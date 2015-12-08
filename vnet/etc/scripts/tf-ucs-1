@@ -1,0 +1,16 @@
+comment { connected to Ixia port 1}
+set int ip address TenGigabitEthernet4/0/0 1.0.0.2/8
+
+set int state TenGigabitEthernet4/0/0 up
+
+comment { connected to Ixia port 2}
+set int ip address TenGigabitEthernet4/0/1 2.0.0.2/8
+set int state TenGigabitEthernet4/0/1 up
+
+comment { connected to Ixia port 3}
+set int ip address TenGigabitEthernet6/0/0 3.0.0.2/8
+set int state TenGigabitEthernet6/0/0 up
+
+comment { connected to Ixia port 4}
+set int ip address TenGigabitEthernet6/0/1 4.0.0.2/8
+set int state TenGigabitEthernet6/0/1 up

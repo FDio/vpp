@@ -1,0 +1,105 @@
+######################################################################
+# glibc
+######################################################################
+
+# glibc needs this for cross compiling 
+libc_cv_forced_unwind=yes
+libc_cv_c_cleanup=yes
+libc_cv_ssp=no
+# fixes gentoo build; not sure why?
+libc_cv_uname_release=""
+libc_cv_uname_version=""
+ac_cv_header_cpuid_h=yes
+######################################################################
+# bash
+######################################################################
+
+# Bash configure.in uses this to work around an autoconf 2.53 bug
+ac_cv_func_setvbuf_reversed=no
+ac_cv_rl_version=5.1
+bash_cv_termcap_lib=libncurses
+
+# These mostly come from debian bash-2.05b changes
+# They are needed to make a functioning bash.  Without these
+# settings gdbserver exiting would cause the invoking bash to
+# exit also.
+bash_cv_have_mbstate_t=yes
+bash_cv_dup2_broken=no
+bash_cv_pgrp_pipe=no
+bash_cv_sys_siglist=yes
+bash_cv_under_sys_siglist=yes
+bash_cv_opendir_not_robust=no
+bash_cv_printf_declared=yes
+bash_cv_ulimit_maxfds=yes
+bash_cv_getenv_redef=yes
+bash_cv_getcwd_calls_popen=no
+bash_cv_func_strcoll_broken=no
+bash_cv_must_reinstall_sighandlers=no
+bash_cv_type_quad_t=yes
+bash_cv_func_sigsetjmp=present
+bash_cv_job_control_missing=present
+bash_cv_sys_named_pipes=present
+bash_cv_type_rlimit=long
+bash_cv_printf_a_format=yes
+bash_cv_unusable_rtsigs=no
+
+######################################################################
+# Apache
+######################################################################
+ac_cv_func_setpgrp_void=yes
+apr_cv_process_shared_works=yes
+apr_cv_tcp_nodelay_with_cork=yes
+ap_void_ptr_lt_long=no
+
+case ${host_cpu} in
+x86_64 | alpha)
+  ac_cv_sizeof_ssize_t=8
+  ac_cv_sizeof_size_t=8
+  ac_cv_sizeof_pid_t=4
+  ;;
+*)
+  ac_cv_sizeof_ssize_t=4
+  ac_cv_sizeof_size_t=4
+  ac_cv_sizeof_pid_t=4
+  ;;
+esac
+
+######################################################################
+# gdb
+######################################################################
+gdb_cv_func_ptrace_args=int,int,long,long
+
+######################################################################
+# dpkg
+######################################################################
+dpkg_cv_va_copy=yes
+
+######################################################################
+# coreutils
+######################################################################
+ac_cv_search_clock_gettime=no
+gl_cv_fs_space=yes
+
+######################################################################
+# valgrind
+######################################################################
+ac_cv_file__proc_self_fd=yes
+ac_cv_file__proc_self_exe=yes
+ac_cv_file__proc_self_maps=yes
+
+######################################################################
+# tcpdump
+######################################################################
+ac_cv_linux_vers=2
+ac_cv_func_pcap_findalldevs=no
+
+######################################################################
+# flex
+######################################################################
+ac_cv_func_malloc_0_nonnull=yes
+ac_cv_func_realloc_0_nonnull=yes
+
+######################################################################
+# tar
+######################################################################
+tar_gl_cv_func_mknod_works=yes

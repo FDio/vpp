@@ -1,0 +1,10 @@
+changelog
+files
+*debhelper*
+*.substvars
+*.install
+vpp-dpdk-dkms*
+vpp/
+vpp-dev/
+vpp-lib/
+vpp-dpdk-dkms/

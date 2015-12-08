@@ -1,0 +1,23 @@
+loop cre
+set int ip table loop0 12
+set int ip address loop0 192.168.1.1/24
+set int state loop0 up
+
+set int ip table GigabitEthernet2/2/0 12
+comment { set int ip address GigabitEthernet2/2/0 192.168.1.1/24 }
+set int unnumbered GigabitEthernet2/2/0 use loop0
+set int state GigabitEthernet2/2/0 up
+
+set int ip table GigabitEthernet2/7/0 11
+set int ip address GigabitEthernet2/7/0 192.168.2.1/24
+set int state GigabitEthernet2/7/0 up
+
+uncomment { set dhcp proxy server 1.2.3.4 src-address 1.2.3.5 add-option-82 rx-fib-id 0 server-fib-id 0 }
+
+uncomment { set dhcp proxy server 192.168.2.2 src-address 192.168.2.1 add-option-82 rx-fib-id 12 server-fib-id 11 }
+
+ip route add 0.0.0.0/24 table 11 via local
+ip route add 255.255.255.255/24 table 11 via local
+
+ip route add 0.0.0.0/24 table 12 via local
+ip route add 255.255.255.255/24 table 12 via local

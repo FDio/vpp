@@ -1,0 +1,46 @@
+
+set int ip address GigabitEthernet2/1/0 1.2.3.4/24
+set int state GigabitEthernet2/1/0 up 
+
+set int state GigabitEthernet2/2/0 up
+cre sub GigabitEthernet2/2/0 1 dot1q 9 
+set int state GigabitEthernet2/2/0.1 up
+set int state tuntap-0 down
+
+set int acl input GigabitEthernet2/1/0
+set int acl output GigabitEthernet2/1/0
+set int acl input GigabitEthernet2/2/0.1 
+set int acl output GigabitEthernet2/2/0.1
+
+set int l2 bridge GigabitEthernet2/1/0 0
+set int l2 bridge GigabitEthernet2/2/0.1 0
+
+set int l2 tag-rewrite GigabitEthernet2/1/0 push dot1q 50
+set int l2 tag-rewrite GigabitEthernet2/2/0.1 pop 1
+
+
+trace add pg-input 6
+
+clear error
+clear run
+clear int
+
+packet-generator new {
+  name new_input_if_index_mac_move
+  limit 4
+  no-recycle
+  node ethernet-input 
+  interface GigabitEthernet2/1/0
+  size 98-98
+  data { hex 0x00010203040500020406080a080045006402b46b96000100096978676265000500bf436973636f20494f5320536f6674776172652c2040160011000000010101cc000400000000001a00100000000100000000ffffffff }
+}
+
+packet-generator new {
+  name dmac_hit
+  limit 7
+  no-recycle
+  node ethernet-input 
+  interface GigabitEthernet2/2/0
+  size 98-98
+  data { hex 0x00020406080a00224406080a8100000981000011080045006402b46b96000100096978676265000500bf436973636f20494f5320536f6674776172652c2040160011000000010101cc000400000000001a00100000000100000000ffffffff }
+}

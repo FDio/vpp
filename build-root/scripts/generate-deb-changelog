@@ -1,0 +1,37 @@
+#!/bin/bash
+
+CHANGELOG=deb/debian/changelog
+DIST=unstable
+FIRST=1
+
+print_changelog_item() {
+	DATE=$(git log -1 --format=%cD ${TAG})
+	DEBFULLNAME=$(git log -1 --format=%an ${TAG})
+	DEBEMAIL=$(git log -1 --format=%ae ${TAG})
+
+	if [ ${FIRST} = 0 ]; then echo >> ${CHANGELOG}; fi
+	FIRST=0
+
+	echo "vpp (${VER}) ${DIST}; urgency=low" >> ${CHANGELOG}
+	echo >> ${CHANGELOG}
+	echo "${DESC}" >> ${CHANGELOG}
+	echo >> ${CHANGELOG}
+	echo " -- ${DEBFULLNAME} <${DEBEMAIL}>  ${DATE}" >> ${CHANGELOG}
+}
+
+VER=$(scripts/version)
+TAG=HEAD
+ADDS=$(echo ${VER} | sed -e 's/~.*//'| cut -s -d- -f2)
+
+rm -f ${CHANGELOG}
+
+if [ -n "${ADDS}" ]; then
+	DESC="  * includes ${ADDS} commits after $(echo ${VER}| cut -d- -f1) release"
+	print_changelog_item
+fi
+
+for TAG in $(git tag -l 'v[0-9].[0-9].[0-9]' | sort -r ); do
+	VER=$(echo ${TAG}| sed -e 's/^v//')
+	DESC=$(git tag -l -n20 ${TAG} | tail -n+2 | sed -e 's/^ */  /')
+	print_changelog_item
+done

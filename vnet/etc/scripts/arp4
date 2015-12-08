@@ -1,0 +1,21 @@
+packet-generator new {
+  name x
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    ICMP: 1.0.0.2 -> 2.0.0.2
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+trace add pg-input 100
+loop create
+loop create
+set int state loop0 up
+set int state loop1 up
+
+set int ip address loop0 1.0.0.1/24
+set int ip address loop1 2.0.0.1/24

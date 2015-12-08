@@ -1,0 +1,18 @@
+packet-generator new {
+  name x
+  limit 1
+  node ethernet-input
+  no-recycle
+  pcap /home/eliot/pcap-data/ISIS_level1_adjacency.cap
+}
+
+packet-generator new {
+  name y
+  limit 1
+  node hdlc-input
+  no-recycle
+  pcap /home/eliot/pcap-data/ISIS_p2p_adjacency.cap
+}
+
+tr add pg-input 10
+

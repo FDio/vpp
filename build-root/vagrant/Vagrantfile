@@ -1,0 +1,36 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+
+  # Pick the right distro and bootstrap, default is ubuntu1404
+  distro = ENV['VPP_VAGRANT_DISTRO']
+  if distro == 'centos7'
+    config.vm.box = "puppetlabs/centos-7.0-64-nocm"
+    config.vm.provision 'shell', path: 'bootstrap.centos7.sh'
+  else
+    config.vm.box = "puppetlabs/ubuntu-14.04-64-nocm"
+    config.vm.provision 'shell', path: 'bootstrap.ubuntu1404.sh'
+  end
+
+  # vagrant-cachier caches apt/yum etc to speed subsequent
+  # vagrant up
+  # to enable, run
+  # vagrant plugin install vagrant-cachier
+  #
+  if Vagrant.has_plugin?("vagrant-cachier")
+    config.cache.scope = :box
+  end
+
+  config.vm.synced_folder "../../", "/vpp", disabled: false
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "4096"
+  end
+  config.vm.provider "vmware_fusion" do |fusion,override|
+    fusion.vmx["memsize"] = "4096"
+  end
+  config.vm.provider "vmware_workstation" do |vws,override|
+    vws.vmx["memsize"] = "8192"
+    vws.vmx["numvcpus"] = "4"
+  end
+end

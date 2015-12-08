@@ -1,0 +1,21 @@
+description	"vector packet processing engine"
+author          "Cisco Systems, Inc <listname@cisco.com>"
+
+manual
+
+respawn
+
+pre-start script
+   rm -f /dev/shm/* || true
+   # should be there via dkms, but if not, start anyway
+   modprobe igb_uio || true
+end script
+
+
+script
+  exec vpe $(cat /etc/vpp/startup.conf | sed -e 's/#.*//')
+end script
+
+post-stop script
+   rm -f /dev/shm/* || true
+end script

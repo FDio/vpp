@@ -1,0 +1,56 @@
+Building DEB packages
+=====================
+
+REQUIREMENTS:
+    You will need a working Internet connection to execute the build, because
+    the build procedure for the included "dpdk" project attempts to contact the
+    Internet host "dpdk.org".
+
+There are three main parts to the process:
+    a) Stage the source tree so that dpkg-source will recognize its organization
+        and create a valid DSC source package for you;
+    b) Ensure that the tools required for building DEB packages are installed;
+        and
+    c) Launch the build.
+
+1) Create, or have on hand, a local clone of the git repository, with no
+untracked files or local modifications pending, up-to-date with the branch or
+commit reference from which you wish to construct the source release.
+
+The branch and repository origins will differ based on local conditions.
+
+Example:
+$ git clone -b master ssh://git@example.com:7999/~username/open-vpp
+
+("-b master" can be omitted since master is the default branch)
+
+2) Rename the checkout with a version number embedded in its name as is
+conventional for code releases.  Again, your version number may vary.
+
+Example:
+$ mv open-vpp open-vpp-0.0.0
+
+3) Ensure that the dpkg-buildpackage program is installed.
+
+E.g.,
+
+# apt-get install dpkg-dev
+
+4) From the PARENT directory of the debian/ directory, run:
+
+$ cd open-vpp-0.0.0
+$ dpkg-buildpackage -I .git -us -uc
+
+(The -us and -uc flags omit GPG signatures from the .dsc and .changes files,
+respectively.  You can add them later, or if you are preparing a signed release
+and have the signing key on hand, leave off the flags.)
+
+5) Get rid of the source directory; you now either have a source package with
+which you can re-create it at any time, or there were problems with the build,
+and you should go back to your git checkout to fix them.
+
+$ rm -r open-vpp-0.0.0
+
+END
+
+vim:set ai et sw=4 ts=4 tw=80:

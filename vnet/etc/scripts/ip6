@@ -1,0 +1,15 @@
+packet-generator new {
+  name x
+  limit 1
+  node ethernet-input
+  size 64-64
+  no-recycle
+  data {
+    IP6: 1.2.3 -> 4.5.6
+    ICMP: ::1 -> ::2
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+tr add pg-input 100

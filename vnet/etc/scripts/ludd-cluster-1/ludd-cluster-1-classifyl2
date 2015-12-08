@@ -1,0 +1,8 @@
+set int ip address GigabitEthernet2/2/0 192.168.1.1/24
+set int state GigabitEthernet2/2/0 up
+
+classify table mask l3 ip4 src buckets 2 l2-miss-next ethernet
+
+classify session advance 14 l2-hit-next ip4 table-index 0 match l3 ip4 src 192.168.1.2
+
+set int l2 class intfc GigabitEthernet2/2/0 ip4-table 0

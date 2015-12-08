@@ -1,0 +1,16 @@
+packet-generator new {
+  name x
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    TCP: 1.2.3.4 -> 5.6.7.8
+    TCP: 1234 -> 5678
+    incrementing 100
+  }
+}
+
+tr add pg-input 100
+ip route 5.6.7.8/32 via local
+ip route 1.2.3.4/32 via local

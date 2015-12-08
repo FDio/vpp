@@ -1,0 +1,6 @@
+packet-generator new {
+  name x
+  limit 1
+  node ethernet-input
+  data { IP: 1.2.3 -> 4.5.6 incrementing 100 }
+}

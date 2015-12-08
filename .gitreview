@@ -1,0 +1,4 @@
+[gerrit]
+host=gerrit.projectrotterdam.info
+port=29418
+project=vpp

@@ -1,0 +1,27 @@
+srp create-interfaces
+srp create-interfaces
+set int hw-class fake-srp0 srp
+set int hw-class fake-srp1 srp
+
+packet-generator new {
+  name x
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    ICMP: 1.0.0.2 -> 2.0.0.2
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+tr add pg-input 100
+set int state fake-srp0 up
+set int state fake-srp1 up
+
+set int ip address fake-srp0 1.0.0.1/24
+set int ip address fake-srp1 2.0.0.1/24
+
+
+
