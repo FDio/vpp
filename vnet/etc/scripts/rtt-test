@@ -1,0 +1,31 @@
+set int state TenGigabitEthernet4/0/0 up
+set int state TenGigabitEthernet5/0/0 up
+
+set int ip address TenGigabitEthernet4/0/0 1.0.0.1/24
+set int ip address TenGigabitEthernet5/0/0 2.0.0.1/24
+
+ip route table 0 1.0.0.2/32 via TenGigabitEthernet4/0/0 IP4: 00:1b:21:74:5b:04 -> 00:1b:21:79:8e:bc
+ip route table 0 2.0.0.2/32 via TenGigabitEthernet5/0/0 IP4: 00:1b:21:79:8e:bc -> 00:1b:21:74:5b:04
+ip route table 1 2.0.0.2/32 via local
+ip route table 1 1.0.0.2/32 via local
+
+set int ip table TenGigabitEthernet5/0/0 1
+set int ip table TenGigabitEthernet4/0/0 1
+
+comment { trace add rtt-test-tx 100 }
+comment { trace add ixge-input 100 }
+comment { te rtt { 1.0.0.2 -> 2.0.0.2 count 1e4 rate 1e9 size 100 histogram-time 1e-5 } }
+
+packet-generator new {
+  name x
+  limit 1
+  node ip4-input
+  size 170-170
+  data {
+    ICMP: 1.0.0.2 -> 2.0.0.2
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+

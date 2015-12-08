@@ -1,0 +1,16 @@
+packet-generator new {
+  name x
+  limit 1
+  node ip6-input
+  size 64-64
+  no-recycle
+  data {
+    ICMP6: ::1 -> ::2
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+tr add pg-input 100
+ip route ::1/128 via local
+ip route ::2/128 via local

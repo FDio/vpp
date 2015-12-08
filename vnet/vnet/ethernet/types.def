@@ -1,0 +1,112 @@
+/*
+ * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Emacs editing mode -*-C-*- Ethernet types. */
+
+/*
+ * ethernet types
+ *
+ * Copyright (c) 2008 Eliot Dresselhaus
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ *  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/* Types < 0x600 (1536) are LLC packet lengths. */
+ethernet_type (0x600, LLC_LENGTH)
+
+ethernet_type (0x600, XNS_IDP)
+ethernet_type (0x800, IP4)
+ethernet_type (0x806, ARP)
+ethernet_type (0x0BAD, VINES_IP)
+ethernet_type (0x0BAE, VINES_LOOPBACK)
+ethernet_type (0x0BAF, VINES_ECHO)
+ethernet_type (0x1984, TRAIN)
+ethernet_type (0x2000, CDP)
+ethernet_type (0x2001, CGMP)
+ethernet_type (0x2007, SRP_CONTROL)
+ethernet_type (0x2452, CENTRINO_PROMISC)
+ethernet_type (0x6000, DECNET)
+ethernet_type (0x6001, DECNET_DUMP_LOAD)
+ethernet_type (0x6002, DECNET_REMOTE_CONSOLE)
+ethernet_type (0x6003, DECNET_ROUTE)
+ethernet_type (0x6004, DEC_LAT)
+ethernet_type (0x6005, DEC_DIAGNOSTIC)
+ethernet_type (0x6006, DEC_CUSTOMER)
+ethernet_type (0x6007, DEC_SCA)
+ethernet_type (0x6558, TRANSPARENT_BRIDGING)
+ethernet_type (0x6559, RAW_FRAME_RELAY)
+ethernet_type (0x8035, REVERSE_ARP)
+ethernet_type (0x8038, DEC_LAN_BRIDGE)
+ethernet_type (0x803D, DEC_ETHERNET_ENCRYPTION)
+ethernet_type (0x803F, DEC_LAN_TRAFFIC_MONITOR)
+ethernet_type (0x8041, DEC_LAST)
+ethernet_type (0x809B, APPLETALK)
+ethernet_type (0x80D5, IBM_SNA)
+ethernet_type (0x80F3, APPLETALK_AARP)
+ethernet_type (0x80FF, WELLFLEET_COMPRESSION)
+ethernet_type (0x8100, VLAN)
+ethernet_type (0x8137, IPX)
+ethernet_type (0x814C, SNMP)
+ethernet_type (0x81FD, CABLETRON_ISMP)
+ethernet_type (0x81FF, CABLETRON_ISMP_TBFLOOD)
+ethernet_type (0x86DD, IP6)
+ethernet_type (0x86DF, ATOMIC)
+ethernet_type (0x876B, TCP_IP_COMPRESSION)
+ethernet_type (0x876C, IP_AUTONOMOUS_SYSTEMS)
+ethernet_type (0x876D, SECURE_DATA)
+ethernet_type (0x8808, MAC_CONTROL)
+ethernet_type (0x8809, SLOW_PROTOCOLS)
+ethernet_type (0x880B, PPP)
+ethernet_type (0x8847, MPLS_UNICAST)
+ethernet_type (0x8848, MPLS_MULTICAST)
+ethernet_type (0x8863, PPPOE_DISCOVERY)
+ethernet_type (0x8864, PPPOE_SESSION)
+ethernet_type (0x886D, INTEL_ANS)
+ethernet_type (0x886F, MICROSOFT_NLB_HEARTBEAT)
+ethernet_type (0x8881, CDMA_2000)
+ethernet_type (0x888e, 802_1X_AUTHENTICATION)
+ethernet_type (0x8892, PROFINET)
+ethernet_type (0x889a, HYPERSCSI)
+ethernet_type (0x88a2, AOE)
+ethernet_type (0x88a8, DOT1AD)
+ethernet_type (0x88AE, BRDWALK)
+ethernet_type (0x88B7, 802_OUI_EXTENDED)
+ethernet_type (0x88c7, 802_11I_PRE_AUTHENTICATION)
+ethernet_type (0x88cc, 802_1_LLDP)
+ethernet_type (0x894f, VPATH_3)
+ethernet_type (0x9000, LOOPBACK)
+ethernet_type (0x9021, RTNET_MAC)
+ethernet_type (0x9022, RTNET_CONFIG)
+ethernet_type (0x9100, VLAN_9100)
+ethernet_type (0x9200, VLAN_9200)
+ethernet_type (0x9999, PGLAN)
+ethernet_type (0xFEFE, SRP_ISIS)
+ethernet_type (0xFFFF, RESERVED)

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+TAG=$(git describe | cut -d- -f1 | sed -e 's/^v//')
+ADD=$(git describe | cut -s -d- -f2)
+CMT=$(git describe --dirty --match 'v*'| cut -s -d- -f3,4)
+
+if [ "$1" = "rpm-version" ]; then
+  echo ${TAG}
+  exit
+fi
+
+if [ "$1" = "rpm-release" ]; then
+  [ -z "${ADD}" ] && echo release && exit
+  echo ${ADD}~${CMT}
+  exit
+fi
+
+if [ -n "${ADD}" ]; then
+  echo ${TAG}-${ADD}~${CMT}
+else
+  echo ${TAG}
+fi

@@ -1,0 +1,21 @@
+packet-generator new {
+  name x
+  limit 1
+  node ip6-input
+  size 64-64
+  no-recycle
+  data {
+    ICMP6: 2000::2 -> 2001::2
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+tr add pg-input 100
+loop create
+loop create
+set int state loop0 up
+set int state loop1 up
+
+set int ip address loop0 2000::1/64
+set int ip address loop1 2001::1/64

@@ -1,0 +1,6 @@
+int create-ethernet
+set int ip address fake-eth0 1.2.3.4/24
+set int state fake-eth0 up
+ip route 1.2.3.5/32 via local
+trace add tuntap-rx 100
+

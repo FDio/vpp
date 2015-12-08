@@ -1,0 +1,58 @@
+
+set int ip address GigabitEthernet2/1/0 1.2.3.4/24
+set int state GigabitEthernet2/1/0 up 
+set int state tuntap-0 down
+
+
+cre sub GigabitEthernet2/1/0 1 dot1q 1 
+cre sub GigabitEthernet2/1/0 2 dot1q 2 
+cre sub GigabitEthernet2/1/0 3 dot1q 3
+cre sub GigabitEthernet2/2/0 1 dot1q 1 
+cre sub GigabitEthernet2/2/0 100 dot1q 100 
+
+set int l2 bridge GigabitEthernet2/1/0 0
+set int l2 bridge GigabitEthernet2/1/0.1 0
+set int l2 bridge GigabitEthernet2/1/0.2 0
+set int l2 bridge GigabitEthernet2/1/0.3 0
+set int l2 bridge GigabitEthernet2/2/0 0
+set int l2 bridge GigabitEthernet2/2/0.1 0
+set int l2 bridge GigabitEthernet2/2/0.100 0
+
+set int l2 tag-rewrite GigabitEthernet2/2/0.1 push dot1q 50
+set int l2 tag-rewrite GigabitEthernet2/1/0.2 translate 1-1 dot1q 100
+set int l2 tag-rewrite GigabitEthernet2/1/0.3 translate 1-1 dot1q 99 
+
+set int l2 efp-filter GigabitEthernet2/2/0
+set int l2 efp-filter GigabitEthernet2/2/0.1
+set int l2 efp-filter GigabitEthernet2/2/0.100
+
+
+l2fib add 00:00:00:00:00:11    0  GigabitEthernet2/2/0.1 static
+l2fib add 00:00:00:00:00:22    0  GigabitEthernet2/2/0.100 static
+
+set int state GigabitEthernet2/1/0 up
+set int state GigabitEthernet2/1/0.1 up
+set int state GigabitEthernet2/1/0.2 up
+set int state GigabitEthernet2/1/0.3 up
+set int state GigabitEthernet2/2/0 up
+set int state GigabitEthernet2/2/0.1 up
+set int state GigabitEthernet2/2/0.100 up
+
+
+trace add pg-input 6
+
+clear error
+clear run
+clear int
+
+packet-generator new {
+  name post_vtr_pass
+  limit 9111003
+  no-recycle
+  node ethernet-input
+  interface GigabitEthernet2/1/0
+  data {
+      IP4: 0050.56b7.7c83 -> 00:00:00:00:00:22 vlan 2
+      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 
+  }
+}

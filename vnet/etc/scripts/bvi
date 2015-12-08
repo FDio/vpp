@@ -1,0 +1,76 @@
+
+
+set int state tuntap-0 down
+set int ip address GigabitEthernet2/1/0 1.2.3.4/24
+
+set int state GigabitEthernet2/1/0 up 
+cre sub GigabitEthernet2/1/0 1 dot1q 7 
+set int state GigabitEthernet2/1/0.1 up
+
+set int state GigabitEthernet2/2/0 up
+cre sub GigabitEthernet2/2/0 1 dot1q 9 
+set int state GigabitEthernet2/2/0.1 up
+
+
+loop create
+set int l2 bridge loop0 0 bvi
+set int ip table loop0 0
+set int state loop0 up
+
+
+set int l2 bridge GigabitEthernet2/1/0.1 0
+set int l2 bridge GigabitEthernet2/2/0.1 0
+
+set int l2 tag-rewrite GigabitEthernet2/1/0.1 pop 1
+set int l2 tag-rewrite GigabitEthernet2/2/0.1 pop 1 
+
+l2fib add 00:22:44:06:08:0a    0  GigabitEthernet2/1/0.1 static
+l2fib add 00:02:04:06:08:0a    0  GigabitEthernet2/2/0.1 static
+
+
+ip route table 0 8.0.0.1/32 via loop0
+set ip arp loop0 8.0.0.1 00:02:04:06:08:0a
+
+
+ip route add 1.2.3.3/32 via GigabitEthernet2/1/0 IP4: 00:15:17:61:73:47 -> 00:15:17:61:73:46
+
+cle er
+cle int
+cle run
+
+packet-generator new {
+  name bvi_to_l2 
+  limit 100
+  no-recycle
+  node ethernet-input
+  interface GigabitEthernet2/1/0
+  data {
+      IP4: 0050.56b7.7c83 -> 0050.56b7.296d 
+      GRE: 1.2.3.3 -> 8.0.0.1 mpls_unicast 
+  }
+}
+
+packet-generator new {
+  name l2_to_bvi
+  limit 50
+  no-recycle
+  node ethernet-input
+  interface GigabitEthernet2/2/0
+  data {
+      IP4: 0050.56b7.7c83 -> dead.0000.0000  vlan 9
+      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 
+  }
+}
+
+packet-generator new {
+  name l2_to_bvi_via_flood
+  limit 25
+  no-recycle
+  node ethernet-input
+  interface GigabitEthernet2/2/0
+  data {
+      IP4: 0050.56b7.7c83 -> ffff.ffff.ffff  vlan 9
+      GRE: 8.0.0.1 -> 1.2.3.3 mpls_unicast 
+  }
+}
+

@@ -1,0 +1,83 @@
+#!/bin/sh
+
+if [ $# -lt 2 ]; then
+    cat - <<EOF
+$0 FROM-DIR TO-DIR ENVIRONMENT
+
+Copies files from one directory to another with possible
+transformations.
+
+Files named FILE.spp will be transformed via the spp preprocessor
+subject to environment definitions.  Source FILE.copyimgspp results in
+destination file FILE in the corresponding destination directory.
+
+Files named FILE.copyimgsh are run as shell scripts in (i.e. via chdir)
+the corresponding destination directory (and not copied).
+
+First regular files are copied.  Then transformations are preformed.
+Finally, shell scripts are run.
+EOF
+  exit 1;
+fi
+
+FROM_DIR=$1
+TO_DIR=$2
+
+FILTER=" -and -not -name '*~'";
+FILTER="${FILTER} -and -not -name '.*~'";
+FILTER="$FILTER -and -not -path '*/.git*'";
+FILTER="$FILTER -and -not -path '*/.svn*'";
+FILTER="$FILTER -and -not -path '*/.CVS*'";
+
+FROM_FILES=`(cd $FROM_DIR; eval "find . -not -type d $FILTER")`;
+ FROM_DIRS=`(cd $FROM_DIR; eval "find .      -type d $FILTER")`;
+
+COPY_FILES=
+SPP_FILES=
+SH_FILES=
+for f in $FROM_FILES; do
+  case $f in
+    *.copyimgspp) SPP_FILES="$SPP_FILES $f" ;;
+    *.copyimgsh)   SH_FILES="$SH_FILES $f" ;;
+    *)		 COPY_FILES="$COPY_FILES $f";;
+  esac
+done
+
+# Make destination directories.
+mkdir -p $TO_DIR;
+if [ "$FROM_DIRS" != "" ]; then
+  for d in $FROM_DIRS; do
+    mkdir -p $TO_DIR/$d;
+  done
+fi
+
+# Copy files
+if [ "$COPY_FILES" != "" ]; then
+    tar -cf - -C $FROM_DIR $COPY_FILES | tar --preserve-permissions -xf - -C $TO_DIR;
+fi
+
+# Use spp to transform any spp files
+if [ "$SPP_FILES" != "" ]; then
+  for f in $SPP_FILES; do
+    d=`dirname $f`;
+    b=`basename $f .copyimgspp`;
+    mkdir -p $TO_DIR/$d;
+    t=$TO_DIR/$d/$b;
+    spp -o $TO_DIR/$d/$b $FROM_DIR/$f || exit 1;
+  done;
+fi
+
+# Now that all files have been copied/created we run any shell scripts
+ABS_FROM_DIR=`(cd $FROM_DIR; pwd)`;
+if [ "$SH_FILES" != "" ]; then
+  # Allow directory to define some functions
+  if [ -f $FROM_DIR/copyimgsh-functions.sh ]; then
+    . $FROM_DIR/copyimgsh-functions.sh ;
+  fi ;
+  for f in $SH_FILES; do
+    d=`dirname $f`;
+    b=`basename $f`;
+    mkdir -p $TO_DIR/$d;
+    (cd $TO_DIR/$d; . $ABS_FROM_DIR/$d/$b) || exit 1;
+  done;
+fi;

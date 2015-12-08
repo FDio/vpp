@@ -1,0 +1,9 @@
+l2tp_set_lookup_key lookup_v6_src
+
+sw_interface_add_del_address GigabitEthernet2/3/0 db03::1/64
+sw_interface_set_flags GigabitEthernet2/3/0 admin-up
+
+comment sw_interface_add_del_address GigabitEthernet2/4/0 db02::2/64
+sw_interface_set_flags GigabitEthernet2/4/0 admin-up
+
+l2tp_session_add_del client_address db03::2 our_address db03::1 GigabitEthernet2/4/0 local_session_id 3 remote_session_id 1 local_cookie 33 remote_cookie 11

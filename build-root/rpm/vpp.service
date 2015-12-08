@@ -1,0 +1,12 @@
+[Unit]
+Description=Vector Packet Processing Process
+After=syslog.target network.target auditd.service
+
+[Service]
+ExecStart=/bin/sh -c '/usr/bin/vpe $(cat /etc/vpp/startup.conf | sed -e "s/#.*//")'
+Type=simple
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
