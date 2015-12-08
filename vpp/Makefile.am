@@ -1,0 +1,104 @@
+# Copyright (c) 2015 Cisco and/or its affiliates.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+AUTOMAKE_OPTIONS = foreign subdir-objects
+
+AM_CFLAGS = -Wall @Q_PLATFORM_DEFINE@ @Q_PLATFORM_PLUGPATH@ @DPDK@
+
+noinst_PROGRAMS = 
+BUILT_SOURCES =
+bin_PROGRAMS = 
+CLEANFILES = 
+lib_LTLIBRARIES =
+
+bin_PROGRAMS += vpe
+
+vpe_SOURCES =					\
+  vnet/main.c					\
+  app/vpe_cli.c					\
+  app/version.c					\
+  oam/oam.c					\
+  stats/stats.c
+
+vpe_SOURCES +=					\
+  api/api.c					\
+  api/custom_dump.c
+
+# comment out to disable stats upload to gmond 
+
+vpe_SOURCES +=					\
+  api/gmon.c	
+
+nobase_include_HEADERS =			\
+  api/vpe_all_api_h.h				\
+  api/vpe_msg_enum.h				\
+  api/vpe.api.h
+
+# install the API definition, so we can produce java bindings, etc.
+
+apidir = $(prefix)/api
+api_DATA = api/vpe.api
+
+BUILT_SOURCES += api/vpe.api.h app/version.c
+
+.PHONY:	app/version.c
+
+app/version.c:
+	@pushd ../../../vpp ;					\
+	branch=`git rev-parse --abbrev-ref HEAD` ;		\
+	popd ;							\
+	if [ x$$GITTAG = "x" ] ; then				\
+	   GITTAG=$$USER-private ;				\
+	fi ;							\
+	vppversion -p vpe -b $${branch}@$${GITTAG} -o $@
+
+vpe_LDADD = -lvlibapi -lvlibmemory  -lvlib_unix -lvlib 
+
+vpe_LDADD += -l:libvnet.a
+
+vpe_LDADD += -lsvm -lsvmdb -lrt
+
+vpe_LDADD += -lvnetplugin
+
+if WITH_DPDK
+vpe_LDADD += -l:libdpdk.a
+endif
+
+# These go last
+
+vpe_LDADD += -lvppinfra -lm -lpthread -lcrypto -ldl
+
+SUFFIXES = .api.h .api
+
+%.api.h: %.api
+	@echo "  APIGEN  " $@ ;					\
+	@mkdir -p `dirname $@` ;				\
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
+	| vppapigen --input - --output $@ --show-name $@
+
+
+noinst_PROGRAMS += test_client test_ha
+
+test_client_SOURCES = api/test_client.c
+test_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
+	-lpthread -lm -lrt
+
+test_ha_SOURCES = api/test_ha.c
+test_ha_LDADD = -lvlibmemoryclient -lvlibapi -lsvmdb -lsvm -lvppinfra \
+		-lpthread -lm -lrt
+
+noinst_PROGRAMS += summary_stats_client
+
+summary_stats_client_SOURCES = api/summary_stats_client.c
+summary_stats_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
+	-lpthread -lm -lrt

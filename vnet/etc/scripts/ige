@@ -1,0 +1,19 @@
+packet-generator new {
+  name x
+  limit 1
+  node ip4-lookup
+  size 50-50
+  data {
+    ICMP: 1.0.0.1 -> 1.0.0.3 ttl 1
+    incrementing 30
+  }
+}
+
+comment { tr add pg-input 100 }
+set int ip address GigabitEthernet4/0/0 1.0.0.1/24
+set int ip address GigabitEthernet4/0/1 1.0.0.2/24
+set int state GigabitEthernet4/0/0 up
+set int state GigabitEthernet4/0/1 up
+
+ip route add 1.0.0.3/32 via GigabitEthernet4/0/1 IP4: 00:15:17:61:73:47 -> 00:15:17:61:73:46
+tr add ige-input 10

@@ -1,0 +1,7 @@
+ethernet create-interfaces
+set int state fake-eth0 up
+set int ip address fake-eth0 2000::1/64
+comment { ip probe fake-eth0 2000::1 }
+
+
+

@@ -1,0 +1,8 @@
+classify table mask l2 src l3 ip4 src buckets 2 miss-next local
+
+comment { classify table mask l3 ip4 src buckets 2 miss-next local }
+set ip classify intfc GigabitEthernet2/2/0 table-index 0
+set int ip address GigabitEthernet2/2/0 192.168.1.1/24
+set int state GigabitEthernet2/2/0 up
+
+classify session hit-next local table-index 0 match l2 src 00:50:56:b7:05:bb l3 ip4 src 192.168.1.2

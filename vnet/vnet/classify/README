@@ -1,0 +1,180 @@
+=== vnet classifier theory of operation ===
+
+The vnet classifier trades off simplicity and perf / scale
+characteristics. At a certain level, it's a dumb robot. Given an
+incoming packet, search an ordered list of (mask, match) tables. If
+the classifier finds a matching entry, take the indicated action. If
+not, take a last-resort action.
+
+We use the MMX-unit to match or hash 16 octets at a time. For hardware
+backward compatibility, the code does not [currently] use 256-bit
+(32-octet) vector instructions.
+
+Effective use of the classifier centers around building table lists
+which "hit" as soon as practicable. In many cases, established
+sessions hit in the first table. In this mode of operation, the
+classifier easily processes multiple MPPS / core - even with millions
+of sessions in the data base. Searching 357 tables on a regular basis
+will neatly solve the halting problem.
+
+==== Basic operation ====
+
+The classifier mask-and-match operation proceeds as follows. Given a
+starting classifier table index, lay hands on the indicated mask
+vector.  When building tables, we arrange for the mask to obey
+mmx-unit (16-octet) alignment.
+
+We know that the first octet of packet data starts on a cache-line
+boundary. Further, it's reasonably likely that folks won't want to use
+the generalized classifier on the L2 header; preferring to decode the
+Ethertype manually. That scheme makes it easy to select among ip4 /
+ip6 / MPLS, etc. classifier table sets.
+
+A no-vlan-tag L2 header is 14 octets long. A typical ipv4 header
+begins with the octets 0x4500: version=4, header_length=5, DSCP=0,
+ECN=0. If one doesn't intend to classify on (DSCP, ECN) - the typical
+case - we program the classifier to skip the first 16-octet vector.
+
+To classify untagged ipv4 packets on source address, we program the
+classifier to skip one vector, and mask-and-match one vector.
+
+The basic match-and-match operation looks like this:
+
+ switch (t->match_n_vectors)
+   {
+   case 1:
+     result = (data[0 + t->skip_n_vectors] & mask[0]) ^ key[0];
+     break;
+     
+   case 2:
+     result =  (data[0 + t->skip_n_vectors] & mask[0]) ^ key[0];
+     result |= (data[1 + t->skip_n_vectors] & mask[1]) ^ key[1];
+     break;
+     
+     <etc>
+    }
+
+ result_mask = u32x4_zero_byte_mask (result);
+ if (result_mask == 0xffff)
+     return (v);
+
+Net of setup, it costs a couple of clock cycles to mask-and-match 16
+octets.
+
+At the risk of belaboring an obvious point, the control-plane
+'''must''' pay attention to detail. When skipping one (or more)
+vectors, masks and matches must reflect that decision. See
+.../vnet/vnet/classify/vnet_classify.c:unformat_classify_[mask|match]. Note
+that vec_validate (xxx, 13) creates a 14-element vector.
+
+==== Creating a classifier table ====
+
+To create a new classifier table via the control-plane API, send a
+"classify_add_del_table" message. The underlying action routine,
+vnet_classify_add_del_table(...), is located in
+.../vnet/vnet/classify/vnet_classify.c, and has the following
+prototype:
+
+ int vnet_classify_add_del_table (vnet_classify_main_t * cm,
+                                  u8 * mask, 
+                                  u32 nbuckets,
+                                  u32 memory_size,
+                                  u32 skip,
+                                  u32 match,
+                                  u32 next_table_index,
+                                  u32 miss_next_index,
+                                  u32 * table_index,
+                                  int is_add)
+
+Pass cm = &vnet_classify_main if calling this routine directly. Mask,
+skip(_n_vectors) and match(_n_vectors) are as described above. Mask
+need not be aligned, but it must be match*16 octets in length. To
+avoid having your head explode, be absolutely certain that '''only'''
+the bits you intend to match on are set.
+
+The classifier uses thread-safe, no-reader-locking-required
+bounded-index extensible hashing. Nbuckets is the [fixed] size of the
+hash bucket vector. The algorithm works in constant time regardless of
+hash collisions, but wastes space when the bucket array is too
+small. A good rule of thumb: let nbuckets = approximate number of
+entries expected.
+
+At a signficant cost in complexity, it would be possible to resize the
+bucket array dynamically. We have no plans to implement that function.
+
+Each classifier table has its own clib mheap memory allocation
+arena. To pick the memory_size parameter, note that each classifier
+table entry needs 16*(1 + match_n_vectors) bytes. Within reason, aim a
+bit high. Clib mheap memory uses o/s level virtual memory - not wired
+or hugetlb memory - so it's best not to scrimp on size.
+
+The "next_table_index" parameter is as described: the pool index in
+vnet_classify_main.tables of the next table to search. Code ~0 to
+indicate the end of the table list. 0 is a valid table index!
+
+We often create classification tables in reverse order -
+last-table-searched to first-table-searched - so we can easily set
+this parameter. Of course, one can manually adjust the data structure
+after-the-fact.
+
+Specific classifier client nodes - for example,
+.../vnet/vnet/classify/ip_classify.c - interpret the "miss_next_index"
+parameter as a vpp graph-node next index. When packet classification
+fails to produce a match, ip_classify_inline sends packets to the
+indicated disposition. A classifier application might program this
+parameter to send packets which don't match an existing session to a
+"first-sign-of-life, create-new-session" node.
+
+Finally, the is_add parameter indicates whether to add or delete the
+indicated table. The delete case implicitly terminates all sessions
+with extreme prejudice, by freeing the specified clib mheap.
+
+==== Creating a classifier session ====
+
+To create a new classifier session via the control-plane API, send a
+"classify_add_del_session" message. The underlying action routine,
+vnet_classify_add_del_session(...), is located in
+.../vnet/vnet/classify/vnet_classify.c, and has the following
+prototype:
+
+int vnet_classify_add_del_session (vnet_classify_main_t * cm, 
+                                   u32 table_index, 
+                                   u8 * match, 
+                                   u32 hit_next_index,
+                                   u32 opaque_index, 
+                                   i32 advance,
+                                   int is_add)
+
+Pass cm = &vnet_classify_main if calling this routine directly. Table
+index specifies the table which receives the new session / contains
+the session to delete depending on is_add.
+
+Match is the key for the indicated session. It need not be aligned,
+but it must be table->match_n_vectors*16 octets in length. As a
+courtesy, vnet_classify_add_del_session applies the table's mask to
+the stored key-value. In this way, one can create a session by passing
+unmasked (packet_data + offset) as the "match" parameter, and end up
+with unconfusing session keys. 
+
+Specific classifier client nodes - for example,
+.../vnet/vnet/classify/ip_classify.c - interpret the per-session
+hit_next_index parameter as a vpp graph-node next index. When packet
+classification produces a match, ip_classify_inline sends packets to
+the indicated disposition.
+
+ip4/6_classify place the per-session opaque_index parameter into
+vnet_buffer(b)->l2_classify.opaque_index; a slight misnomer, but
+anyhow classifier applications can send session-hit packets to
+specific graph nodes, with useful values in buffer metadata. Depending
+on the required semantics, we send known-session traffic to a certain
+node, with e.g. a session pool index in buffer metadata. It's totally
+up to the control-plane and the specific use-case.
+
+Finally, nodes such as ip4/6-classify apply the advance parameter as a
+[signed!] argument to vlib_buffer_advance(...); to "consume" a
+networking layer. Example: if we classify incoming tunneled IP packets
+by (inner) source/dest address and source/dest port, we might choose
+to decapsulate and reencapsulate the inner packet. In such a case,
+program the advance parameter to perform the tunnel decapsulation, and
+program next_index to send traffic to a node which uses
+e.g. opaque_index to output traffic on a specific tunnel interface.

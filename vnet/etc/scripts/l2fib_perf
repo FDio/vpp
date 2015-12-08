@@ -1,0 +1,29 @@
+
+set int ip address GigabitEthernet2/1/0 1.2.3.4/24
+set int state GigabitEthernet2/1/0 up 
+
+set int state GigabitEthernet2/2/0 up
+cre sub GigabitEthernet2/2/0 1 dot1q 9 
+set int state GigabitEthernet2/2/0.1 up
+set int state tuntap-0 down
+
+set int l2 bridge GigabitEthernet2/1/0 0
+set int l2 bridge GigabitEthernet2/2/0.1 0
+
+l2fib add 00:22:44:06:08:0a    0  GigabitEthernet2/1/0   static
+l2fib add 00:02:04:06:08:0a    0  GigabitEthernet2/2/0.1 static
+
+cle er
+cle int
+cle run
+
+packet-generator new {
+  name perf
+  limit 9111003
+  no-recycle
+  node ethernet-input 
+  interface GigabitEthernet2/2/0.1 
+  size 98-98
+  data { hex 0x00224406080a00020406080a81000009080045006402b46b96000100096978676265000500bf436973636f20494f5320536f6674776172652c2040160011000000010101cc000400000000001a00100000000100000000ffffffff }
+}
+

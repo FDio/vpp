@@ -1,0 +1,18 @@
+packet-generator new {
+  name x
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    ICMP: 1.2.3.4 -> 5.6.7.8
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+tr add pg-input 100
+set interface ip source-check pg/stream-0
+ip route 1.2.3.4/32 via pg/stream-0 0x01020304
+ip route 5.6.7.8/32 via drop
+

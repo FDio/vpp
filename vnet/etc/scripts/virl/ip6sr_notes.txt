@@ -1,0 +1,38 @@
+vpp-1, tunnel 1: iosv-1 vpp-1 vpp-3 vpp-2 iosv-2
+
+iosv-1
+::a:1:1:0:6
+
+to iosv2
+ipv6 route ::a:1:1:0:16/128 ::a:1:1:0:7
+to iosv4
+ipv6 route ::a:1:1:0:22/128 ::a:1:1:0:7
+
+vpp-1
+
+::a:1:1:0:7
+...
+::a:1:1:0:e
+
+sr tunnel src 0::a:1:1:0:6 dst 0::a:1:1:0:16/128 next 0::a:1:1:0:f next 0::a:1:1:0:1a next 0::a:1:1:0:16 tag 0::a:1:1:0:7 InPE 1 clean
+
+vpp-3
+::a:1:1:0:f
+..
+::a:1:1:0:1b
+
+comment {fix src rpf screws}
+ip route add ::a:1:1:0:6/128 via drop
+ip route add ::a:1:1:0:16/128 via drop
+ip route add ::a:1:1:0:22/128 via drop
+vpp-2
+::a:1:1:0:1a
+..
+::a:1:1:0:17
+
+sr tunnel src 0::a:1:1:0:16 dst 0::a:1:1:0:6/128 next 0::a:1:1:0:1b next 0::a:1:1:0:e next 0::a:1:1:0:6 tag 0::a:1:1:0:17 InPE 1 clean
+
+iosv-2
+::a:1:1:0:16
+
+ipv6 route ::a:1:1:0:6/128 ::a:1:1:0:17

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# includes
+paths=`find $1/*/include -type f -print | grep -v '/dpdk/include/'`
+rm -f $2
+
+for path in $paths
+do
+    relpath=`echo $path | sed -e 's:.*/include/::'`
+    dir=`dirname $relpath`
+    if [ $dir = "." ] ; then
+        echo ../$path /usr/include >> $2
+    else
+        echo ../$path /usr/include/$dir >> $2
+    fi
+done        
+
+# sample plugin
+paths=`(cd ..; find sample-plugin -type f -print | grep -v autom4te)`
+
+for path in $paths
+do
+    relpath=`echo $path | sed -e 's:.*/sample-plugin/::'`
+    dir=`dirname $relpath`
+    if [ $dir = "sample-plugin" ] ; then
+        echo ../../$path /usr/share/doc/vpp/examples/sample-plugin >> $2
+    else
+        echo ../../$path \
+        /usr/share/doc/vpp/examples/$dir >> $2
+    fi
+done        

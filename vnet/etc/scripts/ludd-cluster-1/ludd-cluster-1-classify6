@@ -1,0 +1,5 @@
+classify table mask l3 ip6 src buckets 2 miss-next local
+set ip6 classify intfc GigabitEthernet2/2/0 table-index 0
+set int ip address GigabitEthernet2/2/0 db01::1/64
+set int state GigabitEthernet2/2/0 up
+classify session hit-next local table-index 0 match l3 ip6 src db01::2

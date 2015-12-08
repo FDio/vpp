@@ -1,0 +1,34 @@
+# Copyright (c) 2015 Cisco and/or its affiliates.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+AUTOMAKE_OPTIONS = foreign subdir-objects
+
+AM_CFLAGS = -Wall @Q_PLATFORM_DEFINE@ @Q_PLATFORM_PLUGPATH@ @DPDK@
+
+libvatplugin_la_SOURCES = \
+  vat/plugin_api.c
+
+lib_LTLIBRARIES = libvatplugin.la	
+
+bin_PROGRAMS = vpe_api_test vpe_json_test
+
+vpe_api_test_SOURCES = vat/api_format.c vat/main.c vat/plugin.c vat/vat.h vat/json_format.h vat/json_format.c
+vpe_json_test_SOURCES = vat/json_format.h vat/json_format.c vat/json_test.c
+
+vpe_api_test_LDADD = -lvlibmemoryclient -lvlibapi -lsvm \
+	-lvppinfra -lpthread -lm \
+	-lrt -ldl libvatplugin.la
+vpe_json_test_LDADD = -lvppinfra -lm
+nobase_include_HEADERS = vat/vat.h vat/json_format.h
+
+

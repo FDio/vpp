@@ -1,0 +1,23 @@
+int create-ethernet
+int create-sub fake-eth0 1
+set int state fake-eth0 up
+set int state fake-eth0.1 up
+
+packet-generator new {
+  name x
+  limit 1
+  node ethernet-input
+  interface fake-eth0
+  size 64-64
+  no-recycle
+  data {
+    IP4: 1.2.3 -> 4.5.6 vlan 1
+    ICMP: 1.2.3.4 -> 5.6.7.8
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+tr add pg-input 100
+ip route 5.6.7.8/32 via local
+ip route 1.2.3.4/32 via local
