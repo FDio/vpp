@@ -156,24 +156,6 @@ ip_csum_t ip_csum_and_memcpy (ip_csum_t sum, void * dst, void * src, uword n_byt
 always_inline u16
 ip_csum_and_memcpy_fold (ip_csum_t sum, void * dst)
 {
-  uword n_zero;
-  ip_csum_t * dst_even;
-
-  dst_even = uword_to_pointer
-    (pointer_to_uword (dst) &~ (sizeof (sum) - 1),
-     ip_csum_t *);
-
-  if ((n_zero = dst - (void *) dst_even))
-    {
-      u8 * d8 = dst;
-      uword i;
-
-      for (i = 0; i < n_zero; i++)
-	d8[i] = 0;
-      
-      sum = ip_csum_with_carry (sum, dst_even[0]);
-    }
-  
   return ip_csum_fold (sum);
 }
 
