@@ -3915,7 +3915,7 @@ vl_api_show_version_t_handler (vl_api_show_version_t *mp)
     vl_api_show_version_reply_t *rmp;
     int rv = 0;
     char * vpe_api_get_build_directory(void);
-    char * vpe_api_get_branch(void);
+    char * vpe_api_get_version(void);
     char * vpe_api_get_build_date(void);
 
     unix_shared_memory_queue_t * q =
@@ -3929,8 +3929,8 @@ vl_api_show_version_t_handler (vl_api_show_version_t *mp)
         strncpy ((char *) rmp->program, "vpe", ARRAY_LEN(rmp->program)-1);
         strncpy ((char *) rmp->build_directory, vpe_api_get_build_directory(),
                  ARRAY_LEN(rmp->build_directory)-1);
-        strncpy ((char *) rmp->git_branch, vpe_api_get_branch(),
-                 ARRAY_LEN(rmp->git_branch)-1);
+        strncpy ((char *) rmp->version, vpe_api_get_version(),
+                 ARRAY_LEN(rmp->version)-1);
         strncpy ((char *) rmp->build_date, vpe_api_get_build_date(),
                  ARRAY_LEN(rmp->build_date)-1);
     }));

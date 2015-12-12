@@ -91,7 +91,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = elftool$(EXEEXT) vppversion$(EXEEXT)
+bin_PROGRAMS = elftool$(EXEEXT)
 subdir = .
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/configure $(am__configure_deps) depcomp compile \
@@ -114,9 +114,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-am_vppversion_OBJECTS = vlib_version.$(OBJEXT)
-vppversion_OBJECTS = $(am_vppversion_OBJECTS)
-vppversion_DEPENDENCIES =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -151,8 +148,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(elftool_SOURCES) $(vppversion_SOURCES)
-DIST_SOURCES = $(elftool_SOURCES) $(vppversion_SOURCES)
+SOURCES = $(elftool_SOURCES)
+DIST_SOURCES = $(elftool_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -317,8 +314,6 @@ AUTOMAKE_OPTIONS = foreign
 elftool_SOURCES = elftool.c
 elftool_CPPFLAGS = -Wall
 elftool_LDADD = -lvppinfra -lpthread -lrt -lm
-vppversion_SOURCES = vlib_version.c
-vppversion_LDADD = -lvppinfra -lpthread -lm
 all: all-am
 
 .SUFFIXES:
@@ -410,10 +405,6 @@ clean-binPROGRAMS:
 elftool$(EXEEXT): $(elftool_OBJECTS) $(elftool_DEPENDENCIES) $(EXTRA_elftool_DEPENDENCIES) 
 	@rm -f elftool$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(elftool_OBJECTS) $(elftool_LDADD) $(LIBS)
-
-vppversion$(EXEEXT): $(vppversion_OBJECTS) $(vppversion_DEPENDENCIES) $(EXTRA_vppversion_DEPENDENCIES) 
-	@rm -f vppversion$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(vppversion_OBJECTS) $(vppversion_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

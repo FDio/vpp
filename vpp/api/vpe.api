@@ -1988,14 +1988,14 @@ define show_version {
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
     @param program - name of the program (vpe)
+    @param version  - version of the program
     @param build_directory - root of the workspace where the program was built
-    @param git_branch - the git branch for the workspace
 */
 manual_java define show_version_reply {
    u32 context;
    i32 retval;
    u8 program[32];
-   u8 git_branch[32];
+   u8 version[32];
    u8 build_date[32];
    u8 build_directory[256];
 };

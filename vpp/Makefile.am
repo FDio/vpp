@@ -49,18 +49,16 @@ nobase_include_HEADERS =			\
 apidir = $(prefix)/api
 api_DATA = api/vpe.api
 
-BUILT_SOURCES += api/vpe.api.h app/version.c
+BUILT_SOURCES += api/vpe.api.h app/version.h
 
-.PHONY:	app/version.c
+.PHONY:	app/version.h
 
-app/version.c:
-	@pushd ../../../vpp ;					\
-	branch=`git rev-parse --abbrev-ref HEAD` ;		\
-	popd ;							\
-	if [ x$$GITTAG = "x" ] ; then				\
-	   GITTAG=$$USER-private ;				\
-	fi ;							\
-	vppversion -p vpe -b $${branch}@$${GITTAG} -o $@
+app/version.h: ../build-root/scripts/version
+	@echo "#define VPP_BUILD_DATE \"$$(date)\"" 	 			 > $@
+	@echo "#define VPP_BUILD_USER \"$$(whoami)\"" 				>> $@
+	@echo "#define VPP_BUILD_HOST \"$$(hostname)\"" 			>> $@
+	@echo "#define VPP_BUILD_TOPDIR \"$$(git rev-parse --show-toplevel)\"" 	>> $@
+	@echo "#define VPP_BUILD_VER \"$$(../../scripts/version)\"" 		>> $@
 
 vpe_LDADD = -lvlibapi -lvlibmemory  -lvlib_unix -lvlib 
 

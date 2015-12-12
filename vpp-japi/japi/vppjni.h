@@ -156,10 +156,10 @@ typedef struct {
   u8 collect_indices;
   u32 * sw_if_dump_if_indices;
 
-  /* program name, build_dir, git_version */
+  /* program name, build_dir, version */
   u8 program_name[32];
   u8 build_directory[256];
-  u8 git_branch[32];
+  u8 version[32];
   u8 build_date[32];
 
   /* subinterface table */

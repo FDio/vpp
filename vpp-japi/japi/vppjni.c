@@ -153,11 +153,11 @@ JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getVppVersion
   vppjni_lock (jm, 11);
   jstring progName = (*env)->NewStringUTF(env, (char *)jm->program_name);
   jstring buildDir = (*env)->NewStringUTF(env, (char *)jm->build_directory);
-  jstring gitBranch = (*env)->NewStringUTF(env, (char *)jm->git_branch);
+  jstring version = (*env)->NewStringUTF(env, (char *)jm->version);
   jstring buildDate = (*env)->NewStringUTF(env, (char *)jm->build_date);
   vppjni_unlock (jm);
 
-  return (*env)->NewObject(env, cls, constr, progName, buildDir, gitBranch, buildDate);
+  return (*env)->NewObject(env, cls, constr, progName, buildDir, version, buildDate);
 }
 
 static int jm_show_version (vppjni_main_t *jm)
@@ -1349,9 +1349,9 @@ vl_api_show_version_reply_t_handler (vl_api_show_version_reply_t * mp)
             sizeof(jm->build_directory)-1);
     jm->build_directory[sizeof(jm->build_directory)-1] = 0;
 
-    strncpy((char*)jm->git_branch, (const char*)mp->git_branch,
-            sizeof(jm->git_branch)-1);
-    jm->git_branch[sizeof(jm->git_branch)-1] = 0;
+    strncpy((char*)jm->version, (const char*)mp->version,
+            sizeof(jm->version)-1);
+    jm->version[sizeof(jm->version)-1] = 0;
 
     strncpy((char*)jm->build_date, (const char*)mp->build_date,
             sizeof(jm->build_date)-1);

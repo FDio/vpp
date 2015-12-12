@@ -861,7 +861,7 @@ static void vl_api_show_version_reply_t_handler
 
     if (retval >= 0) {
         errmsg ("        program: %s\n", mp->program);
-        errmsg ("     git branch: %s\n", mp->git_branch);
+        errmsg ("        version: %s\n", mp->version);
         errmsg ("     build date: %s\n", mp->build_date);
         errmsg ("build directory: %s\n", mp->build_directory);
     }
@@ -878,7 +878,7 @@ static void vl_api_show_version_reply_t_handler_json
     vat_json_init_object(&node);
     vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
     vat_json_object_add_string_copy(&node, "program", mp->program);
-    vat_json_object_add_string_copy(&node, "git_branch", mp->git_branch);
+    vat_json_object_add_string_copy(&node, "version", mp->version);
     vat_json_object_add_string_copy(&node, "build_date", mp->build_date);
     vat_json_object_add_string_copy(&node, "build_directory", mp->build_directory);
 

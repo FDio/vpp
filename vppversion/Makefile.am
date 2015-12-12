@@ -13,11 +13,8 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-bin_PROGRAMS = elftool vppversion
+bin_PROGRAMS = elftool
 
 elftool_SOURCES = elftool.c
 elftool_CPPFLAGS = -Wall
 elftool_LDADD = -lvppinfra -lpthread -lrt -lm
-
-vppversion_SOURCES = vlib_version.c
-vppversion_LDADD = -lvppinfra -lpthread -lm

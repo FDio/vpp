@@ -368,7 +368,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 AM_CFLAGS = -Wall @Q_PLATFORM_DEFINE@ @Q_PLATFORM_PLUGPATH@ @DPDK@
-BUILT_SOURCES = api/vpe.api.h app/version.c
+BUILT_SOURCES = api/vpe.api.h app/version.h
 CLEANFILES = 
 lib_LTLIBRARIES = 
 
@@ -1074,17 +1074,17 @@ uninstall-am: uninstall-apiDATA uninstall-binPROGRAMS \
 	uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
 	uninstall-nobase_includeHEADERS
 
+.PRECIOUS: Makefile
 
-.PHONY:	app/version.c
 
-app/version.c:
-	@pushd ../../../vpp ;					\
-	branch=`git rev-parse --abbrev-ref HEAD` ;		\
-	popd ;							\
-	if [ x$$GITTAG = "x" ] ; then				\
-	   GITTAG=$$USER-private ;				\
-	fi ;							\
-	vppversion -p vpe -b $${branch}@$${GITTAG} -o $@
+.PHONY:	app/version.h
+
+app/version.h: ../build-root/scripts/version
+	@echo "#define VPP_BUILD_DATE \"$$(date)\"" 	 			 > $@
+	@echo "#define VPP_BUILD_USER \"$$(whoami)\"" 				>> $@
+	@echo "#define VPP_BUILD_HOST \"$$(hostname)\"" 			>> $@
+	@echo "#define VPP_BUILD_TOPDIR \"$$(git rev-parse --show-toplevel)\"" 	>> $@
+	@echo "#define VPP_BUILD_VER \"$$(../../scripts/version)\"" 		>> $@
 
 %.api.h: %.api
 	@echo "  APIGEN  " $@ ;					\
