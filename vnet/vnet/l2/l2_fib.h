@@ -95,7 +95,7 @@ u64 l2fib_make_key (u8 * mac_address, u16 bd_index) {
   // Create the in-register key as H:L:A:B:C:D:E:F
   // In memory the key is H:L:A:B:C:D:E:F
   temp = *((u64 *)(mac_address)) >> 16;
-  temp = temp | (bd_index << 48);
+  temp = temp | (((u64)bd_index) << 48);
 #endif
 
   return temp;
