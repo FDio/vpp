@@ -41,7 +41,7 @@ done
 
 cd $wsroot
 
-for dir in vppapigen vppinfra sample-plugin vppversion svm vlib vlib-api vnet \
+for dir in vppapigen vppinfra sample-plugin svm vlib vlib-api vnet \
     vpp vpp-api-test vpp-japi 
 do
     cd $dir
@@ -52,7 +52,7 @@ done
 
 cd $build_root
 echo Compile native tools
-for tool in vppapigen vppversion
+for tool in vppapigen
 do
     make V=0 is_build_tool=yes $tool-install
 done

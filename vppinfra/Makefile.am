@@ -266,3 +266,9 @@ libvppinfra_la_SOURCES =			\
   vppinfra/timer.c				\
   vppinfra/unix-formats.c			\
   vppinfra/unix-misc.c
+
+bin_PROGRAMS = elftool
+
+elftool_SOURCES = tools/elftool.c
+elftool_CPPFLAGS = -Wall
+elftool_LDADD = libvppinfra.la -lpthread -lrt -lm
