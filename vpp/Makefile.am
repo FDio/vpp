@@ -51,14 +51,17 @@ api_DATA = api/vpe.api
 
 BUILT_SOURCES += api/vpe.api.h app/version.h
 
+app/version.o:	app/version.h
+
 .PHONY:	app/version.h
 
-app/version.h: ../build-root/scripts/version
-	@echo "#define VPP_BUILD_DATE \"$$(date)\"" 	 			 > $@
-	@echo "#define VPP_BUILD_USER \"$$(whoami)\"" 				>> $@
-	@echo "#define VPP_BUILD_HOST \"$$(hostname)\"" 			>> $@
+app/version.h:
+	@echo "  VERSION " $@ 
+	@echo "#define VPP_BUILD_DATE \"$$(date)\"" > $@
+	@echo "#define VPP_BUILD_USER \"$$(whoami)\"" >> $@
+	@echo "#define VPP_BUILD_HOST \"$$(hostname)\"" >> $@
 	@echo "#define VPP_BUILD_TOPDIR \"$$(git rev-parse --show-toplevel)\"" 	>> $@
-	@echo "#define VPP_BUILD_VER \"$$(../../scripts/version)\"" 		>> $@
+	@echo "#define VPP_BUILD_VER \"$$(../../scripts/version)\"" >> $@
 
 vpe_LDADD = -lvlibapi -lvlibmemory  -lvlib_unix -lvlib 
 

@@ -16,8 +16,11 @@
 #include <app/version.h>
 
 static char * vpe_version_string = 
-"vpp v" VPP_BUILD_VER " built by " VPP_BUILD_USER " on " VPP_BUILD_HOST " at " VPP_BUILD_DATE;
-static char * vpe_dir_string = "workspace is " VPP_BUILD_TOPDIR;
+    "vpp v" VPP_BUILD_VER 
+    " built by " VPP_BUILD_USER 
+    " on " VPP_BUILD_HOST 
+    " at " VPP_BUILD_DATE;
+static char * vpe_dir_string = "Built in " VPP_BUILD_TOPDIR;
 
 static clib_error_t *
 show_vpe_version_command_fn (vlib_main_t * vm,
