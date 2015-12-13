@@ -632,7 +632,10 @@ static void svm_region_init_internal (char *root_path)
     atexit(svm_mutex_cleanup);
 
     /* Randomize the shared-VM base at init time */
-    randomize_baseva = (ticks & 15) * 4096;
+    if (MMAP_PAGESIZE <= (4<<10))
+        randomize_baseva = (ticks & 15) * MMAP_PAGESIZE;
+    else
+        randomize_baseva = (ticks & 3) * MMAP_PAGESIZE;
 
     vec_validate(a,0);
     a->root_path = root_path;

@@ -25,7 +25,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/mem.h>
 
-#define MMAP_PAGESIZE (4<<10)
+#define MMAP_PAGESIZE (clib_mem_get_page_size())
 
 #define SVM_VERSION ((1<<16) | 1) /* set to declare region ready. */
 
@@ -34,7 +34,7 @@
 #define SVM_FLAGS_NODATA (1<<2)  /* region will be further subdivided */
 #define SVM_FLAGS_NEED_DATA_INIT (1<<3) 
 
-#define SVM_PVT_MHEAP_SIZE (32<<10) /* region's private mheap (32k) */
+#define SVM_PVT_MHEAP_SIZE (128<<10) /* region's private mheap (128k) */
 
 typedef struct svm_region_ {
     volatile uword version;
