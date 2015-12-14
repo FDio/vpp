@@ -1122,3 +1122,88 @@ VLIB_CLI_COMMAND (cli_show_api_plugin_command, static) = {
     .short_help = "show api plugin",
     .function = vl_api_show_plugin_command,
 };
+
+static void vl_api_rpc_call_t_handler (vl_api_rpc_call_t * mp)
+{
+  vl_api_rpc_reply_t * rmp;
+  int (*fp)(void *);
+  i32 rv = 0;
+  vlib_main_t * vm = vlib_get_main();
+
+  if (mp->function == 0)
+    {
+      rv = -1;
+      clib_warning ("rpc NULL function pointer");
+    }
+  
+  else
+    {
+      if (mp->need_barrier_sync)
+        vlib_worker_thread_barrier_sync (vm);
+
+      fp = (void *)(mp->function);
+      rv = (*fp)(mp->data);
+
+      if (mp->need_barrier_sync)
+        vlib_worker_thread_barrier_release (vm);
+    }
+
+  if (mp->send_reply)
+    {
+      unix_shared_memory_queue_t * q =
+        vl_api_client_index_to_input_queue (mp->client_index);
+      if (q)
+        {
+          rmp = vl_msg_api_alloc_as_if_client (sizeof (*rmp));
+          rmp->_vl_msg_id = ntohs (VL_API_RPC_REPLY);
+          rmp->context = mp->context;
+          rmp->retval = rv;
+          vl_msg_api_send_shmem (q, (u8 *)&rmp);
+        }
+    }
+  if (mp->multicast)
+    {
+      clib_warning ("multicast not yet implemented...");
+    }
+}
+
+static void vl_api_rpc_reply_t_handler (vl_api_rpc_reply_t * mp)
+{ clib_warning ("unimplemented"); }
+
+void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
+{
+  vl_api_rpc_call_t * mp;
+  api_main_t *am = &api_main;
+  vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
+
+  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) + data_length);
+  memset (mp, 0, sizeof (*mp));
+  memcpy (mp->data, data, data_length);
+  mp->_vl_msg_id = ntohs (VL_API_RPC_CALL);
+  mp->function = (u64)fp;
+  mp->need_barrier_sync = 1;
+  
+  /* Use the "normal" control-plane mechanism for the main thread */
+  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *)&mp);
+}
+
+#define foreach_rpc_api_msg                     \
+_(RPC_CALL,rpc_call)                            \
+_(RPC_REPLY,rpc_reply)
+
+static clib_error_t *
+rpc_api_hookup (vlib_main_t *vm)
+{
+#define _(N,n)                                                  \
+    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
+                           vl_api_##n##_t_handler,              \
+                           vl_noop_handler,                     \
+                           vl_noop_handler,			\
+                           vl_api_##n##_t_print,                \
+                           sizeof(vl_api_##n##_t), 0 /* do not trace */); 
+    foreach_rpc_api_msg;
+#undef _
+    return 0;
+}
+
+VLIB_API_INIT_FUNCTION(rpc_api_hookup);

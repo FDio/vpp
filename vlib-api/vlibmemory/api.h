@@ -109,8 +109,6 @@ static inline u32 vl_msg_api_handle_from_index_and_epoch (u32 index, u32 epoch)
     return handle;
 }
     
-
-
 void *vl_msg_api_alloc(int nbytes);
 void *vl_msg_api_alloc_as_if_client (int nbytes);
 void vl_msg_api_free(void *a);
@@ -135,5 +133,7 @@ int vl_client_connect_to_vlib(char *svm_name, char *client_name,
 int vl_client_connect_to_vlib_no_rx_pthread (char *svm_name, char *client_name, 
                                              int rx_queue_size);
 u16 vl_client_get_first_plugin_msg_id (char * plugin_name);
+
+void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 
 #endif /* included_vlibmemory_api_h */

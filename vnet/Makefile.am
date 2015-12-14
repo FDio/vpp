@@ -18,6 +18,7 @@ AM_CFLAGS = -Wall @DPDK@ @VIRL@
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
 nobase_include_HEADERS =
+noinst_PROGRAMS =
 
 ########################################
 # Generic stuff
@@ -608,19 +609,11 @@ nobase_include_HEADERS +=			\
 
 lib_LTLIBRARIES = libvnet.la libvnetplugin.la
 
-noinst_PROGRAMS = vnet_unix
-
-vnet_unix_SOURCES =				\
-  example/main_stub.c
-
-vnet_unix_LDFLAGS = -static
 dpdk_libs = 
 
 if WITH_DPDK
 dpdk_libs += -l:libdpdk.a
 endif
-
-vnet_unix_LDADD = libvnet.la -l:libvlib_unix.a -l:libvlib.a -l:libvppinfra.a -lpthread -lvlibapi -lvlibmemory -lsvm -lm -ldl $(dpdk_libs) -lrt
 
 pcap2pg_SOURCES = 				\
   vnet/unix/pcap2pg.c				\
