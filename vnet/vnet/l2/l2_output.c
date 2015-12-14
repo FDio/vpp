@@ -452,6 +452,7 @@ static void output_node_mapping_send_rpc
  u32 sw_if_index)
 {
   output_node_mapping_rpc_args_t args;
+  void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 
   args.node_index = node_index;
   args.sw_if_index = sw_if_index;

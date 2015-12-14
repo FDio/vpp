@@ -296,6 +296,7 @@ static void set_unset_ip6_neighbor_rpc
  int is_add)
 {
   ip6_neighbor_set_unset_rpc_args_t args;
+  void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
   
   args.sw_if_index = sw_if_index;
   args.is_add = is_add;

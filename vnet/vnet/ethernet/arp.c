@@ -21,6 +21,8 @@
 #include <vnet/l2/l2_input.h>
 #include <vppinfra/mhash.h>
 
+void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+
 typedef struct {
   u32 sw_if_index;
   u32 fib_index;
