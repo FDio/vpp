@@ -987,11 +987,9 @@ vhost_user_input (vlib_main_t * vm,
   for(i = 0; i < vec_len(vum->vhost_user_interfaces); i++ )
     {
       vui = vec_elt_at_index(vum->vhost_user_interfaces, i);
-      if (!vui->is_up ||
+      if (vui->is_up &&
           (i % dm->input_cpu_count) == (cpu_index - dm->input_cpu_first_index))
-        continue;
-      n_rx_packets +=
-        vhost_user_if_input (vm, vum, vui, node);
+        n_rx_packets += vhost_user_if_input (vm, vum, vui, node);
     }
   return n_rx_packets;
 }
