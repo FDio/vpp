@@ -65,17 +65,10 @@ vpe_main_init (vlib_main_t * vm)
     if ((error = vlib_call_init_function (vm, lisp_gpe_init)))
 	return error;
 
-#if DPDK == 0
-    if ((error = vlib_call_init_function (vm, ixge_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, ixgev_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, ige_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, vice_init)))
-        return error;
-#else
+#if DPDK == 1
     if ((error = vlib_call_init_function (vm, dpdk_init)))
+        return error;
+    if ((error = vlib_call_init_function (vm, dpdk_thread_init)))
         return error;
     if ((error = vlib_call_init_function (vm, vhost_user_init)))
 	return error;

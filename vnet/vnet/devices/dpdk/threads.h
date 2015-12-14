@@ -17,8 +17,6 @@
 
 #include <vnet/vnet.h>
 
-void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
-
 typedef void (*dpdk_worker_thread_callback_t) (vlib_main_t *vm);
 
 void dpdk_worker_thread (vlib_worker_thread_t * w,

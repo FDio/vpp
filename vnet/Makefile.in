@@ -93,6 +93,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+noinst_PROGRAMS = pcap2pg$(EXEEXT)
 
 ########################################
 # Layer 3 protocol: IPSec
@@ -139,7 +140,6 @@ host_triplet = @host@
 @WITH_DPDK_TRUE@am__append_4 = vnet/devices/dpdk/dpdk.h \
 @WITH_DPDK_TRUE@	vnet/devices/dpdk/threads.h \
 @WITH_DPDK_TRUE@	vnet/devices/virtio/vhost-user.h
-noinst_PROGRAMS = vnet_unix$(EXEEXT) pcap2pg$(EXEEXT)
 @WITH_DPDK_TRUE@am__append_5 = -l:libdpdk.a
 subdir = .
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
@@ -382,14 +382,6 @@ pcap2pg_DEPENDENCIES = libvnet.la
 pcap2pg_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(pcap2pg_LDFLAGS) $(LDFLAGS) -o $@
-am_vnet_unix_OBJECTS = example/main_stub.$(OBJEXT)
-vnet_unix_OBJECTS = $(am_vnet_unix_OBJECTS)
-am__DEPENDENCIES_1 =
-am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
-vnet_unix_DEPENDENCIES = libvnet.la $(am__DEPENDENCIES_2)
-vnet_unix_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(vnet_unix_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -425,10 +417,9 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libvnet_la_SOURCES) $(libvnetplugin_la_SOURCES) \
-	$(pcap2pg_SOURCES) $(vnet_unix_SOURCES)
+	$(pcap2pg_SOURCES)
 DIST_SOURCES = $(am__libvnet_la_SOURCES_DIST) \
-	$(libvnetplugin_la_SOURCES) $(pcap2pg_SOURCES) \
-	$(vnet_unix_SOURCES)
+	$(libvnetplugin_la_SOURCES) $(pcap2pg_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -908,12 +899,7 @@ nobase_include_HEADERS = vnet/api_errno.h vnet/buffer.h vnet/config.h \
 	vnet/unix/pcap.h vnet/unix/tuntap.h vnet/unix/tapcli.h \
 	vnet/plugin/plugin.h
 lib_LTLIBRARIES = libvnet.la libvnetplugin.la
-vnet_unix_SOURCES = \
-  example/main_stub.c
-
-vnet_unix_LDFLAGS = -static
 dpdk_libs = $(am__append_5)
-vnet_unix_LDADD = libvnet.la -l:libvlib_unix.a -l:libvlib.a -l:libvppinfra.a -lpthread -lvlibapi -lvlibmemory -lsvm -lm -ldl $(dpdk_libs) -lrt
 pcap2pg_SOURCES = \
   vnet/unix/pcap2pg.c				\
   vnet/unix/pcap.h
@@ -1583,22 +1569,9 @@ vnet/unix/pcap2pg.$(OBJEXT): vnet/unix/$(am__dirstamp) \
 pcap2pg$(EXEEXT): $(pcap2pg_OBJECTS) $(pcap2pg_DEPENDENCIES) $(EXTRA_pcap2pg_DEPENDENCIES) 
 	@rm -f pcap2pg$(EXEEXT)
 	$(AM_V_CCLD)$(pcap2pg_LINK) $(pcap2pg_OBJECTS) $(pcap2pg_LDADD) $(LIBS)
-example/$(am__dirstamp):
-	@$(MKDIR_P) example
-	@: > example/$(am__dirstamp)
-example/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) example/$(DEPDIR)
-	@: > example/$(DEPDIR)/$(am__dirstamp)
-example/main_stub.$(OBJEXT): example/$(am__dirstamp) \
-	example/$(DEPDIR)/$(am__dirstamp)
-
-vnet_unix$(EXEEXT): $(vnet_unix_OBJECTS) $(vnet_unix_DEPENDENCIES) $(EXTRA_vnet_unix_DEPENDENCIES) 
-	@rm -f vnet_unix$(EXEEXT)
-	$(AM_V_CCLD)$(vnet_unix_LINK) $(vnet_unix_OBJECTS) $(vnet_unix_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f example/*.$(OBJEXT)
 	-rm -f vnet/*.$(OBJEXT)
 	-rm -f vnet/*.lo
 	-rm -f vnet/classify/*.$(OBJEXT)
@@ -1669,7 +1642,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@example/$(DEPDIR)/main_stub.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@vnet/$(DEPDIR)/config.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@vnet/$(DEPDIR)/interface.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@vnet/$(DEPDIR)/interface_cli.Plo@am__quote@
@@ -2203,8 +2175,6 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-rm -f example/$(DEPDIR)/$(am__dirstamp)
-	-rm -f example/$(am__dirstamp)
 	-rm -f vnet/$(DEPDIR)/$(am__dirstamp)
 	-rm -f vnet/$(am__dirstamp)
 	-rm -f vnet/classify/$(DEPDIR)/$(am__dirstamp)
@@ -2282,7 +2252,7 @@ clean-am: clean-generic clean-libLTLIBRARIES clean-libtool \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf example/$(DEPDIR) vnet/$(DEPDIR) vnet/classify/$(DEPDIR) vnet/devices/dpdk/$(DEPDIR) vnet/devices/ssvm/$(DEPDIR) vnet/devices/virtio/$(DEPDIR) vnet/dhcp/$(DEPDIR) vnet/dhcpv6/$(DEPDIR) vnet/ethernet/$(DEPDIR) vnet/flow/$(DEPDIR) vnet/gre/$(DEPDIR) vnet/hdlc/$(DEPDIR) vnet/ip/$(DEPDIR) vnet/ipsec/$(DEPDIR) vnet/l2/$(DEPDIR) vnet/l2tp/$(DEPDIR) vnet/lawful-intercept/$(DEPDIR) vnet/lisp-gpe/$(DEPDIR) vnet/llc/$(DEPDIR) vnet/map/$(DEPDIR) vnet/mpls-gre/$(DEPDIR) vnet/nsh-gre/$(DEPDIR) vnet/nsh-vxlan-gpe/$(DEPDIR) vnet/osi/$(DEPDIR) vnet/pg/$(DEPDIR) vnet/plugin/$(DEPDIR) vnet/policer/$(DEPDIR) vnet/ppp/$(DEPDIR) vnet/snap/$(DEPDIR) vnet/sr/$(DEPDIR) vnet/srp/$(DEPDIR) vnet/unix/$(DEPDIR) vnet/vcgn/$(DEPDIR) vnet/vxlan/$(DEPDIR)
+	-rm -rf vnet/$(DEPDIR) vnet/classify/$(DEPDIR) vnet/devices/dpdk/$(DEPDIR) vnet/devices/ssvm/$(DEPDIR) vnet/devices/virtio/$(DEPDIR) vnet/dhcp/$(DEPDIR) vnet/dhcpv6/$(DEPDIR) vnet/ethernet/$(DEPDIR) vnet/flow/$(DEPDIR) vnet/gre/$(DEPDIR) vnet/hdlc/$(DEPDIR) vnet/ip/$(DEPDIR) vnet/ipsec/$(DEPDIR) vnet/l2/$(DEPDIR) vnet/l2tp/$(DEPDIR) vnet/lawful-intercept/$(DEPDIR) vnet/lisp-gpe/$(DEPDIR) vnet/llc/$(DEPDIR) vnet/map/$(DEPDIR) vnet/mpls-gre/$(DEPDIR) vnet/nsh-gre/$(DEPDIR) vnet/nsh-vxlan-gpe/$(DEPDIR) vnet/osi/$(DEPDIR) vnet/pg/$(DEPDIR) vnet/plugin/$(DEPDIR) vnet/policer/$(DEPDIR) vnet/ppp/$(DEPDIR) vnet/snap/$(DEPDIR) vnet/sr/$(DEPDIR) vnet/srp/$(DEPDIR) vnet/unix/$(DEPDIR) vnet/vcgn/$(DEPDIR) vnet/vxlan/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-libtool distclean-tags
@@ -2330,7 +2300,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf example/$(DEPDIR) vnet/$(DEPDIR) vnet/classify/$(DEPDIR) vnet/devices/dpdk/$(DEPDIR) vnet/devices/ssvm/$(DEPDIR) vnet/devices/virtio/$(DEPDIR) vnet/dhcp/$(DEPDIR) vnet/dhcpv6/$(DEPDIR) vnet/ethernet/$(DEPDIR) vnet/flow/$(DEPDIR) vnet/gre/$(DEPDIR) vnet/hdlc/$(DEPDIR) vnet/ip/$(DEPDIR) vnet/ipsec/$(DEPDIR) vnet/l2/$(DEPDIR) vnet/l2tp/$(DEPDIR) vnet/lawful-intercept/$(DEPDIR) vnet/lisp-gpe/$(DEPDIR) vnet/llc/$(DEPDIR) vnet/map/$(DEPDIR) vnet/mpls-gre/$(DEPDIR) vnet/nsh-gre/$(DEPDIR) vnet/nsh-vxlan-gpe/$(DEPDIR) vnet/osi/$(DEPDIR) vnet/pg/$(DEPDIR) vnet/plugin/$(DEPDIR) vnet/policer/$(DEPDIR) vnet/ppp/$(DEPDIR) vnet/snap/$(DEPDIR) vnet/sr/$(DEPDIR) vnet/srp/$(DEPDIR) vnet/unix/$(DEPDIR) vnet/vcgn/$(DEPDIR) vnet/vxlan/$(DEPDIR)
+	-rm -rf vnet/$(DEPDIR) vnet/classify/$(DEPDIR) vnet/devices/dpdk/$(DEPDIR) vnet/devices/ssvm/$(DEPDIR) vnet/devices/virtio/$(DEPDIR) vnet/dhcp/$(DEPDIR) vnet/dhcpv6/$(DEPDIR) vnet/ethernet/$(DEPDIR) vnet/flow/$(DEPDIR) vnet/gre/$(DEPDIR) vnet/hdlc/$(DEPDIR) vnet/ip/$(DEPDIR) vnet/ipsec/$(DEPDIR) vnet/l2/$(DEPDIR) vnet/l2tp/$(DEPDIR) vnet/lawful-intercept/$(DEPDIR) vnet/lisp-gpe/$(DEPDIR) vnet/llc/$(DEPDIR) vnet/map/$(DEPDIR) vnet/mpls-gre/$(DEPDIR) vnet/nsh-gre/$(DEPDIR) vnet/nsh-vxlan-gpe/$(DEPDIR) vnet/osi/$(DEPDIR) vnet/pg/$(DEPDIR) vnet/plugin/$(DEPDIR) vnet/policer/$(DEPDIR) vnet/ppp/$(DEPDIR) vnet/snap/$(DEPDIR) vnet/sr/$(DEPDIR) vnet/srp/$(DEPDIR) vnet/unix/$(DEPDIR) vnet/vcgn/$(DEPDIR) vnet/vxlan/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
