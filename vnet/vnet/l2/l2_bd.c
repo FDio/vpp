@@ -36,7 +36,7 @@ bd_main_t bd_main;
 
 // Init bridge domain if not done already
 // For feature bitmap, set all bits except ARP termination
-inline void
+void
 bd_validate (l2_bridge_domain_t * bd_config) 
 {
   if (!bd_is_valid (bd_config)) {

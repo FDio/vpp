@@ -82,7 +82,7 @@ bd_is_valid (l2_bridge_domain_t * bd_config)
 }
 
 // Init bridge domain if not done already
-inline void
+void
 bd_validate (l2_bridge_domain_t * bd_config);
 
 
