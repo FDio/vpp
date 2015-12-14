@@ -562,6 +562,14 @@ static void maybe_fix_string_table_offset (elog_event_t * e,
     }
 }
 
+static int elog_cmp (void * a1, void * a2)
+{
+  elog_event_t * e1 = a1;
+  elog_event_t * e2 = a2;
+
+  return e1->time - e2->time;
+}
+
 void elog_merge (elog_main_t * dst, u8 * dst_tag, 
                  elog_main_t * src, u8 * src_tag)
 {
@@ -668,7 +676,7 @@ void elog_merge (elog_main_t * dst, u8 * dst_tag,
   }
 
   /* Sort events by increasing time. */
-  vec_sort (dst->events, e1, e2, e1->time < e2->time ? -1 : (e1->time > e2->time ? +1 : 0));
+  vec_sort_with_function (dst->events, elog_cmp);
 
   /* Recreate the event ring or the results won't serialize */
   {
@@ -960,7 +968,7 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   serialize_integer (m, vec_len (em->events), sizeof (u32));
 
   /* SMP logs can easily have local time paradoxes... */
-  vec_sort (em->events, e0, e1, e0->time - e1->time);
+  vec_sort_with_function (em->events, elog_cmp);
 
   vec_foreach (e, em->events)
     serialize (m, serialize_elog_event, em, e);

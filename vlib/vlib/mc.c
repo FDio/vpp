@@ -2273,6 +2273,15 @@ static u8 * format_mc_stream_state (u8 * s, va_list * args)
   return format (s, "%s", t);
 }
 
+static int
+mc_peer_comp (void * a1, void * a2)
+{
+  mc_stream_peer_t * p1 = a1;
+  mc_stream_peer_t * p2 = a2;
+
+  return mc_peer_id_compare (p1->id, p2->id);
+}
+
 u8 * format_mc_main (u8 * s, va_list * args)
 {
   mc_main_t * mcm = va_arg (*args, mc_main_t *);
@@ -2331,7 +2340,7 @@ u8 * format_mc_main (u8 * s, va_list * args)
         if (clib_bitmap_get (t->all_peer_bitmap, p - t->peers))
           vec_add1 (ps, p[0]); 
       }));
-      vec_sort (ps, p1, p2, mc_peer_id_compare (p1->id, p2->id));
+      vec_sort_with_function (ps, mc_peer_comp);
       s = format (s, "\n%U%=30s%10s%16s%16s",
                   format_white_space, indent + 6,
                   "Peer", "Last seq", "Retries", "Future");

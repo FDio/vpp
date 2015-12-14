@@ -362,6 +362,15 @@ out:
   return (rv);
 }
 
+static int
+name_sort_cmp (void * a1, void * a2)
+{
+  name_sort_t * n1 = a1;
+  name_sort_t * n2 = a2;
+
+  return strcmp ((char *)n1->name, (char *)n2->name);
+}
+
 JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceList
   (JNIEnv * env, jobject obj, jstring name_filter)
 {
@@ -387,8 +396,7 @@ JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceList
         }
     }));
 
-  vec_sort (nses, n1, n2, 
-            strcmp ((char *)n1->name, (char *)n2->name));
+  vec_sort_with_function (nses, name_sort_cmp);
 
   vec_foreach (ns, nses)
     s = format (s, "%s: %d, ", ns->name, ns->value);

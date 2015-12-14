@@ -40,6 +40,15 @@
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
 
+static int
+node_cmp (void * a1, void *a2)
+{
+  vlib_node_t ** n1 = a1;
+  vlib_node_t ** n2 = a2;
+
+  return vec_cmp (n1[0]->name, n2[0]->name);
+}
+
 static clib_error_t *
 show_node_graph (vlib_main_t * vm,
 		 unformat_input_t * input,
@@ -61,8 +70,7 @@ show_node_graph (vlib_main_t * vm,
       vlib_node_t ** nodes = vec_dup (nm->nodes);
       uword i;
 
-      vec_sort (nodes, n1, n2,
-		vec_cmp (n1[0]->name, n2[0]->name));
+      vec_sort_with_function (nodes, node_cmp);
 
       for (i = 0; i < vec_len (nodes); i++)
 	vlib_cli_output (vm, "%U\n\n", format_vlib_node_graph, nm, nodes[i]);
@@ -282,8 +290,7 @@ show_node_runtime (vlib_main_t * vm,
           stat_vm = stat_vms[j];
           nodes = node_dups[j];
 
-          vec_sort (nodes, n1, n2,
-                    vec_cmp (n1[0]->name, n2[0]->name));
+          vec_sort_with_function (nodes, node_cmp);
 
           n_input = n_output = n_drop = n_punt = n_clocks = 0;
           n_internal_vectors = n_internal_calls = 0;

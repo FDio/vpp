@@ -170,6 +170,15 @@ VLIB_CLI_COMMAND (trace_cli_command,static) = {
   .short_help = "Packet tracer commands",
 };
 
+static int
+trace_cmp (void * a1, void * a2)
+{
+  vlib_trace_header_t ** t1 = a1;
+  vlib_trace_header_t ** t2 = a2;
+  i64 dt = t1[0]->time - t2[0]->time;
+  return dt < 0 ? -1 : (dt > 0 ? +1 : 0);
+}
+
 static clib_error_t *
 cli_show_trace_buffer (vlib_main_t * vm,
 		       unformat_input_t * input,
@@ -206,10 +215,7 @@ cli_show_trace_buffer (vlib_main_t * vm,
       }
     
     /* Sort them by increasing time. */
-    vec_sort (traces, t0, t1, ({
-          i64 dt = t0[0]->time - t1[0]->time;
-          dt < 0 ? -1 : (dt > 0 ? +1 : 0);
-        }));
+    vec_sort_with_function (traces, trace_cmp);
     
     for (i = 0; i < vec_len (traces); i++)
       {
