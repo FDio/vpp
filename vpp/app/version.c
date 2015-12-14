@@ -22,6 +22,21 @@ static char * vpe_version_string =
     " at " VPP_BUILD_DATE;
 static char * vpe_dir_string = "Built in " VPP_BUILD_TOPDIR;
 
+static char * vpe_compiler = "Compiled with "
+#if defined(__INTEL_COMPILER)
+#define __(x) #x
+#define _(x) __(x)
+	"icc " _(__INTEL_COMPILER) " (" __VERSION__ ")";
+#undef _
+#undef __
+#elif defined(__clang__)
+	"Clang/LLVM " __clang_version__;
+#elif defined (__GNUC__)
+	"GCC " __VERSION__;
+#else
+	"unknown compiler";
+#endif
+
 static clib_error_t *
 show_vpe_version_command_fn (vlib_main_t * vm,
 		 unformat_input_t * input,
@@ -30,6 +45,7 @@ show_vpe_version_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "%s", vpe_version_string);
   if (unformat (input, "verbose")){
      vlib_cli_output (vm, "%s", vpe_dir_string);
+     vlib_cli_output (vm, "%s", vpe_compiler);
   }
   return 0;
 }
