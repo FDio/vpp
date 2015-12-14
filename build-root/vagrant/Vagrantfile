@@ -22,6 +22,13 @@ Vagrant.configure(2) do |config|
     config.cache.scope = :box
   end
 
+  # use http proxy if avaiable
+  if ENV['http_proxy'] && Vagrant.has_plugin?("vagrant-proxyconf")
+   config.proxy.http     = "$http_proxy"
+   config.proxy.https    = "$https_proxy"
+   config.proxy.no_proxy = "localhost,127.0.0.1"
+  end
+
   config.vm.synced_folder "../../", "/vpp", disabled: false
   config.vm.provider "virtualbox" do |vb|
     vb.memory = "4096"
