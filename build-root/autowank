@@ -192,7 +192,6 @@ function touchme ()
   local older="no"
 
   if [ ! -r "$victim" ] ; then
-    echo "  Possible problem: No $victim exists. " > /dev/stderr 
     return
   fi
 

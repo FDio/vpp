@@ -768,7 +768,7 @@ find_source_for_package =									\
       $(call build_msg_fn,No source for $(PACKAGE) in $${g});					\
       exit 1;											\
     fi ;											\
-    $(call build_msg_fn,Autowanking $${g}/$(PACKAGE_SOURCE)) ;					\
+    $(call build_msg_fn,Fix file dates in $${g}/$(PACKAGE_SOURCE)) ;					\
     (cd $${s} ; $(MU_BUILD_ROOT_DIR)/autowank --touch) ;					\
   fi ;												\
   s=`cd $${s} && pwd` ;										\

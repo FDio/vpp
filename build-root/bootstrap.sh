@@ -41,15 +41,6 @@ done
 
 cd $wsroot
 
-for dir in vppapigen vppinfra sample-plugin svm vlib vlib-api vnet \
-    vpp vpp-api-test vpp-japi 
-do
-    cd $dir
-    echo "Autowank in $dir"
-    ../build-root/autowank --touch
-    cd $wsroot
-done
-
 cd $build_root
 echo Compile native tools
 for tool in vppapigen
