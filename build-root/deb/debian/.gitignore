@@ -8,3 +8,5 @@ vpp/
 vpp-dev/
 vpp-lib/
 vpp-dpdk-dkms/
+vpp-dbg/
+vppctl/
