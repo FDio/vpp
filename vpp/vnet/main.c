@@ -143,6 +143,65 @@ int main (int argc, char * argv[])
     u32 size;
     void vlib_set_get_handoff_structure_cb (void *cb);
 
+    /*
+     * Load startup config from file.
+     * usage: vpe -c /etc/vpp/startup.conf
+     */
+    if ((argc == 3) && !strncmp(argv[1], "-c", 2))
+      {
+        FILE * fp;
+        char inbuf[4096];
+        int argc_ = 1;
+        char ** argv_ = NULL;
+        char * arg = NULL;
+        char * p;
+
+        fp = fopen (argv[2], "r");
+        if (fp == NULL)
+          {
+            fprintf(stderr, "open configuration file '%s' failed\n", argv[2]);
+            return 1;
+          }
+        argv_ = calloc(1, sizeof(char *));
+        if (argv_ == NULL)
+          return 1;
+        arg = strndup(argv[0], 1024);
+        if (arg == NULL)
+          return 1;
+        argv_[0] = arg;
+
+        while (1) {
+          if (fgets(inbuf, 4096, fp) == 0)
+            break;
+          p = strtok(inbuf, " \t\n");
+          while (p != NULL) {
+            if (*p == '#')
+              break;
+            argc_++;
+            char ** tmp = realloc(argv_, argc_ * sizeof(char *));
+            if (tmp == NULL)
+              return 1;
+            argv_ = tmp;
+            arg = strndup(p, 1024);
+            if (arg == NULL)
+              return 1;
+            argv_[argc_ - 1] = arg;
+            p = strtok(NULL, " \t\n");
+          }
+        }
+
+        fclose(fp);
+
+        char ** tmp = realloc(argv_, (argc_ + 1) * sizeof(char *));
+        if (tmp == NULL)
+           return 1;
+        argv_ = tmp;
+        argv_[argc_] = NULL;
+
+        argc = argc_;
+        argv = argv_;
+      }
+
     /* 
      * Look for and parse the "heapsize" config parameter.
      * Manual since none of the clib infra has been bootstrapped yet.
