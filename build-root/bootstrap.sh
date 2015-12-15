@@ -42,7 +42,8 @@ done
 cd $wsroot
 
 for dir in vppapigen vppinfra sample-plugin svm vlib vlib-api vnet \
-    vpp vpp-api-test vpp-japi 
+    vpp vpp-api-test vpp-japi vppctl
+
 do
     cd $dir
     echo "Autowank in $dir"
