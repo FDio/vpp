@@ -13,7 +13,7 @@
 
 # vector packet processor
 vpp_arch = native
-vpp_native_tools = vppapigen vppversion
+vpp_native_tools = vppapigen
 
 vpp_root_packages = vpp vlib vlib-api vnet svm dpdk vpp-api-test \
 	vpp-japi 
