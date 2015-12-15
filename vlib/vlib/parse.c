@@ -965,8 +965,7 @@ static clib_error_t * parse_init (vlib_main_t *vm)
     }
   vec_free (bounds);
 
-  vec_sort (pm->parse_registrations, r1, r2, 
-            rule_length_compare (r1[0], r2[0]));
+  vec_sort_with_function (pm->parse_registrations, rule_length_compare);
 
   for (i = 0; i < vec_len (pm->parse_registrations); i++)
     {

@@ -2019,6 +2019,14 @@ static int dump_sub_interface_table (vat_main_t * vam)
     return 0;
 }
 
+static int name_sort_cmp (void * a1, void * a2)
+{
+  name_sort_t * n1 = a1;
+  name_sort_t * n2 = a2;
+
+  return strcmp ((char *)n1->name, (char *)n2->name);
+}
+
 static int dump_interface_table (vat_main_t * vam)
 {
     hash_pair_t * p;
@@ -2036,8 +2044,7 @@ static int dump_interface_table (vat_main_t * vam)
         ns->value = (u32) p->value[0];
     }));
 
-    vec_sort (nses, n1, n2, 
-              strcmp ((char *)n1->name, (char *)n2->name));
+    vec_sort_with_function (nses, name_sort_cmp);
 
     fformat (vam->ofp, "%-25s%-15s\n", "Interface", "sw_if_index");
     vec_foreach (ns, nses) {
@@ -8275,6 +8282,14 @@ static int comment (vat_main_t * vam)
     return 0;
 }
 
+static int cmd_cmp (void * a1, void * a2)
+{
+  u8 ** c1 = a1;
+  u8 ** c2 = a2;
+
+  return strcmp ((char *)(c1[0]), (char *)(c2[0]));
+}
+
 static int help (vat_main_t * vam)
 {
     u8 ** cmds = 0;
@@ -8304,8 +8319,7 @@ static int help (vat_main_t * vam)
         vec_add1 (cmds, (u8 *)(p->key));
     }));
 
-    vec_sort (cmds, c1, c2, 
-              strcmp ((char *)(c1[0]), (char *)(c2[0])));
+    vec_sort_with_function (cmds, cmd_cmp);
 
     for (j = 0; j < vec_len(cmds); j++)
         fformat (vam->ofp, "%s\n", cmds[j]);
@@ -8356,6 +8370,14 @@ typedef struct {
 } macro_sort_t;
 
 
+static int macro_sort_cmp (void * a1, void * a2)
+{
+  macro_sort_t * s1 = a1;
+  macro_sort_t * s2 = a2;
+
+  return strcmp ((char *)(s1->name), (char *)(s2->name));
+}
+
 static int dump_macro_table (vat_main_t * vam)
 {
     macro_sort_t * sort_me = 0, * sm;    
@@ -8369,7 +8391,7 @@ static int dump_macro_table (vat_main_t * vam)
         sm->value = (u8 *) (p->value[0]);
     }));
     
-    vec_sort (sort_me, s1, s2, strcmp ((char *)(s1->name), (char *)(s2->name)));
+    vec_sort_with_function (sort_me, macro_sort_cmp);
 
     if (vec_len(sort_me))
         fformat (vam->ofp, "%-15s%s\n", "Name", "Value");

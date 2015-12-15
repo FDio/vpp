@@ -585,6 +585,33 @@ typedef struct {
   u32 label;
 } show_mpls_fib_t;
 
+static int
+mpls_dest_cmp(void * a1, void * a2)
+{
+  show_mpls_fib_t * r1 = a1;
+  show_mpls_fib_t * r2 = a2;
+
+  return clib_net_to_host_u32(r1->dest) - clib_net_to_host_u32(r2->dest);
+}
+
+static int
+mpls_fib_index_cmp(void * a1, void * a2)
+{
+  show_mpls_fib_t * r1 = a1;
+  show_mpls_fib_t * r2 = a2;
+
+  return r1->fib_index - r2->fib_index;
+}
+
+static int
+mpls_label_cmp(void * a1, void * a2)
+{
+  show_mpls_fib_t * r1 = a1;
+  show_mpls_fib_t * r2 = a2;
+
+  return r1->label - r2->label;
+}
+
 static clib_error_t *
 show_mpls_fib_command_fn (vlib_main_t * vm,
 		 unformat_input_t * input,
@@ -614,9 +641,8 @@ show_mpls_fib_command_fn (vlib_main_t * vm,
       goto decap_table;
     }
   /* sort output by dst address within fib */
-  vec_sort (records, r0, r1, clib_net_to_host_u32(r0->dest) -
-            clib_net_to_host_u32(r1->dest));
-  vec_sort (records, r0, r1, r0->fib_index - r1->fib_index);
+  vec_sort_with_function (records, mpls_dest_cmp);
+  vec_sort_with_function (records, mpls_fib_index_cmp);
   vlib_cli_output (vm, "MPLS encap table");
   vlib_cli_output (vm, "%=6s%=16s%=16s", "Table", "Dest address", "Labels");
   vec_foreach (s, records)
@@ -645,7 +671,7 @@ show_mpls_fib_command_fn (vlib_main_t * vm,
       goto out;
     }
 
-  vec_sort (records, r0, r1, r0->label - r1->label);
+  vec_sort_with_function (records, mpls_label_cmp);
 
   vlib_cli_output (vm, "MPLS decap table");
   vlib_cli_output (vm, "%=10s%=15s%=6s%=6s", "RX Table", "TX Table/Intfc", 

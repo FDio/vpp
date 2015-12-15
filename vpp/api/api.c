@@ -388,6 +388,15 @@ int vl_api_memclnt_delete_callback (u32 client_index)
 #define API_LINK_STATE_EVENT 1
 #define API_ADMIN_UP_DOWN_EVENT 2
 
+static int
+event_data_cmp (void * a1, void * a2)
+{
+  uword * e1 = a1;
+  uword * e2 = a2;
+
+  return (word) e1[0] - (word) e2[0];
+}
+
 static uword
 link_state_process (vlib_main_t * vm,
                     vlib_node_runtime_t * rt,
@@ -414,7 +423,7 @@ link_state_process (vlib_main_t * vm,
             (vm, &event_data, API_ADMIN_UP_DOWN_EVENT);
 
         /* Sort, so we can eliminate duplicates */
-        vec_sort (event_data, e1, e2, (word) e1[0] - (word) e2[0]);
+        vec_sort_with_function (event_data, event_data_cmp);
 
         prev_sw_if_index = ~0;
 

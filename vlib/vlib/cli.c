@@ -296,6 +296,24 @@ all_subs (vlib_cli_main_t * cm,
   return subs;
 }
 
+static int
+vlib_cli_cmp_rule (void * a1, void * a2)
+{
+  vlib_cli_sub_rule_t * r1 = a1;
+  vlib_cli_sub_rule_t * r2 = a2;
+
+  return vec_cmp (r1->name, r2->name);
+}
+
+static int
+vlib_cli_cmp_command (void * a1, void * a2)
+{
+  vlib_cli_command_t * c1 = a1;
+  vlib_cli_command_t * c2 = a2;
+
+  return vec_cmp (c1->path, c2->path);
+}
+
 static clib_error_t *
 vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 				vlib_cli_main_t * cm,
@@ -351,7 +369,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	      sr->rule_index = ~0;
 	    }
 
-	  vec_sort (subs, c1, c2, vec_cmp (c1->name, c2->name));
+	  vec_sort_with_function (subs, vlib_cli_cmp_rule);
 
 	  for (i = 0; i < vec_len (subs); i++) 
 	    {
@@ -382,7 +400,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
       vlib_cli_command_t * sub, * subs;
 
       subs = all_subs (cm, 0, parent_command_index);
-      vec_sort (subs, c1, c2, vec_cmp (c1->path, c2->path));
+      vec_sort_with_function (subs, vlib_cli_cmp_command);
       vec_foreach (sub, subs)
 	vlib_cli_output (vm, "  %-40U %U",
 			 format_vlib_cli_path, sub->path,

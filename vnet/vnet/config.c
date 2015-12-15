@@ -217,6 +217,15 @@ remove_reference (vnet_config_main_t * cm, vnet_config_t * c)
     }
 }
 
+static int
+feature_cmp (void * a1, void * a2)
+{
+  vnet_config_feature_t * f1 = a1;
+  vnet_config_feature_t * f2 = a2;
+
+  return (int) f1->feature_index - f2->feature_index;
+}
+
 always_inline u32 *
 vnet_get_config_heap (vnet_config_main_t * cm, u32 ci)
 { return heap_elt_at_index (cm->config_string_heap, ci); }
@@ -259,7 +268,7 @@ u32 vnet_config_add_feature (vlib_main_t * vm,
   
   /* Sort (prioritize) features. */
   if (vec_len (new_features) > 1)
-    vec_sort (new_features, f1, f2, (int) f1->feature_index - f2->feature_index);
+    vec_sort_with_function (new_features, feature_cmp);
 
   if (old)
     remove_reference (cm, old);

@@ -1814,6 +1814,16 @@ typedef CLIB_PACKED (struct {
   u32 index : 26;
 }) ip4_route_t;
 
+static int
+ip4_route_cmp (void * a1, void * a2)
+{
+  ip4_route_t * r1 = a1;
+  ip4_route_t * r2 = a2;
+
+  int cmp = ip4_address_compare (&r1->address, &r2->address);
+  return cmp ? cmp : ((int) r1->address_length - (int) r2->address_length);
+}
+
 static clib_error_t *
 ip4_show_fib (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 {
@@ -1949,9 +1959,7 @@ ip4_show_fib (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * c
 	    }
 	}
 
-      vec_sort (routes, r1, r2,
-		({ int cmp = ip4_address_compare (&r1->address, &r2->address);
-		  cmp ? cmp : ((int) r1->address_length - (int) r2->address_length); }));
+      vec_sort_with_function (routes, ip4_route_cmp);
       if (vec_len(routes)) {
           if (include_empty_fibs == 0)
               vlib_cli_output (vm, "Table %d, fib_index %d, flow hash: %U", 
@@ -2104,6 +2112,15 @@ static void count_routes_in_fib_at_prefix_length
   ap->count_by_prefix_length[mask_width]++;
 }
 
+static int
+ip6_route_cmp (void * a1, void * a2)
+{
+  ip6_route_t * r1 = a1;
+  ip6_route_t * r2 = a2;
+
+  int cmp = ip6_address_compare (&r1->address, &r2->address);
+  return cmp ? cmp : ((int) r1->address_length - (int) r2->address_length);
+}
 
 static clib_error_t *
 ip6_show_fib (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -2172,9 +2189,7 @@ ip6_show_fib (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * c
 
       BV(clib_bihash_foreach_key_value_pair)(h, add_routes_in_fib, a);
       
-      vec_sort (routes, r1, r2,
-		({ int cmp = ip6_address_compare (&r1->address, &r2->address);
-		  cmp ? cmp : ((int) r1->address_length - (int) r2->address_length); }));
+      vec_sort_with_function (routes, ip6_route_cmp);
 
       vlib_cli_output (vm, "%=45s%=16s%=16s%=16s",
 		       "Destination", "Packets", "Bytes", "Adjacency");

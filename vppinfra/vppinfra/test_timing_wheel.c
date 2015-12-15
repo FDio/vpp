@@ -54,6 +54,12 @@ typedef struct {
   f64 time_next_status_update;
 } test_timing_wheel_main_t;
 
+typedef struct {
+  f64 dt;
+  f64 fraction;
+  u64 count;
+} test_timing_wheel_tmp_t;
+
 static void set_event (test_timing_wheel_main_t * tm, uword i)
 {
   timing_wheel_t * w = &tm->timing_wheel;
@@ -68,6 +74,14 @@ static void set_event (test_timing_wheel_main_t * tm, uword i)
   timing_wheel_insert (w, cpu_time, i);
   timing_wheel_validate (w);
   tm->events[i] = cpu_time;
+}
+
+static int test_timing_wheel_tmp_cmp (void * a1, void * a2)
+{
+  test_timing_wheel_tmp_t * f1 = a1;
+  test_timing_wheel_tmp_t * f2 = a2;
+
+  return f1->dt < f2->dt ? -1 : (f1->dt > f2->dt ? +1 : 0);
 }
 
 clib_error_t *
@@ -294,11 +308,7 @@ test_timing_wheel_main (unformat_input_t * input)
 		  min_error, max_error);
 
     {
-      struct tmp {
-	f64 dt;
-	f64 fraction;
-	u64 count;
-      } * fs, * f;
+      test_timing_wheel_tmp_t * fs, * f;
       f64 total_fraction;
 
       fs = 0;
@@ -313,7 +323,7 @@ test_timing_wheel_main (unformat_input_t * input)
 	  f->count = error_hist[i];
 	}
 
-      vec_sort (fs, f1, f2, f1->dt < f2->dt ? -1 : (f1->dt > f2->dt ? +1 : 0));
+      vec_sort_with_function (fs, test_timing_wheel_tmp_cmp);
 
       total_fraction = 0;
       vec_foreach (f, fs)
