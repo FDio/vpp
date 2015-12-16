@@ -1,0 +1,76 @@
+From e2592eb622c33791d8ae51153360bd8249bdd056 Mon Sep 17 00:00:00 2001
+From: Damjan Marion <damarion@cisco.com>
+Date: Wed, 16 Dec 2015 03:29:22 +0100
+Subject: [PATCH 3/4] virtio: Cleanup virtio pmd debug log output, reset
+
+---
+ drivers/net/virtio/virtio_ethdev.c | 10 +++++-----
+ drivers/net/virtio/virtio_rxtx.c   |  4 +++-
+ 2 files changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/virtio/virtio_ethdev.c b/drivers/net/virtio/virtio_ethdev.c
+index d928339..2fa1587 100644
+--- a/drivers/net/virtio/virtio_ethdev.c
++++ b/drivers/net/virtio/virtio_ethdev.c
+@@ -1635,24 +1635,24 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
+ 	link.link_speed  = SPEED_10G;
+ 
+ 	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
+-		PMD_INIT_LOG(DEBUG, "Get link status from hw");
+ 		vtpci_read_dev_config(hw,
+ 				offsetof(struct virtio_net_config, status),
+ 				&status, sizeof(status));
+ 		if ((status & VIRTIO_NET_S_LINK_UP) == 0) {
+ 			link.link_status = 0;
+-			PMD_INIT_LOG(DEBUG, "Port %d is down",
+-				     dev->data->port_id);
+ 		} else {
+ 			link.link_status = 1;
+-			PMD_INIT_LOG(DEBUG, "Port %d is up",
+-				     dev->data->port_id);
+ 		}
+ 	} else {
+ 		link.link_status = 1;   /* Link up */
+ 	}
+ 	virtio_dev_atomic_write_link_status(dev, &link);
+ 
++        /* This message is far too noisy for normal use */
++        if (0)
++            PMD_INIT_LOG(DEBUG, "Port %d is %s\n", dev->data->port_id,
++                         link.link_status ? "up" : "down");
++
+ 	return (old.link_status == link.link_status) ? -1 : 0;
+ }
+ 
+diff --git a/drivers/net/virtio/virtio_rxtx.c b/drivers/net/virtio/virtio_rxtx.c
+index 74b39ef..2512bce 100644
+--- a/drivers/net/virtio/virtio_rxtx.c
++++ b/drivers/net/virtio/virtio_rxtx.c
+@@ -618,6 +618,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+ 		rxm->next = NULL;
+ 		rxm->pkt_len = (uint32_t)(len[i] - hdr_size);
+ 		rxm->data_len = (uint16_t)(len[i] - hdr_size);
++		rxm->ol_flags = 0;
+ 
+ 		if (hw->vlan_strip)
+ 			rte_vlan_strip(rxm);
+@@ -737,6 +738,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
+ 		rxm->vlan_tci = 0;
+ 		rxm->pkt_len = (uint32_t)(len[0] - hdr_size);
+ 		rxm->data_len = (uint16_t)(len[0] - hdr_size);
++		rxm->ol_flags = 0;
+ 
+ 		rxm->port = rxvq->port_id;
+ 		rx_pkts[nb_rx] = rxm;
+@@ -838,7 +840,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+ 	if (unlikely(nb_pkts < 1))
+ 		return nb_pkts;
+ 
+-	PMD_TX_LOG(DEBUG, "%d packets to xmit", nb_pkts);
++	PMD_TX_LOG(DEBUG, "%d packets to xmit\n", nb_pkts);
+ 	nb_used = VIRTQUEUE_NUSED(txvq);
+ 
+ 	virtio_rmb();
+-- 
+2.5.0
+

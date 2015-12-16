@@ -1,0 +1,24 @@
+From a8767269f3ee545141e83e5a5f62ff24c29248a9 Mon Sep 17 00:00:00 2001
+From: Damjan Marion <damarion@cisco.com>
+Date: Wed, 16 Dec 2015 04:43:40 +0100
+Subject: [PATCH 5/5] missing include
+
+---
+ lib/librte_eal/linuxapp/eal/eal_timer.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/lib/librte_eal/linuxapp/eal/eal_timer.c b/lib/librte_eal/linuxapp/eal/eal_timer.c
+index 9ceff33..d0792be 100644
+--- a/lib/librte_eal/linuxapp/eal/eal_timer.c
++++ b/lib/librte_eal/linuxapp/eal/eal_timer.c
+@@ -51,6 +51,7 @@
+ #include <rte_memzone.h>
+ #include <rte_eal.h>
+ #include <rte_debug.h>
++#include <rte_lcore.h>
+ 
+ #include "eal_private.h"
+ #include "eal_internal_cfg.h"
+-- 
+2.5.0
+

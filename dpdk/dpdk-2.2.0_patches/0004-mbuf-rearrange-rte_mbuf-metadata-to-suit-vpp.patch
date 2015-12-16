@@ -1,0 +1,83 @@
+From b8b575a3398c480f6e02525a0933e5e057139b78 Mon Sep 17 00:00:00 2001
+From: Damjan Marion <damarion@cisco.com>
+Date: Wed, 16 Dec 2015 04:25:23 +0100
+Subject: [PATCH 4/4] mbuf: rearrange rte_mbuf metadata to suit vpp
+
+---
+ .../linuxapp/eal/include/exec-env/rte_kni_common.h   |  5 +++--
+ lib/librte_mbuf/rte_mbuf.h                           | 20 ++++++++++++--------
+ 2 files changed, 15 insertions(+), 10 deletions(-)
+
+diff --git a/lib/librte_eal/linuxapp/eal/include/exec-env/rte_kni_common.h b/lib/librte_eal/linuxapp/eal/include/exec-env/rte_kni_common.h
+index bd1cc09..a68a949 100644
+--- a/lib/librte_eal/linuxapp/eal/include/exec-env/rte_kni_common.h
++++ b/lib/librte_eal/linuxapp/eal/include/exec-env/rte_kni_common.h
+@@ -120,11 +120,12 @@ struct rte_kni_mbuf {
+ 	char pad2[4];
+ 	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */
+ 	uint16_t data_len;      /**< Amount of data in segment buffer. */
++	char pad3[8];
++	void *next;
+ 
+ 	/* fields on second cache line */
+-	char pad3[8] __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)));
++	char pad4[16] __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)));
+ 	void *pool;
+-	void *next;
+ };
+ 
+ /*
+diff --git a/lib/librte_mbuf/rte_mbuf.h b/lib/librte_mbuf/rte_mbuf.h
+index f234ac9..a1b4405 100644
+--- a/lib/librte_mbuf/rte_mbuf.h
++++ b/lib/librte_mbuf/rte_mbuf.h
+@@ -734,6 +734,12 @@ struct rte_mbuf_offload;
+ /**
+  * The generic rte_mbuf, containing a packet mbuf.
+  */
++/*
++ * offload in the second cache line, next in the first. Better for vpp
++ * at least as of right now.
++ * If you change this structure, you must change the user-mode
++ * version in rte_mbuf.h
++ */
+ struct rte_mbuf {
+ 	MARKER cacheline0;
+ 
+@@ -786,6 +792,12 @@ struct rte_mbuf {
+ 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
+ 	uint16_t data_len;        /**< Amount of data in segment buffer. */
+ 	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
++	uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
++	uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
++	struct rte_mbuf *next;    /**< Next segment of scattered packet. */
++
++	/* second cache line - fields only used in slow path or on TX */
++	MARKER cacheline1 __rte_cache_aligned;
+ 
+ 	union {
+ 		uint32_t rss;     /**< RSS hash result if RSS enabled */
+@@ -809,20 +821,12 @@ struct rte_mbuf {
+ 		uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
+ 	} hash;                   /**< hash information */
+ 
+-	uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
+-
+-	uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
+-
+-	/* second cache line - fields only used in slow path or on TX */
+-	MARKER cacheline1 __rte_cache_aligned;
+-
+ 	union {
+ 		void *userdata;   /**< Can be used for external metadata */
+ 		uint64_t udata64; /**< Allow 8-byte userdata on 32-bit */
+ 	};
+ 
+ 	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
+-	struct rte_mbuf *next;    /**< Next segment of scattered packet. */
+ 
+ 	/* fields to support TX offloads */
+ 	union {
+-- 
+2.5.0
+

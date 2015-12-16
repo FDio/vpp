@@ -988,15 +988,16 @@ static u8 * format_dpdk_device (u8 * s, va_list * args)
       rte_eth_dev_rss_hash_conf_get(xd->device_index, &rss_conf);
       pci = di.pci_dev;
 
-      s = format(s, "%Upci id:            device %04x:%04x subsystem %04x:%04x\n"
-                    "%Upci address:       %04x:%02x:%02x.%02x\n",
-                 format_white_space, indent + 2,
-                 pci->id.vendor_id, pci->id.device_id,
-                 pci->id.subsystem_vendor_id,
-                 pci->id.subsystem_device_id,
-                 format_white_space, indent + 2,
-                 pci->addr.domain, pci->addr.bus,
-                 pci->addr.devid, pci->addr.function);
+      if (pci)
+        s = format(s, "%Upci id:            device %04x:%04x subsystem %04x:%04x\n"
+                      "%Upci address:       %04x:%02x:%02x.%02x\n",
+                   format_white_space, indent + 2,
+                   pci->id.vendor_id, pci->id.device_id,
+                   pci->id.subsystem_vendor_id,
+                   pci->id.subsystem_device_id,
+                   format_white_space, indent + 2,
+                   pci->addr.domain, pci->addr.bus,
+                   pci->addr.devid, pci->addr.function);
       s = format(s, "%Umax rx packet len: %d\n",
                  format_white_space, indent + 2, di.max_rx_pktlen);
       s = format(s, "%Upromiscuous:       unicast %s all-multicast %s\n",

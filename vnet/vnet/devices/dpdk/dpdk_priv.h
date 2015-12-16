@@ -22,6 +22,22 @@
 #define DPDK_NB_RX_DESC_40GE    (4096-128)
 #define DPDK_NB_TX_DESC_40GE    2048
 
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+#define foreach_dpdk_counter                    \
+  _ (tx_frames_ok, opackets)                    \
+  _ (tx_bytes_ok, obytes)                       \
+  _ (tx_errors, oerrors)                        \
+  _ (tx_loopback_frames_ok, olbpackets)         \
+  _ (tx_loopback_bytes_ok, olbbytes)            \
+  _ (rx_frames_ok, ipackets)                    \
+  _ (rx_bytes_ok, ibytes)                       \
+  _ (rx_errors, ierrors)                        \
+  _ (rx_missed, imissed)                        \
+  _ (rx_multicast_frames_ok, imcasts)           \
+  _ (rx_no_bufs, rx_nombuf)                     \
+  _ (rx_loopback_frames_ok, ilbpackets)         \
+  _ (rx_loopback_bytes_ok, ilbbytes)
+#else
 #define foreach_dpdk_counter                    \
   _ (tx_frames_ok, opackets)                    \
   _ (tx_bytes_ok, obytes)                       \
@@ -44,6 +60,7 @@
   _ (rx_pause_xoff, rx_pause_xoff)              \
   _ (rx_loopback_frames_ok, ilbpackets)         \
   _ (rx_loopback_bytes_ok, ilbbytes)
+#endif
 
 #define foreach_dpdk_q_counter                  \
   _ (rx_frames_ok, q_ipackets)                  \
@@ -412,10 +429,15 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
                                          xd->stats.imissed -
                                          xd->last_stats.imissed);
         }
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+      rxerrors = xd->stats.ierrors;
+      last_rxerrors = xd->last_stats.ierrors;
+#else
       rxerrors = xd->stats.ibadcrc
         + xd->stats.ibadlen + xd->stats.ierrors;
       last_rxerrors = xd->last_stats.ibadcrc
         + xd->last_stats.ibadlen + xd->last_stats.ierrors;
+#endif
 
       if (PREDICT_FALSE (rxerrors != last_rxerrors))
         {
