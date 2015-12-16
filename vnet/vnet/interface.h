@@ -263,6 +263,10 @@ typedef struct vnet_hw_interface_t {
    VNET_HW_INTERFACE_FLAG_SPEED_40G |		\
    VNET_HW_INTERFACE_FLAG_SPEED_100G)
 
+  /* l2output node flags */
+#define VNET_HW_INTERFACE_FLAG_L2OUTPUT_SHIFT	9
+#define VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED	(1 << 9)
+
   /* Hardware address as vector.  Zero (e.g. zero-length vector) if no
      address for this class (e.g. PPP). */
   u8 * hw_address;

@@ -477,16 +477,26 @@ u32 l2output_create_output_node_mapping (
 #if DPDK > 0
   uword		       cpu_number;
 
+  hw0 = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
+
   cpu_number = os_get_cpu_number();
 
   if (cpu_number)
     {
+      u32 oldflags;
+      vlib_node_t  *error_drop_node;
+
+      error_drop_node = vlib_get_node_by_name (vlib_main, (u8 *) "error-drop");
+      oldflags = __sync_fetch_and_or(&hw0->flags,
+                                     VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED);
+
+      if ((oldflags & VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED) )
+      return error_drop_node->index;
+
       output_node_mapping_send_rpc (node_index, sw_if_index);
-      return 0;
+      return error_drop_node->index;
     }
 #endif
-
-  hw0 = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
 
   // dynamically create graph node arc 
   next = vlib_node_add_next (vlib_main,
