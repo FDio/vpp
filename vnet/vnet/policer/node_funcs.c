@@ -85,7 +85,7 @@ uword vnet_policer_inline (vlib_main_t * vm,
 	  vlib_buffer_t * b0, * b1;
           u32 next0, next1;
           u32 sw_if_index0, sw_if_index1;
-          u32 pi0, pi1;
+          u32 pi0 = 0, pi1 = 0;
           u32 len0, len1;
           u32 col0, col1;
           policer_read_response_type_st * pol0, * pol1;
@@ -200,7 +200,7 @@ uword vnet_policer_inline (vlib_main_t * vm,
 	  vlib_buffer_t * b0;
           u32 next0;
           u32 sw_if_index0;
-          u32 pi0;
+          u32 pi0 = 0;
           u32 len0;
           u32 col0;
           policer_read_response_type_st * pol0;
