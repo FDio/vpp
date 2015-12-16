@@ -847,7 +847,7 @@ ip4_map_t (vlib_main_t *vm,
       vlib_buffer_t *p0, *p1;
       ip4_header_t *ip40, *ip41;
       map_domain_t *d0, *d1;
-      ip4_mapt_next_t next0, next1;
+      ip4_mapt_next_t next0 = 0, next1 = 0;
       u16 ip4_len0, ip4_len1;
       u8 error0, error1;
       i32 dst_port0, dst_port1;
