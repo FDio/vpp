@@ -315,9 +315,9 @@ void cnat_port_free_v2_bulk (
 static i16 get_suiting_port_pos_from_range(cnat_portmap_v2_t *my_pm, 
     u16 bulk_start, i16 bulk_size, port_pair_t pair_type)
 {
-    i16 num_pos, num_bits, iterations;
+    i16 num_pos = 0, num_bits, iterations;
     uword bulk_ports;
-    i16 inc;
+    i16 inc = 0;
     i16 num_uwords = bulk_size/BITS(my_pm->bm[0]);
 
     if(PREDICT_FALSE(!num_uwords)) {
