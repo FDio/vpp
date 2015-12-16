@@ -1,5 +1,4 @@
 *~
-autom4te.cache/
 /build-root/.ccache
 /build-root/build-*/
 /build-root/install-*/
@@ -13,3 +12,28 @@ autom4te.cache/
 /dpdk/*.tar.gz
 /path_setup
 /tools/
+# start autotools ignore
+autom4te.cache/
+config/
+Makefile
+Makefile.in
+aclocal.m4
+app.info
+compile
+config.h
+config.h.in
+config.log
+config.guess
+config.sub
+config.status
+configure
+configure.scan
+coverage_report
+depcomp
+install-sh
+libtool
+m4
+missing
+stamp-h1
+ltmain.sh
+# stop autotools ignore
