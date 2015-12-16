@@ -14,6 +14,7 @@
  */
 #include <vlib/vlib.h>
 #include <app/version.h>
+#include <rte_version.h>
 
 static char * vpe_version_string = 
     "vpp v" VPP_BUILD_VER 
@@ -46,6 +47,7 @@ show_vpe_version_command_fn (vlib_main_t * vm,
   if (unformat (input, "verbose")){
      vlib_cli_output (vm, "%s", vpe_dir_string);
      vlib_cli_output (vm, "%s", vpe_compiler);
+     vlib_cli_output (vm, "DPDK version is %s", rte_version());
   }
   return 0;
 }
