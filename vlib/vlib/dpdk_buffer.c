@@ -724,10 +724,13 @@ vlib_buffer_free_inline (vlib_main_t * vm,
         }
       else
         {
-          mb = ((struct rte_mbuf *)b)-1;
-          ASSERT(rte_mbuf_refcnt_read(mb) == 1);
-          rte_pktmbuf_free (mb);
-        }
+	  if (PREDICT_TRUE (b->clone_count == 0))
+	    {
+	      mb = ((struct rte_mbuf *)b)-1;
+	      ASSERT(rte_mbuf_refcnt_read(mb) == 1);
+	      rte_pktmbuf_free (mb);
+	    }
+	}
     }
   if (vec_len(bm->announce_list))
     {
