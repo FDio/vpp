@@ -1,0 +1,198 @@
+From 7ffb8ce542aeebc92dc0b359ea3e05d0eac0e3c5 Mon Sep 17 00:00:00 2001
+From: Ed Warnicke <eaw@cisco.com>
+Date: Mon, 14 Dec 2015 21:11:08 -0800
+Subject: [PATCH] First try at vppsh
+
+Signed-off-by: Ed Warnicke <eaw@cisco.com>
+---
+ build-data/packages/vppsh.mk | 31 +++++++++++++++++++++++++++++++
+ build-data/platforms/vpp.mk  |  2 +-
+ build-root/bootstrap.sh      |  2 +-
+ vpp-api-test/vat/main.c      |  6 ++++++
+ vppsh/Makefile.am            | 11 +++++++++++
+ vppsh/configure.ac           | 33 +++++++++++++++++++++++++++++++++
+ vppsh/src/main.c             | 33 +++++++++++++++++++++++++++++++++
+ 7 files changed, 116 insertions(+), 2 deletions(-)
+ create mode 100644 build-data/packages/vppsh.mk
+ create mode 100644 vppsh/Makefile.am
+ create mode 100644 vppsh/configure.ac
+ create mode 100644 vppsh/src/main.c
+
+diff --git a/build-data/packages/vppsh.mk b/build-data/packages/vppsh.mk
+new file mode 100644
+index 0000000..1c7823e
+--- /dev/null
++++ b/build-data/packages/vppsh.mk
+@@ -0,0 +1,31 @@
++vppsh_configure_depend =			\
++	vppinfra-install			\
++	dpdk-install				\
++	svm-install				\
++	vlib-api-install			\
++	vlib-install				\
++	vnet-install				\
++	vpp-install
++
++# 
++vppsh_configure_args = --with-q-platform=$(PLATFORM) --with-dpdk \
++       --with-q-plugin-prefix=$(MU_BUILD_ROOT_DIR)/packages-$(PLATFORM)
++
++vppsh_CPPFLAGS = $(call installed_includes_fn,	\
++	vppinfra				\
++	dpdk					\
++	svm					\
++	vlib					\
++	vlib-api				\
++	vnet					\
++	vpp)
++
++vppsh_LDFLAGS = $(call installed_libs_fn,	\
++	vppinfra				\
++	dpdk					\
++	svm					\
++	vlib					\
++	vlib-api				\
++	vnet					\
++	vpp)
++
+diff --git a/build-data/platforms/vpp.mk b/build-data/platforms/vpp.mk
+index 1975a86..448db00 100644
+--- a/build-data/platforms/vpp.mk
++++ b/build-data/platforms/vpp.mk
+@@ -16,7 +16,7 @@ vpp_arch = native
+ vpp_native_tools = vppapigen vppversion
+ 
+ vpp_root_packages = vpp vlib vlib-api vnet svm dpdk vpp-api-test \
+-	vpp-japi 
++	vpp-japi vppsh
+ 
+ vpp_configure_args_vpp = --with-dpdk
+ vnet_configure_args_vpp = --with-dpdk
+diff --git a/build-root/bootstrap.sh b/build-root/bootstrap.sh
+index 3ae9409..de0ec60 100755
+--- a/build-root/bootstrap.sh
++++ b/build-root/bootstrap.sh
+@@ -42,7 +42,7 @@ done
+ cd $wsroot
+ 
+ for dir in vppapigen vppinfra sample-plugin vppversion svm vlib vlib-api vnet \
+-    vpp vpp-api-test vpp-japi 
++    vpp vpp-api-test vpp-japi vppsh 
+ do
+     cd $dir
+     echo "Autowank in $dir"
+diff --git a/vpp-api-test/vat/main.c b/vpp-api-test/vat/main.c
+index e7c2552..3ba2145 100644
+--- a/vpp-api-test/vat/main.c
++++ b/vpp-api-test/vat/main.c
+@@ -275,6 +275,12 @@ int main (int argc, char ** argv)
+         vam->current_file = (u8 *) "interactive";
+         do_one_file (vam);
+         fclose(vam->ifp);
++    } else if (vec_len(input_files) == 0) { 
++        vam->ifp = stdin;
++        vam->ofp = stdout;
++        vam->current_file = (u8 *) "script";
++        do_one_file (vam);
++        fclose(vam->ifp);
+     }
+ 
+     vl_client_disconnect_from_vlib();
+diff --git a/vppsh/Makefile.am b/vppsh/Makefile.am
+new file mode 100644
+index 0000000..549db89
+--- /dev/null
++++ b/vppsh/Makefile.am
+@@ -0,0 +1,11 @@
++AUTOMAKE_OPTIONS = foreign subdir-objects
++
++AM_CFLAGS = -Wall @Q_PLATFORM_DEFINE@ @Q_PLATFORM_PLUGPATH@ @DPDK@
++
++bin_PROGRAMS = vppsh
++
++vppsh_SOURCES = src/main.c
++
++vppsh_LDADD = -lvlibmemoryclient -lvlibapi -lsvm \
++        -lvppinfra -lpthread -lm \
++        -lrt 
+diff --git a/vppsh/configure.ac b/vppsh/configure.ac
+new file mode 100644
+index 0000000..1018431
+--- /dev/null
++++ b/vppsh/configure.ac
+@@ -0,0 +1,33 @@
++AC_INIT(vppsh, 1.0)
++AM_INIT_AUTOMAKE
++
++AC_PROG_LIBTOOL
++AM_PROG_AS
++AC_PROG_CC
++AM_PROG_CC_C_O
++
++AC_ARG_WITH(q-plugin-prefix,
++            AC_HELP_STRING([--with-q-plugin-prefix],[vlib plugin prefix]),
++            [case $with_q_plugin_prefix in
++               *) ;;
++             esac])
++
++AC_ARG_WITH(q-platform,
++            AC_HELP_STRING([--with-q-platform],[Build version for given platform (qnative)]),
++            [case $with_q_platform in
++               qnative) ;;
++               vpe) with_q_platform=vpe;;
++               *) with_q_platform=qnative;;
++             esac])
++
++AC_ARG_WITH(dpdk,
++            AC_HELP_STRING([--with-dpdk],[Use the Intel dpdk]),
++            [with_dpdk=1],
++            [with_dpdk=0])
++
++AC_SUBST(Q_PLATFORM_DEFINE,[-DQ_PLATFORM_${with_q_platform}])
++AC_SUBST(Q_PLATFORM_PLUGPATH,[-DQ_PLUGIN_PREFIX=${with_q_plugin_prefix}])
++AC_SUBST(DPDK,[-DDPDK=${with_dpdk}])
++AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
++
++AC_OUTPUT([Makefile])
+diff --git a/vppsh/src/main.c b/vppsh/src/main.c
+new file mode 100644
+index 0000000..ef8ab35
+--- /dev/null
++++ b/vppsh/src/main.c
+@@ -0,0 +1,33 @@
++/*
++ * Copyright (c) 2015 Cisco and/or its affiliates.
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at:
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include <stdio.h>
++#include <setjmp.h>
++#include <vppinfra/clib.h>
++#include <vppinfra/format.h>
++#include <vppinfra/error.h>
++#include <vppinfra/time.h>
++#include <vppinfra/macros.h>
++#include <vnet/vnet.h>
++#include <vlib/vlib.h>
++#include <vlib/unix/unix.h>
++#include <vlibapi/api.h>
++#include <vlibmemory/api.h>
++
++
++int main (int argc, char ** argv) {
++  puts("Hello World");
++  return 0;
++}
+-- 
+1.9.1
+
