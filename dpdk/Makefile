@@ -23,10 +23,11 @@ DPDK_DEBUG            ?= n
 
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
-DPDK_VERSION := 2.1.0
+DPDK_VERSION ?= 2.1.0
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.gz
 DPDK_TAR_URL := http://dpdk.org/browse/dpdk/snapshot/$(DPDK_TARBALL)
-DPDK_TARBALL_MD5_CKSUM := 205a0d12bfd6eb717d57506272f43519
+DPDK_2.1.0_TARBALL_MD5_CKSUM := 205a0d12bfd6eb717d57506272f43519
+DPDK_2.2.0_TARBALL_MD5_CKSUM := 22e2fd68cd5504f43fe9a5a6fd6dd938
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 DPDK_TARGET := x86_64-native-linuxapp-gcc
 JOBS := $(shell grep processor /proc/cpuinfo | wc -l)
@@ -125,7 +126,7 @@ $(CURDIR)/$(DPDK_TARBALL):
 
 $(B)/.download.ok: $(CURDIR)/$(DPDK_TARBALL)
 	@openssl md5 $< | cut -f 2 -d " " - > $(B)/$(DPDK_TARBALL).md5sum
-	@([ "$$(<$(B)/$(DPDK_TARBALL).md5sum)" = "$(DPDK_TARBALL_MD5_CKSUM)" ] || \
+	@([ "$$(<$(B)/$(DPDK_TARBALL).md5sum)" = "$(DPDK_$(DPDK_VERSION)_TARBALL_MD5_CKSUM)" ] || \
 	( echo "Bad Checksum! Please remove $< and retry" && \
 		rm $(B)/$(DPDK_TARBALL).md5sum && false ))
 	@touch $@
