@@ -19,24 +19,6 @@
 
 vlib_main_t **vlib_mains;
 
-static inline uword
-vlib_get_cpu_number_inline (void)
-{
-  void * sp;
-  uword n;
-  u32 len;
-
-  /* Get any old stack address. */
-  sp = &sp;
-
-  n = ((uword)sp - (uword)vlib_thread_stacks[0]) >> 20;
-
-  /* "processes" have their own stacks, and they always run in thread 0 */
-  n = n >= len ? 0 : n;
-
-  return n;
-}
-
 void
 vlib_set_thread_name (char *name);
 
