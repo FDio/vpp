@@ -151,6 +151,8 @@ void vlib_register_errors (vlib_main_t * vm,
   vlib_node_t * n = vlib_get_node (vm, node_index);
   uword l;
 
+  ASSERT(os_get_cpu_number() == 0);
+
   /* Free up any previous error strings. */
   if (n->n_errors > 0)
     heap_dealloc (em->error_strings_heap, n->error_heap_handle);
@@ -209,8 +211,45 @@ show_errors (vlib_main_t * vm,
   vlib_node_t * n;
   u32 code, i, ni;
   u64 c;
+  int index = 0;
+  int verbose = 0;
+  u64 * sums = 0;
+
+  if (unformat (input, "verbose"))
+    verbose = 1;
+
+  vec_validate(sums, vec_len(em->counters));
 
   vlib_cli_output (vm, "%=16s%=40s%=20s", "Count", "Node", "Reason");
+
+  foreach_vlib_main(({
+    em = &this_vlib_main->error_main;
+
+    if (verbose)
+      vlib_cli_output(vm, "Thread %u (%v):", index, vlib_worker_threads[index].name);
+
+    for (ni = 0; ni < vec_len (this_vlib_main->node_main.nodes); ni++)
+      {
+	n = vlib_get_node (this_vlib_main, ni);
+	for (code = 0; code < n->n_errors; code++)
+	  {
+	    i = n->error_heap_index + code;
+	    c = em->counters[i];
+	    if (i < vec_len (em->counters_last_clear))
+	      c -= em->counters_last_clear[i];
+	    sums[i] += c;
+
+	    if (c == 0 || !verbose)
+	      continue;
+
+	    vlib_cli_output (vm, "%16Ld%=40v%s", c, n->name, em->error_strings_heap[i]);
+	  }
+      }
+    index++;
+  }));
+
+  if (verbose)
+   vlib_cli_output(vm, "Total:");
 
   for (ni = 0; ni < vec_len (vm->node_main.nodes); ni++)
     {
@@ -218,16 +257,12 @@ show_errors (vlib_main_t * vm,
       for (code = 0; code < n->n_errors; code++)
 	{
 	  i = n->error_heap_index + code;
-	  c = em->counters[i];
-	  if (i < vec_len (em->counters_last_clear))
-	    c -= em->counters_last_clear[i];
-
-	  if (c == 0)
-	    continue;
-
-	  vlib_cli_output (vm, "%16Ld%=40v%s", c, n->name, em->error_strings_heap[i]);
+	  if (sums[i])
+	    vlib_cli_output (vm, "%16Ld%=40v%s", sums[i], n->name, em->error_strings_heap[i]);
 	}
     }
+
+  vec_free(sums);
 
   return 0;
 }
@@ -249,12 +284,15 @@ clear_error_counters (vlib_main_t * vm,
 		      unformat_input_t * input,
 		      vlib_cli_command_t * cmd)
 {
-  vlib_error_main_t * em = &vm->error_main;
+  vlib_error_main_t * em;
   u32 i;
 
-  vec_validate (em->counters_last_clear, vec_len (em->counters) - 1);
-  for (i = 0; i < vec_len (em->counters); i++)
-    em->counters_last_clear[i] = em->counters[i];
+  foreach_vlib_main(({
+    em = &this_vlib_main->error_main;
+    vec_validate (em->counters_last_clear, vec_len (em->counters) - 1);
+    for (i = 0; i < vec_len (em->counters); i++)
+      em->counters_last_clear[i] = em->counters[i];
+  }));
   return 0;
 }
 

@@ -70,7 +70,7 @@ os_get_cpu_number (void)
   /* Get any old stack address. */
   sp = &sp;
 
-  n = ((uword)sp - (uword)vlib_thread_stacks[0]) 
+  n = ((uword)sp - (uword)vlib_thread_stacks[0])
       >> VLIB_LOG2_THREAD_STACK_SIZE;
 
   /* "processes" have their own stacks, and they always run in thread 0 */
@@ -675,6 +675,11 @@ static clib_error_t * start_workers (vlib_main_t * vm)
 
             unix_physmem_init (vm_clone, 0 /* physmem not required */);
 
+	    vm_clone->error_main.counters =
+	      vec_dup(vlib_mains[0]->error_main.counters);
+	    vm_clone->error_main.counters_last_clear =
+	      vec_dup(vlib_mains[0]->error_main.counters_last_clear);
+
             /* Fork the vlib_buffer_main_t free lists, etc. */
             bm_clone = vec_dup (vm_clone->buffer_main);
             vm_clone->buffer_main = bm_clone;
@@ -817,16 +822,23 @@ void vlib_worker_thread_node_runtime_update(void)
       vlib_node_runtime_t * rt;
       w = vlib_worker_threads + i;
       oldheap = clib_mem_set_heap (w->thread_mheap);
-      
+
       vm_clone = vlib_mains[i];
 
       /* Re-clone error heap */
+      u64 * old_counters = vm_clone->error_main.counters;
+      u64 * old_counters_all_clear = vm_clone->error_main.counters_last_clear;
       memcpy (&vm_clone->error_main, &vm->error_main, sizeof (vm->error_main));
+      j = vec_len(vm->error_main.counters) - 1;
+      vec_validate_aligned(old_counters, j, CLIB_CACHE_LINE_BYTES);
+      vec_validate_aligned(old_counters_all_clear, j, CLIB_CACHE_LINE_BYTES);
+      vm_clone->error_main.counters = old_counters;
+      vm_clone->error_main.counters_last_clear = old_counters_all_clear;
 
       nm_clone = &vm_clone->node_main;
       vec_free (nm_clone->next_frames);
       nm_clone->next_frames = vec_dup (nm->next_frames);
-      
+
       for (j = 0; j < vec_len (nm_clone->next_frames); j++)
         {
           vlib_next_frame_t *nf = &nm_clone->next_frames[j];
