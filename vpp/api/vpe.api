@@ -1854,6 +1854,22 @@ define vxlan_add_del_tunnel_reply {
     i32 retval;
     u32 sw_if_index;
 };
+
+manual_java define vxlan_tunnel_dump {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+};
+
+manual_java define vxlan_tunnel_details {
+    u32 context;
+    u32 sw_if_index;
+    u32 src_address;
+    u32 dst_address;
+    u32 encap_vrf_id;
+    u32 decap_next_index;
+    u32 vni;
+};
   
 /** \brief L2 interface vlan tag rewrite configure request
     @param client_index - opaque cookie to identify the sender
@@ -2062,7 +2078,7 @@ manual_java define ip_address_details {
     u8 prefix_length;
 };
 
-define ip_address_dump {
+manual_java define ip_address_dump {
     u32 client_index;
     u32 context;
     u32 sw_if_index;

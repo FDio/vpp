@@ -1285,6 +1285,18 @@ static void * vl_api_vxlan_add_del_tunnel_t_print
     FINISH;
 }
 
+static void * vl_api_vxlan_tunnel_dump_t_print
+(vl_api_vxlan_tunnel_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: vxlan_tunnel_dump ");
+
+    s = format (s, "sw_if_index %d ", ntohl(mp->sw_if_index));
+
+    FINISH;
+}
+
 static void *vl_api_l2_fib_clear_table_t_print
 (vl_api_l2_fib_clear_table_t * mp, void *handle)
 {
@@ -1737,6 +1749,7 @@ _(L2TPV3_INTERFACE_ENABLE_DISABLE, l2tpv3_interface_enable_disable)     \
 _(L2TPV3_SET_LOOKUP_KEY, l2tpv3_set_lookup_key)                         \
 _(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)                   \
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
+_(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)         \
