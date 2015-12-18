@@ -14,17 +14,20 @@
  */
 
 package org.openvpp.vppjapi;
-import org.openvpp.vppjapi.vppApi;
 
-public abstract class vppApiCallbacks extends vppApi {
-/* Disabled!
- *
- * public abstract void interfaceDetails(
-            int ifIndex, String interfaceName, int supIfIndex, byte[] physAddr,
-            byte adminUp, byte linkUp, byte linkDuplex, byte linkSpeed,
-            int subId, byte subDot1ad, byte subNumberOfTags, int subOuterVlanId, int subInnerVlanId,
-            byte subExactMatch, byte subDefault, byte subOuterVlanIdAny, byte subInnerVlanIdAny,
-            int vtrOp, int vtrPushDot1q, int vtrTag1, int vtrTag2);
- */
+public class vppVxlanTunnelDetails {
+    public int srcAddress;
+    public int dstAddress;
+    public int encapVrfId;
+    public int vni;
+    public int decap_next_index;
 
+    public vppVxlanTunnelDetails(int _srcAddress, int _dstAddress,
+            int _encapVrfId, int _vni, int _decap_next_index) {
+        srcAddress = _srcAddress;
+        dstAddress = _dstAddress;
+        encapVrfId = _encapVrfId;
+        vni = _vni;
+        decap_next_index = _decap_next_index;
+    }
 }

@@ -84,6 +84,20 @@ typedef struct {
 } sw_interface_subif_t;
 
 typedef struct {
+    u8 *desc;
+} sw_if_config_t;
+
+typedef struct {
+    u32 ip;
+    u8 prefix_length;
+} ipv4_address_t;
+
+typedef struct {
+    u8 ip[16];
+    u8 prefix_length;
+} ipv6_address_t;
+
+typedef struct {
   u64 ip4;
   u64 ip6;
   u64 unicast;
@@ -107,6 +121,14 @@ typedef struct {
   if_counters_t rx;
   if_counters_t tx;
 } sw_interface_stats_t;
+
+typedef struct {
+    u32 src_address;
+    u32 dst_address;
+    u32 encap_vrf_id;
+    u32 vni;
+    u32 decap_next_index;
+} vxlan_tunnel_details_t;
 
 
 typedef struct {
@@ -152,6 +174,8 @@ typedef struct {
   /* interface table */
   sw_interface_details_t * sw_if_table;
 
+  uword * sw_if_config_by_sw_if_index;
+
   /* interface indices of responses to one sw_if_dump request */
   u8 collect_indices;
   u32 * sw_if_dump_if_indices;
@@ -164,6 +188,14 @@ typedef struct {
 
   /* subinterface table */
   sw_interface_subif_t * sw_if_subif_table;
+
+  /* used in ip_address_dump request and response handling */
+  ipv4_address_t *ipv4_addresses;
+  ipv6_address_t *ipv6_addresses;
+  u8 is_ipv6;
+
+  /* used in vxlan_tunnel_dump request and response handling */
+  vxlan_tunnel_details_t *vxlan_tunnel_details;
 
   /* main heap */
   u8 * heap;
