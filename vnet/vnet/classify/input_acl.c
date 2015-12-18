@@ -35,7 +35,7 @@ vnet_inacl_ip_feature_enable (vlib_main_t * vnm,
     { /* IP[46] */
       ip_lookup_main_t * lm;
       ip_config_main_t * ipcm;
-      ip4_rx_feature_type_t ftype;
+      u32 ftype;
       u32 ci;
 
       if (tid == INPUT_ACL_TABLE_IP4)

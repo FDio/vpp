@@ -159,7 +159,7 @@ vlib_thread_init (vlib_main_t * vm)
   if (!tm->main_lcore)
     {
       tm->main_lcore = clib_bitmap_first_set(avail_cpu);
-      if (tm->main_lcore == ~0)
+      if (tm->main_lcore == (u8) ~0)
         return clib_error_return (0, "no available cpus to be used for the"
                                   " main thread");
     }

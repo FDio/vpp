@@ -446,7 +446,7 @@ fill_free_list (vlib_main_t * vm,
   vlib_buffer_t * b;
   int n, i;
   u32 bi;
-  u32 n_remaining, n_alloc;
+  u32 n_remaining = 0, n_alloc = 0;
   unsigned socket_id = rte_socket_id ? rte_socket_id() : 0;
   struct rte_mempool *rmp = vm->buffer_main->pktmbuf_pools[socket_id];
   struct rte_mbuf *mb;

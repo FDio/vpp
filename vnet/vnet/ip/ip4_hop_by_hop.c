@@ -299,7 +299,6 @@ VLIB_REGISTER_NODE (ip4_pop_hop_by_hop_node) = {
     [IP_LOOKUP_NEXT_MAP] = "ip4-map",
     [IP_LOOKUP_NEXT_MAP_T] = "ip4-map-t",
     [IP_LOOKUP_NEXT_SIXRD] = "ip4-sixrd",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip4-sixrd",
     [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip4-hop-by-hop", /* probably not */
     [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip4-add-hop-by-hop", 
     [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip4-pop-hop-by-hop", 

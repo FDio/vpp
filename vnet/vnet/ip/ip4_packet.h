@@ -266,7 +266,7 @@ ip4_address_is_multicast (ip4_address_t * a)
 always_inline void
 ip4_multicast_address_set_for_group (ip4_address_t * a, ip_multicast_group_t g)
 {
-  ASSERT (g < (1 << 28));
+  ASSERT ((u32) g < (1 << 28));
   a->as_u32 = clib_host_to_net_u32 ((0xe << 28) + g);
 }
 

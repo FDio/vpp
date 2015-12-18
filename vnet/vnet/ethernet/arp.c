@@ -1746,7 +1746,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	  ip0 = arp0->ip4_over_ethernet[1].ip4.as_u32;
 	  bd_index0 = vnet_buffer(p0)->l2.bd_index;
 	  if (PREDICT_FALSE (
-	    (bd_index0 != last_bd_index) || (last_bd_index == ~0)))
+	    (bd_index0 != last_bd_index) || (last_bd_index == (u16) ~0)))
 	    {
 	      last_bd_index = bd_index0;
 	      last_bd_config = vec_elt_at_index(l2im->bd_configs, bd_index0);

@@ -563,7 +563,7 @@ vlib_node_runtime_sync_stats (vlib_main_t * vm,
   r->clocks_since_last_overflow = 0;
 }
 
-always_inline void
+always_inline void __attribute__((unused))
 vlib_process_sync_stats (vlib_main_t * vm,
 			 vlib_process_t * p,
 			 uword n_calls,

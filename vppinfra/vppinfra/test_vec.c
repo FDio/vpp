@@ -1049,7 +1049,8 @@ int test_vec_main (unformat_input_t * input)
     {
       u8 * bigboy = 0;
       u64 one_gig = (1<<30);
-      u64 size, index;
+      u64 size;
+      i64 index;
 
       fformat (stdout, "giant vector test...");
       size = 5ULL * one_gig;

@@ -117,9 +117,9 @@ static u8 * format_svm_size (u8 * s, va_list * args)
 {
     uword size = va_arg (*args, uword);
 
-    if (size >= (1>>20)) {
+    if (size >= (1<<20)) {
         s = format (s, "(%d mb)", size >> 20);
-    } else if (size >= (1>>10)) {
+    } else if (size >= (1<<10)) {
         s = format (s, "(%d kb)", size >> 10);
     } else {
         s = format (s, "(%d bytes)", size);

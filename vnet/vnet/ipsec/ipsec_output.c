@@ -81,7 +81,7 @@ static u8 * format_ipsec_output_trace (u8 * s, va_list * args)
   return s;
 }
 
-always_inline intf_output_feat_t
+always_inline intf_output_feat_t __attribute__((unused))
 get_next_intf_output_feature_and_reset_bit(vlib_buffer_t *b)
 {
   u32 next_feature;

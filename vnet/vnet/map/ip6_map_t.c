@@ -451,7 +451,7 @@ ip6_map_t_fragmented (vlib_main_t *vm,
       u16 frag_id0, frag_offset0,
           frag_id1, frag_offset1;
       u8 frag_more0, frag_more1;
-      ip6_mapt_fragmented_next_t next0, next1;
+      u32 next0, next1;
 
       pi0 = to_next[0] = from[0];
       pi1 = to_next[1] = from[1];
@@ -536,7 +536,7 @@ ip6_map_t_fragmented (vlib_main_t *vm,
       u16 frag_id0;
       u8 frag_more0;
       u16 frag_offset0;
-      ip6_mapt_fragmented_next_t next0;
+      u32 next0;
 
       pi0 = to_next[0] = from[0];
       from += 1;

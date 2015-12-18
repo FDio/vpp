@@ -90,6 +90,7 @@ nobase_include_HEADERS +=			\
   vlib/unix/plugin.h				\
   vlib/unix/unix.h
     
+if !WITH_DPDK
 noinst_PROGRAMS = vlib_unix 
 
 vlib_unix_SOURCES =				\
@@ -98,3 +99,4 @@ vlib_unix_SOURCES =				\
 
 vlib_unix_LDADD = libvlib_unix.la libvlib.la \
 	          -lvppinfra -lpthread -lm -ldl -lrt
+endif

@@ -703,7 +703,7 @@ static int requests_switch (srp_ips_request_type_t r)
     [SRP_IPS_REQUEST_signal_fail] = 1,
     [SRP_IPS_REQUEST_signal_degrade] = 1,
   };
-  return r < ARRAY_LEN (t) ? t[r] : 0;
+  return (int) r < ARRAY_LEN (t) ? t[r] : 0;
 }
 
 /* Called when an IPS control packet is received on given interface. */

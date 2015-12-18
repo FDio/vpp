@@ -115,7 +115,7 @@ mheap_elt_size_to_user_n_bytes (uword n_bytes)
   return (n_bytes - STRUCT_OFFSET_OF (mheap_elt_t, user_data));
 }
 
-always_inline uword
+always_inline uword __attribute__((unused))
 mheap_elt_size_to_user_n_words (uword n_bytes)
 {
   ASSERT (n_bytes % MHEAP_USER_DATA_WORD_BYTES == 0);

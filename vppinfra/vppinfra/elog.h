@@ -182,7 +182,7 @@ always_inline void
 elog_enable_disable (elog_main_t * em, int is_enabled)
 {
   em->n_total_events = 0;
-  em->n_total_events_disable_limit = is_enabled ? ~0ULL : 0ULL;
+  em->n_total_events_disable_limit = is_enabled ? ~0 : 0;
 }
 
 /* Disable logging after specified number of ievents have been logged.

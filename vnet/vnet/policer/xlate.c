@@ -894,7 +894,7 @@ compute_policer_params (uint64_t hz,                 // CPU speed in clocks per 
     uint32_t max;
     uint32_t scale_shift;
     uint32_t scale_amount;
-    uint32_t orig_current_limit = *current_limit;
+    uint32_t __attribute__((unused)) orig_current_limit = *current_limit;
 
     // Compute period. For 1Ghz-to-8Ghz CPUs, the period will be in 
     // the range of 16 to 116 usec.
@@ -969,8 +969,6 @@ compute_policer_params (uint64_t hz,                 // CPU speed in clocks per 
             (unsigned long long)effective_BPS,
             (double)cir_rate / (double)effective_BPS);
     }
-#else
-    orig_current_limit = orig_current_limit;  // Make compiler happy
 #endif
 
     return 0; // ok

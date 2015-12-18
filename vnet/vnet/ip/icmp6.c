@@ -749,7 +749,7 @@ void icmp6_register_type (vlib_main_t * vm, icmp6_type_t type, u32 node_index)
 {
   icmp6_main_t * im = &icmp6_main;
 
-  ASSERT (type < ARRAY_LEN (im->input_next_index_by_type));
+  ASSERT ((int) type < ARRAY_LEN (im->input_next_index_by_type));
   im->input_next_index_by_type[type]
     = vlib_node_add_next (vm, ip6_icmp_input_node.index, node_index);
 }

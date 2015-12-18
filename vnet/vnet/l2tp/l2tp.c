@@ -576,7 +576,7 @@ int l2tpv3_interface_enable_disable (vnet_main_t * vnm,
   ip_config_main_t * rx_cm = &lm->rx_config_mains[VNET_UNICAST];
   u32 ci;
   ip6_l2tpv3_config_t config;
-  ip4_rx_feature_type_t type;
+  ip6_rx_feature_type_t type;
 
   if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;

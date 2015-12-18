@@ -690,7 +690,7 @@ void ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type,
 {
   icmp4_main_t * im = &icmp4_main;
 
-  ASSERT (type < ARRAY_LEN (im->ip4_input_next_index_by_type));
+  ASSERT ((int)type < ARRAY_LEN (im->ip4_input_next_index_by_type));
   im->ip4_input_next_index_by_type[type]
     = vlib_node_add_next (vm, ip4_icmp_input_node.index, node_index);
 }

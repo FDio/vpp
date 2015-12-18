@@ -227,7 +227,7 @@ set_interpreter_rpath (elf_tool_main_t * tm)
   u32 run_length;
   u8 in_run;
   u64 offset0 = 0, offset1 = 0;
-  clib_error_t * error;
+  clib_error_t * error = 0;
   int fix_in_place = 0;
 
   if (!strcmp (tm->input_file, tm->output_file))

@@ -130,7 +130,7 @@ ip4_map_vtcfl (ip4_header_t *ip4, vlib_buffer_t *p)
   u8 tc = mm->tc_copy ? ip4->tos : mm->tc;
   u32 vtcfl = 0x6 << 28;
   vtcfl |= tc << 20;
-  vtcfl |= vnet_buffer(p)->ip.flow_hash && 0x000fffff;
+  vtcfl |= vnet_buffer(p)->ip.flow_hash & 0x000fffff;
 
   return (clib_host_to_net_u32(vtcfl));
 }
