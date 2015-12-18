@@ -21,8 +21,8 @@ bin_PROGRAMS =
 CLEANFILES = 
 lib_LTLIBRARIES = 
 
-nobase_include_HEADERS =			\
-  japi/org_openvpp_vppjapi_vppApi.h		\
+nobase_include_HEADERS =		\
+  japi/org_openvpp_vppjapi_vppApi.h	\
   japi/org_openvpp_vppjapi_vppConn.h
 
 lib_LTLIBRARIES += libvppjni.la
@@ -41,34 +41,47 @@ $(jarfile): libvppjni.la
 
 BUILT_SOURCES += japi/org_openvpp_vppjapi_vppConn.h japi/vppapi.c 
 
-japi/org_openvpp_vppjapi_vppConn.h: \
-    japi/org/openvpp/vppjapi/vppVersion.java \
-    japi/org/openvpp/vppjapi/vppInterfaceCounters.java \
-    japi/org/openvpp/vppjapi/vppBridgeDomainDetails.java \
-    japi/org/openvpp/vppjapi/vppBridgeDomainInterfaceDetails.java \
-    japi/org/openvpp/vppjapi/vppL2Fib.java \
-    japi/org/openvpp/vppjapi/vppConn.java \
+japi/org_openvpp_vppjapi_vppConn.h: 					\
+    japi/org/openvpp/vppjapi/vppVersion.java 				\
+    japi/org/openvpp/vppjapi/vppInterfaceDetails.java 			\
+    japi/org/openvpp/vppjapi/vppInterfaceCounters.java 			\
+    japi/org/openvpp/vppjapi/vppBridgeDomainDetails.java 		\
+    japi/org/openvpp/vppjapi/vppBridgeDomainInterfaceDetails.java	\
+    japi/org/openvpp/vppjapi/vppL2Fib.java 				\
+    japi/org/openvpp/vppjapi/vppIPv4Address.java 			\
+    japi/org/openvpp/vppjapi/vppIPv6Address.java 			\
+    japi/org/openvpp/vppjapi/vppVxlanTunnelDetails.java 		\
+    japi/org/openvpp/vppjapi/vppConn.java 				\
+    japi/org/openvpp/vppjapi/vppApiCallbacks.java 			\
     ../vpp/api/vpe.api.h
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppVersion.java ;\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppVersion ;				\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppInterfaceCounters.java ;\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppVersion.java ;				\
+	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppVersion ;						\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppInterfaceDetails.java ;			\
+	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppInterfaceDetails ;					\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppInterfaceCounters.java ;		\
 	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppInterfaceCounters ;				\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppBridgeDomainInterfaceDetails.java ;\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppBridgeDomainInterfaceDetails ;				\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppBridgeDomainDetails.java ;\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppBridgeDomainInterfaceDetails.java ;	\
+	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppBridgeDomainInterfaceDetails ;			\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppBridgeDomainDetails.java ;		\
 	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppBridgeDomainDetails ;				\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppL2Fib.java ;\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppL2Fib ;				\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppConn.java ;	\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppL2Fib.java ;				\
+	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppL2Fib ;						\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppIPv4Address.java ;			\
+	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppIPv4Address ;					\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppIPv6Address.java ;			\
+	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppIPv6Address ;					\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppVxlanTunnelDetails.java ;		\
+	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppVxlanTunnelDetails ;				\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppConn.java ;				\
 	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppConn ;
 
-japi/vppapi.c: japi/org_openvpp_vppjapi_vppConn.h japi/org/openvpp/vppjapi/vppApiCallbacks.java
-	pushd .. ; dir=`pwd` ; popd ;							\
-	instdir=`echo $${dir} | sed -e 's:build-root/build:build-root/install:'` ;	\
-	vppapigen --input $${instdir}/vpp/api/vpe.api --jni  japi/vppapi.c --app vpe ;	\
+japi/vppapi.c: japi/org_openvpp_vppjapi_vppConn.h
+	pushd .. ; dir=`pwd` ; popd ;								\
+	instdir=`echo $${dir} | sed -e 's:build-root/build:build-root/install:'` ;		\
+	vppapigen --input $${instdir}/vpp/api/vpe.api --jni  japi/vppapi.c --app vpe ;		\
 	vppapigen --input $${instdir}/vpp/api/vpe.api --java japi/vppApi.java --app vpe ;	\
 	$(JAVAC) -classpath . -d . japi/vppApi.java ;						\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppApi ; \
+	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppApi ;				\
 	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppApiCallbacks.java ;	\
 	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppApiCallbacks ;
 
