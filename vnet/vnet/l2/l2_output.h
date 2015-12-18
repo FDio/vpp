@@ -73,7 +73,7 @@ typedef struct {
 } l2output_main_t;
 
 l2output_main_t l2output_main;
-vlib_node_registration_t l2output_node;
+extern vlib_node_registration_t l2output_node;
 
 // L2 output features
 

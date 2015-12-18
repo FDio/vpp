@@ -46,7 +46,7 @@ static u8 * format_l2_classify_trace (u8 * s, va_list * args)
 
 l2_classify_main_t l2_classify_main;
 
-vlib_node_registration_t l2_classify_node;
+extern vlib_node_registration_t l2_classify_node;
 
 #define foreach_l2_classify_error               \
 _(MISS, "Classify misses")                      \

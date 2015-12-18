@@ -199,13 +199,13 @@ typedef struct {
 
 ipsec_main_t ipsec_main;
 
-vlib_node_registration_t ipsec_input_ip4_node;
-vlib_node_registration_t ipsec_input_ip6_node;
-vlib_node_registration_t ipsec_output_node;
-vlib_node_registration_t esp_encrypt_node;
-vlib_node_registration_t esp_decrypt_node;
-vlib_node_registration_t ipsec_if_output_node;
-vlib_node_registration_t ipsec_if_input_node;
+extern vlib_node_registration_t ipsec_input_ip4_node;
+extern vlib_node_registration_t ipsec_input_ip6_node;
+extern vlib_node_registration_t ipsec_output_node;
+extern vlib_node_registration_t esp_encrypt_node;
+extern vlib_node_registration_t esp_decrypt_node;
+extern vlib_node_registration_t ipsec_if_output_node;
+extern vlib_node_registration_t ipsec_if_input_node;
 
 
 /*

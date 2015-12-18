@@ -89,7 +89,7 @@ typedef struct flow_report_main {
 
 flow_report_main_t flow_report_main;
 
-vlib_node_registration_t flow_report_process_node;
+extern vlib_node_registration_t flow_report_process_node;
 
 int vnet_flow_report_enable_disable (u32 sw_if_index, u32 table_index,
                                        int enable_disable);

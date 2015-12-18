@@ -110,8 +110,8 @@ typedef struct {
 
 lisp_gpe_main_t lisp_gpe_main;
 
-vlib_node_registration_t lisp_gpe_input_node;
-vlib_node_registration_t lisp_gpe_encap_node;
+extern vlib_node_registration_t lisp_gpe_input_node;
+extern vlib_node_registration_t lisp_gpe_encap_node;
 
 u8 * format_lisp_gpe_encap_trace (u8 * s, va_list * args);
 u8 * format_lisp_gpe_header_with_length (u8 * s, va_list * args);

@@ -95,7 +95,7 @@ format_function_t format_gre_protocol;
 format_function_t format_gre_header;
 format_function_t format_gre_header_with_length;
 
-vlib_node_registration_t gre_input_node;
+extern vlib_node_registration_t gre_input_node;
 vnet_device_class_t gre_device_class;
 
 /* Parse gre protocol as 0xXXXX or protocol name.

@@ -26,7 +26,7 @@
 
 typedef u8 v8;
 
-vlib_node_registration_t ikev2_node;
+extern vlib_node_registration_t ikev2_node;
 
 typedef CLIB_PACKED (struct {
   u64  ispi;

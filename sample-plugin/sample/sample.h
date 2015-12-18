@@ -35,6 +35,6 @@ typedef struct {
 
 sample_main_t sample_main;
 
-vlib_node_registration_t sample_node;
+extern vlib_node_registration_t sample_node;
 
 #endif /* __included_sample_h__ */

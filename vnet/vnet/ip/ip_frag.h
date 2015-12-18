@@ -43,8 +43,8 @@
 #define IP4_FRAG_NODE_NAME "ip4-frag"
 #define IP6_FRAG_NODE_NAME "ip6-frag"
 
-vlib_node_registration_t ip4_frag_node;
-vlib_node_registration_t ip6_frag_node;
+extern vlib_node_registration_t ip4_frag_node;
+extern vlib_node_registration_t ip6_frag_node;
 
 typedef enum {
   IP4_FRAG_NEXT_IP4_LOOKUP,
