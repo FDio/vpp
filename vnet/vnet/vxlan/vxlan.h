@@ -102,6 +102,9 @@ typedef struct {
   u64 dummy_str [sizeof(ip4_vxlan_header_t)/sizeof(u64) + 2];
 #define vxlan_dummy_rewrite ((u8 *) &vxlan_main.dummy_str[1])
 
+  /* Mapping from sw_if_index to tunnel index */
+  u32 * tunnel_index_by_sw_if_index;
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;

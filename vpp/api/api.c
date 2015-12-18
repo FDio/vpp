@@ -271,6 +271,7 @@ _(L2TPV3_INTERFACE_ENABLE_DISABLE, l2tpv3_interface_enable_disable)     \
 _(L2TPV3_SET_LOOKUP_KEY, l2tpv3_set_lookup_key)                         \
 _(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)                   \
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
+_(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)         \
@@ -4116,6 +4117,55 @@ out:
     ({
         rmp->sw_if_index = ntohl (sw_if_index);
     }));
+}
+
+static void send_vxlan_tunnel_details
+(vxlan_tunnel_t * t, unix_shared_memory_queue_t * q)
+{
+    vl_api_vxlan_tunnel_details_t * rmp;
+    ip4_main_t * im = &ip4_main;
+
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_VXLAN_TUNNEL_DETAILS);
+    rmp->src_address = t->src.data_u32;
+    rmp->dst_address = t->dst.data_u32;
+    rmp->encap_vrf_id = htonl(im->fibs[t->encap_fib_index].table_id);
+    rmp->vni = htonl(t->vni);
+    rmp->decap_next_index = htonl(t->decap_next_index);
+    rmp->sw_if_index = htonl(t->sw_if_index);
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void vl_api_vxlan_tunnel_dump_t_handler
+(vl_api_vxlan_tunnel_dump_t * mp)
+{
+    unix_shared_memory_queue_t * q;
+    vxlan_main_t * vxm = &vxlan_main;
+    vxlan_tunnel_t * t;
+    u32 sw_if_index;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+
+    sw_if_index = ntohl(mp->sw_if_index);
+
+    if (~0 == sw_if_index) {
+        pool_foreach (t, vxm->tunnels,
+        ({
+            send_vxlan_tunnel_details(t, q);
+        }));
+    } else {
+        if ((sw_if_index >= vec_len(vxm->tunnel_index_by_sw_if_index)) ||
+                (~0 == vxm->tunnel_index_by_sw_if_index[sw_if_index])) {
+            return;
+        }
+        t = &vxm->tunnels[vxm->tunnel_index_by_sw_if_index[sw_if_index]];
+        send_vxlan_tunnel_details(t, q);
+    }
 }
 
 static void 

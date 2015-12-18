@@ -32,4 +32,3 @@ vpe_json_test_LDADD = -lvppinfra -lm
 nobase_include_HEADERS = vat/vat.h vat/json_format.h
 
 
-dist_bin_SCRIPTS = scripts/vppctl
