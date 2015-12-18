@@ -1880,6 +1880,7 @@ _(L2TPV3_INTERFACE_ENABLE_DISABLE_REPLY,                                \
 _(L2TPV3_SET_LOOKUP_KEY_REPLY, l2tpv3_set_lookup_key_reply)             \
 _(SW_IF_L2TPV3_TUNNEL_DETAILS, sw_if_l2tpv3_tunnel_details)             \
 _(VXLAN_ADD_DEL_TUNNEL_REPLY, vxlan_add_del_tunnel_reply)               \
+_(VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)                           \
 _(L2_FIB_CLEAR_TABLE_REPLY, l2_fib_clear_table_reply)                   \
 _(L2_INTERFACE_EFP_FILTER_REPLY, l2_interface_efp_filter_reply)         \
 _(L2_INTERFACE_VLAN_TAG_REWRITE_REPLY, l2_interface_vlan_tag_rewrite_reply) \
@@ -6555,6 +6556,86 @@ static int api_vxlan_add_del_tunnel (vat_main_t * vam)
     return 0;
 }
 
+static void vl_api_vxlan_tunnel_details_t_handler
+(vl_api_vxlan_tunnel_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+
+    fformat(vam->ofp, "%11d%13U%13U%14d%18d%13d\n",
+            ntohl(mp->sw_if_index),
+            format_ip4_address, &mp->src_address,
+            format_ip4_address, &mp->dst_address,
+            ntohl(mp->encap_vrf_id),
+            ntohl(mp->decap_next_index),
+            ntohl(mp->vni));
+}
+
+static void vl_api_vxlan_tunnel_details_t_handler_json
+(vl_api_vxlan_tunnel_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    struct in_addr ip4;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_uint(node, "sw_if_index", ntohl(mp->sw_if_index));
+    memcpy(&ip4, &mp->src_address, sizeof(ip4));
+    vat_json_object_add_ip4(node, "src_address", ip4);
+    memcpy(&ip4, &mp->dst_address, sizeof(ip4));
+    vat_json_object_add_ip4(node, "dst_address", ip4);
+    vat_json_object_add_uint(node, "encap_vrf_id", ntohl(mp->encap_vrf_id));
+    vat_json_object_add_uint(node, "decap_next_index", ntohl(mp->decap_next_index));
+    vat_json_object_add_uint(node, "vni", ntohl(mp->vni));
+}
+
+static int api_vxlan_tunnel_dump (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_vxlan_tunnel_dump_t *mp;
+    f64 timeout;
+    u32 sw_if_index;
+    u8 sw_if_index_set = 0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "sw_if_index %d", &sw_if_index))
+            sw_if_index_set = 1;
+        else
+            break;
+    }
+
+    if (sw_if_index_set == 0) {
+        sw_if_index = ~0;
+    }
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%11s%13s%13s%14s%18s%13s\n",
+                "sw_if_index", "src_address", "dst_address",
+                "encap_vrf_id", "decap_next_index", "vni");
+    }
+
+    /* Get list of l2tpv3-tunnel interfaces */
+    M(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump);
+
+    mp->sw_if_index = htonl(sw_if_index);
+
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    W;
+}
+
 static int api_l2_fib_clear_table (vat_main_t * vam)
 {
 //  unformat_input_t * i = vam->input;
@@ -8582,6 +8663,7 @@ _(sw_if_l2tpv3_tunnel_dump, "")                                         \
 _(vxlan_add_del_tunnel,                                                 \
   "src <ip4-addr> dst <ip4-addr> vni [encap-vrf-id <nn>]\n"             \
   " [decap-next l2|ip4|ip6] [del]")                                     \
+_(vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
 _(l2_fib_clear_table, "")                                               \
 _(l2_interface_efp_filter, "sw_if_index <nn> enable | disable")         \
 _(l2_interface_vlan_tag_rewrite,                                        \

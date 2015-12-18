@@ -218,6 +218,9 @@ int vnet_vxlan_add_del_tunnel
       t->hw_if_index = hw_if_index;
       t->sw_if_index = sw_if_index = hi->sw_if_index;
       
+      vec_validate_init_empty (vxm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
+      vxm->tunnel_index_by_sw_if_index[sw_if_index] = t - vxm->tunnels;
+
       if (a->decap_next_index == VXLAN_INPUT_NEXT_L2_INPUT)
         {
 	  l2input_main_t * l2im = &l2input_main;
@@ -241,6 +244,8 @@ int vnet_vxlan_add_del_tunnel
       /* make sure tunnel is removed from l2 bd or xconnect */
       set_int_l2_mode(vxm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0, 0, 0, 0);
       vec_add1 (vxm->free_vxlan_tunnel_hw_if_indices, t->hw_if_index);
+
+      vxm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 
       hash_unset (vxm->vxlan_tunnel_by_key, key.as_u64);
 
