@@ -25,9 +25,12 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Set;
 
 import org.openvpp.vppjapi.vppVersion;
+import org.openvpp.vppjapi.vppInterfaceDetails;
 import org.openvpp.vppjapi.vppInterfaceCounters;
 import org.openvpp.vppjapi.vppBridgeDomainDetails;
-import org.openvpp.vppjapi.vppL2Fib;
+import org.openvpp.vppjapi.vppIPv4Address;
+import org.openvpp.vppjapi.vppIPv6Address;
+import org.openvpp.vppjapi.vppVxlanTunnelDetails;
 
 public class vppConn {
     private static final String LIBNAME = "libvppjni.so.0.0.0";
@@ -43,7 +46,6 @@ public class vppConn {
     private static void loadStream(final InputStream is) throws IOException {
         final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxr-x---");
         final Path p = Files.createTempFile(LIBNAME, null, PosixFilePermissions.asFileAttribute(perms));
-
         try {
             Files.copy(is, p, StandardCopyOption.REPLACE_EXISTING);
 
@@ -77,7 +79,7 @@ public class vppConn {
     public native int swIfIndexFromName (String interfaceName);
     public native String interfaceNameFromSwIfIndex (int swIfIndex);
     public native void clearInterfaceTable ();
-    public native int swInterfaceDump (byte nameFilterValid, byte [] nameFilter);
+    public native vppInterfaceDetails[] swInterfaceDump (byte nameFilterValid, byte [] nameFilter);
     public native int bridgeDomainIdFromName(String bridgeDomain);
     public native int findOrAddBridgeDomainId(String bridgeDomain);
     public native vppVersion getVppVersion();
@@ -86,4 +88,9 @@ public class vppConn {
     public native vppBridgeDomainDetails getBridgeDomainDetails(int bdId);
     public native vppL2Fib[] l2FibTableDump(int bdId);
     public native int bridgeDomainIdFromInterfaceName(String interfaceName);
+    public native vppIPv4Address[] ipv4AddressDump(String interfaceName);
+    public native vppIPv6Address[] ipv6AddressDump(String interfaceName);
+    public native vppVxlanTunnelDetails[] vxlanTunnelDump(int swIfIndex);
+    public native int setInterfaceDescription (String ifName, String ifDesc);
+    public native String getInterfaceDescription (String ifName);
 }

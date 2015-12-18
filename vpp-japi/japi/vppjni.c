@@ -39,6 +39,14 @@
 #include <api/vpe_all_api_h.h>
 #undef vl_printfun
 
+#define VPPJNI_DEBUG 0
+
+#if VPPJNI_DEBUG == 1
+  #define DEBUG_LOG(...) clib_warning(__VA_ARGS__)
+#else
+  #define DEBUG_LOG(...)
+#endif
+
 static int connect_to_vpe(char *name);
 
 /* 
@@ -197,6 +205,80 @@ static int jm_stats_enable_disable (vppjni_main_t *jm, u8 enable)
   return rv;
 }
 
+JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_setInterfaceDescription
+  (JNIEnv *env, jobject obj, jstring ifName, jstring ifDesc)
+{
+    int rv = 0;
+    vppjni_main_t * jm = &vppjni_main;
+    uword * p;
+    u32 sw_if_index = ~0;
+    sw_if_config_t *cfg;
+
+    const char *if_name_str = (*env)->GetStringUTFChars (env, ifName, 0);
+    const char *if_desc_str = (*env)->GetStringUTFChars (env, ifDesc, 0);
+
+    vppjni_lock (jm, 23);
+
+    p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name_str);
+    if (p == 0) {
+        rv = -1;
+        goto out;
+    }
+    sw_if_index = (jint) p[0];
+
+    u8 *if_desc = 0;
+    vec_validate_init_c_string (if_desc, if_desc_str, strlen(if_desc_str));
+    (*env)->ReleaseStringUTFChars (env, ifDesc, if_desc_str);
+
+    p = hash_get (jm->sw_if_config_by_sw_if_index, sw_if_index);
+    if (p != 0) {
+        cfg = (sw_if_config_t *) (p[0]);
+        if (cfg->desc)
+            vec_free(cfg->desc);
+    }
+    else {
+        cfg = (sw_if_config_t *) clib_mem_alloc(sizeof(sw_if_config_t));
+        hash_set (jm->sw_if_config_by_sw_if_index, sw_if_index, cfg);
+    }
+
+    cfg->desc = if_desc;
+
+out:
+    (*env)->ReleaseStringUTFChars (env, ifName, if_name_str);
+    vppjni_unlock (jm);
+    return rv;
+}
+
+JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceDescription
+(JNIEnv * env, jobject obj, jstring ifName)
+{
+    vppjni_main_t * jm = &vppjni_main;
+    u32 sw_if_index = ~0;
+    uword * p;
+    const char *if_name_str = (*env)->GetStringUTFChars (env, ifName, 0);
+    jstring ifDesc = NULL;
+
+    vppjni_lock (jm, 24);
+    p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name_str);
+    if (p == 0)
+        goto out;
+
+    sw_if_index = (jint) p[0];
+
+    p = hash_get (jm->sw_if_config_by_sw_if_index, sw_if_index);
+    if (p == 0)
+        goto out;
+
+    sw_if_config_t *cfg = (sw_if_config_t *) (p[0]);
+    u8 * s = format (0, "%s%c", cfg->desc, 0);
+    ifDesc = (*env)->NewStringUTF(env, (char *)s);
+
+out:
+    vppjni_unlock (jm);
+
+    return ifDesc;
+}
+
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_clientConnect
   (JNIEnv *env, jobject obj, jstring clientName)
 {
@@ -243,12 +325,14 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_clientConnect
       h->flags |= MHEAP_FLAG_THREAD_SAFE;
 
       jm->reply_hash = hash_create (0, sizeof (uword));
-      jm->callback_hash = hash_create (0, sizeof (uword));
-      jm->ping_hash = hash_create (0, sizeof (uword));
+      //jm->callback_hash = hash_create (0, sizeof (uword));
+      //jm->ping_hash = hash_create (0, sizeof (uword));
       jm->api_main = am;
       vjbd_main_init(&jm->vjbd_main);
       jm->sw_if_index_by_interface_name = 
         hash_create_string (0, sizeof (uword));
+      jm->sw_if_config_by_sw_if_index =
+        hash_create (0, sizeof (uword));
 
       {
         // call control ping first to attach rx thread to java thread
@@ -271,7 +355,7 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_clientConnect
       if (rv != 0)
           clib_warning ("unable to subscribe to stats (rv: %d)", rv);
     }
-  clib_warning ("clientConnect result: %d", rv);
+  DEBUG_LOG ("clientConnect result: %d", rv);
 
   return rv;
 }
@@ -308,7 +392,7 @@ void vl_api_generic_reply_handler (vl_api_generic_reply_t *mp)
 
   jm->context_id_received = context;
 
-  clib_warning("Received generic reply for msg id %d", msg_id);
+  DEBUG_LOG ("Received generic reply for msg id %d", msg_id);
 
   /* A generic reply, successful, we're done */
   if (retval >= 0 && total_bytes == sizeof(*mp))
@@ -518,15 +602,16 @@ JNIEXPORT void JNICALL Java_org_openvpp_vppjapi_vppConn_clearInterfaceTable
 {
     vppjni_main_t * jm = &vppjni_main;
 
-    vppjni_lock (jm, 10);
+    vppjni_lock (jm, 21);
 
     vec_reset_length(jm->sw_if_table);
 
     vppjni_unlock (jm);
 }
 
+static jobjectArray sw_if_dump_get_interfaces ();
 
-JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_swInterfaceDump
+JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_swInterfaceDump
 (JNIEnv * env, jobject obj, jbyte name_filter_valid, jbyteArray name_filter)
 {
     vppjni_main_t *jm = &vppjni_main;
@@ -535,7 +620,11 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_swInterfaceDump
     u32 my_context_id;
     int rv;
     rv = vppjni_sanity_check (jm);
-    if (rv) return rv;
+    if (rv) {
+        clib_warning("swInterfaceDump sanity_check rv = %d", rv);
+        return NULL;
+    }
+
     vppjni_lock (jm, 7);
     my_context_id = vppjni_get_context_id (jm);
     jbyte * name_filterP = (*env)->GetByteArrayElements (env, name_filter, NULL);
@@ -551,9 +640,8 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_swInterfaceDump
     memcpy ((char *) mp->name_filter, name_filterP, cnt);
     (*env)->ReleaseByteArrayElements (env, name_filter, name_filterP, 0);
 
-    clib_warning("interface filter (%d, %s, len: %d)", mp->name_filter_valid, (char *)mp->name_filter, cnt);
+    DEBUG_LOG ("interface filter (%d, %s, len: %d)", mp->name_filter_valid, (char *)mp->name_filter, cnt);
 
-    hash_set (jm->callback_hash, my_context_id, (*env)->NewGlobalRef(env, obj));
     jm->collect_indices = 1;
 
     S;
@@ -563,26 +651,29 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_swInterfaceDump
         M(CONTROL_PING, control_ping);
         mp->context = clib_host_to_net_u32 (my_context_id);
 
-        // this control ping will mark end of interface dump
-        hash_set (jm->ping_hash, my_context_id, VL_API_SW_INTERFACE_DUMP);
-
         S;
     }
     vppjni_unlock (jm);
     WNR;
-    return my_context_id;
+
+    vppjni_lock (jm, 7);
+    jobjectArray result = sw_if_dump_get_interfaces(env);
+    vppjni_unlock (jm);
+    return result;
 }
 
-static int sw_if_dump_call_all_callbacks (jobject obj)
+static jobjectArray sw_if_dump_get_interfaces (JNIEnv * env)
 {
     vppjni_main_t * jm = &vppjni_main;
     sw_interface_details_t *sw_if_details;
-    int rc = 0;
     u32 i;
 
-    JNIEnv *env = jm->jenv;
+    int len = vec_len(jm->sw_if_dump_if_indices);
+    jmethodID jmtdIfDetails = jm->jmtdIfDetails;
 
-    for (i = 0; i < vec_len(jm->sw_if_dump_if_indices); i++) {
+    jobjectArray ifArray = (*env)->NewObjectArray(env, len, jm->jcls, NULL);
+
+    for (i = 0; i < len; i++) {
         u32 sw_if_index = jm->sw_if_dump_if_indices[i];
         ASSERT(sw_if_index < vec_len(jm->sw_if_table));
         sw_if_details = &jm->sw_if_table[sw_if_index];
@@ -606,8 +697,6 @@ static int sw_if_dump_call_all_callbacks (jobject obj)
         jint vtrTag1 = sw_if_details->vtr_tag1;
         jint vtrTag2 = sw_if_details->vtr_tag2;
 
-        jmethodID jmtdIfDetails = jm->jmtdIfDetails;
-
         jbyte adminUpDown = sw_if_details->admin_up_down;
         jbyte linkUpDown = sw_if_details->link_up_down;
         jbyte linkDuplex = sw_if_details->link_duplex;
@@ -619,51 +708,37 @@ static int sw_if_dump_call_all_callbacks (jobject obj)
         jbyte subOuterVlanIdAny = sw_if_details->sub_outer_vlan_id_any;
         jbyte subInnerVlanIdAny = sw_if_details->sub_inner_vlan_id_any;
 
-        clib_warning("Method: %p, Calling method", jm->jmtdIfDetails);
-        (*env)->CallVoidMethod(env, obj, jmtdIfDetails, ifIndex, ifname,
+        jobject ifObj = (*env)->NewObject(env, jm->jcls, jmtdIfDetails,
+                ifIndex, ifname,
                 supIfIndex, physAddr, adminUpDown, linkUpDown,
                 linkDuplex, linkSpeed, subId, subDot1ad,
                 subNumberOfTags, subOuterVlanId, subInnerVlanId,
                 subExactMatch, subDefault, subOuterVlanIdAny,
                 subInnerVlanIdAny, vtrOp, vtrPushDot1q, vtrTag1, vtrTag2);
-        if ((*env)->ExceptionCheck(env)) {
-            (*env)->ExceptionDescribe(env);
-            rc = 1;
-            goto out;
-        }
-    }
-    clib_warning("Method: %p, Calling method (null arg)", jm->jmtdIfDetails);
-    jmethodID jmtdIfDetails = jm->jmtdIfDetails;
-    (*env)->CallVoidMethod(env, obj, jmtdIfDetails, -1, NULL, -1, NULL, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rc = 1;
-        goto out;
+        (*env)->SetObjectArrayElement(env, ifArray, i, ifObj);
     }
 
-    clib_warning("Done");
-
-out:
     jm->collect_indices = 0;
     vec_reset_length(jm->sw_if_dump_if_indices);
-    return rc;
+    return ifArray;
 }
 
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_findOrAddBridgeDomainId
   (JNIEnv * env, jobject obj, jstring bridgeDomain)
 {
   vppjni_main_t * jm = &vppjni_main;
+  static u8 * bd_name = 0;
   jint rv = -1;
-  const char * bd_name = (*env)->GetStringUTFChars (env, bridgeDomain, NULL);
+  const char * bdName = (*env)->GetStringUTFChars (env, bridgeDomain, NULL);
+
+  vec_validate_init_c_string (bd_name, bdName, strlen(bdName));
+  (*env)->ReleaseStringUTFChars (env, bridgeDomain, bdName);
 
   vppjni_lock (jm, 6);
-
-  rv = (jint)vjbd_find_or_add_bd (&jm->vjbd_main, (u8 *)bd_name);
-
+  rv = (jint)vjbd_find_or_add_bd (&jm->vjbd_main, bd_name);
   vppjni_unlock (jm);
   
-  (*env)->ReleaseStringUTFChars (env, bridgeDomain, bd_name);
-
+  _vec_len(bd_name) = 0;
   return rv;
 }
 
@@ -671,16 +746,18 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainIdFromName
   (JNIEnv * env, jobject obj, jstring bridgeDomain)
 {
   vppjni_main_t * jm = &vppjni_main;
+  static u8 * bd_name = 0;
   jint rv = -1;
-  const char * bd_name = (*env)->GetStringUTFChars(env, bridgeDomain, NULL);
+  const char * bdName = (*env)->GetStringUTFChars (env, bridgeDomain, NULL);
 
-  vppjni_lock(jm, 7);
+  vec_validate_init_c_string (bd_name, bdName, strlen(bdName));
+  (*env)->ReleaseStringUTFChars (env, bridgeDomain, bdName);
 
+  vppjni_lock (jm, 20);
   rv = (jint)vjbd_id_from_name(&jm->vjbd_main, (u8 *)bd_name);
+  vppjni_unlock (jm);
 
-  vppjni_unlock(jm);
-  
-  (*env)->ReleaseStringUTFChars(env, bridgeDomain, bd_name);
+  _vec_len(bd_name) = 0;
 
   return rv;
 }
@@ -772,7 +849,7 @@ static void vl_api_sw_interface_details_t_handler
   sw_if_details->sub_inner_vlan_id_any = mp->sub_inner_vlan_id_any;
 
   hash_set_mem (jm->sw_if_index_by_interface_name, s, sw_if_index);
-  clib_warning("Got interface %s", (char *)s);
+  DEBUG_LOG ("Got interface %s", (char *)s);
 
   /* In sub interface case, fill the sub interface table entry */
   if (mp->sw_if_index != mp->sup_sw_if_index) {
@@ -909,7 +986,7 @@ vl_api_bridge_domain_details_t_handler (vl_api_bridge_domain_details_t * mp)
   bd_oper->flood = mp->flood != 0;
   bd_oper->forward = mp->forward != 0;
   bd_oper->learn =  mp->learn != 0;
-  bd_oper->uu_flood = mp->flood != 0;
+  bd_oper->uu_flood = mp->uu_flood != 0;
   bd_oper->arp_term = mp->arp_term != 0;
   bd_oper->bvi_sw_if_index = ntohl (mp->bvi_sw_if_index);
   bd_oper->n_sw_ifs = ntohl (mp->n_sw_ifs);
@@ -1266,14 +1343,10 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_l2FibTableDump
 
   l2FibArray = (*env)->NewObjectArray(env, count, l2FibClass, NULL);
 
-  u32 pos = 0;
   for (i = 0; i < count; i++) {
       bd_l2fib_oper_t *l2_fib = &l2fib_oper[i];
-      if (1) {
-          jobject l2FibObj = l2_fib_create_object(env, l2_fib);
-          (*env)->SetObjectArrayElement(env, l2FibArray, pos, l2FibObj);
-          pos++;
-      }
+      jobject l2FibObj = l2_fib_create_object(env, l2_fib);
+      (*env)->SetObjectArrayElement(env, l2FibArray, i, l2FibObj);
   }
 
 done:
@@ -1322,6 +1395,269 @@ vl_api_l2_fib_table_entry_t_handler (vl_api_l2_fib_table_entry_t * mp)
   l2fib_oper->bvi = mp->bvi_mac;
 }
 
+static int ipAddressDump
+(JNIEnv * env, jobject obj, jstring interfaceName, jboolean isIPv6)
+{
+    vppjni_main_t *jm = &vppjni_main;
+    vl_api_ip_address_dump_t * mp;
+    const char *if_name;
+    u32 my_context_id;
+    u32 sw_if_index;
+    f64 timeout;
+    uword *p;
+    int rv = 0;
+
+    if (NULL == interfaceName) {
+        return -1;
+    }
+
+    if_name = (*env)->GetStringUTFChars (env, interfaceName, NULL);
+    p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name);
+    (*env)->ReleaseStringUTFChars (env, interfaceName, if_name);
+    if (p == 0) {
+        return -1;
+    }
+    sw_if_index = (u32) p[0];
+
+    rv = vppjni_sanity_check (jm);
+    if (0 != rv) {
+        return rv;
+    }
+
+    my_context_id = vppjni_get_context_id (jm);
+    M(IP_ADDRESS_DUMP, ip_address_dump);
+    mp->context = clib_host_to_net_u32 (my_context_id);
+    mp->sw_if_index = clib_host_to_net_u32(sw_if_index);
+    mp->is_ipv6 = isIPv6;
+    jm->is_ipv6 = isIPv6;
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+      vl_api_control_ping_t * mp;
+      M(CONTROL_PING, control_ping);
+      S;
+    }
+
+    WNR;
+
+    return rv;
+}
+
+JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_ipv4AddressDump
+(JNIEnv * env, jobject obj, jstring interfaceName)
+{
+    vppjni_main_t *jm = &vppjni_main;
+    jobject returnArray = NULL;
+    int i;
+
+    vppjni_lock (jm, 18);
+
+    vec_reset_length(jm->ipv4_addresses);
+
+    if (0 != ipAddressDump(env, obj, interfaceName, 0)) {
+        goto done;
+    }
+
+    u32 count = vec_len(jm->ipv4_addresses);
+    ipv4_address_t *ipv4_address = jm->ipv4_addresses;
+
+    jclass IPv4AddressClass = (*env)->FindClass(env, "org/openvpp/vppjapi/vppIPv4Address");
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+        goto done;
+    }
+
+    jmethodID midIPv4AddressInit = (*env)->GetMethodID(env, IPv4AddressClass, "<init>", "(IB)V");
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+        goto done;
+    }
+
+    jobjectArray ipv4AddressArray = (*env)->NewObjectArray(env, count, IPv4AddressClass, NULL);
+
+    for (i = 0; i < count; i++) {
+        ipv4_address_t *address = &ipv4_address[i];
+
+        jint ip = address->ip;
+        jbyte prefixLength = address->prefix_length;
+
+        jobject ipv4AddressObj = (*env)->NewObject(env, IPv4AddressClass, midIPv4AddressInit,
+                ip, prefixLength);
+
+        (*env)->SetObjectArrayElement(env, ipv4AddressArray, i, ipv4AddressObj);
+    }
+
+    returnArray = ipv4AddressArray;
+
+done:
+    vppjni_unlock (jm);
+    return returnArray;
+}
+
+JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_ipv6AddressDump
+(JNIEnv * env, jobject obj, jstring interfaceName)
+{
+    vppjni_main_t *jm = &vppjni_main;
+    jobject returnArray = NULL;
+    int i;
+
+    vppjni_lock (jm, 19);
+
+    vec_reset_length(jm->ipv6_addresses);
+
+    if (0 != ipAddressDump(env, obj, interfaceName, 1)) {
+        goto done;
+    }
+
+    u32 count = vec_len(jm->ipv6_addresses);
+    ipv6_address_t *ipv6_address = jm->ipv6_addresses;
+
+    jclass IPv6AddressClass = (*env)->FindClass(env, "org/openvpp/vppjapi/vppIPv6Address");
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+        goto done;
+    }
+
+    jmethodID midIPv6AddressInit = (*env)->GetMethodID(env, IPv6AddressClass, "<init>", "([BB)V");
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+        goto done;
+    }
+
+    jobjectArray ipv6AddressArray = (*env)->NewObjectArray(env, count, IPv6AddressClass, NULL);
+
+    for (i = 0; i < count; i++) {
+        ipv6_address_t *address = &ipv6_address[i];
+
+        jbyteArray ip = (*env)->NewByteArray(env, 16);
+        (*env)->SetByteArrayRegion(env, ip, 0, 16,
+                (signed char*)address->ip);
+
+        jbyte prefixLength = address->prefix_length;
+
+        jobject ipv6AddressObj = (*env)->NewObject(env, IPv6AddressClass, midIPv6AddressInit,
+                ip, prefixLength);
+
+        (*env)->SetObjectArrayElement(env, ipv6AddressArray, i, ipv6AddressObj);
+    }
+
+    returnArray = ipv6AddressArray;
+
+done:
+    vppjni_unlock (jm);
+    return returnArray;
+}
+
+static void vl_api_ip_address_details_t_handler (vl_api_ip_address_details_t * mp)
+{
+    vppjni_main_t * jm = &vppjni_main;
+
+    if (!jm->is_ipv6) {
+        ipv4_address_t *address = 0;
+        vec_add2(jm->ipv4_addresses, address, 1);
+        address->ip = *(u32*)mp->ip;
+        address->prefix_length = mp->prefix_length;
+    } else {
+        ipv6_address_t *address = 0;
+        vec_add2(jm->ipv6_addresses, address, 1);
+        memcpy(address->ip, mp->ip, 16);
+        address->prefix_length = mp->prefix_length;
+    }
+}
+
+#define VXLAN_TUNNEL_INTERFACE_NAME_PREFIX "vxlan_tunnel"
+
+JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_vxlanTunnelDump
+(JNIEnv * env, jobject obj, jint swIfIndex)
+{
+    vppjni_main_t *jm = &vppjni_main;
+    vl_api_vxlan_tunnel_dump_t * mp;
+    jobjectArray returnArray = NULL;
+    u32 my_context_id;
+    f64 timeout;
+    int rv = 0;
+    int i;
+
+    vppjni_lock (jm, 22);
+
+    vec_reset_length(jm->vxlan_tunnel_details);
+
+    my_context_id = vppjni_get_context_id (jm);
+    M(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump);
+    mp->context = clib_host_to_net_u32 (my_context_id);
+    mp->sw_if_index = clib_host_to_net_u32 (swIfIndex);
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+      vl_api_control_ping_t * mp;
+      M(CONTROL_PING, control_ping);
+      S;
+    }
+
+    WNR;
+    if (0 != rv) {
+        goto done;
+    }
+
+    u32 count = vec_len(jm->vxlan_tunnel_details);
+
+    jclass VxlanTunnelDetailsClass = (*env)->FindClass(env,
+            "org/openvpp/vppjapi/vppVxlanTunnelDetails");
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+        goto done;
+    }
+
+    jmethodID midVxlanTunnelDetailsInit = (*env)->GetMethodID(env,
+            VxlanTunnelDetailsClass, "<init>", "(IIIII)V");
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+        goto done;
+    }
+
+    jobjectArray vxlanTunnelDetailsArray = (*env)->NewObjectArray(env, count,
+            VxlanTunnelDetailsClass, NULL);
+
+    for (i = 0; i < count; i++) {
+        vxlan_tunnel_details_t *details = &jm->vxlan_tunnel_details[i];
+
+        jint src_address = details->src_address;
+        jint dst_address = details->dst_address;
+        jint encap_vrf_id = details->encap_vrf_id;
+        jint vni = details->vni;
+        jint decap_next_index = details->decap_next_index;
+
+        jobject vxlanTunnelDetailsObj = (*env)->NewObject(env,
+                VxlanTunnelDetailsClass, midVxlanTunnelDetailsInit,
+                src_address, dst_address, encap_vrf_id, vni, decap_next_index);
+
+        (*env)->SetObjectArrayElement(env, vxlanTunnelDetailsArray, i,
+                vxlanTunnelDetailsObj);
+    }
+
+    returnArray = vxlanTunnelDetailsArray;
+
+done:
+    vppjni_unlock (jm);
+    return returnArray;
+}
+
+static void vl_api_vxlan_tunnel_details_t_handler
+(vl_api_vxlan_tunnel_details_t * mp)
+{
+    vppjni_main_t * jm = &vppjni_main;
+    vxlan_tunnel_details_t *tunnel_details;
+
+    vec_add2(jm->vxlan_tunnel_details, tunnel_details, 1);
+    tunnel_details->src_address = ntohl(mp->src_address);
+    tunnel_details->dst_address = ntohl(mp->dst_address);
+    tunnel_details->encap_vrf_id = ntohl(mp->encap_vrf_id);
+    tunnel_details->vni = ntohl(mp->vni);
+    tunnel_details->decap_next_index = ntohl(mp->decap_next_index);
+}
+
 /* cleanup handler for RX thread */
 void cleanup_rx_thread(void *arg)
 {
@@ -1348,7 +1684,7 @@ vl_api_show_version_reply_t_handler (vl_api_show_version_reply_t * mp)
   i32 retval = ntohl(mp->retval);
 
   if (retval >= 0) {
-    clib_warning ("show version request succeeded(%d)");
+    DEBUG_LOG ("show version request succeeded(%d)");
     strncpy((char*)jm->program_name, (const char*)mp->program,
             sizeof(jm->program_name)-1);
     jm->program_name[sizeof(jm->program_name)-1] = 0;
@@ -1385,9 +1721,6 @@ static void vl_api_control_ping_reply_t_handler
 {
   vppjni_main_t * jm = &vppjni_main;
   i32 retval = ntohl(mp->retval);
-  u32 context = clib_host_to_net_u32 (mp->context);
-  uword *p = NULL;
-
   jm->retval = retval;
 
   // attach to java thread if not attached
@@ -1408,8 +1741,11 @@ static void vl_api_control_ping_reply_t_handler
     jm->retval = -999;
     goto out;
   }
-  // jm->jenv is now stable global reference that can be reused
+  // jm->jenv is now stable global reference that can be reused (only within RX thread)
 
+#if 0
+  // ! callback system removed for now
+  //
   // get issuer msg-id
   p = hash_get (jm->ping_hash, context);
   if (p != 0) { // ping marks end of some dump call
@@ -1444,6 +1780,8 @@ static void vl_api_control_ping_reply_t_handler
     // delete global reference
     (*env)->DeleteGlobalRef(env, obj);
   }
+#endif
+
 out:
   jm->result_ready = 1;
 }
@@ -1594,14 +1932,14 @@ jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     return JNI_ERR;
   }
 
-  jclass cls = (*env)->FindClass(env, "org/openvpp/vppjapi/vppApiCallbacks");
+  jclass cls = (*env)->FindClass(env, "org/openvpp/vppjapi/vppInterfaceDetails");
   if ((*env)->ExceptionCheck(env)) {
       (*env)->ExceptionDescribe(env);
       return JNI_ERR;
   }
 
   jm->jmtdIfDetails = 
-      (*env)->GetMethodID(env, cls, "interfaceDetails", "(ILjava/lang/String;I[BBBBBIBBIIBBBBIIII)V");
+      (*env)->GetMethodID(env, cls, "<init>", "(ILjava/lang/String;I[BBBBBIBBIIBBBBIIII)V");
   if ((*env)->ExceptionCheck(env)) {
       (*env)->ExceptionDescribe(env);
       return JNI_ERR;
@@ -1640,7 +1978,9 @@ _(VNET_INTERFACE_COUNTERS, vnet_interface_counters)     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)       \
 _(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)         \
 _(BRIDGE_DOMAIN_SW_IF_DETAILS, bridge_domain_sw_if_details) \
-_(L2_FIB_TABLE_ENTRY, l2_fib_table_entry)
+_(L2_FIB_TABLE_ENTRY, l2_fib_table_entry)               \
+_(IP_ADDRESS_DETAILS, ip_address_details)               \
+_(VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)
 
 static int connect_to_vpe(char *name)
 {

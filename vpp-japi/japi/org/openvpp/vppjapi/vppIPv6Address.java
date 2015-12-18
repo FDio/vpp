@@ -14,17 +14,13 @@
  */
 
 package org.openvpp.vppjapi;
-import org.openvpp.vppjapi.vppApi;
 
-public abstract class vppApiCallbacks extends vppApi {
-/* Disabled!
- *
- * public abstract void interfaceDetails(
-            int ifIndex, String interfaceName, int supIfIndex, byte[] physAddr,
-            byte adminUp, byte linkUp, byte linkDuplex, byte linkSpeed,
-            int subId, byte subDot1ad, byte subNumberOfTags, int subOuterVlanId, int subInnerVlanId,
-            byte subExactMatch, byte subDefault, byte subOuterVlanIdAny, byte subInnerVlanIdAny,
-            int vtrOp, int vtrPushDot1q, int vtrTag1, int vtrTag2);
- */
+public class vppIPv6Address {
+    public byte[] ip;
+    public byte prefixLength;
 
+    public vppIPv6Address(byte[] _ip, byte _prefixLength) {
+        ip = _ip;
+        prefixLength = _prefixLength;
+    }
 }
