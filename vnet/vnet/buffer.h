@@ -119,6 +119,8 @@ typedef struct {
 	  u32 established_connection_index;
 
 	  u32 mini_connection_index;
+
+	  u32 transmit_stamp;
 	} tcp;
 
 	/* ICMP */
