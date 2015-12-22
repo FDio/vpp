@@ -1,0 +1,2 @@
+#!/bin/bash
+echo exec ${@} | vpe_api_test | sed 's/vat# //g'
