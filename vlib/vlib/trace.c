@@ -188,6 +188,7 @@ cli_show_trace_buffer (vlib_main_t * vm,
   vlib_trace_header_t ** h, ** traces;
   u32 i, index = 0;
   char * fmt;
+  u8 * s = 0;
 
   /* Get active traces from pool. */
 
@@ -195,8 +196,8 @@ cli_show_trace_buffer (vlib_main_t * vm,
   ({
     void *mainheap;
 
-    fmt = "------------------- Start of thread %d %v -------------------";
-    vlib_cli_output (vm, fmt, index, vlib_worker_threads[index].name);
+    fmt = "------------------- Start of thread %d %s -------------------\n";
+    s = format (s, fmt, index, vlib_worker_threads[index].name);
 
     tm = &this_vlib_main->trace_main;
 
@@ -210,7 +211,7 @@ cli_show_trace_buffer (vlib_main_t * vm,
     if (vec_len (traces) == 0)
       {
         clib_mem_set_heap (mainheap);
-        vlib_cli_output (vm, "No packets in trace buffer");
+        s = format (s, "No packets in trace buffer\n");
         goto done;
       }
     
@@ -221,7 +222,7 @@ cli_show_trace_buffer (vlib_main_t * vm,
       {
         clib_mem_set_heap (mainheap);
         
-        vlib_cli_output (vm, "Packet %d\n%U\n\n", i + 1,
+        s = format (s, "Packet %d\n%U\n\n", i + 1,
                          format_vlib_trace, vm, traces[i]);
 
         mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
@@ -234,6 +235,8 @@ cli_show_trace_buffer (vlib_main_t * vm,
     index++;
   }));
 
+  vlib_cli_output (vm, s);
+  vec_free (s);
   return 0;
 }
 
