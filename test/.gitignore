@@ -1,0 +1,6 @@
+/env
+/outputs
+/output.xml
+/log.html
+/report.html
+*.pyc
