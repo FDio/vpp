@@ -1,43 +1,50 @@
-To run vpp with the debug shell:
-
-sudo ~vagrant/git/vpp/build-root/install-vpp_debug-native/vpp/bin/vpe unix interactive
-
-which will result in a prompt that looks like:
-
-DBGvpd#
+VPP has now been built, installed, and started.
 
 To give it a spin, we can create a tap interface and try a simple ping
 (with trace).
 
+Make sure you have run:
+
+$ vagrant ssh
+
+To get to the vagrant VM:
+
+vagrant@localhost:~$
+
+Confirm that vpp is running with
+
+vagrant@localhost:~$ sudo status vpp
+vpp start/running, process 25202
+
 To create the tap:
 
-DBGvpd# tap connect foobar
+vagrant@localhost:~$ sudo vppctl tap connect foobar
 Created tap-0 for Linux tap 'foobar'
-DBGvpd# show int
+vagrant@localhost:~$ sudo vppctl show int
 
 To assign it an ip address (and 'up' the interface):
 
-DBGvpd# set int ip address tap-0 192.168.1.1/24
-DBGvpd# set int state tap-0 up
+vagrant@localhost:~$ sudo vppctl set int ip address tap-0 192.168.1.1/24
+vagrant@localhost:~$ sudo vppctl set int state tap-0 up
 
 To turn on packet tracing for the tap interface:
-DBGvpd# trace add tapcli-rx 10
+vagrant@localhost:~$ sudo vppctl trace add tapcli-rx 10
 
-Now, to set up and try the other end from the unix prompt:
-vagrant@vagrant-ubuntu-trusty-64:~$ sudo ip addr add 192.168.1.2/24 dev foobar
-vagrant@vagrant-ubuntu-trusty-64:~$ ping -c 3 192.168.1.1
+Now, to set up and try the other end:
+vagrant@localhost:~$ sudo ip addr add 192.168.1.2/24 dev foobar
+vagrant@localhost:~$ ping -c 3 192.168.1.1
 
-To look at the trace, back in the vpp CLI:
-DBGvpd#  show trace
+To look at the trace:
+vagrant@localhost:~$ sudo vppctl show trace
 
 And to stop tracing:
 
-DBGvpd# clear trace
+vagrant@localhost:~$ sudo vppctl clear trace
 
 Other fun things to look at:
 
 The vlib packet processing graph:
-DBGvpd# show vlib graph
+vagrant@localhost:~$ sudo vppctl show vlib graph
 
 which will produce output like:
 
