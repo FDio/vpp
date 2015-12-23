@@ -36,4 +36,5 @@ m4
 missing
 stamp-h1
 ltmain.sh
+ylwrap
 # stop autotools ignore
