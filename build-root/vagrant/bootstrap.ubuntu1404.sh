@@ -61,16 +61,12 @@ if [ -d build-root ]; then
   # Build vpp
   sudo -H -u vagrant make PLATFORM=vpp TAG=vpp_debug install-deb
 
-  # Stick the dpdk module in the canonical place
-  cp ./install-vpp_debug-native/dpdk/kmod/igb_uio.ko /lib/modules/`uname -r`/kernel/drivers/uio/
-  depmod
+  # Install debian packages
+  dpkg -i *.deb
 
-  # Load igb_uio into the kernel
-  modprobe igb_uio
+  # Start vpp
+  start vpp
 
-  # Make sure igb_uio loads at boot time
-  # Make sure uio loads at boot time
-  echo  igb_uio >> /lib/modprobe.d/igb_uio.conf
   cd ~vagrant/
   cat /vagrant/README
 
