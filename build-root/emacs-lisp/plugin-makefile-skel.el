@@ -70,5 +70,7 @@ install-data-hook:
 	cp $(prefix)/lib/" plugin-name "_plugin.so.*.*.* /usr/lib/vpp_plugins
 	cp $(prefix)/lib/" plugin-name "_test_plugin.so.*.*.* \\
 		/usr/lib/vpp_api_test_plugins
+	rm -f $(prefix)/lib/" plugin-name "_plugin.*
+	rm -f $(prefix)/lib/" plugin-name "_test_plugin.*
 endif
 ")
