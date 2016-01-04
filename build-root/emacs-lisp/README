@@ -1,0 +1,86 @@
+How to construct a complete plugin using the emacs skeletons
+
+0. Install open-vpp, including the development package.
+
+1. Load emacs skeletons
+
+   M-x find-file all-skel.el
+   M-x eval-buffer
+
+2. Pick a single-word, lower-case name for your plugin. For example: macswap.
+Hereafter, we'll refer to the selected name as <plugin-name>.
+
+3. Generate the entire plugin:
+
+   M-x make-plugin
+   Plugin-name: <plugin-name>
+
+Or, generate each file individually:
+
+3. Create the required directories, e.g. under .../vpp
+
+   $ mkdir -p <plugin-name>-plugin/<plugin-name>
+
+4. Create <plugin-name>-plugin/{configure.ac,Makefile.am}
+
+   M-x find-file <plugin-name>-plugin/configure.ac
+   M-x plugin-configure-skel
+   
+   M-x find-file <plugin-name>-plugin/Makefile.am
+   M-x plugin-makefile.skel
+
+5. Create the api skeleton
+   M-x find-file <plugin-name>-plugin/<plugin-name>/<plugin-name>.api
+   M-x plugin-api-skel
+
+6. Create the api message enumeration header file
+   M-x find-file <plugin-name>-plugin/<plugin-name>/<plugin-name>_msg_enum.h
+   M-x plugin-msg-enum-skel
+
+7. Create the "all-api" header file
+   M-x find-file <plugin-name>-plugin/<plugin-name>/<plugin-name>_all_api_h.h
+   M-x plugin-all-apih-skel
+
+8. Create the main data structure definition header file
+   M-x find-file <plugin-name>-plugin/<plugin-name>/<plugin-name>.h
+   M-x plugin-h-skel
+
+9. Create the plugin main C file
+   M-x find-file <plugin-name>-plugin/<plugin-name>/<plugin-name>.c
+   M-x plugin-main-skel
+
+10. Create the vpp-api-test plugin main C file
+   M-x find-file <plugin-name>-plugin/<plugin-name>/<plugin-name>_test.c
+   M-x plugin-test-skel
+
+11. Create the data plane packet processing node
+   M-x find-file <plugin-name>-plugin/<plugin-name>/node.c
+   M-x plugin-node-skel
+
+12. Process autotools input files
+
+   $ cd <plugin-name>-plugin
+   $ autoreconf -i -f
+
+13. Build the plugin skeleton
+
+   $ mkdir build
+   $ cd build
+   $ ../configure
+   $ make
+   $ sudo make install
+
+
+
+
+
+
+
+
+   
+
+
+
+
+
+
