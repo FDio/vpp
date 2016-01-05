@@ -164,7 +164,7 @@ ip6_map (vlib_main_t *vm,
     vlib_get_next_frame(vm, node, next_index, to_next, n_left_to_next);
 
     /* Dual loop */
-    while (n_left_from > 4 && n_left_to_next > 2) {
+    while (n_left_from >= 4 && n_left_to_next >= 2) {
       u32 pi0, pi1;
       vlib_buffer_t *p0, *p1;
       u8 error0 = MAP_ERROR_NONE;

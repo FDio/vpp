@@ -676,9 +676,9 @@ format_map_domain (u8 *s, va_list *args)
     map_domain_counter_lock(mm);
     vlib_counter_t v;
     vlib_get_combined_counter(&mm->domain_counters[MAP_DOMAIN_COUNTER_TX], d - mm->domains, &v);
-    s = format(s, "  TX: %d/%d", v.packets, v.bytes);
+    s = format(s, "  TX: %lld/%lld", v.packets, v.bytes);
     vlib_get_combined_counter(&mm->domain_counters[MAP_DOMAIN_COUNTER_RX], d - mm->domains, &v);
-    s = format(s, "  RX: %d/%d", v.packets, v.bytes);
+    s = format(s, "  RX: %lld/%lld", v.packets, v.bytes);
     map_domain_counter_unlock(mm);
   }
   
