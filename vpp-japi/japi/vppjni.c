@@ -1556,7 +1556,7 @@ static void vl_api_ip_address_details_t_handler (vl_api_ip_address_details_t * m
     if (!jm->is_ipv6) {
         ipv4_address_t *address = 0;
         vec_add2(jm->ipv4_addresses, address, 1);
-        address->ip = *(u32*)mp->ip;
+        memcpy(&address->ip, mp->ip, 4);
         address->prefix_length = mp->prefix_length;
     } else {
         ipv6_address_t *address = 0;
