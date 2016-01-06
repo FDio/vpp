@@ -274,7 +274,8 @@ typedef struct {
  _(FRAGMENT_MEMORY, "could not cache fragment")	        \
  _(FRAGMENT_MALFORMED, "fragment has unexpected format")\
  _(FRAGMENT_DROPPED, "dropped cached fragment")         \
- _(MALFORMED, "malformed packet")
+ _(MALFORMED, "malformed packet")			\
+ _(IP4_ERROR_TIME_EXPIRED, "time expired")
 
 typedef enum {
 #define _(sym,str) MAP_ERROR_##sym,
@@ -392,6 +393,12 @@ ip6_map_get_domain (u32 adj_index, ip4_address_t *addr,
   map_main_t *mm = &map_main;
   ip4_main_t *im4 = &ip4_main;
   ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
+
+  /*
+   * Disable direct MAP domain lookup on decap, until the security check is updated to verify IPv4 SA.
+   * (That's done implicitly when MAP domain is looked up in the IPv4 FIB)
+   */
+#ifdef MAP_NONSHARED_DOMAIN_ENABLED
   ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
   ip_adjacency_t *adj = ip_get_adjacency(lm6, adj_index);
   ASSERT(adj);
@@ -400,6 +407,7 @@ ip6_map_get_domain (u32 adj_index, ip4_address_t *addr,
   *map_domain_index = p[0];
   if (p[0] != ~0)
     return pool_elt_at_index(mm->domains, p[0]);
+#endif
 
   u32 ai = ip4_fib_lookup_with_table(im4, 0, addr, 0);
   ip_adjacency_t *adj4 = ip_get_adjacency (lm4, ai);

@@ -156,6 +156,28 @@ ip4_map_ip6_lookup_bypass (vlib_buffer_t *p0, ip4_header_t *ip)
 }
 
 /*
+ * ip4_map_ttl
+ */
+static inline void
+ip4_map_decrement_ttl (ip4_header_t *ip, u8 *error)
+{
+  i32 ttl = ip->ttl;
+
+  /* Input node should have reject packets with ttl 0. */
+  ASSERT (ip->ttl > 0);
+
+  u32 checksum = ip->checksum + clib_host_to_net_u16(0x0100);
+  checksum += checksum >= 0xffff;
+  ip->checksum = checksum;
+  ttl -= 1;
+  ip->ttl = ttl;
+  *error = ttl <= 0 ? IP4_ERROR_TIME_EXPIRED : *error;
+
+  /* Verify checksum. */
+  ASSERT (ip->checksum == ip4_header_checksum(ip));
+}
+
+/*
  * ip4_map
  */
 static uword
@@ -344,6 +366,9 @@ ip4_map (vlib_main_t *vm,
        * Shared IPv4 address
        */
       port0 = ip4_map_port_and_security_check(d0, ip40, &next0, &error0);
+
+      /* Decrement IPv4 TTL */
+      ip4_map_decrement_ttl(ip40, &error0);
 
       /* MAP calc */
       u32 da40 = clib_net_to_host_u32(ip40->dst_address.as_u32);

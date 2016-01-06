@@ -681,7 +681,8 @@ format_map_domain (u8 *s, va_list *args)
     s = format(s, "  RX: %lld/%lld", v.packets, v.bytes);
     map_domain_counter_unlock(mm);
   }
-  
+  s = format(s, "\n");
+
   if (d->rules) {
     int i;
     ip6_address_t dst;
