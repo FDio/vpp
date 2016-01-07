@@ -483,19 +483,44 @@ VLIB_REGISTER_NODE (ip6_icmp_echo_request_node,static) = {
 };
 
 typedef enum {
-  ICMP6_TTL_EXPIRE_NEXT_DROP,
-  ICMP6_TTL_EXPIRE_NEXT_LOOKUP,
-  ICMP6_TTL_EXPIRE_N_NEXT,
-} icmp_ttl_expire_next_t;
+  IP6_ICMP_ERROR_NEXT_DROP,
+  IP6_ICMP_ERROR_NEXT_LOOKUP,
+  IP6_ICMP_ERROR_N_NEXT,
+} ip6_icmp_error_next_t;
+
+void
+icmp6_error_set_vnet_buffer (vlib_buffer_t *b, u8 type, u8 code, u32 data)
+{
+  vnet_buffer(b)->ip.icmp.type = type;
+  vnet_buffer(b)->ip.icmp.code = code;
+  vnet_buffer(b)->ip.icmp.data = data;
+}
+
+static u8
+icmp6_icmp_type_to_error (u8 type)
+{
+  switch (type) {
+  case ICMP6_destination_unreachable:
+    return ICMP6_ERROR_DEST_UNREACH_SENT;
+  case ICMP6_packet_too_big:
+    return ICMP6_ERROR_PACKET_TOO_BIG_SENT;
+  case ICMP6_time_exceeded:
+    return ICMP6_ERROR_TTL_EXPIRE_SENT;
+  case ICMP6_parameter_problem:
+    return ICMP6_ERROR_PARAM_PROBLEM_SENT;
+  default:
+    return ICMP6_ERROR_DROP;
+  }
+}
 
 static uword
-ip6_icmp_ttl_expire (vlib_main_t * vm,
-                     vlib_node_runtime_t * node,
-                     vlib_frame_t * frame)
+ip6_icmp_error (vlib_main_t * vm,
+		vlib_node_runtime_t * node,
+		vlib_frame_t * frame)
 {
   u32 * from, * to_next;
   uword n_left_from, n_left_to_next;
-  icmp_ttl_expire_next_t next_index;
+  ip6_icmp_error_next_t next_index;
   ip6_main_t *im = &ip6_main;
   ip_lookup_main_t * lm = &im->lookup_main;
 
@@ -514,8 +539,8 @@ ip6_icmp_ttl_expire (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
         {
           u32 pi0 = from[0];
-          u32 next0 = ICMP6_TTL_EXPIRE_NEXT_LOOKUP;
-          u8 error0 = ICMP6_ERROR_TTL_EXPIRE_RESP_SENT;
+          u32 next0 = IP6_ICMP_ERROR_NEXT_LOOKUP;
+          u8 error0 = ICMP6_ERROR_NONE;
           vlib_buffer_t * p0;
           ip6_header_t * ip0, * out_ip0;
           icmp46_header_t * icmp0;
@@ -533,8 +558,8 @@ ip6_icmp_ttl_expire (vlib_main_t * vm,
           ip0 = vlib_buffer_get_current(p0);
           sw_if_index0 = vnet_buffer(p0)->sw_if_index[VLIB_RX];
 
-          /* RFC2463 says to keep as much of the original packet as possible
-           * within the MTU. We cheat "a little" here by keeping whatever fits
+          /* RFC4443 says to keep as much of the original packet as possible
+           * within the minimum MTU. We cheat "a little" here by keeping whatever fits
            * in the first buffer, to be more efficient */
           if (PREDICT_FALSE(p0->total_length_not_including_first_buffer))
             { /* clear current_length of all other buffers in chain */
@@ -547,7 +572,7 @@ ip6_icmp_ttl_expire (vlib_main_t * vm,
                 }                  
             }
 
-          /* Add IP header and ICMPv6 header including a 4 byte ununsed field */
+          /* Add IP header and ICMPv6 header including a 4 byte data field */
           vlib_buffer_advance(p0, 
                               -sizeof(ip6_header_t)-sizeof(icmp46_header_t)-4);
           out_ip0 = vlib_buffer_get_current(p0);
@@ -556,8 +581,8 @@ ip6_icmp_ttl_expire (vlib_main_t * vm,
           /* Fill ip header fields */
           out_ip0->ip_version_traffic_class_and_flow_label = 
               clib_host_to_net_u32(0x6<<28);
-          out_ip0->payload_length = 
-              clib_host_to_net_u16(p0->current_length - sizeof(ip6_header_t));
+	  u16 plen = p0->current_length > 1280 ? 1280 : p0->current_length;
+          out_ip0->payload_length = clib_host_to_net_u16(plen - sizeof(ip6_header_t));
           out_ip0->protocol = IP_PROTOCOL_ICMP6;
           out_ip0->hop_limit = 0xff;
           out_ip0->dst_address = ip0->src_address;
@@ -570,23 +595,27 @@ ip6_icmp_ttl_expire (vlib_main_t * vm,
               ip6_address_t *if_ip = 
                   ip_interface_address_get_address(lm, if_add);
               out_ip0->src_address = *if_ip;
-              vlib_error_count (vm, node->node_index, error0, 1);
             } 
           else   /* interface has no IP6 address - should not happen */
             {
-              next0 = ICMP6_TTL_EXPIRE_NEXT_DROP;
-              error0 = ICMP6_ERROR_TTL_EXPIRE_RESP_DROP;
+              next0 = IP6_ICMP_ERROR_NEXT_DROP;
+              error0 = ICMP6_ERROR_DROP;
             }
 
           /* Fill icmp header fields */
-          icmp0->type = ICMP6_time_exceeded;
-          icmp0->code = ICMP6_time_exceeded_ttl_exceeded_in_transit;
+          icmp0->type = vnet_buffer(p0)->ip.icmp.type;
+          icmp0->code = vnet_buffer(p0)->ip.icmp.code;
+	  *((u32 *)(icmp0 + 1)) = clib_host_to_net_u32(vnet_buffer(p0)->ip.icmp.data);
           icmp0->checksum = 0;
           icmp0->checksum = ip6_tcp_udp_icmp_compute_checksum(
               vm, p0, out_ip0, &bogus_length);
 
+
+
           /* Update error status */
-          p0->error = node->errors[error0];
+	  if (error0 == ICMP6_ERROR_NONE)
+	    error0 = icmp6_icmp_type_to_error(icmp0->type);
+	  vlib_error_count(vm, node->node_index, error0, 1);
 
           /* Verify speculative enqueue, maybe switch current next frame */
           vlib_validate_buffer_enqueue_x1(vm, node, next_index,
@@ -599,18 +628,18 @@ ip6_icmp_ttl_expire (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (ip6_icmp_ttl_expire_node) = {
-  .function = ip6_icmp_ttl_expire,
-  .name = "ip6-icmp-ttl-expire",
+VLIB_REGISTER_NODE (ip6_icmp_error_node) = {
+  .function = ip6_icmp_error,
+  .name = "ip6-icmp-error",
   .vector_size = sizeof (u32),
 
   .n_errors = ARRAY_LEN (icmp_error_strings),
   .error_strings = icmp_error_strings,
 
-  .n_next_nodes = ICMP6_TTL_EXPIRE_N_NEXT,
+  .n_next_nodes = IP6_ICMP_ERROR_N_NEXT,
   .next_nodes = {
-    [ICMP6_TTL_EXPIRE_NEXT_DROP] = "error-drop",
-    [ICMP6_TTL_EXPIRE_NEXT_LOOKUP] = "ip6-lookup",
+    [IP6_ICMP_ERROR_NEXT_DROP] = "error-drop",
+    [IP6_ICMP_ERROR_NEXT_LOOKUP] = "ip6-lookup",
   },
 
   .format_trace = format_icmp6_input_trace,

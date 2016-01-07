@@ -76,7 +76,7 @@ ip4_map_get_port (ip4_header_t *ip, map_dir_e dir)
     icmp46_header_t *icmp = (void *)(ip + 1);
     if (icmp->type == ICMP4_echo_request || icmp->type == ICMP4_echo_reply) {
       return *((u16 *)(icmp + 1));
-    } else if (clib_net_to_host_u16(ip->length) >= 64) { // IP + ICMP + IP + L4 header
+    } else if (clib_net_to_host_u16(ip->length) >= 56) { // IP + ICMP + IP + L4 header
       ip4_header_t *icmp_ip = (ip4_header_t *)(icmp + 2);
       if (PREDICT_TRUE((icmp_ip->protocol == IP_PROTOCOL_TCP) ||
 		       (icmp_ip->protocol == IP_PROTOCOL_UDP))) {
@@ -256,8 +256,8 @@ ip4_map (vlib_main_t *vm,
       u64 dal61 = map_get_pfx(d1, da41, dp41);
       u64 dar60 = map_get_sfx(d0, da40, dp40);
       u64 dar61 = map_get_sfx(d1, da41, dp41);
-      if (dal60 == 0 && dar60 == 0) error0 = MAP_ERROR_UNKNOWN;
-      if (dal61 == 0 && dar61 == 0) error1 = MAP_ERROR_UNKNOWN;
+      if (dal60 == 0 && dar60 == 0) error0 = MAP_ERROR_NO_BINDING;
+      if (dal61 == 0 && dar61 == 0) error1 = MAP_ERROR_NO_BINDING;
 
       /* construct ipv6 header */
       vlib_buffer_advance(p0, - sizeof(ip6_header_t));
@@ -375,7 +375,7 @@ ip4_map (vlib_main_t *vm,
       u16 dp40 = clib_net_to_host_u16(port0);
       u64 dal60 = map_get_pfx(d0, da40, dp40);
       u64 dar60 = map_get_sfx(d0, da40, dp40);
-      if (dal60 == 0 && dar60 == 0 && error0 == MAP_ERROR_NONE) error0 = MAP_ERROR_UNKNOWN;
+      if (dal60 == 0 && dar60 == 0 && error0 == MAP_ERROR_NONE) error0 = MAP_ERROR_NO_BINDING;
 
       /* construct ipv6 header */
       vlib_buffer_advance(p0, - (sizeof(ip6_header_t)));

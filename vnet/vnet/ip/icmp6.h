@@ -46,8 +46,11 @@
   _ (ROUTER_ADVERTISEMENTS_TX, "router advertisements sent")            \
   _ (ROUTER_ADVERTISEMENTS_RX, "router advertisements received")        \
   _ (DST_LOOKUP_MISS, "icmp6 dst address lookup misses")                \
-  _ (TTL_EXPIRE_RESP_SENT, "TTL time exceeded response sent")           \
-  _ (TTL_EXPIRE_RESP_DROP, "TTL time exceeded response dropped")      
+  _ (DEST_UNREACH_SENT, "destination unreachable response sent")	\
+  _ (PACKET_TOO_BIG_SENT, "packet too big response sent")		\
+  _ (TTL_EXPIRE_SENT, "hop limit exceeded response sent")		\
+  _ (PARAM_PROBLEM_SENT, "parameter Pproblem response sent")		\
+  _ (DROP, "error message dropped")
 
 
 typedef enum {
@@ -62,6 +65,7 @@ typedef struct {
 
 format_function_t format_icmp6_input_trace;
 void icmp6_register_type (vlib_main_t * vm, icmp6_type_t type, u32 node_index);
+void icmp6_error_set_vnet_buffer (vlib_buffer_t *b, u8 type, u8 code, u32 data);
 
 extern vlib_node_registration_t ip6_icmp_input_node;
 

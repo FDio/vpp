@@ -27,6 +27,7 @@ enum  ip6_map_next_e {
   IP6_MAP_NEXT_IP6_ICMP_RELAY,
   IP6_MAP_NEXT_IP6_LOCAL,
   IP6_MAP_NEXT_DROP,
+  IP6_MAP_NEXT_ICMP,
   IP6_MAP_N_NEXT,
 };
 
@@ -142,7 +143,6 @@ ip6_map_ip4_lookup_bypass (vlib_buffer_t *p0, ip4_header_t *ip)
   return (false);
 }
 
-
 /*
  * ip6_map
  */
@@ -230,7 +230,6 @@ ip6_map (vlib_main_t *vm,
 	next0 = IP6_MAP_NEXT_IP6_REASS;
       } else {
 	error0 = MAP_ERROR_BAD_PROTOCOL;
-	next0 = IP6_MAP_NEXT_DROP;
       }
       if (PREDICT_TRUE(ip61->protocol == IP_PROTOCOL_IP_IN_IP && clib_net_to_host_u16(ip61->payload_length) > 20)) {
 	d1 = ip6_map_get_domain(vnet_buffer(p1)->ip.adj_index[VLIB_TX], (ip4_address_t *)&ip41->src_address.as_u32,
@@ -244,7 +243,6 @@ ip6_map (vlib_main_t *vm,
 	next1 = IP6_MAP_NEXT_IP6_REASS;
       } else {
 	error1 = MAP_ERROR_BAD_PROTOCOL;
-	next1 = IP6_MAP_NEXT_DROP;
       }
 
       if (d0) {
@@ -297,6 +295,32 @@ ip6_map (vlib_main_t *vm,
 	tr->map_domain_index = map_domain_index1;
 	tr->port = port1;
       }
+
+      if (error0 == MAP_ERROR_DECAP_SEC_CHECK && mm->icmp6_enabled) {
+	/* Set ICMP parameters */
+	vlib_buffer_advance(p0, -sizeof(ip6_header_t));
+	icmp6_error_set_vnet_buffer(p0, ICMP6_destination_unreachable,
+				    ICMP6_destination_unreachable_source_address_failed_policy, 0);
+	next0 = IP6_MAP_NEXT_ICMP;
+      } else {
+	next0 = (error0 == MAP_ERROR_NONE) ? next0 : IP6_MAP_NEXT_DROP;
+      }
+
+      if (error1 == MAP_ERROR_DECAP_SEC_CHECK && mm->icmp6_enabled) {
+	/* Set ICMP parameters */
+	vlib_buffer_advance(p1, -sizeof(ip6_header_t));
+	icmp6_error_set_vnet_buffer(p1, ICMP6_destination_unreachable,
+				      ICMP6_destination_unreachable_source_address_failed_policy, 0);
+	next1 = IP6_MAP_NEXT_ICMP;
+      } else {
+	next1 = (error1 == MAP_ERROR_NONE) ? next1 : IP6_MAP_NEXT_DROP;
+      }
+
+      /* Reset packet */
+      if (next0 == IP6_MAP_NEXT_IP6_LOCAL)
+	vlib_buffer_advance(p0, -sizeof(ip6_header_t));
+      if (next1 == IP6_MAP_NEXT_IP6_LOCAL)
+	vlib_buffer_advance(p1, -sizeof(ip6_header_t));
 
       p0->error = error_node->errors[error0];
       p1->error = error_node->errors[error1];
@@ -377,7 +401,21 @@ ip6_map (vlib_main_t *vm,
 	tr->port = (u16)port0;
       }
 
-      next0 = (error0 == MAP_ERROR_NONE) ? next0 : IP6_MAP_NEXT_DROP;
+      if (mm->icmp6_enabled &&
+	  (error0 == MAP_ERROR_DECAP_SEC_CHECK || error0 == MAP_ERROR_NO_DOMAIN)) {
+	/* Set ICMP parameters */
+	vlib_buffer_advance(p0, -sizeof(ip6_header_t));
+	icmp6_error_set_vnet_buffer(p0, ICMP6_destination_unreachable,
+				      ICMP6_destination_unreachable_source_address_failed_policy, 0);
+	next0 = IP6_MAP_NEXT_ICMP;
+      } else {
+	next0 = (error0 == MAP_ERROR_NONE) ? next0 : IP6_MAP_NEXT_DROP;
+      }
+
+      /* Reset packet */
+      if (next0 == IP6_MAP_NEXT_IP6_LOCAL)
+	vlib_buffer_advance(p0, -sizeof(ip6_header_t));
+
       p0->error = error_node->errors[error0];
       vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next, n_left_to_next, pi0, next0);
     }
@@ -626,7 +664,7 @@ ip6_map_ip4_reass (vlib_main_t *vm,
       ip4_header_t *ip40;
       ip6_header_t *ip60;
       i32 port0 = 0;
-      u32 map_domain_index0;
+      u32 map_domain_index0 = ~0;
       u32 next0 = IP6_MAP_IP4_REASS_NEXT_IP4_LOOKUP;
       u8 cached = 0;
 
@@ -860,7 +898,7 @@ ip6_map_icmp_relay (vlib_main_t *vm,
       new_ip40->fragment_id = fid[0]; fid++;
       new_ip40->ttl = 64;
       new_ip40->protocol = IP_PROTOCOL_ICMP;
-      new_ip40->src_address = mm->icmp_src_address;
+      new_ip40->src_address = mm->icmp4_src_address;
       new_ip40->dst_address = inner_ip40->src_address;
       new_ip40->checksum = ip4_header_checksum(new_ip40);
 
@@ -916,6 +954,7 @@ VLIB_REGISTER_NODE(ip6_map_node) = {
     [IP6_MAP_NEXT_IP6_ICMP_RELAY] = "ip6-map-icmp-relay",
     [IP6_MAP_NEXT_IP6_LOCAL] = "ip6-local",
     [IP6_MAP_NEXT_DROP] = "error-drop",
+    [IP6_MAP_NEXT_ICMP] = "ip6-icmp-error",
   },
 };
 

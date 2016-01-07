@@ -62,7 +62,7 @@ static u8 * format_ip6_input_trace (u8 * s, va_list * va)
 typedef enum {
   IP6_INPUT_NEXT_DROP,
   IP6_INPUT_NEXT_LOOKUP,
-  IP6_INPUT_NEXT_TTL_EXPIRE,
+  IP6_INPUT_NEXT_ICMP,
   IP6_INPUT_N_NEXT,
 } ip6_input_next_t;
 
@@ -186,13 +186,23 @@ ip6_input (vlib_main_t * vm,
 
       if (PREDICT_FALSE(error0 != IP6_ERROR_NONE))
         {
-          next0 = (error0 == IP6_ERROR_TIME_EXPIRED) ?
-                  IP6_INPUT_NEXT_TTL_EXPIRE : IP6_INPUT_NEXT_DROP;
+	  if (error0 == IP6_ERROR_TIME_EXPIRED) {
+	    icmp6_error_set_vnet_buffer(p0, ICMP6_time_exceeded,
+					  ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
+	    next0 = IP6_INPUT_NEXT_ICMP;
+	  } else {
+	    next0 = IP6_INPUT_NEXT_DROP;
+	  }
         }
       if (PREDICT_FALSE(error1 != IP6_ERROR_NONE))
         {
-          next1 = (error1 == IP6_ERROR_TIME_EXPIRED) ?
-                  IP6_INPUT_NEXT_TTL_EXPIRE : IP6_INPUT_NEXT_DROP;
+	  if (error1 == IP6_ERROR_TIME_EXPIRED) {
+	    icmp6_error_set_vnet_buffer(p1, ICMP6_time_exceeded,
+					  ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
+	    next1 = IP6_INPUT_NEXT_ICMP;
+	  } else {
+	    next1 = IP6_INPUT_NEXT_DROP;
+	  }
         }
 
 	  p0->error = error_node->errors[error0];
@@ -249,8 +259,13 @@ ip6_input (vlib_main_t * vm,
 
       if (PREDICT_FALSE(error0 != IP6_ERROR_NONE))
         {
-          next0 = (error0 == IP6_ERROR_TIME_EXPIRED) ?
-                  IP6_INPUT_NEXT_TTL_EXPIRE : IP6_INPUT_NEXT_DROP;
+	  if (error0 == IP6_ERROR_TIME_EXPIRED) {
+	    icmp6_error_set_vnet_buffer(p0, ICMP6_time_exceeded,
+					  ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
+	    next0 = IP6_INPUT_NEXT_ICMP;
+	  } else {
+	    next0 = IP6_INPUT_NEXT_DROP;
+	  }
         }
 	  p0->error = error_node->errors[error0];
 
@@ -283,7 +298,7 @@ VLIB_REGISTER_NODE (ip6_input_node) = {
   .next_nodes = {
     [IP6_INPUT_NEXT_DROP] = "error-drop",
     [IP6_INPUT_NEXT_LOOKUP] = "ip6-lookup",
-    [IP6_INPUT_NEXT_TTL_EXPIRE] = "ip6-icmp-ttl-expire",
+    [IP6_INPUT_NEXT_ICMP] = "ip6-icmp-error",
   },
 
   .format_buffer = format_ip6_header,

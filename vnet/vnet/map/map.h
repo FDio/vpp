@@ -205,9 +205,10 @@ typedef struct {
   bool tc_copy;
   bool sec_check;
   bool sec_check_frag;
+  bool icmp6_enabled;
 
   /* ICMPv6 -> ICMPv4 relay parameters */
-  ip4_address_t icmp_src_address;
+  ip4_address_t icmp4_src_address;
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -269,6 +270,7 @@ typedef struct {
  _(ICMP, "unable to translate ICMP")			\
  _(ICMP_RELAY, "unable to relay ICMP")			\
  _(UNKNOWN, "unknown")					\
+ _(NO_BINDING, "no binding")				\
  _(NO_DOMAIN, "no domain")				\
  _(FRAGMENTED, "packet is a fragment")                  \
  _(FRAGMENT_MEMORY, "could not cache fragment")	        \

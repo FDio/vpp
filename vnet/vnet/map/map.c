@@ -602,8 +602,7 @@ map_icmp_relay_source_address_command_fn (vlib_main_t *vm,
   ip4_address_t icmp_src_address;
   map_main_t *mm = &map_main;
 
-  memset(&icmp_src_address, 0, sizeof(icmp_src_address));
-
+  mm->icmp4_src_address.as_u32 = 0;
 
   /* Get a line of input. */
   if (!unformat_user(input, unformat_line_input, line_input))
@@ -611,12 +610,44 @@ map_icmp_relay_source_address_command_fn (vlib_main_t *vm,
  
   while (unformat_check_input(line_input) != UNFORMAT_END_OF_INPUT) {
     if (unformat(line_input, "%U", unformat_ip4_address, &icmp_src_address))
-      mm->icmp_src_address = icmp_src_address;
+      mm->icmp4_src_address = icmp_src_address;
     else
       return clib_error_return(0, "unknown input `%U'",
                                format_unformat_error, input);
   }
   unformat_free(line_input);
+
+  return 0;
+}
+
+static clib_error_t *
+map_icmp_unreachables_command_fn (vlib_main_t *vm,
+				  unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  map_main_t *mm = &map_main;
+  int num_m_args = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user(input, unformat_line_input, line_input))
+    return 0;
+ 
+  while (unformat_check_input(line_input) != UNFORMAT_END_OF_INPUT) {
+    num_m_args++;
+    if (unformat(line_input, "on"))
+      mm->icmp6_enabled = true;
+    else if (unformat(line_input, "off"))
+      mm->icmp6_enabled = false;
+    else
+      return clib_error_return(0, "unknown input `%U'",
+                               format_unformat_error, input);
+  }
+  unformat_free(line_input);
+
+
+  if (num_m_args != 1)
+    return clib_error_return(0, "mandatory argument(s) missing");
 
   return 0;
 }
@@ -833,9 +864,11 @@ show_map_stats_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
   else
     vlib_cli_output(vm, "MAP traffic-class: %x", mm->tc);
 
-  vlib_cli_output(vm, "MAP IPv6 inbound security check: %s Fragments: %s", mm->sec_check ? "enabled" : "disabled",
+  vlib_cli_output(vm, "MAP IPv6 inbound security check: %s, fragmented packet security check: %s", mm->sec_check ? "enabled" : "disabled",
 		  mm->sec_check_frag ? "enabled" : "disabled");
 
+  vlib_cli_output(vm, "ICMP-relay IPv4 source address: %U\n", format_ip4_address, &mm->icmp4_src_address);
+  vlib_cli_output(vm, "ICMP6 unreachables sent for unmatched packets: %s\n", mm->icmp6_enabled ? "enabled" : "disabled");
 
   /*
    * Counters
@@ -861,9 +894,9 @@ show_map_stats_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
   }
   map_domain_counter_unlock (mm);
 
-  vlib_cli_output(vm, "Encapsulated packets: %d bytes: %d\n", total_pkts[MAP_DOMAIN_COUNTER_TX],
+  vlib_cli_output(vm, "Encapsulated packets: %lld bytes: %lld\n", total_pkts[MAP_DOMAIN_COUNTER_TX],
 		  total_bytes[MAP_DOMAIN_COUNTER_TX]);
-  vlib_cli_output(vm, "Decapsulated packets: %d bytes: %d\n", total_pkts[MAP_DOMAIN_COUNTER_RX],
+  vlib_cli_output(vm, "Decapsulated packets: %lld bytes: %lld\n", total_pkts[MAP_DOMAIN_COUNTER_RX],
 		  total_bytes[MAP_DOMAIN_COUNTER_RX]);
 
   vlib_cli_output(vm, "ICMP relayed packets: %d\n", vlib_get_simple_counter(&mm->icmp_relayed, 0));
@@ -1524,10 +1557,15 @@ VLIB_CLI_COMMAND(map_security_check_command, static) = {
 };
 
 VLIB_CLI_COMMAND(map_icmp_relay_source_address_command, static) = {
-  .path = "map params icmp-source-address",
-  .short_help = 
-  "icmp-source-address <ip4-address>",
+  .path = "map params icmp source-address",
+   .short_help = "source-address <ip4-address>",
   .function = map_icmp_relay_source_address_command_fn,
+};
+
+VLIB_CLI_COMMAND(map_icmp_unreachables_command, static) = {
+  .path = "map params icmp unreachables",
+  .short_help = "unreachables {on|off}",
+  .function = map_icmp_unreachables_command_fn,
 };
 
 VLIB_CLI_COMMAND(map_security_check_frag_command, static) = {
@@ -1597,6 +1635,9 @@ clib_error_t *map_init (vlib_main_t *vm)
   /* Inbound security check */
   mm->sec_check = true;
   mm->sec_check_frag = false;
+
+  /* ICMP6 Type 1, Code 5 for security check failure */
+  mm->icmp6_enabled = false;
 
   vec_validate(mm->domain_counters, MAP_N_DOMAIN_COUNTER - 1);
   mm->domain_counters[MAP_DOMAIN_COUNTER_RX].name = "rx";
