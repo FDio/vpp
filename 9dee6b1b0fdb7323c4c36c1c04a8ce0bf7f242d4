@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "daeb3561_0acedf83",
+        "filename": "vnet/vnet/ip/icmp6.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 492,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-01-07T14:53:11Z",
+      "side": 1,
+      "message": "Please rename to \"icmp6_set_buffer_opaque(...)\" or something similar. I had no clue what this function did until I looked at it and saw vnet_buffer(b)-\u003eip.icmp.XXX \u003d yyy...",
+      "revId": "9dee6b1b0fdb7323c4c36c1c04a8ce0bf7f242d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
