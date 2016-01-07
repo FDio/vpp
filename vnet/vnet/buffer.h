@@ -66,7 +66,10 @@ _(gre)                                          \
 _(l2_classify)                                  \
 _(io_handoff)                                   \
 _(policer)                                      \
-_(output_features)
+_(output_features)				\
+_(map)						\
+_(map_t)					\
+_(ip_frag)
 
 /* 
  * vnet stack buffer opaque array overlay structure.
@@ -117,6 +120,13 @@ typedef struct {
 
 	  u32 mini_connection_index;
 	} tcp;
+
+	/* ICMP */
+	struct {
+	  u8 type;
+	  u8 code;
+	  u32 data;
+	} icmp;
       };
     } ip;
 
