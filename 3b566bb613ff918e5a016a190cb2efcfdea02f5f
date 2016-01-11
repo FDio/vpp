@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_00c48690",
+        "filename": "build-root/vagrant/bootstrap.ubuntu1404.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 24
+      },
+      "writtenOn": "2016-01-11T23:12:21Z",
+      "side": 1,
+      "message": "It doesn\u0027t really bother me that you slipped in Emacs here, but it should probably be a separate commit - however if you want to keep it in this commit, at least mention it in the commit message.",
+      "revId": "3b566bb613ff918e5a016a190cb2efcfdea02f5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
