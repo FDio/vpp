@@ -1,3 +1,6 @@
+# Fix grub-pc on Virtualbox with Ubuntu
+export DEBIAN_FRONTEND=noninteractive
+
 # Standard update + upgrade dance
 apt-get update
 apt-get upgrade -y
@@ -7,7 +10,7 @@ apt-get upgrade -y
 sudo update-alternatives --install /bin/sh sh /bin/bash 100
 
 # Install build tools
-apt-get install -y build-essential autoconf automake bison libssl-dev ccache libtool git dkms debhelper
+apt-get install -y build-essential autoconf automake bison libssl-dev ccache libtool git dkms debhelper emacs
 
 # Install other stuff
 # apt-get install -y qemu-kvm libvirt-bin ubuntu-vm-builder bridge-utils
