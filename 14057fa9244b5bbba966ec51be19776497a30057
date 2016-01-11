@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_20f8aae4",
+        "filename": "build-root/vagrant/bootstrap.ubuntu1404.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 24
+      },
+      "writtenOn": "2016-01-11T20:56:04Z",
+      "side": 1,
+      "message": "Why not just DEBIAN_FRONTEND\u003dnoninteractive at the start of the script, instead of all over the place?",
+      "revId": "14057fa9244b5bbba966ec51be19776497a30057",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
