@@ -1,19 +1,19 @@
 # Standard update + upgrade dance
-apt-get update
-apt-get upgrade -y
+DEBIAN_FRONTEND=noninteractive apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 
 # Fix the silly notion that /bin/sh should point to dash by pointing it to bash
 
-sudo update-alternatives --install /bin/sh sh /bin/bash 100
+DEBIAN_FRONTEND=noninteractive sudo update-alternatives --install /bin/sh sh /bin/bash 100
 
 # Install build tools
-apt-get install -y build-essential autoconf automake bison libssl-dev ccache libtool git dkms debhelper
+DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential autoconf automake bison libssl-dev ccache libtool git dkms debhelper
 
 # Install other stuff
 # apt-get install -y qemu-kvm libvirt-bin ubuntu-vm-builder bridge-utils
 
 # Install uio
-apt-get install -y linux-image-extra-`uname -r`
+DEBIAN_FRONTEND=noninteractive  apt-get install -y linux-image-extra-`uname -r`
 
 # Install jdk and maven
 apt-get install -y openjdk-7-jdk
@@ -21,7 +21,7 @@ apt-get install -y openjdk-7-jdk
 # apt-get install -y --force-yes maven3
 
 # Install debian packaging tools
-apt-get install -y debhelper dkms
+DEBIAN_FRONTEND=noninteractive  apt-get install -y debhelper dkms
 
 # Setup for hugepages using upstart so it persists across reboots
 echo "vm.nr_hugepages=1024" >> /etc/sysctl.d/20-hugepages.conf
