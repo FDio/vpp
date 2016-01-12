@@ -771,6 +771,9 @@ static u32 vhost_user_if_input ( vlib_main_t * vm,
   if (PREDICT_FALSE(!txvq->desc))
     return 0;
 
+  if (PREDICT_FALSE(!txvq->avail))
+    return 0;
+
   /* do we have pending intterupts ? */
   if ((txvq->n_since_last_int) && (txvq->int_deadline < now))
     vhost_user_send_call(vm, txvq);
@@ -1036,6 +1039,9 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 
   if (PREDICT_FALSE(!rxvq->desc))
      goto done2;
+
+  if (PREDICT_FALSE(!rxvq->avail))
+    goto done2;
 
   if (PREDICT_FALSE(vui->lockp != 0))
     {
