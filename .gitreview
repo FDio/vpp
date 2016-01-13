@@ -1,4 +1,4 @@
 [gerrit]
-host=gerrit.projectrotterdam.info
+host=gerrit.fd.io
 port=29418
 project=vpp
