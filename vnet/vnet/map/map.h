@@ -190,9 +190,6 @@ typedef struct {
   vlib_combined_counter_main_t *domain_counters;
   volatile u32 *counter_lock;
 
-  /* Global counters */
-  vlib_simple_counter_main_t icmp_relayed;
-
 #ifdef MAP_SKIP_IP6_LOOKUP
   /* pre-presolve */
   u32 adj6_index, adj4_index;
@@ -203,12 +200,14 @@ typedef struct {
   /* Traffic class: zero, copy (~0) or fixed value */
   u8 tc;
   bool tc_copy;
-  bool sec_check;
-  bool sec_check_frag;
-  bool icmp6_enabled;
+
+  bool sec_check;		/* Inbound security check */
+  bool sec_check_frag;		/* Inbound security check for (subsequent) fragments */
+  bool icmp6_enabled;		/* Send destination unreachable for security check failure */
 
   /* ICMPv6 -> ICMPv4 relay parameters */
   ip4_address_t icmp4_src_address;
+  vlib_simple_counter_main_t icmp_relayed;
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -217,13 +216,13 @@ typedef struct {
   /*
    * IPv4 encap and decap reassembly
    */
-  //Conf
+  /* Configuration */
   f32 ip4_reass_conf_ht_ratio; //Size of ht is 2^ceil(log2(ratio*pool_size))
   u16 ip4_reass_conf_pool_size; //Max number of allocated reass structures
   u16 ip4_reass_conf_lifetime_ms; //Time a reassembly struct is considered valid in ms
   u32 ip4_reass_conf_buffers; //Maximum number of buffers used by ip4 reassembly
 
-  //Runtime
+  /* Runtime */
   map_ip4_reass_t *ip4_reass_pool;
   u8 ip4_reass_ht_log2len; //Hash table size is 2^log2len
   u16 ip4_reass_allocated;
@@ -231,19 +230,22 @@ typedef struct {
   u16 ip4_reass_fifo_last;
   volatile u32 *ip4_reass_lock;
 
-  //Counters
+  /* Counters */
   u32 ip4_reass_buffered_counter;
+
+  bool frag_inner;		/* Inner or outer fragmentation */
+  bool frag_ignore_df;		/* Fragment (outer) packet even if DF is set */
 
   /*
    * IPv6 decap reassembly
    */
-  //Conf
+  /* Configuration */
   f32 ip6_reass_conf_ht_ratio; //Size of ht is 2^ceil(log2(ratio*pool_size))
   u16 ip6_reass_conf_pool_size; //Max number of allocated reass structures
   u16 ip6_reass_conf_lifetime_ms; //Time a reassembly struct is considered valid in ms
   u32 ip6_reass_conf_buffers; //Maximum number of buffers used by ip6 reassembly
 
-  //Runtime
+  /* Runtime */
   map_ip6_reass_t *ip6_reass_pool;
   u8 ip6_reass_ht_log2len; //Hash table size is 2^log2len
   u16 ip6_reass_allocated;
@@ -251,19 +253,18 @@ typedef struct {
   u16 ip6_reass_fifo_last;
   volatile u32 *ip6_reass_lock;
 
-  //Counters
+  /* Counters */
   u32 ip6_reass_buffered_counter;
 
 } map_main_t;
 
 /*
- * TODO: Remove SEC_CHECK / TRANSLATED_4TO6 / TRANSLATED_6TO4
+ * MAP Error counters/messages
  */
 #define foreach_map_error				\
   /* Must be first. */					\
  _(NONE, "valid MAP packets")				\
  _(BAD_PROTOCOL, "bad protocol")			\
- _(WRONG_ICMP_TYPE, "wrong icmp type")			\
  _(SEC_CHECK, "security check failed")			\
  _(ENCAP_SEC_CHECK, "encap security check failed")	\
  _(DECAP_SEC_CHECK, "decap security check failed")	\
@@ -277,7 +278,7 @@ typedef struct {
  _(FRAGMENT_MALFORMED, "fragment has unexpected format")\
  _(FRAGMENT_DROPPED, "dropped cached fragment")         \
  _(MALFORMED, "malformed packet")			\
- _(IP4_ERROR_TIME_EXPIRED, "time expired")
+ _(DF_SET, "can't fragment, DF set")
 
 typedef enum {
 #define _(sym,str) MAP_ERROR_##sym,

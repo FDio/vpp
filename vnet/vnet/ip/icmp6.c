@@ -571,6 +571,7 @@ ip6_icmp_error (vlib_main_t * vm,
                   b->current_length = 0;
                 }                  
             }
+	  p0->current_length = p0->current_length > 1280 ? 1280 : p0->current_length;
 
           /* Add IP header and ICMPv6 header including a 4 byte data field */
           vlib_buffer_advance(p0, 
@@ -581,8 +582,8 @@ ip6_icmp_error (vlib_main_t * vm,
           /* Fill ip header fields */
           out_ip0->ip_version_traffic_class_and_flow_label = 
               clib_host_to_net_u32(0x6<<28);
-	  u16 plen = p0->current_length > 1280 ? 1280 : p0->current_length;
-          out_ip0->payload_length = clib_host_to_net_u16(plen - sizeof(ip6_header_t));
+
+          out_ip0->payload_length = clib_host_to_net_u16(p0->current_length - sizeof(ip6_header_t));
           out_ip0->protocol = IP_PROTOCOL_ICMP6;
           out_ip0->hop_limit = 0xff;
           out_ip0->dst_address = ip0->src_address;

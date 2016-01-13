@@ -62,7 +62,7 @@ static u8 * format_ip6_input_trace (u8 * s, va_list * va)
 typedef enum {
   IP6_INPUT_NEXT_DROP,
   IP6_INPUT_NEXT_LOOKUP,
-  IP6_INPUT_NEXT_ICMP,
+  IP6_INPUT_NEXT_ICMP_ERROR,
   IP6_INPUT_N_NEXT,
 } ip6_input_next_t;
 
@@ -189,7 +189,7 @@ ip6_input (vlib_main_t * vm,
 	  if (error0 == IP6_ERROR_TIME_EXPIRED) {
 	    icmp6_error_set_vnet_buffer(p0, ICMP6_time_exceeded,
 					  ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
-	    next0 = IP6_INPUT_NEXT_ICMP;
+	    next0 = IP6_INPUT_NEXT_ICMP_ERROR;
 	  } else {
 	    next0 = IP6_INPUT_NEXT_DROP;
 	  }
@@ -199,7 +199,7 @@ ip6_input (vlib_main_t * vm,
 	  if (error1 == IP6_ERROR_TIME_EXPIRED) {
 	    icmp6_error_set_vnet_buffer(p1, ICMP6_time_exceeded,
 					  ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
-	    next1 = IP6_INPUT_NEXT_ICMP;
+	    next1 = IP6_INPUT_NEXT_ICMP_ERROR;
 	  } else {
 	    next1 = IP6_INPUT_NEXT_DROP;
 	  }
@@ -262,7 +262,7 @@ ip6_input (vlib_main_t * vm,
 	  if (error0 == IP6_ERROR_TIME_EXPIRED) {
 	    icmp6_error_set_vnet_buffer(p0, ICMP6_time_exceeded,
 					  ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
-	    next0 = IP6_INPUT_NEXT_ICMP;
+	    next0 = IP6_INPUT_NEXT_ICMP_ERROR;
 	  } else {
 	    next0 = IP6_INPUT_NEXT_DROP;
 	  }
@@ -298,7 +298,7 @@ VLIB_REGISTER_NODE (ip6_input_node) = {
   .next_nodes = {
     [IP6_INPUT_NEXT_DROP] = "error-drop",
     [IP6_INPUT_NEXT_LOOKUP] = "ip6-lookup",
-    [IP6_INPUT_NEXT_ICMP] = "ip6-icmp-error",
+    [IP6_INPUT_NEXT_ICMP_ERROR] = "ip6-icmp-error",
   },
 
   .format_buffer = format_ip6_header,

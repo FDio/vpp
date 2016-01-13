@@ -653,6 +653,58 @@ map_icmp_unreachables_command_fn (vlib_main_t *vm,
 }
 
 static clib_error_t *
+map_fragment_command_fn (vlib_main_t *vm,
+			 unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  map_main_t *mm = &map_main;
+
+  /* Get a line of input. */
+  if (!unformat_user(input, unformat_line_input, line_input))
+    return 0;
+ 
+  while (unformat_check_input(line_input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat(line_input, "inner"))
+      mm->frag_inner = true;
+    else if (unformat(line_input, "outer"))
+      mm->frag_inner = false;
+    else
+      return clib_error_return(0, "unknown input `%U'",
+                               format_unformat_error, input);
+  }
+  unformat_free(line_input);
+
+  return 0;
+}
+
+static clib_error_t *
+map_fragment_df_command_fn (vlib_main_t *vm,
+			    unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  map_main_t *mm = &map_main;
+
+  /* Get a line of input. */
+  if (!unformat_user(input, unformat_line_input, line_input))
+    return 0;
+ 
+  while (unformat_check_input(line_input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat(line_input, "on"))
+      mm->frag_ignore_df = true;
+    else if (unformat(line_input, "off"))
+      mm->frag_ignore_df = false;
+    else
+      return clib_error_return(0, "unknown input `%U'",
+                               format_unformat_error, input);
+  }
+  unformat_free(line_input);
+
+  return 0;
+}
+
+static clib_error_t *
 map_traffic_class_command_fn (vlib_main_t *vm,
 			      unformat_input_t *input,
 			      vlib_cli_command_t *cmd)
@@ -869,6 +921,8 @@ show_map_stats_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 
   vlib_cli_output(vm, "ICMP-relay IPv4 source address: %U\n", format_ip4_address, &mm->icmp4_src_address);
   vlib_cli_output(vm, "ICMP6 unreachables sent for unmatched packets: %s\n", mm->icmp6_enabled ? "enabled" : "disabled");
+  vlib_cli_output(vm, "Inner fragmentation: %s\n", mm->frag_inner ? "enabled" : "disabled");
+  vlib_cli_output(vm, "Fragment packets regardless of DF flag: %s\n", mm->frag_ignore_df ? "enabled" : "disabled");
 
   /*
    * Counters
@@ -1563,9 +1617,21 @@ VLIB_CLI_COMMAND(map_icmp_relay_source_address_command, static) = {
 };
 
 VLIB_CLI_COMMAND(map_icmp_unreachables_command, static) = {
-  .path = "map params icmp unreachables",
+  .path = "map params icmp6 unreachables",
   .short_help = "unreachables {on|off}",
   .function = map_icmp_unreachables_command_fn,
+};
+
+VLIB_CLI_COMMAND(map_fragment_command, static) = {
+  .path = "map params fragment",
+  .short_help = "[inner|outer] [ignore-df [on|off]]",
+  .function = map_fragment_command_fn,
+};
+
+VLIB_CLI_COMMAND(map_fragment_df_command, static) = {
+  .path = "map params fragment ignore-df",
+  .short_help = "on|off",
+  .function = map_fragment_df_command_fn,
 };
 
 VLIB_CLI_COMMAND(map_security_check_frag_command, static) = {
@@ -1638,6 +1704,10 @@ clib_error_t *map_init (vlib_main_t *vm)
 
   /* ICMP6 Type 1, Code 5 for security check failure */
   mm->icmp6_enabled = false;
+
+  /* Inner or outer fragmentation */
+  mm->frag_inner = false;
+  mm->frag_ignore_df = false;
 
   vec_validate(mm->domain_counters, MAP_N_DOMAIN_COUNTER - 1);
   mm->domain_counters[MAP_DOMAIN_COUNTER_RX].name = "rx";

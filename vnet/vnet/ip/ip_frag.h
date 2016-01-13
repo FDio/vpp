@@ -49,6 +49,7 @@ vlib_node_registration_t ip6_frag_node;
 typedef enum {
   IP4_FRAG_NEXT_IP4_LOOKUP,
   IP4_FRAG_NEXT_IP6_LOOKUP,
+  IP4_FRAG_NEXT_ICMP_ERROR,
   IP4_FRAG_NEXT_DROP,
   IP4_FRAG_N_NEXT
 } ip4_frag_next_t;
@@ -65,8 +66,8 @@ typedef enum {
  _(NONE, "packet fragmented")				\
  _(SMALL_PACKET, "packet smaller than MTU")             \
  _(FRAGMENT_SENT, "number of sent fragments")           \
- _(CANT_FRAGMENT_HEADER, "can't fragment header'")      \
- _(DONT_FRAGMENT_SET, "can't fragment this packet'")    \
+ _(CANT_FRAGMENT_HEADER, "can't fragment header")	\
+ _(DONT_FRAGMENT_SET, "can't fragment this packet")	\
  _(MALFORMED, "malformed packet")                       \
  _(MEMORY, "could not allocate buffer")                 \
  _(UNKNOWN, "unknown error")
@@ -77,5 +78,7 @@ typedef enum {
 #undef _
    IP_FRAG_N_ERROR,
  } ip_frag_error_t;
+
+void ip_frag_set_vnet_buffer(vlib_buffer_t *b, u16 offset, u16 mtu, u8 next_index, u8 flags);
 
 #endif /* ifndef IP_FRAG_H */
