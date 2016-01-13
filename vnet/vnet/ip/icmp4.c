@@ -41,6 +41,13 @@
 #include <vnet/ip/ip.h>
 #include <vnet/pg/pg.h>
 
+
+static char * icmp_error_strings[] = {
+#define _(f,s) s,
+  foreach_icmp4_error
+#undef _
+};
+
 static u8 * format_ip4_icmp_type_and_code (u8 * s, va_list * args)
 {
   icmp4_type_t type = va_arg (*args, int);
@@ -96,10 +103,6 @@ static u8 * format_ip4_icmp_header (u8 * s, va_list * args)
   return s;
 }
 
-typedef struct {
-  u8 packet_data[64];
-} icmp_input_trace_t;
-
 static u8 * format_icmp_input_trace (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
@@ -112,20 +115,6 @@ static u8 * format_icmp_input_trace (u8 * s, va_list * va)
 
   return s;
 }
-
-typedef enum {
-  ICMP4_ERROR_UNKNOWN_TYPE,
-  ICMP4_ERROR_ECHO_REPLIES_SENT,
-  ICMP4_ERROR_TTL_EXPIRE_RESP_SENT,
-  ICMP4_ERROR_TTL_EXPIRE_RESP_DROP,
-} icmp_error_t;
-
-static char * icmp_error_strings[] = {
-  [ICMP4_ERROR_UNKNOWN_TYPE] = "unknown type",
-  [ICMP4_ERROR_ECHO_REPLIES_SENT] = "echo replies sent",
-  [ICMP4_ERROR_TTL_EXPIRE_RESP_SENT] = "TTL time exceeded response sent",
-  [ICMP4_ERROR_TTL_EXPIRE_RESP_DROP] = "TTL time exceeded response dropped",
-};
 
 typedef enum {
   ICMP_INPUT_NEXT_ERROR,
@@ -418,19 +407,42 @@ VLIB_REGISTER_NODE (ip4_icmp_echo_request_node,static) = {
 };
 
 typedef enum {
-  ICMP4_TTL_EXPIRE_NEXT_DROP,
-  ICMP4_TTL_EXPIRE_NEXT_LOOKUP,
-  ICMP4_TTL_EXPIRE_N_NEXT,
-} icmp_ttl_expire_next_t;
+  IP4_ICMP_ERROR_NEXT_DROP,
+  IP4_ICMP_ERROR_NEXT_LOOKUP,
+  IP4_ICMP_ERROR_N_NEXT,
+} ip4_icmp_error_next_t;
+
+void
+icmp4_error_set_vnet_buffer (vlib_buffer_t *b, u8 type, u8 code, u32 data)
+{
+  vnet_buffer(b)->ip.icmp.type = type;
+  vnet_buffer(b)->ip.icmp.code = code;
+  vnet_buffer(b)->ip.icmp.data = data;
+}
+
+static u8
+icmp4_icmp_type_to_error (u8 type)
+{
+  switch (type) {
+  case ICMP4_destination_unreachable:
+    return ICMP4_ERROR_DEST_UNREACH_SENT;
+  case ICMP4_time_exceeded:
+    return ICMP4_ERROR_TTL_EXPIRE_SENT;
+  case ICMP4_parameter_problem:
+    return ICMP4_ERROR_PARAM_PROBLEM_SENT;
+  default:
+    return ICMP4_ERROR_DROP;
+  }
+}
 
 static uword
-ip4_icmp_ttl_expire (vlib_main_t * vm,
-                     vlib_node_runtime_t * node,
-                     vlib_frame_t * frame)
+ip4_icmp_error (vlib_main_t * vm,
+		vlib_node_runtime_t * node,
+		vlib_frame_t * frame)
 {
   u32 * from, * to_next;
   uword n_left_from, n_left_to_next;
-  icmp_ttl_expire_next_t next_index;
+  ip4_icmp_error_next_t next_index;
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t * lm = &im->lookup_main;
 
@@ -442,117 +454,113 @@ ip4_icmp_ttl_expire (vlib_main_t * vm,
     vlib_trace_frame_buffers_only (vm, node, from, frame->n_vectors,
 				   /* stride */ 1, sizeof (icmp_input_trace_t));
 
-  while (n_left_from > 0)
-    {
-      vlib_get_next_frame(vm, node, next_index, to_next, n_left_to_next);
+  while (n_left_from > 0) {
+    vlib_get_next_frame(vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_from > 0 && n_left_to_next > 0)
-        {
-          u32 pi0 = from[0];
-          u32 next0 = ICMP4_TTL_EXPIRE_NEXT_LOOKUP;
-          u8 error0 = ICMP4_ERROR_TTL_EXPIRE_RESP_SENT;
-          u32 len0, new_len0;
-          vlib_buffer_t * p0;
-          ip4_header_t * ip0, * out_ip0;
-          icmp46_header_t * icmp0;
-          ip_csum_t sum;
-          u32 sw_if_index0, if_add_index0; 
+    while (n_left_from > 0 && n_left_to_next > 0) {
+      u32 pi0 = from[0];
+      u32 next0 = IP4_ICMP_ERROR_NEXT_LOOKUP;
+      u8 error0 = ICMP4_ERROR_NONE;
+      vlib_buffer_t * p0;
+      ip4_header_t * ip0, * out_ip0;
+      icmp46_header_t * icmp0;
+      u32 sw_if_index0, if_add_index0;
+      ip_csum_t sum;
 
-          /* Speculatively enqueue p0 to the current next frame */
-          to_next[0] = pi0;
-          from += 1;
-          to_next += 1;
-          n_left_from -= 1;
-          n_left_to_next -= 1;
+      /* Speculatively enqueue p0 to the current next frame */
+      to_next[0] = pi0;
+      from += 1;
+      to_next += 1;
+      n_left_from -= 1;
+      n_left_to_next -= 1;
 
-          p0 = vlib_get_buffer(vm, pi0);
-          ip0 = vlib_buffer_get_current(p0);
-          len0 = vlib_buffer_length_in_chain (vm, p0);
-          sw_if_index0 = vnet_buffer(p0)->sw_if_index[VLIB_RX];
+      p0 = vlib_get_buffer(vm, pi0);
+      ip0 = vlib_buffer_get_current(p0);
+      sw_if_index0 = vnet_buffer(p0)->sw_if_index[VLIB_RX];
 
-          /* Cut payload to just IP header plus first 8 bytes */
-          new_len0 = (ip0->ip_version_and_header_length &0xf)*4 + 8;
-          if (len0 > new_len0)
-            {
-              p0->current_length = new_len0; /* should fit in 1st buffer */
-              if (PREDICT_FALSE(p0->total_length_not_including_first_buffer))
-                { /* clear current_length of all other buffers in chain */
-                  vlib_buffer_t *b = p0;
-                  p0->total_length_not_including_first_buffer = 0;
-                  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
-                    {
-                      b = vlib_get_buffer (vm, b->next_buffer);
-                      b->current_length = 0;
-                    }                  
-                }
-            }
+      /*
+       * RFC1812 says to keep as much of the original packet as
+       * possible within the minimum MTU (576). We cheat "a little"
+       * here by keeping whatever fits in the first buffer, to be more
+       * efficient
+       */
+      if (PREDICT_FALSE(p0->total_length_not_including_first_buffer)) {
+	/* clear current_length of all other buffers in chain */
+	vlib_buffer_t *b = p0;
+	p0->total_length_not_including_first_buffer = 0;
+	while (b->flags & VLIB_BUFFER_NEXT_PRESENT) {
+	  b = vlib_get_buffer (vm, b->next_buffer);
+	  b->current_length = 0;
+	}                  
+      }
+      p0->current_length = p0->current_length > 576 ? 576 : p0->current_length;
 
-          /* Add IP header and ICMP header including a 4 byte unused field */
-          vlib_buffer_advance(p0, 
-                              -sizeof(ip4_header_t)-sizeof(icmp46_header_t)-4);
-          out_ip0 = vlib_buffer_get_current(p0);
-          icmp0 = (icmp46_header_t *) &out_ip0[1];
+      /* Add IP header and ICMPv4 header including a 4 byte data field */
+      vlib_buffer_advance(p0, 
+			  -sizeof(ip4_header_t)-sizeof(icmp46_header_t)-4);
+      out_ip0 = vlib_buffer_get_current(p0);
+      icmp0 = (icmp46_header_t *) &out_ip0[1];
 
-          /* Fill ip header fields */
-          out_ip0->ip_version_and_header_length = 0x45;
-          out_ip0->tos = 0;
-          out_ip0->length = clib_host_to_net_u16(p0->current_length);
-          out_ip0->fragment_id = 0;
-          out_ip0->ttl = 0xff;
-          out_ip0->protocol = IP_PROTOCOL_ICMP;
-          out_ip0->dst_address = ip0->src_address;
-          if_add_index0 = 
-              lm->if_address_pool_index_by_sw_if_index[sw_if_index0];
-          if (PREDICT_TRUE(if_add_index0 != ~0)) 
-            {
-              ip_interface_address_t *if_add = 
-                  pool_elt_at_index(lm->if_address_pool, if_add_index0);
-              ip4_address_t *if_ip = 
-                  ip_interface_address_get_address(lm, if_add);
-              out_ip0->src_address = *if_ip;
-              vlib_error_count (vm, node->node_index, error0, 1);
-            } 
-          else   /* interface has no IP4 address - should not happen */
-            {
-              next0 = ICMP4_TTL_EXPIRE_NEXT_DROP;
-              error0 = ICMP4_ERROR_TTL_EXPIRE_RESP_DROP;
-            }
-          out_ip0->checksum = ip4_header_checksum(out_ip0);
+      /* Fill ip header fields */
+      out_ip0->ip_version_and_header_length = 0x45;
+      out_ip0->tos = 0;
+      out_ip0->length = clib_host_to_net_u16(p0->current_length);
+      out_ip0->fragment_id = 0;
+      out_ip0->flags_and_fragment_offset = 0;
+      out_ip0->ttl = 0xff;
+      out_ip0->protocol = IP_PROTOCOL_ICMP;
+      out_ip0->dst_address = ip0->src_address;
+      if_add_index0 = 
+	lm->if_address_pool_index_by_sw_if_index[sw_if_index0];
+      if (PREDICT_TRUE(if_add_index0 != ~0)) {
+	ip_interface_address_t *if_add = 
+	  pool_elt_at_index(lm->if_address_pool, if_add_index0);
+	ip4_address_t *if_ip = 
+	  ip_interface_address_get_address(lm, if_add);
+	out_ip0->src_address = *if_ip;
+      } else {
+	/* interface has no IP4 address - should not happen */
+	next0 = IP4_ICMP_ERROR_NEXT_DROP;
+	error0 = ICMP4_ERROR_DROP;
+      }
+      out_ip0->checksum = ip4_header_checksum(out_ip0);
 
-          /* Fill icmp header fields */
-          icmp0->type = ICMP4_time_exceeded;
-          icmp0->code = ICMP4_time_exceeded_ttl_exceeded_in_transit;
-          icmp0->checksum = 0;
-          sum = ip_incremental_checksum(
-              0, icmp0, p0->current_length - sizeof(ip4_header_t));
-          icmp0->checksum = ~ip_csum_fold(sum);
+      /* Fill icmp header fields */
+      icmp0->type = vnet_buffer(p0)->ip.icmp.type;
+      icmp0->code = vnet_buffer(p0)->ip.icmp.code;
+      *((u32 *)(icmp0 + 1)) = clib_host_to_net_u32(vnet_buffer(p0)->ip.icmp.data);
+      icmp0->checksum = 0;
+      sum = ip_incremental_checksum(0, icmp0, p0->current_length - sizeof(ip4_header_t));
+      icmp0->checksum = ~ip_csum_fold(sum);
 
-          /* Update error status */
-          p0->error = node->errors[error0];
+      /* Update error status */
+      if (error0 == ICMP4_ERROR_NONE)
+	error0 = icmp4_icmp_type_to_error(icmp0->type);
+      vlib_error_count(vm, node->node_index, error0, 1);
 
-          /* Verify speculative enqueue, maybe switch current next frame */
-          vlib_validate_buffer_enqueue_x1(vm, node, next_index,
-                                          to_next, n_left_to_next,
-                                          pi0, next0);
-        }
-      vlib_put_next_frame(vm, node, next_index, n_left_to_next);
+      /* Verify speculative enqueue, maybe switch current next frame */
+      vlib_validate_buffer_enqueue_x1(vm, node, next_index,
+				      to_next, n_left_to_next,
+				      pi0, next0);
     }
+    vlib_put_next_frame(vm, node, next_index, n_left_to_next);
+  }
 
   return frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (ip4_icmp_ttl_expire_node) = {
-  .function = ip4_icmp_ttl_expire,
-  .name = "ip4-icmp-ttl-expire",
+VLIB_REGISTER_NODE (ip4_icmp_error_node) = {
+  .function = ip4_icmp_error,
+  .name = "ip4-icmp-error",
   .vector_size = sizeof (u32),
 
   .n_errors = ARRAY_LEN (icmp_error_strings),
   .error_strings = icmp_error_strings,
 
-  .n_next_nodes = ICMP4_TTL_EXPIRE_N_NEXT,
+  .n_next_nodes = IP4_ICMP_ERROR_N_NEXT,
   .next_nodes = {
-    [ICMP4_TTL_EXPIRE_NEXT_DROP] = "error-drop",
-    [ICMP4_TTL_EXPIRE_NEXT_LOOKUP] = "ip4-lookup",
+    [IP4_ICMP_ERROR_NEXT_DROP] = "error-drop",
+    [IP4_ICMP_ERROR_NEXT_LOOKUP] = "ip4-lookup",
   },
 
   .format_trace = format_icmp_input_trace,
