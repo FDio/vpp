@@ -64,7 +64,7 @@ typedef enum {
   IP4_INPUT_NEXT_PUNT,
   IP4_INPUT_NEXT_LOOKUP,
   IP4_INPUT_NEXT_LOOKUP_MULTICAST,
-  IP4_INPUT_NEXT_TTL_EXPIRE,
+  IP4_INPUT_NEXT_ICMP_ERROR,
   IP4_INPUT_N_NEXT,
 } ip4_input_next_t;
 
@@ -220,19 +220,21 @@ ip4_input_inline (vlib_main_t * vm,
 
       if (PREDICT_FALSE(error0 != IP4_ERROR_NONE))
         {
-          next0 = (error0 != IP4_ERROR_OPTIONS
-                   ? (error0 == IP4_ERROR_TIME_EXPIRED
-                      ? IP4_INPUT_NEXT_TTL_EXPIRE
-                      : IP4_INPUT_NEXT_DROP)
-                   : IP4_INPUT_NEXT_PUNT);
+	  if (error0 == IP4_ERROR_TIME_EXPIRED) {
+	    icmp4_error_set_vnet_buffer(p0, ICMP4_time_exceeded,
+					ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
+	    next0 = IP4_INPUT_NEXT_ICMP_ERROR;
+	  } else
+	    next0 = error0 != IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
         }
       if (PREDICT_FALSE(error1 != IP4_ERROR_NONE))
         {
-          next1 = (error1 != IP4_ERROR_OPTIONS
-                   ? (error1 == IP4_ERROR_TIME_EXPIRED
-                      ? IP4_INPUT_NEXT_TTL_EXPIRE
-                      : IP4_INPUT_NEXT_DROP)
-                   : IP4_INPUT_NEXT_PUNT);
+	  if (error1 == IP4_ERROR_TIME_EXPIRED) {
+	    icmp4_error_set_vnet_buffer(p1, ICMP4_time_exceeded,
+					ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
+	    next1 = IP4_INPUT_NEXT_ICMP_ERROR;
+	  } else
+	    next1 = error1 != IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
         }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -307,11 +309,12 @@ ip4_input_inline (vlib_main_t * vm,
 	  p0->error = error_node->errors[error0];
       if (PREDICT_FALSE(error0 != IP4_ERROR_NONE))
         {
-          next0 = (error0 != IP4_ERROR_OPTIONS
-                   ? (error0 == IP4_ERROR_TIME_EXPIRED
-                      ? IP4_INPUT_NEXT_TTL_EXPIRE
-                      : IP4_INPUT_NEXT_DROP)
-                   : IP4_INPUT_NEXT_PUNT);
+	  if (error0 == IP4_ERROR_TIME_EXPIRED) {
+	    icmp4_error_set_vnet_buffer(p0, ICMP4_time_exceeded,
+					ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
+	    next0 = IP4_INPUT_NEXT_ICMP_ERROR;
+	  } else
+	    next0 = error0 != IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
         }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -361,7 +364,7 @@ VLIB_REGISTER_NODE (ip4_input_node) = {
     [IP4_INPUT_NEXT_PUNT] = "error-punt",
     [IP4_INPUT_NEXT_LOOKUP] = "ip4-lookup",
     [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-lookup-multicast",
-    [IP4_INPUT_NEXT_TTL_EXPIRE] = "ip4-icmp-ttl-expire",
+    [IP4_INPUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 
   .format_buffer = format_ip4_header,
@@ -379,7 +382,7 @@ VLIB_REGISTER_NODE (ip4_input_no_checksum_node,static) = {
     [IP4_INPUT_NEXT_PUNT] = "error-punt",
     [IP4_INPUT_NEXT_LOOKUP] = "ip4-lookup",
     [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-lookup-multicast",
-    [IP4_INPUT_NEXT_TTL_EXPIRE] = "ip4-icmp-ttl-expire",
+    [IP4_INPUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 
   .format_buffer = format_ip4_header,
