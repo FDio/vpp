@@ -37,9 +37,8 @@ static u8 * format_ip_frag_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip_frag_trace_t * t = va_arg (*args, ip_frag_trace_t *);
-  s = format(s, "IPv%s offset: %u mtu: %u fragments: %u next: %s",
-             t->ipv6?"6":"4",
-             t->header_offset, t->mtu, t->n_fragments, node->next_node_names[t->next]);
+  s = format(s, "IPv%s offset: %u mtu: %u fragments: %u",
+             t->ipv6?"6":"4", t->header_offset, t->mtu, t->n_fragments);
   return s;
 }
 
@@ -146,6 +145,14 @@ ip4_frag_do_fragment(vlib_main_t *vm, u32 pi, u32 **buffer, ip_frag_error_t *err
   }
 }
 
+void
+ip_frag_set_vnet_buffer (vlib_buffer_t *b, u16 offset, u16 mtu, u8 next_index, u8 flags)
+{
+  vnet_buffer(b)->ip_frag.header_offset = offset;
+  vnet_buffer(b)->ip_frag.mtu = mtu;
+  vnet_buffer(b)->ip_frag.next_index = next_index;
+  vnet_buffer(b)->ip_frag.flags = flags;
+}
 
 static uword
 ip4_frag (vlib_main_t *vm,
@@ -189,13 +196,25 @@ ip4_frag (vlib_main_t *vm,
         tr->next = vnet_buffer(p0)->ip_frag.next_index;
       }
 
-      next0 = (error0 == IP_FRAG_ERROR_NONE) ? vnet_buffer(p0)->ip_frag.next_index : IP4_FRAG_NEXT_DROP;
-      frag_sent += vec_len(buffer);
-      small_packets += (vec_len(buffer) == 1);
+      if (error0 == IP_FRAG_ERROR_DONT_FRAGMENT_SET) {
+	icmp4_error_set_vnet_buffer(p0, ICMP4_destination_unreachable,
+				    ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
+				    vnet_buffer(p0)->ip_frag.mtu);
+	vlib_buffer_advance(p0, vnet_buffer(p0)->ip_frag.header_offset);
+	next0 = IP4_FRAG_NEXT_ICMP_ERROR;
+      } else
+	next0 = (error0 == IP_FRAG_ERROR_NONE) ? vnet_buffer(p0)->ip_frag.next_index : IP4_FRAG_NEXT_DROP;
+
+      if (error0 == IP_FRAG_ERROR_NONE) {
+	frag_sent += vec_len(buffer);
+	small_packets += (vec_len(buffer) == 1);
+      } else
+	vlib_error_count(vm, ip4_frag_node.index, error0, 1);
 
       //Send fragments that were added in the frame
       frag_from = buffer;
       frag_left = vec_len(buffer);
+
       while (frag_left > 0) {
         while (frag_left > 0 && n_left_to_next > 0) {
           u32 i;
@@ -218,6 +237,7 @@ ip4_frag (vlib_main_t *vm,
     vlib_put_next_frame(vm, node, next_index, n_left_to_next);
   }
   vec_free(buffer);
+
   vlib_node_increment_counter(vm, ip4_frag_node.index, IP_FRAG_ERROR_FRAGMENT_SENT, frag_sent);
   vlib_node_increment_counter(vm, ip4_frag_node.index, IP_FRAG_ERROR_SMALL_PACKET, small_packets);
 
@@ -426,6 +446,7 @@ VLIB_REGISTER_NODE (ip4_frag_node) = {
   .next_nodes = {
     [IP4_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP4_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [IP4_FRAG_NEXT_ICMP_ERROR] = "ip4-icmp-error",
     [IP4_FRAG_NEXT_DROP] = "error-drop"
   },
 };
