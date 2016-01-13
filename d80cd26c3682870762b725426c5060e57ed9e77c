@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_40996e6d",
+        "filename": "vnet/vnet/ip/icmp4.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-01-13T22:27:08Z",
+      "side": 1,
+      "message": "Also need to clear the next field which is missing from the original code:\nout_ip0-\u003eflags_and_fragment_offset \u003d 0;",
+      "revId": "d80cd26c3682870762b725426c5060e57ed9e77c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
