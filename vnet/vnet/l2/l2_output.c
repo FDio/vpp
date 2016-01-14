@@ -474,10 +474,11 @@ u32 l2output_create_output_node_mapping (
   u32                  next;  // index of next graph node
   vnet_hw_interface_t *hw0;
   u32                 *node;
-#if DPDK > 0
-  uword		       cpu_number;
 
   hw0 = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
+
+#if DPDK > 0
+  uword		       cpu_number;
 
   cpu_number = os_get_cpu_number();
 
