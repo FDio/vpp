@@ -22,6 +22,11 @@ Vagrant.configure(2) do |config|
     config.cache.scope = :box
   end
 
+  ## Define 1 to multiple physical ports for your VMs to used by DPDK
+  # config.vm.network "private_network", type: "dhcp"
+  # config.vm.network "private_network", type: "dhcp"
+  # config.vm.network "private_network", type: "dhcp"
+
   # use http proxy if avaiable
   if ENV['http_proxy'] && Vagrant.has_plugin?("vagrant-proxyconf")
    config.proxy.http     = "$http_proxy"
