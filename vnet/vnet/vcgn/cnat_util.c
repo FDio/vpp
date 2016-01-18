@@ -2132,7 +2132,6 @@ int icmpv6_generate_with_throttling_v1 (spp_ctx_t *ctx, ipv6_header_t *ipv6,
 }
 #endif 
 
-inline 
 void calculate_window_scale(tcp_hdr_type *tcp_header, u8 *scale) {
     
     u8 check_options = 0;

@@ -177,7 +177,7 @@ inline void swap_ip_dst(ipv4_header *ip,
 #endif 
 }
 
-inline void swap_ip_dst_udp_port(ipv4_header *ip,
+void swap_ip_dst_udp_port(ipv4_header *ip,
                                  udp_hdr_type_t *udp,
                                  cnat_main_db_entry_t *db, u16 vrf)
 {

@@ -111,7 +111,7 @@ is_pcp_pkt(spp_ctx_t *ctx, u32 addr, u16 port)
 }
 #endif
 
-inline void swap_ip_src_udp_port(ipv4_header *ip,
+void swap_ip_src_udp_port(ipv4_header *ip,
                                  udp_hdr_type_t *udp,
                                  cnat_main_db_entry_t *db)
 {
