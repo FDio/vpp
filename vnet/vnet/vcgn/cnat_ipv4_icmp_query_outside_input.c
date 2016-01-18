@@ -64,7 +64,7 @@ vlib_node_registration_t cnat_ipv4_icmp_q_outside_input_node;
 
 #define NSTAGES 5
 
-inline void swap_ip_dst_icmp_id(ipv4_header *ip,
+void swap_ip_dst_icmp_id(ipv4_header *ip,
                                 icmp_v4_t *icmp,
                          cnat_main_db_entry_t *db, u16 vrf)
 {

@@ -397,7 +397,6 @@ u32 spp_trace_log_get_sys_up_time_in_ms (void)
     return (sys_up_time);
 }
 
-inline
 u32 spp_trace_log_get_unix_time_in_seconds (void)
 {
     spp_node_main_vector_t *nmv;
@@ -978,7 +977,6 @@ void spp_printf(u16 error_code, u16 num_args, u32 *arg)
   /* To be filled */
 }
 
-inline
 u32 spp_trace_log_get_unix_time_in_seconds (void)
 {
     vlib_main_t  *vlib_main;

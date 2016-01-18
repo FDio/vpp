@@ -310,7 +310,7 @@ cnat_nfv9_dump_logging_context (u32 value1,
  * Argument: u8 *new_addr, u8 *org_addr
  * returns the difference
  */
-inline 
+
 int cnat_nfv9_pad_added_to_an_addr(u8 *new_addr, u8 *org_addr)
 {
     uword addr1 = (uword) new_addr;
@@ -326,7 +326,7 @@ int cnat_nfv9_pad_added_to_an_addr(u8 *new_addr, u8 *org_addr)
  * Argument: u8 * data_ptr
  * pointer to the data pointer
  */
-inline
+
 u8 *cnat_nfv9_add_end_of_record_padding (u8 *data_ptr)
 {
     uword tmp       = (uword) data_ptr;
@@ -345,7 +345,7 @@ u8 *cnat_nfv9_add_end_of_record_padding (u8 *data_ptr)
  * Argument: u8 * data_ptr
  * pointer to the data pointer
  */
-inline
+
 u16 cnat_nfv9_pad_end_of_record_length (u16 record_length)
 {
     u16 pad_value = NFV9_PAD_VALUE;
@@ -419,7 +419,7 @@ void fill_ip_n_udp_hdr (u32 ipv4_addr, u16 port,
  * Argument: cnat_nfv9_logging_info_t *nfv9_logging_info
  * structure that contains the packet context
  */
-inline
+
 void cnat_nfv9_fill_nfv9_ip_header (cnat_nfv9_logging_info_t *nfv9_logging_info)
 {
     u16             new_record_length  = 0;
@@ -488,7 +488,7 @@ void cnat_nfv9_fill_nfv9_ip_header (cnat_nfv9_logging_info_t *nfv9_logging_info)
  * Argument: cnat_nfv9_logging_info_t *nfv9_logging_info
  * structure that contains the packet context
  */
-inline
+
 void cnat_nfv9_send_queued_pkt (cnat_nfv9_logging_info_t *nfv9_logging_info)
 {
 }
@@ -503,7 +503,7 @@ void cnat_nfv9_send_queued_pkt (cnat_nfv9_logging_info_t *nfv9_logging_info)
  * Argument: cnat_nfv9_logging_info_t *nfv9_logging_info
  * structure that contains the packet context
  */
-inline
+
 void cnat_nfv9_send_pkt (cnat_nfv9_logging_info_t *nfv9_logging_info)
 {
     cnat_nfv9_fill_nfv9_ip_header(nfv9_logging_info);
@@ -606,7 +606,7 @@ inline void send_vpp3_nfv9_pkt (cnat_nfv9_logging_info_t *nfv9_logging_info)
 /*
  * send_vpp3_nfv9_pkt: to send one b0 in a frame
  */
-inline void send_vpp3_nfv9_pkt (cnat_nfv9_logging_info_t *nfv9_logging_info)
+void send_vpp3_nfv9_pkt (cnat_nfv9_logging_info_t *nfv9_logging_info)
 {
     vlib_node_t                  *output_node;
     vlib_main_t                  *vm =  vlib_get_main();
@@ -647,7 +647,7 @@ inline void send_vpp3_nfv9_pkt (cnat_nfv9_logging_info_t *nfv9_logging_info)
  * Argument: vlib_node_t *output_node
  * vlib_node_t structure for rewrite_output node
  */
-inline
+
 void cnat_nfv9_send_pkt_always_success (
                          cnat_nfv9_logging_info_t *nfv9_logging_info,
                          vlib_node_t               *output_node)
@@ -722,7 +722,7 @@ void cnat_nfv9_send_pkt_always_success (
  * structure that contains the nfv9 logging info and will store
  * the packet context as well.
  */
-inline
+
 void cnat_nfv9_create_logging_context (
                               cnat_nfv9_logging_info_t      *nfv9_logging_info,
                               cnat_nfv9_template_add_flag_t  template_flag)
@@ -851,7 +851,6 @@ void cnat_nfv9_create_logging_context (
     }
 }
 
-inline
 void cnat_nfv9_record_create (
        	cnat_nfv9_logging_info_t *nfv9_logging_info, u16 cur_record)
 {

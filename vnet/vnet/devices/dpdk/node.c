@@ -932,7 +932,7 @@ vlib_get_handoff_queue_elt (u32 vlib_worker_index)
   return elt;
 }
 
-inline vlib_frame_queue_elt_t * 
+static inline vlib_frame_queue_elt_t *
 dpdk_get_handoff_queue_elt ( 
     u32 vlib_worker_index, 
     vlib_frame_queue_elt_t ** handoff_queue_elt_by_worker_index)

@@ -176,7 +176,7 @@ void cnat_table_entry_fill_map(u32 start_addr, u32 end_addr,
 
  
 void cnat_delete_session_db_entry (cnat_session_entry_t *ep, u8 log);
-inline void handle_cnat_port_exceeded_logging(
+void handle_cnat_port_exceeded_logging(
     cnat_user_db_entry_t *udb,
     cnat_key_t   * key,
     cnat_vrfmap_t *vrfmap);
@@ -3025,7 +3025,7 @@ static inline void handle_dslite_port_exceeded_logging(
 }
 #endif
 
-inline void handle_cnat_port_exceeded_logging(
+void handle_cnat_port_exceeded_logging(
     cnat_user_db_entry_t *udb,
     cnat_key_t   * key,
     cnat_vrfmap_t *vrfmap)
