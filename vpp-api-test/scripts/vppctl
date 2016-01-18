@@ -1,2 +1,13 @@
 #!/bin/bash
-echo exec ${@} | vpe_api_test | sed 's/vat# //g'
+if [ $# -gt 0 ]; then
+    echo exec ${@} | vpe_api_test | sed 's/vat# //g'
+else
+    echo -n "vpp# "
+    while read CMD; do
+	if [ $CMD == "exit" ]; then
+	    exit
+	fi
+	echo exec $CMD | vpe_api_test | sed 's/vat# //g'
+	echo -n "vpp# "
+    done
+fi
