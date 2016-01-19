@@ -59,10 +59,13 @@
                     ...
 ~~~~~~~~
 
-   A user is returned a pointer to element # 1.
-   Null pointer vectors are valid and mean a zero length vector.
-   You can also have an allocated non-null zero length vector by just
-   setting the vector length field to zero (e.g. _vec_len (v) = 0).
+   The user pointer contains the address of vector element # 0.  Null
+   pointer vectors are valid and mean a zero length vector.  
+
+   You can reset the length of an allocated vector to zero via the
+   vec_reset_length(v) macro, or by setting the vector length field to
+   zero (e.g. _vec_len (v) = 0). Vec_reset_length(v) preferred: it
+   understands Null pointers.
 
    Typically, the header is not present.  Headers allow for other
    data structures to be built atop CLIB vectors.
