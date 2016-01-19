@@ -430,6 +430,7 @@ VLIB_REGISTER_NODE (l2input_node,static) = {
   .name = "l2-input",
   .vector_size = sizeof (u32),
   .format_trace = format_l2input_trace,
+  .format_buffer = format_ethernet_header_with_length,
   .type = VLIB_NODE_TYPE_INTERNAL,
   
   .n_errors = ARRAY_LEN(l2input_error_strings),

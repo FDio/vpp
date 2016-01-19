@@ -142,6 +142,7 @@ int vnet_vxlan_add_del_tunnel
   vxlan_main_t * vxm = &vxlan_main;
   vxlan_tunnel_t *t = 0;
   vnet_main_t * vnm = vxm->vnet_main;
+  ip4_main_t * im4 = &ip4_main;
   vnet_hw_interface_t * hi;
   uword * p;
   u32 hw_if_index = ~0;
@@ -231,6 +232,8 @@ int vnet_vxlan_add_del_tunnel
 	}
       vnet_sw_interface_set_flags (vnm, sw_if_index, 
                                    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+      vec_validate (im4->fib_index_by_sw_if_index, sw_if_index);
+      im4->fib_index_by_sw_if_index[sw_if_index] = t->encap_fib_index;
     }
   else
     {

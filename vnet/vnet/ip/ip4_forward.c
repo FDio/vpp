@@ -1753,8 +1753,8 @@ static u8 * format_ip4_forward_next_trace (u8 * s, va_list * args)
   uword indent = format_get_indent (s);
 
   adj = ip_get_adjacency (&im->lookup_main, t->adj_index);
-  s = format (s, "fib: %d adjacency: %U flow hash: 0x%08x",
-	      t->fib_index, format_ip_adjacency,
+  s = format (s, "fib %d adj-idx %d : %U flow hash: 0x%08x",
+	      t->fib_index, t->adj_index, format_ip_adjacency,
 	      vnm, &im->lookup_main, t->adj_index, t->flow_hash);
   switch (adj->lookup_next_index)
     {

@@ -1181,6 +1181,7 @@ typedef struct {
   /* Adjacency taken. */
   u32 adj_index;
   u32 flow_hash;
+  u32 fib_index;
 
   /* Packet data, possibly *after* rewrite. */
   u8 packet_data[64 - 1*sizeof(u32)];
@@ -1197,8 +1198,8 @@ static u8 * format_ip6_forward_next_trace (u8 * s, va_list * args)
   uword indent = format_get_indent (s);
 
   adj = ip_get_adjacency (&im->lookup_main, t->adj_index);
-  s = format (s, "adjacency: %U flow hash: 0x%08x",
-	      format_ip_adjacency,
+  s = format (s, "fib %d adj-idx %d : %U flow hash: 0x%08x",
+	      t->fib_index, t->adj_index, format_ip_adjacency,
 	      vnm, &im->lookup_main, t->adj_index, t->flow_hash);
   switch (adj->lookup_next_index)
     {
@@ -1225,6 +1226,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
 			vlib_rx_or_tx_t which_adj_index)
 {
   u32 * from, n_left;
+  ip6_main_t * im = &ip6_main;
 
   n_left = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
@@ -1250,6 +1252,8 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
           t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
+	  t0->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
+                             vnet_buffer(b0)->sw_if_index[VLIB_RX]);
 	  memcpy (t0->packet_data,
 		  vlib_buffer_get_current (b0),
 		  sizeof (t0->packet_data));
@@ -1259,6 +1263,8 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
 	  t1->adj_index = vnet_buffer (b1)->ip.adj_index[which_adj_index];
           t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
+	  t1->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
+                             vnet_buffer(b1)->sw_if_index[VLIB_RX]);
 	  memcpy (t1->packet_data,
 		  vlib_buffer_get_current (b1),
 		  sizeof (t1->packet_data));
@@ -1282,6 +1288,8 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
           t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
+	  t0->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
+                             vnet_buffer(b0)->sw_if_index[VLIB_RX]);
 	  memcpy (t0->packet_data,
 		  vlib_buffer_get_current (b0),
 		  sizeof (t0->packet_data));
