@@ -232,6 +232,8 @@ vxlan_encap (vlib_main_t * vm,
           /* Reset to look up tunnel partner in the configured FIB */
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
           vnet_buffer(b1)->sw_if_index[VLIB_TX] = t1->encap_fib_index;
+          vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
+          vnet_buffer(b1)->sw_if_index[VLIB_RX] = sw_if_index1;
           pkts_encapsulated += 2;
 
  	  len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -374,6 +376,7 @@ vxlan_encap (vlib_main_t * vm,
 
           /* Reset to look up tunnel partner in the configured FIB */
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
+          vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
           pkts_encapsulated ++;
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
