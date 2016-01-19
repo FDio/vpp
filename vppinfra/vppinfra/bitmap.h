@@ -534,6 +534,11 @@ unformat_bitmap_list(unformat_input_t * input, va_list * va)
         ;
       else if (unformat (input, "%u", &a))
         b = a;
+      else if (bitmap)
+        {
+	  unformat_put_input(input);
+	  break;
+	}
       else
         goto error;
 
