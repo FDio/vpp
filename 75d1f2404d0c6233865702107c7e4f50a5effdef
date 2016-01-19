@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_230e7435",
+        "filename": "vppinfra/vppinfra/bitmap.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-01-19T20:21:30Z",
+      "side": 1,
+      "message": "Truthfully, b \u003e 63 is not wrong from the point of view of an arbitrary bitmap. Might be better to check the size of the resulting bitmap for the use-case at hand.",
+      "revId": "75d1f2404d0c6233865702107c7e4f50a5effdef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
