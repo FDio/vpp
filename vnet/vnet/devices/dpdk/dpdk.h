@@ -135,6 +135,7 @@ typedef struct {
   int callfd;
   int kickfd;
   int errfd;
+  int enabled;
   u32 callfd_idx;
   u32 n_since_last_int;
   f64 int_deadline;
@@ -152,7 +153,7 @@ typedef struct {
 
   u64 feature_mask;
   u32 num_vrings;
-  dpdk_vu_vring vrings[2];
+  dpdk_vu_vring vrings[VHOST_MAX_QUEUE_PAIRS * 2];
   u64 region_addr[VHOST_MEMORY_MAX_NREGIONS];
   u32 region_fd[VHOST_MEMORY_MAX_NREGIONS];
 } dpdk_vu_intf_t;
@@ -447,12 +448,6 @@ void dpdk_efd_update_counters(dpdk_device_t *xd, u32 n_buffers, u16 enabled);
 u32 is_efd_discardable(vlib_thread_main_t *tm,
                        vlib_buffer_t * b0,
                        struct rte_mbuf *mb);
-
-/* dpdk vhost-user interrupt management */
-u8 dpdk_vhost_user_want_interrupt (dpdk_device_t *xd, int idx);
-void dpdk_vhost_user_send_interrupt (vlib_main_t * vm, dpdk_device_t * xd,
-                                    int idx);
-
 
 static inline u64 vnet_get_aggregate_rx_packets (void)
 {

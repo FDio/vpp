@@ -495,7 +495,7 @@ u32 l2output_create_output_node_mapping (
       return error_drop_node->index;
 
       output_node_mapping_send_rpc (node_index, sw_if_index);
-      return error_drop_node->index;
+      return 0;
     }
 #endif
 
