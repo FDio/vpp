@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_0396d094",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-01-20T13:26:06Z",
+      "side": 1,
+      "message": "Please do likewise for vpe_api_test at the same time... BTW \"colision\" -\u003e \"collision\"",
+      "revId": "27d2e48002e82b7ffc5acc67181d503a0bb4346e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
