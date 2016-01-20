@@ -13,7 +13,7 @@ end script
 
 
 script
-  exec vpe $(cat /etc/vpp/startup.conf | sed -e 's/#.*//')
+  exec vpp -c /etc/vpp/startup.conf
 end script
 
 post-stop script

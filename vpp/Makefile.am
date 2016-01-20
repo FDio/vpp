@@ -21,22 +21,22 @@ bin_PROGRAMS =
 CLEANFILES = 
 lib_LTLIBRARIES =
 
-bin_PROGRAMS += vpe
+bin_PROGRAMS += vpp
 
-vpe_SOURCES =					\
+vpp_SOURCES =					\
   vnet/main.c					\
   app/vpe_cli.c					\
   app/version.c					\
   oam/oam.c					\
   stats/stats.c
 
-vpe_SOURCES +=					\
+vpp_SOURCES +=					\
   api/api.c					\
   api/custom_dump.c
 
 # comment out to disable stats upload to gmond 
 
-vpe_SOURCES +=					\
+vpp_SOURCES +=					\
   api/gmon.c	
 
 nobase_include_HEADERS =			\
@@ -63,21 +63,21 @@ app/version.h:
 	@echo "#define VPP_BUILD_TOPDIR \"$$(git rev-parse --show-toplevel)\"" 	>> $@
 	@echo "#define VPP_BUILD_VER \"$$(../../scripts/version)\"" >> $@
 
-vpe_LDADD = -lvlibapi -lvlibmemory  -lvlib_unix -lvlib 
+vpp_LDADD = -lvlibapi -lvlibmemory  -lvlib_unix -lvlib
 
-vpe_LDADD += -l:libvnet.a
+vpp_LDADD += -l:libvnet.a
 
-vpe_LDADD += -lsvm -lsvmdb -lrt
+vpp_LDADD += -lsvm -lsvmdb -lrt
 
-vpe_LDADD += -lvnetplugin
+vpp_LDADD += -lvnetplugin
 
 if WITH_DPDK
-vpe_LDADD += -l:libdpdk.a
+vpp_LDADD += -l:libdpdk.a
 endif
 
 # These go last
 
-vpe_LDADD += -lvppinfra -lm -lpthread -lcrypto -ldl
+vpp_LDADD += -lvppinfra -lm -lpthread -lcrypto -ldl
 
 SUFFIXES = .api.h .api
 
