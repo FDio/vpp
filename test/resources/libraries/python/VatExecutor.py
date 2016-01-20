@@ -19,7 +19,7 @@ __all__ = []
 class VatExecutor(object):
     
     __TMP_DIR = "/tmp/"
-    __VAT_BIN = "vpe_api_test"
+    __VAT_BIN = "vpp_api_test"
 
     def __init__(self):
         self._stdout = None
@@ -53,7 +53,7 @@ class VatExecutor(object):
         logger.trace("stdout: '{0}'".format(self._stdout))
         logger.trace("stderr: '{0}'".format(self._stderr))
 
-        #TODO: download vpe_api_test output file
+        #TODO: download vpp_api_test output file
         self._delete_files(node, remote_file_path, remote_file_out)
 
     def _delete_files(self, node, *files):

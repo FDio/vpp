@@ -7,7 +7,7 @@
  - install python requirements for this project by executing:
     # pip install -r requirements.txt
  - make sure user mentioned in topology.py has NOPASSWD sudo access to
-    vpe_api_test
+    vpp_api_test
 
 
  Done.

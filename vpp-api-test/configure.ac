@@ -1,4 +1,4 @@
-AC_INIT(vpe-api-test, 1.0)
+AC_INIT(vpp-api-test, 1.0)
 AM_INIT_AUTOMAKE
 
 AC_PROG_LIBTOOL
@@ -16,7 +16,7 @@ AC_ARG_WITH(q-platform,
             AC_HELP_STRING([--with-q-platform],[Build version for given platform (qnative)]),
 	    [case $with_q_platform in
 	       qnative) ;;
-               vpe) with_q_platform=vpe;;
+               vpp) with_q_platform=vpp;;
 	       *) with_q_platform=qnative;;
 	     esac])
 

@@ -236,7 +236,7 @@ int main (int argc, char ** argv)
     vat_api_hookup(vam);
     vat_plugin_api_reference();
 
-    if (connect_to_vpe("vpe_api_test") < 0) {
+    if (connect_to_vpe("vpp_api_test") < 0) {
         svm_region_exit();
         fformat (stderr, "Couldn't connect to vpe, exiting...\n");
         exit (1);

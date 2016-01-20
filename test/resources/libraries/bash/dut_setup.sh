@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo vpe process
-ps aux | grep vpe
+echo vpp process
+ps aux | grep vpp
 
 echo Free memory
 free -m

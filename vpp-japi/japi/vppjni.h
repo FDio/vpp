@@ -140,7 +140,7 @@ typedef struct {
   volatile u32 lock;
   u32 tag;
 
-  /* To recycle pseudo-synchronous message code from vpe_api_test... */
+  /* To recycle pseudo-synchronous message code from vpp_api_test... */
   volatile u32 result_ready;
   volatile i32 retval;
   volatile u8 *shmem_result;

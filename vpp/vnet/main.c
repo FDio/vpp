@@ -145,7 +145,7 @@ int main (int argc, char * argv[])
 
     /*
      * Load startup config from file.
-     * usage: vpe -c /etc/vpp/startup.conf
+     * usage: vpp -c /etc/vpp/startup.conf
      */
     if ((argc == 3) && !strncmp(argv[1], "-c", 2))
       {

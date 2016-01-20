@@ -14,10 +14,10 @@ Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils
 
 %description
-This package provides VPP executables: vpe, vpe_api_test, vpe_json_test
-vpe - the vector packet engine
-vpe_api_test - vector packet engine API test tool
-vpe_json_test - vector packet engine JSON test tool
+This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
+vpp - the vector packet engine
+vpp_api_test - vector packet engine API test tool
+vpp_json_test - vector packet engine JSON test tool
 
 %package lib
 Summary: VPP libraries
@@ -111,7 +111,7 @@ sysctl --system
 %files
 %defattr(-,bin,bin)
 %{_unitdir}/vpp.service
-/usr/bin/vpe*
+/usr/bin/vpp*
 /usr/bin/svm*
 %config /etc/sysctl.d/80-vpp.conf
 %config /etc/vpp/startup.conf

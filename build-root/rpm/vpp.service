@@ -3,7 +3,7 @@ Description=Vector Packet Processing Process
 After=syslog.target network.target auditd.service
 
 [Service]
-ExecStart=/bin/sh -c '/usr/bin/vpe $(cat /etc/vpp/startup.conf | sed -e "s/#.*//")'
+ExecStart=/usr/bin/vpp -c /etc/vpp/startup.conf
 Type=simple
 Restart=on-failure
 RestartSec=5s

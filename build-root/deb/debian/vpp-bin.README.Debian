@@ -1,6 +1,6 @@
 To run vpp with the debug shell:
 
-sudo vpe unix interactive
+sudo vpp unix interactive
 
 which will result in a prompt that looks like:
 

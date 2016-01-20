@@ -51,7 +51,7 @@ ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
  *  configure the node id
  *  trace list application data support
  *  cons up analysis / steering plug-in(s)
- *  add configuration binary APIs, vpe_api_test_support, yang models and
+ *  add configuration binary APIs, vpp_api_test_support, yang models and
  *  orca code
  *  perf tune: dual loop, replace memcpy w/ N x 8-byte load/stores
  *  
