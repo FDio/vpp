@@ -1025,7 +1025,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_EARLY_CONFIG_FUNCTION (cpu_config, "cpu");
 
-#if !defined (__x86_64__)
+#if !defined (__x86_64__) && !defined (__aarch64__) && !defined (__powerpc64__)
 void __sync_fetch_and_add_8 (void)
 {
   fformat(stderr, "%s called\n", __FUNCTION__);
@@ -1128,6 +1128,7 @@ show_threads_fn (vlib_main_t * vm,
                    "ID", "Name", "Type", "LWP",
                    "lcore", "Core", "Socket", "State");
 
+#if !defined(__powerpc64__)
   for (i = 0; i < vec_len(vlib_worker_threads); i++)
     {
       w = vlib_worker_threads + i;
@@ -1166,6 +1167,7 @@ show_threads_fn (vlib_main_t * vm,
       vlib_cli_output(vm, "%v", line);
       vec_free(line);
     }
+#endif
 
   return 0;
 }

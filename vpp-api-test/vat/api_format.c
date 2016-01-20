@@ -34,7 +34,11 @@
 #include <vnet/l2/l2_classify.h> 
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/classify/input_acl.h>
+#if DPDK > 0
 #include <vnet/ipsec/ipsec.h>
+#else
+#include <inttypes.h>
+#endif
 #include <vnet/map/map.h>
 
 #include "vat/json_format.h"
@@ -228,6 +232,7 @@ uword unformat_ip6_address (unformat_input_t * input, va_list * args)
 uword
 unformat_ipsec_policy_action (unformat_input_t * input, va_list * args)
 {
+#if DPDK > 0
   u32 * r = va_arg (*args, u32 *);
 
   if (0) ;
@@ -237,11 +242,15 @@ unformat_ipsec_policy_action (unformat_input_t * input, va_list * args)
   else
     return 0;
   return 1;
+#else
+  return 0;
+#endif
 }
 
 uword
 unformat_ipsec_crypto_alg (unformat_input_t * input, va_list * args)
 {
+#if DPDK > 0
   u32 * r = va_arg (*args, u32 *);
 
   if (0) ;
@@ -251,11 +260,15 @@ unformat_ipsec_crypto_alg (unformat_input_t * input, va_list * args)
   else
     return 0;
   return 1;
+#else
+  return 0;
+#endif
 }
 
 u8 *
 format_ipsec_crypto_alg (u8 * s, va_list * args)
 {
+#if DPDK > 0
   u32 i = va_arg (*args, u32);
   u8 * t = 0;
 
@@ -268,11 +281,15 @@ format_ipsec_crypto_alg (u8 * s, va_list * args)
         return format (s, "unknown");
     }
   return format (s, "%s", t);
+#else
+  return format (s, "Unimplemented");
+#endif
 }
 
 uword
 unformat_ipsec_integ_alg (unformat_input_t * input, va_list * args)
 {
+#if DPDK > 0
   u32 * r = va_arg (*args, u32 *);
 
   if (0) ;
@@ -282,11 +299,15 @@ unformat_ipsec_integ_alg (unformat_input_t * input, va_list * args)
   else
     return 0;
   return 1;
+#else
+  return 0;
+#endif
 }
 
 u8 *
 format_ipsec_integ_alg (u8 * s, va_list * args)
 {
+#if DPDK > 0
   u32 i = va_arg (*args, u32);
   u8 * t = 0;
 
@@ -299,6 +320,9 @@ format_ipsec_integ_alg (u8 * s, va_list * args)
         return format (s, "unknown");
     }
   return format (s, "%s", t);
+#else
+  return format (s, "Unsupported");
+#endif
 }
 
 u8 * format_ip4_address (u8 * s, va_list * args)
@@ -7721,6 +7745,7 @@ api_ip_dump (vat_main_t * vam)
 static int
 api_ipsec_spd_add_del (vat_main_t * vam)
 {
+#if DPDK > 0
     unformat_input_t * i = vam->input;
     vl_api_ipsec_spd_add_del_t *mp;
     f64 timeout;
@@ -7750,11 +7775,16 @@ api_ipsec_spd_add_del (vat_main_t * vam)
     S; W;
     /* NOTREACHED */
     return 0;
+#else
+    clib_warning ("unsupported (no dpdk)");
+    return -99;
+#endif
 }
 
 static int
 api_ipsec_interface_add_del_spd (vat_main_t * vam)
 {
+#if DPDK > 0
     unformat_input_t * i = vam->input;
     vl_api_ipsec_interface_add_del_spd_t *mp;
     f64 timeout;
@@ -7798,11 +7828,16 @@ api_ipsec_interface_add_del_spd (vat_main_t * vam)
     S; W;
     /* NOTREACHED */
     return 0;
+#else
+    clib_warning ("unsupported (no dpdk)");
+    return -99;
+#endif
 }
 
 static int
 api_ipsec_spd_add_del_entry (vat_main_t * vam)
 {
+#if DPDK > 0
     unformat_input_t * i = vam->input;
     vl_api_ipsec_spd_add_del_entry_t *mp;
     f64 timeout;
@@ -7928,11 +7963,16 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
     S; W;
     /* NOTREACHED */
     return 0;
+#else
+    clib_warning ("unsupported (no dpdk)");
+    return -99;
+#endif
 }
 
 static int
 api_ipsec_sad_add_del_entry (vat_main_t * vam)
 {
+#if DPDK > 0
     unformat_input_t * i = vam->input;
     vl_api_ipsec_sad_add_del_entry_t *mp;
     f64 timeout;
@@ -8035,11 +8075,16 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
     S; W;
     /* NOTREACHED */
     return 0;
+#else
+    clib_warning ("unsupported (no dpdk)");
+    return -99;
+#endif
 }
 
 static int
 api_ipsec_sa_set_key (vat_main_t * vam)
 {
+#if DPDK > 0
     unformat_input_t * i = vam->input;
     vl_api_ipsec_sa_set_key_t *mp;
     f64 timeout;
@@ -8077,6 +8122,10 @@ api_ipsec_sa_set_key (vat_main_t * vam)
     S; W;
     /* NOTREACHED */
     return 0;
+#else
+    clib_warning ("unsupported (no dpdk)");
+    return -99;
+#endif
 }
 
 /*

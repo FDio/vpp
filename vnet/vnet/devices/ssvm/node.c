@@ -94,6 +94,7 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
   u32 trace_cnt __attribute__((unused)) = vlib_get_trace_count (vm, node);
   volatile u32 * lock;
   u32 * elt_indices;
+  uword n_trace = vlib_get_trace_count (vm, node);
 
   /* Either side down? buh-bye... */
   if ((u64)(sh->opaque [MASTER_ADMIN_STATE_INDEX]) == 0 ||
@@ -236,7 +237,19 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
            */
           VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b0);
 
-          /* $$$$ tracing */
+          if (PREDICT_FALSE(n_trace > 0))
+          {
+              ssvm_eth_input_trace_t *tr;
+              
+              vlib_trace_buffer (vm, node, next0,
+                                 b0, /* follow_chain */ 1);
+              vlib_set_trace_count (vm, node, --n_trace);
+
+              tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+
+              tr->next_index = next0;
+              tr->sw_if_index = intfc->vlib_hw_if_index;
+          }
 
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
                                            to_next, n_left_to_next,

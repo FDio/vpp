@@ -171,6 +171,7 @@ typedef struct vlib_main_t {
   /* control-plane API queue signal pending */
   volatile u32 queue_signal_pending;
   void (*queue_signal_callback)(struct vlib_main_t *);
+  u8 **argv;
 } vlib_main_t;
 
 /* Global main structure. */

@@ -38,6 +38,7 @@ static inline int clib_bihash_is_free_24_8 (clib_bihash_kv_24_8_t *v)
   return 0;
 }
 
+#if !defined(__powerpc64__) && !defined(__aarch64__)
 static inline u32
 crc_u32(u32 data, u32 value)
 {
@@ -70,7 +71,7 @@ static inline u64 clib_bihash_hash_24_8  (clib_bihash_kv_24_8_t *v)
   return value;
 }
 
-#if 0
+#else
 static inline u64 clib_bihash_hash_24_8  (clib_bihash_kv_24_8_t *v)
 {
   u64 tmp = v->key[0] ^ v->key[1] ^ v->key[2];

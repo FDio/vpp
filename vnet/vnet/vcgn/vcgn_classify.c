@@ -397,7 +397,9 @@ clib_error_t *vcgn_classify_init (vlib_main_t *vm)
   mp->inside_sw_if_index = 1;
   mp->outside_sw_if_index = 0;
 
+#if DPDK==1
   dpdk_set_next_node (DPDK_RX_NEXT_IP4_INPUT, "vcgn-classify");
+#endif
 
   {
     pg_node_t * pn;
