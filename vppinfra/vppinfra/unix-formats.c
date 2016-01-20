@@ -884,9 +884,11 @@ u8 * format_signal (u8 * s, va_list * args)
 
 u8 * format_ucontext_pc (u8 * s, va_list * args)
 {
-  ucontext_t * uc = va_arg (*args, ucontext_t *);
+  ucontext_t * uc __attribute__((unused));
   unsigned long * regs = 0;
   uword reg_no = 0;
+
+  uc = va_arg (*args, ucontext_t *);
 
 #if defined (powerpc)
   regs = &uc->uc_mcontext.uc_regs->gregs[0];

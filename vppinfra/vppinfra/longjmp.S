@@ -290,38 +290,42 @@ _prologue (clib_longjmp)
 	
 	blr
 
-_prologue (clib_calljmp)
-	/* Make sure stack is 16 byte aligned. */
-	andi. 0, 5, 0xf
-	sub  5, 5, 0
-	addi 5, 5, -16
-	
-	/* Save old stack/link pointer on new stack. */
-	std 1, 0(5)
+	.globl clib_calljmp
+	.section	".opd","aw"
+	.align 3
+clib_calljmp:
+	.quad	.L.clib_calljmp,.TOC.@tocbase,0
+	.previous
+	.type	clib_calljmp, @function
+.L.clib_calljmp:
 	mflr 0
-	std 0, 8(5)
-	
-	/* Switch stacks. */
-	mr 1, 5
-	
-	/* Get function pointer. */
-	ld 0, 0(3)
-	mtctr 0
-	
-	/* Move argument into place. */
-	mr 3, 4
-	
-	/* Away we go. */
+	mr 9,3
+	std 0,16(1)
+	stdu 1,-112(1)
+#APP
+	std 1,-8(5)
+	addi 5,5,-256
+	mr 1,5
+#NO_APP
+	ld 10,0(9)
+	std 2,40(1)
+	mr 3,4
+	mtctr 10
+	ld 11,16(9)
+	ld 2,8(9)
 	bctrl
-	
-	/* Switch back to old stack. */
-	ld 0, 8(1)
+	ld 2,40(1)
+#APP
+	addi 1,1,256
+	ld 1,-8(1)
+#NO_APP
+	addi 1,1,112
+	ld 0,16(1)
 	mtlr 0
-	ld 0, 0(1)
-	mr 1, 0
-	
-	/* Return to caller. */
 	blr
+	.long 0
+	.byte 0,0,0,1,128,0,0,0
+	.size	clib_calljmp,.-.L.clib_calljmp
 	
 #elif defined(__powerpc__)
 	

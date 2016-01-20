@@ -261,6 +261,11 @@ clib_error_t * unix_physmem_init (vlib_main_t * vm, int physical_memory_required
   else
     error = clib_error_return (0, "uio_dma deprecated");
 
+  vpm->page_mask = pow2_mask (vpm->log2_n_bytes_per_page);
+  vpm->virtual.start = pointer_to_uword (pm->mem);
+  vpm->virtual.size = pm->mem_size;
+  vpm->virtual.end = vpm->virtual.start + vpm->virtual.size;
+
   if (using_fake_memory)
       fformat(stderr, "%s: use fake dma pages\n", __FUNCTION__);
   else

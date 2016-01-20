@@ -17,6 +17,17 @@
 
 #include "map.h"
 
+#ifdef __powerpc64__
+#include <vppinfra/xxhash.h>
+
+static inline u32
+crc_u32(u32 data, u32 value)
+{
+  u64 tmp = ((u64)data<<32) | (u64) value;
+  return (u32) clib_xxhash(tmp);
+}
+#endif
+
 /*
  * This code supports the following MAP modes:
  * 

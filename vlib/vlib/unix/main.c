@@ -397,15 +397,13 @@ VLIB_MAIN_LOOP_EXIT_FUNCTION (unix_exit);
 
 u8 **vlib_thread_stacks;
 
-static char **argv_global;
-  
 static uword thread0 (uword arg)
 {
   vlib_main_t * vm = (vlib_main_t *)arg;
   unformat_input_t input;
   int i;
   
-  unformat_init_command_line (&input, argv_global);
+  unformat_init_command_line (&input, vm->argv);
   i = vlib_main (vm, &input);
   unformat_free (&input);
   
@@ -423,7 +421,7 @@ int vlib_unix_main (int argc, char * argv[])
   clib_error_t * e;
   int i;
 
-  argv_global = argv;
+  vm->argv = (u8 **)argv;
   vm->name = argv[0];
   vm->heap_base = clib_mem_get_heap ();
   ASSERT(vm->heap_base);
@@ -432,7 +430,7 @@ int vlib_unix_main (int argc, char * argv[])
   if (i)
     return i;
   
-  unformat_init_command_line (&input, argv_global);
+  unformat_init_command_line (&input, vm->argv);
   vm->init_functions_called = hash_create (0, /* value bytes */ 0);
   e = vlib_call_all_config_functions (vm, &input, 1 /* early */);
   if (e != 0)
@@ -459,7 +457,7 @@ int vlib_unix_main (int argc, char * argv[])
        * Disallow writes to the bottom page of the stack, to
        * catch stack overflows.
        */
-      if (mprotect (thread_stacks, 4096, PROT_READ) < 0)
+      if (mprotect (thread_stacks, clib_mem_get_page_size(), PROT_READ) < 0)
           clib_unix_warning ("thread stack");
 
       thread_stacks += VLIB_THREAD_STACK_SIZE;

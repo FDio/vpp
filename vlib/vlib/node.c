@@ -262,7 +262,7 @@ static void node_elog_init (vlib_main_t * vm, uword ni)
 }
 
 #ifdef CLIB_UNIX
-#define STACK_ALIGN 4096
+#define STACK_ALIGN (clib_mem_get_page_size())
 #else
 #define STACK_ALIGN CLIB_CACHE_LINE_BYTES
 #endif
@@ -272,6 +272,7 @@ static void register_node (vlib_main_t * vm,
 {
   vlib_node_main_t * nm = &vm->node_main;
   vlib_node_t * n;
+  u32 page_size = clib_mem_get_page_size();
   int i;
 
   if (CLIB_DEBUG > 0)
@@ -363,9 +364,26 @@ static void register_node (vlib_main_t * vm,
 
 	log2_n_stack_bytes = clib_max (r->process_log2_n_stack_bytes, 15);
 
-	p = clib_mem_alloc_aligned_no_fail 
+#ifdef CLIB_UNIX
+        /* 
+         * Bump the stack size if running over a kernel with a large page size,
+         * and the stack isn't any too big to begin with. Otherwise, we'll
+         * trip over the stack guard page for sure.
+         */
+        if ((page_size > (4<<10)) && log2_n_stack_bytes < 19)
+          {
+            if ((1<<log2_n_stack_bytes) <= page_size)
+              log2_n_stack_bytes = min_log2 (page_size) + 1;
+            else
+              log2_n_stack_bytes++;
+          }
+#endif
+
+	p = clib_mem_alloc_aligned_at_offset 
             (sizeof (p[0]) + (1 << log2_n_stack_bytes),
-             STACK_ALIGN);
+             STACK_ALIGN, STRUCT_OFFSET_OF (vlib_process_t, stack));
+        if (p == 0)
+            clib_panic ("failed to allocate process stack (%d bytes)", 1<<log2_n_stack_bytes);
 
 	memset (p, 0, sizeof (p[0]));
 	p->log2_n_stack_bytes = log2_n_stack_bytes;
@@ -388,7 +406,7 @@ static void register_node (vlib_main_t * vm,
          * Disallow writes to the bottom page of the stack, to
          * catch stack overflows.
          */
-        if (mprotect (p->stack, 4096, PROT_READ) < 0)
+        if (mprotect (p->stack, page_size, PROT_READ) < 0)
             clib_unix_warning ("process stack");
 #endif
 

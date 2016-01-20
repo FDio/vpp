@@ -17,6 +17,7 @@
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
 
+#if DPDK==1
 #include <vnet/lawful-intercept/lawful_intercept.h>
 
 #include <vppinfra/error.h>
@@ -270,3 +271,38 @@ VLIB_REGISTER_NODE (li_hit_node) = {
         [LI_HIT_NEXT_ETHERNET] = "ethernet-input-not-l2",
   },
 };
+
+#else
+#include <vlib/vlib.h>
+
+static uword
+li_hit_node_fn (vlib_main_t * vm,
+		  vlib_node_runtime_t * node,
+		  vlib_frame_t * frame)
+{
+  clib_warning ("LI not implemented (no DPDK)");
+  return 0;
+}
+
+VLIB_REGISTER_NODE (li_hit_node) = {
+  .vector_size = sizeof (u32),
+  .function = li_hit_node_fn,
+  .name = "li-hit",
+};
+
+VLIB_REGISTER_NODE (ipsec_output_node) = {
+  .vector_size = sizeof (u32),
+  .function = li_hit_node_fn,
+  .name = "ipsec-output",
+};
+
+static clib_error_t *
+li_init (vlib_main_t * vm)
+{
+  return 0;
+}
+
+VLIB_INIT_FUNCTION(li_init);
+
+
+#endif /* DPDK */
