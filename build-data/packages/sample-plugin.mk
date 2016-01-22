@@ -9,7 +9,7 @@ sample-plugin_configure_depend =		\
 	vpp-api-test-install
 
 # 
-sample-plugin_configure_args = --with-q-platform=$(PLATFORM) --with-dpdk
+sample-plugin_configure_args = --with-dpdk
 
 sample-plugin_CPPFLAGS = $(call installed_includes_fn,	\
 	vppinfra					\

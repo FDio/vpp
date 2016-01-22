@@ -541,6 +541,7 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
   u32 n_trace, trace_cnt __attribute__((unused));
   vlib_buffer_free_list_t * fl;
   u8 efd_discard_burst = 0;
+  u16 ip_align_offset = 0;
 
   if (xd->admin_up == 0)
     return 0;
@@ -558,6 +559,9 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
         }
       return 0;
     }
+
+  if (xd->pmd == VNET_DPDK_PMD_THUNDERX)
+      ip_align_offset = 6;
 
   vec_reset_length (xd->d_trace_buffers);
   trace_cnt = n_trace = vlib_get_trace_count (vm, node);
@@ -706,6 +710,14 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
 
           b0->current_data = l3_offset0;
           b0->current_length = mb->data_len - l3_offset0;
+
+          if (PREDICT_FALSE (ip_align_offset != 0))
+            {
+              if (next0 == DPDK_RX_NEXT_IP4_INPUT ||
+                  next0 == DPDK_RX_NEXT_IP6_INPUT)
+                b0->current_data += ip_align_offset;
+            }
+             
           b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
           if (VMWARE_LENGTH_BUG_WORKAROUND)

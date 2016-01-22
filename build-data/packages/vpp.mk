@@ -7,8 +7,7 @@ vpp_configure_depend =				\
 	vnet-install				\
 
 # 
-vpp_configure_args = --with-q-platform=$(PLATFORM) \
-       --with-q-plugin-prefix=$(MU_BUILD_ROOT_DIR)/packages-$(PLATFORM)
+vpp_configure_args = 
 
 # Platform dependent configure flags
 vpp_configure_args += $(vpp_configure_args_$(PLATFORM))

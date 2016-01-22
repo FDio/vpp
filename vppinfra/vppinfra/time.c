@@ -78,6 +78,11 @@ static f64 clock_frequency_from_proc_filesystem (void)
   int fd;
   unformat_input_t input;
 
+/* $$$$ aarch64 kernel doesn't report "cpu MHz" */
+#if defined(__aarch64__)
+  return 0.0;
+#endif
+  
   cpu_freq = 0;
   fd = open ("/proc/cpuinfo", 0);
   if (fd < 0)

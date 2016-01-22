@@ -52,7 +52,9 @@
 #include <vnet/mpls-gre/mpls.h>
 #include <vnet/dhcp/proxy.h>
 #include <vnet/dhcp/client.h>
+#if IPV6SR > 0
 #include <vnet/sr/sr.h>
+#endif
 #include <vnet/dhcpv6/proxy.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -73,7 +75,9 @@
 #include <vnet/l2/l2_fib.h>
 
 #if DPDK > 0
+#if IPSEC > 0
 #include <vnet/ipsec/ipsec.h>
+#endif /* IPSEC */
 #include <vnet/devices/virtio/vhost-user.h>
 #endif
 
@@ -3276,6 +3280,9 @@ static void vl_api_set_arp_neighbor_limit_t_handler (vl_api_set_arp_neighbor_lim
 static void vl_api_sr_tunnel_add_del_t_handler
 (vl_api_sr_tunnel_add_del_t *mp)
 {
+#if IPV6SR == 0
+    clib_warning ("unimplemented");
+#else
     ip6_sr_add_del_tunnel_args_t _a, *a=&_a;
     int rv = 0;
     vl_api_sr_tunnel_add_del_reply_t * rmp;
@@ -3319,6 +3326,7 @@ static void vl_api_sr_tunnel_add_del_t_handler
 out:
 
     REPLY_MACRO(VL_API_SR_TUNNEL_ADD_DEL_REPLY);
+#endif
 }
 
 #define foreach_classify_add_del_table_field    \
@@ -4509,6 +4517,10 @@ static void vl_api_input_acl_set_interface_t_handler
 static void vl_api_ipsec_spd_add_del_t_handler
 (vl_api_ipsec_spd_add_del_t * mp)
 {
+#if IPSEC == 0
+    clib_warning ("unimplemented");
+#else
+
     vlib_main_t *vm __attribute__((unused)) = vlib_get_main();
     vl_api_ipsec_spd_add_del_reply_t * rmp;
     int rv;
@@ -4520,6 +4532,7 @@ static void vl_api_ipsec_spd_add_del_t_handler
 #endif
 
     REPLY_MACRO(VL_API_IPSEC_SPD_ADD_DEL_REPLY);
+#endif
 }
 
 static void vl_api_ipsec_interface_add_del_spd_t_handler
@@ -4536,7 +4549,7 @@ static void vl_api_ipsec_interface_add_del_spd_t_handler
 
     VALIDATE_SW_IF_INDEX(mp);
 
-#if DPDK > 0 
+#if IPSEC > 0 
     rv = ipsec_set_interface_spd(vm, sw_if_index, spd_id, mp->is_add);
 #else
     rv = VNET_API_ERROR_UNIMPLEMENTED;
@@ -4554,7 +4567,7 @@ static void vl_api_ipsec_spd_add_del_entry_t_handler
     vl_api_ipsec_spd_add_del_entry_reply_t * rmp;
     int rv;
 
-#if DPDK > 0
+#if IPSEC > 0 
     ipsec_policy_t p;
 
     p.id = ntohl(mp->spd_id);
@@ -4604,7 +4617,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
     vlib_main_t *vm __attribute__((unused)) = vlib_get_main();
     vl_api_ipsec_sad_add_del_entry_reply_t * rmp;
     int rv;
-#if DPDK > 0
+#if IPSEC > 0
     ipsec_sa_t sa;
 
     sa.id = ntohl(mp->sad_id);
@@ -4830,7 +4843,7 @@ static void vl_api_ipsec_sa_set_key_t_handler
     vlib_main_t *vm __attribute__((unused)) = vlib_get_main();
     vl_api_ipsec_sa_set_key_reply_t *rmp;
     int rv;
-#if DPDK > 0
+#if IPSEC > 0
     ipsec_sa_t sa;
     sa.id = ntohl(mp->sa_id);
     sa.crypto_key_len = mp->crypto_key_length;

@@ -91,6 +91,8 @@
 /* setjmp/longjmp not supported for the moment. */
 #define CLIB_ARCH_LONGJMP_REGS 0
 
+#elif defined(__aarch64__)
+#define CLIB_ARCH_LONGJMP_REGS (22)
 #else
 #error "unknown machine"
 #endif

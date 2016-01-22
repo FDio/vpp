@@ -172,7 +172,12 @@ native_libdir = $($(NATIVE_ARCH)_libdir)
 arch_lib_dir = lib$($(BASIC_ARCH)_libdir)
 
 # OS to configure for.  configure --host will be set to $(ARCH)-$(OS)
-OS = mu-linux
+# Allow per-platform overrides
+
+OS = $(strip $($(PLATFORM)_os))
+ifeq ($(OS),)
+  OS = mu-linux
+endif
 
 spu_target = spu
 native_target =
@@ -506,9 +511,13 @@ DYNAMIC_LINKER=${shell cd $(TOOL_INSTALL_LIB_DIR); echo ld*.so.*}
 lots_of_slashes_to_pad_names = "/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////"
 
 # When PLATFORM != native we *always* use our own versions of GLIBC and dynamic linker
-CROSS_LDFLAGS =											\
-  -Wl,--dynamic-linker=$(lots_of_slashes_to_pad_names)$(TOOL_INSTALL_LIB_DIR)/$(DYNAMIC_LINKER)	\
-  -Wl,-rpath -Wl,$(lots_of_slashes_to_pad_names)$(TOOL_INSTALL_LIB_DIR)
+# Allow per-platform overrides
+CROSS_LDFLAGS = $(strip $($(PLATFORM)_cross_ldflags))
+ifeq ($(CROSS_LDFLAGS),)
+  CROSS_LDFLAGS =											\
+    -Wl,--dynamic-linker=$(lots_of_slashes_to_pad_names)$(TOOL_INSTALL_LIB_DIR)/$(DYNAMIC_LINKER)	\
+    -Wl,-rpath -Wl,$(lots_of_slashes_to_pad_names)$(TOOL_INSTALL_LIB_DIR)
+endif
 
 cross_ldflags = $(if $(is_native)$(is_build_tool),,$(CROSS_LDFLAGS) )
 

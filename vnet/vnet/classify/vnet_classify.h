@@ -294,7 +294,9 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
   u32x4 result __attribute__((aligned(sizeof(u32x4))));
   vnet_classify_bucket_t * b;
   u32 value_index;
+#ifndef __aarch64__
   u32 result_mask;
+#endif
   u32 bucket_index;
   int i;
 
@@ -357,6 +359,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
           abort();
         }
 
+#ifndef __aarch64__
       result_mask = u32x4_zero_byte_mask (result);
       if (result_mask == 0xffff)
         {
@@ -367,6 +370,24 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
             }
           return (v);
         }
+#else
+      { 
+        typedef union {u32x4 as_u32x4; u64 as_u64[2];} u64u_t;
+        u64u_t u;
+        u.as_u32x4 = result;
+
+        if (u.as_u64[0] == 0 && u.as_u64[1] == 0)
+          {
+            if (PREDICT_TRUE(now))
+              {
+                v->hits++;
+                v->last_heard = now;
+              }
+            return (v);
+          }
+      }
+#endif
+      
       v = vnet_classify_entry_at_index (t, v, 1);
     }
   return 0;

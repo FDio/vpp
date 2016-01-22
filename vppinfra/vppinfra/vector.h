@@ -61,6 +61,10 @@
 
 #define _vector_size(n) __attribute__ ((vector_size (n)))
 
+#if defined (__aarch64__)
+typedef unsigned int u32x4 _vector_size (16);
+#endif
+
 #ifdef CLIB_HAVE_VEC64
 /* Signed 64 bit. */
 typedef char i8x8 _vector_size (8);

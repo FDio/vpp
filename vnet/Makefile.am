@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @DPDK@ @VIRL@
+AM_CFLAGS = -Wall @DPDK@ @VIRL@ @IPSEC@ @VCGN@ @IPV6SR@
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -278,7 +278,7 @@ nobase_include_HEADERS +=			\
 ########################################
 # Layer 3 protocol: IPSec
 ########################################
-if WITH_DPDK
+if WITH_IPSEC
 libvnet_la_SOURCES +=       			\
  vnet/ipsec/ipsec.c				\
  vnet/ipsec/ipsec_cli.c  			\
@@ -295,13 +295,13 @@ libvnet_la_SOURCES +=       			\
  vnet/ipsec/ikev2_cli.c				\
  vnet/ipsec/ikev2_payload.c			\
  vnet/ipsec/ikev2_format.c
+endif 
 
 nobase_include_HEADERS +=     		        \
  vnet/ipsec/ipsec.h                             \
  vnet/ipsec/esp.h				\
  vnet/ipsec/ikev2.h                             \
  vnet/ipsec/ikev2_priv.h
-endif 
 
 ########################################
 # Layer 3 protocol: osi
@@ -441,8 +441,11 @@ nobase_include_HEADERS +=			\
 ########################################
 # ipv6 segment routing
 ########################################
+
+if WITH_IPV6SR
 libvnet_la_SOURCES +=				\
  vnet/sr/sr.c
+endif
  
 nobase_include_HEADERS +=			\
  vnet/sr/sr_packet.h				\
@@ -452,6 +455,8 @@ nobase_include_HEADERS +=			\
 ########################################
 # CGN
 #########################################
+
+if WITH_VCGN
 libvnet_la_SOURCES +=						\
  vnet/vcgn/cnat_bulk_port.c					\
  vnet/vcgn/cnat_config.c					\
@@ -480,6 +485,7 @@ libvnet_la_SOURCES +=						\
  vnet/vcgn/index_list.c						\
  vnet/vcgn/spp_platform_trace_log.c				\
  vnet/vcgn/vcgn_classify.c
+endif
 
 ########################################
 # DHCPv6 proxy

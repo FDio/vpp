@@ -42,7 +42,6 @@
 #include <vppinfra/error.h>
 
 #include <vnet/vnet.h>
-#include <vnet/sr/sr.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>

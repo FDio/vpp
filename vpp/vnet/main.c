@@ -52,8 +52,6 @@ vpe_main_init (vlib_main_t * vm)
 	return error;
     if ((error = vlib_call_init_function (vm, ethernet_arp_init)))
 	return error;
-    if ((error = vlib_call_init_function (vm, sr_init)))
-	return error;
     if ((error = vlib_call_init_function (vm, map_init)))
 	return error;
     if ((error = vlib_call_init_function (vm, sixrd_init)))
@@ -72,8 +70,10 @@ vpe_main_init (vlib_main_t * vm)
         return error;
     if ((error = vlib_call_init_function (vm, vhost_user_init)))
 	return error;
+#if IPSEC > 0
     if ((error = vlib_call_init_function (vm, ipsec_init)))
         return error;
+#endif /* IPSEC */
 #endif    
     if ((error = vlib_call_init_function (vm, vlibmemory_init)))
 	return error;
@@ -102,16 +102,20 @@ vpe_main_init (vlib_main_t * vm)
         return error;
     if ((error = vlib_call_init_function (vm, tuntap_init)))
 	return error;
+#if IPV6SR > 0
     if ((error = vlib_call_init_function (vm, sr_init)))
         return error;
+#endif
     if ((error = vlib_call_init_function (vm, l2_classify_init)))
         return error;
     if ((error = vlib_call_init_function (vm, policer_init)))
         return error;
     if ((error = vlib_call_init_function (vm, vxlan_init)))
         return error;
+#if VCGN > 0
     if ((error = vlib_call_init_function (vm, vcgn_init)))
         return error;
+#endif
     if ((error = vlib_call_init_function (vm, li_init)))
         return error;
 
@@ -338,6 +342,39 @@ u32 vlib_app_num_thread_stacks_needed (void)
 {
   return 1;
 }
+
+/* 
+ * Depending on the configuration selected above,
+ * it may be necessary to generate stub graph nodes.
+ * It is never OK to ignore "node 'x' refers to unknown node 'y'
+ * messages!
+ */
+
+#if IPV6SR == 0
+#define foreach_ipv6_sr_stub_node \
+_(ipsec-output, ipsec_output)
+#else
+#define foreach_ipv6_sr_stub_node
+#endif
+
+#define _(n,m)                                          \
+static uword                                            \
+m##_node_fn (vlib_main_t *vm,                           \
+           vlib_node_runtime_t *node,                   \
+           vlib_frame_t *frame)                         \
+{                                                       \
+  clib_warning("unimplemented, leaking buffers...");    \
+  return 0;                                             \
+}                                                       \
+                                                        \
+VLIB_REGISTER_NODE(m##_node) = {                        \
+  .function = m##_node_fn,                              \
+  .name = #n,                                           \
+  .vector_size = sizeof(u32),                           \
+  .type = VLIB_NODE_TYPE_INTERNAL,                      \
+};
+foreach_ipv6_sr_stub_node;
+#undef _
 
 #if CLIB_DEBUG > 0
 

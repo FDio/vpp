@@ -9,8 +9,7 @@ vpp-api-test-no-dpdk_configure_depend =		\
 	vpp-no-dpdk-install
 
 # 
-vpp-api-test-no-dpdk_configure_args = --with-q-platform=$(PLATFORM) \
-       --with-q-plugin-prefix=$(MU_BUILD_ROOT_DIR)/packages-$(PLATFORM)
+vpp-api-test-no-dpdk_configure_args = 
 
 vpp-api-test-no-dpdk_CPPFLAGS = $(call installed_includes_fn,	\
 	vppinfra						\

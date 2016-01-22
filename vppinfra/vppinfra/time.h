@@ -143,8 +143,18 @@ always_inline u64 clib_cpu_time_now (void)
   return ((u64)h << 32) | l;
 }
 
-#else
+#elif defined (__aarch64__)
+always_inline u64 clib_cpu_time_now (void)
+{
+  u64 tsc;
 
+  /* Works on Cavium ThunderX. Other platforms: YMMV */
+  asm volatile("mrs %0, cntvct_el0" : "=r" (tsc));
+
+  return tsc;
+}
+
+#else
 #error "don't know how to read CPU time stamp"
 
 #endif

@@ -341,6 +341,7 @@ dpdk_lib_init (dpdk_main_t * dm)
           /* 10G adapters */
           case VNET_DPDK_PMD_IXGBE:
           case VNET_DPDK_PMD_IXGBEVF:
+          case VNET_DPDK_PMD_THUNDERX:
             xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
             xd->nb_rx_desc = DPDK_NB_RX_DESC_10GE;
             xd->nb_tx_desc = DPDK_NB_TX_DESC_10GE;
@@ -1684,6 +1685,22 @@ do {                                                  \
   _(pmd_af_packet_drv)
 #endif
 
+#undef _
+
+/* 
+ * At the moment, the ThunderX NIC driver doesn't have
+ * an entry point named "devinitfn_rte_xxx_driver"
+ */
+#define _(d)                                          \
+do {                                                  \
+  void d(void);			                      \
+  __attribute__((unused)) void (* volatile pf)(void); \
+  pf = d;		                              \
+} while(0);
+
+#ifdef RTE_LIBRTE_THUNDERVNIC_PMD
+_(rte_nicvf_pmd_init)
+#endif
 #undef _
 
   dm->vlib_main = vm;

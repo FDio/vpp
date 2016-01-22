@@ -75,6 +75,7 @@ typedef enum {
 } dpdk_device_type_t;
 
 #define foreach_dpdk_pmd          \
+  _ ("rte_nicvf_pmd", THUNDERX)	  \
   _ ("rte_em_pmd", E1000EM)       \
   _ ("rte_igb_pmd", IGB)          \
   _ ("rte_igbvf_pmd", IGBVF)      \

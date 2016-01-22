@@ -51,8 +51,6 @@ _(format_ip6_address_and_length)                \
 _(udp_register_dst_port)                        \
 _(ethernet_register_input_type)                 \
 _(ethernet_set_flags)				\
-_(vnet_register_sr_app_callback)		\
-_(format_ip6_sr_header)                         \
 _(format_ip6_address)                           \
 _(unformat_ip6_address)                         \
 _(ip6_main)					\
@@ -101,9 +99,18 @@ _(efd_config)
 #define foreach_dpdk_plugin_reference
 #endif
 
+#if IPV6SR > 0
+#define foreach_ip6_sr_plugin_reference		\
+_(vnet_register_sr_app_callback)		\
+_(format_ip6_sr_header)
+#else
+#define foreach_ip6_sr_plugin_reference
+#endif 
+
 #define _(a) void a (void);
 foreach_plugin_reference
 foreach_dpdk_plugin_reference
+foreach_ip6_sr_plugin_reference
 #undef _
 
 void *vnet_library_plugin_references[] =
@@ -111,6 +118,7 @@ void *vnet_library_plugin_references[] =
 #define _(a) &a,
     foreach_plugin_reference
     foreach_dpdk_plugin_reference
+    foreach_ip6_sr_plugin_reference
 #undef _
   };
 

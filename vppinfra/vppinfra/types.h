@@ -77,7 +77,7 @@ typedef unsigned long long u64;
 #define log2_uword_bits 6
 #define clib_address_bits _MIPS_SZPTR
 
-#elif defined(alpha) || defined(__x86_64__) || defined (__powerpc64__)
+#elif defined(alpha) || defined(__x86_64__) || defined (__powerpc64__) || defined (__aarch64__)
 typedef int i32;
 typedef long i64;
 

@@ -92,7 +92,7 @@ static uword f3 (uword arg)
 
 static void test_calljmp (unformat_input_t * input)
 {
-  static u8 stack[32*1024];
+  static u8 stack[32*1024] __attribute__((aligned(16)));
   uword v;
 
   v = clib_calljmp (f3, 0, stack + sizeof (stack));

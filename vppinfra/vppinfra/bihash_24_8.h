@@ -50,14 +50,6 @@ crc_u32(u32 data, u32 value)
 
 static inline u64 clib_bihash_hash_24_8  (clib_bihash_kv_24_8_t *v)
 {
-#if 0
-  u64 * dp = (u64 *) &v->key[0];
-  u64 value = 0;
-
-  value __builtin_ia32_crc32di (dp[0], value);
-  value __builtin_ia32_crc32di (dp[1], value);
-  value __builtin_ia32_crc32di (dp[2], value);
-#endif
   u32 * dp = (u32 *) &v->key[0];
   u32 value = 0;
 
@@ -70,8 +62,7 @@ static inline u64 clib_bihash_hash_24_8  (clib_bihash_kv_24_8_t *v)
 
   return value;
 }
-
-#else
+#else 
 static inline u64 clib_bihash_hash_24_8  (clib_bihash_kv_24_8_t *v)
 {
   u64 tmp = v->key[0] ^ v->key[1] ^ v->key[2];

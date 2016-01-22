@@ -40,7 +40,7 @@
 
 #include <vppinfra/clib.h>
 
-#if defined(__x86_64__) || defined(i386)
+#if defined(__x86_64__) || defined(i386) || defined(__aarch64__)
 #define CLIB_ARCH_IS_BIG_ENDIAN (0)
 #define CLIB_ARCH_IS_LITTLE_ENDIAN (1)
 #else

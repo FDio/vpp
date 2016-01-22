@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @Q_PLATFORM_DEFINE@ @Q_PLATFORM_PLUGPATH@ @DPDK@
+AM_CFLAGS = -Wall @DPDK@ @IPSEC@ @VCGN@ @IPV6SR@
 
 noinst_PROGRAMS = 
 BUILT_SOURCES =
@@ -75,9 +75,11 @@ if WITH_DPDK
 vpp_LDADD += -l:libdpdk.a
 endif
 
-# These go last
+vpp_LDADD += -lvppinfra -lm -lpthread -ldl
 
-vpp_LDADD += -lvppinfra -lm -lpthread -lcrypto -ldl
+if WITH_IPV6SR
+  vpp_LDADD += -lcrypto
+endif
 
 SUFFIXES = .api.h .api
 
