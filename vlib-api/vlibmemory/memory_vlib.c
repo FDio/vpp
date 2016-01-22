@@ -1046,9 +1046,10 @@ VLIB_CLI_COMMAND (trace, static) = {
 clib_error_t *
 vlibmemory_init (vlib_main_t * vm)
 {
-    /* Do this early, to avoid glibc malloc fubar */
-    svm_region_init();
-    return 0;
+  api_main_t *am = &api_main;
+  /* Normally NULL, can be set by cmd line "chroot {prefix foo}" */
+  svm_region_init_chroot (am->root_path);
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (vlibmemory_init);
@@ -1058,13 +1059,6 @@ void vl_set_memory_region_name (char *name)
     api_main_t *am = &api_main;
 
     am->region_name = name;
-}
-
-void vl_set_memory_root_path (char *name)
-{
-    api_main_t *am = &api_main;
-
-    am->root_path = name;
 }
 
 static int range_compare (vl_api_msg_range_t * a0, vl_api_msg_range_t * a1)

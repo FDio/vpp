@@ -4979,6 +4979,26 @@ vpe_api_init (vlib_main_t *vm)
 
 VLIB_INIT_FUNCTION(vpe_api_init);
 
+static clib_error_t *
+chroot_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  u8 * chroot_path;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "prefix %s", &chroot_path))
+        {
+          vec_add1 (chroot_path, 0);
+          vl_set_memory_root_path ((char *)chroot_path);
+        }
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+VLIB_EARLY_CONFIG_FUNCTION (chroot_config, "chroot");
+
 void * get_unformat_vnet_sw_interface (void)
 {
     return (void *) &unformat_vnet_sw_interface;

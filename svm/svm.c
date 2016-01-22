@@ -338,8 +338,6 @@ u8 *shm_name_from_svm_map_region_args (svm_map_region_args_t *a)
                 split_point++;
             }
             vec_add1 (mkdir_arg, 0);
-            if (mkdir ((char *) mkdir_arg, 0777) < 0 && errno != EEXIST)
-                clib_unix_warning ("mkdir %s", mkdir_arg);
             
             /* ready to descend another level */
             mkdir_arg[vec_len(mkdir_arg)-1] = '-';

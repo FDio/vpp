@@ -176,6 +176,7 @@ int main (int argc, char ** argv)
     unformat_input_t _argv, *a = &_argv;
     u8 **input_files = 0;
     u8 *output_file = 0;
+    u8 *chroot_prefix;
     u8 *this_input_file;
     u8 interactive = 1;
     u8 json_output = 0;
@@ -213,7 +214,9 @@ int main (int argc, char ** argv)
         else if (unformat (a, "plugin_name_filter %s", 
                            (u8 *)&vat_plugin_name_filter))
             vec_add1 (vat_plugin_name_filter, 0);
-        else {
+        else if (unformat (a, "chroot prefix %s", &chroot_prefix)) {
+            vl_set_memory_root_path ((char *)chroot_prefix);
+        } else {
             fformat (stderr, 
                      "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n");
             exit (1);

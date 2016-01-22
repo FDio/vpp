@@ -35,6 +35,8 @@
 #include <vppinfra/heap.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
+#include <vlibapi/api.h>
+#include <vlibmemory/api.h>
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -104,11 +106,12 @@ static clib_error_t *
 gmon_init (vlib_main_t *vm)
 {
     gmon_main_t *gm = &gmon_main;
+    api_main_t * am = &api_main;
     pid_t *swp = 0;
     f64 *v = 0;
 
     gm->vlib_main = vm;
-    gm->svmdb_client = svmdb_map();
+    gm->svmdb_client = svmdb_map_chroot(am->root_path);
 
     /* Find or create, set to zero */
     vec_add1 (v, 0.0);

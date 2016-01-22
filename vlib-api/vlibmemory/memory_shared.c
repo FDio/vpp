@@ -192,6 +192,13 @@ static void vl_msg_api_free_nolock (void *a)
     svm_pop_heap (oldheap);
 }
 
+void vl_set_memory_root_path (char *name)
+{
+    api_main_t *am = &api_main;
+
+    am->root_path = name;
+}
+
 int vl_map_shmem (char *region_name, int is_vlib)
 {
     svm_map_region_args_t *a = 0;
@@ -203,7 +210,7 @@ int vl_map_shmem (char *region_name, int is_vlib)
     struct timespec ts, tsrem;
 
     if (is_vlib == 0)
-        svm_region_init();
+        svm_region_init_chroot(am->root_path);
 
     vec_validate (a, 0);
 
