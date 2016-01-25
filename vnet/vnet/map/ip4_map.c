@@ -100,7 +100,7 @@ ip4_map_port_and_security_check (map_domain_t *d, ip4_header_t *ip, u32 *next, u
   u16 port = 0;
 
   if (d->psid_length > 0) {
-    if (!ip4_is_fragment(ip)) {
+    if (ip4_get_fragment_offset(ip) == 0) {
       if (PREDICT_FALSE((ip->ip_version_and_header_length != 0x45) || clib_host_to_net_u16(ip->length) < 28)) {
 	return 0;
       }
@@ -110,6 +110,7 @@ ip4_map_port_and_security_check (map_domain_t *d, ip4_header_t *ip, u32 *next, u
 	if ((d->psid_offset > 0) && (clib_net_to_host_u16(port) < (0x1 << (16 - d->psid_offset)))) {
 	  *error = MAP_ERROR_ENCAP_SEC_CHECK;
 	} else {
+	  if (ip4_get_fragment_more(ip)) *next = IP4_MAP_NEXT_REASS;
 	  return (port);
 	}
       } else {
@@ -283,8 +284,10 @@ ip4_map (vlib_main_t *vm,
       u64 dal61 = map_get_pfx(d1, da41, dp41);
       u64 dar60 = map_get_sfx(d0, da40, dp40);
       u64 dar61 = map_get_sfx(d1, da41, dp41);
-      if (dal60 == 0 && dar60 == 0) error0 = MAP_ERROR_NO_BINDING;
-      if (dal61 == 0 && dar61 == 0) error1 = MAP_ERROR_NO_BINDING;
+      if (dal60 == 0 && dar60 == 0 && error0 == MAP_ERROR_NONE && next0 != IP4_MAP_NEXT_REASS)
+	error0 = MAP_ERROR_NO_BINDING;
+      if (dal61 == 0 && dar61 == 0 && error1 == MAP_ERROR_NONE && next1 != IP4_MAP_NEXT_REASS)
+	error0 = MAP_ERROR_NO_BINDING;
 
       /* construct ipv6 header */
       vlib_buffer_advance(p0, - sizeof(ip6_header_t));
@@ -394,7 +397,8 @@ ip4_map (vlib_main_t *vm,
       u16 dp40 = clib_net_to_host_u16(port0);
       u64 dal60 = map_get_pfx(d0, da40, dp40);
       u64 dar60 = map_get_sfx(d0, da40, dp40);
-      if (dal60 == 0 && dar60 == 0 && error0 == MAP_ERROR_NONE) error0 = MAP_ERROR_NO_BINDING;
+      if (dal60 == 0 && dar60 == 0 && error0 == MAP_ERROR_NONE && next0 != IP4_MAP_NEXT_REASS)
+	error0 = MAP_ERROR_NO_BINDING;
 
       /* construct ipv6 header */
       vlib_buffer_advance(p0, - (sizeof(ip6_header_t)));
