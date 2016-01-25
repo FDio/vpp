@@ -257,8 +257,6 @@ ip4_map (vlib_main_t *vm,
       p1 = vlib_get_buffer(vm, pi1);
       ip40 = vlib_buffer_get_current(p0);
       ip41 = vlib_buffer_get_current(p1);
-      p0->current_length = clib_net_to_host_u16(ip40->length);
-      p1->current_length = clib_net_to_host_u16(ip41->length);
       d0 = ip4_map_get_domain(vnet_buffer(p0)->ip.adj_index[VLIB_TX], &map_domain_index0);
       d1 = ip4_map_get_domain(vnet_buffer(p1)->ip.adj_index[VLIB_TX], &map_domain_index1);
       ASSERT(d0);
@@ -379,7 +377,6 @@ ip4_map (vlib_main_t *vm,
 
       p0 = vlib_get_buffer(vm, pi0);
       ip40 = vlib_buffer_get_current(p0);
-      p0->current_length = clib_net_to_host_u16(ip40->length);
       d0 = ip4_map_get_domain(vnet_buffer(p0)->ip.adj_index[VLIB_TX], &map_domain_index0);
       ASSERT(d0);
 
