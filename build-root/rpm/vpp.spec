@@ -113,6 +113,7 @@ sysctl --system
 %{_unitdir}/vpp.service
 /usr/bin/vpp*
 /usr/bin/svm*
+/usr/bin/elftool
 %config /etc/sysctl.d/80-vpp.conf
 %config /etc/vpp/startup.conf
 
