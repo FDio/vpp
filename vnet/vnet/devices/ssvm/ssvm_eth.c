@@ -49,6 +49,7 @@ int ssvm_eth_create (ssvm_eth_main_t * em, u8 * name, int is_master)
   intfc->ssvm_size = em->segment_size;
   intfc->i_am_master = 1;
   intfc->name = name;
+  intfc->my_pid = getpid();
   if (is_master == 0)
     {
       rv = ssvm_slave_init (intfc, 20 /* timeout in seconds */);
