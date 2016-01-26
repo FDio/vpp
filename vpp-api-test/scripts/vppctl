@@ -4,7 +4,7 @@ if [ $# -gt 0 ]; then
 else
     echo -n "vpp# "
     while read CMD; do
-	if [ $CMD == "exit" ]; then
+	if [ "$CMD" == "exit" ]; then
 	    exit
 	fi
 	echo exec $CMD | vpp_api_test | sed 's/vat# //g'
