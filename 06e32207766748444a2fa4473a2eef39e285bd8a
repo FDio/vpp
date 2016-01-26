@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_c36b4884",
+        "filename": "dpdk/dpdk-2.1.0_patches/0008-Vhost-multiq.patch",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-01-26T21:32:14Z",
+      "side": 1,
+      "message": "I dont think we need to support this with DPDK2.1 as we already have DPDK2.2 working fine with VPP.",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 4
+      },
+      "revId": "06e32207766748444a2fa4473a2eef39e285bd8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_235d54ea",
+        "filename": "vnet/vnet/devices/dpdk/vhost_user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-01-26T21:32:14Z",
+      "side": 1,
+      "message": "this change should not go into final commit",
+      "range": {
+        "startLine": 34,
+        "startChar": 32,
+        "endLine": 34,
+        "endChar": 33
+      },
+      "revId": "06e32207766748444a2fa4473a2eef39e285bd8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_0372507c",
+        "filename": "vnet/vnet/devices/dpdk/vhost_user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-01-26T21:32:14Z",
+      "side": 1,
+      "message": "Can we use standard vpp way of doing this with foreach_vhost_user message and _() macro?",
+      "range": {
+        "startLine": 62,
+        "startChar": 0,
+        "endLine": 62,
+        "endChar": 2
+      },
+      "revId": "06e32207766748444a2fa4473a2eef39e285bd8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_435858fa",
+        "filename": "vnet/vnet/l2/l2_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 498,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-01-26T21:32:14Z",
+      "side": 1,
+      "message": "This should be separate commit. I\u0027m going to fix that .....",
+      "range": {
+        "startLine": 498,
+        "startChar": 12,
+        "endLine": 498,
+        "endChar": 13
+      },
+      "revId": "06e32207766748444a2fa4473a2eef39e285bd8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
