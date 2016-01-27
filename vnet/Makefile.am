@@ -211,12 +211,6 @@ nobase_include_HEADERS +=			\
 # Layer 3 protocols go here
 ########################################
 
-# vnet/ip/tcp.c					\
-# vnet/ip/tcp_format.c				\
-# vnet/ip/tcp_init.c				\
-# vnet/ip/tcp_pg.c				
-
-
 ########################################
 # Layer 3 protocol: IP v4/v6
 ########################################

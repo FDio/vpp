@@ -2367,7 +2367,6 @@ VLIB_REGISTER_NODE (ip4_local_node,static) = {
   .next_nodes = {
     [IP_LOCAL_NEXT_DROP] = "error-drop",
     [IP_LOCAL_NEXT_PUNT] = "error-punt",
-    // [IP_LOCAL_NEXT_TCP_LOOKUP] = "ip4-tcp-lookup",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip4-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",
   },

@@ -60,13 +60,11 @@
   /* Errors signalled by ip6-local. */                                  \
   _ (UNKNOWN_PROTOCOL, "unknown ip protocol")                           \
   _ (UDP_CHECKSUM, "bad udp checksum")                                  \
-  _ (TCP_CHECKSUM, "bad tcp checksum")                                  \
   _ (ICMP_CHECKSUM, "bad icmp checksum")                                \
   _ (UDP_LENGTH, "inconsistent udp/ip lengths")                         \
                                                                         \
-  /* Errors signalled by {tcp6,udp6}-lookup. */                         \
+  /* Errors signalled by udp6-lookup. */				\
   _ (UNKNOWN_UDP_PORT, "no listener for udp port")                      \
-  _ (UNKNOWN_TCP_PORT, "no listener for tcp port")                      \
                                                                         \
   /* Spoofed packets in ip6-rewrite-local */                            \
   _(SPOOFED_LOCAL_PACKETS, "ip4 spoofed local-address packet drops")    \
