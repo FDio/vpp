@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_86d0ae54",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-01-27T20:52:20Z",
+      "side": 1,
+      "message": "Unfortunately, rte mbuf clones must not be touched once they\u0027ve been created, or all copies will be affected. This change-set will totally break L2 flooding packet replication. I\u0027m afraid it\u0027s a non-starter. If you have a use-case in mind for which an rte_pktmbuf_clone() is sufficient, please add a new API for it...",
+      "revId": "4e375891d82476253939f916e523d6c32b8cd1d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
