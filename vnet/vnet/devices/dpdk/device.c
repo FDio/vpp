@@ -46,70 +46,14 @@ static struct rte_mbuf * dpdk_replicate_packet_mb (vlib_buffer_t * b)
 {
   vlib_main_t * vm = vlib_get_main();
   vlib_buffer_main_t * bm = vm->buffer_main;
-  struct rte_mbuf * first_mb = 0, * new_mb, * pkt_mb, ** prev_mb_next = 0;
-  u8 nb_segs, nb_segs_left;
-  u32 copy_bytes;
+  struct rte_mbuf * new_mb, * pkt_mb;
   unsigned socket_id = rte_socket_id();
 
   ASSERT (bm->pktmbuf_pools[socket_id]);
   pkt_mb = ((struct rte_mbuf *)b)-1;
-  nb_segs = pkt_mb->nb_segs;
-  for (nb_segs_left = nb_segs; nb_segs_left; nb_segs_left--)
-    {
-      if (PREDICT_FALSE(pkt_mb == 0))
-	{
-	  clib_warning ("Missing %d mbuf chain segment(s):   "
-			"(nb_segs = %d, nb_segs_left = %d)!",
-			nb_segs - nb_segs_left, nb_segs, nb_segs_left);
-	  if (first_mb)
-	    rte_pktmbuf_free(first_mb);
-	  return NULL;
-	}
-      new_mb = rte_pktmbuf_alloc (bm->pktmbuf_pools[socket_id]);
-      if (PREDICT_FALSE(new_mb == 0))
-	{
-	  if (first_mb)
-	    rte_pktmbuf_free(first_mb);
-	  return NULL;
-	}
-      
-      /*
-       * Copy packet info into 1st segment.
-       */
-      if (first_mb == 0)
-	{
-	  first_mb = new_mb;
-	  rte_pktmbuf_pkt_len (first_mb) = pkt_mb->pkt_len;
-	  first_mb->nb_segs = pkt_mb->nb_segs;
-	  first_mb->port = pkt_mb->port;
-#ifdef DAW_FIXME // TX Offload support TBD
-	  first_mb->vlan_macip = pkt_mb->vlan_macip;
-	  first_mb->hash = pkt_mb->hash;
-	  first_mb->ol_flags = pkt_mb->ol_flags
-#endif
-	}
-      else
-	{
-	  ASSERT(prev_mb_next != 0);
-	  *prev_mb_next = new_mb;
-	}
-      
-      /*
-       * Copy packet segment data into new mbuf segment.
-       */
-      rte_pktmbuf_data_len (new_mb) = pkt_mb->data_len;
-      copy_bytes = pkt_mb->data_len + RTE_PKTMBUF_HEADROOM;
-      ASSERT(copy_bytes <= pkt_mb->buf_len);
-      memcpy(new_mb->buf_addr, pkt_mb->buf_addr, copy_bytes);
+  new_mb = rte_pktmbuf_clone(pkt_mb, bm->pktmbuf_pools[socket_id]);
 
-      prev_mb_next = &new_mb->next;
-      pkt_mb = pkt_mb->next;
-    }
-
-  ASSERT(pkt_mb == 0);
-  __rte_mbuf_sanity_check(first_mb, 1);
-
-  return first_mb;
+  return new_mb;
 }
 
 typedef struct {
