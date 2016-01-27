@@ -485,17 +485,15 @@ u32 l2output_create_output_node_mapping (
   if (cpu_number)
     {
       u32 oldflags;
-      vlib_node_t  *error_drop_node;
 
-      error_drop_node = vlib_get_node_by_name (vlib_main, (u8 *) "error-drop");
       oldflags = __sync_fetch_and_or(&hw0->flags,
                                      VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED);
 
       if ((oldflags & VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED) )
-      return error_drop_node->index;
+        return L2OUTPUT_NEXT_DROP;
 
       output_node_mapping_send_rpc (node_index, sw_if_index);
-      return error_drop_node->index;
+        return L2OUTPUT_NEXT_DROP;
     }
 #endif
 
