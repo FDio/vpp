@@ -263,7 +263,6 @@ nobase_include_HEADERS +=			\
  vnet/ip/ip_packet.h				\
  vnet/ip/ports.def				\
  vnet/ip/protocols.def				\
- vnet/ip/tcp.h					\
  vnet/ip/tcp_packet.h				\
  vnet/ip/udp.h					\
  vnet/ip/udp_error.def				\

@@ -63,8 +63,6 @@
 #include <vnet/ip/ip6_error.h>
 #include <vnet/ip/icmp6.h>
 
-#include <vnet/ip/tcp.h>
-
 #if DPDK > 0
 #include <vnet/devices/dpdk/dpdk.h>
 #endif
