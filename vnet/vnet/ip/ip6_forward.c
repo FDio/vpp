@@ -1621,7 +1621,6 @@ ip6_local (vlib_main_t * vm,
 	  error1 = len_diff1 < 0 ? IP6_ERROR_UDP_LENGTH : error1;
 
 	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_UDP == IP6_ERROR_UDP_CHECKSUM);
-	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_TCP == IP6_ERROR_TCP_CHECKSUM);
 	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_ICMP == IP6_ERROR_ICMP_CHECKSUM);
 	  error0 = (! good_l4_checksum0
 		    ? IP6_ERROR_UDP_CHECKSUM + type0
@@ -1713,7 +1712,6 @@ ip6_local (vlib_main_t * vm,
 	  error0 = len_diff0 < 0 ? IP6_ERROR_UDP_LENGTH : error0;
 
 	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_UDP == IP6_ERROR_UDP_CHECKSUM);
-	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_TCP == IP6_ERROR_TCP_CHECKSUM);
 	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_ICMP == IP6_ERROR_ICMP_CHECKSUM);
 	  error0 = (! good_l4_checksum0
 		    ? IP6_ERROR_UDP_CHECKSUM + type0
@@ -1754,7 +1752,6 @@ VLIB_REGISTER_NODE (ip6_local_node,static) = {
   .next_nodes = {
     [IP_LOCAL_NEXT_DROP] = "error-drop",
     [IP_LOCAL_NEXT_PUNT] = "error-punt",
-    // [IP_LOCAL_NEXT_TCP_LOOKUP] = "ip6-tcp-lookup",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip6-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip6-icmp-input",
   },

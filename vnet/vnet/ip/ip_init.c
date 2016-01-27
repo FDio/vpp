@@ -124,19 +124,8 @@ do {						\
   if ((error = vlib_call_init_function (vm, ip4_hop_by_hop_init)))
     return error;
 
-#if 0
-  if ((error = vlib_call_init_function (vm, tcp_udp_lookup_init)))
-    return error;
-
-#endif
-
   if ((error = vlib_call_init_function (vm, udp_local_init)))
     return error;
-
-#if 0
-  if ((error = vlib_call_init_function (vm, tcp_init)))
-    return error;
-#endif
 
   if ((error = vlib_call_init_function (vm, udp_init)))
     return error;

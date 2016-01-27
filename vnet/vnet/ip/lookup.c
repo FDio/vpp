@@ -881,12 +881,6 @@ void ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
 	lm->local_next_by_ip_protocol[i] = IP_LOCAL_NEXT_PUNT;
 	lm->builtin_protocol_by_ip_protocol[i] = IP_BUILTIN_PROTOCOL_UNKNOWN;
       }
-#if 0
-    /* Eliot's TCP doesn't actually work */
-    lm->local_next_by_ip_protocol[IP_PROTOCOL_TCP] = IP_LOCAL_NEXT_TCP_LOOKUP;
-    lm->builtin_protocol_by_ip_protocol[IP_PROTOCOL_TCP] = 
-        IP_BUILTIN_PROTOCOL_TCP;
-#endif
 
     lm->local_next_by_ip_protocol[IP_PROTOCOL_UDP] = IP_LOCAL_NEXT_UDP_LOOKUP;
     lm->local_next_by_ip_protocol[is_ip6 ? IP_PROTOCOL_ICMP6 : IP_PROTOCOL_ICMP] = IP_LOCAL_NEXT_ICMP;
