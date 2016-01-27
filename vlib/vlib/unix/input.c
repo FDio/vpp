@@ -195,6 +195,8 @@ linux_epoll_input (vlib_main_t * vm,
               errors[n_errors] = f->error_function (f);
               n_errors += errors[n_errors] != 0;
             }
+	  else
+            close(f->file_descriptor);
 	}
 
       ASSERT (n_errors < ARRAY_LEN (errors));
