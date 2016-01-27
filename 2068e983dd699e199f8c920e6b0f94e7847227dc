@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_e6c09a7e",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-01-27T22:29:13Z",
+      "side": 1,
+      "message": "I get a creepy feeling that (i+1) and/or (i-1) could be out of range in some annoying case or other.",
+      "revId": "2068e983dd699e199f8c920e6b0f94e7847227dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
