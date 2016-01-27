@@ -335,10 +335,10 @@ show_node_runtime (vlib_main_t * vm,
                 vlib_cli_output (vm, "---------------");
 
               if ( w->dpdk_lcore_id > -1)
-                vlib_cli_output (vm, "Thread %d %v (lcore %u)", j, w->name,
+                vlib_cli_output (vm, "Thread %d %s (lcore %u)", j, w->name,
                                  w->dpdk_lcore_id);
               else
-                vlib_cli_output (vm, "Thread %d %v", j,
+                vlib_cli_output (vm, "Thread %d %s", j,
                                  w->name);
             }
 
