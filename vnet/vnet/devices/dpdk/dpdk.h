@@ -88,7 +88,8 @@ typedef enum {
   _ ("rte_enic_pmd", ENIC)        \
   _ ("rte_vmxnet3_pmd", VMXNET3)  \
   _ ("AF_PACKET PMD", AF_PACKET)  \
-  _ ("rte_pmd_fm10k", FM10K)
+  _ ("rte_pmd_fm10k", FM10K)      \
+  _ ("rte_cxgbe_pmd", CXGBE)
 
 typedef enum {
   VNET_DPDK_PMD_NONE,

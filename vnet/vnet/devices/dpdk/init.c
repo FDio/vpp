@@ -317,6 +317,12 @@ dpdk_lib_init (dpdk_main_t * dm)
         xd->rx_q_used = 1;
 
       xd->dev_type = VNET_DPDK_DEV_ETH;
+
+      /* workaround for drivers not setting driver_name */
+      if (!dev_info.driver_name)
+        dev_info.driver_name = dev_info.pci_dev->driver->name;
+      ASSERT(dev_info.driver_name);
+
       if (!xd->pmd) {
 
 
@@ -388,6 +394,20 @@ dpdk_lib_init (dpdk_main_t * dm)
                   VNET_DPDK_PORT_TYPE_ETH_10G : VNET_DPDK_PORT_TYPE_ETH_40G;
                 break;
               default:
+                xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
+            }
+            break;
+
+          case VNET_DPDK_PMD_CXGBE:
+            switch (dev_info.pci_dev->id.device_id) {
+              case 0x5410: /* T580-LP-cr */
+                xd->nb_rx_desc = DPDK_NB_RX_DESC_40GE;
+                xd->nb_tx_desc = DPDK_NB_TX_DESC_40GE;
+                xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
+                break;
+              default:
+                xd->nb_rx_desc = DPDK_NB_RX_DESC_10GE;
+                xd->nb_tx_desc = DPDK_NB_TX_DESC_10GE;
                 xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
             }
             break;
@@ -1683,6 +1703,10 @@ do {                                                  \
 
 #ifdef RTE_LIBRTE_PMD_AF_PACKET
   _(pmd_af_packet_drv)
+#endif
+
+#ifdef RTE_LIBRTE_CXGBE_PMD
+  _(rte_cxgbe_driver)
 #endif
 
 #undef _

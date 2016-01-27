@@ -753,6 +753,7 @@ static u8 * format_dpdk_device_name (u8 * s, va_list * args)
   char *device_name;
   u32 i = va_arg (*args, u32);
   struct rte_eth_dev_info dev_info;
+  u8 * ret;
 
   if (dm->interface_name_format_decimal)
     devname_format = "%s%d/%d/%d";
@@ -799,9 +800,27 @@ static u8 * format_dpdk_device_name (u8 * s, va_list * args)
     }
 
   rte_eth_dev_info_get(i, &dev_info);
-  return format (s, devname_format, device_name, dev_info.pci_dev->addr.bus,
+  ret = format (s, devname_format, device_name, dev_info.pci_dev->addr.bus,
 		 dev_info.pci_dev->addr.devid,
 		 dev_info.pci_dev->addr.function);
+
+  /* address Chelsio cards which share PCI address */
+	if (dm->devices[i].pmd ==  VNET_DPDK_PMD_CXGBE) {
+    struct rte_eth_dev_info di;
+
+    di.pci_dev = 0;
+    rte_eth_dev_info_get(i+1, &di);
+    if (di.pci_dev && memcmp(&dev_info.pci_dev->addr, &di.pci_dev->addr,
+        sizeof(struct rte_pci_addr)) == 0)
+	    return format(ret, "/0");	
+
+    di.pci_dev = 0;
+    rte_eth_dev_info_get(i-1, &di);
+    if (di.pci_dev && memcmp(&dev_info.pci_dev->addr, &di.pci_dev->addr,
+        sizeof(struct rte_pci_addr)) == 0)
+	    return format(ret, "/1");	
+	}
+  return ret;
 }
 
 static u8 * format_dpdk_device_type (u8 * s, va_list * args)
@@ -857,6 +876,10 @@ static u8 * format_dpdk_device_type (u8 * s, va_list * args)
     case VNET_DPDK_PMD_VICE:
     case VNET_DPDK_PMD_ENIC:
 	dev_type = "Cisco VIC";
+	break;
+
+    case VNET_DPDK_PMD_CXGBE:
+	dev_type = "Chelsio T4/T5";
 	break;
 
     case VNET_DPDK_PMD_VMXNET3:
