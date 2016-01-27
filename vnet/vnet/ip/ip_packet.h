@@ -56,10 +56,9 @@ typedef enum {
 #undef ip_port
 } ip_port_t;
 
-/* Classifies protocols into TCP, UDP, ICMP or other. */
+/* Classifies protocols into UDP, ICMP or other. */
 typedef enum {
   IP_BUILTIN_PROTOCOL_UDP,
-  IP_BUILTIN_PROTOCOL_TCP,
   IP_BUILTIN_PROTOCOL_ICMP,
   IP_BUILTIN_PROTOCOL_UNKNOWN,
 } ip_builtin_protocol_t;
