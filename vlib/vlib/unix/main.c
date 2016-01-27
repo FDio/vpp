@@ -403,7 +403,7 @@ static uword thread0 (uword arg)
   unformat_input_t input;
   int i;
   
-  unformat_init_command_line (&input, vm->argv);
+  unformat_init_command_line (&input, (char **)vm->argv);
   i = vlib_main (vm, &input);
   unformat_free (&input);
   
@@ -430,7 +430,7 @@ int vlib_unix_main (int argc, char * argv[])
   if (i)
     return i;
   
-  unformat_init_command_line (&input, vm->argv);
+  unformat_init_command_line (&input, (char **)vm->argv);
   vm->init_functions_called = hash_create (0, /* value bytes */ 0);
   e = vlib_call_all_config_functions (vm, &input, 1 /* early */);
   if (e != 0)

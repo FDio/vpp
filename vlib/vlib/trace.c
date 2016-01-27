@@ -235,7 +235,7 @@ cli_show_trace_buffer (vlib_main_t * vm,
     index++;
   }));
 
-  vlib_cli_output (vm, s);
+  vlib_cli_output (vm, (char *) s);
   vec_free (s);
   return 0;
 }
