@@ -318,10 +318,15 @@ BUILD_DEBUG =
 # Message from build system itself (as opposed to make or shell commands)
 build_msg_fn = echo "@@@@ $(1) @@@@"
 
+# Allow CCACHE_DIR to be overridden, e.g. in .../build-root/build-config.mk
+ifeq ($(CCACHE_DIR),)
+  CCACHE_DIR=$(MU_BUILD_ROOT_DIR)/.ccache
+endif
+
 # Always prefer our own tools to those installed on system.
 # Note: ccache-bin must be before tool bin.
 BUILD_ENV =										\
-    export CCACHE_DIR=$(MU_BUILD_ROOT_DIR)/.ccache ;					\
+    export CCACHE_DIR=$(CCACHE_DIR) ;					\
     export PATH=$(TOOL_INSTALL_DIR)/ccache-bin:$(TOOL_INSTALL_DIR)/bin:$${PATH} ;	\
     export PATH="`echo $${PATH} | sed -e s/[.]://`" ;					\
     $(if $(not_native),export CONFIG_SITE=$(MU_BUILD_ROOT_DIR)/config.site ;,)	\
