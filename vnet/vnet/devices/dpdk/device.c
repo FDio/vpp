@@ -16,6 +16,7 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/format.h>
 #include <vlib/unix/cj.h>
+#include <assert.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/dpdk/dpdk.h>
@@ -261,26 +262,42 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
         } 
       else if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
         {
+          u32 offset;
+          if (PREDICT_TRUE(xd->lockp == NULL)) {
+              dpdk_device_and_queue_t * dq;
+              vec_foreach (dq, dm->devices_by_cpu[vm->cpu_index])
+              {
+                if (xd->device_index == dq->device)
+                    break; 
+              }
+              assert (dq);
+              offset = dq->queue_id * VIRTIO_QNUM;
+          } else {
+              offset = queue_id * VIRTIO_QNUM;
+          }
           if (PREDICT_TRUE(tx_head > tx_tail)) 
             {
               /* no wrap, transmit in one burst */
-              rv = rte_vhost_enqueue_burst(&xd->vu_vhost_dev, VIRTIO_RXQ,
+              rv = rte_vhost_enqueue_burst(&xd->vu_vhost_dev, offset + VIRTIO_RXQ,
                                            &tx_vector[tx_tail],
                                            (uint16_t) (tx_head-tx_tail));
               if (PREDICT_TRUE(rv > 0))
                 {
-                  if (dpdk_vhost_user_want_interrupt(xd, VIRTIO_RXQ)) {
-                    dpdk_vu_vring *vring = &(xd->vu_intf->vrings[VIRTIO_RXQ]);
+                  if (dpdk_vhost_user_want_interrupt(xd, offset + VIRTIO_RXQ)) {
+                    dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
                     vring->n_since_last_int += rv;
 
-                    if (vring->n_since_last_int > dm->vhost_coalesce_frames)
-                      dpdk_vhost_user_send_interrupt(dm->vlib_main, xd, VIRTIO_RXQ);
+                    f64 now = vlib_time_now (dm->vlib_main);
+                    if (vring->int_deadline < now || 
+                        vring->n_since_last_int > dm->vhost_coalesce_frames)
+                      dpdk_vhost_user_send_interrupt(dm->vlib_main, xd, offset + VIRTIO_RXQ);
+                    }
                   }
 
                   int c = rv;
                   while(c--)
                     rte_pktmbuf_free (tx_vector[tx_tail+c]);
-                }
+
             }
           else
             {
@@ -289,18 +306,20 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
                * so we can try to transmit the rest. If we didn't transmit
                * everything, stop now.
                */
-              rv = rte_vhost_enqueue_burst(&xd->vu_vhost_dev, VIRTIO_RXQ,
+              rv = rte_vhost_enqueue_burst(&xd->vu_vhost_dev, offset + VIRTIO_RXQ,
                                            &tx_vector[tx_tail], 
                                            (uint16_t) (DPDK_TX_RING_SIZE - tx_tail));
 
               if (PREDICT_TRUE(rv > 0))
                 {
-                  if (dpdk_vhost_user_want_interrupt(xd, VIRTIO_RXQ)) {
-                    dpdk_vu_vring *vring = &(xd->vu_intf->vrings[VIRTIO_RXQ]);
+                  if (dpdk_vhost_user_want_interrupt(xd, offset + VIRTIO_RXQ)) {
+                    dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
                     vring->n_since_last_int += rv;
 
-                    if (vring->n_since_last_int > dm->vhost_coalesce_frames)
-                      dpdk_vhost_user_send_interrupt(dm->vlib_main, xd, VIRTIO_RXQ);
+                    f64 now = vlib_time_now (dm->vlib_main);
+                    if (vring->int_deadline < now || 
+                        vring->n_since_last_int > dm->vhost_coalesce_frames)
+                      dpdk_vhost_user_send_interrupt(dm->vlib_main, xd, offset + VIRTIO_RXQ);
                   }
 
                   int c = rv;

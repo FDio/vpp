@@ -137,6 +137,7 @@ typedef struct {
   int callfd;
   int kickfd;
   int errfd;
+  int enabled;
   u32 callfd_idx;
   u32 n_since_last_int;
   f64 int_deadline;
@@ -154,7 +155,7 @@ typedef struct {
 
   u64 feature_mask;
   u32 num_vrings;
-  dpdk_vu_vring vrings[2];
+  dpdk_vu_vring vrings[VHOST_MAX_QUEUE_PAIRS * 2];
   u64 region_addr[VHOST_MEMORY_MAX_NREGIONS];
   u32 region_fd[VHOST_MEMORY_MAX_NREGIONS];
 } dpdk_vu_intf_t;
