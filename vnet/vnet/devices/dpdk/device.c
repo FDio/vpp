@@ -287,17 +287,17 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
                     dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
                     vring->n_since_last_int += rv;
 
-                    f64 now = vlib_time_now (dm->vlib_main);
+                    f64 now = vlib_time_now (vm);
                     if (vring->int_deadline < now || 
                         vring->n_since_last_int > dm->vhost_coalesce_frames)
-                      dpdk_vhost_user_send_interrupt(dm->vlib_main, xd, offset + VIRTIO_RXQ);
+                      dpdk_vhost_user_send_interrupt(vm, xd, offset + VIRTIO_RXQ);
                     }
-                  }
 
                   int c = rv;
                   while(c--)
                     rte_pktmbuf_free (tx_vector[tx_tail+c]);
 
+              }
             }
           else
             {
@@ -316,10 +316,10 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
                     dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
                     vring->n_since_last_int += rv;
 
-                    f64 now = vlib_time_now (dm->vlib_main);
+                    f64 now = vlib_time_now (vm);
                     if (vring->int_deadline < now || 
                         vring->n_since_last_int > dm->vhost_coalesce_frames)
-                      dpdk_vhost_user_send_interrupt(dm->vlib_main, xd, offset + VIRTIO_RXQ);
+                      dpdk_vhost_user_send_interrupt(vm, xd, offset + VIRTIO_RXQ);
                   }
 
                   int c = rv;
