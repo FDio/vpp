@@ -75,7 +75,7 @@ static g_val_t vpp_metric_handler (int metric_index)
     switch (metric_index) {
     case 0:
         vector_ratep = svmdb_local_get_vec_variable 
-            (svmdb_client, "vlib_vector_rate", sizeof (*vector_ratep));
+            (svmdb_client, "vpp_vector_rate", sizeof (*vector_ratep));
         if (vector_ratep) {
             val.d = *vector_ratep;
             vec_free (vector_ratep);
@@ -100,7 +100,7 @@ static g_val_t vpp_metric_handler (int metric_index)
 
     case 2:
         vpp_rx_ratep = svmdb_local_get_vec_variable 
-            (svmdb_client, "vnet_input_rate", sizeof (*vector_ratep));
+            (svmdb_client, "vpp_input_rate", sizeof (*vector_ratep));
         if (vpp_rx_ratep) {
             val.d = *vpp_rx_ratep;
             vec_free (vpp_rx_ratep);

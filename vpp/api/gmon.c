@@ -116,18 +116,18 @@ gmon_init (vlib_main_t *vm)
     /* Find or create, set to zero */
     vec_add1 (v, 0.0);
     svmdb_local_set_vec_variable(gm->svmdb_client, 
-                                 "vlib_vector_rate", 
+                                 "vpp_vector_rate", 
                                  (char *)v, sizeof (*v));
     vec_free(v);
     vec_add1 (v, 0.0);
     svmdb_local_set_vec_variable(gm->svmdb_client, 
-                                 "vnet_input_rate", 
+                                 "vpp_input_rate", 
                                  (char *)v, sizeof (*v));
     vec_free(v);
 
     vec_add1 (swp, 0.0);
     svmdb_local_set_vec_variable(gm->svmdb_client, 
-                                 "vpef_pid", 
+                                 "vpp_pid", 
                                  (char *)swp, sizeof (*swp));
     vec_free(swp);
 
@@ -135,15 +135,15 @@ gmon_init (vlib_main_t *vm)
     gm->vector_rate_ptr = 
         svmdb_local_get_variable_reference (gm->svmdb_client,
                                             SVMDB_NAMESPACE_VEC, 
-                                            "vlib_vector_rate");
+                                            "vpp_vector_rate");
     gm->input_rate_ptr = 
         svmdb_local_get_variable_reference (gm->svmdb_client,
                                             SVMDB_NAMESPACE_VEC, 
-                                            "vnet_input_rate");
+                                            "vpp_input_rate");
     gm->vpef_pid_ptr = 
         svmdb_local_get_variable_reference (gm->svmdb_client,
                                             SVMDB_NAMESPACE_VEC, 
-                                            "vpef_pid");
+                                            "vpp_pid");
     return 0;
 }
 
