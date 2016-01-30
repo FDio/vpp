@@ -31,6 +31,7 @@ libvppjni_la_SOURCES = japi/vppjni.c japi/vppapi.c
 libvppjni_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
 	              -lpthread -lm -lrt
 libvppjni_la_LDFLAGS = -module
+libvppjni_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 
 jarfile = vppjapi-$(PACKAGE_VERSION).jar
 packagedir = org/openvpp/vppjapi
