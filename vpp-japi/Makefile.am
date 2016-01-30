@@ -27,7 +27,7 @@ nobase_include_HEADERS =		\
 
 lib_LTLIBRARIES += libvppjni.la
 
-libvppjni_la_SOURCES = japi/vppjni.c japi/vppapi.c
+libvppjni_la_SOURCES = japi/vppjni.c japi/vppapi.c japi/vppjni_env.h japi/vppjni_env.c
 libvppjni_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
 	              -lpthread -lm -lrt
 libvppjni_la_LDFLAGS = -module

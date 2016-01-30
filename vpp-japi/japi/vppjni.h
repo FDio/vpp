@@ -150,8 +150,6 @@ typedef struct {
   /* attachment of rx thread to java thread */
   JNIEnv *jenv;
   JavaVM *jvm;
-  jclass jcls;
-  jmethodID jmtdIfDetails;  // interfaceDetails method
   uword *callback_hash;     // map context_id => jobject
   uword *ping_hash;         // map ping context_id => msg type called
 

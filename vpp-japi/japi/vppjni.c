@@ -21,6 +21,7 @@
 #include <jni.h>
 #include <japi/vppjni.h>
 #include <japi/vppjni_bridge_domain.h>
+#include <japi/vppjni_env.h>
 #include <japi/org_openvpp_vppjapi_vppConn.h>
 #include <japi/org_openvpp_vppjapi_vppApi.h>
 
@@ -57,6 +58,29 @@ static int connect_to_vpe(char *name);
  */
 void __stack_chk_guard (void) __attribute__((weak));
 void __stack_chk_guard (void) {  }
+
+BIND_JAPI_CLASS(vppBridgeDomainDetails, "()V");
+BIND_JAPI_BOOL_FIELD(vppBridgeDomainDetails, arpTerm);
+BIND_JAPI_BOOL_FIELD(vppBridgeDomainDetails, flood);
+BIND_JAPI_BOOL_FIELD(vppBridgeDomainDetails, forward);
+BIND_JAPI_BOOL_FIELD(vppBridgeDomainDetails, learn);
+BIND_JAPI_BOOL_FIELD(vppBridgeDomainDetails, uuFlood);
+BIND_JAPI_INT_FIELD(vppBridgeDomainDetails, bdId);
+BIND_JAPI_STRING_FIELD(vppBridgeDomainDetails, name);
+BIND_JAPI_STRING_FIELD(vppBridgeDomainDetails, bviInterfaceName);
+BIND_JAPI_OBJ_FIELD(vppBridgeDomainDetails, interfaces, "[Lorg/openvpp/vppjapi/vppBridgeDomainInterfaceDetails;");
+
+BIND_JAPI_CLASS(vppBridgeDomainInterfaceDetails, "()V");
+BIND_JAPI_BYTE_FIELD(vppBridgeDomainInterfaceDetails, splitHorizonGroup);
+BIND_JAPI_STRING_FIELD(vppBridgeDomainInterfaceDetails, interfaceName);
+
+BIND_JAPI_CLASS(vppInterfaceCounters, "(JJJJJJJJJJJJJJJJJJJJJJ)V");
+BIND_JAPI_CLASS(vppInterfaceDetails, "(ILjava/lang/String;I[BBBBBIBBIIBBBBIIII)V");
+BIND_JAPI_CLASS(vppIPv4Address, "(IB)V");
+BIND_JAPI_CLASS(vppIPv6Address, "([BB)V");
+BIND_JAPI_CLASS(vppL2Fib, "([BZLjava/lang/String;ZZ)V");
+BIND_JAPI_CLASS(vppVersion, "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+BIND_JAPI_CLASS(vppVxlanTunnelDetails, "(IIIII)V");
 
 void vl_client_add_api_signatures (vl_api_memclnt_create_t *mp) 
 {
@@ -144,19 +168,6 @@ JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getVppVersion
   (JNIEnv *env, jobject obj)
 {
   vppjni_main_t * jm = &vppjni_main;
-  jmethodID constr;
-  // TODO: cache this
-  jclass cls = (*env)->FindClass(env, "org/openvpp/vppjapi/vppVersion");
-  if ((*env)->ExceptionCheck(env)) {
-      (*env)->ExceptionDescribe(env);
-      return NULL;
-  }
-
-  constr = (*env)->GetMethodID(env, cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
-  if ((*env)->ExceptionCheck(env)) {
-      (*env)->ExceptionDescribe(env);
-      return NULL;
-  }
 
   vppjni_lock (jm, 11);
   jstring progName = (*env)->NewStringUTF(env, (char *)jm->program_name);
@@ -165,7 +176,7 @@ JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getVppVersion
   jstring buildDate = (*env)->NewStringUTF(env, (char *)jm->build_date);
   vppjni_unlock (jm);
 
-  return (*env)->NewObject(env, cls, constr, progName, buildDir, version, buildDate);
+  return vppVersionObject(env, progName, buildDir, version, buildDate);
 }
 
 static int jm_show_version (vppjni_main_t *jm)
@@ -527,21 +538,7 @@ JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceCounters
     vppjni_main_t * jm = &vppjni_main;
     sw_interface_stats_t *s;
     u32 sw_if_index = swIfIndex;
-    jmethodID constr;
     jobject result = NULL;
-
-    // TODO: cache this
-    jclass cls = (*env)->FindClass(env, "org/openvpp/vppjapi/vppInterfaceCounters");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        return NULL;
-    }
-
-    constr = (*env)->GetMethodID(env, cls, "<init>", "(JJJJJJJJJJJJJJJJJJJJJJ)V");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        return NULL;
-    }
 
     vppjni_lock (jm, 16);
 
@@ -553,7 +550,7 @@ JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceCounters
         goto out;
     }
 
-    result = (*env)->NewObject(env, cls, constr,
+    result = vppInterfaceCountersObject(env,
             s->rx.octets, s->rx.pkts.ip4, s->rx.pkts.ip6, s->rx.pkts.unicast,
             s->rx.pkts.multicast, s->rx.pkts.broadcast, s->rx.pkts.discard,
             s->rx.pkts.fifo_full, s->rx.pkts.error, s->rx.pkts.unknown_proto,
@@ -669,9 +666,8 @@ static jobjectArray sw_if_dump_get_interfaces (JNIEnv * env)
     u32 i;
 
     int len = vec_len(jm->sw_if_dump_if_indices);
-    jmethodID jmtdIfDetails = jm->jmtdIfDetails;
 
-    jobjectArray ifArray = (*env)->NewObjectArray(env, len, jm->jcls, NULL);
+    jobjectArray ifArray = vppInterfaceDetailsArray(env, len);
 
     for (i = 0; i < len; i++) {
         u32 sw_if_index = jm->sw_if_dump_if_indices[i];
@@ -708,7 +704,7 @@ static jobjectArray sw_if_dump_get_interfaces (JNIEnv * env)
         jbyte subOuterVlanIdAny = sw_if_details->sub_outer_vlan_id_any;
         jbyte subInnerVlanIdAny = sw_if_details->sub_inner_vlan_id_any;
 
-        jobject ifObj = (*env)->NewObject(env, jm->jcls, jmtdIfDetails,
+        jobject ifObj = vppInterfaceDetailsObject(env,
                 ifIndex, ifname,
                 supIfIndex, physAddr, adminUpDown, linkUpDown,
                 linkDuplex, linkSpeed, subId, subDot1ad,
@@ -1062,20 +1058,7 @@ JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getBridgeDomainDetail
 
     /* setting BridgeDomainDetails */
 
-    jclass bddClass = (*env)->FindClass(env, "org/openvpp/vppjapi/vppBridgeDomainDetails");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-
-    jmethodID midInit = (*env)->GetMethodID(env, bddClass, "<init>", "()V");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-    jobject bddObj = (*env)->NewObject(env, bddClass, midInit);
+    jobject bddObj = vppBridgeDomainDetailsObject(env);
 
     u8 *vec_bd_name = vjbd_oper_name_from_id(bdm, bd_id);
     if (NULL == vec_bd_name) {
@@ -1090,66 +1073,14 @@ JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getBridgeDomainDetail
         rv = NULL;
         goto out;
     }
-    jfieldID fidName = (*env)->GetFieldID(env, bddClass, "name", "Ljava/lang/String;");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-    (*env)->SetObjectField(env, bddObj, fidName, bdName);
 
-    jfieldID fidBdId = (*env)->GetFieldID(env, bddClass, "bdId", "I");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-    (*env)->SetIntField(env, bddObj, fidBdId, bdId);
-
-    jboolean flood = bd_oper->flood;
-    jfieldID fidFlood = (*env)->GetFieldID(env, bddClass, "flood", "Z");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-    (*env)->SetBooleanField(env, bddObj, fidFlood, flood);
-
-    jboolean uuFlood = bd_oper->uu_flood;
-    jfieldID fidUuFlood = (*env)->GetFieldID(env, bddClass, "uuFlood", "Z");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-    (*env)->SetBooleanField(env, bddObj, fidUuFlood, uuFlood);
-
-    jboolean forward = bd_oper->forward;
-    jfieldID fidForward = (*env)->GetFieldID(env, bddClass, "forward", "Z");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-    (*env)->SetBooleanField(env, bddObj, fidForward, forward);
-
-    jboolean learn = bd_oper->learn;
-    jfieldID fidLearn = (*env)->GetFieldID(env, bddClass, "learn", "Z");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-    (*env)->SetBooleanField(env, bddObj, fidLearn, learn);
-
-    jboolean arpTerm = bd_oper->arp_term;
-    jfieldID fidArpTerm = (*env)->GetFieldID(env, bddClass, "arpTerm", "Z");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-    (*env)->SetBooleanField(env, bddObj, fidArpTerm, arpTerm);
+    set_vppBridgeDomainDetails_name(env, bddObj, bdName);
+    set_vppBridgeDomainDetails_bdId(env, bddObj, bdId);
+    set_vppBridgeDomainDetails_flood(env, bddObj, (jboolean)bd_oper->flood);
+    set_vppBridgeDomainDetails_uuFlood(env, bddObj, (jboolean)bd_oper->uu_flood);
+    set_vppBridgeDomainDetails_forward(env, bddObj, (jboolean)bd_oper->forward);
+    set_vppBridgeDomainDetails_learn(env, bddObj, (jboolean)bd_oper->learn);
+    set_vppBridgeDomainDetails_arpTerm(env, bddObj, (jboolean)bd_oper->arp_term);
 
     jstring bviInterfaceName = NULL;
     if (~0 != bd_oper->bvi_sw_if_index) {
@@ -1165,54 +1096,21 @@ JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getBridgeDomainDetail
             goto out;
         }
     }
-    jfieldID fidBviInterfaceName = (*env)->GetFieldID(env, bddClass, "bviInterfaceName", "Ljava/lang/String;");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-    (*env)->SetObjectField(env, bddObj, fidBviInterfaceName, bviInterfaceName);
 
+    set_vppBridgeDomainDetails_bviInterfaceName(env, bddObj, bviInterfaceName);
 
     /* setting BridgeDomainInterfaceDetails */
-
-    jclass bdidClass = (*env)->FindClass(env, "org/openvpp/vppjapi/vppBridgeDomainInterfaceDetails");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-
-    jfieldID fidInterfaceName = (*env)->GetFieldID(env, bdidClass, "interfaceName", "Ljava/lang/String;");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-
-    jfieldID fidSHG = (*env)->GetFieldID(env, bdidClass, "splitHorizonGroup", "B");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
 
     u32 len = vec_len(bd_oper->bd_sw_if_oper);
     ASSERT(len == bd_oper->n_sw_ifs);
 
-    jobjectArray bdidArray = (*env)->NewObjectArray(env, len, bdidClass, NULL);
+    jobjectArray bdidArray = vppBridgeDomainInterfaceDetailsArray(env, len);
 
     u32 i;
     for (i = 0; i < len; i++) {
         bd_sw_if_oper_t *sw_if_oper = &bd_oper->bd_sw_if_oper[i];
 
-        jmethodID midBdidInit = (*env)->GetMethodID(env, bdidClass, "<init>", "()V");
-        if ((*env)->ExceptionCheck(env)) {
-            (*env)->ExceptionDescribe(env);
-            rv = NULL;
-            goto out;
-        }
-        jobject bdidObj = (*env)->NewObject(env, bdidClass, midBdidInit);
+        jobject bdidObj = vppBridgeDomainInterfaceDetailsObject(env);
         (*env)->SetObjectArrayElement(env, bdidArray, i, bdidObj);
 
         u32 sw_if_index = sw_if_oper->sw_if_index;
@@ -1226,20 +1124,12 @@ JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getBridgeDomainDetail
             rv = NULL;
             goto out;
         }
-        (*env)->SetObjectField(env, bdidObj, fidInterfaceName, interfaceName);
 
-        jbyte shg = sw_if_oper->shg;
-        (*env)->SetByteField(env, bdidObj, fidSHG, shg);
+        set_vppBridgeDomainInterfaceDetails_interfaceName(env, bdidObj, interfaceName);
+        set_vppBridgeDomainInterfaceDetails_splitHorizonGroup(env, bdidObj, (jbyte)sw_if_oper->shg);
     }
 
-    jfieldID fidInterfaces = (*env)->GetFieldID(env, bddClass, "interfaces",
-            "[Lorg/openvpp/vppjapi/vppBridgeDomainInterfaceDetails;");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        rv = NULL;
-        goto out;
-    }
-    (*env)->SetObjectField(env, bddObj, fidInterfaces, bdidArray);
+    set_vppBridgeDomainDetails_interfaces(env, bddObj, bdidArray);
 
     rv = bddObj;
 
@@ -1252,18 +1142,6 @@ out:
 
 static jobject l2_fib_create_object(JNIEnv *env, bd_l2fib_oper_t *l2_fib)
 {
-    jclass l2FibClass = (*env)->FindClass(env, "org/openvpp/vppjapi/vppL2Fib");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        return NULL;
-    }
-
-    jmethodID midL2FIbInit = (*env)->GetMethodID(env, l2FibClass, "<init>", "([BZLjava/lang/String;ZZ)V");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        return NULL;
-    }
-
     u32 sw_if_index = l2_fib->sw_if_index;
     const char *str_if_name = interface_name_from_sw_if_index(sw_if_index);
     if (NULL == str_if_name) {
@@ -1282,11 +1160,7 @@ static jobject l2_fib_create_object(JNIEnv *env, bd_l2fib_oper_t *l2_fib)
     jboolean filter = l2_fib->filter;
     jboolean bridgedVirtualInterface = l2_fib->bvi;
 
-    jobject l2FibObj = (*env)->NewObject(env, l2FibClass, midL2FIbInit,
-            physAddr, staticConfig, outgoingInterface, filter,
-            bridgedVirtualInterface);
-
-    return l2FibObj;
+    return vppL2FibObject(env, physAddr, staticConfig, outgoingInterface, filter, bridgedVirtualInterface);
 }
 
 JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_l2FibTableDump
@@ -1335,14 +1209,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_l2FibTableDump
   u32 count = vec_len(bd_oper->l2fib_oper);
   bd_l2fib_oper_t *l2fib_oper = bd_oper->l2fib_oper;
 
-  jclass l2FibClass = (*env)->FindClass(env, "org/openvpp/vppjapi/vppL2Fib");
-  if ((*env)->ExceptionCheck(env)) {
-      (*env)->ExceptionDescribe(env);
-      goto done;
-  }
-
-  l2FibArray = (*env)->NewObjectArray(env, count, l2FibClass, NULL);
-
+  l2FibArray = vppL2FibArray(env, count);
   for (i = 0; i < count; i++) {
       bd_l2fib_oper_t *l2_fib = &l2fib_oper[i];
       jobject l2FibObj = l2_fib_create_object(env, l2_fib);
@@ -1462,19 +1329,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_ipv4AddressDump
     u32 count = vec_len(jm->ipv4_addresses);
     ipv4_address_t *ipv4_address = jm->ipv4_addresses;
 
-    jclass IPv4AddressClass = (*env)->FindClass(env, "org/openvpp/vppjapi/vppIPv4Address");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        goto done;
-    }
-
-    jmethodID midIPv4AddressInit = (*env)->GetMethodID(env, IPv4AddressClass, "<init>", "(IB)V");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        goto done;
-    }
-
-    jobjectArray ipv4AddressArray = (*env)->NewObjectArray(env, count, IPv4AddressClass, NULL);
+    jobjectArray ipv4AddressArray = vppIPv4AddressArray(env, count);
 
     for (i = 0; i < count; i++) {
         ipv4_address_t *address = &ipv4_address[i];
@@ -1482,8 +1337,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_ipv4AddressDump
         jint ip = address->ip;
         jbyte prefixLength = address->prefix_length;
 
-        jobject ipv4AddressObj = (*env)->NewObject(env, IPv4AddressClass, midIPv4AddressInit,
-                ip, prefixLength);
+        jobject ipv4AddressObj = vppIPv4AddressObject(env, ip, prefixLength);
 
         (*env)->SetObjectArrayElement(env, ipv4AddressArray, i, ipv4AddressObj);
     }
@@ -1513,19 +1367,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_ipv6AddressDump
     u32 count = vec_len(jm->ipv6_addresses);
     ipv6_address_t *ipv6_address = jm->ipv6_addresses;
 
-    jclass IPv6AddressClass = (*env)->FindClass(env, "org/openvpp/vppjapi/vppIPv6Address");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        goto done;
-    }
-
-    jmethodID midIPv6AddressInit = (*env)->GetMethodID(env, IPv6AddressClass, "<init>", "([BB)V");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        goto done;
-    }
-
-    jobjectArray ipv6AddressArray = (*env)->NewObjectArray(env, count, IPv6AddressClass, NULL);
+    jobjectArray ipv6AddressArray = vppIPv6AddressArray(env, count);
 
     for (i = 0; i < count; i++) {
         ipv6_address_t *address = &ipv6_address[i];
@@ -1536,8 +1378,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_ipv6AddressDump
 
         jbyte prefixLength = address->prefix_length;
 
-        jobject ipv6AddressObj = (*env)->NewObject(env, IPv6AddressClass, midIPv6AddressInit,
-                ip, prefixLength);
+        jobject ipv6AddressObj = vppIPv6AddressObject(env, ip, prefixLength);
 
         (*env)->SetObjectArrayElement(env, ipv6AddressArray, i, ipv6AddressObj);
     }
@@ -1603,22 +1444,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_vxlanTunnelDump
 
     u32 count = vec_len(jm->vxlan_tunnel_details);
 
-    jclass VxlanTunnelDetailsClass = (*env)->FindClass(env,
-            "org/openvpp/vppjapi/vppVxlanTunnelDetails");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        goto done;
-    }
-
-    jmethodID midVxlanTunnelDetailsInit = (*env)->GetMethodID(env,
-            VxlanTunnelDetailsClass, "<init>", "(IIIII)V");
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-        goto done;
-    }
-
-    jobjectArray vxlanTunnelDetailsArray = (*env)->NewObjectArray(env, count,
-            VxlanTunnelDetailsClass, NULL);
+    jobjectArray vxlanTunnelDetailsArray = vppVxlanTunnelDetailsArray(env, count);
 
     for (i = 0; i < count; i++) {
         vxlan_tunnel_details_t *details = &jm->vxlan_tunnel_details[i];
@@ -1629,8 +1455,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_vxlanTunnelDump
         jint vni = details->vni;
         jint decap_next_index = details->decap_next_index;
 
-        jobject vxlanTunnelDetailsObj = (*env)->NewObject(env,
-                VxlanTunnelDetailsClass, midVxlanTunnelDetailsInit,
+        jobject vxlanTunnelDetailsObj = vppVxlanTunnelDetailsObject(env,
                 src_address, dst_address, encap_vrf_id, vni, decap_next_index);
 
         (*env)->SetObjectArrayElement(env, vxlanTunnelDetailsArray, i,
@@ -1932,22 +1757,9 @@ jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     return JNI_ERR;
   }
 
-  jclass cls = (*env)->FindClass(env, "org/openvpp/vppjapi/vppInterfaceDetails");
-  if ((*env)->ExceptionCheck(env)) {
-      (*env)->ExceptionDescribe(env);
+  if (vppjni_init(env) != 0) {
       return JNI_ERR;
   }
-
-  jm->jmtdIfDetails = 
-      (*env)->GetMethodID(env, cls, "<init>", "(ILjava/lang/String;I[BBBBBIBBIIBBBBIIII)V");
-  if ((*env)->ExceptionCheck(env)) {
-      (*env)->ExceptionDescribe(env);
-      return JNI_ERR;
-  }
-
-  // methods are not local references they stay forever
-  // jclass is local reference let's hold global ref to it
-  jm->jcls = (*env)->NewGlobalRef(env, cls);
 
   jm->jvm = vm;
   return JNI_VERSION_1_6;
@@ -1960,10 +1772,7 @@ void JNI_OnUnload(JavaVM *vm, void *reserved) {
     return;
   }
 
-  if (jm->jcls != NULL) {
-    (*env)->DeleteGlobalRef(env, jm->jcls);
-    jm->jcls = NULL;
-  }
+  vppjni_uninit(env);
 
   jm->jenv = NULL;
   jm->jvm = NULL;
