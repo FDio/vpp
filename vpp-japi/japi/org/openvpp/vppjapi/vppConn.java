@@ -32,7 +32,7 @@ import org.openvpp.vppjapi.vppIPv4Address;
 import org.openvpp.vppjapi.vppIPv6Address;
 import org.openvpp.vppjapi.vppVxlanTunnelDetails;
 
-public class vppConn {
+public final class vppConn {
     private static final String LIBNAME = "libvppjni.so.0.0.0";
 
     static {

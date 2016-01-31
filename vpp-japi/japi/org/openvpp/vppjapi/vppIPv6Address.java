@@ -19,8 +19,8 @@ public class vppIPv6Address {
     public byte[] ip;
     public byte prefixLength;
 
-    public vppIPv6Address(byte[] _ip, byte _prefixLength) {
-        ip = _ip;
-        prefixLength = _prefixLength;
+    public vppIPv6Address(byte[] ip, byte prefixLength) {
+        this.ip = ip;
+        this.prefixLength = prefixLength;
     }
 }

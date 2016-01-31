@@ -15,7 +15,7 @@
 
 package org.openvpp.vppjapi;
 
-public class vppBridgeDomainInterfaceDetails {
+public final class vppBridgeDomainInterfaceDetails {
     public String interfaceName;
     public byte splitHorizonGroup;
 }
