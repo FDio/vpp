@@ -15,18 +15,17 @@
 
 package org.openvpp.vppjapi;
 
-public class vppVersion {
-    public String programName;
-    public String buildDirectory;
-    public String gitBranch;
-    public String buildDate;
+public final class vppVersion {
+    public final String programName;
+    public final String buildDirectory;
+    public final String gitBranch;
+    public final String buildDate;
 
-    public vppVersion(String _progName, String _buildDir, String _gitBranch, String _buildDate)
-    {
-        programName = _progName;
-        buildDirectory = _buildDir;
-        gitBranch = _gitBranch;
-        buildDate = _buildDate;
+    public vppVersion(String progName, String buildDir, String gitBranch, String buildDate) {
+        this.programName = progName;
+        this.buildDirectory = buildDir;
+        this.gitBranch = gitBranch;
+        this.buildDate = buildDate;
     }
 }
 

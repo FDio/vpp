@@ -15,19 +15,19 @@
 
 package org.openvpp.vppjapi;
 
-public class vppVxlanTunnelDetails {
-    public int srcAddress;
-    public int dstAddress;
-    public int encapVrfId;
-    public int vni;
-    public int decap_next_index;
+public final class vppVxlanTunnelDetails {
+    public final int srcAddress;
+    public final int dstAddress;
+    public final int encapVrfId;
+    public final int vni;
+    public final int decapNextIndex;
 
-    public vppVxlanTunnelDetails(int _srcAddress, int _dstAddress,
-            int _encapVrfId, int _vni, int _decap_next_index) {
-        srcAddress = _srcAddress;
-        dstAddress = _dstAddress;
-        encapVrfId = _encapVrfId;
-        vni = _vni;
-        decap_next_index = _decap_next_index;
+    public vppVxlanTunnelDetails(int srcAddress, int dstAddress,
+            int encapVrfId, int vni, int decapNextIndex) {
+        this.srcAddress = srcAddress;
+        this.dstAddress = dstAddress;
+        this.encapVrfId = encapVrfId;
+        this.vni = vni;
+        this.decapNextIndex = decapNextIndex;
     }
 }
