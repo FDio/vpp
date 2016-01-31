@@ -16,10 +16,10 @@
 package org.openvpp.vppjapi;
 
 public final class vppVersion {
-    public String programName;
-    public String buildDirectory;
-    public String gitBranch;
-    public String buildDate;
+    public final String programName;
+    public final String buildDirectory;
+    public final String gitBranch;
+    public final String buildDate;
 
     public vppVersion(String progName, String buildDir, String gitBranch, String buildDate) {
         this.programName = progName;
