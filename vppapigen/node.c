@@ -1774,7 +1774,7 @@ void generate_java_top_boilerplate(FILE *fp)
 
     fprintf (fp, "package org.openvpp.vppjapi;\n\n");
     fprintf (fp, "import org.openvpp.vppjapi.vppConn;\n\n");
-    fprintf (fp, "public class %s extends vppConn {\n\n",
+    fprintf (fp, "public final class %s extends vppConn {\n\n",
              java_class);
 }
 

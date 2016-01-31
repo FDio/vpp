@@ -15,7 +15,7 @@
 
 package org.openvpp.vppjapi;
 
-public class vppInterfaceDetails {
+public final class vppInterfaceDetails {
     public int ifIndex;
     public String interfaceName;
     public int supIfIndex;

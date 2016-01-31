@@ -17,7 +17,7 @@ package org.openvpp.vppjapi;
 
 import org.openvpp.vppjapi.vppBridgeDomainInterfaceDetails;
 
-public class vppBridgeDomainDetails {
+public final class vppBridgeDomainDetails {
     public String name;
     public int bdId;
     public boolean flood;
