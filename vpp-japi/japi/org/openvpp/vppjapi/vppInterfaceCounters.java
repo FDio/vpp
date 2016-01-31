@@ -15,7 +15,7 @@
 
 package org.openvpp.vppjapi;
 
-public class vppInterfaceCounters {
+public final class vppInterfaceCounters {
 
     public final long rxOctets;
     public final long rxIp4;
