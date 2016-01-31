@@ -16,11 +16,11 @@
 package org.openvpp.vppjapi;
 
 public final class vppVxlanTunnelDetails {
-    public int srcAddress;
-    public int dstAddress;
-    public int encapVrfId;
-    public int vni;
-    public int decapNextIndex;
+    public final int srcAddress;
+    public final int dstAddress;
+    public final int encapVrfId;
+    public final int vni;
+    public final int decapNextIndex;
 
     public vppVxlanTunnelDetails(int srcAddress, int dstAddress,
             int encapVrfId, int vni, int decapNextIndex) {
