@@ -16,8 +16,9 @@
 package org.openvpp.vppjapi;
 
 public class vppIPv6Address {
-    public byte[] ip;
-    public byte prefixLength;
+    // FIXME: this is dangerous
+    public final byte[] ip;
+    public final byte prefixLength;
 
     public vppIPv6Address(byte[] _ip, byte _prefixLength) {
         ip = _ip;

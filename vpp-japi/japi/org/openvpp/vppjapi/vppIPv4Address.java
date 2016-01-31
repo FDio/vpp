@@ -15,12 +15,12 @@
 
 package org.openvpp.vppjapi;
 
-public class vppIPv4Address {
-    public int ip;
-    public byte prefixLength;
+public final class vppIPv4Address {
+    public final int ip;
+    public final byte prefixLength;
 
-    public vppIPv4Address(int _ip, byte _prefixLength) {
-        ip = _ip;
-        prefixLength = _prefixLength;
+    public vppIPv4Address(int ip, byte prefixLength) {
+        this.ip = ip;
+        this.prefixLength = prefixLength;
     }
 }
