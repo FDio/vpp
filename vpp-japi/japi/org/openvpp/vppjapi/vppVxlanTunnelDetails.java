@@ -28,6 +28,6 @@ public final class vppVxlanTunnelDetails {
         this.dstAddress = dstAddress;
         this.encapVrfId = encapVrfId;
         this.vni = vni;
-        this.decap_next_index = decapNextIndex;
+        this.decapNextIndex = decapNextIndex;
     }
 }

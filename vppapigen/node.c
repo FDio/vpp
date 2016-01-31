@@ -172,6 +172,20 @@ void primtype_recursive_generate(node_t *this, enum passid which, FILE *ofp,
     }
 }
 
+static int hidden_from_java(const node_t * deeper)
+{
+    if (current_java_parameter_number++ < 3) {
+        if (!strncmp ((char *)(deeper->data[0]), "client_index", 12))
+            return 1;
+        else if (!strncmp ((char *)(deeper->data[0]), "context", 7))
+            return 1;
+        else if (!strncmp ((char *)(deeper->data[0]), "_vl_msg_id", 10))
+            return 1;
+    }
+
+    return 0;
+}
+
 void primtype_java_method (node_t * this, enum passid which, FILE *ofp, 
                            char *java_type_name)
 {
@@ -180,13 +194,8 @@ void primtype_java_method (node_t * this, enum passid which, FILE *ofp,
     deeper = this->deeper;
 
     /* We'll take care of _msg_id, client_index, and context ourselves */
-    if (current_java_parameter_number++ < 3) {
-        if (!strncmp ((char *)(deeper->data[0]), "client_index", 12))
-            return;
-        else if (!strncmp ((char *)(deeper->data[0]), "context", 7))
-            return;
-        else if (!strncmp ((char *)(deeper->data[0]), "_vl_msg_id", 10))
-            return;
+    if (hidden_from_java(deeper)) {
+        return;
     }
 
     if (deeper->type == NODE_SCALAR)
@@ -207,13 +216,8 @@ void primtype_java_parameter (node_t * this, enum passid which, FILE *ofp,
     deeper = this->deeper;
 
     /* We'll take care of _msg_id, client_index, and context ourselves */
-    if (current_java_parameter_number++ < 3) {
-        if (!strncmp ((char *)(deeper->data[0]), "client_index", 12))
-            return;
-        else if (!strncmp ((char *)(deeper->data[0]), "context", 7))
-            return;
-        else if (!strncmp ((char *)(deeper->data[0]), "_vl_msg_id", 10))
-            return;
+    if (hidden_from_java(deeper)) {
+        return;
     }
     if (current_java_parameter_need_comma_space) {
         current_java_parameter_need_comma_space = 0;
@@ -236,13 +240,8 @@ void primtype_java_setup (node_t * this, enum passid which, FILE *ofp,
     deeper = this->deeper;
 
     /* We'll take care of _msg_id, client_index, and context ourselves */
-    if (current_java_parameter_number++ < 3) {
-        if (!strncmp ((char *)(deeper->data[0]), "client_index", 12))
-            return;
-        else if (!strncmp ((char *)(deeper->data[0]), "context", 7))
-            return;
-        else if (!strncmp ((char *)(deeper->data[0]), "_vl_msg_id", 10))
-            return;
+    if (hidden_from_java(deeper)) {
+        return;
     }
 
     if (deeper->type == NODE_VECTOR) {
@@ -265,13 +264,8 @@ void primtype_java_code (node_t * this, enum passid which, FILE *ofp,
     deeper = this->deeper;
 
     /* We'll take care of _msg_id, client_index, and context ourselves */
-    if (current_java_parameter_number++ < 3) {
-        if (!strncmp ((char *)(deeper->data[0]), "client_index", 12))
-            return;
-        else if (!strncmp ((char *)(deeper->data[0]), "context", 7))
-            return;
-        else if (!strncmp ((char *)(deeper->data[0]), "_vl_msg_id", 10))
-            return;
+    if (hidden_from_java(deeper)) {
+        return;
     }
 
     indent_me(ofp);
@@ -319,13 +313,8 @@ void primtype_java_teardown (node_t * this, enum passid which, FILE *ofp,
     deeper = this->deeper;
 
     /* We'll take care of _msg_id, client_index, and context ourselves */
-    if (current_java_parameter_number++ < 3) {
-        if (!strncmp ((char *)(deeper->data[0]), "client_index", 12))
-            return;
-        else if (!strncmp ((char *)(deeper->data[0]), "context", 7))
-            return;
-        else if (!strncmp ((char *)(deeper->data[0]), "_vl_msg_id", 10))
-            return;
+    if (hidden_from_java(deeper)) {
+        return;
     }
 
     if (deeper->type == NODE_VECTOR) {
@@ -720,6 +709,18 @@ void node_define_print (node_t *this)
     fprintf(stdout, "};\n");
 }
 
+static void emit_java_arg_declaration(node_t *child, FILE *fp) {
+    current_java_parameter_number = 0;
+    while (child) {
+        node_vft_t *vftp = the_vft[child->type];
+        current_java_emitted_parameter = 0;
+        vftp->java_method_function(child, JAVA_METHOD_PASS, fp);
+        child = child->peer;
+        if (child && current_java_emitted_parameter)
+            fputs (", ", fp);
+    }
+}
+
 void node_define_generate (node_t *this, enum passid which, FILE *fp)
 {
     node_t *child, *save_child;
@@ -752,27 +753,49 @@ void node_define_generate (node_t *this, enum passid which, FILE *fp)
     case JAVA_METHOD_PASS:
         indent += 4;
         indent_me(fp);
-        fprintf (fp, "public native int %s (", 
-                 java_name_mangle(CDATA0));
+
+        /* Generate private native declaration */
+        fprintf (fp, "private static native int %s0(", java_name_mangle(CDATA0));
+        emit_java_arg_declaration(this->deeper, fp);
+        fputs (");\n", fp);
+
+        /* Generate public Java method */
+        indent_me(fp);
+        fprintf (fp, "public final int %s(", java_name_mangle(CDATA0));
+        emit_java_arg_declaration(this->deeper, fp);
+        fputs (") {\n", fp);
+
+        indent += 4;
+        indent_me(fp);
+        fputs ("checkConnected();\n", fp);
+        indent_me(fp);
+        fprintf (fp, "return %s.%s0(", java_class, java_name_mangle(CDATA0));
+
         child = this->deeper;
-        while (child) {
-            node_vft_t *vftp = the_vft[child->type];
-            current_java_emitted_parameter = 0;
-            vftp->java_method_function(child, which, fp);
+        current_java_parameter_number = 0;
+        while (child && hidden_from_java(child->deeper)) {
             child = child->peer;
-            if (child && current_java_emitted_parameter)
+        }
+        while (child) {
+            fputs(java_name_mangle((char *)(child->deeper->data[0])), fp);
+            child = child->peer;
+            if (child)
                 fputs (", ", fp);
         }
-        fprintf (fp, ");\n");
+
+        fputs (");\n", fp);
+        indent -= 4;
+        indent_me(fp);
+        fputs ("}\n\n", fp);
         indent -= 4;
         break;
 
     case JAVA_JNI_PASS:
         /* Generate function prototype */
-        fprintf (fp, "JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_%s_%s\n", 
+        fprintf (fp, "JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_%s_%s0\n", 
                  java_class, java_name_mangle(CDATA0));
 
-        fprintf (fp, "(JNIEnv * env, jobject obj");
+        fprintf (fp, "(JNIEnv * env, jclass clazz");
         current_java_parameter_need_comma_space = 1;
         child = this->deeper;
         save_child = child;
@@ -1773,9 +1796,12 @@ void generate_java_top_boilerplate(FILE *fp)
     fprintf (fp, " */\n\n");
 
     fprintf (fp, "package org.openvpp.vppjapi;\n\n");
-    fprintf (fp, "import org.openvpp.vppjapi.vppConn;\n\n");
-    fprintf (fp, "public class %s extends vppConn {\n\n",
+    fprintf (fp, "import java.io.IOException;\n\n");
+    fprintf (fp, "public class %s extends vppConn {\n",
              java_class);
+    fprintf (fp, "    public %s(String clientName) throws IOException {\n", java_class);
+    fprintf (fp, "        super(clientName);\n");
+    fprintf (fp, "    }\n\n");
 }
 
 void generate_java_bottom_boilerplate(FILE *fp)
