@@ -15,20 +15,21 @@
 
 package org.openvpp.vppjapi;
 
-public class vppL2Fib {
-    public byte[] physAddress;
-    public boolean staticConfig;
-    public String outgoingInterface;
-    public boolean filter;
-    public boolean bridgedVirtualInterface;
+public final class vppL2Fib {
+    // FIXME: this is dangerous
+    public final byte[] physAddress;
+    public final boolean staticConfig;
+    public final String outgoingInterface;
+    public final boolean filter;
+    public final boolean bridgedVirtualInterface;
 
-    public vppL2Fib(byte[] _physAddress, boolean _staticConfig,
-            String _outgoingInterface, boolean _filter,
-            boolean _bridgedVirtualInterface) {
-        physAddress = _physAddress;
-        staticConfig = _staticConfig;
-        outgoingInterface = _outgoingInterface;
-        filter = _filter;
-        bridgedVirtualInterface = _bridgedVirtualInterface;
+    public vppL2Fib(byte[] physAddress, boolean staticConfig,
+            String outgoingInterface, boolean filter,
+            boolean bridgedVirtualInterface) {
+        this.physAddress = physAddress;
+        this.staticConfig = staticConfig;
+        this.outgoingInterface = outgoingInterface;
+        this.filter = filter;
+        this.bridgedVirtualInterface = bridgedVirtualInterface;
     }
 }

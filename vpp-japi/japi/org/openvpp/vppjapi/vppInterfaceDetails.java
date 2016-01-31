@@ -15,28 +15,29 @@
 
 package org.openvpp.vppjapi;
 
-public class vppInterfaceDetails {
-    public int ifIndex;
-    public String interfaceName;
-    public int supIfIndex;
-    public byte[] physAddr;
-    public byte adminUp;
-    public byte linkUp;
-    public byte linkDuplex;
-    public byte linkSpeed;
-    public int subId;
-    public byte subDot1ad;
-    public byte subNumberOfTags;
-    public int subOuterVlanId;
-    public int subInnerVlanId;
-    public byte subExactMatch;
-    public byte subDefault;
-    public byte subOuterVlanIdAny;
-    public byte subInnerVlanIdAny;
-    public int vtrOp;
-    public int vtrPushDot1q;
-    public int vtrTag1;
-    public int vtrTag2;
+public final class vppInterfaceDetails {
+    public final int ifIndex;
+    public final String interfaceName;
+    public final int supIfIndex;
+    // FIXME: this is dangerous
+    public final byte[] physAddr;
+    public final byte adminUp;
+    public final byte linkUp;
+    public final byte linkDuplex;
+    public final byte linkSpeed;
+    public final int subId;
+    public final byte subDot1ad;
+    public final byte subNumberOfTags;
+    public final int subOuterVlanId;
+    public final int subInnerVlanId;
+    public final byte subExactMatch;
+    public final byte subDefault;
+    public final byte subOuterVlanIdAny;
+    public final byte subInnerVlanIdAny;
+    public final int vtrOp;
+    public final int vtrPushDot1q;
+    public final int vtrTag1;
+    public final int vtrTag2;
 
     public vppInterfaceDetails(int ifIndex, String interfaceName, int supIfIndex, byte[] physAddr, byte adminUp,
             byte linkUp, byte linkDuplex, byte linkSpeed, int subId, byte subDot1ad, byte subNumberOfTags,

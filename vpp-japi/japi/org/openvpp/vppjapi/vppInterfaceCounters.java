@@ -17,29 +17,29 @@ package org.openvpp.vppjapi;
 
 public class vppInterfaceCounters {
 
-    public long rxOctets;
-    public long rxIp4;
-    public long rxIp6;
-    public long rxUnicast;
-    public long rxMulticast;
-    public long rxBroadcast;
-    public long rxDiscard;
-    public long rxFifoFull;
-    public long rxError;
-    public long rxUnknownProto;
-    public long rxMiss;
+    public final long rxOctets;
+    public final long rxIp4;
+    public final long rxIp6;
+    public final long rxUnicast;
+    public final long rxMulticast;
+    public final long rxBroadcast;
+    public final long rxDiscard;
+    public final long rxFifoFull;
+    public final long rxError;
+    public final long rxUnknownProto;
+    public final long rxMiss;
 
-    public long txOctets;
-    public long txIp4;
-    public long txIp6;
-    public long txUnicast;
-    public long txMulticast;
-    public long txBroadcast;
-    public long txDiscard;
-    public long txFifoFull;
-    public long txError;
-    public long txUnknownProto;
-    public long txMiss;
+    public final long txOctets;
+    public final long txIp4;
+    public final long txIp6;
+    public final long txUnicast;
+    public final long txMulticast;
+    public final long txBroadcast;
+    public final long txDiscard;
+    public final long txFifoFull;
+    public final long txError;
+    public final long txUnknownProto;
+    public final long txMiss;
 
     public vppInterfaceCounters(
             long rxOctets, long rxIp4, long rxIp6, long rxUni, long rxMulti,
