@@ -38,3 +38,8 @@ stamp-h1
 ltmain.sh
 ylwrap
 # stop autotools ignore
+
+# OSX and some IDE 
+.DS_Store
+.idea/
+.project
