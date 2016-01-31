@@ -16,11 +16,12 @@
 package org.openvpp.vppjapi;
 
 public final class vppL2Fib {
-    public byte[] physAddress;
-    public boolean staticConfig;
-    public String outgoingInterface;
-    public boolean filter;
-    public boolean bridgedVirtualInterface;
+    // FIXME: this is dangerous
+    public final byte[] physAddress;
+    public final boolean staticConfig;
+    public final String outgoingInterface;
+    public final boolean filter;
+    public final boolean bridgedVirtualInterface;
 
     public vppL2Fib(byte[] physAddress, boolean staticConfig,
             String outgoingInterface, boolean filter,
