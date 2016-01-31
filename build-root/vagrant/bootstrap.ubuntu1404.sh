@@ -48,10 +48,12 @@ start hugepages
 
 # Setup the vpp code
 cd ~vagrant/
+
 sudo -u vagrant mkdir git
 cd git/
 
-# You will need to alter this line to reflect reality.
+# Check if git exists and remove it before attempting clone, else clone ineffective when "reload --provision"
+[ -d vpp ] && rm -rf vpp
 sudo -H -u vagrant git clone /vpp
 cd vpp/
 
