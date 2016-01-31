@@ -16,13 +16,13 @@
 import java.net.InetAddress;
 import org.openvpp.vppjapi.*;
 
-public class vppApi extends vppConn {
+public class vppApi {
 
     native int controlPing();
     native void test (byte[] array, byte[] array2);
 
     public static void main (String[] args) throws Exception {
-        vppApi api = new vppApi ();
+        vppConn api = new vppConn ();
         String ipv6 = "db01::feed";
         String ipv4 = "192.168.1.1";
         InetAddress addr6 = InetAddress.getByName(ipv6);

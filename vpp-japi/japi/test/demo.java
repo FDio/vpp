@@ -15,24 +15,17 @@
 
 import org.openvpp.vppjapi.*;
 
-public class demo extends vppApi {
+public class demo {
     public static void main (String[] args) throws Exception {
-        vppApi api = new vppApi ();
+        vppApi api = new vppApi ("JavaTest");
+        System.out.printf ("Connected OK...");
+
         String intlist;
         int [] contexts;
         int i, limit;
         int trips;
         int rv, errors, saved_error;
         long before, after;
-
-        rv = api.clientConnect ("JavaTest");
-        if (rv == 0)
-            System.out.printf ("Connected OK...");
-        else
-        {
-            System.out.printf ("clientConnect returned %d\n", rv);
-            System.exit (1);
-        }
 
         if (false)
         {
@@ -171,7 +164,7 @@ public class demo extends vppApi {
                            limit, after - before, 
                            limit / (after - before));
 
-        api.clientDisconnect();
+        api.close();
         System.out.printf ("Done...\n");
     }
 }

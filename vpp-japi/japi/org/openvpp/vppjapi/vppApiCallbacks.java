@@ -14,9 +14,14 @@
  */
 
 package org.openvpp.vppjapi;
+
+import java.io.IOException;
 import org.openvpp.vppjapi.vppApi;
 
 public abstract class vppApiCallbacks extends vppApi {
+     public vppApiCallbacks(String clientName) throws IOException {
+         super(clientName);
+     }
 /* Disabled!
  *
  * public abstract void interfaceDetails(

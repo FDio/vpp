@@ -23,6 +23,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.openvpp.vppjapi.vppVersion;
 import org.openvpp.vppjapi.vppInterfaceDetails;
@@ -32,7 +33,7 @@ import org.openvpp.vppjapi.vppIPv4Address;
 import org.openvpp.vppjapi.vppIPv6Address;
 import org.openvpp.vppjapi.vppVxlanTunnelDetails;
 
-public class vppConn {
+public class vppConn implements AutoCloseable {
     private static final String LIBNAME = "libvppjni.so.0.0.0";
 
     static {
@@ -40,6 +41,7 @@ public class vppConn {
             loadLibrary();
         } catch (IOException | RuntimeException e) {
             System.out.printf ("Can't find vpp jni library: %s\n", LIBNAME);
+            throw new ExceptionInInitializerError(e);
         }
     }
 
@@ -72,25 +74,163 @@ public class vppConn {
         }
     }
 
-    public native int clientConnect(String clientName);
-    public native void clientDisconnect();
-    public native int getRetval(int context, int release);
-    public native String getInterfaceList (String nameFilter);
-    public native int swIfIndexFromName (String interfaceName);
-    public native String interfaceNameFromSwIfIndex (int swIfIndex);
-    public native void clearInterfaceTable ();
-    public native vppInterfaceDetails[] swInterfaceDump (byte nameFilterValid, byte [] nameFilter);
-    public native int bridgeDomainIdFromName(String bridgeDomain);
-    public native int findOrAddBridgeDomainId(String bridgeDomain);
-    public native vppVersion getVppVersion();
-    public native vppInterfaceCounters getInterfaceCounters(int swIfIndex);
-    public native int[] bridgeDomainDump(int bdId);
-    public native vppBridgeDomainDetails getBridgeDomainDetails(int bdId);
-    public native vppL2Fib[] l2FibTableDump(int bdId);
-    public native int bridgeDomainIdFromInterfaceName(String interfaceName);
-    public native vppIPv4Address[] ipv4AddressDump(String interfaceName);
-    public native vppIPv6Address[] ipv6AddressDump(String interfaceName);
-    public native vppVxlanTunnelDetails[] vxlanTunnelDump(int swIfIndex);
-    public native int setInterfaceDescription (String ifName, String ifDesc);
-    public native String getInterfaceDescription (String ifName);
+    private static vppConn currentConnection = null;
+    private final AtomicBoolean disconnected = new AtomicBoolean(false);
+    private final String clientName;
+
+    // Hidden on purpose to prevent external instantiation
+    vppConn(final String clientName) throws IOException {
+        this.clientName = clientName;
+
+        synchronized (vppConn.class) {
+            if (currentConnection != null) {
+                throw new IOException("Already connected as " + currentConnection.clientName);
+            }
+
+            final int ret = clientConnect(clientName);
+            if (ret != 0) {
+                throw new IOException("Connection returned error " + ret);
+            }
+
+            currentConnection = this;
+        }
+    }
+
+    @Override
+    public final void close() {
+        if (disconnected.compareAndSet(false, true)) {
+            synchronized (vppConn.class) {
+                clientDisconnect();
+                currentConnection = null;
+            }
+        }
+    }
+
+    /**
+     * Check if this instance is connected.
+     *
+     * @throws IllegalStateException if this instance was disconnected.
+     */
+    protected final void checkConnected() {
+        if (disconnected.get()) {
+            throw new IllegalStateException("Disconnected client " + clientName);
+        }
+    }
+
+    public final int getRetval(int context, int release) {
+        checkConnected();
+        return getRetval0(context, release);
+    }
+
+    public final String getInterfaceList (String nameFilter) {
+        checkConnected();
+        return getInterfaceList0(nameFilter);
+    }
+
+    public final int swIfIndexFromName (String interfaceName) {
+        checkConnected();
+        return swIfIndexFromName0(interfaceName);
+    }
+
+    public final String interfaceNameFromSwIfIndex (int swIfIndex) {
+        checkConnected();
+        return interfaceNameFromSwIfIndex0(swIfIndex);
+    }
+
+    public final void clearInterfaceTable () {
+        checkConnected();
+        clearInterfaceTable0();
+    }
+
+    public final vppInterfaceDetails[] swInterfaceDump (byte nameFilterValid, byte [] nameFilter) {
+        checkConnected();
+        return swInterfaceDump0(nameFilterValid, nameFilter);
+    }
+
+    public final int bridgeDomainIdFromName(String bridgeDomain) {
+        checkConnected();
+        return bridgeDomainIdFromName0(bridgeDomain);
+    }
+
+    public final int findOrAddBridgeDomainId(String bridgeDomain) {
+        checkConnected();
+        return findOrAddBridgeDomainId0(bridgeDomain);
+    }
+
+    public final vppVersion getVppVersion() {
+        checkConnected();
+        return getVppVersion0();
+    }
+
+    public final vppInterfaceCounters getInterfaceCounters(int swIfIndex) {
+        checkConnected();
+        return getInterfaceCounters0(swIfIndex);
+    }
+
+    public final int[] bridgeDomainDump(int bdId) {
+        checkConnected();
+        return bridgeDomainDump0(bdId);
+    }
+
+    public final vppBridgeDomainDetails getBridgeDomainDetails(int bdId) {
+        checkConnected();
+        return getBridgeDomainDetails0(bdId);
+    }
+
+    public final vppL2Fib[] l2FibTableDump(int bdId) {
+        checkConnected();
+        return l2FibTableDump0(bdId);
+    }
+
+    public final int bridgeDomainIdFromInterfaceName(String interfaceName) {
+        checkConnected();
+        return bridgeDomainIdFromInterfaceName0(interfaceName);
+    }
+
+    public final vppIPv4Address[] ipv4AddressDump(String interfaceName) {
+        checkConnected();
+        return ipv4AddressDump0(interfaceName);
+    }
+
+    public final vppIPv6Address[] ipv6AddressDump(String interfaceName) {
+        checkConnected();
+        return ipv6AddressDump0(interfaceName);
+    }
+
+    public final vppVxlanTunnelDetails[] vxlanTunnelDump(int swIfIndex) {
+        checkConnected();
+        return vxlanTunnelDump0(swIfIndex);
+    }
+
+    public final int setInterfaceDescription(String ifName, String ifDesc) {
+        checkConnected();
+        return setInterfaceDescription0(ifName, ifDesc);
+    }
+
+    public final String getInterfaceDescription(String ifName) {
+        checkConnected();
+        return getInterfaceDescription0(ifName);
+    }
+
+    private static native int clientConnect(String clientName);
+    private static native void clientDisconnect();
+    private static native int getRetval0(int context, int release);
+    private static native String getInterfaceList0(String nameFilter);
+    private static native int swIfIndexFromName0(String interfaceName);
+    private static native String interfaceNameFromSwIfIndex0(int swIfIndex);
+    private static native void clearInterfaceTable0();
+    private static native vppInterfaceDetails[] swInterfaceDump0(byte nameFilterValid, byte [] nameFilter);
+    private static native int bridgeDomainIdFromName0(String bridgeDomain);
+    private static native int findOrAddBridgeDomainId0(String bridgeDomain);
+    private static native vppVersion getVppVersion0();
+    private static native vppInterfaceCounters getInterfaceCounters0(int swIfIndex);
+    private static native int[] bridgeDomainDump0(int bdId);
+    private static native vppBridgeDomainDetails getBridgeDomainDetails0(int bdId);
+    private static native vppL2Fib[] l2FibTableDump0(int bdId);
+    private static native int bridgeDomainIdFromInterfaceName0(String interfaceName);
+    private static native vppIPv4Address[] ipv4AddressDump0(String interfaceName);
+    private static native vppIPv6Address[] ipv6AddressDump0(String interfaceName);
+    private static native vppVxlanTunnelDetails[] vxlanTunnelDump0(int swIfIndex);
+    private static native int setInterfaceDescription0(String ifName, String ifDesc);
+    private static native String getInterfaceDescription0(String ifName);
 }
