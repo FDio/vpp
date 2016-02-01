@@ -885,23 +885,21 @@ static jintArray create_array_of_bd_ids(JNIEnv * env, jint bd_id)
 {
     vppjni_main_t *jm = &vppjni_main;
     vjbd_main_t * bdm = &jm->vjbd_main;
-    u32 *buf = NULL;
     u32 i;
 
+    jintArray bdidArray;
     if (bd_id != ~0) {
-        vec_add1(buf, bd_id);
+        bdidArray = (*env)->NewIntArray(env, 1);
+        (*env)->SetIntArrayRegion(env, bdidArray, 0, 1, &bd_id);
     } else {
+        jint buf[vec_len(bdm->bd_oper)];
         for (i = 0; i < vec_len(bdm->bd_oper); i++) {
-            u32 bd_id = bdm->bd_oper[i].bd_id;
-            vec_add1(buf, bd_id);
+            buf[i] = bdm->bd_oper[i].bd_id;
         }
+
+        bdidArray = (*env)->NewIntArray(env, vec_len(bdm->bd_oper));
+        (*env)->SetIntArrayRegion(env, bdidArray, 0, vec_len(bdm->bd_oper), buf);
     }
-
-    jintArray bdidArray = (*env)->NewIntArray(env, vec_len(buf));
-
-    (*env)->SetIntArrayRegion(env, bdidArray, 0, vec_len(buf), (int*)buf);
-
-    vec_free(buf);
 
     return bdidArray;
 }
