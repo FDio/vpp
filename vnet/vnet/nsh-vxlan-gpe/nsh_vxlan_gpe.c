@@ -238,7 +238,7 @@ int vnet_nsh_vxlan_gpe_add_del_tunnel
   nsh_vxlan_gpe_tunnel_key_t key, *key_copy;
   hash_pair_t *hp;
   
-  key.src = a->dst.as_u32; /* decap src in key is encap dst in config */
+  key.src = a->src.as_u32; 
   key.vni = clib_host_to_net_u32 (a->vni << 8);
   key.spi_si = clib_host_to_net_u32(a->spi_si);
 
