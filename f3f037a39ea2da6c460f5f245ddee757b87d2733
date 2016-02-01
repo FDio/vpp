@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_495879fa",
+        "filename": "build-root/deb/debian/control",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-02-01T16:42:54Z",
+      "side": 1,
+      "message": "I think preferable name would be -dev",
+      "range": {
+        "startLine": 29,
+        "startChar": 18,
+        "endLine": 29,
+        "endChar": 25
+      },
+      "revId": "f3f037a39ea2da6c460f5f245ddee757b87d2733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
