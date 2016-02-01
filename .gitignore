@@ -3,6 +3,7 @@
 /build-root/build-*/
 /build-root/install-*/
 /build-root/tools
+/build-root/dpdk-includes/
 /build-root/packages-vpp/
 /build-root/path_setup
 /build-root/build-config.mk

@@ -23,16 +23,16 @@ Package: vpp-dev
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Vector Packet Processing--development support
- This package contains development support files for the VPP libraries, including:
+ This package contains development support files for the VPP libraries
  .
- Do we need to list those header files or just leave it blank ?
- dynamic vectors (vec.c), dynamic bitmaps (bitmap.h), allocation heap of
- objects (heap.c), allocation pool(pool.h), dynamic hash tables (hash.c), memory
- allocator (mheap.c), extendable printf-like interface built on top of vectors
- (format.c), formats for data structures (std-formats.c), and support for clock
- time-based function calls (timer.c).
+
+Package: vpp-dpdk-dev
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Vector Packet Processing--development support
+ This package contains dpdk header files which match the dpdk version
+ compiled into the vpp executable
  .
- TODO: reference and describe only the .h files
 
 Package: vpp-lib
 Architecture: any

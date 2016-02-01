@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# includes
+rm -rf dpdk-includes
+mkdir dpdk-includes
+(cd $1/dpdk/include; tar cfh - . | (cd ../../../dpdk-includes; tar xf -))
+
+paths=`cd dpdk-includes; find . -type f -print`
+rm -f $2
+
+for path in $paths
+do
+    dir=`dirname $path`
+    if [ $dir = "." ] ; then
+        echo ../dpdk-includes/$path /usr/include/vpp-dpdk >> $2
+    else
+        echo ../dpdk-includes/$path /usr/include/vpp-dpdk/$dir >> $2
+    fi
+done        
+
