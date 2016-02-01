@@ -862,25 +862,11 @@ static clib_error_t * dpdk_bind_eth_kernel_drivers (vlib_main_t * vm,
        */
       if (bind_uio)
 	{
-          int pci_vendor_id = strtol((char *) pci_vid, NULL, 16);
-          int pci_device_id = strtol((char *) pci_did, NULL, 16);
-
-          /*
-           * Set PCI ID to ".../virtio-pci/new_id" for Intel fortvile adapaters
-           */
-          if (pci_vendor_id == 0x8086 &&
-              (pci_device_id == I40E_DEV_ID_10G_BASE_T ||
-               pci_device_id == I40E_DEV_ID_SFP_XL710 ||
-               pci_device_id == I40E_DEV_ID_QSFP_A ||
-               pci_device_id == I40E_DEV_ID_QSFP_B ||
-               pci_device_id == I40E_DEV_ID_QSFP_C))
-            {
-              _vec_len (path) = 0;
-              path = format (path, "/sys/bus/pci/drivers/%s/new_id%c", driver_name, 0);
-              error = write_sys_fs ((char *) path, "%s %s", pci_vid, pci_did);
-              if (error)
-                continue;
-            }
+          _vec_len (path) = 0;
+          path = format (path, "/sys/bus/pci/drivers/%s/new_id%c", driver_name, 0);
+          error = write_sys_fs ((char *) path, "%s %s", pci_vid, pci_did);
+          if (error)
+            continue;
 
           _vec_len (path) = 0;
           path = format (path, "/sys/bus/pci/drivers/%s/bind%c", driver_name, 0);
