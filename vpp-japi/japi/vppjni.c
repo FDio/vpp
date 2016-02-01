@@ -624,8 +624,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_swInterfaceDump
 
     vppjni_lock (jm, 7);
     my_context_id = vppjni_get_context_id (jm);
-    jbyte * name_filterP = (*env)->GetByteArrayElements (env, name_filter, NULL);
-    int cnt = (*env)->GetArrayLength (env, name_filter);
+    jsize cnt = (*env)->GetArrayLength (env, name_filter);
 
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->context = clib_host_to_net_u32 (my_context_id);
@@ -634,8 +633,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_swInterfaceDump
     if (cnt > sizeof(mp->name_filter))
         cnt = sizeof(mp->name_filter);
 
-    memcpy ((char *) mp->name_filter, name_filterP, cnt);
-    (*env)->ReleaseByteArrayElements (env, name_filter, name_filterP, 0);
+    (*env)->GetByteArrayRegion(env, name_filter, 0, cnt, (jbyte *)mp->name_filter);
 
     DEBUG_LOG ("interface filter (%d, %s, len: %d)", mp->name_filter_valid, (char *)mp->name_filter, cnt);
 
