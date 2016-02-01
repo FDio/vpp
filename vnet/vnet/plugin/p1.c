@@ -77,7 +77,17 @@ _(vnet_get_main)                                \
 _(pg_stream_add)                                \
 _(pg_stream_del)                                \
 _(pg_stream_enable_disable)                     \
-_(pg_main) 
+_(pg_main)					\
+_(ip_main)					\
+_(log)						\
+_(unformat_pg_edit)				\
+_(unformat_tcp_udp_port)			\
+_(unformat_pg_number)				\
+_(_vlib_init_function_ip4_lookup_init)		\
+_(_vlib_init_function_ip6_lookup_init)		\
+_(ip4_register_protocol)			\
+_(ip6_register_protocol)			\
+_(ip_csum_and_memcpy)
 
 #if DPDK > 0
 #define foreach_dpdk_plugin_reference		\
