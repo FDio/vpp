@@ -23,7 +23,7 @@ DPDK_DEBUG            ?= n
 
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
-DPDK_VERSION ?= 2.1.0
+DPDK_VERSION ?= 2.2.0
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.gz
 DPDK_TAR_URL := http://dpdk.org/browse/dpdk/snapshot/$(DPDK_TARBALL)
 DPDK_2.1.0_TARBALL_MD5_CKSUM := 205a0d12bfd6eb717d57506272f43519
