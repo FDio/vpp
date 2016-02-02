@@ -68,6 +68,14 @@ typedef struct {
   /* Pool of trace buffers. */
   vlib_trace_header_t ** trace_buffer_pool;
 
+  u32 last_main_loop_count;
+  u32 filter_node_index;
+  u32 filter_flag;
+#define FILTER_FLAG_NONE    0
+#define FILTER_FLAG_INCLUDE 1
+#define FILTER_FLAG_EXCLUDE 2
+  u32 filter_count;
+
   /* Per node trace counts. */
   vlib_trace_node_t * nodes;
 } vlib_trace_main_t;

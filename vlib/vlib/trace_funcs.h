@@ -99,6 +99,8 @@ vlib_trace_next_frame (vlib_main_t * vm,
   nf->flags |= VLIB_FRAME_TRACE;
 }
 
+void trace_apply_filter (vlib_main_t * vm);
+
 /* Mark buffer as traced and allocate trace buffer. */
 always_inline void
 vlib_trace_buffer (vlib_main_t * vm,
@@ -109,6 +111,16 @@ vlib_trace_buffer (vlib_main_t * vm,
 {
   vlib_trace_main_t * tm = &vm->trace_main;
   vlib_trace_header_t ** h;
+
+  /*
+   * Apply filter to existing traces to keep number of allocated traces low.
+   * Performed each time around the main loop.
+   */
+  if (tm->last_main_loop_count != vm->main_loop_count)
+    {
+      tm->last_main_loop_count = vm->main_loop_count;
+      trace_apply_filter (vm);
+    }
 
   vlib_trace_next_frame (vm, r, next_index);
 
