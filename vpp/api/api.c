@@ -1795,6 +1795,7 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
     kp = clib_mem_alloc (sizeof (*kp));
     *kp = sup_and_sub_key;
     
+    memset (&template, 0, sizeof (template));
     template.type = VNET_SW_INTERFACE_TYPE_SUB;
     template.sup_sw_if_index = hi->sw_if_index;
     template.sub.id = id;
