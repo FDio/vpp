@@ -16,7 +16,7 @@ vpp_arch = native
 vpp_native_tools = vppapigen
 
 vpp_root_packages = vpp vlib vlib-api vnet svm dpdk vpp-api-test \
-	vpp-japi 
+	vpp-japi gmod
 
 vpp_configure_args_vpp = --with-dpdk
 vnet_configure_args_vpp = --with-dpdk
