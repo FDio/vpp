@@ -19,6 +19,9 @@ yum install -y apr-devel
 yum install -y --enablerepo=epel libconfuse-devel
 yum install -y --enablerepo=epel ganglia-devel
 
+# PCIutils
+yum install -y pciutils
+
 # Load the uio kernel module
 modprobe uio_pci_generic
 
