@@ -109,9 +109,10 @@ vlib_trace_frame_buffers_only (vlib_main_t * vm,
 
 /* Free up all trace buffer memory. */
 always_inline void
-clear_trace_buffer (vlib_trace_main_t * tm)
+clear_trace_buffer (void)
 {
   int i;
+  vlib_trace_main_t * tm;
 
   foreach_vlib_main (
   ({
@@ -179,16 +180,108 @@ trace_cmp (void * a1, void * a2)
   return dt < 0 ? -1 : (dt > 0 ? +1 : 0);
 }
 
+/*
+ * Return 1 if this packet passes the trace filter, or 0 otherwise
+ */
+u32 filter_accept (vlib_trace_main_t * tm, vlib_trace_header_t * h)
+{
+  vlib_trace_header_t * e = vec_end (h);
+
+  if (tm->filter_flag == 0) return 1;
+
+  if (tm->filter_flag == FILTER_FLAG_INCLUDE)
+    {
+      while (h < e)
+        {
+          if (h->node_index == tm->filter_node_index)
+            return 1;
+          h = vlib_trace_header_next (h);
+        }
+      return 0;
+   }
+  else /* FILTER_FLAG_EXCLUDE */
+    {
+      while (h < e)
+        {
+          if (h->node_index == tm->filter_node_index)
+            return 0;
+          h = vlib_trace_header_next (h);
+        }
+      return 1;
+   }
+
+  return 0;
+}
+
+/*
+ * Remove traces from the trace buffer pool that don't pass the filter
+ */
+void trace_apply_filter (vlib_main_t * vm)
+{
+  vlib_trace_main_t * tm = &vm->trace_main;
+  vlib_trace_header_t ** h;
+  vlib_trace_header_t *** traces_to_remove = 0;
+  u32 index;
+  u32 trace_index;
+  u32 n_accepted;
+
+  u32 accept;
+
+  if (tm->filter_flag == FILTER_FLAG_NONE)
+    return;
+
+  /*
+   * Ideally we would retain the first N traces that pass the filter instead
+   * of any N traces.
+   */
+  n_accepted = 0;
+  pool_foreach (h, tm->trace_buffer_pool,
+   ({
+      accept = filter_accept(tm, h[0]);
+
+      if ((n_accepted == tm->filter_count) || !accept)
+          vec_add1 (traces_to_remove, h);
+      else
+          n_accepted++;
+  }));
+
+  /* remove all traces that we don't want to keep */
+  for (index=0; index<vec_len(traces_to_remove); index++)
+    {
+      trace_index = traces_to_remove[index] - tm->trace_buffer_pool;
+      _vec_len (tm->trace_buffer_pool[trace_index]) = 0;
+      pool_put_index (tm->trace_buffer_pool, trace_index);
+    }
+
+  vec_free (traces_to_remove);
+}
+
 static clib_error_t *
 cli_show_trace_buffer (vlib_main_t * vm,
 		       unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
 {
-  vlib_trace_main_t * tm = &vm->trace_main;
+  vlib_trace_main_t * tm;
   vlib_trace_header_t ** h, ** traces;
   u32 i, index = 0;
   char * fmt;
   u8 * s = 0;
+  u32 max;
+
+  /*
+   * By default display only this many traces. To display more, explicitly
+   * specify a max. This prevents unexpectedly huge outputs.
+   */
+  max = 50;
+  while (unformat_check_input(input) != (uword)UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "max %d", &max))
+        ;
+      else
+        return clib_error_create ("expected 'max COUNT', got `%U'",
+                                  format_unformat_error, input);
+    }
+
 
   /* Get active traces from pool. */
 
@@ -202,6 +295,9 @@ cli_show_trace_buffer (vlib_main_t * vm,
     tm = &this_vlib_main->trace_main;
 
     mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
+
+    trace_apply_filter(this_vlib_main);
+
     traces = 0;
     pool_foreach (h, tm->trace_buffer_pool, 
     ({
@@ -220,6 +316,13 @@ cli_show_trace_buffer (vlib_main_t * vm,
     
     for (i = 0; i < vec_len (traces); i++)
       {
+        if (i == max)
+          {
+            vlib_cli_output (vm, "Limiting display to %d packets."
+                                 " To display more specify max.", max);
+            goto done;
+          }
+
         clib_mem_set_heap (mainheap);
         
         s = format (s, "Packet %d\n%U\n\n", i + 1,
@@ -242,7 +345,7 @@ cli_show_trace_buffer (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (show_trace_cli,static) = {
   .path = "show trace",
-  .short_help = "Show trace buffer",
+  .short_help = "Show trace buffer [max COUNT]",
   .function = cli_show_trace_buffer,
 };
 
@@ -283,13 +386,106 @@ VLIB_CLI_COMMAND (add_trace_cli,static) = {
   .function = cli_add_trace_buffer,
 };
 
+
+/*
+ * Configure a filter for packet traces.
+ *
+ * This supplements the packet trace feature so that only packets matching
+ * the filter are included in the trace. Currently the only filter is to
+ * keep packets that include a certain node in the trace or exclude a certain
+ * node in the trace.
+ *
+ * The count of traced packets in the "trace add" command is still used to
+ * create a certain number of traces. The "trace filter" command specifies
+ * how many of those packets should be retained in the trace.
+ *
+ * For example, 1Mpps of traffic is arriving and one of those packets is being
+ * dropped. To capture the trace for only that dropped packet, you can do:
+ *     trace filter include error-drop 1
+ *     trace add dpdk-input 1000000
+ *     <wait one second>
+ *     show trace
+ *
+ * Note that the filter could be implemented by capturing all traces and just
+ * reducing traces displayed by the "show trace" function. But that would
+ * require a lot of memory for storing the traces, making that infeasible.
+ *
+ * To remove traces from the trace pool that do not include a certain node
+ * requires that the trace be "complete" before applying the filter. To
+ * accomplish this, the trace pool is filtered upon each iteraction of the
+ * main vlib loop. Doing so keeps the number of allocated traces down to a
+ * reasonably low number. This requires that tracing for a buffer is not
+ * performed after the vlib main loop interation completes. i.e. you can't
+ * save away a buffer temporarily then inject it back into the graph and
+ * expect that the trace_index is still valid (such as a traffic manager might
+ * do). A new trace buffer should be allocated for those types of packets.
+ *
+ * The filter can be extended to support multiple nodes and other match
+ * criteria (e.g. input sw_if_index, mac address) but for now just checks if
+ * a specified node is in the trace or not in the trace.
+ */
+static clib_error_t *
+cli_filter_trace (vlib_main_t * vm,
+                  unformat_input_t * input,
+                  vlib_cli_command_t * cmd)
+{
+  vlib_trace_main_t * tm = &vm->trace_main;
+  u32 filter_node_index;
+  u32 filter_flag;
+  u32 filter_count;
+  void *mainheap;
+
+  if (unformat (input, "include %U %d",
+      unformat_vlib_node, vm, &filter_node_index, &filter_count))
+    {
+      filter_flag = FILTER_FLAG_INCLUDE;
+    }
+  else if (unformat (input, "exclude %U %d",
+      unformat_vlib_node, vm, &filter_node_index, &filter_count))
+    {
+      filter_flag = FILTER_FLAG_EXCLUDE;
+    }
+  else if (unformat (input, "none"))
+    {
+      filter_flag = FILTER_FLAG_NONE;
+      filter_node_index = 0;
+      filter_count = 0;
+    }
+  else
+    return clib_error_create ("expected 'include NODE COUNT' or 'exclude NODE COUNT' or 'none', got `%U'",
+                              format_unformat_error, input);
+
+  foreach_vlib_main (
+  ({
+    tm = &this_vlib_main->trace_main;
+    tm->filter_node_index = filter_node_index;
+    tm->filter_flag = filter_flag;
+    tm->filter_count = filter_count;
+
+    /*
+     * Clear the trace limits to stop any in-progress tracing
+     * Prevents runaway trace allocations when the filter changes (or is removed)
+     */
+    mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
+    vec_free (tm->nodes);
+    clib_mem_set_heap (mainheap);
+  }));
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (filter_trace_cli,static) = {
+  .path = "trace filter",
+  .short_help = "filter trace output - include NODE COUNT | exclude NODE COUNT | none",
+  .function = cli_filter_trace,
+};
+
 static clib_error_t *
 cli_clear_trace_buffer (vlib_main_t * vm,
 			unformat_input_t * input,
 			vlib_cli_command_t * cmd)
 {
-  vlib_trace_main_t * tm = &vm->trace_main;
-  clear_trace_buffer (tm);
+  clear_trace_buffer ();
   return 0;
 }
 
