@@ -11,6 +11,14 @@ yum install glibc-static -y
 # Install jdk and maven
 yum install -y java-1.8.0-openjdk-devel
 
+# Install EPEL
+yum install -y epel-release
+
+# Install components to build Ganglia modules
+yum install -y apr-devel
+yum install -y --enablerepo=epel libconfuse-devel
+yum install -y --enablerepo=epel ganglia-devel
+
 # Load the uio kernel module
 modprobe uio_pci_generic
 
