@@ -614,6 +614,7 @@ static void stats_thread_fn (void *arg)
 {
     stats_main_t *sm = &stats_main;
     vlib_worker_thread_t *w = (vlib_worker_thread_t *)arg;
+    vlib_thread_main_t *tm = vlib_get_thread_main();
     
     /* stats thread wants no signals. */
     {
@@ -621,6 +622,10 @@ static void stats_thread_fn (void *arg)
         sigfillset (&s);
         pthread_sigmask (SIG_SETMASK, &s, 0);
     }
+
+    if (vec_len(tm->thread_prefix))
+        vlib_set_thread_name((char *)
+               format(0, "%v_stats%c", tm->thread_prefix, '\0'));
 
     clib_mem_set_heap (w->thread_mheap);
 
