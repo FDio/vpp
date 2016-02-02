@@ -273,8 +273,10 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
                     dpdk_vu_vring *vring = &(xd->vu_intf->vrings[VIRTIO_RXQ]);
                     vring->n_since_last_int += rv;
 
-                    if (vring->n_since_last_int > dm->vhost_coalesce_frames)
-                      dpdk_vhost_user_send_interrupt(dm->vlib_main, xd, VIRTIO_RXQ);
+                    f64 now = vlib_time_now (vm);
+                    if (vring->int_deadline < now ||
+                        vring->n_since_last_int > dm->vhost_coalesce_frames)
+                      dpdk_vhost_user_send_interrupt(vm, xd, VIRTIO_RXQ);
                   }
 
                   int c = rv;
@@ -299,8 +301,10 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
                     dpdk_vu_vring *vring = &(xd->vu_intf->vrings[VIRTIO_RXQ]);
                     vring->n_since_last_int += rv;
 
-                    if (vring->n_since_last_int > dm->vhost_coalesce_frames)
-                      dpdk_vhost_user_send_interrupt(dm->vlib_main, xd, VIRTIO_RXQ);
+                    f64 now = vlib_time_now (vm);
+                    if (vring->int_deadline < now ||
+                        vring->n_since_last_int > dm->vhost_coalesce_frames)
+                      dpdk_vhost_user_send_interrupt(vm, xd, VIRTIO_RXQ);
                   }
 
                   int c = rv;

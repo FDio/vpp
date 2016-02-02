@@ -350,7 +350,7 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
                                           bm->pktmbuf_pools[socket_id],
                                           xd->rx_vectors[queue_id], VLIB_FRAME_SIZE);
 
-      f64 now = vlib_time_now (dm->vlib_main);
+      f64 now = vlib_time_now (vm);
 
       /* send pending interrupts if needed */
       if (dpdk_vhost_user_want_interrupt(xd, VIRTIO_TXQ)) {
@@ -359,13 +359,13 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 
           if ((vring->n_since_last_int && (vring->int_deadline < now))
               || (vring->n_since_last_int > dm->vhost_coalesce_frames))
-            dpdk_vhost_user_send_interrupt(dm->vlib_main, xd, VIRTIO_TXQ);
+            dpdk_vhost_user_send_interrupt(vm, xd, VIRTIO_TXQ);
       }
 
       if (dpdk_vhost_user_want_interrupt(xd, VIRTIO_RXQ)) {
           dpdk_vu_vring *vring = &(xd->vu_intf->vrings[VIRTIO_RXQ]);
           if (vring->n_since_last_int && (vring->int_deadline < now))
-            dpdk_vhost_user_send_interrupt(dm->vlib_main, xd, VIRTIO_RXQ);
+            dpdk_vhost_user_send_interrupt(vm, xd, VIRTIO_RXQ);
       }
 
     }
