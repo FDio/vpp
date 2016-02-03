@@ -257,7 +257,23 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
           /* 1-wide cache? */
-          hi0 = vnet_get_sup_hw_interface 
+          /*
+	    alagalah 
+	    VLIB_TX is being set up correctly in decap.c BUT
+	    This appears to be a references to the HW interface and
+	    not the sw_interface (ie NSH tunnel) ... so
+	    hi0->dev_instance is returning the ... what? [0] which
+	    ends up equating to first FIB entry (first tunnel encap)
+	    by default ? 
+	    
+	    So t0 needs to be set here ot the next tunnel we want to go to
+	    and either I can rename this node to be SFF_nsh_encap and then
+	    treat the ingress tunnel <src>, <*vni*>, <nsi_si> as in decap.c to make
+	    the VLIB_TX key be <dst>, ... (as per above).., then look up the sw_if_index (as opposed to hw/dev_instance)
+	    and t0 *should* resolve. Need to dig into VLIB tutorials more before iterating. (and fix up eth1 not being picked up)
+
+	  */
+	  hi0 = vnet_get_sup_hw_interface 
             (vnm, vnet_buffer(b0)->sw_if_index[VLIB_TX]);
 
           t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
