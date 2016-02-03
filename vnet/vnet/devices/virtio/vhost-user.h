@@ -24,6 +24,18 @@
 #define VHOST_NET_VRING_NUM             2
 
 #define VIRTQ_DESC_F_NEXT               1
+#define VHOST_USER_REPLY_MASK       (0x1 << 2)
+
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+#define VHOST_USER_PROTOCOL_F_MQ   0
+#define VHOST_USER_PROTOCOL_FEATURES   (1ULL << VHOST_USER_PROTOCOL_F_MQ)
+
+/* If multiqueue is provided by host, then we suppport it. */
+#define VIRTIO_NET_CTRL_MQ   4
+#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
+#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
+#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
+#endif
 
 #define foreach_virtio_net_feature      \
  _ (VIRTIO_NET_F_MRG_RXBUF, 15)         \
@@ -83,6 +95,12 @@ typedef enum vhost_user_req {
   VHOST_USER_SET_VRING_KICK = 12,
   VHOST_USER_SET_VRING_CALL = 13,
   VHOST_USER_SET_VRING_ERR = 14,
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  VHOST_USER_GET_PROTOCOL_FEATURES = 15,
+  VHOST_USER_SET_PROTOCOL_FEATURES = 16,
+  VHOST_USER_GET_QUEUE_NUM = 17,
+  VHOST_USER_SET_VRING_ENABLE = 18,
+#endif
   VHOST_USER_MAX
 } vhost_user_req_t;
 

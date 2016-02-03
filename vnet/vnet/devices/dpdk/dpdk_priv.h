@@ -342,30 +342,41 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
       vlib_main_t * vm = vlib_get_main();
       vlib_buffer_main_t * bm = vm->buffer_main;
       unsigned socket_id = rte_socket_id();
+      u32 offset = 0;
 
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+      offset = queue_id * VIRTIO_QNUM;
+
+      struct vhost_virtqueue *vq =
+        xd->vu_vhost_dev.virtqueue[offset + VIRTIO_TXQ];
+
+      if (PREDICT_FALSE(!vq->enabled))
+        return 0;
+#else
       if (PREDICT_FALSE(!xd->vu_is_running))
         return 0;
+#endif
 
-      n_buffers = rte_vhost_dequeue_burst(&xd->vu_vhost_dev, VIRTIO_TXQ,
+      n_buffers = rte_vhost_dequeue_burst(&xd->vu_vhost_dev, offset + VIRTIO_TXQ,
                                           bm->pktmbuf_pools[socket_id],
                                           xd->rx_vectors[queue_id], VLIB_FRAME_SIZE);
 
       f64 now = vlib_time_now (vm);
 
       /* send pending interrupts if needed */
-      if (dpdk_vhost_user_want_interrupt(xd, VIRTIO_TXQ)) {
-          dpdk_vu_vring *vring = &(xd->vu_intf->vrings[VIRTIO_TXQ]);
+      if (dpdk_vhost_user_want_interrupt(xd, offset + VIRTIO_TXQ)) {
+          dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_TXQ]);
           vring->n_since_last_int += n_buffers;
 
           if ((vring->n_since_last_int && (vring->int_deadline < now))
               || (vring->n_since_last_int > dm->vhost_coalesce_frames))
-            dpdk_vhost_user_send_interrupt(vm, xd, VIRTIO_TXQ);
+            dpdk_vhost_user_send_interrupt(vm, xd, offset + VIRTIO_TXQ);
       }
 
-      if (dpdk_vhost_user_want_interrupt(xd, VIRTIO_RXQ)) {
-          dpdk_vu_vring *vring = &(xd->vu_intf->vrings[VIRTIO_RXQ]);
+      if (dpdk_vhost_user_want_interrupt(xd, offset + VIRTIO_RXQ)) {
+          dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
           if (vring->n_since_last_int && (vring->int_deadline < now))
-            dpdk_vhost_user_send_interrupt(vm, xd, VIRTIO_RXQ);
+            dpdk_vhost_user_send_interrupt(vm, xd, offset + VIRTIO_RXQ);
       }
 
     }
