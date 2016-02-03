@@ -1,0 +1,5 @@
+The location of the vpp code has moved from
+~/git/vpp
+To 
+/vpp
+/vpp is a mount of the source code from outside the Vagrant, and should make it much easier to interact with the system.
