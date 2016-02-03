@@ -81,13 +81,13 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
       u32 n_left_to_next;
 
       vlib_get_next_frame (vm, node, next_index,
-			   to_next, n_left_to_next);
+                           to_next, n_left_to_next);
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
-	{
+        {
           u32 bi0, bi1;
-	  vlib_buffer_t * b0, * b1;
-	  u32 next0 = NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
+          vlib_buffer_t * b0, * b1;
+          u32 next0 = NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
           u32 next1 = NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
           vnet_hw_interface_t * hi0, * hi1;
           ip4_header_t * ip0, * ip1;
@@ -100,31 +100,31 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
           u16 new_l0, new_l1;
           ip_csum_t sum0, sum1;
 
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t * p2, * p3;
+          /* Prefetch next iteration. */
+          {
+            vlib_buffer_t * p2, * p3;
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
+            p2 = vlib_get_buffer (vm, from[2]);
+            p3 = vlib_get_buffer (vm, from[3]);
 
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
+            vlib_prefetch_buffer_header (p2, LOAD);
+            vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
-	  }
+            CLIB_PREFETCH (p2->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+            CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+          }
 
-	  bi0 = from[0];
-	  bi1 = from[1];
-	  to_next[0] = bi0;
-	  to_next[1] = bi1;
-	  from += 2;
-	  to_next += 2;
-	  n_left_to_next -= 2;
-	  n_left_from -= 2;
+          bi0 = from[0];
+          bi1 = from[1];
+          to_next[0] = bi0;
+          to_next[1] = bi1;
+          from += 2;
+          to_next += 2;
+          n_left_to_next -= 2;
+          n_left_from -= 2;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
+          b0 = vlib_get_buffer (vm, bi0);
+          b1 = vlib_get_buffer (vm, bi1);
 
           /* 1-wide cache? */
           hi0 = vnet_get_sup_hw_interface 
@@ -228,16 +228,16 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
               tr->tunnel_index = t1 - ngm->tunnels;
             }
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
-	}
+          vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+                                           to_next, n_left_to_next,
+                                           bi0, bi1, next0, next1);
+        }
 
       while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 bi0;
-	  vlib_buffer_t * b0;
-	  u32 next0 = NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
+        {
+          u32 bi0;
+          vlib_buffer_t * b0;
+          u32 next0 = NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
           vnet_hw_interface_t * hi0;
           ip4_header_t * ip0;
           udp_header_t * udp0;
@@ -247,14 +247,14 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
           u16 new_l0;
           ip_csum_t sum0;
 
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
+          bi0 = from[0];
+          to_next[0] = bi0;
+          from += 1;
+          to_next += 1;
+          n_left_from -= 1;
+          n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+          b0 = vlib_get_buffer (vm, bi0);
 
           /* 1-wide cache? */
           hi0 = vnet_get_sup_hw_interface 
@@ -317,10 +317,10 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
                 vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->tunnel_index = t0 - ngm->tunnels;
             }
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	}
+          vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+                                           to_next, n_left_to_next,
+                                           bi0, next0);
+        }
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
