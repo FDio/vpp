@@ -257,7 +257,7 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
           /* 1-wide cache? */
-          hi0 = vnet_get_sup_hw_interface 
+      	  hi0 = vnet_get_sup_hw_interface 
             (vnm, vnet_buffer(b0)->sw_if_index[VLIB_TX]);
 
           t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
