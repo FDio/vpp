@@ -27,8 +27,10 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	find $(INSTALL_PREFIX)$(ARCH)/*/bin -type f -print		\
 	  | sed -e 's:.*:../& /usr/bin:'				\
 	    > deb/debian/vpp.install ;					\
-	find $(INSTALL_PREFIX)$(ARCH)/*/lib*  -type f -print		\
-	  | egrep -e '*\.so\.*\.*\.*'					\
+									\
+	: need symbolic links in the lib pkg ; 				\
+	find $(INSTALL_PREFIX)$(ARCH)/*/lib* \( -type f -o  -type l \)  \
+	  -print | egrep -e '*\.so\.*\.*\.*'				\
 	  | sed -e 's:.*:../& /usr/lib/x86_64-linux-gnu:'		\
 	    > deb/debian/vpp-lib.install ;				\
 									\
