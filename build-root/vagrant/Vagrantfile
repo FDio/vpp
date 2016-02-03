@@ -13,6 +13,22 @@ Vagrant.configure(2) do |config|
     config.vm.provision 'shell', path: 'bootstrap.ubuntu1404.sh'
   end
 
+  # Add .gnupg dir in so folks can sign patches
+  # Note, as gnupg puts socket files in that dir, we have
+  # to be cautious and make sure we are dealing with a plain file
+  homedir = File.expand_path("~/")
+  Dir["#{homedir}/.gnupg/**/*"].each do |fname|
+    if File.file?(fname)
+      destname = fname.sub(Regexp.escape("#{homedir}/"),'')
+      config.vm.provision "file", source: fname, destination: destname
+    end
+  end
+
+  # Copy in the .gitconfig if it exists
+  if File.file?(File.expand_path("~/.gitconfig"))
+    config.vm.provision  "file", source: "~/.gitconfig", destination: ".gitconfig"
+  end
+
   # vagrant-cachier caches apt/yum etc to speed subsequent
   # vagrant up
   # to enable, run

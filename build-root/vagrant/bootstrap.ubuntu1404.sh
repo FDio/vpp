@@ -10,7 +10,7 @@ apt-get upgrade -y
 sudo update-alternatives --install /bin/sh sh /bin/bash 100
 
 # Install build tools
-apt-get install -y build-essential autoconf automake bison libssl-dev ccache libtool git dkms debhelper emacs libganglia1-dev libapr1-dev libconfuse-dev
+apt-get install -y build-essential autoconf automake bison libssl-dev ccache libtool git dkms debhelper emacs libganglia1-dev libapr1-dev libconfuse-dev git-review
 
 # Install other stuff
 # apt-get install -y qemu-kvm libvirt-bin ubuntu-vm-builder bridge-utils
@@ -49,13 +49,10 @@ start hugepages
 # Setup the vpp code
 cd ~vagrant/
 
-sudo -u vagrant mkdir git
-cd git/
+sudo -u vagrant mkdir -p git/vpp
+cp /vagrant/README.moved git/vpp/
 
-# Check if git exists and remove it before attempting clone, else clone ineffective when "reload --provision"
-[ -d vpp ] && rm -rf vpp
-sudo -H -u vagrant git clone /vpp
-cd vpp/
+cd /vpp/
 
 # Initial vpp build
 if [ -d build-root ]; then
