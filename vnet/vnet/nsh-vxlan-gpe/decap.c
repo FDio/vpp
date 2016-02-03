@@ -274,7 +274,8 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           error0 = 0;
           next0 = NSH_VXLAN_GPE_INPUT_NEXT_DROP;
 
-          key0.src = iuvn0->ip4.src_address.as_u32;
+          // key0.src = iuvn0->ip4.src_address.as_u32;
+	  key0.src = iuvn0->ip4.dst_address.as_u32;
           key0.vni = iuvn0->vxlan.vni_res;
           key0.spi_si = iuvn0->nsh.spi_si;
           key0.pad = 0;
@@ -308,7 +309,14 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
            * ip[46] lookup in the configured FIB
            * nsh-vxlan-gpe-encap, here's the encap tunnel sw_if_index
            */
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
+          /* vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index; */
+	  /* Note the VLIB_TX .. so this is setting egress... 
+	     ... need to therefore correlate to what is going on in encap.c
+	     ... for next node. It appears we need the moral equivalent of:
+	         rx interface, unless vnet_buffer(b)->sw_if_index[VLIB_TX] set
+		 Meaning a SET check in encap as I *think* this is the right tunnel i/f
+	  */
+          vnet_buffer(b0)->sw_if_index[VLIB_TX] = tunnel_index0;
           pkts_decapsulated ++;
 
         trace00:
