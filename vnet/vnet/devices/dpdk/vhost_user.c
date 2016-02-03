@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <assert.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/stat.h>
@@ -37,6 +38,30 @@
 #else
 #define DBG_SOCK(args...)
 #endif
+
+static const char *vhost_message_str[] = {
+    [VHOST_USER_NONE] = "VHOST_USER_NONE",
+    [VHOST_USER_GET_FEATURES] = "VHOST_USER_GET_FEATURES",
+    [VHOST_USER_SET_FEATURES] = "VHOST_USER_SET_FEATURES",
+    [VHOST_USER_SET_OWNER] = "VHOST_USER_SET_OWNER",
+    [VHOST_USER_RESET_OWNER] = "VHOST_USER_RESET_OWNER",
+    [VHOST_USER_SET_MEM_TABLE] = "VHOST_USER_SET_MEM_TABLE",
+    [VHOST_USER_SET_LOG_BASE] = "VHOST_USER_SET_LOG_BASE",
+    [VHOST_USER_SET_LOG_FD] = "VHOST_USER_SET_LOG_FD",
+    [VHOST_USER_SET_VRING_NUM] = "VHOST_USER_SET_VRING_NUM",
+    [VHOST_USER_SET_VRING_ADDR] = "VHOST_USER_SET_VRING_ADDR",
+    [VHOST_USER_SET_VRING_BASE] = "VHOST_USER_SET_VRING_BASE",
+    [VHOST_USER_GET_VRING_BASE] = "VHOST_USER_GET_VRING_BASE",
+    [VHOST_USER_SET_VRING_KICK] = "VHOST_USER_SET_VRING_KICK",
+    [VHOST_USER_SET_VRING_CALL] = "VHOST_USER_SET_VRING_CALL",
+    [VHOST_USER_SET_VRING_ERR]  = "VHOST_USER_SET_VRING_ERR",
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+    [VHOST_USER_GET_PROTOCOL_FEATURES]  = "VHOST_USER_GET_PROTOCOL_FEATURES",
+    [VHOST_USER_SET_PROTOCOL_FEATURES]  = "VHOST_USER_SET_PROTOCOL_FEATURES",
+    [VHOST_USER_GET_QUEUE_NUM]  = "VHOST_USER_GET_QUEUE_NUM",
+    [VHOST_USER_SET_VRING_ENABLE]  = "VHOST_USER_SET_VRING_ENABLE",
+#endif
+};
 
 /*
  * DPDK vhost-user functions 
@@ -122,6 +147,30 @@ dpdk_vhost_user_device_from_sw_if_index(u32 sw_if_index)
   return dpdk_vhost_user_device_from_hw_if_index(sw->hw_if_index);
 }
 
+static void stop_processing_packets(u32 hw_if_index, u8 idx)
+{
+  dpdk_device_t *xd =
+    dpdk_vhost_user_device_from_hw_if_index(hw_if_index);
+  assert(xd);
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  xd->vu_vhost_dev.virtqueue[idx]->enabled = 0;
+#else
+  xd->vu_is_running = 0;
+#endif
+}
+
+static void disable_interface(dpdk_device_t * xd)
+{
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  u8 idx;
+  int numqs = xd->vu_vhost_dev.virt_qp_nb * VIRTIO_QNUM;
+  for (idx = 0;  idx < numqs; idx++)
+    xd->vu_vhost_dev.virtqueue[idx]->enabled = 0;
+#endif
+
+  xd->vu_is_running = 0;
+}
+
 static inline void * map_guest_mem(dpdk_device_t * xd, u64 addr)
 {
   dpdk_vu_intf_t * vui = xd->vu_intf;
@@ -133,7 +182,7 @@ static inline void * map_guest_mem(dpdk_device_t * xd, u64 addr)
          return (void *) (vui->region_addr[i] + addr - mem->regions[i].guest_phys_address);
        }
   }
-  DBG_SOCK("failed to map guest mem addr %llx", addr);
+  DBG_SOCK("failed to map guest mem addr %lx", addr);
   return 0;
 }
 
@@ -146,6 +195,11 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id)
   vnet_sw_interface_t * sw;
   clib_error_t * error;
   dpdk_device_and_queue_t * dq;
+  int num_qpairs = 1;
+
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  num_qpairs = dm->use_rss < 1 ? 1 : dm->use_rss;
+#endif
 
   dpdk_device_t * xd = NULL;
   u8 addr[6];
@@ -179,12 +233,16 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id)
           xd->vu_if_id = if_id;
 
       // reset virtqueues
-      for (j = 0; j < VIRTIO_QNUM; j++)
-        {
+      for (j = 0; j < num_qpairs * VIRTIO_QNUM; j++) {
           memset(xd->vu_vhost_dev.virtqueue[j], 0, sizeof(struct vhost_virtqueue));
-        }
+          xd->vu_vhost_dev.virtqueue[j]->kickfd = -1; 
+          xd->vu_vhost_dev.virtqueue[j]->callfd = -1; 
+          xd->vu_vhost_dev.virtqueue[j]->backend = -1; 
+       }
+
       // reset lockp
-      memset ((void *) xd->lockp, 0, CLIB_CACHE_LINE_BYTES);
+      if (xd->lockp)
+          memset ((void *) xd->lockp, 0, CLIB_CACHE_LINE_BYTES);
 
       // reset tx vectors
       for (j = 0; j < tm->n_vlib_mains; j++)
@@ -205,7 +263,12 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id)
       // vui was not retrieved from inactive ifaces - create new
       vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
       xd->dev_type = VNET_DPDK_DEV_VHOST_USER;
-      xd->rx_q_used = 1;
+      xd->rx_q_used = num_qpairs;
+      xd->tx_q_used = num_qpairs;
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+      xd->vu_vhost_dev.virt_qp_nb = num_qpairs;
+#endif
+
       vec_validate_aligned (xd->rx_vectors, xd->rx_q_used, CLIB_CACHE_LINE_BYTES);
 
       if (if_id == (u32)~0)
@@ -221,15 +284,30 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id)
                                              VHOST_MEMORY_MAX_NREGIONS *
                                              sizeof(struct virtio_memory_regions));
 
-      for (j = 0; j < VIRTIO_QNUM; j++)
-        {
+      /* Will be set when guest sends VHOST_USER_SET_MEM_TABLE cmd */
+      xd->vu_vhost_dev.mem->nregions = 0;
+
+      /* 
+       * New virtqueue structure is an array of VHOST_MAX_QUEUE_PAIRS * 2
+       * We need to allocate numq pairs.
+       */
+      for (j = 0; j < num_qpairs * VIRTIO_QNUM; j++) {
           xd->vu_vhost_dev.virtqueue[j] = clib_mem_alloc (sizeof(struct vhost_virtqueue));
           memset(xd->vu_vhost_dev.virtqueue[j], 0, sizeof(struct vhost_virtqueue));
-        }
+          xd->vu_vhost_dev.virtqueue[j]->kickfd = -1; 
+          xd->vu_vhost_dev.virtqueue[j]->callfd = -1; 
+          xd->vu_vhost_dev.virtqueue[j]->backend = -1; 
+      }
 
-      xd->lockp = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-                                          CLIB_CACHE_LINE_BYTES);
-      memset ((void *) xd->lockp, 0, CLIB_CACHE_LINE_BYTES);
+      xd->lockp = NULL;
+      if (xd->tx_q_used < dm->input_cpu_count) {
+          xd->lockp = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+            CLIB_CACHE_LINE_BYTES);
+          memset ((void *) xd->lockp, 0, CLIB_CACHE_LINE_BYTES);
+      }
+
+      DBG_SOCK("tm->n_vlib_mains: %d. TX %d, RX: %d, num_qpairs: %d, Lock: %p",
+        tm->n_vlib_mains, xd->tx_q_used, xd->rx_q_used, num_qpairs, xd->lockp);
 
       vec_validate_aligned (xd->tx_vectors, tm->n_vlib_mains,
                             CLIB_CACHE_LINE_BYTES);
@@ -253,7 +331,9 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id)
                             CLIB_CACHE_LINE_BYTES);
 
   }
-  {
+  /*
+   * Generate random MAC address for the interface
+   */
     f64 now = vlib_time_now(vm);
     u32 rnd;
     rnd = (u32) (now * 1e6);
@@ -262,7 +342,6 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id)
     memcpy (addr+2, &rnd, sizeof(rnd));
     addr[0] = 2;
     addr[1] = 0xfe;
-  }
 
   error = ethernet_register_interface
     (dm->vnet_main,
@@ -283,34 +362,59 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id)
 
   *hw_if_index = xd->vlib_hw_if_index;
 
-  int cpu = (xd->device_index % dm->input_cpu_count) +
-            dm->input_cpu_first_index;
+  DBG_SOCK("xd->device_index: %d, dm->input_cpu_count: %d, "
+    "dm->input_cpu_first_index: %d\n", xd->device_index,
+    dm->input_cpu_count, dm->input_cpu_first_index);
 
-  vec_add2(dm->devices_by_cpu[cpu], dq, 1);
-  dq->device = xd->device_index;
-  dq->queue_id = 0;
+  int q, next_cpu = 0;
+  for (q = 0; q < num_qpairs; q++) {
+      int cpu = dm->input_cpu_first_index +
+        (next_cpu % dm->input_cpu_count);
 
-  // start polling if it was not started yet (because of no phys ifaces)
-  if (tm->n_vlib_mains == 1 && dpdk_input_node.state != VLIB_NODE_STATE_POLLING)
-    vlib_node_set_state (vm, dpdk_input_node.index, VLIB_NODE_STATE_POLLING);
+      unsigned lcore = vlib_worker_threads[cpu].dpdk_lcore_id;
+      vec_validate(xd->cpu_socket_id_by_queue, q);
+      xd->cpu_socket_id_by_queue[q] = rte_lcore_to_socket_id(lcore);
 
-  if (tm->n_vlib_mains > 1 && tm->main_thread_is_io_node)
-    vlib_node_set_state (vm, dpdk_io_input_node.index, VLIB_NODE_STATE_POLLING);
+      vec_add2(dm->devices_by_cpu[cpu], dq, 1);
+      dq->device = xd->device_index;
+      dq->queue_id = q;
+      DBG_SOCK("CPU for %d = %d. QID: %d", *hw_if_index, cpu, dq->queue_id);
 
-  if (tm->n_vlib_mains > 1 && !tm->main_thread_is_io_node)
-    vlib_node_set_state (vlib_mains[cpu], dpdk_input_node.index,
-                         VLIB_NODE_STATE_POLLING);
+      // start polling if it was not started yet (because of no phys ifaces)
+      if (tm->n_vlib_mains == 1 && dpdk_input_node.state != VLIB_NODE_STATE_POLLING)
+        vlib_node_set_state (vm, dpdk_input_node.index, VLIB_NODE_STATE_POLLING);
+
+      if (tm->n_vlib_mains > 1 && tm->main_thread_is_io_node)
+        vlib_node_set_state (vm, dpdk_io_input_node.index, VLIB_NODE_STATE_POLLING);
+
+      if (tm->n_vlib_mains > 1 && !tm->main_thread_is_io_node)
+        vlib_node_set_state (vlib_mains[cpu], dpdk_input_node.index,
+                             VLIB_NODE_STATE_POLLING);
+      next_cpu++;
+  }
 
   vlib_worker_thread_barrier_release (vm);
   return 0;
 }
+
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+static clib_error_t *
+dpdk_vhost_user_set_protocol_features(u32 hw_if_index, u64 prot_features)
+{
+  dpdk_device_t * xd;
+  xd = dpdk_vhost_user_device_from_hw_if_index(hw_if_index);
+  assert(xd);
+  xd->vu_vhost_dev.protocol_features = prot_features;
+  return 0;
+}
+#endif
 
 static clib_error_t *
 dpdk_vhost_user_get_features(u32 hw_if_index, u64 * features)
 {
   *features = rte_vhost_feature_get();
 
-  DBG_SOCK("supported features: 0x%x", *features);
+  DBG_SOCK("supported features: 0x%lx", *features);
   return 0;
 }
 
@@ -331,10 +435,13 @@ dpdk_vhost_user_set_features(u32 hw_if_index, u64 features)
   if (xd->vu_vhost_dev.features & (1 << VIRTIO_NET_F_MRG_RXBUF))
     hdr_len = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 
-  xd->vu_vhost_dev.virtqueue[VIRTIO_RXQ]->vhost_hlen = hdr_len;
-  xd->vu_vhost_dev.virtqueue[VIRTIO_TXQ]->vhost_hlen = hdr_len;
-
-  xd->vu_is_running = 0;
+  int numqs = VIRTIO_QNUM;
+  u8 idx;
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  numqs = xd->vu_vhost_dev.virt_qp_nb * VIRTIO_QNUM;
+#endif
+  for (idx = 0; idx < numqs; idx++)
+      xd->vu_vhost_dev.virtqueue[idx]->vhost_hlen = hdr_len;
 
   return 0;
 }
@@ -386,9 +493,7 @@ dpdk_vhost_user_set_mem_table(u32 hw_if_index, vhost_user_memory_t * vum, int fd
     }
   }
 
-  xd->vu_is_running = 0;
-
-  DBG_SOCK("done");
+  disable_interface(xd);
   return 0;
 }
 
@@ -407,7 +512,7 @@ dpdk_vhost_user_set_vring_num(u32 hw_if_index, u8 idx, u32 num)
   vq = xd->vu_vhost_dev.virtqueue[idx];
   vq->size = num;
 
-  xd->vu_is_running = 0;
+  stop_processing_packets(hw_if_index, idx);
 
   return 0;
 }
@@ -418,7 +523,8 @@ dpdk_vhost_user_set_vring_addr(u32 hw_if_index, u8 idx, u64 desc, u64 used, u64 
   dpdk_device_t * xd;
   struct vhost_virtqueue *vq;
 
-  DBG_SOCK("idx %u desc 0x%x used 0x%x avail 0x%x", idx, desc, used, avail);
+  DBG_SOCK("idx %u desc 0x%lx used 0x%lx avail 0x%lx",
+    idx, desc, used, avail);
 
   if (!(xd = dpdk_vhost_user_device_from_hw_if_index(hw_if_index))) {
     clib_warning("not a vhost-user interface");
@@ -434,7 +540,7 @@ dpdk_vhost_user_set_vring_addr(u32 hw_if_index, u8 idx, u64 desc, u64 used, u64 
     clib_warning("falied to set vring addr");
   }
 
-  xd->vu_is_running = 0;
+  stop_processing_packets(hw_if_index, idx);
 
   return 0;
 }
@@ -453,7 +559,42 @@ dpdk_vhost_user_get_vring_base(u32 hw_if_index, u8 idx, u32 * num)
   vq = xd->vu_vhost_dev.virtqueue[idx];
   *num = vq->last_used_idx;
 
-  DBG_SOCK("idx %u num %u", idx, *num);
+/*
+ * From spec:
+ * Client must start ring upon receiving a kick
+ * (that is, detecting that file descriptor is readable)
+ * on the descriptor specified by VHOST_USER_SET_VRING_KICK,
+ * and stop ring upon receiving VHOST_USER_GET_VRING_BASE.
+ */
+  dpdk_vu_intf_t *vui = xd->vu_intf;
+  DBG_SOCK("Stopping vring Q %u of device %d", idx, hw_if_index);
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  vui->vrings[idx].enabled = 0; /* Reset local copy */
+  vui->vrings[idx].callfd = -1; /* Reset FD */
+  vq->enabled = 0;
+  vq->desc = NULL;
+  vq->used = NULL;
+  vq->avail = NULL;
+
+  /* Check if all Qs are disabled */
+  int numqs = xd->vu_vhost_dev.virt_qp_nb * VIRTIO_QNUM;
+  for (idx = 0;  idx < numqs; idx++) {
+    if (xd->vu_vhost_dev.virtqueue[idx]->enabled)
+        break;
+  }
+
+  /* If all vrings are disabed then disable device */
+  if (idx == numqs)  {
+      DBG_SOCK("Device %d disabled", hw_if_index);
+      xd->vu_is_running = 0;
+  }
+#else
+  vq->desc = NULL;
+  vq->used = NULL;
+  vq->avail = NULL;
+  xd->vu_is_running = 0;
+#endif
+
   return 0;
 }
 
@@ -474,7 +615,7 @@ dpdk_vhost_user_set_vring_base(u32 hw_if_index, u8 idx, u32 num)
   vq->last_used_idx = num;
   vq->last_used_idx_res = num;
 
-  xd->vu_is_running = 0;
+  stop_processing_packets(hw_if_index, idx);
 
   return 0;
 }
@@ -484,50 +625,126 @@ dpdk_vhost_user_set_vring_kick(u32 hw_if_index, u8 idx, int fd)
 {
   dpdk_main_t * dm = &dpdk_main;
   dpdk_device_t * xd;
-  struct vhost_virtqueue *vq, *vq0, *vq1;
-
-  DBG_SOCK("idx %u fd %d", idx, fd);
+  dpdk_vu_vring *vring;
+  struct vhost_virtqueue *vq0, *vq1, *vq;
+  int index, vu_is_running = 0;
 
   if (!(xd = dpdk_vhost_user_device_from_hw_if_index(hw_if_index))) {
     clib_warning("not a vhost-user interface");
     return 0;
   }
 
+  vring = &xd->vu_intf->vrings[idx];
   vq = xd->vu_vhost_dev.virtqueue[idx];
   vq->kickfd = fd;
 
-  vq0 = xd->vu_vhost_dev.virtqueue[0];
-  vq1 = xd->vu_vhost_dev.virtqueue[1];
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  vq->enabled = (vq->desc && vq->avail && vq->used && vring->enabled) ? 1 : 0;
+#endif
 
-  if (vq0->desc && vq0->avail && vq0->used &&
-      vq1->desc && vq1->avail && vq1->used) {
-    xd->vu_is_running = 1;
-    if (xd->admin_up)
-      vnet_hw_interface_set_flags (dm->vnet_main, xd->vlib_hw_if_index,
-                           VNET_HW_INTERFACE_FLAG_LINK_UP |
-                           ETH_LINK_FULL_DUPLEX );
+  /*
+   * Set xd->vu_is_running if at least one pair of
+   * RX/TX queues are enabled.
+   */
+  int numqs = VIRTIO_QNUM;
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  numqs = xd->vu_vhost_dev.virt_qp_nb * VIRTIO_QNUM;
+#endif
+
+  for (index = 0; index < numqs; index += 2) {
+    vq0 = xd->vu_vhost_dev.virtqueue[index]; /* RX */
+    vq1 = xd->vu_vhost_dev.virtqueue[index + 1]; /* TX */
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+    if (vq0->enabled && vq1->enabled)
+#else
+    if (vq0->desc && vq0->avail && vq0->used &&
+      vq1->desc && vq1->avail && vq1->used)
+#endif
+    {
+        vu_is_running = 1;
+        break;
+    }
+  }
+  DBG_SOCK("SET_VRING_KICK - idx %d, running %d, fd: %d",
+    idx, vu_is_running, fd);
+
+  xd->vu_is_running = vu_is_running;
+  if (xd->vu_is_running && xd->admin_up) {
+    vnet_hw_interface_set_flags (dm->vnet_main,
+      xd->vlib_hw_if_index, VNET_HW_INTERFACE_FLAG_LINK_UP |
+      ETH_LINK_FULL_DUPLEX );
   }
 
   return 0;
 }
 
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+dpdk_vhost_user_set_vring_enable(u32 hw_if_index, u8 idx, int enable)
+{
+  dpdk_device_t * xd;
+  struct vhost_virtqueue *vq;
+  dpdk_vu_intf_t *vui;
+
+  if (!(xd = dpdk_vhost_user_device_from_hw_if_index(hw_if_index))) {
+    clib_warning("not a vhost-user interface");
+    return 0;
+  }
+
+  vui = xd->vu_intf;
+  /*
+   * Guest vhost driver wrongly enables queue before
+   * setting the vring address. Therefore, save a
+   * local copy. Reflect it in vq structure if addresses
+   * are set. If not, vq will be enabled when vring
+   * is kicked.
+   */
+  vui->vrings[idx].enabled = enable; /* Save local copy */
+
+  vq = xd->vu_vhost_dev.virtqueue[idx];
+  if (vq->desc && vq->avail && vq->used)
+    xd->vu_vhost_dev.virtqueue[idx]->enabled = enable;
+
+  return 0;
+}
+#endif
+
+static clib_error_t * dpdk_vhost_user_callfd_read_ready (unix_file_t * uf)
+{
+  __attribute__((unused)) int n;
+  u8 buff[8];
+  n = read(uf->file_descriptor, ((char*)&buff), 8);
+  return 0;
+}
 
 static clib_error_t *
 dpdk_vhost_user_set_vring_call(u32 hw_if_index, u8 idx, int fd)
 {
   dpdk_device_t * xd;
   struct vhost_virtqueue *vq;
+  unix_file_t template = {0};
 
-  DBG_SOCK("idx %u fd %d", idx, fd);
+  DBG_SOCK("SET_VRING_CALL - idx %d, fd %d", idx, fd);
 
   if (!(xd = dpdk_vhost_user_device_from_hw_if_index(hw_if_index))) {
     clib_warning("not a vhost-user interface");
     return 0;
   }
 
+  dpdk_vu_intf_t *vui = xd->vu_intf;
+
+  /* if there is old fd, delete it */
+  if (vui->vrings[idx].callfd > 0) {
+    unix_file_t * uf = pool_elt_at_index (unix_main.file_pool,
+      vui->vrings[idx].callfd_idx);
+    unix_file_del (&unix_main, uf);
+  }
+  vui->vrings[idx].callfd = fd;
+  template.read_function = dpdk_vhost_user_callfd_read_ready;
+  template.file_descriptor = fd;
+  vui->vrings[idx].callfd_idx = unix_file_add (&unix_main, &template);
+
   vq = xd->vu_vhost_dev.virtqueue[idx];
-  /* reset callfd to force no interrupts */
-  vq->callfd = -1;
+  vq->callfd = -1; /* We use locally saved vring->callfd; */
 
   return 0;
 }
@@ -563,10 +780,7 @@ dpdk_vhost_user_send_interrupt(vlib_main_t * vm, dpdk_device_t * xd, int idx)
 
     /* if vm is interested in interrupts */
     if((vring->callfd > 0) && !(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)) {
-        u64 x = 1;
-        int rv __attribute__((unused));
-        /* $$$$ pay attention to rv */
-        rv = write(vring->callfd, &x, sizeof(x));
+        eventfd_write(vring->callfd, (eventfd_t)1);
         vring->n_since_last_int = 0;
         vring->int_deadline = vlib_time_now(vm) + dm->vhost_coalesce_time;
     }
@@ -588,7 +802,12 @@ dpdk_vhost_user_vui_init(vnet_main_t * vnm,
   memset(vui, 0, sizeof(*vui));
 
   vui->unix_fd = sockfd;
-  vui->num_vrings = 2;
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  vui->num_vrings = xd->vu_vhost_dev.virt_qp_nb * VIRTIO_QNUM;
+#else
+  vui->num_vrings = VIRTIO_QNUM;
+#endif
+  DBG_SOCK("dpdk_vhost_user_vui_init VRINGS: %d", vui->num_vrings);
   vui->sock_is_server = is_server;
   strncpy(vui->sock_filename, sock_filename, ARRAY_LEN(vui->sock_filename)-1);
   vui->sock_errno = 0;
@@ -638,14 +857,6 @@ dpdk_vhost_user_if_disconnect(dpdk_device_t * xd)
     DBG_SOCK("interface ifindex %d disconnected", xd->vlib_sw_if_index);
 }
 
-static clib_error_t * dpdk_vhost_user_callfd_read_ready (unix_file_t * uf)
-{
-  __attribute__((unused)) int n;
-  u8 buff[8];
-  n = read(uf->file_descriptor, ((char*)&buff), 8);
-  return 0;
-}
-
 static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
 {
   int n;
@@ -660,7 +871,6 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
   struct cmsghdr *cmsg;
   uword * p;
   u8 q;
-  unix_file_t template = {0};
   vnet_main_t * vnm = vnet_get_main();
 
   p = hash_get (dm->vu_sw_if_index_by_sock_fd, uf->file_descriptor);
@@ -719,12 +929,13 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
       rv = read(uf->file_descriptor, ((char*)&msg) + n, msg.size);
   }
 
+  DBG_SOCK("VPP VHOST message %s", vhost_message_str[msg.request]);
   switch (msg.request) {
     case VHOST_USER_GET_FEATURES:
       DBG_SOCK("if %d msg VHOST_USER_GET_FEATURES",
         xd->vlib_hw_if_index);
 
-      msg.flags |= 4;
+      msg.flags |= VHOST_USER_REPLY_MASK;
 
       dpdk_vhost_user_get_features(xd->vlib_hw_if_index, &msg.u64);
       msg.u64 &= vui->feature_mask;
@@ -732,7 +943,7 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_SET_FEATURES:
-      DBG_SOCK("if %d msg VHOST_USER_SET_FEATURES features 0x%016llx",
+      DBG_SOCK("if %d msg VHOST_USER_SET_FEATURES features 0x%016lx",
         xd->vlib_hw_if_index, msg.u64);
 
       dpdk_vhost_user_set_features(xd->vlib_hw_if_index, msg.u64);
@@ -792,38 +1003,29 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_CALL:
-      DBG_SOCK("if %d msg VHOST_USER_SET_VRING_CALL u64 %d",
-        xd->vlib_hw_if_index, msg.u64);
-
       q = (u8) (msg.u64 & 0xFF);
+
+      DBG_SOCK("if %d msg VHOST_USER_SET_VRING_CALL u64 %lx, idx: %d",
+        xd->vlib_hw_if_index, msg.u64, q);
 
       if (!(msg.u64 & 0x100))
       {
         if (number_of_fds != 1)
           goto close_socket;
-
-        /* if there is old fd, delete it */
-        if (vui->vrings[q].callfd) {
-          unix_file_t * uf = pool_elt_at_index (unix_main.file_pool,
-            vui->vrings[q].callfd_idx);
-          unix_file_del (&unix_main, uf);
-        }
-        vui->vrings[q].callfd = fds[0];
-        template.read_function = dpdk_vhost_user_callfd_read_ready;
-        template.file_descriptor = fds[0];
-        vui->vrings[q].callfd_idx = unix_file_add (&unix_main, &template);
+        fd = fds[0];
+      } else {
+        fd = -1;
       }
-      else
-        vui->vrings[q].callfd = -1;
+      dpdk_vhost_user_set_vring_call(xd->vlib_hw_if_index, q, fd);
 
-      dpdk_vhost_user_set_vring_call(xd->vlib_hw_if_index, q, vui->vrings[q].callfd);
       break;
 
     case VHOST_USER_SET_VRING_KICK:
-      DBG_SOCK("if %d msg VHOST_USER_SET_VRING_KICK u64 %d",
-        xd->vlib_hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
+
+      DBG_SOCK("if %d msg VHOST_USER_SET_VRING_KICK u64 %lx, idx: %d",
+        xd->vlib_hw_if_index, msg.u64, q);
 
       if (!(msg.u64 & 0x100))
       {
@@ -839,10 +1041,11 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_ERR:
-      DBG_SOCK("if %d msg VHOST_USER_SET_VRING_ERR u64 %d",
-        xd->vlib_hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
+
+      DBG_SOCK("if %d msg VHOST_USER_SET_VRING_ERR u64 %lx, idx: %d",
+        xd->vlib_hw_if_index, msg.u64, q);
 
       if (!(msg.u64 & 0x100))
       {
@@ -868,7 +1071,7 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
       DBG_SOCK("if %d msg VHOST_USER_GET_VRING_BASE idx %d num %d",
         xd->vlib_hw_if_index, msg.state.index, msg.state.num);
 
-      msg.flags |= 4;
+      msg.flags |= VHOST_USER_REPLY_MASK;
       msg.size = sizeof(msg.state);
 
       dpdk_vhost_user_get_vring_base(xd->vlib_hw_if_index, msg.state.index, &msg.state.num);
@@ -889,6 +1092,44 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
         xd->vlib_hw_if_index);
       break;
 
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+    case VHOST_USER_GET_PROTOCOL_FEATURES:
+      DBG_SOCK("if %d msg VHOST_USER_GET_PROTOCOL_FEATURES",
+        xd->vlib_hw_if_index);
+
+      msg.flags |= VHOST_USER_REPLY_MASK;
+      msg.u64 = VHOST_USER_PROTOCOL_FEATURES;
+      DBG_SOCK("VHOST_USER_PROTOCOL_FEATURES: %llx", VHOST_USER_PROTOCOL_FEATURES);
+      msg.size = sizeof(msg.u64);
+      break;
+
+    case VHOST_USER_SET_PROTOCOL_FEATURES:
+      DBG_SOCK("if %d msg VHOST_USER_SET_PROTOCOL_FEATURES",
+        xd->vlib_hw_if_index);
+
+      DBG_SOCK("VHOST_USER_SET_PROTOCOL_FEATURES: 0x%lx",
+        msg.u64);
+      dpdk_vhost_user_set_protocol_features(xd->vlib_hw_if_index,
+        msg.u64);
+      break;
+
+    case VHOST_USER_SET_VRING_ENABLE:
+      DBG_SOCK("%d VPP VHOST_USER_SET_VRING_ENABLE IDX: %d, Enable: %d",
+        xd->vlib_hw_if_index, msg.state.index, msg.state.num);
+      dpdk_vhost_user_set_vring_enable
+        (xd->vlib_hw_if_index, msg.state.index, msg.state.num);
+      break;
+
+    case VHOST_USER_GET_QUEUE_NUM:
+      DBG_SOCK("if %d msg VHOST_USER_GET_QUEUE_NUM:",
+        xd->vlib_hw_if_index);
+
+      msg.flags |= VHOST_USER_REPLY_MASK;
+      msg.u64 = xd->vu_vhost_dev.virt_qp_nb;
+      msg.size = sizeof(msg.u64);
+      break;
+#endif
+
     default:
       DBG_SOCK("unknown vhost-user message %d received. closing socket",
         msg.request);
@@ -904,10 +1145,11 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
 
       vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index,  VNET_HW_INTERFACE_FLAG_LINK_UP);
       vui->is_up = 1;
+      xd->admin_up = 1;
   }
 
   /* if we need to reply */
-  if (msg.flags & 4)
+  if (msg.flags & VHOST_USER_REPLY_MASK)
   {
       n = send(uf->file_descriptor, &msg, VHOST_USER_MSG_HDR_SZ + msg.size, 0);
       if (n != (msg.size + VHOST_USER_MSG_HDR_SZ))
@@ -1470,7 +1712,7 @@ show_dpdk_vhost_user_command_fn (vlib_main_t * vm,
     u32 virtio_net_hdr_sz = (vui->num_vrings > 0 ?
             vhost_dev->virtqueue[0]->vhost_hlen : 0);
 
-    vlib_cli_output (vm, "Interface: %s (ifindex %d)",
+    vlib_cli_output (vm, "Interface: %v (ifindex %d)",
                          hi->name, hw_if_indices[i]);
 
     vlib_cli_output (vm, "virtio_net_hdr_sz %d\n features (0x%llx): \n",
@@ -1506,8 +1748,9 @@ show_dpdk_vhost_user_command_fn (vlib_main_t * vm,
     }
     for (q = 0; q < vui->num_vrings; q++) {
       struct vhost_virtqueue *vq = vhost_dev->virtqueue[q];
+      const char *qtype = (q & 1) ? "TX" : "RX";
 
-      vlib_cli_output(vm, "\n Virtqueue %d\n", q);
+      vlib_cli_output(vm, "\n Virtqueue %d (%s)\n", q/2, qtype);
 
       vlib_cli_output(vm, "  qsz %d last_used_idx %d last_used_idx_res %d\n",
               vq->size, vq->last_used_idx, vq->last_used_idx_res);
@@ -1516,12 +1759,17 @@ show_dpdk_vhost_user_command_fn (vlib_main_t * vm,
         vlib_cli_output(vm, "  avail.flags %x avail.idx %d used.flags %x used.idx %d\n",
           vq->avail->flags, vq->avail->idx, vq->used->flags, vq->used->idx);
 
-      vlib_cli_output(vm, "  kickfd %d callfd %d errfd %d\n",
-        vui->vrings[q].kickfd,
-        vui->vrings[q].callfd,
-        vui->vrings[q].errfd);
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+      vlib_cli_output(vm, "  kickfd %d callfd %d errfd %d enabled %d\n",
+        vq->kickfd, vq->callfd, vui->vrings[q].errfd, vq->enabled);
+
+      if (show_descr && vq->enabled) {
+#else
+      vlib_cli_output(vm, "  kickfd %d callfd %d errfd\n",
+        vq->kickfd, vq->callfd, vui->vrings[q].errfd);
 
       if (show_descr) {
+#endif
         vlib_cli_output(vm, "\n  descriptor table:\n");
         vlib_cli_output(vm, "   id          addr         len  flags  next      user_addr\n");
         vlib_cli_output(vm, "  ===== ================== ===== ====== ===== ==================\n");
