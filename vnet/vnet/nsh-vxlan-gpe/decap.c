@@ -83,9 +83,9 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 	  vlib_buffer_t * b0, * b1;
 	  u32 next0, next1;
           ip4_vxlan_gpe_and_nsh_header_t * iuvn0, * iuvn1;
-	  uword * p0, * p1;
+	  uword * p0, * p1, * next_p0;
           u32 tunnel_index0, tunnel_index1;
-          nsh_vxlan_gpe_tunnel_t * t0, * t1;
+          nsh_vxlan_gpe_tunnel_t * t0, * t1, * next_t0;
           nsh_vxlan_gpe_tunnel_key_t key0, key1;
           u32 error0, error1;
 
@@ -134,7 +134,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 
           tunnel_index1 = ~0;
           error1 = 0;
-          next1 = NSH_VXLAN_GPE_INPUT_NEXT_DROP;
+          next1 = VXLAN_GPE_INPUT_NEXT_DROP;
 
           key0.src = iuvn0->ip4.src_address.as_u32;
           key0.vni = iuvn0->vxlan.vni_res;
@@ -275,7 +275,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           next0 = NSH_VXLAN_GPE_INPUT_NEXT_DROP;
 
           key0.src = iuvn0->ip4.src_address.as_u32;
-          key0.vni = iuvn0->vxlan.vni_res;
+	  key0.vni = iuvn0->vxlan.vni_res;
           key0.spi_si = iuvn0->nsh.spi_si;
           key0.pad = 0;
 
@@ -283,7 +283,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
                              || (key0.as_u64[1] != last_key.as_u64[1])))
             {
               p0 = hash_get_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, &key0);
-
+                    
               if (p0 == 0)
                 {
                   error0 = NSH_VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
@@ -299,16 +299,44 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 
           t0 = pool_elt_at_index (ngm->tunnels, tunnel_index0);
 
-          next0 = t0->decap_next_index;
-
           /* Required to make the l2 tag push / pop code work on l2 subifs */
           vnet_update_l2_len (b0);
 
-          /* 
-           * ip[46] lookup in the configured FIB
-           * nsh-vxlan-gpe-encap, here's the encap tunnel sw_if_index
-           */
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
+          next0 = t0->decap_next_index;
+
+	  if (next0 == NSH_VXLAN_GPE_INPUT_NEXT_NSH_VXLAN_GPE_ENCAP)
+	    {
+	      /* 
+		 Functioning as SFF (ie "half NSH tunnel mode")
+		 If ingress (we are in decap.c) with NSH header, and 'decap next nsh-vxlan-gpe' then "NSH switch"
+		 1. Take DST, remap to SRC, remap other keys in place
+		 2. Look up new t0 as per above
+		 3. Set sw_if_index[VLIB_TX] to be t0->sw_if_index
+	       */
+	      next_key0.src = iuvn0->ip4.dst_address.as_u32;
+	      next_key0.vni = iuvn0->vxlan.vni_res;
+	      next_key0.spi_si = iuvn0->nsh.spi_si;
+	      next_key0.pad = 0;
+              next_p0 = hash_get_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, &key0);
+
+              if (next_p0 == 0)
+                {
+                  error0 = NSH_VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
+                  goto trace00;
+                }
+	      next_t0 = pool_elt_at_index (ngm->tunnels, next_p0[0]);
+	      vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->sw_if_index;
+              
+	    } 
+	  else 
+	    {
+	      /* 
+	       * ip[46] lookup in the configured FIB
+	       * nsh-vxlan-gpe-encap, here's the encap tunnel sw_if_index
+	       */
+	      vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
+	    }
+
           pkts_decapsulated ++;
 
         trace00:
