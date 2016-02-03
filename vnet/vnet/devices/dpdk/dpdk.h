@@ -137,6 +137,9 @@ typedef struct {
   int callfd;
   int kickfd;
   int errfd;
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  int enabled;
+#endif
   u32 callfd_idx;
   u32 n_since_last_int;
   f64 int_deadline;
@@ -154,7 +157,11 @@ typedef struct {
 
   u64 feature_mask;
   u32 num_vrings;
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  dpdk_vu_vring vrings[VHOST_MAX_QUEUE_PAIRS * 2];
+#else
   dpdk_vu_vring vrings[2];
+#endif
   u64 region_addr[VHOST_MEMORY_MAX_NREGIONS];
   u32 region_fd[VHOST_MEMORY_MAX_NREGIONS];
 } dpdk_vu_intf_t;
