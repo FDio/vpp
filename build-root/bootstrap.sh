@@ -5,7 +5,9 @@ cd ../
 wsroot=`pwd`
 
 # PATH
-CCACHE_DIR="$build_root/.ccache"
+if [[ ! $CCACHE_DIR ]];then
+    CCACHE_DIR="$build_root/.ccache"
+fi
 ADD_TO_PATH="$build_root/tools/ccache-bin:$build_root/tools/bin"
 
 # Construct build-config.mk
