@@ -79,7 +79,6 @@ _(pg_stream_del)                                \
 _(pg_stream_enable_disable)                     \
 _(pg_main)					\
 _(ip_main)					\
-_(log)						\
 _(unformat_pg_edit)				\
 _(unformat_tcp_udp_port)			\
 _(unformat_pg_number)				\
