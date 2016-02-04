@@ -23,9 +23,6 @@ apt-get install -y openjdk-7-jdk
 # $$$ comment out for the moment
 # apt-get install -y --force-yes maven3
 
-# Install debian packaging tools
-apt-get install -y debhelper dkms
-
 # Setup for hugepages using upstart so it persists across reboots
 echo "vm.nr_hugepages=1024" >> /etc/sysctl.d/20-hugepages.conf
 sysctl --system
