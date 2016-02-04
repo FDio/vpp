@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_b4e1989c",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/decap.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-04T12:24:06Z",
+      "side": 1,
+      "message": "To minimize the [apparent] size of the patch, please minimize white-space diffs. Apparently tabs turned into spaces. Emacs M-x tabify is your friend...",
+      "revId": "07cbb969281832722a06cdb489114adb805f1163",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
