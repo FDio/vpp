@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_f4d720be",
+        "filename": "build-root/vagrant/bootstrap.ubuntu1404.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-04T12:19:25Z",
+      "side": 1,
+      "message": "Is there a similar change in the works for CentOS?",
+      "revId": "5105a0038497592ea91d6dc880027d31c9f85f3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
