@@ -382,10 +382,6 @@ clib_error_t *
 ip6_set_neighbor_limit (u32 neighbor_limit);
 
 uword
-ip6_tcp_register_listener (vlib_main_t * vm,
-			   u16 dst_port,
-			   u32 next_node_index);
-uword
 ip6_udp_register_listener (vlib_main_t * vm,
 			   u16 dst_port,
 			   u32 next_node_index);
