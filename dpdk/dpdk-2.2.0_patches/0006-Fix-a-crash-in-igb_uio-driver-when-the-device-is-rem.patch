@@ -1,0 +1,33 @@
+From 68d23609ec0c42773043383ff2939a30830e8069 Mon Sep 17 00:00:00 2001
+From: Bud Grise <griseb@cisco.com>
+Date: Tue, 2 Feb 2016 12:45:44 -0800
+Subject: [PATCH 6/8] Fix a crash in igb_uio driver when the device is removed.
+
+This crash happens because the device still has MSI configured,
+the fix is to free the IRQ.
+
+Signed-off-by: Todd Foggoa (tfoggoa) <tfoggoa@cisco.com>
+---
+ lib/librte_eal/linuxapp/igb_uio/igb_uio.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/lib/librte_eal/linuxapp/igb_uio/igb_uio.c b/lib/librte_eal/linuxapp/igb_uio/igb_uio.c
+index f5617d2..23a5cfa 100644
+--- a/lib/librte_eal/linuxapp/igb_uio/igb_uio.c
++++ b/lib/librte_eal/linuxapp/igb_uio/igb_uio.c
+@@ -571,6 +571,12 @@ igbuio_pci_remove(struct pci_dev *dev)
+ 	udev = info->priv;
+ 
+ 	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
++
++	if (info->irq && (info->irq != UIO_IRQ_CUSTOM)){
++		free_irq(info->irq, info->uio_dev);
++		info->irq = UIO_IRQ_NONE;
++	}
++
+ 	uio_unregister_device(info);
+ 	igbuio_pci_release_iomem(info);
+ 	if (udev->mode == RTE_INTR_MODE_MSIX)
+-- 
+2.2.1
+
