@@ -1303,24 +1303,23 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   if (!dm->coremask_set_manually)
     {
       vlib_thread_registration_t * tr;
-      uword coremask;
+      uword * coremask = 0;
       int i;
 
       /* main thread core */
-      coremask = 1 << tm->main_lcore;
+      coremask = clib_bitmap_set(coremask, tm->main_lcore, 1);
 
       for (i = 0; i < vec_len (tm->registrations); i++)
         {
           tr = tm->registrations[i];
-          if (clib_bitmap_is_zero(tr->coremask))
-            continue;
-          coremask |= tr->coremask[0];
+          coremask = clib_bitmap_or(coremask, tr->coremask);
         }
 
       vec_insert (dm->eal_init_args, 2, 1);
       dm->eal_init_args[1] = (u8 *) "-c";
-      tmp = format (0, "%x%c", coremask, 0);
+      tmp = format (0, "%U%c", format_bitmap_hex, coremask, 0);
       dm->eal_init_args[2] = tmp;
+      clib_bitmap_free(coremask);
     }
 
   if (!dm->nchannels_set_manually)

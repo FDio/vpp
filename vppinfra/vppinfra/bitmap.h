@@ -542,7 +542,7 @@ unformat_bitmap_list(unformat_input_t * input, va_list * va)
       else
         goto error;
 
-      if ((b < a) || (b > 63))
+      if (b < a)
         goto error;
 
       for (i = a; i <= b; i++)
@@ -555,4 +555,27 @@ error:
   return 0;
 }
 
+static inline u8 *
+format_bitmap_hex(u8 * s, va_list * args)
+{
+  uword * bitmap = va_arg (*args, uword *);
+  int i, is_trailing_zero = 1;
+
+  if (!bitmap)
+    return format(s, "0");
+
+  i = vec_bytes (bitmap) * 2;
+
+  while (i > 0)
+    {
+      u8 x = clib_bitmap_get_multiple(bitmap, --i * 4, 4);
+
+      if (x && is_trailing_zero)
+        is_trailing_zero = 0;
+
+      if (x || !is_trailing_zero)
+          s = format(s, "%x", x);
+    }
+  return s;
+}
 #endif /* included_clib_bitmap_h */
