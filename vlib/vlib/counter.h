@@ -45,7 +45,6 @@
  * the CPU configuration is available, so we have to
  * preallocate the mini-counter per-cpu vectors
  */
-#define VLIB_COUNTER_MAX_CPUS	32
 
 typedef struct {
   /* Compact counters that (rarely) can overflow. */
@@ -101,7 +100,7 @@ vlib_get_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 
   v = 0;
 
-  for (i = 0; i < VLIB_COUNTER_MAX_CPUS; i++)
+  for (i = 0; i < vec_len(cm->minis); i++)
     {
       my_minis = cm->minis[i];
       mini = vec_elt_at_index (my_minis, index);
@@ -127,7 +126,7 @@ vlib_zero_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 
   ASSERT (index < vec_len (cm->maxi));
 
-  for (i = 0; i < VLIB_COUNTER_MAX_CPUS; i++)
+  for (i = 0; i < vec_len(cm->minis); i++)
     {
       my_minis = cm->minis[i];
       my_minis[index] = 0;
@@ -257,7 +256,7 @@ vlib_get_combined_counter (vlib_combined_counter_main_t * cm,
   result->packets = 0;
   result->bytes = 0;
 
-  for (i = 0; i < VLIB_COUNTER_MAX_CPUS; i++)
+  for (i = 0; i < vec_len(cm->minis); i++)
     {
       my_minis = cm->minis[i];
 
@@ -281,7 +280,7 @@ vlib_zero_combined_counter (vlib_combined_counter_main_t * cm,
   vlib_mini_counter_t * mini, * my_minis;
   int i;
 
-  for (i = 0; i < VLIB_COUNTER_MAX_CPUS; i++)
+  for (i = 0; i < vec_len(cm->minis); i++)
     {
       my_minis = cm->minis[i];
 
@@ -295,37 +294,8 @@ vlib_zero_combined_counter (vlib_combined_counter_main_t * cm,
     vlib_counter_zero (&cm->value_at_last_clear[index]);
 }
 
-/* Initialize/allocate given counter index.
-   Works for both simple and combined counters. */
-#define vlib_validate_counter_DEPRECATED(cm,index)              \
-  do {                                                          \
-    int i;                                                      \
-                                                                \
-    vec_validate ((cm)->minis, VLIB_COUNTER_MAX_CPUS-1);        \
-    for (i = 0; i < VLIB_COUNTER_MAX_CPUS; i++)                 \
-      vec_validate ((cm)->minis[i], (index));                   \
-    vec_validate ((cm)->maxi, (index));                         \
-  } while (0)
-
-static inline void
-vlib_validate_simple_counter (vlib_simple_counter_main_t *cm, u32 index)
-{
-  int i;
-  vec_validate (cm->minis, VLIB_COUNTER_MAX_CPUS-1);
-  for (i = 0; i < VLIB_COUNTER_MAX_CPUS; i++)
-    vec_validate_aligned (cm->minis[i], index, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (cm->maxi, index, CLIB_CACHE_LINE_BYTES);
-}
-
-static inline void
-vlib_validate_combined_counter (vlib_combined_counter_main_t *cm, u32 index)
-{
-  int i;
-  vec_validate (cm->minis, VLIB_COUNTER_MAX_CPUS-1);
-  for (i = 0; i < VLIB_COUNTER_MAX_CPUS; i++)
-    vec_validate_aligned (cm->minis[i], index, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (cm->maxi, index, CLIB_CACHE_LINE_BYTES);
-}
+void vlib_validate_simple_counter (vlib_simple_counter_main_t *cm, u32 index);
+void vlib_validate_combined_counter (vlib_combined_counter_main_t *cm, u32 index);
 
 /* Number of simple/combined counters allocated. */
 #define vlib_counter_len(cm) vec_len((cm)->maxi)
