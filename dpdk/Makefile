@@ -89,6 +89,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_TOOLCHAIN_GCC,y)
 	$(call set,RTE_TOOLCHAIN,"gcc")
 	@# modify options
+	$(call set,RTE_MAX_LCORE,256)
 	$(call set,RTE_PKTMBUF_HEADROOM,$(DPDK_PKTMBUF_HEADROOM))
 	$(call set,RTE_LIBEAL_USE_HPET,y)
 	$(call set,RTE_BUILD_COMBINE_LIBS,y)
