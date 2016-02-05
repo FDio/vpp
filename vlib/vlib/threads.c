@@ -517,7 +517,7 @@ static clib_error_t * start_workers (vlib_main_t * vm)
 
   /* Set up the main thread */
   vec_add2_aligned (vlib_worker_threads, w, 1, CLIB_CACHE_LINE_BYTES);
-  w->elog_track.name = "thread 0";
+  w->elog_track.name = "main thread";
   elog_track_register (&vm->elog_main, &w->elog_track);
 
   if (vec_len(tm->thread_prefix))
@@ -599,7 +599,8 @@ static clib_error_t * start_workers (vlib_main_t * vm)
             w->instance_id = k;
             w->registration = tr; 
             
-            w->elog_track.name = (char *) format (0, "thread %d", i+1);
+            w->elog_track.name = 
+                (char *) format (0, "%s %d", tr->name, k+1);
             vec_add1 (w->elog_track.name, 0);
             elog_track_register (&vm->elog_main, &w->elog_track);
             
@@ -719,7 +720,8 @@ static clib_error_t * start_workers (vlib_main_t * vm)
               w->thread_function = tr->function;
               w->thread_function_arg = w;
               w->instance_id = j;
-              w->elog_track.name = (char *) format (0, "thread %d", i+1);
+              w->elog_track.name = 
+                  (char *) format (0, "%s %d", tr->name, j+1);
               w->registration = tr;
               vec_add1 (w->elog_track.name, 0);
               elog_track_register (&vm->elog_main, &w->elog_track);
