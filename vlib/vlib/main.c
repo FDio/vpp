@@ -135,7 +135,7 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index, u32 frame_flags)
     }
   else
     {
-      f = clib_mem_alloc_aligned_no_fail (n, CLIB_CACHE_LINE_BYTES);
+      f = clib_mem_alloc_aligned_no_fail (n, VLIB_FRAME_ALIGN);
       f->cpu_index = vm->cpu_index;
       fi = vlib_frame_index_no_check (vm, f);
     }

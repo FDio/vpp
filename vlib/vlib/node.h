@@ -290,6 +290,7 @@ typedef struct vlib_node_t {
 
 /* Max number of vector elements to process at once per node. */
 #define VLIB_FRAME_SIZE 256
+#define VLIB_FRAME_ALIGN VLIB_MAX_CPUS
 
 /* Calling frame (think stack frame) for a node. */
 typedef struct vlib_frame_t {
