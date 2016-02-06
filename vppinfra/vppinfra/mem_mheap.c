@@ -50,7 +50,7 @@ clib_smp_main_t clib_smp_main = {
   .n_tls_4k_pages = 1,
 };
 
-void * clib_per_cpu_mheaps[32];
+void * clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 
 void clib_mem_exit (void)
 {
