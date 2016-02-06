@@ -43,15 +43,12 @@ typedef struct vlib_thread_registration_ {
   uword * coremask;
 } vlib_thread_registration_t;
 
-#define VLIB_MAX_CPUS 32
-
-/* 
- * Objects passed around by "index" are cache-line aligned.
- * We can stick the owner CPU into the low 6 bits.
+/*
+ * Frames have their cpu / vlib_main_t index in the low-order N bits
+ * Make VLIB_MAX_CPUS a power-of-two, please...
  */
-#if VLIB_MAX_CPUS > 64
-#error VLIB_MAX_CPUS must be <= 64
-#endif
+
+#define VLIB_MAX_CPUS 256
 
 #define VLIB_CPU_MASK (VLIB_MAX_CPUS - 1) /* 0x3f, max */
 #define VLIB_OFFSET_MASK (~VLIB_CPU_MASK)
