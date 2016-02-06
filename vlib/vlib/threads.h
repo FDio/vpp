@@ -50,6 +50,10 @@ typedef struct vlib_thread_registration_ {
 
 #define VLIB_MAX_CPUS 256
 
+#if VLIB_MAX_CPUS > CLIB_MAX_MHEAPS
+#error Please increase number of per-cpu mheaps
+#endif
+
 #define VLIB_CPU_MASK (VLIB_MAX_CPUS - 1) /* 0x3f, max */
 #define VLIB_OFFSET_MASK (~VLIB_CPU_MASK)
 
