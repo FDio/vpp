@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_7a877962",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/decap.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-07T21:03:13Z",
+      "side": 1,
+      "message": "Anything you can figure out how to do to lose the whitespace diffs?",
+      "revId": "7dd573c12aed0406e82bfba12feb2ad38ed1c6e7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_5a7cb572",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/encap.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-07T21:03:13Z",
+      "side": 1,
+      "message": "Ugh, more whitespace diffs.",
+      "revId": "7dd573c12aed0406e82bfba12feb2ad38ed1c6e7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
