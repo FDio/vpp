@@ -296,6 +296,10 @@ llc_register_input_protocol (vlib_main_t * vm,
     clib_error_t * error = vlib_call_init_function (vm, llc_input_init);
     if (error)
       clib_error_report (error);
+    /* Otherwise, osi_input_init will wipe out e.g. the snap init */
+    error = vlib_call_init_function (vm, osi_input_init);
+    if (error)
+      clib_error_report (error);
   }
 
   pi = llc_get_protocol_info (lm, protocol);

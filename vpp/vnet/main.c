@@ -56,6 +56,12 @@ vpe_main_init (vlib_main_t * vm)
 	return error;
     if ((error = vlib_call_init_function (vm, sixrd_init)))
 	return error;
+    if ((error = vlib_call_init_function (vm, llc_init)))
+	return error;
+    if ((error = vlib_call_init_function (vm, snap_init)))
+	return error;
+    if ((error = vlib_call_init_function (vm, cdp_init)))
+	return error;
     if ((error = vlib_call_init_function (vm, nsh_gre_init)))
 	return error;
     if ((error = vlib_call_init_function (vm, nsh_vxlan_gpe_init)))

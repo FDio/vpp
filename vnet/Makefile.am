@@ -191,8 +191,19 @@ libvnet_la_SOURCES +=				\
 
 nobase_include_HEADERS +=			\
   vnet/vxlan/vxlan.h				\
-  vnet/vxlan/vxlan_packet.h         \
+  vnet/vxlan/vxlan_packet.h         		\
   vnet/vxlan/vxlan_error.def
+
+########################################
+# Layer 2 / CDP
+########################################
+libvnet_la_SOURCES +=				\
+  vnet/cdp/cdp_input.c				\
+  vnet/cdp/cdp_node.c				\
+  vnet/cdp/cdp_periodic.c	
+
+nobase_include_HEADERS +=			\
+  vnet/cdp/cdp_protocol.h
 
 ########################################
 # Layer 2/3 "classify"
