@@ -140,6 +140,9 @@ send_ethernet_hello (cdp_main_t *cm, cdp_neighbor_t *n, int count)
         b0->current_length = nbytes_to_checksum + sizeof (*h0) 
             - sizeof (cdp_hdr_t) ;
 
+       /* And the outbound interface */
+        vnet_buffer(b0)->sw_if_index[VLIB_TX] = hw->sw_if_index;
+
         /* Set the 802.3 ethernet length */
 	h0->ethernet.len = htons (b0->current_length
                                   - sizeof (ethernet_802_3_header_t));
