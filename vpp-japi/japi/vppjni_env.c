@@ -21,7 +21,7 @@ static vppjni_class_t *class_head;
 // Head of the class registration list.
 static vppjni_field_t *field_head;
 
-void vppjni_init_register_class(vppjni_class_t *ptr)
+void vppjni_register_class(vppjni_class_t *ptr)
 {
     vppjni_class_t **where = &class_head;
     while (*where != NULL) {
@@ -38,7 +38,7 @@ void vppjni_register_field(vppjni_field_t *ptr) {
     *where = ptr;
 }
 
-jobject vppjni_init_new_object(JNIEnv *env, const vppjni_class_t *ptr, va_list ap) {
+jobject vppjni_new_object(JNIEnv *env, const vppjni_class_t *ptr, va_list ap) {
     jobject obj = (*env)->NewObjectV(env, ptr->jclass, ptr->jinit, ap);
     if ((*env)->ExceptionCheck(env)) {
         (*env)->ExceptionDescribe(env);
@@ -48,7 +48,7 @@ jobject vppjni_init_new_object(JNIEnv *env, const vppjni_class_t *ptr, va_list a
     return obj;
 }
 
-int vppjni_env_init(JNIEnv *env)
+int vppjni_init(JNIEnv *env)
 {
     vppjni_class_t *cwlk;
     vppjni_field_t *fwlk;
@@ -91,7 +91,7 @@ int vppjni_env_init(JNIEnv *env)
     return 0;
 }
 
-void vppjni_env_uninit(JNIEnv *env) {
+void vppjni_uninit(JNIEnv *env) {
     vppjni_class_t *cwlk;
     vppjni_field_t *fwlk;
 
