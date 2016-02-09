@@ -1484,7 +1484,7 @@ static void vl_api_vxlan_tunnel_details_t_handler
 }
 
 /* cleanup handler for RX thread */
-void cleanup_rx_thread(void *arg)
+static void cleanup_rx_thread(void *arg)
 {
   vppjni_main_t * jm = &vppjni_main;
 
