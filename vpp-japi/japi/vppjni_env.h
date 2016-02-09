@@ -110,9 +110,9 @@ typedef struct jenv_field {
 #define BIND_JAPI_STRING_FIELD(cls, field) \
     BIND_JAPI_OBJ_FIELD(cls, field, "Ljava/lang/String;")
 
-jobject vppjni_new_object(JNIEnv *env, const vppjni_class_t *ptr, va_list ap);
-void vppjni_register_class(vppjni_class_t *ptr);
-void vppjni_register_field(vppjni_field_t *ptr);
-int vppjni_init(JNIEnv *env);
-void vppjni_uninit(JNIEnv *env);
+jobject vppjni_new_object(JNIEnv *env, const vppjni_class_t *ptr, va_list ap) __attribute__ ((visibility ("hidden")));
+void vppjni_register_class(vppjni_class_t *ptr) __attribute__ ((visibility ("hidden")));
+void vppjni_register_field(vppjni_field_t *ptr) __attribute__ ((visibility ("hidden")));
+int vppjni_init(JNIEnv *env) __attribute__ ((visibility ("hidden")));
+void vppjni_uninit(JNIEnv *env) __attribute__ ((visibility ("hidden")));
 
