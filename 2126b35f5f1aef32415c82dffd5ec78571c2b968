@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baf0414d_2a13e05d",
+        "filename": "gmod/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-02-10T14:31:37Z",
+      "side": 1,
+      "message": "Would this be better? I do not know autotools that well so please verify.\n\nm4_ifndef([AC_PROG_LIBTOOL],[AC_CONFIG_MACRO_DIR([m4])])\nm4_ifdef([AC_PROG_LIBTOOL],[AC_PROG_LIBTOOL],[LT_INIT])",
+      "revId": "2126b35f5f1aef32415c82dffd5ec78571c2b968",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_4a0e2436",
+        "filename": "sample-plugin/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-02-10T14:31:37Z",
+      "side": 1,
+      "message": "Would something like this work better for backward compat. In my mis-configured system I thought I needed these lines:\n\nm4_ifndef([AC_PROG_LIBTOOL],[AC_CONFIG_MACRO_DIR([m4])])\nm4_ifdef([AC_PROG_LIBTOOL],[AC_PROG_LIBTOOL],[LT_INIT])",
+      "revId": "2126b35f5f1aef32415c82dffd5ec78571c2b968",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_0a101c4d",
+        "filename": "svm/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-02-10T14:31:37Z",
+      "side": 1,
+      "message": "m4_ifndef([AC_PROG_LIBTOOL],[AC_CONFIG_MACRO_DIR([m4])])\nm4_ifdef([AC_PROG_LIBTOOL],[AC_PROG_LIBTOOL],[LT_INIT])",
+      "revId": "2126b35f5f1aef32415c82dffd5ec78571c2b968",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_ea1cd86c",
+        "filename": "vlib-api/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-02-10T14:31:37Z",
+      "side": 1,
+      "message": "m4_ifndef([AC_PROG_LIBTOOL],[AC_CONFIG_MACRO_DIR([m4])])\nm4_ifdef([AC_PROG_LIBTOOL],[AC_PROG_LIBTOOL],[LT_INIT])",
+      "revId": "2126b35f5f1aef32415c82dffd5ec78571c2b968",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_ca19147b",
+        "filename": "vlib/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-02-10T14:31:37Z",
+      "side": 1,
+      "message": "m4_ifndef([AC_PROG_LIBTOOL],[AC_CONFIG_MACRO_DIR([m4])])\nm4_ifdef([AC_PROG_LIBTOOL],[AC_PROG_LIBTOOL],[LT_INIT])",
+      "revId": "2126b35f5f1aef32415c82dffd5ec78571c2b968",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_aa26d0b8",
+        "filename": "vnet/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-02-10T14:31:37Z",
+      "side": 1,
+      "message": "m4_ifndef([AC_PROG_LIBTOOL],[AC_CONFIG_MACRO_DIR([m4])])\nm4_ifdef([AC_PROG_LIBTOOL],[AC_PROG_LIBTOOL],[LT_INIT])",
+      "revId": "2126b35f5f1aef32415c82dffd5ec78571c2b968",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_8a2b0c82",
+        "filename": "vpp-api-test/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-02-10T14:31:37Z",
+      "side": 1,
+      "message": "m4_ifndef([AC_PROG_LIBTOOL],[AC_CONFIG_MACRO_DIR([m4])])\nm4_ifdef([AC_PROG_LIBTOOL],[AC_PROG_LIBTOOL],[LT_INIT])",
+      "revId": "2126b35f5f1aef32415c82dffd5ec78571c2b968",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_6a20c89b",
+        "filename": "vpp-japi/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-02-10T14:31:37Z",
+      "side": 1,
+      "message": "m4_ifndef([AC_PROG_LIBTOOL],[AC_CONFIG_MACRO_DIR([m4])])\nm4_ifdef([AC_PROG_LIBTOOL],[AC_PROG_LIBTOOL],[LT_INIT])",
+      "revId": "2126b35f5f1aef32415c82dffd5ec78571c2b968",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf0414d_4a2504aa",
+        "filename": "vpp/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-02-10T14:31:37Z",
+      "side": 1,
+      "message": "Do we need the trailing spaces, I know from DPDK.org patches the checkpatch tool will complian.",
+      "revId": "2126b35f5f1aef32415c82dffd5ec78571c2b968",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
