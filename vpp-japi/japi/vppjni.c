@@ -894,11 +894,14 @@ static jintArray create_array_of_bd_ids(JNIEnv * env, jint bd_id)
     }
 
     jintArray bdidArray = (*env)->NewIntArray(env, vec_len(buf));
+    if (!bdidArray) {
+        goto out;
+    }
 
     (*env)->SetIntArrayRegion(env, bdidArray, 0, vec_len(buf), (int*)buf);
 
+out:
     vec_free(buf);
-
     return bdidArray;
 }
 
