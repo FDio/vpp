@@ -799,11 +799,6 @@ static inline u16 nfv9_get_max_length_minus_max_record_size(u16 path_mtu)
             * requires max number of bytes. If you add more records,
             * this needs to be re-checked */
         if (max_length_minus_max_record_size < CNAT_NFV9_MIN_RECORD_SIZE) {
-            printf(
-               "Resetting max_length_minus_max_record_size from %d to %ld\n",
-               max_length_minus_max_record_size,
-               CNAT_NFV9_MIN_RECORD_SIZE);
-
             max_length_minus_max_record_size = CNAT_NFV9_MIN_RECORD_SIZE;
         }
    return max_length_minus_max_record_size;
@@ -948,7 +943,6 @@ set_vcgn_nfv9_logging_cofig_command_fn (vlib_main_t * vm,
     u16           i_vrf;
     u32           i_vrf_id;
     u8            found;
-    u8            found_vrf;
     /*
      * Init NFv9 logging info as needed, this will be done only once
      */
@@ -983,6 +977,9 @@ set_vcgn_nfv9_logging_cofig_command_fn (vlib_main_t * vm,
                     ip_addr, port, refresh_rate, 
                     timeout, pmtu, enable);
     #endif
+    if (refresh_rate == 0) refresh_rate = 500; /* num of pkts */
+    if (timeout == 0) timeout = 30;  /* in mins */
+
     nfv9_conf.enable = enable;
     nfv9_conf.ipv4_address = ip_addr;
     nfv9_conf.i_vrf_id = vcm->inside_sw_if_index;
@@ -1009,16 +1006,11 @@ set_vcgn_nfv9_logging_cofig_command_fn (vlib_main_t * vm,
         /* Do we already have a map for this VRF? */
         pool_foreach (my_nfv9_logging_info, cnat_nfv9_logging_info_pool, ({
               if (my_nfv9_logging_info->i_vrf_id == i_vrf_id) {
-                  found_vrf = 1;
-                  printf("found_vrf %d\n", found_vrf);
                   nfv9_server_info_t *server =  nfv9_server_info_pool +
                       my_nfv9_logging_info->server_index;
-                  printf("server ip4 0x%x port %d\n", server->ipv4_address, server->port);
-                  printf("nfv9_conf v4 0x%x port %d\n", nfv9_conf.ipv4_address, nfv9_conf.port);
                   if((server->ipv4_address ==  (nfv9_conf.ipv4_address)) && (server->port == (nfv9_conf.port))) {
                       found = 1;
                       my_nfv9_logging_info_tmp = my_nfv9_logging_info;
-                      printf("found %d\n", found);
                       break;
                   }
               }
@@ -1280,7 +1272,6 @@ set_vcgn_nfv9_logging_cofig_command_fn (vlib_main_t * vm,
                 }
                 my_vrfmap->nf_logging_policy = nfv9_logging_policy;
             }
-        printf("After deleting the netflow server,Netflow logging policy = %d\n", my_vrfmap->nf_logging_policy);
     }
 
 done:

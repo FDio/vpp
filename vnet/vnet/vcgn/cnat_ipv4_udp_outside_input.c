@@ -137,7 +137,7 @@ is_static_dest_nat_enabled(u16 vrf)
     return CNAT_NO_CONFIG;
 }*/
 
-inline void swap_ip_dst(ipv4_header *ip, 
+static inline void swap_ip_dst(ipv4_header *ip, 
                         cnat_main_db_entry_t *db, u16 vrf)
 {
 
@@ -177,7 +177,7 @@ inline void swap_ip_dst(ipv4_header *ip,
 #endif 
 }
 
-void swap_ip_dst_udp_port(ipv4_header *ip,
+inline void swap_ip_dst_udp_port(ipv4_header *ip,
                                  udp_hdr_type_t *udp,
                                  cnat_main_db_entry_t *db, u16 vrf)
 {

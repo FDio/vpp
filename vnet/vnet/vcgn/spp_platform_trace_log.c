@@ -977,7 +977,7 @@ void spp_printf(u16 error_code, u16 num_args, u32 *arg)
   /* To be filled */
 }
 
-u32 spp_trace_log_get_unix_time_in_seconds (void)
+inline u32 spp_trace_log_get_unix_time_in_seconds (void)
 {
     vlib_main_t  *vlib_main;
 

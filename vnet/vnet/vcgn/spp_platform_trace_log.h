@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *------------------------------------------------------------------
- */
+ */ 
 
 #ifndef __SPP_PLATFORM_TRACE_LOG_H__ 
 #define __SPP_PLATFORM_TRACE_LOG_H__ 
@@ -339,10 +339,11 @@ void spp_printf(u16 error_code, u16 num_args, u32 *arg);
  * The following 2 functions are temporary hacks until
  * we have RTC support from the PD nodes
  */
+#if 0
 inline
 u32 spp_trace_log_get_sys_up_time_in_ms (void);
-
-inline
+#endif
+extern
 u32 spp_trace_log_get_unix_time_in_seconds (void);
 
 enum {

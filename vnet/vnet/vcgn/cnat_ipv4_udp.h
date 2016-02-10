@@ -31,10 +31,10 @@
 #include "cnat_global.h"
 #include "cnat_config.h"
 
-inline void swap_ip_src_udp_port(ipv4_header *ip,
+extern void swap_ip_src_udp_port(ipv4_header *ip,
                                  udp_hdr_type_t *udp,
                                  cnat_main_db_entry_t *db);
-inline void swap_ip_dst_udp_port(ipv4_header *ip,
+extern void swap_ip_dst_udp_port(ipv4_header *ip,
                                  udp_hdr_type_t *udp,
                                  cnat_main_db_entry_t *db,
                                  u16 vrf);

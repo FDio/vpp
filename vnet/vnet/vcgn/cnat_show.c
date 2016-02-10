@@ -496,21 +496,24 @@ static void print_server_ip_address (vlib_main_t *vm, u32 ip)
     bytes[1] = (ip >> 8) & 0xFF;
     bytes[2] = (ip >> 16) & 0xFF;
     bytes[3] = (ip >> 24) & 0xFF;	
-    vlib_cli_output(vm, "\tIP Address %d.%d.%d.%d\n", bytes[0], bytes[1], bytes[2], bytes[3]); 
+    vlib_cli_output(vm, "\tIP Address   : %d.%d.%d.%d\n", bytes[0], bytes[1], bytes[2], bytes[3]);
 }
 
 void cnat_nfv9_show_collector (vlib_main_t *vm, cnat_nfv9_logging_info_t *my_nfv9_logging_info)
 {
     nfv9_server_info_t *server =  nfv9_server_info_pool +
         my_nfv9_logging_info->server_index;
-
+#if 0
     vlib_cli_output(vm,"\tVRF - 0x%x - %s\n", my_nfv9_logging_info->i_vrf,
            my_nfv9_logging_info->deleted?"DELETED":"ACTIVE");
+#endif
     print_server_ip_address(vm, clib_net_to_host_u32(server->ipv4_address)); 
-    vlib_cli_output(vm,"\tIP port  %d\n", server->port);
-    vlib_cli_output(vm,"\tTimeout  %d\n", server->timeout_rate);
-    vlib_cli_output(vm,"\tRefresh  %d\n", server->refresh_rate);
-    vlib_cli_output(vm,"\tMax PkSz %d\n", my_nfv9_logging_info->max_length_minus_max_record_size);
+    vlib_cli_output(vm,"\tPort         : %d\n", server->port);
+    vlib_cli_output(vm,"\tTimeout      : %d\n", server->timeout_rate);
+    vlib_cli_output(vm,"\tRefresh Rate : %d\n", server->refresh_rate);
+    vlib_cli_output(vm,"\tMax Pkt Size : %d\n", my_nfv9_logging_info->max_length_minus_max_record_size);
+    
+    return;
 }
 
 void cnat_db_dump_policy (int argc, unsigned long *argv) 

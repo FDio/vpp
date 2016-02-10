@@ -38,14 +38,23 @@ typedef struct {
     u16         *em_l4_checksum;
 } icmp_em_ip_info;
 
-inline void swap_ip_src_icmp_id(ipv4_header *ip,
+extern void swap_ip_src_icmp_id(ipv4_header *ip,
                                 icmp_v4_t *icmp,
                                 cnat_main_db_entry_t *db, 
-				u16 vrf);
+				                u16 vrf);
 
-inline void swap_ip_dst_icmp_id(ipv4_header *ip,
+extern void swap_ip_dst_icmp_id(ipv4_header *ip,
                                 icmp_v4_t *icmp,
                                 cnat_main_db_entry_t *db, 
-				u16 vrf);
+				                u16 vrf);
+
+extern void swap_ip_src_emip_dst(ipv4_header *ip,
+                                 icmp_em_ip_info *icmp_info,
+                                 cnat_main_db_entry_t *db, u16 vrf);
+
+extern void swap_ip_dst_emip_src(ipv4_header *ip,
+                                 icmp_em_ip_info *icmp_info,
+                                 cnat_main_db_entry_t *db, u16 vrf);
+
 
 #endif /* __CNAT_IPV4_ICMP_H__ */

@@ -276,15 +276,15 @@ void cnat_nat44_handle_show_stats(vlib_main_t *vm)
     vlib_cli_output(vm, "vCGN NAT44 Statistics :\n");
     vlib_cli_output(vm, "\tActive Translations : %u\n", 
             NAT44_COMMON_STATS.active_translations);
-    vlib_cli_output(vm, "\tTotal free address : %u\n", free);
-    vlib_cli_output(vm, "\tTotal used address : %u\n", used);
+    vlib_cli_output(vm, "\tTotal free translation entries : %u\n", free);
+    vlib_cli_output(vm, "\tTotal used translation entries : %u\n", used);
     vlib_cli_output(vm, "\ti2o drops due to port limit exceeded : %lu\n", 
             in2out_drops_port_limit_exceeded);
     vlib_cli_output(vm, "\ti2o drops due to system limit reached : %lu\n", 
             in2out_drops_system_limit_reached);
     vlib_cli_output(vm, "\ti2o drops due to resource depletion : %lu\n", 
             in2out_drops_resource_depletion);
-    vlib_cli_output(vm, "\ti2o drops due to no translations : %lu\n", 
+    vlib_cli_output(vm, "\to2i drops due to no translations : %lu\n", 
             NAT44_COMMON_STATS.no_translation_entry_drops);
 
     vlib_cli_output(vm, "\tPool address usage:\n");
@@ -321,6 +321,10 @@ void cnat_nat44_handle_show_config(vlib_main_t *vm)
     u8  status_str[20]; 
     cnat_nfv9_logging_info_t *my_nfv9_logging_info, 
         *global_nfv9_logging_info = 0;
+
+    vnet_hw_interface_t * hw;
+    dpdk_main_t * dm = &dpdk_main;
+
     void cnat_nfv9_show_collector 
         (vlib_main_t *vm, cnat_nfv9_logging_info_t *my_nfv9_logging_info);
 
@@ -330,21 +334,23 @@ void cnat_nat44_handle_show_config(vlib_main_t *vm)
     vlib_cli_output(vm, "\tdynamic port start range : %u\n", cnat_static_port_range);
 
     pool_foreach(my_vrfmap, cnat_map_by_vrf, ({
-                vlib_cli_output(vm, "\ti-intf-index : 0x%x\n", my_vrfmap->i_vrf);
-                vlib_cli_output(vm, "\to-intf-index : 0x%x\n", my_vrfmap->o_vrf);
+                hw = vnet_get_hw_interface (dm->vnet_main, my_vrfmap->i_vrf);
+                vlib_cli_output(vm, "\tInside Interface  : %s\n", hw->name);
+                hw = vnet_get_hw_interface (dm->vnet_main, my_vrfmap->o_vrf);
+                vlib_cli_output(vm, "\tOutside Interface : %s\n", hw->name);
 
                 memset(status_str, 0x00, sizeof(status_str));
                 switch(my_vrfmap->status) {
                 case S_WAO: memcpy(status_str, "S_WAO", 5); break;
                 case S_WA:  memcpy(status_str, "S_WA",  4); break;
                 case S_WO:  memcpy(status_str, "S_WO",  4); break;
-                case S_RUN: memcpy(status_str, "S_RUN", 5); break;
+                case S_RUN: memcpy(status_str, "ONLINE", 6); break;
                 case S_DEL: memcpy(status_str, "S_DEL", 5); break;
                 default: memcpy(status_str, "Invalid state", 13); 
 
                 } 
                 vlib_cli_output(vm, 
-                              "\tvrf map table status : %s\n", status_str);
+                              "\tAddress pool map table status : %s\n", status_str);
 
                 pm = my_vrfmap->portmap_list;
                 pm_len = vec_len(pm);
@@ -493,13 +499,13 @@ void cnat_v4_show_inside_entry_req_t_handler
     cnat_v4_show_translation_entry entry[PLATFORM_MAX_TRANSLATION_ENTRIES];
     u8 display_entry;
     u8 flag_str[11];
+    vnet_hw_interface_t * hw;
+    dpdk_main_t * dm = &dpdk_main;
 
     ki.k.k.ipv4 = mp->ipv4_addr;
     ki.k.k.vrf = mp->vrf_id;
     start_port = mp->start_port;
     end_port = mp->end_port;
-    //memset(flag_str,0x00,11);
-    //strncpy(flag_str,"NA",2);
 #if DEBUG
     vlib_cli_output(vm, "## proto %d, inside-addr 0x%x, start_port %u, "
                 "end_port %u, vrf 0x%x, flag 0x%x\n",
@@ -714,11 +720,12 @@ next_entry:
     else strncpy((char *)transl_str, "Unknown", 7); /* currently we are not supporting static/alg entries */
 
     ip.s_addr = clib_net_to_host_u32(u_ki.k.k.ipv4);
+    hw = vnet_get_hw_interface (dm->vnet_main, u_ki.k.k.vrf);
 
     vlib_cli_output (vm, "Inside-translation details\n");
     vlib_cli_output (vm, "--------------------------\n");
 
-    vlib_cli_output (vm, "Inside interface index : 0x%x\n", u_ki.k.k.vrf);
+    vlib_cli_output (vm, "Inside interface       : %s\n", hw->name);
     vlib_cli_output (vm, "Inside address         : %s\n", inet_ntoa(ip));
     vlib_cli_output (vm, "Start port             : %u\n", start_port);
     vlib_cli_output (vm, "End port               : %u\n", end_port);
@@ -779,6 +786,8 @@ void cnat_v4_show_outside_entry_req_t_handler
     u8 done = 0;
     u8 display_entry;
     u8 flag_str[11];
+    vnet_hw_interface_t * hw;
+    dpdk_main_t * dm = &dpdk_main;
 
     ko.k.k.ipv4 = mp->ipv4_addr;
     ko.k.k.vrf = mp->vrf_id;
@@ -899,11 +908,12 @@ void cnat_v4_show_outside_entry_req_t_handler
     else strncpy((char *)transl_str, "Unknown", 7); /* currently we are not supporting static/alg entries */
 
     ip.s_addr = clib_net_to_host_u32(ko.k.k.ipv4);
+    hw = vnet_get_hw_interface (dm->vnet_main, (ko.k.k.vrf & CNAT_VRF_MASK));
 
     vlib_cli_output (vm, "Outside-translation details\n");
     vlib_cli_output (vm, "--------------------------\n");
 
-    vlib_cli_output (vm, "Outside interface index : 0x%x\n", (ko.k.k.vrf & CNAT_VRF_MASK));
+    vlib_cli_output (vm, "Outside interface       : %s\n", hw->name);
     vlib_cli_output (vm, "Outside address         : %s\n", inet_ntoa(ip));
     vlib_cli_output (vm, "Start port              : %u\n", start_port);
     vlib_cli_output (vm, "End port                : %u\n", end_port);

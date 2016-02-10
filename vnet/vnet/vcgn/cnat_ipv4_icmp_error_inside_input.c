@@ -62,7 +62,7 @@ vlib_node_registration_t cnat_ipv4_icmp_e_inside_input_node;
 
 #define NSTAGES 5
 
-void swap_ip_src_emip_dst(ipv4_header *ip,
+inline void swap_ip_src_emip_dst(ipv4_header *ip,
                                  icmp_em_ip_info *icmp_info,
                                  cnat_main_db_entry_t *db, u16 vrf)
 {

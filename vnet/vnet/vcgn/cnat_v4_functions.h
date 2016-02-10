@@ -296,7 +296,7 @@ cnat_v4_recalculate_tcp_checksum (ipv4_header *ip,
 }
 
 
-inline void tcp_in2out_nat_mss_n_checksum (ipv4_header *ip,
+extern void tcp_in2out_nat_mss_n_checksum (ipv4_header *ip,
                                       tcp_hdr_type *tcp,
                                       u32 ipv4_addr,
                                       u16 port,

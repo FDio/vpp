@@ -338,7 +338,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
           if (unformat_user (input, unformat_vlib_cli_sub_command, vm, c, &parent))
 	    ;
 
-	  else if (! unformat_check_input (input) == UNFORMAT_END_OF_INPUT)
+	  else if (! (unformat_check_input (input) == UNFORMAT_END_OF_INPUT))
 	    goto unknown;
 
 	  else
