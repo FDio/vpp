@@ -265,8 +265,10 @@ JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceDescripti
     vppjni_main_t * jm = &vppjni_main;
     u32 sw_if_index = ~0;
     uword * p;
-    const char *if_name_str = (*env)->GetStringUTFChars (env, ifName, 0);
     jstring ifDesc = NULL;
+    const char *if_name_str = (*env)->GetStringUTFChars (env, ifName, 0);
+    if (!if_name_str)
+        return NULL;
 
     vppjni_lock (jm, 24);
     p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name_str);
@@ -310,13 +312,15 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_clientConnect
     if (jm->is_connected)
         return -2;
 
+    client_name = (*env)->GetStringUTFChars(env, clientName, 0);
+    if (!client_name)
+        return -3;
+
     if (jm->heap == 0)
         clib_mem_init (0, 128<<20);
 
     heap = clib_mem_get_per_cpu_heap();
     h = mheap_header (heap);
-
-    client_name = (*env)->GetStringUTFChars (env, clientName, 0);
 
     clib_time_init (&jm->clib_time);
 
@@ -471,9 +475,11 @@ JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceList0
     hash_pair_t * p;
     name_sort_t * nses = 0, * ns;
     const char *this_name;
-    const char * nf = (*env)->GetStringUTFChars (env, name_filter, NULL);
     u8 * s = 0;
     char *strcasestr (const char *, const char *);
+    const char * nf = (*env)->GetStringUTFChars (env, name_filter, NULL);
+    if (!nf)
+        return NULL;
 
     vppjni_lock (jm, 4);
 
@@ -512,18 +518,20 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_swIfIndexFromName0
     vppjni_main_t * jm = &vppjni_main;
     jint rv = -1;
     const char * if_name = (*env)->GetStringUTFChars (env, interfaceName, NULL);
-    uword * p;
+    if (if_name) {
+        uword * p;
 
-    vppjni_lock (jm, 5);
+        vppjni_lock (jm, 5);
 
-    p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name);
+        p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name);
 
-    if (p != 0)
-        rv = (jint) p[0];
+        if (p != 0)
+            rv = (jint) p[0];
 
-    vppjni_unlock (jm);
+        vppjni_unlock (jm);
 
-    (*env)->ReleaseStringUTFChars (env, interfaceName, if_name);
+        (*env)->ReleaseStringUTFChars (env, interfaceName, if_name);
+    }
 
     return rv;
 }
@@ -717,18 +725,20 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_findOrAddBridgeDomainId0
   (JNIEnv * env, jobject obj, jstring bridgeDomain)
 {
     vppjni_main_t * jm = &vppjni_main;
-    static u8 * bd_name = 0;
     jint rv = -1;
     const char * bdName = (*env)->GetStringUTFChars (env, bridgeDomain, NULL);
+    if (bdName) {
+        static u8 * bd_name = 0;
 
-    vec_validate_init_c_string (bd_name, bdName, strlen(bdName));
-    (*env)->ReleaseStringUTFChars (env, bridgeDomain, bdName);
+        vec_validate_init_c_string (bd_name, bdName, strlen(bdName));
+        (*env)->ReleaseStringUTFChars (env, bridgeDomain, bdName);
 
-    vppjni_lock (jm, 6);
-    rv = (jint)vjbd_find_or_add_bd (&jm->vjbd_main, bd_name);
-    vppjni_unlock (jm);
+        vppjni_lock (jm, 6);
+        rv = (jint)vjbd_find_or_add_bd (&jm->vjbd_main, bd_name);
+        vppjni_unlock (jm);
 
-    _vec_len(bd_name) = 0;
+        _vec_len(bd_name) = 0;
+    }
     return rv;
 }
 
@@ -736,18 +746,20 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainIdFromName0
   (JNIEnv * env, jobject obj, jstring bridgeDomain)
 {
     vppjni_main_t * jm = &vppjni_main;
-    static u8 * bd_name = 0;
     jint rv = -1;
     const char * bdName = (*env)->GetStringUTFChars (env, bridgeDomain, NULL);
+    if (bdName) {
+        static u8 * bd_name = 0;
 
-    vec_validate_init_c_string (bd_name, bdName, strlen(bdName));
-    (*env)->ReleaseStringUTFChars (env, bridgeDomain, bdName);
+        vec_validate_init_c_string (bd_name, bdName, strlen(bdName));
+        (*env)->ReleaseStringUTFChars (env, bridgeDomain, bdName);
 
-    vppjni_lock (jm, 20);
-    rv = (jint)vjbd_id_from_name(&jm->vjbd_main, (u8 *)bd_name);
-    vppjni_unlock (jm);
+        vppjni_lock (jm, 20);
+        rv = (jint)vjbd_id_from_name(&jm->vjbd_main, (u8 *)bd_name);
+        vppjni_unlock (jm);
 
-    _vec_len(bd_name) = 0;
+        _vec_len(bd_name) = 0;
+    }
 
     return rv;
 }
@@ -1278,6 +1290,10 @@ static int ipAddressDump
     }
 
     if_name = (*env)->GetStringUTFChars (env, interfaceName, NULL);
+    if (!if_name) {
+        return -1;
+    }
+
     p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name);
     (*env)->ReleaseStringUTFChars (env, interfaceName, if_name);
     if (p == 0) {
