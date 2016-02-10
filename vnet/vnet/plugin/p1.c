@@ -39,6 +39,7 @@ _(_vlib_init_function_pg_init)                  \
 _(_vlib_init_function_ip_main_init)             \
 _(_vlib_init_function_ethernet_init)            \
 _(_vlib_init_function_ethernet_arp_init)        \
+_(_vlib_config_function_dpdk_config)            \
 _(l2input_intf_bitmap_enable)                   \
 _(ip4_main)                                     \
 _(ip6_main)                                     \
@@ -101,6 +102,9 @@ _(dpdk_interface_tx_vector)                     \
 _(rte_calloc)                                   \
 _(rte_free)                                     \
 _(rte_malloc)                                   \
+_(rte_zmalloc)                                  \
+_(rte_malloc_virt2phy)                          \
+_(rte_eal_get_configuration)                    \
 _(post_sw_interface_set_flags)                  \
 _(dpdk_get_admin_up_down_in_progress)           \
 _(efd_config)
