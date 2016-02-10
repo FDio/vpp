@@ -28,11 +28,11 @@ vlib_configure_args_vpp = --with-pre-data=128
 
 
 vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
-	-fstack-protector-all -fPIC
+	-fstack-protector-all -fPIC -Werror
 vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
-	-fstack-protector-all -fPIC
+	-fstack-protector-all -fPIC -Werror
 
 vpp_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) \
-	-fstack-protector -fPIC
+	-fstack-protector -fPIC -Werror
 vpp_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) \
-	-fstack-protector -fPIC
+	-fstack-protector -fPIC -Werror

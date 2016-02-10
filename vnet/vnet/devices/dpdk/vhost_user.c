@@ -39,7 +39,7 @@
 #define DBG_SOCK(args...)
 #endif
 
-static const char *vhost_message_str[] = {
+static const char *vhost_message_str[] __attribute__((unused)) = {
     [VHOST_USER_NONE] = "VHOST_USER_NONE",
     [VHOST_USER_GET_FEATURES] = "VHOST_USER_GET_FEATURES",
     [VHOST_USER_SET_FEATURES] = "VHOST_USER_SET_FEATURES",
