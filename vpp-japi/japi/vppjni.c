@@ -473,7 +473,6 @@ JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceList0
     const char *this_name;
     const char * nf = (*env)->GetStringUTFChars (env, name_filter, NULL);
     u8 * s = 0;
-    char *strcasestr (const char *, const char *);
 
     vppjni_lock (jm, 4);
 
