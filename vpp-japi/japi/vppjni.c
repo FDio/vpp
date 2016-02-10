@@ -27,11 +27,11 @@
 
 #include <api/vpe_msg_enum.h>
 #define vl_typedefs             /* define message structures */
-#include <api/vpe_all_api_h.h> 
+#include <api/vpe_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun 
-#include <api/vpe_all_api_h.h> 
+#define vl_endianfun
+#include <api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
@@ -50,7 +50,7 @@
 
 static int connect_to_vpe(char *name);
 
-/* 
+/*
  * The Java runtime isn't compile w/ -fstack-protector,
  * so we have to supply missing external references for the
  * regular vpp libraries. Weak reference in case folks get religion
@@ -82,9 +82,9 @@ BIND_JAPI_CLASS(vppL2Fib, "([BZLjava/lang/String;ZZ)V");
 BIND_JAPI_CLASS(vppVersion, "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
 BIND_JAPI_CLASS(vppVxlanTunnelDetails, "(IIIII)V");
 
-void vl_client_add_api_signatures (vl_api_memclnt_create_t *mp) 
+void vl_client_add_api_signatures (vl_api_memclnt_create_t *mp)
 {
-    /* 
+    /*
      * Send the main API signature in slot 0. This bit of code must
      * match the checks in ../vpe/api/api.c: vl_msg_api_version_check().
      */
@@ -101,7 +101,7 @@ static int sw_interface_dump (vppjni_main_t * jm)
     sw_interface_subif_t * sub = NULL;
 
     /* Toss the old name table */
-    hash_foreach_pair (p, jm->sw_if_index_by_interface_name, 
+    hash_foreach_pair (p, jm->sw_if_index_by_interface_name,
     ({
         vec_add2 (nses, ns, 1);
         ns->name = (u8 *)(p->key);
@@ -121,37 +121,37 @@ static int sw_interface_dump (vppjni_main_t * jm)
     vec_free (jm->sw_if_subif_table);
 
     /* recreate the interface name hash table */
-    jm->sw_if_index_by_interface_name 
+    jm->sw_if_index_by_interface_name
       = hash_create_string (0, sizeof(uword));
 
     /* Get list of ethernets */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "Ether", sizeof(mp->name_filter-1)); 
+    strncpy ((char *) mp->name_filter, "Ether", sizeof(mp->name_filter-1));
     S;
 
     /* and local / loopback interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "lo", sizeof(mp->name_filter-1)); 
+    strncpy ((char *) mp->name_filter, "lo", sizeof(mp->name_filter-1));
     S;
 
     /* and vxlan tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "vxlan", sizeof(mp->name_filter-1)); 
+    strncpy ((char *) mp->name_filter, "vxlan", sizeof(mp->name_filter-1));
     S;
 
     /* and tap tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "tap", sizeof(mp->name_filter-1)); 
+    strncpy ((char *) mp->name_filter, "tap", sizeof(mp->name_filter-1));
     S;
 
     /* and l2tpv3 tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "l2tpv3_tunnel", 
+    strncpy ((char *) mp->name_filter, "l2tpv3_tunnel",
              sizeof(mp->name_filter-1));
     S;
 
@@ -167,53 +167,53 @@ static int sw_interface_dump (vppjni_main_t * jm)
 JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getVppVersion0
   (JNIEnv *env, jobject obj)
 {
-  vppjni_main_t * jm = &vppjni_main;
+    vppjni_main_t * jm = &vppjni_main;
 
-  vppjni_lock (jm, 11);
-  jstring progName = (*env)->NewStringUTF(env, (char *)jm->program_name);
-  jstring buildDir = (*env)->NewStringUTF(env, (char *)jm->build_directory);
-  jstring version = (*env)->NewStringUTF(env, (char *)jm->version);
-  jstring buildDate = (*env)->NewStringUTF(env, (char *)jm->build_date);
-  vppjni_unlock (jm);
+    vppjni_lock (jm, 11);
+    jstring progName = (*env)->NewStringUTF(env, (char *)jm->program_name);
+    jstring buildDir = (*env)->NewStringUTF(env, (char *)jm->build_directory);
+    jstring version = (*env)->NewStringUTF(env, (char *)jm->version);
+    jstring buildDate = (*env)->NewStringUTF(env, (char *)jm->build_date);
+    vppjni_unlock (jm);
 
-  return vppVersionObject(env, progName, buildDir, version, buildDate);
+    return vppVersionObject(env, progName, buildDir, version, buildDate);
 }
 
 static int jm_show_version (vppjni_main_t *jm)
 {
-  int rv;
-  vl_api_show_version_t *mp;
-  f64 timeout;
+    int rv;
+    vl_api_show_version_t *mp;
+    f64 timeout;
 
-  vppjni_lock (jm, 10);
-  M(SHOW_VERSION, show_version);
+    vppjni_lock (jm, 10);
+    M(SHOW_VERSION, show_version);
 
-  S;
-  vppjni_unlock (jm);
-  WNR;
-  return rv;
+    S;
+    vppjni_unlock (jm);
+    WNR;
+    return rv;
 }
 
 static int jm_stats_enable_disable (vppjni_main_t *jm, u8 enable)
 {
-  vl_api_want_stats_t * mp;
-  f64 timeout;
-  int rv;
+    vl_api_want_stats_t * mp;
+    f64 timeout;
+    int rv;
 
-  vppjni_lock (jm, 13);
+    vppjni_lock (jm, 13);
 
-  M(WANT_STATS, want_stats);
+    M(WANT_STATS, want_stats);
 
-  mp->enable_disable = enable;
+    mp->enable_disable = enable;
 
-  S;
-  vppjni_unlock (jm);
-  WNR;
+    S;
+    vppjni_unlock (jm);
+    WNR;
 
-  // already subscribed / already disabled (it's ok)
-  if (rv == -2 || rv == -3)
-      rv = 0;
-  return rv;
+    // already subscribed / already disabled (it's ok)
+    if (rv == -2 || rv == -3)
+        rv = 0;
+    return rv;
 }
 
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_setInterfaceDescription0
@@ -246,8 +246,7 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_setInterfaceDescription0
         cfg = (sw_if_config_t *) (p[0]);
         if (cfg->desc)
             vec_free(cfg->desc);
-    }
-    else {
+    } else {
         cfg = (sw_if_config_t *) clib_mem_alloc(sizeof(sw_if_config_t));
         hash_set (jm->sw_if_config_by_sw_if_index, sw_if_index, cfg);
     }
@@ -293,243 +292,240 @@ out:
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_clientConnect
   (JNIEnv *env, jobject obj, jstring clientName)
 {
-  int rv;
-  const char *client_name;
-  void vl_msg_reply_handler_hookup(void);
-  vppjni_main_t * jm = &vppjni_main;
-  api_main_t * am = &api_main;
-  u8 * heap;
-  mheap_t * h; 
-  f64 timeout;
-      
-  /* 
-   * Bail out now if we're not running as root
-   */
-  if (geteuid() != 0)
-    return -1;
+    int rv;
+    const char *client_name;
+    void vl_msg_reply_handler_hookup(void);
+    vppjni_main_t * jm = &vppjni_main;
+    api_main_t * am = &api_main;
+    u8 * heap;
+    mheap_t * h;
+    f64 timeout;
 
-  if (jm->is_connected)
-      return -2;
+    /*
+     * Bail out now if we're not running as root
+     */
+    if (geteuid() != 0)
+        return -1;
 
-  if (jm->heap == 0)
-    clib_mem_init (0, 128<<20);
+    if (jm->is_connected)
+        return -2;
 
-  heap = clib_mem_get_per_cpu_heap();
-  h = mheap_header (heap);
+    if (jm->heap == 0)
+        clib_mem_init (0, 128<<20);
 
-  client_name = (*env)->GetStringUTFChars (env, clientName, 0);
+    heap = clib_mem_get_per_cpu_heap();
+    h = mheap_header (heap);
 
-  clib_time_init (&jm->clib_time);
+    client_name = (*env)->GetStringUTFChars (env, clientName, 0);
 
-  rv = connect_to_vpe ((char *) client_name);
+    clib_time_init (&jm->clib_time);
 
-  if (rv < 0)
-    clib_warning ("connection failed, rv %d", rv);
+    rv = connect_to_vpe ((char *) client_name);
 
-  (*env)->ReleaseStringUTFChars (env, clientName, client_name);
+    if (rv < 0)
+        clib_warning ("connection failed, rv %d", rv);
 
-  if (rv == 0)
-    {
-      vl_msg_reply_handler_hookup ();
-      jm->is_connected = 1;
-      /* make the main heap thread-safe */
-      h->flags |= MHEAP_FLAG_THREAD_SAFE;
+    (*env)->ReleaseStringUTFChars (env, clientName, client_name);
 
-      jm->reply_hash = hash_create (0, sizeof (uword));
-      //jm->callback_hash = hash_create (0, sizeof (uword));
-      //jm->ping_hash = hash_create (0, sizeof (uword));
-      jm->api_main = am;
-      vjbd_main_init(&jm->vjbd_main);
-      jm->sw_if_index_by_interface_name = 
-        hash_create_string (0, sizeof (uword));
-      jm->sw_if_config_by_sw_if_index =
-        hash_create (0, sizeof (uword));
+    if (rv == 0) {
+        vl_msg_reply_handler_hookup ();
+        jm->is_connected = 1;
+        /* make the main heap thread-safe */
+        h->flags |= MHEAP_FLAG_THREAD_SAFE;
 
-      {
-        // call control ping first to attach rx thread to java thread
-        vl_api_control_ping_t * mp;
-        M(CONTROL_PING, control_ping);
-        S;
-        WNR;
+        jm->reply_hash = hash_create (0, sizeof (uword));
+        //jm->callback_hash = hash_create (0, sizeof (uword));
+        //jm->ping_hash = hash_create (0, sizeof (uword));
+        jm->api_main = am;
+        vjbd_main_init(&jm->vjbd_main);
+        jm->sw_if_index_by_interface_name =
+            hash_create_string (0, sizeof (uword));
+        jm->sw_if_config_by_sw_if_index =
+            hash_create (0, sizeof (uword));
 
-        if (rv != 0) {
-            clib_warning ("first control ping failed: %d", rv);
+        {
+            // call control ping first to attach rx thread to java thread
+            vl_api_control_ping_t * mp;
+            M(CONTROL_PING, control_ping);
+            S;
+            WNR;
+
+            if (rv != 0) {
+                clib_warning ("first control ping failed: %d", rv);
+            }
         }
-      }
-      rv = jm_show_version(jm);
-      if (rv != 0)
-          clib_warning ("unable to retrieve vpp version (rv: %d)", rv);
-      rv = sw_interface_dump(jm);
-      if (rv != 0)
-          clib_warning ("unable to retrieve interface list (rv: %d)", rv);
-      rv = jm_stats_enable_disable(jm, 1);
-      if (rv != 0)
-          clib_warning ("unable to subscribe to stats (rv: %d)", rv);
+        rv = jm_show_version(jm);
+        if (rv != 0)
+            clib_warning ("unable to retrieve vpp version (rv: %d)", rv);
+        rv = sw_interface_dump(jm);
+        if (rv != 0)
+            clib_warning ("unable to retrieve interface list (rv: %d)", rv);
+        rv = jm_stats_enable_disable(jm, 1);
+        if (rv != 0)
+            clib_warning ("unable to subscribe to stats (rv: %d)", rv);
     }
-  DEBUG_LOG ("clientConnect result: %d", rv);
+    DEBUG_LOG ("clientConnect result: %d", rv);
 
-  return rv;
+    return rv;
 }
 
 JNIEXPORT void JNICALL Java_org_openvpp_vppjapi_vppConn_clientDisconnect
   (JNIEnv *env, jobject obj)
 {
-  u8 *save_heap;
-  vppjni_main_t * jm = &vppjni_main;
-  vl_client_disconnect_from_vlib();
-  
-  save_heap = jm->heap;
-  memset (jm, 0, sizeof (*jm));
-  jm->heap = save_heap;
+    u8 *save_heap;
+    vppjni_main_t * jm = &vppjni_main;
+    vl_client_disconnect_from_vlib();
+
+    save_heap = jm->heap;
+    memset (jm, 0, sizeof (*jm));
+    jm->heap = save_heap;
 }
 
 void vl_api_generic_reply_handler (vl_api_generic_reply_t *mp)
 {
-  api_main_t * am = &api_main;
-  u16 msg_id = clib_net_to_host_u16 (mp->_vl_msg_id);
-  trace_cfg_t *cfgp;
-  i32 retval = clib_net_to_host_u32 (mp->retval);
-  int total_bytes = sizeof(mp);
-  vppjni_main_t * jm = &vppjni_main;
-  u8 * saved_reply = 0;
-  u32 context = clib_host_to_net_u32 (mp->context);
-    
-  cfgp = am->api_trace_cfg + msg_id;
+    api_main_t * am = &api_main;
+    u16 msg_id = clib_net_to_host_u16 (mp->_vl_msg_id);
+    trace_cfg_t *cfgp;
+    i32 retval = clib_net_to_host_u32 (mp->retval);
+    int total_bytes = sizeof(mp);
+    vppjni_main_t * jm = &vppjni_main;
+    u8 * saved_reply = 0;
+    u32 context = clib_host_to_net_u32 (mp->context);
 
-  if (!cfgp) 
-    clib_warning ("msg id %d: no trace configuration\n", msg_id);
-  else
-    total_bytes = cfgp->size;
+    cfgp = am->api_trace_cfg + msg_id;
 
-  jm->context_id_received = context;
+    if (!cfgp)
+        clib_warning ("msg id %d: no trace configuration\n", msg_id);
+    else
+        total_bytes = cfgp->size;
 
-  DEBUG_LOG ("Received generic reply for msg id %d", msg_id);
+    jm->context_id_received = context;
 
-  /* A generic reply, successful, we're done */
-  if (retval >= 0 && total_bytes == sizeof(*mp))
-    return;
+    DEBUG_LOG ("Received generic reply for msg id %d", msg_id);
 
-  /* Save the reply */
-  vec_validate (saved_reply, total_bytes - 1);
-  memcpy (saved_reply, mp, total_bytes);
+    /* A generic reply, successful, we're done */
+    if (retval >= 0 && total_bytes == sizeof(*mp))
+        return;
 
-  vppjni_lock (jm, 2);
-  hash_set (jm->reply_hash, context, saved_reply);
-  jm->saved_reply_count ++;
-  vppjni_unlock (jm);
+    /* Save the reply */
+    vec_validate (saved_reply, total_bytes - 1);
+    memcpy (saved_reply, mp, total_bytes);
+
+    vppjni_lock (jm, 2);
+    hash_set (jm->reply_hash, context, saved_reply);
+    jm->saved_reply_count ++;
+    vppjni_unlock (jm);
 }
 
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_getRetval0
 (JNIEnv * env, jobject obj, jint context, jint release)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  vl_api_generic_reply_t * mp;
-  uword * p;
-  int rv = 0;
+    vppjni_main_t * jm = &vppjni_main;
+    vl_api_generic_reply_t * mp;
+    uword * p;
+    int rv = 0;
 
-  /* Dunno yet? */
-  if (context > jm->context_id_received)
-    return (VNET_API_ERROR_RESPONSE_NOT_READY);
+    /* Dunno yet? */
+    if (context > jm->context_id_received)
+        return (VNET_API_ERROR_RESPONSE_NOT_READY);
 
-  vppjni_lock (jm, 1);
-  p = hash_get (jm->reply_hash, context);
+    vppjni_lock (jm, 1);
+    p = hash_get (jm->reply_hash, context);
 
-  /* 
-   * Two cases: a generic "yes" reply - won't be in the hash table
-   * or "no", or "more data" which will be in the table.
-   */
-  if (p == 0)
-    goto out;
-      
-  mp = (vl_api_generic_reply_t *) (p[0]);
-  rv = clib_net_to_host_u32 (mp->retval);
+    /*
+     * Two cases: a generic "yes" reply - won't be in the hash table
+     * or "no", or "more data" which will be in the table.
+     */
+    if (p == 0)
+        goto out;
 
-  if (release)
-    {
-      u8 * free_me = (u8 *) mp;
-      vec_free (free_me);
-      hash_unset (jm->reply_hash, context);
-      jm->saved_reply_count --;
+    mp = (vl_api_generic_reply_t *) (p[0]);
+    rv = clib_net_to_host_u32 (mp->retval);
+
+    if (release) {
+        u8 * free_me = (u8 *) mp;
+        vec_free (free_me);
+        hash_unset (jm->reply_hash, context);
+        jm->saved_reply_count --;
     }
 
 out:
-  vppjni_unlock (jm);
-  return (rv);
+    vppjni_unlock (jm);
+    return (rv);
 }
 
 static int
 name_sort_cmp (void * a1, void * a2)
 {
-  name_sort_t * n1 = a1;
-  name_sort_t * n2 = a2;
+    name_sort_t * n1 = a1;
+    name_sort_t * n2 = a2;
 
-  return strcmp ((char *)n1->name, (char *)n2->name);
+    return strcmp ((char *)n1->name, (char *)n2->name);
 }
 
 JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceList0
   (JNIEnv * env, jobject obj, jstring name_filter)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  jstring rv;
-  hash_pair_t * p;
-  name_sort_t * nses = 0, * ns;
-  const char *this_name;
-  const char * nf = (*env)->GetStringUTFChars (env, name_filter, NULL);
-  u8 * s = 0;
-  char *strcasestr (const char *, const char *);
+    vppjni_main_t * jm = &vppjni_main;
+    jstring rv;
+    hash_pair_t * p;
+    name_sort_t * nses = 0, * ns;
+    const char *this_name;
+    const char * nf = (*env)->GetStringUTFChars (env, name_filter, NULL);
+    u8 * s = 0;
+    char *strcasestr (const char *, const char *);
 
-  vppjni_lock (jm, 4);
-  
-  hash_foreach_pair (p, jm->sw_if_index_by_interface_name, 
-    ({
-      this_name = (const char *)(p->key);
-      if (strlen (nf) == 0 || strcasestr (this_name, nf))
-        {
-          vec_add2 (nses, ns, 1);
-          ns->name = (u8 *)(p->key);
-          ns->value = (u32) p->value[0];
-        }
-    }));
+    vppjni_lock (jm, 4);
 
-  vec_sort_with_function (nses, name_sort_cmp);
+    hash_foreach_pair (p, jm->sw_if_index_by_interface_name,
+            ({
+                this_name = (const char *)(p->key);
+                if (strlen (nf) == 0 || strcasestr (this_name, nf)) {
+                    vec_add2 (nses, ns, 1);
+                    ns->name = (u8 *)(p->key);
+                    ns->value = (u32) p->value[0];
+                }
+            }));
 
-  vec_foreach (ns, nses)
-    s = format (s, "%s: %d, ", ns->name, ns->value);
+    vec_sort_with_function (nses, name_sort_cmp);
 
-  _vec_len (s) = vec_len (s) - 2;
-  vec_terminate_c_string (s);
-  vppjni_unlock (jm);
+    vec_foreach (ns, nses)
+        s = format (s, "%s: %d, ", ns->name, ns->value);
 
-  vec_free (nses);
+    _vec_len (s) = vec_len (s) - 2;
+    vec_terminate_c_string (s);
+    vppjni_unlock (jm);
 
-  (*env)->ReleaseStringUTFChars (env, name_filter, nf);
+    vec_free (nses);
 
-  rv = (*env)->NewStringUTF (env, (char *) s);
-  vec_free (s);
-  
-  return rv;
+    (*env)->ReleaseStringUTFChars (env, name_filter, nf);
+
+    rv = (*env)->NewStringUTF (env, (char *) s);
+    vec_free (s);
+
+    return rv;
 }
 
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_swIfIndexFromName0
   (JNIEnv * env, jobject obj, jstring interfaceName)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  jint rv = -1;
-  const char * if_name = (*env)->GetStringUTFChars (env, interfaceName, NULL);
-  uword * p;
+    vppjni_main_t * jm = &vppjni_main;
+    jint rv = -1;
+    const char * if_name = (*env)->GetStringUTFChars (env, interfaceName, NULL);
+    uword * p;
 
-  vppjni_lock (jm, 5);
+    vppjni_lock (jm, 5);
 
-  p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name);
+    p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name);
 
-  if (p != 0)
-      rv = (jint) p[0];
+    if (p != 0)
+        rv = (jint) p[0];
 
-  vppjni_unlock (jm);
-  
-  (*env)->ReleaseStringUTFChars (env, interfaceName, if_name);
+    vppjni_unlock (jm);
 
-  return rv;
+    (*env)->ReleaseStringUTFChars (env, interfaceName, if_name);
+
+    return rv;
 }
 
 JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceCounters0
@@ -720,159 +716,159 @@ static jobjectArray sw_if_dump_get_interfaces (JNIEnv * env)
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_findOrAddBridgeDomainId0
   (JNIEnv * env, jobject obj, jstring bridgeDomain)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  static u8 * bd_name = 0;
-  jint rv = -1;
-  const char * bdName = (*env)->GetStringUTFChars (env, bridgeDomain, NULL);
+    vppjni_main_t * jm = &vppjni_main;
+    static u8 * bd_name = 0;
+    jint rv = -1;
+    const char * bdName = (*env)->GetStringUTFChars (env, bridgeDomain, NULL);
 
-  vec_validate_init_c_string (bd_name, bdName, strlen(bdName));
-  (*env)->ReleaseStringUTFChars (env, bridgeDomain, bdName);
+    vec_validate_init_c_string (bd_name, bdName, strlen(bdName));
+    (*env)->ReleaseStringUTFChars (env, bridgeDomain, bdName);
 
-  vppjni_lock (jm, 6);
-  rv = (jint)vjbd_find_or_add_bd (&jm->vjbd_main, bd_name);
-  vppjni_unlock (jm);
-  
-  _vec_len(bd_name) = 0;
-  return rv;
+    vppjni_lock (jm, 6);
+    rv = (jint)vjbd_find_or_add_bd (&jm->vjbd_main, bd_name);
+    vppjni_unlock (jm);
+
+    _vec_len(bd_name) = 0;
+    return rv;
 }
 
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainIdFromName0
   (JNIEnv * env, jobject obj, jstring bridgeDomain)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  static u8 * bd_name = 0;
-  jint rv = -1;
-  const char * bdName = (*env)->GetStringUTFChars (env, bridgeDomain, NULL);
+    vppjni_main_t * jm = &vppjni_main;
+    static u8 * bd_name = 0;
+    jint rv = -1;
+    const char * bdName = (*env)->GetStringUTFChars (env, bridgeDomain, NULL);
 
-  vec_validate_init_c_string (bd_name, bdName, strlen(bdName));
-  (*env)->ReleaseStringUTFChars (env, bridgeDomain, bdName);
+    vec_validate_init_c_string (bd_name, bdName, strlen(bdName));
+    (*env)->ReleaseStringUTFChars (env, bridgeDomain, bdName);
 
-  vppjni_lock (jm, 20);
-  rv = (jint)vjbd_id_from_name(&jm->vjbd_main, (u8 *)bd_name);
-  vppjni_unlock (jm);
+    vppjni_lock (jm, 20);
+    rv = (jint)vjbd_id_from_name(&jm->vjbd_main, (u8 *)bd_name);
+    vppjni_unlock (jm);
 
-  _vec_len(bd_name) = 0;
+    _vec_len(bd_name) = 0;
 
-  return rv;
+    return rv;
 }
 
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainIdFromInterfaceName0
   (JNIEnv * env, jobject obj, jstring interfaceName)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  vjbd_main_t * bdm = &jm->vjbd_main;
-  u32 sw_if_index;
-  jint rv = -1;
-  const char * if_name;
-  uword * p;
+    vppjni_main_t * jm = &vppjni_main;
+    vjbd_main_t * bdm = &jm->vjbd_main;
+    u32 sw_if_index;
+    jint rv = -1;
+    const char * if_name;
+    uword * p;
 
-  if_name = (*env)->GetStringUTFChars (env, interfaceName, NULL);
+    if_name = (*env)->GetStringUTFChars (env, interfaceName, NULL);
 
-  vppjni_lock (jm, 14);
+    vppjni_lock (jm, 14);
 
-  p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name);
+    p = hash_get_mem (jm->sw_if_index_by_interface_name, if_name);
 
-  if (p != 0) {
-      sw_if_index = (jint) p[0];
-      p = hash_get (bdm->bd_id_by_sw_if_index, sw_if_index);
-      if (p != 0) {
-          rv = (jint) p[0];
-      }
-  }
+    if (p != 0) {
+        sw_if_index = (jint) p[0];
+        p = hash_get (bdm->bd_id_by_sw_if_index, sw_if_index);
+        if (p != 0) {
+            rv = (jint) p[0];
+        }
+    }
 
-  vppjni_unlock (jm);
+    vppjni_unlock (jm);
 
-  (*env)->ReleaseStringUTFChars (env, interfaceName, if_name);
+    (*env)->ReleaseStringUTFChars (env, interfaceName, if_name);
 
-  return rv;
+    return rv;
 }
 
-/* 
+/*
  * Special-case: build the interface table, maintain
  * the next loopback sw_if_index vbl.
  */
 static void vl_api_sw_interface_details_t_handler
 (vl_api_sw_interface_details_t * mp)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  static sw_interface_details_t empty_sw_if_details = {0,};
-  sw_interface_details_t *sw_if_details;
-  u32 sw_if_index;
+    vppjni_main_t * jm = &vppjni_main;
+    static sw_interface_details_t empty_sw_if_details = {0,};
+    sw_interface_details_t *sw_if_details;
+    u32 sw_if_index;
 
-  vppjni_lock (jm, 1);
+    vppjni_lock (jm, 1);
 
-  sw_if_index = ntohl (mp->sw_if_index);
+    sw_if_index = ntohl (mp->sw_if_index);
 
-  u8 * s = format (0, "%s%c", mp->interface_name, 0);
+    u8 * s = format (0, "%s%c", mp->interface_name, 0);
 
-  if (jm->collect_indices) {
-      u32 pos = vec_len(jm->sw_if_dump_if_indices);
-      vec_validate(jm->sw_if_dump_if_indices, pos);
-      jm->sw_if_dump_if_indices[pos] = sw_if_index;
-  }
+    if (jm->collect_indices) {
+        u32 pos = vec_len(jm->sw_if_dump_if_indices);
+        vec_validate(jm->sw_if_dump_if_indices, pos);
+        jm->sw_if_dump_if_indices[pos] = sw_if_index;
+    }
 
-  vec_validate_init_empty(jm->sw_if_table, sw_if_index, empty_sw_if_details);
-  sw_if_details = &jm->sw_if_table[sw_if_index];
-  sw_if_details->valid = 1;
+    vec_validate_init_empty(jm->sw_if_table, sw_if_index, empty_sw_if_details);
+    sw_if_details = &jm->sw_if_table[sw_if_index];
+    sw_if_details->valid = 1;
 
-  snprintf((char *)sw_if_details->interface_name,
-          sizeof(sw_if_details->interface_name), "%s", (char *)s);
-  sw_if_details->sw_if_index = sw_if_index;
-  sw_if_details->sup_sw_if_index = ntohl(mp->sup_sw_if_index);
-  sw_if_details->l2_address_length = ntohl (mp->l2_address_length);
-  ASSERT(sw_if_details->l2_address_length <= sizeof(sw_if_details->l2_address));
-  memcpy(sw_if_details->l2_address, mp->l2_address,
-          sw_if_details->l2_address_length);
-  sw_if_details->sub_id = ntohl (mp->sub_id);
-  sw_if_details->sub_outer_vlan_id = ntohl (mp->sub_outer_vlan_id);
-  sw_if_details->sub_inner_vlan_id = ntohl (mp->sub_inner_vlan_id);
-  sw_if_details->vtr_op = ntohl (mp->vtr_op);
-  sw_if_details->vtr_push_dot1q = ntohl (mp->vtr_push_dot1q);
-  sw_if_details->vtr_tag1 = ntohl (mp->vtr_tag1);
-  sw_if_details->vtr_tag2 = ntohl (mp->vtr_tag2);
+    snprintf((char *)sw_if_details->interface_name,
+            sizeof(sw_if_details->interface_name), "%s", (char *)s);
+    sw_if_details->sw_if_index = sw_if_index;
+    sw_if_details->sup_sw_if_index = ntohl(mp->sup_sw_if_index);
+    sw_if_details->l2_address_length = ntohl (mp->l2_address_length);
+    ASSERT(sw_if_details->l2_address_length <= sizeof(sw_if_details->l2_address));
+    memcpy(sw_if_details->l2_address, mp->l2_address,
+            sw_if_details->l2_address_length);
+    sw_if_details->sub_id = ntohl (mp->sub_id);
+    sw_if_details->sub_outer_vlan_id = ntohl (mp->sub_outer_vlan_id);
+    sw_if_details->sub_inner_vlan_id = ntohl (mp->sub_inner_vlan_id);
+    sw_if_details->vtr_op = ntohl (mp->vtr_op);
+    sw_if_details->vtr_push_dot1q = ntohl (mp->vtr_push_dot1q);
+    sw_if_details->vtr_tag1 = ntohl (mp->vtr_tag1);
+    sw_if_details->vtr_tag2 = ntohl (mp->vtr_tag2);
 
-  sw_if_details->admin_up_down = mp->admin_up_down;
-  sw_if_details->link_up_down = mp->link_up_down;
-  sw_if_details->link_duplex = mp->link_duplex;
-  sw_if_details->link_speed = mp->link_speed;
-  sw_if_details->sub_dot1ad = mp->sub_dot1ad;
-  sw_if_details->sub_number_of_tags = mp->sub_number_of_tags;
-  sw_if_details->sub_exact_match = mp->sub_exact_match;
-  sw_if_details->sub_default = mp->sub_default;
-  sw_if_details->sub_outer_vlan_id_any = mp->sub_outer_vlan_id_any;
-  sw_if_details->sub_inner_vlan_id_any = mp->sub_inner_vlan_id_any;
+    sw_if_details->admin_up_down = mp->admin_up_down;
+    sw_if_details->link_up_down = mp->link_up_down;
+    sw_if_details->link_duplex = mp->link_duplex;
+    sw_if_details->link_speed = mp->link_speed;
+    sw_if_details->sub_dot1ad = mp->sub_dot1ad;
+    sw_if_details->sub_number_of_tags = mp->sub_number_of_tags;
+    sw_if_details->sub_exact_match = mp->sub_exact_match;
+    sw_if_details->sub_default = mp->sub_default;
+    sw_if_details->sub_outer_vlan_id_any = mp->sub_outer_vlan_id_any;
+    sw_if_details->sub_inner_vlan_id_any = mp->sub_inner_vlan_id_any;
 
-  hash_set_mem (jm->sw_if_index_by_interface_name, s, sw_if_index);
-  DEBUG_LOG ("Got interface %s", (char *)s);
+    hash_set_mem (jm->sw_if_index_by_interface_name, s, sw_if_index);
+    DEBUG_LOG ("Got interface %s", (char *)s);
 
-  /* In sub interface case, fill the sub interface table entry */
-  if (mp->sw_if_index != mp->sup_sw_if_index) {
-    sw_interface_subif_t * sub = NULL;
+    /* In sub interface case, fill the sub interface table entry */
+    if (mp->sw_if_index != mp->sup_sw_if_index) {
+        sw_interface_subif_t * sub = NULL;
 
-    vec_add2(jm->sw_if_subif_table, sub, 1);
+        vec_add2(jm->sw_if_subif_table, sub, 1);
 
-    vec_validate(sub->interface_name, strlen((char *)s) + 1);
-    strncpy((char *)sub->interface_name, (char *)s,
-            vec_len(sub->interface_name));
-    sub->sw_if_index = ntohl(mp->sw_if_index);
-    sub->sub_id = ntohl(mp->sub_id);
+        vec_validate(sub->interface_name, strlen((char *)s) + 1);
+        strncpy((char *)sub->interface_name, (char *)s,
+                vec_len(sub->interface_name));
+        sub->sw_if_index = ntohl(mp->sw_if_index);
+        sub->sub_id = ntohl(mp->sub_id);
 
-    sub->sub_dot1ad = mp->sub_dot1ad;
-    sub->sub_number_of_tags = mp->sub_number_of_tags;
-    sub->sub_outer_vlan_id = ntohs(mp->sub_outer_vlan_id);
-    sub->sub_inner_vlan_id = ntohs(mp->sub_inner_vlan_id);
-    sub->sub_exact_match = mp->sub_exact_match;
-    sub->sub_default = mp->sub_default;
-    sub->sub_outer_vlan_id_any = mp->sub_outer_vlan_id_any;
-    sub->sub_inner_vlan_id_any = mp->sub_inner_vlan_id_any;
+        sub->sub_dot1ad = mp->sub_dot1ad;
+        sub->sub_number_of_tags = mp->sub_number_of_tags;
+        sub->sub_outer_vlan_id = ntohs(mp->sub_outer_vlan_id);
+        sub->sub_inner_vlan_id = ntohs(mp->sub_inner_vlan_id);
+        sub->sub_exact_match = mp->sub_exact_match;
+        sub->sub_default = mp->sub_default;
+        sub->sub_outer_vlan_id_any = mp->sub_outer_vlan_id_any;
+        sub->sub_inner_vlan_id_any = mp->sub_inner_vlan_id_any;
 
-    /* vlan tag rewrite */
-    sub->vtr_op = ntohl(mp->vtr_op);
-    sub->vtr_push_dot1q = ntohl(mp->vtr_push_dot1q);
-    sub->vtr_tag1 = ntohl(mp->vtr_tag1);
-    sub->vtr_tag2 = ntohl(mp->vtr_tag2);
-  }
-  vppjni_unlock (jm);
+        /* vlan tag rewrite */
+        sub->vtr_op = ntohl(mp->vtr_op);
+        sub->vtr_push_dot1q = ntohl(mp->vtr_push_dot1q);
+        sub->vtr_tag1 = ntohl(mp->vtr_tag1);
+        sub->vtr_tag2 = ntohl(mp->vtr_tag2);
+    }
+    vppjni_unlock (jm);
 }
 
 static void vl_api_sw_interface_set_flags_t_handler
@@ -965,60 +961,60 @@ JNIEXPORT jintArray JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainDump0
 static void
 vl_api_bridge_domain_details_t_handler (vl_api_bridge_domain_details_t * mp)
 {
-  vppjni_main_t *jm = &vppjni_main;
-  vjbd_main_t * bdm = &jm->vjbd_main;
-  vjbd_oper_t * bd_oper;
-  u32 bd_id, bd_index;
+    vppjni_main_t *jm = &vppjni_main;
+    vjbd_main_t * bdm = &jm->vjbd_main;
+    vjbd_oper_t * bd_oper;
+    u32 bd_id, bd_index;
 
-  bd_id = ntohl (mp->bd_id);
+    bd_id = ntohl (mp->bd_id);
 
-  bd_index = vec_len(bdm->bd_oper);
-  vec_validate (bdm->bd_oper, bd_index);
-  bd_oper = vec_elt_at_index(bdm->bd_oper, bd_index);
+    bd_index = vec_len(bdm->bd_oper);
+    vec_validate (bdm->bd_oper, bd_index);
+    bd_oper = vec_elt_at_index(bdm->bd_oper, bd_index);
 
-  hash_set(bdm->oper_bd_index_by_bd_id, bd_id, bd_index);
+    hash_set(bdm->oper_bd_index_by_bd_id, bd_id, bd_index);
 
-  bd_oper->bd_id = bd_id;
-  bd_oper->flood = mp->flood != 0;
-  bd_oper->forward = mp->forward != 0;
-  bd_oper->learn =  mp->learn != 0;
-  bd_oper->uu_flood = mp->uu_flood != 0;
-  bd_oper->arp_term = mp->arp_term != 0;
-  bd_oper->bvi_sw_if_index = ntohl (mp->bvi_sw_if_index);
-  bd_oper->n_sw_ifs = ntohl (mp->n_sw_ifs);
+    bd_oper->bd_id = bd_id;
+    bd_oper->flood = mp->flood != 0;
+    bd_oper->forward = mp->forward != 0;
+    bd_oper->learn =  mp->learn != 0;
+    bd_oper->uu_flood = mp->uu_flood != 0;
+    bd_oper->arp_term = mp->arp_term != 0;
+    bd_oper->bvi_sw_if_index = ntohl (mp->bvi_sw_if_index);
+    bd_oper->n_sw_ifs = ntohl (mp->n_sw_ifs);
 
-  bd_oper->bd_sw_if_oper = 0;
+    bd_oper->bd_sw_if_oper = 0;
 }
 
 static void
 vl_api_bridge_domain_sw_if_details_t_handler
 (vl_api_bridge_domain_sw_if_details_t * mp)
 {
-  vppjni_main_t *jm = &vppjni_main;
-  vjbd_main_t * bdm = &jm->vjbd_main;
-  bd_sw_if_oper_t * bd_sw_if_oper;
-  u32 bd_id, sw_if_index;
+    vppjni_main_t *jm = &vppjni_main;
+    vjbd_main_t * bdm = &jm->vjbd_main;
+    bd_sw_if_oper_t * bd_sw_if_oper;
+    u32 bd_id, sw_if_index;
 
-  bd_id = ntohl (mp->bd_id);
-  sw_if_index = ntohl (mp->sw_if_index);
+    bd_id = ntohl (mp->bd_id);
+    sw_if_index = ntohl (mp->sw_if_index);
 
-  uword *p;
-  p = hash_get (bdm->oper_bd_index_by_bd_id, bd_id);
-  if (p == 0) {
-      clib_warning("Invalid bd_id %d in bridge_domain_sw_if_details_t_handler", bd_id);
-      return;
-  }
-  u32 oper_bd_index = (jint) p[0];
-  vjbd_oper_t *bd_oper = vec_elt_at_index(bdm->bd_oper, oper_bd_index);
+    uword *p;
+    p = hash_get (bdm->oper_bd_index_by_bd_id, bd_id);
+    if (p == 0) {
+        clib_warning("Invalid bd_id %d in bridge_domain_sw_if_details_t_handler", bd_id);
+        return;
+    }
+    u32 oper_bd_index = (jint) p[0];
+    vjbd_oper_t *bd_oper = vec_elt_at_index(bdm->bd_oper, oper_bd_index);
 
-  u32 len = vec_len(bd_oper->bd_sw_if_oper);
-  vec_validate(bd_oper->bd_sw_if_oper, len);
-  bd_sw_if_oper = &bd_oper->bd_sw_if_oper[len];
-  bd_sw_if_oper->bd_id = bd_id;
-  bd_sw_if_oper->sw_if_index = sw_if_index;
-  bd_sw_if_oper->shg = mp->shg;
+    u32 len = vec_len(bd_oper->bd_sw_if_oper);
+    vec_validate(bd_oper->bd_sw_if_oper, len);
+    bd_sw_if_oper = &bd_oper->bd_sw_if_oper[len];
+    bd_sw_if_oper->bd_id = bd_id;
+    bd_sw_if_oper->sw_if_index = sw_if_index;
+    bd_sw_if_oper->shg = mp->shg;
 
-  hash_set(bdm->bd_id_by_sw_if_index, sw_if_index, bd_id);
+    hash_set(bdm->bd_id_by_sw_if_index, sw_if_index, bd_id);
 }
 
 static const char* interface_name_from_sw_if_index(u32 sw_if_index)
@@ -1166,100 +1162,100 @@ static jobject l2_fib_create_object(JNIEnv *env, bd_l2fib_oper_t *l2_fib)
 JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_l2FibTableDump0
 (JNIEnv * env, jobject obj, jint bd_id)
 {
-  vppjni_main_t *jm = &vppjni_main;
-  vjbd_main_t * bdm = &jm->vjbd_main;
-  vl_api_l2_fib_table_dump_t *mp;
-  jobjectArray l2FibArray = NULL;
-  vjbd_oper_t *bd_oper;
-  u32 oper_bd_index;
-  uword *p;
-  f64 timeout;
-  int rv;
-  u32 i;
+    vppjni_main_t *jm = &vppjni_main;
+    vjbd_main_t * bdm = &jm->vjbd_main;
+    vl_api_l2_fib_table_dump_t *mp;
+    jobjectArray l2FibArray = NULL;
+    vjbd_oper_t *bd_oper;
+    u32 oper_bd_index;
+    uword *p;
+    f64 timeout;
+    int rv;
+    u32 i;
 
-  vppjni_lock (jm, 17);
+    vppjni_lock (jm, 17);
 
-  //vjbd_l2fib_oper_reset (bdm);
+    //vjbd_l2fib_oper_reset (bdm);
 
-  p = hash_get (bdm->oper_bd_index_by_bd_id, bd_id);
-  if (p == 0) {
-      goto done;
-  }
-  oper_bd_index = p[0];
-  bd_oper = vec_elt_at_index(bdm->bd_oper, oper_bd_index);
-  vec_reset_length (bd_oper->l2fib_oper);
+    p = hash_get (bdm->oper_bd_index_by_bd_id, bd_id);
+    if (p == 0) {
+        goto done;
+    }
+    oper_bd_index = p[0];
+    bd_oper = vec_elt_at_index(bdm->bd_oper, oper_bd_index);
+    vec_reset_length (bd_oper->l2fib_oper);
 
-  /* Get list of l2 fib table entries */
-  M(L2_FIB_TABLE_DUMP, l2_fib_table_dump);
-  mp->bd_id = ntohl(bd_id);
-  S;
-
-  /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t * mp;
-    M(CONTROL_PING, control_ping);
+    /* Get list of l2 fib table entries */
+    M(L2_FIB_TABLE_DUMP, l2_fib_table_dump);
+    mp->bd_id = ntohl(bd_id);
     S;
-  }
 
-  WNR;
-  if (0 != rv) {
-      goto done;
-  }
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
 
-  u32 count = vec_len(bd_oper->l2fib_oper);
-  bd_l2fib_oper_t *l2fib_oper = bd_oper->l2fib_oper;
+    WNR;
+    if (0 != rv) {
+        goto done;
+    }
 
-  l2FibArray = vppL2FibArray(env, count);
-  for (i = 0; i < count; i++) {
-      bd_l2fib_oper_t *l2_fib = &l2fib_oper[i];
-      jobject l2FibObj = l2_fib_create_object(env, l2_fib);
-      (*env)->SetObjectArrayElement(env, l2FibArray, i, l2FibObj);
-  }
+    u32 count = vec_len(bd_oper->l2fib_oper);
+    bd_l2fib_oper_t *l2fib_oper = bd_oper->l2fib_oper;
+
+    l2FibArray = vppL2FibArray(env, count);
+    for (i = 0; i < count; i++) {
+        bd_l2fib_oper_t *l2_fib = &l2fib_oper[i];
+        jobject l2FibObj = l2_fib_create_object(env, l2_fib);
+        (*env)->SetObjectArrayElement(env, l2FibArray, i, l2FibObj);
+    }
 
 done:
-  vppjni_unlock (jm);
+    vppjni_unlock (jm);
 
-  return l2FibArray;
+    return l2FibArray;
 }
 
 static void
 vl_api_l2_fib_table_entry_t_handler (vl_api_l2_fib_table_entry_t * mp)
 {
-  //static u8 * mac_addr;
-  vppjni_main_t *jm = &vppjni_main;
-  vjbd_main_t * bdm = &jm->vjbd_main;
-  vjbd_oper_t * bd_oper;
-  u32 bd_id, oper_bd_index;
-  //uword mhash_val_l2fi;
-  bd_l2fib_oper_t * l2fib_oper;
-  l2fib_u64_mac_t * l2fe_u64_mac = (l2fib_u64_mac_t *)&mp->mac;
+    //static u8 * mac_addr;
+    vppjni_main_t *jm = &vppjni_main;
+    vjbd_main_t * bdm = &jm->vjbd_main;
+    vjbd_oper_t * bd_oper;
+    u32 bd_id, oper_bd_index;
+    //uword mhash_val_l2fi;
+    bd_l2fib_oper_t * l2fib_oper;
+    l2fib_u64_mac_t * l2fe_u64_mac = (l2fib_u64_mac_t *)&mp->mac;
 
-  bd_id = ntohl (mp->bd_id);
+    bd_id = ntohl (mp->bd_id);
 
-  uword *p = hash_get (bdm->oper_bd_index_by_bd_id, bd_id);
-  if (p == 0) {
-      return;
-  }
-  oper_bd_index = (jint) p[0];
-  bd_oper = vec_elt_at_index(bdm->bd_oper, oper_bd_index);
+    uword *p = hash_get (bdm->oper_bd_index_by_bd_id, bd_id);
+    if (p == 0) {
+        return;
+    }
+    oper_bd_index = (jint) p[0];
+    bd_oper = vec_elt_at_index(bdm->bd_oper, oper_bd_index);
 
 #if 0
-  vec_validate (mac_addr, MAC_ADDRESS_SIZE);
-  memcpy (mac_addr, l2fe_u64_mac->fields.mac, MAC_ADDRESS_SIZE);
-  mhash_val_l2fi = vec_len (bd_oper->l2fib_oper);
-  if (mhash_elts (&bd_oper->l2fib_index_by_mac) == 0)
-    mhash_init (&bd_oper->l2fib_index_by_mac, sizeof (u32), MAC_ADDRESS_SIZE);
-  mhash_set_mem (&bd_oper->l2fib_index_by_mac, mac_addr, &mhash_val_l2fi, 0);
+    vec_validate (mac_addr, MAC_ADDRESS_SIZE);
+    memcpy (mac_addr, l2fe_u64_mac->fields.mac, MAC_ADDRESS_SIZE);
+    mhash_val_l2fi = vec_len (bd_oper->l2fib_oper);
+    if (mhash_elts (&bd_oper->l2fib_index_by_mac) == 0)
+        mhash_init (&bd_oper->l2fib_index_by_mac, sizeof (u32), MAC_ADDRESS_SIZE);
+    mhash_set_mem (&bd_oper->l2fib_index_by_mac, mac_addr, &mhash_val_l2fi, 0);
 #endif
 
-  vec_add2 (bd_oper->l2fib_oper, l2fib_oper, 1);
+    vec_add2 (bd_oper->l2fib_oper, l2fib_oper, 1);
 
-  l2fib_oper->bd_id = bd_id;
-  l2fib_oper->mac_addr.raw = l2fib_mac_to_u64 (l2fe_u64_mac->fields.mac);
-  l2fib_oper->sw_if_index = ntohl (mp->sw_if_index);
-  l2fib_oper->learned = !mp->static_mac;
-  l2fib_oper->filter = mp->filter_mac;
-  l2fib_oper->bvi = mp->bvi_mac;
+    l2fib_oper->bd_id = bd_id;
+    l2fib_oper->mac_addr.raw = l2fib_mac_to_u64 (l2fe_u64_mac->fields.mac);
+    l2fib_oper->sw_if_index = ntohl (mp->sw_if_index);
+    l2fib_oper->learned = !mp->static_mac;
+    l2fib_oper->filter = mp->filter_mac;
+    l2fib_oper->bvi = mp->bvi_mac;
 }
 
 static int ipAddressDump
@@ -1486,57 +1482,57 @@ static void vl_api_vxlan_tunnel_details_t_handler
 /* cleanup handler for RX thread */
 static void cleanup_rx_thread(void *arg)
 {
-  vppjni_main_t * jm = &vppjni_main;
+    vppjni_main_t * jm = &vppjni_main;
 
-  vppjni_lock (jm, 99);
+    vppjni_lock (jm, 99);
 
-  int getEnvStat = (*jm->jvm)->GetEnv(jm->jvm, (void **)&(jm->jenv), JNI_VERSION_1_6);
-  if (getEnvStat == JNI_EVERSION) {
-    clib_warning ("Unsupported JNI version\n");
-    jm->retval = -999;
-    goto out;
-  } else if (getEnvStat != JNI_EDETACHED) {
-    (*jm->jvm)->DetachCurrentThread(jm->jvm);
-  }
+    int getEnvStat = (*jm->jvm)->GetEnv(jm->jvm, (void **)&(jm->jenv), JNI_VERSION_1_6);
+    if (getEnvStat == JNI_EVERSION) {
+        clib_warning ("Unsupported JNI version\n");
+        jm->retval = -999;
+        goto out;
+    } else if (getEnvStat != JNI_EDETACHED) {
+        (*jm->jvm)->DetachCurrentThread(jm->jvm);
+    }
 out:
-  vppjni_unlock (jm);
+    vppjni_unlock (jm);
 }
 
 static void
 vl_api_show_version_reply_t_handler (vl_api_show_version_reply_t * mp)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  i32 retval = ntohl(mp->retval);
+    vppjni_main_t * jm = &vppjni_main;
+    i32 retval = ntohl(mp->retval);
 
-  if (retval >= 0) {
-    DEBUG_LOG ("show version request succeeded(%d)");
-    strncpy((char*)jm->program_name, (const char*)mp->program,
-            sizeof(jm->program_name)-1);
-    jm->program_name[sizeof(jm->program_name)-1] = 0;
+    if (retval >= 0) {
+        DEBUG_LOG ("show version request succeeded(%d)");
+        strncpy((char*)jm->program_name, (const char*)mp->program,
+                sizeof(jm->program_name)-1);
+        jm->program_name[sizeof(jm->program_name)-1] = 0;
 
-    strncpy((char*)jm->build_directory, (const char*)mp->build_directory,
-            sizeof(jm->build_directory)-1);
-    jm->build_directory[sizeof(jm->build_directory)-1] = 0;
+        strncpy((char*)jm->build_directory, (const char*)mp->build_directory,
+                sizeof(jm->build_directory)-1);
+        jm->build_directory[sizeof(jm->build_directory)-1] = 0;
 
-    strncpy((char*)jm->version, (const char*)mp->version,
-            sizeof(jm->version)-1);
-    jm->version[sizeof(jm->version)-1] = 0;
+        strncpy((char*)jm->version, (const char*)mp->version,
+                sizeof(jm->version)-1);
+        jm->version[sizeof(jm->version)-1] = 0;
 
-    strncpy((char*)jm->build_date, (const char*)mp->build_date,
-            sizeof(jm->build_date)-1);
-    jm->build_date[sizeof(jm->build_date)-1] = 0;
-  } else {
-    clib_error ("show version request failed(%d)", retval);
-  }
-  jm->retval = retval;
-  jm->result_ready = 1;
+        strncpy((char*)jm->build_date, (const char*)mp->build_date,
+                sizeof(jm->build_date)-1);
+        jm->build_date[sizeof(jm->build_date)-1] = 0;
+    } else {
+        clib_error ("show version request failed(%d)", retval);
+    }
+    jm->retval = retval;
+    jm->result_ready = 1;
 }
 
 static void vl_api_want_stats_reply_t_handler (vl_api_want_stats_reply_t * mp)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  jm->retval = mp->retval; // FIXME: vpp api does not do ntohl on this retval
-  jm->result_ready = 1;
+    vppjni_main_t * jm = &vppjni_main;
+    jm->retval = mp->retval; // FIXME: vpp api does not do ntohl on this retval
+    jm->result_ready = 1;
 }
 
 // control ping needs to be very first thing called
@@ -1544,71 +1540,71 @@ static void vl_api_want_stats_reply_t_handler (vl_api_want_stats_reply_t * mp)
 static void vl_api_control_ping_reply_t_handler
 (vl_api_control_ping_reply_t * mp)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  i32 retval = ntohl(mp->retval);
-  jm->retval = retval;
+    vppjni_main_t * jm = &vppjni_main;
+    i32 retval = ntohl(mp->retval);
+    jm->retval = retval;
 
-  // attach to java thread if not attached
-  int getEnvStat = (*jm->jvm)->GetEnv(jm->jvm, (void **)&(jm->jenv), JNI_VERSION_1_6);
-  if (getEnvStat == JNI_EDETACHED) {
-    if ((*jm->jvm)->AttachCurrentThread(jm->jvm, (void **)&(jm->jenv), NULL) != 0) {
-      clib_warning("Failed to attach thread\n");
-      jm->retval = -999;
-      goto out;
+    // attach to java thread if not attached
+    int getEnvStat = (*jm->jvm)->GetEnv(jm->jvm, (void **)&(jm->jenv), JNI_VERSION_1_6);
+    if (getEnvStat == JNI_EDETACHED) {
+        if ((*jm->jvm)->AttachCurrentThread(jm->jvm, (void **)&(jm->jenv), NULL) != 0) {
+            clib_warning("Failed to attach thread\n");
+            jm->retval = -999;
+            goto out;
+        }
+
+        // workaround as we can't use pthread_cleanup_push
+        pthread_key_create(&jm->cleanup_rx_thread_key, cleanup_rx_thread);
+        // destructor is only called if the value of key is non null
+        pthread_setspecific(jm->cleanup_rx_thread_key, (void *)1);
+    } else if (getEnvStat == JNI_EVERSION) {
+        clib_warning ("Unsupported JNI version\n");
+        jm->retval = -999;
+        goto out;
     }
-
-    // workaround as we can't use pthread_cleanup_push
-    pthread_key_create(&jm->cleanup_rx_thread_key, cleanup_rx_thread);
-    // destructor is only called if the value of key is non null
-    pthread_setspecific(jm->cleanup_rx_thread_key, (void *)1);
-  } else if (getEnvStat == JNI_EVERSION) {
-    clib_warning ("Unsupported JNI version\n");
-    jm->retval = -999;
-    goto out;
-  }
-  // jm->jenv is now stable global reference that can be reused (only within RX thread)
+    // jm->jenv is now stable global reference that can be reused (only within RX thread)
 
 #if 0
-  // ! callback system removed for now
-  //
-  // get issuer msg-id
-  p = hash_get (jm->ping_hash, context);
-  if (p != 0) { // ping marks end of some dump call
-    JNIEnv *env = jm->jenv;
-    u16 msg_id = (u16)p[0];
+    // ! callback system removed for now
+    //
+    // get issuer msg-id
+    p = hash_get (jm->ping_hash, context);
+    if (p != 0) { // ping marks end of some dump call
+        JNIEnv *env = jm->jenv;
+        u16 msg_id = (u16)p[0];
 
-    // we will no longer need this
-    hash_unset (jm->ping_hash, context);
+        // we will no longer need this
+        hash_unset (jm->ping_hash, context);
 
-    // get original caller obj
-    p = hash_get (jm->callback_hash, context);
+        // get original caller obj
+        p = hash_get (jm->callback_hash, context);
 
-    if (p == 0) // don't have callback stored
-      goto out;
+        if (p == 0) // don't have callback stored
+            goto out;
 
-    jobject obj = (jobject)p[0]; // object that called original call
+        jobject obj = (jobject)p[0]; // object that called original call
 
-    switch (msg_id) {
-      case VL_API_SW_INTERFACE_DUMP:
-        if (0 != sw_if_dump_call_all_callbacks(obj)) {
-          goto out2;
+        switch (msg_id) {
+            case VL_API_SW_INTERFACE_DUMP:
+                if (0 != sw_if_dump_call_all_callbacks(obj)) {
+                    goto out2;
+                }
+                break;
+            default:
+                clib_warning("Unhandled control ping issuer msg-id: %d", msg_id);
+                goto out2;
+                break;
         }
-        break;
-      default:
-        clib_warning("Unhandled control ping issuer msg-id: %d", msg_id);
-        goto out2;
-        break;
+out2:
+        // free the saved obj
+        hash_unset (jm->callback_hash, context);
+        // delete global reference
+        (*env)->DeleteGlobalRef(env, obj);
     }
-  out2:
-    // free the saved obj
-    hash_unset (jm->callback_hash, context);
-    // delete global reference
-    (*env)->DeleteGlobalRef(env, obj);
-  }
 #endif
 
 out:
-  jm->result_ready = 1;
+    jm->result_ready = 1;
 }
 
 #define VPPJNI_DEBUG_COUNTERS 0
@@ -1616,166 +1612,164 @@ out:
 static void vl_api_vnet_interface_counters_t_handler
 (vl_api_vnet_interface_counters_t *mp)
 {
-  vppjni_main_t *jm = &vppjni_main;
-  CLIB_UNUSED(char *counter_name);
-  u32 count, sw_if_index;
-  int i;
-  static sw_interface_stats_t empty_stats = {0, };
+    vppjni_main_t *jm = &vppjni_main;
+    CLIB_UNUSED(char *counter_name);
+    u32 count, sw_if_index;
+    int i;
+    static sw_interface_stats_t empty_stats = {0, };
 
-  vppjni_lock (jm, 12);
-  count = ntohl (mp->count);
-  sw_if_index = ntohl (mp->first_sw_if_index);
-  if (mp->is_combined == 0) {
-    u64 * vp, v;
-    vp = (u64 *) mp->data;
+    vppjni_lock (jm, 12);
+    count = ntohl (mp->count);
+    sw_if_index = ntohl (mp->first_sw_if_index);
+    if (mp->is_combined == 0) {
+        u64 * vp, v;
+        vp = (u64 *) mp->data;
 
-    for (i = 0; i < count; i++) {
-      sw_interface_details_t *sw_if = NULL;
+        for (i = 0; i < count; i++) {
+            sw_interface_details_t *sw_if = NULL;
 
-      v = clib_mem_unaligned (vp, u64);
-      v = clib_net_to_host_u64 (v);
-      vp++;
+            v = clib_mem_unaligned (vp, u64);
+            v = clib_net_to_host_u64 (v);
+            vp++;
 
-      if (sw_if_index < vec_len(jm->sw_if_table))
-        sw_if = vec_elt_at_index(jm->sw_if_table, sw_if_index);
+            if (sw_if_index < vec_len(jm->sw_if_table))
+                sw_if = vec_elt_at_index(jm->sw_if_table, sw_if_index);
 
-      if (sw_if /* && (sw_if->admin_up_down == 1)*/ && sw_if->interface_name[0] != 0)
-        {
-          vec_validate_init_empty(jm->sw_if_stats_by_sw_if_index, sw_if_index, empty_stats);
-          sw_interface_stats_t * s = vec_elt_at_index(jm->sw_if_stats_by_sw_if_index, sw_if_index);
+            if (sw_if /* && (sw_if->admin_up_down == 1)*/ && sw_if->interface_name[0] != 0) {
+                vec_validate_init_empty(jm->sw_if_stats_by_sw_if_index, sw_if_index, empty_stats);
+                sw_interface_stats_t * s = vec_elt_at_index(jm->sw_if_stats_by_sw_if_index, sw_if_index);
 
-          s->sw_if_index = sw_if_index;
-          s->valid = 1;
+                s->sw_if_index = sw_if_index;
+                s->valid = 1;
 
-          switch (mp->vnet_counter_type) {
-          case  VNET_INTERFACE_COUNTER_DROP:
-            counter_name = "drop";
-            s->rx.pkts.discard = v;
-            break;
-          case  VNET_INTERFACE_COUNTER_PUNT:
-            counter_name = "punt";
-            s->rx.pkts.unknown_proto = v;
-            break;
-          case  VNET_INTERFACE_COUNTER_IP4:
-            counter_name = "ip4";
-            s->rx.pkts.ip4 = v;
-            break;
-          case  VNET_INTERFACE_COUNTER_IP6:
-            counter_name = "ip6";
-            s->rx.pkts.ip6 = v;
-            break;
-          case  VNET_INTERFACE_COUNTER_RX_NO_BUF:
-            counter_name = "rx-no-buf";
-            s->rx.pkts.fifo_full = v;
-            break;
-          case  VNET_INTERFACE_COUNTER_RX_MISS:
-            counter_name = "rx-miss";
-            s->rx.pkts.miss = v;
-            break;
-          case  VNET_INTERFACE_COUNTER_RX_ERROR:
-            counter_name = "rx-error";
-            s->rx.pkts.error = v;
-            break;
-          case  VNET_INTERFACE_COUNTER_TX_ERROR:
-            counter_name = "tx-error (fifo-full)";
-            s->tx.pkts.fifo_full = v;
-            break;
-          default:
-            counter_name = "bogus";
-            break;
-          }
+                switch (mp->vnet_counter_type) {
+                    case  VNET_INTERFACE_COUNTER_DROP:
+                        counter_name = "drop";
+                        s->rx.pkts.discard = v;
+                        break;
+                    case  VNET_INTERFACE_COUNTER_PUNT:
+                        counter_name = "punt";
+                        s->rx.pkts.unknown_proto = v;
+                        break;
+                    case  VNET_INTERFACE_COUNTER_IP4:
+                        counter_name = "ip4";
+                        s->rx.pkts.ip4 = v;
+                        break;
+                    case  VNET_INTERFACE_COUNTER_IP6:
+                        counter_name = "ip6";
+                        s->rx.pkts.ip6 = v;
+                        break;
+                    case  VNET_INTERFACE_COUNTER_RX_NO_BUF:
+                        counter_name = "rx-no-buf";
+                        s->rx.pkts.fifo_full = v;
+                        break;
+                    case  VNET_INTERFACE_COUNTER_RX_MISS:
+                        counter_name = "rx-miss";
+                        s->rx.pkts.miss = v;
+                        break;
+                    case  VNET_INTERFACE_COUNTER_RX_ERROR:
+                        counter_name = "rx-error";
+                        s->rx.pkts.error = v;
+                        break;
+                    case  VNET_INTERFACE_COUNTER_TX_ERROR:
+                        counter_name = "tx-error (fifo-full)";
+                        s->tx.pkts.fifo_full = v;
+                        break;
+                    default:
+                        counter_name = "bogus";
+                        break;
+                }
 
 #if VPPJNI_DEBUG_COUNTERS == 1
-          clib_warning ("%s (%d): %s (%lld)\n", sw_if->interface_name, s->sw_if_index,
+                clib_warning ("%s (%d): %s (%lld)\n", sw_if->interface_name, s->sw_if_index,
                         counter_name, v);
 #endif
+            }
+            sw_if_index++;
         }
-      sw_if_index++;
-    }
-  } else {
-    vlib_counter_t *vp;
-    u64 packets, bytes;
-    vp = (vlib_counter_t *) mp->data;
+    } else {
+        vlib_counter_t *vp;
+        u64 packets, bytes;
+        vp = (vlib_counter_t *) mp->data;
 
-    for (i = 0; i < count; i++) {
-      sw_interface_details_t *sw_if = NULL;
+        for (i = 0; i < count; i++) {
+            sw_interface_details_t *sw_if = NULL;
 
-      packets = clib_mem_unaligned (&vp->packets, u64);
-      packets = clib_net_to_host_u64 (packets);
-      bytes = clib_mem_unaligned (&vp->bytes, u64);
-      bytes = clib_net_to_host_u64 (bytes);
-      vp++;
+            packets = clib_mem_unaligned (&vp->packets, u64);
+            packets = clib_net_to_host_u64 (packets);
+            bytes = clib_mem_unaligned (&vp->bytes, u64);
+            bytes = clib_net_to_host_u64 (bytes);
+            vp++;
 
-      if (sw_if_index < vec_len(jm->sw_if_table))
-        sw_if = vec_elt_at_index(jm->sw_if_table, sw_if_index);
+            if (sw_if_index < vec_len(jm->sw_if_table))
+                sw_if = vec_elt_at_index(jm->sw_if_table, sw_if_index);
 
-      if (sw_if /* && (sw_if->admin_up_down == 1) */ && sw_if->interface_name[0] != 0)
-        {
-          vec_validate_init_empty(jm->sw_if_stats_by_sw_if_index, sw_if_index, empty_stats);
-          sw_interface_stats_t * s = vec_elt_at_index(jm->sw_if_stats_by_sw_if_index, sw_if_index);
+            if (sw_if /* && (sw_if->admin_up_down == 1) */ && sw_if->interface_name[0] != 0) {
+                vec_validate_init_empty(jm->sw_if_stats_by_sw_if_index, sw_if_index, empty_stats);
+                sw_interface_stats_t * s = vec_elt_at_index(jm->sw_if_stats_by_sw_if_index, sw_if_index);
 
-          s->valid = 1;
-          s->sw_if_index = sw_if_index;
+                s->valid = 1;
+                s->sw_if_index = sw_if_index;
 
-          switch (mp->vnet_counter_type) {
-          case  VNET_INTERFACE_COUNTER_RX:
-            s->rx.pkts.unicast = packets;
-            s->rx.octets = bytes;
-            counter_name = "rx";
-            break;
+                switch (mp->vnet_counter_type) {
+                    case  VNET_INTERFACE_COUNTER_RX:
+                        s->rx.pkts.unicast = packets;
+                        s->rx.octets = bytes;
+                        counter_name = "rx";
+                        break;
 
-          case  VNET_INTERFACE_COUNTER_TX:
-            s->tx.pkts.unicast = packets;
-            s->tx.octets = bytes;
-            counter_name = "tx";
-            break;
+                    case  VNET_INTERFACE_COUNTER_TX:
+                        s->tx.pkts.unicast = packets;
+                        s->tx.octets = bytes;
+                        counter_name = "tx";
+                        break;
 
-          default:
-            counter_name = "bogus";
-            break;
-          }
+                    default:
+                        counter_name = "bogus";
+                        break;
+                }
 
 #if VPPJNI_DEBUG_COUNTERS == 1
-          clib_warning ("%s (%d): %s.packets %lld\n", 
-                   sw_if->interface_name,
-                   sw_if_index, counter_name, packets);
-          clib_warning ("%s (%d): %s.bytes %lld\n", 
-                   sw_if->interface_name,
-                   sw_if_index, counter_name, bytes);
+                clib_warning ("%s (%d): %s.packets %lld\n",
+                        sw_if->interface_name,
+                        sw_if_index, counter_name, packets);
+                clib_warning ("%s (%d): %s.bytes %lld\n",
+                        sw_if->interface_name,
+                        sw_if_index, counter_name, bytes);
 #endif
+            }
+            sw_if_index++;
         }
-      sw_if_index++;
     }
-  }
-  vppjni_unlock (jm);
+    vppjni_unlock (jm);
 }
 
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
-  vppjni_main_t * jm = &vppjni_main;
-  JNIEnv* env;
-  if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6) != JNI_OK) {
-    return JNI_ERR;
-  }
+    vppjni_main_t * jm = &vppjni_main;
+    JNIEnv* env;
+    if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6) != JNI_OK) {
+        return JNI_ERR;
+    }
 
-  if (vppjni_init(env) != 0) {
-      return JNI_ERR;
-  }
+    if (vppjni_init(env) != 0) {
+        return JNI_ERR;
+    }
 
-  jm->jvm = vm;
-  return JNI_VERSION_1_6;
+    jm->jvm = vm;
+    return JNI_VERSION_1_6;
 }
 
 void JNI_OnUnload(JavaVM *vm, void *reserved) {
-  vppjni_main_t * jm = &vppjni_main;
-  JNIEnv* env;
-  if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6) != JNI_OK) {
-    return;
-  }
+    vppjni_main_t * jm = &vppjni_main;
+    JNIEnv* env;
+    if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6) != JNI_OK) {
+        return;
+    }
 
-  vppjni_uninit(env);
+    vppjni_uninit(env);
 
-  jm->jenv = NULL;
-  jm->jvm = NULL;
+    jm->jenv = NULL;
+    jm->jvm = NULL;
 }
 
 #define foreach_vpe_api_msg                             \
@@ -1793,102 +1787,88 @@ _(VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)
 
 static int connect_to_vpe(char *name)
 {
-  vppjni_main_t * jm = &vppjni_main;
-  api_main_t * am = &api_main;
+    vppjni_main_t * jm = &vppjni_main;
+    api_main_t * am = &api_main;
 
-  if (vl_client_connect_to_vlib("/vpe-api", name, 32) < 0)
-    return -1;
+    if (vl_client_connect_to_vlib("/vpe-api", name, 32) < 0)
+        return -1;
 
-  jm->my_client_index = am->my_client_index;
-  jm->vl_input_queue = am->shmem_hdr->vl_input_queue;
+    jm->my_client_index = am->my_client_index;
+    jm->vl_input_queue = am->shmem_hdr->vl_input_queue;
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,	        \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1); 
+#define _(N,n)                                  \
+    vl_msg_api_set_handlers(VL_API_##N, #n,     \
+            vl_api_##n##_t_handler,	            \
+            vl_noop_handler,                    \
+            vl_api_##n##_t_endian,              \
+            vl_api_##n##_t_print,               \
+            sizeof(vl_api_##n##_t), 1);
     foreach_vpe_api_msg;
 #undef _
-  
 
-  return 0;
+    return 0;
 }
 
 /* Format an IP6 address. */
 u8 * format_ip6_address (u8 * s, va_list * args)
 {
-  ip6_address_t * a = va_arg (*args, ip6_address_t *);
-  u32 max_zero_run = 0, this_zero_run = 0;
-  int max_zero_run_index = -1, this_zero_run_index=0;
-  int in_zero_run = 0, i;
-  int last_double_colon = 0;
+    ip6_address_t * a = va_arg (*args, ip6_address_t *);
+    u32 max_zero_run = 0, this_zero_run = 0;
+    int max_zero_run_index = -1, this_zero_run_index=0;
+    int in_zero_run = 0, i;
+    int last_double_colon = 0;
 
-  /* Ugh, this is a pain. Scan forward looking for runs of 0's */
-  for (i = 0; i < ARRAY_LEN (a->as_u16); i++)
-    {
-      if (a->as_u16[i] == 0)
-        {
-          if (in_zero_run)
-            this_zero_run++;
-          else
-            {
-              in_zero_run = 1;
-              this_zero_run =1;
-              this_zero_run_index = i;
+    /* Ugh, this is a pain. Scan forward looking for runs of 0's */
+    for (i = 0; i < ARRAY_LEN (a->as_u16); i++) {
+        if (a->as_u16[i] == 0) {
+            if (in_zero_run) {
+                this_zero_run++;
+            } else {
+                in_zero_run = 1;
+                this_zero_run =1;
+                this_zero_run_index = i;
             }
-        }
-      else
-        {
-          if (in_zero_run)
-            {
-              /* offer to compress the biggest run of > 1 zero */
-              if (this_zero_run > max_zero_run && this_zero_run > 1)
-                {
-                  max_zero_run_index = this_zero_run_index;
-                  max_zero_run = this_zero_run;
+        } else {
+            if (in_zero_run) {
+                /* offer to compress the biggest run of > 1 zero */
+                if (this_zero_run > max_zero_run && this_zero_run > 1) {
+                    max_zero_run_index = this_zero_run_index;
+                    max_zero_run = this_zero_run;
                 }
             }
-          in_zero_run = 0;
-          this_zero_run = 0;
+            in_zero_run = 0;
+            this_zero_run = 0;
         }
     }
 
-  if (in_zero_run)
-    {
-      if (this_zero_run > max_zero_run && this_zero_run > 1)
-        {
-          max_zero_run_index = this_zero_run_index;
-          max_zero_run = this_zero_run;
+    if (in_zero_run) {
+        if (this_zero_run > max_zero_run && this_zero_run > 1) {
+            max_zero_run_index = this_zero_run_index;
+            max_zero_run = this_zero_run;
         }
-    }
-  
-  for (i = 0; i < ARRAY_LEN (a->as_u16); i++)
-    {
-      if (i == max_zero_run_index)
-        {
-	  s = format (s, "::");
-          i += max_zero_run - 1;
-          last_double_colon = 1;
-        }
-      else
-	{
-	  s = format (s, "%s%x",
-		      (last_double_colon || i == 0) ? "" : ":",
-		      clib_net_to_host_u16 (a->as_u16[i]));
-	  last_double_colon = 0;
-	}
     }
 
-  return s;
+    for (i = 0; i < ARRAY_LEN (a->as_u16); i++) {
+        if (i == max_zero_run_index) {
+            s = format (s, "::");
+            i += max_zero_run - 1;
+            last_double_colon = 1;
+        } else {
+            s = format (s, "%s%x",
+                    (last_double_colon || i == 0) ? "" : ":",
+                    clib_net_to_host_u16 (a->as_u16[i]));
+            last_double_colon = 0;
+        }
+    }
+
+    return s;
 }
 
 /* Format an IP4 address. */
 u8 * format_ip4_address (u8 * s, va_list * args)
 {
-  u8 * a = va_arg (*args, u8 *);
-  return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
+    u8 * a = va_arg (*args, u8 *);
+    return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
 }
 
 
