@@ -164,7 +164,7 @@ static int sw_interface_dump (vppjni_main_t * jm)
     W;
 }
 
-JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getVppVersion
+JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getVppVersion0
   (JNIEnv *env, jobject obj)
 {
   vppjni_main_t * jm = &vppjni_main;
@@ -216,7 +216,7 @@ static int jm_stats_enable_disable (vppjni_main_t *jm, u8 enable)
   return rv;
 }
 
-JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_setInterfaceDescription
+JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_setInterfaceDescription0
   (JNIEnv *env, jobject obj, jstring ifName, jstring ifDesc)
 {
     int rv = 0;
@@ -260,7 +260,7 @@ out:
     return rv;
 }
 
-JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceDescription
+JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceDescription0
 (JNIEnv * env, jobject obj, jstring ifName)
 {
     vppjni_main_t * jm = &vppjni_main;
@@ -419,7 +419,7 @@ void vl_api_generic_reply_handler (vl_api_generic_reply_t *mp)
   vppjni_unlock (jm);
 }
 
-JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_getRetval
+JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_getRetval0
 (JNIEnv * env, jobject obj, jint context, jint release)
 {
   vppjni_main_t * jm = &vppjni_main;
@@ -466,7 +466,7 @@ name_sort_cmp (void * a1, void * a2)
   return strcmp ((char *)n1->name, (char *)n2->name);
 }
 
-JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceList
+JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceList0
   (JNIEnv * env, jobject obj, jstring name_filter)
 {
   vppjni_main_t * jm = &vppjni_main;
@@ -510,7 +510,7 @@ JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceList
   return rv;
 }
 
-JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_swIfIndexFromName
+JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_swIfIndexFromName0
   (JNIEnv * env, jobject obj, jstring interfaceName)
 {
   vppjni_main_t * jm = &vppjni_main;
@@ -532,7 +532,7 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_swIfIndexFromName
   return rv;
 }
 
-JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceCounters
+JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceCounters0
 (JNIEnv * env, jobject obj, jint swIfIndex)
 {
     vppjni_main_t * jm = &vppjni_main;
@@ -565,7 +565,7 @@ out:
     return result;
 }
 
-JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_interfaceNameFromSwIfIndex
+JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_interfaceNameFromSwIfIndex0
 (JNIEnv * env, jobject obj, jint swIfIndex)
 {
     vppjni_main_t * jm = &vppjni_main;
@@ -594,7 +594,7 @@ out:
     return ifname;
 }
 
-JNIEXPORT void JNICALL Java_org_openvpp_vppjapi_vppConn_clearInterfaceTable
+JNIEXPORT void JNICALL Java_org_openvpp_vppjapi_vppConn_clearInterfaceTable0
 (JNIEnv * env, jobject obj)
 {
     vppjni_main_t * jm = &vppjni_main;
@@ -608,7 +608,7 @@ JNIEXPORT void JNICALL Java_org_openvpp_vppjapi_vppConn_clearInterfaceTable
 
 static jobjectArray sw_if_dump_get_interfaces ();
 
-JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_swInterfaceDump
+JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_swInterfaceDump0
 (JNIEnv * env, jobject obj, jbyte name_filter_valid, jbyteArray name_filter)
 {
     vppjni_main_t *jm = &vppjni_main;
@@ -717,7 +717,7 @@ static jobjectArray sw_if_dump_get_interfaces (JNIEnv * env)
     return ifArray;
 }
 
-JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_findOrAddBridgeDomainId
+JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_findOrAddBridgeDomainId0
   (JNIEnv * env, jobject obj, jstring bridgeDomain)
 {
   vppjni_main_t * jm = &vppjni_main;
@@ -736,7 +736,7 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_findOrAddBridgeDomainId
   return rv;
 }
 
-JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainIdFromName
+JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainIdFromName0
   (JNIEnv * env, jobject obj, jstring bridgeDomain)
 {
   vppjni_main_t * jm = &vppjni_main;
@@ -756,7 +756,7 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainIdFromName
   return rv;
 }
 
-JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainIdFromInterfaceName
+JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainIdFromInterfaceName0
   (JNIEnv * env, jobject obj, jstring interfaceName)
 {
   vppjni_main_t * jm = &vppjni_main;
@@ -920,7 +920,7 @@ static void bridge_domain_oper_free(void)
     hash_free(bdm->oper_bd_index_by_bd_id);
 }
 
-JNIEXPORT jintArray JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainDump
+JNIEXPORT jintArray JNICALL Java_org_openvpp_vppjapi_vppConn_bridgeDomainDump0
 (JNIEnv * env, jobject obj, jint bd_id)
 {
     vppjni_main_t *jm = &vppjni_main;
@@ -1034,7 +1034,7 @@ static const char* interface_name_from_sw_if_index(u32 sw_if_index)
     return (const char*)jm->sw_if_table[sw_if_index].interface_name;
 }
 
-JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getBridgeDomainDetails
+JNIEXPORT jobject JNICALL Java_org_openvpp_vppjapi_vppConn_getBridgeDomainDetails0
 (JNIEnv * env, jobject obj, jint bdId)
 {
     vppjni_main_t *jm = &vppjni_main;
@@ -1163,7 +1163,7 @@ static jobject l2_fib_create_object(JNIEnv *env, bd_l2fib_oper_t *l2_fib)
     return vppL2FibObject(env, physAddr, staticConfig, outgoingInterface, filter, bridgedVirtualInterface);
 }
 
-JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_l2FibTableDump
+JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_l2FibTableDump0
 (JNIEnv * env, jobject obj, jint bd_id)
 {
   vppjni_main_t *jm = &vppjni_main;
@@ -1311,7 +1311,7 @@ static int ipAddressDump
     return rv;
 }
 
-JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_ipv4AddressDump
+JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_ipv4AddressDump0
 (JNIEnv * env, jobject obj, jstring interfaceName)
 {
     vppjni_main_t *jm = &vppjni_main;
@@ -1349,7 +1349,7 @@ done:
     return returnArray;
 }
 
-JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_ipv6AddressDump
+JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_ipv6AddressDump0
 (JNIEnv * env, jobject obj, jstring interfaceName)
 {
     vppjni_main_t *jm = &vppjni_main;
@@ -1409,7 +1409,7 @@ static void vl_api_ip_address_details_t_handler (vl_api_ip_address_details_t * m
 
 #define VXLAN_TUNNEL_INTERFACE_NAME_PREFIX "vxlan_tunnel"
 
-JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_vxlanTunnelDump
+JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_vxlanTunnelDump0
 (JNIEnv * env, jobject obj, jint swIfIndex)
 {
     vppjni_main_t *jm = &vppjni_main;
