@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE /* for strcasestr(3) */
 #include <vnet/vnet.h>
 
 #define vl_api_version(n,v) static u32 vpe_api_version = (v);
@@ -476,7 +477,6 @@ JNIEXPORT jstring JNICALL Java_org_openvpp_vppjapi_vppConn_getInterfaceList0
     name_sort_t * nses = 0, * ns;
     const char *this_name;
     u8 * s = 0;
-    char *strcasestr (const char *, const char *);
     const char * nf = (*env)->GetStringUTFChars (env, name_filter, NULL);
     if (!nf)
         return NULL;
