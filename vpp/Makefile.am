@@ -19,7 +19,6 @@ noinst_PROGRAMS =
 BUILT_SOURCES =
 bin_PROGRAMS = 
 CLEANFILES = 
-lib_LTLIBRARIES =
 
 bin_PROGRAMS += vpp
 

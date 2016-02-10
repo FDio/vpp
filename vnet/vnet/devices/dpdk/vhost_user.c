@@ -679,7 +679,7 @@ dpdk_vhost_user_set_vring_kick(u32 hw_if_index, u8 idx, int fd)
 }
 
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
-dpdk_vhost_user_set_vring_enable(u32 hw_if_index, u8 idx, int enable)
+int dpdk_vhost_user_set_vring_enable(u32 hw_if_index, u8 idx, int enable)
 {
   dpdk_device_t * xd;
   struct vhost_virtqueue *vq;

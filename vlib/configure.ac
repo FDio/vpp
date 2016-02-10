@@ -1,10 +1,10 @@
 AC_INIT(vlib, 1.1)
+LT_INIT
 AM_INIT_AUTOMAKE
 AM_SILENT_RULES
 
 AC_PROG_CC
 AM_PROG_CC_C_O
-AC_PROG_LIBTOOL
 
 AC_ARG_WITH(dpdk,
             AC_HELP_STRING([--with-dpdk],[Use the Intel dpdk]),
