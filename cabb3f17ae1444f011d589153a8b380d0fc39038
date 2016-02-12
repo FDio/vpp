@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_1f406355",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1123,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-02-12T18:10:08Z",
+      "side": 1,
+      "message": "please don\u0027t display 0 counters, even when verbose is set. I t will generate huge output in some cases.",
+      "revId": "cabb3f17ae1444f011d589153a8b380d0fc39038",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
