@@ -398,6 +398,53 @@ u32 vlib_buffer_add_data (vlib_main_t * vm,
 			  u32 buffer_index,
 			  void * data, u32 n_data_bytes);
 
+/*
+ * vlib_buffer_chain_* functions provide a way to create long buffers.
+ * When DPDK is enabled, the 'hidden' DPDK header is taken care of transparently.
+ */
+
+/* Initializes the buffer as an empty packet with no chained buffers. */
+void
+vlib_buffer_chain_init(vlib_buffer_t *first);
+
+/* The provided next_bi buffer index is appended to the end of the packet. */
+vlib_buffer_t *
+vlib_buffer_chain_buffer(vlib_main_t *vm,
+                    vlib_buffer_t *first,
+                    vlib_buffer_t *last,
+                    u32 next_bi);
+
+/* Increases or decreases the packet length.
+ * It does not allocate or deallocate new buffers.
+ * Therefore, the added length must be compatible
+ * with the last buffer. */
+void
+vlib_buffer_chain_increase_length(vlib_buffer_t *first,
+                             vlib_buffer_t *last,
+                             i32 len);
+
+/* Copy data to the end of the packet and increases its length.
+ * It does not allocate new buffers.
+ * Returns the number of copied bytes. */
+u16
+vlib_buffer_chain_append_data(vlib_main_t *vm,
+                             u32 free_list_index,
+                             vlib_buffer_t *first,
+                             vlib_buffer_t *last,
+                             void *data, u16 data_len);
+
+/* Copy data to the end of the packet and increases its length.
+ * Allocates additional buffers from the free list if necessary.
+ * Returns the number of copied bytes.
+ * 'last' value is modified whenever new buffers are allocated and
+ * chained and points to the last buffer in the chain. */
+u16
+vlib_buffer_chain_append_data_with_alloc(vlib_main_t *vm,
+                             u32 free_list_index,
+                             vlib_buffer_t *first,
+                             vlib_buffer_t **last,
+                             void * data, u16 data_len);
+
 format_function_t format_vlib_buffer, format_vlib_buffer_and_data, format_vlib_buffer_contents;
 
 typedef struct {
