@@ -42,6 +42,19 @@
 
 #include <vppinfra/hash.h>
 
+#if DPDK == 1
+#undef always_inline // dpdk and clib use conflicting always_inline macros.
+#include <rte_config.h>
+#include <rte_mbuf.h>
+#include <rte_memcpy.h>
+
+#if CLIB_DEBUG > 0
+#define always_inline static inline
+#else
+#define always_inline static inline __attribute__ ((__always_inline__))
+#endif
+#endif
+
 /** \file
     vlib buffer access methods.
 */
@@ -397,6 +410,102 @@ u32 vlib_buffer_add_data (vlib_main_t * vm,
 			  u32 free_list_index,
 			  u32 buffer_index,
 			  void * data, u32 n_data_bytes);
+
+/*
+ * vlib_buffer_chain_* functions provide a way to create long buffers.
+ * When DPDK is enabled, the 'hidden' DPDK header is taken care of transparently.
+ */
+
+/* Initializes the buffer as an empty packet with no chained buffers. */
+always_inline void
+vlib_buffer_chain_init(vlib_buffer_t *first)
+{
+  first->total_length_not_including_first_buffer = 0;
+  first->current_length = 0;
+  first->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+  first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+#if DPDK == 1
+  (((struct rte_mbuf *) first) - 1)->nb_segs = 1;
+  (((struct rte_mbuf *) first) - 1)->next = 0;
+  (((struct rte_mbuf *) first) - 1)->pkt_len = 0;
+  (((struct rte_mbuf *) first) - 1)->data_len = 0;
+  (((struct rte_mbuf *) first) - 1)->data_off = RTE_PKTMBUF_HEADROOM + first->current_data;
+#endif
+}
+
+/* The provided next_bi buffer index is appended to the end of the packet. */
+always_inline vlib_buffer_t *
+vlib_buffer_chain_buffer(vlib_main_t *vm,
+                    vlib_buffer_t *first,
+                    vlib_buffer_t *last,
+                    u32 next_bi)
+{
+  vlib_buffer_t *next_buffer = vlib_get_buffer(vm, next_bi);
+  last->next_buffer = next_bi;
+  last->flags |= VLIB_BUFFER_NEXT_PRESENT;
+  next_buffer->current_length = 0;
+  next_buffer->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+#if DPDK == 1
+  (((struct rte_mbuf *) first) - 1)->nb_segs++;
+  (((struct rte_mbuf *) last) - 1)->next = (((struct rte_mbuf *) next_buffer) - 1);
+  (((struct rte_mbuf *) next_buffer) - 1)->data_len = 0;
+  (((struct rte_mbuf *) next_buffer) - 1)->data_off = RTE_PKTMBUF_HEADROOM + next_buffer->current_data;
+  (((struct rte_mbuf *) next_buffer) - 1)->next = 0;
+#endif
+  return next_buffer;
+}
+
+/* Increases or decreases the packet length.
+ * It does not allocate or deallocate new buffers.
+ * Therefore, the added length must be compatible
+ * with the last buffer. */
+always_inline void
+vlib_buffer_chain_increase_length(vlib_buffer_t *first,
+                             vlib_buffer_t *last,
+                             i32 len)
+{
+  last->current_length += len;
+  if (first != last)
+    first->total_length_not_including_first_buffer += len;
+#if DPDK == 1
+  (((struct rte_mbuf *) first) - 1)->pkt_len += len;
+  (((struct rte_mbuf *) last) - 1)->data_len += len;
+#endif
+}
+
+/* Copy data to the end of the packet and increases its length.
+ * It does not allocate new buffers.
+ * Returns the number of copied bytes. */
+always_inline u16
+vlib_buffer_chain_append_data(vlib_main_t *vm,
+                             u32 free_list_index,
+                             vlib_buffer_t *first,
+                             vlib_buffer_t *last,
+                             void *data, u16 data_len)
+{
+  u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm, free_list_index);
+  ASSERT(n_buffer_bytes >= last->current_length + last->current_data);
+  u16 len = clib_min(data_len, n_buffer_bytes - last->current_length - last->current_data);
+#if DPDK == 1
+  rte_memcpy(vlib_buffer_get_current (last) + last->current_length, data, len);
+#else
+  memcpy(vlib_buffer_get_current (last) + last->current_length, data, len);
+#endif
+  vlib_buffer_chain_increase_length(first, last, len);
+  return len;
+}
+
+/* Copy data to the end of the packet and increases its length.
+ * Allocates additional buffers from the free list if necessary.
+ * Returns the number of copied bytes.
+ * 'last' value is modified whenever new buffers are allocated and
+ * chained and points to the last buffer in the chain. */
+u16
+vlib_buffer_chain_append_data_with_alloc(vlib_main_t *vm,
+                             u32 free_list_index,
+                             vlib_buffer_t *first,
+                             vlib_buffer_t **last,
+                             void * data, u16 data_len);
 
 format_function_t format_vlib_buffer, format_vlib_buffer_and_data, format_vlib_buffer_contents;
 

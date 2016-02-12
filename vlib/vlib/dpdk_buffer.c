@@ -882,6 +882,34 @@ u32 vlib_buffer_add_data (vlib_main_t * vm,
   return bi;
 }
 
+u16
+vlib_buffer_chain_append_data_with_alloc(vlib_main_t *vm,
+                             u32 free_list_index,
+                             vlib_buffer_t *first,
+                             vlib_buffer_t **last,
+                             void * data, u16 data_len) {
+  vlib_buffer_t *l = *last;
+  u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm, free_list_index);
+  u16 copied = 0;
+  ASSERT(n_buffer_bytes >= l->current_length + l->current_data);
+  while (data_len) {
+    u16 max = n_buffer_bytes - l->current_length - l->current_data;
+    if (max == 0) {
+      if (1 != vlib_buffer_alloc_from_free_list (vm, &l->next_buffer, 1, free_list_index))
+        return copied;
+      *last = l = vlib_buffer_chain_buffer(vm, first, l, l->next_buffer);
+      max = n_buffer_bytes - l->current_length - l->current_data;
+    }
+
+    u16 len = (data_len > max)?max:data_len;
+    rte_memcpy(vlib_buffer_get_current (l) + l->current_length, data + copied, len);
+    vlib_buffer_chain_increase_length(first, l, len);
+    data_len -= len;
+    copied += len;
+  }
+  return copied;
+}
+
 clib_error_t *
 vlib_buffer_pool_create(vlib_main_t * vm, unsigned num_mbufs,
                         unsigned mbuf_size, unsigned socket_id)
