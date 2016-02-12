@@ -182,7 +182,7 @@ typedef struct {
 
 typedef struct {
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  volatile u32 *lockp;
+  volatile u32 **lockp;
 
   /* Instance ID */
   u32 device_index;
@@ -202,6 +202,10 @@ typedef struct {
 
   /* per-worker destination frame queue */
   dpdk_frame_t * frames;
+
+  /* various device flags */
+  u16 flags;
+#define DPDK_DEVICE_FLAG_SHARED_Q       (1 << 0)
 
   dpdk_device_type_t dev_type:8;
   dpdk_pmd_t pmd:8;

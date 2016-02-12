@@ -304,8 +304,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       memcpy(&xd->port_conf, &port_conf_template, sizeof(struct rte_eth_conf));
 
-      xd->tx_q_used = dev_info.max_tx_queues < tm->n_vlib_mains ?
-                      1 : tm->n_vlib_mains;
+      xd->tx_q_used = clib_min(dev_info.max_tx_queues, tm->n_vlib_mains);
 
       if (dm->use_rss > 1 && dev_info.max_rx_queues >= dm->use_rss)
         {
@@ -485,9 +484,15 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       if (xd->tx_q_used < tm->n_vlib_mains)
         {
-          xd->lockp = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-                                              CLIB_CACHE_LINE_BYTES);
-          memset ((void *) xd->lockp, 0, CLIB_CACHE_LINE_BYTES);
+          int q;
+          xd->flags |= DPDK_DEVICE_FLAG_SHARED_Q;
+          vec_validate(xd->lockp, xd->tx_q_used - 1);
+          for (q = 0; q < xd->tx_q_used; q++)
+            {
+              xd->lockp[q] = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+                                                     CLIB_CACHE_LINE_BYTES);
+              memset ((void *) xd->lockp[q], 0, CLIB_CACHE_LINE_BYTES);
+          }
         }
 
       xd->device_index = xd - dm->devices;
