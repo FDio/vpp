@@ -16,6 +16,24 @@
       "revId": "cabb3f17ae1444f011d589153a8b380d0fc39038",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_ff0b7f29",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1123,
+      "author": {
+        "id": 25
+      },
+      "writtenOn": "2016-02-12T18:57:14Z",
+      "side": 1,
+      "message": "There are three levels:\n0. Brief\n1. Verbose\n2. Detail\n\nZero value counters are displayed when you user specifies \"detail\". This gives users a way to get zero valued counters if they want. Additionally, this will overcome the confusion that you yourself had (I had that too, which means other may also succumb to that) that values for non-zero queues are not displayed.",
+      "parentUuid": "9af53d3f_1f406355",
+      "revId": "cabb3f17ae1444f011d589153a8b380d0fc39038",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
