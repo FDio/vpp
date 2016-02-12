@@ -221,11 +221,12 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
        * This device only supports one TX queue,
        * and we're running multi-threaded...
        */
-      if (PREDICT_FALSE(xd->lockp != 0))
+      if (xd->flags & DPDK_DEVICE_FLAG_SHARED_Q)
         {
-          queue_id = 0;
-          while (__sync_lock_test_and_set (xd->lockp, 1))
-            /* zzzz */;
+          queue_id = queue_id % xd->tx_q_used;
+          while (__sync_lock_test_and_set (xd->lockp[queue_id], 1))
+            /* zzzz */
+            queue_id = (queue_id + 1) % xd->tx_q_used;
         }
 
       if (PREDICT_TRUE(xd->dev_type == VNET_DPDK_DEV_ETH)) 
@@ -264,7 +265,7 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
         {
           u32 offset = 0;
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
-          if (PREDICT_TRUE(xd->lockp == NULL)) {
+          if (PREDICT_TRUE(xd->lockp[queue_id] == NULL)) {
               dpdk_device_and_queue_t * dq;
               vec_foreach (dq, dm->devices_by_cpu[vm->cpu_index])
               {
@@ -367,8 +368,8 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
           rv = 0;
         }
 
-      if (PREDICT_FALSE(xd->lockp != 0))
-          *xd->lockp = 0;
+      if (PREDICT_FALSE(xd->lockp[queue_id] != 0))
+          *xd->lockp[queue_id] = 0;
 
       if (PREDICT_FALSE(rv < 0))
         {
