@@ -182,7 +182,7 @@ typedef struct {
 
 typedef struct {
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  volatile u32 *lockp;
+  volatile u32 **lockp;
 
   /* Instance ID */
   u32 device_index;
@@ -331,6 +331,7 @@ typedef struct {
   u32 nchannels;
   u32 num_mbufs;
   u32 use_rss;
+  u32 max_tx_queues;
   u8 num_kni; /* while kni_init allows u32, port_id in callback fn is only u8 */
 
   /* Ethernet input node index */
@@ -452,6 +453,8 @@ void increment_efd_drop_counter (vlib_main_t * vm, u32 counter_index, u32 count)
 }
 
 void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
+void dpdk_device_lock_init(dpdk_device_t * xd);
+void dpdk_device_lock_free(dpdk_device_t * xd);
 void dpdk_efd_update_counters(dpdk_device_t *xd, u32 n_buffers, u16 enabled);
 u32 is_efd_discardable(vlib_thread_main_t *tm,
                        vlib_buffer_t * b0,
