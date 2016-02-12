@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_02412c39",
+        "filename": "vnet/vnet/ethernet/arp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1141,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-12T22:19:39Z",
+      "side": 1,
+      "message": "This patch is worth merging if only to avoid printing the ARP table header line if the table is empty. \n\nAt least in a cursory test, I didn\u0027t see SIGSEGV or similar. All of the macros/functions involved appear to check vec_len(es) appropriately. vec_len(0) \u003d 0. _vec_len(0) \u003d \u003ckaboom\u003e.",
+      "revId": "cb46684aacb226285807d145a18e1acf8ed21ca0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
