@@ -16,6 +16,24 @@
       "revId": "cb46684aacb226285807d145a18e1acf8ed21ca0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_82741c9d",
+        "filename": "vnet/vnet/ethernet/arp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1141,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-02-12T23:05:58Z",
+      "side": 1,
+      "message": "The steps to reproduce are:\n  vpp build-release\n  vpp run-release\n  vpp# show ip arp\n\u003cShell prompt appears\u003e\n\nTrying to figure out why you did not see this problem I also did:\n  vpp build\n  vpp run\n  vpp# show ip arp\n  vpp#\nDoes not crash and works as expected.\n\nIf I add the test in the code the release build works correctly.\n\nI am running a Ubuntu 15.10 release with all patches.\nLinux supermicro 4.2.0-27-generic #32-Ubuntu SMP Fri Jan 22 04:49:08 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux\n\ngcc (Ubuntu 5.2.1-22ubuntu2) 5.2.1 20151010\n\nThe test for zero is being optimized out by the compiler :-(",
+      "parentUuid": "9af53d3f_02412c39",
+      "revId": "cb46684aacb226285807d145a18e1acf8ed21ca0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
