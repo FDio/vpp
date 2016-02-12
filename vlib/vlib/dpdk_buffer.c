@@ -882,6 +882,94 @@ u32 vlib_buffer_add_data (vlib_main_t * vm,
   return bi;
 }
 
+void
+vlib_buffer_chain_init(vlib_buffer_t *first)
+{
+  first->total_length_not_including_first_buffer = 0;
+  first->current_length = 0;
+  first->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+  first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  (((struct rte_mbuf *) first) - 1)->nb_segs = 1;
+  (((struct rte_mbuf *) first) - 1)->next = 0;
+  (((struct rte_mbuf *) first) - 1)->pkt_len = 0;
+  (((struct rte_mbuf *) first) - 1)->data_len = 0;
+  (((struct rte_mbuf *) first) - 1)->data_off = RTE_PKTMBUF_HEADROOM + first->current_data;
+}
+
+vlib_buffer_t *
+vlib_buffer_chain_buffer(vlib_main_t *vm,
+                    vlib_buffer_t *first,
+                    vlib_buffer_t *last,
+                    u32 next_bi)
+{
+  vlib_buffer_t *next_buffer = vlib_get_buffer(vm, next_bi);
+  last->next_buffer = next_bi;
+  last->flags |= VLIB_BUFFER_NEXT_PRESENT;
+  next_buffer->current_length = 0;
+  next_buffer->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+  (((struct rte_mbuf *) first) - 1)->nb_segs++;
+  (((struct rte_mbuf *) last) - 1)->next = (((struct rte_mbuf *) next_buffer) - 1);
+  (((struct rte_mbuf *) next_buffer) - 1)->data_len = 0;
+  (((struct rte_mbuf *) next_buffer) - 1)->data_off = RTE_PKTMBUF_HEADROOM + next_buffer->current_data;
+  (((struct rte_mbuf *) next_buffer) - 1)->next = 0;
+  return next_buffer;
+}
+
+void
+vlib_buffer_chain_increase_length(vlib_buffer_t *first,
+                             vlib_buffer_t *last,
+                             i32 len)
+{
+  last->current_length += len;
+  if (first != last)
+    first->total_length_not_including_first_buffer += len;
+  (((struct rte_mbuf *) first) - 1)->pkt_len += len;
+  (((struct rte_mbuf *) last) - 1)->data_len += len;
+}
+
+u16
+vlib_buffer_chain_append_data(vlib_main_t *vm,
+                             u32 free_list_index,
+                             vlib_buffer_t *first,
+                             vlib_buffer_t *last,
+                             void *data, u16 data_len)
+{
+  u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm, free_list_index);
+  ASSERT(n_buffer_bytes >= last->current_length + last->current_data);
+  u16 len = clib_min(data_len, n_buffer_bytes - last->current_length - last->current_data);
+  rte_memcpy(vlib_buffer_get_current (last) + last->current_length, data, len);
+  vlib_buffer_chain_increase_length(first, last, len);
+  return len;
+}
+
+u16
+vlib_buffer_chain_append_data_with_alloc(vlib_main_t *vm,
+                             u32 free_list_index,
+                             vlib_buffer_t *first,
+                             vlib_buffer_t **last,
+                             void * data, u16 data_len) {
+  vlib_buffer_t *l = *last;
+  u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm, free_list_index);
+  u16 copied = 0;
+  ASSERT(n_buffer_bytes >= l->current_length + l->current_data);
+  while (data_len) {
+    u16 max = n_buffer_bytes - l->current_length - l->current_data;
+    if (max == 0) {
+      if (1 != vlib_buffer_alloc_from_free_list (vm, &l->next_buffer, 1, free_list_index))
+        return copied;
+      *last = l = vlib_buffer_chain_buffer(vm, first, l, l->next_buffer);
+      max = n_buffer_bytes - l->current_length - l->current_data;
+    }
+
+    u16 len = (data_len > max)?max:data_len;
+    rte_memcpy(vlib_buffer_get_current (l) + l->current_length, data + copied, len);
+    vlib_buffer_chain_increase_length(first, l, len);
+    data_len -= len;
+    copied += len;
+  }
+  return copied;
+}
+
 clib_error_t *
 vlib_buffer_pool_create(vlib_main_t * vm, unsigned num_mbufs,
                         unsigned mbuf_size, unsigned socket_id)
