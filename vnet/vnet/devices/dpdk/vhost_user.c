@@ -241,8 +241,13 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id)
        }
 
       // reset lockp
-      if (xd->lockp)
-          memset ((void *) xd->lockp, 0, CLIB_CACHE_LINE_BYTES);
+      dpdk_device_lock_free(xd);
+
+      if (xd->tx_q_used < tm->n_vlib_mains)
+        dpdk_device_lock_init(xd);
+
+      for (j = 0; j < vec_len(xd->lockp); j++)
+        memset ((void *) xd->lockp[j], 0, CLIB_CACHE_LINE_BYTES);
 
       // reset tx vectors
       for (j = 0; j < tm->n_vlib_mains; j++)
@@ -299,12 +304,8 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id)
           xd->vu_vhost_dev.virtqueue[j]->backend = -1; 
       }
 
-      xd->lockp = NULL;
-      if (xd->tx_q_used < dm->input_cpu_count) {
-          xd->lockp = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-            CLIB_CACHE_LINE_BYTES);
-          memset ((void *) xd->lockp, 0, CLIB_CACHE_LINE_BYTES);
-      }
+      if (xd->tx_q_used < dm->input_cpu_count)
+        dpdk_device_lock_init(xd);
 
       DBG_SOCK("tm->n_vlib_mains: %d. TX %d, RX: %d, num_qpairs: %d, Lock: %p",
         tm->n_vlib_mains, xd->tx_q_used, xd->rx_q_used, num_qpairs, xd->lockp);
@@ -1795,4 +1796,3 @@ VLIB_CLI_COMMAND (show_vhost_user_command, static) = {
     .short_help = "show vhost-user interface",
     .function = show_dpdk_vhost_user_command_fn,
 };
-
