@@ -223,9 +223,10 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
        */
       if (PREDICT_FALSE(xd->lockp != 0))
         {
-          queue_id = 0;
-          while (__sync_lock_test_and_set (xd->lockp, 1))
-            /* zzzz */;
+          queue_id = queue_id % xd->tx_q_used;
+          while (__sync_lock_test_and_set (xd->lockp[queue_id], 1))
+            /* zzzz */
+            queue_id = (queue_id + 1) % xd->tx_q_used;
         }
 
       if (PREDICT_TRUE(xd->dev_type == VNET_DPDK_DEV_ETH)) 
@@ -368,7 +369,7 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
         }
 
       if (PREDICT_FALSE(xd->lockp != 0))
-          *xd->lockp = 0;
+          *xd->lockp[queue_id] = 0;
 
       if (PREDICT_FALSE(rv < 0))
         {

@@ -204,6 +204,30 @@ static u32 dpdk_flag_change (vnet_main_t * vnm,
 extern int rte_netmap_probe(void);
 #endif
 
+void
+dpdk_device_lock_init(dpdk_device_t * xd)
+{
+  int q;
+  vec_validate(xd->lockp, xd->tx_q_used - 1);
+  for (q = 0; q < xd->tx_q_used; q++)
+    {
+      xd->lockp[q] = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+                                             CLIB_CACHE_LINE_BYTES);
+      memset ((void *) xd->lockp[q], 0, CLIB_CACHE_LINE_BYTES);
+  }
+}
+
+void
+dpdk_device_lock_free(dpdk_device_t * xd)
+{
+  int q;
+
+  for (q = 0; q < vec_len(xd->lockp); q++)
+    clib_mem_free((void *) xd->lockp[q]);
+  vec_free(xd->lockp);
+  xd->lockp = 0;
+}
+
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -304,8 +328,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       memcpy(&xd->port_conf, &port_conf_template, sizeof(struct rte_eth_conf));
 
-      xd->tx_q_used = dev_info.max_tx_queues < tm->n_vlib_mains ?
-                      1 : tm->n_vlib_mains;
+      xd->tx_q_used = clib_min(dev_info.max_tx_queues, tm->n_vlib_mains);
+
+      if (dm->max_tx_queues)
+        xd->tx_q_used = clib_min(xd->tx_q_used, dm->max_tx_queues);
 
       if (dm->use_rss > 1 && dev_info.max_rx_queues >= dm->use_rss)
         {
@@ -484,11 +510,7 @@ dpdk_lib_init (dpdk_main_t * dm)
         rte_eth_macaddr_get(i,(struct ether_addr *)addr);
 
       if (xd->tx_q_used < tm->n_vlib_mains)
-        {
-          xd->lockp = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-                                              CLIB_CACHE_LINE_BYTES);
-          memset ((void *) xd->lockp, 0, CLIB_CACHE_LINE_BYTES);
-        }
+        dpdk_device_lock_init(xd);
 
       xd->device_index = xd - dm->devices;
       ASSERT(i == xd->device_index);
@@ -1032,6 +1054,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 #endif
 
       else if (unformat (input, "num-mbufs %d", &dm->num_mbufs))
+        ;
+      else if (unformat (input, "max-tx-queues %d", &dm->max_tx_queues))
         ;
       else if (unformat (input, "kni %d", &dm->num_kni))
         ;
