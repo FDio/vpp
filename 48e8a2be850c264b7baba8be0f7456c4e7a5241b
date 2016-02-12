@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_82ff7c01",
+        "filename": "vlib/vlib/buffer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1223,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-12T19:37:35Z",
+      "side": 1,
+      "message": "static inline, move to buffer_funcs.h?",
+      "revId": "48e8a2be850c264b7baba8be0f7456c4e7a5241b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_62047815",
+        "filename": "vlib/vlib/buffer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1247,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-12T19:37:35Z",
+      "side": 1,
+      "message": "static inline, move to buffer_funcs.h?",
+      "revId": "48e8a2be850c264b7baba8be0f7456c4e7a5241b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_4209742b",
+        "filename": "vlib/vlib/buffer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1257,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-12T19:37:35Z",
+      "side": 1,
+      "message": "static inline, move to buffer_funcs.h?",
+      "revId": "48e8a2be850c264b7baba8be0f7456c4e7a5241b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_220e7035",
+        "filename": "vlib/vlib/buffer_funcs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 401,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-12T19:37:35Z",
+      "side": 1,
+      "message": "static inline vs. declare (see buffers.c comments)",
+      "revId": "48e8a2be850c264b7baba8be0f7456c4e7a5241b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_02136c5d",
+        "filename": "vlib/vlib/dpdk_buffer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 885,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-12T19:37:35Z",
+      "side": 1,
+      "message": "Same comments as in the non-dpdk buffer allocator, mumble move to buffer_funcs.h under #if DPDK\u003d\u003d1, etc, etc.",
+      "revId": "48e8a2be850c264b7baba8be0f7456c4e7a5241b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
