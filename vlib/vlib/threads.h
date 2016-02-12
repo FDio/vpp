@@ -37,6 +37,8 @@ typedef struct vlib_thread_registration_ {
   int fixed_count;
   u32 count;
   int no_data_structure_clone;
+  u32 frame_queue_nelts;
+
   /* All threads of this type run on pthreads */
   int use_pthreads;
   u32 first_index;

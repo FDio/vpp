@@ -631,7 +631,12 @@ static clib_error_t * start_workers (vlib_main_t * vm)
               continue;
 
             /* Allocate "to-worker-N" frame queue */
-            fq = vlib_frame_queue_alloc (FRAME_QUEUE_NELTS);
+            if (tr->frame_queue_nelts) {
+                fq = vlib_frame_queue_alloc (tr->frame_queue_nelts);
+            } else {
+                fq = vlib_frame_queue_alloc (FRAME_QUEUE_NELTS);
+            }
+
             vec_validate (vlib_frame_queues, worker_thread_index);
             vlib_frame_queues[worker_thread_index] = fq;
 
