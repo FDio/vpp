@@ -1043,7 +1043,6 @@ vhost_user_intfc_tx (vlib_main_t * vm,
   u16 used_index;
   vhost_user_main_t * vum = &vhost_user_main;
   uword n_packets = 0;
-  uword n_avail_desc;
   vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
   vhost_user_intf_t * vui = vec_elt_at_index (vum->vhost_user_interfaces, rd->dev_instance);
   vhost_user_vring_t * rxvq = &vui->vrings[VHOST_NET_VRING_IDX_RX];
@@ -1075,14 +1074,6 @@ vhost_user_intfc_tx (vlib_main_t * vm,
      error = VHOST_USER_TX_FUNC_ERROR_PKT_DROP_NOBUF;
      goto done2;
    }
-
-   if (PREDICT_TRUE(rxvq->avail->idx > rxvq->last_avail_idx))
-     n_avail_desc = rxvq->avail->idx - rxvq->last_avail_idx;
-   else /* wrapped */
-     n_avail_desc = (u16) -1 - rxvq->last_avail_idx + rxvq->avail->idx;
-
-  DBG_VQ("rxvq->avail->idx %d rxvq->last_avail_idx %d n_avail_desc %d",
-    rxvq->avail->idx, rxvq->last_avail_idx, n_avail_desc);
 
   n_left = n_packets = frame->n_vectors;
   used_index = rxvq->used->idx;
