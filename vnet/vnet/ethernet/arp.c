@@ -1138,14 +1138,17 @@ show_ip4_arp (vlib_main_t * vm,
 
   es = 0;
   pool_foreach (e, am->ip4_entry_pool, ({ vec_add1 (es, e[0]); }));
-  vec_sort_with_function (es, ip4_arp_entry_sort);
-  vlib_cli_output (vm, "%U", format_ethernet_arp_ip4_entry, vnm, 0);
-  vec_foreach (e, es) {
-    if (sw_if_index != ~0 && e->key.sw_if_index != sw_if_index)
-      continue;
-    vlib_cli_output (vm, "%U", format_ethernet_arp_ip4_entry, vnm, e);
-  }
-  vec_free (es);
+  if ( es )
+    {
+      vec_sort_with_function (es, ip4_arp_entry_sort);
+      vlib_cli_output (vm, "%U", format_ethernet_arp_ip4_entry, vnm, 0);
+      vec_foreach (e, es) {
+        if (sw_if_index != ~0 && e->key.sw_if_index != sw_if_index)
+          continue;
+        vlib_cli_output (vm, "%U", format_ethernet_arp_ip4_entry, vnm, e);
+      }
+      vec_free (es);
+    }
 
   if (vec_len (am->proxy_arps))
     {
