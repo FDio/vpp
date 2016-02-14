@@ -23,7 +23,6 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.openvpp.vppjapi.vppVersion;
 import org.openvpp.vppjapi.vppInterfaceDetails;
@@ -39,8 +38,8 @@ public class vppConn implements AutoCloseable {
     static {
         try {
             loadLibrary();
-        } catch (IOException | RuntimeException e) {
-            System.out.printf ("Can't find vpp jni library: %s\n", LIBNAME);
+        } catch (Exception e) {
+            System.out.printf("Can't find vpp jni library: %s\n", LIBNAME);
             throw new ExceptionInInitializerError(e);
         }
     }
@@ -67,7 +66,7 @@ public class vppConn implements AutoCloseable {
     private static void loadLibrary() throws IOException {
       try (final InputStream is = vppConn.class.getResourceAsStream('/' + LIBNAME)) {
           if (is == null) {
-            throw new IOException(String.format("Failed to open library resource %s",
+              throw new IOException(String.format("Failed to open library resource %s",
                                                 LIBNAME));
           }
           loadStream(is);
@@ -75,8 +74,8 @@ public class vppConn implements AutoCloseable {
     }
 
     private static vppConn currentConnection = null;
-    private final AtomicBoolean disconnected = new AtomicBoolean(false);
     private final String clientName;
+    private volatile boolean disconnected = false;
 
     // Hidden on purpose to prevent external instantiation
     vppConn(final String clientName) throws IOException {
@@ -97,8 +96,10 @@ public class vppConn implements AutoCloseable {
     }
 
     @Override
-    public final void close() {
-        if (disconnected.compareAndSet(false, true)) {
+    public synchronized final void close() {
+        if (!disconnected) {
+            disconnected = true;
+
             synchronized (vppConn.class) {
                 clientDisconnect();
                 currentConnection = null;
@@ -112,7 +113,7 @@ public class vppConn implements AutoCloseable {
      * @throws IllegalStateException if this instance was disconnected.
      */
     protected final void checkConnected() {
-        if (disconnected.get()) {
+        if (disconnected) {
             throw new IllegalStateException("Disconnected client " + clientName);
         }
     }
