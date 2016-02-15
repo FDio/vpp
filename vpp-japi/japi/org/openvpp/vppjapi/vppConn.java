@@ -23,7 +23,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Set;
-
+import javax.annotation.concurrent.GuardedBy;
 import org.openvpp.vppjapi.vppVersion;
 import org.openvpp.vppjapi.vppInterfaceDetails;
 import org.openvpp.vppjapi.vppInterfaceCounters;
@@ -73,8 +73,12 @@ public class vppConn implements AutoCloseable {
         }
     }
 
+    @GuardedBy("vppConn.class")
     private static vppConn currentConnection = null;
+
     private final String clientName;
+
+    // Not @GuardedBy because we allow unlocked reads
     private volatile boolean disconnected = false;
 
     // Hidden on purpose to prevent external instantiation
