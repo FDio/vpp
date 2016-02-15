@@ -1008,6 +1008,12 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
           no_huge = 1;
         }
 
+      else if (unformat (input, "enable-tcp-udp-checksum"))
+        {
+          dm->buffer_flags_template &= 
+            ~(IP_BUFFER_L4_CHECKSUM_CORRECT | IP_BUFFER_L4_CHECKSUM_COMPUTED);
+        }
+
       else if (unformat (input, "decimal-interface-names"))
         dm->interface_name_format_decimal = 1;
 
@@ -1766,6 +1772,12 @@ _(rte_nicvf_pmd_init)
   /* vhost-user coalescence frames defaults */
   dm->vhost_coalesce_frames = 32;
   dm->vhost_coalesce_time = 1e-3;
+
+  /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
+  dm->buffer_flags_template = 
+    (VLIB_BUFFER_TOTAL_LENGTH_VALID 
+     | IP_BUFFER_L4_CHECKSUM_COMPUTED
+     | IP_BUFFER_L4_CHECKSUM_CORRECT);
 
   /* init CLI */
   if ((error = vlib_call_init_function (vm, dpdk_cli_init)))

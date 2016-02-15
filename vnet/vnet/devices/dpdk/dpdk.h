@@ -301,6 +301,9 @@ typedef struct {
   /* per-thread recycle lists */
   u32 ** recycle;
 
+  /* buffer flags template, configurable to enable/disable tcp / udp cksum */
+  u32 buffer_flags_template;
+
   /* flow control callback. If 0 then flow control is disabled */
   dpdk_flowcontrol_callback_t flowcontrol_callback;
 

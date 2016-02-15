@@ -542,7 +542,8 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
   vlib_buffer_free_list_t * fl;
   u8 efd_discard_burst = 0;
   u16 ip_align_offset = 0;
-
+  u32 buffer_flags_template;
+  
   if (xd->admin_up == 0)
     return 0;
 
@@ -562,6 +563,8 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
 
   if (xd->pmd == VNET_DPDK_PMD_THUNDERX)
       ip_align_offset = 6;
+
+  buffer_flags_template = dm->buffer_flags_template;
 
   vec_reset_length (xd->d_trace_buffers);
   trace_cnt = n_trace = vlib_get_trace_count (vm, node);
@@ -718,7 +721,7 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
                 b0->current_data += ip_align_offset;
             }
              
-          b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+          b0->flags = buffer_flags_template;
 
           if (VMWARE_LENGTH_BUG_WORKAROUND)
               b0->current_length -= 4;
@@ -1142,6 +1145,7 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
   u16 queue_id = 0;
   vlib_node_runtime_t * node_trace;
   u32 first_worker_index = 0;
+  u32 buffer_flags_template;
   
   /* Wait until the dpdk init sequence is complete */
   while (dm->io_thread_release == 0)
@@ -1185,6 +1189,8 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
 
   /* packet tracing is triggered on the dpdk-input node for ease-of-use */
   node_trace = vlib_node_get_runtime (vm, dpdk_input_node.index);
+
+  buffer_flags_template = dm->buffer_flags_template;
 
   /* And handle them... */
   while (1)
@@ -1382,7 +1388,7 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
               b0->current_data = l3_offset0;
               b0->current_length = mb->data_len - l3_offset0;
 
-              b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+              b0->flags = buffer_flags_template;
 
               if (VMWARE_LENGTH_BUG_WORKAROUND)
                   b0->current_length -= 4;
@@ -1585,6 +1591,7 @@ dpdk_io_input (vlib_main_t * vm,
   u16 queue_id = 0;
   vlib_node_runtime_t * node_trace;
   static u32 first_worker_index;
+  u32 buffer_flags_template;
 
   if (PREDICT_FALSE(num_workers_set == 0))
     {
@@ -1612,6 +1619,8 @@ dpdk_io_input (vlib_main_t * vm,
 
   /* packet tracing is triggered on the dpdk-input node for ease-of-use */
   node_trace = vlib_node_get_runtime (vm, dpdk_input_node.index);
+
+  buffer_flags_template = dm->buffer_flags_template;
 
   vec_foreach (xd, dm->devices)
     {
@@ -1780,7 +1789,7 @@ dpdk_io_input (vlib_main_t * vm,
           b0->current_data = l3_offset0;
           b0->current_length = mb->data_len - l3_offset0;
 
-          b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+          b0->flags = buffer_flags_template;
                 
           if (VMWARE_LENGTH_BUG_WORKAROUND)
               b0->current_length -= 4;
