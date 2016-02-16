@@ -322,6 +322,7 @@ typedef struct {
 
   /* Config stuff */
   u8 ** eal_init_args;
+  u8 * eal_init_args_str;
   u8 * eth_if_blacklist;
   u8 * eth_if_whitelist;
   u8 * uio_driver_name;

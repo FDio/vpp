@@ -17,6 +17,8 @@
 
 #if DPDK > 0
 #include <rte_version.h>
+#include <vnet/vnet.h>
+#include <vnet/devices/dpdk/dpdk.h>
 #endif /* DPDK */
 
 static char * vpe_version_string = 
@@ -47,13 +49,16 @@ show_vpe_version_command_fn (vlib_main_t * vm,
 		 vlib_cli_command_t * cmd)
 {
   vlib_cli_output (vm, "%s", vpe_version_string);
-  if (unformat (input, "verbose")){
-     vlib_cli_output (vm, "%s", vpe_dir_string);
-     vlib_cli_output (vm, "%s", vpe_compiler);
+  if (unformat (input, "verbose"))
+    {
+      vlib_cli_output (vm, "%s", vpe_dir_string);
+      vlib_cli_output (vm, "%s", vpe_compiler);
 #if DPDK > 0
-     vlib_cli_output (vm, "DPDK version is %s", rte_version());
+      vlib_cli_output (vm, "DPDK version is %s", rte_version());
+      vlib_cli_output (vm, "DPDK EAL init arguments: %v",
+                       dpdk_main.eal_init_args_str);
 #endif
-  }
+    }
   return 0;
 }
 

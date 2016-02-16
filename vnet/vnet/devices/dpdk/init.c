@@ -1436,6 +1436,11 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   vm = dm->vlib_main;
 
+  /* make copy of args as rte_eal_init tends to mess up with arg array */
+  for (i = 1; i < vec_len(dm->eal_init_args); i++)
+    dm->eal_init_args_str = format(dm->eal_init_args_str, "%s ",
+                                   dm->eal_init_args[i]);
+
   ret = rte_eal_init(vec_len(dm->eal_init_args), (char **) dm->eal_init_args);
 
   /* lazy umount hugepages */
