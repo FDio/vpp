@@ -888,33 +888,6 @@ do {						\
   (_v(cmp) < 0 ? -1 : (_v(cmp) > 0 ? +1 : 0));		\
 })
 
-/**\brief Sort a vector with qsort via user's comparison body
-
-   Example to sort an integer vector:
-     int * int_vec = ...;
-     vec_sort (int_vec, i0, i1, i0[0] - i1[0]);
-
-   WARNING: vec_sort requires an executable stack segment.
-   If at all possible, use vec_sort_with_function () instead.
-
-   @param vec vector to sort
-   @param v0 vector element
-   @param v1 vector element
-   @param body vector comparision expression
-*/
-
-#define vec_sort(vec,v0,v1,body)					\
-do {									\
-  int _vec_sort_compare (const void * _v0,				\
-			 const void * _v1)				\
-  {									\
-    __typeof__ (vec) v0 = (__typeof__ (vec)) _v0;			\
-    __typeof__ (vec) v1 = (__typeof__ (vec)) _v1;			\
-    return (int) (body);						\
-  }									\
-  qsort (vec, vec_len (vec), sizeof (vec[0]), _vec_sort_compare);	\
-} while (0)
-
 /** \brief Sort a vector using the supplied element comparison function
 
     @param vec vector to sort
