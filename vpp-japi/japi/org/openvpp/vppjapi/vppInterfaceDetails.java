@@ -38,11 +38,12 @@ public final class vppInterfaceDetails {
     public final int vtrPushDot1q;
     public final int vtrTag1;
     public final int vtrTag2;
+    public final int linkMtu;
 
     public vppInterfaceDetails(int ifIndex, String interfaceName, int supIfIndex, byte[] physAddr, byte adminUp,
             byte linkUp, byte linkDuplex, byte linkSpeed, int subId, byte subDot1ad, byte subNumberOfTags,
             int subOuterVlanId, int subInnerVlanId, byte subExactMatch, byte subDefault, byte subOuterVlanIdAny,
-            byte subInnerVlanIdAny, int vtrOp, int vtrPushDot1q, int vtrTag1, int vtrTag2)
+            byte subInnerVlanIdAny, int vtrOp, int vtrPushDot1q, int vtrTag1, int vtrTag2, int linkMtu)
     {
         this.ifIndex = ifIndex;
         this.interfaceName = interfaceName;
@@ -65,5 +66,6 @@ public final class vppInterfaceDetails {
         this.vtrPushDot1q = vtrPushDot1q;
         this.vtrTag1 = vtrTag1;
         this.vtrTag2 = vtrTag2;
+        this.linkMtu = linkMtu;
     }
 }

@@ -2374,6 +2374,7 @@ static void send_sw_interface_details (vpe_api_main_t * am,
 		       VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT);
     mp->link_speed = ((hi->flags & VNET_HW_INTERFACE_FLAG_SPEED_MASK) >>
 		      VNET_HW_INTERFACE_FLAG_SPEED_SHIFT);
+    mp->link_mtu = ntohs(hi->max_packet_bytes);
 
     strncpy ((char *) mp->interface_name, 
              (char *) interface_name, ARRAY_LEN(mp->interface_name)-1);
