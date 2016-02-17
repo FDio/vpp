@@ -40,6 +40,7 @@ typedef struct {
     u8 link_up_down;
     u8 link_duplex;
     u8 link_speed;
+    u16 link_mtu;
     u32 sub_id;
     u8 sub_dot1ad;
     u8 sub_number_of_tags;
