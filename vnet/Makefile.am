@@ -59,6 +59,18 @@ nobase_include_HEADERS +=			\
   vnet/policer/police.h				\
   vnet/policer/xlate.h
 
+########################################
+# Cop - junk filter
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/cop/cop.c				\
+  vnet/cop/node1.c				\
+  vnet/cop/ip4_whitelist.c			\
+  vnet/cop/ip6_whitelist.c	
+
+nobase_include_HEADERS +=			\
+  vnet/cop/cop.h
 
 ########################################
 # Layer 2 protocols go here

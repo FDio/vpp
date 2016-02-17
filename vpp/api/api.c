@@ -69,6 +69,7 @@
 #include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 #include <vnet/map/map.h>
+#include <vnet/cop/cop.h>
 
 #undef BIHASH_TYPE
 #undef __included_bihash_template_h__
@@ -307,7 +308,9 @@ _(MAP_DEL_DOMAIN, map_del_domain)                                       \
 _(MAP_ADD_DEL_RULE, map_add_del_rule)                                   \
 _(MAP_DOMAIN_DUMP, map_domain_dump)                                     \
 _(MAP_RULE_DUMP, map_rule_dump)						\
-_(MAP_SUMMARY_STATS, map_summary_stats)
+_(MAP_SUMMARY_STATS, map_summary_stats)					\
+_(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable)		\
+_(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -4859,6 +4862,49 @@ static void vl_api_ipsec_sa_set_key_t_handler
 
     REPLY_MACRO(VL_API_IPSEC_SA_SET_KEY_REPLY);
 }
+
+static void vl_api_cop_interface_enable_disable_t_handler
+(vl_api_cop_interface_enable_disable_t * mp)
+{
+    vl_api_cop_interface_enable_disable_reply_t * rmp;
+    int rv;
+    u32 sw_if_index = ntohl(mp->sw_if_index);
+    int enable_disable;
+
+    VALIDATE_SW_IF_INDEX(mp);
+
+    enable_disable = (int) mp->enable_disable;
+
+    rv = cop_interface_enable_disable (sw_if_index, enable_disable);
+
+    BAD_SW_IF_INDEX_LABEL;
+
+    REPLY_MACRO(VL_API_COP_INTERFACE_ENABLE_DISABLE_REPLY);
+}
+
+static void vl_api_cop_whitelist_enable_disable_t_handler
+(vl_api_cop_whitelist_enable_disable_t * mp)
+{
+    vl_api_cop_whitelist_enable_disable_reply_t * rmp;
+    cop_whitelist_enable_disable_args_t _a, *a=&_a;
+    u32 sw_if_index = ntohl(mp->sw_if_index);
+    int rv;
+
+    VALIDATE_SW_IF_INDEX(mp);
+
+    a->sw_if_index = sw_if_index;
+    a->ip4 = mp->ip4;
+    a->ip6 = mp->ip6;
+    a->default_cop = mp->default_cop;
+    a->fib_id = ntohl(mp->fib_id);
+
+    rv = cop_whitelist_enable_disable (a);
+
+    BAD_SW_IF_INDEX_LABEL;
+
+    REPLY_MACRO(VL_API_COP_WHITELIST_ENABLE_DISABLE_REPLY);
+}
+
 
 #define BOUNCE_HANDLER(nn)                                              \
 static void vl_api_##nn##_t_handler (                                   \

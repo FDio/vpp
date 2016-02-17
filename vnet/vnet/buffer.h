@@ -298,6 +298,12 @@ typedef struct {
       u8 flags;          //See ip_frag.h
     } ip_frag;
 
+    /* COP - configurable junk filter(s) */
+    struct {
+        /* Current configuration index. */
+        u32 current_config_index;
+    } cop;
+
     u32 unused[6];
   };
 } vnet_buffer_opaque_t;

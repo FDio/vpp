@@ -40,6 +40,7 @@
 #include <inttypes.h>
 #endif
 #include <vnet/map/map.h>
+#include <vnet/cop/cop.h>
 
 #include "vat/json_format.h"
 
@@ -1791,7 +1792,9 @@ _(bd_ip_mac_add_del_reply)                              \
 _(map_del_domain_reply)                                 \
 _(map_add_del_rule_reply)                               \
 _(want_interface_events_reply)                          \
-_(want_stats_reply)
+_(want_stats_reply)					\
+_(cop_interface_enable_disable_reply)			\
+_(cop_whitelist_enable_disable_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -1936,12 +1939,14 @@ _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
 _(MAP_ADD_DOMAIN_REPLY, map_add_domain_reply)                           \
 _(MAP_DEL_DOMAIN_REPLY, map_del_domain_reply)                           \
-_(MAP_ADD_DEL_RULE_REPLY, map_add_del_rule_reply)			            \
+_(MAP_ADD_DEL_RULE_REPLY, map_add_del_rule_reply)	                \
 _(MAP_DOMAIN_DETAILS, map_domain_details)                               \
 _(MAP_RULE_DETAILS, map_rule_details)                                   \
 _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
 _(WANT_STATS_REPLY, want_stats_reply)					\
-_(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    
+_(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
+_(COP_INTERFACE_ENABLE_DISABLE_REPLY, cop_interface_enable_disable_reply) \
+_(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -8399,6 +8404,90 @@ api_get_first_msg_id (vat_main_t * vam)
     return 0;
 }
 
+static int api_cop_interface_enable_disable (vat_main_t * vam)
+{
+    unformat_input_t * line_input = vam->input;
+    vl_api_cop_interface_enable_disable_t * mp;
+    f64 timeout;
+    u32 sw_if_index = ~0;
+    u8 enable_disable = 1;
+
+    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (line_input, "disable"))
+            enable_disable = 0;
+        if (unformat (line_input, "enable"))
+            enable_disable = 1;
+        else if (unformat (line_input, "%U", unformat_sw_if_index,
+                           vam, &sw_if_index))
+            ;
+        else if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+            ;
+        else
+            break;
+    }
+        
+    if (sw_if_index == ~0) {
+        errmsg ("missing interface name or sw_if_index\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable);
+    mp->sw_if_index = ntohl(sw_if_index);
+    mp->enable_disable = enable_disable;
+
+    /* send it... */
+    S;
+    /* Wait for the reply */
+    W;
+}
+
+static int api_cop_whitelist_enable_disable (vat_main_t * vam)
+{
+    unformat_input_t * line_input = vam->input;
+    vl_api_cop_whitelist_enable_disable_t * mp;
+    f64 timeout;
+    u32 sw_if_index = ~0;
+    u8 ip4=0, ip6=0, default_cop=0;
+    u32 fib_id;
+
+    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (line_input, "ip4"))
+            ip4 = 1;
+        else if (unformat (line_input, "ip6"))
+            ip6 = 1;
+        else if (unformat (line_input, "default"))
+            default_cop = 1;
+        else if (unformat (line_input, "%U", unformat_sw_if_index,
+                           vam, &sw_if_index))
+            ;
+        else if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+            ;
+        else if (unformat (line_input, "fib-id %d", &fib_id))
+            ;
+        else
+            break;
+    }
+        
+    if (sw_if_index == ~0) {
+        errmsg ("missing interface name or sw_if_index\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable);
+    mp->sw_if_index = ntohl(sw_if_index);
+    mp->fib_id = ntohl(fib_id);
+    mp->ip4 = ip4;
+    mp->ip6 = ip6;
+    mp->default_cop = default_cop;
+
+    /* send it... */
+    S;
+    /* Wait for the reply */
+    W;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -8778,7 +8867,10 @@ _(map_domain_dump, "")                                                  \
 _(map_rule_dump, "index <map-domain>")                                  \
 _(want_interface_events,  "enable|disable")                             \
 _(want_stats,"enable|disable")                                          \
-_(get_first_msg_id, "client <name>")
+_(get_first_msg_id, "client <name>")					\
+_(cop_interface_enable_disable, "<intfc> | sw_if_index <nn> [disable]") \
+_(cop_whitelist_enable_disable, "<intfc> | sw_if_index <nn>\n"		\
+  "fib-id <nn> [ip4][ip6][default]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

@@ -1694,6 +1694,39 @@ static void * vl_api_ip_dump_t_print
     FINISH;
 }
 
+static void * vl_api_cop_interface_enable_disable_t_print
+(vl_api_cop_interface_enable_disable_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: cop_interface_enable_disable ");
+    s = format (s, "sw_if_index %d ", ntohl(mp->sw_if_index));
+    if (mp->enable_disable)
+        s = format (s, "enable ");
+    else
+        s = format (s, "disable ");
+
+    FINISH;
+}
+
+static void * vl_api_cop_whitelist_enable_disable_t_print
+(vl_api_cop_whitelist_enable_disable_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: cop_whitelist_enable_disable ");
+    s = format (s, "sw_if_index %d ", ntohl(mp->sw_if_index));
+    s = format (s, "fib-id %d ", ntohl(mp->fib_id));
+    if (mp->ip4)
+        s = format (s, "ip4 ");
+    if (mp->ip6)
+        s = format (s, "ip6 ");
+    if (mp->default_cop)
+        s = format (s, "default ");
+
+    FINISH;
+}
+
 #define foreach_custom_print_function                                   \
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
@@ -1773,7 +1806,9 @@ _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
 _(IP_ADDRESS_DUMP, ip_address_dump)                                     \
 _(IP_DUMP, ip_dump)                                                     \
 _(DELETE_LOOPBACK, delete_loopback)                                     \
-_(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)
+_(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)					\
+_(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable) 		\
+_(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)
 
 void vl_msg_api_custom_dump_configure (api_main_t *am) 
 {

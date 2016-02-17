@@ -122,6 +122,8 @@ vpe_main_init (vlib_main_t * vm)
 #endif
     if ((error = vlib_call_init_function (vm, li_init)))
         return error;
+    if ((error = vlib_call_init_function (vm, cop_init)))
+        return error;
 
     return error;
 }
