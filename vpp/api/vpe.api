@@ -51,6 +51,7 @@ define want_interface_events_reply {
     @param interface_name - name of the interface
     @param link_duplex - 1 if half duplex, 2 if full duplex
     @param link_speed - 1 = 10M, 2 = 100M, 4 = 1G, 8 = 10G, 16 = 40G, 32 = 100G
+    @param link_MTU - max. transmittion unit 
     @param sub_if_id - A number 0-N to uniquely identify this subif on super if
     @param sub_dot1ad -  0 = dot1q, 1=dot1ad
     @param sub_number_of_tags - Number of tags (0 - 2)
@@ -88,6 +89,9 @@ manual_java define sw_interface_details {
 
     /* 1 = 10M, 2 = 100M, 4 = 1G, 8 = 10G, 16 = 40G, 32 = 100G */
     u8 link_speed;
+    
+    /* MTU */
+    u16 link_mtu;
 
     /* Subinterface ID. A number 0-N to uniquely identify this subinterface under the super interface*/
     u32 sub_id;
