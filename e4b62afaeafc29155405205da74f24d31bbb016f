@@ -19,6 +19,23 @@
     },
     {
       "key": {
+        "uuid": "9af53d3f_0577f6d5",
+        "filename": "vpp-japi/japi/vppjni.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-02-17T14:53:12Z",
+      "side": 1,
+      "message": "This modifies how the vppInterfaceDetails constructor should look like and therefore you should also modify vpp-japi/japi/org/openvpp/vppjapi/vppInterfaceDetails.java to reflect this change.",
+      "revId": "e4b62afaeafc29155405205da74f24d31bbb016f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9af53d3f_459f3e04",
         "filename": "vpp-japi/japi/vppjni.c",
         "patchSetId": 1
