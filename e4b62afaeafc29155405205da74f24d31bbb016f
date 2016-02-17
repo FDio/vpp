@@ -1,0 +1,95 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_058936ca",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-02-17T14:43:01Z",
+      "side": 1,
+      "message": "lower case \"mtu\" and ntohs(mp-\u003elink_mtu)",
+      "revId": "e4b62afaeafc29155405205da74f24d31bbb016f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_459f3e04",
+        "filename": "vpp-japi/japi/vppjni.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-02-17T14:43:01Z",
+      "side": 1,
+      "message": "use lower camel case as the rest of the variables here (linkMtu)",
+      "revId": "e4b62afaeafc29155405205da74f24d31bbb016f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_25a43a56",
+        "filename": "vpp-japi/japi/vppjni.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-02-17T14:43:01Z",
+      "side": 1,
+      "message": "use lower case link_mtu as other variables in this file",
+      "revId": "e4b62afaeafc29155405205da74f24d31bbb016f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_659a4216",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2373,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-02-17T14:43:01Z",
+      "side": 1,
+      "message": "ntohs(hi-\u003emax_packet_bytes)",
+      "revId": "e4b62afaeafc29155405205da74f24d31bbb016f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_859546e6",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-02-17T14:43:01Z",
+      "side": 1,
+      "message": "we should follow naming convention in this file (lower case letters)",
+      "range": {
+        "startLine": 94,
+        "startChar": 8,
+        "endLine": 94,
+        "endChar": 16
+      },
+      "revId": "e4b62afaeafc29155405205da74f24d31bbb016f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
