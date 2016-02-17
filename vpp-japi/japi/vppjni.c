@@ -76,7 +76,7 @@ BIND_JAPI_BYTE_FIELD(vppBridgeDomainInterfaceDetails, splitHorizonGroup);
 BIND_JAPI_STRING_FIELD(vppBridgeDomainInterfaceDetails, interfaceName);
 
 BIND_JAPI_CLASS(vppInterfaceCounters, "(JJJJJJJJJJJJJJJJJJJJJJ)V");
-BIND_JAPI_CLASS(vppInterfaceDetails, "(ILjava/lang/String;I[BBBBBIBBIIBBBBIIII)V");
+BIND_JAPI_CLASS(vppInterfaceDetails, "(ILjava/lang/String;I[BBBBBIBBIIBBBBIIIII)V");
 BIND_JAPI_CLASS(vppIPv4Address, "(IB)V");
 BIND_JAPI_CLASS(vppIPv6Address, "([BB)V");
 BIND_JAPI_CLASS(vppL2Fib, "([BZLjava/lang/String;ZZ)V");
@@ -694,6 +694,7 @@ static jobjectArray sw_if_dump_get_interfaces (JNIEnv * env)
         jint vtrPushDot1q = sw_if_details->vtr_push_dot1q;
         jint vtrTag1 = sw_if_details->vtr_tag1;
         jint vtrTag2 = sw_if_details->vtr_tag2;
+        jint linkMtu = sw_if_details->link_mtu;
 
         jbyte adminUpDown = sw_if_details->admin_up_down;
         jbyte linkUpDown = sw_if_details->link_up_down;
@@ -712,7 +713,7 @@ static jobjectArray sw_if_dump_get_interfaces (JNIEnv * env)
                 linkDuplex, linkSpeed, subId, subDot1ad,
                 subNumberOfTags, subOuterVlanId, subInnerVlanId,
                 subExactMatch, subDefault, subOuterVlanIdAny,
-                subInnerVlanIdAny, vtrOp, vtrPushDot1q, vtrTag1, vtrTag2);
+                subInnerVlanIdAny, vtrOp, vtrPushDot1q, vtrTag1, vtrTag2, linkMtu);
         (*env)->SetObjectArrayElement(env, ifArray, i, ifObj);
     }
 
