@@ -502,7 +502,6 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
   u32 n_trace, trace_cnt __attribute__((unused));
   vlib_buffer_free_list_t * fl;
   u8 efd_discard_burst = 0;
-  u16 ip_align_offset = 0;
   u32 buffer_flags_template;
   
   if (xd->admin_up == 0)
@@ -521,9 +520,6 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
         }
       return 0;
     }
-
-  if (xd->pmd == VNET_DPDK_PMD_THUNDERX)
-      ip_align_offset = 6;
 
   buffer_flags_template = dm->buffer_flags_template;
 
@@ -673,15 +669,11 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
 			sizeof (ethernet_header_t) : 0);
 
           b0->current_data = l3_offset0;
+          /* Some drivers like fm10k receive frames with
+             mb->data_off > RTE_PKTMBUF_HEADROOM */
+          b0->current_data += mb->data_off - RTE_PKTMBUF_HEADROOM;
           b0->current_length = mb->data_len - l3_offset0;
 
-          if (PREDICT_FALSE (ip_align_offset != 0))
-            {
-              if (next0 == DPDK_RX_NEXT_IP4_INPUT ||
-                  next0 == DPDK_RX_NEXT_IP6_INPUT)
-                b0->current_data += ip_align_offset;
-            }
-             
           b0->flags = buffer_flags_template;
 
           if (VMWARE_LENGTH_BUG_WORKAROUND)
@@ -1390,6 +1382,9 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
                             sizeof (ethernet_header_t) : 0);
 
               b0->current_data = l3_offset0;
+              /* Some drivers like fm10k receive frames with
+                 mb->data_off > RTE_PKTMBUF_HEADROOM */
+              b0->current_data += mb->data_off - RTE_PKTMBUF_HEADROOM;
               b0->current_length = mb->data_len - l3_offset0;
 
               b0->flags = buffer_flags_template;
