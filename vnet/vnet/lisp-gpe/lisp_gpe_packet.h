@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef included_lisp_gpe_packet_h
 #define included_lisp_gpe_packet_h
 
@@ -119,5 +120,14 @@ foreach_lisp_gpe_flag_bit
 #define LISP_GPE_NEXT_PROTOCOL_IP6 0x2
 #define LISP_GPE_NEXT_PROTOCOL_ETHERNET 0x3
 #define LISP_GPE_NEXT_PROTOCOL_NSH 0x4
+
+typedef enum
+{
+  LISP_GPE_NEXT_PROTO_IP4 = 1,
+  LISP_GPE_NEXT_PROTO_IP6,
+  LISP_GPE_NEXT_PROTO_ETHERNET,
+  LISP_GPE_NEXT_PROTO_NSH,
+  LISP_GPE_NEXT_PROTOS
+} lisp_gpe_next_protocol_e;
 
 #endif /* included_lisp_gpe_packet_h */
