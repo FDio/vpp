@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_c8e6c344",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-02-18T09:15:16Z",
+      "side": 1,
+      "message": "lower case \"mtu\"",
+      "revId": "1323aa803b3918be1b85fd52168ad1584c58596e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_a8e37f32",
+        "filename": "vpp-japi/japi/org/openvpp/vppjapi/vppInterfaceDetails.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-02-18T09:15:16Z",
+      "side": 1,
+      "message": "linkMtu",
+      "revId": "1323aa803b3918be1b85fd52168ad1584c58596e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_88d0bb54",
+        "filename": "vpp-japi/japi/org/openvpp/vppjapi/vppInterfaceDetails.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-02-18T09:15:16Z",
+      "side": 1,
+      "message": "linkMtu",
+      "revId": "1323aa803b3918be1b85fd52168ad1584c58596e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_68d57742",
+        "filename": "vpp-japi/japi/vppjni.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-02-18T09:15:16Z",
+      "side": 1,
+      "message": "jint linkMtu",
+      "revId": "1323aa803b3918be1b85fd52168ad1584c58596e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
