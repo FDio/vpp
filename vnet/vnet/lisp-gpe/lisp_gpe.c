@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -12,129 +12,551 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
 lisp_gpe_main_t lisp_gpe_main;
 
-static u8 * format_decap_next (u8 * s, va_list * args)
+/* avoids calling route callbacks for src fib */
+static void
+ip4_sd_fib_set_adj_index (lisp_gpe_main_t * lgm, ip4_fib_t * fib, u32 flags,
+                           u32 dst_address_u32, u32 dst_address_length,
+                           u32 adj_index)
 {
-  u32 next_index = va_arg (*args, u32);
+  ip_lookup_main_t * lm = lgm->lookup_main;
+  uword * hash;
 
-  switch (next_index)
+  if (vec_bytes(fib->old_hash_values))
+    memset (fib->old_hash_values, ~0, vec_bytes (fib->old_hash_values));
+  if (vec_bytes(fib->new_hash_values))
+    memset (fib->new_hash_values, ~0, vec_bytes (fib->new_hash_values));
+  fib->new_hash_values[0] = adj_index;
+
+  /* Make sure adj index is valid. */
+  if (CLIB_DEBUG > 0)
+    (void) ip_get_adjacency (lm, adj_index);
+
+  hash = fib->adj_index_by_dst_address[dst_address_length];
+
+  hash = _hash_set3 (hash, dst_address_u32,
+                     fib->new_hash_values,
+                     fib->old_hash_values);
+
+  fib->adj_index_by_dst_address[dst_address_length] = hash;
+}
+
+/* copied from ip4_forward since it's static */
+static void
+ip4_fib_init_adj_index_by_dst_address (ip_lookup_main_t * lm,
+                                       ip4_fib_t * fib,
+                                       u32 address_length)
+{
+  hash_t * h;
+  uword max_index;
+
+  ASSERT (lm->fib_result_n_bytes >= sizeof (uword));
+  lm->fib_result_n_words = round_pow2 (lm->fib_result_n_bytes, sizeof (uword)) / sizeof (uword);
+
+  fib->adj_index_by_dst_address[address_length] =
+    hash_create (32 /* elts */, lm->fib_result_n_words * sizeof (uword));
+
+  hash_set_flags (fib->adj_index_by_dst_address[address_length],
+                  HASH_FLAG_NO_AUTO_SHRINK);
+
+  h = hash_header (fib->adj_index_by_dst_address[address_length]);
+  max_index = (hash_value_bytes (h) / sizeof (fib->new_hash_values[0])) - 1;
+
+  /* Initialize new/old hash value vectors. */
+  vec_validate_init_empty (fib->new_hash_values, max_index, ~0);
+  vec_validate_init_empty (fib->old_hash_values, max_index, ~0);
+}
+
+void
+ip4_sd_fib_add_del_src_route (lisp_gpe_main_t * lgm,
+                              ip4_add_del_route_args_t * a)
+{
+  ip_lookup_main_t * lm = lgm->lookup_main;
+  ip4_fib_t * fib;
+  u32 dst_address, dst_address_length, adj_index, old_adj_index;
+  uword * hash, is_del;
+
+  /* Either create new adjacency or use given one depending on arguments. */
+  if (a->n_add_adj > 0)
+      ip_add_adjacency (lm, a->add_adj, a->n_add_adj, &adj_index);
+  else
+    adj_index = a->adj_index;
+
+  dst_address = a->dst_address.data_u32;
+  dst_address_length = a->dst_address_length;
+
+  fib = pool_elt_at_index(lgm->src_fibs, a->table_index_or_table_id);
+
+  if (! fib->adj_index_by_dst_address[dst_address_length])
+    ip4_fib_init_adj_index_by_dst_address (lm, fib, dst_address_length);
+
+  hash = fib->adj_index_by_dst_address[dst_address_length];
+
+  is_del = (a->flags & IP4_ROUTE_FLAG_DEL) != 0;
+
+  if (is_del)
     {
-    case LISP_GPE_INPUT_NEXT_DROP:
-      return format (s, "drop");
-    case LISP_GPE_INPUT_NEXT_IP4_INPUT:
-      return format (s, "ip4");
-    case LISP_GPE_INPUT_NEXT_IP6_INPUT:
-      return format (s, "ip6");
-    case LISP_GPE_INPUT_NEXT_LISP_GPE_ENCAP:
-      return format (s, "nsh-lisp-gpe");
-    default:
-      return format (s, "unknown %d", next_index);
+      fib->old_hash_values[0] = ~0;
+      hash = _hash_unset (hash, dst_address, fib->old_hash_values);
+      fib->adj_index_by_dst_address[dst_address_length] = hash;
     }
-  return s;
+  else
+    ip4_sd_fib_set_adj_index (lgm, fib, a->flags, dst_address,
+                              dst_address_length, adj_index);
+
+  old_adj_index = fib->old_hash_values[0];
+
+  ip4_fib_mtrie_add_del_route (fib, a->dst_address, dst_address_length,
+                               is_del ? old_adj_index : adj_index,
+                               is_del);
+
+  /* Delete old adjacency index if present and changed. */
+  if (! (a->flags & IP4_ROUTE_FLAG_KEEP_OLD_ADJACENCY)
+      && old_adj_index != ~0
+      && old_adj_index != adj_index)
+    ip_del_adjacency (lm, old_adj_index);
 }
 
-u8 * format_lisp_gpe_tunnel (u8 * s, va_list * args)
+void *
+ip4_sd_get_src_route (lisp_gpe_main_t * lgm, u32 src_fib_index,
+                      ip4_address_t * src, u32 address_length)
 {
-  lisp_gpe_tunnel_t * t = va_arg (*args, lisp_gpe_tunnel_t *);
-  lisp_gpe_main_t * ngm = &lisp_gpe_main;
+  ip4_fib_t * fib = pool_elt_at_index (lgm->src_fibs, src_fib_index);
+  uword * hash, * p;
 
-  s = format (s, 
-              "[%d] %U (src) %U (dst) fibs: encap %d, decap %d",
-              t - ngm->tunnels,
-              format_ip4_address, &t->src,
-              format_ip4_address, &t->dst,
-              t->encap_fib_index,
-              t->decap_fib_index);
-
-  s = format (s, " decap next %U\n", format_decap_next, t->decap_next_index);
-  s = format (s, "lisp ver %d ", (t->ver_res>>6));
-
-#define _(n,v) if (t->flags & v) s = format (s, "%s-bit ", #n);
-  foreach_lisp_gpe_flag_bit;
-#undef _
-
-  s = format (s, "next_protocol %d ver_res %x res %x\n",
-              t->next_protocol, t->ver_res, t->res);
-  
-  s = format (s, "iid %d (0x%x)\n", t->iid, t->iid);
-  return s;
+  hash = fib->adj_index_by_dst_address[address_length];
+  p = hash_get (hash, src->as_u32);
+  return (void *) p;
 }
 
-static u8 * format_lisp_gpe_name (u8 * s, va_list * args)
+typedef CLIB_PACKED (struct {
+  ip4_address_t address;
+  u32 address_length : 6;
+  u32 index : 26;
+}) ip4_route_t;
+
+static void
+ip4_sd_fib_clear_src_fib (lisp_gpe_main_t * lgm, ip4_fib_t * fib)
 {
-  u32 dev_instance = va_arg (*args, u32);
-  return format (s, "lisp_gpe_tunnel%d", dev_instance);
+  ip4_route_t * routes = 0, * r;
+  u32 i;
+
+  vec_reset_length (routes);
+
+  for (i = 0; i < ARRAY_LEN (fib->adj_index_by_dst_address); i++) {
+      uword * hash = fib->adj_index_by_dst_address[i];
+      hash_pair_t * p;
+      ip4_route_t x;
+
+      x.address_length = i;
+
+      hash_foreach_pair (p, hash,
+      ({
+          x.address.data_u32 = p->key;
+          vec_add1 (routes, x);
+      }));
+  }
+
+  vec_foreach (r, routes) {
+      ip4_add_del_route_args_t a;
+
+      memset (&a, 0, sizeof (a));
+      a.flags = IP4_ROUTE_FLAG_FIB_INDEX | IP4_ROUTE_FLAG_DEL;
+      a.table_index_or_table_id = fib - lgm->src_fibs;
+      a.dst_address = r->address;
+      a.dst_address_length = r->address_length;
+      a.adj_index = ~0;
+
+      ip4_sd_fib_add_del_src_route (lgm, &a);
+  }
 }
 
-static uword dummy_interface_tx (vlib_main_t * vm,
-                                 vlib_node_runtime_t * node,
-                                 vlib_frame_t * frame)
+int
+ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
+                          ip_prefix_t * src_prefix, u32 table_index,
+                          ip_adjacency_t * add_adj, u8 is_add)
 {
-  clib_warning ("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
+  uword * p;
+  ip4_add_del_route_args_t a;
+  ip_adjacency_t * dst_adjp, dst_adj;
+  ip4_address_t dst = ip_prefix_v4(dst_prefix), src;
+  u32 dst_address_length = ip_prefix_len(dst_prefix), src_address_length = 0;
+  ip4_fib_t * src_fib;
 
-VNET_DEVICE_CLASS (lisp_gpe_device_class,static) = {
-  .name = "LISP_GPE",
-  .format_device_name = format_lisp_gpe_name,
-  .format_tx_trace = format_lisp_gpe_encap_trace,
-  .tx_function = dummy_interface_tx,
-};
+  if (src_prefix)
+    {
+      src = ip_prefix_v4(src_prefix);
+      src_address_length = ip_prefix_len(src_prefix);
+    }
+  else
+    memset(&src, 0, sizeof(src));
 
-static uword dummy_set_rewrite (vnet_main_t * vnm,
-                                u32 sw_if_index,
-                                u32 l3_type,
-                                void * dst_address,
-                                void * rewrite,
-                                uword max_rewrite_bytes)
-{
+  /* lookup dst adj */
+  p = ip4_get_route (lgm->im4, table_index, 0, dst.as_u8, dst_address_length);
+
+  if (is_add)
+    {
+      /* insert dst prefix to ip4 fib, if it's not in yet */
+      if (p == 0)
+        {
+          /* dst adj should point to lisp gpe lookup */
+          dst_adj = add_adj[0];
+          dst_adj.lookup_next_index = lgm->ip4_lookup_next_lgpe_ip4_lookup;
+
+          memset(&a, 0, sizeof(a));
+          a.flags = IP4_ROUTE_FLAG_TABLE_ID;
+          a.table_index_or_table_id = table_index; /* vrf */
+          a.adj_index = ~0;
+          a.dst_address_length = dst_address_length;
+          a.dst_address = dst;
+          a.flags |= IP4_ROUTE_FLAG_ADD;
+          a.add_adj = &dst_adj;
+          a.n_add_adj = 1;
+
+          ip4_add_del_route (lgm->im4, &a);
+
+          /* lookup dst adj to obtain the adj index */
+          p = ip4_get_route (lgm->im4, table_index, 0, dst.as_u8,
+                             dst_address_length);
+          if (p == 0)
+            {
+              clib_warning("Failed to insert dst route for eid %U!",
+                           format_ip4_address_and_length, dst.as_u8,
+                           dst_address_length);
+              return -1;
+            }
+
+          /* allocate and init src ip4 fib */
+          pool_get(lgm->src_fibs, src_fib);
+          ip4_mtrie_init (&src_fib->mtrie);
+
+          /* reuse rewrite header to store pointer to src fib */
+          dst_adjp = ip_get_adjacency (lgm->lookup_main, p[0]);
+          dst_adjp->rewrite_header.sw_if_index = src_fib - lgm->src_fibs;
+        }
+    }
+  else
+    {
+      if (p == 0)
+        {
+          clib_warning("Trying to delete inexistent dst route for %U. Aborting",
+                       format_ip4_address_and_length, dst.as_u8,
+                       dst_address_length);
+          return -1;
+        }
+    }
+
+  dst_adjp = ip_get_adjacency (lgm->lookup_main, p[0]);
+
+  /* add/del src prefix to src fib */
+  memset(&a, 0, sizeof(a));
+  a.flags = IP4_ROUTE_FLAG_TABLE_ID;
+  a.table_index_or_table_id = dst_adjp->rewrite_header.sw_if_index;
+  a.adj_index = ~0;
+  a.flags |= is_add ? IP4_ROUTE_FLAG_ADD : IP4_ROUTE_FLAG_DEL;
+  a.add_adj = add_adj;
+  a.n_add_adj = 1;
+  /* if src prefix is null, add 0/0 */
+  a.dst_address_length = src_address_length;
+  a.dst_address = src;
+  ip4_sd_fib_add_del_src_route (lgm, &a);
+
+  /* if a delete, check if there are elements left in the src fib */
+  if (!is_add)
+    {
+      src_fib = pool_elt_at_index(lgm->src_fibs,
+                                  dst_adjp->rewrite_header.sw_if_index);
+      if (!src_fib)
+        return 0;
+
+      /* if there's nothing left, clear src fib .. */
+      if (ARRAY_LEN(src_fib->adj_index_by_dst_address) == 0)
+        {
+          ip4_sd_fib_clear_src_fib (lgm, src_fib);
+          pool_put(lgm->src_fibs, src_fib);
+        }
+
+      /* .. and remove dst route */
+      memset(&a, 0, sizeof(a));
+      a.flags = IP4_ROUTE_FLAG_TABLE_ID;
+      a.table_index_or_table_id = table_index; /* vrf */
+      a.adj_index = ~0;
+      a.dst_address_length = dst_address_length;
+      a.dst_address = dst;
+      a.flags |= IP4_ROUTE_FLAG_DEL;
+
+      ip4_add_del_route (lgm->im4, &a);
+    }
+
   return 0;
 }
 
-u8 * format_lisp_gpe_header_with_length (u8 * s, va_list * args)
+static void *
+ip4_sd_fib_get_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
+                      ip_prefix_t * src_prefix, u32 table_index)
 {
-  lisp_gpe_header_t * h = va_arg (*args, lisp_gpe_header_t *);
-  u32 max_header_bytes = va_arg (*args, u32);
-  u32 header_bytes;
+  uword * p;
+  ip4_address_t dst = ip_prefix_v4(dst_prefix), src;
+  u32 dst_address_length = ip_prefix_len(dst_prefix), src_address_length = 0;
+  ip_adjacency_t * dst_adj;
 
-  header_bytes = sizeof (h[0]);
-  if (max_header_bytes != 0 && header_bytes > max_header_bytes)
-    return format (s, "gre-nsh header truncated");
+  if (src_prefix)
+    {
+      src = ip_prefix_v4(src_prefix);
+      src_address_length = ip_prefix_len(src_prefix);
+    }
+  else
+    memset(&src, 0, sizeof(src));
 
-  s = format (s, "flags: ");
-#define _(n,v) if (h->flags & v) s = format (s, "%s ", #n);
-  foreach_lisp_gpe_flag_bit;
-#undef _
+  /* lookup dst adj */
+  p = ip4_get_route (lgm->im4, table_index, 0, dst.as_u8, dst_address_length);
+  if (p == 0)
+      return p;
 
-  s = format (s, "\n  ver_res %d res %d next_protocol %d iid %d(%x)",
-              h->ver_res, h->res, h->next_protocol, 
-              clib_net_to_host_u32 (h->iid),
-              clib_net_to_host_u32 (h->iid));
-  return s;
+  dst_adj = ip_get_adjacency (lgm->lookup_main, p[0]);
+  return ip4_sd_get_src_route (lgm, dst_adj->rewrite_header.sw_if_index, &src,
+                               src_address_length);
 }
 
-VNET_HW_INTERFACE_CLASS (lisp_gpe_hw_class) = {
-  .name = "LISP_GPE",
-  .format_header = format_lisp_gpe_header_with_length,
-  .set_rewrite = dummy_set_rewrite,
+typedef enum
+{
+  LGPE_IP4_LOOKUP_NEXT_DROP,
+  LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP,
+  LGPE_IP4_LOOKUP_NEXT_LGPE_ENCAP,
+  LGPE_IP4_LOOKUP_N_NEXT,
+} lgpe_ip4_lookup_next_t;
+
+always_inline void
+ip4_src_fib_lookup_one (lisp_gpe_main_t * lgm, u32 src_fib_index0,
+                        ip4_address_t * addr0, u32 * src_adj_index0)
+{
+  ip4_fib_mtrie_leaf_t leaf0, leaf1;
+  ip4_fib_mtrie_t * mtrie0;
+
+  mtrie0 = &vec_elt_at_index(lgm->src_fibs, src_fib_index0)->mtrie;
+
+  leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
+  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 0);
+  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 1);
+  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 2);
+  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 3);
+
+  /* Handle default route. */
+  leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
+  src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+}
+
+always_inline void
+ip4_src_fib_lookup_two (lisp_gpe_main_t * lgm, u32 src_fib_index0,
+                        u32 src_fib_index1, ip4_address_t * addr0,
+                        ip4_address_t * addr1, u32 * src_adj_index0,
+                        u32 * src_adj_index1)
+{
+  ip4_fib_mtrie_leaf_t leaf0, leaf1;
+  ip4_fib_mtrie_t * mtrie0, * mtrie1;
+
+  mtrie0 = &vec_elt_at_index(lgm->src_fibs, src_fib_index0)->mtrie;
+  mtrie1 = &vec_elt_at_index(lgm->src_fibs, src_fib_index1)->mtrie;
+
+  leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
+
+  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 0);
+  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 0);
+
+  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 1);
+  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 1);
+
+  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 2);
+  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 2);
+
+  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 3);
+  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 3);
+
+  /* Handle default route. */
+  leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
+  leaf1 = (leaf1 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie1->default_leaf : leaf1);
+  src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+  src_adj_index1[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+}
+
+always_inline uword
+lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
+                 vlib_frame_t * from_frame)
+{
+  u32 n_left_from, next_index, * from, * to_next;
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame(vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from >= 4 && n_left_to_next >= 2)
+        {
+          u32 bi0, bi1;
+          vlib_buffer_t * b0, * b1;
+          ip4_header_t * ip0, * ip1;
+          u32 dst_adj_index0, src_adj_index0, src_fib_index0, dst_adj_index1,
+              src_adj_index1, src_fib_index1;
+          ip_adjacency_t * dst_adj0, * src_adj0, * dst_adj1, * src_adj1;
+          u32 next0, next1;
+
+          next0 = next1 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
+
+          /* Prefetch next iteration. */
+          {
+            vlib_buffer_t * p2, * p3;
+
+            p2 = vlib_get_buffer (vm, from[2]);
+            p3 = vlib_get_buffer (vm, from[3]);
+
+            vlib_prefetch_buffer_header (p2, LOAD);
+            vlib_prefetch_buffer_header (p3, LOAD);
+
+            CLIB_PREFETCH (p2->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+            CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+          }
+
+          bi0 = from[0];
+          bi1 = from[1];
+          to_next[0] = bi0;
+          to_next[1] = bi1;
+          from += 2;
+          to_next += 2;
+          n_left_to_next -= 2;
+          n_left_from -= 2;
+
+          b0 = vlib_get_buffer (vm, bi0);
+          b1 = vlib_get_buffer (vm, bi1);
+
+          ip0 = vlib_buffer_get_current (b0);
+          ip1 = vlib_buffer_get_current (b1);
+
+          /* dst lookup was done by ip4 lookup */
+          dst_adj_index0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+          dst_adj_index1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+
+          dst_adj0 = ip_get_adjacency (lgm->lookup_main, dst_adj_index0);
+          dst_adj1 = ip_get_adjacency (lgm->lookup_main, dst_adj_index1);
+
+          src_fib_index0 = dst_adj0->rewrite_header.sw_if_index;
+          src_fib_index1 = dst_adj1->rewrite_header.sw_if_index;
+
+          /* if default route not hit in ip4 lookup */
+          if (PREDICT_TRUE(src_fib_index0 != (u32) ~0
+                           && src_fib_index1 != (u32) ~0))
+            {
+              ip4_src_fib_lookup_two (lgm, src_fib_index0, src_fib_index1,
+                                      &ip0->src_address, &ip1->src_address,
+                                      &src_adj_index0, &src_adj_index1);
+
+              vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
+              vnet_buffer(b1)->ip.adj_index[VLIB_TX] = src_adj_index1;
+
+              src_adj0 = ip_get_adjacency (lgm->lookup_main, src_adj_index0);
+              src_adj1 = ip_get_adjacency (lgm->lookup_main, src_adj_index1);
+
+              next0 = src_adj0->lookup_next_index;
+              next1 = src_adj1->lookup_next_index;
+            }
+          else
+            {
+              if (src_fib_index0 != (u32) ~0)
+                {
+                  ip4_src_fib_lookup_one (lgm, src_fib_index0,
+                                          &ip0->src_address, &src_adj_index0);
+                  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
+                  src_adj0 = ip_get_adjacency (lgm->lookup_main,
+                                               src_adj_index0);
+                  next0 = src_adj0->lookup_next_index;
+                }
+              if (src_fib_index1 != (u32) ~0)
+                {
+                  ip4_src_fib_lookup_one (lgm, src_fib_index1,
+                                          &ip1->src_address, &src_adj_index1);
+                  vnet_buffer(b1)->ip.adj_index[VLIB_TX] = src_adj_index1;
+                  src_adj1 = ip_get_adjacency (lgm->lookup_main,
+                                               src_adj_index1);
+                  next1 = src_adj1->lookup_next_index;
+                }
+            }
+
+          vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
+                                          n_left_to_next, bi0, bi1, next0,
+                                          next1);
+        }
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+        {
+          vlib_buffer_t * b0;
+          ip4_header_t * ip0;
+          u32 bi0, dst_adj_index0, src_adj_index0, src_fib_index0;
+          u32 next0 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
+          ip_adjacency_t * dst_adj0, * src_adj0;
+
+          bi0 = from[0];
+          to_next[0] = bi0;
+          from += 1;
+          to_next += 1;
+          n_left_from -= 1;
+          n_left_to_next -= 1;
+
+          b0 = vlib_get_buffer (vm, bi0);
+          ip0 = vlib_buffer_get_current (b0);
+
+          /* dst lookup was done by ip4 lookup */
+          dst_adj_index0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+          dst_adj0 = ip_get_adjacency (lgm->lookup_main, dst_adj_index0);
+          src_fib_index0 = dst_adj0->rewrite_header.sw_if_index;
+
+          /* default route hit in ip4 lookup, send to lisp control plane */
+          if (src_fib_index0 == (u32) ~0)
+            goto done;
+
+          /* src lookup we do here */
+          ip4_src_fib_lookup_one (lgm, src_fib_index0, &ip0->src_address,
+                                  &src_adj_index0);
+          vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
+          src_adj0 = ip_get_adjacency (lgm->lookup_main, src_adj_index0);
+          next0 = src_adj0->lookup_next_index;
+
+        done:
+          vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
+                                          n_left_to_next, bi0, next0);
+        }
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  return from_frame->n_vectors;
+}
+
+
+VLIB_REGISTER_NODE (lgpe_ip4_lookup_node) = {
+  .function = lgpe_ip4_lookup,
+  .name = "lgpe-ip4-lookup",
+  .vector_size = sizeof (u32),
+
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_next_nodes = LGPE_IP4_LOOKUP_N_NEXT,
+  .next_nodes = {
+      [LGPE_IP4_LOOKUP_NEXT_DROP] = "error-drop",
+      [LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP] = "lisp-cp-lookup",
+      [LGPE_IP4_LOOKUP_NEXT_LGPE_ENCAP] = "lisp-gpe-encap",
+  },
 };
 
-#define foreach_copy_field                      \
-_(src.as_u32)                                   \
-_(dst.as_u32)                                   \
-_(encap_fib_index)                              \
-_(decap_fib_index)                              \
-_(decap_next_index)                             \
-_(flags)                                        \
-_(next_protocol)				\
-_(ver_res)                                      \
-_(res)                                          \
-_(iid)
-
-static int lisp_gpe_rewrite (lisp_gpe_tunnel_t * t)
+static int
+lisp_gpe_rewrite (lisp_gpe_tunnel_t * t)
 {
   u8 *rw = 0;
   ip4_header_t * ip0;
@@ -142,9 +564,9 @@ static int lisp_gpe_rewrite (lisp_gpe_tunnel_t * t)
   ip4_udp_lisp_gpe_header_t * h0;
   int len;
 
-  len = sizeof (*h0);
+  len = sizeof(*h0);
 
-  vec_validate_aligned (rw, len-1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned(rw, len - 1, CLIB_CACHE_LINE_BYTES);
 
   h0 = (ip4_udp_lisp_gpe_header_t *) rw;
 
@@ -165,308 +587,416 @@ static int lisp_gpe_rewrite (lisp_gpe_tunnel_t * t)
 
   /* LISP-gpe header */
   lisp0 = &h0->lisp;
-  
+
   lisp0->flags = t->flags;
   lisp0->ver_res = t->ver_res;
   lisp0->res = t->res;
   lisp0->next_protocol = t->next_protocol;
   lisp0->iid = clib_host_to_net_u32 (t->iid);
-  
+
   t->rewrite = rw;
-  return (0);
+  return 0;
 }
 
-int vnet_lisp_gpe_add_del_tunnel 
-(vnet_lisp_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp)
+/* TODO remove */
+int
+vnet_lisp_gpe_add_del_tunnel (vnet_lisp_gpe_add_del_tunnel_args_t *a,
+                              u32 * sw_if_indexp)
 {
-  lisp_gpe_main_t * ngm = &lisp_gpe_main;
-  lisp_gpe_tunnel_t *t = 0;
-  vnet_main_t * vnm = ngm->vnet_main;
-  vnet_hw_interface_t * hi;
-  uword * p;
-  u32 hw_if_index = ~0;
-  u32 sw_if_index = ~0;
-  int rv;
-  lisp_gpe_tunnel_key_t key, *key_copy;
-  hash_pair_t *hp;
-  
-  key.src = a->src.as_u32;
-  key.iid = clib_host_to_net_u32(a->iid);
+  clib_warning ("UNSUPPORTED! Use vnet_lisp_gpe_add_del_fwd_entry");
+  return 0;
+}
 
-  p = hash_get_mem (ngm->lisp_gpe_tunnel_by_key, &key);
-  
+#define foreach_copy_field                      \
+_(encap_fib_index)                              \
+_(decap_fib_index)                              \
+_(decap_next_index)                             \
+_(flags)                                        \
+_(next_protocol)                                \
+_(ver_res)                                      \
+_(res)                                          \
+_(iid)
+
+static u32
+add_del_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u32 * tun_index_res)
+{
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+  lisp_gpe_tunnel_t *t = 0;
+  uword * p;
+  int rv;
+  lisp_gpe_tunnel_key_t key;
+
+  memset(&key, 0, sizeof(key));
+  gid_address_copy(&key.eid, &a->deid);
+  key.dst_loc = ip_addr_v4(&a->dlocator).as_u32;
+  key.iid = clib_host_to_net_u32 (a->iid);
+
+  p = mhash_get (&lgm->lisp_gpe_tunnel_by_key, &key);
+
   if (a->is_add)
     {
       /* adding a tunnel: tunnel must not already exist */
-      if (p) 
+      if (p)
         return VNET_API_ERROR_INVALID_VALUE;
-      
+
       if (a->decap_next_index >= LISP_GPE_INPUT_N_NEXT)
         return VNET_API_ERROR_INVALID_DECAP_NEXT;
-      
-      pool_get_aligned (ngm->tunnels, t, CLIB_CACHE_LINE_BYTES);
+
+      pool_get_aligned (lgm->tunnels, t, CLIB_CACHE_LINE_BYTES);
       memset (t, 0, sizeof (*t));
-      
+
       /* copy from arg structure */
 #define _(x) t->x = a->x;
       foreach_copy_field;
 #undef _
-      
+
+      t->src = ip_addr_v4(&a->slocator);
+      t->dst = ip_addr_v4(&a->dlocator);
+
       rv = lisp_gpe_rewrite (t);
 
       if (rv)
         {
-          pool_put (ngm->tunnels, t);
+          pool_put(lgm->tunnels, t);
           return rv;
         }
 
-      key_copy = clib_mem_alloc (sizeof (*key_copy));
-      memcpy (key_copy, &key, sizeof (*key_copy));
+      mhash_set(&lgm->lisp_gpe_tunnel_by_key, &key, t - lgm->tunnels, 0);
 
-      hash_set_mem (ngm->lisp_gpe_tunnel_by_key, key_copy, 
-                    t - ngm->tunnels);
-      
-      if (vec_len (ngm->free_lisp_gpe_tunnel_hw_if_indices) > 0)
-        {
-          hw_if_index = ngm->free_lisp_gpe_tunnel_hw_if_indices
-            [vec_len (ngm->free_lisp_gpe_tunnel_hw_if_indices)-1];
-          _vec_len (ngm->free_lisp_gpe_tunnel_hw_if_indices) -= 1;
-          
-          hi = vnet_get_hw_interface (vnm, hw_if_index);
-          hi->dev_instance = t - ngm->tunnels;
-          hi->hw_instance = hi->dev_instance;
-        }
-      else 
-        {
-          hw_if_index = vnet_register_interface
-            (vnm, lisp_gpe_device_class.index, t - ngm->tunnels,
-             lisp_gpe_hw_class.index, t - ngm->tunnels);
-          hi = vnet_get_hw_interface (vnm, hw_if_index);
-          hi->output_node_index = lisp_gpe_encap_node.index;
-        }
-      
-      t->hw_if_index = hw_if_index;
-      t->sw_if_index = sw_if_index = hi->sw_if_index;
-      
-      vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 
-                                   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+      /* return tunnel index */
+      if (tun_index_res)
+        tun_index_res[0] = t - lgm->tunnels;
     }
   else
     {
       /* deleting a tunnel: tunnel must exist */
-      if (!p) 
-        return VNET_API_ERROR_NO_SUCH_ENTRY;
+      if (!p)
+        {
+          clib_warning("Tunnel for eid %U doesn't exist!", format_gid_address,
+                       &a->deid);
+          return VNET_API_ERROR_NO_SUCH_ENTRY;
+        }
 
-      t = pool_elt_at_index (ngm->tunnels, p[0]);
+      t = pool_elt_at_index(lgm->tunnels, p[0]);
 
-      vnet_sw_interface_set_flags (vnm, t->sw_if_index, 0 /* down */);
-      vec_add1 (ngm->free_lisp_gpe_tunnel_hw_if_indices, t->hw_if_index);
+      mhash_unset(&lgm->lisp_gpe_tunnel_by_key, &key, 0);
 
-      hp = hash_get_pair (ngm->lisp_gpe_tunnel_by_key, &key);
-      key_copy = (void *)(hp->key);
-      hash_unset_mem (ngm->lisp_gpe_tunnel_by_key, &key);
-      clib_mem_free (key_copy);
-
-      vec_free (t->rewrite);
-      pool_put (ngm->tunnels, t);
+      vec_free(t->rewrite);
+      pool_put(lgm->tunnels, t);
     }
-
-  if (sw_if_indexp)
-      *sw_if_indexp = sw_if_index;
 
   return 0;
 }
 
-static u32 fib_index_from_fib_id (u32 fib_id)
+int
+vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+                                 u32 * hw_if_indexp)
 {
-  ip4_main_t * im = &ip4_main;
-  uword * p;
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+  ip_adjacency_t adj, * adjp;
+  u32 * adj_index, rv, tun_index = ~0;
+  ip_prefix_t * dpref = &gid_address_ippref(&a->deid);
+  ip_prefix_t * spref = &gid_address_ippref(&a->seid);
 
-  p = hash_get (im->fib_index_by_table_id, fib_id);
-  if (!p)
-    return ~0;
+  /* setup adjacency for eid */
+  memset (&adj, 0, sizeof(adj));
+  adj.n_adj = 1;
+  adj.explicit_fib_index = ~0;
 
-  return p[0];
-}
+  /* treat negative fwd entries separately */
+  if (a->is_negative)
+    {
+      switch (a->action)
+        {
+        case NO_ACTION:
+          /* TODO update timers? */
+        case FORWARD_NATIVE:
+          /* TODO check if route/next-hop for eid exists in fib and add
+           * more specific for the eid with the next-hop found */
+        case SEND_MAP_REQUEST:
+          /* TODO insert tunnel that always sends map-request */
+        case DROP:
+          /* for drop fwd entries, just add route, no need to add encap tunnel */
+          adj.lookup_next_index = LGPE_IP4_LOOKUP_NEXT_DROP;
 
-static uword unformat_decap_next (unformat_input_t * input, va_list * args)
-{
-  u32 * result = va_arg (*args, u32 *);
-  u32 tmp;
-  
-  if (unformat (input, "drop"))
-    *result = LISP_GPE_INPUT_NEXT_DROP;
-  else if (unformat (input, "ip4"))
-    *result = LISP_GPE_INPUT_NEXT_IP4_INPUT;
-  else if (unformat (input, "ip6"))
-    *result = LISP_GPE_INPUT_NEXT_IP6_INPUT;
-  else if (unformat (input, "ethernet"))
-    *result = LISP_GPE_INPUT_NEXT_IP6_INPUT;
-  else if (unformat (input, "lisp-gpe"))
-    *result = LISP_GPE_INPUT_NEXT_LISP_GPE_ENCAP;
-  else if (unformat (input, "%d", &tmp))
-    *result = tmp;
-  else
-    return 0;
-  return 1;
+          /* add/delete route for prefix */
+          rv = ip4_sd_fib_add_del_route (lgm, dpref, spref, a->iid, &adj,
+                                         a->is_add);
+          return rv;
+          break;
+        default:
+          return -1;
+        }
+    }
+
+  /* send packets that hit this adj to lisp-gpe encap */
+  adj.lookup_next_index = LGPE_IP4_LOOKUP_NEXT_LGPE_ENCAP;
+
+  /* add/delete route for prefix
+   * TODO use hash to decide fib instead of using iid in clear */
+  rv = ip4_sd_fib_add_del_route (lgm, dpref, spref, a->iid, &adj, a->is_add);
+
+  if (rv)
+    return rv;
+
+  /* add/del tunnel to tunnels pool */
+  rv = add_del_tunnel (a, &tun_index);
+
+  /* reuse sw_if_index for storing the tunnel index */
+  if (a->is_add)
+    {
+      adj_index = ip4_sd_fib_get_route(lgm, dpref, spref, a->iid);
+      if (!adj_index)
+        {
+          clib_warning("Failed to insert fwd entry! For %U",
+                       format_ip4_address_and_length, ip_prefix_v4(dpref),
+                       ip_prefix_len(dpref));
+          return -1;
+        }
+      adjp = ip_get_adjacency (lgm->lookup_main, adj_index[0]);
+      adjp->rewrite_header.sw_if_index = tun_index;
+    }
+
+  return rv;
 }
 
 static clib_error_t *
-lisp_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
-                                   unformat_input_t * input,
-                                   vlib_cli_command_t * cmd)
+lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
+                                       unformat_input_t * input,
+                                       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
-  ip4_address_t src, dst;
   u8 is_add = 1;
-  u8 src_set = 0;
-  u8 dst_set = 0;
-  u32 encap_fib_index = 0;
-  u32 decap_fib_index = 0;
-  u8 next_protocol = LISP_GPE_NEXT_PROTOCOL_IP4;
-  u32 decap_next_index = LISP_GPE_INPUT_NEXT_IP4_INPUT;
-  u8 flags = LISP_GPE_FLAGS_P;
-  u8 ver_res = 0;
-  u8 res = 0;
-  u32 iid = 0;
-  u8 iid_set = 0;
-  u32 tmp;
-  int rv;
-  vnet_lisp_gpe_add_del_tunnel_args_t _a, * a = &_a;
-  
+  ip_address_t slocator, dlocator, *slocators = 0, *dlocators = 0;
+  ip_prefix_t * prefp;
+  gid_address_t * eids = 0, eid;
+  clib_error_t * error = 0;
+  u32 i;
+
+  prefp = &gid_address_ippref(&eid);
+
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (line_input, "del"))
-      is_add = 0;
-    else if (unformat (line_input, "src %U", 
-                       unformat_ip4_address, &src))
-      src_set = 1;
-    else if (unformat (line_input, "dst %U",
-                       unformat_ip4_address, &dst))
-      dst_set = 1;
-    else if (unformat (line_input, "encap-vrf-id %d", &tmp))
-      {
-        encap_fib_index = fib_index_from_fib_id (tmp);
-        if (encap_fib_index == ~0)
-          return clib_error_return (0, "nonexistent encap fib id %d", tmp);
-      }
-    else if (unformat (line_input, "decap-vrf-id %d", &tmp))
-      {
-        decap_fib_index = fib_index_from_fib_id (tmp);
-        if (decap_fib_index == ~0)
-          return clib_error_return (0, "nonexistent decap fib id %d", tmp);
-      }
-    else if (unformat (line_input, "decap-next %U", unformat_decap_next, 
-                       &decap_next_index))
-      ;
-    else if (unformat(line_input, "next-ip4"))
-      next_protocol = 1;
-    else if (unformat(line_input, "next-ip6"))
-      next_protocol = 2;
-    else if (unformat(line_input, "next-ethernet"))
-      next_protocol = 3;
-    else if (unformat(line_input, "next-nsh"))
-      next_protocol = 4;
-    /* Allow the user to specify anything they want in the LISP hdr */
-    else if (unformat (line_input, "ver_res %x", &tmp))
-      ver_res = tmp;
-    else if (unformat (line_input, "res %x", &tmp))
-      res = tmp;
-    else if (unformat (line_input, "flags %x", &tmp))
-      flags = tmp;
-    else if (unformat (line_input, "n-bit"))
-      flags |= LISP_GPE_FLAGS_N;
-    else if (unformat (line_input, "l-bit"))
-      flags |= LISP_GPE_FLAGS_L;
-    else if (unformat (line_input, "e-bit"))
-      flags |= LISP_GPE_FLAGS_E;
-    else if (unformat (line_input, "v-bit"))
-      flags |= LISP_GPE_FLAGS_V;
-    else if (unformat (line_input, "i-bit"))
-      flags |= LISP_GPE_FLAGS_V;
-    else if (unformat (line_input, "not-p-bit"))
-      flags &= ~LISP_GPE_FLAGS_P;
-    else if (unformat (line_input, "p-bit"))
-      flags |= LISP_GPE_FLAGS_P;
-    else if (unformat (line_input, "o-bit"))
-      flags |= LISP_GPE_FLAGS_O;
-    else if (unformat (line_input, "iidx %x", &iid))
-      iid_set = 1;
-    else if (unformat (line_input, "iid %d", &iid))
-      iid_set = 1;
-    else 
-      return clib_error_return (0, "parse error: '%U'", 
-                                format_unformat_error, line_input);
-  }
-
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+        is_add = 0;
+      else if (unformat (line_input, "add"))
+        is_add = 1;
+      else if (unformat (line_input, "eid %U slocator %U dlocator %U",
+                         unformat_ip_prefix, prefp,
+                         unformat_ip_address, &slocator,
+                         unformat_ip_address, &dlocator))
+        {
+          vec_add1 (eids, eid);
+          vec_add1 (slocators, slocator);
+          vec_add1 (dlocators, dlocator);
+        }
+      else
+        {
+          error = unformat_parse_error (line_input);
+          goto done;
+        }
+    }
   unformat_free (line_input);
 
-  if (src_set == 0)
-    return clib_error_return (0, "tunnel src address not specified");
-
-  if (dst_set == 0)
-    return clib_error_return (0, "tunnel dst address not specified");
-
-  if (iid_set == 0)
-    return clib_error_return (0, "iid not specified");
-
-  memset (a, 0, sizeof (*a));
-
-  a->is_add = is_add;
-
-#define _(x) a->x = x;
-  foreach_copy_field;
-#undef _
-  
-  rv = vnet_lisp_gpe_add_del_tunnel (a, 0 /* hw_if_indexp */);
-
-  switch(rv)
+  if (vec_len (eids) + vec_len (slocators) == 0)
     {
-    case 0:
-      break;
-    case VNET_API_ERROR_INVALID_DECAP_NEXT:
-      return clib_error_return (0, "invalid decap-next...");
-
-    case VNET_API_ERROR_TUNNEL_EXIST:
-      return clib_error_return (0, "tunnel already exists...");
-
-    case VNET_API_ERROR_NO_SUCH_ENTRY:
-      return clib_error_return (0, "tunnel does not exist...");
-
-    default:
-      return clib_error_return 
-        (0, "vnet_lisp_gpe_add_del_tunnel returned %d", rv);
+      error = clib_error_return (0, "expected ip4/ip6 eids/locators.");
+      goto done;
     }
 
+  if (vec_len (eids) != vec_len (slocators))
+    {
+      error = clib_error_return (0, "number of eids not equal to that of locators.");
+      goto done;
+    }
+
+  for (i = 0; i < vec_len(eids); i++)
+    {
+      vnet_lisp_gpe_add_del_fwd_entry_args_t a;
+      memset (&a, 0, sizeof(a));
+
+      a.is_add = is_add;
+      a.deid = eids[i];
+      a.slocator = slocators[i];
+      a.dlocator = dlocators[i];
+      prefp = &gid_address_ippref(&a.deid);
+      a.decap_next_index = (ip_prefix_version(prefp) == IP4) ?
+              LISP_GPE_INPUT_NEXT_IP4_INPUT : LISP_GPE_INPUT_NEXT_IP6_INPUT;
+      vnet_lisp_gpe_add_del_fwd_entry (&a, 0);
+    }
+
+ done:
+  vec_free(eids);
+  vec_free(slocators);
+  return error;
+}
+
+VLIB_CLI_COMMAND (add_del_lisp_gpe_mapping_tunnel_command, static) = {
+  .path = "lisp gpe maptunnel",
+  .short_help = "lisp gpe maptunnel eid <eid> sloc <src-locator> dloc <dst-locator> [del]",
+  .function = lisp_gpe_add_del_fwd_entry_command_fn,
+};
+
+int
+add_del_ip_prefix_route (ip_prefix_t * dst_prefix, u32 table_id,
+                         ip_adjacency_t * add_adj, u8 is_add, u32 * adj_index)
+{
+  uword * p;
+
+  if (ip_prefix_version(dst_prefix) == IP4)
+    {
+      ip4_main_t * im4 = &ip4_main;
+      ip4_add_del_route_args_t a;
+      ip4_address_t addr = ip_prefix_v4(dst_prefix);
+
+      memset(&a, 0, sizeof(a));
+      a.flags = IP4_ROUTE_FLAG_TABLE_ID;
+      a.table_index_or_table_id = table_id;
+      a.adj_index = ~0;
+      a.dst_address_length = ip_prefix_len(dst_prefix);
+      a.dst_address = addr;
+      a.flags |= is_add ? IP4_ROUTE_FLAG_ADD : IP4_ROUTE_FLAG_DEL;
+      a.add_adj = add_adj;
+      a.n_add_adj = 1;
+      ip4_add_del_route (im4, &a);
+
+      if (is_add)
+        {
+          p = ip4_get_route (im4, table_id, 0, addr.as_u8,
+                             ip_prefix_len(dst_prefix));
+          if (p == 0)
+            {
+              clib_warning("Failed to insert route for eid %U!",
+                           format_ip4_address_and_length, addr.as_u8,
+                           ip_prefix_len(dst_prefix));
+              return -1;
+            }
+          adj_index[0] = p[0];
+        }
+    }
+  else
+    {
+      ip6_main_t * im6 = &ip6_main;
+      ip6_add_del_route_args_t a;
+      ip6_address_t addr = ip_prefix_v6(dst_prefix);
+
+      memset(&a, 0, sizeof(a));
+      a.flags = IP6_ROUTE_FLAG_TABLE_ID;
+      a.table_index_or_table_id = table_id;
+      a.adj_index = ~0;
+      a.dst_address_length = ip_prefix_len(dst_prefix);
+      a.dst_address = addr;
+      a.flags |= is_add ? IP6_ROUTE_FLAG_ADD : IP6_ROUTE_FLAG_DEL;
+      a.add_adj = add_adj;
+      a.n_add_adj = 1;
+
+      ip6_add_del_route (im6, &a);
+
+      if (is_add)
+        {
+          adj_index[0] = ip6_get_route (im6, table_id, 0, &addr,
+                                        ip_prefix_len(dst_prefix));
+          if (adj_index[0] == 0)
+            {
+              clib_warning("Failed to insert route for eid %U!",
+                           format_ip6_address_and_length, addr.as_u8,
+                           ip_prefix_len(dst_prefix));
+              return -1;
+            }
+        }
+    }
   return 0;
 }
 
-VLIB_CLI_COMMAND (create_lisp_gpe_tunnel_command, static) = {
-  .path = "lisp gpe tunnel",
-  .short_help = 
-  "lisp gpe tunnel src <ip4-addr> dst <ip4-addr> iidx <0xnn> | iid <nn>\n"
-  "    [encap-fib-id <nn>] [decap-fib-id <nn>]\n"
-  "    [n-bit][l-bit][e-bit][v-bit][i-bit][p-bit][not-p-bit][o-bit]\n"
-  "    [next-ip4][next-ip6][next-ethernet][next-nsh]\n"
-  "    [decap-next [ip4|ip6|ethernet|nsh-encap|<nn>]][del]\n",
-  .function = lisp_gpe_add_del_tunnel_command_fn,
-};
+static void
+add_del_lisp_gpe_default_route (u8 is_v4, u8 is_add)
+{
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+  ip_adjacency_t adj;
+  ip_prefix_t prefix;
+  u32 adj_index = 0;
+
+  /* setup adjacency */
+  memset (&adj, 0, sizeof(adj));
+  adj.n_adj = 1;
+  adj.explicit_fib_index = ~0;
+  adj.lookup_next_index = lgm->ip4_lookup_next_lgpe_ip4_lookup;
+  /* default route has tunnel_index ~0 */
+  adj.rewrite_header.sw_if_index = ~0;
+
+  /* set prefix to 0/0 */
+  memset(&prefix, 0, sizeof(prefix));
+  ip_prefix_version(&prefix) = is_v4 ? IP4 : IP6;
+
+  /* add/delete route for prefix XXX default table only */
+  add_del_ip_prefix_route (&prefix, 0, &adj, is_add, &adj_index);
+}
+
+static u8 *
+format_decap_next (u8 * s, va_list * args)
+{
+  u32 next_index = va_arg (*args, u32);
+
+  switch (next_index)
+    {
+    case LISP_GPE_INPUT_NEXT_DROP:
+      return format (s, "drop");
+    case LISP_GPE_INPUT_NEXT_IP4_INPUT:
+      return format (s, "ip4");
+    case LISP_GPE_INPUT_NEXT_IP6_INPUT:
+      return format (s, "ip6");
+    case LISP_GPE_INPUT_NEXT_LISP_GPE_ENCAP:
+      return format (s, "nsh-lisp-gpe");
+    default:
+      return format (s, "unknown %d", next_index);
+    }
+  return s;
+}
+
+u8 *
+format_lisp_gpe_tunnel (u8 * s, va_list * args)
+{
+  lisp_gpe_tunnel_t * t = va_arg (*args, lisp_gpe_tunnel_t *);
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+
+  s = format (s,
+              "[%d] %U (src) %U (dst) fibs: encap %d, decap %d",
+              t - lgm->tunnels,
+              format_ip4_address, &t->src,
+              format_ip4_address, &t->dst,
+              t->encap_fib_index,
+              t->decap_fib_index);
+
+  s = format (s, " decap next %U\n", format_decap_next, t->decap_next_index);
+  s = format (s, "lisp ver %d ", (t->ver_res>>6));
+
+#define _(n,v) if (t->flags & v) s = format (s, "%s-bit ", #n);
+  foreach_lisp_gpe_flag_bit;
+#undef _
+
+  s = format (s, "next_protocol %d ver_res %x res %x\n",
+              t->next_protocol, t->ver_res, t->res);
+
+  s = format (s, "iid %d (0x%x)\n", t->iid, t->iid);
+  return s;
+}
 
 static clib_error_t *
 show_lisp_gpe_tunnel_command_fn (vlib_main_t * vm,
                                 unformat_input_t * input,
                                 vlib_cli_command_t * cmd)
 {
-  lisp_gpe_main_t * ngm = &lisp_gpe_main;
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
   lisp_gpe_tunnel_t * t;
   
-  if (pool_elts (ngm->tunnels) == 0)
+  if (pool_elts (lgm->tunnels) == 0)
     vlib_cli_output (vm, "No lisp-gpe tunnels configured...");
 
-  pool_foreach (t, ngm->tunnels,
+  pool_foreach (t, lgm->tunnels,
   ({
     vlib_cli_output (vm, "%U", format_lisp_gpe_tunnel, t);
   }));
@@ -479,15 +1009,154 @@ VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) = {
     .function = show_lisp_gpe_tunnel_command_fn,
 };
 
-clib_error_t *lisp_gpe_init (vlib_main_t *vm)
+static u8 *
+format_lisp_gpe_name (u8 * s, va_list * args)
 {
-  lisp_gpe_main_t *ngm = &lisp_gpe_main;
+  u32 dev_instance = va_arg (*args, u32);
+  return format (s, "lisp_gpe_tunnel%d", dev_instance);
+}
+
+static uword
+dummy_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
+                    vlib_frame_t * frame)
+{
+  clib_warning("you shouldn't be here, leaking buffers...");
+  return frame->n_vectors;
+}
+
+VNET_DEVICE_CLASS (lisp_gpe_device_class,static) = {
+  .name = "LISP_GPE",
+  .format_device_name = format_lisp_gpe_name,
+  .format_tx_trace = format_lisp_gpe_encap_trace,
+  .tx_function = dummy_interface_tx,
+};
+
+static uword
+dummy_set_rewrite (vnet_main_t * vnm, u32 sw_if_index, u32 l3_type,
+                   void * dst_address, void * rewrite, uword max_rewrite_bytes)
+{
+  return 0;
+}
+
+u8 *
+format_lisp_gpe_header_with_length (u8 * s, va_list * args)
+{
+  lisp_gpe_header_t * h = va_arg (*args, lisp_gpe_header_t *);
+  u32 max_header_bytes = va_arg (*args, u32);
+  u32 header_bytes;
+
+  header_bytes = sizeof (h[0]);
+  if (max_header_bytes != 0 && header_bytes > max_header_bytes)
+    return format (s, "gre-nsh header truncated");
+
+  s = format (s, "flags: ");
+#define _(n,v) if (h->flags & v) s = format (s, "%s ", #n);
+  foreach_lisp_gpe_flag_bit;
+#undef _
+
+  s = format (s, "\n  ver_res %d res %d next_protocol %d iid %d(%x)",
+              h->ver_res, h->res, h->next_protocol,
+              clib_net_to_host_u32 (h->iid),
+              clib_net_to_host_u32 (h->iid));
+  return s;
+}
+
+VNET_HW_INTERFACE_CLASS (lisp_gpe_hw_class) = {
+  .name = "LISP_GPE",
+  .format_header = format_lisp_gpe_header_with_length,
+  .set_rewrite = dummy_set_rewrite,
+};
+
+void
+vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
+                             u32 * hw_if_indexp)
+{
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+  vnet_main_t * vnm = lgm->vnet_main;
+  vnet_hw_interface_t * hi;
+  u32 hw_if_index = ~0;
+
+  if (a->is_add)
+    {
+      /* create hw lisp_gpe0 iface */
+      hw_if_index = vnet_register_interface (vnm, lisp_gpe_device_class.index, 0,
+                                             lisp_gpe_hw_class.index, 0);
+
+      hi = vnet_get_hw_interface (vnm, hw_if_index);
+      hi->output_node_index = lisp_gpe_encap_node.index;
+      lgm->lisp_gpe_hw_if_index = hw_if_index;
+
+      /* add lgpe_ip4_lookup as possible next_node for ip4 lookup */
+      lgm->ip4_lookup_next_lgpe_ip4_lookup = vlib_node_add_next (
+          vnm->vlib_main, ip4_lookup_node.index, lgpe_ip4_lookup_node.index);
+
+      /* insert default routes that points at lisp-gpe-encap */
+      add_del_lisp_gpe_default_route(/* is_v4 */1, 1);
+      add_del_lisp_gpe_default_route(/* is_v4 */0, 1);
+    }
+  else
+    {
+      vnet_sw_interface_set_flags (vnm, lgm->lisp_gpe_hw_if_index,
+                                   0 /* down */);
+    }
+}
+
+static clib_error_t *
+lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm,
+                                   unformat_input_t * input,
+                                   vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, * line_input = &_line_input;
+  u8 is_add = 1;
+  vnet_lisp_gpe_add_del_iface_args_t _a, * a = &_a;
+
+  /* Get a line of input. */
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "up"))
+        is_add = 1;
+      else if (unformat (line_input, "down"))
+        is_add = 0;
+      else
+        {
+          return clib_error_return (0, "parse error: '%U'",
+                                   format_unformat_error, line_input);
+        }
+    }
+
+  a->is_add = is_add;
+  vnet_lisp_gpe_add_del_iface (a, 0);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (add_del_lisp_gpe_iface_command, static) = {
+  .path = "lisp gpe iface",
+  .short_help = "lisp gpe iface [del]",
+  .function = lisp_gpe_add_del_iface_command_fn,
+};
+
+clib_error_t *
+lisp_gpe_init (vlib_main_t *vm)
+{
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+  clib_error_t * error = 0;
+
+  if ((error = vlib_call_init_function (vm, ip_main_init)))
+    return error;
+
+  if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
+    return error;
+
+  lgm->vnet_main = vnet_get_main();
+  lgm->vlib_main = vm;
+  lgm->im4 = &ip4_main;
+  lgm->lookup_main = &ip4_main.lookup_main;
   
-  ngm->vnet_main = vnet_get_main();
-  ngm->vlib_main = vm;
-  
-  ngm->lisp_gpe_tunnel_by_key 
-    = hash_create_mem (0, sizeof(lisp_gpe_tunnel_key_t), sizeof (uword));
+  mhash_init (&lgm->lisp_gpe_tunnel_by_key, sizeof(uword),
+              sizeof(lisp_gpe_tunnel_key_t));
 
   udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe, 
                          lisp_gpe_input_node.index, 1 /* is_ip4 */);
@@ -495,4 +1164,3 @@ clib_error_t *lisp_gpe_init (vlib_main_t *vm)
 }
 
 VLIB_INIT_FUNCTION(lisp_gpe_init);
-  

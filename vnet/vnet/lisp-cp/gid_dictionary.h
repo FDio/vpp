@@ -1,0 +1,72 @@
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef VNET_LISP_GPE_GID_DICTIONARY_H_
+#define VNET_LISP_GPE_GID_DICTIONARY_H_
+
+#include <vnet/vnet.h>
+#include <vnet/lisp-cp/lisp_types.h>
+#include <vppinfra/bihash_24_8.h>
+#include <vppinfra/bihash_template.h>
+
+#define GID_LOOKUP_MISS ((u32)~0)
+
+/* Default size of the ip4 hash table */
+#define IP4_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define IP4_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+
+/* Default size of the ip6 hash table */
+#define IP6_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define IP6_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+
+typedef struct
+{
+  BVT(clib_bihash) ip4_lookup_table;
+
+  /* bitmap/vector of mask widths to search */
+  uword * ip4_non_empty_dst_address_length_bitmap;
+  u8 * ip4_prefix_lengths_in_search_order;
+  ip4_address_t ip4_fib_masks[33];
+  u32 ip4_prefix_len_refcount[33];
+
+  /* ip4 lookup table config parameters */
+  u32 ip4_lookup_table_nbuckets;
+  uword ip4_lookup_table_size;
+
+  BVT(clib_bihash) ip6_lookup_table;
+
+  /* bitmap/vector of mask widths to search */
+  uword * ip6_non_empty_dst_address_length_bitmap;
+  u8 * ip6_prefix_lengths_in_search_order;
+  ip6_address_t ip6_fib_masks[129];
+  u64 ip6_prefix_len_refcount[129];
+
+  /* ip6 lookup table config parameters */
+  u32 ip6_lookup_table_nbuckets;
+  uword ip6_lookup_table_size;
+
+} gid_dictionary_t;
+
+u32
+gid_dictionary_add_del (gid_dictionary_t *db, gid_address_t *key, u32 value,
+			u8 is_add);
+
+u32
+gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t *key);
+
+void
+gid_dictionary_init (gid_dictionary_t * db);
+
+#endif /* VNET_LISP_GPE_GID_DICTIONARY_H_ */

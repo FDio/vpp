@@ -425,18 +425,37 @@ nobase_include_HEADERS +=			\
  vnet/nsh-vxlan-gpe/nsh_vxlan_gpe_error.def
 
 ########################################
+# LISP control plane: lisp-cp
+########################################
+
+libvnet_la_SOURCES +=				\
+ vnet/lisp-cp/lisp_types.c			\
+ vnet/lisp-cp/control.c				\
+ vnet/lisp-cp/gid_dictionary.c			\
+ vnet/lisp-cp/lisp_msg_serdes.c			\
+ vnet/lisp-cp/packets.c			
+
+nobase_include_HEADERS +=			\
+ vnet/lisp-cp/lisp_types.h			\
+ vnet/lisp-cp/packets.h				\
+ vnet/lisp-cp/gid_dictionary.h			\
+ vnet/lisp-cp/lisp_cp_messages.h		\
+ vnet/lisp-cp/lisp_msg_serdes.h			\
+ vnet/lisp-cp/control.h				
+
+########################################
 # Tunnel protocol: lisp-gpe
 ########################################
 
 libvnet_la_SOURCES +=				\
  vnet/lisp-gpe/lisp_gpe.c			\
  vnet/lisp-gpe/encap.c				\
- vnet/lisp-gpe/decap.c
+ vnet/lisp-gpe/decap.c				
 
 nobase_include_HEADERS +=			\
  vnet/lisp-gpe/lisp_gpe.h			\
  vnet/lisp-gpe/lisp_gpe_packet.h		\
- vnet/lisp-gpe/lisp_gpe_error.def
+ vnet/lisp-gpe/lisp_gpe_error.def		
 
 ########################################
 # DHCP client
