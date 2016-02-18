@@ -38,6 +38,7 @@ _ (67, dhcp_to_server)                          \
 _ (68, dhcp_to_client)                          \
 _ (500, ikev2)                                  \
 _ (4341, lisp_gpe)                              \
+_ (4342, lisp_cp)                          	\
 _ (4739, ipfix)                                 \
 _ (4789, vxlan)					\
 _ (4790, vxlan_gpe)				\
@@ -47,6 +48,7 @@ _ (6633, vpath_3)
 #define foreach_udp6_dst_port                   \
 _ (547, dhcpv6_to_server)                       \
 _ (546, dhcpv6_to_client)			\
+_ (4342, lisp_cp6)                          	\
 _ (6633, vpath6_3)
 
 typedef enum {

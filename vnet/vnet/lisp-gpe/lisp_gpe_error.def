@@ -12,5 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+ 
 lisp_gpe_error (DECAPSULATED, "good packets decapsulated")
 lisp_gpe_error (NO_SUCH_TUNNEL, "no such tunnel packets")
