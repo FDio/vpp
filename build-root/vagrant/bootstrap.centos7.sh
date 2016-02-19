@@ -8,6 +8,10 @@ yum groupinstall 'Development Tools' -y
 yum install openssl-devel -y
 yum install glibc-static -y
 
+# Install development tools
+yum install gdb -y
+yum install gdbserver -y
+
 # Install jdk and maven
 yum install -y java-1.8.0-openjdk-devel
 

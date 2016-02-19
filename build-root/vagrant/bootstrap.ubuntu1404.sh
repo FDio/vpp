@@ -10,7 +10,7 @@ apt-get upgrade -y
 sudo update-alternatives --install /bin/sh sh /bin/bash 100
 
 # Install build tools
-apt-get install -y build-essential autoconf automake bison libssl-dev ccache libtool git dkms debhelper emacs libganglia1-dev libapr1-dev libconfuse-dev git-review
+apt-get install -y build-essential autoconf automake bison libssl-dev ccache libtool git dkms debhelper emacs libganglia1-dev libapr1-dev libconfuse-dev git-review gdb gdbserver
 
 # Install other stuff
 # apt-get install -y qemu-kvm libvirt-bin ubuntu-vm-builder bridge-utils
