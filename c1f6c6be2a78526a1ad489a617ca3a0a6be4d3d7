@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_f3697826",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 1906,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-02-19T14:05:06Z",
+      "side": 1,
+      "message": "Can you reverse logic here, so 0\u003drandom, 1\u003dpre-configured. i.e. s/use_random_mac/use_preconf_mac/",
+      "range": {
+        "startLine": 1906,
+        "startChar": 11,
+        "endLine": 1906,
+        "endChar": 25
+      },
+      "revId": "c1f6c6be2a78526a1ad489a617ca3a0a6be4d3d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
