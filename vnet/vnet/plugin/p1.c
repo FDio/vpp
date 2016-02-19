@@ -110,7 +110,9 @@ _(rte_malloc_virt2phy)                          \
 _(rte_eal_get_configuration)                    \
 _(post_sw_interface_set_flags)                  \
 _(dpdk_get_admin_up_down_in_progress)           \
-_(efd_config)
+_(efd_config)                                   \
+_(dpdk_set_mac_address)                         \
+_(dpdk_set_mc_filter)
 #else
 #define foreach_dpdk_plugin_reference
 #endif
