@@ -424,6 +424,11 @@ void vnet_buffer_needs_dpdk_mb (vlib_buffer_t * b);
 
 void dpdk_set_next_node (dpdk_rx_next_t, char *);
 
+clib_error_t * dpdk_set_mac_address (vnet_hw_interface_t * hi, char * address);
+
+clib_error_t * dpdk_set_mc_filter (vnet_hw_interface_t * hi,
+                                   struct ether_addr mc_addr_vec[], int naddr);
+
 typedef void (*dpdk_io_thread_callback_t) (vlib_main_t *vm);
 
 void dpdk_io_thread (vlib_worker_thread_t * w,
