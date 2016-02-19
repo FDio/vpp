@@ -20,7 +20,8 @@ lib_LTLIBRARIES = libvlibapi.la libvlibmemory.la libvlibmemoryclient.la \
 
 libvlibapi_la_SOURCES = 			\
 	vlibapi/api.h				\
-	vlibapi/api_shared.c
+	vlibapi/api_shared.c			\
+	vlibapi/node_serialize.c
 
 nobase_include_HEADERS = vlibapi/api.h
 

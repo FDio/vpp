@@ -2809,3 +2809,28 @@ define cop_whitelist_enable_disable_reply {
     i32 retval;
 };
 
+/** \brief get_node_graph - get a copy of the vpp node graph
+    including the current set of graph arcs.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define get_node_graph {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief get_node_graph_reply
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param reply_in_shmem - result from vlib_node_serialize, in shared
+    memory. Process with vlib_node_unserialize, remember to switch
+    heaps and free the result.
+*/
+
+define get_node_graph_reply {
+    u32 context;
+    i32 retval;
+    u64 reply_in_shmem;
+};

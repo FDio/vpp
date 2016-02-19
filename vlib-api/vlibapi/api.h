@@ -215,6 +215,10 @@ int vl_msg_api_pd_handler (void *mp, int rv);
 void vl_msg_api_set_first_available_msg_id (u16 first_avail);
 u16 vl_msg_api_get_msg_ids (char * name, int n);
 
+/* node_serialize.c prototypes */
+u8 * vlib_node_serialize (vlib_node_main_t *nm, u8 * vector);
+vlib_node_t ** vlib_node_unserialize (u8 * vector);
+
 #define VLIB_API_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,api_init)
 
 #endif /* included_api_h */

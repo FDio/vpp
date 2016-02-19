@@ -310,7 +310,8 @@ _(MAP_DOMAIN_DUMP, map_domain_dump)                                     \
 _(MAP_RULE_DUMP, map_rule_dump)						\
 _(MAP_SUMMARY_STATS, map_summary_stats)					\
 _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable)		\
-_(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)
+_(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)		\
+_(GET_NODE_GRAPH, get_node_graph)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -4905,6 +4906,35 @@ static void vl_api_cop_whitelist_enable_disable_t_handler
     REPLY_MACRO(VL_API_COP_WHITELIST_ENABLE_DISABLE_REPLY);
 }
 
+static void vl_api_get_node_graph_t_handler
+(vl_api_get_node_graph_t * mp)
+{
+    int rv = 0;
+    u8 * vector = 0;
+    api_main_t * am = &api_main;
+    vlib_main_t * vm = vlib_get_main();
+    void * oldheap;
+    vl_api_get_node_graph_reply_t * rmp;
+    
+    pthread_mutex_lock (&am->vlib_rp->mutex);
+    oldheap = svm_push_data_heap (am->vlib_rp);
+    
+    /* 
+     * Keep the number of memcpy ops to a minimum (e.g. 1).
+     * The current size of the serialized vector is
+     * slightly under 4K.
+     */
+    vec_validate (vector, 4095);
+    vec_reset_length (vector);
+
+    vector = vlib_node_serialize (&vm->node_main, vector);
+    
+    svm_pop_heap (oldheap);
+    pthread_mutex_unlock (&am->vlib_rp->mutex);
+
+    REPLY_MACRO2(VL_API_GET_NODE_GRAPH_REPLY,
+                 rmp->reply_in_shmem = (uword) vector);
+}
 
 #define BOUNCE_HANDLER(nn)                                              \
 static void vl_api_##nn##_t_handler (                                   \

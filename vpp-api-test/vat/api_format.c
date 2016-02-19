@@ -635,10 +635,23 @@ static void vl_api_cli_reply_t_handler_json
 {
     vat_main_t * vam = &vat_main;
     vat_json_node_t node;
+    api_main_t * am = &api_main;
+    void * oldheap;
+    u8 * reply;
 
     vat_json_init_object(&node);
     vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
-    vat_json_object_add_uint(&node, "reply_in_shmem", ntohl(mp->reply_in_shmem));
+    vat_json_object_add_uint(&node, "reply_in_shmem", 
+                             ntohl(mp->reply_in_shmem));
+    /* Toss the shared-memory original... */
+    pthread_mutex_lock (&am->vlib_rp->mutex);
+    oldheap = svm_push_data_heap (am->vlib_rp);
+
+    reply = (u8 *)(mp->reply_in_shmem);
+    vec_free (reply);
+    
+    svm_pop_heap (oldheap);
+    pthread_mutex_unlock (&am->vlib_rp->mutex);
 
     vat_json_print(vam->ofp, &node);
     vat_json_free(&node);
@@ -1723,6 +1736,94 @@ static void vl_api_get_first_msg_id_reply_t_handler_json
     vam->result_ready = 1;
 }
 
+static void vl_api_get_node_graph_reply_t_handler
+(vl_api_get_node_graph_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    api_main_t * am = &api_main;
+    i32 retval = ntohl(mp->retval);
+    u8 * pvt_copy, * reply;
+    void * oldheap;
+    vlib_node_t * node;
+    int i;
+    
+    if (vam->async_mode) {
+        vam->async_errors += (retval < 0);
+    } else {
+        vam->retval = retval;
+        vam->result_ready = 1;
+    }
+
+    /* "Should never happen..." */
+    if (retval != 0)
+        return;
+
+    reply = (u8 *)(mp->reply_in_shmem);
+    pvt_copy = vec_dup (reply);
+
+    /* Toss the shared-memory original... */
+    pthread_mutex_lock (&am->vlib_rp->mutex);
+    oldheap = svm_push_data_heap (am->vlib_rp);
+
+    vec_free (reply);
+    
+    svm_pop_heap (oldheap);
+    pthread_mutex_unlock (&am->vlib_rp->mutex);
+
+    if (vam->graph_nodes) {
+        hash_free (vam->graph_node_index_by_name);
+
+        for (i = 0; i < vec_len (vam->graph_nodes); i++) {
+            node = vam->graph_nodes[i];
+            vec_free (node->name);
+            vec_free (node->next_nodes);
+            vec_free (node);
+        }
+        vec_free(vam->graph_nodes);
+    }
+
+    vam->graph_node_index_by_name = hash_create_string (0, sizeof(uword));
+    vam->graph_nodes = vlib_node_unserialize (pvt_copy);
+    vec_free (pvt_copy);
+
+    for (i = 0; i < vec_len (vam->graph_nodes); i++) {
+        node = vam->graph_nodes[i];
+        hash_set_mem (vam->graph_node_index_by_name, node->name, i);
+    }
+}
+
+static void vl_api_get_node_graph_reply_t_handler_json
+(vl_api_get_node_graph_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    api_main_t * am = &api_main;
+    void * oldheap;
+    vat_json_node_t node;
+    u8 * reply;
+
+    /* $$$$ make this real? */
+    vat_json_init_object(&node);
+    vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
+    vat_json_object_add_uint(&node, "reply_in_shmem", mp->reply_in_shmem);
+
+    reply = (u8 *)(mp->reply_in_shmem);
+
+    /* Toss the shared-memory original... */
+    pthread_mutex_lock (&am->vlib_rp->mutex);
+    oldheap = svm_push_data_heap (am->vlib_rp);
+
+    vec_free (reply);
+    
+    svm_pop_heap (oldheap);
+    pthread_mutex_unlock (&am->vlib_rp->mutex);
+
+    vat_json_print(vam->ofp, &node);
+    vat_json_free(&node);
+
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
@@ -1946,7 +2047,8 @@ _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
 _(WANT_STATS_REPLY, want_stats_reply)					\
 _(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
 _(COP_INTERFACE_ENABLE_DISABLE_REPLY, cop_interface_enable_disable_reply) \
-_(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply)
+_(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply) \
+_(GET_NODE_GRAPH_REPLY, get_node_graph_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -8488,6 +8590,19 @@ static int api_cop_whitelist_enable_disable (vat_main_t * vam)
     W;
 }
 
+static int api_get_node_graph (vat_main_t * vam)
+{
+    vl_api_get_node_graph_t * mp;
+    f64 timeout;
+
+    M(GET_NODE_GRAPH, get_node_graph);
+
+    /* send it... */
+    S;
+    /* Wait for the reply */
+    W;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -8622,6 +8737,75 @@ static int dump_macro_table (vat_main_t * vam)
                  sort_me[i].value);
     return 0;
 }
+
+static int dump_node_table (vat_main_t * vam)
+{
+    int i, j;
+    vlib_node_t * node, * next_node;
+
+    if (vec_len (vam->graph_nodes) == 0) {
+        fformat (vam->ofp, "Node table empty, issue get_node_graph...\n");
+        return 0;
+    }
+
+    for (i = 0; i < vec_len (vam->graph_nodes); i++) {
+        node = vam->graph_nodes[i];
+        fformat (vam->ofp, "[%d] %s\n", i, node->name);
+        for (j = 0; j < vec_len (node->next_nodes); j++) {
+            if (node->next_nodes[j] != ~0) {
+                next_node = vam->graph_nodes[node->next_nodes[j]];
+                fformat (vam->ofp, "  [%d] %s\n", j, next_node->name);
+            }
+        }
+    }
+    return 0;
+}
+
+static int search_node_table (vat_main_t * vam)
+{
+    unformat_input_t * line_input = vam->input;
+    u8 * node_to_find;
+    int j;
+    vlib_node_t * node, * next_node;
+    uword * p;
+
+    if (vam->graph_node_index_by_name == 0) {
+        fformat (vam->ofp, "Node table empty, issue get_node_graph...\n");
+        return 0;
+    }
+
+    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (line_input, "%s", &node_to_find)) {
+            vec_add1 (node_to_find, 0);
+            p = hash_get_mem (vam->graph_node_index_by_name, node_to_find);
+            if (p == 0) {
+                fformat (vam->ofp, "%s not found...\n", node_to_find);
+                goto out;
+            }
+            node = vam->graph_nodes[p[0]];
+            fformat (vam->ofp, "[%d] %s\n", p[0], node->name);
+            for (j = 0; j < vec_len (node->next_nodes); j++) {
+                if (node->next_nodes[j] != ~0) {
+                    next_node = vam->graph_nodes[node->next_nodes[j]];
+                    fformat (vam->ofp, "  [%d] %s\n", j, next_node->name);
+                }
+            }
+        }
+            
+        else {
+            clib_warning ("parse error '%U'", format_unformat_error, 
+                          line_input);
+            return -99;
+        }
+
+    out:
+        vec_free(node_to_find);
+        
+    }
+
+    return 0;        
+}
+
 
 static int script (vat_main_t * vam)
 {
@@ -8870,7 +9054,8 @@ _(want_stats,"enable|disable")                                          \
 _(get_first_msg_id, "client <name>")					\
 _(cop_interface_enable_disable, "<intfc> | sw_if_index <nn> [disable]") \
 _(cop_whitelist_enable_disable, "<intfc> | sw_if_index <nn>\n"		\
-  "fib-id <nn> [ip4][ip6][default]")
+  "fib-id <nn> [ip4][ip6][default]")					\
+_(get_node_graph, " ")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
@@ -8881,11 +9066,13 @@ _(dump_ipv4_table, "usage: dump_ipv4_table")                    \
 _(dump_ipv6_table, "usage: dump_ipv6_table")                    \
 _(dump_stats_table, "usage: dump_stats_table")                  \
 _(dump_macro_table, "usage: dump_macro_table ")                 \
+_(dump_node_table, "usage: dump_node_table")			\
 _(echo, "usage: echo <message>")				\
 _(exec, "usage: exec <vpe-debug-CLI-command>")                  \
 _(help, "usage: help")                                          \
 _(q, "usage: quit")                                             \
 _(quit, "usage: quit")                                          \
+_(search_node_table, "usage: search_node_table <name>...")	\
 _(set, "usage: set <variable-name> <value>")                    \
 _(script, "usage: script <file-name>")                          \
 _(unset, "usage: unset <variable-name>")
