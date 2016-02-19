@@ -154,25 +154,28 @@ handoff_dispatch_node_fn (vlib_main_t * vm,
           next0 = vnet_buffer(b0)->io_handoff.next_index;
           next1 = vnet_buffer(b1)->io_handoff.next_index;
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+          if (PREDICT_FALSE(vm->trace_main.trace_active_hint))
             {
-              vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
-              handoff_dispatch_trace_t *t =
-                vlib_add_trace (vm, node, b0, sizeof (*t));
-              sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-              t->sw_if_index = sw_if_index0;
-              t->next_index = next0;
-              t->buffer_index = bi0;
-            }
-          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
-            {
-              vlib_trace_buffer (vm, node, next1, b1, /* follow_chain */ 0);
-              handoff_dispatch_trace_t *t =
-                vlib_add_trace (vm, node, b1, sizeof (*t));
-              sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
-              t->sw_if_index = sw_if_index1;
-              t->next_index = next1;
-              t->buffer_index = bi1;
+            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+              {
+                vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
+                handoff_dispatch_trace_t *t =
+                  vlib_add_trace (vm, node, b0, sizeof (*t));
+                sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+                t->sw_if_index = sw_if_index0;
+                t->next_index = next0;
+                t->buffer_index = bi0;
+              }
+            if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
+              {
+                vlib_trace_buffer (vm, node, next1, b1, /* follow_chain */ 0);
+                handoff_dispatch_trace_t *t =
+                  vlib_add_trace (vm, node, b1, sizeof (*t));
+                sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
+                t->sw_if_index = sw_if_index1;
+                t->next_index = next1;
+                t->buffer_index = bi1;
+              }
             }
             
           /* verify speculative enqueues, maybe switch current next frame */
@@ -200,16 +203,19 @@ handoff_dispatch_node_fn (vlib_main_t * vm,
 
           next0 = vnet_buffer(b0)->io_handoff.next_index;
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+          if (PREDICT_FALSE(vm->trace_main.trace_active_hint))
             {
-              vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
-              handoff_dispatch_trace_t *t =
-                vlib_add_trace (vm, node, b0, sizeof (*t));
-              sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-              t->sw_if_index = sw_if_index0;
-              t->next_index = next0;
-              t->buffer_index = bi0;
-           }
+            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+              {
+                vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
+                handoff_dispatch_trace_t *t =
+                  vlib_add_trace (vm, node, b0, sizeof (*t));
+                sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+                t->sw_if_index = sw_if_index0;
+                t->next_index = next0;
+                t->buffer_index = bi0;
+              }
+            }
 
           /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

@@ -76,6 +76,9 @@ typedef struct {
 #define FILTER_FLAG_EXCLUDE 2
   u32 filter_count;
 
+  /* set on trace add, cleared on clear trace */
+  u32 trace_active_hint;
+
   /* Per node trace counts. */
   vlib_trace_node_t * nodes;
 } vlib_trace_main_t;
