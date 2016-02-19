@@ -246,6 +246,7 @@ typedef struct {
   dpdk_port_type_t port_type;
 
   dpdk_efd_agent_t efd_agent;
+  u8 need_txlock; /* Used by VNET_DPDK_DEV_VHOST_USER */
 } dpdk_device_t;
 
 #define MAX_NELTS 32

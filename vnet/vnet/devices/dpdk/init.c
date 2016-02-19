@@ -215,6 +215,7 @@ dpdk_device_lock_init(dpdk_device_t * xd)
                                              CLIB_CACHE_LINE_BYTES);
       memset ((void *) xd->lockp[q], 0, CLIB_CACHE_LINE_BYTES);
   }
+  xd->need_txlock = 1;
 }
 
 void
@@ -226,6 +227,7 @@ dpdk_device_lock_free(dpdk_device_t * xd)
     clib_mem_free((void *) xd->lockp[q]);
   vec_free(xd->lockp);
   xd->lockp = 0;
+  xd->need_txlock = 0;
 }
 
 static clib_error_t *

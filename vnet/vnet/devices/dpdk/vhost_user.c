@@ -198,7 +198,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
   int num_qpairs = 1;
 
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
-  num_qpairs = dm->use_rss < 1 ? 1 : dm->use_rss;
+  num_qpairs = dm->use_rss < 1 ? 1 : tm->n_vlib_mains;
 #endif
 
   dpdk_device_t * xd = NULL;
@@ -242,9 +242,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
 
       // reset lockp
       dpdk_device_lock_free(xd);
-
-      if (xd->tx_q_used < tm->n_vlib_mains)
-        dpdk_device_lock_init(xd);
+      dpdk_device_lock_init(xd);
 
       // reset tx vectors
       for (j = 0; j < tm->n_vlib_mains; j++)
@@ -301,8 +299,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
           xd->vu_vhost_dev.virtqueue[j]->backend = -1; 
       }
 
-      if (xd->tx_q_used < dm->input_cpu_count)
-        dpdk_device_lock_init(xd);
+      dpdk_device_lock_init(xd);
 
       DBG_SOCK("tm->n_vlib_mains: %d. TX %d, RX: %d, num_qpairs: %d, Lock: %p",
         tm->n_vlib_mains, xd->tx_q_used, xd->rx_q_used, num_qpairs, xd->lockp);
@@ -705,6 +702,17 @@ int dpdk_vhost_user_set_vring_enable(u32 hw_if_index, u8 idx, int enable)
    * is kicked.
    */
   vui->vrings[idx].enabled = enable; /* Save local copy */
+
+  int numqs = xd->vu_vhost_dev.virt_qp_nb * VIRTIO_QNUM;
+  while (numqs--) {
+    if (! vui->vrings[numqs].enabled)
+        break;
+  }
+
+  if (numqs == -1) /* All Qs are enabled */
+    xd->need_txlock = 0;
+  else
+    xd->need_txlock = 1;
 
   vq = xd->vu_vhost_dev.virtqueue[idx];
   if (vq->desc && vq->avail && vq->used)

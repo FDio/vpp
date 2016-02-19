@@ -221,7 +221,8 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
        * This device only supports one TX queue,
        * and we're running multi-threaded...
        */
-      if (PREDICT_FALSE(xd->lockp != 0))
+      if (PREDICT_FALSE(xd->dev_type != VNET_DPDK_DEV_VHOST_USER &&
+        xd->lockp != 0))
         {
           queue_id = queue_id % xd->tx_q_used;
           while (__sync_lock_test_and_set (xd->lockp[queue_id], 1))
@@ -264,8 +265,12 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
       else if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
         {
           u32 offset = 0;
+          if (xd->need_txlock) {
+            queue_id = 0;
+            while (__sync_lock_test_and_set (xd->lockp[queue_id], 1));
+          }
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
-          if (PREDICT_TRUE(xd->lockp == NULL)) {
+          else {
               dpdk_device_and_queue_t * dq;
               vec_foreach (dq, dm->devices_by_cpu[vm->cpu_index])
               {
@@ -274,8 +279,6 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
               }
               assert (dq);
               offset = dq->queue_id * VIRTIO_QNUM;
-          } else {
-              offset = queue_id * VIRTIO_QNUM;
           }
 #endif
           if (PREDICT_TRUE(tx_head > tx_tail)) 
@@ -331,6 +334,9 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
 
               n_retry = (rv == DPDK_TX_RING_SIZE - tx_tail) ? 1 : 0;
             }
+
+          if (xd->need_txlock)
+            *xd->lockp[queue_id] = 0;
         }
 #if RTE_LIBRTE_KNI
       else if (xd->dev_type == VNET_DPDK_DEV_KNI)
@@ -370,7 +376,8 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
           rv = 0;
         }
 
-      if (PREDICT_FALSE(xd->lockp != 0))
+      if (PREDICT_FALSE(xd->dev_type != VNET_DPDK_DEV_VHOST_USER &&
+            xd->lockp != 0))
           *xd->lockp[queue_id] = 0;
 
       if (PREDICT_FALSE(rv < 0))
