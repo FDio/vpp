@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_33400056",
+        "filename": "vnet/vnet/devices/dpdk/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 355,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-19T16:11:11Z",
+      "side": 1,
+      "message": "Does this change cause a measurable performance dip?",
+      "range": {
+        "startLine": 355,
+        "startChar": 0,
+        "endLine": 355,
+        "endChar": 3
+      },
+      "revId": "557983e8b72b594edb9e0e81fb0cbf50ba491277",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
