@@ -117,11 +117,43 @@
   _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")          \
   _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")
 
-#define foreach_dpdk_pkt_type                                   \
-  _ (RTE_PTYPE_L3_IPV4, "Packet with IPv4 header")              \
-  _ (RTE_PTYPE_L3_IPV4_EXT, "Packet with extended IPv4 header") \
-  _ (RTE_PTYPE_L3_IPV6, "Packet with IPv6 header")              \
-  _ (RTE_PTYPE_L3_IPV6_EXT, "Packet with extended IPv6 header")
+#define foreach_dpdk_pkt_type                                           \
+  _ (L2, ETHER, "Ethernet packet")                                      \
+  _ (L2, ETHER_TIMESYNC, "Ethernet packet for time sync")               \
+  _ (L2, ETHER_ARP, "ARP packet")                                       \
+  _ (L2, ETHER_LLDP, "LLDP (Link Layer Discovery Protocol) packet")     \
+  _ (L3, IPV4, "IPv4 packet without extension headers")                 \
+  _ (L3, IPV4_EXT, "IPv4 packet with extension headers")                \
+  _ (L3, IPV4_EXT_UNKNOWN, "IPv4 packet with or without extension headers") \
+  _ (L3, IPV6, "IPv6 packet without extension headers")                 \
+  _ (L3, IPV6_EXT, "IPv6 packet with extension headers")                \
+  _ (L3, IPV6_EXT_UNKNOWN, "IPv6 packet with or without extension headers") \
+  _ (L4, TCP, "TCP packet")                                             \
+  _ (L4, UDP, "UDP packet")                                             \
+  _ (L4, FRAG, "Fragmented IP packet")                                  \
+  _ (L4, SCTP, "SCTP (Stream Control Transmission Protocol) packet")    \
+  _ (L4, ICMP, "ICMP packet")                                           \
+  _ (L4, NONFRAG, "Non-fragmented IP packet")                           \
+  _ (TUNNEL, GRE, "GRE tunneling packet")                               \
+  _ (TUNNEL, VXLAN, "VXLAN tunneling packet")                           \
+  _ (TUNNEL, NVGRE, "NVGRE Tunneling packet")                           \
+  _ (TUNNEL, GENEVE, "GENEVE Tunneling packet")                         \
+  _ (TUNNEL, GRENAT, "Teredo, VXLAN or GRE Tunneling packet")           \
+  _ (INNER_L2, ETHER, "Inner Ethernet packet")                          \
+  _ (INNER_L2, ETHER_VLAN, "Inner Ethernet packet with VLAN")           \
+  _ (INNER_L3, IPV4, "Inner IPv4 packet without extension headers")     \
+  _ (INNER_L3, IPV4_EXT, "Inner IPv4 packet with extension headers")    \
+  _ (INNER_L3, IPV4_EXT_UNKNOWN, "Inner IPv4 packet with or without extension headers") \
+  _ (INNER_L3, IPV6, "Inner IPv6 packet without extension headers")     \
+  _ (INNER_L3, IPV6_EXT, "Inner IPv6 packet with extension headers")    \
+  _ (INNER_L3, IPV6_EXT_UNKNOWN, "Inner IPv6 packet with or without extension headers") \
+  _ (INNER_L4, TCP, "Inner TCP packet")                                 \
+  _ (INNER_L4, UDP, "Inner UDP packet")                                 \
+  _ (INNER_L4, FRAG, "Inner fagmented IP packet")                       \
+  _ (INNER_L4, SCTP, "Inner SCTP (Stream Control Transmission Protocol) packet") \
+  _ (INNER_L4, ICMP, "Inner ICMP packet")                               \
+  _ (INNER_L4, NONFRAG, "Inner non-fragmented IP packet")
+
 #else
 #define foreach_dpdk_pkt_rx_offload_flag                                \
   _ (PKT_RX_VLAN_PKT, "RX packet is a 802.1q VLAN packet")              \
@@ -160,13 +192,13 @@ static inline u8 * format_dpdk_pkt_types (u8 * s, va_list * va)
 
   s = format (s, "Packet Types");
 
-#define _(F, S)             \
-  if (*pkt_types & F)           \
-    {               \
-      s = format (s, "\n%U%s (0x%04x) %s",      \
-      format_white_space, indent, #F, F, S);  \
+#define _(L, F, S)             \
+  if ((*pkt_types & RTE_PTYPE_##L##_MASK) == RTE_PTYPE_##L##_##F)           \
+    {                                                                       \
+      s = format (s, "\n%U%s (0x%04x) %s", format_white_space, indent,      \
+                     "RTE_PTYPE_" #L "_" #F, RTE_PTYPE_##L##_##F, S);       \
     }
-  
+
   foreach_dpdk_pkt_type
 
 #undef _
