@@ -352,7 +352,7 @@ dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t *xd, struct rte_mbuf *mb,
 	{
 	  n0 = DPDK_RX_NEXT_ETHERNET_INPUT;
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 1, 0, 0)
-	  is0_ip4 = (mb->packet_type & (RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L3_IPV4_EXT)) != 0;
+	  is0_ip4 = RTE_ETH_IS_IPV4_HDR(mb->packet_type) != 0;
 #else
 	  is0_ip4 = (mb_flags & (PKT_RX_IPV4_HDR | PKT_RX_IPV4_HDR_EXT)) != 0;
 #endif
@@ -362,8 +362,7 @@ dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t *xd, struct rte_mbuf *mb,
 	  else
 	    {
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 1, 0, 0)
-	      is0_ip6 =
-              (mb->packet_type & (RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L3_IPV6_EXT)) != 0;
+	      is0_ip6 = RTE_ETH_IS_IPV6_HDR(mb->packet_type) != 0;
 #else
 	      is0_ip6 = 
 		      (mb_flags & (PKT_RX_IPV6_HDR | PKT_RX_IPV6_HDR_EXT)) != 0;
