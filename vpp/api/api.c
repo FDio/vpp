@@ -3551,7 +3551,8 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t *mp)
 
     rv = dpdk_vhost_user_create_if(vnm, vm, (char *)mp->sock_filename,
                               mp->is_server, &sw_if_index, (u64)~0,
-                              mp->renumber, ntohl(mp->custom_dev_instance));
+                              mp->renumber, ntohl(mp->custom_dev_instance),
+                              (mp->use_custom_mac)?mp->mac_address:NULL);
 
     REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_REPLY,
     ({

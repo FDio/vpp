@@ -50,7 +50,7 @@ typedef enum {
 int vhost_user_create_if(vnet_main_t * vnm, vlib_main_t * vm, 
     const char * sock_filename, u8 is_server,
     u32 * sw_if_index, u64 feature_mask,
-    u8 renumber, u32 custom_dev_instance);
+    u8 renumber, u32 custom_dev_instance, u8 *hwaddr);
 int vhost_user_modify_if(vnet_main_t * vnm, vlib_main_t * vm,
     const char * sock_filename, u8 is_server,
     u32 sw_if_index, u64 feature_mask,

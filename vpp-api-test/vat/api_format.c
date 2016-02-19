@@ -6893,6 +6893,8 @@ static int api_create_vhost_user_if (vat_main_t * vam)
     u8 is_server = 0;
     u8 file_name_set = 0;
     u32 custom_dev_instance = ~0;
+    u8 hwaddr[6];
+    u8 use_custom_mac = 0;
 
     while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
       if (unformat (i, "socket %s", &file_name)) {
@@ -6900,6 +6902,8 @@ static int api_create_vhost_user_if (vat_main_t * vam)
       }
       else if (unformat (i, "renumber %"PRIu32, &custom_dev_instance))
         ;
+      else if (unformat (i, "mac %U", unformat_ethernet_address, hwaddr))
+        use_custom_mac = 1;
       else if (unformat (i, "server"))
         is_server = 1;
       else
@@ -6926,6 +6930,8 @@ static int api_create_vhost_user_if (vat_main_t * vam)
         mp->renumber = 1;
         mp->custom_dev_instance = ntohl(custom_dev_instance);
     }
+    mp->use_custom_mac = use_custom_mac;
+    memcpy(mp->mac_address, hwaddr, 6);
 
     S; W;
     /* NOTREACHED */
@@ -8993,7 +8999,8 @@ _(l2_interface_vlan_tag_rewrite,                                        \
   "[disable][push-[1|2]][pop-[1|2]][translate-1-[1|2]] \n"              \
   "[translate-2-[1|2]] [push_dot1q 0] tag1 <nn> tag2 <nn>")             \
 _(create_vhost_user_if,                                                 \
-        "socket <filename> [server] [renumber <dev_instance>]")         \
+        "socket <filename> [server] [renumber <dev_instance>] "         \
+        "[mac <mac_address>]")                                          \
 _(modify_vhost_user_if,                                                 \
         "<intfc> | sw_if_index <nn> socket <filename>\n"                \
         "[server] [renumber <dev_instance>]")                           \
