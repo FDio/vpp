@@ -121,6 +121,8 @@ clear_trace_buffer (void)
     tm = &this_vlib_main->trace_main;
     mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
 
+    tm->trace_active_hint = 0;
+
     for (i = 0; i < vec_len (tm->trace_buffer_pool); i++)
       if (! pool_is_free_index (tm->trace_buffer_pool, i))
         vec_free (tm->trace_buffer_pool[i]);
@@ -368,6 +370,8 @@ cli_add_trace_buffer (vlib_main_t * vm,
   ({
     void *oldheap;
     tm = &this_vlib_main->trace_main;
+
+    tm->trace_active_hint = 1;
 
     oldheap = clib_mem_set_heap (this_vlib_main->heap_base);
 
