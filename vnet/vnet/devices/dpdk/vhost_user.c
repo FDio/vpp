@@ -700,16 +700,16 @@ int dpdk_vhost_user_set_vring_enable(u32 hw_if_index, u8 idx, int enable)
   vui->vrings[idx].enabled = enable; /* Save local copy */
 
   int numqs = xd->vu_vhost_dev.virt_qp_nb * VIRTIO_QNUM;
-  while (numqs) {
+  while (numqs--) {
     if (! vui->vrings[numqs].enabled)
         break;
   }
 
-  if (numqs == 0) /* All Qs are enabled */
+  if (numqs == -1) /* All Qs are enabled */
     xd->need_txlock = 0;
   else
     xd->need_txlock = 1;
-  
+
   vq = xd->vu_vhost_dev.virtqueue[idx];
   if (vq->desc && vq->avail && vq->used)
     xd->vu_vhost_dev.virtqueue[idx]->enabled = enable;
