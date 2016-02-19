@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_ee362fe7",
+        "filename": "vnet/vnet/devices/dpdk/vhost_user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 708,
+      "author": {
+        "id": 13
+      },
+      "writtenOn": "2016-02-19T18:28:56Z",
+      "side": 1,
+      "message": "Dangling white space.",
+      "range": {
+        "startLine": 708,
+        "startChar": 0,
+        "endLine": 708,
+        "endChar": 2
+      },
+      "revId": "8c1416f12e1db4d7cb30dc78a832aa66472dea2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
