@@ -43,6 +43,40 @@ static char * dpdk_tx_func_error_strings[] = {
 #undef _
 };
 
+clib_error_t *
+dpdk_set_mac_address (vnet_hw_interface_t * hi, char * address)
+{
+   int error;
+   dpdk_main_t * dm = &dpdk_main;
+   dpdk_device_t * xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+
+   error=rte_eth_dev_default_mac_addr_set(xd->device_index,
+                                          (struct ether_addr *) address);
+
+   if (error) {
+     return clib_error_return (0, "mac address set failed: %d", error);
+   } else {
+     return NULL;
+  }
+}
+
+clib_error_t *
+dpdk_set_mc_filter (vnet_hw_interface_t * hi,
+                    struct ether_addr mc_addr_vec[], int naddr)
+{
+  int error;
+  dpdk_main_t * dm = &dpdk_main;
+  dpdk_device_t * xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+
+  error=rte_eth_dev_set_mc_addr_list(xd->device_index, mc_addr_vec, naddr);
+
+  if (error) {
+    return clib_error_return (0, "mc addr list failed: %d", error);
+  } else {
+    return NULL;
+  }
+}
+
 static struct rte_mbuf * dpdk_replicate_packet_mb (vlib_buffer_t * b)
 {
   vlib_main_t * vm = vlib_get_main();
