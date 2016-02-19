@@ -118,10 +118,10 @@
   _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")
 
 #define foreach_dpdk_pkt_type                                   \
-  _ (RTE_PTYPE_L3_IPV4, "Packet with IPv4 header")              \
-  _ (RTE_PTYPE_L3_IPV4_EXT, "Packet with extended IPv4 header") \
-  _ (RTE_PTYPE_L3_IPV6, "Packet with IPv6 header")              \
-  _ (RTE_PTYPE_L3_IPV6_EXT, "Packet with extended IPv6 header")
+  _ (L3, IPV4, "Packet with IPv4 header")              \
+  _ (L3, IPV4_EXT, "Packet with extended IPv4 header") \
+  _ (L3, IPV6, "Packet with IPv6 header")              \
+  _ (L3, IPV6_EXT, "Packet with extended IPv6 header")
 #else
 #define foreach_dpdk_pkt_rx_offload_flag                                \
   _ (PKT_RX_VLAN_PKT, "RX packet is a 802.1q VLAN packet")              \
@@ -160,11 +160,11 @@ static inline u8 * format_dpdk_pkt_types (u8 * s, va_list * va)
 
   s = format (s, "Packet Types");
 
-#define _(F, S)             \
-  if (*pkt_types & F)           \
+#define _(L, F, S)             \
+  if ((*pkt_types & RTE_PTYPE_##L##_MASK) == RTE_PTYPE_##L##_##F)           \
     {               \
       s = format (s, "\n%U%s (0x%04x) %s",      \
-      format_white_space, indent, #F, F, S);  \
+      format_white_space, indent, "RTE_PTYPE_" #L "_" #F, RTE_PTYPE_##L##_##F, S);  \
     }
   
   foreach_dpdk_pkt_type
