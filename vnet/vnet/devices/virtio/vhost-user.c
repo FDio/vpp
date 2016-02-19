@@ -1429,14 +1429,16 @@ static vhost_user_intf_t *vhost_user_vui_new()
 
 // create ethernet interface for vhost user intf
 static void vhost_user_create_ethernet(vnet_main_t * vnm, vlib_main_t * vm,
-                                       vhost_user_intf_t *vui)
+                                       vhost_user_intf_t *vui, u8 *hwaddress)
 {
   vhost_user_main_t * vum = &vhost_user_main;
   u8 hwaddr[6];
   clib_error_t * error;
 
   /* create hw and sw interface */
-  {
+  if (hwaddress) {
+    memcpy(hwaddr, hwaddress, 6);
+  } else {
     f64 now = vlib_time_now(vm);
     u32 rnd;
     rnd = (u32) (now * 1e6);
@@ -1529,7 +1531,8 @@ int vhost_user_create_if(vnet_main_t * vnm, vlib_main_t * vm,
                          u8 is_server,
                          u32 * sw_if_index,
                          u64 feature_mask,
-                         u8 renumber, u32 custom_dev_instance)
+                         u8 renumber, u32 custom_dev_instance,
+                         u8 *hwaddr)
 {
   vhost_user_intf_t * vui = NULL;
   dpdk_main_t * dm = &dpdk_main;
@@ -1553,7 +1556,7 @@ int vhost_user_create_if(vnet_main_t * vnm, vlib_main_t * vm,
   vui = vhost_user_vui_new ();
   ASSERT(vui != NULL);
 
-  vhost_user_create_ethernet (vnm, vm, vui);
+  vhost_user_create_ethernet (vnm, vm, vui, hwaddr);
   vhost_user_vui_init (vnm, vui, sockfd, sock_filename, is_server,
                        feature_mask, &sw_if_idx);
 
@@ -1626,6 +1629,8 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
   u64 feature_mask = (u64)~0;
   u8 renumber = 0;
   u32 custom_dev_instance = ~0;
+  u8 hwaddr[6];
+  u8 *hw = NULL;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -1638,6 +1643,8 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
       is_server = 1;
     else if (unformat (line_input, "feature-mask 0x%llx", &feature_mask))
       ;
+    else if (unformat (line_input, "hwaddr %U", unformat_ethernet_address, hwaddr))
+          hw = hwaddr;
     else if (unformat (line_input, "renumber %d", &custom_dev_instance)) {
         renumber = 1;
     }
@@ -1651,7 +1658,7 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 
   vhost_user_create_if(vnm, vm, (char *)sock_filename,
                        is_server, &sw_if_index, feature_mask,
-                       renumber, custom_dev_instance);
+                       renumber, custom_dev_instance, hw);
 
   vec_free(sock_filename);
 
