@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_0ecef383",
+        "filename": "vnet/vnet/ip/udp_local.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-20T15:02:45Z",
+      "side": 1,
+      "message": "It looks like the single and dual-loop codes are subtly different. That\u0027s generally not a good idea.\n\nDid you check the assembly code to see if this form is equivalent to:\n\nerror0 \u003d next0 \u003d 0;\nif (PREDICT_FALSE (clib_net_to_host_u16(h0-\u003elength) \u003e ...length))\n { error0 \u003d node-\u003eerrors[...]; next0 \u003d UDP_INPUT_NEXT_DROP}",
+      "revId": "de09073b21d24fcbd39618555d757c7988fb871b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
