@@ -128,22 +128,12 @@ u8 * format_vnet_sw_if_index_name (u8 * s, va_list * args)
 		 vnet_get_sw_interface (vnm, sw_if_index));
 }
 
-u8 * format_vnet_sw_interface (u8 * s, va_list * args)
+u8 * format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
+                                     vnet_sw_interface_t * si)
 {
-  vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
-  vnet_sw_interface_t * si = va_arg (*args, vnet_sw_interface_t *);
-  vnet_interface_main_t * im = &vnm->interface_main;
   uword indent, n_printed;
   int i, j, n_counters;
   static vnet_main_t ** my_vnet_mains;
-
-  if (! si)
-    return format (s, "%=32s%=5s%=16s%=16s%=16s",
-		   "Name", "Idx", "State", "Counter", "Count");
-
-  s = format (s, "%-32U%=5d%=16U",
-	      format_vnet_sw_interface_name, vnm, si, si->sw_if_index,
-	      format_vnet_sw_interface_flags, si->flags);
 
   vec_reset_length (my_vnet_mains);
 
@@ -234,6 +224,47 @@ u8 * format_vnet_sw_interface (u8 * s, va_list * args)
 	s = format (s, "%-16s%16Ld", cm->name, vtotal);
       }
   }
+
+  return s;
+}
+
+u8 * format_vnet_sw_interface (u8 * s, va_list * args)
+{
+  vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
+  vnet_sw_interface_t * si = va_arg (*args, vnet_sw_interface_t *);
+  vnet_interface_main_t * im = &vnm->interface_main;
+
+  if (! si)
+    return format (s, "%=32s%=5s%=16s%=16s%=16s",
+		   "Name", "Idx", "State", "Counter", "Count");
+
+  s = format (s, "%-32U%=5d%=16U",
+	      format_vnet_sw_interface_name, vnm, si, si->sw_if_index,
+	      format_vnet_sw_interface_flags, si->flags);
+
+  s = format_vnet_sw_interface_cntrs(s, im, si);
+
+  return s;
+}
+
+u8 * format_vnet_sw_interface_name_override (u8 * s, va_list * args)
+{
+  vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
+  vnet_sw_interface_t * si = va_arg (*args, vnet_sw_interface_t *);
+  /* caller supplied display name for this interface */
+  u8* name = va_arg (*args, u8*);
+  vnet_interface_main_t * im = &vnm->interface_main;
+
+
+  if (! si)
+    return format (s, "%=32s%=5s%=16s%=16s%=16s",
+		   "Name", "Idx", "State", "Counter", "Count");
+
+  s = format (s, "%-32v%=5d%=16U",
+	      name, si->sw_if_index,
+	      format_vnet_sw_interface_flags, si->flags);
+
+  s = format_vnet_sw_interface_cntrs(s, im, si);
 
   return s;
 }
