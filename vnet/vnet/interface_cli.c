@@ -70,6 +70,13 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
 	  /* Implies verbose. */
 	  verbose = 1;
 	}
+      /* See if user wants to show an interface with a specific hw_if_index. */
+      else if (unformat (input, "%u", &hw_if_index))
+       {
+         vec_add1 (hw_if_indices, hw_if_index);
+         /* Implies verbose. */
+         verbose = 1;
+       }
 
       else if (unformat (input, "verbose"))
 	verbose = 1;
