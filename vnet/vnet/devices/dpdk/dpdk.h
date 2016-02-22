@@ -394,6 +394,8 @@ typedef struct {
 
 dpdk_main_t dpdk_main;
 
+dpdk_main_t *get_dpdk_main(void);
+
 typedef enum {
   DPDK_RX_NEXT_IP4_INPUT,
   DPDK_RX_NEXT_IP6_INPUT,
