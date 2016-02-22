@@ -111,6 +111,11 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
   return 0;
 }
 
+dpdk_main_t *get_dpdk_main(void)
+{
+    return &dpdk_main;
+}
+
 static u32 dpdk_flag_change (vnet_main_t * vnm, 
                              vnet_hw_interface_t * hi,
                              u32 flags)
