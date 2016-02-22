@@ -154,6 +154,7 @@ void vnet_hw_interface_init_for_class (vnet_main_t * vnm, u32 hw_if_index, u32 h
 format_function_t format_vnet_hw_interface;
 format_function_t format_vnet_sw_interface;
 format_function_t format_vnet_sw_interface_name;
+format_function_t format_vnet_sw_interface_name_override;
 format_function_t format_vnet_sw_if_index_name;
 format_function_t format_vnet_sw_interface_flags;
 

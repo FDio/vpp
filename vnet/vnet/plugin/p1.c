@@ -30,6 +30,9 @@
 #define foreach_plugin_reference                \
 _(unformat_vnet_hw_interface)                   \
 _(unformat_vnet_sw_interface)                   \
+_(format_vnet_hw_interface)                     \
+_(format_vnet_sw_interface)                     \
+_(format_vnet_sw_interface_name_override)       \
 _(vnet_hw_interface_rx_redirect_to_node)        \
 _(vnet_config_add_feature)                      \
 _(vnet_config_del_feature)                      \
