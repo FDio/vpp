@@ -1006,6 +1006,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 no_pci = 0;
   u8 no_huge = 0;
   u8 huge_dir = 0;
+  u8 dump_physmem = 0;
   u8 file_prefix = 0;
   u8 * socket_mem = 0;
 
@@ -1072,6 +1073,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       }
 #endif
 
+      else if (unformat (input, "dump-physmem"))
+        dump_physmem = 1;
       else if (unformat (input, "num-mbufs %d", &dm->num_mbufs))
         ;
       else if (unformat (input, "max-tx-queues %d", &dm->max_tx_queues))
@@ -1454,6 +1457,16 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     dm->eal_init_args_str = format(dm->eal_init_args_str, "%s ",
                                    dm->eal_init_args[i]);
 
+  if (CLIB_DEBUG > 0)
+    {
+      int ix;
+
+      clib_warning ("DPDK eal init args:\n");
+      for (ix=0; ix<vec_len(dm->eal_init_args); ix++) {
+        clib_warning ("    %s\n", dm->eal_init_args[ix]);
+      }
+    }
+
   ret = rte_eal_init(vec_len(dm->eal_init_args), (char **) dm->eal_init_args);
 
   /* lazy umount hugepages */
@@ -1461,6 +1474,12 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   if (ret < 0)
     return clib_error_return (0, "rte_eal_init returned %d", ret);
+
+  /* Dump the physical memory layout prior to creating the mbuf_pool */
+  if (dump_physmem) {
+    fprintf(stdout, "DPDK physical memory layout:\n");
+    rte_dump_physmem_layout(stdout);
+  }
 
   /* main thread 1st */
   error = vlib_buffer_pool_create(vm, dm->num_mbufs, MBUF_SIZE, rte_socket_id());
