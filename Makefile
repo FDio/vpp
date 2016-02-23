@@ -19,10 +19,15 @@ GDB?=gdb
 
 MINIMAL_STARTUP_CONF="unix { interactive } dpdk { no-pci socket-mem 1024 }"
 
+GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
+
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms openjdk-7-jdk git libtool libganglia1-dev libapr1-dev
 DEB_DEPENDS += libconfuse-dev git-review
 
+ifneq ("$(wildcard $(STARTUP_DIR)/startup.conf),"")
+        STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
+endif
 
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
@@ -49,11 +54,15 @@ help:
 	@echo " V=[0|1]             - set build verbosity level"
 	@echo " STARTUP_CONF=<path> - startup configuration file"
 	@echo "                       (e.g. /etc/vpp/startup.conf)"
+	@echo " STARTUP_DIR=<path>  - startup drectory (e.g. /etc/vpp)"
+	@echo "                       It also sets STARTUP_CONF if"
+	@echo "                       startup.conf file is present"
 	@echo " GDB=<path>          - gdb binary to use for debugging"
 	@echo ""
 	@echo "Current Argumernt Values:"
 	@echo " V            = $(V)"
 	@echo " STARTUP_CONF = $(STARTUP_CONF)"
+	@echo " STARTUP_DIR  = $(STARTUP_DIR)"
 	@echo " GDB          = $(GDB)"
 
 $(BR)/.bootstrap.ok:
@@ -104,15 +113,16 @@ wipe-release: $(BR)/.bootstrap.ok
 
 rebuild-release: wipe-release build-release
 
+STARTUP_DIR ?= $(PWD)
 ifeq ("$(wildcard $(STARTUP_CONF))","")
 define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
 	@echo "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
-	@sudo $(1) $(MINIMAL_STARTUP_CONF)
+	@cd $(STARTUP_DIR) && sudo $(1) $(MINIMAL_STARTUP_CONF)
 endef
 else
 define run
-	@sudo $(1) -c $(STARTUP_CONF)
+	@cd $(STARTUP_DIR) && sudo $(1) -c $(STARTUP_CONF)
 endef
 endif
 
@@ -123,10 +133,10 @@ run-release:
 	$(call run, $(BR)/install-vpp-native/vpp/bin/vpp)
 
 debug:
-	$(call run, $(GDB) --args $(BR)/install-vpp_debug-native/vpp/bin/vpp)
+	$(call run, $(GDB) $(GDB_ARGS) --args $(BR)/install-vpp_debug-native/vpp/bin/vpp)
 
 debug-release:
-	$(call run, $(GDB) --args $(BR)/install-vpp-native/vpp/bin/vpp)
+	$(call run, $(GDB) $(GDB_ARGS) --args $(BR)/install-vpp-native/vpp/bin/vpp)
 
 build-vat:
 	$(call make,vpp_debug,vpp-api-test-install)
