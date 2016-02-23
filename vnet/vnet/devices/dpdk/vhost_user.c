@@ -63,6 +63,11 @@ static const char *vhost_message_str[] __attribute__((unused)) = {
 #endif
 };
 
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+static int dpdk_vhost_user_set_vring_enable(u32 hw_if_index,
+    u8 idx, int enable);
+#endif
+
 /*
  * DPDK vhost-user functions 
  */
@@ -437,10 +442,23 @@ dpdk_vhost_user_set_features(u32 hw_if_index, u64 features)
   int numqs = VIRTIO_QNUM;
   u8 idx;
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  int prot_feature = features &
+        (1ULL << VHOST_USER_F_PROTOCOL_FEATURES);
   numqs = xd->vu_vhost_dev.virt_qp_nb * VIRTIO_QNUM;
 #endif
-  for (idx = 0; idx < numqs; idx++)
+  for (idx = 0; idx < numqs; idx++) {
       xd->vu_vhost_dev.virtqueue[idx]->vhost_hlen = hdr_len;
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+      /*
+       * Spec says, if F_PROTOCOL_FEATURE is not set by the
+       * slave, then all the vrings should start off as
+       * enabled. If slave negotiates F_PROTOCOL_FEATURE, then
+       * slave is responsible to enable it.
+       */
+      if (! prot_feature)
+          dpdk_vhost_user_set_vring_enable(hw_if_index, idx, 1);
+#endif
+  }
 
   return 0;
 }
@@ -565,11 +583,9 @@ dpdk_vhost_user_get_vring_base(u32 hw_if_index, u8 idx, u32 * num)
  * on the descriptor specified by VHOST_USER_SET_VRING_KICK,
  * and stop ring upon receiving VHOST_USER_GET_VRING_BASE.
  */
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
-  dpdk_vu_intf_t *vui = xd->vu_intf;
-#endif
   DBG_SOCK("Stopping vring Q %u of device %d", idx, hw_if_index);
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  dpdk_vu_intf_t *vui = xd->vu_intf;
   vui->vrings[idx].enabled = 0; /* Reset local copy */
   vui->vrings[idx].callfd = -1; /* Reset FD */
   vq->enabled = 0;
@@ -682,7 +698,8 @@ dpdk_vhost_user_set_vring_kick(u32 hw_if_index, u8 idx, int fd)
 }
 
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
-int dpdk_vhost_user_set_vring_enable(u32 hw_if_index, u8 idx, int enable)
+static int
+dpdk_vhost_user_set_vring_enable(u32 hw_if_index, u8 idx, int enable)
 {
   dpdk_device_t * xd;
   struct vhost_virtqueue *vq;
