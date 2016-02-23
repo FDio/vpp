@@ -568,7 +568,9 @@ dpdk_vhost_user_get_vring_base(u32 hw_if_index, u8 idx, u32 * num)
  * on the descriptor specified by VHOST_USER_SET_VRING_KICK,
  * and stop ring upon receiving VHOST_USER_GET_VRING_BASE.
  */
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
   dpdk_vu_intf_t *vui = xd->vu_intf;
+#endif
   DBG_SOCK("Stopping vring Q %u of device %d", idx, hw_if_index);
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
   vui->vrings[idx].enabled = 0; /* Reset local copy */
@@ -627,7 +629,9 @@ dpdk_vhost_user_set_vring_kick(u32 hw_if_index, u8 idx, int fd)
 {
   dpdk_main_t * dm = &dpdk_main;
   dpdk_device_t * xd;
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
   dpdk_vu_vring *vring;
+#endif
   struct vhost_virtqueue *vq0, *vq1, *vq;
   int index, vu_is_running = 0;
 
@@ -636,11 +640,11 @@ dpdk_vhost_user_set_vring_kick(u32 hw_if_index, u8 idx, int fd)
     return 0;
   }
 
-  vring = &xd->vu_intf->vrings[idx];
   vq = xd->vu_vhost_dev.virtqueue[idx];
   vq->kickfd = fd;
 
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
+  vring = &xd->vu_intf->vrings[idx];
   vq->enabled = (vq->desc && vq->avail && vq->used && vring->enabled) ? 1 : 0;
 #endif
 
