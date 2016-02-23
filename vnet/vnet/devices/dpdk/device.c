@@ -332,6 +332,7 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
               n_retry = (rv == DPDK_TX_RING_SIZE - tx_tail) ? 1 : 0;
             }
         }
+#if RTE_LIBRTE_KNI
       else if (xd->dev_type == VNET_DPDK_DEV_KNI)
         {
           if (PREDICT_TRUE(tx_head > tx_tail)) 
@@ -362,6 +363,7 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
               n_retry = (rv == DPDK_TX_RING_SIZE - tx_tail) ? 1 : 0;
             }
         } 
+#endif
       else
         {
           ASSERT(0);
@@ -781,9 +783,12 @@ static u8 * format_dpdk_device_name (u8 * s, va_list * args)
   else
     devname_format = "%s%x/%x/%x";
 
+#ifdef RTE_LIBRTE_KNI
   if (dm->devices[i].dev_type == VNET_DPDK_DEV_KNI) {
        return format(s, "kni%d", dm->devices[i].kni_port_id);
-  } else if (dm->devices[i].dev_type == VNET_DPDK_DEV_VHOST_USER) {
+  } else
+#endif
+  if (dm->devices[i].dev_type == VNET_DPDK_DEV_VHOST_USER) {
        return format(s, "VirtualEthernet0/0/%d", dm->devices[i].vu_if_id);
   }
   switch (dm->devices[i].port_type)
@@ -1169,6 +1174,7 @@ static void dpdk_clear_hw_interface_counters (u32 instance)
   rte_eth_xstats_reset(xd->device_index);
 }
 
+#ifdef RTE_LIBRTE_KNI
 static int
 kni_config_network_if(u8 port_id, u8 if_up)
 {
@@ -1213,6 +1219,7 @@ kni_change_mtu(u8 port_id, unsigned new_mtu)
 
   return 0;
 }
+#endif
 
 static clib_error_t *
 dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
@@ -1223,6 +1230,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   dpdk_device_t * xd = vec_elt_at_index (dm->devices, hif->dev_instance);
   int rv = 0;
 
+#ifdef RTE_LIBRTE_KNI
   if (xd->dev_type == VNET_DPDK_DEV_KNI)
   {
       if (is_up)
@@ -1257,6 +1265,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
       }
       return 0;
   }
+#endif
   if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
     {
       if (is_up)

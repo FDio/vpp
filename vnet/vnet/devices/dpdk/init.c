@@ -620,6 +620,7 @@ dpdk_lib_init (dpdk_main_t * dm)
      rte_eth_dev_set_mtu(xd->device_index, hi->max_packet_bytes);
     }
 
+#ifdef RTE_LIBRTE_KNI
   if (dm->num_kni) {
     clib_warning("Initializing KNI interfaces...");
     rte_kni_init(dm->num_kni);
@@ -696,6 +697,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       hi = vnet_get_hw_interface (dm->vnet_main, xd->vlib_hw_if_index);
     }
   }
+#endif
 
   if (nb_desc > dm->num_mbufs) 
     clib_warning ("%d mbufs allocated but total rx/tx ring size is %d\n",

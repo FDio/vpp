@@ -45,7 +45,9 @@
 #include <rte_ring.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+#ifdef RTE_LIBRTE_KNI
 #include <rte_kni.h>
+#endif
 #include <rte_virtio_net.h>
 #include <rte_pci_dev_ids.h>
 #include <rte_version.h>
