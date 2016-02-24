@@ -230,11 +230,37 @@ static inline void vhost_user_if_disconnect(vhost_user_intf_t * vui)
     vui->vrings[q].desc = NULL;
     vui->vrings[q].avail = NULL;
     vui->vrings[q].used = NULL;
+    vui->vrings[q].log_guest_addr = 0;
   }
 
   unmap_all_mem_regions(vui);
   DBG_SOCK("interface ifindex %d disconnected", vui->sw_if_index);
 }
+
+#define VHOST_LOG_PAGE 0x1000
+always_inline void vhost_user_log_dirty_pages(vhost_user_intf_t * vui,
+                                                u64 addr, u64 len)
+{
+  if (PREDICT_TRUE(vui->log_base_addr == 0
+                   || !(vui->features & (1 << FEAT_VHOST_F_LOG_ALL)))) {
+    return;
+  }
+  if (PREDICT_FALSE((addr + len - 1) / VHOST_LOG_PAGE / 8 >= vui->log_size)) {
+    DBG_SOCK("vhost_user_log_dirty_pages(): out of range\n");
+    return;
+  }
+
+  CLIB_MEMORY_BARRIER();
+  u64 page = addr / VHOST_LOG_PAGE;
+  while (page * VHOST_LOG_PAGE < addr + len) {
+    ((u8*)vui->log_base_addr)[page / 8] |= 1 << page % 8;
+    page++;
+  }
+}
+
+#define vhost_user_log_dirty_ring(vui, vq, member) \
+  vhost_user_log_dirty_pages(vui, vq->log_guest_addr + offsetof(vring_used_t, member), \
+                             sizeof(vq->used->member))
 
 static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
 {
@@ -313,7 +339,10 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
 
       msg.flags |= 4;
       msg.u64 = (1 << FEAT_VIRTIO_NET_F_MRG_RXBUF) |
-                (1 << FEAT_VIRTIO_F_ANY_LAYOUT);
+                (1 << FEAT_VIRTIO_F_ANY_LAYOUT) |
+                (1 << FEAT_VHOST_F_LOG_ALL) |
+                (1 << FEAT_VIRTIO_NET_F_GUEST_ANNOUNCE) |
+                (1 << FEAT_VHOST_USER_F_PROTOCOL_FEATURES);
       msg.u64 &= vui->feature_mask;
 
       msg.size = sizeof(msg.u64);
@@ -324,6 +353,7 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
         vui->hw_if_index, msg.u64);
 
       vui->features = msg.u64;
+
       if (vui->features & (1 << FEAT_VIRTIO_NET_F_MRG_RXBUF))
         vui->virtio_net_hdr_sz = 12;
       else
@@ -339,6 +369,7 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
         vui->vrings[q].desc = 0;
         vui->vrings[q].avail = 0;
         vui->vrings[q].used = 0;
+        vui->vrings[q].log_guest_addr = 0;
       }
 
       DBG_SOCK("interface %d disconnected", vui->sw_if_index);
@@ -417,6 +448,15 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
         DBG_SOCK("failed to map user memory for hw_if_index %d",
           vui->hw_if_index);
         goto close_socket;
+      }
+
+      vui->vrings[msg.state.index].log_guest_addr = msg.addr.log_guest_addr;
+
+      /* Spec says: If VHOST_USER_F_PROTOCOL_FEATURES has not been negotiated,
+       the ring is initialized in an enabled state. */
+
+      if (!(vui->features & (1 << FEAT_VHOST_USER_F_PROTOCOL_FEATURES))) {
+        vui->vrings[msg.state.index].enabled = 1;
       }
 
       vui->vrings[msg.state.index].last_used_idx =
@@ -509,7 +549,10 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
       DBG_SOCK("if %d msg VHOST_USER_GET_VRING_BASE idx %d num %d",
         vui->hw_if_index, msg.state.index, msg.state.num);
 
-      msg.state.num = vui->vrings[msg.state.index].last_used_idx;
+      /* Spec says: Client must [...] stop ring upon receiving VHOST_USER_GET_VRING_BASE. */
+      vui->vrings[msg.state.index].enabled = 0;
+
+      msg.state.num = vui->vrings[msg.state.index].last_avail_idx;
       msg.flags |= 4;
       msg.size = sizeof(msg.state);
       break;
@@ -521,15 +564,72 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_SET_LOG_BASE:
+    {
       DBG_SOCK("if %d msg VHOST_USER_SET_LOG_BASE",
         vui->hw_if_index);
 
+      if (msg.size != sizeof(msg.log)) {
+        DBG_SOCK("invalid msg size for VHOST_USER_SET_LOG_BASE: %d instead of %d",
+                 msg.size, sizeof(msg.log));
+        goto close_socket;
+      }
+
+      if (!(vui->protocol_features & (1 << VHOST_USER_PROTOCOL_F_LOG_SHMFD))) {
+        DBG_SOCK("VHOST_USER_PROTOCOL_F_LOG_SHMFD not set but VHOST_USER_SET_LOG_BASE received");
+        goto close_socket;
+      }
+
+      fd = fds[0];
+      /* align size to 2M page */
+      long page_sz = get_huge_page_size(fd);
+      ssize_t map_sz = (msg.log.size + msg.log.offset + page_sz) & ~(page_sz - 1);
+
+      vui->log_base_addr = mmap(0, map_sz, PROT_READ | PROT_WRITE,
+                                MAP_SHARED, fd, 0);
+
+      DBG_SOCK("map log region addr 0 len 0x%lx off 0x%lx fd %d mapped 0x%lx",
+               map_sz, msg.log.offset, fd, vui->log_base_addr);
+
+      if (vui->log_base_addr == MAP_FAILED) {
+        clib_warning("failed to map memory. errno is %d", errno);
+        goto close_socket;
+      }
+
+      vui->log_base_addr += msg.log.offset;
+      vui->log_size = msg.log.size;
+
+      msg.flags |= 4;
+      msg.size = sizeof(msg.u64);
+
       break;
+    }
 
     case VHOST_USER_SET_LOG_FD:
       DBG_SOCK("if %d msg VHOST_USER_SET_LOG_FD",
         vui->hw_if_index);
 
+      break;
+
+    case VHOST_USER_GET_PROTOCOL_FEATURES:
+      DBG_SOCK("if %d msg VHOST_USER_GET_PROTOCOL_FEATURES", vui->hw_if_index);
+
+      msg.flags |= 4;
+      msg.u64 = (1 << VHOST_USER_PROTOCOL_F_LOG_SHMFD);
+      msg.size = sizeof(msg.u64);
+      break;
+
+    case VHOST_USER_SET_PROTOCOL_FEATURES:
+      DBG_SOCK("if %d msg VHOST_USER_SET_PROTOCOL_FEATURES features 0x%lx",
+               vui->hw_if_index, msg.u64);
+
+      vui->protocol_features = msg.u64;
+
+      break;
+
+    case VHOST_USER_SET_VRING_ENABLE:
+      DBG_SOCK("if %d VHOST_USER_SET_VRING_ENABLE, enable: %d",
+               vui->hw_if_index, msg.state.num);
+      vui->vrings[msg.state.index].enabled = msg.state.num;
       break;
 
     default:
@@ -750,6 +850,7 @@ static inline void vhost_user_send_call(vlib_main_t * vm, vhost_user_vring_t * v
     vq->int_deadline = vlib_time_now(vm) + vum->coalesce_time;
 }
 
+
 static u32 vhost_user_if_input ( vlib_main_t * vm,
                                vhost_user_main_t * vum, 
                                vhost_user_intf_t * vui,
@@ -770,7 +871,7 @@ static u32 vhost_user_if_input ( vlib_main_t * vm,
   vec_reset_length (vui->d_trace_buffers);
 
   /* no descriptor ptr - bail out */
-  if (PREDICT_FALSE(!txvq->desc || !txvq->avail))
+  if (PREDICT_FALSE(!txvq->desc || !txvq->avail || !txvq->enabled))
     return 0;
 
   /* do we have pending intterupts ? */
@@ -799,6 +900,7 @@ static u32 vhost_user_if_input ( vlib_main_t * vm,
     txvq->last_avail_idx = txvq->last_used_idx = txvq->avail->idx;
     CLIB_MEMORY_BARRIER();
     txvq->used->idx = txvq->last_used_idx;
+    vhost_user_log_dirty_ring(vui, txvq, idx);
     vhost_user_send_call(vm, txvq);
     return 0;
   }
@@ -849,6 +951,7 @@ static u32 vhost_user_if_input ( vlib_main_t * vm,
       txvq->last_avail_idx++;
       txvq->used->ring[txvq->last_used_idx & qsz_mask].id = desc_chain_head;
       txvq->used->ring[txvq->last_used_idx & qsz_mask].len = 0;
+      vhost_user_log_dirty_ring(vui, txvq, ring[txvq->last_used_idx & qsz_mask]);
       txvq->last_used_idx++;
       flush--;
     }
@@ -914,6 +1017,7 @@ static u32 vhost_user_if_input ( vlib_main_t * vm,
       txvq->last_avail_idx++;
       txvq->used->ring[txvq->last_used_idx & qsz_mask].id = desc_chain_head;
       txvq->used->ring[txvq->last_used_idx & qsz_mask].len = 0;
+      vhost_user_log_dirty_ring(vui, txvq, ring[txvq->last_used_idx & qsz_mask]);
       txvq->last_used_idx++;
 
       if(PREDICT_FALSE(b_head->current_length < 14 &&
@@ -957,6 +1061,7 @@ static u32 vhost_user_if_input ( vlib_main_t * vm,
   /* give buffers back to driver */
   CLIB_MEMORY_BARRIER();
   txvq->used->idx = txvq->last_used_idx;
+  vhost_user_log_dirty_ring(vui, txvq, idx);
 
   if (PREDICT_FALSE (vec_len (vui->d_trace_buffers) > 0))
   {
@@ -1052,7 +1157,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
   if (PREDICT_FALSE(!vui->is_up))
      goto done2;
 
-  if (PREDICT_FALSE(!rxvq->desc || !rxvq->avail || vui->sock_errno != 0)) {
+  if (PREDICT_FALSE(!rxvq->desc || !rxvq->avail || vui->sock_errno != 0 || !rxvq->enabled)) {
      error = VHOST_USER_TX_FUNC_ERROR_NOT_READY;
      goto done2;
   }
@@ -1111,6 +1216,8 @@ vhost_user_intfc_tx (vlib_main_t * vm,
       hdr->hdr.flags = 0;
       hdr->hdr.gso_type = 0;
 
+      vhost_user_log_dirty_pages(vui, rxvq->desc[desc_current].addr, vui->virtio_net_hdr_sz);
+
       if (vui->virtio_net_hdr_sz == 12)
         hdr->num_buffers = 1;
 
@@ -1149,6 +1256,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
             //Move from available to used buffer
             rxvq->used->ring[used_index & qsz_mask].id = desc_chain_head;
             rxvq->used->ring[used_index & qsz_mask].len = desc_len;
+            vhost_user_log_dirty_ring(vui, rxvq, ring[used_index & qsz_mask]);
             rxvq->last_avail_idx++;
             used_index++;
             hdr->num_buffers++;
@@ -1182,6 +1290,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
         u16 bytes_to_copy = bytes_left > (rxvq->desc[desc_current].len - offset) ? (rxvq->desc[desc_current].len - offset) : bytes_left;
         rte_memcpy(buffer_addr, vlib_buffer_get_current (current_b0) + current_b0->current_length - bytes_left, bytes_to_copy);
 
+        vhost_user_log_dirty_pages(vui, rxvq->desc[desc_current].addr + offset, bytes_to_copy);
         bytes_left -= bytes_to_copy;
         offset += bytes_to_copy;
         buffer_addr += bytes_to_copy;
@@ -1191,6 +1300,8 @@ vhost_user_intfc_tx (vlib_main_t * vm,
       //Move from available to used ring
       rxvq->used->ring[used_index & qsz_mask].id = desc_chain_head;
       rxvq->used->ring[used_index & qsz_mask].len = desc_len;
+      vhost_user_log_dirty_ring(vui, rxvq, ring[used_index & qsz_mask]);
+
       rxvq->last_avail_idx++;
       used_index++;
   }
@@ -1198,6 +1309,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 done:
   CLIB_MEMORY_BARRIER();
   rxvq->used->idx = used_index;
+  vhost_user_log_dirty_ring(vui, rxvq, idx);
 
   /* interrupt (call) handling */
   if((rxvq->callfd > 0) && !(rxvq->avail->flags & 1)) {
@@ -1473,6 +1585,7 @@ static void vhost_user_vui_init(vnet_main_t * vnm,
   vnet_sw_interface_t * sw;
   sw = vnet_get_hw_sw_interface (vnm, vui->hw_if_index);
   vlib_thread_main_t * tm = vlib_get_thread_main();
+  int q;
 
   vui->unix_fd = sockfd;
   vui->sw_if_index = sw->sw_if_index;
@@ -1484,6 +1597,11 @@ static void vhost_user_vui_init(vnet_main_t * vnm,
   vui->feature_mask = feature_mask;
   vui->active = 1;
   vui->unix_file_index = ~0;
+  vui->log_base_addr = 0;
+
+  for (q = 0; q < 2; q++) {
+    vui->vrings[q].enabled = 0;
+  }
 
   vnet_hw_interface_set_flags (vnm, vui->hw_if_index,  0);
 
