@@ -153,6 +153,8 @@ typedef struct {
   JavaVM *jvm;
   uword *callback_hash;     // map context_id => jobject
   uword *ping_hash;         // map ping context_id => msg type called
+  jobject callback;
+  jclass callbackClass;
 
   /* Timestamp */
   clib_time_t clib_time;
