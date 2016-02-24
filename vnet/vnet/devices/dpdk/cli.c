@@ -661,6 +661,31 @@ parse_op_and_prec (vlib_main_t *vm, unformat_input_t *input,
     return (error);
 }
 
+static clib_error_t *
+set_dpdk_stats_clear (vlib_main_t *vm, unformat_input_t *input,
+          vlib_cli_command_t *cmd)
+{
+  u8 no_stats_clear = 0;
+
+  if (unformat(input, "on")) {
+    no_stats_clear = 0;
+  } else if (unformat(input, "off")) {
+    no_stats_clear = 1;
+  } else {
+      return clib_error_return(0, "expecting on or off");
+  }
+
+  dpdk_set_no_stats_clear_mode(no_stats_clear);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (cmd_set_dpdk_stats_clear,static) = {
+    .path = "set dpdk stats clear",
+    .short_help = "set dpdk stats clear <on/off>",
+    .function = set_dpdk_stats_clear,
+};
+
 
 static clib_error_t *
 set_efd (vlib_main_t *vm, unformat_input_t *input,
