@@ -73,6 +73,8 @@ japi/org_openvpp_vppjapi_vppConn.h: 					\
 	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppIPv6Address ;					\
 	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppVxlanTunnelDetails.java ;		\
 	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppVxlanTunnelDetails ;				\
+	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppApiCallbacks.java ;		\
+	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppApiCallbacks ;				\
 	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppConn.java ;				\
 	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppConn ;
 
