@@ -431,7 +431,8 @@ int vlib_unix_main (int argc, char * argv[])
     return i;
   
   unformat_init_command_line (&input, (char **)vm->argv);
-  vm->init_functions_called = hash_create (0, /* value bytes */ 0);
+  if (vm->init_functions_called == 0)
+      vm->init_functions_called = hash_create (0, /* value bytes */ 0);
   e = vlib_call_all_config_functions (vm, &input, 1 /* early */);
   if (e != 0)
     {

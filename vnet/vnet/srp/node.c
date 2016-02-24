@@ -269,7 +269,7 @@ static char * srp_error_strings[] = {
 #undef _
 };
 
-VLIB_REGISTER_NODE (srp_input_node,static) = {
+vlib_node_registration_t srp_input_node = {
   .function = srp_input,
   .name = "srp-input",
   /* Takes a vector of packets. */
@@ -444,7 +444,7 @@ srp_control_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (srp_control_input_node,static) = {
+static vlib_node_registration_t srp_control_input_node = {
   .function = srp_control_input,
   .name = "srp-control",
   /* Takes a vector of packets. */
@@ -908,7 +908,7 @@ srp_ips_process (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_REGISTER_NODE (srp_ips_process_node) = {
+vlib_node_registration_t srp_ips_process_node = {
     .function = srp_ips_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "srp-ips-process",
@@ -921,6 +921,9 @@ static clib_error_t * srp_init (vlib_main_t * vm)
 
   sm->default_data_ttl = 255;
   sm->vlib_main = vm;
+  vlib_register_node (vm, &srp_ips_process_node);
+  vlib_register_node (vm, &srp_input_node);
+  vlib_register_node (vm, &srp_control_input_node);
   srp_setup_node (vm, srp_input_node.index);
 
   return 0;

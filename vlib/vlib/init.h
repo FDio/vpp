@@ -169,6 +169,14 @@ static void __vlib_add_config_function_##x (void)               \
     _error;								\
   })
 
+/* Don't call given init function: used to suppress parts of the netstack */
+#define vlib_mark_init_function_complete(vm, x)				\
+  ({									\
+    extern vlib_init_function_t * VLIB_INIT_FUNCTION_SYMBOL (x);	\
+    vlib_init_function_t * _f = VLIB_INIT_FUNCTION_SYMBOL (x);		\
+    hash_set1 (vm->init_functions_called, _f);				\
+  })
+
 #define vlib_call_post_graph_init_function(vm, x)			\
   ({									\
     extern vlib_init_function_t * VLIB_POST_GRAPH_INIT_FUNCTION_SYMBOL (x); \

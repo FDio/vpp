@@ -218,6 +218,9 @@ typedef struct {
   /* Set to one to use AB.CD.EF instead of A:B:C:D:E:F as ethernet format. */
   int format_ethernet_address_16bit;
 
+  /* debug: make sure we don't wipe out an ethernet registration by mistake */
+  u8 next_by_ethertype_register_called;
+
 } ethernet_main_t;
 
 ethernet_main_t ethernet_main;

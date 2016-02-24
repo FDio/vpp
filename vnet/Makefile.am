@@ -16,7 +16,6 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 AM_CFLAGS = -Wall @DPDK@ @VIRL@ @IPSEC@ @VCGN@ @IPV6SR@
 
 libvnet_la_SOURCES =
-libvnetplugin_la_SOURCES =
 nobase_include_HEADERS =
 noinst_PROGRAMS =
 
@@ -42,6 +41,7 @@ nobase_include_HEADERS +=			\
   vnet/interface_funcs.h			\
   vnet/l3_types.h				\
   vnet/pipeline.h				\
+  vnet/plugin/plugin.h				\
   vnet/replication.h				\
   vnet/rewrite.h				\
   vnet/vnet.h
@@ -620,17 +620,7 @@ nobase_include_HEADERS +=			\
   vnet/unix/tuntap.h				\
   vnet/unix/tapcli.h
 
-########################################
-# Plugin client library
-########################################
-
-libvnetplugin_la_SOURCES +=			\
-  vnet/plugin/p1.c
-
-nobase_include_HEADERS +=			\
-  vnet/plugin/plugin.h
-
-lib_LTLIBRARIES = libvnet.la libvnetplugin.la
+lib_LTLIBRARIES = libvnet.la 
 
 dpdk_libs = 
 

@@ -960,6 +960,16 @@ clib_error_t * next_by_ethertype_init (next_by_ethertype_t * l3_next)
   l3_next->sparse_index_by_input_next_index[ETHERNET_INPUT_NEXT_PUNT]
     = SPARSE_VEC_INVALID_INDEX;
  
+  /* 
+   * Make sure we don't wipe out an ethernet registration by mistake 
+   * Can happen if init function ordering constraints are missing.
+   */
+  if (CLIB_DEBUG > 0)
+    {
+      ethernet_main_t * em = &ethernet_main;
+      ASSERT(em->next_by_ethertype_register_called == 0);
+    }
+
   return 0;
 }
 
@@ -971,6 +981,12 @@ clib_error_t * next_by_ethertype_register (next_by_ethertype_t * l3_next,
   u32 i;
   u16 * n;
   ethernet_main_t * em = &ethernet_main;
+
+  if (CLIB_DEBUG > 0)
+    {
+      ethernet_main_t * em = &ethernet_main;
+      em->next_by_ethertype_register_called = 1;
+    }
 
   /* Setup ethernet type -> next index sparse vector mapping. */
   n = sparse_vec_validate (l3_next->input_next_by_type, ethertype);

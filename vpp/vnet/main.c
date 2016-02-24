@@ -27,108 +27,17 @@
  *
  */
 
-static clib_error_t *
+static void
 vpe_main_init (vlib_main_t * vm)
 {
-    clib_error_t * error = 0;
-    void vnet_library_plugin_reference(void);
-
     if (CLIB_DEBUG > 0)
         vlib_unix_cli_set_prompt ("DBGvpp# ");
     else
         vlib_unix_cli_set_prompt ("vpp# ");
 
-    vnet_library_plugin_reference();
-
-    if ((error = vlib_call_init_function (vm, pg_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, ip_main_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, osi_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, l2_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, ethernet_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, ethernet_arp_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, map_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, sixrd_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, llc_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, snap_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, cdp_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, nsh_gre_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, nsh_vxlan_gpe_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, lisp_gpe_init)))
-	return error;
-
-#if DPDK == 1
-    if ((error = vlib_call_init_function (vm, dpdk_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, dpdk_thread_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, vhost_user_init)))
-	return error;
-#if IPSEC > 0
-    if ((error = vlib_call_init_function (vm, ipsec_init)))
-        return error;
-#endif /* IPSEC */
-#endif    
-    if ((error = vlib_call_init_function (vm, vlibmemory_init)))
-	return error;
-    if ((error = vlib_call_init_function (vm, l2tp_init)))
-       return error;
-    if ((error = vlib_call_init_function (vm, gre_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, gre_interface_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, mpls_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, mpls_interface_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, dhcp_proxy_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, dhcpv6_proxy_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, tapcli_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, gdb_func_init)))
-        return error;
-    if ((error = unix_physmem_init
-	 (vm, 0 /* fail_if_physical_memory_not_present */)))
-        return error;
-    if ((error = vlib_call_init_function (vm, tuntap_init)))
-	return error;
-#if IPV6SR > 0
-    if ((error = vlib_call_init_function (vm, sr_init)))
-        return error;
-#endif
-    if ((error = vlib_call_init_function (vm, l2_classify_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, policer_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, vxlan_init)))
-        return error;
-#if VCGN > 0
-    if ((error = vlib_call_init_function (vm, vcgn_init)))
-        return error;
-#endif
-    if ((error = vlib_call_init_function (vm, li_init)))
-        return error;
-    if ((error = vlib_call_init_function (vm, cop_init)))
-        return error;
-
-    return error;
+    /* Turn off network stack components which we don't want */
+    vlib_mark_init_function_complete (vm, srp_init);
 }
-
-VLIB_INIT_FUNCTION (vpe_main_init);
 
 /* 
  * Load plugins from /usr/lib/vpp_plugins by default
@@ -147,6 +56,7 @@ void *vnet_get_handoff_structure (void)
 int main (int argc, char * argv[])
 {
     int i;
+    vlib_main_t * vm = &vlib_global_main;
     void vl_msg_api_set_first_available_msg_id (u16);
     uword main_heap_size = (1ULL << 30);
     u8 * sizep;
@@ -254,6 +164,8 @@ defaulted:
 
     /* Allocate main heap */
     if (clib_mem_init (0, main_heap_size)) {
+        vm->init_functions_called = hash_create (0, /* value bytes */ 0);
+        vpe_main_init(vm);
         vlib_set_get_handoff_structure_cb (&vnet_get_handoff_structure);
         return vlib_unix_main (argc, argv);
     } else {

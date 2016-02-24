@@ -150,6 +150,7 @@ void srp_interface_set_hw_wrap_function (u32 hw_if_index, srp_hw_wrap_function_t
 void srp_interface_set_hw_enable_function (u32 hw_if_index, srp_hw_enable_function_t * f);
 
 vlib_node_registration_t srp_ips_process_node;
+vlib_node_registration_t srp_input_node;
 
 /* Called when an IPS control packet is received on given interface. */
 void srp_ips_rx_packet (u32 sw_if_index, srp_ips_header_t * ips_packet);

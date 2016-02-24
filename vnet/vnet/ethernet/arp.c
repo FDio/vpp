@@ -1246,6 +1246,10 @@ static clib_error_t * ethernet_arp_init (vlib_main_t * vm)
 {
   ethernet_arp_main_t * am = &ethernet_arp_main;
   pg_node_t * pn;
+  clib_error_t * error;
+
+  if ((error = vlib_call_init_function (vm, ethernet_init)))
+    return error;
 
   ethernet_register_input_type (vm, ETHERNET_TYPE_ARP, arp_input_node.index);
 

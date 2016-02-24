@@ -66,6 +66,13 @@ static clib_error_t * ethernet_init (vlib_main_t * vm)
   ethernet_main_t * em = &ethernet_main;
   clib_error_t * error;
 
+  /* 
+   * Set up the L2 path now, or we'll wipe out the L2 ARP
+   * registration set up by ethernet_arp_init.
+   */
+  if ((error = vlib_call_init_function(vm, l2_init)))
+    return error;
+
   em->vlib_main = vm;
 
   em->type_info_by_name = hash_create_string (0, sizeof (uword));

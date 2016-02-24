@@ -64,11 +64,9 @@ app/version.h:
 
 vpp_LDADD = -lvlibapi -lvlibmemory  -lvlib_unix -lvlib
 
-vpp_LDADD += -l:libvnet.a
+vpp_LDADD += -lvnet
 
 vpp_LDADD += -lsvm -lsvmdb -lrt
-
-vpp_LDADD += -lvnetplugin
 
 if WITH_DPDK
 vpp_LDADD += -l:libdpdk.a
