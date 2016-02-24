@@ -38,6 +38,11 @@ missing
 stamp-h1
 ltmain.sh
 ylwrap
+
+.cproject
+*.iml
+.bootstrap.ok
+.settings
 # stop autotools ignore
 
 # OSX and some IDE 
