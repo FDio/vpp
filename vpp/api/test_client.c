@@ -22,6 +22,8 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <semaphore.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <pthread.h>
@@ -52,6 +54,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/interface.h>
 
+
 #define f64_endian(a)
 #define f64_print(a,b)
 
@@ -79,6 +82,9 @@ typedef struct {
     /* convenience */
     unix_shared_memory_queue_t * vl_input_queue;
     u32 my_client_index;
+
+    volatile u32 context_id_sent;
+    volatile u32 context_id_received;
 } test_main_t;
 
 test_main_t test_main;
@@ -543,6 +549,9 @@ static void vl_api_sw_interface_set_l2_bridge_reply_t_handler
     fformat (stdout, "l2_bridge reply %d\n", ntohl(mp->retval));
 }
 
+static void vl_api_get_node_index_reply_t_handler
+(vl_api_get_node_index_reply_t *mp);
+
 static void noop_handler (void *notused) { }
 
 #define vl_api_vnet_ip4_fib_counters_t_endian noop_handler
@@ -552,6 +561,7 @@ static void noop_handler (void *notused) { }
 
 #define foreach_api_msg                                                 \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
+_(GET_NODE_INDEX_REPLY, get_node_index_reply)                           \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
 _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
@@ -1282,11 +1292,79 @@ void l2_bridge (test_main_t *tm)
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
 }
 
+static inline u32 vppjni_get_context_id (test_main_t * tm)
+{
+  u32 my_context_id;
+  my_context_id = __sync_add_and_fetch (&tm->context_id_sent, 1);
+  return my_context_id;
+}
+
+
+int total = 0;
+struct timeval tval_before;
+sem_t permit_to_send;
+int debug = 0;
+
+static long int get_elapsed_microseconds() {
+    struct timeval tval_after, tval_result;
+    gettimeofday(&tval_after, NULL);
+    timersub(&tval_after, &tval_before, &tval_result);
+    long int t = 1000000*(long int)tval_result.tv_sec + (long int)tval_result.tv_usec;
+    return t;
+}
+
+static void vl_api_get_node_index_reply_t_handler
+(vl_api_get_node_index_reply_t *mp)
+{
+    int n = ntohl(mp->context);
+    if (debug == 1) {
+        fformat (stdout, "get_node_index reply %d (context: %d)\n", ntohl(mp->retval), n);
+    }
+
+    sem_post(&permit_to_send);
+
+    if (n == total) {
+        printf("Requests per second: %f\n", total/(get_elapsed_microseconds()/1000000.0));
+    }
+}
+
+void get_node_index (test_main_t *tm)
+{
+    vl_api_get_node_index_t * mp;
+    char node_name[] = "1";
+    u32 my_context_id;
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset(mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (VL_API_GET_NODE_INDEX);
+    mp->client_index = tm->my_client_index;
+
+    my_context_id = vppjni_get_context_id (tm);
+    mp->context = clib_host_to_net_u32 (my_context_id);
+
+    memcpy (mp->node_name, node_name, sizeof (mp->node_name));
+
+    vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
+}
+
+void get_node_index_test (test_main_t *tm)
+{
+    gettimeofday(&tval_before, NULL);
+
+    int i = 0;
+    for (; i<total; ++i) {
+        sem_wait(&permit_to_send);
+        get_node_index(tm);
+    }
+
+    printf("Requests per second (SEND): %f\n", total/(get_elapsed_microseconds()/1000000.0));
+}
+
 int main (int argc, char ** argv)
 {
     api_main_t * am = &api_main;
     test_main_t * tm = &test_main;
-    int ch;
+    int ch, max_requests;
     
     connect_to_vpe("test_client");
     
@@ -1295,9 +1373,17 @@ int main (int argc, char ** argv)
     
     fformat(stdout, "Type 'h' for help, 'q' to quit...\n");
     
+    total = atoi(argv[1]);
+    max_requests = atoi(argv[2]);
+    debug = atoi(argv[3]);
+    sem_init(&permit_to_send, 0, max_requests);
+
     while (1) {
         ch = getchar();
         switch (ch) {
+        case 'C':
+            get_node_index_test(tm);
+            break;
         case 'q':
             goto done;
         case 'd':
