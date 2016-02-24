@@ -522,7 +522,15 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
 
   {
 #define _(N, V)							\
-    if (xd->stats.V != 0)					\
+    if (dm->no_stats_clear) {                                  \
+      /* In no_stats_clear mode, display the delta */          \
+      if ((xd->stats.V - xd->last_cleared_stats.V) != 0) {     \
+        s = format (s, "\n%U%-40U%16Ld",                       \
+                   format_white_space, indent + 2,             \
+                   format_c_identifier, #N,                    \
+                    xd->stats.V - xd->last_cleared_stats.V);   \
+        }                                                      \
+    } else if (xd->stats.V != 0)					\
       s = format (s, "\n%U%-40U%16Ld",				\
 		  format_white_space, indent + 2,		\
 		  format_c_identifier, #N, xd->stats.V);
