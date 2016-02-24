@@ -2428,7 +2428,8 @@ int exec (vat_main_t * vam)
     while (vat_time_now (vam) < timeout) {
         if (vam->result_ready == 1) {
             u8 * free_me;
-            fformat (vam->ofp, "%s", vam->shmem_result);
+            if (vam->shmem_result != NULL)
+                fformat (vam->ofp, "%s", vam->shmem_result);
             pthread_mutex_lock (&am->vlib_rp->mutex);
             oldheap = svm_push_data_heap (am->vlib_rp);
             
