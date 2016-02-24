@@ -24,14 +24,6 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Set;
 
-import org.openvpp.vppjapi.vppVersion;
-import org.openvpp.vppjapi.vppInterfaceDetails;
-import org.openvpp.vppjapi.vppInterfaceCounters;
-import org.openvpp.vppjapi.vppBridgeDomainDetails;
-import org.openvpp.vppjapi.vppIPv4Address;
-import org.openvpp.vppjapi.vppIPv6Address;
-import org.openvpp.vppjapi.vppVxlanTunnelDetails;
-
 public class vppConn implements AutoCloseable {
     private static final String LIBNAME = "libvppjni.so.0.0.0";
 
@@ -78,7 +70,7 @@ public class vppConn implements AutoCloseable {
     private volatile boolean disconnected = false;
 
     // Hidden on purpose to prevent external instantiation
-    vppConn(final String clientName) throws IOException {
+    vppConn(final String clientName, final org.openvpp.vppjapi.vppApiCallbacks callback) throws IOException {
         this.clientName = clientName;
 
         synchronized (vppConn.class) {
@@ -86,7 +78,7 @@ public class vppConn implements AutoCloseable {
                 throw new IOException("Already connected as " + currentConnection.clientName);
             }
 
-            final int ret = clientConnect(clientName);
+            final int ret = clientConnect(clientName, callback);
             if (ret != 0) {
                 throw new IOException("Connection returned error " + ret);
             }
@@ -213,7 +205,7 @@ public class vppConn implements AutoCloseable {
         return getInterfaceDescription0(ifName);
     }
 
-    private static native int clientConnect(String clientName);
+    private static native int clientConnect(String clientName, vppApiCallbacks callback);
     private static native void clientDisconnect();
     private static native int getRetval0(int context, int release);
     private static native String getInterfaceList0(String nameFilter);

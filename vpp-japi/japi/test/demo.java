@@ -17,7 +17,13 @@ import org.openvpp.vppjapi.*;
 
 public class demo {
     public static void main (String[] args) throws Exception {
-        vppApi api = new vppApi ("JavaTest");
+        vppApi api = new vppApi ("JavaTest", new vppApiCallbacks() {
+
+            @Override
+            public void getNodeIndexReply(final long contextId, final long retVal, final long nodeIndex) {
+                System.err.println("SURPRISE");
+            }
+        });
         System.out.printf ("Connected OK...");
 
         String intlist;
@@ -31,24 +37,24 @@ public class demo {
         {
             intlist = api.getInterfaceList ("");
             System.out.printf ("Unfiltered interface list:\n%s", intlist);
-            
+
             trips = 0;
-            
+
             contexts = new int[6];
-            
+
             for (i = 0; i < 6; i++)
             {
-                contexts[i] = api.swInterfaceSetFlags 
+                contexts[i] = api.swInterfaceSetFlags
                     (5 + i /* sw_if_index */,
                      (byte)1 /* admin_up */,
                      (byte)1 /* link_up (ignored) */,
                      (byte)0 /* deleted */);
             }
-            
+
             /* Thread.sleep (1); */
             errors = 0;
             saved_error = 0;
-            
+
             for (i = 0; i < 6; i ++)
             {
                 while (true)
@@ -65,14 +71,14 @@ public class demo {
                     errors++;
                 }
             }
-            
+
             if (errors == 0)
                 System.out.printf ("intfcs up...\n");
             else
-                System.out.printf 
+                System.out.printf
                     ("%d errors, last error %d...\n", errors, saved_error);
         }
-        
+
         limit = 250000;
         saved_error = 0;
         errors = 0;
@@ -93,26 +99,26 @@ public class demo {
         before = System.currentTimeMillis();
 
         for (i = 0; i < limit; i++) {
-            contexts[i] = api.ipAddDelRoute 
-                (0 /* int nextHopSwIfIndex */, 
-                 0 /* int vrfId */, 
-                 0 /* int lookupInVrf */, 
-                 0 /* int resolveAttempts */, 
-                 0 /* int classifyTableIndex */, 
-                 (byte)0 /* byte createVrfIfNeeded */, 
-                 (byte)0 /* byte resolveIfNeeded */, 
-                 (byte)1 /* byte isAdd */, 
-                 (byte)1 /* byte isDrop */, 
-                 (byte)0 /* byte isIpv6 */, 
-                 (byte)0 /* byte isLocal */, 
-                 (byte)0 /* byte isClassify */, 
-                 (byte)0 /* byte isMultipath */, 
-                 (byte)0 /* byte notLast */, 
-                 (byte)0 /* byte nextHopWeight */, 
-                 (byte)32 /* byte dstAddressLength */, 
-                 address, 
+            contexts[i] = api.ipAddDelRoute
+                (0 /* int nextHopSwIfIndex */,
+                 0 /* int vrfId */,
+                 0 /* int lookupInVrf */,
+                 0 /* int resolveAttempts */,
+                 0 /* int classifyTableIndex */,
+                 (byte)0 /* byte createVrfIfNeeded */,
+                 (byte)0 /* byte resolveIfNeeded */,
+                 (byte)1 /* byte isAdd */,
+                 (byte)1 /* byte isDrop */,
+                 (byte)0 /* byte isIpv6 */,
+                 (byte)0 /* byte isLocal */,
+                 (byte)0 /* byte isClassify */,
+                 (byte)0 /* byte isMultipath */,
+                 (byte)0 /* byte notLast */,
+                 (byte)0 /* byte nextHopWeight */,
+                 (byte)32 /* byte dstAddressLength */,
+                 address,
                  zeros);
-            
+
             address[3] += 1;
             if (address[3] == 0)
             {
@@ -131,7 +137,7 @@ public class demo {
         }
 
         trips = 0;
-                        
+
         for (i = 0; i < limit; i++)
         {
             while (true)
@@ -155,13 +161,13 @@ public class demo {
         if (errors == 0)
             System.out.printf ("done %d route ops (all OK)...\n", limit);
         else
-            System.out.printf 
+            System.out.printf
                 ("%d errors, last error %d...\n", errors, saved_error);
-        
+
         System.out.printf ("result in %d trips\n", trips);
 
         System.out.printf ("%d routes in %d milliseconds, %d routes/msec\n",
-                           limit, after - before, 
+                           limit, after - before,
                            limit / (after - before));
 
         api.close();

@@ -293,7 +293,7 @@ out:
 }
 
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_clientConnect
-  (JNIEnv *env, jobject obj, jstring clientName)
+  (JNIEnv *env, jobject obj, jstring clientName, jobject callback)
 {
     int rv;
     const char *client_name;
@@ -339,6 +339,8 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_clientConnect
         h->flags |= MHEAP_FLAG_THREAD_SAFE;
 
         jm->reply_hash = hash_create (0, sizeof (uword));
+        jm->callback = callback;
+        jm->env = env;
         //jm->callback_hash = hash_create (0, sizeof (uword));
         //jm->ping_hash = hash_create (0, sizeof (uword));
         jm->api_main = am;
@@ -1555,6 +1557,43 @@ static void vl_api_want_stats_reply_t_handler (vl_api_want_stats_reply_t * mp)
     jm->result_ready = 1;
 }
 
+// TODO extract context_id into a parameter
+
+JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppApi_getNodeIndex0
+(JNIEnv * env, jclass clazz, jbyteArray node_name)
+{
+    vppjni_main_t *jm = &vppjni_main;
+    vl_api_get_node_index_t * mp;
+    u32 my_context_id;
+    int rv;
+    rv = vppjni_sanity_check (jm);
+    if (rv) return rv;
+    my_context_id = vppjni_get_context_id (jm);
+    jbyte * node_nameP = (*env)->GetByteArrayElements (env, node_name, NULL);
+    M(GET_NODE_INDEX, get_node_index);
+    mp->context = clib_host_to_net_u32 (my_context_id);
+    memcpy (mp->node_name, node_nameP, sizeof (mp->node_name));
+    (*env)->ReleaseByteArrayElements (env, node_name, node_nameP, 0);
+    S;
+    return my_context_id;
+}
+
+static void
+vl_api_get_node_index_reply_t_handler (vl_api_get_node_index_reply_t * mp)
+{
+    vppjni_main_t * jm = &vppjni_main;
+
+    jobject callback = jm->callback;
+    // TODO can we reuse env from initial connect ?
+    JNIEnv *env = jm->env;
+    jclass callbackClass = (*env)->GetObjectClass(env, callback);
+    jmethodID midCallBack = (*env)->GetMethodID(env, callbackClass, "getNodeIndexReply", "(JJJ)V");
+//    if (NULL == midCallBack) {
+//    	FAIL
+//    }
+    (*env)->CallVoidMethod(env, callback, midCallBack, mp->context, mp->retval, mp->node_index);
+}
+
 // control ping needs to be very first thing called
 // to attach rx thread to java thread
 static void vl_api_control_ping_reply_t_handler
@@ -1796,6 +1835,7 @@ void JNI_OnUnload(JavaVM *vm, void *reserved) {
 _(CONTROL_PING_REPLY, control_ping_reply)               \
 _(SW_INTERFACE_DETAILS, sw_interface_details)           \
 _(SHOW_VERSION_REPLY, show_version_reply)               \
+_(GET_NODE_INDEX_REPLY, get_node_index_reply)           \
 _(WANT_STATS_REPLY, want_stats_reply)                   \
 _(VNET_INTERFACE_COUNTERS, vnet_interface_counters)     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)       \

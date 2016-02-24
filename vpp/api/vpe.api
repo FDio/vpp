@@ -1636,7 +1636,7 @@ define classify_set_interface_l2_tables_reply {
     @param context - sender context, to match reply w/ request
     @param node_name[] - name of the node
 */
-define get_node_index {
+manual_java define get_node_index {
     u32 client_index;
     u32 context;
     u8 node_name[64];

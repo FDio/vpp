@@ -1799,8 +1799,8 @@ void generate_java_top_boilerplate(FILE *fp)
     fprintf (fp, "import java.io.IOException;\n\n");
     fprintf (fp, "public class %s extends vppConn {\n",
              java_class);
-    fprintf (fp, "    public %s(String clientName) throws IOException {\n", java_class);
-    fprintf (fp, "        super(clientName);\n");
+    fprintf (fp, "    public %s(String clientName, vppApiCallbacks callback) throws IOException {\n", java_class);
+    fprintf (fp, "        super(clientName, callback);\n");
     fprintf (fp, "    }\n\n");
 }
 
