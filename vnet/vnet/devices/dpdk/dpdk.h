@@ -345,6 +345,9 @@ typedef struct {
   u32 max_tx_queues;
   u8 num_kni; /* while kni_init allows u32, port_id in callback fn is only u8 */
 
+  /* Optional config parameter to create (per device) one tx queue, no lock */
+  u8 lockless_tx_queue;
+
   /* Ethernet input node index */
   u32 ethernet_input_node_index;
 

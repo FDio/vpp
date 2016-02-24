@@ -335,7 +335,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       memcpy(&xd->port_conf, &port_conf_template, sizeof(struct rte_eth_conf));
 
-      xd->tx_q_used = clib_min(dev_info.max_tx_queues, tm->n_vlib_mains);
+      xd->tx_q_used = (dm->lockless_tx_queue) ? 1 :
+                          clib_min(dev_info.max_tx_queues, tm->n_vlib_mains);
 
       if (dm->max_tx_queues)
         xd->tx_q_used = clib_min(xd->tx_q_used, dm->max_tx_queues);
@@ -520,7 +521,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
         rte_eth_macaddr_get(i,(struct ether_addr *)addr);
 
-      if (xd->tx_q_used < tm->n_vlib_mains)
+      if (!dm->lockless_tx_queue && (xd->tx_q_used < tm->n_vlib_mains))
         dpdk_device_lock_init(xd);
 
       xd->device_index = xd - dm->devices;
@@ -1064,6 +1065,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         dm->use_virtio_vhost = 0;
       else if (unformat (input, "rss %d", &dm->use_rss))
         ;
+      else if (unformat (input, "lockless-tx-queue"))
+        dm->lockless_tx_queue = 1;
 
 #define _(a)                                    \
       else if (unformat(input, #a))             \

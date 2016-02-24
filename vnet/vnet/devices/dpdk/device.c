@@ -236,7 +236,8 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
    */
   n_retry = dm->flowcontrol_callback ? 0 : 255;
 
-  queue_id = vm->cpu_index;
+  /* if only one tx queue it must be 0 */
+  queue_id = ((xd->tx_q_used > 1) ? vm->cpu_index : 0);
 
   do {
       /* start the burst at the tail */
@@ -249,7 +250,6 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
       if (PREDICT_FALSE(xd->dev_type != VNET_DPDK_DEV_VHOST_USER &&
         xd->lockp != 0))
         {
-          queue_id = queue_id % xd->tx_q_used;
           while (__sync_lock_test_and_set (xd->lockp[queue_id], 1))
             /* zzzz */
             queue_id = (queue_id + 1) % xd->tx_q_used;
