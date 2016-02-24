@@ -113,7 +113,9 @@ _(dpdk_get_admin_up_down_in_progress)           \
 _(get_dpdk_main)                                \
 _(efd_config)                                   \
 _(dpdk_set_mac_address)                         \
-_(dpdk_set_mc_filter)
+_(dpdk_set_mc_filter)                           \
+_(dpdk_get_hw_interface_stats)                  \
+_(dpdk_set_no_stats_clear_mode)
 #else
 #define foreach_dpdk_plugin_reference
 #endif

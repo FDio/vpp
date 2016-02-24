@@ -244,6 +244,7 @@ typedef struct {
 
   struct rte_eth_stats stats;
   struct rte_eth_stats last_stats;
+  struct rte_eth_stats last_cleared_stats;
   struct rte_eth_xstats * xstats;
   f64 time_last_stats_update;
   dpdk_port_type_t port_type;
@@ -382,6 +383,11 @@ typedef struct {
   u8 admin_up_down_in_progress;
 
   u8 have_io_threads;
+
+  /*
+   * flag indicating that stats should never be cleared.
+   */
+  u8 no_stats_clear;
 
   /* which cpus are running dpdk-input */
   int input_cpu_first_index;
@@ -541,5 +547,11 @@ u32 dpdk_get_admin_up_down_in_progress (void);
 
 uword
 dpdk_input_rss (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f);
+
+void
+dpdk_set_no_stats_clear_mode (u8 enable);
+
+clib_error_t*
+dpdk_get_hw_interface_stats (u32 hw_if_index, struct rte_eth_stats* dest);
 
 #endif /* __included_dpdk_h__ */
