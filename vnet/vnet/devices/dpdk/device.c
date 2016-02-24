@@ -814,17 +814,37 @@ static void dpdk_clear_hw_interface_counters (u32 instance)
    */
   if (xd->admin_up != 0xff)
     {
-      rte_eth_stats_reset (xd->device_index);
-      memset (&xd->last_stats, 0, sizeof (xd->last_stats));
-      dpdk_update_counters (xd, vlib_time_now (dm->vlib_main));
+      if (dm->no_stats_clear)
+        {
+          /*
+           * Set the "last_cleared_stats" to the current stats, so that
+           * things appear to clear from a display perspective.
+           */
+          rte_eth_stats_get (xd->device_index, &xd->stats);
+          memcpy (&xd->last_cleared_stats, &xd->stats, sizeof(xd->stats));
+        }
+      else
+        {
+          /*
+           * Internally rte_eth_xstats_reset() is calling rte_eth_stats_reset()
+           * so we're only calling xstats_reset() here.
+           */
+          rte_eth_xstats_reset (xd->device_index);
+          memset (&xd->last_stats, 0, sizeof (xd->last_stats));
+          dpdk_update_counters (xd, vlib_time_now (dm->vlib_main));
+        }
     }
   else
     {
-      rte_eth_stats_reset (xd->device_index);
-      memset(&xd->stats, 0, sizeof(xd->stats));
+      /*
+       * Internally rte_eth_xstats_reset() is calling rte_eth_stats_reset(),
+       * so we're only calling xstats_reset() here.
+       */
+      rte_eth_xstats_reset (xd->device_index);
+      memset (&xd->stats, 0, sizeof(xd->stats));
       memset (&xd->last_stats, 0, sizeof (xd->last_stats));
     }
-  rte_eth_xstats_reset(xd->device_index);
+
 }
 
 #ifdef RTE_LIBRTE_KNI
@@ -1187,4 +1207,40 @@ int rte_delay_us_override (unsigned us) {
         }
     }
   return 0; // no override
+}
+
+/*
+ * Turn on/off "no stats clear" mode. When enabled, stats are never zero'd,
+ * instead the displayed stats are a delta from the last_cleared_stats
+ */
+void
+dpdk_set_no_stats_clear_mode (u8 enable)
+{
+  dpdk_main_t * dm = &dpdk_main;
+
+  dm->no_stats_clear = enable;
+}
+
+/*
+ * Return a copy of the DPDK port stats in dest.
+ */
+clib_error_t*
+dpdk_get_hw_interface_stats (u32 hw_if_index, struct rte_eth_stats* dest)
+{
+  dpdk_main_t * dm = &dpdk_main;
+  vnet_main_t * vnm = vnet_get_main();
+  vnet_hw_interface_t * hi = vnet_get_hw_interface (vnm, hw_if_index);
+  dpdk_device_t * xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+
+  if (!dest) {
+     return clib_error_return (0, "Missing or NULL argument");
+  }
+  if (!xd) {
+     return clib_error_return (0, "Unable to get DPDK device from HW interface");
+  }
+
+  dpdk_update_counters (xd, vlib_time_now (dm->vlib_main));
+
+  memcpy(dest, &xd->stats, sizeof(xd->stats));
+  return (0);
 }
