@@ -13,158 +13,144 @@
  * limitations under the License.
  */
 
-import org.openvpp.vppjapi.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
+import org.openvpp.vppjapi.vppApi;
+import org.openvpp.vppjapi.vppApiCallbacks;
 
 public class demo {
-    public static void main (String[] args) throws Exception {
-        vppApi api = new vppApi ("JavaTest");
-        System.out.printf ("Connected OK...");
 
-        String intlist;
-        int [] contexts;
-        int i, limit;
-        int trips;
-        int rv, errors, saved_error;
-        long before, after;
+    private static volatile long stopTime;
+    private static volatile long total;
 
-        if (false)
-        {
-            intlist = api.getInterfaceList ("");
-            System.out.printf ("Unfiltered interface list:\n%s", intlist);
-            
-            trips = 0;
-            
-            contexts = new int[6];
-            
-            for (i = 0; i < 6; i++)
-            {
-                contexts[i] = api.swInterfaceSetFlags 
-                    (5 + i /* sw_if_index */,
-                     (byte)1 /* admin_up */,
-                     (byte)1 /* link_up (ignored) */,
-                     (byte)0 /* deleted */);
-            }
-            
-            /* Thread.sleep (1); */
-            errors = 0;
-            saved_error = 0;
-            
-            for (i = 0; i < 6; i ++)
-            {
-                while (true)
-                {
-                    rv = api.getRetval (contexts[i], 1 /* release */);
-                    if (rv != -77)
-                        break;
-                    Thread.sleep (1);
-                    trips++;
-                }
-                if (rv < 0)
-                {
-                    saved_error = rv;
-                    errors++;
-                }
-            }
-            
-            if (errors == 0)
-                System.out.printf ("intfcs up...\n");
-            else
-                System.out.printf 
-                    ("%d errors, last error %d...\n", errors, saved_error);
+    private static final BlockingQueue<Task> sharedQueue = new LinkedBlockingQueue<>(100);
+    private static final Task QUIT = new Task() {
+        @Override
+        public void run(final vppApi api) {
+
         }
-        
-        limit = 250000;
-        saved_error = 0;
-        errors = 0;
-        contexts = new int [limit];
-        byte [] address = new byte [4];
-        byte [] zeros = new byte [4];
+    };
 
-        address[0] = (byte)192;
-        address[1] = (byte)168;
-        address[2] = (byte)2;
-        address[3] = (byte)1;
+    interface Task {
 
-        for (i = 0; i < 4; i++)
-            zeros[i] = 0;
-
-        System.out.printf ("start %d route ops ...", limit);
-
-        before = System.currentTimeMillis();
-
-        for (i = 0; i < limit; i++) {
-            contexts[i] = api.ipAddDelRoute 
-                (0 /* int nextHopSwIfIndex */, 
-                 0 /* int vrfId */, 
-                 0 /* int lookupInVrf */, 
-                 0 /* int resolveAttempts */, 
-                 0 /* int classifyTableIndex */, 
-                 (byte)0 /* byte createVrfIfNeeded */, 
-                 (byte)0 /* byte resolveIfNeeded */, 
-                 (byte)1 /* byte isAdd */, 
-                 (byte)1 /* byte isDrop */, 
-                 (byte)0 /* byte isIpv6 */, 
-                 (byte)0 /* byte isLocal */, 
-                 (byte)0 /* byte isClassify */, 
-                 (byte)0 /* byte isMultipath */, 
-                 (byte)0 /* byte notLast */, 
-                 (byte)0 /* byte nextHopWeight */, 
-                 (byte)32 /* byte dstAddressLength */, 
-                 address, 
-                 zeros);
-            
-            address[3] += 1;
-            if (address[3] == 0)
-            {
-                address[2] += 1;
-                if (address[2] == 0)
-                {
-                    address[1] += 1;
-                    {
-                        if (address[1] == 0)
-                        {
-                            address[0] += 1;
-                        }
-                    }
-                }
-            }
-        }
-
-        trips = 0;
-                        
-        for (i = 0; i < limit; i++)
-        {
-            while (true)
-            {
-                rv = api.getRetval (contexts[i], 1 /* release */);
-                if (rv != -77)
-                    break;
-                Thread.sleep (1);
-                trips++;
-            }
-            if (rv < 0)
-            {
-                saved_error = rv;
-                errors++;
-            }
-        }
-
-        after = System.currentTimeMillis();
-
-
-        if (errors == 0)
-            System.out.printf ("done %d route ops (all OK)...\n", limit);
-        else
-            System.out.printf 
-                ("%d errors, last error %d...\n", errors, saved_error);
-        
-        System.out.printf ("result in %d trips\n", trips);
-
-        System.out.printf ("%d routes in %d milliseconds, %d routes/msec\n",
-                           limit, after - before, 
-                           limit / (after - before));
-
-        api.close();
-        System.out.printf ("Done...\n");
+        void run(final org.openvpp.vppjapi.vppApi api);
     }
+
+    static class Producer implements Runnable {
+
+        private volatile long startTime;
+
+        @Override
+        public void run() {
+            for (int i = 0; i < total; i++) {
+                if(i == 0) {
+                    startTime = System.currentTimeMillis();
+                    System.err.println("Calls start");
+                }
+
+                try {
+                    sharedQueue.put(new Task() {
+                        @Override
+                        public void run(final vppApi api) {
+                            final int requestId = api.getNodeIndex("1".getBytes());
+                            if(requestId % 100 == 0) {
+                                System.err.println("Call " + requestId);
+                            }
+                        }
+                    });
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            long elapsedTime = System.currentTimeMillis() - startTime;
+            System.err.println("Requests per second (SEND) : " + total / (elapsedTime / 1000.0));
+
+            System.err.println("Calls end");
+            try {
+                sharedQueue.put(QUIT);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void onReponse(final long contextId) {
+            if (contextId % 100 == 0) {
+                System.err.println("Current response " + contextId);
+                System.err.println("Current response arguments " + contextId);
+            }
+
+
+            if (contextId == total) {
+                long elapsedTime = System.currentTimeMillis() - startTime;
+                System.err.println("Requests per second : " + total / (elapsedTime / 1000.0));
+            }
+        }
+    }
+
+    static class Consumer implements Runnable, vppApiCallbacks {
+
+        private final Producer prod;
+        private volatile org.openvpp.vppjapi.vppApi api;
+
+        // Semaphore to wait for callback before executing next task
+        // If we hammer requests into VPP, it slows down considerably
+        // It's enough to increase MAX_AVAILABLE to 2 to slow execution down by a couple orders
+        private static final int MAX_AVAILABLE = 1;
+        private final Semaphore semaphore = new Semaphore(MAX_AVAILABLE, true);
+
+        public void setApi(final vppApi api) {
+            this.api = api;
+        }
+
+        Consumer(final Producer prod) {
+            this.prod = prod;
+        }
+
+        @Override
+        public void run() {
+            Task next;
+            try {
+                while((next = sharedQueue.take()) != QUIT) {
+                    semaphore.acquire();
+                    next.run(api);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void getNodeIndexReply(final long contextId, final long retVal, final long nodeIndex) {
+            prod.onReponse(contextId);
+            semaphore.release();
+        }
+    }
+
+
+    public static void main(String[] args) throws Exception {
+        total = Long.parseLong(args[0]);
+
+        final Producer prod = new Producer();
+        final Thread thread = new Thread(prod);
+        final Consumer cons = new Consumer(prod);
+        final Thread thread1 = new Thread(cons);
+
+        final vppApi test = new vppApi("test", cons);
+        System.out.println("Connected OK...");
+        cons.setApi(test);
+
+        thread1.start();
+        thread.start();
+
+        thread.join();
+        thread1.join();
+
+        System.err.println("Quitting");
+
+        test.close();
+        System.exit(0);
+    }
+
 }

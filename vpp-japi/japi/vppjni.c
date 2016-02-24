@@ -292,8 +292,9 @@ out:
     return ifDesc;
 }
 
+
 JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_clientConnect
-  (JNIEnv *env, jobject obj, jstring clientName)
+  (JNIEnv *env, jobject obj, jstring clientName, jobject callback)
 {
     int rv;
     const char *client_name;
@@ -339,8 +340,11 @@ JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_clientConnect
         h->flags |= MHEAP_FLAG_THREAD_SAFE;
 
         jm->reply_hash = hash_create (0, sizeof (uword));
-        //jm->callback_hash = hash_create (0, sizeof (uword));
-        //jm->ping_hash = hash_create (0, sizeof (uword));
+        jm->callback = (*env)->NewGlobalRef(env, callback);
+        jm->callbackClass = (jclass)(*env)->NewGlobalRef(env, (*env)->GetObjectClass(env, callback));
+        jm->replyCallback = (*env)->GetMethodID(env, jm->callbackClass, "getNodeIndexReply", "(JJJ)V");
+//        jm->callback_hash = hash_create (0, sizeof (uword));
+//        jm->ping_hash = hash_create (0, sizeof (uword));
         jm->api_main = am;
         vjbd_main_init(&jm->vjbd_main);
         jm->sw_if_index_by_interface_name =
@@ -1524,6 +1528,7 @@ vl_api_show_version_reply_t_handler (vl_api_show_version_reply_t * mp)
     vppjni_main_t * jm = &vppjni_main;
     i32 retval = ntohl(mp->retval);
 
+    // Custom additional hand crafted handling
     if (retval >= 0) {
         DEBUG_LOG ("show version request succeeded(%d)");
         strncpy((char*)jm->program_name, (const char*)mp->program,
@@ -1552,6 +1557,40 @@ static void vl_api_want_stats_reply_t_handler (vl_api_want_stats_reply_t * mp)
 {
     vppjni_main_t * jm = &vppjni_main;
     jm->retval = mp->retval; // FIXME: vpp api does not do ntohl on this retval
+    jm->result_ready = 1;
+}
+
+JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_vppConn_getNodeIndex0
+(JNIEnv * env, jclass clazz, jbyteArray node_name)
+{
+//    f64 timeout;
+	vppjni_main_t *jm = &vppjni_main;
+    vl_api_get_node_index_t * mp;
+    u32 my_context_id;
+    int rv;
+    rv = vppjni_sanity_check (jm);
+    if (rv) return rv;
+    my_context_id = vppjni_get_context_id (jm);
+    jbyte * node_nameP = (*env)->GetByteArrayElements (env, node_name, NULL);
+    M(GET_NODE_INDEX, get_node_index);
+    mp->context = clib_host_to_net_u32 (my_context_id);
+    memcpy (mp->node_name, node_nameP, sizeof (mp->node_name));
+    (*env)->ReleaseByteArrayElements (env, node_name, node_nameP, 0);
+    S;
+//    WNR;
+//    return rv;
+    return my_context_id;
+}
+
+static void
+vl_api_get_node_index_reply_t_handler (vl_api_get_node_index_reply_t * mp)
+{
+    vppjni_main_t * jm = &vppjni_main;
+
+    JNIEnv *env = jm->jenv;
+	(*env)->CallVoidMethod(env, jm->callback, jm->replyCallback, ntohl(mp->context), 1, 1);
+
+	//    jm->retval = 22;
     jm->result_ready = 1;
 }
 
@@ -1796,6 +1835,7 @@ void JNI_OnUnload(JavaVM *vm, void *reserved) {
 _(CONTROL_PING_REPLY, control_ping_reply)               \
 _(SW_INTERFACE_DETAILS, sw_interface_details)           \
 _(SHOW_VERSION_REPLY, show_version_reply)               \
+_(GET_NODE_INDEX_REPLY, get_node_index_reply)           \
 _(WANT_STATS_REPLY, want_stats_reply)                   \
 _(VNET_INTERFACE_COUNTERS, vnet_interface_counters)     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)       \
