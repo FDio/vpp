@@ -204,6 +204,9 @@ typedef struct {
   api_main_t * api_main;
   u32 my_client_index;
 
+  jobject callback;
+  JNIEnv *env;
+
   vjbd_main_t vjbd_main;
 } vppjni_main_t;
 
