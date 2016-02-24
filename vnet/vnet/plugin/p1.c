@@ -109,6 +109,8 @@ _(rte_zmalloc)                                  \
 _(rte_malloc_virt2phy)                          \
 _(rte_eal_get_configuration)                    \
 _(post_sw_interface_set_flags)                  \
+_(dpdk_set_stat_poll_interval)                  \
+_(dpdk_set_link_state_poll_interval)            \
 _(dpdk_get_admin_up_down_in_progress)           \
 _(get_dpdk_main)                                \
 _(efd_config)                                   \

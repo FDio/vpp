@@ -393,6 +393,10 @@ typedef struct {
   int input_cpu_first_index;
   int input_cpu_count;
 
+  /* control interval of dpdk link state and stat polling */
+  f64 link_state_poll_interval;
+  f64 stat_poll_interval;
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
@@ -492,6 +496,8 @@ void increment_efd_drop_counter (vlib_main_t * vm, u32 counter_index, u32 count)
    vm->error_main.counters[my_n->error_heap_index+counter_index] += count;
 }
 
+void dpdk_set_stat_poll_interval (f64 interval);
+void dpdk_set_link_state_poll_interval (f64 interval);
 void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
 void dpdk_device_lock_init(dpdk_device_t * xd);
 void dpdk_device_lock_free(dpdk_device_t * xd);
