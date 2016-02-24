@@ -963,9 +963,9 @@ static inline u64 ipv6_get_key (ip6_header_t *ip)
    u64  hash_key;
 
    hash_key = ip->src_address.as_u64[0] ^
-              ip->src_address.as_u64[1] ^
-              ip->dst_address.as_u64[0] ^
-              ip->dst_address.as_u64[1] ^
+              rotate_left(ip->src_address.as_u64[1],13) ^
+              rotate_left(ip->dst_address.as_u64[0],26) ^
+              rotate_left(ip->dst_address.as_u64[1],39) ^
               ip->protocol;
 
    return hash_key;
