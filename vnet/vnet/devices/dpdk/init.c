@@ -1643,7 +1643,13 @@ dpdk_process (vlib_main_t * vm,
 
   while (1)
     {
-      vlib_process_wait_for_event_or_clock (vm, 5.0);
+      /*
+       * check each time through the loop in case intervals are changed
+       */
+      f64 min_wait = dm->link_state_poll_interval < dm->stat_poll_interval ?
+                     dm->link_state_poll_interval : dm->stat_poll_interval;
+
+      vlib_process_wait_for_event_or_clock (vm, min_wait);
 
       if (dpdk_get_admin_up_down_in_progress())
           /* skip the poll if an admin up down is in progress (on any interface) */
@@ -1652,9 +1658,9 @@ dpdk_process (vlib_main_t * vm,
       vec_foreach (xd, dm->devices)
 	{
 	  f64 now = vlib_time_now (vm);
-	  if ((now - xd->time_last_stats_update) >= DPDK_STATS_POLL_INTERVAL)
+          if ((now - xd->time_last_stats_update) >= dm->stat_poll_interval)
 	    dpdk_update_counters (xd, now);
-	  if ((now - xd->time_last_link_update) >= DPDK_LINK_POLL_INTERVAL)
+          if ((now - xd->time_last_link_update) >= dm->link_state_poll_interval)
 	    dpdk_update_link_state (xd, now);
 
       if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
@@ -1674,6 +1680,26 @@ VLIB_REGISTER_NODE (dpdk_process_node,static) = {
     .name = "dpdk-process",
     .process_log2_n_stack_bytes = 17,
 };
+
+int dpdk_set_stat_poll_interval (f64 interval)
+{
+  if (interval < DPDK_MIN_STATS_POLL_INTERVAL)
+      return (VNET_API_ERROR_INVALID_VALUE);
+
+  dpdk_main.stat_poll_interval = interval;
+
+  return 0;
+}
+
+int dpdk_set_link_state_poll_interval (f64 interval)
+{
+  if (interval < DPDK_MIN_LINK_POLL_INTERVAL)
+      return (VNET_API_ERROR_INVALID_VALUE);
+
+  dpdk_main.link_state_poll_interval = interval;
+
+  return 0;
+}
 
 clib_error_t *
 dpdk_init (vlib_main_t * vm)
@@ -1802,6 +1828,9 @@ _(rte_nicvf_pmd_init)
     (VLIB_BUFFER_TOTAL_LENGTH_VALID 
      | IP_BUFFER_L4_CHECKSUM_COMPUTED
      | IP_BUFFER_L4_CHECKSUM_CORRECT);
+
+  dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
+  dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
 
   /* init CLI */
   if ((error = vlib_call_init_function (vm, dpdk_cli_init)))
