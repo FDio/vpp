@@ -26,9 +26,11 @@
 #define VIRTQ_DESC_F_NEXT               1
 #define VHOST_USER_REPLY_MASK       (0x1 << 2)
 
+#define VHOST_USER_PROTOCOL_F_MQ   0
+#define VHOST_USER_PROTOCOL_F_LOG_SHMFD	1
+
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
 #define VHOST_USER_F_PROTOCOL_FEATURES  30
-#define VHOST_USER_PROTOCOL_F_MQ   0
 #define VHOST_USER_PROTOCOL_FEATURES   (1ULL << VHOST_USER_PROTOCOL_F_MQ)
 
 /* If multiqueue is provided by host, then we suppport it. */
@@ -40,7 +42,11 @@
 
 #define foreach_virtio_net_feature      \
  _ (VIRTIO_NET_F_MRG_RXBUF, 15)         \
- _ (VIRTIO_F_ANY_LAYOUT, 27)
+ _ (VIRTIO_F_ANY_LAYOUT, 27)            \
+ _ (VHOST_F_LOG_ALL, 26)                \
+ _ (VIRTIO_NET_F_GUEST_ANNOUNCE, 21)    \
+ _ (VHOST_USER_F_PROTOCOL_FEATURES, 30)
+
 
 typedef enum {
 #define _(f,n) FEAT_##f = (n),
@@ -80,6 +86,11 @@ typedef struct vhost_vring_addr {
   u64 desc_user_addr, used_user_addr, avail_user_addr, log_guest_addr;
 } vhost_vring_addr_t;
 
+typedef struct vhost_user_log {
+  u64 size;
+  u64 offset;
+} vhost_user_log_t;
+
 typedef enum vhost_user_req {
   VHOST_USER_NONE = 0,
   VHOST_USER_GET_FEATURES = 1,
@@ -96,12 +107,12 @@ typedef enum vhost_user_req {
   VHOST_USER_SET_VRING_KICK = 12,
   VHOST_USER_SET_VRING_CALL = 13,
   VHOST_USER_SET_VRING_ERR = 14,
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
   VHOST_USER_GET_PROTOCOL_FEATURES = 15,
   VHOST_USER_SET_PROTOCOL_FEATURES = 16,
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
   VHOST_USER_GET_QUEUE_NUM = 17,
-  VHOST_USER_SET_VRING_ENABLE = 18,
 #endif
+  VHOST_USER_SET_VRING_ENABLE = 18,
   VHOST_USER_MAX
 } vhost_user_req_t;
 
@@ -151,6 +162,7 @@ typedef struct vhost_user_msg {
         vhost_vring_state_t state;
         vhost_vring_addr_t addr;
         vhost_user_memory_t memory;
+        vhost_user_log_t log;
     };
 } __attribute ((packed)) vhost_user_msg_t;
 
@@ -161,9 +173,11 @@ typedef struct {
   vring_desc_t *desc;
   vring_avail_t *avail;
   vring_used_t *used;
+  u64 log_guest_addr;
   int callfd;
   int kickfd;
   int errfd;
+  u32 enabled;
   u32 callfd_idx;
   u32 n_since_last_int;
   f64 int_deadline;
@@ -186,6 +200,7 @@ typedef struct {
   u32 nregions;
   u64 features;
   u64 feature_mask;
+  u64 protocol_features;
   u32 num_vrings;
   vhost_user_memory_region_t regions[VHOST_MEMORY_MAX_NREGIONS];
   void * region_mmap_addr[VHOST_MEMORY_MAX_NREGIONS];
@@ -194,6 +209,9 @@ typedef struct {
   int virtio_net_hdr_sz;
   int is_any_layout;
   u32 * d_trace_buffers;
+
+  void * log_base_addr;
+  u64 log_size;
 } vhost_user_intf_t;
 
 typedef struct {
