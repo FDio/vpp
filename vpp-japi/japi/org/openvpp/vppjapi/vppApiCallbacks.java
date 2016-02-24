@@ -15,13 +15,7 @@
 
 package org.openvpp.vppjapi;
 
-import java.io.IOException;
-import org.openvpp.vppjapi.vppApi;
-
-public abstract class vppApiCallbacks extends vppApi {
-     public vppApiCallbacks(String clientName) throws IOException {
-         super(clientName);
-     }
+public interface vppApiCallbacks {
 /* Disabled!
  *
  * public abstract void interfaceDetails(
@@ -31,5 +25,9 @@ public abstract class vppApiCallbacks extends vppApi {
             byte subExactMatch, byte subDefault, byte subOuterVlanIdAny, byte subInnerVlanIdAny,
             int vtrOp, int vtrPushDot1q, int vtrTag1, int vtrTag2);
  */
+
+
+    void getNodeIndexReply(long contextId, long retVal, long nodeIndex);
+
 
 }
