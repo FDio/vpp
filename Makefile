@@ -35,6 +35,7 @@ endif
 help:
 	@echo "Make Targets:"
 	@echo " bootstrap           - prepare tree for build"
+	@echo " install-dep         - install software dependencies"
 	@echo " wipe                - wipe all products of debug build "
 	@echo " wipe-release        - wipe all products of release build "
 	@echo " build               - build debug binaries"
@@ -70,6 +71,7 @@ ifeq ("$(shell lsb_release -si)", "Ubuntu")
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
 	if [ -n "$$MISSING" ] ; then \
 	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
+	  echo "by executing \"make install-dep\"\n" ; \
 	  exit 1 ; \
 	fi ; \
 	exit 0
@@ -92,6 +94,13 @@ endif
 	@touch $@
 
 bootstrap: $(BR)/.bootstrap.ok
+
+install-dep:
+ifeq ("$(shell lsb_release -si)", "Ubuntu")
+	@sudo apt-get install $(DEB_DEPENDS)
+else
+	$(error "This option currently works only on Ubuntu systems")
+endif
 
 define make
 	@make -C $(BR) V=$(V) PLATFORM=vpp TAG=$(1) $(2)
