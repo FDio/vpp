@@ -384,7 +384,7 @@ dpdk_lib_init (dpdk_main_t * dm)
           /* Cisco VIC */
           case VNET_DPDK_PMD_VICE:
           case VNET_DPDK_PMD_ENIC:
-            rte_eth_link_get_nowait(xd->device_index, &l);
+            rte_eth_link_get_nowait(i, &l);
             if (l.link_speed == 40000)
               {
                 xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
@@ -417,7 +417,7 @@ dpdk_lib_init (dpdk_main_t * dm)
                 xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
                 break;
               case I40E_DEV_ID_VF:
-                rte_eth_link_get_nowait(xd->device_index, &l);
+                rte_eth_link_get_nowait(i, &l);
                 xd->port_type = l.link_speed == 10000 ?
                   VNET_DPDK_PORT_TYPE_ETH_10G : VNET_DPDK_PORT_TYPE_ETH_40G;
                 break;
