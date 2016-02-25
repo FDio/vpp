@@ -465,6 +465,10 @@ dpdk_lib_init (dpdk_main_t * dm)
             xd->af_packet_port_id = af_packet_port_id++;
             break;
 
+          case VNET_DPDK_PMD_BOND:
+            xd->port_type = VNET_DPDK_PORT_TYPE_ETH_BOND;
+            break;
+
           default:
             xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
         }
@@ -1589,7 +1593,9 @@ dpdk_process (vlib_main_t * vm,
               vlib_frame_t * f)
 {
   clib_error_t * error;
+  vnet_main_t * vnm = vnet_get_main();
   dpdk_main_t * dm = &dpdk_main;
+  ethernet_main_t * em = &ethernet_main;
   dpdk_device_t * xd;
   vlib_thread_main_t * tm = vlib_get_thread_main();
   void *vu_state;
@@ -1629,6 +1635,45 @@ dpdk_process (vlib_main_t * vm,
     {
       dpdk_update_link_state (xd, now);
     }
+
+{ // Setup MACs for bond interfaces and their links which was initialized in
+  // dpdk_port_setup() but needs to be done again here to take effect.
+  int nports = rte_eth_dev_count();
+  if (nports > 0) {
+      for (i = 0; i < nports; i++) {
+	  struct rte_eth_dev_info dev_info;
+	  rte_eth_dev_info_get(i, &dev_info);
+	  if (!dev_info.driver_name)
+	      dev_info.driver_name = dev_info.pci_dev->driver->name;
+	  ASSERT(dev_info.driver_name);
+	  if (strncmp(dev_info.driver_name, "rte_bond_pmd", 12) == 0) {
+	      u8  addr[6]; 
+	      u8  slink[16];
+	      int nlink = rte_eth_bond_slaves_get(i, slink, 16);
+	      if (nlink > 0) {
+		  vnet_hw_interface_t * hi;
+		  ethernet_interface_t * ei;
+		  /* Get MAC of 1st slave link */
+		  rte_eth_macaddr_get(slink[0], (struct ether_addr *)addr);
+		  /* Set MAC of bounded interface to that of 1st slave link */
+		  rte_eth_bond_mac_address_set(i, (struct ether_addr *)addr);
+		  /* Populate MAC of bonded interface in VPP hw tables */
+		  hi = vnet_get_hw_interface (
+		      vnm, dm->devices[i].vlib_hw_if_index);
+		  ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
+		  memcpy (hi->hw_address, addr, 6);
+		  memcpy (ei->address, addr, 6);
+		  /* Add MAC to other slave links */
+		  while (nlink > 1) {
+		      nlink--;
+		      rte_eth_dev_mac_addr_add(
+			  slink[nlink], (struct ether_addr *)addr, 0);
+		  }
+	      }
+	  }
+      }
+  }
+}
 
   while (1)
     {
@@ -1731,6 +1776,10 @@ do {                                                  \
 
 #ifdef RTE_LIBRTE_CXGBE_PMD
   _(rte_cxgbe_driver)
+#endif
+
+#ifdef RTE_LIBRTE_PMD_BOND
+  _(bond_drv)
 #endif
 
 #undef _

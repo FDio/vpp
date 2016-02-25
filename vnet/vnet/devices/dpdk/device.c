@@ -812,6 +812,9 @@ static u8 * format_dpdk_device_name (u8 * s, va_list * args)
       device_name = "FortyGigabitEthernet";
       break;
 
+    case VNET_DPDK_PORT_TYPE_ETH_BOND:
+      return format(s, "BondEthernet%d", dm->devices[i].device_index);
+
     case VNET_DPDK_PORT_TYPE_ETH_SWITCH:
       device_name = "EthernetSwitch";
       break;
@@ -926,8 +929,12 @@ static u8 * format_dpdk_device_type (u8 * s, va_list * args)
 #endif
 
     case VNET_DPDK_PMD_AF_PACKET:
-  dev_type = "af_packet";
-  break;
+	dev_type = "af_packet";
+	break;
+ 
+    case VNET_DPDK_PMD_BOND:
+	dev_type = "Ethernet Bonding";
+	break;
 
     default:
     case VNET_DPDK_PMD_UNKNOWN:
