@@ -325,6 +325,7 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index, u32 flag
   u32 mask;
   clib_error_t * error = 0;
   u32 is_create = (helper_flags & VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE) != 0;
+  u32 old_flags;
 
   mask = VNET_SW_INTERFACE_FLAG_ADMIN_UP | VNET_SW_INTERFACE_FLAG_PUNT;
   flags &= mask;
@@ -397,13 +398,32 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index, u32 flag
 	  vnet_hw_interface_class_t * hw_class = vnet_get_hw_interface_class (vnm, hi->hw_class_index);
 	  vnet_device_class_t * dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
 
-	  if (dev_class->admin_up_down_function
-	      && (error = dev_class->admin_up_down_function (vnm, si->hw_if_index, flags)))
-	    goto done;
+          /* save the si admin up flag */
+          old_flags = si->flags;
 
-	  if (hw_class->admin_up_down_function
-	      && (error = hw_class->admin_up_down_function (vnm, si->hw_if_index, flags)))
-	    goto done;
+          /* update si admin up flag in advance if we are going admin down */
+          if (!(flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
+              si->flags &=  ~VNET_SW_INTERFACE_FLAG_ADMIN_UP;
+
+          if (dev_class->admin_up_down_function
+              && (error = dev_class->admin_up_down_function(vnm,
+                                                            si->hw_if_index,
+                                                            flags)))
+            {
+              /* restore si admin up flag to it's original state on errors */
+              si->flags =  old_flags;
+              goto done;
+            }
+
+          if (hw_class->admin_up_down_function
+              && (error = hw_class->admin_up_down_function(vnm,
+                                                           si->hw_if_index,
+                                                           flags)))
+            {
+              /* restore si admin up flag to it's original state on errors */
+              si->flags =  old_flags;
+              goto done;
+            }
 
 	  /* Admin down implies link down. */
 	  if (! (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)

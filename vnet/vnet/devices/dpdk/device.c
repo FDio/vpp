@@ -930,6 +930,17 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
     }
   else
     {
+      /*
+       * DAW-FIXME: VMXNET3 device stop/start doesn't work,
+       * therefore fake the stop in the dpdk driver by
+       * silently dropping all of the incoming pkts instead of
+       * stopping the driver / hardware.
+       */
+      if (xd->pmd != VNET_DPDK_PMD_VMXNET3)
+         xd->admin_up = 0;
+      else
+         xd->admin_up = ~0;
+
       rte_eth_allmulticast_disable (xd->device_index);
       vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index, 0);
 
@@ -940,12 +951,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
        * stopping the driver / hardware.
        */
       if (xd->pmd != VNET_DPDK_PMD_VMXNET3)
-	{
 	  rte_eth_dev_stop (xd->device_index);
-	  xd->admin_up = 0;
-	}
-      else
-	  xd->admin_up = ~0;
     }
 
   if (rv < 0)
