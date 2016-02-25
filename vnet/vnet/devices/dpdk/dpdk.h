@@ -51,6 +51,7 @@
 #include <rte_virtio_net.h>
 #include <rte_pci_dev_ids.h>
 #include <rte_version.h>
+#include <rte_eth_bond.h>
 
 #include <vnet/unix/pcap.h>
 #include <vnet/devices/virtio/vhost-user.h>
@@ -90,6 +91,7 @@ typedef enum {
   _ ("rte_enic_pmd", ENIC)        \
   _ ("rte_vmxnet3_pmd", VMXNET3)  \
   _ ("AF_PACKET PMD", AF_PACKET)  \
+  _ ("rte_bond_pmd", BOND)        \
   _ ("rte_pmd_fm10k", FM10K)      \
   _ ("rte_cxgbe_pmd", CXGBE)
 
@@ -108,6 +110,7 @@ typedef enum {
   VNET_DPDK_PORT_TYPE_ETH_1G,
   VNET_DPDK_PORT_TYPE_ETH_10G,
   VNET_DPDK_PORT_TYPE_ETH_40G,
+  VNET_DPDK_PORT_TYPE_ETH_BOND,
   VNET_DPDK_PORT_TYPE_ETH_SWITCH,
 #ifdef NETMAP
   VNET_DPDK_PORT_TYPE_NETMAP,
