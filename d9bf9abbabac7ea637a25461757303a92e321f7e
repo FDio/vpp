@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_d4053a15",
+        "filename": "vnet/vnet/devices/dpdk/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-25T22:31:30Z",
+      "side": 0,
+      "message": "Why did you decide to move this block of stuff?",
+      "revId": "d9bf9abbabac7ea637a25461757303a92e321f7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

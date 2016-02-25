@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_54124a63",
+        "filename": "vnet/vnet/devices/dpdk/dpdk.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 569,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-25T22:31:30Z",
+      "side": 1,
+      "message": "format_function_t foo; is less typing...",
+      "revId": "501eac53d9c613b7198c4c0e403168cbe9147828",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9af53d3f_140cc241",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 782,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-25T22:31:30Z",
+      "side": 1,
+      "message": "This doesn\u0027t have much to do with the dpdk...",
+      "revId": "501eac53d9c613b7198c4c0e403168cbe9147828",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
