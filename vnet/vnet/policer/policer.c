@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <stdint.h>
 #include <vnet/policer/policer.h>
 
 u8 * format_policer_instance (u8 * s, va_list * va)

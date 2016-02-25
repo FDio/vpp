@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#if DPDK==1
 #include <vnet/devices/dpdk/dpdk.h>
+#endif
 
 #include <openssl/hmac.h>
 #include <openssl/rand.h>

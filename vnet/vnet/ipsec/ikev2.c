@@ -26,29 +26,6 @@ static int ikev2_delete_tunnel_interface(vnet_main_t * vnm,
                                          ikev2_sa_t *sa,
                                          ikev2_child_sa_t * child);
 
-static void hexdump(u8 buffer[], int len)
-{
-#define HEXDUMP_LINE_LEN  16
-  int i;
-  char s[HEXDUMP_LINE_LEN+1];
-  bzero(s, HEXDUMP_LINE_LEN+1);
-
-  for(i=0; i < len; i++) {
-    if (!(i%HEXDUMP_LINE_LEN)) {
-      if (s[0])
-        printf("[%s]",s);
-      printf("\n%05x: ", i);
-      bzero(s, HEXDUMP_LINE_LEN);
-    }
-    s[i%HEXDUMP_LINE_LEN]=isprint(buffer[i])?buffer[i]:'.';
-    printf("%02x ", buffer[i]);
-  }
-  while(i++%HEXDUMP_LINE_LEN)
-    printf("   ");
-
-  printf("[%s]\n", s);
-}
-
 #define ikev2_set_state(sa, v) do { \
     (sa)->state = v; \
     clib_warning("sa state changed to " #v); \
@@ -458,7 +435,6 @@ ikev2_calc_child_keys(ikev2_sa_t *sa, ikev2_child_sa_t * child)
   int len = ctr_encr->key_len * 2 + ctr_integ->key_len * 2;
 
   keymat = ikev2_calc_prfplus(tr_prf, sa->sk_d, s, len);
-  hexdump(keymat, vec_len(keymat));
 
   int pos = 0;
 
@@ -1884,7 +1860,6 @@ ikev2_node_fn (vlib_main_t * vm,
                            ike0->exchange,
                            format_ip4_address, ip40->src_address.as_u8,
                            format_ip4_address, ip40->dst_address.as_u8);
-              hexdump((u8 *) ip40, b0->current_length);
             }
 
 dispatch0:
@@ -1899,10 +1874,6 @@ dispatch0:
                 b0->current_length = len + sizeof(ip4_header_t) + sizeof(udp_header_t);
                 ip40->length = clib_host_to_net_u16(b0->current_length);
                 ip40->checksum = ip4_header_checksum (ip40);
-#if 0
-                clib_warning("sending response:");
-                hexdump(vlib_buffer_get_current (b0), b0->current_length);
-#endif
             }
           /* delete sa */
           if (sa0 && (sa0->state == IKEV2_STATE_DELETED ||

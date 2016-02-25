@@ -15,6 +15,8 @@
 virl_arch = native
 virl_native_tools = vppapigen
 
+virl_uses_dpdk = yes
+
 virl_root_packages = vpp vlib vlib-api vnet svm dpdk vpp-api-test \
 	vpp-japi 
 

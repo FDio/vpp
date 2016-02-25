@@ -1142,6 +1142,7 @@ show_threads_fn (vlib_main_t * vm,
                     w->registration ? w->registration->name : "",
                     w->lwp);
 
+#if DPDK==1
       int lcore = w->dpdk_lcore_id;
       if (lcore > -1)
         {
@@ -1165,7 +1166,7 @@ show_threads_fn (vlib_main_t * vm,
                 line = format(line, "unknown");
             }
         }
-
+#endif
       vlib_cli_output(vm, "%v", line);
       vec_free(line);
     }

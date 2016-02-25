@@ -290,12 +290,6 @@ VLIB_REGISTER_NODE (li_hit_node) = {
   .name = "li-hit",
 };
 
-VLIB_REGISTER_NODE (ipsec_output_node) = {
-  .vector_size = sizeof (u32),
-  .function = li_hit_node_fn,
-  .name = "ipsec-output",
-};
-
 static clib_error_t *
 li_init (vlib_main_t * vm)
 {

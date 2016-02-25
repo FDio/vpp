@@ -75,10 +75,10 @@
 #undef __included_bihash_template_h__
 #include <vnet/l2/l2_fib.h>
 
-#if DPDK > 0
 #if IPSEC > 0
 #include <vnet/ipsec/ipsec.h>
 #endif /* IPSEC */
+#if DPDK > 0
 #include <vnet/devices/virtio/vhost-user.h>
 #endif
 

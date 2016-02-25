@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#if DPDK==1
 #include <vnet/devices/dpdk/dpdk.h>
+#endif
 
 #define foreach_ipsec_policy_action \
   _(0, BYPASS,  "bypass")          \
@@ -237,9 +239,12 @@ int ipsec_set_interface_key(vnet_main_t * vnm, u32 hw_if_index, ipsec_if_set_key
 always_inline void
 ipsec_alloc_empty_buffers(vlib_main_t * vm, ipsec_main_t *im)
 {
+#if DPDK==1
   dpdk_main_t * dm = &dpdk_main;
   u32 free_list_index = dm->vlib_buffer_free_list_index;
-
+#else
+  u32 free_list_index = VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX;
+#endif
   uword l = vec_len (im->empty_buffers);
   uword n_alloc = 0;
 

@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <math.h>
+#include <stdint.h>
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>

@@ -12,6 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <stdint.h>
+
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/policer/policer.h>

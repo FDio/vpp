@@ -21,6 +21,7 @@
 
 #include <vnet/ipsec/ipsec.h>
 
+#if IPSEC > 0
 
 #define foreach_ipsec_output_next                \
 _(DROP, "error-drop")                            \
@@ -403,3 +404,23 @@ VLIB_REGISTER_NODE (ipsec_output_node) = {
 #undef _
   },
 };
+
+#else /* IPSEC > 1 */
+
+/* Dummy ipsec output node, in case when IPSec is disabled */
+
+static uword
+ipsec_output_node_fn (vlib_main_t * vm,
+		  vlib_node_runtime_t * node,
+		  vlib_frame_t * frame)
+{
+  clib_warning ("IPSec disabled");
+  return 0;
+}
+
+VLIB_REGISTER_NODE (ipsec_output_node) = {
+  .vector_size = sizeof (u32),
+  .function = ipsec_output_node_fn,
+  .name = "ipsec-output",
+};
+#endif

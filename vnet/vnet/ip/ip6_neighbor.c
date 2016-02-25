@@ -284,10 +284,10 @@ typedef struct {
   ip6_address_t addr;
 } ip6_neighbor_set_unset_rpc_args_t;
 
+#if DPDK > 0
 static void ip6_neighbor_set_unset_rpc_callback 
 ( ip6_neighbor_set_unset_rpc_args_t * a);
 
-#if DPDK > 0
 static void set_unset_ip6_neighbor_rpc 
 (vlib_main_t * vm,
  u32 sw_if_index,
@@ -458,6 +458,7 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
   return rv;
 }
 
+#if DPDK > 0
 static void ip6_neighbor_set_unset_rpc_callback 
 ( ip6_neighbor_set_unset_rpc_args_t * a)
 {
@@ -469,6 +470,7 @@ static void ip6_neighbor_set_unset_rpc_callback
     vnet_unset_ip6_ethernet_neighbor (vm, a->sw_if_index, &a->addr, 
                                       a->link_layer_address, 6);
 }
+#endif
 
 static int
 ip6_neighbor_sort (void *a1, void *a2)

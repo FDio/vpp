@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <ctype.h>
+
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>

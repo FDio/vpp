@@ -1,6 +1,5 @@
 vpp_configure_depend =				\
 	vppinfra-install			\
-	dpdk-install				\
 	svm-install				\
 	vlib-api-install			\
 	vlib-install				\
@@ -15,7 +14,6 @@ vpp_configure_args += $(vpp_configure_args_$(PLATFORM))
 
 vpp_CPPFLAGS = $(call installed_includes_fn,	\
 	vppinfra				\
-	dpdk					\
         openssl					\
 	svm					\
 	vlib					\
@@ -24,9 +22,14 @@ vpp_CPPFLAGS = $(call installed_includes_fn,	\
 
 vpp_LDFLAGS = $(call installed_libs_fn,		\
 	vppinfra				\
-	dpdk					\
 	openssl					\
 	svm					\
 	vlib					\
 	vlib-api				\
 	vnet)
+
+ifeq ($($(PLATFORM)_uses_dpdk),yes)
+vpp_configure_depend += dpdk-install
+vpp_CPPFLAGS += $(call installed_includes_fn, dpdk)
+vpp_LDFLAGS += $(call installed_libs_fn, dpdk)
+endif

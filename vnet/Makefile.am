@@ -299,7 +299,6 @@ libvnet_la_SOURCES +=       			\
  vnet/ipsec/ipsec.c				\
  vnet/ipsec/ipsec_cli.c  			\
  vnet/ipsec/ipsec_format.c			\
- vnet/ipsec/ipsec_output.c			\
  vnet/ipsec/ipsec_input.c			\
  vnet/ipsec/ipsec_if.c				\
  vnet/ipsec/ipsec_if_in.c			\
@@ -312,6 +311,9 @@ libvnet_la_SOURCES +=       			\
  vnet/ipsec/ikev2_payload.c			\
  vnet/ipsec/ikev2_format.c
 endif 
+
+libvnet_la_SOURCES +=       			\
+ vnet/ipsec/ipsec_output.c
 
 nobase_include_HEADERS +=     		        \
  vnet/ipsec/ipsec.h                             \
