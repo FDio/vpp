@@ -68,7 +68,7 @@ static u8 * format_handoff_dispatch_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   handoff_dispatch_trace_t * t = va_arg (*args, handoff_dispatch_trace_t *);
-  
+
   s = format (s, "HANDOFF_DISPATCH: sw_if_index %d next_index %d buffer 0x%x",
       t->sw_if_index,
       t->next_index,
@@ -267,53 +267,6 @@ static char * dpdk_error_strings[] = {
     foreach_dpdk_error
 #undef _
 };
-
-typedef struct {
-  u32 buffer_index;
-  u16 device_index;
-  u16 queue_index;
-  struct rte_mbuf mb;
-  vlib_buffer_t buffer; /* Copy of VLIB buffer; pkt data stored in pre_data. */
-} dpdk_rx_dma_trace_t;
-
-static u8 * format_dpdk_rx_dma_trace (u8 * s, va_list * va)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
-  CLIB_UNUSED (vnet_main_t * vnm) = vnet_get_main();
-  dpdk_rx_dma_trace_t * t = va_arg (*va, dpdk_rx_dma_trace_t *);
-  dpdk_main_t * dm = &dpdk_main;
-  dpdk_device_t * xd = vec_elt_at_index (dm->devices, t->device_index);
-  format_function_t * f;
-  uword indent = format_get_indent (s);
-  vnet_sw_interface_t * sw = vnet_get_sw_interface (vnm, xd->vlib_sw_if_index);
-
-  s = format (s, "%U rx queue %d",
-	      format_vnet_sw_interface_name, vnm, sw,
-	      t->queue_index);
-
-  s = format (s, "\n%Ubuffer 0x%x: %U",
-	      format_white_space, indent,
-	      t->buffer_index,
-	      format_vlib_buffer, &t->buffer);
-
-#ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
-  s = format (s, "\n%U%U",
-	      format_white_space, indent,
-	      format_dpdk_rx_rte_mbuf, &t->mb);
-#else
-  s = format (s, "\n%U%U",
-	      format_white_space, indent,
-	      format_dpdk_rte_mbuf, &t->mb);
-#endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
-  f = node->format_buffer;
-  if (!f)
-    f = format_hex_bytes;
-  s = format (s, "\n%U%U", format_white_space, indent,
-	      f, t->buffer.pre_data, sizeof (t->buffer.pre_data));
-
-  return s;
-}
 
 always_inline void
 dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t *xd, struct rte_mbuf *mb,

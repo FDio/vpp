@@ -570,6 +570,7 @@ if WITH_DPDK
 libvnet_la_SOURCES +=				\
   vnet/devices/dpdk/dpdk_priv.h		\
   vnet/devices/dpdk/device.c		\
+  vnet/devices/dpdk/format.c		\
   vnet/devices/dpdk/init.c			\
   vnet/devices/dpdk/node.c			\
   vnet/devices/dpdk/threads.c       \

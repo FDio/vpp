@@ -403,6 +403,23 @@ typedef enum {
   DPDK_RX_N_NEXT,
 } dpdk_rx_next_t;
 
+typedef struct {
+  u32 buffer_index;
+  u16 device_index;
+  u8 queue_index;
+  struct rte_mbuf mb;
+  /* Copy of VLIB buffer; packet data stored in pre_data. */
+  vlib_buffer_t buffer;
+} dpdk_tx_dma_trace_t;
+
+typedef struct {
+  u32 buffer_index;
+  u16 device_index;
+  u16 queue_index;
+  struct rte_mbuf mb;
+  vlib_buffer_t buffer; /* Copy of VLIB buffer; pkt data stored in pre_data. */
+} dpdk_rx_dma_trace_t;
+
 void vnet_buffer_needs_dpdk_mb (vlib_buffer_t * b);
 
 void dpdk_set_next_node (dpdk_rx_next_t, char *);
@@ -534,5 +551,13 @@ u32 dpdk_get_admin_up_down_in_progress (void);
 
 uword
 dpdk_input_rss (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f);
+
+format_function_t format_dpdk_device_name;
+format_function_t format_dpdk_device;
+format_function_t format_dpdk_tx_dma_trace;
+format_function_t format_dpdk_rx_dma_trace;
+format_function_t format_dpdk_rte_mbuf;
+format_function_t format_dpdk_rx_rte_mbuf;
+unformat_function_t unformat_socket_mem;
 
 #endif /* __included_dpdk_h__ */
