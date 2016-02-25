@@ -920,33 +920,6 @@ static clib_error_t * dpdk_bind_eth_kernel_drivers (vlib_main_t * vm,
   return error;
 }
 
-static uword
-unformat_socket_mem (unformat_input_t * input, va_list * va)
-{
-  uword ** r = va_arg (* va, uword **);
-  int i = 0;
-  u32 mem;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, ","))
-        hash_set (*r, i, 1024);
-      else if (unformat (input, "%u,", &mem))
-        hash_set (*r, i, mem);
-      else if (unformat (input, "%u", &mem))
-        hash_set (*r, i, mem);
-      else
-        {
-          unformat_put_input (input);
-          goto done;
-        }
-      i++;
-    }
-
-done:
-  return 1;
-}
-
 static u32
 get_node_free_hugepages_num (u32 node, u32 page_size)
 {
