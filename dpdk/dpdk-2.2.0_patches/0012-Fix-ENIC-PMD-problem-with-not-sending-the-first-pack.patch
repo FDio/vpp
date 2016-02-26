@@ -1,0 +1,26 @@
+From cbd799612eb1da02cefc6d43fe304e4434cdf8e5 Mon Sep 17 00:00:00 2001
+From: John Lo <loj@cisco.com>
+Date: Fri, 26 Feb 2016 12:54:27 -0500
+Subject: [PATCH 2/2] Fix ENIC PMD problem with not sending the first packet on
+ TX.
+
+---
+ drivers/net/enic/base/enic_vnic_wq.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/enic/base/enic_vnic_wq.h b/drivers/net/enic/base/enic_vnic_wq.h
+index e3ea574..75fad22 100644
+--- a/drivers/net/enic/base/enic_vnic_wq.h
++++ b/drivers/net/enic/base/enic_vnic_wq.h
+@@ -48,7 +48,7 @@ static inline void enic_vnic_post_wq_index(struct vnic_wq *wq)
+ 	 * stale descriptor fields.
+ 	*/
+ 	wmb();
+-	iowrite32(buf->index, &wq->ctrl->posted_index);
++	iowrite32(buf->next->index, &wq->ctrl->posted_index);
+ }
+ 
+ static inline void enic_vnic_post_wq(struct vnic_wq *wq,
+-- 
+1.9.1
+
