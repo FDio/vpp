@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_089386a4",
+        "filename": "vnet/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-26T13:17:15Z",
+      "side": 1,
+      "message": "Might want to free the buffers, throttle the clib_warning()",
+      "revId": "e936bbe5945ca3c0f522f6c0abdfbdaa407bcb84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
