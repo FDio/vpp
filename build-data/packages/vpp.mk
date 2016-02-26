@@ -28,7 +28,7 @@ vpp_LDFLAGS = $(call installed_libs_fn,		\
 	vlib-api				\
 	vnet)
 
-ifeq ($($(PLATFORM)_uses_dpdk),yes)
+ifneq ($($(PLATFORM)_uses_dpdk),no)
 vpp_configure_depend += dpdk-install
 vpp_CPPFLAGS += $(call installed_includes_fn, dpdk)
 vpp_LDFLAGS += $(call installed_libs_fn, dpdk)
