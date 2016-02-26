@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_4814eef4",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2431,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-26T20:48:01Z",
+      "side": 1,
+      "message": "Oops... My bad... Thanks for fixing it... D.",
+      "revId": "d7ffe349d6a65cfc01cf828961eb57412b2c2c01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
