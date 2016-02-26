@@ -268,32 +268,6 @@ u32 vlib_app_num_thread_stacks_needed (void)
  * messages!
  */
 
-#if IPV6SR == 0
-#define foreach_ipv6_sr_stub_node \
-_(ipsec-output, ipsec_output)
-#else
-#define foreach_ipv6_sr_stub_node
-#endif
-
-#define _(n,m)                                          \
-static uword                                            \
-m##_node_fn (vlib_main_t *vm,                           \
-           vlib_node_runtime_t *node,                   \
-           vlib_frame_t *frame)                         \
-{                                                       \
-  clib_warning("unimplemented, leaking buffers...");    \
-  return 0;                                             \
-}                                                       \
-                                                        \
-VLIB_REGISTER_NODE(m##_node) = {                        \
-  .function = m##_node_fn,                              \
-  .name = #n,                                           \
-  .vector_size = sizeof(u32),                           \
-  .type = VLIB_NODE_TYPE_INTERNAL,                      \
-};
-foreach_ipv6_sr_stub_node;
-#undef _
-
 #if CLIB_DEBUG > 0
 
 static clib_error_t *
