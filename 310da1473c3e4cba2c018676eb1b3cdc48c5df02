@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af53d3f_a8881a23",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1391,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-27T16:27:44Z",
+      "side": 1,
+      "message": "We need to discuss this...",
+      "revId": "310da1473c3e4cba2c018676eb1b3cdc48c5df02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
