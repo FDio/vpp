@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afa4931_fec9415b",
+        "filename": "vnet/vnet/plugin/p1.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-02-29T21:14:34Z",
+      "side": 1,
+      "message": "FYI: we switched to [dynamically] linking the vpp container app against libvnet.so. We\u0027re not even building p1.c at this point. Please make sure that your plugin finds symbols as needed, etc. I don\u0027t mind merging this change, but at some point soon the entire file will have an accident.\n\nIn fact, if you feel like disposing of it, please go ahead.",
+      "revId": "679ea7951514736e8c8318b434ad7162b27eea84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
