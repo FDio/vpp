@@ -842,7 +842,7 @@ ethernet_sw_interface_add_del (vnet_main_t * vnm,
   clib_error_t * error = 0;
   subint_config_t *subint;
   u32 match_flags;
-  u32 unsupported;
+  u32 unsupported=0;
 
   // Find the config for this subinterface
   subint = ethernet_sw_interface_get_config (vnm, sw_if_index, &match_flags, &unsupported);

@@ -337,7 +337,7 @@ static pfhash_kv_t * pfhash_get_internal (pfhash_t * p, u32 bucket_contents,
 u64 pfhash_get (pfhash_t * p, u32 bucket, void * key)
 {
   pfhash_kv_t *kv;
-  u32 match_index;
+  u32 match_index=~0;
   pfhash_kv_16_t * kv16;
   pfhash_kv_8_t * kv8;
   pfhash_kv_8v8_t * kv8v8;

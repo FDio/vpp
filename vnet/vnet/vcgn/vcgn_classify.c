@@ -939,7 +939,7 @@ set_vcgn_nfv9_logging_cofig_command_fn (vlib_main_t * vm,
 /* vcgn changes start*/
     cnat_nfv9_logging_info_t *my_nfv9_logging_info = NULL;
     cnat_nfv9_logging_info_t *my_nfv9_logging_info_tmp = NULL;
-    cnat_vrfmap_t *my_vrfmap = 0, *my_vrfmap_temp; 
+    cnat_vrfmap_t *my_vrfmap = 0, *my_vrfmap_temp = 0; 
     u16           i_vrf;
     u32           i_vrf_id;
     u8            found;
