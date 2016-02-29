@@ -66,11 +66,23 @@ static uword dummy_interface_tx (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static clib_error_t *
+vxlan_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+{
+  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    vnet_hw_interface_set_flags (vnm, hw_if_index, VNET_HW_INTERFACE_FLAG_LINK_UP);
+  else
+    vnet_hw_interface_set_flags (vnm, hw_if_index, 0);
+
+  return /* no error */ 0;
+}
+
 VNET_DEVICE_CLASS (vxlan_device_class,static) = {
   .name = "VXLAN",
   .format_device_name = format_vxlan_name,
   .format_tx_trace = format_vxlan_encap_trace,
   .tx_function = dummy_interface_tx,
+  .admin_up_down_function = vxlan_interface_admin_up_down,
 };
 
 static uword dummy_set_rewrite (vnet_main_t * vnm,
