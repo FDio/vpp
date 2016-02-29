@@ -72,6 +72,8 @@ linux_epoll_file_update (unix_file_t * f,
   e.events = EPOLLIN;
   if (f->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE)
     e.events |= EPOLLOUT;
+    if (f->flags & UNIX_FILE_EVENT_EDGE_TRIGGERED)
+      e.events |= EPOLLET;
   e.data.u32 = f - um->file_pool;
 
   if (epoll_ctl (em->epoll_fd,
