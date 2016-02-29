@@ -607,6 +607,19 @@ nobase_include_HEADERS +=			\
   vnet/devices/ssvm/ssvm_eth.h
 
 ########################################
+# Linux packet interface
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/devices/af_packet/af_packet.c		\
+  vnet/devices/af_packet/device.c		\
+  vnet/devices/af_packet/node.c			\
+  vnet/devices/af_packet/cli.c
+
+nobase_include_HEADERS +=			\
+  vnet/devices/af_packet/af_packet.h
+
+########################################
 # Unix kernel related
 ########################################
 
