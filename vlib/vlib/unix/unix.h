@@ -51,6 +51,7 @@ typedef struct unix_file {
 
   u32 flags;
 #define UNIX_FILE_DATA_AVAILABLE_TO_WRITE (1 << 0)
+#define UNIX_FILE_EVENT_EDGE_TRIGGERED   (1 << 1)
 
   /* Data available for function's use. */
   uword private_data;
