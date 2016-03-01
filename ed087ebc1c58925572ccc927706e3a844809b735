@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afa4931_3ee8c97b",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 815,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-01T15:37:09Z",
+      "side": 1,
+      "message": "xd-\u003eadmin_up could use an enum or a small set of #defines added. I see it being set to 0,1,0xFF.",
+      "revId": "ed087ebc1c58925572ccc927706e3a844809b735",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7afa4931_befbb946",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1223,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-01T15:37:09Z",
+      "side": 1,
+      "message": "Maybe add debug CLI to call this function?",
+      "revId": "ed087ebc1c58925572ccc927706e3a844809b735",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
