@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "7afa4931_7e4ad184",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 815,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-03-01T18:50:11Z",
+      "side": 1,
+      "message": "The VMXNET3 driver hack that uses the 0xFF state for admin_up was introduced circa dpdk 1.8.  Hopefully the underlying issue has been resolved since then.  Assuming this is the case, the DAW-FIXME code in the VMXNET3 device case should be removed.\n\nxd-\u003eadmin_up should really treated as a boolean.",
+      "parentUuid": "7afa4931_3ee8c97b",
+      "revId": "ed087ebc1c58925572ccc927706e3a844809b735",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7afa4931_befbb946",
         "filename": "vnet/vnet/devices/dpdk/device.c",
         "patchSetId": 1
