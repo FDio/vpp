@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afa4931_fed021f9",
+        "filename": "vnet/vnet/devices/dpdk/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 965,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-01T01:22:04Z",
+      "side": 1,
+      "message": "Is there a sound mathematical basis for this particular hash code? It\u0027s clearly cheap to compute, but is it robust in the face of different addressing patterns? \n\nIt might make sense to try a variant of xxhash or [in a pinch] Jenkins hashing since they\u0027ve both been studied to death.",
+      "revId": "6427f3e08892133d5e601dbab9ade03ca9bf1222",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
