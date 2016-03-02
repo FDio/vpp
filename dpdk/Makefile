@@ -34,7 +34,7 @@ JOBS := $(shell grep processor /proc/cpuinfo | wc -l)
 
 # compiler/linker custom arguments
 DPDK_CPU_CFLAGS := -pie -fPIC
-DPDK_CPU_LDFLAGS := -pie -fPIC
+DPDK_CPU_LDFLAGS :=
 DPDK_EXTRA_LDFLAGS := -g
 
 ifeq ($(DPDK_DEBUG),n)
