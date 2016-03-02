@@ -506,6 +506,7 @@ vlib_buffer_chain_append_data_with_alloc(vlib_main_t *vm,
                              vlib_buffer_t *first,
                              vlib_buffer_t **last,
                              void * data, u16 data_len);
+void vlib_buffer_chain_validate(vlib_main_t *vm, vlib_buffer_t *first);
 
 format_function_t format_vlib_buffer, format_vlib_buffer_and_data, format_vlib_buffer_contents;
 
