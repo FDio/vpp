@@ -1248,6 +1248,14 @@ vlib_buffer_chain_append_data_with_alloc(vlib_main_t *vm,
   return copied;
 }
 
+/*
+ * Fills in the required rte_mbuf fields for chained buffers given a VLIB chain.
+ */
+void vlib_buffer_chain_validate (vlib_main_t * vm, vlib_buffer_t * b_first)
+{
+  return;
+}
+
 static void vlib_serialize_tx (serialize_main_header_t * m, serialize_stream_t * s)
 {
   vlib_main_t * vm;
@@ -1460,4 +1468,3 @@ VLIB_CLI_COMMAND (show_buffers_command, static) = {
   .short_help = "Show packet buffer allocation",
   .function = show_buffers,
 };
-

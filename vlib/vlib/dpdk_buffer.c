@@ -910,6 +910,25 @@ vlib_buffer_chain_append_data_with_alloc(vlib_main_t *vm,
   return copied;
 }
 
+/*
+ * Fills in the required rte_mbuf fields for chained buffers given a VLIB chain.
+ */
+void vlib_buffer_chain_validate (vlib_main_t * vm, vlib_buffer_t * b_first)
+{
+  vlib_buffer_t *b = b_first, *prev = b_first;
+  struct rte_mbuf *mb_first = ((struct rte_mbuf *) b) - 1;
+
+  mb_first->pkt_len = mb_first-> data_len = b_first->current_length;
+  while (b->flags & VLIB_BUFFER_NEXT_PRESENT) {
+      b = vlib_get_buffer(vm, b->next_buffer);
+      mb_first->nb_segs++;
+      mb_first->pkt_len += b->current_length;
+      (((struct rte_mbuf *) prev) - 1)->next = (((struct rte_mbuf *) b) - 1);
+      (((struct rte_mbuf *) b) - 1)->data_len = b->current_length;
+      prev = b;
+  }
+}
+
 clib_error_t *
 vlib_buffer_pool_create(vlib_main_t * vm, unsigned num_mbufs,
                         unsigned mbuf_size, unsigned socket_id)
