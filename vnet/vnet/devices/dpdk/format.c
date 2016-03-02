@@ -513,6 +513,13 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
                  format_dpdk_rss_hf_name, di.flow_type_rss_offloads);
     }
 
+    if (verbose && xd->dev_type == VNET_DPDK_DEV_VHOST_USER) {
+        s = format(s, "%Uqueue size (max):  rx %d (%d) tx %d (%d)\n",
+                 format_white_space, indent + 2,
+                 xd->rx_q_used, xd->rx_q_used,
+                 xd->tx_q_used, xd->tx_q_used);
+    }
+
   if (xd->cpu_socket > -1)
     s = format (s, "%Ucpu socket %d",
                 format_white_space, indent + 2,
@@ -536,7 +543,7 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
 
   vec_foreach(xstat, xd->xstats)
     {
-      if (xstat->value)
+      if (verbose == 2 || (verbose && xstat->value))
         {
           /* format_c_identifier don't like c strings inside vector */
           u8 * name = format(0,"%s", xstat->name);
@@ -544,6 +551,34 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
                       format_white_space, indent + 4,
                       format_c_identifier, name, xstat->value);
           vec_free(name);
+        }
+    }
+
+    if (verbose && xd->dev_type == VNET_DPDK_DEV_VHOST_USER) {
+        int i;
+        for (i = 0; i < xd->rx_q_used * VIRTIO_QNUM; i++) {
+            u8 * name;
+            if (verbose == 2 || xd->vu_intf->vrings[i].packets) {
+                if (i & 1) {
+                    name = format(NULL, "tx q%d packets", i >> 1);
+                } else {
+                    name = format(NULL, "rx q%d packets", i >> 1);
+                }
+                xs = format(xs, "\n%U%-38U%16Ld",
+                    format_white_space, indent + 4,
+                    format_c_identifier, name, xd->vu_intf->vrings[i].packets);
+                vec_free(name);
+
+                if (i & 1) {
+                    name = format(NULL, "tx q%d bytes", i >> 1);
+                } else {
+                    name = format(NULL, "rx q%d bytes", i >> 1);
+                }
+                xs = format(xs, "\n%U%-38U%16Ld",
+                    format_white_space, indent + 4,
+                    format_c_identifier, name, xd->vu_intf->vrings[i].bytes);
+                vec_free(name);
+            }
         }
     }
 

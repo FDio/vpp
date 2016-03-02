@@ -148,6 +148,8 @@ typedef struct {
   u32 callfd_idx;
   u32 n_since_last_int;
   f64 int_deadline;
+  u64 packets;
+  u64 bytes;
 } dpdk_vu_vring;
 
 typedef struct {
