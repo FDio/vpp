@@ -308,14 +308,24 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
 #endif
           if (PREDICT_TRUE(tx_head > tx_tail)) 
             {
+              int i; u32 bytes = 0;
+              struct rte_mbuf **pkts = &tx_vector[tx_tail];
+              for (i = 0; i < (tx_head - tx_tail); i++) {
+                  struct rte_mbuf *buff = pkts[i];
+                  bytes += rte_pktmbuf_data_len(buff);
+              } 
+                
               /* no wrap, transmit in one burst */
               rv = rte_vhost_enqueue_burst(&xd->vu_vhost_dev, offset + VIRTIO_RXQ,
                                            &tx_vector[tx_tail],
                                            (uint16_t) (tx_head-tx_tail));
               if (PREDICT_TRUE(rv > 0))
                 {
+                  dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
+                  vring->packets += rv;
+                  vring->bytes += bytes;
+
                   if (dpdk_vhost_user_want_interrupt(xd, offset + VIRTIO_RXQ)) {
-                    dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
                     vring->n_since_last_int += rv;
 
                     f64 now = vlib_time_now (vm);
@@ -336,14 +346,23 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
                * so we can try to transmit the rest. If we didn't transmit
                * everything, stop now.
                */
+              int i; u32 bytes = 0;
+              struct rte_mbuf **pkts = &tx_vector[tx_tail];
+              for (i = 0; i < (DPDK_TX_RING_SIZE - tx_tail); i++) {
+                  struct rte_mbuf *buff = pkts[i];
+                  bytes += rte_pktmbuf_data_len(buff);
+              }
               rv = rte_vhost_enqueue_burst(&xd->vu_vhost_dev, offset + VIRTIO_RXQ,
                                            &tx_vector[tx_tail], 
                                            (uint16_t) (DPDK_TX_RING_SIZE - tx_tail));
 
               if (PREDICT_TRUE(rv > 0))
                 {
+                  dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
+                  vring->packets += rv;
+                  vring->bytes += bytes;
+
                   if (dpdk_vhost_user_want_interrupt(xd, offset + VIRTIO_RXQ)) {
-                    dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
                     vring->n_since_last_int += rv;
 
                     f64 now = vlib_time_now (vm);
@@ -825,6 +844,14 @@ static void dpdk_clear_hw_interface_counters (u32 instance)
       memset (&xd->last_stats, 0, sizeof (xd->last_stats));
     }
   rte_eth_xstats_reset(xd->device_index);
+
+  if (PREDICT_FALSE(xd->dev_type == VNET_DPDK_DEV_VHOST_USER)) {
+    int i;
+    for (i = 0; i < xd->rx_q_used * VIRTIO_QNUM; i++) {
+        xd->vu_intf->vrings[i].packets = 0;
+        xd->vu_intf->vrings[i].bytes = 0;
+    }
+  }
 }
 
 #ifdef RTE_LIBRTE_KNI
