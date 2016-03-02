@@ -139,7 +139,7 @@ tapcli_tx (vlib_main_t * vm,
       /* Use the sup intfc to finesse vlan subifs */
       hw = vnet_get_sup_hw_interface (tm->vnet_main, tx_sw_if_index);
       tx_sw_if_index = hw->sw_if_index;
-          
+
       p = hash_get (tm->tapcli_interface_index_by_sw_if_index, 
                     tx_sw_if_index);
       if (p == 0)
@@ -177,8 +177,7 @@ tapcli_tx (vlib_main_t * vm,
 	clib_unix_warning ("writev");
     }
     
-  /* interface output path flattens buffer chains */
-  vlib_buffer_free_no_next (vm, buffers, n_packets);
+  vlib_buffer_free(vm, vlib_frame_vector_args(frame), frame->n_vectors);
     
   return n_packets;
 }
@@ -206,17 +205,12 @@ tapcli_rx (vlib_main_t * vm,
   tapcli_main_t * tm = &tapcli_main;
   vlib_buffer_t * b;
   u32 bi;
-#if DPDK == 0
+  vlib_buffer_free_list_t *fl;
   const uword buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
-  u32 free_list_index = VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX;
-#else
-  dpdk_main_t * dm = &dpdk_main;
-  const uword buffer_size = MBUF_SIZE;
-  u32 free_list_index = dm->vlib_buffer_free_list_index;
-#endif
   static u32 * ready_interface_indices;
   tapcli_interface_t * ti;
   int i;
+  word n_bytes_in_packet;
 
   vec_reset_length (ready_interface_indices);
 
@@ -227,6 +221,8 @@ tapcli_rx (vlib_main_t * vm,
 
   if (vec_len (ready_interface_indices) == 0)
     return 1;
+
+  fl = vlib_buffer_get_free_list(vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   for (i = 0; i < vec_len(ready_interface_indices); i++)
     {
@@ -241,28 +237,20 @@ tapcli_rx (vlib_main_t * vm,
       {
         uword n_left = vec_len (tm->rx_buffers);
         uword n_alloc;
-
-        if (n_left < VLIB_FRAME_SIZE / 2)
-          {
-            if (! tm->rx_buffers)
-              vec_alloc (tm->rx_buffers, VLIB_FRAME_SIZE);
-
-            n_alloc = vlib_buffer_alloc_from_free_list 
-              (vm, tm->rx_buffers + n_left, VLIB_FRAME_SIZE - n_left, 
-               free_list_index);
-            _vec_len (tm->rx_buffers) = n_left + n_alloc;
-          }
+        if (n_left < VLIB_FRAME_SIZE / 2) {
+	  vec_validate(tm->rx_buffers, VLIB_FRAME_SIZE + n_left - 1);
+	  n_alloc = vlib_buffer_alloc(vm, &tm->rx_buffers[n_left], VLIB_FRAME_SIZE);
+	  n_left += n_alloc;
+	  _vec_len (tm->rx_buffers) = n_left;
+	}
       }
 
       /* Allocate RX buffers from end of rx_buffers.
          Turn them into iovecs to pass to readv. */
       {
         uword i_rx = vec_len (tm->rx_buffers) - 1;
-        vlib_buffer_t * b;
-        word j, n_bytes_left, n_bytes_in_packet;
-#if DPDK == 1
-        u8 out_of_dpdk_buffers = 0;
-#endif
+        vlib_buffer_t * b, *head, *prev = 0;
+        word j, n_bytes_left;
 
         /* We need enough buffers left for an MTU sized packet. */
         if (PREDICT_FALSE(vec_len (tm->rx_buffers) < tm->mtu_buffers))
@@ -277,14 +265,10 @@ tapcli_rx (vlib_main_t * vm,
         for (j = 0; j < tm->mtu_buffers; j++)
           {
             b = vlib_get_buffer (vm, tm->rx_buffers[i_rx - j]);
+	    vlib_buffer_init_for_free_list (b, fl);
             tm->iovecs[j].iov_base = b->data;
             tm->iovecs[j].iov_len = buffer_size;
           }
-
-#if DPDK == 1
-        if (PREDICT_FALSE(out_of_dpdk_buffers == 1))
-          continue;
-#endif
 
         n_bytes_left = readv (ti->unix_fd, tm->iovecs, tm->mtu_buffers);
         n_bytes_in_packet = n_bytes_left;
@@ -296,36 +280,34 @@ tapcli_rx (vlib_main_t * vm,
           }
         
         bi = tm->rx_buffers[i_rx];
-        while (1)
-          {
-            b = vlib_get_buffer (vm, tm->rx_buffers[i_rx]);
+	b = head = vlib_get_buffer (vm, tm->rx_buffers[i_rx]);
 
-            b->flags = 0;
-            b->current_data = 0;
-            b->current_length = n_bytes_left < buffer_size 
-              ? n_bytes_left : buffer_size;
+        while (1) {
+	  u32 bi;
 
-            n_bytes_left -= buffer_size;
+	  vlib_buffer_init_for_free_list(b, fl);
 
-	if (n_bytes_left <= 0)
-          {
+	  b->current_length = n_bytes_left < buffer_size ? n_bytes_left : buffer_size;
+	  n_bytes_left -= buffer_size;
+
+	  if (prev) {
+	    prev->next_buffer = bi;
+	    prev->flags |= VLIB_BUFFER_NEXT_PRESENT;
 #if DPDK == 1
-              struct rte_mbuf *mb = (struct rte_mbuf *)(b - 1);
-              rte_pktmbuf_data_len (mb) = n_bytes_in_packet;
-              rte_pktmbuf_pkt_len (mb) = n_bytes_in_packet;
+	    (((struct rte_mbuf *) head) - 1)->nb_segs++;
+	    (((struct rte_mbuf *) prev) - 1)->next = (((struct rte_mbuf *) b) - 1);
+
 #endif
-            break;
-          }
-        
-            i_rx--;
-            b->flags |= VLIB_BUFFER_NEXT_PRESENT;
-            b->next_buffer = tm->rx_buffers[i_rx];
-#if DPDK == 1
-            ASSERT(0); /* $$$$ fixme */
-            /* ((struct rte_pktmbuf *)(b->mb))->next = 
-               vlib_get_buffer (vm, tm->rx_buffers[i_rx])->mb; */
-#endif
-          }
+	  }
+	  prev = b;
+
+	  /* last segment */
+	  if (n_bytes_left <= 0) break;
+
+	  i_rx--;
+	  bi = tm->rx_buffers[i_rx];
+	  b = vlib_get_buffer (vm, bi);
+	}
 
         /* Interface counters for tapcli interface. */
         vlib_increment_combined_counter 
@@ -339,6 +321,7 @@ tapcli_rx (vlib_main_t * vm,
       }
 
       b = vlib_get_buffer (vm, bi);
+      b->total_length_not_including_first_buffer = (n_bytes_in_packet > buffer_size) ? n_bytes_in_packet - buffer_size : 0;
 
       /*
        * Turn this on if you run into
@@ -370,7 +353,6 @@ tapcli_rx (vlib_main_t * vm,
             next_index = TAPCLI_RX_NEXT_DROP;
         }
 
-
         vlib_set_next_frame_buffer (vm, node, next_index, bi);
         
         if (n_trace > 0)
@@ -381,7 +363,7 @@ tapcli_rx (vlib_main_t * vm,
           }
       }
     }
-  
+
   return 1;
 }
 
@@ -433,11 +415,7 @@ static clib_error_t *
 tapcli_config (vlib_main_t * vm, unformat_input_t * input)
 {
   tapcli_main_t *tm = &tapcli_main;
-#if DPDK == 0
   const uword buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
-#else
-  const uword buffer_size = MBUF_SIZE;
-#endif
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -604,6 +582,7 @@ VNET_DEVICE_CLASS (tapcli_dev_class,static) = {
   .rx_redirect_to_node = tapcli_set_interface_next_node,
   .name_renumber = tap_name_renumber,
   .admin_up_down_function = tapcli_interface_admin_up_down,
+  .no_flatten_output_chains = 1,
 };
 
 int vnet_tap_dump_ifs (tapcli_interface_details_t **out_tapids)
@@ -790,6 +769,7 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
   {
     vnet_hw_interface_t * hw;
     hw = vnet_get_hw_interface (tm->vnet_main, ti->hw_if_index);
+    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = tm->mtu_bytes - sizeof(ethernet_header_t);
     ti->sw_if_index = hw->sw_if_index;
     if (sw_if_indexp)
       *sw_if_indexp = hw->sw_if_index;
@@ -1004,7 +984,7 @@ tap_connect_command_fn (vlib_main_t * vm,
   clib_error_t * error;
   int user_hwaddr = 0;
   u8 hwaddr[6];
-    
+
   if (tm->is_disabled)
     {
       return clib_error_return (0, "device disabled...");
@@ -1150,6 +1130,7 @@ tap_connect_command_fn (vlib_main_t * vm,
     vnet_hw_interface_t * hw;
     hw = vnet_get_hw_interface (tm->vnet_main, ti->hw_if_index);
     ti->sw_if_index = hw->sw_if_index;
+    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = tm->mtu_bytes - sizeof(ethernet_header_t);
   }
 
   ti->active = 1;
