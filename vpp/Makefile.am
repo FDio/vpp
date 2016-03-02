@@ -82,7 +82,7 @@ SUFFIXES = .api.h .api
 
 %.api.h: %.api
 	@echo "  APIGEN  " $@ ;					\
-	@mkdir -p `dirname $@` ;				\
+	mkdir -p `dirname $@` ;					\
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
 	| vppapigen --input - --output $@ --show-name $@
 
