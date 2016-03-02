@@ -201,6 +201,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
   clib_error_t * error;
   dpdk_device_and_queue_t * dq;
   int num_qpairs = 1;
+  dpdk_vu_intf_t *vui = NULL;
 
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
   num_qpairs = dm->use_rss < 1 ? 1 : tm->n_vlib_mains;
@@ -238,11 +239,14 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
           xd->vu_if_id = if_id;
 
       // reset virtqueues
+      vui = xd->vu_intf;
       for (j = 0; j < num_qpairs * VIRTIO_QNUM; j++) {
           memset(xd->vu_vhost_dev.virtqueue[j], 0, sizeof(struct vhost_virtqueue));
           xd->vu_vhost_dev.virtqueue[j]->kickfd = -1; 
           xd->vu_vhost_dev.virtqueue[j]->callfd = -1; 
           xd->vu_vhost_dev.virtqueue[j]->backend = -1; 
+          vui->vrings[j].packets = 0;
+          vui->vrings[j].bytes = 0;
        }
 
       // reset lockp
@@ -283,7 +287,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
 
       xd->device_index = xd - dm->devices;
       xd->per_interface_next_index = ~0;
-      xd->vu_intf = NULL;
+      xd->vu_intf = clib_mem_alloc (sizeof(*(xd->vu_intf)));
 
       xd->vu_vhost_dev.mem = clib_mem_alloc (sizeof(struct virtio_memory) +
                                              VHOST_MEMORY_MAX_NREGIONS *
@@ -296,12 +300,15 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
        * New virtqueue structure is an array of VHOST_MAX_QUEUE_PAIRS * 2
        * We need to allocate numq pairs.
        */
+      vui = xd->vu_intf;
       for (j = 0; j < num_qpairs * VIRTIO_QNUM; j++) {
           xd->vu_vhost_dev.virtqueue[j] = clib_mem_alloc (sizeof(struct vhost_virtqueue));
           memset(xd->vu_vhost_dev.virtqueue[j], 0, sizeof(struct vhost_virtqueue));
           xd->vu_vhost_dev.virtqueue[j]->kickfd = -1; 
           xd->vu_vhost_dev.virtqueue[j]->callfd = -1; 
           xd->vu_vhost_dev.virtqueue[j]->backend = -1; 
+          vui->vrings[j].packets = 0;
+          vui->vrings[j].bytes = 0;
       }
 
       dpdk_device_lock_init(xd);
@@ -360,9 +367,6 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
 
   sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->vlib_hw_if_index);
   xd->vlib_sw_if_index = sw->sw_if_index;
-
-  if (!xd->vu_intf)
-      xd->vu_intf = clib_mem_alloc (sizeof(*(xd->vu_intf)));
 
   *hw_if_index = xd->vlib_hw_if_index;
 
