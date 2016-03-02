@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afa4931_81bc1c6e",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1710,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-02T22:56:59Z",
+      "side": 1,
+      "message": "The set_xxx_poll_interval(...) routines need to check their arguments, and return e.g. VNET_API_ERROR_INVALID_VALUE if directed to set either timeout to 0.\n\nPlease think through what the minimum acceptable poll interval should be, for both routines.",
+      "revId": "051a063fcc159edb6ef376bf4fde305463f9d5ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
