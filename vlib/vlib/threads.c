@@ -674,8 +674,6 @@ static clib_error_t * start_workers (vlib_main_t * vm)
             clib_mem_set_heap (oldheap);
             vec_add1 (vlib_mains, vm_clone);
 
-            unix_physmem_init (vm_clone, 0 /* physmem not required */);
-
 	    vm_clone->error_main.counters =
 	      vec_dup(vlib_mains[0]->error_main.counters);
 	    vm_clone->error_main.counters_last_clear =

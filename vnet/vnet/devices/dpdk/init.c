@@ -715,17 +715,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   return 0;
 }
 
-/*
- * Tell the vlib physical memory allocator that we've handled
- * the initialization. We don't actually do so until
- * vlib_main(...) callls the dpdk config function.
- */
-int vlib_app_physmem_init (vlib_main_t * vm, physmem_main_t * pm,
-                           int physmem_required)
-{
-  return 1;
-}
-
 static clib_error_t *
 write_sys_fs (char * file_name, char * fmt, ...)
 {
