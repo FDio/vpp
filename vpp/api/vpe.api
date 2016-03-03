@@ -2842,3 +2842,15 @@ define get_node_graph_reply {
     i32 retval;
     u64 reply_in_shmem;
 };
+
+define sw_interface_errors_dump {
+    u32 context;
+    u32 client_index;
+};
+
+define sw_interface_error_details {
+    u32 context;
+    u64 count;
+    u8 node_name[16];
+    u8 error[40];
+};
