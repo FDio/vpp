@@ -186,7 +186,7 @@ ethernet_register_interface (vnet_main_t * vnm,
     /* preamble */ 8 + /* inter frame gap */ 12;
 
   /* Standard default ethernet MTU. */
-  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 1500;
+  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
 
   memcpy (ei->address, address, sizeof (ei->address));
   vec_free (hi->hw_address);
