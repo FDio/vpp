@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afa4931_44574203",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2644,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-03-03T15:02:26Z",
+      "side": 1,
+      "message": "Do not use errmsg to output text to screen. follow other commands that use \"fformat (vam-\u003eofp ...\"\n(applies to all errmsg in this diff)",
+      "revId": "f95d70a5b2e86b315fbbaae3a424a828872bc2ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7afa4931_844d4a75",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2539,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-03-03T15:02:26Z",
+      "side": 1,
+      "message": "remove this",
+      "revId": "f95d70a5b2e86b315fbbaae3a424a828872bc2ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7afa4931_a43046e9",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 2846,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-03-03T15:02:26Z",
+      "side": 1,
+      "message": "to follow naming of other similar api calls it should be called something like \"sw_interface_errors_dump\"\nand reply should probably be called\nreply should probably be called \"sw_interface_error_details\"\nso it is not confused with other calls that have 1 request and 1 reply.",
+      "revId": "f95d70a5b2e86b315fbbaae3a424a828872bc2ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
