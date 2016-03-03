@@ -2842,3 +2842,23 @@ define get_node_graph_reply {
     i32 retval;
     u64 reply_in_shmem;
 };
+
+/** \brief Clear interface statistics
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to clear statistics
+*/
+define sw_interface_clear_stats {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+};
+
+/** \brief Reply to sw_interface_clear_stats 
+    @param context - sender context which was passed in the request
+    @param retval - return code of the set flags request
+*/
+define sw_interface_clear_stats_reply {
+    u32 context;
+    i32 retval;
+};
