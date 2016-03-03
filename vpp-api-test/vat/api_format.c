@@ -2049,7 +2049,8 @@ _(WANT_STATS_REPLY, want_stats_reply)					\
 _(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
 _(COP_INTERFACE_ENABLE_DISABLE_REPLY, cop_interface_enable_disable_reply) \
 _(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply) \
-_(GET_NODE_GRAPH_REPLY, get_node_graph_reply)
+_(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
+_(SW_INTERFACE_ERROR_DETAILS, sw_interface_error_details)
 
 /* M: construct, but don't yet send a message */
 
@@ -2623,6 +2624,54 @@ int api_sw_interface_dump (vat_main_t * vam)
         S;
     }
     W;
+}
+
+int api_sw_interface_errors_dump (vat_main_t * vam)
+{
+    vl_api_sw_interface_errors_dump_t *mp;
+    f64 timeout;
+
+    M(SW_INTERFACE_ERRORS_DUMP, sw_interface_errors_dump);
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    if (!vam->json_output)
+        fformat (vam->ofp, "\n%=16s%=40s%=20s\n", "Count", "Node_name", "Error");
+
+    W;
+
+    return 0;
+}
+
+int vl_api_sw_interface_error_details_t_handler (vl_api_sw_interface_error_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    fformat (vam->ofp, "%16Ld%=40s%s\n", ntohl(mp->count), mp->node_name, mp->error);
+    return 0;
+}
+
+int vl_api_sw_interface_error_details_t_handler_json (vl_api_sw_interface_error_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_int(node, "count", ntohl(mp->count));
+    vat_json_object_add_string_copy(node, "node_name", mp->node_name);
+    vat_json_object_add_string_copy(node, "error", mp->error);
+
+    return 0;
 }
 
 static int api_sw_interface_set_flags (vat_main_t * vam)
@@ -8868,6 +8917,7 @@ static int echo (vat_main_t * vam)
 #define foreach_vpe_api_msg                                             \
 _(create_loopback,"[mac <mac-addr>]")                                   \
 _(sw_interface_dump,"")                                                 \
+_(sw_interface_errors_dump,"")                                          \
 _(sw_interface_set_flags,                                               \
   "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down") \
 _(sw_interface_add_del_address,                                         \
