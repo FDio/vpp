@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afa4931_c44a3255",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 2850,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-03-03T15:09:12Z",
+      "side": 1,
+      "message": "better name would probably be \"sw_interface_clear_stats\"\nwould it be possible to add sw_if_index which would allow clear of stats of single interface in case it is set or all interfaces if its ~0 ?",
+      "revId": "88850f712e873b759ce5e3c5d31aac2fb8fda165",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
