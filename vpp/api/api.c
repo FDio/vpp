@@ -311,7 +311,8 @@ _(MAP_RULE_DUMP, map_rule_dump)						\
 _(MAP_SUMMARY_STATS, map_summary_stats)					\
 _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable)		\
 _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)		\
-_(GET_NODE_GRAPH, get_node_graph)
+_(GET_NODE_GRAPH, get_node_graph)                                       \
+_(SW_CLEAR_INTERFACES, sw_clear_interfaces)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -2349,6 +2350,58 @@ static void vl_api_sw_interface_set_flags_t_handler (
 
    BAD_SW_IF_INDEX_LABEL;
    REPLY_MACRO(VL_API_SW_INTERFACE_SET_FLAGS_REPLY);
+}
+
+static void vl_api_sw_clear_interfaces_t_handler (
+    vl_api_sw_clear_interfaces_t * mp)
+{
+   vl_api_sw_clear_interfaces_reply_t *rmp;
+
+   vnet_main_t * vnm = vnet_get_main();
+   vnet_interface_main_t * im = &vnm->interface_main;
+   vlib_simple_counter_main_t * sm;
+   vlib_combined_counter_main_t * cm;
+   static vnet_main_t ** my_vnet_mains;
+   int i, j, n_counters;
+
+   int rv = 0;
+
+   vec_reset_length (my_vnet_mains);
+
+   for (i = 0; i < vec_len (vnet_mains); i++)
+     {
+       if (vnet_mains[i])
+         vec_add1 (my_vnet_mains, vnet_mains[i]);
+     }
+
+   if (vec_len (vnet_mains) == 0)
+     vec_add1 (my_vnet_mains, vnm);
+
+   n_counters = vec_len (im->combined_sw_if_counters);
+
+   for (j = 0; j < n_counters; j++)
+     {
+       for (i = 0; i < vec_len(my_vnet_mains); i++)
+         {
+           im = &my_vnet_mains[i]->interface_main;
+           cm = im->combined_sw_if_counters + j;
+           vlib_clear_combined_counters (cm);
+         }
+     }
+
+   n_counters = vec_len (im->sw_if_counters);
+
+   for (j = 0; j < n_counters; j++)
+     {
+       for (i = 0; i < vec_len(my_vnet_mains); i++)
+         {
+           im = &my_vnet_mains[i]->interface_main;
+           sm = im->sw_if_counters + j;
+           vlib_clear_simple_counters (sm);
+         }
+     }
+
+   REPLY_MACRO(VL_API_SW_CLEAR_INTERFACES_REPLY);
 }
 
 static void send_sw_interface_details (vpe_api_main_t * am,

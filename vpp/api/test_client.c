@@ -167,6 +167,18 @@ static void vl_api_sw_interface_set_flags_reply_t_handler (
     fformat (stdout, "set flags reply: reply %d\n", ntohl(mp->retval));
 }
 
+static void vl_api_sw_clear_interfaces_t_handler (
+		vl_api_sw_clear_interfaces_t * mp)
+{
+    fformat (stdout, "clear interfaces\n");
+}
+
+static void vl_api_sw_clear_interfaces_reply_t_handler (
+	vl_api_sw_clear_interfaces_reply_t * mp)
+{
+    fformat (stdout, "clear interfaces reply: reply %d\n", ntohl(mp->retval));
+}
+
 static void vl_api_want_interface_events_reply_t_handler (
     vl_api_want_interface_events_reply_t *mp)
 {
@@ -585,7 +597,9 @@ _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY, sw_interface_ip6_set_link_local
 _(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)			\
 _(SR_TUNNEL_ADD_DEL_REPLY,sr_tunnel_add_del_reply)          \
 _(SW_INTERFACE_SET_L2_XCONNECT_REPLY, sw_interface_set_l2_xconnect_reply) \
-_(SW_INTERFACE_SET_L2_BRIDGE_REPLY, sw_interface_set_l2_bridge_reply)
+_(SW_INTERFACE_SET_L2_BRIDGE_REPLY, sw_interface_set_l2_bridge_reply)   \
+_(SW_CLEAR_INTERFACES, sw_clear_interfaces)                       \
+_(SW_CLEAR_INTERFACES_REPLY, sw_clear_interfaces_reply)           \
 
 int connect_to_vpe(char *name)
 {
