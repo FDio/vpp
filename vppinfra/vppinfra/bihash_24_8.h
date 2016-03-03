@@ -38,7 +38,7 @@ static inline int clib_bihash_is_free_24_8 (clib_bihash_kv_24_8_t *v)
   return 0;
 }
 
-#if !defined(__powerpc64__) && !defined(__aarch64__)
+#if __SSE4_2__
 static inline u32
 crc_u32(u32 data, u32 value)
 {
