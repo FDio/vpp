@@ -620,7 +620,7 @@ static void vl_api_sw_interface_set_flags_t_handler_json
     /* JSON output not supported */
 }
 
-static void vl_api_cli_reply_t_handler 
+static void vl_api_cli_reply_t_handler
 (vl_api_cli_reply_t * mp)
 {
     vat_main_t * vam = &vat_main;
@@ -1896,7 +1896,8 @@ _(map_add_del_rule_reply)                               \
 _(want_interface_events_reply)                          \
 _(want_stats_reply)					\
 _(cop_interface_enable_disable_reply)			\
-_(cop_whitelist_enable_disable_reply)
+_(cop_whitelist_enable_disable_reply)                   \
+_(sw_clear_interfaces_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -2049,7 +2050,8 @@ _(WANT_STATS_REPLY, want_stats_reply)					\
 _(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
 _(COP_INTERFACE_ENABLE_DISABLE_REPLY, cop_interface_enable_disable_reply) \
 _(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply) \
-_(GET_NODE_GRAPH_REPLY, get_node_graph_reply)
+_(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
+_(SW_CLEAR_INTERFACES_REPLY, sw_clear_interfaces_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -2662,6 +2664,21 @@ static int api_sw_interface_set_flags (vat_main_t * vam)
     mp->sw_if_index = ntohl (sw_if_index);
     mp->admin_up_down = admin_up;
     mp->link_up_down = link_up;
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply, return the good/bad news... */
+    W;
+}
+
+static int api_sw_clear_interfaces (vat_main_t * vam)
+{
+    vl_api_sw_clear_interfaces_t *mp;
+    f64 timeout;
+
+    /* Construct the API message */
+    M(SW_CLEAR_INTERFACES, sw_clear_interfaces);
 
     /* send it... */
     S;
@@ -9064,7 +9081,8 @@ _(get_first_msg_id, "client <name>")					\
 _(cop_interface_enable_disable, "<intfc> | sw_if_index <nn> [disable]") \
 _(cop_whitelist_enable_disable, "<intfc> | sw_if_index <nn>\n"		\
   "fib-id <nn> [ip4][ip6][default]")					\
-_(get_node_graph, " ")
+_(get_node_graph, " ")                                                  \
+_(sw_clear_interfaces,"")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
