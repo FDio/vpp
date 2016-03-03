@@ -63,6 +63,35 @@ int main (int argc, char * argv[])
     u32 size;
     void vlib_set_get_handoff_structure_cb (void *cb);
 
+#if __x86_64__
+    const char * msg = "ERROR: This binary requires CPU with %s extensions.\n";
+#define _(a,b) \
+    if (!__builtin_cpu_supports(a))	\
+      {					\
+	fprintf(stderr, msg, b);	\
+	exit(1);			\
+      }
+
+#if __AVX2__
+      _("avx2", "AVX2")
+#endif
+#if __AVX__
+      _("avx", "AVX")
+#endif
+#if __SSE4_2__
+      _("sse4.2", "SSE4.2")
+#endif
+#if __SSE4_1__
+      _("sse4.1", "SSE4.1")
+#endif
+#if __SSSE3__
+      _("ssse3", "SSSE3")
+#endif
+#if __SSE3__
+      _("sse3", "SSE3")
+#endif
+#endif
+
     /*
      * Load startup config from file.
      * usage: vpp -c /etc/vpp/startup.conf
