@@ -620,7 +620,7 @@ static void vl_api_sw_interface_set_flags_t_handler_json
     /* JSON output not supported */
 }
 
-static void vl_api_cli_reply_t_handler 
+static void vl_api_cli_reply_t_handler
 (vl_api_cli_reply_t * mp)
 {
     vat_main_t * vam = &vat_main;
@@ -1896,7 +1896,8 @@ _(map_add_del_rule_reply)                               \
 _(want_interface_events_reply)                          \
 _(want_stats_reply)					\
 _(cop_interface_enable_disable_reply)			\
-_(cop_whitelist_enable_disable_reply)
+_(cop_whitelist_enable_disable_reply)                   \
+_(sw_interface_clear_stats_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -2049,7 +2050,8 @@ _(WANT_STATS_REPLY, want_stats_reply)					\
 _(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
 _(COP_INTERFACE_ENABLE_DISABLE_REPLY, cop_interface_enable_disable_reply) \
 _(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply) \
-_(GET_NODE_GRAPH_REPLY, get_node_graph_reply)
+_(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
+_(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -2662,6 +2664,39 @@ static int api_sw_interface_set_flags (vat_main_t * vam)
     mp->sw_if_index = ntohl (sw_if_index);
     mp->admin_up_down = admin_up;
     mp->link_up_down = link_up;
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply, return the good/bad news... */
+    W;
+}
+
+static int api_sw_interface_clear_stats (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_sw_interface_clear_stats_t *mp;
+    f64 timeout;
+    u32 sw_if_index;
+    u8 sw_if_index_set = 0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+            sw_if_index_set = 1;
+        else if (unformat (i, "sw_if_index %d", &sw_if_index))
+            sw_if_index_set = 1;
+        else
+            break;
+    }
+
+    /* Construct the API message */
+    M(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats);
+
+    if (sw_if_index_set == 1)
+        mp->sw_if_index = ntohl (sw_if_index);
+    else
+    	mp->sw_if_index = ~0;
 
     /* send it... */
     S;
@@ -9064,7 +9099,8 @@ _(get_first_msg_id, "client <name>")					\
 _(cop_interface_enable_disable, "<intfc> | sw_if_index <nn> [disable]") \
 _(cop_whitelist_enable_disable, "<intfc> | sw_if_index <nn>\n"		\
   "fib-id <nn> [ip4][ip6][default]")					\
-_(get_node_graph, " ")
+_(get_node_graph, " ")                                                  \
+_(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
