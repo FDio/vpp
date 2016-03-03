@@ -68,7 +68,7 @@ gre_register_interface (vnet_main_t * vnm,
     /* preamble */ 8 + /* inter frame gap */ 12;
 
   /* Standard default gre MTU. */
-  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 1500;
+  hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
 
   memcpy (&t->tunnel_src, tunnel_src, sizeof (t->tunnel_src));
   memcpy (&t->tunnel_dst, tunnel_dst, sizeof (t->tunnel_dst));
