@@ -216,6 +216,7 @@ _(TO_NETCONF_CLIENT, to_netconf_client)                                 \
 _(WANT_OAM_EVENTS, want_oam_events)                                     \
 _(OAM_ADD_DEL, oam_add_del)                                             \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                                 \
+_(SW_INTERFACE_ERRORS_DUMP, sw_interface_errors_dump)                   \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
@@ -2561,6 +2562,51 @@ static void vl_api_sw_interface_dump_t_handler (
 
     vec_free (name_string);
     vec_free (filter_string);
+}
+
+static void vl_api_sw_interface_errors_dump_t_handler (vl_api_sw_interface_errors_dump_t *mp, vlib_main_t *vm)
+{
+    vlib_error_main_t * em = &vm->error_main;
+    vlib_node_t * n;
+    unix_shared_memory_queue_t * q;
+    vl_api_sw_interface_error_details_t *reply;
+    u32 code, i, ni;
+    u64 c;
+    int index = 0;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+
+    if (q == 0)
+        return;
+
+    foreach_vlib_main(({
+      em = &this_vlib_main->error_main;
+
+      for (ni = 0; ni < vec_len (this_vlib_main->node_main.nodes); ni++)
+        {
+      n = vlib_get_node (this_vlib_main, ni);
+      for (code = 0; code < n->n_errors; code++)
+        {
+          i = n->error_heap_index + code;
+          c = em->counters[i];
+          if (i < vec_len (em->counters_last_clear))
+            c -= em->counters_last_clear[i];
+
+          if (c == 0)
+            continue;
+
+          reply = vl_msg_api_alloc (sizeof (*reply));
+          reply->_vl_msg_id = ntohs(VL_API_SW_INTERFACE_ERROR_DETAILS);
+          reply->count = ntohl(c);
+          reply->context = mp->context;
+          strcpy((char *)reply->node_name, (char *)n->name);
+          strcpy((char *)reply->error, (char *)em->error_strings_heap[i]);
+          vl_msg_api_send_shmem(q, (u8 *)&reply);
+        }
+        }
+      index++;
+    }));
+
 }
 
 void send_oam_event (oam_target_t * t)
