@@ -967,7 +967,7 @@ int ip6_ioam_set_rewrite (u8 **rwp, u32 trace_option_elts, int has_pow_option)
 }
 
 static clib_error_t *
-ip6_ioam_set_rewrite_command_fn (vlib_main_t * vm,
+ip6_set_ioam_rewrite_command_fn (vlib_main_t * vm,
                                  unformat_input_t * input,
                                  vlib_cli_command_t * cmd)
 {
@@ -999,10 +999,10 @@ ip6_ioam_set_rewrite_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (ip6_ioam_set_rewrite_cmd, static) = {
-  .path = "ioam set rewrite",
-  .short_help = "ioam set rewrite [trace-elts <nn>] [pow]",
-  .function = ip6_ioam_set_rewrite_command_fn,
+VLIB_CLI_COMMAND (ip6_set_ioam_rewrite_cmd, static) = {
+  .path = "set ioam rewrite",
+  .short_help = "set ioam rewrite [trace-elts <nn>] [pow]",
+  .function = ip6_set_ioam_rewrite_command_fn,
 };
   
 int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width, u32 vrf_id,
@@ -1076,7 +1076,7 @@ int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width, u32 vrf_id,
 }
                               
 static clib_error_t *
-ip6_ioam_set_destination_command_fn (vlib_main_t * vm,
+ip6_set_ioam_destination_command_fn (vlib_main_t * vm,
                                      unformat_input_t * input,
                                      vlib_cli_command_t * cmd)
 {
@@ -1124,10 +1124,10 @@ ip6_ioam_set_destination_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (ip6_ioam_set_destination_cmd, static) = {
-  .path = "ioam set destination",
-  .short_help = "ioam set destination <ip6-address>/<width> add | pop | none",
-  .function = ip6_ioam_set_destination_command_fn,
+VLIB_CLI_COMMAND (ip6_set_ioam_destination_cmd, static) = {
+  .path = "set ioam destination",
+  .short_help = "set ioam destination <ip6-address>/<width> add | pop | none",
+  .function = ip6_set_ioam_destination_command_fn,
 };
   
 void vnet_register_ioam_end_of_path_callback (void *cb)
