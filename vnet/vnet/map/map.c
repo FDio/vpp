@@ -17,7 +17,7 @@
 
 #include "map.h"
 
-#if defined(__powerpc64__) || defined(__aarch64__)
+#ifndef __SSE4_2__
 #include <vppinfra/xxhash.h>
 
 static inline u32
