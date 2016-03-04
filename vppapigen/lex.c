@@ -54,6 +54,7 @@ static void usage (char *);
 static int name_check (const char *, YYSTYPE *);
 static int name_compare (const char *, const char *);
 extern int yydebug;
+extern YYSTYPE yylval;
 
 unsigned int crc32c_table[256] = { 
   0x00000000, 0xF26B8303, 0xE13B70F7, 0x1350F3F4,  
