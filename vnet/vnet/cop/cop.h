@@ -72,7 +72,7 @@ typedef struct {
 
 cop_main_t cop_main;
 
-vlib_node_registration_t cop_input_node;
+extern vlib_node_registration_t cop_input_node;
 
 int cop_interface_enable_disable (u32 sw_if_index, int enable_disable);
 

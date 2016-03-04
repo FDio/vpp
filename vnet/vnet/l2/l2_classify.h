@@ -65,7 +65,7 @@ typedef struct {
 
 l2_classify_main_t l2_classify_main;
 
-vlib_node_registration_t l2_classify_node;
+extern vlib_node_registration_t l2_classify_node;
 
 void vnet_l2_classify_enable_disable (u32 sw_if_index,
                                       int enable_disable);

@@ -18,9 +18,6 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 
-vlib_node_registration_t ip6_sixrd_node;
-vlib_node_registration_t ip4_sixrd_node;
-
 int sixrd_create_domain(ip6_address_t *ip6_prefix, u8 ip6_prefix_len,
 			ip4_address_t *ip4_prefix, u8 ip4_prefix_len,
 			ip4_address_t *ip4_src, u32 *sixrd_domain_index, u16 mtu);

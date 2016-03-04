@@ -296,18 +296,18 @@ typedef struct {
 
 map_main_t map_main;
 
-vlib_node_registration_t ip4_map_node;
-vlib_node_registration_t ip6_map_node;
+extern vlib_node_registration_t ip4_map_node;
+extern vlib_node_registration_t ip6_map_node;
 
-vlib_node_registration_t ip4_map_t_node;
-vlib_node_registration_t ip4_map_t_fragmented_node;
-vlib_node_registration_t ip4_map_t_tcp_udp_node;
-vlib_node_registration_t ip4_map_t_icmp_node;
+extern vlib_node_registration_t ip4_map_t_node;
+extern vlib_node_registration_t ip4_map_t_fragmented_node;
+extern vlib_node_registration_t ip4_map_t_tcp_udp_node;
+extern vlib_node_registration_t ip4_map_t_icmp_node;
 
-vlib_node_registration_t ip6_map_t_node;
-vlib_node_registration_t ip6_map_t_fragmented_node;
-vlib_node_registration_t ip6_map_t_tcp_udp_node;
-vlib_node_registration_t ip6_map_t_icmp_node;
+extern vlib_node_registration_t ip6_map_t_node;
+extern vlib_node_registration_t ip6_map_t_fragmented_node;
+extern vlib_node_registration_t ip6_map_t_tcp_udp_node;
+extern vlib_node_registration_t ip6_map_t_icmp_node;
 
 /*
  * map_get_pfx

@@ -85,8 +85,8 @@ typedef struct {
 } l2t_trace_t;
 
 l2t_main_t l2t_main;
-vlib_node_registration_t l2t_encap_node;
-vlib_node_registration_t l2t_decap_node;
+extern vlib_node_registration_t l2t_encap_node;
+extern vlib_node_registration_t l2t_decap_node;
 
 enum {
     SESSION_COUNTER_USER_TO_NETWORK=0,

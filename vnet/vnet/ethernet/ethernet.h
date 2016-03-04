@@ -448,6 +448,6 @@ int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
                                        uword type_opaque,
                                        uword data, int is_add);
 
-vlib_node_registration_t ethernet_input_node;
+extern vlib_node_registration_t ethernet_input_node;
 
 #endif /* included_ethernet_h */

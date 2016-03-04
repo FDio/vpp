@@ -32,7 +32,7 @@
 #include <ssvm.h>
 
 vnet_device_class_t ssvm_eth_device_class;
-vlib_node_registration_t ssvm_eth_input_node;
+extern vlib_node_registration_t ssvm_eth_input_node;
 
 #define SSVM_BUFFER_SIZE  \
   (VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES + VLIB_BUFFER_PRE_DATA_SIZE)

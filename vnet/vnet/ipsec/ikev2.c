@@ -47,7 +47,7 @@ static u8 * format_ikev2_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t ikev2_node;
+static vlib_node_registration_t ikev2_node;
 
 #define foreach_ikev2_error \
 _(PROCESSED, "IKEv2 packets processed") \
@@ -1908,7 +1908,7 @@ dispatch0:
   return frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (ikev2_node) = {
+VLIB_REGISTER_NODE (ikev2_node,static) = {
   .function = ikev2_node_fn,
   .name = "ikev2",
   .vector_size = sizeof (u32),

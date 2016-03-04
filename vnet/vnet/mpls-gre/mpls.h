@@ -113,8 +113,8 @@ format_function_t format_mpls_eth_header_with_length;
 format_function_t format_mpls_unicast_label;
 format_function_t format_mpls_encap_index;
 
-vlib_node_registration_t mpls_input_node;
-vlib_node_registration_t mpls_policy_encap_node;
+extern vlib_node_registration_t mpls_input_node;
+extern vlib_node_registration_t mpls_policy_encap_node;
 
 vnet_device_class_t mpls_gre_device_class;
 

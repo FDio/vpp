@@ -66,9 +66,9 @@
 #define NB_MBUF   (32<<10)
 
 vnet_device_class_t dpdk_device_class;
-vlib_node_registration_t dpdk_input_node;
-vlib_node_registration_t dpdk_io_input_node;
-vlib_node_registration_t handoff_dispatch_node;
+extern vlib_node_registration_t dpdk_input_node;
+extern vlib_node_registration_t dpdk_io_input_node;
+extern vlib_node_registration_t handoff_dispatch_node;
 
 typedef enum {
   VNET_DPDK_DEV_ETH = 1,      /* Standard DPDK PMD driver */
