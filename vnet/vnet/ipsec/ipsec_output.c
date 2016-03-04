@@ -58,7 +58,7 @@ static char * ipsec_output_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t ipsec_output_node;
+static vlib_node_registration_t ipsec_output_node;
 
 typedef struct {
   u32 spd_id;
@@ -386,7 +386,7 @@ dispatch0:
   return from_frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (ipsec_output_node) = {
+VLIB_REGISTER_NODE (ipsec_output_node,static) = {
   .function = ipsec_output_node_fn,
   .name = "ipsec-output",
   .vector_size = sizeof (u32),

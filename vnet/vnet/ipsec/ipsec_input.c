@@ -52,8 +52,6 @@ static char * ipsec_input_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t ipsec_input_node;
-
 typedef struct {
   u32 tunnel_index;
   u32 spi;
@@ -172,6 +170,8 @@ ipsec_input_ip6_protect_policy_match (ipsec_spd_t * spd,
     return 0;
 }
 
+static vlib_node_registration_t ipsec_input_ip4_node;
+
 static uword
 ipsec_input_ip4_node_fn (vlib_main_t * vm,
 		         vlib_node_runtime_t * node,
@@ -270,7 +270,7 @@ trace0:
 }
 
 
-VLIB_REGISTER_NODE (ipsec_input_ip4_node) = {
+VLIB_REGISTER_NODE (ipsec_input_ip4_node,static) = {
   .function = ipsec_input_ip4_node_fn,
   .name = "ipsec-input-ip4",
   .vector_size = sizeof (u32),
@@ -288,6 +288,8 @@ VLIB_REGISTER_NODE (ipsec_input_ip4_node) = {
   },
 };
 
+
+static vlib_node_registration_t ipsec_input_ip6_node;
 
 static uword
 ipsec_input_ip6_node_fn (vlib_main_t * vm,
@@ -387,7 +389,7 @@ trace0:
 }
 
 
-VLIB_REGISTER_NODE (ipsec_input_ip6_node) = {
+VLIB_REGISTER_NODE (ipsec_input_ip6_node,static) = {
   .function = ipsec_input_ip6_node_fn,
   .name = "ipsec-input-ip6",
   .vector_size = sizeof (u32),

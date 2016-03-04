@@ -15,7 +15,7 @@
  */
 #include "sixrd.h"
 
-vlib_node_registration_t ip4_sixrd_node;
+static vlib_node_registration_t ip4_sixrd_node;
 
 typedef enum {
   IP4_SIXRD_NEXT_IP6_LOOKUP,
@@ -112,7 +112,7 @@ static char *sixrd_error_strings[] = {
 #undef _
 };
 
-VLIB_REGISTER_NODE(ip4_sixrd_node) = {
+VLIB_REGISTER_NODE(ip4_sixrd_node,static) = {
   .function = ip4_sixrd,
   .name = "ip4-sixrd",
   .vector_size = sizeof(u32),

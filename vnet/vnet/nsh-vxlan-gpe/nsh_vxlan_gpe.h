@@ -125,8 +125,8 @@ typedef struct {
 
 nsh_vxlan_gpe_main_t nsh_vxlan_gpe_main;
 
-vlib_node_registration_t nsh_vxlan_gpe_input_node;
-vlib_node_registration_t nsh_vxlan_gpe_encap_node;
+extern vlib_node_registration_t nsh_vxlan_gpe_input_node;
+extern vlib_node_registration_t nsh_vxlan_gpe_encap_node;
 
 u8 * format_nsh_vxlan_gpe_encap_trace (u8 * s, va_list * args);
 

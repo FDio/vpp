@@ -102,6 +102,8 @@ split_horizon_violation (u8 shg1, u8 shg2)
 }
 
 
+static vlib_node_registration_t l2output_node;
+
 static uword
 l2output_node_fn (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
@@ -394,7 +396,7 @@ l2output_node_fn (vlib_main_t * vm,
 }
 
 
-VLIB_REGISTER_NODE (l2output_node) = {
+VLIB_REGISTER_NODE (l2output_node,static) = {
   .function = l2output_node_fn,
   .name = "l2-output",
   .vector_size = sizeof (u32),

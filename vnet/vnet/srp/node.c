@@ -269,7 +269,7 @@ static char * srp_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t srp_input_node = {
+static vlib_node_registration_t srp_input_node = {
   .function = srp_input,
   .name = "srp-input",
   /* Takes a vector of packets. */

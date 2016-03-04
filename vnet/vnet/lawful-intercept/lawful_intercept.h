@@ -41,6 +41,6 @@ typedef CLIB_PACKED(struct {
   udp_header_t udp;
 }) ip4_udp_header_t;
 
-vlib_node_registration_t li_hit_node;
+extern vlib_node_registration_t li_hit_node;
 
 #endif /* __lawful_intercept_h__ */

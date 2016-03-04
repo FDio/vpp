@@ -97,8 +97,8 @@ typedef struct {
 
 nsh_gre_main_t nsh_gre_main;
 
-vlib_node_registration_t nsh_gre_input_node;
-vlib_node_registration_t nsh_gre_encap_node;
+extern vlib_node_registration_t nsh_gre_input_node;
+extern vlib_node_registration_t nsh_gre_encap_node;
 
 u8 * format_nsh_gre_encap_trace (u8 * s, va_list * args);
 
