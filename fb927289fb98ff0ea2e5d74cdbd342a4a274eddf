@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afa4931_e73650e7",
+        "filename": "vnet/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-04T18:01:20Z",
+      "side": 1,
+      "message": "2009?",
+      "revId": "fb927289fb98ff0ea2e5d74cdbd342a4a274eddf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
