@@ -64,6 +64,7 @@ int main (int argc, char * argv[])
     void vlib_set_get_handoff_structure_cb (void *cb);
 
 #if __x86_64__
+    __builtin_cpu_init ();
     const char * msg = "ERROR: This binary requires CPU with %s extensions.\n";
 #define _(a,b) \
     if (!__builtin_cpu_supports(a))	\

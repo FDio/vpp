@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <vlib/vlib.h>
+#include <vppinfra/cpu.h>
 #include <app/version.h>
 
 #if DPDK > 0
@@ -26,9 +27,8 @@ static char * vpe_version_string =
     " built by " VPP_BUILD_USER 
     " on " VPP_BUILD_HOST 
     " at " VPP_BUILD_DATE;
-static char * vpe_dir_string = "Built in " VPP_BUILD_TOPDIR;
 
-static char * vpe_compiler = "Compiled with "
+static char * vpe_compiler =
 #if defined(__INTEL_COMPILER)
 #define __(x) #x
 #define _(x) __(x)
@@ -48,17 +48,25 @@ show_vpe_version_command_fn (vlib_main_t * vm,
 		 unformat_input_t * input,
 		 vlib_cli_command_t * cmd)
 {
-  vlib_cli_output (vm, "%s", vpe_version_string);
   if (unformat (input, "verbose"))
     {
-      vlib_cli_output (vm, "%s", vpe_dir_string);
-      vlib_cli_output (vm, "%s", vpe_compiler);
+#define _(a,b,c) vlib_cli_output (vm, "%-25s " b, a ":", c);
+      _("Version", "%s", "v" VPP_BUILD_VER);
+      _("Compiled by", "%s", VPP_BUILD_USER);
+      _("Compile host", "%s", VPP_BUILD_HOST);
+      _("Compile date", "%s", VPP_BUILD_DATE);
+      _("Compile location", "%s", VPP_BUILD_TOPDIR);
+      _("Compiler", "%s", vpe_compiler);
+      _("CPU model name", "%U", format_cpu_model_name);
+      _("CPU microarchitecture", "%U", format_cpu_uarch);
 #if DPDK > 0
-      vlib_cli_output (vm, "DPDK version is %s", rte_version());
-      vlib_cli_output (vm, "DPDK EAL init arguments: %v",
-                       dpdk_main.eal_init_args_str);
+      _("DPDK Version", "%s", rte_version());
+      _("DPDK EAL init args", "%s", dpdk_main.eal_init_args_str);
 #endif
+#undef _
     }
+  else
+    vlib_cli_output (vm, "%s", vpe_version_string);
   return 0;
 }
 

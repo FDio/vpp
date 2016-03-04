@@ -168,6 +168,7 @@ nobase_include_HEADERS = \
   vppinfra/byte_order.h \
   vppinfra/cache.h \
   vppinfra/clib.h \
+  vppinfra/cpu.h \
   vppinfra/elf.h \
   vppinfra/elf_clib.h \
   vppinfra/elog.h \
@@ -224,6 +225,7 @@ nobase_include_HEADERS = \
 CLIB_CORE = \
   vppinfra/asm_x86.c \
   vppinfra/backtrace.c \
+  vppinfra/cpu.c \
   vppinfra/elf.c \
   vppinfra/elog.c \
   vppinfra/error.c \
