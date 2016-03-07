@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afa4931_321478f4",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2567,
+      "author": {
+        "id": 13
+      },
+      "writtenOn": "2016-03-07T16:48:57Z",
+      "side": 1,
+      "message": "please wrap.",
+      "range": {
+        "startLine": 2567,
+        "startChar": 94,
+        "endLine": 2567,
+        "endChar": 110
+      },
+      "revId": "33d8c04d61fd6beea40a1e10167c89c1b7de2c5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7afa4931_12f97cc8",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2587,
+      "author": {
+        "id": 13
+      },
+      "writtenOn": "2016-03-07T16:48:57Z",
+      "side": 1,
+      "message": "this indentation is a little bit weird. Unless gerrit displays tabs wrongly.",
+      "range": {
+        "startLine": 2587,
+        "startChar": 0,
+        "endLine": 2587,
+        "endChar": 6
+      },
+      "revId": "33d8c04d61fd6beea40a1e10167c89c1b7de2c5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
