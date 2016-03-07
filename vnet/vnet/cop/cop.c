@@ -257,9 +257,14 @@ int cop_whitelist_enable_disable (cop_whitelist_enable_disable_args_t *a)
           /* configured opaque data must match, or no supper */
           p = hash_get (im4->fib_index_by_table_id, a->fib_id);
           if (p)
-              fib_index = p[0];
+            fib_index = p[0];
           else
-              return VNET_API_ERROR_NO_SUCH_FIB;
+            {
+              if (is_add)
+                return VNET_API_ERROR_NO_SUCH_FIB;
+              else
+                continue;
+            }
           break;
               
         case VNET_COP_IP6:
@@ -267,9 +272,14 @@ int cop_whitelist_enable_disable (cop_whitelist_enable_disable_args_t *a)
           next_to_add_del = IP6_RX_COP_WHITELIST;
           p = hash_get (im6->fib_index_by_table_id, a->fib_id);
           if (p)
-              fib_index = p[0];
+            fib_index = p[0];
           else
-              return VNET_API_ERROR_NO_SUCH_FIB;
+            {
+              if (is_add)
+                return VNET_API_ERROR_NO_SUCH_FIB;
+              else
+                continue;
+            }
           break;
 
         case VNET_COP_DEFAULT:
