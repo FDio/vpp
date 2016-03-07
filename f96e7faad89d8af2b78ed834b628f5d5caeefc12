@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afa4931_67300057",
+        "filename": "vpp/api/custom_dump.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1735,
+      "author": {
+        "id": 18
+      },
+      "writtenOn": "2016-03-07T09:16:28Z",
+      "side": 1,
+      "message": "missing sw_if_index param",
+      "revId": "f96e7faad89d8af2b78ed834b628f5d5caeefc12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
