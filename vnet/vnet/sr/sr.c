@@ -1659,14 +1659,13 @@ sr_local (vlib_main_t * vm,
               ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
               
               if (PREDICT_TRUE (sr0->segments_left > 0))
-              {
                   sr0->segments_left -= 1;
-                  goto do_trace0;
-              }
             }
 
           /* End of the path. Clean up the SR header, or not */
-          if (sr0->flags & clib_host_to_net_u16(IP6_SR_HEADER_FLAG_CLEANUP))
+          if (PREDICT_FALSE 
+              (sr0->segments_left == 0 && 
+               (sr0->flags & clib_host_to_net_u16(IP6_SR_HEADER_FLAG_CLEANUP))))
           {
               u64 *copy_dst0, *copy_src0;
               u16 new_l0;
@@ -1765,14 +1764,13 @@ sr_local (vlib_main_t * vm,
               ip1->dst_address.as_u64[1] = new_dst1->as_u64[1];
               
               if (PREDICT_TRUE (sr1->segments_left > 0))
-                {
                   sr1->segments_left -= 1;
-                  goto do_trace1;
-                }
             }
 
           /* End of the path. Clean up the SR header, or not */
-          if (sr1->flags & clib_host_to_net_u16(IP6_SR_HEADER_FLAG_CLEANUP))
+          if (PREDICT_FALSE 
+              (sr1->segments_left == 0 && 
+               (sr1->flags & clib_host_to_net_u16(IP6_SR_HEADER_FLAG_CLEANUP))))
             {
               u64 *copy_dst1, *copy_src1;
               u16 new_l1;
@@ -1892,14 +1890,13 @@ sr_local (vlib_main_t * vm,
               ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
               
               if (PREDICT_TRUE (sr0->segments_left > 0))
-                {
                   sr0->segments_left -= 1;
-                  goto do_trace;
-                }
             }
 
           /* End of the path. Clean up the SR header, or not */
-          if (sr0->flags & clib_host_to_net_u16(IP6_SR_HEADER_FLAG_CLEANUP))
+          if (PREDICT_FALSE 
+              (sr0->segments_left == 0 && 
+               (sr0->flags & clib_host_to_net_u16(IP6_SR_HEADER_FLAG_CLEANUP))))
             {
               u64 *copy_dst0, *copy_src0;
               u16 new_l0;
