@@ -231,6 +231,7 @@ static inline void vhost_user_if_disconnect(vhost_user_intf_t * vui)
     vui->vrings[q].avail = NULL;
     vui->vrings[q].used = NULL;
     vui->vrings[q].log_guest_addr = 0;
+    vui->vrings[q].log_used = 0;
   }
 
   unmap_all_mem_regions(vui);
@@ -259,8 +260,10 @@ always_inline void vhost_user_log_dirty_pages(vhost_user_intf_t * vui,
 }
 
 #define vhost_user_log_dirty_ring(vui, vq, member) \
-  vhost_user_log_dirty_pages(vui, vq->log_guest_addr + offsetof(vring_used_t, member), \
-                             sizeof(vq->used->member))
+  if (PREDICT_FALSE(vq->log_used)) { \
+    vhost_user_log_dirty_pages(vui, vq->log_guest_addr + offsetof(vring_used_t, member), \
+                             sizeof(vq->used->member)); \
+  }
 
 static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
 {
@@ -370,6 +373,7 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
         vui->vrings[q].avail = 0;
         vui->vrings[q].used = 0;
         vui->vrings[q].log_guest_addr = 0;
+        vui->vrings[q].log_used = 0;
       }
 
       DBG_SOCK("interface %d disconnected", vui->sw_if_index);
@@ -451,6 +455,8 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
       }
 
       vui->vrings[msg.state.index].log_guest_addr = msg.addr.log_guest_addr;
+      vui->vrings[msg.state.index].log_used =
+          (msg.addr.flags & (1 << VHOST_VRING_F_LOG)) ? 1 : 0;
 
       /* Spec says: If VHOST_USER_F_PROTOCOL_FEATURES has not been negotiated,
        the ring is initialized in an enabled state. */

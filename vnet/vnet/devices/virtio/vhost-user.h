@@ -28,6 +28,7 @@
 
 #define VHOST_USER_PROTOCOL_F_MQ   0
 #define VHOST_USER_PROTOCOL_F_LOG_SHMFD	1
+#define VHOST_VRING_F_LOG 0
 
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
 #define VHOST_USER_F_PROTOCOL_FEATURES  30
@@ -178,6 +179,7 @@ typedef struct {
   int kickfd;
   int errfd;
   u32 enabled;
+  u32 log_used;
   u32 callfd_idx;
   u32 n_since_last_int;
   f64 int_deadline;
