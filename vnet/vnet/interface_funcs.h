@@ -150,6 +150,10 @@ int vnet_hw_interface_rx_redirect_to_node (vnet_main_t * vnm, u32 hw_if_index,
 
 void vnet_hw_interface_init_for_class (vnet_main_t * vnm, u32 hw_if_index, u32 hw_class_index, u32 hw_instance);
 
+/* Rename interface */
+clib_error_t *
+vnet_rename_interface (vnet_main_t * vnm, u32  hw_if_index, char * new_name);
+
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
 format_function_t format_vnet_sw_interface;
