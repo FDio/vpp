@@ -1078,3 +1078,40 @@ int vnet_interface_add_del_feature(vnet_main_t * vnm,
   return 0;
 }
 
+clib_error_t *
+vnet_rename_interface (vnet_main_t * vnm,
+                       u32           hw_if_index,
+                       char *        new_name)
+{
+  vnet_interface_main_t * im = &vnm->interface_main;
+  vlib_main_t * vm = vnm->vlib_main;
+  vnet_hw_interface_t* hw;
+  u8* old_name;
+  clib_error_t * error = 0;
+
+  hw = vnet_get_hw_interface(vnm, hw_if_index);
+  if (!hw)
+    {
+      return clib_error_return (0,
+                                "unable to find hw interface for index %u",
+                                 hw_if_index);
+    }
+
+  old_name = hw->name;
+
+  // set new hw->name
+  hw->name = format (0, "%s", new_name);
+
+  // remove the old name to hw_if_index mapping and install the new one
+  hash_unset_mem (im->hw_interface_by_name, old_name);
+  hash_set_mem (im->hw_interface_by_name, hw->name, hw_if_index);
+
+  // rename tx/output nodes
+  vlib_node_rename (vm, hw->tx_node_index, "%v-tx", hw->name);
+  vlib_node_rename (vm, hw->output_node_index, "%v-output", hw->name);
+
+  // free the old name vector
+  vec_free (old_name);
+
+  return error;
+}
