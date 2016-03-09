@@ -39,6 +39,11 @@ ethernet_arp_hw_interface_link_up_down (vnet_main_t * vnm,
                                         u32 hw_if_index,
                                         u32 flags);
 
+extern clib_error_t *
+ip6_discover_neighbor_hw_interface_link_up_down (vnet_main_t * vnm,
+                                                 u32 hw_if_index,
+                                                 u32 flags);
+
 // Feature graph node names
 static char * l2input_feat_names[] = {
 #define _(sym,name) name,
@@ -552,6 +557,10 @@ u32 set_int_l2_mode (vlib_main_t * vm,
       // delete the l2fib entry for the bvi interface
       mac = *((u64 *)hi->hw_address);
       l2fib_del_entry (mac, config->bd_index);
+
+      // Let ARP and NDP know that the output node index changed
+      ethernet_arp_hw_interface_link_up_down(vnet_main, hi->hw_if_index, 0);
+      ip6_discover_neighbor_hw_interface_link_up_down(vnet_main, hi->hw_if_index, 0);
     } 
     l2_if_adjust--;
   } else if (config->xconnect) {
@@ -635,10 +644,10 @@ u32 set_int_l2_mode (vlib_main_t * vm,
         // Disable learning by default. no use since l2fib entry is static.
         config->feature_bitmap &= ~L2INPUT_FEAT_LEARN;
 
-        // Add BVI to arp_input_next_index_by_hw_if_index table so arp-input
-        // node can send out ARP response via BVI to BD
+        // Let ARP and NDP know that the output_index_node changed so they
+        // can send requests via BVI to BD
         ethernet_arp_hw_interface_link_up_down(vnet_main, hi->hw_if_index, 0);
- 
+        ip6_discover_neighbor_hw_interface_link_up_down(vnet_main, hi->hw_if_index, 0);
       }
 
       // Add interface to bridge-domain flood vector
