@@ -301,10 +301,20 @@ static u8 * format_simulated_ethernet_name (u8 * s, va_list * args)
   return format (s, "loop%d", dev_instance);
 }
 
+static clib_error_t *
+simulated_ethernet_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+{
+  u32 hw_flags = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?
+      VNET_HW_INTERFACE_FLAG_LINK_UP : 0;
+  vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
+  return 0;
+}
+
 VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
   .name = "Loopback",
   .format_device_name = format_simulated_ethernet_name,
   .tx_function = simulated_ethernet_interface_tx,
+  .admin_up_down_function = simulated_ethernet_admin_up_down,
 };
 
 int vnet_create_loopback_interface (u32 * sw_if_indexp, u8 *mac_address)
