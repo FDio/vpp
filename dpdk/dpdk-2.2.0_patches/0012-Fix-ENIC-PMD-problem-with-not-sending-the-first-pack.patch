@@ -1,26 +1,31 @@
-From cbd799612eb1da02cefc6d43fe304e4434cdf8e5 Mon Sep 17 00:00:00 2001
+From 70725980c4d8f1e01cfa352a95341893aab00e7e Mon Sep 17 00:00:00 2001
 From: John Lo <loj@cisco.com>
-Date: Fri, 26 Feb 2016 12:54:27 -0500
-Subject: [PATCH 2/2] Fix ENIC PMD problem with not sending the first packet on
- TX.
+Date: Mon, 7 Mar 2016 14:07:19 -0500
+Subject: [PATCH 1/2] Fix-ENIC-PMD-problem-with-not-sending-the-first-pack.
 
 ---
- drivers/net/enic/base/enic_vnic_wq.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/net/enic/base/enic_vnic_wq.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/net/enic/base/enic_vnic_wq.h b/drivers/net/enic/base/enic_vnic_wq.h
-index e3ea574..75fad22 100644
+index e3ea574..b019109 100644
 --- a/drivers/net/enic/base/enic_vnic_wq.h
 +++ b/drivers/net/enic/base/enic_vnic_wq.h
-@@ -48,7 +48,7 @@ static inline void enic_vnic_post_wq_index(struct vnic_wq *wq)
- 	 * stale descriptor fields.
- 	*/
- 	wmb();
--	iowrite32(buf->index, &wq->ctrl->posted_index);
-+	iowrite32(buf->next->index, &wq->ctrl->posted_index);
+@@ -69,11 +69,11 @@ static inline void enic_vnic_post_wq(struct vnic_wq *wq,
+ 	buf->wr_id = wrid;
+ 
+ 	buf = buf->next;
+-	if (cq_entry)
+-		enic_vnic_post_wq_index(wq);
++	wq->ring.desc_avail -= desc_skip_cnt;
+ 	wq->to_use = buf;
+ 
+-	wq->ring.desc_avail -= desc_skip_cnt;
++	if (cq_entry)
++		enic_vnic_post_wq_index(wq);
  }
  
- static inline void enic_vnic_post_wq(struct vnic_wq *wq,
+ #endif /* _ENIC_VNIC_WQ_H_ */
 -- 
 1.9.1
 
