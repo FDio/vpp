@@ -1,0 +1,84 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afa4931_9826cdb9",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-03-11T04:02:55Z",
+      "side": 1,
+      "message": "Consider removing this and any visualization app specific handling here. We should modify the app to understand the actual interface and node information sent and not do any special handling here.",
+      "range": {
+        "startLine": 28,
+        "startChar": 8,
+        "endLine": 28,
+        "endChar": 28
+      },
+      "revId": "eca40c88cc7f2c382c0fc2e582e23178cec0867c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7afa4931_782b0183",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 391,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-03-11T04:02:55Z",
+      "side": 1,
+      "message": "Please remove is_visapp_enabled and all the references and special handling.",
+      "range": {
+        "startLine": 391,
+        "startChar": 34,
+        "endLine": 391,
+        "endChar": 51
+      },
+      "revId": "eca40c88cc7f2c382c0fc2e582e23178cec0867c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7afa4931_5820459b",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 417,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-03-11T04:02:55Z",
+      "side": 1,
+      "message": "Shouldnt this be converted to network byte order here?",
+      "revId": "eca40c88cc7f2c382c0fc2e582e23178cec0867c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7afa4931_382579ab",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-03-11T04:02:55Z",
+      "side": 1,
+      "message": "Convert to network byte order",
+      "revId": "eca40c88cc7f2c382c0fc2e582e23178cec0867c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
