@@ -1148,11 +1148,11 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
                  u32 pages_avail;
 
                  pages_avail = get_node_free_hugepages_num(c, 1048576);
-                 if (!(pages_avail >= pages_num_1g))
+                 if (!pages_avail || !(pages_avail >= pages_num_1g))
                    use_1g = 0;
 
                  pages_avail = get_node_free_hugepages_num(c, 2048);
-                 if (!(pages_avail >= pages_num_2m))
+                 if (!pages_avail || !(pages_avail >= pages_num_2m))
                    use_2m = 0;
               }
            }
