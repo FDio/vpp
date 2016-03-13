@@ -210,9 +210,9 @@ do {									\
   _n1 = _i + _n0 - _l;							\
   _n1 = _n1 < 0 ? 0 : _n1;						\
   _n0 -= _n1;								\
-  memcpy ((f) + _i, (e), _n0 * sizeof ((f)[0]));			\
+  clib_memcpy ((f) + _i, (e), _n0 * sizeof ((f)[0]));			\
   if (_n1)								\
-    memcpy ((f) + 0, (e) + _n0, _n1 * sizeof ((f)[0]));			\
+    clib_memcpy ((f) + 0, (e) + _n0, _n1 * sizeof ((f)[0]));		\
 } while (0)
 
 /* Subtract element from fifo. */

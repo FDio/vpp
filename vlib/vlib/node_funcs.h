@@ -93,7 +93,7 @@ vlib_node_set_runtime_data (vlib_main_t * vm, u32 node_index,
 
   ASSERT (vec_len (n->runtime_data) <= sizeof (r->runtime_data));
   if (vec_len (n->runtime_data) > 0)
-    memcpy (r->runtime_data, n->runtime_data, vec_len (n->runtime_data));
+    clib_memcpy (r->runtime_data, n->runtime_data, vec_len (n->runtime_data));
 }
 
 always_inline void

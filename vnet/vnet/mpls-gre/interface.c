@@ -129,8 +129,8 @@ mpls_gre_interface_tx (vlib_main_t * vm,
           dst0 = vlib_buffer_get_current (b0);
           dst1 = vlib_buffer_get_current (b1);
 
-          memcpy (dst0, t0->rewrite_data, vec_len(t0->rewrite_data));
-          memcpy (dst1, t1->rewrite_data, vec_len(t1->rewrite_data));
+          clib_memcpy (dst0, t0->rewrite_data, vec_len(t0->rewrite_data));
+          clib_memcpy (dst1, t1->rewrite_data, vec_len(t1->rewrite_data));
 
           /* Fix TX fib indices */
           vnet_buffer(b0)->sw_if_index [VLIB_TX] = t0->outer_fib_index;
@@ -197,7 +197,7 @@ mpls_gre_interface_tx (vlib_main_t * vm,
 
           dst0 = vlib_buffer_get_current (b0);
 
-          memcpy (dst0, t0->rewrite_data, vec_len(t0->rewrite_data));
+          clib_memcpy (dst0, t0->rewrite_data, vec_len(t0->rewrite_data));
 
           /* Fix the TX fib index */
           vnet_buffer(b0)->sw_if_index [VLIB_TX] = t0->outer_fib_index;
@@ -378,8 +378,8 @@ mpls_eth_interface_tx (vlib_main_t * vm,
           dst0 = vlib_buffer_get_current (b0);
           dst1 = vlib_buffer_get_current (b1);
 
-          memcpy (dst0, t0->rewrite_data, vec_len(t0->rewrite_data));
-          memcpy (dst1, t1->rewrite_data, vec_len(t1->rewrite_data));
+          clib_memcpy (dst0, t0->rewrite_data, vec_len(t0->rewrite_data));
+          clib_memcpy (dst1, t1->rewrite_data, vec_len(t1->rewrite_data));
 
           /* Fix TX fib indices */
           vnet_buffer(b0)->sw_if_index [VLIB_TX] = t0->tx_sw_if_index;
@@ -399,7 +399,7 @@ mpls_eth_interface_tx (vlib_main_t * vm,
               tr->mpls_encap_index = t0->encap_index;
               tr->length = b0->current_length;
               hi0 = vnet_get_sup_hw_interface (vnm, t0->tx_sw_if_index);
-              memcpy (tr->dst, hi0->hw_address, sizeof (tr->dst));
+              clib_memcpy (tr->dst, hi0->hw_address, sizeof (tr->dst));
             }
           if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED)) 
             {
@@ -411,7 +411,7 @@ mpls_eth_interface_tx (vlib_main_t * vm,
               tr->mpls_encap_index = t1->encap_index;
               tr->length = b0->current_length;
               hi1 = vnet_get_sup_hw_interface (vnm, t1->tx_sw_if_index);
-              memcpy (tr->dst, hi1->hw_address, sizeof (tr->dst));
+              clib_memcpy (tr->dst, hi1->hw_address, sizeof (tr->dst));
             }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -447,7 +447,7 @@ mpls_eth_interface_tx (vlib_main_t * vm,
 
           dst0 = vlib_buffer_get_current (b0);
 
-          memcpy (dst0, t0->rewrite_data, vec_len(t0->rewrite_data));
+          clib_memcpy (dst0, t0->rewrite_data, vec_len(t0->rewrite_data));
 
           /* Fix the TX interface */
           vnet_buffer(b0)->sw_if_index [VLIB_TX] = t0->tx_sw_if_index;
@@ -465,7 +465,7 @@ mpls_eth_interface_tx (vlib_main_t * vm,
               tr->mpls_encap_index = t0->encap_index;
               tr->length = b0->current_length;
               hi0 = vnet_get_sup_hw_interface (vnm, t0->tx_sw_if_index);
-              memcpy (tr->dst, hi0->hw_address, sizeof (tr->dst));
+              clib_memcpy (tr->dst, hi0->hw_address, sizeof (tr->dst));
             }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -1394,7 +1394,7 @@ int vnet_mpls_ethernet_add_del_tunnel (u8 *dst,
   tp->hw_if_index = hw_if_index;
 
  reinstall_it:
-  memcpy(tp->tunnel_dst, dst, sizeof (tp->tunnel_dst));
+  clib_memcpy(tp->tunnel_dst, dst, sizeof (tp->tunnel_dst));
   tp->intfc_address.as_u32 = intfc->as_u32;
   tp->mask_width = mask_width;
   tp->inner_fib_index = inner_fib_index;
@@ -1436,7 +1436,7 @@ int vnet_mpls_ethernet_add_del_tunnel (u8 *dst,
    * we just built to the mpls header stack
    */
   vec_insert (rewrite_data, adj.rewrite_header.data_bytes, 0);
-  memcpy(rewrite_data, 
+  clib_memcpy(rewrite_data, 
          vnet_rewrite_get_data_internal(&adj.rewrite_header, 
                                         sizeof (adj.rewrite_data)),
          adj.rewrite_header.data_bytes);
@@ -1619,7 +1619,7 @@ int vnet_mpls_policy_tunnel_add_rewrite (mpls_main_t * mm,
   
   vec_validate (rewrite_data, adj.rewrite_header.data_bytes -1);
 
-  memcpy(rewrite_data, 
+  clib_memcpy(rewrite_data, 
          vnet_rewrite_get_data_internal(&adj.rewrite_header, 
                                         sizeof (adj.rewrite_data)),
          adj.rewrite_header.data_bytes);
@@ -1762,7 +1762,7 @@ int vnet_mpls_ethernet_add_del_policy_tunnel (u8 *dst,
   tp->hw_if_index = hw_if_index;
 
  reinstall_it:
-  memcpy(tp->tunnel_dst, dst, sizeof (tp->tunnel_dst));
+  clib_memcpy(tp->tunnel_dst, dst, sizeof (tp->tunnel_dst));
   tp->intfc_address.as_u32 = intfc->as_u32;
   tp->mask_width = mask_width;
   tp->inner_fib_index = inner_fib_index;

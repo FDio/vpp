@@ -541,7 +541,7 @@ static void serialize_mc_register_stream_name (serialize_main_t * m, va_list * v
 
 static void elog_stream_name (char * buf, int n_buf_bytes, char * v)
 {
-  memcpy (buf, v, clib_min (n_buf_bytes - 1, vec_len (v)));
+  clib_memcpy (buf, v, clib_min (n_buf_bytes - 1, vec_len (v)));
   buf[n_buf_bytes - 1] = 0;
 }
 
@@ -1307,7 +1307,7 @@ static void serialize_mc_stream (serialize_main_t * m, va_list * va)
   serialize_integer (m, pool_elts (s->peers), sizeof (u32));
   pool_foreach (p, s->peers, ({
     u8 * x = serialize_get (m, sizeof (p->id));
-    memcpy (x, p->id.as_u8, sizeof (p->id));
+    clib_memcpy (x, p->id.as_u8, sizeof (p->id));
     serialize_integer (m, p->last_sequence_received, 
                        sizeof (p->last_sequence_received));
   }));
@@ -1327,7 +1327,7 @@ void unserialize_mc_stream (serialize_main_t * m, va_list * va)
       u8 * x;
       pool_get (s->peers, p);
       x = unserialize_get (m, sizeof (p->id));
-      memcpy (p->id.as_u8, x, sizeof (p->id));
+      clib_memcpy (p->id.as_u8, x, sizeof (p->id));
       unserialize_integer (m, &p->last_sequence_received, sizeof (p->last_sequence_received));
       mhash_set (&s->peer_index_by_id, &p->id, p - s->peers, /* old_value */ 0);
     }

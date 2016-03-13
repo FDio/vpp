@@ -50,7 +50,7 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
         {
             mac_addr_t *ma;
             vec_add2 (mac_addrs, ma, 1);
-            memcpy(ma, mac_addr, sizeof (mac_addr));
+            clib_memcpy(ma, mac_addr, sizeof (mac_addr));
         } else {
         barf:
 	    return clib_error_return (0, "unknown input `%U'",

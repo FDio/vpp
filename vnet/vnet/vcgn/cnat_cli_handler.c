@@ -341,12 +341,12 @@ void cnat_nat44_handle_show_config(vlib_main_t *vm)
 
                 memset(status_str, 0x00, sizeof(status_str));
                 switch(my_vrfmap->status) {
-                case S_WAO: memcpy(status_str, "S_WAO", 5); break;
-                case S_WA:  memcpy(status_str, "S_WA",  4); break;
-                case S_WO:  memcpy(status_str, "S_WO",  4); break;
-                case S_RUN: memcpy(status_str, "ONLINE", 6); break;
-                case S_DEL: memcpy(status_str, "S_DEL", 5); break;
-                default: memcpy(status_str, "Invalid state", 13); 
+                case S_WAO: clib_memcpy(status_str, "S_WAO", 5); break;
+                case S_WA:  clib_memcpy(status_str, "S_WA",  4); break;
+                case S_WO:  clib_memcpy(status_str, "S_WO",  4); break;
+                case S_RUN: clib_memcpy(status_str, "ONLINE", 6); break;
+                case S_DEL: clib_memcpy(status_str, "S_DEL", 5); break;
+                default: clib_memcpy(status_str, "Invalid state", 13); 
 
                 } 
                 vlib_cli_output(vm, 

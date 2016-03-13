@@ -154,7 +154,7 @@ static clib_error_t * test_lisp_msg_parse_mapping_record ()
     0xaa, 0xbb, 0xcc, 0xdd, /* Loator */
   };
   b->current_length = buff_len;
-  memcpy(b->data, map_reply_records, sizeof(map_reply_records));
+  clib_memcpy(b->data, map_reply_records, sizeof(map_reply_records));
 
   lisp_msg_parse_mapping_record (b, &eid, &locs, &probed);
   _assert(vec_len (locs) == 1);

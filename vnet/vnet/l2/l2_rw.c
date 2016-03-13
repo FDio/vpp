@@ -331,8 +331,8 @@ int l2_rw_mod_entry(u32 *index,
   vec_alloc_aligned(e->value, e->rewrite_n_vectors, sizeof(u32x4));
   memset(e->value, 0, e->rewrite_n_vectors * sizeof(u32x4));
 
-  memcpy(((u8 *)e->value) + skip, value, len);
-  memcpy(((u8 *)e->mask) + skip, mask, len);
+  clib_memcpy(((u8 *)e->value) + skip, value, len);
+  clib_memcpy(((u8 *)e->mask) + skip, mask, len);
 
   int i;
   for (i = 0; i < e->rewrite_n_vectors; i++) {

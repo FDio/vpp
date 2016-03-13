@@ -320,7 +320,7 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
       (cmsg->cmsg_type == SCM_RIGHTS) &&
       (cmsg->cmsg_len - CMSG_LEN(0) <= VHOST_MEMORY_MAX_NREGIONS * sizeof(int))) {
         number_of_fds = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
-        memcpy(fds, CMSG_DATA(cmsg), number_of_fds * sizeof(int));
+        clib_memcpy(fds, CMSG_DATA(cmsg), number_of_fds * sizeof(int));
   }
 
   /* version 1, no reply bit set*/
@@ -399,7 +399,7 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
       }
       unmap_all_mem_regions(vui);
       for(i=0; i < msg.memory.nregions; i++) {
-        memcpy(&(vui->regions[i]), &msg.memory.regions[i],
+        clib_memcpy(&(vui->regions[i]), &msg.memory.regions[i],
           sizeof(vhost_user_memory_region_t));
 
         long page_sz = get_huge_page_size(fds[i]);
@@ -838,7 +838,7 @@ void vhost_user_rx_trace (vlib_main_t * vm,
     t0->virtqueue = virtqueue;
     t0->device_index = vui - vum->vhost_user_interfaces;
 #if VHOST_USER_COPY_TX_HDR == 1
-    rte_memcpy(&t0->hdr, b0->pre_data, sizeof(virtio_net_hdr_t));
+    clib_memcpy(&t0->hdr, b0->pre_data, sizeof(virtio_net_hdr_t));
 #endif
 
     b+=1;
@@ -997,7 +997,7 @@ static u32 vhost_user_if_input ( vlib_main_t * vm,
 
 #if VHOST_USER_COPY_TX_HDR == 1
         if (PREDICT_TRUE(offset))
-          rte_memcpy(b->pre_data, buffer_addr, sizeof(virtio_net_hdr_t)); /* 12 byte hdr is not used on tx */
+          clib_memcpy(b->pre_data, buffer_addr, sizeof(virtio_net_hdr_t)); /* 12 byte hdr is not used on tx */
 #endif
 
         if (txvq->desc[desc_current].len > offset) {
@@ -1294,7 +1294,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
         }
 
         u16 bytes_to_copy = bytes_left > (rxvq->desc[desc_current].len - offset) ? (rxvq->desc[desc_current].len - offset) : bytes_left;
-        rte_memcpy(buffer_addr, vlib_buffer_get_current (current_b0) + current_b0->current_length - bytes_left, bytes_to_copy);
+        clib_memcpy(buffer_addr, vlib_buffer_get_current (current_b0) + current_b0->current_length - bytes_left, bytes_to_copy);
 
         vhost_user_log_dirty_pages(vui, rxvq->desc[desc_current].addr + offset, bytes_to_copy);
         bytes_left -= bytes_to_copy;
@@ -1555,14 +1555,14 @@ static void vhost_user_create_ethernet(vnet_main_t * vnm, vlib_main_t * vm,
 
   /* create hw and sw interface */
   if (hwaddress) {
-    memcpy(hwaddr, hwaddress, 6);
+    clib_memcpy(hwaddr, hwaddress, 6);
   } else {
     f64 now = vlib_time_now(vm);
     u32 rnd;
     rnd = (u32) (now * 1e6);
     rnd = random_u32 (&rnd);
 
-    memcpy (hwaddr+2, &rnd, sizeof(rnd));
+    clib_memcpy (hwaddr+2, &rnd, sizeof(rnd));
     hwaddr[0] = 2;
     hwaddr[1] = 0xfe;
   }

@@ -57,7 +57,7 @@ replication_prep (vlib_main_t * vm,
   ctx->recycle_node_index = recycle_node_index;
 
   // Save vnet state
-  memcpy (ctx->vnet_buffer, vnet_buffer(b0), sizeof(vnet_buffer_opaque_t));
+  clib_memcpy (ctx->vnet_buffer, vnet_buffer(b0), sizeof(vnet_buffer_opaque_t));
 
   // Save packet contents
   ctx->l2_packet = l2_packet;
@@ -98,7 +98,7 @@ replication_recycle (vlib_main_t * vm,
   ctx = pool_elt_at_index (rm->contexts[cpu_number], b0->clone_count);
 
   // Restore vnet buffer state
-  memcpy (vnet_buffer(b0), ctx->vnet_buffer, sizeof(vnet_buffer_opaque_t));
+  clib_memcpy (vnet_buffer(b0), ctx->vnet_buffer, sizeof(vnet_buffer_opaque_t));
 
   // Restore the packet start (current_data) and length
   vlib_buffer_advance(b0, ctx->current_data - b0->current_data);

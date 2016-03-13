@@ -89,9 +89,9 @@ static uword ethernet_set_rewrite (vnet_main_t * vnm,
   }
 
   ei = pool_elt_at_index (em->interfaces, hw->hw_instance);
-  memcpy (h->src_address, ei->address, sizeof (h->src_address));
+  clib_memcpy (h->src_address, ei->address, sizeof (h->src_address));
   if (dst_address)
-    memcpy (h->dst_address, dst_address, sizeof (h->dst_address));
+    clib_memcpy (h->dst_address, dst_address, sizeof (h->dst_address));
   else
     memset (h->dst_address, ~0, sizeof (h->dst_address)); /* broadcast */
 
@@ -188,7 +188,7 @@ ethernet_register_interface (vnet_main_t * vnm,
   /* Standard default ethernet MTU. */
   hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
 
-  memcpy (ei->address, address, sizeof (ei->address));
+  clib_memcpy (ei->address, address, sizeof (ei->address));
   vec_free (hi->hw_address);
   vec_add (hi->hw_address, address, sizeof (ei->address));
 
@@ -277,7 +277,7 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 
       n_copy = clib_min (n_left_from, n_left_to_next);
 
-      memcpy (to_next, from, n_copy * sizeof (from[0]));
+      clib_memcpy (to_next, from, n_copy * sizeof (from[0]));
       n_left_to_next -= n_copy;
       n_left_from -= n_copy;
       for (i = 0; i < n_copy; i++)
@@ -341,7 +341,7 @@ int vnet_create_loopback_interface (u32 * sw_if_indexp, u8 *mac_address)
    * address is programmed on the loopback interface.
    */
   if (memcmp (address, mac_address, sizeof (address)))
-    memcpy (address, mac_address, sizeof (address));
+    clib_memcpy (address, mac_address, sizeof (address));
   else
     {
       address[0] = 0xde;

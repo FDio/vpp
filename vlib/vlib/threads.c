@@ -639,7 +639,7 @@ static clib_error_t * start_workers (vlib_main_t * vm)
             oldheap = clib_mem_set_heap (w->thread_mheap);
 
             vm_clone = clib_mem_alloc (sizeof (*vm_clone));
-            memcpy (vm_clone, vlib_mains[0], sizeof (*vm_clone));
+            clib_memcpy (vm_clone, vlib_mains[0], sizeof (*vm_clone));
 
             vm_clone->cpu_index = worker_thread_index;
             vm_clone->heap_base = w->thread_mheap;
@@ -674,7 +674,7 @@ static clib_error_t * start_workers (vlib_main_t * vm)
               {
                 vlib_node_t *n;
                 n = clib_mem_alloc_no_fail (sizeof(*n));
-                memcpy (n, nm->nodes[j], sizeof (*n));
+                clib_memcpy (n, nm->nodes[j], sizeof (*n));
                 /* none of the copied nodes have enqueue rights given out */
                 n->owner_node_index = VLIB_INVALID_NODE_INDEX;
                 memset (&n->stats_total, 0, sizeof (n->stats_total));
@@ -854,7 +854,7 @@ void vlib_worker_thread_node_runtime_update(void)
       /* Re-clone error heap */
       u64 * old_counters = vm_clone->error_main.counters;
       u64 * old_counters_all_clear = vm_clone->error_main.counters_last_clear;
-      memcpy (&vm_clone->error_main, &vm->error_main, sizeof (vm->error_main));
+      clib_memcpy (&vm_clone->error_main, &vm->error_main, sizeof (vm->error_main));
       j = vec_len(vm->error_main.counters) - 1;
       vec_validate_aligned(old_counters, j, CLIB_CACHE_LINE_BYTES);
       vec_validate_aligned(old_counters_all_clear, j, CLIB_CACHE_LINE_BYTES);
@@ -890,7 +890,7 @@ void vlib_worker_thread_node_runtime_update(void)
         old_n_clone = old_nodes_clone[j];
 
         new_n_clone = clib_mem_alloc_no_fail (sizeof(*new_n_clone));
-        memcpy (new_n_clone, new_n, sizeof (*new_n));
+        clib_memcpy (new_n_clone, new_n, sizeof (*new_n));
         /* none of the copied nodes have enqueue rights given out */
         new_n_clone->owner_node_index = VLIB_INVALID_NODE_INDEX;
 
@@ -905,10 +905,10 @@ void vlib_worker_thread_node_runtime_update(void)
         else
           {
             /* Copy stats if the old data is valid */
-            memcpy (&new_n_clone->stats_total, 
+            clib_memcpy (&new_n_clone->stats_total, 
                     &old_n_clone->stats_total,
                     sizeof (new_n_clone->stats_total));
-            memcpy (&new_n_clone->stats_last_clear, 
+            clib_memcpy (&new_n_clone->stats_last_clear, 
                     &old_n_clone->stats_last_clear,
                     sizeof (new_n_clone->stats_last_clear));
 

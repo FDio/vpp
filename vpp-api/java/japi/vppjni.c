@@ -420,7 +420,7 @@ void vl_api_generic_reply_handler (vl_api_generic_reply_t *mp)
 
     /* Save the reply */
     vec_validate (saved_reply, total_bytes - 1);
-    memcpy (saved_reply, mp, total_bytes);
+    clib_memcpy (saved_reply, mp, total_bytes);
 
     vppjni_lock (jm, 2);
     hash_set (jm->reply_hash, context, saved_reply);
@@ -836,7 +836,7 @@ static void vl_api_sw_interface_details_t_handler
     sw_if_details->sup_sw_if_index = ntohl(mp->sup_sw_if_index);
     sw_if_details->l2_address_length = ntohl (mp->l2_address_length);
     ASSERT(sw_if_details->l2_address_length <= sizeof(sw_if_details->l2_address));
-    memcpy(sw_if_details->l2_address, mp->l2_address,
+    clib_memcpy(sw_if_details->l2_address, mp->l2_address,
             sw_if_details->l2_address_length);
     sw_if_details->sub_id = ntohl (mp->sub_id);
     sw_if_details->sub_outer_vlan_id = ntohl (mp->sub_outer_vlan_id);
@@ -1263,7 +1263,7 @@ vl_api_l2_fib_table_entry_t_handler (vl_api_l2_fib_table_entry_t * mp)
 
 #if 0
     vec_validate (mac_addr, MAC_ADDRESS_SIZE);
-    memcpy (mac_addr, l2fe_u64_mac->fields.mac, MAC_ADDRESS_SIZE);
+    clib_memcpy (mac_addr, l2fe_u64_mac->fields.mac, MAC_ADDRESS_SIZE);
     mhash_val_l2fi = vec_len (bd_oper->l2fib_oper);
     if (mhash_elts (&bd_oper->l2fib_index_by_mac) == 0)
         mhash_init (&bd_oper->l2fib_index_by_mac, sizeof (u32), MAC_ADDRESS_SIZE);
@@ -1419,12 +1419,12 @@ static void vl_api_ip_address_details_t_handler (vl_api_ip_address_details_t * m
     if (!jm->is_ipv6) {
         ipv4_address_t *address = 0;
         vec_add2(jm->ipv4_addresses, address, 1);
-        memcpy(&address->ip, mp->ip, 4);
+        clib_memcpy(&address->ip, mp->ip, 4);
         address->prefix_length = mp->prefix_length;
     } else {
         ipv6_address_t *address = 0;
         vec_add2(jm->ipv6_addresses, address, 1);
-        memcpy(address->ip, mp->ip, 16);
+        clib_memcpy(address->ip, mp->ip, 16);
         address->prefix_length = mp->prefix_length;
     }
 }

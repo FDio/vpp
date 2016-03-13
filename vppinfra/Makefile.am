@@ -189,6 +189,8 @@ nobase_include_HEADERS = \
   vppinfra/math.h \
   vppinfra/md5.h \
   vppinfra/mem.h \
+  vppinfra/memcpy_sse3.h \
+  vppinfra/memcpy_avx.h \
   vppinfra/mhash.h \
   vppinfra/mheap.h \
   vppinfra/mheap_bootstrap.h \

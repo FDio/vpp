@@ -129,7 +129,7 @@ BV(make_working_copy)
 
   v = BV(clib_bihash_get_value) (h, b->offset);
 
-  memcpy (working_copy, v, sizeof (*v)*(1<<b->log2_pages));
+  clib_memcpy (working_copy, v, sizeof (*v)*(1<<b->log2_pages));
   working_bucket.as_u64 = b->as_u64;
   working_bucket.offset = BV(clib_bihash_get_offset) (h, working_copy);
   CLIB_MEMORY_BARRIER();
@@ -167,7 +167,7 @@ static BVT(clib_bihash_value) *
                 {
                   if (BV(clib_bihash_is_free)(&(new_v->kvp[k])))
                     {
-                      memcpy (&(new_v->kvp[k]), &(v->kvp[j]), 
+                      clib_memcpy (&(new_v->kvp[k]), &(v->kvp[j]), 
                               sizeof (new_v->kvp[k]));
                       goto doublebreak;
                     }
@@ -243,7 +243,7 @@ int BV(clib_bihash_add_del)
         {
           if (!memcmp(&(v->kvp[i]), &add_v->key, sizeof (add_v->key)))
             {
-              memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
+              clib_memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
               CLIB_MEMORY_BARRIER();
               /* Restore the previous (k,v) pairs */
               b->as_u64 = h->saved_bucket.as_u64;
@@ -254,7 +254,7 @@ int BV(clib_bihash_add_del)
         {
           if (BV(clib_bihash_is_free)(&(v->kvp[i])))
             {
-              memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
+              clib_memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
               CLIB_MEMORY_BARRIER();
               b->as_u64 = h->saved_bucket.as_u64;
               goto unlock;
@@ -301,7 +301,7 @@ int BV(clib_bihash_add_del)
     {
       if (BV(clib_bihash_is_free)(&(new_v->kvp[i])))
         {
-          memcpy (&(new_v->kvp[i]), add_v, sizeof (*add_v));
+          clib_memcpy (&(new_v->kvp[i]), add_v, sizeof (*add_v));
           goto expand_ok;
         }
     }

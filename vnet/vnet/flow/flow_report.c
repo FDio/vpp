@@ -61,7 +61,7 @@ int send_template_packet (flow_report_main_t *frm,
 
   ASSERT (vec_len (fr->rewrite) < VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES);
     
-  memcpy (b0->data, fr->rewrite, vec_len (fr->rewrite));
+  clib_memcpy (b0->data, fr->rewrite, vec_len (fr->rewrite));
   b0->current_data = 0;
   b0->current_length = vec_len (fr->rewrite);
   b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;

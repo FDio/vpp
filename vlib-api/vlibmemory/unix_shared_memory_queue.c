@@ -134,7 +134,7 @@ int unix_shared_memory_queue_add_nolock (unix_shared_memory_queue_t *q,
     }
         
     tailp = (i8 *)(&q->data[0] + q->elsize*q->tail);
-    memcpy(tailp, elem, q->elsize);
+    clib_memcpy(tailp, elem, q->elsize);
 
     q->tail++;
     q->cursize++;
@@ -163,7 +163,7 @@ int unix_shared_memory_queue_add_raw (unix_shared_memory_queue_t *q,
     }
         
     tailp = (i8 *)(&q->data[0] + q->elsize*q->tail);
-    memcpy(tailp, elem, q->elsize);
+    clib_memcpy(tailp, elem, q->elsize);
 
     q->tail++;
     q->cursize++;
@@ -202,7 +202,7 @@ int unix_shared_memory_queue_add (unix_shared_memory_queue_t *q,
     }
         
     tailp = (i8 *)(&q->data[0] + q->elsize*q->tail);
-    memcpy(tailp, elem, q->elsize);
+    clib_memcpy(tailp, elem, q->elsize);
 
     q->tail++;
     q->cursize++;
@@ -250,7 +250,7 @@ int unix_shared_memory_queue_sub(unix_shared_memory_queue_t *q,
     }
     
     headp = (i8 *)(&q->data[0] + q->elsize*q->head);
-    memcpy(elem, headp, q->elsize);
+    clib_memcpy(elem, headp, q->elsize);
     
     q->head++;
     if (q->cursize == q->maxsize)
@@ -280,7 +280,7 @@ int unix_shared_memory_queue_sub_raw (unix_shared_memory_queue_t *q,
     }
     
     headp = (i8 *)(&q->data[0] + q->elsize*q->head);
-    memcpy(elem, headp, q->elsize);
+    clib_memcpy(elem, headp, q->elsize);
     
     q->head++;
     q->cursize--;

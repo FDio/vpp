@@ -152,11 +152,11 @@ nsh_gre_encap (vlib_main_t * vm,
           
           /* If there are TLVs to copy, do so */
           if (PREDICT_FALSE (_vec_len(t0->rewrite) > 24))
-            memcpy (&copy_dst0[3], t0->rewrite + 24 , 
+            clib_memcpy (&copy_dst0[3], t0->rewrite + 24 , 
                     _vec_len (t0->rewrite)-24);
 
           if (PREDICT_FALSE (_vec_len(t1->rewrite) > 24))
-            memcpy (&copy_dst1[3], t1->rewrite + 24 , 
+            clib_memcpy (&copy_dst1[3], t1->rewrite + 24 , 
                     _vec_len (t1->rewrite)-24);
 
           /* fix the <bleep>ing outer-IP checksums */
@@ -246,7 +246,7 @@ nsh_gre_encap (vlib_main_t * vm,
           
           /* If there are TLVs to copy, do so */
           if (PREDICT_FALSE (_vec_len(t0->rewrite) > 24))
-            memcpy (&copy_dst0[3], t0->rewrite + 24 , 
+            clib_memcpy (&copy_dst0[3], t0->rewrite + 24 , 
                     _vec_len (t0->rewrite)-24);
 
           /* fix the <bleep>ing outer-IP checksum */

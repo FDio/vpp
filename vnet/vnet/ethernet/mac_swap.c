@@ -235,16 +235,16 @@ mac_swap_node_fn (vlib_main_t * vm,
                 if (b0->flags & VLIB_BUFFER_IS_TRACED) 
                   {
                     swap_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-                    memcpy (t->src, h0->src_address, 6);
-                    memcpy (t->dst, h0->dst_address, 6);
+                    clib_memcpy (t->src, h0->src_address, 6);
+                    clib_memcpy (t->dst, h0->dst_address, 6);
                     t->sw_if_index = sw_if_index0;
                     t->next_index = next0;
                   }
                 if (b1->flags & VLIB_BUFFER_IS_TRACED) 
                   {
                     swap_trace_t *t = vlib_add_trace (vm, node, b1, sizeof (*t));
-                    memcpy (t->src, h1->src_address, 6);
-                    memcpy (t->dst, h1->dst_address, 6);
+                    clib_memcpy (t->src, h1->src_address, 6);
+                    clib_memcpy (t->dst, h1->dst_address, 6);
                     t->sw_if_index = sw_if_index1;
                     t->next_index = next1;
                   }
@@ -317,8 +317,8 @@ mac_swap_node_fn (vlib_main_t * vm,
             if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
                               && (b0->flags & VLIB_BUFFER_IS_TRACED))) {
               swap_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-              memcpy (t->src, h0->src_address, 6);
-              memcpy (t->dst, h0->dst_address, 6);
+              clib_memcpy (t->src, h0->src_address, 6);
+              clib_memcpy (t->dst, h0->dst_address, 6);
               t->sw_if_index = sw_if_index0;
               t->next_index = next0;
             }

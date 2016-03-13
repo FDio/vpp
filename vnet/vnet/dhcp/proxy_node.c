@@ -633,7 +633,7 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
 
       hi0 = vnet_get_sup_hw_interface (vnm, original_sw_if_index);
       ei0 = pool_elt_at_index (em->interfaces, hi0->hw_instance);
-      memcpy (mac0->src_address, ei0->address, sizeof (ei0->address));
+      clib_memcpy (mac0->src_address, ei0->address, sizeof (ei0->address));
       memset (mac0->dst_address, 0xff, sizeof (mac0->dst_address));
       mac0->type = (si0->type == VNET_SW_INTERFACE_TYPE_SUB) ?
 	clib_net_to_host_u16(0x8100) : clib_net_to_host_u16 (0x0800);

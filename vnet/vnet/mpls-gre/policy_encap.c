@@ -109,7 +109,7 @@ mpls_policy_encap (vlib_main_t * vm,
 
           vlib_buffer_advance (b0, -(word)vec_len(e0->rewrite));
           h0 = vlib_buffer_get_current (b0);
-          memcpy (h0, e0->rewrite, vec_len(e0->rewrite));
+          clib_memcpy (h0, e0->rewrite, vec_len(e0->rewrite));
 
           next0 = e0->output_next_index;
 

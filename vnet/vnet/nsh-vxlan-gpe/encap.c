@@ -179,11 +179,11 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 
           /* If there are TLVs to copy, do so */
           if (PREDICT_FALSE (_vec_len(t0->rewrite) > 64))
-            memcpy (&copy_dst0[3], t0->rewrite + 64 , 
+            clib_memcpy (&copy_dst0[3], t0->rewrite + 64 , 
                     _vec_len (t0->rewrite)-64);
 
           if (PREDICT_FALSE (_vec_len(t1->rewrite) > 64))
-            memcpy (&copy_dst0[3], t1->rewrite + 64 , 
+            clib_memcpy (&copy_dst0[3], t1->rewrite + 64 , 
                     _vec_len (t1->rewrite)-64);
 
           /* fix the <bleep>ing outer-IP checksum */
@@ -331,7 +331,7 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 
           /* If there are TLVs to copy, do so */
           if (PREDICT_FALSE (_vec_len(t0->rewrite) > 64))
-            memcpy (&copy_dst0[3], t0->rewrite + 64 , 
+            clib_memcpy (&copy_dst0[3], t0->rewrite + 64 , 
                     _vec_len (t0->rewrite)-64);
 
           /* fix the <bleep>ing outer-IP checksum */

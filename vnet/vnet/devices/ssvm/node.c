@@ -173,7 +173,7 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
               b0->total_length_not_including_first_buffer =
                 elt->total_length_not_including_first_buffer;
               
-              memcpy (b0->data + b0->current_data, elt->data, 
+              clib_memcpy (b0->data + b0->current_data, elt->data, 
                       b0->current_length);
 
               if (PREDICT_FALSE(prev != 0))
@@ -274,7 +274,7 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
   n_available = (u32)pointer_to_uword(sh->opaque[CHUNK_POOL_NFREE]);
   elt_indices = (u32 *)(sh->opaque[CHUNK_POOL_FREELIST_INDEX]);
 
-  memcpy (&elt_indices[n_available], intfc->rx_queue, 
+  clib_memcpy (&elt_indices[n_available], intfc->rx_queue, 
           vec_len (intfc->rx_queue) * sizeof (u32));
 
   n_available += vec_len (intfc->rx_queue);

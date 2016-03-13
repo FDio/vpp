@@ -56,7 +56,7 @@ vlib_dpdk_clone_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 
       for (i = 0; i < new_buffers_needed; i++)
         {
-          memcpy (copy_src, copy_dst, src_buf->current_length);
+          clib_memcpy (copy_src, copy_dst, src_buf->current_length);
           dst_buf->current_data = src_buf->current_data;
           dst_buf->current_length = src_buf->current_length;
           dst_buf->flags = src_buf->flags;
@@ -90,7 +90,7 @@ vlib_dpdk_clone_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   rv = vlib_buffer_from_rte_mbuf(rte_mbufs[0]);
   vlib_buffer_init_for_free_list (rv, fl);
 
-  memcpy(rv->data + b->current_data, b->data + b->current_data, 
+  clib_memcpy(rv->data + b->current_data, b->data + b->current_data, 
          b->current_length);
   rv->current_data = b->current_data;
   rv->current_length = b->current_length;

@@ -780,7 +780,7 @@ void cnat_nfv9_create_logging_context (
        nfv9_logging_info->nfv9_template_header = 
            (cnat_nfv9_template_t *) nfv9_logging_info->next_data_ptr;
 
-       memcpy(nfv9_logging_info->nfv9_template_header,
+       clib_memcpy(nfv9_logging_info->nfv9_template_header,
               &cnat_nfv9_template_info,
               sizeof(cnat_nfv9_template_info));
 
@@ -928,7 +928,7 @@ static void cnat_nfv9_insert_add_record(
 
     nfv9_logging_add_record.protocol = my_protocol;
 
-    memcpy(nfv9_logging_info->record[NAT44_ADD_RECORD], 
+    clib_memcpy(nfv9_logging_info->record[NAT44_ADD_RECORD], 
             &nfv9_logging_add_record, CNAT_NFV9_ADD_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[NAT44_ADD_RECORD] 
@@ -1009,7 +1009,7 @@ static void cnat_nfv9_ds_lite_insert_add_record(
 		   ((my_proto_mask == CNAT_ICMP) ? ICMP_PROT : 0)));
     nfv9_logging_add_record.protocol = my_protocol;
 
-    memcpy(nfv9_logging_info->record[DS_LITE_ADD_RECORD], 
+    clib_memcpy(nfv9_logging_info->record[DS_LITE_ADD_RECORD], 
             &nfv9_logging_add_record, CNAT_NFV9_DS_LITE_ADD_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[DS_LITE_ADD_RECORD] 
@@ -1084,7 +1084,7 @@ static void cnat_nfv9_ds_lite_insert_del_record(
 		   ((my_proto_mask == CNAT_ICMP) ? ICMP_PROT : 0)));
     nfv9_logging_del_record.protocol = my_protocol;
 
-    memcpy(nfv9_logging_info->record[DS_LITE_DEL_RECORD], 
+    clib_memcpy(nfv9_logging_info->record[DS_LITE_DEL_RECORD], 
             &nfv9_logging_del_record, CNAT_NFV9_DS_LITE_DEL_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[DS_LITE_DEL_RECORD] += 
@@ -1135,7 +1135,7 @@ static void cnat_nfv9_insert_bulk_add_record(
     nfv9_logging_bulk_add_record.outside_ip_port_end =
         clib_host_to_net_u16(bulk_alloc_start_port + bulk_size -1);
 
-    memcpy(nfv9_logging_info->record[NAT44_BULK_ADD_RECORD], 
+    clib_memcpy(nfv9_logging_info->record[NAT44_BULK_ADD_RECORD], 
             &nfv9_logging_bulk_add_record, CNAT_NFV9_BULK_ADD_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[NAT44_BULK_ADD_RECORD] 
@@ -1210,7 +1210,7 @@ static void cnat_nfv9_ds_lite_insert_bulk_add_record(
     nfv9_logging_bulk_add_record.outside_ip_port_end =
         clib_host_to_net_u16(bulk_alloc_start_port + bulk_size -1);
 
-    memcpy(nfv9_logging_info->record[DS_LITE_BULK_ADD_RECORD], 
+    clib_memcpy(nfv9_logging_info->record[DS_LITE_BULK_ADD_RECORD], 
             &nfv9_logging_bulk_add_record, CNAT_NFV9_DS_LITE_BULK_ADD_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[DS_LITE_BULK_ADD_RECORD] 
@@ -1272,7 +1272,7 @@ static void cnat_nfv9_ds_lite_insert_bulk_del_record(
     nfv9_logging_bulk_del_record.outside_ip_port_start =
         clib_host_to_net_u16(bulk_alloc_start_port);
 
-    memcpy(nfv9_logging_info->record[DS_LITE_BULK_DEL_RECORD], 
+    clib_memcpy(nfv9_logging_info->record[DS_LITE_BULK_DEL_RECORD], 
         &nfv9_logging_bulk_del_record, 
         CNAT_NFV9_DS_LITE_BULK_DEL_RECORD_LENGTH);
     nfv9_logging_info->record_length[DS_LITE_BULK_DEL_RECORD] += 
@@ -1323,7 +1323,7 @@ static void cnat_nfv9_insert_del_record(
 
     nfv9_logging_del_record.protocol = my_protocol;
 
-    memcpy(nfv9_logging_info->record[NAT44_DEL_RECORD], 
+    clib_memcpy(nfv9_logging_info->record[NAT44_DEL_RECORD], 
             &nfv9_logging_del_record, CNAT_NFV9_DEL_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[NAT44_DEL_RECORD] 
@@ -1367,7 +1367,7 @@ static void cnat_nfv9_insert_bulk_del_record(
     nfv9_logging_bulk_del_record.outside_ip_port_start =
         clib_host_to_net_u16(bulk_alloc_start_port);
 
-    memcpy(nfv9_logging_info->record[NAT44_BULK_DEL_RECORD], 
+    clib_memcpy(nfv9_logging_info->record[NAT44_BULK_DEL_RECORD], 
             &nfv9_logging_bulk_del_record, CNAT_NFV9_BULK_DEL_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[NAT44_BULK_DEL_RECORD] 
@@ -1605,7 +1605,7 @@ void cnat_nfv9_bib_mapping_create (nat64_bib_entry_t *db,
     nfv9_logging_add_record.protocol = my_protocol;
 
 
-    memcpy(nfv9_logging_info->record[NAT64_ADD_BIB_RECORD], 
+    clib_memcpy(nfv9_logging_info->record[NAT64_ADD_BIB_RECORD], 
             &nfv9_logging_add_record, CNAT_NFV9_NAT64_ADD_BIB_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[NAT64_ADD_BIB_RECORD] += 
@@ -1752,7 +1752,7 @@ void cnat_nfv9_session_mapping_create (nat64_bib_entry_t *bdb,
     nfv9_logging_add_record.protocol = my_protocol;
 
 
-    memcpy(nfv9_logging_info->record[NAT64_ADD_SESSION_RECORD],
+    clib_memcpy(nfv9_logging_info->record[NAT64_ADD_SESSION_RECORD],
        &nfv9_logging_add_record, CNAT_NFV9_NAT64_ADD_SESSION_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[NAT64_ADD_SESSION_RECORD] +=
@@ -1850,7 +1850,7 @@ void cnat_nfv9_bib_mapping_delete (nat64_bib_entry_t *db,
     nfv9_logging_del_record.protocol = my_protocol;
 
 
-    memcpy(nfv9_logging_info->record[NAT64_DEL_BIB_RECORD],
+    clib_memcpy(nfv9_logging_info->record[NAT64_DEL_BIB_RECORD],
             &nfv9_logging_del_record, CNAT_NFV9_NAT64_DEL_BIB_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[NAT64_DEL_BIB_RECORD] +=
@@ -1982,7 +1982,7 @@ void cnat_nfv9_session_mapping_delete (nat64_bib_entry_t *bdb,
            ((my_proto_mask == CNAT_ICMP) ? IPV6_PROTO_ICMPV6 : 0)));
     nfv9_logging_del_record.protocol = my_protocol;
 
-    memcpy(nfv9_logging_info->record[NAT64_DEL_SESSION_RECORD],
+    clib_memcpy(nfv9_logging_info->record[NAT64_DEL_SESSION_RECORD],
        &nfv9_logging_del_record, CNAT_NFV9_NAT64_DEL_SESSION_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[NAT64_DEL_SESSION_RECORD] +=
@@ -2106,7 +2106,7 @@ void cnat_nfv9_nat44_log_session_create(cnat_main_db_entry_t *db,
             ((my_proto_mask == CNAT_ICMP) ? ICMP_PROT : GRE_PROT)));
     nfv9_logging_add_session_record.protocol = my_protocol;
 
-    memcpy(nfv9_logging_info->record[NAT44_ADD_SESSION_RECORD],
+    clib_memcpy(nfv9_logging_info->record[NAT44_ADD_SESSION_RECORD],
             &nfv9_logging_add_session_record,
             CNAT_NFV9_NAT44_ADD_SESSION_RECORD_LENGTH);
 
@@ -2224,7 +2224,7 @@ void cnat_nfv9_nat44_log_session_delete(cnat_main_db_entry_t *db,
 
     nfv9_logging_del_session_record.protocol = my_protocol;
 
-    memcpy(nfv9_logging_info->record[NAT44_DEL_SESSION_RECORD],
+    clib_memcpy(nfv9_logging_info->record[NAT44_DEL_SESSION_RECORD],
             &nfv9_logging_del_session_record,
             CNAT_NFV9_NAT44_DEL_SESSION_RECORD_LENGTH);
 
@@ -2494,7 +2494,7 @@ void cnat_nfv9_ds_lite_log_session_create(
                    ((my_proto_mask == CNAT_ICMP) ? ICMP_PROT : 0)));
     nfv9_logging_add_record.protocol = my_protocol;
 
-    memcpy(nfv9_logging_info->record[DS_LITE_ADD_SESSION_RECORD],
+    clib_memcpy(nfv9_logging_info->record[DS_LITE_ADD_SESSION_RECORD],
             &nfv9_logging_add_record, CNAT_NFV9_DS_LITE_ADD_SESSION_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[DS_LITE_ADD_SESSION_RECORD]
@@ -2624,7 +2624,7 @@ void cnat_nfv9_ds_lite_log_session_delete(
                    ((my_proto_mask == CNAT_ICMP) ? ICMP_PROT : 0)));
     nfv9_logging_add_record.protocol = my_protocol;
     
-    memcpy(nfv9_logging_info->record[DS_LITE_DEL_SESSION_RECORD],
+    clib_memcpy(nfv9_logging_info->record[DS_LITE_DEL_SESSION_RECORD],
             &nfv9_logging_add_record, CNAT_NFV9_DS_LITE_DEL_SESSION_RECORD_LENGTH);
 
     nfv9_logging_info->record_length[DS_LITE_DEL_SESSION_RECORD]
@@ -2734,10 +2734,10 @@ static void cnat_nfv9_insert_ingress_vrfid_name_record(
     nfv9_ingress_vrfid_name_record.ingress_vrf_id = 
 		    clib_host_to_net_u32(vrfid_name_map[index].vrf_id);
 
-    memcpy(nfv9_ingress_vrfid_name_record.ingress_vrf_name,
+    clib_memcpy(nfv9_ingress_vrfid_name_record.ingress_vrf_name,
             vrfid_name_map[index].vrf_name, NFV9_VRF_NAME_LEN);
 
-    memcpy(nfv9_logging_info->record[INGRESS_VRF_ID_NAME_RECORD], 
+    clib_memcpy(nfv9_logging_info->record[INGRESS_VRF_ID_NAME_RECORD], 
             &nfv9_ingress_vrfid_name_record, 
             CNAT_NFV9_INGRESS_VRFID_NAME_RECORD_LENGTH);
 

@@ -79,7 +79,7 @@ u8 * format_pfhash (u8 * s, va_list * args)
                   if (kv16->values[j] != (u32)~0)
                     {
                       vec_add2 (shs, sh, 1);
-                      memcpy (sh->key, &kv16->kb.k_u32x4[j], p->key_size);
+                      clib_memcpy (sh->key, &kv16->kb.k_u32x4[j], p->key_size);
                       sh->value = kv16->values[j];
                     }
                 }
@@ -93,7 +93,7 @@ u8 * format_pfhash (u8 * s, va_list * args)
                       if (kv8->values[j] != (u32)~0)
                         {
                           vec_add2 (shs, sh, 1);
-                          memcpy (sh->key, &kv8->kb.k_u64[j], p->key_size);
+                          clib_memcpy (sh->key, &kv8->kb.k_u64[j], p->key_size);
                           sh->value = kv8->values[j];
                         }
                     }
@@ -106,7 +106,7 @@ u8 * format_pfhash (u8 * s, va_list * args)
                       if (kv8v8->values[j] != (u64)~0)
                         {
                           vec_add2 (shs, sh, 1);
-                          memcpy (sh->key, &kv8v8->kb.k_u64[j], p->key_size);
+                          clib_memcpy (sh->key, &kv8v8->kb.k_u64[j], p->key_size);
                           sh->value = kv8v8->values[j];
                         }
                     }
@@ -120,7 +120,7 @@ u8 * format_pfhash (u8 * s, va_list * args)
                   if (kv4->values[j] != (u32)~0)
                     {
                       vec_add2 (shs, sh, 1);
-                      memcpy (sh->key, &kv4->kb.kb[j], p->key_size);
+                      clib_memcpy (sh->key, &kv4->kb.kb[j], p->key_size);
                       sh->value = kv4->values[j];
                     }
                 }
@@ -131,7 +131,7 @@ u8 * format_pfhash (u8 * s, va_list * args)
       hash_foreach_pair (hp, p->overflow_hash, 
       ({
         vec_add2 (shs, sh, 1);
-        memcpy (sh->key, (u8 *)hp->key, p->key_size);
+        clib_memcpy (sh->key, (u8 *)hp->key, p->key_size);
         sh->value = hp->value[0];
       }));      
 
@@ -408,7 +408,7 @@ void pfhash_set (pfhash_t * p, u32 bucket, void * key, void * value)
           return;
         }
       kcopy = clib_mem_alloc (p->key_size);
-      memcpy (kcopy, key, p->key_size);
+      clib_memcpy (kcopy, key, p->key_size);
       hash_set_mem (p->overflow_hash, kcopy, value);
       p->nitems++;
       p->nitems_in_overflow++;
@@ -462,7 +462,7 @@ void pfhash_set (pfhash_t * p, u32 bucket, void * key, void * value)
         {
           if (kv16->values[i] == (u32)~0)
             {
-              memcpy (&kv16->kb.k_u32x4[i], key, p->key_size);
+              clib_memcpy (&kv16->kb.k_u32x4[i], key, p->key_size);
               kv16->values[i] = (u32)(u64) value;
               return;
             }
@@ -471,13 +471,13 @@ void pfhash_set (pfhash_t * p, u32 bucket, void * key, void * value)
       for (i = 0; i < 3; i++) 
         {
           kcopy = clib_mem_alloc (p->key_size);
-          memcpy (kcopy, &kv16->kb.k_u32x4[i], p->key_size);
+          clib_memcpy (kcopy, &kv16->kb.k_u32x4[i], p->key_size);
           hash_set_mem (p->overflow_hash, kcopy, kv16->values[i]);
           p->nitems_in_overflow++;
         }
       /* Add new key to overflow */
       kcopy = clib_mem_alloc (p->key_size);
-      memcpy (kcopy, key, p->key_size);
+      clib_memcpy (kcopy, key, p->key_size);
       hash_set_mem (p->overflow_hash, kcopy, value);
       p->buckets[bucket] = PFHASH_BUCKET_OVERFLOW;
       p->overflow_count++;
@@ -491,7 +491,7 @@ void pfhash_set (pfhash_t * p, u32 bucket, void * key, void * value)
             {
               if (kv8->values[i] == (u32)~0)
                 {
-                  memcpy (&kv8->kb.k_u64[i], key, 8);
+                  clib_memcpy (&kv8->kb.k_u64[i], key, 8);
                   kv8->values[i] = (u32)(u64) value;
                   return;
                 }
@@ -500,7 +500,7 @@ void pfhash_set (pfhash_t * p, u32 bucket, void * key, void * value)
           for (i = 0; i < 5; i++) 
             {
               kcopy = clib_mem_alloc (p->key_size);
-              memcpy (kcopy, &kv8->kb.k_u64[i], 8);
+              clib_memcpy (kcopy, &kv8->kb.k_u64[i], 8);
               hash_set_mem (p->overflow_hash, kcopy, kv8->values[i]);
               p->nitems_in_overflow++;
             }
@@ -511,7 +511,7 @@ void pfhash_set (pfhash_t * p, u32 bucket, void * key, void * value)
             {
               if (kv8v8->values[i] == (u64)~0)
                 {
-                  memcpy (&kv8v8->kb.k_u64[i], key, 8);
+                  clib_memcpy (&kv8v8->kb.k_u64[i], key, 8);
                   kv8v8->values[i] = (u64) value;
                   return;
                 }
@@ -520,7 +520,7 @@ void pfhash_set (pfhash_t * p, u32 bucket, void * key, void * value)
           for (i = 0; i < 4; i++) 
             {
               kcopy = clib_mem_alloc (p->key_size);
-              memcpy (kcopy, &kv8v8->kb.k_u64[i], 8);
+              clib_memcpy (kcopy, &kv8v8->kb.k_u64[i], 8);
               hash_set_mem (p->overflow_hash, kcopy, kv8v8->values[i]);
               p->nitems_in_overflow++;
             }
@@ -528,7 +528,7 @@ void pfhash_set (pfhash_t * p, u32 bucket, void * key, void * value)
         }
       /* Add new key to overflow */
       kcopy = clib_mem_alloc (p->key_size);
-      memcpy (kcopy, key, p->key_size);
+      clib_memcpy (kcopy, key, p->key_size);
       hash_set_mem (p->overflow_hash, kcopy, value);
       p->buckets[bucket] = PFHASH_BUCKET_OVERFLOW;
       p->overflow_count++;
@@ -540,7 +540,7 @@ void pfhash_set (pfhash_t * p, u32 bucket, void * key, void * value)
         {
           if (kv4->values[i] == (u32)~0)
             {
-              memcpy (&kv4->kb.kb[i], key, 4);
+              clib_memcpy (&kv4->kb.kb[i], key, 4);
               kv4->values[i] = (u32)(u64) value;
               return;
             }
@@ -549,13 +549,13 @@ void pfhash_set (pfhash_t * p, u32 bucket, void * key, void * value)
       for (i = 0; i < 8; i++) 
         {
           kcopy = clib_mem_alloc (p->key_size);
-          memcpy (kcopy, &kv4->kb.kb[i], 4);
+          clib_memcpy (kcopy, &kv4->kb.kb[i], 4);
           hash_set_mem (p->overflow_hash, kcopy, kv4->values[i]);
           p->nitems_in_overflow++;
         }
       /* Add new key to overflow */
       kcopy = clib_mem_alloc (p->key_size);
-      memcpy (kcopy, key, p->key_size);
+      clib_memcpy (kcopy, key, p->key_size);
       hash_set_mem (p->overflow_hash, kcopy, value);
       p->buckets[bucket] = PFHASH_BUCKET_OVERFLOW;
       p->overflow_count++;

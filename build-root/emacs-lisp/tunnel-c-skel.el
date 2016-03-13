@@ -188,7 +188,7 @@ int vnet_" encap_stack "_add_del_tunnel
 
       /* $$$$ use a simple hash if you can ... */
       key_copy = clib_mem_alloc (sizeof (*key_copy));
-      memcpy (key_copy, &key, sizeof (*key_copy));
+      clib_memcpy (key_copy, &key, sizeof (*key_copy));
 
       hash_set_mem (ngm->" encap_stack "_tunnel_by_key, key_copy, 
                     t - ngm->tunnels);

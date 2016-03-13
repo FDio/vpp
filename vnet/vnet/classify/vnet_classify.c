@@ -110,7 +110,7 @@ vnet_classify_new_table (vnet_classify_main_t *cm,
   memset(t, 0, sizeof (*t));
   
   vec_validate_aligned (t->mask, match_n_vectors - 1, sizeof(u32x4));
-  memcpy (t->mask, mask, match_n_vectors * sizeof (u32x4));
+  clib_memcpy (t->mask, mask, match_n_vectors * sizeof (u32x4));
 
   t->next_table_index = ~0;
   t->nbuckets = nbuckets;
@@ -292,7 +292,7 @@ static inline void make_working_copy
     {
 #define _(size)                                         \
     case size:                                          \
-      memcpy (working_copy, v,                          \
+      clib_memcpy (working_copy, v,                          \
               sizeof (vnet_classify_entry_##size##_t)   \
               * (1<<b->log2_pages)                      \
               * (t->entries_per_page));                 \
@@ -348,7 +348,7 @@ split_and_rehash (vnet_classify_table_t * t,
                   
                   if (vnet_classify_entry_is_free (new_v))
                     {
-                      memcpy (new_v, v, sizeof (vnet_classify_entry_t) 
+                      clib_memcpy (new_v, v, sizeof (vnet_classify_entry_t) 
                               + (t->match_n_vectors * sizeof (u32x4)));
                       new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
                       goto doublebreak;
@@ -405,7 +405,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
         }
 
       v = vnet_classify_entry_alloc (t, 0 /* new_log2_pages */);
-      memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
+      clib_memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
               t->match_n_vectors * sizeof (u32x4));
       v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
 
@@ -436,7 +436,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
 
           if (!memcmp (v->key, add_v->key, t->match_n_vectors * sizeof (u32x4)))
             {
-              memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
+              clib_memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
                       t->match_n_vectors * sizeof(u32x4));
               v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
 
@@ -452,7 +452,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
 
           if (vnet_classify_entry_is_free (v))
             {
-              memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
+              clib_memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
                       t->match_n_vectors * sizeof(u32x4));
               v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
               CLIB_MEMORY_BARRIER();
@@ -513,7 +513,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
 
       if (vnet_classify_entry_is_free (new_v))
         {
-          memcpy (new_v, add_v, sizeof (vnet_classify_entry_t) +
+          clib_memcpy (new_v, add_v, sizeof (vnet_classify_entry_t) +
                   t->match_n_vectors * sizeof(u32x4));
           new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
           goto expand_ok;
@@ -1464,10 +1464,10 @@ uword unformat_ip6_match (unformat_input_t * input, va_list * args)
   ip = (ip6_header_t *) match;
   
   if (src)
-    memcpy (&ip->src_address, &src_val, sizeof (ip->src_address));
+    clib_memcpy (&ip->src_address, &src_val, sizeof (ip->src_address));
 
   if (dst)
-    memcpy (&ip->dst_address, &dst_val, sizeof (ip->dst_address));
+    clib_memcpy (&ip->dst_address, &dst_val, sizeof (ip->dst_address));
   
   if (proto)
     ip->protocol = proto_val;
@@ -1584,10 +1584,10 @@ uword unformat_l2_match (unformat_input_t * input, va_list * args)
   vec_validate_aligned (match, len-1, sizeof(u32x4));
 
   if (dst)
-    memcpy (match, dst_val, 6);
+    clib_memcpy (match, dst_val, 6);
 
   if (src)
-    memcpy (match + 6, src_val, 6);
+    clib_memcpy (match + 6, src_val, 6);
   
   if (tag2)
     {
@@ -1723,7 +1723,7 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
   e->flags = 0;
 
   /* Copy key data, honoring skip_n_vectors */
-  memcpy (&e->key, match + t->skip_n_vectors * sizeof (u32x4),
+  clib_memcpy (&e->key, match + t->skip_n_vectors * sizeof (u32x4),
           t->match_n_vectors * sizeof (u32x4));
 
   /* Clear don't-care bits; likely when dynamically creating sessions */

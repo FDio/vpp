@@ -673,10 +673,10 @@ void oam_add_del (test_main_t *tm, int is_add)
     mp->is_add = is_add;
 
     tmp.as_u32 = ntohl (0xc0a80101); /* 192.168.1.1 */
-    memcpy (mp->src_address, tmp.as_u8, 4);
+    clib_memcpy (mp->src_address, tmp.as_u8, 4);
 
     tmp.as_u32 = ntohl (0xc0a80103); /* 192.168.1.3 */
-    memcpy (mp->dst_address, tmp.as_u8, 4);
+    clib_memcpy (mp->dst_address, tmp.as_u8, 4);
     
     mp->vrf_id = 0;
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
@@ -718,11 +718,11 @@ void add_del_ip4_route (test_main_t *tm, int enable_disable)
 
     /* Next hop: 6.0.0.1 */
     tmp = ntohl(0x06000001);
-    memcpy (mp->next_hop_address, &tmp, sizeof (tmp));
+    clib_memcpy (mp->next_hop_address, &tmp, sizeof (tmp));
 
     /* Destination: 10.0.0.1/32 */
     tmp = ntohl(0x0);
-    memcpy (mp->dst_address, &tmp, sizeof (tmp));
+    clib_memcpy (mp->dst_address, &tmp, sizeof (tmp));
     mp->dst_address_length = 0;
 
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
@@ -748,13 +748,13 @@ void add_del_ip6_route (test_main_t *tm, int enable_disable)
 
     tmp[0] = clib_host_to_net_u64 (0xdabe000000000000ULL);
     tmp[1] = clib_host_to_net_u64 (0x0ULL);
-    memcpy (mp->dst_address, &tmp[0], 8);
-    memcpy (&mp->dst_address[8], &tmp[1], 8);
+    clib_memcpy (mp->dst_address, &tmp[0], 8);
+    clib_memcpy (&mp->dst_address[8], &tmp[1], 8);
 
     tmp[0] = clib_host_to_net_u64(0xdb01000000000000ULL);
     tmp[1] = clib_host_to_net_u64 (0x11ULL);
-    memcpy (mp->next_hop_address, &tmp[0], 8);
-    memcpy (&mp->next_hop_address[8], &tmp[1], 8);
+    clib_memcpy (mp->next_hop_address, &tmp[0], 8);
+    clib_memcpy (&mp->next_hop_address[8], &tmp[1], 8);
 
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
 }
@@ -774,7 +774,7 @@ void add_del_interface_address (test_main_t *tm, int enable_disable)
     mp->address_length = 8;
     
     tmp = ntohl (0x01020304);
-    memcpy (mp->address, &tmp, 4);
+    clib_memcpy (mp->address, &tmp, 4);
 
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
 }
@@ -796,8 +796,8 @@ void add_del_v6_interface_address (test_main_t *tm, int enable_disable)
     tmp[0] = clib_host_to_net_u64(0xdb01000000000000ULL);
     tmp[1] = clib_host_to_net_u64 (0x11ULL);
 
-    memcpy (mp->address, &tmp[0], 8);
-    memcpy (&mp->address[8], &tmp[1], 8);
+    clib_memcpy (mp->address, &tmp[0], 8);
+    clib_memcpy (&mp->address[8], &tmp[1], 8);
 
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
 }
@@ -842,7 +842,7 @@ void connect_unix_tap (test_main_t *tm, char *name)
     mp->_vl_msg_id = ntohs (VL_API_TAP_CONNECT);
     mp->client_index = tm->my_client_index;
     mp->context = 0xdeadbeef;
-    memcpy (mp->tap_name, name, strlen(name));
+    clib_memcpy (mp->tap_name, name, strlen(name));
     mp->use_random_mac = 1;
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
 }
@@ -892,7 +892,7 @@ void create_mpls_gre_tunnel (test_main_t *tm, u32 vrf_id, u32 label,
     lp->is_add = is_add;
     /* dst: 5.0.0.1 */
     tmp = ntohl (0x05000001);
-    memcpy (lp->dst_address, &tmp, 4);
+    clib_memcpy (lp->dst_address, &tmp, 4);
 
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&lp);
 
@@ -907,13 +907,13 @@ void create_mpls_gre_tunnel (test_main_t *tm, u32 vrf_id, u32 label,
 
     /* src: 6.0.0.1 */
     tmp = ntohl (0x06000001);
-    memcpy (mp->src_address, &tmp, 4);
+    clib_memcpy (mp->src_address, &tmp, 4);
     /* dst: 5.0.0.1 */
     tmp = ntohl (0x05000001);
-    memcpy (mp->dst_address, &tmp, 4);
+    clib_memcpy (mp->dst_address, &tmp, 4);
     /* intfc: 5.0.0.1/24 */
     tmp = ntohl (0x05000001);
-    memcpy (mp->intfc_address, &tmp, 4);
+    clib_memcpy (mp->intfc_address, &tmp, 4);
     mp->intfc_address_length = 24;
 
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
@@ -934,10 +934,10 @@ void add_del_proxy_arp (test_main_t *tm, int is_add)
 
     /* proxy fib 11, 1.1.1.1 -> 1.1.1.10 */
     tmp = ntohl (0x01010101);
-    memcpy (mp->low_address, &tmp, 4);
+    clib_memcpy (mp->low_address, &tmp, 4);
 
     tmp = ntohl (0x0101010a);
-    memcpy (mp->hi_address, &tmp, 4);
+    clib_memcpy (mp->hi_address, &tmp, 4);
 
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
 }
@@ -974,7 +974,7 @@ void add_ip4_neighbor (test_main_t *tm, int add_del)
     memset (mp->mac_address, 0xbe, sizeof (mp->mac_address));
     
     tmp = ntohl (0x0101010a);
-    memcpy (mp->dst_address, &tmp, 4);
+    clib_memcpy (mp->dst_address, &tmp, 4);
 
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
 }
@@ -999,8 +999,8 @@ void add_ip6_neighbor (test_main_t *tm, int add_del)
     tmp[0] = clib_host_to_net_u64(0xdb01000000000000ULL);
     tmp[1] = clib_host_to_net_u64 (0x11ULL);
 
-    memcpy (mp->dst_address, &tmp[0], 8);
-    memcpy (&mp->dst_address[8], &tmp[1], 8);
+    clib_memcpy (mp->dst_address, &tmp[0], 8);
+    clib_memcpy (&mp->dst_address[8], &tmp[1], 8);
 
     vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *)&mp);
 }
@@ -1151,8 +1151,8 @@ void ip6nd_ra_prefix(test_main_t *tm, int is_no)
     tmp[1] = clib_host_to_net_u64 (0x11ULL);
 
 
-    memcpy (mp->address, &tmp[0], 8);
-    memcpy (&mp->address[8], &tmp[1], 8);
+    clib_memcpy (mp->address, &tmp[0], 8);
+    clib_memcpy (&mp->address[8], &tmp[1], 8);
 
     mp->address_length = 64;
 
@@ -1205,8 +1205,8 @@ void ip6_set_link_local_address(test_main_t *tm)
     tmp[0] = clib_host_to_net_u64(0xfe80000000000000ULL);
     tmp[1] = clib_host_to_net_u64 (0x11ULL);
 
-    memcpy (mp->address, &tmp[0], 8);
-    memcpy (&mp->address[8], &tmp[1], 8);
+    clib_memcpy (mp->address, &tmp[0], 8);
+    clib_memcpy (&mp->address[8], &tmp[1], 8);
 
     mp->address_length = 64;
 

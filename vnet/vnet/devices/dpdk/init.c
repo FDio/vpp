@@ -312,7 +312,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       xd->cpu_socket = (i8) rte_eth_dev_socket_id(i);
       rte_eth_dev_info_get(i, &dev_info);
 
-      memcpy(&xd->tx_conf, &dev_info.default_txconf,
+      clib_memcpy(&xd->tx_conf, &dev_info.default_txconf,
              sizeof(struct rte_eth_txconf));
       if (dm->no_multi_seg)
         {
@@ -325,7 +325,7 @@ dpdk_lib_init (dpdk_main_t * dm)
           port_conf_template.rxmode.jumbo_frame = 1;
         }
 
-      memcpy(&xd->port_conf, &port_conf_template, sizeof(struct rte_eth_conf));
+      clib_memcpy(&xd->port_conf, &port_conf_template, sizeof(struct rte_eth_conf));
 
       xd->tx_q_used = clib_min(dev_info.max_tx_queues, tm->n_vlib_mains);
 
@@ -520,7 +520,7 @@ dpdk_lib_init (dpdk_main_t * dm)
           u32 rnd;
           rnd = (u32) (now * 1e6);
           rnd = random_u32 (&rnd);
-          memcpy (addr+2, &rnd, sizeof(rnd));
+          clib_memcpy (addr+2, &rnd, sizeof(rnd));
           addr[0] = 2;
           addr[1] = 0xfe;
         }
@@ -689,7 +689,7 @@ dpdk_lib_init (dpdk_main_t * dm)
         rnd = (u32) (now * 1e6);
         rnd = random_u32 (&rnd);
 
-        memcpy (addr+2, &rnd, sizeof(rnd));
+        clib_memcpy (addr+2, &rnd, sizeof(rnd));
         addr[0] = 2;
         addr[1] = 0xfe;
       }
@@ -1436,8 +1436,8 @@ dpdk_process (vlib_main_t * vm,
 		  bhi = vnet_get_hw_interface(
 		      vnm, dm->devices[i].vlib_hw_if_index);
 		  bei = pool_elt_at_index(em->interfaces, bhi->hw_instance);
-		  memcpy(bhi->hw_address, addr, 6);
-		  memcpy(bei->address, addr, 6);
+		  clib_memcpy(bhi->hw_address, addr, 6);
+		  clib_memcpy(bei->address, addr, 6);
 		  /* Init l3 packet size allowed on bonded interface */
 		  bhi->max_l3_packet_bytes[VLIB_RX] = 
 		  bhi->max_l3_packet_bytes[VLIB_TX] = 
