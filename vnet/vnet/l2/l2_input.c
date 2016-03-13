@@ -338,16 +338,16 @@ l2input_node_fn (vlib_main_t * vm,
               l2input_trace_t *t = 
                       vlib_add_trace (vm, node, b0, sizeof (*t));
               t->sw_if_index = sw_if_index0;
-              memcpy(t->src, h0->src_address, 6);
-              memcpy(t->dst, h0->dst_address, 6);
+              clib_memcpy(t->src, h0->src_address, 6);
+              clib_memcpy(t->dst, h0->dst_address, 6);
             }
             if (b1->flags & VLIB_BUFFER_IS_TRACED) {
               ethernet_header_t * h1 = vlib_buffer_get_current (b1);
               l2input_trace_t *t = 
                       vlib_add_trace (vm, node, b1, sizeof (*t));
               t->sw_if_index = sw_if_index1;
-              memcpy(t->src, h1->src_address, 6);
-              memcpy(t->dst, h1->dst_address, 6);
+              clib_memcpy(t->src, h1->src_address, 6);
+              clib_memcpy(t->dst, h1->dst_address, 6);
             }
           }
 
@@ -398,8 +398,8 @@ l2input_node_fn (vlib_main_t * vm,
                vlib_add_trace (vm, node, b0, sizeof (*t));
             sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
             t->sw_if_index = sw_if_index0;
-            memcpy(t->src, h0->src_address, 6);
-            memcpy(t->dst, h0->dst_address, 6);
+            clib_memcpy(t->src, h0->src_address, 6);
+            clib_memcpy(t->dst, h0->dst_address, 6);
           }
 
           em->counters[node_counter_base_index + L2INPUT_ERROR_L2INPUT] += 1;

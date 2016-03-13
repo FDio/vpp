@@ -520,7 +520,7 @@ static u32 tapcli_flag_change (vnet_main_t * vnm,
 
   ti = vec_elt_at_index (tm->tapcli_interfaces, hw->dev_instance);
 
-  memcpy (&ifr, &ti->ifr, sizeof (ifr));
+  clib_memcpy (&ifr, &ti->ifr, sizeof (ifr));
 
   /* get flags, modify to bring up interface... */
   if (ioctl (ti->provision_fd, SIOCGIFFLAGS, &ifr) < 0)
@@ -757,7 +757,7 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
   ti = tapcli_get_new_tapif();
 
   if (hwaddr_arg != 0)
-    memcpy(hwaddr, hwaddr_arg, 6);
+    clib_memcpy(hwaddr, hwaddr_arg, 6);
 
   error = ethernet_register_interface
         (tm->vnet_main,
@@ -782,7 +782,7 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
     ti->unix_file_index = unix_file_add (&unix_main, &template);
     ti->unix_fd = dev_net_tun_fd;
     ti->provision_fd = dev_tap_fd;
-    memcpy (&ti->ifr, &ifr, sizeof (ifr));
+    clib_memcpy (&ti->ifr, &ifr, sizeof (ifr));
   }
   
   {
@@ -1117,7 +1117,7 @@ tap_connect_command_fn (vlib_main_t * vm,
       rnd = (u32) (now * 1e6);
       rnd = random_u32 (&rnd);
 
-      memcpy (hwaddr+2, &rnd, sizeof(rnd));
+      clib_memcpy (hwaddr+2, &rnd, sizeof(rnd));
       hwaddr[0] = 2;
       hwaddr[1] = 0xfe;
       user_hwaddr = 1;
@@ -1142,7 +1142,7 @@ tap_connect_command_fn (vlib_main_t * vm,
     ti->unix_file_index = unix_file_add (&unix_main, &template);
     ti->unix_fd = dev_net_tun_fd;
     ti->provision_fd = dev_tap_fd;
-    memcpy (&ti->ifr, &ifr, sizeof (ifr));
+    clib_memcpy (&ti->ifr, &ifr, sizeof (ifr));
   }
   
   {

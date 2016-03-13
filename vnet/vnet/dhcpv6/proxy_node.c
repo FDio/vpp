@@ -202,7 +202,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
        
           h0 = vlib_buffer_get_current (b0);
           e_h0 = (ethernet_header_t *)b0->data;
-          memcpy(client_src_mac, e_h0->src_address, 6);
+          clib_memcpy(client_src_mac, e_h0->src_address, 6);
           /* Send to DHCPV6 server via the configured FIB */
           vnet_buffer(b0)->sw_if_index[VLIB_TX] =
               dpm->server_fib_index;
@@ -346,7 +346,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
                                                       sizeof(cmac->opt));
                cmac->opt.option = clib_host_to_net_u16(DHCPV6_OPTION_CLIENT_LINK_LAYER_ADDRESS);
                cmac->link_type = clib_host_to_net_u16(1); // ethernet
-               memcpy(cmac->data, client_src_mac, 6);
+               clib_memcpy(cmac->data, client_src_mac, 6);
                u1->length += sizeof(*cmac);
             }
           if (oui1 || fib_id1) {
@@ -639,7 +639,7 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
 
       hi0 = vnet_get_sup_hw_interface (vnm, original_sw_if_index);
       ei0 = pool_elt_at_index (em->interfaces, hi0->hw_instance);
-      memcpy (mac0->src_address, ei0->address, sizeof (ei0->address));
+      clib_memcpy (mac0->src_address, ei0->address, sizeof (ei0->address));
       memset (&mac0->dst_address, 0xff, sizeof (mac0->dst_address));
       mac0->type = (si0->type == VNET_SW_INTERFACE_TYPE_SUB) ?
 	clib_net_to_host_u16(0x8100) : clib_net_to_host_u16 (0x86dd);

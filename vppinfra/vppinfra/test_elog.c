@@ -188,7 +188,7 @@ int test_elog_main (unformat_input_t * input)
 
 	    d = ELOG_DATA (em, e);
 	    v = format (0, "foo %d%c", i, 0);
-	    memcpy (d->s, v, clib_min (vec_len (v), sizeof (d->s)));
+	    clib_memcpy (d->s, v, clib_min (vec_len (v), sizeof (d->s)));
 	  }
 
 	  {

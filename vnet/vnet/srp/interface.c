@@ -69,9 +69,9 @@ static uword srp_set_rewrite (vnet_main_t * vnm,
     return 0;
   }
 
-  memcpy (h->ethernet.src_address, hw->hw_address, sizeof (h->ethernet.src_address));
+  clib_memcpy (h->ethernet.src_address, hw->hw_address, sizeof (h->ethernet.src_address));
   if (dst_address)
-    memcpy (h->ethernet.dst_address, dst_address, sizeof (h->ethernet.dst_address));
+    clib_memcpy (h->ethernet.dst_address, dst_address, sizeof (h->ethernet.dst_address));
   else
     memset (h->ethernet.dst_address, ~0, sizeof (h->ethernet.dst_address)); /* broadcast */
 
@@ -190,7 +190,7 @@ static void srp_register_interface_helper (u32 * hw_if_indices_by_side, u32 redi
     }
 
   /* Inherit MAC address from outer ring. */
-  memcpy (si->my_address, hws[SRP_RING_OUTER]->hw_address,
+  clib_memcpy (si->my_address, hws[SRP_RING_OUTER]->hw_address,
 	  vec_len (hws[SRP_RING_OUTER]->hw_address));
 
   /* Default time to wait to restore signal. */
@@ -373,7 +373,7 @@ simulated_srp_interface_tx (vlib_main_t * vm,
 
       n_copy = clib_min (n_left_from, n_left_to_next);
 
-      memcpy (to_next, from, n_copy * sizeof (from[0]));
+      clib_memcpy (to_next, from, n_copy * sizeof (from[0]));
       n_left_to_next -= n_copy;
       n_left_from -= n_copy;
       for (i = 0; i < n_copy; i++)

@@ -882,7 +882,7 @@ static u16 nfv9_get_server_instance(
         /* Create a new one, initialize and return */
         server = 0;
         pool_get(nfv9_server_info_pool, server);
-        memcpy(server, new_server_info, sizeof(nfv9_server_info_t));
+        clib_memcpy(server, new_server_info, sizeof(nfv9_server_info_t));
         server->ref_count = 1;
         nfv9_info->server_index = server - nfv9_server_info_pool;
 #ifdef DEBUG_NF_SERVER_CONFIG

@@ -218,7 +218,7 @@ static int nsh_vxlan_gpe_rewrite (nsh_vxlan_gpe_tunnel_t * t)
 
   /* Copy any TLVs */
   if (vec_len(t->tlvs))
-    memcpy (nsh0->tlvs, t->tlvs, 4*vec_len(t->tlvs));
+    clib_memcpy (nsh0->tlvs, t->tlvs, 4*vec_len(t->tlvs));
 
   t->rewrite = rw;
   return (0);
@@ -271,7 +271,7 @@ int vnet_nsh_vxlan_gpe_add_del_tunnel
         }
 
       key_copy = clib_mem_alloc (sizeof (*key_copy));
-      memcpy (key_copy, &key, sizeof (*key_copy));
+      clib_memcpy (key_copy, &key, sizeof (*key_copy));
 
       hash_set_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, key_copy, 
                     t - ngm->tunnels);

@@ -804,7 +804,7 @@ static int syslog_get_timestamp(unsigned char *ts)
     ts += u16_to_ascii_decimal_unaligned(ts, (tm1.tm_year + 1900));
     *ts++ = SYSLOG_DELIMITER;
     /* Month */
-    memcpy(ts, months[tm1.tm_mon], 4);
+    clib_memcpy(ts, months[tm1.tm_mon], 4);
     ts += 4; /* DELIMITER taken care */
     /* day */
     ts += u16_to_ascii_decimal_unaligned(ts, tm1.tm_mday);
@@ -870,7 +870,7 @@ inline static int syslog_fill_header(const cnat_syslog_logging_info_t *log_info,
     temp += syslog_get_timestamp(temp);
     *temp++ = SYSLOG_DELIMITER;
     count = strlen(log_info->header_hostname);
-    memcpy(temp, log_info->header_hostname, count);
+    clib_memcpy(temp, log_info->header_hostname, count);
     temp += count;
     *temp++ = SYSLOG_DELIMITER;
     *temp++ = SYSLOG_FIELD_ABSENT; /* App name - nil value */
@@ -879,7 +879,7 @@ inline static int syslog_fill_header(const cnat_syslog_logging_info_t *log_info,
     *temp++ = SYSLOG_DELIMITER;
     /* Now the msg id */
     count = strlen(syslog_service_string[s_type]);
-    memcpy(temp, syslog_service_string[s_type], count);
+    clib_memcpy(temp, syslog_service_string[s_type], count);
     temp += count;
     *temp++ = SYSLOG_DELIMITER;
     *temp++ = SYSLOG_FIELD_ABSENT; /* No structured elements */
@@ -1078,7 +1078,7 @@ void cnat_syslog_insert_nat44_record(
     *record++ = '['; /* Open the record */
 
     /* Copy the record type */
-    memcpy(record, sys_log_event[e_type].event_name, 
+    clib_memcpy(record, sys_log_event[e_type].event_name, 
         sys_log_event[e_type].name_length);
     record += sys_log_event[e_type].name_length;
     *record++ = SYSLOG_DELIMITER;
@@ -1110,7 +1110,7 @@ void cnat_syslog_insert_nat44_record(
     *record++ = SYSLOG_DELIMITER;
 
     /* copy configured VRF NAME */
-    memcpy(record, log_info->vrf_name, log_info->vrf_name_len);
+    clib_memcpy(record, log_info->vrf_name, log_info->vrf_name_len);
     record += log_info->vrf_name_len;
     *record++ = SYSLOG_DELIMITER;
     
@@ -1197,7 +1197,7 @@ void cnat_syslog_insert_record(
     *record++ = '['; /* Open the record */
 
     /* Copy the record type */
-    memcpy(record, sys_log_event[e_type].event_name, 
+    clib_memcpy(record, sys_log_event[e_type].event_name, 
         sys_log_event[e_type].name_length);
     record += sys_log_event[e_type].name_length;
     *record++ = SYSLOG_DELIMITER;
@@ -1234,7 +1234,7 @@ void cnat_syslog_insert_record(
      *record++ = SYSLOG_DELIMITER;
  
     /* copy configured VRF NAME */
-    memcpy(record, log_info->vrf_name, log_info->vrf_name_len);
+    clib_memcpy(record, log_info->vrf_name, log_info->vrf_name_len);
     record += log_info->vrf_name_len;
     *record++ = SYSLOG_DELIMITER;
     
@@ -1521,7 +1521,7 @@ void cnat_syslog_dslite_insert_port_exceeded(
     *record++ = '['; /* Open the record */
 
     /* Copy the record type */
-    memcpy(record, sys_log_event[port_block_runout].event_name, 
+    clib_memcpy(record, sys_log_event[port_block_runout].event_name, 
         sys_log_event[port_block_runout].name_length);
     record += sys_log_event[port_block_runout].name_length;
     *record++ = SYSLOG_DELIMITER;
@@ -1543,7 +1543,7 @@ void cnat_syslog_dslite_insert_port_exceeded(
     *record++ = SYSLOG_DELIMITER;
 
     /* copy configured VRF NAME */
-    memcpy(record, log_info->vrf_name, log_info->vrf_name_len);
+    clib_memcpy(record, log_info->vrf_name, log_info->vrf_name_len);
     record += log_info->vrf_name_len;
     *record++ = SYSLOG_DELIMITER;
     
@@ -1621,7 +1621,7 @@ void cnat_syslog_nat44_insert_port_exceeded(
     *record++ = '['; /* Open the record */
 
     /* Copy the record type */
-    memcpy(record, sys_log_event[port_block_runout].event_name,
+    clib_memcpy(record, sys_log_event[port_block_runout].event_name,
         sys_log_event[port_block_runout].name_length);
     record += sys_log_event[port_block_runout].name_length;
     *record++ = SYSLOG_DELIMITER;
@@ -1643,7 +1643,7 @@ void cnat_syslog_nat44_insert_port_exceeded(
     *record++ = SYSLOG_DELIMITER;
 
     /* copy configured VRF NAME */
-    memcpy(record, log_info->vrf_name, log_info->vrf_name_len);
+    clib_memcpy(record, log_info->vrf_name, log_info->vrf_name_len);
     record += log_info->vrf_name_len;
     *record++ = SYSLOG_DELIMITER;
 
@@ -1715,7 +1715,7 @@ void cnat_syslog_nat44_insert_tcp_seq_mismatch(
     *record++ = '['; /* Open the record */
 
     /* Copy the record type */
-    memcpy(record, sys_log_event[tcp_seq_mismatch].event_name,
+    clib_memcpy(record, sys_log_event[tcp_seq_mismatch].event_name,
         sys_log_event[tcp_seq_mismatch].name_length);
     record += sys_log_event[tcp_seq_mismatch].name_length;
     *record++ = SYSLOG_DELIMITER;
@@ -1729,7 +1729,7 @@ void cnat_syslog_nat44_insert_tcp_seq_mismatch(
     *record++ = SYSLOG_DELIMITER;
 
     /* copy configured VRF NAME */
-    memcpy(record, log_info->vrf_name, log_info->vrf_name_len);
+    clib_memcpy(record, log_info->vrf_name, log_info->vrf_name_len);
     record += log_info->vrf_name_len;
     *record++ = SYSLOG_DELIMITER;
 

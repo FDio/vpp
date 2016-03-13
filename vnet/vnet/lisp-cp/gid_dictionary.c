@@ -132,7 +132,7 @@ add_del_ip4_key (gid_dictionary_t *db, u32 vni, ip_prefix_t * pref, u32 val,
   ip4_address_t key;
   u8 plen = ip_prefix_len (pref);
 
-  memcpy (&key, &ip_prefix_v4(pref), sizeof(key));
+  clib_memcpy (&key, &ip_prefix_v4(pref), sizeof(key));
   key.as_u32 &= db->ip4_fib_masks[plen].as_u32;
   if (is_add)
     {
@@ -197,7 +197,7 @@ add_del_ip6_key (gid_dictionary_t *db, u32 vni, ip_prefix_t *pref, u32 val,
   ip6_address_t key;
   u8 plen = ip_prefix_len (pref);
 
-  memcpy (&key, &ip_prefix_v6(pref), sizeof(key));
+  clib_memcpy (&key, &ip_prefix_v6(pref), sizeof(key));
   ip6_address_mask (&key, &db->ip6_fib_masks[plen]);
   if (is_add)
     {

@@ -303,7 +303,7 @@ esp_encrypt_node_fn (vlib_main_t * vm,
             u8 iv[16];
             RAND_bytes(iv, sizeof(iv));
 
-            memcpy((u8 *) vlib_buffer_get_current (o_b0) + ip_hdr_size +
+            clib_memcpy((u8 *) vlib_buffer_get_current (o_b0) + ip_hdr_size +
                    sizeof(esp_header_t), iv, 16 );
 
             esp_encrypt_aes_cbc(sa0->crypto_alg,

@@ -225,7 +225,7 @@ af_packet_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set)
 
   /*use configured or generate random MAC address */
   if (hw_addr_set)
-    memcpy(hw_addr, hw_addr_set, 6);
+    clib_memcpy(hw_addr, hw_addr_set, 6);
   else
     {
       f64 now = vlib_time_now(vm);
@@ -233,7 +233,7 @@ af_packet_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set)
       rnd = (u32) (now * 1e6);
       rnd = random_u32 (&rnd);
 
-      memcpy (hw_addr+2, &rnd, sizeof(rnd));
+      clib_memcpy (hw_addr+2, &rnd, sizeof(rnd));
       hw_addr[0] = 2;
       hw_addr[1] = 0xfe;
     }

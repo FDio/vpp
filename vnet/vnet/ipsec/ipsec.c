@@ -191,7 +191,7 @@ ipsec_add_del_policy(vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
       u32 policy_index;
 
       pool_get (spd->policies, vp);
-      memcpy (vp, policy, sizeof (*vp));
+      clib_memcpy (vp, policy, sizeof (*vp));
       policy_index = vp - spd->policies;
 
       if (policy->is_outbound)
@@ -199,14 +199,14 @@ ipsec_add_del_policy(vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
           if (policy->is_ipv6)
             {
               vec_add1 (spd->ipv6_outbound_policies, policy_index);
-              memcpy(vp, policy, sizeof(ipsec_policy_t));
+              clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
               vec_sort_with_function (spd->ipv6_outbound_policies,
                                       ipsec_spd_entry_sort);
             }
           else
             {
               vec_add1 (spd->ipv4_outbound_policies, policy_index);
-              memcpy(vp, policy, sizeof(ipsec_policy_t));
+              clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
               vec_sort_with_function (spd->ipv4_outbound_policies,
                                       ipsec_spd_entry_sort);
             }
@@ -219,7 +219,7 @@ ipsec_add_del_policy(vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
                 {
                   vec_add1 (spd->ipv6_inbound_protect_policy_indices,
                             policy_index);
-                  memcpy(vp, policy, sizeof(ipsec_policy_t));
+                  clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
                   vec_sort_with_function (
                      spd->ipv6_inbound_protect_policy_indices,
                      ipsec_spd_entry_sort);
@@ -228,7 +228,7 @@ ipsec_add_del_policy(vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
                 {
                   vec_add1 (spd->ipv6_inbound_policy_discard_and_bypass_indices,
                             policy_index);
-                  memcpy(vp, policy, sizeof(ipsec_policy_t));
+                  clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
                   vec_sort_with_function (
                      spd->ipv6_inbound_policy_discard_and_bypass_indices,
                      ipsec_spd_entry_sort);
@@ -240,7 +240,7 @@ ipsec_add_del_policy(vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
                 {
                   vec_add1 (spd->ipv4_inbound_protect_policy_indices,
                             policy_index);
-                  memcpy(vp, policy, sizeof(ipsec_policy_t));
+                  clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
                   vec_sort_with_function (
                      spd->ipv4_inbound_protect_policy_indices,
                      ipsec_spd_entry_sort);
@@ -249,7 +249,7 @@ ipsec_add_del_policy(vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
                 {
                   vec_add1 (spd->ipv4_inbound_policy_discard_and_bypass_indices,
                             policy_index);
-                  memcpy(vp, policy, sizeof(ipsec_policy_t));
+                  clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
                   vec_sort_with_function (
                     spd->ipv4_inbound_policy_discard_and_bypass_indices,
                     ipsec_spd_entry_sort);
@@ -432,7 +432,7 @@ ipsec_add_del_sa(vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
   else /* create new SA */
     {
       pool_get (im->sad, sa);
-      memcpy (sa, new_sa, sizeof (*sa));
+      clib_memcpy (sa, new_sa, sizeof (*sa));
       sa_index = sa - im->sad;
       hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
     }
@@ -457,14 +457,14 @@ ipsec_set_sa_key(vlib_main_t * vm, ipsec_sa_t * sa_update)
   /* new crypto key */
   if (0 < sa_update->crypto_key_len)
     {
-      memcpy(sa->crypto_key, sa_update->crypto_key, sa_update->crypto_key_len);
+      clib_memcpy(sa->crypto_key, sa_update->crypto_key, sa_update->crypto_key_len);
       sa->crypto_key_len = sa_update->crypto_key_len;
     }
 
   /* new integ key */
   if (0 < sa_update->integ_key_len)
     {
-      memcpy(sa->integ_key, sa_update->integ_key, sa_update->integ_key_len);
+      clib_memcpy(sa->integ_key, sa_update->integ_key, sa_update->integ_key_len);
       sa->integ_key_len = sa_update->integ_key_len;
     }
 

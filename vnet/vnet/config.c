@@ -149,7 +149,7 @@ find_config_with_features (vlib_main_t * vm,
       /* First element in heap points back to pool index. */
       d = vec_elt_at_index (cm->config_string_heap, c->config_string_heap_index);
       d[0] = c->index;
-      memcpy (d + 1, config_string, vec_bytes (config_string));
+      clib_memcpy (d + 1, config_string, vec_bytes (config_string));
       hash_set_mem (cm->config_string_hash, config_string, c->index);
 
       c->reference_count = 0; /* will be incremented by caller. */

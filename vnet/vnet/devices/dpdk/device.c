@@ -135,7 +135,7 @@ static struct rte_mbuf * dpdk_replicate_packet_mb (vlib_buffer_t * b)
       rte_pktmbuf_data_len (new_mb) = pkt_mb->data_len;
       copy_bytes = pkt_mb->data_len + RTE_PKTMBUF_HEADROOM;
       ASSERT(copy_bytes <= pkt_mb->buf_len);
-      memcpy(new_mb->buf_addr, pkt_mb->buf_addr, copy_bytes);
+      clib_memcpy(new_mb->buf_addr, pkt_mb->buf_addr, copy_bytes);
 
       prev_mb_next = &new_mb->next;
       pkt_mb = pkt_mb->next;
@@ -165,9 +165,9 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm,
   t0->queue_index = queue_id;
   t0->device_index = xd->device_index;
   t0->buffer_index = buffer_index;
-  memcpy (&t0->mb, mb, sizeof (t0->mb));
-  memcpy (&t0->buffer, buffer, sizeof (buffer[0]) - sizeof (buffer->pre_data));
-  memcpy (t0->buffer.pre_data, buffer->data + buffer->current_data,
+  clib_memcpy (&t0->mb, mb, sizeof (t0->mb));
+  clib_memcpy (&t0->buffer, buffer, sizeof (buffer[0]) - sizeof (buffer->pre_data));
+  clib_memcpy (t0->buffer.pre_data, buffer->data + buffer->current_data,
 	  sizeof (t0->buffer.pre_data));
 }
 
@@ -841,8 +841,8 @@ static void dpdk_clear_hw_interface_counters (u32 instance)
        */
       dpdk_update_counters (xd, vlib_time_now (dm->vlib_main));
 
-      memcpy (&xd->last_cleared_stats, &xd->stats, sizeof(xd->stats));
-      memcpy (xd->last_cleared_xstats, xd->xstats,
+      clib_memcpy (&xd->last_cleared_stats, &xd->stats, sizeof(xd->stats));
+      clib_memcpy (xd->last_cleared_xstats, xd->xstats,
 	      vec_len(xd->last_cleared_xstats) *
 	      sizeof(xd->last_cleared_xstats[0]));
     }
@@ -1256,6 +1256,6 @@ dpdk_get_hw_interface_stats (u32 hw_if_index, struct rte_eth_stats* dest)
 
   dpdk_update_counters (xd, vlib_time_now (dm->vlib_main));
 
-  memcpy(dest, &xd->stats, sizeof(xd->stats));
+  clib_memcpy(dest, &xd->stats, sizeof(xd->stats));
   return (0);
 }

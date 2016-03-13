@@ -307,7 +307,7 @@ srp_topology_packet (vlib_main_t * vm, u32 sw_if_index, u8 ** contents)
     return SRP_ERROR_TOPOLOGY_BAD_LENGTH;
 
   /* Fill in our source MAC address. */
-  memcpy (t->ethernet.src_address, hi->hw_address, vec_len (hi->hw_address));
+  clib_memcpy (t->ethernet.src_address, hi->hw_address, vec_len (hi->hw_address));
 
   /* Make space for our MAC binding. */
   vec_resize (*contents, sizeof (srp_topology_mac_binding_t));
@@ -319,7 +319,7 @@ srp_topology_packet (vlib_main_t * vm, u32 sw_if_index, u8 ** contents)
   mb->flags =
     ((t->srp.is_inner_ring ? SRP_TOPOLOGY_MAC_BINDING_FLAG_IS_INNER_RING : 0)
      | (/* is wrapped FIXME */ 0));
-  memcpy (mb->address, hi->hw_address, vec_len (hi->hw_address));
+  clib_memcpy (mb->address, hi->hw_address, vec_len (hi->hw_address));
 
   t->control.checksum
     = ~ip_csum_fold (ip_incremental_checksum (0, &t->control,
@@ -586,7 +586,7 @@ static void init_ips_packet (srp_interface_t * si,
   i->srp.mode = SRP_MODE_control_locally_buffered_for_host;
   srp_header_compute_parity (&i->srp);
 
-  memcpy (&i->ethernet.src_address, &si->my_address, sizeof (si->my_address));
+  clib_memcpy (&i->ethernet.src_address, &si->my_address, sizeof (si->my_address));
   i->ethernet.type = clib_host_to_net_u16 (ETHERNET_TYPE_SRP_CONTROL);
 
   /* Checksum will be filled in later. */
@@ -594,7 +594,7 @@ static void init_ips_packet (srp_interface_t * si,
   i->control.type = SRP_CONTROL_PACKET_TYPE_ips;
   i->control.ttl = 255;
 
-  memcpy (&i->originator_address, &si->my_address, sizeof (si->my_address));
+  clib_memcpy (&i->originator_address, &si->my_address, sizeof (si->my_address));
 }
 
 static void tx_ips_packet (srp_interface_t * si,
@@ -655,7 +655,7 @@ static void serialize_srp_interface_state_msg (serialize_main_t * m, va_list * v
       if (ir->rx_neighbor_address_valid)
 	{
 	  p = serialize_get (m, sizeof (ir->rx_neighbor_address));
-	  memcpy (p, ir->rx_neighbor_address, sizeof (ir->rx_neighbor_address));
+	  clib_memcpy (p, ir->rx_neighbor_address, sizeof (ir->rx_neighbor_address));
 	}
       serialize_likely_small_unsigned_integer (m, ir->waiting_to_restore);
       if (ir->waiting_to_restore)
@@ -681,7 +681,7 @@ static void unserialize_srp_interface_state_msg (serialize_main_t * m, va_list *
       if (ir->rx_neighbor_address_valid)
 	{
 	  p = unserialize_get (m, sizeof (ir->rx_neighbor_address));
-	  memcpy (ir->rx_neighbor_address, p, sizeof (ir->rx_neighbor_address));
+	  clib_memcpy (ir->rx_neighbor_address, p, sizeof (ir->rx_neighbor_address));
 	}
       ir->waiting_to_restore = unserialize_likely_small_unsigned_integer (m);
       if (ir->waiting_to_restore)
@@ -736,7 +736,7 @@ void srp_ips_rx_packet (u32 sw_if_index, srp_ips_header_t * h)
 	  ASSERT (0);
 	}
       ir->rx_neighbor_address_valid = 1;
-      memcpy (ir->rx_neighbor_address, h->originator_address, sizeof (ir->rx_neighbor_address));
+      clib_memcpy (ir->rx_neighbor_address, h->originator_address, sizeof (ir->rx_neighbor_address));
     }
 
   switch (si->current_ips_state)

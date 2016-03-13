@@ -298,7 +298,7 @@ ssvm_eth_interface_tx (vlib_main_t * vm,
 
       if (PREDICT_TRUE(n_allocated > 0))
 	{
-	  memcpy (&em->chunk_cache[n_present_in_cache],
+	  clib_memcpy (&em->chunk_cache[n_present_in_cache],
 		  &elt_indices[n_available - n_allocated],
 		  sizeof(u32) * n_allocated);
 	}
@@ -346,7 +346,7 @@ ssvm_eth_interface_tx (vlib_main_t * vm,
           elt->owner = !i_am_master;
           elt->tag = 1;
 	  
-          memcpy (elt->data, b0->data + b0->current_data, b0->current_length);
+          clib_memcpy (elt->data, b0->data + b0->current_data, b0->current_length);
           
           if (PREDICT_FALSE (prev_elt != 0))
             prev_elt->next_index = elt - elts;

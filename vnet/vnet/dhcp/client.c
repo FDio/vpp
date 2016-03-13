@@ -163,7 +163,7 @@ int dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
             /* Replace the existing hostname if necessary */
             vec_free (c->hostname);
             vec_validate (c->hostname, o->length - 1);
-            memcpy (c->hostname, o->data, o->length);
+            clib_memcpy (c->hostname, o->data, o->length);
           }
           break;
 
@@ -297,7 +297,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
     {
       f = vlib_get_frame_to_node (vm, hw->output_node_index);
       vnet_buffer(b)->sw_if_index[VLIB_TX] = c->sw_if_index;
-      memcpy (b->data, c->l2_rewrite, vec_len(c->l2_rewrite));
+      clib_memcpy (b->data, c->l2_rewrite, vec_len(c->l2_rewrite));
       ip = (void *)
         (((u8 *)vlib_buffer_get_current (b)) + vec_len (c->l2_rewrite));
     }
@@ -344,7 +344,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_server);
 
   /* Send the interface MAC address */
-  memcpy (dhcp->client_hardware_address, c->l2_rewrite + 6, 6);
+  clib_memcpy (dhcp->client_hardware_address, c->l2_rewrite + 6, 6);
 
   /* Lease renewal, set up client_ip_address */
   if (is_broadcast == 0)
@@ -385,7 +385,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
     {
       o->option = 54;
       o->length = 4;
-      memcpy (o->data, &c->dhcp_server.as_u32, 4);
+      clib_memcpy (o->data, &c->dhcp_server.as_u32, 4);
       o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
     }
 
@@ -394,7 +394,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
     {
       o->option = 50;
       o->length = 4;
-      memcpy (o->data, &c->leased_address.as_u32, 4);
+      clib_memcpy (o->data, &c->leased_address.as_u32, 4);
       o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
     }
 
@@ -403,7 +403,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
     {
       o->option = 12;
       o->length = vec_len (c->hostname);
-      memcpy (o->data, c->hostname, vec_len (c->hostname));
+      clib_memcpy (o->data, c->hostname, vec_len (c->hostname));
       o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
     }
 
@@ -417,7 +417,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
    */
   o->option = 55;
   o->length = vec_len (c->option_55_data);
-  memcpy (o->data, c->option_55_data, vec_len(c->option_55_data));
+  clib_memcpy (o->data, c->option_55_data, vec_len(c->option_55_data));
   o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
 
   /* End of list */

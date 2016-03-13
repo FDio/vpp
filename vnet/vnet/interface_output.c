@@ -98,14 +98,14 @@ vnet_interface_output_trace (vlib_main_t * vm,
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  memcpy (t0->data, vlib_buffer_get_current (b0),
+	  clib_memcpy (t0->data, vlib_buffer_get_current (b0),
 		  sizeof (t0->data));
 	}
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
 	  t1->sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-	  memcpy (t1->data, vlib_buffer_get_current (b1),
+	  clib_memcpy (t1->data, vlib_buffer_get_current (b1),
 		  sizeof (t1->data));
 	}
       from += 2;
@@ -126,7 +126,7 @@ vnet_interface_output_trace (vlib_main_t * vm,
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  memcpy (t0->data, vlib_buffer_get_current (b0),
+	  clib_memcpy (t0->data, vlib_buffer_get_current (b0),
 		  sizeof (t0->data));
 	}
       from += 1;

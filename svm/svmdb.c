@@ -306,7 +306,7 @@ static void local_set_variable_nolock (svmdb_client_t *client,
         svmdb_value_t * oldvalue;
         oldvalue = pool_elt_at_index (client->shm->values, hp->value[0]);
         vec_alloc (oldvalue->value, vec_len(val)*elsize);
-        memcpy (oldvalue->value, val, vec_len(val)*elsize);
+        clib_memcpy (oldvalue->value, val, vec_len(val)*elsize);
         _vec_len (oldvalue->value) = vec_len(val);
         notify_value (oldvalue, SVMDB_ACTION_SET);
     } else {
@@ -315,7 +315,7 @@ static void local_set_variable_nolock (svmdb_client_t *client,
         memset (newvalue, 0, sizeof (*newvalue));
         newvalue->elsize = elsize;
         vec_alloc (newvalue->value, vec_len(val)*elsize);
-        memcpy (newvalue->value, val, vec_len(val)*elsize);
+        clib_memcpy (newvalue->value, val, vec_len(val)*elsize);
         _vec_len (newvalue->value) = vec_len(val);
         name = format (0, "%s%c", var, 0);
         hash_set_mem (h, name, newvalue - shm->values);
@@ -448,7 +448,7 @@ void *svmdb_local_get_vec_variable (svmdb_client_t *client, char *var,
     if (rv && vec_len(rv)) {
 	/* Make a copy in process-local memory */
         vec_alloc (copy, vec_len(rv)*elsize);
-	memcpy (copy, rv, vec_len(rv)*elsize);
+	clib_memcpy (copy, rv, vec_len(rv)*elsize);
 	_vec_len(copy) = vec_len(rv);
         region_unlock (client->db_rp);
         return (copy);

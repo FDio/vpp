@@ -288,7 +288,7 @@ uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_val
       sk = (void *) (h->key_vector_or_heap + i);
       sk->heap_handle = handle;
       sk->vec.len = n_key_bytes;
-      memcpy (sk->vec.vector_data, key, n_key_bytes);
+      clib_memcpy (sk->vec.vector_data, key, n_key_bytes);
 
       /* Advance key past vector header. */
       i += sizeof (sk[0]);
@@ -309,7 +309,7 @@ uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_val
 	}
 
       n_key_bytes = h->n_key_bytes;
-      memcpy (k, key, n_key_bytes);
+      clib_memcpy (k, key, n_key_bytes);
     }
   ikey = i;
 

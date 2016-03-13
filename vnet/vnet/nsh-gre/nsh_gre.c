@@ -214,7 +214,7 @@ static int nsh_gre_rewrite (nsh_gre_tunnel_t * t)
 
   /* Copy any TLVs */
   if (vec_len(t->tlvs))
-    memcpy (nsh0->tlvs, t->tlvs, 4*vec_len(t->tlvs));
+    clib_memcpy (nsh0->tlvs, t->tlvs, 4*vec_len(t->tlvs));
 
   t->rewrite = rw;
   return (0);

@@ -94,7 +94,7 @@ static clib_error_t * test_format_unformat_gid_address (void)
   gid_address_ippref_len(gid_addr) = 64;
   ip_prefix_version(&gid_addr->ippref) = IP6;
   u8 ipv6[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf};
-  memcpy(gid_addr->ippref.addr.ip.v6.as_u8, ipv6, sizeof(ipv6));
+  clib_memcpy(gid_addr->ippref.addr.ip.v6.as_u8, ipv6, sizeof(ipv6));
 
   s = format(0, "%U", format_gid_address, gid_addr);
   vec_add1(s, 0);

@@ -335,9 +335,9 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	       *  is not in the IP6 FIB */
 	      vlib_buffer_reset (p0);
 	      eth0 = vlib_buffer_get_current (p0);
-	      memcpy (tmp_mac, eth0->dst_address, 6);
-	      memcpy (eth0->dst_address, eth0->src_address, 6);
-	      memcpy (eth0->src_address, tmp_mac, 6);
+	      clib_memcpy (tmp_mac, eth0->dst_address, 6);
+	      clib_memcpy (eth0->dst_address, eth0->src_address, 6);
+	      clib_memcpy (eth0->src_address, tmp_mac, 6);
 	      vnet_buffer(p0)->sw_if_index[VLIB_TX] = 
 		  vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	      next0 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
@@ -359,9 +359,9 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	       *  is not in the IP6 FIB */
 	      vlib_buffer_reset (p1);
 	      eth1 = vlib_buffer_get_current (p1);
-	      memcpy (tmp_mac, eth1->dst_address, 6);
-	      memcpy (eth1->dst_address, eth1->src_address, 6);
-	      memcpy (eth1->src_address, tmp_mac, 6);
+	      clib_memcpy (tmp_mac, eth1->dst_address, 6);
+	      clib_memcpy (eth1->dst_address, eth1->src_address, 6);
+	      clib_memcpy (eth1->src_address, tmp_mac, 6);
 	      vnet_buffer(p1)->sw_if_index[VLIB_TX] = 
 		  vnet_buffer (p1)->sw_if_index[VLIB_RX];
 	      next1 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
@@ -435,9 +435,9 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	       *  is not in the IP6 FIB */
 	      vlib_buffer_reset (p0);
 	      eth0 = vlib_buffer_get_current (p0);
-	      memcpy (tmp_mac, eth0->dst_address, 6);
-	      memcpy (eth0->dst_address, eth0->src_address, 6);
-	      memcpy (eth0->src_address, tmp_mac, 6);
+	      clib_memcpy (tmp_mac, eth0->dst_address, 6);
+	      clib_memcpy (eth0->dst_address, eth0->src_address, 6);
+	      clib_memcpy (eth0->src_address, tmp_mac, 6);
 	      vnet_buffer(p0)->sw_if_index[VLIB_TX] = 
 		  vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	      next0 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;

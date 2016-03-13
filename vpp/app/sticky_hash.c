@@ -169,8 +169,8 @@ sticky_hash_miss_node_fn (vlib_main_t * vm,
           h0 = vlib_buffer_get_current (b0);
 
           /* Add forward and reverse entries for this flow */
-          memcpy (mp->fdata, h0, sizeof (mp->fdata));
-          memcpy (mp->rdata, h0, sizeof (mp->rdata));
+          clib_memcpy (mp->fdata, h0, sizeof (mp->fdata));
+          clib_memcpy (mp->rdata, h0, sizeof (mp->rdata));
 
           h0 = (classify_data_or_mask_t *)(mp->rdata);
 
@@ -406,8 +406,8 @@ ip4_sticky_hash_init_command_fn (vlib_main_t * vm,
   vec_validate (fm, 3 * sizeof(u32x4) - 1);
   vec_validate (rm, 3 * sizeof(u32x4) - 1);
 
-  memcpy (fm, &fwd_mask, sizeof (fwd_mask));
-  memcpy (rm, &rev_mask, sizeof (rev_mask));
+  clib_memcpy (fm, &fwd_mask, sizeof (fwd_mask));
+  clib_memcpy (rm, &rev_mask, sizeof (rev_mask));
   
   rv = ip4_sticky_hash_enable_disable (mp, fwd_sw_if_index, fm, 
                                        rev_sw_if_index, rm,

@@ -249,7 +249,7 @@ void serialize_vnet_rewrite (serialize_main_t * m, va_list * va)
   serialize_integer (m, rw->data_bytes, sizeof (rw->data_bytes));
   serialize_integer (m, rw->max_l3_packet_bytes, sizeof (rw->max_l3_packet_bytes));
   p = serialize_get (m, rw->data_bytes);
-  memcpy (p, vnet_rewrite_get_data_internal (rw, max_data_bytes), rw->data_bytes);
+  clib_memcpy (p, vnet_rewrite_get_data_internal (rw, max_data_bytes), rw->data_bytes);
 }
 
 void unserialize_vnet_rewrite (serialize_main_t * m, va_list * va)
@@ -266,5 +266,5 @@ void unserialize_vnet_rewrite (serialize_main_t * m, va_list * va)
   unserialize_integer (m, &rw->data_bytes, sizeof (rw->data_bytes));
   unserialize_integer (m, &rw->max_l3_packet_bytes, sizeof (rw->max_l3_packet_bytes));
   p = unserialize_get (m, rw->data_bytes);
-  memcpy (vnet_rewrite_get_data_internal (rw, max_data_bytes), p, rw->data_bytes);
+  clib_memcpy (vnet_rewrite_get_data_internal (rw, max_data_bytes), p, rw->data_bytes);
 }

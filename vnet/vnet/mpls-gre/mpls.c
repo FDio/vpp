@@ -127,10 +127,10 @@ unformat_mpls_gre_header (unformat_input_t * input, va_list * args)
     u32 h_n_bytes = sizeof (h[0]);
 
     vec_add2 (*result, p, g_n_bytes);
-    memcpy (p, g, g_n_bytes);
+    clib_memcpy (p, g, g_n_bytes);
 
     vec_add2 (*result, p, h_n_bytes);
-    memcpy (p, h, h_n_bytes);
+    clib_memcpy (p, h, h_n_bytes);
   }
   
   return 1;

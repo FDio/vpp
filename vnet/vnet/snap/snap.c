@@ -164,7 +164,7 @@ unformat_snap_header (unformat_input_t * input, va_list * args)
     u32 n_bytes = sizeof (h[0]);
 
     vec_add2 (*result, p, n_bytes);
-    memcpy (p, h, n_bytes);
+    clib_memcpy (p, h, n_bytes);
   }
   
   return 1;

@@ -472,8 +472,7 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
               trace_len = trace_len < ARRAY_LEN(t->option_data) ? 
                 trace_len : ARRAY_LEN(t->option_data);
               t->trace_len = trace_len;
-              t->timestamp_msbs = time_u64.as_u32[1];
-              memcpy (t->option_data, hbh0, trace_len);
+              clib_memcpy (t->option_data, hbh0, trace_len);
             }
             
           processed++;
@@ -683,7 +682,7 @@ ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
 
           hbh0 = (ip6_hop_by_hop_header_t *)(ip0 + 1);
           /* $$$ tune, rewrite_length is a multiple of 8 */
-          memcpy (hbh0, rewrite, rewrite_length);
+          clib_memcpy (hbh0, rewrite, rewrite_length);
           /* Patch the protocol chain, insert the h-b-h (type 0) header */
           hbh0->protocol = ip0->protocol;
           ip0->protocol = 0;

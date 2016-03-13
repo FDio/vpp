@@ -42,7 +42,7 @@ void get_interface_ethernet_address (l2t_main_t *lm,
 
     hi = vnet_get_sup_hw_interface (lm->vnet_main, sw_if_index);
     ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
-    memcpy (dst, ei->address, sizeof (ei->address));
+    clib_memcpy (dst, ei->address, sizeof (ei->address));
 }
 
 /* packet trace format function */
@@ -326,8 +326,8 @@ l2tp_session_add_command_fn (vlib_main_t * vm,
     
     pool_get (lm->sessions, s);
     memset (s, 0, sizeof (*s));
-    memcpy (&s->our_address, &our_address, sizeof (s->our_address));
-    memcpy (&s->client_address, &client_address, sizeof (s->client_address));
+    clib_memcpy (&s->our_address, &our_address, sizeof (s->our_address));
+    clib_memcpy (&s->client_address, &client_address, sizeof (s->client_address));
     s->sw_if_index = sw_if_index;
     s->vlan_id = clib_host_to_net_u16 (vlan_id);
     s->local_cookie = clib_host_to_net_u64 (local_cookie);
@@ -348,13 +348,13 @@ l2tp_session_add_command_fn (vlib_main_t * vm,
     switch (lm->lookup_type) {
     case L2T_LOOKUP_SRC_ADDRESS:
         src_address_copy = clib_mem_alloc (sizeof (*src_address_copy));
-        memcpy (src_address_copy, &client_address, sizeof (*src_address_copy));
+        clib_memcpy (src_address_copy, &client_address, sizeof (*src_address_copy));
         hash_set_mem (lm->session_by_src_address, src_address_copy, 
                       s - lm->sessions);
         break;
     case L2T_LOOKUP_DST_ADDRESS:
         dst_address_copy = clib_mem_alloc (sizeof (*dst_address_copy));
-        memcpy (dst_address_copy, &our_address, sizeof (*dst_address_copy));
+        clib_memcpy (dst_address_copy, &our_address, sizeof (*dst_address_copy));
         hash_set_mem (lm->session_by_dst_address, dst_address_copy, 
                       s - lm->sessions);
         break;

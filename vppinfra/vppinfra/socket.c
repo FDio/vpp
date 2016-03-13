@@ -100,7 +100,7 @@ socket_config (char * config,
     {
       struct sockaddr_un * su = addr;
       su->sun_family = PF_LOCAL;
-      memcpy (&su->sun_path, config,
+      clib_memcpy (&su->sun_path, config,
 	      clib_min (sizeof (su->sun_path), 1 + strlen (config)));
       *addr_len = sizeof (su[0]);
     }
@@ -157,7 +157,7 @@ socket_config (char * config,
 	      if (! host)
 		error = clib_error_return (0, "unknown host `%s'", config);
 	      else
-		memcpy (&sa->sin_addr.s_addr, host->h_addr_list[0], host->h_length);
+		clib_memcpy (&sa->sin_addr.s_addr, host->h_addr_list[0], host->h_length);
 	    }
 
 	  else

@@ -244,8 +244,8 @@ ip_update_adjacency (ip_lookup_main_t * lm,
   adj->lookup_next_index = IP_LOOKUP_NEXT_ARP;
   CLIB_MEMORY_BARRIER();
 
-  memcpy (&adj->rewrite_header, &copy_adj->rewrite_header,
-	  VLIB_BUFFER_PRE_DATA_SIZE);
+  clib_memcpy (&adj->rewrite_header, &copy_adj->rewrite_header,
+	       VLIB_BUFFER_PRE_DATA_SIZE);
   adj->lookup_next_index = copy_adj->lookup_next_index;
   ip_share_adjacency(lm, adj_index);
   ip_call_add_del_adjacency_callbacks (lm, adj_index, /* is_del */ 0);
@@ -343,7 +343,7 @@ static u32 ip_multipath_normalize_next_hops (ip_lookup_main_t * lm,
     }
   else
     {
-      memcpy (nhs, raw_next_hops, n_nhs * sizeof (raw_next_hops[0]));
+      clib_memcpy (nhs, raw_next_hops, n_nhs * sizeof (raw_next_hops[0]));
       qsort (nhs, n_nhs, sizeof (nhs[0]), (void *) next_hop_sort_by_weight);
     }
 
@@ -471,7 +471,7 @@ ip_multipath_adjacency_get (ip_lookup_main_t * lm,
   madj->normalized_next_hops.heap_offset
     = heap_alloc (lm->next_hop_heap, vec_len (nhs),
 		  madj->normalized_next_hops.heap_handle);
-  memcpy (lm->next_hop_heap + madj->normalized_next_hops.heap_offset,
+  clib_memcpy (lm->next_hop_heap + madj->normalized_next_hops.heap_offset,
 	  nhs, vec_bytes (nhs));
 
   hash_set (lm->multipath_adjacency_by_next_hops,
@@ -482,7 +482,7 @@ ip_multipath_adjacency_get (ip_lookup_main_t * lm,
   madj->unnormalized_next_hops.heap_offset
     = heap_alloc (lm->next_hop_heap, vec_len (raw_next_hops),
 		  madj->unnormalized_next_hops.heap_handle);
-  memcpy (lm->next_hop_heap + madj->unnormalized_next_hops.heap_offset,
+  clib_memcpy (lm->next_hop_heap + madj->unnormalized_next_hops.heap_offset,
 	  raw_next_hops, vec_bytes (raw_next_hops));
 
   ip_call_add_del_adjacency_callbacks (lm, adj_index, /* is_del */ 0);

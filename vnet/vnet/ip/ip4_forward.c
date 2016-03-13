@@ -181,7 +181,7 @@ ip4_fib_set_adj_index (ip4_main_t * im,
 			fib->new_hash_values);
 
       p = hash_get (hash, dst_address_u32);
-      memcpy (p, fib->new_hash_values, vec_bytes (fib->new_hash_values));
+      clib_memcpy (p, fib->new_hash_values, vec_bytes (fib->new_hash_values));
     }
 }
 
@@ -545,7 +545,7 @@ void ip4_maybe_remap_adjacencies (ip4_main_t * im,
 	    else
 	      {
 		/* Remap to new adjacency. */
-		memcpy (fib->old_hash_values, p->value, vec_bytes (fib->old_hash_values));
+		clib_memcpy (fib->old_hash_values, p->value, vec_bytes (fib->old_hash_values));
 
 		/* Set new adjacency value. */
 		fib->new_hash_values[0] = p->value[0] = m - 1;
@@ -1450,7 +1450,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
 	  t0->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
                              vnet_buffer(b0)->sw_if_index[VLIB_RX]);
-	  memcpy (t0->packet_data,
+	  clib_memcpy (t0->packet_data,
 		  vlib_buffer_get_current (b0),
 		  sizeof (t0->packet_data));
 	}
@@ -1461,7 +1461,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	  t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
 	  t1->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
                              vnet_buffer(b1)->sw_if_index[VLIB_RX]);
-	  memcpy (t1->packet_data,
+	  clib_memcpy (t1->packet_data,
 		  vlib_buffer_get_current (b1),
 		  sizeof (t1->packet_data));
 	}
@@ -1486,7 +1486,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
 	  t0->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
                              vnet_buffer(b0)->sw_if_index[VLIB_RX]);
-	  memcpy (t0->packet_data,
+	  clib_memcpy (t0->packet_data,
 		  vlib_buffer_get_current (b0),
 		  sizeof (t0->packet_data));
 	}
@@ -2197,7 +2197,7 @@ ip4_arp (vlib_main_t * vm,
 	    hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 
 	    /* Src ethernet address in ARP header. */
-	    memcpy (h0->ip4_over_ethernet[0].ethernet, hw_if0->hw_address,
+	    clib_memcpy (h0->ip4_over_ethernet[0].ethernet, hw_if0->hw_address,
 		    sizeof (h0->ip4_over_ethernet[0].ethernet));
 
 	    ip4_src_address_for_packet (im, p0, &h0->ip4_over_ethernet[0].ip4, sw_if_index0);
@@ -2310,7 +2310,7 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
 
   hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
-  memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address, sizeof (h->ip4_over_ethernet[0].ethernet));
+  clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address, sizeof (h->ip4_over_ethernet[0].ethernet));
 
   h->ip4_over_ethernet[0].ip4 = src[0];
   h->ip4_over_ethernet[1].ip4 = dst[0];
