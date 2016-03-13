@@ -217,7 +217,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
                        unformat_ip4_address, &ip4))
         {
           data = vec_new(u8, 4);
-          memcpy(data, ip4.as_u8, 4);
+          clib_memcpy(data, ip4.as_u8, 4);
           r = ikev2_set_profile_id(vm, name, (u8) id_type, data, /*local*/ 1);
           goto done;
         }
@@ -242,7 +242,7 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
                        unformat_ip4_address, &ip4))
         {
           data = vec_new(u8, 4);
-          memcpy(data, ip4.as_u8, 4);
+          clib_memcpy(data, ip4.as_u8, 4);
           r = ikev2_set_profile_id(vm, name, (u8) id_type, data, /*remote*/ 0);
           goto done;
         }

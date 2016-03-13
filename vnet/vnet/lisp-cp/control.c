@@ -894,7 +894,7 @@ get_local_iface_ip_for_dst (lisp_cp_main_t *lcm, ip_address_t * dst,
     }
   else if (l6)
     {
-      memcpy (&ip_addr_v6(sloc), l6, sizeof(*l6));
+      clib_memcpy (&ip_addr_v6(sloc), l6, sizeof(*l6));
       ip_addr_version(sloc) = IP6;
     }
   else
@@ -1069,9 +1069,9 @@ get_src_and_dst (void *hdr, ip_address_t * src, ip_address_t *dst)
   else
     {
       ip6 = hdr;
-      memcpy (&ip_addr_v6(src), &ip6->src_address, sizeof(ip6->src_address));
+      clib_memcpy (&ip_addr_v6(src), &ip6->src_address, sizeof(ip6->src_address));
       ip_addr_version(src) = IP6;
-      memcpy (&ip_addr_v6(dst), &ip6->dst_address, sizeof(ip6->dst_address));
+      clib_memcpy (&ip_addr_v6(dst), &ip6->dst_address, sizeof(ip6->dst_address));
       ip_addr_version(dst) = IP6;
     }
 }
@@ -1132,7 +1132,7 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               lisp_cp_lookup_trace_t *tr = vlib_add_trace (vm, node, p0,
                                                           sizeof(*tr));
               gid_address_copy (&tr->dst_eid, &dst);
-              memcpy (&tr->map_resolver_ip,
+              clib_memcpy (&tr->map_resolver_ip,
                       vec_elt_at_index(lcm->map_resolvers, 0),
                       sizeof(ip_address_t));
             }

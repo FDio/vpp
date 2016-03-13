@@ -70,7 +70,7 @@ static clib_error_t * elf_set_interpreter (elf_main_t * em, char * interp)
 
   /* Put in new null terminated string. */
   memset (s->contents, 0, vec_len (s->contents));
-  memcpy (s->contents, interp, strlen (interp));
+  clib_memcpy (s->contents, interp, strlen (interp));
 
   return 0;
 }

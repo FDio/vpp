@@ -337,7 +337,7 @@ _ip6_map_t_icmp (map_domain_t *d, vlib_buffer_t *p, u8 *error)
 
     //Move up icmp header
     ip4 = (ip4_header_t *) u8_ptr_add(inner_l4, - 2 * sizeof(*ip4) - 8);
-    memcpy(u8_ptr_add(inner_l4, - sizeof(*ip4) - 8), icmp, 8);
+    clib_memcpy(u8_ptr_add(inner_l4, - sizeof(*ip4) - 8), icmp, 8);
     icmp = (icmp46_header_t *) u8_ptr_add(inner_l4, - sizeof(*ip4) - 8);
   } else {
     //Only one header to translate

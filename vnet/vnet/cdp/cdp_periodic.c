@@ -34,7 +34,7 @@ static void add_device_name_tlv (vnet_hw_interface_t *hw, u8 **t0p)
 
     t->t = htons(CDP_TLV_device_name);
     t->l = htons(3 + sizeof (*t));
-    memcpy (&t->v, "VPP", 3);
+    clib_memcpy (&t->v, "VPP", 3);
     
     *t0p += ntohs(t->l);
 }
@@ -45,7 +45,7 @@ static void add_port_id_tlv (vnet_hw_interface_t *hw, u8 **t0p)
 
     t->t = htons(CDP_TLV_port_id);
     t->l = htons(vec_len(hw->name) + sizeof (*t));
-    memcpy (&t->v, hw->name, vec_len (hw->name));
+    clib_memcpy (&t->v, hw->name, vec_len (hw->name));
     *t0p += ntohs(t->l);
 }
 
@@ -55,7 +55,7 @@ static void add_version_tlv (vnet_hw_interface_t *hw, u8 **t0p)
 
     t->t = htons(CDP_TLV_version);
     t->l = htons(12 + sizeof (*t));
-    memcpy (&t->v, "VPP Software", 12);
+    clib_memcpy (&t->v, "VPP Software", 12);
     *t0p += ntohs(t->l);
 }
 
@@ -65,7 +65,7 @@ static void add_platform_tlv (vnet_hw_interface_t *hw, u8 **t0p)
 
     t->t = htons(CDP_TLV_platform);
     t->l = htons(2 + sizeof (*t));
-    memcpy (&t->v, "SW", 2);
+    clib_memcpy (&t->v, "SW", 2);
     *t0p += ntohs(t->l);
 }
 
@@ -78,7 +78,7 @@ static void add_capability_tlv (vnet_hw_interface_t *hw, u8 **t0p)
     t->l = htons(4 + sizeof (*t));
     capabilities = CDP_ROUTER_DEVICE;
     capabilities = htonl (capabilities);
-    memcpy (&t->v, &capabilities, sizeof (capabilities));
+    clib_memcpy (&t->v, &capabilities, sizeof (capabilities));
     *t0p += ntohs(t->l);
 }
 
@@ -122,7 +122,7 @@ send_ethernet_hello (cdp_main_t *cm, cdp_neighbor_t *n, int count)
         /* Add the interface's ethernet source address */
         hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
         
-	memcpy (h0->ethernet.src_address, hw->hw_address, 
+	clib_memcpy (h0->ethernet.src_address, hw->hw_address, 
                 vec_len (hw->hw_address));
         
         t0 = (u8 *) &h0->cdp.data;
@@ -250,7 +250,7 @@ send_srp_hello (cdp_main_t *cm, cdp_neighbor_t *n, int count)
         add_tlvs (cm, hw, &t0);
         
         /* Add the interface's ethernet source address */
-	memcpy (h0->ethernet.src_address, hw->hw_address, 
+	clib_memcpy (h0->ethernet.src_address, hw->hw_address, 
                 vec_len (hw->hw_address));
 
         /* add the cdp packet checksum */

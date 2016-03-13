@@ -240,7 +240,7 @@ static int unix_cli_line_edit (unix_main_t * um, unix_cli_file_t * cf)
               prev = cf->command_history [cf->excursion];
               vec_validate (cf->current_command, vec_len(prev)-1);
 
-              memcpy (cf->current_command, prev, vec_len(prev));
+              clib_memcpy (cf->current_command, prev, vec_len(prev));
               _vec_len (cf->current_command) = vec_len(prev);
               unix_cli_add_pending_output (uf, cf, cf->current_command,
                                            vec_len (cf->current_command));
@@ -271,7 +271,7 @@ static int unix_cli_line_edit (unix_main_t * um, unix_cli_file_t * cf)
           unix_cli_add_pending_output (uf, cf, (u8 *) "\b\b  \b\b\r\n", 8);
 
           vec_validate (cf->input_vector, vec_len(cf->current_command)-1);
-          memcpy (cf->input_vector, cf->current_command, 
+          clib_memcpy (cf->input_vector, cf->current_command, 
                   vec_len(cf->current_command));
           _vec_len(cf->input_vector) = _vec_len (cf->current_command);
 
@@ -342,7 +342,7 @@ static int unix_cli_line_edit (unix_main_t * um, unix_cli_file_t * cf)
 
                   vec_validate (cf->current_command, vec_len(item)-1);
 
-                  memcpy (cf->current_command, item, vec_len(item));
+                  clib_memcpy (cf->current_command, item, vec_len(item));
                   _vec_len (cf->current_command) = vec_len(item);
                   unix_cli_add_pending_output (uf, cf, cf->current_command,
                                                vec_len (cf->current_command));

@@ -169,7 +169,7 @@ void vlib_register_errors (vlib_main_t * vm,
 
   l = vec_len (em->error_strings_heap);
 
-  memcpy (vec_elt_at_index (em->error_strings_heap, n->error_heap_index),
+  clib_memcpy (vec_elt_at_index (em->error_strings_heap, n->error_heap_index),
 	  error_strings,
 	  n_errors * sizeof (error_strings[0]));
 
@@ -179,7 +179,7 @@ void vlib_register_errors (vlib_main_t * vm,
 
   /* Zero counters for re-registrations of errors. */
   if (n->error_heap_index + n_errors <= vec_len (em->counters_last_clear))
-    memcpy (em->counters + n->error_heap_index,
+    clib_memcpy (em->counters + n->error_heap_index,
 	    em->counters_last_clear + n->error_heap_index,
 	    n_errors * sizeof (em->counters[0]));
   else

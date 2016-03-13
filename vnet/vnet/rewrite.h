@@ -97,7 +97,7 @@ vnet_rewrite_set_data_internal (vnet_rewrite_header_t * rw,
   ASSERT ((data_bytes >= 0) && (data_bytes < max_size));
 
   rw->data_bytes = data_bytes;
-  memcpy (rw->data + max_size - data_bytes, data, data_bytes);
+  clib_memcpy (rw->data + max_size - data_bytes, data, data_bytes);
   memset (rw->data, 0xfe, max_size - data_bytes);
 }
 
@@ -152,7 +152,7 @@ _vnet_rewrite_one_header (vnet_rewrite_header_t * h0,
       eh_copy_t * s, * d;
       s = (eh_copy_t *)(h0->data + max_size - sizeof (eh_copy_t));
       d = (eh_copy_t *)(((u8 *)packet0) - sizeof (eh_copy_t));
-      __builtin_memcpy (d, s, sizeof (eh_copy_t));
+      clib_memcpy (d, s, sizeof (eh_copy_t));
       return;
     }
       
@@ -205,10 +205,10 @@ _vnet_rewrite_two_headers (vnet_rewrite_header_t * h0,
       eh_copy_t * s0, * d0, * s1, * d1;
       s0 = (eh_copy_t *)(h0->data + max_size - sizeof (eh_copy_t));
       d0 = (eh_copy_t *)(((u8 *)packet0) - sizeof (eh_copy_t));
-      __builtin_memcpy (d0, s0, sizeof (eh_copy_t));
+      clib_memcpy (d0, s0, sizeof (eh_copy_t));
       s1 = (eh_copy_t *)(h1->data + max_size - sizeof (eh_copy_t));
       d1 = (eh_copy_t *)(((u8 *)packet1) - sizeof (eh_copy_t));
-      __builtin_memcpy (d1, s1, sizeof (eh_copy_t));
+      clib_memcpy (d1, s1, sizeof (eh_copy_t));
       return;
     }
 

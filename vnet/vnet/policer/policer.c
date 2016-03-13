@@ -287,8 +287,8 @@ configure_policer_command_fn (vlib_main_t * vm,
 
       ASSERT (cp - pm->configs == pp - pm->policer_templates);
 
-      memcpy (cp, &c, sizeof (*cp));
-      memcpy (pp, &test_policer, sizeof (*pp));
+      clib_memcpy (cp, &c, sizeof (*cp));
+      clib_memcpy (pp, &test_policer, sizeof (*pp));
 
       hash_set_mem (pm->policer_config_by_name, name, cp - pm->configs);
     }

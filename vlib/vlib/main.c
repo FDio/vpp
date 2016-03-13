@@ -1463,10 +1463,10 @@ static void vlib_main_loop (vlib_main_t * vm)
 		  void * data;
 		  data = vlib_process_signal_event_helper (nm, n, p, te->event_type_index, te->n_data_elts, te->n_data_elt_bytes);
 		  if (te->n_data_bytes < sizeof (te->inline_event_data))
-		    memcpy (data, te->inline_event_data, te->n_data_bytes);
+		    clib_memcpy (data, te->inline_event_data, te->n_data_bytes);
 		  else
 		    {
-		      memcpy (data, te->event_data_as_vector, te->n_data_bytes);
+		      clib_memcpy (data, te->event_data_as_vector, te->n_data_bytes);
 		      vec_free (te->event_data_as_vector);
 		    }
 		  pool_put (nm->signal_timed_event_data_pool, te);

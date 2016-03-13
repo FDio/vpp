@@ -182,8 +182,8 @@ pkt_push_ipv6 (vlib_main_t * vm, vlib_buffer_t *b, ip6_address_t *src,
 //    ip6h->ip6_vfc = (IP6VERSION << 4);
 //    ip6h->ip6_nxt = proto;
 //    ip6h->ip6_plen = clib_host_to_net_u16(len);
-//    memcpy(ip6h->ip6_src.s6_addr, src->s6_addr, sizeof(struct in6_addr));
-//    memcpy(ip6h->ip6_dst.s6_addr, dst->s6_addr, sizeof(struct in6_addr));
+//    clib_memcpy(ip6h->ip6_src.s6_addr, src->s6_addr, sizeof(struct in6_addr));
+//    clib_memcpy(ip6h->ip6_dst.s6_addr, dst->s6_addr, sizeof(struct in6_addr));
 //    return(ip6h);
 }
 

@@ -1646,7 +1646,7 @@ void spp_api_cnat_generic_command_request_t_handler
         case CNAT_DEBUG_GENERIC_COMMAND_READ_MEM:
 	    start_locn = spp_net_to_host_byte_order_32(&mp->params[1]);
 	    num_bytes  = spp_net_to_host_byte_order_32(&mp->params[2]);
-	    memcpy(&(resp_ptr->raw_data[0]), (u8 *) start_locn, num_bytes);
+	    clib_memcpy(&(resp_ptr->raw_data[0]), (u8 *) start_locn, num_bytes);
 	    resp_ptr->num_bytes = spp_host_to_net_byte_order_32(num_bytes);
 
 #ifdef SHOW_DEBUG
@@ -1672,7 +1672,7 @@ void spp_api_cnat_generic_command_request_t_handler
 		return;
 	    }
 
-	    memcpy((u8 *) start_locn, &(mp->params[3]), num_bytes);
+	    clib_memcpy((u8 *) start_locn, &(mp->params[3]), num_bytes);
 	    resp_ptr->num_bytes = 0;
 	    break;
 

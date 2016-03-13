@@ -301,7 +301,7 @@ clib_error_t * vl_socket_read_ready (unix_file_t * uf)
             if (msg_buffer == socket_main.input_buffer) {
                 ASSERT(vec_len(rp->unprocessed_input) == 0);
                 vec_validate (rp->unprocessed_input, vec_len (msg_buffer)-1);
-                memcpy (rp->unprocessed_input, msg_buffer, vec_len(msg_buffer));
+                clib_memcpy (rp->unprocessed_input, msg_buffer, vec_len(msg_buffer));
                 _vec_len (rp->unprocessed_input) = vec_len (msg_buffer);
             }
             _vec_len(socket_main.input_buffer) = save_input_buffer_length;

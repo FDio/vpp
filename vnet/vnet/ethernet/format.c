@@ -294,7 +294,7 @@ unformat_ethernet_header (unformat_input_t * input, va_list * args)
     u32 n_bytes = sizeof (e[0]) + n_vlan * sizeof (m->vlan[0]);
 
     vec_add2 (*result, p, n_bytes);
-    memcpy (p, m, n_bytes);
+    clib_memcpy (p, m, n_bytes);
   }
   
   return 1;

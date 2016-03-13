@@ -339,7 +339,7 @@ static void register_node (vlib_main_t * vm,
     {
       vec_resize (n->runtime_data, r->runtime_data_bytes);
       if (r->runtime_data)
-	memcpy (n->runtime_data, r->runtime_data, r->runtime_data_bytes);
+	clib_memcpy (n->runtime_data, r->runtime_data, r->runtime_data_bytes);
     }
 
   vec_resize (n->next_node_names, r->n_next_nodes);
@@ -438,7 +438,7 @@ static void register_node (vlib_main_t * vm,
 
     ASSERT (vec_len (n->runtime_data) <= sizeof (rt->runtime_data));
     if (vec_len (n->runtime_data) > 0)
-      memcpy (rt->runtime_data, n->runtime_data, vec_len (n->runtime_data));
+      clib_memcpy (rt->runtime_data, n->runtime_data, vec_len (n->runtime_data));
 
     vec_free (n->runtime_data);
   }

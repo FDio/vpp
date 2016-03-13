@@ -818,7 +818,7 @@ add_relocation_table (elf_main_t * em, elf_section_t * s)
 	}
 
       vec_resize (t->relocations, vec_len (rs));
-      memcpy (t->relocations, rs, vec_bytes (t->relocations));
+      clib_memcpy (t->relocations, rs, vec_bytes (t->relocations));
       vec_free (rs);
     }
   else
@@ -1909,7 +1909,7 @@ elf_create_section_with_contents (elf_main_t * em,
   sts->contents = st;
 
   vec_resize (c, n_content_bytes);
-  memcpy (c, contents, n_content_bytes);
+  clib_memcpy (c, contents, n_content_bytes);
   s->contents = c;
 
   em->file_header.section_header_count += is_new_section && s->header.type != ~0;

@@ -480,7 +480,7 @@ ip6_get_route (ip6_main_t * im,
   BVT(clib_bihash_kv) kv, value;
 
   ASSERT (address_length < ARRAY_LEN (im->fib_masks));
-  memcpy (&masked_address, address, sizeof (masked_address));
+  clib_memcpy (&masked_address, address, sizeof (masked_address));
   ip6_address_mask (&masked_address, &im->fib_masks[address_length]);
 
   kv.key[0] = masked_address.as_u64[0];
@@ -1253,7 +1253,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
           t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
 	  t0->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
                              vnet_buffer(b0)->sw_if_index[VLIB_RX]);
-	  memcpy (t0->packet_data,
+	  clib_memcpy (t0->packet_data,
 		  vlib_buffer_get_current (b0),
 		  sizeof (t0->packet_data));
 	}
@@ -1264,7 +1264,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
           t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
 	  t1->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
                              vnet_buffer(b1)->sw_if_index[VLIB_RX]);
-	  memcpy (t1->packet_data,
+	  clib_memcpy (t1->packet_data,
 		  vlib_buffer_get_current (b1),
 		  sizeof (t1->packet_data));
 	}
@@ -1289,7 +1289,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
           t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
 	  t0->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
                              vnet_buffer(b0)->sw_if_index[VLIB_RX]);
-	  memcpy (t0->packet_data,
+	  clib_memcpy (t0->packet_data,
 		  vlib_buffer_get_current (b0),
 		  sizeof (t0->packet_data));
 	}
@@ -1913,7 +1913,7 @@ ip6_discover_neighbor (vlib_main_t * vm,
 
 	    h0->neighbor.target_address = ip0->dst_address;
 
-	    memcpy (h0->link_layer_option.ethernet_address, 
+	    clib_memcpy (h0->link_layer_option.ethernet_address, 
                     hw_if0->hw_address, vec_len (hw_if0->hw_address));
 
             /* $$$$ appears we need this; why is the checksum non-zero? */
@@ -2018,7 +2018,7 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)
   h->ip.src_address = src[0];
   h->neighbor.target_address = dst[0];
 
-  memcpy (h->link_layer_option.ethernet_address, hi->hw_address, vec_len (hi->hw_address));
+  clib_memcpy (h->link_layer_option.ethernet_address, hi->hw_address, vec_len (hi->hw_address));
 
   h->neighbor.icmp.checksum = 
     ip6_tcp_udp_icmp_compute_checksum (vm, 0, &h->ip, &bogus_length);

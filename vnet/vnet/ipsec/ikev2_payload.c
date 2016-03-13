@@ -171,7 +171,7 @@ ikev2_payload_add_sa(ikev2_payload_chain_t * c, ikev2_sa_proposal_t * proposals)
           tr->transform_len = clib_host_to_net_u16(sizeof(*tr) + vec_len(t->attrs));
 
           if (vec_len(t->attrs) > 0)
-            memcpy(tr->attributes, t->attrs, vec_len(t->attrs));
+            clib_memcpy(tr->attributes, t->attrs, vec_len(t->attrs));
 
           DBG_PLD("transform type %U transform_id %u last_or_more %u attr_size %u%s%U",
                   format_ikev2_transform_type, tr->transform_type,
@@ -238,7 +238,7 @@ ikev2_payload_add_delete(ikev2_payload_chain_t *c, ikev2_delete_t * d)
         {
           u8 * data = vec_new(u8, 4);
           u32 spi = clib_host_to_net_u32(d2->spi);
-          memcpy(data, &spi, 4);
+          clib_memcpy(data, &spi, 4);
           ikev2_payload_add_data(c, data);
           vec_free(data);
         }
@@ -422,7 +422,7 @@ ikev2_parse_notify_payload(ike_payload_header_t * ikep)
 
   if (n->spi_size == 4)
     {
-      memcpy(&spi, n->payload, n->spi_size);
+      clib_memcpy(&spi, n->payload, n->spi_size);
       r->spi = clib_net_to_host_u32(spi);
       DBG_PLD("spi %lx", r->spi);
     }

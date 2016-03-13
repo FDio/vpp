@@ -51,7 +51,7 @@ static void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
 
   /* pkt ip6 src address */
   vec_add2 (keybuf, copy_target, sizeof (ip6_address_t));
-  memcpy (copy_target, ip->src_address.as_u8, sizeof (ip6_address_t));
+  clib_memcpy (copy_target, ip->src_address.as_u8, sizeof (ip6_address_t));
 
   /* first segment */
   vec_add2 (keybuf, copy_target, 1);
@@ -75,7 +75,7 @@ static void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
   for (i = 0; i <= first_segment; i++)
     {
       vec_add2 (keybuf, copy_target, sizeof (ip6_address_t));
-      memcpy (copy_target, addrp->as_u8, sizeof (ip6_address_t));
+      clib_memcpy (copy_target, addrp->as_u8, sizeof (ip6_address_t));
       addrp++;
     }
 
@@ -380,7 +380,7 @@ sr_rewrite (vlib_main_t * vm,
               ip0 = vlib_buffer_get_current (b0);
               sr0 = (ip6_sr_header_t *) (ip0+1);
               /* $$$ tune */
-              memcpy (sr0, t0->rewrite, vec_len (t0->rewrite));
+              clib_memcpy (sr0, t0->rewrite, vec_len (t0->rewrite));
               /* Fix the next header chain */
               sr0->protocol = ip0->protocol;
               ip0->protocol = 43; /* routing extension header */
@@ -428,7 +428,7 @@ sr_rewrite (vlib_main_t * vm,
               vlib_buffer_advance (b1, - (word) vec_len(t1->rewrite));
               ip1 = vlib_buffer_get_current (b1);
               sr1 = (ip6_sr_header_t *) (ip1+1);
-              memcpy (sr1, t1->rewrite, vec_len (t1->rewrite));
+              clib_memcpy (sr1, t1->rewrite, vec_len (t1->rewrite));
               sr1->protocol = ip1->protocol;
               ip1->protocol = 43; 
               new_l1 = clib_net_to_host_u16(ip1->payload_length) +
@@ -459,26 +459,26 @@ sr_rewrite (vlib_main_t * vm,
               sr_rewrite_trace_t *tr = vlib_add_trace (vm, node, 
                                                        b0, sizeof (*tr));
               tr->tunnel_index = t0 - sm->tunnels;
-              memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+              clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
                       sizeof (tr->src.as_u8));
-              memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+              clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
                       sizeof (tr->dst.as_u8));
               tr->length = new_l0;
               tr->next_index = next0;
-              memcpy (tr->sr, sr0, sizeof (tr->sr));
+              clib_memcpy (tr->sr, sr0, sizeof (tr->sr));
             }
           if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED)) 
             {
               sr_rewrite_trace_t *tr = vlib_add_trace (vm, node, 
                                                        b1, sizeof (*tr));
               tr->tunnel_index = t1 - sm->tunnels;
-              memcpy (tr->src.as_u8, ip1->src_address.as_u8,
+              clib_memcpy (tr->src.as_u8, ip1->src_address.as_u8,
                       sizeof (tr->src.as_u8));
-              memcpy (tr->dst.as_u8, ip1->dst_address.as_u8,
+              clib_memcpy (tr->dst.as_u8, ip1->dst_address.as_u8,
                       sizeof (tr->dst.as_u8));
               tr->length = new_l1;
               tr->next_index = next1;
-              memcpy (tr->sr, sr1, sizeof (tr->sr));
+              clib_memcpy (tr->sr, sr1, sizeof (tr->sr));
             }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -554,7 +554,7 @@ sr_rewrite (vlib_main_t * vm,
               ip0 = vlib_buffer_get_current (b0);
               sr0 = (ip6_sr_header_t *) (ip0+1);
               /* $$$ tune */
-              memcpy (sr0, t0->rewrite, vec_len (t0->rewrite));
+              clib_memcpy (sr0, t0->rewrite, vec_len (t0->rewrite));
               /* Fix the next header chain */
               sr0->protocol = ip0->protocol;
               ip0->protocol = 43; /* routing extension header */
@@ -587,13 +587,13 @@ sr_rewrite (vlib_main_t * vm,
               sr_rewrite_trace_t *tr = vlib_add_trace (vm, node, 
                                                        b0, sizeof (*tr));
               tr->tunnel_index = t0 - sm->tunnels;
-              memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+              clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
                       sizeof (tr->src.as_u8));
-              memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+              clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
                       sizeof (tr->dst.as_u8));
               tr->length = new_l0;
               tr->next_index = next0;
-              memcpy (tr->sr, sr0, sizeof (tr->sr));
+              clib_memcpy (tr->sr, sr0, sizeof (tr->sr));
             }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -752,8 +752,8 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   /* remember the FIB index */
   tx_fib_index = p[0];
 
-  memcpy (key.src.as_u8, a->src_address->as_u8, sizeof (key.src));
-  memcpy (key.dst.as_u8, a->dst_address->as_u8, sizeof (key.dst));
+  clib_memcpy (key.src.as_u8, a->src_address->as_u8, sizeof (key.src));
+  clib_memcpy (key.dst.as_u8, a->dst_address->as_u8, sizeof (key.dst));
 
   p = hash_get_mem (sm->tunnel_index_by_key, &key);
 
@@ -790,7 +790,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   pool_get (sm->tunnels, t);
   memset (t, 0, sizeof (*t));
 
-  memcpy (&t->key, &key, sizeof (t->key));
+  clib_memcpy (&t->key, &key, sizeof (t->key));
   t->dst_mask_width = a->dst_mask_width;
   t->rx_fib_index = rx_fib_index;
   t->tx_fib_index = tx_fib_index;
@@ -848,7 +848,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
 
   vec_foreach (this_address, a->segments)
     {
-      memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
+      clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
       addrp--;
     }
 
@@ -857,12 +857,12 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
 
   vec_foreach (this_address, a->tags)
     {
-      memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
+      clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
       addrp++;
     }
 
   key_copy = vec_new (ip6_sr_tunnel_key_t, 1);
-  memcpy (key_copy, &key, sizeof (ip6_sr_tunnel_key_t));
+  clib_memcpy (key_copy, &key, sizeof (ip6_sr_tunnel_key_t));
   hash_set_mem (sm->tunnel_index_by_key, key_copy, t - sm->tunnels);
 
   memset(&adj, 0, sizeof (adj));
@@ -890,7 +890,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   
   vec_add1 (add_adj, ap[0]);
   
-  memcpy (aa.dst_address.as_u8, a->dst_address, sizeof (aa.dst_address.as_u8));
+  clib_memcpy (aa.dst_address.as_u8, a->dst_address, sizeof (aa.dst_address.as_u8));
   aa.dst_address_length = a->dst_mask_width;
 
   aa.flags = (a->is_del ? IP6_ROUTE_FLAG_DEL : IP6_ROUTE_FLAG_ADD);
@@ -947,13 +947,13 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
                          &next_address))
         {
           vec_add2 (segments, this_seg, 1);
-          memcpy (this_seg->as_u8, next_address.as_u8, sizeof (*this_seg));
+          clib_memcpy (this_seg->as_u8, next_address.as_u8, sizeof (*this_seg));
         }
       else if (unformat (input, "tag %U", unformat_ip6_address,
                          &tag))
         {
           vec_add2 (tags, this_tag, 1);
-          memcpy (this_tag->as_u8, tag.as_u8, sizeof (*this_tag));
+          clib_memcpy (this_tag->as_u8, tag.as_u8, sizeof (*this_tag));
         }
       else if (unformat (input, "clean"))
         flags |= IP6_SR_HEADER_FLAG_CLEANUP;
@@ -1300,11 +1300,11 @@ sr_fix_dst_addr (vlib_main_t * vm,
               if (next0 != SR_FIX_DST_ADDR_NEXT_DROP)
                 {
                   t->adj_index = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-                  memcpy (t->src.as_u8, ip0->src_address.as_u8,
+                  clib_memcpy (t->src.as_u8, ip0->src_address.as_u8,
                           sizeof (t->src.as_u8));
-                  memcpy (t->dst.as_u8, ip0->dst_address.as_u8,
+                  clib_memcpy (t->dst.as_u8, ip0->dst_address.as_u8,
                           sizeof (t->dst.as_u8));
-                  memcpy (t->sr, sr0, sizeof (t->sr));
+                  clib_memcpy (t->sr, sr0, sizeof (t->sr));
                 }
             }
 
@@ -1488,7 +1488,7 @@ static int sr_validate_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
 
   /* pkt ip6 src address */
   vec_add2 (keybuf, copy_target, sizeof (ip6_address_t));
-  memcpy (copy_target, ip->src_address.as_u8, sizeof (ip6_address_t));
+  clib_memcpy (copy_target, ip->src_address.as_u8, sizeof (ip6_address_t));
 
   /* last segment */
   vec_add2 (keybuf, copy_target, 1);
@@ -1512,7 +1512,7 @@ static int sr_validate_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
   for (i = 0; i <= first_segment; i++)
     {
       vec_add2 (keybuf, copy_target, sizeof (ip6_address_t));
-      memcpy (copy_target, addrp->as_u8, sizeof (ip6_address_t));
+      clib_memcpy (copy_target, addrp->as_u8, sizeof (ip6_address_t));
       addrp++;
     }
 
@@ -1699,15 +1699,15 @@ sr_local (vlib_main_t * vm,
             {
               sr_local_trace_t *tr = vlib_add_trace (vm, node, 
                                                      b0, sizeof (*tr));
-              memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+              clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
                       sizeof (tr->src.as_u8));
-              memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+              clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
                       sizeof (tr->dst.as_u8));
               tr->length = vlib_buffer_length_in_chain (vm, b0);
               tr->next_index = next0;
               tr->sr_valid = sr0 != 0;
               if (tr->sr_valid)
-                memcpy (tr->sr, sr0, sizeof (tr->sr));
+                clib_memcpy (tr->sr, sr0, sizeof (tr->sr));
             }
 
 	  b1 = vlib_get_buffer (vm, bi1);
@@ -1804,15 +1804,15 @@ sr_local (vlib_main_t * vm,
             {
               sr_local_trace_t *tr = vlib_add_trace (vm, node, 
                                                      b1, sizeof (*tr));
-              memcpy (tr->src.as_u8, ip1->src_address.as_u8,
+              clib_memcpy (tr->src.as_u8, ip1->src_address.as_u8,
                       sizeof (tr->src.as_u8));
-              memcpy (tr->dst.as_u8, ip1->dst_address.as_u8,
+              clib_memcpy (tr->dst.as_u8, ip1->dst_address.as_u8,
                       sizeof (tr->dst.as_u8));
               tr->length = vlib_buffer_length_in_chain (vm, b1);
               tr->next_index = next1;
               tr->sr_valid = sr1 != 0;
               if (tr->sr_valid)
-                memcpy (tr->sr, sr1, sizeof (tr->sr));
+                clib_memcpy (tr->sr, sr1, sizeof (tr->sr));
             }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -1930,15 +1930,15 @@ sr_local (vlib_main_t * vm,
             {
               sr_local_trace_t *tr = vlib_add_trace (vm, node, 
                                                      b0, sizeof (*tr));
-              memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+              clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
                       sizeof (tr->src.as_u8));
-              memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+              clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
                       sizeof (tr->dst.as_u8));
               tr->length = vlib_buffer_length_in_chain (vm, b0);
               tr->next_index = next0;
               tr->sr_valid = sr0 != 0;
               if (tr->sr_valid)
-                memcpy (tr->sr, sr0, sizeof (tr->sr));
+                clib_memcpy (tr->sr, sr0, sizeof (tr->sr));
             }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

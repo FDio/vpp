@@ -350,8 +350,8 @@ l2flood_node_fn (vlib_main_t * vm,
 		  ethernet_header_t * h0 = vlib_buffer_get_current (b0); 
                   t->sw_if_index = sw_if_index0;
                   t->bd_index = vnet_buffer(b0)->l2.bd_index;
-                  memcpy(t->src, h0->src_address, 6);
-                  memcpy(t->dst, h0->dst_address, 6);
+                  clib_memcpy(t->src, h0->src_address, 6);
+                  clib_memcpy(t->dst, h0->dst_address, 6);
                 }
               if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
                 {
@@ -359,8 +359,8 @@ l2flood_node_fn (vlib_main_t * vm,
 		  ethernet_header_t * h1 = vlib_buffer_get_current (b1); 
                   t->sw_if_index = sw_if_index1;
                   t->bd_index = vnet_buffer(b1)->l2.bd_index;
-                  memcpy(t->src, h1->src_address, 6);
-                  memcpy(t->dst, h1->dst_address, 6);
+                  clib_memcpy(t->src, h1->src_address, 6);
+                  clib_memcpy(t->dst, h1->dst_address, 6);
                 }
             }
 
@@ -406,8 +406,8 @@ l2flood_node_fn (vlib_main_t * vm,
 	      ethernet_header_t * h0 = vlib_buffer_get_current (b0); 
               t->sw_if_index = sw_if_index0;
               t->bd_index = vnet_buffer(b0)->l2.bd_index;
-              memcpy(t->src, h0->src_address, 6);
-              memcpy(t->dst, h0->dst_address, 6);
+              clib_memcpy(t->src, h0->src_address, 6);
+              clib_memcpy(t->dst, h0->dst_address, 6);
             }
 
           /* verify speculative enqueue, maybe switch current next frame */

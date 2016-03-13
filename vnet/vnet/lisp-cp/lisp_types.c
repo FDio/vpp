@@ -218,7 +218,7 @@ ip4_address_put (u8 * b, ip4_address_t * a)
 {
   *(u16 *)b = clib_host_to_net_u16(ip_version_to_iana_afi(IP4));
   u8 *p = b + sizeof (u16);
-  memcpy (p, a, sizeof(*a));
+  clib_memcpy (p, a, sizeof(*a));
   return ip4_address_size_to_put();
 }
 
@@ -227,7 +227,7 @@ ip6_address_put (u8 * b, ip6_address_t * a)
 {
   *(u16 *)b = clib_host_to_net_u16(ip_version_to_iana_afi(IP6));
   u8 *p = b + sizeof (u16);
-  memcpy (p, a, sizeof(*a));
+  clib_memcpy (p, a, sizeof(*a));
   return ip6_address_size_to_put();
 }
 
@@ -237,7 +237,7 @@ ip_address_put (u8 * b, ip_address_t * a)
   u32 len = ip_address_size (a);
   *(u16 *) b = clib_host_to_net_u16(ip_address_iana_afi (a));
   u8 * p = b + sizeof (u16);
-  memcpy (p, &ip_addr_addr (a), len);
+  clib_memcpy (p, &ip_addr_addr (a), len);
   return (len + sizeof (u16));
 }
 
@@ -246,7 +246,7 @@ ip_address_parse(void * offset, u16 iana_afi, ip_address_t *dst)
 {
   ip_addr_version(dst) = ip_iana_afi_to_version (iana_afi);
   u8 size = ip_version_to_size (ip_addr_version(dst));
-  memcpy (&ip_addr_addr(dst), offset + sizeof(u16), size);
+  clib_memcpy (&ip_addr_addr(dst), offset + sizeof(u16), size);
   return(sizeof(u16) + size);
 }
 
@@ -304,7 +304,7 @@ ip_prefix_length (void *a)
 void
 ip_prefix_copy (void * dst , void * src)
 {
-  memcpy (dst, src, sizeof (ip_prefix_t));
+  clib_memcpy (dst, src, sizeof (ip_prefix_t));
 }
 
 int
@@ -463,7 +463,7 @@ void
 locator_copy (locator_t * dst, locator_t * src)
 {
   /* TODO if gid become more complex, this will need to be changed! */
-  memcpy (dst, src, sizeof(*dst));
+  clib_memcpy (dst, src, sizeof(*dst));
 }
 
 u32

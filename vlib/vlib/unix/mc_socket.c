@@ -893,7 +893,7 @@ find_interface_ip4_address (char * if_name, u32 * ip4_address, u32 * mtu)
   }
 
   sa = (void *) &ifr.ifr_addr;
-  memcpy (ip4_address, &sa->sin_addr.s_addr, sizeof (ip4_address[0]));
+  clib_memcpy (ip4_address, &sa->sin_addr.s_addr, sizeof (ip4_address[0]));
 
   if (ioctl (fd, SIOCGIFMTU, &ifr) < 0)
     return -1;

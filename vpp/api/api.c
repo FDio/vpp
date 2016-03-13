@@ -600,7 +600,7 @@ void handle_ip4_arp_event (u32 pool_index)
     
     if (q->cursize < q->maxsize) {
         mp =  vl_msg_api_alloc (sizeof (*mp));
-        memcpy (mp, event, sizeof (*mp));
+        clib_memcpy (mp, event, sizeof (*mp));
         vl_msg_api_send_shmem (q, (u8 *)&mp);
     } else {
         static f64 last_time;
@@ -843,7 +843,7 @@ static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
                             ntohl(mp->next_hop_sw_if_index)))
         return VNET_API_ERROR_NO_MATCHING_INTERFACE;
     
-    memcpy (next_hop_address.data, mp->next_hop_address, 
+    clib_memcpy (next_hop_address.data, mp->next_hop_address, 
             sizeof (next_hop_address.data));
 
     /* Arp for the next_hop if necessary */
@@ -860,7 +860,7 @@ static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
             pool_get (vam->pending_routes, pr);
             pr->resolve_type = RESOLVE_IP4_ADD_DEL_ROUTE;
             adr = &pr->r;
-            memcpy (adr, mp, sizeof (*adr));
+            clib_memcpy (adr, mp, sizeof (*adr));
             /* recursion block, "just in case" */
             adr->resolve_if_needed = 0;
             adr->resolve_attempts = ntohl(mp->resolve_attempts);
@@ -910,7 +910,7 @@ static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
     }
 
     memset (&a, 0, sizeof (a));
-    memcpy (a.dst_address.data, mp->dst_address, sizeof (a.dst_address.data));
+    clib_memcpy (a.dst_address.data, mp->dst_address, sizeof (a.dst_address.data));
 
     a.dst_address_length = mp->dst_address_length;
 
@@ -1038,7 +1038,7 @@ static int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
                             ntohl(mp->next_hop_sw_if_index)))
         return VNET_API_ERROR_NO_MATCHING_INTERFACE;
 
-    memcpy (next_hop_address.as_u8, mp->next_hop_address, 
+    clib_memcpy (next_hop_address.as_u8, mp->next_hop_address, 
             sizeof (next_hop_address.as_u8));
 
     /* Arp for the next_hop if necessary */
@@ -1055,7 +1055,7 @@ static int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
             pool_get (vam->pending_routes, pr);
             adr = &pr->r;
             pr->resolve_type = RESOLVE_IP6_ADD_DEL_ROUTE;
-            memcpy (adr, mp, sizeof (*adr));
+            clib_memcpy (adr, mp, sizeof (*adr));
             /* recursion block, "just in case" */
             adr->resolve_if_needed = 0;
             adr->resolve_attempts = ntohl(mp->resolve_attempts);
@@ -1104,7 +1104,7 @@ static int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
     }
 
     memset (&a, 0, sizeof (a));
-    memcpy (a.dst_address.as_u8, mp->dst_address, sizeof (a.dst_address.as_u8));
+    clib_memcpy (a.dst_address.as_u8, mp->dst_address, sizeof (a.dst_address.as_u8));
 
     a.dst_address_length = mp->dst_address_length;
     
@@ -1212,7 +1212,7 @@ void api_config_default_ip_route (u8 is_ipv6, u8 is_add, u32 vrf_id,
     mp.is_ipv6 = is_ipv6;
     mp.next_hop_weight = 1;
 
-    memcpy (&mp.next_hop_address[0], next_hop_addr, 16);
+    clib_memcpy (&mp.next_hop_address[0], next_hop_addr, 16);
 
     if (is_ipv6)
         rv = ip6_add_del_route_t_handler (&mp);
@@ -2029,7 +2029,7 @@ static int mpls_ethernet_add_del_tunnel_2_t_handler
             pool_get (vam->pending_routes, pr);
             pr->resolve_type = RESOLVE_MPLS_ETHERNET_ADD_DEL;
             pme = &pr->t;
-            memcpy (pme, mp, sizeof (*pme));
+            clib_memcpy (pme, mp, sizeof (*pme));
             /* recursion block, "just in case" */
             pme->resolve_if_needed = 0;
             pme->resolve_attempts = ntohl(mp->resolve_attempts);
@@ -2253,8 +2253,8 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t *mp, vlib_mai
             }
         }
 
-        memcpy (&a.ethernet, mp->mac_address, 6);
-        memcpy (&a.ip4, mp->dst_address, 4);
+        clib_memcpy (&a.ethernet, mp->mac_address, 6);
+        clib_memcpy (&a.ip4, mp->dst_address, 4);
 
         if (mp->is_add) 
             rv = vnet_arp_set_ip4_over_ethernet (vnm, ntohl(mp->sw_if_index), 
@@ -2294,10 +2294,10 @@ vl_api_is_address_reachable_t_handler (vl_api_is_address_reachable_t *mp)
     }
 
     rmp = vl_msg_api_alloc (sizeof (*rmp));
-    memcpy (rmp, mp, sizeof (*rmp));
+    clib_memcpy (rmp, mp, sizeof (*rmp));
 
     sw_if_index = mp->next_hop_sw_if_index;
-    memcpy (&addr, mp->address, sizeof (addr));
+    clib_memcpy (&addr, mp->address, sizeof (addr));
     if (mp->is_ipv6) {
         lm = &im6->lookup_main;
         adj_index = 
@@ -2460,7 +2460,7 @@ static void send_sw_interface_details (vpe_api_main_t * am,
         
         ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
         ASSERT (sizeof (mp->l2_address) >= sizeof (ei->address));
-        memcpy (mp->l2_address, ei->address, sizeof (ei->address));
+        clib_memcpy (mp->l2_address, ei->address, sizeof (ei->address));
         mp->l2_address_length = ntohl(sizeof (ei->address));
     } else if (swif->sup_sw_if_index != swif->sw_if_index) {
         vnet_sub_interface_t *sub = &swif->sub;
@@ -2590,7 +2590,7 @@ void send_oam_event (oam_target_t * t)
         if (q) {
             mp = vl_msg_api_alloc (sizeof (*mp));
             mp->_vl_msg_id = ntohs (VL_API_OAM_EVENT);
-            memcpy (mp->dst_address, &t->dst_address, sizeof (mp->dst_address));
+            clib_memcpy (mp->dst_address, &t->dst_address, sizeof (mp->dst_address));
             mp->state = t->state;
             vl_msg_api_send_shmem (q, (u8 *)&mp);
         }
@@ -3001,11 +3001,11 @@ void dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
     mp->client_index = client_index;
     mp->pid = pid;
     mp->is_ipv6 = is_ipv6;
-    memcpy (&mp->hostname, hostname, vec_len(hostname));
+    clib_memcpy (&mp->hostname, hostname, vec_len(hostname));
     mp->hostname[vec_len(hostname) + 1] = '\n';
-    memcpy (&mp->host_address[0], host_address, 16);
-    memcpy (&mp->router_address[0], router_address, 16);
-    memcpy (&mp->host_mac[0], host_mac, 6);
+    clib_memcpy (&mp->host_address[0], host_address, 16);
+    clib_memcpy (&mp->router_address[0], router_address, 16);
+    clib_memcpy (&mp->host_mac[0], host_mac, 6);
 
     mp->_vl_msg_id = ntohs (VL_API_DHCP_COMPL_EVENT);
 
@@ -3286,7 +3286,7 @@ static void shmem_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
     
     vec_validate (shmem_vec, offset + buffer_bytes - 1);
 
-    memcpy (shmem_vec + offset, buffer, buffer_bytes);
+    clib_memcpy (shmem_vec + offset, buffer, buffer_bytes);
 
     svm_pop_heap (oldheap);
     pthread_mutex_unlock (&am->vlib_rp->mutex);
@@ -3388,12 +3388,12 @@ static void vl_api_sr_tunnel_add_del_t_handler
     this_address = (ip6_address_t *)mp->segs_and_tags;
     for (i = 0; i < mp->n_segments; i++) {
         vec_add2 (segments, seg, 1);
-        memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
+        clib_memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
         this_address++;
     }
     for (i = 0; i < mp->n_tags; i++) {
         vec_add2 (tags, tag, 1);
-        memcpy (tag->as_u8, this_address->as_u8, sizeof (*this_address));
+        clib_memcpy (tag->as_u8, this_address->as_u8, sizeof (*this_address));
         this_address++;
     }
 
@@ -3765,8 +3765,8 @@ static void send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
     mp->local_cookie[0] = s->local_cookie[0];
     mp->local_cookie[1] = s->local_cookie[1];
     mp->remote_cookie = s->remote_cookie;
-    memcpy(mp->client_address, &s->client_address, sizeof(s->client_address));
-    memcpy(mp->our_address, &s->our_address, sizeof(s->our_address));
+    clib_memcpy(mp->client_address, &s->client_address, sizeof(s->client_address));
+    clib_memcpy(mp->our_address, &s->our_address, sizeof(s->our_address));
     mp->l2_sublayer_present = s->l2_sublayer_present;
 
     vl_msg_api_send_shmem (q, (u8 *)&mp);
@@ -3785,7 +3785,7 @@ static void send_ip_address_details (vpe_api_main_t * am,
     mp->_vl_msg_id = ntohs(VL_API_IP_ADDRESS_DETAILS);
 
     if (is_ipv6) {
-        memcpy(&mp->ip, ip, sizeof(mp->ip));
+        clib_memcpy(&mp->ip, ip, sizeof(mp->ip));
     } else {
         u32 * tp = (u32 *)mp->ip;
         *tp = ntohl(*(u32*)ip);
@@ -4556,11 +4556,11 @@ vl_api_lisp_add_del_local_eid_t_handler(
     gid_address_type (&eid) = IP_PREFIX;
 
     if (mp->is_ipv6) {
-        memcpy(&ip_addr_v6(ip_eid), mp->ip_address,
+        clib_memcpy(&ip_addr_v6(ip_eid), mp->ip_address,
                sizeof(ip_addr_v6(ip_eid)));
         ip_addr_version(ip_eid) = IP6;
     } else {
-        memcpy(&ip_addr_v4(ip_eid), mp->ip_address,
+        clib_memcpy(&ip_addr_v4(ip_eid), mp->ip_address,
                sizeof(ip_addr_v4(ip_eid)));
         ip_addr_version(ip_eid) = IP4;
     }
@@ -4602,28 +4602,28 @@ lisp_gpe_add_del_fwd_entry_set_address(
     ip_eid = &ip_prefix_addr(prefp);
 
     if (mp->eid_is_ipv6) {
-        memcpy(&ip_addr_v6(ip_eid), mp->eid_ip_address,
+        clib_memcpy(&ip_addr_v6(ip_eid), mp->eid_ip_address,
                sizeof(ip_addr_v6(ip_eid)));
         ip_addr_version(ip_eid) = IP6;
     } else {
-        memcpy(&ip_addr_v4(ip_eid), mp->eid_ip_address,
+        clib_memcpy(&ip_addr_v4(ip_eid), mp->eid_ip_address,
                sizeof(ip_addr_v4(ip_eid)));
         ip_addr_version(ip_eid) = IP4;
     }
     ip_prefix_len(prefp) = mp->eid_prefix_len;
 
     if (mp->address_is_ipv6) {
-        memcpy(&ip_addr_v6(slocator), mp->source_ip_address,
+        clib_memcpy(&ip_addr_v6(slocator), mp->source_ip_address,
                sizeof(ip_addr_v6(slocator)));
         ip_addr_version(slocator) = IP6;
-        memcpy(&ip_addr_v6(dlocator), mp->destination_ip_address,
+        clib_memcpy(&ip_addr_v6(dlocator), mp->destination_ip_address,
                sizeof(ip_addr_v6(dlocator)));
         ip_addr_version(dlocator) = IP6;
     } else {
-        memcpy(&ip_addr_v4(slocator), mp->source_ip_address,
+        clib_memcpy(&ip_addr_v4(slocator), mp->source_ip_address,
                sizeof(ip_addr_v4(slocator)));
         ip_addr_version(slocator) = IP4;
-        memcpy(&ip_addr_v4(dlocator), mp->destination_ip_address,
+        clib_memcpy(&ip_addr_v4(dlocator), mp->destination_ip_address,
                sizeof(ip_addr_v4(dlocator)));
         ip_addr_version(dlocator) = IP4;
     }
@@ -4669,11 +4669,11 @@ vl_api_lisp_add_del_map_resolver_t_handler(
     ip_addr = &a->address;
 
     if (mp->is_ipv6) {
-        memcpy(&ip_addr_v6(ip_addr), mp->ip_address,
+        clib_memcpy(&ip_addr_v6(ip_addr), mp->ip_address,
                sizeof(ip_addr_v6(ip_addr)));
         ip_addr_version(ip_addr) = IP6;
     } else {
-        memcpy(&ip_addr_v4(ip_addr), mp->ip_address,
+        clib_memcpy(&ip_addr_v4(ip_addr), mp->ip_address,
                sizeof(ip_addr_v4(ip_addr)));
         ip_addr_version(ip_addr) = IP4;
     }
@@ -4771,13 +4771,13 @@ send_lisp_local_eid_table_details (mapping_t *mapit,
     switch (ip_prefix_version(ip_prefix)) {
         case IP4:
             rmp->eid_is_ipv6 = 0;
-            memcpy(rmp->eid_ip_address, &ip_prefix_v4(ip_prefix),
+            clib_memcpy(rmp->eid_ip_address, &ip_prefix_v4(ip_prefix),
                    sizeof(ip_prefix_v4(ip_prefix)));
             break;
 
         case IP6:
             rmp->eid_is_ipv6 = 1;
-            memcpy(rmp->eid_ip_address, &ip_prefix_v6(ip_prefix),
+            clib_memcpy(rmp->eid_ip_address, &ip_prefix_v6(ip_prefix),
                    sizeof(ip_prefix_v6(ip_prefix)));
             break;
 
@@ -4825,9 +4825,9 @@ send_lisp_gpe_tunnel_details (lisp_gpe_tunnel_t *tunnel,
     /*list_gpe_tunnel now support only IPv4*/
     rmp->is_ipv6 = 0;
     ip4 = &tunnel->src;
-    memcpy(rmp->source_ip, ip4, sizeof(*ip4));
+    clib_memcpy(rmp->source_ip, ip4, sizeof(*ip4));
     ip4 = &tunnel->dst;
-    memcpy(rmp->destination_ip, ip4, sizeof(*ip4));
+    clib_memcpy(rmp->destination_ip, ip4, sizeof(*ip4));
 
     rmp->encap_fib_id = htonl(tunnel->encap_fib_index);
     rmp->decap_fib_id = htonl(tunnel->decap_fib_index);
@@ -4878,12 +4878,12 @@ send_lisp_map_resolver_details (ip_address_t *ip,
     switch (ip_addr_version(ip)) {
         case IP4:
             rmp->is_ipv6 = 0;
-            memcpy(rmp->ip_address, &ip_addr_v4(ip), sizeof(ip_addr_v4(ip)));
+            clib_memcpy(rmp->ip_address, &ip_addr_v4(ip), sizeof(ip_addr_v4(ip)));
             break;
 
         case IP6:
             rmp->is_ipv6 = 1;
-            memcpy(rmp->ip_address, &ip_addr_v6(ip), sizeof(ip_addr_v6(ip)));
+            clib_memcpy(rmp->ip_address, &ip_addr_v6(ip), sizeof(ip_addr_v6(ip)));
             break;
 
         default:
@@ -4942,7 +4942,7 @@ static int arp_change_data_callback (u32 pool_index, u8 * new_mac,
 
     event = pool_elt_at_index (am->arp_events, pool_index);
     if (memcmp (&event->new_mac, new_mac, sizeof (event->new_mac))) {
-	memcpy (event->new_mac, new_mac, sizeof(event->new_mac));
+	clib_memcpy (event->new_mac, new_mac, sizeof(event->new_mac));
     } else { /* same mac */
 	if ((sw_if_index == event->sw_if_index) && 
 	    ((address == 0) || 
@@ -5093,10 +5093,10 @@ static void vl_api_ipsec_spd_add_del_entry_t_handler
     p.is_outbound = mp->is_outbound;
     p.is_ipv6 = mp->is_ipv6;
 
-    memcpy(&p.raddr.start, mp->remote_address_start, 16);
-    memcpy(&p.raddr.stop, mp->remote_address_stop, 16);
-    memcpy(&p.laddr.start, mp->local_address_start, 16);
-    memcpy(&p.laddr.stop, mp->local_address_stop, 16);
+    clib_memcpy(&p.raddr.start, mp->remote_address_start, 16);
+    clib_memcpy(&p.raddr.stop, mp->remote_address_stop, 16);
+    clib_memcpy(&p.laddr.start, mp->local_address_start, 16);
+    clib_memcpy(&p.laddr.stop, mp->local_address_stop, 16);
 
     p.protocol = mp->protocol;
     p.rport.start = ntohs(mp->remote_port_start);
@@ -5159,7 +5159,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
     }
     sa.crypto_alg = mp->crypto_algorithm;
     sa.crypto_key_len = mp->crypto_key_length;
-    memcpy(&sa.crypto_key, mp->crypto_key, sizeof(sa.crypto_key));
+    clib_memcpy(&sa.crypto_key, mp->crypto_key, sizeof(sa.crypto_key));
     /* check for unsupported integ-alg */
     if (mp->integrity_algorithm < IPSEC_INTEG_ALG_SHA1_96 ||
         mp->integrity_algorithm > IPSEC_INTEG_ALG_SHA_512_256) {
@@ -5170,12 +5170,12 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
     }
     sa.integ_alg = mp->integrity_algorithm;
     sa.integ_key_len = mp->integrity_key_length;
-    memcpy(&sa.integ_key, mp->integrity_key, sizeof(sa.integ_key));
+    clib_memcpy(&sa.integ_key, mp->integrity_key, sizeof(sa.integ_key));
     sa.use_esn = mp->use_extended_sequence_number;
     sa.is_tunnel = mp->is_tunnel;
     sa.is_tunnel_ip6 = mp->is_tunnel_ipv6;
-    memcpy(&sa.tunnel_src_addr, mp->tunnel_src_address, 16);
-    memcpy(&sa.tunnel_dst_addr, mp->tunnel_dst_address, 16);
+    clib_memcpy(&sa.tunnel_src_addr, mp->tunnel_src_address, 16);
+    clib_memcpy(&sa.tunnel_dst_addr, mp->tunnel_dst_address, 16);
 
     rv = ipsec_add_del_sa(vm, &sa, mp->is_add);
 #else
@@ -5221,7 +5221,7 @@ vl_api_ikev2_profile_set_auth_t_handler
     clib_error_t * error;
     u8 * tmp = format(0, "%s", mp->name);
     u8 * data = vec_new (u8, mp->data_len);
-    memcpy(data, mp->data, mp->data_len);
+    clib_memcpy(data, mp->data, mp->data_len);
     error = ikev2_set_profile_auth(vm, tmp, mp->auth_method, data, mp->is_hex);
     vec_free (tmp);
     vec_free (data);
@@ -5246,7 +5246,7 @@ vl_api_ikev2_profile_set_id_t_handler
     clib_error_t * error;
     u8 * tmp = format(0, "%s", mp->name);
     u8 * data = vec_new (u8, mp->data_len);
-    memcpy(data, mp->data, mp->data_len);
+    clib_memcpy(data, mp->data, mp->data_len);
     error = ikev2_set_profile_id(vm, tmp, mp->id_type, data, mp->is_local);
     vec_free (tmp);
     vec_free (data);
@@ -5372,11 +5372,11 @@ vl_api_map_domain_dump_t_handler
     rmp->ea_bits_len = d->ea_bits_len;
     rmp->psid_offset = d->psid_offset;
     rmp->psid_length = d->psid_length;
-    memcpy(rmp->ip4_prefix, &d->ip4_prefix, sizeof(rmp->ip4_prefix));
+    clib_memcpy(rmp->ip4_prefix, &d->ip4_prefix, sizeof(rmp->ip4_prefix));
     rmp->ip4_prefix_len = d->ip4_prefix_len;
-    memcpy(rmp->ip6_prefix, &d->ip6_prefix, sizeof(rmp->ip6_prefix));
+    clib_memcpy(rmp->ip6_prefix, &d->ip6_prefix, sizeof(rmp->ip6_prefix));
     rmp->ip6_prefix_len = d->ip6_prefix_len;
-    memcpy(rmp->ip6_src, &d->ip6_src, sizeof(rmp->ip6_src));
+    clib_memcpy(rmp->ip6_src, &d->ip6_src, sizeof(rmp->ip6_src));
     rmp->ip6_src_len = d->ip6_src_len;
     rmp->mtu = htons(d->mtu);
     rmp->is_translation = (d->flags & MAP_DOMAIN_TRANSLATION);
@@ -5419,7 +5419,7 @@ vl_api_map_rule_dump_t_handler
     memset(rmp, 0, sizeof(*rmp));
     rmp->_vl_msg_id = ntohs(VL_API_MAP_RULE_DETAILS);
     rmp->psid = htons(i);
-    memcpy(rmp->ip6_dst, &dst, sizeof(rmp->ip6_dst));
+    clib_memcpy(rmp->ip6_dst, &dst, sizeof(rmp->ip6_dst));
     vl_msg_api_send_shmem(q, (u8 *)&rmp);
   }
 }
@@ -5485,9 +5485,9 @@ static void vl_api_ipsec_sa_set_key_t_handler
     ipsec_sa_t sa;
     sa.id = ntohl(mp->sa_id);
     sa.crypto_key_len = mp->crypto_key_length;
-    memcpy(&sa.crypto_key, mp->crypto_key, sizeof(sa.crypto_key));
+    clib_memcpy(&sa.crypto_key, mp->crypto_key, sizeof(sa.crypto_key));
     sa.integ_key_len = mp->integrity_key_length;
-    memcpy(&sa.integ_key, mp->integrity_key, sizeof(sa.integ_key));
+    clib_memcpy(&sa.integ_key, mp->integrity_key, sizeof(sa.integ_key));
 
     rv = ipsec_set_sa_key(vm, &sa);
 #else

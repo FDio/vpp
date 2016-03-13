@@ -102,7 +102,7 @@ void vl_msg_api_trace(api_main_t *am, vl_api_trace_t *tp, void *msg)
     }
 
     vec_validate(msg_copy, cfgp->size - 1);
-    memcpy(msg_copy, msg, cfgp->size);
+    clib_memcpy(msg_copy, msg, cfgp->size);
     *this_trace = msg_copy;
 }
 
@@ -772,7 +772,7 @@ static void vl_msg_api_process_file (vlib_main_t *vm, u8 *filename,
 
         /* Copy the buffer (from the read-only mmap'ed file) */
         vec_validate (tmpbuf, size-1 + sizeof(uword));
-        memcpy (tmpbuf+sizeof(uword), msg, size);
+        clib_memcpy (tmpbuf+sizeof(uword), msg, size);
         memset (tmpbuf, 0xf, sizeof(uword));
 
         /* 
@@ -870,7 +870,7 @@ static void vl_msg_api_process_file (vlib_main_t *vm, u8 *filename,
     }
     
     if (saved_print_handlers) {
-        memcpy (am->msg_print_handlers, saved_print_handlers, 
+        clib_memcpy (am->msg_print_handlers, saved_print_handlers, 
                 vec_len(am->msg_print_handlers) * sizeof (void *));
         vec_free (saved_print_handlers);
     }

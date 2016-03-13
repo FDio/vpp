@@ -300,8 +300,8 @@ static void set_unset_ip6_neighbor_rpc
   
   args.sw_if_index = sw_if_index;
   args.is_add = is_add;
-  memcpy (&args.addr, a, sizeof (*a));
-  memcpy (args.link_layer_address, link_layer_addreess, 6);
+  clib_memcpy (&args.addr, a, sizeof (*a));
+  clib_memcpy (args.link_layer_address, link_layer_addreess, 6);
   
   vl_api_rpc_call_main_thread (ip6_neighbor_set_unset_rpc_callback,
                                (u8 *) &args, sizeof (args));
@@ -376,7 +376,7 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
     }
 
   /* Update time stamp and ethernet address. */
-  memcpy (n->link_layer_address, link_layer_address, n_bytes_link_layer_address);
+  clib_memcpy (n->link_layer_address, link_layer_address, n_bytes_link_layer_address);
   n->cpu_time_last_updated = clib_cpu_time_now ();
 
   /* Customer(s) waiting for this address to be resolved? */
@@ -722,7 +722,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	      eth_if0 = ethernet_get_interface (&ethernet_main, sw_if0->hw_if_index);
 	      if (eth_if0 && o0)
 		{
-                  memcpy (o0->ethernet_address, eth_if0->address, 6);
+                  clib_memcpy (o0->ethernet_address, eth_if0->address, 6);
 		  o0->header.type = 
                       ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address;
 		}
@@ -741,8 +741,8 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
                * interface MAC to SMAC */
               vlib_buffer_reset (p0);
               eth0 = vlib_buffer_get_current(p0);
-              memcpy(eth0->dst_address, eth0->src_address, 6);
-              memcpy(eth0->src_address, eth_if0->address, 6);
+              clib_memcpy(eth0->dst_address, eth0->src_address, 6);
+              clib_memcpy(eth0->src_address, eth_if0->address, 6);
 
               /* Setup input and output sw_if_index for packet */
               ASSERT(vnet_buffer(p0)->sw_if_index[VLIB_RX] == sw_if_index0);
@@ -1013,7 +1013,7 @@ icmp6_router_solicitation(vlib_main_t * vm,
 			  h.header.n_data_u64s = 1;
 
 			  /* copy ll address */
-			  memcpy(&h.ethernet_address[0], eth_if0->address,  6);
+			  clib_memcpy(&h.ethernet_address[0], eth_if0->address,  6);
 
 			  vlib_buffer_add_data (vm,
 						p0->free_list_index,
@@ -1081,7 +1081,7 @@ icmp6_router_solicitation(vlib_main_t * vm,
 				  }
 				h.unused  = 0;
 				
-				memcpy(&h.dst_address, &pr_info->prefix,  sizeof(ip6_address_t));
+				clib_memcpy(&h.dst_address, &pr_info->prefix,  sizeof(ip6_address_t));
 
 				payload_length += sizeof( icmp6_neighbor_discovery_prefix_information_option_t); 
 
@@ -1131,8 +1131,8 @@ icmp6_router_solicitation(vlib_main_t * vm,
                            * interface MAC to SMAC */
                           vlib_buffer_reset (p0);
                           eth0 = vlib_buffer_get_current(p0);
-                          memcpy(eth0->dst_address, eth0->src_address, 6);
-                          memcpy(eth0->src_address, eth_if0->address, 6);
+                          clib_memcpy(eth0->dst_address, eth0->src_address, 6);
+                          clib_memcpy(eth0->src_address, eth_if0->address, 6);
 			  next0 = is_dropped ? 
                               next0 : ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX;
                           vnet_buffer(p0)->sw_if_index[VLIB_TX] = sw_if_index0;
@@ -1568,7 +1568,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	 /* fill in radv_info for this interface that will be needed later */
 	 a->adv_link_mtu = hw_if0->max_l3_packet_bytes[VLIB_RX];
 	 
-	 memcpy (a->link_layer_address, eth_if0->address, 6);
+	 clib_memcpy (a->link_layer_address, eth_if0->address, 6);
 	 
 	 /* fill in default link-local address  (this may be overridden) */
 	 ip6_link_local_address_from_ethernet_address (&a->link_local_address, eth_if0->address);
@@ -1666,7 +1666,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	     mcast_group_info->type = 4;
 	     mcast_group_info->mcast_source_address_pool = 0;
 	     mcast_group_info->num_sources = 0;
-	     memcpy(&mcast_group_info->mcast_address, &addr, sizeof(ip6_address_t));
+	     clib_memcpy(&mcast_group_info->mcast_address, &addr, sizeof(ip6_address_t));
 	   } 
 	 
 	 ip6_set_reserved_multicast_address (&addr,
@@ -1688,7 +1688,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	     mcast_group_info->type = 4;
 	     mcast_group_info->mcast_source_address_pool = 0;
 	     mcast_group_info->num_sources = 0;
-	     memcpy(&mcast_group_info->mcast_address, &addr, sizeof(ip6_address_t));
+	     clib_memcpy(&mcast_group_info->mcast_address, &addr, sizeof(ip6_address_t));
 	   } 
 	 
 	 ip6_set_reserved_multicast_address (&addr,
@@ -1710,7 +1710,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	     mcast_group_info->type = 4;
 	     mcast_group_info->mcast_source_address_pool = 0;
 	     mcast_group_info->num_sources = 0;
-	     memcpy(&mcast_group_info->mcast_address, &addr, sizeof(ip6_address_t));
+	     clib_memcpy(&mcast_group_info->mcast_address, &addr, sizeof(ip6_address_t));
 	   } 
        }
    } 
@@ -1824,7 +1824,7 @@ ip6_neighbor_send_mldpv2_report(u32 sw_if_index)
 	rr.type = m->type;
 	rr.aux_data_len_u32s = 0;
 	rr.num_sources = clib_host_to_net_u16 (m->num_sources);
-	memcpy(&rr.mcast_addr, &m->mcast_address, sizeof(ip6_address_t));
+	clib_memcpy(&rr.mcast_addr, &m->mcast_address, sizeof(ip6_address_t));
 
 	num_addr_records++;
 
@@ -2270,7 +2270,7 @@ ip6_neighbor_ra_prefix(vlib_main_t * vm, u32 sw_if_index,
 	  memset(prefix, 0x0, sizeof(ip6_radv_prefix_t));
 	  
 	  prefix->prefix_len = prefix_len;
-	  memcpy(&prefix->prefix,  prefix_addr, sizeof(ip6_address_t));
+	  clib_memcpy(&prefix->prefix,  prefix_addr, sizeof(ip6_address_t));
 	  
 	  /* initialize default values */
 	  prefix->adv_on_link_flag = 1;      /* L bit set */
@@ -2775,7 +2775,7 @@ enable_ip6_interface(vlib_main_t * vm,
 		      md5_add (&m, &link_local_address, 16);
 		      md5_finish (&m,  digest);
 		      
-		      memcpy(&link_local_address, digest, 16);
+		      clib_memcpy(&link_local_address, digest, 16);
 		      
 		      radv_info->randomizer = link_local_address.as_u64[0];
 		      
@@ -3028,7 +3028,7 @@ ip6_neighbor_add_del_interface_address (ip6_main_t * im,
 	      mcast_group_info->type = 4;
 	      mcast_group_info->mcast_source_address_pool = 0;
 	      mcast_group_info->num_sources = 0;
-	      memcpy(&mcast_group_info->mcast_address, &a, sizeof(ip6_address_t));
+	      clib_memcpy(&mcast_group_info->mcast_address, &a, sizeof(ip6_address_t));
 	    } 
 	}
     }

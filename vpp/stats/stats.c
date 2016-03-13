@@ -666,7 +666,7 @@ static void vl_api_vnet_interface_counters_t_handler (
         if (q) {
             if (q_prev && (q_prev->cursize < q_prev->maxsize)) {
                 mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
-                memcpy(mp_copy, mp, mp_size);
+                clib_memcpy(mp_copy, mp, mp_size);
                 vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
                 mp = mp_copy;
             }
@@ -776,7 +776,7 @@ static void vl_api_vnet_ip4_fib_counters_t_handler (
         if (q) {
             if (q_prev && (q_prev->cursize < q_prev->maxsize)) {
                 mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
-                memcpy(mp_copy, mp, mp_size);
+                clib_memcpy(mp_copy, mp, mp_size);
                 vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
                 mp = mp_copy;
             }
@@ -809,7 +809,7 @@ static void vl_api_vnet_ip6_fib_counters_t_handler (
         if (q) {
             if (q_prev && (q_prev->cursize < q_prev->maxsize)) {
                 mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
-                memcpy(mp_copy, mp, mp_size);
+                clib_memcpy(mp_copy, mp, mp_size);
                 vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
                 mp = mp_copy;
             }

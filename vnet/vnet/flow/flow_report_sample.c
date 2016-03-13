@@ -191,7 +191,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                     goto flush;
                   b0 = vlib_get_buffer (vm, bi0);
                   
-                  memcpy (b0->data, fr->rewrite, vec_len (fr->rewrite));
+                  clib_memcpy (b0->data, fr->rewrite, vec_len (fr->rewrite));
                   b0->current_data = 0;
                   b0->current_length = vec_len (fr->rewrite);
                   b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -226,7 +226,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
 #define _(field,mask,item,length)                                       \
               if (clib_bitmap_get (fr->fields_to_send, field_index))    \
                 {                                                       \
-                  memcpy (b0->data + next_offset, &field,               \
+                  clib_memcpy (b0->data + next_offset, &field,          \
                           length);                                      \
                   next_offset += length;                                \
                 }                                                       \
@@ -237,7 +237,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
               /* Add packetTotalCount manually */
               {
                 u64 packets = clib_host_to_net_u64 (v->hits);
-                memcpy (b0->data + next_offset, &packets, sizeof (packets));
+                clib_memcpy (b0->data + next_offset, &packets, sizeof (packets));
                 next_offset += sizeof (packets);
               }
               records_this_buffer++;

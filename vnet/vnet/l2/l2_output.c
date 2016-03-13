@@ -192,16 +192,16 @@ l2output_node_fn (vlib_main_t * vm,
                     l2output_trace_t *t = 
                       vlib_add_trace (vm, node, b0, sizeof (*t));
                     t->sw_if_index = sw_if_index0;
-                    memcpy(t->src, h0->src_address, 6);
-                    memcpy(t->dst, h0->dst_address, 6);
+                    clib_memcpy(t->src, h0->src_address, 6);
+                    clib_memcpy(t->dst, h0->dst_address, 6);
                   }
                 if (b1->flags & VLIB_BUFFER_IS_TRACED) 
                   {
                     l2output_trace_t *t = 
                       vlib_add_trace (vm, node, b1, sizeof (*t));
                     t->sw_if_index = sw_if_index1;
-                    memcpy(t->src, h1->src_address, 6);
-                    memcpy(t->dst, h1->dst_address, 6);
+                    clib_memcpy(t->src, h1->src_address, 6);
+                    clib_memcpy(t->dst, h1->dst_address, 6);
                   }
               }
 
@@ -329,8 +329,8 @@ l2output_node_fn (vlib_main_t * vm,
                vlib_add_trace (vm, node, b0, sizeof (*t));
             t->sw_if_index = sw_if_index0;
             h0 = vlib_buffer_get_current (b0);
-            memcpy(t->src, h0->src_address, 6);
-            memcpy(t->dst, h0->dst_address, 6);
+            clib_memcpy(t->src, h0->src_address, 6);
+            clib_memcpy(t->dst, h0->dst_address, 6);
             }
 
           em->counters[node_counter_base_index + L2OUTPUT_ERROR_L2OUTPUT] += 1;

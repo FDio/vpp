@@ -180,7 +180,7 @@ af_packet_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* copy data */
 	      u32 bytes_to_copy = data_len > n_buffer_bytes ? n_buffer_bytes : data_len;
 	      b0->current_data = 0;
-	      memcpy (vlib_buffer_get_current (b0), (u8 *) tph + tph->tp_mac + offset, bytes_to_copy);
+	      clib_memcpy (vlib_buffer_get_current (b0), (u8 *) tph + tph->tp_mac + offset, bytes_to_copy);
 
 	      /* fill buffer header */
 	      b0->clone_count = 0;
@@ -222,7 +222,7 @@ af_packet_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->hw_if_index = apif->hw_if_index;
-	      memcpy(&tr->tph, tph, sizeof(struct tpacket2_hdr));
+	      clib_memcpy(&tr->tph, tph, sizeof(struct tpacket2_hdr));
 	    }
 	  /* enque and take next packet */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

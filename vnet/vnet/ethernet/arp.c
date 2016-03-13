@@ -278,7 +278,7 @@ ethernet_arp_sw_interface_up_down (vnet_main_t * vnm,
           ethernet_arp_ip4_over_ethernet_address_t delme;
 	  e = pool_elt_at_index (am->ip4_entry_pool, to_delete[i]);
 
-          memcpy (&delme.ethernet, e->ethernet_address, 6);
+          clib_memcpy (&delme.ethernet, e->ethernet_address, 6);
           delme.ip4.as_u32 = e->key.ip4_address.as_u32;
 
           vnet_arp_unset_ip4_over_ethernet (vnm, e->key.sw_if_index,
@@ -347,7 +347,7 @@ vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
   args.fib_index = fib_index;
   args.is_static = is_static;
   args.is_remove = 0;
-  memcpy (&args.a, a, sizeof (*a));
+  clib_memcpy (&args.a, a, sizeof (*a));
 
   vl_api_rpc_call_main_thread (set_ip4_over_ethernet_rpc_callback, 
                                (u8 *) &args, sizeof (args));
@@ -452,7 +452,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
     }
 
   /* Update time stamp and ethernet address. */
-  memcpy (e->ethernet_address, a->ethernet, sizeof (e->ethernet_address));
+  clib_memcpy (e->ethernet_address, a->ethernet, sizeof (e->ethernet_address));
   e->cpu_time_last_updated = clib_cpu_time_now ();
   if (is_static)
     e->flags |= ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC;
@@ -696,7 +696,7 @@ static void unset_random_arp_entry (void)
 
   e = pool_elt_at_index (am->ip4_entry_pool, index);
   
-  memcpy (&delme.ethernet, e->ethernet_address, 6);
+  clib_memcpy (&delme.ethernet, e->ethernet_address, 6);
   delme.ip4.as_u32 = e->key.ip4_address.as_u32;
   
   vnet_arp_unset_ip4_over_ethernet (vnm, e->key.sw_if_index,
@@ -724,7 +724,7 @@ static void arp_unnumbered (vlib_buffer_t * p0,
   ethernet_arp_header_t * arp0;
 
   /* Save the dst mac address */
-  memcpy(dst_mac_address, eth0->dst_address, sizeof (dst_mac_address));
+  clib_memcpy(dst_mac_address, eth0->dst_address, sizeof (dst_mac_address));
 
   /* Figure out which sw_if_index supplied the address */
   unnum_src_sw_if_index = ifa0->sw_if_index;
@@ -753,7 +753,7 @@ static void arp_unnumbered (vlib_buffer_t * p0,
           b0 = vlib_get_buffer (vm, buffers[i]);
 
           /* xerox (partially built) ARP pkt */
-          memcpy (b0->data, p0->data, p0->current_length + p0->current_data);
+          clib_memcpy (b0->data, p0->data, p0->current_length + p0->current_data);
           b0->current_data = p0->current_data;
           b0->current_length = p0->current_length;
           vnet_buffer(b0)->sw_if_index[VLIB_RX] =
@@ -776,7 +776,7 @@ static void arp_unnumbered (vlib_buffer_t * p0,
       vnet_buffer(b0)->sw_if_index[VLIB_TX] = hi->sw_if_index;
 
       /* Fix ARP pkt src address */
-      memcpy (arp0->ip4_over_ethernet[0].ethernet, hi->hw_address, 6);
+      clib_memcpy (arp0->ip4_over_ethernet[0].ethernet, hi->hw_address, 6);
 
       /* Build L2 encaps for this swif */
       header_size = sizeof (ethernet_header_t);
@@ -817,8 +817,8 @@ static void arp_unnumbered (vlib_buffer_t * p0,
       }
       
       /* Restore the original dst address, set src address */
-      memcpy (eth0->dst_address, dst_mac_address, sizeof (eth0->dst_address));
-      memcpy (eth0->src_address, hi->hw_address, sizeof (eth0->src_address));
+      clib_memcpy (eth0->dst_address, dst_mac_address, sizeof (eth0->dst_address));
+      clib_memcpy (eth0->src_address, hi->hw_address, sizeof (eth0->src_address));
       
       /* Transmit replicas */
       if (i > 0)
@@ -986,14 +986,14 @@ arp_input (vlib_main_t * vm,
 
 	  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
 
-	  memcpy (arp0->ip4_over_ethernet[0].ethernet, hw_if0->hw_address, 6);
+	  clib_memcpy (arp0->ip4_over_ethernet[0].ethernet, hw_if0->hw_address, 6);
 	  clib_mem_unaligned (&arp0->ip4_over_ethernet[0].ip4.data_u32, u32) = if_addr0->data_u32;
 
 	  /* Hardware must be ethernet-like. */
 	  ASSERT (vec_len (hw_if0->hw_address) == 6);
 
-	  memcpy (eth0->dst_address, eth0->src_address, 6);
-	  memcpy (eth0->src_address, hw_if0->hw_address, 6);
+	  clib_memcpy (eth0->dst_address, eth0->src_address, 6);
+	  clib_memcpy (eth0->src_address, hw_if0->hw_address, 6);
 
 	  /* Figure out how much to rewind current data from adjacency. */
           if (ifa0)
@@ -1390,7 +1390,7 @@ vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,
   args.sw_if_index = sw_if_index;
   args.fib_index = fib_index;
   args.is_remove = 1;
-  memcpy (&args.a, a, sizeof (*a));
+  clib_memcpy (&args.a, a, sizeof (*a));
 
   vl_api_rpc_call_main_thread (set_ip4_over_ethernet_rpc_callback, 
                                (u8 *) &args, sizeof (args));
@@ -1600,7 +1600,7 @@ vnet_arp_glean_add(u32 fib_index, void * next_hop_arg)
   e->flags = ETHERNET_ARP_IP4_ENTRY_FLAG_GLEAN;
 
   memset(&args, 0, sizeof(args));
-  memcpy(&add_adj, adj, sizeof(add_adj));
+  clib_memcpy(&add_adj, adj, sizeof(add_adj));
   add_adj.arp.next_hop.ip4.as_u32 = next_hop->as_u32; /* install neighbor /32 route */
   args.table_index_or_table_id = fib_index;
   args.flags = IP4_ROUTE_FLAG_FIB_INDEX | IP4_ROUTE_FLAG_ADD| IP4_ROUTE_FLAG_NEIGHBOR;
@@ -1828,7 +1828,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	    {
 	      u8 *t0 = vlib_add_trace (
 		  vm, node, p0, sizeof(ethernet_arp_input_trace_t));
-	      memcpy (t0, l3h0, sizeof(ethernet_arp_input_trace_t));
+	      clib_memcpy (t0, l3h0, sizeof(ethernet_arp_input_trace_t));
 	    }
 
 	  if (PREDICT_FALSE  (
@@ -1907,9 +1907,9 @@ arp_term_l2bd (vlib_main_t * vm,
 	  arp0->opcode = clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
 	  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
 	  arp0->ip4_over_ethernet[0].ip4.as_u32 = ip0;
-	  memcpy (arp0->ip4_over_ethernet[0].ethernet, macp0, 6);
-	  memcpy (eth0->dst_address, eth0->src_address, 6);
-	  memcpy (eth0->src_address, macp0, 6);
+	  clib_memcpy (arp0->ip4_over_ethernet[0].ethernet, macp0, 6);
+	  clib_memcpy (eth0->dst_address, eth0->src_address, 6);
+	  clib_memcpy (eth0->src_address, macp0, 6);
 	  n_replies_sent += 1;
 
 	  // For BVI, need to use l2-fwd node to send ARP reply as 

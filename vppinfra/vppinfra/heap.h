@@ -180,7 +180,7 @@ always_inline void * _heap_dup (void * v_old, uword v_bytes)
 		       HEAP_DATA_ALIGN);
   h_new = heap_header (v_new);
   heap_dup_header (h_old, h_new);
-  memcpy (v_new, v_old, v_bytes);
+  clib_memcpy (v_new, v_old, v_bytes);
   return v_new;
 }
 

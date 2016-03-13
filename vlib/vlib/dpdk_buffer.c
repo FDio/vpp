@@ -42,7 +42,6 @@
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_memory.h>
-#include <rte_memcpy.h>
 #include <rte_memzone.h>
 #include <rte_tailq.h>
 #include <rte_eal.h>
@@ -771,7 +770,7 @@ vlib_packet_template_buffer_init (vlib_main_t * vm,
     {
       vlib_buffer_t * b = vlib_get_buffer (vm, buffers[i]);
       ASSERT (b->current_length == vec_len (t->packet_data));
-      memcpy (vlib_buffer_get_current (b), t->packet_data, b->current_length);
+      clib_memcpy (vlib_buffer_get_current (b), t->packet_data, b->current_length);
     }
 }
 
@@ -812,7 +811,7 @@ vlib_packet_template_get_packet (vlib_main_t * vm,
   *bi_result = bi;
 
   b = vlib_get_buffer (vm, bi);
-  memcpy (vlib_buffer_get_current (b),
+  clib_memcpy (vlib_buffer_get_current (b),
           t->packet_data, vec_len(t->packet_data));
   b->current_length = vec_len(t->packet_data);
 
@@ -858,7 +857,7 @@ u32 vlib_buffer_add_data (vlib_main_t * vm,
       ASSERT (n_buffer_bytes >= b->current_length);
       n_left_this_buffer = n_buffer_bytes - (b->current_data + b->current_length);
       n = clib_min (n_left_this_buffer, n_left);
-      memcpy (vlib_buffer_get_current (b) + b->current_length, d, n);
+      clib_memcpy (vlib_buffer_get_current (b) + b->current_length, d, n);
       b->current_length += n;
       n_left -= n;
       if (n_left == 0)
@@ -900,7 +899,7 @@ vlib_buffer_chain_append_data_with_alloc(vlib_main_t *vm,
     }
 
     u16 len = (data_len > max)?max:data_len;
-    rte_memcpy(vlib_buffer_get_current (l) + l->current_length, data + copied, len);
+    clib_memcpy(vlib_buffer_get_current (l) + l->current_length, data + copied, len);
     vlib_buffer_chain_increase_length(first, l, len);
     data_len -= len;
     copied += len;

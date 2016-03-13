@@ -342,14 +342,14 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
    * Generate random MAC address for the interface
    */
   if (hwaddr) {
-    memcpy(addr, hwaddr, sizeof(addr));
+    clib_memcpy(addr, hwaddr, sizeof(addr));
   } else {
     f64 now = vlib_time_now(vm);
     u32 rnd;
     rnd = (u32) (now * 1e6);
     rnd = random_u32 (&rnd);
 
-    memcpy (addr+2, &rnd, sizeof(rnd));
+    clib_memcpy (addr+2, &rnd, sizeof(rnd));
     addr[0] = 2;
     addr[1] = 0xfe;
   }
@@ -949,7 +949,7 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
       (cmsg->cmsg_type == SCM_RIGHTS) &&
       (cmsg->cmsg_len - CMSG_LEN(0) <= VHOST_MEMORY_MAX_NREGIONS * sizeof(int))) {
         number_of_fds = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
-        memcpy(fds, CMSG_DATA(cmsg), number_of_fds * sizeof(int));
+        clib_memcpy(fds, CMSG_DATA(cmsg), number_of_fds * sizeof(int));
   }
 
   /* version 1, no reply bit set*/

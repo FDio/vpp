@@ -114,9 +114,9 @@ ip4_frag_do_fragment(vlib_main_t *vm, u32 pi, u32 **buffer, ip_frag_error_t *err
       fip4 = (ip4_header_t *)(vlib_buffer_get_current(b) + offset);
 
       //Copy offset and ip4 header
-      memcpy(b->data, packet, offset + sizeof(*ip4));
+      clib_memcpy(b->data, packet, offset + sizeof(*ip4));
       //Copy data
-      memcpy(((u8*)(fip4)) + sizeof(*fip4),
+      clib_memcpy(((u8*)(fip4)) + sizeof(*fip4),
              packet + offset + sizeof(*fip4) + ptr, len);
     }
     b->current_length = offset + len + sizeof(*fip4);
@@ -321,8 +321,8 @@ ip6_frag_do_fragment(vlib_main_t *vm, u32 pi, u32 **buffer, ip_frag_error_t *err
       b = vlib_get_buffer(vm, bi);
       vnet_buffer(b)->sw_if_index[VLIB_RX] = vnet_buffer(p)->sw_if_index[VLIB_RX];
       vnet_buffer(b)->sw_if_index[VLIB_TX] = vnet_buffer(p)->sw_if_index[VLIB_TX];
-      memcpy(vlib_buffer_get_current(b), vlib_buffer_get_current(p), headers_len);
-      memcpy(vlib_buffer_get_current(b) + headers_len, payload + ptr, len);
+      clib_memcpy(vlib_buffer_get_current(b), vlib_buffer_get_current(p), headers_len);
+      clib_memcpy(vlib_buffer_get_current(b) + headers_len, payload + ptr, len);
       frag_hdr = vlib_buffer_get_current(b) + headers_len - sizeof(*frag_hdr);
     } else {
       bi = pi;

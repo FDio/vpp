@@ -46,7 +46,6 @@
 #undef always_inline // dpdk and clib use conflicting always_inline macros.
 #include <rte_config.h>
 #include <rte_mbuf.h>
-#include <rte_memcpy.h>
 
 #if CLIB_DEBUG > 0
 #define always_inline static inline
@@ -151,7 +150,7 @@ vlib_buffer_contents (vlib_main_t * vm, u32 buffer_index, u8 * contents)
     {
       b = vlib_get_buffer (vm, buffer_index);
       l = b->current_length;
-      memcpy (contents + content_len, b->data + b->current_data, l);
+      clib_memcpy (contents + content_len, b->data + b->current_data, l);
       content_len += l;
       if (! (b->flags & VLIB_BUFFER_NEXT_PRESENT))
 	break;
@@ -493,9 +492,9 @@ vlib_buffer_chain_append_data(vlib_main_t *vm,
   ASSERT(n_buffer_bytes >= last->current_length + last->current_data);
   u16 len = clib_min(data_len, n_buffer_bytes - last->current_length - last->current_data);
 #if DPDK == 1
-  rte_memcpy(vlib_buffer_get_current (last) + last->current_length, data, len);
+  clib_memcpy(vlib_buffer_get_current (last) + last->current_length, data, len);
 #else
-  memcpy(vlib_buffer_get_current (last) + last->current_length, data, len);
+  clib_memcpy(vlib_buffer_get_current (last) + last->current_length, data, len);
 #endif
   vlib_buffer_chain_increase_length(first, last, len);
   return len;

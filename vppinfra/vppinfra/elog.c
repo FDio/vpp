@@ -263,7 +263,7 @@ static u8 * fixed_format (u8 * s, char * fmt, char * result, uword * result_len)
 
   ASSERT (*result_len > f - percent);
   l = clib_min (f - percent, *result_len - 1);
-  memcpy (result, percent, l);
+  clib_memcpy (result, percent, l);
   result[l] = 0;
 
  done:
@@ -836,7 +836,7 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 	  unserialize_cstring (m, &t);
 	  if (n_bytes == 0)
 	    n_bytes = strlen (t) + 1;
-	  memcpy (d, t, clib_min (n_bytes, vec_len (t)));
+	  clib_memcpy (d, t, clib_min (n_bytes, vec_len (t)));
 	  vec_free (t);
 	  break;
 	}

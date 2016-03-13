@@ -101,7 +101,7 @@ static clib_error_t * elf_set_interpreter (elf_main_t * em,
 
   /* Put in new null terminated string. */
   memset (s->contents, 0, vec_len (s->contents));
-  memcpy (s->contents, interp, strlen (interp));
+  clib_memcpy (s->contents, interp, strlen (interp));
 
   return 0;
 }
@@ -336,11 +336,11 @@ set_interpreter_rpath (elf_tool_main_t * tm)
     }
   
   if (tm->interpreter_offset)
-    memcpy (&idp[tm->interpreter_offset], tm->set_interpreter, 
+    clib_memcpy (&idp[tm->interpreter_offset], tm->set_interpreter, 
             strlen (tm->set_interpreter)+1);
 
   if (tm->rpath_offset)
-    memcpy (&idp[tm->rpath_offset], tm->set_rpath, 
+    clib_memcpy (&idp[tm->rpath_offset], tm->set_rpath, 
             strlen (tm->set_rpath)+1);
 
   /* Write the output file... */

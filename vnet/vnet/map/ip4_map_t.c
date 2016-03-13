@@ -263,7 +263,7 @@ _ip4_map_t_icmp (map_domain_t *d, vlib_buffer_t *p, u8 *error)
 
       vlib_buffer_advance(p, - 2*(sizeof(*ip6) - sizeof(*ip4)) - sizeof(*inner_frag));
       ip6 = vlib_buffer_get_current(p);
-      memcpy(u8_ptr_add(ip6, sizeof(*ip6) - sizeof(*ip4)), ip4, 20 + 8);
+      clib_memcpy(u8_ptr_add(ip6, sizeof(*ip6) - sizeof(*ip4)), ip4, 20 + 8);
       ip4 = (ip4_header_t *) u8_ptr_add(ip6, sizeof(*ip6) - sizeof(*ip4));
       icmp = (icmp46_header_t *) (ip4 + 1);
 
@@ -276,7 +276,7 @@ _ip4_map_t_icmp (map_domain_t *d, vlib_buffer_t *p, u8 *error)
     } else {
       vlib_buffer_advance(p, - 2*(sizeof(*ip6) - sizeof(*ip4)));
       ip6 = vlib_buffer_get_current(p);
-      memcpy(u8_ptr_add(ip6, sizeof(*ip6) - sizeof(*ip4)), ip4, 20 + 8);
+      clib_memcpy(u8_ptr_add(ip6, sizeof(*ip6) - sizeof(*ip4)), ip4, 20 + 8);
       ip4 = (ip4_header_t *) u8_ptr_add(ip6, sizeof(*ip6) - sizeof(*ip4));
       icmp = (icmp46_header_t *) u8_ptr_add(ip4, sizeof(*ip4));
       inner_ip6 = (ip6_header_t *) u8_ptr_add(inner_ip4, sizeof(*ip4) - sizeof(*ip6));

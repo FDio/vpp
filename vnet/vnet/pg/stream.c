@@ -258,8 +258,8 @@ void pg_edit_group_get_fixed_packet_data (pg_stream_t * s,
   vec_foreach (e, g->edits)
     do_edit (s, g, e, /* want_commit */ 0);
 
-  memcpy (packet_data, g->fixed_packet_data, vec_len (g->fixed_packet_data));
-  memcpy (packet_data_mask, g->fixed_packet_data_mask, vec_len (g->fixed_packet_data_mask));
+  clib_memcpy (packet_data, g->fixed_packet_data, vec_len (g->fixed_packet_data));
+  clib_memcpy (packet_data_mask, g->fixed_packet_data_mask, vec_len (g->fixed_packet_data_mask));
 }
 
 static void perform_fixed_edits (pg_stream_t * s)
