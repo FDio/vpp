@@ -40,6 +40,8 @@ u8 * vlib_node_serialize (vlib_node_main_t *nm, u8 * vector)
       cstemp = vec_dup(node->name);
       vec_add1(cstemp, 0);
       serialize_cstring (sm, (char *)cstemp);
+      serialize_likely_small_unsigned_integer (sm, node->error_heap_index);
+      serialize_likely_small_unsigned_integer (sm, node->n_errors);
       serialize_likely_small_unsigned_integer (sm, vec_len(node->next_nodes));
       for (j = 0; j < vec_len (node->next_nodes); j++)
         serialize_likely_small_unsigned_integer (sm, node->next_nodes[j]);
@@ -69,7 +71,8 @@ vlib_node_t ** vlib_node_unserialize (u8 * vector)
       vec_validate (node,0);
       nodes[i] = node;
       unserialize_cstring (sm, (char **)&node->name);
-
+      node->error_heap_index = unserialize_likely_small_unsigned_integer (sm);
+      node->n_errors = unserialize_likely_small_unsigned_integer (sm);
       nnexts = unserialize_likely_small_unsigned_integer (sm);
       if (nnexts > 0)
           vec_validate (node->next_nodes, nnexts-1);
