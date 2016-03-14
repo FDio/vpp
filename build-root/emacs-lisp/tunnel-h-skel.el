@@ -12,8 +12,8 @@ nil
 #ifndef included_vnet_" encap_stack "_h
 #define included_vnet_" encap_stack "_h
 
-#include <clib/error.h>
-#include <clib/hash.h>
+#include <vppinfra/error.h>
+#include <vppinfra/hash.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/l2/l2_input.h>
