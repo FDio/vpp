@@ -26,7 +26,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ip/format.h>
 
-vnet_hw_interface_class_t gre_hw_interface_class;
+extern vnet_hw_interface_class_t gre_hw_interface_class;
 
 typedef enum {
 #define gre_error(n,s) GRE_ERROR_##n,
@@ -96,7 +96,7 @@ format_function_t format_gre_header;
 format_function_t format_gre_header_with_length;
 
 extern vlib_node_registration_t gre_input_node;
-vnet_device_class_t gre_device_class;
+extern vnet_device_class_t gre_device_class;
 
 /* Parse gre protocol as 0xXXXX or protocol name.
    In either host or network byte order. */

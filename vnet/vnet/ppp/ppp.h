@@ -44,7 +44,7 @@
 #include <vnet/ppp/packet.h>
 #include <vnet/pg/pg.h>
 
-vnet_hw_interface_class_t ppp_hw_interface_class;
+extern vnet_hw_interface_class_t ppp_hw_interface_class;
 
 typedef enum {
 #define ppp_error(n,s) PPP_ERROR_##n,

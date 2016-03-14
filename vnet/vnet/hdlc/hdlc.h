@@ -44,7 +44,7 @@
 #include <vnet/hdlc/packet.h>
 #include <vnet/pg/pg.h>
 
-vnet_hw_interface_class_t hdlc_hw_interface_class;
+extern vnet_hw_interface_class_t hdlc_hw_interface_class;
 
 typedef enum {
 #define hdlc_error(n,s) HDLC_ERROR_##n,
