@@ -1798,16 +1798,33 @@ static void vl_api_get_node_graph_reply_t_handler_json
 {
     vat_main_t * vam = &vat_main;
     api_main_t * am = &api_main;
+    i32 retval = ntohl(mp->retval);
+    u8 * pvt_copy, * reply;
     void * oldheap;
-    vat_json_node_t node;
-    u8 * reply;
+    vlib_node_t * node;
+    vat_json_node_t jsnode;
+    int i;
+    
+    if (vam->async_mode) {
+        vam->async_errors += (retval < 0);
+    } else {
+        vam->retval = retval;
+        vam->result_ready = 1;
+    }
+
+    /* "Should never happen..." */
+    if (retval != 0)
+        return;
 
     /* $$$$ make this real? */
-    vat_json_init_object(&node);
-    vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
-    vat_json_object_add_uint(&node, "reply_in_shmem", mp->reply_in_shmem);
+    vat_json_init_object(&jsnode);
+    vat_json_object_add_int(&jsnode, "retval", ntohl(mp->retval));
+    vat_json_object_add_uint(&jsnode, "reply_in_shmem", mp->reply_in_shmem);
+    vat_json_print(vam->ofp, &jsnode);
+    vat_json_free(&jsnode);
 
     reply = (u8 *)(mp->reply_in_shmem);
+    pvt_copy = vec_dup (reply);
 
     /* Toss the shared-memory original... */
     pthread_mutex_lock (&am->vlib_rp->mutex);
@@ -1818,11 +1835,26 @@ static void vl_api_get_node_graph_reply_t_handler_json
     svm_pop_heap (oldheap);
     pthread_mutex_unlock (&am->vlib_rp->mutex);
 
-    vat_json_print(vam->ofp, &node);
-    vat_json_free(&node);
+    if (vam->graph_nodes) {
+        hash_free (vam->graph_node_index_by_name);
 
-    vam->retval = ntohl(mp->retval);
-    vam->result_ready = 1;
+        for (i = 0; i < vec_len (vam->graph_nodes); i++) {
+            node = vam->graph_nodes[i];
+            vec_free (node->name);
+            vec_free (node->next_nodes);
+            vec_free (node);
+        }
+        vec_free(vam->graph_nodes);
+    }
+
+    vam->graph_node_index_by_name = hash_create_string (0, sizeof(uword));
+    vam->graph_nodes = vlib_node_unserialize (pvt_copy);
+    vec_free (pvt_copy);
+
+    for (i = 0; i < vec_len (vam->graph_nodes); i++) {
+        node = vam->graph_nodes[i];
+        hash_set_mem (vam->graph_node_index_by_name, node->name, i);
+    }
 }
 
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
@@ -2051,7 +2083,9 @@ _(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
 _(COP_INTERFACE_ENABLE_DISABLE_REPLY, cop_interface_enable_disable_reply) \
 _(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply) \
 _(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
-_(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)
+_(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)       \
+_(ERROR_DETAILS, error_details)                                         \
+_(ERROR_LIST, error_list)
 
 /* M: construct, but don't yet send a message */
 
@@ -2627,6 +2661,91 @@ int api_sw_interface_dump (vat_main_t * vam)
     W;
 }
 
+int vl_api_error_details_t_handler (vl_api_error_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    fformat (vam->ofp, "%d: %s\n", ntohl(mp->error_index), mp->description);
+
+    /* make copy && append */
+    vec_add1(vam->errors, format (NULL, (char *)mp->description));
+
+    return 0;
+}
+
+int vl_api_error_details_t_handler_json (vl_api_error_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_int(node, "index", ntohl(mp->error_index));
+    vat_json_object_add_string_copy(node, "description", mp->description);
+
+    /* make copy && append */
+    vec_add1(vam->errors, format (NULL, (char *)mp->description));
+
+    return 0;
+}
+
+int vl_api_error_list_t_handler (vl_api_error_list_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+
+    if (vec_len (vam->graph_nodes) == 0) {
+        fformat (vam->ofp, "Node table empty, issue get_node_graph...\n");
+        return 0;
+    }
+
+    if (vec_len (vam->errors) == 0) {
+        fformat (vam->ofp, "Error table empty, issue errors_dump...\n");
+        return 0;
+    }
+
+    fformat (vam->ofp, "%s: %s [%d]\n", 
+             vam->graph_nodes[ntohl(mp->node_index)]->name,
+             vam->errors[ntohl(mp->error_index)],
+             ntohl(mp->error_count));
+
+    return 0;
+}
+
+int vl_api_error_list_t_handler_json (vl_api_error_list_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+
+    if (vec_len (vam->graph_nodes) == 0) {
+        fformat (vam->ofp, "Node table empty, issue get_node_graph...\n");
+        return 0;
+    }
+
+    if (vec_len (vam->errors) == 0) {
+        fformat (vam->ofp, "Error table empty, issue errors_dump...\n");
+        return 0;
+    }
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_string_copy(node, "node_name", 
+                                vam->graph_nodes[ntohl(mp->node_index)]->name);
+    vat_json_object_add_string_copy(node, "error_description", 
+                                vam->errors[ntohl(mp->error_index)]);
+    vat_json_object_add_int(node, "count", ntohl(mp->error_count));
+
+    return 0;
+}
+
 static int api_sw_interface_set_flags (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
@@ -2703,6 +2822,56 @@ static int api_sw_interface_clear_stats (vat_main_t * vam)
 
     /* Wait for a reply, return the good/bad news... */
     W;
+}
+
+int api_errors_dump (vat_main_t * vam)
+{
+    vl_api_errors_dump_t *mp;
+    f64 timeout;
+    int i;
+
+    /* free previous errors */
+    if (vam->errors) {
+        for (i = 0; i < vec_len(vam->errors); i++)
+            vec_free(vam->errors[i]);
+        vec_free(vam->errors[i]);
+    }
+
+    M(ERRORS_DUMP, errors_dump);
+    mp->context = 0;
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+
+    W;
+
+    return 0;
+}
+
+int api_fetch_errors (vat_main_t * vam)
+{
+    vl_api_errors_dump_t *mp;
+    f64 timeout;
+
+    M(FETCH_ERRORS, fetch_errors);
+    mp->context = 0;
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+
+    W;
+
+    return 0;
 }
 
 static int api_sw_interface_add_del_address (vat_main_t * vam)
@@ -9100,7 +9269,9 @@ _(cop_interface_enable_disable, "<intfc> | sw_if_index <nn> [disable]") \
 _(cop_whitelist_enable_disable, "<intfc> | sw_if_index <nn>\n"		\
   "fib-id <nn> [ip4][ip6][default]")					\
 _(get_node_graph, " ")                                                  \
-_(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")
+_(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")                \
+_(errors_dump,"")                                                       \
+_(fetch_errors,"")                                                      \
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

@@ -2862,3 +2862,49 @@ define sw_interface_clear_stats_reply {
     u32 context;
     i32 retval;
 };
+
+/** \brief Dump error index and description
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define errors_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply to errors_dump 
+    @param context - sender context which was passed in the request
+    @param retval - return code of the set flags request
+    @param error_index - error index in error_strings_heap
+    @param description - error description from error_strings_heap
+*/
+manual_java define error_details {
+    u32 context;
+    i32 retval;
+    u32 error_index;
+    u8  description[150];
+};
+
+/** \brief Fetch errors from all nodes
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define fetch_errors {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply to fetch_errors 
+    @param context - sender context which was passed in the request
+    @param retval - return code of the set flags request
+    @param node_index - index to table dumped by dump_node_table API command
+    @param error_index - index to table dumped by errors_dump API command
+    @param error_count - error counter
+*/
+manual_java define error_list {
+    u32 context;
+    i32 retval;
+    u32 node_index;
+    u32 error_index;
+    u64 error_count;
+};
