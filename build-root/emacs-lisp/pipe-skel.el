@@ -10,7 +10,7 @@ nil
 '(setq nstages (skeleton-read "Number of pipeline stages: "))
 "
 #include <vlib/vlib.h>
-#include <clib/error.h>
+#include <vppinfra/error.h>
 
 /*
  * Dump these counters via the \"show error\" CLI command 

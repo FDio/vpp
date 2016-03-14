@@ -10,8 +10,8 @@ nil
 '(setq encap-stack (replace-regexp-in-string "_" "-" encap_stack))
 '(setq ENCAP-STACK (upcase encap-stack))
 "
-#include <clib/error.h>
-#include <clib/hash.h>
+#include <vppinfra/error.h>
+#include <vppinfra/hash.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>

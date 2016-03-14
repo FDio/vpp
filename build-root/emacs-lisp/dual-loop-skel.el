@@ -11,14 +11,13 @@ nil
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
-#include <clib/error.h>
 
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
-#include <clib/hash.h>
-#include <clib/error.h>
-#include <clib/elog.h>
+#include <vppinfra/hash.h>
+#include <vppinfra/error.h>
+#include <vppinfra/elog.h>
 
 typedef struct {
   /* convenience */
