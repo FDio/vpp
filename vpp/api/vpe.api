@@ -2862,3 +2862,45 @@ define sw_interface_clear_stats_reply {
     u32 context;
     i32 retval;
 };
+
+/** \brief Dump error index and description
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define vlib_error_strings_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply to vlib_error_strings_dump 
+    @param context - sender context which was passed in the request
+    @param error_index - error index in error_strings_heap
+    @param description - error description from error_strings_heap
+*/
+manual_java define vlib_error_string_details {
+    u32 context;
+    u32 error_index;
+    u8  description[0];
+};
+
+/** \brief Fetch errors from all nodes
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define vlib_errors_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply to vlib_errors_dump 
+    @param context - sender context which was passed in the request
+    @param thread_id - thread index
+    @param num_errors - number of errors reported in this msg
+    @param data - [index0, counter0, index1, counter1....]
+*/
+manual_java define vlib_errors_details {
+    u32 context;
+    u32 thread_id;
+    u32 num_errors;
+    u64 data[0];
+};
