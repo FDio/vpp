@@ -213,6 +213,8 @@ _(WANT_INTERFACE_EVENTS, want_interface_events)                         \
 _(WANT_OAM_EVENTS, want_oam_events)                                     \
 _(OAM_ADD_DEL, oam_add_del)                                             \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                                 \
+_(VLIB_ERROR_STRINGS_DUMP, vlib_error_strings_dump)                     \
+_(VLIB_ERRORS_DUMP, vlib_errors_dump)                                   \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
@@ -2588,6 +2590,105 @@ static void vl_api_sw_interface_dump_t_handler (
     vec_free (name_string);
     vec_free (filter_string);
 }
+
+static void vl_api_vlib_error_strings_dump_t_handler (
+        vl_api_vlib_error_strings_dump_t *mp, vlib_main_t *vm)
+{
+    vlib_error_main_t * em = &vm->error_main;
+    vl_api_vlib_error_string_details_t *rmp;
+    unix_shared_memory_queue_t * q;
+    int length, ni;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+
+    for (ni = 0; ni < vec_len (em->error_strings_heap); ni++)
+    {
+        length = strlen((char *)em->error_strings_heap[ni]);
+
+        rmp = vl_msg_api_alloc_as_if_client(sizeof (*rmp) + length + 1);
+        rmp->_vl_msg_id = ntohs (VL_API_VLIB_ERROR_STRING_DETAILS);
+        rmp->error_index = ntohl(ni);
+
+        strncpy((char *)rmp->description,
+                (char *)em->error_strings_heap[ni],
+                length);
+        rmp->description[length] = '\0';   /* null character manually added */
+
+        /* Send to the main thread... */
+        vl_msg_api_send_shmem (q, (u8 *)&rmp);
+    }
+}
+
+#define ERROR_BATCH_SIZE 128
+static void vl_api_vlib_errors_dump_t_handler (
+        vl_api_vlib_errors_dump_t *mp, vlib_main_t *vm)
+{
+    vlib_error_main_t * em = &vm->error_main;
+    vlib_node_t * n;
+    unix_shared_memory_queue_t * q;
+    vl_api_vlib_errors_details_t *rmp;
+    u32 code, i, j, ni;
+    u64 c;
+    int index = 0;
+    u32 *error_index = NULL;
+    u64 *error_count = NULL;
+    u32 items_this_message;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+
+    if (q == 0)
+        return;
+
+    foreach_vlib_main(({
+        em = &this_vlib_main->error_main;
+
+        for (ni = 0; ni < vec_len (this_vlib_main->node_main.nodes); ni++)
+        {
+            n = vlib_get_node (this_vlib_main, ni);
+
+            for (code = 0; code < n->n_errors; code++)
+            {
+                i = n->error_heap_index + code;
+                c = em->counters[i];
+                if (i < vec_len (em->counters_last_clear))
+                    c -= em->counters_last_clear[i];
+
+                if (c == 0)
+                    continue;
+
+                vec_add1(error_index, i);
+                vec_add1(error_count, c);
+            }
+        }
+
+        for (i = 0; i < vec_len(error_index); ) {
+            items_this_message = clib_min(ERROR_BATCH_SIZE,
+                                          vec_len(error_index) - i);
+
+            rmp = vl_msg_api_alloc_as_if_client(sizeof (*rmp) +
+                    items_this_message * sizeof(vl_api_vlib_error_counter_t));
+            rmp->_vl_msg_id  = ntohs (VL_API_VLIB_ERRORS_DETAILS);
+            rmp->thread_id   = ntohl(index);
+            rmp->num_errors  = ntohl(items_this_message);
+
+            for (j=0; j<items_this_message; j++) {
+                rmp->errors[j].error_index = ntohl(error_index[j+i]);
+                rmp->errors[j].error_count =
+                    clib_host_to_net_u64(error_count[j+i]);
+            }
+
+            /* Send to the main thread... */
+            vl_msg_api_send_shmem (q, (u8 *)&rmp);
+
+            i += items_this_message;
+        }
+
+        vec_free(error_index);
+        vec_free(error_count);
+        index++;
+    }));
+}
+
 
 void send_oam_event (oam_target_t * t)
 {
