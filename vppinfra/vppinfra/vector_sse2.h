@@ -474,7 +474,7 @@ i32x4_get0 (i32x4 x)
 always_inline u32 u8x16_compare_byte_mask (u8x16 x)
 { return _mm_movemask_epi8 ((__m128i) x); }
 
-u8 u32x4_compare_word_mask_table[256];
+extern u8 u32x4_compare_word_mask_table[256];
 
 always_inline u32 u32x4_compare_word_mask (u32x4 x)
 {

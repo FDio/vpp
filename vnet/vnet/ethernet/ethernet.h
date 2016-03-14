@@ -96,7 +96,7 @@ typedef struct ethernet_interface {
   u8 address[6];
 } ethernet_interface_t;
 
-vnet_hw_interface_class_t ethernet_hw_interface_class;
+extern vnet_hw_interface_class_t ethernet_hw_interface_class;
 
 typedef struct {
   /* Name (a c string). */

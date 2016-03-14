@@ -27,7 +27,7 @@ typedef CLIB_PACKED (struct {
   mpls_unicast_header_t labels[0];   /* 4 bytes each */
 }) ip4_gre_and_mpls_header_t;
 
-vnet_hw_interface_class_t mpls_gre_hw_interface_class;
+extern vnet_hw_interface_class_t mpls_gre_hw_interface_class;
 
 typedef enum {
 #define mpls_error(n,s) MPLS_ERROR_##n,
@@ -116,7 +116,7 @@ format_function_t format_mpls_encap_index;
 extern vlib_node_registration_t mpls_input_node;
 extern vlib_node_registration_t mpls_policy_encap_node;
 
-vnet_device_class_t mpls_gre_device_class;
+extern vnet_device_class_t mpls_gre_device_class;
 
 /* Parse mpls protocol as 0xXXXX or protocol name.
    In either host or network byte order. */
