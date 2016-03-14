@@ -3360,3 +3360,50 @@ define trace_profile_del_reply {
     u32 context;
     i32 retval;
 };
+
+/** \brief Dump error index and description
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define vlib_error_strings_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply to vlib_error_strings_dump 
+    @param context - sender context which was passed in the request
+    @param error_index - error index in error_strings_heap
+    @param description - error description from error_strings_heap
+*/
+manual_java define vlib_error_string_details {
+    u32 context;
+    u32 error_index;
+    u8  description[0];
+};
+
+/** \brief Fetch errors from all nodes
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define vlib_errors_dump {
+    u32 client_index;
+    u32 context;
+};
+
+typeonly manual_print manual_endian define vlib_error_counter {
+    u32 error_index;
+    u64 error_count;
+};
+
+/** \brief Reply to vlib_errors_dump 
+    @param context - sender context which was passed in the request
+    @param thread_id - thread index
+    @param num_errors - number of errors reported in this msg
+    @param errors - errors counter structure
+*/
+manual_java manual_print manual_endian define vlib_errors_details {
+    u32 context;
+    u32 thread_id;
+    u32 num_errors;
+    vl_api_vlib_error_counter_t errors[0];
+};
