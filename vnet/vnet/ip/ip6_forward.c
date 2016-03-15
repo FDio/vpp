@@ -265,6 +265,14 @@ void ip6_add_del_route (ip6_main_t * im, ip6_add_del_route_args_t * a)
       BV(clib_bihash_add_del) (&im->ip6_lookup_table, &kv, 1 /* is_add */);
     }
 
+  /* Avoid spurious reference count increments */
+  if (old_adj_index == adj_index)
+    {
+      ip_adjacency_t * adj = ip_get_adjacency (lm, adj_index);
+      if (adj->share_count > 0)
+        adj->share_count --;
+    }
+
   /* Delete old adjacency index if present and changed. */
   {
     if (! (a->flags & IP6_ROUTE_FLAG_KEEP_OLD_ADJACENCY)

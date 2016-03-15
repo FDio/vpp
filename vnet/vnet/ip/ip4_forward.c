@@ -380,6 +380,14 @@ void ip4_add_del_route (ip4_main_t * im, ip4_add_del_route_args_t * a)
 
   old_adj_index = fib->old_hash_values[0];
 
+  /* Avoid spurious reference count increments */
+  if (old_adj_index == adj_index)
+    {
+      ip_adjacency_t * adj = ip_get_adjacency (lm, adj_index);
+      if (adj->share_count > 0)
+        adj->share_count --;
+    }
+
   ip4_fib_mtrie_add_del_route (fib, a->dst_address, dst_address_length,
 			       is_del ? old_adj_index : adj_index,
 			       is_del);

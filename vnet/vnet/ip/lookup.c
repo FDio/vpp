@@ -60,6 +60,55 @@ ip_add_adjacency (ip_lookup_main_t * lm,
   ip_adjacency_t * adj;
   u32 ai, i, handle;
 
+  /* See if we know enough to attempt to share an existing adjacency */
+  if (copy_adj && n_adj == 1)
+    {
+      uword signature;
+      uword * p;
+
+      switch (copy_adj->lookup_next_index)
+        {
+        case IP_LOOKUP_NEXT_DROP:
+          if (lm->drop_adj_index)
+            {
+              adj = ip_get_adjacency (lm, lm->drop_adj_index);
+              *adj_index_return = lm->drop_adj_index;
+              return (adj);
+            }
+          break;
+
+        case IP_LOOKUP_NEXT_LOCAL:
+          if (lm->local_adj_index)
+            {
+              adj = ip_get_adjacency (lm, lm->local_adj_index);
+              *adj_index_return = lm->local_adj_index;
+              return (adj);
+            }
+        default:
+          break;
+        }
+
+      signature = vnet_ip_adjacency_signature (copy_adj);
+      p = hash_get (lm->adj_index_by_signature, signature);
+      if (p)
+        {
+          adj = heap_elt_at_index (lm->adjacency_heap, p[0]);
+          while (1)
+            {
+              if (vnet_ip_adjacency_share_compare (adj, copy_adj))
+                {
+                  adj->share_count++;
+                  *adj_index_return = p[0];
+                  return adj;
+                }
+              if (adj->next_adj_with_signature == 0)
+                break;
+              adj = heap_elt_at_index (lm->adjacency_heap,
+                                       adj->next_adj_with_signature);
+            }
+        }
+    }
+
   ai = heap_alloc (lm->adjacency_heap, n_adj, handle);
   adj = heap_elt_at_index (lm->adjacency_heap, ai);
 
@@ -82,9 +131,35 @@ ip_add_adjacency (ip_lookup_main_t * lm,
 
       adj[i].heap_handle = handle;
       adj[i].n_adj = n_adj;
+      adj[i].share_count = 0;
+      adj[i].next_adj_with_signature = 0;
 
       /* Zero possibly stale counters for re-used adjacencies. */
       vlib_zero_combined_counter (&lm->adjacency_counters, ai + i);
+    }
+
+  /* Set up to share the adj later */
+  if (copy_adj && n_adj == 1)
+    {
+      uword * p;
+      u32 old_ai;
+      uword signature = vnet_ip_adjacency_signature (adj);
+
+      p = hash_get (lm->adj_index_by_signature, signature);
+      /* Hash collision? */
+      if (p)
+        {
+          /* Save the adj index, p[0] will be toast after the unset! */
+          old_ai = p[0];
+          hash_unset (lm->adj_index_by_signature, signature);
+          hash_set (lm->adj_index_by_signature, signature, ai);
+          adj->next_adj_with_signature = old_ai;
+        }
+      else
+        {
+          adj->next_adj_with_signature = 0;
+          hash_set (lm->adj_index_by_signature, signature, ai);
+        }
     }
 
   *adj_index_return = ai;
@@ -101,6 +176,69 @@ static void ip_del_adjacency2 (ip_lookup_main_t * lm, u32 adj_index, u32 delete_
   adj = ip_get_adjacency (lm, adj_index);
   handle = adj->heap_handle;
 
+  /* Special-case local, drop adjs */
+  switch (adj->lookup_next_index)
+    {
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_DROP:
+      return;
+    default:
+      break;
+    }
+
+
+  if (adj->n_adj == 1)
+    {
+      uword signature;
+      uword * p;
+      u32 this_ai;
+      ip_adjacency_t * this_adj, * prev_adj = 0;
+      if (adj->share_count > 0)
+        {
+          adj->share_count --;
+          return;
+        }
+
+      signature = vnet_ip_adjacency_signature (adj);
+      p = hash_get (lm->adj_index_by_signature, signature);
+      if (p == 0)
+        {
+          clib_warning ("adj 0x%llx signature %llx not in table",
+                        adj, signature);
+          goto bag_it;
+        }
+      this_ai = p[0];
+      /* At the top of the signature chain (likely)? */
+      if (this_ai == adj_index)
+        {
+          if (adj->next_adj_with_signature == 0)
+            {
+              hash_unset (lm->adj_index_by_signature, signature);
+              goto bag_it;
+            }
+          else
+            {
+              this_adj = ip_get_adjacency (lm, adj->next_adj_with_signature);
+              hash_unset (lm->adj_index_by_signature, signature);
+              hash_set (lm->adj_index_by_signature, signature,
+                        this_adj->heap_handle);
+            }
+        }
+      else                      /* walk signature chain */
+        {
+          this_adj = ip_get_adjacency (lm, this_ai);
+          while (this_adj != adj)
+            {
+              prev_adj = this_adj;
+              this_adj = ip_get_adjacency
+                (lm, this_adj->next_adj_with_signature);
+              ASSERT(this_adj->heap_handle != 0);
+            }
+          prev_adj->next_adj_with_signature = this_adj->next_adj_with_signature;
+        }
+    }
+
+ bag_it:
   if (delete_multipath_adjacency)
     ip_multipath_del_adjacency (lm, adj_index);
 
@@ -829,6 +967,14 @@ void unserialize_ip_lookup_main (serialize_main_t * m, va_list * va)
 void ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
 {
   ip_adjacency_t * adj;
+  ip_adjacency_t template_adj;
+
+  /* ensure that adjacency is cacheline aligned and sized */
+  ASSERT(STRUCT_OFFSET_OF(ip_adjacency_t, cacheline0) == 0);
+  ASSERT(STRUCT_OFFSET_OF(ip_adjacency_t, cacheline1) == CLIB_CACHE_LINE_BYTES);
+
+  lm->adj_index_by_signature = hash_create (0, sizeof (uword));
+  memset (&template_adj, 0, sizeof (template_adj));
 
   /* Hand-craft special miss adjacency to use when nothing matches in the
      routing table.  Same for drop adjacency. */
@@ -836,12 +982,14 @@ void ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
   adj->lookup_next_index = IP_LOOKUP_NEXT_MISS;
   ASSERT (lm->miss_adj_index == IP_LOOKUP_MISS_ADJ_INDEX);
 
-  adj = ip_add_adjacency (lm, /* template */ 0, /* n-adj */ 1, &lm->drop_adj_index);
-  adj->lookup_next_index = IP_LOOKUP_NEXT_DROP;
+  /* Make the "drop" adj sharable */
+  template_adj.lookup_next_index = IP_LOOKUP_NEXT_DROP;
+  adj = ip_add_adjacency (lm, &template_adj, /* n-adj */ 1, &lm->drop_adj_index);
 
-  adj = ip_add_adjacency (lm, /* template */ 0, /* n-adj */ 1, &lm->local_adj_index);
-  adj->lookup_next_index = IP_LOOKUP_NEXT_LOCAL;
-  adj->if_address_index = ~0;
+  /* Make the "local" adj sharable */
+  template_adj.lookup_next_index = IP_LOOKUP_NEXT_LOCAL;
+  template_adj.if_address_index = ~0;
+  adj = ip_add_adjacency (lm, &template_adj, /* n-adj */ 1, &lm->local_adj_index);
 
   if (! lm->fib_result_n_bytes)
     lm->fib_result_n_bytes = sizeof (uword);
@@ -983,6 +1131,10 @@ u8 * format_ip_adjacency (u8 * s, va_list * args)
     }
   if (adj->explicit_fib_index != ~0 && adj->explicit_fib_index != 0)
     s = format (s, " lookup fib index %d", adj->explicit_fib_index);
+  if (adj->share_count > 0)
+    s = format (s, " shared %d", adj->share_count + 1);
+  if (adj->next_adj_with_signature)
+    s = format (s, " next_adj_with_signature %d", adj->next_adj_with_signature);
 
   return s;
 }
@@ -1083,11 +1235,17 @@ static uword unformat_ip_adjacency (unformat_input_t * input, va_list * args)
       if (next == IP_LOOKUP_NEXT_LOCAL)
         (void) unformat (input, "%d", &adj->if_address_index);
       else if (next == IP_LOOKUP_NEXT_CLASSIFY)
-        if (!unformat (input, "%d", &adj->classify_table_index))
-          {
-            clib_warning ("classify adj must specify table index");
-            return 0;
-          }
+        {
+          if (!unformat (input, "%d", &adj->classify_table_index))
+            {
+              clib_warning ("classify adj must specify table index");
+              return 0;
+            }
+        }
+      else if (next == IP_LOOKUP_NEXT_DROP)
+        {
+          adj->rewrite_header.node_index = 0;
+        }
     }
 
   else if (unformat_user (input,

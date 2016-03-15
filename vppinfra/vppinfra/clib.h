@@ -64,6 +64,8 @@
 #define STRUCT_SIZE_OF(t,f)   (sizeof (_STRUCT_FIELD (t, f)))
 #define STRUCT_BITS_OF(t,f)   (BITS (_STRUCT_FIELD (t, f)))
 #define STRUCT_ARRAY_LEN(t,f) ARRAY_LEN (_STRUCT_FIELD (t, f))
+#define STRUCT_MARK(mark)     u8 mark[0]
+#define STRUCT_MARK_PTR(v, f) &(v)->f
 
 /* Stride in bytes between struct array elements. */
 #define STRUCT_STRIDE_OF(t,f)			\

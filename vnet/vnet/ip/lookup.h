@@ -106,8 +106,11 @@ _(reverse, IP_FLOW_HASH_REVERSE_SRC_DST)
 
 /* IP unicast adjacency. */
 typedef struct {
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
   /* Handle for this adjacency in adjacency heap. */
   u32 heap_handle;
+
+  STRUCT_MARK(signature_start);
 
   /* Interface address index for this local/arp adjacency. */
   u32 if_address_index;
@@ -131,8 +134,50 @@ typedef struct {
   /* Highest possible perf subgraph arc interposition, e.g. for ip6 ioam */
   u16 saved_lookup_next_index;
 
-  vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE - 5*sizeof(u32));
+  STRUCT_MARK(signature_end);
+
+  /* Number of FIB entries sharing this adjacency */
+  u32 share_count;
+  /* Use this adjacency instead */
+  u32 next_adj_with_signature;
+
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
+
+  /* Rewrite in second/third cache lines */
+  vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
 } ip_adjacency_t;
+
+static inline uword
+vnet_ip_adjacency_signature (ip_adjacency_t * adj)
+{
+  uword signature = 0xfeedfaceULL;
+
+  /* Skip heap handle, sum everything up to but not including share_count */
+  signature = hash_memory64
+      (STRUCT_MARK_PTR(adj, signature_start),
+       STRUCT_OFFSET_OF(ip_adjacency_t, signature_end)
+       - STRUCT_OFFSET_OF(ip_adjacency_t, signature_start),
+       signature);
+
+  /* and the rewrite */
+  signature = hash_memory64 (&adj->rewrite_header, VLIB_BUFFER_PRE_DATA_SIZE,
+                             signature);
+  return signature;
+}
+
+static inline int
+vnet_ip_adjacency_share_compare (ip_adjacency_t * a1, ip_adjacency_t *a2)
+{
+  if (memcmp (STRUCT_MARK_PTR(a1, signature_start),
+              STRUCT_MARK_PTR(a2, signature_start),
+              STRUCT_OFFSET_OF(ip_adjacency_t, signature_end)
+              - STRUCT_OFFSET_OF(ip_adjacency_t, signature_start)))
+    return 0;
+  if (memcmp (&a1->rewrite_header, &a2->rewrite_header,
+              VLIB_BUFFER_PRE_DATA_SIZE))
+    return 0;
+  return 1;
+}
 
 /* Index into adjacency table. */
 typedef u32 ip_adjacency_index_t;
@@ -260,6 +305,9 @@ typedef struct ip_lookup_main_t {
 
   /* Indexed by heap_handle from ip_adjacency_t. */
   ip_multipath_adjacency_t * multipath_adjacencies;
+
+  /* Adjacency by signature hash */
+  uword * adj_index_by_signature;
 
   /* Temporary vectors for looking up next hops in hash. */
   ip_multipath_next_hop_t * next_hop_hash_lookup_key;
