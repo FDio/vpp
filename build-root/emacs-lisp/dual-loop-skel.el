@@ -285,5 +285,18 @@ VLIB_REGISTER_NODE (" node-name "_node) = {
   },
 };
 
+clib_error_t *" node-name "_init (vlib_main_t *vm)
+{
+  " node-name "_main_t *msm = &" node-name "_main;
+    
+  /* $$$$$ Initialize " node-name "_main_t structure here. $$$$$ */
+  msm->vlib_main = vm;
+  msm->vnet_main = vnet_get_main();
+  msm->ethernet_main = ethernet_get_main(vm);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION(" node-name "_init);
 ")
 
