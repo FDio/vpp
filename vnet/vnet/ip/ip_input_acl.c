@@ -112,11 +112,11 @@ ip_inacl_inline (vlib_main_t * vm,
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
-      h0 = b0->data;
+      h0 = vlib_buffer_get_current(b0);
 
       bi1 = from[1];
       b1 = vlib_get_buffer (vm, bi1);
-      h1 = b1->data;
+      h1 = vlib_buffer_get_current(b1);
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
       table_index0 = am->classify_table_index_by_sw_if_index[tid][sw_if_index0];
@@ -157,7 +157,7 @@ ip_inacl_inline (vlib_main_t * vm,
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
-      h0 = b0->data;
+      h0 = vlib_buffer_get_current(b0);
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
       table_index0 = am->classify_table_index_by_sw_if_index[tid][sw_if_index0];
@@ -224,7 +224,7 @@ ip_inacl_inline (vlib_main_t * vm,
           n_left_to_next -= 1;
 
           b0 = vlib_get_buffer (vm, bi0);
-          h0 = b0->data;
+          h0 = vlib_buffer_get_current(b0);
           table_index0 = vnet_buffer(b0)->l2_classify.table_index;
           e0 = 0;
           t0 = 0;
