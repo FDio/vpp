@@ -95,6 +95,7 @@ vnet_classify_new_table (vnet_classify_main_t *cm,
 
   t->writer_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, 
                                            CLIB_CACHE_LINE_BYTES);
+  t->writer_lock[0] = 0;
 
   clib_mem_set_heap (oldheap);
   return (t);
@@ -1735,7 +1736,7 @@ VLIB_CLI_COMMAND (classify_session_command, static) = {
     .path = "classify session",
     .short_help = 
     "classify session [hit-next|l2-hit-next|acl-hit-next <next_index>]"
-    "\n table-index <nn> match [hex] [l2] [l3 ip4]",
+    "\n table-index <nn> match [hex] [l2] [l3 ip4] [opaque-index <index>]",
     .function = classify_session_command_fn,
 };
 
