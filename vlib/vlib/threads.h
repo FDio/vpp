@@ -93,6 +93,7 @@ typedef struct {
   u32 instance_id;
   vlib_thread_registration_t *registration;
   u8 *name;
+  u64 barrier_sync_count;
 
   long lwp;
   int dpdk_lcore_id;

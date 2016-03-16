@@ -1083,6 +1083,8 @@ void vlib_worker_thread_barrier_sync(vlib_main_t *vm)
   if (++vlib_worker_threads[0].recursion_level > 1)
       return;
 
+  vlib_worker_threads[0].barrier_sync_count++;
+
   ASSERT (os_get_cpu_number() == 0);
 
   deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
