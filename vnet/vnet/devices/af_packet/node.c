@@ -124,7 +124,7 @@ af_packet_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, u32 device_idx)
 {
   af_packet_main_t * apm = &af_packet_main;
-  af_packet_if_t * apif = vec_elt_at_index(apm->interfaces, device_idx);
+  af_packet_if_t * apif = pool_elt_at_index(apm->interfaces, device_idx);
   struct tpacket2_hdr *tph;
   u32 next_index = AF_PACKET_INPUT_NEXT_ETHERNET_INPUT;
   u32 block = 0;

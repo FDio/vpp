@@ -200,7 +200,7 @@ af_packet_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set)
     goto error;
 
   /* So far everything looks good, let's create interface */
-  vec_add2 (apm->interfaces, apif, 1);
+  pool_get (apm->interfaces, apif);
   if_index = apif - apm->interfaces;
 
   apif->fd = fd;
@@ -241,7 +241,7 @@ af_packet_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set)
   if (error)
     {
       memset(apif, 0, sizeof(*apif));
-      _vec_len(apm->interfaces) -= 1;
+      pool_put(apm->interfaces, apif);
       clib_error_report (error);
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;

@@ -47,7 +47,7 @@ static u8 * format_af_packet_device_name (u8 * s, va_list * args)
 {
   u32 i = va_arg (*args, u32);
   af_packet_main_t * apm = &af_packet_main;
-  af_packet_if_t * apif = vec_elt_at_index (apm->interfaces, i);
+  af_packet_if_t * apif = pool_elt_at_index (apm->interfaces, i);
 
   s = format (s, "host-%s", apif->host_if_name);
   return s;
@@ -75,7 +75,7 @@ af_packet_interface_tx (vlib_main_t * vm,
   u32 n_left = frame->n_vectors;
   u32 n_sent = 0;
   vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
-  af_packet_if_t * apif = vec_elt_at_index (apm->interfaces, rd->dev_instance);
+  af_packet_if_t * apif = pool_elt_at_index (apm->interfaces, rd->dev_instance);
   int block = 0;
   u32 block_size = apif->tx_req->tp_block_size;
   u32 frame_size = apif->tx_req->tp_frame_size;
