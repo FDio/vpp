@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5af74547_9d3003ea",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-16T19:47:47Z",
+      "side": 1,
+      "message": "Since these definitions are used in precisely one place - just below here - they serve no useful purpose.  Please get rid of them.",
+      "revId": "4b961c4d2a923d59028587c45d5e2b744d7c5f70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5af74547_5d527b14",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-16T19:47:47Z",
+      "side": 1,
+      "message": "Please declare BIT_XXX directly, right here. Idiomatically, one would write (1\u003c\u003c0), (1\u003c\u003c1), (1\u003c\u003c2) etc. rather than 0x01, 0x02, 0x04 etc.",
+      "revId": "4b961c4d2a923d59028587c45d5e2b744d7c5f70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
