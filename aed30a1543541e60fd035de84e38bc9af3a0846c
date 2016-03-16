@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5af74547_fd402737",
+        "filename": "vnet/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-16T20:06:39Z",
+      "side": 1,
+      "message": "\u003cblush\u003e",
+      "revId": "aed30a1543541e60fd035de84e38bc9af3a0846c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5af74547_1d5cf324",
+        "filename": "vnet/vnet/classify/vnet_classify.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-16T20:06:39Z",
+      "side": 1,
+      "message": "Please add PREDICT_TRUE(...) to favor the aligned case",
+      "revId": "aed30a1543541e60fd035de84e38bc9af3a0846c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
