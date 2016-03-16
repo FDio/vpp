@@ -16,6 +16,7 @@ BR=$(WS_ROOT)/build-root
 CCACHE_DIR?=$(BR)/.ccache
 V?=0
 GDB?=gdb
+PLATFORM?=vpp
 
 MINIMAL_STARTUP_CONF="unix { interactive } dpdk { no-pci socket-mem 1024 }"
 
@@ -23,7 +24,7 @@ GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms openjdk-7-jdk git libtool libganglia1-dev libapr1-dev
-DEB_DEPENDS += libconfuse-dev git-review
+DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
 
 ifneq ("$(wildcard $(STARTUP_DIR)/startup.conf),"")
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
@@ -31,6 +32,7 @@ endif
 
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
+.PHONY: ctags cscope
 
 help:
 	@echo "Make Targets:"
@@ -50,6 +52,8 @@ help:
 	@echo " run-vat             - run vpp-api-test tool"
 	@echo " pkg-deb             - build DEB packages"
 	@echo " pkg-rpm             - build RPM packages"
+	@echo " ctags               - (re)generate ctags database"
+	@echo " cscope              - (re)generate cscope database"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]             - set build verbosity level"
@@ -59,12 +63,14 @@ help:
 	@echo "                       It also sets STARTUP_CONF if"
 	@echo "                       startup.conf file is present"
 	@echo " GDB=<path>          - gdb binary to use for debugging"
+	@echo " PLATFORM=<name>     - target platform. default is vpp"
 	@echo ""
 	@echo "Current Argumernt Values:"
 	@echo " V            = $(V)"
 	@echo " STARTUP_CONF = $(STARTUP_CONF)"
 	@echo " STARTUP_DIR  = $(STARTUP_DIR)"
 	@echo " GDB          = $(GDB)"
+	@echo " PLATFORM     = $(PLATFORM)"
 
 $(BR)/.bootstrap.ok:
 ifeq ("$(shell lsb_release -si)", "Ubuntu")
@@ -103,22 +109,22 @@ else
 endif
 
 define make
-	@make -C $(BR) V=$(V) PLATFORM=vpp TAG=$(1) $(2)
+	@make -C $(BR) V=$(V) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
 endef
 
 build: $(BR)/.bootstrap.ok
-	$(call make,vpp_debug,vpp-install)
+	$(call make,$(PLATFORM)_debug,vpp-install)
 
 wipe: $(BR)/.bootstrap.ok
-	$(call make,vpp_debug,vpp-wipe)
+	$(call make,$(PLATFORM)_debug,vpp-wipe)
 
 rebuild: wipe build
 
 build-release: $(BR)/.bootstrap.ok
-	$(call make,vpp,vpp-install)
+	$(call make,$(PLATFORM),vpp-install)
 
 wipe-release: $(BR)/.bootstrap.ok
-	$(call make,vpp,vpp-wipe)
+	$(call make,$(PLATFORM),vpp-wipe)
 
 rebuild-release: wipe-release build-release
 
@@ -135,26 +141,40 @@ define run
 endef
 endif
 
+%.files: .FORCE
+	@find . \( -name '*\.[chyS]' -o -name '*\.java' -o -name '*\.lex' \) -and \
+		\( -not -path './build-root*' -o -path \
+		'./build-root/build-vpp_debug-native/dpdk*' \) > $@
+
+.FORCE:
+
 run:
-	$(call run, $(BR)/install-vpp_debug-native/vpp/bin/vpp)
+	$(call run, $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp)
 
 run-release:
-	$(call run, $(BR)/install-vpp-native/vpp/bin/vpp)
+	$(call run, $(BR)/install-$(PLATFORM)-native/vpp/bin/vpp)
 
 debug:
-	$(call run, $(GDB) $(GDB_ARGS) --args $(BR)/install-vpp_debug-native/vpp/bin/vpp)
+	$(call run, $(GDB) $(GDB_ARGS) --args $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp)
 
 debug-release:
-	$(call run, $(GDB) $(GDB_ARGS) --args $(BR)/install-vpp-native/vpp/bin/vpp)
+	$(call run, $(GDB) $(GDB_ARGS) --args $(BR)/install-$(PLATFORM)-native/vpp/bin/vpp)
 
 build-vat:
-	$(call make,vpp_debug,vpp-api-test-install)
+	$(call make,$(PLATFORM)_debug,vpp-api-test-install)
 
 run-vat:
-	@sudo $(BR)/install-vpp_debug-native/vpp-api-test/bin/vpp_api_test
+	@sudo $(BR)/install-$(PLATFORM)_debug-native/vpp-api-test/bin/vpp_api_test
 
 pkg-deb:
-	$(call make,vpp,install-deb)
+	$(call make,$(PLATFORM),install-deb)
 
 pkg-rpm:
-	$(call make,vpp,install-rpm)
+	$(call make,$(PLATFORM),install-rpm)
+
+ctags: ctags.files
+	@ctags --totals --tag-relative -L $<
+	@rm $<
+
+cscope: cscope.files
+	@cscope -b -q -v
