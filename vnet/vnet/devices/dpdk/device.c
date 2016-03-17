@@ -1223,3 +1223,57 @@ int rte_delay_us_override (unsigned us) {
     }
   return 0; // no override
 }
+
+/*
+ * Return the number of dpdk mbufs
+ */
+u32 dpdk_num_mbufs (void)
+{
+  dpdk_main_t * dm = &dpdk_main;
+
+  return dm->num_mbufs;
+}
+
+/*
+ * Return the io_thread_release
+ */
+int dpdk_io_thread_release (void)
+{
+  dpdk_main_t * dm = &dpdk_main;
+
+  return dm->io_thread_release;
+}
+
+/*
+ * Return the pmd type for a given hardware interface
+ */
+dpdk_pmd_t dpdk_get_pmd_type (vnet_hw_interface_t *hi)
+{
+  dpdk_main_t   * dm = &dpdk_main;
+  dpdk_device_t * xd;
+
+  assert (hi);
+
+  xd = vec_elt_at_index (dm->devices, hi->dev_instance);
+
+  assert (xd);
+
+  return xd->pmd;
+}
+
+/*
+ * Return the cpu socket for a given hardware interface
+ */
+i8 dpdk_get_cpu_socket (vnet_hw_interface_t *hi)
+{
+  dpdk_main_t   * dm = &dpdk_main;
+  dpdk_device_t * xd;
+
+  assert (hi);
+
+  xd = vec_elt_at_index(dm->devices, hi->dev_instance);
+
+  assert (xd);
+
+  return xd->cpu_socket;
+}
