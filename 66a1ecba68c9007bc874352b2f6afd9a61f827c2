@@ -22,6 +22,23 @@
       "revId": "66a1ecba68c9007bc874352b2f6afd9a61f827c2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5af74547_bd4dffc6",
+        "filename": "vnet/vnet/ip/ip_input_acl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-03-17T15:46:22Z",
+      "side": 1,
+      "message": "The intention of ip_input_acl is not to classify packets starting from the IP header; it is to classify from start of packet in the IP4 or IP6 forwarding path (invoked via the ip4/6-input node). Thus, it is reasonable to classify the L2 header in the IP forwarding path as well. This also means matching is expected to be 16-byte aligned since it is from start of packet, as least for the DPDK-input case. If one wants to classify from IP header only, he can certainly skip from start of the packet in 16B units but making sure to match the precise offset of the start of IP header, depending on existence of VLAN tags or tunnel header, etc. So, this change is not appropriate (unless we really want to change the semantics of what ip_input_acl is doing). I think it is appropriate to add a comment here to say h0 is L2 header to avoid future confusion.",
+      "revId": "66a1ecba68c9007bc874352b2f6afd9a61f827c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
