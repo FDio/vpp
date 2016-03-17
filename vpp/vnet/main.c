@@ -196,6 +196,9 @@ defaulted:
     if (clib_mem_init (0, main_heap_size)) {
         vm->init_functions_called = hash_create (0, /* value bytes */ 0);
         vpe_main_init(vm);
+#if ! DPDK
+        unix_physmem_init(vm, 0 /* fail_if_physical_memory_not_present */);
+#endif
         vlib_set_get_handoff_structure_cb (&vnet_get_handoff_structure);
         return vlib_unix_main (argc, argv);
     } else {
