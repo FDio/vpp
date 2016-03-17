@@ -68,6 +68,8 @@ vpp_LDADD += -lvnet
 
 vpp_LDADD += -lsvm -lsvmdb -lrt
 
+vpp_LDADD += -lvnetplugin
+
 if WITH_DPDK
 vpp_LDADD += -l:libdpdk.a
 endif
