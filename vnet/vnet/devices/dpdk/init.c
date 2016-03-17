@@ -227,6 +227,65 @@ dpdk_device_lock_free(dpdk_device_t * xd)
   xd->need_txlock = 0;
 }
 
+/*
+ * Allow applications to implement their own way to determine the
+ * input thread parameters.
+ */
+void
+dpdk_set_determine_input_threads_fn (dpdk_determine_input_threads_t function)
+{
+  dpdk_main_t * dm = &dpdk_main;
+
+  dm->dpdk_determine_input_threads_fn = function;
+}
+
+clib_error_t *
+dpdk_determine_input_threads (vlib_main_t *vm,
+                              int         *first_input_thread,
+                              int         *num_input_threads,
+                              u8          *have_dedicated_input_threads)
+{
+  vlib_thread_main_t * tm = vlib_get_thread_main();
+  vlib_thread_registration_t * tr;
+  uword * p;
+  clib_error_t * error = 0;
+  dpdk_main_t * dm = &dpdk_main;
+
+  if (dm->dpdk_determine_input_threads_fn) {
+      return dm->dpdk_determine_input_threads_fn (vm,
+                 first_input_thread,
+                 num_input_threads,
+                 have_dedicated_input_threads);
+  }
+
+  *first_input_thread = 0;
+  *num_input_threads = 1;
+  *have_dedicated_input_threads = 0;
+
+  /* find out which cpus will be used for input */
+  p = hash_get_mem (tm->thread_registrations_by_name, "rx");
+  tr = p ? (vlib_thread_registration_t *) p[0] : 0;
+
+  if (!tr || tr->count == 0)
+    {
+      /* no io threads, workers doing input */
+      p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+      tr = p ? (vlib_thread_registration_t *) p[0] : 0;
+    }
+  else
+    {
+      *have_dedicated_input_threads = 1;
+    }
+
+  if (tr && tr->count > 0)
+    {
+      *first_input_thread = tr->first_index;
+      *num_input_threads = tr->count;
+    }
+
+  return error;
+}
+
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -239,35 +298,16 @@ dpdk_lib_init (dpdk_main_t * dm)
   vnet_sw_interface_t * sw;
   vnet_hw_interface_t * hi;
   dpdk_device_t * xd;
-  vlib_thread_registration_t * tr;
-  uword * p;
 
   u32 next_cpu = 0;
   u8 af_packet_port_id = 0;
 
-  dm->input_cpu_first_index = 0;
-  dm->input_cpu_count = 1;
-
-  /* find out which cpus will be used for input */
-  p = hash_get_mem (tm->thread_registrations_by_name, "io");
-  tr = p ? (vlib_thread_registration_t *) p[0] : 0;
-
-  if (!tr || tr->count == 0)
-    {
-      /* no io threads, workers doing input */
-      p = hash_get_mem (tm->thread_registrations_by_name, "workers");
-      tr = p ? (vlib_thread_registration_t *) p[0] : 0;
-    }
-  else
-    {
-      dm->have_io_threads = 1;
-    }
-
-  if (tr && tr->count > 0)
-    {
-      dm->input_cpu_first_index = tr->first_index;
-      dm->input_cpu_count = tr->count;
-    }
+  error = dpdk_determine_input_threads (vm,
+              &dm->input_cpu_first_index,
+              &dm->input_cpu_count,
+              &dm->have_io_threads);
+  if (error)
+    return error;
 
   vec_validate_aligned (dm->devices_by_cpu, tm->n_vlib_mains - 1,
                         CLIB_CACHE_LINE_BYTES);

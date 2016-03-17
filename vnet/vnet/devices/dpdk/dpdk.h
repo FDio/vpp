@@ -175,6 +175,11 @@ typedef void (*dpdk_flowcontrol_callback_t) (vlib_main_t *vm,
                                              u32 hw_if_index,
                                              u32 n_packets);
 
+typedef clib_error_t *
+(*dpdk_determine_input_threads_t) (vlib_main_t *vm,
+                                   int         *first_input_thread,
+                                   int         *num_input_threads,
+                                   u8          *have_dedicated_input_threads);
 /*
  * The header for the tx_vector in dpdk_device_t.
  * Head and tail are indexes into the tx_vector and are of type
@@ -396,6 +401,9 @@ typedef struct {
   f64 link_state_poll_interval;
   f64 stat_poll_interval;
 
+  /* A function to override the setting of the above fields */
+  dpdk_determine_input_threads_t dpdk_determine_input_threads_fn;
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
@@ -572,6 +580,9 @@ int dpdk_io_thread_release (void);
 dpdk_pmd_t dpdk_get_pmd_type (vnet_hw_interface_t *hi);
 
 i8 dpdk_get_cpu_socket (vnet_hw_interface_t *hi);
+
+void
+dpdk_set_determine_input_threads_fn (dpdk_determine_input_threads_t function);
 
 uword
 dpdk_input_rss (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f);
