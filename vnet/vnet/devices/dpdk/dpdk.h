@@ -573,6 +573,12 @@ int dpdk_vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
 
 u32 dpdk_get_admin_up_down_in_progress (void);
 
+u32 dpdk_num_mbufs (void);
+
+int dpdk_io_thread_release (void);
+
+dpdk_pmd_t dpdk_get_pmd_type (vnet_hw_interface_t *hi);
+
 void
 dpdk_set_determine_input_threads_fn (dpdk_determine_input_threads_t function);
 
