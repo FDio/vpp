@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5af74547_fda26799",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-17T12:06:18Z",
+      "side": 1,
+      "message": "Parens required: (1\u003c\u003c0) please. Otherwise, someone will get a nasty surprise due to operator precedence. The \"\u003c\u003c\" and \"\u003e\u003e\" operators are notorious for that specific issue...",
+      "revId": "a4bd8ed588b1871fc243a2fd408ae4bc0a32c342",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
