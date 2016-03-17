@@ -49,3 +49,7 @@ ylwrap
 .DS_Store
 .idea/
 .project
+
+# cscope and ctags
+/cscope.*
+/tags
