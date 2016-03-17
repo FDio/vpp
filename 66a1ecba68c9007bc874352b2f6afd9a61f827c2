@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5af74547_ddd9eb84",
+        "filename": "vnet/vnet/classify/vnet_classify.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-03-17T07:13:26Z",
+      "side": 1,
+      "message": "So the reason why I did not put PREDICT_TRUE at first is that dpdk driver puts MAC header on aligned boundaries. Therefore, the IP header is not.\nSo I thought relying on CPU\u0027s adaptative branching prediction was the best solution.",
+      "range": {
+        "startLine": 47,
+        "startChar": 25,
+        "endLine": 47,
+        "endChar": 60
+      },
+      "revId": "66a1ecba68c9007bc874352b2f6afd9a61f827c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
