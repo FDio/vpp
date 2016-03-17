@@ -884,8 +884,6 @@ static clib_error_t * dpdk_bind_eth_kernel_drivers (vlib_main_t * vm,
           _vec_len (path) = 0;
           path = format (path, "/sys/bus/pci/drivers/%s/new_id%c", driver_name, 0);
           error = write_sys_fs ((char *) path, "%s %s", pci_vid, pci_did);
-          if (error)
-            continue;
 
           _vec_len (path) = 0;
           path = format (path, "/sys/bus/pci/drivers/%s/bind%c", driver_name, 0);
