@@ -167,7 +167,14 @@ static void add_protocol (osi_main_t * pm,
 
 static clib_error_t * osi_init (vlib_main_t * vm)
 {
+  clib_error_t * error = 0;
   osi_main_t * pm = &osi_main;
+
+  /* init order dependency: llc_init -> osi_init */
+  if ((error = vlib_call_init_function(vm, llc_init)))
+  {
+	  return error;
+  }
 
   memset (pm, 0, sizeof (pm[0]));
   pm->vlib_main = vm;
