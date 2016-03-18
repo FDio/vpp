@@ -15,7 +15,7 @@
 
 (require 'skeleton)
 
-(define-skeleton plugin-configure-skel
+(define-skeleton skel-plugin-configure
 "Insert a plug-in 'configure.ac' skeleton "
 nil
 '(if (not (boundp 'plugin-name))

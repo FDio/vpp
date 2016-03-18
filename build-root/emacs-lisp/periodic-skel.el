@@ -2,7 +2,7 @@
 
 (require 'skeleton)
 
-(define-skeleton periodic-skel
+(define-skeleton skel-periodic
 "Insert a skeleton periodic process node"
 nil
 '(setq node-name (skeleton-read "Name: "))

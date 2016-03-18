@@ -2,7 +2,7 @@
 
 (require 'skeleton)
 
-(define-skeleton dual-loop-skel
+(define-skeleton skel-dual-loop
 "Insert a skeleton dual-loop graph node"
 nil
 '(setq node-name (skeleton-read "Node Name: "))

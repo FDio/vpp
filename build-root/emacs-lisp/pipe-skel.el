@@ -2,7 +2,7 @@
 
 (require 'skeleton)
 
-(define-skeleton pipeline-node-skel
+(define-skeleton skel-pipeline-node
 "Insert a skeleton pipelined graph node"
 nil
 '(setq node-name (skeleton-read "Node Name: "))
