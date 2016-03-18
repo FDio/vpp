@@ -15,7 +15,7 @@
 
 (require 'skeleton)
 
-(define-skeleton plugin-test-skel
+(define-skeleton skel-plugin-test
 "Insert a plug-in vpp-api-test skeleton "
 nil
 '(if (not (boundp 'plugin-name))
