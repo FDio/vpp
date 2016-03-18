@@ -103,7 +103,7 @@ bootstrap: $(BR)/.bootstrap.ok
 
 install-dep:
 ifeq ("$(shell lsb_release -si)", "Ubuntu")
-	@sudo apt-get install $(DEB_DEPENDS)
+	@sudo apt-get -y install $(DEB_DEPENDS)
 else
 	$(error "This option currently works only on Ubuntu systems")
 endif
