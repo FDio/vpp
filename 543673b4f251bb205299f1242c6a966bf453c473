@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5af74547_e0507c60",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2650,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-18T15:23:38Z",
+      "side": 1,
+      "message": "error_count is a u64 *, so ntohl is not correct here.",
+      "revId": "543673b4f251bb205299f1242c6a966bf453c473",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
