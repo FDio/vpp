@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5af74547_003fe826",
+        "filename": "vnet/vnet/osi/osi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-18T14:51:18Z",
+      "side": 1,
+      "message": "Please indent this code the same way as the rest of the file is indented: emacs M-X c-set-style gnu, or 2x spaces before the braces and another 2x spaces before \"return error\"",
+      "revId": "2fdcff5bab09368effc4570b86234bb60cee2fe9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
