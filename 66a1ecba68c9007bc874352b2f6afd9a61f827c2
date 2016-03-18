@@ -39,6 +39,24 @@
       "revId": "66a1ecba68c9007bc874352b2f6afd9a61f827c2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5af74547_bd805f8c",
+        "filename": "vnet/vnet/ip/ip_input_acl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-03-18T07:35:20Z",
+      "side": 1,
+      "message": "I am going to push a new patch with reverted changes. Although:\n- I do think it is misleading to match on L2 header on an L3 node.\n- I have a bad fealing about assuming -\u003edata to be the ethernet header (e.g. after encapsulation, it is not).\n\nIt was not the purpose of the patch though. And I don\u0027t use that feature. So I don\u0027t mind reverting.",
+      "parentUuid": "5af74547_bd4dffc6",
+      "revId": "66a1ecba68c9007bc874352b2f6afd9a61f827c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
