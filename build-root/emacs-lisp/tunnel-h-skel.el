@@ -2,7 +2,7 @@
 
 (require 'skeleton)
 
-(define-skeleton tunnel-h-skel
+(define-skeleton skel-tunnel-h
 "Insert a tunnel encap header file"
 nil
 '(setq encap_stack (skeleton-read "encap_stack (e.g ip4_udp_lisp): "))

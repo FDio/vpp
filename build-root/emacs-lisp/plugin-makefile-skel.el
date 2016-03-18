@@ -15,7 +15,7 @@
 
 (require 'skeleton)
 
-(define-skeleton plugin-makefile-skel
+(define-skeleton skel-plugin-makefile
 "Insert a plug-in 'Makefile.am' skeleton "
 nil
 '(if (not (boundp 'plugin-name))
