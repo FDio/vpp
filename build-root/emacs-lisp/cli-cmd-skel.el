@@ -2,7 +2,7 @@
 
 (require 'skeleton)
 
-(define-skeleton cli-cmd-skel
+(define-skeleton skel-cli-cmd
 "Insert a CLI command "
 nil
 '(setq cmd-name (skeleton-read "Command Name: "))

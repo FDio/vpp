@@ -15,7 +15,7 @@
 
 (require 'skeleton)
 
-(define-skeleton plugin-msg-enum-skel
+(define-skeleton skel-plugin-msg-enum
 "Insert a plug-in message enumeration skeleton "
 nil
 '(if (not (boundp 'plugin-name))

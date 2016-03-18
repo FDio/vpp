@@ -15,7 +15,7 @@
 
 (require 'skeleton)
 
-(define-skeleton plugin-api-skel
+(define-skeleton skel-plugin-api
 "Insert a plug-in '<name>.api' skeleton "
 nil
 '(if (not (boundp 'plugin-name))

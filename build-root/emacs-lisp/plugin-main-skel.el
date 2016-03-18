@@ -15,7 +15,7 @@
 
 (require 'skeleton)
 
-(define-skeleton plugin-main-skel
+(define-skeleton skel-plugin-main
 "Insert a plug-in 'main.c' skeleton "
 nil
 '(if (not (boundp 'plugin-name))

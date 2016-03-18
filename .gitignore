@@ -49,3 +49,6 @@ ylwrap
 .DS_Store
 .idea/
 .project
+
+# cscope
+cscope.*

@@ -15,7 +15,7 @@
 
 (require 'skeleton)
 
-(define-skeleton plugin-all-apih-skel
+(define-skeleton skel-plugin-all-apih
 "Insert a plug-in 'all_api_h.h' skeleton "
 nil
 '(if (not (boundp 'plugin-name))

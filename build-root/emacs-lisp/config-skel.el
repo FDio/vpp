@@ -2,7 +2,7 @@
 
 (require 'skeleton)
 
-(define-skeleton config-skel
+(define-skeleton skel-config
 "Insert a vlib config skeleton "
 nil
 '(setq cfg-name (skeleton-read "Config Class Name: "))
