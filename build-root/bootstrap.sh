@@ -42,9 +42,12 @@ for c in gcc g++
 done
 
 cd $wsroot
-
+if [ ! -f vppinfra/configure ] ; then     \
+    autoreconf vppinfra;                  \
+fi ;
 cd $build_root
 echo Compile native tools
+
 for tool in vppapigen
 do
     make V=0 is_build_tool=yes $tool-install
