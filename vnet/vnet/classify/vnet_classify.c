@@ -18,6 +18,8 @@
 #include <vnet/api_errno.h>     /* for API error numbers */
 #include <vnet/l2/l2_classify.h> /* for L2_CLASSIFY_NEXT_xxx */
 
+vnet_classify_main_t vnet_classify_main;
+
 #if VALIDATION_SCAFFOLDING
 /* Validation scaffolding */
 void mv (vnet_classify_table_t * t)
@@ -63,6 +65,35 @@ void rogue (vnet_classify_table_t * t)
 void mv (vnet_classify_table_t * t) { }
 void rogue (vnet_classify_table_t * t) { }
 #endif
+
+void vnet_classify_register_unformat_l2_next_index_fn (unformat_function_t * fn)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+
+  vec_add1 (cm->unformat_l2_next_index_fns, fn);
+}
+
+void vnet_classify_register_unformat_ip_next_index_fn (unformat_function_t * fn)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+
+  vec_add1 (cm->unformat_ip_next_index_fns, fn);
+}
+
+void 
+vnet_classify_register_unformat_acl_next_index_fn (unformat_function_t * fn)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+
+  vec_add1 (cm->unformat_acl_next_index_fns, fn);
+}
+
+void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t * fn)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+
+  vec_add1 (cm->unformat_opaque_index_fns, fn);
+}
 
 vnet_classify_table_t * 
 vnet_classify_new_table (vnet_classify_main_t *cm,
@@ -990,10 +1021,22 @@ _(li, LI)
 
 uword unformat_l2_next_index (unformat_input_t * input, va_list * args)
 {
+  vnet_classify_main_t * cm = &vnet_classify_main;
   u32 * miss_next_indexp = va_arg (*args, u32 *);
   u32 next_index = 0;
   u32 tmp;
+  int i;
   
+  /* First try registered unformat fns, allowing override... */
+  for (i = 0; i < vec_len (cm->unformat_l2_next_index_fns); i++)
+    {
+      if (unformat (input, "%U", cm->unformat_l2_next_index_fns[i], &tmp))
+        {
+          next_index = tmp;
+          goto out;
+        }
+    }
+
 #define _(n,N) \
   if (unformat (input, #n)) { next_index = L2_CLASSIFY_NEXT_##N; goto out;}
   foreach_l2_next;
@@ -1021,9 +1064,21 @@ _(rewrite, REWRITE)
 uword unformat_ip_next_index (unformat_input_t * input, va_list * args)
 {
   u32 * miss_next_indexp = va_arg (*args, u32 *);
+  vnet_classify_main_t * cm = &vnet_classify_main;
   u32 next_index = 0;
   u32 tmp;
+  int i;
   
+  /* First try registered unformat fns, allowing override... */
+  for (i = 0; i < vec_len (cm->unformat_ip_next_index_fns); i++)
+    {
+      if (unformat (input, "%U", cm->unformat_ip_next_index_fns[i], &tmp))
+        {
+          next_index = tmp;
+          goto out;
+        }
+    }
+
 #define _(n,N) \
   if (unformat (input, #n)) { next_index = IP_LOOKUP_NEXT_##N; goto out;}
   foreach_ip_next;
@@ -1047,9 +1102,21 @@ _(deny, DENY)
 
 uword unformat_acl_next_index (unformat_input_t * input, va_list * args)
 {
-  u32 * miss_next_indexp = va_arg (*args, u32 *);
+  u32 * next_indexp = va_arg (*args, u32 *);
+  vnet_classify_main_t * cm = &vnet_classify_main;
   u32 next_index = 0;
   u32 tmp;
+  int i;
+
+  /* First try registered unformat fns, allowing override... */
+  for (i = 0; i < vec_len (cm->unformat_acl_next_index_fns); i++)
+    {
+      if (unformat (input, "%U", cm->unformat_acl_next_index_fns[i], &tmp))
+        {
+          next_index = tmp;
+          goto out;
+        }
+    }
 
 #define _(n,N) \
   if (unformat (input, #n)) { next_index = ACL_NEXT_INDEX_##N; goto out;}
@@ -1070,7 +1137,7 @@ uword unformat_acl_next_index (unformat_input_t * input, va_list * args)
   return 0;
 
  out:
-  *miss_next_indexp = next_index;
+  *next_indexp = next_index;
   return 1;
 }
 
@@ -1678,10 +1745,10 @@ classify_session_command_fn (vlib_main_t * vm,
   int is_add = 1;
   u32 table_index = ~0;
   u32 hit_next_index = ~0;
-  u32 opaque_index = ~0;
+  u64 opaque_index = ~0;
   u8 * match = 0;
   i32 advance = 0;
-  int rv;
+  int i, rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) 
     {
@@ -1696,7 +1763,7 @@ classify_session_command_fn (vlib_main_t * vm,
       else if (unformat (input, "acl-hit-next %U", unformat_acl_next_index,
                          &hit_next_index))
         ;
-      else if (unformat (input, "opaque-index %d", &opaque_index))
+      else if (unformat (input, "opaque-index %lld", &opaque_index))
         ;
       else if (unformat (input, "match %U", unformat_classify_match,
                          cm, &match, table_index))
@@ -1706,7 +1773,18 @@ classify_session_command_fn (vlib_main_t * vm,
       else if (unformat (input, "table-index %d", &table_index))
         ;
       else
-        break;
+        {
+          /* Try registered opaque-index unformat fns */
+          for (i = 0; i < vec_len (cm->unformat_opaque_index_fns); i++)
+            {
+              if (unformat (input, "%U", cm->unformat_opaque_index_fns[i], 
+                            &opaque_index))
+                goto found_opaque;
+            }
+          break;
+        }
+    found_opaque:
+      ;
     }
 
   if (table_index == ~0)
@@ -1739,6 +1817,113 @@ VLIB_CLI_COMMAND (classify_session_command, static) = {
     "\n table-index <nn> match [hex] [l2] [l3 ip4] [opaque-index <index>]",
     .function = classify_session_command_fn,
 };
+
+static uword 
+unformat_opaque_sw_if_index (unformat_input_t * input, va_list * args)
+{
+  u64 * opaquep = va_arg (*args, u64 *);
+  u32 sw_if_index;
+
+  if (unformat (input, "opaque-sw_if_index %U", unformat_vnet_sw_interface,
+                vnet_get_main(), &sw_if_index))
+    {
+      *opaquep = sw_if_index;
+      return 1;
+    }
+  return 0;
+}
+
+static uword 
+unformat_ip_next_node (unformat_input_t * input, va_list * args)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+  u32 * next_indexp = va_arg (*args, u32 *);
+  u32 node_index;
+  u32 next_index, rv;
+
+  if (unformat (input, "node %U", unformat_vlib_node,
+                cm->vlib_main, &node_index))
+    {
+      rv = next_index = vlib_node_add_next 
+        (cm->vlib_main, ip4_classify_node.index, node_index);
+      next_index = vlib_node_add_next 
+        (cm->vlib_main, ip6_classify_node.index, node_index);
+      ASSERT(rv == next_index);
+
+      *next_indexp = next_index;
+      return 1;
+    }
+  return 0;
+}
+
+static uword 
+unformat_acl_next_node (unformat_input_t * input, va_list * args)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+  u32 * next_indexp = va_arg (*args, u32 *);
+  u32 node_index;
+  u32 next_index, rv;
+
+  if (unformat (input, "node %U", unformat_vlib_node,
+                cm->vlib_main, &node_index))
+    {
+      rv = next_index = vlib_node_add_next 
+        (cm->vlib_main, ip4_inacl_node.index, node_index);
+      next_index = vlib_node_add_next 
+        (cm->vlib_main, ip6_inacl_node.index, node_index);
+      ASSERT(rv == next_index);
+
+      *next_indexp = next_index;
+      return 1;
+    }
+  return 0;
+}
+
+static uword 
+unformat_l2_next_node (unformat_input_t * input, va_list * args)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+  u32 * next_indexp = va_arg (*args, u32 *);
+  u32 node_index;
+  u32 next_index;
+
+  if (unformat (input, "node %U", unformat_vlib_node,
+                cm->vlib_main, &node_index))
+    {
+      next_index = vlib_node_add_next 
+        (cm->vlib_main, l2_classify_node.index, node_index);
+
+      *next_indexp = next_index;
+      return 1;
+    }
+  return 0;
+}
+
+
+static clib_error_t * 
+vnet_classify_init (vlib_main_t * vm)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+
+  cm->vlib_main = vm;
+  cm->vnet_main = vnet_get_main();
+
+  vnet_classify_register_unformat_opaque_index_fn 
+    (unformat_opaque_sw_if_index);
+
+  vnet_classify_register_unformat_ip_next_index_fn
+    (unformat_ip_next_node);
+
+  vnet_classify_register_unformat_l2_next_index_fn
+    (unformat_l2_next_node);
+
+  vnet_classify_register_unformat_acl_next_index_fn
+    (unformat_acl_next_node);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (vnet_classify_init);
 
 #define TEST_CODE 1
 

@@ -71,6 +71,9 @@ ip_inacl_inline (vlib_main_t * vm,
   u32 chain_hits = 0;
   input_acl_table_id_t tid;
   vlib_node_runtime_t * error_node;
+  u32 n_next_nodes;
+
+  n_next_nodes = node->n_next_nodes;
 
   if (is_ip4)
     {
@@ -245,7 +248,7 @@ ip_inacl_inline (vlib_main_t * vm,
                 {
                   vlib_buffer_advance (b0, e0->advance);
 
-                  next0 = (e0->next_index < ACL_NEXT_INDEX_N_NEXT)?
+                  next0 = (e0->next_index < n_next_nodes)?
                            e0->next_index:next0;
 
                   hits++;
@@ -267,7 +270,7 @@ ip_inacl_inline (vlib_main_t * vm,
                                                 t0->next_table_index);
                       else
                         {
-                          next0 = (t0->miss_next_index < ACL_NEXT_INDEX_N_NEXT)?
+                          next0 = (t0->miss_next_index < n_next_nodes)?
                                    t0->miss_next_index:next0;
 
                           misses++;
@@ -288,7 +291,7 @@ ip_inacl_inline (vlib_main_t * vm,
                       if (e0)
                         {
                           vlib_buffer_advance (b0, e0->advance);
-                          next0 = (e0->next_index < ACL_NEXT_INDEX_N_NEXT)?
+                          next0 = (e0->next_index < n_next_nodes)?
                                    e0->next_index:next0;
                           hits++;
                           chain_hits++;

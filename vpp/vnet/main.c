@@ -91,6 +91,7 @@ int main (int argc, char * argv[])
 #if __SSE3__
       _("sse3", "SSE3")
 #endif
+#undef _
 #endif
 
     /*

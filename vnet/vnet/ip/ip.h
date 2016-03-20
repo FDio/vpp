@@ -218,4 +218,7 @@ ip_incremental_checksum_buffer (vlib_main_t * vm, vlib_buffer_t * first_buffer,
 
 void ip_del_all_interface_addresses (vlib_main_t *vm, u32 sw_if_index);
 
+extern vlib_node_registration_t ip4_inacl_node;
+extern vlib_node_registration_t ip6_inacl_node;
+
 #endif /* included_ip_main_h */

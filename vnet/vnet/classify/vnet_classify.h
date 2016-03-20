@@ -158,12 +158,18 @@ struct _vnet_classify_main {
   /* Table pool */
   vnet_classify_table_t * tables;
   
+  /* Registered next-index, opaque unformat fcns */
+  unformat_function_t ** unformat_l2_next_index_fns;
+  unformat_function_t ** unformat_ip_next_index_fns;
+  unformat_function_t ** unformat_acl_next_index_fns;
+  unformat_function_t ** unformat_opaque_index_fns;
+
   /* convenience variables */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
 };
 
-vnet_classify_main_t vnet_classify_main;
+extern vnet_classify_main_t vnet_classify_main;
 
 u8 * format_classify_table (u8 * s, va_list * args);
 
@@ -468,5 +474,16 @@ unformat_function_t unformat_l3_match;
 unformat_function_t unformat_vlan_tag;
 unformat_function_t unformat_l2_match;
 unformat_function_t unformat_classify_match;
+
+void vnet_classify_register_unformat_ip_next_index_fn 
+(unformat_function_t * fn);
+
+void vnet_classify_register_unformat_l2_next_index_fn 
+(unformat_function_t * fn);
+
+void vnet_classify_register_unformat_acl_next_index_fn 
+(unformat_function_t * fn);
+
+void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t * fn);
 
 #endif /* __included_vnet_classify_h__ */
