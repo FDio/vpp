@@ -43,6 +43,7 @@
 
 static vnet_device_class_t tapcli_dev_class;
 static vnet_hw_interface_class_t tapcli_interface_class;
+static vlib_node_registration_t tapcli_rx_node;
 
 static void tapcli_nopunt_frame (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
@@ -58,6 +59,21 @@ typedef struct {
   u32 per_interface_next_index;
   u8 active;                    /* for delete */
 } tapcli_interface_t;
+
+typedef struct {
+  u16 sw_if_index;
+} tapcli_rx_trace_t;
+
+u8 * format_tapcli_rx_trace (u8 * s, va_list * va)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
+  vnet_main_t * vnm = vnet_get_main();
+  tapcli_rx_trace_t * t = va_arg (*va, tapcli_rx_trace_t *);
+  s = format (s, "%U", format_vnet_sw_if_index_name,
+                vnm, t->sw_if_index);
+  return s;
+}
 
 typedef struct {
   /* Vector of iovecs for readv/writev calls. */
@@ -197,24 +213,157 @@ enum {
   TAPCLI_RX_N_NEXT,
 };
 
+
+
+static uword tapcli_rx_iface(vlib_main_t * vm,
+                            vlib_node_runtime_t * node,
+                            tapcli_interface_t * ti)
+{
+  tapcli_main_t * tm = &tapcli_main;
+  const uword buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+  u32 n_trace = vlib_get_trace_count (vm, node);
+  u8 set_trace = 0;
+
+  vnet_main_t *vnm;
+  vnet_sw_interface_t * si;
+  u8 admin_down;
+  u32 next = node->cached_next_index;
+  u32 n_left_to_next, next_index;
+  u32 *to_next;
+
+  vnm = vnet_get_main();
+  si = vnet_get_sw_interface (vnm, ti->sw_if_index);
+  admin_down = !(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+
+  vlib_get_next_frame(vm, node, next, to_next, n_left_to_next);
+
+  while (n_left_to_next) { // Fill at most one vector
+    vlib_buffer_t *b_first, *b, *prev;
+    u32 bi_first, bi;
+    word n_bytes_in_packet;
+    int j, n_bytes_left;
+
+    if (PREDICT_FALSE(vec_len(tm->rx_buffers) < tm->mtu_buffers)) {
+      uword len = vec_len(tm->rx_buffers);
+      _vec_len(tm->rx_buffers) +=
+          vlib_buffer_alloc_from_free_list(vm, &tm->rx_buffers[len],
+                            VLIB_FRAME_SIZE - len, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+      if (PREDICT_FALSE(vec_len(tm->rx_buffers) < tm->mtu_buffers)) {
+        clib_warning("vlib_buffer_alloc failed");
+        break;
+      }
+    }
+
+    uword i_rx = vec_len (tm->rx_buffers) - 1;
+
+    /* Allocate RX buffers from end of rx_buffers.
+           Turn them into iovecs to pass to readv. */
+    vec_validate (tm->iovecs, tm->mtu_buffers - 1);
+    for (j = 0; j < tm->mtu_buffers; j++) {
+      b = vlib_get_buffer (vm, tm->rx_buffers[i_rx - j]);
+      b->clone_count = 0;
+      tm->iovecs[j].iov_base = b->data;
+      tm->iovecs[j].iov_len = buffer_size;
+    }
+
+    n_bytes_left = readv (ti->unix_fd, tm->iovecs, tm->mtu_buffers);
+    n_bytes_in_packet = n_bytes_left;
+    if (n_bytes_left <= 0) {
+      if (errno != EAGAIN) {
+        vlib_node_increment_counter(vm, tapcli_rx_node.index,
+                                    TAPCLI_ERROR_READ, 1);
+      }
+      break;
+    }
+
+    bi_first = tm->rx_buffers[i_rx];
+    b = b_first = vlib_get_buffer (vm, tm->rx_buffers[i_rx]);
+    prev = NULL;
+
+    while (1) {
+      b->current_length = n_bytes_left < buffer_size ? n_bytes_left : buffer_size;
+      n_bytes_left -= buffer_size;
+
+      if (prev) {
+        prev->next_buffer = bi;
+        prev->flags |= VLIB_BUFFER_NEXT_PRESENT;
+      }
+      prev = b;
+
+      /* last segment */
+      if (n_bytes_left <= 0)
+        break;
+
+      i_rx--;
+      bi = tm->rx_buffers[i_rx];
+      b = vlib_get_buffer (vm, bi);
+    }
+
+    _vec_len (tm->rx_buffers) = i_rx;
+
+    b_first->total_length_not_including_first_buffer =
+        (n_bytes_in_packet > buffer_size) ? n_bytes_in_packet - buffer_size : 0;
+    b_first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+
+    /* Ensure mbufs are updated */
+    vlib_buffer_chain_validate(vm, b_first);
+
+    VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b_first);
+
+    vnet_buffer (b_first)->sw_if_index[VLIB_RX] = ti->sw_if_index;
+    vnet_buffer (b_first)->sw_if_index[VLIB_TX] = (u32)~0;
+
+    b_first->error = node->errors[TAPCLI_ERROR_NONE];
+    next_index = TAPCLI_RX_NEXT_ETHERNET_INPUT;
+    next_index = (ti->per_interface_next_index != ~0) ?
+        ti->per_interface_next_index : next_index;
+    next_index = admin_down ? TAPCLI_RX_NEXT_DROP : next_index;
+
+    to_next[0] = bi_first;
+    to_next++;
+    n_left_to_next--;
+
+    vlib_validate_buffer_enqueue_x1 (vm, node, next,
+                                     to_next, n_left_to_next,
+                                     bi_first, next_index);
+
+    /* Interface counters for tapcli interface. */
+    if (PREDICT_TRUE(!admin_down)) {
+      vlib_increment_combined_counter (
+          vnet_main.interface_main.combined_sw_if_counters
+          + VNET_INTERFACE_COUNTER_RX,
+          os_get_cpu_number(), ti->sw_if_index,
+          1, n_bytes_in_packet);
+
+      if (PREDICT_FALSE(n_trace > 0)) {
+        vlib_trace_buffer (vm, node, next_index,
+                           b_first, /* follow_chain */ 1);
+        n_trace--;
+        set_trace = 1;
+        tapcli_rx_trace_t *t0 = vlib_add_trace (vm, node, b_first, sizeof (*t0));
+        t0->sw_if_index = si->sw_if_index;
+      }
+    }
+  }
+  vlib_put_next_frame (vm, node, next, n_left_to_next);
+  if (set_trace)
+    vlib_set_trace_count (vm, node, n_trace);
+  return VLIB_FRAME_SIZE - n_left_to_next;
+}
+
 static uword
 tapcli_rx (vlib_main_t * vm,
 	   vlib_node_runtime_t * node,
 	   vlib_frame_t * frame)
 {
   tapcli_main_t * tm = &tapcli_main;
-  vlib_buffer_t *b_first;
-  u32 bi;
-  vlib_buffer_free_list_t *fl;
-  const uword buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
   static u32 * ready_interface_indices;
   tapcli_interface_t * ti;
   int i;
-  word n_bytes_in_packet;
+  u32 total_count = 0;
 
   vec_reset_length (ready_interface_indices);
-
-  clib_bitmap_foreach (i, tm->pending_read_bitmap, 
+  clib_bitmap_foreach (i, tm->pending_read_bitmap,
   ({
     vec_add1 (ready_interface_indices, i);
   }));
@@ -222,161 +371,33 @@ tapcli_rx (vlib_main_t * vm,
   if (vec_len (ready_interface_indices) == 0)
     return 1;
 
-  fl = vlib_buffer_get_free_list(vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-
   for (i = 0; i < vec_len(ready_interface_indices); i++)
-    {
-      /* Clear the "interrupt" bit */
-      tm->pending_read_bitmap = 
+  {
+    tm->pending_read_bitmap =
         clib_bitmap_set (tm->pending_read_bitmap,
                          ready_interface_indices[i], 0);
-      
-      ti = vec_elt_at_index (tm->tapcli_interfaces, ready_interface_indices[i]);
 
-      /* Make sure we have some RX buffers. */
-      {
-        uword n_left = vec_len (tm->rx_buffers);
-        uword n_alloc;
-        if (n_left < VLIB_FRAME_SIZE / 2) {
-	  vec_validate(tm->rx_buffers, VLIB_FRAME_SIZE + n_left - 1);
-	  n_alloc = vlib_buffer_alloc(vm, &tm->rx_buffers[n_left], VLIB_FRAME_SIZE);
-	  n_left += n_alloc;
-	  _vec_len (tm->rx_buffers) = n_left;
-	}
-      }
-
-      /* Allocate RX buffers from end of rx_buffers.
-         Turn them into iovecs to pass to readv. */
-      {
-        uword i_rx = vec_len (tm->rx_buffers) - 1;
-        vlib_buffer_t * b, *prev = 0;
-        word j, n_bytes_left;
-
-        /* We need enough buffers left for an MTU sized packet. */
-        if (PREDICT_FALSE(vec_len (tm->rx_buffers) < tm->mtu_buffers))
-          {
-            clib_bitmap_set (tm->pending_read_bitmap,
-                             ready_interface_indices[i], 1);
-            clib_warning ("buffer allocation failure");
-            continue;
-          }
-
-        vec_validate (tm->iovecs, tm->mtu_buffers - 1);
-        for (j = 0; j < tm->mtu_buffers; j++)
-          {
-            b = vlib_get_buffer (vm, tm->rx_buffers[i_rx - j]);
-	    vlib_buffer_init_for_free_list (b, fl);
-            tm->iovecs[j].iov_base = b->data;
-            tm->iovecs[j].iov_len = buffer_size;
-          }
-
-        n_bytes_left = readv (ti->unix_fd, tm->iovecs, tm->mtu_buffers);
-        n_bytes_in_packet = n_bytes_left;
-        if (n_bytes_left <= 0)
-          {
-            if (errno != EAGAIN)
-              clib_unix_warning ("readv %d", n_bytes_left);
-            return 0;
-          }
-        
-        bi = tm->rx_buffers[i_rx];
-	b = b_first = vlib_get_buffer (vm, tm->rx_buffers[i_rx]);
-
-        while (1) {
-	  u32 bi;
-
-	  vlib_buffer_init_for_free_list(b, fl);
-
-	  b->current_length = n_bytes_left < buffer_size ? n_bytes_left : buffer_size;
-	  n_bytes_left -= buffer_size;
-
-	  if (prev) {
-	    prev->next_buffer = bi;
-	    prev->flags |= VLIB_BUFFER_NEXT_PRESENT;
-	  }
-	  prev = b;
-
-	  /* last segment */
-	  if (n_bytes_left <= 0) break;
-
-	  i_rx--;
-	  bi = tm->rx_buffers[i_rx];
-	  b = vlib_get_buffer (vm, bi);
-	}
-
-        /* Interface counters for tapcli interface. */
-        vlib_increment_combined_counter 
-          (vnet_main.interface_main.combined_sw_if_counters
-           + VNET_INTERFACE_COUNTER_RX,
-           os_get_cpu_number(),
-           ti->sw_if_index,
-           1, n_bytes_in_packet);
-
-        _vec_len (tm->rx_buffers) = i_rx;
-      }
-
-      b_first->total_length_not_including_first_buffer = (n_bytes_in_packet > buffer_size) ? n_bytes_in_packet - buffer_size : 0;
-      b_first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-
-      /* Ensure mbufs are updated */
-      vlib_buffer_chain_validate(vm, b_first);
-
-      /*
-       * Turn this on if you run into
-       * "bad monkey" contexts, and you want to know exactly
-       * which nodes they've visited... See .../vlib/vlib/buffer.h
-       */
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b_first);
-
-      {
-        u32 next_index;
-        uword n_trace = vlib_get_trace_count (vm, node);
-
-        vnet_buffer (b_first)->sw_if_index[VLIB_RX] = ti->sw_if_index;
-        vnet_buffer (b_first)->sw_if_index[VLIB_TX] = (u32)~0;
-
-        b_first->error = node->errors[0];
-
-        {
-          next_index = TAPCLI_RX_NEXT_ETHERNET_INPUT;
-
-          next_index = (ti->per_interface_next_index != ~0) ? 
-            ti->per_interface_next_index : next_index;
-        }
-        {
-          vnet_main_t *vnm = vnet_get_main();
-          vnet_sw_interface_t * si;
-          si = vnet_get_sw_interface (vnm, ti->sw_if_index);
-          if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
-            next_index = TAPCLI_RX_NEXT_DROP;
-        }
-
-        vlib_set_next_frame_buffer (vm, node, next_index, bi);
-        
-        if (n_trace > 0)
-          {
-            vlib_trace_buffer (vm, node, next_index,
-                               b_first, /* follow_chain */ 1);
-            vlib_set_trace_count (vm, node, n_trace - 1);
-          }
-      }
-    }
-
-  return 1;
+    ti = vec_elt_at_index (tm->tapcli_interfaces, ready_interface_indices[i]);
+    total_count += tapcli_rx_iface(vm, node, ti);
+  }
+  return total_count; //This might return more than 256.
 }
 
 static char * tapcli_rx_error_strings[] = {
-  "Interface down",
+#define _(sym,string) string,
+  foreach_tapcli_error
+#undef _
 };
 
-VLIB_REGISTER_NODE (tapcli_rx_node,static) = {
+VLIB_REGISTER_NODE (tapcli_rx_node, static) = {
   .function = tapcli_rx,
   .name = "tapcli-rx",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
   .vector_size = 4,
-  .n_errors = 1,
+  .n_errors = TAPCLI_N_ERROR,
   .error_strings = tapcli_rx_error_strings,
+  .format_trace = format_tapcli_rx_trace,
 
   .n_next_nodes = TAPCLI_RX_N_NEXT,
   .next_nodes = {
@@ -1169,8 +1190,10 @@ tapcli_init (vlib_main_t * vm)
   tm->mtu_bytes = 4096 + 256;
   tm->tapcli_interface_index_by_sw_if_index = hash_create (0, sizeof(uword));
   tm->tapcli_interface_index_by_unix_fd = hash_create (0, sizeof (uword));
+  tm->rx_buffers = 0;
+  vec_alloc(tm->rx_buffers, VLIB_FRAME_SIZE);
+  vec_reset_length(tm->rx_buffers);
   vm->os_punt_frame = tapcli_nopunt_frame;
-
   return 0;
 }
 

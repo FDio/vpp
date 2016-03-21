@@ -18,6 +18,18 @@
 #ifndef __included_tapcli_h__
 #define __included_tapcli_h__
 
+#define foreach_tapcli_error                            \
+  /* Must be first. */                                  \
+ _(NONE, "no error")                                    \
+ _(READ, "read error")                                  \
+ _(UNKNOWN, "unknown error")
+
+typedef enum {
+#define _(sym,str) TAPCLI_ERROR_##sym,
+  foreach_tapcli_error
+#undef _
+   TAPCLI_N_ERROR,
+ } tapcli_error_t;
 
 typedef struct {
   u32 sw_if_index;
