@@ -114,6 +114,7 @@ libvnet_la_SOURCES +=				\
  vnet/l2/l2_output_acl.c			\
  vnet/l2/l2_output.c				\
  vnet/l2/l2_patch.c				\
+ vnet/l2/l2_rw.c                                \
  vnet/l2/l2_vtr.c				\
  vnet/l2/l2_xcrw.c
 
@@ -129,6 +130,7 @@ nobase_include_HEADERS +=			\
  vnet/l2/l2_bvi.h				\
  vnet/l2/l2_flood.h				\
  vnet/l2/l2_fib.h				\
+ vnet/l2/l2_rw.h                                \
  vnet/l2/l2_xcrw.h				\
  vnet/l2/l2_classify.h
 

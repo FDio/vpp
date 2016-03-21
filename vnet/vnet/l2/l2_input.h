@@ -93,6 +93,7 @@ l2input_bd_config_from_index (l2input_main_t * l2im, u32 bd_index)
  _(ARP_TERM,      "arp-term-l2bd")              \
  _(UU_FLOOD,      "l2-flood")                   \
  _(FWD,           "l2-fwd")                     \
+ _(RW,            "l2-rw")                      \
  _(LEARN,         "l2-learn")                   \
  _(VTR,           "l2-input-vtr")               \
  _(VPATH,         "vpath-input-l2")             \
@@ -195,6 +196,11 @@ l2_input_config_t * l2input_intf_config (u32 sw_if_index);
 u32 l2input_intf_bitmap_enable (u32 sw_if_index,
                                  u32 feature_bitmap,
                                  u32 enable);
+
+//Sets modifies flags from a bridge domain
+u32 l2input_set_bridge_features(u32 bd_index,
+                                u32 feat_mask,
+                                u32 feat_value);
 
 
 #define MODE_L3        0
