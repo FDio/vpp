@@ -507,7 +507,16 @@ u32 l2input_intf_bitmap_enable (u32 sw_if_index,
   return config->feature_bitmap;
 }
 
-
+u32 l2input_set_bridge_features(u32 bd_index,
+                                 u32 feat_mask, u32 feat_value)
+{
+  l2_bridge_domain_t * bd_config;
+  vec_validate (l2input_main.bd_configs, bd_index);
+  bd_config = vec_elt_at_index(l2input_main.bd_configs, bd_index);
+  bd_validate (bd_config);
+  bd_config->feature_bitmap = (bd_config->feature_bitmap & ~feat_mask) | feat_value;
+  return bd_config->feature_bitmap;
+}
 
 // Set the subinterface to run in l2 or l3 mode.
 // for L3 mode, just the sw_if_index is specified
