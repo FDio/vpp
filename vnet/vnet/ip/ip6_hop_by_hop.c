@@ -81,7 +81,7 @@ typedef union {
 } time_u64_t;
 
 static inline u8
-fetch_trace_data_size(trace_type)
+fetch_trace_data_size(u8 trace_type)
 {
   u8 trace_data_size = 0;
 
