@@ -26,6 +26,11 @@ DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms openjdk-7-jdk git libtool libganglia1-dev libapr1-dev
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
 
+RPM_DEPENDS_GROUPS = 'Development Tools'
+RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel
+RPM_DEPENDS += openssl-devel epel-release apr-devel
+EPEL_DEPENDS = libconfuse-devel ganglia-devel
+
 ifneq ("$(wildcard $(STARTUP_DIR)/startup.conf),"")
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
 endif
@@ -104,8 +109,12 @@ bootstrap: $(BR)/.bootstrap.ok
 install-dep:
 ifeq ("$(shell lsb_release -si)", "Ubuntu")
 	@sudo apt-get -y install $(DEB_DEPENDS)
+else ifneq ("$(wildcard /etc/redhat-release)","")
+	@sudo yum groupinstall -y $(RPM_DEPENDS_GROUPS)
+	@sudo yum install -y $(RPM_DEPENDS)
+	@sudo yum install -y --enablerepo=epel $(EPEL_DEPENDS)
 else
-	$(error "This option currently works only on Ubuntu systems")
+	$(error "This option currently works only on Ubuntu or Centos systems")
 endif
 
 define make
