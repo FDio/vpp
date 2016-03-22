@@ -1175,8 +1175,9 @@ distclean:
 	rm -rf $(MU_BUILD_ROOT_DIR)/$(IMAGES_PREFIX)*
 	rm -rf $(TOOL_INSTALL_DIR)
 	rm -rf $(MU_BUILD_ROOT_DIR)/*.deb
+	rm -rf $(MU_BUILD_ROOT_DIR)/*.rpm
 	rm -rf $(MU_BUILD_ROOT_DIR)/*.changes
-	(cd $(MU_BUILD_ROOT_DIR)/deb/;debian/rules clean)
+	if [ -e /usr/bin/dh ];then (cd $(MU_BUILD_ROOT_DIR)/deb/;debian/rules clean); fi
 	rm -f $(MU_BUILD_ROOT_DIR)/deb/debian/*.install
 	rm -f $(MU_BUILD_ROOT_DIR)/deb/debian/*.dkms
 	rm -f $(MU_BUILD_ROOT_DIR)/deb/debian/changelog
