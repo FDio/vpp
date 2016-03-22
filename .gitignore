@@ -8,6 +8,7 @@
 /build-root/path_setup
 /build-root/build-config.mk
 /build-root/*.deb
+/build-root/*.rpm
 /build-root/*.changes
 /build-config.mk
 /dpdk/*.tar.gz
