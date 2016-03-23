@@ -240,6 +240,7 @@ nobase_include_HEADERS +=			\
 # Layer 3 protocol: IP v4/v6
 ########################################
 libvnet_la_SOURCES +=				\
+ vnet/ip/adj_alloc.c				\
  vnet/ip/format.c				\
  vnet/ip/icmp4.c				\
  vnet/ip/icmp6.c				\
@@ -269,6 +270,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip_frag.c
 
 nobase_include_HEADERS +=			\
+ vnet/ip/adj_alloc.h				\
  vnet/ip/format.h				\
  vnet/ip/icmp46_packet.h			\
  vnet/ip/icmp4.h				\

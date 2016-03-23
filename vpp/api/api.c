@@ -5150,6 +5150,11 @@ vpe_api_hookup (vlib_main_t *vm)
     am->api_trace_cfg [VL_API_NSH_GRE_ADD_DEL_TUNNEL].size
         += 4 * sizeof (u32);
 
+    /* 
+     * Thread-safe API messages
+     */
+    am->is_mp_safe [VL_API_IP_ADD_DEL_ROUTE] = 1;
+
     return 0;
 }
 

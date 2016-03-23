@@ -191,7 +191,8 @@ set_ply_with_more_specific_leaf (ip4_fib_mtrie_t * m,
       /* Replace less specific terminal leaves with new leaf. */
       else if (new_leaf_dst_address_bits >= ply->dst_address_bits_of_leaves[i])
 	{
-	  ply->leaves[i] = new_leaf;
+          __sync_val_compare_and_swap (&ply->leaves[i], old_leaf, new_leaf);
+          ASSERT(ply->leaves[i] == new_leaf);
 	  ply->dst_address_bits_of_leaves[i] = new_leaf_dst_address_bits;
 	  ply->n_non_empty_leafs += ip4_fib_mtrie_leaf_is_empty (old_leaf);
 	}
@@ -240,7 +241,9 @@ set_leaf (ip4_fib_mtrie_t * m,
 	      if (old_leaf_is_terminal)
 		{
 		  old_ply->dst_address_bits_of_leaves[i] = a->dst_address_length;
-		  old_ply->leaves[i] = new_leaf;
+                  __sync_val_compare_and_swap (&old_ply->leaves[i], old_leaf,
+                                               new_leaf);
+                  ASSERT(old_ply->leaves[i] == new_leaf);
 		  old_ply->n_non_empty_leafs += ip4_fib_mtrie_leaf_is_empty (old_leaf);
 		  ASSERT (old_ply->n_non_empty_leafs <= ARRAY_LEN (old_ply->leaves));
 		}
@@ -274,7 +277,9 @@ set_leaf (ip4_fib_mtrie_t * m,
 	  /* Refetch since ply_create may move pool. */
 	  old_ply = pool_elt_at_index (m->ply_pool, old_ply_index);
 
-	  old_ply->leaves[dst_byte] = new_leaf;
+          __sync_val_compare_and_swap (&old_ply->leaves[dst_byte], old_leaf,
+                                       new_leaf);
+          ASSERT(old_ply->leaves[dst_byte] == new_leaf);
 	  old_ply->dst_address_bits_of_leaves[dst_byte] = 0;
 
 	  old_ply->n_non_empty_leafs -= ip4_fib_mtrie_leaf_is_non_empty (old_leaf);

@@ -373,9 +373,9 @@ ip_get_adjacency (ip_lookup_main_t * lm,
 {
   ip_adjacency_t * adj;
 
-  adj = heap_elt_at_index (lm->adjacency_heap, adj_index);
+  adj = vec_elt_at_index (lm->adjacency_heap, adj_index);
 
-  ASSERT (! heap_is_free_handle (lm->adjacency_heap, adj->heap_handle));
+  ASSERT (adj->heap_handle != ~0);
 
   return adj;
 }
@@ -482,8 +482,5 @@ do {                                                                    \
 } while (0)
 
 void ip_lookup_init (ip_lookup_main_t * lm, u32 ip_lookup_node_index);
-
-serialize_function_t serialize_ip_lookup_main, unserialize_ip_lookup_main;
-serialize_function_t serialize_vec_ip_adjacency, unserialize_vec_ip_adjacency;
 
 #endif /* included_ip_lookup_h */

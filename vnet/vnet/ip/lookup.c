@@ -39,6 +39,7 @@
 
 #include <vppinfra/math.h>		/* for fabs */
 #include <vnet/ip/ip.h>
+#include <vnet/ip/adj_alloc.h>
 
 static void
 ip_multipath_del_adjacency (ip_lookup_main_t * lm, u32 del_adj_index);
@@ -47,7 +48,15 @@ always_inline void
 ip_poison_adjacencies (ip_adjacency_t * adj, uword n_adj)
 {
   if (CLIB_DEBUG > 0)
-    memset (adj, 0xfe, n_adj * sizeof (adj[0]));
+    {
+      u32 save_handle = adj->heap_handle;;
+      u32 save_n_adj = adj->n_adj;
+
+      memset (adj, 0xfe, n_adj * sizeof (adj[0]));
+
+      adj->heap_handle = save_handle;
+      adj->n_adj = save_n_adj;
+    }
 }
 
 /* Create new block of given number of contiguous adjacencies. */
@@ -92,7 +101,7 @@ ip_add_adjacency (ip_lookup_main_t * lm,
       p = hash_get (lm->adj_index_by_signature, signature);
       if (p)
         {
-          adj = heap_elt_at_index (lm->adjacency_heap, p[0]);
+          adj = vec_elt_at_index (lm->adjacency_heap, p[0]);
           while (1)
             {
               if (vnet_ip_adjacency_share_compare (adj, copy_adj))
@@ -103,14 +112,14 @@ ip_add_adjacency (ip_lookup_main_t * lm,
                 }
               if (adj->next_adj_with_signature == 0)
                 break;
-              adj = heap_elt_at_index (lm->adjacency_heap,
-                                       adj->next_adj_with_signature);
+              adj = vec_elt_at_index (lm->adjacency_heap,
+                                      adj->next_adj_with_signature);
             }
         }
     }
 
-  ai = heap_alloc (lm->adjacency_heap, n_adj, handle);
-  adj = heap_elt_at_index (lm->adjacency_heap, ai);
+  lm->adjacency_heap = aa_alloc (lm->adjacency_heap, &adj, n_adj);
+  handle = ai = adj->heap_handle;
 
   ip_poison_adjacencies (adj, n_adj);
 
@@ -169,23 +178,14 @@ ip_add_adjacency (ip_lookup_main_t * lm,
 static void ip_del_adjacency2 (ip_lookup_main_t * lm, u32 adj_index, u32 delete_multipath_adjacency)
 {
   ip_adjacency_t * adj;
-  uword handle;
 
   ip_call_add_del_adjacency_callbacks (lm, adj_index, /* is_del */ 1);
 
   adj = ip_get_adjacency (lm, adj_index);
-  handle = adj->heap_handle;
 
-  /* Special-case local, drop adjs */
-  switch (adj->lookup_next_index)
-    {
-    case IP_LOOKUP_NEXT_LOCAL:
-    case IP_LOOKUP_NEXT_DROP:
+  /* Special-case miss, local, drop adjs */
+  if (adj_index < 3)
       return;
-    default:
-      break;
-    }
-
 
   if (adj->n_adj == 1)
     {
@@ -202,11 +202,8 @@ static void ip_del_adjacency2 (ip_lookup_main_t * lm, u32 adj_index, u32 delete_
       signature = vnet_ip_adjacency_signature (adj);
       p = hash_get (lm->adj_index_by_signature, signature);
       if (p == 0)
-        {
-          clib_warning ("adj 0x%llx signature %llx not in table",
-                        adj, signature);
           goto bag_it;
-        }
+
       this_ai = p[0];
       /* At the top of the signature chain (likely)? */
       if (this_ai == adj_index)
@@ -232,7 +229,12 @@ static void ip_del_adjacency2 (ip_lookup_main_t * lm, u32 adj_index, u32 delete_
               prev_adj = this_adj;
               this_adj = ip_get_adjacency
                 (lm, this_adj->next_adj_with_signature);
-              ASSERT(this_adj->heap_handle != 0);
+              /* 
+               * This can happen when creating the first multipath adj of a set
+               * We end up looking at the miss adjacency (handle==0).
+               */
+              if (this_adj->heap_handle == 0)
+                  goto bag_it;
             }
           prev_adj->next_adj_with_signature = this_adj->next_adj_with_signature;
         }
@@ -244,7 +246,7 @@ static void ip_del_adjacency2 (ip_lookup_main_t * lm, u32 adj_index, u32 delete_
 
   ip_poison_adjacencies (adj, adj->n_adj);
 
-  heap_dealloc (lm->adjacency_heap, handle);
+  aa_free (lm->adjacency_heap, adj);
 }
 
 void ip_del_adjacency (ip_lookup_main_t * lm, u32 adj_index)
@@ -792,178 +794,6 @@ ip_interface_address_add_del (ip_lookup_main_t * lm,
   return /* no error */ 0;
 }
 
-void serialize_vec_ip_adjacency (serialize_main_t * m, va_list * va)
-{
-  ip_adjacency_t * a = va_arg (*va, ip_adjacency_t *);
-  u32 n = va_arg (*va, u32);
-  u32 i;
-  for (i = 0; i < n; i++)
-    {
-      serialize_integer (m, a[i].heap_handle, sizeof (a[i].heap_handle));
-      serialize_integer (m, a[i].n_adj, sizeof (a[i].n_adj));
-      serialize_integer (m, a[i].lookup_next_index, sizeof (a[i].lookup_next_index_as_int));
-      switch (a[i].lookup_next_index)
-	{
-	case IP_LOOKUP_NEXT_LOCAL:
-	  serialize_integer (m, a[i].if_address_index, sizeof (a[i].if_address_index));
-	  break;
-
-	case IP_LOOKUP_NEXT_ARP:
-	  serialize_integer (m, a[i].if_address_index, sizeof (a[i].if_address_index));
-	  serialize_integer (m, a[i].rewrite_header.sw_if_index, sizeof (a[i].rewrite_header.sw_if_index));
-	  break;
-
-	case IP_LOOKUP_NEXT_REWRITE:
-	  serialize (m, serialize_vnet_rewrite, &a[i].rewrite_header, sizeof (a[i].rewrite_data));
-	  break;
-
-	default:
-	  /* nothing else to serialize. */
-	  break;
-	}
-    }
-}
-
-void unserialize_vec_ip_adjacency (serialize_main_t * m, va_list * va)
-{
-  ip_adjacency_t * a = va_arg (*va, ip_adjacency_t *);
-  u32 n = va_arg (*va, u32);
-  u32 i;
-  ip_poison_adjacencies (a, n);
-  for (i = 0; i < n; i++)
-    {
-      unserialize_integer (m, &a[i].heap_handle, sizeof (a[i].heap_handle));
-      unserialize_integer (m, &a[i].n_adj, sizeof (a[i].n_adj));
-      unserialize_integer (m, &a[i].lookup_next_index_as_int, sizeof (a[i].lookup_next_index_as_int));
-      switch (a[i].lookup_next_index)
-	{
-	case IP_LOOKUP_NEXT_LOCAL:
-	  unserialize_integer (m, &a[i].if_address_index, sizeof (a[i].if_address_index));
-	  break;
-
-	case IP_LOOKUP_NEXT_ARP:
-	  unserialize_integer (m, &a[i].if_address_index, sizeof (a[i].if_address_index));
-	  unserialize_integer (m, &a[i].rewrite_header.sw_if_index, sizeof (a[i].rewrite_header.sw_if_index));
-	  break;
-
-	case IP_LOOKUP_NEXT_REWRITE:
-	  unserialize (m, unserialize_vnet_rewrite, &a[i].rewrite_header, sizeof (a[i].rewrite_data));
-	  break;
-
-	default:
-	  /* nothing else to unserialize. */
-	  break;
-	}
-    }
-}
-
-static void serialize_vec_ip_multipath_next_hop (serialize_main_t * m, va_list * va)
-{
-  ip_multipath_next_hop_t * nh = va_arg (*va, ip_multipath_next_hop_t *);
-  u32 n = va_arg (*va, u32);
-  u32 i;
-  for (i = 0; i < n; i++)
-    {
-      serialize_integer (m, nh[i].next_hop_adj_index, sizeof (nh[i].next_hop_adj_index));
-      serialize_integer (m, nh[i].weight, sizeof (nh[i].weight));
-    }
-}
-
-static void unserialize_vec_ip_multipath_next_hop (serialize_main_t * m, va_list * va)
-{
-  ip_multipath_next_hop_t * nh = va_arg (*va, ip_multipath_next_hop_t *);
-  u32 n = va_arg (*va, u32);
-  u32 i;
-  for (i = 0; i < n; i++)
-    {
-      unserialize_integer (m, &nh[i].next_hop_adj_index, sizeof (nh[i].next_hop_adj_index));
-      unserialize_integer (m, &nh[i].weight, sizeof (nh[i].weight));
-    }
-}
-
-static void serialize_vec_ip_multipath_adjacency (serialize_main_t * m, va_list * va)
-{
-  ip_multipath_adjacency_t * a = va_arg (*va, ip_multipath_adjacency_t *);
-  u32 n = va_arg (*va, u32);
-  u32 i;
-  for (i = 0; i < n; i++)
-    {
-#define foreach_ip_multipath_adjacency_field		\
-  _ (adj_index) _ (n_adj_in_block) _ (reference_count)	\
-  _ (normalized_next_hops.count)			\
-  _ (normalized_next_hops.heap_offset)			\
-  _ (normalized_next_hops.heap_handle)			\
-  _ (unnormalized_next_hops.count)			\
-  _ (unnormalized_next_hops.heap_offset)		\
-  _ (unnormalized_next_hops.heap_handle)
-
-#define _(f) serialize_integer (m, a[i].f, sizeof (a[i].f));
-      foreach_ip_multipath_adjacency_field;
-#undef _
-    }
-}
-
-static void unserialize_vec_ip_multipath_adjacency (serialize_main_t * m, va_list * va)
-{
-  ip_multipath_adjacency_t * a = va_arg (*va, ip_multipath_adjacency_t *);
-  u32 n = va_arg (*va, u32);
-  u32 i;
-  for (i = 0; i < n; i++)
-    {
-#define _(f) unserialize_integer (m, &a[i].f, sizeof (a[i].f));
-      foreach_ip_multipath_adjacency_field;
-#undef _
-    }
-}
-
-void serialize_ip_lookup_main (serialize_main_t * m, va_list * va)
-{
-  ip_lookup_main_t * lm = va_arg (*va, ip_lookup_main_t *);
-
-  /* If this isn't true you need to call e.g. ip4_maybe_remap_adjacencies
-     to make it true. */
-  ASSERT (lm->n_adjacency_remaps == 0);
-
-  serialize (m, serialize_heap, lm->adjacency_heap, serialize_vec_ip_adjacency);
-
-  serialize (m, serialize_heap, lm->next_hop_heap, serialize_vec_ip_multipath_next_hop);
-  vec_serialize (m, lm->multipath_adjacencies, serialize_vec_ip_multipath_adjacency);
-
-  /* Adjacency counters (FIXME disabled for now). */
-  if (0)
-    serialize (m, serialize_vlib_combined_counter_main, &lm->adjacency_counters, /* incremental */ 0);
-}
-
-void unserialize_ip_lookup_main (serialize_main_t * m, va_list * va)
-{
-  ip_lookup_main_t * lm = va_arg (*va, ip_lookup_main_t *);
-
-  unserialize (m, unserialize_heap, &lm->adjacency_heap, unserialize_vec_ip_adjacency);
-  unserialize (m, unserialize_heap, &lm->next_hop_heap, unserialize_vec_ip_multipath_next_hop);
-  vec_unserialize (m, &lm->multipath_adjacencies, unserialize_vec_ip_multipath_adjacency);
-
-  /* Build hash table from unserialized data. */
-  {
-    ip_multipath_adjacency_t * a;
-
-    vec_foreach (a, lm->multipath_adjacencies)
-      {
-	if (a->n_adj_in_block > 0 && a->reference_count > 0)
-	  hash_set (lm->multipath_adjacency_by_next_hops,
-		    ip_next_hop_hash_key_from_handle (a->normalized_next_hops.heap_handle),
-		    a - lm->multipath_adjacencies);
-      }
-  }
-
-  /* Validate adjacency counters. */
-  vlib_validate_combined_counter (&lm->adjacency_counters, 
-                                  vec_len (lm->adjacency_heap) - 1);
-
-  /* Adjacency counters (FIXME disabled for now). */
-  if (0)
-    unserialize (m, unserialize_vlib_combined_counter_main, &lm->adjacency_counters, /* incremental */ 0);
-}
-
 void ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
 {
   ip_adjacency_t * adj;
@@ -976,20 +806,26 @@ void ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
   lm->adj_index_by_signature = hash_create (0, sizeof (uword));
   memset (&template_adj, 0, sizeof (template_adj));
 
+  /* Preallocate three "special" adjacencies */
+  lm->adjacency_heap = aa_bootstrap (0, 3 /* n=1 free items */);
+
   /* Hand-craft special miss adjacency to use when nothing matches in the
      routing table.  Same for drop adjacency. */
-  adj = ip_add_adjacency (lm, /* template */ 0, /* n-adj */ 1, &lm->miss_adj_index);
+  adj = ip_add_adjacency (lm, /* template */ 0, /* n-adj */ 1, 
+                          &lm->miss_adj_index);
   adj->lookup_next_index = IP_LOOKUP_NEXT_MISS;
   ASSERT (lm->miss_adj_index == IP_LOOKUP_MISS_ADJ_INDEX);
 
   /* Make the "drop" adj sharable */
   template_adj.lookup_next_index = IP_LOOKUP_NEXT_DROP;
-  adj = ip_add_adjacency (lm, &template_adj, /* n-adj */ 1, &lm->drop_adj_index);
+  adj = ip_add_adjacency (lm, &template_adj, /* n-adj */ 1, 
+                          &lm->drop_adj_index);
 
   /* Make the "local" adj sharable */
   template_adj.lookup_next_index = IP_LOOKUP_NEXT_LOCAL;
   template_adj.if_address_index = ~0;
-  adj = ip_add_adjacency (lm, &template_adj, /* n-adj */ 1, &lm->local_adj_index);
+  adj = ip_add_adjacency (lm, &template_adj, /* n-adj */ 1, 
+                          &lm->local_adj_index);
 
   if (! lm->fib_result_n_bytes)
     lm->fib_result_n_bytes = sizeof (uword);
@@ -1782,6 +1618,7 @@ VLIB_CLI_COMMAND (ip_route_command, static) = {
   .path = "ip route",
   .short_help = "Add/delete IP routes",
   .function = vnet_ip_route_cmd,
+  .is_mp_safe = 1,
 };
 
 /* 
@@ -1831,10 +1668,10 @@ ip6_probe_neighbor_wait (vlib_main_t *vm, ip6_address_t * a, u32 sw_if_index,
         default:
           clib_warning ("unknown event_type %d", event_type);
         }
+      vec_reset_length (event_data);
     }
   
  done:
-  vec_reset_length (event_data);
 
   if (!resolved)
     return clib_error_return (0, "Resolution failed for %U",
@@ -1884,6 +1721,7 @@ ip4_probe_neighbor_wait (vlib_main_t *vm, ip4_address_t * a, u32 sw_if_index,
         default:
           clib_warning ("unknown event_type %d", event_type);
         }
+      vec_reset_length (event_data);
     }
   
  done:
@@ -1956,6 +1794,7 @@ VLIB_CLI_COMMAND (ip_probe_neighbor_command, static) = {
   .path = "ip probe-neighbor",
   .function = probe_neighbor_address,
   .short_help = "ip probe-neighbor <intfc> <ip4-addr> | <ip6-addr> [retry nn]",
+  .is_mp_safe = 1,
 };
 
 typedef CLIB_PACKED (struct {

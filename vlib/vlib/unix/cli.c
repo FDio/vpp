@@ -821,6 +821,7 @@ VLIB_CLI_COMMAND (cli_exec, static) = {
   .path = "exec",
   .short_help = "Execute commands from file",
   .function = unix_cli_exec,
+  .is_mp_safe = 1,
 };
 
 static clib_error_t *
