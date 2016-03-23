@@ -158,23 +158,6 @@ static u32 dpdk_flag_change (vnet_main_t * vnm,
 	{
 	  int rv;
       
-	  /*
-	   * DAW-FIXME: The DPDK VMXNET3 driver does not currently support
-	   *            multi-buffer packets.  Max out at 1518 bytes for now.
-	   *
-	   *            If/when the driver gets fixed, then this should be
-	   *            removed.
-	   */
-	  if ((xd->pmd == VNET_DPDK_PMD_VMXNET3) &&
-	      (hi->max_packet_bytes > 1518))
-	    {
-	      hi->max_packet_bytes = 1518;
-
-	      vlib_cli_output (vlib_get_main(), 
-			       "VMXNET3 driver does not  support jumbo frames "
-			       "yet -- setting mtu to 1518!");
-	    }
-
 	  xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
 
 	  if (xd->admin_up)

@@ -1,0 +1,171 @@
+From f582f39372766a24d9bdbdc3a2a3334de88a70f1 Mon Sep 17 00:00:00 2001
+From: Steve Shin <jonshin@cisco.com>
+Date: Wed, 23 Mar 2016 09:54:54 -0700
+Subject: [PATCH] vmxnet3: support jumbo frames
+
+---
+ drivers/net/vmxnet3/vmxnet3_ethdev.c |  3 +-
+ drivers/net/vmxnet3/vmxnet3_ring.h   |  2 +
+ drivers/net/vmxnet3/vmxnet3_rxtx.c   | 77 ++++++++++++++++++++++--------------
+ 3 files changed, 52 insertions(+), 30 deletions(-)
+
+diff --git a/drivers/net/vmxnet3/vmxnet3_ethdev.c b/drivers/net/vmxnet3/vmxnet3_ethdev.c
+index c363bf6..b78acd4 100644
+--- a/drivers/net/vmxnet3/vmxnet3_ethdev.c
++++ b/drivers/net/vmxnet3/vmxnet3_ethdev.c
+@@ -425,6 +425,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
+ {
+ 	struct rte_eth_conf port_conf = dev->data->dev_conf;
+ 	struct vmxnet3_hw *hw = dev->data->dev_private;
++        uint32_t mtu = dev->data->mtu;
+ 	Vmxnet3_DriverShared *shared = hw->shared;
+ 	Vmxnet3_DSDevRead *devRead = &shared->devRead;
+ 	uint32_t *mac_ptr;
+@@ -442,7 +443,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
+ 	devRead->misc.driverInfo.vmxnet3RevSpt = 1;
+ 	devRead->misc.driverInfo.uptVerSpt     = 1;
+ 
+-	devRead->misc.mtu = rte_le_to_cpu_32(dev->data->mtu);
++	devRead->misc.mtu = rte_le_to_cpu_32(mtu);
+ 	devRead->misc.queueDescPA  = hw->queueDescPA;
+ 	devRead->misc.queueDescLen = hw->queue_desc_len;
+ 	devRead->misc.numTxQueues  = hw->num_tx_queues;
+diff --git a/drivers/net/vmxnet3/vmxnet3_ring.h b/drivers/net/vmxnet3/vmxnet3_ring.h
+index 612487e..b1582f8 100644
+--- a/drivers/net/vmxnet3/vmxnet3_ring.h
++++ b/drivers/net/vmxnet3/vmxnet3_ring.h
+@@ -171,6 +171,8 @@ typedef struct vmxnet3_rx_queue {
+ 	uint32_t                    qid1;
+ 	uint32_t                    qid2;
+ 	Vmxnet3_RxQueueDesc         *shared;
++        struct rte_mbuf		    *start_seg;
++        struct rte_mbuf		    *last_seg;
+ 	struct vmxnet3_rxq_stats    stats;
+ 	bool                        stopped;
+ 	uint16_t                    queue_id;      /**< Device RX queue index. */
+diff --git a/drivers/net/vmxnet3/vmxnet3_rxtx.c b/drivers/net/vmxnet3/vmxnet3_rxtx.c
+index 4de5d89..9f68ec6 100644
+--- a/drivers/net/vmxnet3/vmxnet3_rxtx.c
++++ b/drivers/net/vmxnet3/vmxnet3_rxtx.c
+@@ -547,7 +547,6 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+ 	vmxnet3_rx_queue_t *rxq;
+ 	Vmxnet3_RxCompDesc *rcd;
+ 	vmxnet3_buf_info_t *rbi;
+-	Vmxnet3_RxDesc *rxd;
+ 	struct rte_mbuf *rxm = NULL;
+ 	struct vmxnet3_hw *hw;
+ 
+@@ -572,37 +571,16 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+ 
+ 		idx = rcd->rxdIdx;
+ 		ring_idx = (uint8_t)((rcd->rqID == rxq->qid1) ? 0 : 1);
+-		rxd = (Vmxnet3_RxDesc *)rxq->cmd_ring[ring_idx].base + idx;
+ 		rbi = rxq->cmd_ring[ring_idx].buf_info + idx;
+ 
+-		if (unlikely(rcd->sop != 1 || rcd->eop != 1)) {
+-			rte_pktmbuf_free_seg(rbi->m);
+-			PMD_RX_LOG(DEBUG, "Packet spread across multiple buffers\n)");
+-			goto rcd_done;
+-		}
+-
+ 		PMD_RX_LOG(DEBUG, "rxd idx: %d ring idx: %d.", idx, ring_idx);
+ 
++ #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
++		Vmxnet3_RxDesc *rxd
++			= (Vmxnet3_RxDesc *)rxq->cmd_ring[ring_idx].base + idx;
+ 		VMXNET3_ASSERT(rcd->len <= rxd->len);
+ 		VMXNET3_ASSERT(rbi->m);
+-
+-		if (unlikely(rcd->len == 0)) {
+-			PMD_RX_LOG(DEBUG, "Rx buf was skipped. rxring[%d][%d]\n)",
+-				   ring_idx, idx);
+-			VMXNET3_ASSERT(rcd->sop && rcd->eop);
+-			rte_pktmbuf_free_seg(rbi->m);
+-			goto rcd_done;
+-		}
+-
+-		/* Assuming a packet is coming in a single packet buffer */
+-		if (unlikely(rxd->btype != VMXNET3_RXD_BTYPE_HEAD)) {
+-			PMD_RX_LOG(DEBUG,
+-				   "Alert : Misbehaving device, incorrect "
+-				   " buffer type used. iPacket dropped.");
+-			rte_pktmbuf_free_seg(rbi->m);
+-			goto rcd_done;
+-		}
+-		VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_HEAD);
++ #endif
+ 
+ 		/* Get the packet buffer pointer from buf_info */
+ 		rxm = rbi->m;
+@@ -615,7 +593,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+ 		rxq->cmd_ring[ring_idx].next2comp = idx;
+ 
+ 		/* For RCD with EOP set, check if there is frame error */
+-		if (unlikely(rcd->err)) {
++		if (unlikely(rcd->eop && rcd->err)) {
+ 			rxq->stats.drop_total++;
+ 			rxq->stats.drop_err++;
+ 
+@@ -641,9 +619,49 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+ 		rxm->ol_flags = 0;
+ 		rxm->vlan_tci = 0;
+ 
+-		vmxnet3_rx_offload(rcd, rxm);
++		/*
++		 * If this is the first buffer of the received packet,
++		 * set the pointer to the first mbuf of the packet
++		 * Otherwise, update the total length and the number of segments
++		 * of the current scattered packet, and update the pointer to
++		 * the last mbuf of the current packet.
++		 */
++		if (rcd->sop) {
++#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
++			VMXNET3_ASSERT(!rxq->start_seg);
++			VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_HEAD);
++#endif
++
++			if (unlikely(rcd->len == 0)) {
++				PMD_RX_LOG(DEBUG,
++					   "Rx buf was skipped. rxring[%d][%d])",
++					   ring_idx, idx);
++				rte_pktmbuf_free_seg(rbi->m);
++				goto rcd_done;
++			}
++
++			rxq->start_seg = rxm;
++			vmxnet3_rx_offload(rcd, rxm);
++		} else {
++			struct rte_mbuf *start = rxq->start_seg;
++
++#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
++			VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_BODY);
++			VMXNET3_ASSERT(start != NULL);
++#endif
++
++			start->pkt_len += rxm->data_len;
++			start->nb_segs++;
++
++			rxq->last_seg->next = rxm;
++		}
++		rxq->last_seg = rxm;
++
++		if (rcd->eop) {
++			rx_pkts[nb_rx++] = rxq->start_seg;
++			rxq->start_seg = NULL;
++		}
+ 
+-		rx_pkts[nb_rx++] = rxm;
+ rcd_done:
+ 		rxq->cmd_ring[ring_idx].next2comp = idx;
+ 		VMXNET3_INC_RING_IDX_ONLY(rxq->cmd_ring[ring_idx].next2comp, rxq->cmd_ring[ring_idx].size);
+@@ -944,6 +962,7 @@ vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev)
+ 			}
+ 		}
+ 		rxq->stopped = FALSE;
++		rxq->start_seg = NULL;
+ 	}
+ 
+ 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+-- 
+1.9.1
+
