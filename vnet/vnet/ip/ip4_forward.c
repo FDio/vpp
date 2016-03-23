@@ -136,136 +136,6 @@ ip4_fib_init_adj_index_by_dst_address (ip_lookup_main_t * lm,
   vec_validate_init_empty (fib->old_hash_values, max_index, ~0);
 }
 
-static void serialize_ip4_address (serialize_main_t * m, va_list * va)
-{
-  ip4_address_t * a = va_arg (*va, ip4_address_t *);
-  u8 * p = serialize_get (m, sizeof (a->as_u8));
-  memcpy (p, a->as_u8, sizeof (a->as_u8));
-}
-
-static void unserialize_ip4_address (serialize_main_t * m, va_list * va)
-{
-  ip4_address_t * a = va_arg (*va, ip4_address_t *);
-  u8 * p = unserialize_get (m, sizeof (a->as_u8));
-  memcpy (a->as_u8, p, sizeof (a->as_u8));
-}
-
-static void serialize_ip4_address_and_length (serialize_main_t * m, va_list * va)
-{
-  ip4_address_t * a = va_arg (*va, ip4_address_t *);
-  u32 l = va_arg (*va, u32);
-  u32 n_bytes = (l / 8) + ((l % 8) != 0);
-  u8 * p = serialize_get (m, 1 + n_bytes);
-  ASSERT (l <= 32);
-  p[0] = l;
-  memcpy (p + 1, a->as_u8, n_bytes);
-}
-
-static void unserialize_ip4_address_and_length (serialize_main_t * m, va_list * va)
-{
-  ip4_address_t * a = va_arg (*va, ip4_address_t *);
-  u32 * al = va_arg (*va, u32 *);
-  u8 * p = unserialize_get (m, 1);
-  u32 l, n_bytes;
-
-  al[0] = l = p[0];
-  ASSERT (l <= 32);
-  n_bytes = (l / 8) + ((l % 8) != 0);
-
-  if (n_bytes)
-    {
-      p = unserialize_get (m, n_bytes);
-      memcpy (a->as_u8, p, n_bytes);
-    }
-}
-
-static void serialize_ip4_add_del_route_msg (serialize_main_t * m, va_list * va)
-{
-  ip4_add_del_route_args_t * a = va_arg (*va, ip4_add_del_route_args_t *);
-    
-  serialize_likely_small_unsigned_integer (m, a->table_index_or_table_id);
-  serialize_likely_small_unsigned_integer (m, a->flags);
-  serialize (m, serialize_ip4_address_and_length, &a->dst_address, a->dst_address_length);
-  serialize_likely_small_unsigned_integer (m, a->adj_index);
-  serialize_likely_small_unsigned_integer (m, a->n_add_adj);
-  if (a->n_add_adj > 0)
-    serialize (m, serialize_vec_ip_adjacency, a->add_adj, a->n_add_adj);
-}
-
-/* Serialized adjacencies for arp/rewrite do not send graph next_index
-   since graph hookup is not guaranteed to be the same for both sides
-   of serialize/unserialize. */
-static void
-unserialize_fixup_ip4_rewrite_adjacencies (vlib_main_t * vm,
-					   ip_adjacency_t * adj,
-					   u32 n_adj)
-{
-  vnet_main_t * vnm = vnet_get_main();
-  u32 i, ni, sw_if_index, is_arp;
-  vnet_hw_interface_t * hw;
-
-  for (i = 0; i < n_adj; i++)
-    {
-      switch (adj[i].lookup_next_index)
-	{
-	case IP_LOOKUP_NEXT_REWRITE:
-	case IP_LOOKUP_NEXT_ARP:
-	  is_arp = adj[i].lookup_next_index == IP_LOOKUP_NEXT_ARP;
-	  sw_if_index = adj[i].rewrite_header.sw_if_index;
-	  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-	  ni = is_arp ? ip4_arp_node.index : ip4_rewrite_node.index;
-	  adj[i].rewrite_header.node_index = ni;
-	  adj[i].rewrite_header.next_index = vlib_node_add_next (vm, ni, hw->output_node_index);
-	  if (is_arp)
-	    vnet_rewrite_for_sw_interface
-	      (vnm,
-	       VNET_L3_PACKET_TYPE_ARP,
-	       sw_if_index,
-	       ni,
-	       VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST,
-	       &adj[i].rewrite_header,
-	       sizeof (adj->rewrite_data));
-	  break;
-
-	default:
-	  break;
-	}
-    }
-}
-
-static void unserialize_ip4_add_del_route_msg (serialize_main_t * m, va_list * va)
-{
-  ip4_main_t * i4m = &ip4_main;
-  ip4_add_del_route_args_t a;
-    
-  a.table_index_or_table_id = unserialize_likely_small_unsigned_integer (m);
-  a.flags = unserialize_likely_small_unsigned_integer (m);
-  unserialize (m, unserialize_ip4_address_and_length, &a.dst_address, &a.dst_address_length);
-  a.adj_index = unserialize_likely_small_unsigned_integer (m);
-  a.n_add_adj = unserialize_likely_small_unsigned_integer (m);
-  a.add_adj = 0;
-  if (a.n_add_adj > 0)
-    {
-      vec_resize (a.add_adj, a.n_add_adj);
-      unserialize (m, unserialize_vec_ip_adjacency, a.add_adj, a.n_add_adj);
-      unserialize_fixup_ip4_rewrite_adjacencies (vlib_get_main(), 
-                                                 a.add_adj, a.n_add_adj);
-    }
-
-  /* Prevent re-re-distribution. */
-  a.flags |= IP4_ROUTE_FLAG_NO_REDISTRIBUTE;
-
-  ip4_add_del_route (i4m, &a);
-
-  vec_free (a.add_adj);
-}
-
-MC_SERIALIZE_MSG (ip4_add_del_route_msg, static) = {
-  .name = "vnet_ip4_add_del_route",
-  .serialize = serialize_ip4_add_del_route_msg,
-  .unserialize = unserialize_ip4_add_del_route_msg,
-};
-
 static void
 ip4_fib_set_adj_index (ip4_main_t * im,
 		       ip4_fib_t * fib,
@@ -317,20 +187,11 @@ ip4_fib_set_adj_index (ip4_main_t * im,
 
 void ip4_add_del_route (ip4_main_t * im, ip4_add_del_route_args_t * a)
 {
-  vlib_main_t * vm = vlib_get_main();
   ip_lookup_main_t * lm = &im->lookup_main;
   ip4_fib_t * fib;
   u32 dst_address, dst_address_length, adj_index, old_adj_index;
   uword * hash, is_del;
   ip4_add_del_route_callback_t * cb;
-
-  if (vm->mc_main && ! (a->flags & IP4_ROUTE_FLAG_NO_REDISTRIBUTE))
-    {
-      u32 multiple_messages_per_vlib_buffer = (a->flags & IP4_ROUTE_FLAG_NOT_LAST_IN_GROUP);
-      mc_serialize2 (vm->mc_main, multiple_messages_per_vlib_buffer,
-		     &ip4_add_del_route_msg, a);
-      return;
-    }
 
   /* Either create new adjacency or use given one depending on arguments. */
   if (a->n_add_adj > 0)
@@ -399,51 +260,6 @@ void ip4_add_del_route (ip4_main_t * im, ip4_add_del_route_args_t * a)
     ip_del_adjacency (lm, old_adj_index);
 }
 
-static void serialize_ip4_add_del_route_next_hop_msg (serialize_main_t * m, va_list * va)
-{
-  u32 flags = va_arg (*va, u32);
-  ip4_address_t * dst_address = va_arg (*va, ip4_address_t *);
-  u32 dst_address_length = va_arg (*va, u32);
-  ip4_address_t * next_hop_address = va_arg (*va, ip4_address_t *);
-  u32 next_hop_sw_if_index = va_arg (*va, u32);
-  u32 next_hop_weight = va_arg (*va, u32);
-
-  serialize_likely_small_unsigned_integer (m, flags);
-  serialize (m, serialize_ip4_address_and_length, dst_address, dst_address_length);
-  serialize (m, serialize_ip4_address, next_hop_address);
-  serialize_likely_small_unsigned_integer (m, next_hop_sw_if_index);
-  serialize_likely_small_unsigned_integer (m, next_hop_weight);
-}
-
-static void unserialize_ip4_add_del_route_next_hop_msg (serialize_main_t * m, va_list * va)
-{
-  ip4_main_t * im = &ip4_main;
-  u32 flags, dst_address_length, next_hop_sw_if_index, next_hop_weight;
-  ip4_address_t dst_address, next_hop_address;
-
-  flags = unserialize_likely_small_unsigned_integer (m);
-  unserialize (m, unserialize_ip4_address_and_length, &dst_address, &dst_address_length);
-  unserialize (m, unserialize_ip4_address, &next_hop_address);
-  next_hop_sw_if_index = unserialize_likely_small_unsigned_integer (m);
-  next_hop_weight = unserialize_likely_small_unsigned_integer (m);
-
-  ip4_add_del_route_next_hop
-    (im,
-     flags | IP4_ROUTE_FLAG_NO_REDISTRIBUTE,
-     &dst_address,
-     dst_address_length,
-     &next_hop_address,
-     next_hop_sw_if_index,
-     next_hop_weight, (u32)~0, 
-     (u32)~0 /* explicit FIB index */);
-}
-
-MC_SERIALIZE_MSG (ip4_add_del_route_next_hop_msg, static) = {
-  .name = "vnet_ip4_add_del_route_next_hop",
-  .serialize = serialize_ip4_add_del_route_next_hop_msg,
-  .unserialize = unserialize_ip4_add_del_route_next_hop_msg,
-};
-
 void
 ip4_add_del_route_next_hop (ip4_main_t * im,
 			    u32 flags,
@@ -455,7 +271,6 @@ ip4_add_del_route_next_hop (ip4_main_t * im,
                             u32 explicit_fib_index)
 {
   vnet_main_t * vnm = vnet_get_main();
-  vlib_main_t * vm = vlib_get_main();
   ip_lookup_main_t * lm = &im->lookup_main;
   u32 fib_index;
   ip4_fib_t * fib;
@@ -468,18 +283,6 @@ ip4_add_del_route_next_hop (ip4_main_t * im,
   int is_del = (flags & IP4_ROUTE_FLAG_DEL) != 0;
   int is_interface_next_hop;
   clib_error_t * error = 0;
-
-  if (vm->mc_main && ! (flags & IP4_ROUTE_FLAG_NO_REDISTRIBUTE))
-    {
-      u32 multiple_messages_per_vlib_buffer = (flags & IP4_ROUTE_FLAG_NOT_LAST_IN_GROUP);
-      mc_serialize2 (vm->mc_main,
-		     multiple_messages_per_vlib_buffer,
-		     &ip4_add_del_route_next_hop_msg,
-		     flags,
-		     dst_address, dst_address_length,
-		     next_hop, next_hop_sw_if_index, next_hop_weight);
-      return;
-    }
 
   if (explicit_fib_index == (u32)~0)
       fib_index = vec_elt (im->fib_index_by_sw_if_index, next_hop_sw_if_index);
@@ -1249,38 +1052,6 @@ typedef struct {
     u32 length;
 } ip4_interface_address_t;
 
-static void serialize_vec_ip4_set_interface_address (serialize_main_t * m, va_list * va)
-{
-    ip4_interface_address_t * a = va_arg (*va, ip4_interface_address_t *);
-    u32 n = va_arg (*va, u32);
-    u32 i;
-    for (i = 0; i < n; i++) {
-        serialize_integer (m, a[i].sw_if_index, sizeof (a[i].sw_if_index));
-        serialize (m, serialize_ip4_address, &a[i].address);
-        serialize_integer (m, a[i].length, sizeof (a[i].length));
-    }
-}
-
-static void unserialize_vec_ip4_set_interface_address (serialize_main_t * m, va_list * va)
-{
-    ip4_interface_address_t * a = va_arg (*va, ip4_interface_address_t *);
-    u32 n = va_arg (*va, u32);
-    u32 i;
-    for (i = 0; i < n; i++) {
-        unserialize_integer (m, &a[i].sw_if_index, sizeof (a[i].sw_if_index));
-        unserialize (m, unserialize_ip4_address, &a[i].address);
-        unserialize_integer (m, &a[i].length, sizeof (a[i].length));
-    }
-}
-
-static void serialize_ip4_set_interface_address_msg (serialize_main_t * m, va_list * va)
-{
-  ip4_interface_address_t * a = va_arg (*va, ip4_interface_address_t *);
-  int is_del = va_arg (*va, int);
-  serialize (m, serialize_vec_ip4_set_interface_address, a, 1);
-  serialize_integer (m, is_del, sizeof (is_del));
-}
-
 static clib_error_t *
 ip4_add_del_interface_address_internal (vlib_main_t * vm,
 					u32 sw_if_index,
@@ -1289,31 +1060,6 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
 					u32 redistribute,
 					u32 insert_routes,
 					u32 is_del);
-
-static void unserialize_ip4_set_interface_address_msg (serialize_main_t * m, va_list * va)
-{
-  mc_main_t * mcm = va_arg (*va, mc_main_t *);
-  vlib_main_t * vm = mcm->vlib_main;
-  ip4_interface_address_t a;
-  clib_error_t * error;
-  int is_del;
-
-  unserialize (m, unserialize_vec_ip4_set_interface_address, &a, 1);
-  unserialize_integer (m, &is_del, sizeof (is_del));
-  error = ip4_add_del_interface_address_internal
-    (vm, a.sw_if_index, &a.address, a.length,
-     /* redistribute */ 0,
-     /* insert_routes */ 1,
-     is_del);
-  if (error)
-    clib_error_report (error);
-}
-
-MC_SERIALIZE_MSG (ip4_set_interface_address_msg, static) = {
-  .name = "vnet_ip4_set_interface_address",
-  .serialize = serialize_ip4_set_interface_address_msg,
-  .unserialize = unserialize_ip4_set_interface_address_msg,
-};
 
 static clib_error_t *
 ip4_add_del_interface_address_internal (vlib_main_t * vm,
@@ -1354,17 +1100,6 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
       }));
     }
 
-  if (vm->mc_main && redistribute)
-    {
-      ip4_interface_address_t a;
-      a.sw_if_index = sw_if_index;
-      a.address = address[0];
-      a.length = address_length;
-      mc_serialize (vm->mc_main, &ip4_set_interface_address_msg, 
-		    &a, (int)is_del);
-      goto done;
-    }
-    
   elts_before = pool_elts (lm->if_address_pool);
 
   error = ip_interface_address_add_del
@@ -1416,135 +1151,6 @@ ip4_add_del_interface_address (vlib_main_t * vm, u32 sw_if_index,
      /* redistribute */ 1,
      /* insert_routes */ 1,
      is_del);
-}
-
-static void serialize_ip4_fib (serialize_main_t * m, va_list * va)
-{
-  ip4_fib_t * f = va_arg (*va, ip4_fib_t *);
-  u32 l, dst, adj_index;
-
-  serialize_integer (m, f->table_id, sizeof (f->table_id));
-  for (l = 0; l < ARRAY_LEN (f->adj_index_by_dst_address); l++)
-    {
-      u32 n_elts = hash_elts (f->adj_index_by_dst_address[l]);
-
-      serialize_integer (m, n_elts, sizeof (n_elts));
-      hash_foreach (dst, adj_index, f->adj_index_by_dst_address[l], ({
-        ip4_address_t tmp;
-        tmp.as_u32 = dst;
-	serialize (m, serialize_ip4_address, &tmp);
-        serialize_integer (m, adj_index, sizeof (adj_index));
-      }));
-    }
-}
-
-static void unserialize_ip4_fib (serialize_main_t * m, va_list * va)
-{
-  ip4_add_del_route_args_t a;
-  u32 i;
-
-  a.flags = (IP4_ROUTE_FLAG_ADD
-             | IP4_ROUTE_FLAG_NO_REDISTRIBUTE
-             | IP4_ROUTE_FLAG_TABLE_ID);
-  a.n_add_adj = 0;
-  a.add_adj = 0;
-
-  unserialize_integer (m, &a.table_index_or_table_id,
-                       sizeof (a.table_index_or_table_id));
-
-  for (i = 0; i < STRUCT_ARRAY_LEN (ip4_fib_t, adj_index_by_dst_address); i++)
-    {
-      u32 n_elts;
-      unserialize_integer (m, &n_elts, sizeof (u32));
-      a.dst_address_length = i;
-      while (n_elts > 0)
-        {
-          unserialize (m, unserialize_ip4_address, &a.dst_address);
-          unserialize_integer (m, &a.adj_index, sizeof (a.adj_index));
-          ip4_add_del_route (&ip4_main, &a);
-          n_elts--;
-        }
-    }
-}
-
-void serialize_vnet_ip4_main (serialize_main_t * m, va_list * va)
-{
-  vnet_main_t * vnm = va_arg (*va, vnet_main_t *);
-  vnet_interface_main_t * vim = &vnm->interface_main;
-  vnet_sw_interface_t * si;
-  ip4_main_t * i4m = &ip4_main;
-  ip4_interface_address_t * as = 0, * a;
-
-  /* Download adjacency tables & multipath stuff. */
-  serialize (m, serialize_ip_lookup_main, &i4m->lookup_main);
-
-  /* FIBs. */
-  {
-    ip4_fib_t * f;
-    u32 n_fibs = vec_len (i4m->fibs);
-    serialize_integer (m, n_fibs, sizeof (n_fibs));
-    vec_foreach (f, i4m->fibs)
-      serialize (m, serialize_ip4_fib, f);
-  }
-
-  /* FIB interface config. */
-  vec_serialize (m, i4m->fib_index_by_sw_if_index, serialize_vec_32);
-
-  /* Interface ip4 addresses. */
-  pool_foreach (si, vim->sw_interfaces, ({
-    u32 sw_if_index = si->sw_if_index;
-    ip_interface_address_t * ia;
-    foreach_ip_interface_address (&i4m->lookup_main, ia, sw_if_index, 
-                                  0 /* honor unnumbered */,
-    ({
-      ip4_address_t * x = ip_interface_address_get_address (&i4m->lookup_main, ia);
-      vec_add2 (as, a, 1);
-      a->address = x[0];
-      a->length = ia->address_length;
-      a->sw_if_index = sw_if_index;
-    }));
-  }));
-  vec_serialize (m, as, serialize_vec_ip4_set_interface_address);
-  vec_free (as);
-}
-
-void unserialize_vnet_ip4_main (serialize_main_t * m, va_list * va)
-{
-  vlib_main_t * vm = va_arg (*va, vlib_main_t *);
-  ip4_main_t * i4m = &ip4_main;
-  ip4_interface_address_t * as = 0, * a;
-
-  unserialize (m, unserialize_ip_lookup_main, &i4m->lookup_main);
-
-  {
-    ip_adjacency_t * adj, * adj_heap;
-    u32 n_adj;
-    adj_heap = i4m->lookup_main.adjacency_heap;
-    heap_foreach (adj, n_adj, adj_heap, ({
-      unserialize_fixup_ip4_rewrite_adjacencies (vm, adj, n_adj);
-      ip_call_add_del_adjacency_callbacks (&i4m->lookup_main, adj - adj_heap, /* is_del */ 0);
-    }));
-  }
-
-  /* FIBs */
-  {
-    u32 i, n_fibs;
-    unserialize_integer (m, &n_fibs, sizeof (n_fibs));
-    for (i = 0; i < n_fibs; i++)
-      unserialize (m, unserialize_ip4_fib);
-  }
-
-  vec_unserialize (m, &i4m->fib_index_by_sw_if_index, unserialize_vec_32);
-
-  vec_unserialize (m, &as, unserialize_vec_ip4_set_interface_address);
-  vec_foreach (a, as) {
-    ip4_add_del_interface_address_internal
-      (vm, a->sw_if_index, &a->address, a->length,
-       /* redistribute */ 0,
-       /* insert_routes */ 0,
-       /* is_del */ 0);
-  }
-  vec_free (as);
 }
 
 static clib_error_t *
