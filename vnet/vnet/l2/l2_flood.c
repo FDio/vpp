@@ -196,6 +196,9 @@ l2flood_process (vlib_main_t * vm,
     members = (l2_flood_member_t *) ctx->feature_replicas;
     current_member = (i32)ctx->feature_counter - 1;
 
+    // Need to update input index after packet context is restored
+    sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+
     // Find next member that passes the reflection and SHG check
     while ((current_member >= 0) &&
            ((members[current_member].sw_if_index == sw_if_index0) ||
@@ -285,7 +288,6 @@ l2flood_node_fn (vlib_main_t * vm,
 	  vlib_buffer_t * b0, * b1;
           u32 next0, next1;
           u32 sw_if_index0, sw_if_index1;
-          ethernet_header_t * h0, * h1;
           l2fib_entry_key_t key0, key1;
           l2fib_entry_result_t result0, result1;
           u32 bucket0, bucket1;
@@ -329,11 +331,6 @@ l2flood_node_fn (vlib_main_t * vm,
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
           sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
 
-          /* Process 2 x pkts */
-
-          h0 = vlib_buffer_get_current (b0);
-          h1 = vlib_buffer_get_current (b1);
-
             /* process 2 pkts */
             em->counters[node_counter_base_index + L2FLOOD_ERROR_L2FLOOD] += 2;
 
@@ -348,7 +345,8 @@ l2flood_node_fn (vlib_main_t * vm,
               if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
                 {
                   l2flood_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-                  t->sw_if_index = sw_if_index0;
+		  ethernet_header_t * h0 = vlib_buffer_get_current (b0); 
+                  t->sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
                   t->bd_index = vnet_buffer(b0)->l2.bd_index;
                   memcpy(t->src, h0->src_address, 6);
                   memcpy(t->dst, h0->dst_address, 6);
@@ -356,7 +354,8 @@ l2flood_node_fn (vlib_main_t * vm,
               if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
                 {
                   l2flood_trace_t *t = vlib_add_trace (vm, node, b1, sizeof (*t));
-                  t->sw_if_index = sw_if_index1;
+		  ethernet_header_t * h1 = vlib_buffer_get_current (b1); 
+                  t->sw_if_index = vnet_buffer(b1)->sw_if_index[VLIB_RX];
                   t->bd_index = vnet_buffer(b1)->l2.bd_index;
                   memcpy(t->src, h1->src_address, 6);
                   memcpy(t->dst, h1->dst_address, 6);
@@ -376,7 +375,6 @@ l2flood_node_fn (vlib_main_t * vm,
 	  vlib_buffer_t * b0;
           u32 next0;
           u32 sw_if_index0;
-          ethernet_header_t * h0;
           l2fib_entry_key_t key0;
           l2fib_entry_result_t result0;
           u32 bucket0;
@@ -393,8 +391,6 @@ l2flood_node_fn (vlib_main_t * vm,
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
  
-          h0 = vlib_buffer_get_current (b0);
-
           /* process 1 pkt */
           em->counters[node_counter_base_index + L2FLOOD_ERROR_L2FLOOD] += 1;
 
@@ -405,7 +401,8 @@ l2flood_node_fn (vlib_main_t * vm,
                             (b0->flags & VLIB_BUFFER_IS_TRACED)))
             {
               l2flood_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-              t->sw_if_index = sw_if_index0;
+	      ethernet_header_t * h0 = vlib_buffer_get_current (b0); 
+              t->sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
               t->bd_index = vnet_buffer(b0)->l2.bd_index;
               memcpy(t->src, h0->src_address, 6);
               memcpy(t->dst, h0->dst_address, 6);
