@@ -921,7 +921,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
           vlib_buffer_main_t * bm = vm->buffer_main;
           memset(&conf, 0, sizeof(conf));
           snprintf(conf.name, RTE_KNI_NAMESIZE, "vpp%u", xd->kni_port_id);
-          conf.mbuf_size = MBUF_SIZE;
+          conf.mbuf_size = VLIB_BUFFER_DATA_SIZE;
           memset(&ops, 0, sizeof(ops));
           ops.port_id = xd->kni_port_id;
           ops.change_mtu = kni_change_mtu;

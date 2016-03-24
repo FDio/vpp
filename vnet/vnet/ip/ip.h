@@ -162,7 +162,7 @@ ip_incremental_checksum_buffer (vlib_main_t * vm, vlib_buffer_t * first_buffer,
 #if DPDK > 0
 {
   u32 n_bytes_left = n_bytes_to_checksum;
-  struct rte_mbuf * mb = ((struct rte_mbuf *)first_buffer)-1;
+  struct rte_mbuf * mb = rte_mbuf_from_vlib_buffer(first_buffer);
   u8 nb_segs = mb->nb_segs;
   ASSERT(mb->data_len >= first_buffer_offset);
   void * h;

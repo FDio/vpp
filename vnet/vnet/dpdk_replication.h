@@ -49,7 +49,7 @@ vlib_dpdk_clone_buffer (vlib_main_t * vm, vlib_buffer_t * b)
         return 0;
 
       src_buf = b;
-      rv = dst_buf = (vlib_buffer_t *)(rte_mbufs[0] + 1);
+      rv = dst_buf = vlib_buffer_from_rte_mbuf(rte_mbufs[0]);
       vlib_buffer_init_for_free_list (dst_buf, fl);
       copy_src = b->data + src_buf->current_data;
       copy_dst = dst_buf->data + src_buf->current_data;
@@ -75,7 +75,7 @@ vlib_dpdk_clone_buffer (vlib_main_t * vm, vlib_buffer_t * b)
           if (i < new_buffers_needed - 1)
             {
               src_buf = vlib_get_buffer (vm, src_buf->next_buffer);
-              dst_buf = (vlib_buffer_t *)(rte_mbufs[i+1] + 1);
+              dst_buf = vlib_buffer_from_rte_mbuf(rte_mbufs[i+1]);
               vlib_buffer_init_for_free_list (dst_buf, fl);
               copy_src = src_buf->data;
               copy_dst = dst_buf->data;
@@ -87,7 +87,7 @@ vlib_dpdk_clone_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   if (rte_mempool_get_bulk (rmp, (void **)rte_mbufs, 1) < 0)
     return 0;
 
-  rv = (vlib_buffer_t *)(rte_mbufs[0] + 1);
+  rv = vlib_buffer_from_rte_mbuf(rte_mbufs[0]);
   vlib_buffer_init_for_free_list (rv, fl);
 
   memcpy(rv->data + b->current_data, b->data + b->current_data, 

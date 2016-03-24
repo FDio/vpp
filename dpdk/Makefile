@@ -16,7 +16,7 @@ SHELL := /bin/bash
 
 DPDK_BUILD_DIR        ?= $(CURDIR)/_build
 DPDK_INSTALL_DIR      ?= $(CURDIR)/_install
-DPDK_PKTMBUF_HEADROOM ?= 256
+DPDK_PKTMBUF_HEADROOM ?= 128
 DPDK_DOWNLOAD_DIR     ?= $(HOME)/Downloads
 DPDK_MARCH            ?= native
 DPDK_DEBUG            ?= n
