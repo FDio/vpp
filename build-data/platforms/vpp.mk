@@ -24,8 +24,6 @@ vpp_configure_args_vpp = --with-dpdk
 vnet_configure_args_vpp = --with-dpdk
 
 # Set these parameters carefully. The vlib_buffer_t is 128 bytes, i.e.
-# dpdk_headroom = uiotarball_headroom = vlib_pre_data + 128
-dpdk_configure_args_vpp = --with-headroom=256
 vlib_configure_args_vpp = --with-pre-data=128
 
 

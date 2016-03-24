@@ -254,7 +254,7 @@ u8 * vlib_validate_buffers (vlib_main_t * vm,
 
 clib_error_t *
 vlib_buffer_pool_create(vlib_main_t * vm, unsigned num_mbufs,
-                        unsigned mbuf_size, unsigned socket_id);
+                        unsigned socket_id);
 
 /** \brief Allocate buffers into supplied array
 
@@ -425,11 +425,9 @@ vlib_buffer_chain_init(vlib_buffer_t *first)
   first->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
   first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 #if DPDK == 1
-  (((struct rte_mbuf *) first) - 1)->nb_segs = 1;
-  (((struct rte_mbuf *) first) - 1)->next = 0;
-  (((struct rte_mbuf *) first) - 1)->pkt_len = 0;
-  (((struct rte_mbuf *) first) - 1)->data_len = 0;
-  (((struct rte_mbuf *) first) - 1)->data_off = RTE_PKTMBUF_HEADROOM + first->current_data;
+  struct rte_mbuf * mb = rte_mbuf_from_vlib_buffer(first);
+  rte_pktmbuf_reset(mb);
+  mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + first->current_data;
 #endif
 }
 
@@ -446,11 +444,17 @@ vlib_buffer_chain_buffer(vlib_main_t *vm,
   next_buffer->current_length = 0;
   next_buffer->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 #if DPDK == 1
-  (((struct rte_mbuf *) first) - 1)->nb_segs++;
-  (((struct rte_mbuf *) last) - 1)->next = (((struct rte_mbuf *) next_buffer) - 1);
-  (((struct rte_mbuf *) next_buffer) - 1)->data_len = 0;
-  (((struct rte_mbuf *) next_buffer) - 1)->data_off = RTE_PKTMBUF_HEADROOM + next_buffer->current_data;
-  (((struct rte_mbuf *) next_buffer) - 1)->next = 0;
+  struct rte_mbuf * mb;
+  mb = rte_mbuf_from_vlib_buffer(first);
+  mb->nb_segs++;
+
+  mb = rte_mbuf_from_vlib_buffer(last);
+  mb->next = rte_mbuf_from_vlib_buffer(next_buffer);
+
+  mb = rte_mbuf_from_vlib_buffer(next_buffer);
+  mb->data_len = 0;
+  mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + next_buffer->current_data;
+  mb->next = 0;
 #endif
   return next_buffer;
 }
@@ -468,8 +472,10 @@ vlib_buffer_chain_increase_length(vlib_buffer_t *first,
   if (first != last)
     first->total_length_not_including_first_buffer += len;
 #if DPDK == 1
-  (((struct rte_mbuf *) first) - 1)->pkt_len += len;
-  (((struct rte_mbuf *) last) - 1)->data_len += len;
+  struct rte_mbuf * mb_first = rte_mbuf_from_vlib_buffer(first);
+  struct rte_mbuf * mb_last = rte_mbuf_from_vlib_buffer(last);
+  mb_first->pkt_len += len;
+  mb_last->data_len += len;
 #endif
 }
 
@@ -588,6 +594,11 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * _dst,
 {
   vlib_buffer_union_t * dst = (vlib_buffer_union_t *) _dst;
   vlib_buffer_union_t * src = (vlib_buffer_union_t *) &fl->buffer_init_template;
+
+  /* Make sure vlib_buffer_t is cacheline aligned and sized */
+  ASSERT(STRUCT_OFFSET_OF(vlib_buffer_t, cacheline0) == 0);
+  ASSERT(STRUCT_OFFSET_OF(vlib_buffer_t, cacheline1) == CLIB_CACHE_LINE_BYTES);
+  ASSERT(STRUCT_OFFSET_OF(vlib_buffer_t, cacheline2) == CLIB_CACHE_LINE_BYTES * 2);
 
   /* Make sure buffer template is sane. */
   ASSERT (fl->index == fl->buffer_init_template.free_list_index);

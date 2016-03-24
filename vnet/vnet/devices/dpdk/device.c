@@ -87,7 +87,7 @@ static struct rte_mbuf * dpdk_replicate_packet_mb (vlib_buffer_t * b)
   unsigned socket_id = rte_socket_id();
 
   ASSERT (bm->pktmbuf_pools[socket_id]);
-  pkt_mb = ((struct rte_mbuf *)b)-1;
+  pkt_mb = rte_mbuf_from_vlib_buffer(b);
   nb_segs = pkt_mb->nb_segs;
   for (nb_segs_left = nb_segs; nb_segs_left; nb_segs_left--)
     {
@@ -159,7 +159,7 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm,
   dpdk_tx_dma_trace_t * t0;
   struct rte_mbuf * mb;
 
-  mb = ((struct rte_mbuf *)buffer)-1;
+  mb = rte_mbuf_from_vlib_buffer(buffer);
 
   t0 = vlib_add_trace (vm, node, buffer, sizeof (t0[0]));
   t0->queue_index = queue_id;
@@ -541,7 +541,7 @@ dpdk_interface_tx (vlib_main_t * vm,
         {
           u32 bi0 = from[n_packets];
           vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-          struct rte_mbuf *mb0 = ((struct rte_mbuf *)b0) - 1;
+          struct rte_mbuf *mb0 = rte_mbuf_from_vlib_buffer(b0);
           rte_pktmbuf_free (mb0);
         }
       return n_on_ring;
@@ -584,9 +584,9 @@ dpdk_interface_tx (vlib_main_t * vm,
       pref0 = vlib_get_buffer (vm, pi0);
       pref1 = vlib_get_buffer (vm, pi1);
 
-      prefmb0 = ((struct rte_mbuf *)pref0) - 1;
-      prefmb1 = ((struct rte_mbuf *)pref1) - 1;
-      
+      prefmb0 = rte_mbuf_from_vlib_buffer(pref0);
+      prefmb1 = rte_mbuf_from_vlib_buffer(pref1);
+
       CLIB_PREFETCH(prefmb0, CLIB_CACHE_LINE_BYTES, LOAD);
       CLIB_PREFETCH(pref0, CLIB_CACHE_LINE_BYTES, LOAD);
       CLIB_PREFETCH(prefmb1, CLIB_CACHE_LINE_BYTES, LOAD);
@@ -599,8 +599,8 @@ dpdk_interface_tx (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
 
-      mb0 = ((struct rte_mbuf *)b0) - 1;
-      mb1 = ((struct rte_mbuf *)b1) - 1;
+      mb0 = rte_mbuf_from_vlib_buffer(b0);
+      mb1 = rte_mbuf_from_vlib_buffer(b1);
 
       any_clone = b0->clone_count | b1->clone_count;
       if (PREDICT_FALSE(any_clone != 0))
@@ -701,7 +701,7 @@ dpdk_interface_tx (vlib_main_t * vm,
       
       b0 = vlib_get_buffer (vm, bi0);
 
-      mb0 = ((struct rte_mbuf *)b0) - 1;
+      mb0 = rte_mbuf_from_vlib_buffer(b0);
       if (PREDICT_FALSE(b0->clone_count != 0))
     {
       struct rte_mbuf * mb0_new = dpdk_replicate_packet_mb (b0);
@@ -921,7 +921,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
           vlib_buffer_main_t * bm = vm->buffer_main;
           memset(&conf, 0, sizeof(conf));
           snprintf(conf.name, RTE_KNI_NAMESIZE, "vpp%u", xd->kni_port_id);
-          conf.mbuf_size = MBUF_SIZE;
+          conf.mbuf_size = VLIB_BUFFER_DATA_SIZE;
           memset(&ops, 0, sizeof(ops));
           ops.port_id = xd->kni_port_id;
           ops.change_mtu = kni_change_mtu;

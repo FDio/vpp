@@ -61,7 +61,7 @@ pg_set_mbuf_metadata (pg_main_t * pg, u32 * buffers, u32 n_alloc)
   for (i = 0; i < n_alloc; i++)
     {
       b = vlib_get_buffer (vm, buffers[i]);
-      mb = ((struct rte_mbuf *)b) - 1;
+      mb = rte_mbuf_from_vlib_buffer(b);
 
       delta = vlib_buffer_length_in_chain (vm, b) - (i16) mb->pkt_len;
       new_data_len = (u16)((i16) mb->data_len + delta);
@@ -1473,9 +1473,9 @@ pg_stream_fill (pg_main_t * pg, pg_stream_t * s, u32 n_buffers)
           ({
             vlib_buffer_t * b;
             struct rte_mbuf *mb;
-            
+
             b = vlib_get_buffer(vm, bi0[0]);
-            mb = (struct rte_mbuf *)b - 1;
+            mb = rte_mbuf_from_vlib_buffer(b);
             ASSERT(rte_mbuf_refcnt_read(mb) == 1);
           }));
         }

@@ -1405,13 +1405,13 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   rte_dump_physmem_layout(stdout);
 
   /* main thread 1st */
-  error = vlib_buffer_pool_create(vm, dm->num_mbufs, MBUF_SIZE, rte_socket_id());
+  error = vlib_buffer_pool_create(vm, dm->num_mbufs, rte_socket_id());
   if (error)
     return error;
 
   for (i = 0; i < RTE_MAX_LCORE; i++)
     {
-      error = vlib_buffer_pool_create(vm, dm->num_mbufs, MBUF_SIZE,
+      error = vlib_buffer_pool_create(vm, dm->num_mbufs,
                                       rte_lcore_to_socket_id(i));
       if (error)
         return error;

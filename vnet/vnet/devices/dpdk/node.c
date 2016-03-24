@@ -366,7 +366,7 @@ void dpdk_rx_trace (dpdk_main_t * dm,
       n_left -= 1;
 
       b0 = vlib_get_buffer (vm, bi0);
-      mb = ((struct rte_mbuf *)b0) - 1;
+      mb = rte_mbuf_from_vlib_buffer(b0);
       dpdk_rx_next_and_error_from_mb_flags_x1 (xd, mb, b0,
 					       &next0, &error0);
       vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
@@ -602,20 +602,20 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
           if (PREDICT_TRUE(n_buffers > 2))
           {
               struct rte_mbuf *pfmb = xd->rx_vectors[queue_id][mb_index+2];
-              vlib_buffer_t *bp = (vlib_buffer_t *)(pfmb+1);
+              vlib_buffer_t *bp = vlib_buffer_from_rte_mbuf(pfmb);
               CLIB_PREFETCH (pfmb, CLIB_CACHE_LINE_BYTES, STORE);
               CLIB_PREFETCH (bp, CLIB_CACHE_LINE_BYTES, STORE);
           }
 
           ASSERT(mb);
 
-          b0 = (vlib_buffer_t *)(mb+1);
+          b0 = vlib_buffer_from_rte_mbuf(mb);
 
           /* check whether EFD is looking for packets to discard */
           if (PREDICT_FALSE(efd_discard_burst))
             {
               vlib_thread_main_t * tm = vlib_get_thread_main();
-              
+
               if (PREDICT_TRUE(cntr_type = is_efd_discardable(tm, b0, mb)))
                 {
                   rte_pktmbuf_free(mb);
@@ -633,7 +633,7 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
           if (PREDICT_FALSE(mb->nb_segs > 1))
             {
               struct rte_mbuf *pfmb = mb->next;
-              vlib_buffer_t *bp = (vlib_buffer_t *)(pfmb+1);
+              vlib_buffer_t *bp = vlib_buffer_from_rte_mbuf(pfmb);
               CLIB_PREFETCH (pfmb, CLIB_CACHE_LINE_BYTES, LOAD);
               CLIB_PREFETCH (bp, CLIB_CACHE_LINE_BYTES, STORE);
 	      b_chain = b0;
@@ -693,7 +693,7 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
 	    {
 	      ASSERT(mb_seg != 0);
 
-	      b_seg = (vlib_buffer_t *)(mb_seg+1);
+	      b_seg = vlib_buffer_from_rte_mbuf(mb_seg);
 	      vlib_buffer_init_for_free_list (b_seg, fl);
               b_seg->clone_count = 0;
 
@@ -1280,13 +1280,13 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
               if (PREDICT_TRUE(n_buffers > 1))
                 {
                   struct rte_mbuf *pfmb = xd->rx_vectors[queue_id][mb_index+2];
-                  vlib_buffer_t *bp = (vlib_buffer_t *)(pfmb+1);
+                  vlib_buffer_t *bp = vlib_buffer_from_rte_mbuf(pfmb);
                   CLIB_PREFETCH (pfmb, CLIB_CACHE_LINE_BYTES, LOAD);
                   CLIB_PREFETCH (bp, CLIB_CACHE_LINE_BYTES, STORE);
                   CLIB_PREFETCH (bp->data, CLIB_CACHE_LINE_BYTES, LOAD);
                 }
                 
-              b0 = (vlib_buffer_t *)(mb+1);
+              b0 = vlib_buffer_from_rte_mbuf(mb);
 
               /* check whether EFD is looking for packets to discard */
               if (PREDICT_FALSE(efd_discard_burst))
@@ -1310,7 +1310,7 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
               if (PREDICT_FALSE(mb->nb_segs > 1))
                 {
                   struct rte_mbuf *pfmb = mb->next;
-                  vlib_buffer_t *bp = (vlib_buffer_t *)(pfmb+1);
+                  vlib_buffer_t *bp = vlib_buffer_from_rte_mbuf(pfmb);
                   CLIB_PREFETCH (pfmb, CLIB_CACHE_LINE_BYTES, LOAD);
                   CLIB_PREFETCH (bp, CLIB_CACHE_LINE_BYTES, STORE);
                   b_chain = b0;
@@ -1361,7 +1361,7 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
                 {
                   ASSERT(mb_seg != 0);
  
-                  b_seg = (vlib_buffer_t *)(mb_seg+1);
+                  b_seg = vlib_buffer_from_rte_mbuf(mb_seg);
                   vlib_buffer_init_for_free_list (b_seg, fl);
                   b_seg->clone_count = 0;
  
@@ -1681,14 +1681,14 @@ dpdk_io_input (vlib_main_t * vm,
           if (PREDICT_TRUE(n_buffers > 1))
             {
               struct rte_mbuf *pfmb = xd->rx_vectors[queue_id][mb_index+2];
-              vlib_buffer_t *bp = (vlib_buffer_t *)(pfmb+1);
+              vlib_buffer_t *bp = vlib_buffer_from_rte_mbuf(pfmb);
               CLIB_PREFETCH (pfmb, CLIB_CACHE_LINE_BYTES, LOAD);
               CLIB_PREFETCH (bp, CLIB_CACHE_LINE_BYTES, STORE);
               CLIB_PREFETCH (bp->data, CLIB_CACHE_LINE_BYTES, LOAD);
             }
-                
-          b0 = (vlib_buffer_t *)(mb+1);
-                
+
+          b0 = vlib_buffer_from_rte_mbuf(mb);
+
           /* check whether EFD is looking for packets to discard */
           if (PREDICT_FALSE(efd_discard_burst))
             {
@@ -1711,7 +1711,7 @@ dpdk_io_input (vlib_main_t * vm,
           if (PREDICT_FALSE(mb->nb_segs > 1))
             {
               struct rte_mbuf *pfmb = mb->next;
-              vlib_buffer_t *bp = (vlib_buffer_t *)(pfmb+1);
+              vlib_buffer_t *bp = vlib_buffer_from_rte_mbuf(pfmb);
               CLIB_PREFETCH (pfmb, CLIB_CACHE_LINE_BYTES, LOAD);
               CLIB_PREFETCH (bp, CLIB_CACHE_LINE_BYTES, STORE);
               b_chain = b0;
@@ -1762,7 +1762,7 @@ dpdk_io_input (vlib_main_t * vm,
             {
               ASSERT(mb_seg != 0);
  
-              b_seg = (vlib_buffer_t *)(mb_seg+1);
+              b_seg = vlib_buffer_from_rte_mbuf(mb_seg);
               vlib_buffer_init_for_free_list (b_seg, fl);
               b_seg->clone_count = 0;
  

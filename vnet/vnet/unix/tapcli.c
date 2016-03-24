@@ -220,7 +220,7 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
                             tapcli_interface_t * ti)
 {
   tapcli_main_t * tm = &tapcli_main;
-  const uword buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+  const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
   u32 n_trace = vlib_get_trace_count (vm, node);
   u8 set_trace = 0;
 
@@ -434,7 +434,7 @@ static clib_error_t *
 tapcli_config (vlib_main_t * vm, unformat_input_t * input)
 {
   tapcli_main_t *tm = &tapcli_main;
-  const uword buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+  const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
