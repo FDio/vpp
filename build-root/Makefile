@@ -670,7 +670,7 @@ linux_n_cpus = `grep '^processor' /proc/cpuinfo | wc -l`
 MAKE_PARALLEL_JOBS =				\
   -j $(shell					\
     if [ -f /proc/cpuinfo ] ; then		\
-      expr 4 '*' $(linux_n_cpus) ;		\
+      expr 2 '*' $(linux_n_cpus) ;		\
     else					\
       echo 1 ;					\
     fi)
