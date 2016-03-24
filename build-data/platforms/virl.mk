@@ -24,8 +24,6 @@ vpp_configure_args_virl = --with-dpdk
 vnet_configure_args_virl = --with-dpdk --with-virl
 
 # Set these parameters carefully. The vlib_buffer_t is 128 bytes, i.e.
-# dpdk_headroom = uiotarball_headroom = vlib_pre_data + 128
-dpdk_configure_args_virl = --with-headroom=256
 vlib_configure_args_virl = --with-pre-data=128
 
 # Override default -march and CONFIG_RTE_MACHINE settings

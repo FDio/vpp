@@ -94,11 +94,6 @@ buffer_add_to_chain(vlib_main_t *vm, u32 bi, u32 first_bi, u32 prev_bi)
   vlib_buffer_t * b = vlib_get_buffer (vm, bi);
   vlib_buffer_t * first_b = vlib_get_buffer (vm, first_bi);
   vlib_buffer_t * prev_b = vlib_get_buffer (vm, prev_bi);
-#if DPDK > 0
-  struct rte_mbuf * mbuf = ((struct rte_mbuf *) b) - 1;
-  struct rte_mbuf * first_mbuf = ((struct rte_mbuf *) first_b) - 1;
-  struct rte_mbuf * prev_mbuf = ((struct rte_mbuf *) prev_b) - 1;
-#endif
 
   /* update first buffer */
   first_b->total_length_not_including_first_buffer +=  b->current_length;
@@ -111,6 +106,9 @@ buffer_add_to_chain(vlib_main_t *vm, u32 bi, u32 first_bi, u32 prev_bi)
   b->next_buffer = 0;
 
 #if DPDK > 0
+  struct rte_mbuf * mbuf = rte_mbuf_from_vlib_buffer(b);
+  struct rte_mbuf * first_mbuf = rte_mbuf_from_vlib_buffer(first_b);
+  struct rte_mbuf * prev_mbuf = rte_mbuf_from_vlib_buffer(prev_b);
   first_mbuf->nb_segs++;
   prev_mbuf->next = mbuf;
   mbuf->data_len = b->current_length;

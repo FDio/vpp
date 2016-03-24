@@ -45,7 +45,16 @@
 #include <vppinfra/serialize.h>
 #include <vppinfra/vector.h>
 #include <vlib/error.h>		/* for vlib_error_t */
+
+#if DPDK > 0
+#include <rte_config.h>
+#define VLIB_BUFFER_DATA_SIZE		(2048)
+#define VLIB_BUFFER_PRE_DATA_SIZE	RTE_PKTMBUF_HEADROOM
+#else
 #include <vlib/config.h>        /* for __PRE_DATA_SIZE */
+#define VLIB_BUFFER_DATA_SIZE		(512)
+#define VLIB_BUFFER_PRE_DATA_SIZE	__PRE_DATA_SIZE
+#endif
 
 #ifdef CLIB_HAVE_VEC128
 typedef u8x16 vlib_copy_unit_t;
@@ -62,6 +71,7 @@ typedef uword vlib_copy_unit_t;
     
 /* VLIB buffer representation. */
 typedef struct {
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
   /* Offset within data[] that we are currently processing.
      If negative current header points into predata area. */ 
   i16 current_data;  /**< signed offset in data[], pre_data[]  
@@ -124,22 +134,24 @@ typedef struct {
   u32 opaque[8]; /**< Opaque data used by sub-graphs for their own purposes. 
                     See .../vnet/vnet/buffer.h
                  */
-  /***** end of first cache line */
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
 
   u32 opaque2[16];  /**< More opaque data, in its own cache line */
 
   /***** end of second cache line */
-  u8 pre_data [__PRE_DATA_SIZE]; /**< Space for inserting data 
-                                     before buffer start.  
-                                     Packet rewrite string will be
-                                     rewritten backwards and may extend 
-                                     back before buffer->data[0].
-                                     Must come directly before packet data.
-                                 */
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline2);
+  u8 pre_data [VLIB_BUFFER_PRE_DATA_SIZE]; /**< Space for inserting data
+                                               before buffer start.
+                                               Packet rewrite string will be
+                                               rewritten backwards and may extend
+                                               back before buffer->data[0].
+                                               Must come directly before packet data.
+                                            */
 
-#define VLIB_BUFFER_PRE_DATA_SIZE (ARRAY_LEN (((vlib_buffer_t *)0)->pre_data))
   u8 data[0]; /**< Packet data. Hardware DMA here */
 } vlib_buffer_t;  /* Must be a multiple of 64B. */
+
+#define VLIB_BUFFER_HDR_SIZE  (sizeof(vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE)
 
 /** \brief Prefetch buffer metadata.
     The first 64 bytes of buffer contains most header information
@@ -283,13 +295,7 @@ typedef struct {
      initializing static data for each packet generated. */
   vlib_buffer_free_list_t * buffer_free_list_pool;
 #define VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX (0)
-
-#if DPDK == 1
-/* must be same as dpdk buffer size */
-#define VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES (2048)
-#else
-#define VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES (512)
-#endif
+#define VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES VLIB_BUFFER_DATA_SIZE
 
   /* Hash table mapping buffer size (rounded to next unit of
      sizeof (vlib_buffer_t)) to free list index. */
@@ -356,6 +362,11 @@ serialize_vlib_buffer_n_bytes (serialize_main_t * m)
     = uword_to_pointer (m->stream.data_function_opaque, vlib_serialize_buffer_main_t *);
   return sm->tx.n_total_data_bytes + s->current_buffer_index + vec_len (s->overflow_buffer);
 }
+
+#if DPDK > 0
+#define rte_mbuf_from_vlib_buffer(x) (((struct rte_mbuf *)x) - 1)
+#define vlib_buffer_from_rte_mbuf(x) ((vlib_buffer_t *)(x+1))
+#endif
 
 /*
  */

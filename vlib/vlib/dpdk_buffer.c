@@ -66,12 +66,10 @@
 
 #include <vlib/vlib.h>
 
-phys_addr_t          __attribute__ ((weak)) rte_mem_virt2phy();
-int                  __attribute__ ((weak)) rte_eal_has_hugepages();
-unsigned             __attribute__ ((weak)) rte_socket_id();
-struct rte_mempool * __attribute__ ((weak)) rte_mempool_create();
-void                 __attribute__ ((weak)) rte_pktmbuf_init();
-void                 __attribute__ ((weak)) rte_pktmbuf_pool_init();
+#pragma weak rte_mem_virt2phy
+#pragma weak rte_eal_has_hugepages
+#pragma weak rte_socket_id
+#pragma weak rte_pktmbuf_pool_create
 
 uword vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm, vlib_buffer_t * b_first)
 {
@@ -400,13 +398,13 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
 
   for (i = 0; i < vec_len (f->unaligned_buffers); i++) {
       b = vlib_get_buffer (vm, f->unaligned_buffers[i]);
-      mb = ((struct rte_mbuf *)b)-1;
+      mb = rte_mbuf_from_vlib_buffer(b);
       ASSERT(rte_mbuf_refcnt_read(mb) == 1);
       rte_pktmbuf_free (mb);
   }
   for (i = 0; i < vec_len (f->aligned_buffers); i++) {
       b = vlib_get_buffer (vm, f->aligned_buffers[i]);
-      mb = ((struct rte_mbuf *)b)-1;
+      mb = rte_mbuf_from_vlib_buffer(b);
       ASSERT(rte_mbuf_refcnt_read(mb) == 1);
       rte_pktmbuf_free (mb);
   }
@@ -487,7 +485,7 @@ fill_free_list (vlib_main_t * vm,
       mb->data_off = RTE_PKTMBUF_HEADROOM;
       mb->nb_segs = 1;
 
-      b = (vlib_buffer_t *)(mb+1);
+      b = vlib_buffer_from_rte_mbuf(mb);
       bi = vlib_get_buffer_index (vm, b);
       
       vec_add1_aligned (fl->aligned_buffers, bi, sizeof (vlib_copy_unit_t));
@@ -726,7 +724,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
         {
 	  if (PREDICT_TRUE (b->clone_count == 0))
 	    {
-	      mb = ((struct rte_mbuf *)b)-1;
+	      mb = rte_mbuf_from_vlib_buffer(b);
 	      ASSERT(rte_mbuf_refcnt_read(mb) == 1);
 	      rte_pktmbuf_free (mb);
 	    }
@@ -820,7 +818,7 @@ vlib_packet_template_get_packet (vlib_main_t * vm,
 
   /* Fix up mbuf header length fields */
   struct rte_mbuf * mb;
-  mb = ((struct rte_mbuf *)b) - 1;
+  mb = rte_mbuf_from_vlib_buffer(b);
   mb->data_len = b->current_length;
   mb->pkt_len = b->current_length;
 
@@ -916,22 +914,26 @@ vlib_buffer_chain_append_data_with_alloc(vlib_main_t *vm,
 void vlib_buffer_chain_validate (vlib_main_t * vm, vlib_buffer_t * b_first)
 {
   vlib_buffer_t *b = b_first, *prev = b_first;
-  struct rte_mbuf *mb_first = ((struct rte_mbuf *) b) - 1;
+  struct rte_mbuf *mb_prev, *mb, *mb_first;
 
-  mb_first->pkt_len = mb_first-> data_len = b_first->current_length;
+  mb_first = rte_mbuf_from_vlib_buffer(b_first);
+
+  mb_first->pkt_len = mb_first->data_len = b_first->current_length;
   while (b->flags & VLIB_BUFFER_NEXT_PRESENT) {
       b = vlib_get_buffer(vm, b->next_buffer);
+      mb = rte_mbuf_from_vlib_buffer(b);
+      mb_prev = rte_mbuf_from_vlib_buffer(prev);
       mb_first->nb_segs++;
       mb_first->pkt_len += b->current_length;
-      (((struct rte_mbuf *) prev) - 1)->next = (((struct rte_mbuf *) b) - 1);
-      (((struct rte_mbuf *) b) - 1)->data_len = b->current_length;
+      mb_prev->next = mb;
+      mb->data_len = b->current_length;
       prev = b;
   }
 }
 
 clib_error_t *
 vlib_buffer_pool_create(vlib_main_t * vm, unsigned num_mbufs,
-                        unsigned mbuf_size, unsigned socket_id)
+                        unsigned socket_id)
 {
   vlib_buffer_main_t * bm = vm->buffer_main;
   vlib_physmem_main_t * vpm = &vm->physmem_main;
@@ -939,7 +941,7 @@ vlib_buffer_pool_create(vlib_main_t * vm, unsigned num_mbufs,
   uword new_start, new_size;
   int i;
 
-  if (!rte_mempool_create)
+  if (!rte_pktmbuf_pool_create)
     return clib_error_return (0, "not linked with DPDK");
 
   vec_validate_aligned(bm->pktmbuf_pools, socket_id, CLIB_CACHE_LINE_BYTES);
@@ -949,12 +951,15 @@ vlib_buffer_pool_create(vlib_main_t * vm, unsigned num_mbufs,
     return 0;
 
   u8 * pool_name = format(0, "mbuf_pool_socket%u%c",socket_id, 0);
-  rmp = rte_mempool_create((char *) pool_name,
-                           num_mbufs, mbuf_size, 512,
-                           sizeof(struct rte_pktmbuf_pool_private),
-                           rte_pktmbuf_pool_init, NULL,
-                           rte_pktmbuf_init, NULL,
-                           socket_id, 0);
+
+  rmp = rte_pktmbuf_pool_create((char *) pool_name,         /* pool name */
+				 num_mbufs,                 /* number of mbufs */
+				 512,                       /* cache size */
+				 VLIB_BUFFER_HDR_SIZE,      /* priv size */
+				 VLIB_BUFFER_PRE_DATA_SIZE
+				 + VLIB_BUFFER_DATA_SIZE,   /* dataroom size */
+				 socket_id);                /* cpu socket */
+
   vec_free(pool_name);
 
   if (rmp)

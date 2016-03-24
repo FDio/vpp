@@ -200,12 +200,11 @@ tuntap_rx (vlib_main_t * vm,
   tuntap_main_t * tm = &tuntap_main;
   vlib_buffer_t * b;
   u32 bi;
+  const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
 #if DPDK == 0
-  const uword buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
   u32 free_list_index = VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX;
 #else
   dpdk_main_t * dm = &dpdk_main;
-  const uword buffer_size = MBUF_SIZE;
   u32 free_list_index = dm->vlib_buffer_free_list_index;
 #endif
 
@@ -262,7 +261,7 @@ tuntap_rx (vlib_main_t * vm,
 #endif
 	b = vlib_get_buffer (vm, tm->rx_buffers[i_rx]);
 #if DPDK == 1
-        mb = (((struct rte_mbuf *)b)-1);
+	mb = rte_mbuf_from_vlib_buffer(b);
 #endif
 	b->flags = 0;
 	b->current_data = 0;
@@ -445,12 +444,7 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
   u8 * name;
   int flags = IFF_TUN | IFF_NO_PI;
   int is_enabled = 0, is_ether = 0, have_normal_interface = 0;
-#if DPDK == 0
-  const uword buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
-#else
-  const uword buffer_size = MBUF_SIZE;
-#endif
-
+  const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
