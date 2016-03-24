@@ -188,6 +188,7 @@ VLIB_CLI_COMMAND (cmd_show_dpdk_bufferr,static) = {
     .path = "show dpdk buffer",
     .short_help = "show dpdk buffer state",
     .function = show_dpdk_buffer,
+    .is_mp_safe = 1,
 };
 
 static clib_error_t *
@@ -243,10 +244,11 @@ test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-VLIB_CLI_COMMAND (cmd_test_dpdk_bufferr,static) = {
+VLIB_CLI_COMMAND (cmd_test_dpdk_buffer,static) = {
     .path = "test dpdk buffer",
     .short_help = "test dpdk buffer [allocate <nn>][free <nn>]",
     .function = test_dpdk_buffer,
+    .is_mp_safe = 1,
 };
 
 static void
@@ -327,6 +329,7 @@ VLIB_CLI_COMMAND (cmd_trace_frame_queue,static) = {
     .path = "trace frame-queue",
     .short_help = "trace frame-queue (on|off)",
     .function = trace_frame_queue,
+    .is_mp_safe = 1,
 };
 
 
