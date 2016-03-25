@@ -1,0 +1,11 @@
+In file included from /vpp/build-data/../vlib/vlib/vlib.h:53:0,
+                 from /vpp/build-data/../vlib/vlib/cli.c:40:
+/vpp/build-data/../vlib/vlib/buffer.h:50:24: fatal error: rte_config.h: No such file or directory
+ #include <rte_config.h>
+                        ^
+compilation terminated.
+In file included from /vpp/build-data/../vlib/vlib/vlib.h:53:0,
+                 from /vpp/build-data/../vlib/vlib/counter.c:40:
+/vpp/build-data/../vlib/vlib/buffer.h:50:24: fatal error: rte_config.h: No such file or directory
+ #include <rte_config.h>
+                        ^
