@@ -70,6 +70,7 @@
 #include <vnet/lisp-gpe/lisp_gpe.h>
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
+#include <vnet/ip/ip6_hop_by_hop.h>
 
 #undef BIHASH_TYPE
 #undef __included_bihash_template_h__
@@ -312,7 +313,10 @@ _(MAP_SUMMARY_STATS, map_summary_stats)					\
 _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable)		\
 _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)		\
 _(GET_NODE_GRAPH, get_node_graph)                                       \
-_(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)
+_(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
+_(TRACE_PROFILE_ADD, trace_profile_add)                                 \
+_(TRACE_PROFILE_APPLY, trace_profile_apply)                             \
+_(TRACE_PROFILE_DEL, trace_profile_del)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -4996,6 +5000,63 @@ static void vl_api_get_node_graph_t_handler
     REPLY_MACRO2(VL_API_GET_NODE_GRAPH_REPLY,
                  rmp->reply_in_shmem = (uword) vector);
 }
+
+static void vl_api_trace_profile_add_t_handler
+(vl_api_trace_profile_add_t *mp)
+{
+    int rv = 0;
+    vl_api_trace_profile_add_reply_t * rmp;
+    clib_error_t *error;
+
+    /* Ignoring the profile id as currently a single profile 
+     * is supported */
+    error = ip6_ioam_trace_profile_set(mp->trace_num_elt, mp->trace_type, 
+                               ntohl(mp->node_id), ntohl(mp->trace_app_data), 
+                               mp->pow_enable, mp->trace_tsp, 
+                               mp->trace_ppc);
+    if (error) {
+      clib_error_report(error);
+      rv = clib_error_get_code(error);
+    }
+    
+    REPLY_MACRO(VL_API_TRACE_PROFILE_ADD_REPLY);
+}
+
+static void vl_api_trace_profile_apply_t_handler
+(vl_api_trace_profile_apply_t *mp)
+{
+    int rv = 0;
+    vl_api_trace_profile_apply_reply_t * rmp;
+ 
+    if (mp->enable != 0) {
+      rv = ip6_ioam_set_destination ((ip6_address_t *)(&mp->dest_ipv6),
+				ntohl(mp->prefix_length),
+				ntohl(mp->vrf_id), 
+                        mp->trace_op == IOAM_HBYH_ADD,
+                        mp->trace_op == IOAM_HBYH_POP,
+                        mp->trace_op == IOAM_HBYH_MOD);
+    } else {
+      //ip6_ioam_clear_destination(&ip6, mp->prefix_length, mp->vrf_id);
+    }
+    REPLY_MACRO(VL_API_TRACE_PROFILE_APPLY_REPLY);
+}
+
+static void vl_api_trace_profile_del_t_handler
+(vl_api_trace_profile_del_t *mp)
+{
+    int rv = 0;
+    vl_api_trace_profile_del_reply_t * rmp;
+    clib_error_t *error;
+
+    error = clear_ioam_rewrite_fn();
+    if (error) {
+      clib_error_report(error);
+      rv = clib_error_get_code(error);
+    }
+    
+    REPLY_MACRO(VL_API_TRACE_PROFILE_DEL_REPLY);
+}
+
 
 #define BOUNCE_HANDLER(nn)                                              \
 static void vl_api_##nn##_t_handler (                                   \

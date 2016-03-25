@@ -1080,7 +1080,7 @@ int ip6_ioam_set_rewrite (u8 **rwp, u32 trace_type, u32 trace_option_elts,
 }
 
 clib_error_t *
-clear_ioam_rewrite_fn()
+clear_ioam_rewrite_fn(void)
 {
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
 
@@ -1096,11 +1096,18 @@ clear_ioam_rewrite_fn()
 
   return 0;
 }
+
+clib_error_t * clear_ioam_rewrite_command_fn (vlib_main_t * vm,
+                                 unformat_input_t * input,
+                                 vlib_cli_command_t * cmd)
+{
+  return(clear_ioam_rewrite_fn());
+}
   
 VLIB_CLI_COMMAND (ip6_clear_ioam_trace_cmd, static) = {
   .path = "clear ioam rewrite",
   .short_help = "clear ioam rewrite",
-  .function = clear_ioam_rewrite_fn,
+  .function = clear_ioam_rewrite_command_fn,
 };
 
 clib_error_t *
@@ -1126,7 +1133,7 @@ ip6_ioam_trace_profile_set(u32 trace_option_elts, u32 trace_type, u32 node_id,
       break;
 
     default:
-      return clib_error_return (0, "ip6_ioam_set_rewrite returned %d", rv);
+      return clib_error_return_code(0, rv, 0, "ip6_ioam_set_rewrite returned %d", rv);
     }
 
   return 0;
