@@ -63,6 +63,9 @@ typedef struct {
   u32 rx_table_id;
   u32 tx_table_id;
 
+  /* optional name argument - for referencing SR tunnel/policy by name */
+  u8 * name;
+
   /* segment list, when inserting an ip6 SR header*/
   ip6_address_t *segments;
 
@@ -88,7 +91,10 @@ typedef struct {
 
   /* find an sr "tunnel" by its outer-IP src/dst */
   uword * tunnel_index_by_key;
-  
+
+  /* find an sr "tunnel" by its name */
+  uword * tunnel_index_by_name;
+
   /* ip6-lookup next index for imposition FIB entries */
   u32 ip6_lookup_sr_next_index;
 

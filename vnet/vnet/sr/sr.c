@@ -1051,7 +1051,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (sr_tunnel_command, static) = {
     .path = "sr tunnel",
     .short_help = 
-    "sr tunnel [del] <src> <dst> [next <addr>] [cleanup] [reroute] [key %s]",
+    "sr tunnel [del] [name <name>] src <addr> dst <addr> [next <addr>] [cleanup] [reroute] [key %s]",
     .function = sr_add_del_tunnel_command_fn,
 };
 
@@ -1362,6 +1362,15 @@ static clib_error_t * sr_init (vlib_main_t * vm)
 
   sm->tunnel_index_by_key = 
     hash_create_mem (0, sizeof (ip6_sr_tunnel_key_t), sizeof (uword));
+
+  /* alagalah : super sketchy on this one, can't find any use of 
+     hash_create_mem that hashes by "name". VXLANGPE has a tunnel name on creation
+     but sr doesn't have this (see "show sr tunnel"). I'm assuming 15+/0 chars is enough
+
+     Maybe in types.h we could define a LITERAL_STRING_LEN const ?
+   */
+  sm->tunnel_index_by_name = 
+    hash_create_mem (0, sizeof (u8)*16, sizeof (uword));
 
   sm->hmac_key_by_shared_secret = hash_create_string (0, sizeof(uword));
 
