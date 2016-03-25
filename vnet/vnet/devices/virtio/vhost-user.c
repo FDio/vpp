@@ -1031,7 +1031,7 @@ static u32 vhost_user_if_input ( vlib_main_t * vm,
         error = VHOST_USER_INPUT_FUNC_ERROR_UNDERSIZED_FRAME;
       }
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b_head);
 
       vnet_buffer (b_head)->sw_if_index[VLIB_RX] = vui->sw_if_index;
       vnet_buffer (b_head)->sw_if_index[VLIB_TX] = (u32)~0;
