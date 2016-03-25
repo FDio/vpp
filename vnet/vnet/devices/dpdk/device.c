@@ -77,7 +77,7 @@ dpdk_set_mc_filter (vnet_hw_interface_t * hi,
   }
 }
 
-static struct rte_mbuf * dpdk_replicate_packet_mb (vlib_buffer_t * b)
+struct rte_mbuf * dpdk_replicate_packet_mb (vlib_buffer_t * b)
 {
   vlib_main_t * vm = vlib_get_main();
   vlib_buffer_main_t * bm = vm->buffer_main;
