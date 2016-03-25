@@ -2121,6 +2121,7 @@ _(sw_interface_ip6nd_ra_config_reply)                   \
 _(set_arp_neighbor_limit_reply)                         \
 _(l2_patch_add_del_reply)                               \
 _(sr_tunnel_add_del_reply)                              \
+_(sr_policy_add_del_reply)                              \
 _(classify_add_del_session_reply)                       \
 _(classify_set_interface_ip_table_reply)                \
 _(classify_set_interface_l2_tables_reply)               \
@@ -2259,6 +2260,7 @@ _(SW_INTERFACE_IP6ND_RA_CONFIG_REPLY,                                   \
 _(SET_ARP_NEIGHBOR_LIMIT_REPLY, set_arp_neighbor_limit_reply)           \
 _(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                       \
 _(SR_TUNNEL_ADD_DEL_REPLY, sr_tunnel_add_del_reply)                     \
+_(SR_POLICY_ADD_DEL_REPLY, sr_policy_add_del_reply)                     \
 _(CLASSIFY_ADD_DEL_TABLE_REPLY, classify_add_del_table_reply)           \
 _(CLASSIFY_ADD_DEL_SESSION_REPLY, classify_add_del_session_reply)       \
 _(CLASSIFY_SET_INTERFACE_IP_TABLE_REPLY,                                \
@@ -5495,6 +5497,7 @@ static int api_trace_profile_del (vat_main_t *vam)
    S; W;
    return 0;
 }
+
 static int api_sr_tunnel_add_del (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
@@ -5515,11 +5518,17 @@ static int api_sr_tunnel_add_del (vat_main_t * vam)
   ip6_address_t * tags = 0;
   ip6_address_t * this_tag;
   ip6_address_t next_address, tag;
+  u8 * name = 0;
+  u8 * policy_name = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "del"))
         is_del = 1;
+      else if (unformat (i, "name %s", &name))
+            ;
+      else if (unformat (i, "policy %s", &policy_name))
+            ;
       else if (unformat (i, "rx_fib_id %d", &rx_table_id))
         ;
       else if (unformat (i, "tx_fib_id %d", &tx_table_id))
@@ -5608,9 +5617,86 @@ static int api_sr_tunnel_add_del (vat_main_t * vam)
 
   mp->outer_vrf_id = ntohl (rx_table_id);
   mp->inner_vrf_id = ntohl (tx_table_id);
+  memcpy (mp->name, name, vec_len(name));
+  memcpy (mp->policy_name, policy_name, vec_len(policy_name));
 
   vec_free (segments);
   vec_free (tags);
+  
+  S; W;
+  /* NOTREACHED */
+}
+
+static int api_sr_policy_add_del (vat_main_t * vam)
+{
+  unformat_input_t * i = vam->input;
+  vl_api_sr_policy_add_del_t *mp;
+  f64 timeout;
+  int is_del = 0;
+  u8 * name = 0;
+  u8 * this_tunnel_name = 0;
+  u8 * tunnel_name = 0;
+  u8 ** tunnel_names = 0;
+  u8 * tunnel_name_lengths = 0;
+  int name_set = 0 ;
+  int tunnel_set = 0;
+  int j = 0;
+  int tunnel_name_len = 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "del"))
+        is_del = 1;
+      else if (unformat (i, "name %s", &name))
+	name_set = 1;
+      else if (unformat (i, "tunnel %s", &tunnel_name))
+        {
+	  memcpy (this_tunnel_name, tunnel_name, vec_len(tunnel_name));
+	  vec_add2 (tunnel_names, this_tunnel_name, vec_len(tunnel_name));
+
+	  vec_add1 (tunnel_name_lengths, vec_len(tunnel_name));
+	  /*	  if (tunnel_name)
+	    {
+	      vec_add1 (tunnel_names, tunnel_name);
+	      vec_add1 (tunnel_name_lengths, vec_len(tunnel_name));
+	      tunnel_set=1;
+	      }*/
+        }
+      else 
+        break;
+    }
+
+  if (!name_set)
+    {
+      errmsg ("policy name required\n");
+      return -99;
+    }
+
+  if ((!tunnel_set) && (!is_del))
+    {
+      errmsg ("tunnel name required\n");
+      return -99;
+    }
+
+  for (j = 0; j < vec_len(tunnel_name_lengths); j++)
+    {
+      tunnel_name_len += tunnel_name_lengths[j];
+      errmsg ("%d tunnel names length %d",j, tunnel_name_len);
+    }
+
+
+
+  M2(SR_POLICY_ADD_DEL, sr_policy_add_del, tunnel_name_len);
+
+  
+
+  mp->is_add = !is_del;
+
+  memcpy (mp->name, name, vec_len(name));
+  memcpy (mp->tunnel_names, tunnel_names, tunnel_name_len);
+
+  vec_free (tunnel_names);
+  vec_free (tunnel_name);
   
   S; W;
   /* NOTREACHED */
@@ -10254,8 +10340,11 @@ _(mpls_ethernet_add_del_tunnel_2,                                       \
   "inner_vrf_id <n> outer_vrf_id <n> next-hop <ip4-addr>\n"             \
   "resolve-attempts <n> resolve-if-needed 0 | 1 [del]")                 \
 _(sr_tunnel_add_del,                                                    \
-  "src <ip6-addr> dst <ip6-addr>/<mw> (next <ip6-addr>)+\n"             \
-  " [tag <ip6-addr>]* [clean] [reroute]")                               \
+  "[name <name>] src <ip6-addr> dst <ip6-addr>/<mw> \n"                 \
+  "(next <ip6-addr>)+ [tag <ip6-addr>]* [clean] [reroute] \n"           \
+  "[policy <policy_name>]")						\
+_(sr_policy_add_del,                                                    \
+  "[name <name>] [tunnel <tunnel-name>]* [del]")			\
 _(classify_add_del_table,                                               \
   "buckets <nn> [skip <n>] [match <n>] [memory_size <nn-bytes>]\n"	\
   "[del] mask <mask-value>\n"						\

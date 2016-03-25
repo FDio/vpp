@@ -1,0 +1,23 @@
+sr_tunnel_add_del name sr2 src ::a:1:1:0:6 dst ff15::2/128 next ::a:1:1:0:f next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean policy_name  
+exec show sr tunnel
+exec show sr policy
+sr_tunnel_add_del name sr2 src ::a:1:1:0:6 dst ff15::2/128 next ::a:1:1:0:f next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean policy_name  del 
+exec show sr tunnel
+exec show sr policy
+sr_tunnel_add_del name sr2 src ::a:1:1:0:6 dst ff15::2/128 next 666f:6f00:0:a:1:1:0:f next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean policy_name foo 
+exec show sr tunnel
+exec show sr policy
+sr_tunnel_add_del name sr2 src ::a:1:1:0:6 dst ff15::2/128 next ::a:1:1:0:f next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean policy_name  del 
+exec show sr tunnel
+exec show sr policy
+sr_tunnel_add_del name sr2 src ::a:1:1:0:6 dst ff15::2/128 next 666f:6f00:0:a:1:1:0:f next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean policy_name foo 
+sr_tunnel_add_del name sr3 src ::b:1:1:0:6 dst ff16::2/128 next 666f:6f00:0:a:1:1:0:f next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean policy_name foo 
+exec show sr tunnel
+exec show sr policy
+sr_tunnel_add_del name sr2 src ::a:1:1:0:6 dst ff15::2/128 next 666f:6f00:0:a:1:1:0:f next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean policy_name foo del 
+exec show sr tunnel
+exec show sr policy
+sr_tunnel_add_del name sr2 src ::a:1:1:0:6 dst ff15::2/128 next ::a:1:1:0:f next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean policy_name  
+sr_tunnel_add_del name sr3 src ::b:1:1:0:6 dst ff16::2/128 next 666f:6f00:0:a:1:1:0:f next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean
+exec show sr tunnel
+exec show sr policy
