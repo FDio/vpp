@@ -1,0 +1,152 @@
+commit 54f9e32305d4a8d30c2a4ae059d310189b312498
+Author: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+Date:   Fri Jan 29 12:57:56 2016 +0800
+
+    vhost: handle dirty pages logging request
+    
+    VHOST_USER_SET_LOG_BASE request is used to tell the backend (dpdk
+    vhost-user) where we should log dirty pages, and how big the log
+    buffer is.
+    
+    This request introduces a new payload:
+    
+        typedef struct VhostUserLog {
+                uint64_t mmap_size;
+                uint64_t mmap_offset;
+        } VhostUserLog;
+    
+    Also, a fd is delivered from QEMU by ancillary data.
+    
+    With those info given, an area of memory is mmaped, assigned
+    to dev->log_base, for logging dirty pages.
+    
+    Signed-off-by: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+    Signed-off-by: Victor Kaplansky <victork@redhat.com>
+    Tested-by: Pavel Fedin <p.fedin@samsung.com>
+
+diff --git a/lib/librte_vhost/rte_virtio_net.h b/lib/librte_vhost/rte_virtio_net.h
+index 10dcb90..8acee02 100644
+--- a/lib/librte_vhost/rte_virtio_net.h
++++ b/lib/librte_vhost/rte_virtio_net.h
+@@ -129,7 +129,9 @@ struct virtio_net {
+ 	char			ifname[IF_NAME_SZ];	/**< Name of the tap device or socket path. */
+ 	uint32_t		virt_qp_nb;	/**< number of queue pair we have allocated */
+ 	void			*priv;		/**< private context */
+-	uint64_t		reserved[64];	/**< Reserve some spaces for future extension. */
++	uint64_t		log_size;	/**< Size of log area */
++	uint64_t		log_base;	/**< Where dirty pages are logged */
++	uint64_t		reserved[62];	/**< Reserve some spaces for future extension. */
+ 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];	/**< Contains all virtqueue information. */
+ } __rte_cache_aligned;
+ 
+diff --git a/lib/librte_vhost/vhost_user/vhost-net-user.c b/lib/librte_vhost/vhost_user/vhost-net-user.c
+index 8b7a448..32ad6f6 100644
+--- a/lib/librte_vhost/vhost_user/vhost-net-user.c
++++ b/lib/librte_vhost/vhost_user/vhost-net-user.c
+@@ -388,9 +388,12 @@ vserver_message_handler(int connfd, void *dat, int *remove)
+ 		break;
+ 
+ 	case VHOST_USER_SET_LOG_BASE:
+-		RTE_LOG(INFO, VHOST_CONFIG, "not implemented.\n");
+-		break;
++		user_set_log_base(ctx, &msg);
+ 
++		/* it needs a reply */
++		msg.size = sizeof(msg.payload.u64);
++		send_vhost_message(connfd, &msg);
++		break;
+ 	case VHOST_USER_SET_LOG_FD:
+ 		close(msg.fds[0]);
+ 		RTE_LOG(INFO, VHOST_CONFIG, "not implemented.\n");
+diff --git a/lib/librte_vhost/vhost_user/vhost-net-user.h b/lib/librte_vhost/vhost_user/vhost-net-user.h
+index 38637cc..6d252a3 100644
+--- a/lib/librte_vhost/vhost_user/vhost-net-user.h
++++ b/lib/librte_vhost/vhost_user/vhost-net-user.h
+@@ -83,6 +83,11 @@ typedef struct VhostUserMemory {
+ 	VhostUserMemoryRegion regions[VHOST_MEMORY_MAX_NREGIONS];
+ } VhostUserMemory;
+ 
++typedef struct VhostUserLog {
++	uint64_t mmap_size;
++	uint64_t mmap_offset;
++} VhostUserLog;
++
+ typedef struct VhostUserMsg {
+ 	VhostUserRequest request;
+ 
+@@ -97,6 +102,7 @@ typedef struct VhostUserMsg {
+ 		struct vhost_vring_state state;
+ 		struct vhost_vring_addr addr;
+ 		VhostUserMemory memory;
++		VhostUserLog    log;
+ 	} payload;
+ 	int fds[VHOST_MEMORY_MAX_NREGIONS];
+ } __attribute((packed)) VhostUserMsg;
+diff --git a/lib/librte_vhost/vhost_user/virtio-net-user.c b/lib/librte_vhost/vhost_user/virtio-net-user.c
+index 2934d1c..0f3b163 100644
+--- a/lib/librte_vhost/vhost_user/virtio-net-user.c
++++ b/lib/librte_vhost/vhost_user/virtio-net-user.c
+@@ -365,3 +365,51 @@ user_set_protocol_features(struct vhost_device_ctx ctx,
+ 
+ 	dev->protocol_features = protocol_features;
+ }
++
++int
++user_set_log_base(struct vhost_device_ctx ctx,
++		 struct VhostUserMsg *msg)
++{
++	struct virtio_net *dev;
++	int fd = msg->fds[0];
++	uint64_t size, off;
++	void *addr;
++
++	dev = get_device(ctx);
++	if (!dev)
++		return -1;
++
++	if (fd < 0) {
++		RTE_LOG(ERR, VHOST_CONFIG, "invalid log fd: %d\n", fd);
++		return -1;
++	}
++
++	if (msg->size != sizeof(VhostUserLog)) {
++		RTE_LOG(ERR, VHOST_CONFIG,
++			"invalid log base msg size: %"PRId32" != %d\n",
++			msg->size, (int)sizeof(VhostUserLog));
++		return -1;
++	}
++
++	size = msg->payload.log.mmap_size;
++	off  = msg->payload.log.mmap_offset;
++	RTE_LOG(INFO, VHOST_CONFIG,
++		"log mmap size: %"PRId64", offset: %"PRId64"\n",
++		size, off);
++
++	/*
++	 * mmap from 0 to workaround a hugepage mmap bug: mmap will
++	 * fail when offset is not page size aligned.
++	 */
++	addr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++	if (addr == MAP_FAILED) {
++		RTE_LOG(ERR, VHOST_CONFIG, "mmap log base failed!\n");
++		return -1;
++	}
++
++	/* TODO: unmap on stop */
++	dev->log_base = (uint64_t)(uintptr_t)addr + off;
++	dev->log_size = size;
++
++	return 0;
++}
+diff --git a/lib/librte_vhost/vhost_user/virtio-net-user.h b/lib/librte_vhost/vhost_user/virtio-net-user.h
+index b82108d..013cf38 100644
+--- a/lib/librte_vhost/vhost_user/virtio-net-user.h
++++ b/lib/librte_vhost/vhost_user/virtio-net-user.h
+@@ -49,6 +49,7 @@ void user_set_vring_kick(struct vhost_device_ctx, struct VhostUserMsg *);
+ 
+ void user_set_protocol_features(struct vhost_device_ctx ctx,
+ 				uint64_t protocol_features);
++int user_set_log_base(struct vhost_device_ctx ctx, struct VhostUserMsg *);
+ 
+ int user_get_vring_base(struct vhost_device_ctx, struct vhost_vring_state *);
+ 
