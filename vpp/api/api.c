@@ -3357,6 +3357,15 @@ static void vl_api_set_arp_neighbor_limit_t_handler (vl_api_set_arp_neighbor_lim
     REPLY_MACRO(VL_API_SET_ARP_NEIGHBOR_LIMIT_REPLY);
 }
 
+/* alagalah TODO: add "name" to API */
+/* 
+   alagalah TODO: add API for following: 
+   - adding policy
+   - ?? name to index resolution so can add things directly via index, not just 
+     name like convenience in CLI
+   - extend "show" commands for API
+*/
+
 static void vl_api_sr_tunnel_add_del_t_handler
 (vl_api_sr_tunnel_add_del_t *mp)
 {
