@@ -72,7 +72,9 @@ _(NOT_CONNECTED, -78, "Not connected to the data plane")                \
 _(IF_ALREADY_EXISTS, -79, "Interface already exists")                   \
 _(BOND_SLAVE_NOT_ALLOWED, -80, "Operation not allowed on slave of BondEthernet") \
 _(VALUE_EXIST, -81, "Value already exists")                             \
-_(SAME_SRC_DST, -82, "Source and destination are the same")
+_(SAME_SRC_DST, -82, "Source and destination are the same")             \
+_(IP6_MULTICAST_ADDRESS_NOT_PRESENT, -83, "IP6 multicast address required") \
+_(SR_POLICY_NAME_NOT_PRESENT, -84, "Segement routing policy name required")
 
 typedef enum {
 #define _(a,b,c) VNET_API_ERROR_##a = (b),
