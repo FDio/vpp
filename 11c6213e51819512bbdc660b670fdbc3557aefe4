@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_e2fe4238",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-25T17:44:17Z",
+      "side": 1,
+      "message": "extern... clear_ioam_rewrite_fn(void);\n\nOtherwise gcc 5.2 will complain. Sorry I didn\u0027t see this the first time around.",
+      "revId": "11c6213e51819512bbdc660b670fdbc3557aefe4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_c2fb4646",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 5012,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-25T17:44:17Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this function return useful status?",
+      "revId": "11c6213e51819512bbdc660b670fdbc3557aefe4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
