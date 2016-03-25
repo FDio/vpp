@@ -205,6 +205,7 @@ u8 * format_ip6_sr_header_with_length (u8 * s, va_list * args)
 _(ERROR, "error-drop")                          \
 _(IP6_LOOKUP, "ip6-lookup")                     \
 _(SR_LOCAL, "sr-local")
+//_(SR_REPLICATE,"sr-replicate")
 
 typedef enum {
 #define _(s,n) SR_REWRITE_NEXT_##s,
@@ -289,7 +290,8 @@ sr_rewrite (vlib_main_t * vm,
       vlib_get_next_frame (vm, node, next_index,
 			   to_next, n_left_to_next);
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      /* Note 2x loop disabled */
+      while (0 && n_left_from >= 4 && n_left_to_next >= 2)
 	{
 	  u32 bi0, bi1;
 	  vlib_buffer_t * b0, * b1;
@@ -516,6 +518,13 @@ sr_rewrite (vlib_main_t * vm,
           t0 = pool_elt_at_index (sm->tunnels, 
                                   adj0->rewrite_header.sw_if_index);
 
+	  /* add a replication node */
+	  if(PREDICT_FALSE(t0->policy_index != ~0))
+	    {
+	      //next0=SR_REWRITE_NEXT_SR_REPLICATE;
+	      goto trace0;
+	    }
+
           ASSERT (VLIB_BUFFER_PRE_DATA_SIZE
                   >= ((word) vec_len (t0->rewrite)) + b0->current_data);
           
@@ -582,6 +591,7 @@ sr_rewrite (vlib_main_t * vm,
               }
             }
 
+	trace0:
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
             {
               sr_rewrite_trace_t *tr = vlib_add_trace (vm, node, 
@@ -733,6 +743,8 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   ip6_add_del_route_args_t aa;
   u32 hmac_key_index_u32;
   u8 hmac_key_index = 0;
+  ip6_sr_policy_t * pt;
+  int i;
 
   /* Make sure that the rx FIB exists */
   p = hash_get (im->fib_index_by_table_id, a->rx_table_id);
@@ -755,7 +767,11 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   memcpy (key.src.as_u8, a->src_address->as_u8, sizeof (key.src));
   memcpy (key.dst.as_u8, a->dst_address->as_u8, sizeof (key.dst));
 
-  p = hash_get_mem (sm->tunnel_index_by_key, &key);
+  /* If the name exists, find the tunnel by name else... */
+  if (a->name)
+    p = hash_get_mem(sm->tunnel_index_by_name, a->name);
+  else if (p==0)
+    p = hash_get_mem (sm->tunnel_index_by_key, &key);
 
   if (p)
     {
@@ -769,6 +785,37 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
           ip6_delete_route_no_next_hop (&t->key.dst, t->dst_mask_width, 
                                         a->rx_table_id);
           vec_free (t->rewrite);
+	  /* Remove tunnel from any policy if associated */
+	  if (t->policy_index != ~0)
+	    {
+	      pt=pool_elt_at_index(sm->policies, t->policy_index);
+	      for(i=0; i< vec_len(pt->tunnel_indices); i++)
+		{
+		  if(pt->tunnel_indices[i] == t - sm->tunnels)
+		    {
+		      vec_delete(pt->tunnel_indices, 1, i);
+		      goto found;
+		    }
+		}
+	      clib_warning("Tunnel index %d not found in policy_index %d", 
+			   t - sm->tunnels, pt - sm->policies);
+	    found: 
+	      /* If this is last tunnel in the  policy, clean up the policy too */
+	      /* alagalah : maybe clean this up and make a subroutine */
+	      if(vec_len(pt->tunnel_indices) == 0)
+		{
+		  hash_unset_mem(sm->policy_index_by_policy_name, pt->name);
+		  vec_free(pt->name);
+		  pool_put(sm->policies, pt);
+		}
+	    }
+
+	  /* Clean up the tunnel by name */
+	  if(t->name)
+	    {
+	      hash_unset_mem(sm->tunnel_index_by_name, t->name);
+	      vec_free(t->name);
+	    }
           pool_put (sm->tunnels, t);
           hp = hash_get_pair (sm->tunnel_index_by_key, &key);
           key_copy = (void *)(hp->key);
@@ -789,6 +836,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   /* create a new tunnel */
   pool_get (sm->tunnels, t);
   memset (t, 0, sizeof (*t));
+  t->policy_index = ~0;
 
   memcpy (&t->key, &key, sizeof (t->key));
   t->dst_mask_width = a->dst_mask_width;
@@ -902,6 +950,30 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   ip6_add_del_route (im, &aa);
   vec_free (add_adj);
 
+  if (a->policy_name)
+    {
+      p=hash_get_mem (sm->policy_index_by_policy_name, a->policy_name);
+      if (p)
+	{
+	  pt = pool_elt_at_index (sm->policies, p[0]);
+	}
+      else /* no policy, lets create one */
+	{
+	  pool_get (sm->policies, pt);
+	  memset (pt, 0, sizeof(*pt));
+	  pt->name = format (0, "%s%c", a->name, 0);
+	  hash_set_mem (sm->policy_index_by_policy_name, pt->name, pt - sm->policies);
+	}
+      vec_add1 (pt->tunnel_indices, t - sm->tunnels);
+      t->policy_index = p[0]; /* equiv. to (pt - sm->policies) */
+    }
+
+  if (a->name)
+    {
+      t->name = format (0, "%s%c", a->name, 0);
+      hash_set_mem(sm->tunnel_index_by_name, t->name, t - sm->tunnels);
+    }
+
   return 0;
 }
 
@@ -918,6 +990,8 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
   int dst_address_set = 0;
   u16 flags = 0;
   u8 *shared_secret = 0;
+  u8 *name = 0;
+  u8 *policy_name = 0;
   u32 rx_table_id = 0;
   u32 tx_table_id = 0;
   ip6_address_t * segments = 0;
@@ -925,6 +999,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
   ip6_address_t * tags = 0;
   ip6_address_t * this_tag;
   ip6_sr_add_del_tunnel_args_t _a, *a=&_a;
+  //ip6_sr_policy_t * policy = 0;
   ip6_address_t next_address, tag;
   int pl_index;
   int rv;
@@ -939,6 +1014,10 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
         ;
       else if (unformat (input, "src %U", unformat_ip6_address, &src_address))
         src_address_set = 1;
+      else if (unformat (input, "name %s", &name))
+        ;
+      else if (unformat (input, "policy %s", &policy_name))
+        ;
       else if (unformat (input, "dst %U/%d", 
                          unformat_ip6_address, &dst_address,
                          &dst_mask_width))
@@ -1012,6 +1091,8 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
   a->rx_table_id = rx_table_id;
   a->tx_table_id = tx_table_id;
   a->shared_secret = shared_secret;
+  a->name = name;
+  a->policy_name = policy_name;
 
   rv = ip6_sr_add_del_tunnel (a);
   
@@ -1051,10 +1132,46 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (sr_tunnel_command, static) = {
     .path = "sr tunnel",
     .short_help = 
-    "sr tunnel [del] <src> <dst> [next <addr>] [cleanup] [reroute] [key %s]",
+    "sr tunnel [del] [name <name>] src <addr> dst <addr> [next <addr>] [cleanup] [reroute] [key %s] [policy <policy_name>",
     .function = sr_add_del_tunnel_command_fn,
 };
 
+void
+ip6_sr_tunnel_display (vlib_main_t * vm,
+		       ip6_sr_tunnel_t * t)
+{
+  ip6_main_t * im = &ip6_main;
+  ip6_sr_main_t * sm = &sr_main;
+  ip6_fib_t * rx_fib, * tx_fib;
+  ip6_sr_policy_t * pt;
+
+  rx_fib = find_ip6_fib_by_table_index_or_id (im, t->rx_fib_index, 
+                                                  IP6_ROUTE_FLAG_FIB_INDEX);
+      
+  tx_fib = find_ip6_fib_by_table_index_or_id (im, t->tx_fib_index, 
+                                                  IP6_ROUTE_FLAG_FIB_INDEX);
+
+  if (t->name)
+    vlib_cli_output (vm,"sr tunnel name: %s", (char *)t->name);
+
+  vlib_cli_output (vm, "src %U dst %U first hop %U", 
+		   format_ip6_address, &t->key.src,
+		   format_ip6_address, &t->key.dst,
+		   format_ip6_address, &t->first_hop);
+  vlib_cli_output (vm, "    rx-fib-id %d tx-fib-id %d",
+		   rx_fib->table_id, tx_fib->table_id);
+  vlib_cli_output (vm, "  sr: %U", format_ip6_sr_header, t->rewrite, 
+		   0 /* print_hmac */);
+
+  if (t->policy_index != ~0)
+    {
+      pt=pool_elt_at_index(sm->policies, t->policy_index);
+      vlib_cli_output (vm,"sr policy: %s", (char *)pt->name);
+    }
+  vlib_cli_output (vm, "-------");
+
+  return;
+}
 
 static clib_error_t *
 show_sr_tunnel_fn (vlib_main_t * vm,
@@ -1064,11 +1181,297 @@ show_sr_tunnel_fn (vlib_main_t * vm,
   static ip6_sr_tunnel_t ** tunnels;
   ip6_sr_tunnel_t * t;
   ip6_sr_main_t * sm = &sr_main;
+  int i;
+  uword * p = 0;
+  u8 *name = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "name %s", &name)) 
+	{
+	  p=hash_get_mem (sm->tunnel_index_by_name, name);
+	  if(!p)
+	    vlib_cli_output (vm, "No SR tunnel with name: %s. Showing all.", name);
+	 }
+      else 
+        break;
+    }
+
+  vec_reset_length (tunnels);
+
+  if(!p) /* Either name parm not passed or no tunnel with that name found, show all */
+    {
+  pool_foreach (t, sm->tunnels, 
+  ({
+    vec_add1 (tunnels, t);
+  }));
+    }
+  else /* Just show the one tunnel by name */
+    vec_add1 (tunnels, &sm->tunnels[p[0]]);
+
+  if (vec_len (tunnels) == 0)
+    vlib_cli_output (vm, "No SR tunnels configured");
+
+  for (i = 0; i < vec_len (tunnels); i++)
+    {
+      t = tunnels[i];
+      ip6_sr_tunnel_display (vm, t);
+    }
+  
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_sr_tunnel_command, static) = {
+    .path = "show sr tunnel",
+    .short_help = "show sr tunnel [name <sr-tunnel-name>]",
+    .function = show_sr_tunnel_fn,
+};
+
+static clib_error_t *
+sr_add_del_policy_command_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  ip6_sr_main_t * sm = &sr_main;
+  int is_del = 0;
+  u8 ** tunnel_names = 0;
+  u8 * tunnel_name = 0;
+  u8 * name = 0;
+  uword * p;
+  ip6_sr_tunnel_t * t = 0;
+  ip6_sr_policy_t * policy;
+  u32 * tunnel_indices = 0;
+  int i;
+
+  /*
+    Add: Takes list of tunnel names to associate with a policy name
+    - checks policy name does not already exist
+    - for each tunnel_name
+      - validates tunnel exist
+      - checks tunnel not already assigned to a policy (ip6_sr_tunnel_t:policy_index != ~0)
+      - checks that tunnel destination not already in use
+      TODO:
+      -- for this iteration checks tunnels not already assigned to a policy
+      -- checks that tunnel_dest not already in use... this may cause issues.
+      -- ip6_sr_tunnel_t:u32 policy_index *could* be extended to a vector of policies
+      - adds tunnel index to ip6_sr_policy_t:tunnel_indices
+    - updates sr_main_t:policies
+    - updates sr_main_t:policy_index_by_policy_name
+    finally:
+    - updates tunnels with policy_index
+
+    Del: Only uses policy name. Other input ignored
+    - checks if policy_name exists
+    - checks if policy associated with multicast_map (policy in use)
+    - removes policy_index from all associated tunnels
+    - removes policy from policy_index_by_policy_name
+    finally:
+    - removes policy from sr_main_t:policies
+   */
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+        is_del = 1;
+      else if (unformat (input, "name %s", &name))
+	;
+      else if (unformat (input, "tunnels %s", &tunnel_name))
+	{
+	  vec_add1 (tunnel_names, tunnel_name);
+	}
+      else if (vec_len(tunnel_names))
+	{
+	  unformat (input, "%s", &tunnel_name);
+	  vec_add1 (tunnel_names, tunnel_name);
+	 }
+      else 
+        break;
+    }
+
+  if (!name)
+    return clib_error_return (0, "name of SR policy required");
+
+  if (is_del)
+	{
+	  p=hash_get_mem (sm->policy_index_by_policy_name, name);
+	  if (!p)
+	    return clib_error_return (0, "policy name %s not found", name);
+
+	  return clib_error_return (0, "TODO: deleting policy name %s", name);
+	}
+  else 
+    {
+      if (!vec_len(tunnel_names))
+	return clib_error_return (0, "tunnel name to associate to SR policy is required");
+
+      vec_reset_length (tunnel_indices);
+      /* Check tunnel names, add tunnel_index to policy */
+      for (i=0; i < vec_len(tunnel_names); i++)
+	{
+	  p = hash_get_mem (sm->tunnel_index_by_name, tunnel_names[i]);
+	  if (!p)
+	    return clib_error_return (0, "tunnel name %s not found", tunnel_names[i]);
+
+	  t = pool_elt_at_index (sm->tunnels, p[0]);
+
+	  /* Checking t seems a bit superfluous here but if weirdness abounds .... */
+	  if (t->policy_index != ~0)
+	    return clib_error_return (0, "tunnel name %s already has policy_index %d", t->name, t->policy_index);
+	  
+	  /* alagalah TODO: Create hash of tunnel dst and check that a tunnel with same dst not already in use */
+
+	  /* Add to tunnel indicies */
+	  vec_add1 (tunnel_indices, p[0]);
+	}
+
+      /* Add policy to ip6_sr_main_t */
+      pool_get (sm->policies, policy);
+      policy->name = name; // alagalah remove: format (0, "%s%c", &name, 0);
+      policy->tunnel_indices = tunnel_indices;
+      hash_set_mem (sm->policy_index_by_policy_name, policy->name, policy - sm->policies);
+
+      /* Yes, this could be construed as overkill but the last thing you should do is set
+	 the policy_index on the tunnel after everything is set in ip6_sr_main_t. 
+	 If this is deemed overly cautious, could set this in the vec_len(tunnel_names) loop.
+       */
+      for (i=0; i < vec_len(policy->tunnel_indices); i++)
+	{
+	  t = pool_elt_at_index (sm->tunnels, policy->tunnel_indices[i]);
+	  t->policy_index = policy - sm->policies;
+	}
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (sr_policy_command, static) = {
+    .path = "sr policy",
+    .short_help = 
+    "sr policy [del] name <policy-name> tunnels <sr-tunnel-name> [<sr-tunnel-name>]",
+    .function = sr_add_del_policy_command_fn,
+};
+
+static clib_error_t *
+show_sr_policy_fn (vlib_main_t * vm,
+                   unformat_input_t * input,
+                   vlib_cli_command_t * cmd)
+{
+  static ip6_sr_policy_t ** policies;
+  ip6_sr_policy_t * policy;
+  ip6_sr_tunnel_t * t;
+  ip6_sr_main_t * sm = &sr_main;
+  int i, j;
+  uword * p = 0;
+  u8 * name = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "name %s", &name)) 
+	{
+	  p=hash_get_mem (sm->policy_index_by_policy_name, name);
+	  if(!p)
+	    vlib_cli_output (vm, "policy with name %s not found. Showing all.", name);
+	 }
+      else 
+        break;
+    }
+
+  vec_reset_length (policies);
+
+  if(!p) /* Either name parm not passed or no policy with that name found, show all */
+    {
+  pool_foreach (policy, sm->policies, 
+  ({
+    vec_add1 (policies, policy);
+  }));
+    }
+  else /* Just show the one policy by name and a summary of tunnel names */
+    {
+      policy = pool_elt_at_index(sm->policies, p[0]);
+      vec_add1 (policies, policy);
+    }
+
+  if (vec_len (policies) == 0)
+    vlib_cli_output (vm, "No SR policies configured");
+
+  for (i = 0; i < vec_len (policies); i++)
+    {
+      policy = policies [i];
+
+      if(policy->name)
+	vlib_cli_output (vm,"SR policy name: %s", (char *)policy->name);
+      for(j = 0; j < vec_len (policy->tunnel_indices); j++)
+	{
+	  t = pool_elt_at_index (sm->tunnels, policy->tunnel_indices[j]);
+	  ip6_sr_tunnel_display (vm, t);
+	}
+    }
+  
+  return 0;
+
+}
+
+VLIB_CLI_COMMAND (show_sr_policy_command, static) = {
+    .path = "show sr policy",
+    .short_help = "show sr policy [name <sr-policy-name>]",
+    .function = show_sr_policy_fn,
+};
+
+static clib_error_t *
+sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  int is_del = 0;
+  u8 *name = 0;
+  u8 *policy_name = 0;
+  ip6_sr_add_del_tunnel_args_t _a, *a=&_a;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+        is_del = 1;
+      else if (unformat (input, "name %s", &policy_name))
+        ;
+      else if (unformat (input, "tunnels %s", &name))
+        ;
+      else 
+        break;
+    }
+
+  if (!policy_name)
+    return clib_error_return (0, "Name of SR policy required");
+
+  if (!name)
+    return clib_error_return (0, "Tunnel name to associate to SR policy is required");
+
+  if (is_del)
+    return clib_error_return (0, "Thoust dareth deleteth me!");
+
+  a->name = name;
+  a->policy_name = policy_name;
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (sr_multicast_map_command, static) = {
+    .path = "sr multicast-map",
+    .short_help = 
+    "sr multicast-map  <multicast-ip6-address> sr-policy <sr-policy-name> [del]",
+    .function = sr_add_del_multicast_map_command_fn,
+};
+
+static clib_error_t *
+show_sr_multicast_map_fn (vlib_main_t * vm,
+                   unformat_input_t * input,
+                   vlib_cli_command_t * cmd)
+{
+  static ip6_sr_tunnel_t ** tunnels;
+  ip6_sr_tunnel_t * t;
+  ip6_sr_main_t * sm = &sr_main;
   ip6_main_t * im = &ip6_main;
   ip6_fib_t * rx_fib, * tx_fib;
   int i;
-
-  vec_reset_length (tunnels);
 
   pool_foreach (t, sm->tunnels, 
   ({
@@ -1088,6 +1491,9 @@ show_sr_tunnel_fn (vlib_main_t * vm,
       tx_fib = find_ip6_fib_by_table_index_or_id (im, t->tx_fib_index, 
                                                   IP6_ROUTE_FLAG_FIB_INDEX);
 
+      if(t->name)
+	vlib_cli_output (vm,"SR tunnel name: %s", (char *)t->name);
+
       vlib_cli_output (vm, "src %U dst %U first hop %U", 
                        format_ip6_address, &t->key.src,
                        format_ip6_address, &t->key.dst,
@@ -1102,11 +1508,12 @@ show_sr_tunnel_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_sr_tunnel_command, static) = {
-    .path = "show sr tunnel",
-    .short_help = "show sr tunnel",
-    .function = show_sr_tunnel_fn,
+VLIB_CLI_COMMAND (show_sr_multicast_map_command, static) = {
+    .path = "show sr multicast-map",
+    .short_help = "show sr multicast-map",
+    .function = show_sr_multicast_map_fn,
 };
+
 
 #define foreach_sr_fix_dst_addr_next            \
 _(DROP, "error-drop")
@@ -1362,6 +1769,12 @@ static clib_error_t * sr_init (vlib_main_t * vm)
 
   sm->tunnel_index_by_key = 
     hash_create_mem (0, sizeof (ip6_sr_tunnel_key_t), sizeof (uword));
+
+  sm->tunnel_index_by_name = 
+    hash_create_string (0, sizeof (uword));
+
+  sm->policy_index_by_policy_name = 
+    hash_create_string(0, sizeof (uword));
 
   sm->hmac_key_by_shared_secret = hash_create_string (0, sizeof(uword));
 
