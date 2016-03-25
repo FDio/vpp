@@ -516,6 +516,13 @@ sr_rewrite (vlib_main_t * vm,
           t0 = pool_elt_at_index (sm->tunnels, 
                                   adj0->rewrite_header.sw_if_index);
 
+	  /* add a replication node */
+	  if(PREDICT_FALSE(t0->policy_index != ~0))
+	    {
+	      next0=SR_REWRITE_NEXT_SR_POLICY;
+	      goto trace0;
+	    }
+
           ASSERT (VLIB_BUFFER_PRE_DATA_SIZE
                   >= ((word) vec_len (t0->rewrite)) + b0->current_data);
           
@@ -582,6 +589,7 @@ sr_rewrite (vlib_main_t * vm,
               }
             }
 
+	trace0:
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
             {
               sr_rewrite_trace_t *tr = vlib_add_trace (vm, node, 
@@ -733,6 +741,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   ip6_add_del_route_args_t aa;
   u32 hmac_key_index_u32;
   u8 hmac_key_index = 0;
+  ip6_sr_policy_t * pt;
 
   /* Make sure that the rx FIB exists */
   p = hash_get (im->fib_index_by_table_id, a->rx_table_id);
@@ -755,7 +764,11 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   memcpy (key.src.as_u8, a->src_address->as_u8, sizeof (key.src));
   memcpy (key.dst.as_u8, a->dst_address->as_u8, sizeof (key.dst));
 
-  p = hash_get_mem (sm->tunnel_index_by_key, &key);
+  /* If the name exists, find the tunnel by name else... */
+  if (a->name)
+    p = hash_get_mem(sm->tunnel_index_by_name, a->name);
+  else if (p==0)
+    p = hash_get_mem (sm->tunnel_index_by_key, &key);
 
   if (p)
     {
@@ -769,6 +782,37 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
           ip6_delete_route_no_next_hop (&t->key.dst, t->dst_mask_width, 
                                         a->rx_table_id);
           vec_free (t->rewrite);
+	  /* Remove tunnel from any policy if associated */
+	  if (t->policy_index != ~0)
+	    {
+	      pt=pool_elt_at_index(sm->policies, t->policy_index);
+	      for(i=0; i< vec_len(pt->tunnel_indices); i++)
+		{
+		  if(pt->tunnel_indices[i] == t - sm->tunnels)
+		    {
+		      vec_delete(pt->tunnel_indices, 1, i);
+		      goto found;
+		    }
+		}
+	      clib_warning("Tunnel index %d not found in policy_index %d", 
+			   t - sm->tunnels, pt - sm->policies);
+	    found: 
+	      /* If this is last tunnel in the  policy, clean up the policy too */
+	      /* alagalah : maybe clean this up and make a subroutine */
+	      if(vec_len(pt->tunnel_indices) == 0)
+		{
+		  hash_unset_mem(sm->policy_index_by_policy_name, pt->name);
+		  vec_free(pt->name);
+		  pool_put(sm->policies, pt);
+		}
+	    }
+
+	  /* Clean up the tunnel by name */
+	  if(t->name)
+	    {
+	      hash_unset_mem(sm->tunnel_index_by_name, t->name);
+	      vec_free(t->name);
+	    }
           pool_put (sm->tunnels, t);
           hp = hash_get_pair (sm->tunnel_index_by_key, &key);
           key_copy = (void *)(hp->key);
@@ -789,6 +833,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   /* create a new tunnel */
   pool_get (sm->tunnels, t);
   memset (t, 0, sizeof (*t));
+  t->policy_index = ~0;
 
   memcpy (&t->key, &key, sizeof (t->key));
   t->dst_mask_width = a->dst_mask_width;
@@ -902,6 +947,29 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   ip6_add_del_route (im, &aa);
   vec_free (add_adj);
 
+  if(a->policy_name)
+    {
+      p=hash_get_mem(sm->policy_index_by_policy_name, a->policy_name);
+      if(p)
+	{
+	  pt = pool_elt_at_index(sm->policies, p[0]);
+	}
+      else /* no policy, lets create one */
+	{
+	  pool_get(sm->policies, pt);
+	  memset(pt, 0, sizeof(*pt));
+	  pt->name = format(0,"%s%c",a->name,0);
+	  hash_set_mem(sm->policy_index_by_policy_name, pt->name, pt - sm->policies);
+	}
+      vec_add1(pt->tunnel_indices, t - sm->tunnels);
+      t->policy_index = p[0]; /* equiv. to (pt - sm->policies) */
+    }
+
+  if(a->name)
+    {
+      t->name=format(0,"%s%c",a->name,0);
+      hash_set_mem(sm->tunnel_index_by_name, t->name, t - sm->tunnels);
+    }
   return 0;
 }
 
@@ -918,6 +986,8 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
   int dst_address_set = 0;
   u16 flags = 0;
   u8 *shared_secret = 0;
+  u8 *name = 0;
+  u8 *policy_name = 0;
   u32 rx_table_id = 0;
   u32 tx_table_id = 0;
   ip6_address_t * segments = 0;
@@ -925,6 +995,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
   ip6_address_t * tags = 0;
   ip6_address_t * this_tag;
   ip6_sr_add_del_tunnel_args_t _a, *a=&_a;
+  ip6_sr_policy_t * policy = 0;
   ip6_address_t next_address, tag;
   int pl_index;
   int rv;
@@ -939,6 +1010,10 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
         ;
       else if (unformat (input, "src %U", unformat_ip6_address, &src_address))
         src_address_set = 1;
+      else if (unformat (input, "name %s", &name))
+        ;
+      else if (unformat (input, "policy %s", &policy_name))
+        ;
       else if (unformat (input, "dst %U/%d", 
                          unformat_ip6_address, &dst_address,
                          &dst_mask_width))
@@ -1012,6 +1087,8 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
   a->rx_table_id = rx_table_id;
   a->tx_table_id = tx_table_id;
   a->shared_secret = shared_secret;
+  a->name = name;
+  a->policy_name = policy_name;
 
   rv = ip6_sr_add_del_tunnel (a);
   
@@ -1051,7 +1128,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (sr_tunnel_command, static) = {
     .path = "sr tunnel",
     .short_help = 
-    "sr tunnel [del] <src> <dst> [next <addr>] [cleanup] [reroute] [key %s]",
+    "sr tunnel [del] [name <name>] src <addr> dst <addr> [next <addr>] [cleanup] [reroute] [key %s]",
     .function = sr_add_del_tunnel_command_fn,
 };
 
@@ -1362,6 +1439,9 @@ static clib_error_t * sr_init (vlib_main_t * vm)
 
   sm->tunnel_index_by_key = 
     hash_create_mem (0, sizeof (ip6_sr_tunnel_key_t), sizeof (uword));
+
+  sm->tunnel_index_by_name = 
+    hash_create_string (0, sizeof (uword));
 
   sm->hmac_key_by_shared_secret = hash_create_string (0, sizeof(uword));
 
