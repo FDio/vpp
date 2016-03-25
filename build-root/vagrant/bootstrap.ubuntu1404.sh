@@ -13,7 +13,7 @@ cd /vpp
 sudo -H -u vagrant make install-dep
 
 # Install useful but non-mandatory tools
-apt-get install -y emacs  git-review gdb gdbserver
+apt-get install -y emacs emacs24-el git-review gdb gdbserver cscope cscope-el 
 
 sudo -H -u vagrant make bootstrap
 sudo -H -u vagrant make pkg-deb
@@ -34,6 +34,3 @@ for intf in $(ls /sys/class/net) ; do
         ifconfig $intf down
     fi
 done
-
-start vpp
-cat /vagrant/README
