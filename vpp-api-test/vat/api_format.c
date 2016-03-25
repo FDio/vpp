@@ -41,6 +41,7 @@
 #endif
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
+#include <vnet/ip/ip6_hop_by_hop.h>
 
 #include "vat/json_format.h"
 
@@ -1897,7 +1898,10 @@ _(want_interface_events_reply)                          \
 _(want_stats_reply)					\
 _(cop_interface_enable_disable_reply)			\
 _(cop_whitelist_enable_disable_reply)                   \
-_(sw_interface_clear_stats_reply)
+_(sw_interface_clear_stats_reply)                       \
+_(trace_profile_add_reply)                              \
+_(trace_profile_apply_reply)                            \
+_(trace_profile_del_reply) 
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -2051,7 +2055,10 @@ _(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
 _(COP_INTERFACE_ENABLE_DISABLE_REPLY, cop_interface_enable_disable_reply) \
 _(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply) \
 _(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
-_(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)
+_(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)      \
+_(TRACE_PROFILE_ADD_REPLY, trace_profile_add_reply)                   \
+_(TRACE_PROFILE_APPLY_REPLY, trace_profile_apply_reply)               \
+_(TRACE_PROFILE_DEL_REPLY, trace_profile_del_reply) 
 
 /* M: construct, but don't yet send a message */
 
@@ -5092,7 +5099,121 @@ static int api_l2_patch_add_del (vat_main_t * vam)
     /* NOTREACHED */
     return 0;
 }
+static int api_trace_profile_add (vat_main_t *vam)
+{
+   unformat_input_t * input = vam->input;
+   vl_api_trace_profile_add_t *mp;
+   f64 timeout;
+   u32 id = 0;
+   u32 trace_option_elts = 0;
+   u32 trace_type = 0, node_id = 0, app_data = 0, trace_tsp = 2;
+   int has_pow_option = 0;
+   int has_ppc_option = 0;
+  
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "id %d trace-type 0x%x trace-elts %d "
+                           "trace-tsp %d node-id 0x%x app-data 0x%x", 
+		    &id, &trace_type, &trace_option_elts, &trace_tsp,
+                      &node_id, &app_data))
+            ;
+      else if (unformat (input, "pow"))
+        has_pow_option = 1;
+      else if (unformat (input, "ppc encap"))
+        has_ppc_option = PPC_ENCAP;
+      else if (unformat (input, "ppc decap"))
+        has_ppc_option = PPC_DECAP;
+      else if (unformat (input, "ppc none"))
+        has_ppc_option = PPC_NONE;
+      else
+        break;
+    }
+  M(TRACE_PROFILE_ADD, trace_profile_add);
+  mp->id = htons(id);
+  mp->trace_type = trace_type;
+  mp->trace_num_elt = trace_option_elts;
+  mp->trace_ppc = has_ppc_option;
+  mp->trace_app_data = htonl(app_data);
+  mp->pow_enable = has_pow_option;
+  mp->trace_tsp = trace_tsp;
+  mp->node_id = htonl(node_id);
+  
+  S; W;
+  
+  return(0);
+   
+}
+static int api_trace_profile_apply (vat_main_t *vam)
+{
+  unformat_input_t * input = vam->input;
+  vl_api_trace_profile_apply_t *mp;
+  f64 timeout;
+  ip6_address_t addr;
+  u32 mask_width = ~0;
+  int is_add = 0;
+  int is_pop = 0;
+  int is_none = 0;
+  u32 vrf_id = 0;
+  u32 id = 0;
+  
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U/%d",
+                    unformat_ip6_address, &addr, &mask_width))
+        ;
+      else if (unformat (input, "id %d", &id))
+	;
+      else if (unformat (input, "vrf-id %d", &vrf_id))
+        ;
+      else if (unformat (input, "add"))
+        is_add = 1;
+      else if (unformat (input, "pop"))
+        is_pop = 1;
+      else if (unformat (input, "none"))
+        is_none = 1;
+      else
+        break;
+    }
 
+  if ((is_add + is_pop + is_none) != 1) {
+    errmsg("One of (add, pop, none) required");
+    return -99;
+  }
+  if (mask_width == ~0) {
+    errmsg("<address>/<mask-width> required");
+    return -99;
+  }
+  M(TRACE_PROFILE_APPLY, trace_profile_apply);
+  memcpy(mp->dest_ipv6, &addr, sizeof(mp->dest_ipv6));
+  mp->id = htons(id);
+  mp->prefix_length = htonl(mask_width);
+  mp->vrf_id = htonl(vrf_id);
+  if (is_add)
+    mp->trace_op = IOAM_HBYH_ADD;
+  else if (is_pop)
+    mp->trace_op = IOAM_HBYH_POP;
+  else
+    mp->trace_op = IOAM_HBYH_MOD;
+
+  if(is_none)
+    mp->enable = 0;
+  else
+    mp->enable = 1;
+  
+  S; W;
+
+  return 0;
+}
+
+static int api_trace_profile_del (vat_main_t *vam)
+{
+   vl_api_trace_profile_del_t *mp;
+   f64 timeout;
+   
+   M(TRACE_PROFILE_DEL, trace_profile_del);
+   S; W;
+   return 0;
+}
 static int api_sr_tunnel_add_del (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
@@ -9100,7 +9221,13 @@ _(cop_interface_enable_disable, "<intfc> | sw_if_index <nn> [disable]") \
 _(cop_whitelist_enable_disable, "<intfc> | sw_if_index <nn>\n"		\
   "fib-id <nn> [ip4][ip6][default]")					\
 _(get_node_graph, " ")                                                  \
-_(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")
+_(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")                \
+_(trace_profile_add, "id <nn> trace-type <0x1f|0x3|0x9|0x11|0x19> "     \
+  "trace-elts <nn> trace-tsp <0|1|2|3> node-id <node id in hex> "       \
+  "app-data <app_data in hex> [pow] [ppc <encap|decap>]")               \
+_(trace_profile_apply, "id <nn> <ip6-address>/<width>"                  \
+  " vrf_id <nn>  add | pop | none")                                     \
+_(trace_profile_del, "")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
