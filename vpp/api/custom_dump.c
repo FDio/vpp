@@ -1014,6 +1014,9 @@ static void *vl_api_sr_tunnel_add_del_t_print
 
     s = format (0, "SCRIPT: sr_tunnel_add_del ");
 
+    if (mp->name)
+      s = format (s, "name %s ", mp->name);
+
     s = format (s, "src %U dst %U/%d ", format_ip6_address, 
                 (ip6_address_t *) mp->src_address,
                 format_ip6_address,
@@ -1062,11 +1065,77 @@ static void *vl_api_sr_tunnel_add_del_t_print
         }
     }
 
+    if (mp->policy_name)
+      s = format (s, "policy_name %s ", mp->policy_name);
+
     if (mp->is_add == 0)
         s = format (s, "del ");
     
     FINISH;
 }
+
+static void *vl_api_sr_policy_add_del_t_print
+(vl_api_sr_policy_add_del_t * mp, void *handle)
+{
+  u8 * s;
+  int i;
+
+  s = format (0, "SCRIPT: sr_policy_add_del ");
+
+  if (mp->name)
+    s = format (s, "name %s ", mp->name);
+
+
+  if (mp->tunnel_names)
+    {
+    // start deserializing tunnel_names
+    int num_tunnels = mp->tunnel_names[0]; //number of tunnels
+    u8 * deser_tun_names = mp->tunnel_names;
+    deser_tun_names += 1; //moving along
+
+    u8 * tun_name = 0;
+    int tun_name_len = 0;
+
+    for (i=0; i < num_tunnels; i++)
+      {
+	tun_name_len= *deser_tun_names;
+	deser_tun_names += 1;
+	vec_resize (tun_name, tun_name_len);
+	memcpy(tun_name, deser_tun_names, tun_name_len);
+	s = format (s, "tunnel %s ", tun_name);
+	deser_tun_names += tun_name_len;
+	tun_name = 0;
+      }
+    }
+
+  if (mp->is_add == 0)
+    s = format (s, "del ");
+    
+  FINISH;
+}
+
+static void *vl_api_sr_multicast_map_add_del_t_print
+(vl_api_sr_multicast_map_add_del_t * mp, void *handle)
+{
+
+  u8 * s = 0;
+  /* int i; */
+
+  s = format (0, "SCRIPT: sr_multicast_map_add_del ");
+
+  if (mp->multicast_address)
+    s = format (s, "address %U ", format_ip6_address, &mp->multicast_address); 
+
+  if (mp->policy_name)
+    s = format (s, "sr-policy %s ", &mp->policy_name);
+
+
+  if (mp->is_add == 0) 
+    s = format (s, "del ");
+    
+  FINISH;
+}
+
 
 static void *vl_api_classify_add_del_table_t_print
 (vl_api_classify_add_del_table_t * mp, void *handle)
@@ -1808,6 +1877,8 @@ _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)                       \
 _(L2_PATCH_ADD_DEL, l2_patch_add_del)                                   \
 _(SR_TUNNEL_ADD_DEL, sr_tunnel_add_del)					\
+_(SR_POLICY_ADD_DEL, sr_policy_add_del)					\
+_(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
 _(L2FIB_ADD_DEL, l2fib_add_del)                                         \
 _(L2_FLAGS, l2_flags)                                                   \
@@ -1816,7 +1887,7 @@ _(CLASSIFY_ADD_DEL_TABLE, classify_add_del_table)			\
 _(CLASSIFY_ADD_DEL_SESSION, classify_add_del_session)			\
 _(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)		\
 _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                         \
-_(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                            \
+_(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                               \
 _(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)	\
 _(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)	\
 _(ADD_NODE_NEXT, add_node_next)						\

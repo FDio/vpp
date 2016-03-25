@@ -37,6 +37,9 @@ typedef struct {
   /* src, dst address */
   ip6_sr_tunnel_key_t key;
 
+  /* optional tunnel name */
+  u8 * name;
+
   /* mask width for FIB entry */
   u32 dst_mask_width;
 
@@ -49,6 +52,10 @@ typedef struct {
 
   /* The actual ip6 sr header */
   u8 * rewrite;
+
+  /* Indicates that this tunnel is part of a policy comprising
+     of multiple tunnels. */
+  u32 policy_index;
 } ip6_sr_tunnel_t;
 
 typedef struct {
@@ -62,6 +69,12 @@ typedef struct {
   u32 dst_mask_width;
   u32 rx_table_id;
   u32 tx_table_id;
+
+  /* optional name argument - for referencing SR tunnel/policy by name */
+  u8 * name;
+
+  /* optional policy name */
+  u8 * policy_name;
 
   /* segment list, when inserting an ip6 SR header*/
   ip6_address_t *segments;
@@ -83,12 +96,57 @@ typedef struct {
 } ip6_sr_add_del_tunnel_args_t;
 
 typedef struct {
+  /* policy name */
+  u8 * name;
+
+  /* tunnel names */
+  u8 ** tunnel_names;
+
+  /* Delete the policy? */
+  u8 is_del;
+} ip6_sr_add_del_policy_args_t;
+
+
+typedef struct {
+  /* name of policy */
+  u8 * name;
+  
+  /* vector to SR tunnel index */
+  u32 * tunnel_indices;
+
+} ip6_sr_policy_t;
+
+typedef struct {
+  /* multicast IP6 address */
+  ip6_address_t *multicast_address;
+
+  /* name of policy to map to */
+  u8 * policy_name;
+
+  /* Delete the mapping */
+  u8 is_del;
+
+} ip6_sr_add_del_multicastmap_args_t;
+
+typedef struct {
   /* pool of tunnel instances, sr entry only */
   ip6_sr_tunnel_t *tunnels;
 
   /* find an sr "tunnel" by its outer-IP src/dst */
   uword * tunnel_index_by_key;
-  
+
+  /* find an sr "tunnel" by its name */
+  uword * tunnel_index_by_name;
+
+  /* policy pool */
+  ip6_sr_policy_t * policies;
+
+  /* find a policy by name */
+  uword * policy_index_by_policy_name;
+
+  /* multicast address to policy mapping */
+  uword * policy_index_by_multicast_address;
+
   /* ip6-lookup next index for imposition FIB entries */
   u32 ip6_lookup_sr_next_index;
 
@@ -98,6 +156,9 @@ typedef struct {
   /* ip6-rewrite next index for reinstalling the original dst address */
   u32 ip6_rewrite_sr_next_index;
 
+  /* ip6-replicate next index for multicast tunnel */
+  u32 ip6_lookup_sr_replicate_index;
+  
   /* application API callback */
   void *sr_local_cb;
 
@@ -126,7 +187,15 @@ format_function_t format_ip6_sr_header_with_length;
 
 vlib_node_registration_t ip6_sr_input_node;
 
+vlib_node_registration_t sr_replicate_node;
+
 int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a);
+int ip6_sr_add_del_policy (ip6_sr_add_del_policy_args_t * a);
+int ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a);
+
 void vnet_register_sr_app_callback (void *cb);
+
+void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip, 
+		  ip6_sr_header_t * sr);
 
 #endif /* included_vnet_sr_h */
