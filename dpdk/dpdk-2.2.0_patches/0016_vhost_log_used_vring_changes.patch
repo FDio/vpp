@@ -1,0 +1,273 @@
+commit b171fad1ffa55e9f0030eedf491a76ab543db4c9
+Author: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+Date:   Fri Jan 29 12:57:57 2016 +0800
+
+    vhost: log used vring changes
+    
+    Introduce vhost_log_write() helper function to log the dirty pages we
+    touched. Page size is harded code to 4096 (VHOST_LOG_PAGE), and each
+    log is presented by 1 bit.
+    
+    Therefore, vhost_log_write() simply finds the right bit for related
+    page we are gonna change, and set it to 1. dev->log_base denotes the
+    start of the dirty page bitmap.
+    
+    Every time we update virtio used ring, we need to log it. And it's
+    been done by a new vhost_log_write() wrapper, vhost_log_used_vring().
+    
+    Signed-off-by: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+    Signed-off-by: Victor Kaplansky <victork@redhat.com>
+    Tested-by: Pavel Fedin <p.fedin@samsung.com>
+
+diff --git a/lib/librte_vhost/rte_virtio_net.h b/lib/librte_vhost/rte_virtio_net.h
+index 8acee02..4a2303a 100644
+--- a/lib/librte_vhost/rte_virtio_net.h
++++ b/lib/librte_vhost/rte_virtio_net.h
+@@ -40,6 +40,7 @@
+  */
+ 
+ #include <stdint.h>
++//#include <linux/vhost.h>
+ #include <linux/virtio_ring.h>
+ #include <linux/virtio_net.h>
+ #include <sys/eventfd.h>
+@@ -90,7 +91,8 @@ struct vhost_virtqueue {
+ 	int			callfd;			/**< Used to notify the guest (trigger interrupt). */
+ 	int			kickfd;			/**< Currently unused as polling mode is enabled. */
+ 	int			enabled;
+-	uint64_t		reserved[16];		/**< Reserve some spaces for future extension. */
++	uint64_t		log_guest_addr;		/**< Physical address of used ring, for logging */
++	uint64_t		reserved[15];		/**< Reserve some spaces for future extension. */
+ 	struct buf_vector	buf_vec[BUF_VECTOR_MAX];	/**< for scatter RX. */
+ } __rte_cache_aligned;
+ 
+@@ -205,6 +207,7 @@ gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
+ 	return vhost_va;
+ }
+ 
++
+ /**
+  *  Disable features in feature_mask. Returns 0 on success.
+  */
+diff --git a/lib/librte_vhost/vhost_rxtx.c b/lib/librte_vhost/vhost_rxtx.c
+index 5e7e5b1..168b031 100644
+--- a/lib/librte_vhost/vhost_rxtx.c
++++ b/lib/librte_vhost/vhost_rxtx.c
+@@ -47,6 +47,42 @@
+ #include "vhost-net.h"
+ 
+ #define MAX_PKT_BURST 32
++#define VHOST_LOG_PAGE	4096
++
++static inline void __attribute__((always_inline))
++vhost_log_page(uint8_t *log_base, uint64_t page)
++{
++	log_base[page / 8] |= 1 << (page % 8);
++}
++
++static inline void __attribute__((always_inline))
++vhost_log_write(struct virtio_net *dev, uint64_t addr, uint64_t len)
++{
++	uint64_t page;
++
++	if (likely(((dev->features & (1ULL << VHOST_F_LOG_ALL)) == 0) ||
++		   !dev->log_base || !len))
++		return;
++
++	if (unlikely(dev->log_size <= ((addr + len - 1) / VHOST_LOG_PAGE / 8)))
++		return;
++
++	/* To make sure guest memory updates are committed before logging */
++	rte_smp_wmb();
++
++	page = addr / VHOST_LOG_PAGE;
++	while (page * VHOST_LOG_PAGE < addr + len) {
++		vhost_log_page((uint8_t *)(uintptr_t)dev->log_base, page);
++		page += 1;
++	}
++}
++
++static inline void __attribute__((always_inline))
++vhost_log_used_vring(struct virtio_net *dev, struct vhost_virtqueue *vq,
++		     uint64_t offset, uint64_t len)
++{
++	vhost_log_write(dev, vq->log_guest_addr + offset, len);
++}
+ 
+ static bool
+ is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t qp_nb)
+@@ -172,6 +208,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
+ 		uint32_t offset = 0, vb_offset = 0;
+ 		uint32_t pkt_len, len_to_cpy, data_len, total_copied = 0;
+ 		uint8_t hdr = 0, uncompleted_pkt = 0;
++		uint16_t idx;
+ 
+ 		/* Get descriptor from available ring */
+ 		desc = &vq->desc[head[packet_success]];
+@@ -244,16 +281,18 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
+ 		}
+ 
+ 		/* Update used ring with desc information */
+-		vq->used->ring[res_cur_idx & (vq->size - 1)].id =
+-							head[packet_success];
++		idx = res_cur_idx & (vq->size - 1);
++		vq->used->ring[idx].id = head[packet_success];
+ 
+ 		/* Drop the packet if it is uncompleted */
+ 		if (unlikely(uncompleted_pkt == 1))
+-			vq->used->ring[res_cur_idx & (vq->size - 1)].len =
+-							vq->vhost_hlen;
++			vq->used->ring[idx].len = vq->vhost_hlen;
+ 		else
+-			vq->used->ring[res_cur_idx & (vq->size - 1)].len =
+-							pkt_len + vq->vhost_hlen;
++			vq->used->ring[idx].len = pkt_len + vq->vhost_hlen;
++
++		vhost_log_used_vring(dev, vq,
++			offsetof(struct vring_used, ring[idx]),
++			sizeof(vq->used->ring[idx]));
+ 
+ 		res_cur_idx++;
+ 		packet_success++;
+@@ -282,6 +321,9 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
+ 
+ 	*(volatile uint16_t *)&vq->used->idx += count;
+ 	vq->last_used_idx = res_end_idx;
++	vhost_log_used_vring(dev, vq,
++		offsetof(struct vring_used, idx),
++		sizeof(vq->used->idx));
+ 
+ 	/* flush used->idx update before we read avail->flags. */
+ 	rte_mb();
+@@ -311,6 +353,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint32_t queue_id,
+ 	uint32_t seg_avail;
+ 	uint32_t vb_avail;
+ 	uint32_t cpy_len, entry_len;
++	uint16_t idx;
+ 
+ 	if (pkt == NULL)
+ 		return 0;
+@@ -350,16 +393,18 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint32_t queue_id,
+ 	entry_len = vq->vhost_hlen;
+ 
+ 	if (vb_avail == 0) {
+-		uint32_t desc_idx =
+-			vq->buf_vec[vec_idx].desc_idx;
++		uint32_t desc_idx = vq->buf_vec[vec_idx].desc_idx;
++
++		if ((vq->desc[desc_idx].flags & VRING_DESC_F_NEXT) == 0) {
++			idx = cur_idx & (vq->size - 1);
+ 
+-		if ((vq->desc[desc_idx].flags
+-			& VRING_DESC_F_NEXT) == 0) {
+ 			/* Update used ring with desc information */
+-			vq->used->ring[cur_idx & (vq->size - 1)].id
+-				= vq->buf_vec[vec_idx].desc_idx;
+-			vq->used->ring[cur_idx & (vq->size - 1)].len
+-				= entry_len;
++			vq->used->ring[idx].id = vq->buf_vec[vec_idx].desc_idx;
++			vq->used->ring[idx].len = entry_len;
++
++			vhost_log_used_vring(dev, vq,
++					offsetof(struct vring_used, ring[idx]),
++					sizeof(vq->used->ring[idx]));
+ 
+ 			entry_len = 0;
+ 			cur_idx++;
+@@ -402,10 +447,13 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint32_t queue_id,
+ 			if ((vq->desc[vq->buf_vec[vec_idx].desc_idx].flags &
+ 				VRING_DESC_F_NEXT) == 0) {
+ 				/* Update used ring with desc information */
+-				vq->used->ring[cur_idx & (vq->size - 1)].id
++				idx = cur_idx & (vq->size - 1);
++				vq->used->ring[idx].id
+ 					= vq->buf_vec[vec_idx].desc_idx;
+-				vq->used->ring[cur_idx & (vq->size - 1)].len
+-					= entry_len;
++				vq->used->ring[idx].len = entry_len;
++				vhost_log_used_vring(dev, vq,
++					offsetof(struct vring_used, ring[idx]),
++					sizeof(vq->used->ring[idx]));
+ 				entry_len = 0;
+ 				cur_idx++;
+ 				entry_success++;
+@@ -438,16 +486,18 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint32_t queue_id,
+ 
+ 					if ((vq->desc[desc_idx].flags &
+ 						VRING_DESC_F_NEXT) == 0) {
+-						uint16_t wrapped_idx =
+-							cur_idx & (vq->size - 1);
++						idx = cur_idx & (vq->size - 1);
+ 						/*
+ 						 * Update used ring with the
+ 						 * descriptor information
+ 						 */
+-						vq->used->ring[wrapped_idx].id
++						vq->used->ring[idx].id
+ 							= desc_idx;
+-						vq->used->ring[wrapped_idx].len
++						vq->used->ring[idx].len
+ 							= entry_len;
++						vhost_log_used_vring(dev, vq,
++							offsetof(struct vring_used, ring[idx]),
++							sizeof(vq->used->ring[idx]));
+ 						entry_success++;
+ 						entry_len = 0;
+ 						cur_idx++;
+@@ -470,10 +520,13 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint32_t queue_id,
+ 				 * This whole packet completes.
+ 				 */
+ 				/* Update used ring with desc information */
+-				vq->used->ring[cur_idx & (vq->size - 1)].id
++				idx = cur_idx & (vq->size - 1);
++				vq->used->ring[idx].id
+ 					= vq->buf_vec[vec_idx].desc_idx;
+-				vq->used->ring[cur_idx & (vq->size - 1)].len
+-					= entry_len;
++				vq->used->ring[idx].len = entry_len;
++				vhost_log_used_vring(dev, vq,
++					offsetof(struct vring_used, ring[idx]),
++					sizeof(vq->used->ring[idx]));
+ 				entry_success++;
+ 				break;
+ 			}
+@@ -797,6 +850,9 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
+ 		/* Update used index buffer information. */
+ 		vq->used->ring[used_idx].id = head[entry_success];
+ 		vq->used->ring[used_idx].len = 0;
++		vhost_log_used_vring(dev, vq,
++				offsetof(struct vring_used, ring[used_idx]),
++				sizeof(vq->used->ring[used_idx]));
+ 
+ 		/* Allocate an mbuf and populate the structure. */
+ 		m = rte_pktmbuf_alloc(mbuf_pool);
+@@ -919,6 +975,8 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
+ 
+ 	rte_compiler_barrier();
+ 	vq->used->idx += entry_success;
++	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
++			sizeof(vq->used->idx));
+ 	/* Kick guest if required. */
+ 	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
+ 		eventfd_write(vq->callfd, (eventfd_t)1);
+diff --git a/lib/librte_vhost/virtio-net.c b/lib/librte_vhost/virtio-net.c
+index f984dc4..3410338 100644
+--- a/lib/librte_vhost/virtio-net.c
++++ b/lib/librte_vhost/virtio-net.c
+@@ -673,12 +673,16 @@ set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
+ 		return -1;
+ 	}
+ 
++	vq->log_guest_addr = addr->log_guest_addr;
++
+ 	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") mapped address desc: %p\n",
+ 			dev->device_fh, vq->desc);
+ 	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") mapped address avail: %p\n",
+ 			dev->device_fh, vq->avail);
+ 	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") mapped address used: %p\n",
+ 			dev->device_fh, vq->used);
++	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") log_guest_addr: %"PRIx64"\n",
++			dev->device_fh, vq->log_guest_addr);
+ 
+ 	return 0;
+ }

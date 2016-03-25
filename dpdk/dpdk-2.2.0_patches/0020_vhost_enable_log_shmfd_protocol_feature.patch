@@ -1,0 +1,33 @@
+commit d639996a74fa71a9553bcef7cb2b2e9bb0fd5203
+Author: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+Date:   Fri Jan 29 12:58:02 2016 +0800
+
+    vhost: enable log_shmfd protocol feature
+    
+    To claim that we support vhost-user live migration support:
+    SET_LOG_BASE request will be send only when this feature flag
+    is set.
+    
+    Besides this flag, we actually need another feature flag set
+    to make vhost-user live migration work: VHOST_F_LOG_ALL.
+    Which, however, has been enabled long time ago.
+    
+    Signed-off-by: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+    Tested-by: Pavel Fedin <p.fedin@samsung.com>
+
+diff --git a/lib/librte_vhost/vhost_user/virtio-net-user.h b/lib/librte_vhost/vhost_user/virtio-net-user.h
+index 1e9ff9a..28213f3 100644
+--- a/lib/librte_vhost/vhost_user/virtio-net-user.h
++++ b/lib/librte_vhost/vhost_user/virtio-net-user.h
+@@ -38,9 +38,11 @@
+ #include "vhost-net-user.h"
+ 
+ #define VHOST_USER_PROTOCOL_F_MQ	0
++#define VHOST_USER_PROTOCOL_F_LOG_SHMFD	1
+ #define VHOST_USER_PROTOCOL_F_RARP	2
+ 
+ #define VHOST_USER_PROTOCOL_FEATURES	((1ULL << VHOST_USER_PROTOCOL_F_MQ) | \
++					 (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) |\
+ 					 (1ULL << VHOST_USER_PROTOCOL_F_RARP))
+ 
+ int user_set_mem_table(struct vhost_device_ctx, struct VhostUserMsg *);

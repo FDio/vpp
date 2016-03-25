@@ -1,0 +1,28 @@
+commit d293dac8f30e46f0cb66fbcce2977d73d56fe103
+Author: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+Date:   Fri Jan 29 12:58:00 2016 +0800
+
+    vhost: claim support of guest announce
+    
+    It's actually a feature already enabled in Linux kernel (since v3.5).
+    What we need to do is simply to claim that we support such feature,
+    and nothing else.
+    
+    With that, the guest will send an ARP message after live migration
+    to notify the switches about the new location of migrated VM.
+    
+    Signed-off-by: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+    Tested-by: Pavel Fedin <p.fedin@samsung.com>
+
+diff --git a/lib/librte_vhost/virtio-net.c b/lib/librte_vhost/virtio-net.c
+index 3410338..9059b11 100644
+--- a/lib/librte_vhost/virtio-net.c
++++ b/lib/librte_vhost/virtio-net.c
+@@ -74,6 +74,7 @@ static struct virtio_net_config_ll *ll_root;
+ #define VHOST_SUPPORTED_FEATURES ((1ULL << VIRTIO_NET_F_MRG_RXBUF) | \
+ 				(1ULL << VIRTIO_NET_F_CTRL_VQ) | \
+ 				(1ULL << VIRTIO_NET_F_CTRL_RX) | \
++				(1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE) | \
+ 				(VHOST_SUPPORTS_MQ)            | \
+ 				(1ULL << VIRTIO_F_VERSION_1)   | \
+ 				(1ULL << VHOST_F_LOG_ALL)      | \
