@@ -1014,6 +1014,9 @@ static void *vl_api_sr_tunnel_add_del_t_print
 
     s = format (0, "SCRIPT: sr_tunnel_add_del ");
 
+    if (mp->name)
+      s = format (s, "name %s ", mp->name);
+
     s = format (s, "src %U dst %U/%d ", format_ip6_address, 
                 (ip6_address_t *) mp->src_address,
                 format_ip6_address,
@@ -1061,6 +1064,9 @@ static void *vl_api_sr_tunnel_add_del_t_print
             break;
         }
     }
+
+    if (mp->policy_name)
+      s = format (s, "policy_name %s ", mp->policy_name);
 
     if (mp->is_add == 0)
         s = format (s, "del ");

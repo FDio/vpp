@@ -3383,7 +3383,15 @@ static void vl_api_sr_tunnel_add_del_t_handler
     a->is_del = (mp->is_add == 0);
     a->rx_table_id = ntohl(mp->outer_vrf_id);
     a->tx_table_id = ntohl(mp->inner_vrf_id);
-
+    
+    a->name = format(0, "%s", mp->name);
+    if (!(vec_len(a->name)))
+      a->name = 0;
+    
+    a->policy_name = format(0, "%s", mp->policy_name);
+    if (!(vec_len(a->policy_name)))
+      a->policy_name = 0;
+    
     /* Yank segments and tags out of the API message */
     this_address = (ip6_address_t *)mp->segs_and_tags;
     for (i = 0; i < mp->n_segments; i++) {

@@ -5515,11 +5515,17 @@ static int api_sr_tunnel_add_del (vat_main_t * vam)
   ip6_address_t * tags = 0;
   ip6_address_t * this_tag;
   ip6_address_t next_address, tag;
+  u8 * name = 0;
+  u8 * policy_name = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "del"))
         is_del = 1;
+      else if (unformat (i, "name %s", &name))
+            ;
+      else if (unformat (i, "policy %s", &policy_name))
+            ;
       else if (unformat (i, "rx_fib_id %d", &rx_table_id))
         ;
       else if (unformat (i, "tx_fib_id %d", &tx_table_id))
@@ -5608,6 +5614,8 @@ static int api_sr_tunnel_add_del (vat_main_t * vam)
 
   mp->outer_vrf_id = ntohl (rx_table_id);
   mp->inner_vrf_id = ntohl (tx_table_id);
+  memcpy (mp->name, name, vec_len(name));
+  memcpy (mp->policy_name, policy_name, vec_len(policy_name));
 
   vec_free (segments);
   vec_free (tags);
@@ -10254,8 +10262,9 @@ _(mpls_ethernet_add_del_tunnel_2,                                       \
   "inner_vrf_id <n> outer_vrf_id <n> next-hop <ip4-addr>\n"             \
   "resolve-attempts <n> resolve-if-needed 0 | 1 [del]")                 \
 _(sr_tunnel_add_del,                                                    \
-  "src <ip6-addr> dst <ip6-addr>/<mw> (next <ip6-addr>)+\n"             \
-  " [tag <ip6-addr>]* [clean] [reroute]")                               \
+  "[name <name>] src <ip6-addr> dst <ip6-addr>/<mw> \n"                 \
+  "(next <ip6-addr>)+ [tag <ip6-addr>]* [clean] [reroute] \n"           \
+  "[policy <policy_name>]")						\
 _(classify_add_del_table,                                               \
   "buckets <nn> [skip <n>] [match <n>] [memory_size <nn-bytes>]\n"	\
   "[del] mask <mask-value>\n"						\

@@ -3,70 +3,252 @@
 
 Vagrant.configure(2) do |config|
 
-  # Pick the right distro and bootstrap, default is ubuntu1404
-  distro = ENV['VPP_VAGRANT_DISTRO']
-  if distro == 'centos7'
-    config.vm.box = "puppetlabs/centos-7.2-64-nocm"
-    config.vm.provision 'shell', path: 'bootstrap.centos7.sh'
-  else
-    config.vm.box = "puppetlabs/ubuntu-14.04-64-nocm"
-    config.vm.provision 'shell', path: 'bootstrap.ubuntu1404.sh'
-  end
+  config.vm.define "vpp1", primary: true do |vpp1|
+    # Pick the right distro and bootstrap, default is ubuntu1404 hi
+    distro = ENV['VPP_VAGRANT_DISTRO']
+    if distro == 'centos7'
+      vpp1.vm.box = "puppetlabs/centos-7.0-64-nocm"
+      vpp1.vm.provision 'shell', path: 'bootstrap.centos7.sh'
+    else
+      vpp1.vm.box = "puppetlabs/ubuntu-14.04-64-nocm"
+      vpp1.vm.provision 'shell', path: 'bootstrap.ubuntu1404.sh'
+    end
 
-  # Add .gnupg dir in so folks can sign patches
-  # Note, as gnupg puts socket files in that dir, we have
-  # to be cautious and make sure we are dealing with a plain file
-  homedir = File.expand_path("~/")
-  Dir["#{homedir}/.gnupg/**/*"].each do |fname|
-    if File.file?(fname)
-      destname = fname.sub(Regexp.escape("#{homedir}/"),'')
-      config.vm.provision "file", source: fname, destination: destname
+    # Add .gnupg dir in so folks can sign patches
+    # Note, as gnupg puts socket files in that dir, we have
+    # to be cautious and make sure we are dealing with a plain file
+    homedir = File.expand_path("~/")
+    Dir["#{homedir}/.gnupg/**/*"].each do |fname|
+      if File.file?(fname)
+        destname = fname.sub(Regexp.escape("#{homedir}/"),'')
+        vpp1.vm.provision "file", source: fname, destination: destname
+      end
+    end
+
+    # Copy in the .gitconfig if it exists
+    if File.file?(File.expand_path("~/.gitconfig"))
+      vpp1.vm.provision  "file", source: "~/.gitconfig", destination: ".gitconfig"
+    end
+
+    # vagrant-cachier caches apt/yum etc to speed subsequent
+    # vagrant up
+    # to enable, run
+    # vagrant plugin install vagrant-cachier
+    #
+    if Vagrant.has_plugin?("vagrant-cachier")
+      vpp1.cache.scope = :box
+    end
+
+    # Define some physical ports for your VMs to be used by DPDK
+  
+    vpp1.vm.hostname = "vpp1"
+    vpp1.vm.network "private_network", ip: "192.100.100.11"
+    vpp1.vm.network "private_network", ip: "192.100.101.11"
+    vpp1.vm.network "private_network", ip: "192.100.200.11" # This is for non-AFPACKET testing, new VM on this net to test
+
+    # use http proxy if avaiable
+    if ENV['http_proxy'] && Vagrant.has_plugin?("vagrant-proxyconf")
+      vpp1.proxy.http     = "$http_proxy"
+      vpp1.proxy.https    = "$https_proxy"
+      vpp1.proxy.no_proxy = "localhost,127.0.0.1"
+    end
+
+    vpp1.vm.synced_folder "../../", "/vpp", disabled: false
+    vpp1.vm.provider "virtualbox" do |vb|
+      vb.memory = "4096"
+    end
+    vpp1.vm.provider "vmware_fusion" do |fusion,override|
+      fusion.vmx["memsize"] = "4096"
+    end
+    vpp1.vm.provider "vmware_workstation" do |vws,override|
+      vws.vmx["memsize"] = "8192"
+      vws.vmx["numvcpus"] = "4"
     end
   end
 
-  # Copy in the .gitconfig if it exists
-  if File.file?(File.expand_path("~/.gitconfig"))
-    config.vm.provision  "file", source: "~/.gitconfig", destination: ".gitconfig"
+  config.vm.define "vpp2" do |vpp2|
+    # Pick the right distro and bootstrap, default is ubuntu1404
+    distro = ENV['VPP_VAGRANT_DISTRO']
+    if distro == 'centos7'
+      vpp2.vm.box = "puppetlabs/centos-7.0-64-nocm"
+      vpp2.vm.provision 'shell', path: 'bootstrap.centos7.sh'
+    else
+      vpp2.vm.box = "puppetlabs/ubuntu-14.04-64-nocm"
+      vpp2.vm.provision 'shell', path: 'bootstrap.ubuntu1404.sh'
+    end
+    
+    # Add .gnupg dir in so folks can sign patches
+    # Note, as gnupg puts socket files in that dir, we have
+    # to be cautious and make sure we are dealing with a plain file
+    homedir = File.expand_path("~/")
+    Dir["#{homedir}/.gnupg/**/*"].each do |fname|
+      if File.file?(fname)
+        destname = fname.sub(Regexp.escape("#{homedir}/"),'')
+        vpp2.vm.provision "file", source: fname, destination: destname
+      end
+    end
+
+    # Copy in the .gitconfig if it exists
+    if File.file?(File.expand_path("~/.gitconfig"))
+      vpp2.vm.provision  "file", source: "~/.gitconfig", destination: ".gitconfig"
+    end
+
+    # vagrant-cachier caches apt/yum etc to speed subsequent
+    # vagrant up
+    # to enable, run
+    # vagrant plugin install vagrant-cachier
+    #
+    if Vagrant.has_plugin?("vagrant-cachier")
+      vpp2.cache.scope = :box
+    end
+
+    # Define some physical ports for your VMs to be used by DPDK
+    nics = 0
+    vpp2.vm.hostname = "vpp2"
+    vpp2.vm.network "private_network", ip: "192.100.102.12"
+    vpp2.vm.network "private_network", ip: "192.100.103.12"
+
+    # use http proxy if avaiable
+    if ENV['http_proxy'] && Vagrant.has_plugin?("vagrant-proxyconf")
+      vpp2.proxy.http     = "$http_proxy"
+      vpp2.proxy.https    = "$https_proxy"
+      vpp2.proxy.no_proxy = "localhost,127.0.0.1"
+    end
+
+    vpp2.vm.synced_folder "../../", "/vpp", disabled: false
+    vpp2.vm.provider "virtualbox" do |vb|
+      vb.memory = "4096"
+    end
+    vpp2.vm.provider "vmware_fusion" do |fusion,override|
+      fusion.vmx["memsize"] = "4096"
+    end
+    vpp2.vm.provider "vmware_workstation" do |vws,override|
+      vws.vmx["memsize"] = "8192"
+      vws.vmx["numvcpus"] = "4"
+    end
   end
 
-  # vagrant-cachier caches apt/yum etc to speed subsequent
-  # vagrant up
-  # to enable, run
-  # vagrant plugin install vagrant-cachier
-  #
-  if Vagrant.has_plugin?("vagrant-cachier")
-    config.cache.scope = :box
+  config.vm.define "vpp3" do |vpp3|
+    # Pick the right distro and bootstrap, default is ubuntu1404
+    distro = ENV['VPP_VAGRANT_DISTRO']
+    if distro == 'centos7'
+      vpp3.vm.box = "puppetlabs/centos-7.0-64-nocm"
+      vpp3.vm.provision 'shell', path: 'bootstrap.centos7.sh'
+    else
+      vpp3.vm.box = "puppetlabs/ubuntu-14.04-64-nocm"
+      vpp3.vm.provision 'shell', path: 'bootstrap.ubuntu1404.sh'
+    end
+    
+    # Add .gnupg dir in so folks can sign patches
+    # Note, as gnupg puts socket files in that dir, we have
+    # to be cautious and make sure we are dealing with a plain file
+    homedir = File.expand_path("~/")
+    Dir["#{homedir}/.gnupg/**/*"].each do |fname|
+      if File.file?(fname)
+        destname = fname.sub(Regexp.escape("#{homedir}/"),'')
+        vpp3.vm.provision "file", source: fname, destination: destname
+      end
+    end
+
+    # Copy in the .gitconfig if it exists
+    if File.file?(File.expand_path("~/.gitconfig"))
+      vpp3.vm.provision  "file", source: "~/.gitconfig", destination: ".gitconfig"
+    end
+
+    # vagrant-cachier caches apt/yum etc to speed subsequent
+    # vagrant up
+    # to enable, run
+    # vagrant plugin install vagrant-cachier
+    #
+    if Vagrant.has_plugin?("vagrant-cachier")
+      vpp3.cache.scope = :box
+    end
+    
+    # Define some physical ports for your VMs to be used by DPDK
+    nics = 0
+    vpp3.vm.hostname = "vpp3"
+    vpp3.vm.network "private_network", ip: "192.100.100.13"
+    vpp3.vm.network "private_network", ip: "192.100.102.13"
+
+    # use http proxy if avaiable
+    if ENV['http_proxy'] && Vagrant.has_plugin?("vagrant-proxyconf")
+      vpp3.proxy.http     = "$http_proxy"
+      vpp3.proxy.https    = "$https_proxy"
+      vpp3.proxy.no_proxy = "localhost,127.0.0.1"
+    end
+    
+    vpp3.vm.synced_folder "../../", "/vpp", disabled: false
+    vpp3.vm.provider "virtualbox" do |vb|
+      vb.memory = "4096"
+    end
+    vpp3.vm.provider "vmware_fusion" do |fusion,override|
+      fusion.vmx["memsize"] = "4096"
+    end
+    vpp3.vm.provider "vmware_workstation" do |vws,override|
+      vws.vmx["memsize"] = "8192"
+      vws.vmx["numvcpus"] = "4"
+    end
   end
 
-  # Define some physical ports for your VMs to be used by DPDK
-  nics = 0
-  if ENV.key?('VPP_VAGRANT_NICS')
-    nics = ENV['VPP_VAGRANT_NICS'].to_i(10)
-  end
-  for i in 1..nics
-    config.vm.network "private_network", type: "dhcp"
-  end
+  config.vm.define "vpp4" do |vpp4|
+    # Pick the right distro and bootstrap, default is ubuntu1404
+    distro = ENV['VPP_VAGRANT_DISTRO']
+    if distro == 'centos7'
+      vpp4.vm.box = "puppetlabs/centos-7.0-64-nocm"
+      vpp4.vm.provision 'shell', path: 'bootstrap.centos7.sh'
+    else
+      vpp4.vm.box = "puppetlabs/ubuntu-14.04-64-nocm"
+      vpp4.vm.provision 'shell', path: 'bootstrap.ubuntu1404.sh'
+    end
 
-  # use http proxy if avaiable
-  if ENV['http_proxy'] && Vagrant.has_plugin?("vagrant-proxyconf")
-   config.proxy.http     = ENV['http_proxy']
-   config.proxy.https    = ENV['https_proxy']
-   config.proxy.no_proxy = "localhost,127.0.0.1"
-  end
+    # Add .gnupg dir in so folks can sign patches
+    # Note, as gnupg puts socket files in that dir, we have
+    # to be cautious and make sure we are dealing with a plain file
+    homedir = File.expand_path("~/")
+    Dir["#{homedir}/.gnupg/**/*"].each do |fname|
+      if File.file?(fname)
+        destname = fname.sub(Regexp.escape("#{homedir}/"),'')
+        vpp4.vm.provision "file", source: fname, destination: destname
+      end
+    end
 
-  config.vm.synced_folder "../../", "/vpp", disabled: false
-  config.vm.provider "virtualbox" do |vb|
-    vb.memory = "4096"
-  end
-  config.vm.provider "vmware_fusion" do |fusion,override|
-    fusion.vmx["memsize"] = "4096"
-  end
-  config.vm.provider "libvirt" do |lv|
-    lv.memory = 4096
-    lv.cpus = 8
-  end
-  config.vm.provider "vmware_workstation" do |vws,override|
-    vws.vmx["memsize"] = "8192"
-    vws.vmx["numvcpus"] = "4"
+    # Copy in the .gitconfig if it exists
+    if File.file?(File.expand_path("~/.gitconfig"))
+      vpp4.vm.provision  "file", source: "~/.gitconfig", destination: ".gitconfig"
+    end
+
+    # vagrant-cachier caches apt/yum etc to speed subsequent
+    # vagrant up
+    # to enable, run
+    # vagrant plugin install vagrant-cachier
+    #
+    if Vagrant.has_plugin?("vagrant-cachier")
+      vpp4.cache.scope = :box
+    end
+
+    # Define some physical ports for your VMs to be used by DPDK
+    vpp4.vm.hostname = "vpp4"
+    vpp4.vm.network "private_network", ip: "192.100.101.14"
+    vpp4.vm.network "private_network", ip: "192.100.103.14"
+
+    # use http proxy if avaiable
+    if ENV['http_proxy'] && Vagrant.has_plugin?("vagrant-proxyconf")
+      vpp4.proxy.http     = "$http_proxy"
+      vpp4.proxy.https    = "$https_proxy"
+      vpp4.proxy.no_proxy = "localhost,127.0.0.1"
+    end
+
+    vpp4.vm.synced_folder "../../", "/vpp", disabled: false
+    vpp4.vm.provider "virtualbox" do |vb|
+      vb.memory = "4096"
+    end
+    vpp4.vm.provider "vmware_fusion" do |fusion,override|
+      fusion.vmx["memsize"] = "4096"
+    end
+    vpp4.vm.provider "vmware_workstation" do |vws,override|
+      vws.vmx["memsize"] = "8192"
+      vws.vmx["numvcpus"] = "4"
+    end
   end
 end
+
