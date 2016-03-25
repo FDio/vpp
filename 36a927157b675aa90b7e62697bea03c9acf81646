@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_82609e36",
+        "filename": "vlib/vlib/buffer_funcs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 476,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-03-25T12:59:59Z",
+      "side": 1,
+      "message": "Any reason why the change is not applied here too ?",
+      "range": {
+        "startLine": 475,
+        "startChar": 2,
+        "endLine": 476,
+        "endChar": 52
+      },
+      "revId": "36a927157b675aa90b7e62697bea03c9acf81646",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_62659244",
+        "filename": "vlib/vlib/dpdk_buffer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 823,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-03-25T12:59:59Z",
+      "side": 1,
+      "message": "Here too ?",
+      "range": {
+        "startLine": 820,
+        "startChar": 2,
+        "endLine": 823,
+        "endChar": 34
+      },
+      "revId": "36a927157b675aa90b7e62697bea03c9acf81646",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_425a9684",
+        "filename": "vlib/vlib/dpdk_buffer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 925,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-03-25T12:59:59Z",
+      "side": 1,
+      "message": "Here too ?",
+      "range": {
+        "startLine": 924,
+        "startChar": 0,
+        "endLine": 925,
+        "endChar": 66
+      },
+      "revId": "36a927157b675aa90b7e62697bea03c9acf81646",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
