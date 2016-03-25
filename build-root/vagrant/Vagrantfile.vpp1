@@ -1,0 +1,65 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+
+  # Pick the right distro and bootstrap, default is ubuntu1404 hi
+  distro = ENV['VPP_VAGRANT_DISTRO']
+  if distro == 'centos7'
+    config.vm.box = "puppetlabs/centos-7.0-64-nocm"
+    config.vm.provision 'shell', path: 'bootstrap.centos7.sh'
+  else
+    config.vm.box = "puppetlabs/ubuntu-14.04-64-nocm"
+    config.vm.provision 'shell', path: 'bootstrap.ubuntu1404.sh'
+  end
+
+  # Add .gnupg dir in so folks can sign patches
+  # Note, as gnupg puts socket files in that dir, we have
+  # to be cautious and make sure we are dealing with a plain file
+  homedir = File.expand_path("~/")
+  Dir["#{homedir}/.gnupg/**/*"].each do |fname|
+    if File.file?(fname)
+      destname = fname.sub(Regexp.escape("#{homedir}/"),'')
+      config.vm.provision "file", source: fname, destination: destname
+    end
+  end
+
+  # Copy in the .gitconfig if it exists
+  if File.file?(File.expand_path("~/.gitconfig"))
+    config.vm.provision  "file", source: "~/.gitconfig", destination: ".gitconfig"
+  end
+
+  # vagrant-cachier caches apt/yum etc to speed subsequent
+  # vagrant up
+  # to enable, run
+  # vagrant plugin install vagrant-cachier
+  #
+  if Vagrant.has_plugin?("vagrant-cachier")
+    config.cache.scope = :box
+  end
+
+  # Define some physical ports for your VMs to be used by DPDK
+  
+  config.vm.hostname = "vpp1"
+  config.vm.network "private_network", ip: "192.100.100.11"
+  config.vm.network "private_network", ip: "192.100.101.11"
+
+  # use http proxy if avaiable
+  if ENV['http_proxy'] && Vagrant.has_plugin?("vagrant-proxyconf")
+   config.proxy.http     = "$http_proxy"
+   config.proxy.https    = "$https_proxy"
+   config.proxy.no_proxy = "localhost,127.0.0.1"
+  end
+
+  config.vm.synced_folder "../../", "/vpp", disabled: false
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "4096"
+  end
+  config.vm.provider "vmware_fusion" do |fusion,override|
+    fusion.vmx["memsize"] = "4096"
+  end
+  config.vm.provider "vmware_workstation" do |vws,override|
+    vws.vmx["memsize"] = "8192"
+    vws.vmx["numvcpus"] = "4"
+  end
+end
