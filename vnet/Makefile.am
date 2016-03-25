@@ -527,7 +527,8 @@ nobase_include_HEADERS +=			\
 
 if WITH_IPV6SR
 libvnet_la_SOURCES +=				\
- vnet/sr/sr.c
+ vnet/sr/sr.c					\
+ vnet/sr/sr_replicate.c
 endif
  
 nobase_include_HEADERS +=			\
