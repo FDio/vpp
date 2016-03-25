@@ -73,8 +73,7 @@ ip6_ioam_trace_profile_set(u32 trace_option_elts, u32 trace_type, u32 node_id,
 extern int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width,
                   u32 vrf_id, int is_add, int is_pop, int is_none);
 
-
-extern clib_error_t * clear_ioam_trace_fn();
+extern clib_error_t * clear_ioam_rewrite_fn(void);
 
 static inline u8 is_zero_ip4_address (ip4_address_t *a)
 {
