@@ -254,7 +254,6 @@ af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   clib_bitmap_foreach (i, apm->pending_input_bitmap,
     ({
-      clib_bitmap_set (apm->pending_input_bitmap, i, 1);
       n_rx_packets += af_packet_device_input_fn(vm, node, frame, i);
     }));
 
