@@ -471,8 +471,12 @@ ip_update_adjacency (ip_lookup_main_t * lm,
 static inline int
 ip_adjacency_is_multipath(ip_lookup_main_t * lm, u32 adj_index)
 {
+  if (!vec_len(lm->multipath_adjacencies))
+    return 0;
+
   if (vec_len(lm->multipath_adjacencies) < adj_index - 1)
     return 0;
+
 
   return (lm->multipath_adjacencies[adj_index].adj_index == adj_index &&
 	  lm->multipath_adjacencies[adj_index].n_adj_in_block > 0);

@@ -1145,6 +1145,7 @@ define l2_patch_add_del_reply {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add the tunnel if non-zero, else delete it
+    @param name[] - tunnel name (len. 64)
     @param src_address[] -
     @param dst_address[] -
     @param dst_mask_width -
@@ -1154,11 +1155,13 @@ define l2_patch_add_del_reply {
     @param n_segments -
     @param n_tags -
     @param segs_and_tags[] -
+    @param policy_name[] - name of policy to associate this tunnel to (len. 64)
 */
 define sr_tunnel_add_del {
     u32 client_index;
     u32 context;
     u8 is_add;
+    u8 name[64];
     u8 src_address[16];
     u8 dst_address[16];
     u8 dst_mask_width;
@@ -1168,6 +1171,7 @@ define sr_tunnel_add_del {
     u8 n_segments;
     u8 n_tags;
     u8 segs_and_tags[0];
+    u8 policy_name[64];
 };
 
 /** \brief IPv6 segment routing tunnel add / del response
@@ -1175,6 +1179,54 @@ define sr_tunnel_add_del {
     @param retval - return value for request
 */
 define sr_tunnel_add_del_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief IPv6 segment routing policy add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add the tunnel if non-zero, else delete it
+    @param name[] - policy name (len. 64)
+    @param tunnel_names[] -
+*/
+define sr_policy_add_del {
+    u32 client_index;
+    u32 context;
+    u8 is_add;
+    u8 name[64];
+    u8 tunnel_names[0];
+};
+
+/** \brief IPv6 segment routing policy add / del response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define sr_policy_add_del_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief IPv6 segment routing multicast map to policy add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add the tunnel if non-zero, else delete it
+    @param multicast_address[] - IP6 multicast address
+    @param policy_name[] = policy name (len.64)
+*/
+define sr_multicast_map_add_del {
+    u32 client_index;
+    u32 context;
+    u8 is_add;
+    u8 multicast_address[16];
+    u8 policy_name[64];
+};
+
+/** \brief IPv6 segment routing multicast map to policy add / del response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define sr_multicast_map_add_del_reply {
     u32 context;
     i32 retval;
 };

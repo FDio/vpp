@@ -468,6 +468,9 @@ u32 dpdk_get_handoff_node_index (void);
 
 void set_efd_bitmap (u8 *bitmap, u32 value, u32 op);
 
+struct rte_mbuf * dpdk_replicate_packet_mb (vlib_buffer_t * b);
+struct rte_mbuf * dpdk_zerocopy_replicate_packet_mb (vlib_buffer_t * b);
+
 #define foreach_dpdk_error						\
   _(NONE, "no error")							\
   _(RX_PACKET_ERROR, "Rx packet errors")				\

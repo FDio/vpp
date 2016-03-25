@@ -42,6 +42,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 
+#include <vnet/api_errno.h> // alagalah TODO : committers please pay note, is this ok?
 #include <vnet/vnet.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_bd.h>
@@ -329,7 +330,8 @@ _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump)                 \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
-_(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)
+_(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
+_(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -3389,7 +3391,15 @@ static void vl_api_sr_tunnel_add_del_t_handler
     a->is_del = (mp->is_add == 0);
     a->rx_table_id = ntohl(mp->outer_vrf_id);
     a->tx_table_id = ntohl(mp->inner_vrf_id);
-
+    
+    a->name = format(0, "%s", mp->name);
+    if (!(vec_len(a->name)))
+      a->name = 0;
+    
+    a->policy_name = format(0, "%s", mp->policy_name);
+    if (!(vec_len(a->policy_name)))
+      a->policy_name = 0;
+    
     /* Yank segments and tags out of the API message */
     this_address = (ip6_address_t *)mp->segs_and_tags;
     for (i = 0; i < mp->n_segments; i++) {
@@ -3411,6 +3421,96 @@ static void vl_api_sr_tunnel_add_del_t_handler
 out:
 
     REPLY_MACRO(VL_API_SR_TUNNEL_ADD_DEL_REPLY);
+#endif
+}
+
+static void vl_api_sr_policy_add_del_t_handler
+(vl_api_sr_policy_add_del_t *mp)
+{
+#if IPV6SR == 0
+    clib_warning ("unimplemented");
+#else
+    ip6_sr_add_del_policy_args_t _a, *a=&_a;
+    int rv = 0;
+    vl_api_sr_policy_add_del_reply_t * rmp;
+    int i;
+
+    memset (a, 0, sizeof (*a));
+    a->is_del = (mp->is_add == 0);
+    
+    a->name = format(0, "%s", mp->name);
+    if (!(vec_len(a->name)))
+      {
+        rv = VNET_API_ERROR_NO_SUCH_NODE2;
+	goto out;
+      }      
+
+    if (!(mp->tunnel_names))
+      {
+        rv = VNET_API_ERROR_NO_SUCH_NODE2;
+	goto out;
+      }
+
+    // start deserializing tunnel_names
+    int num_tunnels = mp->tunnel_names[0]; //number of tunnels
+    u8 * deser_tun_names = mp->tunnel_names;
+    deser_tun_names += 1; //moving along
+
+    u8 * tun_name = 0;
+    int tun_name_len = 0;
+
+    for (i=0; i < num_tunnels; i++)
+      {
+	tun_name_len= *deser_tun_names;
+	deser_tun_names += 1;
+	vec_resize (tun_name, tun_name_len);
+	memcpy(tun_name, deser_tun_names, tun_name_len);
+	vec_add1 (a->tunnel_names, tun_name);
+	deser_tun_names += tun_name_len;
+	tun_name = 0;
+      }
+    
+    rv = ip6_sr_add_del_policy (a);
+
+out:
+
+    REPLY_MACRO(VL_API_SR_POLICY_ADD_DEL_REPLY);
+#endif
+}
+
+static void vl_api_sr_multicast_map_add_del_t_handler
+(vl_api_sr_multicast_map_add_del_t *mp)
+{
+#if IPV6SR == 0
+    clib_warning ("unimplemented");
+#else
+    ip6_sr_add_del_multicastmap_args_t _a, *a=&_a;
+    int rv = 0;
+    vl_api_sr_multicast_map_add_del_reply_t * rmp;
+
+    memset (a, 0, sizeof (*a));
+    a->is_del = (mp->is_add == 0);
+    
+    a->multicast_address = (ip6_address_t *)&mp->multicast_address;
+    a->policy_name = format(0, "%s", mp->policy_name);
+
+    if (a->multicast_address == 0)
+      {
+        rv = -1 ; 
+	goto out;
+      }      
+
+    if (!(a->policy_name))
+      {
+        rv = -2 ; 
+	goto out;
+      }
+
+    rv = ip6_sr_add_del_multicastmap (a);
+
+out:
+
+    REPLY_MACRO(VL_API_SR_MULTICAST_MAP_ADD_DEL_REPLY);
 #endif
 }
 
@@ -5825,6 +5925,19 @@ vpe_api_hookup (vlib_main_t *vm)
                              vl_noop_handler,
                              vl_api_sr_tunnel_add_del_t_endian,
                              vl_api_sr_tunnel_add_del_t_print,
+                             256, 1);
+
+
+    /* 
+     * Manually register the sr policy add del msg, so we trace
+     * enough bytes to capture a typical tunnel name list
+     */
+    vl_msg_api_set_handlers (VL_API_SR_POLICY_ADD_DEL, 
+                             "sr_policy_add_del",
+                             vl_api_sr_policy_add_del_t_handler,
+                             vl_noop_handler,
+                             vl_api_sr_policy_add_del_t_endian,
+                             vl_api_sr_policy_add_del_t_print,
                              256, 1);
 
     /* 
