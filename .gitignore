@@ -11,6 +11,7 @@
 /build-root/*.rpm
 /build-root/*.changes
 /build-config.mk
+/vpp-api/python/vpp_papi/vpp_papi.py
 /dpdk/*.tar.gz
 /path_setup
 /tools/

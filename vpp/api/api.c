@@ -325,7 +325,7 @@ _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump)                 \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
-_(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)
+_(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -3383,7 +3383,15 @@ static void vl_api_sr_tunnel_add_del_t_handler
     a->is_del = (mp->is_add == 0);
     a->rx_table_id = ntohl(mp->outer_vrf_id);
     a->tx_table_id = ntohl(mp->inner_vrf_id);
-
+    
+    a->name = format(0, "%s", mp->name);
+    if (!(vec_len(a->name)))
+      a->name = 0;
+    
+    a->policy_name = format(0, "%s", mp->policy_name);
+    if (!(vec_len(a->policy_name)))
+      a->policy_name = 0;
+    
     /* Yank segments and tags out of the API message */
     this_address = (ip6_address_t *)mp->segs_and_tags;
     for (i = 0; i < mp->n_segments; i++) {
@@ -3405,6 +3413,50 @@ static void vl_api_sr_tunnel_add_del_t_handler
 out:
 
     REPLY_MACRO(VL_API_SR_TUNNEL_ADD_DEL_REPLY);
+#endif
+}
+
+static void vl_api_sr_policy_add_del_t_handler
+(vl_api_sr_policy_add_del_t *mp)
+{
+#if IPV6SR == 0
+    clib_warning ("unimplemented");
+#else
+    ip6_sr_add_del_policy_args_t _a, *a=&_a;
+    int rv = 0;
+    vl_api_sr_policy_add_del_reply_t * rmp;
+    //int i;
+
+    memset (a, 0, sizeof (*a));
+    a->is_del = (mp->is_add == 0);
+    
+    a->name = format(0, "%s", mp->name);
+    if (!(vec_len(a->name)))
+      a->name = 0;
+    else
+      goto out;
+    /* alagalah TODO parse tunnels from mp */
+/*
+    this_address = (ip6_address_t *)mp->segs_and_tags;
+    for (i = 0; i < mp->n_segments; i++) {
+        vec_add2 (segments, seg, 1);
+        memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
+        this_address++;
+    }
+    for (i = 0; i < mp->n_tags; i++) {
+        vec_add2 (tags, tag, 1);
+        memcpy (tag->as_u8, this_address->as_u8, sizeof (*this_address));
+        this_address++;
+    }
+
+    a->segments = segments;
+    a->tags = tags;
+*/
+    rv = ip6_sr_add_del_policy (a);
+
+out:
+
+    REPLY_MACRO(VL_API_SR_POLICY_ADD_DEL_REPLY);
 #endif
 }
 
@@ -5689,6 +5741,19 @@ vpe_api_hookup (vlib_main_t *vm)
                              vl_noop_handler,
                              vl_api_sr_tunnel_add_del_t_endian,
                              vl_api_sr_tunnel_add_del_t_print,
+                             256, 1);
+
+
+    /* 
+     * Manually register the sr policy add del msg, so we trace
+     * enough bytes to capture a typical tunnel name list
+     */
+    vl_msg_api_set_handlers (VL_API_SR_POLICY_ADD_DEL, 
+                             "sr_policy_add_del",
+                             vl_api_sr_policy_add_del_t_handler,
+                             vl_noop_handler,
+                             vl_api_sr_policy_add_del_t_endian,
+                             vl_api_sr_policy_add_del_t_print,
                              256, 1);
 
     /* 

@@ -1014,6 +1014,9 @@ static void *vl_api_sr_tunnel_add_del_t_print
 
     s = format (0, "SCRIPT: sr_tunnel_add_del ");
 
+    if (mp->name)
+      s = format (s, "name %s ", mp->name);
+
     s = format (s, "src %U dst %U/%d ", format_ip6_address, 
                 (ip6_address_t *) mp->src_address,
                 format_ip6_address,
@@ -1062,12 +1065,39 @@ static void *vl_api_sr_tunnel_add_del_t_print
         }
     }
 
+    if (mp->policy_name)
+      s = format (s, "policy_name %s ", mp->policy_name);
+
     if (mp->is_add == 0)
         s = format (s, "del ");
     
     FINISH;
 }
 
+/*alagalah TODO workout why "defined but not used when it clearly is... vppapigen issue?
+
+static void *vl_api_sr_policy_add_del_t_print
+(vl_api_sr_policy_add_del_t * mp, void *handle)
+{
+  u8 * s;
+  int i;
+
+  s = format (0, "SCRIPT: sr_policy_add_del ");
+
+  if (mp->name)
+    s = format (s, "name %s ", mp->name);
+
+  for (i = 0; i < mp->tunnel_names; i++) {
+    // alagalah todo - more formatting needed: see Seg next example    s = format (s, "tunnel %s ", mp->tunnel_names[i]);
+    s = format (s, "tunnel %s ", mp->tunnel_names);
+  }
+
+  if (mp->is_add == 0)
+    s = format (s, "del ");
+    
+  FINISH;
+}
+*/
 static void *vl_api_classify_add_del_table_t_print
 (vl_api_classify_add_del_table_t * mp, void *handle)
 {
