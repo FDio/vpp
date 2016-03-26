@@ -273,7 +273,7 @@ elog_event_data_not_inline (elog_main_t * em,
   return elog_event_data (em, type, track, cpu_time);
 }
 
-/* Most common form: log a single 32 bit datum. */
+/* Most common forms: log a single 32 bit datum, w / w-out track */
 always_inline void
 elog (elog_main_t * em, elog_event_type_t * type, u32 data)
 {
@@ -293,6 +293,30 @@ elog_inline (elog_main_t * em, elog_event_type_t * type, u32 data)
     (em,
      type,
      &em->default_track,
+     clib_cpu_time_now ());
+  d[0] = data;
+}
+
+always_inline void
+elog_track (elog_main_t * em, elog_event_type_t * type, elog_track_t *track, 
+            u32 data)
+{
+  u32 * d = elog_event_data_not_inline
+    (em,
+     type,
+     track,
+     clib_cpu_time_now ());
+  d[0] = data;
+}
+
+always_inline void
+elog_track_inline (elog_main_t * em, elog_event_type_t * type, 
+                   elog_track_t *track, u32 data)
+{
+  u32 * d = elog_event_data_inline
+    (em,
+     type,
+     track,
      clib_cpu_time_now ());
   d[0] = data;
 }

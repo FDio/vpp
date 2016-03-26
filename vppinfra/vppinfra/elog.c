@@ -52,7 +52,10 @@ static inline void elog_lock (elog_main_t * em)
 static inline void elog_unlock (elog_main_t * em)
 {
   if (PREDICT_FALSE(em->lock != 0))
-    *em->lock = 0;
+    {
+      CLIB_MEMORY_BARRIER();
+      *em->lock = 0;
+    }
 }
 
 /* Non-inline version. */
@@ -168,7 +171,6 @@ word elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
   }
 
   new_event_type (em, l);
-  
   elog_unlock(em);
 
   return l;

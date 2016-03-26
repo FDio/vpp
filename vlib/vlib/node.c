@@ -61,13 +61,13 @@ static void node_set_elog_name (vlib_main_t * vm, uword node_index)
 
   t = vec_elt_at_index (vm->node_call_elog_event_types, node_index);
   vec_free (t->format);
-  t->format = (char *) format (0, "%v (%%d)", n->name);
+  t->format = (char *) format (0, "%v-call: %%d%c", n->name, 0);
 
   t = vec_elt_at_index (vm->node_return_elog_event_types, node_index);
   vec_free (t->format);
-  t->format = (char *) format (0, "%v () = %%d", n->name);
+  t->format = (char *) format (0, "%v-return: %%d%c", n->name, 0);
 
-  n->name_elog_string = elog_string (&vm->elog_main, "%v", n->name);
+  n->name_elog_string = elog_string (&vm->elog_main, "%v%c", n->name,0);
 }
 
 void vlib_node_rename (vlib_main_t * vm, u32 node_index, char * fmt, ...)

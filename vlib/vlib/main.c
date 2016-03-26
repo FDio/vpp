@@ -46,9 +46,6 @@
 
 CJ_GLOBAL_LOG_PROTOTYPE;
 
-
-//#define VLIB_ELOG_MAIN_LOOP 1
-
 /* Actually allocate a few extra slots of vector data to support
    speculative vector enqueues which overflow vector data in next frame. */
 #define VLIB_FRAME_SIZE_ALLOC (VLIB_FRAME_SIZE + 4)
@@ -779,22 +776,26 @@ void vlib_gdb_show_event_log (void)
   elog_show_buffer_internal (vlib_get_main(), (u32)~0);
 }
 
-always_inline void
+static inline void
 vlib_elog_main_loop_event (vlib_main_t * vm,
 			   u32 node_index,
 			   u64 time,
 			   u32 n_vectors,
 			   u32 is_return)
 {
-  elog_main_t * em = &vm->elog_main;
+  vlib_main_t * evm = &vlib_global_main;
+  elog_main_t * em = &evm->elog_main;
 
-  if (VLIB_ELOG_MAIN_LOOP)
-    elog (em,
+  if (VLIB_ELOG_MAIN_LOOP && n_vectors)
+    elog_track (em,
 	  /* event type */
 	  vec_elt_at_index (is_return
-			    ? vm->node_return_elog_event_types
-			    : vm->node_call_elog_event_types,
+			    ? evm->node_return_elog_event_types
+			    : evm->node_call_elog_event_types,
 			    node_index),
+          /* track */
+          (vm->cpu_index ? &vlib_worker_threads[vm->cpu_index].elog_track :
+           &em->default_track),
 	  /* data to log */ n_vectors);
 }
 
