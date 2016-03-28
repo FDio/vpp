@@ -142,13 +142,33 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 
 
 static inline void
+dpdk_get_xstats (dpdk_device_t * xd)
+{
+  int len;
+  if ((len = rte_eth_xstats_get(xd->device_index, NULL, 0)) > 0)
+    {
+      vec_validate(xd->xstats, len - 1);
+      vec_validate(xd->last_cleared_xstats, len - 1);
+
+      len = rte_eth_xstats_get(xd->device_index, xd->xstats, vec_len(xd->xstats));
+
+      ASSERT(vec_len(xd->xstats) == len);
+      ASSERT(vec_len(xd->last_cleared_xstats) == len);
+
+      _vec_len(xd->xstats) = len;
+      _vec_len(xd->last_cleared_xstats) = len;
+
+    }
+}
+
+
+static inline void
 dpdk_update_counters (dpdk_device_t * xd, f64 now)
 {
   vlib_simple_counter_main_t * cm;
   vnet_main_t * vnm = vnet_get_main();
   u32 my_cpu = os_get_cpu_number();
   u64 rxerrors, last_rxerrors;
-  int len;
 
   /* only update counters for PMD interfaces */
   if (xd->dev_type != VNET_DPDK_DEV_ETH)
@@ -207,11 +227,5 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
         }
     }
 
-  if ((len = rte_eth_xstats_get(xd->device_index, NULL, 0)) > 0)
-    {
-      vec_validate(xd->xstats, len - 1);
-      len = rte_eth_xstats_get(xd->device_index, xd->xstats, vec_len(xd->xstats));
-      ASSERT(vec_len(xd->xstats) == len);
-      _vec_len(xd->xstats) = len;
-    }
+  dpdk_get_xstats(xd);
 }

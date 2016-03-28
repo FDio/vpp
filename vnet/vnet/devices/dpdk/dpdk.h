@@ -245,7 +245,9 @@ typedef struct {
 
   struct rte_eth_stats stats;
   struct rte_eth_stats last_stats;
+  struct rte_eth_stats last_cleared_stats;
   struct rte_eth_xstats * xstats;
+  struct rte_eth_xstats * last_cleared_xstats;
   f64 time_last_stats_update;
   dpdk_port_type_t port_type;
 
@@ -566,6 +568,9 @@ u32 dpdk_get_admin_up_down_in_progress (void);
 
 uword
 dpdk_input_rss (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f);
+
+clib_error_t*
+dpdk_get_hw_interface_stats (u32 hw_if_index, struct rte_eth_stats* dest);
 
 format_function_t format_dpdk_device_name;
 format_function_t format_dpdk_device;
