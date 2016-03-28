@@ -35,3 +35,7 @@
 (load-file "./tunnel-decap-skel.el")
 (load-file "./tunnel-encap-skel.el")
 (load-file "./tunnel-h-skel.el")
+(load-file "./elog-4-int-skel.el")
+(load-file "./elog-4-int-track-skel.el")
+(load-file "./elog-enum-skel.el")
+(load-file "./elog-one-datum-skel.el")

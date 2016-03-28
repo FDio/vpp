@@ -419,7 +419,7 @@ elog_nsec_per_clock (elog_main_t * em)
 					    &em->init_time));
 }
 
-static void elog_alloc (elog_main_t * em, u32 n_events)
+void elog_alloc (elog_main_t * em, u32 n_events)
 {
   if (em->event_ring)
     vec_free (em->event_ring);

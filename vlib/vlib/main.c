@@ -665,8 +665,8 @@ vlib_cli_elog_clear (vlib_main_t * vm,
 }
 
 VLIB_CLI_COMMAND (elog_clear_cli, static) = {
-  .path = "clear event-logger",
-  .short_help = "Clear current event log",
+  .path = "event-logger clear",
+  .short_help = "Clear the event log",
   .function = vlib_cli_elog_clear,
 };
 
@@ -711,9 +711,76 @@ elog_save_buffer (vlib_main_t * vm,
 }
 
 VLIB_CLI_COMMAND (elog_save_cli, static) = {
-  .path = "save event-logger",
-  .short_help = "save event-logger <filename> (saves log in /tmp/<filename>)",
+  .path = "event-logger save",
+  .short_help = "event-logger save <filename> (saves log in /tmp/<filename>)",
   .function = elog_save_buffer,
+};
+
+static clib_error_t *
+elog_stop (vlib_main_t * vm,
+           unformat_input_t * input,
+           vlib_cli_command_t * cmd)
+{
+  elog_main_t * em = &vm->elog_main;
+
+  em->n_total_events_disable_limit = em->n_total_events;
+
+  vlib_cli_output (vm, "Stopped the event logger...");
+  return 0;
+}
+
+VLIB_CLI_COMMAND (elog_stop_cli, static) = {
+  .path = "event-logger stop",
+  .short_help = "Stop the event-logger",
+  .function = elog_stop,
+};
+
+static clib_error_t *
+elog_restart (vlib_main_t * vm,
+            unformat_input_t * input,
+            vlib_cli_command_t * cmd)
+{
+  elog_main_t * em = &vm->elog_main;
+
+  em->n_total_events_disable_limit = ~0;
+
+  vlib_cli_output (vm, "Restarted the event logger...");
+  return 0;
+}
+
+VLIB_CLI_COMMAND (elog_restart_cli, static) = {
+  .path = "event-logger restart",
+  .short_help = "Restart the event-logger",
+  .function = elog_restart,
+};
+
+static clib_error_t *
+elog_resize (vlib_main_t * vm,
+             unformat_input_t * input,
+             vlib_cli_command_t * cmd)
+{
+  elog_main_t * em = &vm->elog_main;
+  u32 tmp;
+
+  /* Stop the parade */
+  elog_reset_buffer (&vm->elog_main);
+
+  if (unformat (input, "%d", &tmp))
+    {
+      elog_alloc (em, tmp);
+      em->n_total_events_disable_limit = ~0;
+    }
+  else 
+    return clib_error_return (0, "Must specify how many events in the ring");
+
+  vlib_cli_output (vm, "Resized ring and restarted the event logger...");
+  return 0;
+}
+
+VLIB_CLI_COMMAND (elog_resize_cli, static) = {
+  .path = "event-logger resize",
+  .short_help = "event-logger resize <nnn>",
+  .function = elog_resize,
 };
 
 #endif /* CLIB_UNIX */
@@ -729,7 +796,10 @@ static void elog_show_buffer_internal (vlib_main_t * vm, u32 n_events_to_show)
     * vm->clib_time.seconds_per_clock;
 
   es = elog_peek_events (em);
-  vlib_cli_output (vm, "%d events in buffer", vec_len (es));
+  vlib_cli_output (vm, "%d of %d events in buffer, logger %s", vec_len (es), 
+                   em->event_ring_size,
+                   em->n_total_events < em->n_total_events_disable_limit ?
+                   "running" : "stopped");
   vec_foreach (e, es)
     {
       vlib_cli_output (vm, "%18.9f: %U",
