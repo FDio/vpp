@@ -529,27 +529,37 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
 
   {
 #define _(N, V)							\
-    if (xd->stats.V != 0)					\
-      s = format (s, "\n%U%-40U%16Ld",				\
-		  format_white_space, indent + 2,		\
-		  format_c_identifier, #N, xd->stats.V);
+    if ((xd->stats.V - xd->last_cleared_stats.V) != 0) {       \
+      s = format (s, "\n%U%-40U%16Ld",                         \
+                  format_white_space, indent + 2,              \
+                  format_c_identifier, #N,                     \
+                  xd->stats.V - xd->last_cleared_stats.V);     \
+    }                                                          \
 
     foreach_dpdk_counter
 #undef _
   }
 
   u8 * xs = 0;
-  struct rte_eth_xstats * xstat;
+  u32 i = 0;
 
-  vec_foreach(xstat, xd->xstats)
+  ASSERT(vec_len(xd->xstats) == vec_len(xd->last_cleared_xstats));
+
+  vec_foreach_index(i, xd->xstats)
     {
-      if (verbose == 2 || (verbose && xstat->value))
+      u64 delta = 0;
+      struct rte_eth_xstats* xstat = vec_elt_at_index(xd->xstats, i);
+      struct rte_eth_xstats* last_xstat =
+        vec_elt_at_index(xd->last_cleared_xstats, i);
+
+      delta = xstat->value - last_xstat->value;
+      if (verbose == 2 || (verbose && delta))
         {
-          /* format_c_identifier don't like c strings inside vector */
+          /* format_c_identifier doesn't like c strings inside vector */
           u8 * name = format(0,"%s", xstat->name);
           xs = format(xs, "\n%U%-38U%16Ld",
                       format_white_space, indent + 4,
-                      format_c_identifier, name, xstat->value);
+                      format_c_identifier, name, delta);
           vec_free(name);
         }
     }
