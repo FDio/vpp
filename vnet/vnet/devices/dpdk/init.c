@@ -472,9 +472,33 @@ dpdk_lib_init (dpdk_main_t * dm)
        * Otherwise rte_eth_dev_configure() will fail and the port will
        * not be available.
        */
-      xd->port_conf.rxmode.max_rx_pkt_len = 
-	      (ETHERNET_MAX_PACKET_BYTES > dev_info.max_rx_pktlen) ? 
- 	      dev_info.max_rx_pktlen : ETHERNET_MAX_PACKET_BYTES;
+      if (ETHERNET_MAX_PACKET_BYTES > dev_info.max_rx_pktlen)
+        {
+          /*
+           * This device does not support the platforms's max frame
+           * size. Use it's advertised mru instead.
+           */
+          xd->port_conf.rxmode.max_rx_pkt_len = dev_info.max_rx_pktlen;
+        }
+      else
+        {
+          xd->port_conf.rxmode.max_rx_pkt_len = ETHERNET_MAX_PACKET_BYTES;
+
+          /*
+           * Some platforms do not account for Ethernet FCS (4 bytes) in
+           * MTU calculations. To interop with them increase mru but only
+           * if the device's settings can support it.
+           */
+          if ((dev_info.max_rx_pktlen >= (ETHERNET_MAX_PACKET_BYTES + 4)) &&
+              xd->port_conf.rxmode.hw_strip_crc)
+            {
+              /*
+               * Allow additional 4 bytes (for Ethernet FCS). These bytes are
+               * stripped by h/w and so will not consume any buffer memory.
+               */
+              xd->port_conf.rxmode.max_rx_pkt_len += 4;
+            }
+        }
 
       /*
        * DAW-FIXME: VMXNET3 driver doesn't support jumbo / multi-buffer pkts
