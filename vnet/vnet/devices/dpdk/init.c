@@ -698,6 +698,29 @@ dpdk_lib_init (dpdk_main_t * dm)
   return 0;
 }
 
+int dpdk_eth_rx_queue_setup (dpdk_device_t * xd)
+{
+    vlib_main_t  *vm = vlib_get_main();
+    vlib_buffer_main_t * bm = vm->buffer_main;
+    int           rv = 0;
+    int           j;
+
+    if (xd->pmd == VNET_DPDK_PMD_IXGBE) {
+        for (j = 0; j < xd->rx_q_used; j++)
+          {
+            rv = rte_eth_rx_queue_setup(xd->device_index, j, xd->nb_rx_desc,
+                                        xd->cpu_socket, 0,
+                                        bm->pktmbuf_pools[xd->cpu_socket_id_by_queue[j]]);
+            if (rv < 0) {
+                clib_warning("rte_eth_rx_queue_setup[%d]: err %d",
+                             xd->device_index, rv);
+            }
+          }
+    }
+
+    return rv;
+}
+
 static clib_error_t *
 write_sys_fs (char * file_name, char * fmt, ...)
 {

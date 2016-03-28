@@ -501,6 +501,7 @@ void dpdk_efd_update_counters(dpdk_device_t *xd, u32 n_buffers, u16 enabled);
 u32 is_efd_discardable(vlib_thread_main_t *tm,
                        vlib_buffer_t * b0,
                        struct rte_mbuf *mb);
+int dpdk_eth_rx_queue_setup(dpdk_device_t * xd);
 
 /* dpdk vhost-user interrupt management */
 u8 dpdk_vhost_user_want_interrupt (dpdk_device_t *xd, int idx);

@@ -976,8 +976,10 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
        * silently dropping all of the incoming pkts instead of 
        * stopping the driver / hardware.
        */
-      if (xd->admin_up == 0)
-	rv = rte_eth_dev_start (xd->device_index);
+      if (xd->admin_up == 0) {
+         (void) dpdk_eth_rx_queue_setup (xd);
+         rv = rte_eth_dev_start (xd->device_index);
+      }
 
       if (xd->promisc)
 	  rte_eth_promiscuous_enable(xd->device_index);
