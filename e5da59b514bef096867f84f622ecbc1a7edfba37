@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_85d30838",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 708,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-03-29T08:59:05Z",
+      "side": 1,
+      "message": "Why only IXGBE?",
+      "range": {
+        "startLine": 708,
+        "startChar": 34,
+        "endLine": 708,
+        "endChar": 38
+      },
+      "revId": "e5da59b514bef096867f84f622ecbc1a7edfba37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
