@@ -1,11 +1,17 @@
-From 70725980c4d8f1e01cfa352a95341893aab00e7e Mon Sep 17 00:00:00 2001
-From: John Lo <loj@cisco.com>
-Date: Mon, 7 Mar 2016 14:07:19 -0500
-Subject: [PATCH 1/2] Fix-ENIC-PMD-problem-with-not-sending-the-first-pack.
+commit aba31298526865f5db99eaa54b63eb39dc95b74f
+Author: John Daley <johndale@cisco.com>
+Date:   Tue Mar 8 10:49:07 2016 -0800
 
----
- drivers/net/enic/base/enic_vnic_wq.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+    enic: fix last packet not being sent
+    
+    The last packet of the tx burst function array was not being
+    emitted until the subsequent call.  The nic descriptor index
+    was being set to the current tx descriptor instead of one past
+    the descriptor as required by the nic.
+    
+    Fixes: d739ba4c6abf ("enic: improve Tx packet rate")
+    
+    Signed-off-by: John Daley <johndale@cisco.com>
 
 diff --git a/drivers/net/enic/base/enic_vnic_wq.h b/drivers/net/enic/base/enic_vnic_wq.h
 index e3ea574..b019109 100644
@@ -26,6 +32,3 @@ index e3ea574..b019109 100644
  }
  
  #endif /* _ENIC_VNIC_WQ_H_ */
--- 
-1.9.1
-

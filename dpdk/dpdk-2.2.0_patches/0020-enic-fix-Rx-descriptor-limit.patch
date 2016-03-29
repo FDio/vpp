@@ -1,0 +1,61 @@
+commit 65ca78fdf9a684743bfca278cf1fcfea4603931d
+Author: Nelson Escobar <neescoba@cisco.com>
+Date:   Fri Mar 18 11:33:34 2016 -0700
+
+    enic: fix Rx descriptor limit
+    
+    On initialization, the rq descriptor count was set to the limit
+    of the vic.  When the requested number of rx descriptors was
+    less than this count, enic_alloc_rq() was incorrectly setting
+    the count to the lower value.  This results in later calls to
+    enic_alloc_rq() incorrectly using the lower value as the adapter
+    limit.
+    
+    Fixes: fefed3d1e62c ("enic: new driver")
+    
+    Signed-off-by: Nelson Escobar <neescoba@cisco.com>
+    Reviewed-by: John Daley <johndale@cisco.com>
+
+diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
+index e30672c..2f79cf0 100644
+--- a/drivers/net/enic/enic_main.c
++++ b/drivers/net/enic/enic_main.c
+@@ -524,24 +524,22 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
+ 				"policy.  Applying the value in the adapter "\
+ 				"policy (%d).\n",
+ 				queue_idx, nb_desc, enic->config.rq_desc_count);
+-		} else if (nb_desc != enic->config.rq_desc_count) {
+-			enic->config.rq_desc_count = nb_desc;
+-			dev_info(enic,
+-				"RX Queues - effective number of descs:%d\n",
+-				nb_desc);
++			nb_desc = enic->config.rq_desc_count;
+ 		}
++		dev_info(enic, "RX Queues - effective number of descs:%d\n",
++			 nb_desc);
+ 	}
+ 
+ 	/* Allocate queue resources */
+ 	rc = vnic_rq_alloc(enic->vdev, rq, queue_idx,
+-		enic->config.rq_desc_count, sizeof(struct rq_enet_desc));
++		nb_desc, sizeof(struct rq_enet_desc));
+ 	if (rc) {
+ 		dev_err(enic, "error in allocation of rq\n");
+ 		goto err_exit;
+ 	}
+ 
+ 	rc = vnic_cq_alloc(enic->vdev, &enic->cq[queue_idx], queue_idx,
+-		socket_id, enic->config.rq_desc_count,
++		socket_id, nb_desc,
+ 		sizeof(struct cq_enet_rq_desc));
+ 	if (rc) {
+ 		dev_err(enic, "error in allocation of cq for rq\n");
+@@ -550,7 +548,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
+ 
+ 	/* Allocate the mbuf ring */
+ 	rq->mbuf_ring = (struct rte_mbuf **)rte_zmalloc_socket("rq->mbuf_ring",
+-			sizeof(struct rte_mbuf *) * enic->config.rq_desc_count,
++			sizeof(struct rte_mbuf *) * nb_desc,
+ 			RTE_CACHE_LINE_SIZE, rq->socket_id);
+ 
+ 	if (rq->mbuf_ring != NULL)

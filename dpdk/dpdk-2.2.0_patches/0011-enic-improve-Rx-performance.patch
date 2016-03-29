@@ -1,20 +1,20 @@
-From 0963caf48db910ca6f93c5cbff8d5d24b2be64dd Mon Sep 17 00:00:00 2001
-From: John Lo <loj@cisco.com>
-Date: Mon, 7 Mar 2016 14:12:29 -0500
-Subject: [PATCH 2/2] Replacement of ENIC PMD receive path to improve
- performance and code clarifty.
+commit 947d860c821f4248dcf2fc01e98671524973eeea
+Author: John Daley <johndale@cisco.com>
+Date:   Fri Mar 4 13:09:00 2016 -0800
 
----
- drivers/net/enic/Makefile       |   1 +
- drivers/net/enic/base/vnic_rq.c |  99 ++---------
- drivers/net/enic/base/vnic_rq.h | 147 +---------------
- drivers/net/enic/enic.h         |  16 +-
- drivers/net/enic/enic_ethdev.c  |  27 ++-
- drivers/net/enic/enic_main.c    | 321 ++++++++++------------------------
- drivers/net/enic/enic_res.h     |  16 +-
- drivers/net/enic/enic_rx.c      | 378 ++++++++++++++++++++++++++++++++++++++++
- 8 files changed, 519 insertions(+), 486 deletions(-)
- create mode 100644 drivers/net/enic/enic_rx.c
+    enic: improve Rx performance
+    
+    This is a wholesale replacement of the Enic PMD receive path in order
+    to improve performance and code clarity. The changes are:
+    - Simplify and reduce code path length of receive function.
+    - Put most of the fast-path receive functions in one file.
+    - Reduce the number of posted_index updates (pay attention to
+      rx_free_thresh)
+    - Remove the unneeded container structure around the RQ mbuf ring
+    - Prefetch next Mbuf and descriptors while processing the current one
+    - Use a lookup table for converting CQ flags to mbuf flags.
+    
+    Signed-off-by: John Daley <johndale@cisco.com>
 
 diff --git a/drivers/net/enic/Makefile b/drivers/net/enic/Makefile
 index f0ee093..f316274 100644
@@ -494,7 +494,7 @@ index 2a88043..6f2ada5 100644
  	ENICPMD_FUNC_TRACE();
  
 diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
-index 07a9810..d0c9bff 100644
+index f818c32..9fff020 100644
 --- a/drivers/net/enic/enic_main.c
 +++ b/drivers/net/enic/enic_main.c
 @@ -60,6 +60,17 @@
@@ -960,10 +960,10 @@ index 49f7e22..33f2e84 100644
  
 diff --git a/drivers/net/enic/enic_rx.c b/drivers/net/enic/enic_rx.c
 new file mode 100644
-index 0000000..12b1f62
+index 0000000..945a60f
 --- /dev/null
 +++ b/drivers/net/enic/enic_rx.c
-@@ -0,0 +1,378 @@
+@@ -0,0 +1,370 @@
 +/*
 + * Copyright 2008-2014 Cisco Systems, Inc.  All rights reserved.
 + * Copyright 2007 Nuova Systems, Inc.  All rights reserved.
@@ -1127,20 +1127,12 @@ index 0000000..12b1f62
 +
 +	/* Check for packet error. Can't be more specific than MAC error */
 +	if (enic_cq_rx_desc_packet_error(bwflags)) {
-+#ifdef RTE_NEXT_ABI
 +		pkt_err_flags |= PKT_RX_MAC_ERR;
-+#else
-+		pkt_err_flags |= PKT_EXT_RX_PKT_ERROR;
-+#endif
 +	}
 +
 +	/* Check for bad FCS. MAC error isn't quite, but no other choice */
 +	if (!enic_cq_rx_desc_fcs_ok(cqrd)) {
-+#ifdef RTE_NEXT_ABI
 +		pkt_err_flags |= PKT_RX_MAC_ERR;
-+#else
-+		pkt_err_flags |= PKT_EXT_RX_BAD_FCS;
-+#endif
 +	}
 +	return pkt_err_flags;
 +}
@@ -1342,6 +1334,3 @@ index 0000000..12b1f62
 +
 +	return nb_rx;
 +}
--- 
-1.9.1
-

@@ -1,0 +1,36 @@
+commit 57524648749fb7dc1daf3af3213dab472ee432de
+Author: John Daley <johndale@cisco.com>
+Date:   Fri Mar 18 11:27:07 2016 -0700
+
+    enic: update maintainers
+    
+    Change maintainers for ENIC PMD and fix pointer to enic
+    documentation in MAINTAINERS.
+    
+    Signed-off-by: John Daley <johndale@cisco.com>
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 6ed54dd..e848ffa 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -276,8 +276,9 @@ F: doc/guides/nics/cxgbe.rst
+ 
+ Cisco enic
+ M: John Daley <johndale@cisco.com>
+-M: Sujith Sankar <ssujith@cisco.com>
++M: Nelson Escobar <neescoba@cisco.com>
+ F: drivers/net/enic/
++F: doc/guides/nics/enic.rst
+ 
+ Combo szedata2
+ M: Matej Vido <matejvido@gmail.com>
+diff --git a/doc/guides/nics/enic.rst b/doc/guides/nics/enic.rst
+index 2a228fd..e67c3db 100644
+--- a/doc/guides/nics/enic.rst
++++ b/doc/guides/nics/enic.rst
+@@ -218,4 +218,4 @@ Any questions or bugs should be reported to DPDK community and to the ENIC PMD
+ maintainers:
+ 
+ - John Daley <johndale@cisco.com>
+-- Sujith Sankar <ssujith@cisco.com>
++- Nelson Escobar <neescoba@cisco.com>
