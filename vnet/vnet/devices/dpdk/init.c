@@ -968,6 +968,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 no_pci = 0;
   u8 no_huge = 0;
   u8 huge_dir = 0;
+  u8 no_master_lcore = 0;
   u8 file_prefix = 0;
   u8 * socket_mem = 0;
 
@@ -991,6 +992,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "decimal-interface-names"))
         dm->interface_name_format_decimal = 1;
+
+      else if (unformat (input, "no-master-lcore"))
+        no_master_lcore = 1;
 
       else if (unformat (input, "no-multi-seg"))
         dm->no_multi_seg = 1;
@@ -1393,11 +1397,14 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
                                             (char *) dm->uio_driver_name);
     }
 
-  /* set master-lcore */
-  tmp = format (0, "--master-lcore%c", 0);
-  vec_add1 (dm->eal_init_args, tmp);
-  tmp = format (0, "%u%c", tm->main_lcore, 0);
-  vec_add1 (dm->eal_init_args, tmp);
+  if (no_master_lcore == 0)
+    {
+      /* set master-lcore */
+      tmp = format (0, "--master-lcore%c", 0);
+      vec_add1 (dm->eal_init_args, tmp);
+      tmp = format (0, "%u%c", tm->main_lcore, 0);
+      vec_add1 (dm->eal_init_args, tmp);
+    }
 
   /* NULL terminate the "argv" vector, in case of stupidity */
   vec_add1 (dm->eal_init_args, 0);
