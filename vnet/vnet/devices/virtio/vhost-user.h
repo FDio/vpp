@@ -78,11 +78,11 @@ typedef struct vhost_user_memory {
   vhost_user_memory_region_t regions[VHOST_MEMORY_MAX_NREGIONS];
 } vhost_user_memory_t;
 
-typedef struct vhost_vring_state { 
+typedef struct {
   unsigned int index, num;
 } vhost_vring_state_t;
 
-typedef struct vhost_vring_addr {
+typedef struct {
   unsigned int index, flags;
   u64 desc_user_addr, used_user_addr, avail_user_addr, log_guest_addr;
 } vhost_vring_addr_t;
