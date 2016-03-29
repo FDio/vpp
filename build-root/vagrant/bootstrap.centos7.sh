@@ -8,8 +8,8 @@ cd /vpp
 make install-dep
 
 # Build rpms
-make bootstrap
-make pkg-rpm
+sudo -H -u vagrant make bootstrap
+sudo -H -u vagrant make pkg-rpm
 
 # Install rpms
 
