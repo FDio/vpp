@@ -357,13 +357,15 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
   ethernet_arp_ip4_over_ethernet_address_t * a = a_arg;
   vlib_main_t * vm = vlib_get_main();
   ip4_main_t * im = &ip4_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
   int make_new_arp_cache_entry=1;
   uword * p;
   ip4_add_del_route_args_t args;
-  ip_adjacency_t adj;
+  ip_adjacency_t adj, * existing_adj;
   pending_resolution_t * pr, * mc;
   
   u32 next_index;
+  u32 adj_index;
 
   fib_index = (fib_index != (u32)~0) 
     ? fib_index : im->fib_index_by_sw_if_index[sw_if_index];
@@ -396,13 +398,30 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
      &adj.rewrite_header,
      sizeof (adj.rewrite_data));
 
+  adj_index = ip4_fib_lookup_with_table (im, fib_index, &a->ip4, 0);
+  existing_adj = ip_get_adjacency(lm, adj_index);
+
   args.table_index_or_table_id = fib_index;
   args.flags = IP4_ROUTE_FLAG_FIB_INDEX | IP4_ROUTE_FLAG_ADD | IP4_ROUTE_FLAG_NEIGHBOR;
   args.dst_address = a->ip4;
   args.dst_address_length = 32;
-  args.adj_index = ~0;
-  args.add_adj = &adj;
-  args.n_add_adj = 1;
+
+  if (existing_adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+      existing_adj->arp.next_hop.ip4.as_u32 == a->ip4.as_u32)
+    {
+      /* we are reusing existing adj */
+      ip_update_adjacency (lm, adj_index, &adj);
+      args.adj_index = adj_index;
+      args.n_add_adj = 0;
+      args.flags |= IP4_ROUTE_FLAG_KEEP_OLD_ADJACENCY;
+    }
+  else
+    {
+      /* create new adj */
+      args.adj_index = ~0;
+      args.add_adj = &adj;
+      args.n_add_adj = 1;
+    }
 
   ip4_add_del_route (im, &args);
   if (make_new_arp_cache_entry)
