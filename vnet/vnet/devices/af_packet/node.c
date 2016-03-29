@@ -140,6 +140,9 @@ af_packet_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
     VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
   u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
 
+  if (apif->per_interface_next_index != ~0)
+      next_index = apif->per_interface_next_index;
+
   n_free_bufs = vec_len (apm->rx_buffers);
   if (PREDICT_FALSE(n_free_bufs < VLIB_FRAME_SIZE))
     {
@@ -153,7 +156,7 @@ af_packet_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
   while ((tph->tp_status & TP_STATUS_USER) && (n_free_bufs > min_bufs))
     {
       vlib_buffer_t * b0, * first_b0 = 0;
-      u32 next0 = AF_PACKET_INPUT_NEXT_ETHERNET_INPUT;
+      u32 next0 = next_index;
 
       u32 n_left_to_next;
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);

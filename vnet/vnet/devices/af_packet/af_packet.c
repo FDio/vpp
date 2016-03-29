@@ -209,6 +209,7 @@ af_packet_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set)
   apif->rx_req = rx_req;
   apif->tx_req = tx_req;
   apif->host_if_name = host_if_name;
+  apif->per_interface_next_index = ~0;
 
   {
     unix_file_t template = {0};
