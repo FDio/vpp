@@ -31,7 +31,7 @@ RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
 
-ifneq ("$(wildcard $(STARTUP_DIR)/startup.conf),"")
+ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
 endif
 
@@ -76,6 +76,7 @@ help:
 	@echo " STARTUP_DIR  = $(STARTUP_DIR)"
 	@echo " GDB          = $(GDB)"
 	@echo " PLATFORM     = $(PLATFORM)"
+	@echo " DPDK_VERSION = $(DPDK_VERSION)"
 
 $(BR)/.bootstrap.ok:
 ifeq ("$(shell lsb_release -si)", "Ubuntu")

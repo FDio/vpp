@@ -29,6 +29,7 @@ DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.gz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
 DPDK_2.1.0_TARBALL_MD5_CKSUM := 205a0d12bfd6eb717d57506272f43519
 DPDK_2.2.0_TARBALL_MD5_CKSUM := 22e2fd68cd5504f43fe9a5a6fd6dd938
+DPDK_16.04-rc2_TARBALL_MD5_CKSUM := a642985d2694d8cf8fdfdf0723be3406
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 DPDK_TARGET := x86_64-native-linuxapp-gcc
 JOBS := $(shell grep processor /proc/cpuinfo | wc -l)
@@ -82,7 +83,7 @@ all: build
 
 $(B)/custom-config: $(B)/.patch.ok Makefile
 	@echo --- generating custom config from $(DPDK_SOURCE)/config/common_linuxapp ---
-	@cp $(DPDK_SOURCE)/config/common_linuxapp $@ 
+	@cpp -undef -ffreestanding -x assembler-with-cpp $(DPDK_SOURCE)/config/common_linuxapp $@
 	$(call set,RTE_MACHINE,$(DPDK_MACHINE))
 	$(call set,RTE_ARCH,"x86_64")
 	$(call set,RTE_ARCH_X86_64,y)
@@ -145,11 +146,13 @@ $(B)/.extract.ok: $(B)/.download.ok
 extract: $(B)/.extract.ok
 
 $(B)/.patch.ok: $(B)/.extract.ok
+ifneq ($(wildcard $(CURDIR)/dpdk-$(DPDK_VERSION)_patches/*.patch),)
 	@echo --- patching ---
 	for f in $(CURDIR)/dpdk-$(DPDK_VERSION)_patches/*.patch ; do \
 		echo Applying patch: $$(basename $$f) ; \
 		patch -p1 -d $(DPDK_SOURCE) < $$f ; \
 	done
+endif
 	@touch $@
 
 .PHONY: patch
