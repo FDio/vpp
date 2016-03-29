@@ -59,6 +59,81 @@ ip_poison_adjacencies (ip_adjacency_t * adj, uword n_adj)
     }
 }
 
+static void
+ip_share_adjacency(ip_lookup_main_t * lm, u32 adj_index)
+{
+  ip_adjacency_t * adj = ip_get_adjacency(lm, adj_index);
+  uword * p;
+  u32 old_ai;
+  uword signature = vnet_ip_adjacency_signature (adj);
+
+  p = hash_get (lm->adj_index_by_signature, signature);
+  /* Hash collision? */
+  if (p)
+    {
+      /* Save the adj index, p[0] will be toast after the unset! */
+      old_ai = p[0];
+      hash_unset (lm->adj_index_by_signature, signature);
+      hash_set (lm->adj_index_by_signature, signature, adj_index);
+      adj->next_adj_with_signature = old_ai;
+    }
+  else
+    {
+      adj->next_adj_with_signature = 0;
+      hash_set (lm->adj_index_by_signature, signature, adj_index);
+    }
+}
+
+static void
+ip_unshare_adjacency(ip_lookup_main_t * lm, u32 adj_index)
+{
+  ip_adjacency_t * adj = ip_get_adjacency(lm, adj_index);
+  uword signature;
+  uword * p;
+  u32 this_ai;
+  ip_adjacency_t * this_adj, * prev_adj = 0;
+
+  signature = vnet_ip_adjacency_signature (adj);
+  p = hash_get (lm->adj_index_by_signature, signature);
+  if (p == 0)
+      return;
+
+  this_ai = p[0];
+  /* At the top of the signature chain (likely)? */
+  if (this_ai == adj_index)
+    {
+      if (adj->next_adj_with_signature == 0)
+	{
+	  hash_unset (lm->adj_index_by_signature, signature);
+	  return;
+	}
+      else
+	{
+	  this_adj = ip_get_adjacency (lm, adj->next_adj_with_signature);
+	  hash_unset (lm->adj_index_by_signature, signature);
+	  hash_set (lm->adj_index_by_signature, signature,
+		    this_adj->heap_handle);
+	}
+    }
+  else                      /* walk signature chain */
+    {
+      this_adj = ip_get_adjacency (lm, this_ai);
+      while (this_adj != adj)
+	{
+	  prev_adj = this_adj;
+	  this_adj = ip_get_adjacency
+	    (lm, this_adj->next_adj_with_signature);
+	  /*
+	   * This can happen when creating the first multipath adj of a set
+	   * We end up looking at the miss adjacency (handle==0).
+	   */
+	  if (this_adj->heap_handle == 0)
+            return;
+        }
+      prev_adj->next_adj_with_signature = this_adj->next_adj_with_signature;
+    }
+}
+
 /* Create new block of given number of contiguous adjacencies. */
 ip_adjacency_t *
 ip_add_adjacency (ip_lookup_main_t * lm,
@@ -149,30 +224,31 @@ ip_add_adjacency (ip_lookup_main_t * lm,
 
   /* Set up to share the adj later */
   if (copy_adj && n_adj == 1)
-    {
-      uword * p;
-      u32 old_ai;
-      uword signature = vnet_ip_adjacency_signature (adj);
-
-      p = hash_get (lm->adj_index_by_signature, signature);
-      /* Hash collision? */
-      if (p)
-        {
-          /* Save the adj index, p[0] will be toast after the unset! */
-          old_ai = p[0];
-          hash_unset (lm->adj_index_by_signature, signature);
-          hash_set (lm->adj_index_by_signature, signature, ai);
-          adj->next_adj_with_signature = old_ai;
-        }
-      else
-        {
-          adj->next_adj_with_signature = 0;
-          hash_set (lm->adj_index_by_signature, signature, ai);
-        }
-    }
+    ip_share_adjacency(lm, ai);
 
   *adj_index_return = ai;
   return adj;
+}
+
+void
+ip_update_adjacency (ip_lookup_main_t * lm,
+		     u32 adj_index,
+		     ip_adjacency_t * copy_adj)
+{
+  ip_adjacency_t * adj = ip_get_adjacency(lm, adj_index);
+
+  ip_call_add_del_adjacency_callbacks (lm, adj_index, /* is_del */ 1);
+  ip_unshare_adjacency(lm, adj_index);
+
+  /* temporary redirect to drop while updating rewrite data */
+  adj->lookup_next_index = IP_LOOKUP_NEXT_ARP;
+  CLIB_MEMORY_BARRIER();
+
+  memcpy (&adj->rewrite_header, &copy_adj->rewrite_header,
+	  VLIB_BUFFER_PRE_DATA_SIZE);
+  adj->lookup_next_index = copy_adj->lookup_next_index;
+  ip_share_adjacency(lm, adj_index);
+  ip_call_add_del_adjacency_callbacks (lm, adj_index, /* is_del */ 0);
 }
 
 static void ip_del_adjacency2 (ip_lookup_main_t * lm, u32 adj_index, u32 delete_multipath_adjacency)
@@ -189,58 +265,15 @@ static void ip_del_adjacency2 (ip_lookup_main_t * lm, u32 adj_index, u32 delete_
 
   if (adj->n_adj == 1)
     {
-      uword signature;
-      uword * p;
-      u32 this_ai;
-      ip_adjacency_t * this_adj, * prev_adj = 0;
       if (adj->share_count > 0)
         {
           adj->share_count --;
           return;
         }
 
-      signature = vnet_ip_adjacency_signature (adj);
-      p = hash_get (lm->adj_index_by_signature, signature);
-      if (p == 0)
-          goto bag_it;
-
-      this_ai = p[0];
-      /* At the top of the signature chain (likely)? */
-      if (this_ai == adj_index)
-        {
-          if (adj->next_adj_with_signature == 0)
-            {
-              hash_unset (lm->adj_index_by_signature, signature);
-              goto bag_it;
-            }
-          else
-            {
-              this_adj = ip_get_adjacency (lm, adj->next_adj_with_signature);
-              hash_unset (lm->adj_index_by_signature, signature);
-              hash_set (lm->adj_index_by_signature, signature,
-                        this_adj->heap_handle);
-            }
-        }
-      else                      /* walk signature chain */
-        {
-          this_adj = ip_get_adjacency (lm, this_ai);
-          while (this_adj != adj)
-            {
-              prev_adj = this_adj;
-              this_adj = ip_get_adjacency
-                (lm, this_adj->next_adj_with_signature);
-              /* 
-               * This can happen when creating the first multipath adj of a set
-               * We end up looking at the miss adjacency (handle==0).
-               */
-              if (this_adj->heap_handle == 0)
-                  goto bag_it;
-            }
-          prev_adj->next_adj_with_signature = this_adj->next_adj_with_signature;
-        }
+      ip_unshare_adjacency(lm, adj_index);
     }
 
- bag_it:
   if (delete_multipath_adjacency)
     ip_multipath_del_adjacency (lm, adj_index);
 
@@ -474,6 +507,17 @@ ip_multipath_adjacency_add_del_next_hop (ip_lookup_main_t * lm,
   n_nhs = 0;
   i_nh = 0;
   nhs = 0;
+
+  /* If old adj is not multipath, we need to "convert" it by calling this
+   * function recursively */
+  if (old_mp_adj_index != ~0 && !ip_adjacency_is_multipath(lm, old_mp_adj_index))
+    {
+      ip_multipath_adjacency_add_del_next_hop(lm, /* is_del */ 0,
+					      /* old_mp_adj_index */ ~0,
+					      /* nh_adj_index */ old_mp_adj_index,
+					      /* weight * */ 1,
+					      &old_mp_adj_index);
+    }
 
   /* If old multipath adjacency is valid, find requested next hop. */
   if (old_mp_adj_index < vec_len (lm->multipath_adjacencies)
@@ -952,6 +996,11 @@ u8 * format_ip_adjacency (u8 * s, va_list * args)
       switch (adj->lookup_next_index)
 	{
 	case IP_LOOKUP_NEXT_ARP:
+	  if (adj->if_address_index != ~0)
+	    s = format (s, " %U", format_ip_interface_address, lm, adj->if_address_index);
+	  if (adj->arp.next_hop.ip4.as_u32)
+	    s = format (s, " via %U", format_ip4_address, &adj->arp.next_hop.ip4.as_u32);
+	  break;
 	case IP_LOOKUP_NEXT_LOCAL:
 	  if (adj->if_address_index != ~0)
 	    s = format (s, " %U", format_ip_interface_address, lm, adj->if_address_index);
@@ -1273,73 +1322,6 @@ vnet_ip_route_cmd (vlib_main_t * vm, unformat_input_t * main_input, vlib_cli_com
     {
       error = clib_error_return (0, "no next hops or adjacencies to add.");
       goto done;
-    }
-
-  if (vec_len(ip4_via_next_hops))
-    {
-      if (sw_if_indices[0] == (u32)~0)
-        {
-          u32 ai;
-          uword * p;
-          u32 fib_index;
-          ip_adjacency_t *nh_adj;
-
-          p = hash_get (ip4_main.fib_index_by_table_id, table_ids[0]);
-          if (p == 0)
-            {
-              error = clib_error_return (0, "Nonexistent FIB id %d",
-                                         table_ids[0]);
-              goto done;
-            }
-
-          fib_index = p[0];
-
-          ai = ip4_fib_lookup_with_table (&ip4_main,
-                                          fib_index,
-                                          ip4_via_next_hops,
-                                          1 /* disable default route */);
-          if (ai == 0)
-            {
-              error = clib_error_return (0, "next hop %U not in FIB",
-                                         format_ip4_address,
-                                         ip4_via_next_hops);
-              goto done;
-            }
-          nh_adj = ip_get_adjacency (&ip4_main.lookup_main, ai);
-          vec_add1 (add_adj, nh_adj[0]);
-        }
-    }
-  if (vec_len(ip6_via_next_hops))
-    {
-      if (sw_if_indices[0] == (u32)~0)
-        {
-          u32 ai;
-          uword * p;
-          u32 fib_index;
-          ip_adjacency_t *nh_adj;
-
-          p = hash_get (ip6_main.fib_index_by_table_id, table_ids[0]);
-          if (p == 0)
-            {
-              error = clib_error_return (0, "Nonexistent FIB id %d",
-                                         table_ids[0]);
-              goto done;
-            }
-
-          fib_index = p[0];
-          ai = ip6_fib_lookup_with_table (&ip6_main,
-                                          fib_index,
-                                          ip6_via_next_hops);
-          if (ai == 0)
-            {
-              error = clib_error_return (0, "next hop %U not in FIB",
-                                         format_ip6_address,
-                                         ip6_via_next_hops);
-              goto done;
-            }
-          nh_adj = ip_get_adjacency (&ip6_main.lookup_main, ai);
-          vec_add1 (add_adj, nh_adj[0]);
-        }
     }
 
   {
@@ -2017,8 +1999,13 @@ ip4_show_fib (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * c
 		  msg = format (msg, "%16Ld%16Ld ", sum.packets, sum.bytes);
 
 		  indent = vec_len (msg);
-		  msg = format (msg, "weight %d, index %d\n%U%U",
-				nhs[j].weight, adj_index + i,
+		  msg = format (msg, "weight %d, index %d",
+				nhs[j].weight, adj_index + i);
+
+		  if (ip_adjacency_is_multipath(lm, adj_index))
+		      msg = format (msg, ", multipath");
+
+		  msg = format (msg, "\n%U%U",
 				format_white_space, indent,
 				format_ip_adjacency,
 				vnm, lm, adj_index + i);
@@ -2240,8 +2227,13 @@ ip6_show_fib (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * c
 		  msg = format (msg, "%16Ld%16Ld ", sum.packets, sum.bytes);
 
 		  indent = vec_len (msg);
-		  msg = format (msg, "weight %d, index %d\n%U%U",
-				nhs[j].weight, adj_index + i,
+		  msg = format (msg, "weight %d, index %d",
+				nhs[j].weight, adj_index + i);
+
+		  if (ip_adjacency_is_multipath(lm, adj_index + i))
+		      msg = format (msg, ", multipath");
+
+		  msg = format (msg, "\n%U%U",
 				format_white_space, indent,
 				format_ip_adjacency,
 				vnm, lm, adj_index + i);

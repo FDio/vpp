@@ -242,7 +242,7 @@ void ip4_add_del_route (ip4_main_t * im, ip4_add_del_route_args_t * a)
   old_adj_index = fib->old_hash_values[0];
 
   /* Avoid spurious reference count increments */
-  if (old_adj_index == adj_index)
+  if (old_adj_index == adj_index && !(a->flags & IP4_ROUTE_FLAG_KEEP_OLD_ADJACENCY))
     {
       ip_adjacency_t * adj = ip_get_adjacency (lm, adj_index);
       if (adj->share_count > 0)
@@ -318,13 +318,29 @@ ip4_add_del_route_next_hop (ip4_main_t * im,
           /* Next hop must be known. */
           if (! nh_result)
             {
-              vnm->api_errno = VNET_API_ERROR_NEXT_HOP_NOT_IN_FIB;
-              error = clib_error_return (0, "next-hop %U/32 not in FIB",
-                                         format_ip4_address, next_hop);
-              goto done;
-            }
-          nh_adj_index = *nh_result;
-        }
+	      ip_adjacency_t * adj;
+
+	      nh_adj_index = ip4_fib_lookup_with_table (im, fib_index,
+							next_hop, 0);
+	      adj = ip_get_adjacency (lm, nh_adj_index);
+	      /* if ARP interface adjacencty is present, we need to
+		 install ARP adjaceny for specific next hop */
+	      if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+		  adj->arp.next_hop.ip4.as_u32 == 0)
+		{
+		  nh_adj_index = vnet_arp_glean_add(fib_index, next_hop);
+		}
+	      else
+		{
+		  vnm->api_errno = VNET_API_ERROR_NEXT_HOP_NOT_IN_FIB;
+		  error = clib_error_return (0, "next-hop %U/32 not in FIB",
+					     format_ip4_address, next_hop);
+		  goto done;
+		}
+	    }
+	  else
+	    nh_adj_index = *nh_result;
+	}
     }
   else
     {
@@ -366,6 +382,29 @@ ip4_add_del_route_next_hop (ip4_main_t * im,
       error = clib_error_return (0, "prefix matches next hop %U/%d",
                                  format_ip4_address, dst_address,
                                  dst_address_length);
+      goto done;
+    }
+
+  /* Destination is not known and default weight is set so add route
+     to existing non-multipath adjacency */
+  if (dst_adj_index == ~0 && next_hop_weight == 1 && next_hop_sw_if_index == ~0)
+    {
+      /* create new adjacency */
+      ip4_add_del_route_args_t a;
+      a.table_index_or_table_id = fib_index;
+      a.flags = ((is_del ? IP4_ROUTE_FLAG_DEL : IP4_ROUTE_FLAG_ADD)
+		 | IP4_ROUTE_FLAG_FIB_INDEX
+		 | IP4_ROUTE_FLAG_KEEP_OLD_ADJACENCY
+		 | (flags & (IP4_ROUTE_FLAG_NO_REDISTRIBUTE
+			     | IP4_ROUTE_FLAG_NOT_LAST_IN_GROUP)));
+      a.dst_address = dst_address[0];
+      a.dst_address_length = dst_address_length;
+      a.adj_index = nh_adj_index;
+      a.add_adj = 0;
+      a.n_add_adj = 0;
+
+      ip4_add_del_route (im, &a);
+
       goto done;
     }
 
@@ -934,6 +973,7 @@ void ip4_adjacency_set_interface_route (vnet_main_t * vnm,
       n = IP_LOOKUP_NEXT_ARP;
       node_index = ip4_arp_node.index;
       adj->if_address_index = if_address_index;
+      adj->arp.next_hop.ip4.as_u32 = 0;
       packet_type = VNET_L3_PACKET_TYPE_ARP;
     }
   else
@@ -2083,6 +2123,10 @@ ip4_arp (vlib_main_t * vm,
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 	  adj0 = ip_get_adjacency (lm, adj_index0);
 	  ip0 = vlib_buffer_get_current (p0);
+
+	  /* If packet destination is not local, send ARP to next hop */
+	  if (adj0->arp.next_hop.ip4.as_u32)
+	    ip0->dst_address.data_u32 = adj0->arp.next_hop.ip4.as_u32;
 
 	  /* 
 	   * if ip4_rewrite_local applied the IP_LOOKUP_NEXT_ARP

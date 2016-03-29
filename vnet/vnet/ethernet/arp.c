@@ -35,8 +35,11 @@ typedef struct {
 
   u16 flags;
 #define ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC (1 << 0)
+#define ETHERNET_ARP_IP4_ENTRY_FLAG_GLEAN  (2 << 0)
 
   u64 cpu_time_last_updated;
+
+  u32 * adjacencies;
 } ethernet_arp_ip4_entry_t;
 
 typedef struct {
@@ -210,22 +213,31 @@ static u8 * format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
   ethernet_arp_ip4_entry_t * e = va_arg (*va, ethernet_arp_ip4_entry_t *);
   vnet_sw_interface_t * si;
   ip4_fib_t * fib;
+  u8 * flags = 0;
 
   if (! e)
-    return format (s, "%=12s%=6s%=16s%=4s%=20s%=24s", "Time", "FIB", "IP4", 
-                   "Static", "Ethernet", "Interface");
+    return format (s, "%=12s%=6s%=16s%=6s%=20s%=24s", "Time", "FIB", "IP4",
+                   "Flags", "Ethernet", "Interface");
 
   fib = find_ip4_fib_by_table_index_or_id (&ip4_main, e->key.fib_index,
                                            IP4_ROUTE_FLAG_FIB_INDEX);
   si = vnet_get_sw_interface (vnm, e->key.sw_if_index);
-  s = format (s, "%=12U%=6u%=16U%=4s%=20U%=25U",
+
+  if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_GLEAN)
+    flags = format(flags, "G");
+
+  if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC)
+    flags = format(flags, "S");
+
+  s = format (s, "%=12U%=6u%=16U%=6s%=20U%=24U",
 	      format_vlib_cpu_time, vnm->vlib_main, e->cpu_time_last_updated,
               fib->table_id,
 	      format_ip4_address, &e->key.ip4_address,
-              (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC) ? "S" : "",
+	      flags ? (char *) flags : "",
 	      format_ethernet_address, e->ethernet_address,
 	      format_vnet_sw_interface_name, vnm, si);
 
+  vec_free(flags);
   return s;
 }
 
@@ -357,13 +369,15 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
   ethernet_arp_ip4_over_ethernet_address_t * a = a_arg;
   vlib_main_t * vm = vlib_get_main();
   ip4_main_t * im = &ip4_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
   int make_new_arp_cache_entry=1;
   uword * p;
   ip4_add_del_route_args_t args;
-  ip_adjacency_t adj;
+  ip_adjacency_t adj, * existing_adj;
   pending_resolution_t * pr, * mc;
   
   u32 next_index;
+  u32 adj_index;
 
   fib_index = (fib_index != (u32)~0) 
     ? fib_index : im->fib_index_by_sw_if_index[sw_if_index];
@@ -396,15 +410,40 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
      &adj.rewrite_header,
      sizeof (adj.rewrite_data));
 
-  args.table_index_or_table_id = fib_index;
-  args.flags = IP4_ROUTE_FLAG_FIB_INDEX | IP4_ROUTE_FLAG_ADD | IP4_ROUTE_FLAG_NEIGHBOR;
-  args.dst_address = a->ip4;
-  args.dst_address_length = 32;
-  args.adj_index = ~0;
-  args.add_adj = &adj;
-  args.n_add_adj = 1;
+  /* result of this lookup should be next-hop adjacency */
+  adj_index = ip4_fib_lookup_with_table (im, fib_index, &a->ip4, 0);
+  existing_adj = ip_get_adjacency(lm, adj_index);
 
-  ip4_add_del_route (im, &args);
+  if (existing_adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+      existing_adj->arp.next_hop.ip4.as_u32 == a->ip4.as_u32)
+    {
+      u32 * ai;
+      u32 * adjs = vec_dup(e->adjacencies);
+      /* Update all adj assigned to this arp entry */
+      vec_foreach(ai, adjs)
+	{
+	  int i;
+	  ip_adjacency_t * uadj = ip_get_adjacency(lm, *ai);
+	  for (i = 0; i < uadj->n_adj; i++)
+	    if (uadj[i].lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+		uadj[i].arp.next_hop.ip4.as_u32 == a->ip4.as_u32)
+	      ip_update_adjacency (lm, *ai + i, &adj);
+	}
+      vec_free(adjs);
+    }
+  else
+    {
+      /* create new adj */
+      args.table_index_or_table_id = fib_index;
+      args.flags = IP4_ROUTE_FLAG_FIB_INDEX | IP4_ROUTE_FLAG_ADD | IP4_ROUTE_FLAG_NEIGHBOR;
+      args.dst_address = a->ip4;
+      args.dst_address_length = 32;
+      args.adj_index = ~0;
+      args.add_adj = &adj;
+      args.n_add_adj = 1;
+      ip4_add_del_route (im, &args);
+    }
+
   if (make_new_arp_cache_entry)
     {
       pool_get (am->ip4_entry_pool, e);
@@ -1242,11 +1281,88 @@ clib_error_t *ip4_set_arp_limit (u32 arp_limit)
   return 0;
 }
 
+static void
+arp_ip4_entry_del_adj(ethernet_arp_ip4_entry_t *e, u32 adj_index)
+{
+  int done = 0;
+  int i;
+
+  while (!done)
+    {
+      vec_foreach_index(i, e->adjacencies)
+	if (vec_elt(e->adjacencies, i) == adj_index)
+	  {
+	    vec_del1(e->adjacencies, i);
+	    continue;
+	  }
+      done = 1;
+    }
+}
+
+static void
+arp_ip4_entry_add_adj(ethernet_arp_ip4_entry_t *e, u32 adj_index)
+{
+  int i;
+  vec_foreach_index(i, e->adjacencies)
+    if (vec_elt(e->adjacencies, i) == adj_index)
+      return;
+  vec_add1(e->adjacencies, adj_index);
+}
+
+static void
+arp_add_del_adj_cb (struct ip_lookup_main_t * lm,
+		    u32 adj_index,
+		    ip_adjacency_t * adj,
+		    u32 is_del)
+{
+  ethernet_arp_main_t * am = &ethernet_arp_main;
+  ip4_main_t * im = &ip4_main;
+  ethernet_arp_ip4_key_t k;
+  ethernet_arp_ip4_entry_t * e = 0;
+  uword * p;
+  u32 ai;
+
+  for(ai = adj->heap_handle; ai < adj->heap_handle + adj->n_adj ; ai++)
+    {
+      adj = ip_get_adjacency (lm, ai);
+      if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP && adj->arp.next_hop.ip4.as_u32)
+	{
+	  k.sw_if_index = adj->rewrite_header.sw_if_index;
+	  k.ip4_address.as_u32 = adj->arp.next_hop.ip4.as_u32;
+	  k.fib_index = im->fib_index_by_sw_if_index[adj->rewrite_header.sw_if_index];
+	  p = mhash_get (&am->ip4_entry_by_key, &k);
+	  if (p)
+	    e = pool_elt_at_index (am->ip4_entry_pool, p[0]);
+	}
+      else
+	continue;
+
+      if (is_del)
+	{
+	  if (!e)
+	    clib_warning("Adjacency contains unknown ARP next hop %U (del)",
+			 format_ip4_address, &adj->arp.next_hop);
+	  else
+	    arp_ip4_entry_del_adj(e, adj->heap_handle);
+	}
+      else /* add */
+	{
+	  if (!e)
+	    clib_warning("Adjacency contains unknown ARP next hop %U (add)",
+			 format_ip4_address, &adj->arp.next_hop);
+	  else
+	    arp_ip4_entry_add_adj(e, adj->heap_handle);
+	}
+    }
+}
+
 static clib_error_t * ethernet_arp_init (vlib_main_t * vm)
 {
   ethernet_arp_main_t * am = &ethernet_arp_main;
   pg_node_t * pn;
   clib_error_t * error;
+  ip4_main_t * im = &ip4_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
 
   if ((error = vlib_call_init_function (vm, ethernet_init)))
     return error;
@@ -1283,7 +1399,9 @@ static clib_error_t * ethernet_arp_init (vlib_main_t * vm)
     foreach_ethernet_arp_error
 #undef _
   }
-  
+
+  ip_register_add_del_adjacency_callback(lm, arp_add_del_adj_cb);
+
   return 0;
 }
 
@@ -1472,6 +1590,55 @@ int vnet_proxy_arp_fib_reset (u32 fib_id)
   vec_free (entries_to_delete);
 
    return 0;
+}
+
+u32
+vnet_arp_glean_add(u32 fib_index, void * next_hop_arg)
+{
+  ethernet_arp_main_t * am = &ethernet_arp_main;
+  ip4_main_t * im = &ip4_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
+  ip4_address_t * next_hop = next_hop_arg;
+  ip_adjacency_t add_adj, *adj;
+  ip4_add_del_route_args_t args;
+  ethernet_arp_ip4_entry_t * e;
+  ethernet_arp_ip4_key_t k;
+  u32 adj_index;
+
+  adj_index = ip4_fib_lookup_with_table(im, fib_index, next_hop, 0);
+  adj = ip_get_adjacency(lm, adj_index);
+
+  if (!adj || adj->lookup_next_index != IP_LOOKUP_NEXT_ARP)
+    return ~0;
+
+  if (adj->arp.next_hop.ip4.as_u32 != 0)
+    return adj_index;
+
+  k.sw_if_index = adj->rewrite_header.sw_if_index;
+  k.fib_index = fib_index;
+  k.ip4_address.as_u32 = next_hop->as_u32;
+
+  if (mhash_get (&am->ip4_entry_by_key, &k))
+    return adj_index;
+
+  pool_get (am->ip4_entry_pool, e);
+  mhash_set (&am->ip4_entry_by_key, &k, e - am->ip4_entry_pool, /* old value */ 0);
+  e->key = k;
+  e->cpu_time_last_updated = clib_cpu_time_now ();
+  e->flags = ETHERNET_ARP_IP4_ENTRY_FLAG_GLEAN;
+
+  memset(&args, 0, sizeof(args));
+  memcpy(&add_adj, adj, sizeof(add_adj));
+  add_adj.arp.next_hop.ip4.as_u32 = next_hop->as_u32; /* install neighbor /32 route */
+  args.table_index_or_table_id = fib_index;
+  args.flags = IP4_ROUTE_FLAG_FIB_INDEX | IP4_ROUTE_FLAG_ADD| IP4_ROUTE_FLAG_NEIGHBOR;
+  args.dst_address.as_u32 = next_hop->as_u32;
+  args.dst_address_length = 32;
+  args.adj_index = ~0;
+  args.add_adj = &add_adj;
+  args.n_add_adj = 1;
+  ip4_add_del_route (im, &args);
+  return ip4_fib_lookup_with_table (im, fib_index, next_hop, 0);
 }
 
 static clib_error_t *
