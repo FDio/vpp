@@ -929,8 +929,8 @@ static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
             ip_adjacency_t cadj;
             memset(&cadj, 0, sizeof(cadj));
             cadj.lookup_next_index = IP_LOOKUP_NEXT_CLASSIFY;
-            cadj.classify_table_index = ntohl(mp->classify_table_index);
-            if (pool_is_free_index (cm->tables, cadj.classify_table_index)) {
+            cadj.classify.table_index = ntohl(mp->classify_table_index);
+            if (pool_is_free_index (cm->tables, cadj.classify.table_index)) {
                 dsunlock(sm);
                 return VNET_API_ERROR_NO_SUCH_TABLE;
             }

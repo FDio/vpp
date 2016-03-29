@@ -129,10 +129,15 @@ typedef struct {
   i16 explicit_fib_index;
   u16 mcast_group_index;  
 
-  /* When classifying, start here */
-  u16 classify_table_index;
   /* Highest possible perf subgraph arc interposition, e.g. for ip6 ioam */
   u16 saved_lookup_next_index;
+
+  union {
+    /* IP_LOOKUP_NEXT_CLASSIFY only */
+    struct {
+      u16 table_index;
+    } classify;
+  };
 
   STRUCT_MARK(signature_end);
 
