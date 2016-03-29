@@ -42,6 +42,7 @@
 
 #include <vnet/vnet.h>
 #include <vlib/buffer.h>
+#include <vnet/ip/ip4_packet.h>
 
 /* Next index stored in adjacency. */
 typedef enum {
@@ -133,6 +134,13 @@ typedef struct {
   u16 saved_lookup_next_index;
 
   union {
+    /* IP_LOOKUP_NEXT_ARP only */
+    struct {
+      union {
+        ip4_address_t ip4;
+      } next_hop;
+      u32 next_adj_index_with_same_next_hop;
+    } arp;
     /* IP_LOOKUP_NEXT_CLASSIFY only */
     struct {
       u16 table_index;
@@ -391,6 +399,13 @@ do {								\
   CLIB_PREFETCH (_adj, sizeof (_adj[0]), type);			\
 } while (0)
 
+static inline void
+ip_register_add_del_adjacency_callback(ip_lookup_main_t * lm,
+				       ip_add_del_adjacency_callback_t cb)
+{
+  vec_add1(lm->add_del_adjacency_callbacks, cb);
+}
+
 always_inline void
 ip_call_add_del_adjacency_callbacks (ip_lookup_main_t * lm, u32 adj_index, u32 is_del)
 {
@@ -409,6 +424,20 @@ ip_add_adjacency (ip_lookup_main_t * lm,
 		  u32 * adj_index_result);
 
 void ip_del_adjacency (ip_lookup_main_t * lm, u32 adj_index);
+void
+ip_update_adjacency (ip_lookup_main_t * lm,
+		     u32 adj_index,
+		     ip_adjacency_t * copy_adj);
+
+static inline int
+ip_adjacency_is_multipath(ip_lookup_main_t * lm, u32 adj_index)
+{
+  if (vec_len(lm->multipath_adjacencies) < adj_index - 1)
+    return 0;
+
+  return (lm->multipath_adjacencies[adj_index].adj_index == adj_index &&
+	  lm->multipath_adjacencies[adj_index].n_adj_in_block > 0);
+}
 
 void
 ip_multipath_adjacency_free (ip_lookup_main_t * lm,
