@@ -930,7 +930,7 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
   if (classify_table_index != (u32) ~0)
     {
       adj->lookup_next_index = IP_LOOKUP_NEXT_CLASSIFY;
-      adj->classify_table_index = classify_table_index;
+      adj->classify.table_index = classify_table_index;
     }
   else
     adj->lookup_next_index = IP_LOOKUP_NEXT_LOCAL;

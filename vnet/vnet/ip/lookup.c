@@ -132,7 +132,7 @@ ip_add_adjacency (ip_lookup_main_t * lm,
       adj[i].rewrite_header.sw_if_index = ~0;
       adj[i].explicit_fib_index = ~0;
       adj[i].mcast_group_index = ~0;
-      adj[i].classify_table_index = ~0;
+      adj[i].classify.table_index = ~0;
       adj[i].saved_lookup_next_index = 0;
 
       if (copy_adj)
@@ -958,7 +958,7 @@ u8 * format_ip_adjacency (u8 * s, va_list * args)
 	  break;
 
         case IP_LOOKUP_NEXT_CLASSIFY:
-            s = format (s, " table %d", adj->classify_table_index);
+            s = format (s, " table %d", adj->classify.table_index);
 
 	default:
 	  break;
@@ -1072,7 +1072,7 @@ static uword unformat_ip_adjacency (unformat_input_t * input, va_list * args)
         (void) unformat (input, "%d", &adj->if_address_index);
       else if (next == IP_LOOKUP_NEXT_CLASSIFY)
         {
-          if (!unformat (input, "%d", &adj->classify_table_index))
+          if (!unformat (input, "%d", &adj->classify.table_index))
             {
               clib_warning ("classify adj must specify table index");
               return 0;

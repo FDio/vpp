@@ -112,11 +112,11 @@ ip_classify_inline (vlib_main_t * vm,
         
       adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
       adj0 = ip_get_adjacency (lm, adj_index0);
-      table_index0 = adj0->classify_table_index;
+      table_index0 = adj0->classify.table_index;
 
       adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
       adj1 = ip_get_adjacency (lm, adj_index1);
-      table_index1 = adj1->classify_table_index;
+      table_index1 = adj1->classify.table_index;
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
 
@@ -156,7 +156,7 @@ ip_classify_inline (vlib_main_t * vm,
         
       adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
       adj0 = ip_get_adjacency (lm, adj_index0);
-      table_index0 = adj0->classify_table_index;
+      table_index0 = adj0->classify.table_index;
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
       vnet_buffer(b0)->l2_classify.hash = 
