@@ -1777,7 +1777,7 @@ int vnet_mpls_ethernet_add_del_policy_tunnel (u8 *dst,
   memset(&adj, 0, sizeof (adj));
   adj.explicit_fib_index = ~0;
   adj.lookup_next_index = IP_LOOKUP_NEXT_CLASSIFY;
-  adj.classify_table_index = classify_table_index;
+  adj.classify.table_index = classify_table_index;
     
   if (!l2_only)
     ip_add_adjacency (lm, &adj, 1 /* one adj */,
