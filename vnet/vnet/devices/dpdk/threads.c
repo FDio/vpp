@@ -35,9 +35,6 @@
 #include <vlibmemory/vl_memory_api_h.h> 
 #undef vl_printfun
 
-vlib_thread_main_t vlib_thread_main;
-
-frame_queue_trace_t *frame_queue_traces;
 
 /*
  * Check the frame queue to see if any frames are available.
@@ -65,19 +62,27 @@ static inline int vlib_frame_queue_dequeue_internal (vlib_main_t *vm)
   if (PREDICT_FALSE(fq->trace))
     {
       frame_queue_trace_t *fqt;
+      frame_queue_nelt_counter_t *fqh;
       u32 elix;
    
-      fqt = &frame_queue_traces[thread_id];
+      fqt = &dpdk_main.frame_queue_traces[thread_id];
+
       fqt->nelts = fq->nelts;
       fqt->head = fq->head;
       fqt->head_hint = fq->head_hint;
       fqt->tail = fq->tail;
       fqt->threshold = fq->vector_threshold;
       fqt->n_in_use = fqt->tail - fqt->head;
-      if (fqt->n_in_use > fqt->nelts){
-        fqt->n_in_use = 0;
+      if (fqt->n_in_use >= fqt->nelts){
+        // if beyond max then use max
+        fqt->n_in_use = fqt->nelts-1;
       }
 
+      /* Record the number of elements in use in the histogram */
+      fqh = &dpdk_main.frame_queue_histogram[thread_id];
+      fqh->count[ fqt->n_in_use ]++;
+
+      /* Record a snapshot of the elements in use */
       for (elix=0; elix<fqt->nelts; elix++) {
         elt = fq->elts + ((fq->head+1 + elix) & (fq->nelts-1));
         if (1 || elt->valid) 

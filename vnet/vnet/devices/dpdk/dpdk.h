@@ -267,6 +267,10 @@ typedef struct {
   i32 n_vectors[MAX_NELTS];
 } frame_queue_trace_t;
 
+typedef struct {
+  u64 count[MAX_NELTS];
+} frame_queue_nelt_counter_t;
+
 #define DPDK_TX_RING_SIZE (4 * 1024)
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
@@ -395,6 +399,10 @@ typedef struct {
   /* control interval of dpdk link state and stat polling */
   f64 link_state_poll_interval;
   f64 stat_poll_interval;
+
+  /* for frame queue tracing */
+  frame_queue_trace_t        *frame_queue_traces;
+  frame_queue_nelt_counter_t *frame_queue_histogram;
 
   /* convenience */
   vlib_main_t * vlib_main;
