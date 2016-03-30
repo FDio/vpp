@@ -1101,7 +1101,7 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
   u32 num_devices = 0;
   uword * p;
   u16 queue_id = 0;
-  vlib_node_runtime_t * node_trace;
+  vlib_node_runtime_t * node_trace = 0;
   u32 first_worker_index = 0;
   u32 buffer_flags_template;
   
@@ -1144,9 +1144,6 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
   vec_validate_init_empty (congested_handoff_queue_by_worker_index,
                            first_worker_index + num_workers - 1,
                            (vlib_frame_queue_t *)(~0));
-
-  /* packet tracing is triggered on the dpdk-input node for ease-of-use */
-  node_trace = vlib_node_get_runtime (vm, dpdk_input_node.index);
 
   buffer_flags_template = dm->buffer_flags_template;
 
@@ -1204,8 +1201,19 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
               continue;
             }
 
-          vec_reset_length (xd->d_trace_buffers);
-          trace_cnt = n_trace = vlib_get_trace_count (vm, node_trace);
+          trace_cnt = n_trace = 0;
+          if (PREDICT_FALSE(vm->trace_main.trace_active_hint))
+            {
+              /*
+               * packet tracing is triggered on the dpdk-input node for
+               * ease-of-use. Re-fetch the node_runtime for dpdk-input
+               * in case it has changed.
+               */
+              node_trace = vlib_node_get_runtime (vm, dpdk_input_node.index);
+
+              vec_reset_length (xd->d_trace_buffers);
+              trace_cnt = n_trace = vlib_get_trace_count (vm, node_trace);
+            }
         
           /*
            * DAW-FIXME: VMXNET3 device stop/start doesn't work, 
