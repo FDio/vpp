@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a045101_eb785d2d",
+        "filename": "vnet/vnet/lisp-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-03-31T13:26:30Z",
+      "side": 1,
+      "message": "Oops! I\u0027ll change it back to 2014. Or you\u0027d like it to be 2016?",
+      "parentUuid": "3a045101_4b82b101",
+      "revId": "7913c712dfe11416913529fe3710927da2a91db7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a045101_6b8d6d31",
         "filename": "vnet/vnet/lisp-gpe/decap.c",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2016-03-31T12:34:47Z",
       "side": 1,
       "message": "Ack. Pls don\u0027t forget all about this...",
+      "revId": "7913c712dfe11416913529fe3710927da2a91db7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_8b8f9923",
+        "filename": "vnet/vnet/lisp-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 220,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-03-31T13:26:30Z",
+      "side": 1,
+      "message": "Ack!",
+      "parentUuid": "3a045101_6b8d6d31",
       "revId": "7913c712dfe11416913529fe3710927da2a91db7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "3a045101_8b04397f",
+        "filename": "vnet/vnet/lisp-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-03-31T13:26:30Z",
+      "side": 1,
+      "message": "Well, since this and decap.c were already checked in, I didn\u0027t want to change the year to 2016. I can definitely do it if you think that\u0027s better.",
+      "parentUuid": "3a045101_cb9ec163",
+      "revId": "7913c712dfe11416913529fe3710927da2a91db7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a045101_eb917d53",
         "filename": "vnet/vnet/lisp-gpe/encap.c",
         "patchSetId": 1
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "3a045101_ebc61d49",
+        "filename": "vnet/vnet/lisp-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-03-31T13:26:30Z",
+      "side": 1,
+      "message": "This in fact just pulls the previously existing (and yours :)) encap code into a separate function and adds ip4_encap_two for the dual-loop. I guess that all other encap protocols do something very similar. \n\nSo the idea would be generalize this a bit and move it to ip4.h such that everybody can use it? Also, since we\u0027re fixing the udp checksum at the end, is it fine to have it there?",
+      "parentUuid": "3a045101_eb917d53",
+      "revId": "7913c712dfe11416913529fe3710927da2a91db7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a045101_4babd189",
         "filename": "vnet/vnet/lisp-gpe/lisp_gpe.h",
         "patchSetId": 1
@@ -81,6 +153,24 @@
       "writtenOn": "2016-03-31T12:34:47Z",
       "side": 1,
       "message": "This variable seems to be unused. I changed it to \"compiler_error_if_used\". gcc did not complain.",
+      "revId": "7913c712dfe11416913529fe3710927da2a91db7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_cb75a133",
+        "filename": "vnet/vnet/lisp-gpe/lisp_gpe.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-03-31T13:26:30Z",
+      "side": 1,
+      "message": "Thanks for catching this! I removed it!",
+      "parentUuid": "3a045101_4babd189",
       "revId": "7913c712dfe11416913529fe3710927da2a91db7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
