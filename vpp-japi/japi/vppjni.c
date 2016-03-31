@@ -149,6 +149,12 @@ static int sw_interface_dump (vppjni_main_t * jm)
     strncpy ((char *) mp->name_filter, "tap", sizeof(mp->name_filter-1));
     S;
 
+    /* and host (af_packet) interfaces */
+    M(SW_INTERFACE_DUMP, sw_interface_dump);
+    mp->name_filter_valid = 1;
+    strncpy ((char *) mp->name_filter, "host", sizeof(mp->name_filter-1));
+    S;
+
     /* and l2tpv3 tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
