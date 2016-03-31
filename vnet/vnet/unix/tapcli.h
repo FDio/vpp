@@ -31,6 +31,10 @@ typedef enum {
    TAPCLI_N_ERROR,
  } tapcli_error_t;
 
+#define TAP_MTU_MIN 68
+#define TAP_MTU_MAX 65535 - sizeof(ethernet_header_t)
+#define TAP_MTU_DEFAULT 1500
+
 typedef struct {
   u32 sw_if_index;
   u8 dev_name[64];

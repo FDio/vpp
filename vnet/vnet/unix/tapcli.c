@@ -788,7 +788,7 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
   {
     vnet_hw_interface_t * hw;
     hw = vnet_get_hw_interface (tm->vnet_main, ti->hw_if_index);
-    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = tm->mtu_bytes - sizeof(ethernet_header_t);
+    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = TAP_MTU_MAX;
     ti->sw_if_index = hw->sw_if_index;
     if (sw_if_indexp)
       *sw_if_indexp = hw->sw_if_index;
@@ -1149,7 +1149,7 @@ tap_connect_command_fn (vlib_main_t * vm,
     vnet_hw_interface_t * hw;
     hw = vnet_get_hw_interface (tm->vnet_main, ti->hw_if_index);
     ti->sw_if_index = hw->sw_if_index;
-    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = tm->mtu_bytes - sizeof(ethernet_header_t);
+    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = TAP_MTU_MAX;
   }
 
   ti->active = 1;
@@ -1179,6 +1179,52 @@ VLIB_CLI_COMMAND (tap_connect_command, static) = {
     .function = tap_connect_command_fn,
 };
 
+static clib_error_t *
+tap_mtu_command_fn (vlib_main_t * vm,
+                 unformat_input_t * input,
+                 vlib_cli_command_t * cmd)
+{
+  tapcli_main_t * tm = &tapcli_main;
+ // u32 sw_if_index = ~0;
+  u32 mtu = 0;
+  const uword buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+
+  if (tm->is_disabled)
+    {
+      return clib_error_return (0, "device disabled...");
+    }
+
+ /* if (unformat (input, "%U", unformat_vnet_sw_interface, tm->vnet_main,
+                &sw_if_index))
+      ;
+  else
+    return clib_error_return (0, "unknown input `%U'",
+                              format_unformat_error, input); */
+
+  if (unformat(input, "%d", &mtu))
+  ;
+  else
+    return clib_error_return (0, "unknown input '%U'",
+                              format_unformat_error, input);
+
+  if (mtu >= TAP_MTU_MIN && mtu <= TAP_MTU_MAX) {
+    tm->mtu_bytes = mtu;
+    tm->mtu_buffers = (tm->mtu_bytes + (buffer_size - 1)) / buffer_size;
+  } else
+    return clib_error_return (0, "Invalid MTU value for tap Interface");
+
+
+  vlib_cli_output (vm, "Changed mtu for tap '%d'", mtu);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (tap_mtu_command, static) = {
+    .path = "tap mtu",
+    .short_help = "tap mtu [mtu_value <68 to 65521>]",
+    .function = tap_mtu_command_fn,
+};
+
 clib_error_t *
 tapcli_init (vlib_main_t * vm)
 {
@@ -1187,7 +1233,7 @@ tapcli_init (vlib_main_t * vm)
   tm->vlib_main = vm;
   tm->vnet_main = vnet_get_main();
   tm->unix_main = &unix_main;
-  tm->mtu_bytes = 4096 + 256;
+  tm->mtu_bytes = TAP_MTU_DEFAULT;
   tm->tapcli_interface_index_by_sw_if_index = hash_create (0, sizeof(uword));
   tm->tapcli_interface_index_by_unix_fd = hash_create (0, sizeof (uword));
   tm->rx_buffers = 0;
