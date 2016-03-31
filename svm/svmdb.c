@@ -472,9 +472,9 @@ void svmdb_local_dump_vecs (svmdb_client_t *client)
     hash_foreach_mem(key, value, h, 
     ({
         svmdb_value_t *v = pool_elt_at_index (shm->values, value);
-        (void) fformat(stdout, "%s:\n %U\n", key, 
+        (void) fformat(stdout, "%s:\n %U (%.2f)\n", key, 
                        format_hex_bytes, v->value, 
-                       vec_len(v->value)*v->elsize);
+                       vec_len(v->value)*v->elsize, ((f64 *)(v->value))[0]);
     }));
 
     region_unlock (client->db_rp);

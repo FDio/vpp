@@ -40,26 +40,57 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vnet/api_errno.h>
 
 #include <svmdb.h>
 
 typedef struct {
-    svmdb_client_t *svmdb_client;
-    f64 *vector_rate_ptr;
-    f64 *input_rate_ptr;
-    pid_t *vpef_pid_ptr;
-    vlib_main_t *vlib_main;
+  svmdb_client_t *svmdb_client;
+  f64 *vector_rate_ptr;
+  f64 *input_rate_ptr;
+  f64 *sig_error_rate_ptr;
+  pid_t *vpef_pid_ptr;
+  u64 last_sig_errors;
+  u64 current_sig_errors;
+  u64 * sig_error_bitmap;
+  vlib_main_t *vlib_main;
+  vlib_main_t ** my_vlib_mains;
+
 } gmon_main_t;
 
 #if DPDK == 0
 static inline u64 vnet_get_aggregate_rx_packets (void)
 { return 0; }
 #else
+#include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/devices/dpdk/dpdk.h>
 #endif
 
 gmon_main_t gmon_main;
+
+static u64 get_significant_errors(gmon_main_t * gm)
+{
+  vlib_main_t * this_vlib_main;
+  vlib_error_main_t * em;
+  uword code;
+  int vm_index;
+  u64 significant_errors = 0;
+
+  clib_bitmap_foreach (code, gm->sig_error_bitmap,
+  ({
+    for (vm_index = 0; vm_index < vec_len (gm->my_vlib_mains); vm_index++)
+      {
+        this_vlib_main = gm->my_vlib_mains[vm_index];
+        em = &this_vlib_main->error_main;
+        significant_errors += em->counters[code] -
+          ((vec_len(em->counters_last_clear) > code) ?
+           em->counters_last_clear[code] : 0);
+      }
+  }));
+
+  return (significant_errors);
+}
 
 static uword
 gmon_process (vlib_main_t * vm,
@@ -67,10 +98,11 @@ gmon_process (vlib_main_t * vm,
               vlib_frame_t * f)
 {
     f64 vector_rate;
-    u64 input_packets, last_input_packets;
+    u64 input_packets, last_input_packets, new_sig_errors;
     f64 last_runtime, dt, now;
     gmon_main_t *gm = &gmon_main;
     pid_t vpefpid;
+    int i;
 
     vpefpid = getpid();
     *gm->vpef_pid_ptr = vpefpid;
@@ -80,6 +112,17 @@ gmon_process (vlib_main_t * vm,
 	      
     last_runtime = 0.0;
     last_input_packets = 0;
+
+    /* Initial wait for the world to settle down */
+    vlib_process_suspend (vm, 5.0);
+
+    if (vec_len(vlib_mains) == 0)
+      vec_add1(gm->my_vlib_mains, &vlib_global_main);
+    else
+      {
+        for (i = 0; i < vec_len(vlib_mains); i++)
+          vec_add1 (gm->my_vlib_mains, vlib_mains[i]);
+      }
 
     while (1) {
         vlib_process_suspend (vm, 5.0);
@@ -91,6 +134,11 @@ gmon_process (vlib_main_t * vm,
         *gm->input_rate_ptr = (f64)(input_packets - last_input_packets) / dt;
         last_runtime = now;
         last_input_packets = input_packets;
+
+        new_sig_errors = get_significant_errors(gm);
+        *gm->sig_error_rate_ptr = 
+            ((f64)(new_sig_errors - gm->last_sig_errors)) / dt;
+        gm->last_sig_errors = new_sig_errors;
     }
 
     return 0; /* not so much */
@@ -124,6 +172,11 @@ gmon_init (vlib_main_t *vm)
                                  "vpp_input_rate", 
                                  (char *)v, sizeof (*v));
     vec_free(v);
+    vec_add1 (v, 0.0);
+    svmdb_local_set_vec_variable(gm->svmdb_client, 
+                                 "vpp_sig_error_rate", 
+                                 (char *)v, sizeof (*v));
+    vec_free(v);
 
     vec_add1 (swp, 0.0);
     svmdb_local_set_vec_variable(gm->svmdb_client, 
@@ -131,7 +184,7 @@ gmon_init (vlib_main_t *vm)
                                  (char *)swp, sizeof (*swp));
     vec_free(swp);
 
-    /* the value cell will never move, so acquire a reference to it */
+    /* the value cells will never move, so acquire references to them */
     gm->vector_rate_ptr = 
         svmdb_local_get_variable_reference (gm->svmdb_client,
                                             SVMDB_NAMESPACE_VEC, 
@@ -140,6 +193,10 @@ gmon_init (vlib_main_t *vm)
         svmdb_local_get_variable_reference (gm->svmdb_client,
                                             SVMDB_NAMESPACE_VEC, 
                                             "vpp_input_rate");
+    gm->sig_error_rate_ptr = 
+        svmdb_local_get_variable_reference (gm->svmdb_client,
+                                            SVMDB_NAMESPACE_VEC, 
+                                            "vpp_sig_error_rate");
     gm->vpef_pid_ptr = 
         svmdb_local_get_variable_reference (gm->svmdb_client,
                                             SVMDB_NAMESPACE_VEC, 
@@ -157,8 +214,64 @@ static clib_error_t *gmon_exit (vlib_main_t *vm)
         *gm->vector_rate_ptr = 0.0;
         *gm->vpef_pid_ptr = 0;
         *gm->input_rate_ptr = 0.0;
+        *gm->sig_error_rate_ptr = 0.0;
         svmdb_unmap (gm->svmdb_client);
     }
     return 0;
 }
 VLIB_MAIN_LOOP_EXIT_FUNCTION (gmon_exit);
+
+static int 
+significant_error_enable_disable (gmon_main_t * gm, 
+                                  u32 index, int enable)
+{
+  vlib_main_t * vm = gm->vlib_main;
+  vlib_error_main_t * em = &vm->error_main;
+
+  if (index >= vec_len (em->counters))
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  gm->sig_error_bitmap = clib_bitmap_set (gm->sig_error_bitmap, index, enable);
+  return 0;
+}
+
+static clib_error_t *
+set_significant_error_command_fn (vlib_main_t * vm,
+		 unformat_input_t * input,
+		 vlib_cli_command_t * cmd)
+{
+  u32 index;
+  int enable = 1;
+  int rv;
+  gmon_main_t *gm = &gmon_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (input, "%d", &index))
+      ;
+    else if (unformat (input, "disable"))
+      enable = 0;
+    else
+      return clib_error_return (0, "unknown input `%U'",
+                                format_unformat_error, input);
+  }
+
+  rv = significant_error_enable_disable (gm, index, enable);
+
+  switch (rv)
+    {
+    case 0:
+      break;
+
+    default:
+      return clib_error_return 
+        (0, "significant_error_enable_disable returned %d", rv);
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (set_significant_error_command, static) = {
+    .path = "set significant error",
+    .short_help = "set significant error <counter-index-nnn>",
+    .function = set_significant_error_command_fn,
+};
