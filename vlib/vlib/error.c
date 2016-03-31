@@ -215,12 +215,18 @@ show_errors (vlib_main_t * vm,
   int verbose = 0;
   u64 * sums = 0;
 
-  if (unformat (input, "verbose"))
+  if (unformat (input, "verbose %d", &verbose))
+    ;
+  else if (unformat (input, "verbose"))
     verbose = 1;
 
   vec_validate(sums, vec_len(em->counters));
 
-  vlib_cli_output (vm, "%=16s%=40s%=20s", "Count", "Node", "Reason");
+  if (verbose)
+    vlib_cli_output (vm, "%=10s%=40s%=20s%=6s", "Count", "Node", "Reason", 
+                     "Index");
+  else
+    vlib_cli_output (vm, "%=10s%=40s%=6s", "Count", "Node", "Reason");
 
   foreach_vlib_main(({
     em = &this_vlib_main->error_main;
@@ -239,10 +245,15 @@ show_errors (vlib_main_t * vm,
 	      c -= em->counters_last_clear[i];
 	    sums[i] += c;
 
-	    if (c == 0 || !verbose)
+	    if (c == 0 && verbose < 2)
 	      continue;
 
-	    vlib_cli_output (vm, "%16Ld%=40v%s", c, n->name, em->error_strings_heap[i]);
+            if (verbose)
+              vlib_cli_output (vm, "%10Ld%=40v%=20s%=6d", c, n->name, 
+                               em->error_strings_heap[i], i);
+            else
+              vlib_cli_output (vm, "%10d%=40v%s", c, n->name, 
+                               em->error_strings_heap[i]);
 	  }
       }
     index++;
@@ -258,7 +269,11 @@ show_errors (vlib_main_t * vm,
 	{
 	  i = n->error_heap_index + code;
 	  if (sums[i])
-	    vlib_cli_output (vm, "%16Ld%=40v%s", sums[i], n->name, em->error_strings_heap[i]);
+            {
+              if (verbose)
+                vlib_cli_output (vm, "%10Ld%=40v%=20s%=10d", sums[i], n->name, 
+                                 em->error_strings_heap[i], i);
+            }
 	}
     }
 
