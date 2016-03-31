@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_4b82b101",
+        "filename": "vnet/vnet/lisp-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-31T12:34:47Z",
+      "side": 1,
+      "message": "Calendar check",
+      "revId": "7913c712dfe11416913529fe3710927da2a91db7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_6b8d6d31",
+        "filename": "vnet/vnet/lisp-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 220,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-31T12:34:47Z",
+      "side": 1,
+      "message": "Ack. Pls don\u0027t forget all about this...",
+      "revId": "7913c712dfe11416913529fe3710927da2a91db7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_cb9ec163",
+        "filename": "vnet/vnet/lisp-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-31T12:34:47Z",
+      "side": 1,
+      "message": "Calendar check...",
+      "revId": "7913c712dfe11416913529fe3710927da2a91db7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_eb917d53",
+        "filename": "vnet/vnet/lisp-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-31T12:34:47Z",
+      "side": 1,
+      "message": "These functions seem worth moving to e.g. ip4.h, with the magic length constants changed to [constant] args to a static inline. I\u0027m sure that you found this code elsewhere, judging by the comments.",
+      "revId": "7913c712dfe11416913529fe3710927da2a91db7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_4babd189",
+        "filename": "vnet/vnet/lisp-gpe/lisp_gpe.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-03-31T12:34:47Z",
+      "side": 1,
+      "message": "This variable seems to be unused. I changed it to \"compiler_error_if_used\". gcc did not complain.",
+      "revId": "7913c712dfe11416913529fe3710927da2a91db7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
