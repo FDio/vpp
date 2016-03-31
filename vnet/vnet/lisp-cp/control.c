@@ -35,7 +35,7 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
       if (mi != GID_LOOKUP_MISS) {
           clib_warning("eid %U found in the eid-table", format_ip_address,
                        &a->deid);
-          return -1;
+          return VNET_API_ERROR_VALUE_EXIST;
       }
 
       pool_get(lcm->mapping_pool, m);
@@ -52,7 +52,7 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
         {
           clib_warning("Locator set with index %d doesn't exist",
                        a->locator_set_index);
-          return -1;
+          return VNET_API_ERROR_INVALID_VALUE;
         }
 
       /* add eid to list of eids supported by locator-set */
@@ -72,10 +72,10 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
     }
   else
     {
-      if (mi != ~0) {
+      if (mi == GID_LOOKUP_MISS) {
           clib_warning("eid %U not found in the eid-table", format_ip_address,
                        &a->deid);
-          return -1;
+          return VNET_API_ERROR_INVALID_VALUE;
       }
 
       /* clear locator-set to eids binding */
@@ -236,19 +236,6 @@ clean_locator_to_locator_set (lisp_cp_main_t * lcm, u32 lsi)
       /* delete locator if it's part of no locator-set */
       if (vec_len (ls_indexes[0]) == 0)
         pool_put_index(lcm->locator_pool, loc_indexp[0]);
-
-      /* remove from local locator-set vector */
-      if (ls->local)
-        {
-          u32 k, *llocp;
-          for (k = 0; k < vec_len(lcm->local_locator_set_indexes); k++)
-            {
-              llocp = vec_elt_at_index(lcm->local_locator_set_indexes, k);
-              if (llocp[0] == lsi)
-                break;
-            }
-          vec_del1(lcm->local_locator_set_indexes, k);
-        }
     }
 }
 int
@@ -260,6 +247,7 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
   locator_t * loc, * itloc;
   uword _p = (u32)~0, * p = &_p;
   u32 loc_index, ls_index, ** ls_indexes;
+  u32 **eid_indexes;
 
   if (a->is_add)
     {
@@ -358,6 +346,151 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 //          return -1;
 //        }
 
+      if (vec_len(lcm->locator_set_to_eids) != 0)
+      {
+          eid_indexes = vec_elt_at_index(lcm->locator_set_to_eids, p[0]);
+          if (vec_len(eid_indexes[0]) != 0)
+          {
+              clib_warning ("Can't delete a locator that supports a mapping!");
+              return -1;
+          }
+      }
+
+      /* clean locator to locator-sets data */
+      clean_locator_to_locator_set (lcm, p[0]);
+
+      if (ls->local)
+        {
+          u32 it, lsi;
+
+          vec_foreach_index(it, lcm->local_locator_set_indexes)
+          {
+            lsi = vec_elt(lcm->local_locator_set_indexes, it);
+            if (lsi == p[0])
+              {
+                vec_del1(lcm->local_locator_set_indexes, it);
+                break;
+              }
+          }
+          hash_unset_mem(lcm->locator_set_index_by_name, ls->name);
+          vec_free(ls->name);
+        }
+      pool_put(lcm->locator_set_pool, ls);
+    }
+  return 0;
+}
+
+static inline
+uword *vnet_lisp_get_locator(vnet_lisp_add_del_locator_set_args_t * a,
+                             uword *p)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+
+  ASSERT(a != NULL);
+  ASSERT(p != NULL);
+
+  /* find locator-set */
+  if (a->local)
+  {
+      p = hash_get_mem(lcm->locator_set_index_by_name, a->name);
+  }
+  else
+  {
+      *p = a->index;
+  }
+
+  return p;
+}
+
+int
+vnet_lisp_add_del_locator_set_name (vnet_lisp_add_del_locator_set_args_t * a,
+                                    u32 * ls_result)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+  locator_set_t * ls;
+  uword _p = (u32)~0, * p = &_p;
+  u32 ls_index = ~0;
+  u32 **eid_indexes = NULL;
+
+  ASSERT(a != NULL);
+  ASSERT(ls_result != NULL);
+
+  p = vnet_lisp_get_locator(a, p);
+
+  if (a->is_add)
+    {
+      /* overwrite */
+      if (p && p[0] != (u32)~0)
+        {
+          ls = pool_elt_at_index(lcm->locator_set_pool, p[0]);
+          if (!ls)
+            {
+              clib_warning("locator-set %d to be overwritten doesn't exist!",
+                           p[0]);
+              return VNET_API_ERROR_UNSPECIFIED;
+            }
+
+          /* clean locator to locator-set vectors and remove locators if
+           * they're not part of another locator-set */
+          clean_locator_to_locator_set (lcm, p[0]);
+
+          /* remove locator indices from locator set */
+          vec_free(ls->locator_indices);
+
+          ls_index = p[0];
+
+          if (ls_result)
+            ls_result[0] = p[0];
+        }
+      /* new locator-set */
+      else
+        {
+          pool_get(lcm->locator_set_pool, ls);
+          ls_index = ls - lcm->locator_set_pool;
+
+          if (a->local)
+            {
+              ls->name = vec_dup(a->name);
+
+              if (!lcm->locator_set_index_by_name)
+                lcm->locator_set_index_by_name = hash_create_vec(
+                    /* size */0, sizeof(ls->name[0]), sizeof(uword));
+              hash_set_mem(lcm->locator_set_index_by_name, ls->name, ls_index);
+
+              /* mark as local locator-set */
+              vec_add1(lcm->local_locator_set_indexes, ls_index);
+            }
+          ls->local = a->local;
+	  ls->locator_indices = NULL;
+          if (ls_result)
+            ls_result[0] = ls_index;
+        }
+    }
+  else
+    {
+       if (!p)
+       {
+           clib_warning("locator-set %v doesn't exists", a->name);
+           return VNET_API_ERROR_INVALID_ARGUMENT;
+       }
+
+       ls = pool_elt_at_index(lcm->locator_set_pool, p[0]);
+       if (!ls)
+       {
+           clib_warning("locator-set with index %d doesn't exists", p[0]);
+           return VNET_API_ERROR_INVALID_ARGUMENT;
+       }
+
+      if (vec_len(lcm->locator_set_to_eids) != 0)
+      {
+          eid_indexes = vec_elt_at_index(lcm->locator_set_to_eids, p[0]);
+          if (vec_len(eid_indexes[0]) != 0)
+          {
+              clib_warning ("Can't delete a locator that supports a mapping!");
+              return -1;
+          }
+      }
+
       /* clean locator to locator-sets data */
       clean_locator_to_locator_set (lcm, p[0]);
 
@@ -378,6 +511,85 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
           vec_free(ls->name);
         }
       pool_put(lcm->locator_set_pool, ls);
+    }
+  return 0;
+}
+
+int
+vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t *a,
+                           u32 *ls_result)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+  locator_set_t *ls = NULL;
+  locator_t *loc = NULL, *itloc = NULL;
+  uword _p = (u32)~0, * p = &_p;
+  u32 loc_index = ~0, ls_index = ~0, *locit = NULL, **ls_indexes = NULL;
+  u32 i = ~0;
+
+  ASSERT(a != NULL);
+  ASSERT(ls_result != NULL);
+
+  p = vnet_lisp_get_locator(a, p);
+  if (!p) {
+      clib_warning("locator-set %v doesn't exists", a->name);
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+  }
+
+  ls_index = p[0];
+
+  if (a->is_add)
+    {
+        ls = pool_elt_at_index(lcm->locator_set_pool, p[0]);
+        if (!ls)
+        {
+            clib_warning("locator-set %d to be overwritten doesn't exist!",
+                         p[0]);
+            return VNET_API_ERROR_INVALID_ARGUMENT;
+        }
+
+        if (ls_result)
+            ls_result[0] = p[0];
+
+      /* allocate locators */
+      itloc = a->locators;
+      pool_get(lcm->locator_pool, loc);
+      loc[0] = itloc[0];
+      loc_index = loc - lcm->locator_pool;
+
+      vec_add1(ls->locator_indices, loc_index);
+
+      vec_validate (lcm->locator_to_locator_sets, loc_index);
+      ls_indexes = vec_elt_at_index(lcm->locator_to_locator_sets,
+                                    loc_index);
+      vec_add1(ls_indexes[0], ls_index);
+    }
+  else
+    {
+      ls = pool_elt_at_index(lcm->locator_set_pool, p[0]);
+      if (!ls)
+        {
+          clib_warning("locator-set with index %d doesn't exists", p[0]);
+          return VNET_API_ERROR_INVALID_ARGUMENT;
+        }
+
+      if (ls->local)
+      {
+          itloc = a->locators;
+          i = 0;
+          vec_foreach (locit, ls->locator_indices)
+          {
+              loc = pool_elt_at_index(lcm->locator_pool, locit[0]);
+              if (loc->local && loc->sw_if_index == itloc->sw_if_index)
+              {
+                  ls_indexes = vec_elt_at_index(lcm->locator_to_locator_sets,
+                                                locit[0]);
+                  pool_put_index(lcm->locator_pool, locit[0]);
+                  vec_del1(ls->locator_indices, i);
+                  vec_del1(ls_indexes[0], ls_index);
+              }
+              i++;
+          }
+      }
     }
   return 0;
 }

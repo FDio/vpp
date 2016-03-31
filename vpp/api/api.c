@@ -68,6 +68,7 @@
 #include <vnet/nsh-gre/nsh_gre.h>
 #include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
+#include <vnet/lisp-cp/control.h>
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
@@ -322,7 +323,17 @@ _(GET_NODE_GRAPH, get_node_graph)                                       \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
 _(TRACE_PROFILE_ADD, trace_profile_add)                                 \
 _(TRACE_PROFILE_APPLY, trace_profile_apply)                             \
-_(TRACE_PROFILE_DEL, trace_profile_del)
+_(TRACE_PROFILE_DEL, trace_profile_del)                                 \
+_(LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set)                   \
+_(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
+_(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
+_(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry)               \
+_(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver)                 \
+_(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
+_(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
+_(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump)                 \
+_(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
+_(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -4475,6 +4486,442 @@ out:
     ({
         rmp->sw_if_index = ntohl (sw_if_index);
     }));
+}
+
+static void
+vl_api_lisp_add_del_locator_set_t_handler(vl_api_lisp_add_del_locator_set_t *mp)
+{
+    vl_api_lisp_add_del_locator_set_reply_t *rmp;
+    int rv = 0;
+    vnet_lisp_add_del_locator_set_args_t _a, *a = &_a;
+    u32 ls_index = ~0;
+    u8 *locator_name = NULL;
+
+    memset(a, 0, sizeof(a[0]));
+
+    locator_name = format(0, "%s", mp->locator_set_name);
+
+    a->name = locator_name;
+    a->locators = NULL;
+    a->is_add = mp->is_add;
+    a->local = 1;
+
+    rv = vnet_lisp_add_del_locator_set_name(a, &ls_index);
+
+    vec_free(locator_name);
+
+    REPLY_MACRO(VL_API_LISP_ADD_DEL_LOCATOR_SET_REPLY);
+}
+
+static void
+vl_api_lisp_add_del_locator_t_handler(
+    vl_api_lisp_add_del_locator_t *mp)
+{
+    vl_api_lisp_add_del_locator_reply_t *rmp;
+    int rv = 0;
+    locator_t locator, *locators = NULL;
+    vnet_lisp_add_del_locator_set_args_t _a, *a = &_a;
+    u32 ls_index = ~0;
+    u8 *locator_name = NULL;
+
+    memset(&locator, 0, sizeof(locator));
+    memset(a, 0, sizeof(a[0]));
+
+    locator.sw_if_index = ntohl(mp->sw_if_index);
+    locator.priority = mp->priority;
+    locator.weight = mp->weight;
+    locator.local = 1;
+    vec_add1(locators, locator);
+
+    locator_name = format(0, "%s", mp->locator_set_name);
+
+    a->name = locator_name;
+    a->locators = locators;
+    a->is_add = mp->is_add;
+    a->local = 1;
+
+    rv = vnet_lisp_add_del_locator(a, &ls_index);
+
+    vec_free(locators);
+    vec_free(locator_name);
+
+    REPLY_MACRO(VL_API_LISP_ADD_DEL_LOCATOR_REPLY);
+}
+
+static void
+vl_api_lisp_add_del_local_eid_t_handler(
+    vl_api_lisp_add_del_local_eid_t *mp)
+{
+    vl_api_lisp_add_del_local_eid_reply_t *rmp;
+    lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+    int rv = 0;
+    ip_prefix_t  *prefp = NULL;
+    ip_address_t *ip_eid = NULL;
+    gid_address_t eid;
+    uword * p = NULL;
+    u32 locator_set_index = ~0, map_index = ~0;
+    vnet_lisp_add_del_mapping_args_t _a, *a = &_a;
+    u8 *name = NULL;
+
+    prefp = &gid_address_ippref(&eid);
+    ip_eid = &ip_prefix_addr(prefp);
+    gid_address_type (&eid) = IP_PREFIX;
+
+    if (mp->is_ipv6) {
+        memcpy(&ip_addr_v6(ip_eid), mp->ip_address,
+               sizeof(ip_addr_v6(ip_eid)));
+        ip_addr_version(ip_eid) = IP6;
+    } else {
+        memcpy(&ip_addr_v4(ip_eid), mp->ip_address,
+               sizeof(ip_addr_v4(ip_eid)));
+        ip_addr_version(ip_eid) = IP4;
+    }
+    ip_prefix_len(prefp) = mp->prefix_len;
+
+    name = format(0, "%s", mp->locator_set_name);
+    p = hash_get_mem(lcm->locator_set_index_by_name, name);
+    if (!p) {
+        rv = VNET_API_ERROR_INVALID_VALUE;
+        goto out;
+    }
+    locator_set_index = p[0];
+
+  /* XXX treat batch configuration */
+    a->is_add = mp->is_add;
+    a->deid = eid;
+    a->locator_set_index = locator_set_index;
+    a->local = 1;
+
+    rv = vnet_lisp_add_del_mapping(a, &map_index);
+
+out:
+    vec_free(name);
+
+    REPLY_MACRO(VL_API_LISP_ADD_DEL_LOCAL_EID_REPLY);
+}
+
+static void
+lisp_gpe_add_del_fwd_entry_set_address(
+    vl_api_lisp_gpe_add_del_fwd_entry_t *mp,
+    ip_address_t                        *slocator,
+    ip_address_t                        *dlocator,
+    gid_address_t                       *eid)
+{
+    ip_address_t *ip_eid = NULL;
+    ip_prefix_t *prefp = NULL;
+
+    prefp = &gid_address_ippref(eid);
+    ip_eid = &ip_prefix_addr(prefp);
+
+    if (mp->eid_is_ipv6) {
+        memcpy(&ip_addr_v6(ip_eid), mp->eid_ip_address,
+               sizeof(ip_addr_v6(ip_eid)));
+        ip_addr_version(ip_eid) = IP6;
+    } else {
+        memcpy(&ip_addr_v4(ip_eid), mp->eid_ip_address,
+               sizeof(ip_addr_v4(ip_eid)));
+        ip_addr_version(ip_eid) = IP4;
+    }
+    ip_prefix_len(prefp) = mp->eid_prefix_len;
+
+    if (mp->address_is_ipv6) {
+        memcpy(&ip_addr_v6(slocator), mp->source_ip_address,
+               sizeof(ip_addr_v6(slocator)));
+        ip_addr_version(slocator) = IP6;
+        memcpy(&ip_addr_v6(dlocator), mp->destination_ip_address,
+               sizeof(ip_addr_v6(dlocator)));
+        ip_addr_version(dlocator) = IP6;
+    } else {
+        memcpy(&ip_addr_v4(slocator), mp->source_ip_address,
+               sizeof(ip_addr_v4(slocator)));
+        ip_addr_version(slocator) = IP4;
+        memcpy(&ip_addr_v4(dlocator), mp->destination_ip_address,
+               sizeof(ip_addr_v4(dlocator)));
+        ip_addr_version(dlocator) = IP4;
+    }
+}
+
+static void
+vl_api_lisp_gpe_add_del_fwd_entry_t_handler(
+    vl_api_lisp_gpe_add_del_fwd_entry_t *mp)
+{
+    vl_api_lisp_gpe_add_del_fwd_entry_reply_t *rmp;
+    int rv = 0;
+    ip_address_t slocator, dlocator;
+    ip_prefix_t * prefp = NULL;
+    gid_address_t eid;
+    vnet_lisp_gpe_add_del_fwd_entry_args_t a;
+
+    lisp_gpe_add_del_fwd_entry_set_address(mp, &slocator, &dlocator, &eid);
+
+    memset (&a, 0, sizeof(a));
+
+    a.is_add = mp->is_add;
+    a.deid = eid;
+    a.slocator = slocator;
+    a.dlocator = dlocator;
+    prefp = &gid_address_ippref(&a.deid);
+    a.decap_next_index = (ip_prefix_version(prefp) == IP4) ?
+    LISP_GPE_INPUT_NEXT_IP4_INPUT : LISP_GPE_INPUT_NEXT_IP6_INPUT;
+    rv = vnet_lisp_gpe_add_del_fwd_entry (&a, 0);
+
+    REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY);
+}
+
+static void
+vl_api_lisp_add_del_map_resolver_t_handler(
+    vl_api_lisp_add_del_map_resolver_t *mp)
+{
+    vl_api_lisp_add_del_map_resolver_reply_t *rmp;
+    int rv = 0;
+    ip_address_t *ip_addr = NULL;
+    vnet_lisp_add_del_map_resolver_args_t _a, * a = &_a;
+
+    a->is_add = mp->is_add;
+    ip_addr = &a->address;
+
+    if (mp->is_ipv6) {
+        memcpy(&ip_addr_v6(ip_addr), mp->ip_address,
+               sizeof(ip_addr_v6(ip_addr)));
+        ip_addr_version(ip_addr) = IP6;
+    } else {
+        memcpy(&ip_addr_v4(ip_addr), mp->ip_address,
+               sizeof(ip_addr_v4(ip_addr)));
+        ip_addr_version(ip_addr) = IP4;
+    }
+
+    rv = vnet_lisp_add_del_map_resolver (a);
+
+    REPLY_MACRO(VL_API_LISP_ADD_DEL_MAP_RESOLVER_REPLY);
+}
+
+static void
+vl_api_lisp_gpe_add_del_iface_t_handler(
+    vl_api_lisp_gpe_add_del_iface_t *mp)
+{
+    vl_api_lisp_gpe_add_del_iface_reply_t *rmp;
+    int rv = 0;
+    vnet_lisp_gpe_add_del_iface_args_t _a, * a = &_a;
+
+    a->is_add = mp->is_add;
+    vnet_lisp_gpe_add_del_iface (a, 0);
+
+    REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
+}
+
+static void
+send_lisp_locator_set_details (lisp_cp_main_t *lcm,
+                               locator_set_t *lsit,
+                               unix_shared_memory_queue_t *q)
+{
+    vl_api_lisp_locator_set_details_t *rmp;
+    locator_t *loc = NULL;
+    u32 * locit = NULL;
+
+    vec_foreach (locit, lsit->locator_indices) {
+        loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
+        rmp = vl_msg_api_alloc (sizeof (*rmp));
+        memset (rmp, 0, sizeof (*rmp));
+        rmp->_vl_msg_id = ntohs(VL_API_LISP_LOCATOR_SET_DETAILS);
+        strncpy((char *) rmp->locator_set_name,
+                (char *) lsit->name, ARRAY_LEN(rmp->locator_set_name) - 1);
+        rmp->sw_if_index = htonl(loc->sw_if_index);
+        rmp->priority = loc->priority;
+        rmp->weight = loc->weight;
+
+        vl_msg_api_send_shmem (q, (u8 *)&rmp);
+    }
+}
+
+static void
+vl_api_lisp_locator_set_dump_t_handler (vl_api_lisp_locator_set_dump_t *mp)
+{
+    unix_shared_memory_queue_t * q = NULL;
+    lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+    locator_set_t * lsit = NULL;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+
+    pool_foreach (lsit, lcm->locator_set_pool,
+        ({
+            send_lisp_locator_set_details(lcm, lsit, q);
+        }));
+}
+
+static void
+send_lisp_local_eid_table_details (mapping_t *mapit,
+                                   unix_shared_memory_queue_t *q)
+{
+    vl_api_lisp_local_eid_table_details_t *rmp = NULL;
+    lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+    locator_set_t *ls = NULL;
+    gid_address_t *gid = NULL;
+    ip_prefix_t *ip_prefix = NULL;
+    u8 type = ~0;
+
+    ls = pool_elt_at_index (lcm->locator_set_pool,
+                            mapit->locator_set_index);
+
+    gid = &mapit->eid;
+    type = gid_address_type(gid);
+
+    if (type != IP_PREFIX) {
+        return;
+    }
+
+    ip_prefix = &gid_address_ippref(gid);
+
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_LISP_LOCAL_EID_TABLE_DETAILS);
+    strncpy((char *) rmp->locator_set_name,
+            (char *) ls->name, ARRAY_LEN(rmp->locator_set_name) - 1);
+
+    switch (ip_prefix_version(ip_prefix)) {
+        case IP4:
+            rmp->eid_is_ipv6 = 0;
+            memcpy(rmp->eid_ip_address, &ip_prefix_v4(ip_prefix),
+                   sizeof(ip_prefix_v4(ip_prefix)));
+            break;
+
+        case IP6:
+            rmp->eid_is_ipv6 = 1;
+            memcpy(rmp->eid_ip_address, &ip_prefix_v6(ip_prefix),
+                   sizeof(ip_prefix_v6(ip_prefix)));
+            break;
+
+        default:
+            ASSERT(0);
+    }
+    rmp->eid_prefix_len = ip_prefix_len(ip_prefix);
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void
+vl_api_lisp_local_eid_table_dump_t_handler (
+    vl_api_lisp_local_eid_table_dump_t *mp)
+{
+    unix_shared_memory_queue_t * q = NULL;
+    lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+    mapping_t * mapit = NULL;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+
+    pool_foreach (mapit, lcm->mapping_pool,
+        ({
+            send_lisp_local_eid_table_details(mapit, q);
+        }));
+}
+
+static void
+send_lisp_gpe_tunnel_details (lisp_gpe_tunnel_t *tunnel,
+                              unix_shared_memory_queue_t *q)
+{
+    vl_api_lisp_gpe_tunnel_details_t *rmp;
+    lisp_gpe_main_t * lgm = &lisp_gpe_main;
+    ip4_address_t *ip4 = NULL;
+
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_LISP_GPE_TUNNEL_DETAILS);
+
+    rmp->tunnels = tunnel - lgm->tunnels;
+
+    /*list_gpe_tunnel now support only IPv4*/
+    rmp->is_ipv6 = 0;
+    ip4 = &tunnel->src;
+    memcpy(rmp->source_ip, ip4, sizeof(*ip4));
+    ip4 = &tunnel->dst;
+    memcpy(rmp->destination_ip, ip4, sizeof(*ip4));
+
+    rmp->encap_fib_id = htonl(tunnel->encap_fib_index);
+    rmp->decap_fib_id = htonl(tunnel->decap_fib_index);
+    rmp->dcap_next = htonl(tunnel->decap_next_index);
+    rmp->lisp_ver = tunnel->ver_res;
+    rmp->next_protocol = tunnel->next_protocol;
+    rmp->flags = tunnel->flags;
+    rmp->ver_res = tunnel->ver_res;
+    rmp->res = tunnel->res;
+    rmp->iid = htonl(tunnel->iid);
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void
+vl_api_lisp_gpe_tunnel_dump_t_handler (
+    vl_api_lisp_local_eid_table_dump_t *mp)
+{
+    unix_shared_memory_queue_t * q = NULL;
+    lisp_gpe_main_t * lgm = &lisp_gpe_main;
+    lisp_gpe_tunnel_t * tunnel = NULL;
+
+    if (pool_elts(lgm->tunnels) == 0) {
+        return;
+    }
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+
+    pool_foreach(tunnel, lgm->tunnels,
+                 ({
+                     send_lisp_gpe_tunnel_details(tunnel, q);
+                }));
+}
+
+static void
+send_lisp_map_resolver_details (ip_address_t *ip,
+                                unix_shared_memory_queue_t *q)
+{
+    vl_api_lisp_map_resolver_details_t *rmp = NULL;
+
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_LISP_MAP_RESOLVER_DETAILS);
+
+    switch (ip_addr_version(ip)) {
+        case IP4:
+            rmp->is_ipv6 = 0;
+            memcpy(rmp->ip_address, &ip_addr_v4(ip), sizeof(ip_addr_v4(ip)));
+            break;
+
+        case IP6:
+            rmp->is_ipv6 = 1;
+            memcpy(rmp->ip_address, &ip_addr_v6(ip), sizeof(ip_addr_v6(ip)));
+            break;
+
+        default:
+            ASSERT(0);
+    }
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void
+vl_api_lisp_map_resolver_dump_t_handler (
+    vl_api_lisp_local_eid_table_dump_t *mp)
+{
+    unix_shared_memory_queue_t * q = NULL;
+    lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+    ip_address_t *ip = NULL;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+
+    vec_foreach(ip, lcm->map_resolvers) {
+        send_lisp_map_resolver_details(ip, q);
+    }
+
 }
 
 static void 

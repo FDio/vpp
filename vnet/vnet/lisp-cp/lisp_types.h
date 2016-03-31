@@ -35,6 +35,8 @@ typedef struct
   ip_address_type_t version;
 } ip_address_t;
 
+int ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2);
+
 typedef struct
 {
   ip_address_t addr;

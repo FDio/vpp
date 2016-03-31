@@ -1863,6 +1863,218 @@ static void vl_api_get_node_graph_reply_t_handler_json
     vam->result_ready = 1;
 }
 
+static void
+vl_api_lisp_locator_set_details_t_handler (
+    vl_api_lisp_locator_set_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+
+    fformat(vam->ofp, "%=20s%=16d%=16d%=16d\n",
+            mp->locator_set_name,
+            ntohl(mp->sw_if_index),
+            mp->priority,
+            mp->weight);
+}
+
+static void
+vl_api_lisp_locator_set_details_t_handler_json (
+    vl_api_lisp_locator_set_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+    vat_json_node_t *node = NULL;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_string_copy(node, "locator-set", mp->locator_set_name);
+    vat_json_object_add_uint(node, "locator", ntohl(mp->sw_if_index));
+    vat_json_object_add_uint(node, "priority", mp->priority);
+    vat_json_object_add_uint(node, "weight", mp->weight);
+}
+
+static void
+vl_api_lisp_local_eid_table_details_t_handler (
+    vl_api_lisp_local_eid_table_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+    u8 *prefix;
+
+    prefix = format(0, "%U/%d",
+                    mp->eid_is_ipv6 ? format_ip6_address : format_ip4_address,
+                    mp->eid_ip_address,
+                    mp->eid_prefix_len);
+
+    fformat(vam->ofp, "%=20s%=30s\n",
+            mp->locator_set_name, prefix);
+
+    vec_free(prefix);
+}
+
+static void
+vl_api_lisp_local_eid_table_details_t_handler_json (
+    vl_api_lisp_local_eid_table_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    struct in6_addr ip6;
+    struct in_addr ip4;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_string_copy(node, "locator-set", mp->locator_set_name);
+    if (mp->eid_is_ipv6) {
+        memcpy(&ip6, mp->eid_ip_address, sizeof(ip6));
+        vat_json_object_add_ip6(node, "eid address", ip6);
+    } else {
+        memcpy(&ip4, mp->eid_ip_address, sizeof(ip4));
+        vat_json_object_add_ip4(node, "eid address", ip4);
+    }
+    vat_json_object_add_uint(node, "eid prefix len", mp->eid_prefix_len);
+}
+
+static u8 *
+format_decap_next (u8 * s, va_list * args)
+{
+  u32 next_index = va_arg (*args, u32);
+
+  switch (next_index)
+    {
+    case LISP_GPE_INPUT_NEXT_DROP:
+      return format (s, "drop");
+    case LISP_GPE_INPUT_NEXT_IP4_INPUT:
+      return format (s, "ip4");
+    case LISP_GPE_INPUT_NEXT_IP6_INPUT:
+      return format (s, "ip6");
+    case LISP_GPE_INPUT_NEXT_LISP_GPE_ENCAP:
+      return format (s, "nsh-lisp-gpe");
+    default:
+      return format (s, "unknown %d", next_index);
+    }
+  return s;
+}
+
+static void
+vl_api_lisp_gpe_tunnel_details_t_handler (vl_api_lisp_gpe_tunnel_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+    u8 *iid_str;
+    u8 *flag_str = NULL;
+
+    iid_str = format(0, "%d (0x%x)", ntohl(mp->iid), ntohl(mp->iid));
+
+#define _(n,v) if (mp->flags & v) flag_str = format (flag_str, "%s-bit ", #n);
+  foreach_lisp_gpe_flag_bit;
+#undef _
+
+    fformat(vam->ofp, "%=20d%=30U%=16U%=16d%=16d%=16U"
+            "%=16d%=16d%=16sd=16d%=16s%=16s\n",
+            mp->tunnels,
+            mp->is_ipv6 ? format_ip6_address : format_ip4_address,
+            mp->source_ip,
+            mp->is_ipv6 ? format_ip6_address : format_ip4_address,
+            mp->destination_ip,
+            ntohl(mp->encap_fib_id),
+            ntohl(mp->decap_fib_id),
+            format_decap_next, ntohl(mp->dcap_next),
+            mp->ver_res >> 6,
+            flag_str,
+            mp->next_protocol,
+            mp->ver_res,
+            mp->res,
+            iid_str);
+
+    vec_free(iid_str);
+}
+
+static void
+vl_api_lisp_gpe_tunnel_details_t_handler_json (
+    vl_api_lisp_gpe_tunnel_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    struct in6_addr ip6;
+    struct in_addr ip4;
+    u8 *next_decap_str;
+
+    next_decap_str = format(0, "%U", format_decap_next, htonl(mp->dcap_next));
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_uint(node, "tunel", mp->tunnels);
+    if (mp->is_ipv6) {
+        memcpy(&ip6, mp->source_ip, sizeof(ip6));
+        vat_json_object_add_ip6(node, "source address", ip6);
+        memcpy(&ip6, mp->destination_ip, sizeof(ip6));
+        vat_json_object_add_ip6(node, "destination address", ip6);
+    } else {
+        memcpy(&ip4, mp->source_ip, sizeof(ip4));
+        vat_json_object_add_ip4(node, "source address", ip4);
+        memcpy(&ip4, mp->destination_ip, sizeof(ip4));
+        vat_json_object_add_ip4(node, "destination address", ip4);
+    }
+    vat_json_object_add_uint(node, "fib encap", ntohl(mp->encap_fib_id));
+    vat_json_object_add_uint(node, "fib decap", ntohl(mp->decap_fib_id));
+    vat_json_object_add_string_copy(node, "decap next", next_decap_str);
+    vat_json_object_add_uint(node, "lisp version", mp->ver_res >> 6);
+    vat_json_object_add_uint(node, "flags", mp->flags);
+    vat_json_object_add_uint(node, "next protocol", mp->next_protocol);
+    vat_json_object_add_uint(node, "ver_res", mp->ver_res);
+    vat_json_object_add_uint(node, "res", mp->res);
+    vat_json_object_add_uint(node, "iid", ntohl(mp->iid));
+
+    vec_free(next_decap_str);
+}
+
+static void
+vl_api_lisp_map_resolver_details_t_handler (
+    vl_api_lisp_map_resolver_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+
+    fformat(vam->ofp, "%=20U\n",
+            mp->is_ipv6 ? format_ip6_address : format_ip4_address,
+            mp->ip_address);
+}
+
+static void
+vl_api_lisp_map_resolver_details_t_handler_json (
+    vl_api_lisp_map_resolver_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    struct in6_addr ip6;
+    struct in_addr ip4;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    if (mp->is_ipv6) {
+        memcpy(&ip6, mp->ip_address, sizeof(ip6));
+        vat_json_object_add_ip6(node, "map resolver", ip6);
+    } else {
+        memcpy(&ip4, mp->ip_address, sizeof(ip4));
+        vat_json_object_add_ip4(node, "map resolver", ip4);
+    }
+}
+
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
@@ -1943,7 +2155,13 @@ _(cop_whitelist_enable_disable_reply)                   \
 _(sw_interface_clear_stats_reply)                       \
 _(trace_profile_add_reply)                              \
 _(trace_profile_apply_reply)                            \
-_(trace_profile_del_reply) 
+_(trace_profile_del_reply)                              \
+_(lisp_add_del_locator_set_reply)                       \
+_(lisp_add_del_locator_reply)                           \
+_(lisp_add_del_local_eid_reply)                         \
+_(lisp_gpe_add_del_fwd_entry_reply)                     \
+_(lisp_add_del_map_resolver_reply)                      \
+_(lisp_gpe_add_del_iface_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -2105,7 +2323,17 @@ _(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
 _(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)      \
 _(TRACE_PROFILE_ADD_REPLY, trace_profile_add_reply)                   \
 _(TRACE_PROFILE_APPLY_REPLY, trace_profile_apply_reply)               \
-_(TRACE_PROFILE_DEL_REPLY, trace_profile_del_reply) 
+_(TRACE_PROFILE_DEL_REPLY, trace_profile_del_reply)                     \
+_(LISP_ADD_DEL_LOCATOR_SET_REPLY, lisp_add_del_locator_set_reply)       \
+_(LISP_ADD_DEL_LOCATOR_REPLY, lisp_add_del_locator_reply)               \
+_(LISP_ADD_DEL_LOCAL_EID_REPLY, lisp_add_del_local_eid_reply)           \
+_(LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY, lisp_gpe_add_del_fwd_entry_reply)   \
+_(LISP_ADD_DEL_MAP_RESOLVER_REPLY, lisp_add_del_map_resolver_reply)     \
+_(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
+_(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
+_(LISP_LOCAL_EID_TABLE_DETAILS, lisp_local_eid_table_details)           \
+_(LISP_GPE_TUNNEL_DETAILS, lisp_gpe_tunnel_details)                     \
+_(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)
 
 /* M: construct, but don't yet send a message */
 
@@ -9128,6 +9356,553 @@ static int api_get_node_graph (vat_main_t * vam)
     W;
 }
 
+static int
+api_lisp_add_del_locator_set(vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_lisp_add_del_locator_set_t *mp;
+    f64 timeout = ~0;
+    u8  is_add = 1;
+    u8 *locator_set_name = NULL;
+    u8  locator_set_name_set = 0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "del")) {
+            is_add = 0;
+        } else if (unformat(input, "locator-set %s", &locator_set_name)) {
+            locator_set_name_set = 1;
+        } else
+            break;
+    }
+
+    if (locator_set_name_set == 0) {
+        errmsg ("missing locator-set name");
+        return -99;
+    }
+
+    if (vec_len(locator_set_name) > 64) {
+        errmsg ("locator-set name too long\n");
+        vec_free(locator_set_name);
+        return -99;
+    }
+    vec_add1(locator_set_name, 0);
+
+    /* Construct the API message */
+    M(LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set);
+
+    mp->is_add = is_add;
+    memcpy(mp->locator_set_name, locator_set_name,
+           vec_len(locator_set_name));
+    vec_free(locator_set_name);
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_lisp_add_del_locator(vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_lisp_add_del_locator_t *mp;
+    f64 timeout = ~0;
+    u32 tmp_if_index = ~0;
+    u32 sw_if_index = ~0;
+    u8  sw_if_index_set = 0;
+    u8  sw_if_index_if_name_set = 0;
+    u8  priority = ~0;
+    u8  priority_set = 0;
+    u8  weight = ~0;
+    u8  weight_set = 0;
+    u8  is_add = 1;
+    u8  *locator_set_name = NULL;
+    u8  locator_set_name_set = 0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "del")) {
+            is_add = 0;
+        } else if (unformat(input, "locator-set %s", &locator_set_name)) {
+            locator_set_name_set = 1;
+        } else if (unformat(input, "iface %U", unformat_sw_if_index, vam,
+            &tmp_if_index)) {
+            sw_if_index_if_name_set = 1;
+            sw_if_index = tmp_if_index;
+        } else if (unformat(input,"sw_if_index %d", &tmp_if_index)) {
+            sw_if_index_set = 1;
+            sw_if_index = tmp_if_index;
+        } else if (unformat(input, "p %d", &priority)) {
+            priority_set = 1;
+        } else if (unformat(input, "w %d", &weight)) {
+            weight_set = 1;
+        } else
+            break;
+    }
+
+    if (locator_set_name_set == 0) {
+        errmsg ("missing locator-set name");
+        return -99;
+    }
+
+    if (sw_if_index_set == 0 && sw_if_index_if_name_set == 0) {
+        errmsg ("missing sw_if_index");
+        vec_free(locator_set_name);
+        return -99;
+    }
+
+    if (sw_if_index_set != 0 && sw_if_index_if_name_set != 0) {
+        errmsg ("cannot use both params interface name and sw_if_index");
+        vec_free(locator_set_name);
+        return -99;
+    }
+
+    if (priority_set == 0) {
+        errmsg ("missing locator-set priority\n");
+        vec_free(locator_set_name);
+        return -99;
+    }
+
+    if (weight_set == 0) {
+        errmsg ("missing locator-set weight\n");
+        vec_free(locator_set_name);
+        return -99;
+    }
+
+    if (vec_len(locator_set_name) > 64) {
+        errmsg ("locator-set name too long\n");
+        vec_free(locator_set_name);
+        return -99;
+    }
+    vec_add1(locator_set_name, 0);
+
+    /* Construct the API message */
+    M(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator);
+
+    mp->is_add = is_add;
+    mp->sw_if_index = ntohl(sw_if_index);
+    mp->priority = priority;
+    mp->weight = weight;
+    memcpy(mp->locator_set_name, locator_set_name,
+           vec_len(locator_set_name));
+    vec_free(locator_set_name);
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_lisp_add_del_local_eid(vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_lisp_add_del_local_eid_t *mp;
+    f64 timeout = ~0;
+    u8 is_add = 1;
+    u8 eidv4_set = 0;
+    u8 eidv6_set = 0;
+    ip4_address_t eidv4;
+    ip6_address_t eidv6;
+    u8 tmp_eid_lenght = ~0;
+    u8 eid_lenght = ~0;
+    u8 *locator_set_name = NULL;
+    u8 locator_set_name_set = 0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "del")) {
+            is_add = 0;
+        } else if (unformat(input, "eid %U/%d", unformat_ip4_address,
+            &eidv4, &tmp_eid_lenght)) {
+            eid_lenght = tmp_eid_lenght;
+            eidv4_set = 1;
+        } else if (unformat(input, "eid %U/%d", unformat_ip6_address,
+            &eidv6, &tmp_eid_lenght)) {
+            eid_lenght = tmp_eid_lenght;
+            eidv6_set = 1;
+        } else if (unformat(input, "locator-set %s", &locator_set_name)) {
+            locator_set_name_set = 1;
+        } else
+            break;
+    }
+
+    if (locator_set_name_set == 0) {
+        errmsg ("missing locator-set name\n");
+        return -99;
+    }
+
+    if (vec_len(locator_set_name) > 64) {
+        errmsg ("locator-set name too long\n");
+        vec_free(locator_set_name);
+        return -99;
+    }
+    vec_add1(locator_set_name, 0);
+
+    if (eidv4_set && eidv6_set) {
+        errmsg ("both eid v4 and v6 addresses set\n");
+        vec_free(locator_set_name);
+        return -99;
+    }
+
+    if (!eidv4_set && !eidv6_set) {
+        errmsg ("eid addresses not set\n");
+        vec_free(locator_set_name);
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid);
+
+    mp->is_add = is_add;
+    if (eidv6_set) {
+        mp->is_ipv6 = 1;
+        memcpy(mp->ip_address, &eidv6, sizeof(eidv6));
+    } else {
+        mp->is_ipv6 = 0;
+        memcpy(mp->ip_address, &eidv4, sizeof(eidv4));
+    }
+    mp->prefix_len = eid_lenght;
+    memcpy(mp->locator_set_name, locator_set_name,
+           vec_len(locator_set_name));
+    vec_free(locator_set_name);
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_lisp_gpe_add_del_fwd_entry(vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_lisp_gpe_add_del_fwd_entry_t *mp;
+    f64 timeout = ~0;
+    u8 is_add = 1;
+    u8 eidv4_set = 0, slocv4_set = 0, dlocv4_set = 0;
+    u8 eidv6_set = 0, slocv6_set = 0, dlocv6_set = 0;
+    ip4_address_t eidv4, slocv4, dlocv4;
+    ip6_address_t eidv6, slocv6, dlocv6;
+    u8 tmp_eid_lenght = ~0;
+    u8 eid_lenght = ~0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "del")) {
+            is_add = 0;
+        } else if (unformat(input, "eid %U/%d", unformat_ip4_address,
+                            &eidv4, &tmp_eid_lenght)) {
+            eid_lenght = tmp_eid_lenght;
+            eidv4_set = 1;
+        } else if (unformat(input, "eid %U/%d", unformat_ip6_address,
+                            &eidv6, &tmp_eid_lenght)) {
+            eid_lenght = tmp_eid_lenght;
+            eidv6_set = 1;
+        } else if (unformat(input, "sloc %U", unformat_ip4_address, &slocv4)) {
+            slocv4_set = 1;
+        } else if (unformat(input, "sloc %U", unformat_ip6_address, &slocv6)) {
+            slocv6_set = 1;
+        } else if (unformat(input, "dloc %U", unformat_ip4_address, &dlocv4)) {
+            dlocv4_set = 1;
+        } else if (unformat(input, "dloc %U", unformat_ip6_address, &dlocv6)) {
+            dlocv6_set = 1;
+        } else
+            break;
+    }
+
+    if (eidv4_set && eidv6_set) {
+        errmsg ("both eid v4 and v6 addresses set\n");
+        return -99;
+    }
+
+    if (!eidv4_set && !eidv6_set) {
+        errmsg ("eid addresses not set\n");
+        return -99;
+    }
+
+    if (slocv4_set && slocv6_set) {
+        errmsg ("both source v4 and v6 addresses set\n");
+        return -99;
+    }
+
+    if (!slocv4_set && !slocv6_set) {
+        errmsg ("source addresses not set\n");
+        return -99;
+    }
+
+    if (dlocv4_set && dlocv6_set) {
+        errmsg ("both destination v4 and v6 addresses set\n");
+        return -99;
+    }
+
+    if (dlocv4_set && dlocv6_set) {
+        errmsg ("destination addresses not set\n");
+        return -99;
+    }
+
+    if (!(slocv4_set == dlocv4_set && slocv6_set == dlocv6_set)) {
+        errmsg ("mixing type of source and destination address\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry);
+
+    mp->is_add = is_add;
+    if (eidv6_set) {
+        mp->eid_is_ipv6 = 1;
+        memcpy(mp->eid_ip_address, &eidv6, sizeof(eidv6));
+    } else {
+        mp->eid_is_ipv6 = 0;
+        memcpy(mp->eid_ip_address, &eidv4, sizeof(eidv4));
+    }
+    mp->eid_prefix_len = eid_lenght;
+    if (slocv6_set) {
+        mp->address_is_ipv6 = 1;
+        memcpy(mp->source_ip_address, &slocv6, sizeof(slocv6));
+        memcpy(mp->destination_ip_address, &dlocv6, sizeof(dlocv6));
+    } else {
+        mp->address_is_ipv6 = 0;
+        memcpy(mp->source_ip_address, &slocv4, sizeof(slocv4));
+        memcpy(mp->destination_ip_address, &dlocv4, sizeof(dlocv4));
+    }
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_lisp_add_del_map_resolver(vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_lisp_add_del_map_resolver_t *mp;
+    f64 timeout = ~0;
+    u8 is_add = 1;
+    u8 ipv4_set = 0;
+    u8 ipv6_set = 0;
+    ip4_address_t ipv4;
+    ip6_address_t ipv6;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "del")) {
+            is_add = 0;
+        } else if (unformat(input, "%U", unformat_ip4_address, &ipv4)) {
+            ipv4_set = 1;
+        } else if (unformat(input, "%U", unformat_ip6_address, &ipv6)) {
+            ipv6_set = 1;
+        } else
+            break;
+    }
+
+    if (ipv4_set && ipv6_set) {
+        errmsg ("both eid v4 and v6 addresses set\n");
+        return -99;
+    }
+
+    if (!ipv4_set && !ipv6_set) {
+        errmsg ("eid addresses not set\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver);
+
+    mp->is_add = is_add;
+    if (ipv6_set) {
+        mp->is_ipv6 = 1;
+        memcpy(mp->ip_address, &ipv6, sizeof(ipv6));
+    } else {
+        mp->is_ipv6 = 0;
+        memcpy(mp->ip_address, &ipv4, sizeof(ipv4));
+    }
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_lisp_gpe_add_del_iface(vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_lisp_gpe_add_del_iface_t *mp;
+    f64 timeout = ~0;
+    u8 is_set = 0;
+    u8  is_add = 1;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "up")) {
+            is_set = 1;
+            is_add = 1;
+        } else if (unformat(input, "down")) {
+            is_set = 1;
+            is_add = 0;
+        } else
+            break;
+    }
+
+    if (is_set == 0) {
+        errmsg("Value not set\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface);
+
+    mp->is_add = is_add;
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_lisp_locator_set_dump(vat_main_t *vam)
+{
+    vl_api_lisp_locator_set_dump_t *mp;
+    f64 timeout = ~0;
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%=20s%=16s%=16s%=16s\n",
+                "Locator-set", "Locator", "Priority", "Weight");
+    }
+
+    M(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump);
+    /* send it... */
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_lisp_local_eid_table_dump(vat_main_t *vam)
+{
+    vl_api_lisp_local_eid_table_dump_t *mp;
+    f64 timeout = ~0;
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%=20s%=30s\n",
+                "Locator-set", "Eid");
+    }
+
+    M(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump);
+    /* send it... */
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_lisp_gpe_tunnel_dump(vat_main_t *vam)
+{
+    vl_api_lisp_gpe_tunnel_dump_t *mp;
+    f64 timeout = ~0;
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%=20s%=30s%=16s%=16s%=16s%=16s"
+                "%=16s%=16s%=16s%=16s%=16s\n",
+                "Tunel", "Source", "Destination", "Fib encap", "Fib decap",
+                "Decap next", "Lisp version", "Flags", "Next protocol",
+                "ver_res", "res", "iid");
+    }
+
+    M(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump);
+    /* send it... */
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_lisp_map_resolver_dump(vat_main_t *vam)
+{
+    vl_api_lisp_map_resolver_dump_t *mp;
+    f64 timeout = ~0;
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%=20s\n",
+                "Map resolver");
+    }
+
+    M(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump);
+    /* send it... */
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -9597,7 +10372,21 @@ _(trace_profile_add, "id <nn> trace-type <0x1f|0x3|0x9|0x11|0x19> "     \
   "app-data <app_data in hex> [pow] [ppc <encap|decap>]")               \
 _(trace_profile_apply, "id <nn> <ip6-address>/<width>"                  \
   " vrf_id <nn>  add | pop | none")                                     \
-_(trace_profile_del, "")
+_(trace_profile_del, "")                                                \
+_(lisp_add_del_locator_set, "locator-set <locator_name> [del]")         \
+_(lisp_add_del_locator, "locator-set <locator_name> "                   \
+                        "iface <intf> | sw_if_index <sw_if_index> "     \
+                        "p <priority> w <weight> [del]")                \
+_(lisp_add_del_local_eid, "<ipv4|ipv6>/<prefix> "                       \
+                          "locator-set <locator_name> [del]")           \
+_(lisp_gpe_add_del_fwd_entry, "eid <ip4|6-addr>/<prefix> "              \
+    "sloc <ip4/6-addr> dloc <ip4|6-addr> [del]")                        \
+_(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
+_(lisp_gpe_add_del_iface, "up|down")                                    \
+_(lisp_locator_set_dump, "")                                            \
+_(lisp_local_eid_table_dump, "")                                        \
+_(lisp_gpe_tunnel_dump, "")                                             \
+_(lisp_map_resolver_dump, "")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

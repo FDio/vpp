@@ -2184,6 +2184,252 @@ define lisp_gpe_add_del_tunnel_reply {
     u32 sw_if_index;
 };
 
+/** \brief add or delete locator_set
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param locator_set_name - locator name
+*/
+define lisp_add_del_locator_set {
+    u32 client_index;
+    u32 context;
+    u8  is_add;
+    u8  locator_set_name[64];
+};
+
+/** \brief Reply for locator_set add/del
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define lisp_add_del_locator_set_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief add or delete locator for locator_set
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param locator_set_name - name of locator_set to add/del locator
+    @param sw_if_index - index of the interface
+    @param priority - priority of the lisp locator
+    @param weight - weight of the lisp locator
+*/
+define lisp_add_del_locator {
+    u32 client_index;
+    u32 context;
+    u8  is_add;
+    u8  locator_set_name[64];
+    u32 sw_if_index;
+    u8  priority;
+    u8  weight;
+};
+
+/** \brief Reply for locator add/del
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define lisp_add_del_locator_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief add or delete lisp eid-table
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
+    @param ip_address - array of address bytes
+    @param prefix_len - prefix len
+    @param locator_set_name - name of locator_set to add/del eid-table
+*/
+define lisp_add_del_local_eid {
+    u32 client_index;
+    u32 context;
+    u8  is_add;
+    u8  is_ipv6;
+    u8  ip_address[16];
+    u8  prefix_len;
+    u8  locator_set_name[64];
+};
+
+/** \brief Reply for local_eid add/del
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define lisp_add_del_local_eid_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief add or delete lisp gpe maptunel
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param eid_is_ipv6 - if non-zero the address is ipv6, else ipv4
+    @param eid_ip_address - array of address bytes
+    @param eid_prefix_len - prefix len
+    @param address_is_ipv6 - if non-zero the address is ipv6, else ipv4
+    @param source_ip_address - array of address bytes
+    @param destination_ip_address - array of address bytes
+*/
+define lisp_gpe_add_del_fwd_entry {
+    u32 client_index;
+    u32 context;
+    u8  is_add;
+    u8  eid_is_ipv6;
+    u8  eid_ip_address[16];
+    u8  eid_prefix_len;
+    u8  address_is_ipv6;
+    u8  source_ip_address[16];
+    u8  destination_ip_address[16];
+};
+
+/** \brief Reply for gpe_fwd_entry add/del
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define lisp_gpe_add_del_fwd_entry_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief add or delete map-resolver
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
+    @param ip_address - array of address bytes
+*/
+define lisp_add_del_map_resolver {
+    u32 client_index;
+    u32 context;
+    u8  is_add;
+    u8  is_ipv6;
+    u8  ip_address[16];
+};
+
+/** \brief Reply for map_resolver add/del
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define lisp_add_del_map_resolver_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief add or delete gpe_iface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+*/
+define lisp_gpe_add_del_iface {
+    u32 client_index;
+    u32 context;
+    u8  is_add;
+};
+
+/** \brief Reply for gpe_iface add/del
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define lisp_gpe_add_del_iface_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief LISP locator_set status
+    @param locator_set_name - name of the locator_set
+    @param sw_if_index - sw_if_index of the locator
+    @param priority - locator priority
+    @param weight - locator weight
+ */
+manual_java define lisp_locator_set_details {
+    u32 context;
+    u8  locator_set_name[64];
+    u32 sw_if_index;
+    u8  priority;
+    u8  weight;
+};
+
+/** \brief Request for locator_set summary status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define lisp_locator_set_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief LISP local eid table status
+    @param locator_set_name - name of the locator_set
+    @param eid_is_ipv6 - if non-zero the address is ipv6, else ipv4
+    @param eid_ip_address - array of address bytes
+    @param eid_prefix_len - prefix len
+ */
+manual_java define lisp_local_eid_table_details {
+    u32 context;
+    u8  locator_set_name[64];
+    u8  eid_is_ipv6;
+    u8  eid_ip_address[16];
+    u8  eid_prefix_len;
+};
+
+/** \brief Request for local eid table summary status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define lisp_local_eid_table_dump {
+    u32 client_index;
+    u32 context;
+};
+
+manual_java define lisp_gpe_tunnel_details {
+    u32 context;
+    u32 tunnels;
+    u8  is_ipv6;
+    u8  source_ip[16];
+    u8  destination_ip[16];
+    u32 encap_fib_id;
+    u32 decap_fib_id;
+    u32 dcap_next;
+    u8  lisp_ver;
+    u8  next_protocol;
+    u8  flags;
+    u8  ver_res;
+    u8  res;
+    u32 iid;
+};
+
+/** \brief Request for gpe tunnel summary status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define lisp_gpe_tunnel_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief LISP map resolver status
+    @param locator_set_name - name of the locator_set
+    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
+    @param ip_address - array of address bytes
+ */
+manual_java define lisp_map_resolver_details {
+    u32 context;
+    u8  is_ipv6;
+    u8  ip_address[16];
+};
+
+/** \brief Request for map resolver summary status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define lisp_map_resolver_dump {
+    u32 client_index;
+    u32 context;
+};
+
 /* Gross kludge, DGMS */
 define interface_name_renumber {
     u32 client_index;
