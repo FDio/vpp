@@ -36,7 +36,12 @@ sample-plugin_image_include = echo $(arch_lib_dir)/vlib_plugins
 
 ifneq ($($(PLATFORM)_uses_dpdk),no)
 sample-plugin_configure_args = --with-dpdk
+ifeq ($($(PLATFORM)_uses_external_dpdk),yes)
+sample-plugin_CPPFLAGS += -I$($(PLATFORM)_dpdk_inc_dir)
+sample-plugin_LDFLAGS += -L$($(PLATFORM)_dpdk_lib_dir)
+else
 sample-plugin_configure_depend += dpdk-install
 sample-plugin_CPPFLAGS += $(call installed_includes_fn, dpdk)
 sample-plugin_LDFLAGS += $(call installed_libs_fn, dpdk)
+endif
 endif
