@@ -575,4 +575,87 @@ format_function_t format_dpdk_rte_mbuf;
 format_function_t format_dpdk_rx_rte_mbuf;
 unformat_function_t unformat_socket_mem;
 
+
+static inline void
+dpdk_pmd_constructor_init()
+{
+  /* Add references to DPDK Driver Constructor functions to get the dynamic
+   * loader to pull in the driver library & run the constructors.
+   */
+#define _(d)                                            \
+  do {                                                  \
+    void devinitfn_ ##d(void);                          \
+    __attribute__((unused)) void (* volatile pf)(void); \
+    pf = devinitfn_ ##d;                                \
+  } while(0);
+
+#ifdef RTE_LIBRTE_EM_PMD
+  _(em_pmd_drv)
+#endif
+
+#ifdef RTE_LIBRTE_IGB_PMD
+  _(pmd_igb_drv)
+#endif
+
+#ifdef RTE_LIBRTE_IXGBE_PMD
+  _(rte_ixgbe_driver)
+#endif
+
+#ifdef RTE_LIBRTE_I40E_PMD
+  _(rte_i40e_driver)
+  _(rte_i40evf_driver)
+#endif
+
+#ifdef RTE_LIBRTE_FM10K_PMD
+  _(rte_fm10k_driver)
+#endif
+
+#ifdef RTE_LIBRTE_VIRTIO_PMD
+  _(rte_virtio_driver)
+#endif
+
+#ifdef RTE_LIBRTE_VMXNET3_PMD
+  _(rte_vmxnet3_driver)
+#endif
+
+#ifdef RTE_LIBRTE_VICE_PMD
+  _(rte_vice_driver)
+#endif
+
+#ifdef RTE_LIBRTE_ENIC_PMD
+  _(rte_enic_driver)
+#endif
+
+#ifdef RTE_LIBRTE_PMD_AF_PACKET
+  _(pmd_af_packet_drv)
+#endif
+
+#ifdef RTE_LIBRTE_CXGBE_PMD
+  _(rte_cxgbe_driver)
+#endif
+
+#ifdef RTE_LIBRTE_PMD_BOND
+  _(bond_drv)
+#endif
+
+#undef _
+
+/*
+ * At the moment, the ThunderX NIC driver doesn't have
+ * an entry point named "devinitfn_rte_xxx_driver"
+ */
+#define _(d)                                          \
+  do {                                                  \
+    void d(void);			                      \
+    __attribute__((unused)) void (* volatile pf)(void); \
+    pf = d;		                              \
+  } while(0);
+
+#ifdef RTE_LIBRTE_THUNDERVNIC_PMD
+  _(rte_nicvf_pmd_init)
+#endif
+#undef _
+
+}
+
 #endif /* __included_dpdk_h__ */
