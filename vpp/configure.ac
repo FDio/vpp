@@ -11,6 +11,11 @@ AC_ARG_WITH(dpdk,
             [with_dpdk=1],
             [with_dpdk=0])
 
+AC_ARG_ENABLE(dpdk-shared,
+              AC_HELP_STRING([--enable-dpdk-shared],[Link with DPDK shared lib]),
+              [enable_dpdk_shared=1],
+              [enable_dpdk_shared=0])
+
 AC_ARG_WITH(ipsec,
             AC_HELP_STRING([--without-ipsec],[Disable ipsec]),
             [with_ipsec=0],
@@ -27,7 +32,22 @@ AC_ARG_WITH(ipv6sr,
             [with_ipv6sr=1])
 
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
-AC_SUBST(DPDK,[-DDPDK=${with_dpdk}])
+AM_CONDITIONAL(ENABLE_DPDK_SHARED, test "$enable_dpdk_shared" = "1")
+AC_SUBST(DPDK,["-DDPDK=${with_dpdk} -DDPDK_SHARED_LIB=${enable_dpdk_shared}"])
+
+AM_COND_IF(
+	[ENABLE_DPDK_SHARED],
+	[
+		AC_CHECK_HEADERS(
+			[rte_config.h],
+			[], [AC_MSG_ERROR([DPDK header files not found])],
+		)
+		AC_CHECK_LIB(
+			[dpdk], [rte_eal_init],
+			[], [AC_MSG_ERROR([DPDK shared library not found])],
+		)
+	],
+)
 
 AM_CONDITIONAL(WITH_IPSEC, test "$with_ipsec" = "1")
 AC_SUBST(IPSEC,[-DIPSEC=${with_ipsec}])

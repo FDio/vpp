@@ -71,7 +71,11 @@ vpp_LDADD += -lsvm -lsvmdb -lrt
 vpp_LDADD += -lvnetplugin
 
 if WITH_DPDK
+if ENABLE_DPDK_SHARED
+vpp_LDADD += -ldpdk
+else
 vpp_LDADD += -l:libdpdk.a
+endif
 endif
 
 vpp_LDADD += -lvppinfra -lm -lpthread -ldl
