@@ -17,7 +17,7 @@ vpp_native_tools = vppapigen
 
 vpp_uses_dpdk = yes
 
-vpp_root_packages = vpp vlib vlib-api vnet svm dpdk vpp-api-test \
+vpp_root_packages = vpp vlib vlib-api vnet svm vpp-api-test \
 	vpp-japi gmod
 
 vpp_configure_args_vpp = --with-dpdk
@@ -26,6 +26,11 @@ vnet_configure_args_vpp = --with-dpdk
 # Set these parameters carefully. The vlib_buffer_t is 128 bytes, i.e.
 vlib_configure_args_vpp = --with-pre-data=128
 
+# DPDK configuration parameters
+# vpp_uses_external_dpdk = yes
+# vpp_dpdk_inc_dir = /usr/include/dpdk
+# vpp_dpdk_lib_dir = /usr/lib
+# vpp_dpdk_shared_lib = yes
 
 vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
 	-fstack-protector-all -fPIC -Werror
