@@ -11,6 +11,11 @@ AC_ARG_WITH(dpdk,
             [with_dpdk=1],
             [with_dpdk=0])
 
+AC_ARG_ENABLE(dpdk-dynamic,
+              AC_HELP_STRING([--enable-dpdk-dynamic],[Link DPDK dynamically]),
+              [enable_dpdk_dynamic=1],
+              [enable_dpdk_dynamic=0])
+
 AC_ARG_WITH(ipsec,
             AC_HELP_STRING([--without-ipsec],[Disable ipsec]),
             [with_ipsec=0],
@@ -27,7 +32,8 @@ AC_ARG_WITH(ipv6sr,
             [with_ipv6sr=1])
 
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
-AC_SUBST(DPDK,[-DDPDK=${with_dpdk}])
+AM_CONDITIONAL(ENABLE_DPDK_DYNAMIC, test "$enable_dpdk_dynamic" = "1")
+AC_SUBST(DPDK,["-DDPDK=${with_dpdk} -DDPDK_DYNAMIC_LINK=${enable_dpdk_dynamic}"])
 
 AM_CONDITIONAL(WITH_IPSEC, test "$with_ipsec" = "1")
 AC_SUBST(IPSEC,[-DIPSEC=${with_ipsec}])
