@@ -124,7 +124,7 @@ ip4_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, u32 ec_len)
   ip0 = vlib_buffer_get_current(b0);
 
   /* Apply the encap string. */
-#if DPDK
+#if DPDK > 0
   rte_memcpy(ip0, ec0, ec_len);
 #else
   memcpy(ip0, ec0, ec_len);
@@ -167,7 +167,7 @@ ip4_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
   ip1 = vlib_buffer_get_current (b1);
 
   /* Apply the encap string */
-#ifdef DPDK
+#if DPDK > 0
   rte_memcpy (ip0, ec0, ec_len);
   rte_memcpy (ip1, ec1, ec_len);
 #else
