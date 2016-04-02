@@ -16,6 +16,7 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/error.h>
 #include <vppinfra/format.h>
+#include <vppinfra/bitmap.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/dpdk/dpdk.h>
@@ -1565,6 +1566,7 @@ dpdk_process (vlib_main_t * vm,
 {
   clib_error_t * error;
   vnet_main_t * vnm = vnet_get_main();
+  vnet_interface_main_t * im = &vnm->interface_main;
   dpdk_main_t * dm = &dpdk_main;
   ethernet_main_t * em = &ethernet_main;
   dpdk_device_t * xd;
@@ -1635,10 +1637,14 @@ dpdk_process (vlib_main_t * vm,
 		  memcpy (hi->hw_address, addr, 6);
 		  memcpy (ei->address, addr, 6);
 		  /* Add MAC to other slave links */
-		  while (nlink > 1) {
+		  while (nlink >= 1) {
 		      nlink--;
-		      rte_eth_dev_mac_addr_add(
+		      if (nlink) rte_eth_dev_mac_addr_add(
 			  slink[nlink], (struct ether_addr *)addr, 0);
+		      /* Set bond_slaves_by_sw_interface bitmap */
+		      im->bond_slaves_by_sw_interface = clib_bitmap_set(
+			  im->bond_slaves_by_sw_interface, 
+			  dm->devices[slink[nlink]].vlib_sw_if_index, 1);
 		  }
 	      }
 	  }

@@ -42,10 +42,17 @@
 u8 * format_vnet_sw_interface_flags (u8 * s, va_list * args)
 {
   u32 flags = va_arg (*args, u32);
+  uword slave = va_arg(*args, uword);
 
-  s = format (s, "%s", (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? "up" : "down");
-  if (flags & VNET_SW_INTERFACE_FLAG_PUNT)
-    s = format (s, "/punt");
+  if (slave) 
+    s = format (s, "bond-slave");
+  else 
+    {
+      s = format (s, "%s", 
+		  (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? "up" : "down");
+      if (flags & VNET_SW_INTERFACE_FLAG_PUNT) 
+	s = format (s, "/punt");
+    }
 
   return s;
 }
@@ -53,6 +60,7 @@ u8 * format_vnet_sw_interface_flags (u8 * s, va_list * args)
 u8 * format_vnet_hw_interface (u8 * s, va_list * args)
 {
   vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
+  vnet_interface_main_t * im = &vnm->interface_main;
   vnet_hw_interface_t * hi = va_arg (*args, vnet_hw_interface_t *);
   vnet_hw_interface_class_t * hw_class;
   vnet_device_class_t * dev_class;
@@ -65,9 +73,13 @@ u8 * format_vnet_hw_interface (u8 * s, va_list * args)
 
   indent = format_get_indent (s);
 
-  s = format (s, "%-32v%=6d%=8s",
-	      hi->name, hi->hw_if_index,
-	      hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP ? "up" : "down");
+  s = format (s, "%-32v%=6d", hi->name, hi->hw_if_index);
+
+  if (clib_bitmap_get (im->bond_slaves_by_sw_interface, hi->sw_if_index))
+    s = format (s, "%=8s", "slave");
+  else
+    s = format (s, "%=8s", 
+		hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP ? "up" : "down");
 
   hw_class = vnet_get_hw_interface_class (vnm, hi->hw_class_index);
   dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
@@ -240,7 +252,9 @@ u8 * format_vnet_sw_interface (u8 * s, va_list * args)
 
   s = format (s, "%-32U%=5d%=16U",
 	      format_vnet_sw_interface_name, vnm, si, si->sw_if_index,
-	      format_vnet_sw_interface_flags, si->flags);
+	      format_vnet_sw_interface_flags, si->flags,
+	      clib_bitmap_get (im->bond_slaves_by_sw_interface, 
+			       si->sw_if_index));
 
   s = format_vnet_sw_interface_cntrs(s, im, si);
 

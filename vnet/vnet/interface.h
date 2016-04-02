@@ -440,6 +440,9 @@ typedef struct {
   vlib_simple_counter_main_t * sw_if_counters;
   vlib_combined_counter_main_t * combined_sw_if_counters;
 
+  /* Bitmap showing if sw interface is a slave link to a bonded interface  */
+  uword * bond_slaves_by_sw_interface;
+
   vnet_hw_interface_nodes_t * deleted_hw_interface_nodes;
 
   /* pcap drop tracing */

@@ -39,6 +39,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
+#include <vppinfra/bitmap.h>
 
 #define VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE (1 << 0)
 #define VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE (1 << 1)
@@ -322,6 +323,7 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index, u32 flag
 {
   vnet_sw_interface_t * si = vnet_get_sw_interface (vnm, sw_if_index);
   vlib_main_t * vm = vnm->vlib_main;
+  vnet_interface_main_t * im = &vnm->interface_main;
   u32 mask;
   clib_error_t * error = 0;
   u32 is_create = (helper_flags & VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE) != 0;
@@ -362,6 +364,15 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index, u32 flag
 	      goto done;
 	    }
 	}
+
+      /* Donot change state for slave link of bonded interfaces */
+      if (clib_bitmap_get (im->bond_slaves_by_sw_interface, sw_if_index))
+        {
+	  error = clib_error_return 
+	      (0, "not allowed as %U belong to a BondEthernet interface",
+	       format_vnet_sw_interface_name, vnm, si);
+	  goto done;
+        }
 
       /* Already in the desired state? */
       if ((si->flags & mask) == flags)
