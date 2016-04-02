@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a045101_568374cc",
+        "filename": "vnet/vnet/lisp-gpe/decap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-02T16:52:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a045101_d61f84b6",
+      "revId": "19d5ee49e17e0da0202479da40d99c86236986ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a045101_b61cf8c2",
         "filename": "vnet/vnet/lisp-gpe/decap.c",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2016-04-02T15:57:17Z",
       "side": 1,
       "message": "Please don\u0027t forget all about this.",
+      "revId": "19d5ee49e17e0da0202479da40d99c86236986ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_767e70e6",
+        "filename": "vnet/vnet/lisp-gpe/decap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-02T16:52:12Z",
+      "side": 1,
+      "message": "Ah, this is just a reminder in case we want to implement something LISP calls \"data-plane security\". Most probable we will want to do it in the future, but this wasn\u0027t something planned for this patch. Mainly because the UDP-based LISP control protocol defined in RFC6830 is 1) pull-based and 2) it can\u0027t ensure reliable delivery of messages. For this feature to work we would need TCP and to push state from the mapping-system. That\u0027s not yet on our roadmap, as it\u0027s in fact a feature not yet standardized.",
+      "parentUuid": "3a045101_b61cf8c2",
       "revId": "19d5ee49e17e0da0202479da40d99c86236986ca",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
