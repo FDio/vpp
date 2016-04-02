@@ -686,7 +686,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
   unix_main_t * um = &unix_main;
   unix_cli_main_t * cm = &unix_cli_main;
   int flags, standard_input_fd;
-  clib_error_t * error;
+  clib_error_t * error = 0;
 
   /* We depend on unix flags being set. */
   if ((error = vlib_call_config_function (vm, unix_config)))
@@ -704,14 +704,15 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
       unix_cli_file_add (cm, "stdin", standard_input_fd);
     }
 
-  {
+  /* If we have socket config, LISTEN, otherwise, don't */
+  clib_socket_t * s = &um->cli_listen_socket;
+  if(s->config && s->config[0] != 0) {
     /* CLI listen. */
-    clib_socket_t * s = &um->cli_listen_socket;
     unix_file_t template = {0};
 
     s->flags = SOCKET_IS_SERVER; /* listen, don't connect */
-
     error = clib_socket_init (s);
+
     if (error)
       return error;
 
