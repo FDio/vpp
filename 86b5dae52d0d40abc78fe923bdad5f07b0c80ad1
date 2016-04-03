@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_76f31074",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1645,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-04-03T03:45:00Z",
+      "side": 1,
+      "message": "Why do you need bitmap here? Can this be solved simply by introducing new flag in the vnet_hw_interface_t?",
+      "range": {
+        "startLine": 1645,
+        "startChar": 8,
+        "endLine": 1645,
+        "endChar": 10
+      },
+      "revId": "86b5dae52d0d40abc78fe923bdad5f07b0c80ad1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
