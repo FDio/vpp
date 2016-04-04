@@ -1,13 +1,29 @@
 #!/bin/bash
-if [ $# -gt 0 ]; then
-    echo exec ${@} | vpp_api_test | sed 's/vat# //g'
+PREFIX_ARGS=""
+CMD_ARGS=""
+while [[ $# -gt 0 ]]; do
+    arg=$1
+    shift
+    case ${arg} in
+	--prefix|-p)
+	    PREFIX_ARGS="chroot prefix ${1}"
+	    shift
+	;;
+	*)
+	    CMD_ARGS="$CMD_ARGS ${arg}"
+        ;;
+    esac
+done
+
+if [ "x${CMD_ARGS}" != "x" ]; then
+    echo exec ${CMD_ARGS} | vpp_api_test $PREFIX_ARGS | sed 's/vat# //g'
 else
     echo -n "vpp# "
     while read CMD; do
         if [ "x$CMD" == "xexit" ]; then
             exit
         elif [ "x$CMD" != "x" ]; then
-            echo exec $CMD | vpp_api_test | sed 's/vat# //g'
+            echo exec $CMD | vpp_api_test $PREFIX_ARGS| sed 's/vat# //g'
         fi
         echo -n "vpp# "
     done
