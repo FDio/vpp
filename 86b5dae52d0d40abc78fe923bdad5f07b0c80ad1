@@ -22,6 +22,30 @@
       "revId": "86b5dae52d0d40abc78fe923bdad5f07b0c80ad1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_36ed888c",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1645,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-04T00:10:24Z",
+      "side": 1,
+      "message": "Since I am not comfortable using a flags bit vnet_hw_interface_t struct for this purpose, I thought it would use less memory than adding a new u8 field to vnet_hw_interface_t, as bitmap with trail 0\u0027s do not need to occupy any memory for that part. Also, if there is a need to support further \"show bonded interface..\" type CLI/API in the future, a bitmap will be quicker for finding all the links which are slaves to a bonded interface.",
+      "parentUuid": "3a045101_76f31074",
+      "range": {
+        "startLine": 1645,
+        "startChar": 8,
+        "endLine": 1645,
+        "endChar": 10
+      },
+      "revId": "86b5dae52d0d40abc78fe923bdad5f07b0c80ad1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
