@@ -839,6 +839,41 @@ ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm,
   return;
 }
 
+/*
+ * Set the L2/L3 mode for the subinterface regardless of port
+ */
+void
+ethernet_sw_interface_set_l2_mode_noport (vnet_main_t * vnm,
+                                          u32 sw_if_index,
+                                          u32 l2)
+{
+  subint_config_t *subint;
+  u32 dummy_flags;
+  u32 dummy_unsup;
+
+  /* Find the config for this subinterface */
+  subint = ethernet_sw_interface_get_config (vnm, sw_if_index, &dummy_flags, &dummy_unsup);
+
+  if (subint == 0) {
+    /* unimplemented or not ethernet */
+    goto done;
+  }
+
+  /*
+   * Double check that the config we found is for our interface (or the
+   * interface is down)
+   */
+  ASSERT ((subint->sw_if_index == sw_if_index) | (subint->sw_if_index == ~0));
+
+  if (l2) {
+    subint->flags |= SUBINT_CONFIG_L2;
+  } else {
+    subint->flags &= ~SUBINT_CONFIG_L2;
+  }
+
+ done:
+  return;
+}
 
 static clib_error_t *
 ethernet_sw_interface_add_del (vnet_main_t * vnm,
