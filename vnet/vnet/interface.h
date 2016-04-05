@@ -311,6 +311,15 @@ typedef struct vnet_hw_interface_t {
 
   /* Count of number of L2 subinterfaces */
   u32 l2_if_count;
+
+  /* Bonded interface info -
+     0       - not a bonded interface nor a slave
+     ~0      - slave to a bonded interface
+     others  - A bonded interface with a pointer to bitmap for all slaves */
+  uword *bond_info;
+#define VNET_HW_INTERFACE_BOND_INFO_NONE ((uword *) 0)
+#define VNET_HW_INTERFACE_BOND_INFO_SLAVE ((uword *) ~0)
+
 } vnet_hw_interface_t;
 
 typedef enum {
@@ -363,6 +372,8 @@ typedef struct {
 #define VNET_SW_INTERFACE_FLAG_PROXY_ARP (1 << 2)
 
 #define VNET_SW_INTERFACE_FLAG_UNNUMBERED (1 << 3)
+
+#define VNET_SW_INTERFACE_FLAG_BOND_SLAVE (1 << 4)
 
   /* Index for this interface. */
   u32 sw_if_index;

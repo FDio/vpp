@@ -1859,6 +1859,11 @@ vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
     si = vnet_get_sup_sw_interface (vnm, ntohl(mp->sw_if_index));
     hi = vnet_get_sup_hw_interface (vnm, ntohl(mp->sw_if_index));
 
+    if (hi->bond_info == VNET_HW_INTERFACE_BOND_INFO_SLAVE) {
+         rv = VNET_API_ERROR_BOND_SLAVE_NOT_ALLOWED;
+	goto out;
+    }
+
     sw_if_index = si->sw_if_index;
     sub_id = ntohl(mp->sub_id);
     

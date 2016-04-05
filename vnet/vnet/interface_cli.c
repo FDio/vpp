@@ -39,6 +39,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vppinfra/bitmap.h>
 
 static int compare_interface_names (void *a1, void *a2)
 {
@@ -58,34 +59,33 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
   vnet_interface_main_t * im = &vnm->interface_main;
   vnet_hw_interface_t * hi;
   u32 hw_if_index, * hw_if_indices = 0;
-  int i, verbose = 1, is_show;
+  int i, verbose = -1, is_show, show_bond = 0;
 
   is_show = strstr (cmd->path, "show") != 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       /* See if user wants to show a specific interface. */
       if (unformat (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
-	{
 	  vec_add1 (hw_if_indices, hw_if_index);
-	  /* Implies verbose. */
-	  verbose = 1;
-	}
+
       /* See if user wants to show an interface with a specific hw_if_index. */
       else if (unformat (input, "%u", &hw_if_index))
-       {
          vec_add1 (hw_if_indices, hw_if_index);
-         /* Implies verbose. */
-         verbose = 1;
-       }
 
       else if (unformat (input, "verbose"))
-	verbose = 1;
+	  verbose = 1; /* this is also the default */
 
       else if (unformat (input, "detail"))
 	verbose = 2;
 
       else if (unformat (input, "brief"))
 	verbose = 0;
+
+      else if (unformat (input, "bond"))
+      {
+	show_bond = 1;
+	if (verbose < 0) verbose = 0; /* default to brief for link bonding */
+      }
 
       else
 	{
@@ -100,6 +100,8 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
     pool_foreach (hi, im->hw_interfaces,
 		  vec_add1 (hw_if_indices, hi - im->hw_interfaces));
 
+  if (verbose < 0) verbose = 1; /* default to verbose (except bond) */
+
   if (is_show)
     {
       /* Sort by name. */
@@ -109,7 +111,23 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
       for (i = 0; i < vec_len (hw_if_indices); i++)
 	{
 	  hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);
-	  vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm, hi, verbose);
+	  if (show_bond == 0) /* show all interfaces */
+	      vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm, 
+			       hi, verbose);
+	  else if ((hi->bond_info) && 
+		   (hi->bond_info != VNET_HW_INTERFACE_BOND_INFO_SLAVE))
+	    { /* show only bonded interface and all its slave interfaces */
+	      int hw_idx;
+	      vnet_hw_interface_t * shi;
+	      vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm, 
+			       hi, verbose);
+	      clib_bitmap_foreach (hw_idx, hi->bond_info,
+		({
+		  shi = vnet_get_hw_interface(vnm, hw_idx);
+		  vlib_cli_output (vm, "%U\n", 
+				   format_vnet_hw_interface, vnm, shi, verbose);
+		}));
+	    }
 	}
     }
   else
@@ -133,7 +151,7 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (show_hw_interfaces_command, static) = {
   .path = "show hardware-interfaces",
-  .short_help = "show hardware-interfaces [verbose|brief]  [<if-name1> <if-name2> ...]",
+  .short_help = "show hardware-interfaces [brief|verbose|detail] [bond] [<if-name1> <if-name2> ...]",
   .function = show_or_clear_hw_interfaces,
 };
 
@@ -556,6 +574,13 @@ create_sub_interfaces (vlib_main_t * vm,
   */
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (hi->bond_info == VNET_HW_INTERFACE_BOND_INFO_SLAVE) {
+    error = clib_error_return (
+	0, "not allowed as %v belong to a BondEthernet interface", hi->name);
+    goto done;
+  }
+
   for (id = id_min; id <= id_max; id++)
     {
       uword * p;

@@ -363,6 +363,15 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index, u32 flag
 	    }
 	}
 
+      /* Donot change state for slave link of bonded interfaces */
+      if (si->flags & VNET_SW_INTERFACE_FLAG_BOND_SLAVE)
+        {
+	  error = clib_error_return 
+	      (0, "not allowed as %U belong to a BondEthernet interface",
+	       format_vnet_sw_interface_name, vnm, si);
+	  goto done;
+        }
+
       /* Already in the desired state? */
       if ((si->flags & mask) == flags)
 	goto done;
