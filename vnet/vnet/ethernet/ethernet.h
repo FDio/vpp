@@ -355,6 +355,7 @@ ethernet_buffer_get_header (vlib_buffer_t * b)
 ethernet_main_t * ethernet_get_main (vlib_main_t * vm);
 u32 ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags);
 void ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index, u32 l2);
+void ethernet_sw_interface_set_l2_mode_noport (vnet_main_t * vnm, u32 sw_if_index, u32 l2);
 void ethernet_set_rx_redirect (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 enable);
 
 int
