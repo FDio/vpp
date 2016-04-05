@@ -16,6 +16,7 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/error.h>
 #include <vppinfra/format.h>
+#include <vppinfra/bitmap.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/dpdk/dpdk.h>
@@ -1622,23 +1623,34 @@ dpdk_process (vlib_main_t * vm,
 	      u8  slink[16];
 	      int nlink = rte_eth_bond_slaves_get(i, slink, 16);
 	      if (nlink > 0) {
-		  vnet_hw_interface_t * hi;
-		  ethernet_interface_t * ei;
+		  vnet_hw_interface_t * bhi;
+		  ethernet_interface_t * bei;
 		  /* Get MAC of 1st slave link */
 		  rte_eth_macaddr_get(slink[0], (struct ether_addr *)addr);
 		  /* Set MAC of bounded interface to that of 1st slave link */
 		  rte_eth_bond_mac_address_set(i, (struct ether_addr *)addr);
 		  /* Populate MAC of bonded interface in VPP hw tables */
-		  hi = vnet_get_hw_interface (
+		  bhi = vnet_get_hw_interface(
 		      vnm, dm->devices[i].vlib_hw_if_index);
-		  ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
-		  memcpy (hi->hw_address, addr, 6);
-		  memcpy (ei->address, addr, 6);
-		  /* Add MAC to other slave links */
-		  while (nlink > 1) {
-		      nlink--;
-		      rte_eth_dev_mac_addr_add(
-			  slink[nlink], (struct ether_addr *)addr, 0);
+		  bei = pool_elt_at_index(em->interfaces, bhi->hw_instance);
+		  memcpy(bhi->hw_address, addr, 6);
+		  memcpy(bei->address, addr, 6);
+		  while (nlink >= 1) { /* for all slave links */
+		      int slave = slink[--nlink];
+		      dpdk_device_t * sdev = &dm->devices[slave];
+		      vnet_hw_interface_t * shi;
+		      vnet_sw_interface_t * ssi;
+		      /* Add MAC to all slave links except the first one */
+		      if (nlink) rte_eth_dev_mac_addr_add(
+			  slave, (struct ether_addr *)addr, 0);
+		      /* Set slaves bitmap for bonded interface */
+		      bhi->bond_info = clib_bitmap_set(
+			  bhi->bond_info, sdev->vlib_hw_if_index, 1);
+		      /* Set slave link flags on slave interface */
+		      shi = vnet_get_hw_interface(vnm, sdev->vlib_hw_if_index);
+		      ssi = vnet_get_sw_interface(vnm, sdev->vlib_sw_if_index);
+		      shi->bond_info = VNET_HW_INTERFACE_BOND_INFO_SLAVE;
+		      ssi->flags |= VNET_SW_INTERFACE_FLAG_BOND_SLAVE;
 		  }
 	      }
 	  }

@@ -38,14 +38,21 @@
  */
 
 #include <vnet/vnet.h>
+#include <vppinfra/bitmap.h>
 
 u8 * format_vnet_sw_interface_flags (u8 * s, va_list * args)
 {
   u32 flags = va_arg (*args, u32);
 
-  s = format (s, "%s", (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? "up" : "down");
-  if (flags & VNET_SW_INTERFACE_FLAG_PUNT)
-    s = format (s, "/punt");
+  if (flags & VNET_SW_INTERFACE_FLAG_BOND_SLAVE) 
+    s = format (s, "bond-slave");
+  else 
+    {
+      s = format (s, "%s", 
+		  (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? "up" : "down");
+      if (flags & VNET_SW_INTERFACE_FLAG_PUNT) 
+	s = format (s, "/punt");
+    }
 
   return s;
 }
@@ -65,14 +72,24 @@ u8 * format_vnet_hw_interface (u8 * s, va_list * args)
 
   indent = format_get_indent (s);
 
-  s = format (s, "%-32v%=6d%=8s",
-	      hi->name, hi->hw_if_index,
-	      hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP ? "up" : "down");
+  s = format (s, "%-32v%=6d", hi->name, hi->hw_if_index);
+
+  if (hi->bond_info == VNET_HW_INTERFACE_BOND_INFO_SLAVE)
+    s = format (s, "%=8s", "slave");
+  else
+    s = format (s, "%=8s", 
+		hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP ? "up" : "down");
 
   hw_class = vnet_get_hw_interface_class (vnm, hi->hw_class_index);
   dev_class = vnet_get_device_class (vnm, hi->dev_class_index);
 
-  if (dev_class->format_device_name)  
+  if (hi->bond_info && (hi->bond_info != VNET_HW_INTERFACE_BOND_INFO_SLAVE)) 
+    {
+      int hw_idx;
+      s = format (s, "Slave-Idx:");
+      clib_bitmap_foreach (hw_idx, hi->bond_info, format(s, " %d", hw_idx));
+    }
+  else if (dev_class->format_device_name)  
     s = format (s, "%U", dev_class->format_device_name, hi->dev_instance);
   else
     s = format (s, "%s%d", dev_class->name, hi->dev_instance);
