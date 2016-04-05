@@ -631,10 +631,13 @@ static clib_error_t * start_workers (vlib_main_t * vm)
               {
                 vlib_next_frame_t *nf = &nm_clone->next_frames[j];
                 u32 save_node_runtime_index;
+                u32 save_flags;
 
                 save_node_runtime_index = nf->node_runtime_index;
+                save_flags = nf->flags & VLIB_FRAME_NO_FREE_AFTER_DISPATCH;
                 vlib_next_frame_init (nf);
                 nf->node_runtime_index = save_node_runtime_index;
+                nf->flags = save_flags;
               }
 
             /* fork the frame dispatch queue */
@@ -843,10 +846,13 @@ void vlib_worker_thread_node_runtime_update(void)
         {
           vlib_next_frame_t *nf = &nm_clone->next_frames[j];
           u32 save_node_runtime_index;
+          u32 save_flags;
 
           save_node_runtime_index = nf->node_runtime_index;
+          save_flags = nf->flags & VLIB_FRAME_NO_FREE_AFTER_DISPATCH;
           vlib_next_frame_init (nf);
           nf->node_runtime_index = save_node_runtime_index;
+          nf->flags = save_flags;
         }
 
       old_nodes_clone = nm_clone->nodes;
