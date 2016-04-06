@@ -1,15 +1,17 @@
-commit 3253bbc79c8a1eddf791d9ec11bcea4a004d258e
-Author: John Daley <johndale@cisco.com>
-Date:   Thu Mar 17 15:57:05 2016 -0700
+From 3ffb9431d6ba34dbcffab5cff4c060d5dca167e1 Mon Sep 17 00:00:00 2001
+From: John Daley <johndale@cisco.com>
+Date: Thu, 17 Mar 2016 15:57:05 -0700
+Subject: [PATCH 16/22]     enic: fix mbuf flags on Rx
 
-    enic: fix mbuf flags on Rx
-    
     In the receive path, the function to set mbuf ol_flags used the
     mbuf packet_type before it was set.
-    
+
     Fixes: 947d860c821f ("enic: improve Rx performance")
-    
+
     Signed-off-by: John Daley <johndale@cisco.com>
+---
+ drivers/net/enic/enic_rx.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/enic/enic_rx.c b/drivers/net/enic/enic_rx.c
 index 945a60f..59ebaa4 100644
@@ -36,3 +38,6 @@ index 945a60f..59ebaa4 100644
  
  		/* prefetch mbuf data for caller */
  		rte_packet_prefetch(RTE_PTR_ADD(rxmb->buf_addr,
+-- 
+1.9.1
+

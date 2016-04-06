@@ -1,9 +1,8 @@
-commit 947d860c821f4248dcf2fc01e98671524973eeea
-Author: John Daley <johndale@cisco.com>
-Date:   Fri Mar 4 13:09:00 2016 -0800
+From 057358356e7d05f07ab2df37c12b1cce37a3cca9 Mon Sep 17 00:00:00 2001
+From: John Daley <johndale@cisco.com>
+Date: Fri, 4 Mar 2016 13:09:00 -0800
+Subject: [PATCH 11/22]     enic: improve Rx performance
 
-    enic: improve Rx performance
-    
     This is a wholesale replacement of the Enic PMD receive path in order
     to improve performance and code clarity. The changes are:
     - Simplify and reduce code path length of receive function.
@@ -13,8 +12,19 @@ Date:   Fri Mar 4 13:09:00 2016 -0800
     - Remove the unneeded container structure around the RQ mbuf ring
     - Prefetch next Mbuf and descriptors while processing the current one
     - Use a lookup table for converting CQ flags to mbuf flags.
-    
+
     Signed-off-by: John Daley <johndale@cisco.com>
+---
+ drivers/net/enic/Makefile       |   1 +
+ drivers/net/enic/base/vnic_rq.c |  99 ++---------
+ drivers/net/enic/base/vnic_rq.h | 147 +---------------
+ drivers/net/enic/enic.h         |  16 +-
+ drivers/net/enic/enic_ethdev.c  |  27 ++-
+ drivers/net/enic/enic_main.c    | 321 ++++++++++------------------------
+ drivers/net/enic/enic_res.h     |  16 +-
+ drivers/net/enic/enic_rx.c      | 370 ++++++++++++++++++++++++++++++++++++++++
+ 8 files changed, 511 insertions(+), 486 deletions(-)
+ create mode 100644 drivers/net/enic/enic_rx.c
 
 diff --git a/drivers/net/enic/Makefile b/drivers/net/enic/Makefile
 index f0ee093..f316274 100644
@@ -1334,3 +1344,6 @@ index 0000000..945a60f
 +
 +	return nb_rx;
 +}
+-- 
+1.9.1
+

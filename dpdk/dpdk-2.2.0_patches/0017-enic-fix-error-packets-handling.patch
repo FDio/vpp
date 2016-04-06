@@ -1,24 +1,26 @@
-commit 5776c30293bbbdb3e332c868fbccf99b2026fba0
-Author: John Daley <johndale@cisco.com>
-Date:   Thu Mar 17 15:57:06 2016 -0700
+From 678e5952cf49bb66c2d697581a70dc8c7d703e8f Mon Sep 17 00:00:00 2001
+From: John Daley <johndale@cisco.com>
+Date: Thu, 17 Mar 2016 15:57:06 -0700
+Subject: [PATCH 17/22]     enic: fix error packets handling
 
-    enic: fix error packets handling
-    
     If the packet_error bit in the completion descriptor is set, the
     remainder of the descriptor and data are invalid. PKT_RX_MAC_ERR
     was set in the mbuf->ol_flags if packet_error was set and used
     later to indicate an error packet. But since PKT_RX_MAC_ERR is
     defined as 0, mbuf flags and packet types and length were being
     misinterpreted.
-    
+
     Make the function enic_cq_rx_to_pkt_err_flags() return true for error
     packets and use the return value instead of mbuf->ol_flags to indicate
     error packets. Also remove warning for error packets and rely on
     rx_error stats.
-    
+
     Fixes: 947d860c821f ("enic: improve Rx performance")
-    
+
     Signed-off-by: John Daley <johndale@cisco.com>
+---
+ drivers/net/enic/enic_rx.c | 43 ++++++++++++++++++-------------------------
+ 1 file changed, 18 insertions(+), 25 deletions(-)
 
 diff --git a/drivers/net/enic/enic_rx.c b/drivers/net/enic/enic_rx.c
 index 59ebaa4..817a891 100644
@@ -110,3 +112,6 @@ index 59ebaa4..817a891 100644
  
  		/* prefetch mbuf data for caller */
  		rte_packet_prefetch(RTE_PTR_ADD(rxmb->buf_addr,
+-- 
+1.9.1
+

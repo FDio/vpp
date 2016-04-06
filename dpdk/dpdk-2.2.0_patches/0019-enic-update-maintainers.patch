@@ -1,19 +1,22 @@
-commit 57524648749fb7dc1daf3af3213dab472ee432de
-Author: John Daley <johndale@cisco.com>
-Date:   Fri Mar 18 11:27:07 2016 -0700
+From 8ad252ab40b8f95db8413220146d54bf8a7d7be8 Mon Sep 17 00:00:00 2001
+From: John Daley <johndale@cisco.com>
+Date: Fri, 18 Mar 2016 11:27:07 -0700
+Subject: [PATCH 19/22]     enic: update maintainers
 
-    enic: update maintainers
-    
     Change maintainers for ENIC PMD and fix pointer to enic
     documentation in MAINTAINERS.
-    
+
     Signed-off-by: John Daley <johndale@cisco.com>
+---
+ MAINTAINERS              | 3 ++-
+ doc/guides/nics/enic.rst | 2 +-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 6ed54dd..e848ffa 100644
+index b90aeea..f5b8bb4 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -276,8 +276,9 @@ F: doc/guides/nics/cxgbe.rst
+@@ -264,8 +264,9 @@ F: doc/guides/nics/cxgbe.rst
  
  Cisco enic
  M: John Daley <johndale@cisco.com>
@@ -34,3 +37,6 @@ index 2a228fd..e67c3db 100644
  - John Daley <johndale@cisco.com>
 -- Sujith Sankar <ssujith@cisco.com>
 +- Nelson Escobar <neescoba@cisco.com>
+-- 
+1.9.1
+

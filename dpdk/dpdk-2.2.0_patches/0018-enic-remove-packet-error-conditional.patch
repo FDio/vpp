@@ -1,12 +1,14 @@
-commit 50765c820e98a4434efbc0a58df4b9d78afb7a5f
-Author: John Daley <johndale@cisco.com>
-Date:   Thu Mar 17 15:57:07 2016 -0700
+From 2fa6a45ff9f9fb3108b09403e32393416bd0a732 Mon Sep 17 00:00:00 2001
+From: John Daley <johndale@cisco.com>
+Date: Thu, 17 Mar 2016 15:57:07 -0700
+Subject: [PATCH 18/22]     enic: remove packet error conditional
 
-    enic: remove packet error conditional
-    
     small cleanup to remove conditional.
-    
+
     Signed-off-by: John Daley <johndale@cisco.com>
+---
+ drivers/net/enic/enic_rx.c | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/net/enic/enic_rx.c b/drivers/net/enic/enic_rx.c
 index 817a891..232987a 100644
@@ -51,3 +53,6 @@ index 817a891..232987a 100644
  
  		/* prefetch mbuf data for caller */
  		rte_packet_prefetch(RTE_PTR_ADD(rxmb->buf_addr,
+-- 
+1.9.1
+

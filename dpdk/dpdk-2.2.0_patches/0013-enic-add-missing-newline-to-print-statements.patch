@@ -1,15 +1,17 @@
-commit bba57df3861c644e98c5e8f79e62f6ca5074cb40
-Author: Nelson Escobar <neescoba@cisco.com>
-Date:   Thu Mar 17 15:48:13 2016 -0700
+From a1ed99bc24f88f061d75eed0db84dc6355855dd2 Mon Sep 17 00:00:00 2001
+From: Nelson Escobar <neescoba@cisco.com>
+Date: Thu, 17 Mar 2016 15:48:13 -0700
+Subject: [PATCH 13/22]     enic: add missing newline to print statements
 
-    enic: add missing newline to print statements
-    
     Add the missing '\n' character to the end of a few print statements.
-    
+
     Fixes: fefed3d1e62c ("enic: new driver")
-    
+
     Signed-off-by: Nelson Escobar <neescoba@cisco.com>
     Acked-by: John Daley <johndale@cisco.com>
+---
+ drivers/net/enic/enic_main.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
 index 9fff020..e30672c 100644
@@ -40,3 +42,6 @@ index 9fff020..e30672c 100644
  			__func__, name);
  		return NULL;
  	}
+-- 
+1.9.1
+

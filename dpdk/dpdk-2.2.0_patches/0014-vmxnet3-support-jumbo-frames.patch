@@ -1,7 +1,7 @@
-From f582f39372766a24d9bdbdc3a2a3334de88a70f1 Mon Sep 17 00:00:00 2001
+From fef2b892245d5a2f3c68d2e03a6c5f2a40205cf7 Mon Sep 17 00:00:00 2001
 From: Steve Shin <jonshin@cisco.com>
 Date: Wed, 23 Mar 2016 09:54:54 -0700
-Subject: [PATCH] vmxnet3: support jumbo frames
+Subject: [PATCH 14/22] vmxnet3: support jumbo frames
 
 ---
  drivers/net/vmxnet3/vmxnet3_ethdev.c |  3 +-
@@ -44,7 +44,7 @@ index 612487e..b1582f8 100644
  	bool                        stopped;
  	uint16_t                    queue_id;      /**< Device RX queue index. */
 diff --git a/drivers/net/vmxnet3/vmxnet3_rxtx.c b/drivers/net/vmxnet3/vmxnet3_rxtx.c
-index 4de5d89..9f68ec6 100644
+index c76b230..59b6db8 100644
 --- a/drivers/net/vmxnet3/vmxnet3_rxtx.c
 +++ b/drivers/net/vmxnet3/vmxnet3_rxtx.c
 @@ -547,7 +547,6 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
@@ -106,9 +106,9 @@ index 4de5d89..9f68ec6 100644
  			rxq->stats.drop_total++;
  			rxq->stats.drop_err++;
  
-@@ -641,9 +619,49 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
- 		rxm->ol_flags = 0;
+@@ -642,9 +620,49 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
  		rxm->vlan_tci = 0;
+ 		rxm->packet_type = RTE_PTYPE_UNKNOWN;
  
 -		vmxnet3_rx_offload(rcd, rxm);
 +		/*
@@ -158,7 +158,7 @@ index 4de5d89..9f68ec6 100644
  rcd_done:
  		rxq->cmd_ring[ring_idx].next2comp = idx;
  		VMXNET3_INC_RING_IDX_ONLY(rxq->cmd_ring[ring_idx].next2comp, rxq->cmd_ring[ring_idx].size);
-@@ -944,6 +962,7 @@ vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev)
+@@ -945,6 +963,7 @@ vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev)
  			}
  		}
  		rxq->stopped = FALSE;

@@ -1,4 +1,4 @@
-From 9a2515d7157271bac2bd5cd49758dbf3eb2b43b6 Mon Sep 17 00:00:00 2001
+From 666ceb1d0c11e2ca69baacc272b7d5690d3f11a3 Mon Sep 17 00:00:00 2001
 From: Bud Grise <griseb@cisco.com>
 Date: Mon, 1 Feb 2016 14:28:01 -0500
 Subject: [PATCH 8/8] Add missing init of packet_type field.
@@ -34,10 +34,10 @@ index d8fb252..8796c8a 100644
  		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
  		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
 diff --git a/drivers/net/virtio/virtio_rxtx.c b/drivers/net/virtio/virtio_rxtx.c
-index e4bf9b7..e605c85 100644
+index 2512bce..a74c816 100644
 --- a/drivers/net/virtio/virtio_rxtx.c
 +++ b/drivers/net/virtio/virtio_rxtx.c
-@@ -605,6 +605,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+@@ -619,6 +619,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
  		rxm->pkt_len = (uint32_t)(len[i] - hdr_size);
  		rxm->data_len = (uint16_t)(len[i] - hdr_size);
  		rxm->ol_flags = 0;
@@ -45,7 +45,7 @@ index e4bf9b7..e605c85 100644
  
  		if (hw->vlan_strip)
  			rte_vlan_strip(rxm);
-@@ -726,6 +727,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
+@@ -739,6 +740,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
  		rxm->pkt_len = (uint32_t)(len[0] - hdr_size);
  		rxm->data_len = (uint16_t)(len[0] - hdr_size);
  		rxm->ol_flags = 0;
@@ -66,5 +66,5 @@ index 4de5d89..c76b230 100644
  		vmxnet3_rx_offload(rcd, rxm);
  
 -- 
-2.2.1
+1.9.1
 

@@ -1,0 +1,34 @@
+
+Changes needed to DPDK are stored here as git patch files. Maintaining these
+files using “git format-patch” and “git am” will make it simpler to manage
+these changes. Patches made to DPDK should only be temporary until they are
+accepted upstream and made available in the next DPDK release.
+
+The following is the method used to generate these patches:
+
+1. Git clone the DPDK to a new directory:
+ # git clone http://dpdk.org/git/dpdk dpdk
+
+2. Create a branch based on the DPDK release you wish to patch.
+Note, “git tag” will show you all the release tags. The following example is
+for DPDK release tag “v2.2.0” and will create a branch named “two_dot_two”.
+ # cd dpdk
+ # git checkout -b two_dot_two v2.2.0
+
+3. Apply all the existing VPP DPDK patches to this new branch.
+ # git am <VPP directory>/dpdk/dpdk-2.2.0_patches/*
+
+4. Make your changes and commit your change to your DPDK repository.
+ # <edit files>
+ # git commit -s
+
+5. Create the patch files with format-patch. This creates all the patch files
+for your branch (two_dot_two), with your latest commits as the last ones.
+ # git format-patch master..two_dot_two
+
+6. Copy, add and commit the new patches into the VPP patches directory.
+ # cp <new patch files> <VPP directory>/dpdk/dpdk-2.2.0_patches
+ # cd <VPP directory>
+ # git add dpdk/dpdk-2.2.0_patches/<new patch files>
+ # git commit -s
+
