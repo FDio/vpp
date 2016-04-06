@@ -33,3 +33,9 @@ nobase_include_HEADERS = vat/vat.h vat/json_format.h
 
 
 dist_bin_SCRIPTS = scripts/vppctl
+
+bin_PROGRAMS += ioam_consumer
+
+ioam_consumer_SOURCES = vat/json_format.h vat/json_format.c vat/ioam_consumer.c
+ioam_consumer_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
+	-lpthread -lm -lrt

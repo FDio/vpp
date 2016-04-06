@@ -16,6 +16,24 @@
 #define __included_ip6_hop_by_hop_h__
 
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
+#define foreach_ip6_ioam_data_export_error \
+_(SUCCESS, "iOAM trace data export success") \
+_(CLIENT_QFULL, "iOAM trace data client queue full") \
+_(NO_TRACE_AVL, "iOAM trace data not available") \
+_(NO_CLIENT_SUB, "iOAM trace no client subscription")
+
+typedef enum {
+#define _(sym,str) IP6_IOAM_DATA_EXPORT_##sym,
+  foreach_ip6_ioam_data_export_error
+#undef _
+  IP6_IOAM_DATA_EXPORT_N_ERROR,
+} ip6_ioam_data_export_error_t;
+
+static char * ip6_ioam_data_export_error_strings[] = {
+#define _(sym,string) string,
+  foreach_ip6_ioam_data_export_error
+#undef _
+};
 
 typedef struct {
   /* The current rewrite we're using */
@@ -23,6 +41,8 @@ typedef struct {
 
   /* Trace data processing callback */
   void *ioam_end_of_path_cb;
+  void *ioam_data_export_cb;
+  
   /* Configuration data */
   /* Adjacency */
   ip6_address_t adj;
@@ -61,6 +81,9 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
+
+  /* Stats */
+  u64 export_stats[ARRAY_LEN(ip6_ioam_data_export_error_strings)];
 } ip6_hop_by_hop_main_t;
 
 extern ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
@@ -102,4 +125,14 @@ static inline u8 is_zero_ip6_address (ip6_address_t *a)
 }
 
 extern ip6_hop_by_hop_main_t * hm;
+
+typedef CLIB_PACKED (struct {
+  ip6_address_t flow_id;
+  ioam_trace_option_t *trace_opt;
+}) ioam_data_export_t;
+
+
+typedef int (*ioam_data_export_cb) (ioam_data_export_t *data);    
+void ip6_ioam_set_export_notify(int enable, ioam_data_export_cb cb);
+
 #endif /* __included_ip6_hop_by_hop_h__ */

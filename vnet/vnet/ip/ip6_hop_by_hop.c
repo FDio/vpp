@@ -771,6 +771,12 @@ static char * ip6_pop_hop_by_hop_error_strings[] = {
 #undef _
 };
 
+typedef int (*ioam_data_export) (ioam_data_export_t *);
+u32 ioam_end_of_path_cb (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_buffer_t *b0, ip6_header_t *ip0,
+			 ip_adjacency_t *adj0, ioam_data_export ioam_data_export);
+
+
 static uword
 ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
@@ -783,12 +789,13 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
   ip_lookup_next_t next_index;
   u32 processed = 0;
   u32 no_header = 0;
+  int (*ioam_data_export)(ioam_data_export_t *data);  
   u32 (*ioam_end_of_path_cb) (vlib_main_t *, vlib_node_runtime_t *,
                               vlib_buffer_t *, ip6_header_t *, 
-                              ip_adjacency_t *);
-  
+                              ip_adjacency_t *, int (*export) (ioam_data_export_t *));
   ioam_end_of_path_cb = hm->ioam_end_of_path_cb;
-  
+  ioam_data_export = hm->ioam_data_export_cb;
+
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -906,7 +913,7 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
           
               /* Collect data from trace via callback */
               next0 = ioam_end_of_path_cb ? 
-                ioam_end_of_path_cb (vm, node, b0, ip0, adj0) 
+                ioam_end_of_path_cb (vm, node, b0, ip0, adj0, ioam_data_export) 
                 : adj0->saved_lookup_next_index;
               
               
@@ -997,7 +1004,8 @@ ip6_hop_by_hop_init (vlib_main_t * vm)
   hm->vlib_time_0 = vlib_time_now (vm);
   hm->ioam_flag = IOAM_HBYH_MOD;
   hm->trace_tsp = TSP_MICROSECONDS; /* Micro seconds */
-
+  memset(&hm->export_stats[0], 0, sizeof(hm->export_stats));
+  
   return 0;
 }
 
@@ -1379,11 +1387,120 @@ VLIB_CLI_COMMAND (ip6_set_ioam_destination_cmd, static) = {
   .function = ip6_set_ioam_destination_command_fn,
 };
 
+typedef int (*ioam_data_export) (ioam_data_export_t *data);
+u32 ioam_end_of_path_cb (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_buffer_t *b0, ip6_header_t *ip0,
+			 ip_adjacency_t *adj0, ioam_data_export ioam_data_export)
+{
+  ip6_hop_by_hop_main_t * hm = &ip6_hop_by_hop_main;  
+  ip6_hop_by_hop_header_t *hbh0;
+  ip6_hop_by_hop_option_t *opt0, *limit0;
+  ioam_trace_option_t * trace0;
+  int done = 0;
+  u8 type0;
+  ioam_data_export_t data;
+
+  data.trace_opt = NULL;
+  trace0 = NULL;
+  if (ioam_data_export == 0) {
+    /* this should not happen as the end of path cb will also be null */
+    goto ALLDONE;
+  } 
+  copy_ip6_address(&data.flow_id, &ip0->dst_address);
+  hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
+  opt0 = (ip6_hop_by_hop_option_t *) (hbh0+1);
+  limit0 = (ip6_hop_by_hop_option_t *)
+            ((u8 *)hbh0 + ((hbh0->length+1)<<3));
+  while (!done && opt0 < limit0)
+    {
+      type0 = opt0->type & HBH_OPTION_TYPE_MASK;
+      switch (type0)
+        {
+        case HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST:
+	  trace0 = (ioam_trace_option_t *)opt0;
+	  data.trace_opt = trace0;
+	  
+	  /* export trace option for flow_id*/
+	  /* traceopt is in network byte order*/
+          opt0 = (ip6_hop_by_hop_option_t *)
+            (((u8 *)opt0) + opt0->length
+             + sizeof (ip6_hop_by_hop_option_t));
+	  done = 1;
+	  break;
+	case HBH_OPTION_TYPE_IOAM_PROOF_OF_WORK:
+	  opt0 = (ip6_hop_by_hop_option_t *)
+            (((u8 *)opt0) + sizeof (ioam_pow_option_t));
+          break;	
+	case HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE:
+	  opt0 = (ip6_hop_by_hop_option_t *)
+            (((u8 *)opt0) + sizeof (ioam_e2e_option_t));
+          break;	
+
+        case 0: /*Pad */
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *)opt0) + 1;
+	break;
+
+	}
+    }
+  hm->export_stats[ioam_data_export(&data)]++;
+  
+ ALLDONE:  
+  return(adj0?adj0->saved_lookup_next_index:0);
+}
+
 void vnet_register_ioam_end_of_path_callback (void *cb)
 {
   ip6_hop_by_hop_main_t * hm = &ip6_hop_by_hop_main;
 
   hm->ioam_end_of_path_cb = cb;
 }
-                                             
 
+/*
+ * Api to enable/disable export of end of path trace data
+ * Receives a pointer to callback function that will be set
+ * and called for export
+ */
+void ip6_ioam_set_export_notify (int enable, ioam_data_export_cb cb)
+{
+  ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
+  if (enable) {
+    vnet_register_ioam_end_of_path_callback(ioam_end_of_path_cb); 
+    hm->ioam_data_export_cb = cb;
+  } else {
+    hm->ioam_data_export_cb = 0;
+    hm->ioam_end_of_path_cb = 0;
+  }
+ 
+}
+                                             
+static clib_error_t *
+ip6_show_ioam_export_cmd_fn (vlib_main_t * vm,
+                      unformat_input_t * input,
+                      vlib_cli_command_t * cmd)
+{
+  ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
+  u8 *s = 0;
+  int i = 0;
+  
+  if (hm->ioam_data_export_cb != 0) {
+    s = format(s, " Data export to on-box client is ON\n");
+  } else {
+    s = format(s, " Data export to on-box client is OFF\n");
+  }
+
+  for ( i = 0; i < IP6_IOAM_DATA_EXPORT_N_ERROR; i++) {
+    s = format(s, " %s - %lu\n", ip6_ioam_data_export_error_strings[i],
+	       hm->export_stats[i]);
+  }
+
+  vlib_cli_output(vm, "%v", s);
+  vec_free(s);
+  return 0;
+}
+
+
+VLIB_CLI_COMMAND (ip6_show_ioam_export_cmd, static) = {
+  .path = "show ioam export",
+  .short_help = "iOAM data export statistics",
+  .function = ip6_show_ioam_export_cmd_fn,
+};
