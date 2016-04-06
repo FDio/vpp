@@ -59,9 +59,13 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 {
   u32 n_left_from, next_index, * from, * to_next;
   nsh_vxlan_gpe_main_t * ngm = &nsh_vxlan_gpe_main;
+  vnet_main_t * vnm = ngm->vnet_main;
+  vnet_interface_main_t * im = &vnm->interface_main;
   u32 last_tunnel_index = ~0;
   nsh_vxlan_gpe_tunnel_key_t last_key;
   u32 pkts_decapsulated = 0;
+  u32 cpu_index = os_get_cpu_number();
+  u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
   memset (&last_key, 0xff, sizeof (last_key));
 
@@ -69,6 +73,8 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
   n_left_from = from_frame->n_vectors;
 
   next_index = node->cached_next_index;
+  stats_sw_if_index = node->runtime_data[0];
+  stats_n_packets = stats_n_bytes = 0;
 
   while (n_left_from > 0)
     {
@@ -88,6 +94,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           nsh_vxlan_gpe_tunnel_t * t0, * t1;
           nsh_vxlan_gpe_tunnel_key_t key0, key1;
           u32 error0, error1;
+          u32 sw_if_index0, sw_if_index1, len0, len1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -162,6 +169,8 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           t0 = pool_elt_at_index (ngm->tunnels, tunnel_index0);
 
           next0 = t0->decap_next_index;
+          sw_if_index0 = t0->sw_if_index;
+          len0 = vlib_buffer_length_in_chain(vm, b0);
 
           /* Required to make the l2 tag push / pop code work on l2 subifs */
           vnet_update_l2_len (b0);
@@ -204,13 +213,29 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
               vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
             }
 
+          pkts_decapsulated++;
+          stats_n_packets += 1;
+          stats_n_bytes += len0;
+
+          if (PREDICT_FALSE(sw_if_index0 != stats_sw_if_index))
+          {
+            stats_n_packets -= 1;
+            stats_n_bytes -= len0;
+            if (stats_n_packets)
+              vlib_increment_combined_counter(
+                  im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+                  cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+            stats_n_packets = 1;
+            stats_n_bytes = len0;
+            stats_sw_if_index = sw_if_index0;
+          }
 
         trace0:
           b0->error = error0 ? node->errors[error0] : 0;
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              nsh_vxlan_gpe_rx_trace_t *tr 
+              nsh_vxlan_gpe_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->next_index = next0;
               tr->error = error0;
@@ -244,6 +269,8 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           t1 = pool_elt_at_index (ngm->tunnels, tunnel_index1);
 
           next1 = t1->decap_next_index;
+          sw_if_index1 = t1->sw_if_index;
+          len1 = vlib_buffer_length_in_chain(vm, b1);
 
           /* Required to make the l2 tag push / pop code work on l2 subifs */
           vnet_update_l2_len (b1);
@@ -286,15 +313,31 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
               vnet_buffer(b1)->sw_if_index[VLIB_TX] = t1->decap_fib_index;
             }
 
+          pkts_decapsulated++;
+          stats_n_packets += 1;
+          stats_n_bytes += len1;
+          /* Batch stats increment on the same vxlan tunnel so counter
+           is not incremented per packet */
+          if (PREDICT_FALSE(sw_if_index1 != stats_sw_if_index))
+          {
+            stats_n_packets -= 1;
+            stats_n_bytes -= len1;
+            if (stats_n_packets)
+              vlib_increment_combined_counter(
+                  im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+                  cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+            stats_n_packets = 1;
+            stats_n_bytes = len1;
+            stats_sw_if_index = sw_if_index1;
+          }
           vnet_buffer(b1)->sw_if_index[VLIB_TX] = t1->decap_fib_index;
-          pkts_decapsulated += 2;
 
         trace1:
           b1->error = error1 ? node->errors[error1] : 0;
 
-          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
             {
-              nsh_vxlan_gpe_rx_trace_t *tr 
+              nsh_vxlan_gpe_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b1, sizeof (*tr));
               tr->next_index = next1;
               tr->error = error1;
@@ -318,6 +361,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           nsh_vxlan_gpe_tunnel_t * t0;
           nsh_vxlan_gpe_tunnel_key_t key0;
           u32 error0;
+          u32 sw_if_index0, len0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -367,13 +411,15 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           t0 = pool_elt_at_index (ngm->tunnels, tunnel_index0);
 
           next0 = t0->decap_next_index;
+          sw_if_index0 = t0->sw_if_index;
+          len0 = vlib_buffer_length_in_chain(vm, b0);
 
           /* Required to make the l2 tag push / pop code work on l2 subifs */
           vnet_update_l2_len (b0);
 
           if (next0 == NSH_VXLAN_GPE_INPUT_NEXT_NSH_VXLAN_GPE_ENCAP)
             {
-              /* 
+              /*
                * Functioning as SFF (ie "half NSH tunnel mode")
                * If ingress (we are in decap.c) with NSH header, and 'decap next nsh-vxlan-gpe' then "NSH switch"
                * 1. Take DST, remap to SRC, remap other keys in place
@@ -402,7 +448,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
             } 
           else 
             {
-              /* 
+              /*
                * ip[46] lookup in the configured FIB
                * nsh-vxlan-gpe-encap, here's the encap tunnel sw_if_index
                */
@@ -411,12 +457,30 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 
           pkts_decapsulated ++;
 
+          stats_n_packets += 1;
+          stats_n_bytes += len0;
+
+          /* Batch stats increment on the same nsh-vxlan-gpe tunnel so counter
+           is not incremented per packet */
+          if (PREDICT_FALSE(sw_if_index0 != stats_sw_if_index))
+          {
+            stats_n_packets -= 1;
+            stats_n_bytes -= len0;
+            if (stats_n_packets)
+              vlib_increment_combined_counter(
+                  im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+                  cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+            stats_n_packets = 1;
+            stats_n_bytes = len0;
+            stats_sw_if_index = sw_if_index0;
+          }
+
         trace00:
           b0->error = error0 ? node->errors[error0] : 0;
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              nsh_vxlan_gpe_rx_trace_t *tr 
+              nsh_vxlan_gpe_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->next_index = next0;
               tr->error = error0;
@@ -431,8 +495,16 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   vlib_node_increment_counter (vm, nsh_vxlan_gpe_input_node.index,
-                               NSH_VXLAN_GPE_ERROR_DECAPSULATED, 
+                               NSH_VXLAN_GPE_ERROR_DECAPSULATED,
                                pkts_decapsulated);
+  /* Increment any remaining batch stats */
+  if (stats_n_packets)
+  {
+    vlib_increment_combined_counter(
+        im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX, cpu_index,
+        stats_sw_if_index, stats_n_packets, stats_n_bytes);
+    node->runtime_data[0] = stats_sw_if_index;
+  }
   return from_frame->n_vectors;
 }
 

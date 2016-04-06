@@ -246,7 +246,7 @@ vxlan_encap (vlib_main_t * vm,
 	     and admin-down tunnel where packets are dropped. It is not worthwhile
 	     to check for this rare case and affect normal path performance. */
 	  if (PREDICT_FALSE ((sw_if_index0 != stats_sw_if_index) ||
-			     (sw_if_index0 != stats_sw_if_index))) 
+			     (sw_if_index1 != stats_sw_if_index))) 
 	    {
 	      stats_n_packets -= 2;
 	      stats_n_bytes -= len0 + len1;
