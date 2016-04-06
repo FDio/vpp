@@ -112,7 +112,7 @@ void udp_register_dst_port (vlib_main_t * vm,
                             u32 node_index, u8 is_ip4);
 
 always_inline void
-ip4_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, u32 ec_len)
+ip4_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len)
 {
   ip4_header_t * ip0;
   ip_csum_t sum0;
@@ -150,7 +150,7 @@ ip4_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, u32 ec_len)
 
 always_inline void
 ip4_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
-                   u8 * ec0, u8 * ec1, u32 ec_len)
+                   u8 * ec0, u8 * ec1, word ec_len)
 {
   ip4_header_t * ip0, *ip1;
   ip_csum_t sum0, sum1;
