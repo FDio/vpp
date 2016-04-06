@@ -2942,3 +2942,40 @@ define trace_profile_del_reply {
     u32 context;
     i32 retval;
 };
+
+/** \brief Subscribe / Unsubscribe to iOAM data
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+define want_to_ioam_consumer {
+    u32 client_index;
+    u32 context;
+    u32 enable_disable;
+    u32 pid;
+};
+
+/** \brief Response to iOAM subscribtion request
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define want_to_ioam_consumer_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** brief publish data to subscribed consumer
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flow_id - ipv6 destination flow id corresponding to data
+    @param data_length - length of the data that follows
+    @param data - iOAM trace data 
+*/
+define to_ioam_consumer {
+    u32 client_index;
+    u32 context;
+    u8 flow_id[16];
+    u16 data_length;    
+    u8 data[0];
+};

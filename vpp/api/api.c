@@ -316,7 +316,8 @@ _(GET_NODE_GRAPH, get_node_graph)                                       \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
 _(TRACE_PROFILE_ADD, trace_profile_add)                                 \
 _(TRACE_PROFILE_APPLY, trace_profile_apply)                             \
-_(TRACE_PROFILE_DEL, trace_profile_del)
+_(TRACE_PROFILE_DEL, trace_profile_del)                                 \
+_(WANT_TO_IOAM_CONSUMER, want_to_ioam_consumer)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -327,7 +328,8 @@ _(to_netconf_server)                            \
 _(from_netconf_server)                          \
 _(to_netconf_client)                            \
 _(from_netconf_client)                          \
-_(oam_events)
+_(oam_events)                                   \
+_(to_ioam_consumer) 
 
 typedef enum {
     RESOLVE_IP4_ADD_DEL_ROUTE=1,
@@ -512,8 +514,12 @@ admin_up_down_function (vnet_main_t *vm, u32 sw_if_index, u32 flags)
                                    sw_if_index);
     return 0;
 }
+static void vlib_local_to_ioam_consumer_notify(int enable);
 
-#define pub_sub_handler(lca,UCA)                                        \
+static void vlib_local_no_op_notify (int enable)
+{
+}
+#define pub_sub_handler(lca,UCA,notify,notify_cb)			\
 static void vl_api_want_##lca##_t_handler (                             \
     vl_api_want_##lca##_t *mp)                                          \
 {                                                                       \
@@ -534,6 +540,9 @@ static void vl_api_want_##lca##_t_handler (                             \
             pool_put (vam->lca##_registrations, rp);                    \
             hash_unset (vam->lca##_registration_hash,                   \
                 mp->client_index);                                      \
+	    if (notify) {                                               \
+	      vlib_local_##notify_cb##_notify(mp->enable_disable);      \
+            }								\
             goto reply;                                                 \
         }                                                               \
     }                                                                   \
@@ -547,17 +556,21 @@ static void vl_api_want_##lca##_t_handler (                             \
     rp->client_pid = mp->pid;                                           \
     hash_set (vam->lca##_registration_hash, rp->client_index,           \
               rp - vam->lca##_registrations);                           \
-                                                                        \
+    if (notify) {      							\
+        vlib_local_##notify_cb##_notify(mp->enable_disable);            \
+    }									\
+    									\
 reply:                                                                  \
     REPLY_MACRO (VL_API_WANT_##UCA##_REPLY);                            \
 }
 
-pub_sub_handler (interface_events,INTERFACE_EVENTS)
-pub_sub_handler (from_netconf_server,FROM_NETCONF_SERVER)
-pub_sub_handler (to_netconf_server,TO_NETCONF_SERVER)
-pub_sub_handler (from_netconf_client,FROM_NETCONF_CLIENT)
-pub_sub_handler (to_netconf_client,TO_NETCONF_CLIENT)
-pub_sub_handler (oam_events,OAM_EVENTS)
+pub_sub_handler (interface_events,INTERFACE_EVENTS,0,no_op)
+pub_sub_handler (from_netconf_server,FROM_NETCONF_SERVER,0,no_op)
+pub_sub_handler (to_netconf_server,TO_NETCONF_SERVER,0,no_op)
+pub_sub_handler (from_netconf_client,FROM_NETCONF_CLIENT,0,no_op)
+pub_sub_handler (to_netconf_client,TO_NETCONF_CLIENT,0,no_op)
+pub_sub_handler (oam_events,OAM_EVENTS,0,no_op)
+pub_sub_handler (to_ioam_consumer,TO_IOAM_CONSUMER,1,to_ioam_consumer)
 
 #define RESOLUTION_EVENT 1
 #define RESOLUTION_PENDING_EVENT 2
@@ -5093,6 +5106,61 @@ BOUNCE_HANDLER(from_netconf_server);
 BOUNCE_HANDLER(to_netconf_client);
 BOUNCE_HANDLER(from_netconf_client);
 
+int vlib_api_ioam_send_to_consumer_cb (ioam_data_export_t *ioam_data_export)
+{
+  vl_api_to_ioam_consumer_t *mp;
+  vpe_client_registration_t *reg;
+  vpe_api_main_t * vam = &vpe_api_main;
+  unix_shared_memory_queue_t * q;
+  u32 flowid_len = 0, trace_len = 0;                               
+
+  /* One registration only... */         
+  pool_foreach(reg, vam->to_ioam_consumer_registrations,
+	       ({  
+		 q = vl_api_client_index_to_input_queue (reg->client_index); 
+		 if (q) {
+		   /*  
+		    * If the queue is stuffed, turf the msg and complain 
+		    * It's unlikely that the intended recipient is       
+		    * alive; avoid deadlock at all costs.                
+		    */                   
+		   if (q->cursize == q->maxsize) {
+		     clib_warning ("ERROR: receiver queue full, drop msg"); 
+		     return (IP6_IOAM_DATA_EXPORT_CLIENT_QFULL);    
+		   } else {
+		     flowid_len = sizeof(ioam_data_export->flow_id);
+		     /* size of trace option + type/len */ 
+		     trace_len = ioam_data_export->trace_opt != NULL?
+		       ioam_data_export->trace_opt->hdr.length+2:0;
+		     if (trace_len == 0) {
+		       return(IP6_IOAM_DATA_EXPORT_NO_TRACE_AVL);
+		     }
+		     mp =  vl_msg_api_alloc (sizeof (*mp)+trace_len);
+		     memset (mp, 0, sizeof (*mp));
+		     mp->_vl_msg_id = ntohs(VL_API_TO_IOAM_CONSUMER);
+		     mp->data_length = trace_len;
+		     memcpy((u8 *)&mp->flow_id[0], (u8 *)&ioam_data_export->flow_id, 
+			    flowid_len);
+		     memcpy((u8 *)mp->data,
+			    (u8 *)ioam_data_export->trace_opt,trace_len);
+		     vl_msg_api_send_shmem_nolock (q, (u8 *)&mp);
+		     return (IP6_IOAM_DATA_EXPORT_SUCCESS);
+		   }
+		 }
+	       }));
+  return (IP6_IOAM_DATA_EXPORT_NO_CLIENT_SUB);
+
+}
+
+static void vlib_local_to_ioam_consumer_notify (int enable)
+{
+  if(enable) {
+    ip6_ioam_set_export_notify(enable, vlib_api_ioam_send_to_consumer_cb);
+  } else {
+    ip6_ioam_set_export_notify(enable,0);
+  }
+}
+
 /*
  * vpe_api_hookup
  * Add vpe's API message handlers to the table.
@@ -5173,7 +5241,8 @@ vpe_api_init (vlib_main_t *vm)
     am->to_netconf_client_registration_hash = hash_create (0, sizeof (uword));
     am->from_netconf_client_registration_hash = hash_create (0, sizeof (uword));
     am->oam_events_registration_hash = hash_create (0, sizeof (uword));
-
+    am->to_ioam_consumer_registration_hash = hash_create(0, sizeof (uword));
+    
     vl_api_init (vm);
     vl_set_memory_region_name ("/vpe-api");
     vl_enable_disable_memory_api (vm, 1 /* enable it */);
