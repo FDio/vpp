@@ -1739,7 +1739,68 @@ static void *vl_api_sw_interface_clear_stats_t_print
     FINISH;
 }
 
-#define foreach_custom_print_function                                   \
+static void *vl_api_trace_profile_add_t_print
+(vl_api_trace_profile_add_t *mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: trace_profile_add ");
+    s = format (s, "id %d ", ntohs(mp->id));
+    s = format (s, "trace_type 0x%x ", mp->trace_type);
+    s = format (s, "trace_num_elt %d ", mp->trace_num_elt);
+    s = format (s, "trace_ppc %s ", mp->trace_ppc?"enable":"disable");
+    s = format (s, "trace_tsp %d ", mp->trace_tsp);
+    s = format (s, "trace_app_data 0x%x ", ntohl(mp->trace_app_data));
+    s = format (s, "pow_enable %s ", mp->pow_enable?"enable":"disable");
+    s = format (s, "node_id %d ", ntohl(mp->node_id));
+
+    FINISH;
+}
+
+static void *vl_api_trace_profile_del_t_print
+(vl_api_trace_profile_del_t *mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: trace_profile_del ");
+    s = format (s, "id %d ", ntohs(mp->id));
+    
+    FINISH;
+}
+
+static void *vl_api_trace_profile_apply_t_print
+(vl_api_trace_profile_apply_t *mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: trace_profile_apply ");
+    s = format (s, "id %d ", ntohs(mp->id));
+    s = format (s, "destination %U/%d ", format_ip6_address, 
+		(ip6_address_t *) mp->dest_ipv6, ntohl(mp->prefix_length));
+    s = format (s, "vrf_id %d ", ntohl(mp->vrf_id));
+    s = format (s, "trace_op %d ", mp->trace_op);
+    if (mp->enable == 0) {
+      s = format (s, "del ");
+    }
+
+    FINISH;
+}
+
+static void *vl_api_want_to_ioam_consumer_t_print
+(vl_api_want_to_ioam_consumer_t *mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: want_to_ioam_consumer ");
+    s = format (s, "pid %d ", ntohs(mp->pid));
+    s = format (s, "%s ", ntohl(mp->enable_disable)? "subscribe":"unsubscribe");
+
+    FINISH;
+}
+
+
+
+#define foreach_custom_print_function					\
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)           \
@@ -1821,7 +1882,12 @@ _(DELETE_LOOPBACK, delete_loopback)                                     \
 _(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)					\
 _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable) 		\
 _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)           \
-_(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)
+_(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
+_(TRACE_PROFILE_ADD, trace_profile_add)                                 \
+_(TRACE_PROFILE_APPLY, trace_profile_apply)                             \
+_(TRACE_PROFILE_DEL, trace_profile_del)                                 \
+_(WANT_TO_IOAM_CONSUMER, want_to_ioam_consumer)
+ 
 
 void vl_msg_api_custom_dump_configure (api_main_t *am) 
 {
