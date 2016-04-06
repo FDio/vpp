@@ -9,45 +9,19 @@ apt-get upgrade -y
 
 sudo update-alternatives --install /bin/sh sh /bin/bash 100
 
-# Install build tools
-apt-get install -y build-essential autoconf automake bison libssl-dev ccache libtool git dkms debhelper emacs libganglia1-dev libapr1-dev libconfuse-dev git-review gdb gdbserver
+cd /vpp
+sudo -H -u vagrant make install-dep
 
-# Install other stuff
-# apt-get install -y qemu-kvm libvirt-bin ubuntu-vm-builder bridge-utils
+# Install useful but non-mandatory tools
+apt-get install -y emacs  git-review gdb gdbserver
 
-# Install uio
-apt-get install -y linux-image-extra-`uname -r`
+sudo -H -u vagrant make bootstrap
+sudo -H -u vagrant make pkg-deb
+(cd build-root/;dpkg -i *.deb)
 
-# Install jdk and maven
-apt-get install -y openjdk-7-jdk
-# $$$ comment out for the moment
-# apt-get install -y --force-yes maven3
-
-# Setup for hugepages using upstart so it persists across reboots
-echo "vm.nr_hugepages=1024" >> /etc/sysctl.d/20-hugepages.conf
-sysctl --system
-
-cat << EOF > /etc/init/hugepages.conf
-start on runlevel [2345]
-
-task
-
-script
-    mkdir -p /run/hugepages/kvm || true
-    rm -f /run/hugepages/kvm/* || true
-    rm -f /dev/shm/* || true
-    mount -t hugetlbfs nodev /run/hugepages/kvm
-end script
-EOF
-
-# Make sure we run that hugepages.conf right now
-start hugepages
-
-# Setup the vpp code
-cd ~vagrant/
-
-sudo -u vagrant mkdir -p git/vpp
-cp /vagrant/README.moved git/vpp/
+# Capture all the interface IPs, in case we need them later
+ifconfig -a > ~vagrant/ifconfiga
+chown vagrant:vagrant ~vagrant/ifconfiga
 
 # Disable all ethernet interfaces other than the default route
 # interface so VPP will use those interfaces.  The VPP auto-blacklist
@@ -61,24 +35,5 @@ for intf in $(ls /sys/class/net) ; do
     fi
 done
 
-cd /vpp/
-
-# Initial vpp build
-if [ -d build-root ]; then
-  # Bootstrap vpp
-  cd build-root/
-  sudo -H -u vagrant ./bootstrap.sh
-
-  # Build vpp
-  sudo -H -u vagrant make PLATFORM=vpp TAG=vpp_debug install-deb
-
-  # Install debian packages
-  dpkg -i *.deb
-
-  # Start vpp
-  start vpp
-
-  cd ~vagrant/
-  cat /vagrant/README
-
-fi
+start vpp
+cat /vagrant/README
