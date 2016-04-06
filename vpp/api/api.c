@@ -727,7 +727,7 @@ resolver_process (vlib_main_t * vm,
                     e = clib_error_return (0, "resolver: BOGUS TYPE %d",
                                            pr->resolve_type);
                 }
-                if (e) {
+                if (e && clib_error_get_code(e)!=0) {
                     clib_error_report (e);
                     if (is_adr)
                         adr->resolve_attempts = 1;
