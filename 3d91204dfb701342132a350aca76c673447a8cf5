@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_06749bcd",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 169
+      },
+      "writtenOn": "2016-04-07T07:39:42Z",
+      "side": 1,
+      "message": "Is this MP-safe?",
+      "range": {
+        "startLine": 358,
+        "startChar": 0,
+        "endLine": 359,
+        "endChar": 28
+      },
+      "revId": "3d91204dfb701342132a350aca76c673447a8cf5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
