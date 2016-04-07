@@ -39,6 +39,7 @@ missing
 stamp-h1
 ltmain.sh
 ylwrap
+test-driver
 
 .cproject
 *.iml

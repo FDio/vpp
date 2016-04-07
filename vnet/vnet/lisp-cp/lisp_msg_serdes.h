@@ -23,7 +23,7 @@
 void *
 lisp_msg_put_mreq (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 		   gid_address_t * seid, gid_address_t * deid,
-		   locator_set_t * loc_set, u8 is_smr_invoked, u64 * nonce);
+		   ip_address_t * rlocs, u8 is_smr_invoked, u64 * nonce);
 
 void *
 lisp_msg_push_ecm (vlib_main_t * vm, vlib_buffer_t *b, int lp, int rp,
