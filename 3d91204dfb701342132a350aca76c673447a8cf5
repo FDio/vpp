@@ -2,6 +2,121 @@
   "comments": [
     {
       "key": {
+        "uuid": "3a045101_f99f104f",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-07T17:05:06Z",
+      "side": 1,
+      "message": "Would have preferred no change in the indentation style \nof the whole function (although I like your new style \nbetter). My personal preferred style is something like:\nif (...) {\n  ...\n} else {\n  ...\n}",
+      "range": {
+        "startLine": 80,
+        "startChar": 2,
+        "endLine": 80,
+        "endChar": 3
+      },
+      "revId": "3d91204dfb701342132a350aca76c673447a8cf5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_5999646d",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-07T17:05:06Z",
+      "side": 1,
+      "message": "This is already done above for both packets individually and should be removed. Or, you can remove the two individual ones above and keep this one here.",
+      "range": {
+        "startLine": 335,
+        "startChar": 6,
+        "endLine": 335,
+        "endChar": 23
+      },
+      "revId": "3d91204dfb701342132a350aca76c673447a8cf5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_19a3dc9f",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-07T17:05:06Z",
+      "side": 1,
+      "message": "This is not present in the double loop and I don\u0027t think it is need for now. For normal VXLAN tunnel decap case where packet will be forwarded via L2 BD or xconnect this is needed. It will be needed in the future if nsh-vxlan-gpe decap is enhanced to support L2 forwarding as next node in the future. This may also be needed if IP source check is required for IP forwarding after decap but I doubt it will be used.",
+      "range": {
+        "startLine": 457,
+        "startChar": 35,
+        "endLine": 457,
+        "endChar": 42
+      },
+      "revId": "3d91204dfb701342132a350aca76c673447a8cf5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_d9ac548f",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-07T17:05:06Z",
+      "side": 1,
+      "message": "Similar comment as in decap about changing the indent style of \"almost\" the whole function. If you are to change it, may as well fix the indent of lines above.",
+      "range": {
+        "startLine": 88,
+        "startChar": 53,
+        "endLine": 88,
+        "endChar": 54
+      },
+      "revId": "3d91204dfb701342132a350aca76c673447a8cf5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_b9a9887d",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-07T17:05:06Z",
+      "side": 1,
+      "message": "This should be sw_if_index1. It is in the original vxlan encap path as well which should also be fixed.",
+      "range": {
+        "startLine": 238,
+        "startChar": 18,
+        "endLine": 238,
+        "endChar": 30
+      },
+      "revId": "3d91204dfb701342132a350aca76c673447a8cf5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a045101_06749bcd",
         "filename": "vnet/vnet/nsh-vxlan-gpe/encap.c",
         "patchSetId": 1
@@ -13,6 +128,30 @@
       "writtenOn": "2016-04-07T07:39:42Z",
       "side": 1,
       "message": "Is this MP-safe?",
+      "range": {
+        "startLine": 358,
+        "startChar": 0,
+        "endLine": 359,
+        "endChar": 28
+      },
+      "revId": "3d91204dfb701342132a350aca76c673447a8cf5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_99b6ccdb",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-07T17:05:06Z",
+      "side": 1,
+      "message": "These are local variables on the stack, should be fine.",
+      "parentUuid": "3a045101_06749bcd",
       "range": {
         "startLine": 358,
         "startChar": 0,
