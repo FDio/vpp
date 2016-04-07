@@ -313,7 +313,17 @@ ip_prefix_cmp(ip_prefix_t * p1, ip_prefix_t * p2)
   int cmp = 0;
   cmp = ip_address_cmp (&ip_prefix_addr(p1), &ip_prefix_addr(p2));
   if (cmp == 0)
-    cmp = ip_prefix_len(p1) < ip_prefix_len(p2) ? 1 : 2; /* XXX ? */
+  {
+    if (ip_prefix_len(p1) < ip_prefix_len(p2))
+    {
+      cmp = 1;
+    }
+    else
+    {
+      if (ip_prefix_len(p1) > ip_prefix_len(p2))
+        cmp = 2;
+    }
+  }
   return cmp;
 }
 

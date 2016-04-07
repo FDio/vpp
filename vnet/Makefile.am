@@ -443,6 +443,34 @@ nobase_include_HEADERS +=			\
  vnet/lisp-cp/lisp_msg_serdes.h			\
  vnet/lisp-cp/control.h				
 
+
+if WITH_UNIT_TESTS
+LDS = -lvppinfra -l:libvlib.a -l:libdpdk.a -l:libvlibmemory.a \
+	-l:libvlibapi.a -l:libsvm.a -lpthread -ldl -lrt -lm -l:libvlib_unix.a
+
+TESTS = test_cp_serdes test_lisp_types
+
+test_cp_serdes_SOURCES =			\
+ vnet/lisp-cp/test/test_cp_serdes.c		\
+ vnet/lisp-cp/lisp_msg_serdes.c			\
+ vnet/lisp-cp/lisp_types.c			\
+ vnet/lisp-cp/packets.c				\
+ vnet/ip/ip_checksum.c
+
+test_lisp_types_SOURCES =			\
+ vnet/lisp-cp/test/test_lisp_types.c		\
+ vnet/lisp-cp/lisp_types.c
+
+test_cp_serdes_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_lisp_types_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+
+test_cp_serdes_LDADD = libvnet.la $(LDS)
+test_lisp_types_LDADD = libvnet.la $(LDS)
+
+test_cp_serdes_LDFLAGS = -static
+test_lisp_types_LDFLAGS = -static
+endif
+
 ########################################
 # Tunnel protocol: lisp-gpe
 ########################################
@@ -456,6 +484,19 @@ nobase_include_HEADERS +=			\
  vnet/lisp-gpe/lisp_gpe.h			\
  vnet/lisp-gpe/lisp_gpe_packet.h		\
  vnet/lisp-gpe/lisp_gpe_error.def		
+
+if WITH_UNIT_TESTS
+TESTS += test_test
+
+test_test_SOURCES = vnet/lisp-gpe/test/test.c
+
+test_test_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+
+test_test_LDADD = $(LIBOBJS)
+
+noinst_PROGRAMS += $(TESTS)
+check_PROGRAMS = $(TESTS)
+endif
 
 ########################################
 # DHCP client
@@ -685,3 +726,5 @@ pcap2pg_LDFLAGS = -static
 pcap2pg_LDADD = libvnet.la -l:libvppinfra.a -lpthread -lm -ldl
 
 noinst_PROGRAMS += pcap2pg
+
+

@@ -1,0 +1,7 @@
+Unit test infrastructure for lisp-gpe
+
+To run unit tests do the following:
+  1. build vpp
+  2. go to build-root/build-$tag-$arch/vnet
+  3. run $make check
+
