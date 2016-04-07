@@ -237,7 +237,7 @@ ip_classify_inline (vlib_main_t * vm,
                   vnet_buffer(b0)->l2_classify.opaque_index
                     = e0->opaque_index;
                   vlib_buffer_advance (b0, e0->advance);
-                  next0 = (e0->next_index < IP_LOOKUP_N_NEXT)?
+                  next0 = (e0->next_index < node->n_next_nodes)?
                            e0->next_index:next0;
                   hits++;
                 }
@@ -264,7 +264,7 @@ ip_classify_inline (vlib_main_t * vm,
                           vnet_buffer(b0)->l2_classify.opaque_index
                             = e0->opaque_index;
                           vlib_buffer_advance (b0, e0->advance);
-                          next0 = (e0->next_index < IP_LOOKUP_N_NEXT)?
+                          next0 = (e0->next_index < node->n_next_nodes)?
                                    e0->next_index:next0;
                           hits++;
                           chain_hits++;
