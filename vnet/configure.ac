@@ -32,6 +32,11 @@ AC_ARG_WITH(ipv6sr,
             [with_ipv6sr=0],
             [with_ipv6sr=1])
 
+AC_ARG_ENABLE(lisp_unit_tests,
+              AC_HELP_STRING([--enable-lisp-unit-tests], [Build LISP unit tests]),
+              [with_lisp_unit_tests=1],
+              [with_lisp_unit_tests=0])
+
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AC_SUBST(DPDK,[-DDPDK=${with_dpdk}])
 
@@ -46,5 +51,7 @@ AC_SUBST(VCGN,[-DVCGN=${with_vcgn}])
 
 AM_CONDITIONAL(WITH_IPV6SR, test "$with_ipv6sr" = "1")
 AC_SUBST(IPV6SR,[-DIPV6SR=${with_ipv6sr}])
+
+AM_CONDITIONAL(WITH_LISP_UNIT_TESTS, test "$with_lisp_unit_tests" = "1")
 
 AC_OUTPUT([Makefile])

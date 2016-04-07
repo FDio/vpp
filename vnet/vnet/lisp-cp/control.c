@@ -692,6 +692,47 @@ get_local_iface_ip_for_dst (lisp_cp_main_t *lcm, ip_address_t * dst,
     }
 }
 
+
+static ip_address_t *
+build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
+{
+  ip4_address_t * l4;
+  ip6_address_t * l6;
+  u32 i;
+  locator_t * loc;
+  u32 * loc_indexp;
+  ip_interface_address_t * ia = 0;
+  ip_address_t * rlocs = 0;
+  ip_address_t _rloc, * rloc = &_rloc;
+
+  for (i = 0; i < vec_len(loc_set->locator_indices); i++)
+    {
+      loc_indexp = vec_elt_at_index(loc_set->locator_indices, i);
+      loc = pool_elt_at_index (lcm->locator_pool, loc_indexp[0]);
+
+      ip_addr_version(rloc) = IP4;
+      /* Add ipv4 locators first TODO sort them */
+      foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
+				    loc->sw_if_index, 1 /* unnumbered */,
+      ({
+	l4 = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
+  ip_addr_v4(rloc) = l4[0];
+  vec_add1(rlocs, rloc[0]);
+      }));
+
+      ip_addr_version(rloc) = IP6;
+      /* Add ipv6 locators */
+      foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
+				    loc->sw_if_index, 1 /* unnumbered */,
+      ({
+  l6 = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
+  ip_addr_v6(rloc) = l6[0];
+  vec_add1(rlocs, rloc[0]);
+      }));
+    }
+  return rlocs;
+}
+
 static vlib_buffer_t *
 build_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
                                 gid_address_t * seid, gid_address_t * deid,
@@ -701,6 +742,7 @@ build_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   vlib_buffer_t * b;
   u32 bi;
   ip_address_t * mr_ip, sloc;
+  ip_address_t * rlocs = 0;
 
   if (vlib_buffer_alloc (vm, &bi, 1) != 1)
     {
@@ -713,8 +755,11 @@ build_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   /* leave some space for the encap headers */
   vlib_buffer_make_headroom (b, MAX_LISP_MSG_ENCAP_LEN);
 
+  /* get rlocs */
+  rlocs = build_itr_rloc_list (lcm, loc_set);
+
   /* put lisp msg */
-  lisp_msg_put_mreq (lcm, b, seid, deid, loc_set, is_smr_invoked, nonce_res);
+  lisp_msg_put_mreq (lcm, b, seid, deid, rlocs, is_smr_invoked, nonce_res);
 
   /* push ecm: udp-ip-lisp */
   lisp_msg_push_ecm (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, seid, deid);
@@ -730,6 +775,9 @@ build_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
                        mr_ip);
 
   bi_res[0] = bi;
+
+  if (rlocs)
+    vec_free(rlocs);
   return b;
 }
 

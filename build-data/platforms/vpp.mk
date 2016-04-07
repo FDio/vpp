@@ -23,6 +23,9 @@ vpp_root_packages = vpp vlib vlib-api vnet svm vpp-api-test \
 vpp_configure_args_vpp = --with-dpdk
 vnet_configure_args_vpp = --with-dpdk
 
+# Uncomment following to enable building of LISP unit tests
+# vnet_configure_args_vpp += --enable-lisp-unit-tests
+
 # Set these parameters carefully. The vlib_buffer_t is 128 bytes, i.e.
 vlib_configure_args_vpp = --with-pre-data=128
 
