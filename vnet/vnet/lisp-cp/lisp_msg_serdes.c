@@ -27,42 +27,31 @@ lisp_msg_put_gid (vlib_buffer_t * b, gid_address_t * gid)
 
 void *
 lisp_msg_put_itr_rlocs (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-                        locator_set_t * loc_set, u8 * locs_put)
+			ip_address_t * rlocs, u8 * locs_put)
 {
-  ip_interface_address_t * ia = 0;
-  ip4_address_t * l4;
-  ip6_address_t * l6;
-  u32 * loc_indexp;
-  locator_t * loc;
-  u32 i;
   u8 * p, * bp, count = 0;
+  u32 i;
+  ip_address_t * addr;
 
   bp = vlib_buffer_get_current(b);
-  for (i = 0; i < vec_len(loc_set->locator_indices); i++)
+  for (i = 0; i < vec_len(rlocs); i++)
+  {
+    addr = &rlocs[i];
+    switch (ip_addr_version(addr))
     {
-      loc_indexp = vec_elt_at_index(loc_set->locator_indices, i);
-      loc = pool_elt_at_index (lcm->locator_pool, loc_indexp[0]);
-
-      /* Add ipv4 locators first TODO sort them */
-      foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
-                                    loc->sw_if_index, 1 /* unnumbered */,
-      ({
-        l4 = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
-        p = vlib_buffer_put_uninit (b, ip4_address_size_to_put());
-        ip4_address_put (p, l4);
-        count++;
-      }));
-
-      /* Add ipv6 locators */
-      foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
-                                    loc->sw_if_index, 1 /* unnumbered */,
-      ({
-        l6 = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
-        p = vlib_buffer_put_uninit (b, ip6_address_size_to_put());
-        ip6_address_put (p, l6);
-        count++;
-      }));
+    case IP4:
+      p = vlib_buffer_put_uninit (b, ip4_address_size_to_put());
+      ip4_address_put (p, &ip_addr_v4(addr));
+      count++;
+      break;
+    case IP6:
+      p = vlib_buffer_put_uninit (b, ip6_address_size_to_put());
+      ip6_address_put (p, &ip_addr_v6(addr));
+      count++;
+      break;
     }
+  }
+
   *locs_put = count-1;
   return bp;
 }
@@ -103,8 +92,8 @@ nonce_build (u32 seed)
 
 void *
 lisp_msg_put_mreq (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-                   gid_address_t * seid, gid_address_t * deid,
-                   locator_set_t * loc_set, u8 is_smr_invoked, u64 * nonce)
+		   gid_address_t * seid, gid_address_t * deid,
+		   ip_address_t * rlocs, u8 is_smr_invoked, u64 * nonce)
 {
   u8 loc_count = 0;
 
@@ -123,7 +112,7 @@ lisp_msg_put_mreq (lisp_cp_main_t * lcm, vlib_buffer_t * b,
   lisp_msg_put_gid (b, seid);
 
   /* Put itr rlocs */
-  lisp_msg_put_itr_rlocs(lcm, b, loc_set, &loc_count);
+  lisp_msg_put_itr_rlocs(lcm, b, rlocs, &loc_count);
   MREQ_ITR_RLOC_COUNT(h) = loc_count;
 
   /* Put eid record */

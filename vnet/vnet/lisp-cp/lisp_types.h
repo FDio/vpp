@@ -96,6 +96,7 @@ typedef enum {
 
 u8 *format_gid_address (u8 * s, va_list * args);
 uword unformat_gid_address (unformat_input_t * input, va_list * args);
+int gid_address_cmp (gid_address_t * a1, gid_address_t * a2);
 
 u16 gid_address_size_to_put (gid_address_t * a);
 u16 gid_address_put (u8 * b, gid_address_t * gid);

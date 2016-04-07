@@ -1,0 +1,10 @@
+Unit test infrastructure for vnet
+
+To run unit tests do the following:
+
+  1. build vpp with 'vpp_enable_tests = yes' in build-data/platforms/vpp.mk
+
+  2. go to build-root/build-$tag-$arch/vnet
+
+  3. run
+    $ make check

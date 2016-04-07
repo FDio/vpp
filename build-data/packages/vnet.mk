@@ -18,6 +18,10 @@ vnet_LDFLAGS = $(call installed_libs_fn, 	\
     vlib					\
     vlib-api)
 
+ifeq ($($(PLATFORM)_enable_tests),yes)
+vnet_configure_args += --enable-tests
+endif
+
 # Platform dependent configure flags
 vnet_configure_args += $(vnet_configure_args_$(PLATFORM))
 
