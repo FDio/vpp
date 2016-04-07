@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_19cabc4f",
+        "filename": "build-data/platforms/vpp.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-07T21:03:37Z",
+      "side": 1,
+      "message": "Please change this to a comment which suggests e.g. \"--enable-lisp-unit-tests\". I\u0027d prefer that these tests not be added to every vpp_debug image.",
+      "revId": "a6c399de7c1826f85cb2271f5775c8db6c0c34e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
