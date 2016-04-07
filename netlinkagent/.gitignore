@@ -1,0 +1,7 @@
+.libs/
+libnetlinkagent.la
+src/.deps/
+src/.dirstamp
+src/.libs/
+src/netlinkagent.lo
+src/netlinkagent.o

@@ -1,0 +1,6 @@
+AC_INIT([netlinkagent],1.0)
+AM_INIT_AUTOMAKE
+AC_PROG_CC
+LT_INIT
+AC_OUTPUT([Makefile])
+
