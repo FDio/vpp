@@ -36,6 +36,7 @@
 #include <vnet/classify/input_acl.h>
 #if DPDK > 0
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ikev2.h>
 #else
 #include <inttypes.h>
 #endif
@@ -324,6 +325,42 @@ format_ipsec_integ_alg (u8 * s, va_list * args)
   return format (s, "%s", t);
 #else
   return format (s, "Unsupported");
+#endif
+}
+
+uword
+unformat_ikev2_auth_method (unformat_input_t * input, va_list * args)
+{
+#if DPDK > 0
+  u32 * r = va_arg (*args, u32 *);
+
+  if (0) ;
+#define _(v,f,s) else if (unformat (input, s)) *r = IKEV2_AUTH_METHOD_##f;
+  foreach_ikev2_auth_method
+#undef _
+  else
+    return 0;
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+uword
+unformat_ikev2_id_type (unformat_input_t * input, va_list * args)
+{
+#if DPDK > 0
+  u32 * r = va_arg (*args, u32 *);
+
+  if (0) ;
+#define _(v,f,s) else if (unformat (input, s)) *r = IKEV2_ID_TYPE_##f;
+  foreach_ikev2_id_type
+#undef _
+  else
+    return 0;
+  return 1;
+#else
+  return 0;
 #endif
 }
 
@@ -1890,6 +1927,11 @@ _(ipsec_interface_add_del_spd_reply)                    \
 _(ipsec_spd_add_del_entry_reply)                        \
 _(ipsec_sad_add_del_entry_reply)                        \
 _(ipsec_sa_set_key_reply)                               \
+_(ikev2_profile_add_del_reply)                          \
+_(ikev2_profile_set_auth_reply)                         \
+_(ikev2_profile_set_id_reply)                           \
+_(ikev2_profile_set_ts_reply)                           \
+_(ikev2_set_local_key_reply)                            \
 _(delete_loopback_reply)                                \
 _(bd_ip_mac_add_del_reply)                              \
 _(map_del_domain_reply)                                 \
@@ -2038,6 +2080,11 @@ _(IPSEC_INTERFACE_ADD_DEL_SPD_REPLY, ipsec_interface_add_del_spd_reply) \
 _(IPSEC_SPD_ADD_DEL_ENTRY_REPLY, ipsec_spd_add_del_entry_reply)         \
 _(IPSEC_SAD_ADD_DEL_ENTRY_REPLY, ipsec_sad_add_del_entry_reply)         \
 _(IPSEC_SA_SET_KEY_REPLY, ipsec_sa_set_key_reply)                       \
+_(IKEV2_PROFILE_ADD_DEL_REPLY, ikev2_profile_add_del_reply)             \
+_(IKEV2_PROFILE_SET_AUTH_REPLY, ikev2_profile_set_auth_reply)           \
+_(IKEV2_PROFILE_SET_ID_REPLY, ikev2_profile_set_id_reply)               \
+_(IKEV2_PROFILE_SET_TS_REPLY, ikev2_profile_set_ts_reply)               \
+_(IKEV2_SET_LOCAL_KEY_REPLY, ikev2_set_local_key_reply)                 \
 _(DELETE_LOOPBACK_REPLY, delete_loopback_reply)                         \
 _(BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                     \
 _(DHCP_COMPL_EVENT, dhcp_compl_event)                                   \
@@ -8405,6 +8452,314 @@ api_ipsec_sa_set_key (vat_main_t * vam)
 #endif
 }
 
+static int
+api_ikev2_profile_add_del (vat_main_t * vam)
+{
+#if DPDK > 0
+    unformat_input_t * i = vam->input;
+    vl_api_ikev2_profile_add_del_t * mp;
+    f64 timeout;
+    u8 is_add = 1;
+    u8 * name = 0;
+
+    const char * valid_chars = "a-zA-Z0-9_";
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "del"))
+            is_add = 0;
+        else if (unformat (i, "name %U", unformat_token, valid_chars, &name))
+            vec_add1 (name, 0);
+        else {
+            errmsg ("parse error '%U'", format_unformat_error, i);
+            return -99;
+        }
+    }
+
+    if (!vec_len (name)) {
+        errmsg ("profile name must be specified");
+        return -99;
+    }
+
+    if (vec_len (name) > 64) {
+        errmsg ("profile name too long");
+        return -99;
+    }
+
+    M(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del);
+
+    memcpy(mp->name, name, vec_len (name));
+    mp->is_add = is_add;
+    vec_free (name);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+#else
+    clib_warning ("unsupported (no dpdk)");
+    return -99;
+#endif
+}
+
+static int
+api_ikev2_profile_set_auth (vat_main_t * vam)
+{
+#if DPDK > 0
+    unformat_input_t * i = vam->input;
+    vl_api_ikev2_profile_set_auth_t * mp;
+    f64 timeout;
+    u8 * name = 0;
+    u8 * data = 0;
+    u32 auth_method = 0;
+    u8 is_hex = 0;
+
+    const char * valid_chars = "a-zA-Z0-9_";
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "name %U", unformat_token, valid_chars, &name))
+            vec_add1 (name, 0);
+        else if (unformat (i, "auth_method %U",
+                           unformat_ikev2_auth_method, &auth_method))
+            ;
+        else if (unformat (i, "auth_data 0x%U", unformat_hex_string, &data))
+            is_hex = 1;
+        else if (unformat (i, "auth_data %v", &data))
+            ;
+        else {
+            errmsg ("parse error '%U'", format_unformat_error, i);
+            return -99;
+        }
+    }
+
+    if (!vec_len (name)) {
+        errmsg ("profile name must be specified");
+        return -99;
+    }
+
+    if (vec_len (name) > 64) {
+        errmsg ("profile name too long");
+        return -99;
+    }
+
+    if (!vec_len(data)) {
+        errmsg ("auth_data must be specified");
+        return -99;
+    }
+
+    if (!auth_method) {
+        errmsg ("auth_method must be specified");
+        return -99;
+    }
+
+    M(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth);
+
+    mp->is_hex = is_hex;
+    mp->auth_method = (u8) auth_method;
+    mp->data_len = vec_len (data);
+    memcpy (mp->name, name, vec_len (name));
+    memcpy (mp->data, data, vec_len (data));
+    vec_free (name);
+    vec_free (data);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+#else
+    clib_warning ("unsupported (no dpdk)");
+    return -99;
+#endif
+}
+
+static int
+api_ikev2_profile_set_id (vat_main_t * vam)
+{
+#if DPDK > 0
+    unformat_input_t * i = vam->input;
+    vl_api_ikev2_profile_set_id_t * mp;
+    f64 timeout;
+    u8 * name = 0;
+    u8 * data = 0;
+    u8 is_local = 0;
+    u32 id_type = 0;
+    ip4_address_t ip4;
+
+    const char * valid_chars = "a-zA-Z0-9_";
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "name %U", unformat_token, valid_chars, &name))
+            vec_add1 (name, 0);
+        else if (unformat (i, "id_type %U",
+                           unformat_ikev2_id_type, &id_type))
+            ;
+        else if (unformat (i, "id_data %U", unformat_ip4_address, &ip4))
+          {
+            data = vec_new(u8, 4);
+            memcpy(data, ip4.as_u8, 4);
+          }
+        else if (unformat (i, "id_data 0x%U", unformat_hex_string, &data))
+            ;
+        else if (unformat (i, "id_data %v", &data))
+            ;
+        else if (unformat (i, "local"))
+            is_local = 1;
+        else if (unformat (i, "remote"))
+            is_local = 0;
+        else {
+            errmsg ("parse error '%U'", format_unformat_error, i);
+            return -99;
+        }
+    }
+
+    if (!vec_len (name)) {
+        errmsg ("profile name must be specified");
+        return -99;
+    }
+
+    if (vec_len (name) > 64) {
+        errmsg ("profile name too long");
+        return -99;
+    }
+
+    if (!vec_len(data)) {
+        errmsg ("id_data must be specified");
+        return -99;
+    }
+
+    if (!id_type) {
+        errmsg ("id_type must be specified");
+        return -99;
+    }
+
+    M(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id);
+
+    mp->is_local = is_local;
+    mp->id_type = (u8) id_type;
+    mp->data_len = vec_len (data);
+    memcpy (mp->name, name, vec_len (name));
+    memcpy (mp->data, data, vec_len (data));
+    vec_free (name);
+    vec_free (data);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+#else
+    clib_warning ("unsupported (no dpdk)");
+    return -99;
+#endif
+}
+
+static int
+api_ikev2_profile_set_ts (vat_main_t * vam)
+{
+#if DPDK > 0
+    unformat_input_t * i = vam->input;
+    vl_api_ikev2_profile_set_ts_t * mp;
+    f64 timeout;
+    u8 * name = 0;
+    u8 is_local = 0;
+    u32 proto = 0, start_port = 0, end_port = (u32) ~0;
+    ip4_address_t start_addr, end_addr;
+
+    const char * valid_chars = "a-zA-Z0-9_";
+
+    start_addr.as_u32 = 0;
+    end_addr.as_u32 = (u32) ~0;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "name %U", unformat_token, valid_chars, &name))
+            vec_add1 (name, 0);
+	else if (unformat (i, "protocol %d", &proto))
+	    ;
+	else if (unformat (i, "start_port %d", &start_port))
+	    ;
+	else if (unformat (i, "end_port %d", &end_port))
+	    ;
+        else if (unformat (i, "start_addr %U", unformat_ip4_address, &start_addr))
+            ;
+        else if (unformat (i, "end_addr %U", unformat_ip4_address, &end_addr))
+            ;
+        else if (unformat (i, "local"))
+            is_local = 1;
+        else if (unformat (i, "remote"))
+            is_local = 0;
+        else {
+            errmsg ("parse error '%U'", format_unformat_error, i);
+            return -99;
+        }
+    }
+
+    if (!vec_len (name)) {
+        errmsg ("profile name must be specified");
+        return -99;
+    }
+
+    if (vec_len (name) > 64) {
+        errmsg ("profile name too long");
+        return -99;
+    }
+
+    M(IKEV2_PROFILE_SET_TS, ikev2_profile_set_ts);
+
+    mp->is_local = is_local;
+    mp->proto = (u8) proto;
+    mp->start_port = (u16) start_port;
+    mp->end_port = (u16) end_port;
+    mp->start_addr = start_addr.as_u32;
+    mp->end_addr = end_addr.as_u32;
+    memcpy (mp->name, name, vec_len (name));
+    vec_free (name);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+#else
+    clib_warning ("unsupported (no dpdk)");
+    return -99;
+#endif
+}
+
+static int
+api_ikev2_set_local_key (vat_main_t * vam)
+{
+#if DPDK > 0
+    unformat_input_t * i = vam->input;
+    vl_api_ikev2_set_local_key_t * mp;
+    f64 timeout;
+    u8 * file = 0;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "file %v", &file))
+            vec_add1 (file, 0);
+        else {
+            errmsg ("parse error '%U'", format_unformat_error, i);
+            return -99;
+        }
+    }
+
+    if (!vec_len (file)) {
+        errmsg ("RSA key file must be specified");
+        return -99;
+    }
+
+    if (vec_len (file) > 256) {
+        errmsg ("file name too long");
+        return -99;
+    }
+
+    M(IKEV2_SET_LOCAL_KEY, ikev2_set_local_key);
+
+    memcpy (mp->key_file, file, vec_len (file));
+    vec_free (file);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+#else
+    clib_warning ("unsupported (no dpdk)");
+    return -99;
+#endif
+}
+
 /*
  * MAP
  */
@@ -9209,6 +9564,15 @@ _(ipsec_spd_add_del_entry, "spd_id <n> priority <n> action <action>\n"  \
   "  laddr_stop <ip4|ip6> raddr_start <ip4|ip6> raddr_stop <ip4|ip6>\n" \
   "  [lport_start <n> lport_stop <n>] [rport_start <n> rport_stop <n>]" )\
 _(ipsec_sa_set_key, "sa_id <n> crypto_key <hex> integ_key <hex>")       \
+_(ikev2_profile_add_del, "name <profile_name> [del]")                   \
+_(ikev2_profile_set_auth, "name <profile_name> auth_method <method>\n"  \
+  "(auth_data 0x<data> | auth_data <data>)")                            \
+_(ikev2_profile_set_id, "name <profile_name> id_type <type>\n"          \
+  "(id_data 0x<data> | id_data <data>) (local|remote)")                 \
+_(ikev2_profile_set_ts, "name <profile_name> protocol <proto>\n"        \
+  "start_port <port> end_port <port> start_addr <ip4> end_addr <ip4>\n" \
+  "(local|remote)")                                                     \
+_(ikev2_set_local_key, "file <absolute_file_path>")                     \
 _(delete_loopback,"sw_if_index <nn>")                                   \
 _(bd_ip_mac_add_del, "bd_id <bridge-domain-id> <ip4/6-addr> <mac-addr> [del]") \
 _(map_add_domain,                                                       \
