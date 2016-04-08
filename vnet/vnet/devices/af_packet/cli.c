@@ -80,6 +80,40 @@ VLIB_CLI_COMMAND (af_packet_create_command, static) = {
   .function = af_packet_create_command_fn,
 };
 
+static clib_error_t *
+af_packet_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
+                             vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, * line_input = &_line_input;
+  u8 * host_if_name = NULL;
+
+  /* Get a line of input. */
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "name %s", &host_if_name))
+        ;
+      else
+        return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+    }
+  unformat_free (line_input);
+
+  if (host_if_name == NULL)
+      return clib_error_return (0, "missing host interface name");
+
+  af_packet_delete_if(vm, host_if_name);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (af_packet_delete_command, static) = {
+  .path = "delete host-interface",
+  .short_help = "delete host-interface name <interface name>",
+  .function = af_packet_delete_command_fn,
+};
+
 clib_error_t *
 af_packet_cli_init (vlib_main_t * vm)
 {
