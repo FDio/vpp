@@ -157,6 +157,7 @@ create_packet_v2_sock(u8 * name, tpacket_req_t * rx_req, tpacket_req_t * tx_req,
   return 0;
 error:
   close(*fd);
+  *fd = -1;
   return ret;
 }
 
@@ -210,6 +211,8 @@ af_packet_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set)
   apif->tx_req = tx_req;
   apif->host_if_name = host_if_name;
   apif->per_interface_next_index = ~0;
+  apif->next_tx_frame = 0;
+  apif->next_rx_frame = 0;
 
   {
     unix_file_t template = {0};
@@ -263,6 +266,58 @@ error:
   vec_free(rx_req);
   vec_free(tx_req);
   return ret;
+}
+
+int
+af_packet_delete_if(vlib_main_t *vm, u8 *host_if_name)
+{
+  vnet_main_t *vnm = vnet_get_main();
+  af_packet_main_t *apm = &af_packet_main;
+  af_packet_if_t *apif;
+  uword *p;
+  uword if_index;
+  u32 ring_sz;
+
+  p = mhash_get(&apm->if_index_by_host_if_name, host_if_name);
+  if (p == NULL) {
+    clib_warning("Host interface %s does not exist", host_if_name);
+    return VNET_API_ERROR_SYSCALL_ERROR_1;
+  }
+  apif = pool_elt_at_index(apm->interfaces, p[0]);
+  if_index = apif - apm->interfaces;
+
+  /* bring down the interface */
+  vnet_hw_interface_set_flags(vnm, apif->hw_if_index, 0);
+
+  /* clean up */
+  if (apif->unix_file_index != ~0) {
+    unix_file_del(&unix_main, unix_main.file_pool + apif->unix_file_index);
+    apif->unix_file_index = ~0;
+  }
+  ring_sz = apif->rx_req->tp_block_size * apif->rx_req->tp_block_nr +
+            apif->tx_req->tp_block_size * apif->tx_req->tp_block_nr;
+  if (munmap(apif->rx_ring, ring_sz))
+    clib_warning("Host interface %s could not free rx/tx ring", host_if_name);
+  apif->rx_ring = NULL;
+  apif->tx_ring = NULL;
+  close(apif->fd);
+  apif->fd = -1;
+
+  vec_free(apif->rx_req);
+  apif->rx_req = NULL;
+  vec_free(apif->tx_req);
+  apif->tx_req = NULL;
+
+  vec_free(apif->host_if_name);
+  apif->host_if_name = NULL;
+
+  mhash_unset(&apm->if_index_by_host_if_name, host_if_name, &if_index);
+
+  ethernet_delete_interface(vnm, apif->hw_if_index);
+
+  pool_put(apm->interfaces, apif);
+
+  return 0;
 }
 
 static clib_error_t *
