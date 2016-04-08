@@ -412,6 +412,12 @@ VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
   .function = create_simulated_ethernet_interfaces,
 };
 
+VLIB_CLI_COMMAND (create_loopback_interface_command, static) = {
+  .path = "create loopback interface",
+  .short_help = "create loopback interface [mac <mac-addr>]",
+  .function = create_simulated_ethernet_interfaces,
+};
+
 ethernet_interface_t *
 ethernet_get_interface (ethernet_main_t * em, u32 hw_if_index)
 {
