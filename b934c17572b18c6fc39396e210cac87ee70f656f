@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_f9f4b088",
+        "filename": "vnet/vnet/nsh-vxlan-gpe/encap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-08T03:52:12Z",
+      "side": 1,
+      "message": "This should be sw_if_index1, as commented before, that the stats code you probably modeled from vnet/vxlan/encap.c is also incorrect and needs to be fixed.",
+      "range": {
+        "startLine": 239,
+        "startChar": 18,
+        "endLine": 239,
+        "endChar": 30
+      },
+      "revId": "b934c17572b18c6fc39396e210cac87ee70f656f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
