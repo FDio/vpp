@@ -412,6 +412,39 @@ VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
   .function = create_simulated_ethernet_interfaces,
 };
 
+static clib_error_t *
+create_simulated_ethernet_interfaces_new (vlib_main_t * vm,
+				          unformat_input_t * input,
+				          vlib_cli_command_t * cmd)
+{
+  int rv;
+  u32 sw_if_index;
+  u8 mac_address[6];
+
+  memset (mac_address, 0, sizeof (mac_address));
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "mac %U", unformat_ethernet_address, mac_address))
+        ;
+      else
+        break;
+    }
+
+  rv = vnet_create_loopback_interface (&sw_if_index, mac_address);
+
+  if (rv)
+    return clib_error_return (0, "vnet_create_loopback_interface failed");
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command_new, static) = {
+  .path = "create loopback interface",
+  .short_help = "create loopback interface [mac <mac-addr>]",
+  .function = create_simulated_ethernet_interfaces_new,
+};
+
 ethernet_interface_t *
 ethernet_get_interface (ethernet_main_t * em, u32 hw_if_index)
 {
