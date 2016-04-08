@@ -2594,6 +2594,146 @@ define ipsec_sa_set_key_reply {
     i32 retval;
 };
 
+/** \brief IKEv2: Add/delete profile
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param is_add - Add IKEv2 profile if non-zero, else delete
+*/
+define ikev2_profile_add_del {
+    u32 client_index;
+    u32 context;
+
+    u8 name[64];
+    u8 is_add;
+};
+
+/** \brief Reply for IKEv2: Add/delete profile
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_profile_add_del_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief IKEv2: Set IKEv2 profile authentication method
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param auth_method - IKEv2 authentication method (shared-key-mic/rsa-sig)
+    @param is_hex - Authentication data in hex format if non-zero, else string
+    @param data_len - Authentication data length
+    @param data - Authentication data (for rsa-sig cert file path)
+*/
+define ikev2_profile_set_auth {
+    u32 client_index;
+    u32 context;
+
+    u8 name[64];
+    u8 auth_method;
+    u8 is_hex;
+    u32 data_len;
+    u8 data[0];
+};
+
+/** \brief Reply for IKEv2: Set IKEv2 profile authentication method
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_profile_set_auth_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief IKEv2: Set IKEv2 profile local/remote identification
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param is_local - Identification is local if non-zero, else remote
+    @param id_type - Identification type
+    @param data_len - Identification data length
+    @param data - Identification data
+*/
+define ikev2_profile_set_id {
+    u32 client_index;
+    u32 context;
+
+    u8 name[64];
+    u8 is_local;
+    u8 id_type;
+    u32 data_len;
+    u8 data[0];
+};
+
+/** \brief Reply for IKEv2:
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_profile_set_id_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief IKEv2: Set IKEv2 profile traffic selector parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param is_local - Traffic selector is local if non-zero, else remote
+    @param proto - Traffic selector IP protocol (if zero not relevant)
+    @param start_port - The smallest port number allowed by traffic selector
+    @param end_port - The largest port number allowed by traffic selector
+    @param start_addr - The smallest address included in traffic selector
+    @param end_addr - The largest address included in traffic selector
+*/
+define ikev2_profile_set_ts {
+    u32 client_index;
+    u32 context;
+
+    u8 name[64];
+    u8 is_local;
+    u8 proto;
+    u16 start_port;
+    u16 end_port;
+    u32 start_addr;
+    u32 end_addr;
+};
+
+/** \brief Reply for IKEv2: Set IKEv2 profile traffic selector parameters
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_profile_set_ts_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief IKEv2: Set IKEv2 local RSA private key
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param key_file - Key file absolute path
+*/
+define ikev2_set_local_key {
+    u32 client_index;
+    u32 context;
+
+    u8 key_file[256];
+};
+
+/** \brief Reply for IKEv2: Set IKEv2 local key
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_set_local_key_reply {
+    u32 context;
+    i32 retval;
+};
+
 /** \brief Tell client about a DHCP completion event
     @param client_index - opaque cookie to identify the sender
     @param pid - client pid registered to receive notification

@@ -78,6 +78,7 @@
 
 #if IPSEC > 0
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ikev2.h>
 #endif /* IPSEC */
 #if DPDK > 0
 #include <vnet/devices/virtio/vhost-user.h>
@@ -302,6 +303,11 @@ _(IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)             \
 _(IPSEC_SPD_ADD_DEL_ENTRY, ipsec_spd_add_del_entry)                     \
 _(IPSEC_SAD_ADD_DEL_ENTRY, ipsec_sad_add_del_entry)                     \
 _(IPSEC_SA_SET_KEY, ipsec_sa_set_key)                                   \
+_(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del)                         \
+_(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth)                       \
+_(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id)                           \
+_(IKEV2_PROFILE_SET_TS, ikev2_profile_set_ts)                           \
+_(IKEV2_SET_LOCAL_KEY, ikev2_set_local_key)                             \
 _(DELETE_LOOPBACK, delete_loopback)                                     \
 _(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)                                 \
 _(MAP_ADD_DOMAIN, map_add_domain)                                       \
@@ -4624,7 +4630,7 @@ static void vl_api_ipsec_interface_add_del_spd_t_handler
 
     VALIDATE_SW_IF_INDEX(mp);
 
-#if IPSEC > 0 
+#if IPSEC > 0
     rv = ipsec_set_interface_spd(vm, sw_if_index, spd_id, mp->is_add);
 #else
     rv = VNET_API_ERROR_UNIMPLEMENTED;
@@ -4642,8 +4648,10 @@ static void vl_api_ipsec_spd_add_del_entry_t_handler
     vl_api_ipsec_spd_add_del_entry_reply_t * rmp;
     int rv;
 
-#if IPSEC > 0 
+#if IPSEC > 0
     ipsec_policy_t p;
+
+    memset(&p, 0, sizeof(p));
 
     p.id = ntohl(mp->spd_id);
     p.priority = ntohl(mp->priority);
@@ -4695,6 +4703,8 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
 #if IPSEC > 0
     ipsec_sa_t sa;
 
+    memset(&sa, 0, sizeof(sa));
+
     sa.id = ntohl(mp->sad_id);
     sa.spi = ntohl(mp->spi);
     /* security protocol AH unsupported */
@@ -4707,7 +4717,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
     /* check for unsupported crypto-alg */
     if (mp->crypto_algorithm < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
         mp->crypto_algorithm > IPSEC_CRYPTO_ALG_AES_CBC_256) {
-        clib_warning("unsupported crypto-alg: '%U'", format_ipsec_crypto_alg, 
+        clib_warning("unsupported crypto-alg: '%U'", format_ipsec_crypto_alg,
                      mp->crypto_algorithm);
         rv = VNET_API_ERROR_UNIMPLEMENTED;
         goto out;
@@ -4741,6 +4751,124 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
 out:
     REPLY_MACRO(VL_API_IPSEC_SAD_ADD_DEL_ENTRY_REPLY);
 }
+
+static void
+vl_api_ikev2_profile_add_del_t_handler
+(vl_api_ikev2_profile_add_del_t * mp)
+{
+    vlib_main_t * vm = vlib_get_main();
+    vl_api_ikev2_profile_add_del_reply_t * rmp;
+    int rv = 0;
+
+#if IPSEC > 0
+    clib_error_t * error;
+    u8 * tmp = format(0, "%s", mp->name);
+    error = ikev2_add_del_profile(vm, tmp, mp->is_add);
+    vec_free (tmp);
+    if (error)
+      rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+    rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+   REPLY_MACRO(VL_API_IKEV2_PROFILE_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_ikev2_profile_set_auth_t_handler
+(vl_api_ikev2_profile_set_auth_t * mp)
+{
+    vlib_main_t * vm = vlib_get_main();
+    vl_api_ikev2_profile_set_auth_reply_t * rmp;
+    int rv = 0;
+
+#if IPSEC > 0
+    clib_error_t * error;
+    u8 * tmp = format(0, "%s", mp->name);
+    u8 * data = vec_new (u8, mp->data_len);
+    memcpy(data, mp->data, mp->data_len);
+    error = ikev2_set_profile_auth(vm, tmp, mp->auth_method, data, mp->is_hex);
+    vec_free (tmp);
+    vec_free (data);
+    if (error)
+      rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+    rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+   REPLY_MACRO(VL_API_IKEV2_PROFILE_SET_AUTH_REPLY);
+}
+
+static void
+vl_api_ikev2_profile_set_id_t_handler
+(vl_api_ikev2_profile_set_id_t * mp)
+{
+    vlib_main_t * vm = vlib_get_main();
+    vl_api_ikev2_profile_set_id_reply_t * rmp;
+    int rv = 0;
+
+#if IPSEC > 0
+    clib_error_t * error;
+    u8 * tmp = format(0, "%s", mp->name);
+    u8 * data = vec_new (u8, mp->data_len);
+    memcpy(data, mp->data, mp->data_len);
+    error = ikev2_set_profile_id(vm, tmp, mp->id_type, data, mp->is_local);
+    vec_free (tmp);
+    vec_free (data);
+    if (error)
+      rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+    rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+   REPLY_MACRO(VL_API_IKEV2_PROFILE_SET_ID_REPLY);
+}
+
+static void
+vl_api_ikev2_profile_set_ts_t_handler
+(vl_api_ikev2_profile_set_ts_t * mp)
+{
+    vlib_main_t * vm = vlib_get_main();
+    vl_api_ikev2_profile_set_ts_reply_t * rmp;
+    int rv = 0;
+
+#if IPSEC > 0
+    clib_error_t * error;
+    u8 * tmp = format(0, "%s", mp->name);
+    error = ikev2_set_profile_ts(vm, tmp, mp->proto, mp->start_port,
+                                 mp->end_port, (ip4_address_t) mp->start_addr,
+                                 (ip4_address_t) mp->end_addr, mp->is_local);
+    vec_free (tmp);
+    if (error)
+      rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+    rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+   REPLY_MACRO(VL_API_IKEV2_PROFILE_SET_TS_REPLY);
+}
+
+static void
+vl_api_ikev2_set_local_key_t_handler
+(vl_api_ikev2_set_local_key_t * mp)
+{
+    vlib_main_t * vm = vlib_get_main();
+    vl_api_ikev2_set_local_key_reply_t * rmp;
+    int rv = 0;
+
+#if IPSEC > 0
+    clib_error_t * error;
+
+    error = ikev2_set_local_key(vm, mp->key_file);
+    if (error)
+      rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+    rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+   REPLY_MACRO(VL_API_IKEV2_SET_LOCAL_KEY_REPLY);
+}
+
 static void
 vl_api_map_add_domain_t_handler
 (vl_api_map_add_domain_t * mp)
