@@ -64,8 +64,13 @@ ip6_fib_lookup_with_table (ip6_main_t * im, u32 fib_index, ip6_address_t * dst)
   int i, len;
   int rv;
   BVT(clib_bihash_kv) kv, value;
+  u64 fib;
 
   len = vec_len (im->prefix_lengths_in_search_order);
+
+  kv.key[0] = dst->as_u64[0];
+  kv.key[1] = dst->as_u64[1];
+  fib = ((u64)((fib_index))<<32);
 
   for (i = 0; i < len; i++)
     {
@@ -73,10 +78,10 @@ ip6_fib_lookup_with_table (ip6_main_t * im, u32 fib_index, ip6_address_t * dst)
       ip6_address_t * mask = &im->fib_masks[dst_address_length];
       
       ASSERT(dst_address_length >= 0 && dst_address_length <= 128);
-      
-      kv.key[0] = dst->as_u64[0] & mask->as_u64[0];
-      kv.key[1] = dst->as_u64[1] & mask->as_u64[1];
-      kv.key[2] = ((u64)((fib_index))<<32) | dst_address_length;
+      //As lengths are decreasing, masks are increasingly specific.
+      kv.key[0] &= mask->as_u64[0];
+      kv.key[1] &= mask->as_u64[1];
+      kv.key[2] = fib | dst_address_length;
       
       rv = BV(clib_bihash_search_inline_2)(&im->ip6_lookup_table, &kv, &value);
       if (rv == 0)
