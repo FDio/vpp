@@ -34,6 +34,7 @@
 FILE *ofp;
 FILE *javafp;
 FILE *jnifp;
+FILE *pythonfp;
 char *java_class;
 time_t starttime;
 char *vlib_app_name;
@@ -159,6 +160,12 @@ void primtype_recursive_generate(node_t *this, enum passid which, FILE *ofp,
     case JAVA_METHOD_PASS:
         vftp = the_vft[this->type];
         current_java_methodfun = vftp->java_method_function;
+        break;
+
+    case PYTHON_PASS:
+        fputs("('", pythonfp);
+        fputs((char *)type_name, pythonfp);
+        fputs("', ", pythonfp);
         break;
 
     default:
@@ -876,6 +883,20 @@ void node_define_generate (node_t *this, enum passid which, FILE *fp)
         fprintf (fp, "}\n\n");
         break;
 
+    case PYTHON_PASS:
+      fprintf(fp, "('%s',\n", CDATA0);
+        child = this->deeper;
+        indent += 4;
+        while (child) {
+            node_vft_t *vftp = the_vft[child->type];
+            indent_me(fp);
+            vftp->generate(child, which, fp);
+            child = child->peer;
+        }
+        indent -= 4;
+        fprintf(fp, "),\n\n");
+        break;
+
     default:
         fprintf(stderr, "node_define_generate: unimp pass %d\n", which);
         break;
@@ -1032,6 +1053,9 @@ void node_scalar_generate (node_t *this, enum passid which, FILE *fp)
             }
         }
         break;
+    case PYTHON_PASS:
+        fprintf(fp, "'%s'),\n", CDATA0);
+        break;
 
     default:
         fprintf(stderr, "node_scalar_generate: unimp pass %d\n", which);
@@ -1136,6 +1160,9 @@ void node_vector_generate (node_t *this, enum passid which, FILE *fp)
         indent_me(fp);
         fprintf(fp, "}\n");
         break;
+    case PYTHON_PASS:
+        fprintf(fp, "'%s', '%d'),\n", CDATA0, IDATA1);
+        break;
 
     default:
         fprintf(stderr, "node_vector_generate: unimp pass %d\n", which);
@@ -1215,6 +1242,14 @@ void node_complex_generate (node_t *this, enum passid which, FILE *fp)
         indent_me(fp);
         fprintf(fp, "%s_endian(&a->%s%s);\n", 
                 CDATA0, union_prefix, member_name);
+        break;
+    case PYTHON_PASS:
+        fprintf(fp, "('%s',", CDATA0);
+        deeper = this->deeper;
+        if (deeper) {
+            vftp = the_vft[deeper->type];
+            vftp->generate(deeper, which, fp);
+        }
         break;
 
     default:
@@ -1767,14 +1802,14 @@ void add_msg_ids(YYSTYPE a1)
     while (np) {
         if (np->type == NODE_DEFINE) {
             if (!(np->flags & NODE_FLAG_TYPEONLY)) {
-                /* add the parse tree for "u16 _vl_msg_id" */
+	        /* add the parse tree for "u16 _vl_msg_id" */
                 new_u16 = make_node(NODE_U16);
                 new_u16->peer = np->deeper;
                 np->deeper = new_u16;
                 new_vbl = make_node(NODE_SCALAR);
                 new_vbl->data[0] = sxerox("_vl_msg_id");
                 new_u16->deeper = new_vbl;
-            }
+	    }
         }
         np = np->peer;
     }
@@ -1988,6 +2023,23 @@ void generate_jni_bottom_boilerplate(FILE *fp)
     fputs (hookup_boilerplate, fp);
 }
 
+void generate_python (YYSTYPE a1, FILE *fp)
+{
+  node_t *np = (node_t *)a1;
+  node_vft_t *vftp;
+  fprintf (fp, "vppapidef = [\n");
+  /* Walk the top-level node-list */
+  while (np) {
+    if (np->type == NODE_DEFINE && !(np->flags & NODE_FLAG_TYPEONLY)) {
+      /* Yeah, this is pedantic */
+      vftp = the_vft[np->type];
+      vftp->generate(np, PYTHON_PASS, fp);
+    }
+    np = np->peer;
+  }
+  fprintf (fp, "\n]\n");
+}
+
 void generate(YYSTYPE a1)
 {
     if (dump_tree) {
@@ -2019,5 +2071,8 @@ void generate(YYSTYPE a1)
         generate_jni_reply_handler_list (a1, jnifp);
         generate_jni_code(a1, jnifp);
         generate_jni_bottom_boilerplate(jnifp);
+    }
+    if (pythonfp) {
+      generate_python(a1, pythonfp);
     }
 }

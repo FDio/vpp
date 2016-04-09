@@ -28,7 +28,7 @@
 #include "node.h"
 #include "gram.h"
 
-FILE *ifp, *ofp, *javafp, *jnifp;
+FILE *ifp, *ofp, *javafp, *jnifp, *pythonfp;
 char *java_class = "vppApi";
 char *vlib_app_name = "vpp";
 int dump_tree;
@@ -260,6 +260,7 @@ int main (int argc, char **argv)
     char *ofile=0;
     char *jofile=0;
     char *jnifile=0;
+    char *pythonfile=0;
     char *show_name=0;
 
     while (curarg < argc) {
@@ -364,6 +365,23 @@ int main (int argc, char **argv)
             }
             continue;
         }
+        if (!strncmp (argv [curarg], "--python", 8)) {
+            curarg++;
+            if (curarg < argc) {
+                pythonfp = fopen (argv[curarg], "w");
+                if (pythonfp == NULL) {
+                    fprintf (stderr, "Couldn't open python output file %s\n",
+                         argv[curarg]);
+                    exit (1);
+                }
+                pythonfile = argv[curarg];
+                curarg++;
+            } else {
+                fprintf(stderr, "Missing filename after --python\n");
+                exit(1);
+            }
+            continue;
+        }
         if (!strncmp (argv [curarg], "--app", 4)) {
             curarg++;
             if (curarg < argc) {
@@ -399,6 +417,9 @@ int main (int argc, char **argv)
     if (jnifp == NULL) {
         jnifile = 0;
     }
+    if (pythonfp == NULL) {
+        pythonfile = 0;
+    }
     if (ifp == NULL) {
         fprintf(stderr, "No input file specified...\n");
         exit(1);
@@ -424,6 +445,10 @@ int main (int argc, char **argv)
             printf ("Java native bindings written to %s\n", jnifile);
             fclose (jnifp);
         }
+        if (pythonfile) {
+            printf ("Python bindings written to %s\n", pythonfile);
+            fclose (pythonfp);
+        }
     }
     else {
         fclose (ifp);
@@ -441,6 +466,10 @@ int main (int argc, char **argv)
             printf ("Removing %s\n", jnifile);
             unlink (jnifile);
         }
+        if (pythonfile) {
+            printf ("Removing %s\n", pythonfile);
+            unlink (pythonfile);
+        }
         exit (1);
     }
     exit (0);
@@ -452,7 +481,7 @@ int main (int argc, char **argv)
 static void usage (char *progname)
 {
     fprintf (stderr, 
-             "usage: %s --input <filename> [--output <filename>]\n%s",
+             "usage: %s --input <filename> [--output <filename>] [--python <filename>]\n%s",
              progname,
              "          [--yydebug] [--dump-tree]\n");
     exit (1);
