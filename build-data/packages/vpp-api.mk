@@ -1,4 +1,4 @@
-vpp-japi_configure_depend =			\
+vpp-api_configure_depend =			\
 	vppinfra-install			\
 	svm-install				\
 	vlib-api-install			\
@@ -6,7 +6,7 @@ vpp-japi_configure_depend =			\
 	vnet-install				\
 	vpp-install
 
-vpp-japi_CPPFLAGS = $(call installed_includes_fn,	\
+vpp-api_CPPFLAGS = $(call installed_includes_fn,	\
 	vppinfra					\
 	svm						\
 	vlib						\
@@ -14,10 +14,10 @@ vpp-japi_CPPFLAGS = $(call installed_includes_fn,	\
 	vnet						\
 	vpp)
 
-vpp-japi_LDFLAGS = $(call installed_libs_fn,	\
+vpp-api_LDFLAGS = $(call installed_libs_fn,	\
 	vppinfra				\
 	svm					\
 	vlib					\
 	vlib-api)
 
-vpp-japi_CPPFLAGS += -I/usr/lib/jvm/java-7-openjdk-amd64/include
+vpp-api_CPPFLAGS += -I/usr/lib/jvm/java-7-openjdk-amd64/include
