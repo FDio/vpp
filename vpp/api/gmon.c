@@ -77,7 +77,7 @@ static u64 get_significant_errors(gmon_main_t * gm)
   int vm_index;
   u64 significant_errors = 0;
 
-  clib_bitmap_foreach (code, gm->sig_error_bitmap,
+  clib_bitmap_foreach (code, (uword*) gm->sig_error_bitmap,
   ({
     for (vm_index = 0; vm_index < vec_len (gm->my_vlib_mains); vm_index++)
       {
@@ -231,7 +231,7 @@ significant_error_enable_disable (gmon_main_t * gm,
   if (index >= vec_len (em->counters))
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  gm->sig_error_bitmap = clib_bitmap_set (gm->sig_error_bitmap, index, enable);
+  gm->sig_error_bitmap = (u64*)clib_bitmap_set ((uword*)gm->sig_error_bitmap, index, enable);
   return 0;
 }
 

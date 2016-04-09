@@ -586,8 +586,11 @@ do {						\
   hash_v3_finalize_step_2_u32x(a,b,c);		\
 } while (0)
 
+/*
+ * Function hash_memory will call the appropriate function :
 extern u64 hash_memory64 (void * p, word n_bytes, u64 state);
 extern u32 hash_memory32 (void * p, word n_bytes, u32 state);
+*/
 extern uword hash_memory (void * p, word n_bytes, uword state);
 
 extern uword mem_key_sum (hash_t * h, uword key);

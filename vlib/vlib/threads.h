@@ -48,7 +48,9 @@ typedef struct vlib_thread_registration_ {
  * Make VLIB_MAX_CPUS a power-of-two, please...
  */
 
+#ifndef VLIB_MAX_CPUS
 #define VLIB_MAX_CPUS 256
+#endif
 
 #if VLIB_MAX_CPUS > CLIB_MAX_MHEAPS
 #error Please increase number of per-cpu mheaps

@@ -110,7 +110,7 @@ void isaac2 (isaac_t * ctx, uword * results)
   u32 a##n, b##n, c##n, x##n, y##n, * m##n, * mm##n, * m2##n, * r##n, * mend##n
 
   _ (0); _ (1);
-
+  (void)mend1; /* "set but unused variable" error on mend1 with gcc 4.9  */
 #undef _
 
 #define _(n)							\

@@ -198,14 +198,14 @@ vnet_ip_adjacency_signature (ip_adjacency_t * adj)
   uword signature = 0xfeedfaceULL;
 
   /* Skip heap handle, sum everything up to but not including share_count */
-  signature = hash_memory64
+  signature = hash_memory
       (STRUCT_MARK_PTR(adj, signature_start),
        STRUCT_OFFSET_OF(ip_adjacency_t, signature_end)
        - STRUCT_OFFSET_OF(ip_adjacency_t, signature_start),
        signature);
 
   /* and the rewrite */
-  signature = hash_memory64 (&adj->rewrite_header, VLIB_BUFFER_PRE_DATA_SIZE,
+  signature = hash_memory (&adj->rewrite_header, VLIB_BUFFER_PRE_DATA_SIZE,
                              signature);
   return signature;
 }
