@@ -63,6 +63,7 @@ enum passid {
     PRINTFUN_PASS,
     JAVA_METHOD_PASS,
     JAVA_JNI_PASS,
+    PYTHON_PASS,
 };
 
 extern void *make_node (enum node_subclass type);
