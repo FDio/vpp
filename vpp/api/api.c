@@ -5365,8 +5365,8 @@ vl_api_map_domain_dump_t_handler
   }
 
   pool_foreach(d, mm->domains, ({
+    /* Make sure every field is initiated (or don't skip the memset()) */
     rmp = vl_msg_api_alloc (sizeof (*rmp));
-    memset (rmp, 0, sizeof (*rmp));
     rmp->_vl_msg_id = ntohs(VL_API_MAP_DOMAIN_DETAILS);
     rmp->domain_index = htonl(d - mm->domains);
     rmp->ea_bits_len = d->ea_bits_len;
@@ -5462,15 +5462,15 @@ vl_api_map_summary_stats_t_handler (
 
     map_domain_counter_unlock (mm);
 
-    /* Note: in HOST byte order! */
-    rmp->total_pkts[MAP_DOMAIN_COUNTER_RX] = total_pkts[MAP_DOMAIN_COUNTER_RX];
-    rmp->total_bytes[MAP_DOMAIN_COUNTER_RX] = total_bytes[MAP_DOMAIN_COUNTER_RX];
-    rmp->total_pkts[MAP_DOMAIN_COUNTER_TX] = total_pkts[MAP_DOMAIN_COUNTER_TX];
-    rmp->total_bytes[MAP_DOMAIN_COUNTER_TX] = total_bytes[MAP_DOMAIN_COUNTER_TX];
-    rmp->total_bindings = pool_elts(mm->domains);
+    /* Note: in network byte order! */
+    rmp->total_pkts[MAP_DOMAIN_COUNTER_RX] = clib_host_to_net_u64(total_pkts[MAP_DOMAIN_COUNTER_RX]);
+    rmp->total_bytes[MAP_DOMAIN_COUNTER_RX] = clib_host_to_net_u64(total_bytes[MAP_DOMAIN_COUNTER_RX]);
+    rmp->total_pkts[MAP_DOMAIN_COUNTER_TX] = clib_host_to_net_u64(total_pkts[MAP_DOMAIN_COUNTER_TX]);
+    rmp->total_bytes[MAP_DOMAIN_COUNTER_TX] = clib_host_to_net_u64(total_bytes[MAP_DOMAIN_COUNTER_TX]);
+    rmp->total_bindings = clib_host_to_net_u64(pool_elts(mm->domains));
     rmp->total_ip4_fragments = 0; // Not yet implemented. Should be a simple counter.
-    rmp->total_security_check[MAP_DOMAIN_COUNTER_TX] = map_error_counter_get(ip4_map_node.index, MAP_ERROR_ENCAP_SEC_CHECK);
-    rmp->total_security_check[MAP_DOMAIN_COUNTER_RX] = map_error_counter_get(ip4_map_node.index, MAP_ERROR_DECAP_SEC_CHECK);
+    rmp->total_security_check[MAP_DOMAIN_COUNTER_TX] = clib_host_to_net_u64(map_error_counter_get(ip4_map_node.index, MAP_ERROR_ENCAP_SEC_CHECK));
+    rmp->total_security_check[MAP_DOMAIN_COUNTER_RX] = clib_host_to_net_u64(map_error_counter_get(ip4_map_node.index, MAP_ERROR_DECAP_SEC_CHECK));
 
     vl_msg_api_send_shmem(q, (u8 *)&rmp);
 }

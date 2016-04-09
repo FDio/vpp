@@ -93,7 +93,7 @@ endif
 	@echo 'export PATH=$(BR)/tools/ccache-bin:$$PATH' >> $(BR)/path_setup
 	@echo 'export PATH=$(BR)/tools/bin:$$PATH'        >> $(BR)/path_setup
 	@echo 'export CCACHE_DIR=$(CCACHE_DIR)'           >> $(BR)/path_setup
-	
+
 ifeq ("$(wildcard /usr/bin/ccache )","")
 	@echo "WARNING: Please install ccache AYEC and re-run this script"
 else
