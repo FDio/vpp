@@ -18,7 +18,7 @@ vpp_lite_native_tools = vppapigen
 vpp_lite_uses_dpdk = no
 
 vpp_lite_root_packages = vpp vlib vlib-api vnet svm vpp-api-test \
-	vpp-japi gmod
+	vpp-api gmod
 
 vlib_configure_args_vpp_lite = --with-pre-data=128
 
