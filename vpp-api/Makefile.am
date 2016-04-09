@@ -20,8 +20,40 @@ BUILT_SOURCES =
 bin_PROGRAMS = 
 CLEANFILES = 
 lib_LTLIBRARIES = 
+noinst_PROGRAMS = test_pneum
+nobase_include_HEADERS = pneum/pneum.h
 
-nobase_include_HEADERS =		\
+#
+# Python binding
+#
+pneum_la_SOURCES = pneum/pneum_wrap.c pneum/pneum.c
+pneum_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread -lm -lrt
+pneum_la_LDFLAGS = -module
+pneum_la_CPPFLAGS = -I/usr/include/python3.4/
+lib_LTLIBRARIES += pneum.la
+
+BUILT_SOURCES += api_vpp_papi.py
+
+api_vpp_papi.py: $(prefix)/../vpp/api/vpe.api papi/api-gen.py
+	@echo "  PYTHON API";                                            	  \
+	$(CC) $(CPPFLAGS) -E -P -C -x c $<			                  \
+	| vppapigen --input - --python defs_$@;                                   \
+	echo "#include <api/vpe_msg_enum.h>"                                      \
+	| $(CC) $(CPPFLAGS) -E -P -x c - | grep VL_API                            \
+	| @srcdir@/papi/api-gen.py -i defs_$@ > $@
+
+#
+# Test client
+#
+noinst_PROGRAMS += test_pneum
+test_pneum_SOURCES = pneum/pneum.c pneum/test_pneum.c
+test_pneum_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread -lm -lrt
+
+#
+# Java binding
+#
+
+nobase_include_HEADERS +=		\
   japi/org_openvpp_vppjapi_vppApi.h	\
   japi/org_openvpp_vppjapi_vppConn.h
 

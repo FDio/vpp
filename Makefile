@@ -24,7 +24,7 @@ GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms openjdk-7-jdk git libtool libganglia1-dev libapr1-dev
-DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
+DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope python3-dev
 
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel
@@ -93,7 +93,7 @@ endif
 	@echo 'export PATH=$(BR)/tools/ccache-bin:$$PATH' >> $(BR)/path_setup
 	@echo 'export PATH=$(BR)/tools/bin:$$PATH'        >> $(BR)/path_setup
 	@echo 'export CCACHE_DIR=$(CCACHE_DIR)'           >> $(BR)/path_setup
-	
+
 ifeq ("$(wildcard /usr/bin/ccache )","")
 	@echo "WARNING: Please install ccache AYEC and re-run this script"
 else
