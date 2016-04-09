@@ -165,7 +165,7 @@ af_packet_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 data_len = tph->tp_snaplen;
 	  u32 offset = 0;
-	  u32 bi0, first_bi0 = 0, prev_bi0;
+	  u32 bi0 = 0, first_bi0 = 0, prev_bi0;
 
 	  while (data_len)
 	    {

@@ -1894,8 +1894,8 @@ ip6_neighbor_process_timer_event (vlib_main_t * vm,
   ip6_radv_t *radv_info; 
   vlib_frame_t * f = 0; 
   u32 n_this_frame = 0;
-  u32 n_left_to_next;
-  u32 * to_next;
+  u32 n_left_to_next = 0;
+  u32 * to_next = 0;
   u32 bo0; 
   icmp6_router_solicitation_header_t * h0;
   vlib_buffer_t * b0;

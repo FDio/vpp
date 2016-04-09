@@ -542,8 +542,8 @@ ikev2_decrypt_sk_payload(ikev2_sa_t * sa, ike_header_t * ike, u8 * payload)
   u8 last_payload = 0;
   u8 * hmac = 0;
   u32 len = clib_net_to_host_u32(ike->length);
-  ike_payload_header_t * ikep;
-  u32 plen;
+  ike_payload_header_t * ikep = 0;
+  u32 plen = 0;
   ikev2_sa_transform_t * tr_integ;
   tr_integ = ikev2_sa_get_td_for_type(sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
 
