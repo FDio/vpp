@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
@@ -37,11 +38,6 @@
 #define vl_typedefs 
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
-
-typedef struct msgbuf_ {
-    unix_shared_memory_queue_t *q;
-    u8 data[0];
-} msgbuf_t;
 
 static inline void *vl_msg_api_alloc_internal(int nbytes, int pool)
 {
@@ -119,12 +115,13 @@ static inline void *vl_msg_api_alloc_internal(int nbytes, int pool)
 
     pthread_mutex_lock (&am->vlib_rp->mutex);
     oldheap = svm_push_data_heap (am->vlib_rp);
-    rv = clib_mem_alloc(nbytes + sizeof(msgbuf_t));
+    rv = clib_mem_alloc(nbytes);
     rv->q = 0;
     svm_pop_heap (oldheap);
     pthread_mutex_unlock (&am->vlib_rp->mutex);
 
  out:
+    rv->data_len = htonl(nbytes - sizeof(msgbuf_t));
     return(rv->data);
 }
 
@@ -152,7 +149,8 @@ void vl_msg_api_free(void *a)
     void *oldheap;
     api_main_t *am = &api_main;
     
-    rv = (msgbuf_t *)(((u8 *)a) - sizeof(*rv));
+    rv = (msgbuf_t *)(((u8 *)a) - offsetof(msgbuf_t, data));
+
     /*
      * Here's the beauty of the scheme.  Only one proc/thread has
      * control of a given message buffer. To free a buffer, we just clear the 
@@ -176,7 +174,7 @@ static void vl_msg_api_free_nolock (void *a)
     void *oldheap;
     api_main_t *am = &api_main;
     
-    rv = (msgbuf_t *)(((u8 *)a) - sizeof(*rv));
+    rv = (msgbuf_t *)(((u8 *)a) - offsetof(msgbuf_t, data));
     /*
      * Here's the beauty of the scheme.  Only one proc/thread has
      * control of a given message buffer. To free a buffer, we just clear the 
