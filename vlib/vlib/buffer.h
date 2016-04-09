@@ -59,7 +59,7 @@
 #ifdef CLIB_HAVE_VEC128
 typedef u8x16 vlib_copy_unit_t;
 #else
-typedef uword vlib_copy_unit_t;
+typedef u64 vlib_copy_unit_t;
 #endif
 
 /** \file

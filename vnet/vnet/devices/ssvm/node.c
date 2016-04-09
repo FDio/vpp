@@ -97,8 +97,8 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
   uword n_trace = vlib_get_trace_count (vm, node);
 
   /* Either side down? buh-bye... */
-  if ((u64)(sh->opaque [MASTER_ADMIN_STATE_INDEX]) == 0 ||
-      (u64)(sh->opaque [SLAVE_ADMIN_STATE_INDEX]) == 0)
+  if (pointer_to_uword(sh->opaque [MASTER_ADMIN_STATE_INDEX]) == 0 ||
+      pointer_to_uword(sh->opaque [SLAVE_ADMIN_STATE_INDEX]) == 0)
     return 0;
 
   if (intfc->i_am_master)
@@ -271,14 +271,14 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
 
   ASSERT(vec_len(intfc->rx_queue) > 0);
 
-  n_available = (u32)(u64)(sh->opaque[CHUNK_POOL_NFREE]);
+  n_available = (u32)pointer_to_uword(sh->opaque[CHUNK_POOL_NFREE]);
   elt_indices = (u32 *)(sh->opaque[CHUNK_POOL_FREELIST_INDEX]);
 
   memcpy (&elt_indices[n_available], intfc->rx_queue, 
           vec_len (intfc->rx_queue) * sizeof (u32));
 
   n_available += vec_len (intfc->rx_queue);
-  sh->opaque[CHUNK_POOL_NFREE] = (void *) (u64) n_available;
+  sh->opaque[CHUNK_POOL_NFREE] = uword_to_pointer(n_available, void* );
 
   ssvm_unlock (sh);
 

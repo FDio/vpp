@@ -1135,8 +1135,8 @@ static void vl_api_rpc_call_t_handler (vl_api_rpc_call_t * mp)
       if (mp->need_barrier_sync)
         vlib_worker_thread_barrier_sync (vm);
 
-      fp = (void *)(mp->function);
-      rv = (*fp)(mp->data);
+      fp = uword_to_pointer(mp->function, int(*)(void *));
+      rv = fp(mp->data);
 
       if (mp->need_barrier_sync)
         vlib_worker_thread_barrier_release (vm);
@@ -1174,7 +1174,7 @@ void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
   memset (mp, 0, sizeof (*mp));
   memcpy (mp->data, data, data_length);
   mp->_vl_msg_id = ntohs (VL_API_RPC_CALL);
-  mp->function = (u64)fp;
+  mp->function = pointer_to_uword(fp);
   mp->need_barrier_sync = 1;
   
   /* Use the "normal" control-plane mechanism for the main thread */

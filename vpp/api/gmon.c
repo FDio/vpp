@@ -52,7 +52,7 @@ typedef struct {
   pid_t *vpef_pid_ptr;
   u64 last_sig_errors;
   u64 current_sig_errors;
-  u64 * sig_error_bitmap;
+  uword * sig_error_bitmap;
   vlib_main_t *vlib_main;
   vlib_main_t ** my_vlib_mains;
 

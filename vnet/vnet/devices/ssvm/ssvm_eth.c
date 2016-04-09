@@ -95,7 +95,7 @@ int ssvm_eth_create (ssvm_eth_main_t * em, u8 * name, int is_master)
 
   sh->opaque [CHUNK_POOL_INDEX] = (void *) elts;
   sh->opaque [CHUNK_POOL_FREELIST_INDEX] = (void *) elt_indices;
-  sh->opaque [CHUNK_POOL_NFREE] = (void *) em->nbuffers;
+  sh->opaque [CHUNK_POOL_NFREE] = (void *)(uword) em->nbuffers;
   
   ssvm_pop_heap (oldheap);
 
@@ -276,8 +276,8 @@ ssvm_eth_interface_tx (vlib_main_t * vm,
   n_present_in_cache = vec_len (em->chunk_cache);
 
   /* admin / link up/down check */
-  if ((u64)(sh->opaque [MASTER_ADMIN_STATE_INDEX]) == 0 ||
-      (u64)(sh->opaque [SLAVE_ADMIN_STATE_INDEX]) == 0)
+  if (sh->opaque [MASTER_ADMIN_STATE_INDEX] == 0 ||
+      sh->opaque [SLAVE_ADMIN_STATE_INDEX] == 0)
     {
       interface_down = 1;
       goto out;
@@ -287,7 +287,7 @@ ssvm_eth_interface_tx (vlib_main_t * vm,
 
   elts = (ssvm_eth_queue_elt_t *) (sh->opaque [CHUNK_POOL_INDEX]);
   elt_indices = (u32 *) (sh->opaque [CHUNK_POOL_FREELIST_INDEX]);
-  n_available = (u32) (u64) (sh->opaque [CHUNK_POOL_NFREE]);
+  n_available = (u32) pointer_to_uword(sh->opaque [CHUNK_POOL_NFREE]);
 
   if (n_present_in_cache < n_left*2)
     {
@@ -305,7 +305,7 @@ ssvm_eth_interface_tx (vlib_main_t * vm,
 
       n_present_in_cache += n_allocated;
       n_available -= n_allocated;
-      sh->opaque [CHUNK_POOL_NFREE] = (void *) (u64) n_available;
+      sh->opaque [CHUNK_POOL_NFREE] = uword_to_pointer(n_available, void*);
       _vec_len (em->chunk_cache) = n_present_in_cache;
     }
 

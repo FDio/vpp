@@ -6,14 +6,12 @@ vnet_configure_depend = 			\
 
 vnet_CPPFLAGS = $(call installed_includes_fn, 	\
     vppinfra 					\
-    openssl					\
     svm						\
     vlib 					\
     vlib-api)
 
 vnet_LDFLAGS = $(call installed_libs_fn, 	\
     vppinfra					\
-    openssl					\
     svm						\
     vlib					\
     vlib-api)
@@ -24,6 +22,12 @@ endif
 
 # Platform dependent configure flags
 vnet_configure_args += $(vnet_configure_args_$(PLATFORM))
+
+# include & link with openssl only if needed
+ifneq ($($(PLATFORM)_uses_openssl),no)
+vnet_CPPFLAGS += $(call installed_includes_fn, openssl)
+vnet_LDFLAGS += $(call installed_libs_fn, openssl)
+endif
 
 ifneq ($($(PLATFORM)_uses_dpdk),no)
 ifeq ($($(PLATFORM)_uses_external_dpdk),yes)

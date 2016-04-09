@@ -214,7 +214,7 @@ void clib_macro_init(macro_main_t * mm)
 {
   if (mm->the_builtin_eval_hash != 0)
     {
-      clib_warning ("mm %llx already initialized", (u64)mm);
+      clib_warning ("mm %p already initialized", mm);
       return;
     }
 

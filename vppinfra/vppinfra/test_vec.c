@@ -1050,7 +1050,7 @@ int test_vec_main (unformat_input_t * input)
       u8 * bigboy = 0;
       u64 one_gig = (1<<30);
       u64 size;
-      i64 index;
+      u64 index;
 
       fformat (stdout, "giant vector test...");
       size = 5ULL * one_gig;
@@ -1090,7 +1090,7 @@ int main (int argc, char * argv[])
   unformat_input_t i;
   int ret;
 
-  mheap_alloc (0, 10ULL<<30);
+  mheap_alloc (0, (uword)10ULL<<30);
 
   verbose = (argc > 1);
   unformat_init_command_line (&i, argv);

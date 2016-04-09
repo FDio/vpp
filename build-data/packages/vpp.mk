@@ -18,7 +18,6 @@ vpp_configure_args += $(vpp_configure_args_$(PLATFORM))
 
 vpp_CPPFLAGS = $(call installed_includes_fn,	\
 	vppinfra				\
-        openssl					\
 	svm					\
 	vlib					\
 	vlib-api				\
@@ -26,11 +25,16 @@ vpp_CPPFLAGS = $(call installed_includes_fn,	\
 
 vpp_LDFLAGS = $(call installed_libs_fn,		\
 	vppinfra				\
-	openssl					\
 	svm					\
 	vlib					\
 	vlib-api				\
 	vnet)
+
+# include & link with openssl only if needed
+ifneq ($($(PLATFORM)_uses_openssl),no)
+vpp_CPPFLAGS += $(call installed_includes_fn, openssl)
+vpp_LDFLAGS += $(call installed_libs_fn, openssl)
+endif
 
 ifneq ($($(PLATFORM)_uses_dpdk),no)
 ifeq ($($(PLATFORM)_uses_external_dpdk),yes)

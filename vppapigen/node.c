@@ -285,8 +285,8 @@ void primtype_java_code (node_t * this, enum passid which, FILE *ofp,
             indent_me(ofp);
             fprintf(ofp, "int _i;\n");
             indent_me(ofp);
-            fprintf(ofp, "for (_i = 0; _i < %d; _i++) {\n", 
-                    (int)(u64)(deeper->data[1]));
+            fprintf(ofp, "for (_i = 0; _i < %u; _i++) {\n",
+                    (u64)(deeper->data[1]));
             indent += 4;
             indent_me(ofp);
             fprintf(ofp, "mp->%s[_i] = %s(%sP[_i]);\n",

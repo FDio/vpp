@@ -3314,7 +3314,7 @@ static void vl_api_cli_request_t_handler
     rp->_vl_msg_id = ntohs(VL_API_CLI_REPLY);
     rp->context = mp->context;
 
-    unformat_init_vector (&input, (u8 *)mp->cmd_in_shmem);
+    unformat_init_vector (&input, (u8 *)(uword)mp->cmd_in_shmem);
 
     vlib_cli_input (vm, &input, shmem_cli_output, 
                     (uword)&shmem_vec);
@@ -5191,11 +5191,11 @@ static void
 vl_api_ikev2_profile_add_del_t_handler
 (vl_api_ikev2_profile_add_del_t * mp)
 {
-    vlib_main_t * vm = vlib_get_main();
     vl_api_ikev2_profile_add_del_reply_t * rmp;
     int rv = 0;
 
 #if IPSEC > 0
+    vlib_main_t * vm = vlib_get_main();
     clib_error_t * error;
     u8 * tmp = format(0, "%s", mp->name);
     error = ikev2_add_del_profile(vm, tmp, mp->is_add);
@@ -5213,11 +5213,11 @@ static void
 vl_api_ikev2_profile_set_auth_t_handler
 (vl_api_ikev2_profile_set_auth_t * mp)
 {
-    vlib_main_t * vm = vlib_get_main();
     vl_api_ikev2_profile_set_auth_reply_t * rmp;
     int rv = 0;
 
 #if IPSEC > 0
+    vlib_main_t * vm = vlib_get_main();
     clib_error_t * error;
     u8 * tmp = format(0, "%s", mp->name);
     u8 * data = vec_new (u8, mp->data_len);
@@ -5238,11 +5238,11 @@ static void
 vl_api_ikev2_profile_set_id_t_handler
 (vl_api_ikev2_profile_set_id_t * mp)
 {
-    vlib_main_t * vm = vlib_get_main();
-    vl_api_ikev2_profile_set_id_reply_t * rmp;
+    vl_api_ikev2_profile_add_del_reply_t * rmp;
     int rv = 0;
 
 #if IPSEC > 0
+    vlib_main_t * vm = vlib_get_main();
     clib_error_t * error;
     u8 * tmp = format(0, "%s", mp->name);
     u8 * data = vec_new (u8, mp->data_len);
@@ -5263,11 +5263,11 @@ static void
 vl_api_ikev2_profile_set_ts_t_handler
 (vl_api_ikev2_profile_set_ts_t * mp)
 {
-    vlib_main_t * vm = vlib_get_main();
     vl_api_ikev2_profile_set_ts_reply_t * rmp;
     int rv = 0;
 
 #if IPSEC > 0
+    vlib_main_t * vm = vlib_get_main();
     clib_error_t * error;
     u8 * tmp = format(0, "%s", mp->name);
     error = ikev2_set_profile_ts(vm, tmp, mp->proto, mp->start_port,
@@ -5287,11 +5287,11 @@ static void
 vl_api_ikev2_set_local_key_t_handler
 (vl_api_ikev2_set_local_key_t * mp)
 {
-    vlib_main_t * vm = vlib_get_main();
-    vl_api_ikev2_set_local_key_reply_t * rmp;
+    vl_api_ikev2_profile_set_ts_reply_t * rmp;
     int rv = 0;
 
 #if IPSEC > 0
+    vlib_main_t * vm = vlib_get_main();
     clib_error_t * error;
 
     error = ikev2_set_local_key(vm, mp->key_file);

@@ -40,8 +40,8 @@ cj_log (u32 type, void * data0, void * data1)
   r->time = vlib_time_now (cjm->vlib_main);
   r->cpu = os_get_cpu_number();
   r->type = type;
-  r->data[0] = (u64) data0;
-  r->data[1] = (u64) data1;
+  r->data[0] = pointer_to_uword(data0);
+  r->data[1] = pointer_to_uword(data1);
 }
 
 void cj_stop(void)

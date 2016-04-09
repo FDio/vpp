@@ -40,11 +40,11 @@ extern vlib_node_registration_t ip6_classify_node;
 
 #define CLASSIFY_TRACE 0
 
-#ifndef __aarch64__
+#if !defined( __aarch64__) && !defined(__arm__)
 #define CLASSIFY_USE_SSE //Allow usage of SSE operations
 #endif
 
-#define U32X4_ALIGNED(p) PREDICT_TRUE((((u64)p) & 0xf) == 0)
+#define U32X4_ALIGNED(p) PREDICT_TRUE((((intptr_t)p) & 0xf) == 0)
 
 struct _vnet_classify_main;
 typedef struct _vnet_classify_main vnet_classify_main_t;

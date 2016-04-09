@@ -158,10 +158,10 @@ static int htlb_init (vlib_main_t * vm)
      /* Don't want mheap mmap/munmap with IO memory. */
      MHEAP_FLAG_DISABLE_VM);
   
-  cur = (u64) pm->mem;
+  cur = pointer_to_uword(pm->mem);
   i = 0;
 
-  while (cur < (u64) pm->mem + pm->mem_size)
+  while (cur < pointer_to_uword(pm->mem) + pm->mem_size)
     {
       pfn = (u64) cur / pagesize;
       seek_loc = pfn * sizeof (u64);

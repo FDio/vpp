@@ -113,7 +113,14 @@ always_inline u64 clib_cpu_time_now (void)
 }
 
 #elif defined (__arm__)
-
+#if defined(__ARM_ARCH_7A__)
+always_inline u64 clib_cpu_time_now (void)
+{
+  u64 tsc;
+  asm volatile("mrrc p15, 0, %Q0, %R0, c9" : "=r" (tsc));
+  return tsc;
+}
+#else
 always_inline u64 clib_cpu_time_now (void)
 {
   u32 lo;
@@ -121,6 +128,7 @@ always_inline u64 clib_cpu_time_now (void)
 		: [lo] "=r" (lo));
   return (u64) lo;
 }
+#endif
 
 #elif defined (__xtensa__)
 
