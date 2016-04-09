@@ -73,7 +73,7 @@ typedef struct {
   u32 my_pid;
   u32 vlib_hw_if_index;
   u8 * name;
-  u64 requested_va;
+  uword requested_va;
   int i_am_master;
   u32 per_interface_next_index;
   u32 * rx_queue;

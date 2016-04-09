@@ -478,7 +478,7 @@ clib_setjmp:
 #endif
 
 	/* Give back user's return value. */
-	mov r1, r0
+	mov r0, r1
 	bx lr
 	
 	.global clib_longjmp
@@ -501,7 +501,7 @@ clib_longjmp:
 #endif
 	
 	/* Give back user's return value. */
-	mov r1, r0
+	mov r0, r1
 	bx lr
 
 	.global clib_calljmp

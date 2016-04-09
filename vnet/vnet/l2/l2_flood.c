@@ -174,7 +174,7 @@ l2flood_process (vlib_main_t * vm,
 	  (!in_shg || members[0].shg != in_shg)))) {
       // If more than one member then initiate replication
       ctx = replication_prep (vm, b0, l2flood_node.index, 1 /* l2_packet */);
-      ctx->feature_replicas = (u64) members;
+      ctx->feature_replicas = (uword) members;
       ctx->feature_counter = current_member;
     }
 
@@ -194,7 +194,7 @@ l2flood_process (vlib_main_t * vm,
     ctx = replication_get_ctx (b0);
     replication_clear_recycled (b0);
 
-    members = (l2_flood_member_t *) ctx->feature_replicas;
+    members = (l2_flood_member_t *)(intptr_t) ctx->feature_replicas;
     current_member = (i32)ctx->feature_counter - 1;
 
     // Need to update input index from saved packet context

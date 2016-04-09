@@ -495,9 +495,9 @@ dpdk_vhost_user_set_mem_table(u32 hw_if_index, vhost_user_memory_t * vum, int fd
     mem->regions[i].userspace_address      = vum->regions[i].userspace_addr;
 
     mapped_size = mem->regions[i].memory_size + vum->regions[i].mmap_offset;
-    mapped_address = (uint64_t)(uintptr_t)mmap(NULL, mapped_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd[i], 0);
+    mapped_address = pointer_to_uword(mmap(NULL, mapped_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd[i], 0));
 
-    if ((void *)mapped_address == MAP_FAILED)
+    if (uword_to_pointer(mapped_address, void*) == MAP_FAILED)
     {
       clib_warning("mmap error");
       return 0;

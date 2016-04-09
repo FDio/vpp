@@ -88,7 +88,7 @@ static inline u64 zap64 (u64 x, word n)
     return x & masks_little_endian[n];
 }
 
-u64 hash_memory64 (void * p, word n_bytes, u64 state)
+static inline u64 hash_memory64 (void * p, word n_bytes, u64 state)
 {
   u64 * q = p;
   u64 a, b, c, n;
@@ -155,7 +155,7 @@ static inline u32 zap32 (u32 x, word n)
     return x & masks_little_endian[n];
 }
 
-u32 hash_memory32 (void * p, word n_bytes, u32 state)
+static inline u32 hash_memory32 (void * p, word n_bytes, u32 state)
 {
   u32 * q = p;
   u32 a, b, c, n;

@@ -114,7 +114,7 @@ static inline void ssvm_eth_validate_freelists (int need_lock)
         ssvm_lock (sh, my_pid, 15);
 
       elt_indices = (u32 *) (sh->opaque [CHUNK_POOL_FREELIST_INDEX]);
-      n_available = (u32) (u64) (sh->opaque [CHUNK_POOL_NFREE]);
+      n_available = (u32) (uword) (sh->opaque [CHUNK_POOL_NFREE]);
 
       for (i = 0; i < n_available; i++)
 	ASSERT (elt_indices[i] < 2048);

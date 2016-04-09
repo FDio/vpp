@@ -12,15 +12,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE
+#include <sched.h>
+
 #include <signal.h>
 #include <math.h>
 #include <vppinfra/format.h>
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
-#include <vlib/unix/physmem.h>
-
 #include <vlib/unix/cj.h>
+
 
 #if DPDK==1
 #include <rte_config.h>
@@ -174,6 +176,16 @@ vlib_thread_init (vlib_main_t * vm)
   /* assume that there is socket 0 only if there is no data from sysfs */
   if (!tm->cpu_socket_bitmap)
     tm->cpu_socket_bitmap = clib_bitmap_set(0, 0, 1);
+
+  /* pin main thread to main_lcore  */
+#if DPDK==0
+  {
+     cpu_set_t cpuset;
+     CPU_ZERO(&cpuset);
+     CPU_SET(tm->main_lcore, &cpuset);
+     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+  }
+#endif
 
   /* as many threads as stacks... */
   vec_validate_aligned (vlib_worker_threads, vec_len(vlib_thread_stacks)-1,
@@ -486,7 +498,6 @@ void *vlib_worker_thread_bootstrap_fn (void *arg)
 static int
 vlib_launch_thread (void *fp, vlib_worker_thread_t *w, unsigned lcore_id)
 {
-  pthread_t dummy;
   void *(*fp_arg)(void *) = fp;
 
 #if DPDK==1
@@ -497,7 +508,19 @@ vlib_launch_thread (void *fp, vlib_worker_thread_t *w, unsigned lcore_id)
       return -1;
   else
 #endif
-    return pthread_create (&dummy, NULL /* attr */, fp_arg, (void *)w);
+  {
+    int ret;
+    pthread_t worker;
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(lcore_id, &cpuset);
+
+    ret = pthread_create (&worker, NULL /* attr */, fp_arg, (void *)w);
+    if(ret == 0)
+        return pthread_setaffinity_np(worker, sizeof(cpu_set_t), &cpuset);
+    else
+        return ret;
+  }
 }
 
 static clib_error_t * start_workers (vlib_main_t * vm)
@@ -1031,7 +1054,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_EARLY_CONFIG_FUNCTION (cpu_config, "cpu");
 
-#if !defined (__x86_64__) && !defined (__aarch64__) && !defined (__powerpc64__)
+#if !defined (__x86_64__) && !defined (__aarch64__) && !defined (__powerpc64__) && !defined(__arm__)
 void __sync_fetch_and_add_8 (void)
 {
   fformat(stderr, "%s called\n", __FUNCTION__);

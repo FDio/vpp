@@ -61,7 +61,7 @@
 
 #define _vector_size(n) __attribute__ ((vector_size (n)))
 
-#if defined (__aarch64__)
+#if defined (__aarch64__) || defined (__arm__)
 typedef unsigned int u32x4 _vector_size (16);
 #endif
 

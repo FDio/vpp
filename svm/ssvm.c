@@ -59,10 +59,10 @@ int ssvm_master_init (ssvm_private_t * ssvm, u32 master_index)
   if (ssvm->requested_va)
     ssvm->requested_va += randomize_baseva;
   
-  sh = ssvm->sh = (void *) mmap((void *)ssvm->requested_va, ssvm->ssvm_size, 
+  sh = ssvm->sh = (ssvm_shared_header_t *) mmap((void *)ssvm->requested_va, ssvm->ssvm_size, 
                                 PROT_READ | PROT_WRITE, flags, ssvm_fd, 0);
 
-  if ((u64) ssvm->sh == (u64) MAP_FAILED)
+  if (ssvm->sh == MAP_FAILED)
     {
       clib_unix_warning ("mmap");
       close(ssvm_fd);
@@ -78,7 +78,7 @@ int ssvm_master_init (ssvm_private_t * ssvm, u32 master_index)
     (((u8 *)sh) + MMAP_PAGESIZE, ssvm->ssvm_size - MMAP_PAGESIZE, 
      MHEAP_FLAG_DISABLE_VM | MHEAP_FLAG_THREAD_SAFE);
 
-  sh->ssvm_va = (u64) sh;
+  sh->ssvm_va = pointer_to_uword(sh);
   sh->master_index = master_index;
 
   oldheap = ssvm_push_heap (sh);
@@ -123,7 +123,7 @@ int ssvm_slave_init (ssvm_private_t * ssvm, int timeout_in_seconds)
  map_it:
     sh = (void *) mmap (0, MMAP_PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, 
                         ssvm_fd, 0);
-    if ((u64) sh == (u64) MAP_FAILED)
+    if (sh == MAP_FAILED)
       {
         clib_unix_warning ("slave research mmap");
         close (ssvm_fd);
@@ -150,7 +150,7 @@ int ssvm_slave_init (ssvm_private_t * ssvm, int timeout_in_seconds)
                                   MAP_SHARED | MAP_FIXED,
                                   ssvm_fd, 0);
     
-    if ((u64) sh == (u64) MAP_FAILED)
+    if (sh == MAP_FAILED)
       {
         clib_unix_warning ("slave final mmap");
         close (ssvm_fd);
