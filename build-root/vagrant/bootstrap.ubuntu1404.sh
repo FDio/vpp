@@ -35,5 +35,25 @@ for intf in $(ls /sys/class/net) ; do
     fi
 done
 
+# Hugepages
+echo "vm.nr_hugepages=1024" >> /etc/sysctl.d/20-hugepages.conf
+sysctl --system
+
+cat << EOF > /etc/init/hugepages.conf
+start on runlevel [2345]
+
+task
+
+script
+    mkdir -p /run/hugepages/kvm || true
+    rm -f /run/hugepages/kvm/* || true
+    rm -f /dev/shm/* || true
+    mount -t hugetlbfs nodev /run/hugepages/kvm
+end script
+EOF
+
+# Make sure we run that hugepages.conf right now
+start hugepages
+
 start vpp
 cat /vagrant/README
