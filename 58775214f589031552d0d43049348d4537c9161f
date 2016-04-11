@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_776d4704",
+        "filename": "vlib/vlib/threads.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-11T15:24:49Z",
+      "side": 1,
+      "message": "Please get rid of this",
+      "revId": "58775214f589031552d0d43049348d4537c9161f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
