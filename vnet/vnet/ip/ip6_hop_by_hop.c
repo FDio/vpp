@@ -429,6 +429,12 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
                 case 0: /* Pad */
                   opt0 = (ip6_hop_by_hop_option_t *) ((u8 *)opt0) + 1;
                   goto out0;
+
+                default:
+                  opt0 = (ip6_hop_by_hop_option_t *)
+                  (((u8 *)opt0) + opt0->length
+                  + sizeof (ip6_hop_by_hop_option_t));
+                  break;
                 }
             }
 
