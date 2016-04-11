@@ -20,7 +20,10 @@ endif
 
 lib_LIBRARIES =
 
-TESTS	=  test_bihash_template \
+TESTS =
+
+if ENABLE_TESTS
+TESTS  +=  test_bihash_template \
 	   test_elog \
 	   test_elf \
 	   test_fifo \
@@ -44,6 +47,7 @@ TESTS	=  test_bihash_template \
 	   test_timing_wheel \
 	   test_vec \
 	   test_zvec 
+endif
 
 noinst_PROGRAMS = $(TESTS)
 check_PROGRAMS	= $(TESTS)

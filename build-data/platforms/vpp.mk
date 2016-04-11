@@ -17,6 +17,9 @@ vpp_native_tools = vppapigen
 
 vpp_uses_dpdk = yes
 
+# Uncoment to enable building unit tests
+# vpp_enable_tests = yes
+
 vpp_root_packages = vpp vlib vlib-api vnet svm vpp-api-test \
 	vpp-japi gmod
 
