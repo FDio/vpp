@@ -23,7 +23,7 @@ MINIMAL_STARTUP_CONF="unix { interactive } dpdk { no-pci socket-mem 1024 }"
 GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
-DEB_DEPENDS += debhelper dkms openjdk-7-jdk git libtool libganglia1-dev libapr1-dev
+DEB_DEPENDS += debhelper dkms default-jdk git libtool libganglia1-dev libapr1-dev
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
 
 RPM_DEPENDS_GROUPS = 'Development Tools'
