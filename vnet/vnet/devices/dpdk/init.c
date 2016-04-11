@@ -1512,6 +1512,35 @@ void dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	    break;
 	  }
       }
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
+    if (hw_flags_chg || (xd->link.link_speed != prev_link.link_speed))
+      {
+	hw_flags_chg = 1;
+	switch (xd->link.link_speed)
+	  {
+	  case ETH_SPEED_NUM_10M:
+	    hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_10M;
+	    break;
+	  case ETH_SPEED_NUM_100M:
+	    hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_100M;
+	    break;
+	  case ETH_SPEED_NUM_1G:
+	    hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_1G;
+	    break;
+	  case ETH_SPEED_NUM_10G:
+	    hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_10G;
+	    break;
+	  case ETH_SPEED_NUM_40G:
+	    hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_40G;
+	    break;
+    case 0:
+      break;
+    default:
+      clib_warning("unknown link speed %d", xd->link.link_speed);
+	    break;
+	  }
+      }
+#else
     if (hw_flags_chg || (xd->link.link_speed != prev_link.link_speed))
       {
 	hw_flags_chg = 1;
@@ -1539,6 +1568,7 @@ void dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	    break;
 	  }
       }
+#endif
     if (hw_flags_chg)
       {
         if (LINK_STATE_ELOGS)
