@@ -217,7 +217,8 @@ static u8 * format_ip6_hop_by_hop_trace (u8 * s, va_list * args)
 vlib_node_registration_t ip6_hop_by_hop_node;
 
 #define foreach_ip6_hop_by_hop_error \
-_(PROCESSED, "Pkts with ip6 hop-by-hop options")
+_(PROCESSED, "Pkts with ip6 hop-by-hop options") \
+_(UNKNOWN_OPTION, "Unknown ip6 hop-by-hop options")
 
 typedef enum {
 #define _(sym,str) IP6_HOP_BY_HOP_ERROR_##sym,
@@ -242,7 +243,7 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
   ip6_hop_by_hop_main_t * hm = &ip6_hop_by_hop_main;
   u32 n_left_from, * from, * to_next;
   ip_lookup_next_t next_index;
-  u32 processed = 0;
+  u32 processed = 0, unknown_opts = 0;
   u8 elt_index = 0;
   time_u64_t time_u64;
 
@@ -434,6 +435,7 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
                   opt0 = (ip6_hop_by_hop_option_t *)
                   (((u8 *)opt0) + opt0->length
                   + sizeof (ip6_hop_by_hop_option_t));
+                  unknown_opts++;
                   break;
                 }
             }
@@ -471,6 +473,11 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+    if (PREDICT_FALSE(unknown_opts > 0)) {
+      vlib_node_increment_counter (vm, ip6_hop_by_hop_node.index,
+                                   IP6_HOP_BY_HOP_ERROR_UNKNOWN_OPTION, unknown_opts);
     }
 
   vlib_node_increment_counter (vm, ip6_hop_by_hop_node.index, 
