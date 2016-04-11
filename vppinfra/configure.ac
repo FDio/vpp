@@ -31,6 +31,13 @@ AC_ARG_WITH(ldflags,
 
 ######################################################################
 
+AC_ARG_ENABLE(tests,
+              AC_HELP_STRING([--enable-tests],[Enable unit tests]),
+              [enable_tests=1],
+              [enable_tests=0])
+
+AM_CONDITIONAL(ENABLE_TESTS, test "$enable_tests" = "1")
+
 AC_ARG_WITH(unix,
             AC_HELP_STRING([--with-unix],[Compile unix version of clib]),
 	    [],
