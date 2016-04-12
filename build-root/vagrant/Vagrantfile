@@ -7,11 +7,10 @@ Vagrant.configure(2) do |config|
   distro = ENV['VPP_VAGRANT_DISTRO']
   if distro == 'centos7'
     config.vm.box = "puppetlabs/centos-7.2-64-nocm"
-    config.vm.provision 'shell', path: 'bootstrap.centos7.sh'
   else
     config.vm.box = "puppetlabs/ubuntu-14.04-64-nocm"
-    config.vm.provision 'shell', path: 'bootstrap.ubuntu1404.sh'
   end
+  config.vm.provision :shell, :path => "bootstrap.sh", :args => "/vpp vagrant"
 
   # Add .gnupg dir in so folks can sign patches
   # Note, as gnupg puts socket files in that dir, we have
