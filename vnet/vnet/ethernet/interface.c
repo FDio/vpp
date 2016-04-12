@@ -476,3 +476,9 @@ VLIB_CLI_COMMAND (delete_simulated_ethernet_interface_command, static) = {
   .short_help = "Delete Loopback ethernet interface intfc <interface>",
   .function = delete_simulated_ethernet_interfaces,
 };
+
+VLIB_CLI_COMMAND (delete_loopback_interface_command, static) = {
+  .path = "delete loopback interface",
+  .short_help = "delete loopback interface intfc <interface>",
+  .function = delete_simulated_ethernet_interfaces,
+};
