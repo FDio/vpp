@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_6dab3a8a",
+        "filename": "vnet/vnet/devices/af_packet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-12T13:58:40Z",
+      "side": 1,
+      "message": "The other field I set was mb-\u003edata_off \u003d (u16) RTE_PKTMBUF_HEADROOM + b0-\u003ecurrent_data)",
+      "revId": "bb41b3292a14cf5c50f9cdc7396458e31a7fafe1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
