@@ -70,8 +70,6 @@ typedef struct {
   uword * mac_changes_by_address;
   pending_resolution_t * mac_changes;
 
-  u32 * arp_input_next_index_by_hw_if_index;
-
   ethernet_arp_ip4_entry_t * ip4_entry_pool;
 
   mhash_t ip4_entry_by_key;
@@ -627,6 +625,7 @@ int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
 /* Either we drop the packet or we send a reply to the sender. */
 typedef enum {
   ARP_INPUT_NEXT_DROP,
+  ARP_INPUT_NEXT_REPLY_TX,
   ARP_INPUT_N_NEXT,
 } arp_input_next_t;
 
@@ -704,12 +703,11 @@ static void unset_random_arp_entry (void)
                                     e->key.fib_index, &delme);
 }
   
-static u32 arp_unnumbered (vlib_buffer_t * p0, 
-                           u32 pi0,
-                           ethernet_header_t * eth0,
-                           ip_interface_address_t * ifa0)
+static void arp_unnumbered (vlib_buffer_t * p0, 
+		       u32 pi0,
+		       ethernet_header_t * eth0,
+		       ip_interface_address_t * ifa0)
 {
-  ethernet_arp_main_t * am = &ethernet_arp_main;
   vlib_main_t * vm = vlib_get_main();
   vnet_main_t * vnm = vnet_get_main();
   vnet_interface_main_t * vim = &vnm->interface_main;
@@ -833,13 +831,11 @@ static u32 arp_unnumbered (vlib_buffer_t * p0,
         }
     }
 
-  hi = vnet_get_sup_hw_interface (vnm, broadcast_swifs[0]);
+  /* The regular path outputs the original pkt.. */
+  vnet_buffer (p0)->sw_if_index[VLIB_TX] = broadcast_swifs[0];
 
   vec_free (broadcast_swifs);
   vec_free (buffers);
-
-  /* The regular path outputs the original pkt.. */
-  return vec_elt (am->arp_input_next_index_by_hw_if_index, hi->hw_if_index);
 }
 
 static uword
@@ -982,14 +978,9 @@ arp_input (vlib_main_t * vm,
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
 	  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 
-          /* Can happen in a multi-core env. */
-          if (PREDICT_FALSE(hw_if0->hw_if_index >= vec_len (am->arp_input_next_index_by_hw_if_index)))
-            {
-              error0 = ETHERNET_ARP_ERROR_missing_interface_address;
-              goto drop2;
-            }
-
-	  next0 = vec_elt (am->arp_input_next_index_by_hw_if_index, hw_if0->hw_if_index);
+	  /* Send reply back through input interface */
+	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
+	  next0 = ARP_INPUT_NEXT_REPLY_TX;
 
 	  arp0->opcode = clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
 
@@ -1015,7 +1006,7 @@ arp_input (vlib_main_t * vm,
                   goto drop2;
                 }
               if (is_unnum0)
-                next0 = arp_unnumbered (p0, pi0, eth0, ifa0);
+                arp_unnumbered (p0, pi0, eth0, ifa0);
               else
                 vlib_buffer_advance (p0, -adj0->rewrite_header.data_bytes);
             }
@@ -1117,31 +1108,12 @@ VLIB_REGISTER_NODE (arp_input_node,static) = {
   .n_next_nodes = ARP_INPUT_N_NEXT,
   .next_nodes = {
     [ARP_INPUT_NEXT_DROP] = "error-drop",
+    [ARP_INPUT_NEXT_REPLY_TX] = "interface-output",
   },
 
   .format_buffer = format_ethernet_arp_header,
   .format_trace = format_ethernet_arp_input_trace,
 };
-
-clib_error_t *
-ethernet_arp_hw_interface_link_up_down (vnet_main_t * vnm,
-					u32 hw_if_index,
-					u32 flags)
-{
-  ethernet_arp_main_t * am = &ethernet_arp_main;
-  vnet_hw_interface_t * hw_if;
-
-  hw_if = vnet_get_hw_interface (vnm, hw_if_index);
-
-  /* Fill in lookup tables with default table (0). */
-  vec_validate_init_empty (am->arp_input_next_index_by_hw_if_index, hw_if_index, ~0);
-  am->arp_input_next_index_by_hw_if_index[hw_if_index]
-    = vlib_node_add_next (vnm->vlib_main, arp_input_node.index, hw_if->output_node_index);
-
-  return 0;
-}
-
-VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (ethernet_arp_hw_interface_link_up_down);
 
 static int
 ip4_arp_entry_sort (void *a1, void *a2)
