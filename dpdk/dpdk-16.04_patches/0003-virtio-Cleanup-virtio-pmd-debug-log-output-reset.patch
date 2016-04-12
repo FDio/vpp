@@ -1,0 +1,65 @@
+From 1ee05e874eaa3f03ee7b5fbd6a32dff7304bd620 Mon Sep 17 00:00:00 2001
+From: Damjan Marion <damarion@cisco.com>
+Date: Wed, 16 Dec 2015 03:29:22 +0100
+Subject: [PATCH 3/6] virtio: Cleanup virtio pmd debug log output, reset
+
+---
+ drivers/net/virtio/virtio_ethdev.c | 5 -----
+ drivers/net/virtio/virtio_rxtx.c   | 4 +++-
+ 2 files changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/virtio/virtio_ethdev.c b/drivers/net/virtio/virtio_ethdev.c
+index 63a368a..ed4e757 100644
+--- a/drivers/net/virtio/virtio_ethdev.c
++++ b/drivers/net/virtio/virtio_ethdev.c
+@@ -1405,18 +1405,13 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
+ 	link.link_speed  = SPEED_10G;
+ 
+ 	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
+-		PMD_INIT_LOG(DEBUG, "Get link status from hw");
+ 		vtpci_read_dev_config(hw,
+ 				offsetof(struct virtio_net_config, status),
+ 				&status, sizeof(status));
+ 		if ((status & VIRTIO_NET_S_LINK_UP) == 0) {
+ 			link.link_status = ETH_LINK_DOWN;
+-			PMD_INIT_LOG(DEBUG, "Port %d is down",
+-				     dev->data->port_id);
+ 		} else {
+ 			link.link_status = ETH_LINK_UP;
+-			PMD_INIT_LOG(DEBUG, "Port %d is up",
+-				     dev->data->port_id);
+ 		}
+ 	} else {
+ 		link.link_status = ETH_LINK_UP;
+diff --git a/drivers/net/virtio/virtio_rxtx.c b/drivers/net/virtio/virtio_rxtx.c
+index ef21d8e..7fe14ad 100644
+--- a/drivers/net/virtio/virtio_rxtx.c
++++ b/drivers/net/virtio/virtio_rxtx.c
+@@ -643,6 +643,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+ 		rxm->next = NULL;
+ 		rxm->pkt_len = (uint32_t)(len[i] - hdr_size);
+ 		rxm->data_len = (uint16_t)(len[i] - hdr_size);
++		rxm->ol_flags = 0;
+ 
+ 		if (hw->vlan_strip)
+ 			rte_vlan_strip(rxm);
+@@ -760,6 +761,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
+ 		rxm->vlan_tci = 0;
+ 		rxm->pkt_len = (uint32_t)(len[0] - hdr_size);
+ 		rxm->data_len = (uint16_t)(len[0] - hdr_size);
++		rxm->ol_flags = 0;
+ 
+ 		rxm->port = rxvq->port_id;
+ 		rx_pkts[nb_rx] = rxm;
+@@ -863,7 +865,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+ 	if (unlikely(nb_pkts < 1))
+ 		return nb_pkts;
+ 
+-	PMD_TX_LOG(DEBUG, "%d packets to xmit", nb_pkts);
++	PMD_TX_LOG(DEBUG, "%d packets to xmit\n", nb_pkts);
+ 	nb_used = VIRTQUEUE_NUSED(txvq);
+ 
+ 	virtio_rmb();
+-- 
+2.7.4
+
