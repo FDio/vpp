@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_6d833acd",
+        "filename": "vnet/vnet/map/examples/test_map.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-12T16:41:31Z",
+      "side": 1,
+      "message": "python vs python3 ... not sure if this is intentional but at least on Ubuntu14.04 LTS python defaults to 2.7.6",
+      "range": {
+        "startLine": 1,
+        "startChar": 15,
+        "endLine": 1,
+        "endChar": 21
+      },
+      "revId": "2a1e85764d506ad7cd344df452ac65b436b538ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_2d6d3233",
+        "filename": "vpp-api-client/pneum/pneum_wrap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-12T16:41:31Z",
+      "side": 1,
+      "message": "It appears from your changes to the Makefile that this will pull in the v3.x version of Python.h (python3-dev) .. just that I comment about python v python3 elsewhere but this is clearly covered in make install-dep changes you added.",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 19
+      },
+      "revId": "2a1e85764d506ad7cd344df452ac65b436b538ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_ad7942fe",
+        "filename": "vpp-api-client/python/api-gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-12T16:41:31Z",
+      "side": 1,
+      "message": "\"python\" vs python3 used elsewhere. Is this deliberate?",
+      "range": {
+        "startLine": 1,
+        "startChar": 4,
+        "endLine": 1,
+        "endChar": 21
+      },
+      "revId": "2a1e85764d506ad7cd344df452ac65b436b538ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_8d7e86e3",
+        "filename": "vpp-api-client/python/test_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-12T16:41:31Z",
+      "side": 1,
+      "message": "see prior comment where \"python\" default was used",
+      "range": {
+        "startLine": 1,
+        "startChar": 14,
+        "endLine": 1,
+        "endChar": 22
+      },
+      "revId": "2a1e85764d506ad7cd344df452ac65b436b538ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
