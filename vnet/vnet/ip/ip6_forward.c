@@ -1768,6 +1768,7 @@ void ip6_register_protocol (u32 protocol, u32 node_index)
 
 typedef enum {
   IP6_DISCOVER_NEIGHBOR_NEXT_DROP,
+  IP6_DISCOVER_NEIGHBOR_NEXT_REPLY_TX,
   IP6_DISCOVER_NEIGHBOR_N_NEXT,
 } ip6_discover_neighbor_next_t;
 
@@ -1933,11 +1934,7 @@ ip6_discover_neighbor (vlib_main_t * vm,
                                      sizeof (ethernet_header_t));
 	    vlib_buffer_advance (b0, -adj0->rewrite_header.data_bytes);
 
-            /* $$$$ hack in case next0 == 0 */
-            b0->error = node->errors[IP6_DISCOVER_NEIGHBOR_ERROR_DROP];
-	    next0 = 
-              vec_elt (im->discover_neighbor_next_index_by_hw_if_index, 
-                       hw_if0->hw_if_index);
+	    next0 = IP6_DISCOVER_NEIGHBOR_NEXT_REPLY_TX;
 
 	    vlib_set_next_frame_buffer (vm, node, next0, bi0);
 	  }
@@ -1969,30 +1966,9 @@ VLIB_REGISTER_NODE (ip6_discover_neighbor_node) = {
   .n_next_nodes = IP6_DISCOVER_NEIGHBOR_N_NEXT,
   .next_nodes = {
     [IP6_DISCOVER_NEIGHBOR_NEXT_DROP] = "error-drop",
+    [IP6_DISCOVER_NEIGHBOR_NEXT_REPLY_TX] = "interface-output",
   },
 };
-
-clib_error_t *
-ip6_discover_neighbor_hw_interface_link_up_down (vnet_main_t * vnm,
-                                                 u32 hw_if_index,
-                                                 u32 flags)
-{
-  vlib_main_t * vm = vnm->vlib_main;
-  ip6_main_t * im = &ip6_main;
-  vnet_hw_interface_t * hw_if;
-
-  hw_if = vnet_get_hw_interface (vnm, hw_if_index);
-
-  vec_validate_init_empty 
-    (im->discover_neighbor_next_index_by_hw_if_index, hw_if_index, 0);
-  im->discover_neighbor_next_index_by_hw_if_index[hw_if_index]
-    = vlib_node_add_next (vm, ip6_discover_neighbor_node.index,
-                          hw_if->output_node_index);
-  return 0;
-}
-
-VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION 
-(ip6_discover_neighbor_hw_interface_link_up_down);
 
 clib_error_t *
 ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)

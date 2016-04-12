@@ -163,8 +163,6 @@ typedef struct ip6_main_t {
   /* Template used to generate IP6 neighbor solicitation packets. */
   vlib_packet_template_t discover_neighbor_packet_template;
 
-  u32 * discover_neighbor_next_index_by_hw_if_index;
-
   /* ip6 lookup table config parameters */
   u32 lookup_table_nbuckets;
   uword lookup_table_size;

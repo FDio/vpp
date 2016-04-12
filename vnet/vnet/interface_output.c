@@ -1147,11 +1147,6 @@ VLIB_REGISTER_NODE (punt_buffers,static) = {
   .validate_frame = validate_error_frame,
 };
 
-static clib_error_t *
-vnet_per_buffer_interface_output_hw_interface_add_del (vnet_main_t * vnm,
-						       u32 hw_if_index,
-						       u32 is_create);
-
 VLIB_REGISTER_NODE (vnet_per_buffer_interface_output_node,static) = {
   .function = vnet_per_buffer_interface_output,
   .name = "interface-output",
