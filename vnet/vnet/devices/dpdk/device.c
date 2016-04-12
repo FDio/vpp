@@ -321,11 +321,12 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
                                            (uint16_t) (tx_head-tx_tail));
               if (PREDICT_TRUE(rv > 0))
                 {
-                  dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
+                  dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_TXQ]);
                   vring->packets += rv;
                   vring->bytes += bytes;
 
                   if (dpdk_vhost_user_want_interrupt(xd, offset + VIRTIO_RXQ)) {
+                    vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
                     vring->n_since_last_int += rv;
 
                     f64 now = vlib_time_now (vm);
@@ -358,11 +359,12 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
 
               if (PREDICT_TRUE(rv > 0))
                 {
-                  dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
+                  dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_TXQ]);
                   vring->packets += rv;
                   vring->bytes += bytes;
 
                   if (dpdk_vhost_user_want_interrupt(xd, offset + VIRTIO_RXQ)) {
+                    vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
                     vring->n_since_last_int += rv;
 
                     f64 now = vlib_time_now (vm);

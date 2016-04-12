@@ -105,12 +105,10 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 
       f64 now = vlib_time_now (vm);
 
-      dpdk_vu_vring *vring = &(xd->vu_intf->vrings[offset + VIRTIO_TXQ]);
-      vring->packets += n_buffers;
-      vring->bytes += bytes;
-
+      dpdk_vu_vring *vring = NULL;
       /* send pending interrupts if needed */
       if (dpdk_vhost_user_want_interrupt(xd, offset + VIRTIO_TXQ)) {
+          vring = &(xd->vu_intf->vrings[offset + VIRTIO_TXQ]);
           vring->n_since_last_int += n_buffers;
 
           if ((vring->n_since_last_int && (vring->int_deadline < now))
@@ -118,8 +116,11 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
             dpdk_vhost_user_send_interrupt(vm, xd, offset + VIRTIO_TXQ);
       }
 
+      vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
+      vring->packets += n_buffers;
+      vring->bytes += bytes;
+
       if (dpdk_vhost_user_want_interrupt(xd, offset + VIRTIO_RXQ)) {
-          vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
           if (vring->n_since_last_int && (vring->int_deadline < now))
             dpdk_vhost_user_send_interrupt(vm, xd, offset + VIRTIO_RXQ);
       }
