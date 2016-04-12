@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_2d265217",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 537,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-12T16:30:12Z",
+      "side": 1,
+      "message": "Minor nit on a patch that was otherwise awesome to read, but formatting changes made me stare more at this bit than any other. I was wondering what changed other than format (espec. in macros, where I need to stare more than others). No need to create a new PS but something to note in the future if you don\u0027t mind.",
+      "range": {
+        "startLine": 532,
+        "startChar": 0,
+        "endLine": 537,
+        "endChar": 64
+      },
+      "revId": "5f49adef65edcb8885100bcbe09a7d8ceac718c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
