@@ -158,7 +158,7 @@ int test_slist_main (unformat_input_t *input)
   u32 tmp;
 
   tm->seed = 0xbabeb00b;
-  tm->iter = 10000000;
+  tm->iter = 100000;
   tm->verbose = 1;
   tm->branching_factor = 1.0 / 5.0;
 
@@ -200,7 +200,7 @@ int main (int argc, char * argv[])
   unformat_input_t i;
   int ret;
 
-  clib_mem_init (0, (u64)8<<30);
+  clib_mem_init (0, (u64)4<<30);
 
   unformat_init_command_line (&i, argv);
   ret = test_slist_main (&i);

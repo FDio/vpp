@@ -166,8 +166,11 @@ int main (int argc, char * argv[])
 	}
     }
 
-  if (! tm->input_file)
-    clib_error ("no input file");
+  if (!tm->input_file)
+    {
+      clib_warning("No input file! Using test_bihash_template");
+      tm->input_file = "test_bihash_template";
+    }
 
   error = elf_read_file (em, tm->input_file);
   if (error)

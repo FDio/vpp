@@ -54,7 +54,7 @@ int test_random_main (unformat_input_t * input)
   uword print;
   u32 seed;
   u32 *seedp = &seed;
-  
+
   /* first, check known sequence from Numerical Recipes in C, 2nd ed.
      page 284 */
   seed = known_random_sequence[0];
@@ -126,6 +126,8 @@ int main (int argc, char * argv[])
 {
   unformat_input_t i;
   int ret;
+
+  clib_mem_init (0, 3ULL<<30);
 
   unformat_init_command_line (&i, argv);
   ret = test_random_main (&i);
