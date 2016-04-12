@@ -6,7 +6,7 @@
 %define _version         %(../scripts/version rpm-version)
 %define _release         %(../scripts/version rpm-release)
 
-Name: vpp
+
 Summary: Vector Packet Processing
 License: MIT
 Version: %{_version}
