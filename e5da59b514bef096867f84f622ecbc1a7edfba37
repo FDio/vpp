@@ -22,6 +22,30 @@
       "revId": "e5da59b514bef096867f84f622ecbc1a7edfba37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_a5028409",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 708,
+      "author": {
+        "id": 105
+      },
+      "writtenOn": "2016-04-12T16:39:57Z",
+      "side": 1,
+      "message": "This change came from a problem we found with 10gigE interfaces when a user issues admin up/down repeatedly (~10 times) with traffic passing. The RX queue pointers would end up in an insane state such that no traffic would pass. I don\u0027t believe the problem happened on other interface types.",
+      "parentUuid": "3a045101_85d30838",
+      "range": {
+        "startLine": 708,
+        "startChar": 34,
+        "endLine": 708,
+        "endChar": 38
+      },
+      "revId": "e5da59b514bef096867f84f622ecbc1a7edfba37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
