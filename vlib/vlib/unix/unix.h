@@ -175,4 +175,18 @@ static inline unix_main_t * vlib_unix_get_main (void)
 /* thread stack array; vec_len = max number of threads */
 u8 **vlib_thread_stacks;
 
+/* utils */
+
+clib_error_t *
+write_sys_fs (char * file_name, char * fmt, ...);
+
+clib_error_t *
+read_sys_fs (char * file_name, char * fmt, ...);
+
+clib_error_t *
+foreach_directory_file (char * dir_name,
+			clib_error_t * (* f) (void * arg, u8 * path_name,
+					      u8 * file_name),
+			void * arg, int scan_dirs);
+
 #endif /* included_unix_unix_h */
