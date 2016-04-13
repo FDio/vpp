@@ -53,7 +53,7 @@ typedef struct {
   int config_fd;
 
   /* PCI bus address for this devices parsed from /sys/bus/pci/devices name. */
-  pci_bus_address_t bus_address;
+  vlib_pci_addr_t bus_address;
 
   /* File descriptor for /dev/uio%d */
   int uio_fd;
@@ -74,21 +74,26 @@ typedef struct {
 /* Pool of PCI devices. */
 typedef struct {
   vlib_main_t * vlib_main;
-  linux_pci_device_t * pci_devices;
+  vlib_pci_device_t * pci_devs;
+  linux_pci_device_t * linux_pci_devices;
+  pci_device_registration_t * pci_device_registrations;
+  uword * pci_dev_index_by_pci_addr;
 } linux_pci_main_t;
 
 extern linux_pci_main_t linux_pci_main;
 
 always_inline linux_pci_device_t *
-pci_dev_for_linux (pci_device_t * dev)
+pci_dev_for_linux (vlib_pci_device_t * dev)
 {
   linux_pci_main_t * pm = &linux_pci_main;
-  return pool_elt_at_index (pm->pci_devices, dev->os_handle);
+  return pool_elt_at_index (pm->linux_pci_devices, dev->os_handle);
 }
 
 /* Call to allocate/initialize the pci subsystem.
    This is not an init function so that users can explicitly enable
    pci only when it's needed. */
 clib_error_t * pci_bus_init (vlib_main_t * vm);
+
+clib_error_t * vlib_pci_bind_to_uio (vlib_pci_device_t * d, char * uio_driver_name);
 
 #endif /* included_unix_pci_h */

@@ -65,6 +65,8 @@ nobase_include_HEADERS =			\
   vlib/node_funcs.h				\
   vlib/node.h					\
   vlib/physmem.h				\
+  vlib/pci/pci.h				\
+  vlib/pci/pci_config.h				\
   vlib/threads.h				\
   vlib/trace_funcs.h				\
   vlib/trace.h					\
@@ -81,12 +83,14 @@ libvlib_unix_la_SOURCES =			\
   vlib/unix/plugin.c				\
   vlib/unix/plugin.h				\
   vlib/unix/physmem.c				\
-  vlib/unix/unix.h                              
+  vlib/unix/pci.c				\
+  vlib/unix/util.c
 
 nobase_include_HEADERS +=			\
   vlib/unix/cj.h				\
   vlib/unix/mc_socket.h				\
   vlib/unix/physmem.h				\
+  vlib/unix/pci.h				\
   vlib/unix/plugin.h				\
   vlib/unix/unix.h
     
