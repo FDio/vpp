@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_6e7331b2",
+        "filename": "vnet/vnet/ip/ip_input_acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-13T15:21:10Z",
+      "side": 1,
+      "message": "Thanks for fixing this in ip_input_acl.c. If you are fixing this, the same should also be applied to l2_input_acl.c to be consistent. Do you have a use case for needing opaque_index to be set up for input ACL?\nOne more thing I noticed is that in l2_classify.c, the init of opaque_index to ~0 is missing. Do you mind fix it as well?",
+      "range": {
+        "startLine": 239,
+        "startChar": 27,
+        "endLine": 239,
+        "endChar": 38
+      },
+      "revId": "a3c1e1dcc3dfbe262588781c95778fc2019d02db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
