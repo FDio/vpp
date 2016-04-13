@@ -323,21 +323,7 @@ VLIB_REGISTER_NODE (ip4_classify_node) = {
   .error_strings = ip_classify_error_strings,
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = {
-    [IP_LOOKUP_NEXT_MISS] = "ip4-miss",
-    [IP_LOOKUP_NEXT_DROP] = "ip4-drop",
-    [IP_LOOKUP_NEXT_PUNT] = "ip4-punt",
-    [IP_LOOKUP_NEXT_LOCAL] = "ip4-local",
-    [IP_LOOKUP_NEXT_ARP] = "ip4-arp",
-    [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite-transit",
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip4-classify", /* probably not... */
-    [IP_LOOKUP_NEXT_MAP] = "ip4-map",
-    [IP_LOOKUP_NEXT_MAP_T] = "ip4-map-t",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip4-sixrd",
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip4-hop-by-hop",
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip4-add-hop-by-hop", 
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip4-pop-hop-by-hop", 
-  },
+  .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
 static uword
@@ -358,21 +344,7 @@ VLIB_REGISTER_NODE (ip6_classify_node) = {
   .error_strings = ip_classify_error_strings,
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = {
-    [IP_LOOKUP_NEXT_MISS] = "ip6-miss",
-    [IP_LOOKUP_NEXT_DROP] = "ip6-drop",
-    [IP_LOOKUP_NEXT_PUNT] = "ip6-punt",
-    [IP_LOOKUP_NEXT_LOCAL] = "ip6-local",
-    [IP_LOOKUP_NEXT_ARP] = "ip6-discover-neighbor",
-    [IP_LOOKUP_NEXT_REWRITE] = "ip6-rewrite",
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip6-classify", /* probably not... */
-    [IP_LOOKUP_NEXT_MAP] = "ip6-map",
-    [IP_LOOKUP_NEXT_MAP_T] = "ip6-map-t",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip6-sixrd",
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop", 
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop", 
-  },
+  .next_nodes = IP6_LOOKUP_NEXT_NODES,
 };
 
 static clib_error_t *

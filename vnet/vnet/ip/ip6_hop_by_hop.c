@@ -497,22 +497,7 @@ VLIB_REGISTER_NODE (ip6_hop_by_hop_node) = {
 
   /* See ip/lookup.h */
   .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = {
-    [IP_LOOKUP_NEXT_MISS] = "ip6-miss",
-    [IP_LOOKUP_NEXT_DROP] = "ip6-drop",
-    [IP_LOOKUP_NEXT_PUNT] = "ip6-punt",
-    [IP_LOOKUP_NEXT_LOCAL] = "ip6-local",
-    [IP_LOOKUP_NEXT_ARP] = "ip6-discover-neighbor",
-    [IP_LOOKUP_NEXT_REWRITE] = "ip6-rewrite",
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip6-classify",
-    [IP_LOOKUP_NEXT_MAP] = "ip6-map",
-    [IP_LOOKUP_NEXT_MAP_T] = "ip6-map-t",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip6-sixrd",
-    /* Next 3 arcs probably never used */
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop", 
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop", 
-  },
+  .next_nodes = IP6_LOOKUP_NEXT_NODES,
 };
 
 /* The main h-b-h tracer will be invoked, no need to do much here */
@@ -729,22 +714,7 @@ VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) = {
 
   /* See ip/lookup.h */
   .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = {
-    [IP_LOOKUP_NEXT_MISS] = "ip6-miss",
-    [IP_LOOKUP_NEXT_DROP] = "ip6-drop",
-    [IP_LOOKUP_NEXT_PUNT] = "ip6-punt",
-    [IP_LOOKUP_NEXT_LOCAL] = "ip6-local",
-    [IP_LOOKUP_NEXT_ARP] = "ip6-discover-neighbor",
-    [IP_LOOKUP_NEXT_REWRITE] = "ip6-rewrite",
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip6-classify",
-    [IP_LOOKUP_NEXT_MAP] = "ip6-map",
-    [IP_LOOKUP_NEXT_MAP_T] = "ip6-map-t",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip6-sixrd",
-    /* Next 3 arcs probably never used */
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop", 
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop", 
-  },
+  .next_nodes = IP6_LOOKUP_NEXT_NODES,
 };
 
 
@@ -980,22 +950,7 @@ VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) = {
 
   /* See ip/lookup.h */
   .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = {
-    [IP_LOOKUP_NEXT_MISS] = "ip6-miss",
-    [IP_LOOKUP_NEXT_DROP] = "ip6-drop",
-    [IP_LOOKUP_NEXT_PUNT] = "ip6-punt",
-    [IP_LOOKUP_NEXT_LOCAL] = "ip6-local",
-    [IP_LOOKUP_NEXT_ARP] = "ip6-discover-neighbor",
-    [IP_LOOKUP_NEXT_REWRITE] = "ip6-rewrite",
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip6-classify",
-    [IP_LOOKUP_NEXT_MAP] = "ip6-map",
-    [IP_LOOKUP_NEXT_MAP_T] = "ip6-map-t",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip6-sixrd",
-    /* Next 3 arcs probably never used */
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop", 
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop", 
-  },
+  .next_nodes = IP6_LOOKUP_NEXT_NODES,
 };
 
 
