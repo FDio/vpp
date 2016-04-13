@@ -81,7 +81,7 @@ libvlib_unix_la_SOURCES =			\
   vlib/unix/plugin.c				\
   vlib/unix/plugin.h				\
   vlib/unix/physmem.c				\
-  vlib/unix/unix.h                              
+  vlib/unix/util.c
 
 nobase_include_HEADERS +=			\
   vlib/unix/cj.h				\

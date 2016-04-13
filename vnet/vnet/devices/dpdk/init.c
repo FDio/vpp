@@ -21,9 +21,12 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/dpdk/dpdk.h>
 #include <vlib/unix/physmem.h>
+#include <vlib/unix/unix.h>
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
@@ -724,195 +727,111 @@ dpdk_lib_init (dpdk_main_t * dm)
 }
 
 static clib_error_t *
-write_sys_fs (char * file_name, char * fmt, ...)
-{
-  u8 * s;
-  int fd;
-
-  fd = open (file_name, O_WRONLY);
-  if (fd < 0)
-    return clib_error_return_unix (0, "open `%s'", file_name);
-
-  va_list va;
-  va_start (va, fmt);
-  s = va_format (0, fmt, &va);
-  va_end (va);
-  vec_add1 (s, 0); // terminate c string
-
-  if (write (fd, s, vec_len (s)) < 0)
-      return clib_error_return_unix (0, "write '%s' to '%s'", s, file_name);
-
-  vec_free (s);
-  close (fd);
-  return 0;
-}
-
-#define VIRTIO_PCI_NAME  "virtio-pci"
-
-static clib_error_t * dpdk_bind_eth_kernel_drivers (vlib_main_t * vm,
-						    char * pci_dev_id,
-						    char * kernel_driver)
+dpdk_device_bind_to_uio (void * arg, u8 * dev_dir_name, u8 * file_name)
 {
   dpdk_main_t * dm = &dpdk_main;
-  unformat_input_t _in;
-  unformat_input_t * in = &_in;
-  clib_error_t * error = 0;
-  u8 * line = 0, * modcmd = 0, * path = 0;
-  u8 * pci_vid = 0, *pci_did = 0, * devname = 0;
-  char *driver_name = kernel_driver;
-  FILE * fp;
+  u64 class = 0, vid = 0, did = 0;
+  u8 * s, * pci_addr;
+  DIR *d = 0;
+  struct dirent *e;
 
-  /* 
-   * Bail out now if we're not running as root.
-   * This allows non-privileged use of the packet generator, etc.
-   */
-  if (geteuid() != 0)
-    return 0;
+  pci_addr = format (0, "%v%c", file_name, 0);
 
-  /*
-   * Get all ethernet pci device numbers for the device type specified.
-   */
-  modcmd = format (0, "lspci -nDd %s | grep 0200 | "
-		   "awk '{ print $1, $3 }'%c", pci_dev_id, 0);
-  if ((fp = popen ((const char *)modcmd, "r")) == NULL)
+  /* if whitelist exists process only whitelisted devices */
+  if (dm->eth_if_whitelist &&
+      !strstr ((char *)dm->eth_if_whitelist, (char *) pci_addr))
+    goto done;
+
+  /* Read device class */
+  s = format (0, "%v/%s%c", dev_dir_name, "class", 0);
+  read_sys_fs((char *) s, "0x%x", &class);
+  _vec_len(s)=0;
+
+  /* Only interested in ethernet devices */
+  if (class != 0x20000)
+   goto done;
+
+  /* Read vendor and device id */
+  s = format (0, "%v/%s%c", dev_dir_name, "vendor", 0);
+  read_sys_fs((char *) s, "0x%x", &vid);
+  _vec_len(s)=0;
+  s = format (0, "%v/%s%c", dev_dir_name, "device", 0);
+  read_sys_fs((char *) s, "0x%x", &did);
+  _vec_len(s)=0;
+
+  if (vid == 0x1af4 && did == 0x1000)			/* virtio */
+    ;
+  else if (vid == 0x1fad && did == 0x07b0)		/* vmxnet3 */
+    ;
+  else if (vid == 0x8086)				/* all Intel devices */
+    ;
+  else if (vid == 0x1137 && did == 0x0043)		/* Cisco VIC */
+    ;
+  else if (vid == 0x1425 && (did & 0xE000) == 0x4000)	/* Chelsio T4/T5 */
+    ;
+  else
     {
-      error = clib_error_return_unix (0, 
-				      "Unable to get %s ethernet pci devices.",
-				      pci_dev_id);
+      fprintf(stderr, "Unsupporred Ethernet PCI device 0x%04x:0x%04x found "
+	      "at PCI address %s\n", (u16) vid, (u16) did, pci_addr);
       goto done;
     }
 
-  vec_validate (line, BUFSIZ);
-  vec_validate (path, BUFSIZ);
-  while (fgets ((char *)line, BUFSIZ, fp) != NULL)
+  /* if uio sub-directory exists, we are fine, device is
+     already bound to UIO driver */
+  s = format (0, "%v/uio%c", dev_dir_name, 0);
+  if (access( (char *) s, F_OK) == 0)
+    goto done;
+  _vec_len(s)=0;
+
+  /* walk trough all linux interfaces belonging to this PCI ID
+     and check if any of them is in use */
+  s = format (0, "%v/net%c", dev_dir_name, 0);
+  d = opendir ((char *) s);
+  _vec_len(s)=0;
+
+  if (!d)
+    goto done;
+
+  while((e = readdir(d)))
     {
-      struct stat st;
-      u8 bind_uio = 1;
-      line[strlen ((char *)line) - 1] = 0; // chomp trailing newline.
-
-      unformat_init_string (in, (char *)line, strlen((char *)line) + 1);
-      unformat(in, "%s %s:%s", &devname, &pci_vid, &pci_did);
-      unformat_free (in);
-
-      /*
-       * Blacklist all ethernet interfaces in the 
-       * linux IP routing tables (route --inet --inet6)
-       */
-      if (strstr ((char *)dm->eth_if_blacklist, (char *)devname))
+      struct ifreq ethreq;
+      int fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+      if (e->d_name[0] == '.') /* skip . and .. */
 	continue;
-
-      /*
-       * If there are any devices whitelisted, then blacklist all devices
-       * which are not explicitly whitelisted.
-       */
-      if (dm->eth_if_whitelist && 
-	  !strstr ((char *)dm->eth_if_whitelist, (char *)devname))
-	continue;
-
-#ifdef NETMAP
-      /*
-       * Optimistically open the device as a netmap device.
-       */
-      if (eth_nm_open((char *)devname))
-        continue;
-#endif
-
-      _vec_len (path) = 0;
-      path = format (path, "/sys/bus/pci/devices/%s/driver/unbind%c",
-		     devname, 0);
-
-      /*
-       * If the device is bound to a driver...
-       */
-      if (stat ((const char *)path, &st) == 0)
+      memset(&ethreq, 0, sizeof(ethreq));
+      strncpy(ethreq.ifr_name, e->d_name, IFNAMSIZ);
+      ioctl(fd, SIOCGIFFLAGS, &ethreq);
+      close(fd);
+      if (ethreq.ifr_flags & IFF_UP)
 	{
-	  u8 * device_path;
+	  if (!dm->eth_if_whitelist)
+	    dm->eth_if_blacklist = format(dm->eth_if_blacklist, "%s ",
+					  pci_addr);
 
-	  /*
-	   * If the interface is not a virtio...
-	   */
-         if (!driver_name || strcmp(driver_name, VIRTIO_PCI_NAME))
-           {
-              /*
-               * If it is already bound to driver, don't unbind/bind it.
-               */
-              device_path = format (0, "/sys/bus/pci/drivers/%s/%s/device%c",
-                                    driver_name, devname, 0);
-              if (stat ((const char *)device_path, &st) == 0)
-                bind_uio = 0;
-
-              vec_free (device_path);
-           }
-	  
-	  /*
-	   * unbind it from the current driver
-	   */
-	  if (bind_uio)
-	    {
-	      _vec_len (path) -= 1;
-	      path = format (path, "%c", 0);
-	      error = write_sys_fs ((char *)path, "%s", devname);
-	      if (error)
-		goto done;
-	    }
-	}
-
-      /*
-       * DAW-FIXME: The following bind/unbind dance is necessary for the dpdk
-       *            virtio poll-mode driver to work.  
-       */
- 
-      if (driver_name && !strcmp(driver_name, VIRTIO_PCI_NAME))
-	{
-	  /*
-	   * bind interface to the native kernel module
-	   */
-	  _vec_len (path) = 0;
-	  path = format (path, "/sys/bus/pci/drivers/%s/bind%c",
-			 driver_name, 0);
-	  error = write_sys_fs ((char *)path, "%s", devname);
-	  if (error)
-	    goto done;
-
-	  /*
-	   * unbind interface from the native kernel module
-	   */
-	  _vec_len (path) -= 5;
-	  path = format (path, "unbind%c", 0);
-	  error = write_sys_fs ((char *)path, "%s", devname);
-	  if (error)
-	    goto done;
-	}
-
-      /*
-       * bind the interface to igb_uio
-       */
-      if (bind_uio)
-	{
-          _vec_len (path) = 0;
-          path = format (path, "/sys/bus/pci/drivers/%s/new_id%c", driver_name, 0);
-          error = write_sys_fs ((char *) path, "%s %s", pci_vid, pci_did);
-
-          _vec_len (path) = 0;
-          path = format (path, "/sys/bus/pci/drivers/%s/bind%c", driver_name, 0);
-	  error = write_sys_fs ((char *) path, "%s", devname);
-	  if (error)
-            {
-              error = 0;
-              continue;
-            }
+	  fprintf(stdout, "Skipping PCI device %s as host interface "
+		  "%s is up\n", file_name, e->d_name);
+	  goto done;
 	}
     }
-  
- done:
-  vec_free (line);
-  vec_free (path);
-  vec_free (devname);
-  vec_free (pci_vid);
-  vec_free (pci_did);
-  vec_free (modcmd);
-  pclose (fp);
-  return error;
+
+  s = format (0, "/sys/bus/pci/devices/%s/driver/unbind%c", pci_addr, 0);
+  write_sys_fs ((char *) s, "%s", pci_addr);
+  _vec_len(s)=0;
+
+  s = format (0, "/sys/bus/pci/drivers/%v/new_id%c", dm->uio_driver_name, 0);
+  write_sys_fs ((char *) s, "0x%04x 0x%04x", vid, did);
+  _vec_len(s)=0;
+
+  s = format (s, "/sys/bus/pci/drivers/%s/bind%c", dm->uio_driver_name, 0);
+  write_sys_fs ((char *) s, "%s", pci_addr);
+
+#undef _
+
+done:
+  closedir(d);
+  vec_free(s);
+  vec_free(pci_addr);
+  return 0;
 }
 
 static u32
@@ -956,7 +875,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 * s, * tmp = 0;
   u8 * pci_dev_id = 0;
   u8 * rte_cmd = 0, * ethname = 0;
-  FILE * rte_fp;
   u32 log_level;
   int ret, i;
   char * fmt;
@@ -1214,91 +1132,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         }
     }
 
-  /*
-   * Blacklist all ethernet interfaces in the linux IP routing tables.
-   */
-  dm->eth_if_blacklist = format (0, "%c", 0);
-  rte_cmd = format (0, "route --inet --inet6 -n|awk '{print $7}'|sort -u|"
-                    "egrep $(echo $(ls -1d /sys/class/net/*/device|"
-                    "cut -d/ -f5)|sed -s 's/ /|/g')%c", 0);
-  if ((rte_fp = popen ((const char *)rte_cmd, "r")) == NULL)
-    {
-      error = clib_error_return_unix (0, "Unable to find blacklist ethernet"
-				      " interface(s) in linux routing tables.");
-      goto rte_cmd_err;
-
-    }
-
-  vec_validate (ethname, BUFSIZ);
-  while (fgets ((char *)ethname, BUFSIZ, rte_fp) != NULL)
-    {
-      FILE *rlnk_fp;
-      u8 * rlnk_cmd = 0, * devname = 0;
-
-      ethname[strlen ((char *)ethname) - 1] = 0; // chomp trailing newline.
-
-      rlnk_cmd = format (0, "readlink /sys/class/net/%s%c",
-			 ethname, 0);
-
-      if ((rlnk_fp = popen ((const char *)rlnk_cmd, "r")) == NULL)
-	{
-	  error = clib_error_return_unix (0, "Unable to read %s link.",
-					  ethname);
-	  goto rlnk_cmd_err;
-	}
-
-      vec_validate (devname, BUFSIZ);
-      while (fgets ((char *)devname, BUFSIZ, rlnk_fp) != NULL)
-	{
-	  char * pci_id = 0;
-	  
-	  /*
-	   * Extract the device PCI ID name from the link. It is the first
-	   * PCI ID searching backwards from the end of the link pathname.
-	   * For example:
-	   *     readlink /sys/class/net/eth0
-	   *     ../../devices/pci0000:00/0000:00:0a.0/virtio4/net/eth0
-	   */
-	  for (pci_id = (char *)((devname + strlen((char *)devname)));
-	       ((u8 *)pci_id > devname) && *pci_id != '.'; pci_id--)
-	    ;
-
-	  /*
-	   * Verify that the field found is a valid PCI ID.
-	   */
-	  if ((*(pci_id - 1) == '.') || ((u8 *)(pci_id - 11) < devname) || 
-	      (*(pci_id - 11) != '/') || (*(pci_id - 3) != ':') ||
-	      (*(pci_id - 6) != ':'))
-	    {
-	      devname[strlen ((char *)devname) - 1] = 0; // chomp trailing newline.
-	      clib_warning ("Unable to extract %s PCI ID (0x%llx \"%s\") "
-			    "from 0x%llx \"%s\"", ethname, pci_id, pci_id,
-			    devname, devname);
-	      continue;
-	    }
-
-	  pci_id[2] = 0;
-	  pci_id -= 10;
-
-          /* Don't blacklist any interfaces which have been whitelisted.
-           */
-          if (dm->eth_if_whitelist &&
-              strstr ((char *)dm->eth_if_whitelist, (char *)pci_id))
-              continue;
-
-	  _vec_len (dm->eth_if_blacklist) -= 1; // chomp trailing NULL.
-	  dm->eth_if_blacklist = format (dm->eth_if_blacklist, " %s%c",
-					 pci_id, 0);
-	}
-  
-    rlnk_cmd_err:
-      pclose (rlnk_fp);
-      vec_free (rlnk_cmd);
-      vec_free (devname);
-    }
-
- rte_cmd_err:
-  pclose (rte_fp);
   vec_free (rte_cmd);
   vec_free (ethname);
 
@@ -1336,6 +1169,10 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       dm->eal_init_args[4] = tmp;
     }
 
+  if (no_pci == 0 && geteuid() == 0)
+    foreach_directory_file ("/sys/bus/pci/devices", dpdk_device_bind_to_uio,
+			    vm, /* scan_dirs */ 0);
+
   /*
    * If there are whitelisted devices,
    * add the whitelist option & device list to the dpdk arg list...
@@ -1363,35 +1200,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       vec_add1 (dm->eal_init_args, tmp);
       unformat (in, "%s", &pci_dev_id);
       vec_add1 (dm->eal_init_args, pci_dev_id);
-    }
-
-  if (no_pci == 0)
-    {
-      /*
-       * Bind Virtio pci devices to the igb_uio kernel driver.
-       */
-      error = dpdk_bind_eth_kernel_drivers (vm, "1af4:1000", VIRTIO_PCI_NAME);
-      if (error)
-        return error;
-
-      /*
-       * Bind vmxnet3 pci devices to the igb_uio kernel driver.
-       */
-      error = dpdk_bind_eth_kernel_drivers (vm, "15ad:07b0",
-                                            (char *) dm->uio_driver_name);
-      if (error)
-        return error;
-
-      /*
-       * Bind Intel ethernet pci devices to igb_uio kernel driver.
-       */
-      error = dpdk_bind_eth_kernel_drivers (vm, "8086:",
-                                            (char *) dm->uio_driver_name);
-      /*
-       * Bind Cisco VIC ethernet pci devices to igb_uio kernel driver.
-       */
-      error = dpdk_bind_eth_kernel_drivers (vm, "1137:0043",
-                                            (char *) dm->uio_driver_name);
     }
 
   /* set master-lcore */
