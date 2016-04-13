@@ -1301,27 +1301,14 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip4_sw_interface_add_del);
 
+
 VLIB_REGISTER_NODE (ip4_lookup_node) = {
   .function = ip4_lookup,
   .name = "ip4-lookup",
   .vector_size = sizeof (u32),
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = {
-    [IP_LOOKUP_NEXT_MISS] = "ip4-miss",
-    [IP_LOOKUP_NEXT_DROP] = "ip4-drop",
-    [IP_LOOKUP_NEXT_PUNT] = "ip4-punt",
-    [IP_LOOKUP_NEXT_LOCAL] = "ip4-local",
-    [IP_LOOKUP_NEXT_ARP] = "ip4-arp",
-    [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite-transit",
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip4-classify",
-    [IP_LOOKUP_NEXT_MAP] = "ip4-map",
-    [IP_LOOKUP_NEXT_MAP_T] = "ip4-map-t",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip4-sixrd",
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip4-hop-by-hop",
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip4-add-hop-by-hop", 
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip4-pop-hop-by-hop", 
-  },
+  .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
 /* Global IP4 main. */
@@ -2979,21 +2966,7 @@ VLIB_REGISTER_NODE (ip4_lookup_multicast_node,static) = {
   .vector_size = sizeof (u32),
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = {
-    [IP_LOOKUP_NEXT_MISS] = "ip4-miss",
-    [IP_LOOKUP_NEXT_DROP] = "ip4-drop",
-    [IP_LOOKUP_NEXT_PUNT] = "ip4-punt",
-    [IP_LOOKUP_NEXT_LOCAL] = "ip4-local",
-    [IP_LOOKUP_NEXT_ARP] = "ip4-arp",
-    [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite-transit",
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip4-classify",
-    [IP_LOOKUP_NEXT_MAP] = "ip4-map",
-    [IP_LOOKUP_NEXT_MAP_T] = "ip4-map-t",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip4-sixrd",
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip4-hop-by-hop",
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip4-add-hop-by-hop", 
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip4-pop-hop-by-hop", 
-  },
+  .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
 VLIB_REGISTER_NODE (ip4_multicast_node,static) = {

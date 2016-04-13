@@ -230,21 +230,7 @@ VLIB_REGISTER_NODE (ip4_hop_by_hop_node) = {
 
   /* See ip/lookup.h */
   .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = {
-    [IP_LOOKUP_NEXT_MISS] = "ip4-miss",
-    [IP_LOOKUP_NEXT_DROP] = "ip4-drop",
-    [IP_LOOKUP_NEXT_PUNT] = "ip4-punt",
-    [IP_LOOKUP_NEXT_LOCAL] = "ip4-local",
-    [IP_LOOKUP_NEXT_ARP] = "ip4-arp",
-    [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite-transit",
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip4-classify",
-    [IP_LOOKUP_NEXT_MAP] = "ip4-map",
-    [IP_LOOKUP_NEXT_MAP_T] = "ip4-map-t",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip4-sixrd",
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip4-hop-by-hop", /* probably not */
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip4-add-hop-by-hop", 
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip4-pop-hop-by-hop", 
-  },
+  .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
 VLIB_REGISTER_NODE (ip4_add_hop_by_hop_node) = {
@@ -259,21 +245,7 @@ VLIB_REGISTER_NODE (ip4_add_hop_by_hop_node) = {
 
   /* See ip/lookup.h */
   .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = {
-    [IP_LOOKUP_NEXT_MISS] = "ip4-miss",
-    [IP_LOOKUP_NEXT_DROP] = "ip4-drop",
-    [IP_LOOKUP_NEXT_PUNT] = "ip4-punt",
-    [IP_LOOKUP_NEXT_LOCAL] = "ip4-local",
-    [IP_LOOKUP_NEXT_ARP] = "ip4-arp",
-    [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite-transit",
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip4-classify",
-    [IP_LOOKUP_NEXT_MAP] = "ip4-map",
-    [IP_LOOKUP_NEXT_MAP_T] = "ip4-map-t",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip4-sixrd",
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip4-hop-by-hop", /* probably not */
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip4-add-hop-by-hop", 
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip4-pop-hop-by-hop", 
-  },
+  .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
 VLIB_REGISTER_NODE (ip4_pop_hop_by_hop_node) = {
@@ -288,21 +260,7 @@ VLIB_REGISTER_NODE (ip4_pop_hop_by_hop_node) = {
 
   /* See ip/lookup.h */
   .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = {
-    [IP_LOOKUP_NEXT_MISS] = "ip4-miss",
-    [IP_LOOKUP_NEXT_DROP] = "ip4-drop",
-    [IP_LOOKUP_NEXT_PUNT] = "ip4-punt",
-    [IP_LOOKUP_NEXT_LOCAL] = "ip4-local",
-    [IP_LOOKUP_NEXT_ARP] = "ip4-arp",
-    [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite-transit",
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip4-classify",
-    [IP_LOOKUP_NEXT_MAP] = "ip4-map",
-    [IP_LOOKUP_NEXT_MAP_T] = "ip4-map-t",
-    [IP_LOOKUP_NEXT_SIXRD] = "ip4-sixrd",
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip4-hop-by-hop", /* probably not */
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip4-add-hop-by-hop", 
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip4-pop-hop-by-hop", 
-  },
+  .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
 static clib_error_t *
