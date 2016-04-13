@@ -367,10 +367,12 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
             }
             else
             {
-              vnm->api_errno = VNET_API_ERROR_UNKNOWN_DESTINATION;
-              error = clib_error_return (0, "next-hop %U/128 not in FIB",
-                                         format_ip6_address, next_hop);
-              goto done;
+	      ip_adjacency_t add_adj;
+	      add_adj.lookup_next_index = IP_LOOKUP_NEXT_INDIRECT;
+	      add_adj.indirect.next_hop.ip6.as_u64[0] = next_hop->as_u64[0];
+	      add_adj.indirect.next_hop.ip6.as_u64[1] = next_hop->as_u64[1];
+	      add_adj.explicit_fib_index = explicit_fib_index;
+	      ip_add_adjacency (lm, &add_adj, 1, &nh_adj_index);
             }
           }
           else
@@ -641,10 +643,11 @@ void ip6_delete_matching_routes (ip6_main_t * im,
   ip6_maybe_remap_adjacencies (im, table_index_or_table_id, flags);
 }
 
-static uword
-ip6_lookup (vlib_main_t * vm,
-	    vlib_node_runtime_t * node,
-	    vlib_frame_t * frame)
+always_inline uword
+ip6_lookup_inline (vlib_main_t * vm,
+		   vlib_node_runtime_t * node,
+		   vlib_frame_t * frame,
+		   int is_indirect)
 {
   ip6_main_t * im = &ip6_main;
   ip_lookup_main_t * lm = &im->lookup_main;
@@ -669,6 +672,7 @@ ip6_lookup (vlib_main_t * vm,
 	  ip_lookup_next_t next0, next1;
 	  ip6_header_t * ip0, * ip1;
 	  ip_adjacency_t * adj0, * adj1;
+	  ip6_address_t * dst_addr0, * dst_addr1;
           u32 fib_index0, fib_index1;
           u32 flow_hash_config0, flow_hash_config1;
 
@@ -694,6 +698,20 @@ ip6_lookup (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
+	  if (is_indirect)
+	    {
+	      ip_adjacency_t * iadj0, * iadj1;
+	      iadj0 = ip_get_adjacency (lm, vnet_buffer(p0)->ip.adj_index[VLIB_TX]);
+	      iadj1 = ip_get_adjacency (lm, vnet_buffer(p1)->ip.adj_index[VLIB_TX]);
+	      dst_addr0 = &iadj0->indirect.next_hop.ip6;
+	      dst_addr1 = &iadj1->indirect.next_hop.ip6;
+	    }
+	  else
+	    {
+	      dst_addr0 = &ip0->dst_address;
+	      dst_addr1 = &ip1->dst_address;
+	    }
+
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p0)->sw_if_index[VLIB_RX]);
 	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p1)->sw_if_index[VLIB_RX]);
 
@@ -702,10 +720,8 @@ ip6_lookup (vlib_main_t * vm,
           fib_index1 = (vnet_buffer(p1)->sw_if_index[VLIB_TX] == (u32)~0) ?
             fib_index1 : vnet_buffer(p1)->sw_if_index[VLIB_TX];
 
-	  adj_index0 = ip6_fib_lookup_with_table (im, fib_index0, 
-                                                  &ip0->dst_address);
-	  adj_index1 = ip6_fib_lookup_with_table (im, fib_index1, 
-                                                  &ip1->dst_address);
+	  adj_index0 = ip6_fib_lookup_with_table (im, fib_index0, dst_addr0);
+	  adj_index1 = ip6_fib_lookup_with_table (im, fib_index1, dst_addr1);
 
 	  adj0 = ip_get_adjacency (lm, adj_index0);
 	  adj1 = ip_get_adjacency (lm, adj_index1);
@@ -713,13 +729,13 @@ ip6_lookup (vlib_main_t * vm,
           if (PREDICT_FALSE (adj0->explicit_fib_index != ~0))
             {
               adj_index0 = ip6_fib_lookup_with_table 
-                (im, adj0->explicit_fib_index, &ip0->dst_address);
+                (im, adj0->explicit_fib_index, dst_addr0);
               adj0 = ip_get_adjacency (lm, adj_index0);
             }
           if (PREDICT_FALSE (adj1->explicit_fib_index != ~0))
             {
               adj_index1 = ip6_fib_lookup_with_table 
-                (im, adj1->explicit_fib_index, &ip1->dst_address);
+                (im, adj1->explicit_fib_index, dst_addr1);
               adj1 = ip_get_adjacency (lm, adj_index1);
             }
 
@@ -818,6 +834,7 @@ ip6_lookup (vlib_main_t * vm,
 	  u32 pi0, adj_index0;
 	  ip_lookup_next_t next0;
 	  ip_adjacency_t * adj0;
+	  ip6_address_t * dst_addr0;
           u32 fib_index0, flow_hash_config0;
 
 	  pi0 = from[0];
@@ -827,6 +844,17 @@ ip6_lookup (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (p0);
 
+	  if (is_indirect)
+	    {
+	      ip_adjacency_t * iadj0;
+	      iadj0 = ip_get_adjacency (lm, vnet_buffer(p0)->ip.adj_index[VLIB_TX]);
+	      dst_addr0 = &iadj0->indirect.next_hop.ip6;
+	    }
+	  else
+	    {
+	      dst_addr0 = &ip0->dst_address;
+	    }
+
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p0)->sw_if_index[VLIB_RX]);
           fib_index0 = (vnet_buffer(p0)->sw_if_index[VLIB_TX] == (u32)~0) ?
             fib_index0 : vnet_buffer(p0)->sw_if_index[VLIB_TX];
@@ -834,15 +862,14 @@ ip6_lookup (vlib_main_t * vm,
           flow_hash_config0 = 
               vec_elt_at_index (im->fibs,fib_index0)->flow_hash_config;
 
-	  adj_index0 = ip6_fib_lookup_with_table (im, fib_index0, 
-                                                  &ip0->dst_address);
+	  adj_index0 = ip6_fib_lookup_with_table (im, fib_index0, dst_addr0);
 
 	  adj0 = ip_get_adjacency (lm, adj_index0);
 
           if (PREDICT_FALSE (adj0->explicit_fib_index != ~0))
             {
-              adj_index0 = ip6_fib_lookup_with_table 
-                (im, adj0->explicit_fib_index, &ip0->dst_address);
+              adj_index0 = ip6_fib_lookup_with_table
+                (im, adj0->explicit_fib_index, dst_addr0);
               adj0 = ip_get_adjacency (lm, adj_index0);
             }
 
@@ -1206,9 +1233,35 @@ ip6_sw_interface_add_del (vnet_main_t * vnm,
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip6_sw_interface_add_del);
 
+static uword
+ip6_lookup (vlib_main_t * vm,
+	    vlib_node_runtime_t * node,
+	    vlib_frame_t * frame)
+{
+  return ip6_lookup_inline (vm, node, frame, /* is_indirect */ 0);
+}
+
 VLIB_REGISTER_NODE (ip6_lookup_node) = {
   .function = ip6_lookup,
   .name = "ip6-lookup",
+  .vector_size = sizeof (u32),
+
+  .n_next_nodes = IP_LOOKUP_N_NEXT,
+  .next_nodes = IP6_LOOKUP_NEXT_NODES,
+};
+
+static uword
+ip6_indirect (vlib_main_t * vm,
+	      vlib_node_runtime_t * node,
+	      vlib_frame_t * frame)
+{
+  return ip6_lookup_inline (vm, node, frame, /* is_indirect */ 1);
+}
+
+
+VLIB_REGISTER_NODE (ip6_indirect_node) = {
+  .function = ip6_indirect,
+  .name = "ip6-indirect",
   .vector_size = sizeof (u32),
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,

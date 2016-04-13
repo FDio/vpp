@@ -79,6 +79,9 @@ typedef enum {
   /* This packets needs to go to 6RD (RFC5969) */
   IP_LOOKUP_NEXT_SIXRD,
 
+  /* This packets needs to go to indirect next hop */
+  IP_LOOKUP_NEXT_INDIRECT,
+
   /* Hop-by-hop header handling */
   IP_LOOKUP_NEXT_HOP_BY_HOP,
   IP_LOOKUP_NEXT_ADD_HOP_BY_HOP,
@@ -101,6 +104,7 @@ typedef enum {
     [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip4-hop-by-hop",		\
     [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip4-add-hop-by-hop",	\
     [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip4-pop-hop-by-hop",	\
+    [IP_LOOKUP_NEXT_INDIRECT] = "ip4-indirect",			\
 }
 
 #define IP6_LOOKUP_NEXT_NODES {					\
@@ -117,6 +121,7 @@ typedef enum {
     [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",		\
     [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop",	\
     [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop",	\
+    [IP_LOOKUP_NEXT_INDIRECT] = "ip6-indirect",			\
 }
 
 /* Flow hash configuration */
@@ -170,12 +175,15 @@ typedef struct {
     /* IP_LOOKUP_NEXT_ARP only */
     struct {
       ip46_address_t next_hop;
-      u32 next_adj_index_with_same_next_hop;
     } arp;
     /* IP_LOOKUP_NEXT_CLASSIFY only */
     struct {
       u16 table_index;
     } classify;
+    /* IP_LOOKUP_NEXT_INDIRECT only */
+    struct {
+        ip46_address_t next_hop;
+    } indirect;
   };
 
   STRUCT_MARK(signature_end);
