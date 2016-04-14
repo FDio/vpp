@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_d14d4474",
+        "filename": "vnet/vnet/unix/tapcli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1197,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-14T13:58:01Z",
+      "side": 1,
+      "message": "Please remove this.",
+      "revId": "b078d33257e9270325c82c16d5a7e5a04fafbd01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
