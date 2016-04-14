@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a045101_6eb571cc",
+        "filename": "vlib/vlib/unix/unix.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-04-14T03:51:32Z",
+      "side": 1,
+      "message": "While this is not part of this change set, this variable definition is missing the \"extern\" prefix to make this a variable declaration instead of a definition.  This header file is included in lots of .c files and there will be multiple allocations of storage for this symbol in each of them.  It is also similarly defined in .../vlib/vlib/main.h without the \"extern\" prefix.",
+      "revId": "c04c472dd7297c6bfdd45c114820dcded9604848",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_4ecab550",
+        "filename": "vlib/vlib/unix/unix.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-04-14T03:51:32Z",
+      "side": 1,
+      "message": "Do we have a nomenclature guideline for the use of the \"extern\" keyword for function declarations in header files?\n\nPersonally, I prefer using the \"extern\" keywork for both function and variable declarations in header files so that I don\u0027t mistakenly leave it off of variable declarations which actually makes a difference in the compiler output.",
+      "revId": "c04c472dd7297c6bfdd45c114820dcded9604848",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_2ec76947",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 746,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-04-14T03:51:32Z",
+      "side": 1,
+      "message": "Since you have already initialized s \u003d 0, I would pass \u0027s\u0027 as the first arg to format instead of 0, to prevent cut-n-paste memory leak bugs.",
+      "revId": "c04c472dd7297c6bfdd45c114820dcded9604848",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_0ec4ad3e",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 748,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-04-14T03:51:32Z",
+      "side": 1,
+      "message": "I prefer the use of vec_reset_length() over _vec_len()\u003d0, except in performance critical loops where clock cycles to check for the vector_pointer \u003d\u003d 0 is wasteful.",
+      "revId": "c04c472dd7297c6bfdd45c114820dcded9604848",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_eec0612c",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 755,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-04-14T03:51:32Z",
+      "side": 1,
+      "message": "The first arg to format() should be \u0027s\u0027.  This is currently leaking memory as you\u0027ll be allocating memory for a new vector with this call instead of re-using the vector pointed to by \u0027s\u0027.  \n\nThis is true for most of the subsequent calls to format() in this function as well.",
+      "revId": "c04c472dd7297c6bfdd45c114820dcded9604848",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
