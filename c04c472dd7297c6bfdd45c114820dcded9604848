@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a045101_2e3c092f",
+        "filename": "vlib/vlib/unix/unix.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-04-14T10:04:07Z",
+      "side": 1,
+      "message": "Agree, but current situation is that in whole vlib word \"extern\" is mentioned only 6 times. This is out of scope of this patch....",
+      "parentUuid": "3a045101_6eb571cc",
+      "revId": "c04c472dd7297c6bfdd45c114820dcded9604848",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a045101_4ecab550",
         "filename": "vlib/vlib/unix/unix.h",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2016-04-14T03:51:32Z",
       "side": 1,
       "message": "Do we have a nomenclature guideline for the use of the \"extern\" keyword for function declarations in header files?\n\nPersonally, I prefer using the \"extern\" keywork for both function and variable declarations in header files so that I don\u0027t mistakenly leave it off of variable declarations which actually makes a difference in the compiler output.",
+      "revId": "c04c472dd7297c6bfdd45c114820dcded9604848",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_0e494dd0",
+        "filename": "vlib/vlib/unix/unix.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-04-14T10:04:07Z",
+      "side": 1,
+      "message": "As far I dont think we have guideline and extern is barely used.",
+      "parentUuid": "3a045101_4ecab550",
       "revId": "c04c472dd7297c6bfdd45c114820dcded9604848",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -81,6 +117,24 @@
       "writtenOn": "2016-04-14T03:51:32Z",
       "side": 1,
       "message": "The first arg to format() should be \u0027s\u0027.  This is currently leaking memory as you\u0027ll be allocating memory for a new vector with this call instead of re-using the vector pointed to by \u0027s\u0027.  \n\nThis is true for most of the subsequent calls to format() in this function as well.",
+      "revId": "c04c472dd7297c6bfdd45c114820dcded9604848",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_ee4501b4",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 755,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-04-14T10:04:07Z",
+      "side": 1,
+      "message": "That was stupid mistake. I was changing from vec_free() to something more kind to mem allocator and I missed to replace 0 with s.\nWill fix in the next changeset.",
+      "parentUuid": "3a045101_eec0612c",
       "revId": "c04c472dd7297c6bfdd45c114820dcded9604848",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
