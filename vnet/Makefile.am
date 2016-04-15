@@ -82,7 +82,6 @@ nobase_include_HEADERS +=			\
 ########################################
 libvnet_la_SOURCES +=				\
  vnet/ethernet/arp.c				\
- vnet/ethernet/cli.c				\
  vnet/ethernet/format.c				\
  vnet/ethernet/init.c				\
  vnet/ethernet/interface.c			\
