@@ -18,7 +18,7 @@ include /usr/share/dpkg/default.mk
 
 # main packaging script based on dh7 syntax
 %:
-	dh $@ --with dkms
+	dh $@ --with dkms --with systemd
 
 override_dh_install:
 	dh_install --exclude .git
