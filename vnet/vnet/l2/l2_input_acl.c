@@ -254,6 +254,7 @@ l2_inacl_node_fn (vlib_main_t * vm,
           /* Feature bitmap update */
           vnet_buffer(b0)->l2.feature_bitmap &= ~L2INPUT_FEAT_ACL;
 
+          vnet_buffer(b0)->l2_classify.opaque_index = ~0;
           /* Determine the next node */
           next0 = feat_bitmap_get_next_node_index(msm->feat_next_node_index,
                     vnet_buffer(b0)->l2.feature_bitmap);
@@ -267,6 +268,8 @@ l2_inacl_node_fn (vlib_main_t * vm,
                                              now);
               if (e0)
                 {
+                  vnet_buffer(b0)->l2_classify.opaque_index
+                    = e0->opaque_index;
                   vlib_buffer_advance (b0, e0->advance);
 
                   next0 = (e0->next_index < ACL_NEXT_INDEX_N_NEXT)?
