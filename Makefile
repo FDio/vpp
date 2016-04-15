@@ -18,7 +18,7 @@ V?=0
 GDB?=gdb
 PLATFORM?=vpp
 
-MINIMAL_STARTUP_CONF="unix { interactive } dpdk { no-pci socket-mem 1024 }"
+MINIMAL_STARTUP_CONF="unix { interactive }"
 
 GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 

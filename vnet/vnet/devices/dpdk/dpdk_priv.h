@@ -45,7 +45,6 @@ _(force-ranks, r)
 _(huge-dir)                                     \
 _(proc-type)                                    \
 _(file-prefix)                                  \
-_(socket-mem)                                   \
 _(vdev)
 
 static inline u32
