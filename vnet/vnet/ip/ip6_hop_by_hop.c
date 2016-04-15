@@ -34,6 +34,22 @@ char *ppc_state[] = {"None", "Encap", "Decap"};
 
 ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
 
+#define OI_DECAP   100
+
+#define foreach_ip6_hbyh_input_next \
+  _(IP6_REWRITE, "ip6-rewrite")                      \
+  _(IP6_LOOKUP, "ip6-lookup")                      \
+  _(IP6_HBYH, "ip6-hop-by-hop")\
+  _(IP6_POP_HBYH, "ip6-pop-hop-by-hop")\
+  _(DROP, "error-drop")                        
+
+typedef enum {
+#define _(s,n) IP6_HBYH_INPUT_NEXT_##s,
+  foreach_ip6_hbyh_input_next
+#undef _
+  IP6_HBYH_INPUT_N_NEXT,
+} ip6_hbyh_input_next_t;
+
 /*
  * ip6 hop-by-hop option handling. We push pkts with h-b-h options to
  * ip6_hop_by_hop_node_fn from ip6-lookup at a cost of ~2 clocks/pkt in
@@ -441,13 +457,9 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
             }
 
         out0:
-
-          /* 
-           * Since we push pkts here from the h-b-h header imposition code
-           * we have to be careful what we wish for...
-           */
-          next0 = adj0->lookup_next_index != IP_LOOKUP_NEXT_ADD_HOP_BY_HOP ?
-              adj0->lookup_next_index : adj0->saved_lookup_next_index;
+          next0 = (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP) ?
+            IP6_HBYH_INPUT_NEXT_IP6_POP_HBYH : IP6_HBYH_INPUT_NEXT_IP6_REWRITE;
+          vnet_buffer(b0)->l2_classify.opaque_index = ~0;
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
                             && (b0->flags & VLIB_BUFFER_IS_TRACED))) 
@@ -495,9 +507,12 @@ VLIB_REGISTER_NODE (ip6_hop_by_hop_node) = {
   .n_errors = ARRAY_LEN(ip6_hop_by_hop_error_strings),
   .error_strings = ip6_hop_by_hop_error_strings,
 
-  /* See ip/lookup.h */
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP6_LOOKUP_NEXT_NODES,
+  .n_next_nodes = IP6_HBYH_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [IP6_HBYH_INPUT_NEXT_##s] = n,
+    foreach_ip6_hbyh_input_next
+#undef _
+  },
 };
 
 /* The main h-b-h tracer will be invoked, no need to do much here */
@@ -676,7 +691,7 @@ ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
           ip0->payload_length = clib_host_to_net_u16 (new_l0);
           
           /* Populate the (first) h-b-h list elt */
-          next0 = IP_LOOKUP_NEXT_HOP_BY_HOP;
+          next0 = IP6_HBYH_INPUT_NEXT_IP6_LOOKUP;
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
                             && (b0->flags & VLIB_BUFFER_IS_TRACED))) 
@@ -713,8 +728,12 @@ VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) = {
   .error_strings = ip6_add_hop_by_hop_error_strings,
 
   /* See ip/lookup.h */
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP6_LOOKUP_NEXT_NODES,
+  .n_next_nodes = IP6_HBYH_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [IP6_HBYH_INPUT_NEXT_##s] = n,
+    foreach_ip6_hbyh_input_next
+#undef _
+  },
 };
 
 
@@ -887,11 +906,18 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
             {
               hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
           
-              /* Collect data from trace via callback */
-              next0 = ioam_end_of_path_cb ? 
-                ioam_end_of_path_cb (vm, node, b0, ip0, adj0) 
-                : adj0->saved_lookup_next_index;
-              
+              if (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP)
+                { /* First pass. Send to hbyh node. */
+                  next0 = IP6_HBYH_INPUT_NEXT_IP6_LOOKUP;
+                  goto out1;
+                }
+              else
+                { /* Second pass */
+                  /* Collect data from trace via callback */
+                  next0 = ioam_end_of_path_cb ? 
+                          ioam_end_of_path_cb (vm, node, b0, ip0, adj0) :
+                          IP6_HBYH_INPUT_NEXT_IP6_REWRITE;
+                }
               
               /* Pop the trace data */
               vlib_buffer_advance (b0, (hbh0->length+1)<<3);
@@ -910,7 +936,7 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
             }
           else
             {
-              next0 = adj0->saved_lookup_next_index;
+              next0 = IP6_HBYH_INPUT_NEXT_IP6_LOOKUP;
               no_header++;
             }
               
@@ -922,6 +948,7 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
               t->next_index = next0;
             }
 
+out1:
           /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -949,8 +976,12 @@ VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) = {
   .error_strings = ip6_pop_hop_by_hop_error_strings,
 
   /* See ip/lookup.h */
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP6_LOOKUP_NEXT_NODES,
+  .n_next_nodes = IP6_HBYH_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [IP6_HBYH_INPUT_NEXT_##s] = n,
+    foreach_ip6_hbyh_input_next
+#undef _
+  },
 };
 
 
