@@ -1,0 +1,14 @@
+[Unit]
+Description=vector packet processing engine
+After=network.target
+
+[Service]
+Type=simple
+ExecStartPre=-/bin/rm -f /dev/shm/* 
+ExecStartPre=-/sbin/modprobe igb_uio
+ExecStart=/usr/bin/vpp -c /etc/vpp/startup.conf
+ExecStopPost=/bin/rm -f /dev/shm/*
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
