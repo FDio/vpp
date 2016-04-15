@@ -783,38 +783,6 @@ dpdk_bind_devices_to_uio (dpdk_main_t * dm)
   vec_free (pci_addr);
 }
 
-static u32
-get_node_free_hugepages_num (u32 node, u32 page_size)
-{
-  FILE * fp;
-  u8 * tmp;
-
-  tmp = format (0, "/sys/devices/system/node/node%u/hugepages/hugepages-%ukB/"
-                "free_hugepages%c", node, page_size, 0);
-  fp = fopen ((char *) tmp, "r");
-  vec_free(tmp);
-
-  if (fp != NULL)
-    {
-      u8 * buffer = 0;
-      u32 pages_avail = 0;
-
-      vec_validate (buffer, 256-1);
-      if (fgets ((char *)buffer, 256, fp))
-        {
-          unformat_input_t in;
-          unformat_init_string (&in, (char *) buffer, strlen ((char *) buffer));
-          unformat(&in, "%u", &pages_avail);
-          unformat_free (&in);
-        }
-      vec_free(buffer);
-      fclose(fp);
-      return pages_avail;
-    }
-
-  return 0;
-}
-
 static clib_error_t *
 dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -910,6 +878,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         ;
       else if (unformat (input, "uio-driver %s", &dm->uio_driver_name))
 	;
+      else if (unformat (input, "socket-mem %s", &socket_mem))
+	;
       else if (unformat (input, "vhost-user-coalesce-frames %d", &dm->vhost_coalesce_frames))
         ;
       else if (unformat (input, "vhost-user-coalesce-time %f", &dm->vhost_coalesce_time))
@@ -937,8 +907,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
               huge_dir = 1;                           \
             else if (!strncmp(#a, "file-prefix", 11)) \
               file_prefix = 1;                        \
-            else if (!strncmp(#a, "socket-mem", 10))  \
-              socket_mem = vec_dup (s);               \
 	    tmp = format (0, "--%s%c", #a, 0);	      \
 	    vec_add1 (dm->eal_init_args, tmp);	      \
 	    vec_add1 (s, 0);			      \
@@ -982,56 +950,97 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   if (!dm->uio_driver_name)
-    dm->uio_driver_name = format (0, "igb_uio");
+    dm->uio_driver_name = format (0, "igb_uio%c", 0);
 
   /*
    * Use 1G huge pages if available.
    */
   if (!no_huge && !huge_dir)
     {
-      uword * mem_by_socket = hash_create (0, sizeof (uword));
-      uword c;
+      u32 x, * mem_by_socket = 0;
+      uword c = 0;
       u8 use_1g = 1;
       u8 use_2m = 1;
+      u8 less_than_1g = 1;
       int rv;
 
       umount(DEFAULT_HUGE_DIR);
 
       /* Process "socket-mem" parameter value */
       if (vec_len (socket_mem))
-        {
-          unformat_input_t in;
-          unformat_init_vector(&in, socket_mem);
-          unformat(&in, "%U", unformat_socket_mem, &mem_by_socket);
-          unformat_free(&in);
-        }
+	{
+	  unformat_input_t in;
+	  unformat_init_vector(&in, socket_mem);
+	  while (unformat_check_input (&in) != UNFORMAT_END_OF_INPUT)
+	    {
+	      if (unformat (&in, "%u,", &x))
+		;
+	      else if (unformat (&in, "%u", &x))
+		;
+	      else if (unformat (&in, ","))
+		x = 0;
+	      else
+		break;
+
+	      vec_add1(mem_by_socket, x);
+
+	      if (x > 1023)
+		less_than_1g = 0;
+	    }
+	  unformat_free(&in);
+	}
       else
-        use_1g = 0;
+	{
+	  clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
+	    {
+	      vec_validate(mem_by_socket, c);
+	      mem_by_socket[c] = 512; /* default per-socket mem */
+	    }
+	  ));
+	}
 
       /* check if available enough 1GB pages for each socket */
-      clib_bitmap_foreach (c, tm->cpu_socket_bitmap, ({
-         uword * p = hash_get (mem_by_socket, c);
-         if (p)
-           {
-             u32 mem = p[0];
-             if (mem)
-               {
-                 u32 pages_num_1g = mem / 1024;
-                 u32 pages_num_2m = mem / 2;
-                 u32 pages_avail;
+      clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
+        {
+	  u32 pages_avail, page_size, mem;
+	  u8 *s = 0;
+	  char * path = "/sys/devices/system/node/node%u/hugepages/"
+			"hugepages-%ukB/free_hugepages%c";
 
-                 pages_avail = get_node_free_hugepages_num(c, 1048576);
-                 if (!pages_avail || !(pages_avail >= pages_num_1g))
-                   use_1g = 0;
+	  vec_validate(mem_by_socket, c);
+	  mem = mem_by_socket[c];
 
-                 pages_avail = get_node_free_hugepages_num(c, 2048);
-                 if (!pages_avail || !(pages_avail >= pages_num_2m))
-                   use_2m = 0;
-              }
-           }
+	  page_size = 1024;
+	  pages_avail = 0;
+	  s = format (s, path, c, page_size * 1024, 0);
+	  read_sys_fs ((char *) s, "%u", &pages_avail);
+	  vec_reset_length (s);
+
+	  if (page_size * pages_avail < mem)
+	    use_1g = 0;
+
+	  page_size = 2;
+	  pages_avail = 0;
+	  s = format (s, path, c, page_size * 1024, 0);
+	  read_sys_fs ((char *) s, "%u", &pages_avail);
+	  vec_reset_length (s);
+
+	  if (page_size * pages_avail < mem)
+	    use_2m = 0;
+
+	  vec_free(s);
       }));
+      _vec_len (mem_by_socket) = c + 1;
 
-      hash_free (mem_by_socket);
+      /* regenerate socket_mem string */
+      vec_free (socket_mem);
+      vec_foreach_index (x, mem_by_socket)
+	socket_mem = format (socket_mem, "%s%u",
+			     socket_mem ? "," : "",
+			     mem_by_socket[x]);
+      socket_mem = format (socket_mem, "%c", 0);
+
+      vec_free (mem_by_socket);
 
       rv = mkdir(VPP_RUN_DIR, 0755);
       if (rv && errno != EEXIST)
@@ -1049,7 +1058,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
           goto done;
         }
 
-      if (use_1g)
+      if (use_1g && !(less_than_1g && use_2m))
         {
           rv = mount("none", DEFAULT_HUGE_DIR, "hugetlbfs", 0, "pagesize=1G");
         }
@@ -1154,6 +1163,12 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   tmp = format (0, "--master-lcore%c", 0);
   vec_add1 (dm->eal_init_args, tmp);
   tmp = format (0, "%u%c", tm->main_lcore, 0);
+  vec_add1 (dm->eal_init_args, tmp);
+
+  /* set socket-mem */
+  tmp = format (0, "--socket-mem%c", 0);
+  vec_add1 (dm->eal_init_args, tmp);
+  tmp = format (0, "%s%c", socket_mem, 0);
   vec_add1 (dm->eal_init_args, tmp);
 
   /* NULL terminate the "argv" vector, in case of stupidity */
