@@ -208,14 +208,6 @@ bad_tx_sw_if_index:				\
 
 #define foreach_vpe_api_msg                                             \
 _(WANT_INTERFACE_EVENTS, want_interface_events)                         \
-_(WANT_FROM_NETCONF_SERVER, want_from_netconf_server)                   \
-_(WANT_TO_NETCONF_SERVER, want_to_netconf_server)                       \
-_(WANT_FROM_NETCONF_CLIENT, want_from_netconf_client)                   \
-_(WANT_TO_NETCONF_CLIENT, want_to_netconf_client)                       \
-_(FROM_NETCONF_SERVER, from_netconf_server)                             \
-_(TO_NETCONF_SERVER, to_netconf_server)                                 \
-_(FROM_NETCONF_CLIENT, from_netconf_client)                             \
-_(TO_NETCONF_CLIENT, to_netconf_client)                                 \
 _(WANT_OAM_EVENTS, want_oam_events)                                     \
 _(OAM_ADD_DEL, oam_add_del)                                             \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                                 \
@@ -570,10 +562,6 @@ reply:                                                                  \
 }
 
 pub_sub_handler (interface_events,INTERFACE_EVENTS)
-pub_sub_handler (from_netconf_server,FROM_NETCONF_SERVER)
-pub_sub_handler (to_netconf_server,TO_NETCONF_SERVER)
-pub_sub_handler (from_netconf_client,FROM_NETCONF_CLIENT)
-pub_sub_handler (to_netconf_client,TO_NETCONF_CLIENT)
 pub_sub_handler (oam_events,OAM_EVENTS)
 
 #define RESOLUTION_EVENT 1
@@ -5668,11 +5656,6 @@ static void vl_api_##nn##_t_handler (                                   \
     vl_msg_api_free (mp);                                               \
 }
 
-BOUNCE_HANDLER(to_netconf_server);
-BOUNCE_HANDLER(from_netconf_server);
-BOUNCE_HANDLER(to_netconf_client);
-BOUNCE_HANDLER(from_netconf_client);
-
 /*
  * vpe_api_hookup
  * Add vpe's API message handlers to the table.
@@ -5707,11 +5690,6 @@ vpe_api_hookup (vlib_main_t *vm)
                              vl_api_sr_tunnel_add_del_t_endian,
                              vl_api_sr_tunnel_add_del_t_print,
                              256, 1);
-
-    am->message_bounce [VL_API_FROM_NETCONF_SERVER] = 1;
-    am->message_bounce [VL_API_TO_NETCONF_SERVER] = 1;
-    am->message_bounce [VL_API_FROM_NETCONF_CLIENT] = 1;
-    am->message_bounce [VL_API_TO_NETCONF_CLIENT] = 1;
 
     /* 
      * Trace space for 8 MPLS encap labels, classifier mask+match
