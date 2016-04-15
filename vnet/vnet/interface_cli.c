@@ -799,3 +799,81 @@ VLIB_CLI_COMMAND (renumber_interface_command, static) = {
   .function = renumber_interface_command_fn,
 };
 
+static clib_error_t *
+promiscuous_cmd (vlib_main_t * vm,
+                 unformat_input_t * input,
+                 vlib_cli_command_t * cmd)
+{
+  vnet_main_t * vnm = vnet_get_main();
+  u32 hw_if_index;
+  u32 flags = ETHERNET_INTERFACE_FLAG_ACCEPT_ALL;
+  ethernet_main_t * em = &ethernet_main;
+  ethernet_interface_t * eif;
+
+  if (unformat (input, "on %U",
+                unformat_vnet_hw_interface, vnm, &hw_if_index))
+    ;
+  else if (unformat (input, "off %U",
+                     unformat_ethernet_interface, vnm, &hw_if_index))
+    flags = 0;
+  else
+    return clib_error_return (0, "unknown input `%U'",
+                              format_unformat_error, input);
+
+  eif = ethernet_get_interface (em, hw_if_index);
+  if (!eif)
+    return clib_error_return (0, "not supported");
+
+  ethernet_set_flags (vnm, hw_if_index, flags);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (set_interface_promiscuous_cmd, static) = {
+  .path = "set interface promiscuous",
+  .short_help = "set interface promiscuous [on | off] <intfc>",
+  .function = promiscuous_cmd,
+};
+
+static clib_error_t *
+mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vnet_main_t * vnm = vnet_get_main();
+  u32 hw_if_index, mtu;
+  u32 flags = ETHERNET_INTERFACE_FLAG_MTU;
+  ethernet_main_t * em = &ethernet_main;
+
+  if (unformat (input, "%d %U", &mtu,
+                unformat_vnet_hw_interface, vnm, &hw_if_index))
+    {
+      vnet_hw_interface_t * hi = vnet_get_hw_interface (vnm, hw_if_index);
+      ethernet_interface_t * eif = ethernet_get_interface (em, hw_if_index);
+
+      if (!eif)
+        return clib_error_return (0, "not supported");
+
+      if (mtu < ETHERNET_MIN_PACKET_BYTES)
+	return clib_error_return (0, "Invalid mtu (%d): "
+				  "must be >= min pkt bytes (%d)", mtu,
+				  hi->min_packet_bytes);
+
+      if (mtu > ETHERNET_MAX_PACKET_BYTES)
+	return clib_error_return (0, "Invalid mtu (%d): must be <= 9216", mtu);
+
+      if (hi->max_packet_bytes != mtu)
+	{
+	  hi->max_packet_bytes = mtu;
+	  ethernet_set_flags (vnm, hw_if_index, flags);
+	}
+    }
+  else
+    return clib_error_return (0, "unknown input `%U'",
+                              format_unformat_error, input);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (set_interface_mtu_cmd, static) = {
+  .path = "set interface mtu",
+  .short_help = "set interface mtu <64-9216> <intfc>",
+  .function = mtu_cmd,
+};
+

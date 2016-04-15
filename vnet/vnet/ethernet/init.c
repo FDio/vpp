@@ -86,8 +86,6 @@ static clib_error_t * ethernet_init (vlib_main_t * vm)
     return error;
   if ((error = vlib_call_init_function (vm, ethernet_input_init)))
     return error;
-  if ((error = vlib_call_init_function (vm, ethernet_cli_init)))
-    return error;  
 
   return error;
 }
