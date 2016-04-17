@@ -1,0 +1,208 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_9a300dea",
+        "filename": "vnet/vnet/devices/ssvm/ssvm_eth.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "(uword)",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_7a4d3972",
+        "filename": "vnet/vnet/devices/ssvm/ssvm_eth.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "(uword)",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_da3685e7",
+        "filename": "vnet/vnet/l2/l2_flood.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "Can you use (uword) for this purpose?",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_ba33d1f5",
+        "filename": "vnet/vnet/l2/l2_flood.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 197,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "Can you use (uword) for this purpose?",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_fa3949d9",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3317,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "Can you use (uword) for this purpose?",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_3a20e19a",
+        "filename": "vpp/api/gmon.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "My bad, please change u64 -\u003e uword in the header file.",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_1a251dab",
+        "filename": "vpp/api/gmon.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "Fixing the header file will make this go away",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_5a2b9582",
+        "filename": "vppapigen/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "Sometimes gcc is too smart for its own good.",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_7a2659bc",
+        "filename": "vppinfra/vppinfra/byte_order.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "Can we lose the i386 / __aarch64__ clauses here, and rely on (__BYTE_ORDER__) \u003d\u003d ( __ORDER_LITTLE_ENDIAN__)? \n\nThis is a new one for me.",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_9a192d7c",
+        "filename": "vppinfra/vppinfra/hash.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "Good idea. Let\u0027s should convert hash_memoryXX(...) into static inlines - in hash.c - and remove all evidence of the old function prototypes from the header file.\n\nAs you\u0027ve seen, these functions are very lightly used. In fact, they\u0027re probably only good for creating 32/64-bit bugs. (:-)...",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_da0fa52d",
+        "filename": "vppinfra/vppinfra/longjmp.S",
+        "patchSetId": 1
+      },
+      "lineNbr": 481,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "This must have been broken for years. Nice one! Thanks.",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_ba1cf16b",
+        "filename": "vppinfra/vppinfra/macros.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-17T12:50:29Z",
+      "side": 1,
+      "message": "Clearly a nit, since this should never happen, but since %llx expects to find a 64-bit quantity... \n\nWithout trying the whole comedy routine, was this to fix a \"cast from pointer to integer of different width\" warning?\n\nI should probably go add a %p format arg to format(...) and friends, to make this PITA go away...",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
