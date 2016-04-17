@@ -38,4 +38,8 @@ typedef struct {
 
 int vnet_tap_dump_ifs (tapcli_interface_details_t **out_tapids);
 
+#define TAP_MTU_MIN 68
+#define TAP_MTU_MAX 65535
+#define TAP_MTU_DEFAULT 1500
+
 #endif /* __included_tapcli_h__ */
