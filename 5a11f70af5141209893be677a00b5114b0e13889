@@ -2,6 +2,98 @@
   "comments": [
     {
       "key": {
+        "uuid": "fa0f191f_fa6709e9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-04-17T17:31:24Z",
+      "side": 1,
+      "message": "Can we make it generic for AArch32? Renaming platform to PLATFORM\u003darm32...",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 27
+      },
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_1a73ddb2",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-04-17T17:31:24Z",
+      "side": 1,
+      "message": "Making main-lcore\u003d1 default as long as lcore 1 exists makes sense in all cases. I can address that in separate commit.",
+      "range": {
+        "startLine": 18,
+        "startChar": 0,
+        "endLine": 18,
+        "endChar": 64
+      },
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_3a6ea1ca",
+        "filename": "build-data/platforms/raspi.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-04-17T17:31:24Z",
+      "side": 1,
+      "message": "this is used in multiple shared libs and in plugins. Can we just make this defined in include file like we have it for x86_64?",
+      "range": {
+        "startLine": 34,
+        "startChar": 47,
+        "endLine": 34,
+        "endChar": 75
+      },
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_5a795592",
+        "filename": "vlib/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-04-17T17:31:24Z",
+      "side": 1,
+      "message": "can you make it default if DPDK\u003d\u003d0?",
+      "range": {
+        "startLine": 181,
+        "startChar": 10,
+        "endLine": 181,
+        "endChar": 22
+      },
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_9a300dea",
         "filename": "vnet/vnet/devices/ssvm/ssvm_eth.c",
         "patchSetId": 1
