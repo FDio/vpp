@@ -180,8 +180,8 @@ ethernet_register_interface (vnet_main_t * vnm,
 
   ethernet_setup_node (vnm->vlib_main, hi->output_node_index);
 
-  hi->min_packet_bytes = ETHERNET_MIN_PACKET_BYTES;
-  hi->max_packet_bytes = ETHERNET_MAX_PACKET_BYTES;
+  hi->min_packet_bytes = hi->min_mtu = ETHERNET_MIN_PACKET_BYTES;
+  hi->max_packet_bytes = hi->max_mtu = ETHERNET_MAX_PACKET_BYTES;
   hi->per_packet_overhead_bytes =
     /* preamble */ 8 + /* inter frame gap */ 12;
 
