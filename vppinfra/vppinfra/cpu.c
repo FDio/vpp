@@ -21,6 +21,7 @@
 #endif
 
 #define foreach_x86_cpu_uarch \
+ _(0x06, 0x4f, "Broadwell", "Broadwell-EP/EX") \
  _(0x06, 0x3d, "Broadwell", "Broadwell") \
  _(0x06, 0x3f, "Haswell", "Haswell-E") \
  _(0x06, 0x3c, "Haswell", "Haswell") \
