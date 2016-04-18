@@ -405,6 +405,15 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
   return 0;
 }
 
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
+static long get_huge_page_size(int fd)
+{
+  struct statfs s;
+  fstatfs(fd, &s);
+  return s.f_bsize;
+}
+#endif
+
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
 static clib_error_t *
 dpdk_vhost_user_set_protocol_features(u32 hw_if_index, u64 prot_features)
@@ -554,13 +563,14 @@ dpdk_vhost_user_set_vring_num(u32 hw_if_index, u8 idx, u32 num)
 }
 
 static clib_error_t *
-dpdk_vhost_user_set_vring_addr(u32 hw_if_index, u8 idx, u64 desc, u64 used, u64 avail)
+dpdk_vhost_user_set_vring_addr(u32 hw_if_index, u8 idx, u64 desc, \
+    u64 used, u64 avail, u64 log)
 {
   dpdk_device_t * xd;
   struct vhost_virtqueue *vq;
 
-  DBG_SOCK("idx %u desc 0x%lx used 0x%lx avail 0x%lx",
-    idx, desc, used, avail);
+  DBG_SOCK("idx %u desc 0x%lx used 0x%lx avail 0x%lx log 0x%lx",
+    idx, desc, used, avail, log);
 
   if (!(xd = dpdk_vhost_user_device_from_hw_if_index(hw_if_index))) {
     clib_warning("not a vhost-user interface");
@@ -571,6 +581,9 @@ dpdk_vhost_user_set_vring_addr(u32 hw_if_index, u8 idx, u64 desc, u64 used, u64 
   vq->desc = (struct vring_desc *) qva_to_vva(&xd->vu_vhost_dev, desc);
   vq->used = (struct vring_used *) qva_to_vva(&xd->vu_vhost_dev, used);
   vq->avail = (struct vring_avail *) qva_to_vva(&xd->vu_vhost_dev, avail);
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
+  vq->log_guest_addr = log;
+#endif
 
   if (!(vq->desc && vq->used && vq->avail)) {
     clib_warning("falied to set vring addr");
@@ -611,6 +624,9 @@ dpdk_vhost_user_get_vring_base(u32 hw_if_index, u8 idx, u32 * num)
   vq->desc = NULL;
   vq->used = NULL;
   vq->avail = NULL;
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
+  vq->log_guest_addr = 0;
+#endif
 
   /* Check if all Qs are disabled */
   int numqs = xd->vu_vhost_dev.virt_qp_nb * VIRTIO_QNUM;
@@ -1039,7 +1055,8 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
       dpdk_vhost_user_set_vring_addr(xd->vlib_hw_if_index, msg.state.index,
                                     msg.addr.desc_user_addr,
                                     msg.addr.used_user_addr,
-                                    msg.addr.avail_user_addr);
+                                    msg.addr.avail_user_addr,
+                                    msg.addr.log_guest_addr);
       break;
 
     case VHOST_USER_SET_OWNER:
@@ -1133,8 +1150,45 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_SET_LOG_BASE:
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
       DBG_SOCK("if %d msg VHOST_USER_SET_LOG_BASE",
         xd->vlib_hw_if_index);
+
+      if (msg.size != sizeof(msg.log)) {
+        DBG_SOCK("invalid msg size for VHOST_USER_SET_LOG_BASE: %u instead of %lu",
+                 msg.size, sizeof(msg.log));
+        goto close_socket;
+      }
+
+      if (!(xd->vu_vhost_dev.protocol_features & (1 << VHOST_USER_PROTOCOL_F_LOG_SHMFD))) {
+        DBG_SOCK("VHOST_USER_PROTOCOL_F_LOG_SHMFD not set but VHOST_USER_SET_LOG_BASE received");
+        goto close_socket;
+      }
+
+      fd = fds[0];
+      /* align size to 2M page */
+      long page_sz = get_huge_page_size(fd);
+      ssize_t map_sz = (msg.log.size + msg.log.offset + page_sz) & ~(page_sz - 1);
+
+      void *addr = mmap(0, map_sz, PROT_READ | PROT_WRITE,
+                                MAP_SHARED, fd, 0);
+
+      DBG_SOCK("map log region addr 0 len 0x%lx off 0x%lx fd %d mapped %p",
+               map_sz, msg.log.offset, fd, addr);
+
+      if (addr == MAP_FAILED) {
+        clib_warning("failed to map memory. errno is %d", errno);
+        goto close_socket;
+      }
+
+      xd->vu_vhost_dev.log_base += (u64)addr + msg.log.offset;
+      xd->vu_vhost_dev.log_size = msg.log.size;
+      msg.flags |= VHOST_USER_REPLY_MASK;
+      msg.size = sizeof(msg.u64);
+#else
+      DBG_SOCK("if %d msg VHOST_USER_SET_LOG_BASE Not-Implemented",
+        xd->vlib_hw_if_index);
+#endif
       break;
 
     case VHOST_USER_SET_LOG_FD:
