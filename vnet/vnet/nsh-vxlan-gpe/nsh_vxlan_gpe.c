@@ -516,7 +516,7 @@ VLIB_CLI_COMMAND (create_nsh_vxlan_gpe_tunnel_command, static) = {
   "    c1 <nn> c2 <nn> c3 <nn> c4 <nn> spi <nn> si <nn> vni <nn>\n"
   "    [encap-vrf-id <nn>] [decap-vrf-id <nn>] [o-bit <1|0>] [c-bit <1|0>]\n"
   "    [md-type <nn>][next-ip4][next-ip6][next-ethernet][next-nsh]\n"
-  "    [tlv <xx>][decap-next [ip4|ip6|ethernet|nsh-encap]][del]\n",
+  "    [tlv <xx>][decap-next [ip4|ip6|ethernet|nsh-vxlan-gpe]][del]\n",
   .function = nsh_vxlan_gpe_add_del_tunnel_command_fn,
 };
 
