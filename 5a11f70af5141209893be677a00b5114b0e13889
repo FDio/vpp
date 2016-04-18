@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_bae63143",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Sure: we may have to specify the arch for gcc, as the copro is different (and so the registers to access to the cycles counter)",
+      "parentUuid": "fa0f191f_fa6709e9",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 27
+      },
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_1a73ddb2",
         "filename": "/COMMIT_MSG",
         "patchSetId": 1
@@ -71,6 +95,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_9ae36d33",
+        "filename": "build-data/platforms/raspi.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_3a6ea1ca",
+      "range": {
+        "startLine": 34,
+        "startChar": 47,
+        "endLine": 34,
+        "endChar": 75
+      },
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_5a795592",
         "filename": "vlib/vlib/threads.c",
         "patchSetId": 1
@@ -82,6 +130,30 @@
       "writtenOn": "2016-04-17T17:31:24Z",
       "side": 1,
       "message": "can you make it default if DPDK\u003d\u003d0?",
+      "range": {
+        "startLine": 181,
+        "startChar": 10,
+        "endLine": 181,
+        "endChar": 22
+      },
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_7ad09953",
+        "filename": "vlib/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_5a795592",
       "range": {
         "startLine": 181,
         "startChar": 10,
@@ -111,6 +183,24 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_fac38988",
+        "filename": "vnet/vnet/devices/ssvm/ssvm_eth.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_9a300dea",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_7a4d3972",
         "filename": "vnet/vnet/devices/ssvm/ssvm_eth.h",
         "patchSetId": 1
@@ -128,6 +218,24 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_dac0c57e",
+        "filename": "vnet/vnet/devices/ssvm/ssvm_eth.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_7a4d3972",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_da3685e7",
         "filename": "vnet/vnet/l2/l2_flood.c",
         "patchSetId": 1
@@ -139,6 +247,24 @@
       "writtenOn": "2016-04-17T12:50:29Z",
       "side": 1,
       "message": "Can you use (uword) for this purpose?",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_babd1105",
+        "filename": "vnet/vnet/l2/l2_flood.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_da3685e7",
       "revId": "5a11f70af5141209893be677a00b5114b0e13889",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -179,6 +305,24 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_9aba4d09",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3317,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_fa3949d9",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_3a20e19a",
         "filename": "vpp/api/gmon.c",
         "patchSetId": 1
@@ -190,6 +334,24 @@
       "writtenOn": "2016-04-17T12:50:29Z",
       "side": 1,
       "message": "My bad, please change u64 -\u003e uword in the header file.",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_5ad5d541",
+        "filename": "vpp/api/gmon.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_3a20e19a",
       "revId": "5a11f70af5141209893be677a00b5114b0e13889",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -247,6 +409,24 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_3aca21a2",
+        "filename": "vppinfra/vppinfra/byte_order.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Indeed, \"__BYTE_ORDER__\" was introduced in gcc 4.6, and is also available in clang.\nYet, if I remove the test with x86 and x86_64, wouldn\u0027t this break compatibility with icc ?",
+      "parentUuid": "fa0f191f_7a2659bc",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_9a192d7c",
         "filename": "vppinfra/vppinfra/hash.h",
         "patchSetId": 1
@@ -258,6 +438,24 @@
       "writtenOn": "2016-04-17T12:50:29Z",
       "side": 1,
       "message": "Good idea. Let\u0027s should convert hash_memoryXX(...) into static inlines - in hash.c - and remove all evidence of the old function prototypes from the header file.\n\nAs you\u0027ve seen, these functions are very lightly used. In fact, they\u0027re probably only good for creating 32/64-bit bugs. (:-)...",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_1acf5db2",
+        "filename": "vppinfra/vppinfra/hash.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_9a192d7c",
       "revId": "5a11f70af5141209893be677a00b5114b0e13889",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -292,6 +490,24 @@
       "writtenOn": "2016-04-17T12:50:29Z",
       "side": 1,
       "message": "Clearly a nit, since this should never happen, but since %llx expects to find a 64-bit quantity... \n\nWithout trying the whole comedy routine, was this to fix a \"cast from pointer to integer of different width\" warning?\n\nI should probably go add a %p format arg to format(...) and friends, to make this PITA go away...",
+      "revId": "5a11f70af5141209893be677a00b5114b0e13889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_5a3cb593",
+        "filename": "vppinfra/vppinfra/macros.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-04-18T04:00:05Z",
+      "side": 1,
+      "message": "Indeed, using %p is better.",
+      "parentUuid": "fa0f191f_ba1cf16b",
       "revId": "5a11f70af5141209893be677a00b5114b0e13889",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
