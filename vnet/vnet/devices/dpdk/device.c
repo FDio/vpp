@@ -608,37 +608,37 @@ dpdk_interface_tx (vlib_main_t * vm,
       if (PREDICT_FALSE(any_clone != 0))
         {
           if (PREDICT_FALSE(b0->clone_count != 0))
-        {
-          struct rte_mbuf * mb0_new = dpdk_replicate_packet_mb (b0);
-          if (PREDICT_FALSE(mb0_new == 0))
-            {
-              vlib_error_count (vm, node->node_index,
-                    DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
-              b0->flags |= VLIB_BUFFER_REPL_FAIL;
-            }
-          else
-            mb0 = mb0_new;
-          vec_add1 (dm->recycle[my_cpu], bi0);
-        }
+	    {
+	      struct rte_mbuf * mb0_new = dpdk_replicate_packet_mb (b0);
+	      if (PREDICT_FALSE(mb0_new == 0))
+		{
+		  vlib_error_count (vm, node->node_index,
+				    DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
+		  b0->flags |= VLIB_BUFFER_REPL_FAIL;
+		}
+	      else
+		mb0 = mb0_new;
+	      vec_add1 (dm->recycle[my_cpu], bi0);
+	    }
           if (PREDICT_FALSE(b1->clone_count != 0))
-        {
-          struct rte_mbuf * mb1_new = dpdk_replicate_packet_mb (b1);
-          if (PREDICT_FALSE(mb1_new == 0))
-            {
-              vlib_error_count (vm, node->node_index,
-                    DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
-              b1->flags |= VLIB_BUFFER_REPL_FAIL;
-            }
-          else
-            mb1 = mb1_new;
-          vec_add1 (dm->recycle[my_cpu], bi1);
-        }
-    }
+	    {
+	      struct rte_mbuf * mb1_new = dpdk_replicate_packet_mb (b1);
+	      if (PREDICT_FALSE(mb1_new == 0))
+		{
+		  vlib_error_count (vm, node->node_index,
+				    DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
+		  b1->flags |= VLIB_BUFFER_REPL_FAIL;
+		}
+	      else
+		mb1 = mb1_new;
+	      vec_add1 (dm->recycle[my_cpu], bi1);
+	    }
+	}
 
       delta0 = PREDICT_FALSE(b0->flags & VLIB_BUFFER_REPL_FAIL) ? 0 :
-    vlib_buffer_length_in_chain (vm, b0) - (i16) mb0->pkt_len;
+	vlib_buffer_length_in_chain (vm, b0) - (i16) mb0->pkt_len;
       delta1 = PREDICT_FALSE(b1->flags & VLIB_BUFFER_REPL_FAIL) ? 0 :
-    vlib_buffer_length_in_chain (vm, b1) - (i16) mb1->pkt_len;
+	vlib_buffer_length_in_chain (vm, b1) - (i16) mb1->pkt_len;
       
       new_data_len0 = (u16)((i16) mb0->data_len + delta0);
       new_data_len1 = (u16)((i16) mb1->data_len + delta1);
@@ -653,23 +653,23 @@ dpdk_interface_tx (vlib_main_t * vm,
       mb1->pkt_len = new_pkt_len1;
 
       mb0->data_off = (PREDICT_FALSE(b0->flags & VLIB_BUFFER_REPL_FAIL)) ?
-          mb0->data_off : (u16)(RTE_PKTMBUF_HEADROOM + b0->current_data);
+	mb0->data_off : (u16)(RTE_PKTMBUF_HEADROOM + b0->current_data);
       mb1->data_off = (PREDICT_FALSE(b1->flags & VLIB_BUFFER_REPL_FAIL)) ?
-          mb1->data_off : (u16)(RTE_PKTMBUF_HEADROOM + b1->current_data);
+	mb1->data_off : (u16)(RTE_PKTMBUF_HEADROOM + b1->current_data);
 
       if (PREDICT_FALSE(node->flags & VLIB_NODE_FLAG_TRACE))
-    {
+	{
           if (b0->flags & VLIB_BUFFER_IS_TRACED)
-              dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi0, b0);
+	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi0, b0);
           if (b1->flags & VLIB_BUFFER_IS_TRACED)
-              dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi1, b1);
-    }
+	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi1, b1);
+	}
 
       if (PREDICT_TRUE(any_clone == 0))
         {
-      tx_vector[i % DPDK_TX_RING_SIZE] = mb0;
+	  tx_vector[i % DPDK_TX_RING_SIZE] = mb0;
           i++;
-      tx_vector[i % DPDK_TX_RING_SIZE] = mb1;
+	  tx_vector[i % DPDK_TX_RING_SIZE] = mb1;
           i++;
         }
       else
@@ -677,12 +677,12 @@ dpdk_interface_tx (vlib_main_t * vm,
           /* cloning was done, need to check for failure */
           if (PREDICT_TRUE((b0->flags & VLIB_BUFFER_REPL_FAIL) == 0))
             {
-          tx_vector[i % DPDK_TX_RING_SIZE] = mb0;
+	      tx_vector[i % DPDK_TX_RING_SIZE] = mb0;
               i++;
             }
           if (PREDICT_TRUE((b1->flags & VLIB_BUFFER_REPL_FAIL) == 0))
             {
-          tx_vector[i % DPDK_TX_RING_SIZE] = mb1;
+	      tx_vector[i % DPDK_TX_RING_SIZE] = mb1;
               i++;
             }
         }
@@ -705,21 +705,21 @@ dpdk_interface_tx (vlib_main_t * vm,
 
       mb0 = rte_mbuf_from_vlib_buffer(b0);
       if (PREDICT_FALSE(b0->clone_count != 0))
-    {
-      struct rte_mbuf * mb0_new = dpdk_replicate_packet_mb (b0);
-      if (PREDICT_FALSE(mb0_new == 0))
-        {
-          vlib_error_count (vm, node->node_index,
-                DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
-          b0->flags |= VLIB_BUFFER_REPL_FAIL;
-        }
-      else
-        mb0 = mb0_new;
-      vec_add1 (dm->recycle[my_cpu], bi0);
-    }
+	{
+	  struct rte_mbuf * mb0_new = dpdk_replicate_packet_mb (b0);
+	  if (PREDICT_FALSE(mb0_new == 0))
+	    {
+	      vlib_error_count (vm, node->node_index,
+				DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
+	      b0->flags |= VLIB_BUFFER_REPL_FAIL;
+	    }
+	  else
+	    mb0 = mb0_new;
+	  vec_add1 (dm->recycle[my_cpu], bi0);
+	}
 
       delta0 = PREDICT_FALSE(b0->flags & VLIB_BUFFER_REPL_FAIL) ? 0 :
-    vlib_buffer_length_in_chain (vm, b0) - (i16) mb0->pkt_len;
+	vlib_buffer_length_in_chain (vm, b0) - (i16) mb0->pkt_len;
       
       new_data_len0 = (u16)((i16) mb0->data_len + delta0);
       new_pkt_len0 = (u16)((i16) mb0->pkt_len + delta0);
@@ -728,15 +728,15 @@ dpdk_interface_tx (vlib_main_t * vm,
       mb0->data_len = new_data_len0;
       mb0->pkt_len = new_pkt_len0;
       mb0->data_off = (PREDICT_FALSE(b0->flags & VLIB_BUFFER_REPL_FAIL)) ?
-          mb0->data_off : (u16)(RTE_PKTMBUF_HEADROOM + b0->current_data);
+	mb0->data_off : (u16)(RTE_PKTMBUF_HEADROOM + b0->current_data);
 
       if (PREDICT_FALSE(node->flags & VLIB_NODE_FLAG_TRACE))
-          if (b0->flags & VLIB_BUFFER_IS_TRACED)
-              dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi0, b0);
+	if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	  dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi0, b0);
 
       if (PREDICT_TRUE((b0->flags & VLIB_BUFFER_REPL_FAIL) == 0))
         {
-      tx_vector[i % DPDK_TX_RING_SIZE] = mb0;
+	  tx_vector[i % DPDK_TX_RING_SIZE] = mb0;
           i++;
         }
       n_left--;
@@ -783,15 +783,15 @@ dpdk_interface_tx (vlib_main_t * vm,
           vlib_increment_simple_counter (cm, my_cpu, xd->vlib_sw_if_index, n_packets);
 
           vlib_error_count (vm, node->node_index, DPDK_TX_FUNC_ERROR_PKT_DROP,
-                n_packets);
+			    n_packets);
 
           while (n_packets--)
             rte_pktmbuf_free (tx_vector[ring->tx_tail + n_packets]);
         }
 
         /* Reset head/tail to avoid unnecessary wrap */
-        ring->tx_head = 0;
-        ring->tx_tail = 0;
+      ring->tx_head = 0;
+      ring->tx_tail = 0;
     }
 
   /* Recycle replicated buffers */
@@ -813,9 +813,9 @@ static int dpdk_device_renumber (vnet_hw_interface_t * hi,
   dpdk_device_t * xd = vec_elt_at_index (dm->devices, hi->dev_instance);
 
   if (!xd || xd->dev_type != VNET_DPDK_DEV_VHOST_USER) {
-      clib_warning("cannot renumber non-vhost-user interface (sw_if_index: %d)",
-              hi->sw_if_index);
-      return 0;
+    clib_warning("cannot renumber non-vhost-user interface (sw_if_index: %d)",
+		 hi->sw_if_index);
+    return 0;
   }
 
   xd->vu_if_id = new_dev_instance;
@@ -843,8 +843,8 @@ static void dpdk_clear_hw_interface_counters (u32 instance)
 
       memcpy (&xd->last_cleared_stats, &xd->stats, sizeof(xd->stats));
       memcpy (xd->last_cleared_xstats, xd->xstats,
-          vec_len(xd->last_cleared_xstats) *
-          sizeof(xd->last_cleared_xstats[0]));
+	      vec_len(xd->last_cleared_xstats) *
+	      sizeof(xd->last_cleared_xstats[0]));
     }
   else
     {
@@ -860,8 +860,8 @@ static void dpdk_clear_hw_interface_counters (u32 instance)
   if (PREDICT_FALSE(xd->dev_type == VNET_DPDK_DEV_VHOST_USER)) {
     int i;
     for (i = 0; i < xd->rx_q_used * VIRTIO_QNUM; i++) {
-        xd->vu_intf->vrings[i].packets = 0;
-        xd->vu_intf->vrings[i].bytes = 0;
+      xd->vu_intf->vrings[i].packets = 0;
+      xd->vu_intf->vrings[i].bytes = 0;
     }
   }
 }
