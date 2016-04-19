@@ -503,15 +503,6 @@ dpdk_lib_init (dpdk_main_t * dm)
             }
         }
 
-      /*
-       * DAW-FIXME: VMXNET3 driver doesn't support jumbo / multi-buffer pkts
-       */
-      if (xd->pmd == VNET_DPDK_PMD_VMXNET3)
-        {
-          xd->port_conf.rxmode.max_rx_pkt_len = 1518;
-          xd->port_conf.rxmode.jumbo_frame = 0;
-        }
-
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
         {
           f64 now = vlib_time_now(vm);
@@ -624,11 +615,6 @@ dpdk_lib_init (dpdk_main_t * dm)
           vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
           rte_eth_dev_set_vlan_offload(xd->device_index, vlan_off);
 	}
-      /*
-       * DAW-FIXME: VMXNET3 driver doesn't support jumbo / multi-buffer pkts
-       */
-      else if (xd->pmd == VNET_DPDK_PMD_VMXNET3)
-	  hi->max_packet_bytes = 1518;
 
       hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 
 	      xd->port_conf.rxmode.max_rx_pkt_len - sizeof(ethernet_header_t);
@@ -1409,8 +1395,12 @@ dpdk_process (vlib_main_t * vm,
       dpdk_update_link_state (xd, now);
     }
 
-{ // Setup MACs for bond interfaces and their links which was initialized in
-  // dpdk_port_setup() but needs to be done again here to take effect.
+{ // Extra set up for bond interfaces:
+  // 1. Setup MACs for bond interfaces and their slave links which was set
+  //    in dpdk_port_setup() but needs to be done again here to take effect.
+  // 2. Set max L3 packet size of each bond interface to the lowerst value of 
+  //    its slave links 
+  // 3. Set up info for bond interface related CLI support.
   int nports = rte_eth_dev_count();
   if (nports > 0) {
       for (i = 0; i < nports; i++) {
@@ -1436,6 +1426,10 @@ dpdk_process (vlib_main_t * vm,
 		  bei = pool_elt_at_index(em->interfaces, bhi->hw_instance);
 		  memcpy(bhi->hw_address, addr, 6);
 		  memcpy(bei->address, addr, 6);
+		  /* Init l3 packet size allowed on bonded interface */
+		  bhi->max_l3_packet_bytes[VLIB_RX] = 
+		  bhi->max_l3_packet_bytes[VLIB_TX] = 
+		      ETHERNET_MAX_PACKET_BYTES - sizeof(ethernet_header_t);
 		  while (nlink >= 1) { /* for all slave links */
 		      int slave = slink[--nlink];
 		      dpdk_device_t * sdev = &dm->devices[slave];
@@ -1452,6 +1446,12 @@ dpdk_process (vlib_main_t * vm,
 		      ssi = vnet_get_sw_interface(vnm, sdev->vlib_sw_if_index);
 		      shi->bond_info = VNET_HW_INTERFACE_BOND_INFO_SLAVE;
 		      ssi->flags |= VNET_SW_INTERFACE_FLAG_BOND_SLAVE;
+		      /* Set l3 packet size allowed as the lowest of slave */
+		      if (bhi->max_l3_packet_bytes[VLIB_RX] >
+			  shi->max_l3_packet_bytes[VLIB_RX]) 
+			  bhi->max_l3_packet_bytes[VLIB_RX] =
+			  bhi->max_l3_packet_bytes[VLIB_TX] =
+			      shi->max_l3_packet_bytes[VLIB_RX];
 		  }
 	      }
 	  }
