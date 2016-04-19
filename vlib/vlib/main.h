@@ -168,8 +168,9 @@ typedef struct vlib_main_t {
   vlib_config_function_runtime_t *config_function_registrations;
   mc_serialize_msg_t *mc_msg_registrations; /* mc_main is a pointer... */
 
-  /* control-plane API queue signal pending */
+  /* control-plane API queue signal pending, length indication */
   volatile u32 queue_signal_pending;
+  volatile u32 api_queue_nonempty;
   void (*queue_signal_callback)(struct vlib_main_t *);
   u8 **argv;
 } vlib_main_t;

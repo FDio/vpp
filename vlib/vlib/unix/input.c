@@ -127,10 +127,12 @@ linux_epoll_input (vlib_main_t * vm,
     if (nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] > 0)
       timeout_ms = 0;
 
-    if (vector_rate > 1)
+    /* 
+     * When busy: don't wait & only epoll for input 
+     * every 1024 times through main loop. 
+     */
+    if (vector_rate > 1 || vm->api_queue_nonempty)
       {
-	/* When busy don't wait & only epoll for input every 8 times
-	   through main loop. */
 	timeout_ms = 0;
 	node->input_main_loops_per_call = 1024;
       }

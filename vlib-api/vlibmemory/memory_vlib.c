@@ -404,6 +404,7 @@ memclnt_process (vlib_main_t * vm,
         while (1) {
             pthread_mutex_lock (&q->mutex);
             if (q->cursize == 0) {
+                vm->api_queue_nonempty = 0;
                 pthread_mutex_unlock (&q->mutex);
                 
                 if (TRACE_VLIB_MEMORY_QUEUE)
@@ -626,6 +627,7 @@ memclnt_queue_signal (int signum)
     vlib_main_t * vm = vlib_get_main();
 
     vm->queue_signal_pending = 1;
+    vm->api_queue_nonempty = 1;
 }
 
 static void 
