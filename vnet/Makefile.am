@@ -684,6 +684,20 @@ nobase_include_HEADERS +=			\
   vnet/devices/af_packet/af_packet.h
 
 ########################################
+# NETMAP interface
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/devices/netmap/netmap.c			\
+  vnet/devices/netmap/device.c			\
+  vnet/devices/netmap/node.c			\
+  vnet/devices/netmap/cli.c
+
+nobase_include_HEADERS +=			\
+  vnet/devices/netmap/netmap.h
+
+
+########################################
 # Unix kernel related
 ########################################
 

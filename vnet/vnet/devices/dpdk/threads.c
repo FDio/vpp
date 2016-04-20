@@ -20,6 +20,7 @@
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/dpdk/dpdk.h>
+#include <vnet/devices/dpdk/threads.h>
 
 #include <vlibmemory/api.h>
 #include <vlibmemory/vl_memory_msg_enum.h> /* enumerate all vlib messages */

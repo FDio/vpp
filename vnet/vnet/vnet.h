@@ -84,9 +84,4 @@ vnet_main_t **vnet_mains;
 #include <vnet/interface_funcs.h>
 #include <vnet/global_funcs.h>
 
-#if DPDK > 0
-#include <vnet/devices/dpdk/threads.h>
-#include <vnet/dpdk_replication.h>
-#endif
-
 #endif /* included_vnet_vnet_h */
