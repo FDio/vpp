@@ -60,17 +60,65 @@ typedef enum
 {
   /* NOTE: ip addresses are left out on purpose. Use max masked ip-prefixes
    * instead */
-  IP_PREFIX,
-  NO_ADDRESS,
+  GID_ADDR_IP_PREFIX,
+  GID_ADDR_LCAF,
+  GID_ADDR_NO_ADDRESS,
   GID_ADDR_TYPES
 } gid_address_type_t;
 
-/* might want to expand this in the future :) */
+typedef enum
+{
+  /* make sure that values corresponds with RFC */
+  LCAF_NULL_BODY = 0,
+  LCAF_AFI_LIST_TYPE,
+  LCAF_INSTANCE_ID,
+  LCAF_TYPES
+} lcaf_type_t;
+
+struct _gid_address_t;
+
 typedef struct
+{
+  u8 vni_mask_len;
+  u32 vni;
+  struct _gid_address_t *gid_addr;
+} vni_t;
+
+#define vni_vni(_a) (_a)->vni
+#define vni_mask_len(_a) (_a)->vni_mask_len
+#define vni_gid(_a) (_a)->gid_addr
+
+typedef struct
+{
+  u8 src_len;
+  u8 dst_len;
+  struct _gid_address_t *src;
+  struct _gid_address_t *dst;
+} source_dest_t;
+
+typedef struct
+{
+  /* the union needs to be at the beginning! */
+  union
+  {
+    source_dest_t sd;
+    vni_t uni;
+  };
+  u8 type;
+} lcaf_t;
+
+#define lcaf_type(_a) (_a)->type
+#define lcaf_vni(_a) vni_vni(& (_a)->uni)
+#define lcaf_vni_len(_a) vni_mask_len(& (_a)->uni)
+#define lcaf_gid (_a) vni_gid(& (_a)->uni)
+
+/* might want to expand this in the future :) */
+typedef struct _gid_address_t
 {
   union
   {
     ip_prefix_t ippref;
+    lcaf_t lcaf;
   };
   u8 type;
 } gid_address_t;
@@ -101,6 +149,7 @@ typedef enum {
 u8 *format_gid_address (u8 * s, va_list * args);
 uword unformat_gid_address (unformat_input_t * input, va_list * args);
 int gid_address_cmp (gid_address_t * a1, gid_address_t * a2);
+void gid_address_free (gid_address_t *a);
 
 u16 gid_address_size_to_put (gid_address_t * a);
 u16 gid_address_put (u8 * b, gid_address_t * gid);
@@ -113,6 +162,9 @@ u32 gid_address_parse (u8 * offset, gid_address_t *a);
 #define gid_address_ippref(_a) (_a)->ippref
 #define gid_address_ippref_len(_a) (_a)->ippref.len
 #define gid_address_ip(_a) ip_prefix_addr(&gid_address_ippref(_a))
+#define gid_address_lcaf(_a) (_a)->lcaf
+#define gid_address_vni(_a) ( (GID_ADDR_LCAF == gid_address_type(_a)) ? \
+                              lcaf_vni(&gid_address_lcaf(_a)) : 0)
 
 /* 'sub'address functions */
 u16 ip_prefix_size_to_write (void * pref);
@@ -120,6 +172,13 @@ u16 ip_prefix_write (u8 * p, void * pref);
 u8 ip_prefix_length (void *a);
 void *ip_prefix_cast (gid_address_t * a);
 void ip_prefix_copy (void * dst , void * src);
+
+int lcaf_cmp (lcaf_t * lcaf1, lcaf_t * lcaf2);
+u16 lcaf_size_to_write (void * pref);
+u16 lcaf_write (u8 * p, void * pref);
+u8 lcaf_prefix_length (void *a);
+void *lcaf_cast (gid_address_t * a);
+void lcaf_copy (void * dst , void * src);
 
 typedef struct
 {
@@ -139,6 +198,7 @@ typedef struct
 u32 locator_parse (void * ptr, locator_t * loc);
 void locator_copy (locator_t * dst, locator_t * src);
 u32 locator_cmp (locator_t * l1, locator_t * l2);
+void locator_free (locator_t * l);
 
 typedef struct
 {

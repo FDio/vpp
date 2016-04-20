@@ -17,20 +17,87 @@
 
 typedef u16 (*size_to_write_fct)(void *);
 typedef void * (*cast_fct)(gid_address_t *);
-typedef u16 (*write_fct)(u8 *, void *);
+typedef u16 (*serdes_fct)(u8 *, void *);
 typedef u8 (*addr_len_fct)(void *);
 typedef void (*copy_fct)(void *, void *);
+typedef void (*free_fct)(void *);
+typedef int (*cmp_fct)(void *, void *);
+
+u16 vni_write (u8 * p, void * a);
+u16 vni_parse (u8 * p, void * a);
+u16 vni_size_to_write (void * a);
+void vni_free (void * a);
+void vni_copy (void * dst, void * src);
+u16 vni_length (void * a);
+int vni_cmp (void *, void *);
+
+u16 no_addr_size_to_write (void *);
+u16 no_addr_write (u8 * p, void * a);
+u16 no_addr_parse (u8 * p, void * a);
+void no_addr_free (void * a);
+void no_addr_copy (void *, void *);
+u16 no_addr_length (void * a);
+int no_addr_cmp (void * a1, void * a2);
 
 size_to_write_fct size_to_write_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_size_to_write };
-write_fct write_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_write };
+  { ip_prefix_size_to_write, lcaf_size_to_write };
+serdes_fct write_fcts[GID_ADDR_TYPES] =
+  { ip_prefix_write, lcaf_write };
 cast_fct cast_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_cast };
+  { ip_prefix_cast, lcaf_cast };
 addr_len_fct addr_len_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_length };
+  { ip_prefix_length, lcaf_prefix_length };
 copy_fct copy_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_copy };
+  { ip_prefix_copy, lcaf_copy };
+
+cmp_fct lcaf_cmp_fcts[LCAF_TYPES] =
+  {
+    no_addr_cmp,
+    NULL,
+    vni_cmp
+  };
+
+size_to_write_fct lcaf_body_length_fcts[LCAF_TYPES] =
+  {
+    no_addr_length,
+    NULL,
+    vni_length
+  };
+
+copy_fct lcaf_copy_fcts[LCAF_TYPES] =
+  {
+    no_addr_copy,
+    NULL,
+    vni_copy
+  };
+
+free_fct lcaf_free_fcts[LCAF_TYPES] =
+  {
+    no_addr_free,
+    NULL,
+    vni_free
+  };
+
+size_to_write_fct lcaf_size_to_write_fcts[LCAF_TYPES] =
+  {
+    no_addr_size_to_write,
+    NULL,
+    vni_size_to_write
+  };
+
+serdes_fct lcaf_write_fcts[LCAF_TYPES] =
+  {
+    no_addr_write,
+    NULL,
+    vni_write
+  };
+
+serdes_fct lcaf_parse_fcts[LCAF_TYPES] =
+  {
+    no_addr_parse,
+    NULL,
+    vni_parse
+  };
 
 u8 *
 format_ip_address (u8 * s, va_list * args)
@@ -87,7 +154,7 @@ format_gid_address (u8 * s, va_list * args)
   u8 type = gid_address_type(a);
   switch (type)
     {
-    case IP_PREFIX:
+    case GID_ADDR_IP_PREFIX:
       return format (s, "%U", format_ip_prefix, &gid_address_ippref(a));
     default:
       clib_warning("Can't format gid type %d", type);
@@ -100,7 +167,7 @@ unformat_gid_address (unformat_input_t * input, va_list * args)
 {
   gid_address_t * a = va_arg(*args, gid_address_t *);
   if (unformat (input, "%U", unformat_ip_prefix, &gid_address_ippref(a)))
-    gid_address_type(a) = IP_PREFIX;
+    gid_address_type(a) = GID_ADDR_IP_PREFIX;
   else
     return 0;
   return 1;
@@ -250,6 +317,88 @@ ip_address_parse(void * offset, u16 iana_afi, ip_address_t *dst)
   return(sizeof(u16) + size);
 }
 
+u32
+lcaf_hdr_parse (void * offset, lcaf_t * lcaf)
+{
+  lcaf_hdr_t * lh = offset;
+  lcaf->type = lh->type;
+
+  /* this is a bit of hack: since the LCAF Instance ID is the
+    only message that uses reserved2 field, we can set it here.
+    If any LCAF format starts using reserved2 field as well this needs
+    to be moved elsewhere */
+  lcaf_vni_len (lcaf) = lh->reserved2;
+
+  return sizeof (lh[0]);
+}
+
+u16
+vni_parse (u8 * p, void * a)
+{
+  vni_t * v = a;
+  u16 size = 0;
+  vni_vni (v) = clib_net_to_host_u32 ( *(u32 *) p);
+  size += sizeof (u32);
+
+  vni_gid (v) = clib_mem_alloc (sizeof (gid_address_t));
+  gid_address_t * gid = vni_gid (v);
+  memset (gid, 0, sizeof (gid[0]));
+
+  size += gid_address_parse (p + size, gid);
+  return size;
+}
+
+u16
+no_addr_parse (u8 * p, void * a)
+{
+  /* do nothing */
+  return 0;
+}
+
+u32
+lcaf_parse (void * offset, gid_address_t *addr)
+{
+  /* skip AFI type */
+  offset += sizeof (u16);
+  lcaf_t * lcaf = &gid_address_lcaf (addr);
+
+  u32 size = lcaf_hdr_parse (offset, lcaf);
+  u8 type = lcaf_type (lcaf);
+
+  if (!lcaf_parse_fcts[type])
+    {
+      clib_warning ("Unsupported LCAF type: %u", type);
+      return ~0;
+    }
+  size += (*lcaf_parse_fcts[type])(offset + size, lcaf);
+  return sizeof (u16) + size;
+}
+
+void
+vni_free (void * a)
+{
+  vni_t * v = a;
+  gid_address_free (vni_gid (v));
+  clib_mem_free (vni_gid (v));
+}
+
+void
+no_addr_free (void * a)
+{
+  /* nothing to do */
+}
+
+void
+gid_address_free (gid_address_t *a)
+{
+  if (gid_address_type (a) != GID_ADDR_LCAF)
+    return;
+
+  lcaf_t * lcaf = &gid_address_lcaf (a);
+  u8 lcaf_type = lcaf_type (lcaf);
+  (*lcaf_free_fcts[lcaf_type])(lcaf);
+}
+
 int
 ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2)
 {
@@ -339,6 +488,143 @@ ip_prefix_cmp(ip_prefix_t * p1, ip_prefix_t * p2)
   return cmp;
 }
 
+void
+no_addr_copy (void * dst, void * src)
+{
+  /* nothing to do */
+}
+
+void
+vni_copy (void * dst, void * src)
+{
+  vni_t * vd = dst;
+  vni_t * vs = src;
+
+  clib_memcpy (vd, vs, sizeof (vd[0]));
+  vni_gid (vd) = clib_mem_alloc (sizeof (gid_address_t));
+  gid_address_copy (vni_gid (vd), vni_gid (vs));
+}
+
+void
+lcaf_copy (void * dst , void * src)
+{
+  lcaf_t * lcaf_dst = dst;
+  lcaf_t * lcaf_src = src;
+
+  lcaf_type (lcaf_dst) = lcaf_type (lcaf_src);
+  (*lcaf_copy_fcts[lcaf_type (lcaf_src)])(dst, src);
+}
+
+u8
+lcaf_prefix_length (void *a)
+{
+  return 0;
+}
+
+void *
+lcaf_cast (gid_address_t * a)
+{
+  return &gid_address_lcaf (a);
+}
+
+u16
+no_addr_length (void * a)
+{
+  return 0;
+}
+
+u16
+vni_length (void * a)
+{
+  vni_t * v = a;
+  return (sizeof (u32) /* VNI size */
+   + gid_address_size_to_put (vni_gid (v)) /* vni body size*/);
+}
+
+u16
+lcaf_write (u8 * p, void * a)
+{
+  u16 size = 0, len;
+  lcaf_t * lcaf = a;
+  u8 type = lcaf_type (lcaf);
+  lcaf_hdr_t _h, *h = &_h;
+
+  *(u16 *) p = clib_host_to_net_u16 (LISP_AFI_LCAF);
+  size += sizeof (u16);
+  memset (h, 0, sizeof (h[0]));
+  LCAF_TYPE (h) = type;
+  u16 lcaf_len = (*lcaf_body_length_fcts[type])(lcaf);
+  LCAF_LENGTH (h) = clib_host_to_net_u16 (lcaf_len);
+
+  if (LCAF_INSTANCE_ID == type)
+    LCAF_RES2 (h) = lcaf_vni_len(lcaf);
+
+  clib_memcpy (p + size, h, sizeof (h[0]));
+  size += sizeof (h[0]);
+  len = (*lcaf_write_fcts[type])(p + size, lcaf);
+
+  if (~0 == len)
+    return ~0;
+
+  return size + len;
+}
+
+u16
+vni_write (u8 * p, void * a)
+{
+  vni_t * v = a;
+  u16 size = 0, len;
+
+  *(u32 *)p = clib_host_to_net_u32 (vni_vni (v));
+  size += sizeof (u32);
+  len = gid_address_put (p + size, vni_gid (v));
+
+  if (~0 == len)
+    return ~0;
+
+  return size + len;
+}
+
+u16
+no_addr_write (u8 * p, void * a)
+{
+  /* do nothing; return AFI field size */
+  return sizeof (u16);
+}
+
+u16
+no_addr_size_to_write (void * a)
+{
+  return sizeof (u16); /* AFI field length */
+}
+
+u16
+vni_size_to_write (void * a)
+{
+  vni_t * v =  a;
+  u16 size = sizeof (vni_vni (v));
+
+  gid_address_t * gid = vni_gid (v);
+  return (size + sizeof (lcaf_hdr_t)
+    + gid_address_size_to_put (gid));
+}
+
+u16
+lcaf_size_to_write (void * a)
+{
+  lcaf_t * lcaf = (lcaf_t *) a;
+  u32 size = 0, len;
+  u8 type = lcaf_type (lcaf);
+
+  size += sizeof (u16); /* AFI size */
+
+  len = (*lcaf_size_to_write_fcts[type])(lcaf);
+  if (~0 == len)
+    return ~0;
+
+  return size + len;
+}
+
 u8
 gid_address_len (gid_address_t *a)
 {
@@ -389,26 +675,48 @@ gid_address_parse (u8 * offset, gid_address_t *a)
     {
     case LISP_AFI_NO_ADDR:
       len = sizeof(u16);
-      gid_address_type(a) = NO_ADDRESS;
+      gid_address_type(a) = GID_ADDR_NO_ADDRESS;
       break;
     case LISP_AFI_IP:
       len = ip_address_parse (offset, afi, &gid_address_ip(a));
-      gid_address_type(a) = IP_PREFIX;
+      gid_address_type(a) = GID_ADDR_IP_PREFIX;
       /* this should be modified outside if needed*/
       gid_address_ippref_len(a) = 32;
       break;
     case LISP_AFI_IP6:
       len = ip_address_parse (offset, afi, &gid_address_ip(a));
-      gid_address_type(a) = IP_PREFIX;
+      gid_address_type(a) = GID_ADDR_IP_PREFIX;
       /* this should be modified outside if needed*/
       gid_address_ippref_len(a) = 128;
       break;
     case LISP_AFI_LCAF:
+      len = lcaf_parse (offset, a);
+      gid_address_type(a) = GID_ADDR_LCAF;
+      break;
     default:
       clib_warning("LISP AFI %d not supported!", afi);
       return ~0;
     }
   return len;
+}
+
+int
+no_addr_cmp (void * a1, void * a2)
+{
+  return 0;
+}
+
+int
+vni_cmp (void * a1, void * a2)
+{
+  vni_t * v1 = a1;
+  vni_t * v2 = a2;
+
+  if (vni_mask_len (v1) != vni_mask_len (v2))
+    return -1;
+  if (vni_vni (v1) != vni_vni (v2))
+    return -1;
+  return gid_address_cmp (vni_gid (v1), vni_gid (v2));
 }
 
 /* Compare two gid_address_t.
@@ -421,6 +729,7 @@ gid_address_parse (u8 * offset, gid_address_t *a)
 int
 gid_address_cmp (gid_address_t * a1, gid_address_t * a2)
 {
+  lcaf_t * lcaf1, * lcaf2;
   int cmp = -1;
   if (!a1 || !a2)
     return -1;
@@ -429,14 +738,20 @@ gid_address_cmp (gid_address_t * a1, gid_address_t * a2)
 
   switch (gid_address_type(a1))
     {
-    case NO_ADDRESS:
+    case GID_ADDR_NO_ADDRESS:
       if (a1 == a2)
         cmp = 0;
       else
         cmp = 2;
       break;
-    case IP_PREFIX:
+    case GID_ADDR_IP_PREFIX:
       cmp = ip_prefix_cmp (&gid_address_ippref(a1), &gid_address_ippref(a2));
+      break;
+    case GID_ADDR_LCAF:
+      lcaf1 = &gid_address_lcaf (a1);
+      lcaf2 = &gid_address_lcaf (a2);
+      if (lcaf_type (lcaf1) == lcaf_type (lcaf2))
+        cmp = (*lcaf_cmp_fcts[lcaf_type (lcaf1)])(lcaf1, lcaf2);
       break;
     default:
       break;
@@ -476,6 +791,8 @@ locator_copy (locator_t * dst, locator_t * src)
 {
   /* TODO if gid become more complex, this will need to be changed! */
   clib_memcpy (dst, src, sizeof(*dst));
+  if (!src->local)
+    gid_address_copy (&dst->address, &src->address);
 }
 
 u32
@@ -494,4 +811,11 @@ locator_cmp (locator_t * l1, locator_t * l2)
   if (l1->mweight != l2->mweight)
     return 1;
   return 0;
+}
+
+void
+locator_free (locator_t * l)
+{
+  if (!l->local)
+    gid_address_free (&l->address);
 }

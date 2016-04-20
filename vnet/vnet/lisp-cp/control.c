@@ -194,7 +194,7 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   uword * p;
   vnet_lisp_add_del_mapping_args_t _a, * a = &_a;
 
-  gid_address_type (&eid) = IP_PREFIX;
+  gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -972,7 +972,7 @@ get_local_iface_ip_for_dst (lisp_cp_main_t *lcm, ip_address_t * dst,
 }
 
 
-static ip_address_t *
+static gid_address_t *
 build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
 {
   ip4_address_t * l4;
@@ -981,9 +981,12 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
   locator_t * loc;
   u32 * loc_indexp;
   ip_interface_address_t * ia = 0;
-  ip_address_t * rlocs = 0;
-  ip_address_t _rloc, * rloc = &_rloc;
+  gid_address_t gid_data, * gid = &gid_data;
+  gid_address_t * rlocs = 0;
+  ip_prefix_t * ippref = &gid_address_ippref (gid);
+  ip_address_t * rloc = &ip_prefix_addr (ippref);
 
+  gid_address_type (gid) = GID_ADDR_IP_PREFIX;
   for (i = 0; i < vec_len(loc_set->locator_indices); i++)
     {
       loc_indexp = vec_elt_at_index(loc_set->locator_indices, i);
@@ -995,8 +998,8 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
 				    loc->sw_if_index, 1 /* unnumbered */,
       ({
 	l4 = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
-  ip_addr_v4(rloc) = l4[0];
-  vec_add1(rlocs, rloc[0]);
+        ip_addr_v4 (rloc) = l4[0];
+        vec_add1 (rlocs, gid[0]);
       }));
 
       ip_addr_version(rloc) = IP6;
@@ -1004,9 +1007,9 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
       foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
 				    loc->sw_if_index, 1 /* unnumbered */,
       ({
-  l6 = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
-  ip_addr_v6(rloc) = l6[0];
-  vec_add1(rlocs, rloc[0]);
+        l6 = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
+        ip_addr_v6 (rloc) = l6[0];
+        vec_add1 (rlocs, gid[0]);
       }));
     }
   return rlocs;
@@ -1021,7 +1024,7 @@ build_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   vlib_buffer_t * b;
   u32 bi;
   ip_address_t * mr_ip, sloc;
-  ip_address_t * rlocs = 0;
+  gid_address_t * rlocs = 0;
 
   if (vlib_buffer_alloc (vm, &bi, 1) != 1)
     {
@@ -1168,9 +1171,9 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           gid_address_t src, dst;
           ip_prefix_t * spref, * dpref;
 
-          gid_address_type (&src) = IP_PREFIX;
+          gid_address_type (&src) = GID_ADDR_IP_PREFIX;
           spref = &gid_address_ippref(&src);
-          gid_address_type (&dst) = IP_PREFIX;
+          gid_address_type (&dst) = GID_ADDR_IP_PREFIX;
           dpref = &gid_address_ippref(&dst);
 
           pi0 = from[0];
@@ -1356,7 +1359,8 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
     {
       u32 li = vec_elt (dst_ls->locator_indices, i);
       locator_t * l = pool_elt_at_index (lcm->locator_pool, li);
-      if (l->priority < minp && gid_address_type(&l->address) == IP_PREFIX)
+      if (l->priority < minp && gid_address_type(&l->address)
+            == GID_ADDR_IP_PREFIX)
         {
           minp = l->priority;
           dl = l;
@@ -1456,6 +1460,7 @@ compare_locators (lisp_cp_main_t *lcm, u32 * old_ls_indexes,
 void
 process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
 {
+  locator_t * loc;
   u32 len = 0, i, ls_index = 0;
   void * h;
   vnet_lisp_add_del_locator_set_args_t _ls_arg, * ls_arg = &_ls_arg;
@@ -1496,6 +1501,10 @@ process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
       if (len == ~0)
         {
           clib_warning ("Failed to parse mapping record!");
+          vec_foreach (loc, ls_arg->locators)
+            {
+              locator_free (loc);
+            }
           vec_free(ls_arg->locators);
           return;
         }
@@ -1559,7 +1568,7 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm, vlib_buffer_t * b)
   gid_address_t src, dst;
 //  u64 nonce;
   u32 i, len = 0;
-  gid_address_t * itr_rlocs = 0;
+  gid_address_t * itr_rlocs = 0, * rloc;
 
   mreq_hdr = vlib_buffer_get_current (b);
   vlib_buffer_pull (b, sizeof(*mreq_hdr));
@@ -1580,6 +1589,12 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm, vlib_buffer_t * b)
   len = lisp_msg_parse_itr_rlocs (b, &itr_rlocs, MREQ_ITR_RLOC_COUNT(mreq_hdr) + 1);
   if (len == ~0)
     return;
+
+  /* TODO: RLOCs are currently unused, so free them for now */
+  vec_foreach (rloc, itr_rlocs)
+    {
+      gid_address_free (rloc);
+    }
 
   /* parse eid records and send SMR-invoked map-requests */
   for (i = 0; i < MREQ_REC_COUNT(mreq_hdr); i++)

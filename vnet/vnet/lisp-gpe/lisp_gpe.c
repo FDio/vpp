@@ -484,7 +484,7 @@ vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
       vec_foreach(tunnel, tunnels) {
         memset(at, 0, sizeof(at[0]));
         at->is_add = 0;
-        gid_address_type(&at->deid) = IP_PREFIX;
+        gid_address_type(&at->deid) = GID_ADDR_IP_PREFIX;
         ip_prefix_copy(&gid_address_ippref(&at->deid), &tunnel->eid);
         ip_address_copy(&at->dlocator, &tunnel->dst_loc);
         vnet_lisp_gpe_add_del_fwd_entry (at, 0);

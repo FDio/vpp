@@ -4583,7 +4583,7 @@ vl_api_lisp_add_del_local_eid_t_handler(
 
     prefp = &gid_address_ippref(&eid);
     ip_eid = &ip_prefix_addr(prefp);
-    gid_address_type (&eid) = IP_PREFIX;
+    gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
 
     if (mp->is_ipv6) {
         clib_memcpy(&ip_addr_v6(ip_eid), mp->ip_address,
@@ -4802,7 +4802,7 @@ send_lisp_local_eid_table_details (mapping_t *mapit,
     gid = &mapit->eid;
     type = gid_address_type(gid);
 
-    if (type != IP_PREFIX) {
+    if (type != GID_ADDR_IP_PREFIX) {
         return;
     }
 
