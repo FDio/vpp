@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_839b04c9",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 5368,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-04-20T11:45:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_033a54cd",
+      "revId": "e71ac00fd16639594f951f44f85c883419e0bd2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_43204c9b",
         "filename": "vppapigen/node.c",
         "patchSetId": 6
@@ -30,6 +48,24 @@
       "writtenOn": "2016-04-20T11:20:56Z",
       "side": 1,
       "message": "Is this thing actually used?",
+      "revId": "e71ac00fd16639594f951f44f85c883419e0bd2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_63a0f0f4",
+        "filename": "vppapigen/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2026,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-04-20T11:45:22Z",
+      "side": 1,
+      "message": "Currently not. Deleted.",
+      "parentUuid": "fa0f191f_43204c9b",
       "revId": "e71ac00fd16639594f951f44f85c883419e0bd2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
