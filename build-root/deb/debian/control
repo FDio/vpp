@@ -1,8 +1,8 @@
 Source: vpp
 Section: net
 Priority: extra
-Maintainer: Cisco OpenVPP Packaging Team <bogus.address@cisco.com>
-Build-Depends: debhelper (>= 9), dkms
+Maintainer: FD.io Project Discussion <discuss@lists.fd.io>
+Build-Depends: debhelper (>= 9), dkms, dh-systemd (>= 1.5)
 Standards-Version: 3.9.4
 
 Package: vpp
