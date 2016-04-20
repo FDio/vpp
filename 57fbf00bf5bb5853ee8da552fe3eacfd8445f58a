@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_eec0677e",
+        "filename": "build-root/vagrant/bootstrap.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 162
+      },
+      "writtenOn": "2016-04-20T21:39:50Z",
+      "side": 1,
+      "message": "Can we have top-level \"make wipe\" to do all steps of build-root-dist-clean and removal of .bootstrap.ok.\n\nThe 2 makefiles are confusing (unless there is another reason behind it).",
+      "range": {
+        "startLine": 72,
+        "startChar": 5,
+        "endLine": 72,
+        "endChar": 9
+      },
+      "revId": "57fbf00bf5bb5853ee8da552fe3eacfd8445f58a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_0ec4bb90",
+        "filename": "build-root/vagrant/bootstrap.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 162
+      },
+      "writtenOn": "2016-04-20T21:39:50Z",
+      "side": 1,
+      "message": "With choice of upstart and systemd, we will to choose select which init mechanism is active. And as we support other distros - this could start looking dirty.\n\nEither we check the currently active init-process and chose appropriate command. Or simply reboot the vm",
+      "range": {
+        "startLine": 103,
+        "startChar": 10,
+        "endLine": 103,
+        "endChar": 13
+      },
+      "revId": "57fbf00bf5bb5853ee8da552fe3eacfd8445f58a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
