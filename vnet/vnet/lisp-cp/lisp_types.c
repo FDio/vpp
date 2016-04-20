@@ -22,15 +22,15 @@ typedef u8 (*addr_len_fct)(void *);
 typedef void (*copy_fct)(void *, void *);
 
 size_to_write_fct size_to_write_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_size_to_write };
+  { ip_prefix_size_to_write, lcaf_size_to_write };
 write_fct write_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_write };
+  { ip_prefix_write, lcaf_write };
 cast_fct cast_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_cast };
+  { ip_prefix_cast, lcaf_cast };
 addr_len_fct addr_len_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_length };
+  { ip_prefix_length, lcaf_prefix_length };
 copy_fct copy_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_copy };
+  { ip_prefix_copy, lcaf_copy };
 
 u8 *
 format_ip_address (u8 * s, va_list * args)
@@ -87,7 +87,7 @@ format_gid_address (u8 * s, va_list * args)
   u8 type = gid_address_type(a);
   switch (type)
     {
-    case IP_PREFIX:
+    case GID_ADDR_IP_PREFIX:
       return format (s, "%U", format_ip_prefix, &gid_address_ippref(a));
     default:
       clib_warning("Can't format gid type %d", type);
@@ -100,7 +100,7 @@ unformat_gid_address (unformat_input_t * input, va_list * args)
 {
   gid_address_t * a = va_arg(*args, gid_address_t *);
   if (unformat (input, "%U", unformat_ip_prefix, &gid_address_ippref(a)))
-    gid_address_type(a) = IP_PREFIX;
+    gid_address_type(a) = GID_ADDR_IP_PREFIX;
   else
     return 0;
   return 1;
@@ -250,6 +250,61 @@ ip_address_parse(void * offset, u16 iana_afi, ip_address_t *dst)
   return(sizeof(u16) + size);
 }
 
+u32
+lcaf_hdr_parse (void *offset, lcaf_t *lcaf)
+{
+  lcaf_hdr_t * lh = offset;
+  lcaf->type = lh->type;
+  lcaf->rsvd2 = lh->reserved2;
+  lcaf->len = clib_net_to_host_u16 (lh->len);
+  return sizeof (lh[0]);
+}
+
+u32
+lcaf_vni_parse (void *offset, lcaf_t *lcaf)
+{
+  lcaf->vni = clib_net_to_host_u32 ( *(u32 *) offset);
+  return sizeof (u32);
+}
+
+u32
+lcaf_parse (void * offset, gid_address_t *addr)
+{
+  /* skip AFI type */
+  offset += sizeof (u16);
+  gid_address_t * gid = NULL;
+  lcaf_t * lcaf = &gid_address_lcaf (addr);
+
+  u32 size = lcaf_hdr_parse (offset, lcaf);
+  lcaf_gid_address (lcaf) = clib_mem_alloc (sizeof (gid_address_t));
+  gid = lcaf_gid_address (lcaf);
+  memset (gid, 0, sizeof (gid[0]));
+
+  switch (lcaf_type (lcaf))
+    {
+    case LCAF_INSTANCE_ID:
+      size += lcaf_vni_parse (((u8 *) offset) + size, lcaf);
+      break;
+    default:
+      clib_warning ("Unsupported LCAF type: %u",
+                    gid_address_lcaf_type (addr));
+      return ~0;
+    }
+
+  size += gid_address_parse (offset + size, gid);
+  return sizeof (u16) + size;
+}
+
+void
+gid_address_free (gid_address_t *a)
+{
+  if (gid_address_type (a) != GID_ADDR_LCAF)
+    return;
+
+  gid_address_free (gid_address_lcaf_gid_addr (a));
+  clib_mem_free (gid_address_lcaf_gid_addr (a));
+}
+
 int
 ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2)
 {
@@ -327,6 +382,87 @@ ip_prefix_cmp(ip_prefix_t * p1, ip_prefix_t * p2)
   return cmp;
 }
 
+void
+lcaf_copy (void * dst , void * src)
+{
+  lcaf_t * lcaf_dst = dst;
+  lcaf_t * lcaf_src = src;
+
+  clib_memcpy (dst, src, sizeof (lcaf_t));
+  lcaf_gid_address (lcaf_dst) = clib_mem_alloc (sizeof (gid_address_t));
+  gid_address_copy (lcaf_gid_address (lcaf_dst),
+                    lcaf_gid_address (lcaf_src));
+}
+
+u8
+lcaf_prefix_length (void *a)
+{
+  lcaf_t * lcaf = &gid_address_lcaf ((gid_address_t *) a);
+  return gid_address_len (lcaf_gid_address (lcaf));
+}
+
+void *
+lcaf_cast (gid_address_t * a)
+{
+  return &gid_address_lcaf (a);
+}
+
+static u16
+lcaf_vni_write (u8 * p, u32 vni)
+{
+  *(u32 *)p = clib_host_to_net_u32 (vni);
+  return sizeof (u32);
+}
+
+u16
+lcaf_write (u8 * p, void * a)
+{
+  u16 size = 0;
+  lcaf_t * lcaf = a;
+  lcaf_hdr_t _h, *h = &_h;
+
+  *(u16 *) p = clib_host_to_net_u16 (LISP_AFI_LCAF);
+  size += sizeof (u16);
+  memset (h, 0, sizeof (h[0]));
+  LCAF_TYPE (h) = lcaf->type;
+  LCAF_LENGTH (h) = clib_host_to_net_u16 (lcaf->len);
+  LCAF_RES2 (h) = lcaf->rsvd2;
+
+  clib_memcpy (p + size, h, sizeof (h[0]));
+  size += sizeof (h[0]);
+
+  switch (lcaf_type (lcaf))
+    {
+    case LCAF_INSTANCE_ID:
+      size += lcaf_vni_write (p + size, lcaf_vni (lcaf));
+      break;
+    default:
+      break;
+    }
+  size += gid_address_put (p + size, lcaf_gid_address (lcaf));
+  return size;
+}
+
+u16
+lcaf_size_to_write (void * a)
+{
+  lcaf_t * lcaf = (lcaf_t *) a;
+  u32 size = 0;
+
+  size += sizeof (u16); /* AFI size */
+  switch (lcaf_type (lcaf))
+    {
+    case LCAF_INSTANCE_ID:
+      size += sizeof (lcaf_vni (lcaf));
+      break;
+    default:
+      break;
+    }
+  gid_address_t * gid = lcaf_gid_address (lcaf);
+  return (size + sizeof (lcaf_hdr_t)
+    + gid_address_size_to_put (gid));
+}
+
 u8
 gid_address_len (gid_address_t *a)
 {
@@ -377,26 +513,43 @@ gid_address_parse (u8 * offset, gid_address_t *a)
     {
     case LISP_AFI_NO_ADDR:
       len = sizeof(u16);
-      gid_address_type(a) = NO_ADDRESS;
+      gid_address_type(a) = GID_ADDR_NO_ADDRESS;
       break;
     case LISP_AFI_IP:
       len = ip_address_parse (offset, afi, &gid_address_ip(a));
-      gid_address_type(a) = IP_PREFIX;
+      gid_address_type(a) = GID_ADDR_IP_PREFIX;
       /* this should be modified outside if needed*/
       gid_address_ippref_len(a) = 32;
       break;
     case LISP_AFI_IP6:
       len = ip_address_parse (offset, afi, &gid_address_ip(a));
-      gid_address_type(a) = IP_PREFIX;
+      gid_address_type(a) = GID_ADDR_IP_PREFIX;
       /* this should be modified outside if needed*/
       gid_address_ippref_len(a) = 128;
       break;
     case LISP_AFI_LCAF:
+      len = lcaf_parse (offset, a);
+      gid_address_type(a) = GID_ADDR_LCAF;
+      break;
     default:
       clib_warning("LISP AFI %d not supported!", afi);
       return ~0;
     }
   return len;
+}
+
+static int
+gid_lcaf_cmp (lcaf_t * a1, lcaf_t * a2)
+{
+  if (a1->flags != a2->flags)
+    return 1;
+  if (a1->type != a2->type)
+    return 1;
+  if (a1->vni != a2->vni)
+    return 1;
+  if (a1->len != a2->len)
+    return 1;
+  return gid_address_cmp (lcaf_gid_address (a1), lcaf_gid_address (a2));
 }
 
 /* Compare two gid_address_t.
@@ -417,14 +570,18 @@ gid_address_cmp (gid_address_t * a1, gid_address_t * a2)
 
   switch (gid_address_type(a1))
     {
-    case NO_ADDRESS:
+    case GID_ADDR_NO_ADDRESS:
       if (a1 == a2)
         cmp = 0;
       else
         cmp = 2;
       break;
-    case IP_PREFIX:
+    case GID_ADDR_IP_PREFIX:
       cmp = ip_prefix_cmp (&gid_address_ippref(a1), &gid_address_ippref(a2));
+      break;
+    case GID_ADDR_LCAF:
+      cmp = gid_lcaf_cmp(&gid_address_lcaf (a1),
+                         &gid_address_lcaf (a2));
       break;
     default:
       break;
@@ -464,6 +621,8 @@ locator_copy (locator_t * dst, locator_t * src)
 {
   /* TODO if gid become more complex, this will need to be changed! */
   clib_memcpy (dst, src, sizeof(*dst));
+  if (!src->local)
+    gid_address_copy (&dst->address, &src->address);
 }
 
 u32
@@ -482,4 +641,11 @@ locator_cmp (locator_t * l1, locator_t * l2)
   if (l1->mweight != l2->mweight)
     return 1;
   return 0;
+}
+
+void
+locator_free (locator_t * l)
+{
+  if (!l->local)
+    gid_address_free (&l->address);
 }
