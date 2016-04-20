@@ -91,6 +91,30 @@
       "revId": "2a1e85764d506ad7cd344df452ac65b436b538ac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a045101_0d515662",
+        "filename": "vpp-api-client/python/test_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-04-20T11:45:22Z",
+      "side": 1,
+      "message": "Keith, thanks for the comments. The mix of Python 2 and 3 might be a little unfortunate. The reason for moving to Python 3, was because of us wanting to look at using asyncio. Which is only supported in Python3. I believe we should be able to support both for now. Let me check.",
+      "parentUuid": "3a045101_8d7e86e3",
+      "range": {
+        "startLine": 1,
+        "startChar": 14,
+        "endLine": 1,
+        "endChar": 22
+      },
+      "revId": "2a1e85764d506ad7cd344df452ac65b436b538ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
