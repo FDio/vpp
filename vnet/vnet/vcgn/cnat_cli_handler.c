@@ -37,6 +37,10 @@
 
 #include <arpa/inet.h>
 
+#if DPDK
+#include <vnet/devices/dpdk/dpdk.h>
+#endif
+
 u32 show_debug_level = 0;
 
 u32
