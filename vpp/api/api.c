@@ -321,6 +321,7 @@ _(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
 _(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
 _(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry)               \
 _(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver)                 \
+_(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
 _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump)                 \
@@ -4465,7 +4466,7 @@ vl_api_lisp_gpe_add_del_tunnel_t_handler
     a->ver_res = mp->ver_res;
     a->res = mp->res;
     a->next_protocol = mp->next_protocol;
-    a->iid = clib_net_to_host_u32 (mp->iid);
+    a->vni = clib_net_to_host_u32 (mp->iid);
 
     rv = vnet_lisp_gpe_add_del_tunnel (a, &sw_if_index);
     
@@ -4580,7 +4581,7 @@ vl_api_lisp_add_del_local_eid_t_handler(
     a->locator_set_index = locator_set_index;
     a->local = 1;
 
-    rv = vnet_lisp_add_del_mapping(a, &map_index);
+    rv = vnet_lisp_add_del_local_mapping(a, &map_index);
 
 out:
     vec_free(name);
@@ -4684,6 +4685,20 @@ vl_api_lisp_add_del_map_resolver_t_handler(
 }
 
 static void
+vl_api_lisp_gpe_enable_disable_t_handler(
+    vl_api_lisp_gpe_enable_disable_t *mp)
+{
+    vl_api_lisp_gpe_enable_disable_reply_t *rmp;
+    int rv = 0;
+    vnet_lisp_gpe_enable_disable_args_t _a, * a = &_a;
+
+    a->is_en = mp->is_en;
+    vnet_lisp_gpe_enable_disable (a);
+
+    REPLY_MACRO(VL_API_LISP_GPE_ENABLE_DISABLE_REPLY);
+}
+
+static void
 vl_api_lisp_gpe_add_del_iface_t_handler(
     vl_api_lisp_gpe_add_del_iface_t *mp)
 {
@@ -4692,6 +4707,8 @@ vl_api_lisp_gpe_add_del_iface_t_handler(
     vnet_lisp_gpe_add_del_iface_args_t _a, * a = &_a;
 
     a->is_add = mp->is_add;
+    a->table_id = mp->table_id;
+    a->vni = mp->vni;
     vnet_lisp_gpe_add_del_iface (a, 0);
 
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
@@ -4837,7 +4854,7 @@ send_lisp_gpe_tunnel_details (lisp_gpe_tunnel_t *tunnel,
     rmp->flags = tunnel->flags;
     rmp->ver_res = tunnel->ver_res;
     rmp->res = tunnel->res;
-    rmp->iid = htonl(tunnel->iid);
+    rmp->iid = htonl(tunnel->vni);
 
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
