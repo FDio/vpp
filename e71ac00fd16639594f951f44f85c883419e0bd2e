@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_033a54cd",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 5368,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-20T11:20:56Z",
+      "side": 1,
+      "message": "Please put a comment here warning folks that the code (currently) initializes every field, and that if folks skip the canonical memset(...) they\u0027d better pay attention.",
+      "revId": "e71ac00fd16639594f951f44f85c883419e0bd2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_43204c9b",
+        "filename": "vppapigen/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2026,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-20T11:20:56Z",
+      "side": 1,
+      "message": "Is this thing actually used?",
+      "revId": "e71ac00fd16639594f951f44f85c883419e0bd2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
