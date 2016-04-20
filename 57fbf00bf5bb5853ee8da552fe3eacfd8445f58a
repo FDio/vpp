@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_aeba6f08",
+        "filename": "build-root/vagrant/bootstrap.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-04-20T22:01:58Z",
+      "side": 1,
+      "message": "My only reluctance is that I tend to think of \u0027wipe\u0027 as morally equivalent to \u0027clean\u0027 which is somewhat less than \u0027distclean\u0027. Having a single top level distclean might also be an idea :)",
+      "parentUuid": "fa0f191f_eec0677e",
+      "range": {
+        "startLine": 72,
+        "startChar": 5,
+        "endLine": 72,
+        "endChar": 9
+      },
+      "revId": "57fbf00bf5bb5853ee8da552fe3eacfd8445f58a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_0ec4bb90",
         "filename": "build-root/vagrant/bootstrap.sh",
         "patchSetId": 3
@@ -36,6 +60,30 @@
       "writtenOn": "2016-04-20T21:39:50Z",
       "side": 1,
       "message": "With choice of upstart and systemd, we will to choose select which init mechanism is active. And as we support other distros - this could start looking dirty.\n\nEither we check the currently active init-process and chose appropriate command. Or simply reboot the vm",
+      "range": {
+        "startLine": 103,
+        "startChar": 10,
+        "endLine": 103,
+        "endChar": 13
+      },
+      "revId": "57fbf00bf5bb5853ee8da552fe3eacfd8445f58a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_8e37abb0",
+        "filename": "build-root/vagrant/bootstrap.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-04-20T22:01:58Z",
+      "side": 1,
+      "message": "You are totally correct :)  I just need to incorporate that into this (as we had no ubuntu1604 support when I wrote this... many thanks to you for providing it ;) )",
+      "parentUuid": "fa0f191f_0ec4bb90",
       "range": {
         "startLine": 103,
         "startChar": 10,
