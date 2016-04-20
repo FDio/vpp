@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_c380dc8d",
+        "filename": "build-root/deb/debian/vpp.service",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 121
+      },
+      "writtenOn": "2016-04-20T18:05:25Z",
+      "side": 1,
+      "message": "M-x replace-regexp \" +$\" \"\"",
+      "range": {
+        "startLine": 7,
+        "startChar": 35,
+        "endLine": 7,
+        "endChar": 36
+      },
+      "revId": "3d2a40956a24667d6c1f401af7103af0e72be2d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_a37de8b3",
+        "filename": "build-root/deb/debian/vpp.service",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 121
+      },
+      "writtenOn": "2016-04-20T18:05:25Z",
+      "side": 1,
+      "message": "can you be a little more selective?",
+      "range": {
+        "startLine": 7,
+        "startChar": 25,
+        "endLine": 7,
+        "endChar": 35
+      },
+      "revId": "3d2a40956a24667d6c1f401af7103af0e72be2d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
