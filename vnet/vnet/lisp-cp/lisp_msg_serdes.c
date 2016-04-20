@@ -25,32 +25,19 @@ lisp_msg_put_gid (vlib_buffer_t * b, gid_address_t * gid)
   return p;
 }
 
-void *
+static void *
 lisp_msg_put_itr_rlocs (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-			ip_address_t * rlocs, u8 * locs_put)
+                        gid_address_t * rlocs, u8 * locs_put)
 {
-  u8 * p, * bp, count = 0;
+  u8 * bp, count = 0;
   u32 i;
-  ip_address_t * addr;
 
-  bp = vlib_buffer_get_current(b);
-  for (i = 0; i < vec_len(rlocs); i++)
-  {
-    addr = &rlocs[i];
-    switch (ip_addr_version(addr))
+  bp = vlib_buffer_get_current (b);
+  for (i = 0; i < vec_len (rlocs); i++)
     {
-    case IP4:
-      p = vlib_buffer_put_uninit (b, ip4_address_size_to_put());
-      ip4_address_put (p, &ip_addr_v4(addr));
+      lisp_msg_put_gid (b, &rlocs[i]);
       count++;
-      break;
-    case IP6:
-      p = vlib_buffer_put_uninit (b, ip6_address_size_to_put());
-      ip6_address_put (p, &ip_addr_v6(addr));
-      count++;
-      break;
     }
-  }
 
   *locs_put = count-1;
   return bp;
@@ -92,8 +79,8 @@ nonce_build (u32 seed)
 
 void *
 lisp_msg_put_mreq (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-		   gid_address_t * seid, gid_address_t * deid,
-		   ip_address_t * rlocs, u8 is_smr_invoked, u64 * nonce)
+                   gid_address_t * seid, gid_address_t * deid,
+                   gid_address_t * rlocs, u8 is_smr_invoked, u64 * nonce)
 {
   u8 loc_count = 0;
 
@@ -127,7 +114,7 @@ lisp_msg_push_ecm (vlib_main_t * vm, vlib_buffer_t *b, int lp, int rp,
                    gid_address_t *la, gid_address_t *ra)
 {
   ecm_hdr_t *h;
-  ASSERT(gid_address_type(la) == IP_PREFIX);
+  ASSERT(gid_address_type(la) == GID_ADDR_IP_PREFIX);
 
   /* Push inner ip and udp */
   pkt_push_udp_and_ip (vm, b, lp, rp, &gid_address_ip(la),

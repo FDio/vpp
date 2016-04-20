@@ -430,4 +430,31 @@ typedef enum lisp_authoritative
   A_AUTHORITATIVE
 } lisp_authoritative_e;
 
+/*
+ * LISP Canonical Address Format Encodings
+ *
+ *   0                   1                   2                   3
+ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |           AFI = 16387         |     Rsvd1     |     Flags     |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |    Type       |     Rsvd2     |            Length             |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+typedef struct _lcaf_hdr_t
+{
+  u8 reserved1;
+  u8 flags;
+  u8 type;
+  u8 reserved2;
+  u16 len;
+} __attribute__ ((__packed__)) lcaf_hdr_t;
+
+#define LCAF_TYPE(h) ((lcaf_hdr_t *)(h))->type
+#define LCAF_LENGTH(h) ((lcaf_hdr_t *)(h))->len
+#define LCAF_RES2(h) ((lcaf_hdr_t *)(h))->reserved2
+#define LCAF_FLAGS(h) ((lcaf_hdr_t *)(h))->flags
+#define LCAF_PAYLOAD(h) (u8 *)(h)+sizeof(lcaf_hdr_t)
+
 #endif /* VNET_LISP_GPE_LISP_CP_MESSAGES_H_ */

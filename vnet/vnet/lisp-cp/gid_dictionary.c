@@ -100,7 +100,7 @@ gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key)
   /* XXX for now this only works with ip-prefixes, no lcafs */
   switch (gid_address_type (key))
     {
-    case IP_PREFIX:
+    case GID_ADDR_IP_PREFIX:
       return ip_lookup (db, 0, &gid_address_ippref(key));
       break;
     default:
@@ -264,7 +264,7 @@ gid_dictionary_add_del (gid_dictionary_t *db, gid_address_t *key, u32 value,
   /* XXX for now this only works with ip-prefixes, no lcafs */
   switch (gid_address_type (key))
     {
-    case IP_PREFIX:
+    case GID_ADDR_IP_PREFIX:
       return gid_dictionary_add_del_ip (db, 0, &gid_address_ippref(key), value,
                                         is_add);
       break;

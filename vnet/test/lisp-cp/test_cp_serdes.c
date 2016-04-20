@@ -65,7 +65,7 @@ static clib_error_t * test_lisp_msg_push_ecm ()
   clib_error_t * error = 0;
   gid_address_t la, ra;
   vlib_buffer_t * b = 0;
-  u32 buff_len = 500;
+  u32 buff_len = 900;
   int lp = 0x15, rp = 0x14;
 
   b = clib_mem_alloc (buff_len);
@@ -74,11 +74,11 @@ static clib_error_t * test_lisp_msg_push_ecm ()
   b->current_data = sizeof(udp_header_t) + sizeof(ip4_header_t) +
     sizeof(ecm_hdr_t) + 1;
 
-  la.type = IP_PREFIX;
+  la.type = GID_ADDR_IP_PREFIX;
   la.ippref.addr.ip.v4.as_u32 = 0xa1b2c3d4;
   la.ippref.addr.version = IP4;
 
-  ra.type = IP_PREFIX;
+  ra.type = GID_ADDR_IP_PREFIX;
   ra.ippref.addr.ip.v4.as_u32 = 0x90817263;
   ra.ippref.addr.version = IP4;
 
@@ -96,7 +96,7 @@ static clib_error_t * test_lisp_msg_push_ecm ()
   u8 expected_ip4_hdr[] = {
     0x45,                   /* version; IHL */
     0x00,                   /* services */
-    0x02, 0x10,             /* total length */
+    0x03, 0xa0,             /* total length */
     0x00, 0x00,             /* identification */
     0x40, 0x00,             /* flags; fragment offset*/
     0xff,                   /* TTL */
@@ -114,7 +114,7 @@ static clib_error_t * test_lisp_msg_push_ecm ()
   u8 expected_udp_hdr[] = {
     0x00, 0x15, /* src port */
     0x00, 0x14, /* dst port */
-    0x01, 0xfc, /* length */
+    0x03, 0x8c, /* length */
     0x00, 0x00, /* checksum */
   };
   _assert(0 == memcmp(uh, expected_udp_hdr, sizeof(expected_udp_hdr)));
@@ -161,7 +161,7 @@ static clib_error_t * test_lisp_msg_parse_mapping_record ()
   _assert(eid.ippref.addr.ip.v4.as_u32 == 0x66554433);
   _assert(locs[0].local == 0);
   _assert(locs[0].address.ippref.addr.ip.v4.as_u32 == 0xddccbbaa);
-  _assert(locs[0].address.type == IP_PREFIX);
+  _assert(locs[0].address.type == GID_ADDR_IP_PREFIX);
   _assert(locs[0].priority == 0xa);
   _assert(locs[0].weight == 0xb);
   _assert(locs[0].mpriority == 0xc);
@@ -175,40 +175,50 @@ done:
 }
 
 static map_request_hdr_t *
-build_map_request (lisp_cp_main_t * lcm, vlib_buffer_t * b)
+build_map_request (lisp_cp_main_t * lcm, vlib_buffer_t * b,
+                   gid_address_t * rlocs)
 {
   gid_address_t _seid, * seid = &_seid;
   gid_address_t _deid, * deid = &_deid;
   u8 is_smr_invoked = 1;
   u64 nonce = 0;
-  map_request_hdr_t *h;
-  ip_address_t * rlocs = 0;
-  ip_address_t _addr, * addr = &_addr;
+  map_request_hdr_t * h = 0;
 
-  gid_address_type(seid) = IP_PREFIX;
-  gid_address_ip(seid).ip.v4.as_u32 = 0x12345678;
+  gid_address_type (seid) = GID_ADDR_IP_PREFIX;
+  ip_address_t * ip_addr = &gid_address_ip (seid);
+  ip_addr_v4 (ip_addr).as_u32 = 0x12345678;
   seid->ippref.addr.version = IP4;
 
-  gid_address_type(deid) = IP_PREFIX;
-  gid_address_ip(deid).ip.v4.as_u32 = 0x9abcdef0;
+  gid_address_type (deid) = GID_ADDR_IP_PREFIX;
+  ip_address_t * ip_addr2 = &gid_address_ip (deid);
+  ip_addr_v4 (ip_addr2).as_u32 = 0x9abcdef0;
   deid->ippref.addr.version = IP4;
-  gid_address_ippref_len(deid) = 24;
-
-  ip_addr_version(addr) = IP4;
-  ip_addr_v4(addr).data_u32 = 0x10203040;
-  vec_add1(rlocs, addr[0]);
-
-  ip_addr_v6(addr).as_u32[0] = 0xffeeddcc;
-  ip_addr_v6(addr).as_u32[1] = 0xbbaa9988;
-  ip_addr_v6(addr).as_u32[2] = 0x77665544;
-  ip_addr_v6(addr).as_u32[3] = 0x33221100;
-  ip_addr_version(addr) = IP6;
-  vec_add1(rlocs, addr[0]);
+  gid_address_ippref_len (deid) = 24;
 
   h = lisp_msg_put_mreq (lcm, b, seid, deid, rlocs,
                      is_smr_invoked, &nonce);
   vec_free(rlocs);
   return h;
+}
+
+static void
+generate_rlocs (gid_address_t **rlocs, u32 * count)
+{
+  gid_address_t gid_addr_data, * gid_addr = &gid_addr_data;
+  ip_address_t * addr = &gid_address_ip (gid_addr);
+
+  gid_address_type (gid_addr) = GID_ADDR_IP_PREFIX;
+
+  ip_addr_version (addr) = IP4;
+  ip_addr_v4 (addr).data_u32 = 0x10203040;
+  vec_add1 (rlocs[0], gid_addr[0]);
+
+  ip_addr_v6 (addr).as_u32[0] = 0xffeeddcc;
+  ip_addr_v6 (addr).as_u32[1] = 0xbbaa9988;
+  ip_addr_v6 (addr).as_u32[2] = 0x77665544;
+  ip_addr_v6 (addr).as_u32[3] = 0x33221100;
+  ip_addr_version (addr) = IP6;
+  vec_add1 (rlocs[0], gid_addr[0]);
 }
 
 static clib_error_t * test_lisp_msg_parse ()
@@ -219,13 +229,15 @@ static clib_error_t * test_lisp_msg_parse ()
   gid_address_t gid;
   clib_error_t * error = 0;
   vlib_buffer_t * b;
-  gid_address_t * rlocs = 0;
+  gid_address_t * rlocs_decode = 0, * rlocs = 0;
+  u32 rloc_count_parse = 0;
 
   u8 * data = clib_mem_alloc(500);
   memset(data, 0, 500);
   b = (vlib_buffer_t *) data;
 
-  h = build_map_request (lcm, b);
+  generate_rlocs (&rlocs_decode, &rloc_count_parse);
+  h = build_map_request (lcm, b, rlocs_decode);
 
   vlib_buffer_pull(b, sizeof(*h));
   u32 len = lisp_msg_parse_addr(b, &gid);
@@ -259,16 +271,95 @@ done:
   return error;
 }
 
+static clib_error_t * test_lisp_msg_put_mreq_with_lcaf ()
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  clib_error_t * error = 0;
+  map_request_hdr_t *h = 0;
+  gid_address_t * rlocs = 0;
+  gid_address_t rloc;
+
+  ip_prefix_t ippref;
+  ip_prefix_version (&ippref) = IP4;
+  ip4_address_t * ip = &ip_prefix_v4 (&ippref);
+  ip->as_u32 = 0x11223344;
+
+  gid_address_t gid1 =
+    {
+      .type = GID_ADDR_IP_PREFIX,
+      .ippref = ippref
+    };
+
+  lcaf_t lcaf1 =
+    {
+      .type = LCAF_INSTANCE_ID,
+      .uni =
+        {
+          .vni_mask_len = 0x17,
+          .vni = 0x90919293,
+          .gid_addr = &gid1
+        }
+    };
+
+  gid_address_type (&rloc) = GID_ADDR_LCAF;
+  gid_address_lcaf (&rloc) = lcaf1;
+
+  vec_add1 (rlocs, rloc);
+
+  u8 * data = clib_mem_alloc (500);
+  memset (data, 0, 500);
+
+  h = build_map_request (lcm, (vlib_buffer_t *) data, rlocs);
+
+  /* clear Nonce to simplify comparison */
+  memset ((u8 *)h + 4, 0, 8);
+
+  u8 expected_data[] =
+    {
+      0x10, 0x40, 0x00, 0x01, /* type; flags; IRC; REC count */
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, /* nonce */
+      0x00, 0x01,             /* Source-EID-AFI */
+      0x78, 0x56, 0x34, 0x12, /* Source EID Address */
+
+      /* RLOCs */
+      0x40, 0x03,             /* AFI = LCAF*/
+      /* LCAF header*/
+      0x00, 0x00,             /* reserved1, flags */
+      0x02,                   /* type = Instance ID */
+      0x17,                   /* IID mask-len */
+      0x00, 0x0a,             /* iid length + next AFI lenght */
+      0x90, 0x91, 0x92, 0x93, /* IID / VNI */
+
+      0x00, 0x01,             /* AFI = ipv4 */
+      0x44, 0x33, 0x22, 0x11, /* ITR-RLOC Address 1 */
+
+      /* record */
+      0x00,                   /* reserved */
+      0x18,                   /* EID mask-len */
+      0x00, 0x01,             /* EID-prefix-AFI */
+      0xf0, 0xde, 0xbc, 0x9a, /* EID-prefix */
+    };
+
+  _assert (0 == memcmp (expected_data, (u8 *) h, sizeof (expected_data)));
+done:
+  clib_mem_free (data);
+  return error;
+}
+
 static clib_error_t * test_lisp_msg_put_mreq ()
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
   clib_error_t * error = 0;
   map_request_hdr_t *h;
+  gid_address_t * rlocs = 0;
+  u32 rloc_count = 0;
 
   u8 * data = clib_mem_alloc(500);
   memset(data, 0, 500);
 
-  h = build_map_request (lcm, (vlib_buffer_t *)data);
+  generate_rlocs (&rlocs, &rloc_count);
+  h = build_map_request (lcm, (vlib_buffer_t *) data, rlocs);
 
   /* clear Nonce to simplify comparison */
   memset((u8 *)h + 4, 0, 8);
@@ -297,19 +388,149 @@ static clib_error_t * test_lisp_msg_put_mreq ()
     0x00, 0x01,             /* EID-prefix-AFI */
     0xf0, 0xde, 0xbc, 0x9a, /* EID-prefix */
   };
+  _assert (0 == memcmp (expected_data, (u8 *) h, sizeof (expected_data)));
 
-  int r = memcmp(expected_data, (u8 *)h, sizeof(expected_data));
-  error = CLIB_ERROR_ASSERT (r == 0);
+done:
+  clib_mem_free (data);
+  return error;
+}
 
-  clib_mem_free(data);
+static clib_error_t *
+test_lisp_parse_lcaf ()
+{
+  int i;
+  clib_error_t * error = 0;
+  gid_address_t eid;
+  locator_t * locs = 0;
+  locator_t probed;
+  vlib_buffer_t * b = 0;
+  u32 buff_len = 500;
+
+  b = clib_mem_alloc (buff_len);
+  memset ((u8 *)b, 0, buff_len);
+
+  u8 map_reply_records[] =
+    {
+      /* 1. record */
+      0x01, 0x02, 0x03, 0x04, /* record TTL */
+      0x03,                   /* locator count */
+      0x00, 0x00, 0x00,       /* eid-mask-len; ... */
+      0x00, 0x00,             /* reserved; map-version num */
+      0x00, 0x01,             /* EID-Prefix-AFI */
+      0x33, 0x44, 0x55, 0x66, /* eid-prefix */
+
+      /* 1st locator */
+      0x0a,                   /* prority */
+      0x0b,                   /* weight */
+      0x0c,                   /* m-prority */
+      0x0d,                   /* m-weight */
+      0x00, 0x00,             /* unused flags */
+      0x40, 0x03,             /* Loc-AFI = LCAF*/
+
+      /* LCAF header*/
+      0x00, 0x00,             /* reserved1, flags */
+      0x02,                   /* type = Instance ID */
+      0x18,                   /* IID mask-len */
+      0x0a, 0x00,             /* iid length + next AFI lenght */
+      /* LCAF Instance ID */
+      0x00, 0x00, 0x00, 0x09, /* iid */
+      0x00, 0x01,             /* AFI = ipv4 */
+      0x10, 0xbb, 0xcc, 0xdd, /* ipv4 loator address */
+
+      /* 2nd locator */
+      0x07,                   /* prority */
+      0x06,                   /* weight */
+      0x05,                   /* m-prority */
+      0x04,                   /* m-weight */
+      0x00, 0x00,             /* unused flags */
+      0x40, 0x03,             /* Loc-AFI = LCAF*/
+
+      /* LCAF header*/
+      0x00, 0x00,             /* reserved1, flags */
+      0x02,                   /* type = Instance ID */
+      0x18,                   /* IID mask-len */
+      0x00, 0x16,             /* iid length + next AFI lenght */
+      /* LCAF Instance ID */
+      0x22, 0x44, 0x66, 0x88, /* iid */
+      0x00, 0x02,             /* AFI = ipv6 */
+      0xcc, 0xdd, 0xee, 0xff,
+      0x88, 0x99, 0xaa, 0xbb,
+      0x44, 0x55, 0x66, 0x77,
+      0x00, 0x11, 0x22, 0x33, /* ipv6 locator address */
+
+      /* 3rd locator */
+      0x0a,                   /* prority */
+      0x0b,                   /* weight */
+      0x0c,                   /* m-prority */
+      0x0d,                   /* m-weight */
+      0x00, 0x00,             /* unused flags */
+      0x00, 0x01,             /* Loc-AFI */
+      0xaa, 0xbb, 0xcc, 0xdd, /* Loator */
+    };
+
+  b->current_length = buff_len;
+  memcpy (b->data, map_reply_records, sizeof (map_reply_records));
+
+  lisp_msg_parse_mapping_record (b, &eid, &locs, &probed);
+  _assert (vec_len (locs) == 3);
+  _assert (eid.ippref.addr.ip.v4.as_u32 == 0x66554433);
+
+  /* check 1st locator - an LCAF with ipv4 */
+  _assert (locs[0].local == 0);
+  _assert (locs[0].priority == 0xa);
+  _assert (locs[0].weight == 0xb);
+  _assert (locs[0].mpriority == 0xc);
+  _assert (locs[0].mweight == 0xd);
+
+  /* check LCAF header data */
+  lcaf_t * lcaf = &gid_address_lcaf (&locs[0].address);
+  _assert (gid_address_type (&locs[0].address) == GID_ADDR_LCAF);
+  _assert (lcaf_type (lcaf) == LCAF_INSTANCE_ID);
+  vni_t * v = (vni_t *) lcaf;
+  _assert (vni_vni (v) == 0x09);
+
+  gid_address_t * nested_gid = vni_gid (v);
+  _assert (GID_ADDR_IP_PREFIX == gid_address_type (nested_gid));
+  ip_prefix_t * ip_pref = &gid_address_ippref (nested_gid);
+  _assert (IP4 == ip_prefix_version (ip_pref));
+
+  /* 2nd locator - LCAF entry with ipv6 address */
+  _assert (locs[1].local == 0);
+  _assert (locs[1].priority == 0x7);
+  _assert (locs[1].weight == 0x6);
+  _assert (locs[1].mpriority == 0x5);
+  _assert (locs[1].mweight == 0x4);
+
+  /* LCAF header */
+  _assert (gid_address_type (&locs[1].address) == GID_ADDR_LCAF);
+  lcaf = &gid_address_lcaf (&locs[1].address);
+  _assert (lcaf_type (lcaf) == LCAF_INSTANCE_ID);
+  v = (vni_t *) lcaf;
+  _assert (vni_vni (v) == 0x22446688);
+
+  nested_gid = vni_gid (v);
+  _assert (GID_ADDR_IP_PREFIX == gid_address_type (nested_gid));
+  ip_pref = &gid_address_ippref (nested_gid);
+  _assert (IP6 == ip_prefix_version (ip_pref));
+
+  /* 3rd locator - simple ipv4 address */
+  _assert (gid_address_type (&locs[2].address) == GID_ADDR_IP_PREFIX);
+done:
+  clib_mem_free (b);
+
+  for (i = 0; i < 3; i++)
+    locator_free (&locs[i]);
+  vec_free (locs);
   return error;
 }
 
 #define foreach_test_case                 \
   _(lisp_msg_put_mreq)                    \
+  _(lisp_msg_put_mreq_with_lcaf)          \
   _(lisp_msg_push_ecm)                    \
   _(lisp_msg_parse)                       \
-  _(lisp_msg_parse_mapping_record)
+  _(lisp_msg_parse_mapping_record)        \
+  _(lisp_parse_lcaf)
 
 int run_tests (void)
 {
