@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_8331c40d",
+        "filename": "build-root/vagrant/bootstrap.ubuntu1604.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-04-20T18:41:59Z",
+      "side": 1,
+      "message": "Good point, can we pick this up in: https://gerrit.fd.io/r/#/c/821/ where I\u0027m trying to unify these things though?",
+      "parentUuid": "fa0f191f_23a43856",
+      "revId": "415ceaa31b7478a9b7421bddd295ef466cd6b2a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_639a3016",
         "filename": "build-root/vagrant/bootstrap.ubuntu1604.sh",
         "patchSetId": 1
@@ -42,6 +60,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_6336b005",
+        "filename": "build-root/vagrant/bootstrap.ubuntu1604.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-04-20T18:41:59Z",
+      "side": 1,
+      "message": "Good point, can we pick this up in: https://gerrit.fd.io/r/#/c/821/ where I\u0027m trying to unify these things though?",
+      "parentUuid": "fa0f191f_639a3016",
+      "range": {
+        "startLine": 32,
+        "startChar": 44,
+        "endLine": 32,
+        "endChar": 45
+      },
+      "revId": "415ceaa31b7478a9b7421bddd295ef466cd6b2a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_038934ca",
         "filename": "build-root/vagrant/bootstrap.ubuntu1604.sh",
         "patchSetId": 1
@@ -53,6 +95,24 @@
       "writtenOn": "2016-04-20T17:41:06Z",
       "side": 1,
       "message": "recall that this script is only run at bootstrap time.  If you want to bring the interface down at build time, you should modify /etc/network/interfaces to remove \u0027auto\u0027 from all interfaces you do not wish to have brought up.\n\nAlternately, you could put something in /etc/rc.local or the like.",
+      "revId": "415ceaa31b7478a9b7421bddd295ef466cd6b2a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_433baceb",
+        "filename": "build-root/vagrant/bootstrap.ubuntu1604.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-04-20T18:41:59Z",
+      "side": 1,
+      "message": "Good point, can we pick this up in: https://gerrit.fd.io/r/#/c/821/ where I\u0027m trying to unify these things though?",
+      "parentUuid": "fa0f191f_038934ca",
       "revId": "415ceaa31b7478a9b7421bddd295ef466cd6b2a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
