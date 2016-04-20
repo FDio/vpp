@@ -177,7 +177,7 @@ ip4_sd_fib_clear_src_fib (lisp_gpe_main_t * lgm, ip4_fib_t * fib)
 
 int
 ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
-                          ip_prefix_t * src_prefix, u32 table_index,
+                          ip_prefix_t * src_prefix, u32 table_id,
                           ip_adjacency_t * add_adj, u8 is_add)
 {
   uword * p;
@@ -196,7 +196,7 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
     memset(&src, 0, sizeof(src));
 
   /* lookup dst adj */
-  p = ip4_get_route (lgm->im4, table_index, 0, dst.as_u8, dst_address_length);
+  p = ip4_get_route (lgm->im4, table_id, 0, dst.as_u8, dst_address_length);
 
   if (is_add)
     {
@@ -209,7 +209,7 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 
           memset(&a, 0, sizeof(a));
           a.flags = IP4_ROUTE_FLAG_TABLE_ID;
-          a.table_index_or_table_id = table_index; /* vrf */
+          a.table_index_or_table_id = table_id; /* vrf */
           a.adj_index = ~0;
           a.dst_address_length = dst_address_length;
           a.dst_address = dst;
@@ -220,7 +220,7 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
           ip4_add_del_route (lgm->im4, &a);
 
           /* lookup dst adj to obtain the adj index */
-          p = ip4_get_route (lgm->im4, table_index, 0, dst.as_u8,
+          p = ip4_get_route (lgm->im4, table_id, 0, dst.as_u8,
                              dst_address_length);
           if (p == 0)
             {
@@ -283,7 +283,7 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
       /* .. and remove dst route */
       memset(&a, 0, sizeof(a));
       a.flags = IP4_ROUTE_FLAG_TABLE_ID;
-      a.table_index_or_table_id = table_index; /* vrf */
+      a.table_index_or_table_id = table_id; /* vrf */
       a.adj_index = ~0;
       a.dst_address_length = dst_address_length;
       a.dst_address = dst;
@@ -297,7 +297,7 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 
 static void *
 ip4_sd_fib_get_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
-                      ip_prefix_t * src_prefix, u32 table_index)
+                      ip_prefix_t * src_prefix, u32 table_id)
 {
   uword * p;
   ip4_address_t dst = ip_prefix_v4(dst_prefix), src;
@@ -313,7 +313,7 @@ ip4_sd_fib_get_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
     memset(&src, 0, sizeof(src));
 
   /* lookup dst adj */
-  p = ip4_get_route (lgm->im4, table_index, 0, dst.as_u8, dst_address_length);
+  p = ip4_get_route (lgm->im4, table_id, 0, dst.as_u8, dst_address_length);
   if (p == 0)
       return p;
 
@@ -326,7 +326,6 @@ typedef enum
 {
   LGPE_IP4_LOOKUP_NEXT_DROP,
   LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP,
-  LGPE_IP4_LOOKUP_NEXT_LGPE_ENCAP,
   LGPE_IP4_LOOKUP_N_NEXT,
 } lgpe_ip4_lookup_next_t;
 
@@ -468,6 +467,12 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
 
               next0 = src_adj0->lookup_next_index;
               next1 = src_adj1->lookup_next_index;
+
+              /* prepare buffer for lisp-gpe output node */
+              vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+                  src_adj0->rewrite_header.sw_if_index;
+              vnet_buffer (b1)->sw_if_index[VLIB_TX] =
+                  src_adj1->rewrite_header.sw_if_index;
             }
           else
             {
@@ -479,6 +484,7 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   src_adj0 = ip_get_adjacency (lgm->lookup_main,
                                                src_adj_index0);
                   next0 = src_adj0->lookup_next_index;
+                  vnet_buffer (b0)->sw_if_index[VLIB_TX] = src_adj_index0;
                 }
               if (src_fib_index1 != (u32) ~0)
                 {
@@ -488,6 +494,7 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   src_adj1 = ip_get_adjacency (lgm->lookup_main,
                                                src_adj_index1);
                   next1 = src_adj1->lookup_next_index;
+                  vnet_buffer (b1)->sw_if_index[VLIB_TX] = src_adj_index1;
                 }
             }
 
@@ -530,6 +537,9 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           src_adj0 = ip_get_adjacency (lgm->lookup_main, src_adj_index0);
           next0 = src_adj0->lookup_next_index;
 
+          /* prepare packet for lisp-gpe output node */
+          vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+              src_adj0->rewrite_header.sw_if_index;
         done:
           vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
                                           n_left_to_next, bi0, next0);
@@ -551,7 +561,6 @@ VLIB_REGISTER_NODE (lgpe_ip4_lookup_node) = {
   .next_nodes = {
       [LGPE_IP4_LOOKUP_NEXT_DROP] = "error-drop",
       [LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP] = "lisp-cp-lookup",
-      [LGPE_IP4_LOOKUP_NEXT_LGPE_ENCAP] = "lisp-gpe-encap",
   },
 };
 
@@ -592,7 +601,7 @@ lisp_gpe_rewrite (lisp_gpe_tunnel_t * t)
   lisp0->ver_res = t->ver_res;
   lisp0->res = t->res;
   lisp0->next_protocol = t->next_protocol;
-  lisp0->iid = clib_host_to_net_u32 (t->iid);
+  lisp0->iid = clib_host_to_net_u32 (t->vni);
 
   t->rewrite = rw;
   return 0;
@@ -615,7 +624,7 @@ _(flags)                                        \
 _(next_protocol)                                \
 _(ver_res)                                      \
 _(res)                                          \
-_(iid)
+_(vni)
 
 static u32
 add_del_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u32 * tun_index_res)
@@ -629,7 +638,7 @@ add_del_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u32 * tun_index_res)
   memset(&key, 0, sizeof(key));
   gid_address_copy(&key.eid, &a->deid);
   key.dst_loc = ip_addr_v4(&a->dlocator).as_u32;
-  key.iid = clib_host_to_net_u32 (a->iid);
+  key.iid = clib_host_to_net_u32 (a->vni);
 
   p = mhash_get (&lgm->lisp_gpe_tunnel_by_key, &key);
 
@@ -688,6 +697,41 @@ add_del_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u32 * tun_index_res)
   return 0;
 }
 
+static int
+add_del_negative_fwd_entry (lisp_gpe_main_t * lgm,
+                            vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+{
+  ip_adjacency_t adj;
+  /* setup adjacency for eid */
+  memset (&adj, 0, sizeof(adj));
+  adj.n_adj = 1;
+  adj.explicit_fib_index = ~0;
+
+  ip_prefix_t * dpref = &gid_address_ippref(&a->deid);
+  ip_prefix_t * spref = &gid_address_ippref(&a->seid);
+
+  switch (a->action)
+    {
+    case NO_ACTION:
+      /* TODO update timers? */
+    case FORWARD_NATIVE:
+      /* TODO check if route/next-hop for eid exists in fib and add
+       * more specific for the eid with the next-hop found */
+    case SEND_MAP_REQUEST:
+      /* TODO insert tunnel that always sends map-request */
+    case DROP:
+      /* for drop fwd entries, just add route, no need to add encap tunnel */
+      adj.lookup_next_index = LGPE_IP4_LOOKUP_NEXT_DROP;
+
+      /* add/delete route for prefix */
+      return ip4_sd_fib_add_del_route (lgm, dpref, spref, a->table_id, &adj,
+                                       a->is_add);
+      break;
+    default:
+      return -1;
+    }
+}
+
 int
 vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
                                  u32 * hw_if_indexp)
@@ -695,66 +739,59 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
   lisp_gpe_main_t * lgm = &lisp_gpe_main;
   ip_adjacency_t adj, * adjp;
   u32 * adj_index, rv, tun_index = ~0;
-  ip_prefix_t * dpref = &gid_address_ippref(&a->deid);
-  ip_prefix_t * spref = &gid_address_ippref(&a->seid);
+  ip_prefix_t * dpref, * spref;
+  uword * lookup_next_index, * lgpe_sw_if_index;
+
+  /* treat negative fwd entries separately */
+  if (a->is_negative)
+    return add_del_negative_fwd_entry (lgm, a);
+
+  /* add/del tunnel to tunnels pool and prepares rewrite */
+  rv = add_del_tunnel (a, &tun_index);
+  if (rv)
+    return rv;
+
+  dpref = &gid_address_ippref(&a->deid);
+  spref = &gid_address_ippref(&a->seid);
 
   /* setup adjacency for eid */
   memset (&adj, 0, sizeof(adj));
   adj.n_adj = 1;
   adj.explicit_fib_index = ~0;
 
-  /* treat negative fwd entries separately */
-  if (a->is_negative)
-    {
-      switch (a->action)
-        {
-        case NO_ACTION:
-          /* TODO update timers? */
-        case FORWARD_NATIVE:
-          /* TODO check if route/next-hop for eid exists in fib and add
-           * more specific for the eid with the next-hop found */
-        case SEND_MAP_REQUEST:
-          /* TODO insert tunnel that always sends map-request */
-        case DROP:
-          /* for drop fwd entries, just add route, no need to add encap tunnel */
-          adj.lookup_next_index = LGPE_IP4_LOOKUP_NEXT_DROP;
-
-          /* add/delete route for prefix */
-          rv = ip4_sd_fib_add_del_route (lgm, dpref, spref, a->iid, &adj,
-                                         a->is_add);
-          return rv;
-          break;
-        default:
-          return -1;
-        }
-    }
-
-  /* send packets that hit this adj to lisp-gpe encap */
-  adj.lookup_next_index = LGPE_IP4_LOOKUP_NEXT_LGPE_ENCAP;
-
-  /* add/delete route for prefix
-   * TODO use hash to decide fib instead of using iid in clear */
-  rv = ip4_sd_fib_add_del_route (lgm, dpref, spref, a->iid, &adj, a->is_add);
-
-  if (rv)
-    return rv;
-
-  /* add/del tunnel to tunnels pool */
-  rv = add_del_tunnel (a, &tun_index);
-
-  /* reuse sw_if_index for storing the tunnel index */
   if (a->is_add)
     {
-      adj_index = ip4_sd_fib_get_route(lgm, dpref, spref, a->iid);
-      if (!adj_index)
-        {
-          clib_warning("Failed to insert fwd entry! For %U",
-                       format_ip4_address_and_length, ip_prefix_v4(dpref),
-                       ip_prefix_len(dpref));
-          return -1;
-        }
+      /* send packets that hit this adj to lisp-gpe interface output node in
+       * requested vrf. */
+      lookup_next_index = hash_get(lgm->lgpe_ip4_lookup_next_index_by_table_id,
+                                   a->table_id);
+      lgpe_sw_if_index = hash_get(lgm->lisp_gpe_hw_if_index_by_table_id,
+                                  a->table_id);
+
+      /* the assumption is that the interface must've been created before
+       * programming the dp */
+      ASSERT(lookup_next_index != 0);
+      ASSERT(lgpe_sw_if_index != 0);
+
+      adj.lookup_next_index = lookup_next_index[0];
+      adj.rewrite_header.node_index = tun_index;
+      adj.rewrite_header.sw_if_index = lgpe_sw_if_index[0];
+    }
+
+  /* add/delete route for prefix */
+  rv = ip4_sd_fib_add_del_route (lgm, dpref, spref, a->table_id, &adj,
+                                 a->is_add);
+
+  /* check that everything worked */
+  if (CLIB_DEBUG && a->is_add)
+    {
+      adj_index = ip4_sd_fib_get_route (lgm, dpref, spref, a->table_id);
+      ASSERT(adj_index != 0);
+
       adjp = ip_get_adjacency (lgm->lookup_main, adj_index[0]);
-      adjp->rewrite_header.sw_if_index = tun_index;
+
+      ASSERT(adjp != 0);
+      ASSERT(adjp->rewrite_header.node_index == tun_index);
     }
 
   return rv;
@@ -810,7 +847,8 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 
   if (vec_len (eids) != vec_len (slocators))
     {
-      error = clib_error_return (0, "number of eids not equal to that of locators.");
+      error = clib_error_return (0, "number of eids not equal to that of "
+          "locators.");
       goto done;
     }
 
@@ -837,104 +875,10 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (add_del_lisp_gpe_mapping_tunnel_command, static) = {
   .path = "lisp gpe maptunnel",
-  .short_help = "lisp gpe maptunnel eid <eid> sloc <src-locator> dloc <dst-locator> [del]",
+  .short_help = "lisp gpe maptunnel eid <eid> sloc <src-locator> "
+      "dloc <dst-locator> [del]",
   .function = lisp_gpe_add_del_fwd_entry_command_fn,
 };
-
-int
-add_del_ip_prefix_route (ip_prefix_t * dst_prefix, u32 table_id,
-                         ip_adjacency_t * add_adj, u8 is_add, u32 * adj_index)
-{
-  uword * p;
-
-  if (ip_prefix_version(dst_prefix) == IP4)
-    {
-      ip4_main_t * im4 = &ip4_main;
-      ip4_add_del_route_args_t a;
-      ip4_address_t addr = ip_prefix_v4(dst_prefix);
-
-      memset(&a, 0, sizeof(a));
-      a.flags = IP4_ROUTE_FLAG_TABLE_ID;
-      a.table_index_or_table_id = table_id;
-      a.adj_index = ~0;
-      a.dst_address_length = ip_prefix_len(dst_prefix);
-      a.dst_address = addr;
-      a.flags |= is_add ? IP4_ROUTE_FLAG_ADD : IP4_ROUTE_FLAG_DEL;
-      a.add_adj = add_adj;
-      a.n_add_adj = 1;
-      ip4_add_del_route (im4, &a);
-
-      if (is_add)
-        {
-          p = ip4_get_route (im4, table_id, 0, addr.as_u8,
-                             ip_prefix_len(dst_prefix));
-          if (p == 0)
-            {
-              clib_warning("Failed to insert route for eid %U!",
-                           format_ip4_address_and_length, addr.as_u8,
-                           ip_prefix_len(dst_prefix));
-              return -1;
-            }
-          adj_index[0] = p[0];
-        }
-    }
-  else
-    {
-      ip6_main_t * im6 = &ip6_main;
-      ip6_add_del_route_args_t a;
-      ip6_address_t addr = ip_prefix_v6(dst_prefix);
-
-      memset(&a, 0, sizeof(a));
-      a.flags = IP6_ROUTE_FLAG_TABLE_ID;
-      a.table_index_or_table_id = table_id;
-      a.adj_index = ~0;
-      a.dst_address_length = ip_prefix_len(dst_prefix);
-      a.dst_address = addr;
-      a.flags |= is_add ? IP6_ROUTE_FLAG_ADD : IP6_ROUTE_FLAG_DEL;
-      a.add_adj = add_adj;
-      a.n_add_adj = 1;
-
-      ip6_add_del_route (im6, &a);
-
-      if (is_add)
-        {
-          adj_index[0] = ip6_get_route (im6, table_id, 0, &addr,
-                                        ip_prefix_len(dst_prefix));
-          if (adj_index[0] == 0)
-            {
-              clib_warning("Failed to insert route for eid %U!",
-                           format_ip6_address_and_length, addr.as_u8,
-                           ip_prefix_len(dst_prefix));
-              return -1;
-            }
-        }
-    }
-  return 0;
-}
-
-static void
-add_del_lisp_gpe_default_route (u8 is_v4, u8 is_add)
-{
-  lisp_gpe_main_t * lgm = &lisp_gpe_main;
-  ip_adjacency_t adj;
-  ip_prefix_t prefix;
-  u32 adj_index = 0;
-
-  /* setup adjacency */
-  memset (&adj, 0, sizeof(adj));
-  adj.n_adj = 1;
-  adj.explicit_fib_index = ~0;
-  adj.lookup_next_index = lgm->ip4_lookup_next_lgpe_ip4_lookup;
-  /* default route has tunnel_index ~0 */
-  adj.rewrite_header.sw_if_index = ~0;
-
-  /* set prefix to 0/0 */
-  memset(&prefix, 0, sizeof(prefix));
-  ip_prefix_version(&prefix) = is_v4 ? IP4 : IP6;
-
-  /* add/delete route for prefix XXX default table only */
-  add_del_ip_prefix_route (&prefix, 0, &adj, is_add, &adj_index);
-}
 
 static u8 *
 format_decap_next (u8 * s, va_list * args)
@@ -949,8 +893,6 @@ format_decap_next (u8 * s, va_list * args)
       return format (s, "ip4");
     case LISP_GPE_INPUT_NEXT_IP6_INPUT:
       return format (s, "ip6");
-    case LISP_GPE_INPUT_NEXT_LISP_GPE_ENCAP:
-      return format (s, "nsh-lisp-gpe");
     default:
       return format (s, "unknown %d", next_index);
     }
@@ -981,7 +923,7 @@ format_lisp_gpe_tunnel (u8 * s, va_list * args)
   s = format (s, "next_protocol %d ver_res %x res %x\n",
               t->next_protocol, t->ver_res, t->res);
 
-  s = format (s, "iid %d (0x%x)\n", t->iid, t->iid);
+  s = format (s, "iid %d (0x%x)\n", t->vni, t->vni);
   return s;
 }
 
@@ -1009,106 +951,74 @@ VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) = {
     .function = show_lisp_gpe_tunnel_command_fn,
 };
 
-static u8 *
-format_lisp_gpe_name (u8 * s, va_list * args)
-{
-  u32 dev_instance = va_arg (*args, u32);
-  return format (s, "lisp_gpe_tunnel%d", dev_instance);
-}
-
-static uword
-dummy_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
-                    vlib_frame_t * frame)
-{
-  clib_warning("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
-
-VNET_DEVICE_CLASS (lisp_gpe_device_class,static) = {
-  .name = "LISP_GPE",
-  .format_device_name = format_lisp_gpe_name,
-  .format_tx_trace = format_lisp_gpe_encap_trace,
-  .tx_function = dummy_interface_tx,
-};
-
-static uword
-dummy_set_rewrite (vnet_main_t * vnm, u32 sw_if_index, u32 l3_type,
-                   void * dst_address, void * rewrite, uword max_rewrite_bytes)
-{
-  return 0;
-}
-
-u8 *
-format_lisp_gpe_header_with_length (u8 * s, va_list * args)
-{
-  lisp_gpe_header_t * h = va_arg (*args, lisp_gpe_header_t *);
-  u32 max_header_bytes = va_arg (*args, u32);
-  u32 header_bytes;
-
-  header_bytes = sizeof (h[0]);
-  if (max_header_bytes != 0 && header_bytes > max_header_bytes)
-    return format (s, "gre-nsh header truncated");
-
-  s = format (s, "flags: ");
-#define _(n,v) if (h->flags & v) s = format (s, "%s ", #n);
-  foreach_lisp_gpe_flag_bit;
-#undef _
-
-  s = format (s, "\n  ver_res %d res %d next_protocol %d iid %d(%x)",
-              h->ver_res, h->res, h->next_protocol,
-              clib_net_to_host_u32 (h->iid),
-              clib_net_to_host_u32 (h->iid));
-  return s;
-}
-
-VNET_HW_INTERFACE_CLASS (lisp_gpe_hw_class) = {
-  .name = "LISP_GPE",
-  .format_header = format_lisp_gpe_header_with_length,
-  .set_rewrite = dummy_set_rewrite,
-};
-
-void
-vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
-                             u32 * hw_if_indexp)
+clib_error_t *
+vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
 {
   lisp_gpe_main_t * lgm = &lisp_gpe_main;
   vnet_main_t * vnm = lgm->vnet_main;
-  vnet_hw_interface_t * hi;
-  u32 hw_if_index = ~0;
 
-  if (a->is_add)
+  if (a->is_en)
     {
-      /* create hw lisp_gpe0 iface */
-      hw_if_index = vnet_register_interface (vnm, lisp_gpe_device_class.index, 0,
-                                             lisp_gpe_hw_class.index, 0);
-
-      hi = vnet_get_hw_interface (vnm, hw_if_index);
-      hi->output_node_index = lisp_gpe_encap_node.index;
-      lgm->lisp_gpe_hw_if_index = hw_if_index;
-
       /* add lgpe_ip4_lookup as possible next_node for ip4 lookup */
-      lgm->ip4_lookup_next_lgpe_ip4_lookup = vlib_node_add_next (
-          vnm->vlib_main, ip4_lookup_node.index, lgpe_ip4_lookup_node.index);
-
-      /* insert default routes that points at lisp-gpe-encap */
-      add_del_lisp_gpe_default_route(/* is_v4 */1, 1);
-      add_del_lisp_gpe_default_route(/* is_v4 */0, 1);
+      if (lgm->ip4_lookup_next_lgpe_ip4_lookup == ~0)
+        {
+          lgm->ip4_lookup_next_lgpe_ip4_lookup = vlib_node_add_next (
+              vnm->vlib_main, ip4_lookup_node.index,
+              lgpe_ip4_lookup_node.index);
+        }
+      else
+        {
+          /* ask cp to re-add ifaces and defaults */
+        }
     }
   else
     {
-      vnet_sw_interface_set_flags (vnm, lgm->lisp_gpe_hw_if_index,
-                                   0 /* down */);
+      CLIB_UNUSED(uword * val);
+      hash_pair_t * p;
+      u32 * table_ids = 0, * table_id;
+      lisp_gpe_tunnel_key_t * tunnels = 0, * tunnel;
+      vnet_lisp_gpe_add_del_fwd_entry_args_t _at, * at = &_at;
+      vnet_lisp_gpe_add_del_iface_args_t _ai, * ai= &_ai;
+
+      /* remove all tunnels */
+      mhash_foreach(tunnel, val, &lgm->lisp_gpe_tunnel_by_key, ({
+        vec_add1(tunnels, tunnel[0]);
+      }));
+
+      vec_foreach(tunnel, tunnels) {
+        memset(at, 0, sizeof(at[0]));
+        at->is_add = 0;
+        gid_address_copy(&at->deid, &tunnel->eid);
+        ip_addr_v4(&at->dlocator).as_u32= tunnel->dst_loc;
+        vnet_lisp_gpe_add_del_fwd_entry (at, 0);
+      }
+      vec_free(tunnels);
+
+      /* disable all ifaces */
+      hash_foreach_pair(p, lgm->lisp_gpe_hw_if_index_by_table_id, ({
+        vec_add1(table_ids, p->key);
+      }));
+
+      vec_foreach(table_id, table_ids) {
+        ai->is_add = 0;
+        ai->table_id = table_id[0];
+
+        /* disables interface and removes defaults */
+        vnet_lisp_gpe_add_del_iface(ai, 0);
+      }
+      vec_free(table_ids);
     }
+
+  return 0;
 }
 
 static clib_error_t *
-lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm,
-                                   unformat_input_t * input,
-                                   vlib_cli_command_t * cmd)
+lisp_gpe_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
+                                    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
-  u8 is_add = 1;
-  vnet_lisp_gpe_add_del_iface_args_t _a, * a = &_a;
+  u8 is_en = 1;
+  vnet_lisp_gpe_enable_disable_args_t _a, * a = &_a;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -1116,26 +1026,24 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "up"))
-        is_add = 1;
-      else if (unformat (line_input, "down"))
-        is_add = 0;
+      if (unformat (line_input, "enable"))
+        is_en = 1;
+      else if (unformat (line_input, "disable"))
+        is_en = 0;
       else
         {
           return clib_error_return (0, "parse error: '%U'",
                                    format_unformat_error, line_input);
         }
     }
-
-  a->is_add = is_add;
-  vnet_lisp_gpe_add_del_iface (a, 0);
-  return 0;
+  a->is_en = is_en;
+  return vnet_lisp_gpe_enable_disable (a);
 }
 
-VLIB_CLI_COMMAND (add_del_lisp_gpe_iface_command, static) = {
-  .path = "lisp gpe iface",
-  .short_help = "lisp gpe iface [del]",
-  .function = lisp_gpe_add_del_iface_command_fn,
+VLIB_CLI_COMMAND (enable_disable_lisp_gpe_command, static) = {
+  .path = "lisp gpe",
+  .short_help = "lisp gpe [enable|disable]",
+  .function = lisp_gpe_enable_disable_command_fn,
 };
 
 clib_error_t *
@@ -1154,7 +1062,8 @@ lisp_gpe_init (vlib_main_t *vm)
   lgm->vlib_main = vm;
   lgm->im4 = &ip4_main;
   lgm->lookup_main = &ip4_main.lookup_main;
-  
+  lgm->ip4_lookup_next_lgpe_ip4_lookup = ~0;
+
   mhash_init (&lgm->lisp_gpe_tunnel_by_key, sizeof(uword),
               sizeof(lisp_gpe_tunnel_key_t));
 

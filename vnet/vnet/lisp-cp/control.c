@@ -18,7 +18,8 @@
 #include <vnet/lisp-cp/lisp_msg_serdes.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
-/* Adds mapping to map-cache but does NOT program LISP forwarding */
+/* Stores mapping in map-cache. It does NOT program data plane forwarding for
+ * remote/learned mappings. */
 int
 vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
                            u32 * map_index_result)
@@ -32,11 +33,12 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
   if (a->is_add)
     {
       /* TODO check if overwriting and take appropriate actions */
-      if (mi != GID_LOOKUP_MISS) {
+      if (mi != GID_LOOKUP_MISS)
+        {
           clib_warning("eid %U found in the eid-table", format_ip_address,
                        &a->deid);
           return VNET_API_ERROR_VALUE_EXIST;
-      }
+        }
 
       pool_get(lcm->mapping_pool, m);
       m->eid = a->deid;
@@ -65,18 +67,17 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
         {
           /* mark as local */
           vec_add1(lcm->local_mappings_indexes, map_index);
-
-          /* XXX do something else? */
         }
       map_index_result[0] = map_index;
     }
   else
     {
-      if (mi == GID_LOOKUP_MISS) {
+      if (mi == GID_LOOKUP_MISS)
+        {
           clib_warning("eid %U not found in the eid-table", format_ip_address,
                        &a->deid);
           return VNET_API_ERROR_INVALID_VALUE;
-      }
+        }
 
       /* clear locator-set to eids binding */
       eid_indexes = vec_elt_at_index(lcm->locator_set_to_eids,
@@ -113,6 +114,66 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
     }
 
   return 0;
+}
+
+/* Stores mapping in map-cache and programs data plane for local mappings. */
+int
+vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
+                                 u32 * map_index_result)
+{
+  uword * table_id, * refc;
+  u32 rv;
+  vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+
+  /* store/remove mapping from map-cache */
+  rv = vnet_lisp_add_del_mapping (a, map_index_result);
+  if (rv)
+    return rv;
+
+  table_id = hash_get(lcm->table_id_by_vni, /* default for now */ 0);
+
+  if (!table_id)
+    {
+      clib_warning ("vni %d not associated to a vrf!", 0);
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  refc = hash_get(lcm->dp_if_refcount_by_vni, 0);
+
+  /* enable/disable data-plane interface */
+  if (a->is_add)
+    {
+      /* create interface or update refcount */
+      if (!refc)
+        {
+          ai->is_add = 1;
+          ai->vni = 0; /* default for now, pass vni as parameter */
+          ai->table_id = table_id[0];
+          vnet_lisp_gpe_add_del_iface (ai, 0);
+        }
+      else
+        {
+          refc[0]++;
+        }
+    }
+  else
+    {
+      /* since this is a remove for an existing eid, the iface should exist */
+      ASSERT(refc != 0);
+      refc[0]--;
+
+      /* remove iface if needed */
+      if (refc[0] == 0)
+        {
+          ai->is_add = 0;
+          ai->vni = 0; /* default for now, pass vni as parameter */
+          ai->table_id = table_id[0];
+          vnet_lisp_gpe_add_del_iface (ai, 0);
+        }
+    }
+
+  return rv;
 }
 
 static clib_error_t *
@@ -171,7 +232,7 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   a->locator_set_index = locator_set_index;
   a->local = 1;
 
-  vnet_lisp_add_del_mapping (a, &map_index);
+  vnet_lisp_add_del_local_mapping (a, &map_index);
  done:
   vec_free(eids);
   return error;
@@ -650,7 +711,8 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (lisp_cp_add_del_locator_set_command) = {
     .path = "lisp locator-set",
-    .short_help = "lisp locator-set add/del <name> <iface-name> <priority> <weight>",
+    .short_help = "lisp locator-set add/del <name> iface <iface-name> "
+        "<priority> <weight>",
     .function = lisp_add_del_locator_set_command_fn,
 };
 
@@ -1251,7 +1313,7 @@ del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index,
   a->is_add = 0;
   a->dlocator = fe->dst_loc;
   a->slocator = fe->src_loc;
-  a->iid = 0; // XXX should be part of mapping/eid
+  a->vni = 0; // XXX should be part of mapping/eid
   gid_address_copy(&a->deid, &fe->deid);
 
   vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
@@ -1268,8 +1330,9 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
   locator_set_t * dst_ls, * src_ls;
   u32 i, minp = ~0;
   locator_t * dl = 0;
-  uword * feip = 0;
+  uword * feip = 0, * tidp;
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
+
   memset (a, 0, sizeof(*a));
 
   /* remove entry if it already exists */
@@ -1334,10 +1397,20 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
     }
 
   gid_address_copy (&a->deid, &dst_map->eid);
-  a->iid = 0; // XXX should be part of mapping/eid
+  a->vni = 0; // XXX should be part of mapping/eid
+
+  tidp = hash_get(lcm->table_id_by_vni, a->vni);
+  if (!tidp)
+    {
+      clib_warning("vni %d not associated to a vrf!", a->vni);
+      return;
+    }
+  a->table_id = tidp[0];
+
   u8 ipver = ip_prefix_version(&gid_address_ippref(&a->deid));
   a->decap_next_index = (ipver == IP4) ?
           LISP_GPE_INPUT_NEXT_IP4_INPUT : LISP_GPE_INPUT_NEXT_IP6_INPUT;
+
   /* XXX tunnels work only with IP4 now */
   vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
 
@@ -1610,6 +1683,9 @@ lisp_cp_init (vlib_main_t *vm)
 
   gid_dictionary_init (&lcm->mapping_index_by_gid);
   gid_dictionary_init (&lcm->mapping_index_by_gid);
+
+  /* default vrf mapped to vni 0 */
+  hash_set(lcm->table_id_by_vni, 0, 0);
 
   udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp,
                          lisp_cp_input_node.index, 1 /* is_ip4 */);

@@ -91,6 +91,12 @@ typedef struct
   /* vector of map-resolver addresses */
   ip_address_t * map_resolvers;
 
+  /* Lookup vrf by vni */
+  uword * table_id_by_vni;
+
+  /* Number of src prefixes in a vni that use an interface */
+  uword * dp_if_refcount_by_vni;
+
   /* commodity */
   ip4_main_t * im4;
   ip6_main_t * im6;
@@ -122,7 +128,6 @@ typedef struct
 int
 vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 			       u32 * ls_index);
-
 int
 vnet_lisp_add_del_locator_set_name (vnet_lisp_add_del_locator_set_args_t * a,
                                     u32 * ls_index);
@@ -146,6 +151,9 @@ typedef struct
 int
 vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t *a,
 			   u32 * map_index);
+int
+vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
+                                 u32 * map_index_result);
 
 typedef struct
 {

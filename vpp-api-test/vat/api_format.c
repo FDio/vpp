@@ -1954,8 +1954,6 @@ format_decap_next (u8 * s, va_list * args)
       return format (s, "ip4");
     case LISP_GPE_INPUT_NEXT_IP6_INPUT:
       return format (s, "ip6");
-    case LISP_GPE_INPUT_NEXT_LISP_GPE_ENCAP:
-      return format (s, "nsh-lisp-gpe");
     default:
       return format (s, "unknown %d", next_index);
     }
@@ -2161,6 +2159,7 @@ _(lisp_add_del_locator_reply)                           \
 _(lisp_add_del_local_eid_reply)                         \
 _(lisp_gpe_add_del_fwd_entry_reply)                     \
 _(lisp_add_del_map_resolver_reply)                      \
+_(lisp_gpe_enable_disable_reply)                        \
 _(lisp_gpe_add_del_iface_reply)
 
 #define _(n)                                    \
@@ -2329,6 +2328,7 @@ _(LISP_ADD_DEL_LOCATOR_REPLY, lisp_add_del_locator_reply)               \
 _(LISP_ADD_DEL_LOCAL_EID_REPLY, lisp_add_del_local_eid_reply)           \
 _(LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY, lisp_gpe_add_del_fwd_entry_reply)   \
 _(LISP_ADD_DEL_MAP_RESOLVER_REPLY, lisp_add_del_map_resolver_reply)     \
+_(LISP_GPE_ENABLE_DISABLE_REPLY, lisp_gpe_enable_disable_reply)         \
 _(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
 _(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
 _(LISP_LOCAL_EID_TABLE_DETAILS, lisp_local_eid_table_details)           \
@@ -7862,8 +7862,6 @@ static uword unformat_lisp_gpe_decap_next (unformat_input_t * input,
         *result = LISP_GPE_INPUT_NEXT_IP6_INPUT;
     else if (unformat (input, "ethernet"))
         *result = LISP_GPE_INPUT_NEXT_IP6_INPUT;
-    else if (unformat (input, "lisp-gpe"))
-        *result = LISP_GPE_INPUT_NEXT_LISP_GPE_ENCAP;
     else if (unformat (input, "%d", &tmp))
         *result = tmp;
     else
@@ -9748,13 +9746,55 @@ api_lisp_add_del_map_resolver(vat_main_t * vam)
 }
 
 static int
+api_lisp_gpe_enable_disable (vat_main_t * vam)
+{
+  unformat_input_t * input = vam->input;
+  vl_api_lisp_gpe_enable_disable_t *mp;
+  f64 timeout = ~0;
+  u8 is_set = 0;
+  u8 is_en = 1;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+      if (unformat(input, "enable")) {
+          is_set = 1;
+          is_en = 1;
+      } else if (unformat(input, "disable")) {
+          is_set = 1;
+          is_en = 0;
+      } else
+          break;
+  }
+
+  if (is_set == 0) {
+      errmsg("Value not set\n");
+      return -99;
+  }
+
+  /* Construct the API message */
+  M(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable);
+
+  mp->is_en = is_en;
+
+  /* send it... */
+  S;
+
+  /* Wait for a reply... */
+  W;
+
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
 api_lisp_gpe_add_del_iface(vat_main_t * vam)
 {
     unformat_input_t * input = vam->input;
     vl_api_lisp_gpe_add_del_iface_t *mp;
     f64 timeout = ~0;
     u8 is_set = 0;
-    u8  is_add = 1;
+    u8 is_add = 1;
+    u32 table_id, vni;
 
     /* Parse args required to build the message */
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
@@ -9764,6 +9804,10 @@ api_lisp_gpe_add_del_iface(vat_main_t * vam)
         } else if (unformat(input, "down")) {
             is_set = 1;
             is_add = 0;
+        } else if (unformat(input, "table_id %d", &table_id)) {
+            ;
+        } else if (unformat(input, "vni %d", &vni)) {
+            ;
         } else
             break;
     }
@@ -9777,6 +9821,8 @@ api_lisp_gpe_add_del_iface(vat_main_t * vam)
     M(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface);
 
     mp->is_add = is_add;
+    mp->table_id = table_id;
+    mp->vni = vni;
 
     /* send it... */
     S;
@@ -10382,6 +10428,7 @@ _(lisp_add_del_local_eid, "<ipv4|ipv6>/<prefix> "                       \
 _(lisp_gpe_add_del_fwd_entry, "eid <ip4|6-addr>/<prefix> "              \
     "sloc <ip4/6-addr> dloc <ip4|6-addr> [del]")                        \
 _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
+_(lisp_gpe_enable_disable, "enable|disable")                            \
 _(lisp_gpe_add_del_iface, "up|down")                                    \
 _(lisp_locator_set_dump, "")                                            \
 _(lisp_local_eid_table_dump, "")                                        \

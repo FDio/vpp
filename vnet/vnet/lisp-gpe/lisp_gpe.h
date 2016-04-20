@@ -74,15 +74,14 @@ typedef struct
   u8 ver_res;
   u8 res;
   u8 next_protocol;
-  u32 iid;
+  u32 vni;
 } lisp_gpe_tunnel_t;
 
 #define foreach_lisp_gpe_input_next             \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")                       \
-_(ETHERNET_INPUT, "ethernet-input")             \
-_(LISP_GPE_ENCAP, "lisp-gpe-encap")
+_(ETHERNET_INPUT, "ethernet-input")
 
 typedef enum {
 #define _(s,n) LISP_GPE_INPUT_NEXT_##s,
@@ -96,7 +95,7 @@ typedef enum {
 #include <vnet/lisp-gpe/lisp_gpe_error.def>
 #undef lisp_gpe_error
   LISP_GPE_N_ERROR,
-} lisp_gpe_input_error_t;
+} lisp_gpe_error_t;
 
 /* As a first step, reuse v4 fib. The goal of the typedef is to shield
  * consumers from future updates that may result in the lisp ip4 fib diverging
@@ -114,13 +113,18 @@ typedef struct lisp_gpe_main
   /* lookup tunnel by key */
   mhash_t lisp_gpe_tunnel_by_key;
 
-  /* lookup tunnel by adjacency index */
-  uword * lisp_gpe_tunnel_by_adj_index;
+  /* lookup decap tunnel termination sw_if_index by vni and vice versa */
+  uword * tunnel_term_sw_if_index_by_vni;
+  uword * vni_by_tunnel_term_sw_if_index;
 
   /* Free vlib hw_if_indices */
   u32 * free_lisp_gpe_tunnel_hw_if_indices;
 
-  u32 lisp_gpe_hw_if_index;
+  /* Lookup lisp-gpe interfaces by vrf */
+  uword * lisp_gpe_hw_if_index_by_table_id;
+
+  /* Lookup lgpe_ip4_lookup_next by vrf */
+  uword * lgpe_ip4_lookup_next_index_by_table_id;
 
   /* next node indexes that points ip4 lookup to lisp gpe lookup and lisp cp */
   u32 ip4_lookup_next_lgpe_ip4_lookup;
@@ -136,10 +140,9 @@ lisp_gpe_main_t lisp_gpe_main;
 
 extern vlib_node_registration_t lgpe_ip4_lookup_node;
 extern vlib_node_registration_t lisp_gpe_input_node;
-extern vlib_node_registration_t lisp_gpe_encap_node;
 
 u8 *
-format_lisp_gpe_encap_trace (u8 * s, va_list * args);
+format_lisp_gpe_tx_trace (u8 * s, va_list * args);
 u8 *
 format_lisp_gpe_header_with_length (u8 * s, va_list * args);
 
@@ -154,7 +157,7 @@ typedef struct
   u8 ver_res;
   u8 res;
   u8 next_protocol;
-  u32 iid; /* host byte order */
+  u32 vni; /* host byte order */
 } vnet_lisp_gpe_add_del_tunnel_args_t;
 
 int
@@ -164,11 +167,21 @@ vnet_lisp_gpe_add_del_tunnel (vnet_lisp_gpe_add_del_tunnel_args_t *a,
 typedef struct
 {
   u8 is_add;
+  u32 table_id; /* vrf */
+  u32 vni;      /* host byte order */
 } vnet_lisp_gpe_add_del_iface_args_t;
 
 void
 vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t *a,
 			     u32 * hw_if_indexp);
+
+typedef struct
+{
+  u8 is_en;
+} vnet_lisp_gpe_enable_disable_args_t;
+
+clib_error_t *
+vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t *a);
 
 typedef enum
 {
@@ -194,7 +207,8 @@ typedef struct
   u8 ver_res;
   u8 res;
   u8 next_protocol;
-  u32 iid; /* host byte order */
+  u32 vni; /* host byte order */
+  u32 table_id;
 } vnet_lisp_gpe_add_del_fwd_entry_args_t;
 
 int

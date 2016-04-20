@@ -52,7 +52,6 @@ next_proto_to_next_index[LISP_GPE_NEXT_PROTOS] ={
     LISP_GPE_INPUT_NEXT_DROP,
     LISP_GPE_INPUT_NEXT_IP4_INPUT,
     LISP_GPE_INPUT_NEXT_IP6_INPUT,
-    LISP_GPE_INPUT_NEXT_DROP,
     LISP_GPE_INPUT_NEXT_DROP
 };
 
@@ -85,6 +84,7 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, next_index, * from, * to_next;
   lisp_gpe_tunnel_key_t last_key;
   u32 pkts_decapsulated = 0;
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
 
   memset (&last_key, 0xff, sizeof (last_key));
 
@@ -104,8 +104,8 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
           u32 bi0, bi1;
           vlib_buffer_t * b0, * b1;
           ip4_udp_lisp_gpe_header_t * iul0, * iul1;
-          u32 error0, error1;
-          u32 next0, next1;
+          u32 next0, next1, error0, error1;
+          uword * si0, * si1;
 
           next0 = next1 = LISP_GPE_INPUT_NEXT_IP4_INPUT;
 
@@ -156,14 +156,35 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
           vnet_update_l2_len (b0);
           vnet_update_l2_len (b1);
 
-          /* TODO hash to map iid to fib */
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = iul0->lisp.iid;
-          vnet_buffer(b1)->sw_if_index[VLIB_TX] = iul1->lisp.iid;
+          /* map iid/vni to lisp-gpe sw_if_index which is used by ipx_input to
+           * decide the rx vrf and the input features to be applied */
+          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, iul0->lisp.iid);
+          si1 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, iul1->lisp.iid);
 
-          pkts_decapsulated += 2;
+          if (si0)
+            {
+              vnet_buffer(b0)->sw_if_index[VLIB_RX] = si0[0];
+              pkts_decapsulated++;
+              error0 = 0;
+            }
+          else
+            {
+              next0 = LISP_GPE_INPUT_NEXT_DROP;
+              error0 = LISP_GPE_ERROR_NO_SUCH_TUNNEL;
+            }
 
-          /* TODO error handling if security is implemented */
-          error0 = error1 = 0;
+          if (si1)
+            {
+              vnet_buffer(b1)->sw_if_index[VLIB_RX] = si1[0];
+              pkts_decapsulated++;
+              error0 = 0;
+            }
+          else
+            {
+              next1 = LISP_GPE_INPUT_NEXT_DROP;
+              error1 = LISP_GPE_ERROR_NO_SUCH_TUNNEL;
+            }
+
           b0->error = error0 ? node->errors[error0] : 0;
           b1->error = error1 ? node->errors[error1] : 0;
 
@@ -197,6 +218,7 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
           u32 next0;
           ip4_udp_lisp_gpe_header_t * iul0;
           u32 error0;
+          uword * si0;
 
           bi0 = from[0];
           to_next[0] = bi0;
@@ -228,18 +250,29 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
           /* Required to make the l2 tag push / pop code work on l2 subifs */
           vnet_update_l2_len (b0);
 
-          /* TODO hash to map iid to fib */
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = iul0->lisp.iid;
-          pkts_decapsulated ++;
+          /* map iid/vni to lisp-gpe sw_if_index which is used by ipx_input to
+           * decide the rx vrf and the input features to be applied */
+          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, iul0->lisp.iid);
+
+          if (si0)
+            {
+              vnet_buffer(b0)->sw_if_index[VLIB_RX] = si0[0];
+              pkts_decapsulated++;
+              error0 = 0;
+            }
+          else
+            {
+              next0 = LISP_GPE_INPUT_NEXT_DROP;
+              error0 = LISP_GPE_ERROR_NO_SUCH_TUNNEL;
+            }
 
           /* TODO error handling if security is implemented */
-          error0 = 0;
           b0->error = error0 ? node->errors[error0] : 0;
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              lisp_gpe_rx_trace_t *tr 
-                = vlib_add_trace (vm, node, b0, sizeof (*tr));
+              lisp_gpe_rx_trace_t *tr = vlib_add_trace (vm, node, b0,
+                                                        sizeof(*tr));
               tr->next_index = next0;
               tr->error = error0;
               tr->h = iul0->lisp;
