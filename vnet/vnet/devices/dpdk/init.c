@@ -89,6 +89,11 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
     {
       rv = rte_eth_tx_queue_setup(xd->device_index, j, xd->nb_tx_desc,
                                  xd->cpu_socket, &xd->tx_conf);
+
+      /* retry with any other CPU socket */
+      if (rv < 0)
+        rv = rte_eth_tx_queue_setup(xd->device_index, j, xd->nb_tx_desc,
+                                   SOCKET_ID_ANY, &xd->tx_conf);
       if (rv < 0)
         break;
     }
@@ -103,6 +108,12 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
       rv = rte_eth_rx_queue_setup(xd->device_index, j, xd->nb_rx_desc,
                                   xd->cpu_socket, 0,
                                   bm->pktmbuf_pools[xd->cpu_socket_id_by_queue[j]]);
+
+      /* retry with any other CPU socket */
+      if (rv < 0)
+        rv = rte_eth_rx_queue_setup(xd->device_index, j, xd->nb_rx_desc,
+                                    SOCKET_ID_ANY, 0,
+                                    bm->pktmbuf_pools[xd->cpu_socket_id_by_queue[j]]);
       if (rv < 0)
         return clib_error_return (0, "rte_eth_rx_queue_setup[%d]: err %d",
                                   xd->device_index, rv);
