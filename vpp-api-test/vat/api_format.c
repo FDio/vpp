@@ -616,6 +616,7 @@ static void vl_api_sw_interface_details_t_handler_json
     node = vat_json_array_add(&vam->json_tree);
 
     vat_json_init_object(node);
+    vat_json_object_add_uint(node, "context", ntohl(mp->context));
     vat_json_object_add_uint(node, "sw_if_index", ntohl(mp->sw_if_index));
     vat_json_object_add_uint(node, "sup_sw_if_index", ntohl(mp->sup_sw_if_index));
     vat_json_object_add_uint(node, "l2_address_length", ntohl(mp->l2_address_length));
@@ -2879,30 +2880,35 @@ int api_sw_interface_dump (vat_main_t * vam)
     /* Get list of ethernets */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
+    mp->context = 99;
     strncpy ((char *) mp->name_filter, "Ether", sizeof(mp->name_filter-1)); 
     S;
 
     /* and local / loopback interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
+    mp->context = 991;
     strncpy ((char *) mp->name_filter, "lo", sizeof(mp->name_filter-1)); 
     S;
 
     /* and vxlan tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
+    mp->context = 992;
     strncpy ((char *) mp->name_filter, "vxlan", sizeof(mp->name_filter-1)); 
     S;
 
     /* and host (af_packet) interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
+    mp->context = 993;
     strncpy ((char *) mp->name_filter, "host", sizeof(mp->name_filter-1));
     S;
 
     /* and l2tpv3 tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
+    mp->context = 994;
     strncpy ((char *) mp->name_filter, "l2tpv3_tunnel", sizeof(mp->name_filter-1));
     S;
 
