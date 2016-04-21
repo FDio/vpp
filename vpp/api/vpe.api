@@ -1984,6 +1984,7 @@ define nsh_gre_add_del_tunnel_reply {
     @param num_regions - number of used memory regions
 */
 manual_java define sw_interface_vhost_user_details {
+    u32 context;
     u32 sw_if_index;
     u8 interface_name[64];
     u32 virtio_net_hdr_sz;

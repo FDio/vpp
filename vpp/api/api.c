@@ -3689,7 +3689,8 @@ static void vl_api_sw_interface_vhost_user_details_t_handler (
 #if DPDK > 0
 static void send_sw_interface_vhost_user_details (vpe_api_main_t * am,
                                        unix_shared_memory_queue_t *q,
-                                       vhost_user_intf_details_t * vui)
+                                       vhost_user_intf_details_t * vui,
+                                       u32 context)
 {
     vl_api_sw_interface_vhost_user_details_t * mp;
 
@@ -3702,6 +3703,7 @@ static void send_sw_interface_vhost_user_details (vpe_api_main_t * am,
     mp->is_server = vui->is_server;
     mp->num_regions = ntohl(vui->num_regions);
     mp->sock_errno = ntohl(vui->sock_errno);
+    mp->context = mp->context;
 
     strncpy ((char *) mp->sock_filename,
              (char *) vui->sock_filename, ARRAY_LEN(mp->sock_filename)-1);
@@ -3734,7 +3736,7 @@ vl_api_sw_interface_vhost_user_dump_t_handler (
         return;
 
     vec_foreach (vuid, ifaces) {
-        send_sw_interface_vhost_user_details (am, q, vuid);
+        send_sw_interface_vhost_user_details (am, q, vuid, mp->context);
     }
     vec_free(ifaces);
 #endif
