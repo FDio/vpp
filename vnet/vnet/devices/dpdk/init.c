@@ -984,7 +984,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	      if (x > 1023)
 		less_than_1g = 0;
 	    }
+          /* Note: unformat_free vec_frees(in.buffer), aka socket_mem... */
 	  unformat_free(&in);
+          socket_mem = 0;
 	}
       else
 	{
@@ -1030,7 +1032,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       _vec_len (mem_by_socket) = c + 1;
 
       /* regenerate socket_mem string */
-      vec_free (socket_mem);
       vec_foreach_index (x, mem_by_socket)
 	socket_mem = format (socket_mem, "%s%u",
 			     socket_mem ? "," : "",
