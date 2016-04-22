@@ -20,7 +20,7 @@ libvatplugin_la_SOURCES = \
 
 lib_LTLIBRARIES = libvatplugin.la	
 
-bin_PROGRAMS = vpp_api_test vpp_json_test
+bin_PROGRAMS = vpp_api_test vpp_json_test vpp_restart
 
 vpp_api_test_SOURCES = vat/api_format.c vat/main.c vat/plugin.c vat/vat.h vat/json_format.h vat/json_format.c
 vpp_json_test_SOURCES = vat/json_format.h vat/json_format.c vat/json_test.c
@@ -31,5 +31,7 @@ vpp_api_test_LDADD = -lvlibmemoryclient -lvlibapi -lsvm \
 vpp_json_test_LDADD = -lvppinfra -lm
 nobase_include_HEADERS = vat/vat.h vat/json_format.h
 
+vpp_restart_SOURCES = vat/restart.c
+vpp_restart_LDADD = -lsvmdb -lsvm -lvppinfra -lpthread -lrt
 
 dist_bin_SCRIPTS = scripts/vppctl

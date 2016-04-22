@@ -92,6 +92,18 @@ static u64 get_significant_errors(gmon_main_t * gm)
   return (significant_errors);
 }
 
+static clib_error_t *
+publish_pid (vlib_main_t *vm)
+{
+  gmon_main_t *gm = &gmon_main;
+
+  *gm->vpef_pid_ptr = getpid();
+
+  return 0;
+}
+VLIB_API_INIT_FUNCTION(publish_pid);
+
+
 static uword
 gmon_process (vlib_main_t * vm,
               vlib_node_runtime_t * rt,
@@ -101,11 +113,7 @@ gmon_process (vlib_main_t * vm,
     u64 input_packets, last_input_packets, new_sig_errors;
     f64 last_runtime, dt, now;
     gmon_main_t *gm = &gmon_main;
-    pid_t vpefpid;
     int i;
-
-    vpefpid = getpid();
-    *gm->vpef_pid_ptr = vpefpid;
 
     last_runtime = 0.0; 
     last_input_packets = 0;
