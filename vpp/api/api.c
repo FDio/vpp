@@ -2427,7 +2427,8 @@ static void vl_api_sw_interface_clear_stats_t_handler (
 static void send_sw_interface_details (vpe_api_main_t * am,
                                        unix_shared_memory_queue_t *q,
                                        vnet_sw_interface_t * swif,
-                                       u8 * interface_name)
+                                       u8 * interface_name,
+                                       u32 context)
 {
     vl_api_sw_interface_details_t * mp;
     vnet_hw_interface_t * hi;
@@ -2448,6 +2449,7 @@ static void send_sw_interface_details (vpe_api_main_t * am,
     mp->link_speed = ((hi->flags & VNET_HW_INTERFACE_FLAG_SPEED_MASK) >>
 		      VNET_HW_INTERFACE_FLAG_SPEED_SHIFT);
     mp->link_mtu = ntohs(hi->max_packet_bytes);
+    mp->context = context;
 
     strncpy ((char *) mp->interface_name, 
              (char *) interface_name, ARRAY_LEN(mp->interface_name)-1);
@@ -2567,7 +2569,7 @@ static void vl_api_sw_interface_dump_t_handler (
         if (mp->name_filter_valid == 0 ||
             strcasestr((char *) name_string, (char *) filter_string)) {
 
-            send_sw_interface_details (am, q, swif, name_string);
+            send_sw_interface_details (am, q, swif, name_string, mp->context);
             send_sw_interface_flags (am, q, swif);
         }
         _vec_len (name_string) = 0;
@@ -3689,7 +3691,8 @@ static void vl_api_sw_interface_vhost_user_details_t_handler (
 #if DPDK > 0
 static void send_sw_interface_vhost_user_details (vpe_api_main_t * am,
                                        unix_shared_memory_queue_t *q,
-                                       vhost_user_intf_details_t * vui)
+                                       vhost_user_intf_details_t * vui,
+                                       u32 context)
 {
     vl_api_sw_interface_vhost_user_details_t * mp;
 
@@ -3702,6 +3705,7 @@ static void send_sw_interface_vhost_user_details (vpe_api_main_t * am,
     mp->is_server = vui->is_server;
     mp->num_regions = ntohl(vui->num_regions);
     mp->sock_errno = ntohl(vui->sock_errno);
+    mp->context = context;
 
     strncpy ((char *) mp->sock_filename,
              (char *) vui->sock_filename, ARRAY_LEN(mp->sock_filename)-1);
@@ -3734,7 +3738,7 @@ vl_api_sw_interface_vhost_user_dump_t_handler (
         return;
 
     vec_foreach (vuid, ifaces) {
-        send_sw_interface_vhost_user_details (am, q, vuid);
+        send_sw_interface_vhost_user_details (am, q, vuid, mp->context);
     }
     vec_free(ifaces);
 #endif
@@ -3743,7 +3747,8 @@ vl_api_sw_interface_vhost_user_dump_t_handler (
 static void send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
                                        unix_shared_memory_queue_t *q,
                                        l2t_session_t *s,
-                                       l2t_main_t * lm)
+                                       l2t_main_t * lm,
+                                       u32 context)
 {
     vl_api_sw_if_l2tpv3_tunnel_details_t * mp;
     u8 * if_name = NULL;
@@ -3768,6 +3773,7 @@ static void send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
     memcpy(mp->client_address, &s->client_address, sizeof(s->client_address));
     memcpy(mp->our_address, &s->our_address, sizeof(s->our_address));
     mp->l2_sublayer_present = s->l2_sublayer_present;
+    mp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&mp);
 }
@@ -3865,7 +3871,7 @@ vl_api_sw_if_l2tpv3_tunnel_dump_t_handler (
 
     pool_foreach (session, lm->sessions, 
     ({
-        send_sw_if_l2tpv3_tunnel_details (am, q, session, lm);
+        send_sw_if_l2tpv3_tunnel_details (am, q, session, lm, mp->context);
     }));
 }
 
@@ -3951,7 +3957,8 @@ static void vl_api_l2_fib_table_entry_t_handler (
 static void send_l2fib_table_entry (vpe_api_main_t * am,
                                     unix_shared_memory_queue_t *q,
                                     l2fib_entry_key_t * l2fe_key,
-                                    l2fib_entry_result_t * l2fe_res)
+                                    l2fib_entry_result_t * l2fe_res,
+                                    u32 context)
 {
     vl_api_l2_fib_table_entry_t * mp;
 
@@ -3966,6 +3973,7 @@ static void send_l2fib_table_entry (vpe_api_main_t * am,
     mp->static_mac = l2fe_res->fields.static_mac;
     mp->filter_mac = l2fe_res->fields.filter;
     mp->bvi_mac = l2fe_res->fields.bvi;
+    mp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&mp);
 }
@@ -4001,7 +4009,7 @@ vl_api_l2_fib_table_dump_t_handler (vl_api_l2_fib_table_dump_t *mp)
 
     vec_foreach_index (ni, l2fe_key) {
         send_l2fib_table_entry (am, q, vec_elt_at_index(l2fe_key, ni),
-                                vec_elt_at_index(l2fe_res, ni));
+                                vec_elt_at_index(l2fe_res, ni), mp->context);
     }
     vec_free(l2fe_key);
     vec_free(l2fe_res);
@@ -5380,6 +5388,7 @@ vl_api_map_domain_dump_t_handler
     rmp->ip6_src_len = d->ip6_src_len;
     rmp->mtu = htons(d->mtu);
     rmp->is_translation = (d->flags & MAP_DOMAIN_TRANSLATION);
+    rmp->context = mp->context;
 
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
   }));
@@ -5420,6 +5429,7 @@ vl_api_map_rule_dump_t_handler
     rmp->_vl_msg_id = ntohs(VL_API_MAP_RULE_DETAILS);
     rmp->psid = htons(i);
     memcpy(rmp->ip6_dst, &dst, sizeof(rmp->ip6_dst));
+    rmp->context = mp->context;
     vl_msg_api_send_shmem(q, (u8 *)&rmp);
   }
 }
