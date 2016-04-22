@@ -67,6 +67,7 @@ define want_interface_events_reply {
     @param vtr_tag2
 */
 manual_java define sw_interface_details {
+    u32 context;
     u32 sw_if_index;
 
     /* index of sup interface (e.g. hw interface).
@@ -1683,6 +1684,7 @@ define l2tpv3_set_tunnel_cookies_reply {
 };
 
 manual_java define sw_if_l2tpv3_tunnel_details {
+    u32 context;
     u32 sw_if_index;
     u8 interface_name[64];
     u8 client_address [16];
@@ -1984,6 +1986,7 @@ define nsh_gre_add_del_tunnel_reply {
     @param num_regions - number of used memory regions
 */
 manual_java define sw_interface_vhost_user_details {
+    u32 context;
     u32 sw_if_index;
     u8 interface_name[64];
     u32 virtio_net_hdr_sz;
@@ -2034,6 +2037,7 @@ define ip_dump {
     @param bvi_mac - the mac address is a bridge virtual interface
 */
 manual_java define l2_fib_table_entry {
+    u32 context;
     u32 bd_id;
     u64 mac;
     u32 sw_if_index;
@@ -3037,6 +3041,7 @@ define map_domain_dump {
 };
 
 manual_java define map_domain_details {
+  u32 context;
   u32 domain_index;
   u8 ip6_prefix[16];
   u8 ip4_prefix[4];
@@ -3059,6 +3064,7 @@ define map_rule_dump {
 };
 
 manual_java define map_rule_details {
+  u32 context;
   u8 ip6_dst[16];
   u16 psid;
 };
