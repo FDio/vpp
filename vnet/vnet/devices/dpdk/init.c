@@ -1019,7 +1019,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       _vec_len (mem_by_socket) = c + 1;
 
       /* regenerate socket_mem string */
-      vec_free (socket_mem);
+      socket_mem = 0;
       vec_foreach_index (x, mem_by_socket)
 	socket_mem = format (socket_mem, "%s%u",
 			     socket_mem ? "," : "",
