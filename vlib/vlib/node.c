@@ -177,9 +177,10 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
 
   if ((p = hash_get (node->next_slot_by_node, next_node_index)))
     {
-      /* Next already exists: use it if slot not specified or the same. */
-      if ((slot == ~0) || (slot == p[0]))
-	  return p[0];
+      /* Next already exists: slot must match. */
+      if (slot != ~0)
+	ASSERT (slot == p[0]);
+      return p[0];
     }
 
   if (slot == ~0)

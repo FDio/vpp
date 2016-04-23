@@ -41,6 +41,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/l2/l2_input.h>
 
 static uword ethernet_set_rewrite (vnet_main_t * vnm,
 				   u32 sw_if_index,
@@ -255,9 +256,7 @@ ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return (u32)~0;
 }
 
-#define VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT VNET_INTERFACE_TX_N_NEXT
-
-/* Echo packets back to ethernet input. */
+/* Echo packets back to ethernet/l2-input. */
 static uword
 simulated_ethernet_interface_tx (vlib_main_t * vm,
 				 vlib_node_runtime_t * node,
@@ -265,8 +264,21 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 {
   u32 n_left_from, n_left_to_next, n_copy, * from, * to_next;
   u32 next_index = VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
-  u32 i;
+  u32 i, next_node_index, bvi_flag, sw_if_index;
+  u32 n_pkts = 0, n_bytes = 0;
+  u32 cpu_index = vm->cpu_index;
+  vnet_main_t * vnm = vnet_get_main();
+  vnet_interface_main_t * im = &vnm->interface_main;
+  vlib_node_main_t * nm = &vm->node_main;
+  vlib_node_t *loop_node;
   vlib_buffer_t * b;
+
+  // check tx node index, it is ethernet-input on loopback create
+  // but can be changed to l2-input if loopback is configured as 
+  // BVI of a BD (Bridge Domain).
+  loop_node = vec_elt (nm->nodes, node->node_index);
+  next_node_index = loop_node->next_nodes[next_index];
+  bvi_flag = (next_node_index == l2input_node.index)? 1 : 0;
 
   n_left_from = frame->n_vectors;
   from = vlib_frame_args (frame);
@@ -280,16 +292,32 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
       clib_memcpy (to_next, from, n_copy * sizeof (from[0]));
       n_left_to_next -= n_copy;
       n_left_from -= n_copy;
-      for (i = 0; i < n_copy; i++)
+      i = 0;
+      b = vlib_get_buffer (vm, from[i]);
+      sw_if_index =  vnet_buffer (b)->sw_if_index[VLIB_TX];
+      while (1)
 	{
-	  b = vlib_get_buffer (vm, from[i]);
-          /* Set up RX and TX indices as if received from a real driver */
-	  vnet_buffer (b)->sw_if_index[VLIB_RX] = 
-              vnet_buffer (b)->sw_if_index[VLIB_TX];
-          vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~0;
+	  // Set up RX and TX indices as if received from a real driver
+	  // unless loopback is used as a BVI. For BVI case, leave TX index 
+	  // and update l2_len in packet as required for l2 forwarding path
+	  vnet_buffer (b)->sw_if_index[VLIB_RX] = sw_if_index;
+	  if (bvi_flag) vnet_update_l2_len(b);
+	  else vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~0;
+
+	  i++;
+	  n_pkts++;
+	  n_bytes += vlib_buffer_length_in_chain (vm, b);
+
+	  if (i < n_copy) b = vlib_get_buffer (vm, from[i]);
+	  else break;
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+      /* increment TX interface stat */
+      vlib_increment_combined_counter (
+	  im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+	  cpu_index, sw_if_index, n_pkts, n_bytes);
     }
 
   return n_left_from;

@@ -72,6 +72,8 @@ typedef struct {
 
 extern l2input_main_t l2input_main;
 
+extern vlib_node_registration_t l2input_node;
+
 static_always_inline l2_bridge_domain_t * 
 l2input_bd_config_from_index (l2input_main_t * l2im, u32 bd_index)
 {
