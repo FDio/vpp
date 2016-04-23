@@ -514,6 +514,15 @@ dpdk_lib_init (dpdk_main_t * dm)
             }
         }
 
+      /*
+       * DAW-FIXME: VMXNET3 driver doesn't support jumbo / multi-buffer pkts
+       */
+      if (xd->pmd == VNET_DPDK_PMD_VMXNET3)
+        {
+          xd->port_conf.rxmode.max_rx_pkt_len = 1518;
+          xd->port_conf.rxmode.jumbo_frame = 0;
+        }
+
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
         {
           f64 now = vlib_time_now(vm);
@@ -626,6 +635,11 @@ dpdk_lib_init (dpdk_main_t * dm)
           vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
           rte_eth_dev_set_vlan_offload(xd->device_index, vlan_off);
 	}
+      /*
+       * DAW-FIXME: VMXNET3 driver doesn't support jumbo / multi-buffer pkts
+       */
+      else if (xd->pmd == VNET_DPDK_PMD_VMXNET3)
+	  hi->max_packet_bytes = 1518;
 
       hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 
 	      xd->port_conf.rxmode.max_rx_pkt_len - sizeof(ethernet_header_t);
