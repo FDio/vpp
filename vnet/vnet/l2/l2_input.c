@@ -34,9 +34,6 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/cache.h>
 
-extern clib_error_t *
-vnet_per_buffer_interface_output_hw_interface_add_del (
-    vnet_main_t * vnm, u32 hw_if_index, u32 is_create);
 
 // Feature graph node names
 static char * l2input_feat_names[] = {
@@ -73,8 +70,6 @@ static u8 * format_l2input_trace (u8 * s, va_list * args)
 }
 
 l2input_main_t l2input_main;
-
-static vlib_node_registration_t l2input_node;
 
 #define foreach_l2input_error			\
 _(L2INPUT,     "L2 input packets")		\
@@ -135,7 +130,6 @@ classify_and_dispatch (vlib_main_t * vm,
   ethernet_header_t * h0;
   u8 * l3h0;
   u32 sw_if_index0;
-  u8 bvi_flg = 0;
 
 #define get_u32(addr) ( *((u32 *)(addr)) )
 #define get_u16(addr) ( *((u16 *)(addr)) )
@@ -143,19 +137,6 @@ classify_and_dispatch (vlib_main_t * vm,
 #define STATS_IF_LAYER2_MCAST_INPUT_CNT 1
 #define STATS_IF_LAYER2_BCAST_INPUT_CNT 2
 
-  // Check for from-BVI processing
-  // When we come from ethernet-input, TX is ~0
-  if (PREDICT_FALSE (vnet_buffer(b0)->sw_if_index[VLIB_TX] != ~0)) {
-    // Set up for a from-bvi packet
-    bvi_to_l2 (vm, 
-               msm->vnet_main, 
-               cpu_index, 
-               b0, 
-               vnet_buffer(b0)->sw_if_index[VLIB_TX]);
-    bvi_flg = 1;
-  }
-
-  // The RX interface can be changed by bvi_to_l2()
   sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
 
   h0 = vlib_buffer_get_current (b0);
@@ -217,14 +198,21 @@ classify_and_dispatch (vlib_main_t * vm,
   // Get config for the input interface
   config = vec_elt_at_index(msm->configs, sw_if_index0);
 
-  // Save split horizon group, use 0 for BVI to make sure not dropped
-  vnet_buffer(b0)->l2.shg = bvi_flg ? 0 : config->shg;
+  // Save split horizon group
+  vnet_buffer(b0)->l2.shg = config->shg;
 
   if (config->xconnect) {
     // Set the output interface
     vnet_buffer(b0)->sw_if_index[VLIB_TX] = config->output_sw_if_index;
 
   } else {
+
+    // Check for from-BVI processing, TX is non-~0 if from BVI loopback
+    // Set SHG for BVI packets to 0 so it is not dropped for VXLAN tunnels
+    if (PREDICT_FALSE (vnet_buffer(b0)->sw_if_index[VLIB_TX] != ~0)) {
+      vnet_buffer(b0)->sw_if_index[VLIB_TX] = ~0;
+      vnet_buffer(b0)->l2.shg = 0;
+    }
 
     // Do bridge-domain processing
     bd_index0 = config->bd_index;
@@ -424,7 +412,7 @@ l2input_node_fn (vlib_main_t * vm,
 }
 
 
-VLIB_REGISTER_NODE (l2input_node,static) = {
+VLIB_REGISTER_NODE (l2input_node) = {
   .function = l2input_node_fn,
   .name = "l2-input",
   .vector_size = sizeof (u32),
@@ -536,6 +524,7 @@ u32 set_int_l2_mode (vlib_main_t * vm,
   l2_flood_member_t member;
   u64 mac;
   i32 l2_if_adjust = 0; 
+  u32 slot;
 
   hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
 
@@ -554,16 +543,15 @@ u32 set_int_l2_mode (vlib_main_t * vm,
       bd_config->bvi_sw_if_index = ~0;
       config->bvi = 0;
 
-      // restore output node
-      hi->output_node_index = bd_config->saved_bvi_output_node_index;
-
       // delete the l2fib entry for the bvi interface
       mac = *((u64 *)hi->hw_address);
       l2fib_del_entry (mac, config->bd_index);
 
-      // Let interface-output node know that the output node index changed
-      vnet_per_buffer_interface_output_hw_interface_add_del(
-	  vnet_main, hi->hw_if_index, 0);
+      // Make loop output node send packet back to ethernet-input node
+      slot = vlib_node_add_named_next_with_slot (
+	  vm, hi->tx_node_index, "ethernet-input",
+	  VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
+      ASSERT (slot == VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
     } 
     l2_if_adjust--;
   } else if (config->xconnect) {
@@ -636,10 +624,6 @@ u32 set_int_l2_mode (vlib_main_t * vm,
         bd_config->bvi_sw_if_index = sw_if_index;
         config->bvi = 1;
 
-        // make BVI outputs go to l2-input
-        bd_config->saved_bvi_output_node_index = hi->output_node_index;
-        hi->output_node_index = l2input_node.index;
-
         // create the l2fib entry for the bvi interface
         mac = *((u64 *)hi->hw_address);
         l2fib_add_entry (mac, bd_index, sw_if_index, 1, 0, 1);  // static + bvi
@@ -647,10 +631,11 @@ u32 set_int_l2_mode (vlib_main_t * vm,
         // Disable learning by default. no use since l2fib entry is static.
         config->feature_bitmap &= ~L2INPUT_FEAT_LEARN;
 
-	// Let interface-output node know that the output node index changed
-        // so output can be sent via BVI to BD
-	vnet_per_buffer_interface_output_hw_interface_add_del(
-	    vnet_main, hi->hw_if_index, 0);
+	// Make loop output node send packet to l2-input node
+	slot = vlib_node_add_named_next_with_slot (
+	    vm, hi->tx_node_index, "l2-input",
+	    VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
+	ASSERT (slot == VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
       }
 
       // Add interface to bridge-domain flood vector
