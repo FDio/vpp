@@ -86,35 +86,6 @@ l2_to_bvi (vlib_main_t * vlib_main,
   return TO_BVI_ERR_OK;
 }
 
-
-// Prepare a packet that was sent to the BVI interface for L2 processing.
-
-static_always_inline void 
-bvi_to_l2 (vlib_main_t * vlib_main,
-           vnet_main_t * vnet_main,
-           u32 cpu_index,
-           vlib_buffer_t * b0,
-           u32 bvi_sw_if_index)
-{
-  // Set the input interface to be the BVI interface
-  vnet_buffer(b0)->sw_if_index[VLIB_RX] = bvi_sw_if_index;
-  vnet_buffer(b0)->sw_if_index[VLIB_TX] = ~0;
-
-  // Update l2_len in packet which is expected by l2 path, 
-  // including l2 tag push/pop code on output
-  vnet_update_l2_len(b0);
-
-  // increment BVI TX interface stat
-  vlib_increment_combined_counter 
-      (vnet_main->interface_main.combined_sw_if_counters
-       + VNET_INTERFACE_COUNTER_TX,
-       cpu_index,
-       bvi_sw_if_index,
-       1,
-       vlib_buffer_length_in_chain (vlib_main, b0));
-}
-
-
 void
 l2bvi_register_input_type (vlib_main_t * vm,
                            ethernet_type_t type,

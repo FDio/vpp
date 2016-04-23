@@ -59,9 +59,6 @@ typedef struct {
   // set to ~0 if there is no BVI
   u32 bvi_sw_if_index;
 
-  // output node index for bvi interface before it was changed to l2-input
-  u32 saved_bvi_output_node_index;
-
   // bridge domain id, not to be confused with bd_index
   u32 bd_id;
 
