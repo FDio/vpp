@@ -851,13 +851,14 @@ mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
       if (!eif)
         return clib_error_return (0, "not supported");
 
-      if (mtu < ETHERNET_MIN_PACKET_BYTES)
+      if (mtu < hi->min_supported_packet_bytes)
 	return clib_error_return (0, "Invalid mtu (%d): "
 				  "must be >= min pkt bytes (%d)", mtu,
-				  hi->min_packet_bytes);
+				  hi->min_supported_packet_bytes);
 
-      if (mtu > ETHERNET_MAX_PACKET_BYTES)
-	return clib_error_return (0, "Invalid mtu (%d): must be <= 9216", mtu);
+      if (mtu > hi->max_supported_packet_bytes)
+	return clib_error_return (0, "Invalid mtu (%d): must be <= (%d)", mtu,
+                                  hi->max_supported_packet_bytes);
 
       if (hi->max_packet_bytes != mtu)
 	{
@@ -873,7 +874,7 @@ mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 
 VLIB_CLI_COMMAND (set_interface_mtu_cmd, static) = {
   .path = "set interface mtu",
-  .short_help = "set interface mtu <64-9216> <intfc>",
+  .short_help = "set interface mtu <value> <intfc>",
   .function = mtu_cmd,
 };
 
