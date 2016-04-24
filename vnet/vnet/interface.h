@@ -292,6 +292,12 @@ typedef struct vnet_hw_interface_t {
   /* Maximum transmit rate for this interface in bits/sec. */
   f64 max_rate_bits_per_sec;
 
+  /* Smallest packet size supported by this interface. */
+  u32 min_supported_packet_bytes;
+
+  /* Largest packet size supported by this interface. */
+  u32 max_supported_packet_bytes;
+
   /* Smallest packet size for this interface. */
   u32 min_packet_bytes;
 

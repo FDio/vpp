@@ -515,39 +515,48 @@ static u32 tapcli_flag_change (vnet_main_t * vnm,
 {
   tapcli_main_t *tm = &tapcli_main;
   tapcli_interface_t *ti;
-  struct ifreq ifr;
-  u32 want_promisc;
 
-  ti = vec_elt_at_index (tm->tapcli_interfaces, hw->dev_instance);
+   ti = vec_elt_at_index (tm->tapcli_interfaces, hw->dev_instance);
 
-  clib_memcpy (&ifr, &ti->ifr, sizeof (ifr));
-
-  /* get flags, modify to bring up interface... */
-  if (ioctl (ti->provision_fd, SIOCGIFFLAGS, &ifr) < 0)
+  if (flags & ETHERNET_INTERFACE_FLAG_MTU)
     {
-      clib_unix_warning ("Couldn't get interface flags for %s", hw->name);
-      return 0;
+      const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
+      tm->mtu_bytes = hw->max_packet_bytes;
+      tm->mtu_buffers = (tm->mtu_bytes + (buffer_size - 1)) / buffer_size;
     }
-
-  want_promisc = (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL) != 0;
-
-  if (want_promisc == ti->is_promisc)
-    return 0;
-
-
-  if (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL)
-    ifr.ifr_flags |= IFF_PROMISC;
-  else
-    ifr.ifr_flags &= ~(IFF_PROMISC);
-
-  /* get flags, modify to bring up interface... */
-  if (ioctl (ti->provision_fd, SIOCSIFFLAGS, &ifr) < 0)
+   else
     {
-      clib_unix_warning ("Couldn't set interface flags for %s", hw->name);
-      return 0;
-    }
+      struct ifreq ifr;
+      u32 want_promisc;
 
-  ti->is_promisc = want_promisc;
+      memcpy (&ifr, &ti->ifr, sizeof (ifr));
+
+      /* get flags, modify to bring up interface... */
+      if (ioctl (ti->provision_fd, SIOCGIFFLAGS, &ifr) < 0)
+        {
+          clib_unix_warning ("Couldn't get interface flags for %s", hw->name);
+          return 0;
+        }
+
+      want_promisc = (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL) != 0;
+
+      if (want_promisc == ti->is_promisc)
+        return 0;
+
+      if (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL)
+        ifr.ifr_flags |= IFF_PROMISC;
+      else
+        ifr.ifr_flags &= ~(IFF_PROMISC);
+
+      /* get flags, modify to bring up interface... */
+      if (ioctl (ti->provision_fd, SIOCSIFFLAGS, &ifr) < 0)
+        {
+          clib_unix_warning ("Couldn't set interface flags for %s", hw->name);
+          return 0;
+        }
+
+      ti->is_promisc = want_promisc;
+    }
 
   return 0;
 }
@@ -788,7 +797,9 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
   {
     vnet_hw_interface_t * hw;
     hw = vnet_get_hw_interface (tm->vnet_main, ti->hw_if_index);
-    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = tm->mtu_bytes - sizeof(ethernet_header_t);
+    hw->min_supported_packet_bytes = TAP_MTU_MIN;
+    hw->max_supported_packet_bytes = TAP_MTU_MAX;
+    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = hw->max_supported_packet_bytes - sizeof(ethernet_header_t);
     ti->sw_if_index = hw->sw_if_index;
     if (sw_if_indexp)
       *sw_if_indexp = hw->sw_if_index;
@@ -1149,7 +1160,9 @@ tap_connect_command_fn (vlib_main_t * vm,
     vnet_hw_interface_t * hw;
     hw = vnet_get_hw_interface (tm->vnet_main, ti->hw_if_index);
     ti->sw_if_index = hw->sw_if_index;
-    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = tm->mtu_bytes - sizeof(ethernet_header_t);
+    hw->min_supported_packet_bytes = TAP_MTU_MIN;
+    hw->max_supported_packet_bytes = TAP_MTU_MAX;
+    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = hw->max_supported_packet_bytes - sizeof(ethernet_header_t);
   }
 
   ti->active = 1;
@@ -1187,7 +1200,7 @@ tapcli_init (vlib_main_t * vm)
   tm->vlib_main = vm;
   tm->vnet_main = vnet_get_main();
   tm->unix_main = &unix_main;
-  tm->mtu_bytes = 4096 + 256;
+  tm->mtu_bytes = TAP_MTU_DEFAULT;
   tm->tapcli_interface_index_by_sw_if_index = hash_create (0, sizeof(uword));
   tm->tapcli_interface_index_by_unix_fd = hash_create (0, sizeof (uword));
   tm->rx_buffers = 0;
