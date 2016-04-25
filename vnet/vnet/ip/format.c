@@ -107,13 +107,3 @@ uword unformat_tcp_udp_port (unformat_input_t * input, va_list * args)
   *result = port;
   return 1;
 }
-
-uword unformat_ip46_address (unformat_input_t * input, va_list * args)
-{
-  ip46_address_t * a = va_arg (*args, ip46_address_t *);
-  u32 is_ip6 = va_arg (*args, u32);
-  if (is_ip6)
-    return unformat_user (input, unformat_ip6_address, &a->ip6);
-  else
-    return unformat_user (input, unformat_ip4_address, &a->ip4);
-}

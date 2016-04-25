@@ -40,6 +40,9 @@
 #ifndef included_ip6_packet_h
 #define included_ip6_packet_h
 
+#include <vnet/ip/tcp_packet.h>
+#include <vnet/ip/ip4_packet.h>
+
 typedef union {
   u8 as_u8[16];
   u16 as_u16[8];
@@ -54,6 +57,17 @@ typedef CLIB_PACKED (struct {
   ip6_address_t ip6_addr;
   u32 fib_index;
 }) ip6_address_fib_t;
+
+typedef CLIB_PACKED (union {
+  struct {
+    u32 pad[3];
+    ip4_address_t ip4;
+  };
+  ip6_address_t ip6;
+}) ip46_address_t;
+#define ip46_address_is_ip4(ip46) (((ip46)->pad[0] | (ip46)->pad[1] | (ip46)->pad[2]) == 0)
+#define ip46_address_mask_ip4(ip46) ((ip46)->pad[0] = (ip46)->pad[1] = (ip46)->pad[2] = 0)
+#define ip46_address_set_ip4(ip46, ip) (ip46_address_mask_ip4(ip46), (ip46)->ip4 = (ip)[0])
 
 always_inline void
 ip6_addr_fib_init (ip6_address_fib_t * addr_fib, ip6_address_t * address,

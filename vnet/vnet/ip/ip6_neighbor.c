@@ -36,7 +36,11 @@ typedef struct {
 typedef struct {
   ip6_neighbor_key_t key;
   u8 link_layer_address[8];
+  u16 flags;
+#define IP6_NEIGHBOR_FLAG_STATIC (1 << 0)
+#define IP6_NEIGHBOR_FLAG_GLEAN  (2 << 0)
   u64 cpu_time_last_updated;
+  u32 *adjacencies;
 } ip6_neighbor_t;
 
 /* advertised prefix option */ 
@@ -200,17 +204,26 @@ static u8 * format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
   ip6_neighbor_t * n = va_arg (*va, ip6_neighbor_t *);
   vnet_main_t * vnm = vnet_get_main();
   vnet_sw_interface_t * si;
+  u8 * flags = 0;
 
   if (! n)
-    return format (s, "%=12s%=20s%=20s%=40s", "Time", "Address", "Link layer", "Interface");
+    return format (s, "%=12s%=20s%=6s%=20s%=40s", "Time", "Address", "Flags", "Link layer", "Interface");
+
+  if (n->flags & IP6_NEIGHBOR_FLAG_GLEAN)
+    flags = format(flags, "G");
+
+  if (n->flags & IP6_NEIGHBOR_FLAG_STATIC)
+    flags = format(flags, "S");
 
   si = vnet_get_sw_interface (vnm, n->key.sw_if_index);
-  s = format (s, "%=12U%=20U%=20U%=40U",
+  s = format (s, "%=12U%=20U%=6s%=20U%=40U",
 	      format_vlib_cpu_time, vm, n->cpu_time_last_updated,
 	      format_ip6_address, &n->key.ip6_address,
+	      flags ? (char *)flags : "",
 	      format_ethernet_address, n->link_layer_address,
 	      format_vnet_sw_interface_name, vnm, si);
 
+  vec_free(flags);
   return s;
 }
 
@@ -278,7 +291,7 @@ static void unset_random_neighbor_entry (void)
 
 typedef struct {
   u8 is_add;
-  u8 pad;
+  u8 is_static;
   u8 link_layer_address[6];
   u32 sw_if_index;
   ip6_address_t addr;
@@ -293,13 +306,14 @@ static void set_unset_ip6_neighbor_rpc
  u32 sw_if_index,
  ip6_address_t * a,
  u8 *link_layer_addreess,
- int is_add)
+ int is_add, int is_static)
 {
   ip6_neighbor_set_unset_rpc_args_t args;
   void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
   
   args.sw_if_index = sw_if_index;
   args.is_add = is_add;
+  args.is_static = is_static;
   clib_memcpy (&args.addr, a, sizeof (*a));
   clib_memcpy (args.link_layer_address, link_layer_addreess, 6);
   
@@ -313,22 +327,27 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
                                 u32 sw_if_index,
                                 ip6_address_t * a,
                                 u8 * link_layer_address,
-                                uword n_bytes_link_layer_address)
+                                uword n_bytes_link_layer_address,
+                                int is_static)
 {
   vnet_main_t * vnm = vnet_get_main();
   ip6_neighbor_main_t * nm = &ip6_neighbor_main;
   ip6_neighbor_key_t k;
-  ip6_neighbor_t * n;
+  ip6_neighbor_t * n = 0;
   ip6_main_t * im = &ip6_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
+  int make_new_nd_cache_entry=1;
   uword * p;
   u32 next_index;
+  u32 adj_index;
+  ip_adjacency_t *existing_adj;
   pending_resolution_t * pr;
 
 #if DPDK > 0
   if (os_get_cpu_number())
     {
       set_unset_ip6_neighbor_rpc (vm, sw_if_index, a, link_layer_address,
-                                  1 /* set new neighbor */);
+                                  1 /* set new neighbor */, is_static);
       return 0;
     }
 #endif
@@ -340,44 +359,80 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
   vlib_worker_thread_barrier_sync (vm);
 
   p = mhash_get (&nm->neighbor_index_by_key, &k);
-  if (p)
+  if (p) {
     n = pool_elt_at_index (nm->neighbor_pool, p[0]);
-  else
+    /* Refuse to over-write static neighbor entry. */
+    if (!is_static &&
+        (n->flags & IP6_NEIGHBOR_FLAG_STATIC))
+      return -2;
+    make_new_nd_cache_entry = 0;
+  }
+
+  /* Note: always install the route. It might have been deleted */
+  ip6_add_del_route_args_t args;
+  ip_adjacency_t adj;
+
+  memset (&adj, 0, sizeof(adj));
+  adj.lookup_next_index = IP_LOOKUP_NEXT_REWRITE;
+  adj.explicit_fib_index = ~0;
+
+  vnet_rewrite_for_sw_interface
+  (vnm,
+   VNET_L3_PACKET_TYPE_IP6,
+   sw_if_index,
+   ip6_rewrite_node.index,
+   link_layer_address,
+   &adj.rewrite_header,
+   sizeof (adj.rewrite_data));
+
+  /* result of this lookup should be next-hop adjacency */
+  adj_index = ip6_fib_lookup_with_table (im, im->fib_index_by_sw_if_index[sw_if_index], a);
+  existing_adj = ip_get_adjacency(lm, adj_index);
+
+  if (existing_adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+      existing_adj->arp.next_hop.ip6.as_u64[0] == a->as_u64[0] &&
+      existing_adj->arp.next_hop.ip6.as_u64[1] == a->as_u64[1])
+  {
+    u32 * ai;
+    u32 * adjs = vec_dup(n->adjacencies);
+    /* Update all adj assigned to this arp entry */
+    vec_foreach(ai, adjs)
     {
-      ip6_add_del_route_args_t args;
-      ip_adjacency_t adj;
-
-      memset (&adj, 0, sizeof(adj));
-      adj.lookup_next_index = IP_LOOKUP_NEXT_REWRITE;
-      adj.explicit_fib_index = ~0;
-
-      vnet_rewrite_for_sw_interface
-	(vnm,
-	 VNET_L3_PACKET_TYPE_IP6,
-	 sw_if_index,
-	 ip6_rewrite_node.index,
-	 link_layer_address,
-	 &adj.rewrite_header,
-	 sizeof (adj.rewrite_data));
-
-      args.table_index_or_table_id = im->fib_index_by_sw_if_index[sw_if_index];
-      args.flags = IP6_ROUTE_FLAG_FIB_INDEX | IP6_ROUTE_FLAG_ADD | IP6_ROUTE_FLAG_NEIGHBOR;
-      args.dst_address = a[0];
-      args.dst_address_length = 128;
-      args.adj_index = ~0;
-      args.add_adj = &adj;
-      args.n_add_adj = 1;
-
-      ip6_add_del_route (im, &args);
-      pool_get (nm->neighbor_pool, n);
-      mhash_set (&nm->neighbor_index_by_key, &k, n - nm->neighbor_pool,
-		 /* old value */ 0);
-      n->key = k;
+      int i;
+      ip_adjacency_t * uadj = ip_get_adjacency(lm, *ai);
+      for (i = 0; i < uadj->n_adj; i++)
+        if (uadj[i].lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+            uadj[i].arp.next_hop.ip6.as_u64[0] == a->as_u64[0] &&
+            uadj[i].arp.next_hop.ip6.as_u64[1] == a->as_u64[1])
+          ip_update_adjacency (lm, *ai + i, &adj);
     }
+    vec_free(adjs);
+  }
+  else
+  {
+    /* create new adj */
+    args.table_index_or_table_id = im->fib_index_by_sw_if_index[sw_if_index];
+    args.flags = IP6_ROUTE_FLAG_FIB_INDEX | IP6_ROUTE_FLAG_ADD | IP6_ROUTE_FLAG_NEIGHBOR;
+    args.dst_address = a[0];
+    args.dst_address_length = 128;
+    args.adj_index = ~0;
+    args.add_adj = &adj;
+    args.n_add_adj = 1;
+    ip6_add_del_route (im, &args);
+  }
+
+  if (make_new_nd_cache_entry) {
+    pool_get (nm->neighbor_pool, n);
+    mhash_set (&nm->neighbor_index_by_key, &k, n - nm->neighbor_pool,
+               /* old value */ 0);
+    n->key = k;
+  }
 
   /* Update time stamp and ethernet address. */
   clib_memcpy (n->link_layer_address, link_layer_address, n_bytes_link_layer_address);
   n->cpu_time_last_updated = clib_cpu_time_now ();
+  if (is_static)
+    n->flags |= IP6_NEIGHBOR_FLAG_STATIC;
 
   /* Customer(s) waiting for this address to be resolved? */
   p = mhash_get (&nm->pending_resolutions_by_address, a);
@@ -422,7 +477,7 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
   if (os_get_cpu_number())
     {
       set_unset_ip6_neighbor_rpc (vm, sw_if_index, a, link_layer_address,
-                                  0 /* unset */);
+                                  0 /* unset */, 0);
       return 0;
     }
 #endif
@@ -458,6 +513,56 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
   return rv;
 }
 
+
+u32
+vnet_ip6_neighbor_glean_add(u32 fib_index, void * next_hop_arg)
+{
+  ip6_neighbor_main_t * nm = &ip6_neighbor_main;
+  ip6_main_t * im = &ip6_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
+  ip6_address_t * next_hop = next_hop_arg;
+  ip_adjacency_t add_adj, *adj;
+  ip6_add_del_route_args_t args;
+  ip6_neighbor_t * n;
+  ip6_neighbor_key_t k;
+  u32 adj_index;
+
+  adj_index = ip6_fib_lookup_with_table(im, fib_index, next_hop);
+  adj = ip_get_adjacency(lm, adj_index);
+
+  if (!adj || adj->lookup_next_index != IP_LOOKUP_NEXT_ARP)
+    return ~0;
+
+  if (adj->arp.next_hop.ip6.as_u64[0] ||
+      adj->arp.next_hop.ip6.as_u64[1])
+    return adj_index;
+
+  k.sw_if_index = adj->rewrite_header.sw_if_index;
+  k.ip6_address = *next_hop;
+  k.pad = 0;
+  if (mhash_get (&nm->neighbor_index_by_key, &k))
+    return adj_index;
+
+  pool_get (nm->neighbor_pool, n);
+  mhash_set (&nm->neighbor_index_by_key, &k, n - nm->neighbor_pool, /* old value */ 0);
+  n->key = k;
+  n->cpu_time_last_updated = clib_cpu_time_now ();
+  n->flags = IP6_NEIGHBOR_FLAG_GLEAN;
+
+  memset(&args, 0, sizeof(args));
+  memcpy(&add_adj, adj, sizeof(add_adj));
+  add_adj.arp.next_hop.ip6 = *next_hop; /* install neighbor /128 route */
+  args.table_index_or_table_id = fib_index;
+  args.flags = IP6_ROUTE_FLAG_FIB_INDEX | IP6_ROUTE_FLAG_ADD | IP6_ROUTE_FLAG_NEIGHBOR;
+  args.dst_address = *next_hop;
+  args.dst_address_length = 128;
+  args.adj_index = ~0;
+  args.add_adj = &add_adj;
+  args.n_add_adj = 1;
+  ip6_add_del_route (im, &args);
+  return ip6_fib_lookup_with_table (im, fib_index, next_hop);
+}
+
 #if DPDK > 0
 static void ip6_neighbor_set_unset_rpc_callback 
 ( ip6_neighbor_set_unset_rpc_args_t * a)
@@ -465,7 +570,7 @@ static void ip6_neighbor_set_unset_rpc_callback
   vlib_main_t * vm = vlib_get_main();
   if (a->is_add) 
       vnet_set_ip6_ethernet_neighbor (vm, a->sw_if_index, &a->addr, 
-                                      a->link_layer_address, 6);
+                                      a->link_layer_address, 6, a->is_static);
   else
     vnet_unset_ip6_ethernet_neighbor (vm, a->sw_if_index, &a->addr, 
                                       a->link_layer_address, 6);
@@ -530,6 +635,7 @@ set_ip6_neighbor (vlib_main_t * vm,
   u8 mac_address[6];
   int addr_valid = 0;
   int is_del = 0;
+  int is_static = 0;
   u32 sw_if_index;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) 
@@ -543,6 +649,8 @@ set_ip6_neighbor (vlib_main_t * vm,
 
       else if (unformat (input, "delete") || unformat (input, "del"))
         is_del = 1;
+      else if (unformat (input, "static"))
+        is_static = 1;
       else
         break;
     }
@@ -552,7 +660,7 @@ set_ip6_neighbor (vlib_main_t * vm,
   
   if (!is_del)
     vnet_set_ip6_ethernet_neighbor (vm, sw_if_index, &addr,
-                                    mac_address, sizeof(mac_address));
+                                    mac_address, sizeof(mac_address), is_static);
   else
     vnet_unset_ip6_ethernet_neighbor (vm, sw_if_index, &addr,
                                       mac_address, sizeof(mac_address));
@@ -562,7 +670,7 @@ set_ip6_neighbor (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_ip6_neighbor_command, static) = {
   .path = "set ip6 neighbor",
   .function = set_ip6_neighbor,
-  .short_help = "set ip6 neighbor [del] <intfc> <ip6-address> <mac-address>",
+  .short_help = "set ip6 neighbor [del] <intfc> <ip6-address> <mac-address> [static]",
 };
 
 typedef enum {
@@ -666,7 +774,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
               vnet_set_ip6_ethernet_neighbor (
                   vm, sw_if_index0,
                   is_solicitation ? &ip0->src_address : &h0->target_address,
-                  o0->ethernet_address, sizeof (o0->ethernet_address));
+                  o0->ethernet_address, sizeof (o0->ethernet_address), 0);
             }
 
 	  if (is_solicitation && error0 == ICMP6_ERROR_NONE)
@@ -931,7 +1039,7 @@ icmp6_router_solicitation(vlib_main_t * vm,
               vnet_set_ip6_ethernet_neighbor (vm, sw_if_index0,
                                               &ip0->src_address,
                                               o0->ethernet_address,
-                                              sizeof (o0->ethernet_address));
+                                              sizeof (o0->ethernet_address), 0);
           }
 	      
 	  /* default is to drop */
@@ -3072,10 +3180,87 @@ clib_error_t *ip6_set_neighbor_limit (u32 neighbor_limit)
   return 0;
 }
 
+
+static void
+ip6_neighbor_entry_del_adj(ip6_neighbor_t *n, u32 adj_index)
+{
+  int done = 0;
+  int i;
+  while (!done)
+    {
+      vec_foreach_index(i, n->adjacencies)
+        if (vec_elt(n->adjacencies, i) == adj_index)
+          {
+            vec_del1(n->adjacencies, i);
+            continue;
+          }
+      done = 1;
+    }
+}
+
+static void
+ip6_neighbor_entry_add_adj(ip6_neighbor_t *n, u32 adj_index)
+{
+  int i;
+  vec_foreach_index(i, n->adjacencies)
+    if (vec_elt(n->adjacencies, i) == adj_index)
+      return;
+  vec_add1(n->adjacencies, adj_index);
+}
+
+static void
+ip6_neighbor_add_del_adj_cb (struct ip_lookup_main_t * lm,
+                    u32 adj_index,
+                    ip_adjacency_t * adj,
+                    u32 is_del)
+{
+  ip6_neighbor_main_t * nm = &ip6_neighbor_main;
+  ip6_neighbor_key_t k;
+  ip6_neighbor_t *n = 0;
+  uword * p;
+  u32 ai;
+
+  for(ai = adj->heap_handle; ai < adj->heap_handle + adj->n_adj ; ai++)
+    {
+      adj = ip_get_adjacency (lm, ai);
+      if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+          (adj->arp.next_hop.ip6.as_u64[0] || adj->arp.next_hop.ip6.as_u64[1]))
+        {
+          k.sw_if_index = adj->rewrite_header.sw_if_index;
+          k.ip6_address.as_u64[0] = adj->arp.next_hop.ip6.as_u64[0];
+          k.ip6_address.as_u64[1] = adj->arp.next_hop.ip6.as_u64[1];
+          k.pad = 0;
+          p = mhash_get (&nm->neighbor_index_by_key, &k);
+          if (p)
+            n = pool_elt_at_index (nm->neighbor_pool, p[0]);
+        }
+      else
+        continue;
+
+      if (is_del)
+        {
+          if (!n)
+            clib_warning("Adjacency contains unknown ND next hop %U (del)",
+                         format_ip46_address, &adj->arp.next_hop);
+          else
+            ip6_neighbor_entry_del_adj(n, adj->heap_handle);
+        }
+      else /* add */
+        {
+          if (!n)
+            clib_warning("Adjacency contains unknown ND next hop %U (add)",
+                         format_ip46_address, &adj->arp.next_hop);
+          else
+            ip6_neighbor_entry_add_adj(n, adj->heap_handle);
+        }
+    }
+}
+
 static clib_error_t * ip6_neighbor_init (vlib_main_t * vm)
 {
   ip6_neighbor_main_t * nm = &ip6_neighbor_main;
   ip6_main_t * im = &ip6_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
  
   mhash_init (&nm->neighbor_index_by_key,
 	      /* value size */ sizeof (uword),
@@ -3110,6 +3295,8 @@ static clib_error_t * ip6_neighbor_init (vlib_main_t * vm)
   vec_validate_init_empty 
       (im->discover_neighbor_next_index_by_hw_if_index, 32, 0 /* drop */);
 #endif
+
+  ip_register_add_del_adjacency_callback(lm, ip6_neighbor_add_del_adj_cb);
 
   return 0;
 }

@@ -353,14 +353,29 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
           kv.key[2] = ((u64)((fib - im->fibs))<<32) | 128;
 
           if (BV(clib_bihash_search)(&im->ip6_lookup_table, &kv, &value) < 0)
+          {
+            ip_adjacency_t * adj;
+            nh_adj_index = ip6_fib_lookup_with_table (im, fib_index, next_hop);
+            adj = ip_get_adjacency (lm, nh_adj_index);
+            /* if ND interface adjacencty is present, we need to
+                             install ND adjaceny for specific next hop */
+            if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+                adj->arp.next_hop.ip6.as_u64[0] == 0 &&
+                adj->arp.next_hop.ip6.as_u64[1] == 0)
+            {
+              nh_adj_index = vnet_ip6_neighbor_glean_add(fib_index, next_hop);
+            }
+            else
             {
               vnm->api_errno = VNET_API_ERROR_UNKNOWN_DESTINATION;
               error = clib_error_return (0, "next-hop %U/128 not in FIB",
                                          format_ip6_address, next_hop);
               goto done;
             }
-          
-          nh_adj_index = value.value;
+          }
+          else
+            nh_adj_index = value.value;
+
         }
     }
   else
@@ -423,6 +438,28 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
                                  dst_address_length);
       goto done;
     }
+
+  /* Destination is not known and default weight is set so add route
+     to existing non-multipath adjacency */
+  if (dst_adj_index == ~0 && next_hop_weight == 1 && next_hop_sw_if_index == ~0)
+  {
+    /* create new adjacency */
+    ip6_add_del_route_args_t a;
+    a.table_index_or_table_id = fib_index;
+    a.flags = ((is_del ? IP6_ROUTE_FLAG_DEL : IP6_ROUTE_FLAG_ADD)
+        | IP6_ROUTE_FLAG_FIB_INDEX
+        | IP6_ROUTE_FLAG_KEEP_OLD_ADJACENCY
+        | (flags & (IP6_ROUTE_FLAG_NO_REDISTRIBUTE
+            | IP6_ROUTE_FLAG_NOT_LAST_IN_GROUP)));
+    a.dst_address = dst_address[0];
+    a.dst_address_length = dst_address_length;
+    a.adj_index = nh_adj_index;
+    a.add_adj = 0;
+    a.n_add_adj = 0;
+
+    ip6_add_del_route (im, &a);
+    goto done;
+  }
 
   old_mp_adj_index = dst_adj ? dst_adj->heap_handle : ~0;
 
@@ -872,6 +909,8 @@ void ip6_adjacency_set_interface_route (vnet_main_t * vnm,
       n = IP_LOOKUP_NEXT_ARP;
       node_index = ip6_discover_neighbor_node.index;
       adj->if_address_index = if_address_index;
+      adj->arp.next_hop.ip6.as_u64[0] = 0;
+      adj->arp.next_hop.ip6.as_u64[1] = 0;
   }
   else
     {
@@ -1839,6 +1878,12 @@ ip6_discover_neighbor (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 
 	  adj0 = ip_get_adjacency (lm, adj_index0);
+
+	  if (adj0->arp.next_hop.ip6.as_u64[0] ||
+	      adj0->arp.next_hop.ip6.as_u64[1]) {
+	    ip0->dst_address.as_u64[0] = adj0->arp.next_hop.ip6.as_u64[0];
+	    ip0->dst_address.as_u64[1] = adj0->arp.next_hop.ip6.as_u64[1];
+	  }
 
 	  a0 = hash_seeds[0];
 	  b0 = hash_seeds[1];
