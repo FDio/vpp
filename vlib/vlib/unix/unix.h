@@ -41,6 +41,7 @@
 #define included_unix_unix_h
 
 #include <vppinfra/socket.h>
+#include <termios.h>
 
 struct unix_file;
 typedef clib_error_t * (unix_file_function_t) (struct unix_file * f);
@@ -102,10 +103,15 @@ typedef struct {
   /* CLI log file. GIGO. */
   u8 *log_filename;
   int log_fd;
-  /* Don't put telnet connections into character mode */
+  /* Don't put CLI connections into character mode */
   int cli_line_mode;
+
+  /* Maximum amount of command line history to keep per session */
   u32 cli_history_limit;
-  
+
+  /* Store the original state of stdin when it's a tty */
+  struct termios tio_stdin;
+  int tio_isset;
 } unix_main_t;
 
 /* Global main structure. */
