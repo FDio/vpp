@@ -1216,7 +1216,8 @@ vhost_user_intfc_tx (vlib_main_t * vm,
         error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
         goto done;
       }
-      CLIB_PREFETCH(buffer_addr, clib_min(rxvq->desc[desc_current].len, 500), STORE);
+      CLIB_PREFETCH(buffer_addr, clib_min(rxvq->desc[desc_current].len,
+	4*CLIB_CACHE_LINE_BYTES), STORE);
 
       virtio_net_hdr_mrg_rxbuf_t * hdr = (virtio_net_hdr_mrg_rxbuf_t *) buffer_addr;
       hdr->hdr.flags = 0;
