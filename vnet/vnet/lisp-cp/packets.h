@@ -48,7 +48,7 @@ always_inline void *
 vlib_buffer_push_uninit (vlib_buffer_t *b, u8 size)
 {
   /* XXX should make sure there's enough space! */
-  ASSERT (b->current_data > size);
+  ASSERT (b->current_data >= size);
   b->current_data -= size;
   b->current_length += size;
 

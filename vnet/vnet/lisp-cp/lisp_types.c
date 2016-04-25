@@ -266,6 +266,18 @@ ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2)
   return res;
 }
 
+void
+ip_address_copy (ip_address_t * dst , ip_address_t * src)
+{
+  clib_memcpy (dst, src, sizeof (ip_address_t));
+}
+
+void
+ip_address_copy_addr (void * dst , ip_address_t * src)
+{
+  clib_memcpy (dst, src, ip_address_size(src));
+}
+
 void *
 ip_prefix_cast (gid_address_t * a)
 {

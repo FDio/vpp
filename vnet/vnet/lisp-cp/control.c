@@ -151,6 +151,8 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
           ai->vni = 0; /* default for now, pass vni as parameter */
           ai->table_id = table_id[0];
           vnet_lisp_gpe_add_del_iface (ai, 0);
+
+          hash_set(lcm->dp_if_refcount_by_vni, 0 /* table_id */, 1);
         }
       else
         {
@@ -873,7 +875,7 @@ format_lisp_cp_lookup_trace (u8 * s, va_list * args)
   lisp_cp_lookup_trace_t * t = va_arg (*args, lisp_cp_lookup_trace_t *);
 
   s = format (s, "LISP-CP-LOOKUP: map-resolver: %U destination eid %U",
-              format_ip4_address, &t->map_resolver_ip, format_gid_address,
+              format_ip_address, &t->map_resolver_ip, format_gid_address,
               &t->dst_eid);
   return s;
 }
@@ -896,9 +898,12 @@ get_local_iface_ip_for_dst (lisp_cp_main_t *lcm, ip_address_t * dst,
   u32 adj_index;
   ip_adjacency_t * adj;
   ip_interface_address_t * ia = 0;
-  ip_lookup_main_t * lm = &lcm->im4->lookup_main;
+  ip_lookup_main_t * lm;
   ip4_address_t * l4 = 0;
   ip6_address_t * l6 = 0;
+
+  lm = ip_addr_version (dst) == IP4 ?
+      &lcm->im4->lookup_main : &lcm->im6->lookup_main;
 
   adj_index = ip_fib_lookup_with_table (lcm, 0, dst);
   adj = ip_get_adjacency (lm, adj_index);
@@ -1331,6 +1336,7 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
   u32 i, minp = ~0;
   locator_t * dl = 0;
   uword * feip = 0, * tidp;
+  fwd_entry_t* fe;
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
 
   memset (a, 0, sizeof(*a));
@@ -1407,15 +1413,14 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
     }
   a->table_id = tidp[0];
 
+  /* TODO remove */
   u8 ipver = ip_prefix_version(&gid_address_ippref(&a->deid));
   a->decap_next_index = (ipver == IP4) ?
           LISP_GPE_INPUT_NEXT_IP4_INPUT : LISP_GPE_INPUT_NEXT_IP6_INPUT;
 
-  /* XXX tunnels work only with IP4 now */
   vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
 
   /* add tunnel to fwd entry table XXX check return value from DP insertion */
-  fwd_entry_t* fe;
   pool_get (lcm->fwd_entry_pool, fe);
   fe->dst_loc = a->dlocator;
   fe->src_loc = a->slocator;

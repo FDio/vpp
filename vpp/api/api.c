@@ -4860,7 +4860,6 @@ send_lisp_gpe_tunnel_details (lisp_gpe_tunnel_t *tunnel,
 {
     vl_api_lisp_gpe_tunnel_details_t *rmp;
     lisp_gpe_main_t * lgm = &lisp_gpe_main;
-    ip4_address_t *ip4 = NULL;
 
     rmp = vl_msg_api_alloc (sizeof (*rmp));
     memset (rmp, 0, sizeof (*rmp));
@@ -4868,12 +4867,9 @@ send_lisp_gpe_tunnel_details (lisp_gpe_tunnel_t *tunnel,
 
     rmp->tunnels = tunnel - lgm->tunnels;
 
-    /*list_gpe_tunnel now support only IPv4*/
-    rmp->is_ipv6 = 0;
-    ip4 = &tunnel->src;
-    clib_memcpy(rmp->source_ip, ip4, sizeof(*ip4));
-    ip4 = &tunnel->dst;
-    clib_memcpy(rmp->destination_ip, ip4, sizeof(*ip4));
+    rmp->is_ipv6 = ip_addr_version(&tunnel->src) == IP6 ? 1 : 0;
+    ip_address_copy_addr(rmp->source_ip, &tunnel->src);
+    ip_address_copy_addr(rmp->destination_ip, &tunnel->dst);
 
     rmp->encap_fib_id = htonl(tunnel->encap_fib_index);
     rmp->decap_fib_id = htonl(tunnel->decap_fib_index);

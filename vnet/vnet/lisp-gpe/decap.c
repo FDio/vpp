@@ -48,7 +48,7 @@ format_lisp_gpe_rx_trace (u8 * s, va_list * args)
 }
 
 static u32
-next_proto_to_next_index[LISP_GPE_NEXT_PROTOS] ={
+next_proto_to_next_index[LISP_GPE_NEXT_PROTOS] = {
     LISP_GPE_INPUT_NEXT_DROP,
     LISP_GPE_INPUT_NEXT_IP4_INPUT,
     LISP_GPE_INPUT_NEXT_IP6_INPUT,
@@ -78,8 +78,8 @@ next_protocol_to_next_index (lisp_gpe_header_t * lgh, u8 * next_header)
 }
 
 static uword
-lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-                vlib_frame_t * from_frame)
+lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+                       vlib_frame_t * from_frame, u8 is_v4)
 {
   u32 n_left_from, next_index, * from, * to_next;
   lisp_gpe_tunnel_key_t last_key;
@@ -103,11 +103,11 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
         {
           u32 bi0, bi1;
           vlib_buffer_t * b0, * b1;
-          ip4_udp_lisp_gpe_header_t * iul0, * iul1;
-          u32 next0, next1, error0 = 0, error1 = 0;
+          ip4_udp_lisp_gpe_header_t * iul4_0, * iul4_1;
+          ip6_udp_lisp_gpe_header_t * iul6_0, * iul6_1;
+          lisp_gpe_header_t * lh0, * lh1;
+          u32 next0, next1, error0, error1;
           uword * si0, * si1;
-
-          next0 = next1 = LISP_GPE_INPUT_NEXT_IP4_INPUT;
 
           /* Prefetch next iteration. */
           {
@@ -136,20 +136,45 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
           b1 = vlib_get_buffer (vm, bi1);
 
           /* udp leaves current_data pointing at the lisp header */
-          vlib_buffer_advance (b0, - IP_UDP_HDR_LEN);
-          vlib_buffer_advance (b1, - IP_UDP_HDR_LEN);
+          if (is_v4)
+            {
+              vlib_buffer_advance (
+                  b0, -(word) (sizeof(udp_header_t) + sizeof(ip4_header_t)));
+              vlib_buffer_advance (
+                  b1, -(word) (sizeof(udp_header_t) + sizeof(ip4_header_t)));
 
-          iul0 = vlib_buffer_get_current (b0);
-          iul1 = vlib_buffer_get_current (b1);
+              iul4_0 = vlib_buffer_get_current (b0);
+              iul4_1 = vlib_buffer_get_current (b1);
 
-          /* pop (ip, udp, lisp-gpe) */
-          vlib_buffer_advance (b0, sizeof (*iul0));
-          vlib_buffer_advance (b1, sizeof (*iul1));
+              /* pop (ip, udp, lisp-gpe) */
+              vlib_buffer_advance (b0, sizeof(*iul4_0));
+              vlib_buffer_advance (b1, sizeof(*iul4_1));
+
+              lh0 = &iul4_0->lisp;
+              lh1 = &iul4_1->lisp;
+            }
+          else
+            {
+              vlib_buffer_advance (
+                  b0, -(word) (sizeof(udp_header_t) + sizeof(ip6_header_t)));
+              vlib_buffer_advance (
+                  b1, -(word) (sizeof(udp_header_t) + sizeof(ip6_header_t)));
+
+              iul6_0 = vlib_buffer_get_current (b0);
+              iul6_1 = vlib_buffer_get_current (b1);
+
+              /* pop (ip, udp, lisp-gpe) */
+              vlib_buffer_advance (b0, sizeof(*iul6_0));
+              vlib_buffer_advance (b1, sizeof(*iul6_1));
+
+              lh0 = &iul6_0->lisp;
+              lh1 = &iul6_1->lisp;
+            }
 
           /* determine next_index from lisp-gpe header */
-          next0 = next_protocol_to_next_index (&iul0->lisp,
+          next0 = next_protocol_to_next_index (lh0,
                                                vlib_buffer_get_current (b0));
-          next1 = next_protocol_to_next_index (&iul1->lisp,
+          next1 = next_protocol_to_next_index (lh1,
                                                vlib_buffer_get_current (b1));
 
           /* Required to make the l2 tag push / pop code work on l2 subifs */
@@ -158,8 +183,8 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           /* map iid/vni to lisp-gpe sw_if_index which is used by ipx_input to
            * decide the rx vrf and the input features to be applied */
-          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, iul0->lisp.iid);
-          si1 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, iul1->lisp.iid);
+          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, lh0->iid);
+          si1 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, lh1->iid);
 
           if (si0)
             {
@@ -194,7 +219,7 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
                                                         sizeof(*tr));
               tr->next_index = next0;
               tr->error = error0;
-              tr->h = iul0->lisp;
+              tr->h = lh0[0];
             }
 
           if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
@@ -203,7 +228,7 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
                                                         sizeof(*tr));
               tr->next_index = next1;
               tr->error = error1;
-              tr->h = iul1->lisp;
+              tr->h = lh1[0];
             }
 
           vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
@@ -216,7 +241,9 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
           u32 bi0;
           vlib_buffer_t * b0;
           u32 next0;
-          ip4_udp_lisp_gpe_header_t * iul0;
+          ip4_udp_lisp_gpe_header_t * iul4_0;
+          ip6_udp_lisp_gpe_header_t * iul6_0;
+          lisp_gpe_header_t * lh0;
           u32 error0;
           uword * si0;
 
@@ -230,12 +257,30 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
           b0 = vlib_get_buffer (vm, bi0);
 
           /* udp leaves current_data pointing at the lisp header */
-          vlib_buffer_advance (b0, - IP_UDP_HDR_LEN);
+          if (is_v4)
+            {
+              vlib_buffer_advance (
+                  b0, -(word) (sizeof(udp_header_t) + sizeof(ip4_header_t)));
 
-          iul0 = vlib_buffer_get_current (b0);
+              iul4_0 = vlib_buffer_get_current (b0);
 
-          /* pop (ip, udp, lisp-gpe) */
-          vlib_buffer_advance (b0, sizeof (*iul0));
+              /* pop (ip, udp, lisp-gpe) */
+              vlib_buffer_advance (b0, sizeof(*iul4_0));
+
+              lh0 = &iul4_0->lisp;
+            }
+          else
+            {
+              vlib_buffer_advance (
+                  b0, -(word) (sizeof(udp_header_t) + sizeof(ip6_header_t)));
+
+              iul6_0 = vlib_buffer_get_current (b0);
+
+              /* pop (ip, udp, lisp-gpe) */
+              vlib_buffer_advance (b0, sizeof(*iul6_0));
+
+              lh0 = &iul6_0->lisp;
+            }
 
           /* TODO if security is to be implemented, something similar to RPF,
            * probably we'd like to check that the peer is allowed to send us
@@ -244,7 +289,7 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
            * the packet is one of its locators */
 
           /* determine next_index from lisp-gpe header */
-          next0 = next_protocol_to_next_index (&iul0->lisp,
+          next0 = next_protocol_to_next_index (lh0,
                                                vlib_buffer_get_current (b0));
 
           /* Required to make the l2 tag push / pop code work on l2 subifs */
@@ -252,7 +297,7 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           /* map iid/vni to lisp-gpe sw_if_index which is used by ipx_input to
            * decide the rx vrf and the input features to be applied */
-          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, iul0->lisp.iid);
+          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, lh0->iid);
 
           if (si0)
             {
@@ -275,7 +320,7 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
                                                         sizeof(*tr));
               tr->next_index = next0;
               tr->error = error0;
-              tr->h = iul0->lisp;
+              tr->h = lh0[0];
             }
 
           vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
@@ -284,10 +329,24 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, lisp_gpe_input_node.index,
+  vlib_node_increment_counter (vm, lisp_gpe_ip4_input_node.index,
                                LISP_GPE_ERROR_DECAPSULATED, 
                                pkts_decapsulated);
   return from_frame->n_vectors;
+}
+
+static uword
+lisp_gpe_ip4_input (vlib_main_t * vm, vlib_node_runtime_t * node,
+                    vlib_frame_t * from_frame)
+{
+  return lisp_gpe_input_inline(vm, node, from_frame, 1);
+}
+
+static uword
+lisp_gpe_ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
+                    vlib_frame_t * from_frame)
+{
+  return lisp_gpe_input_inline(vm, node, from_frame, 0);
 }
 
 static char * lisp_gpe_error_strings[] = {
@@ -297,9 +356,9 @@ static char * lisp_gpe_error_strings[] = {
 #undef _
 };
 
-VLIB_REGISTER_NODE (lisp_gpe_input_node) = {
-  .function = lisp_gpe_input,
-  .name = "lisp-gpe-input",
+VLIB_REGISTER_NODE (lisp_gpe_ip4_input_node) = {
+  .function = lisp_gpe_ip4_input,
+  .name = "lisp-gpe-ip4-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
 
@@ -309,7 +368,28 @@ VLIB_REGISTER_NODE (lisp_gpe_input_node) = {
   .n_next_nodes = LISP_GPE_INPUT_N_NEXT,
   .next_nodes = {
 #define _(s,n) [LISP_GPE_INPUT_NEXT_##s] = n,
-    foreach_lisp_gpe_input_next
+    foreach_lisp_gpe_ip_input_next
+#undef _
+  },
+
+  .format_buffer = format_lisp_gpe_header_with_length,
+  .format_trace = format_lisp_gpe_rx_trace,
+  // $$$$ .unformat_buffer = unformat_lisp_gpe_header,
+};
+
+VLIB_REGISTER_NODE (lisp_gpe_ip6_input_node) = {
+  .function = lisp_gpe_ip6_input,
+  .name = "lisp-gpe-ip6-input",
+  /* Takes a vector of packets. */
+  .vector_size = sizeof (u32),
+
+  .n_errors = LISP_GPE_N_ERROR,
+  .error_strings = lisp_gpe_error_strings,
+
+  .n_next_nodes = LISP_GPE_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [LISP_GPE_INPUT_NEXT_##s] = n,
+    foreach_lisp_gpe_ip_input_next
 #undef _
   },
 
