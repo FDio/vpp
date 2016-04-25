@@ -373,6 +373,9 @@ void ip6_adjacency_set_interface_route (vnet_main_t * vnm,
 					u32 sw_if_index,
 					u32 if_address_index);
 
+u32
+vnet_ip6_neighbor_glean_add(u32 fib_index, void * next_hop_arg);
+
 clib_error_t *
 ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index);
 
@@ -395,7 +398,8 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
                                 u32 sw_if_index,
                                 ip6_address_t * a,
                                 u8 * link_layer_address,
-                                uword n_bytes_link_layer_address);
+                                uword n_bytes_link_layer_address,
+                                int is_static);
 int
 vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
                                   u32 sw_if_index,

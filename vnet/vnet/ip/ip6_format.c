@@ -320,3 +320,28 @@ uword unformat_ip6_header (unformat_input_t * input, va_list * args)
 
   return 1;
 }
+
+/* Parse an IP46 address. */
+uword unformat_ip46_address (unformat_input_t * input, va_list * args)
+{
+  ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
+  ip46_type_t type = va_arg (*args, ip46_type_t);
+  if ((type != IP46_TYPE_IP6) &&
+      unformat(input, "%U", unformat_ip4_address, &ip46->ip4)) {
+    ip46_address_mask_ip4(ip46);
+    return 1;
+  } else if ((type != IP46_TYPE_IP4) &&
+      unformat(input, "%U", unformat_ip6_address, &ip46->ip6)) {
+    return 1;
+  }
+  return 0;
+}
+
+/* Format an IP46 address. */
+u8 * format_ip46_address (u8 * s, va_list * args)
+{
+  ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
+  return ip46_address_is_ip4(ip46)?
+      format(s, "%U", format_ip4_address, &ip46->ip4):
+      format(s, "%U", format_ip6_address, &ip46->ip6);
+}

@@ -2213,7 +2213,7 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t *mp, vlib_mai
             rv = vnet_set_ip6_ethernet_neighbor 
                 (vm, ntohl(mp->sw_if_index),
                  (ip6_address_t *)(mp->dst_address), 
-                 mp->mac_address, sizeof (mp->mac_address));
+                 mp->mac_address, sizeof (mp->mac_address), mp->is_static);
         else
             rv = vnet_unset_ip6_ethernet_neighbor 
                 (vm, ntohl(mp->sw_if_index),
