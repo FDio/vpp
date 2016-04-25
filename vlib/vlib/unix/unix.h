@@ -113,6 +113,12 @@ typedef struct {
   /* Suppress the welcome banner at CLI session start */
   int cli_no_banner;
 
+  /* Maximum pager buffer size */
+  u32 cli_pager_buffer_limit;
+
+  /* Suppress the pager */
+  int cli_no_pager;
+
   /* Store the original state of stdin when it's a tty */
   struct termios tio_stdin;
   int tio_isset;
