@@ -47,6 +47,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+/** Default CLI pager limit is not configured in startup.conf */
+#define UNIX_CLI_DEFAULT_PAGER_LIMIT 100000
+
+/** Default CLI history depth if not configured in startup.conf */
+#define UNIX_CLI_DEFAULT_HISTORY 50
+
+
 unix_main_t unix_main;
 
 static clib_error_t *
@@ -299,6 +306,10 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
   unix_main_t * um = &unix_main;
   clib_error_t * error = 0;
 
+  /* Defaults */
+  um->cli_pager_buffer_limit = UNIX_CLI_DEFAULT_PAGER_LIMIT;
+  um->cli_history_limit = UNIX_CLI_DEFAULT_HISTORY;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       char * cli_prompt;
@@ -314,6 +325,11 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
         um->cli_line_mode = 1;
       else if (unformat (input, "cli-no-banner"))
         um->cli_no_banner = 1;
+      else if (unformat (input, "cli-no-pager"))
+        um->cli_no_pager = 1;
+      else if (unformat (input, "cli-pager-buffer-limit %d",
+                                        &um->cli_pager_buffer_limit))
+        ;
       else if (unformat (input, "cli-history-limit %d", &um->cli_history_limit))
         ;
       else if (unformat (input, "full-coredump"))

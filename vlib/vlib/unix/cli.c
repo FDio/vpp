@@ -45,8 +45,10 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <termios.h>
+#include <signal.h>
 #include <unistd.h>
 #include <arpa/telnet.h>
+#include <sys/ioctl.h>
 
 /* ANSI Escape code. */
 #define ESC "\x1b"
@@ -55,20 +57,21 @@
 #define CSI ESC "["
 
 /* ANSI sequences. */
-#define ANSI_CLEAR  CSI "2J" CSI "1;1H"
-#define ANSI_RESET  CSI "0m"
-#define ANSI_BOLD   CSI "1m"
-#define ANSI_DIM    CSI "2m"
-#define ANSI_DRED   ANSI_DIM CSI "31m"
-#define ANSI_BRED   ANSI_BOLD CSI "31m"
-#define ANSI_CLEAR  CSI "2J" CSI "1;1H"
+#define ANSI_CLEAR      CSI "2J" CSI "1;1H"
+#define ANSI_RESET      CSI "0m"
+#define ANSI_BOLD       CSI "1m"
+#define ANSI_DIM        CSI "2m"
+#define ANSI_DRED       ANSI_DIM CSI "31m"
+#define ANSI_BRED       ANSI_BOLD CSI "31m"
+#define ANSI_CLEAR      CSI "2J" CSI "1;1H"
+#define ANSI_CLEARLINE  CSI "2K"
+#define ANSI_SCROLLDN   CSI "1T"
+#define ANSI_SAVECURSOR CSI "s"
+#define ANSI_RESTCURSOR CSI "u"
 
 /** Maximum depth into a byte stream from which to compile a Telnet
  * protocol message. This is a saftey measure. */
 #define UNIX_CLI_MAX_DEPTH_TELNET 16
-
-/** Default CLI history depth if not configured in startup.conf */
-#define UNIX_CLI_DEFAULT_HISTORY 50
 
 /** Unix standard in */
 #define UNIX_CLI_STDIN_FD 0
@@ -127,6 +130,9 @@ typedef struct {
   /* Position of the insert cursor on the current input line */
   u32 cursor;
 
+  /* Line mode or char mode */
+  u8 line_mode;
+
   /* Set if the CRLF mode wants CR + LF */
   u8 crlf_mode;
 
@@ -136,14 +142,44 @@ typedef struct {
   /* Has the session started? */
   u8 started;
 
+  /* Disable the pager? */
+  u8 no_pager;
+
+  /* Pager buffer */
+  u8 ** pager_vector;
+
+  /* Lines currently displayed */
+  u32 pager_lines;
+
+  /* Line number of top of page */
+  u32 pager_start;
+
+  /* Terminal size */
+  u32 width, height;
+
   u32 process_node_index;
 } unix_cli_file_t;
+
+always_inline void
+unix_cli_pager_reset (unix_cli_file_t *f)
+{
+  u8 ** p;
+
+  f->pager_lines = f->pager_start = 0;
+  vec_foreach (p, f->pager_vector)
+    {
+      vec_free(*p);
+    }
+  vec_free(f->pager_vector);
+  f->pager_vector = 0;
+}
 
 always_inline void
 unix_cli_file_free (unix_cli_file_t * f)
 {
   vec_free (f->output_vector);
   vec_free (f->input_vector);
+  unix_cli_pager_reset(f);
 }
 
 /* CLI actions */
@@ -168,6 +204,17 @@ typedef enum {
   UNIX_CLI_PARSE_ACTION_FWDSEARCH,
   UNIX_CLI_PARSE_ACTION_YANK,
   UNIX_CLI_PARSE_ACTION_TELNETIAC,
+
+  UNIX_CLI_PARSE_ACTION_PAGER_CRLF,
+  UNIX_CLI_PARSE_ACTION_PAGER_QUIT,
+  UNIX_CLI_PARSE_ACTION_PAGER_NEXT,
+  UNIX_CLI_PARSE_ACTION_PAGER_DN,
+  UNIX_CLI_PARSE_ACTION_PAGER_UP,
+  UNIX_CLI_PARSE_ACTION_PAGER_TOP,
+  UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM,
+  UNIX_CLI_PARSE_ACTION_PAGER_PGDN,
+  UNIX_CLI_PARSE_ACTION_PAGER_PGUP,
+  UNIX_CLI_PARSE_ACTION_PAGER_SEARCH,
 
   UNIX_CLI_PARSE_ACTION_PARTIALMATCH,
   UNIX_CLI_PARSE_ACTION_NOMATCH
@@ -247,6 +294,41 @@ static unix_cli_parse_actions_t unix_cli_parse_strings[] = {
  _( "\0",     UNIX_CLI_PARSE_ACTION_NOACTION ),   /* NUL */
  _( NULL,     UNIX_CLI_PARSE_ACTION_NOMATCH )
 };
+static unix_cli_parse_actions_t unix_cli_parse_pager[] = {
+ /* Line handling */
+ _( "\r\n",   UNIX_CLI_PARSE_ACTION_PAGER_CRLF ),       /* Must be before '\r' */
+ _( "\n",     UNIX_CLI_PARSE_ACTION_PAGER_CRLF ),
+ _( "\r\0",   UNIX_CLI_PARSE_ACTION_PAGER_CRLF ),       /* Telnet does this */
+ _( "\r",     UNIX_CLI_PARSE_ACTION_PAGER_CRLF ),
+
+ /* Pager commands */
+ _( " ",      UNIX_CLI_PARSE_ACTION_PAGER_NEXT ),
+ _( "q",      UNIX_CLI_PARSE_ACTION_PAGER_QUIT ),
+ _( "/",      UNIX_CLI_PARSE_ACTION_PAGER_SEARCH ),
+
+ /* VT100 */
+ _( CSI "A",  UNIX_CLI_PARSE_ACTION_PAGER_UP ),
+ _( CSI "B",  UNIX_CLI_PARSE_ACTION_PAGER_DN ),
+ _( CSI "H",  UNIX_CLI_PARSE_ACTION_PAGER_TOP ),
+ _( CSI "F",  UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM ),
+
+ /* VT100 Application mode */
+ _( ESC "OA", UNIX_CLI_PARSE_ACTION_PAGER_UP ),
+ _( ESC "OB", UNIX_CLI_PARSE_ACTION_PAGER_DN ),
+ _( ESC "OH", UNIX_CLI_PARSE_ACTION_PAGER_TOP ),
+ _( ESC "OF", UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM ),
+
+ /* ANSI X3.41-1974 */
+ _( CSI "1~", UNIX_CLI_PARSE_ACTION_PAGER_TOP ),
+ _( CSI "4~", UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM ),
+ _( CSI "5~", UNIX_CLI_PARSE_ACTION_PAGER_PGUP ),
+ _( CSI "6~", UNIX_CLI_PARSE_ACTION_PAGER_PGDN ),
+
+ /* Other protocol things */
+ _( "\xff",   UNIX_CLI_PARSE_ACTION_TELNETIAC ),  /* IAC */
+ _( "\0",     UNIX_CLI_PARSE_ACTION_NOACTION ),   /* NUL */
+ _( NULL,     UNIX_CLI_PARSE_ACTION_NOMATCH )
+};
 #undef _
 
 typedef enum {
@@ -261,6 +343,9 @@ typedef struct {
   unix_cli_file_t * cli_file_pool;
 
   u32 * unused_cli_process_node_indices;
+
+  /* The session index of the stdin cli */
+  u32 stdin_cli_file_index;
 
   /* File pool index of current input. */
   u32 current_input_file_index;
@@ -278,6 +363,7 @@ static unix_cli_main_t unix_cli_main;
  * partial match was found or a complete match was found and what action,
  * if any, should be taken.
  *
+ * @param a       Actions list to search within.
  * @param input   String fragment to search for.
  * @param ilen    Length of the string in 'input'.
  * @param matched Pointer to an integer that will contain the number of
@@ -291,9 +377,9 @@ static unix_cli_main_t unix_cli_main;
  *         match at all.
  */
 static unix_cli_parse_action_t
-unix_cli_match_action(u8 *input, u32 ilen, i32 *matched)
+unix_cli_match_action(unix_cli_parse_actions_t *a,
+          u8 *input, u32 ilen, i32 *matched)
 {
-  unix_cli_parse_actions_t *a = unix_cli_parse_strings;
   u8 partial = 0;
 
   while (a->input)
@@ -467,6 +553,81 @@ static void unix_vlib_cli_output_cooked(unix_cli_file_t * cf,
     }
 }
 
+/** \brief Output the CLI prompt */
+static void unix_cli_cli_prompt(unix_cli_file_t * cf, unix_file_t * uf)
+{
+  unix_cli_main_t * cm = &unix_cli_main;
+
+  unix_vlib_cli_output_raw (cf, uf, cm->cli_prompt, vec_len (cm->cli_prompt));
+}
+
+/** \brief Output a pager prompt and show number of buffered lines */
+static void unix_cli_pager_prompt(unix_cli_file_t * cf, unix_file_t * uf)
+{
+  u8 * prompt;
+
+  prompt = format(0, "\r%s-- more -- (%d-%d/%d)%s",
+    cf->ansi_capable ? ANSI_BOLD : "",
+    cf->pager_start + 1,
+    cf->pager_start + cf->height,
+    cf->pager_lines,
+    cf->ansi_capable ? ANSI_RESET: "");
+
+  unix_vlib_cli_output_cooked(cf, uf, prompt, vec_len(prompt));
+
+  vec_free(prompt);
+}
+
+/** \brief Output a pager "skipping" message */
+static void unix_cli_pager_message(unix_cli_file_t * cf, unix_file_t * uf,
+    char *message, char *postfix)
+{
+  u8 * prompt;
+
+  prompt = format(0, "\r%s-- %s --%s%s",
+    cf->ansi_capable ? ANSI_BOLD : "",
+    message,
+    cf->ansi_capable ? ANSI_RESET: "",
+    postfix);
+
+  unix_vlib_cli_output_cooked(cf, uf, prompt, vec_len(prompt));
+
+  vec_free(prompt);
+}
+
+/** \brief Erase the printed pager prompt */
+static void unix_cli_pager_prompt_erase(unix_cli_file_t * cf, unix_file_t * uf)
+{
+  if (cf->ansi_capable)
+    {
+      unix_vlib_cli_output_cooked(cf, uf, (u8 *)"\r", 1);
+      unix_vlib_cli_output_cooked(cf, uf,
+          (u8 *)ANSI_CLEARLINE, sizeof(ANSI_CLEARLINE) - 1);
+    }
+  else
+    {
+      int i;
+
+      unix_vlib_cli_output_cooked(cf, uf, (u8 *)"\r", 1);
+      for (i = 0; i < cf->width - 1; i ++)
+        unix_vlib_cli_output_cooked(cf, uf, (u8 *)" ", 1);
+      unix_vlib_cli_output_cooked(cf, uf, (u8 *)"\r", 1);
+    }
+}
+
+/** \brief Uses an ANSI escape sequence to move the cursor */
+static void unix_cli_ansi_cursor(unix_cli_file_t * cf, unix_file_t * uf,
+      u16 x, u16 y)
+{
+  u8 * str;
+
+  str = format(0, "%s%d;%dH", CSI, y, x);
+
+  unix_vlib_cli_output_cooked(cf, uf, str, vec_len(str));
+
+  vec_free(str);
+}
+
 /** \brief VLIB CLI output function. */
 static void unix_vlib_cli_output (uword cli_file_index,
 				  u8 * buffer,
@@ -480,7 +641,74 @@ static void unix_vlib_cli_output (uword cli_file_index,
   cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
   uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
 
-  unix_vlib_cli_output_cooked(cf, uf, buffer, buffer_bytes);
+  if (cf->no_pager || um->cli_pager_buffer_limit == 0 || cf->height == 0)
+    {
+      unix_vlib_cli_output_cooked(cf, uf, buffer, buffer_bytes);
+    }
+  else
+    {
+      /* At each \n add the line to the pager buffer.
+       * If we've not yet displayed a whole page in this command then
+       * also output the line.
+       * If we have displayed a whole page then display a pager prompt
+       * and count the lines we've buffered.
+       */
+      u8 * p = buffer;
+      u8 * line;
+      uword i, len = buffer_bytes;
+
+      while (len)
+        {
+          i = unix_vlib_findchr('\n', p, len);
+          if (i < len)
+            i ++; /* include the '\n' */
+
+          /* make a vec out of this substring */
+          line = vec_new(u8, i);
+          memcpy(line, p, i);
+
+          /* store in pager buffer */
+          vec_add1(cf->pager_vector, line);
+          cf->pager_lines ++;
+
+          if (cf->pager_lines < cf->height)
+            {
+              /* output this line */
+              unix_vlib_cli_output_cooked(cf, uf, p, i);
+              /* TODO: stop if line longer than cf->width and would
+               * overflow cf->height */
+            }
+          else
+            {
+              /* Display the pager prompt every 10 lines */
+              if (!(cf->pager_lines % 10))
+                unix_cli_pager_prompt(cf, uf);
+            }
+
+          p += i;
+          len -= i;
+        }
+
+        /* Check if we went over the pager buffer limit */
+        if (cf->pager_lines > um->cli_pager_buffer_limit)
+          {
+            /* Stop using the pager for the remainder of this CLI command */
+            cf->no_pager = 2;
+
+            /* If we likely printed the prompt, erase it */
+            if (cf->pager_lines > cf->height - 1)
+              unix_cli_pager_prompt_erase (cf, uf);
+
+            /* Dump out the contents of the buffer */
+            for (i = cf->pager_start + (cf->height - 1);
+                          i < cf->pager_lines; i ++)
+              unix_vlib_cli_output_cooked (cf, uf,
+                cf->pager_vector[i],
+                vec_len(cf->pager_vector[i]));
+
+            unix_cli_pager_reset (cf);
+          }
+    }
 }
 
 /** \brief Identify whether a terminal type is ANSI capable. */
@@ -538,9 +766,7 @@ static void unix_cli_file_welcome(unix_cli_main_t * cm, unix_cli_file_t * cf)
       }
 
   /* Prompt. */
-  unix_vlib_cli_output_raw (cf, uf,
-             cm->cli_prompt,
-             vec_len (cm->cli_prompt));
+  unix_cli_cli_prompt (cf, uf);
 
   cf->started = 1;
 }
@@ -629,6 +855,14 @@ static i32 unix_cli_process_telnet(unix_main_t * um,
                           unix_cli_file_welcome(&unix_cli_main, cf);
                         break;
 
+                      case TELOPT_NAWS:
+                        /* Window size */
+                        if (i != 8) /* check message is correct size */
+                          break;
+                        cf->width = clib_net_to_host_u16(*((u16 *)(input_vector + 3)));
+                        cf->height = clib_net_to_host_u16(*((u16 *)(input_vector + 5)));
+                        break;
+
                       default:
                         break;
                     }
@@ -699,6 +933,8 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
 
     case UNIX_CLI_PARSE_ACTION_REVSEARCH:
     case UNIX_CLI_PARSE_ACTION_FWDSEARCH:
+      if (!cf->has_history || !cf->history_limit)
+        break;
       if (cf->search_mode == 0)
         {
           /* Erase the current command (if any) */
@@ -794,6 +1030,8 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
 
     case UNIX_CLI_PARSE_ACTION_UP:
     case UNIX_CLI_PARSE_ACTION_DOWN:
+      if (!cf->has_history || !cf->history_limit)
+        break;
       cf->search_mode = 0;
       /* Erase the command */
       for (j = cf->cursor; j < (vec_len (cf->current_command)); j++)
@@ -995,6 +1233,157 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
 
       break;
 
+    case UNIX_CLI_PARSE_ACTION_TAB:
+    case UNIX_CLI_PARSE_ACTION_YANK:
+      /* TODO */
+      break;
+
+
+    case UNIX_CLI_PARSE_ACTION_PAGER_QUIT:
+    pager_quit:
+      unix_cli_pager_prompt_erase (cf, uf);
+      unix_cli_pager_reset (cf);
+      unix_cli_cli_prompt (cf, uf);
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_PAGER_NEXT:
+    case UNIX_CLI_PARSE_ACTION_PAGER_PGDN:
+      /* show next page of the buffer */
+      if (cf->height + cf->pager_start < cf->pager_lines)
+        {
+          u8 * line;
+          int m = cf->pager_start + (cf->height - 1);
+          unix_cli_pager_prompt_erase (cf, uf);
+          for (j = m;
+                j < cf->pager_lines && cf->pager_start < m;
+                j ++, cf->pager_start ++)
+            {
+              line = cf->pager_vector[j];
+              unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+            }
+          unix_cli_pager_prompt (cf, uf);
+        }
+      else
+        {
+          if (action == UNIX_CLI_PARSE_ACTION_PAGER_NEXT)
+            /* no more in buffer, exit, but only if it was <space> */
+            goto pager_quit;
+        }
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_PAGER_DN:
+    case UNIX_CLI_PARSE_ACTION_PAGER_CRLF:
+      /* display the next line of the buffer */
+      if (cf->pager_start < cf->pager_lines - (cf->height - 1))
+        {
+          u8 * line;
+          unix_cli_pager_prompt_erase (cf, uf);
+          line = cf->pager_vector[cf->pager_start + (cf->height - 1)];
+          unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+          cf->pager_start ++;
+          unix_cli_pager_prompt (cf, uf);
+        }
+      else
+        {
+          if (action == UNIX_CLI_PARSE_ACTION_PAGER_CRLF)
+            /* no more in buffer, exit, but only if it was <enter> */
+            goto pager_quit;
+        }
+
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_PAGER_UP:
+      /* scroll the page back one line */
+      if (cf->pager_start > 0)
+        {
+          u8 * line;
+          cf->pager_start --;
+          if (cf->ansi_capable)
+            {
+              unix_cli_pager_prompt_erase (cf, uf);
+              unix_vlib_cli_output_cooked (cf, uf, (u8 *)ANSI_SCROLLDN, sizeof(ANSI_SCROLLDN) - 1);
+              unix_vlib_cli_output_cooked (cf, uf, (u8 *)ANSI_SAVECURSOR, sizeof(ANSI_SAVECURSOR) - 1);
+              unix_cli_ansi_cursor(cf, uf, 1, 1);
+              unix_vlib_cli_output_cooked (cf, uf, (u8 *)ANSI_CLEARLINE, sizeof(ANSI_CLEARLINE) - 1);
+              unix_vlib_cli_output_cooked (cf, uf, cf->pager_vector[cf->pager_start], vec_len(cf->pager_vector[cf->pager_start]));
+              unix_vlib_cli_output_cooked (cf, uf, (u8 *)ANSI_RESTCURSOR, sizeof(ANSI_RESTCURSOR) - 1);
+              unix_cli_pager_prompt_erase (cf, uf);
+              unix_cli_pager_prompt (cf, uf);
+            }
+          else
+            {
+              int m = cf->pager_start + (cf->height - 1);
+              unix_cli_pager_prompt_erase (cf, uf);
+              for (j = cf->pager_start; j < cf->pager_lines && j < m; j ++)
+                {
+                  line = cf->pager_vector[j];
+                  unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+                }
+              unix_cli_pager_prompt (cf, uf);
+            }
+        }
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_PAGER_TOP:
+      /* back to the first page of the buffer */
+      if (cf->pager_start > 0)
+        {
+          u8 * line;
+          cf->pager_start = 0;
+          int m = cf->pager_start + (cf->height - 1);
+          unix_cli_pager_prompt_erase (cf, uf);
+          for (j = cf->pager_start; j < cf->pager_lines && j < m; j ++)
+            {
+              line = cf->pager_vector[j];
+              unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+            }
+          unix_cli_pager_prompt (cf, uf);
+        }
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM:
+      /* skip to the last page of the buffer */
+      if (cf->pager_start < cf->pager_lines - (cf->height - 1))
+        {
+          u8 * line;
+          cf->pager_start = cf->pager_lines - (cf->height - 1);
+          unix_cli_pager_prompt_erase (cf, uf);
+          unix_cli_pager_message (cf, uf, "skipping", "\n");
+          for (j = cf->pager_start; j < cf->pager_lines; j ++)
+            {
+              line = cf->pager_vector[j];
+              unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+            }
+          unix_cli_pager_prompt (cf, uf);
+        }
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_PAGER_PGUP:
+      /* wander back one page in the buffer */
+      if (cf->pager_start > 0)
+        {
+          u8 * line;
+          int m;
+          if (cf->pager_start >= cf->height)
+            cf->pager_start -= cf->height - 1;
+          else
+            cf->pager_start = 1;
+          m = cf->pager_start + cf->height - 1;
+          unix_cli_pager_prompt_erase (cf, uf);
+          for (j = cf->pager_start; j < cf->pager_lines && j < m; j ++)
+            {
+              line = cf->pager_vector[j];
+              unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+            }
+          unix_cli_pager_prompt (cf, uf);
+        }
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_PAGER_SEARCH:
+      /* search forwards in the buffer */
+      break;
+
+
     case UNIX_CLI_PARSE_ACTION_CRLF:
     crlf:
       vec_add1 (cf->current_command, '\r');
@@ -1006,31 +1395,36 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
               vec_len(cf->current_command));
       _vec_len(cf->input_vector) = _vec_len (cf->current_command);
 
-      if (vec_len(cf->command_history) >= cf->history_limit)
+      if (cf->has_history && cf->history_limit)
         {
-          vec_free (cf->command_history[0]);
-          vec_delete (cf->command_history, 1, 0);
-        }
-      /* Don't add blank lines to the cmd history */
-      if (vec_len (cf->current_command) > 2)
-        {
-          /* Don't duplicate the previous command */
-          _vec_len (cf->current_command) -= 2;
-          j = vec_len(cf->command_history);
-          if (j == 0 ||
-            (vec_len (cf->current_command) != vec_len (cf->command_history[j - 1]) ||
-                memcmp(cf->current_command, cf->command_history[j - 1],
-                       vec_len (cf->current_command)) != 0))
+          if (cf->command_history && vec_len(cf->command_history) >= cf->history_limit)
             {
-              vec_add1 (cf->command_history, cf->current_command);
-              cf->current_command = 0;
-              cf->command_number ++;
+              vec_free (cf->command_history[0]);
+              vec_delete (cf->command_history, 1, 0);
+            }
+          /* Don't add blank lines to the cmd history */
+          if (vec_len (cf->current_command) > 2)
+            {
+              /* Don't duplicate the previous command */
+              _vec_len (cf->current_command) -= 2;
+              j = vec_len(cf->command_history);
+              if (j == 0 ||
+                (vec_len (cf->current_command) != vec_len (cf->command_history[j - 1]) ||
+                    memcmp(cf->current_command, cf->command_history[j - 1],
+                           vec_len (cf->current_command)) != 0))
+                {
+                  vec_add1 (cf->command_history, cf->current_command);
+                  cf->current_command = 0;
+                  cf->command_number ++;
+                }
+              else
+                vec_reset_length (cf->current_command);
             }
           else
             vec_reset_length (cf->current_command);
         }
-      else
-          vec_reset_length (cf->current_command);
+      else /* history disabled */
+        vec_reset_length (cf->current_command);
       cf->excursion = 0;
       cf->search_mode = 0;
       vec_reset_length (cf->search_key);
@@ -1038,9 +1432,13 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
 
       return 0;
 
-
-    default:
-      if (cf->search_mode && isprint(input))
+    case UNIX_CLI_PARSE_ACTION_PARTIALMATCH:
+    case UNIX_CLI_PARSE_ACTION_NOMATCH:
+      if (cf->pager_lines)
+        {
+          /* no-op for now */
+        }
+      else if (cf->has_history && cf->search_mode && isprint(input))
         {
           int k, limit, offset;
           u8 * item;
@@ -1098,42 +1496,46 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
           cf->cursor = 0;
           goto crlf;
         }
+      else if (isprint(input)) /* skip any errant control codes */
+        {
+          if (cf->cursor == vec_len(cf->current_command))
+            {
+              /* Append to end */
+              vec_add1 (cf->current_command, input);
+              cf->cursor ++;
+
+              /* Echo the character back to the client */
+              unix_vlib_cli_output_raw (cf, uf, &input, 1);
+            }
+          else
+            {
+              /* Insert at cursor: resize +1 byte, move everything over */
+              j = vec_len (cf->current_command) - cf->cursor;
+              vec_add1 (cf->current_command, (u8)'A');
+              memmove (cf->current_command + cf->cursor + 1,
+                cf->current_command + cf->cursor,
+                j);
+              cf->current_command[cf->cursor] = input;
+              /* Redraw the line */
+              j ++;
+              unix_vlib_cli_output_raw (cf, uf,
+                    cf->current_command + cf->cursor, j);
+              /* Put terminal cursor back */
+              while (-- j)
+                unix_vlib_cli_output_raw (cf, uf, (u8 *)"\b", 1);
+              cf->cursor ++;
+            }
+        }
       else
         {
-          if (isprint(input)) /* skip any errant control codes */
-            {
-              if (cf->cursor == vec_len(cf->current_command))
-                {
-                  /* Append to end */
-                  vec_add1 (cf->current_command, input);
-                  cf->cursor ++;
-
-                  /* Echo the character back to the client */
-                  unix_vlib_cli_output_raw (cf, uf, &input, 1);
-                }
-              else
-                {
-                  /* Insert at cursor: resize +1 byte, move everything over */
-                  j = vec_len (cf->current_command) - cf->cursor;
-                  vec_add1 (cf->current_command, (u8)'A');
-                  memmove (cf->current_command + cf->cursor + 1,
-                    cf->current_command + cf->cursor,
-                    j);
-                  cf->current_command[cf->cursor] = input;
-                  /* Redraw the line */
-                  j ++;
-                  unix_vlib_cli_output_raw (cf, uf,
-                        cf->current_command + cf->cursor, j);
-                  /* Put terminal cursor back */
-                  while (-- j)
-                    unix_vlib_cli_output_raw (cf, uf, (u8 *)"\b", 1);
-                  cf->cursor ++;
-                }
-            }
+          /* no-op - not printable or otherwise not actionable */
         }
 
     found:
 
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_TELNETIAC:
       break;
     }
     return 1;
@@ -1153,8 +1555,12 @@ static int unix_cli_line_edit (unix_cli_main_t * cm,
       unix_cli_parse_action_t action;
       /* See if the input buffer is some sort of control code */
       i32 matched = 0;
+      unix_cli_parse_actions_t *a;
 
-      action = unix_cli_match_action(&cf->input_vector[i],
+      /* If we're in the pager mode, search the pager actions */
+      a = cf->pager_lines ? unix_cli_parse_pager : unix_cli_parse_strings;
+
+      action = unix_cli_match_action(a, &cf->input_vector[i],
         vec_len (cf->input_vector) - i, &matched);
 
       switch (action)
@@ -1223,7 +1629,7 @@ static void unix_cli_process_input (unix_cli_main_t * cm,
       goto done;
 
   /* Line edit, echo, etc. */
-  if (cf->has_history && unix_cli_line_edit (cm, um, cf))
+  if (!cf->line_mode  && unix_cli_line_edit (cm, um, cf))
     return;
 
   if (um->log_fd)
@@ -1248,12 +1654,15 @@ static void unix_cli_process_input (unix_cli_main_t * cm,
   (void) unformat (&input, "");
 
   cm->current_input_file_index = cli_file_index;
+  cf->pager_lines = 0; /* start a new pager session */
+  cf->pager_start = 0;
 
   if (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     vlib_cli_input (um->vlib_main, &input, unix_vlib_cli_output, cli_file_index);
 
   /* Re-fetch pointer since pool may have moved. */
   cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
+  uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
 
   /* Zero buffer since otherwise unformat_free will call vec_free on it. */
   input.buffer = 0;
@@ -1264,11 +1673,26 @@ static void unix_cli_process_input (unix_cli_main_t * cm,
 done:
   _vec_len (cf->input_vector) = 0;
 
-  /* Prompt. */
-  uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
-  unix_vlib_cli_output_raw (cf, uf,
-			       cm->cli_prompt,
-			       vec_len (cm->cli_prompt));
+  if (cf->no_pager == 2)
+    {
+      /* Pager was programmatically disabled */
+      unix_cli_pager_message (cf, uf, "pager buffer overflowed", "\n");
+      cf->no_pager = um->cli_no_pager;
+    }
+
+  if (cf->pager_lines == 0 || cf->pager_lines < cf->height)
+    {
+      /* There was no need for the pager */
+      unix_cli_pager_reset (cf);
+
+      /* Prompt. */
+      unix_cli_cli_prompt (cf, uf);
+    }
+  else
+    {
+      /* Display the pager prompt */
+      unix_cli_pager_prompt(cf, uf);
+    }
 }
 
 static void unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
@@ -1495,16 +1919,22 @@ static clib_error_t * unix_cli_listen_read_ready (unix_file_t * uf)
         IAC, DONT, TELOPT_ECHO,     /* client should not echo */
         IAC, DO,   TELOPT_TTYPE,    /* client should tell us its term type */
         IAC, SB,   TELOPT_TTYPE, 1, IAC, SE, /* now tell me ttype */
+        IAC, DO,   TELOPT_NAWS,     /* client should tell us its window sz */
+        IAC, SB,   TELOPT_NAWS, 1, IAC, SE,  /* now tell me window size */
       };
 
       /* Enable history on this CLI */
-      cf->has_history = 1;
-      cf->history_limit = um->cli_history_limit ?
-                          um->cli_history_limit :
-                          UNIX_CLI_DEFAULT_HISTORY;
+      cf->history_limit = um->cli_history_limit;
+      cf->has_history = cf->history_limit != 0;
+
+      /* Make sure this session is in line mode */
+      cf->line_mode = 0;
 
       /* We need CRLF */
       cf->crlf_mode = 1;
+
+      /* Setup the pager */
+      cf->no_pager = um->cli_no_pager;
 
       uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
 
@@ -1520,6 +1950,21 @@ static clib_error_t * unix_cli_listen_read_ready (unix_file_t * uf)
   return error;
 }
 
+static void
+unix_cli_resize_interrupt (int signum)
+{
+  unix_cli_main_t * cm = &unix_cli_main;
+  unix_cli_file_t * cf = pool_elt_at_index (cm->cli_file_pool,
+                                cm->stdin_cli_file_index);
+  struct winsize ws;
+  (void)signum;
+
+  /* Terminal resized, fetch the new size */
+  ioctl(UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws);
+  cf->width = ws.ws_col;
+  cf->height = ws.ws_row;
+}
+
 static clib_error_t *
 unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -1530,6 +1975,8 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
   unix_cli_file_t * cf;
   u32 cf_index;
   struct termios tio;
+  struct sigaction sa;
+  struct winsize ws;
   u8 * term;
 
   /* We depend on unix flags being set. */
@@ -1545,15 +1992,36 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 
       cf_index = unix_cli_file_add (cm, "stdin", UNIX_CLI_STDIN_FD);
       cf = pool_elt_at_index (cm->cli_file_pool, cf_index);
+      cm->stdin_cli_file_index = cf_index;
 
       /* If stdin is a tty and we are using chacracter mode, enable
        * history on the CLI and set the tty line discipline accordingly. */
       if (isatty(UNIX_CLI_STDIN_FD) && um->cli_line_mode == 0)
         {
-          cf->has_history = 1;
-          cf->history_limit = um->cli_history_limit ?
-                              um->cli_history_limit :
-                              UNIX_CLI_DEFAULT_HISTORY;
+          /* Capture terminal resize events */
+          sa.sa_handler = unix_cli_resize_interrupt;
+          sa.sa_flags = 0;
+          if (sigaction (SIGWINCH, &sa, 0) < 0)
+              clib_panic ("sigaction");
+
+          /* Retrieve the current terminal size */
+          ioctl(UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws);
+          cf->width = ws.ws_col;
+          cf->height = ws.ws_row;
+
+          if (cf->width == 0 || cf->height == 0)
+            /* We have a tty, but no size. Stick to line mode. */
+            goto notty;
+
+          /* Setup the history */
+          cf->history_limit = um->cli_history_limit;
+          cf->has_history = cf->history_limit != 0;
+
+          /* Setup the pager */
+          cf->no_pager = um->cli_no_pager;
+
+          /* We're going to be in char by char mode */
+          cf->line_mode = 0;
 
           /* Save the original tty state so we can restore it later */
           tcgetattr(UNIX_CLI_STDIN_FD, &um->tio_stdin);
@@ -1572,6 +2040,15 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
           if (term != NULL)
             cf->ansi_capable = unix_cli_terminal_type(term,
                         strlen((char *)term));
+        }
+      else
+        {
+        notty:
+          /* No tty, so make sure these things are off */
+          cf->no_pager = 1;
+          cf->history_limit = 0;
+          cf->has_history = 0;
+          cf->line_mode = 1;
         }
 
       /* Send banner and initial prompt */
@@ -1792,11 +2269,15 @@ unix_cli_show_history (vlib_main_t * vm,
 
   cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
 
-  i = 1 + cf->command_number - vec_len(cf->command_history);
-
-  for (j = 0; j < vec_len (cf->command_history); j++)
+  if (cf->has_history && cf->history_limit)
     {
-      vlib_cli_output (vm, "%d  %v\n", i + j, cf->command_history[j]);
+      i = 1 + cf->command_number - vec_len(cf->command_history);
+      for (j = 0; j < vec_len (cf->command_history); j++)
+          vlib_cli_output (vm, "%d  %v\n", i + j, cf->command_history[j]);
+    }
+  else
+    {
+      vlib_cli_output (vm, "History not enabled.\n");
     }
 
   return 0;
@@ -1808,6 +2289,162 @@ VLIB_CLI_COMMAND (cli_unix_cli_show_history, static) = {
   .function = unix_cli_show_history,
 };
 
+static clib_error_t *
+unix_cli_show_terminal (vlib_main_t * vm,
+      unformat_input_t * input,
+      vlib_cli_command_t * cmd)
+{
+  unix_main_t * um = &unix_main;
+  unix_cli_main_t * cm = &unix_cli_main;
+  unix_cli_file_t * cf;
+  vlib_node_t * n;
+
+  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+  n = vlib_get_node (vm, cf->process_node_index);
+
+  vlib_cli_output (vm, "Terminal name:   %v\n", n->name);
+  vlib_cli_output (vm, "Terminal mode:   %s\n", cf->line_mode ? 
+                                                "line-by-line" :
+                                                "char-by-char");
+  vlib_cli_output (vm, "Terminal width:  %d\n", cf->width);
+  vlib_cli_output (vm, "Terminal height: %d\n", cf->height);
+  vlib_cli_output (vm, "ANSI capable:    %s\n", cf->ansi_capable ? "yes" : "no");
+  vlib_cli_output (vm, "History enabled: %s%s\n",
+        cf->has_history ? "yes" : "no",
+        !cf->has_history || cf->history_limit ? "" : " (disabled by history limit)");
+  if (cf->has_history)
+    vlib_cli_output (vm, "History limit:   %d\n", cf->history_limit);
+  vlib_cli_output (vm, "Pager enabled:   %s%s%s\n",
+        cf->no_pager ? "no" : "yes",
+        cf->no_pager || cf->height ? "" : " (disabled by terminal height)",
+        cf->no_pager || um->cli_pager_buffer_limit ? "" : " (disabled by buffer limit)");
+  if (!cf->no_pager)
+    vlib_cli_output (vm, "Pager limit:     %d\n", um->cli_pager_buffer_limit);
+  vlib_cli_output (vm, "CRLF mode:       %s\n", cf->crlf_mode ? "CR+LF" : "LF");
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (cli_unix_cli_show_terminal, static) = {
+  .path = "show terminal",
+  .short_help = "Show current session terminal settings",
+  .function = unix_cli_show_terminal,
+};
+
+static clib_error_t *
+unix_cli_set_terminal_pager (vlib_main_t * vm,
+      unformat_input_t * input,
+      vlib_cli_command_t * cmd)
+{
+  unix_main_t * um = &unix_main;
+  unix_cli_main_t * cm = &unix_cli_main;
+  unix_cli_file_t * cf;
+  unformat_input_t _line_input, * line_input = &_line_input;
+
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+    if (unformat (line_input, "on"))
+      cf->no_pager = 0;
+    else if (unformat (line_input, "off"))
+      cf->no_pager = 1;
+    else if (unformat (line_input, "limit %u", &um->cli_pager_buffer_limit))
+      vlib_cli_output (vm, "Pager limit set to %u lines; note, this is global.\n",
+        um->cli_pager_buffer_limit);
+    else
+      return clib_error_return (0, "unknown parameter: `%U`",
+                                format_unformat_error, line_input);
+  }
+
+  unformat_free(line_input);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_pager, static) = {
+  .path = "set terminal pager",
+  .short_help = "set terminal pager [on|off] [limit <lines>]",
+  .function = unix_cli_set_terminal_pager,
+};
+
+static clib_error_t *
+unix_cli_set_terminal_history (vlib_main_t * vm,
+      unformat_input_t * input,
+      vlib_cli_command_t * cmd)
+{
+  unix_cli_main_t * cm = &unix_cli_main;
+  unix_cli_file_t * cf;
+  unformat_input_t _line_input, * line_input = &_line_input;
+  u32 limit;
+
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+    if (unformat (line_input, "on"))
+      cf->has_history = 1;
+    else if (unformat (line_input, "off"))
+      cf->has_history = 0;
+    else if (unformat (line_input, "limit %u", &cf->history_limit))
+      ;
+    else
+      return clib_error_return (0, "unknown parameter: `%U`",
+                                format_unformat_error, line_input);
+
+    /* If we reduced history size, or turned it off, purge the history */
+    limit = cf->has_history ? cf->history_limit : 0;
+
+    while (cf->command_history && vec_len(cf->command_history) >= limit)
+      {
+        vec_free (cf->command_history[0]);
+        vec_delete (cf->command_history, 1, 0);
+      }
+  }
+
+  unformat_free(line_input);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_history, static) = {
+  .path = "set terminal history",
+  .short_help = "set terminal history [on|off] [limit <lines>]",
+  .function = unix_cli_set_terminal_history,
+};
+
+static clib_error_t *
+unix_cli_set_terminal_ansi (vlib_main_t * vm,
+      unformat_input_t * input,
+      vlib_cli_command_t * cmd)
+{
+  unix_cli_main_t * cm = &unix_cli_main;
+  unix_cli_file_t * cf;
+
+  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+
+  if (unformat (input, "on"))
+    cf->ansi_capable = 1;
+  else if (unformat (input, "off"))
+    cf->ansi_capable = 0;
+  else
+    return clib_error_return (0, "unknown parameter: `%U`",
+                              format_unformat_error, input);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_ansi, static) = {
+  .path = "set terminal ansi",
+  .short_help = "set terminal ansi [on|off]",
+  .function = unix_cli_set_terminal_ansi,
+};
 
 static clib_error_t *
 unix_cli_init (vlib_main_t * vm)
