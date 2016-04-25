@@ -299,6 +299,9 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
   unix_main_t * um = &unix_main;
   clib_error_t * error = 0;
 
+  /* Defaults */
+  um->cli_pager_buffer_limit = 100000;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       char * cli_prompt;
@@ -314,6 +317,11 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
         um->cli_line_mode = 1;
       else if (unformat (input, "cli-no-banner"))
         um->cli_no_banner = 1;
+      else if (unformat (input, "cli-no-pager"))
+        um->cli_no_pager = 1;
+      else if (unformat (input, "cli-pager-buffer-limit %d",
+                                        &um->cli_pager_buffer_limit))
+        ;
       else if (unformat (input, "cli-history-limit %d", &um->cli_history_limit))
         ;
       else if (unformat (input, "full-coredump"))
