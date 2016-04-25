@@ -308,6 +308,50 @@ ethernet_buffer_get_header (vlib_buffer_t * b)
      + vnet_buffer (b)->ethernet.start_of_ethernet_header);
 }
 
+/** Returns the number of VLAN headers in the current Ethernet frame in the
+ * buffer. Returns 0, 1, 2 for the known header count. The value 3 indicates
+ * the number of headers is not known.
+ */
+#define ethernet_buffer_get_vlan_count(b) ( \
+    ((b)->flags & ETH_BUFFER_VLAN_BITS) >> LOG2_ETH_BUFFER_VLAN_1_DEEP \
+)
+
+/** Sets the number of VLAN headers in the current Ethernet frame in the
+ * buffer. Values 0, 1, 2 indicate  the header count. The value 3 indicates
+ * the number of headers is not known.
+ */
+#define ethernet_buffer_set_vlan_count(b, v) ( \
+    (b)->flags = ((b)->flags & ~ETH_BUFFER_VLAN_BITS) | \
+        (((v) << LOG2_ETH_BUFFER_VLAN_1_DEEP) & ETH_BUFFER_VLAN_BITS) \
+)
+
+/** Adjusts the vlan count by the delta in 'v' */
+#define ethernet_buffer_adjust_vlan_count(b, v) ( \
+  ethernet_buffer_set_vlan_count(b,  \
+      (word)ethernet_buffer_get_vlan_count(b) + (word)(v)) \
+)
+
+/** Adjusts the vlan count by the header size byte delta in 'v' */
+#define ethernet_buffer_adjust_vlan_count_by_bytes(b, v) ( \
+    (b)->flags = ((b)->flags & ~ETH_BUFFER_VLAN_BITS) | (( \
+        ((b)->flags & ETH_BUFFER_VLAN_BITS) + \
+        ((v) << (LOG2_ETH_BUFFER_VLAN_1_DEEP - 2)) \
+    ) & ETH_BUFFER_VLAN_BITS) \
+)
+
+/**
+ * Determine the size of the Ethernet headers of the current frame in
+ * the buffer. This uses the VLAN depth flags that are set by
+ * ethernet-input. Because these flags are stored in the vlib_buffer_t
+ * "flags" field this count is valid regardless of the node so long as it's
+ * checked downstream of ethernet-input; That is, the value is not stored in
+ * the opaque space.
+ */
+#define ethernet_buffer_header_size(b) ( \
+        ethernet_buffer_get_vlan_count((b)) * sizeof(ethernet_vlan_header_t) + \
+        sizeof(ethernet_header_t) \
+)
+
 ethernet_main_t * ethernet_get_main (vlib_main_t * vm);
 u32 ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags);
 void ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index, u32 l2);
