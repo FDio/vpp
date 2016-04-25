@@ -227,6 +227,7 @@ vnet_update_l2_len (vlib_buffer_t * b)
 {
   ethernet_header_t * eth;
   u16 ethertype;
+  u8 vlan_count = 0;
 
   /* point at currrent l2 hdr */
   eth = vlib_buffer_get_current (b);
@@ -245,12 +246,15 @@ vnet_update_l2_len (vlib_buffer_t * b)
       (ethertype == ETHERNET_TYPE_VLAN_9200)) {    
     ethernet_vlan_header_t * vlan;
     vnet_buffer(b)->l2.l2_len += sizeof (*vlan);
+    vlan_count = 1;
     vlan = (void *) (eth+1);
     ethertype = clib_net_to_host_u16 (vlan->type);
     if (ethertype == ETHERNET_TYPE_VLAN) {
       vnet_buffer(b)->l2.l2_len += sizeof (*vlan);
+      vlan_count = 2;
     }
   }
+  ethernet_buffer_set_vlan_count(b, vlan_count);
 }
 
 /*

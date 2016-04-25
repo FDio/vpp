@@ -49,6 +49,19 @@
 #define IP_BUFFER_L4_CHECKSUM_COMPUTED (1 << LOG2_IP_BUFFER_L4_CHECKSUM_COMPUTED)
 #define IP_BUFFER_L4_CHECKSUM_CORRECT  (1 << LOG2_IP_BUFFER_L4_CHECKSUM_CORRECT)
 
+/* VLAN header flags.
+ * These bits are zeroed in vlib_buffer_init_for_free_list()
+ * meaning wherever the buffer comes from they have a reasonable
+ * value (eg, if ip4/ip6 generates the packet.)
+ */
+#define LOG2_ETH_BUFFER_VLAN_2_DEEP LOG2_VLIB_BUFFER_FLAG_USER(3)
+#define LOG2_ETH_BUFFER_VLAN_1_DEEP LOG2_VLIB_BUFFER_FLAG_USER(4)
+#define ETH_BUFFER_VLAN_2_DEEP (1 << LOG2_ETH_BUFFER_VLAN_2_DEEP)
+#define ETH_BUFFER_VLAN_1_DEEP (1 << LOG2_ETH_BUFFER_VLAN_1_DEEP)
+#define ETH_BUFFER_VLAN_BITS (ETH_BUFFER_VLAN_1_DEEP | \
+                              ETH_BUFFER_VLAN_2_DEEP)
+
+
 #define foreach_buffer_opaque_union_subtype     \
 _(ethernet)                                     \
 _(ip)                                           \
