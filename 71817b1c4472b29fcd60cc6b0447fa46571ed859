@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_0f54b552",
+        "filename": "vnet/vnet/ip/lookup.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-04-25T20:02:54Z",
+      "side": 1,
+      "message": "Let\u0027s make this a bit cleaner. Inside vnet/vnet/ip/ip.h you will find ip46_address_t definition.  Can you change it to something like this:\n\ntypedef CLIB_PACKED (union {\n  struct {\n    u32 pad[3];\n    ip4_address_t ip4;\n  };\n  ip6_address_t ip6;\n  u32 as_u32[4];\n}) ip46_address_t;\n\n#define ip46_addr_is_ip4(x) ( x.as_u32[0] | x.as_u32[1] | x.as_u32[2] \u003d\u003d 0)\n#define ip46_addr_mask_ip4(x) ( x.as_u32[0] \u003d x.as_u32[1] \u003d x.as_u32[2] \u003d 0)\n\nand then just use ip46_address_t in this struct ....",
+      "range": {
+        "startLine": 173,
+        "startChar": 8,
+        "endLine": 173,
+        "endChar": 19
+      },
+      "revId": "71817b1c4472b29fcd60cc6b0447fa46571ed859",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
