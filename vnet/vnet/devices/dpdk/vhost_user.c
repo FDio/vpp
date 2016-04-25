@@ -422,6 +422,21 @@ dpdk_vhost_user_get_features(u32 hw_if_index, u64 * features)
 {
   *features = rte_vhost_feature_get();
 
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
+#define OFFLOAD_FEATURES ((1ULL << VIRTIO_NET_F_HOST_TSO4) | \
+		(1ULL << VIRTIO_NET_F_HOST_TSO6) | \
+		(1ULL << VIRTIO_NET_F_CSUM)    | \
+		(1ULL << VIRTIO_NET_F_GUEST_CSUM) | \
+		(1ULL << VIRTIO_NET_F_GUEST_TSO4) | \
+		(1ULL << VIRTIO_NET_F_GUEST_TSO6))
+
+  /* These are not suppoted as bridging/tunneling VHOST
+   * interfaces with hardware interfaces/drivers that does
+   * not support offloading breaks L4 traffic.
+   */
+  *features &= (~OFFLOAD_FEATURES);
+#endif
+
   DBG_SOCK("supported features: 0x%lx", *features);
   return 0;
 }
