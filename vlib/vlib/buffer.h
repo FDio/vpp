@@ -93,8 +93,7 @@ typedef struct {
 #define VLIB_BUFFER_NEXT_PRESENT (1 << VLIB_BUFFER_LOG2_NEXT_PRESENT) 
 #define VLIB_BUFFER_IS_RECYCLED (1 << 2) 
 #define VLIB_BUFFER_TOTAL_LENGTH_VALID (1 << 3)
-#define VLIB_BUFFER_HGSHM_USER_INDEX_VALID (1 << 4) 
-#define VLIB_BUFFER_REPL_FAIL (1 << 5) 
+#define VLIB_BUFFER_REPL_FAIL (1 << 4) 
 
   /* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
