@@ -1471,14 +1471,24 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_vxlanTunnelDump0
     for (i = 0; i < count; i++) {
         vxlan_tunnel_details_t *details = &jm->vxlan_tunnel_details[i];
 
-        jint src_address = details->src_address;
-        jint dst_address = details->dst_address;
+
+        /* This interface to support both v4 and v6 addresses is nasty */
+        jbyteArray src_address = (*env)->NewByteArray(env, 16);
+        (*env)->SetByteArrayRegion(env, src_address, 0, 16,
+                (signed char*)details->src_address);
+
+        jbyteArray dst_address = (*env)->NewByteArray(env, 16);
+        (*env)->SetByteArrayRegion(env, dst_address, 0, 16,
+                (signed char*)details->dst_address);
+
         jint encap_vrf_id = details->encap_vrf_id;
         jint vni = details->vni;
         jint decap_next_index = details->decap_next_index;
+        jboolean is_ipv6 = details->is_ipv6 ? 1 : 0;
 
         jobject vxlanTunnelDetailsObj = vppVxlanTunnelDetailsObject(env,
-                src_address, dst_address, encap_vrf_id, vni, decap_next_index);
+                src_address, dst_address, encap_vrf_id, vni,
+                decap_next_index, is_ipv6);
 
         (*env)->SetObjectArrayElement(env, vxlanTunnelDetailsArray, i,
                 vxlanTunnelDetailsObj);
@@ -1497,12 +1507,22 @@ static void vl_api_vxlan_tunnel_details_t_handler
     vppjni_main_t * jm = &vppjni_main;
     vxlan_tunnel_details_t *tunnel_details;
 
+    /* TODO chris add ipv6 */
+
     vec_add2(jm->vxlan_tunnel_details, tunnel_details, 1);
-    tunnel_details->src_address = ntohl(mp->src_address);
-    tunnel_details->dst_address = ntohl(mp->dst_address);
+    if (mp->is_ipv6) {
+        ((u64 *)tunnel_details->src_address)[0] = clib_net_to_host_u64(((u32 *)mp->src_address)[0]);
+        ((u64 *)tunnel_details->src_address)[1] = clib_net_to_host_u64(((u32 *)mp->src_address)[1]);
+        ((u64 *)tunnel_details->dst_address)[0] = clib_net_to_host_u64(((u32 *)mp->dst_address)[0]);
+        ((u64 *)tunnel_details->dst_address)[1] = clib_net_to_host_u64(((u32 *)mp->dst_address)[1]);
+    } else {
+        *(u32 *)tunnel_details->src_address = ntohl(*(u32 *)mp->src_address);
+        *(u32 *)tunnel_details->dst_address = ntohl(*(u32 *)mp->dst_address);
+    }
     tunnel_details->encap_vrf_id = ntohl(mp->encap_vrf_id);
     tunnel_details->vni = ntohl(mp->vni);
     tunnel_details->decap_next_index = ntohl(mp->decap_next_index);
+    tunnel_details->is_ipv6 = mp->is_ipv6;
 }
 
 /* cleanup handler for RX thread */

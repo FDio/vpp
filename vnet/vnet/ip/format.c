@@ -52,6 +52,17 @@ u8 * format_ip_protocol (u8 * s, va_list * args)
     return format (s, "unknown %d", protocol);
 }
 
+/* Format a an IPv4 ot IPv6 address. */
+u8 * format_ip46_address (u8 * s, va_list * args)
+{
+  ip46_address_t * a = va_arg (*args, ip46_address_t *);
+  u32 is_ip6 = va_arg (*args, u32);
+  if (is_ip6)
+    return format (s, "%U", format_ip6_address, &a->ip6);
+  else
+    return format (s, "%U", format_ip4_address, &a->ip4);
+}
+
 uword unformat_ip_protocol (unformat_input_t * input, va_list * args)
 {
   u8 * result = va_arg (*args, u8 *);

@@ -51,6 +51,7 @@ unformat_function_t unformat_tcp_udp_port;
 format_function_t format_ip_adjacency;
 format_function_t format_ip_adjacency_packet_data;
 
+format_function_t format_ip46_address;
 unformat_function_t unformat_ip46_address;
 
 /* IP4 */

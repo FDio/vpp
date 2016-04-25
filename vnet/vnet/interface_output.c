@@ -41,7 +41,8 @@
 
 typedef struct {
   u32 sw_if_index;
-  u8 data[64 - sizeof (u32)];
+  //u8 data[64 - sizeof (u32)];
+  u8 data[128 - sizeof (u32)]; // cluke undo
 } interface_output_trace_t;
 
 u8 * format_vnet_interface_output_trace (u8 * s, va_list * va)
