@@ -66,7 +66,7 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return(0, "Invalid interface name");
 
   if (r == VNET_API_ERROR_SUBIF_ALREADY_EXISTS)
-    return clib_error_return(0, "Interface elready exists");
+    return clib_error_return(0, "Interface already exists");
 
   return 0;
 }
