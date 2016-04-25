@@ -312,6 +312,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "cli-line-mode"))
         um->cli_line_mode = 1;
+      else if (unformat (input, "cli-no-banner"))
+        um->cli_no_banner = 1;
       else if (unformat (input, "cli-history-limit %d", &um->cli_history_limit))
         ;
       else if (unformat (input, "full-coredump"))

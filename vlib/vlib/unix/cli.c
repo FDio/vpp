@@ -56,6 +56,12 @@
 
 /* ANSI sequences. */
 #define ANSI_CLEAR  CSI "2J" CSI "1;1H"
+#define ANSI_RESET  CSI "0m"
+#define ANSI_BOLD   CSI "1m"
+#define ANSI_DIM    CSI "2m"
+#define ANSI_DRED   ANSI_DIM CSI "31m"
+#define ANSI_BRED   ANSI_BOLD CSI "31m"
+#define ANSI_CLEAR  CSI "2J" CSI "1;1H"
 
 /** Maximum depth into a byte stream from which to compile a Telnet
  * protocol message. This is a saftey measure. */
@@ -66,6 +72,31 @@
 
 /** Unix standard in */
 #define UNIX_CLI_STDIN_FD 0
+
+
+typedef struct {
+  u8 * line;
+  u32 length;
+} unix_cli_banner_t;
+
+#define _(a) { .line = (u8 *)(a), .length = sizeof(a) - 1 }
+/** Plain welcome banner. */
+static unix_cli_banner_t unix_cli_banner[] = {
+_("    _______    _        _   _____  ___ \n"),
+_(" __/ __/ _ \\  (_)__    | | / / _ \\/ _ \\\n"),
+_(" _/ _// // / / / _ \\   | |/ / ___/ ___/\n"),
+_(" /_/ /____(_)_/\\___/   |___/_/  /_/    \n"),
+_("\n")
+};
+/** ANSI color welcome banner. */
+static unix_cli_banner_t unix_cli_banner_color[] = {
+_(ANSI_BRED "    _______    _     " ANSI_RESET "   _   _____  ___ \n"),
+_(ANSI_BRED " __/ __/ _ \\  (_)__ " ANSI_RESET "   | | / / _ \\/ _ \\\n"),
+_(ANSI_BRED " _/ _// // / / / _ \\" ANSI_RESET "   | |/ / ___/ ___/\n"),
+_(ANSI_BRED " /_/ /____(_)_/\\___/" ANSI_RESET "   |___/_/  /_/    \n"),
+_("\n")
+};
+#undef _
 
 
 /** Unix CLI session. */
@@ -468,18 +499,44 @@ static u8 unix_cli_terminal_type(u8 * term, uword len)
   return 0;
 }
 
-/** \brief Emit initial prompt on a connection. */
+/** \brief Emit initial welcome banner and prompt on a connection. */
 static void unix_cli_file_welcome(unix_cli_main_t * cm, unix_cli_file_t * cf)
 {
   unix_main_t * um = &unix_main;
   unix_file_t * uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
+  unix_cli_banner_t *banner;
+  int i, len;
 
   /*
    * Put the first bytes directly into the buffer so that further output is
    * queued until everything is ready. (oterwise initial prompt can appear
    * mid way through VPP initialization)
    */
-  unix_cli_add_pending_output (uf, cf,
+  unix_cli_add_pending_output (uf, cf, (u8 *)"\r", 1);
+
+  if (!um->cli_no_banner)
+    {
+      if (cf->ansi_capable)
+        {
+          banner = unix_cli_banner_color;
+          len = ARRAY_LEN(unix_cli_banner_color);
+        }
+      else
+        {
+          banner = unix_cli_banner;
+          len = ARRAY_LEN(unix_cli_banner);
+        }
+
+      for (i = 0; i < len; i++)
+        {
+          unix_vlib_cli_output_cooked(cf, uf,
+            banner[i].line,
+            banner[i].length);
+        }
+      }
+
+  /* Prompt. */
+  unix_vlib_cli_output_raw (cf, uf,
              cm->cli_prompt,
              vec_len (cm->cli_prompt));
 
