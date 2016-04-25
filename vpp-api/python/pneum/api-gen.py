@@ -36,6 +36,9 @@ format_struct = {'u8': 'B',
                  'vl_api_ip4_fib_counter_t' : 'IBQQ',
                  'vl_api_ip6_fib_counter_t' : 'QQBQQ',
                  };
+#
+# NB: If new types are introduced in vpe.api, these must be updated.
+#
 type_size = {'u8':   1,
              'u16' : 2,
              'u32' : 4,
@@ -47,17 +50,13 @@ type_size = {'u8':   1,
 };
 
 def get_args(t):
-    args = None
+    argslist = []
     for i in t:
-        arg = i[1]
-        arg = arg.replace('_','')
-        if args == None:
-            args = arg
-            continue
-        args = args + ', ' +  arg
-    return args
+        argslist.append(i[1].replace('_',''))
+    return argslist
 
 def get_pack(t):
+    zeroarray = False
     bytecount = 0
     pack = '>'
     tup = u''
@@ -67,8 +66,10 @@ def get_pack(t):
         if len(i) is 3:
             size = type_size[i[0]]
             bytecount += size * int(i[2])
+            # Check if we have a zero length array
             if i[2] == '0':
                 tup += 'msg[' + str(bytecount) + ':],'
+                zeroarray = True
                 continue
             if size == 1:
                 n = i[2] * size
@@ -82,7 +83,7 @@ def get_pack(t):
             bytecount += type_size[i[0]]
             pack += format_struct[i[0]]
             tup += 'tr[' + str(j) + '],'
-    return pack, bytecount, tup
+    return pack, bytecount, tup, zeroarray
 
 def get_reply_func(f):
     if f['name']+'_reply' in func_name:
@@ -115,8 +116,9 @@ def get_definitions():
     func_name = {}
     i = 1
     for a in cfg.vppapidef:
-        pack, packlen, tup = get_pack(a[1:])
-        func_name[a[0]] = dict([('name', a[0]), ('args', get_args(a[4:])), ('full_args', get_args(a[1:])), ('pack', pack), ('packlen', packlen), ('tup', tup)])
+        pack, packlen, tup, zeroarray = get_pack(a[1:])
+        func_name[a[0]] = dict([('name', a[0]), ('pack', pack), ('packlen', packlen), ('tup', tup), ('args', get_args(a[1:])),
+                                ('zeroarray', zeroarray)])
         func_list.append(func_name[a[0]])  # Indexed by name
     return func_list, func_name
 
@@ -137,14 +139,13 @@ void pneum_set_handlers(void) {
     '''
 
 #
-# XXX:Deal with empty arrays
 # Print array with a hash of 'decode' and 'multipart'
 # Simplify to do only decode for now. And deduce multipart from _dump?
 #
 def decode_function_print(name, args, pack, packlen, tup):
 
     print(u'def ' + name + u'_decode(msg):')
-    print(u"    n = namedtuple('" + name + "', '" + args + "')" +
+    print(u"    n = namedtuple('" + name + "', '" + ', '.join(args) + "')" +
     '''
     if not n:
         return None
@@ -157,12 +158,11 @@ def decode_function_print(name, args, pack, packlen, tup):
     return r
     ''')
 
-def function_print(name, id, args, pack, multipart):
-    if not args:
-        args = ""
+def function_print(name, id, args, pack, multipart, zeroarray):
+    if len(args) < 4:
         print "def", name + "(async = False):"
     else:
-        print "def", name + "(" + args + ",async = False):"
+        print "def", name + "(" + ', '.join(args[3:]) + ", async = False):"
     print "    global waiting_for_reply"
     print "    context = get_context(" + id + ")"
 
@@ -176,7 +176,10 @@ def function_print(name, id, args, pack, multipart):
     if multipart == True:
         print "    results[context]['m'] = True"
 
-    print "    vpp_api.write(pack('" + pack + "', " + id + ", 0, context, " + args + "))"
+    if zeroarray == True:
+        print "    vpp_api.write(pack('" + pack + "', " + id + ", 0, context, " + ', '.join(args[3:-1]) + ") + " + args[-1] + ")"
+    else:
+        print "    vpp_api.write(pack('" + pack + "', " + id + ", 0, context, " + ', '.join(args[3:]) + "))"
 
     if multipart == True:
         print "    vpp_api.write(pack('>HII', VL_API_CONTROL_PING, 0, context))"
@@ -201,6 +204,9 @@ def api_table_print (name, msg_id):
 
 print '''#!/usr/bin/env python3
 
+#
+# AUTO-GENERATED FILE. PLEASE DO NOT EDIT.
+#
 import sys, time, threading, signal, os, logging
 from struct import *
 from collections import namedtuple
@@ -312,7 +318,7 @@ pp = pprint.PrettyPrinter(indent=4)
 #
 for f in func_list:
     #if f['name'].find('_reply') > 0 or f['name'].find('_details') > 0:
-    decode_function_print(f['name'], f['full_args'], f['pack'], f['packlen'], f['tup'])
+    decode_function_print(f['name'], f['args'], f['pack'], f['packlen'], f['tup'])
 
     #r = get_reply_func(f)
     #if not r:
@@ -327,7 +333,7 @@ for f in func_list:
     else:
         f['multipart'] = False
     msg_id_in = 'VL_API_' + f['name'].upper()
-    function_print(f['name'], msg_id_in, f['args'], f['pack'], f['multipart'])
+    function_print(f['name'], msg_id_in, f['args'], f['pack'], f['multipart'], f['zeroarray'])
 
 
 print "api_func_table = [0] * 10000"
