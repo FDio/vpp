@@ -103,11 +103,15 @@ typedef struct {
   /* CLI log file. GIGO. */
   u8 *log_filename;
   int log_fd;
+
   /* Don't put CLI connections into character mode */
   int cli_line_mode;
 
   /* Maximum amount of command line history to keep per session */
   u32 cli_history_limit;
+
+  /* Suppress the welcome banner at CLI session start */
+  int cli_no_banner;
 
   /* Store the original state of stdin when it's a tty */
   struct termios tio_stdin;
