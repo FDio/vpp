@@ -998,8 +998,14 @@ u8 * format_ip_adjacency (u8 * s, va_list * args)
 	case IP_LOOKUP_NEXT_ARP:
 	  if (adj->if_address_index != ~0)
 	    s = format (s, " %U", format_ip_interface_address, lm, adj->if_address_index);
-	  if (adj->arp.next_hop.ip4.as_u32)
+	  if (adj->arp.next_hop.ip4.as_u32 != 0 &&
+	      adj->arp.next_hop.ip4_padding[0] == 0 &&
+	      adj->arp.next_hop.ip4_padding[1] == 0 &&
+	      adj->arp.next_hop.ip4_padding[2] == 0)
 	    s = format (s, " via %U", format_ip4_address, &adj->arp.next_hop.ip4.as_u32);
+	  else if (adj->arp.next_hop.ip6.as_u64[0] ||
+	      adj->arp.next_hop.ip6.as_u64[1])
+	    s = format (s, " via %U", format_ip6_address, &adj->arp.next_hop.ip6);
 	  break;
 	case IP_LOOKUP_NEXT_LOCAL:
 	  if (adj->if_address_index != ~0)

@@ -40,6 +40,8 @@
 #ifndef included_ip6_packet_h
 #define included_ip6_packet_h
 
+#include <vnet/ip/tcp_packet.h>
+
 typedef union {
   u8 as_u8[16];
   u16 as_u16[8];

@@ -390,7 +390,8 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
       e = pool_elt_at_index (am->ip4_entry_pool, p[0]);
 
       /* Refuse to over-write static arp. */
-      if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC)
+      if (!is_static &&
+          (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC))
 	return -2;
       make_new_arp_cache_entry = 0;
     }
@@ -1313,7 +1314,7 @@ arp_add_del_adj_cb (struct ip_lookup_main_t * lm,
 	{
 	  if (!e)
 	    clib_warning("Adjacency contains unknown ARP next hop %U (del)",
-			 format_ip4_address, &adj->arp.next_hop);
+			 format_ip4_address, &adj->arp.next_hop.ip4);
 	  else
 	    arp_ip4_entry_del_adj(e, adj->heap_handle);
 	}
@@ -1321,7 +1322,7 @@ arp_add_del_adj_cb (struct ip_lookup_main_t * lm,
 	{
 	  if (!e)
 	    clib_warning("Adjacency contains unknown ARP next hop %U (add)",
-			 format_ip4_address, &adj->arp.next_hop);
+			 format_ip4_address, &adj->arp.next_hop.ip4);
 	  else
 	    arp_ip4_entry_add_adj(e, adj->heap_handle);
 	}
@@ -1714,7 +1715,7 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (ip_arp_add_del_command, static) = {
     .path = "set ip arp",
-    .short_help = "set ip arp [del] <intfc> <ip-address> <mac-address>",
+    .short_help = "set ip arp [del] <intfc> <ip-address> <mac-address> [static] [count <count>] [fib-id <fib-id>] [proxy <lo-addr> - <hi-addr>]",
     .function = ip_arp_add_del_command_fn,
 };
 

@@ -43,6 +43,7 @@
 #include <vnet/vnet.h>
 #include <vlib/buffer.h>
 #include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
 
 /* Next index stored in adjacency. */
 typedef enum {
@@ -169,7 +170,12 @@ typedef struct {
     /* IP_LOOKUP_NEXT_ARP only */
     struct {
       union {
-        ip4_address_t ip4;
+        CLIB_PACKED (struct {
+          //Padding set to zero for v4/v6 disambiguation.
+          u32 ip4_padding[3];
+          ip4_address_t ip4;
+        });
+        ip6_address_t ip6;
       } next_hop;
       u32 next_adj_index_with_same_next_hop;
     } arp;
