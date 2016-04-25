@@ -49,6 +49,7 @@ _ (6633, vpath_3)
 #define foreach_udp6_dst_port                   \
 _ (547, dhcpv6_to_server)                       \
 _ (546, dhcpv6_to_client)			\
+_ (4341, lisp_gpe6)                             \
 _ (4342, lisp_cp6)                          	\
 _ (6633, vpath6_3)
 
@@ -113,45 +114,63 @@ void udp_register_dst_port (vlib_main_t * vm,
                             u32 node_index, u8 is_ip4);
 
 always_inline void
-ip4_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len)
+ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
+                  u8 is_ip4)
 {
-  ip4_header_t * ip0;
-  ip_csum_t sum0;
-  u16 old_l0 = 0;
   u16 new_l0;
   udp_header_t * udp0;
 
   vlib_buffer_advance (b0, - ec_len);
-  ip0 = vlib_buffer_get_current(b0);
 
-  /* Apply the encap string. */
-  clib_memcpy(ip0, ec0, ec_len);
+  if (is_ip4)
+    {
+      ip4_header_t * ip0;
+      ip_csum_t sum0;
+      u16 old_l0 = 0;
 
-  /* fix the <bleep>ing outer-IP checksum */
-  sum0 = ip0->checksum;
-  /* old_l0 always 0, see the rewrite setup */
-  new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+      ip0 = vlib_buffer_get_current(b0);
 
-  sum0 = ip_csum_update(sum0, old_l0, new_l0, ip4_header_t,
-                        length /* changed member */);
-  ip0->checksum = ip_csum_fold (sum0);
-  ip0->length = new_l0;
+      /* Apply the encap string. */
+      clib_memcpy(ip0, ec0, ec_len);
 
-  /* Fix UDP length */
-  udp0 = (udp_header_t *)(ip0+1);
-  new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
-                                 - sizeof (*ip0));
+      /* fix the <bleep>ing outer-IP checksum */
+      sum0 = ip0->checksum;
+      /* old_l0 always 0, see the rewrite setup */
+      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
 
-  udp0->length = new_l0;
+      sum0 = ip_csum_update(sum0, old_l0, new_l0, ip4_header_t,
+                            length /* changed member */);
+      ip0->checksum = ip_csum_fold (sum0);
+      ip0->length = new_l0;
+
+      /* Fix UDP length */
+      udp0 = (udp_header_t *)(ip0+1);
+      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                     - sizeof (*ip0));
+      udp0->length = new_l0;
+    }
+  else
+    {
+      ip6_header_t * ip0;
+      ip0 = vlib_buffer_get_current(b0);
+
+      /* Apply the encap string. */
+      clib_memcpy(ip0, ec0, ec_len);
+
+      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                     - sizeof (*ip0));
+      ip0->payload_length = new_l0;
+
+      /* Fix UDP length */
+      udp0 = (udp_header_t *)(ip0+1);
+      udp0->length = new_l0;
+    }
 }
 
 always_inline void
-ip4_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
-                   u8 * ec0, u8 * ec1, word ec_len)
+ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
+                  u8 * ec0, u8 * ec1, word ec_len, u8 is_v4)
 {
-  ip4_header_t * ip0, *ip1;
-  ip_csum_t sum0, sum1;
-  u16 old_l0 = 0, old_l1 = 0;
   u16 new_l0, new_l1;
   udp_header_t * udp0, *udp1;
 
@@ -160,43 +179,73 @@ ip4_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
   vlib_buffer_advance (b0, -ec_len);
   vlib_buffer_advance (b1, -ec_len);
 
-  ip0 = vlib_buffer_get_current (b0);
-  ip1 = vlib_buffer_get_current (b1);
+  if (is_v4)
+    {
+      ip4_header_t * ip0, *ip1;
+      ip_csum_t sum0, sum1;
+      u16 old_l0 = 0, old_l1 = 0;
 
-  /* Apply the encap string */
-  clib_memcpy (ip0, ec0, ec_len);
-  clib_memcpy (ip1, ec1, ec_len);
+      ip0 = vlib_buffer_get_current (b0);
+      ip1 = vlib_buffer_get_current (b1);
 
-  /* fix the <bleep>ing outer-IP checksum */
-  sum0 = ip0->checksum;
-  sum1 = ip1->checksum;
+      /* Apply the encap string */
+      clib_memcpy (ip0, ec0, ec_len);
+      clib_memcpy (ip1, ec1, ec_len);
 
-  /* old_l0 always 0, see the rewrite setup */
-  new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-  new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
+      /* fix the <bleep>ing outer-IP checksum */
+      sum0 = ip0->checksum;
+      sum1 = ip1->checksum;
 
-  sum0 = ip_csum_update(sum0, old_l0, new_l0, ip4_header_t,
-                        length /* changed member */);
-  sum1 = ip_csum_update(sum1, old_l1, new_l1, ip4_header_t,
-                        length /* changed member */);
+      /* old_l0 always 0, see the rewrite setup */
+      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+      new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
 
-  ip0->checksum = ip_csum_fold (sum0);
-  ip1->checksum = ip_csum_fold (sum1);
+      sum0 = ip_csum_update(sum0, old_l0, new_l0, ip4_header_t,
+                            length /* changed member */);
+      sum1 = ip_csum_update(sum1, old_l1, new_l1, ip4_header_t,
+                            length /* changed member */);
 
-  ip0->length = new_l0;
-  ip1->length = new_l1;
+      ip0->checksum = ip_csum_fold (sum0);
+      ip1->checksum = ip_csum_fold (sum1);
 
-  /* Fix UDP length */
-  udp0 = (udp_header_t *) (ip0 + 1);
-  udp1 = (udp_header_t *) (ip1 + 1);
+      ip0->length = new_l0;
+      ip1->length = new_l1;
 
-  new_l0 = clib_host_to_net_u16 (
-      vlib_buffer_length_in_chain (vm, b0) - sizeof(*ip0));
-  new_l1 = clib_host_to_net_u16 (
-      vlib_buffer_length_in_chain (vm, b1) - sizeof(*ip1));
-  udp0->length = new_l0;
-  udp1->length = new_l1;
-  return;
+      /* Fix UDP length */
+      udp0 = (udp_header_t *) (ip0 + 1);
+      udp1 = (udp_header_t *) (ip1 + 1);
+
+      new_l0 = clib_host_to_net_u16 (
+          vlib_buffer_length_in_chain (vm, b0) - sizeof(*ip0));
+      new_l1 = clib_host_to_net_u16 (
+          vlib_buffer_length_in_chain (vm, b1) - sizeof(*ip1));
+      udp0->length = new_l0;
+      udp1->length = new_l1;
+    }
+  else
+    {
+      ip6_header_t * ip0, * ip1;
+      ip0 = vlib_buffer_get_current(b0);
+      ip1 = vlib_buffer_get_current(b1);
+
+      /* Apply the encap string. */
+      clib_memcpy(ip0, ec0, ec_len);
+      clib_memcpy(ip1, ec1, ec_len);
+
+      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                     - sizeof (*ip0));
+      new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
+                                     - sizeof (*ip1));
+      ip0->payload_length = new_l0;
+      ip1->payload_length = new_l1;
+
+      /* Fix UDP length */
+      udp0 = (udp_header_t *)(ip0+1);
+      udp1 = (udp_header_t *)(ip1+1);
+
+      udp0->length = new_l0;
+      udp1->length = new_l1;
+    }
 }
 
 #endif /* included_udp_h */

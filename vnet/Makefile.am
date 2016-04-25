@@ -478,6 +478,7 @@ endif
 libvnet_la_SOURCES +=				\
  vnet/lisp-gpe/lisp_gpe.c			\
  vnet/lisp-gpe/interface.c			\
+ vnet/lisp-gpe/ip_forward.c			\
  vnet/lisp-gpe/decap.c				
 
 nobase_include_HEADERS +=			\

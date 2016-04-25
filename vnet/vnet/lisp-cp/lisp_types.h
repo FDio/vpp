@@ -25,23 +25,25 @@ typedef enum
   IP6
 } ip_address_type_t;
 
-typedef struct
+typedef CLIB_PACKED(struct ip_address
 {
   union
   {
     ip4_address_t v4;
     ip6_address_t v6;
   } ip;
-  ip_address_type_t version;
-} ip_address_t;
+  u8 version;
+}) ip_address_t;
 
 int ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2);
+void ip_address_copy (ip_address_t * dst , ip_address_t * src);
+void ip_address_copy_addr (void * dst , ip_address_t * src);
 
-typedef struct
+typedef CLIB_PACKED(struct ip_prefix
 {
   ip_address_t addr;
   u8 len;
-} ip_prefix_t;
+}) ip_prefix_t;
 
 #define ip_addr_addr(_a) (_a)->ip
 #define ip_addr_v4(_a) (_a)->ip.v4
@@ -113,7 +115,6 @@ u32 gid_address_parse (u8 * offset, gid_address_t *a);
 #define gid_address_ip(_a) ip_prefix_addr(&gid_address_ippref(_a))
 
 /* 'sub'address functions */
-int ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2);
 u16 ip_prefix_size_to_write (void * pref);
 u16 ip_prefix_write (u8 * p, void * pref);
 u8 ip_prefix_length (void *a);

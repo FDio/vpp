@@ -27,25 +27,29 @@
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/lisp-gpe/lisp_gpe_packet.h>
 
-#define IP_UDP_HDR_LEN (word) (sizeof(udp_header_t) + sizeof(ip4_header_t))
-
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;             /* 20 bytes */
   udp_header_t udp;             /* 8 bytes */
   lisp_gpe_header_t lisp;       /* 8 bytes */
 }) ip4_udp_lisp_gpe_header_t;
 
+typedef CLIB_PACKED (struct {
+  ip6_header_t ip6;             /* 40 bytes */
+  udp_header_t udp;             /* 8 bytes */
+  lisp_gpe_header_t lisp;       /* 8 bytes */
+}) ip6_udp_lisp_gpe_header_t;
+
 typedef struct
 {
   union
   {
     struct
-      {
-	gid_address_t eid;
-	u32 dst_loc;
-	u32 iid;
-      };
-    u8 as_u8[6];
+    {
+      ip_prefix_t eid;          /* within the dp only ip and mac can be eids */
+      ip_address_t dst_loc;
+      u32 iid;
+    };
+    u8 as_u8[40];
   };
 } lisp_gpe_tunnel_key_t;
 
@@ -58,8 +62,8 @@ typedef struct
   u32 decap_next_index;
 
   /* tunnel src and dst addresses */
-  ip4_address_t src;
-  ip4_address_t dst;
+  ip_address_t src;
+  ip_address_t dst;
 
   /* FIB indices */
   u32 encap_fib_index;          /* tunnel partner lookup here */
@@ -77,7 +81,7 @@ typedef struct
   u32 vni;
 } lisp_gpe_tunnel_t;
 
-#define foreach_lisp_gpe_input_next             \
+#define foreach_lisp_gpe_ip_input_next          \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")                       \
@@ -85,7 +89,7 @@ _(ETHERNET_INPUT, "ethernet-input")
 
 typedef enum {
 #define _(s,n) LISP_GPE_INPUT_NEXT_##s,
-  foreach_lisp_gpe_input_next
+  foreach_lisp_gpe_ip_input_next
 #undef _
   LISP_GPE_INPUT_N_NEXT,
 } lisp_gpe_input_next_t;
@@ -100,12 +104,28 @@ typedef enum {
 /* As a first step, reuse v4 fib. The goal of the typedef is to shield
  * consumers from future updates that may result in the lisp ip4 fib diverging
  * from ip4 fib */
-typedef ip4_fib_t lisp_ip4_fib_t;
+typedef ip4_fib_t ip4_src_fib_t;
+
+typedef struct ip6_src_fib
+{
+  BVT(clib_bihash) ip6_lookup_table;
+
+  /* bitmap/vector of mask widths to search */
+  uword * non_empty_dst_address_length_bitmap;
+  u8 * prefix_lengths_in_search_order;
+  ip6_address_t fib_masks[129];
+  i32 dst_address_length_refcounts[129];
+
+  /* ip6 lookup table config parameters */
+  u32 lookup_table_nbuckets;
+  uword lookup_table_size;
+} ip6_src_fib_t;
 
 typedef struct lisp_gpe_main
 {
   /* Pool of src fibs that are paired with dst fibs */
-  ip4_fib_t * src_fibs;
+  ip4_src_fib_t * ip4_src_fibs;
+  ip6_src_fib_t * ip6_src_fibs;
 
   /* vector of encap tunnel instances */
   lisp_gpe_tunnel_t * tunnels;
@@ -123,26 +143,30 @@ typedef struct lisp_gpe_main
   /* Lookup lisp-gpe interfaces by vrf */
   uword * lisp_gpe_hw_if_index_by_table_id;
 
-  /* Lookup lgpe_ip4_lookup_next by vrf */
+  /* Lookup lgpe_ipX_lookup_next by vrf */
   uword * lgpe_ip4_lookup_next_index_by_table_id;
+  uword * lgpe_ip6_lookup_next_index_by_table_id;
 
-  /* next node indexes that points ip4 lookup to lisp gpe lookup and lisp cp */
+  /* next node indexes that point ip4/6 lookup to lisp gpe ip lookup */
   u32 ip4_lookup_next_lgpe_ip4_lookup;
+  u32 ip6_lookup_next_lgpe_ip6_lookup;
 
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
-  ip_lookup_main_t * lookup_main;
   ip4_main_t * im4;
+  ip6_main_t * im6;
+  ip_lookup_main_t * lm4;
+  ip_lookup_main_t * lm6;
 } lisp_gpe_main_t;
 
 lisp_gpe_main_t lisp_gpe_main;
 
 extern vlib_node_registration_t lgpe_ip4_lookup_node;
-extern vlib_node_registration_t lisp_gpe_input_node;
+extern vlib_node_registration_t lgpe_ip6_lookup_node;
+extern vlib_node_registration_t lisp_gpe_ip4_input_node;
+extern vlib_node_registration_t lisp_gpe_ip6_input_node;
 
-u8 *
-format_lisp_gpe_tx_trace (u8 * s, va_list * args);
 u8 *
 format_lisp_gpe_header_with_length (u8 * s, va_list * args);
 
@@ -202,7 +226,7 @@ typedef struct
   ip_address_t dlocator;
   u32 encap_fib_index;
   u32 decap_fib_index;
-  u32 decap_next_index;
+  u32 decap_next_index; /* TODO is this really needed? */
   u8 flags;
   u8 ver_res;
   u8 res;
@@ -215,7 +239,36 @@ int
 vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
 				 u32 * hw_if_indexp);
 
-u8 *
-format_lisp_gpe_header_with_length (u8 * s, va_list * args);
+int
+ip_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
+                         ip_prefix_t * src_prefix, u32 table_id,
+                         ip_adjacency_t * add_adj, u8 is_add);
+u32
+ip_sd_fib_get_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
+                     ip_prefix_t * src_prefix, u32 table_id);
+
+#define foreach_lgpe_ip4_lookup_next    \
+  _(DROP, "error-drop")                 \
+  _(LISP_CP_LOOKUP, "lisp-cp-lookup")
+
+typedef enum lgpe_ip4_lookup_next
+{
+#define _(sym,str) LGPE_IP4_LOOKUP_NEXT_##sym,
+  foreach_lgpe_ip4_lookup_next
+#undef _
+  LGPE_IP4_LOOKUP_N_NEXT,
+} lgpe_ip4_lookup_next_t;
+
+#define foreach_lgpe_ip6_lookup_next     \
+  _(DROP, "error-drop")                 \
+  _(LISP_CP_LOOKUP, "lisp-cp-lookup")
+
+typedef enum lgpe_ip6_lookup_next
+{
+#define _(sym,str) LGPE_IP6_LOOKUP_NEXT_##sym,
+  foreach_lgpe_ip6_lookup_next
+#undef _
+  LGPE_IP6_LOOKUP_N_NEXT,
+} lgpe_ip6_lookup_next_t;
 
 #endif /* included_vnet_lisp_gpe_h */
