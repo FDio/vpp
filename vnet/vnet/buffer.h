@@ -52,6 +52,15 @@
 #define LOG2_HGSHM_BUFFER_USER_INDEX_VALID  LOG2_VLIB_BUFFER_FLAG_USER(3)
 #define VNET_HGSHM_BUFFER_USER_INDEX_VALID  (1 << LOG2_HGSHM_BUFFER_USER_INDEX_VALID)
 
+/* VLAN header flags */
+#define LOG2_ETH_BUFFER_VLAN_1_DEEP LOG2_VLIB_BUFFER_FLAG_USER(4)
+#define LOG2_ETH_BUFFER_VLAN_2_DEEP LOG2_VLIB_BUFFER_FLAG_USER(5)
+#define ETH_BUFFER_VLAN_1_DEEP (1 << LOG2_ETH_BUFFER_VLAN_1_DEEP)
+#define ETH_BUFFER_VLAN_2_DEEP (1 << LOG2_ETH_BUFFER_VLAN_2_DEEP)
+#define ETH_BUFFER_VLAN_BITS (ETH_BUFFER_VLAN_1_DEEP | \
+                              ETH_BUFFER_VLAN_2_DEEP)
+
+
 #define foreach_buffer_opaque_union_subtype     \
 _(ethernet)                                     \
 _(ip)                                           \
