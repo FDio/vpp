@@ -288,9 +288,9 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
               nsh_vxlan_gpe_tunnel_t  * next_t1;
               nsh_vxlan_gpe_tunnel_key_t next_key1;
 
-              next_key1.src = iuvn0->ip4.dst_address.as_u32;
-              next_key1.vni = iuvn0->vxlan.vni_res;
-              next_key1.spi_si = iuvn0->nsh.spi_si;
+              next_key1.src = iuvn1->ip4.dst_address.as_u32;
+              next_key1.vni = iuvn1->vxlan.vni_res;
+              next_key1.spi_si = iuvn1->nsh.spi_si;
               next_key1.pad = 0;
 
               next_p1 = hash_get_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, &next_key1);
