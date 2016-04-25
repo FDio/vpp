@@ -129,6 +129,7 @@ parse_header (ethernet_input_variant_t variant,
   *inner_id = 0;
 
   *match_flags = SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_0_TAG;
+  ethernet_buffer_set_vlan_count(b0, 0);
 
   // check for vlan encaps
   if ((*type == ETHERNET_TYPE_VLAN) ||
@@ -150,6 +151,7 @@ parse_header (ethernet_input_variant_t variant,
     *type = clib_net_to_host_u16(h0->type);
 
     vlib_buffer_advance (b0, sizeof (h0[0]));
+    ethernet_buffer_set_vlan_count(b0, 1);
 
     if (*type == ETHERNET_TYPE_VLAN) {
       // Double tagged packet
@@ -164,10 +166,12 @@ parse_header (ethernet_input_variant_t variant,
       *type = clib_net_to_host_u16(h0->type);
 
       vlib_buffer_advance (b0, sizeof (h0[0]));
+      ethernet_buffer_set_vlan_count(b0, 2);
 
       if (*type == ETHERNET_TYPE_VLAN) {
         // More than double tagged packet
         *match_flags = SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_3_TAG;
+        ethernet_buffer_set_vlan_count(b0, 3); // "unknown" number, aka, 3-or-more
       }
     }
   }
@@ -230,7 +234,7 @@ determine_next_node (ethernet_main_t * em,
     *next0 = em->l2_next;
     // record the L2 len and reset the buffer so the L2 header is preserved
     vnet_buffer(b0)->l2.l2_len = b0->current_data;
-    vlib_buffer_advance (b0, -(b0->current_data));
+    vlib_buffer_advance(b0, - ethernet_buffer_header_size(b0));
 
   // check for common IP/MPLS ethertypes
   } else if (type0 == ETHERNET_TYPE_IP4) {
