@@ -114,7 +114,13 @@ typedef struct {
   u8 ** command_history;
   u8 * current_command;
   i32 excursion;
+
+  /* Maximum number of history entries this session will store. */
   u32 history_limit;
+
+  /* Current command line counter */
+  u32 command_number;
+
   u8 * search_key;
   int search_mode;
 
@@ -160,7 +166,6 @@ typedef enum {
   UNIX_CLI_PARSE_ACTION_CLEAR,
   UNIX_CLI_PARSE_ACTION_REVSEARCH,
   UNIX_CLI_PARSE_ACTION_FWDSEARCH,
-  UNIX_CLI_PARSE_ACTION_HISTORY,
   UNIX_CLI_PARSE_ACTION_YANK,
   UNIX_CLI_PARSE_ACTION_TELNETIAC,
 
@@ -236,9 +241,6 @@ static unix_cli_parse_actions_t unix_cli_parse_strings[] = {
  /* Emacs-ish history search */
  _( CTL('S'), UNIX_CLI_PARSE_ACTION_FWDSEARCH ),
  _( CTL('R'), UNIX_CLI_PARSE_ACTION_REVSEARCH ),
-
- /* TODO: replace with 'history' command? */
- _( "?",      UNIX_CLI_PARSE_ACTION_HISTORY ),
 
  /* Other protocol things */
  _( "\xff",   UNIX_CLI_PARSE_ACTION_TELNETIAC ),  /* IAC */
@@ -695,23 +697,6 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_NOACTION:
       break;
 
-    case UNIX_CLI_PARSE_ACTION_HISTORY:
-      /* Erase the current command (if any)*/
-      for (j = cf->cursor; j < (vec_len (cf->current_command)); j++)
-        unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
-      for (j = 0; j < (vec_len (cf->current_command)); j++)
-        unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b \b", 3);
-
-      unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\nHistory:\n", 10);
-
-      for (j = 0; j < vec_len (cf->command_history); j++)
-        {
-          unix_vlib_cli_output_cooked (cf, uf, cf->command_history[j],
-                                       vec_len(cf->command_history[j]));
-          unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
-        }
-      goto crlf;
-
     case UNIX_CLI_PARSE_ACTION_REVSEARCH:
     case UNIX_CLI_PARSE_ACTION_FWDSEARCH:
       if (cf->search_mode == 0)
@@ -1029,12 +1014,23 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
       /* Don't add blank lines to the cmd history */
       if (vec_len (cf->current_command) > 2)
         {
+          /* Don't duplicate the previous command */
           _vec_len (cf->current_command) -= 2;
-          vec_add1 (cf->command_history, cf->current_command);
-          cf->current_command = 0;
+          j = vec_len(cf->command_history);
+          if (j == 0 ||
+            (vec_len (cf->current_command) != vec_len (cf->command_history[j - 1]) ||
+                memcmp(cf->current_command, cf->command_history[j - 1],
+                       vec_len (cf->current_command)) != 0))
+            {
+              vec_add1 (cf->command_history, cf->current_command);
+              cf->current_command = 0;
+              cf->command_number ++;
+            }
+          else
+            vec_reset_length (cf->current_command);
         }
       else
-        vec_reset_length (cf->current_command);
+          vec_reset_length (cf->current_command);
       cf->excursion = 0;
       cf->search_mode = 0;
       vec_reset_length (cf->search_key);
@@ -1784,6 +1780,34 @@ VLIB_CLI_COMMAND (cli_unix_show_errors, static) = {
   .short_help = "Show Unix system call error history",
   .function = unix_show_errors,
 };
+
+static clib_error_t *
+unix_cli_show_history (vlib_main_t * vm,
+      unformat_input_t * input,
+      vlib_cli_command_t * cmd)
+{
+  unix_cli_main_t * cm = &unix_cli_main;
+  unix_cli_file_t * cf;
+  int i, j;
+
+  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+
+  i = 1 + cf->command_number - vec_len(cf->command_history);
+
+  for (j = 0; j < vec_len (cf->command_history); j++)
+    {
+      vlib_cli_output (vm, "%d  %v\n", i + j, cf->command_history[j]);
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (cli_unix_cli_show_history, static) = {
+  .path = "history",
+  .short_help = "Show current session command history",
+  .function = unix_cli_show_history,
+};
+
 
 static clib_error_t *
 unix_cli_init (vlib_main_t * vm)
