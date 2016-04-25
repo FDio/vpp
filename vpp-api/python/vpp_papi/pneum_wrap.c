@@ -12,7 +12,11 @@ wrap_pneum_callback (char *data, int len)
   gstate = PyGILState_Ensure();
 
   /* Time to call the callback */
+#if PY_VERSION_HEX >= 0x03000000
   result = PyObject_CallFunction(pneum_callback, "y#", data, len);
+#else
+  result = PyObject_CallFunction(pneum_callback, "s#", data, len);
+#endif
   if (result)
     Py_DECREF(result);
   else
@@ -84,8 +88,11 @@ wrap_read (PyObject *self, PyObject *args)
   Py_END_ALLOW_THREADS
 
   if (rv != 0) { Py_RETURN_NONE; }
-
+#if PY_VERSION_HEX >= 0x03000000
   PyObject *ret = Py_BuildValue("y#", data, len);
+#else
+  PyObject *ret = Py_BuildValue("s#", data, len);
+#endif
   if (!ret) { Py_RETURN_NONE; }
 
   vl_msg_api_free(data);
@@ -100,21 +107,46 @@ static PyMethodDef vpp_api_Methods[] = {
   {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-static struct PyModuleDef vpp_api_module = {
-  PyModuleDef_HEAD_INIT,
-  "vpp_api",   /* name of module */
-   NULL, /* module documentation, may be NULL */
-  -1,       /* size of per-interpreter state of the module,
-	       or -1 if the module keeps state in global variables. */
-  vpp_api_Methods
-};
-
+#if PY_VERSION_HEX >= 0x03000000
 PyMODINIT_FUNC
 PyInit_vpp_api (void)
+#else
+void
+initvpp_api (void)
+#endif
 {
+#if PY_VERSION_HEX >= 0x03000000
+  static struct PyModuleDef vpp_api_module = {
+# if PY_VERSION_HEX >= 0x03020000
+    PyModuleDef_HEAD_INIT,
+# else
+    {
+      PyObject_HEAD_INIT(NULL)
+      NULL, /* m_init */
+      0,    /* m_index */
+      NULL, /* m_copy */
+    },
+# endif
+    (char *) "vpp_api",
+    NULL,
+    -1,
+    vpp_api_Methods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+  };
+#endif
+
   /* Ensure threading is initialised */
   if (!PyEval_ThreadsInitialized()) {
     PyEval_InitThreads();
   }
+
+#if PY_VERSION_HEX >= 0x03000000
   return PyModule_Create(&vpp_api_module);
+#else
+  Py_InitModule((char *) "vpp_api", vpp_api_Methods);
+  return;
+#endif
 }

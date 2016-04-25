@@ -202,7 +202,7 @@ def api_table_print (name, msg_id):
 # Generate the main Python file
 #
 
-print '''#!/usr/bin/env python3
+print '''
 
 #
 # AUTO-GENERATED FILE. PLEASE DO NOT EDIT.
