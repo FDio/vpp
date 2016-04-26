@@ -1,0 +1,280 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_04237706",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 984,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "We shouldn\u0027t forget that this works just because of how convoluted ip prefix encoding is with LISP. The mask has a weird position in the header so it has to be filled in after the IP part is written. Therefore when writing an ip prefix, we\u0027re actually writing only the IP.",
+      "range": {
+        "startLine": 984,
+        "startChar": 2,
+        "endLine": 984,
+        "endChar": 46
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_e41f63b6",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1499,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "well done!",
+      "range": {
+        "startLine": 1499,
+        "startChar": 10,
+        "endLine": 1499,
+        "endChar": 45
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_c41c5fc4",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1588,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "Hmm, you did this because we\u0027re not using them for now? Just add a comment clarifying this. Again, good catch!",
+      "range": {
+        "startLine": 1588,
+        "startChar": 1,
+        "endLine": 1588,
+        "endChar": 31
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_24267b17",
+        "filename": "vnet/vnet/lisp-cp/lisp_cp_messages.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "I guess we should have one for rsvd1 as well. But not sure where we use this, since when sending it should be set to 0 (and we do that at the start for the whole LCAF header).",
+      "range": {
+        "startLine": 456,
+        "startChar": 8,
+        "endLine": 456,
+        "endChar": 17
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_a4128bb2",
+        "filename": "vnet/vnet/lisp-cp/lisp_cp_messages.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 458,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "nice :-)",
+      "range": {
+        "startLine": 458,
+        "startChar": 8,
+        "endLine": 458,
+        "endChar": 20
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_e44883ce",
+        "filename": "vnet/vnet/lisp-cp/lisp_msg_serdes.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "I don\u0027t think this is implied by the spec :) (generally rlocs should be IPs), but I love how it simplifies and generalizes the code. The only drawback is that now you have to convert ITR ip4/6 addresses to gid addresses, but we had to convert them to ip_address_t either way. So I guess we should live this as is.",
+      "range": {
+        "startLine": 30,
+        "startChar": 24,
+        "endLine": 30,
+        "endChar": 46
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_c44a1fac",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "Not sure if it\u0027s worth it but maybe we can avoid the switch with something like the arrays of function pointers we use for ip prefix now.",
+      "range": {
+        "startLine": 283,
+        "startChar": 2,
+        "endLine": 283,
+        "endChar": 27
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_a4b60bdb",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "No need for this for now. Typically LCAFs have no flags so until we need it, let\u0027s keep it out.",
+      "range": {
+        "startLine": 77,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 11
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_04a0178f",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "No need for this either. I don\u0027t think we need the union either (were you thinking about it because some types fill this area with other stuff?)",
+      "range": {
+        "startLine": 80,
+        "startChar": 4,
+        "endLine": 80,
+        "endChar": 13
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_24a31ba0",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "Let\u0027s move this to the gid_address_t struct. So by default gids should have vni \u003d 0. Also, why a union?",
+      "range": {
+        "startLine": 83,
+        "startChar": 0,
+        "endLine": 85,
+        "endChar": 4
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_e4dac316",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "I think I\u0027d rather put the lcaf types in here in the clear if possible. So instead of having this layering of gid_type/lcaf_type, we could just flatten it to gid_type and allocates vpp local types for each lcaf type. This gives us quicker access to the data with less convoluted macros, it may complicate parsing though. What do you think?",
+      "range": {
+        "startLine": 101,
+        "startChar": 4,
+        "endLine": 101,
+        "endChar": 16
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_e44d23c6",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-26T17:00:41Z",
+      "side": 1,
+      "message": "This is what I meant when describing the disadvantages of having the lcaf layer in the address hierarchy. In theory, we could have gid_address_sd, gid_address_elp and so on for other types.",
+      "range": {
+        "startLine": 147,
+        "startChar": 8,
+        "endLine": 147,
+        "endChar": 33
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
