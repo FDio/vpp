@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_c4e33f32",
+        "filename": "vnet/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T14:20:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_21b0ad8a",
+      "revId": "220c45f32bf5708885a2bd4d8c00bd9b2d36c8b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_0110094d",
         "filename": "vnet/vnet/ethernet/ethernet.h",
         "patchSetId": 1
@@ -72,6 +90,30 @@
       "side": 1,
       "message": "Oops. Yes, that was a refactoring error (I originally had these macros in buffer.h but that felt wrong)",
       "parentUuid": "fa0f191f_0110094d",
+      "range": {
+        "startLine": 324,
+        "startChar": 0,
+        "endLine": 324,
+        "endChar": 1
+      },
+      "revId": "220c45f32bf5708885a2bd4d8c00bd9b2d36c8b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_a4d04b54",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T14:20:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_0186c9b9",
       "range": {
         "startLine": 324,
         "startChar": 0,
@@ -131,6 +173,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_a4e96b1c",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T14:20:51Z",
+      "side": 1,
+      "message": "Shifting by a negative value is \"undefined behavior\" in C99. Without a conditional to guard it shifting won\u0027t work here.\n\nI did a test with this program:\n\n#include \u003cstdio.h\u003e\n#include \u003cstdint.h\u003e\n\nvoid main(int argc, char *argv[])\n{\n        uint32_t x \u003d 0xffffffff;\n\n        printf(\"%x\\n\", x \u003c\u003c -1);\n}\n\nUnfortunately the output is \"80000000\". The result is the same for a smaller input value, eg \"0xabcd\" etc, meaning \u003c\u003c-1 does not do what we want for the zero case.",
+      "parentUuid": "fa0f191f_41bba172",
+      "range": {
+        "startLine": 335,
+        "startChar": 37,
+        "endLine": 335,
+        "endChar": 39
+      },
+      "revId": "220c45f32bf5708885a2bd4d8c00bd9b2d36c8b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_c119f17a",
         "filename": "vnet/vnet/ethernet/node.c",
         "patchSetId": 1
@@ -165,6 +231,30 @@
       "writtenOn": "2016-04-26T11:50:25Z",
       "side": 1,
       "message": "Definitely.",
+      "parentUuid": "fa0f191f_c119f17a",
+      "range": {
+        "startLine": 174,
+        "startChar": 8,
+        "endLine": 174,
+        "endChar": 38
+      },
+      "revId": "220c45f32bf5708885a2bd4d8c00bd9b2d36c8b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_24dd5b71",
+        "filename": "vnet/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T14:20:51Z",
+      "side": 1,
+      "message": "Done",
       "parentUuid": "fa0f191f_c119f17a",
       "range": {
         "startLine": 174,
@@ -213,6 +303,30 @@
       "side": 1,
       "message": "Noted.",
       "parentUuid": "fa0f191f_a126fdb8",
+      "range": {
+        "startLine": 254,
+        "startChar": 6,
+        "endLine": 254,
+        "endChar": 36
+      },
+      "revId": "220c45f32bf5708885a2bd4d8c00bd9b2d36c8b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_e4e64344",
+        "filename": "vnet/vnet/l2/l2_input.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T14:20:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_01ada931",
       "range": {
         "startLine": 254,
         "startChar": 6,
