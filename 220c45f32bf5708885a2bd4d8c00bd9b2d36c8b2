@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_21b0ad8a",
+        "filename": "vnet/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T11:50:25Z",
+      "side": 1,
+      "message": "Not bothered. Whatever works.",
+      "parentUuid": "fa0f191f_21130d5e",
+      "revId": "220c45f32bf5708885a2bd4d8c00bd9b2d36c8b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_0110094d",
         "filename": "vnet/vnet/ethernet/ethernet.h",
         "patchSetId": 1
@@ -30,6 +48,30 @@
       "writtenOn": "2016-04-26T03:11:24Z",
       "side": 1,
       "message": "This will overwrite the other bits in the flags. Should probably be something like:\n(b)-\u003eflags \u003d ((b)-\u003eflags \u0026 ~(ETH_VLAN_BUFFER_BITS) | (v)\u003c\u003cLOG2_ETH_VLAN_BUFFER_2_DEEP)",
+      "range": {
+        "startLine": 324,
+        "startChar": 0,
+        "endLine": 324,
+        "endChar": 1
+      },
+      "revId": "220c45f32bf5708885a2bd4d8c00bd9b2d36c8b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_0186c9b9",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T11:50:25Z",
+      "side": 1,
+      "message": "Oops. Yes, that was a refactoring error (I originally had these macros in buffer.h but that felt wrong)",
+      "parentUuid": "fa0f191f_0110094d",
       "range": {
         "startLine": 324,
         "startChar": 0,
@@ -65,6 +107,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_41bba172",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T11:50:25Z",
+      "side": 1,
+      "message": "I can play with that but I am not sure it will save much. Since we do in fact store the 3 value we should try to make sure we don\u0027t do strange things; as is the resulting pointer would still remain inside the packet header keeping corruption local. \u003c\u003c3 would possibly send it deep into the packet. Maybe this is ok. I\u0027ll ponder it.",
+      "parentUuid": "fa0f191f_e11cf56c",
+      "range": {
+        "startLine": 335,
+        "startChar": 37,
+        "endLine": 335,
+        "endChar": 39
+      },
+      "revId": "220c45f32bf5708885a2bd4d8c00bd9b2d36c8b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_c119f17a",
         "filename": "vnet/vnet/ethernet/node.c",
         "patchSetId": 1
@@ -88,6 +154,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_2189cdca",
+        "filename": "vnet/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T11:50:25Z",
+      "side": 1,
+      "message": "Definitely.",
+      "parentUuid": "fa0f191f_c119f17a",
+      "range": {
+        "startLine": 174,
+        "startChar": 8,
+        "endLine": 174,
+        "endChar": 38
+      },
+      "revId": "220c45f32bf5708885a2bd4d8c00bd9b2d36c8b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_a126fdb8",
         "filename": "vnet/vnet/l2/l2_input.h",
         "patchSetId": 1
@@ -99,6 +189,30 @@
       "writtenOn": "2016-04-26T03:11:24Z",
       "side": 1,
       "message": "Similar comment about possibly more efficient to use a variable vc to accumulate number of vlan tags and invoke ethernet_buffer_set_vlan_count once.",
+      "range": {
+        "startLine": 254,
+        "startChar": 6,
+        "endLine": 254,
+        "endChar": 36
+      },
+      "revId": "220c45f32bf5708885a2bd4d8c00bd9b2d36c8b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_01ada931",
+        "filename": "vnet/vnet/l2/l2_input.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T11:50:25Z",
+      "side": 1,
+      "message": "Noted.",
+      "parentUuid": "fa0f191f_a126fdb8",
       "range": {
         "startLine": 254,
         "startChar": 6,
