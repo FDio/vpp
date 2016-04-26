@@ -1222,7 +1222,7 @@ typedef struct {
   u32 fib_index;
 
   /* Packet data, possibly *after* rewrite. */
-  u8 packet_data[64 - 1*sizeof(u32)];
+  u8 packet_data[128 - 1*sizeof(u32)];
 } ip6_forward_next_trace_t;
 
 static u8 * format_ip6_forward_next_trace (u8 * s, va_list * args)
