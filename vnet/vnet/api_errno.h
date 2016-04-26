@@ -72,7 +72,11 @@ _(NOT_CONNECTED, -78, "Not connected to the data plane")                \
 _(IF_ALREADY_EXISTS, -79, "Interface already exists")                   \
 _(BOND_SLAVE_NOT_ALLOWED, -80, "Operation not allowed on slave of BondEthernet") \
 _(VALUE_EXIST, -81, "Value already exists")                             \
-_(SAME_SRC_DST, -82, "Source and destination are the same")
+_(SAME_SRC_DST, -82, "Source and destination are the same")             \
+_(NOT_RUNNING_AS_ROOT, -83, "Not running as root") \
+_(ALREADY_CONNECTED, -84, "Connection to the data plane already exists") \
+_(UNSUPPORTED_JNI_VERSION, -85, "Unsupported JNI version") \
+_(FAILED_TO_ATTACH_TO_JAVA_THREAD, -86, "Failed to attach to Java thread")
 
 typedef enum {
 #define _(a,b,c) VNET_API_ERROR_##a = (b),
