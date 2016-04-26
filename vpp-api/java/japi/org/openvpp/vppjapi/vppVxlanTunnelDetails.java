@@ -16,18 +16,20 @@
 package org.openvpp.vppjapi;
 
 public final class vppVxlanTunnelDetails {
-    public final int srcAddress;
-    public final int dstAddress;
+    public final byte[] srcAddress;
+    public final byte[] dstAddress;
     public final int encapVrfId;
     public final int vni;
     public final int decapNextIndex;
+    public final boolean isIpv6;
 
-    public vppVxlanTunnelDetails(int srcAddress, int dstAddress,
-            int encapVrfId, int vni, int decapNextIndex) {
+    public vppVxlanTunnelDetails(byte[] srcAddress, byte[] dstAddress,
+            int encapVrfId, int vni, int decapNextIndex, boolean isIpv6) {
         this.srcAddress = srcAddress;
         this.dstAddress = dstAddress;
         this.encapVrfId = encapVrfId;
         this.vni = vni;
         this.decapNextIndex = decapNextIndex;
+        this.isIpv6 = isIpv6;
     }
 }

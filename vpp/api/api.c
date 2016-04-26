@@ -4196,13 +4196,25 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
     }
     encap_fib_index = p[0];
 
+    /* Check src & dst are different */
+    if ((a->is_ip6 && memcmp(mp->src_address, mp->dst_address, 16) == 0) ||
+       (!a->is_ip6 && memcmp(mp->src_address, mp->dst_address, 4) == 0)) {
+        rv = VNET_API_ERROR_SAME_SRC_DST;
+        goto out;
+    }
     memset (a, 0, sizeof (*a));
 
     a->is_add = mp->is_add;
+    a->is_ip6 = mp->is_ipv6;
 
     /* ip addresses sent in network byte order */
-    a->src.as_u32 = mp->src_address;
-    a->dst.as_u32 = mp->dst_address;
+    if (a->is_ip6) {
+        memcpy(&(a->src.ip6), mp->src_address, 16);
+        memcpy(&(a->dst.ip6), mp->dst_address, 16);
+    } else {
+        memcpy(&(a->src.ip4), mp->src_address, 4);
+        memcpy(&(a->dst.ip4), mp->dst_address, 4);
+    }
 
     a->encap_fib_index = encap_fib_index;
     a->decap_next_index = ntohl(mp->decap_next_index);
@@ -4220,17 +4232,26 @@ static void send_vxlan_tunnel_details
 (vxlan_tunnel_t * t, unix_shared_memory_queue_t * q)
 {
     vl_api_vxlan_tunnel_details_t * rmp;
-    ip4_main_t * im = &ip4_main;
+    ip4_main_t * im4 = &ip4_main;
+    ip6_main_t * im6 = &ip6_main;
+    u8 is_ipv6 = !(t->flags & VXLAN_TUNNEL_IS_IPV4);
 
     rmp = vl_msg_api_alloc (sizeof (*rmp));
     memset (rmp, 0, sizeof (*rmp));
     rmp->_vl_msg_id = ntohs(VL_API_VXLAN_TUNNEL_DETAILS);
-    rmp->src_address = t->src.data_u32;
-    rmp->dst_address = t->dst.data_u32;
-    rmp->encap_vrf_id = htonl(im->fibs[t->encap_fib_index].table_id);
+    if (is_ipv6) {
+        memcpy(rmp->src_address, &(t->src.ip6), 16);
+        memcpy(rmp->dst_address, &(t->dst.ip6), 16);
+        rmp->encap_vrf_id = htonl(im6->fibs[t->encap_fib_index].table_id);
+    } else {
+        memcpy(rmp->src_address, &(t->src.ip4), 4);
+        memcpy(rmp->dst_address, &(t->dst.ip4), 4);
+        rmp->encap_vrf_id = htonl(im4->fibs[t->encap_fib_index].table_id);
+    }
     rmp->vni = htonl(t->vni);
     rmp->decap_next_index = htonl(t->decap_next_index);
     rmp->sw_if_index = htonl(t->sw_if_index);
+    rmp->is_ipv6 = is_ipv6;
 
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
