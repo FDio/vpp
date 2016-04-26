@@ -1682,7 +1682,6 @@ lisp_cp_init (vlib_main_t *vm)
   lcm->vnet_main = vnet_get_main();
 
   gid_dictionary_init (&lcm->mapping_index_by_gid);
-  gid_dictionary_init (&lcm->mapping_index_by_gid);
 
   /* default vrf mapped to vni 0 */
   hash_set(lcm->table_id_by_vni, 0, 0);

@@ -171,20 +171,27 @@ void *
 pkt_push_ipv6 (vlib_main_t * vm, vlib_buffer_t *b, ip6_address_t *src,
                ip6_address_t *dst, int proto)
 {
-  return 0;
-//    struct ip6_hdr *ip6h;
-//    int len;
-//
-//    len = lbuf_size(b);
-//    ip6h = lbuf_push_uninit(b, sizeof(struct ip6_hdr));
-//
-//    ip6h->ip6_hops = 255;
-//    ip6h->ip6_vfc = (IP6VERSION << 4);
-//    ip6h->ip6_nxt = proto;
-//    ip6h->ip6_plen = clib_host_to_net_u16(len);
-//    clib_memcpy(ip6h->ip6_src.s6_addr, src->s6_addr, sizeof(struct in6_addr));
-//    clib_memcpy(ip6h->ip6_dst.s6_addr, dst->s6_addr, sizeof(struct in6_addr));
-//    return(ip6h);
+  ip6_header_t *ip6h;
+  u16 payload_length;
+
+  /* make some room */
+  ip6h = vlib_buffer_push_uninit(b, sizeof(ip6_header_t));
+
+  ip6h->ip_version_traffic_class_and_flow_label =
+        clib_host_to_net_u32 (0x6<<28);
+
+ /* calculate ip6 payload length */
+  payload_length = vlib_buffer_length_in_chain(vm, b);
+  payload_length -= sizeof (*ip6h);
+
+  ip6h->payload_length = clib_host_to_net_u16(payload_length);
+
+  ip6h->hop_limit = 0xff;
+  ip6h->protocol = proto;
+  clib_memcpy(ip6h->src_address.as_u8, src->as_u8, sizeof(ip6h->src_address));
+  clib_memcpy(ip6h->dst_address.as_u8, dst->as_u8, sizeof(ip6h->src_address));
+
+  return ip6h;
 }
 
 void *
