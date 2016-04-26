@@ -82,14 +82,9 @@ endef
 all: build
 
 $(B)/custom-config: $(B)/.patch.ok Makefile
-	@echo --- generating custom config from $(DPDK_SOURCE)/config/common_linuxapp ---
-	@cpp -undef -ffreestanding -x assembler-with-cpp $(DPDK_SOURCE)/config/common_linuxapp $@
+	@echo --- generating custom config from $(DPDK_SOURCE)/config/defconfig_$(DPDK_TARGET) ---
+	@cpp -undef -ffreestanding -x assembler-with-cpp $(DPDK_SOURCE)/config/defconfig_$(DPDK_TARGET) $@
 	$(call set,RTE_MACHINE,$(DPDK_MACHINE))
-	$(call set,RTE_ARCH,"x86_64")
-	$(call set,RTE_ARCH_X86_64,y)
-	$(call set,RTE_ARCH_64,y)
-	$(call set,RTE_TOOLCHAIN_GCC,y)
-	$(call set,RTE_TOOLCHAIN,"gcc")
 	@# modify options
 	$(call set,RTE_MAX_LCORE,256)
 	$(call set,RTE_PKTMBUF_HEADROOM,$(DPDK_PKTMBUF_HEADROOM))
