@@ -361,7 +361,7 @@ byte_to_ascii_decimal_unaligned(
  * in to the space provided and 
  * returns the number of bytes copied
  */
-inline static int 
+inline static int __attribute__((unused))
 copy_ipv4_addr(unsigned char *ptr, u32 ipv4) 
 {
     unsigned char *temp = ptr; 

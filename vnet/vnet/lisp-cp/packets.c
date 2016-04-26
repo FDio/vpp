@@ -225,7 +225,7 @@ pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t *b, u16 sp, u16 dp,
 
   udpsum = udp_checksum (uh, clib_net_to_host_u16 (uh->length), ih,
                          ip_addr_version(sip));
-  if (udpsum == -1)
+  if (udpsum == (u16) ~0)
     {
       clib_warning("Failed UDP checksum! Discarding");
       return 0;

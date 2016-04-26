@@ -104,7 +104,7 @@ lisp_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
           u32 bi0, bi1;
           vlib_buffer_t * b0, * b1;
           ip4_udp_lisp_gpe_header_t * iul0, * iul1;
-          u32 next0, next1, error0, error1;
+          u32 next0, next1, error0 = 0, error1 = 0;
           uword * si0, * si1;
 
           next0 = next1 = LISP_GPE_INPUT_NEXT_IP4_INPUT;

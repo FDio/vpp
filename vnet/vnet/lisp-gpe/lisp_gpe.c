@@ -721,7 +721,7 @@ add_del_negative_fwd_entry (lisp_gpe_main_t * lgm,
       /* TODO insert tunnel that always sends map-request */
     case DROP:
       /* for drop fwd entries, just add route, no need to add encap tunnel */
-      adj.lookup_next_index = LGPE_IP4_LOOKUP_NEXT_DROP;
+      adj.lookup_next_index = (u16) LGPE_IP4_LOOKUP_NEXT_DROP;
 
       /* add/delete route for prefix */
       return ip4_sd_fib_add_del_route (lgm, dpref, spref, a->table_id, &adj,

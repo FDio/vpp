@@ -2668,7 +2668,7 @@ void cnat_nfv9_ds_lite_log_session_delete(
  */
 
 
-static inline
+static inline __attribute__((unused))
 void handle_vrfid_name_mapping(void)
 {
     cnat_nfv9_logging_info_t    *nfv9_logging_info = NULL;

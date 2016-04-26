@@ -623,7 +623,7 @@ cnat_dynamic_port_alloc_v2 (
     for (i = 0; i < max_trys_to_find_port;  i++) {
 
     /* start_bit is only a u16.. so it can rollover and become zero */
-    if (PREDICT_FALSE((start_bit >= BITS_PER_INST) ||
+    if (PREDICT_FALSE( /* (start_bit >= BITS_PER_INST) || FIXME u16 cannot be >= 65536 */
                     (start_bit < static_port_range))) {
                     start_bit = static_port_range;
 #ifndef NO_BULK_LOGGING

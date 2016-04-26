@@ -420,7 +420,7 @@ u8 * format_os_pci_handle (u8 * s, va_list * va)
 		 l->bus_address.slot, l->bus_address.function);
 }
 
-static inline pci_device_registration_t *
+pci_device_registration_t * __attribute__((unused))
 pci_device_next_registered (pci_device_registration_t * r)
 {
   uword i;
