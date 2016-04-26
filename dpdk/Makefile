@@ -31,7 +31,14 @@ DPDK_2.1.0_TARBALL_MD5_CKSUM := 205a0d12bfd6eb717d57506272f43519
 DPDK_2.2.0_TARBALL_MD5_CKSUM := 22e2fd68cd5504f43fe9a5a6fd6dd938
 DPDK_16.04_TARBALL_MD5_CKSUM := 0728d506d7f56eb64233e824fa3c098a
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
-DPDK_TARGET := x86_64-native-linuxapp-gcc
+
+ifneq (,$(findstring clang,$(CC)))
+DPDK_CC=clang
+else
+DPDK_CC=gcc
+endif
+
+DPDK_TARGET := x86_64-native-linuxapp-$(DPDK_CC)
 JOBS := $(shell grep processor /proc/cpuinfo | wc -l)
 
 # compiler/linker custom arguments
@@ -40,9 +47,9 @@ DPDK_CPU_LDFLAGS :=
 DPDK_EXTRA_LDFLAGS := -g
 
 ifeq ($(DPDK_DEBUG),n)
-DPDK_EXTRA_CFLAGS := -g 
+DPDK_EXTRA_CFLAGS := -g
 else
-DPDK_EXTRA_CFLAGS := -g -O0 
+DPDK_EXTRA_CFLAGS := -g -O0
 endif
 
 # translate gcc march values to DPDK arch

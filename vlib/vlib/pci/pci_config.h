@@ -417,7 +417,7 @@ pci_config_find_capability (pci_config_type0_regs_t * t, int cap_type)
   while (ttl-- && next_offset >= 0x40)
     {
       c = (void *) t + (next_offset &~ 3);
-      if (c->type == 0xff)
+      if ((u8) c->type == 0xff)
 	break;
       if (c->type == cap_type)
 	return c;

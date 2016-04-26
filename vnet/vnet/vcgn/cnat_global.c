@@ -57,7 +57,7 @@ dslite_table_entry_t *dslite_table_db_ptr;
  */
 
 /* TOBE_PORTED: Following is in cnat_util.c */
-always_inline
+always_inline __attribute__((unused))
 void ipv4_decr_ttl_n_calc_csum(ipv4_header *ipv4)
 {
     u32 checksum;

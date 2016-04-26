@@ -51,7 +51,7 @@ aa_alloc (ip_adjacency_t * adjs, ip_adjacency_t **blockp, u32 n)
   aa_header_t * ah = aa_header (adjs);
   ip_adjacency_t * adj_block;
   u32 freelist_length;
-  int need_barrier_sync;
+  int need_barrier_sync = 0;
   
   ASSERT(os_get_cpu_number() == 0);
   ASSERT (clib_mem_is_heap_object (_vec_find(ah)));
