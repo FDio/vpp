@@ -128,38 +128,38 @@ static int sw_interface_dump (vppjni_main_t * jm)
     /* Get list of ethernets */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "Ether", sizeof(mp->name_filter-1));
+    strncpy ((char *) mp->name_filter, "Ether", sizeof(mp->name_filter)-1);
     S;
 
     /* and local / loopback interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "lo", sizeof(mp->name_filter-1));
+    strncpy ((char *) mp->name_filter, "lo", sizeof(mp->name_filter)-1);
     S;
 
     /* and vxlan tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "vxlan", sizeof(mp->name_filter-1));
+    strncpy ((char *) mp->name_filter, "vxlan", sizeof(mp->name_filter)-1);
     S;
 
     /* and tap tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "tap", sizeof(mp->name_filter-1));
+    strncpy ((char *) mp->name_filter, "tap", sizeof(mp->name_filter)-1);
     S;
 
     /* and host (af_packet) interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "host", sizeof(mp->name_filter-1));
+    strncpy ((char *) mp->name_filter, "host", sizeof(mp->name_filter)-1);
     S;
 
     /* and l2tpv3 tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
     strncpy ((char *) mp->name_filter, "l2tpv3_tunnel",
-             sizeof(mp->name_filter-1));
+             sizeof(mp->name_filter)-1);
     S;
 
     /* Use a control ping for synchronization */
