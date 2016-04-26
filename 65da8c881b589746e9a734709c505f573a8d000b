@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_44a4cf56",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-26T17:38:45Z",
+      "side": 1,
+      "message": "Do you think this should be LOG2_ETH_BUFFER_VLAN_1_DEEP?",
+      "range": {
+        "startLine": 316,
+        "startChar": 43,
+        "endLine": 316,
+        "endChar": 70
+      },
+      "revId": "65da8c881b589746e9a734709c505f573a8d000b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_04adb731",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-26T17:38:45Z",
+      "side": 1,
+      "message": "Still not sure this is right. I thought it should be:\n(b)-\u003eflags \u003d (b)-\u003eflags \u0026 ~ETH_BUFFER_VLAN_BITS |\n  ((v) \u003c\u003c LOG2_ETH_BUFFER_VLAN_1_DEEP \u0026 ETH_BUFFER_VLAN_BITS)",
+      "range": {
+        "startLine": 325,
+        "startChar": 0,
+        "endLine": 325,
+        "endChar": 1
+      },
+      "revId": "65da8c881b589746e9a734709c505f573a8d000b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
