@@ -67,7 +67,7 @@ int main (int argc, char * argv[])
     u32 size;
     void vlib_set_get_handoff_structure_cb (void *cb);
 
-#if __x86_64__
+#if __x86_64__ && !defined(__clang__)
     __builtin_cpu_init ();
     const char * msg = "ERROR: This binary requires CPU with %s extensions.\n";
 #define _(a,b) \

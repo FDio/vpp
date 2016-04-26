@@ -137,8 +137,8 @@ is_static_dest_nat_enabled(u16 vrf)
     return CNAT_NO_CONFIG;
 }*/
 
-static inline void swap_ip_dst(ipv4_header *ip, 
-                        cnat_main_db_entry_t *db, u16 vrf)
+static inline void __attribute__((unused))
+swap_ip_dst(ipv4_header *ip, cnat_main_db_entry_t *db, u16 vrf)
 {
 
     CNAT_UPDATE_L3_CHECKSUM_DECLARE
