@@ -1,4 +1,5 @@
 *~
+
 /build-root/.ccache
 /build-root/build-*/
 /build-root/install-*/
@@ -56,3 +57,8 @@ test-driver
 # cscope and ctags
 /cscope.*
 /tags
+
+# jvpp generated sources
+/vpp-api/java/jvpp/gen/target
+/vpp-api/java/jvpp/gen/*.pyc
+
