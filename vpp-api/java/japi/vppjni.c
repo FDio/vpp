@@ -1471,14 +1471,24 @@ JNIEXPORT jobjectArray JNICALL Java_org_openvpp_vppjapi_vppConn_vxlanTunnelDump0
     for (i = 0; i < count; i++) {
         vxlan_tunnel_details_t *details = &jm->vxlan_tunnel_details[i];
 
-        jint src_address = details->src_address;
-        jint dst_address = details->dst_address;
+
+        /* This interface to support both v4 and v6 addresses is nasty */
+        jbyteArray src_address = (*env)->NewByteArray(env, 16);
+        (*env)->SetByteArrayRegion(env, src_address, 0, 16,
+                (signed char*)details->src_address);
+
+        jbyteArray dst_address = (*env)->NewByteArray(env, 16);
+        (*env)->SetByteArrayRegion(env, dst_address, 0, 16,
+                (signed char*)details->dst_address);
+
         jint encap_vrf_id = details->encap_vrf_id;
         jint vni = details->vni;
         jint decap_next_index = details->decap_next_index;
+        jboolean is_ipv6 = details->is_ipv6 ? 1 : 0;
 
         jobject vxlanTunnelDetailsObj = vppVxlanTunnelDetailsObject(env,
-                src_address, dst_address, encap_vrf_id, vni, decap_next_index);
+                src_address, dst_address, encap_vrf_id, vni,
+                decap_next_index, is_ipv6);
 
         (*env)->SetObjectArrayElement(env, vxlanTunnelDetailsArray, i,
                 vxlanTunnelDetailsObj);
@@ -1498,11 +1508,51 @@ static void vl_api_vxlan_tunnel_details_t_handler
     vxlan_tunnel_details_t *tunnel_details;
 
     vec_add2(jm->vxlan_tunnel_details, tunnel_details, 1);
-    tunnel_details->src_address = ntohl(mp->src_address);
-    tunnel_details->dst_address = ntohl(mp->dst_address);
+    if (mp->is_ipv6){
+        u64 *s, *d;
+
+        /* this is ugly - why is this in host order at all? -cluke */
+        /* Per notes from Ole, Maros and Keith, this should all be
+         * superceded with a new api builder soon, so this interface will
+         * be short lived -cluke */
+        s = (void *)mp->src_address;
+        d = (void *)tunnel_details->src_address;
+#if CLIB_ARCH_IS_LITTLE_ENDIAN
+        d[0] = clib_net_to_host_u64(s[1]);
+        d[1] = clib_net_to_host_u64(s[0]);
+#else /* big endian */
+        d[0] = s[0];
+        d[1] = s[1];
+#endif
+
+        s = (void *)mp->dst_address;
+        d = (void *)tunnel_details->dst_address;
+#if CLIB_ARCH_IS_LITTLE_ENDIAN
+        d[0] = clib_net_to_host_u64(s[1]);
+        d[1] = clib_net_to_host_u64(s[0]);
+#else /* big endian */
+        d[0] = s[0];
+        d[1] = s[1];
+#endif
+    } else {
+        u32 *s, *d;
+
+        /* the type changed from a u32 to u8[16] - this does
+         * the same as dst = ntohl(src) with the u32 of a v4
+         * address in the first 32 bits */
+
+        s = (void *)mp->src_address;
+        d = (void *)tunnel_details->src_address;
+        d[0] = ntohl(s[0]);
+
+        s = (void *)mp->dst_address;
+        d = (void *)tunnel_details->dst_address;
+        d[0] = ntohl(s[0]);
+    }
     tunnel_details->encap_vrf_id = ntohl(mp->encap_vrf_id);
     tunnel_details->vni = ntohl(mp->vni);
     tunnel_details->decap_next_index = ntohl(mp->decap_next_index);
+    tunnel_details->is_ipv6 = mp->is_ipv6;
 }
 
 /* cleanup handler for RX thread */

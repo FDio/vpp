@@ -71,7 +71,8 @@ _(RESPONSE_NOT_READY, -77, "Response not ready")			\
 _(NOT_CONNECTED, -78, "Not connected to the data plane")                \
 _(IF_ALREADY_EXISTS, -79, "Interface already exists")                   \
 _(BOND_SLAVE_NOT_ALLOWED, -80, "Operation not allowed on slave of BondEthernet") \
-_(VALUE_EXIST, -81, "Value already exists")
+_(VALUE_EXIST, -81, "Value already exists")                             \
+_(SAME_SRC_DST, -82, "Source and destination are the same")
 
 typedef enum {
 #define _(a,b,c) VNET_API_ERROR_##a = (b),

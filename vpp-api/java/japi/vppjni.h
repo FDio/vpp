@@ -124,11 +124,12 @@ typedef struct {
 } sw_interface_stats_t;
 
 typedef struct {
-    u32 src_address;
-    u32 dst_address;
+    u8 src_address[16];
+    u8 dst_address[16];
     u32 encap_vrf_id;
     u32 vni;
     u32 decap_next_index;
+    u8 is_ipv6;
 } vxlan_tunnel_details_t;
 
 
