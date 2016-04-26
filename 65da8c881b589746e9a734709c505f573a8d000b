@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_e4052315",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-26T18:35:24Z",
+      "side": 1,
+      "message": "I think this is using the correct bits, but they are perhaps mis-named. User bits are defined by this macro:\n\n#define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))\n\nwhich means our bits 4 and 5 are bits 28 and 27. If we want to left shift a 2 bit number into those bits, we \u003c\u003c27; and that is the user bit \"5\" position. I currently have that named as 2_DEEP.\n\nWhen I named these macros it was more the bit position I was naming; but I see now that by swapping them they would also take on the vlan depth value too. I\u0027ll push a change with them swapped.",
+      "parentUuid": "fa0f191f_a4316b0d",
+      "range": {
+        "startLine": 316,
+        "startChar": 43,
+        "endLine": 316,
+        "endChar": 70
+      },
+      "revId": "65da8c881b589746e9a734709c505f573a8d000b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_04adb731",
         "filename": "vnet/vnet/ethernet/ethernet.h",
         "patchSetId": 2
