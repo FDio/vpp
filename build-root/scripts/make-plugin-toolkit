@@ -26,7 +26,7 @@ make PLATFORM=vpp sample-plugin-find-source
 
 make PLATFORM=vpp TAG=vpp wipe-all
 echo Build vpp forwarder production package
-make PLATFORM=vpp TAG=vpp V=0 strip_sumbols=yes install-packages
+make PLATFORM=vpp TAG=vpp strip_sumbols=yes install-packages
 
 tmp_dir="`mktemp -d /tmp/plugin-XXXXXX`"
 trap "rm -rf $tmp_dir" err 

@@ -14,7 +14,6 @@
 WS_ROOT=$(CURDIR)
 BR=$(WS_ROOT)/build-root
 CCACHE_DIR?=$(BR)/.ccache
-V?=0
 GDB?=gdb
 PLATFORM?=vpp
 
@@ -119,7 +118,7 @@ else
 endif
 
 define make
-	@make -C $(BR) V=$(V) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
+	@make -C $(BR) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
 endef
 
 build: $(BR)/.bootstrap.ok
