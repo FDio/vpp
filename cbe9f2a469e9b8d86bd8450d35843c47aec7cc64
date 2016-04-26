@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_5726c369",
+        "filename": "Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-26T21:33:09Z",
+      "side": 1,
+      "message": "Why did you remove git?",
+      "range": {
+        "startLine": 26,
+        "startChar": 30,
+        "endLine": 26,
+        "endChar": 43
+      },
+      "revId": "cbe9f2a469e9b8d86bd8450d35843c47aec7cc64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
