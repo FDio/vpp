@@ -419,6 +419,15 @@ u8 * format_ip6_address (u8 * s, va_list * args)
     return s;
 }
 
+/* Format an IP46 address. */
+u8 * format_ip46_address (u8 * s, va_list * args)
+{
+  ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
+  return ip46_address_is_ip4(ip46)?
+      format(s, "%U", format_ip4_address, &ip46->ip4):
+      format(s, "%U", format_ip6_address, &ip46->ip6);
+}
+
 u8 * format_ethernet_address (u8 * s, va_list * args)
 {
   u8 * a = va_arg (*args, u8 *);
@@ -7068,8 +7077,10 @@ static int api_vxlan_add_del_tunnel (vat_main_t * vam)
     unformat_input_t * line_input = vam->input;
     vl_api_vxlan_add_del_tunnel_t *mp;
     f64 timeout;
-    ip4_address_t src, dst;
+    ip4_address_t src4, dst4;
+    ip6_address_t src6, dst6;
     u8 is_add = 1;
+    u8 ipv4_set = 0, ipv6_set = 0;
     u8 src_set = 0;
     u8 dst_set = 0;
     u32 encap_vrf_id = 0;
@@ -7080,11 +7091,29 @@ static int api_vxlan_add_del_tunnel (vat_main_t * vam)
         if (unformat (line_input, "del"))
             is_add = 0;
         else if (unformat (line_input, "src %U", 
-                           unformat_ip4_address, &src))
+                           unformat_ip4_address, &src4))
+          {
+            ipv4_set = 1;
             src_set = 1;
+          }
         else if (unformat (line_input, "dst %U",
-                           unformat_ip4_address, &dst))
+                           unformat_ip4_address, &dst4))
+          {
+            ipv4_set = 1;
             dst_set = 1;
+          }
+        else if (unformat (line_input, "src %U", 
+                           unformat_ip6_address, &src6))
+          {
+            ipv6_set = 1;
+            src_set = 1;
+          }
+        else if (unformat (line_input, "dst %U",
+                           unformat_ip6_address, &dst6))
+          {
+            ipv6_set = 1;
+            dst_set = 1;
+          }
         else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
             ;
         else if (unformat (line_input, "decap-next %U", 
@@ -7107,19 +7136,30 @@ static int api_vxlan_add_del_tunnel (vat_main_t * vam)
         return -99;
     }
 
+    if (ipv4_set && ipv6_set) {
+        errmsg ("both IPv4 and IPv6 addresses specified");
+        return -99;
+    }
+
     if ((vni == 0) || (vni>>24)) {
         errmsg ("vni not specified or out of range\n");
         return -99;
     }
 
     M (VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel);
-    
-    mp->src_address = src.as_u32;
-    mp->dst_address = dst.as_u32;
+
+    if (ipv6_set) {
+        clib_memcpy(&mp->dst_address, &src6, sizeof(src6));
+        clib_memcpy(&mp->dst_address, &src6, sizeof(dst6));
+    } else { 
+        clib_memcpy(&mp->src_address, &src4, sizeof(src4));
+        clib_memcpy(&mp->dst_address, &dst4, sizeof(dst4));
+    }
     mp->encap_vrf_id = ntohl(encap_vrf_id);
     mp->decap_next_index = ntohl(decap_next_index);
     mp->vni = ntohl(vni);
     mp->is_add = is_add;
+    mp->is_ipv6 = ipv6_set;
 
     S; W;
     /* NOTREACHED */
@@ -7131,10 +7171,10 @@ static void vl_api_vxlan_tunnel_details_t_handler
 {
     vat_main_t * vam = &vat_main;
 
-    fformat(vam->ofp, "%11d%13U%13U%14d%18d%13d\n",
+    fformat(vam->ofp, "%11d%24U%24U%14d%18d%13d\n",
             ntohl(mp->sw_if_index),
-            format_ip4_address, &mp->src_address,
-            format_ip4_address, &mp->dst_address,
+            format_ip46_address, &(mp->src_address[0]),
+            format_ip46_address, &(mp->dst_address[0]),
             ntohl(mp->encap_vrf_id),
             ntohl(mp->decap_next_index),
             ntohl(mp->vni));
@@ -7146,6 +7186,7 @@ static void vl_api_vxlan_tunnel_details_t_handler_json
     vat_main_t * vam = &vat_main;
     vat_json_node_t *node = NULL;
     struct in_addr ip4;
+    struct in6_addr ip6;
 
     if (VAT_JSON_ARRAY != vam->json_tree.type) {
         ASSERT(VAT_JSON_NONE == vam->json_tree.type);
@@ -7155,13 +7196,21 @@ static void vl_api_vxlan_tunnel_details_t_handler_json
 
     vat_json_init_object(node);
     vat_json_object_add_uint(node, "sw_if_index", ntohl(mp->sw_if_index));
-    clib_memcpy(&ip4, &mp->src_address, sizeof(ip4));
-    vat_json_object_add_ip4(node, "src_address", ip4);
-    clib_memcpy(&ip4, &mp->dst_address, sizeof(ip4));
-    vat_json_object_add_ip4(node, "dst_address", ip4);
+    if (mp->is_ipv6) {
+        clib_memcpy(&ip6, &(mp->src_address[0]), sizeof(ip6));
+        vat_json_object_add_ip6(node, "src_address", ip6);
+        clib_memcpy(&ip6, &(mp->dst_address[0]), sizeof(ip6));
+        vat_json_object_add_ip6(node, "dst_address", ip6);
+    } else {
+        clib_memcpy(&ip4, &(mp->src_address[0]), sizeof(ip4));
+        vat_json_object_add_ip4(node, "src_address", ip4);
+        clib_memcpy(&ip4, &(mp->dst_address[0]), sizeof(ip4));
+        vat_json_object_add_ip4(node, "dst_address", ip4);
+    }
     vat_json_object_add_uint(node, "encap_vrf_id", ntohl(mp->encap_vrf_id));
     vat_json_object_add_uint(node, "decap_next_index", ntohl(mp->decap_next_index));
     vat_json_object_add_uint(node, "vni", ntohl(mp->vni));
+    vat_json_object_add_uint(node, "is_ipv6", mp->is_ipv6 ? 1 : 0);
 }
 
 static int api_vxlan_tunnel_dump (vat_main_t * vam)
@@ -7185,12 +7234,12 @@ static int api_vxlan_tunnel_dump (vat_main_t * vam)
     }
 
     if (!vam->json_output) {
-        fformat(vam->ofp, "%11s%13s%13s%14s%18s%13s\n",
+        fformat(vam->ofp, "%11s%24s%24s%14s%18s%13s\n",
                 "sw_if_index", "src_address", "dst_address",
                 "encap_vrf_id", "decap_next_index", "vni");
     }
 
-    /* Get list of l2tpv3-tunnel interfaces */
+    /* Get list of vxlan-tunnel interfaces */
     M(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump);
 
     mp->sw_if_index = htonl(sw_if_index);
