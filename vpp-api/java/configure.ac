@@ -8,12 +8,19 @@ AM_PROG_AS
 AC_PROG_CC
 AM_PROG_CC_C_O
 
+if test -f /usr/bin/lsb_release  && test `lsb_release -si` == "Ubuntu"  && test `lsb_release -sr` == "14.04"  && test -d /usr/lib/jvm/java-8-openjdk-amd64/ ; then
+    JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+    JAVAC=${JAVA_HOME}/bin/javac
+    PATH=${JAVA_HOME}/bin/:${PATH}
+    break
+fi
+
+AX_CHECK_JAVA_HOME
 AX_PROG_JAVAC
 AX_PROG_JAVAH
 AX_PROG_JAR
 AX_PROG_JAVADOC
 AX_PROG_JAVA
-AX_CHECK_JAVA_HOME
 
 AC_OUTPUT([Makefile])
 
