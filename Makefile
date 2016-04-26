@@ -22,7 +22,7 @@ MINIMAL_STARTUP_CONF="unix { interactive }"
 GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
-DEB_DEPENDS += debhelper dkms default-jdk git libtool libganglia1-dev libapr1-dev dh-systemd
+DEB_DEPENDS += debhelper dkms openjdk-8-jdk git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
 
 RPM_DEPENDS_GROUPS = 'Development Tools'
@@ -77,8 +77,19 @@ help:
 	@echo " PLATFORM     = $(PLATFORM)"
 	@echo " DPDK_VERSION = $(DPDK_VERSION)"
 
+# openjdk-8-jdk is not available in 14.04 repos by default
+define use_ppa_for_jdk8
+if [ "$(shell lsb_release -r | awk '{print $$2}')"=="14.04" ]; then \
+	sudo apt install software-properties-common; \
+	sudo add-apt-repository -y ppa:openjdk-r/ppa; \
+	sudo apt update; \
+fi;
+endef
+
 $(BR)/.bootstrap.ok:
 ifeq ("$(shell lsb_release -si)", "Ubuntu")
+	$(use_ppa_for_jdk8)
+
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
 	if [ -n "$$MISSING" ] ; then \
 	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
@@ -108,6 +119,7 @@ bootstrap: $(BR)/.bootstrap.ok
 
 install-dep:
 ifeq ("$(shell lsb_release -si)", "Ubuntu")
+	$(use_ppa_for_jdk8)
 	@sudo apt-get -y install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum groupinstall -y $(RPM_DEPENDS_GROUPS)
@@ -188,3 +200,4 @@ ctags: ctags.files
 
 cscope: cscope.files
 	@cscope -b -q -v
+
