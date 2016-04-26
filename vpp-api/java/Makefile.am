@@ -90,4 +90,51 @@ demo = japi/test/demo.class
 $(demo): $(jarfile)
 	$(JAVAC) -cp $(jarfile) -d $(JAVAROOT) @srcdir@/japi/test/demo.java
 
-all-local: $(jarfile) $(demo)
+#
+# jVpp binding
+#
+
+nobase_include_HEADERS +=		\
+  jvpp/org_openvpp_jvpp_VppJNIConnection.h
+
+lib_LTLIBRARIES += libjvpp.la
+
+libjvpp_la_SOURCES = jvpp/jvpp.c
+libjvpp_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
+	              -lpthread -lm -lrt
+libjvpp_la_LDFLAGS = -module
+libjvpp_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
+
+# todo make two jars api jar and impl jar
+jarfile_jvpp = jvpp-$(PACKAGE_VERSION).jar
+packagedir_jvpp = org/openvpp/jvpp
+JAVAROOT = .
+
+BUILT_SOURCES += jvpp/org_openvpp_jvpp_VppJNIConnection.h jvpp/jvpp.c
+
+jvpp/org_openvpp_jvpp_VppJNIConnection.h: $(prefix)/../vpp/api/vpe.api
+	@echo "  jVpp API";				\
+	mkdir -p dto future callfacade callback @srcdir@/jvpp/gen/target/org/openvpp/jvpp;				\
+	$(CC) $(CPPFLAGS) -E -P -C -x c $<			                  \
+	| vppapigen --input - --python defs_vpp_papi.py; 				\
+	@srcdir@/jvpp/gen/jvpp_gen.py -i defs_vpp_papi.py;				\
+	cp -rf dto future callfacade callback *.java -t @srcdir@/jvpp/gen/target/org/openvpp/jvpp/;				\
+	cp -rf jvpp_gen.h -t @srcdir@/jvpp/gen/target;				\
+	rm -rf dto future callfacade callback *.java jvpp_gen.h;				\
+	$(JAVAC) -classpath . -d . @srcdir@/jvpp/org/openvpp/jvpp/*.java \
+		@srcdir@/jvpp/org/openvpp/jvpp/dto/*.java  \
+		@srcdir@/jvpp/org/openvpp/jvpp/callback/*.java \
+		@srcdir@/jvpp/org/openvpp/jvpp/future/*.java  \
+		@srcdir@/jvpp/org/openvpp/jvpp/test/*.java  \
+		@srcdir@/jvpp/gen/target/org/openvpp/jvpp/*.java \
+		@srcdir@/jvpp/gen/target/org/openvpp/jvpp/dto/*.java  \
+		@srcdir@/jvpp/gen/target/org/openvpp/jvpp/callback/*.java \
+		@srcdir@/jvpp/gen/target/org/openvpp/jvpp/callfacade/*.java \
+		@srcdir@/jvpp/gen/target/org/openvpp/jvpp/future/*.java ; \
+	$(JAVAH) -classpath . -d jvpp org.openvpp.jvpp.VppJNIConnection ;				\
+	$(JAVAH) -classpath . -d jvpp org.openvpp.jvpp.JVppImpl ;
+
+$(jarfile_jvpp): libjvpp.la
+	cd .libs ; $(JAR) cf $(JARFLAGS) ../$@ libjvpp.so.0.0.0 ../$(packagedir_jvpp)/* ; cd ..
+
+all-local: $(jarfile) $(jarfile_jvpp) $(demo)
