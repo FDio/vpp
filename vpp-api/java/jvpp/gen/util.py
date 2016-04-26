@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import os, pprint
 from os import removedirs
 
 
@@ -171,3 +171,8 @@ def remove_suffix(camel_case_name_with_suffix, suffix):
 
 def is_control_ping(camel_case_name_with_suffix):
     return "controlping" in camel_case_name_with_suffix.lower()
+
+def api_message_to_javadoc(api_message):
+    """ Converts vpe.api message description to javadoc """
+    str = pprint.pformat(api_message, indent=4, width=120, depth=None)
+    return " * " + str.replace("\n", "\n * ")
