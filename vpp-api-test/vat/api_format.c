@@ -2481,7 +2481,7 @@ static int dump_ip_table (vat_main_t * vam, int is_ipv6)
              "%-12s\n",
              "sw_if_index");
 
-    if (0 == vam->ip_details_by_sw_if_index) {
+    if (0 == vam) {
         return 0;
     }
 
@@ -2879,31 +2879,31 @@ int api_sw_interface_dump (vat_main_t * vam)
     /* Get list of ethernets */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "Ether", sizeof(mp->name_filter-1)); 
+    strncpy ((char *) mp->name_filter, "Ether", sizeof(mp->name_filter)-1);
     S;
 
     /* and local / loopback interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "lo", sizeof(mp->name_filter-1)); 
+    strncpy ((char *) mp->name_filter, "lo", sizeof(mp->name_filter)-1);
     S;
 
     /* and vxlan tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "vxlan", sizeof(mp->name_filter-1)); 
+    strncpy ((char *) mp->name_filter, "vxlan", sizeof(mp->name_filter)-1);
     S;
 
     /* and host (af_packet) interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "host", sizeof(mp->name_filter-1));
+    strncpy ((char *) mp->name_filter, "host", sizeof(mp->name_filter)-1);
     S;
 
     /* and l2tpv3 tunnel interfaces */
     M(SW_INTERFACE_DUMP, sw_interface_dump);
     mp->name_filter_valid = 1;
-    strncpy ((char *) mp->name_filter, "l2tpv3_tunnel", sizeof(mp->name_filter-1));
+    strncpy ((char *) mp->name_filter, "l2tpv3_tunnel", sizeof(mp->name_filter)-1);
     S;
 
     /* Use a control ping for synchronization */
@@ -6906,7 +6906,7 @@ static int api_l2tpv3_set_lookup_key (vat_main_t * vam)
             break;
     }
 
-    if (key == ~0) {
+    if (key == (u8) ~0) {
         errmsg ("l2tp session lookup key unset\n");
         return -99;
     }
