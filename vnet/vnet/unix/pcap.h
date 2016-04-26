@@ -169,7 +169,8 @@ pcap_add_buffer (pcap_main_t * pm,
   d = pcap_add_packet (pm, time_now, n_bytes_in_trace, n_left);
   while (1)
     {
-      clib_memcpy (d, b->data + b->current_data, b->current_length);
+      u32 copy_length = clib_min ((u32) n_left, b->current_length);
+      clib_memcpy (d, b->data + b->current_data, copy_length);
       n_left -= b->current_length;
       if (n_left <= 0)
 	break;
