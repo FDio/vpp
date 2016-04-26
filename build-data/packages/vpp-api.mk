@@ -20,4 +20,4 @@ vpp-api_LDFLAGS = $(call installed_libs_fn,	\
 	vlib					\
 	vlib-api)
 
-vpp-api_CPPFLAGS += -I/usr/lib/jvm/java-7-openjdk-amd64/include
+vpp-api_CPPFLAGS += -I/usr/lib/jvm/java-8-openjdk-amd64/include
