@@ -74,7 +74,11 @@ _(BOND_SLAVE_NOT_ALLOWED, -80, "Operation not allowed on slave of BondEthernet")
 _(VALUE_EXIST, -81, "Value already exists")                             \
 _(SAME_SRC_DST, -82, "Source and destination are the same")             \
 _(IP6_MULTICAST_ADDRESS_NOT_PRESENT, -83, "IP6 multicast address required") \
-_(SR_POLICY_NAME_NOT_PRESENT, -84, "Segement routing policy name required")
+_(SR_POLICY_NAME_NOT_PRESENT, -84, "Segement routing policy name required") \
+_(NOT_RUNNING_AS_ROOT, -85, "Not running as root") \
+_(ALREADY_CONNECTED, -86, "Connection to the data plane already exists") \
+_(UNSUPPORTED_JNI_VERSION, -87, "Unsupported JNI version") \
+_(FAILED_TO_ATTACH_TO_JAVA_THREAD, -88, "Failed to attach to Java thread")
 
 typedef enum {
 #define _(a,b,c) VNET_API_ERROR_##a = (b),
