@@ -5,7 +5,7 @@ AC_CONFIG_HEADERS(config/config.h)
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 AM_INIT_AUTOMAKE([gnu no-dist-gzip dist-bzip2])
-AM_SILENT_RULES
+AM_SILENT_RULES([yes])
 
 # Checks for programs.
 AC_PROG_CC
