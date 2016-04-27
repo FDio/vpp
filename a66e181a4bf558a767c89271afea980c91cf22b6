@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_fa9ffe4e",
+        "filename": "vpp-api/java/jvpp/Readme.adoc",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-27T14:09:12Z",
+      "side": 1,
+      "message": "Please list/mark or something which of these classes are manual and which are generated.\n\nAlso as shown in the test connection impl, represent that VppConnImpl uses a singleton (?) of GlobalCallback as a parm for life of connection",
+      "range": {
+        "startLine": 43,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 42
+      },
+      "revId": "a66e181a4bf558a767c89271afea980c91cf22b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
