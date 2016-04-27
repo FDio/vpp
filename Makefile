@@ -26,7 +26,7 @@ DEB_DEPENDS += debhelper dkms default-jdk git libtool libganglia1-dev libapr1-de
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
 
 RPM_DEPENDS_GROUPS = 'Development Tools'
-RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel
+RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
 
@@ -113,6 +113,7 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum groupinstall -y $(RPM_DEPENDS_GROUPS)
 	@sudo yum install -y $(RPM_DEPENDS)
 	@sudo yum install -y --enablerepo=epel $(EPEL_DEPENDS)
+	@sudo debuginfo-install glibc-2.17-106.el7_2.4.x86_64 openssl-libs-1.0.1e-51.el7_2.4.x86_64 zlib-1.2.7-15.el7.x86_64
 else
 	$(error "This option currently works only on Ubuntu or Centos systems")
 endif
