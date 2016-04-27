@@ -352,6 +352,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_3a5d76ea",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-04-27T12:23:55Z",
+      "side": 1,
+      "message": "Got it. I think it may be better to define for each lcaf type a new struct and use that within the union.",
+      "parentUuid": "fa0f191f_97bc5b6e",
+      "range": {
+        "startLine": 83,
+        "startChar": 0,
+        "endLine": 85,
+        "endChar": 4
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_e4dac316",
         "filename": "vnet/vnet/lisp-cp/lisp_types.h",
         "patchSetId": 1
