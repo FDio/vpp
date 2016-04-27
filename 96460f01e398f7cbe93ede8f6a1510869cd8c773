@@ -22,6 +22,75 @@
       "revId": "96460f01e398f7cbe93ede8f6a1510869cd8c773",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_f5e6ef43",
+        "filename": "vpp-api/java/jvpp/jvpp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-27T20:27:26Z",
+      "side": 1,
+      "message": "Note that these are not guaranteed to be delivered.... so not sure if there is a better way. Maybe a direct message to the control plane?",
+      "range": {
+        "startLine": 45,
+        "startChar": 25,
+        "endLine": 45,
+        "endChar": 50
+      },
+      "revId": "96460f01e398f7cbe93ede8f6a1510869cd8c773",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_35c46791",
+        "filename": "vpp-api/java/jvpp/jvpp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-27T20:27:26Z",
+      "side": 1,
+      "message": "This would need to be added api_errno.h if we go down that road...",
+      "range": {
+        "startLine": 82,
+        "startChar": 0,
+        "endLine": 82,
+        "endChar": 26
+      },
+      "revId": "96460f01e398f7cbe93ede8f6a1510869cd8c773",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_55cfdbb0",
+        "filename": "vpp-api/java/jvpp/jvpp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-27T20:27:26Z",
+      "side": 1,
+      "message": "Can you look at vnet/vnet/api_errno.h that can keep these consistent?",
+      "range": {
+        "startLine": 103,
+        "startChar": 8,
+        "endLine": 103,
+        "endChar": 18
+      },
+      "revId": "96460f01e398f7cbe93ede8f6a1510869cd8c773",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
