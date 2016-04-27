@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_77cc2736",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 984,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-04-27T08:51:59Z",
+      "side": 1,
+      "message": "I\u0027m thinking of adding ip_address_t field as a sibling to ip_prefix_t within gid_address_t and have a separate enum for that. What do you think?",
+      "parentUuid": "fa0f191f_04237706",
+      "range": {
+        "startLine": 984,
+        "startChar": 2,
+        "endLine": 984,
+        "endChar": 46
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_e41f63b6",
         "filename": "vnet/vnet/lisp-cp/control.c",
         "patchSetId": 1
@@ -59,6 +83,30 @@
       "writtenOn": "2016-04-26T17:00:41Z",
       "side": 1,
       "message": "Hmm, you did this because we\u0027re not using them for now? Just add a comment clarifying this. Again, good catch!",
+      "range": {
+        "startLine": 1588,
+        "startChar": 1,
+        "endLine": 1588,
+        "endChar": 31
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_57d123cc",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1588,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-04-27T08:51:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_c41c5fc4",
       "range": {
         "startLine": 1588,
         "startChar": 1,
