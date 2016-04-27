@@ -1,18 +1,20 @@
-From c6c5a3f41528b28764ee4aa96a72d89c94d695df Mon Sep 17 00:00:00 2001
+From 3433c7828ec909fccb768636ee21867030da14c9 Mon Sep 17 00:00:00 2001
 From: John Daley <johndale@cisco.com>
-Date: Fri, 15 Apr 2016 14:43:11 -0700
-Subject: [PATCH] enic: fix imissed rx counter
+Date: Tue, 26 Apr 2016 13:30:50 -0700
+Subject: [PATCH 1/3] enic: fix 'imissed' to count drops due to lack of RX
+ buffers
 
+Fixes: 7182d3e7d177 ("enic: expose Rx missed packets counter")
 Signed-off-by: John Daley <johndale@cisco.com>
 ---
  drivers/net/enic/enic_main.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
-index c61433f..8d6bbeb 100644
+index 60fe765..be4e9e5 100644
 --- a/drivers/net/enic/enic_main.c
 +++ b/drivers/net/enic/enic_main.c
-@@ -165,10 +165,10 @@ void enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
+@@ -243,10 +243,10 @@ void enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
  	r_stats->ibytes = stats->rx.rx_bytes_ok;
  	r_stats->obytes = stats->tx.tx_bytes_ok;
  
@@ -23,8 +25,8 @@ index c61433f..8d6bbeb 100644
 -	r_stats->imissed = stats->rx.rx_drop;
 +	r_stats->imissed = stats->rx.rx_no_bufs;
  
- 	r_stats->imcasts = stats->rx.rx_multicast_frames_ok;
  	r_stats->rx_nombuf = stats->rx.rx_no_bufs;
+ }
 -- 
 2.7.0
 
