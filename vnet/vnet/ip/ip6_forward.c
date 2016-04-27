@@ -1473,7 +1473,7 @@ u16 ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0, ip6
 
   n_bytes_left = n_this_buffer = payload_length_host_byte_order;
 #if DPDK > 0
-  if (p0) 
+  if (p0 && n_this_buffer + headers_size  > p0->current_length)
   {
     struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer(p0);
     u8 nb_segs = mb->nb_segs;
