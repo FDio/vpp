@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_5a3b8aeb",
+        "filename": "vnet/vnet/buffer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-27T16:11:56Z",
+      "side": 1,
+      "message": "Can you removed this bit, as suggested by Dave, which is not used any more and move the VLAN bits up one, please?",
+      "range": {
+        "startLine": 53,
+        "startChar": 8,
+        "endLine": 53,
+        "endChar": 42
+      },
+      "revId": "a5e6af6b8e39ed63ba973c628c3b2b38bd9b36f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
