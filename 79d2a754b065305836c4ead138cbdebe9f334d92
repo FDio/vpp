@@ -234,6 +234,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_37bb4f74",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-04-27T10:31:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_a4b60bdb",
+      "range": {
+        "startLine": 77,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 11
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_04a0178f",
         "filename": "vnet/vnet/lisp-cp/lisp_types.h",
         "patchSetId": 1
@@ -257,6 +281,30 @@
     },
     {
       "key": {
+        "uuid": "fa0f191f_57b6c38b",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-04-27T10:31:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_04a0178f",
+      "range": {
+        "startLine": 80,
+        "startChar": 4,
+        "endLine": 80,
+        "endChar": 13
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_24a31ba0",
         "filename": "vnet/vnet/lisp-cp/lisp_types.h",
         "patchSetId": 1
@@ -268,6 +316,30 @@
       "writtenOn": "2016-04-26T17:00:41Z",
       "side": 1,
       "message": "Let\u0027s move this to the gid_address_t struct. So by default gids should have vni \u003d 0. Also, why a union?",
+      "range": {
+        "startLine": 83,
+        "startChar": 0,
+        "endLine": 85,
+        "endChar": 4
+      },
+      "revId": "79d2a754b065305836c4ead138cbdebe9f334d92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_97bc5b6e",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-04-27T10:31:39Z",
+      "side": 1,
+      "message": "I put VNI to union because it basically represents body of LCAF IID. There are other LCAF message types with different bodies, thus the union.",
+      "parentUuid": "fa0f191f_24a31ba0",
       "range": {
         "startLine": 83,
         "startChar": 0,
