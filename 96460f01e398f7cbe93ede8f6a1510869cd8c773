@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_da1f9ab6",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_c_gen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-27T14:07:16Z",
+      "side": 1,
+      "message": "We discuss this on a call. This would need to be categorised so please raise a JIRA ticket to do at some point before saying this comment is \"done\" but I don\u0027t feel this is a blocker to the patch as its a new discrete API impl leveraging the same existing mechanisms from JAPI",
+      "range": {
+        "startLine": 23,
+        "startChar": 0,
+        "endLine": 23,
+        "endChar": 74
+      },
+      "revId": "96460f01e398f7cbe93ede8f6a1510869cd8c773",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
