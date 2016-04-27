@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_ba72a647",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-27T14:08:06Z",
+      "side": 1,
+      "message": "As discussed, please have this put a comment explicitly that this is:\na) generated code\nb) what generates it\nc) what that uses as its \"single source of truth\" ie if this breaks because I changed vpe.api then this comment will be useful",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 57
+      },
+      "revId": "c1d2cafdfa4cc7f669e82a2785604284365dc2c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_7aa64ec3",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/dto/JVppDump.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-27T14:08:06Z",
+      "side": 1,
+      "message": "General comment for other reviewers. All \"DUMP\" type DTO generators etc did not involve any modification to existing C binary API ... ie I don\u0027t believe this will adversely impact performance of VPP when a DUMP request is made anymore than the existing mechanism. Will still need to test scale on this but the blast radius is limited to honeycomb/consumers of the Java API.\n\nThese are markers for aggregation of multiple responses which also explains the context-id change",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 68
+      },
+      "revId": "c1d2cafdfa4cc7f669e82a2785604284365dc2c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_facdbe5e",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppFacade.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-27T14:08:06Z",
+      "side": 1,
+      "message": "As discussed on call. Requests will receive back a \"contextId\" as per changes to vpe.api, and \"success/failure\" is predicated on the response actually making it back to this ie .I failed. If the failure is such that we don\u0027t get a response, then this map could \"grow quite large\" based on the problem. Agreed this is a \"hard problem to solve\" and may fall into the case of \"well if that happens then VPP is really messed up\" but that maybe a useful thing for a control plane to keep track of. ie if this map grows quite large it may mean we have a real issue to track.... \n\nIt might be nice to have a comment like a \"todo\" in here to address this at some point, as there is the \"orchestration\" side of the control plane that this whole gerrit series handles quite nicely, but there is also the \"care and feeding\" aspect of the control plane that we need to address at some point (ie from the control plane\u0027s perspective is the data plane behaving erratically and what does it want to do about it)",
+      "range": {
+        "startLine": 26,
+        "startChar": 4,
+        "endLine": 26,
+        "endChar": 73
+      },
+      "revId": "c1d2cafdfa4cc7f669e82a2785604284365dc2c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_3a11f6ac",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackApiTest.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-27T14:08:06Z",
+      "side": 1,
+      "message": "Perhaps either here or in the README architecture include how to run tests without honeycomb:\nsudo java -cp .:build-vpp-native/vpp-api/java/jvpp-1.0.0.jar org.openvpp.jvpp.test.ControlPingTest\n\nsudo java -cp .:build-vpp-native/vpp-api/java/jvpp-1.0.0.jar org.openvpp.jvpp.test.FutureApiTest\n\nsudo java -cp .:build-vpp-native/vpp-api/java/jvpp-1.0.0.jar org.openvpp.jvpp.test.CallbackApiTest\n(yes the above is copypasta\u0027d from an email from Maros)",
+      "revId": "c1d2cafdfa4cc7f669e82a2785604284365dc2c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
