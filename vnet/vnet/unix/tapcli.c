@@ -764,6 +764,7 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
     }
 
   ti = tapcli_get_new_tapif();
+  ti->per_interface_next_index = ~0;
 
   if (hwaddr_arg != 0)
     clib_memcpy(hwaddr, hwaddr_arg, 6);
@@ -1006,14 +1007,10 @@ tap_connect_command_fn (vlib_main_t * vm,
 {
   u8 * intfc_name;
   tapcli_main_t * tm = &tapcli_main;
-  tapcli_interface_t * ti;
-  struct ifreq ifr;
-  int flags;
-  int dev_net_tun_fd;
-  int dev_tap_fd = -1;
-  clib_error_t * error;
   int user_hwaddr = 0;
   u8 hwaddr[6];
+  u8 *hwaddr_arg = 0;
+  u32 sw_if_index;
 
   if (tm->is_disabled)
     {
@@ -1030,97 +1027,6 @@ tap_connect_command_fn (vlib_main_t * vm,
                &hwaddr))
     user_hwaddr = 1;
 
-  flags = IFF_TAP | IFF_NO_PI;
-
-  if ((dev_net_tun_fd = open ("/dev/net/tun", O_RDWR)) < 0)
-    {
-      vlib_cli_output (vm, "Couldn't open /dev/net/tun");
-      return 0;
-    }
-  
-  memset (&ifr, 0, sizeof (ifr));
-  strncpy(ifr.ifr_name, (char *) intfc_name, sizeof (ifr.ifr_name)-1);
-  ifr.ifr_flags = flags;
-  if (ioctl (dev_net_tun_fd, TUNSETIFF, (void *)&ifr) < 0)
-    {
-      vlib_cli_output (vm, "Error setting flags on '%s'", intfc_name);
-      goto error;
-    }
-    
-  /* Open a provisioning socket */
-  if ((dev_tap_fd = socket(PF_PACKET, SOCK_RAW,
-                           htons(ETH_P_ALL))) < 0 )
-    {
-      vlib_cli_output (vm, "Couldn't open provisioning socket");
-      goto error;
-    }
-
-  /* Find the interface index. */
-  {
-    struct ifreq ifr;
-    struct sockaddr_ll sll;
-
-    memset (&ifr, 0, sizeof(ifr));
-    strncpy (ifr.ifr_name, (char *) intfc_name, sizeof (ifr.ifr_name)-1);
-    if (ioctl (dev_tap_fd, SIOCGIFINDEX, &ifr) < 0 )
-      {
-        vlib_cli_output (vm, "Couldn't get if_index");
-        goto error;
-      }
-
-    /* Bind the provisioning socket to the interface. */
-    memset(&sll, 0, sizeof(sll));
-    sll.sll_family   = AF_PACKET;
-    sll.sll_ifindex  = ifr.ifr_ifindex;
-    sll.sll_protocol = htons(ETH_P_ALL);
-
-    if (bind(dev_tap_fd, (struct sockaddr*) &sll, sizeof(sll)) < 0)
-      {
-        vlib_cli_output (vm, "Couldn't bind provisioning socket");
-        goto error;
-      }
-  }
-
-  /* non-blocking I/O on /dev/tapX */
-  {
-    int one = 1;
-    if (ioctl (dev_net_tun_fd, FIONBIO, &one) < 0)
-      {
-        vlib_cli_output (0, "Couldn't set device non-blocking flag");
-	goto error;
-      }
-  }
-  ifr.ifr_mtu = tm->mtu_bytes;
-  if (ioctl (dev_tap_fd, SIOCSIFMTU, &ifr) < 0)
-    {
-      vlib_cli_output (0, "Couldn't set device MTU");
-      goto error;
-    }
-
-  /* get flags, modify to bring up interface... */
-  if (ioctl (dev_tap_fd, SIOCGIFFLAGS, &ifr) < 0)
-    {
-      vlib_cli_output (0, "Couldn't get interface flags");
-      goto error;
-    }
-
-  ifr.ifr_flags |= (IFF_UP | IFF_RUNNING);
-
-  if (ioctl (dev_tap_fd, SIOCSIFFLAGS, &ifr) < 0)
-    {
-      vlib_cli_output (0, "Couldn't set intfc admin state up");
-      goto error;
-    }
-
-  if (ioctl (dev_tap_fd, SIOCGIFHWADDR, &ifr) < 0)
-    {
-      vlib_cli_output (0, "Couldn't get intfc MAC address");
-      goto error;
-    }
-
-  ti = tapcli_get_new_tapif();
-  ti->per_interface_next_index = ~0;
-
   if (unformat(input, "hwaddr random"))
     {
       f64 now = vlib_time_now(vm);
@@ -1133,58 +1039,64 @@ tap_connect_command_fn (vlib_main_t * vm,
       hwaddr[1] = 0xfe;
       user_hwaddr = 1;
     }
+  if (user_hwaddr) hwaddr_arg = hwaddr;
+
+  int rv = vnet_tap_connect(vm, intfc_name, hwaddr_arg, &sw_if_index);
+  if (rv) {
+    switch (rv) {
+    case VNET_API_ERROR_SYSCALL_ERROR_1:
+      vlib_cli_output (vm, "Couldn't open /dev/net/tun");
+      break;
+
+    case VNET_API_ERROR_SYSCALL_ERROR_2:
+      vlib_cli_output (vm, "Error setting flags on '%s'", intfc_name);
+      break;
   
-  error = ethernet_register_interface
-        (tm->vnet_main,
-         tapcli_dev_class.index,
-         ti - tm->tapcli_interfaces /* device instance */,
-         user_hwaddr ? hwaddr : 
-         (u8 *) ifr.ifr_hwaddr.sa_data /* ethernet address */,
-         &ti->hw_if_index, 
-         tapcli_flag_change);
+    case VNET_API_ERROR_SYSCALL_ERROR_3:
+      vlib_cli_output (vm, "Couldn't open provisioning socket");
+      break;
 
-  if (error)
-    clib_error_report (error);
+    case VNET_API_ERROR_SYSCALL_ERROR_4:
+      vlib_cli_output (vm, "Couldn't get if_index");
+      break;
+    
+    case VNET_API_ERROR_SYSCALL_ERROR_5:
+      vlib_cli_output (vm, "Couldn't bind provisioning socket");
+      break;
 
-  {
-    unix_file_t template = {0};
-    template.read_function = tapcli_read_ready;
-    template.file_descriptor = dev_net_tun_fd;
-    ti->unix_file_index = unix_file_add (&unix_main, &template);
-    ti->unix_fd = dev_net_tun_fd;
-    ti->provision_fd = dev_tap_fd;
-    clib_memcpy (&ti->ifr, &ifr, sizeof (ifr));
+    case VNET_API_ERROR_SYSCALL_ERROR_6:
+      vlib_cli_output (0, "Couldn't set device non-blocking flag");
+      break;
+
+    case VNET_API_ERROR_SYSCALL_ERROR_7:
+      vlib_cli_output (0, "Couldn't set device MTU");
+      break;
+
+    case VNET_API_ERROR_SYSCALL_ERROR_8:
+      vlib_cli_output (0, "Couldn't get interface flags");
+      break;
+
+    case VNET_API_ERROR_SYSCALL_ERROR_9:
+      vlib_cli_output (0, "Couldn't set intfc admin state up");
+      break;
+
+    case VNET_API_ERROR_INVALID_REGISTRATION:
+      vlib_cli_output (0, "Invalid registration");
+      break;
+    default:
+      vlib_cli_output (0, "Unknown error: %d", rv);
+      break;
+    }
+    return 0;
   }
-  
-  {
-    vnet_hw_interface_t * hw;
-    hw = vnet_get_hw_interface (tm->vnet_main, ti->hw_if_index);
-    ti->sw_if_index = hw->sw_if_index;
-    hw->min_supported_packet_bytes = TAP_MTU_MIN;
-    hw->max_supported_packet_bytes = TAP_MTU_MAX;
-    hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = hw->max_supported_packet_bytes - sizeof(ethernet_header_t);
-  }
-
-  ti->active = 1;
-
-  hash_set (tm->tapcli_interface_index_by_sw_if_index, ti->sw_if_index,
-            ti - tm->tapcli_interfaces);
-
-  hash_set (tm->tapcli_interface_index_by_unix_fd, ti->unix_fd,
-            ti - tm->tapcli_interfaces);
 
   vlib_cli_output (vm, "Created %U for Linux tap '%s'",
-                   format_vnet_sw_if_index_name, tm->vnet_main, 
-                   ti->sw_if_index, intfc_name);
+		   format_vnet_sw_if_index_name, tm->vnet_main, 
+		   sw_if_index, intfc_name);
                    
   return 0;
 
- error:
-  close (dev_net_tun_fd);
-  close (dev_tap_fd);
-
-  return 0;
-}
+  }
 
 VLIB_CLI_COMMAND (tap_connect_command, static) = {
     .path = "tap connect",
