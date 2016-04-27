@@ -1,0 +1,348 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa0f191f_7a2bee82",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppConnection.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "do not declare RuntimeExceptions as thrown",
+      "range": {
+        "startLine": 26,
+        "startChar": 23,
+        "endLine": 26,
+        "endChar": 52
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_5a202a9b",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "Logger.error()",
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_fa36dee6",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "use string concat (just as on line 85) ?",
+      "range": {
+        "startLine": 64,
+        "startChar": 85,
+        "endLine": 64,
+        "endChar": 89
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_3a2576ab",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "add @GuardedBy annotation",
+      "range": {
+        "startLine": 71,
+        "startChar": 4,
+        "endLine": 71,
+        "endChar": 18
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_ba3066e9",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "a static factory method would be much better",
+      "range": {
+        "startLine": 75,
+        "startChar": 83,
+        "endLine": 75,
+        "endChar": 101
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_1a3ab2cd",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "Preconditions.checkNotNull()",
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_da331af5",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "Preconditions.checkState()",
+      "range": {
+        "startLine": 95,
+        "startChar": 8,
+        "endLine": 95,
+        "endChar": 27
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_9a4da275",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/dto/JVppDump.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "FQCN?",
+      "range": {
+        "startLine": 22,
+        "startChar": 34,
+        "endLine": 22,
+        "endChar": 55
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_7a52ce14",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/dto/JVppReply.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "FQCN? Is this generated? (if so, it should not be committed)",
+      "range": {
+        "startLine": 22,
+        "startChar": 39,
+        "endLine": 22,
+        "endChar": 61
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_5a570a03",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/dto/JVppRequest.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "missing javadoc, \u0027final\u0027 in abstract method declaration leads to warnings (in sonar)",
+      "range": {
+        "startLine": 24,
+        "startChar": 4,
+        "endLine": 24,
+        "endChar": 12
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_1a419239",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVpp.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "empty line, unaligned javadoc",
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_fa3dbebc",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVpp.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "base Future, guava\u0027s ListenableFuture, or j.u.c.CompletionState ?",
+      "range": {
+        "startLine": 31,
+        "startChar": 28,
+        "endLine": 31,
+        "endChar": 42
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_5a6eeaca",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppFacade.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "FQCNs?\n@GuardedBy ?",
+      "range": {
+        "startLine": 26,
+        "startChar": 32,
+        "endLine": 26,
+        "endChar": 49
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_da4afa54",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppFacade.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "Preconditions.checkNotNull",
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_1a6872b9",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppFacade.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "Can it be mutated by caller?",
+      "range": {
+        "startLine": 31,
+        "startChar": 21,
+        "endLine": 31,
+        "endChar": 35
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa0f191f_fa649ee6",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppFacade.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 81
+      },
+      "writtenOn": "2016-04-27T11:22:56Z",
+      "side": 1,
+      "message": "why are these mutable?",
+      "range": {
+        "startLine": 58,
+        "startChar": 0,
+        "endLine": 59,
+        "endChar": 31
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
