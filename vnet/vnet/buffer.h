@@ -49,19 +49,13 @@
 #define IP_BUFFER_L4_CHECKSUM_COMPUTED (1 << LOG2_IP_BUFFER_L4_CHECKSUM_COMPUTED)
 #define IP_BUFFER_L4_CHECKSUM_CORRECT  (1 << LOG2_IP_BUFFER_L4_CHECKSUM_CORRECT)
 
-#define LOG2_HGSHM_BUFFER_USER_INDEX_VALID  LOG2_VLIB_BUFFER_FLAG_USER(3)
-#define VNET_HGSHM_BUFFER_USER_INDEX_VALID  (1 << LOG2_HGSHM_BUFFER_USER_INDEX_VALID)
-
 #define foreach_buffer_opaque_union_subtype     \
 _(ethernet)                                     \
 _(ip)                                           \
 _(mcast)                                        \
-_(lb)                                           \
-_(dlb)                                          \
 _(swt)                                          \
 _(l2)                                           \
 _(l2t)                                          \
-_(hgshm)                                        \
 _(gre)                                          \
 _(l2_classify)                                  \
 _(io_handoff)                                   \
@@ -140,20 +134,6 @@ typedef struct {
       u32 original_free_list_index;
     } mcast;
 
-    /* ipv6 shallow-pkt-inspection load-balancer, only valid there */
-    struct {
-      u8 lb_disable;
-      u8 user_to_network;
-      u8 was_injected;
-      u32 bucket_id;
-    } lb;
-    /* ipv4 DPI load-balancer, only valid there */
-    struct {
-      u8 lb_disable;
-      u8 user_to_network;
-      u32 session_index;
-    } dlb;
-
     /* ip4-in-ip6 softwire termination, only valid there */
     struct {
       u8 swt_disable;
@@ -174,12 +154,6 @@ typedef struct {
       u8 next_index;
       u32 session_index;
     } l2t;
-
-    /* hgshm, valid if packet sent through iface */
-    struct {
-      u32 pad[8 -VLIB_N_RX_TX -1];  /* to end of opaque */
-      u32 user_index;          /* client id borrowing buffer */
-    } hgshm;
 
     struct {
       u32 src, dst;
