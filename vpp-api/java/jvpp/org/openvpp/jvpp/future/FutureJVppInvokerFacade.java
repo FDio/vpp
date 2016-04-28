@@ -20,13 +20,13 @@ package org.openvpp.jvpp.future;
 /**
 * Future facade on top of JVpp
 */
-public final class FutureJVppFacade implements FutureJVpp {
+public class FutureJVppInvokerFacade implements FutureJVppInvoker {
 
     private final org.openvpp.jvpp.JVpp jvpp;
     private final java.util.Map<java.lang.Integer, java.util.concurrent.CompletableFuture<? extends org.openvpp.jvpp.dto.JVppReply<?>>> requests;
 
-    public FutureJVppFacade(final org.openvpp.jvpp.JVpp jvpp,
-                     final java.util.Map<java.lang.Integer, java.util.concurrent.CompletableFuture<? extends org.openvpp.jvpp.dto.JVppReply<?>>> requestMap) {
+    public FutureJVppInvokerFacade(final org.openvpp.jvpp.JVpp jvpp,
+                                   final java.util.Map<java.lang.Integer, java.util.concurrent.CompletableFuture<? extends org.openvpp.jvpp.dto.JVppReply<?>>> requestMap) {
         this.jvpp = jvpp;
         this.requests = requestMap;
     }
@@ -75,4 +75,8 @@ public final class FutureJVppFacade implements FutureJVpp {
         }
     }
 
+    @Override
+    public void close() throws Exception {
+        // NOOP
+    }
 }
