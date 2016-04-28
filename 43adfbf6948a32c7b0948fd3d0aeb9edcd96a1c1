@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_7931c70a",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-28T15:19:32Z",
+      "side": 1,
+      "message": "We should put a PREDICT_TRUE here since this is the expected case. Having next node being not l2-input is for experimental purpose only. Also the next 2 occurrences.",
+      "range": {
+        "startLine": 213,
+        "startChar": 23,
+        "endLine": 213,
+        "endChar": 48
+      },
+      "revId": "43adfbf6948a32c7b0948fd3d0aeb9edcd96a1c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_3c09fd2c",
+        "filename": "vnet/vnet/vxlan/encap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-28T15:19:32Z",
+      "side": 1,
+      "message": "Before we optimize encap path, perhaps we should use PREDICT_TURE/FALSE to favor ip4 paths to minimize the overhead for present VXLAN over IP4 usage.",
+      "revId": "43adfbf6948a32c7b0948fd3d0aeb9edcd96a1c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_1c0e3935",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 487,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-28T15:19:32Z",
+      "side": 1,
+      "message": "Can we also add a check to make sure SIP and DIP are not the same address? I suppose the same check will be needed for the API as well. Such a config can cause packet to get right back into the BD, etc.",
+      "range": {
+        "startLine": 487,
+        "startChar": 11,
+        "endLine": 487,
+        "endChar": 28
+      },
+      "revId": "43adfbf6948a32c7b0948fd3d0aeb9edcd96a1c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_dc0fa12d",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 4205,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-04-28T15:19:32Z",
+      "side": 1,
+      "message": "Can we add a check for SIP the same and DIP and return an error...",
+      "range": {
+        "startLine": 4205,
+        "startChar": 19,
+        "endLine": 4205,
+        "endChar": 20
+      },
+      "revId": "43adfbf6948a32c7b0948fd3d0aeb9edcd96a1c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
