@@ -26,6 +26,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/vxlan/vxlan.h>
+#include <vnet/gre/gre.h>
 #include <vnet/nsh-gre/nsh_gre.h>
 #include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
@@ -1354,6 +1355,36 @@ static void vl_api_vxlan_add_del_tunnel_reply_t_handler_json
     vam->result_ready = 1;
 }
 
+static void vl_api_gre_add_del_tunnel_reply_t_handler
+(vl_api_gre_add_del_tunnel_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    i32 retval = ntohl(mp->retval);
+    if (vam->async_mode) {
+        vam->async_errors += (retval < 0);
+    } else {
+        vam->retval = retval;
+        vam->result_ready = 1;
+    }
+}
+
+static void vl_api_gre_add_del_tunnel_reply_t_handler_json
+(vl_api_gre_add_del_tunnel_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t node;
+
+    vat_json_init_object(&node);
+    vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
+    vat_json_object_add_uint(&node, "sw_if_index", ntohl(mp->sw_if_index));
+
+    vat_json_print(vam->ofp, &node);
+    vat_json_free(&node);
+
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
 static void vl_api_create_vhost_user_if_reply_t_handler
 (vl_api_create_vhost_user_if_reply_t * mp)
 {
@@ -2283,6 +2314,8 @@ _(L2TPV3_SET_LOOKUP_KEY_REPLY, l2tpv3_set_lookup_key_reply)             \
 _(SW_IF_L2TPV3_TUNNEL_DETAILS, sw_if_l2tpv3_tunnel_details)             \
 _(VXLAN_ADD_DEL_TUNNEL_REPLY, vxlan_add_del_tunnel_reply)               \
 _(VXLAN_TUNNEL_DETAILS, vxlan_tunnel_details)                           \
+_(GRE_ADD_DEL_TUNNEL_REPLY, gre_add_del_tunnel_reply)                   \
+_(GRE_TUNNEL_DETAILS, gre_tunnel_details)                               \
 _(L2_FIB_CLEAR_TABLE_REPLY, l2_fib_clear_table_reply)                   \
 _(L2_INTERFACE_EFP_FILTER_REPLY, l2_interface_efp_filter_reply)         \
 _(L2_INTERFACE_VLAN_TAG_REWRITE_REPLY, l2_interface_vlan_tag_rewrite_reply) \
@@ -7255,6 +7288,132 @@ static int api_vxlan_tunnel_dump (vat_main_t * vam)
     W;
 }
 
+static int api_gre_add_del_tunnel (vat_main_t * vam)
+{
+    unformat_input_t * line_input = vam->input;
+    vl_api_gre_add_del_tunnel_t *mp;
+    f64 timeout;
+    ip4_address_t src4, dst4;
+    u8 is_add = 1;
+    u8 src_set = 0;
+    u8 dst_set = 0;
+    u32 outer_fib_id = 0;
+
+    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (line_input, "del"))
+            is_add = 0;
+        else if (unformat (line_input, "src %U",
+                           unformat_ip4_address, &src4))
+            src_set = 1;
+        else if (unformat (line_input, "dst %U",
+                           unformat_ip4_address, &dst4))
+            dst_set = 1;
+        else if (unformat (line_input, "outer-fib-id %d", &outer_fib_id))
+            ;
+        else {
+            errmsg ("parse error '%U'\n", format_unformat_error, line_input);
+            return -99;
+        }
+    }
+
+    if (src_set == 0) {
+        errmsg ("tunnel src address not specified\n");
+        return -99;
+    }
+    if (dst_set == 0) {
+        errmsg ("tunnel dst address not specified\n");
+        return -99;
+    }
+
+
+    M (GRE_ADD_DEL_TUNNEL, gre_add_del_tunnel);
+
+    clib_memcpy(&mp->src_address, &src4, sizeof(src4));
+    clib_memcpy(&mp->dst_address, &dst4, sizeof(dst4));
+    mp->outer_table_id = ntohl(outer_fib_id);
+    mp->is_add = is_add;
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+static void vl_api_gre_tunnel_details_t_handler
+(vl_api_gre_tunnel_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+
+    fformat(vam->ofp, "%11d%15U%15U%14d\n",
+            ntohl(mp->sw_if_index),
+            format_ip4_address, &mp->src_address,
+            format_ip4_address, &mp->dst_address,
+            ntohl(mp->outer_table_id));
+}
+
+static void vl_api_gre_tunnel_details_t_handler_json
+(vl_api_gre_tunnel_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    struct in_addr ip4;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_uint(node, "sw_if_index", ntohl(mp->sw_if_index));
+    clib_memcpy(&ip4, &mp->src_address, sizeof(ip4));
+    vat_json_object_add_ip4(node, "src_address", ip4);
+    clib_memcpy(&ip4, &mp->dst_address, sizeof(ip4));
+    vat_json_object_add_ip4(node, "dst_address", ip4);
+    vat_json_object_add_uint(node, "outer_fib_id", ntohl(mp->outer_table_id));
+}
+
+static int api_gre_tunnel_dump (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_gre_tunnel_dump_t *mp;
+    f64 timeout;
+    u32 sw_if_index;
+    u8 sw_if_index_set = 0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "sw_if_index %d", &sw_if_index))
+            sw_if_index_set = 1;
+        else
+            break;
+    }
+
+    if (sw_if_index_set == 0) {
+        sw_if_index = ~0;
+    }
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%11s%15s%15s%14s\n",
+                "sw_if_index", "src_address", "dst_address",
+                "outer_fib_id");
+    }
+
+    /* Get list of gre-tunnel interfaces */
+    M(GRE_TUNNEL_DUMP, gre_tunnel_dump);
+
+    mp->sw_if_index = htonl(sw_if_index);
+
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    W;
+}
+
 static int api_l2_fib_clear_table (vat_main_t * vam)
 {
 //  unformat_input_t * i = vam->input;
@@ -10378,9 +10537,12 @@ _(l2tpv3_set_lookup_key,                                                \
   "lookup_v6_src | lookup_v6_dst | lookup_session_id")                  \
 _(sw_if_l2tpv3_tunnel_dump, "")                                         \
 _(vxlan_add_del_tunnel,                                                 \
-  "src <ip4-addr> dst <ip4-addr> vni [encap-vrf-id <nn>]\n"             \
+  "src <ip4-addr> dst <ip4-addr> vni <vni> [encap-vrf-id <nn>]\n"       \
   " [decap-next l2|ip4|ip6] [del]")                                     \
 _(vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
+_(gre_add_del_tunnel,                                                   \
+  "src <ip4-addr> dst <ip4-addr> [outer-fib-id <nn>] [del]\n")          \
+_(gre_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                      \
 _(l2_fib_clear_table, "")                                               \
 _(l2_interface_efp_filter, "sw_if_index <nn> enable | disable")         \
 _(l2_interface_vlan_tag_rewrite,                                        \

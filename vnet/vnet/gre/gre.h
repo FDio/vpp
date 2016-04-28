@@ -54,6 +54,7 @@ typedef struct {
   ip4_address_t tunnel_dst;
   u32 outer_fib_index;
   u32 hw_if_index;
+  u32 sw_if_index;
 } gre_tunnel_t;
 
 typedef struct {
@@ -66,6 +67,12 @@ typedef struct {
   uword * protocol_info_by_name, * protocol_info_by_protocol;
   /* Hash mapping src/dst addr pair to tunnel */
   uword * tunnel_by_key;
+
+  /* Free vlib hw_if_indices */
+  u32 * free_vxlan_tunnel_hw_if_indices;
+
+  /* Mapping from sw_if_index to tunnel index */
+  u32 * tunnel_index_by_sw_if_index;
 
   /* convenience */
   vlib_main_t * vlib_main;
@@ -114,5 +121,15 @@ gre_register_input_protocol (vlib_main_t * vm,
 
 /* manually added to the interface output node in gre.c */
 #define GRE_OUTPUT_NEXT_LOOKUP	1
+
+typedef struct {
+  u8 is_add;
+
+  ip4_address_t src, dst;
+  u32 outer_table_id;
+} vnet_gre_add_del_tunnel_args_t;
+
+int vnet_gre_add_del_tunnel
+  (vnet_gre_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
 
 #endif /* included_gre_h */
