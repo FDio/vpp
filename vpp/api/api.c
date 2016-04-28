@@ -64,6 +64,7 @@
 #include <vnet/classify/input_acl.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/vxlan/vxlan.h>
+#include <vnet/gre/gre.h>
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/nsh-gre/nsh_gre.h>
 #include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h>
@@ -272,6 +273,8 @@ _(L2TPV3_SET_LOOKUP_KEY, l2tpv3_set_lookup_key)                         \
 _(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)                   \
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
 _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
+_(GRE_ADD_DEL_TUNNEL, gre_add_del_tunnel)                               \
+_(GRE_TUNNEL_DUMP, gre_tunnel_dump)                                     \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)         \
@@ -4283,6 +4286,95 @@ static void vl_api_vxlan_tunnel_dump_t_handler
         }
         t = &vxm->tunnels[vxm->tunnel_index_by_sw_if_index[sw_if_index]];
         send_vxlan_tunnel_details(t, q);
+    }
+}
+
+static void vl_api_gre_add_del_tunnel_t_handler
+(vl_api_gre_add_del_tunnel_t * mp)
+{
+    vl_api_gre_add_del_tunnel_reply_t * rmp;
+    int rv = 0;
+    vnet_gre_add_del_tunnel_args_t _a, *a = &_a;
+    u32 outer_table_id;
+    uword * p;
+    ip4_main_t * im = &ip4_main;
+    u32 sw_if_index = ~0;
+
+    p = hash_get (im->fib_index_by_table_id, ntohl(mp->outer_table_id));
+    if (! p) {
+        rv = VNET_API_ERROR_NO_SUCH_FIB;
+        goto out;
+    }
+    outer_table_id = p[0];
+
+    /* Check src & dst are different */
+    if (memcmp(&mp->src_address, &mp->dst_address, 4) == 0) {
+        rv = VNET_API_ERROR_SAME_SRC_DST;
+        goto out;
+    }
+
+    memset (a, 0, sizeof (*a));
+
+    a->is_add = mp->is_add;
+
+    /* ip addresses sent in network byte order */
+    a->src.as_u32 = mp->src_address;
+    a->dst.as_u32 = mp->dst_address;
+
+    a->outer_table_id = outer_table_id;
+    rv = vnet_gre_add_del_tunnel (a, &sw_if_index);
+
+out:
+    REPLY_MACRO2(VL_API_GRE_ADD_DEL_TUNNEL_REPLY,
+    ({
+        rmp->sw_if_index = ntohl (sw_if_index);
+    }));
+}
+
+static void send_gre_tunnel_details
+(gre_tunnel_t * t, unix_shared_memory_queue_t * q)
+{
+    vl_api_gre_tunnel_details_t * rmp;
+    ip4_main_t * im = &ip4_main;
+
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_GRE_TUNNEL_DETAILS);
+    rmp->src_address = t->tunnel_src.data_u32;
+    rmp->dst_address = t->tunnel_dst.data_u32;
+    rmp->outer_table_id = htonl(im->fibs[t->outer_fib_index].table_id);
+    rmp->sw_if_index = htonl(t->sw_if_index);
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void vl_api_gre_tunnel_dump_t_handler
+(vl_api_gre_tunnel_dump_t * mp)
+{
+    unix_shared_memory_queue_t * q;
+    gre_main_t * gm = &gre_main;
+    gre_tunnel_t * t;
+    u32 sw_if_index;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+
+    sw_if_index = ntohl(mp->sw_if_index);
+
+    if (~0 == sw_if_index) {
+        pool_foreach (t, gm->tunnels,
+        ({
+            send_gre_tunnel_details(t, q);
+        }));
+    } else {
+        if ((sw_if_index >= vec_len(gm->tunnel_index_by_sw_if_index)) ||
+                (~0 == gm->tunnel_index_by_sw_if_index[sw_if_index])) {
+            return;
+        }
+        t = &gm->tunnels[gm->tunnel_index_by_sw_if_index[sw_if_index]];
+        send_gre_tunnel_details(t, q);
     }
 }
 
