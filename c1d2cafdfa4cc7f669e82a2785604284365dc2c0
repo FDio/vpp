@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_99edbbf2",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-04-28T11:46:29Z",
+      "side": 1,
+      "message": "Will be addressed also for C code in:\n\nhttps://gerrit.fd.io/r/#/c/885/3",
+      "parentUuid": "fa0f191f_ba72a647",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 57
+      },
+      "revId": "c1d2cafdfa4cc7f669e82a2785604284365dc2c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_7aa64ec3",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/dto/JVppDump.java",
         "patchSetId": 5
@@ -71,6 +95,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_59bf23d1",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppFacade.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-04-28T11:46:29Z",
+      "side": 1,
+      "message": "Added TODO regarding the VPP not responding -\u003e leaks in map to the codebase.",
+      "parentUuid": "fa0f191f_facdbe5e",
+      "range": {
+        "startLine": 26,
+        "startChar": 4,
+        "endLine": 26,
+        "endChar": 73
+      },
+      "revId": "c1d2cafdfa4cc7f669e82a2785604284365dc2c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_3a11f6ac",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackApiTest.java",
         "patchSetId": 5
@@ -82,6 +130,24 @@
       "writtenOn": "2016-04-27T14:08:06Z",
       "side": 1,
       "message": "Perhaps either here or in the README architecture include how to run tests without honeycomb:\nsudo java -cp .:build-vpp-native/vpp-api/java/jvpp-1.0.0.jar org.openvpp.jvpp.test.ControlPingTest\n\nsudo java -cp .:build-vpp-native/vpp-api/java/jvpp-1.0.0.jar org.openvpp.jvpp.test.FutureApiTest\n\nsudo java -cp .:build-vpp-native/vpp-api/java/jvpp-1.0.0.jar org.openvpp.jvpp.test.CallbackApiTest\n(yes the above is copypasta\u0027d from an email from Maros)",
+      "revId": "c1d2cafdfa4cc7f669e82a2785604284365dc2c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_79bae7e2",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackApiTest.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-04-28T11:46:29Z",
+      "side": 1,
+      "message": "Added Readme in the test/ folder",
+      "parentUuid": "fa0f191f_3a11f6ac",
       "revId": "c1d2cafdfa4cc7f669e82a2785604284365dc2c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
