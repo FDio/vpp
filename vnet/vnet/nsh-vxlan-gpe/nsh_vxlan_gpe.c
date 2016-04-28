@@ -28,6 +28,8 @@ static u8 * format_decap_next (u8 * s, va_list * args)
       return format (s, "ip4");
     case NSH_VXLAN_GPE_INPUT_NEXT_IP6_INPUT:
       return format (s, "ip6");
+    case NSH_VXLAN_GPE_INPUT_NEXT_ETHERNET_INPUT:
+      return format (s, "ethernet");
     case NSH_VXLAN_GPE_INPUT_NEXT_NSH_VXLAN_GPE_ENCAP:
       return format (s, "nsh-vxlan-gpe");
     default:
