@@ -52,7 +52,11 @@ type_size = {'u8':   1,
 def get_args(t):
     argslist = []
     for i in t:
-        argslist.append(i[1].replace('_',''))
+        if i[1][0] == '_':
+            argslist.append(i[1][1:])
+        else:
+            argslist.append(i[1])
+
     return argslist
 
 def get_pack(t):

@@ -6,16 +6,27 @@ from ipaddress import *
 
 papi_event = threading.Event()
 def papi_event_handler(result):
-    if result.vlmsgid == vpp_papi.VL_API_SW_INTERFACE_SET_FLAGS:
+    if result.vl_msg_id == vpp_papi.VL_API_SW_INTERFACE_SET_FLAGS:
         papi_event.set()
         return
-    if result.vlmsgid == vpp_papi.VL_API_VNET_INTERFACE_COUNTERS:
+    if result.vl_msg_id == vpp_papi.VL_API_VNET_INTERFACE_COUNTERS:
         format = '>' + str(int(len(result.data) / 8)) + 'Q'
         counters = struct.unpack(format, result.data)
         print('Counters:', counters)
         return
+    if result.vl_msg_id == vpp_papi.VL_API_VNET_IP6_FIB_COUNTERS:
+        print('IP6 FIB Counters:', result.count, len(result.c), len(result))
+        i = 0
+        # FIB counters allocate a large (1000 bytes) block so message length does not match reality
+        for c in struct.iter_unpack('>16sBQQ', result.c):
+            # In Python 3.5 we can use a tuple for prefix, length
+            print(str(IPv6Address(c[0])) + '/' + str(c[1]), str(c[2]), str(c[3]))
+            i += 1
+            if i >= result.count:
+                break
+        return
 
-    print('Unknown message id:', result.vlmsgid)
+    print('Unknown message id:', result.vl_msg_id)
 
 class TestPAPI(unittest.TestCase):
 
@@ -52,7 +63,7 @@ class TestPAPI(unittest.TestCase):
 
         t = vpp_papi.map_summary_stats()
         print(t)
-        self.assertEqual(t.totalbindings, 2)
+        self.assertEqual(t.total_bindings, 2)
 
         t = vpp_papi.map_domain_dump()
         print (t)
@@ -64,8 +75,8 @@ class TestPAPI(unittest.TestCase):
         #
         t = vpp_papi.sw_interface_dump(0, b'ignored')
         for interface in t:
-            if interface.vlmsgid == vpp_papi.VL_API_SW_INTERFACE_DETAILS:
-                print(interface.interfacename.decode())
+            if interface.vl_msg_id == vpp_papi.VL_API_SW_INTERFACE_DETAILS:
+                print(interface.interface_name.decode())
 
     def test_want_interface_events(self):
         pid = 123
@@ -108,7 +119,7 @@ class TestPAPI(unittest.TestCase):
         t = vpp_papi.tap_connect(1, b'tap', b'foo', 1, 0)
         print (t)
         self.assertEqual(t.retval, 0)
-        swifindex = t.swifindex
+        swifindex = t.sw_if_index
 
         t = vpp_papi.sw_interface_set_flags(swifindex, 1, 1, 0)
         print (t)
