@@ -96,6 +96,9 @@ ifeq ("$(shell lsb_release -si)", "Ubuntu")
 	  echo "by executing \"make install-dep\"\n" ; \
 	  exit 1 ; \
 	fi ; \
+	if [ "$(shell lsb_release -r | awk '{print $$2}')"=="14.04" ]; then \
+		update-alternatives --set javah /usr/lib/jvm/java-8-openjdk-amd64/bin/javah
+	fi ; \
 	exit 0
 endif
 	@echo "SOURCE_PATH = $(WS_ROOT)"                   > $(BR)/build-config.mk
