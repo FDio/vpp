@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_9947fb4b",
+        "filename": "vpp-api/java/jvpp/jvpp.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-04-28T10:26:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_da02fab3",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 27,
+        "endChar": 2
+      },
+      "revId": "adf6f4689e228276cc0a2201d11698607d72c321",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_faf5becb",
         "filename": "vpp-api/java/jvpp/jvpp.h",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2016-04-27T12:32:58Z",
       "side": 1,
       "message": "use a direct return ?",
+      "range": {
+        "startLine": 66,
+        "startChar": 0,
+        "endLine": 66,
+        "endChar": 17
+      },
+      "revId": "adf6f4689e228276cc0a2201d11698607d72c321",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_7974279c",
+        "filename": "vpp-api/java/jvpp/jvpp.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-04-28T10:26:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa0f191f_faf5becb",
       "range": {
         "startLine": 66,
         "startChar": 0,
