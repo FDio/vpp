@@ -88,6 +88,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_59d84353",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-04-28T11:46:29Z",
+      "side": 1,
+      "message": "We are not using any third party libraries for jvpp at the moment so using GuardedBy is not an option. Added javadoc with guarded by information instead + TODO to add guava in the future.\n\nAdding guava would require better build system e.g. maven ... currently we are just using javac",
+      "parentUuid": "fa0f191f_3a2576ab",
+      "range": {
+        "startLine": 71,
+        "startChar": 4,
+        "endLine": 71,
+        "endChar": 18
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa0f191f_ba3066e9",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
         "patchSetId": 4
@@ -334,6 +358,30 @@
       "writtenOn": "2016-04-27T11:22:56Z",
       "side": 1,
       "message": "why are these mutable?",
+      "range": {
+        "startLine": 58,
+        "startChar": 0,
+        "endLine": 59,
+        "endChar": 31
+      },
+      "revId": "bd8c0c6f87c20fc4fb56b437e37720d046ec116b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_19e2cb03",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppFacade.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-04-28T11:46:29Z",
+      "side": 1,
+      "message": "Bad design :)\n\nPartially fixed (context ID)\nreplyDump mutability will be addressed in https://gerrit.fd.io/r/#/c/907/",
+      "parentUuid": "fa0f191f_fa649ee6",
       "range": {
         "startLine": 58,
         "startChar": 0,
