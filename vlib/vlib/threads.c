@@ -535,7 +535,9 @@ static clib_error_t * start_workers (vlib_main_t * vm)
   vlib_node_runtime_t * rt;
   u32 n_vlib_mains = tm->n_vlib_mains;
   u32 worker_thread_index;
-
+  u8 * main_heap = clib_mem_get_per_cpu_heap();
+  mheap_t * main_heap_header = mheap_header (main_heap);
+      
   vec_reset_length (vlib_worker_threads);
 
   /* Set up the main thread */
@@ -558,21 +560,19 @@ static clib_error_t * start_workers (vlib_main_t * vm)
     }
 #endif
 
+  /* 
+   * Truth of the matter: we always use at least two
+   * threads. So, make the main heap thread-safe 
+   * and make the event log thread-safe.
+   */
+  main_heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
+  vm->elog_main.lock = 
+    clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, 
+                            CLIB_CACHE_LINE_BYTES);
+  vm->elog_main.lock[0] = 0;
+          
   if (n_vlib_mains > 1)
     {
-      u8 * heap = clib_mem_get_per_cpu_heap();
-      mheap_t * h = mheap_header (heap);
-      
-      /* make the main heap thread-safe */
-      h->flags |= MHEAP_FLAG_THREAD_SAFE;
-      
-      /* Make the event-log MP-safe */
-      vm->elog_main.lock = 
-        clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, 
-                                CLIB_CACHE_LINE_BYTES);
-  
-      vm->elog_main.lock[0] = 0;
-
       vec_validate (vlib_mains, tm->n_vlib_mains - 1);
       _vec_len (vlib_mains) = 0;
       vec_add1 (vlib_mains, vm);
@@ -609,13 +609,10 @@ static clib_error_t * start_workers (vlib_main_t * vm)
           for (k = 0; k < tr->count; k++)
           {
             vec_add2 (vlib_worker_threads, w, 1);
-            /* 
-             * Share the main heap which is now thread-safe.
-             *
-             * To allocate separate heaps, code:
-             * mheap_alloc (0 / * use VM * /, tr->mheap_size);
-             */
-            w->thread_mheap = heap;
+            if (tr->mheap_size)
+              w->thread_mheap = mheap_alloc (0 /* use VM */, tr->mheap_size);
+            else
+              w->thread_mheap = main_heap;
             w->thread_stack = vlib_thread_stacks[w - vlib_worker_threads];
             w->thread_function = tr->function;
             w->thread_function_arg = w;
@@ -744,7 +741,10 @@ static clib_error_t * start_workers (vlib_main_t * vm)
           for (j = 0; j < tr->count; j++)
             {
               vec_add2 (vlib_worker_threads, w, 1);
-              w->thread_mheap = mheap_alloc (0 /* use VM */, tr->mheap_size);
+              if (tr->mheap_size)
+                w->thread_mheap = mheap_alloc (0 /* use VM */, tr->mheap_size);
+              else
+                w->thread_mheap = main_heap;
               w->thread_stack = vlib_thread_stacks[w - vlib_worker_threads];
               w->thread_function = tr->function;
               w->thread_function_arg = w;
