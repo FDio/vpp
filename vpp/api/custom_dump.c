@@ -1297,6 +1297,40 @@ static void * vl_api_vxlan_tunnel_dump_t_print
     FINISH;
 }
 
+static void * vl_api_gre_add_del_tunnel_t_print
+(vl_api_gre_add_del_tunnel_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: gre_add_del_tunnel ");
+
+    s = format (s, "dst %U ", format_ip4_address,
+                (ip4_address_t *)&(mp->dst_address));
+
+    s = format (s, "src %U ", format_ip4_address,
+                (ip4_address_t *)&(mp->src_address));
+
+    if (mp->outer_table_id)
+        s = format (s, "outer-fib-id %d ", ntohl(mp->outer_table_id));
+
+    if (mp->is_add == 0)
+        s = format (s, "del ");
+
+    FINISH;
+}
+
+static void * vl_api_gre_tunnel_dump_t_print
+(vl_api_gre_tunnel_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: gre_tunnel_dump ");
+
+    s = format (s, "sw_if_index %d ", ntohl(mp->sw_if_index));
+
+    FINISH;
+}
+
 static void *vl_api_l2_fib_clear_table_t_print
 (vl_api_l2_fib_clear_table_t * mp, void *handle)
 {
@@ -1795,6 +1829,8 @@ _(L2TPV3_SET_LOOKUP_KEY, l2tpv3_set_lookup_key)                         \
 _(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)                   \
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
 _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
+_(GRE_ADD_DEL_TUNNEL, gre_add_del_tunnel)                               \
+_(GRE_TUNNEL_DUMP, gre_tunnel_dump)                                     \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)         \
