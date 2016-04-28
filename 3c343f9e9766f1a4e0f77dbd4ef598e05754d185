@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_b94d1fc7",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-28T13:49:22Z",
+      "side": 1,
+      "message": "Can you reply with where the comment is made about  this being auto generated from \u003cscript\u003e using \u003cfile\u003e as single source of truth (if its not obvious from viewing the \u003cscript\u003e",
+      "range": {
+        "startLine": 224,
+        "startChar": 0,
+        "endLine": 225,
+        "endChar": 58
+      },
+      "revId": "3c343f9e9766f1a4e0f77dbd4ef598e05754d185",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_79c78713",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-28T13:49:22Z",
+      "side": 1,
+      "message": "Separate comment since I didn\u0027t want to pile two things into one so you can respond separately. Did you want to consider using JAVADOCS in the method/class comments so we can generate docs/helpers?",
+      "range": {
+        "startLine": 240,
+        "startChar": 1,
+        "endLine": 242,
+        "endChar": 3
+      },
+      "revId": "3c343f9e9766f1a4e0f77dbd4ef598e05754d185",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_599a8315",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppInvokerFacade.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-04-28T13:49:22Z",
+      "side": 1,
+      "message": "heh, I was going to ask, and bless you for not introducing maven/gradle :D",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 50
+      },
+      "revId": "3c343f9e9766f1a4e0f77dbd4ef598e05754d185",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
