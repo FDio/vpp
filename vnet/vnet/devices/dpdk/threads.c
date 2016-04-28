@@ -277,7 +277,6 @@ VLIB_REGISTER_THREAD (worker_thread_reg, static) = {
   .name = "workers",
   .short_name = "wk",
   .function = dpdk_worker_thread_fn,
-  .mheap_size = 256<<20,
 };
 #endif
 
@@ -293,7 +292,6 @@ VLIB_REGISTER_THREAD (io_thread_reg, static) = {
   .name = "io",
   .short_name = "io",
   .function = dpdk_io_thread_fn,
-  .mheap_size = 256<<20,
 };
 #endif
 

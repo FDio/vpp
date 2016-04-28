@@ -944,5 +944,4 @@ VLIB_REGISTER_THREAD (stats_thread_reg, static) = {
     .count = 1,
     .no_data_structure_clone = 1,
     .use_pthreads = 1,
-    .mheap_size = 2<<20,
 };
