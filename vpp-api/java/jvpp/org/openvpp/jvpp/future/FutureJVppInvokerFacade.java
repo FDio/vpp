@@ -30,7 +30,7 @@ import org.openvpp.jvpp.dto.JVppRequest;
 /**
 * Future facade on top of JVpp
 */
-public final class FutureJVppFacade implements FutureJVpp {
+public class FutureJVppInvokerFacade implements FutureJVppInvoker {
 
     private final JVpp jvpp;
 
@@ -39,7 +39,7 @@ public final class FutureJVppFacade implements FutureJVpp {
      */
     private final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requests;
 
-    public FutureJVppFacade(final JVpp jvpp,
+    public FutureJVppInvokerFacade(final JVpp jvpp,
                      final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requestMap) {
         // TODO use guava's preconditions for nonNull and state checks
         // However adding guava as a dependency requires better build system for Java in VPP project
@@ -81,12 +81,9 @@ public final class FutureJVppFacade implements FutureJVpp {
     }
 
     static final class CompletableDumpFuture<T extends JVppReplyDump<?, ?>> extends CompletableFuture<T> {
-        // TODO make this final
         // The reason why this is not final is the instantiation of ReplyDump DTOs
         // Their instantiation must be generated, so currently the DTOs are created in callback and set when first dump reponses
-        // is returned. Because in callback we have method per response, but here where requests are invoked there is only
-        // a single generic send method that does not have enough information to create the DTO
-        // This can be final as soon as we provide specific send methods here
+        // is handled in the callback.
         private T replyDump;
         private final long contextId;
 
@@ -107,4 +104,8 @@ public final class FutureJVppFacade implements FutureJVpp {
         }
     }
 
+    @Override
+    public void close() throws Exception {
+        // NOOP
+    }
 }

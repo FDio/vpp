@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os, util
+import os
 from string import Template
 
 import dto_gen
+import util
 
 jvpp_facade_callback_template = Template("""
 package $base_package.$future_package;
@@ -128,6 +129,8 @@ def generate_jvpp(func_list, base_package, dto_package, callback_package, future
     if not os.path.exists(future_facade_package):
         raise Exception("%s folder is missing" % future_facade_package)
 
+    methods = []
+    methods_impl = []
     callbacks = []
     for func in func_list:
 
@@ -139,17 +142,48 @@ def generate_jvpp(func_list, base_package, dto_package, callback_package, future
         if not util.is_reply(camel_case_name_with_suffix):
             continue
 
+        camel_case_method_name = util.underscore_to_camelcase(func['name'])
+        camel_case_request_method_name = util.remove_reply_suffix(util.underscore_to_camelcase(func['name']))
         if util.is_details(camel_case_name_with_suffix):
-            camel_case_method_name = util.underscore_to_camelcase(func['name'])
-            camel_case_request_name = get_standard_dump_reply_name(util.underscore_to_camelcase_upper(func['name']),
+            camel_case_reply_name = get_standard_dump_reply_name(util.underscore_to_camelcase_upper(func['name']),
                                                                    func['name'])
             callbacks.append(jvpp_facade_details_callback_method_template.substitute(base_package=base_package,
                                                                                      dto_package=dto_package,
                                                                                      callback_dto=camel_case_name_with_suffix,
                                                                                      callback_dto_field=camel_case_method_name,
-                                                                                     callback_dto_reply_dump=camel_case_request_name + dto_gen.dump_dto_suffix,
+                                                                                     callback_dto_reply_dump=camel_case_reply_name + dto_gen.dump_dto_suffix,
                                                                                      future_package=future_facade_package))
+
+            methods.append(future_jvpp_method_template.substitute(base_package=base_package,
+                                                                  dto_package=dto_package,
+                                                                  method_name=camel_case_request_method_name +
+                                                                              util.underscore_to_camelcase_upper(util.dump_suffix),
+                                                                  reply_name=camel_case_reply_name + dto_gen.dump_dto_suffix,
+                                                                  request_name=util.remove_reply_suffix(camel_case_reply_name) +
+                                                                               util.underscore_to_camelcase_upper(util.dump_suffix)))
+            methods_impl.append(future_jvpp_method_impl_template.substitute(base_package=base_package,
+                                                                            dto_package=dto_package,
+                                                                            method_name=camel_case_request_method_name +
+                                                                                        util.underscore_to_camelcase_upper(util.dump_suffix),
+                                                                            reply_name=camel_case_reply_name + dto_gen.dump_dto_suffix,
+                                                                            request_name=util.remove_reply_suffix(camel_case_reply_name) +
+                                                                                         util.underscore_to_camelcase_upper(util.dump_suffix)))
         else:
+            request_name = util.underscore_to_camelcase_upper(util.unconventional_naming_rep_req[func['name']]) \
+                if func['name'] in util.unconventional_naming_rep_req else util.remove_reply_suffix(camel_case_name_with_suffix)
+
+            methods.append(future_jvpp_method_template.substitute(base_package=base_package,
+                                                                  dto_package=dto_package,
+                                                                  method_name=camel_case_request_method_name,
+                                                                  reply_name=camel_case_name_with_suffix,
+                                                                  request_name=request_name))
+            methods_impl.append(future_jvpp_method_impl_template.substitute(base_package=base_package,
+                                                                            dto_package=dto_package,
+                                                                            method_name=camel_case_request_method_name,
+                                                                            reply_name=camel_case_name_with_suffix,
+                                                                            request_name=request_name))
+
+            # Callback handler is a bit special and a different template has to be used
             if util.is_control_ping(camel_case_name_with_suffix):
                 callbacks.append(jvpp_facade_control_ping_method_template.substitute(base_package=base_package,
                                                                                      dto_package=dto_package,
@@ -170,6 +204,66 @@ def generate_jvpp(func_list, base_package, dto_package, callback_package, future
     jvpp_file.flush()
     jvpp_file.close()
 
+    jvpp_file = open(os.path.join(future_facade_package, "FutureJVpp.java"), 'w')
+    jvpp_file.write(future_jvpp_template.substitute(inputfile=inputfile,
+                                                    base_package=base_package,
+                                                    methods="".join(methods),
+                                                    future_package=future_facade_package))
+    jvpp_file.flush()
+    jvpp_file.close()
+
+    jvpp_file = open(os.path.join(future_facade_package, "FutureJVppFacade.java"), 'w')
+    jvpp_file.write(future_jvpp_facade_template.substitute(inputfile=inputfile,
+                                                           base_package=base_package,
+                                                           dto_package=dto_package,
+                                                           methods="".join(methods_impl),
+                                                           future_package=future_facade_package))
+    jvpp_file.flush()
+    jvpp_file.close()
+
+
+future_jvpp_template = Template('''
+package $base_package.$future_package;
+
+/**
+ * <p>Async facade extension adding specific methods for each request invocation
+ * <br>It was generated by jvpp_future_facade_gen.py based on $inputfile
+ * <br>(python representation of vpe.api generated by vppapigen).
+ */
+public interface FutureJVpp extends FutureJVppInvoker {
+$methods
+}
+''')
+
+future_jvpp_method_template = Template('''
+    java.util.concurrent.CompletionStage<$base_package.$dto_package.$reply_name> $method_name($base_package.$dto_package.$request_name request);
+''')
+
+
+future_jvpp_facade_template = Template('''
+package $base_package.$future_package;
+
+/**
+ * <p>Implementation of FutureJVpp based on FutureJVppInvokerFacade
+ * <br>It was generated by jvpp_future_facade_gen.py based on $inputfile
+ * <br>(python representation of vpe.api generated by vppapigen).
+ */
+public class FutureJVppFacade extends FutureJVppInvokerFacade implements FutureJVpp {
+
+    public FutureJVppFacade(final $base_package.JVpp jvpp,
+                            final java.util.Map<Integer, java.util.concurrent.CompletableFuture<? extends $base_package.$dto_package.JVppReply<?>>> requestMap) {
+        super(jvpp, requestMap);
+    }
+$methods
+}
+''')
+
+future_jvpp_method_impl_template = Template('''
+    @Override
+    public java.util.concurrent.CompletionStage<$base_package.$dto_package.$reply_name> $method_name($base_package.$dto_package.$request_name request) {
+        return send(request);
+    }
+''')
 
 # Returns request name or special one from unconventional_naming_rep_req map
 def get_standard_dump_reply_name(camel_case_dto_name, func_name):
