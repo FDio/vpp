@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_f976f7d7",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-04-28T14:11:33Z",
+      "side": 1,
+      "message": "Hey, that is still in progress. First batch of comments is added in patch set 9 of https://gerrit.fd.io/r/#/c/885/9 ... once that is fully sorted out (all of the files have the headers, Ill also update this patch)",
+      "parentUuid": "da141535_b94d1fc7",
+      "range": {
+        "startLine": 224,
+        "startChar": 0,
+        "endLine": 225,
+        "endChar": 58
+      },
+      "revId": "3c343f9e9766f1a4e0f77dbd4ef598e05754d185",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_79c78713",
         "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
         "patchSetId": 3
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_997dbbb4",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-04-28T14:11:33Z",
+      "side": 1,
+      "message": "Well, we already are using javadocs to document classes and methods in the codebase .. not sure what you mean",
+      "parentUuid": "da141535_79c78713",
+      "range": {
+        "startLine": 240,
+        "startChar": 1,
+        "endLine": 242,
+        "endChar": 3
+      },
+      "revId": "3c343f9e9766f1a4e0f77dbd4ef598e05754d185",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_599a8315",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppInvokerFacade.java",
         "patchSetId": 3
@@ -59,6 +107,30 @@
       "writtenOn": "2016-04-28T13:49:22Z",
       "side": 1,
       "message": "heh, I was going to ask, and bless you for not introducing maven/gradle :D",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 50
+      },
+      "revId": "3c343f9e9766f1a4e0f77dbd4ef598e05754d185",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_794ae784",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppInvokerFacade.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-04-28T14:11:33Z",
+      "side": 1,
+      "message": "well, never say never :D",
+      "parentUuid": "da141535_599a8315",
       "range": {
         "startLine": 44,
         "startChar": 0,
