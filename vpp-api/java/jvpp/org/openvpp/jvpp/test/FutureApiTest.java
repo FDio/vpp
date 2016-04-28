@@ -37,8 +37,8 @@ public class FutureApiTest {
     private static void testShowVersion(final FutureJVppFacade jvpp) {
         System.out.println("Sending ShowVersion request...");
         try {
-            final Future<JVppReply<ShowVersion>> replyFuture = jvpp.send(new ShowVersion()).toCompletableFuture();
-            final ShowVersionReply reply = (ShowVersionReply) replyFuture.get(); // TODO can we get rid of that cast?
+            final Future<ShowVersionReply> replyFuture = jvpp.showVersion(new ShowVersion()).toCompletableFuture();
+            final ShowVersionReply reply = replyFuture.get();
             System.out.printf("Received ShowVersionReply: context=%d, retval=%d, program=%s, " +
                             "version=%s, buildDate=%s, buildDirectory=%s\n",
                     reply.context, reply.retval, new String(reply.program), new String(reply.version),
@@ -58,8 +58,8 @@ public class FutureApiTest {
         try {
             final GetNodeIndex request = new GetNodeIndex();
             request.nodeName = "node0".getBytes();
-            final Future<JVppReply<GetNodeIndex>> replyFuture = jvpp.send(request).toCompletableFuture();
-            final GetNodeIndexReply reply = (GetNodeIndexReply) replyFuture.get();
+            final Future<GetNodeIndexReply> replyFuture = jvpp.getNodeIndex(request).toCompletableFuture();
+            final GetNodeIndexReply reply = replyFuture.get();
             System.out.printf("Received GetNodeIndexReply: context=%d, retval=%d, nodeIndex=%d\n",
                     reply.context, reply.retval, reply.nodeIndex);
         } catch (Exception e) {
@@ -74,8 +74,8 @@ public class FutureApiTest {
             final SwInterfaceDump request = new SwInterfaceDump();
             request.nameFilterValid = 0;
             request.nameFilter = "".getBytes();
-            final Future<JVppReply<SwInterfaceDump>> replyFuture = jvpp.send(request).toCompletableFuture();
-            final SwInterfaceDetailsReplyDump reply = (SwInterfaceDetailsReplyDump) replyFuture.get();
+            final Future<SwInterfaceDetailsReplyDump> replyFuture = jvpp.swInterfaceDump(request).toCompletableFuture();
+            final SwInterfaceDetailsReplyDump reply = replyFuture.get();
 
             if (reply == null) {
                 throw new IllegalStateException("SwInterfaceDetailsReplyDump is null!");
@@ -106,12 +106,12 @@ public class FutureApiTest {
         final Map<Integer, CompletableFuture<? extends JVppReply<?>>>  map = new HashMap<>();
         final org.openvpp.jvpp.JVppImpl impl =
                 new org.openvpp.jvpp.JVppImpl(VppJNIConnection.create("FutureApiTest", new FutureJVppFacadeCallback(map)));
-        final FutureJVppFacade jvpp = new FutureJVppFacade(impl, map);
+        final FutureJVppFacade jvppFacade = new FutureJVppFacade(impl, map);
         System.out.println("Successfully connected to VPP");
 
-        testShowVersion(jvpp);
-        testGetNodeIndex(jvpp);
-        testSwInterfaceDump(jvpp);
+        testShowVersion(jvppFacade);
+        testGetNodeIndex(jvppFacade);
+        testSwInterfaceDump(jvppFacade);
 
         System.out.println("Disconnecting...");
         // TODO we should consider adding jvpp.close(); to the facade

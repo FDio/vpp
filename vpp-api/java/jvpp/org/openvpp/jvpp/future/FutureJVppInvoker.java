@@ -24,7 +24,7 @@ import org.openvpp.jvpp.dto.JVppRequest;
 /**
 * Future facade on top of JVpp
 */
-public interface FutureJVpp {
+public interface FutureJVppInvoker extends AutoCloseable {
 
     /**
      * Invoke asynchronous operation on VPP
