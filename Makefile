@@ -96,6 +96,9 @@ ifeq ("$(shell lsb_release -si)", "Ubuntu")
 	  echo "by executing \"make install-dep\"\n" ; \
 	  exit 1 ; \
 	fi ; \
+	if [ "$(shell lsb_release -r | awk '{print $$2}')"=="14.04" ]; then \
+		sudo update-alternatives --set javah /usr/lib/jvm/java-8-openjdk-amd64/bin/javah ; \
+	fi ; \
 	exit 0
 endif
 	@echo "SOURCE_PATH = $(WS_ROOT)"                   > $(BR)/build-config.mk
@@ -121,6 +124,9 @@ install-dep:
 ifeq ("$(shell lsb_release -si)", "Ubuntu")
 	$(use_ppa_for_jdk8)
 	@sudo apt-get -y install $(DEB_DEPENDS)
+	if [ "$(shell lsb_release -r | awk '{print $$2}')"=="14.04" ]; then \
+		update-alternatives --set javah /usr/lib/jvm/java-8-openjdk-amd64/bin/javah ; \
+	fi ; \
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum groupinstall -y $(RPM_DEPENDS_GROUPS)
 	@sudo yum install -y $(RPM_DEPENDS)
