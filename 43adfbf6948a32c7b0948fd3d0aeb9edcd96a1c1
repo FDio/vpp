@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_fc402537",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-28T15:49:24Z",
+      "side": 1,
+      "message": "Makes sense. Will do.",
+      "parentUuid": "da141535_7931c70a",
+      "range": {
+        "startLine": 213,
+        "startChar": 23,
+        "endLine": 213,
+        "endChar": 48
+      },
+      "revId": "43adfbf6948a32c7b0948fd3d0aeb9edcd96a1c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_3c09fd2c",
         "filename": "vnet/vnet/vxlan/encap.c",
         "patchSetId": 7
@@ -42,6 +66,24 @@
     },
     {
       "key": {
+        "uuid": "da141535_dc3d61bd",
+        "filename": "vnet/vnet/vxlan/encap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-28T15:49:24Z",
+      "side": 1,
+      "message": "That is perfectly reasonable, I\u0027ll make that change.",
+      "parentUuid": "da141535_3c09fd2c",
+      "revId": "43adfbf6948a32c7b0948fd3d0aeb9edcd96a1c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_1c0e3935",
         "filename": "vnet/vnet/vxlan/vxlan.c",
         "patchSetId": 7
@@ -53,6 +95,30 @@
       "writtenOn": "2016-04-28T15:19:32Z",
       "side": 1,
       "message": "Can we also add a check to make sure SIP and DIP are not the same address? I suppose the same check will be needed for the API as well. Such a config can cause packet to get right back into the BD, etc.",
+      "range": {
+        "startLine": 487,
+        "startChar": 11,
+        "endLine": 487,
+        "endChar": 28
+      },
+      "revId": "43adfbf6948a32c7b0948fd3d0aeb9edcd96a1c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_bc4aad53",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 487,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-28T15:49:24Z",
+      "side": 1,
+      "message": "I can add that check; possibly worth adding a jira ticket to have someone check the other tunnel types too.",
+      "parentUuid": "da141535_1c0e3935",
       "range": {
         "startLine": 487,
         "startChar": 11,
