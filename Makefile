@@ -80,9 +80,9 @@ help:
 # openjdk-8-jdk is not available in 14.04 repos by default
 define use_ppa_for_jdk8
 if [ "$(shell lsb_release -r | awk '{print $$2}')"=="14.04" ]; then \
-	sudo apt install software-properties-common; \
+	sudo apt-get -y install software-properties-common; \
 	sudo add-apt-repository -y ppa:openjdk-r/ppa; \
-	sudo apt update; \
+	sudo apt-get update; \
 fi;
 endef
 
