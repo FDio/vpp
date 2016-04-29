@@ -589,6 +589,15 @@ dpdk_vhost_user_set_vring_addr(u32 hw_if_index, u8 idx, u64 desc, \
     clib_warning("falied to set vring addr");
   }
 
+  /*
+   * Inform the guest that there is no need to inform (kick) the
+   * host when it adds buffers. kick results in vmexit and will
+   * incur performance degradation.
+   *
+   * The below function sets a flag in used table. Therefore,
+   * should be initialized after initializing vq->used.
+   */
+  rte_vhost_enable_guest_notification(&xd->vu_vhost_dev, idx, 0);
   stop_processing_packets(hw_if_index, idx);
 
   return 0;
