@@ -101,7 +101,7 @@ gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key)
   switch (gid_address_type (key))
     {
     case GID_ADDR_IP_PREFIX:
-      return ip_lookup (db, 0, &gid_address_ippref(key));
+      return ip_lookup (db, gid_address_vni(key), &gid_address_ippref(key));
       break;
     default:
       clib_warning ("address type %d not supported!", gid_address_type(key));
@@ -239,16 +239,16 @@ add_del_ip6_key (gid_dictionary_t *db, u32 vni, ip_prefix_t *pref, u32 val,
 }
 
 static u32
-gid_dictionary_add_del_ip (gid_dictionary_t *db, u32 iid, ip_prefix_t *key,
-                           u32 value, u8 is_add)
+add_del_ip (gid_dictionary_t *db, u32 vni, ip_prefix_t *key, u32 value,
+            u8 is_add)
 {
-  switch (ip_prefix_version (key))
+  switch (ip_prefix_version(key))
     {
     case IP4:
-      return add_del_ip4_key (db, iid, key, value, is_add);
+      return add_del_ip4_key (db, vni, key, value, is_add);
       break;
     case IP6:
-      return add_del_ip6_key (db, iid, key, value, is_add);
+      return add_del_ip6_key (db, vni, key, value, is_add);
       break;
     default:
       clib_warning("address type %d not supported!", ip_prefix_version (key));
@@ -265,8 +265,8 @@ gid_dictionary_add_del (gid_dictionary_t *db, gid_address_t *key, u32 value,
   switch (gid_address_type (key))
     {
     case GID_ADDR_IP_PREFIX:
-      return gid_dictionary_add_del_ip (db, 0, &gid_address_ippref(key), value,
-                                        is_add);
+      return add_del_ip (db, gid_address_vni(key), &gid_address_ippref(key),
+                         value, is_add);
       break;
     default:
       clib_warning ("address type %d not supported!", gid_address_type (key));
