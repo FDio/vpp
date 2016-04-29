@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_dc220101",
+        "filename": "build-root/vagrant/build.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 121
+      },
+      "writtenOn": "2016-04-29T00:21:39Z",
+      "side": 1,
+      "message": "Check the value of $# to determine how many arguments were passed.  Give $1 and $2 names.  It\u0027s easier for reviewers to figure out what\u0027s going on.\n\nYou can then replace your existence checks with validation checks.",
+      "revId": "d6a0fc5ea696763c3cba67dc47d8e7943ae7649b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_fc25c50a",
+        "filename": "build-root/vagrant/build.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 121
+      },
+      "writtenOn": "2016-04-29T00:21:39Z",
+      "side": 1,
+      "message": "if [ $# -gt 1 ]\nthen\n  if [ -d $1 ]\n  then\n    VPP_DIR\u003d$1\n  else\n    VPP_DIR\u003d$(realpath $(dirname $0)/../../..)\n  fi\n\n  if [ -n $2 ] \u0026\u0026 id $2 \u003e /dev/null 2\u003e\u00261\n  then\n    BUILD_USER\u003d$2\n    SUDOCMD\u003d\"sudo -H -u ${BUILD_USER}\"\n  fi\nfi",
+      "range": {
+        "startLine": 4,
+        "startChar": 0,
+        "endLine": 13,
+        "endChar": 2
+      },
+      "revId": "d6a0fc5ea696763c3cba67dc47d8e7943ae7649b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_7c79b5fb",
+        "filename": "build-root/vagrant/clearinterfaces.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 121
+      },
+      "writtenOn": "2016-04-29T00:21:39Z",
+      "side": 1,
+      "message": "you could find the interface(s) with the default route(s) ahead of time and then not compute it each time through the loop.",
+      "range": {
+        "startLine": 14,
+        "startChar": 8,
+        "endLine": 14,
+        "endChar": 71
+      },
+      "revId": "d6a0fc5ea696763c3cba67dc47d8e7943ae7649b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_9c1c89c3",
+        "filename": "build-root/vagrant/run.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 121
+      },
+      "writtenOn": "2016-04-29T00:21:39Z",
+      "side": 1,
+      "message": "this is duplicate code",
+      "range": {
+        "startLine": 7,
+        "startChar": 3,
+        "endLine": 11,
+        "endChar": 41
+      },
+      "revId": "d6a0fc5ea696763c3cba67dc47d8e7943ae7649b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_bc1f4db7",
+        "filename": "build-root/vagrant/update.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 121
+      },
+      "writtenOn": "2016-04-29T00:21:39Z",
+      "side": 1,
+      "message": "I\u0027ve seen this code in multiple places.  should be re-factored into a function and called from each location needing the information",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 2
+      },
+      "revId": "d6a0fc5ea696763c3cba67dc47d8e7943ae7649b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
