@@ -64,10 +64,12 @@ typedef CLIB_PACKED (union {
     ip4_address_t ip4;
   };
   ip6_address_t ip6;
+  u64 as_u64[2];
 }) ip46_address_t;
-#define ip46_address_is_ip4(ip46) (((ip46)->pad[0] | (ip46)->pad[1] | (ip46)->pad[2]) == 0)
-#define ip46_address_mask_ip4(ip46) ((ip46)->pad[0] = (ip46)->pad[1] = (ip46)->pad[2] = 0)
-#define ip46_address_set_ip4(ip46, ip) (ip46_address_mask_ip4(ip46), (ip46)->ip4 = (ip)[0])
+#define ip46_address_is_ip4(ip46)	(((ip46)->pad[0] | (ip46)->pad[1] | (ip46)->pad[2]) == 0)
+#define ip46_address_mask_ip4(ip46)	((ip46)->pad[0] = (ip46)->pad[1] = (ip46)->pad[2] = 0)
+#define ip46_address_set_ip4(ip46, ip)	(ip46_address_mask_ip4(ip46), (ip46)->ip4 = (ip)[0])
+#define ip46_address_reset(ip46)	((ip46)->as_u64[0] = (ip46)->as_u64[1] = 0)
 
 always_inline void
 ip6_addr_fib_init (ip6_address_fib_t * addr_fib, ip6_address_t * address,

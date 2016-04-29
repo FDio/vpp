@@ -974,6 +974,7 @@ void ip4_adjacency_set_interface_route (vnet_main_t * vnm,
       node_index = ip4_arp_node.index;
       adj->if_address_index = if_address_index;
       adj->arp.next_hop.ip4.as_u32 = 0;
+      ip46_address_reset(&adj->arp.next_hop);
       packet_type = VNET_L3_PACKET_TYPE_ARP;
     }
   else
