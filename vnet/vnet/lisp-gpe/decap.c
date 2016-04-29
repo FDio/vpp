@@ -82,11 +82,8 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
                        vlib_frame_t * from_frame, u8 is_v4)
 {
   u32 n_left_from, next_index, * from, * to_next;
-  lisp_gpe_tunnel_key_t last_key;
   u32 pkts_decapsulated = 0;
   lisp_gpe_main_t * lgm = &lisp_gpe_main;
-
-  memset (&last_key, 0xff, sizeof (last_key));
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
