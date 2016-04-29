@@ -71,7 +71,7 @@
 
 /** Maximum depth into a byte stream from which to compile a Telnet
  * protocol message. This is a saftey measure. */
-#define UNIX_CLI_MAX_DEPTH_TELNET 16
+#define UNIX_CLI_MAX_DEPTH_TELNET 24
 
 /** Unix standard in */
 #define UNIX_CLI_STDIN_FD 0
