@@ -152,6 +152,8 @@ ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
   else
     {
       ip6_header_t * ip0;
+      int bogus0;
+
       ip0 = vlib_buffer_get_current(b0);
 
       /* Apply the encap string. */
@@ -164,6 +166,12 @@ ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
       /* Fix UDP length */
       udp0 = (udp_header_t *)(ip0+1);
       udp0->length = new_l0;
+
+      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip0, &bogus0);
+      ASSERT(bogus0 == 0);
+
+      if (udp0->checksum == 0)
+          udp0->checksum = 0xffff;
     }
 }
 
@@ -225,6 +233,8 @@ ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
   else
     {
       ip6_header_t * ip0, * ip1;
+      int bogus0, bogus1;
+
       ip0 = vlib_buffer_get_current(b0);
       ip1 = vlib_buffer_get_current(b1);
 
@@ -245,6 +255,16 @@ ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
 
       udp0->length = new_l0;
       udp1->length = new_l1;
+
+      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip0, &bogus0);
+      udp1->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b1, ip1, &bogus1);
+      ASSERT(bogus0 == 0);
+      ASSERT(bogus1 == 0);
+
+      if (udp0->checksum == 0)
+          udp0->checksum = 0xffff;
+      if (udp1->checksum == 0)
+          udp1->checksum = 0xffff;
     }
 }
 
