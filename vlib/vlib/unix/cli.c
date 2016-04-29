@@ -1048,18 +1048,32 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
 
           cf->excursion += delta;
 
-          if (cf->excursion > (i32) vec_len (cf->command_history) -1)
-            cf->excursion = 0;
+          if (cf->excursion == vec_len (cf->command_history))
+            {
+              /* down-arrowed to last entry - want a blank line */
+              _vec_len (cf->current_command) = 0;
+            }
           else if (cf->excursion < 0)
-            cf->excursion = vec_len (cf->command_history) -1;
+            {
+              /* up-arrowed over the start to the end, want a blank line */
+              cf->excursion = vec_len (cf->command_history);
+              _vec_len (cf->current_command) = 0;
+            }
+          else
+            {
+              if (cf->excursion > (i32) vec_len (cf->command_history) -1)
+                /* down-arrowed past end - wrap to start */
+                cf->excursion = 0;
 
-          prev = cf->command_history [cf->excursion];
-          vec_validate (cf->current_command, vec_len(prev)-1);
+              /* Print the command at the current position */
+              prev = cf->command_history [cf->excursion];
+              vec_validate (cf->current_command, vec_len(prev)-1);
 
-          clib_memcpy (cf->current_command, prev, vec_len(prev));
-          _vec_len (cf->current_command) = vec_len(prev);
-          unix_vlib_cli_output_cooked (cf, uf, cf->current_command,
-                                       vec_len (cf->current_command));
+              clib_memcpy (cf->current_command, prev, vec_len(prev));
+              _vec_len (cf->current_command) = vec_len(prev);
+              unix_vlib_cli_output_cooked (cf, uf, cf->current_command,
+                                           vec_len (cf->current_command));
+            }
           cf->cursor = vec_len(cf->current_command);
 
           break;
@@ -1422,10 +1436,10 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
             }
           else
             vec_reset_length (cf->current_command);
+          cf->excursion = vec_len (cf->command_history);
         }
       else /* history disabled */
         vec_reset_length (cf->current_command);
-      cf->excursion = 0;
       cf->search_mode = 0;
       vec_reset_length (cf->search_key);
       cf->cursor = 0;
