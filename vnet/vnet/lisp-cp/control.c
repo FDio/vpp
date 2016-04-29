@@ -122,24 +122,26 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
                                  u32 * map_index_result)
 {
   uword * table_id, * refc;
-  u32 rv;
+  u32 rv, vni;
   vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+
+  vni = gid_address_vni(&a->deid);
 
   /* store/remove mapping from map-cache */
   rv = vnet_lisp_add_del_mapping (a, map_index_result);
   if (rv)
     return rv;
 
-  table_id = hash_get(lcm->table_id_by_vni, /* default for now */ 0);
+  table_id = hash_get(lcm->table_id_by_vni, vni);
 
   if (!table_id)
     {
-      clib_warning ("vni %d not associated to a vrf!", 0);
+      clib_warning ("vni %d not associated to a vrf!", vni);
       return VNET_API_ERROR_INVALID_VALUE;
     }
 
-  refc = hash_get(lcm->dp_if_refcount_by_vni, 0);
+  refc = hash_get(lcm->dp_if_refcount_by_vni, vni);
 
   /* enable/disable data-plane interface */
   if (a->is_add)
@@ -148,11 +150,12 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
       if (!refc)
         {
           ai->is_add = 1;
-          ai->vni = 0; /* default for now, pass vni as parameter */
+          ai->vni = vni;
           ai->table_id = table_id[0];
           vnet_lisp_gpe_add_del_iface (ai, 0);
 
-          hash_set(lcm->dp_if_refcount_by_vni, 0 /* table_id */, 1);
+          /* counts the number of eids in a vni that use the interface */
+          hash_set(lcm->dp_if_refcount_by_vni, vni, 1);
         }
       else
         {
@@ -169,7 +172,7 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
       if (refc[0] == 0)
         {
           ai->is_add = 0;
-          ai->vni = 0; /* default for now, pass vni as parameter */
+          ai->vni = vni;
           ai->table_id = table_id[0];
           vnet_lisp_gpe_add_del_iface (ai, 0);
         }
@@ -1321,7 +1324,7 @@ del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index,
   a->is_add = 0;
   a->dlocator = fe->dst_loc;
   a->slocator = fe->src_loc;
-  a->vni = 0; // XXX should be part of mapping/eid
+  a->vni = gid_address_vni(&a->deid);
   gid_address_copy(&a->deid, &fe->deid);
 
   vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
@@ -1336,7 +1339,7 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
 {
   mapping_t * src_map, * dst_map;
   locator_set_t * dst_ls, * src_ls;
-  u32 i, minp = ~0;
+  u32 i, minp = ~0, sw_if_index;
   locator_t * dl = 0;
   uword * feip = 0, * tidp;
   fwd_entry_t* fe;
@@ -1351,6 +1354,17 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
 
   src_map = pool_elt_at_index (lcm->mapping_pool, src_map_index);
   dst_map = pool_elt_at_index (lcm->mapping_pool, dst_map_index);
+
+  gid_address_copy (&a->deid, &dst_map->eid);
+  a->vni = gid_address_vni(&a->deid);
+
+  tidp = hash_get(lcm->table_id_by_vni, a->vni);
+  if (!tidp)
+    {
+      clib_warning("vni %d not associated to a vrf!", a->vni);
+      return;
+    }
+  a->table_id = tidp[0];
 
   /* XXX simple forwarding policy: first lowest (value) priority locator */
   dst_ls = pool_elt_at_index (lcm->locator_set_pool,
@@ -1368,9 +1382,9 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
     }
   if (dl)
     {
-      src_ls = pool_elt_at_index (lcm->locator_set_pool,
-                                  src_map->locator_set_index);
-      for (i = 0; i < vec_len (src_ls->locator_indices); i++)
+      src_ls = pool_elt_at_index(lcm->locator_set_pool,
+                                 src_map->locator_set_index);
+      for (i = 0; i < vec_len(src_ls->locator_indices); i++)
         {
           u32 li = vec_elt (src_ls->locator_indices, i);
           locator_t * sl = pool_elt_at_index (lcm->locator_pool, li);
@@ -1395,8 +1409,8 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
             }
         }
     }
+
   /* insert data plane forwarding entry */
-  u32 sw_if_index;
   a->is_add = 1;
   if (dl)
     a->dlocator = gid_address_ip(&dl->address);
@@ -1405,17 +1419,6 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
       a->is_negative = 1;
       a->action = dst_map->action;
     }
-
-  gid_address_copy (&a->deid, &dst_map->eid);
-  a->vni = 0; // XXX should be part of mapping/eid
-
-  tidp = hash_get(lcm->table_id_by_vni, a->vni);
-  if (!tidp)
-    {
-      clib_warning("vni %d not associated to a vrf!", a->vni);
-      return;
-    }
-  a->table_id = tidp[0];
 
   /* TODO remove */
   u8 ipver = ip_prefix_version(&gid_address_ippref(&a->deid));
