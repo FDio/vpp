@@ -1287,6 +1287,8 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 		[IP4_RX_FEATURE_CHECK_ACCESS] = "ip4-inacl",
 		[IP4_RX_FEATURE_SOURCE_CHECK_REACHABLE_VIA_RX] = "ip4-source-check-via-rx",
 		[IP4_RX_FEATURE_SOURCE_CHECK_REACHABLE_VIA_ANY] = "ip4-source-check-via-any",
+                [IP4_RX_FEATURE_SOURCE_AND_PORT_RANGE_CHECK] = 
+                "ip4-source-and-port-range-check",
 		[IP4_RX_FEATURE_IPSEC] = "ipsec-input-ip4",
 		[IP4_RX_FEATURE_VPATH] = "vpath-input-ip4",
 		[IP4_RX_FEATURE_LOOKUP] = "ip4-lookup",
