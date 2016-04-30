@@ -39,14 +39,18 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
-#include <vnet/ethernet/arp_packet.h>	/* for ethernet_arp_header_t */
+/** for ethernet_header_t */
+#include <vnet/ethernet/ethernet.h>
+/** for ethernet_arp_header_t */
+#include <vnet/ethernet/arp_packet.h>	
 #include <vnet/ppp/ppp.h>
-#include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
-#include <vnet/api_errno.h>     /* for API error numbers */
+/** for srp_hw_interface_class */
+#include <vnet/srp/srp.h>
+/** for API error numbers */
+#include <vnet/api_errno.h>     
 
-/** \file
-    vnet ip4 forwarding 
+/** @file
+    vnet ip4 forwarding
 */
 
 /* This is really, really simple but stupid fib. */
@@ -1380,6 +1384,13 @@ VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_check_2, static) = {
   .runs_before = {"ip4-policer-classify", 0},
   .feature_index = 
   &ip4_main.ip4_unicast_rx_feature_source_reachable_via_any,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_and_port_range_check, static) = {
+  .node_name = "ip4-source-and-port-range-check",
+  .runs_before = {"ip4-policer-classify", 0},
+  .feature_index =
+  &ip4_main.ip4_unicast_rx_feature_source_and_port_range_check,
 };
 
 VNET_IP4_UNICAST_FEATURE_INIT (ip4_policer_classify, static) = {

@@ -45,40 +45,42 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 
-/* Common (IP4/IP6) next index stored in adjacency. */
+/** @brief Common (IP4/IP6) next index stored in adjacency. */
 typedef enum {
-  /* Packet does not match any route in table. */
+  /** Packet does not match any route in table. */
   IP_LOOKUP_NEXT_MISS,
 
-  /* Adjacency says to drop or punt this packet. */
+  /** Adjacency to drop this packet. */
   IP_LOOKUP_NEXT_DROP,
+  /** Adjacency to punt this packet. */
   IP_LOOKUP_NEXT_PUNT,
 
-  /* This packet is for one of our own IP addresses. */
+  /** This packet is for one of our own IP addresses. */
   IP_LOOKUP_NEXT_LOCAL,
 
-  /* This packet matches an "interface route" and packets
+  /** This packet matches an "interface route" and packets
      need to be passed to ARP to find rewrite string for
      this destination. */
   IP_LOOKUP_NEXT_ARP,
 
-  /* This packet is to be rewritten and forwarded to the next
+  /** This packet is to be rewritten and forwarded to the next
      processing node.  This is typically the output interface but
      might be another node for further output processing. */
   IP_LOOKUP_NEXT_REWRITE,
 
-  /* This packet needs to be classified */
+  /** This packet needs to be classified */
   IP_LOOKUP_NEXT_CLASSIFY,
 
-  /* This packet needs to go to MAP - RFC7596, RFC7597 */
+  /** This packet needs to go to MAP - RFC7596, RFC7597 */
   IP_LOOKUP_NEXT_MAP,
 
-  /* This packet needs to go to MAP with Translation - RFC7599 */
+  /** This packet needs to go to MAP with Translation - RFC7599 */
   IP_LOOKUP_NEXT_MAP_T,
 
-  /* This packets needs to go to indirect next hop */
+  /** This packets needs to go to indirect next hop */
   IP_LOOKUP_NEXT_INDIRECT,
 
+  /** This packets needs to go to ICMP error */
   IP_LOOKUP_NEXT_ICMP_ERROR,
 
   IP_LOOKUP_N_NEXT,
@@ -191,6 +193,13 @@ typedef struct {
     u8 opaque[IP_ADJACENCY_OPAQUE_SZ];
   };
 
+  /* 
+   * Special format function for this adjacency.
+   * Specifically good for cases which use the entire rewrite
+   * for their own purposes. Can easily reduce to a u16 or a u8 if/when
+   * the first cache line reads "full" on the free space gas gauge.
+   */
+  u32 special_adjacency_format_function_index;  /* 0 is invalid */
   STRUCT_MARK(signature_end);
 
   /* Number of FIB entries sharing this adjacency */
@@ -429,6 +438,9 @@ typedef struct ip_lookup_main_t {
   /* Either format_ip4_address_and_length or format_ip6_address_and_length. */
   format_function_t * format_address_and_length;
 
+  /* Special adjacency format functions */
+  format_function_t ** special_adjacency_format_functions;
+
   /* Table mapping ip protocol to ip[46]-local node next index. */
   u8 local_next_by_ip_protocol[256];
 
@@ -610,5 +622,7 @@ do {                                                                    \
 } while (0)
 
 void ip_lookup_init (ip_lookup_main_t * lm, u32 ip_lookup_node_index);
+u32 vnet_register_special_adjacency_format_function 
+(ip_lookup_main_t * lm, format_function_t * fp);
 
 #endif /* included_ip_lookup_h */

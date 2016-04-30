@@ -237,9 +237,10 @@ ip_add_adjacency (ip_lookup_main_t * lm,
       adj[i].mcast_group_index = ~0;
       adj[i].classify.table_index = ~0;
       adj[i].saved_lookup_next_index = 0;
+      adj[i].special_adjacency_format_function_index = 0;
 
       if (copy_adj)
-	adj[i] = copy_adj[i];
+        adj[i] = copy_adj[i];
 
       adj[i].heap_handle = handle;
       adj[i].n_adj = n_adj;
@@ -950,7 +951,7 @@ void ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
 u8 * format_ip_flow_hash_config (u8 * s, va_list * args)
 {
   u32 flow_hash_config = va_arg (*args, u32);
-    
+
 #define _(n,v) if (flow_hash_config & v) s = format (s, "%s ", #n);
   foreach_flow_hash_bit;
 #undef _
@@ -973,8 +974,6 @@ u8 * format_ip_lookup_next (u8 * s, va_list * args)
       reg = vec_elt_at_index(lm->registered_adjacencies, n);
       if (reg->node_name) {
         s = format (s, "%s:", reg->node_name);
-      } else {
-        s = format (s, "unknown %d", n);
       }
       return s;
 
@@ -1010,6 +1009,33 @@ static u8 * format_ip_interface_address (u8 * s, va_list * args)
     return format (s, "%U", format_ip4_address_and_length, a, ia->address_length);
 }
 
+u32 vnet_register_special_adjacency_format_function
+(ip_lookup_main_t * lm, format_function_t * fp)
+{
+    u32 rv;
+    /*
+     * Initialize the format function registration vector
+     * Index 0 must be invalid, to avoid finding and fixing trivial bugs
+     * all over the place
+     */
+    if (vec_len (lm->special_adjacency_format_functions) == 0)
+      {
+        vec_add1 (lm->special_adjacency_format_functions,
+                  (format_function_t *) 0);
+      }
+
+    rv = vec_len (lm->special_adjacency_format_functions);
+    vec_add1 (lm->special_adjacency_format_functions, fp);
+    return rv;
+}
+
+/** @brief Pretty print helper function for formatting specific adjacencies.
+    @param s - input string to format
+    @param args - other args passed to format function such as:
+                  - vnet_main_t
+                  - ip_lookup_main_t
+                  - adj_index
+*/
 u8 * format_ip_adjacency (u8 * s, va_list * args)
 {
   vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
@@ -1018,54 +1044,54 @@ u8 * format_ip_adjacency (u8 * s, va_list * args)
   ip_adjacency_t * adj = ip_get_adjacency (lm, adj_index);
   ip_adj_register_t *reg;
 
+  if (adj->lookup_next_index < vec_len (lm->registered_adjacencies))
+    {
+      reg = vec_elt_at_index(lm->registered_adjacencies, 
+			     adj->lookup_next_index);
+      if (reg->fn) 
+	{
+	  s = format(s, " %U", reg->fn, lm, adj);
+	  goto format_done;
+	}
+    }
+  
   switch (adj->lookup_next_index)
     {
     case IP_LOOKUP_NEXT_REWRITE:
       s = format (s, "%U",
 		  format_vnet_rewrite,
-		  vnm->vlib_main, &adj->rewrite_header, sizeof (adj->rewrite_data));
+		  vnm->vlib_main, &adj->rewrite_header, 
+		  sizeof (adj->rewrite_data));
       break;
-
+      
+    case IP_LOOKUP_NEXT_ARP:
+      if (adj->if_address_index != ~0)
+	s = format (s, " %U", format_ip_interface_address, lm, 
+		    adj->if_address_index);
+      if (adj->arp.next_hop.ip6.as_u64[0] || adj->arp.next_hop.ip6.as_u64[1])
+	s = format (s, " via %U", format_ip46_address,
+		    &adj->arp.next_hop, IP46_TYPE_ANY);
+      break;
+    case IP_LOOKUP_NEXT_LOCAL:
+      if (adj->if_address_index != ~0)
+	s = format (s, " %U", format_ip_interface_address, lm, 
+		    adj->if_address_index);
+      break;
+      
+    case IP_LOOKUP_NEXT_CLASSIFY:
+      s = format (s, " table %d", adj->classify.table_index);
+      break;
+    case IP_LOOKUP_NEXT_INDIRECT:
+      s = format (s, " via %U", format_ip46_address,
+		  &adj->indirect.next_hop, IP46_TYPE_ANY);
+      break;
+      
     default:
-      s = format (s, "%U", format_ip_lookup_next, lm, adj->lookup_next_index);
-      if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP)
-	s = format (s, " %U",
-		    format_vnet_sw_interface_name,
-		    vnm,
-		    vnet_get_sw_interface (vnm, adj->rewrite_header.sw_if_index));
-      switch (adj->lookup_next_index)
-	{
-	case IP_LOOKUP_NEXT_ARP:
-	  if (adj->if_address_index != ~0)
-	    s = format (s, " %U", format_ip_interface_address, lm, adj->if_address_index);
-	  if (adj->arp.next_hop.ip6.as_u64[0] || adj->arp.next_hop.ip6.as_u64[1])
-	    s = format (s, " via %U", format_ip46_address,
-			&adj->arp.next_hop, IP46_TYPE_ANY);
-	  break;
-	case IP_LOOKUP_NEXT_LOCAL:
-	  if (adj->if_address_index != ~0)
-	    s = format (s, " %U", format_ip_interface_address, lm, adj->if_address_index);
-	  break;
-
-        case IP_LOOKUP_NEXT_CLASSIFY:
-            s = format (s, " table %d", adj->classify.table_index);
-            break;
-        case IP_LOOKUP_NEXT_INDIRECT:
-	    s = format (s, " via %U", format_ip46_address,
-			&adj->indirect.next_hop, IP46_TYPE_ANY);
-	    break;
-	default:
-	  //Fallback to registered format functions
-	  vec_validate(lm->registered_adjacencies, adj->lookup_next_index);
-	  reg = vec_elt_at_index(lm->registered_adjacencies, adj->lookup_next_index);
-	  if (reg->fn) {
-	    s = format(s, " ");
-	    s = reg->fn(s, lm, adj);
-	  }
-	  break;
-	}
+      s = format (s, " unknown %d", adj->lookup_next_index);
       break;
     }
+
+ format_done:
   if (adj->explicit_fib_index != ~0 && adj->explicit_fib_index != 0)
     s = format (s, " lookup fib index %d", adj->explicit_fib_index);
   if (adj->share_count > 0)

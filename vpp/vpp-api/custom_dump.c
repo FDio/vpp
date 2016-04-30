@@ -2084,6 +2084,49 @@ static void *vl_api_pg_enable_disable_t_print
     FINISH;
 }
 
+static void *vl_api_ip_source_and_port_range_check_add_del_t_print
+(vl_api_ip_source_and_port_range_check_add_del_t * mp, void *handle)
+{
+    u8 * s;
+    int i;
+
+    s = format (0, "SCRIPT: ip_source_and_port_range_check_add_del ");
+    if (mp->is_ipv6)
+        s = format (s, "%U/%d ", format_ip6_address, mp->address,
+                    mp->mask_length);
+    else
+        s = format (s, "%U/%d ", format_ip4_address, mp->address,
+                    mp->mask_length);
+
+    for (i = 0; i < mp->number_of_ranges; i++) {
+        s = format (s, "range %d - %d", mp->low_ports[i], mp->high_ports[i]);
+    }
+
+    s = format (s, "vrf %d ", ntohl(mp->vrf_id));
+
+    if (mp->is_add == 0)
+        s = format (s, "del ");
+
+    FINISH;
+}
+
+static void *vl_api_ip_source_and_port_range_check_interface_add_del_t_print
+(vl_api_ip_source_and_port_range_check_interface_add_del_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: ip_source_and_port_range_check_interface_add_del ");
+
+    s = format (s, "%d ", ntohl(mp->sw_if_index));
+
+    s = format (s, "vrf %d ", ntohl(mp->vrf_id));
+
+    if (mp->is_add == 0)
+        s = format (s, "del ");
+
+    FINISH;
+}
+
 #define foreach_custom_print_function                                   \
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
@@ -2189,7 +2232,12 @@ _(PG_ENABLE_DISABLE, pg_enable_disable)                                 \
 _(POLICER_ADD_DEL, policer_add_del)                                     \
 _(POLICER_DUMP, policer_dump)                                           \
 _(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \
-_(POLICER_CLASSIFY_DUMP, policer_classify_dump)
+_(POLICER_CLASSIFY_DUMP, policer_classify_dump)                         \
+_(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
+  ip_source_and_port_range_check_add_del)                               \
+_(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
+  ip_source_and_port_range_check_interface_add_del)
+
 
 void vl_msg_api_custom_dump_configure (api_main_t *am)
 {
