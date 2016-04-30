@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_829540e6",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 47
+      },
+      "lineNbr": 3397,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-30T18:00:28Z",
+      "side": 1,
+      "message": "If format() returns a zero-length - but allocated - vec then won\u0027t this leak?",
+      "range": {
+        "startLine": 3397,
+        "startChar": 6,
+        "endLine": 3397,
+        "endChar": 18
+      },
+      "revId": "52fc44d61bcebb898dc19ab818ff60e617055694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_629a2c16",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 47
+      },
+      "lineNbr": 3467,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-04-30T18:00:28Z",
+      "side": 1,
+      "message": "Is clib_memcpy() preferred now?",
+      "range": {
+        "startLine": 3467,
+        "startChar": 1,
+        "endLine": 3467,
+        "endChar": 7
+      },
+      "revId": "52fc44d61bcebb898dc19ab818ff60e617055694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
