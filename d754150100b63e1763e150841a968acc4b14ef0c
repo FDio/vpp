@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_c2f1f896",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 5698,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-30T12:04:39Z",
+      "side": 1,
+      "message": "Might be vaguely worth a length check since tunnel_name is assumed to fit in 1 byte.",
+      "revId": "d754150100b63e1763e150841a968acc4b14ef0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_a2ee04b3",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 44
+      },
+      "lineNbr": 1198,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-30T12:04:39Z",
+      "side": 1,
+      "message": "I would probably add the number of tunnel name bytes (as a u16, in net byte order) to the API message. Your serializer works. Someone else\u0027s might not...",
+      "revId": "d754150100b63e1763e150841a968acc4b14ef0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
