@@ -252,6 +252,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip4_mtrie.c				\
  vnet/ip/ip4_pg.c				\
  vnet/ip/ip4_source_check.c			\
+ vnet/ip/ip4_source_and_port_range_check.c	\
  vnet/ip/ip6_format.c				\
  vnet/ip/ip6_forward.c				\
  vnet/ip/ip6_hop_by_hop.c			\
