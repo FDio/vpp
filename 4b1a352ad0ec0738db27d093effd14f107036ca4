@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_4235e844",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 45
+      },
+      "lineNbr": 5735,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-04-30T12:04:39Z",
+      "side": 1,
+      "message": "Personally, I\u0027d add vec_len(tunnel_names) to the API message vs. to the serialized vector itself. If you\u0027re feeling paranoid, you could add vec_len(serial_orig) too.\n\nYour serializer works. A different control-plane\u0027s serializer probably will not the first time they try it. Paranoia checks in api.c might save a phone call in the middle of the night...",
+      "revId": "4b1a352ad0ec0738db27d093effd14f107036ca4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
