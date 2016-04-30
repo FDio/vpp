@@ -209,6 +209,7 @@ ip_add_adjacency (ip_lookup_main_t * lm,
       adj[i].mcast_group_index = ~0;
       adj[i].classify.table_index = ~0;
       adj[i].saved_lookup_next_index = 0;
+      adj[i].special_adjacency_format_function_index = 0;
 
       if (copy_adj)
 	adj[i] = copy_adj[i];
@@ -972,12 +973,42 @@ static u8 * format_ip_interface_address (u8 * s, va_list * args)
     return format (s, "%U", format_ip4_address_and_length, a, ia->address_length);
 }
 
+u32 vnet_register_special_adjacency_format_function 
+(ip_lookup_main_t * lm, format_function_t * fp)
+{
+    u32 rv;
+    /* 
+     * Initialize the format function registration vector
+     * Index 0 must be invalid, to avoid finding and fixing trivial bugs
+     * all over the place
+     */
+    if (vec_len (lm->special_adjacency_format_functions) == 0)
+      {
+        vec_add1 (lm->special_adjacency_format_functions, 
+                  (format_function_t *) 0);
+      }
+
+    rv = vec_len (lm->special_adjacency_format_functions);
+    vec_add1 (lm->special_adjacency_format_functions, fp);
+    return rv;
+}
+
 u8 * format_ip_adjacency (u8 * s, va_list * args)
 {
   vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
   ip_lookup_main_t * lm = va_arg (*args, ip_lookup_main_t *);
   u32 adj_index = va_arg (*args, u32);
   ip_adjacency_t * adj = ip_get_adjacency (lm, adj_index);
+  format_function_t * fp;
+
+  /* If the adjacency has a registered format function, call it */
+  if (adj->special_adjacency_format_function_index)
+    {
+      fp = lm->special_adjacency_format_functions 
+        [adj->special_adjacency_format_function_index];
+      s = format (s, "%U", fp, vnm, lm, adj_index);
+      return s;
+    }
 
   switch (adj->lookup_next_index)
     {

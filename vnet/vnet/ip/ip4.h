@@ -111,6 +111,9 @@ typedef enum {
   IP4_RX_FEATURE_SOURCE_CHECK_REACHABLE_VIA_RX,
   IP4_RX_FEATURE_SOURCE_CHECK_REACHABLE_VIA_ANY,
 
+  /* Neutron-ish source-address plus port range(s) security */
+  IP4_RX_FEATURE_SOURCE_AND_PORT_RANGE_CHECK,
+
   /* IPSec */
   IP4_RX_FEATURE_IPSEC,
 
