@@ -186,6 +186,13 @@ typedef struct {
     } indirect;
   };
 
+  /* 
+   * Special format function for this adjacency.
+   * Specifically good for cases which use the entire rewrite
+   * for their own purposes. Can easily reduce to a u16 or a u8 if/when
+   * the first cache line reads "full" on the free space gas gauge.
+   */
+  u32 special_adjacency_format_function_index;  /* 0 is invalid */
   STRUCT_MARK(signature_end);
 
   /* Number of FIB entries sharing this adjacency */
@@ -412,6 +419,9 @@ typedef struct ip_lookup_main_t {
   /* Either format_ip4_address_and_length or format_ip6_address_and_length. */
   format_function_t * format_address_and_length;
 
+  /* Special adjacency format functions */
+  format_function_t ** special_adjacency_format_functions;
+
   /* Table mapping ip protocol to ip[46]-local node next index. */
   u8 local_next_by_ip_protocol[256];
 
@@ -559,5 +569,7 @@ do {                                                                    \
 } while (0)
 
 void ip_lookup_init (ip_lookup_main_t * lm, u32 ip_lookup_node_index);
+u32 vnet_register_special_adjacency_format_function 
+(ip_lookup_main_t * lm, format_function_t * fp);
 
 #endif /* included_ip_lookup_h */
