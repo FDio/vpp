@@ -129,6 +129,20 @@ u32_array_struct_setter_template = Template("""
     (*env)->ReleaseIntArrayElements (env, ${java_name}, ${java_name}ArrayElements, 0);
     """)
 
+u16_array_struct_setter_template = Template("""
+    jint * ${java_name}ArrayElements = (*env)->GetIntArrayElements(env, ${java_name}, NULL);
+    {
+        size_t _i;
+        jsize cnt = (*env)->GetArrayLength (env, ${java_name});
+        size_t max_size = ${field_length};
+        if (max_size != 0 && cnt > max_size) cnt = max_size;
+        for (_i = 0; _i < cnt; _i++) {
+            mp->${c_name}[_i] = clib_host_to_net_u16(${java_name}ArrayElements[_i]);
+        }
+    }
+    (*env)->ReleaseIntArrayElements (env, ${java_name}, ${java_name}ArrayElements, 0);
+    """)
+
 vl_api_ip4_fib_counter_t_array_struct_setter_template = Template("""
     // vl_api_ip4_fib_counter_t_array_field_setter_template FIXME""")
 
@@ -141,6 +155,7 @@ struct_setter_templates = {'u8': u8_struct_setter_template,
                           'i32': u32_struct_setter_template,
                           'u64': u64_struct_setter_template,
                           'u8[]': u8_array_struct_setter_template,
+                          'u16[]': u16_array_struct_setter_template,
                           'u32[]': u32_array_struct_setter_template,
                           'vl_api_ip4_fib_counter_t[]': vl_api_ip4_fib_counter_t_array_struct_setter_template,
                           'vl_api_ip6_fib_counter_t[]': vl_api_ip6_fib_counter_t_array_struct_setter_template

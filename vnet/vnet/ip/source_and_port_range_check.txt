@@ -1,0 +1,38 @@
+Development tasks to complete the v4/v6 src-address and port range
+checker
+
+o Move debug CLI to separate file, to share across v4 and v6
+
+o API_ERROR_xxx brain-police replace "return -11" with "return
+  API_ERROR_xxx" in ip4_source_and_port_range_check_add_del. 
+
+o Make the v6 version of ip4_source_and_port_range_check_add_del.
+  Separate the adjacency port range match setup from the fib entry
+  setup, to share the range match adjacency setup / teardown code
+
+o If more than 32 range matches are to be supported, call the
+  adjacency allocator directly to acquire a contiguous adjacency block
+  of 2**N adjs. Be sure you care about this feature before bothering.
+
+o Decide if dst port 0 is to be supported. "No" seems like the right
+  answer to me. Dst port 65535 has been special-cased. If that specific port
+  can be disregarded, remove the special-case code.
+
+o Decide if the categories of pkts which always pass the check are
+  correct.
+
+o Completely separate ip4 vs. ip6 feature arc configuration.
+
+o Add Binary API support. Allocate enough space for an ip6 address,
+  add the usual "u8 is_ip6". If 32 dst port ranges is enough, simply
+  add "u16 low[32]; u16 hi[32]" to the api message. Otherwise, add
+  nranges, u16 low_hi[0]; fix the trace config to log a decent number
+  of ranges.
+
+o Add api/custom_dump.c and vpp_api_test/vat/api_format.c support
+
+
+
+
+  
+  
