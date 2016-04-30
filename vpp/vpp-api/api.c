@@ -77,6 +77,7 @@
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
+#include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/devices/af_packet/af_packet.h>
 #include <vnet/policer/policer.h>
 #include <vnet/devices/netmap/netmap.h>
@@ -377,7 +378,11 @@ _(IPFIX_DUMP,ipfix_dump)                                                \
 _(GET_NEXT_INDEX, get_next_index)                                       \
 _(PG_CREATE_INTERFACE, pg_create_interface)                             \
 _(PG_CAPTURE, pg_capture)                                               \
-_(PG_ENABLE_DISABLE, pg_enable_disable)
+_(PG_ENABLE_DISABLE, pg_enable_disable)                                 \
+_(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
+  ip_source_and_port_range_check_add_del)                               \
+_(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
+  ip_source_and_port_range_check_interface_add_del)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -7453,6 +7458,125 @@ static void vl_api_pg_enable_disable_t_handler (vl_api_pg_enable_disable_t *mp)
     pg_enable_disable (stream_index, is_enable);
 
     REPLY_MACRO(VL_API_PG_ENABLE_DISABLE_REPLY);
+}
+
+static void vl_api_ip_source_and_port_range_check_add_del_t_handler (
+    vl_api_ip_source_and_port_range_check_add_del_t *mp)
+{
+    vl_api_ip_source_and_port_range_check_add_del_reply_t *rmp;
+    int rv = 0;
+
+    u8  is_ipv6 = mp->is_ipv6;
+    u8  is_add = mp->is_add;
+    u8  mask_length = mp->mask_length;
+    ip4_address_t ip4_addr;
+    //ip6_address_t ip6_addr;
+    u16 * low_ports = 0 ;
+    u16 * high_ports = 0 ;
+    u16 tmp_low, tmp_high;
+    u8 num_ranges ;
+    int i;
+    u32 vrf_id;
+
+    // Validate port range
+    num_ranges = mp->number_of_ranges;
+    if (num_ranges > 32) { // This is size of array in VPE.API
+        rv = VNET_API_ERROR_EXCEEDED_NUMBER_OF_RANGES_CAPACITY;
+        goto reply;
+    }
+
+    vec_reset_length (low_ports);
+    vec_reset_length (high_ports);
+
+    for (i = 0; i < num_ranges; i++) {
+        tmp_low = mp->low_ports[i];
+        tmp_high = mp->high_ports[i];
+        // If tmp_low <= tmp_high then only need to check tmp_low = 0
+        // If tmp_low <= tmp_high then only need to check tmp_high > 65535
+        if (tmp_low > tmp_high || tmp_low == 0 || tmp_high > 65535) {
+            rv = VNET_API_ERROR_INVALID_VALUE;
+            goto reply;
+        }
+        vec_add1 (low_ports, tmp_low );
+        vec_add1 (high_ports, tmp_high+1 );
+    }
+
+    // Validate mask_length
+    if (mask_length < 0 ||
+        ( is_ipv6 && mask_length > 128) ||
+        ( !is_ipv6 && mask_length > 32)) {
+            rv = VNET_API_ERROR_ADDRESS_LENGTH_MISMATCH;
+            goto reply;
+    }
+
+    vrf_id = ntohl (mp->vrf_id);
+
+    if ( vrf_id < 1 ) {
+        rv = VNET_API_ERROR_INVALID_VALUE;
+        goto reply;
+    }
+    //ip6
+    if (is_ipv6) {
+    /* clib_memcpy (ip6_addr.as_u8, mp->address, */
+    /*         sizeof (ip6_addr.as_u8)); */
+        /* rv = ip6_source_and_port_range_check_add_del (ip6_addr, */
+        /*                                               mask_length, */
+        /*                                               vrf_id, */
+        /*                                               low_ports, */
+        /*                                               high_ports, */
+        /*                                               is_add); */
+
+    //ip4
+    } else {
+        clib_memcpy (ip4_addr.data, mp->address,
+                     sizeof (ip4_addr));
+        rv = ip4_source_and_port_range_check_add_del (&ip4_addr,
+                                                      mask_length,
+                                                      vrf_id,
+                                                      low_ports,
+                                                      high_ports,
+                                                      is_add);
+    }
+
+ reply:
+    vec_free (low_ports);
+    vec_free (high_ports);
+
+    REPLY_MACRO(VL_API_IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_ip_source_and_port_range_check_interface_add_del_t_handler
+(vl_api_ip_source_and_port_range_check_interface_add_del_t * mp)
+{
+    vlib_main_t *vm = vlib_get_main();
+    vl_api_ip_source_and_port_range_check_interface_add_del_reply_t * rmp;
+    ip4_main_t * im = &ip4_main;
+    int rv;
+    u32 sw_if_index, fib_index, vrf_id;
+    uword * p = 0;
+
+    vrf_id  = ntohl(mp->vrf_id);
+
+    p = hash_get (im->fib_index_by_table_id, vrf_id);
+
+    if (p == 0) {
+        rv = VNET_API_ERROR_INVALID_VALUE;
+        goto reply;
+    }
+
+    fib_index = p[0];
+
+    sw_if_index = ntohl(mp->sw_if_index);
+
+    VALIDATE_SW_IF_INDEX(mp);
+
+    rv = set_ip_source_and_port_range_check (vm, fib_index, sw_if_index, mp->is_add);
+
+    BAD_SW_IF_INDEX_LABEL;
+ reply:
+
+    REPLY_MACRO(VL_API_IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \
