@@ -45,6 +45,7 @@
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
+#include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/policer/xlate.h>
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police.h>
@@ -3066,7 +3067,8 @@ _(netmap_create_reply)                                  \
 _(netmap_delete_reply)                                  \
 _(ipfix_enable_reply)                                   \
 _(pg_capture_reply)                                     \
-_(pg_enable_disable_reply)
+_(pg_enable_disable_reply)                              \
+_(ip_source_and_port_range_check_add_del_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3278,7 +3280,9 @@ _(IPFIX_DETAILS, ipfix_details)                                         \
 _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
 _(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
 _(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
-_(PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)
+_(PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)                     \
+_(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
+ ip_source_and_port_range_check_add_del_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -13458,6 +13462,102 @@ int api_pg_enable_disable (vat_main_t *vam)
         clib_memcpy(mp->stream_name, stream_name, name_len);
     }
     vec_free(stream_name);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+int api_ip_source_and_port_range_check_add_del (vat_main_t *vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_ip_source_and_port_range_check_add_del_t *mp;
+    f64 timeout;
+
+    u16 * low_ports = 0;
+    u16 * high_ports = 0;
+    u16 this_low;
+    u16 this_hi;
+    ip4_address_t ip4_addr;
+    ip6_address_t ip6_addr;
+    u32 length;
+    u32 tmp, tmp2;
+    u8 prefix_set = 0;
+    u32 vrf_id =~0;
+    u8 is_add = 1;
+    u8 is_ipv6 = 0;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+        {
+            if (unformat (input, "%U/%d", unformat_ip4_address, &ip4_addr, &length))
+                {
+                    prefix_set = 1;
+                }
+            else if (unformat (input, "%U/%d", unformat_ip6_address, &ip6_addr, &length))
+                {
+                    prefix_set = 1;
+                    is_ipv6 = 1;
+                }
+            else if (unformat (input, "vrf %d", &vrf_id))
+                ;
+            else if (unformat (input, "del"))
+                is_add = 0;
+            else if (unformat (input, "port %d", &tmp))
+                {
+                    if (tmp == 0 || tmp > 65535)
+                        errmsg ("port %d out of range", tmp);
+                    this_low = tmp;
+                    this_hi = this_low + 1;
+                    vec_add1 (low_ports, this_low);
+                    vec_add1 (high_ports, this_hi);
+                }
+            else if (unformat (input, "range %d - %d", &tmp, &tmp2))
+                {
+                    if ((tmp > tmp2) ||
+                        (tmp == 0) ||
+                        (tmp2 > 65535)) {
+                    }
+                    this_low = tmp;
+                    this_hi = tmp2+1;
+                    vec_add1 (low_ports, this_low);
+                    vec_add1 (high_ports, this_hi);
+                }
+            else
+                break;
+        }
+
+    if (prefix_set == 0)
+        errmsg ("<address>/<mask> not specified\n");
+
+    if (vrf_id == ~0)
+        errmsg ("VRF ID required, not specified\n");
+
+    if (vrf_id == 0)
+        errmsg ("VRF ID should not be default. Should be distinct VRF for this purpose.\n");
+
+    if (vec_len(low_ports) == 0)
+        errmsg ("At least one port or port range required\n");
+
+    mp->is_add = is_add;
+
+    if (is_ipv6) {
+        mp->is_ipv6 = 1;
+        clib_memcpy (mp->address, &ip6_addr, sizeof (ip6_addr));
+    } else {
+        mp->is_ipv6 = 0;
+        clib_memcpy (mp->address, &ip4_addr, sizeof (ip4_addr));
+    }
+
+    mp->mask_length = length;
+    mp->number_of_ranges = vec_len (low_ports);
+
+    clib_memcpy (mp->low_ports, low_ports, vec_len(low_ports));
+    vec_free(low_ports);
+
+    clib_memcpy (mp->high_ports, high_ports, vec_len(high_ports));
+    vec_free (high_ports);
+
+    mp->vrf_id = vrf_id;
 
     S; W;
     /* NOTREACHED */

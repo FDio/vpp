@@ -72,10 +72,10 @@
   /* Spoofed packets in ip4-rewrite-local */                            \
   _(SPOOFED_LOCAL_PACKETS, "ip4 spoofed local-address packet drops")    \
                                                                         \
- /* Erros singalled by ip4-inacl */                                     \
+  /* Errors singalled by ip4-inacl */                                   \
   _ (INACL_TABLE_MISS, "input ACL table-miss drops")                    \
   _ (INACL_SESSION_DENY, "input ACL session deny drops")
-  
+
 typedef enum {
 #define _(sym,str) IP4_ERROR_##sym,
   foreach_ip4_error

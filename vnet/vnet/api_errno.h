@@ -83,7 +83,10 @@ _(INVALID_WORKER, -89, "Invalid worker thread")                         \
 _(LISP_DISABLED, -90, "LISP is disabled")                               \
 _(CLASSIFY_TABLE_NOT_FOUND, -91, "Classify table not found")            \
 _(INVALID_EID_TYPE, -92, "Unsupported LSIP EID type")                   \
-_(CANNOT_CREATE_PCAP_FILE, -93, "Cannot create pcap file")
+_(CANNOT_CREATE_PCAP_FILE, -93, "Cannot create pcap file")              \
+_(INCORRECT_ADJACENCY_TYPE, -94, "Invalid adjacency type for this operation") \
+_(EXCEEDED_NUMBER_OF_RANGES_CAPACITY, -95, "Operation would exceed configured capacity of ranges") \
+_(EXCEEDED_NUMBER_OF_PORTS_CAPACITY, -96, "Operation would exceed capacity of number of ports")
 
 typedef enum {
 #define _(a,b,c) VNET_API_ERROR_##a = (b),
