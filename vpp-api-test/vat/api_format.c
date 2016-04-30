@@ -45,6 +45,7 @@
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
+#include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/policer/xlate.h>
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police.h>
@@ -3059,14 +3060,16 @@ _(lisp_enable_disable_reply)                            \
 _(lisp_pitr_set_locator_set_reply)                      \
 _(lisp_add_del_map_request_itr_rlocs_reply)             \
 _(lisp_eid_table_add_del_map_reply)                     \
-_(vxlan_gpe_add_del_tunnel_reply)			\
+_(vxlan_gpe_add_del_tunnel_reply)                       \
 _(af_packet_delete_reply)                               \
 _(policer_classify_set_interface_reply)                 \
 _(netmap_create_reply)                                  \
 _(netmap_delete_reply)                                  \
 _(ipfix_enable_reply)                                   \
 _(pg_capture_reply)                                     \
-_(pg_enable_disable_reply)
+_(pg_enable_disable_reply)                              \
+_(ip_source_and_port_range_check_add_del_reply)         \
+_(ip_source_and_port_range_check_interface_add_del_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3278,7 +3281,11 @@ _(IPFIX_DETAILS, ipfix_details)                                         \
 _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
 _(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
 _(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
-_(PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)
+_(PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)                     \
+_(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
+ ip_source_and_port_range_check_add_del_reply)                          \
+_(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
+ ip_source_and_port_range_check_interface_add_del_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -13467,6 +13474,177 @@ int api_pg_enable_disable (vat_main_t *vam)
     return 0;
 }
 
+int api_ip_source_and_port_range_check_add_del (vat_main_t *vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_ip_source_and_port_range_check_add_del_t *mp;
+    f64 timeout;
+
+    u16 * low_ports = 0;
+    u16 * high_ports = 0;
+    u16 this_low;
+    u16 this_hi;
+    ip4_address_t ip4_addr;
+    ip6_address_t ip6_addr;
+    u32 length;
+    u32 tmp, tmp2;
+    u8 prefix_set = 0;
+    u32 vrf_id =~0;
+    u8 is_add = 1;
+    u8 is_ipv6 = 0;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+        {
+            if (unformat (input, "%U/%d", unformat_ip4_address, &ip4_addr, &length))
+                {
+                    prefix_set = 1;
+                }
+            else if (unformat (input, "%U/%d", unformat_ip6_address, &ip6_addr, &length))
+                {
+                    prefix_set = 1;
+                    is_ipv6 = 1;
+                }
+            else if (unformat (input, "vrf %d", &vrf_id))
+                ;
+            else if (unformat (input, "del"))
+                is_add = 0;
+            else if (unformat (input, "port %d", &tmp))
+                {
+                    if (tmp == 0 || tmp > 65535) {
+                        errmsg ("port %d out of range", tmp);
+                        return -99;
+                    }
+                    this_low = tmp;
+                    this_hi = this_low + 1;
+                    vec_add1 (low_ports, this_low);
+                    vec_add1 (high_ports, this_hi);
+                }
+            else if (unformat (input, "range %d - %d", &tmp, &tmp2))
+                {
+                    if ((tmp > tmp2) ||
+                        (tmp == 0) ||
+                        (tmp2 > 65535)) {
+                        errmsg ("incorrect range parameters\n");
+                        return -99;
+                    }
+                    this_low = tmp;
+                    /* Note: in debug CLI +1 is added to high before
+                       passing to real fn that does "the work"
+                       (ip_source_and_port_range_check_add_del).
+                       This fn is a wrapper around the binary API fn a
+                       control plane will call, which expects this increment
+                       to have occurred. Hence letting the binary API control
+                       plane fn do the increment for consistency between VAT
+                       and other control planes.
+                     */
+                    this_hi = tmp2;
+                    vec_add1 (low_ports, this_low);
+                    vec_add1 (high_ports, this_hi);
+                }
+            else
+                break;
+        }
+
+    if (prefix_set == 0) {
+        errmsg ("<address>/<mask> not specified\n");
+        return -99;
+    }
+
+    if (vrf_id == ~0) {
+        errmsg ("VRF ID required, not specified\n");
+        return -99;
+    }
+
+    if (vrf_id == 0) {
+        errmsg ("VRF ID should not be default. Should be distinct VRF for this purpose.\n");
+        return -99;
+    }
+
+    if (vec_len(low_ports) == 0) {
+        errmsg ("At least one port or port range required\n");
+        return -99;
+    }
+
+    M(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL, ip_source_and_port_range_check_add_del);
+
+    mp->is_add = is_add;
+
+    if (is_ipv6) {
+        mp->is_ipv6 = 1;
+        clib_memcpy (mp->address, &ip6_addr, sizeof (ip6_addr));
+    } else {
+        mp->is_ipv6 = 0;
+        clib_memcpy (mp->address, &ip4_addr, sizeof (ip4_addr));
+    }
+
+    mp->mask_length = length;
+    mp->number_of_ranges = vec_len (low_ports);
+
+    clib_memcpy (mp->low_ports, low_ports, vec_len(low_ports));
+    vec_free(low_ports);
+
+    clib_memcpy (mp->high_ports, high_ports, vec_len(high_ports));
+    vec_free (high_ports);
+
+    mp->vrf_id = ntohl(vrf_id);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+int api_ip_source_and_port_range_check_interface_add_del (vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_ip_source_and_port_range_check_interface_add_del_t *mp;
+    f64 timeout;
+    u32 sw_if_index = ~0;
+    u32 vrf_id = ~0;
+    u8 is_add = 1;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+        {
+            if (unformat (input, "%U", unformat_sw_if_index, vam, &sw_if_index))
+            ;
+            else if (unformat (input, "sw_if_index %d", &sw_if_index))
+            ;
+            else if (unformat (input, "vrf %d", &vrf_id))
+                ;
+            else if (unformat (input, "del"))
+                is_add = 0;
+            else
+                break;
+        }
+
+    if (sw_if_index == ~0) {
+        errmsg ("Interface required but not specified\n");
+        return -99;
+    }
+
+    if (vrf_id == ~0) {
+        errmsg ("VRF ID required but not specified\n");
+        return -99;
+    }
+
+    if (vrf_id == 0) {
+        errmsg ("VRF ID should not be default. Should be distinct VRF for this purpose.\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL, ip_source_and_port_range_check_interface_add_del);
+
+    mp->sw_if_index = ntohl (sw_if_index);
+    mp->is_add = is_add;
+    mp->vrf_id = ntohl (vrf_id);
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -13995,7 +14173,11 @@ _(ipfix_dump, "")                                                       \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(pg_create_interface, "if_id <nn>")                                    \
 _(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \
-_(pg_enable_disable, "[stream <id>] disable")
+_(pg_enable_disable, "[stream <id>] disable")                           \
+_(ip_source_and_port_range_check_add_del,                               \
+  "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                          \
+_(ip_source_and_port_range_check_interface_add_del,                     \
+  "<intf> | sw_if_index <nn> vrf <id>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

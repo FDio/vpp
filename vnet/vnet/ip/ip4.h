@@ -102,68 +102,87 @@ typedef struct {
   uword function_opaque;
 } ip4_add_del_interface_address_callback_t;
 
+/**
+ * @brief IPv4 main type.
+ *
+ * State of IPv4 VPP processing including:
+ * - FIBs
+ * - Feature indices used in feature topological sort
+ * - Feature node run time references
+ */
+
 typedef struct ip4_main_t {
   ip_lookup_main_t lookup_main;
 
-  /* Vector of FIBs. */
+  /** Vector of FIBs. */
   ip4_fib_t * fibs;
 
   u32 fib_masks[33];
 
-  /* Table index indexed by software interface. */
+  /** Table index indexed by software interface. */
   u32 * fib_index_by_sw_if_index;
 
-  /* Hash table mapping table id to fib index.
+  /** Hash table mapping table id to fib index.
      ID space is not necessarily dense; index space is dense. */
   uword * fib_index_by_table_id;
 
-  /* Vector of functions to call when routes are added/deleted. */
+  /** Vector of functions to call when routes are added/deleted. */
   ip4_add_del_route_callback_t * add_del_route_callbacks;
 
-  /* Hash table mapping interface route rewrite adjacency index by sw if index. */
+  /** Hash table mapping interface route rewrite adjacency index by sw if index. */
   uword * interface_route_adj_index_by_sw_if_index;
 
-  /* Functions to call when interface address changes. */
+  /** Functions to call when interface address changes. */
   ip4_add_del_interface_address_callback_t * add_del_interface_address_callbacks;
 
-  /* Template used to generate IP4 ARP packets. */
+  /** Template used to generate IP4 ARP packets. */
   vlib_packet_template_t ip4_arp_request_packet_template;
 
-  /* feature path configuration lists */
+  /** Feature path configuration lists */
   vnet_ip_feature_registration_t * next_uc_feature;
   vnet_ip_feature_registration_t * next_mc_feature;
 
-  /* Built-in unicast feature path indices, see ip_feature_init_cast(...)  */
+  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_check_access;
+  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_source_reachable_via_rx;
+  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_source_reachable_via_any;
+  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_policer_classify;
+  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_ipsec;
+  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_vpath;
+  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_lookup;
+  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
+  u32 ip4_unicast_rx_feature_source_and_port_range_check;
 
-  /* Built-in multicast feature path indices */
+  /** Built-in multicast feature path indices */
   u32 ip4_multicast_rx_feature_vpath;
+  /** Built-in multicast feature path indices */
   u32 ip4_multicast_rx_feature_lookup;
 
-  /* Save results for show command */
+  /** Save results for show command */
   char ** feature_nodes[VNET_N_CAST];
-  
-  /* Seed for Jenkins hash used to compute ip4 flow hash. */
+
+  /** Seed for Jenkins hash used to compute ip4 flow hash. */
   u32 flow_hash_seed;
 
+  /** @brief Template information for VPP generated packets */
   struct {
-    /* TTL to use for host generated packets. */
+    /** TTL to use for host generated packets. */
     u8 ttl;
 
-    /* TOS byte to use for host generated packets. */
+    /** TOS byte to use for host generated packets. */
     u8 tos;
 
     u8 pad[2];
   } host_config;
 } ip4_main_t;
 
-/* Global ip4 main structure. */
+/** Global ip4 main structure. */
 extern ip4_main_t ip4_main;
 
 #define VNET_IP4_UNICAST_FEATURE_INIT(x,...)                    \
