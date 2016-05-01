@@ -35,7 +35,7 @@ typedef struct {
 
 sr_replicate_main_t sr_replicate_main;
 
-vlib_node_registration_t sr_replicate_node;
+//vlib_node_registration_t sr_replicate_node;
 
 
 typedef struct {
@@ -75,7 +75,7 @@ static u8 * format_sr_replicate_trace (u8 * s, va_list * args)
 
 }
 
-vlib_node_registration_t sr_replicate_node;
+//vlib_node_registration_t sr_replicate_node;
 
 #define foreach_sr_replicate_error \
 _(REPLICATED, "sr packets replicated") \
