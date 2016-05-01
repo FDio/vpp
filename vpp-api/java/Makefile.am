@@ -55,6 +55,8 @@ japi/org_openvpp_vppjapi_vppConn.h: 					\
     japi/org/openvpp/vppjapi/vppConn.java 				\
     japi/org/openvpp/vppjapi/vppApiCallbacks.java 			\
     ../../vpp/api/vpe.api.h
+	$(JAVAC) -version ;				\
+	$(JAVAH) -version ;				\
 	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppVersion.java ;				\
 	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppVersion ;						\
 	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppInterfaceDetails.java ;			\
