@@ -50,16 +50,22 @@ typedef struct {
   u8 trunc_size;
 } esp_integ_alg_t;
 
+typedef struct {
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  EVP_CIPHER_CTX encrypt_ctx;
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
+  EVP_CIPHER_CTX decrypt_ctx;
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline2);
+  HMAC_CTX hmac_ctx;
+  ipsec_crypto_alg_t last_encrypt_alg;
+  ipsec_crypto_alg_t last_decrypt_alg;
+  ipsec_integ_alg_t last_integ_alg;
+} esp_main_per_thread_data_t;
 
 typedef struct {
   esp_crypto_alg_t * esp_crypto_algs;
   esp_integ_alg_t * esp_integ_algs;
-  EVP_CIPHER_CTX encrypt_ctx;
-  EVP_CIPHER_CTX decrypt_ctx;
-  HMAC_CTX hmac_ctx;
-  ipsec_crypto_alg_t last_encrytp_alg;
-  ipsec_crypto_alg_t last_decrytp_alg;
-  ipsec_integ_alg_t last_integ_alg;
+  esp_main_per_thread_data_t * per_thread_data;
 } esp_main_t;
 
 esp_main_t esp_main;
@@ -68,6 +74,7 @@ always_inline void
 esp_init()
 {
   esp_main_t * em = &esp_main;
+  vlib_thread_main_t * tm = vlib_get_thread_main();
 
   memset (em, 0, sizeof (em[0]));
 
@@ -99,9 +106,15 @@ esp_init()
   i->md = EVP_sha512();
   i->trunc_size = 32;
 
-  EVP_CIPHER_CTX_init(&(em->encrypt_ctx));
-  EVP_CIPHER_CTX_init(&(em->decrypt_ctx));
-  HMAC_CTX_init(&(em->hmac_ctx));
+  vec_validate_aligned(em->per_thread_data, tm->n_vlib_mains-1, CLIB_CACHE_LINE_BYTES);
+  int thread_id;
+
+  for (thread_id = 0; thread_id < tm->n_vlib_mains - 1; thread_id++)
+    {
+      EVP_CIPHER_CTX_init(&(em->per_thread_data[thread_id].encrypt_ctx));
+      EVP_CIPHER_CTX_init(&(em->per_thread_data[thread_id].decrypt_ctx));
+      HMAC_CTX_init(&(em->per_thread_data[thread_id].hmac_ctx));
+    }
 }
 
 always_inline unsigned int
@@ -115,7 +128,8 @@ hmac_calc(ipsec_integ_alg_t alg,
           u32 seq_hi)
 {
   esp_main_t * em = &esp_main;
-  HMAC_CTX * ctx = &(em->hmac_ctx);
+  u32 cpu_index = os_get_cpu_number();
+  HMAC_CTX * ctx = &(em->per_thread_data[cpu_index].hmac_ctx);
   const EVP_MD * md = NULL;
   unsigned int len;
 
@@ -124,9 +138,9 @@ hmac_calc(ipsec_integ_alg_t alg,
   if (PREDICT_FALSE(em->esp_integ_algs[alg].md == 0))
     return 0;
 
-  if (PREDICT_FALSE(alg != em->last_integ_alg)) {
+  if (PREDICT_FALSE(alg != em->per_thread_data[cpu_index].last_integ_alg)) {
     md = em->esp_integ_algs[alg].md;
-    em->last_integ_alg = alg;
+    em->per_thread_data[cpu_index].last_integ_alg = alg;
   }
 
   HMAC_Init(ctx, key, key_len, md);

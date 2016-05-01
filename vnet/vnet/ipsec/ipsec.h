@@ -175,7 +175,7 @@ typedef struct {
   ipsec_tunnel_if_t * tunnel_interfaces;
   u32 * free_tunnel_if_indices;
 
-  u32 * empty_buffers;
+  u32 ** empty_buffers;
 
   uword * tunnel_index_by_key;
 
@@ -242,20 +242,22 @@ ipsec_alloc_empty_buffers(vlib_main_t * vm, ipsec_main_t *im)
 #else
   u32 free_list_index = VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX;
 #endif
-  uword l = vec_len (im->empty_buffers);
+  u32 cpu_index = os_get_cpu_number();
+  uword l = vec_len (im->empty_buffers[cpu_index]);
   uword n_alloc = 0;
 
   if (PREDICT_FALSE(l < VLIB_FRAME_SIZE))
     {
-      if (!im->empty_buffers) {
-        vec_alloc (im->empty_buffers, 2 * VLIB_FRAME_SIZE );
+      if (!im->empty_buffers[cpu_index]) {
+        vec_alloc (im->empty_buffers[cpu_index], 2 * VLIB_FRAME_SIZE );
       }
 
-      n_alloc = vlib_buffer_alloc_from_free_list (vm, im->empty_buffers + l,
+      n_alloc = vlib_buffer_alloc_from_free_list (vm,
+                                                  im->empty_buffers[cpu_index] + l,
                                                   2 * VLIB_FRAME_SIZE - l,
                                                   free_list_index);
 
-      _vec_len (im->empty_buffers) = l + n_alloc;
+      _vec_len (im->empty_buffers[cpu_index]) = l + n_alloc;
     }
 }
 

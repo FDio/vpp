@@ -89,7 +89,8 @@ esp_encrypt_aes_cbc(ipsec_crypto_alg_t alg,
                     u8 * iv)
 {
   esp_main_t * em = &esp_main;
-  EVP_CIPHER_CTX * ctx = &(em->encrypt_ctx);
+  u32 cpu_index = os_get_cpu_number();
+  EVP_CIPHER_CTX * ctx = &(em->per_thread_data[cpu_index].encrypt_ctx);
   const EVP_CIPHER * cipher = NULL;
   int out_len;
 
@@ -98,9 +99,9 @@ esp_encrypt_aes_cbc(ipsec_crypto_alg_t alg,
   if (PREDICT_FALSE(em->esp_crypto_algs[alg].type == IPSEC_CRYPTO_ALG_NONE))
     return;
 
-  if (PREDICT_FALSE(alg != em->last_encrytp_alg)) {
+  if (PREDICT_FALSE(alg != em->per_thread_data[cpu_index].last_encrypt_alg)) {
     cipher = em->esp_crypto_algs[alg].type;
-    em->last_encrytp_alg = alg;
+    em->per_thread_data[cpu_index].last_encrypt_alg = alg;
   }
 
   EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv);
@@ -142,10 +143,12 @@ esp_encrypt_node_fn (vlib_main_t * vm,
   n_left_from = from_frame->n_vectors;
   ipsec_main_t *im = &ipsec_main;
   u32 * recycle = 0;
+  u32 cpu_index = os_get_cpu_number();
+  u32 * empty_buffers = im->empty_buffers[cpu_index];
 
   ipsec_alloc_empty_buffers(vm, im);
 
-  if (PREDICT_FALSE(vec_len (im->empty_buffers) < n_left_from)){
+  if (PREDICT_FALSE(vec_len (empty_buffers) < n_left_from)){
     vlib_node_increment_counter (vm, esp_encrypt_node.index,
                                  ESP_ENCRYPT_ERROR_NO_BUFFER, n_left_from);
     clib_warning("no enough empty buffers. discarding frame");
@@ -197,13 +200,13 @@ esp_encrypt_node_fn (vlib_main_t * vm,
             }
 
           /* grab free buffer */
-          last_empty_buffer = vec_len (im->empty_buffers) - 1;
-          o_bi0 = im->empty_buffers[last_empty_buffer];
+          last_empty_buffer = vec_len (empty_buffers) - 1;
+          o_bi0 = empty_buffers[last_empty_buffer];
           o_b0 = vlib_get_buffer (vm, o_bi0);
           o_b0->current_data = sizeof(ethernet_header_t);
           ih0 = vlib_buffer_get_current (i_b0);
-          vlib_prefetch_buffer_with_index (vm, im->empty_buffers[last_empty_buffer-1], STORE);
-          _vec_len (im->empty_buffers) = last_empty_buffer;
+          vlib_prefetch_buffer_with_index (vm, empty_buffers[last_empty_buffer-1], STORE);
+          _vec_len (empty_buffers) = last_empty_buffer;
           to_next[0] = o_bi0;
           to_next += 1;
 
