@@ -85,7 +85,8 @@ esp_decrypt_aes_cbc(ipsec_crypto_alg_t alg,
                     u8 * iv)
 {
   esp_main_t * em = &esp_main;
-  EVP_CIPHER_CTX * ctx = &(em->decrypt_ctx);
+  u32 cpu_index = os_get_cpu_number();
+  EVP_CIPHER_CTX * ctx = &(em->per_thread_data[cpu_index].decrypt_ctx);
   const EVP_CIPHER * cipher = NULL;
   int out_len;
 
@@ -94,9 +95,9 @@ esp_decrypt_aes_cbc(ipsec_crypto_alg_t alg,
   if (PREDICT_FALSE(em->esp_crypto_algs[alg].type == 0))
     return;
 
-  if (PREDICT_FALSE(alg != em->last_decrytp_alg)) {
+  if (PREDICT_FALSE(alg != em->per_thread_data[cpu_index].last_decrypt_alg)) {
     cipher = em->esp_crypto_algs[alg].type;
-    em->last_decrytp_alg = alg;
+    em->per_thread_data[cpu_index].last_decrypt_alg = alg;
   }
 
   EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv);
@@ -235,10 +236,12 @@ esp_decrypt_node_fn (vlib_main_t * vm,
   u32 * recycle = 0;
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
+  u32 cpu_index = os_get_cpu_number();
+  u32 * empty_buffers = im->empty_buffers[cpu_index];
 
   ipsec_alloc_empty_buffers(vm, im);
 
-  if (PREDICT_FALSE(vec_len (im->empty_buffers) < n_left_from)){
+  if (PREDICT_FALSE(vec_len (empty_buffers) < n_left_from)){
     vlib_node_increment_counter (vm, esp_decrypt_node.index,
                                  ESP_DECRYPT_ERROR_NO_BUFFER, n_left_from);
     goto free_buffers_and_exit;
@@ -327,11 +330,11 @@ esp_decrypt_node_fn (vlib_main_t * vm,
              }
 
           /* grab free buffer */
-          uword last_empty_buffer = vec_len (im->empty_buffers) - 1;
-          o_bi0 = im->empty_buffers[last_empty_buffer];
+          uword last_empty_buffer = vec_len (empty_buffers) - 1;
+          o_bi0 = empty_buffers[last_empty_buffer];
           o_b0 = vlib_get_buffer (vm, o_bi0);
-          vlib_prefetch_buffer_with_index (vm, im->empty_buffers[last_empty_buffer-1], STORE);
-          _vec_len (im->empty_buffers) = last_empty_buffer;
+          vlib_prefetch_buffer_with_index (vm, empty_buffers[last_empty_buffer-1], STORE);
+          _vec_len (empty_buffers) = last_empty_buffer;
 
           /* add old buffer to the recycle list */
           vec_add1(recycle, i_bi0);
