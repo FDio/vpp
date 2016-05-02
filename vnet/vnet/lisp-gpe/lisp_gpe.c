@@ -227,18 +227,23 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
   ip_prefix_t * dpref, * spref;
   uword * lookup_next_index, * lgpe_sw_if_index, * lnip;
   u8 ip_ver;
+
   /* treat negative fwd entries separately */
   if (a->is_negative)
     return add_del_negative_fwd_entry (lgm, a);
+
+  dpref = &gid_address_ippref(&a->deid);
+  spref = &gid_address_ippref(&a->seid);
+  ip_ver = ip_prefix_version(dpref);
+
+  a->next_protocol = ip_ver == IP4 ?
+      LISP_GPE_NEXT_PROTO_IP4 : LISP_GPE_NEXT_PROTO_IP6;
+  a->flags |= LISP_GPE_FLAGS_P;
 
   /* add/del tunnel to tunnels pool and prepares rewrite */
   rv = add_del_tunnel (a, &tun_index);
   if (rv)
     return rv;
-
-  dpref = &gid_address_ippref(&a->deid);
-  spref = &gid_address_ippref(&a->seid);
-  ip_ver = ip_prefix_version(dpref);
 
   /* setup adjacency for eid */
   memset (&adj, 0, sizeof(adj));
@@ -570,7 +575,7 @@ lisp_gpe_init (vlib_main_t *vm)
   udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe, 
                          lisp_gpe_ip4_input_node.index, 1 /* is_ip4 */);
   udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe6,
-                         lisp_gpe_ip4_input_node.index, 0 /* is_ip4 */);
+                         lisp_gpe_ip6_input_node.index, 0 /* is_ip4 */);
   return 0;
 }
 
