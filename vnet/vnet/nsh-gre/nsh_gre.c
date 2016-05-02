@@ -34,6 +34,8 @@ static u8 * format_decap_next (u8 * s, va_list * args)
       return format (s, "ip4");
     case NSH_INPUT_NEXT_IP6_INPUT:
       return format (s, "ip6");
+    case NSH_INPUT_NEXT_ETHERNET_INPUT:
+      return format (s, "ethernet");
     default:
       return format (s, "index %d", next_index);
     }
@@ -338,7 +340,7 @@ static uword unformat_decap_next (unformat_input_t * input, va_list * args)
   else if (unformat (input, "ip6"))
     *result = NSH_INPUT_NEXT_IP6_INPUT;
   else if (unformat (input, "ethernet"))
-    *result = NSH_INPUT_NEXT_IP6_INPUT;
+    *result = NSH_INPUT_NEXT_ETHERNET_INPUT;
   else if (unformat (input, "%d", &tmp))
     *result = tmp;
   else
