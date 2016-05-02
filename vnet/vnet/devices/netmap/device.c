@@ -92,9 +92,27 @@ netmap_interface_tx (vlib_main_t * vm,
   netmap_main_t * nm = &netmap_main;
   u32 * buffers = vlib_frame_args (frame);
   u32 n_left = frame->n_vectors;
+  f64 const time_constant = 1e3;
   vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
   netmap_if_t * nif = pool_elt_at_index (nm->interfaces, rd->dev_instance);
+  struct netmap_ring *txring;
   int cur_ring;
+  int j = 0;
+
+  for (j = nif->first_tx_ring; j <= nif->last_tx_ring; j++)
+    {
+      int time_wait = 0;
+      txring = NETMAP_TXRING(nif->nifp, j);
+      while (nm_tx_pending(txring))
+        {
+          if (nif->last_tx_time + time_constant > clib_cpu_time_now())
+            clib_cpu_time_wait(time_constant * time_wait);
+
+          time_wait++;
+          nif->last_tx_time = clib_cpu_time_now();
+          ioctl(nif->fd, NIOCTXSYNC, NULL);
+        }
+    }
 
   cur_ring = nif->first_tx_ring;
 
@@ -112,12 +130,11 @@ netmap_interface_tx (vlib_main_t * vm,
 
       while (n_left && n_free_slots)
 	{
-	  vlib_buffer_t * b0;
+	  vlib_buffer_t * b0 = 0;
 	  u32 bi = buffers[0];
 	  u32 len;
 	  u32 offset = 0;
 	  buffers++;
-
 	  struct netmap_slot * slot = &ring->slot[cur];
 
 	  do
@@ -136,7 +153,7 @@ netmap_interface_tx (vlib_main_t * vm,
 	  n_free_slots--;
           n_left--;
 	}
-      CLIB_MEMORY_BARRIER();
+
       ring->head = ring->cur = cur;
     }
 

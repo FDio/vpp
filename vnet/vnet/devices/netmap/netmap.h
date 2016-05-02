@@ -65,6 +65,7 @@ typedef struct {
   u16 last_tx_ring;
   u16 first_rx_ring;
   u16 last_rx_ring;
+  f64 last_tx_time;
 
 } netmap_if_t;
 
@@ -118,6 +119,23 @@ int netmap_delete_if(vlib_main_t * vm, u8 * host_if_name);
 #define NETMAP_BUF_IDX(ring, buf)			\
 	( ((char *)(buf) - ((char *)(ring) + (ring)->buf_ofs) ) / \
 		(ring)->nr_buf_size )
+
+static inline uint32_t
+nm_ring_next(struct netmap_ring *ring, uint32_t i)
+{
+        return ( unlikely(i + 1 == ring->num_slots) ? 0 : i + 1);
+}
+
+
+/*
+ * Return 1 if we have pending transmissions in the tx ring.
+ * When everything is complete ring->head = ring->tail + 1 (modulo ring size)
+ */
+static inline int
+nm_tx_pending(struct netmap_ring *ring)
+{
+        return nm_ring_next(ring, ring->tail) != ring->head;
+}
 
 static inline uint32_t
 nm_ring_space(struct netmap_ring *ring)
