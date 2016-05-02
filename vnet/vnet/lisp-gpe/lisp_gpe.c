@@ -445,6 +445,14 @@ VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) = {
     .function = show_lisp_gpe_tunnel_command_fn,
 };
 
+u8
+vnet_lisp_gpe_enable_disable_status(void)
+{
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+
+  return lgm->is_en;
+}
+
 clib_error_t *
 vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
 {
@@ -471,6 +479,8 @@ vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
         {
           /* ask cp to re-add ifaces and defaults */
         }
+
+      lgm->is_en = 1;
     }
   else
     {
@@ -509,6 +519,7 @@ vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
         vnet_lisp_gpe_add_del_iface(ai, 0);
       }
       vec_free(table_ids);
+      lgm->is_en = 0;
     }
 
   return 0;

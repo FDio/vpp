@@ -158,6 +158,7 @@ typedef struct lisp_gpe_main
   ip6_main_t * im6;
   ip_lookup_main_t * lm4;
   ip_lookup_main_t * lm6;
+  u8 is_en;
 } lisp_gpe_main_t;
 
 lisp_gpe_main_t lisp_gpe_main;
@@ -195,6 +196,8 @@ typedef struct
   u32 vni;      /* host byte order */
 } vnet_lisp_gpe_add_del_iface_args_t;
 
+u8
+vnet_lisp_gpe_enable_disable_status(void);
 void
 vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t *a,
 			     u32 * hw_if_indexp);
