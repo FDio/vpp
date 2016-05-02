@@ -2113,6 +2113,36 @@ vl_api_lisp_map_resolver_details_t_handler_json (
     }
 }
 
+static void
+vl_api_lisp_gpe_enable_disable_status_details_t_handler
+(vl_api_lisp_gpe_enable_disable_status_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+
+    fformat(vam->ofp, "%=20s\n",
+            mp->is_en ? "enable" : "disable");
+}
+
+static void
+vl_api_lisp_gpe_enable_disable_status_details_t_handler_json
+(vl_api_lisp_gpe_enable_disable_status_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    u8 *str = NULL;
+
+    str = format(0, "%s", mp->is_en ? "enable" : "disable");
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_string_copy(node, "lisp_gpe", str);
+}
+
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
@@ -2379,7 +2409,9 @@ _(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
 _(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
 _(LISP_LOCAL_EID_TABLE_DETAILS, lisp_local_eid_table_details)           \
 _(LISP_GPE_TUNNEL_DETAILS, lisp_gpe_tunnel_details)                     \
-_(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)
+_(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
+_(LISP_GPE_ENABLE_DISABLE_STATUS_DETAILS,                               \
+  lisp_gpe_enable_disable_status_details)
 
 /* M: construct, but don't yet send a message */
 
@@ -10300,6 +10332,35 @@ api_lisp_map_resolver_dump(vat_main_t *vam)
     return 0;
 }
 
+static int
+api_lisp_gpe_enable_disable_status_dump(vat_main_t *vam)
+{
+    vl_api_lisp_gpe_enable_disable_status_dump_t *mp;
+    f64 timeout = ~0;
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%=20s\n",
+                "lisp gpe");
+    }
+
+    M(LISP_GPE_ENABLE_DISABLE_STATUS_DUMP,
+      lisp_gpe_enable_disable_status_dump);
+    /* send it... */
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -10792,7 +10853,8 @@ _(lisp_gpe_add_del_iface, "up|down")                                    \
 _(lisp_locator_set_dump, "")                                            \
 _(lisp_local_eid_table_dump, "")                                        \
 _(lisp_gpe_tunnel_dump, "")                                             \
-_(lisp_map_resolver_dump, "")
+_(lisp_map_resolver_dump, "")                                           \
+_(lisp_gpe_enable_disable_status_dump, "")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
