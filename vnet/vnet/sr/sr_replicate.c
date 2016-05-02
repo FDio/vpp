@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#if DPDK > 0 /* Cannot run replicate without DPDK */
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
@@ -364,3 +365,5 @@ clib_error_t *sr_replicate_init (vlib_main_t *vm)
 }
 
 VLIB_INIT_FUNCTION(sr_replicate_init);
+
+#endif /* DPDK */

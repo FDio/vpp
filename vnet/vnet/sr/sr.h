@@ -187,7 +187,9 @@ format_function_t format_ip6_sr_header_with_length;
 
 vlib_node_registration_t ip6_sr_input_node;
 
+#if DPDK > 0
 vlib_node_registration_t sr_replicate_node;
+#endif /* DPDK */
 
 int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a);
 int ip6_sr_add_del_policy (ip6_sr_add_del_policy_args_t * a);
