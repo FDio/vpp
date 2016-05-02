@@ -245,6 +245,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/icmp4.c				\
  vnet/ip/icmp6.c				\
  vnet/ip/ip46_cli.c				\
+ vnet/ip/ping.c				\
  vnet/ip/ip4_format.c				\
  vnet/ip/ip4_forward.c				\
  vnet/ip/ip4_hop_by_hop.c			\
