@@ -16,6 +16,24 @@
       "revId": "ae6a098db03b1dd74a59058b00aaedb5e5ddb777",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_e85a9b4f",
+        "filename": "vnet/vnet/api_errno.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-02T20:36:49Z",
+      "side": 1,
+      "message": "I think this was suggested in patch set 5 \nhttps://gerrit.fd.io/r/#/c/885/5/vpp-api/java/jvpp/jvpp.c@82\n\n... to keep all the error codes in 1 place",
+      "parentUuid": "da141535_c880f78d",
+      "revId": "ae6a098db03b1dd74a59058b00aaedb5e5ddb777",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
