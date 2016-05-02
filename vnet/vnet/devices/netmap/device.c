@@ -94,7 +94,10 @@ netmap_interface_tx (vlib_main_t * vm,
   u32 n_left = frame->n_vectors;
   vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
   netmap_if_t * nif = pool_elt_at_index (nm->interfaces, rd->dev_instance);
+  struct netmap_ring *txring;
+  struct timespec wait = { .tv_sec = 0, .tv_nsec = 100};
   int cur_ring;
+  int j = 0;
 
   cur_ring = nif->first_tx_ring;
 
@@ -112,12 +115,11 @@ netmap_interface_tx (vlib_main_t * vm,
 
       while (n_left && n_free_slots)
 	{
-	  vlib_buffer_t * b0;
+	  vlib_buffer_t * b0 = 0;
 	  u32 bi = buffers[0];
 	  u32 len;
 	  u32 offset = 0;
 	  buffers++;
-
 	  struct netmap_slot * slot = &ring->slot[cur];
 
 	  do
@@ -136,12 +138,23 @@ netmap_interface_tx (vlib_main_t * vm,
 	  n_free_slots--;
           n_left--;
 	}
-      CLIB_MEMORY_BARRIER();
+
       ring->head = ring->cur = cur;
     }
 
   if (n_left < frame->n_vectors)
       ioctl(nif->fd, NIOCTXSYNC, NULL);
+
+  for (j = nif->first_tx_ring; j <= nif->last_tx_ring; j++)
+    {
+      txring = NETMAP_TXRING(nif->nifp, j);
+      while (nm_tx_pending(txring))
+        {
+          ioctl(nif->fd, NIOCTXSYNC, NULL);
+          /* wait 1 tick */
+          nanosleep(&wait, NULL);
+        }
+    }
 
   if (n_left)
     vlib_error_count (vm, node->node_index, NETMAP_TX_ERROR_NO_FREE_SLOTS,
