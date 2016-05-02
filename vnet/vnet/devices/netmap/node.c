@@ -235,7 +235,7 @@ netmap_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   if (n_rx_packets)
-    ioctl(nif->fd, NIOCTXSYNC, NULL);
+    ioctl(nif->fd, NIOCRXSYNC, NULL);
 
   vlib_increment_combined_counter
     (vnet_get_main()->interface_main.combined_sw_if_counters

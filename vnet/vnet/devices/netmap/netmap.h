@@ -120,6 +120,23 @@ int netmap_delete_if(vlib_main_t * vm, u8 * host_if_name);
 		(ring)->nr_buf_size )
 
 static inline uint32_t
+nm_ring_next(struct netmap_ring *ring, uint32_t i)
+{
+        return ( unlikely(i + 1 == ring->num_slots) ? 0 : i + 1);
+}
+
+
+/*
+ * Return 1 if we have pending transmissions in the tx ring.
+ * When everything is complete ring->head = ring->tail + 1 (modulo ring size)
+ */
+static inline int
+nm_tx_pending(struct netmap_ring *ring)
+{
+        return nm_ring_next(ring, ring->tail) != ring->head;
+}
+
+static inline uint32_t
 nm_ring_space(struct netmap_ring *ring)
 {
         int ret = ring->tail - ring->cur;

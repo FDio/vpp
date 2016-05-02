@@ -22,7 +22,8 @@
 #include <vnet/devices/netmap/netmap.h>
 
 #define foreach_netmap_tx_func_error	       \
-_(NO_FREE_SLOTS, "no free tx slots")
+_(NO_FREE_SLOTS, "no free tx slots")           \
+_(PENDING_MSGS, "pending msgs in tx ring")
 
 typedef enum {
 #define _(f,s) NETMAP_TX_ERROR_##f,
@@ -92,6 +93,7 @@ netmap_interface_tx (vlib_main_t * vm,
   netmap_main_t * nm = &netmap_main;
   u32 * buffers = vlib_frame_args (frame);
   u32 n_left = frame->n_vectors;
+  f64 const time_constant = 1e3;
   vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
   netmap_if_t * nif = pool_elt_at_index (nm->interfaces, rd->dev_instance);
   int cur_ring;
@@ -104,21 +106,27 @@ netmap_interface_tx (vlib_main_t * vm,
       int n_free_slots = nm_ring_space(ring);
       uint cur = ring->cur;
 
-      if (!n_free_slots)
-	{
-	  cur_ring++;
-	  continue;
-	}
+      if (nm_tx_pending(ring))
+        {
+         ioctl(nif->fd, NIOCTXSYNC, NULL);
+         clib_cpu_time_wait(time_constant);
+
+         if (nm_tx_pending(ring) && !n_free_slots)
+           {
+             cur_ring++;
+             continue;
+           }
+        }
 
       while (n_left && n_free_slots)
 	{
-	  vlib_buffer_t * b0;
+	  vlib_buffer_t * b0 = 0;
 	  u32 bi = buffers[0];
 	  u32 len;
 	  u32 offset = 0;
 	  buffers++;
 
-	  struct netmap_slot * slot = &ring->slot[cur];
+          struct netmap_slot * slot = &ring->slot[cur];
 
 	  do
 	    {
@@ -144,8 +152,8 @@ netmap_interface_tx (vlib_main_t * vm,
       ioctl(nif->fd, NIOCTXSYNC, NULL);
 
   if (n_left)
-    vlib_error_count (vm, node->node_index, NETMAP_TX_ERROR_NO_FREE_SLOTS,
-		      n_left);
+    vlib_error_count (vm, node->node_index,
+    (n_left == frame->n_vectors ? NETMAP_TX_ERROR_PENDING_MSGS : NETMAP_TX_ERROR_NO_FREE_SLOTS), n_left);
 
   vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
   return frame->n_vectors;
