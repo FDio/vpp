@@ -492,9 +492,9 @@ VLIB_CLI_COMMAND (create_nsh_gre_tunnel_command, static) = {
   .short_help = 
   "nsh gre tunnel src <ip4-addr> dst <ip4-addr>" 
   "    c1 <nn> c2 <nn> c3 <nn> c4 <nn> spi <nn> si <nn>\n"
-  "    [encap-fib-id <nn>] [decap-fib-id <nn>] [o-bit <1|0>] [c-bit <1|0>]\n"
+  "    [encap-vrf-id <nn>] [decap-vrf-id <nn>] [o-bit <1|0>] [c-bit <1|0>]\n"
   "    [md-type <nn>][next-ip4][next-ip6][next-ethernet]\n"
-  "    [tlv <xx>]\n",
+  "    [tlv <xx>][decap-next [ip4|ip6|ethernet]][del]\n",
   .function = nsh_gre_add_del_tunnel_command_fn,
 };
 
