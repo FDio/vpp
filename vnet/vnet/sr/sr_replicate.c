@@ -36,8 +36,6 @@ typedef struct {
 
 sr_replicate_main_t sr_replicate_main;
 
-vlib_node_registration_t sr_replicate_node;
-
 
 typedef struct {
   ip6_address_t src, dst;
@@ -75,8 +73,6 @@ static u8 * format_sr_replicate_trace (u8 * s, va_list * args)
   return s;
 
 }
-
-vlib_node_registration_t sr_replicate_node;
 
 #define foreach_sr_replicate_error \
 _(REPLICATED, "sr packets replicated") \
