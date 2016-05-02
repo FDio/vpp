@@ -34,7 +34,7 @@ echo DISTRIB_DESCRIPTION: $DISTRIB_DESCRIPTION
 
 # Install dependencies
 cd $VPP_DIR
-make install-dep
+make UNATTENDED=yes install-dep
 
 # Really really clean things up so we can be sure
 # that the build works even when switching distros

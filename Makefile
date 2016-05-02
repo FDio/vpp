@@ -21,6 +21,12 @@ MINIMAL_STARTUP_CONF="unix { interactive }"
 
 GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 
+#
+# OS Detection
+#
+OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms openjdk-8-jdk git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
@@ -32,6 +38,10 @@ EPEL_DEPENDS = libconfuse-devel ganglia-devel
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
+endif
+
+ifeq ($(findstring y,$(UNATTENDED)),y)
+CONFIRM=-y
 endif
 
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
@@ -77,19 +87,8 @@ help:
 	@echo " PLATFORM     = $(PLATFORM)"
 	@echo " DPDK_VERSION = $(DPDK_VERSION)"
 
-# openjdk-8-jdk is not available in 14.04 repos by default
-define use_ppa_for_jdk8
-if [ "$(shell lsb_release -r | awk '{print $$2}')"=="14.04" ]; then \
-	sudo apt-get -y install software-properties-common; \
-	sudo add-apt-repository -y ppa:openjdk-r/ppa; \
-	sudo apt-get update; \
-fi;
-endef
-
 $(BR)/.bootstrap.ok:
-ifeq ("$(shell lsb_release -si)", "Ubuntu")
-	$(use_ppa_for_jdk8)
-
+ifeq ($(OS_ID),ubuntu)
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
 	if [ -n "$$MISSING" ] ; then \
 	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
@@ -118,13 +117,17 @@ endif
 bootstrap: $(BR)/.bootstrap.ok
 
 install-dep:
-ifeq ("$(shell lsb_release -si)", "Ubuntu")
-	$(use_ppa_for_jdk8)
-	@sudo apt-get -y install $(DEB_DEPENDS)
+ifeq ($(OS_ID),ubuntu)
+ifeq ($(OS_VERSION_ID),14.04)
+	@sudo apt-get $(CONFIRM) install software-properties-common
+	@sudo add-apt-repository $(CONFIRM) ppa:openjdk-r/ppa
+	@sudo apt-get update
+endif
+	@sudo apt-get $(CONFIRM) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
-	@sudo yum groupinstall -y $(RPM_DEPENDS_GROUPS)
-	@sudo yum install -y $(RPM_DEPENDS)
-	@sudo yum install -y --enablerepo=epel $(EPEL_DEPENDS)
+	@sudo yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+	@sudo yum install $(CONFIRM) $(RPM_DEPENDS)
+	@sudo yum install $(CONFIRM) --enablerepo=epel $(EPEL_DEPENDS)
 	@sudo debuginfo-install glibc-2.17-106.el7_2.4.x86_64 openssl-libs-1.0.1e-51.el7_2.4.x86_64 zlib-1.2.7-15.el7.x86_64
 else
 	$(error "This option currently works only on Ubuntu or Centos systems")
