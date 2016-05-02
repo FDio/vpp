@@ -8,15 +8,6 @@ else
     VPP_DIR=`dirname $0`/../../
 fi
 
-if [ "x$2" != "x" ]; then
-    SUDOCMD="sudo -H -u $2"
-fi
-echo 0:$0
-echo 1:$1
-echo 2:$2
-echo VPP_DIR: $VPP_DIR
-echo SUDOCMD: $SUDOCMD
-
 # Figure out what system we are running on
 if [ -f /etc/lsb-release ];then
     . /etc/lsb-release
@@ -32,21 +23,8 @@ echo DISTRIB_RELEASE: $DISTRIB_RELEASE
 echo DISTRIB_CODENAME: $DISTRIB_CODENAME
 echo DISTRIB_DESCRIPTION: $DISTRIB_DESCRIPTION
 
-# Install dependencies
-cd $VPP_DIR
-make install-dep
-
-# Really really clean things up so we can be sure
-# that the build works even when switching distros
-make wipe
-(cd build-root/;make distclean)
-rm -f build-root/.bootstrap.ok
-
-# Build and install packaging
-$SUDOCMD make bootstrap
 if [ $DISTRIB_ID == "Ubuntu" ]; then
-    $SUDOCMD make pkg-deb
+    (cd ${VPP_DIR}/build-root/;sudo dpkg -i *.deb)
 elif [ $DISTRIB_ID == "CentOS" ]; then
-    $SUDOCMD make pkg-rpm
+    (cd ${VPP_DIR}/build-root/;sudo rpm -Uvh *.rpm)
 fi
-

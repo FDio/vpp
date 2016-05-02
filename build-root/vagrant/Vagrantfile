@@ -13,6 +13,7 @@ Vagrant.configure(2) do |config|
 
   config.vm.provision :shell, :path => "update.sh"
   config.vm.provision :shell, :path => "build.sh", :args => "/vpp vagrant"
+  config.vm.provision :shell, :path => "install.sh", :args => "/vpp"
   config.vm.provision :shell, :path => "clearinterfaces.sh"
   config.vm.provision :shell, :path => "run.sh"
 
