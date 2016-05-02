@@ -58,8 +58,12 @@ next_proto_to_next_index[LISP_GPE_NEXT_PROTOS] = {
 static u32
 next_protocol_to_next_index (lisp_gpe_header_t * lgh, u8 * next_header)
 {
+  /* lisp-gpe router */
+  if (PREDICT_TRUE((lgh->flags & LISP_GPE_FLAGS_P)
+      && lgh->next_protocol < LISP_GPE_NEXT_PROTOS))
+    return next_proto_to_next_index[lgh->next_protocol];
   /* legay lisp router */
-  if (PREDICT_FALSE((lgh->flags & LISP_GPE_FLAGS_P) == 0))
+  else if ((lgh->flags & LISP_GPE_FLAGS_P) == 0)
     {
       ip4_header_t * iph = (ip4_header_t *) next_header;
       if ((iph->ip_version_and_header_length & 0xF0) == 0x40)
@@ -69,10 +73,6 @@ next_protocol_to_next_index (lisp_gpe_header_t * lgh, u8 * next_header)
       else
         return LISP_GPE_INPUT_NEXT_DROP;
     }
-  /* lisp-gpe router */
-  else if ((lgh->flags & LISP_GPE_FLAGS_P)
-      && lgh->next_protocol < LISP_GPE_NEXT_PROTOS)
-    return next_proto_to_next_index[lgh->next_protocol];
   else
     return LISP_GPE_INPUT_NEXT_DROP;
 }
@@ -199,7 +199,7 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
             {
               vnet_buffer(b1)->sw_if_index[VLIB_RX] = si1[0];
               pkts_decapsulated++;
-              error0 = 0;
+              error1 = 0;
             }
           else
             {
@@ -253,7 +253,10 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           b0 = vlib_get_buffer (vm, bi0);
 
-          /* udp leaves current_data pointing at the lisp header */
+          /* udp leaves current_data pointing at the lisp header
+           * TODO: there's no difference in processing between v4 and v6
+           * encapsulated packets so the code should be simplified if ip header
+           * info is not going to be used for dp smrs/dpsec */
           if (is_v4)
             {
               vlib_buffer_advance (
