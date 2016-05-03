@@ -23,14 +23,6 @@
 #include <vnet/devices/dpdk/dpdk.h>
 #endif
 
-/** \mainpage Virtual Packet Edge Documentation
- * \section intro_sec Introduction
- * 
- * VPE is a specific vector packet processing application,
- * designed to steer packets to/from tenant virtual machines.
- *
- */
-
 static void
 vpe_main_init (vlib_main_t * vm)
 {

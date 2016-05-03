@@ -57,3 +57,6 @@ test-driver
 # cscope and ctags
 /cscope.*
 /tags
+
+# Generated documentation
+/build-root/docs

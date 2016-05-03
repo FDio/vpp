@@ -1,0 +1,5 @@
+/* Doxygen directory documentation */
+/**
+@dir
+@brief VLIB application library source.
+*/
