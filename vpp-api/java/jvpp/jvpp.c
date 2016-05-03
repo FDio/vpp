@@ -76,7 +76,7 @@ static void cleanup_rx_thread(void *arg)
 
     vppjni_lock (jm, 99);
 
-    int getEnvStat = (*jm->jvm)->GetEnv(jm->jvm, (void **)&(jm->jenv), JNI_VERSION_1_6);
+    int getEnvStat = (*jm->jvm)->GetEnv(jm->jvm, (void **)&(jm->jenv), JNI_VERSION_1_8);
     if (getEnvStat == JNI_EVERSION) {
         clib_warning ("Unsupported JNI version\n");
         jm->retval = VNET_API_ERROR_UNSUPPORTED_JNI_VERSION;
@@ -170,7 +170,7 @@ static void vl_api_control_ping_reply_t_handler
     char was_thread_connected = 0;
 
     // attach to java thread if not attached
-    int getEnvStat = (*jm->jvm)->GetEnv(jm->jvm, (void **)&(jm->jenv), JNI_VERSION_1_6);
+    int getEnvStat = (*jm->jvm)->GetEnv(jm->jvm, (void **)&(jm->jenv), JNI_VERSION_1_8);
     if (getEnvStat == JNI_EDETACHED) {
         if ((*jm->jvm)->AttachCurrentThread(jm->jvm, (void **)&(jm->jenv), NULL) != 0) {
             clib_warning("Failed to attach thread\n");
@@ -192,26 +192,21 @@ static void vl_api_control_ping_reply_t_handler
     if (was_thread_connected == 0) {
         JNIEnv *env = jm->jenv;
 
-        jclass dtoClass = (*env)->FindClass(env, "org/openvpp/jvpp/dto/ControlPingReply");
-
-        jmethodID constructor = (*env)->GetMethodID(env, dtoClass, "<init>", "()V");
+        jmethodID constructor = (*env)->GetMethodID(env, controlPingReplyClass, "<init>", "()V");
         jmethodID callbackMethod = (*env)->GetMethodID(env, jm->callbackClass, "onControlPingReply", "(Lorg/openvpp/jvpp/dto/ControlPingReply;)V");
 
-        jobject dto = (*env)->NewObject(env, dtoClass, constructor);
+        jobject dto = (*env)->NewObject(env, controlPingReplyClass, constructor);
 
-
-        printf("vl_api_control_ping_reply_t_handler ctx=%d\n", clib_net_to_host_u32(mp->context));
-
-        jfieldID contextFieldId = (*env)->GetFieldID(env, dtoClass, "context", "I");
+        jfieldID contextFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "context", "I");
         (*env)->SetIntField(env, dto, contextFieldId, clib_net_to_host_u32(mp->context));
 
-        jfieldID retvalFieldId = (*env)->GetFieldID(env, dtoClass, "retval", "I");
+        jfieldID retvalFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "retval", "I");
         (*env)->SetIntField(env, dto, retvalFieldId, clib_net_to_host_u32(mp->retval));
 
-        jfieldID clientIndexFieldId = (*env)->GetFieldID(env, dtoClass, "clientIndex", "I");
+        jfieldID clientIndexFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "clientIndex", "I");
         (*env)->SetIntField(env, dto, clientIndexFieldId, clib_net_to_host_u32(mp->client_index));
 
-        jfieldID vpePidFieldId = (*env)->GetFieldID(env, dtoClass, "vpePid", "I");
+        jfieldID vpePidFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "vpePid", "I");
         (*env)->SetIntField(env, dto, vpePidFieldId, clib_net_to_host_u32(mp->vpe_pid));
 
         (*env)->CallVoidMethod(env, jm->callback, callbackMethod, dto);
@@ -221,22 +216,25 @@ static void vl_api_control_ping_reply_t_handler
         jm->result_ready = 1;
 }
 
-
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     vppjni_main_t * jm = &vppjni_main;
     JNIEnv* env;
-    if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6) != JNI_OK) {
+    if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_8) != JNI_OK) {
+        return JNI_EVERSION;
+    }
+
+    if (cache_class_references(env) != 0) {
         return JNI_ERR;
     }
 
     jm->jvm = vm;
-    return JNI_VERSION_1_6;
+    return JNI_VERSION_1_8;
 }
 
 void JNI_OnUnload(JavaVM *vm, void *reserved) {
     vppjni_main_t * jm = &vppjni_main;
     JNIEnv* env;
-    if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6) != JNI_OK) {
+    if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_8) != JNI_OK) {
         return;
     }
 
