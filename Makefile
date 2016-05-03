@@ -128,7 +128,7 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo yum install $(CONFIRM) --enablerepo=epel $(EPEL_DEPENDS)
-	@sudo debuginfo-install glibc-2.17-106.el7_2.4.x86_64 openssl-libs-1.0.1e-51.el7_2.4.x86_64 zlib-1.2.7-15.el7.x86_64
+	@sudo debuginfo-install $(CONFIRM) glibc-2.17-106.el7_2.4.x86_64 openssl-libs-1.0.1e-51.el7_2.4.x86_64 zlib-1.2.7-15.el7.x86_64
 else
 	$(error "This option currently works only on Ubuntu or Centos systems")
 endif
