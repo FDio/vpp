@@ -30,11 +30,14 @@ OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms openjdk-8-jdk git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
+DEB_DEPENDS += doxygen graphviz
 
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
+#RPM_DEPENDS += doxygen # TODO 
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
+#EPEL_DEPENDS += graphviz # TODO
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
@@ -204,3 +207,26 @@ ctags: ctags.files
 cscope: cscope.files
 	@cscope -b -q -v
 
+
+DOXY_INPUT = \
+	README.md \
+    	vppinfra \
+    	svm \
+    	vlib \
+    	vlib-api \
+    	vnet \
+    	vpp \
+    	vpp-api
+
+.PHONY: doxygen
+doxygen:
+	@mkdir -p "$(BR)/docs"
+	ROOT="$(WS_ROOT)" \
+	     BUILD_ROOT="$(BR)" \
+	     INPUT="$(addprefix $(WS_ROOT)/,$(DOXY_INPUT))" \
+	     HTML=YES \
+	     VERSION="`git describe --tags --dirty`" \
+	     doxygen doxygen/doxygen.cfg
+
+wipe-doxygen:
+	rm -rf "$(BR)/docs"
