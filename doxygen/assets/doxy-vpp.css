@@ -1,0 +1,47 @@
+/* VPP CSS overrides */
+
+body, table, div, p, dl {
+	font: initial;
+	font-family: Lucida Grande, Verdana, Geneva, Arial, sans-serif;
+	font-size: small;
+}
+
+code, tt {
+	font: initial;
+	font-family: Consolas, Courier, monospace;
+	font-size: small;
+}
+
+pre {
+	font-size: 105%;
+}
+
+
+.title {
+	font: initial;
+	font-family: Lucida Grande, Verdana, Geneva, Arial, sans-serif;
+	font-size: 150%;
+	font-weight: bold;
+}
+
+
+.mdescLeft, .mdescRight,
+.memItemLeft, .memItemRight,
+.memTemplItemLeft, .memTemplItemRight, .memTemplParams {
+	font-family: Consolas, Courier, monospace;
+}
+
+.memname {
+	font-family: Consolas, Courier, monospace;
+	font-weight: bold;
+	font-size: 105%;
+}
+
+.paramname {
+	font-family: Consolas, Courier, monospace;
+	font-weight: bold;
+}
+
+a.el {
+	font-family: Consolas, Courier, monospace;
+}
