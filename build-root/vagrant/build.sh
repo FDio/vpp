@@ -42,6 +42,12 @@ make wipe
 (cd build-root/;make distclean)
 rm -f build-root/.bootstrap.ok
 
+echo "Check for ganglia-devel and apr-devel"
+echo rpm -ql ganglia-devel
+rpm -ql ganglia-devel
+echo rpm -ql apr-devel
+rpm -ql apr-devel
+
 # Build and install packaging
 $SUDOCMD make bootstrap
 if [ $DISTRIB_ID == "Ubuntu" ]; then
