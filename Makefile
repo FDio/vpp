@@ -204,3 +204,10 @@ ctags: ctags.files
 cscope: cscope.files
 	@cscope -b -q -v
 
+.PHONY: doxygen
+doxygen:
+	mkdir -p "$(BR)/docs"
+	ROOT="$(WS_ROOT)" BUILD_ROOT="$(BR)" VERSION="`git describe`" doxygen doxygen/doxygen.cfg
+
+wipe-doxygen:
+	rm -rf "$(BR)/docs"
