@@ -42,11 +42,43 @@ make wipe
 (cd build-root/;make distclean)
 rm -f build-root/.bootstrap.ok
 
+
+if [ $DISTRIB_ID == "CentOS" ]; then
+    echo "Check for ganglia-devel and apr-devel"
+    echo rpm -ql ganglia-devel
+    rpm -ql ganglia-devel
+    echo rpm -ql apr-devel
+    rpm -ql apr-devel
+
+    echo List all installed rpms
+    rpm -qa
+    echo ls -l /usr/include/apr-1
+    ls -l /usr/include/apr-1
+    echo ls -l /usr/include/gang*
+    ls -l /usr/include/gang*
+    echo ls -l /usr/include/gm_*
+    ls -l /usr/include/gm_*
+    echo cat /usr/include/gm_value.h
+    cat /usr/include/gm_value.h
+
+    echo rpm -V apr-devel
+    rpm -V apr-devel
+    echo rpm -V ganglia-devel
+    rpm -V ganglia-devel
+    echo rpm -V libconfuse-devel
+    rpm -V libconfuse-devel
+
+    echo df
+    df
+fi
+
 # Build and install packaging
+echo make bootstrap
 $SUDOCMD make bootstrap
 if [ $DISTRIB_ID == "Ubuntu" ]; then
     $SUDOCMD make pkg-deb
 elif [ $DISTRIB_ID == "CentOS" ]; then
+    echo make pkg-rpm
     $SUDOCMD make pkg-rpm
 fi
 
