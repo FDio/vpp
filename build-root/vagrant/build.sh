@@ -42,6 +42,18 @@ make wipe
 (cd build-root/;make distclean)
 rm -f build-root/.bootstrap.ok
 
+if [ $DISTRIB_ID == "CentOS" ]; then
+    echo rpm -V apr-devel
+    rpm -V apr-devel
+    if [ $? != 0 ]; then sudo yum reinstall -y apr-devel;fi
+    echo rpm -V ganglia-devel
+    rpm -V ganglia-devel
+    if [ $? != 0 ]; then sudo yum reinstall -y ganglia-devel;fi
+    echo rpm -V libconfuse-devel
+    rpm -V libconfuse-devel
+    if [ $? != 0 ]; then sudo yum reinstall -y libconfuse-devel;fi
+fi
+
 # Build and install packaging
 $SUDOCMD make bootstrap
 if [ $DISTRIB_ID == "Ubuntu" ]; then
