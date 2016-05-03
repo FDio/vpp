@@ -39,7 +39,9 @@ endif
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
+#RPM_DEPENDS += doxygen # TODO
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
+#EPEL_DEPENDS += graphviz # TODO
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
@@ -209,3 +211,26 @@ ctags: ctags.files
 cscope: cscope.files
 	@cscope -b -q -v
 
+
+DOXY_INPUT = \
+	README.md \
+	vppinfra \
+	svm \
+	vlib \
+	vlib-api \
+	vnet \
+	vpp \
+	vpp-api
+
+.PHONY: doxygen
+doxygen:
+	@mkdir -p "$(BR)/docs"
+	ROOT="$(WS_ROOT)" \
+	     BUILD_ROOT="$(BR)" \
+	     INPUT="$(addprefix $(WS_ROOT)/,$(DOXY_INPUT))" \
+	     HTML=YES \
+	     VERSION="`git describe --tags --dirty`" \
+	     doxygen doxygen/doxygen.cfg
+
+wipe-doxygen:
+	rm -rf "$(BR)/docs"
