@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_b39bf871",
+        "filename": "vnet/vnet/ip/ping.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-03T02:16:09Z",
+      "side": 1,
+      "message": "vlib_cli_output() will send output to the current CLI session. os_puts() sends it only to stderr/stdout, which won\u0027t work for Telnet CLI sessions.",
+      "range": {
+        "startLine": 280,
+        "startChar": 4,
+        "endLine": 280,
+        "endChar": 11
+      },
+      "revId": "bb4d09f9a2efd58d50719b5a6aeda2d56ab482ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_9388f423",
+        "filename": "vnet/vnet/ip/ping.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-03T02:16:09Z",
+      "side": 1,
+      "message": "Similar, clib_warning() sends its output to stderr when interactive and syslog when daemonized. If you want the CLI user to see it when connected via Telnet or in the future via vppctl, vlib_cli_output() is the way.",
+      "range": {
+        "startLine": 283,
+        "startChar": 6,
+        "endLine": 283,
+        "endChar": 18
+      },
+      "revId": "bb4d09f9a2efd58d50719b5a6aeda2d56ab482ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
