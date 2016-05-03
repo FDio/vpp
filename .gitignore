@@ -62,3 +62,5 @@ test-driver
 /vpp-api/java/jvpp/gen/target
 /vpp-api/java/jvpp/gen/*.pyc
 
+# Generated documentation
+/build-root/docs
