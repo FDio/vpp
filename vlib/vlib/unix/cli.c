@@ -36,6 +36,12 @@
  *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+/**
+ * @file vlib/vlib/unix/cli.c
+ * @brief Unix stdin/socket command line interface.
+ * Provides a command line interface so humans can interact with VPP.
+ * This is predominantly a debugging and testing mechanism.
+ */
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -50,23 +56,31 @@
 #include <arpa/telnet.h>
 #include <sys/ioctl.h>
 
-/* ANSI Escape code. */
+/** ANSI escape code. */
 #define ESC "\x1b"
 
-/* ANSI Control Sequence Introducer. */
+/** ANSI Control Sequence Introducer. */
 #define CSI ESC "["
 
-/* ANSI sequences. */
+/** ANSI clear screen. */
 #define ANSI_CLEAR      CSI "2J" CSI "1;1H"
+/** ANSI reset color settings. */
 #define ANSI_RESET      CSI "0m"
+/** ANSI Start bold text. */
 #define ANSI_BOLD       CSI "1m"
+/** ANSI Stop bold text. */
 #define ANSI_DIM        CSI "2m"
+/** ANSI Start dark red text. */
 #define ANSI_DRED       ANSI_DIM CSI "31m"
+/** ANSI Start bright red text. */
 #define ANSI_BRED       ANSI_BOLD CSI "31m"
-#define ANSI_CLEAR      CSI "2J" CSI "1;1H"
+/** ANSI clear line cursor is on. */
 #define ANSI_CLEARLINE  CSI "2K"
+/** ANSI scroll screen down one line. */
 #define ANSI_SCROLLDN   CSI "1T"
+/** ANSI save cursor position. */
 #define ANSI_SAVECURSOR CSI "s"
+/** ANSI restore cursor position if previously saved. */
 #define ANSI_RESTCURSOR CSI "u"
 
 /** Maximum depth into a byte stream from which to compile a Telnet
@@ -77,9 +91,10 @@
 #define UNIX_CLI_STDIN_FD 0
 
 
+/** A CLI banner line. */
 typedef struct {
-  u8 * line;
-  u32 length;
+  u8 * line;    /**< The line to print. */
+  u32 length;   /**< The length of the line without terminating NUL. */
 } unix_cli_banner_t;
 
 #define _(a) { .line = (u8 *)(a), .length = sizeof(a) - 1 }
@@ -104,12 +119,13 @@ _("\n")
 
 /** Unix CLI session. */
 typedef struct {
+  /** The file index held by unix.c */
   u32 unix_file_index;
 
-  /* Vector of output pending write to file descriptor. */
+  /** Vector of output pending write to file descriptor. */
   u8 * output_vector;
 
-  /* Vector of input saved by Unix input node to be processed by
+  /** Vector of input saved by Unix input node to be processed by
      CLI process. */
   u8 * input_vector;
 
@@ -118,48 +134,55 @@ typedef struct {
   u8 * current_command;
   i32 excursion;
 
-  /* Maximum number of history entries this session will store. */
+  /** Maximum number of history entries this session will store. */
   u32 history_limit;
 
-  /* Current command line counter */
+  /** Current command line counter */
   u32 command_number;
 
   u8 * search_key;
   int search_mode;
 
-  /* Position of the insert cursor on the current input line */
+  /** Position of the insert cursor on the current input line */
   u32 cursor;
 
-  /* Line mode or char mode */
+  /** Line mode or char mode */
   u8 line_mode;
 
-  /* Set if the CRLF mode wants CR + LF */
+  /** Set if the CRLF mode wants CR + LF */
   u8 crlf_mode;
 
-  /* Can we do ANSI output? */
+  /** Can we do ANSI output? */
   u8 ansi_capable;
 
-  /* Has the session started? */
+  /** Has the session started? */
   u8 started;
 
-  /* Disable the pager? */
+  /** Disable the pager? */
   u8 no_pager;
 
-  /* Pager buffer */
+  /** Pager buffer */
   u8 ** pager_vector;
 
-  /* Lines currently displayed */
+  /** Lines currently displayed */
   u32 pager_lines;
 
-  /* Line number of top of page */
+  /** Line number of top of page */
   u32 pager_start;
 
-  /* Terminal size */
-  u32 width, height;
+  /** Terminal width */
+  u32 width;
 
+  /** Terminal height */
+  u32 height;
+
+  /** Process node identifier */
   u32 process_node_index;
 } unix_cli_file_t;
 
+/** Resets the pager buffer and other data.
+ * @param f The CLI session whose pager needs to be reset.
+ */
 always_inline void
 unix_cli_pager_reset (unix_cli_file_t *f)
 {
@@ -174,6 +197,9 @@ unix_cli_pager_reset (unix_cli_file_t *f)
   f->pager_vector = 0;
 }
 
+/** Release storage used by a CLI session.
+ * @param f The CLI session whose storage needs to be released.
+ */
 always_inline void
 unix_cli_file_free (unix_cli_file_t * f)
 {
@@ -182,15 +208,15 @@ unix_cli_file_free (unix_cli_file_t * f)
   unix_cli_pager_reset(f);
 }
 
-/* CLI actions */
+/** CLI actions */
 typedef enum {
-  UNIX_CLI_PARSE_ACTION_NOACTION = 0,
-  UNIX_CLI_PARSE_ACTION_CRLF,
-  UNIX_CLI_PARSE_ACTION_TAB,
-  UNIX_CLI_PARSE_ACTION_ERASE,
-  UNIX_CLI_PARSE_ACTION_ERASERIGHT,
-  UNIX_CLI_PARSE_ACTION_UP,
-  UNIX_CLI_PARSE_ACTION_DOWN,
+  UNIX_CLI_PARSE_ACTION_NOACTION = 0,  /**< No action */
+  UNIX_CLI_PARSE_ACTION_CRLF,          /**< Carriage return, newline or enter */
+  UNIX_CLI_PARSE_ACTION_TAB,           /**< Tab key */
+  UNIX_CLI_PARSE_ACTION_ERASE,         /**< Erase cursor left */
+  UNIX_CLI_PARSE_ACTION_ERASERIGHT,    /**< Erase cursor right */
+  UNIX_CLI_PARSE_ACTION_UP,            /**< Up arrow */
+  UNIX_CLI_PARSE_ACTION_DOWN,          /**< Down arrow */
   UNIX_CLI_PARSE_ACTION_LEFT,
   UNIX_CLI_PARSE_ACTION_RIGHT,
   UNIX_CLI_PARSE_ACTION_HOME,
@@ -230,13 +256,22 @@ typedef struct {
   unix_cli_parse_action_t action;   /**< Action to take when matched. */
 } unix_cli_parse_actions_t;
 
-/** \brief Given a capital ASCII letter character return a NUL terminated
+/** @brief Given a capital ASCII letter character return a @c NUL terminated
  * string with the control code for that letter.
- * \example CTL('A') returns { 0x01, 0x00 } as a u8[].
+ *
+ * @param c An ASCII character.
+ * @return A @c NUL terminated string of type @c u8[].
+ *
+ * @par Example
+ *     @c CTL('A') returns <code>{ 0x01, 0x00 }</code> as a @c u8[].
  */
 #define CTL(c) (u8[]){ (c) - '@', 0 }
 
 #define _(a,b) { .input = (u8 *)(a), .len = sizeof(a) - 1, .action = (b) }
+/**
+ * Patterns to match on a CLI input stream.
+ * @showinitializer
+ */
 static unix_cli_parse_actions_t unix_cli_parse_strings[] = {
  /* Line handling */
  _( "\r\n",   UNIX_CLI_PARSE_ACTION_CRLF ),       /* Must be before '\r' */
@@ -294,6 +329,11 @@ static unix_cli_parse_actions_t unix_cli_parse_strings[] = {
  _( "\0",     UNIX_CLI_PARSE_ACTION_NOACTION ),   /* NUL */
  _( NULL,     UNIX_CLI_PARSE_ACTION_NOMATCH )
 };
+
+/**
+ * Patterns to match when a CLI session is in the pager.
+ * @showinitializer
+ */
 static unix_cli_parse_actions_t unix_cli_parse_pager[] = {
  /* Line handling */
  _( "\r\n",   UNIX_CLI_PARSE_ACTION_PAGER_CRLF ),       /* Must be before '\r' */
@@ -331,49 +371,54 @@ static unix_cli_parse_actions_t unix_cli_parse_pager[] = {
 };
 #undef _
 
+/** CLI session events. */
 typedef enum {
-  UNIX_CLI_PROCESS_EVENT_READ_READY,
-  UNIX_CLI_PROCESS_EVENT_QUIT,
+  UNIX_CLI_PROCESS_EVENT_READ_READY,  /**< A file descriptor has data to be read. */
+  UNIX_CLI_PROCESS_EVENT_QUIT,        /**< A CLI session wants to close. */
 } unix_cli_process_event_type_t;
 
+/** CLI global state. */
 typedef struct {
-  /* Prompt string for CLI. */
+  /** Prompt string for CLI. */
   u8 * cli_prompt;
 
+  /** Vec pool of CLI sessions. */
   unix_cli_file_t * cli_file_pool;
 
+  /** Vec pool of unused session indices. */
   u32 * unused_cli_process_node_indices;
 
-  /* The session index of the stdin cli */
+  /** The session index of the stdin cli */
   u32 stdin_cli_file_index;
 
-  /* File pool index of current input. */
+  /** File pool index of current input. */
   u32 current_input_file_index;
 } unix_cli_main_t;
 
+/** CLI global state */
 static unix_cli_main_t unix_cli_main;
 
 /**
  * \brief Search for a byte sequence in the action list.
  *
- * Searches unix_cli_parse_actions[] for a match with the bytes in \c input
- * of maximum length \c ilen . When a match is made \c *matched indicates how
- * many bytes were matched. Returns a value from the enum
- * \c unix_cli_parse_action_t to indicate whether no match was found, a
- * partial match was found or a complete match was found and what action,
- * if any, should be taken.
+ * Searches the @ref unix_cli_parse_actions_t list in @a a for a match with
+ * the bytes in @a input of maximum length @a ilen bytes.
+ * When a match is made @a *matched indicates how many bytes were matched.
+ * Returns a value from the enum @ref unix_cli_parse_action_t to indicate
+ * whether no match was found, a partial match was found or a complete
+ * match was found and what action, if any, should be taken.
  *
- * @param a       Actions list to search within.
- * @param input   String fragment to search for.
- * @param ilen    Length of the string in 'input'.
- * @param matched Pointer to an integer that will contain the number of
- *                bytes matched when a complete match is found.
+ * @param[in]  a        Actions list to search within.
+ * @param[in]  input    String fragment to search for.
+ * @param[in]  ilen     Length of the string in 'input'.
+ * @param[out] matched  Pointer to an integer that will contain the number
+ *                      of bytes matched when a complete match is found.
  *
- * @return Action from \v unix_cli_parse_action_t that the string fragment
+ * @return Action from @ref unix_cli_parse_action_t that the string fragment
  *         matches.
- *         \c UNIX_CLI_PARSE_ACTION_PARTIALMATCH is returned when the whole
- *         input string matches the start of at least one action.
- *         \c UNIX_CLI_PARSE_ACTION_NOMATCH is returned when there is no
+ *         @ref UNIX_CLI_PARSE_ACTION_PARTIALMATCH is returned when the
+ *         whole input string matches the start of at least one action.
+ *         @ref UNIX_CLI_PARSE_ACTION_NOMATCH is returned when there is no
  *         match at all.
  */
 static unix_cli_parse_action_t
@@ -1845,6 +1890,11 @@ static clib_error_t * unix_cli_read_ready (unix_file_t * uf)
   return /* no error */ 0;
 }
 
+/** Store a new CLI session.
+ * @param name The name of the session.
+ * @param fd   The file descriptor for the session I/O.
+ * @return The session ID.
+ */
 static u32 unix_cli_file_add (unix_cli_main_t * cm, char * name, int fd)
 {
   unix_main_t * um = &unix_main;
@@ -1905,6 +1955,7 @@ static u32 unix_cli_file_add (unix_cli_main_t * cm, char * name, int fd)
   return cf - cm->cli_file_pool;
 }
 
+/** Telnet listening socket has a new connection. */
 static clib_error_t * unix_cli_listen_read_ready (unix_file_t * uf)
 {
   unix_main_t * um = &unix_main;
@@ -1977,6 +2028,9 @@ static clib_error_t * unix_cli_listen_read_ready (unix_file_t * uf)
   return error;
 }
 
+/** The system terminal has informed us that the window size
+ * has changed.
+ */
 static void
 unix_cli_resize_interrupt (int signum)
 {
@@ -1992,6 +2046,7 @@ unix_cli_resize_interrupt (int signum)
   cf->height = ws.ws_row;
 }
 
+/** Handle configuration directives in the @em unix section. */
 static clib_error_t *
 unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -2109,6 +2164,9 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (unix_cli_config, "unix-cli");
 
+/** Called when VPP is shutting down, this resets the system
+ * terminal state, if previously saved.
+ */
 static clib_error_t *
 unix_cli_exit (vlib_main_t * vm)
 {
@@ -2123,6 +2181,11 @@ unix_cli_exit (vlib_main_t * vm)
 
 VLIB_MAIN_LOOP_EXIT_FUNCTION (unix_cli_exit);
 
+/** Set the CLI prompt.
+ * @param The C string to set the prompt to.
+ * @note This setting is global; it impacts all current
+ *       and future CLI sessions.
+ */
 void vlib_unix_cli_set_prompt (char * prompt)
 {
   char * fmt = (prompt[strlen(prompt)-1] == ' ') ? "%s" : "%s ";
@@ -2132,6 +2195,10 @@ void vlib_unix_cli_set_prompt (char * prompt)
   cm->cli_prompt = format (0, fmt, prompt);
 }
 
+/** CLI command to quit the terminal session.
+ * @note If this is a stdin session then this will
+ *       shutdown VPP also.
+ */
 static clib_error_t *
 unix_cli_quit (vlib_main_t * vm,
 	       unformat_input_t * input,
@@ -2152,6 +2219,7 @@ VLIB_CLI_COMMAND (unix_cli_quit_command, static) = {
   .function = unix_cli_quit,
 };
 
+/** CLI command to execute a VPP command script. */
 static clib_error_t *
 unix_cli_exec (vlib_main_t * vm,
 	       unformat_input_t * input,
@@ -2217,6 +2285,7 @@ VLIB_CLI_COMMAND (cli_exec, static) = {
   .is_mp_safe = 1,
 };
 
+/** CLI command to show various unix error statistics. */
 static clib_error_t *
 unix_show_errors (vlib_main_t * vm,
 		  unformat_input_t * input,
@@ -2285,6 +2354,7 @@ VLIB_CLI_COMMAND (cli_unix_show_errors, static) = {
   .function = unix_show_errors,
 };
 
+/** CLI command to show session command history. */
 static clib_error_t *
 unix_cli_show_history (vlib_main_t * vm,
       unformat_input_t * input,
@@ -2316,6 +2386,7 @@ VLIB_CLI_COMMAND (cli_unix_cli_show_history, static) = {
   .function = unix_cli_show_history,
 };
 
+/** CLI command to show terminal status. */
 static clib_error_t *
 unix_cli_show_terminal (vlib_main_t * vm,
       unformat_input_t * input,
@@ -2358,6 +2429,7 @@ VLIB_CLI_COMMAND (cli_unix_cli_show_terminal, static) = {
   .function = unix_cli_show_terminal,
 };
 
+/** CLI command to set terminal pager settings. */
 static clib_error_t *
 unix_cli_set_terminal_pager (vlib_main_t * vm,
       unformat_input_t * input,
@@ -2398,6 +2470,7 @@ VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_pager, static) = {
   .function = unix_cli_set_terminal_pager,
 };
 
+/** CLI command to set terminal history settings. */
 static clib_error_t *
 unix_cli_set_terminal_history (vlib_main_t * vm,
       unformat_input_t * input,
@@ -2446,6 +2519,7 @@ VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_history, static) = {
   .function = unix_cli_set_terminal_history,
 };
 
+/** CLI command to set terminal ANSI settings. */
 static clib_error_t *
 unix_cli_set_terminal_ansi (vlib_main_t * vm,
       unformat_input_t * input,

@@ -916,7 +916,7 @@ do {								\
   } while (0)
 
 
-/** \brief .
+/** \brief Test whether a vector is a NULL terminated c-string.
 
     @param V (possibly NULL) pointer to a vector. 
     @return BOOLEAN indicating if the vector c-string is null terminated.
@@ -924,7 +924,7 @@ do {								\
 #define vec_c_string_is_terminated(V)                   \
   (((V) != 0) && (vec_len (V) != 0) && ((V)[vec_len ((V)) - 1] == 0))
 
-/** \brief (If necessary) Null terminate a vector containing a c-string.
+/** \brief (If necessary) NULL terminate a vector containing a c-string.
 
     @param V (possibly NULL) pointer to a vector. 
     @return V (value-result macro parameter)
