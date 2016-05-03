@@ -1497,7 +1497,8 @@ static void vl_api_bridge_domain_sw_if_details_t_handler (
 
 static void send_bridge_domain_details (unix_shared_memory_queue_t *q,
                                         l2_bridge_domain_t * bd_config,
-                                        u32 n_sw_ifs)
+                                        u32 n_sw_ifs,
+                                        u32 context)
 {
     vl_api_bridge_domain_details_t * mp;
 
@@ -1512,13 +1513,15 @@ static void send_bridge_domain_details (unix_shared_memory_queue_t *q,
     mp->arp_term = bd_feature_arp_term (bd_config);
     mp->bvi_sw_if_index = ntohl (bd_config->bvi_sw_if_index);
     mp->n_sw_ifs = ntohl (n_sw_ifs);
+    mp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&mp);
 }
 
 static void send_bd_sw_if_details (l2input_main_t * l2im,
                                    unix_shared_memory_queue_t *q,
-                                   l2_flood_member_t * member, u32 bd_id)
+                                   l2_flood_member_t * member, u32 bd_id,
+                                   u32 context)
 {
     vl_api_bridge_domain_sw_if_details_t * mp;
     l2_input_config_t * input_cfg;
@@ -1530,6 +1533,7 @@ static void send_bd_sw_if_details (l2input_main_t * l2im,
     mp->sw_if_index = ntohl (member->sw_if_index);
     input_cfg = vec_elt_at_index (l2im->configs, member->sw_if_index);
     mp->shg = input_cfg->shg;
+    mp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&mp);
 }
@@ -1561,10 +1565,10 @@ static void vl_api_bridge_domain_dump_t_handler (
             l2_flood_member_t * m;
             
             n_sw_ifs = vec_len (bd_config->members);
-            send_bridge_domain_details (q, bd_config, n_sw_ifs);
+            send_bridge_domain_details (q, bd_config, n_sw_ifs, mp->context);
             
             vec_foreach (m, bd_config->members) {
-                send_bd_sw_if_details (l2im, q, m, bd_config->bd_id);
+                send_bd_sw_if_details (l2im, q, m, bd_config->bd_id, mp->context);
             }
         }
     }
@@ -3891,7 +3895,8 @@ static void send_ip_address_details (vpe_api_main_t * am,
                                      unix_shared_memory_queue_t * q,
                                      u8 * ip,
                                      u16 prefix_length,
-                                     u8 is_ipv6)
+                                     u8 is_ipv6,
+                                     u32 context)
 {
     vl_api_ip_address_details_t * mp;
 
@@ -3906,6 +3911,7 @@ static void send_ip_address_details (vpe_api_main_t * am,
         *tp = ntohl(*(u32*)ip);
     }
     mp->prefix_length = prefix_length;
+    mp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&mp);
 }
@@ -3937,7 +3943,7 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t *mp)
         ({
             r6 = ip_interface_address_get_address (lm6, ia);
             u16 prefix_length = ia->address_length;
-            send_ip_address_details(am, q, (u8*)r6, prefix_length, 1);
+            send_ip_address_details(am, q, (u8*)r6, prefix_length, 1, mp->context);
         }));
     } else {
         foreach_ip_interface_address (lm4, ia, sw_if_index,
@@ -3945,14 +3951,15 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t *mp)
         ({
             r4 = ip_interface_address_get_address (lm4, ia);
             u16 prefix_length = ia->address_length;
-            send_ip_address_details(am, q, (u8*)r4, prefix_length, 0);
+            send_ip_address_details(am, q, (u8*)r4, prefix_length, 0, mp->context);
         }));
     }
 }
 
 static void send_ip_details (vpe_api_main_t * am,
                                unix_shared_memory_queue_t *q,
-                               u32 sw_if_index)
+                               u32 sw_if_index,
+                               u32 context)
 {
     vl_api_ip_details_t * mp;
 
@@ -3961,6 +3968,7 @@ static void send_ip_details (vpe_api_main_t * am,
     mp->_vl_msg_id = ntohs(VL_API_IP_DETAILS);
 
     mp->sw_if_index = ntohl(sw_if_index);
+    mp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&mp);
 }
@@ -3987,7 +3995,8 @@ vl_api_sw_if_l2tpv3_tunnel_dump_t_handler (
 
 static void send_sw_interface_tap_details (vpe_api_main_t * am,
                                        unix_shared_memory_queue_t *q,
-                                       tapcli_interface_details_t *tap_if)
+                                       tapcli_interface_details_t *tap_if,
+                                       u32 context)
 {
     vl_api_sw_interface_tap_details_t * mp;
     mp = vl_msg_api_alloc (sizeof (*mp));
@@ -3996,6 +4005,7 @@ static void send_sw_interface_tap_details (vpe_api_main_t * am,
     mp->sw_if_index = ntohl(tap_if->sw_if_index);
     strncpy((char *)mp->dev_name,
             (char *)tap_if->dev_name, ARRAY_LEN(mp->dev_name)-1);
+    mp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&mp);
 }
@@ -4019,7 +4029,7 @@ vl_api_sw_interface_tap_dump_t_handler (
         return;
 
     vec_foreach(tap_if, tapifs) {
-        send_sw_interface_tap_details(am, q, tap_if);
+        send_sw_interface_tap_details(am, q, tap_if, mp->context);
     }
 
     vec_free(tapifs);
@@ -4052,7 +4062,7 @@ vl_api_ip_dump_t_handler (vl_api_ip_dump_t *mp)
                 continue;
             }
             sw_if_index = si->sw_if_index;
-            send_ip_details(am, q, sw_if_index);
+            send_ip_details(am, q, sw_if_index, mp->context);
         }
     }
 }
@@ -4337,7 +4347,7 @@ out:
 }
 
 static void send_vxlan_tunnel_details
-(vxlan_tunnel_t * t, unix_shared_memory_queue_t * q)
+(vxlan_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
 {
     vl_api_vxlan_tunnel_details_t * rmp;
     ip4_main_t * im4 = &ip4_main;
@@ -4360,6 +4370,7 @@ static void send_vxlan_tunnel_details
     rmp->decap_next_index = htonl(t->decap_next_index);
     rmp->sw_if_index = htonl(t->sw_if_index);
     rmp->is_ipv6 = is_ipv6;
+    rmp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
@@ -4382,7 +4393,7 @@ static void vl_api_vxlan_tunnel_dump_t_handler
     if (~0 == sw_if_index) {
         pool_foreach (t, vxm->tunnels,
         ({
-            send_vxlan_tunnel_details(t, q);
+            send_vxlan_tunnel_details(t, q, mp->context);
         }));
     } else {
         if ((sw_if_index >= vec_len(vxm->tunnel_index_by_sw_if_index)) ||
@@ -4390,7 +4401,7 @@ static void vl_api_vxlan_tunnel_dump_t_handler
             return;
         }
         t = &vxm->tunnels[vxm->tunnel_index_by_sw_if_index[sw_if_index]];
-        send_vxlan_tunnel_details(t, q);
+        send_vxlan_tunnel_details(t, q, mp->context);
     }
 }
 
@@ -4437,7 +4448,7 @@ out:
 }
 
 static void send_gre_tunnel_details
-(gre_tunnel_t * t, unix_shared_memory_queue_t * q)
+(gre_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
 {
     vl_api_gre_tunnel_details_t * rmp;
     ip4_main_t * im = &ip4_main;
@@ -4449,6 +4460,7 @@ static void send_gre_tunnel_details
     rmp->dst_address = t->tunnel_dst.data_u32;
     rmp->outer_table_id = htonl(im->fibs[t->outer_fib_index].table_id);
     rmp->sw_if_index = htonl(t->sw_if_index);
+    rmp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
@@ -4471,7 +4483,7 @@ static void vl_api_gre_tunnel_dump_t_handler
     if (~0 == sw_if_index) {
         pool_foreach (t, gm->tunnels,
         ({
-            send_gre_tunnel_details(t, q);
+            send_gre_tunnel_details(t, q, mp->context);
         }));
     } else {
         if ((sw_if_index >= vec_len(gm->tunnel_index_by_sw_if_index)) ||
@@ -4479,7 +4491,7 @@ static void vl_api_gre_tunnel_dump_t_handler
             return;
         }
         t = &gm->tunnels[gm->tunnel_index_by_sw_if_index[sw_if_index]];
-        send_gre_tunnel_details(t, q);
+        send_gre_tunnel_details(t, q, mp->context);
     }
 }
 
@@ -4943,7 +4955,8 @@ vl_api_lisp_gpe_add_del_iface_t_handler(
 static void
 send_lisp_locator_set_details (lisp_cp_main_t *lcm,
                                locator_set_t *lsit,
-                               unix_shared_memory_queue_t *q)
+                               unix_shared_memory_queue_t *q,
+                               u32 context)
 {
     vl_api_lisp_locator_set_details_t *rmp;
     locator_t *loc = NULL;
@@ -4959,6 +4972,7 @@ send_lisp_locator_set_details (lisp_cp_main_t *lcm,
         rmp->sw_if_index = htonl(loc->sw_if_index);
         rmp->priority = loc->priority;
         rmp->weight = loc->weight;
+        rmp->context = context;
 
         vl_msg_api_send_shmem (q, (u8 *)&rmp);
     }
@@ -4978,13 +4992,14 @@ vl_api_lisp_locator_set_dump_t_handler (vl_api_lisp_locator_set_dump_t *mp)
 
     pool_foreach (lsit, lcm->locator_set_pool,
         ({
-            send_lisp_locator_set_details(lcm, lsit, q);
+            send_lisp_locator_set_details(lcm, lsit, q, mp->context);
         }));
 }
 
 static void
 send_lisp_local_eid_table_details (mapping_t *mapit,
-                                   unix_shared_memory_queue_t *q)
+                                   unix_shared_memory_queue_t *q,
+                                   u32 context)
 {
     vl_api_lisp_local_eid_table_details_t *rmp = NULL;
     lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
@@ -5028,6 +5043,7 @@ send_lisp_local_eid_table_details (mapping_t *mapit,
             ASSERT(0);
     }
     rmp->eid_prefix_len = ip_prefix_len(ip_prefix);
+    rmp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
@@ -5047,13 +5063,14 @@ vl_api_lisp_local_eid_table_dump_t_handler (
 
     pool_foreach (mapit, lcm->mapping_pool,
         ({
-            send_lisp_local_eid_table_details(mapit, q);
+            send_lisp_local_eid_table_details(mapit, q, mp->context);
         }));
 }
 
 static void
 send_lisp_gpe_tunnel_details (lisp_gpe_tunnel_t *tunnel,
-                              unix_shared_memory_queue_t *q)
+                              unix_shared_memory_queue_t *q,
+                              u32 context)
 {
     vl_api_lisp_gpe_tunnel_details_t *rmp;
     lisp_gpe_main_t * lgm = &lisp_gpe_main;
@@ -5077,6 +5094,7 @@ send_lisp_gpe_tunnel_details (lisp_gpe_tunnel_t *tunnel,
     rmp->ver_res = tunnel->ver_res;
     rmp->res = tunnel->res;
     rmp->iid = htonl(tunnel->vni);
+    rmp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
@@ -5100,13 +5118,14 @@ vl_api_lisp_gpe_tunnel_dump_t_handler (
 
     pool_foreach(tunnel, lgm->tunnels,
                  ({
-                     send_lisp_gpe_tunnel_details(tunnel, q);
+                     send_lisp_gpe_tunnel_details(tunnel, q, mp->context);
                 }));
 }
 
 static void
 send_lisp_map_resolver_details (ip_address_t *ip,
-                                unix_shared_memory_queue_t *q)
+                                unix_shared_memory_queue_t *q,
+                                u32 context)
 {
     vl_api_lisp_map_resolver_details_t *rmp = NULL;
 
@@ -5128,6 +5147,7 @@ send_lisp_map_resolver_details (ip_address_t *ip,
         default:
             ASSERT(0);
     }
+    rmp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
@@ -5146,7 +5166,7 @@ vl_api_lisp_map_resolver_dump_t_handler (
     }
 
     vec_foreach(ip, lcm->map_resolvers) {
-        send_lisp_map_resolver_details(ip, q);
+        send_lisp_map_resolver_details(ip, q, mp->context);
     }
 
 }
