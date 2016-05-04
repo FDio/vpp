@@ -12,11 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef included_vnet_nsh_gre_packet_h
-#define included_vnet_nsh_gre_packet_h
+#ifndef included_vnet_nsh_packet_h
+#define included_vnet_nsh_packet_h
 
 /*
- * NSH_GRE packet format from draft-quinn-sfc-nsh-03.txt
+ * NSH packet format from draft-quinn-sfc-nsh-03.txt
  *
  * NSH Base Header
  *  0                   1                   2                   3
@@ -78,16 +78,15 @@ typedef CLIB_PACKED(struct {
   u32 c1; u32 c2; u32 c3; u32 c4;
 
   /* Optional variable length metadata */
-  u32 tlvs[0];
+  u32 * tlvs;
 }) nsh_header_t;
 
-#define NSH_GRE_VERSION (0<<6)
-#define NSH_GRE_O_BIT (1<<5)
-#define NSH_GRE_C_BIT (1<<4)
+#define NSH_O_BIT (1<<5)
+#define NSH_C_BIT (1<<4)
 
 /* Network byte order shift / mask */
-#define NSH_GRE_SINDEX_MASK 0xFF
-#define NSH_GRE_SPI_MASK (0x00FFFFFF)
-#define NSH_GRE_SPI_SHIFT 8
+#define NSH_SINDEX_MASK 0xFF
+#define NSH_SPI_MASK (0x00FFFFFF)
+#define NSH_SPI_SHIFT 8
 
-#endif /* included_vnet_nsh_gre_packet_h */
+#endif /* included_vnet_nsh_packet_h */

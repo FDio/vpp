@@ -397,6 +397,20 @@ nobase_include_HEADERS +=			\
 
 
 ########################################
+# NSH Map: nsh
+########################################
+
+#libvnet_la_SOURCES +=				\
+ vnet/nsh/nsh.c					\
+ vnet/nsh/encap.c				\
+ vnet/nsh/decap.c
+
+nobase_include_HEADERS +=			\
+ vnet/nsh/nsh_packet.h				\
+ vnet/nsh/nsh_error.def
+
+
+########################################
 # Tunnel protocol: nsh-gre
 ########################################
 
@@ -406,9 +420,7 @@ libvnet_la_SOURCES +=				\
  vnet/nsh-gre/decap.c
 
 nobase_include_HEADERS +=			\
- vnet/nsh-gre/nsh_gre.h				\
- vnet/nsh-gre/nsh_gre_packet.h			\
- vnet/nsh-gre/nsh_gre_error.def
+ vnet/nsh-gre/nsh_gre.h				
 
 ########################################
 # Tunnel protocol: nsh-vxlan-gpe
