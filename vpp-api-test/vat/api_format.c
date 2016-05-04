@@ -7894,13 +7894,13 @@ static uword unformat_nsh_gre_decap_next
   u32 tmp;
   
   if (unformat (input, "drop"))
-    *result = NSH_INPUT_NEXT_DROP;
+    *result = NSH_GRE_INPUT_NEXT_DROP;
   else if (unformat (input, "ip4"))
-    *result = NSH_INPUT_NEXT_IP4_INPUT;
+    *result = NSH_GRE_INPUT_NEXT_IP4_INPUT;
   else if (unformat (input, "ip6"))
-    *result = NSH_INPUT_NEXT_IP6_INPUT;
+    *result = NSH_GRE_INPUT_NEXT_IP6_INPUT;
   else if (unformat (input, "ethernet"))
-    *result = NSH_INPUT_NEXT_ETHERNET_INPUT;
+    *result = NSH_GRE_INPUT_NEXT_ETHERNET_INPUT;
   else if (unformat (input, "%d", &tmp))
     *result = tmp;
   else
@@ -7932,7 +7932,7 @@ static int api_nsh_gre_add_del_tunnel (vat_main_t * vam)
     u32 c3 = 0;
     u32 c4 = 0;
     u32 *tlvs = 0;
-    u32 decap_next_index = NSH_INPUT_NEXT_IP4_INPUT;
+    u32 decap_next_index = NSH_GRE_INPUT_NEXT_IP4_INPUT;
     u32 tmp;
     int i;
 
@@ -8084,7 +8084,7 @@ static int api_nsh_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
     u32 c3 = 0;
     u32 c4 = 0;
     u32 *tlvs = 0;
-    u32 decap_next_index = NSH_INPUT_NEXT_IP4_INPUT;
+    u32 decap_next_index = NSH_GRE_INPUT_NEXT_IP4_INPUT;
     u32 vni;
     u8 vni_set = 0;
     u32 tmp;

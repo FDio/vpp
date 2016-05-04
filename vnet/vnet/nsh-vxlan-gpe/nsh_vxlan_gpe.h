@@ -22,7 +22,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/gre/gre.h>
-#include <vnet/nsh-gre/nsh_gre_packet.h>
+#include <vnet/nsh/nsh_packet.h>
 #include <vnet/nsh-vxlan-gpe/vxlan_gpe_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/udp.h>
@@ -73,15 +73,7 @@ typedef struct {
   u32 sw_if_index;
 
   /* NSH header fields in HOST byte order */
-  u8 ver_o_c;
-  u8 length;
-  u8 md_type;
-  u8 next_protocol;
-  u32 spi_si;
-    
-  /* Context headers, always present, in HOST byte order */
-  u32 c1, c2, c3, c4;
-  u32 * tlvs;
+  nsh_header_t nsh_hdr;
 } nsh_vxlan_gpe_tunnel_t;
 
 #define foreach_nsh_vxlan_gpe_input_next        \
@@ -137,13 +129,7 @@ typedef struct {
   u32 decap_fib_index;
   u32 decap_next_index;
   u32 vni;
-  u8 ver_o_c;
-  u8 length;
-  u8 md_type;
-  u8 next_protocol;
-  u32 spi_si;
-  u32 c1, c2, c3, c4;
-  u32 * tlvs;
+  nsh_header_t nsh_hdr;
 } vnet_nsh_vxlan_gpe_add_del_tunnel_args_t;
 
 int vnet_nsh_vxlan_gpe_add_del_tunnel 

@@ -18,7 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/nsh-gre/nsh_gre.h>
-#include <vnet/nsh-gre/nsh_gre_packet.h>
+#include <vnet/nsh/nsh_packet.h>
 
 vlib_node_registration_t nsh_input_node;
 
@@ -42,10 +42,10 @@ u8 * format_nsh_header_with_length (u8 * s, va_list * args)
 
   s = format (s, "ver %d ", h->ver_o_c>>6);
 
-  if (h->ver_o_c & NSH_GRE_O_BIT)
+  if (h->ver_o_c & NSH_O_BIT)
       s = format (s, "O-set ");
 
-  if (h->ver_o_c & NSH_GRE_C_BIT)
+  if (h->ver_o_c & NSH_C_BIT)
       s = format (s, "C-set ");
 
   s = format (s, "len %d (%d bytes) md_type %d next_protocol %d\n",
@@ -54,8 +54,8 @@ u8 * format_nsh_header_with_length (u8 * s, va_list * args)
   tmp = clib_net_to_host_u32 (h->spi_si);
 
   s = format (s, "  spi %d si %d ",
-              (tmp>>NSH_GRE_SPI_SHIFT) & NSH_GRE_SPI_MASK,
-              tmp & NSH_GRE_SINDEX_MASK);
+              (tmp>>NSH_SPI_SHIFT) & NSH_SPI_MASK,
+              tmp & NSH_SINDEX_MASK);
 
   s = format (s, "c1 %u c2 %u c3 %u c4 %u",
               clib_net_to_host_u32 (h->c1),
@@ -171,8 +171,8 @@ nsh_gre_input (vlib_main_t * vm,
           tunnel_index1 = ~0;
           error0 = 0;
           error1 = 0;
-          next0 = NSH_INPUT_NEXT_DROP;
-          next1 = NSH_INPUT_NEXT_DROP;
+          next0 = NSH_GRE_INPUT_NEXT_DROP;
+          next1 = NSH_GRE_INPUT_NEXT_DROP;
 
           if (PREDICT_FALSE(key0 != last_key))
             {
@@ -332,7 +332,7 @@ nsh_gre_input (vlib_main_t * vm,
 
           tunnel_index0 = ~0;
           error0 = 0;
-          next0 = NSH_INPUT_NEXT_DROP;
+          next0 = NSH_GRE_INPUT_NEXT_DROP;
 
           if (PREDICT_FALSE(key0 != last_key))
             {
@@ -418,7 +418,7 @@ nsh_gre_input (vlib_main_t * vm,
 
 static char * nsh_error_strings[] = {
 #define nsh_gre_error(n,s) s,
-#include <vnet/nsh-gre/nsh_gre_error.def>
+#include <vnet/nsh/nsh_error.def>
 #undef nsh_gre_error
 #undef _
 };
@@ -432,9 +432,9 @@ VLIB_REGISTER_NODE (nsh_gre_input_node) = {
   .n_errors = NSH_GRE_N_ERROR,
   .error_strings = nsh_error_strings,
 
-  .n_next_nodes = NSH_INPUT_N_NEXT,
+  .n_next_nodes = NSH_GRE_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [NSH_INPUT_NEXT_##s] = n,
+#define _(s,n) [NSH_GRE_INPUT_NEXT_##s] = n,
     foreach_nsh_gre_input_next
 #undef _
   },

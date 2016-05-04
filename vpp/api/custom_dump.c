@@ -1603,9 +1603,9 @@ static void *vl_api_nsh_gre_add_del_tunnel_t_print
 
     if (mp->ver_o_c & 0xc)
         s = format (s, "version %d ", mp->ver_o_c>>6);
-    if (mp->ver_o_c & NSH_GRE_O_BIT)
+    if (mp->ver_o_c & NSH_O_BIT)
         s = format (s, "o-bit 1 ");
-    if (mp->ver_o_c & NSH_GRE_C_BIT)
+    if (mp->ver_o_c & NSH_C_BIT)
         s = format (s, "c-bit 1 ");
     if (mp->md_type)
         s = format (s, "md-type %d ", mp->md_type);
@@ -1659,9 +1659,9 @@ static void *vl_api_nsh_vxlan_gpe_add_del_tunnel_t_print
 
     if (mp->ver_o_c & 0xc)
         s = format (s, "version %d ", mp->ver_o_c>>6);
-    if (mp->ver_o_c & NSH_GRE_O_BIT)
+    if (mp->ver_o_c & NSH_O_BIT)
         s = format (s, "o-bit 1 ");
-    if (mp->ver_o_c & NSH_GRE_C_BIT)
+    if (mp->ver_o_c & NSH_C_BIT)
         s = format (s, "c-bit 1 ");
     if (mp->md_type)
         s = format (s, "md-type %d ", mp->md_type);
