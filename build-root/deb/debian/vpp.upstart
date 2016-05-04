@@ -6,7 +6,7 @@ manual
 respawn
 
 pre-start script
-   rm -f /dev/shm/* || true
+   rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api || true
    # should be there via dkms, but if not, start anyway
    modprobe igb_uio || true
 end script
@@ -17,5 +17,5 @@ script
 end script
 
 post-stop script
-   rm -f /dev/shm/* || true
+   rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api || true
 end script
