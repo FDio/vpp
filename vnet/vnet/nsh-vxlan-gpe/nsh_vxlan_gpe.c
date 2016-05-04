@@ -52,22 +52,22 @@ u8 * format_nsh_vxlan_gpe_tunnel (u8 * s, va_list * args)
               t->decap_fib_index);
   s = format (s, " decap next %U\n", format_decap_next, t->decap_next_index);
   s = format (s, "  vxlan VNI %d ", t->vni);
-  s = format (s, "nsh ver %d ", (t->ver_o_c>>6));
-  if (t->ver_o_c & NSH_GRE_O_BIT)
+  s = format (s, "nsh ver %d ", (t->nsh_hdr.ver_o_c>>6));
+  if (t->nsh_hdr.ver_o_c & NSH_O_BIT)
       s = format (s, "O-set ");
 
-  if (t->ver_o_c & NSH_GRE_C_BIT)
+  if (t->nsh_hdr.ver_o_c & NSH_C_BIT)
       s = format (s, "C-set ");
 
   s = format (s, "len %d (%d bytes) md_type %d next_protocol %d\n",
-              t->length, t->length * 4, t->md_type, t->next_protocol);
+              t->nsh_hdr.length, t->nsh_hdr.length * 4, t->nsh_hdr.md_type, t->nsh_hdr.next_protocol);
   
   s = format (s, "  service path %d service index %d\n",
-              (t->spi_si>>NSH_GRE_SPI_SHIFT) & NSH_GRE_SPI_MASK,
-              t->spi_si & NSH_GRE_SINDEX_MASK);
+              (t->nsh_hdr.spi_si>>NSH_SPI_SHIFT) & NSH_SPI_MASK,
+              t->nsh_hdr.spi_si & NSH_SINDEX_MASK);
 
   s = format (s, "  c1 %d c2 %d c3 %d c4 %d\n",
-              t->c1, t->c2, t->c3, t->c4);
+              t->nsh_hdr.c1, t->nsh_hdr.c2, t->nsh_hdr.c3, t->nsh_hdr.c4);
 
   return s;
 }
@@ -144,19 +144,22 @@ _(dst.as_u32)                                   \
 _(vni)                                          \
 _(encap_fib_index)                              \
 _(decap_fib_index)                              \
-_(decap_next_index)                             \
-_(ver_o_c)                                      \
-_(length)                                       \
-_(md_type)                                      \
-_(next_protocol)                                \
-_(spi_si)                                       \
-_(c1)                                           \
-_(c2)                                           \
-_(c3)                                           \
-_(c4)                                           \
+_(decap_next_index)
+
+
+#define foreach_copy_nshhdr_field               \
+_(ver_o_c)					\
+_(length)					\
+_(md_type)					\
+_(next_protocol)				\
+_(spi_si)					\
+_(c1)						\
+_(c2)						\
+_(c3)						\
+_(c4)						\
 _(tlvs)
 
-#define foreach_32bit_field                     \
+#define foreach_32bit_field			\
 _(spi_si)                                       \
 _(c1)                                           \
 _(c2)                                           \
@@ -171,7 +174,7 @@ static int nsh_vxlan_gpe_rewrite (nsh_vxlan_gpe_tunnel_t * t)
   ip4_vxlan_gpe_and_nsh_header_t * h0;
   int len;
 
-  len = sizeof (*h0) + vec_len(t->tlvs)*4;
+  len = sizeof (*h0) + vec_len(t->nsh_hdr.tlvs)*4;
 
   vec_validate_aligned (rw, len-1, CLIB_CACHE_LINE_BYTES);
 
@@ -200,14 +203,14 @@ static int nsh_vxlan_gpe_rewrite (nsh_vxlan_gpe_tunnel_t * t)
 
   /* NSH header */
   nsh0 = &h0->nsh;
-  nsh0->ver_o_c = t->ver_o_c;
-  nsh0->md_type = t->md_type;
-  nsh0->next_protocol = t->next_protocol;
-  nsh0->spi_si = t->spi_si;
-  nsh0->c1 = t->c1;
-  nsh0->c2 = t->c2;
-  nsh0->c3 = t->c3;
-  nsh0->c4 = t->c4;
+  nsh0->ver_o_c = t->nsh_hdr.ver_o_c;
+  nsh0->md_type = t->nsh_hdr.md_type;
+  nsh0->next_protocol = t->nsh_hdr.next_protocol;
+  nsh0->spi_si = t->nsh_hdr.spi_si;
+  nsh0->c1 = t->nsh_hdr.c1;
+  nsh0->c2 = t->nsh_hdr.c2;
+  nsh0->c3 = t->nsh_hdr.c3;
+  nsh0->c4 = t->nsh_hdr.c4;
   
   /* Endian swap 32-bit fields */
 #define _(x) nsh0->x = clib_host_to_net_u32(nsh0->x);
@@ -215,12 +218,12 @@ static int nsh_vxlan_gpe_rewrite (nsh_vxlan_gpe_tunnel_t * t)
 #undef _
 
   /* fix nsh header length */
-  t->length = 6 + vec_len(t->tlvs);
-  nsh0->length = t->length;
+  t->nsh_hdr.length = 6 + vec_len(t->nsh_hdr.tlvs);
+  nsh0->length = t->nsh_hdr.length;
 
   /* Copy any TLVs */
-  if (vec_len(t->tlvs))
-    clib_memcpy (nsh0->tlvs, t->tlvs, 4*vec_len(t->tlvs));
+  if (vec_len(t->nsh_hdr.tlvs))
+    clib_memcpy (nsh0->tlvs, t->nsh_hdr.tlvs, 4*vec_len(t->nsh_hdr.tlvs));
 
   t->rewrite = rw;
   return (0);
@@ -242,7 +245,7 @@ int vnet_nsh_vxlan_gpe_add_del_tunnel
   
   key.src = a->dst.as_u32; /* decap src in key is encap dst in config */
   key.vni = clib_host_to_net_u32 (a->vni << 8);
-  key.spi_si = clib_host_to_net_u32(a->spi_si);
+  key.spi_si = clib_host_to_net_u32(a->nsh_hdr.spi_si);
   key.pad = 0;
 
   p = hash_get_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, &key);
@@ -262,6 +265,11 @@ int vnet_nsh_vxlan_gpe_add_del_tunnel
       /* copy from arg structure */
 #define _(x) t->x = a->x;
       foreach_copy_field;
+#undef _
+
+      /* copy from arg structure */
+#define _(x) t->nsh_hdr.x = a->nsh_hdr.x;
+      foreach_copy_nshhdr_field;
 #undef _
       
       rv = nsh_vxlan_gpe_rewrite (t);
@@ -486,6 +494,10 @@ nsh_vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
 
 #define _(x) a->x = x;
   foreach_copy_field;
+#undef _
+
+#define _(x) a->nsh_hdr.x = x;
+  foreach_copy_nshhdr_field;
 #undef _
   
   rv = vnet_nsh_vxlan_gpe_add_del_tunnel (a, 0 /* hw_if_indexp */);

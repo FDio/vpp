@@ -28,13 +28,13 @@ static u8 * format_decap_next (u8 * s, va_list * args)
 
   switch (next_index)
     {
-    case NSH_INPUT_NEXT_DROP:
+    case NSH_GRE_INPUT_NEXT_DROP:
       return format (s, "drop");
-    case NSH_INPUT_NEXT_IP4_INPUT:
+    case NSH_GRE_INPUT_NEXT_IP4_INPUT:
       return format (s, "ip4");
-    case NSH_INPUT_NEXT_IP6_INPUT:
+    case NSH_GRE_INPUT_NEXT_IP6_INPUT:
       return format (s, "ip6");
-    case NSH_INPUT_NEXT_ETHERNET_INPUT:
+    case NSH_GRE_INPUT_NEXT_ETHERNET_INPUT:
       return format (s, "ethernet");
     default:
       return format (s, "index %d", next_index);
@@ -57,22 +57,22 @@ u8 * format_nsh_gre_tunnel (u8 * s, va_list * args)
 
   s = format (s, " decap-next %U\n", format_decap_next, t->decap_next_index);
 
-  s = format (s, "  ver %d ", (t->ver_o_c>>6));
-  if (t->ver_o_c & NSH_GRE_O_BIT)
+  s = format (s, "  ver %d ", (t->nsh_hdr.ver_o_c>>6));
+  if (t->nsh_hdr.ver_o_c & NSH_O_BIT)
       s = format (s, "O-set ");
 
-  if (t->ver_o_c & NSH_GRE_C_BIT)
+  if (t->nsh_hdr.ver_o_c & NSH_C_BIT)
       s = format (s, "C-set ");
 
   s = format (s, "len %d (%d bytes) md_type %d next_protocol %d\n",
-              t->length, t->length * 4, t->md_type, t->next_protocol);
+              t->nsh_hdr.length, t->nsh_hdr.length * 4, t->nsh_hdr.md_type, t->nsh_hdr.next_protocol);
   
   s = format (s, "  service path %d service index %d\n",
-              (t->spi_si>>NSH_GRE_SPI_SHIFT) & NSH_GRE_SPI_MASK,
-              t->spi_si & NSH_GRE_SINDEX_MASK);
+              (t->nsh_hdr.spi_si>>NSH_SPI_SHIFT) & NSH_SPI_MASK,
+              t->nsh_hdr.spi_si & NSH_SINDEX_MASK);
 
   s = format (s, "  c1 %d c2 %d c3 %d c4 %d\n",
-              t->c1, t->c2, t->c3, t->c4);
+              t->nsh_hdr.c1, t->nsh_hdr.c2, t->nsh_hdr.c3, t->nsh_hdr.c4);
 
   return s;
 }
@@ -148,19 +148,22 @@ _(src.as_u32)                                   \
 _(dst.as_u32)                                   \
 _(encap_fib_index)                              \
 _(decap_fib_index)                              \
-_(decap_next_index)                             \
-_(ver_o_c)                                      \
-_(length)                                       \
-_(md_type)                                      \
-_(next_protocol)                                \
-_(spi_si)                                       \
-_(c1)                                           \
-_(c2)                                           \
-_(c3)                                           \
-_(c4)                                           \
+_(decap_next_index)
+
+
+#define foreach_copy_nshhdr_field               \
+_(ver_o_c)					\
+_(length)					\
+_(md_type)					\
+_(next_protocol)				\
+_(spi_si)					\
+_(c1)						\
+_(c2)						\
+_(c3)						\
+_(c4)						\
 _(tlvs)
 
-#define foreach_32bit_field                     \
+#define foreach_32bit_field			\
 _(spi_si)                                       \
 _(c1)                                           \
 _(c2)                                           \
@@ -175,7 +178,7 @@ static int nsh_gre_rewrite (nsh_gre_tunnel_t * t)
   ip4_gre_and_nsh_header_t * h0;
   int len;
 
-  len = sizeof (*h0) + vec_len(t->tlvs)*4;
+  len = sizeof (*h0) + vec_len(t->nsh_hdr.tlvs)*4;
 
   vec_validate_aligned (rw, len-1, CLIB_CACHE_LINE_BYTES);
 
@@ -196,14 +199,14 @@ static int nsh_gre_rewrite (nsh_gre_tunnel_t * t)
 
   /* NSH header */
   nsh0 = &h0->nsh;
-  nsh0->ver_o_c = t->ver_o_c;
-  nsh0->md_type = t->md_type;
-  nsh0->next_protocol = t->next_protocol;
-  nsh0->spi_si = t->spi_si;
-  nsh0->c1 = t->c1;
-  nsh0->c2 = t->c2;
-  nsh0->c3 = t->c3;
-  nsh0->c4 = t->c4;
+  nsh0->ver_o_c = t->nsh_hdr.ver_o_c;
+  nsh0->md_type = t->nsh_hdr.md_type;
+  nsh0->next_protocol = t->nsh_hdr.next_protocol;
+  nsh0->spi_si = t->nsh_hdr.spi_si;
+  nsh0->c1 = t->nsh_hdr.c1;
+  nsh0->c2 = t->nsh_hdr.c2;
+  nsh0->c3 = t->nsh_hdr.c3;
+  nsh0->c4 = t->nsh_hdr.c4;
   
   /* Endian swap 32-bit fields */
 #define _(x) nsh0->x = clib_host_to_net_u32(nsh0->x);
@@ -211,12 +214,12 @@ static int nsh_gre_rewrite (nsh_gre_tunnel_t * t)
 #undef _
 
   /* fix nsh header length */
-  t->length = 6 + vec_len(t->tlvs);
-  nsh0->length = t->length;
+  t->nsh_hdr.length = 6 + vec_len(t->nsh_hdr.tlvs);
+  nsh0->length = t->nsh_hdr.length;
 
   /* Copy any TLVs */
-  if (vec_len(t->tlvs))
-    clib_memcpy (nsh0->tlvs, t->tlvs, 4*vec_len(t->tlvs));
+  if (vec_len(t->nsh_hdr.tlvs))
+    clib_memcpy (nsh0->tlvs, t->nsh_hdr.tlvs, 4*vec_len(t->nsh_hdr.tlvs));
 
   t->rewrite = rw;
   return (0);
@@ -236,7 +239,7 @@ int vnet_nsh_gre_add_del_tunnel (vnet_nsh_gre_add_del_tunnel_args_t *a,
   u64 key;
   u32 spi_si_net_byte_order;
 
-  spi_si_net_byte_order = clib_host_to_net_u32(a->spi_si);
+  spi_si_net_byte_order = clib_host_to_net_u32(a->nsh_hdr.spi_si);
 
   key = (((u64)(a->src.as_u32))<<32) | spi_si_net_byte_order;
 
@@ -248,7 +251,7 @@ int vnet_nsh_gre_add_del_tunnel (vnet_nsh_gre_add_del_tunnel_args_t *a,
       if (p) 
         return VNET_API_ERROR_INVALID_VALUE;
       
-      if (a->decap_next_index >= NSH_INPUT_N_NEXT)
+      if (a->decap_next_index >= NSH_GRE_INPUT_N_NEXT)
         return VNET_API_ERROR_INVALID_DECAP_NEXT;
       
       pool_get_aligned (ngm->tunnels, t, CLIB_CACHE_LINE_BYTES);
@@ -259,6 +262,11 @@ int vnet_nsh_gre_add_del_tunnel (vnet_nsh_gre_add_del_tunnel_args_t *a,
       foreach_copy_field;
 #undef _
       
+      /* copy from arg structure */
+#define _(x) t->nsh_hdr.x = a->nsh_hdr.x;
+      foreach_copy_nshhdr_field;
+#undef _
+
       rv = nsh_gre_rewrite (t);
 
       if (rv)
@@ -334,13 +342,13 @@ static uword unformat_decap_next (unformat_input_t * input, va_list * args)
   u32 tmp;
   
   if (unformat (input, "drop"))
-    *result = NSH_INPUT_NEXT_DROP;
+    *result = NSH_GRE_INPUT_NEXT_DROP;
   else if (unformat (input, "ip4"))
-    *result = NSH_INPUT_NEXT_IP4_INPUT;
+    *result = NSH_GRE_INPUT_NEXT_IP4_INPUT;
   else if (unformat (input, "ip6"))
-    *result = NSH_INPUT_NEXT_IP6_INPUT;
+    *result = NSH_GRE_INPUT_NEXT_IP6_INPUT;
   else if (unformat (input, "ethernet"))
-    *result = NSH_INPUT_NEXT_ETHERNET_INPUT;
+    *result = NSH_GRE_INPUT_NEXT_ETHERNET_INPUT;
   else if (unformat (input, "%d", &tmp))
     *result = tmp;
   else
@@ -463,7 +471,12 @@ nsh_gre_add_del_tunnel_command_fn (vlib_main_t * vm,
 #define _(x) a->x = x;
   foreach_copy_field;
 #undef _
-  
+
+      /* copy from arg structure */
+#define _(x) a->nsh_hdr.x = x;
+      foreach_copy_nshhdr_field;
+#undef _
+
   rv = vnet_nsh_gre_add_del_tunnel (a, 0 /* hw_if_indexp */);
 
   switch(rv)
