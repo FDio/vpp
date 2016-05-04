@@ -12,12 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef included_vnet_nsh_gre_h
-#define included_vnet_nsh_gre_h
+#ifndef included_vnet_gre_nsh_h
+#define included_vnet_gre_nsh_h
 
 #include <vnet/vnet.h>
 #include <vnet/gre/gre.h>
-#include <vnet/nsh-gre/nsh_gre_packet.h>
+#include <vnet/nsh/nsh_packet.h>
 #include <vnet/ip/ip4_packet.h>
 
 typedef CLIB_PACKED (struct {
@@ -46,15 +46,8 @@ typedef struct {
   u32 sw_if_index;
 
   /* NSH header fields in HOST byte order */
-  u8 ver_o_c;
-  u8 length;
-  u8 md_type;
-  u8 next_protocol;
-  u32 spi_si;
-    
-  /* Context headers, always present, in HOST byte order */
-  u32 c1, c2, c3, c4;
-  u32 * tlvs;
+  nsh_header_t nsh_hdr;
+
 } nsh_gre_tunnel_t;
 
 #define foreach_nsh_gre_input_next              \
@@ -64,15 +57,15 @@ typedef struct {
   _ (ETHERNET_INPUT, "ethernet-input")
 
 typedef enum {
-#define _(s,n) NSH_INPUT_NEXT_##s,
+#define _(s,n) NSH_GRE_INPUT_NEXT_##s,
   foreach_nsh_gre_input_next
 #undef _
-  NSH_INPUT_N_NEXT,
+  NSH_GRE_INPUT_N_NEXT,
 } nsh_gre_input_next_t;
 
 typedef enum {
 #define nsh_gre_error(n,s) NSH_GRE_ERROR_##n,
-#include <vnet/nsh-gre/nsh_gre_error.def>
+#include <vnet/nsh/nsh_error.def>
 #undef nsh_gre_error
   NSH_GRE_N_ERROR,
 } nsh_gre_input_error_t;
@@ -108,16 +101,10 @@ typedef struct {
   u32 encap_fib_index;
   u32 decap_fib_index;
   u32 decap_next_index;
-  u8 ver_o_c;
-  u8 length;
-  u8 md_type;
-  u8 next_protocol;
-  u32 spi_si;
-  u32 c1, c2, c3, c4;
-  u32 * tlvs;
+  nsh_header_t nsh_hdr;
 } vnet_nsh_gre_add_del_tunnel_args_t;
 
 int vnet_nsh_gre_add_del_tunnel (vnet_nsh_gre_add_del_tunnel_args_t *a, 
                                  u32 * sw_if_indexp);
 
-#endif /* included_vnet_nsh_gre_h */
+#endif /* included_vnet_gre_nsh_h */
