@@ -16,6 +16,7 @@
 #define __included_ip6_hop_by_hop_h__
 
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
+#include <vnet/ip/ip.h>
 
 typedef struct {
   /* The current rewrite we're using */
