@@ -39,9 +39,9 @@ typedef struct {
 } ip6_hop_by_hop_option_t;
 
 /* $$$$ IANA banana constants */
-#define HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST 1
-#define HBH_OPTION_TYPE_IOAM_PROOF_OF_WORK 2
-#define HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE 3
+#define HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST 27
+#define HBH_OPTION_TYPE_IOAM_PROOF_OF_WORK 28
+#define HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE 29
 
 /*
 typedef struct {
