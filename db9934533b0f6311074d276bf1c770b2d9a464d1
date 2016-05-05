@@ -1,0 +1,257 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_387340b3",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "Add a Jira to the commit message please.",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 64
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_78a098f4",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "format.",
+      "range": {
+        "startLine": 166,
+        "startChar": 0,
+        "endLine": 166,
+        "endChar": 14
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_b85e3011",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 498,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "right format ... then ...",
+      "range": {
+        "startLine": 498,
+        "startChar": 3,
+        "endLine": 498,
+        "endChar": 8
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_d861e4d4",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 507,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "format",
+      "range": {
+        "startLine": 507,
+        "startChar": 5,
+        "endLine": 507,
+        "endChar": 33
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_f864a8e6",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 515,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "format",
+      "range": {
+        "startLine": 515,
+        "startChar": 36,
+        "endLine": 515,
+        "endChar": 37
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_989b6cc9",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "format",
+      "range": {
+        "startLine": 523,
+        "startChar": 3,
+        "endLine": 523,
+        "endChar": 11
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_18687cb9",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 535,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "format",
+      "range": {
+        "startLine": 535,
+        "startChar": 4,
+        "endLine": 535,
+        "endChar": 28
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_38aa20d5",
+        "filename": "vnet/vnet/lib-scv/math64.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "There already is a math64.h in linux. If this is different because of your 128bit mod 64 then perhaps this needs to be spelled out.",
+      "range": {
+        "startLine": 2,
+        "startChar": 3,
+        "endLine": 2,
+        "endChar": 9
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_58a5d402",
+        "filename": "vnet/vnet/lib-scv/math64.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "use standard header please.",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 3
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_f8ab88d4",
+        "filename": "vnet/vnet/lib-scv/scv_util.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "No header",
+      "range": {
+        "startLine": 1,
+        "startChar": 6,
+        "endLine": 1,
+        "endChar": 22
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_18af5ce5",
+        "filename": "vnet/vnet/lib-scv/scv_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T04:29:38Z",
+      "side": 1,
+      "message": "Header.\n\nAny I\u0027m curious why there is a project in VPP doing \"Service Chain\" anything when there is nothing I can relate from a Service Chain to a dataplane other than say, NSH. Why isn\u0027t this in the NSH_SFC project?",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 2
+      },
+      "revId": "db9934533b0f6311074d276bf1c770b2d9a464d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
