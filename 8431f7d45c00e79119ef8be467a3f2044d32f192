@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_e5052115",
+        "filename": "vnet/vnet/nsh-gre/decap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-05T01:28:21Z",
+      "side": 1,
+      "message": "I think this function should be put under the folder /vnet/nsh/",
+      "range": {
+        "startLine": 33,
+        "startChar": 5,
+        "endLine": 33,
+        "endChar": 34
+      },
+      "revId": "8431f7d45c00e79119ef8be467a3f2044d32f192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_250c3942",
+        "filename": "vnet/vnet/nsh-gre/nsh_gre.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-05T01:28:21Z",
+      "side": 1,
+      "message": "The file name is nsh_gre.h, why does here change to included_vnet_gre_nsh_h? I think it should keep unchanged, i.e. included_vnet_nsh_gre_h.",
+      "range": {
+        "startLine": 15,
+        "startChar": 8,
+        "endLine": 15,
+        "endChar": 31
+      },
+      "revId": "8431f7d45c00e79119ef8be467a3f2044d32f192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_45172d52",
+        "filename": "vnet/vnet/nsh/nsh_error.def",
+        "patchSetId": 4
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-05T01:28:21Z",
+      "side": 1,
+      "message": "it should be \"nsh_error\"",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 13
+      },
+      "revId": "8431f7d45c00e79119ef8be467a3f2044d32f192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
