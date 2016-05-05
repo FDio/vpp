@@ -122,7 +122,7 @@ int netmap_delete_if(vlib_main_t * vm, u8 * host_if_name);
 static inline uint32_t
 nm_ring_next(struct netmap_ring *ring, uint32_t i)
 {
-        return ( unlikely(i + 1 == ring->num_slots) ? 0 : i + 1);
+        return ( PREDICT_FALSE(i + 1 == ring->num_slots) ? 0 : i + 1);
 }
 
 
