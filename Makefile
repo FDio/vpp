@@ -28,8 +28,13 @@ OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
-DEB_DEPENDS += debhelper dkms openjdk-8-jdk git libtool libganglia1-dev libapr1-dev dh-systemd
+DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
+ifeq ($(OS_VERSION_ID),14.04)
+	DEB_DEPENDS += openjdk-8-jdk-headless
+else
+	DEB_DEPENDS += default-jdk-headless
+endif
 
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
