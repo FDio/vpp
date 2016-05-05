@@ -271,7 +271,9 @@ void ip6_add_del_route (ip6_main_t * im, ip6_add_del_route_args_t * a)
     }
 
   /* Avoid spurious reference count increments */
-  if (old_adj_index == adj_index && !(a->flags & IP6_ROUTE_FLAG_KEEP_OLD_ADJACENCY))
+  if (old_adj_index == adj_index 
+      && adj_index != ~0
+      && !(a->flags & IP6_ROUTE_FLAG_KEEP_OLD_ADJACENCY))
     {
       ip_adjacency_t * adj = ip_get_adjacency (lm, adj_index);
       if (adj->share_count > 0)
