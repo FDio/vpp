@@ -28,7 +28,7 @@ OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
-DEB_DEPENDS += debhelper dkms openjdk-8-jdk git libtool libganglia1-dev libapr1-dev dh-systemd
+DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
 
 RPM_DEPENDS_GROUPS = 'Development Tools'
@@ -122,6 +122,9 @@ ifeq ($(OS_VERSION_ID),14.04)
 	@sudo apt-get $(CONFIRM) install software-properties-common
 	@sudo add-apt-repository $(CONFIRM) ppa:openjdk-r/ppa
 	@sudo apt-get update
+	@sudo apt-get openjdk-8-jdk-headless
+else
+	@sudo apt-get default-jdk-headless
 endif
 	@sudo apt-get $(CONFIRM) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
