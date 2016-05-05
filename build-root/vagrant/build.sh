@@ -32,6 +32,8 @@ echo DISTRIB_RELEASE: $DISTRIB_RELEASE
 echo DISTRIB_CODENAME: $DISTRIB_CODENAME
 echo DISTRIB_DESCRIPTION: $DISTRIB_DESCRIPTION
 
+export DPDK_BASE_URL=https://nexus.fd.io/content/repositories/thirdparty/
+
 # Install dependencies
 cd $VPP_DIR
 make UNATTENDED=yes install-dep

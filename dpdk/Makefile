@@ -125,7 +125,7 @@ $(CURDIR)/$(DPDK_TARBALL):
 	@mkdir -p $(B)
 	@if [ -e $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) ] ; \
 		then cp $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) $(CURDIR) ; \
-		else curl -o $(CURDIR)/$(DPDK_TARBALL) -LO $(DPDK_TAR_URL) ; \
+		else echo curl -o $(CURDIR)/$(DPDK_TARBALL) -LO $(DPDK_TAR_URL);curl -o $(CURDIR)/$(DPDK_TARBALL) -LO $(DPDK_TAR_URL) ; \
 	fi
 	@rm -f $(B)/.download.ok
 
