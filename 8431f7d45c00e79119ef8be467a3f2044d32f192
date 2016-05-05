@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_382580ab",
+        "filename": "vnet/vnet/nsh-gre/decap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T02:45:38Z",
+      "side": 1,
+      "message": "Will be addressed in VPP-43",
+      "parentUuid": "da141535_e5052115",
+      "range": {
+        "startLine": 33,
+        "startChar": 5,
+        "endLine": 33,
+        "endChar": 34
+      },
+      "revId": "8431f7d45c00e79119ef8be467a3f2044d32f192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_250c3942",
         "filename": "vnet/vnet/nsh-gre/nsh_gre.h",
         "patchSetId": 4
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_183abccd",
+        "filename": "vnet/vnet/nsh-gre/nsh_gre.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T02:45:38Z",
+      "side": 1,
+      "message": "Done - but note this goes away in subsequent patch.",
+      "parentUuid": "da141535_250c3942",
+      "range": {
+        "startLine": 15,
+        "startChar": 8,
+        "endLine": 15,
+        "endChar": 31
+      },
+      "revId": "8431f7d45c00e79119ef8be467a3f2044d32f192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_45172d52",
         "filename": "vnet/vnet/nsh/nsh_error.def",
         "patchSetId": 4
@@ -59,6 +107,30 @@
       "writtenOn": "2016-05-05T01:28:21Z",
       "side": 1,
       "message": "it should be \"nsh_error\"",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 13
+      },
+      "revId": "8431f7d45c00e79119ef8be467a3f2044d32f192",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_f836e8e6",
+        "filename": "vnet/vnet/nsh/nsh_error.def",
+        "patchSetId": 4
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-05T02:45:38Z",
+      "side": 1,
+      "message": "No, not until all of NSH_GRE is refactored. See nsh_gre.h .. this is just for consistency\u0027s sake with existing code to minimise changes. Once the NSH specific code is moved to its own graph node I strongly suspect that vnet/vnet/nsh-gre disappears entirely and goes into generic vnet/vnet/gre (see packet.h in that folder)",
+      "parentUuid": "da141535_45172d52",
       "range": {
         "startLine": 15,
         "startChar": 0,
