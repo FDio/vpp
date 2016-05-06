@@ -2139,15 +2139,27 @@ manual_java define l2_fib_table_dump {
     u32 bd_id;
 };
 
-define nsh_vxlan_gpe_add_del_tunnel {
+define vxlan_gpe_add_del_tunnel {
     u32 client_index;
     u32 context;
-    u32 src;
-    u32 dst;
+    u32 local;
+    u32 remote;
     u32 encap_vrf_id;
     u32 decap_vrf_id;
-    u32 decap_next_index;
+    u8 protocol;
     u32 vni;
+    u8 is_add;
+};
+
+define vxlan_gpe_add_del_tunnel_reply {
+    u32 context;
+    i32 retval;
+    u32 sw_if_index;
+};
+
+define nsh_add_del_entry {
+    u32 client_index;
+    u32 context;
     u8 tlv_len_in_words;
     u8 is_add;
     u8 ver_o_c;
@@ -2155,7 +2167,7 @@ define nsh_vxlan_gpe_add_del_tunnel {
     u8 md_type;
     u8 next_protocol;
     /* in network byte order */
-    u32 spi_si;
+    u32 nsp_nsi;
     u32 c1;
     u32 c2;
     u32 c3;
@@ -2163,7 +2175,7 @@ define nsh_vxlan_gpe_add_del_tunnel {
     u32 tlvs[0];
 };
 
-define nsh_vxlan_gpe_add_del_tunnel_reply {
+define nsh_add_del_entry_reply {
     u32 context;
     i32 retval;
     u32 sw_if_index;

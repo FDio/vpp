@@ -27,8 +27,7 @@
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/gre/gre.h>
-#include <vnet/nsh-gre/nsh_gre.h>
-#include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h>
+#include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
 #include <api/vpe_msg_enum.h>
@@ -847,67 +846,6 @@ static void vl_api_mpls_gre_add_del_tunnel_reply_t_handler_json
     vam->result_ready = 1;
 }
 
-static void vl_api_nsh_gre_add_del_tunnel_reply_t_handler 
-(vl_api_nsh_gre_add_del_tunnel_reply_t * mp)
-{
-    vat_main_t * vam = &vat_main;
-    i32 retval = ntohl(mp->retval);
-    u32 sw_if_index = ntohl(mp->sw_if_index);
-
-    if (retval >= 0 && sw_if_index != (u32)~0) {
-        errmsg ("sw_if_index %d\n", ntohl(mp->sw_if_index));
-    }
-    vam->retval = retval;
-    vam->result_ready = 1;
-}
-
-static void vl_api_nsh_gre_add_del_tunnel_reply_t_handler_json
-(vl_api_nsh_gre_add_del_tunnel_reply_t * mp)
-{
-    vat_main_t * vam = &vat_main;
-    vat_json_node_t node;
-
-    vat_json_init_object(&node);
-    vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
-    vat_json_object_add_uint(&node, "sw_if_index", ntohl(mp->sw_if_index));
-
-    vat_json_print(vam->ofp, &node);
-    vat_json_free(&node);
-
-    vam->retval = ntohl(mp->retval);
-    vam->result_ready = 1;
-}
-
-static void vl_api_nsh_vxlan_gpe_add_del_tunnel_reply_t_handler 
-(vl_api_nsh_vxlan_gpe_add_del_tunnel_reply_t * mp)
-{
-    vat_main_t * vam = &vat_main;
-    i32 retval = ntohl(mp->retval);
-    u32 sw_if_index = ntohl(mp->sw_if_index);
-
-    if (retval >= 0 && sw_if_index != (u32)~0) {
-        errmsg ("sw_if_index %d\n", ntohl(mp->sw_if_index));
-    }
-    vam->retval = retval;
-    vam->result_ready = 1;
-}
-
-static void vl_api_nsh_vxlan_gpe_add_del_tunnel_reply_t_handler_json
-(vl_api_nsh_vxlan_gpe_add_del_tunnel_reply_t * mp)
-{
-    vat_main_t * vam = &vat_main;
-    vat_json_node_t node;
-
-    vat_json_init_object(&node);
-    vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
-    vat_json_object_add_uint(&node, "sw_if_index", ntohl(mp->sw_if_index));
-
-    vat_json_print(vam->ofp, &node);
-    vat_json_free(&node);
-
-    vam->retval = ntohl(mp->retval);
-    vam->result_ready = 1;
-}
 
 static void vl_api_show_version_reply_t_handler 
 (vl_api_show_version_reply_t * mp)
@@ -2195,7 +2133,7 @@ _(set_arp_neighbor_limit_reply)                         \
 _(l2_patch_add_del_reply)                               \
 _(sr_tunnel_add_del_reply)                              \
 _(sr_policy_add_del_reply)                              \
-_(sr_multicast_map_add_del_reply)                              \
+_(sr_multicast_map_add_del_reply)                       \
 _(classify_add_del_session_reply)                       \
 _(classify_set_interface_ip_table_reply)                \
 _(classify_set_interface_l2_tables_reply)               \
@@ -2239,6 +2177,7 @@ _(lisp_add_del_map_resolver_reply)                      \
 _(lisp_gpe_enable_disable_reply)                        \
 _(lisp_gpe_add_del_iface_reply)                         \
 _(lisp_enable_disable_reply)                            \
+_(vxlan_gpe_add_del_tunnel_reply)			\
 _(af_packet_create_reply)                               \
 _(af_packet_delete_reply)
 
@@ -2366,9 +2305,8 @@ _(CREATE_VHOST_USER_IF_REPLY, create_vhost_user_if_reply)               \
 _(MODIFY_VHOST_USER_IF_REPLY, modify_vhost_user_if_reply)               \
 _(DELETE_VHOST_USER_IF_REPLY, delete_vhost_user_if_reply)               \
 _(SHOW_VERSION_REPLY, show_version_reply)                               \
-_(NSH_GRE_ADD_DEL_TUNNEL_REPLY, nsh_gre_add_del_tunnel_reply)		\
 _(L2_FIB_TABLE_ENTRY, l2_fib_table_entry)				\
-_(NSH_VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, nsh_vxlan_gpe_add_del_tunnel_reply) \
+_(VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)	\
 _(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
 _(WANT_IP4_ARP_EVENTS_REPLY, want_ip4_arp_events_reply)			\
 _(IP4_ARP_EVENT, ip4_arp_event)                                         \
@@ -7935,312 +7873,75 @@ static int api_show_version (vat_main_t * vam)
     return 0;
 }
 
-static uword unformat_nsh_gre_decap_next 
-(unformat_input_t * input, va_list * args)
-{
-  u32 * result = va_arg (*args, u32 *);
-  u32 tmp;
-  
-  if (unformat (input, "drop"))
-    *result = NSH_GRE_INPUT_NEXT_DROP;
-  else if (unformat (input, "ip4"))
-    *result = NSH_GRE_INPUT_NEXT_IP4_INPUT;
-  else if (unformat (input, "ip6"))
-    *result = NSH_GRE_INPUT_NEXT_IP6_INPUT;
-  else if (unformat (input, "ethernet"))
-    *result = NSH_GRE_INPUT_NEXT_ETHERNET_INPUT;
-  else if (unformat (input, "%d", &tmp))
-    *result = tmp;
-  else
-    return 0;
-  return 1;
-}
 
-static int api_nsh_gre_add_del_tunnel (vat_main_t * vam)
+static int api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
 {
     unformat_input_t * line_input = vam->input;
-    vl_api_nsh_gre_add_del_tunnel_t *mp;
+    vl_api_vxlan_gpe_add_del_tunnel_t *mp;
     f64 timeout;
-    ip4_address_t src, dst;
+    ip4_address_t local, remote;
     u8 is_add = 1;
-    u8 src_set = 0;
-    u8 dst_set = 0;
+    u8 local_set = 0;
+    u8 remote_set = 0;
     u32 encap_vrf_id = 0;
     u32 decap_vrf_id = 0;
-    u8 ver_o_c = 0;
-    u8 md_type = 0;
-    u8 next_protocol = 1; /* ip4 */
-    u32 spi;
-    u8 spi_set = 0;
-    u32 si;
-    u8 si_set = 0;
-    u32 spi_si;
-    u32 c1 = 0;
-    u32 c2 = 0;
-    u32 c3 = 0;
-    u32 c4 = 0;
-    u32 *tlvs = 0;
-    u32 decap_next_index = NSH_GRE_INPUT_NEXT_IP4_INPUT;
-    u32 tmp;
-    int i;
-
-    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
-        if (unformat (line_input, "del"))
-            is_add = 0;
-        else if (unformat (line_input, "src %U", 
-                           unformat_ip4_address, &src))
-            src_set = 1;
-        else if (unformat (line_input, "dst %U",
-                           unformat_ip4_address, &dst))
-            dst_set = 1;
-        else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
-            ;
-        else if (unformat (line_input, "decap-vrf-id %d", &decap_vrf_id))
-            ;
-        else if (unformat (line_input, "decap-next %U", 
-                           unformat_nsh_gre_decap_next, &decap_next_index))
-            ;
-        else if (unformat (line_input, "version %d", &tmp))
-            ver_o_c |= (tmp & 3) << 6;
-        else if (unformat (line_input, "o-bit %d", &tmp))
-            ver_o_c |= (tmp & 1) << 5;
-        else if (unformat (line_input, "c-bit %d", &tmp))
-            ver_o_c |= (tmp & 1) << 4;
-        else if (unformat (line_input, "md-type %d", &tmp))
-            md_type = tmp;
-        else if (unformat(line_input, "next-ip4"))
-            next_protocol = 1;
-        else if (unformat(line_input, "next-ip6"))
-            next_protocol = 2;
-        else if (unformat(line_input, "next-ethernet"))
-            next_protocol = 3;
-        else if (unformat (line_input, "c1 %d", &c1))
-            ;
-        else if (unformat (line_input, "c2 %d", &c2))
-            ;
-        else if (unformat (line_input, "c3 %d", &c3))
-            ;
-        else if (unformat (line_input, "c4 %d", &c4))
-            ;
-        else if (unformat (line_input, "spi %d", &spi))
-            spi_set = 1;
-        else if (unformat (line_input, "si %d", &si))
-            si_set = 1;
-        else if (unformat (line_input, "tlv %x"))
-            vec_add1 (tlvs, tmp);
-        else {
-            errmsg ("parse error '%U'\n", format_unformat_error, line_input);
-            return -99;
-        }
-    }
-
-    if (src_set == 0) {
-        errmsg ("tunnel src address not specified\n");
-        return -99;
-    }
-    if (dst_set == 0) {
-        errmsg ("tunnel dst address not specified\n");
-        return -99;
-    }
-
-    if (spi_set == 0) {
-        errmsg ("spi not specified\n");
-        return -99;
-    }
-
-    if (si_set == 0) {
-        errmsg ("si not specified\n");
-        return -99;
-    }
-
-    M2 (NSH_GRE_ADD_DEL_TUNNEL, nsh_gre_add_del_tunnel,
-        sizeof(u32) * vec_len (tlvs));
-    
-    spi_si = (spi<<8) | si;
-
-    mp->src = src.as_u32;
-    mp->dst = dst.as_u32;
-    mp->encap_vrf_id = ntohl(encap_vrf_id);
-    mp->decap_vrf_id = ntohl(decap_vrf_id);
-    mp->decap_next_index = ntohl(decap_next_index);
-    mp->tlv_len_in_words = vec_len (tlvs);
-    mp->is_add = is_add;
-    mp->ver_o_c = ver_o_c;
-    mp->length = 6 + vec_len(tlvs);
-    mp->md_type = md_type;
-    mp->next_protocol = next_protocol;
-    mp->spi_si = ntohl(spi_si);
-    mp->c1 = ntohl(c1);
-    mp->c2 = ntohl(c2);
-    mp->c3 = ntohl(c3);
-    mp->c4 = ntohl(c4);
-    
-    for (i = 0; i < vec_len(tlvs); i++)
-        mp->tlvs[i] = ntohl(tlvs[i]);
-
-    vec_free (tlvs);
-
-    S; W;
-    /* NOTREACHED */
-    return 0;
-}
-
-static uword unformat_nsh_vxlan_gpe_decap_next 
-(unformat_input_t * input, va_list * args)
-{
-  u32 * result = va_arg (*args, u32 *);
-  u32 tmp;
-  
-  if (unformat (input, "drop"))
-    *result = NSH_VXLAN_GPE_INPUT_NEXT_DROP;
-  else if (unformat (input, "ip4"))
-    *result = NSH_VXLAN_GPE_INPUT_NEXT_IP4_INPUT;
-  else if (unformat (input, "ip6"))
-    *result = NSH_VXLAN_GPE_INPUT_NEXT_IP6_INPUT;
-  else if (unformat (input, "ethernet"))
-    *result = NSH_VXLAN_GPE_INPUT_NEXT_ETHERNET_INPUT;
-  else if (unformat (input, "nsh-vxlan-gpe"))
-      *result = NSH_VXLAN_GPE_INPUT_NEXT_ETHERNET_INPUT;
-  else if (unformat (input, "%d", &tmp))
-    *result = tmp;
-  else
-    return 0;
-  return 1;
-}
-
-static int api_nsh_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
-{
-    unformat_input_t * line_input = vam->input;
-    vl_api_nsh_vxlan_gpe_add_del_tunnel_t *mp;
-    f64 timeout;
-    ip4_address_t src, dst;
-    u8 is_add = 1;
-    u8 src_set = 0;
-    u8 dst_set = 0;
-    u32 encap_vrf_id = 0;
-    u32 decap_vrf_id = 0;
-    u8 ver_o_c = 0;
-    u8 md_type = 0;
-    u8 next_protocol = 1; /* ip4 */
-    u32 spi;
-    u8 spi_set = 0;
-    u32 si;
-    u8 si_set = 0;
-    u32 spi_si;
-    u32 c1 = 0;
-    u32 c2 = 0;
-    u32 c3 = 0;
-    u32 c4 = 0;
-    u32 *tlvs = 0;
-    u32 decap_next_index = NSH_GRE_INPUT_NEXT_IP4_INPUT;
+    u8 protocol = ~0;
     u32 vni;
     u8 vni_set = 0;
-    u32 tmp;
-    int i;
 
     while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
         if (unformat (line_input, "del"))
             is_add = 0;
-        else if (unformat (line_input, "src %U", 
-                           unformat_ip4_address, &src))
-            src_set = 1;
-        else if (unformat (line_input, "dst %U",
-                           unformat_ip4_address, &dst))
-            dst_set = 1;
+        else if (unformat (line_input, "local %U", 
+                           unformat_ip4_address, &local))
+            local_set = 1;
+        else if (unformat (line_input, "remote %U",
+                           unformat_ip4_address, &remote))
+            remote_set = 1;
         else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
             ;
         else if (unformat (line_input, "decap-vrf-id %d", &decap_vrf_id))
-            ;
-        else if (unformat (line_input, "decap-next %U", 
-                           unformat_nsh_vxlan_gpe_decap_next, 
-                           &decap_next_index))
             ;
         else if (unformat (line_input, "vni %d", &vni))
             vni_set = 1;
-        else if (unformat (line_input, "version %d", &tmp))
-            ver_o_c |= (tmp & 3) << 6;
-        else if (unformat (line_input, "o-bit %d", &tmp))
-            ver_o_c |= (tmp & 1) << 5;
-        else if (unformat (line_input, "c-bit %d", &tmp))
-            ver_o_c |= (tmp & 1) << 4;
-        else if (unformat (line_input, "md-type %d", &tmp))
-            md_type = tmp;
         else if (unformat(line_input, "next-ip4"))
-            next_protocol = 1;
+            protocol = 1;
         else if (unformat(line_input, "next-ip6"))
-            next_protocol = 2;
+            protocol = 2;
         else if (unformat(line_input, "next-ethernet"))
-            next_protocol = 3;
-        else if (unformat (line_input, "c1 %d", &c1))
-            ;
-        else if (unformat (line_input, "c2 %d", &c2))
-            ;
-        else if (unformat (line_input, "c3 %d", &c3))
-            ;
-        else if (unformat (line_input, "c4 %d", &c4))
-            ;
-        else if (unformat (line_input, "spi %d", &spi))
-            spi_set = 1;
-        else if (unformat (line_input, "si %d", &si))
-            si_set = 1;
-        else if (unformat (line_input, "tlv %x"))
-            vec_add1 (tlvs, tmp);
+            protocol = 3;
+        else if (unformat(line_input, "next-nsh"))
+            protocol = 4;
         else {
             errmsg ("parse error '%U'\n", format_unformat_error, line_input);
             return -99;
         }
     }
 
-    if (src_set == 0) {
-        errmsg ("tunnel src address not specified\n");
+    if (local_set == 0) {
+        errmsg ("tunnel local address not specified\n");
         return -99;
     }
-    if (dst_set == 0) {
-        errmsg ("tunnel dst address not specified\n");
-        return -99;
-    }
-
-    if (spi_set == 0) {
-        errmsg ("spi not specified\n");
+    if (remote_set == 0) {
+        errmsg ("tunnel remote address not specified\n");
         return -99;
     }
 
-    if (si_set == 0) {
-        errmsg ("si not specified\n");
-        return -99;
-    }
     if (vni_set == 0) {
         errmsg ("vni not specified\n");
         return -99;
     }
 
-    M2 (NSH_VXLAN_GPE_ADD_DEL_TUNNEL, nsh_vxlan_gpe_add_del_tunnel,
-        sizeof(u32) * vec_len (tlvs));
+    M(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel);
     
-    spi_si = (spi<<8) | si;
-
-    mp->src = src.as_u32;
-    mp->dst = dst.as_u32;
+    mp->local = local.as_u32;
+    mp->remote = remote.as_u32;
     mp->encap_vrf_id = ntohl(encap_vrf_id);
     mp->decap_vrf_id = ntohl(decap_vrf_id);
-    mp->decap_next_index = ntohl(decap_next_index);
-    mp->tlv_len_in_words = vec_len (tlvs);
+    mp->protocol = ntohl(protocol);
     mp->vni = ntohl(vni);
     mp->is_add = is_add;
-    mp->ver_o_c = ver_o_c;
-    mp->length = 6 + vec_len(tlvs);
-    mp->md_type = md_type;
-    mp->next_protocol = next_protocol;
-    mp->spi_si = ntohl(spi_si);
-    mp->c1 = ntohl(c1);
-    mp->c2 = ntohl(c2);
-    mp->c3 = ntohl(c3);
-    mp->c4 = ntohl(c4);
-    
-    for (i = 0; i < vec_len(tlvs); i++)
-        mp->tlvs[i] = ntohl(tlvs[i]);
 
-    vec_free (tlvs);
 
     S; W;
     /* NOTREACHED */
@@ -10785,18 +10486,10 @@ _(modify_vhost_user_if,                                                 \
 _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
 _(sw_interface_vhost_user_dump, "")                                     \
 _(show_version, "")                                                     \
-_(nsh_gre_add_del_tunnel,                                               \
-  "src <ip4-addr> dst <ip4-addr>"                                       \
-  "c1 <nn> c2 <nn> c3 <nn> c4 <nn> spi <nn> si <nn>\n"                  \
-  "[encap-fib-id <nn>] [decap-fib-id <nn>] [o-bit <1|0>]\n"             \
-  "[c-bit <1|0>] [md-type <nn>][next-ip4][next-ip6][next-ethernet]\n"   \
-  "[tlv <xx>][del]")							\
-_(nsh_vxlan_gpe_add_del_tunnel,                                         \
-  "src <ip4-addr> dst <ip4-addr> vni <nn>\n"                            \
-  "c1 <nn> c2 <nn> c3 <nn> c4 <nn> spi <nn> si <nn>\n"                  \
-  "[encap-vrf-id <nn>] [decap-vrf-id <nn>] [o-bit <1|0>]\n"             \
-  "[c-bit <1|0>] [md-type <nn>][next-ip4][next-ip6][next-ethernet]\n"   \
-  "[tlv <xx>][del]")							\
+_(vxlan_gpe_add_del_tunnel,						\
+  "local <ip4-addr> remote <ip4-addr> vni <nn>\n"                       \
+    "[encap-vrf-id <nn>] [decap-vrf-id <nn>] [next-ip4][next-ip6]"	\
+  "[next-ethernet] [next-nsh]\n")					\
 _(l2_fib_table_dump, "bd_id <bridge-domain-id>")			\
 _(interface_name_renumber,                                              \
   "<intfc> | sw_if_index <nn> new_show_dev_instance <nn>")		\
