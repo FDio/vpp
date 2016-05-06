@@ -37,9 +37,12 @@ typedef enum {
 } nsh_vxlan_gpe_encap_error_t;
 
 typedef enum {
-    NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
-    NSH_VXLAN_GPE_ENCAP_NEXT_DROP,
-    NSH_VXLAN_GPE_ENCAP_N_NEXT,
+  NSH_VXLAN_GPE_ENCAP_NEXT_DROP,
+  NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
+  NSH_VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP,
+  NSH_VXLAN_GPE_ENCAP_NEXT_ETHERNET_LOOKUP,
+  NSH_VXLAN_GPE_ENCAP_NEXT_NSH_LOOKUP,
+  NSH_VXLAN_GPE_ENCAP_N_NEXT
 } nsh_vxlan_gpe_encap_next_t;
 
 typedef struct {
@@ -281,7 +284,7 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t * b0;
 	  u32 next0 = NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
-      u32 sw_if_index0, len0;
+	  u32 sw_if_index0, len0;
           vnet_hw_interface_t * hi0;
           ip4_header_t * ip0;
           udp_header_t * udp0;
@@ -301,7 +304,7 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
           /* 1-wide cache? */
-          sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
+	  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
           hi0 = vnet_get_sup_hw_interface
             (vnm, vnet_buffer(b0)->sw_if_index[VLIB_TX]);
 
@@ -354,32 +357,33 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 
           /* Reset to look up tunnel partner in the configured FIB */
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
-          vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
+	  vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
           pkts_encapsulated ++;
 
-          len0 = vlib_buffer_length_in_chain(vm, b0);
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
-
-          /* Batch stats increment on the same vxlan tunnel so counter is not
-           incremented per packet. Note stats are still incremented for deleted
-           and admin-down tunnel where packets are dropped. It is not worthwhile
-           to check for this rare case and affect normal path performance. */
-          if (PREDICT_FALSE(sw_if_index0 != stats_sw_if_index)) {
-            stats_n_packets -= 1;
-            stats_n_bytes -= len0;
-            if (stats_n_packets)
-              vlib_increment_combined_counter(
-                  im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-                  cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
-            stats_n_packets = 1;
-            stats_n_bytes = len0;
-            stats_sw_if_index = sw_if_index0;
-          }
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-              nsh_vxlan_gpe_encap_trace_t *tr =
-                vlib_add_trace (vm, node, b0, sizeof (*tr));
+	  len0 = vlib_buffer_length_in_chain(vm, b0); 
+	  stats_n_packets += 1; 
+	  stats_n_bytes += len0; 
+	  
+          /* Batch stats increment on the same vxlan tunnel so counter is not 
+	   *  incremented per packet. Note stats are still incremented for deleted 
+	   *  and admin-down tunnel where packets are dropped. It is not worthwhile 
+	   *  to check for this rare case and affect normal path performance. */ 
+	  if (PREDICT_FALSE(sw_if_index0 != stats_sw_if_index)) 
+	    { 
+	      stats_n_packets -= 1; 
+	      stats_n_bytes -= len0; 
+	      if (stats_n_packets) 
+		vlib_increment_combined_counter( 
+						im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX, 
+						cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes); 
+	      stats_n_packets = 1;
+	      stats_n_bytes = len0; 
+	      stats_sw_if_index = sw_if_index0; 
+	    } 
+	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      nsh_vxlan_gpe_encap_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->tunnel_index = t0 - ngm->tunnels;
             }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -393,12 +397,12 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
                                NSH_VXLAN_GPE_ENCAP_ERROR_ENCAPSULATED,
                                pkts_encapsulated);
   /* Increment any remaining batch stats */
-  if (stats_n_packets) {
-    vlib_increment_combined_counter(
-        im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX, cpu_index,
-        stats_sw_if_index, stats_n_packets, stats_n_bytes);
-    node->runtime_data[0] = stats_sw_if_index;
-  }
+  if (stats_n_packets) { 
+    vlib_increment_combined_counter( 
+				    im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX, cpu_index, 
+				    stats_sw_if_index, stats_n_packets, stats_n_bytes); 
+    node->runtime_data[0] = stats_sw_if_index; 
+  } 
 
   return from_frame->n_vectors;
 }
@@ -416,7 +420,12 @@ VLIB_REGISTER_NODE (nsh_vxlan_gpe_encap_node) = {
   .n_next_nodes = NSH_VXLAN_GPE_ENCAP_N_NEXT,
 
   .next_nodes = {
-        [NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
         [NSH_VXLAN_GPE_ENCAP_NEXT_DROP] = "error-drop",
+        [NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
+        [NSH_VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP] = "ip6-lookup",
+        [NSH_VXLAN_GPE_ENCAP_NEXT_ETHERNET_LOOKUP] = "ethernet-input",
+        [NSH_VXLAN_GPE_ENCAP_NEXT_NSH_LOOKUP] = "nsh-input-map",
+
   },
 };
+ 

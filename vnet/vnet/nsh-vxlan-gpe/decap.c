@@ -535,3 +535,139 @@ VLIB_REGISTER_NODE (nsh_vxlan_gpe_input_node) = {
   .format_trace = format_nsh_vxlan_gpe_rx_trace,
   // $$$$ .unformat_buffer = unformat_nsh_vxlan_gpe_header,
 };
+
+
+
+/* alagalah
+   This gets ripped out and taken to NSH node in subsequent patch
+
+ */
+
+
+/* Statistics (not really errors) */
+#define foreach_nsh_input_error    \
+_(MAPPED, "NSH header found and mapped")
+
+static char * nsh_input_error_strings[] = {
+#define _(sym,string) string,
+  foreach_nsh_input_error
+#undef _
+};
+
+typedef enum {
+#define _(sym,str) NSH_INPUT_ERROR_##sym,
+    foreach_nsh_input_error
+#undef _
+    NSH_INPUT_N_ERROR,
+} nsh_input_error_t;
+
+typedef enum {
+    NSH_INPUT_NEXT_ETHERNET_LOOKUP,
+    NSH_INPUT_NEXT_IP4_LOOKUP,
+    NSH_INPUT_NEXT_IP6_LOOKUP,
+    NSH_INPUT_NEXT_DROP,
+    NSH_INPUT_N_NEXT,
+} nsh_input_next_t;
+
+typedef struct {
+  nsh_header_t nsh_header;
+} nsh_input_trace_t;
+
+u8 * format_nsh_input_map_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nsh_input_trace_t * t 
+      = va_arg (*args, nsh_input_trace_t *);
+
+  s = format (s, "NSH-INPUT: NSPNSI %d", t->nsh_header.spi_si);
+  return s;
+}
+
+static uword
+nsh_input_map (vlib_main_t * vm,
+               vlib_node_runtime_t * node,
+               vlib_frame_t * from_frame)
+{
+  u32 n_left_from, next_index, * from, * to_next;
+  u32 pkts_encapsulated = 0;
+
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index,
+			   to_next, n_left_to_next);
+
+      while (0 && n_left_from >= 4 && n_left_to_next >= 2)
+	{
+
+	}
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t * b0;
+	  u32 next0 = NSH_INPUT_NEXT_IP4_LOOKUP;
+	  
+	  next_index = next0; // alagalah todo stub
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  (void) b0 ; //alagalah stub
+          
+          /* Apply the rewrite string. $$$$ vnet_rewrite? */
+          //vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));
+
+	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      nsh_input_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+              tr->nsh_header.spi_si = ~0; // alagalah todo stub
+            }
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+    }
+
+  vlib_node_increment_counter (vm, node->node_index,
+                               NSH_INPUT_ERROR_MAPPED,
+                               pkts_encapsulated);
+
+  return from_frame->n_vectors;
+};
+
+VLIB_REGISTER_NODE (nsh_input_node) = {
+  .function = nsh_input_map,
+  .name = "nsh-input",
+  .vector_size = sizeof (u32),
+  .format_trace = format_nsh_input_map_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(nsh_input_error_strings),
+  .error_strings = nsh_input_error_strings,
+
+  .n_next_nodes = NSH_INPUT_N_NEXT,
+
+  .next_nodes = {
+        [NSH_INPUT_NEXT_ETHERNET_LOOKUP] = "ethernet-input",
+        [NSH_INPUT_NEXT_IP4_LOOKUP] = "ip4-lookup",
+        [NSH_INPUT_NEXT_IP6_LOOKUP] = "ip4-lookup",
+        [NSH_INPUT_NEXT_DROP] = "error-drop",
+  },
+};

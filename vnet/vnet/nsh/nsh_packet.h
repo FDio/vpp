@@ -78,7 +78,7 @@ typedef CLIB_PACKED(struct {
   u32 c1; u32 c2; u32 c3; u32 c4;
 
   /* Optional variable length metadata */
-  u32 * tlvs;
+  u32 tlvs[0];
 }) nsh_header_t;
 
 #define NSH_O_BIT (1<<5)

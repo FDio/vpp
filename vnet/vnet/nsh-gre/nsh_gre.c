@@ -160,8 +160,8 @@ _(spi_si)					\
 _(c1)						\
 _(c2)						\
 _(c3)						\
-_(c4)						\
-_(tlvs)
+_(c4)
+/* alagalah TODO : temp killing _(tlvs) as its causing me pain */
 
 #define foreach_32bit_field			\
 _(spi_si)                                       \

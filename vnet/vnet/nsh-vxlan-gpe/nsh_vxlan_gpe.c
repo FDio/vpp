@@ -156,8 +156,8 @@ _(spi_si)					\
 _(c1)						\
 _(c2)						\
 _(c3)						\
-_(c4)						\
-_(tlvs)
+_(c4)						
+/* alagalah TODO - temp killing tlvs as its causing me pain */
 
 #define foreach_32bit_field			\
 _(spi_si)                                       \
@@ -174,7 +174,7 @@ static int nsh_vxlan_gpe_rewrite (nsh_vxlan_gpe_tunnel_t * t)
   ip4_vxlan_gpe_and_nsh_header_t * h0;
   int len;
 
-  len = sizeof (*h0) + vec_len(t->nsh_hdr.tlvs)*4;
+  len = sizeof (*h0) + vec_len(&t->nsh_hdr.tlvs[0])*4;
 
   vec_validate_aligned (rw, len-1, CLIB_CACHE_LINE_BYTES);
 
@@ -218,12 +218,9 @@ static int nsh_vxlan_gpe_rewrite (nsh_vxlan_gpe_tunnel_t * t)
 #undef _
 
   /* fix nsh header length */
-  t->nsh_hdr.length = 6 + vec_len(t->nsh_hdr.tlvs);
-  nsh0->length = t->nsh_hdr.length;
 
-  /* Copy any TLVs */
-  if (vec_len(t->nsh_hdr.tlvs))
-    clib_memcpy (nsh0->tlvs, t->nsh_hdr.tlvs, 4*vec_len(t->nsh_hdr.tlvs));
+  t->nsh_hdr.length = 6;
+  nsh0->length = t->nsh_hdr.length;
 
   t->rewrite = rw;
   return (0);
@@ -243,7 +240,7 @@ int vnet_nsh_vxlan_gpe_add_del_tunnel
   nsh_vxlan_gpe_tunnel_key_t key, *key_copy;
   hash_pair_t *hp;
   
-  key.src = a->dst.as_u32; /* decap src in key is encap dst in config */
+  key.src = a->src.as_u32; 
   key.vni = clib_host_to_net_u32 (a->vni << 8);
   key.spi_si = clib_host_to_net_u32(a->nsh_hdr.spi_si);
   key.pad = 0;
@@ -272,6 +269,9 @@ int vnet_nsh_vxlan_gpe_add_del_tunnel
       foreach_copy_nshhdr_field;
 #undef _
       
+      
+      t->nsh_hdr.tlvs[0] = 0;
+
       rv = nsh_vxlan_gpe_rewrite (t);
 
       if (rv)
@@ -500,6 +500,8 @@ nsh_vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
   foreach_copy_nshhdr_field;
 #undef _
   
+  a->nsh_hdr.tlvs[0] = 0 ; // alagalah TODO FIX ME this shouldn't be set 0
+
   rv = vnet_nsh_vxlan_gpe_add_del_tunnel (a, 0 /* hw_if_indexp */);
 
   switch(rv)
