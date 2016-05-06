@@ -17,52 +17,57 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/nsh-gre/nsh_gre.h>
+#include <vnet/vxlan-gpe/vxlan_gpe.h>
 
 /* Statistics (not really errors) */
-#define foreach_nsh_gre_encap_error             \
+#define foreach_vxlan_gpe_encap_error    \
 _(ENCAPSULATED, "good packets encapsulated")
 
-static char * nsh_gre_encap_error_strings[] = {
+static char * vxlan_gpe_encap_error_strings[] = {
 #define _(sym,string) string,
-  foreach_nsh_gre_encap_error
+  foreach_vxlan_gpe_encap_error
 #undef _
 };
 
 typedef enum {
-#define _(sym,str) NSH_GRE_ENCAP_ERROR_##sym,
-    foreach_nsh_gre_encap_error
+#define _(sym,str) VXLAN_GPE_ENCAP_ERROR_##sym,
+    foreach_vxlan_gpe_encap_error
 #undef _
-    NSH_GRE_ENCAP_N_ERROR,
-} nsh_gre_encap_error_t;
+    VXLAN_GPE_ENCAP_N_ERROR,
+} vxlan_gpe_encap_error_t;
 
 typedef enum {
-    NSH_GRE_ENCAP_NEXT_IP4_LOOKUP,
-    NSH_GRE_ENCAP_NEXT_DROP,
-    NSH_GRE_ENCAP_N_NEXT,
-} nsh_gre_encap_next_t;
+  VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
+  VXLAN_GPE_ENCAP_NEXT_DROP,
+  VXLAN_GPE_ENCAP_N_NEXT
+} vxlan_gpe_encap_next_t;
 
 typedef struct {
   u32 tunnel_index;
-} nsh_gre_encap_trace_t;
+} vxlan_gpe_encap_trace_t;
 
-u8 * format_nsh_gre_encap_trace (u8 * s, va_list * args)
+
+u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  nsh_gre_encap_trace_t * t = va_arg (*args, nsh_gre_encap_trace_t *);
+  vxlan_gpe_encap_trace_t * t 
+      = va_arg (*args, vxlan_gpe_encap_trace_t *);
 
-  s = format (s, "NSH-GRE-ENCAP: tunnel %d", t->tunnel_index);
+  s = format (s, "VXLAN-GPE-ENCAP: tunnel %d", t->tunnel_index);
   return s;
 }
 
+#define foreach_fixed_header_offset             \
+_(0) _(1) _(2) _(3) _(4) _(5) _(6)
+
 static uword
-nsh_gre_encap (vlib_main_t * vm,
+vxlan_gpe_encap (vlib_main_t * vm,
                vlib_node_runtime_t * node,
                vlib_frame_t * from_frame)
 {
   u32 n_left_from, next_index, * from, * to_next;
-  nsh_gre_main_t * ngm = &nsh_gre_main;
+  vxlan_gpe_main_t * ngm = &vxlan_gpe_main;
   vnet_main_t * vnm = ngm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
   u32 pkts_encapsulated = 0;
@@ -88,14 +93,17 @@ nsh_gre_encap (vlib_main_t * vm,
 	{
           u32 bi0, bi1;
 	  vlib_buffer_t * b0, * b1;
-	  u32 next0 = NSH_GRE_ENCAP_NEXT_IP4_LOOKUP;
-	  u32 next1 = NSH_GRE_ENCAP_NEXT_IP4_LOOKUP;
+	  u32 next0 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
+          u32 next1 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
           u32 sw_if_index0, sw_if_index1, len0, len1;
           vnet_hw_interface_t * hi0, * hi1;
           ip4_header_t * ip0, * ip1;
+          udp_header_t * udp0, * udp1;
           u64 * copy_src0, * copy_dst0;
           u64 * copy_src1, * copy_dst1;
-          nsh_gre_tunnel_t * t0, * t1;
+          u32 * copy_src_last0, * copy_dst_last0;
+          u32 * copy_src_last1, * copy_dst_last1;
+          vxlan_gpe_tunnel_t * t0, * t1;
           u16 new_l0, new_l1;
           ip_csum_t sum0, sum1;
 
@@ -130,7 +138,7 @@ nsh_gre_encap (vlib_main_t * vm,
           sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_TX];
           hi0 = vnet_get_sup_hw_interface
             (vnm, vnet_buffer(b0)->sw_if_index[VLIB_TX]);
-          hi1 = vnet_get_sup_hw_interface 
+          hi1 = vnet_get_sup_hw_interface
             (vnm, vnet_buffer(b1)->sw_if_index[VLIB_TX]);
 
           t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
@@ -151,24 +159,35 @@ nsh_gre_encap (vlib_main_t * vm,
           copy_dst1 = (u64 *) ip1;
           copy_src1 = (u64 *) t1->rewrite;
 
-          copy_dst0[0] = copy_src0[0];
-          copy_dst0[1] = copy_src0[1];
-          copy_dst0[2] = copy_src0[2];
+          ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
 
-          copy_dst1[0] = copy_src1[0];
-          copy_dst1[1] = copy_src1[1];
-          copy_dst1[2] = copy_src1[2];
+          /* Copy first 36 octets 8-bytes at a time */
+#define _(offs) copy_dst0[offs] = copy_src0[offs];
+          foreach_fixed_header_offset;
+#undef _
+#define _(offs) copy_dst1[offs] = copy_src1[offs];
+          foreach_fixed_header_offset;
+#undef _
+
+          /* Last 4 octets. Hopefully gcc will be our friend */
+          copy_dst_last0 = (u32 *)(&copy_dst0[7]);
+          copy_src_last0 = (u32 *)(&copy_src0[7]);
+          copy_dst_last1 = (u32 *)(&copy_dst1[7]);
+          copy_src_last1 = (u32 *)(&copy_src1[7]);
           
+          copy_dst_last0[0] = copy_src_last0[0];
+          copy_dst_last1[0] = copy_src_last1[0];
+
           /* If there are TLVs to copy, do so */
-          if (PREDICT_FALSE (_vec_len(t0->rewrite) > 24))
-            clib_memcpy (&copy_dst0[3], t0->rewrite + 24 , 
-                    _vec_len (t0->rewrite)-24);
+          if (PREDICT_FALSE (_vec_len(t0->rewrite) > 64))
+            clib_memcpy (&copy_dst0[3], t0->rewrite + 64 , 
+                    _vec_len (t0->rewrite)-64);
 
-          if (PREDICT_FALSE (_vec_len(t1->rewrite) > 24))
-            clib_memcpy (&copy_dst1[3], t1->rewrite + 24 , 
-                    _vec_len (t1->rewrite)-24);
+          if (PREDICT_FALSE (_vec_len(t1->rewrite) > 64))
+            clib_memcpy (&copy_dst0[3], t1->rewrite + 64 , 
+                    _vec_len (t1->rewrite)-64);
 
-          /* fix the <bleep>ing outer-IP checksums */
+          /* fix the <bleep>ing outer-IP checksum */
           sum0 = ip0->checksum;
           /* old_l0 always 0, see the rewrite setup */
           new_l0 = 
@@ -180,7 +199,7 @@ nsh_gre_encap (vlib_main_t * vm,
           ip0->length = new_l0;
 
           sum1 = ip1->checksum;
-          /* old_l1 always 1, see the rewrite setup */
+          /* old_l1 always 0, see the rewrite setup */
           new_l1 = 
             clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
           
@@ -188,6 +207,17 @@ nsh_gre_encap (vlib_main_t * vm,
                                  length /* changed member */);
           ip1->checksum = ip_csum_fold (sum1);
           ip1->length = new_l1;
+          
+          /* Fix UDP length */
+          udp0 = (udp_header_t *)(ip0+1);
+          new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                         - sizeof (*ip0));
+          udp1 = (udp_header_t *)(ip1+1);
+          new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
+                                         - sizeof (*ip1));
+
+          udp0->length = new_l0;
+          udp1->length = new_l1;
 
           /* Reset to look up tunnel partner in the configured FIB */
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
@@ -230,14 +260,14 @@ nsh_gre_encap (vlib_main_t * vm,
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              nsh_gre_encap_trace_t *tr = 
+              vxlan_gpe_encap_trace_t *tr =
                 vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->tunnel_index = t0 - ngm->tunnels;
             }
 
-          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
             {
-              nsh_gre_encap_trace_t *tr = 
+              vxlan_gpe_encap_trace_t *tr =
                 vlib_add_trace (vm, node, b1, sizeof (*tr));
               tr->tunnel_index = t1 - ngm->tunnels;
             }
@@ -246,17 +276,19 @@ nsh_gre_encap (vlib_main_t * vm,
 					   to_next, n_left_to_next,
 					   bi0, bi1, next0, next1);
 	}
-    
+
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
 	  vlib_buffer_t * b0;
-	  u32 next0 = NSH_GRE_ENCAP_NEXT_IP4_LOOKUP;
-      u32 sw_if_index0, len0;
+	  u32 next0 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
+	  u32 sw_if_index0, len0;
           vnet_hw_interface_t * hi0;
           ip4_header_t * ip0;
+          udp_header_t * udp0;
           u64 * copy_src0, * copy_dst0;
-          nsh_gre_tunnel_t * t0;
+          u32 * copy_src_last0, * copy_dst_last0;
+          vxlan_gpe_tunnel_t * t0;
           u16 new_l0;
           ip_csum_t sum0;
 
@@ -270,7 +302,7 @@ nsh_gre_encap (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
           /* 1-wide cache? */
-          sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
+	  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
           hi0 = vnet_get_sup_hw_interface
             (vnm, vnet_buffer(b0)->sw_if_index[VLIB_TX]);
 
@@ -285,14 +317,23 @@ nsh_gre_encap (vlib_main_t * vm,
           /* Copy the fixed header */
           copy_dst0 = (u64 *) ip0;
           copy_src0 = (u64 *) t0->rewrite;
-          copy_dst0[0] = copy_src0[0];
-          copy_dst0[1] = copy_src0[1];
-          copy_dst0[2] = copy_src0[2];
+
+          ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
+
+          /* Copy first 36 octets 8-bytes at a time */
+#define _(offs) copy_dst0[offs] = copy_src0[offs];
+          foreach_fixed_header_offset;
+#undef _
+          /* Last 4 octets. Hopefully gcc will be our friend */
+          copy_dst_last0 = (u32 *)(&copy_dst0[7]);
+          copy_src_last0 = (u32 *)(&copy_src0[7]);
           
+          copy_dst_last0[0] = copy_src_last0[0];
+
           /* If there are TLVs to copy, do so */
-          if (PREDICT_FALSE (_vec_len(t0->rewrite) > 24))
-            clib_memcpy (&copy_dst0[3], t0->rewrite + 24 , 
-                    _vec_len (t0->rewrite)-24);
+          if (PREDICT_FALSE (_vec_len(t0->rewrite) > 64))
+            clib_memcpy (&copy_dst0[3], t0->rewrite + 64 , 
+                    _vec_len (t0->rewrite)-64);
 
           /* fix the <bleep>ing outer-IP checksum */
           sum0 = ip0->checksum;
@@ -305,34 +346,42 @@ nsh_gre_encap (vlib_main_t * vm,
           ip0->checksum = ip_csum_fold (sum0);
           ip0->length = new_l0;
 
+          /* Fix UDP length */
+          udp0 = (udp_header_t *)(ip0+1);
+          new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                         - sizeof (*ip0));
+
+          udp0->length = new_l0;
+
           /* Reset to look up tunnel partner in the configured FIB */
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
-          vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
+	  vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
           pkts_encapsulated ++;
 
-          len0 = vlib_buffer_length_in_chain(vm, b0);
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
-
-          /* Batch stats increment on the same vxlan tunnel so counter is not
-           incremented per packet. Note stats are still incremented for deleted
-           and admin-down tunnel where packets are dropped. It is not worthwhile
-           to check for this rare case and affect normal path performance. */
-          if (PREDICT_FALSE(sw_if_index0 != stats_sw_if_index)) {
-            stats_n_packets -= 1;
-            stats_n_bytes -= len0;
-            if (stats_n_packets)
-              vlib_increment_combined_counter(
-                  im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-                  cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
-            stats_n_packets = 1;
-            stats_n_bytes = len0;
-            stats_sw_if_index = sw_if_index0;
-          }
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-              nsh_gre_encap_trace_t *tr = 
-                vlib_add_trace (vm, node, b0, sizeof (*tr));
+	  len0 = vlib_buffer_length_in_chain(vm, b0); 
+	  stats_n_packets += 1; 
+	  stats_n_bytes += len0; 
+	  
+          /* Batch stats increment on the same vxlan tunnel so counter is not 
+	   *  incremented per packet. Note stats are still incremented for deleted 
+	   *  and admin-down tunnel where packets are dropped. It is not worthwhile 
+	   *  to check for this rare case and affect normal path performance. */ 
+	  if (PREDICT_FALSE(sw_if_index0 != stats_sw_if_index)) 
+	    { 
+	      stats_n_packets -= 1; 
+	      stats_n_bytes -= len0; 
+	      if (stats_n_packets) 
+		vlib_increment_combined_counter( 
+						im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX, 
+						cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes); 
+	      stats_n_packets = 1;
+	      stats_n_bytes = len0; 
+	      stats_sw_if_index = sw_if_index0; 
+	    } 
+	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      vxlan_gpe_encap_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->tunnel_index = t0 - ngm->tunnels;
             }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -342,35 +391,35 @@ nsh_gre_encap (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, node->node_index, 
-                               NSH_GRE_ENCAP_ERROR_ENCAPSULATED, 
+  vlib_node_increment_counter (vm, node->node_index,
+                               VXLAN_GPE_ENCAP_ERROR_ENCAPSULATED,
                                pkts_encapsulated);
   /* Increment any remaining batch stats */
-  if (stats_n_packets) {
-    vlib_increment_combined_counter(
-        im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX, cpu_index,
-        stats_sw_if_index, stats_n_packets, stats_n_bytes);
-    node->runtime_data[0] = stats_sw_if_index;
-  }
+  if (stats_n_packets) { 
+    vlib_increment_combined_counter( 
+				    im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX, cpu_index, 
+				    stats_sw_if_index, stats_n_packets, stats_n_bytes); 
+    node->runtime_data[0] = stats_sw_if_index; 
+  } 
 
   return from_frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (nsh_gre_encap_node) = {
-  .function = nsh_gre_encap,
-  .name = "nsh-gre-encap",
+VLIB_REGISTER_NODE (vxlan_gpe_encap_node) = {
+  .function = vxlan_gpe_encap,
+  .name = "vxlan-gpe-encap",
   .vector_size = sizeof (u32),
-  .format_trace = format_nsh_gre_encap_trace,
+  .format_trace = format_vxlan_gpe_encap_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(nsh_gre_encap_error_strings),
-  .error_strings = nsh_gre_encap_error_strings,
+  .n_errors = ARRAY_LEN(vxlan_gpe_encap_error_strings),
+  .error_strings = vxlan_gpe_encap_error_strings,
 
-  .n_next_nodes = NSH_GRE_ENCAP_N_NEXT,
+  .n_next_nodes = VXLAN_GPE_ENCAP_N_NEXT,
 
-  //  add dispositions here
   .next_nodes = {
-        [NSH_GRE_ENCAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
-        [NSH_GRE_ENCAP_NEXT_DROP] = "error-drop",
+        [VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
+        [VXLAN_GPE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
+

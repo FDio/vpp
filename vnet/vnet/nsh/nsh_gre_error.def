@@ -12,5 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-nsh_vxlan_gpe_error (DECAPSULATED, "good packets decapsulated")
-nsh_vxlan_gpe_error (NO_SUCH_TUNNEL, "no such tunnel packets")
+nsh_gre_error (DECAPSULATED, "good packets decapsulated")
+nsh_gre_error (NO_SUCH_TUNNEL, "no such tunnel packets")
+nsh_gre_error (INVALID_NEXT_PROTOCOL, "invalid next protocol")
