@@ -52,23 +52,31 @@
  *      0x4 : Network Service Header [NSH]
  */
 
+#define foreach_vxlan_gpe_protocol   \
+_ (0x01, IP4)                         \
+_ (0x02, IP6)                         \
+_ (0x03, ETHERNET)		     \
+_ (0x04, NSH)						
+
+
+typedef enum {
+#define _(n,f) VXLAN_GPE_PROTOCOL_##f = n,
+  foreach_vxlan_gpe_protocol
+#undef _
+} vxlan_gpe_protocol_t;
+
 typedef struct {
   u8 flags;
   u8 ver_res;
   u8 res;
-  u8 next_protocol;
+  /* see vxlan_gpe_protocol_t */
+  u8 protocol;
   u32 vni_res;
 } vxlan_gpe_header_t;
 
 #define VXLAN_GPE_FLAGS_I 0x08
 #define VXLAN_GPE_FLAGS_P 0x04
 #define VXLAN_GPE_FLAGS_O 0x01
-
 #define VXLAN_GPE_VERSION 0x0
-
-#define VXLAN_NEXT_PROTOCOL_IP4 0x1
-#define VXLAN_NEXT_PROTOCOL_IP6 0x2
-#define VXLAN_NEXT_PROTOCOL_ETHERNET 0x3
-#define VXLAN_NEXT_PROTOCOL_NSH 0x4
 
 #endif /* included_vxlan_gpe_packet_h */
