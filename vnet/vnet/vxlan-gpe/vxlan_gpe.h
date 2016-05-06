@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef included_vnet_nsh_vxlan_gpe_h
-#define included_vnet_nsh_vxlan_gpe_h
+#ifndef included_vnet_vxlan_gpe_h
+#define included_vnet_vxlan_gpe_h
 
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
@@ -21,45 +21,43 @@
 #include <vnet/ip/ip.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/gre/gre.h>
-#include <vnet/nsh/nsh_packet.h>
-#include <vnet/nsh-vxlan-gpe/vxlan_gpe_packet.h>
+#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/udp.h>
+
 
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;             /* 20 bytes */
   udp_header_t udp;             /* 8 bytes */
   vxlan_gpe_header_t vxlan;     /* 8 bytes */
-  nsh_header_t nsh;   		/* 28 bytes */
-}) ip4_vxlan_gpe_and_nsh_header_t;
+}) ip4_vxlan_gpe_header_t;
 
 typedef CLIB_PACKED(struct {
   /* 
-   * Key fields: ip src, vxlan vni, nsh spi_si 
+   * Key fields: local remote, vni 
    * all fields in NET byte order
    */
   union {
     struct {
-      u32 src;
+      u32 local;
+      u32 remote;
       u32 vni;                      /* shifted 8 bits */
-      u32 spi_si;
       u32 pad;
     };
     u64 as_u64[2];
   };
-}) nsh_vxlan_gpe_tunnel_key_t;
+}) vxlan_gpe_tunnel_key_t;
 
 typedef struct {
   /* Rewrite string. $$$$ embed vnet_rewrite header */
   u8 * rewrite;
 
-  /* decap next index */
-  u32 decap_next_index;
+  /* encapsulated protocol */
+  u8 protocol;
 
   /* tunnel src and dst addresses */
-  ip4_address_t src;
-  ip4_address_t dst;
+  ip4_address_t local;
+  ip4_address_t remote;
 
   /* FIB indices */
   u32 encap_fib_index;          /* tunnel partner lookup here */
@@ -72,40 +70,38 @@ typedef struct {
   u32 hw_if_index;
   u32 sw_if_index;
 
-  /* NSH header fields in HOST byte order */
-  nsh_header_t nsh_hdr;
-} nsh_vxlan_gpe_tunnel_t;
+} vxlan_gpe_tunnel_t;
 
-#define foreach_nsh_vxlan_gpe_input_next        \
+#define foreach_vxlan_gpe_input_next        \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")                       \
 _(ETHERNET_INPUT, "ethernet-input")             \
-_(NSH_VXLAN_GPE_ENCAP, "nsh-vxlan-gpe-encap")
+_(NSH_INPUT, "nsh-input")
 
 typedef enum {
-#define _(s,n) NSH_VXLAN_GPE_INPUT_NEXT_##s,
-  foreach_nsh_vxlan_gpe_input_next
+#define _(s,n) VXLAN_GPE_INPUT_NEXT_##s,
+  foreach_vxlan_gpe_input_next
 #undef _
-  NSH_VXLAN_GPE_INPUT_N_NEXT,
-} nsh_vxlan_gpe_input_next_t;
+  VXLAN_GPE_INPUT_N_NEXT,
+} vxlan_gpe_input_next_t;
 
 typedef enum {
-#define nsh_vxlan_gpe_error(n,s) NSH_VXLAN_GPE_ERROR_##n,
-#include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe_error.def>
-#undef nsh_vxlan_gpe_error
-  NSH_VXLAN_GPE_N_ERROR,
-} nsh_vxlan_gpe_input_error_t;
+#define vxlan_gpe_error(n,s) VXLAN_GPE_ERROR_##n,
+#include <vnet/vxlan-gpe/vxlan_gpe_error.def>
+#undef vxlan_gpe_error
+  VXLAN_GPE_N_ERROR,
+} vxlan_gpe_input_error_t;
 
 typedef struct {
   /* vector of encap tunnel instances */
-  nsh_vxlan_gpe_tunnel_t *tunnels;
+  vxlan_gpe_tunnel_t *tunnels;
 
   /* lookup tunnel by key */
-  uword * nsh_vxlan_gpe_tunnel_by_key;
+  uword * vxlan_gpe_tunnel_by_key;
 
   /* Free vlib hw_if_indices */
-  u32 * free_nsh_vxlan_gpe_tunnel_hw_if_indices;
+  u32 * free_vxlan_gpe_tunnel_hw_if_indices;
 
   /* show device instance by real device instance */
   u32 * dev_inst_by_real;
@@ -113,26 +109,31 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
-} nsh_vxlan_gpe_main_t;
+} vxlan_gpe_main_t;
 
-nsh_vxlan_gpe_main_t nsh_vxlan_gpe_main;
+vxlan_gpe_main_t vxlan_gpe_main;
 
-extern vlib_node_registration_t nsh_vxlan_gpe_input_node;
-extern vlib_node_registration_t nsh_vxlan_gpe_encap_node;
+extern vlib_node_registration_t vxlan_gpe_encap_node;
+extern vlib_node_registration_t vxlan_gpe_input_node;
 
-u8 * format_nsh_vxlan_gpe_encap_trace (u8 * s, va_list * args);
+u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args);
 
 typedef struct {
   u8 is_add;
-  ip4_address_t src, dst;
+  ip4_address_t local, remote;
+  u8 protocol;
   u32 encap_fib_index;
   u32 decap_fib_index;
   u32 decap_next_index;
   u32 vni;
-  nsh_header_t nsh_hdr;
-} vnet_nsh_vxlan_gpe_add_del_tunnel_args_t;
+} vnet_vxlan_gpe_add_del_tunnel_args_t;
 
-int vnet_nsh_vxlan_gpe_add_del_tunnel 
-(vnet_nsh_vxlan_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
 
-#endif /* included_vnet_nsh_vxlan_gpe_h */
+int vnet_vxlan_gpe_add_del_tunnel 
+(vnet_vxlan_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
+
+
+
+
+
+#endif /* included_vnet_vxlan_gpe_h */
