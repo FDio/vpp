@@ -51,11 +51,11 @@ u8 * format_nsh_header_with_length (u8 * s, va_list * args)
   s = format (s, "len %d (%d bytes) md_type %d next_protocol %d\n",
               h->length, h->length * 4, h->md_type, h->next_protocol);
   
-  tmp = clib_net_to_host_u32 (h->spi_si);
+  tmp = clib_net_to_host_u32 (h->nsp_nsi);
 
   s = format (s, "  spi %d si %d ",
-              (tmp>>NSH_SPI_SHIFT) & NSH_SPI_MASK,
-              tmp & NSH_SINDEX_MASK);
+              (tmp>>NSH_NSP_SHIFT) & NSH_NSP_MASK,
+              tmp & NSH_NSI_MASK);
 
   s = format (s, "c1 %u c2 %u c3 %u c4 %u",
               clib_net_to_host_u32 (h->c1),
@@ -160,8 +160,8 @@ nsh_gre_input (vlib_main_t * vm,
           h1 = vlib_buffer_get_current (b1);
 
           /* gre stashed the src ip4 address for us... */
-          key0 = (((u64)(vnet_buffer(b0)->gre.src))<<32) | h0->spi_si;
-          key1 = (((u64)(vnet_buffer(b1)->gre.src))<<32) | h1->spi_si;
+          key0 = (((u64)(vnet_buffer(b0)->gre.src))<<32) | h0->nsp_nsi;
+          key1 = (((u64)(vnet_buffer(b1)->gre.src))<<32) | h1->nsp_nsi;
 
           /* "pop" nsh header */
           vlib_buffer_advance (b0, sizeof (*h0));
@@ -325,7 +325,7 @@ nsh_gre_input (vlib_main_t * vm,
           h0 = vlib_buffer_get_current (b0);
 
           /* gre stashed the src ip4 address for us... */
-          key0 = (((u64)(vnet_buffer(b0)->gre.src))<<32) | h0->spi_si;
+          key0 = (((u64)(vnet_buffer(b0)->gre.src))<<32) | h0->nsp_nsi;
 
           /* "pop" nsh header */
           vlib_buffer_advance (b0, sizeof (*h0));

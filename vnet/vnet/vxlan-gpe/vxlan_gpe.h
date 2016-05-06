@@ -27,56 +27,6 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/udp.h>
 
-//alagalah deprecated start
-typedef CLIB_PACKED (struct {
-  ip4_header_t ip4;             /* 20 bytes */
-  udp_header_t udp;             /* 8 bytes */
-  vxlan_gpe_header_t vxlan;     /* 8 bytes */
-  nsh_header_t nsh;   		/* 28 bytes */
-}) ip4_vxlan_gpe_and_nsh_header_t;
-
-typedef CLIB_PACKED(struct {
-  /* 
-   * Key fields: ip src, vxlan vni, nsh nsp_nsi 
-   * all fields in NET byte order
-   */
-  union {
-    struct {
-      u32 src;
-      u32 vni;                      /* shifted 8 bits */
-      u32 nsp_nsi;
-      u32 pad;
-    };
-    u64 as_u64[2];
-  };
-}) nsh_vxlan_gpe_tunnel_key_t;
-
-typedef struct {
-  /* Rewrite string. $$$$ embed vnet_rewrite header */
-  u8 * rewrite;
-
-  /* decap next index */
-  u32 decap_next_index;
-
-  /* tunnel src and dst addresses */
-  ip4_address_t src;
-  ip4_address_t dst;
-
-  /* FIB indices */
-  u32 encap_fib_index;          /* tunnel partner lookup here */
-  u32 decap_fib_index;          /* inner IP lookup here */
-
-  /* vxlan VNI in HOST byte order, shifted left 8 bits */
-  u32 vni;
-
-  /* vnet intfc hw/sw_if_index */
-  u32 hw_if_index;
-  u32 sw_if_index;
-
-  /* NSH header fields in HOST byte order */
-  nsh_header_t nsh_hdr;
-} nsh_vxlan_gpe_tunnel_t;
-//alagalah end
 
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;             /* 20 bytes */
@@ -230,25 +180,11 @@ typedef struct {
 vxlan_gpe_main_t vxlan_gpe_main;
 
 
-//extern vlib_node_registration_t nsh_vxlan_gpe_input_node;
-//extern vlib_node_registration_t nsh_vxlan_gpe_encap_node;
 extern vlib_node_registration_t vxlan_gpe_encap_node;
 extern vlib_node_registration_t vxlan_gpe_input_node;
 
 u8 * format_nsh_vxlan_gpe_encap_trace (u8 * s, va_list * args);
 u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args);
-
-// alagalah deprecate
-typedef struct {
-  u8 is_add;
-  ip4_address_t src, dst;
-  u32 encap_fib_index;
-  u32 decap_fib_index;
-  u32 decap_next_index;
-  u32 vni;
-  nsh_header_t nsh_hdr;
-} vnet_nsh_vxlan_gpe_add_del_tunnel_args_t;
-//alagalah end
 
 typedef struct {
   u8 is_add;
@@ -260,10 +196,6 @@ typedef struct {
   u32 vni;
 } vnet_vxlan_gpe_add_del_tunnel_args_t;
 
-
-// alagalah deprecated
-int vnet_nsh_vxlan_gpe_add_del_tunnel 
-(vnet_nsh_vxlan_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
 
 int vnet_vxlan_gpe_add_del_tunnel 
 (vnet_vxlan_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
@@ -298,8 +230,8 @@ typedef enum {
 #define foreach_nsh_input_next        \
   _(DROP, "error-drop") \
   _(DECAP_ETHERNET_LOOKUP, "ethernet-input" )	\
-  _(DECAP_IP4_LOOKUP,  "ip4-lookup") \
-  _(DECAP_IP6_LOOKUP,  "ip6-lookup" ) \
+  _(DECAP_IP4_INPUT,  "ip4-lookup") \
+  _(DECAP_IP6_INPUT,  "ip6-lookup" ) \
   _(ENCAP_GRE, "gre-encap" ) \
   _(ENCAP_VXLANGPE, "vxlan-gpe-encap" ) \
   _(ENCAP_ETHERNET, "error-drop")

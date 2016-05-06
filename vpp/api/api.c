@@ -4569,7 +4569,7 @@ vl_api_nsh_gre_add_del_tunnel_t_handler
     a->nsh_hdr.length = mp->length;
     a->nsh_hdr.md_type = mp->md_type;
     a->nsh_hdr.next_protocol = mp->next_protocol;
-    a->nsh_hdr.spi_si = ntohl(mp->spi_si);
+    a->nsh_hdr.nsp_nsi = ntohl(mp->spi_si);
     a->nsh_hdr.c1 = ntohl(mp->c1);
     a->nsh_hdr.c2 = ntohl(mp->c2);
     a->nsh_hdr.c3 = ntohl(mp->c3);
@@ -4578,7 +4578,7 @@ vl_api_nsh_gre_add_del_tunnel_t_handler
     for (i = 0; i < mp->tlv_len_in_words; i++)
         vec_add1 (tlvs, ntohl(mp->tlvs[i]));
 
-    a->nsh_hdr.tlvs = tlvs;
+    /* a->nsh_hdr.tlvs = tlvs; */
 
     rv = vnet_nsh_gre_add_del_tunnel (a, &sw_if_index);
     
@@ -4639,7 +4639,7 @@ vl_api_nsh_vxlan_gpe_add_del_tunnel_t_handler
     a->nsh_hdr.length = mp->length;
     a->nsh_hdr.md_type = mp->md_type;
     a->nsh_hdr.next_protocol = mp->next_protocol;
-    a->nsh_hdr.spi_si = ntohl(mp->spi_si);
+    a->nsh_hdr.nsp_nsi = ntohl(mp->spi_si);
     a->nsh_hdr.c1 = ntohl(mp->c1);
     a->nsh_hdr.c2 = ntohl(mp->c2);
     a->nsh_hdr.c3 = ntohl(mp->c3);
@@ -4648,7 +4648,7 @@ vl_api_nsh_vxlan_gpe_add_del_tunnel_t_handler
     for (i = 0; i < mp->tlv_len_in_words; i++)
         vec_add1 (tlvs, ntohl(mp->tlvs[i]));
 
-    a->nsh_hdr.tlvs = tlvs;
+    /* a->nsh_hdr.tlvs = tlvs; */
 
     rv = vnet_nsh_vxlan_gpe_add_del_tunnel (a, &sw_if_index);
     
