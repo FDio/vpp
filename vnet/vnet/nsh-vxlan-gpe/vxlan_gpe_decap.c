@@ -19,7 +19,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h>
 
-vlib_node_registration_t nsh_vxlan_gpe_input_node;
+vlib_node_registration_t vxlan_gpe_input_node;
 
 // alagalah NSH stuff to move
 typedef struct {
@@ -27,48 +27,45 @@ typedef struct {
 } nsh_input_trace_t;
 // alagalan end
 
-/* From nsh-gre */
-u8 * format_nsh_header_with_length (u8 * s, va_list * args);
-
 typedef struct {
   u32 next_index;
   u32 tunnel_index;
   u32 error;
-  nsh_header_t h;
-} nsh_vxlan_gpe_rx_trace_t;
+} vxlan_gpe_rx_trace_t;
 
-static u8 * format_nsh_vxlan_gpe_rx_trace (u8 * s, va_list * args)
+static u8 * format_vxlan_gpe_rx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  nsh_vxlan_gpe_rx_trace_t * t = va_arg (*args, nsh_vxlan_gpe_rx_trace_t *);
+  vxlan_gpe_rx_trace_t * t = va_arg (*args, vxlan_gpe_rx_trace_t *);
 
   if (t->tunnel_index != ~0)
     {
-      s = format (s, "NSH-VXLAN: tunnel %d next %d error %d", t->tunnel_index, 
+      s = format (s, "VXLAN-GPE: tunnel %d next %d error %d", t->tunnel_index, 
                   t->next_index, t->error);
     }
   else
     {
-      s = format (s, "NSH-VXLAN: no tunnel next %d error %d\n", t->next_index, 
+      s = format (s, "VXLAN-GPE: no tunnel next %d error %d\n", t->next_index, 
                   t->error);
     }
-  s = format (s, "\n  %U", format_nsh_header_with_length, &t->h, 
-              (u32) sizeof (t->h) /* max size */);
+  // alagalah TODO : this uses a NSH formatter from GRE...
+  /*s = format (s, "\n  %U", format_nsh_header_with_length, &t->h, 
+              (u32) sizeof (t->h) /* max size ); */
   return s;
 }
 
 static uword
-nsh_vxlan_gpe_input (vlib_main_t * vm,
+vxlan_gpe_input (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
                      vlib_frame_t * from_frame)
 {
   u32 n_left_from, next_index, * from, * to_next;
-  nsh_vxlan_gpe_main_t * ngm = &nsh_vxlan_gpe_main;
+  vxlan_gpe_main_t * ngm = &vxlan_gpe_main;
   vnet_main_t * vnm = ngm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
   u32 last_tunnel_index = ~0;
-  nsh_vxlan_gpe_tunnel_key_t last_key;
+  vxlan_gpe_tunnel_key_t last_key;
   u32 pkts_decapsulated = 0;
   u32 cpu_index = os_get_cpu_number();
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
@@ -94,11 +91,11 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           u32 bi0, bi1;
 	  vlib_buffer_t * b0, * b1;
 	  u32 next0, next1;
-          ip4_vxlan_gpe_and_nsh_header_t * iuvn0, * iuvn1;
+          ip4_vxlan_gpe_header_t * iuvn0, * iuvn1;
 	  uword * p0, * p1;
           u32 tunnel_index0, tunnel_index1;
-          nsh_vxlan_gpe_tunnel_t * t0, * t1;
-          nsh_vxlan_gpe_tunnel_key_t key0, key1;
+          vxlan_gpe_tunnel_t * t0, * t1;
+          vxlan_gpe_tunnel_key_t key0, key1;
           u32 error0, error1;
           u32 sw_if_index0, sw_if_index1, len0, len1;
 
@@ -143,11 +140,11 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 
           tunnel_index0 = ~0;
           error0 = 0;
-          next0 = NSH_VXLAN_GPE_INPUT_NEXT_DROP;
+          next0 = VXLAN_GPE_INPUT_NEXT_DROP;
 
           tunnel_index1 = ~0;
           error1 = 0;
-          next1 = NSH_VXLAN_GPE_INPUT_NEXT_DROP;
+          next1 = VXLAN_GPE_INPUT_NEXT_DROP;
 
           key0.src = iuvn0->ip4.src_address.as_u32;
           key0.vni = iuvn0->vxlan.vni_res;
@@ -157,11 +154,11 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           if (PREDICT_FALSE ((key0.as_u64[0] != last_key.as_u64[0])
                              || (key0.as_u64[1] != last_key.as_u64[1])))
             {
-              p0 = hash_get_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, &key0);
+              p0 = hash_get_mem (ngm->vxlan_gpe_tunnel_by_key, &key0);
 
               if (p0 == 0)
                 {
-                  error0 = NSH_VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
+                  error0 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
                   goto trace0;
                 }
 
@@ -181,7 +178,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           /* Required to make the l2 tag push / pop code work on l2 subifs */
           vnet_update_l2_len (b0);
 
-          if (next0 == NSH_VXLAN_GPE_INPUT_NEXT_NSH_VXLAN_GPE_ENCAP)
+          if (next0 == VXLAN_GPE_INPUT_NEXT_NSH_INPUT)
             {
               /*
                * Functioning as SFF (ie "half NSH tunnel mode")
@@ -191,19 +188,19 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
                * 3. Set sw_if_index[VLIB_TX] to be t0->sw_if_index
                */
               uword * next_p0;
-              nsh_vxlan_gpe_tunnel_t  * next_t0;
-              nsh_vxlan_gpe_tunnel_key_t next_key0;
+              vxlan_gpe_tunnel_t  * next_t0;
+              vxlan_gpe_tunnel_key_t next_key0;
 
               next_key0.src = iuvn0->ip4.dst_address.as_u32;
               next_key0.vni = iuvn0->vxlan.vni_res;
               next_key0.nsp_nsi = iuvn0->nsh.nsp_nsi;
               next_key0.pad = 0;
 
-              next_p0 = hash_get_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, &next_key0);
+              next_p0 = hash_get_mem (ngm->vxlan_gpe_tunnel_by_key, &next_key0);
 
               if (next_p0 == 0)
                 {
-                  error0 = NSH_VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
+                  error0 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
                   goto trace0;
                 }
               next_t0 = pool_elt_at_index (ngm->tunnels, next_p0[0]);
@@ -241,7 +238,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              nsh_vxlan_gpe_rx_trace_t *tr
+              vxlan_gpe_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->next_index = next0;
               tr->error = error0;
@@ -257,11 +254,11 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           if (PREDICT_FALSE ((key1.as_u64[0] != last_key.as_u64[0])
                              || (key1.as_u64[1] != last_key.as_u64[1])))
             {
-              p1 = hash_get_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, &key1);
+              p1 = hash_get_mem (ngm->vxlan_gpe_tunnel_by_key, &key1);
 
               if (p1 == 0)
                 {
-                  error1 = NSH_VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
+                  error1 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
                   goto trace1;
                 }
 
@@ -281,7 +278,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           /* Required to make the l2 tag push / pop code work on l2 subifs */
           vnet_update_l2_len (b1);
 
-          if (next1 == NSH_VXLAN_GPE_INPUT_NEXT_NSH_VXLAN_GPE_ENCAP)
+          if (next1 == VXLAN_GPE_INPUT_NEXT_NSH_INPUT)
             {
               /*
                * Functioning as SFF (ie "half NSH tunnel mode")
@@ -291,19 +288,19 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
                * 3. Set sw_if_index[VLIB_TX] to be t0->sw_if_index
                */
               uword * next_p1;
-              nsh_vxlan_gpe_tunnel_t  * next_t1;
-              nsh_vxlan_gpe_tunnel_key_t next_key1;
+              vxlan_gpe_tunnel_t  * next_t1;
+              vxlan_gpe_tunnel_key_t next_key1;
 
               next_key1.src = iuvn1->ip4.dst_address.as_u32;
               next_key1.vni = iuvn1->vxlan.vni_res;
               next_key1.nsp_nsi = iuvn1->nsh.nsp_nsi;
               next_key1.pad = 0;
 
-              next_p1 = hash_get_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, &next_key1);
+              next_p1 = hash_get_mem (ngm->vxlan_gpe_tunnel_by_key, &next_key1);
 
               if (next_p1 == 0)
                 {
-                  error1 = NSH_VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
+                  error1 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
                   goto trace1;
                 }
               next_t1 = pool_elt_at_index (ngm->tunnels, next_p1[0]);
@@ -343,7 +340,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 
           if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
             {
-              nsh_vxlan_gpe_rx_trace_t *tr
+              vxlan_gpe_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b1, sizeof (*tr));
               tr->next_index = next1;
               tr->error = error1;
@@ -361,11 +358,11 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t * b0;
 	  u32 next0;
-          ip4_vxlan_gpe_and_nsh_header_t * iuvn0;
+          ip4_vxlan_gpe_and_header_t * iuvn0;
 	  uword * p0;
           u32 tunnel_index0;
-          nsh_vxlan_gpe_tunnel_t * t0;
-          nsh_vxlan_gpe_tunnel_key_t key0;
+          vxlan_gpe_tunnel_t * t0;
+          vxlan_gpe_tunnel_key_t key0;
           u32 error0;
           u32 sw_if_index0, len0;
 
@@ -389,7 +386,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 
           tunnel_index0 = ~0;
           error0 = 0;
-          next0 = NSH_VXLAN_GPE_INPUT_NEXT_DROP;
+          next0 = VXLAN_GPE_INPUT_NEXT_DROP;
 
           key0.src = iuvn0->ip4.src_address.as_u32;
           key0.vni = iuvn0->vxlan.vni_res;
@@ -399,11 +396,11 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           if (PREDICT_FALSE ((key0.as_u64[0] != last_key.as_u64[0])
                              || (key0.as_u64[1] != last_key.as_u64[1])))
             {
-              p0 = hash_get_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, &key0);
+              p0 = hash_get_mem (ngm->vxlan_gpe_tunnel_by_key, &key0);
           
               if (p0 == 0)
                 {
-                  error0 = NSH_VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
+                  error0 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
                   goto trace00;
                 }
 
@@ -423,7 +420,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
           /* Required to make the l2 tag push / pop code work on l2 subifs */
           vnet_update_l2_len (b0);
 
-          if (next0 == NSH_VXLAN_GPE_INPUT_NEXT_NSH_VXLAN_GPE_ENCAP)
+          if (next0 == VXLAN_GPE_INPUT_NEXT_NSH_INPUT)
             {
               /*
                * Functioning as SFF (ie "half NSH tunnel mode")
@@ -433,19 +430,19 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
                * 3. Set sw_if_index[VLIB_TX] to be t0->sw_if_index
                */
               uword * next_p0;
-              nsh_vxlan_gpe_tunnel_t  * next_t0;
-              nsh_vxlan_gpe_tunnel_key_t next_key0;
+              vxlan_gpe_tunnel_t  * next_t0;
+              vxlan_gpe_tunnel_key_t next_key0;
 
               next_key0.src = iuvn0->ip4.dst_address.as_u32;
               next_key0.vni = iuvn0->vxlan.vni_res;
               next_key0.nsp_nsi = iuvn0->nsh.nsp_nsi;
               next_key0.pad = 0;
 
-              next_p0 = hash_get_mem (ngm->nsh_vxlan_gpe_tunnel_by_key, &next_key0);
+              next_p0 = hash_get_mem (ngm->vxlan_gpe_tunnel_by_key, &next_key0);
 
               if (next_p0 == 0)
                 {
-                  error0 = NSH_VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
+                  error0 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
                   goto trace00;
                 }
               next_t0 = pool_elt_at_index (ngm->tunnels, next_p0[0]);
@@ -486,7 +483,7 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              nsh_vxlan_gpe_rx_trace_t *tr
+              vxlan_gpe_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->next_index = next0;
               tr->error = error0;
@@ -500,8 +497,8 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, nsh_vxlan_gpe_input_node.index,
-                               NSH_VXLAN_GPE_ERROR_DECAPSULATED,
+  vlib_node_increment_counter (vm, vxlan_gpe_input_node.index,
+                               VXLAN_GPE_ERROR_DECAPSULATED,
                                pkts_decapsulated);
   /* Increment any remaining batch stats */
   if (stats_n_packets)
@@ -514,32 +511,32 @@ nsh_vxlan_gpe_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char * nsh_vxlan_gpe_error_strings[] = {
-#define nsh_vxlan_gpe_error(n,s) s,
+static char * vxlan_gpe_error_strings[] = {
+#define vxlan_gpe_error(n,s) s,
 #include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe_error.def>
-#undef nsh_vxlan_gpe_error
+#undef vxlan_gpe_error
 #undef _
 };
 
-VLIB_REGISTER_NODE (nsh_vxlan_gpe_input_node) = {
-  .function = nsh_vxlan_gpe_input,
-  .name = "nsh-vxlan-gpe-input",
+VLIB_REGISTER_NODE (vxlan_gpe_input_node) = {
+  .function = vxlan_gpe_input,
+  .name = "vxlan-gpe-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
 
-  .n_errors = NSH_VXLAN_GPE_N_ERROR,
-  .error_strings = nsh_vxlan_gpe_error_strings,
+  .n_errors = VXLAN_GPE_N_ERROR,
+  .error_strings = vxlan_gpe_error_strings,
 
-  .n_next_nodes = NSH_VXLAN_GPE_INPUT_N_NEXT,
+  .n_next_nodes = VXLAN_GPE_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [NSH_VXLAN_GPE_INPUT_NEXT_##s] = n,
-    foreach_nsh_vxlan_gpe_input_next
+#define _(s,n) [VXLAN_GPE_INPUT_NEXT_##s] = n,
+    foreach_vxlan_gpe_input_next
 #undef _
   },
 
-  .format_buffer = format_nsh_header_with_length,
-  .format_trace = format_nsh_vxlan_gpe_rx_trace,
-  // $$$$ .unformat_buffer = unformat_nsh_vxlan_gpe_header,
+  .format_buffer = format_header_with_length,
+  .format_trace = format_vxlan_gpe_rx_trace,
+  // $$$$ .unformat_buffer = unformat_vxlan_gpe_header,
 };
 
 
@@ -550,6 +547,7 @@ u8 * format_nsh_input_map_trace (u8 * s, va_list * args)
   nsh_input_trace_t * t 
       = va_arg (*args, nsh_input_trace_t *);
 
+  //alagalah TODO use the format_nsh_header_with_length from GRE
   s = format (s, "NSH-INPUT: NSPNSI %d", t->nsh_header.nsp_nsi);
   return s;
 }

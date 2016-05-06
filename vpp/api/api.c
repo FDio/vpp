@@ -4578,7 +4578,7 @@ vl_api_nsh_gre_add_del_tunnel_t_handler
     for (i = 0; i < mp->tlv_len_in_words; i++)
         vec_add1 (tlvs, ntohl(mp->tlvs[i]));
 
-    a->nsh_hdr.tlvs = tlvs;
+    /* a->nsh_hdr.tlvs = tlvs; */
 
     rv = vnet_nsh_gre_add_del_tunnel (a, &sw_if_index);
     
@@ -4648,7 +4648,7 @@ vl_api_nsh_vxlan_gpe_add_del_tunnel_t_handler
     for (i = 0; i < mp->tlv_len_in_words; i++)
         vec_add1 (tlvs, ntohl(mp->tlvs[i]));
 
-    a->nsh_hdr.tlvs = tlvs;
+    /* a->nsh_hdr.tlvs = tlvs; */
 
     rv = vnet_nsh_vxlan_gpe_add_del_tunnel (a, &sw_if_index);
     
