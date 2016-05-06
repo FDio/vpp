@@ -17,6 +17,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/gre/gre.h>
+#include <vnet/nsh/nsh.h> 
 #include <vnet/nsh/nsh_packet.h>
 #include <vnet/ip/ip4_packet.h>
 
@@ -65,7 +66,7 @@ typedef enum {
 
 typedef enum {
 #define nsh_gre_error(n,s) NSH_GRE_ERROR_##n,
-#include <vnet/nsh/nsh_error.def>
+#include <vnet/nsh-gre/nsh_gre_error.def>
 #undef nsh_gre_error
   NSH_GRE_N_ERROR,
 } nsh_gre_input_error_t;

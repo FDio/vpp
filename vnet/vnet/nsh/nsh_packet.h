@@ -73,20 +73,21 @@ typedef CLIB_PACKED(struct {
   u8 length;
   u8 md_type;
   u8 next_protocol;
-  u32 spi_si;
+  u32 nsp_nsi; // nsp 24 bits, nsi 8 bits
   /* Context headers, always present */
   u32 c1; u32 c2; u32 c3; u32 c4;
 
   /* Optional variable length metadata */
-  u32 * tlvs;
+  u32 tlvs[0];
 }) nsh_header_t;
 
+#define NSH_VERSION (0<<6)
 #define NSH_O_BIT (1<<5)
 #define NSH_C_BIT (1<<4)
 
 /* Network byte order shift / mask */
-#define NSH_SINDEX_MASK 0xFF
-#define NSH_SPI_MASK (0x00FFFFFF)
-#define NSH_SPI_SHIFT 8
+#define NSH_NSI_MASK 0xFF
+#define NSH_NSP_MASK (0x00FFFFFF)
+#define NSH_NSP_SHIFT 8
 
 #endif /* included_vnet_nsh_packet_h */
