@@ -28,7 +28,7 @@
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/gre/gre.h>
 #include <vnet/nsh-gre/nsh_gre.h>
-#include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h>
+#include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
 #include <api/vpe_msg_enum.h>
