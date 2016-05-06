@@ -56,13 +56,17 @@
  * vlib_load_new_plugins().
  */
  
-
-
 typedef struct {
   u8 *name;
   struct stat file_info;
   void *handle;
 } plugin_info_t;
+
+typedef enum {
+  VLIB_PLUGIN_SIGNATURE_CHECK_NONE,
+  VLIB_PLUGIN_SIGNATURE_CHECK_REPORT,
+  VLIB_PLUGIN_SIGNATURE_CHECK_STRICT,
+} vlib_plugin_check_style_t;
 
 typedef struct {
   /* loaded plugin info */
@@ -76,6 +80,9 @@ typedef struct {
   /* handoff structure get callback */
   void *handoff_structure_get_cb;
 
+  /* plugin signature check style */
+  vlib_plugin_check_style_t check_style;
+
   /* usual */
   vlib_main_t *vlib_main;
 } plugin_main_t;
@@ -84,5 +91,6 @@ plugin_main_t vlib_plugin_main;
 
 int vlib_plugin_early_init (vlib_main_t *vm);
 int vlib_load_new_plugins (plugin_main_t *pm, int from_early_init);
+int vlib_check_plugin_signature (char * filename);
 
 #endif /* __included_plugin_h__ */

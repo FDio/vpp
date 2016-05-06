@@ -68,7 +68,7 @@ vpp_LDADD += -lvnet
 
 vpp_LDADD += -lsvm -lsvmdb -lrt
 
-vpp_LDADD += -lvnetplugin
+vpp_LDADD += -lvnetplugin -lmbedtls
 
 if WITH_DPDK
 if ENABLE_DPDK_SHARED

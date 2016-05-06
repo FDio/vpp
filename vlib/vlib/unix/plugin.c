@@ -45,7 +45,21 @@ load_one_plugin (plugin_main_t *pm, plugin_info_t *pi, int from_early_init)
   clib_error_t * (*fp)(vlib_main_t *, void *, int);
   clib_error_t * error;
   void *handoff_structure;
+  int rv;
   
+  if (pm->check_style != VLIB_PLUGIN_SIGNATURE_CHECK_NONE)
+    {
+      rv = vlib_check_plugin_signature ((char *)pi->name);
+      if (rv)
+        {
+          clib_warning ("%s: signature check failed...", pi->name);
+          if (pm->check_style != VLIB_PLUGIN_SIGNATURE_CHECK_REPORT)
+            return -1;
+        }
+      else
+        clib_warning ("%s: good signature", pi->name);
+    }
+
   handle = dlopen ((char *)pi->name, RTLD_LAZY);
 
   /* 
@@ -191,6 +205,8 @@ char *vlib_plugin_path __attribute__((weak));
 char *vlib_plugin_path = "";
 char *vlib_plugin_name_filter __attribute__((weak));
 char *vlib_plugin_name_filter = 0;
+char *vlib_plugin_signature_scheme __attribute__((weak));
+char *vlib_plugin_signature_scheme = "report";
 
 int vlib_plugin_early_init (vlib_main_t *vm)
 {
@@ -206,5 +222,15 @@ int vlib_plugin_early_init (vlib_main_t *vm)
   pm->plugin_by_name_hash = hash_create_string (0, sizeof (uword));
   pm->vlib_main = vm;
   
+  /* Can't use a config function so early in the game */
+  pm->check_style = VLIB_PLUGIN_SIGNATURE_CHECK_REPORT;
+
+  if (!strncmp (vlib_plugin_signature_scheme, "none", 4))
+      pm->check_style = VLIB_PLUGIN_SIGNATURE_CHECK_NONE;
+  else if (!strncmp (vlib_plugin_signature_scheme, "report", 6))
+      pm->check_style = VLIB_PLUGIN_SIGNATURE_CHECK_REPORT;
+  else if (!strncmp (vlib_plugin_signature_scheme, "strict", 6))
+      pm->check_style = VLIB_PLUGIN_SIGNATURE_CHECK_STRICT;
+
   return vlib_load_new_plugins (pm, 1 /* from_early_init */);
 }

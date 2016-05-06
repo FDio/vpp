@@ -1,0 +1,9 @@
+AC_INIT(mbed_tls, 2.2.1)
+LT_INIT
+AM_INIT_AUTOMAKE
+AM_SILENT_RULES([yes])
+
+AC_PROG_CC
+AM_PROG_CC_C_O
+
+AC_OUTPUT([Makefile])

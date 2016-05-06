@@ -15,8 +15,8 @@ endif
 # Platform dependent configure flags
 vpp_configure_args += $(vpp_configure_args_$(PLATFORM))
 
-
 vpp_CPPFLAGS = $(call installed_includes_fn,	\
+	mbedtls					\
 	vppinfra				\
 	svm					\
 	vlib					\
@@ -24,6 +24,7 @@ vpp_CPPFLAGS = $(call installed_includes_fn,	\
 	vnet)
 
 vpp_LDFLAGS = $(call installed_libs_fn,		\
+	mbedtls					\
 	vppinfra				\
 	svm					\
 	vlib					\

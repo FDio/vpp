@@ -47,6 +47,7 @@ vpe_main_init (vlib_main_t * vm)
  * Load plugins from /usr/lib/vpp_plugins by default
  */
 char *vlib_plugin_path = "/usr/lib/vpp_plugins";
+char *vlib_plugin_signature_scheme = "report";
                                                 
 void *vnet_get_handoff_structure (void)
 {
@@ -168,6 +169,9 @@ int main (int argc, char * argv[])
         if (!strncmp (argv[i], "plugin_path", 11)) {
             if (i < (argc-1))
                 vlib_plugin_path = argv[++i];
+        } else if (!strncmp (argv[i], "plugin_signature", 16)) {
+            if (i < (argc-1))
+                vlib_plugin_signature_scheme = argv[++i];
         } else if (!strncmp (argv[i], "heapsize", 8)) {
             sizep = (u8 *) argv[i+1];
             size = 0;
@@ -257,6 +261,24 @@ plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (plugin_path_config, "plugin_path");
+
+static clib_error_t *
+plugin_signature_config (vlib_main_t * vm, unformat_input_t * input)
+{
+    u8 * junk;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (input, "%s", &junk)) {
+            vec_free(junk);
+            return 0;
+        }
+        else
+            return clib_error_return (0, "unknown input '%U'",
+                                      format_unformat_error, input);
+        }
+    return 0;
+}
+VLIB_CONFIG_FUNCTION (plugin_signature_config, "plugin_signature");
 
 void vl_msg_api_post_mortem_dump(void);
 

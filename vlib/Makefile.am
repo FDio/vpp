@@ -82,6 +82,7 @@ libvlib_unix_la_SOURCES =			\
   vlib/unix/mc_socket.c				\
   vlib/unix/plugin.c				\
   vlib/unix/plugin.h				\
+  vlib/unix/plugin_signature.c			\
   vlib/unix/physmem.c				\
   vlib/unix/pci.c				\
   vlib/unix/util.c
@@ -102,5 +103,5 @@ vlib_unix_SOURCES =				\
   example/mc_test.c
 
 vlib_unix_LDADD = libvlib_unix.la libvlib.la \
-	          -lvppinfra -lpthread -lm -ldl -lrt
+	          -lvppinfra -lmbedtls -lpthread -lm -ldl -lrt
 endif

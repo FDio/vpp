@@ -1,7 +1,8 @@
-vlib_configure_depend = vppinfra-install
+vlib_configure_depend = vppinfra-install mbedtls-install
 
-vlib_CPPFLAGS = $(call installed_includes_fn, vppinfra)
-vlib_LDFLAGS = $(call installed_libs_fn, vppinfra)
+vlib_CPPFLAGS = $(call installed_includes_fn, vppinfra mbedtls)
+vlib_CPPFLAGS += $(call installed_includes_fn, mbedtls)/include
+vlib_LDFLAGS = $(call installed_libs_fn, vppinfra mbedtls)
 
 ifneq ($($(PLATFORM)_uses_dpdk),no)
 vlib_configure_args += --with-dpdk

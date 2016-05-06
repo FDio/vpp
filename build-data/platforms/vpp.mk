@@ -21,7 +21,7 @@ vpp_uses_dpdk = yes
 # vpp_enable_tests = yes
 
 vpp_root_packages = vpp vlib vlib-api vnet svm vpp-api-test \
-	vpp-api gmod
+	vpp-api gmod mbedtls
 
 vpp_configure_args_vpp = --with-dpdk
 vnet_configure_args_vpp = --with-dpdk
