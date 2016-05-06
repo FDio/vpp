@@ -74,6 +74,7 @@
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
+#include <vnet/devices/af_packet/af_packet.h>
 
 #undef BIHASH_TYPE
 #undef __included_bihash_template_h__
@@ -332,7 +333,10 @@ _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_GPE_ENABLE_DISABLE_STATUS_DUMP,                                  \
   lisp_gpe_enable_disable_status_dump)                                  \
-_(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)
+_(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
+_(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
+_(AF_PACKET_CREATE, af_packet_create)                                   \
+_(AF_PACKET_DELETE, af_packet_delete)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -5861,6 +5865,44 @@ static void vl_api_trace_profile_del_t_handler
     REPLY_MACRO(VL_API_TRACE_PROFILE_DEL_REPLY);
 }
 
+static void
+vl_api_af_packet_create_t_handler
+(vl_api_af_packet_create_t *mp)
+{
+    vlib_main_t *vm = vlib_get_main();
+    vl_api_af_packet_create_reply_t *rmp;
+    int rv = 0;
+    u8 *host_if_name = NULL;
+
+    host_if_name = format(0, "%s", mp->host_if_name);
+    vec_add1 (host_if_name, 0);
+
+    rv = af_packet_create_if(vm, host_if_name,
+                             mp->use_random_hw_addr ? 0 : mp->hw_addr);
+
+    vec_free(host_if_name);
+
+    REPLY_MACRO(VL_API_AF_PACKET_CREATE_REPLY);
+}
+
+static void
+vl_api_af_packet_delete_t_handler
+(vl_api_af_packet_delete_t *mp)
+{
+    vlib_main_t * vm = vlib_get_main();
+    vl_api_af_packet_delete_reply_t *rmp;
+    int rv = 0;
+    u8 *host_if_name = NULL;
+
+    host_if_name = format(0, "%s", mp->host_if_name);
+    vec_add1 (host_if_name, 0);
+
+    rv = af_packet_delete_if(vm, host_if_name);
+
+    vec_free(host_if_name);
+
+    REPLY_MACRO(VL_API_AF_PACKET_DELETE_REPLY);
+}
 
 #define BOUNCE_HANDLER(nn)                                              \
 static void vl_api_##nn##_t_handler (                                   \

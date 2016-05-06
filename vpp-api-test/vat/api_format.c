@@ -2201,7 +2201,9 @@ _(lisp_add_del_local_eid_reply)                         \
 _(lisp_gpe_add_del_fwd_entry_reply)                     \
 _(lisp_add_del_map_resolver_reply)                      \
 _(lisp_gpe_enable_disable_reply)                        \
-_(lisp_gpe_add_del_iface_reply)
+_(lisp_gpe_add_del_iface_reply)                         \
+_(af_packet_create_reply)                               \
+_(af_packet_delete_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -2379,7 +2381,9 @@ _(LISP_LOCAL_EID_TABLE_DETAILS, lisp_local_eid_table_details)           \
 _(LISP_GPE_TUNNEL_DETAILS, lisp_gpe_tunnel_details)                     \
 _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
 _(LISP_GPE_ENABLE_DISABLE_STATUS_DETAILS,                               \
-  lisp_gpe_enable_disable_status_details)
+  lisp_gpe_enable_disable_status_details)                               \
+_(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
+_(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -10201,6 +10205,84 @@ api_lisp_gpe_enable_disable_status_dump(vat_main_t *vam)
     return 0;
 }
 
+static int
+api_af_packet_create (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_af_packet_create_t * mp;
+    f64 timeout;
+    u8 * host_if_name = 0;
+    u8 hw_addr[6];
+    u8 random_hw_addr = 1;
+
+    memset (hw_addr, 0, sizeof (hw_addr));
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "name %s", &host_if_name))
+            vec_add1 (host_if_name, 0);
+        else if (unformat (i, "hw_addr %U", unformat_ethernet_address, hw_addr))
+            random_hw_addr = 0;
+        else
+          break;
+    }
+
+    if (!vec_len (host_if_name)) {
+        errmsg ("host-interface name must be specified");
+        return -99;
+    }
+
+    if (vec_len (host_if_name) > 64) {
+        errmsg ("host-interface name too long");
+        return -99;
+    }
+
+    M(AF_PACKET_CREATE, af_packet_create);
+
+    clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
+    clib_memcpy (mp->hw_addr, hw_addr, 6);
+    mp->use_random_hw_addr = random_hw_addr;
+    vec_free (host_if_name);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_af_packet_delete (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_af_packet_delete_t * mp;
+    f64 timeout;
+    u8 * host_if_name = 0;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "name %s", &host_if_name))
+            vec_add1 (host_if_name, 0);
+        else
+          break;
+    }
+
+    if (!vec_len (host_if_name)) {
+        errmsg ("host-interface name must be specified");
+        return -99;
+    }
+
+    if (vec_len (host_if_name) > 64) {
+        errmsg ("host-interface name too long");
+        return -99;
+    }
+
+    M(AF_PACKET_DELETE, af_packet_delete);
+
+    clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
+    vec_free (host_if_name);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -10688,7 +10770,9 @@ _(lisp_locator_set_dump, "")                                            \
 _(lisp_local_eid_table_dump, "")                                        \
 _(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \
-_(lisp_gpe_enable_disable_status_dump, "")
+_(lisp_gpe_enable_disable_status_dump, "")                              \
+_(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
+_(af_packet_delete, "name <host interface name>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

@@ -3355,3 +3355,49 @@ define trace_profile_del_reply {
     u32 context;
     i32 retval;
 };
+
+/** \brief Create host-interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param host_if_name - interface name
+    @param hw_addr - interface MAC
+    @param use_random_hw_addr - use random generated MAC
+*/
+define af_packet_create {
+    u32 client_index;
+    u32 context;
+
+    u8 host_if_name[64];
+    u8 hw_addr[6];
+    u8 use_random_hw_addr;
+};
+
+/** \brief Create host-interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define af_packet_create_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief Delete host-interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param host_if_name - interface name
+*/
+define af_packet_delete {
+    u32 client_index;
+    u32 context;
+
+    u8 host_if_name[64];
+};
+
+/** \brief Delete host-interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define af_packet_delete_reply {
+    u32 context;
+    i32 retval;
+};
