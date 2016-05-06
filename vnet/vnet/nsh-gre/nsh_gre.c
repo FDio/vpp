@@ -68,8 +68,8 @@ u8 * format_nsh_gre_tunnel (u8 * s, va_list * args)
               t->nsh_hdr.length, t->nsh_hdr.length * 4, t->nsh_hdr.md_type, t->nsh_hdr.next_protocol);
   
   s = format (s, "  service path %d service index %d\n",
-              (t->nsh_hdr.spi_si>>NSH_SPI_SHIFT) & NSH_SPI_MASK,
-              t->nsh_hdr.spi_si & NSH_SINDEX_MASK);
+              (t->nsh_hdr.nsp_nsi>>NSH_NSP_SHIFT) & NSH_NSP_MASK,
+              t->nsh_hdr.nsp_nsi & NSH_NSI_MASK);
 
   s = format (s, "  c1 %d c2 %d c3 %d c4 %d\n",
               t->nsh_hdr.c1, t->nsh_hdr.c2, t->nsh_hdr.c3, t->nsh_hdr.c4);
@@ -156,15 +156,15 @@ _(ver_o_c)					\
 _(length)					\
 _(md_type)					\
 _(next_protocol)				\
-_(spi_si)					\
+_(nsp_nsi)					\
 _(c1)						\
 _(c2)						\
 _(c3)						\
-_(c4)						\
-_(tlvs)
+_(c4)
+/* alagalah TODO : temp killing _(tlvs) as its causing me pain */
 
 #define foreach_32bit_field			\
-_(spi_si)                                       \
+_(nsp_nsi)                                       \
 _(c1)                                           \
 _(c2)                                           \
 _(c3)                                           \
@@ -202,7 +202,7 @@ static int nsh_gre_rewrite (nsh_gre_tunnel_t * t)
   nsh0->ver_o_c = t->nsh_hdr.ver_o_c;
   nsh0->md_type = t->nsh_hdr.md_type;
   nsh0->next_protocol = t->nsh_hdr.next_protocol;
-  nsh0->spi_si = t->nsh_hdr.spi_si;
+  nsh0->nsp_nsi = t->nsh_hdr.nsp_nsi;
   nsh0->c1 = t->nsh_hdr.c1;
   nsh0->c2 = t->nsh_hdr.c2;
   nsh0->c3 = t->nsh_hdr.c3;
@@ -237,11 +237,11 @@ int vnet_nsh_gre_add_del_tunnel (vnet_nsh_gre_add_del_tunnel_args_t *a,
   u32 sw_if_index = ~0;
   int rv;
   u64 key;
-  u32 spi_si_net_byte_order;
+  u32 nsp_nsi_net_byte_order;
 
-  spi_si_net_byte_order = clib_host_to_net_u32(a->nsh_hdr.spi_si);
+  nsp_nsi_net_byte_order = clib_host_to_net_u32(a->nsh_hdr.nsp_nsi);
 
-  key = (((u64)(a->src.as_u32))<<32) | spi_si_net_byte_order;
+  key = (((u64)(a->src.as_u32))<<32) | nsp_nsi_net_byte_order;
 
   p = hash_get (ngm->nsh_gre_tunnel_by_src_address, key);
   
@@ -376,7 +376,7 @@ nsh_gre_add_del_tunnel_command_fn (vlib_main_t * vm,
   u8 spi_set = 0;
   u32 si;
   u8 si_set = 0;
-  u32 spi_si;
+  u32 nsp_nsi;
   u32 c1 = 0;
   u32 c2 = 0;
   u32 c3 = 0;
@@ -462,7 +462,7 @@ nsh_gre_add_del_tunnel_command_fn (vlib_main_t * vm,
   if (si_set == 0)
     return clib_error_return (0, "si not specified");
 
-  spi_si = (spi<<8) | si;
+  nsp_nsi = (spi<<8) | si;
   
   memset (a, 0, sizeof (*a));
 
