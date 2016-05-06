@@ -423,13 +423,14 @@ nobase_include_HEADERS +=			\
 
 libvnet_la_SOURCES +=				\
  vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.c		\
- vnet/nsh-vxlan-gpe/encap.c			\
- vnet/nsh-vxlan-gpe/decap.c
+ vnet/nsh-vxlan-gpe/vxlan_gpe_encap.c	        \
+ vnet/nsh-vxlan-gpe/vxlan_gpe_decap.c
 
 nobase_include_HEADERS +=			\
  vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h		\
  vnet/nsh-vxlan-gpe/vxlan_gpe_packet.h		\
- vnet/nsh-vxlan-gpe/nsh_vxlan_gpe_error.def
+ vnet/nsh-vxlan-gpe/nsh_vxlan_gpe_error.def     \
+ vnet/nsh-vxlan-gpe/vxlan_gpe_error.def
 
 ########################################
 # LISP control plane: lisp-cp
