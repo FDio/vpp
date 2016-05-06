@@ -24,7 +24,8 @@
 _(PUNT, "error-punt")                           \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
-_(IP6_INPUT, "ip6-input")
+_(IP6_INPUT, "ip6-input")			\
+_(NSH_INPUT, "nsh-input")
 
 typedef enum {
 #define _(s,n) GRE_INPUT_NEXT_##s,
