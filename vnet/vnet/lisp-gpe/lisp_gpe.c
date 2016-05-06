@@ -91,27 +91,15 @@ lisp_gpe_rewrite (lisp_gpe_tunnel_t * t)
   return 0;
 }
 
-/* TODO remove */
-int
-vnet_lisp_gpe_add_del_tunnel (vnet_lisp_gpe_add_del_tunnel_args_t *a,
-                              u32 * sw_if_indexp)
-{
-  clib_warning ("UNSUPPORTED! Use vnet_lisp_gpe_add_del_fwd_entry");
-  return 0;
-}
-
 #define foreach_copy_field                      \
 _(encap_fib_index)                              \
 _(decap_fib_index)                              \
 _(decap_next_index)                             \
-_(flags)                                        \
-_(next_protocol)                                \
-_(ver_res)                                      \
-_(res)                                          \
 _(vni)
 
 static u32
-add_del_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u32 * tun_index_res)
+add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
+                   u32 * tun_index_res)
 {
   lisp_gpe_main_t * lgm = &lisp_gpe_main;
   lisp_gpe_tunnel_t *t = 0;
@@ -119,6 +107,7 @@ add_del_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u32 * tun_index_res)
   int rv;
   lisp_gpe_tunnel_key_t key;
 
+  /* prepare tunnel key */
   memset(&key, 0, sizeof(key));
   ip_prefix_copy(&key.eid, &gid_address_ippref(&a->deid));
   ip_address_copy(&key.dst_loc, &a->dlocator);
@@ -145,6 +134,10 @@ add_del_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u32 * tun_index_res)
 
       ip_address_copy(&t->src, &a->slocator);
       ip_address_copy(&t->dst, &a->dlocator);
+
+      t->flags |= LISP_GPE_FLAGS_P;
+      t->next_protocol = ip_prefix_version(&key.eid) == IP4 ?
+          LISP_GPE_NEXT_PROTO_IP4 : LISP_GPE_NEXT_PROTO_IP6;
 
       rv = lisp_gpe_rewrite (t);
 
@@ -236,12 +229,8 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
   spref = &gid_address_ippref(&a->seid);
   ip_ver = ip_prefix_version(dpref);
 
-  a->next_protocol = ip_ver == IP4 ?
-      LISP_GPE_NEXT_PROTO_IP4 : LISP_GPE_NEXT_PROTO_IP6;
-  a->flags |= LISP_GPE_FLAGS_P;
-
   /* add/del tunnel to tunnels pool and prepares rewrite */
-  rv = add_del_tunnel (a, &tun_index);
+  rv = add_del_ip_tunnel (a, &tun_index);
   if (rv)
     return rv;
 
@@ -355,9 +344,6 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
       a.deid = eids[i];
       a.slocator = slocators[i];
       a.dlocator = dlocators[i];
-      prefp = &gid_address_ippref(&a.deid);
-      a.decap_next_index = (ip_prefix_version(prefp) == IP4) ?
-              LISP_GPE_INPUT_NEXT_IP4_INPUT : LISP_GPE_INPUT_NEXT_IP6_INPUT;
       vnet_lisp_gpe_add_del_fwd_entry (&a, 0);
     }
 
@@ -367,7 +353,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   return error;
 }
 
-VLIB_CLI_COMMAND (add_del_lisp_gpe_mapping_tunnel_command, static) = {
+VLIB_CLI_COMMAND (lisp_gpe_add_del_fwd_entry_command, static) = {
   .path = "lisp gpe maptunnel",
   .short_help = "lisp gpe maptunnel eid <eid> sloc <src-locator> "
       "dloc <dst-locator> [del]",

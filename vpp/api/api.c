@@ -291,7 +291,6 @@ _(NSH_GRE_ADD_DEL_TUNNEL, nsh_gre_add_del_tunnel)			\
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)	                                \
 _(L2_FIB_TABLE_ENTRY, l2_fib_table_entry)                               \
 _(NSH_VXLAN_GPE_ADD_DEL_TUNNEL, nsh_vxlan_gpe_add_del_tunnel)           \
-_(LISP_GPE_ADD_DEL_TUNNEL, lisp_gpe_add_del_tunnel)			\
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
@@ -4664,64 +4663,6 @@ out:
 }
 
 static void
-vl_api_lisp_gpe_add_del_tunnel_t_handler 
-(vl_api_lisp_gpe_add_del_tunnel_t * mp)
-{
-    vl_api_lisp_gpe_add_del_tunnel_reply_t * rmp;
-    int rv = 0;
-    vnet_lisp_gpe_add_del_tunnel_args_t _a, *a = &_a;
-    u32 encap_fib_index, decap_fib_index;
-    u32 decap_next_index;
-    uword * p;
-    ip4_main_t * im = &ip4_main;
-    u32 sw_if_index = ~0;
-
-    p = hash_get (im->fib_index_by_table_id, ntohl(mp->encap_vrf_id));
-    if (! p) {
-        rv = VNET_API_ERROR_NO_SUCH_FIB;
-        goto out;
-    }
-    encap_fib_index = p[0];
-
-    decap_next_index = ntohl(mp->decap_next_index);
-
-    /* Interpret decap_vrf_id as an opaque if sending to other-than-ip4-input */
-    if (decap_next_index == NSH_GRE_INPUT_NEXT_IP4_INPUT) {
-        p = hash_get (im->fib_index_by_table_id, ntohl(mp->decap_vrf_id));
-        if (! p) {
-            rv = VNET_API_ERROR_NO_SUCH_INNER_FIB;
-            goto out;
-        }
-        decap_fib_index = p[0];
-    } else {
-        decap_fib_index = ntohl(mp->decap_vrf_id);
-    }
-
-    memset (a, 0, sizeof (*a));
-
-    a->is_add = mp->is_add;
-    /* ip addresses sent in network byte order */
-    a->src.as_u32 = mp->src;
-    a->dst.as_u32 = mp->dst;
-    a->encap_fib_index = encap_fib_index;
-    a->decap_fib_index = decap_fib_index;
-    a->decap_next_index = decap_next_index;
-    a->flags = mp->flags;
-    a->ver_res = mp->ver_res;
-    a->res = mp->res;
-    a->next_protocol = mp->next_protocol;
-    a->vni = clib_net_to_host_u32 (mp->iid);
-
-    rv = vnet_lisp_gpe_add_del_tunnel (a, &sw_if_index);
-    
-out:
-    REPLY_MACRO2(VL_API_LISP_GPE_ADD_DEL_TUNNEL_REPLY,
-    ({
-        rmp->sw_if_index = ntohl (sw_if_index);
-    }));
-}
-
-static void
 vl_api_lisp_add_del_locator_set_t_handler(vl_api_lisp_add_del_locator_set_t *mp)
 {
     vl_api_lisp_add_del_locator_set_reply_t *rmp;
@@ -4881,7 +4822,6 @@ vl_api_lisp_gpe_add_del_fwd_entry_t_handler(
     vl_api_lisp_gpe_add_del_fwd_entry_reply_t *rmp;
     int rv = 0;
     ip_address_t slocator, dlocator;
-    ip_prefix_t * prefp = NULL;
     gid_address_t eid;
     vnet_lisp_gpe_add_del_fwd_entry_args_t a;
 
@@ -4893,9 +4833,6 @@ vl_api_lisp_gpe_add_del_fwd_entry_t_handler(
     a.deid = eid;
     a.slocator = slocator;
     a.dlocator = dlocator;
-    prefp = &gid_address_ippref(&a.deid);
-    a.decap_next_index = (ip_prefix_version(prefp) == IP4) ?
-    LISP_GPE_INPUT_NEXT_IP4_INPUT : LISP_GPE_INPUT_NEXT_IP6_INPUT;
     rv = vnet_lisp_gpe_add_del_fwd_entry (&a, 0);
 
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY);
