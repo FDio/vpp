@@ -399,37 +399,40 @@ nobase_include_HEADERS +=			\
 ########################################
 # NSH Map: nsh
 ########################################
+ libvnet_la_SOURCES +=				\
+  vnet/nsh/nsh.c
 
-nobase_include_HEADERS +=			\
- vnet/nsh/nsh_packet.h				\
- vnet/nsh/nsh_error.def
+ nobase_include_HEADERS +=			\
+  vnet/nsh/nsh_packet.h				\
+  vnet/nsh/nsh.h				\
+  vnet/nsh/nsh_error.def
 
 
 ########################################
 # Tunnel protocol: nsh-gre
 ########################################
 
-libvnet_la_SOURCES +=				\
- vnet/nsh-gre/nsh_gre.c				\
- vnet/nsh-gre/encap.c				\
- vnet/nsh-gre/decap.c
+# libvnet_la_SOURCES +=				\
+#   vnet/nsh-gre/nsh_gre.c			\
+#   vnet/nsh-gre/encap.c				\
+#   vnet/nsh-gre/decap.c
 
-nobase_include_HEADERS +=			\
- vnet/nsh-gre/nsh_gre.h				
+# nobase_include_HEADERS +=			\
+#   vnet/nsh-gre/nsh_gre.h				
 
 ########################################
-# Tunnel protocol: nsh-vxlan-gpe
+# Tunnel protocol: vxlan-gpe
 ########################################
 
 libvnet_la_SOURCES +=				\
- vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.c		\
- vnet/nsh-vxlan-gpe/encap.c			\
- vnet/nsh-vxlan-gpe/decap.c
+ vnet/vxlan-gpe/vxlan_gpe.c			\
+ vnet/vxlan-gpe/encap.c	        		\
+ vnet/vxlan-gpe/decap.c
 
 nobase_include_HEADERS +=			\
- vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h		\
- vnet/nsh-vxlan-gpe/vxlan_gpe_packet.h		\
- vnet/nsh-vxlan-gpe/nsh_vxlan_gpe_error.def
+ vnet/vxlan-gpe/vxlan_gpe.h			\
+ vnet/vxlan-gpe/vxlan_gpe_packet.h		\
+ vnet/vxlan-gpe/vxlan_gpe_error.def
 
 ########################################
 # LISP control plane: lisp-cp
