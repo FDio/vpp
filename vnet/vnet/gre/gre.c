@@ -416,6 +416,17 @@ gre_interface_tx (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static clib_error_t *
+gre_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+{
+  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    vnet_hw_interface_set_flags (vnm, hw_if_index, VNET_HW_INTERFACE_FLAG_LINK_UP);
+  else
+    vnet_hw_interface_set_flags (vnm, hw_if_index, 0 /* down */);
+
+  return /* no error */ 0;
+}
+
 static u8 * format_gre_tunnel_name (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
@@ -437,9 +448,9 @@ VNET_DEVICE_CLASS (gre_device_class) = {
   .format_device = format_gre_device,
   .format_tx_trace = format_gre_tx_trace,
   .tx_function = gre_interface_tx,
+  .admin_up_down_function = gre_interface_admin_up_down,
 #ifdef SOON
   .clear counter = 0;
-  .admin_up_down_function = 0;
 #endif
 };
 
