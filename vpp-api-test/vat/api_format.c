@@ -909,37 +909,6 @@ static void vl_api_nsh_vxlan_gpe_add_del_tunnel_reply_t_handler_json
     vam->result_ready = 1;
 }
 
-static void vl_api_lisp_gpe_add_del_tunnel_reply_t_handler 
-(vl_api_lisp_gpe_add_del_tunnel_reply_t * mp)
-{
-    vat_main_t * vam = &vat_main;
-    i32 retval = ntohl(mp->retval);
-    u32 sw_if_index = ntohl(mp->sw_if_index);
-
-    if (retval >= 0 && sw_if_index != (u32)~0) {
-        errmsg ("sw_if_index %d\n", ntohl(mp->sw_if_index));
-    }
-    vam->retval = retval;
-    vam->result_ready = 1;
-}
-
-static void vl_api_lisp_gpe_add_del_tunnel_reply_t_handler_json
-(vl_api_lisp_gpe_add_del_tunnel_reply_t * mp)
-{
-    vat_main_t * vam = &vat_main;
-    vat_json_node_t node;
-
-    vat_json_init_object(&node);
-    vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
-    vat_json_object_add_uint(&node, "sw_if_index", ntohl(mp->sw_if_index));
-
-    vat_json_print(vam->ofp, &node);
-    vat_json_free(&node);
-
-    vam->retval = ntohl(mp->retval);
-    vam->result_ready = 1;
-}
-
 static void vl_api_show_version_reply_t_handler 
 (vl_api_show_version_reply_t * mp)
 {
@@ -2361,7 +2330,6 @@ _(SHOW_VERSION_REPLY, show_version_reply)                               \
 _(NSH_GRE_ADD_DEL_TUNNEL_REPLY, nsh_gre_add_del_tunnel_reply)		\
 _(L2_FIB_TABLE_ENTRY, l2_fib_table_entry)				\
 _(NSH_VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, nsh_vxlan_gpe_add_del_tunnel_reply) \
-_(LISP_GPE_ADD_DEL_TUNNEL_REPLY, lisp_gpe_add_del_tunnel_reply) 	\
 _(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
 _(WANT_IP4_ARP_EVENTS_REPLY, want_ip4_arp_events_reply)			\
 _(IP4_ARP_EVENT, ip4_arp_event)                                         \
@@ -8237,140 +8205,6 @@ static int api_nsh_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
     return 0;
 }
 
-static uword unformat_lisp_gpe_decap_next (unformat_input_t * input, 
-                                               va_list * args)
-{
-    u32 * result = va_arg (*args, u32 *);
-    u32 tmp;
-  
-    if (unformat (input, "drop"))
-        *result = LISP_GPE_INPUT_NEXT_DROP;
-    else if (unformat (input, "ip4"))
-        *result = LISP_GPE_INPUT_NEXT_IP4_INPUT;
-    else if (unformat (input, "ip6"))
-        *result = LISP_GPE_INPUT_NEXT_IP6_INPUT;
-    else if (unformat (input, "ethernet"))
-        *result = LISP_GPE_INPUT_NEXT_IP6_INPUT;
-    else if (unformat (input, "%d", &tmp))
-        *result = tmp;
-    else
-        return 0;
-    return 1;
-}
-
-static int
-api_lisp_gpe_add_del_tunnel (vat_main_t * vam)
-{
-    unformat_input_t * line_input = vam->input;
-    vl_api_lisp_gpe_add_del_tunnel_t *mp;
-    f64 timeout;
-    ip4_address_t src, dst;
-    u8 is_add = 1;
-    u8 src_set = 0;
-    u8 dst_set = 0;
-    u32 encap_vrf_id = 0;
-    u32 decap_vrf_id = 0;
-    u8 next_protocol = LISP_GPE_NEXT_PROTOCOL_IP4;
-    u32 decap_next_index = LISP_GPE_INPUT_NEXT_IP4_INPUT;
-    u8 flags = LISP_GPE_FLAGS_P;
-    u8 ver_res = 0;
-    u8 res = 0;
-    u32 iid = 0;
-    u8 iid_set = 0;
-    u32 tmp;
-  
-    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
-        if (unformat (line_input, "del"))
-            is_add = 0;
-        else if (unformat (line_input, "src %U", 
-                           unformat_ip4_address, &src))
-            src_set = 1;
-        else if (unformat (line_input, "dst %U",
-                           unformat_ip4_address, &dst))
-            dst_set = 1;
-        else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
-            ;
-        else if (unformat (line_input, "decap-vrf-id %d", &decap_vrf_id))
-            ;
-        else if (unformat (line_input, "decap-next %U", 
-                           unformat_lisp_gpe_decap_next, 
-                           &decap_next_index))
-            ;
-        else if (unformat(line_input, "next-ip4"))
-            next_protocol = 1;
-        else if (unformat(line_input, "next-ip6"))
-            next_protocol = 2;
-        else if (unformat(line_input, "next-ethernet"))
-            next_protocol = 3;
-        else if (unformat(line_input, "next-nsh"))
-            next_protocol = 4;
-        /* Allow the user to specify anything they want in the LISP hdr */
-        else if (unformat (line_input, "ver_res %x", &tmp))
-            ver_res = tmp;
-        else if (unformat (line_input, "res %x", &tmp))
-            res = tmp;
-        else if (unformat (line_input, "flags %x", &tmp))
-            flags = tmp;
-        else if (unformat (line_input, "n-bit"))
-            flags |= LISP_GPE_FLAGS_N;
-        else if (unformat (line_input, "l-bit"))
-            flags |= LISP_GPE_FLAGS_L;
-        else if (unformat (line_input, "e-bit"))
-            flags |= LISP_GPE_FLAGS_E;
-        else if (unformat (line_input, "v-bit"))
-            flags |= LISP_GPE_FLAGS_V;
-        else if (unformat (line_input, "i-bit"))
-            flags |= LISP_GPE_FLAGS_V;
-        else if (unformat (line_input, "not-p-bit"))
-            flags &= !LISP_GPE_FLAGS_P;
-        else if (unformat (line_input, "p-bit"))
-            flags |= LISP_GPE_FLAGS_P;
-        else if (unformat (line_input, "o-bit"))
-            flags |= LISP_GPE_FLAGS_O;
-        else if (unformat (line_input, "iidx %x", &iid))
-            iid_set = 1;
-        else if (unformat (line_input, "iid %d", &iid))
-            iid_set = 1;
-        else {
-            errmsg ("parse error '%U'\n", format_unformat_error, line_input);
-            return -99;
-        }
-    }
-
-    if (src_set == 0) {
-        errmsg ("tunnel src address not specified\n");
-        return -99;
-    }
-    if (dst_set == 0) {
-        errmsg ("tunnel dst address not specified\n");
-        return -99;
-    }
-    if (iid_set == 0) {
-        errmsg ("iid not specified\n");
-        return -99;
-    }
-
-    M(LISP_GPE_ADD_DEL_TUNNEL, lisp_gpe_add_del_tunnel);
-
-    mp->src = src.as_u32;
-    mp->dst = dst.as_u32;
-    mp->encap_vrf_id = ntohl(encap_vrf_id);
-    mp->decap_vrf_id = ntohl(decap_vrf_id);
-    mp->decap_next_index = ntohl(decap_next_index);
-    mp->is_add = is_add;
-    mp->flags = flags;
-    mp->ver_res = ver_res;
-    mp->res = res;
-    mp->next_protocol = next_protocol;
-    mp->iid = ntohl(iid);
-
-    S; W; 
-
-    /* NOTREACHED */
-    return 0;
-}
-
-
 u8 * format_l2_fib_mac_address (u8 * s, va_list * args)
 {
   u8 * a = va_arg (*args, u8 *);
@@ -10786,12 +10620,6 @@ _(nsh_vxlan_gpe_add_del_tunnel,                                         \
   "[c-bit <1|0>] [md-type <nn>][next-ip4][next-ip6][next-ethernet]\n"   \
   "[tlv <xx>][del]")							\
 _(l2_fib_table_dump, "bd_id <bridge-domain-id>")			\
-_(lisp_gpe_add_del_tunnel,                                              \
-  "src <ip4-addr> dst <ip4-addr> iid <nn>|iidx <0xnn>\n"                \
-  "[encap-vrf-id <nn>] [decap-vrf-id <nn>]\n"                           \
-  "[n-bit][l-bit][e-bit][v-bit][i-bit][p-bit][not-p-bit][o-bit]\n"      \
-  "[next-ip4][next-ip6][next-ethernet][next-nsh]\n"                     \
-  "[decap-next [ip4|ip6|ethernet|nsh-encap|<nn>]][del]")                \
 _(interface_name_renumber,                                              \
   "<intfc> | sw_if_index <nn> new_show_dev_instance <nn>")		\
 _(input_acl_set_interface,                                              \

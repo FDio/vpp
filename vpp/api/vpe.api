@@ -2169,29 +2169,6 @@ define nsh_vxlan_gpe_add_del_tunnel_reply {
     u32 sw_if_index;
 };
 
-define lisp_gpe_add_del_tunnel {
-    u32 client_index;
-    u32 context;
-    u32 src;
-    u32 dst;
-    u32 encap_vrf_id;
-    u32 decap_vrf_id;
-    u32 decap_next_index;
-    u8 is_add;
-    u8 flags;
-    u8 ver_res;
-    u8 res;
-    u8 next_protocol;
-    /* in network byte order */
-    u32 iid;
-};
-
-define lisp_gpe_add_del_tunnel_reply {
-    u32 context;
-    i32 retval;
-    u32 sw_if_index;
-};
-
 /** \brief add or delete locator_set
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

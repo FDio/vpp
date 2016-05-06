@@ -1684,49 +1684,6 @@ static void *vl_api_nsh_vxlan_gpe_add_del_tunnel_t_print
     FINISH;
 }
 
-static void *vl_api_lisp_gpe_add_del_tunnel_t_print
-(vl_api_lisp_gpe_add_del_tunnel_t * mp, void *handle)
-{
-    u8 * s;
-
-    s = format (0, "SCRIPT: lisp_gpe_add_del_tunnel ");
-
-    s = format (s, "src %U dst %U ", format_ip4_address, &mp->src,
-                format_ip4_address, &mp->dst);
-
-    if (mp->encap_vrf_id)
-        s = format (s, "encap-vrf-id %d ", ntohl(mp->encap_vrf_id));
-    
-    if (mp->decap_vrf_id)
-        s = format (s, "decap-vrf-id %d ", ntohl(mp->decap_vrf_id));
-
-    s = format (s, "decap-next %d ", ntohl(mp->decap_next_index));
-
-    s = format (s, "flags %x ", (u32)(mp->flags));
-
-    if (mp->ver_res)
-        s = format (s, "ver_res %x ", (u32)(mp->ver_res));
-
-    if (mp->res)
-        s = format (s, "res %x ", (u32)(mp->res));
-
-    s = format (s, "iid %d ", ntohl (mp->iid));
-
-    if (mp->is_add == 0)
-        s = format (s, "del ");
-
-    if (mp->next_protocol == 1)
-        s = format (s, "next-ip4 ");
-    else if (mp->next_protocol == 2)
-        s = format (s, "next-ip6 ");
-    else if (mp->next_protocol == 3)
-        s = format (s, "next-ethernet ");
-    else if (mp->next_protocol == 4)
-        s = format (s, "next-nsh ");
-    
-    FINISH;
-}
-
 static void *vl_api_interface_name_renumber_t_print 
 (vl_api_interface_name_renumber_t * mp, void * handle)
 {
@@ -1918,7 +1875,6 @@ _(SHOW_VERSION, show_version)                                           \
 _(NSH_GRE_ADD_DEL_TUNNEL, nsh_gre_add_del_tunnel)			\
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                 \
 _(NSH_VXLAN_GPE_ADD_DEL_TUNNEL, nsh_vxlan_gpe_add_del_tunnel)		\
-_(LISP_GPE_ADD_DEL_TUNNEL, lisp_gpe_add_del_tunnel)			\
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \

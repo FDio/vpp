@@ -174,24 +174,6 @@ format_lisp_gpe_header_with_length (u8 * s, va_list * args);
 typedef struct
 {
   u8 is_add;
-  ip4_address_t src, dst;
-  u32 encap_fib_index;
-  u32 decap_fib_index;
-  u32 decap_next_index;
-  u8 flags;
-  u8 ver_res;
-  u8 res;
-  u8 next_protocol;
-  u32 vni; /* host byte order */
-} vnet_lisp_gpe_add_del_tunnel_args_t;
-
-int
-vnet_lisp_gpe_add_del_tunnel (vnet_lisp_gpe_add_del_tunnel_args_t *a,
-			      u32 * sw_if_indexp);
-
-typedef struct
-{
-  u8 is_add;
   u32 table_id; /* vrf */
   u32 vni;      /* host byte order */
 } vnet_lisp_gpe_add_del_iface_args_t;
@@ -221,20 +203,29 @@ typedef enum
 typedef struct
 {
   u8 is_add;
+
+  /* type of mapping */
   u8 is_negative;
   negative_fwd_actions_e action;
+
+  /* local and remote eids */
   gid_address_t seid; /* TODO convert to ip4, ip6, mac ? */
   gid_address_t deid;
+
+  /* local and remote locators (underlay attachment points) */
   ip_address_t slocator;
   ip_address_t dlocator;
+
+  /* FIB indices to lookup remote locator at encap and inner IP at decap */
   u32 encap_fib_index;
   u32 decap_fib_index;
+
   u32 decap_next_index; /* TODO is this really needed? */
-  u8 flags;
-  u8 ver_res;
-  u8 res;
-  u8 next_protocol;
-  u32 vni; /* host byte order */
+
+  /* VNI/tenant id in HOST byte order */
+  u32 vni;
+
+  /* vrf where fwd entry should be inserted */
   u32 table_id;
 } vnet_lisp_gpe_add_del_fwd_entry_args_t;
 
