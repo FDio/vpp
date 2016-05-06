@@ -27,7 +27,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/sr/sr_packet.h>
 #include <vnet/nsh-gre/nsh_gre.h>
-#include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h>
+#include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
@@ -1628,21 +1628,15 @@ static void *vl_api_nsh_gre_add_del_tunnel_t_print
     FINISH;
 }
 
-static void *vl_api_nsh_vxlan_gpe_add_del_tunnel_t_print
-(vl_api_nsh_vxlan_gpe_add_del_tunnel_t * mp, void *handle)
+static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
+(vl_api_vxlan_gpe_add_del_tunnel_t * mp, void *handle)
 {
     u8 * s;
-    int i;
-    u32 spi_si;
 
-    s = format (0, "SCRIPT: nsh_vxlan_gpe_add_del_tunnel ");
+    s = format (0, "SCRIPT: vxlan_gpe_add_del_tunnel ");
 
     s = format (s, "src %U dst %U ", format_ip4_address, &mp->src,
                 format_ip4_address, &mp->dst);
-
-    spi_si = ntohl(mp->spi_si);
-
-    s = format (s, "spi %d si %d ", (spi_si>>8), (spi_si & 0xff));
 
     s = format (s, "decap-next %d ", ntohl(mp->decap_next_index));
 
@@ -1657,30 +1651,15 @@ static void *vl_api_nsh_vxlan_gpe_add_del_tunnel_t_print
     if (mp->decap_vrf_id)
         s = format (s, "decap-vrf-id %d ", ntohl(mp->decap_vrf_id));
 
-    if (mp->ver_o_c & 0xc)
-        s = format (s, "version %d ", mp->ver_o_c>>6);
-    if (mp->ver_o_c & NSH_O_BIT)
-        s = format (s, "o-bit 1 ");
-    if (mp->ver_o_c & NSH_C_BIT)
-        s = format (s, "c-bit 1 ");
-    if (mp->md_type)
-        s = format (s, "md-type %d ", mp->md_type);
     if (mp->next_protocol == 1)
         s = format (s, "next-ip4 ");
     else if (mp->next_protocol == 2)
         s = format (s, "next-ip6 ");
     else if (mp->next_protocol == 3)
         s = format (s, "next-ethernet");
+    else if (mp->next_protocol == 4)
+        s = format (s, "next-nsh");
     
-    s = format (s, "c1 %d ", ntohl(mp->c1));
-    s = format (s, "c2 %d ", ntohl(mp->c2));
-    s = format (s, "c3 %d ", ntohl(mp->c3));
-    s = format (s, "c4 %d ", ntohl(mp->c4));
-            
-    for (i = 0; i < mp->tlv_len_in_words; i++) {
-        s = format (s, "tlv %x ", ntohl(mp->tlvs[i]));
-    }
-        
     FINISH;
 }
 
@@ -1917,7 +1896,7 @@ _(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)           \
 _(SHOW_VERSION, show_version)                                           \
 _(NSH_GRE_ADD_DEL_TUNNEL, nsh_gre_add_del_tunnel)			\
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                 \
-_(NSH_VXLAN_GPE_ADD_DEL_TUNNEL, nsh_vxlan_gpe_add_del_tunnel)		\
+_(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)			\
 _(LISP_GPE_ADD_DEL_TUNNEL, lisp_gpe_add_del_tunnel)			\
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \

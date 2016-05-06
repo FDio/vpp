@@ -17,50 +17,50 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/nsh-vxlan-gpe/nsh_vxlan_gpe.h>
+#include <vnet/vxlan-gpe/vxlan_gpe.h>
 
 /* Statistics (not really errors) */
-#define foreach_nsh_vxlan_gpe_encap_error    \
+#define foreach_vxlan_gpe_encap_error    \
 _(ENCAPSULATED, "good packets encapsulated")
 
-static char * nsh_vxlan_gpe_encap_error_strings[] = {
+static char * vxlan_gpe_encap_error_strings[] = {
 #define _(sym,string) string,
-  foreach_nsh_vxlan_gpe_encap_error
+  foreach_vxlan_gpe_encap_error
 #undef _
 };
 
 typedef enum {
-#define _(sym,str) NSH_VXLAN_GPE_ENCAP_ERROR_##sym,
-    foreach_nsh_vxlan_gpe_encap_error
+#define _(sym,str) VXLAN_GPE_ENCAP_ERROR_##sym,
+    foreach_vxlan_gpe_encap_error
 #undef _
-    NSH_VXLAN_GPE_ENCAP_N_ERROR,
-} nsh_vxlan_gpe_encap_error_t;
+    VXLAN_GPE_ENCAP_N_ERROR,
+} vxlan_gpe_encap_error_t;
 
 typedef enum {
-  NSH_VXLAN_GPE_ENCAP_NEXT_DROP,
-  NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
-  NSH_VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP,
-  NSH_VXLAN_GPE_ENCAP_NEXT_ETHERNET_LOOKUP,
-  NSH_VXLAN_GPE_ENCAP_NEXT_NSH_LOOKUP,
-  NSH_VXLAN_GPE_ENCAP_N_NEXT
-} nsh_vxlan_gpe_encap_next_t;
+  VXLAN_GPE_ENCAP_NEXT_DROP,
+  VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
+  VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP,
+  VXLAN_GPE_ENCAP_NEXT_ETHERNET_LOOKUP,
+  VXLAN_GPE_ENCAP_NEXT_NSH_LOOKUP,
+  VXLAN_GPE_ENCAP_N_NEXT
+} vxlan_gpe_encap_next_t;
 
 typedef struct {
   u32 tunnel_index;
-} nsh_vxlan_gpe_encap_trace_t;
+} vxlan_gpe_encap_trace_t;
 
 typedef struct {
   nsh_header_t nsh_header;
 } nsh_input_trace_t;
 
-u8 * format_nsh_vxlan_gpe_encap_trace (u8 * s, va_list * args)
+u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  nsh_vxlan_gpe_encap_trace_t * t 
-      = va_arg (*args, nsh_vxlan_gpe_encap_trace_t *);
+  vxlan_gpe_encap_trace_t * t 
+      = va_arg (*args, vxlan_gpe_encap_trace_t *);
 
-  s = format (s, "NSH-VXLAN-ENCAP: tunnel %d", t->tunnel_index);
+  s = format (s, "VXLAN-GPE-ENCAP: tunnel %d", t->tunnel_index);
   return s;
 }
 
@@ -68,12 +68,12 @@ u8 * format_nsh_vxlan_gpe_encap_trace (u8 * s, va_list * args)
 _(0) _(1) _(2) _(3) _(4) _(5) _(6)
 
 static uword
-nsh_vxlan_gpe_encap (vlib_main_t * vm,
+vxlan_gpe_encap (vlib_main_t * vm,
                vlib_node_runtime_t * node,
                vlib_frame_t * from_frame)
 {
   u32 n_left_from, next_index, * from, * to_next;
-  nsh_vxlan_gpe_main_t * ngm = &nsh_vxlan_gpe_main;
+  vxlan_gpe_main_t * ngm = &vxlan_gpe_main;
   vnet_main_t * vnm = ngm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
   u32 pkts_encapsulated = 0;
@@ -99,8 +99,8 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 	{
           u32 bi0, bi1;
 	  vlib_buffer_t * b0, * b1;
-	  u32 next0 = NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
-          u32 next1 = NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
+	  u32 next0 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
+          u32 next1 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
           u32 sw_if_index0, sw_if_index1, len0, len1;
           vnet_hw_interface_t * hi0, * hi1;
           ip4_header_t * ip0, * ip1;
@@ -109,7 +109,7 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
           u64 * copy_src1, * copy_dst1;
           u32 * copy_src_last0, * copy_dst_last0;
           u32 * copy_src_last1, * copy_dst_last1;
-          nsh_vxlan_gpe_tunnel_t * t0, * t1;
+          vxlan_gpe_tunnel_t * t0, * t1;
           u16 new_l0, new_l1;
           ip_csum_t sum0, sum1;
 
@@ -165,7 +165,7 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
           copy_dst1 = (u64 *) ip1;
           copy_src1 = (u64 *) t1->rewrite;
 
-          ASSERT (sizeof (ip4_vxlan_gpe_and_nsh_header_t) == 60);
+          ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 60);
 
           /* Copy first 56 octets 8-bytes at a time */
 #define _(offs) copy_dst0[offs] = copy_src0[offs];
@@ -266,14 +266,14 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              nsh_vxlan_gpe_encap_trace_t *tr =
+              vxlan_gpe_encap_trace_t *tr =
                 vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->tunnel_index = t0 - ngm->tunnels;
             }
 
           if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
             {
-              nsh_vxlan_gpe_encap_trace_t *tr =
+              vxlan_gpe_encap_trace_t *tr =
                 vlib_add_trace (vm, node, b1, sizeof (*tr));
               tr->tunnel_index = t1 - ngm->tunnels;
             }
@@ -287,14 +287,14 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t * b0;
-	  u32 next0 = NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
+	  u32 next0 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
 	  u32 sw_if_index0, len0;
           vnet_hw_interface_t * hi0;
           ip4_header_t * ip0;
           udp_header_t * udp0;
           u64 * copy_src0, * copy_dst0;
           u32 * copy_src_last0, * copy_dst_last0;
-          nsh_vxlan_gpe_tunnel_t * t0;
+          vxlan_gpe_tunnel_t * t0;
           u16 new_l0;
           ip_csum_t sum0;
 
@@ -324,7 +324,7 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
           copy_dst0 = (u64 *) ip0;
           copy_src0 = (u64 *) t0->rewrite;
 
-          ASSERT (sizeof (ip4_vxlan_gpe_and_nsh_header_t) == 60);
+          ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 60);
 
           /* Copy first 56 octets 8-bytes at a time */
 #define _(offs) copy_dst0[offs] = copy_src0[offs];
@@ -386,7 +386,7 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
 	    } 
 	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      nsh_vxlan_gpe_encap_trace_t *tr =
+	      vxlan_gpe_encap_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->tunnel_index = t0 - ngm->tunnels;
             }
@@ -398,7 +398,7 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   vlib_node_increment_counter (vm, node->node_index,
-                               NSH_VXLAN_GPE_ENCAP_ERROR_ENCAPSULATED,
+                               VXLAN_GPE_ENCAP_ERROR_ENCAPSULATED,
                                pkts_encapsulated);
   /* Increment any remaining batch stats */
   if (stats_n_packets) { 
@@ -411,25 +411,25 @@ nsh_vxlan_gpe_encap (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (nsh_vxlan_gpe_encap_node) = {
-  .function = nsh_vxlan_gpe_encap,
-  .name = "nsh-vxlan-gpe-encap",
+VLIB_REGISTER_NODE (vxlan_gpe_encap_node) = {
+  .function = vxlan_gpe_encap,
+  .name = "vxlan-gpe-encap",
   .vector_size = sizeof (u32),
-  .format_trace = format_nsh_vxlan_gpe_encap_trace,
+  .format_trace = format_vxlan_gpe_encap_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(nsh_vxlan_gpe_encap_error_strings),
-  .error_strings = nsh_vxlan_gpe_encap_error_strings,
+  .n_errors = ARRAY_LEN(vxlan_gpe_encap_error_strings),
+  .error_strings = vxlan_gpe_encap_error_strings,
 
-  .n_next_nodes = NSH_VXLAN_GPE_ENCAP_N_NEXT,
+  .n_next_nodes = VXLAN_GPE_ENCAP_N_NEXT,
 
   .next_nodes = {
-        [NSH_VXLAN_GPE_ENCAP_NEXT_DROP] = "error-drop",
-        [NSH_VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
-        [NSH_VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP] = "ip6-lookup",
-        [NSH_VXLAN_GPE_ENCAP_NEXT_ETHERNET_LOOKUP] = "ethernet-input",
-        [NSH_VXLAN_GPE_ENCAP_NEXT_NSH_LOOKUP] = "nsh-input-map",
+        [VXLAN_GPE_ENCAP_NEXT_DROP] = "error-drop",
+        [VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
+        [VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP] = "ip6-lookup",
+        [VXLAN_GPE_ENCAP_NEXT_ETHERNET_LOOKUP] = "ethernet-input",
+        [VXLAN_GPE_ENCAP_NEXT_NSH_LOOKUP] = "nsh-input-map",
 
   },
 };
- 
+// alagalah end  

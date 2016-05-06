@@ -4569,7 +4569,7 @@ vl_api_nsh_gre_add_del_tunnel_t_handler
     a->nsh_hdr.length = mp->length;
     a->nsh_hdr.md_type = mp->md_type;
     a->nsh_hdr.next_protocol = mp->next_protocol;
-    a->nsh_hdr.spi_si = ntohl(mp->spi_si);
+    a->nsh_hdr.nsp_nsi = ntohl(mp->spi_si);
     a->nsh_hdr.c1 = ntohl(mp->c1);
     a->nsh_hdr.c2 = ntohl(mp->c2);
     a->nsh_hdr.c3 = ntohl(mp->c3);
@@ -4578,7 +4578,7 @@ vl_api_nsh_gre_add_del_tunnel_t_handler
     for (i = 0; i < mp->tlv_len_in_words; i++)
         vec_add1 (tlvs, ntohl(mp->tlvs[i]));
 
-    a->nsh_hdr.tlvs = tlvs;
+    /* a->nsh_hdr.tlvs = tlvs; */
 
     rv = vnet_nsh_gre_add_del_tunnel (a, &sw_if_index);
     
@@ -4614,7 +4614,7 @@ vl_api_nsh_vxlan_gpe_add_del_tunnel_t_handler
     decap_next_index = ntohl(mp->decap_next_index);
 
     /* Interpret decap_vrf_id as an opaque if sending to other-than-ip4-input */
-    if (decap_next_index == NSH_GRE_INPUT_NEXT_IP4_INPUT) {
+    if (decap_next_index == VXLAN_GPE_INPUT_NEXT_IP4_INPUT) {
         p = hash_get (im->fib_index_by_table_id, ntohl(mp->decap_vrf_id));
         if (! p) {
             rv = VNET_API_ERROR_NO_SUCH_INNER_FIB;
@@ -4635,22 +4635,8 @@ vl_api_nsh_vxlan_gpe_add_del_tunnel_t_handler
     a->decap_fib_index = decap_fib_index;
     a->decap_next_index = decap_next_index;
     a->vni = ntohl(mp->vni);
-    a->nsh_hdr.ver_o_c = mp->ver_o_c;
-    a->nsh_hdr.length = mp->length;
-    a->nsh_hdr.md_type = mp->md_type;
-    a->nsh_hdr.next_protocol = mp->next_protocol;
-    a->nsh_hdr.spi_si = ntohl(mp->spi_si);
-    a->nsh_hdr.c1 = ntohl(mp->c1);
-    a->nsh_hdr.c2 = ntohl(mp->c2);
-    a->nsh_hdr.c3 = ntohl(mp->c3);
-    a->nsh_hdr.c4 = ntohl(mp->c4);
 
-    for (i = 0; i < mp->tlv_len_in_words; i++)
-        vec_add1 (tlvs, ntohl(mp->tlvs[i]));
-
-    a->nsh_hdr.tlvs = tlvs;
-
-    rv = vnet_nsh_vxlan_gpe_add_del_tunnel (a, &sw_if_index);
+    rv = vnet_vxlan_gpe_add_del_tunnel (a, &sw_if_index);
     
 out:
     REPLY_MACRO2(VL_API_NSH_VXLAN_GPE_ADD_DEL_TUNNEL_REPLY,
