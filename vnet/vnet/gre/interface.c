@@ -102,6 +102,9 @@ int vnet_gre_add_del_tunnel
     vec_validate_init_empty (gm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
     gm->tunnel_index_by_sw_if_index[sw_if_index] = t - gm->tunnels;
 
+    vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
+    im->fib_index_by_sw_if_index[sw_if_index] = t->outer_fib_index;
+
     hi->min_packet_bytes = 64 + sizeof (gre_header_t) + sizeof (ip4_header_t);
     hi->per_packet_overhead_bytes =
       /* preamble */ 8 + /* inter frame gap */ 12;
