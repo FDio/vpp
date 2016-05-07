@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_2cdd3e71",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 3388,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-05-07T14:13:47Z",
+      "side": 1,
+      "message": "Given that the underlying function is willing to generate random MAC addresses, it might be worth adding \"u8 use_random_hw_addr\" to the message, and so forth.",
+      "revId": "7a05e76dbba8269d0a354d82b660404e39216526",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
