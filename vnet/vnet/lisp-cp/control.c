@@ -854,7 +854,7 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (lisp_cp_add_del_locator_set_command) = {
     .path = "lisp locator-set",
     .short_help = "lisp locator-set add/del <name> iface <iface-name> "
-        "<priority> <weight>",
+        "p <priority> w <weight>",
     .function = lisp_add_del_locator_set_command_fn,
 };
 

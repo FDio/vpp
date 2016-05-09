@@ -1877,12 +1877,27 @@ vl_api_lisp_locator_set_details_t_handler (
     vl_api_lisp_locator_set_details_t *mp)
 {
     vat_main_t *vam = &vat_main;
+    u8 * tmp_str = NULL;
 
-    fformat(vam->ofp, "%=20s%=16d%=16d%=16d\n",
-            mp->locator_set_name,
-            ntohl(mp->sw_if_index),
-            mp->priority,
-            mp->weight);
+    if (mp->local) {
+      fformat(vam->ofp, "%=20s%=16d%=16d%=16d\n",
+              mp->locator_set_name,
+              ntohl(mp->sw_if_index),
+              mp->priority,
+              mp->weight);
+    } else {
+      tmp_str = format(0,"%U/%d",
+              mp->is_ipv6 ? format_ip6_address : format_ip4_address,
+              mp->ip_address,
+              mp->prefix_len);
+
+      fformat(vam->ofp, "%=20s%=16s%=16d%=16d\n",
+              mp->locator_set_name,
+              tmp_str,
+              mp->priority,
+              mp->weight);
+      vec_free(tmp_str);
+    }
 }
 
 static void
@@ -1891,6 +1906,8 @@ vl_api_lisp_locator_set_details_t_handler_json (
 {
     vat_main_t *vam = &vat_main;
     vat_json_node_t *node = NULL;
+    struct in6_addr ip6;
+    struct in_addr ip4;
 
     if (VAT_JSON_ARRAY != vam->json_tree.type) {
         ASSERT(VAT_JSON_NONE == vam->json_tree.type);
@@ -1900,7 +1917,18 @@ vl_api_lisp_locator_set_details_t_handler_json (
 
     vat_json_init_object(node);
     vat_json_object_add_string_copy(node, "locator-set", mp->locator_set_name);
-    vat_json_object_add_uint(node, "locator", ntohl(mp->sw_if_index));
+    if (mp->local) {
+        vat_json_object_add_uint(node, "locator", ntohl(mp->sw_if_index));
+    } else {
+        if (mp->is_ipv6) {
+            clib_memcpy(&ip6, mp->ip_address, sizeof(ip6));
+            vat_json_object_add_ip6(node, "locator", ip6);
+        } else {
+            clib_memcpy(&ip4, mp->ip_address, sizeof(ip4));
+            vat_json_object_add_ip4(node, "locator", ip4);
+        }
+        vat_json_object_add_uint(node, "prefix-length", mp->prefix_len);
+    }
     vat_json_object_add_uint(node, "priority", mp->priority);
     vat_json_object_add_uint(node, "weight", mp->weight);
 }
@@ -9791,6 +9819,18 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
 
     if (!eidv4_set && !eidv6_set) {
         errmsg ("eid addresses not set\n");
+        vec_free(locator_set_name);
+        return -99;
+    }
+
+    if (eidv4_set && eid_lenght > 32) {
+        errmsg ("eid prefix to big\n");
+        vec_free(locator_set_name);
+        return -99;
+    }
+
+    if (eidv6_set && eid_lenght > 128) {
+        errmsg ("eid prefix to big\n");
         vec_free(locator_set_name);
         return -99;
     }
