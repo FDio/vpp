@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_275e7946",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 688,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-09T15:57:35Z",
+      "side": 1,
+      "message": "We need to do refcounting here to see how many eids we have per interface (to know when we should remove it). Check the add branch in vnet_lisp_add_del_local_mapping. This way we also avoid asking the dp to instantiate an interface multiple times.",
+      "range": {
+        "startLine": 688,
+        "startChar": 8,
+        "endLine": 688,
+        "endChar": 9
+      },
+      "revId": "0d9229e95c85c6f46023f0bfb582fcebee97b0aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_c7545d23",
+        "filename": "vnet/vnet/lisp-cp/control.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-09T15:57:35Z",
+      "side": 1,
+      "message": "We have the import in control.c. I don\u0027t think we need it here as well.",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 35
+      },
+      "revId": "0d9229e95c85c6f46023f0bfb582fcebee97b0aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_c78fbdcb",
+        "filename": "vnet/vnet/lisp-cp/control.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-09T15:57:35Z",
+      "side": 1,
+      "message": "Could you rename this to vnet_lisp_enable_disable? Maybe the same for the function under.",
+      "range": {
+        "startLine": 176,
+        "startChar": 15,
+        "endLine": 176,
+        "endChar": 34
+      },
+      "revId": "0d9229e95c85c6f46023f0bfb582fcebee97b0aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
