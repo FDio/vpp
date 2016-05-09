@@ -576,4 +576,11 @@ lisp_gpe_init (vlib_main_t *vm)
   return 0;
 }
 
+u8 *
+format_vnet_lisp_gpe_status (u8 * s, va_list * args)
+{
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+  return format (s, "%s", lgm->is_en ? "enabled" : "disabled");
+}
+
 VLIB_INIT_FUNCTION(lisp_gpe_init);
