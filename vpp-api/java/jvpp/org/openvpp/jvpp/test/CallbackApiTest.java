@@ -16,6 +16,7 @@
 
 package org.openvpp.jvpp.test;
 
+import java.util.Objects;
 import org.openvpp.jvpp.JVpp;
 import org.openvpp.jvpp.JVppImpl;
 import org.openvpp.jvpp.VppJNIConnection;
@@ -58,6 +59,7 @@ public class CallbackApiTest {
     private static void testCallbackApi() throws Exception {
         System.out.println("Testing Java callback API");
         JVpp jvpp = new JVppImpl(VppJNIConnection.create("CallbackApiTest", new TestCallback()));
+        Objects.requireNonNull(jvpp);
         System.out.println("Successfully connected to VPP");
 
         System.out.println("Sending ShowVersion request...");
@@ -65,11 +67,13 @@ public class CallbackApiTest {
 
         System.out.println("Sending GetNodeIndex request...");
         GetNodeIndex getNodeIndexRequest = new GetNodeIndex();
+        Objects.requireNonNull(getNodeIndexRequest);
         getNodeIndexRequest.nodeName = "node0".getBytes();
         jvpp.send(getNodeIndexRequest);
 
         System.out.println("Sending SwInterfaceDump request...");
         SwInterfaceDump swInterfaceDumpRequest = new SwInterfaceDump();
+        Objects.requireNonNull(swInterfaceDumpRequest);
         swInterfaceDumpRequest.nameFilterValid = 0;
         swInterfaceDumpRequest.nameFilter = "".getBytes();
         jvpp.send(swInterfaceDumpRequest);

@@ -16,6 +16,7 @@
 
 package org.openvpp.jvpp.test;
 
+import java.util.Objects;
 import org.openvpp.jvpp.JVpp;
 import org.openvpp.jvpp.JVppImpl;
 import org.openvpp.jvpp.VppJNIConnection;
@@ -35,6 +36,7 @@ public class ControlPingTest {
                         reply.context, reply.retval, reply.clientIndex, reply.vpePid);
             }
         }));
+        Objects.requireNonNull(jvpp);
         System.out.println("Successfully connected to VPP");
         Thread.sleep(1000);
 

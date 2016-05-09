@@ -18,6 +18,7 @@ package org.openvpp.jvpp.test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.openvpp.jvpp.JVpp;
 import org.openvpp.jvpp.JVppImpl;
 import org.openvpp.jvpp.VppJNIConnection;
@@ -47,7 +48,9 @@ public class CallbackJVppFacadeTest {
 
         final Map<Integer, JVppCallback> callbackMap = new HashMap<>();
         JVpp impl = new JVppImpl(VppJNIConnection.create("CallbackApiTest", new CallbackJVppFacadeCallback(callbackMap)));
+        Objects.requireNonNull(impl);
         CallbackJVppFacade jvpp = new CallbackJVppFacade(impl, callbackMap);
+        Objects.requireNonNull(jvpp);
         System.out.println("Successfully connected to VPP");
 
         jvpp.showVersion(showVersionCallback1);

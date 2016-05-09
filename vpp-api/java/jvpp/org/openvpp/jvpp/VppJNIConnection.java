@@ -25,6 +25,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Logger;
 import org.openvpp.jvpp.callback.JVppCallback;
@@ -65,11 +66,11 @@ public final class VppJNIConnection implements VppConnection {
     }
 
     private static void loadLibrary() throws IOException {
-        try (final InputStream is = VppJNIConnection.class.getResourceAsStream('/' + LIBNAME)) {
-            if (is == null) {
-                throw new IOException("Failed to open library resource " + LIBNAME);
-            }
+        try ( final InputStream is = VppJNIConnection.class.getResourceAsStream('/' + LIBNAME)) {
+            Objects.requireNonNull(is);
             loadStream(is);
+        } catch(NullPointerException ex) {
+            throw new IOException("Failed to open library resource " + LIBNAME);
         }
     }
 
@@ -77,9 +78,7 @@ public final class VppJNIConnection implements VppConnection {
     private volatile boolean disconnected = false;
 
     private VppJNIConnection(final String clientName) {
-        if (clientName == null) {
-            throw new NullPointerException("Null clientName");
-        }
+        Objects.requireNonNull(clientName,"Null clientName");
         this.clientName = clientName;
     }
 
