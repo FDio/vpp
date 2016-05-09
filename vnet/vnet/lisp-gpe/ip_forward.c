@@ -174,6 +174,26 @@ ip4_sd_fib_clear_src_fib (lisp_gpe_main_t * lgm, ip4_fib_t * fib)
   }
 }
 
+static u8
+ip4_fib_is_empty (ip4_fib_t * fib)
+{
+  u8 fib_is_empty;
+  int i;
+
+  fib_is_empty = 1;
+  for (i = ARRAY_LEN (fib->adj_index_by_dst_address) - 1; i >= 0; i--)
+    {
+      uword * hash = fib->adj_index_by_dst_address[i];
+      uword n_elts = hash_elts (hash);
+      if (n_elts)
+        {
+          fib_is_empty = 0;
+          break;
+        }
+    }
+  return fib_is_empty;
+}
+
 static int
 ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
                           ip_prefix_t * src_prefix, u32 table_id,
@@ -273,7 +293,7 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
         return 0;
 
       /* if there's nothing left */
-      if (ARRAY_LEN(src_fib->adj_index_by_dst_address) == 0)
+      if (ip4_fib_is_empty(src_fib))
         {
           /* remove the src fib ..  */
           pool_put(lgm->ip4_src_fibs, src_fib);
