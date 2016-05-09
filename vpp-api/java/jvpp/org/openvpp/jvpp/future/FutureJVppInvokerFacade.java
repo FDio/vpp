@@ -18,6 +18,7 @@ package org.openvpp.jvpp.future;
 
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.openvpp.jvpp.JVpp;
@@ -41,20 +42,11 @@ public class FutureJVppInvokerFacade implements FutureJVppInvoker {
 
     public FutureJVppInvokerFacade(final JVpp jvpp,
                      final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requestMap) {
-        // TODO use guava's preconditions for nonNull and state checks
-        // However adding guava as a dependency requires better build system for Java in VPP project
-        // Currently it's just invocation of javac
-        if(jvpp == null) {
-            throw new NullPointerException("Null jvpp");
-        }
-        this.jvpp = jvpp;
-        if(requestMap == null) {
-            throw new NullPointerException("Null requestMap");
-        }
+        this.jvpp =  Objects.requireNonNull(jvpp, "Null jvpp");
         // Request map represents the shared state between this facade and it's callback
         // where facade puts futures in and callback completes + removes them
         // TODO what if the call never completes ?
-        this.requests = requestMap;
+        this.requests = Objects.requireNonNull(requestMap, "Null requestMap");
     }
 
     // TODO use Optional in Future, java8

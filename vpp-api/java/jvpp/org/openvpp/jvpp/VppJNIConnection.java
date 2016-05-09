@@ -25,6 +25,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Logger;
 import org.openvpp.jvpp.callback.JVppCallback;
@@ -77,10 +78,7 @@ public final class VppJNIConnection implements VppConnection {
     private volatile boolean disconnected = false;
 
     private VppJNIConnection(final String clientName) {
-        if (clientName == null) {
-            throw new NullPointerException("Null clientName");
-        }
-        this.clientName = clientName;
+        this.clientName = Objects.requireNonNull(clientName,"Null clientName");
     }
 
     /**
