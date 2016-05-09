@@ -3931,6 +3931,9 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t *mp)
     ip_lookup_main_t * lm4 = &im4->lookup_main;
     ip_interface_address_t * ia = 0;
     u32 sw_if_index = ~0;
+    int rv __attribute__ ((unused)) = 0;
+
+    VALIDATE_SW_IF_INDEX(mp);
 
     sw_if_index = ntohl(mp->sw_if_index);
 
@@ -3956,6 +3959,7 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t *mp)
             send_ip_address_details(am, q, (u8*)r4, prefix_length, 0, mp->context);
         }));
     }
+    BAD_SW_IF_INDEX_LABEL;
 }
 
 static void send_ip_details (vpe_api_main_t * am,
