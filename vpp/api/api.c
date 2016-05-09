@@ -4911,23 +4911,53 @@ vl_api_lisp_gpe_add_del_iface_t_handler(
 }
 
 static void
+send_lisp_locator_set_details_set_address
+(vl_api_lisp_locator_set_details_t *rmp,
+ gid_address_t *gid_address)
+{
+    ip_prefix_t *ip_addr;
+
+    if (gid_address_type(gid_address) != GID_ADDR_IP_PREFIX) {
+        return;
+    }
+
+    ip_addr = &gid_address_ippref(gid_address);
+    rmp->prefix_len = ip_prefix_len(ip_addr);
+    rmp->is_ipv6 = ip_prefix_version(ip_addr);
+    ip_address_copy_addr(rmp->ip_address, &ip_prefix_addr(ip_addr));
+}
+
+static void
 send_lisp_locator_set_details (lisp_cp_main_t *lcm,
                                locator_set_t *lsit,
                                unix_shared_memory_queue_t *q,
-                               u32 context)
+                               u32 context,
+                               u32 index)
 {
     vl_api_lisp_locator_set_details_t *rmp;
     locator_t *loc = NULL;
     u32 * locit = NULL;
+    u8 * str = NULL;
 
     vec_foreach (locit, lsit->locator_indices) {
         loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
         rmp = vl_msg_api_alloc (sizeof (*rmp));
         memset (rmp, 0, sizeof (*rmp));
         rmp->_vl_msg_id = ntohs(VL_API_LISP_LOCATOR_SET_DETAILS);
-        strncpy((char *) rmp->locator_set_name,
-                (char *) lsit->name, ARRAY_LEN(rmp->locator_set_name) - 1);
-        rmp->sw_if_index = htonl(loc->sw_if_index);
+        rmp->local = lsit->local;
+        if (lsit->local) {
+            ASSERT(lsit->name != NULL);
+            strncpy((char *) rmp->locator_set_name,
+                    (char *) lsit->name, ARRAY_LEN(rmp->locator_set_name) - 1);
+            rmp->sw_if_index = htonl(loc->sw_if_index);
+        } else {
+            str = format(0, "remote-%d", index);
+            strncpy((char *) rmp->locator_set_name, (char *) str,
+                    ARRAY_LEN(rmp->locator_set_name) - 1);
+            send_lisp_locator_set_details_set_address(rmp, &loc->address);
+
+            vec_free(str);
+        }
         rmp->priority = loc->priority;
         rmp->weight = loc->weight;
         rmp->context = context;
@@ -4942,15 +4972,17 @@ vl_api_lisp_locator_set_dump_t_handler (vl_api_lisp_locator_set_dump_t *mp)
     unix_shared_memory_queue_t * q = NULL;
     lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
     locator_set_t * lsit = NULL;
+    u32 index;
 
     q = vl_api_client_index_to_input_queue (mp->client_index);
     if (q == 0) {
         return;
     }
 
+    index = 0;
     pool_foreach (lsit, lcm->locator_set_pool,
         ({
-            send_lisp_locator_set_details(lcm, lsit, q, mp->context);
+            send_lisp_locator_set_details(lcm, lsit, q, mp->context, index++);
         }));
 }
 
@@ -4964,6 +4996,7 @@ send_lisp_local_eid_table_details (mapping_t *mapit,
     locator_set_t *ls = NULL;
     gid_address_t *gid = NULL;
     ip_prefix_t *ip_prefix = NULL;
+    u8 * str = NULL;
     u8 type = ~0;
 
     ls = pool_elt_at_index (lcm->locator_set_pool,
@@ -4981,8 +5014,16 @@ send_lisp_local_eid_table_details (mapping_t *mapit,
     rmp = vl_msg_api_alloc (sizeof (*rmp));
     memset (rmp, 0, sizeof (*rmp));
     rmp->_vl_msg_id = ntohs(VL_API_LISP_LOCAL_EID_TABLE_DETAILS);
-    strncpy((char *) rmp->locator_set_name,
-            (char *) ls->name, ARRAY_LEN(rmp->locator_set_name) - 1);
+    if (ls->local) {
+        ASSERT(ls->name != NULL);
+        strncpy((char *) rmp->locator_set_name,
+                (char *) ls->name, ARRAY_LEN(rmp->locator_set_name) - 1);
+    } else {
+            str = format(0, "remote-%d", mapit->locator_set_index);
+            strncpy((char *) rmp->locator_set_name, (char *) str,
+                    ARRAY_LEN(rmp->locator_set_name) - 1);
+            vec_free(str);
+    }
 
     switch (ip_prefix_version(ip_prefix)) {
         case IP4:
