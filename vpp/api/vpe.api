@@ -2373,8 +2373,12 @@ define lisp_gpe_add_del_iface_reply {
  */
 manual_java define lisp_locator_set_details {
     u32 context;
+    u8  local;
     u8  locator_set_name[64];
     u32 sw_if_index;
+    u8  is_ipv6;
+    u8  ip_address[16];
+    u8  prefix_len;
     u8  priority;
     u8  weight;
 };
