@@ -18,6 +18,7 @@ package org.openvpp.jvpp.test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import org.openvpp.jvpp.VppJNIConnection;
@@ -37,8 +38,11 @@ public class FutureApiTest {
     private static void testShowVersion(final FutureJVppFacade jvpp) {
         System.out.println("Sending ShowVersion request...");
         try {
+            Objects.requireNonNull(jvpp,"jvpp is null");
             final Future<ShowVersionReply> replyFuture = jvpp.showVersion(new ShowVersion()).toCompletableFuture();
+            Objects.requireNonNull(replyFuture,"replyFuture is null");
             final ShowVersionReply reply = replyFuture.get();
+            Objects.requireNonNull(reply,"reply is null");
             System.out.printf("Received ShowVersionReply: context=%d, retval=%d, program=%s, " +
                             "version=%s, buildDate=%s, buildDirectory=%s\n",
                     reply.context, reply.retval, new String(reply.program), new String(reply.version),
@@ -56,10 +60,13 @@ public class FutureApiTest {
     private static void testGetNodeIndex(final FutureJVppFacade jvpp) {
         System.out.println("Sending GetNodeIndex request...");
         try {
+            Objects.requireNonNull(jvpp,"jvpp is null");
             final GetNodeIndex request = new GetNodeIndex();
             request.nodeName = "node0".getBytes();
             final Future<GetNodeIndexReply> replyFuture = jvpp.getNodeIndex(request).toCompletableFuture();
+            Objects.requireNonNull(replyFuture,"replyFuture is null");
             final GetNodeIndexReply reply = replyFuture.get();
+            Objects.requireNonNull(reply,"reply is null");
             System.out.printf("Received GetNodeIndexReply: context=%d, retval=%d, nodeIndex=%d\n",
                     reply.context, reply.retval, reply.nodeIndex);
         } catch (Exception e) {
@@ -71,29 +78,23 @@ public class FutureApiTest {
     private static void testSwInterfaceDump(final FutureJVppFacade jvpp) {
         System.out.println("Sending SwInterfaceDump request...");
         try {
+            Objects.requireNonNull(jvpp,"SwInterfaceDetailsReplyDump is null!");
             final SwInterfaceDump request = new SwInterfaceDump();
             request.nameFilterValid = 0;
             request.nameFilter = "".getBytes();
             final Future<SwInterfaceDetailsReplyDump> replyFuture = jvpp.swInterfaceDump(request).toCompletableFuture();
+            Objects.requireNonNull(replyFuture,"replyFuture is null");
             final SwInterfaceDetailsReplyDump reply = replyFuture.get();
-
-            if (reply == null) {
-                throw new IllegalStateException("SwInterfaceDetailsReplyDump is null!");
-            }
-            if (reply.swInterfaceDetails == null) {
-                throw new IllegalStateException("SwInterfaceDetailsReplyDump.swInterfaceDetails is null!");
-            }
-
+            Objects.requireNonNull(reply.swInterfaceDetails, "SwInterfaceDetailsReplyDump.swInterfaceDetails is null!");
             for (SwInterfaceDetails details : reply.swInterfaceDetails) {
-                if (details == null) {
-                    throw new IllegalStateException("reply.swInterfaceDetails contains null element!");
-                }
-
+                Objects.requireNonNull(details, "reply.swInterfaceDetails contains null element!");
                 System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, " +
                                 "linkUpDown=%d, linkSpeed=%d, linkMtu=%d\n",
                         new String(details.interfaceName), details.l2AddressLength, details.adminUpDown,
                         details.linkUpDown, details.linkSpeed, (int) details.linkMtu);
             }
+        } catch(NullPointerException e) {
+            throw new IllegalStateException(e.getMessage());
         } catch (Exception e) {
             System.err.printf("SwInterfaceDump request failed:\n");
             e.printStackTrace();

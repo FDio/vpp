@@ -52,10 +52,7 @@ public final class JVppImpl implements $base_package.JVpp {
     private final $base_package.VppConnection connection;
 
     public JVppImpl(final $base_package.VppConnection connection) {
-        if(connection == null) {
-            throw new java.lang.NullPointerException("Connection is null");
-        }
-        this.connection = connection;
+        this.connection = java.util.Objects.requireNonNull(connection,"Connection is null");
     }
 
     @Override

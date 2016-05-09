@@ -53,10 +53,7 @@ public final class CallbackJVppFacade implements $base_package.$callback_facade_
 
     public CallbackJVppFacade(final $base_package.JVpp jvpp,
                               java.util.Map<Integer, $base_package.$callback_package.JVppCallback> callbacks) {
-        if(jvpp == null) {
-            throw new java.lang.NullPointerException("jvpp is null");
-        }
-        this.jvpp = jvpp;
+        this.jvpp = java.util.Objects.requireNonNull(jvpp,"jvpp is null");
         this.callbacks = callbacks;
     }
 
