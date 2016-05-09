@@ -326,14 +326,14 @@ _(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
 _(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry)               \
 _(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver)                 \
 _(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
+_(LISP_ENABLE_DISABLE, lisp_enable_disable)                             \
 _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump)                 \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
-_(LISP_GPE_ENABLE_DISABLE_STATUS_DUMP,                                  \
-  lisp_gpe_enable_disable_status_dump)                                  \
-_(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
+_(LISP_ENABLE_DISABLE_STATUS_DUMP,                                      \
+  lisp_enable_disable_status_dump)                                      \
 _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
 _(AF_PACKET_CREATE, af_packet_create)                                   \
 _(AF_PACKET_DELETE, af_packet_delete)
@@ -4884,6 +4884,17 @@ vl_api_lisp_gpe_enable_disable_t_handler(
 }
 
 static void
+vl_api_lisp_enable_disable_t_handler(
+    vl_api_lisp_enable_disable_t *mp)
+{
+    vl_api_lisp_enable_disable_reply_t *rmp;
+    int rv = 0;
+
+    vnet_lisp_enable_disable (mp->is_en);
+    REPLY_MACRO(VL_API_LISP_ENABLE_DISABLE_REPLY);
+}
+
+static void
 vl_api_lisp_gpe_add_del_iface_t_handler(
     vl_api_lisp_gpe_add_del_iface_t *mp)
 {
@@ -5119,26 +5130,25 @@ vl_api_lisp_map_resolver_dump_t_handler (
 }
 
 static void
-send_lisp_gpe_enable_disable_details (unix_shared_memory_queue_t *q,
+send_lisp_enable_disable_details (unix_shared_memory_queue_t *q,
                                       u32 context)
 {
-    vl_api_lisp_gpe_enable_disable_status_details_t *rmp = NULL;
-    u8 is_en;
+    vl_api_lisp_enable_disable_status_details_t *rmp = NULL;
 
     rmp = vl_msg_api_alloc (sizeof (*rmp));
     memset (rmp, 0, sizeof (*rmp));
-    rmp->_vl_msg_id = ntohs(VL_API_LISP_GPE_ENABLE_DISABLE_STATUS_DETAILS);
+    rmp->_vl_msg_id = ntohs(VL_API_LISP_ENABLE_DISABLE_STATUS_DETAILS);
 
-    is_en = vnet_lisp_gpe_enable_disable_status();
-    rmp->is_en = is_en;
+    rmp->gpe_status = vnet_lisp_gpe_enable_disable_status ();
+    rmp->feature_status = vnet_lisp_enable_disable_status ();
     rmp->context = context;
 
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
 
 static void
-vl_api_lisp_gpe_enable_disable_status_dump_t_handler
-(vl_api_lisp_gpe_enable_disable_status_dump_t *mp)
+vl_api_lisp_enable_disable_status_dump_t_handler
+(vl_api_lisp_enable_disable_status_dump_t *mp)
 {
     unix_shared_memory_queue_t * q = NULL;
 
@@ -5147,7 +5157,7 @@ vl_api_lisp_gpe_enable_disable_status_dump_t_handler
         return;
     }
 
-    send_lisp_gpe_enable_disable_details(q, mp->context);
+    send_lisp_enable_disable_details(q, mp->context);
 }
 
 static void 

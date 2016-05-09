@@ -265,4 +265,6 @@ typedef enum lgpe_ip6_lookup_next
   LGPE_IP6_LOOKUP_N_NEXT,
 } lgpe_ip6_lookup_next_t;
 
+u8 * format_vnet_lisp_gpe_status (u8 * s, va_list * args);
+
 #endif /* included_vnet_lisp_gpe_h */

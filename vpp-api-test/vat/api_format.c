@@ -2083,24 +2083,28 @@ vl_api_lisp_map_resolver_details_t_handler_json (
 }
 
 static void
-vl_api_lisp_gpe_enable_disable_status_details_t_handler
-(vl_api_lisp_gpe_enable_disable_status_details_t *mp)
+vl_api_lisp_enable_disable_status_details_t_handler
+(vl_api_lisp_enable_disable_status_details_t *mp)
 {
     vat_main_t *vam = &vat_main;
 
-    fformat(vam->ofp, "%=20s\n",
-            mp->is_en ? "enable" : "disable");
+    fformat(vam->ofp, "feature: %s\ngpe: %s\n",
+            mp->feature_status ? "enabled" : "disabled",
+            mp->gpe_status ? "enabled" : "disabled");
 }
 
 static void
-vl_api_lisp_gpe_enable_disable_status_details_t_handler_json
-(vl_api_lisp_gpe_enable_disable_status_details_t *mp)
+vl_api_lisp_enable_disable_status_details_t_handler_json
+(vl_api_lisp_enable_disable_status_details_t *mp)
 {
     vat_main_t *vam = &vat_main;
     vat_json_node_t *node = NULL;
-    u8 *str = NULL;
+    u8 * gpe_status = NULL;
+    u8 * feature_status = NULL;
 
-    str = format(0, "%s", mp->is_en ? "enable" : "disable");
+    gpe_status = format (0, "%s", mp->gpe_status ? "enabled" : "disabled");
+    feature_status = format (0, "%s",
+                            mp->feature_status ? "enabled" : "disabled");
 
     if (VAT_JSON_ARRAY != vam->json_tree.type) {
         ASSERT(VAT_JSON_NONE == vam->json_tree.type);
@@ -2109,7 +2113,11 @@ vl_api_lisp_gpe_enable_disable_status_details_t_handler_json
     node = vat_json_array_add(&vam->json_tree);
 
     vat_json_init_object(node);
-    vat_json_object_add_string_copy(node, "lisp_gpe", str);
+    vat_json_object_add_string_copy(node, "gpe_status", gpe_status);
+    vat_json_object_add_string_copy(node, "feature_status", feature_status);
+
+    vec_free (gpe_status);
+    vec_free (feature_status);
 }
 
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
@@ -2202,6 +2210,7 @@ _(lisp_gpe_add_del_fwd_entry_reply)                     \
 _(lisp_add_del_map_resolver_reply)                      \
 _(lisp_gpe_enable_disable_reply)                        \
 _(lisp_gpe_add_del_iface_reply)                         \
+_(lisp_enable_disable_reply)                            \
 _(af_packet_create_reply)                               \
 _(af_packet_delete_reply)
 
@@ -2375,13 +2384,14 @@ _(LISP_ADD_DEL_LOCAL_EID_REPLY, lisp_add_del_local_eid_reply)           \
 _(LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY, lisp_gpe_add_del_fwd_entry_reply)   \
 _(LISP_ADD_DEL_MAP_RESOLVER_REPLY, lisp_add_del_map_resolver_reply)     \
 _(LISP_GPE_ENABLE_DISABLE_REPLY, lisp_gpe_enable_disable_reply)         \
+_(LISP_ENABLE_DISABLE_REPLY, lisp_enable_disable_reply)                 \
 _(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
 _(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
 _(LISP_LOCAL_EID_TABLE_DETAILS, lisp_local_eid_table_details)           \
 _(LISP_GPE_TUNNEL_DETAILS, lisp_gpe_tunnel_details)                     \
 _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
-_(LISP_GPE_ENABLE_DISABLE_STATUS_DETAILS,                               \
-  lisp_gpe_enable_disable_status_details)                               \
+_(LISP_ENABLE_DISABLE_STATUS_DETAILS,                                   \
+  lisp_enable_disable_status_details)                                   \
 _(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
 _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)
 
@@ -10014,6 +10024,52 @@ api_lisp_gpe_enable_disable (vat_main_t * vam)
 }
 
 static int
+api_lisp_enable_disable (vat_main_t * vam)
+{
+  unformat_input_t * input = vam->input;
+  vl_api_lisp_enable_disable_t *mp;
+  f64 timeout = ~0;
+  u8 is_set = 0;
+  u8 is_en = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+        {
+          is_set = 1;
+          is_en = 1;
+        }
+      else if (unformat (input, "disable"))
+        {
+          is_set = 1;
+        }
+      else
+          break;
+    }
+
+  if (!is_set)
+    {
+      errmsg ("Value not set\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M(LISP_ENABLE_DISABLE, lisp_enable_disable);
+
+  mp->is_en = is_en;
+
+  /* send it... */
+  S;
+
+  /* Wait for a reply... */
+  W;
+
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
 api_lisp_gpe_add_del_iface(vat_main_t * vam)
 {
     unformat_input_t * input = vam->input;
@@ -10177,18 +10233,18 @@ api_lisp_map_resolver_dump(vat_main_t *vam)
 }
 
 static int
-api_lisp_gpe_enable_disable_status_dump(vat_main_t *vam)
+api_lisp_enable_disable_status_dump(vat_main_t *vam)
 {
-    vl_api_lisp_gpe_enable_disable_status_dump_t *mp;
+    vl_api_lisp_enable_disable_status_dump_t *mp;
     f64 timeout = ~0;
 
     if (!vam->json_output) {
         fformat(vam->ofp, "%=20s\n",
-                "lisp gpe");
+                "lisp status:");
     }
 
-    M(LISP_GPE_ENABLE_DISABLE_STATUS_DUMP,
-      lisp_gpe_enable_disable_status_dump);
+    M(LISP_ENABLE_DISABLE_STATUS_DUMP,
+      lisp_enable_disable_status_dump);
     /* send it... */
     S;
 
@@ -10765,12 +10821,13 @@ _(lisp_gpe_add_del_fwd_entry, "eid <ip4|6-addr>/<prefix> "              \
     "sloc <ip4/6-addr> dloc <ip4|6-addr> [del]")                        \
 _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
 _(lisp_gpe_enable_disable, "enable|disable")                            \
+_(lisp_enable_disable, "enable|disable")                                \
 _(lisp_gpe_add_del_iface, "up|down")                                    \
 _(lisp_locator_set_dump, "")                                            \
 _(lisp_local_eid_table_dump, "")                                        \
 _(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \
-_(lisp_gpe_enable_disable_status_dump, "")                              \
+_(lisp_enable_disable_status_dump, "")                                  \
 _(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
 _(af_packet_delete, "name <host interface name>")
 
