@@ -51,6 +51,9 @@ typedef struct
 
 typedef struct
 {
+  /* LISP feature status */
+  u8 is_enabled;
+
   /* eid table */
   gid_dictionary_t mapping_index_by_gid;
 
@@ -168,5 +171,8 @@ always_inline lisp_cp_main_t *
 vnet_lisp_cp_get_main() {
   return &lisp_control_main;
 }
+
+clib_error_t * vnet_lisp_enable_disable (u8 is_enabled);
+u8 vnet_lisp_enable_disable_status (void);
 
 #endif /* VNET_CONTROL_H_ */

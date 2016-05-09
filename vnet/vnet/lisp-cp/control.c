@@ -660,6 +660,138 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t *a,
   return 0;
 }
 
+clib_error_t *
+vnet_lisp_enable_disable (u8 is_enabled)
+{
+  vnet_lisp_gpe_add_del_iface_args_t _ai, * ai= &_ai;
+  uword * table_id, * refc;
+  u32 i;
+  clib_error_t * error = 0;
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  vnet_lisp_gpe_enable_disable_args_t _a, * a = &_a;
+
+  a->is_en = is_enabled;
+  error = vnet_lisp_gpe_enable_disable (a);
+  if (error)
+    {
+      return clib_error_return (0, "failed to %s data-plane!",
+                                a->is_en ? "enable" : "disable");
+    }
+
+  if (is_enabled)
+    {
+      /* enable all ifaces */
+      for (i = 0; i < vec_len (lcm->local_mappings_indexes); i++)
+        {
+          mapping_t * m = vec_elt_at_index (lcm->mapping_pool, i);
+          ai->is_add = 1;
+          ai->vni = gid_address_vni (&m->eid);
+
+          refc = hash_get (lcm->dp_if_refcount_by_vni, ai->vni);
+          if (!refc)
+            {
+              table_id = hash_get (lcm->table_id_by_vni, ai->vni);
+              if (table_id)
+                {
+                  ai->table_id = table_id[0];
+                  /* enables interface and adds defaults */
+                  vnet_lisp_gpe_add_del_iface (ai, 0);
+                }
+              else
+                return clib_error_return (0, "no table_id found for vni %u!",
+                                          ai->vni);
+
+              hash_set (lcm->dp_if_refcount_by_vni, ai->vni, 1);
+            }
+          else
+            {
+              refc[0]++;
+            }
+        }
+    }
+  else
+    {
+      /* clear refcount table */
+      hash_free (lcm->dp_if_refcount_by_vni);
+    }
+
+  /* update global flag */
+  lcm->is_enabled = is_enabled;
+
+  return 0;
+}
+
+static clib_error_t *
+lisp_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
+                                   vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, * line_input = &_line_input;
+  u8 is_enabled = 0;
+  u8 is_set = 0;
+
+  /* Get a line of input. */
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "enable"))
+        {
+          is_set = 1;
+          is_enabled = 1;
+        }
+      else if (unformat (line_input, "disable"))
+        is_set = 1;
+      else
+        {
+          return clib_error_return (0, "parse error: '%U'",
+                                   format_unformat_error, line_input);
+        }
+    }
+
+  if (!is_set)
+      return clib_error_return (0, "state not set");
+
+  return vnet_lisp_enable_disable (is_enabled);
+}
+
+VLIB_CLI_COMMAND (lisp_cp_enable_disable_command) = {
+    .path = "lisp",
+    .short_help = "lisp [enable|disable]",
+    .function = lisp_enable_disable_command_fn,
+};
+
+u8
+vnet_lisp_enable_disable_status (void)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  return lcm->is_enabled;
+}
+
+static u8 *
+format_lisp_status (u8 * s, va_list * args)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  return format (s, "%s", lcm->is_enabled ? "enabled" : "disabled");
+}
+
+static clib_error_t *
+lisp_show_status_command_fn (vlib_main_t * vm, unformat_input_t * input,
+                             vlib_cli_command_t * cmd)
+{
+  u8 * msg = 0;
+  msg = format (msg, "feature: %U\ngpe: %U\n",
+                format_lisp_status, format_vnet_lisp_gpe_status);
+  vlib_cli_output (vm, "%v", msg);
+  vec_free (msg);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lisp_show_status_command) = {
+    .path = "show lisp status",
+    .short_help = "show lisp status",
+    .function = lisp_show_status_command_fn,
+};
 static clib_error_t *
 lisp_add_del_locator_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
                                      vlib_cli_command_t * cmd)
