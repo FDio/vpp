@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_e7f8804b",
+        "filename": "vlib/vlib/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 669,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-05-10T11:16:35Z",
+      "side": 1,
+      "message": "Please put under #ifdef TEST_CODE or similar.",
+      "revId": "ad55dae95511f590ef8964f60ef248bd59fd2d30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_a79a8812",
+        "filename": "vlib/vlib/node.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-05-10T11:16:35Z",
+      "side": 1,
+      "message": "Please replace this stanza with a CLIB_CACHE_ALIGN_MARK. By adding output_function/output_function_arg, the magic number 0x140 will be incorrect.",
+      "revId": "ad55dae95511f590ef8964f60ef248bd59fd2d30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
