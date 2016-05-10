@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_4ae73113",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/FutureApiTest.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T15:50:13Z",
+      "side": 1,
+      "message": "Why is NPE wrapped into ISE? Do we need the inner try-catch block? ISE will be catched by outer try-catch.",
+      "range": {
+        "startLine": 97,
+        "startChar": 12,
+        "endLine": 99,
+        "endChar": 13
+      },
+      "revId": "024c67946814d6e43eaaea7d937e7d555bfaf269",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
