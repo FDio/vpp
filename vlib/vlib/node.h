@@ -496,6 +496,11 @@ typedef struct {
   /* When suspending saves cpu cycle counter when process is to be resumed. */
   u64 resume_cpu_time;
 
+  /* Default output function and its argument for any CLI outputs
+     within the process. */
+  vlib_cli_output_function_t *output_function;
+  uword output_function_arg;
+
 #ifdef CLIB_UNIX
   /* Pad to a multiple of the page size so we can mprotect process stacks */
   CLIB_PAD_FROM_TO (0x140, 0x1000);
