@@ -18,6 +18,9 @@
 #include <vnet/lisp-cp/lisp_msg_serdes.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
+static void
+add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index);
+
 /* Stores mapping in map-cache. It does NOT program data plane forwarding for
  * remote/learned mappings. */
 int
@@ -713,6 +716,8 @@ vnet_lisp_enable_disable (u8 is_enabled)
     {
       /* clear refcount table */
       hash_free (lcm->dp_if_refcount_by_vni);
+      hash_free (lcm->fwd_entry_by_mapping_index);
+      pool_free (lcm->fwd_entry_pool);
     }
 
   /* update global flag */
@@ -1285,7 +1290,7 @@ static uword
 lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               vlib_frame_t * from_frame)
 {
-  u32 * from, * to_next_drop;
+  u32 * from, * to_next_drop, di, si;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main();
   u32 pkts_mapped = 0;
   uword n_left_from, n_left_to_next_drop;
@@ -1327,10 +1332,23 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           ip_prefix_len(spref) = ip_address_max_len (ip_prefix_version(spref));
           ip_prefix_len(dpref) = ip_address_max_len (ip_prefix_version(dpref));
 
-          /* send map-request */
-          send_encapsulated_map_request (vm, lcm, &src, &dst, 0);
-
-          pkts_mapped++;
+          /* if we have remote mapping for destination already in map-chache
+             add forwarding tunnel directly. If not send a map-request */
+          di = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &dst);
+          if (~0 != di)
+            {
+              si =  gid_dictionary_lookup (&lcm->mapping_index_by_gid, &src);
+              if (~0 != si)
+                {
+                  add_fwd_entry (lcm, si, di);
+                }
+            }
+          else
+            {
+              /* send map-request */
+              send_encapsulated_map_request (vm, lcm, &src, &dst, 0);
+              pkts_mapped++;
+            }
 
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -1466,7 +1484,7 @@ del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index,
   pool_put(lcm->fwd_entry_pool, fe);
 }
 
-void
+static void
 add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
 {
   mapping_t * src_map, * dst_map;
