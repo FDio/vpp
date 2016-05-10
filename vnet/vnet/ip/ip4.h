@@ -293,6 +293,28 @@ typedef struct {
   u32 n_add_adj;
 } ip4_add_del_route_args_t;
 
+/**
+ * \brief Get or create an IPv4 fib.
+ *
+ * Get or create an IPv4 fib with the provided fib ID or index.
+ * The fib ID is a possibly-sparse user-defined value while
+ * the fib index defines the position of the fib in the fib vector.
+ *
+ * \param im
+ *      ip4_main pointer.
+ * \param table_index_or_id
+ *      The table index if \c IP4_ROUTE_FLAG_FIB_INDEX bit is set in \p flags.
+ *      Otherwise, when set to \c ~0, an arbitrary and unused fib ID is picked
+ *      and can be retrieved with \c ret->table_id.
+ *      Otherwise, the fib ID to be used to retrieve or create the desired fib.
+ * \param flags
+ *      Indicates whether \p table_index_or_id is the fib index or ID.
+ *      When the bit \c IP4_ROUTE_FLAG_FIB_INDEX is set, \p table_index_or_id
+ *      is considered as the fib index, and the fib ID otherwise.
+ * \returns A pointer to the retrieved or created fib.
+ *
+ * \remark When getting a fib with the fib index, the fib MUST already exist.
+ */
 ip4_fib_t *
 find_ip4_fib_by_table_index_or_id (ip4_main_t * im, 
                                    u32 table_index_or_id, u32 flags);

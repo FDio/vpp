@@ -54,9 +54,15 @@ u32 bd_find_or_add_bd_index (bd_main_t * bdm, u32 bd_id)
   uword * p;
   u32 rv;
 
-  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
-  if (p)
-    return (p[0]);
+  if (bd_id == ~0) {
+    bd_id = 0;
+    while (hash_get (bdm->bd_index_by_bd_id, bd_id))
+      bd_id++;
+  } else {
+    p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+    if (p)
+      return (p[0]);
+  }
   
   rv = clib_bitmap_first_clear (bdm->bd_index_bitmap);
 
