@@ -104,7 +104,26 @@ bd_set_flags (vlib_main_t * vm,
               u32 flags,
               u32 enable);
 
+/**
+ * \brief Get or create a bridge domain.
+ *
+ * Get or create a bridge domain with the given bridge domain ID.
+ *
+ * \param bdm bd_main pointer.
+ * \param bd_id The bridge domain ID or ~0 if an arbitrary unused bridge domain should be used.
+ * \return The bridge domain index in \c l2input_main->l2_bridge_domain_t vector.
+ */
 u32 bd_find_or_add_bd_index (bd_main_t * bdm, u32 bd_id);
+
+/**
+ * \brief Delete a bridge domain.
+ *
+ * Delete an existing bridge domain with the given bridge domain ID.
+ *
+ * \param bdm bd_main pointer.
+ * \param bd_id The bridge domain ID.
+ * \return 0 on success and -1 if the bridge domain does not exist.
+ */
 int bd_delete_bd_index (bd_main_t * bdm, u32 bd_id);
 
 u32 bd_add_del_ip_mac(u32 bd_index,
