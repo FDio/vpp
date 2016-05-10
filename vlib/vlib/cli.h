@@ -128,12 +128,6 @@ typedef void (vlib_cli_output_function_t) (uword arg,
 					   u8 * buffer,
 					   uword buffer_bytes);
 typedef struct {
-  /* Current output function. */
-  vlib_cli_output_function_t * output_function;
-
-  /* Opaque data for output function. */
-  uword output_function_arg;
-
   /* Vector of all known commands. */
   vlib_cli_command_t * commands;
 

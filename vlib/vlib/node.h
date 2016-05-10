@@ -496,16 +496,31 @@ typedef struct {
   /* When suspending saves cpu cycle counter when process is to be resumed. */
   u64 resume_cpu_time;
 
+  /* Default output function and its argument for any CLI outputs
+     within the process. */
+  vlib_cli_output_function_t *output_function;
+  uword output_function_arg;
+
 #ifdef CLIB_UNIX
   /* Pad to a multiple of the page size so we can mprotect process stacks */
-  CLIB_PAD_FROM_TO (0x140, 0x1000);
+#define PAGE_SIZE_MULTIPLE 0x1000
+#define ALIGN_ON_MULTIPLE_PAGE_BOUNDARY_FOR_MPROTECT  __attribute__ ((aligned (PAGE_SIZE_MULTIPLE)))
+#else
+#define ALIGN_ON_MULTIPLE_PAGE_BOUNDARY_FOR_MPROTECT
 #endif
+
   /* Process stack.  Starts here and extends 2^log2_n_stack_bytes
      bytes. */
 
 #define VLIB_PROCESS_STACK_MAGIC (0xdead7ead)
-  u32 stack[0];
+  u32 stack[0] ALIGN_ON_MULTIPLE_PAGE_BOUNDARY_FOR_MPROTECT;
 } vlib_process_t __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)));
+
+#ifdef CLIB_UNIX
+  /* Ensure that the stack is aligned on the multiple of the page size */
+typedef char assert_process_stack_must_be_aligned_exactly_to_page_size_multiple
+                [(sizeof(vlib_process_t) - PAGE_SIZE_MULTIPLE) == 0 ? 0 : -1];
+#endif
 
 typedef struct {
     u32 node_index;

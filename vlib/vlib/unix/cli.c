@@ -1889,6 +1889,11 @@ static u32 unix_cli_file_add (unix_cli_main_t * cm, char * name, int fd)
   cf->input_vector = 0;
 
   vlib_start_process (vm, n->runtime_index);
+
+  vlib_process_t * p = vlib_get_process_from_node(vm, n);
+  p->output_function = unix_vlib_cli_output;
+  p->output_function_arg = cf - cm->cli_file_pool;
+
   return cf - cm->cli_file_pool;
 }
 
