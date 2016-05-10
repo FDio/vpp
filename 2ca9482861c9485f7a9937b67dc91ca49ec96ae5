@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_8add4945",
+        "filename": "vlib/vlib/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 519,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-05-10T15:52:38Z",
+      "side": 1,
+      "message": "An example of where this save/restore would be necessary could be a case where you execute the command but want to redirect the output into shared memory. I\u0027ve seen this use case in the APIs, so to keep the diff minimal and retain that flexibility I decided to keep these as-is.",
+      "parentUuid": "da141535_8a41c90d",
+      "range": {
+        "startLine": 515,
+        "startChar": 0,
+        "endLine": 519,
+        "endChar": 41
+      },
+      "revId": "2ca9482861c9485f7a9937b67dc91ca49ec96ae5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_eaba8509",
         "filename": "vlib/vlib/unix/cli.c",
         "patchSetId": 3
@@ -36,6 +60,30 @@
       "writtenOn": "2016-05-10T14:43:02Z",
       "side": 1,
       "message": "Nitpick: In general I prefer to define new locals only at the start of a block; not sure if Dave has a preference",
+      "range": {
+        "startLine": 1893,
+        "startChar": 2,
+        "endLine": 1893,
+        "endChar": 57
+      },
+      "revId": "2ca9482861c9485f7a9937b67dc91ca49ec96ae5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_0af139cd",
+        "filename": "vlib/vlib/unix/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1893,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-05-10T15:52:38Z",
+      "side": 1,
+      "message": "I originally had these three lines within a standalone block {}, but then when chatting with Ole he pointed out we compile with C99, so I removed the braces.\n\nPushing the declaration to the top IMO hinders readability, since it is not used (and can not be) till after we\u0027ve created the process anyway...",
+      "parentUuid": "da141535_eaba8509",
       "range": {
         "startLine": 1893,
         "startChar": 2,
