@@ -506,16 +506,17 @@ void vlib_cli_input (vlib_main_t * vm,
 		     vlib_cli_output_function_t * function,
 		     uword function_arg)
 {
+  vlib_process_t * cp = vlib_get_current_process(vm);
   vlib_cli_main_t * cm = &vm->cli_main;
   clib_error_t * error;
   vlib_cli_output_function_t * save_function;
   uword save_function_arg;
 
-  save_function = cm->output_function;
-  save_function_arg = cm->output_function_arg;
+  save_function = cp->output_function;
+  save_function_arg = cp->output_function_arg;
 
-  cm->output_function = function;
-  cm->output_function_arg = function_arg;
+  cp->output_function = function;
+  cp->output_function_arg = function_arg;
 
   do {
     vec_reset_length (cm->parse_rule_data);
@@ -529,14 +530,14 @@ void vlib_cli_input (vlib_main_t * vm,
       clib_error_free (error);
     }
 
-  cm->output_function = save_function;
-  cm->output_function_arg = save_function_arg;
+  cp->output_function = save_function;
+  cp->output_function_arg = save_function_arg;
 }
 
 /* Output to current CLI connection. */
 void vlib_cli_output (vlib_main_t * vm, char * fmt, ...)
 {
-  vlib_cli_main_t * cm = &vm->cli_main;
+  vlib_process_t * cp = vlib_get_current_process(vm);
   va_list va;
   u8 * s;
 
@@ -548,10 +549,10 @@ void vlib_cli_output (vlib_main_t * vm, char * fmt, ...)
   if (vec_len (s) > 0 && s[vec_len (s)-1] != '\n')
     vec_add1 (s, '\n');
 
-  if (! cm->output_function)
+  if ((! cp) || (! cp->output_function))
     fformat (stdout, "%v", s);
   else
-    cm->output_function (cm->output_function_arg, s, vec_len (s));
+    cp->output_function (cp->output_function_arg, s, vec_len (s));
 
   vec_free (s);
 }
@@ -665,6 +666,37 @@ VLIB_CLI_COMMAND (cmd_test_heap_validate,static) = {
     .function = test_heap_validate,
 };
 
+#ifdef TEST_CODE
+/*
+ * A trivial test harness to verify the per-process output_function
+ * is working correcty.
+ */
+
+static clib_error_t *
+sleep_ten_seconds (vlib_main_t * vm,
+                   unformat_input_t * input,
+                   vlib_cli_command_t * cmd)
+{
+  u16 i;
+  u16 my_id = rand();
+
+  vlib_cli_output(vm, "Starting 10 seconds sleep with id %u\n", my_id);
+
+  for(i=0; i<10; i++)
+    {
+      vlib_process_wait_for_event_or_clock(vm, 1.0);
+      vlib_cli_output(vm, "Iteration number %u, my id: %u\n", i, my_id);
+    }
+  vlib_cli_output(vm, "Done with sleep with id %u\n", my_id);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (ping_command, static) = {
+  .path = "test sleep",
+  .function = sleep_ten_seconds,
+  .short_help = "Sleep for 10 seconds",
+};
+#endif /* ifdef TEST_CODE */
 
 static uword vlib_cli_normalize_path (char * input, char ** result)
 {
