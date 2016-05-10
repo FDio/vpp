@@ -1,0 +1,395 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_a73168a4",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_callback_facade_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "This could be in one line",
+      "range": {
+        "startLine": 56,
+        "startChar": 8,
+        "endLine": 57,
+        "endChar": 25
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_87266467",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "could be in one line",
+      "range": {
+        "startLine": 55,
+        "startChar": 8,
+        "endLine": 56,
+        "endChar": 37
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_870f84e1",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "I would prefer leaving this check as it was. We probably don\u0027t want to change all NPEs that might occur in the try-catch block to IOExceptions, just this particular one when class loader fails to find JNI lib.",
+      "range": {
+        "startLine": 70,
+        "startChar": 12,
+        "endLine": 74,
+        "endChar": 9
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_672b5031",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "could be in one line",
+      "range": {
+        "startLine": 81,
+        "startChar": 8,
+        "endLine": 82,
+        "endChar": 37
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_c72c5c4d",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppInvokerFacade.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "this could be in one line:\n\nthis.jvpp \u003d Objects.requireNonNull(jvpp, \"vpp should not be null\");",
+      "range": {
+        "startLine": 47,
+        "startChar": 8,
+        "endLine": 47,
+        "endChar": 25
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_47f96cc7",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackApiTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Constructor can not return null. It can fail, but then this line would not be called.",
+      "range": {
+        "startLine": 62,
+        "startChar": 8,
+        "endLine": 62,
+        "endChar": 37
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_070374b9",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackApiTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Same as above",
+      "range": {
+        "startLine": 70,
+        "startChar": 8,
+        "endLine": 70,
+        "endChar": 52
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_e7ff60a9",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackApiTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Same as above",
+      "range": {
+        "startLine": 76,
+        "startChar": 8,
+        "endLine": 76,
+        "endChar": 55
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_47204c49",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackJVppFacadeTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Constructor can not return null",
+      "range": {
+        "startLine": 51,
+        "startChar": 8,
+        "endLine": 51,
+        "endChar": 37
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_271d5810",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackJVppFacadeTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "same as above",
+      "range": {
+        "startLine": 53,
+        "startChar": 8,
+        "endLine": 53,
+        "endChar": 37
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_071a5417",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/ControlPingTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Constructor can not return null",
+      "range": {
+        "startLine": 39,
+        "startChar": 8,
+        "endLine": 39,
+        "endChar": 37
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_87dd4445",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/FutureApiTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Without requireNonNull check the second line would end in NPE. Equal to the one thrown by the requireNonNull method. So I would recommend either adding message or removing the check.",
+      "range": {
+        "startLine": 41,
+        "startChar": 12,
+        "endLine": 42,
+        "endChar": 115
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_67e23005",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/FutureApiTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Same as above",
+      "range": {
+        "startLine": 43,
+        "startChar": 12,
+        "endLine": 44,
+        "endChar": 61
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_47e72c13",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/FutureApiTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Same as above",
+      "range": {
+        "startLine": 45,
+        "startChar": 12,
+        "endLine": 49,
+        "endChar": 82
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_07f134cd",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/FutureApiTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Constructor can not return null",
+      "range": {
+        "startLine": 64,
+        "startChar": 12,
+        "endLine": 65,
+        "endChar": 44
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_e7ed20f1",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/FutureApiTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Redundant checks or exception detail message missing",
+      "range": {
+        "startLine": 68,
+        "startChar": 12,
+        "endLine": 70,
+        "endChar": 42
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_c7057cc3",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/FutureApiTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-10T06:07:32Z",
+      "side": 1,
+      "message": "Duplicated code.",
+      "range": {
+        "startLine": 104,
+        "startChar": 12,
+        "endLine": 111,
+        "endChar": 42
+      },
+      "revId": "19138ab67bd8cdd77a73eb58d1bb87cc63d1b319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
