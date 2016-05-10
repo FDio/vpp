@@ -189,6 +189,14 @@ find_ip6_fib_by_table_index_or_id (ip6_main_t * im, u32 table_index_or_id, u32 f
   fib_index = table_index_or_id;
   if (! (flags & IP6_ROUTE_FLAG_FIB_INDEX))
     {
+      if (table_index_or_id == ~0) {
+        table_index_or_id = 0;
+        while (hash_get (im->fib_index_by_table_id, table_index_or_id)) {
+          table_index_or_id++;
+        }
+        return create_fib_with_table_id (im, table_index_or_id);
+      }
+
       p = hash_get (im->fib_index_by_table_id, table_index_or_id);
       if (! p)
 	return create_fib_with_table_id (im, table_index_or_id);

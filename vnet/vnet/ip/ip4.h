@@ -293,6 +293,14 @@ typedef struct {
   u32 n_add_adj;
 } ip4_add_del_route_args_t;
 
+/*
+ * Get or create an IPv4 fib.
+ * If (flags & IP4_ROUTE_FLAG_FIB_INDEX), table_index_or_id is set
+ * to the fib ID (Or ~0 to create a new fib with an arbitrary ID) and
+ * the fib is created if it does not exist.
+ * If !(flags & IP4_ROUTE_FLAG_FIB_INDEX), table_index_or_id is set
+ * to the fib index and the fib must exist.
+ */
 ip4_fib_t *
 find_ip4_fib_by_table_index_or_id (ip4_main_t * im, 
                                    u32 table_index_or_id, u32 flags);

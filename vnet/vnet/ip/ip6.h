@@ -204,6 +204,15 @@ typedef union {
 u32 ip6_fib_lookup (ip6_main_t * im, u32 sw_if_index, ip6_address_t * dst);
 u32 ip6_fib_lookup_with_table (ip6_main_t * im, u32 fib_index, 
                                ip6_address_t * dst);
+
+/*
+ * Get or create an IPv6 fib.
+ * If (flags & IP6_ROUTE_FLAG_FIB_INDEX), table_index_or_id is set
+ * to the fib ID (Or ~0 to create a new fib with an arbitrary ID) and
+ * the fib is created if it does not exist.
+ * If !(flags & IP6_ROUTE_FLAG_FIB_INDEX), table_index_or_id is set
+ * to the fib index and the fib must exist.
+ */
 ip6_fib_t * find_ip6_fib_by_table_index_or_id (ip6_main_t * im, 
                                                u32 table_index_or_id, 
                                                u32 flags);

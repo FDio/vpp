@@ -104,7 +104,17 @@ bd_set_flags (vlib_main_t * vm,
               u32 flags,
               u32 enable);
 
+/*
+ * Find or create a bridge domain with the given bridge ID.
+ * If bd_id is set to ~0, a new bridge domain is created.
+ * Returns the bridge index (Not the ID).
+ */
 u32 bd_find_or_add_bd_index (bd_main_t * bdm, u32 bd_id);
+
+/*
+ * Deletes an existing bridge domain given the bridge ID.
+ * Returns 0 on success and -1 if the bridge does not exist.
+ */
 int bd_delete_bd_index (bd_main_t * bdm, u32 bd_id);
 
 u32 bd_add_del_ip_mac(u32 bd_index,
