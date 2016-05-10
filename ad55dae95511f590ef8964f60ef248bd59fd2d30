@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "da141535_079374fb",
+        "filename": "vlib/vlib/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 669,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-05-10T11:56:21Z",
+      "side": 1,
+      "message": "OK, will put it under #ifdef TEST_CODE.",
+      "parentUuid": "da141535_e7f8804b",
+      "revId": "ad55dae95511f590ef8964f60ef248bd59fd2d30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_a79a8812",
         "filename": "vlib/vlib/node.h",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2016-05-10T11:16:35Z",
       "side": 1,
       "message": "Please replace this stanza with a CLIB_CACHE_ALIGN_MARK. By adding output_function/output_function_arg, the magic number 0x140 will be incorrect.",
+      "revId": "ad55dae95511f590ef8964f60ef248bd59fd2d30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_278678ba",
+        "filename": "vlib/vlib/node.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-05-10T11:56:21Z",
+      "side": 1,
+      "message": "Thx for spotting this.. But, this would change the intent - the magic CLIB_PAD_FROM_TO expands into an array of 0x1000-0x140 bytes to ensure the stack starts at the page (4K) boundary. \n\nBut the CLIB_CACHE_LINE_ALIGN_MARK would just make the stack cache-aligned ?\n\nWhat about if I deleted the CLIB_PAD_FROM_TO altogether and instead did this:\n\n#ifdef CLIB_UNIX\n  u32 stack[0] __attribute__ ((aligned (0x1000)));\n#else\n  u32 stack[0];\n#endif",
+      "parentUuid": "da141535_a79a8812",
       "revId": "ad55dae95511f590ef8964f60ef248bd59fd2d30",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
