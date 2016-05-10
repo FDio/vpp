@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_8a41c90d",
+        "filename": "vlib/vlib/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 519,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-10T14:43:02Z",
+      "side": 1,
+      "message": "Rather than setting this up everytime a new command comes in, can we rely on the values stored when the session is created? That would save us from all this save/restore circus. It\u0027s never going to change mid-session.",
+      "range": {
+        "startLine": 515,
+        "startChar": 0,
+        "endLine": 519,
+        "endChar": 41
+      },
+      "revId": "2ca9482861c9485f7a9937b67dc91ca49ec96ae5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_eaba8509",
+        "filename": "vlib/vlib/unix/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1893,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-10T14:43:02Z",
+      "side": 1,
+      "message": "Nitpick: In general I prefer to define new locals only at the start of a block; not sure if Dave has a preference",
+      "range": {
+        "startLine": 1893,
+        "startChar": 2,
+        "endLine": 1893,
+        "endChar": 57
+      },
+      "revId": "2ca9482861c9485f7a9937b67dc91ca49ec96ae5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
