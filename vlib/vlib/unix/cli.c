@@ -1400,14 +1400,7 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
 
     case UNIX_CLI_PARSE_ACTION_CRLF:
     crlf:
-      vec_add1 (cf->current_command, '\r');
-      vec_add1 (cf->current_command, '\n');
       unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
-
-      vec_validate (cf->input_vector, vec_len(cf->current_command)-1);
-      clib_memcpy (cf->input_vector, cf->current_command,
-              vec_len(cf->current_command));
-      _vec_len(cf->input_vector) = _vec_len (cf->current_command);
 
       if (cf->has_history && cf->history_limit)
         {
@@ -1417,29 +1410,25 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
               vec_delete (cf->command_history, 1, 0);
             }
           /* Don't add blank lines to the cmd history */
-          if (vec_len (cf->current_command) > 2)
+          if (vec_len (cf->current_command))
             {
               /* Don't duplicate the previous command */
-              _vec_len (cf->current_command) -= 2;
               j = vec_len(cf->command_history);
               if (j == 0 ||
                 (vec_len (cf->current_command) != vec_len (cf->command_history[j - 1]) ||
                     memcmp(cf->current_command, cf->command_history[j - 1],
                            vec_len (cf->current_command)) != 0))
                 {
-                  vec_add1 (cf->command_history, cf->current_command);
-                  cf->current_command = 0;
+                  /* copy the command to the history */
+                  u8 * c = 0;
+                  vec_append(c, cf->current_command);
+                  vec_add1 (cf->command_history, c);
                   cf->command_number ++;
                 }
-              else
-                vec_reset_length (cf->current_command);
             }
-          else
-            vec_reset_length (cf->current_command);
           cf->excursion = vec_len (cf->command_history);
         }
-      else /* history disabled */
-        vec_reset_length (cf->current_command);
+
       cf->search_mode = 0;
       vec_reset_length (cf->search_key);
       cf->cursor = 0;
@@ -1491,9 +1480,9 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
                 unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\b \b", 3);
 
               vec_validate (cf->current_command, vec_len(item)-1);
-
               clib_memcpy (cf->current_command, item, vec_len(item));
               _vec_len (cf->current_command) = vec_len(item);
+
               unix_vlib_cli_output_cooked (cf, uf, cf->current_command,
                                            vec_len (cf->current_command));
               cf->cursor = vec_len (cf->current_command);
@@ -1567,13 +1556,13 @@ static int unix_cli_line_edit (unix_cli_main_t * cm,
   for (i = 0; i < vec_len (cf->input_vector); i++)
     {
       unix_cli_parse_action_t action;
-      /* See if the input buffer is some sort of control code */
       i32 matched = 0;
       unix_cli_parse_actions_t *a;
 
       /* If we're in the pager mode, search the pager actions */
       a = cf->pager_lines ? unix_cli_parse_pager : unix_cli_parse_strings;
 
+      /* See if the input buffer is some sort of control code */
       action = unix_cli_match_action(a, &cf->input_vector[i],
         vec_len (cf->input_vector) - i, &matched);
 
@@ -1585,11 +1574,9 @@ static int unix_cli_line_edit (unix_cli_main_t * cm,
               /* There was a partial match which means we need more bytes
                * than the input buffer currently has.
                * Since the bytes before here have been processed, shift
-               * the current contents to the start of the input buffer.
+               * the remaining contents to the start of the input buffer.
                */
-              int j = vec_len (cf->input_vector) - i;
-              memmove(cf->input_vector, cf->input_vector + i, j);
-              _vec_len(cf->input_vector) = j;
+              vec_delete (cf->input_vector, i, 0);
             }
           return 1; /* wait for more */
 
@@ -1604,11 +1591,9 @@ static int unix_cli_line_edit (unix_cli_main_t * cm,
                   /* There was a partial match which means we need more bytes
                    * than the input buffer currently has.
                    * Since the bytes before here have been processed, shift
-                   * the current contents to the start of the input buffer.
+                   * the remaining contents to the start of the input buffer.
                    */
-                  int j = vec_len (cf->input_vector) - i;
-                  memmove(cf->input_vector, cf->input_vector + i, j);
-                  _vec_len(cf->input_vector) = j;
+                  vec_delete (cf->input_vector, i, 0);
                 }
               return 1; /* wait for more */
             }
@@ -1618,7 +1603,12 @@ static int unix_cli_line_edit (unix_cli_main_t * cm,
           /* process the action */
           if (!unix_cli_line_process_one(cm, um, cf, uf,
                 cf->input_vector[i], action))
-            return 0; /* CRLF found */
+            {
+              /* CRLF found. Consume the bytes from the input_vector */
+              vec_delete (cf->input_vector, i + matched, 0);
+              /* And tell our caller to execute cf->input_command */
+              return 0;
+            }
         }
 
       i += matched;
@@ -1638,13 +1628,23 @@ static void unix_cli_process_input (unix_cli_main_t * cm,
   unformat_input_t input;
   int vlib_parse_eval (u8 *);
 
+more:
   /* Try vlibplex first.  Someday... */
   if (0 && vlib_parse_eval (cf->input_vector) == 0)
       goto done;
 
-  /* Line edit, echo, etc. */
-  if (!cf->line_mode  && unix_cli_line_edit (cm, um, cf))
-    return;
+  if (cf->line_mode)
+    {
+      /* just treat whatever we got as a complete line of input */
+      cf->current_command = cf->input_vector;
+    }
+  else
+    {
+      /* Line edit, echo, etc. */
+      if (unix_cli_line_edit (cm, um, cf))
+        /* want more input */
+        return;
+    }
 
   if (um->log_fd)
     {
@@ -1662,7 +1662,8 @@ static void unix_cli_process_input (unix_cli_main_t * cm,
       }
     }
 
-  unformat_init_vector (&input, cf->input_vector);
+  /* Copy our input command to a new string */
+  unformat_init_vector (&input, cf->current_command);
 
   /* Remove leading white space from input. */
   (void) unformat (&input, "");
@@ -1674,18 +1675,21 @@ static void unix_cli_process_input (unix_cli_main_t * cm,
   if (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     vlib_cli_input (um->vlib_main, &input, unix_vlib_cli_output, cli_file_index);
 
-  /* Re-fetch pointer since pool may have moved. */
-  cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
-  uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
-
   /* Zero buffer since otherwise unformat_free will call vec_free on it. */
   input.buffer = 0;
 
   unformat_free (&input);
 
-  /* Re-use input vector. */
+  /* Re-fetch pointer since pool may have moved. */
+  cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
+  uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
+
 done:
-  _vec_len (cf->input_vector) = 0;
+  /* reset vector; we'll re-use it later  */
+  if (cf->line_mode)
+    vec_reset_length (cf->input_vector);
+  else
+    vec_reset_length (cf->current_command);
 
   if (cf->no_pager == 2)
     {
@@ -1707,6 +1711,10 @@ done:
       /* Display the pager prompt */
       unix_cli_pager_prompt(cf, uf);
     }
+
+    /* Any residual data in the input vector? */
+    if (vec_len (cf->input_vector))
+      goto more;
 }
 
 static void unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
