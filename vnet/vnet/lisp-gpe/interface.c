@@ -371,7 +371,8 @@ add_del_ip_prefix_route (ip_prefix_t * dst_prefix, u32 table_id,
       a.dst_address = addr;
       a.flags |= is_add ? IP4_ROUTE_FLAG_ADD : IP4_ROUTE_FLAG_DEL;
       a.add_adj = add_adj;
-      a.n_add_adj = 1;
+      a.n_add_adj = is_add ? 1 : 0;
+
       ip4_add_del_route (im4, &a);
 
       if (is_add)
@@ -402,7 +403,7 @@ add_del_ip_prefix_route (ip_prefix_t * dst_prefix, u32 table_id,
       a.dst_address = addr;
       a.flags |= is_add ? IP6_ROUTE_FLAG_ADD : IP6_ROUTE_FLAG_DEL;
       a.add_adj = add_adj;
-      a.n_add_adj = 1;
+      a.n_add_adj = is_add ? 1 : 0;
 
       ip6_add_del_route (im6, &a);
 
