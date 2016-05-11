@@ -980,7 +980,7 @@ vlib_buffer_pool_create(vlib_main_t * vm, unsigned num_mbufs,
             }
 
           /* check if fits into buffer index range */
-          if (new_size > ( (uword) 1 << (32 + CLIB_LOG2_CACHE_LINE_BYTES)))
+          if ( (u64)new_size > ( (u64) 1 << (32 + CLIB_LOG2_CACHE_LINE_BYTES)))
             rmp = 0;
         }
     }

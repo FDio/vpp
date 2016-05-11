@@ -106,11 +106,11 @@ static int dpdk_vhost_user_set_vring_enable(u32 hw_if_index,
  */
 
 
-static uint64_t
-qva_to_vva(struct virtio_net *dev, uint64_t qemu_va)
+static uword
+qva_to_vva(struct virtio_net *dev, uword qemu_va)
 {
   struct virtio_memory_regions *region;
-  uint64_t vhost_va = 0;
+  uword vhost_va = 0;
   uint32_t regionidx = 0;
 
   /* Find the region where the address lives. */
@@ -176,7 +176,7 @@ static void disable_interface(dpdk_device_t * xd)
   xd->vu_is_running = 0;
 }
 
-static inline void * map_guest_mem(dpdk_device_t * xd, u64 addr)
+static inline void * map_guest_mem(dpdk_device_t * xd, uword addr)
 {
   dpdk_vu_intf_t * vui = xd->vu_intf;
   struct virtio_memory * mem = xd->vu_vhost_dev.mem;
@@ -184,7 +184,7 @@ static inline void * map_guest_mem(dpdk_device_t * xd, u64 addr)
   for (i=0; i<mem->nregions; i++) {
     if ((mem->regions[i].guest_phys_address <= addr) &&
        ((mem->regions[i].guest_phys_address + mem->regions[i].memory_size) > addr)) {
-         return (void *) (vui->region_addr[i] + addr - mem->regions[i].guest_phys_address);
+         return (void *) ((uword)vui->region_addr[i] + addr - (uword)mem->regions[i].guest_phys_address);
        }
   }
   DBG_SOCK("failed to map guest mem addr %lx", addr);
@@ -563,8 +563,8 @@ dpdk_vhost_user_set_vring_num(u32 hw_if_index, u8 idx, u32 num)
 }
 
 static clib_error_t *
-dpdk_vhost_user_set_vring_addr(u32 hw_if_index, u8 idx, u64 desc, \
-    u64 used, u64 avail, u64 log)
+dpdk_vhost_user_set_vring_addr(u32 hw_if_index, u8 idx, uword desc, \
+    uword used, uword avail, uword log)
 {
   dpdk_device_t * xd;
   struct vhost_virtqueue *vq;
@@ -1190,7 +1190,7 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
         goto close_socket;
       }
 
-      xd->vu_vhost_dev.log_base += (u64)addr + msg.log.offset;
+      xd->vu_vhost_dev.log_base += pointer_to_uword(addr) + msg.log.offset;
       xd->vu_vhost_dev.log_size = msg.log.size;
       msg.flags |= VHOST_USER_REPLY_MASK;
       msg.size = sizeof(msg.u64);
@@ -1898,7 +1898,7 @@ show_dpdk_vhost_user_command_fn (vlib_main_t * vm,
             vq->desc[j].len,
             vq->desc[j].flags,
             vq->desc[j].next,
-            (u64) map_guest_mem(xd, vq->desc[j].addr));}
+            pointer_to_uword(map_guest_mem(xd, vq->desc[j].addr)));}
       }
     }
     vlib_cli_output (vm, "\n");
