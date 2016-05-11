@@ -14,11 +14,15 @@
  * limitations under the License.
  *------------------------------------------------------------------
  */
+#include <stdint.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 
+#include <vnet/devices/netmap/net_netmap.h>
 #include <vnet/devices/netmap/netmap.h>
 
 static clib_error_t *
