@@ -1,7 +1,7 @@
-Source: vpp
+Source: fdio-vpp
 Section: net
 Priority: extra
-Maintainer: Cisco OpenVPP Packaging Team <bogus.address@cisco.com>
+Maintainer: Cisco OpenVPP Packaging Team <pkg-vpp-devel@fd.io>
 Build-Depends: debhelper (>= 9), dkms, dh-systemd
 Standards-Version: 3.9.4
 
