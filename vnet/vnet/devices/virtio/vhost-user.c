@@ -140,7 +140,7 @@ static int vhost_user_name_renumber (vnet_hw_interface_t * hi,
 }
 
 
-static inline void * map_guest_mem(vhost_user_intf_t * vui, u64 addr)
+static inline void * map_guest_mem(vhost_user_intf_t * vui, uword addr)
 {
   int i;
   for (i=0; i<vui->nregions; i++) {
@@ -153,7 +153,7 @@ static inline void * map_guest_mem(vhost_user_intf_t * vui, u64 addr)
   return 0;
 }
 
-static inline void * map_user_mem(vhost_user_intf_t * vui, u64 addr)
+static inline void * map_user_mem(vhost_user_intf_t * vui, uword addr)
 {
   int i;
   for (i=0; i<vui->nregions; i++) {
@@ -1949,7 +1949,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
         vui->regions[j].memory_size,
         vui->regions[j].userspace_addr,
         vui->regions[j].mmap_offset,
-        (u64) vui->region_mmap_addr[j]);
+        pointer_to_uword( vui->region_mmap_addr[j]) );
     }
     for (q = 0; q < vui->num_vrings; q++) {
       vlib_cli_output(vm, "\n Virtqueue %d\n", q);
@@ -1982,7 +1982,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
             vui->vrings[q].desc[j].len,
             vui->vrings[q].desc[j].flags,
             vui->vrings[q].desc[j].next,
-            (u64) map_guest_mem(vui, vui->vrings[q].desc[j].addr));}
+            pointer_to_uword(map_guest_mem(vui, vui->vrings[q].desc[j].addr)));}
       }
     }
     vlib_cli_output (vm, "\n");
