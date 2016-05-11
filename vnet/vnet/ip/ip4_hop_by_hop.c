@@ -233,6 +233,8 @@ VLIB_REGISTER_NODE (ip4_hop_by_hop_node) = {
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_hop_by_hop_node, ip4_hop_by_hop_node_fn)
+
 VLIB_REGISTER_NODE (ip4_add_hop_by_hop_node) = {
   .function = ip4_hop_by_hop_node_fn,
   .name = "ip4-add-hop-by-hop",

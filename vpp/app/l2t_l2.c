@@ -250,3 +250,5 @@ VLIB_REGISTER_NODE (l2t_l2_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2t_l2_node, l2t_l2_node_fn)
+

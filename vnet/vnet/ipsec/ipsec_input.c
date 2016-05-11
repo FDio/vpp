@@ -288,6 +288,9 @@ VLIB_REGISTER_NODE (ipsec_input_ip4_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node,
+			      ipsec_input_ip4_node_fn)
+
 
 static vlib_node_registration_t ipsec_input_ip6_node;
 
@@ -406,3 +409,7 @@ VLIB_REGISTER_NODE (ipsec_input_ip6_node,static) = {
 #undef _
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip6_node,
+			      ipsec_input_ip6_node_fn)
+

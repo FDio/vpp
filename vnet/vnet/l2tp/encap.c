@@ -206,6 +206,8 @@ VLIB_REGISTER_NODE (l2t_encap_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2t_encap_node, l2t_encap_node_fn)
+
 void l2tp_encap_init (vlib_main_t * vm)
 {
   l2tp_encap_runtime_t * rt;

@@ -653,6 +653,8 @@ VLIB_REGISTER_NODE (sr_rewrite_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (sr_rewrite_node, sr_rewrite)
+
 static int ip6_delete_route_no_next_hop (ip6_address_t *dst_address_arg, 
                                          u32 dst_address_length, 
                                          u32 rx_table_id)
@@ -1911,6 +1913,8 @@ VLIB_REGISTER_NODE (sr_fix_dst_addr_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (sr_fix_dst_addr_node, sr_fix_dst_addr)
+
 static clib_error_t * sr_init (vlib_main_t * vm)
 {
   ip6_sr_main_t * sm = &sr_main;
@@ -2559,6 +2563,8 @@ VLIB_REGISTER_NODE (sr_local_node, static) = {
 #undef _
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (sr_local_node, sr_local)
 
 ip6_sr_main_t * sr_get_main (vlib_main_t * vm)
 {

@@ -1144,6 +1144,8 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (vhost_user_input_node, vhost_user_input)
+
 static uword
 vhost_user_intfc_tx (vlib_main_t * vm,
                  vlib_node_runtime_t * node,
@@ -1372,6 +1374,9 @@ VNET_DEVICE_CLASS (vhost_user_dev_class,static) = {
   .admin_up_down_function = vhost_user_interface_admin_up_down,
   .no_flatten_output_chains = 1,
 };
+
+VLIB_DEVICE_TX_FUNCTION_MULTIARCH (vhost_user_dev_class,
+				   vhost_user_intfc_tx)
 
 static uword
 vhost_user_process (vlib_main_t * vm,

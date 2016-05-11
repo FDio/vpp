@@ -204,3 +204,6 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .subif_add_del_function = af_packet_subif_add_del_function,
   .no_flatten_output_chains = 1,
 };
+
+VLIB_DEVICE_TX_FUNCTION_MULTIARCH (af_packet_device_class,
+				   af_packet_interface_tx)

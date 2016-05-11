@@ -348,6 +348,8 @@ VLIB_REGISTER_NODE (ip4_cop_whitelist_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_cop_whitelist_node, ip4_cop_whitelist_node_fn)
+
 static clib_error_t *
 ip4_whitelist_init (vlib_main_t * vm)
 {

@@ -59,6 +59,7 @@ show_vpe_version_command_fn (vlib_main_t * vm,
       _("Compiler", "%s", vpe_compiler);
       _("CPU model name", "%U", format_cpu_model_name);
       _("CPU microarchitecture", "%U", format_cpu_uarch);
+      _("CPU flags", "%U", format_cpu_flags);
       _("Current PID", "%d", getpid());
 #if DPDK > 0
       _("DPDK Version", "%s", rte_version());

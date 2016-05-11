@@ -329,6 +329,8 @@ VLIB_REGISTER_NODE (ip4_classify_node) = {
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_classify_node, ip4_classify)
+
 static uword
 ip6_classify (vlib_main_t * vm,
               vlib_node_runtime_t * node,
@@ -349,6 +351,8 @@ VLIB_REGISTER_NODE (ip6_classify_node) = {
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP6_LOOKUP_NEXT_NODES,
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_classify_node, ip6_classify)
 
 static clib_error_t *
 ip_classify_init (vlib_main_t * vm)

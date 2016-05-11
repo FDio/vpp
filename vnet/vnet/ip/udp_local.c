@@ -327,6 +327,8 @@ VLIB_REGISTER_NODE (udp4_input_node) = {
   .unformat_buffer = unformat_udp_header,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (udp4_input_node, udp4_input)
+
 VLIB_REGISTER_NODE (udp6_input_node) = {
   .function = udp6_input,
   .name = "ip6-udp-lookup",
@@ -349,6 +351,8 @@ VLIB_REGISTER_NODE (udp6_input_node) = {
   .format_trace = format_udp_rx_trace,
   .unformat_buffer = unformat_udp_header,
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (udp6_input_node, udp6_input)
 
 static void add_dst_port (udp_main_t * um,
                           udp_dst_port_t dst_port,

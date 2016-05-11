@@ -1346,6 +1346,8 @@ VLIB_REGISTER_NODE (ip4_lookup_node) = {
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_node, ip4_lookup)
+
 static uword
 ip4_indirect (vlib_main_t * vm,
                vlib_node_runtime_t * node,
@@ -1364,6 +1366,8 @@ VLIB_REGISTER_NODE (ip4_indirect_node) = {
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_indirect_node, ip4_indirect)
 
 
 /* Global IP4 main. */
@@ -1604,6 +1608,8 @@ VLIB_REGISTER_NODE (ip4_drop_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_drop_node, ip4_drop)
+
 VLIB_REGISTER_NODE (ip4_punt_node,static) = {
   .function = ip4_punt,
   .name = "ip4-punt",
@@ -1617,6 +1623,8 @@ VLIB_REGISTER_NODE (ip4_punt_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_punt_node, ip4_punt)
+
 VLIB_REGISTER_NODE (ip4_miss_node,static) = {
   .function = ip4_miss,
   .name = "ip4-miss",
@@ -1629,6 +1637,8 @@ VLIB_REGISTER_NODE (ip4_miss_node,static) = {
     [0] = "error-drop",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_miss_node, ip4_miss)
 
 /* Compute TCP/UDP/ICMP4 checksum in software. */
 u16
@@ -2067,6 +2077,8 @@ VLIB_REGISTER_NODE (ip4_local_node,static) = {
     [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_local_node, ip4_local)
 
 void ip4_register_protocol (u32 protocol, u32 node_index)
 {
@@ -2735,6 +2747,8 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_node, ip4_rewrite_transit)
+
 VLIB_REGISTER_NODE (ip4_rewrite_local_node,static) = {
   .function = ip4_rewrite_local,
   .name = "ip4-rewrite-local",
@@ -2750,6 +2764,8 @@ VLIB_REGISTER_NODE (ip4_rewrite_local_node,static) = {
     [IP4_REWRITE_NEXT_ARP] = "ip4-arp",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_local_node, ip4_rewrite_local)
 
 static clib_error_t *
 add_del_interface_table (vlib_main_t * vm,
@@ -3023,6 +3039,8 @@ VLIB_REGISTER_NODE (ip4_lookup_multicast_node,static) = {
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_multicast_node, ip4_lookup_multicast)
 
 VLIB_REGISTER_NODE (ip4_multicast_node,static) = {
   .function = ip4_drop,

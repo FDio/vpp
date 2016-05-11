@@ -153,6 +153,8 @@ VLIB_REGISTER_NODE (mpls_policy_encap_node) =  {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (mpls_policy_encap_node, mpls_policy_encap)
+
 static clib_error_t *
 mpls_policy_encap_init (vlib_main_t * vm)
 {

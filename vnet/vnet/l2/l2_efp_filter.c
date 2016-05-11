@@ -498,6 +498,8 @@ VLIB_REGISTER_NODE (l2_efp_filter_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2_efp_filter_node, l2_efp_filter_node_fn)
+
 clib_error_t *l2_efp_filter_init (vlib_main_t *vm)
 {
   l2_efp_filter_main_t * mp = &l2_efp_filter_main;

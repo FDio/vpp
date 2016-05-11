@@ -550,6 +550,8 @@ VLIB_REGISTER_NODE (vxlan4_input_node) = {
   // $$$$ .unformat_buffer = unformat_vxlan_header,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (vxlan4_input_node, vxlan4_input)
+
 VLIB_REGISTER_NODE (vxlan6_input_node) = {
   .function = vxlan6_input,
   .name = "vxlan6-input",
@@ -570,3 +572,6 @@ VLIB_REGISTER_NODE (vxlan6_input_node) = {
   .format_trace = format_vxlan_rx_trace,
   // $$$$ .unformat_buffer = unformat_vxlan_header,
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_input_node, vxlan6_input)
+

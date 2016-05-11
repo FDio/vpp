@@ -297,6 +297,9 @@ VLIB_REGISTER_NODE (ip4_check_source_reachable_via_any) = {
   .format_trace = format_ip4_source_check_trace,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_check_source_reachable_via_any,
+			      ip4_source_check_reachable_via_any)
+
 VLIB_REGISTER_NODE (ip4_check_source_reachable_via_rx) = {
   .function = ip4_source_check_reachable_via_rx,
   .name = "ip4-source-check-via-rx",
@@ -310,6 +313,9 @@ VLIB_REGISTER_NODE (ip4_check_source_reachable_via_rx) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_source_check_trace,
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_check_source_reachable_via_rx,
+			      ip4_source_check_reachable_via_rx)
 
 static clib_error_t *
 set_ip_source_check (vlib_main_t * vm,

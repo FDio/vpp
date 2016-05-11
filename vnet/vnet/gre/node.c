@@ -434,6 +434,8 @@ VLIB_REGISTER_NODE (gre_input_node) = {
   .unformat_buffer = unformat_gre_header,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (gre_input_node, gre_input)
+
 void
 gre_register_input_protocol (vlib_main_t * vm,
 			     gre_protocol_t protocol,
