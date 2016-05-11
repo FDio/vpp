@@ -703,7 +703,8 @@ libvnet_la_SOURCES +=				\
   vnet/devices/netmap/cli.c
 
 nobase_include_HEADERS +=			\
-  vnet/devices/netmap/netmap.h
+  vnet/devices/netmap/netmap.h                  \
+  vnet/devices/netmap/netmap_pub.h
 
 
 ########################################
