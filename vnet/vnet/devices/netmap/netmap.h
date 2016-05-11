@@ -40,11 +40,6 @@
  * SUCH DAMAGE.
  */
 
-#include <stdint.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
-#include <vnet/devices/netmap/net_netmap.h>
-
 typedef struct {
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
   u8 * host_if_name;
@@ -101,6 +96,8 @@ int netmap_delete_if(vlib_main_t * vm, u8 * host_if_name);
 
 /* Macros and helper functions from sys/net/netmap_user.h */
 
+#ifdef _NET_NETMAP_H_
+
 #define _NETMAP_OFFSET(type, ptr, offset) \
 	((type)(void *)((char *)(ptr) + (offset)))
 
@@ -144,5 +141,5 @@ nm_ring_space(struct netmap_ring *ring)
                 ret += ring->num_slots;
         return ret;
 }
-
+#endif
 
