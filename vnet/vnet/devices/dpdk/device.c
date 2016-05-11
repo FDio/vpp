@@ -1206,7 +1206,6 @@ admin_up_down_process (vlib_main_t * vm,
   clib_error_t * error = 0;
   uword event_type;
   uword *event_data = 0;
-  u32 index;
   u32 sw_if_index;
   u32 flags;
 
@@ -1218,18 +1217,18 @@ admin_up_down_process (vlib_main_t * vm,
 
       dpdk_main.admin_up_down_in_progress = 1;
 
-      for (index=0; index<vec_len(event_data); index++)
+      switch (event_type) {
+        case UP_DOWN_FLAG_EVENT:
         {
-          sw_if_index = event_data[index] >> 32;
-          flags = (u32) event_data[index];
-
-          switch (event_type) {
-          case UP_DOWN_FLAG_EVENT:
-            error = vnet_sw_interface_set_flags (vnet_get_main(), sw_if_index, flags);
-            clib_error_report(error);
-            break;
-          }
+            if (vec_len(event_data) == 2) {
+              sw_if_index = event_data[0];
+              flags = event_data[1];
+              error = vnet_sw_interface_set_flags (vnet_get_main(), sw_if_index, flags);
+              clib_error_report(error);
+            }
         }
+        break;
+      }
 
       vec_reset_length (event_data);
 
@@ -1257,10 +1256,11 @@ VLIB_REGISTER_NODE (admin_up_down_process_node,static) = {
  */
 void post_sw_interface_set_flags (vlib_main_t *vm, u32 sw_if_index, u32 flags)
 {
-  vlib_process_signal_event
+  uword * d = vlib_process_signal_event_data
       (vm, admin_up_down_process_node.index,
-       UP_DOWN_FLAG_EVENT, 
-       (((uword)sw_if_index << 32) | flags));
+       UP_DOWN_FLAG_EVENT, 2, sizeof(u32));
+  d[0] = sw_if_index;
+  d[1] = flags;
 }
 
 /*
