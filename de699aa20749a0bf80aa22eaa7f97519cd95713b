@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_50afe4e3",
+        "filename": "vlib/vlib/node.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-05-11T21:46:29Z",
+      "side": 1,
+      "message": "You can lose the \"else\". First match wins...",
+      "revId": "de699aa20749a0bf80aa22eaa7f97519cd95713b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_30ac70ed",
+        "filename": "vlib/vlib/node.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-05-11T21:46:29Z",
+      "side": 1,
+      "message": "You can lose the if(0) ;... First match wins...",
+      "revId": "de699aa20749a0bf80aa22eaa7f97519cd95713b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_10b96c2e",
+        "filename": "vlib/vlib/node.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-05-11T21:46:29Z",
+      "side": 1,
+      "message": "You can lose the else... First match wins...",
+      "revId": "de699aa20749a0bf80aa22eaa7f97519cd95713b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
