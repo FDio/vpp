@@ -1184,6 +1184,9 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name_renumber = dpdk_device_renumber,
 };
 
+VLIB_DEVICE_TX_FUNCTION_MULTIARCH (dpdk_device_class,
+				   dpdk_interface_tx)
+
 void dpdk_set_flowcontrol_callback (vlib_main_t *vm, 
                                     dpdk_flowcontrol_callback_t callback)
 {

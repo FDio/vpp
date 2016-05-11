@@ -13,6 +13,8 @@
 
 # vector packet processor
 vpp_arch = native
+vpp_march = corei7
+vpp_dpdk_arch = corei7
 vpp_native_tools = vppapigen
 
 vpp_uses_dpdk = yes

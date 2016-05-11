@@ -804,6 +804,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   clib_error_t * error = 0;
   dpdk_main_t * dm = &dpdk_main;
   vlib_thread_main_t * tm = vlib_get_thread_main();
+  vlib_node_runtime_t * rt = vlib_node_get_runtime (vm, dpdk_input_node.index);
   u8 * s, * tmp = 0;
   u8 * pci_dev_id = 0;
   u8 * rte_cmd = 0, * ethname = 0;
@@ -1251,10 +1252,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   if (dm->use_rss)
-    {
-      vlib_node_runtime_t * rt = vlib_node_get_runtime (vm, dpdk_input_node.index);
-      rt->function = dpdk_input_rss;
-    }
+    rt->function = dpdk_input_rss_multiarch_select();
+  else
+    rt->function = dpdk_input_multiarch_select();
  done:
   return error;
 }

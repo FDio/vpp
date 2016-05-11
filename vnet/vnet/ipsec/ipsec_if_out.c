@@ -138,3 +138,5 @@ VLIB_REGISTER_NODE (ipsec_if_output_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec_if_output_node, ipsec_if_output_node_fn)
+

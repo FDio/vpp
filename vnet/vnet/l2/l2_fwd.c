@@ -367,6 +367,8 @@ VLIB_REGISTER_NODE (l2fwd_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2fwd_node, l2fwd_node_fn)
+
 clib_error_t *l2fwd_init (vlib_main_t *vm)
 {
   l2fwd_main_t * mp = &l2fwd_main;

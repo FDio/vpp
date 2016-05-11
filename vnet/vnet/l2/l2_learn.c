@@ -415,6 +415,7 @@ VLIB_REGISTER_NODE (l2learn_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2learn_node, l2learn_node_fn)
 
 clib_error_t *l2learn_init (vlib_main_t *vm)
 {

@@ -232,3 +232,6 @@ VNET_DEVICE_CLASS (netmap_device_class) = {
   .subif_add_del_function = netmap_subif_add_del_function,
   .no_flatten_output_chains = 1,
 };
+
+VLIB_DEVICE_TX_FUNCTION_MULTIARCH(netmap_device_class,
+				  netmap_interface_tx)

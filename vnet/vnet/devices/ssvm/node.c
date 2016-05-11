@@ -334,3 +334,5 @@ VLIB_REGISTER_NODE (ssvm_eth_input_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ssvm_eth_input_node, ssvm_eth_input_node_fn)
+

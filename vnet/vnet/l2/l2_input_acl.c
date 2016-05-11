@@ -371,6 +371,8 @@ VLIB_REGISTER_NODE (l2_inacl_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2_inacl_node, l2_inacl_node_fn)
+
 clib_error_t *l2_inacl_init (vlib_main_t *vm)
 {
   l2_inacl_main_t * mp = &l2_inacl_main;

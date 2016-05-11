@@ -324,6 +324,9 @@ VLIB_REGISTER_NODE (policer_by_sw_if_index_node, static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (policer_by_sw_if_index_node,
+			      vnet_policer_by_sw_if_index);
+
 
 int test_policer_add_del (u32 rx_sw_if_index, u8 *config_name,
                           int is_add)

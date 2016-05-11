@@ -405,6 +405,8 @@ VLIB_REGISTER_NODE (ipsec_output_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec_output_node, ipsec_output_node_fn)
+
 #else /* IPSEC > 1 */
 
 /* Dummy ipsec output node, in case when IPSec is disabled */

@@ -282,6 +282,8 @@ VLIB_REGISTER_NODE (cop_input_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (cop_input_node, cop_input_node_fn)
+
 #define foreach_cop_stub                        \
 _(default-cop-whitelist, default_cop_whitelist)
 

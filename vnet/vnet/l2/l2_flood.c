@@ -442,6 +442,8 @@ VLIB_REGISTER_NODE (l2flood_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2flood_node, l2flood_node_fn)
+
 clib_error_t *l2flood_init (vlib_main_t *vm)
 {
   l2flood_main_t * mp = &l2flood_main;

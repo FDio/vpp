@@ -293,6 +293,8 @@ VLIB_REGISTER_NODE (l2_invtr_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2_invtr_node, l2_invtr_node_fn)
+
 clib_error_t *l2_invtr_init (vlib_main_t *vm)
 {
   l2_invtr_main_t * mp = &l2_invtr_main;

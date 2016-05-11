@@ -1260,6 +1260,8 @@ VLIB_REGISTER_NODE (ip6_lookup_node) = {
   .next_nodes = IP6_LOOKUP_NEXT_NODES,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_lookup_node, ip6_lookup)
+
 static uword
 ip6_indirect (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
@@ -1277,6 +1279,8 @@ VLIB_REGISTER_NODE (ip6_indirect_node) = {
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP6_LOOKUP_NEXT_NODES,
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_indirect_node, ip6_indirect)
 
 typedef struct {
   /* Adjacency taken. */
@@ -1454,6 +1458,8 @@ VLIB_REGISTER_NODE (ip6_drop_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_drop_node, ip6_drop)
+
 VLIB_REGISTER_NODE (ip6_punt_node,static) = {
   .function = ip6_punt,
   .name = "ip6-punt",
@@ -1467,6 +1473,8 @@ VLIB_REGISTER_NODE (ip6_punt_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_punt_node, ip6_punt)
+
 VLIB_REGISTER_NODE (ip6_miss_node,static) = {
   .function = ip6_miss,
   .name = "ip6-miss",
@@ -1479,6 +1487,8 @@ VLIB_REGISTER_NODE (ip6_miss_node,static) = {
     [0] = "error-drop",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_miss_node, ip6_miss)
 
 VLIB_REGISTER_NODE (ip6_multicast_node,static) = {
   .function = ip6_drop,
@@ -1857,6 +1867,8 @@ VLIB_REGISTER_NODE (ip6_local_node,static) = {
     [IP_LOCAL_NEXT_ICMP] = "ip6-icmp-input",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_local_node, ip6_local)
 
 void ip6_register_protocol (u32 protocol, u32 node_index)
 {
@@ -2424,6 +2436,8 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_node, ip6_rewrite_transit)
+
 VLIB_REGISTER_NODE (ip6_rewrite_local_node,static) = {
   .function = ip6_rewrite_local,
   .name = "ip6-rewrite-local",
@@ -2438,6 +2452,8 @@ VLIB_REGISTER_NODE (ip6_rewrite_local_node,static) = {
     [IP6_REWRITE_NEXT_DROP] = "error-drop",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_local_node, ip6_rewrite_local)
 
 /* Global IP6 main. */
 ip6_main_t ip6_main;

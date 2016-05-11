@@ -286,6 +286,8 @@ VLIB_REGISTER_NODE (ip6_cop_whitelist_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_cop_whitelist_node, ip6_cop_whitelist_node_fn)
+
 static clib_error_t *
 ip6_whitelist_init (vlib_main_t * vm)
 {

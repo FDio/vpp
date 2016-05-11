@@ -387,3 +387,5 @@ VLIB_REGISTER_NODE (esp_encrypt_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (esp_encrypt_node, esp_encrypt_node_fn)
+

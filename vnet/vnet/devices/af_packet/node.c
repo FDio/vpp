@@ -267,7 +267,6 @@ af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx_packets;
 }
 
-
 VLIB_REGISTER_NODE (af_packet_input_node) = {
   .function = af_packet_input_fn,
   .name = "af-packet-input",
@@ -283,3 +282,6 @@ VLIB_REGISTER_NODE (af_packet_input_node) = {
     [AF_PACKET_INPUT_NEXT_ETHERNET_INPUT] = "ethernet-input",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (af_packet_input_node, af_packet_input_fn)
+

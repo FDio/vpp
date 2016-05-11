@@ -414,6 +414,8 @@ VLIB_REGISTER_NODE (l2output_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2output_node, l2output_node_fn)
+
 clib_error_t *l2output_init (vlib_main_t *vm)
 {
   l2output_main_t * mp = &l2output_main;

@@ -272,6 +272,8 @@ VLIB_REGISTER_NODE (li_hit_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (li_hit_node, li_hit_node_fn)
+
 #else
 #include <vlib/vlib.h>
 

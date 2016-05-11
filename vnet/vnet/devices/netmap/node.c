@@ -270,7 +270,6 @@ netmap_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx_packets;
 }
 
-
 VLIB_REGISTER_NODE (netmap_input_node) = {
   .function = netmap_input_fn,
   .name = "netmap-input",
@@ -286,4 +285,6 @@ VLIB_REGISTER_NODE (netmap_input_node) = {
     [NETMAP_INPUT_NEXT_ETHERNET_INPUT] = "ethernet-input",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (netmap_input_node, netmap_input_fn)
 

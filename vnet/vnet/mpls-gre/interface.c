@@ -259,6 +259,9 @@ VNET_DEVICE_CLASS (mpls_gre_device_class) = {
 #endif
 };
 
+VLIB_DEVICE_TX_FUNCTION_MULTIARCH (mpls_gre_device_class,
+				   mpls_gre_interface_tx)
+
 VNET_HW_INTERFACE_CLASS (mpls_gre_hw_interface_class) = {
   .name = "MPLS-GRE",
   .format_header = format_mpls_gre_header_with_length,
@@ -510,6 +513,8 @@ VNET_DEVICE_CLASS (mpls_eth_device_class) = {
 #endif
 };
 
+VLIB_DEVICE_TX_FUNCTION_MULTIARCH (mpls_eth_device_class,
+				   mpls_eth_interface_tx)
 
 VNET_HW_INTERFACE_CLASS (mpls_eth_hw_interface_class) = {
   .name = "MPLS-ETH",
@@ -675,6 +680,8 @@ VLIB_REGISTER_NODE (mpls_post_rewrite_node) = {
 #undef _
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (mpls_post_rewrite_node, mpls_post_rewrite)
 
 static u8 * mpls_gre_rewrite (mpls_main_t *mm, mpls_gre_tunnel_t * t)
 {

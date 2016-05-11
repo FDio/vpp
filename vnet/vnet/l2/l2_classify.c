@@ -399,6 +399,8 @@ VLIB_REGISTER_NODE (l2_classify_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2_classify_node, l2_classify_node_fn)
+
 clib_error_t *l2_classify_init (vlib_main_t *vm)
 {
   l2_classify_main_t * cm = &l2_classify_main;
