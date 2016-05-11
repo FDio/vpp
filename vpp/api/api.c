@@ -74,6 +74,7 @@
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/devices/af_packet/af_packet.h>
+#include <vnet/devices/netmap/netmap_pub.h>
 
 #undef BIHASH_TYPE
 #undef __included_bihash_template_h__
@@ -335,7 +336,9 @@ _(LISP_ENABLE_DISABLE_STATUS_DUMP,                                      \
   lisp_enable_disable_status_dump)                                      \
 _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
 _(AF_PACKET_CREATE, af_packet_create)                                   \
-_(AF_PACKET_DELETE, af_packet_delete)
+_(AF_PACKET_DELETE, af_packet_delete)                                   \
+_(NETMAP_CREATE, netmap_create)                                         \
+_(NETMAP_DELETE, netmap_delete)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -5930,6 +5933,45 @@ vl_api_af_packet_delete_t_handler
     vec_free(host_if_name);
 
     REPLY_MACRO(VL_API_AF_PACKET_DELETE_REPLY);
+}
+
+static void
+vl_api_netmap_create_t_handler
+(vl_api_netmap_create_t *mp)
+{
+    vlib_main_t *vm = vlib_get_main();
+    vl_api_netmap_create_reply_t *rmp;
+    int rv = 0;
+    u8 *if_name = NULL;
+
+    if_name = format(0, "%s", mp->if_name);
+    vec_add1 (if_name, 0);
+
+    rv = netmap_create_if(vm, if_name, mp->use_random_hw_addr ? 0 : mp->hw_addr,
+                          mp->is_pipe, mp->is_master);
+
+    vec_free(if_name);
+
+    REPLY_MACRO(VL_API_NETMAP_CREATE_REPLY);
+}
+
+static void
+vl_api_netmap_delete_t_handler
+(vl_api_netmap_delete_t *mp)
+{
+    vlib_main_t * vm = vlib_get_main();
+    vl_api_netmap_delete_reply_t *rmp;
+    int rv = 0;
+    u8 *if_name = NULL;
+
+    if_name = format(0, "%s", mp->if_name);
+    vec_add1 (if_name, 0);
+
+    rv = netmap_delete_if(vm, if_name);
+
+    vec_free(if_name);
+
+    REPLY_MACRO(VL_API_NETMAP_DELETE_REPLY);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \
