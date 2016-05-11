@@ -15,16 +15,24 @@
 arm32_arch = native
 arm32_native_tools = vppapigen
 
-arm32_uses_dpdk = no
+arm32_uses_dpdk = yes
 arm32_uses_openssl = no
 
 arm32_root_packages = vpp vlib vlib-api vnet svm vpp-api-test \
 	vpp-japi gmod
 
 vlib_configure_args_arm32 = --with-pre-data=128
+vnet_configure_args_arm32 = --with-dpdk --without-vcgn --without-ipsec --without-ipv6sr
+vpp_configure_args_arm32 = --with-dpdk --without-vcgn --without-ipsec --without-ipv6sr
 
-vnet_configure_args_arm32 = --without-vcgn --without-ipsec --without-ipv6sr
-vpp_configure_args_arm32 = --without-vcgn --without-ipsec --without-ipv6sr
+arm32_dpdk_arch = "armv7a"
+arm32_dpdk_target = "arm-armv7a-linuxapp-gcc"
+arm32_dpdk_make_extra_args = "CPU_CFLAGS='-mfloat-abi=hard' \
+	CONFIG_RTE_EAL_IGB_UIO=y \
+	CONFIG_RTE_LIBRTE_E1000_PMD=y \
+	CONFIG_RTE_MAX_LCORE=4 \
+	CONFIG_RTE_MAX_NUMA_NODES=1"
+
 
 arm32_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -DVLIB_MAX_CPUS=4 -march=armv7-a \
 	-fstack-protector-all -fPIC -Werror
