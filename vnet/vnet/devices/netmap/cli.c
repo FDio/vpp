@@ -19,7 +19,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 
-#include <vnet/devices/netmap/netmap.h>
+#include <vnet/devices/netmap/netmap_pub.h>
 
 static clib_error_t *
 netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
