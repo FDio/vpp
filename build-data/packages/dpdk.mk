@@ -17,6 +17,16 @@ DPDK_MAKE_ARGS = -C $(call find_source_fn,$(PACKAGE_SOURCE)) \
 	DPDK_DEBUG=$(DPDK_DEBUG)
 
 
+TARGET=$(strip $($(PLATFORM)_dpdk_target))
+ifneq ($(TARGET),)
+DPDK_MAKE_ARGS += DPDK_TARGET=$(TARGET)
+endif
+
+DPDK_MAKE_EXTRA_ARGS = $(strip $($(PLATFORM)_dpdk_make_extra_args))
+ifneq ($(DPDK_MAKE_EXTRA_ARGS),)
+DPDK_MAKE_ARGS += DPDK_MAKE_EXTRA_ARGS="$(DPDK_MAKE_EXTRA_ARGS)"
+endif
+
 dpdk_configure = echo 
 
 dpdk_make_args = $(DPDK_MAKE_ARGS) config

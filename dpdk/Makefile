@@ -38,7 +38,11 @@ else
 DPDK_CC=gcc
 endif
 
+
+ifeq (,$(DPDK_TARGET))
 DPDK_TARGET := x86_64-native-linuxapp-$(DPDK_CC)
+endif
+
 JOBS := $(shell grep processor /proc/cpuinfo | wc -l)
 
 # compiler/linker custom arguments
@@ -63,6 +67,10 @@ else ifeq ($(DPDK_MARCH),core-avx-i)
 DPDK_MACHINE:=ivb                        # Ivy Bridge
 else ifeq ($(DPDK_MARCH),core-avx2)
 DPDK_MACHINE:=hsw                        # Haswell
+else ifeq ($(DPDK_MARCH),armv7a)
+DPDK_MACHINE:=armv7a                     # ARMv7
+else ifeq ($(DPDK_MARCH),armv8a)
+DPDK_MACHINE:=armv8a                     # ARMv8
 else
 $(error Unknown DPDK_MARCH)
 endif
@@ -75,7 +83,8 @@ DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
 	EXTRA_CFLAGS="$(DPDK_EXTRA_CFLAGS)" \
 	EXTRA_LDFLAGS="$(DPDK_EXTRA_LDFLAGS)" \
 	CPU_CFLAGS="$(DPDK_CPU_CFLAGS)" \
-	CPU_LDFLAGS="$(DPDK_CPU_LDFLAGS)"
+	CPU_LDFLAGS="$(DPDK_CPU_LDFLAGS)" \
+        $(DPDK_MAKE_EXTRA_ARGS)
 
 DPDK_SOURCE_FILES := $(shell  [ -e $(DPDK_SOURCE) ] && find $(DPDK_SOURCE) -name "*.[chS]")  
 
