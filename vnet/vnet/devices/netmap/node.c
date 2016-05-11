@@ -282,3 +282,5 @@ VLIB_REGISTER_NODE (netmap_input_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH(netmap_input_node, netmap_input_fn);
+
