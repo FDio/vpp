@@ -563,7 +563,7 @@ lcaf_write (u8 * p, void * a)
   size += sizeof (h[0]);
   len = (*lcaf_write_fcts[type])(p + size, lcaf);
 
-  if (~0 == len)
+  if ((u16)~0 == len)
     return ~0;
 
   return size + len;
@@ -579,7 +579,7 @@ vni_write (u8 * p, void * a)
   size += sizeof (u32);
   len = gid_address_put (p + size, vni_gid (v));
 
-  if (~0 == len)
+  if ((u16)~0 == len)
     return ~0;
 
   return size + len;
