@@ -44,6 +44,21 @@
 #include <vppinfra/timing_wheel.h>
 #include <vlib/trace.h>		/* for vlib_trace_filter_t */
 
+/*
+ * multiarchitecture support. Adding new entry will produce
+ * new graph node function variant optimized for specific cpu
+ * microarchitecture.
+ * Order is important for runtime selection, as 1st match wins...
+ */
+
+#if __x86_64__
+#define foreach_march_variant(a, b) \
+  a(avx2, b) \
+  a(avx, b)
+#else
+#define foreach_march_variant(macro, arg)
+#endif
+
 /* Forward declaration. */
 struct vlib_node_runtime_t;
 struct vlib_frame_t;
@@ -148,6 +163,33 @@ static void __vlib_add_node_registration_##x (void)                     \
     vm->node_main.node_registrations = &x;                              \
 }                                                                       \
 __VA_ARGS__ vlib_node_registration_t x 
+
+#define VLIB_NODE_FUNCTION_MULTIARCH_CLONE(arch, fn) \
+  uword \
+  __attribute__ ((flatten)) \
+  __attribute__ ((target (# arch))) \
+  fn ## _ ## arch ( struct vlib_main_t * vm, \
+		    struct vlib_node_runtime_t * node,\
+		    struct vlib_frame_t * frame) \
+  { return fn (vm, node, frame); }
+
+#define VLIB_NODE_FUNCTION_MULTIARCH_CHECK(arch, fn)			\
+  else if (__builtin_cpu_supports (#arch))				\
+    return & fn ## _ ##arch;
+
+#define VLIB_NODE_FUNCTION_MULTIARCH(node, fn)				\
+  foreach_march_variant(VLIB_NODE_FUNCTION_MULTIARCH_CLONE, fn)		\
+  static void * __vlib_node_select_multiarch_##node(void)		\
+  {									\
+    if (0)								\
+     ;									\
+    foreach_march_variant(VLIB_NODE_FUNCTION_MULTIARCH_CHECK, fn)	\
+    else								\
+      return & fn;							\
+  }									\
+  static void __attribute__((__constructor__))				\
+  __vlib_node_function_multiarch_select_##node (void)			\
+  { node.function = __vlib_node_select_multiarch_##node(); }
 
 always_inline vlib_node_registration_t *
 vlib_node_next_registered (vlib_node_registration_t * c)
