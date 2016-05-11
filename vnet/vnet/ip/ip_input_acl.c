@@ -369,6 +369,8 @@ VLIB_REGISTER_NODE (ip4_inacl_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_inacl_node, ip4_inacl)
+
 static uword
 ip6_inacl (vlib_main_t * vm,
               vlib_node_runtime_t * node,
@@ -391,6 +393,8 @@ VLIB_REGISTER_NODE (ip6_inacl_node) = {
     [ACL_NEXT_INDEX_DENY] = "error-drop",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_inacl_node, ip6_inacl)
 
 static clib_error_t *
 ip_inacl_init (vlib_main_t * vm)

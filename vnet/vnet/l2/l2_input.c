@@ -433,6 +433,8 @@ VLIB_REGISTER_NODE (l2input_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2input_node, l2input_node_fn)
+
 clib_error_t *l2input_init (vlib_main_t *vm)
 {
   l2input_main_t * mp = &l2input_main;

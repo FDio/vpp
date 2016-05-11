@@ -274,6 +274,8 @@ static VLIB_REGISTER_NODE (sw6_ip6_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (sw6_ip6_node, ip6_l2t_node_fn)
+
 static clib_error_t *
 l2tp_config (vlib_main_t * vm, unformat_input_t * input)
 {

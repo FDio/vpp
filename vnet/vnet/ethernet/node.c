@@ -945,6 +945,8 @@ VLIB_REGISTER_NODE (ethernet_input_node) = {
   .unformat_buffer = unformat_ethernet_header,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ethernet_input_node, ethernet_input)
+
 VLIB_REGISTER_NODE (ethernet_input_type_node,static) = {
   .function = ethernet_input_type,
   .name = "ethernet-input-type",
@@ -959,6 +961,8 @@ VLIB_REGISTER_NODE (ethernet_input_type_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ethernet_input_type_node, ethernet_input_type)
+
 VLIB_REGISTER_NODE (ethernet_input_not_l2_node,static) = {
   .function = ethernet_input_not_l2,
   .name = "ethernet-input-not-l2",
@@ -972,6 +976,8 @@ VLIB_REGISTER_NODE (ethernet_input_not_l2_node,static) = {
 #undef _
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ethernet_input_not_l2_node, ethernet_input_not_l2)
 
 void ethernet_set_rx_redirect (vnet_main_t * vnm, 
                                vnet_hw_interface_t * hi, 

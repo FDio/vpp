@@ -19,6 +19,7 @@ DPDK_INSTALL_DIR      ?= $(CURDIR)/_install
 DPDK_PKTMBUF_HEADROOM ?= 128
 DPDK_DOWNLOAD_DIR     ?= $(HOME)/Downloads
 DPDK_MARCH            ?= native
+DPDK_TUNE             ?= generic
 DPDK_DEBUG            ?= n
 
 B := $(DPDK_BUILD_DIR)
@@ -51,7 +52,7 @@ DPDK_CPU_LDFLAGS :=
 DPDK_EXTRA_LDFLAGS := -g
 
 ifeq ($(DPDK_DEBUG),n)
-DPDK_EXTRA_CFLAGS := -g
+DPDK_EXTRA_CFLAGS := -g -mtune=$(DPDK_TUNE)
 else
 DPDK_EXTRA_CFLAGS := -g -O0
 endif

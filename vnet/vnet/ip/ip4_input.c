@@ -371,6 +371,8 @@ VLIB_REGISTER_NODE (ip4_input_node) = {
   .format_trace = format_ip4_input_trace,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_input_node, ip4_input)
+
 VLIB_REGISTER_NODE (ip4_input_no_checksum_node,static) = {
   .function = ip4_input_no_checksum,
   .name = "ip4-input-no-checksum",
@@ -388,6 +390,8 @@ VLIB_REGISTER_NODE (ip4_input_no_checksum_node,static) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_input_trace,
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_input_no_checksum_node, ip4_input_no_checksum)
 
 static clib_error_t * ip4_init (vlib_main_t * vm)
 {

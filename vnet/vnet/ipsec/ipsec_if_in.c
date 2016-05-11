@@ -149,3 +149,6 @@ VLIB_REGISTER_NODE (ipsec_if_input_node) = {
         [IPSEC_IF_INPUT_NEXT_DROP] = "error-drop",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec_if_input_node, ipsec_if_input_node_fn)
+

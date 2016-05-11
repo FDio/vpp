@@ -604,3 +604,5 @@ VLIB_REGISTER_NODE (l2_rw_node) = {
   .next_nodes = { [L2_RW_NEXT_DROP]  = "error-drop"},
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2_rw_node, l2_rw_node_fn)
+

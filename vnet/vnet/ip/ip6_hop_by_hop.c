@@ -628,6 +628,8 @@ VLIB_REGISTER_NODE (ip6_hop_by_hop_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_hop_by_hop_node, ip6_hop_by_hop_node_fn)
+
 /* The main h-b-h tracer will be invoked, no need to do much here */
 typedef struct {
   u32 next_index;
@@ -849,6 +851,7 @@ VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_add_hop_by_hop_node, ip6_add_hop_by_hop_node_fn)
 
 /* The main h-b-h tracer was already invoked, no need to do much here */
 typedef struct {
@@ -1162,6 +1165,8 @@ VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_pop_hop_by_hop_node,
+			      ip6_pop_hop_by_hop_node_fn)
 
 static clib_error_t *
 ip6_hop_by_hop_init (vlib_main_t * vm)

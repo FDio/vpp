@@ -251,6 +251,8 @@ VLIB_REGISTER_NODE (handoff_dispatch_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (handoff_dispatch_node, handoff_dispatch_node_fn)
+
 clib_error_t *handoff_dispatch_init (vlib_main_t *vm)
 {
   handoff_dispatch_main_t * mp = &handoff_dispatch_main;
@@ -488,7 +490,8 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
                                       dpdk_device_t * xd,
                                       vlib_node_runtime_t * node,
                                       u32 cpu_index,
-                                      u16 queue_id)
+                                      u16 queue_id,
+                                      int use_efd)
 {
   u32 n_buffers;
   u32 next_index = DPDK_RX_NEXT_ETHERNET_INPUT;
@@ -510,7 +513,7 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
   if (n_buffers == 0)
     {
       /* check if EFD (dpdk) is enabled */
-      if (PREDICT_FALSE(dm->efd.enabled))
+      if (PREDICT_FALSE(use_efd && dm->efd.enabled))
         {
           /* reset a few stats */
           xd->efd_agent.last_poll_time = 0;
@@ -546,7 +549,7 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
   /* Check for congestion if EFD (Early-Fast-Discard) is enabled
    * in any mode (e.g. dpdk, monitor, or drop_all)
    */
-  if (PREDICT_FALSE(dm->efd.enabled))
+  if (PREDICT_FALSE(use_efd && dm->efd.enabled))
     {
       /* update EFD counters */
       dpdk_efd_update_counters(xd, n_buffers, dm->efd.enabled);
@@ -793,7 +796,7 @@ dpdk_input (vlib_main_t * vm,
     {
       xd = vec_elt_at_index(dm->devices, dq->device);
       ASSERT(dq->queue_id == 0);
-      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, 0);
+      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, 0, 0);
     }
 
   VIRL_SPEED_LIMIT()
@@ -818,13 +821,39 @@ dpdk_input_rss (vlib_main_t * vm,
   vec_foreach (dq, dm->devices_by_cpu[cpu_index])
     {
       xd = vec_elt_at_index(dm->devices, dq->device);
-      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id);
+      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id, 0);
     }
 
   VIRL_SPEED_LIMIT()
 
   return n_rx_packets;
 }
+
+uword
+dpdk_input_efd (vlib_main_t * vm,
+      vlib_node_runtime_t * node,
+      vlib_frame_t * f)
+{
+  dpdk_main_t * dm = &dpdk_main;
+  dpdk_device_t * xd;
+  uword n_rx_packets = 0;
+  dpdk_device_and_queue_t * dq;
+  u32 cpu_index = os_get_cpu_number();
+
+  /*
+   * Poll all devices on this cpu for input/interrupts.
+   */
+  vec_foreach (dq, dm->devices_by_cpu[cpu_index])
+    {
+      xd = vec_elt_at_index(dm->devices, dq->device);
+      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id, 1);
+    }
+
+  VIRL_SPEED_LIMIT()
+
+  return n_rx_packets;
+}
+
 
 VLIB_REGISTER_NODE (dpdk_input_node) = {
   .function = dpdk_input,
@@ -849,6 +878,17 @@ VLIB_REGISTER_NODE (dpdk_input_node) = {
     [DPDK_RX_NEXT_MPLS_INPUT] = "mpls-gre-input",
   },
 };
+
+
+/* handle dpdk_input_rss alternative function */
+VLIB_NODE_FUNCTION_MULTIARCH_CLONE(dpdk_input)
+VLIB_NODE_FUNCTION_MULTIARCH_CLONE(dpdk_input_rss)
+VLIB_NODE_FUNCTION_MULTIARCH_CLONE(dpdk_input_efd)
+
+/* this macro defines dpdk_input_rss_multiarch_select() */
+CLIB_MULTIARCH_SELECT_FN(dpdk_input);
+CLIB_MULTIARCH_SELECT_FN(dpdk_input_rss);
+CLIB_MULTIARCH_SELECT_FN(dpdk_input_efd);
 
 /*
  * Override the next nodes for the dpdk input nodes.

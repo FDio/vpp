@@ -255,6 +255,8 @@ VLIB_REGISTER_NODE (l2_xcrw_node, static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2_xcrw_node, l2_xcrw_node_fn)
+
 clib_error_t *l2_xcrw_init (vlib_main_t *vm)
 {
   l2_xcrw_main_t * mp = &l2_xcrw_main;

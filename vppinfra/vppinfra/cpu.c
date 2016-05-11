@@ -16,10 +16,6 @@
 #include <vppinfra/format.h>
 #include <vppinfra/cpu.h>
 
-#if __x86_64__
-#include <cpuid.h>
-#endif
-
 #define foreach_x86_cpu_uarch \
  _(0x06, 0x4f, "Broadwell", "Broadwell-EP/EX") \
  _(0x06, 0x3d, "Broadwell", "Broadwell") \
@@ -109,3 +105,20 @@ format_cpu_model_name (u8 * s, va_list * args)
   return format (s, "unknown");
 #endif
 }
+
+u8 *
+format_cpu_flags (u8 * s, va_list * args)
+{
+#if __x86_64__
+#define _(flag, func, reg, bit) \
+  if (clib_cpu_supports_ ## flag()) \
+    s = format (s, #flag " ");
+  foreach_x86_64_flags
+  return s;
+#undef _
+#else /* ! __x86_64__ */
+  return format (s, "unknown");
+#endif
+}
+
+

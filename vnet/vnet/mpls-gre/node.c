@@ -278,6 +278,8 @@ VLIB_REGISTER_NODE (mpls_input_node) = {
   .unformat_buffer = unformat_mpls_gre_header,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (mpls_input_node, mpls_input)
+
 static uword
 mpls_ethernet_input (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
@@ -309,6 +311,8 @@ VLIB_REGISTER_NODE (mpls_ethernet_input_node) = {
   .format_trace = format_mpls_rx_trace,
   .unformat_buffer = unformat_mpls_gre_header,
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (mpls_ethernet_input_node, mpls_ethernet_input)
 
 static void
 mpls_setup_nodes (vlib_main_t * vm)

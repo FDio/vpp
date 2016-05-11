@@ -305,6 +305,8 @@ VLIB_REGISTER_NODE (ip6_input_node) = {
   .format_trace = format_ip6_input_trace,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_input_node, ip6_input)
+
 static clib_error_t * ip6_init (vlib_main_t * vm)
 {
   ethernet_register_input_type (vm, ETHERNET_TYPE_IP6,

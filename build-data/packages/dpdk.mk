@@ -4,6 +4,11 @@ ifeq ($(DPDK_MARCH),)
 	DPDK_MARCH="native"
 endif
 
+DPDK_TUNE = $(strip $($(PLATFORM)_mtune))
+ifeq ($(DPDK_TUNE),)
+	DPDK_MARCH="generic"
+endif
+
 ifneq (,$(findstring debug,$(TAG)))
 	DPDK_DEBUG=y
 else
@@ -14,6 +19,7 @@ DPDK_MAKE_ARGS = -C $(call find_source_fn,$(PACKAGE_SOURCE)) \
 	DPDK_BUILD_DIR=$(PACKAGE_BUILD_DIR) \
 	DPDK_INSTALL_DIR=$(PACKAGE_INSTALL_DIR) \
 	DPDK_MARCH=$(DPDK_MARCH) \
+	DPDK_TUNE=$(DPDK_TUNE) \
 	DPDK_DEBUG=$(DPDK_DEBUG)
 
 

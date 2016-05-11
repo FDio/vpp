@@ -252,6 +252,8 @@ VLIB_REGISTER_NODE (l2_patch_node, static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2_patch_node, l2_patch_node_fn)
+
 int vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add)
 {
   l2_patch_main_t * l2pm = &l2_patch_main;  

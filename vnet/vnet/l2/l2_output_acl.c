@@ -274,6 +274,8 @@ VLIB_REGISTER_NODE (l2_outacl_node,static) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2_outacl_node, l2_outacl_node_fn)
+
 clib_error_t *l2_outacl_init (vlib_main_t *vm)
 {
   l2_outacl_main_t * mp = &l2_outacl_main;

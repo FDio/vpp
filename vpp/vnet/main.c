@@ -12,6 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <vppinfra/cpu.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/plugin/plugin.h>
@@ -59,33 +61,32 @@ int main (int argc, char * argv[])
     u32 size;
     void vlib_set_get_handoff_structure_cb (void *cb);
 
-#if __x86_64__ && !defined(__clang__)
-    __builtin_cpu_init ();
+#if __x86_64__
     const char * msg = "ERROR: This binary requires CPU with %s extensions.\n";
 #define _(a,b) \
-    if (!__builtin_cpu_supports(a))	\
+    if (!clib_cpu_supports_ ## a ())	\
       {					\
 	fprintf(stderr, msg, b);	\
 	exit(1);			\
       }
 
 #if __AVX2__
-      _("avx2", "AVX2")
+      _(avx2, "AVX2")
 #endif
 #if __AVX__
-      _("avx", "AVX")
+      _(avx, "AVX")
 #endif
 #if __SSE4_2__
-      _("sse4.2", "SSE4.2")
+      _(sse42, "SSE4.2")
 #endif
 #if __SSE4_1__
-      _("sse4.1", "SSE4.1")
+      _(sse41, "SSE4.1")
 #endif
 #if __SSSE3__
-      _("ssse3", "SSSE3")
+      _(ssse3, "SSSE3")
 #endif
 #if __SSE3__
-      _("sse3", "SSE3")
+      _(sse3, "SSE3")
 #endif
 #undef _
 #endif

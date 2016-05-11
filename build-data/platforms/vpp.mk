@@ -13,6 +13,9 @@
 
 # vector packet processor
 vpp_arch = native
+vpp_march = corei7			# Nehalem Instruction set
+vpp_mtune = corei7-avx			# Optimize for Sandy Bridge
+vpp_dpdk_arch = corei7
 vpp_native_tools = vppapigen
 
 vpp_uses_dpdk = yes
@@ -40,9 +43,9 @@ vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
 vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
 	-fstack-protector-all -fPIC -Werror
 
-vpp_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) \
+vpp_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
 	-fstack-protector -fPIC -Werror
-vpp_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) \
+vpp_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
 	-fstack-protector -fPIC -Werror
 
 vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \

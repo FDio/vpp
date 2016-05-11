@@ -163,6 +163,32 @@ static void __vnet_add_device_class_registration_##x (void)             \
 }                                                                       \
 __VA_ARGS__ vnet_device_class_t x                                       
 
+#define VLIB_DEVICE_TX_FUNCTION_CLONE_TEMPLATE(arch, fn, tgt)		\
+  uword									\
+  __attribute__ ((flatten))						\
+  __attribute__ ((target (tgt)))					\
+  CLIB_CPU_OPTIMIZED							\
+  fn ## _ ## arch ( vlib_main_t * vm,					\
+                   vlib_node_runtime_t * node,				\
+                   vlib_frame_t * frame)				\
+  { return fn (vm, node, frame); }
+
+#define VLIB_DEVICE_TX_FUNCTION_MULTIARCH_CLONE(fn)			\
+  foreach_march_variant(VLIB_DEVICE_TX_FUNCTION_CLONE_TEMPLATE, fn)
+
+#if CLIB_DEBUG > 0
+#define VLIB_MULTIARCH_CLONE_AND_SELECT_FN(fn,...)
+#define VLIB_DEVICE_TX_FUNCTION_MULTIARCH(dev, fn)
+#else
+#define VLIB_DEVICE_TX_FUNCTION_MULTIARCH(dev, fn)			\
+  VLIB_DEVICE_TX_FUNCTION_MULTIARCH_CLONE(fn)				\
+  CLIB_MULTIARCH_SELECT_FN(fn, static inline)				\
+  static void __attribute__((__constructor__))				\
+  __vlib_device_tx_function_multiarch_select_##dev (void)		\
+  { dev.tx_function = fn ## _multiarch_select(); }
+#endif
+
+
 /* Layer-2 (e.g. Ethernet) interface class. */
 typedef struct _vnet_hw_interface_class {
   /* Index into main vector. */

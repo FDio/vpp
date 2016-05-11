@@ -586,3 +586,6 @@ VLIB_REGISTER_NODE (vxlan_encap_node) = {
         [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (vxlan_encap_node, vxlan_encap)
+

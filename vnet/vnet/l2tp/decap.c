@@ -247,6 +247,8 @@ VLIB_REGISTER_NODE (l2t_decap_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (l2t_decap_node, l2t_decap_node_fn)
+
 void l2tp_decap_init (void) 
 {
   ip6_register_protocol (IP_PROTOCOL_L2TP, l2t_decap_node.index);

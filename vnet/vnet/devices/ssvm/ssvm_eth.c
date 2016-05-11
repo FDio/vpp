@@ -474,3 +474,6 @@ VNET_DEVICE_CLASS (ssvm_eth_device_class) = {
   .rx_redirect_to_node = ssvm_eth_set_interface_next_node,
   .no_flatten_output_chains = 1,
 };
+
+VLIB_DEVICE_TX_FUNCTION_MULTIARCH (ssvm_eth_device_class,
+				   ssvm_eth_interface_tx)

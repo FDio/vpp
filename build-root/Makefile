@@ -220,6 +220,11 @@ else
 endif
 export MARCH
 
+MTUNE = $(strip $($(PLATFORM)_mtune))
+ifeq ($(MTUNE),)
+  MTUNE = generic
+endif
+
 ######################################################################
 # Generic build stuff
 ######################################################################

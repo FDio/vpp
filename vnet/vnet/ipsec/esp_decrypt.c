@@ -425,3 +425,5 @@ VLIB_REGISTER_NODE (esp_decrypt_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (esp_decrypt_node, esp_decrypt_node_fn)
+

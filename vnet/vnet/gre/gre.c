@@ -454,6 +454,9 @@ VNET_DEVICE_CLASS (gre_device_class) = {
 #endif
 };
 
+VLIB_DEVICE_TX_FUNCTION_MULTIARCH (gre_device_class,
+				   gre_interface_tx)
+
 
 VNET_HW_INTERFACE_CLASS (gre_hw_interface_class) = {
   .name = "GRE",

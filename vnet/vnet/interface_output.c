@@ -1140,6 +1140,8 @@ VLIB_REGISTER_NODE (drop_buffers,static) = {
   .validate_frame = validate_error_frame,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (drop_buffers, process_drop)
+
 VLIB_REGISTER_NODE (punt_buffers,static) = {
   .function = process_punt,
   .flags = (VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH
@@ -1150,11 +1152,15 @@ VLIB_REGISTER_NODE (punt_buffers,static) = {
   .validate_frame = validate_error_frame,
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (punt_buffers, process_punt)
+
 VLIB_REGISTER_NODE (vnet_per_buffer_interface_output_node,static) = {
   .function = vnet_per_buffer_interface_output,
   .name = "interface-output",
   .vector_size = sizeof (u32),
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (vnet_per_buffer_interface_output_node, vnet_per_buffer_interface_output)
 
 clib_error_t *
 vnet_per_buffer_interface_output_hw_interface_add_del (vnet_main_t * vnm,
