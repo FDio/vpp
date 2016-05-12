@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_903b3ceb",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1930,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-05-12T11:38:56Z",
+      "side": 1,
+      "message": "\"prefix-length\"",
+      "revId": "a6dd691f1fbea6d0dee6b0b7ac5b634b9aac1c80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_d031b40c",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 5036,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-05-12T11:38:56Z",
+      "side": 1,
+      "message": "unnecessary",
+      "revId": "a6dd691f1fbea6d0dee6b0b7ac5b634b9aac1c80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
