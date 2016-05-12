@@ -31,6 +31,7 @@ libvlib_la_SOURCES =				\
   vlib/counter.c				\
   vlib/error.c					\
   vlib/format.c					\
+  vlib/i2c.c					\
   vlib/init.c					\
   vlib/main.c					\
   vlib/mc.c					\
@@ -61,6 +62,7 @@ nobase_include_HEADERS =			\
   vlib/error.h					\
   vlib/format_funcs.h				\
   vlib/global_funcs.h				\
+  vlib/i2c.h					\
   vlib/init.h					\
   vlib/main.h					\
   vlib/mc.h					\
