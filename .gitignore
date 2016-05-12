@@ -57,8 +57,3 @@ test-driver
 # cscope and ctags
 /cscope.*
 /tags
-
-# jvpp generated sources
-/vpp-api/java/jvpp/gen/target
-/vpp-api/java/jvpp/gen/*.pyc
-

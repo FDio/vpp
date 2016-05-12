@@ -114,27 +114,27 @@ BUILT_SOURCES += jvpp/org_openvpp_jvpp_VppJNIConnection.h jvpp/jvpp.c
 
 jvpp/org_openvpp_jvpp_VppJNIConnection.h: $(prefix)/../vpp/api/vpe.api
 	@echo "  jVpp API";				\
-	mkdir -p dto future callfacade callback @srcdir@/jvpp/gen/target/org/openvpp/jvpp;				\
+	cp -rf @srcdir@/jvpp/* -t jvpp/;			\
+	mkdir -p jvpp/gen/target/org/openvpp/jvpp;				\
+	cp -rf jvpp/org/openvpp/jvpp/* -t jvpp/gen/target/org/openvpp/jvpp/;	\
 	$(CC) $(CPPFLAGS) -E -P -C -x c $<			                  \
 	| vppapigen --input - --python defs_vpp_papi.py; 				\
-	@srcdir@/jvpp/gen/jvpp_gen.py -i defs_vpp_papi.py;				\
-	cp -rf dto future callfacade callback *.java -t @srcdir@/jvpp/gen/target/org/openvpp/jvpp/;				\
-	cp -rf jvpp_gen.h -t @srcdir@/jvpp/gen/target;				\
-	rm -rf dto future callfacade callback *.java jvpp_gen.h;				\
-	$(JAVAC) -classpath . -d . @srcdir@/jvpp/org/openvpp/jvpp/*.java \
-		@srcdir@/jvpp/org/openvpp/jvpp/dto/*.java  \
-		@srcdir@/jvpp/org/openvpp/jvpp/callback/*.java \
-		@srcdir@/jvpp/org/openvpp/jvpp/future/*.java  \
-		@srcdir@/jvpp/org/openvpp/jvpp/test/*.java  \
-		@srcdir@/jvpp/gen/target/org/openvpp/jvpp/*.java \
-		@srcdir@/jvpp/gen/target/org/openvpp/jvpp/dto/*.java  \
-		@srcdir@/jvpp/gen/target/org/openvpp/jvpp/callback/*.java \
-		@srcdir@/jvpp/gen/target/org/openvpp/jvpp/callfacade/*.java \
-		@srcdir@/jvpp/gen/target/org/openvpp/jvpp/future/*.java ; \
-	$(JAVAH) -classpath . -d jvpp org.openvpp.jvpp.VppJNIConnection ;				\
+	mkdir -p dto future callfacade callback; 	\
+	./jvpp/gen/jvpp_gen.py -i defs_vpp_papi.py;				\
+	cp -rf dto future callfacade callback *.java -t jvpp/gen/target/org/openvpp/jvpp/;	\
+	cp -rf jvpp_gen.h -t jvpp/gen/target;	\
+	rm -rf dto future callfacade callback *.java jvpp_gen.h;	\
+	$(JAVAC) -classpath . -d . jvpp/gen/target/org/openvpp/jvpp/*.java \
+		jvpp/gen/target/org/openvpp/jvpp/dto/*.java  \
+		jvpp/gen/target/org/openvpp/jvpp/callback/*.java \
+		jvpp/gen/target/org/openvpp/jvpp/callfacade/*.java \
+		jvpp/gen/target/org/openvpp/jvpp/future/*.java 	\
+		jvpp/gen/target/org/openvpp/jvpp/test/*.java	\
+		|| (echo "JVpp compilation failed: $$?"; exit 1);	\
+	$(JAVAH) -classpath . -d jvpp org.openvpp.jvpp.VppJNIConnection ;	\
 	$(JAVAH) -classpath . -d jvpp org.openvpp.jvpp.JVppImpl ;
 
 $(jarfile_jvpp): libjvpp.la
-	cd .libs ; $(JAR) cf $(JARFLAGS) ../$@ libjvpp.so.0.0.0 ../$(packagedir_jvpp)/* ; cd ..
+	cd .libs ; $(JAR) cf $(JARFLAGS) ../$@ libjvpp.so.0.0.0 ../$(packagedir_jvpp)/* ; cd ..;
 
 all-local: $(jarfile) $(jarfile_jvpp) $(demo)
