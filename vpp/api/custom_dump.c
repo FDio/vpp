@@ -1014,7 +1014,7 @@ static void *vl_api_sr_tunnel_add_del_t_print
 
     s = format (0, "SCRIPT: sr_tunnel_add_del ");
 
-    if (mp->name)
+    if (mp->name[0])
       s = format (s, "name %s ", mp->name);
 
     s = format (s, "src %U dst %U/%d ", format_ip6_address, 
@@ -1065,7 +1065,7 @@ static void *vl_api_sr_tunnel_add_del_t_print
         }
     }
 
-    if (mp->policy_name)
+    if (mp->policy_name[0])
       s = format (s, "policy_name %s ", mp->policy_name);
 
     if (mp->is_add == 0)
@@ -1082,11 +1082,11 @@ static void *vl_api_sr_policy_add_del_t_print
 
   s = format (0, "SCRIPT: sr_policy_add_del ");
 
-  if (mp->name)
+  if (mp->name[0])
     s = format (s, "name %s ", mp->name);
 
 
-  if (mp->tunnel_names)
+  if (mp->tunnel_names[0])
     {
     // start deserializing tunnel_names
     int num_tunnels = mp->tunnel_names[0]; //number of tunnels
@@ -1110,7 +1110,7 @@ static void *vl_api_sr_policy_add_del_t_print
 
   if (mp->is_add == 0)
     s = format (s, "del ");
-    
+
   FINISH;
 }
 
@@ -1123,16 +1123,16 @@ static void *vl_api_sr_multicast_map_add_del_t_print
 
   s = format (0, "SCRIPT: sr_multicast_map_add_del ");
 
-  if (mp->multicast_address)
-    s = format (s, "address %U ", format_ip6_address, &mp->multicast_address); 
+  if (mp->multicast_address[0])
+    s = format (s, "address %U ", format_ip6_address, &mp->multicast_address);
 
-  if (mp->policy_name)
+  if (mp->policy_name[0])
     s = format (s, "sr-policy %s ", &mp->policy_name);
 
 
-  if (mp->is_add == 0) 
+  if (mp->is_add == 0)
     s = format (s, "del ");
-    
+
   FINISH;
 }
 
