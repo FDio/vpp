@@ -2,6 +2,52 @@
   "comments": [
     {
       "key": {
+        "uuid": "da141535_fb3379f4",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1876,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-12T12:31:34Z",
+      "side": 1,
+      "message": "If we change the name in vpe.api, probably this one should be changed as well.",
+      "range": {
+        "startLine": 1876,
+        "startChar": 12,
+        "endLine": 1876,
+        "endChar": 23
+      },
+      "revId": "a6dd691f1fbea6d0dee6b0b7ac5b634b9aac1c80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_5025a4c0",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1882,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-12T12:31:34Z",
+      "side": 1,
+      "message": "Nit: change formatting to gnu, for the whole patch.",
+      "range": {
+        "startLine": 1882,
+        "startChar": 0,
+        "endLine": 1882,
+        "endChar": 20
+      },
+      "revId": "a6dd691f1fbea6d0dee6b0b7ac5b634b9aac1c80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_903b3ceb",
         "filename": "vpp-api-test/vat/api_format.c",
         "patchSetId": 1
@@ -19,6 +65,29 @@
     },
     {
       "key": {
+        "uuid": "da141535_9b047d16",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4945,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-12T12:31:34Z",
+      "side": 1,
+      "message": "I think you can use ip_address_copy_addr() for the copying of the prefix. Just do something like ip_address_copy_addr(rmp-\u003eip_address, \u0026ip_prefix_addr(pref)). You could even add an ip_prefix_copy_addr() function that does just this. We could reuse this throughout the whole file when needed, for instance, in send_lisp_local_eid_table_details.",
+      "range": {
+        "startLine": 4930,
+        "startChar": 0,
+        "endLine": 4945,
+        "endChar": 5
+      },
+      "revId": "a6dd691f1fbea6d0dee6b0b7ac5b634b9aac1c80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_d031b40c",
         "filename": "vpp/api/api.c",
         "patchSetId": 1
@@ -30,6 +99,29 @@
       "writtenOn": "2016-05-12T11:38:56Z",
       "side": 1,
       "message": "unnecessary",
+      "revId": "a6dd691f1fbea6d0dee6b0b7ac5b634b9aac1c80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_1b3e2db9",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 2374,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-12T12:31:34Z",
+      "side": 1,
+      "message": "Actually this is only a locator, not a locator set? Should we change the name to lisp_locator_set_locator_details? lisp_locator_set_defails is even shorter but I guess we\u0027d want to keep locator_set in the name because it\u0027s a specific format for when locators in locator-set are dumped, no? Or at least that\u0027s why I think you have the locator_set_name in there.",
+      "range": {
+        "startLine": 2374,
+        "startChar": 0,
+        "endLine": 2374,
+        "endChar": 45
+      },
       "revId": "a6dd691f1fbea6d0dee6b0b7ac5b634b9aac1c80",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
