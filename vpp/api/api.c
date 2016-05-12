@@ -3454,7 +3454,7 @@ static void vl_api_sr_policy_add_del_t_handler
 	goto out;
       }      
 
-    if (!(mp->tunnel_names))
+    if (!(mp->tunnel_names[0]))
       {
         rv = VNET_API_ERROR_NO_SUCH_NODE2;
 	goto out;
