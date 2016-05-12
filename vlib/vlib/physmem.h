@@ -53,6 +53,9 @@ typedef struct {
   uword page_mask;
 
   u64 * page_table;
+
+  /* is fake physmem */
+  u8 is_fake;
 } vlib_physmem_main_t;
 
 always_inline u64

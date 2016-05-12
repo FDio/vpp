@@ -180,6 +180,13 @@ int vlib_unix_main (int argc, char * argv[]);
 clib_error_t * unix_physmem_init (vlib_main_t * vm,
 				  int fail_if_physical_memory_not_present);
 
+static inline int
+unix_physmem_is_fake (vlib_main_t * vm)
+{
+  vlib_physmem_main_t * vpm = &vm->physmem_main;
+  return vpm->is_fake;
+}
+
 /* Set prompt for CLI. */
 void vlib_unix_cli_set_prompt (char * prompt);
 
