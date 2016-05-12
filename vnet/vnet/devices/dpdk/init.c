@@ -22,7 +22,6 @@
 #include <vnet/devices/dpdk/dpdk.h>
 #include <vlib/unix/physmem.h>
 #include <vlib/pci/pci.h>
-#include <vlib/unix/pci.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -744,7 +743,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 static void
 dpdk_bind_devices_to_uio (dpdk_main_t * dm)
 {
-  linux_pci_main_t * pm = &linux_pci_main;
+  vlib_pci_main_t * pm = &pci_main;
   clib_error_t * error;
   vlib_pci_device_t * d;
   pci_config_header_t * c;
@@ -1050,7 +1049,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  page_size = 1024;
 	  pages_avail = 0;
 	  s = format (s, path, page_size * 1024, 0);
-	  read_sys_fs ((char *) s, "%u", &pages_avail);
+	  vlib_sysfs_read ((char *) s, "%u", &pages_avail);
 	  vec_reset_length (s);
 
 	  if (page_size * pages_avail < mem)
@@ -1059,7 +1058,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  page_size = 2;
 	  pages_avail = 0;
 	  s = format (s, path, page_size * 1024, 0);
-	  read_sys_fs ((char *) s, "%u", &pages_avail);
+	  vlib_sysfs_read ((char *) s, "%u", &pages_avail);
 	  vec_reset_length (s);
 
 	  if (page_size * pages_avail < mem)

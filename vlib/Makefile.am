@@ -37,6 +37,8 @@ libvlib_la_SOURCES =				\
   vlib/node.c					\
   vlib/node_cli.c				\
   vlib/node_format.c				\
+  vlib/pci/pci.c				\
+  vlib/pci/linux_pci.c				\
   vlib/threads.c				\
   vlib/trace.c
 
@@ -83,14 +85,12 @@ libvlib_unix_la_SOURCES =			\
   vlib/unix/plugin.c				\
   vlib/unix/plugin.h				\
   vlib/unix/physmem.c				\
-  vlib/unix/pci.c				\
   vlib/unix/util.c
 
 nobase_include_HEADERS +=			\
   vlib/unix/cj.h				\
   vlib/unix/mc_socket.h				\
   vlib/unix/physmem.h				\
-  vlib/unix/pci.h				\
   vlib/unix/plugin.h				\
   vlib/unix/unix.h
     

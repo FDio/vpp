@@ -194,10 +194,13 @@ u8 **vlib_thread_stacks;
 /* utils */
 
 clib_error_t *
-write_sys_fs (char * file_name, char * fmt, ...);
+vlib_sysfs_write (char * file_name, char * fmt, ...);
 
 clib_error_t *
-read_sys_fs (char * file_name, char * fmt, ...);
+vlib_sysfs_read (char * file_name, char * fmt, ...);
+
+u8 *
+vlib_sysfs_link_to_name(char * link);
 
 clib_error_t *
 foreach_directory_file (char * dir_name,

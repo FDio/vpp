@@ -206,8 +206,6 @@ clib_error_t * unix_physmem_init (vlib_main_t * vm, int physical_memory_required
   vlib_physmem_main_t * vpm = &vm->physmem_main;
   physmem_main_t * pm = &physmem_main;
   clib_error_t * error = 0;
-  char * dev_uio_dma_file = "/dev/uio-dma";
-  int using_fake_memory = 0;
 
   /* Avoid multiple calls. */
   if (vm->os_physmem_alloc_aligned)
@@ -224,63 +222,37 @@ clib_error_t * unix_physmem_init (vlib_main_t * vm, int physical_memory_required
   if (vlib_app_physmem_init (vm, pm, physical_memory_required))
       return 0;
 
-  if (physical_memory_required)
+  if (!pm->no_hugepages && htlb_init(vm))
     {
-      if (!pm->no_hugepages && htlb_init(vm))
-        {
-          fformat(stderr, "%s: use huge pages\n", __FUNCTION__);
-          return 0;
-        }
-      pm->uio_dma_fd = open (dev_uio_dma_file, O_RDWR);
+      fformat(stderr, "%s: use huge pages\n", __FUNCTION__);
+      return 0;
     }
-  else
-    pm->uio_dma_fd = -1;
 
-  if (pm->uio_dma_fd < 0)
+  pm->mem = mmap (0, pm->mem_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (pm->mem == MAP_FAILED)
     {
-      if (physical_memory_required)
-	{
-	  error = clib_error_return_unix (0, "open `%s'", dev_uio_dma_file);
-	  goto done;
-	}
-
-      using_fake_memory = 1;
-      pm->mem = mmap (0, pm->mem_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-      if (pm->mem == MAP_FAILED)
-	{
-	  error = clib_error_return_unix (0, "mmap");
-	  goto done;
-	}
-
-      pm->heap = mheap_alloc (pm->mem, pm->mem_size);
-
-      /* Identity map with a single page. */
-      vpm->log2_n_bytes_per_page = min_log2 (pm->mem_size);
-      vec_add1 (vpm->page_table, pointer_to_uword (pm->mem));
+      error = clib_error_return_unix (0, "mmap");
+      goto done;
     }
-  else
-    error = clib_error_return (0, "uio_dma deprecated");
+
+  pm->heap = mheap_alloc (pm->mem, pm->mem_size);
+
+  /* Identity map with a single page. */
+  vpm->log2_n_bytes_per_page = min_log2 (pm->mem_size);
+  vec_add1 (vpm->page_table, pointer_to_uword (pm->mem));
 
   vpm->page_mask = pow2_mask (vpm->log2_n_bytes_per_page);
   vpm->virtual.start = pointer_to_uword (pm->mem);
   vpm->virtual.size = pm->mem_size;
   vpm->virtual.end = vpm->virtual.start + vpm->virtual.size;
 
-  if (using_fake_memory)
-      fformat(stderr, "%s: use fake dma pages\n", __FUNCTION__);
-  else
-      fformat(stderr, "%s: use uio dma pages\n", __FUNCTION__);
+  fformat(stderr, "%s: use fake dma pages\n", __FUNCTION__);
 
  done:
   if (error)
     {
       if (pm->mem != MAP_FAILED)
 	munmap (pm->mem, pm->mem_size);
-      if (pm->uio_dma_fd >= 0)
-	{
-	  close (pm->uio_dma_fd);
-	  pm->uio_dma_fd = -1;
-	}
     }
   return error;
 }
@@ -296,7 +268,7 @@ show_physmem (vlib_main_t * vm,
   physmem_main_t * pm = &physmem_main;
 
   if (pm->heap)
-      vlib_cli_output (vm, "%U", format_mheap, pm->heap, /* verbose */ 0);
+      vlib_cli_output (vm, "%U", format_mheap, pm->heap, /* verbose */ 1);
   else
       vlib_cli_output (vm, "No physmem allocated.");
 #endif

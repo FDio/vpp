@@ -36,9 +36,6 @@
 #include <sys/shm.h>
 
 typedef struct {
-  /* File descriptor for /dev/uio-dma. */
-  int uio_dma_fd;
-
   /* Virtual memory via mmaped. */
   void * mem;
 
