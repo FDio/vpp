@@ -245,6 +245,7 @@ clib_error_t * unix_physmem_init (vlib_main_t * vm, int physical_memory_required
   vpm->virtual.start = pointer_to_uword (pm->mem);
   vpm->virtual.size = pm->mem_size;
   vpm->virtual.end = vpm->virtual.start + vpm->virtual.size;
+  vpm->is_fake = 1;
 
   fformat(stderr, "%s: use fake dma pages\n", __FUNCTION__);
 

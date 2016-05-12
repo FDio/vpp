@@ -636,6 +636,12 @@ libvnet_la_SOURCES +=				\
 nobase_include_HEADERS +=			\
   vnet/devices/dpdk/dpdk.h			\
   vnet/devices/dpdk/threads.h
+else
+libvnet_la_SOURCES +=				\
+  vnet/devices/nic/ixge.c                       \
+  vnet/devices/nic/ixge.h                       \
+  vnet/devices/nic/sfp.c                        \
+  vnet/devices/nic/sfp.h
 endif
 
 ########################################
