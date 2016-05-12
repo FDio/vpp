@@ -646,6 +646,18 @@ typedef CLIB_PACKED (struct {
 
   u16 root_capabilities;
   u32 root_status;
+
+  u32 dev_capabilities2;
+  u16 dev_control2;
+  u16 dev_status2;
+
+  u32 link_capabilities2;
+  u16 link_control2;
+  u16 link_status2;
+
+  u32 slot_capabilities2;
+  u16 slot_control2;
+  u16 slot_status2;
 }) pcie_config_regs_t;
 
 /* PCI express extended capabilities. */

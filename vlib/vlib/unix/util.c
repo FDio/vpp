@@ -59,7 +59,6 @@ foreach_directory_file (char * dir_name,
   d = opendir (dir_name);
   if (! d)
     {
-      /* System has no PCI bus. */
       if (errno == ENOENT)
         return 0;
       return clib_error_return_unix (0, "open `%s'", dir_name);
@@ -101,7 +100,7 @@ foreach_directory_file (char * dir_name,
 }
 
 clib_error_t *
-write_sys_fs (char * file_name, char * fmt, ...)
+vlib_sysfs_write (char * file_name, char * fmt, ...)
 {
   u8 * s;
   int fd;
@@ -124,7 +123,7 @@ write_sys_fs (char * file_name, char * fmt, ...)
 }
 
 clib_error_t *
-read_sys_fs (char * file_name, char * fmt, ...)
+vlib_sysfs_read (char * file_name, char * fmt, ...)
 {
   unformat_input_t input;
   u8 * s = 0;
@@ -163,3 +162,28 @@ read_sys_fs (char * file_name, char * fmt, ...)
   return 0;
 }
 
+u8 *
+vlib_sysfs_link_to_name(char * link)
+{
+  char *p, buffer[64];
+  unformat_input_t in;
+  u8 *s = 0;
+  int r;
+
+  r = readlink(link, buffer, sizeof(buffer) - 1);
+
+  if (r < 0)
+    return 0;
+
+  buffer[r] = 0;
+  p = strrchr(buffer, '/');
+
+  if (!p)
+    return 0;
+
+  unformat_init_string (&in, p+1, strlen (p+1));
+  unformat(&in, "%s", &s);
+  unformat_free (&in);
+
+  return s;
+}
