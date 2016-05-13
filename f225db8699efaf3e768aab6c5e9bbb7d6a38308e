@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_8109ac2e",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-13T12:39:23Z",
+      "side": 1,
+      "message": "No need for deprecation. Feel free to remove right away",
+      "range": {
+        "startLine": 253,
+        "startChar": 4,
+        "endLine": 253,
+        "endChar": 15
+      },
+      "revId": "f225db8699efaf3e768aab6c5e9bbb7d6a38308e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_4113945c",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-13T12:39:23Z",
+      "side": 1,
+      "message": "If not necessary anymore, feel free to remove",
+      "range": {
+        "startLine": 129,
+        "startChar": 8,
+        "endLine": 129,
+        "endChar": 18
+      },
+      "revId": "f225db8699efaf3e768aab6c5e9bbb7d6a38308e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
