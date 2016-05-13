@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_61a45857",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1046,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-13T18:41:34Z",
+      "side": 1,
+      "message": "A nit but if this is a vector:\n  /* vector of map-resolver addresses */\n  ip_address_t * map_resolvers;\n\nThen don\u0027t you want to check if its 0 or empty ? This looks like checking if it has been allocated, correct?",
+      "range": {
+        "startLine": 1046,
+        "startChar": 2,
+        "endLine": 1046,
+        "endChar": 26
+      },
+      "revId": "6964e0e4ea5be8ee946820a6c14e7b56114c8076",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
