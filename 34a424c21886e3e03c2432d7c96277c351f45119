@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_d672cc48",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4927,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-13T09:42:13Z",
+      "side": 1,
+      "message": "I believe this copies too much: the version, the mask and the address. What I think we need is ip_address_copy_addr(rmp-\u003eip_address, \u0026ip_prefix_addr(ip_addr));",
+      "range": {
+        "startLine": 4927,
+        "startChar": 4,
+        "endLine": 4927,
+        "endChar": 18
+      },
+      "revId": "34a424c21886e3e03c2432d7c96277c351f45119",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
