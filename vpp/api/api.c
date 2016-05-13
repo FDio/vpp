@@ -5758,13 +5758,15 @@ static void vl_api_get_node_graph_t_handler
     
     /* 
      * Keep the number of memcpy ops to a minimum (e.g. 1).
-     * The current size of the serialized vector is
-     * slightly under 4K.
      */
-    vec_validate (vector, 4095);
+    vec_validate (vector, 16384);
     vec_reset_length (vector);
 
-    vector = vlib_node_serialize (&vm->node_main, vector);
+    /* $$$$ FIXME */
+    vector = vlib_node_serialize (&vm->node_main, vector, 
+                                  (u32)~0 /* all threads */,
+                                  1 /* include nexts */,
+                                  1 /* include stats */);
     
     svm_pop_heap (oldheap);
     pthread_mutex_unlock (&am->vlib_rp->mutex);
@@ -5961,6 +5963,7 @@ vpe_api_hookup (vlib_main_t *vm)
      * Thread-safe API messages
      */
     am->is_mp_safe [VL_API_IP_ADD_DEL_ROUTE] = 1;
+    am->is_mp_safe [VL_API_GET_NODE_GRAPH] = 1;
 
     return 0;
 }
