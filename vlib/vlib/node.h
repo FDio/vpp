@@ -311,6 +311,8 @@ typedef struct vlib_node_t {
   u8 * (* validate_frame) (struct vlib_main_t * vm,
 			   struct vlib_node_runtime_t *,
 			   struct vlib_frame_t * f);
+  /* for pretty-printing, not typically valid */
+  u8 * state_string;
 } vlib_node_t;
 
 #define VLIB_INVALID_NODE_INDEX ((u32) ~0)
