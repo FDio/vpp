@@ -9811,6 +9811,109 @@ api_lisp_enable_disable (vat_main_t * vam)
 }
 
 static int
+api_lisp_add_del_remote_mapping (vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_lisp_add_del_remote_mapping_t *mp;
+    f64 timeout = ~0;
+    u32 vni = 0;
+    u8 seid_set = 0, deid_set = 0;
+    ip4_address_t seid4, deid4, rloc4;
+    ip6_address_t seid6, deid6, rloc6;
+    u8 seid_len, deid_len, len;
+    u8 deid_is_ip4 = 0, seid_is_ip4 = 0, rloc_is_ip4 = 0;
+    u8 is_add = 1;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "del")) {
+            is_add = 0;
+        } else if (unformat(input, "add")) {
+            is_add = 1;
+        } else if (unformat(input, "deid %U/%d", unformat_ip4_address,
+                            &deid4, &len)) {
+            deid_set = 1;
+            deid_is_ip4 = 1;
+            deid_len = len;
+        } else if (unformat(input, "deid %U/%d", unformat_ip6_address,
+                            &deid6, &len)) {
+            deid_set = 1;
+            deid_is_ip4 = 0;
+            deid_len = len;
+        } else if (unformat(input, "seid %U/%d", unformat_ip4_address,
+                            &seid4, &len)) {
+            seid_set = 1;
+            seid_is_ip4 = 1;
+            seid_len = len;
+        } else if (unformat(input, "seid %U/%d", unformat_ip6_address,
+                            &seid6, &len)) {
+            seid_set = 1;
+            seid_is_ip4 = 0;
+            seid_len = len;
+        } else if (unformat(input, "vni %d", &vni)) {
+            ;
+        } else if (unformat(input, "rloc %U", unformat_ip4_address, &rloc4)) {
+            rloc_is_ip4 = 1;
+        } else if (unformat(input, "rloc %U", unformat_ip6_address, &rloc6)) {
+            rloc_is_ip4 = 0;
+        } else {
+            clib_warning ("parse error '%U'", format_unformat_error, input);
+            return -99;
+        }
+    }
+
+    if (!seid_set && !deid_set) {
+        clib_warning ("missing params!");
+        return -99;
+    }
+
+    if (seid_is_ip4 != deid_is_ip4) {
+        clib_warning ("source and destination EIDs are not in "
+                      "same IP family!");
+        return -99;
+    }
+
+    M(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping);
+    mp->is_add = is_add;
+    mp->vni = htonl (vni);
+    mp->seid_len = seid_len;
+    mp->deid_len = deid_len;
+    if (seid_is_ip4) {
+        mp->eid_is_ip4 = 1;
+        clib_memcpy (mp->seid, &seid4, sizeof (seid4));
+    } else {
+        mp->eid_is_ip4 = 0;
+        clib_memcpy (mp->seid, &seid6, sizeof (seid6));
+    }
+
+    if (deid_is_ip4) {
+        mp->eid_is_ip4 = 1;
+        clib_memcpy (mp->deid, &deid4, sizeof (deid4));
+    } else {
+        mp->eid_is_ip4 = 0;
+        clib_memcpy (mp->deid, &deid6, sizeof (deid6));
+    }
+
+    mp->rloc_is_ip4 = rloc_is_ip4;
+    if (rloc_is_ip4) {
+      mp->rloc_is_ip4 = 1;
+      clib_memcpy (mp->rloc, &rloc4, sizeof (rloc4));
+    } else {
+      mp->rloc_is_ip4 = 0;
+      clib_memcpy (mp->rloc, &rloc6, sizeof (rloc6));
+    }
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
 api_lisp_gpe_add_del_iface(vat_main_t * vam)
 {
     unformat_input_t * input = vam->input;
@@ -10556,6 +10659,9 @@ _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
 _(lisp_gpe_enable_disable, "enable|disable")                            \
 _(lisp_enable_disable, "enable|disable")                                \
 _(lisp_gpe_add_del_iface, "up|down")                                    \
+_(lisp_add_del_remote_mapping, "add|del vni <vni> deid <dest-eid> seid" \
+                               " <src-eid> rloc <locator> "             \
+                               "[rloc <loc> ... ]")                     \
 _(lisp_locator_set_dump, "")                                            \
 _(lisp_local_eid_table_dump, "")                                        \
 _(lisp_gpe_tunnel_dump, "")                                             \

@@ -326,6 +326,7 @@ _(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver)                 \
 _(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
 _(LISP_ENABLE_DISABLE, lisp_enable_disable)                             \
 _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
+_(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping)             \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump)                 \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
@@ -4838,6 +4839,60 @@ send_lisp_locator_set_details_set_address
     rmp->prefix_len = ip_prefix_len(ip_addr);
     rmp->is_ipv6 = ip_prefix_version(ip_addr);
     ip_address_copy_addr(rmp->ip_address, &ip_prefix_addr(ip_addr));
+}
+
+static void
+vl_api_lisp_add_del_remote_mapping_t_handler (
+    vl_api_lisp_add_del_remote_mapping_t *mp)
+{
+    ip_address_t rloc, * rlocs = 0;
+    vl_api_lisp_add_del_remote_mapping_reply_t * rmp;
+    int rv = 0;
+    gid_address_t _seid, * seid = &_seid;
+    gid_address_t _deid, * deid = &_deid;
+    ip_prefix_t * seid_pref = &gid_address_ippref(seid);
+    ip_prefix_t * deid_pref = &gid_address_ippref(deid);
+
+    gid_address_type(seid) = GID_ADDR_IP_PREFIX;
+    gid_address_type(deid) = GID_ADDR_IP_PREFIX;
+    ip_address_t * seid_addr = &ip_prefix_addr(seid_pref);
+    ip_address_t * deid_addr = &ip_prefix_addr(deid_pref);
+    ip_prefix_len(seid_pref) = mp->seid_len;
+    ip_prefix_len(deid_pref) = mp->deid_len;
+    gid_address_set_vni (seid) = ntohl (mp->vni);
+    gid_address_set_vni (deid) = ntohl (mp->vni);
+
+    if (mp->eid_is_ip4) {
+        ip_prefix_version(seid_pref) = IP4;
+        ip_prefix_version(deid_pref) = IP4;
+        clib_memcpy (&ip_addr_v4(seid_addr),
+                     mp->seid, sizeof (ip_addr_v4(seid_addr)));
+        clib_memcpy (&ip_addr_v4(deid_addr),
+                     mp->deid, sizeof (ip_addr_v4(deid_addr)));
+    } else {
+        ip_prefix_version(seid_pref) = IP6;
+        ip_prefix_version(deid_pref) = IP6;
+        clib_memcpy (&ip_addr_v6(seid_addr),
+                     mp->seid, sizeof (ip_addr_v6(seid_addr)));
+        clib_memcpy (&ip_addr_v6(deid_addr),
+                     mp->deid, sizeof (ip_addr_v6(deid_addr)));
+    }
+
+    // TODO foreach rloc
+    if (mp->rloc_is_ip4) {
+        clib_memcpy (&ip_addr_v4(&rloc), mp->rloc,
+                     sizeof (ip_addr_v4(&rloc)));
+        ip_addr_version (&rloc) = IP4;
+    } else {
+        clib_memcpy (&ip_addr_v6(&rloc), mp->rloc,
+                     sizeof (ip_addr_v6(&rloc)));
+        ip_addr_version (&rloc) = IP6;
+    }
+    vec_add1 (rlocs, rloc);
+
+    rv = vnet_lisp_add_del_remote_mapping (deid, seid, rlocs, mp->is_add);
+    vec_free (rlocs);
+    REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
 }
 
 static void
