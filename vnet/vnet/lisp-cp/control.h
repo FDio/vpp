@@ -175,4 +175,8 @@ vnet_lisp_cp_get_main() {
 clib_error_t * vnet_lisp_enable_disable (u8 is_enabled);
 u8 vnet_lisp_enable_disable_status (void);
 
+int
+vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
+                                  ip_address_t * dlocs, u8 action, u8 is_add);
+
 #endif /* VNET_CONTROL_H_ */

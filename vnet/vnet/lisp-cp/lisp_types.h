@@ -165,6 +165,9 @@ u32 gid_address_parse (u8 * offset, gid_address_t *a);
 #define gid_address_lcaf(_a) (_a)->lcaf
 #define gid_address_vni(_a) ( (GID_ADDR_LCAF == gid_address_type(_a)) ? \
                               lcaf_vni(&gid_address_lcaf(_a)) : 0)
+/* setter for vni  */
+#define gid_address_set_vni(_a, _val) \
+  (lcaf_vni(&gid_address_lcaf(_a)) = (_val))
 
 /* 'sub'address functions */
 u16 ip_prefix_size_to_write (void * pref);

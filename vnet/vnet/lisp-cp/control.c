@@ -21,6 +21,13 @@
 static void
 add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index);
 
+static void
+del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index);
+
+static u8
+compare_locators (lisp_cp_main_t *lcm, u32 * old_ls_indexes,
+                  locator_t * new_locators);
+
 /* Stores mapping in map-cache. It does NOT program data plane forwarding for
  * remote/learned mappings. */
 int
@@ -250,6 +257,242 @@ VLIB_CLI_COMMAND (lisp_add_del_local_eid_command) = {
     .path = "lisp eid-table",
     .short_help = "lisp eid-table add/del eid <eid> locator-set <locator-set>",
     .function = lisp_add_del_local_eid_command_fn,
+};
+
+/**
+ * Adds/removes/updates static remote mapping.
+ *
+ * This function also modifies forwarding entries if needed.
+ *
+ * @param deid destination EID
+ * @param seid source EID
+ * @param rlocs vector of remote locators
+ * @param action action for negative map-reply
+ * @param is_add add mapping if non-zero, delete otherwise
+ * @return return code
+ */
+int
+vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
+                                  ip_address_t * rlocs, u8 action, u8 is_add)
+{
+  vnet_lisp_add_del_mapping_args_t _dm_args, * dm_args = &_dm_args;
+  vnet_lisp_add_del_mapping_args_t _sm_args, * sm_args = &_sm_args;
+  vnet_lisp_add_del_locator_set_args_t _ls, * ls = &_ls;
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  u32 mi, ls_index = 0, dst_map_index, src_map_index;
+  locator_t loc;
+  ip_address_t * dl;
+  int rc = -1;
+
+  memset (sm_args, 0, sizeof (sm_args[0]));
+  memset (dm_args, 0, sizeof (dm_args[0]));
+  memset (ls, 0, sizeof (ls[0]));
+
+  /* prepare remote locator set */
+  vec_foreach (dl, rlocs)
+    {
+      memset (&loc, 0, sizeof (loc));
+      gid_address_ip (&loc.address) = dl[0];
+      vec_add1 (ls->locators, loc);
+    }
+  src_map_index = gid_dictionary_lookup (&lcm->mapping_index_by_gid, seid);
+
+  mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, deid);
+  /* new mapping */
+  if ((u32)~0 == mi)
+    {
+      if ((u32)~0 == src_map_index)
+        {
+          clib_warning ("seid %U not found!", format_gid_address, seid);
+          goto done;
+        }
+
+      if (!is_add)
+        {
+          clib_warning ("deid %U marked for removal but not "
+                        "found!", format_gid_address, deid);
+          goto done;
+        }
+
+      ls->is_add = 1;
+      ls->index = ~0;
+      vnet_lisp_add_del_locator_set (ls, &ls_index);
+
+      /* add mapping */
+      gid_address_copy (&dm_args->deid, deid);
+      dm_args->is_add = 1;
+      dm_args->action = action;
+      dm_args->locator_set_index = ls_index;
+      vnet_lisp_add_del_mapping (dm_args, &dst_map_index);
+
+      /* add fwd tunnel */
+      add_fwd_entry (lcm, src_map_index, dst_map_index);
+    }
+  else
+    {
+      /* delete mapping */
+      if (!is_add)
+        {
+          /* delete forwarding entry */
+          del_fwd_entry (lcm, 0, mi);
+          dm_args->is_add = 0;
+          gid_address_copy (&dm_args->deid, deid);
+          mapping_t * map = pool_elt_at_index (lcm->mapping_pool, mi);
+          dm_args->locator_set_index = map->locator_set_index;
+
+          /* delete mapping associated to fwd entry */
+          vnet_lisp_add_del_mapping (dm_args, 0);
+
+          ls->is_add = 0;
+          ls->index = map->locator_set_index;
+          /* delete locator set */
+          vnet_lisp_add_del_locator_set (ls, 0);
+        }
+      /* update existing locator set */
+      else
+        {
+          if ((u32)~0 == src_map_index)
+            {
+              clib_warning ("seid %U not found!", format_gid_address, seid);
+              goto done;
+            }
+
+          mapping_t * old_map;
+          locator_set_t * old_ls;
+          old_map = pool_elt_at_index (lcm->mapping_pool, mi);
+
+          /* update mapping attributes */
+          old_map->action = action;
+
+          old_ls = pool_elt_at_index(lcm->locator_set_pool,
+                                     old_map->locator_set_index);
+          if (compare_locators (lcm, old_ls->locator_indices,
+                                ls->locators))
+            {
+              /* set locator-set index to overwrite */
+              ls->is_add = 1;
+              ls->index = old_map->locator_set_index;
+              vnet_lisp_add_del_locator_set (ls, 0);
+              add_fwd_entry (lcm, src_map_index, mi);
+            }
+        }
+    }
+  /* success */
+  rc = 0;
+done:
+  vec_free (ls->locators);
+  return rc;
+}
+
+/**
+ * Handler for add/del remote mapping CLI.
+ *
+ * @param vm vlib context
+ * @param input input from user
+ * @param cmd cmd
+ * @return pointer to clib error structure
+ */
+static clib_error_t *
+lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
+                                        unformat_input_t * input,
+                                        vlib_cli_command_t * cmd)
+{
+  clib_error_t * error = 0;
+  unformat_input_t _line_input, * line_input = &_line_input;
+  u8 is_add = 1;
+  ip_address_t rloc, * rlocs = 0;
+  ip_prefix_t * deid_ippref, * seid_ippref;
+  gid_address_t seid, deid;
+  u8 deid_set = 0, seid_set = 0;
+  u32 vni, action = ~0;
+
+  /* Get a line of input. */
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  memset (&deid, 0, sizeof (deid));
+  memset (&seid, 0, sizeof (seid));
+
+  seid_ippref = &gid_address_ippref(&seid);
+  deid_ippref = &gid_address_ippref(&deid);
+
+  gid_address_type (&deid) = GID_ADDR_IP_PREFIX;
+  gid_address_type (&seid) = GID_ADDR_IP_PREFIX;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+        is_add = 0;
+      if (unformat (line_input, "add"))
+        ;
+      else if (unformat (line_input, "deid %U",
+                         unformat_ip_prefix, deid_ippref))
+        {
+          deid_set = 1;
+        }
+      else if (unformat (line_input, "vni %u", &vni))
+        {
+          gid_address_set_vni (&seid, vni);
+          gid_address_set_vni (&deid, vni);
+        }
+      else if (unformat (line_input, "seid %U",
+                         unformat_ip_prefix, seid_ippref))
+        seid_set = 1;
+      else if (unformat (line_input, "rloc %U", unformat_ip_address, &rloc))
+        vec_add1 (rlocs, rloc);
+      else if (unformat (line_input, "action %d", &action))
+        ;
+      else
+        {
+          clib_warning ("parse error");
+          goto done;
+        }
+    }
+
+  if (is_add && (!deid_set || !seid_set))
+    {
+      clib_warning ("missing paramete(s)!");
+      goto done;
+    }
+
+  if (!is_add && !deid_set)
+    {
+      clib_warning ("missing deid!");
+      goto done;
+    }
+
+  if (is_add
+      && (ip_prefix_version (deid_ippref)
+        != ip_prefix_version (seid_ippref)))
+    {
+      clib_warning ("source and destination EIDs are not"
+                    " in the same IP family!");
+      goto done;
+    }
+
+  if (is_add && (~0 == action)
+      && 0 == vec_len (rlocs))
+    {
+      clib_warning ("no action set for negative map-reply!");
+      goto done;
+    }
+
+  int rv = vnet_lisp_add_del_remote_mapping (&deid, &seid, rlocs,
+                                             action, is_add);
+  if (rv)
+    clib_warning ("failed to %s remote mapping!",
+                  is_add ? "add" : "delete");
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (lisp_add_del_remote_mapping_command) = {
+    .path = "lisp remote-mapping",
+    .short_help = "lisp remote-mapping add|del vni <vni> deid <dest-eid> "
+     "seid <src-eid> rloc <dst-locator> [rloc <dst-locator> ... ]",
+    .function = lisp_add_del_remote_mapping_command_fn,
 };
 
 static clib_error_t *
@@ -1467,7 +1710,7 @@ ip_interface_get_first_ip_addres (ip_lookup_main_t *lm, u32 sw_if_index,
   return ip_interface_address_get_address (lm, ia);
 }
 
-void
+static void
 del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index,
                u32 dst_map_index)
 {
