@@ -1,0 +1,176 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_7b12c963",
+        "filename": "vnet/vnet/nsh/nsh.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-13T03:11:27Z",
+      "side": 1,
+      "message": "Here 0 just for test?",
+      "range": {
+        "startLine": 170,
+        "startChar": 13,
+        "endLine": 170,
+        "endChar": 14
+      },
+      "revId": "4930581a469fae74231d6f618286d46fabf7ebb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_fb05b914",
+        "filename": "vnet/vnet/nsh/nsh.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-13T03:11:27Z",
+      "side": 1,
+      "message": "For encap-none, could include \"[decap-next [ip4|ip6|ethernet]]\"",
+      "range": {
+        "startLine": 509,
+        "startChar": 3,
+        "endLine": 509,
+        "endChar": 132
+      },
+      "revId": "4930581a469fae74231d6f618286d46fabf7ebb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_1b098d31",
+        "filename": "vnet/vnet/nsh/nsh.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-13T03:11:27Z",
+      "side": 1,
+      "message": "Could include \"[next-ip4][next-ip6][next-ethernet]\"",
+      "range": {
+        "startLine": 696,
+        "startChar": 2,
+        "endLine": 697,
+        "endChar": 37
+      },
+      "revId": "4930581a469fae74231d6f618286d46fabf7ebb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_db02f50a",
+        "filename": "vnet/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-13T03:11:27Z",
+      "side": 1,
+      "message": "no \"nsh\" here.",
+      "range": {
+        "startLine": 326,
+        "startChar": 34,
+        "endLine": 326,
+        "endChar": 37
+      },
+      "revId": "4930581a469fae74231d6f618286d46fabf7ebb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_b6ff5801",
+        "filename": "vnet/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-13T03:11:27Z",
+      "side": 1,
+      "message": "here should be 36.",
+      "range": {
+        "startLine": 162,
+        "startChar": 53,
+        "endLine": 162,
+        "endChar": 55
+      },
+      "revId": "4930581a469fae74231d6f618286d46fabf7ebb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_96045416",
+        "filename": "vnet/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-13T03:11:27Z",
+      "side": 1,
+      "message": "here only need to copy 36 bytes at a time.",
+      "revId": "4930581a469fae74231d6f618286d46fabf7ebb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_7609c02b",
+        "filename": "vnet/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 323,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-13T03:11:27Z",
+      "side": 1,
+      "message": "here only need to copy 36 bytes at a time.",
+      "revId": "4930581a469fae74231d6f618286d46fabf7ebb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_d619ac7a",
+        "filename": "vnet/vnet/vxlan-gpe/nsh_vxlan_gpe_error.def",
+        "patchSetId": 20
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-05-13T03:11:27Z",
+      "side": 1,
+      "message": "Is this file used anywhere?",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 19
+      },
+      "revId": "4930581a469fae74231d6f618286d46fabf7ebb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
