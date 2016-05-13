@@ -104,10 +104,9 @@ public class FutureApiTest {
     private static void testFutureApi() throws Exception {
         System.out.println("Testing Java future API");
 
-        final Map<Integer, CompletableFuture<? extends JVppReply<?>>>  map = new HashMap<>();
         final org.openvpp.jvpp.JVppImpl impl =
-                new org.openvpp.jvpp.JVppImpl(VppJNIConnection.create("FutureApiTest", new FutureJVppFacadeCallback(map)));
-        final FutureJVppFacade jvppFacade = new FutureJVppFacade(impl, map);
+                new org.openvpp.jvpp.JVppImpl(new VppJNIConnection("FutureApiTest"));
+        final FutureJVppFacade jvppFacade = new FutureJVppFacade(impl);
         System.out.println("Successfully connected to VPP");
 
         testShowVersion(jvppFacade);

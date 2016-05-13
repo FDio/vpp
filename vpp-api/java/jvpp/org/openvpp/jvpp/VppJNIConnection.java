@@ -77,7 +77,7 @@ public final class VppJNIConnection implements VppConnection {
     private final String clientName;
     private volatile boolean disconnected = false;
 
-    private VppJNIConnection(final String clientName) {
+    public VppJNIConnection(final String clientName) {
         this.clientName = Objects.requireNonNull(clientName,"Null clientName");
     }
 
@@ -85,6 +85,33 @@ public final class VppJNIConnection implements VppConnection {
      * Guarded by VppJNIConnection.class
      */
     private static final Map<String, VppJNIConnection> connections = new HashMap<>();
+
+    /**
+     * Create a new Vpp connection for existing client
+     *
+     * Multiple instances are allowed since this class is not a singleton
+     * (VPP allows multiple management connections).
+     * This allows reopen reconnection after already closing
+     *
+     * However only a single connection per clientName is allowed.
+     *
+     * @param callback global callback to receive response calls from vpp
+     *
+     * @throws IOException in case the connection could not be established
+     */
+    public void connect(final JVppCallback callback) throws IOException {
+        synchronized (VppJNIConnection.class) {
+            if(connections.containsKey(clientName)) {
+                throw new IOException("Client " + clientName + " already connected");
+            }
+
+            final int ret = clientConnect(clientName, callback);
+            if (ret != 0) {
+                throw new IOException("Connection returned error " + ret);
+            }
+            connections.put(clientName, this);
+        }
+    }
 
     /**
      * Create a new Vpp connection identified by clientName parameter.
@@ -99,6 +126,7 @@ public final class VppJNIConnection implements VppConnection {
      *
      * @return new Vpp connection
      * @throws IOException in case the connection could not be established, or there already is a connection with the same name
+     * @deprecated
      */
     public static VppJNIConnection create(final String clientName, final JVppCallback callback) throws IOException {
         synchronized (VppJNIConnection.class) {

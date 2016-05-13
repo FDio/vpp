@@ -250,9 +250,15 @@ package $base_package.$future_package;
  */
 public class FutureJVppFacade extends FutureJVppInvokerFacade implements FutureJVpp {
 
+    @Deprecated
     public FutureJVppFacade(final $base_package.JVpp jvpp,
                             final java.util.Map<Integer, java.util.concurrent.CompletableFuture<? extends $base_package.$dto_package.JVppReply<?>>> requestMap) {
         super(jvpp, requestMap);
+    }
+
+    public FutureJVppFacade(final $base_package.JVpp jvpp) throws java.io.IOException {
+        super(jvpp, new java.util.HashMap<>());
+        jvpp.connect(new FutureJVppFacadeCallback(getRequests()));
     }
 $methods
 }
