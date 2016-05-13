@@ -56,5 +56,8 @@ enum {
 } vnet_policer_next_t;
 
 u8 * format_policer_instance (u8 * s, va_list * va);
+clib_error_t * policer_add_del (vlib_main_t *vm,
+                                u8 * name, sse2_qos_pol_cfg_params_st * cfg,
+                                u8 is_add);
 
 #endif /* __included_policer_h__ */
