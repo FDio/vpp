@@ -1022,15 +1022,34 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         {
 	  u32 pages_avail, page_size, mem;
 	  u8 *s = 0;
-	  char * path = "/sys/devices/system/node/node%u/hugepages/"
-			"hugepages-%ukB/free_hugepages%c";
+          u8 *p = 0;
+	  char * numa_path = "/sys/devices/system/node/node%u/";
+          char * nonnuma_path = "/sys/kernel/mm/";
+          char * suffix = "hugepages/hugepages-%ukB/free_hugepages%c";
+          char * path = NULL;
+          struct stat sb_numa, sb_nonnuma;
+
+          p = format(p, numa_path, c);
+          stat(numa_path, &sb_numa);
+          stat(nonnuma_path, &sb_nonnuma);
+
+          if (S_ISDIR(sb_numa.st_mode)) {
+            path = (char*)format((u8*)path, "%s%s", p, suffix);
+          } else if (S_ISDIR(sb_nonnuma.st_mode)) {
+            path = (char*)format((u8*)path, "%s%s", nonnuma_path, suffix);
+          } else {
+            use_1g = 0;
+            use_2m = 0;
+            vec_free(p);
+            break;
+          }
 
 	  vec_validate(mem_by_socket, c);
 	  mem = mem_by_socket[c];
 
 	  page_size = 1024;
 	  pages_avail = 0;
-	  s = format (s, path, c, page_size * 1024, 0);
+	  s = format (s, path, page_size * 1024, 0);
 	  read_sys_fs ((char *) s, "%u", &pages_avail);
 	  vec_reset_length (s);
 
@@ -1039,7 +1058,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  page_size = 2;
 	  pages_avail = 0;
-	  s = format (s, path, c, page_size * 1024, 0);
+	  s = format (s, path, page_size * 1024, 0);
 	  read_sys_fs ((char *) s, "%u", &pages_avail);
 	  vec_reset_length (s);
 
@@ -1047,6 +1066,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	    use_2m = 0;
 
 	  vec_free(s);
+	  vec_free(p);
+	  vec_free(path);
       }));
       _vec_len (mem_by_socket) = c + 1;
 
