@@ -51,6 +51,23 @@ ifeq ($(findstring y,$(UNATTENDED)),y)
 CONFIRM=-y
 endif
 
+ifdef http_proxy
+SUDO_OPTS = -E
+else
+ifdef HTTP_PROXY
+SUDO_OPTS = -E
+else
+ifdef https_proxy
+SUDO_OPTS = -E
+else
+ifdef HTTPS_PROXY
+SUDO_OPTS = -E
+else
+endif
+endif
+endif
+endif
+
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
 .PHONY: ctags cscope doxygen wipe-doxygen
@@ -128,11 +145,11 @@ bootstrap: $(BR)/.bootstrap.ok
 install-dep:
 ifeq ($(OS_ID),ubuntu)
 ifeq ($(OS_VERSION_ID),14.04)
-	@sudo apt-get $(CONFIRM) install software-properties-common
-	@sudo add-apt-repository $(CONFIRM) ppa:openjdk-r/ppa
-	@sudo apt-get update
+	@sudo $(SUDO_OPTS) apt-get $(CONFIRM) install software-properties-common
+	@sudo $(SUDO_OPTS) add-apt-repository $(CONFIRM) ppa:openjdk-r/ppa
+	@sudo $(SUDO_OPTS) apt-get update
 endif
-	@sudo apt-get $(CONFIRM) install $(DEB_DEPENDS)
+	@sudo $(SUDO_OPTS) apt-get $(CONFIRM) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo yum install $(CONFIRM) $(RPM_DEPENDS)
