@@ -28,6 +28,16 @@ package $base_package;
 public interface JVpp extends java.lang.AutoCloseable {
 
     /**
+     * Generic connect with $base_package.callback.JVppCallback callback handler
+     * providing connecting to VPP
+     *
+     * @param callback JVppCallback instance providing callback handling
+     *
+     * @throws java.io.IOException if connection cannot be initiated
+     */
+    void connect($base_package.callback.JVppCallback callback) throws java.io.IOException;
+
+    /**
      * Generic dispatch method for sending requests to VPP
      */
     int send($base_package.$dto_package.JVppRequest request);
@@ -53,6 +63,11 @@ public final class JVppImpl implements $base_package.JVpp {
 
     public JVppImpl(final $base_package.VppConnection connection) {
         this.connection = java.util.Objects.requireNonNull(connection,"Connection is null");
+    }
+
+    @Override
+    public void connect($base_package.callback.JVppCallback callback) throws java.io.IOException {
+        connection.connect(callback);
     }
 
     @Override

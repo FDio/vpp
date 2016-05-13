@@ -250,9 +250,18 @@ package $base_package.$future_package;
  */
 public class FutureJVppFacade extends FutureJVppInvokerFacade implements FutureJVpp {
 
-    public FutureJVppFacade(final $base_package.JVpp jvpp,
-                            final java.util.Map<Integer, java.util.concurrent.CompletableFuture<? extends $base_package.$dto_package.JVppReply<?>>> requestMap) {
-        super(jvpp, requestMap);
+    /**
+     * <p>Create FutureJVppFacade object for provided JVpp instance.
+     * Constructor internally creates FutureJVppFacadeCallback class for processing callbacks
+     * and then connects to provided JVpp instance
+     *
+     * @param jvpp provided $base_package.JVpp instance
+     *
+     * @throws java.io.IOException in case instance cannot connect to JVPP
+     */
+    public FutureJVppFacade(final $base_package.JVpp jvpp) throws java.io.IOException {
+        super(jvpp, new java.util.HashMap<>());
+        jvpp.connect(new FutureJVppFacadeCallback(getRequests()));
     }
 $methods
 }
