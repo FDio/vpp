@@ -30,6 +30,7 @@ OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
+DEB_DEPENDS += doxygen graphviz
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 else
@@ -39,9 +40,8 @@ endif
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
-#RPM_DEPENDS += doxygen # TODO
+RPM_DEPENDS += doxygen graphviz
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
-#EPEL_DEPENDS += graphviz # TODO
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
@@ -53,7 +53,7 @@ endif
 
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
-.PHONY: ctags cscope
+.PHONY: ctags cscope doxygen wipe-doxygen
 
 help:
 	@echo "Make Targets:"
@@ -75,6 +75,8 @@ help:
 	@echo " pkg-rpm             - build RPM packages"
 	@echo " ctags               - (re)generate ctags database"
 	@echo " cscope              - (re)generate cscope database"
+	@echo " doxygen             - (re)generate documentation"
+	@echo " wipe-doxygen        - wipe all generated documentation"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]             - set build verbosity level"
@@ -212,6 +214,10 @@ cscope: cscope.files
 	@cscope -b -q -v
 
 
+#
+# Build the documentation
+#
+
 DOXY_INPUT = \
 	README.md \
 	vppinfra \
@@ -222,7 +228,6 @@ DOXY_INPUT = \
 	vpp \
 	vpp-api
 
-.PHONY: doxygen
 doxygen:
 	@mkdir -p "$(BR)/docs"
 	ROOT="$(WS_ROOT)" \
