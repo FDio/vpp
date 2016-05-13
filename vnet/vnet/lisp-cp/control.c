@@ -1138,6 +1138,7 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
 				    loc->sw_if_index, 1 /* unnumbered */,
       ({
 	l4 = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
+        ip_prefix_len (ippref) = 32;
         ip_addr_v4 (rloc) = l4[0];
         vec_add1 (rlocs, gid[0]);
       }));
@@ -1148,6 +1149,7 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
 				    loc->sw_if_index, 1 /* unnumbered */,
       ({
         l6 = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
+        ip_prefix_len (ippref) = 128;
         ip_addr_v6 (rloc) = l6[0];
         vec_add1 (rlocs, gid[0]);
       }));
@@ -1186,8 +1188,15 @@ build_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   /* push ecm: udp-ip-lisp */
   lisp_msg_push_ecm (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, seid, deid);
 
-  /* get map-resolver ip XXX use first*/
-  mr_ip = vec_elt_at_index(lcm->map_resolvers, 0);
+  /* get map-resolver ip XXX use first, for current IP version*/
+  vec_foreach (mr_ip, lcm->map_resolvers)
+    {
+      if (ip_addr_version(mr_ip) ==
+          ip_prefix_version(&gid_address_ippref(seid)))
+        {
+          break;
+        }
+    }
 
   /* get local iface ip to use in map-request XXX fib 0 for now*/
   get_local_iface_ip_for_dst (lcm, mr_ip, &sloc);
