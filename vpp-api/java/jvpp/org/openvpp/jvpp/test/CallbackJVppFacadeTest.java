@@ -16,15 +16,11 @@
 
 package org.openvpp.jvpp.test;
 
-import java.util.HashMap;
-import java.util.Map;
 import org.openvpp.jvpp.JVpp;
 import org.openvpp.jvpp.JVppImpl;
 import org.openvpp.jvpp.VppJNIConnection;
-import org.openvpp.jvpp.callback.JVppCallback;
 import org.openvpp.jvpp.callback.ShowVersionCallback;
 import org.openvpp.jvpp.callfacade.CallbackJVppFacade;
-import org.openvpp.jvpp.callfacade.CallbackJVppFacadeCallback;
 
 /**
  * CallbackJVppFacade together with CallbackJVppFacadeCallback allow for setting different callback for each request.
@@ -45,19 +41,19 @@ public class CallbackJVppFacadeTest {
     private static void testCallbackFacade() throws Exception {
         System.out.println("Testing CallbackJVppFacade");
 
-        final Map<Integer, JVppCallback> callbackMap = new HashMap<>();
-        JVpp impl = new JVppImpl(VppJNIConnection.create("CallbackApiTest", new CallbackJVppFacadeCallback(callbackMap)));
-        CallbackJVppFacade jvpp = new CallbackJVppFacade(impl, callbackMap);
+        JVpp jvpp = new JVppImpl(new VppJNIConnection("CallbackApiTest"));
+
+        CallbackJVppFacade jvppCallbackFacade = new CallbackJVppFacade(jvpp);
         System.out.println("Successfully connected to VPP");
 
-        jvpp.showVersion(showVersionCallback1);
-        jvpp.showVersion(showVersionCallback2);
+        jvppCallbackFacade.showVersion(showVersionCallback1);
+        jvppCallbackFacade.showVersion(showVersionCallback2);
 
 
         Thread.sleep(2000);
 
         System.out.println("Disconnecting...");
-        impl.close();
+        jvpp.close();
         Thread.sleep(1000);
     }
 

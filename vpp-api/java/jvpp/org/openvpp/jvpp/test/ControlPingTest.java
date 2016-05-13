@@ -28,13 +28,14 @@ public class ControlPingTest {
     private static void testControlPing() throws Exception {
         System.out.println("Testing ControlPing using Java callback API");
 
-        JVpp jvpp = new JVppImpl(VppJNIConnection.create("ControlPingTest", new ControlPingCallback() {
+        JVpp jvpp = new JVppImpl( new VppJNIConnection("ControlPingTest"));
+        jvpp.connect( new ControlPingCallback() {
             @Override
             public void onControlPingReply(final ControlPingReply reply) {
                 System.out.printf("Received ControlPingReply: context=%d, retval=%d, clientIndex=%d vpePid=%d\n",
                         reply.context, reply.retval, reply.clientIndex, reply.vpePid);
             }
-        }));
+        });
         System.out.println("Successfully connected to VPP");
         Thread.sleep(1000);
 
