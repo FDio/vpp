@@ -128,11 +128,11 @@ bootstrap: $(BR)/.bootstrap.ok
 install-dep:
 ifeq ($(OS_ID),ubuntu)
 ifeq ($(OS_VERSION_ID),14.04)
-	@sudo apt-get $(CONFIRM) install software-properties-common
-	@sudo add-apt-repository $(CONFIRM) ppa:openjdk-r/ppa
-	@sudo apt-get update
+	@sudo -E apt-get $(CONFIRM) install software-properties-common
+	@sudo -E add-apt-repository $(CONFIRM) ppa:openjdk-r/ppa
+	@sudo -E apt-get update
 endif
-	@sudo apt-get $(CONFIRM) install $(DEB_DEPENDS)
+	@sudo -E apt-get $(CONFIRM) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo yum install $(CONFIRM) $(RPM_DEPENDS)
