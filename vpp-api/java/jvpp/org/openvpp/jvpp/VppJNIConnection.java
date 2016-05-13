@@ -77,7 +77,12 @@ public final class VppJNIConnection implements VppConnection {
     private final String clientName;
     private volatile boolean disconnected = false;
 
-    private VppJNIConnection(final String clientName) {
+    /**
+     * Create VPPJNIConnection instance for client connecting to VPP.
+     *
+     * @param clientName client name instance to be used for communication. Single connection per clientName is allowed.
+     */
+    public VppJNIConnection(final String clientName) {
         this.clientName = Objects.requireNonNull(clientName,"Null clientName");
     }
 
@@ -87,32 +92,28 @@ public final class VppJNIConnection implements VppConnection {
     private static final Map<String, VppJNIConnection> connections = new HashMap<>();
 
     /**
-     * Create a new Vpp connection identified by clientName parameter.
+     * Initiate VPP connection for current instance
      *
      * Multiple instances are allowed since this class is not a singleton
      * (VPP allows multiple management connections).
      *
      * However only a single connection per clientName is allowed.
      *
-     * @param clientName identifier of vpp connection
      * @param callback global callback to receive response calls from vpp
      *
-     * @return new Vpp connection
-     * @throws IOException in case the connection could not be established, or there already is a connection with the same name
+     * @throws IOException in case the connection could not be established
      */
-    public static VppJNIConnection create(final String clientName, final JVppCallback callback) throws IOException {
+    public void connect(final JVppCallback callback) throws IOException {
         synchronized (VppJNIConnection.class) {
             if(connections.containsKey(clientName)) {
                 throw new IOException("Client " + clientName + " already connected");
             }
 
-            final VppJNIConnection vppJNIConnection = new VppJNIConnection(clientName);
             final int ret = clientConnect(clientName, callback);
             if (ret != 0) {
                 throw new IOException("Connection returned error " + ret);
             }
-            connections.put(clientName, vppJNIConnection);
-            return vppJNIConnection;
+            connections.put(clientName, this);
         }
     }
 

@@ -51,10 +51,19 @@ public final class CallbackJVppFacade implements $base_package.$callback_facade_
     private final $base_package.JVpp jvpp;
     private final java.util.Map<Integer, $base_package.$callback_package.JVppCallback> callbacks;
 
-    public CallbackJVppFacade(final $base_package.JVpp jvpp,
-                              java.util.Map<Integer, $base_package.$callback_package.JVppCallback> callbacks) {
+    /**
+     * <p>Create CallbackJVppFacade object for provided JVpp instance.
+     * Constructor internally creates CallbackJVppFacadeCallback class for processing callbacks
+     * and then connects to provided JVpp instance
+     *
+     * @param jvpp provided $base_package.JVpp instance
+     *
+     * @throws java.io.IOException in case instance cannot connect to JVPP
+     */
+    public CallbackJVppFacade(final $base_package.JVpp jvpp) throws java.io.IOException {
         this.jvpp = java.util.Objects.requireNonNull(jvpp,"jvpp is null");
-        this.callbacks = callbacks;
+        this.callbacks = new java.util.HashMap<>();
+        this.jvpp.connect(new CallbackJVppFacadeCallback(this.callbacks));
     }
 
     @Override
