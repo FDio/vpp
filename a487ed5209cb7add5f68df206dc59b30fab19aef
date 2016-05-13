@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_01e7dc41",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1141,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-13T13:36:17Z",
+      "side": 1,
+      "message": "Hm, yeah .. although we expect these to be addresses not prefixes. Still, it\u0027s fine. Leave it as it is.",
+      "range": {
+        "startLine": 1141,
+        "startChar": 8,
+        "endLine": 1141,
+        "endChar": 36
+      },
+      "revId": "a487ed5209cb7add5f68df206dc59b30fab19aef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_21dae078",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1195,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-13T13:36:17Z",
+      "side": 1,
+      "message": "Actually the version should be that of the source and dest locators, not that of the seid. The IP we use for the resolver should be compatible with one of our local locators. Since at this point we know the source locator, we can use that (in theory we could use any interface, but let\u0027s leave that for later).",
+      "range": {
+        "startLine": 1195,
+        "startChar": 48,
+        "endLine": 1195,
+        "endChar": 52
+      },
+      "revId": "a487ed5209cb7add5f68df206dc59b30fab19aef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
