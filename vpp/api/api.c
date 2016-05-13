@@ -74,6 +74,7 @@
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/devices/af_packet/af_packet.h>
+#include <vnet/policer/policer.h>
 
 #undef BIHASH_TYPE
 #undef __included_bihash_template_h__
@@ -335,7 +336,8 @@ _(LISP_ENABLE_DISABLE_STATUS_DUMP,                                      \
   lisp_enable_disable_status_dump)                                      \
 _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
 _(AF_PACKET_CREATE, af_packet_create)                                   \
-_(AF_PACKET_DELETE, af_packet_delete)
+_(AF_PACKET_DELETE, af_packet_delete)                                   \
+_(POLICER_ADD_DEL, policer_add_del)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -5930,6 +5932,36 @@ vl_api_af_packet_delete_t_handler
     vec_free(host_if_name);
 
     REPLY_MACRO(VL_API_AF_PACKET_DELETE_REPLY);
+}
+
+static void
+vl_api_policer_add_del_t_handler
+(vl_api_policer_add_del_t *mp)
+{
+    vlib_main_t * vm = vlib_get_main();
+    vl_api_policer_add_del_reply_t *rmp;
+    int rv = 0;
+    u8 *name = NULL;
+    sse2_qos_pol_cfg_params_st cfg;
+    clib_error_t * error;
+
+    name = format(0, "%s", mp->name);
+
+    memset (&cfg, 0, sizeof (cfg));
+    cfg.rfc = mp->type;
+    cfg.rnd_type = mp->round_type;
+    cfg.rate_type = mp->rate_type;
+    cfg.rb.kbps.cir_kbps = mp->cir;
+    cfg.rb.kbps.eir_kbps = mp->eir;
+    cfg.rb.kbps.cb_bytes = mp->cb;
+    cfg.rb.kbps.eb_bytes = mp->eb;
+
+    error = policer_add_del(vm, name, &cfg, mp->is_add);
+
+    if (error)
+      rv = VNET_API_ERROR_UNSPECIFIED;
+
+    REPLY_MACRO(VL_API_POLICER_ADD_DEL_REPLY);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

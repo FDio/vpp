@@ -15,6 +15,56 @@
 #include <stdint.h>
 #include <vnet/policer/policer.h>
 
+clib_error_t *
+policer_add_del (vlib_main_t *vm,
+                 u8 * name, sse2_qos_pol_cfg_params_st * cfg,
+                 u8 is_add)
+{
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_read_response_type_st test_policer;
+  uword * p;
+  int rv;
+
+  if (is_add == 0)
+    {
+      p = hash_get_mem (pm->policer_config_by_name, name);
+      if (p == 0)
+        {
+          vec_free(name);
+          return clib_error_return (0, "No such policer configuration");
+        }
+      hash_unset_mem (pm->policer_config_by_name, name);
+      vec_free(name);
+      return 0;
+    }
+
+  /* Vet the configuration before adding it to the table */
+  rv = sse2_pol_logical_2_physical (cfg, &test_policer);
+
+  if (rv == 0)
+    {
+      policer_read_response_type_st *pp;
+      sse2_qos_pol_cfg_params_st *cp;
+
+      pool_get (pm->configs, cp);
+      pool_get (pm->policer_templates, pp);
+
+      ASSERT (cp - pm->configs == pp - pm->policer_templates);
+
+      clib_memcpy (cp, cfg, sizeof (*cp));
+      clib_memcpy (pp, &test_policer, sizeof (*pp));
+
+      hash_set_mem (pm->policer_config_by_name, name, cp - pm->configs);
+    }
+  else
+    {
+      vec_free (name);
+      return clib_error_return (0, "Config failed sanity check");
+    }
+
+  return 0;
+}
+
 u8 * format_policer_instance (u8 * s, va_list * va)
 {
   policer_read_response_type_st * i 
@@ -228,14 +278,10 @@ configure_policer_command_fn (vlib_main_t * vm,
                               unformat_input_t * input,
                               vlib_cli_command_t * cmd)
 {
-  vnet_policer_main_t *pm = &vnet_policer_main;
   sse2_qos_pol_cfg_params_st c;
-  policer_read_response_type_st test_policer;
   unformat_input_t _line_input, * line_input = &_line_input;
-  int is_add = 1;
-  int rv;
+  u8 is_add = 1;
   u8 * name = 0;
-  uword * p;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -261,44 +307,7 @@ configure_policer_command_fn (vlib_main_t * vm,
 
   unformat_free (line_input);
 
-  if (is_add == 0)
-    {
-      p = hash_get_mem (pm->policer_config_by_name, name);
-      if (p == 0)
-        {
-          vec_free(name);
-          return clib_error_return (0, "No such policer configuration");
-        }
-      hash_unset_mem (pm->policer_config_by_name, name);
-      vec_free(name);
-      return 0;
-    }
-
-  /* Vet the configuration before adding it to the table */
-  rv = sse2_pol_logical_2_physical (&c, &test_policer);
-  
-  if (rv == 0)
-    {
-      policer_read_response_type_st *pp;
-      sse2_qos_pol_cfg_params_st *cp;
-
-      pool_get (pm->configs, cp);
-      pool_get (pm->policer_templates, pp);
-
-      ASSERT (cp - pm->configs == pp - pm->policer_templates);
-
-      clib_memcpy (cp, &c, sizeof (*cp));
-      clib_memcpy (pp, &test_policer, sizeof (*pp));
-
-      hash_set_mem (pm->policer_config_by_name, name, cp - pm->configs);
-    }
-  else
-    {
-      vec_free (name);
-      return clib_error_return (0, "Config failed sanity check");
-    }
-  
-  return 0;
+  return policer_add_del(vm, name, &c, is_add);
 }
 
 VLIB_CLI_COMMAND (configure_policer_command, static) = {

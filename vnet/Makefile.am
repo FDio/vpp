@@ -58,6 +58,8 @@ libvnet_la_SOURCES +=				\
 
 nobase_include_HEADERS +=			\
   vnet/policer/police.h				\
+  vnet/policer/policer.h			\
+  vnet/policer/fix_types.h			\
   vnet/policer/xlate.h
 
 ########################################

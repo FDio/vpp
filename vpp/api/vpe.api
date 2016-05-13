@@ -3475,3 +3475,40 @@ define af_packet_delete_reply {
     u32 context;
     i32 retval;
 };
+
+/** \brief Add/del policer
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add policer if non-zero, else delete
+    @param name - policer name
+    @param cir - CIR
+    @param eir - EIR
+    @param cb - Committed Burst
+    @param eb - Excess or Peak Burst
+    @param rate_type - rate type
+    @param round_type - rounding type
+    @param type - policer algorithm
+*/
+define policer_add_del {
+    u32 client_index;
+    u32 context;
+
+    u8 is_add;
+    u8 name[64];
+    u32 cir;
+    u32 eir;
+    u64 cb;
+    u64 eb;
+    u8 rate_type;
+    u8 round_type;
+    u8 type;
+};
+
+/** \brief Add/del policer response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define policer_add_del_reply {
+    u32 context;
+    i32 retval;
+};

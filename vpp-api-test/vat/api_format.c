@@ -43,6 +43,7 @@
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
+#include <vnet/policer/xlate.h>
 
 #include "vat/json_format.h"
 
@@ -362,6 +363,56 @@ unformat_ikev2_id_type (unformat_input_t * input, va_list * args)
 #else
   return 0;
 #endif
+}
+
+uword
+unformat_policer_rate_type (unformat_input_t * input, va_list * args)
+{
+  u8 * r = va_arg (*args, u8 *);
+
+  if (unformat (input, "kbps"))
+    *r = SSE2_QOS_RATE_KBPS;
+  else if (unformat(input, "pps"))
+    *r = SSE2_QOS_RATE_PPS;
+  else
+    return 0;
+  return 1;
+}
+
+uword
+unformat_policer_round_type (unformat_input_t * input, va_list * args)
+{
+  u8 * r = va_arg (*args, u8 *);
+
+  if (unformat(input, "closest"))
+    *r = SSE2_QOS_ROUND_TO_CLOSEST;
+  else if (unformat (input, "up"))
+    *r = SSE2_QOS_ROUND_TO_UP;
+  else if (unformat (input, "down"))
+    *r = SSE2_QOS_ROUND_TO_DOWN;
+  else
+    return 0;
+  return 1;
+}
+
+uword
+unformat_policer_type (unformat_input_t * input, va_list * args)
+{
+  u8 * r = va_arg (*args, u8 *);
+
+  if (unformat (input, "1r2c"))
+    *r = SSE2_QOS_POLICER_TYPE_1R2C;
+  else if (unformat (input, "1r3c"))
+    *r = SSE2_QOS_POLICER_TYPE_1R3C_RFC_2697;
+  else if (unformat (input, "2r3c-2698"))
+    *r = SSE2_QOS_POLICER_TYPE_2R3C_RFC_2698;
+  else if (unformat (input, "2r3c-4115"))
+    *r = SSE2_QOS_POLICER_TYPE_2R3C_RFC_4115;
+  else if (unformat (input, "2r3c-mef5cf1"))
+    *r = SSE2_QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1;
+  else
+    return 0;
+  return 1;
 }
 
 u8 * format_ip4_address (u8 * s, va_list * args)
@@ -2179,7 +2230,8 @@ _(lisp_gpe_add_del_iface_reply)                         \
 _(lisp_enable_disable_reply)                            \
 _(vxlan_gpe_add_del_tunnel_reply)			\
 _(af_packet_create_reply)                               \
-_(af_packet_delete_reply)
+_(af_packet_delete_reply)                               \
+_(policer_add_del_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -2359,7 +2411,8 @@ _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
 _(LISP_ENABLE_DISABLE_STATUS_DETAILS,                                   \
   lisp_enable_disable_status_details)                                   \
 _(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
-_(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)
+_(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
+_(POLICER_ADD_DEL_REPLY, policer_add_del_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -10206,6 +10259,75 @@ api_af_packet_delete (vat_main_t * vam)
     return 0;
 }
 
+static int
+api_policer_add_del (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_policer_add_del_t * mp;
+    f64 timeout;
+    u8 is_add = 1;
+    u8 * name = 0;
+    u32 cir = 0;
+    u32 eir = 0;
+    u64 cb = 0;
+    u64 eb = 0;
+    u8 rate_type = 0;
+    u8 round_type = 0;
+    u8 type = 0;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "del"))
+            is_add = 0;
+        else if (unformat (i, "name %s", &name))
+            vec_add1 (name, 0);
+        else if (unformat (i, "cir %u", &cir))
+            ;
+        else if (unformat (i, "eir %u", &eir))
+            ;
+        else if (unformat (i, "cb %u", &cb))
+            ;
+        else if (unformat (i, "eb %u", &eb))
+            ;
+        else if (unformat (i, "rate_type %U", unformat_policer_rate_type,
+                           &rate_type))
+            ;
+        else if (unformat (i, "round_type %U", unformat_policer_round_type,
+                           &round_type))
+            ;
+        else if (unformat (i, "type %U", unformat_policer_type, &type))
+            ;
+        else
+          break;
+    }
+
+    if (!vec_len (name)) {
+        errmsg ("policer name must be specified");
+        return -99;
+    }
+
+    if (vec_len (name) > 64) {
+        errmsg ("policer name too long");
+        return -99;
+    }
+
+    M(POLICER_ADD_DEL, policer_add_del);
+
+    clib_memcpy (mp->name, name, vec_len (name));
+    vec_free (name);
+    mp->is_add = is_add;
+    mp->cir = cir;
+    mp->eir = eir;
+    mp->cb = cb;
+    mp->eb = eb;
+    mp->rate_type = rate_type;
+    mp->round_type = round_type;
+    mp->type = type;
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -10691,7 +10813,8 @@ _(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \
 _(lisp_enable_disable_status_dump, "")                                  \
 _(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
-_(af_packet_delete, "name <host interface name>")
+_(af_packet_delete, "name <host interface name>")                       \
+_(policer_add_del, "name <policer name> <params> [del]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
