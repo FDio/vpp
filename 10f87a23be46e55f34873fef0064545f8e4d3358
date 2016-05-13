@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_1610444d",
+        "filename": "Makefile",
+        "patchSetId": 9
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-13T02:55:11Z",
+      "side": 1,
+      "message": "I see Java continues to be a giant PITA ... grumble... there\u0027s a really simple way to resolve this stuff but ...",
+      "range": {
+        "startLine": 33,
+        "startChar": 0,
+        "endLine": 37,
+        "endChar": 5
+      },
+      "revId": "10f87a23be46e55f34873fef0064545f8e4d3358",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
