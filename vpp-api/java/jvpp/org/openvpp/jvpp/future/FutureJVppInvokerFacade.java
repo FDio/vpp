@@ -49,6 +49,10 @@ public class FutureJVppInvokerFacade implements FutureJVppInvoker {
         this.requests = Objects.requireNonNull(requestMap, "Null requestMap");
     }
 
+    protected final Map<Integer, CompletableFuture<? extends JVppReply<?>>> getRequests() {
+        return this.requests;
+    }
+
     // TODO use Optional in Future, java8
 
     @Override
