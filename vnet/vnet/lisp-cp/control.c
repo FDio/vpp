@@ -1032,7 +1032,7 @@ ip_fib_lookup_with_table (lisp_cp_main_t * lcm, u32 fib_index,
 }
 
 void
-get_local_iface_ip_for_dst (lisp_cp_main_t *lcm, ip_address_t * dst,
+get_mr_and_local_iface_ip (lisp_cp_main_t *lcm, ip_address_t * mr_ip,
                             ip_address_t * sloc)
 {
   u32 adj_index;
@@ -1041,76 +1041,88 @@ get_local_iface_ip_for_dst (lisp_cp_main_t *lcm, ip_address_t * dst,
   ip_lookup_main_t * lm;
   ip4_address_t * l4 = 0;
   ip6_address_t * l6 = 0;
+  ip_address_t * mrit;
 
-  lm = ip_addr_version (dst) == IP4 ?
-      &lcm->im4->lookup_main : &lcm->im6->lookup_main;
-
-  adj_index = ip_fib_lookup_with_table (lcm, 0, dst);
-  adj = ip_get_adjacency (lm, adj_index);
-
-  if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP)
+  if (vec_len(lcm->map_resolvers) == 0)
     {
-      ia = pool_elt_at_index(lm->if_address_pool, adj->if_address_index);
-      if (ip_addr_version(dst) == IP4)
-        {
-          l4 = ip_interface_address_get_address (lm, ia);
-        }
-      else
-        {
-          l6 = ip_interface_address_get_address (lm, ia);
-        }
-    }
-  else if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
-    {
-      /* find sw_if_index in rewrite header */
-      u32 sw_if_index = adj->rewrite_header.sw_if_index;
-
-      /* find suitable address */
-      if (ip_addr_version(dst) == IP4)
-        {
-          /* find the first ip address */
-          foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
-                                        sw_if_index, 1 /* unnumbered */,
-          ({
-            l4 = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
-            break;
-          }));
-        }
-      else
-        {
-          /* find the first ip address */
-          foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
-                                        sw_if_index, 1 /* unnumbered */,
-          ({
-            l6 = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
-            break;
-          }));
-        }
-    }
-  else
-    {
-      clib_warning("Can't find local local interface ip for dst %U",
-                   format_ip_address, dst);
+      clib_warning("No map-resolver configured");
       return;
     }
 
-  if (l4)
+  /* find the first mr ip we have a route to and the ip of the
+   * iface that has a route to it */
+  vec_foreach(mrit, lcm->map_resolvers)
     {
-      ip_addr_v4(sloc).as_u32 = l4->as_u32;
-      ip_addr_version(sloc) = IP4;
-    }
-  else if (l6)
-    {
-      clib_memcpy (&ip_addr_v6(sloc), l6, sizeof(*l6));
-      ip_addr_version(sloc) = IP6;
-    }
-  else
-    {
-      clib_warning("Can't find local interface addr for dst %U",
-                   format_ip_address, dst);
-    }
-}
+      lm = ip_addr_version (mrit) == IP4 ?
+          &lcm->im4->lookup_main : &lcm->im6->lookup_main;
 
+      adj_index = ip_fib_lookup_with_table (lcm, 0, mrit);
+      adj = ip_get_adjacency (lm, adj_index);
+
+      if (adj == 0)
+        continue;
+
+      if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP)
+        {
+          ia = pool_elt_at_index(lm->if_address_pool, adj->if_address_index);
+          if (ip_addr_version(mrit) == IP4)
+            {
+              l4 = ip_interface_address_get_address (lm, ia);
+            }
+          else
+            {
+              l6 = ip_interface_address_get_address (lm, ia);
+            }
+        }
+      else if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
+        {
+          /* find sw_if_index in rewrite header */
+          u32 sw_if_index = adj->rewrite_header.sw_if_index;
+
+          /* find suitable address */
+          if (ip_addr_version(mrit) == IP4)
+            {
+              /* find the first ip address */
+              foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
+                                            sw_if_index, 1 /* unnumbered */,
+              ({
+                l4 = ip_interface_address_get_address (&lcm->im4->lookup_main,
+                                                       ia);
+                break;
+              }));
+            }
+          else
+            {
+              /* find the first ip address */
+              foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
+                                            sw_if_index, 1 /* unnumbered */,
+              ({
+                l6 = ip_interface_address_get_address (&lcm->im6->lookup_main,
+                                                       ia);
+                break;
+              }));
+            }
+        }
+
+      if (l4)
+        {
+          ip_addr_v4(sloc).as_u32 = l4->as_u32;
+          ip_addr_version(sloc) = IP4;
+          ip_address_copy(mr_ip, mrit);
+          return;
+        }
+      else if (l6)
+        {
+          clib_memcpy (&ip_addr_v6(sloc), l6, sizeof(*l6));
+          ip_addr_version(sloc) = IP6;
+          ip_address_copy(mr_ip, mrit);
+          return;
+        }
+    }
+
+  clib_warning("Can't find map-resolver and local interface ip!");
+  return;
+}
 
 static gid_address_t *
 build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
@@ -1139,6 +1151,7 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
       ({
 	l4 = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
         ip_addr_v4 (rloc) = l4[0];
+        ip_prefix_len (ippref) = 32;
         vec_add1 (rlocs, gid[0]);
       }));
 
@@ -1149,6 +1162,7 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
       ({
         l6 = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
         ip_addr_v6 (rloc) = l6[0];
+        ip_prefix_len (ippref) = 128;
         vec_add1 (rlocs, gid[0]);
       }));
     }
@@ -1158,12 +1172,12 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
 static vlib_buffer_t *
 build_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
                                 gid_address_t * seid, gid_address_t * deid,
-                                locator_set_t * loc_set, u8 is_smr_invoked,
+                                locator_set_t * loc_set, ip_address_t * mr_ip,
+                                ip_address_t * sloc, u8 is_smr_invoked,
                                 u64 *nonce_res, u32 * bi_res)
 {
   vlib_buffer_t * b;
   u32 bi;
-  ip_address_t * mr_ip, sloc;
   gid_address_t * rlocs = 0;
 
   if (vlib_buffer_alloc (vm, &bi, 1) != 1)
@@ -1186,14 +1200,8 @@ build_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   /* push ecm: udp-ip-lisp */
   lisp_msg_push_ecm (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, seid, deid);
 
-  /* get map-resolver ip XXX use first*/
-  mr_ip = vec_elt_at_index(lcm->map_resolvers, 0);
-
-  /* get local iface ip to use in map-request XXX fib 0 for now*/
-  get_local_iface_ip_for_dst (lcm, mr_ip, &sloc);
-
   /* push outer ip header */
-  pkt_push_udp_and_ip (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, &sloc,
+  pkt_push_udp_and_ip (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, sloc,
                        mr_ip);
 
   bi_res[0] = bi;
@@ -1215,6 +1223,7 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   locator_set_t * loc_set;
   mapping_t * map;
   pending_map_request_t * pmr;
+  ip_address_t mr_ip, sloc;
 
   /* get locator-set for seid */
   map_index = gid_dictionary_lookup (&lcm->mapping_index_by_gid, seid);
@@ -1235,15 +1244,19 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
     }
   loc_set = pool_elt_at_index (lcm->locator_set_pool, map->locator_set_index);
 
+  /* get local iface ip to use in map-request XXX fib 0 for now*/
+  get_mr_and_local_iface_ip (lcm, &mr_ip, &sloc);
+
   /* build the encapsulated map request */
-  b = build_encapsulated_map_request (vm, lcm, seid, deid, loc_set,
-                                      is_smr_invoked, &nonce, &bi);
+  b = build_encapsulated_map_request (vm, lcm, seid, deid, loc_set, &mr_ip,
+                                      &sloc, is_smr_invoked, &nonce, &bi);
 
   if (!b)
     return;
 
+  /* set fib index and lookup node */
   vnet_buffer(b)->sw_if_index[VLIB_TX] = ~0;
-  next_index = (ip_prefix_version(&gid_address_ippref(seid)) == IP4) ?
+  next_index = (ip_addr_version(&mr_ip) == IP4) ?
       ip4_lookup_node.index : ip6_lookup_node.index;
 
   f = vlib_get_frame_to_node (vm, next_index);
