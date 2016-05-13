@@ -197,6 +197,18 @@ l2_rw_node_fn(vlib_main_t * vm,
       e0 = vnet_classify_find_entry(t0, (u8 *) h0, hash0, now);
       e1 = vnet_classify_find_entry(t1, (u8 *) h1, hash1, now);
 
+      while (!e0 && (t0->next_table_index != ~0)) {
+          t0 = pool_elt_at_index(vcm->tables, t0->next_table_index);
+          hash0 = vnet_classify_hash_packet(t0, (u8 *)h0);
+          e0 = vnet_classify_find_entry(t0, (u8 *) h0, hash0, now);
+      }
+
+      while (!e1 && (t1->next_table_index != ~0)) {
+        t1 = pool_elt_at_index(vcm->tables, t1->next_table_index);
+        hash1 = vnet_classify_hash_packet(t1, (u8 *)h1);
+        e1 = vnet_classify_find_entry(t1, (u8 *) h1, hash1, now);
+      }
+
       rwe_index0 = e0?e0->opaque_index:config0->miss_index;
       rwe_index1 = e1?e1->opaque_index:config1->miss_index;
 
@@ -267,6 +279,12 @@ l2_rw_node_fn(vlib_main_t * vm,
 
       hash0 = vnet_classify_hash_packet(t0, (u8 *)h0);
       e0 = vnet_classify_find_entry(t0, (u8 *) h0, hash0, now);
+
+      while (!e0 && (t0->next_table_index != ~0)) {
+        t0 = pool_elt_at_index(vcm->tables, t0->next_table_index);
+        hash0 = vnet_classify_hash_packet(t0, (u8 *)h0);
+        e0 = vnet_classify_find_entry(t0, (u8 *) h0, hash0, now);
+      }
 
       rwe_index0 = e0?e0->opaque_index:config0->miss_index;
 
