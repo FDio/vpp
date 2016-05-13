@@ -22,6 +22,30 @@
       "revId": "6964e0e4ea5be8ee946820a6c14e7b56114c8076",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_21ad4032",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1046,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-13T18:56:09Z",
+      "side": 1,
+      "message": "Good point! It should also work as it is because the variable will be unallocated until we add a resolver to the list. Still, since vec_len accepts nulls, your suggestion is better. Fix coming.",
+      "parentUuid": "da141535_61a45857",
+      "range": {
+        "startLine": 1046,
+        "startChar": 2,
+        "endLine": 1046,
+        "endChar": 26
+      },
+      "revId": "6964e0e4ea5be8ee946820a6c14e7b56114c8076",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
