@@ -57,7 +57,8 @@ public class CallbackApiTest {
 
     private static void testCallbackApi() throws Exception {
         System.out.println("Testing Java callback API");
-        JVpp jvpp = new JVppImpl(VppJNIConnection.create("CallbackApiTest", new TestCallback()));
+        JVpp jvpp = new JVppImpl( new VppJNIConnection("CallbackApiTest"));
+        jvpp.connect( new TestCallback());
         System.out.println("Successfully connected to VPP");
 
         System.out.println("Sending ShowVersion request...");

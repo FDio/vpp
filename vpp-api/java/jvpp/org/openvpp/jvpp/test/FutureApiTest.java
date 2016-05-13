@@ -16,22 +16,17 @@
 
 package org.openvpp.jvpp.test;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import org.openvpp.jvpp.VppJNIConnection;
 import org.openvpp.jvpp.dto.GetNodeIndex;
 import org.openvpp.jvpp.dto.GetNodeIndexReply;
-import org.openvpp.jvpp.dto.JVppReply;
 import org.openvpp.jvpp.dto.ShowVersion;
 import org.openvpp.jvpp.dto.ShowVersionReply;
 import org.openvpp.jvpp.dto.SwInterfaceDetails;
 import org.openvpp.jvpp.dto.SwInterfaceDetailsReplyDump;
 import org.openvpp.jvpp.dto.SwInterfaceDump;
 import org.openvpp.jvpp.future.FutureJVppFacade;
-import org.openvpp.jvpp.future.FutureJVppFacadeCallback;
 
 public class FutureApiTest {
 
@@ -104,10 +99,9 @@ public class FutureApiTest {
     private static void testFutureApi() throws Exception {
         System.out.println("Testing Java future API");
 
-        final Map<Integer, CompletableFuture<? extends JVppReply<?>>>  map = new HashMap<>();
         final org.openvpp.jvpp.JVppImpl impl =
-                new org.openvpp.jvpp.JVppImpl(VppJNIConnection.create("FutureApiTest", new FutureJVppFacadeCallback(map)));
-        final FutureJVppFacade jvppFacade = new FutureJVppFacade(impl, map);
+                new org.openvpp.jvpp.JVppImpl(new VppJNIConnection("FutureApiTest"));
+        final FutureJVppFacade jvppFacade = new FutureJVppFacade(impl);
         System.out.println("Successfully connected to VPP");
 
         testShowVersion(jvppFacade);
