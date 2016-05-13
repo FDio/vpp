@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_a17ef0e2",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-13T18:11:46Z",
+      "side": 1,
+      "message": "cast to u32",
+      "range": {
+        "startLine": 272,
+        "startChar": 6,
+        "endLine": 272,
+        "endChar": 8
+      },
+      "revId": "0a237368e09bd5a48f53f6a76d99a92921305562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_8183eccb",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-13T18:11:46Z",
+      "side": 1,
+      "message": "cast to u32",
+      "range": {
+        "startLine": 280,
+        "startChar": 6,
+        "endLine": 280,
+        "endChar": 8
+      },
+      "revId": "0a237368e09bd5a48f53f6a76d99a92921305562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_e14aa8ab",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-13T18:11:46Z",
+      "side": 1,
+      "message": "Give the process_map_reply code a look for inspiration.",
+      "range": {
+        "startLine": 310,
+        "startChar": 0,
+        "endLine": 314,
+        "endChar": 5
+      },
+      "revId": "0a237368e09bd5a48f53f6a76d99a92921305562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_c1ee848b",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 9823,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-13T18:11:46Z",
+      "side": 1,
+      "message": "Init to 0 to avoid complains from the compiler.",
+      "range": {
+        "startLine": 9823,
+        "startChar": 7,
+        "endLine": 9823,
+        "endChar": 25
+      },
+      "revId": "0a237368e09bd5a48f53f6a76d99a92921305562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
