@@ -350,6 +350,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
  done:
   vec_free(eids);
   vec_free(slocators);
+  vec_free(dlocators);
   return error;
 }
 
