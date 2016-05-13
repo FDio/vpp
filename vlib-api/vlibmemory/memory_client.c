@@ -248,3 +248,6 @@ result:
 
     return rv;
 }
+
+void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n)
+{ clib_warning ("STUB called..."); }

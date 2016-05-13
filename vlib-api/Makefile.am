@@ -66,11 +66,6 @@ nobase_include_HEADERS +=			\
 	vlibsocket/vl_socket_msg_enum.h		\
 	vlibsocket/sockclnt.api.h
 
-noinst_PROGRAMS = sock_test
-
-sock_test_SOURCES = vlibsocket/sock_test.c 
-sock_test_LDADD = 
-
 BUILT_SOURCES = vlibsocket/sockclnt.api.h vlibmemory/memclnt.api.h 
 
 SUFFIXES = .api.h .api

@@ -93,15 +93,19 @@ SUFFIXES = .api.h .api
 	| vppapigen --input - --output $@ --show-name $@
 
 
-noinst_PROGRAMS += test_client test_ha
+noinst_PROGRAMS += test_client
 
 test_client_SOURCES = api/test_client.c
 test_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
 	-lpthread -lm -lrt
 
+noinst_PROGRAMS += test_client test_ha
+
 test_ha_SOURCES = api/test_ha.c
 test_ha_LDADD = -lvlibmemoryclient -lvlibapi -lsvmdb -lsvm -lvppinfra \
 		-lpthread -lm -lrt
+
+
 
 noinst_PROGRAMS += summary_stats_client
 
