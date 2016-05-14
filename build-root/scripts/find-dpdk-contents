@@ -5,6 +5,15 @@ rm -rf dpdk-includes
 mkdir dpdk-includes
 (cd $1/dpdk/include; tar cfh - . | (cd ../../../dpdk-includes; tar xf -))
 
+# If CDPATH is set, the "Change Directory" builtin (cd) will output the
+# destination directory when a relative path is passed as an argument.
+# In this case, this has the negative side effect of polluting the "paths"
+# variable with the destination directory, breaking the package generation.
+#
+#   Patient:  Doctor!  Doctor!  It hurts when I do this...
+#    Doctor:  Don't do that!
+#
+unset CDPATH
 paths=`cd dpdk-includes; find . -type f -print`
 rm -f $2
 
