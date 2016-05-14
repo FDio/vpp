@@ -13,7 +13,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License. 
+ * limitations under the License.  
  *------------------------------------------------------------------
  */
 
@@ -26,8 +26,6 @@
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/sr/sr_packet.h>
-//#include <vnet/nsh-gre/nsh_gre.h> //alagalah testing nsh-gre removal
-#include <vnet/nsh/nsh.h> //alagalah testing nsh-gre removal
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>

@@ -9,7 +9,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.
+# limitations under the License. 
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
@@ -394,31 +394,6 @@ nobase_include_HEADERS +=			\
  vnet/mpls-gre/mpls.h				\
  vnet/mpls-gre/packet.h				\
  vnet/mpls-gre/error.def
-
-
-########################################
-# NSH Map: nsh
-########################################
- libvnet_la_SOURCES +=				\
-  vnet/nsh/nsh.c
-
- nobase_include_HEADERS +=			\
-  vnet/nsh/nsh_packet.h				\
-  vnet/nsh/nsh.h				\
-  vnet/nsh/nsh_error.def
-
-
-########################################
-# Tunnel protocol: nsh-gre
-########################################
-
-# libvnet_la_SOURCES +=				\
-#   vnet/nsh-gre/nsh_gre.c			\
-#   vnet/nsh-gre/encap.c				\
-#   vnet/nsh-gre/decap.c
-
-# nobase_include_HEADERS +=			\
-#   vnet/nsh-gre/nsh_gre.h				
 
 ########################################
 # Tunnel protocol: vxlan-gpe
