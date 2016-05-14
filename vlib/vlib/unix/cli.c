@@ -116,6 +116,18 @@ _("\n")
 };
 #undef _
 
+/** Pager line index */
+typedef struct {
+  /** Index into pager_vector */
+  u32 line;
+
+  /** Offset of the string in the line */
+  u32 offset;
+
+  /** Length of the string in the line */
+  u32 length;
+} unix_cli_pager_index_t;
+
 
 /** Unix CLI session. */
 typedef struct {
@@ -164,8 +176,8 @@ typedef struct {
   /** Pager buffer */
   u8 ** pager_vector;
 
-  /** Lines currently displayed */
-  u32 pager_lines;
+  /** Index of line fragments in the pager buffer */
+  unix_cli_pager_index_t * pager_index;
 
   /** Line number of top of page */
   u32 pager_start;
@@ -188,12 +200,16 @@ unix_cli_pager_reset (unix_cli_file_t *f)
 {
   u8 ** p;
 
-  f->pager_lines = f->pager_start = 0;
+  f->pager_start = 0;
+
+  vec_free (f->pager_index);
+  f->pager_index = 0;
+
   vec_foreach (p, f->pager_vector)
     {
-      vec_free(*p);
+      vec_free (*p);
     }
-  vec_free(f->pager_vector);
+  vec_free (f->pager_vector);
   f->pager_vector = 0;
 }
 
@@ -205,7 +221,7 @@ unix_cli_file_free (unix_cli_file_t * f)
 {
   vec_free (f->output_vector);
   vec_free (f->input_vector);
-  unix_cli_pager_reset(f);
+  unix_cli_pager_reset (f);
 }
 
 /** CLI actions */
@@ -240,6 +256,7 @@ typedef enum {
   UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM,
   UNIX_CLI_PARSE_ACTION_PAGER_PGDN,
   UNIX_CLI_PARSE_ACTION_PAGER_PGUP,
+  UNIX_CLI_PARSE_ACTION_PAGER_REDRAW,
   UNIX_CLI_PARSE_ACTION_PAGER_SEARCH,
 
   UNIX_CLI_PARSE_ACTION_PARTIALMATCH,
@@ -344,6 +361,8 @@ static unix_cli_parse_actions_t unix_cli_parse_pager[] = {
  /* Pager commands */
  _( " ",      UNIX_CLI_PARSE_ACTION_PAGER_NEXT ),
  _( "q",      UNIX_CLI_PARSE_ACTION_PAGER_QUIT ),
+ _( CTL('L'), UNIX_CLI_PARSE_ACTION_PAGER_REDRAW ),
+ _( CTL('R'), UNIX_CLI_PARSE_ACTION_PAGER_REDRAW ),
  _( "/",      UNIX_CLI_PARSE_ACTION_PAGER_SEARCH ),
 
  /* VT100 */
@@ -615,7 +634,7 @@ static void unix_cli_pager_prompt(unix_cli_file_t * cf, unix_file_t * uf)
     cf->ansi_capable ? ANSI_BOLD : "",
     cf->pager_start + 1,
     cf->pager_start + cf->height,
-    cf->pager_lines,
+    vec_len (cf->pager_index),
     cf->ansi_capable ? ANSI_RESET: "");
 
   unix_vlib_cli_output_cooked(cf, uf, prompt, vec_len(prompt));
@@ -673,7 +692,205 @@ static void unix_cli_ansi_cursor(unix_cli_file_t * cf, unix_file_t * uf,
   vec_free(str);
 }
 
-/** \brief VLIB CLI output function. */
+/** Redraw the currently displayed page of text.
+ * @param cf CLI session to redraw the pager buffer of.
+ * @param uf Unix file of the CLI session.
+ */
+static void unix_cli_pager_redraw(unix_cli_file_t * cf, unix_file_t * uf)
+{
+  unix_cli_pager_index_t * pi = NULL;
+  u8 * line = NULL;
+  word i;
+
+  /* No active pager? Do nothing. */
+  if (!vec_len (cf->pager_index))
+    return;
+
+  if (cf->ansi_capable)
+    {
+      /* If we have ANSI, send the clear screen sequence */
+      unix_vlib_cli_output_cooked (cf, uf,
+          (u8 *)ANSI_CLEAR, sizeof(ANSI_CLEAR) - 1);
+    }
+  else
+    {
+      /* Otherwise make sure we're on a blank line */
+      unix_cli_pager_prompt_erase (cf, uf);
+    }
+
+  /* (Re-)send the current page of content */
+  for (i = 0; i < cf->height - 1 &&
+          i + cf->pager_start < vec_len (cf->pager_index);
+          i ++)
+    {
+      pi = &cf->pager_index[cf->pager_start + i];
+      line = cf->pager_vector[pi->line] + pi->offset;
+
+      unix_vlib_cli_output_cooked (cf, uf, line, pi->length);
+    }
+  /* if the last line didn't end in newline, add a newline */
+  if (pi && line[pi->length - 1] != '\n')
+    unix_vlib_cli_output_cooked (cf, uf, (u8 *)"\n", 1);
+
+  unix_cli_pager_prompt (cf, uf);
+}
+
+/** @brief Process and add a line to the pager index.
+ * In normal operation this function will take the given character string
+ * found in @c line and with length @c len_or_index and iterates the over the
+ * contents, adding each line of text discovered within it to the
+ * pager index. Lines are identified by newlines ("<code>\\n</code>") and by
+ * strings longer than the width of the terminal.
+ *
+ * If instead @c line is @c NULL then @c len_or_index is taken to mean the
+ * index of an existing line in the pager buffer; this simply means that the
+ * input line does not need to be cloned since we alreayd have it. This is
+ * typical if we are reindexing the pager buffer.
+ *
+ * @param cf           The CLI session whose pager we are adding to.
+ * @param line         The string of text to be indexed into the pager buffer.
+ *                     If @c line is @c NULL then the mode of operation
+ *                     changes slightly; see the description above.
+ * @param len_or_index If @c line is a pointer to a string then this parameter
+ *                     indicates the length of that string; Otherwise this
+ *                     value provides the index in the pager buffer of an
+ *                     existing string to be indexed.
+ */
+static void unix_cli_pager_add_line (unix_cli_file_t * cf,
+                                     u8 * line,
+                                     word len_or_index)
+{
+  u8 * p;
+  word i, j, k;
+  word line_index, len;
+  u32 width = cf->width;
+  unix_cli_pager_index_t * pi;
+
+  if (line == NULL)
+    {
+      /* Use a line already in the pager buffer */
+      line_index = len_or_index;
+      p = cf->pager_vector[line_index];
+      len = vec_len (p);
+    }
+  else
+    {
+      len = len_or_index;
+      /* Add a copy of the raw string to the pager buffer */
+      p = vec_new (u8, len);
+      clib_memcpy (p, line, len);
+
+      /* store in pager buffer */
+      line_index = vec_len (cf->pager_vector);
+      vec_add1 (cf->pager_vector, p);
+    }
+
+  i = 0;
+  while (i < len)
+    {
+      /* Find the next line, or run to terminal width, or run to EOL */
+      int l = len - i;
+      j = unix_vlib_findchr((u8)'\n', p, l < width ? l : width);
+
+      if (j < l && p[j] == '\n') /* incl \n */
+        j ++;
+
+      /* Add the line to the index */
+      k = vec_len (cf->pager_index);
+      vec_validate (cf->pager_index, k);
+      pi = &cf->pager_index[k];
+
+      pi->line = line_index;
+      pi->offset = i;
+      pi->length = j;
+
+      i += j;
+      p += j;
+    }
+}
+
+/** @brief Reindex entire pager buffer.
+ * Resets the current pager index and then re-adds the lines in the pager
+ * buffer to the index.
+ *
+ * Additionally this function attempts to retain the current page start
+ * line offset by searching for the same top-of-screen line in the new index.
+ *
+ * @param cf The CLI session whose pager buffer should be reindexed.
+ */
+static void unix_cli_pager_reindex (unix_cli_file_t * cf)
+{
+  word i, old_line, old_offset;
+  unix_cli_pager_index_t * pi;
+
+  /* If there is nothing in the pager buffer then make sure the index
+   * is empty and move on.
+   */
+  if (cf->pager_vector == 0)
+    {
+      vec_reset_length (cf->pager_index);
+      return;
+    }
+
+  /* Retain a pointer to the current page start line so we can
+   * find it later
+   */
+  pi = &cf->pager_index[cf->pager_start];
+  old_line = pi->line;
+  old_offset = pi->offset;
+
+  /* Re-add the buffered lines to the index */
+  vec_reset_length (cf->pager_index);
+  vec_foreach_index(i, cf->pager_vector)
+    {
+      unix_cli_pager_add_line(cf, NULL, i);
+    }
+
+  /* Attempt to re-locate the previously stored page start line */
+  vec_foreach_index(i, cf->pager_index)
+    {
+      pi = &cf->pager_index[i];
+
+      if (pi->line == old_line &&
+            (pi->offset <= old_offset ||
+             pi->offset + pi->length > old_offset))
+        {
+          /* Found it! */
+          cf->pager_start = i;
+          break;
+        }
+    }
+
+  /* In case the start line was not found (rare), ensure the pager start
+   * index is within bounds
+   */
+  if (cf->pager_start >= vec_len (cf->pager_index))
+    {
+      cf->pager_start = vec_len (cf->pager_index) - cf->height + 1;
+
+      if (cf->pager_start < 0)
+        cf->pager_start = 0;
+    }
+}
+
+/** VLIB CLI output function.
+ *
+ * If the terminal has a pager configured then this function takes care
+ * of collating output into the pager buffer; ensuring only the first page
+ * is displayed and any lines in excess of the first page are buffered.
+ *
+ * If the maximum number of index lines in the buffer is exceeded then the
+ * pager is cancelled and the contents of the current buffer are sent to the
+ * terminal.
+ *
+ * If there is no pager configured then the output is sent directly to the
+ * terminal.
+ *
+ * @param cli_file_index Index of the CLI session where this output is
+ *                       directed.
+ * @param buffer         String of printabe bytes to be output.
+ * @param buffer_bytes   The number of bytes in @c buffer to be output.
+ */
 static void unix_vlib_cli_output (uword cli_file_index,
 				  u8 * buffer,
 				  uword buffer_bytes)
@@ -688,75 +905,80 @@ static void unix_vlib_cli_output (uword cli_file_index,
 
   if (cf->no_pager || um->cli_pager_buffer_limit == 0 || cf->height == 0)
     {
-      unix_vlib_cli_output_cooked(cf, uf, buffer, buffer_bytes);
+      unix_vlib_cli_output_cooked (cf, uf, buffer, buffer_bytes);
     }
   else
     {
-      /* At each \n add the line to the pager buffer.
-       * If we've not yet displayed a whole page in this command then
-       * also output the line.
-       * If we have displayed a whole page then display a pager prompt
-       * and count the lines we've buffered.
-       */
-      u8 * p = buffer;
+      word row = vec_len (cf->pager_index);
       u8 * line;
-      uword i, len = buffer_bytes;
+      unix_cli_pager_index_t * pi;
 
-      while (len)
+      /* Index and add the output lines to the pager buffer. */
+      unix_cli_pager_add_line (cf, buffer, buffer_bytes);
+
+      /* Now iterate what was added to display the lines.
+       * If we reach the bottom of the page, display a prompt.
+       */
+      while (row < vec_len (cf->pager_index))
         {
-          i = unix_vlib_findchr('\n', p, len);
-          if (i < len)
-            i ++; /* include the '\n' */
-
-          /* make a vec out of this substring */
-          line = vec_new(u8, i);
-          memcpy(line, p, i);
-
-          /* store in pager buffer */
-          vec_add1(cf->pager_vector, line);
-          cf->pager_lines ++;
-
-          if (cf->pager_lines < cf->height)
+          if (row < cf->height - 1)
             {
               /* output this line */
-              unix_vlib_cli_output_cooked(cf, uf, p, i);
-              /* TODO: stop if line longer than cf->width and would
-               * overflow cf->height */
+              pi = &cf->pager_index[row];
+              line = cf->pager_vector[pi->line] + pi->offset;
+              unix_vlib_cli_output_cooked (cf, uf, line, pi->length);
+
+              /* if the last line didn't end in newline, and we're at the
+               * bottom of the page, add a newline */
+              if (line[pi->length - 1] != '\n' && row == cf->height - 2)
+                unix_vlib_cli_output_cooked (cf, uf, (u8 *)"\n", 1);
             }
           else
             {
               /* Display the pager prompt every 10 lines */
-              if (!(cf->pager_lines % 10))
+              if (!(row % 10))
                 unix_cli_pager_prompt(cf, uf);
             }
-
-          p += i;
-          len -= i;
+          row ++;
         }
 
-        /* Check if we went over the pager buffer limit */
-        if (cf->pager_lines > um->cli_pager_buffer_limit)
-          {
-            /* Stop using the pager for the remainder of this CLI command */
-            cf->no_pager = 2;
+      /* Check if we went over the pager buffer limit */
+      if (vec_len (cf->pager_index) > um->cli_pager_buffer_limit)
+        {
+          /* Stop using the pager for the remainder of this CLI command */
+          cf->no_pager = 2;
 
-            /* If we likely printed the prompt, erase it */
-            if (cf->pager_lines > cf->height - 1)
-              unix_cli_pager_prompt_erase (cf, uf);
+          /* If we likely printed the prompt, erase it */
+          if (vec_len (cf->pager_index) > cf->height - 1)
+            unix_cli_pager_prompt_erase (cf, uf);
 
-            /* Dump out the contents of the buffer */
-            for (i = cf->pager_start + (cf->height - 1);
-                          i < cf->pager_lines; i ++)
-              unix_vlib_cli_output_cooked (cf, uf,
-                cf->pager_vector[i],
-                vec_len(cf->pager_vector[i]));
+          /* Dump out the contents of the buffer */
+          for (row = cf->pager_start + (cf->height - 1);
+                        row < vec_len (cf->pager_index); row ++)
+            {
+              pi = &cf->pager_index[row];
+              line = cf->pager_vector[pi->line] + pi->offset;
+              unix_vlib_cli_output_cooked (cf, uf, line, pi->length);
+            }
 
-            unix_cli_pager_reset (cf);
-          }
+          unix_cli_pager_reset (cf);
+        }
     }
 }
 
-/** \brief Identify whether a terminal type is ANSI capable. */
+/** Identify whether a terminal type is ANSI capable.
+ *
+ * Compares the string given in @term with a list of terminal types known
+ * to support ANSI escape sequences.
+ *
+ * This list contains, for example, @c xterm, @c screen and @c ansi.
+ *
+ * @param term A string with a terminal type in it.
+ * @param len The length of the string in @term.
+ *
+ * @return @c 1 if the terminal type is recognized as supporting ANSI
+ *         terminal sequences; @c 0 otherwise.
+ */
 static u8 unix_cli_terminal_type(u8 * term, uword len)
 {
   /* This may later be better done as a hash of some sort. */
@@ -906,6 +1128,10 @@ static i32 unix_cli_process_telnet(unix_main_t * um,
                           break;
                         cf->width = clib_net_to_host_u16(*((u16 *)(input_vector + 3)));
                         cf->height = clib_net_to_host_u16(*((u16 *)(input_vector + 5)));
+                        /* reindex pager buffer */
+                        unix_cli_pager_reindex (cf);
+                        /* redraw page */
+                        unix_cli_pager_redraw (cf, uf);
                         break;
 
                       default:
@@ -1308,18 +1534,24 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_PAGER_NEXT:
     case UNIX_CLI_PARSE_ACTION_PAGER_PGDN:
       /* show next page of the buffer */
-      if (cf->height + cf->pager_start < cf->pager_lines)
+      if (cf->height + cf->pager_start < vec_len (cf->pager_index))
         {
-          u8 * line;
+          u8 * line = NULL;
+          unix_cli_pager_index_t * pi = NULL;
+
           int m = cf->pager_start + (cf->height - 1);
           unix_cli_pager_prompt_erase (cf, uf);
           for (j = m;
-                j < cf->pager_lines && cf->pager_start < m;
+                j < vec_len (cf->pager_index) && cf->pager_start < m;
                 j ++, cf->pager_start ++)
             {
-              line = cf->pager_vector[j];
-              unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+              pi = &cf->pager_index[j];
+              line = cf->pager_vector[pi->line] + pi->offset;
+              unix_vlib_cli_output_cooked (cf, uf, line, pi->length);
             }
+            /* if the last line didn't end in newline, add a newline */
+            if (pi && line[pi->length - 1] != '\n')
+              unix_vlib_cli_output_cooked (cf, uf, (u8 *)"\n", 1);
           unix_cli_pager_prompt (cf, uf);
         }
       else
@@ -1333,13 +1565,19 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_PAGER_DN:
     case UNIX_CLI_PARSE_ACTION_PAGER_CRLF:
       /* display the next line of the buffer */
-      if (cf->pager_start < cf->pager_lines - (cf->height - 1))
+      if (cf->pager_start < vec_len (cf->pager_index) - (cf->height - 1))
         {
           u8 * line;
+          unix_cli_pager_index_t * pi;
+
           unix_cli_pager_prompt_erase (cf, uf);
-          line = cf->pager_vector[cf->pager_start + (cf->height - 1)];
-          unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+          pi = &cf->pager_index[cf->pager_start + (cf->height - 1)];
+          line = cf->pager_vector[pi->line] + pi->offset;
+          unix_vlib_cli_output_cooked (cf, uf, line, pi->length);
           cf->pager_start ++;
+          /* if the last line didn't end in newline, add a newline */
+          if (line[pi->length - 1] != '\n')
+            unix_vlib_cli_output_cooked (cf, uf, (u8 *)"\n", 1);
           unix_cli_pager_prompt (cf, uf);
         }
       else
@@ -1355,16 +1593,20 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
       /* scroll the page back one line */
       if (cf->pager_start > 0)
         {
-          u8 * line;
+          u8 * line = NULL;
+          unix_cli_pager_index_t * pi = NULL;
+
           cf->pager_start --;
           if (cf->ansi_capable)
             {
+              pi = &cf->pager_index[cf->pager_start];
+              line = cf->pager_vector[pi->line] + pi->offset;
               unix_cli_pager_prompt_erase (cf, uf);
               unix_vlib_cli_output_cooked (cf, uf, (u8 *)ANSI_SCROLLDN, sizeof(ANSI_SCROLLDN) - 1);
               unix_vlib_cli_output_cooked (cf, uf, (u8 *)ANSI_SAVECURSOR, sizeof(ANSI_SAVECURSOR) - 1);
               unix_cli_ansi_cursor(cf, uf, 1, 1);
               unix_vlib_cli_output_cooked (cf, uf, (u8 *)ANSI_CLEARLINE, sizeof(ANSI_CLEARLINE) - 1);
-              unix_vlib_cli_output_cooked (cf, uf, cf->pager_vector[cf->pager_start], vec_len(cf->pager_vector[cf->pager_start]));
+              unix_vlib_cli_output_cooked (cf, uf, line, pi->length);
               unix_vlib_cli_output_cooked (cf, uf, (u8 *)ANSI_RESTCURSOR, sizeof(ANSI_RESTCURSOR) - 1);
               unix_cli_pager_prompt_erase (cf, uf);
               unix_cli_pager_prompt (cf, uf);
@@ -1373,11 +1615,15 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
             {
               int m = cf->pager_start + (cf->height - 1);
               unix_cli_pager_prompt_erase (cf, uf);
-              for (j = cf->pager_start; j < cf->pager_lines && j < m; j ++)
+              for (j = cf->pager_start; j < vec_len (cf->pager_index) && j < m; j ++)
                 {
-                  line = cf->pager_vector[j];
-                  unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+                  pi = &cf->pager_index[j];
+                  line = cf->pager_vector[pi->line] + pi->offset;
+                  unix_vlib_cli_output_cooked (cf, uf, line, pi->length);
                 }
+              /* if the last line didn't end in newline, add a newline */
+              if (pi && line[pi->length - 1] != '\n')
+                unix_vlib_cli_output_cooked (cf, uf, (u8 *)"\n", 1);
               unix_cli_pager_prompt (cf, uf);
             }
         }
@@ -1387,32 +1633,44 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
       /* back to the first page of the buffer */
       if (cf->pager_start > 0)
         {
-          u8 * line;
+          u8 * line = NULL;
+          unix_cli_pager_index_t * pi = NULL;
+
           cf->pager_start = 0;
           int m = cf->pager_start + (cf->height - 1);
           unix_cli_pager_prompt_erase (cf, uf);
-          for (j = cf->pager_start; j < cf->pager_lines && j < m; j ++)
+          for (j = cf->pager_start; j < vec_len (cf->pager_index) && j < m; j ++)
             {
-              line = cf->pager_vector[j];
-              unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+              pi = &cf->pager_index[j];
+              line = cf->pager_vector[pi->line] + pi->offset;
+              unix_vlib_cli_output_cooked (cf, uf, line, pi->length);
             }
+          /* if the last line didn't end in newline, add a newline */
+          if (pi && line[pi->length - 1] != '\n')
+            unix_vlib_cli_output_cooked (cf, uf, (u8 *)"\n", 1);
           unix_cli_pager_prompt (cf, uf);
         }
       break;
 
     case UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM:
       /* skip to the last page of the buffer */
-      if (cf->pager_start < cf->pager_lines - (cf->height - 1))
+      if (cf->pager_start < vec_len (cf->pager_index) - (cf->height - 1))
         {
-          u8 * line;
-          cf->pager_start = cf->pager_lines - (cf->height - 1);
+          u8 * line = NULL;
+          unix_cli_pager_index_t * pi = NULL;
+
+          cf->pager_start = vec_len (cf->pager_index) - (cf->height - 1);
           unix_cli_pager_prompt_erase (cf, uf);
           unix_cli_pager_message (cf, uf, "skipping", "\n");
-          for (j = cf->pager_start; j < cf->pager_lines; j ++)
+          for (j = cf->pager_start; j < vec_len (cf->pager_index); j ++)
             {
-              line = cf->pager_vector[j];
-              unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+              pi = &cf->pager_index[j];
+              line = cf->pager_vector[pi->line] + pi->offset;
+              unix_vlib_cli_output_cooked (cf, uf, line, pi->length);
             }
+          /* if the last line didn't end in newline, add a newline */
+          if (pi && line[pi->length - 1] != '\n')
+            unix_vlib_cli_output_cooked (cf, uf, (u8 *)"\n", 1);
           unix_cli_pager_prompt (cf, uf);
         }
       break;
@@ -1421,21 +1679,32 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
       /* wander back one page in the buffer */
       if (cf->pager_start > 0)
         {
-          u8 * line;
+          u8 * line = NULL;
+          unix_cli_pager_index_t * pi = NULL;
           int m;
+
           if (cf->pager_start >= cf->height)
             cf->pager_start -= cf->height - 1;
           else
-            cf->pager_start = 1;
+            cf->pager_start = 0;
           m = cf->pager_start + cf->height - 1;
           unix_cli_pager_prompt_erase (cf, uf);
-          for (j = cf->pager_start; j < cf->pager_lines && j < m; j ++)
+          for (j = cf->pager_start; j < vec_len (cf->pager_index) && j < m; j ++)
             {
-              line = cf->pager_vector[j];
-              unix_vlib_cli_output_cooked (cf, uf, line, vec_len(line));
+              pi = &cf->pager_index[j];
+              line = cf->pager_vector[pi->line] + pi->offset;
+              unix_vlib_cli_output_cooked (cf, uf, line, pi->length);
             }
+          /* if the last line didn't end in newline, add a newline */
+          if (pi && line[pi->length - 1] != '\n')
+            unix_vlib_cli_output_cooked (cf, uf, (u8 *)"\n", 1);
           unix_cli_pager_prompt (cf, uf);
         }
+      break;
+
+    case UNIX_CLI_PARSE_ACTION_PAGER_REDRAW:
+      /* Redraw the current pager screen */
+      unix_cli_pager_redraw (cf, uf);
       break;
 
     case UNIX_CLI_PARSE_ACTION_PAGER_SEARCH:
@@ -1482,7 +1751,7 @@ static int unix_cli_line_process_one(unix_cli_main_t * cm,
 
     case UNIX_CLI_PARSE_ACTION_PARTIALMATCH:
     case UNIX_CLI_PARSE_ACTION_NOMATCH:
-      if (cf->pager_lines)
+      if (vec_len (cf->pager_index))
         {
           /* no-op for now */
         }
@@ -1605,7 +1874,7 @@ static int unix_cli_line_edit (unix_cli_main_t * cm,
       unix_cli_parse_actions_t *a;
 
       /* If we're in the pager mode, search the pager actions */
-      a = cf->pager_lines ? unix_cli_parse_pager : unix_cli_parse_strings;
+      a = vec_len (cf->pager_index) ? unix_cli_parse_pager : unix_cli_parse_strings;
 
       /* See if the input buffer is some sort of control code */
       action = unix_cli_match_action(a, &cf->input_vector[i],
@@ -1714,8 +1983,7 @@ more:
   (void) unformat (&input, "");
 
   cm->current_input_file_index = cli_file_index;
-  cf->pager_lines = 0; /* start a new pager session */
-  cf->pager_start = 0;
+  cf->pager_start = 0; /* start a new pager session */
 
   if (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     vlib_cli_input (um->vlib_main, &input, unix_vlib_cli_output, cli_file_index);
@@ -1743,7 +2011,7 @@ done:
       cf->no_pager = um->cli_no_pager;
     }
 
-  if (cf->pager_lines == 0 || cf->pager_lines < cf->height)
+  if (vec_len (cf->pager_index) == 0 || vec_len (cf->pager_index) < cf->height)
     {
       /* There was no need for the pager */
       unix_cli_pager_reset (cf);
@@ -2034,9 +2302,11 @@ static clib_error_t * unix_cli_listen_read_ready (unix_file_t * uf)
 static void
 unix_cli_resize_interrupt (int signum)
 {
+  unix_main_t * um = &unix_main;
   unix_cli_main_t * cm = &unix_cli_main;
   unix_cli_file_t * cf = pool_elt_at_index (cm->cli_file_pool,
                                 cm->stdin_cli_file_index);
+  unix_file_t * uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
   struct winsize ws;
   (void)signum;
 
@@ -2044,6 +2314,12 @@ unix_cli_resize_interrupt (int signum)
   ioctl(UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws);
   cf->width = ws.ws_col;
   cf->height = ws.ws_row;
+
+  /* Reindex the pager buffer */
+  unix_cli_pager_reindex (cf);
+
+  /* Redraw the page */
+  unix_cli_pager_redraw (cf, uf);
 }
 
 /** Handle configuration directives in the @em unix section. */
