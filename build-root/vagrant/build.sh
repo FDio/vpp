@@ -1,4 +1,16 @@
 #!/bin/bash
+echo "ps -A"
+ps -A
+
+if [ -f /var/lib/dpkg/lock ]; then
+    echo "ls -l /var/lib/dpkg/lock /var/lib/apt/lists/lock"
+    ls -l /var/lib/dpkg/lock /var/lib/apt/lists/lock
+    echo "cat /var/lib/dpkg/lock /var/lib/apt/lists/lock"
+    echo "fuser /var/lib/dpkg/lock /var/lib/apt/lists/lock"
+    fuser /var/lib/dpkg/lock /var/lib/apt/lists/lock
+else
+    echo "/var/lib/dpkg/lock does not exist"
+fi
 
 # Get Command Line arguements if present
 VPP_DIR=$1
@@ -33,9 +45,38 @@ echo DISTRIB_CODENAME: $DISTRIB_CODENAME
 echo DISTRIB_DESCRIPTION: $DISTRIB_DESCRIPTION
 
 # Install dependencies
+echo "ps -A"
+ps -A
+if [ -f /var/lib/dpkg/lock ]; then
+    echo "ls -l /var/lib/dpkg/lock /var/lib/apt/lists/lock"
+    ls -l /var/lib/dpkg/lock /var/lib/apt/lists/lock
+    echo "cat /var/lib/dpkg/lock /var/lib/apt/lists/lock"
+    echo "fuser /var/lib/dpkg/lock /var/lib/apt/lists/lock"
+    fuser /var/lib/dpkg/lock /var/lib/apt/lists/lock
+else
+    echo "/var/lib/dpkg/lock does not exist"
+fi
+
+echo "cat /var/log/syslog "
+cat /var/log/syslog 
+
 cd $VPP_DIR
+(i=0;time while pgrep -l "apt|unattended-upg" && [ $i -lt 120 ]; do echo $i: `date`;i=$[$i+1];sleep 1;make UNATTENDED=yes install-dep; done)
+
 make UNATTENDED=yes install-dep
 
+echo "ps -A"
+
+ps -A
+if [ -f /var/lib/dpkg/lock ]; then
+    echo "ls -l /var/lib/dpkg/lock /var/lib/apt/lists/lock"
+    ls -l /var/lib/dpkg/lock /var/lib/apt/lists/lock
+    echo "cat /var/lib/dpkg/lock /var/lib/apt/lists/lock"
+    echo "fuser /var/lib/dpkg/lock /var/lib/apt/lists/lock"
+    fuser /var/lib/dpkg/lock /var/lib/apt/lists/lock
+else
+    echo "/var/lib/dpkg/lock does not exist"
+fi
 # Really really clean things up so we can be sure
 # that the build works even when switching distros
 make wipe
