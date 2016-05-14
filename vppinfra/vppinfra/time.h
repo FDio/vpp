@@ -113,12 +113,19 @@ always_inline u64 clib_cpu_time_now (void)
 }
 
 #elif defined (__arm__)
-#if defined(__ARM_ARCH_7A__)
-always_inline u64 clib_cpu_time_now (void)
+#if defined(__ARM_ARCH_8A__)
+always_inline u64 clib_cpu_time_now (void) /* We may run arm64 in aarch32 mode, to leverage 64bit counter */
 {
   u64 tsc;
   asm volatile("mrrc p15, 0, %Q0, %R0, c9" : "=r" (tsc));
   return tsc;
+}
+#elif defined(__ARM_ARCH_7A__)
+always_inline u64 clib_cpu_time_now (void)
+{
+  u32 tsc;
+  asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r" (tsc));
+  return (u64)tsc;
 }
 #else
 always_inline u64 clib_cpu_time_now (void)
