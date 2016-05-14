@@ -1,5 +1,13 @@
 #!/bin/bash
 
+if [ -f /var/lib/dpkg/lock ]; then
+    echo "ls -l /var/lib/dpkg/lock"
+    ls -l /var/lib/dpkg/lock
+    echo "cat /var/lib/dpkg/lock"
+else
+    echo "/var/lib/dpkg/lock does not exist"
+fi
+
 # Get Command Line arguements if present
 VPP_DIR=$1
 if [ "x$1" != "x" ]; then
