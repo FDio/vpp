@@ -407,19 +407,6 @@ nobase_include_HEADERS +=			\
   vnet/nsh/nsh.h				\
   vnet/nsh/nsh_error.def
 
-
-########################################
-# Tunnel protocol: nsh-gre
-########################################
-
-# libvnet_la_SOURCES +=				\
-#   vnet/nsh-gre/nsh_gre.c			\
-#   vnet/nsh-gre/encap.c				\
-#   vnet/nsh-gre/decap.c
-
-# nobase_include_HEADERS +=			\
-#   vnet/nsh-gre/nsh_gre.h				
-
 ########################################
 # Tunnel protocol: vxlan-gpe
 ########################################
