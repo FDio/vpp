@@ -1,0 +1,233 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_269f9161",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "Its a good practice leaving 1 blank line between the first sentence and the second(where the first sentence contains short description (approx 65 chars) of the commit while the second sentence contains details and can be developed into a paragraph with lines no longer than 80 chars)\n\nThe first sentence \"JVPP Interface changes\" is very generic and not suitable for commit message",
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_86b9bdeb",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "No need to mention tests update here",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 9,
+        "endChar": 13
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_a6b4c1f2",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "No need to mention drawbacks :)",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 48
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_86b53dcf",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "Javadoc is needed here stating that connect is called inside \n+ why IOException might be thrown\n\nSame for CallbackFacade",
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_069c8d68",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "This does not clearly say what the method does",
+      "range": {
+        "startLine": 31,
+        "startChar": 7,
+        "endLine": 31,
+        "endChar": 77
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_86877d0f",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "blank line between description and @param improves readability",
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_e6887924",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "initiated",
+      "range": {
+        "startLine": 33,
+        "startChar": 59,
+        "endLine": 33,
+        "endChar": 68
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_4679652e",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppConnection.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "further might not be the right word here",
+      "range": {
+        "startLine": 28,
+        "startChar": 30,
+        "endLine": 28,
+        "endChar": 37
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_667c6921",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppConnection.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "blank line",
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_26ad5189",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "this is just confusing. The sentence should just say:\n\nInitiate current VPP connection",
+      "range": {
+        "startLine": 90,
+        "startChar": 35,
+        "endLine": 90,
+        "endChar": 47
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_e6b639dc",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-05-16T12:51:08Z",
+      "side": 1,
+      "message": "not important here and an implementation detail that might change, please remove",
+      "range": {
+        "startLine": 94,
+        "startChar": 0,
+        "endLine": 94,
+        "endChar": 60
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
