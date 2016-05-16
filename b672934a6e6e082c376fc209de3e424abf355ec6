@@ -16,6 +16,24 @@
       "revId": "b672934a6e6e082c376fc209de3e424abf355ec6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_f3ff1d00",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-05-16T01:11:22Z",
+      "side": 1,
+      "message": "Paranoia -\u003e reducing the possibility of user environment based SNAFUs to the firewall/proxy-server case, since it is not necessary for the non-firewall case.\n\nUpon further investigation, apt-get/add-apt-repository don\u0027t have any environment variables that control it, so I suspect there is a low chance that something else in the user environment is likely to cause problems.\n\nI\u0027ll remove the conditional usage...",
+      "parentUuid": "da141535_70af83e4",
+      "revId": "b672934a6e6e082c376fc209de3e424abf355ec6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
