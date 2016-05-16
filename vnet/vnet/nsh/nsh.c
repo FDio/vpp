@@ -506,7 +506,7 @@ nsh_add_del_map_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (create_nsh_map_command, static) = {
   .path = "create nsh map",
   .short_help = 
-  "create nsh map nsp <nn> nsi <nn> [del] map-nsp <nn> map-nsi <nn> [encap-gre-intf <nn> | encap-vxlan-gpe-intf <nn> | encap-none]\n",
+  "create nsh map nsp <nn> nsi <nn> [del] mapped-nsp <nn> mapped-nsi <nn> [encap-gre-intf <nn> | encap-vxlan-gpe-intf <nn> | encap-none]\n",
   .function = nsh_add_del_map_command_fn,
 };
 
