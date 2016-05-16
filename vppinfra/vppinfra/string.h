@@ -57,7 +57,7 @@ void clib_memswap (void * _a, void * _b, uword bytes);
 
 #if __AVX__
 #include <vppinfra/memcpy_avx.h>
-#elif __SSE3__
+#elif __SSSE3__
 #include <vppinfra/memcpy_sse3.h>
 #else
 #define clib_memcpy(a,b,c) memcpy(a,b,c)
