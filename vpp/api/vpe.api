@@ -2030,35 +2030,6 @@ manual_java define show_version_reply {
    u8 build_directory[256];
 };
 
-define nsh_gre_add_del_tunnel {
-    u32 client_index;
-    u32 context;
-    u32 src;
-    u32 dst;
-    u32 encap_vrf_id;
-    u32 decap_vrf_id;
-    u32 decap_next_index;
-    u8 tlv_len_in_words;
-    u8 is_add;
-    u8 ver_o_c;
-    u8 length;
-    u8 md_type;
-    u8 next_protocol;
-    /* in network byte order */
-    u32 spi_si;
-    u32 c1;
-    u32 c2;
-    u32 c3;
-    u32 c4;
-    u32 tlvs[0];
-};
-
-define nsh_gre_add_del_tunnel_reply {
-    u32 context;
-    i32 retval;
-    u32 sw_if_index;
-};
-
 /** \brief Vhost-user interface details structure (fix this)
     @param sw_if_index - index of the interface
     @param interface_name - name of interface
@@ -2157,29 +2128,6 @@ define vxlan_gpe_add_del_tunnel_reply {
     u32 sw_if_index;
 };
 
-define nsh_add_del_entry {
-    u32 client_index;
-    u32 context;
-    u8 tlv_len_in_words;
-    u8 is_add;
-    u8 ver_o_c;
-    u8 length;
-    u8 md_type;
-    u8 next_protocol;
-    /* in network byte order */
-    u32 nsp_nsi;
-    u32 c1;
-    u32 c2;
-    u32 c3;
-    u32 c4;
-    u32 tlvs[0];
-};
-
-define nsh_add_del_entry_reply {
-    u32 context;
-    i32 retval;
-    u32 sw_if_index;
-};
 
 /** \brief add or delete locator_set
     @param client_index - opaque cookie to identify the sender
