@@ -26,8 +26,6 @@
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/sr/sr_packet.h>
-//#include <vnet/nsh-gre/nsh_gre.h> //alagalah testing nsh-gre removal
-#include <vnet/nsh/nsh.h> //alagalah testing nsh-gre removal
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
