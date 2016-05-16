@@ -300,8 +300,6 @@ static uword unformat_gpe_decap_next (unformat_input_t * input, va_list * args)
     *result = VXLAN_GPE_INPUT_NEXT_IP6_INPUT;
   else if (unformat (input, "ethernet"))
     *result = VXLAN_GPE_INPUT_NEXT_ETHERNET_INPUT;
-  else if (unformat (input, "nsh"))
-    *result = VXLAN_GPE_INPUT_NEXT_NSH_INPUT;
   else if (unformat (input, "%d", &tmp))
     *result = tmp;
   else

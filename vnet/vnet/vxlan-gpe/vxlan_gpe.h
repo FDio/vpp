@@ -76,8 +76,7 @@ typedef struct {
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")                       \
-_(ETHERNET_INPUT, "ethernet-input")             \
-_(NSH_INPUT, "nsh-input")
+_(ETHERNET_INPUT, "ethernet-input")             
 
 typedef enum {
 #define _(s,n) VXLAN_GPE_INPUT_NEXT_##s,

@@ -142,8 +142,8 @@ vxlan_gpe_input (vlib_main_t * vm,
           error0 = 0;
           error1 = 0;
 
-	  next0 = (iuvn0->vxlan.protocol < VXLAN_GPE_INPUT_N_NEXT) ? iuvn0->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
-	  next1 = (iuvn1->vxlan.protocol < VXLAN_GPE_INPUT_N_NEXT) ? iuvn1->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
+	  next0 = (iuvn0->vxlan.protocol < node->n_next_nodes) ? iuvn0->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
+	  next1 = (iuvn1->vxlan.protocol < node->n_next_nodes) ? iuvn1->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
 
 
 
@@ -328,7 +328,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 
           tunnel_index0 = ~0;
           error0 = 0;
-          next0 = (iuvn0->vxlan.protocol < VXLAN_GPE_INPUT_N_NEXT) ? iuvn0->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
+          next0 = (iuvn0->vxlan.protocol < node->n_next_nodes) ? iuvn0->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
 
           key0.local = iuvn0->ip4.dst_address.as_u32;
 	  key0.remote = iuvn0->ip4.src_address.as_u32;
