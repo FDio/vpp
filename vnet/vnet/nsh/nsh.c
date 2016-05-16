@@ -303,7 +303,6 @@ nsh_input_map (vlib_main_t * vm,
 	  u32 error0;
 	  nsh_map_t * map0 = 0;
 
-	  next_index = next0; 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
 	  from += 1;
