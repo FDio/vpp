@@ -16,6 +16,24 @@
       "revId": "effddae67f70f72d51c8c073d491d9df723f86bb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_06312dec",
+        "filename": "vnet/vnet/ip/ip4.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-05-16T11:51:39Z",
+      "side": 1,
+      "message": "I am not sure I understood. Even using ~0 as ID, the used ID might not be equal to the index.",
+      "parentUuid": "da141535_cdba3be1",
+      "revId": "effddae67f70f72d51c8c073d491d9df723f86bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
