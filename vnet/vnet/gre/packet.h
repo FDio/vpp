@@ -22,8 +22,7 @@
 _ (0x0800, ip4)                                 \
 _ (0x86DD, ip6)                                 \
 _ (0x0806, arp)					\
-_ (0x8847, mpls_unicast)			\
-_ (0x894F, nsh)
+_ (0x8847, mpls_unicast)			
 
 typedef enum {
 #define _(n,f) GRE_PROTOCOL_##f = n,
