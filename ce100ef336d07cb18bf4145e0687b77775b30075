@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "da141535_a6e8417d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_269f9161",
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_86b9bdeb",
         "filename": "/COMMIT_MSG",
         "patchSetId": 2
@@ -30,6 +48,30 @@
       "writtenOn": "2016-05-16T12:51:08Z",
       "side": 1,
       "message": "No need to mention tests update here",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 9,
+        "endChar": 13
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_86ed3d8e",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Reformulated, hint to sample is sometimes helpfull",
+      "parentUuid": "da141535_86b9bdeb",
       "range": {
         "startLine": 9,
         "startChar": 0,
@@ -65,6 +107,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_66022940",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_a6b4c1f2",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 48
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_86b53dcf",
         "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
         "patchSetId": 2
@@ -76,6 +142,24 @@
       "writtenOn": "2016-05-16T12:51:08Z",
       "side": 1,
       "message": "Javadoc is needed here stating that connect is called inside \n+ why IOException might be thrown\n\nSame for CallbackFacade",
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_2620b1f6",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Done (both)",
+      "parentUuid": "da141535_86b53dcf",
       "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -105,6 +189,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_4623a505",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_069c8d68",
+      "range": {
+        "startLine": 31,
+        "startChar": 7,
+        "endLine": 31,
+        "endChar": 77
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_86877d0f",
         "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
         "patchSetId": 2
@@ -122,6 +230,24 @@
     },
     {
       "key": {
+        "uuid": "da141535_6626a918",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_86877d0f",
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_e6887924",
         "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
         "patchSetId": 2
@@ -133,6 +259,30 @@
       "writtenOn": "2016-05-16T12:51:08Z",
       "side": 1,
       "message": "initiated",
+      "range": {
+        "startLine": 33,
+        "startChar": 59,
+        "endLine": 33,
+        "endChar": 68
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_8611bdae",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_impl_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_e6887924",
       "range": {
         "startLine": 33,
         "startChar": 59,
@@ -168,6 +318,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_466a851b",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppConnection.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_4679652e",
+      "range": {
+        "startLine": 28,
+        "startChar": 30,
+        "endLine": 28,
+        "endChar": 37
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_667c6921",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppConnection.java",
         "patchSetId": 2
@@ -179,6 +353,24 @@
       "writtenOn": "2016-05-16T12:51:08Z",
       "side": 1,
       "message": "blank line",
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_26779104",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppConnection.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_667c6921",
       "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -208,6 +400,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_e6607937",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_26ad5189",
+      "range": {
+        "startLine": 90,
+        "startChar": 35,
+        "endLine": 90,
+        "endChar": 47
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_e6b639dc",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
         "patchSetId": 2
@@ -219,6 +435,30 @@
       "writtenOn": "2016-05-16T12:51:08Z",
       "side": 1,
       "message": "not important here and an implementation detail that might change, please remove",
+      "range": {
+        "startLine": 94,
+        "startChar": 0,
+        "endLine": 94,
+        "endChar": 60
+      },
+      "revId": "ce100ef336d07cb18bf4145e0687b77775b30075",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_c6657546",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-05-16T15:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_e6b639dc",
       "range": {
         "startLine": 94,
         "startChar": 0,
