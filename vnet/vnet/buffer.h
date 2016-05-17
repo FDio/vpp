@@ -61,6 +61,8 @@
 #define ETH_BUFFER_VLAN_BITS (ETH_BUFFER_VLAN_1_DEEP | \
                               ETH_BUFFER_VLAN_2_DEEP)
 
+#define LOG2_BUFFER_OUTPUT_FEAT_DONE LOG2_VLIB_BUFFER_FLAG_USER(5)
+#define BUFFER_OUTPUT_FEAT_DONE (1 << LOG2_BUFFER_OUTPUT_FEAT_DONE)
 
 #define foreach_buffer_opaque_union_subtype     \
 _(ethernet)                                     \

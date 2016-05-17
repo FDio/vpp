@@ -495,9 +495,10 @@ vnet_interface_output_node_no_flatten (vlib_main_t * vm,
 	  n_packets += 2;
 
           if (PREDICT_FALSE(si->output_feature_bitmap &&
-              vnet_buffer(b0)->output_features.bitmap != (1 << INTF_OUTPUT_FEAT_DONE)))
+              ((b0->flags & BUFFER_OUTPUT_FEAT_DONE) == 0)))
             {
               u32 next0;
+              b0->flags |= BUFFER_OUTPUT_FEAT_DONE;
               vnet_buffer(b0)->output_features.bitmap = si->output_feature_bitmap;
               count_trailing_zeros(next0, vnet_buffer(b0)->output_features.bitmap);
               vnet_buffer(b0)->output_features.bitmap &= ~(1 << next0);
@@ -521,9 +522,10 @@ vnet_interface_output_node_no_flatten (vlib_main_t * vm,
             }
 
           if (PREDICT_FALSE(si->output_feature_bitmap &&
-              vnet_buffer(b1)->output_features.bitmap != (1 << INTF_OUTPUT_FEAT_DONE)))
+              ((b1->flags & BUFFER_OUTPUT_FEAT_DONE) == 0)))
             {
               u32 next1;
+              b1->flags |= BUFFER_OUTPUT_FEAT_DONE;
               vnet_buffer(b1)->output_features.bitmap = si->output_feature_bitmap;
               count_trailing_zeros(next1, vnet_buffer(b1)->output_features.bitmap);
               vnet_buffer(b1)->output_features.bitmap &= ~(1 << next1);
@@ -573,9 +575,10 @@ vnet_interface_output_node_no_flatten (vlib_main_t * vm,
 	  n_packets += 1;
 
           if (PREDICT_FALSE(si->output_feature_bitmap &&
-              vnet_buffer(b0)->output_features.bitmap != (1 << INTF_OUTPUT_FEAT_DONE)))
+              ((b0->flags & BUFFER_OUTPUT_FEAT_DONE) == 0)))
             {
               u32 next0;
+              b0->flags |= BUFFER_OUTPUT_FEAT_DONE;
               vnet_buffer(b0)->output_features.bitmap = si->output_feature_bitmap;
               count_trailing_zeros(next0, vnet_buffer(b0)->output_features.bitmap);
               vnet_buffer(b0)->output_features.bitmap &= ~(1 << next0);
