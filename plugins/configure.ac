@@ -62,5 +62,6 @@ PLUGIN_ENABLED(lb)
 # Disabled plugins, require --enable-XXX-plugin
 PLUGIN_DISABLED(vcgn)
 PLUGIN_DISABLED(sample)
+PLUGIN_DISABLED(netcp)
 
 AC_OUTPUT([Makefile])
