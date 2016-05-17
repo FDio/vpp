@@ -55,3 +55,7 @@ endif
 if ENABLE_flowperpkt_PLUGIN
 SUBDIRS += flowperpkt-plugin
 endif
+
+if ENABLE_netcp_PLUGIN
+SUBDIRS += netcp-plugin
+endif

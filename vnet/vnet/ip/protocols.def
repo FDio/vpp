@@ -158,5 +158,6 @@ ip_protocol (134, RSVP_E2E_IGNORE)
 ip_protocol (135, MOBILITY)
 ip_protocol (136, UDP_LITE)
 ip_protocol (137, MPLS_IN_IP)
+ip_protocol (250, NETCP)
 ip_protocol (255, RESERVED)
 
