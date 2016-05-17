@@ -51,3 +51,7 @@ endif
 if ENABLE_lb_PLUGIN
 SUBDIRS += lb-plugin
 endif
+
+if ENABLE_netcp_PLUGIN
+SUBDIRS += netcp-plugin
+endif
