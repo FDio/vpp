@@ -1,4 +1,4 @@
-AC_INIT(vpp-japi, 1.0.0)
+AC_INIT(vpp-japi, 16.09)
 LT_INIT
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE
