@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_3aad6232",
+        "filename": "build-data/platforms/vpp.mk",
+        "patchSetId": 5
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-05-18T20:46:40Z",
+      "side": 1,
+      "message": "Until the DPDK folks add multiarch support, corei7 will hurt performance. Please add a comment so folks know about the issue, and so they\u0027ll know to compile -march\u003dnative to squeeze the last drop if they want to...",
+      "revId": "5cd7a1b8b0916e979ff63dc90c4d38639a6844db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
