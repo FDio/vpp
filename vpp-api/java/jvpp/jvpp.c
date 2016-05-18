@@ -39,7 +39,9 @@
 #include <api/vpe_all_api_h.h>
 #undef vl_printfun
 
+#ifndef VPPJNI_DEBUG
 #define VPPJNI_DEBUG 0
+#endif
 
 #if VPPJNI_DEBUG == 1
   #define DEBUG_LOG(...) clib_warning(__VA_ARGS__)
@@ -160,6 +162,44 @@ JNIEXPORT void JNICALL Java_org_openvpp_jvpp_VppJNIConnection_clientDisconnect
     vl_client_disconnect_from_vlib();
 }
 
+/**
+* Send error reply to the requestor
+* const char* call  pointer to the request name
+* int context       call context identifier
+* int retval        result of the operation
+*/
+void CallOnError(const char* call, int context, int retval)
+{
+    DEBUG_LOG("\nCallOnError : callback=%s,retval=%d,context=%d\n",call,clib_net_to_host_u32(retval), clib_net_to_host_u32(context));
+    vppjni_main_t * jm = &vppjni_main;
+    JNIEnv *env = jm->jenv;
+    if (!env) printf( "CallOnError : env is null!\n");
+    if (!jm->callbackClass) {
+        DEBUG_LOG( "CallOnError : jm->callbackClass is null!\n");
+        return;
+    }
+
+    jmethodID excConstructor = (*env)->GetMethodID(env, callbackExceptionClass, "<init>", "(Ljava/lang/String;II)V");
+    if (!excConstructor) {
+        DEBUG_LOG( "CallOnError : excConstructor is null!\n");
+        return;
+    }
+    jmethodID callbackExcMethod = (*env)->GetMethodID(env, jm->callbackClass, "onError", "(Lorg/openvpp/jvpp/VppCallbackException;)V");
+    if (!callbackExcMethod) {
+        DEBUG_LOG( "CallOnError : callbackExcMethod is null!\n");
+        return;
+    }
+
+    jobject excObject = (*env)->NewObject(env, callbackExceptionClass, excConstructor,(*env)->NewStringUTF(env, call), clib_net_to_host_u32(context), clib_net_to_host_u32(retval));
+    if (!excObject) {
+        DEBUG_LOG( "CallOnError : excObject is null!\n");
+        return;
+    }
+
+    (*env)->CallVoidMethod(env, jm->callback, callbackExcMethod, excObject);
+    DEBUG_LOG( "CallOnError : Response sent\n");
+}
+
 // control ping needs to be very first thing called
 // to attach rx thread to java thread
 static void vl_api_control_ping_reply_t_handler
@@ -192,24 +232,25 @@ static void vl_api_control_ping_reply_t_handler
     if (was_thread_connected == 0) {
         JNIEnv *env = jm->jenv;
 
-        jmethodID constructor = (*env)->GetMethodID(env, controlPingReplyClass, "<init>", "()V");
-        jmethodID callbackMethod = (*env)->GetMethodID(env, jm->callbackClass, "onControlPingReply", "(Lorg/openvpp/jvpp/dto/ControlPingReply;)V");
+        if (mp->retval<0){
+            CallOnError("controlPing", mp->context, mp->retval);
+        } else {
+            jmethodID constructor = (*env)->GetMethodID(env, controlPingReplyClass, "<init>", "()V");
+            jmethodID callbackMethod = (*env)->GetMethodID(env, jm->callbackClass, "onControlPingReply", "(Lorg/openvpp/jvpp/dto/ControlPingReply;)V");
 
-        jobject dto = (*env)->NewObject(env, controlPingReplyClass, constructor);
+            jobject dto = (*env)->NewObject(env, controlPingReplyClass, constructor);
 
-        jfieldID contextFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "context", "I");
-        (*env)->SetIntField(env, dto, contextFieldId, clib_net_to_host_u32(mp->context));
+            jfieldID contextFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "context", "I");
+            (*env)->SetIntField(env, dto, contextFieldId, clib_net_to_host_u32(mp->context));
 
-        jfieldID retvalFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "retval", "I");
-        (*env)->SetIntField(env, dto, retvalFieldId, clib_net_to_host_u32(mp->retval));
+            jfieldID clientIndexFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "clientIndex", "I");
+            (*env)->SetIntField(env, dto, clientIndexFieldId, clib_net_to_host_u32(mp->client_index));
 
-        jfieldID clientIndexFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "clientIndex", "I");
-        (*env)->SetIntField(env, dto, clientIndexFieldId, clib_net_to_host_u32(mp->client_index));
+            jfieldID vpePidFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "vpePid", "I");
+            (*env)->SetIntField(env, dto, vpePidFieldId, clib_net_to_host_u32(mp->vpe_pid));
 
-        jfieldID vpePidFieldId = (*env)->GetFieldID(env, controlPingReplyClass, "vpePid", "I");
-        (*env)->SetIntField(env, dto, vpePidFieldId, clib_net_to_host_u32(mp->vpe_pid));
-
-        (*env)->CallVoidMethod(env, jm->callback, callbackMethod, dto);
+            (*env)->CallVoidMethod(env, jm->callback, callbackMethod, dto);
+        }
     }
 
     out:
