@@ -36,7 +36,7 @@ $methods
 field_template = Template("""    public $type $name;\n""")
 
 send_template = Template("""    @Override
-    public int send(final $base_package.JVpp jvpp) {
+    public int send(final $base_package.JVpp jvpp) throws org.openvpp.jvpp.VppInvocationException {
         return jvpp.$method_name($args);
     }\n""")
 
@@ -58,8 +58,12 @@ def generate_dtos(func_list, base_package, dto_package, inputfile):
 
         fields = ""
         for t in zip(func['types'], func['args']):
+            # for retval don't generate dto field in Reply
+            field_name = util.underscore_to_camelcase(t[1])
+            if util.is_reply(camel_case_dto_name) and util.is_retval_field(field_name):
+                continue
             fields += field_template.substitute(type=util.jni_2_java_type_mapping[t[0]],
-                                                name=util.underscore_to_camelcase(t[1]))
+                                                name=field_name)
         methods = ""
         base_type = ""
         if util.is_reply(camel_case_dto_name):

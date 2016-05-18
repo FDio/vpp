@@ -83,25 +83,22 @@ public class L2AclTest {
     }
 
     private static void print(ClassifyAddDelTableReply reply) {
-        System.out.printf("ClassifyAddDelTableReply: context=%d, retval=%d, " +
+        System.out.printf("ClassifyAddDelTableReply: context=%d, " +
                         "newTableIndex=%d, skipNVectors=%d, matchNVectors=%d\n",
                 reply.context,
-                reply.retval,
                 reply.newTableIndex,
                 reply.skipNVectors,
                 reply.matchNVectors);
     }
 
     private static void print(ClassifyAddDelSessionReply reply) {
-        System.out.printf("ClassifyAddDelSessionReply: context=%d, retval=%d\n",
-                reply.context,
-                reply.retval);
+        System.out.printf("ClassifyAddDelSessionReply: context=%d\n",
+                reply.context);
     }
 
     private static void print(final InputAclSetInterfaceReply reply) {
-        System.out.printf("InputAclSetInterfaceReply: context=%d, retval=%d\n",
-                reply.context,
-                reply.retval);
+        System.out.printf("InputAclSetInterfaceReply: context=%d\n",
+                reply.context);
 
     }
 

@@ -76,9 +76,8 @@ public class CreateSubInterfaceTest {
     }
 
     private static void print(CreateSubifReply reply) {
-        System.out.printf("CreateSubifReply: context=%d, retval=%d, swIfIndex=%d\n",
+        System.out.printf("CreateSubifReply: context=%d, swIfIndex=%d\n",
                 reply.context,
-                reply.retval,
                 reply.swIfIndex);
     }
 
