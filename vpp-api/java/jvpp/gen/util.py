@@ -45,6 +45,9 @@ def is_reply(name):
 def is_details(name):
     return name.lower().endswith(reply_suffixes[1]) or name.lower().endswith(reply_suffixes[2])
 
+def is_retval_field(name):
+    return name == 'retval'
+
 dump_suffix = "dump"
 
 

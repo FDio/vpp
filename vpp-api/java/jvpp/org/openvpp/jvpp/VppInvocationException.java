@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-package org.openvpp.jvpp.callback;
+package org.openvpp.jvpp;
 
 /**
-* Base JVppCallback interface
-*/
-public interface JVppCallback {
+ * Exception thrown when Vpp jAPI method invocation failed.
+ */
+public class VppInvocationException extends VppBaseCallException {
     /**
-     * onError callback handler used to report failing operation
-     * @param ex org.openvpp.jvpp.VppCallbackException object containing details about failing operation
-     * @throws org.openvpp.jvpp.VppCallbackException
+     * Constructs an VppApiInvocationFailedException with the specified api method name and error code.
+     *
+     * @param methodName method name that failed to invoke
+     * @param errorCode  negative error code value associated with this failure
+     * @throws NullPointerException     if apiMethodName is null
      */
-    void onError(org.openvpp.jvpp.VppCallbackException ex) throws org.openvpp.jvpp.VppCallbackException;
+    public VppInvocationException(final String methodName, final int errorCode) {
+        super(methodName, 0, errorCode);
+    }
 }
