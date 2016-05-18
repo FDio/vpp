@@ -17,6 +17,7 @@
 package org.openvpp.jvpp.dto;
 
 import org.openvpp.jvpp.JVpp;
+import org.openvpp.jvpp.VppInvocationException;
 
 /**
 * Base interface for all request DTOs
@@ -28,6 +29,6 @@ public interface JVppRequest {
      *
      * @return context id of this request. Can be used to track incomming response
      */
-    int send(JVpp jvpp);
+    int send(JVpp jvpp) throws VppInvocationException;
 
 }
