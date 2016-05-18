@@ -18,9 +18,14 @@ package org.openvpp.jvpp.test;
 
 import org.openvpp.jvpp.JVpp;
 import org.openvpp.jvpp.JVppImpl;
+import org.openvpp.jvpp.VppCallbackException;
 import org.openvpp.jvpp.VppJNIConnection;
+import org.openvpp.jvpp.callback.GetNodeIndexCallback;
 import org.openvpp.jvpp.callback.ShowVersionCallback;
 import org.openvpp.jvpp.callfacade.CallbackJVppFacade;
+import org.openvpp.jvpp.dto.GetNodeIndex;
+import org.openvpp.jvpp.dto.GetNodeIndexReply;
+import org.openvpp.jvpp.dto.ShowVersionReply;
 
 /**
  * CallbackJVppFacade together with CallbackJVppFacadeCallback allow for setting different callback for each request.
@@ -28,15 +33,51 @@ import org.openvpp.jvpp.callfacade.CallbackJVppFacade;
  */
 public class CallbackJVppFacadeTest {
 
-    private static ShowVersionCallback showVersionCallback1 = msg ->
-            System.out.printf("ShowVersionCallback1 received ShowVersionReply: context=%d, retval=%d, program=%s," +
-                            "version=%s, buildDate=%s, buildDirectory=%s\n", msg.context, msg.retval, new String(msg.program),
-                    new String(msg.version), new String(msg.buildDate), new String(msg.buildDirectory));
+    private static ShowVersionCallback showVersionCallback1;
+    private static ShowVersionCallback showVersionCallback2;
+    private static GetNodeIndexCallback getNodeIndexCallback;
 
-    private static ShowVersionCallback showVersionCallback2 = msg ->
-            System.out.printf("ShowVersionCallback2 received ShowVersionReply: context=%d, retval=%d, program=%s," +
-                            "version=%s, buildDate=%s, buildDirectory=%s\n", msg.context, msg.retval, new String(msg.program),
-                    new String(msg.version), new String(msg.buildDate), new String(msg.buildDirectory));
+    static {
+        getNodeIndexCallback = new GetNodeIndexCallback() {
+            @Override
+            public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
+                System.out.printf("Received GetNodeIndexReply: context=%d, nodeIndex=%d\n",
+                        msg.context, msg.nodeIndex);
+            }
+
+            @Override
+            public void onError(VppCallbackException ex) {
+                System.out.printf("Received onError exception in getNodeIndexCallback: call=%s, reply=%d, context=%d\n", ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
+            }
+        };
+        showVersionCallback2 = new ShowVersionCallback() {
+            @Override
+            public void onShowVersionReply(final ShowVersionReply msg) {
+                System.out.printf("ShowVersionCallback1 received ShowVersionReply: context=%d, program=%s," +
+                                "version=%s, buildDate=%s, buildDirectory=%s\n", msg.context, new String(msg.program),
+                        new String(msg.version), new String(msg.buildDate), new String(msg.buildDirectory));
+            }
+
+            @Override
+            public void onError(VppCallbackException ex) {
+                System.out.printf("Received onError exception in showVersionCallback2: call=%s, reply=%d, context=%d\n", ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
+            }
+
+        };
+        showVersionCallback1 = new ShowVersionCallback() {
+            @Override
+            public void onShowVersionReply(final ShowVersionReply msg) {
+                System.out.printf("ShowVersionCallback1 received ShowVersionReply: context=%d, program=%s," +
+                                "version=%s, buildDate=%s, buildDirectory=%s\n", msg.context, new String(msg.program),
+                        new String(msg.version), new String(msg.buildDate), new String(msg.buildDirectory));
+            }
+
+            @Override
+            public void onError(VppCallbackException ex) {
+                System.out.printf("Received onError exception in showVersionCallback1: call=%s, reply=%d, context=%d\n", ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
+            }
+        };
+    }
 
     private static void testCallbackFacade() throws Exception {
         System.out.println("Testing CallbackJVppFacade");
@@ -49,6 +90,9 @@ public class CallbackJVppFacadeTest {
         jvppCallbackFacade.showVersion(showVersionCallback1);
         jvppCallbackFacade.showVersion(showVersionCallback2);
 
+        GetNodeIndex getNodeIndexRequest = new GetNodeIndex();
+        getNodeIndexRequest.nodeName = "dummyNode".getBytes();
+        jvppCallbackFacade.getNodeIndex(getNodeIndexRequest, getNodeIndexCallback);
 
         Thread.sleep(2000);
 

@@ -16,8 +16,6 @@
 
 package org.openvpp.jvpp.test;
 
-import static java.util.Objects.requireNonNull;
-
 import org.openvpp.jvpp.JVppImpl;
 import org.openvpp.jvpp.VppJNIConnection;
 import org.openvpp.jvpp.dto.CreateSubif;
@@ -25,6 +23,8 @@ import org.openvpp.jvpp.dto.CreateSubifReply;
 import org.openvpp.jvpp.dto.SwInterfaceDetailsReplyDump;
 import org.openvpp.jvpp.dto.SwInterfaceDump;
 import org.openvpp.jvpp.future.FutureJVppFacade;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * <p>Tests sub-interface creation.<br> Equivalent to:<br>
@@ -76,9 +76,8 @@ public class CreateSubInterfaceTest {
     }
 
     private static void print(CreateSubifReply reply) {
-        System.out.printf("CreateSubifReply: context=%d, retval=%d, swIfIndex=%d\n",
+        System.out.printf("CreateSubifReply: context=%d, swIfIndex=%d\n",
                 reply.context,
-                reply.retval,
                 reply.swIfIndex);
     }
 

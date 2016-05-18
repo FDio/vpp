@@ -17,9 +17,10 @@
 package org.openvpp.jvpp.future;
 
 
-import java.util.concurrent.CompletionStage;
 import org.openvpp.jvpp.dto.JVppReply;
 import org.openvpp.jvpp.dto.JVppRequest;
+
+import java.util.concurrent.CompletionStage;
 
 /**
 * Future facade on top of JVpp
@@ -30,7 +31,8 @@ public interface FutureJVppInvoker extends AutoCloseable {
      * Invoke asynchronous operation on VPP
      *
      * @return CompletionStage with future result of an async VPP call
+     * @throws org.openvpp.jvpp.VppInvocationException when send request failed with details
      */
-    <REQ extends JVppRequest, REPLY extends JVppReply<REQ>> CompletionStage<REPLY> send(REQ req);
+    <REQ extends JVppRequest, REPLY extends JVppReply<REQ>> CompletionStage<REPLY> send(REQ req) throws org.openvpp.jvpp.VppInvocationException;
 
 }
