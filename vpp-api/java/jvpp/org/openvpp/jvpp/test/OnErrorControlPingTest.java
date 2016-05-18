@@ -24,7 +24,7 @@ import org.openvpp.jvpp.callback.ControlPingCallback;
 import org.openvpp.jvpp.dto.ControlPing;
 import org.openvpp.jvpp.dto.ControlPingReply;
 
-public class ControlPingTest {
+public class OnErrorControlPingTest {
 
     private static void testControlPing() throws Exception {
         System.out.println("Testing ControlPing using Java callback API");
@@ -38,14 +38,14 @@ public class ControlPingTest {
             }
 
             @Override
-            public void onError(VppCallbackException ex) throws org.openvpp.jvpp.VppCallbackException {
+            public void onError(VppCallbackException ex) throws VppCallbackException {
                 System.out.printf("Received onError exception: call=%s, reply=%d, context=%d ", ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
             }
 
         });
         System.out.println("Successfully connected to VPP");
         Thread.sleep(1000);
-
+        jvpp.close();
         jvpp.send(new ControlPing());
 
         Thread.sleep(2000);
