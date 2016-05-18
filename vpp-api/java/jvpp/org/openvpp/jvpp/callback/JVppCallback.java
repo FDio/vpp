@@ -15,9 +15,15 @@
  */
 
 package org.openvpp.jvpp.callback;
+import org.openvpp.jvpp.VppCallbackException;
 
 /**
-* Base JVppCallback interface
-*/
+ * Base JVppCallback interface
+ */
 public interface JVppCallback {
+    /**
+     * onError callback handler used to report failing operation
+     * @param ex VppCallbackException object containing details about failing operation
+     */
+    void onError(VppCallbackException ex);
 }
