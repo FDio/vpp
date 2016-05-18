@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_1a761e3f",
+        "filename": "vpp-api/java/jvpp/gen/dto_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-18T13:26:28Z",
+      "side": 1,
+      "message": "jvpp send methods return ctx_id used for reply - response matching\nit can fail in case of connection problems, VNET_API_ERROR_NOT_CONNECTED is returned in that case.\nSo different exception should be thrown",
+      "range": {
+        "startLine": 39,
+        "startChar": 51,
+        "endLine": 39,
+        "endChar": 97
+      },
+      "revId": "cf6a5b458cdd36eb0f57e0da1d9730a16a9b7b9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
