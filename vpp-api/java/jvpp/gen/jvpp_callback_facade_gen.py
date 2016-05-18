@@ -77,16 +77,17 @@ $methods
 """)
 
 method_template = Template(
-    """    void $name($base_package.$dto_package.$request request, $base_package.$callback_package.$callback callback);""")
-method_impl_template = Template("""    public final void $name($base_package.$dto_package.$request request, $base_package.$callback_package.$callback callback) {
+    """    void $name($base_package.$dto_package.$request request, $base_package.$callback_package.$callback callback) throws org.openvpp.jvpp.VppInvocationException;""")
+
+method_impl_template = Template("""    public final void $name($base_package.$dto_package.$request request, $base_package.$callback_package.$callback callback) throws org.openvpp.jvpp.VppInvocationException {
         synchronized (callbacks) {
             callbacks.put(jvpp.$name(request), callback);
         }
     }
 """)
 
-no_arg_method_template = Template("""    void $name($base_package.$callback_package.$callback callback);""")
-no_arg_method_impl_template = Template("""    public final void $name($base_package.$callback_package.$callback callback) {
+no_arg_method_template = Template("""    void $name($base_package.$callback_package.$callback callback) throws org.openvpp.jvpp.VppInvocationException;""")
+no_arg_method_impl_template = Template("""    public final void $name($base_package.$callback_package.$callback callback) throws org.openvpp.jvpp.VppInvocationException {
         synchronized (callbacks) {
             callbacks.put(jvpp.$name(), callback);
         }

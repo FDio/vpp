@@ -39,8 +39,10 @@ public interface JVpp extends java.lang.AutoCloseable {
 
     /**
      * Generic dispatch method for sending requests to VPP
+     *
+     * @throws org.openvpp.jvpp.VppInvocationException if send request had failed
      */
-    int send($base_package.$dto_package.JVppRequest request);
+    int send($base_package.$dto_package.JVppRequest request) throws org.openvpp.jvpp.VppInvocationException;
 
     @Override
     void close();
@@ -76,7 +78,7 @@ public final class JVppImpl implements $base_package.JVpp {
     }
 
     @Override
-    public int send($base_package.$dto_package.JVppRequest request) {
+    public int send($base_package.$dto_package.JVppRequest request)  throws org.openvpp.jvpp.VppInvocationException {
         return request.send(this);
     }
 
@@ -96,9 +98,9 @@ method_impl_template = Template("""    public final int $name($base_package.$dto
     }
 """)
 
-no_arg_method_template = Template("""    int $name();""")
+no_arg_method_template = Template("""    int $name() throws org.openvpp.jvpp.VppInvocationException;""")
 no_arg_method_native_template = Template("""    private static native int ${name}0();""")
-no_arg_method_impl_template = Template("""    public final int $name() {
+no_arg_method_impl_template = Template("""    public final int $name() throws org.openvpp.jvpp.VppInvocationException {
         connection.checkActive();
         return ${name}0();
     }
