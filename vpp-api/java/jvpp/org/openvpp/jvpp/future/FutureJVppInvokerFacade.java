@@ -17,16 +17,14 @@
 package org.openvpp.jvpp.future;
 
 
+import org.openvpp.jvpp.JVpp;
+import org.openvpp.jvpp.VppInvocationException;
+import org.openvpp.jvpp.dto.*;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import org.openvpp.jvpp.JVpp;
-import org.openvpp.jvpp.dto.ControlPing;
-import org.openvpp.jvpp.dto.JVppDump;
-import org.openvpp.jvpp.dto.JVppReply;
-import org.openvpp.jvpp.dto.JVppReplyDump;
-import org.openvpp.jvpp.dto.JVppRequest;
 
 /**
 * Future facade on top of JVpp
@@ -59,20 +57,26 @@ public class FutureJVppInvokerFacade implements FutureJVppInvoker {
     @SuppressWarnings("unchecked")
     public <REQ extends JVppRequest, REPLY extends JVppReply<REQ>> CompletionStage<REPLY> send(REQ req) {
         synchronized(requests) {
-            final int contextId = jvpp.send(req);
+            try {
+                final CompletableFuture<REPLY> replyCompletableFuture;
+                final int contextId = jvpp.send(req);
 
-            final CompletableFuture<REPLY> replyCompletableFuture;
-            if(req instanceof JVppDump) {
-                replyCompletableFuture = (CompletableFuture<REPLY>) new CompletableDumpFuture<>(contextId);
-            } else {
-                replyCompletableFuture = new CompletableFuture<>();
-            }
+                if(req instanceof JVppDump) {
+                    replyCompletableFuture = (CompletableFuture<REPLY>) new CompletableDumpFuture<>(contextId);
+                } else {
+                    replyCompletableFuture = new CompletableFuture<>();
+                }
 
-            requests.put(contextId, replyCompletableFuture);
-            if(req instanceof JVppDump) {
-                requests.put(jvpp.send(new ControlPing()), replyCompletableFuture);
+                requests.put(contextId, replyCompletableFuture);
+                if(req instanceof JVppDump) {
+                    requests.put(jvpp.send(new ControlPing()), replyCompletableFuture);
+                }
+                return replyCompletableFuture;
+            } catch (VppInvocationException ex) {
+                final CompletableFuture<REPLY> replyCompletableFuture = new java.util.concurrent.CompletableFuture<>();
+                replyCompletableFuture.completeExceptionally(ex);
+                return replyCompletableFuture;
             }
-            return replyCompletableFuture;
         }
     }
 
