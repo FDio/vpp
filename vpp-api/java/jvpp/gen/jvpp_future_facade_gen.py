@@ -35,6 +35,23 @@ public final class FutureJVppFacadeCallback implements $base_package.$callback_p
         this.requests = requestMap;
     }
 
+    @Override
+    public void onError(org.openvpp.jvpp.VppCallbackException reply) {
+        final java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>> completableFuture;
+
+        synchronized(requests) {
+            completableFuture = (java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>>) requests.get(reply.getCtxId());
+        }
+
+        if(completableFuture != null) {
+            completableFuture.completeExceptionally(reply);
+
+            synchronized(requests) {
+                requests.remove(reply.getCtxId());
+            }
+        }
+    }
+
 $methods
 }
 """)
@@ -50,12 +67,7 @@ jvpp_facade_callback_method_template = Template("""
         }
 
         if(completableFuture != null) {
-            if(reply.retval < 0) {
-                completableFuture.completeExceptionally(new Exception("Invocation of " + $base_package.$dto_package.$callback_dto.class
-                    + " failed with value " + reply.retval));
-            } else {
-                completableFuture.complete(reply);
-            }
+            completableFuture.complete(reply);
 
             synchronized(requests) {
                 requests.remove(reply.context);
@@ -84,12 +96,7 @@ jvpp_facade_control_ping_method_template = Template("""
                     requests.remove((($base_package.$future_package.FutureJVppFacade.CompletableDumpFuture) completableFuture).getContextId());
                 }
             } else {
-                if(reply.retval < 0) {
-                    completableFuture.completeExceptionally(new Exception("Invocation of " + $base_package.$dto_package.$callback_dto.class
-                        + " failed with value " + reply.retval));
-                } else {
-                    completableFuture.complete(reply);
-                }
+                completableFuture.complete(reply);
             }
 
             synchronized(requests) {
@@ -236,7 +243,7 @@ $methods
 ''')
 
 future_jvpp_method_template = Template('''
-    java.util.concurrent.CompletionStage<$base_package.$dto_package.$reply_name> $method_name($base_package.$dto_package.$request_name request);
+    java.util.concurrent.CompletionStage<$base_package.$dto_package.$reply_name> $method_name($base_package.$dto_package.$request_name request) throws org.openvpp.jvpp.VppInvocationException;
 ''')
 
 
@@ -270,7 +277,13 @@ $methods
 future_jvpp_method_impl_template = Template('''
     @Override
     public java.util.concurrent.CompletionStage<$base_package.$dto_package.$reply_name> $method_name($base_package.$dto_package.$request_name request) {
-        return send(request);
+        try {
+            return send(request);
+        } catch(org.openvpp.jvpp.VppInvocationException ex) {
+            final java.util.concurrent.CompletableFuture<$base_package.$dto_package.$reply_name> replyCompletableFuture = new java.util.concurrent.CompletableFuture<$base_package.$dto_package.$reply_name>();
+            replyCompletableFuture.completeExceptionally(ex);
+            return replyCompletableFuture;
+        }
     }
 ''')
 
