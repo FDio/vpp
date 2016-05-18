@@ -16,17 +16,13 @@
 
 package org.openvpp.jvpp.test;
 
-import java.util.Objects;
-import java.util.concurrent.Future;
 import org.openvpp.jvpp.VppJNIConnection;
-import org.openvpp.jvpp.dto.GetNodeIndex;
-import org.openvpp.jvpp.dto.GetNodeIndexReply;
-import org.openvpp.jvpp.dto.ShowVersion;
-import org.openvpp.jvpp.dto.ShowVersionReply;
-import org.openvpp.jvpp.dto.SwInterfaceDetails;
-import org.openvpp.jvpp.dto.SwInterfaceDetailsReplyDump;
-import org.openvpp.jvpp.dto.SwInterfaceDump;
+import org.openvpp.jvpp.dto.*;
 import org.openvpp.jvpp.future.FutureJVppFacade;
+
+import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 public class FutureApiTest {
 
@@ -38,12 +34,12 @@ public class FutureApiTest {
             Objects.requireNonNull(replyFuture,"replyFuture is null");
             final ShowVersionReply reply = replyFuture.get();
             Objects.requireNonNull(reply,"reply is null");
-            System.out.printf("Received ShowVersionReply: context=%d, retval=%d, program=%s, " +
+            System.out.printf("Received ShowVersionReply: context=%d, program=%s, " +
                             "version=%s, buildDate=%s, buildDirectory=%s\n",
-                    reply.context, reply.retval, new String(reply.program), new String(reply.version),
+                    reply.context, new String(reply.program), new String(reply.version),
                     new String(reply.buildDate), new String(reply.buildDirectory));
         } catch (Exception e) {
-            System.err.printf("ShowVersion request failed:\n");
+            System.err.printf("ShowVersion request failed:"+e.getCause());
             e.printStackTrace();
         }
     }
@@ -62,11 +58,12 @@ public class FutureApiTest {
             Objects.requireNonNull(replyFuture,"replyFuture is null");
             final GetNodeIndexReply reply = replyFuture.get();
             Objects.requireNonNull(reply,"reply is null");
-            System.out.printf("Received GetNodeIndexReply: context=%d, retval=%d, nodeIndex=%d\n",
-                    reply.context, reply.retval, reply.nodeIndex);
+            System.out.printf("Received GetNodeIndexReply: context=%d, nodeIndex=%d\n",
+                    reply.context, reply.nodeIndex);
+        } catch (ExecutionException e) {
+            System.err.printf("GetNodeIndex request failed:"+e.getCause());
         } catch (Exception e) {
-            System.err.printf("GetNodeIndex request failed:\n");
-            e.printStackTrace();
+            System.err.printf("GetNodeIndex request failed:"+e.getCause());
         }
     }
 
@@ -91,8 +88,7 @@ public class FutureApiTest {
         } catch(NullPointerException e) {
             throw new IllegalStateException(e.getMessage());
         } catch (Exception e) {
-            System.err.printf("SwInterfaceDump request failed:\n");
-            e.printStackTrace();
+            System.err.printf("SwInterfaceDump request failed:"+e.getCause());
         }
     }
 
@@ -103,7 +99,6 @@ public class FutureApiTest {
                 new org.openvpp.jvpp.JVppImpl(new VppJNIConnection("FutureApiTest"));
         final FutureJVppFacade jvppFacade = new FutureJVppFacade(impl);
         System.out.println("Successfully connected to VPP");
-
         testShowVersion(jvppFacade);
         testGetNodeIndex(jvppFacade);
         testSwInterfaceDump(jvppFacade);

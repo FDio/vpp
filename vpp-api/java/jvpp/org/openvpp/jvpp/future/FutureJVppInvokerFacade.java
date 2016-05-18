@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.openvpp.jvpp.JVpp;
+import org.openvpp.jvpp.VppInvocationException;
 import org.openvpp.jvpp.dto.ControlPing;
 import org.openvpp.jvpp.dto.JVppDump;
 import org.openvpp.jvpp.dto.JVppReply;
@@ -57,7 +58,7 @@ public class FutureJVppInvokerFacade implements FutureJVppInvoker {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <REQ extends JVppRequest, REPLY extends JVppReply<REQ>> CompletionStage<REPLY> send(REQ req) {
+    public <REQ extends JVppRequest, REPLY extends JVppReply<REQ>> CompletionStage<REPLY> send(REQ req) throws VppInvocationException {
         synchronized(requests) {
             final int contextId = jvpp.send(req);
 

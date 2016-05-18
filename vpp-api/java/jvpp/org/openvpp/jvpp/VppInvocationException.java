@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
-package org.openvpp.jvpp.dto;
-
-import org.openvpp.jvpp.JVpp;
-import org.openvpp.jvpp.VppInvocationException;
+package org.openvpp.jvpp;
 
 /**
-* Base interface for all request DTOs
-*/
-public interface JVppRequest {
-
+ * Exception thrown when Vpp jAPI method invocation failed.
+ */
+public class VppInvocationException extends VppBaseCallException {
     /**
-     * Invoke current operation asynchronously on VPP
+     * Constructs an VppApiInvocationFailedException with the specified api method name and error code.
      *
-     * @return context id of this request. Can be used to track incomming response
+     * @param methodName  name of a method, which invocation failed.
+     * @param errorCode  negative error code value associated with this failure
+     * @throws NullPointerException     if apiMethodName is null
      */
-    int send(JVpp jvpp) throws VppInvocationException;
-
+    public VppInvocationException(final String methodName, final int errorCode) {
+        super(methodName, 0, errorCode);
+    }
 }

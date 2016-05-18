@@ -41,7 +41,9 @@
 #include <api/vpe_all_api_h.h>
 #undef vl_printfun
 
+#ifndef VPPJNI_DEBUG
 #define VPPJNI_DEBUG 0
+#endif
 
 #if VPPJNI_DEBUG == 1
   #define DEBUG_LOG(...) clib_warning(__VA_ARGS__)
@@ -1683,7 +1685,9 @@ out:
     jm->result_ready = 1;
 }
 
+#ifndef VPPJNI_DEBUG_COUNTERS
 #define VPPJNI_DEBUG_COUNTERS 0
+#endif
 
 static void vl_api_vnet_interface_counters_t_handler
 (vl_api_vnet_interface_counters_t *mp)
