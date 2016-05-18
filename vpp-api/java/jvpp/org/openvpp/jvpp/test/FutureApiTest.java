@@ -16,19 +16,17 @@
 
 package org.openvpp.jvpp.test;
 
-import java.util.Objects;
-import java.util.concurrent.Future;
 import org.openvpp.jvpp.VppJNIConnection;
-import org.openvpp.jvpp.dto.GetNodeIndex;
-import org.openvpp.jvpp.dto.GetNodeIndexReply;
-import org.openvpp.jvpp.dto.ShowVersion;
-import org.openvpp.jvpp.dto.ShowVersionReply;
-import org.openvpp.jvpp.dto.SwInterfaceDetails;
-import org.openvpp.jvpp.dto.SwInterfaceDetailsReplyDump;
-import org.openvpp.jvpp.dto.SwInterfaceDump;
+import org.openvpp.jvpp.dto.*;
 import org.openvpp.jvpp.future.FutureJVppFacade;
 
+import java.util.Objects;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 public class FutureApiTest {
+    private static final int GET_TIMEOUT = 500; // 500ms
 
     private static void testShowVersion(final FutureJVppFacade jvpp) {
         System.out.println("Sending ShowVersion request...");
@@ -36,7 +34,7 @@ public class FutureApiTest {
             Objects.requireNonNull(jvpp,"jvpp is null");
             final Future<ShowVersionReply> replyFuture = jvpp.showVersion(new ShowVersion()).toCompletableFuture();
             Objects.requireNonNull(replyFuture,"replyFuture is null");
-            final ShowVersionReply reply = replyFuture.get();
+            final ShowVersionReply reply = replyFuture.get(GET_TIMEOUT, TimeUnit.MILLISECONDS);
             Objects.requireNonNull(reply,"reply is null");
             System.out.printf("Received ShowVersionReply: context=%d, retval=%d, program=%s, " +
                             "version=%s, buildDate=%s, buildDirectory=%s\n",
@@ -60,10 +58,12 @@ public class FutureApiTest {
             request.nodeName = "node0".getBytes();
             final Future<GetNodeIndexReply> replyFuture = jvpp.getNodeIndex(request).toCompletableFuture();
             Objects.requireNonNull(replyFuture,"replyFuture is null");
-            final GetNodeIndexReply reply = replyFuture.get();
+            final GetNodeIndexReply reply = replyFuture.get(GET_TIMEOUT, TimeUnit.MILLISECONDS);
             Objects.requireNonNull(reply,"reply is null");
             System.out.printf("Received GetNodeIndexReply: context=%d, retval=%d, nodeIndex=%d\n",
                     reply.context, reply.retval, reply.nodeIndex);
+        } catch (TimeoutException e) {
+            System.err.printf("GetNodeIndex timeout:\n");
         } catch (Exception e) {
             System.err.printf("GetNodeIndex request failed:\n");
             e.printStackTrace();
@@ -79,7 +79,7 @@ public class FutureApiTest {
             request.nameFilter = "".getBytes();
             final Future<SwInterfaceDetailsReplyDump> replyFuture = jvpp.swInterfaceDump(request).toCompletableFuture();
             Objects.requireNonNull(replyFuture,"replyFuture is null");
-            final SwInterfaceDetailsReplyDump reply = replyFuture.get();
+            final SwInterfaceDetailsReplyDump reply = replyFuture.get(GET_TIMEOUT, TimeUnit.MILLISECONDS);
             Objects.requireNonNull(reply.swInterfaceDetails, "SwInterfaceDetailsReplyDump.swInterfaceDetails is null!");
             for (SwInterfaceDetails details : reply.swInterfaceDetails) {
                 Objects.requireNonNull(details, "reply.swInterfaceDetails contains null element!");

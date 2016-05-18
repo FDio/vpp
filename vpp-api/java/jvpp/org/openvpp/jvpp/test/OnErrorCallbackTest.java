@@ -22,12 +22,11 @@ import org.openvpp.jvpp.VppCallbackException;
 import org.openvpp.jvpp.VppJNIConnection;
 import org.openvpp.jvpp.callback.GetNodeIndexCallback;
 import org.openvpp.jvpp.callback.ShowVersionCallback;
-import org.openvpp.jvpp.callback.SwInterfaceCallback;
 import org.openvpp.jvpp.dto.*;
 
-public class CallbackApiTest {
+public class OnErrorCallbackTest {
 
-    private static class TestCallback implements GetNodeIndexCallback, ShowVersionCallback, SwInterfaceCallback {
+    private static class TestCallback implements GetNodeIndexCallback, ShowVersionCallback{
 
         @Override
         public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
@@ -35,7 +34,7 @@ public class CallbackApiTest {
                     msg.context, msg.retval, msg.nodeIndex);
         }
         @Override
-        public void onShowVersionReply(final ShowVersionReply msg)  {
+        public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("Received ShowVersionReply: context=%d, retval=%d, program=%s, version=%s, " +
                     "buildDate=%s, buildDirectory=%s\n",
                     msg.context, msg.retval, new String(msg.program), new String(msg.version),
@@ -43,15 +42,7 @@ public class CallbackApiTest {
         }
 
         @Override
-        public void onSwInterfaceDetails(final SwInterfaceDetails msg) {
-            System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, " +
-                    "linkUpDown=%d, linkSpeed=%d, linkMtu=%d\n",
-                    new String(msg.interfaceName), msg.l2AddressLength, msg.adminUpDown,
-                    msg.linkUpDown, msg.linkSpeed, (int)msg.linkMtu);
-        }
-
-        @Override
-        public void onError(VppCallbackException ex) throws org.openvpp.jvpp.VppCallbackException {
+        public void onError(VppCallbackException ex) throws VppCallbackException {
             System.out.printf("Received onError exception: call=%s, context=%d, retval=%d\n", ex.getMethodName(), ex.getCtxId(), ex.getErrorCode());
         }
     }
@@ -67,14 +58,8 @@ public class CallbackApiTest {
 
         System.out.println("Sending GetNodeIndex request...");
         GetNodeIndex getNodeIndexRequest = new GetNodeIndex();
-        getNodeIndexRequest.nodeName = "node0".getBytes();
+        getNodeIndexRequest.nodeName = "dummyNode".getBytes();
         jvpp.send(getNodeIndexRequest);
-
-        System.out.println("Sending SwInterfaceDump request...");
-        SwInterfaceDump swInterfaceDumpRequest = new SwInterfaceDump();
-        swInterfaceDumpRequest.nameFilterValid = 0;
-        swInterfaceDumpRequest.nameFilter = "".getBytes();
-        jvpp.send(swInterfaceDumpRequest);
 
         Thread.sleep(5000);
 
