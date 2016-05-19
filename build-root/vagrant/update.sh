@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Make sure that we get the hugepages we need on provision boot
 # Note: The package install should take care of this at the end

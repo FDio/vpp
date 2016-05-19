@@ -3,6 +3,16 @@
 
 Vagrant.configure(2) do |config|
 
+  # Check to make sure you have done "source ./env.sh"
+  envcheck = ENV['VPP_VAGRANT_ENV_SET']
+
+  if envcheck != '1'
+    abort("Please edit env.sh for your environment and use \"source ./env.sh\"")
+  end
+
+  ram = ENV['VPP_VAGRANT_RAM']
+  vcpus = ENV['VPP_VAGRANT_VCPUS']
+  
   # Pick the right distro and bootstrap, default is ubuntu1404
   distro = ENV['VPP_VAGRANT_DISTRO']
   if distro == 'centos7'
@@ -59,20 +69,23 @@ Vagrant.configure(2) do |config|
   end
 
   config.vm.synced_folder "../../", "/vpp", disabled: false
+
+  # Provider section
   config.vm.provider "virtualbox" do |vb|
       vb.customize ["modifyvm", :id, "--ioapic", "on"]
-      vb.memory = 4096
-      vb.cpus = 2
+      vb.memory = "#{ram}"
+      vb.cpus = "#{vcpus}"
   end
   config.vm.provider "vmware_fusion" do |fusion,override|
-    fusion.vmx["memsize"] = "4096"
+    fusion.vmx["memsize"] = "#{ram}"
+    fusion.vmx["numvcpus"] = "#{vcpus}"
   end
   config.vm.provider "libvirt" do |lv|
-    lv.memory = 4096
-    lv.cpus = 8
+    lv.memory = "#{ram}"
+    lv.cpus = "#{vcpus}"
   end
   config.vm.provider "vmware_workstation" do |vws,override|
-    vws.vmx["memsize"] = "8192"
-    vws.vmx["numvcpus"] = "4"
+    vws.vmx["memsize"] = "#{ram}"
+    vws.vmx["numvcpus"] = "#{vcpus}"
   end
 end

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Capture all the interface IPs, in case we need them later
 ip -o addr show > ~vagrant/ifconfiga
