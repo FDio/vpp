@@ -79,13 +79,6 @@ typedef struct {
 
 extern linux_pci_main_t linux_pci_main;
 
-always_inline linux_pci_device_t *
-pci_dev_for_linux (vlib_pci_device_t * dev)
-{
-  linux_pci_main_t * pm = &linux_pci_main;
-  return pool_elt_at_index (pm->linux_pci_devices, dev->os_handle);
-}
-
 /* Call to allocate/initialize the pci subsystem.
    This is not an init function so that users can explicitly enable
    pci only when it's needed. */
