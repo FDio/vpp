@@ -629,11 +629,16 @@ static void unix_cli_cli_prompt(unix_cli_file_t * cf, unix_file_t * uf)
 static void unix_cli_pager_prompt(unix_cli_file_t * cf, unix_file_t * uf)
 {
   u8 * prompt;
+  u32 h;
+
+  h = cf->pager_start + (cf->height - 1);
+  if (h > vec_len (cf->pager_index))
+    h = vec_len (cf->pager_index);
 
   prompt = format(0, "\r%s-- more -- (%d-%d/%d)%s",
     cf->ansi_capable ? ANSI_BOLD : "",
     cf->pager_start + 1,
-    cf->pager_start + cf->height,
+    h,
     vec_len (cf->pager_index),
     cf->ansi_capable ? ANSI_RESET: "");
 
@@ -866,10 +871,10 @@ static void unix_cli_pager_reindex (unix_cli_file_t * cf)
    */
   if (cf->pager_start >= vec_len (cf->pager_index))
     {
-      cf->pager_start = vec_len (cf->pager_index) - cf->height + 1;
-
-      if (cf->pager_start < 0)
+      if (!cf->height || vec_len (cf->pager_index) < (cf->height - 1))
         cf->pager_start = 0;
+      else
+        cf->pager_start = vec_len (cf->pager_index) - (cf->height - 1);
     }
 }
 
