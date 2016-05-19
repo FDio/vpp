@@ -36,14 +36,16 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
   u32 mi, * map_indexp, map_index, i;
-  mapping_t * m;
+  mapping_t * m, * old_map;
   u32 ** eid_indexes;
 
   mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->deid);
+  old_map = mi != ~0 ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
   if (a->is_add)
     {
       /* TODO check if overwriting and take appropriate actions */
-      if (mi != GID_LOOKUP_MISS)
+      if (mi != GID_LOOKUP_MISS && !gid_address_cmp (&old_map->eid,
+                                                     &a->deid))
         {
           clib_warning("eid %U found in the eid-table", format_ip_address,
                        &a->deid);
@@ -54,6 +56,7 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
       m->eid = a->deid;
       m->locator_set_index = a->locator_set_index;
       m->ttl = a->ttl;
+      m->action = a->action;
       m->local = a->local;
 
       map_index = m - lcm->mapping_pool;
@@ -185,6 +188,7 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
           ai->vni = vni;
           ai->table_id = table_id[0];
           vnet_lisp_gpe_add_del_iface (ai, 0);
+          hash_unset (lcm->dp_if_refcount_by_vni, vni);
         }
     }
 
@@ -202,7 +206,7 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   ip_prefix_t * prefp = &gid_address_ippref(&eid);
   gid_address_t * eids = 0;
   clib_error_t * error = 0;
-  u8 * locator_set_name;
+  u8 * locator_set_name = 0;
   u32 locator_set_index = 0, map_index = 0;
   uword * p;
   vnet_lisp_add_del_mapping_args_t _a, * a = &_a;
@@ -250,6 +254,8 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_lisp_add_del_local_mapping (a, &map_index);
  done:
   vec_free(eids);
+  if (locator_set_name)
+    vec_free (locator_set_name);
   return error;
 }
 
@@ -258,6 +264,97 @@ VLIB_CLI_COMMAND (lisp_add_del_local_eid_command) = {
     .short_help = "lisp eid-table add/del eid <eid> locator-set <locator-set>",
     .function = lisp_add_del_local_eid_command_fn,
 };
+
+static int
+lisp_add_del_negative_static_mapping (gid_address_t * deid,
+    vnet_lisp_add_del_locator_set_args_t * ls, u8 action, u8 is_add)
+{
+  uword * p;
+  mapping_t * map;
+  u32 mi = ~0;
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  uword * refc;
+  vnet_lisp_add_del_mapping_args_t _dm_args, * dm_args = &_dm_args;
+  int rv = 0;
+  u32 ls_index = 0, dst_map_index;
+  vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
+
+  memset (dm_args, 0, sizeof (dm_args[0]));
+  u32 vni = gid_address_vni (deid);
+  refc = hash_get (lcm->dp_if_refcount_by_vni, vni);
+
+  p = hash_get (lcm->table_id_by_vni, vni);
+  if (!p)
+    {
+      clib_warning ("vni %d not associated to a vrf!", vni);
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  if (is_add)
+    {
+      vnet_lisp_add_del_locator_set (ls, &ls_index);
+      /* add mapping */
+      gid_address_copy (&dm_args->deid, deid);
+      dm_args->is_add = 1;
+      dm_args->action = action;
+      dm_args->locator_set_index = ls_index;
+
+      /* create interface or update refcount */
+      if (!refc)
+        {
+          vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
+          ai->is_add = 1;
+          ai->vni = vni;
+          ai->table_id = p[0];
+          vnet_lisp_gpe_add_del_iface (ai, 0);
+
+          /* counts the number of eids in a vni that use the interface */
+          hash_set (lcm->dp_if_refcount_by_vni, vni, 1);
+        }
+      else
+        refc[0]++;
+
+      rv = vnet_lisp_add_del_local_mapping (dm_args, &dst_map_index);
+      if (!rv)
+        add_fwd_entry (lcm, lcm->pitr_map_index, dst_map_index);
+    }
+  else
+    {
+      mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, deid);
+      if ((u32)~0 == mi)
+        {
+          clib_warning ("eid %U marked for removal, but not found in "
+                        "map-cache!", unformat_gid_address, deid);
+          return VNET_API_ERROR_INVALID_VALUE;
+        }
+
+      /* delete forwarding entry */
+      del_fwd_entry (lcm, 0, mi);
+
+      dm_args->is_add = 0;
+      gid_address_copy (&dm_args->deid, deid);
+      map = pool_elt_at_index (lcm->mapping_pool, mi);
+      dm_args->locator_set_index = map->locator_set_index;
+
+      /* delete mapping associated to fwd entry */
+      vnet_lisp_add_del_mapping (dm_args, 0);
+
+      refc = hash_get (lcm->dp_if_refcount_by_vni, vni);
+      ASSERT(refc != 0);
+      refc[0]--;
+
+      /* remove iface if needed */
+      if (refc[0] == 0)
+        {
+          ai->is_add = 0;
+          ai->vni = vni;
+          ai->table_id = p[0];
+          vnet_lisp_gpe_add_del_iface (ai, 0);
+          hash_unset (lcm->dp_if_refcount_by_vni, vni);
+        }
+    }
+  return rv;
+}
 
 /**
  * Adds/removes/updates static remote mapping.
@@ -301,6 +398,14 @@ vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
   /* new mapping */
   if ((u32)~0 == mi)
     {
+      ls->is_add = 1;
+      ls->index = ~0;
+
+      /* process a negative mapping */
+      if (0 == vec_len (rlocs))
+        return lisp_add_del_negative_static_mapping (deid, ls,
+                                                     action, is_add);
+
       if ((u32)~0 == src_map_index)
         {
           clib_warning ("seid %U not found!", format_gid_address, seid);
@@ -314,8 +419,6 @@ vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
           goto done;
         }
 
-      ls->is_add = 1;
-      ls->index = ~0;
       vnet_lisp_add_del_locator_set (ls, &ls_index);
 
       /* add mapping */
@@ -403,7 +506,8 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   ip_address_t rloc, * rlocs = 0;
   ip_prefix_t * deid_ippref, * seid_ippref;
   gid_address_t seid, deid;
-  u8 deid_set = 0, seid_set = 0;
+  u8 deid_set = 0;
+  u8 * s = 0;
   u32 vni, action = ~0;
 
   /* Get a line of input. */
@@ -437,11 +541,25 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
         }
       else if (unformat (line_input, "seid %U",
                          unformat_ip_prefix, seid_ippref))
-        seid_set = 1;
+        ;
       else if (unformat (line_input, "rloc %U", unformat_ip_address, &rloc))
         vec_add1 (rlocs, rloc);
-      else if (unformat (line_input, "action %d", &action))
-        ;
+      else if (unformat (line_input, "action %s", &s))
+        {
+          if (!strcmp ((char *)s, "no-action"))
+            action = ACTION_NONE;
+          if (!strcmp ((char *)s, "natively-forward"))
+            action = ACTION_NATIVELY_FORWARDED;
+          if (!strcmp ((char *)s, "send-map-request"))
+            action = ACTION_SEND_MAP_REQUEST;
+          else if (!strcmp ((char *)s, "drop"))
+            action = ACTION_DROP;
+          else
+            {
+              clib_warning ("invalid action: '%s'", s);
+              goto done;
+            }
+        }
       else
         {
           clib_warning ("parse error");
@@ -449,13 +567,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
         }
     }
 
-  if (is_add && (!deid_set || !seid_set))
-    {
-      clib_warning ("missing paramete(s)!");
-      goto done;
-    }
-
-  if (!is_add && !deid_set)
+  if (!deid_set)
     {
       clib_warning ("missing deid!");
       goto done;
@@ -485,14 +597,97 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
 
 done:
   unformat_free (line_input);
+  if (s)
+    vec_free (s);
   return error;
 }
 
 VLIB_CLI_COMMAND (lisp_add_del_remote_mapping_command) = {
     .path = "lisp remote-mapping",
-    .short_help = "lisp remote-mapping add|del vni <vni> deid <dest-eid> "
-     "seid <src-eid> rloc <dst-locator> [rloc <dst-locator> ... ]",
+    .short_help = "lisp remote-mapping add|del vni <vni>"
+     "deid <dest-eid> seid <src-eid> [action <no-action|natively-forward|"
+     "send-map-request|drop>] rloc <dst-locator> [rloc <dst-locator> ... ]",
     .function = lisp_add_del_remote_mapping_command_fn,
+};
+
+int
+vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  u32 locator_set_index = ~0;
+  mapping_t * m;
+  uword * p;
+
+  p = hash_get_mem (lcm->locator_set_index_by_name, locator_set_name);
+  if (!p)
+    {
+      clib_warning ("locator-set %v doesn't exist", locator_set_name);
+      return -1;
+    }
+  locator_set_index = p[0];
+
+  if (is_add)
+    {
+      pool_get (lcm->mapping_pool, m);
+      m->locator_set_index = locator_set_index;
+      m->local = 1;
+      lcm->pitr_map_index = m - lcm->mapping_pool;
+
+      /* enable pitr mode */
+      lcm->lisp_pitr = 1;
+    }
+  else
+    {
+      /* remove pitr mapping */
+      pool_put_index (lcm->mapping_pool, lcm->pitr_map_index);
+
+      /* disable pitr mode */
+      lcm->lisp_pitr = 0;
+    }
+  return 0;
+}
+
+static clib_error_t *
+lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
+                                      unformat_input_t * input,
+                                      vlib_cli_command_t * cmd)
+{
+  u8 locator_name_set = 0;
+  u8 * locator_set_name = 0;
+  u8 is_add = 1;
+  unformat_input_t _line_input, * line_input = &_line_input;
+
+  /* Get a line of input. */
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "ls %_%v%_", &locator_set_name))
+        locator_name_set = 1;
+      else if (unformat (line_input, "disable"))
+        is_add = 0;
+      else
+        return clib_error_return (0, "parse error");
+    }
+
+  if (!locator_name_set)
+    {
+      clib_warning ("No locator set specified!");
+      goto done;
+    }
+  vnet_lisp_pitr_set_locator_set (locator_set_name, is_add);
+
+done:
+  if (locator_set_name)
+    vec_free (locator_set_name);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lisp_pitr_set_locator_set_command) = {
+    .path = "lisp pitr",
+    .short_help = "lisp pitr [disable] ls <locator-set-name>",
+    .function = lisp_pitr_set_locator_set_command_fn,
 };
 
 static clib_error_t *
@@ -1090,7 +1285,8 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
  done:
   vec_free(locators);
-  vec_free(locator_set_name);
+  if (locator_set_name)
+    vec_free (locator_set_name);
   return error;
 }
 
@@ -1469,22 +1665,31 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   ip_address_t mr_ip, sloc;
 
   /* get locator-set for seid */
-  map_index = gid_dictionary_lookup (&lcm->mapping_index_by_gid, seid);
-  if (map_index == ~0)
+  if (!lcm->lisp_pitr)
     {
-      clib_warning("No local mapping found in eid-table for %U!",
-                   format_gid_address, seid);
-      return;
+      map_index = gid_dictionary_lookup (&lcm->mapping_index_by_gid, seid);
+      if (map_index == ~0)
+        {
+          clib_warning("No local mapping found in eid-table for %U!",
+                       format_gid_address, seid);
+          return;
+        }
+
+      map = pool_elt_at_index (lcm->mapping_pool, map_index);
+
+      if (!map->local)
+        {
+          clib_warning("Mapping found for src eid %U is not marked as local!",
+                       format_gid_address, seid);
+          return;
+        }
+    }
+  else
+    {
+      map_index = lcm->pitr_map_index;
+      map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
     }
 
-  map = pool_elt_at_index (lcm->mapping_pool, map_index);
-
-  if (!map->local)
-    {
-      clib_warning("Mapping found for src eid %U is not marked as local!",
-                   format_gid_address, seid);
-      return;
-    }
   loc_set = pool_elt_at_index (lcm->locator_set_pool, map->locator_set_index);
 
   /* get local iface ip to use in map-request XXX fib 0 for now*/
@@ -1593,10 +1798,23 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           di = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &dst);
           if (~0 != di)
             {
-              si =  gid_dictionary_lookup (&lcm->mapping_index_by_gid, &src);
-              if (~0 != si)
+              mapping_t * m =  vec_elt_at_index (lcm->mapping_pool, di);
+              /* send a map-request also in case of negative mapping entry
+                with corresponding action */
+              if (m->action == ACTION_SEND_MAP_REQUEST)
                 {
-                  add_fwd_entry (lcm, si, di);
+                  /* send map-request */
+                  send_encapsulated_map_request (vm, lcm, &src, &dst, 0);
+                  pkts_mapped++;
+                }
+              else
+                {
+                  si =  gid_dictionary_lookup (&lcm->mapping_index_by_gid,
+                                               &src);
+                  if (~0 != si)
+                    {
+                      add_fwd_entry (lcm, si, di);
+                    }
                 }
             }
           else
@@ -1869,6 +2087,7 @@ compare_locators (lisp_cp_main_t *lcm, u32 * old_ls_indexes,
 void
 process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
 {
+  mapping_t * old_map;
   locator_t * loc;
   u32 len = 0, i, ls_index = 0;
   void * h;
@@ -1919,14 +2138,13 @@ process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
         }
 
       mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &m_args->deid);
+      old_map = mi != ~0 ? pool_elt_at_index(lcm->mapping_pool, mi) : 0;
 
       /* if mapping already exists, decide if locators (and forwarding) should
        * be updated and be done */
-      if (mi != ~0)
+      if (old_map != 0 && !gid_address_cmp (&old_map->eid, &m_args->deid))
         {
-          mapping_t * old_map;
           locator_set_t * old_ls;
-          old_map = pool_elt_at_index(lcm->mapping_pool, mi);
 
           /* update mapping attributes */
           old_map->action = m_args->action;

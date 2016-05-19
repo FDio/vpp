@@ -329,6 +329,7 @@ _(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
 _(LISP_ENABLE_DISABLE, lisp_enable_disable)                             \
 _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
 _(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping)             \
+_(LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set)                 \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump)                 \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
@@ -4828,6 +4829,21 @@ vl_api_lisp_gpe_add_del_iface_t_handler(
     vnet_lisp_gpe_add_del_iface (a, 0);
 
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
+}
+
+static void
+vl_api_lisp_pitr_set_locator_set_t_handler(
+  vl_api_lisp_pitr_set_locator_set_t *mp)
+{
+    vl_api_lisp_pitr_set_locator_set_reply_t *rmp;
+    int rv = 0;
+    u8 * ls_name = 0;
+
+    ls_name = format (0, "%s", mp->ls_name);
+    rv = vnet_lisp_pitr_set_locator_set (ls_name, mp->is_add);
+    vec_free (ls_name);
+
+    REPLY_MACRO(VL_API_LISP_PITR_SET_LOCATOR_SET_REPLY);
 }
 
 /** Used for transferring locators via VPP API */

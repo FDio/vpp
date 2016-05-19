@@ -195,7 +195,14 @@ add_del_negative_fwd_entry (lisp_gpe_main_t * lgm,
       /* TODO check if route/next-hop for eid exists in fib and add
        * more specific for the eid with the next-hop found */
     case SEND_MAP_REQUEST:
-      /* TODO insert tunnel that always sends map-request */
+      /* insert tunnel that always sends map-request */
+      adj.rewrite_header.sw_if_index = ~0;
+      adj.lookup_next_index = (u32) (ip_prefix_version(dpref) == IP4) ?
+                                     LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP:
+                                     LGPE_IP6_LOOKUP_NEXT_LISP_CP_LOOKUP;
+      /* add/delete route for prefix */
+      return ip_sd_fib_add_del_route (lgm, dpref, spref, a->table_id, &adj,
+                                      a->is_add);
     case DROP:
       /* for drop fwd entries, just add route, no need to add encap tunnel */
       adj.lookup_next_index =  (u32) (ip_prefix_version(dpref) == IP4 ?
@@ -204,7 +211,6 @@ add_del_negative_fwd_entry (lisp_gpe_main_t * lgm,
       /* add/delete route for prefix */
       return ip_sd_fib_add_del_route (lgm, dpref, spref, a->table_id, &adj,
                                       a->is_add);
-      break;
     default:
       return -1;
     }
@@ -544,6 +550,27 @@ VLIB_CLI_COMMAND (enable_disable_lisp_gpe_command, static) = {
   .path = "lisp gpe",
   .short_help = "lisp gpe [enable|disable]",
   .function = lisp_gpe_enable_disable_command_fn,
+};
+
+static clib_error_t *
+lisp_show_iface_command_fn (vlib_main_t * vm,
+                            unformat_input_t * input,
+                            vlib_cli_command_t * cmd)
+{
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+  hash_pair_t * p;
+
+  vlib_cli_output (vm, "%=10s%=12s", "vrf", "hw_if_index");
+  hash_foreach_pair (p, lgm->lisp_gpe_hw_if_index_by_table_id, ({
+    vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
+  }));
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lisp_show_iface_command) = {
+    .path = "show lisp gpe interface",
+    .short_help = "show lisp gpe interface",
+    .function = lisp_show_iface_command_fn,
 };
 
 clib_error_t *

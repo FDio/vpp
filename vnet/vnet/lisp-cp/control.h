@@ -100,6 +100,12 @@ typedef struct
   /* Number of src prefixes in a vni that use an interface */
   uword * dp_if_refcount_by_vni;
 
+  /* Proxy ETR map index */
+  u32 pitr_map_index;
+
+  /* LISP PITR mode */
+  u8 lisp_pitr;
+
   /* commodity */
   ip4_main_t * im4;
   ip6_main_t * im6;
@@ -178,5 +184,8 @@ u8 vnet_lisp_enable_disable_status (void);
 int
 vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
                                   ip_address_t * dlocs, u8 action, u8 is_add);
+
+int
+vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add);
 
 #endif /* VNET_CONTROL_H_ */

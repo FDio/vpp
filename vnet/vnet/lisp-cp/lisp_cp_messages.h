@@ -416,12 +416,12 @@ void mapping_record_init_hdr(mapping_record_hdr_t *h);
 #define MAP_REC_EID(h) (u8 *)(h)+sizeof(mapping_record_hdr_t)
 #define MAP_REC_VERSION(h) (h)->version_hi << 8 | (h)->version_low
 
-typedef enum lisp_actions
+typedef enum
 {
-  ACT_NO_ACTION = 0,
-  ACT_NATIVE_FWD,
-  ACT_SEND_MREQ,
-  ACT_DROP
+  ACTION_NONE,
+  ACTION_NATIVELY_FORWARDED,
+  ACTION_SEND_MAP_REQUEST,
+  ACTION_DROP
 } lisp_action_e;
 
 typedef enum lisp_authoritative

@@ -2351,6 +2351,7 @@ _(lisp_add_del_map_resolver_reply)                      \
 _(lisp_gpe_enable_disable_reply)                        \
 _(lisp_gpe_add_del_iface_reply)                         \
 _(lisp_enable_disable_reply)                            \
+_(lisp_pitr_set_locator_set_reply)                      \
 _(vxlan_gpe_add_del_tunnel_reply)			\
 _(af_packet_create_reply)                               \
 _(af_packet_delete_reply)                               \
@@ -2528,6 +2529,7 @@ _(LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY, lisp_gpe_add_del_fwd_entry_reply)   \
 _(LISP_ADD_DEL_MAP_RESOLVER_REPLY, lisp_add_del_map_resolver_reply)     \
 _(LISP_GPE_ENABLE_DISABLE_REPLY, lisp_gpe_enable_disable_reply)         \
 _(LISP_ENABLE_DISABLE_REPLY, lisp_enable_disable_reply)                 \
+_(LISP_PITR_SET_LOCATOR_SET_REPLY, lisp_pitr_set_locator_set_reply)     \
 _(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
 _(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
 _(LISP_LOCAL_EID_TABLE_DETAILS, lisp_local_eid_table_details)           \
@@ -9999,6 +10001,58 @@ typedef CLIB_PACKED(struct
 }) rloc_t;
 
 /**
+ * Enable/disable LISP proxy ITR.
+ *
+ * @param vam vpp API test context
+ * @return return code
+ */
+static int
+api_lisp_pitr_set_locator_set (vat_main_t * vam)
+{
+  f64 timeout = ~0;
+  u8 ls_name_set = 0;
+  unformat_input_t * input = vam->input;
+  vl_api_lisp_pitr_set_locator_set_t * mp;
+  u8 is_add = 1;
+  u8 * ls_name = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+        is_add = 0;
+      else if (unformat (input, "locator-set %s", &ls_name))
+        ls_name_set = 1;
+      else
+        {
+          errmsg ("parse error '%U'", format_unformat_error, input);
+          return -99;
+        }
+    }
+
+  if (!ls_name_set)
+    {
+      errmsg ("locator-set name not set!");
+      return -99;
+    }
+
+  M(LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set);
+
+  mp->is_add = is_add;
+  clib_memcpy (mp->ls_name, ls_name, vec_len (ls_name));
+  vec_free (ls_name);
+
+  /* send */
+  S;
+
+  /* wait for reply */
+  W;
+
+  /* notreached*/
+  return 0;
+}
+
+/**
  * Add/del remote mapping from LISP control plane and updates
  * forwarding entries in data-plane accordingly.
  *
@@ -11057,9 +11111,11 @@ _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
 _(lisp_gpe_enable_disable, "enable|disable")                            \
 _(lisp_enable_disable, "enable|disable")                                \
 _(lisp_gpe_add_del_iface, "up|down")                                    \
-_(lisp_add_del_remote_mapping, "add|del vni <vni> deid <dest-eid> seid" \
+_(lisp_add_del_remote_mapping, "add|del vni <vni> table-id <id> "       \
+                               "deid <dest-eid> seid"                   \
                                " <src-eid> rloc <locator> "             \
                                "[rloc <loc> ... ]")                     \
+_(lisp_pitr_set_locator_set, "locator-set <loc-set-name> | del")        \
 _(lisp_locator_set_dump, "")                                            \
 _(lisp_local_eid_table_dump, "")                                        \
 _(lisp_gpe_tunnel_dump, "")                                             \
