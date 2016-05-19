@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Figure out what system we are running on
 if [ -f /etc/lsb-release ];then
