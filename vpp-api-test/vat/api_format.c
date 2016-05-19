@@ -2137,6 +2137,129 @@ vl_api_lisp_enable_disable_status_details_t_handler_json
     vec_free (feature_status);
 }
 
+static u8 * format_policer_type (u8 * s, va_list * va)
+{
+    u32 i = va_arg (*va, u32);
+
+    if (i == SSE2_QOS_POLICER_TYPE_1R2C)
+        s = format (s, "1r2c");
+    else if (i == SSE2_QOS_POLICER_TYPE_1R3C_RFC_2697)
+        s = format (s, "1r3c");
+    else if (i == SSE2_QOS_POLICER_TYPE_2R3C_RFC_2698)
+        s = format (s, "2r3c-2698");
+    else if (i == SSE2_QOS_POLICER_TYPE_2R3C_RFC_4115)
+        s = format (s, "2r3c-4115");
+    else if (i == SSE2_QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1)
+        s = format (s, "2r3c-mef5cf1");
+    else
+        s = format (s, "ILLEGAL");
+    return s;
+}
+
+static u8 * format_policer_rate_type (u8 * s, va_list * va)
+{
+    u32 i = va_arg (*va, u32);
+
+    if (i == SSE2_QOS_RATE_KBPS)
+        s = format (s, "kbps");
+    else if (i == SSE2_QOS_RATE_PPS)
+        s = format(s, "pps");
+    else
+        s = format (s, "ILLEGAL");
+    return s;
+}
+
+static u8 * format_policer_round_type (u8 * s, va_list * va)
+{
+    u32 i = va_arg (*va, u32);
+
+    if (i == SSE2_QOS_ROUND_TO_CLOSEST)
+        s = format(s, "closest");
+    else if (i == SSE2_QOS_ROUND_TO_UP)
+        s = format (s, "up");
+    else if (i == SSE2_QOS_ROUND_TO_DOWN)
+        s = format (s, "down");
+    else
+        s = format (s, "ILLEGAL");
+  return s;
+}
+
+static void vl_api_policer_details_t_handler
+(vl_api_policer_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+
+    fformat (vam->ofp, "Name \"%s\", type %U, cir %u, eir %u, cb %u, eb %u, "
+             "rate type %U, round type %U, %s rate, %s color-aware, "
+             "cir %u tok/period, pir %u tok/period, scale %u, cur lim %u, "
+             "cur bkt %u, ext lim %u, ext bkt %u, last update %llu\n",
+             mp->name,
+             format_policer_type, mp->type,
+             ntohl(mp->cir),
+             ntohl(mp->eir),
+             ntohl(mp->cb),
+             ntohl(mp->eb),
+             format_policer_rate_type, mp->rate_type,
+             format_policer_round_type, mp->round_type,
+             mp->single_rate ? "single" : "dual",
+             mp->color_aware ? "is" : "not",
+             ntohl(mp->cir_tokens_per_period),
+             ntohl(mp->pir_tokens_per_period),
+             ntohl(mp->scale),
+             ntohl(mp->current_limit),
+             ntohl(mp->current_bucket),
+             ntohl(mp->extended_limit),
+             ntohl(mp->extended_bucket),
+             clib_net_to_host_u64(mp->last_update_time));
+}
+
+static void vl_api_policer_details_t_handler_json
+(vl_api_policer_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node;
+    u8 *rate_type_str, *round_type_str, *type_str;
+
+    rate_type_str = format(0, "%U", format_policer_rate_type, mp->rate_type);
+    round_type_str = format(0, "%U", format_policer_round_type, mp->round_type);
+    type_str = format(0, "%U", format_policer_type, mp->type);
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_string_copy(node, "name", mp->name);
+    vat_json_object_add_uint(node, "cir", ntohl(mp->cir));
+    vat_json_object_add_uint(node, "eir", ntohl(mp->eir));
+    vat_json_object_add_uint(node, "cb", ntohl(mp->cb));
+    vat_json_object_add_uint(node, "eb", ntohl(mp->eb));
+    vat_json_object_add_string_copy(node, "rate_type", rate_type_str);
+    vat_json_object_add_string_copy(node, "round_type", round_type_str);
+    vat_json_object_add_string_copy(node, "type", type_str);
+    vat_json_object_add_uint(node, "single_rate", mp->single_rate);
+    vat_json_object_add_uint(node, "color_aware", mp->color_aware);
+    vat_json_object_add_uint(node, "scale", ntohl(mp->scale));
+    vat_json_object_add_uint(node, "cir_tokens_per_period",
+                             ntohl(mp->cir_tokens_per_period));
+    vat_json_object_add_uint(node, "eir_tokens_per_period",
+                             ntohl(mp->pir_tokens_per_period));
+    vat_json_object_add_uint(node, "current_limit", ntohl(mp->current_limit));
+    vat_json_object_add_uint(node, "current_bucket", ntohl(mp->current_bucket));
+    vat_json_object_add_uint(node, "extended_limit", ntohl(mp->extended_limit));
+    vat_json_object_add_uint(node, "extended_bucket",
+                             ntohl(mp->extended_bucket));
+    vat_json_object_add_uint(node, "last_update_time",
+                             ntohl(mp->last_update_time));
+
+    vec_free(rate_type_str);
+    vec_free(round_type_str);
+    vec_free(type_str);
+}
+
+
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
@@ -2415,6 +2538,7 @@ _(LISP_ENABLE_DISABLE_STATUS_DETAILS,                                   \
 _(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
 _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
 _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
+_(POLICER_DETAILS, policer_details)                                     \
 _(NETMAP_CREATE_REPLY, netmap_create_reply)                             \
 _(NETMAP_DELETE_REPLY, netmap_delete_reply)
 
@@ -10333,6 +10457,43 @@ api_policer_add_del (vat_main_t * vam)
 }
 
 static int
+api_policer_dump(vat_main_t *vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_policer_dump_t *mp;
+    f64 timeout = ~0;
+    u8 *match_name = 0;
+    u8 match_name_valid = 0;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "name %s", &match_name)) {
+            vec_add1 (match_name, 0);
+            match_name_valid = 1;
+        } else
+            break;
+    }
+
+    M(POLICER_DUMP, policer_dump);
+    mp->match_name_valid = match_name_valid;
+    clib_memcpy (mp->match_name, match_name, vec_len (match_name));
+    vec_free (match_name);
+    /* send it... */
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
 api_netmap_create (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
@@ -10907,6 +11068,7 @@ _(lisp_enable_disable_status_dump, "")                                  \
 _(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
 _(af_packet_delete, "name <host interface name>")                       \
 _(policer_add_del, "name <policer name> <params> [del]")                \
+_(policer_dump, "[name <policer name>]")                                \
 _(netmap_create, "name <interface name> [hw-addr <mac>] [pipe] "        \
     "[master|slave]")                                                   \
 _(netmap_delete, "name <interface name>")
