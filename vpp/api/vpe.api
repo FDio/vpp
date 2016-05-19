@@ -2325,11 +2325,34 @@ define lisp_gpe_add_del_iface_reply {
     i32 retval;
 };
 
+/** \brief configure or disable LISP PITR node
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ls_name - locator set name
+    @param is_add - add locator set if non-zero, else disable pitr
+*/
+define lisp_pitr_set_locator_set {
+    u32 client_index;
+    u32 context;
+    u8 is_add;
+    u8 ls_name[64];
+};
+
+/** \brief Reply for lisp_pitr_set_locator_set
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define lisp_pitr_set_locator_set_reply {
+    u32 context;
+    i32 retval;
+};
+
 /** \brief add or delete remote static mapping
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
     @param vni - virtual network instance
+    @param table_id - table id
     @param action - negative map-reply action
     @param eid_is_ip4 - ipv4/6 of source and destination EIDs
     @param deid - destination EID
@@ -2342,6 +2365,7 @@ define lisp_add_del_remote_mapping {
     u32 context;
     u8  is_add;
     u32 vni;
+    u32 table_id;
     u8 action;
     u8 eid_is_ip4;
     u8 deid[16];
