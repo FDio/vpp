@@ -339,6 +339,7 @@ _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
 _(AF_PACKET_CREATE, af_packet_create)                                   \
 _(AF_PACKET_DELETE, af_packet_delete)                                   \
 _(POLICER_ADD_DEL, policer_add_del)                                     \
+_(POLICER_DUMP, policer_dump)                                           \
 _(NETMAP_CREATE, netmap_create)                                         \
 _(NETMAP_DELETE, netmap_delete)
 
@@ -5965,6 +5966,84 @@ vl_api_policer_add_del_t_handler
       rv = VNET_API_ERROR_UNSPECIFIED;
 
     REPLY_MACRO(VL_API_POLICER_ADD_DEL_REPLY);
+}
+
+static void
+send_policer_details (u8 *name,
+                      sse2_qos_pol_cfg_params_st *config,
+                      policer_read_response_type_st *templ,
+                      unix_shared_memory_queue_t *q,
+                      u32 context)
+{
+    vl_api_policer_details_t * mp;
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset (mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (VL_API_POLICER_DETAILS);
+    mp->context = context;
+    mp->cir = htonl(config->rb.kbps.cir_kbps);
+    mp->eir = htonl(config->rb.kbps.eir_kbps);
+    mp->cb = htonl(config->rb.kbps.cb_bytes);
+    mp->eb = htonl(config->rb.kbps.eb_bytes);
+    mp->rate_type = config->rate_type;
+    mp->round_type = config->rnd_type;
+    mp->type = config->rfc;
+    mp->single_rate = templ->single_rate ? 1 : 0;
+    mp->color_aware = templ->color_aware ? 1 : 0;
+    mp->scale = htonl(templ->scale);
+    mp->cir_tokens_per_period = htonl(templ->cir_tokens_per_period);
+    mp->pir_tokens_per_period = htonl(templ->pir_tokens_per_period);
+    mp->current_limit = htonl(templ->current_limit);
+    mp->current_bucket = htonl(templ->current_bucket);
+    mp->extended_limit = htonl(templ->extended_limit);
+    mp->extended_bucket = htonl(templ->extended_bucket);
+    mp->last_update_time = clib_host_to_net_u64(templ->last_update_time);
+
+    strncpy ((char *) mp->name, (char *) name, ARRAY_LEN(mp->name) - 1);
+
+    vl_msg_api_send_shmem (q, (u8 *)&mp);
+}
+
+static void
+vl_api_policer_dump_t_handler
+(vl_api_policer_dump_t *mp)
+{
+    unix_shared_memory_queue_t * q;
+    vnet_policer_main_t * pm = &vnet_policer_main;
+    hash_pair_t * hp;
+    uword * p;
+    u32 pool_index;
+    u8 * match_name = 0;
+    u8 * name;
+    sse2_qos_pol_cfg_params_st *config;
+    policer_read_response_type_st *templ;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0)
+        return;
+
+    if (mp->match_name_valid) {
+        match_name = format(0, "%s%c", mp->match_name, 0);
+    }
+
+    if (mp->match_name_valid) {
+        p = hash_get_mem (pm->policer_config_by_name, match_name);
+        if (p) {
+            pool_index = p[0];
+            config = pool_elt_at_index (pm->configs, pool_index);
+            templ = pool_elt_at_index (pm->policer_templates, pool_index);
+            send_policer_details(match_name, config, templ, q, mp->context);
+        }
+    } else {
+        hash_foreach_pair (hp, pm->policer_config_by_name,
+        ({
+            name = (u8 *) hp->key;
+            pool_index = hp->value[0];
+            config = pool_elt_at_index (pm->configs, pool_index);
+            templ = pool_elt_at_index (pm->policer_templates, pool_index);
+            send_policer_details(name, config, templ, q, mp->context);
+        }));
+    }
 }
 
 static void
