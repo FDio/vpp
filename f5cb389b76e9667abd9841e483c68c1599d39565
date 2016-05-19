@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_d5f3d808",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 6028,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-05-19T23:20:26Z",
+      "side": 1,
+      "message": "Two cases: if match_name_valid\u003d\u003d1, use the hash table and look up the policer by name.\n\nIf match_name_valid\u003d\u003d0, use a pool_foreach(...)",
+      "revId": "f5cb389b76e9667abd9841e483c68c1599d39565",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
