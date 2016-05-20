@@ -10534,7 +10534,7 @@ api_netmap_create (vat_main_t * vam)
 
     M(NETMAP_CREATE, netmap_create);
 
-    clib_memcpy (mp->if_name, if_name, vec_len (if_name));
+    clib_memcpy (mp->netmap_if_name, if_name, vec_len (if_name));
     clib_memcpy (mp->hw_addr, hw_addr, 6);
     mp->use_random_hw_addr = random_hw_addr;
     mp->is_pipe = is_pipe;
@@ -10573,7 +10573,7 @@ api_netmap_delete (vat_main_t * vam)
 
     M(NETMAP_DELETE, netmap_delete);
 
-    clib_memcpy (mp->if_name, if_name, vec_len (if_name));
+    clib_memcpy (mp->netmap_if_name, if_name, vec_len (if_name));
     vec_free (if_name);
 
     S; W;

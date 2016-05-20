@@ -3522,7 +3522,7 @@ manual_java define policer_details {
 /** \brief Create netmap
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param if_name - interface name
+    @param netmap_if_name - interface name
     @param hw_addr - interface MAC
     @param use_random_hw_addr - use random generated MAC
     @param is_pipe - is pipe
@@ -3532,7 +3532,7 @@ define netmap_create {
     u32 client_index;
     u32 context;
 
-    u8 if_name[64];
+    u8 netmap_if_name[64];
     u8 hw_addr[6];
     u8 use_random_hw_addr;
     u8 is_pipe;
@@ -3551,13 +3551,13 @@ define netmap_create_reply {
 /** \brief Delete netmap
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param if_name - interface name
+    @param netmap_if_name - interface name
 */
 define netmap_delete {
     u32 client_index;
     u32 context;
 
-    u8 if_name[64];
+    u8 netmap_if_name[64];
 };
 
 /** \brief Delete netmap response
