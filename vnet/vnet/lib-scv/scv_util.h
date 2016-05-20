@@ -77,6 +77,8 @@ extern u16 invalid_profile_start_index;
 extern u8 number_of_invalid_profiles;
 extern f64 next_time_to_send;
 extern u32 time_exponent;
+extern u64 profile_renew_request;
+extern u64 profile_renew_request_failed;
 
 /* 
  * Initialize Service chain
@@ -134,7 +136,7 @@ u64 scv_generate_random(scv_profile * profile);
 
 int scv_profile_to_str(scv_profile * profile, char *buf, int n);
 
-extern void clear_ioam_scv_profiles();
+extern void clear_scv_profiles();
 
 static inline u8 scv_get_profile_in_use(void)
 {
@@ -142,7 +144,7 @@ static inline u8 scv_get_profile_in_use(void)
 }
 
 static inline
-    void scv_notification_reset(u16 start_index_recvd, u8 num_profiles_recvd)
+void scv_notification_reset(u16 start_index_recvd, u8 num_profiles_recvd)
 {
     /* Profiles recevied w/o notn. Nothing to do. */
     if (number_of_invalid_profiles == 0)
@@ -170,9 +172,8 @@ static inline
 }
 
 int __attribute__ ((weak)) scv_profile_renew(u8 * path_name,
-    u8 start_index, u8 num_profiles);
-int __attribute__ ((weak)) scv_profile_refresh(u8 * path_name,
-    u8 start_index, u8 num_profiles);
+					     u8 start_index, u8 num_profiles,
+					     u8 broadcast);
 
 static inline u8 scv_is_decap(scv_profile * p)
 {
@@ -197,7 +198,6 @@ static inline u16 scv_get_next_profile_id(vlib_main_t * vm, u16 id)
         p = scv_profile_find(next_id);
         if (p->validity != 0)
         {
-            vlib_cli_output(vm, "Current id: %d, New id: %d\n", id, next_id);
             return (next_id);
         }
     }
@@ -242,32 +242,25 @@ scv_profile_invalidate(vlib_main_t * vm, ip6_hop_by_hop_main_t * hm,
     if (is_encap)
     {
         rc = scv_profile_renew(chain_path_name,
-            (u8) invalid_profile_start_index, number_of_invalid_profiles);
-        if (rc != 0)
-            vlib_cli_output(vm,
-                "Renew notification- id start:%d,  num %d failed. rc: %d\n",
-                invalid_profile_start_index, number_of_invalid_profiles, rc);
-        else
-            vlib_cli_output(vm,
-                "Renew notification- id start:%d num %d sent. \n",
-                invalid_profile_start_index, number_of_invalid_profiles);
-
+			       (u8) invalid_profile_start_index, number_of_invalid_profiles,
+			       1);
+	if (rc != 0)
+	  profile_renew_request_failed++;
+	else
+	  profile_renew_request++;
     }
     else
     {
         /* Non encap node. Send refresh notification for now. Later set a
            timer and if there is no profile even after the timeout send
            refresh notification. */
-        rc = scv_profile_refresh(chain_path_name,
-            (u8) invalid_profile_start_index, number_of_invalid_profiles);
-        if (rc != 0)
-            vlib_cli_output(vm,
-                "Refresh notification- id start:%d,  num %d failed. rc: %d\n",
-                invalid_profile_start_index, number_of_invalid_profiles, rc);
-        else
-            vlib_cli_output(vm,
-                "Refresh notification- id start:%d num %d sent. \n",
-                invalid_profile_start_index, number_of_invalid_profiles);
+        rc = scv_profile_renew(chain_path_name,
+				 (u8) invalid_profile_start_index, number_of_invalid_profiles,
+				 0);
+	if (rc != 0)
+	  profile_renew_request_failed++;
+	else
+	  profile_renew_request++;
     }
     next_time_to_send = now + time_exponent;
     time_exponent <<= 1;        /* backoff time is power of 2 seconds */
