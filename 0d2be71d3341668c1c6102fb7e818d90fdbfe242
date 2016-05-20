@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_381a096f",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-20T14:25:14Z",
+      "side": 1,
+      "message": "Use table_id_by_vni to figure out the table_id.For now that should work for vni 0 because of the default mapping.",
+      "range": {
+        "startLine": 408,
+        "startChar": 59,
+        "endLine": 408,
+        "endChar": 67
+      },
+      "revId": "0d2be71d3341668c1c6102fb7e818d90fdbfe242",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_581dbd65",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 2368,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-20T14:25:14Z",
+      "side": 1,
+      "message": "Let\u0027s keep this out. Once we add support for VNI we can introduce an API that maps vni to table_id, something like: lisp eid-table vni \u003cvni\u003e table-id \u003ctable_id\u003e. So whenever we\u0027ll add a remote mapping we\u0027ll check to see if a corresponding table-id for the vni exists. If not, we return an error.",
+      "range": {
+        "startLine": 2368,
+        "startChar": 0,
+        "endLine": 2368,
+        "endChar": 17
+      },
+      "revId": "0d2be71d3341668c1c6102fb7e818d90fdbfe242",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
