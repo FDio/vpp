@@ -28,6 +28,8 @@ scv_profile profile_list[MAX_SERVICE_PROFILES];
 u8 max_profiles = 0;
 u16 invalid_profile_start_index = 0;
 u8 number_of_invalid_profiles = 0;
+u64 profile_renew_request_failed = 0;
+u64 profile_renew_request = 0;
 f64 next_time_to_send = 0;
 u32 time_exponent = 1;
 vlib_main_t *gvm = 0;
@@ -65,10 +67,13 @@ void scv_init(u8 * path_name, u8 max, u8 indx)
 {
     int i = 0;
 
-    if (sc_init_done)
+    /* If it is a new profile list reset */
+    if (sc_init_done == 1 && 
+	!strcmp((char *)chain_path_name, (char *)path_name))
     {
-        return;
+      return;
     }
+
     memcpy(chain_path_name, path_name, strlen((const char *)path_name) + 1);
     max_profiles = max;
     pow_profile_index = indx;
@@ -340,7 +345,7 @@ static clib_error_t *show_scv_profile_command_fn(vlib_main_t * vm,
         vlib_cli_output(vm, "%v", s);
         return 0;
     }
-
+    s = format(s, "Profile list in use  : %s\n",chain_path_name);
     for (i = 0; i < max_profiles; i++)
     {
         p = scv_profile_find(i);
@@ -380,7 +385,11 @@ static clib_error_t *show_scv_profile_command_fn(vlib_main_t * vm,
                 next_time_to_send, time_exponent);
         else
             s = format(s, "\nNext time to send : Immediate\n");
-        s = format(s, "\nPath name : %s\n", chain_path_name);
+
+        s = format(s, "Renew sent/failed : 0x%Lx/0x%Lx (%Ld/%Ld)\n",
+		   profile_renew_request, profile_renew_request_failed,
+		   profile_renew_request, profile_renew_request_failed);
+
         s = format(s, "\nProfile index in use: %d\n", pow_profile_index);
         s = format(s, "Pkts passed : 0x%Lx (validity:0x%Lx)\n",
             total_pkts_using_this_profile, p->validity);
@@ -427,13 +436,13 @@ static clib_error_t *test_profile_renew_refresh_fn(vlib_main_t * vm,
     if (renew_or_refresh == TEST_PROFILE_RENEW)
     {
 	
-        rc = scv_profile_renew(path_name, (u8) start_index, (u8) num_profiles);
+      rc = scv_profile_renew(path_name, (u8) start_index, (u8) num_profiles, 1);
     }
     else if (renew_or_refresh == TEST_PROFILE_REFRESH)
     {
 	
-        rc = scv_profile_refresh(path_name, (u8) start_index,
-            (u8) num_profiles);
+        rc = scv_profile_renew(path_name, (u8) start_index,
+				 (u8) num_profiles, 0);
     }
     else
     {
