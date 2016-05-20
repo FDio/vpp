@@ -94,6 +94,18 @@ u8_array_struct_setter_template = Template("""
     }
 """)
 
+u16_array_struct_setter_template = Template("""
+    jshort * ${java_name}ArrayElements = (*env)->GetShortArrayElements(env, ${java_name}, NULL);
+    {
+        int _i;
+        for (_i = 0; _i < 0; _i++) {
+            mp->${c_name}[_i] = clib_host_to_net_u16(${java_name}ArrayElements[_i]);
+        }
+    }
+    (*env)->ReleaseShortArrayElements (env, ${java_name}, ${java_name}ArrayElements, 0);
+    """)
+
+
 u32_array_struct_setter_template = Template("""
     jint * ${java_name}ArrayElements = (*env)->GetIntArrayElements(env, ${java_name}, NULL);
     {
@@ -103,6 +115,17 @@ u32_array_struct_setter_template = Template("""
         }
     }
     (*env)->ReleaseIntArrayElements (env, ${java_name}, ${java_name}ArrayElements, 0);
+    """)
+
+u64_array_struct_setter_template = Template("""
+    jlong * ${java_name}ArrayElements = (*env)->GetLongArrayElements(env, ${java_name}, NULL);
+    {
+        int _i;
+        for (_i = 0; _i < 0; _i++) {
+            mp->${c_name}[_i] = clib_host_to_net_u64(${java_name}ArrayElements[_i]);
+        }
+    }
+    (*env)->ReleaseLongArrayElements (env, ${java_name}, ${java_name}ArrayElements, 0);
     """)
 
 vl_api_ip4_fib_counter_t_array_struct_setter_template = Template("""
@@ -117,7 +140,9 @@ struct_setter_templates = {'u8': u8_struct_setter_template,
                           'i32': u32_struct_setter_template,
                           'u64': u64_struct_setter_template,
                           'u8[]': u8_array_struct_setter_template,
+                          'u16[]': u16_array_struct_setter_template,
                           'u32[]': u32_array_struct_setter_template,
+                          'u64[]': u64_array_struct_setter_template,
                           'vl_api_ip4_fib_counter_t[]': vl_api_ip4_fib_counter_t_array_struct_setter_template,
                           'vl_api_ip6_fib_counter_t[]': vl_api_ip6_fib_counter_t_array_struct_setter_template
                   }
