@@ -7492,8 +7492,8 @@ static int api_vxlan_add_del_tunnel (vat_main_t * vam)
     M (VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel);
 
     if (ipv6_set) {
-        clib_memcpy(&mp->dst_address, &src6, sizeof(src6));
-        clib_memcpy(&mp->dst_address, &src6, sizeof(dst6));
+        clib_memcpy(&mp->src_address, &src6, sizeof(src6));
+        clib_memcpy(&mp->dst_address, &dst6, sizeof(dst6));
     } else { 
         clib_memcpy(&mp->src_address, &src4, sizeof(src4));
         clib_memcpy(&mp->dst_address, &dst4, sizeof(dst4));
