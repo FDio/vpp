@@ -73,6 +73,7 @@
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
+#include <vnet/lib-scv/scv_util.h>
 #include <vnet/devices/af_packet/af_packet.h>
 #include <vnet/policer/policer.h>
 #include <vnet/devices/netmap/netmap.h>
@@ -320,6 +321,9 @@ _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
 _(TRACE_PROFILE_ADD, trace_profile_add)                                 \
 _(TRACE_PROFILE_APPLY, trace_profile_apply)                             \
 _(TRACE_PROFILE_DEL, trace_profile_del)                                 \
+_(SCV_PROFILE_ADD, scv_profile_add)                                     \
+_(SCV_PROFILE_DEL, scv_profile_del)                                     \
+_(WANT_SCV_PROFILE_RENEW_EVENTS, want_scv_profile_renew_events)         \
 _(LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set)                   \
 _(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
 _(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
@@ -5861,6 +5865,125 @@ static void vl_api_get_node_graph_t_handler
                  rmp->reply_in_shmem = (uword) vector);
 }
 
+static void vl_api_scv_profile_add_t_handler
+(vl_api_scv_profile_add_t *mp)
+{
+    int rv = 0;
+    vl_api_scv_profile_add_reply_t * rmp;
+    u8 i, j;
+    scv_profile *profile = NULL;
+    u8 *name = 0;
+    u8 num_profiles = 0;
+
+    if (mp->list_name_len)
+        name = format(0, "%s", mp->list_name);
+
+    num_profiles = mp->num_profiles;
+    if (num_profiles > MAX_SERVICE_PROFILES) {
+        rv = -1;
+        goto ERROROUT;
+    }
+    scv_init(name,  num_profiles, mp->start_index);
+    
+    /* i : index to ring buffer to profiles in service chain verifier
+     * j : index to profiles in msg from orca to vpe
+     * Here service_profile_index is not used directly. We derive it from
+     * start_index itself.
+     */
+    scv_notification_reset(mp->start_index, num_profiles);
+    for (j = 0; j < num_profiles; j++) {
+        i = mp->service_profile_index[j];
+        profile = scv_profile_find(i);
+        if (profile) {
+	    scv_profile_create(profile, clib_net_to_host_u64(mp->prime[j]), 
+			   clib_net_to_host_u64(mp->polynomial_public[j]),
+			   clib_net_to_host_u64(mp->lpc[j]),
+			   clib_net_to_host_u64(mp->secret_share[j]),
+			   clib_net_to_host_u64(mp->validity[j]));
+	    if (1 == mp->validator[j])
+	        scv_set_validator(profile, clib_net_to_host_u64(mp->secret_key[j]));
+            scv_profile_set_bit_mask(profile, mp->max_bits[j]);
+      }
+    }
+ ERROROUT:
+    vec_free(name);
+    REPLY_MACRO(VL_API_SCV_PROFILE_ADD_REPLY);
+}
+
+static void vl_api_scv_profile_del_t_handler
+(vl_api_scv_profile_del_t *mp)
+{
+    int rv = 0;
+    vl_api_scv_profile_del_reply_t * rmp;
+
+
+    clear_scv_profiles();
+
+    REPLY_MACRO(VL_API_SCV_PROFILE_DEL_REPLY);
+}
+
+/* Simply store ths client index to be used in SCV notificiation */
+typedef struct {
+  u32 client_index;
+  u32 client_context;
+  u8 enable;
+} scv_profile_renew_notn_t;
+
+scv_profile_renew_notn_t scv_notn;
+static void vl_api_want_scv_profile_renew_events_t_handler
+(vl_api_want_scv_profile_renew_events_t *mp)
+{
+    int rv = 0;
+    scv_profile_renew_notn_t *notn = &scv_notn;
+    vl_api_want_scv_profile_renew_events_reply_t * rmp;
+
+    if (mp->enable_disable == 1) {
+        notn->client_index = mp->client_index;
+        notn->client_context = mp->context;
+        notn->enable = 1;
+    } else {
+        notn->enable = 0;
+    }      
+    REPLY_MACRO(VL_API_WANT_SCV_PROFILE_RENEW_EVENTS_REPLY);
+}
+
+int 
+scv_profile_renew (u8 *scv_profile_list, 
+                   u8 start_index, 
+		   u8 num_profiles,
+		   u8 broadcast)
+{
+    unix_shared_memory_queue_t * q;
+    scv_profile_renew_notn_t *notn = &scv_notn;
+    vl_api_scv_profile_renew_event_t *mp = NULL;
+
+    if (notn->enable == 0) {
+        return -1;
+    }
+    q = vl_api_client_index_to_input_queue (notn->client_index);
+    if (!q) {
+        notn->enable = 0;
+        return -1;
+    }
+    
+    if (q->cursize >= q->maxsize) {
+        /* If the client is unable to process messages, dont wait */
+        return -2;
+    }
+    mp = vl_msg_api_alloc (sizeof (*mp) + vec_len(scv_profile_list));
+    mp->list_name_len = vec_len(scv_profile_list);
+    clib_memcpy(mp->list_name, scv_profile_list,
+	   mp->list_name_len);
+    mp->num_profiles = num_profiles;
+    mp->_vl_msg_id = ntohs(VL_API_SCV_PROFILE_RENEW_EVENT);
+    mp->client_index = notn->client_index;
+    mp->broadcast = broadcast;
+    mp->context = notn->client_context;
+
+    vl_msg_api_send_shmem (q, (u8 *)&mp);
+    return 0;
+}
+
 static void vl_api_trace_profile_add_t_handler
 (vl_api_trace_profile_add_t *mp)
 {
@@ -6216,7 +6339,8 @@ vpe_api_init (vlib_main_t *vm)
     am->to_netconf_client_registration_hash = hash_create (0, sizeof (uword));
     am->from_netconf_client_registration_hash = hash_create (0, sizeof (uword));
     am->oam_events_registration_hash = hash_create (0, sizeof (uword));
-
+    memset(&scv_notn, 0, sizeof(scv_notn));
+    
     vl_api_init (vm);
     vl_set_memory_region_name ("/vpe-api");
     vl_enable_disable_memory_api (vm, 1 /* enable it */);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -385,6 +385,8 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
           u8 type0;
           u64 random = 0, cumulative = 0;
 	  u8 pow_encap = 0;
+	  scv_profile *pow_profile = NULL;
+	  u16 pow_profile_index = 0;
 	  
           /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -463,6 +465,7 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
                   break;
 
                 case HBH_OPTION_TYPE_IOAM_PROOF_OF_WORK:
+		  pow_profile_index = scv_profile_get_current_index();
 		  pow_profile = scv_profile_find(pow_profile_index);
 		  if (PREDICT_FALSE(!pow_profile))
 		    {
@@ -478,35 +481,32 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
 		  pow_encap = (pow0->random == 0);
                   if (pow_encap)
                     {
-                      if (PREDICT_FALSE(total_pkts_using_this_profile >= 
-					pow_profile->validity)) 
+                      if (PREDICT_FALSE(scv_profile_is_valid(pow_profile)==0)) 
                         {
                           /* Choose a new profile */
                           u16 new_profile_index;
                           new_profile_index = 
-                            scv_get_next_profile_id(vm, 
-						    pow_profile_index);
+                            scv_get_next_profile_id(pow_profile_index);
                           if (new_profile_index != pow_profile_index) 
                             {   
                               /* Got a new profile */
-                              scv_profile_invalidate(vm, hm,
-						     pow_profile_index, 
+                              scv_profile_invalidate(pow_profile_index, 
 						     pow_encap);
+			      scv_profile_set_current(new_profile_index);
                               pow_profile_index = new_profile_index;
                               pow_profile =
                                 scv_profile_find(pow_profile_index);
-                              total_pkts_using_this_profile = 0;
+			      scv_profile_reset_usage_stats(pow_profile);
                             } 
                           else 
                             {
-                              scv_profile_invalidate(vm, hm,
-                                        pow_profile_index, 
-                                        pow_encap);
+                              scv_profile_invalidate(pow_profile_index, 
+                                                     pow_encap);
 			    }
                         }
                       pow0->reserved_profile_id =
 			pow_profile_index & PROFILE_ID_MASK;
-                      total_pkts_using_this_profile++;
+		      scv_profile_incr_usage_stats(pow_profile);
 		    } 
                   else 
                     { /* Non encap node */
@@ -524,21 +524,20 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
                               vlib_node_increment_counter (vm, 
 						       ip6_hop_by_hop_node.index,
 						       IP6_HOP_BY_HOP_ERROR_PROFILE_MISS, 1);
-                              scv_profile_invalidate(vm, hm,
-						 pow0->reserved_profile_id, 
-						 pow_encap);
+                              scv_profile_invalidate(pow0->reserved_profile_id, 
+						     pow_encap);
                             } 
                           else 
                             {
-                              scv_profile_invalidate(vm, hm,
-						 pow_profile_index,
-						 pow_encap);
+                              scv_profile_invalidate(pow_profile_index,
+						     pow_encap);
                               pow_profile_index = pow0->reserved_profile_id;
                               pow_profile = new_profile;
-                              total_pkts_using_this_profile = 0;
+			      scv_profile_set_current(pow_profile_index);
+                              scv_profile_reset_usage_stats(pow_profile);
 			    }
                         }
-                      total_pkts_using_this_profile++;
+                      scv_profile_incr_usage_stats(pow_profile);
                     }
 
                   if (pow0->random == 0) 
@@ -901,6 +900,7 @@ static inline void ioam_end_of_path_validation (vlib_main_t * vm,
   u64 final_cumulative = 0;
   u64 random = 0;
   u8 result = 0;
+  scv_profile *pow_profile = NULL;
 
   if (!hbh0 || !ip0) return;
 
@@ -924,6 +924,7 @@ static inline void ioam_end_of_path_validation (vlib_main_t * vm,
           pow0 = (ioam_pow_option_t *) opt0;
           random = clib_net_to_host_u64(pow0->random);
           final_cumulative = clib_net_to_host_u64(pow0->cumulative);
+	  pow_profile = scv_profile_get_current();
           result =  scv_validate (pow_profile,
                                        final_cumulative, random);
 	  

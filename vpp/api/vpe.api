@@ -3400,6 +3400,111 @@ define trace_profile_del_reply {
     i32 retval;
 };
 
+/** \brief Service Chain Verification(SCV): Set SCV profile
+    @param num_profiles - number of profiles in this list
+    @param start_index - starting index of the profiles in the list
+    @param service_profile_index - index of the profile 
+                                   within ordered list
+    @param validator - True/False to indicate if this is verifier
+    @param secret_key - Verification key
+    @param secret_share - Share of the 1st polynomial
+    @param prime - Prime number used for modulo operation
+    @param max_bits - Max bits to be used for Random number generation
+    @param lpc - Lagrange basis polynomial
+    @param polynomial_public - pre-evaluated public polynomial 
+    @param list_name_len - length of the name of this profile list
+    @param list_name - name of this profile list
+*/
+define scv_profile_add {
+  u32 client_index;
+  u32 context;
+  u8 num_profiles;
+  u8 start_index;
+  u8 service_profile_index[16];
+  u8 validator[16];
+  u64 validity[16];
+  u64 secret_key[16];
+  u64 secret_share[16];
+  u64 prime[16];
+  u8  max_bits[16];
+  u64 lpc[16];
+  u64 polynomial_public[16];
+  u8 list_name_len;
+  u8 list_name[0];
+};
+
+/** \brief Service Chain Verification profile add / del response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define scv_profile_add_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief Delete SCV Profile 
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param list_name_len - length of the name of the profile list
+    @param list_name - name of profile list to delete
+*/
+define scv_profile_del {
+  u32 client_index;
+  u32 context;
+  u8 list_name_len;
+  u8 list_name[0];
+};
+
+/** \brief Service Chain Verification profile add / del response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define scv_profile_del_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief Register for SCV profile renew event
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+define want_scv_profile_renew_events {
+    u32 client_index;
+    u32 context;
+    u32 enable_disable;
+    u32 pid;
+};
+
+/** \brief Reply for scv profile renew events registration
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define want_scv_profile_renew_events_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief SCV Profile renew notification event
+    @param start_index - List of scv profiles requested with this start index
+    @param num_profiles - Number of scv profiles requested
+    @param broadcast - True/False to indicate renewal need for this node 
+                       or all the other nodes using the profile
+    @param list_name_len - length of the name of this profile list
+    @param list_name - name of this profile list
+*/
+define scv_profile_renew_event {
+     u32 client_index;
+     u32 context;
+     i32 retval;
+     u8 start_index;
+     u8 num_profiles;
+     u8 broadcast;
+     u8 list_name_len;
+     u8 list_name[0];
+};
+
 /** \brief Create host-interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

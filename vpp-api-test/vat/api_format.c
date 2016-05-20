@@ -2343,6 +2343,9 @@ _(sw_interface_clear_stats_reply)                       \
 _(trace_profile_add_reply)                              \
 _(trace_profile_apply_reply)                            \
 _(trace_profile_del_reply)                              \
+_(scv_profile_add_reply)                                \
+_(scv_profile_del_reply)                                \
+_(want_scv_profile_renew_events_reply)                  \
 _(lisp_add_del_locator_set_reply)                       \
 _(lisp_add_del_locator_reply)                           \
 _(lisp_add_del_local_eid_reply)                         \
@@ -2519,9 +2522,13 @@ _(COP_INTERFACE_ENABLE_DISABLE_REPLY, cop_interface_enable_disable_reply) \
 _(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply) \
 _(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
 _(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)      \
-_(TRACE_PROFILE_ADD_REPLY, trace_profile_add_reply)                   \
-_(TRACE_PROFILE_APPLY_REPLY, trace_profile_apply_reply)               \
+_(TRACE_PROFILE_ADD_REPLY, trace_profile_add_reply)                     \
+_(TRACE_PROFILE_APPLY_REPLY, trace_profile_apply_reply)                 \
 _(TRACE_PROFILE_DEL_REPLY, trace_profile_del_reply)                     \
+_(SCV_PROFILE_ADD_REPLY, scv_profile_add_reply)                         \
+_(SCV_PROFILE_DEL_REPLY, scv_profile_del_reply)                         \
+_(WANT_SCV_PROFILE_RENEW_EVENTS_REPLY,                                  \
+  want_scv_profile_renew_events_reply)					\
 _(LISP_ADD_DEL_LOCATOR_SET_REPLY, lisp_add_del_locator_set_reply)       \
 _(LISP_ADD_DEL_LOCATOR_REPLY, lisp_add_del_locator_reply)               \
 _(LISP_ADD_DEL_LOCAL_EID_REPLY, lisp_add_del_local_eid_reply)           \
@@ -5709,6 +5716,196 @@ static int api_trace_profile_del (vat_main_t *vam)
    M(TRACE_PROFILE_DEL, trace_profile_del);
    S; W;
    return 0;
+}
+
+uword unformat_u64_list (unformat_input_t * input, va_list * args)
+{
+    u64 ** listp = va_arg (*args, u64 **);
+    u64 * list = 0;
+    u64 number;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) 
+      {
+        if (unformat(input, "0x%Lx", &number))
+          {
+            vec_add1 (list, clib_host_to_net_u64(number)); //not sending
+	  }
+        else
+  	break;
+      }
+    *listp = list;
+    return 1;
+}
+
+static int api_scv_profile_add (vat_main_t *vam)
+{
+#define MAX_BITS 64
+#define MAX_PROFILES_IN_LIST 16
+    unformat_input_t *input = vam->input;
+    vl_api_scv_profile_add_t *mp;
+    u8 *name = NULL;
+    u64 *prime = NULL;
+    u64 *secret_share = NULL, *validity = NULL;
+    u64 *secret_key = NULL;
+    u32  bits = MAX_BITS;
+    u64 *lpc = NULL, *poly2 = NULL;
+    f64 timeout;
+    u32 num_profiles = 0;
+    u8 i = 0;
+    int rv = 0;
+
+    while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
+      {
+        if (unformat(input, "name %s", &name))
+	  ;
+        else if(unformat(input, "num-profile %u", &num_profiles))
+	  ;
+        else if (unformat(input, "validator-key %U", unformat_u64_list, &secret_key))
+          ;
+        else if (unformat(input, "prime-number %U", unformat_u64_list, &prime))
+          ;
+        else if (unformat(input, "secret-share %U", unformat_u64_list, &secret_share))
+          ;
+        else if (unformat(input, "polynomial-public %U",unformat_u64_list, &poly2))
+          ;
+        else if (unformat(input, "lpc %U", unformat_u64_list, &lpc))
+          ;
+        else if (unformat(input, "validity %U", unformat_u64_list, &validity))
+          ;
+        else if (unformat(input, "bits-in-random %u", &bits))
+	  {
+	    if (bits > MAX_BITS)
+	      bits = MAX_BITS;
+	  }
+        else
+  	break;
+      }
+
+    if (!name)
+      {
+        errmsg ("name required\n");
+        rv = -99;
+        goto OUT;
+      }
+    if (num_profiles == 0 || num_profiles > MAX_PROFILES_IN_LIST)
+      {
+        errmsg ("number of profiles must be non zero and less than 16 not %d\n",
+		num_profiles);
+        rv = -99;
+        goto OUT;
+      }
+    if (vec_len(prime) != num_profiles || vec_len(secret_share) != num_profiles ||
+        vec_len(lpc) != num_profiles || vec_len(poly2) != num_profiles)
+      {
+        errmsg ("prime-number, secret-share, lpc, polynomial-public are mandatory \
+                 and must match number of profiles\n");
+        rv = -99;
+        goto OUT;
+      }
+    if (vec_len(secret_key) != 0 && vec_len(secret_key) != num_profiles)
+      {
+        errmsg ("Secret keys should be 0 or %d\n", num_profiles);
+        rv = -99;
+        goto OUT;
+      }
+
+    M2(SCV_PROFILE_ADD, scv_profile_add, vec_len(name));
+
+    mp->list_name_len = vec_len(name);
+    clib_memcpy(mp->list_name, name, mp->list_name_len);
+    mp->num_profiles = num_profiles;
+    mp->start_index = 0;
+  
+    clib_memcpy (mp->secret_share, secret_share, 
+            vec_len(secret_share)* sizeof (u64));
+    clib_memcpy (mp->polynomial_public, poly2, 
+            vec_len(poly2)* sizeof (u64));
+    clib_memcpy (mp->lpc, lpc, 
+            vec_len(lpc)* sizeof (u64));
+    clib_memcpy (mp->prime, prime, 
+            vec_len(prime)* sizeof (u64));
+    if (vec_len(validity) != 0)
+      {
+        clib_memcpy (mp->validity, validity, 
+            vec_len(validity)* sizeof (u64));
+      }
+    else
+      {
+        for (i = 0; i < num_profiles; i++)
+          {
+            mp->validity[i] = ~0L;
+	  }
+    
+      }
+  
+    if (vec_len(secret_key) != 0)
+      {
+        clib_memcpy (mp->secret_key, secret_key, 
+              vec_len(secret_key)* sizeof (u64));
+      } 
+      
+    
+    for (i = 0; i < num_profiles; i++)
+      {
+        mp->service_profile_index[i] = i;
+        mp->max_bits[i] = bits;
+        mp->validator[i] = vec_len(secret_key) == 0 ? 0:1;
+      }
+      
+    S; W;
+  
+OUT:
+    vec_free(name);
+    vec_free(prime);
+    vec_free(lpc);
+    vec_free(poly2);
+    vec_free(validity);
+    vec_free(secret_key);
+    vec_free(secret_share);
+    return(rv);
+}
+
+static int api_scv_profile_del (vat_main_t *vam)
+{
+    vl_api_scv_profile_del_t *mp;
+    f64 timeout;
+   
+    M(SCV_PROFILE_DEL, scv_profile_del);
+    mp->list_name_len = 0;
+    S; W;
+    return 0;
+}
+
+static int
+api_want_scv_profile_renew_events (vat_main_t * vam)
+{
+    unformat_input_t *i = vam->input;
+    vl_api_want_scv_profile_renew_events_t * mp;
+    f64 timeout;
+    int enable = -1;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+      {
+        if (unformat (i, "enable"))
+          enable = 1;
+        else if (unformat (i, "disable"))
+          enable = 0;
+        else
+          break;
+      }
+
+    if (enable == -1)
+      {
+        errmsg ("missing enable|disable\n");
+        return -99;
+      }
+
+
+    M(WANT_SCV_PROFILE_RENEW_EVENTS, want_scv_profile_renew_events);
+    mp->enable_disable = enable;
+    mp->pid = getpid();
+
+    S; W; 
 }
 
 static int api_sr_tunnel_add_del (vat_main_t * vam)
@@ -11099,6 +11296,12 @@ _(trace_profile_add, "id <nn> trace-type <0x1f|0x3|0x9|0x11|0x19> "     \
 _(trace_profile_apply, "id <nn> <ip6-address>/<width>"                  \
   " vrf_id <nn>  add | pop | none")                                     \
 _(trace_profile_del, "")                                                \
+_(scv_profile_add, "name <name> num-profiles [0-16] "                   \
+  "prime-number <0xu64> bits-in-random [0-64] "                         \
+  "secret-share <0xu64> lpc <0xu64> polynomial-public <0xu64> "         \
+  "[validator-key <0xu64>] [validity <0xu64>]")                         \
+_(scv_profile_del, "[id <nn>]")                                         \
+_(want_scv_profile_renew_events, "enable/disable")                      \
 _(lisp_add_del_locator_set, "locator-set <locator_name> [del]")         \
 _(lisp_add_del_locator, "locator-set <locator_name> "                   \
                         "iface <intf> | sw_if_index <sw_if_index> "     \

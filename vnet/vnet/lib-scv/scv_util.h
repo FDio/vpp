@@ -1,7 +1,7 @@
 /* 
  * scv_util.h -- Service chain validation/Proof Of Transit Utility Header
  *
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -66,17 +66,42 @@ typedef struct scv_profile_
     u64 limit;
     u64 validity;
     double primeinv;
+    u64 total_pkts_using_this_profile;
+
     // struct hlist_node my_hash_list; when this gets added to hashtbale
 } scv_profile;
 
-extern scv_profile *pow_profile;
-extern u16 pow_profile_index;
-extern u64 total_pkts_using_this_profile;
-extern u8 chain_path_name[PATH_NAME_SIZE];
-extern u16 invalid_profile_start_index;
-extern u8 number_of_invalid_profiles;
-extern f64 next_time_to_send;
-extern u32 time_exponent;
+typedef struct {
+    /* Name of the profile list in use*/
+    u8 *profile_list_name;
+    scv_profile profile_list[MAX_SERVICE_PROFILES];
+    /* number of profiles in the list */
+    u8 no_of_profiles;
+    u8 sc_init_done;
+    
+    /* The current profile from the list  in use */
+    scv_profile *pow_profile;
+    /* Index of the profile within the list */
+    u16 pow_profile_index;
+  
+    /* Profile error stats */
+    u16 invalid_profile_start_index;
+    u8 number_of_invalid_profiles;
+  
+    /* Profile renewal */
+    u64 profile_renew_request_failed;
+    u64 profile_renew_request;
+    f64 next_time_to_send;
+    u32 time_exponent;
+    u32 unix_time_0;
+    f64 vlib_time_0;
+
+    /* convenience */
+    vlib_main_t * vlib_main;
+    vnet_main_t * vnet_main;
+} scv_main_t;
+
+extern scv_main_t scv_main;
 
 /* 
  * Initialize Service chain
@@ -86,7 +111,7 @@ void scv_init(u8 * path_name, u8 max, u8 indx);
 /* 
  * Get maximum number of profiles configured for this chain.
  */
-u8 scv_get_max_profiles(void);
+u8 scv_get_no_of_profiles(void);
 
 /* 
  * Find a SC profile by ID
@@ -134,58 +159,59 @@ u64 scv_generate_random(scv_profile * profile);
 
 int scv_profile_to_str(scv_profile * profile, char *buf, int n);
 
-extern void clear_ioam_scv_profiles();
+extern void clear_scv_profiles();
 
 static inline u8 scv_get_profile_in_use(void)
 {
-    return pow_profile_index;
+    scv_main_t *sm = &scv_main;
+    return (sm->pow_profile_index);
 }
 
 static inline
-    void scv_notification_reset(u16 start_index_recvd, u8 num_profiles_recvd)
+void scv_notification_reset(u16 start_index_recvd, u8 num_profiles_recvd)
 {
+    scv_main_t *sm = &scv_main;
     /* Profiles recevied w/o notn. Nothing to do. */
-    if (number_of_invalid_profiles == 0)
+    if (sm->number_of_invalid_profiles == 0)
         return;
 
     /* Most likely case. Got all requested profiles */
-    if (PREDICT_TRUE(num_profiles_recvd == number_of_invalid_profiles &&
-            start_index_recvd == invalid_profile_start_index))
+    if (PREDICT_TRUE(num_profiles_recvd == sm->number_of_invalid_profiles &&
+            start_index_recvd == sm->invalid_profile_start_index))
     {
-        number_of_invalid_profiles = 0;
-        invalid_profile_start_index = 0;
+        sm->number_of_invalid_profiles = 0;
+        sm->invalid_profile_start_index = 0;
         return;
     }
 
     /* Received partial list */
-    if (num_profiles_recvd < number_of_invalid_profiles)
+    if (num_profiles_recvd < sm->number_of_invalid_profiles)
     {
-        ASSERT(start_index_recvd == invalid_profile_start_index);
-        invalid_profile_start_index = (start_index_recvd + num_profiles_recvd)
-            % scv_get_max_profiles();
-        number_of_invalid_profiles -= num_profiles_recvd;
+        ASSERT(start_index_recvd == sm->invalid_profile_start_index);
+        sm->invalid_profile_start_index = (start_index_recvd + num_profiles_recvd)
+            % scv_get_no_of_profiles();
+        sm->number_of_invalid_profiles -= num_profiles_recvd;
     }
 
     return;
 }
 
 int __attribute__ ((weak)) scv_profile_renew(u8 * path_name,
-    u8 start_index, u8 num_profiles);
-int __attribute__ ((weak)) scv_profile_refresh(u8 * path_name,
-    u8 start_index, u8 num_profiles);
+					     u8 start_index, u8 num_profiles,
+					     u8 broadcast);
 
 static inline u8 scv_is_decap(scv_profile * p)
 {
     return (p->validator == 1);
 }
 
-static inline u16 scv_get_next_profile_id(vlib_main_t * vm, u16 id)
+static inline u16 scv_get_next_profile_id (u16 id)
 {
-    int next_id, num_profiles = 0;
+    int next_id,num_profiles = 0;
     scv_profile *p;
     u8 max;
 
-    max = scv_get_max_profiles();
+    max = scv_get_no_of_profiles();
 
     next_id = id;
 
@@ -197,18 +223,61 @@ static inline u16 scv_get_next_profile_id(vlib_main_t * vm, u16 id)
         p = scv_profile_find(next_id);
         if (p->validity != 0)
         {
-            vlib_cli_output(vm, "Current id: %d, New id: %d\n", id, next_id);
-            return (next_id);
+	  return (next_id);
         }
     }
 
     return (id);
 }
 
-static inline void
-scv_profile_invalidate(vlib_main_t * vm, ip6_hop_by_hop_main_t * hm,
-    u16 id, u8 is_encap)
+static inline void scv_profile_set_current (u16 index)
 {
+    scv_main_t *sm = &scv_main;
+    scv_profile *profile = NULL;
+    profile = scv_profile_find(index);
+    if (profile) {
+        sm->pow_profile_index = index;
+        sm->pow_profile = profile;
+    }
+}
+static inline u16 scv_profile_get_current_index (void)
+{
+    scv_main_t *sm = &scv_main;
+    return (sm->pow_profile_index);
+}
+
+static inline scv_profile * scv_profile_get_current (void)
+{
+    scv_main_t *sm = &scv_main;
+    return (sm->pow_profile);
+}
+
+static inline u8 scv_profile_is_valid (scv_profile *profile)
+{
+    if (profile->total_pkts_using_this_profile >= profile->validity)
+    {
+      return(0);
+    }
+    return(1);
+}
+static inline void scv_profile_reset_usage_stats (scv_profile *pow)
+{
+  if (pow) {
+    pow->total_pkts_using_this_profile = 0;
+  }
+}
+
+static inline void scv_profile_incr_usage_stats (scv_profile *pow)
+{
+  if (pow) {
+    pow->total_pkts_using_this_profile++;
+  }
+}
+
+static inline void
+scv_profile_invalidate(u16 id, u8 is_encap)
+{
+    scv_main_t *sm = &scv_main;
     scv_profile *p = scv_profile_find(id);
     int rc;
     u8 max;
@@ -218,59 +287,54 @@ scv_profile_invalidate(vlib_main_t * vm, ip6_hop_by_hop_main_t * hm,
 
     /* If there are alredy profiles waiting. If so, use existing start_index. 
      */
-    if (!number_of_invalid_profiles)
-        invalid_profile_start_index = id;
+    if (!sm->number_of_invalid_profiles)
+        sm->invalid_profile_start_index = id;
 
-    max = scv_get_max_profiles();
+    max = scv_get_no_of_profiles();
 
     /* Check whether the id is already included in existing list */
-    if (!(id >= invalid_profile_start_index &&
-            id <= (invalid_profile_start_index +
-                number_of_invalid_profiles - 1) % max))
+    if (!(id >= sm->invalid_profile_start_index &&
+            id <= (sm->invalid_profile_start_index +
+                sm->number_of_invalid_profiles - 1) % max))
     {
-        number_of_invalid_profiles++;
+        sm->number_of_invalid_profiles++;
     }
 
-    if (number_of_invalid_profiles > scv_get_max_profiles())
-        number_of_invalid_profiles = scv_get_max_profiles();
+    if (sm->number_of_invalid_profiles > scv_get_no_of_profiles())
+        sm->number_of_invalid_profiles = scv_get_no_of_profiles();
 
-    now = (f64) (((f64) hm->unix_time_0) +
-        (vlib_time_now(hm->vlib_main) - hm->vlib_time_0));
-    if (now <= next_time_to_send)
+    now = (f64) (((f64) sm->unix_time_0) +
+        (vlib_time_now(sm->vlib_main) - sm->vlib_time_0));
+    if (now <= sm->next_time_to_send)
         return;
 
     if (is_encap)
     {
-        rc = scv_profile_renew(chain_path_name,
-            (u8) invalid_profile_start_index, number_of_invalid_profiles);
-        if (rc != 0)
-            vlib_cli_output(vm,
-                "Renew notification- id start:%d,  num %d failed. rc: %d\n",
-                invalid_profile_start_index, number_of_invalid_profiles, rc);
-        else
-            vlib_cli_output(vm,
-                "Renew notification- id start:%d num %d sent. \n",
-                invalid_profile_start_index, number_of_invalid_profiles);
-
+        rc = scv_profile_renew(sm->profile_list_name,
+			       (u8) sm->invalid_profile_start_index,
+			       sm->number_of_invalid_profiles,
+			       1);
+	if (rc != 0)
+	  sm->profile_renew_request_failed++;
+	else
+	  sm->profile_renew_request++;
     }
     else
     {
         /* Non encap node. Send refresh notification for now. Later set a
            timer and if there is no profile even after the timeout send
            refresh notification. */
-        rc = scv_profile_refresh(chain_path_name,
-            (u8) invalid_profile_start_index, number_of_invalid_profiles);
-        if (rc != 0)
-            vlib_cli_output(vm,
-                "Refresh notification- id start:%d,  num %d failed. rc: %d\n",
-                invalid_profile_start_index, number_of_invalid_profiles, rc);
-        else
-            vlib_cli_output(vm,
-                "Refresh notification- id start:%d num %d sent. \n",
-                invalid_profile_start_index, number_of_invalid_profiles);
+        rc = scv_profile_renew(sm->profile_list_name,
+				 (u8) sm->invalid_profile_start_index,
+			         sm->number_of_invalid_profiles,
+				 0);
+	if (rc != 0)
+	  sm->profile_renew_request_failed++;
+	else
+	  sm->profile_renew_request++;
     }
-    next_time_to_send = now + time_exponent;
-    time_exponent <<= 1;        /* backoff time is power of 2 seconds */
+    sm->next_time_to_send = now + sm->time_exponent;
+    sm->time_exponent <<= 1;        /* backoff time is power of 2 seconds */
 
     return;
 }

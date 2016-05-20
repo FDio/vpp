@@ -1,5 +1,5 @@
 /* 
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -20,17 +20,45 @@
 #include "math64.h"
 #include "scv_util.h"
 
-scv_profile *pow_profile = NULL;
-u16 pow_profile_index = 0;
-u64 total_pkts_using_this_profile = 0;
-u8 chain_path_name[PATH_NAME_SIZE];
-scv_profile profile_list[MAX_SERVICE_PROFILES];
-u8 max_profiles = 0;
-u16 invalid_profile_start_index = 0;
-u8 number_of_invalid_profiles = 0;
-f64 next_time_to_send = 0;
-u32 time_exponent = 1;
-vlib_main_t *gvm = 0;
+scv_main_t scv_main;
+static void scv_main_profiles_reset (void)
+{
+    scv_main_t *sm = &scv_main;
+    int i = 0;
+
+    for (i = 0; i < MAX_SERVICE_PROFILES; i++)
+    {
+      scv_profile_cleanup(&(sm->profile_list[i]));
+    }
+    sm->pow_profile = NULL;
+    sm->pow_profile_index = 0;
+    if (sm->profile_list_name)
+	vec_free(sm->profile_list_name);
+    sm->profile_list_name = NULL;
+    sm->no_of_profiles = 0;
+    sm->invalid_profile_start_index = 0;
+    sm->number_of_invalid_profiles = 0;
+    sm->next_time_to_send = 0;
+    sm->time_exponent = 1;
+    sm->sc_init_done = 0;
+}
+
+static clib_error_t * scv_main_init (vlib_main_t * vm)
+{
+    scv_main_t *sm = &scv_main;
+    
+    bzero(sm, sizeof(scv_main));
+    sm->time_exponent = 1;
+    sm->vlib_main = vm;
+    sm->vnet_main = vnet_get_main();
+    sm->unix_time_0 = (u32) time (0); /* Store starting time */
+    sm->vlib_time_0 = vlib_time_now (vm);
+    scv_main_profiles_reset();
+    
+    return(0);
+}
+
+VLIB_INIT_FUNCTION (scv_main_init);
 
 static void scv_profile_init(scv_profile * new, u16 id)
 {
@@ -44,41 +72,61 @@ static void scv_profile_init(scv_profile * new, u16 id)
 /* 
  * Get maximum number of profiles configured for this chain.
  */
-u8 scv_get_max_profiles(void)
+u8 scv_get_no_of_profiles(void)
 {
-    return max_profiles;
+    scv_main_t *sm = &scv_main;
+    return (sm->no_of_profiles);
 }
 
 scv_profile *scv_profile_find(u16 id)
 {
-    u8 max = scv_get_max_profiles();
+    scv_main_t *sm = &scv_main;
+    u8 max = scv_get_no_of_profiles();
 
     if (id >= 0 && id < max)
     {
-        return (&profile_list[id]);
+        return (&(sm->profile_list[id]));
     }
     return (NULL);
 }
-
-u8 sc_init_done = 0;
-void scv_init(u8 * path_name, u8 max, u8 indx)
+static int scv_profile_name_equal (u8 *name0, u8 *name1)
 {
+    int len0, len1;
+
+    len0 = vec_len (name0);
+    len1 = vec_len (name1);
+    if (len0 != len1)
+        return(0);
+    return (0==strncmp ((char *) name0, (char *)name1, len0));
+}
+  
+void scv_init(u8 * profile_list_name, u8 max, u8 indx)
+{
+    scv_main_t *sm = &scv_main;
     int i = 0;
 
-    if (sc_init_done)
+    /* If it is the same profile list skip reset */
+    if (sm->sc_init_done == 1 && 
+	scv_profile_name_equal(sm->profile_list_name, profile_list_name))
     {
-        return;
-    }
-    memcpy(chain_path_name, path_name, strlen((const char *)path_name) + 1);
-    max_profiles = max;
-    pow_profile_index = indx;
-
-    for (i = 0; i < max_profiles; i++)
-    {
-        scv_profile_init(&profile_list[i], i);
+      return;
     }
 
-    sc_init_done = 1;
+    scv_main_profiles_reset();
+    if (vec_len(profile_list_name))
+      sm->profile_list_name = (u8 *)vec_dup(profile_list_name);
+    else
+      sm->profile_list_name = 0;
+    sm->no_of_profiles = max;
+    sm->pow_profile_index = indx;
+    sm->pow_profile = &(sm->profile_list[indx]);
+    
+    for (i = 0; i < sm->no_of_profiles; i++)
+    {
+      scv_profile_init(&(sm->profile_list[i]), i);
+    }
+
+    sm->sc_init_done = 1;
 }
 
 void scv_profile_cleanup(scv_profile * profile)
@@ -92,6 +140,7 @@ void scv_profile_cleanup(scv_profile * profile)
 void scv_profile_create(scv_profile * profile, u64 prime,
     u64 poly2, u64 lpc, u64 secret_share, u64 validity)
 {
+    scv_main_t *sm = &scv_main;
     if (profile)
     {
         scv_profile_cleanup(profile);
@@ -101,8 +150,10 @@ void scv_profile_create(scv_profile * profile, u64 prime,
         profile->poly_pre_eval = poly2;
         profile->secret_share = secret_share;
         profile->validity = validity;
-        time_exponent = 1;      /* Got a new profile. Reset backoff */
-        next_time_to_send = 0;  /* and send next request with no delay */
+	profile->total_pkts_using_this_profile = 0;
+        sm->time_exponent = 1;      /* Got a new profile. Reset backoff */
+        sm->next_time_to_send = 0;  /* and send next request with no delay */
+	
     }
 }
 
@@ -229,26 +280,12 @@ void scv_profile_set_bit_mask(scv_profile * profile, u16 bits)
 clib_error_t *clear_scv_profile_command_fn(vlib_main_t * vm,
     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-    int i = 0;
+    scv_main_t *sm = &scv_main;
 
-    if (!sc_init_done)
+    if (!sm->sc_init_done)
         return 0;
-
-    for (i = 0; i < max_profiles; i++)
-    {
-        scv_profile_cleanup(&profile_list[i]);
-    }
-    pow_profile = NULL;
-    pow_profile_index = 0;
-    total_pkts_using_this_profile = 0;
-    memset(chain_path_name, 0, PATH_NAME_SIZE);
-    max_profiles = 0;
-    invalid_profile_start_index = 0;
-    number_of_invalid_profiles = 0;
-    next_time_to_send = 0;
-    time_exponent = 1;
-    sc_init_done = 0;
-
+    scv_main_profiles_reset();
+    
     return 0;
 }
 
@@ -275,7 +312,8 @@ static clib_error_t *set_scv_profile_command_fn(vlib_main_t * vm,
     u32 bits;
     u64 lpc = 0, poly2 = 0;
     scv_profile *profile = NULL;
-
+    u8 *profile_list_name = NULL;
+    
     bits = MAX_BITS;
 
     while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
@@ -303,8 +341,8 @@ static clib_error_t *set_scv_profile_command_fn(vlib_main_t * vm,
             return clib_error_return(0, "unknown input `%U'",
                 format_unformat_error, input);
     }
-
-    scv_init((u8 *) "TEST", MAX_SERVICE_PROFILES, 0 /* start index */ );
+    vec_add(profile_list_name, "TEST", strlen("TEST")+1);
+    scv_init( profile_list_name, MAX_SERVICE_PROFILES, 0 /* start index */ );
     profile = scv_profile_find(profile_id);
 
     if (profile)
@@ -314,7 +352,7 @@ static clib_error_t *set_scv_profile_command_fn(vlib_main_t * vm,
             scv_set_validator(profile, secret_key);
         scv_profile_set_bit_mask(profile, bits);
     }
-
+    vec_free(profile_list_name);
     return 0;
 }
 
@@ -330,18 +368,19 @@ VLIB_CLI_COMMAND(set_scv_profile_command) =
 static clib_error_t *show_scv_profile_command_fn(vlib_main_t * vm,
     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+    scv_main_t *sm = &scv_main;
     scv_profile *p = NULL;
     u16 i;
     u8 *s = 0;
 
-    if (sc_init_done == 0)
+    if (sm->sc_init_done == 0)
     {
         s = format(s, "SCV Profiles not configured\n");
         vlib_cli_output(vm, "%v", s);
         return 0;
     }
-
-    for (i = 0; i < max_profiles; i++)
+    s = format(s, "Profile list in use  : %s\n",sm->profile_list_name);
+    for (i = 0; i < sm->no_of_profiles; i++)
     {
         p = scv_profile_find(i);
         if (p->validity == 0)
@@ -367,23 +406,27 @@ static clib_error_t *show_scv_profile_command_fn(vlib_main_t * vm,
             p->validity, p->validity);
     }
 
-    if (max_profiles)
+    if (sm->no_of_profiles)
     {
-        p = scv_profile_find(pow_profile_index);
+        p = scv_profile_find(sm->pow_profile_index);
 
         s = format(s, "\nInvalid profiles start : %d Number : %d\n",
-            invalid_profile_start_index, number_of_invalid_profiles);
+            sm->invalid_profile_start_index, sm->number_of_invalid_profiles);
 
-        if (next_time_to_send)
+        if (sm->next_time_to_send)
             s = format(s, "\nNext time to send : %U, time_exponent:%ld\n",
                 format_time_interval, "d:h:m:s:f:u",
-                next_time_to_send, time_exponent);
+                sm->next_time_to_send, sm->time_exponent);
         else
             s = format(s, "\nNext time to send : Immediate\n");
-        s = format(s, "\nPath name : %s\n", chain_path_name);
-        s = format(s, "\nProfile index in use: %d\n", pow_profile_index);
+
+        s = format(s, "Renew sent/failed : 0x%Lx/0x%Lx (%Ld/%Ld)\n",
+		   sm->profile_renew_request, sm->profile_renew_request_failed,
+		   sm->profile_renew_request, sm->profile_renew_request_failed);
+
+        s = format(s, "\nProfile index in use: %d\n", sm->pow_profile_index);
         s = format(s, "Pkts passed : 0x%Lx (validity:0x%Lx)\n",
-            total_pkts_using_this_profile, p->validity);
+            p->total_pkts_using_this_profile, p->validity);
         if (scv_is_decap(p))
             s = format(s, "  This is Decap node.  \n");
         vlib_cli_output(vm, "%v", s);
@@ -404,17 +447,16 @@ static clib_error_t *test_profile_renew_refresh_fn(vlib_main_t * vm,
     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
     u8 renew_or_refresh = 0;
-
 #define TEST_PROFILE_RENEW 1
 #define TEST_PROFILE_REFRESH 2
-    u8 *path_name = 0;
+    u8 *profile_list_name = 0;
     u32 start_index = 0, num_profiles = 0;
     int rc = 0;
 
     while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
     {
         if (unformat(input, "path-name %s start-index %d num-profiles %d",
-                &path_name, &start_index, &num_profiles))
+                &profile_list_name, &start_index, &num_profiles))
             ;
         else if (unformat(input, "renew"))
             renew_or_refresh = TEST_PROFILE_RENEW;
@@ -427,17 +469,17 @@ static clib_error_t *test_profile_renew_refresh_fn(vlib_main_t * vm,
     if (renew_or_refresh == TEST_PROFILE_RENEW)
     {
 	
-        rc = scv_profile_renew(path_name, (u8) start_index, (u8) num_profiles);
+      rc = scv_profile_renew(profile_list_name, (u8) start_index, (u8) num_profiles, 1);
     }
     else if (renew_or_refresh == TEST_PROFILE_REFRESH)
     {
 	
-        rc = scv_profile_refresh(path_name, (u8) start_index,
-            (u8) num_profiles);
+        rc = scv_profile_renew(profile_list_name, (u8) start_index,
+				 (u8) num_profiles, 0);
     }
     else
     {
-        vec_free(path_name);
+        vec_free(profile_list_name);
         return clib_error_return(0, "Enter renew or refresh");
     }
 
@@ -445,7 +487,7 @@ static clib_error_t *test_profile_renew_refresh_fn(vlib_main_t * vm,
         (renew_or_refresh == TEST_PROFILE_RENEW) ? "Renew" : "Refresh",
         (rc != 0) ? "failed" : "sent", (u32) rc);
 
-    vec_free(path_name);
+    vec_free(profile_list_name);
 
     return 0;
 }
@@ -461,19 +503,19 @@ VLIB_CLI_COMMAND(test_ioam_profile_renew_refresh_cmd, static) =
 static clib_error_t *set_scv_init_fn(vlib_main_t * vm,
     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-    u8 *path_name = 0;
+    u8 *profile_list_name = 0;
     u32 start_index = 0, num_profiles = 0;
 
     while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
     {
         if (unformat(input, "path-name %s start-index %d num-profiles %d",
-                &path_name, &start_index, &num_profiles))
-            scv_init(path_name, num_profiles, start_index);
+                &profile_list_name, &start_index, &num_profiles))
+            scv_init(profile_list_name, num_profiles, start_index);
         else
             return clib_error_return(0, "unknown input `%U'",
                 format_unformat_error, input);
     }
-    vec_free(path_name);
+    vec_free(profile_list_name);
     return 0;
 }
 
