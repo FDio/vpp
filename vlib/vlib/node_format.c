@@ -58,6 +58,9 @@ u8 * format_vlib_node_graph (u8 * s, va_list * va)
 		   "%=26s%=26s%=26s",
 		   "Name", "Next", "Previous");
 
+  if (pointer_to_uword (n) == ~0)
+    return format (s, "");
+
   s = format (s, "%-26v", n->name);
 
   indent = format_get_indent (s);
@@ -106,6 +109,39 @@ u8 * format_vlib_node_graph (u8 * s, va_list * va)
     }
 
   vec_free (tmps);
+
+  return s;
+}
+
+u8 * format_vlib_node_graph_dot (u8 * s, va_list * va)
+{
+  vlib_node_main_t * nm = va_arg (*va, vlib_node_main_t *);
+  vlib_node_t * n = va_arg (*va, vlib_node_t *);
+  vlib_node_t * x;
+  int i;
+
+  if (! n)
+    return format (s, "digraph vlib {\n"
+                      "  node [shape=box, fontsize=10];\n"
+                      "  edge [arrowhead=vee, arrowsize=0.5];\n"
+      );
+
+  if (pointer_to_uword (n) == ~0)
+    return format (s, "}\n");
+
+  s = format (s, "  \"%v\" [label=\"%v\"];\n", n->name, n->name);
+
+  for (i = 0; i < vec_len (n->next_nodes); i++)
+    {
+      if (n->next_nodes[i] == VLIB_INVALID_NODE_INDEX)
+        continue;
+
+      x = vec_elt (nm->nodes, n->next_nodes[i]);
+      s = format (s, "  \"%v\" -> \"%v\" [label=\"%u\"];\n",
+        n->name,
+        x->name,
+        i);
+    }
 
   return s;
 }

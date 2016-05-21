@@ -40,6 +40,11 @@
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+
 static int
 node_cmp (void * a1, void *a2)
 {
@@ -57,13 +62,37 @@ show_node_graph (vlib_main_t * vm,
   vlib_node_main_t * nm = &vm->node_main;
   vlib_node_t * n;
   u32 node_index;
+  format_function_t * gf = format_vlib_node_graph;
+  char *filename = NULL;
+  int fd = -1;
 
-  vlib_cli_output (vm, "%U\n", format_vlib_node_graph, nm, 0);
+  if (unformat (input, "dot"))
+    gf = format_vlib_node_graph_dot;
 
-  if (unformat (input, "%U", unformat_vlib_node, vm, &node_index))
+  if (unformat (input, "file %s", &filename))
+    {
+      fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+      if (fd < 0)
+        {
+          vlib_cli_output (vm, "Unable to write to file %s: %s.\n",
+            filename, strerror(errno));
+          vec_free (filename);
+          return 0;
+        }
+      vec_free (filename);
+    }
+
+#define print(...) do { \
+    if (fd != -1) fdformat (fd, __VA_ARGS__); \
+    else          vlib_cli_output (vm, __VA_ARGS__); \
+  } while(0);
+
+  print ("%U\n", gf, nm, 0);
+
+  if (unformat (input, "%U\n", unformat_vlib_node, vm, &node_index))
     {
       n = vlib_get_node (vm, node_index);
-      vlib_cli_output (vm, "%U\n", format_vlib_node_graph, nm, n);
+      print ("%U", gf, nm, n);
     }
   else
     {
@@ -73,10 +102,17 @@ show_node_graph (vlib_main_t * vm,
       vec_sort_with_function (nodes, node_cmp);
 
       for (i = 0; i < vec_len (nodes); i++)
-	vlib_cli_output (vm, "%U\n\n", format_vlib_node_graph, nm, nodes[i]);
+        print ("%U\n\n", gf, nm, nodes[i]);
 
       vec_free (nodes);
     }
+
+  print ("%U\n", gf, nm, uword_to_pointer(~0, void *));
+
+  if (fd != -1)
+    close (fd);
+
+#undef print
 
   return 0;
 }

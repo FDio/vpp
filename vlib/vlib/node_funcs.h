@@ -958,6 +958,7 @@ vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
 clib_error_t * vlib_node_main_init (vlib_main_t * vm);
 
 format_function_t format_vlib_node_graph;
+format_function_t format_vlib_node_graph_dot;
 format_function_t format_vlib_node_name;
 format_function_t format_vlib_next_node_name;
 format_function_t format_vlib_node_and_next;
