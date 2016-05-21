@@ -682,4 +682,9 @@ dpdk_pmd_constructor_init()
 
 }
 
+uword
+admin_up_down_process (vlib_main_t * vm,
+                       vlib_node_runtime_t * rt,
+                       vlib_frame_t * f);
+
 #endif /* __included_dpdk_h__ */
