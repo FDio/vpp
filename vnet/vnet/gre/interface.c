@@ -159,6 +159,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   int rv;
   u32 num_m_args = 0;
   u8 is_add = 1;
+  u32 sw_if_index;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -191,11 +192,12 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   clib_memcpy(&a->src, &src, sizeof(src));
   clib_memcpy(&a->dst, &dst, sizeof(dst));
 
-  rv = vnet_gre_add_del_tunnel (a, 0);
+  rv = vnet_gre_add_del_tunnel (a, &sw_if_index);
 
   switch(rv)
     {
     case 0:
+      vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
       break;
     case VNET_API_ERROR_INVALID_VALUE:
       return clib_error_return (0, "GRE tunnel already exists...");

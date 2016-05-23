@@ -162,7 +162,7 @@ error:
 }
 
 int
-af_packet_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set)
+af_packet_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set, u32 *sw_if_index)
 {
   af_packet_main_t * apm = &af_packet_main;
   int ret, fd = -1;
@@ -258,7 +258,8 @@ af_packet_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set)
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
   mhash_set_mem (&apm->if_index_by_host_if_name, host_if_name, &if_index, 0);
-
+  if (sw_if_index)
+    *sw_if_index = apif->sw_if_index;
   return 0;
 
 error:

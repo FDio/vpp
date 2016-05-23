@@ -36,6 +36,7 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int r;
   u8 is_pipe = 0;
   u8 is_master = 0;
+  u32 sw_if_index = ~0;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -61,7 +62,7 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (host_if_name == NULL)
       return clib_error_return (0, "missing host interface name");
 
-  r = netmap_create_if(vm, host_if_name, hw_addr_ptr, is_pipe, is_master);
+  r = netmap_create_if(vm, host_if_name, hw_addr_ptr, is_pipe, is_master, &sw_if_index);
 
   if (r == VNET_API_ERROR_SYSCALL_ERROR_1)
     return clib_error_return(0, "%s (errno %d)", strerror (errno), errno);
@@ -72,6 +73,7 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (r == VNET_API_ERROR_SUBIF_ALREADY_EXISTS)
     return clib_error_return(0, "Interface already exists");
 
+  vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
   return 0;
 }
 
