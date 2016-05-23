@@ -40,6 +40,7 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 * host_if_name = NULL;
   u8 hwaddr [6];
   u8 * hw_addr_ptr = 0;
+  u32 sw_if_index;
   int r;
 
   /* Get a line of input. */
@@ -60,7 +61,7 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (host_if_name == NULL)
       return clib_error_return (0, "missing host interface name");
 
-  r = af_packet_create_if(vm, host_if_name, hw_addr_ptr);
+  r = af_packet_create_if(vm, host_if_name, hw_addr_ptr, &sw_if_index);
 
   if (r == VNET_API_ERROR_SYSCALL_ERROR_1)
     return clib_error_return(0, "%s (errno %d)", strerror (errno), errno);
@@ -71,6 +72,7 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (r == VNET_API_ERROR_SUBIF_ALREADY_EXISTS)
     return clib_error_return(0, "Interface elready exists");
 
+  vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
   return 0;
 }
 

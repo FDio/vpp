@@ -1791,7 +1791,7 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
                        renumber, custom_dev_instance, hw);
 
   vec_free(sock_filename);
-
+  vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
   return 0;
 }
 

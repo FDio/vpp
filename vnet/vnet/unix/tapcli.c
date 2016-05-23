@@ -1090,12 +1090,8 @@ tap_connect_command_fn (vlib_main_t * vm,
     return 0;
   }
 
-  vlib_cli_output (vm, "Created %U for Linux tap '%s'",
-		   format_vnet_sw_if_index_name, tm->vnet_main, 
-		   sw_if_index, intfc_name);
-                   
+  vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
   return 0;
-
   }
 
 VLIB_CLI_COMMAND (tap_connect_command, static) = {

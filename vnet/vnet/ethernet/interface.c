@@ -431,6 +431,7 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
   if (rv)
     return clib_error_return (0, "vnet_create_loopback_interface failed");
 
+  vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
   return 0;
 }
 

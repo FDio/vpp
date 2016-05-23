@@ -326,6 +326,7 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
   int rv;
   u32 tmp;
   vnet_vxlan_gpe_add_del_tunnel_args_t _a, * a = &_a;
+  u32 sw_if_index;
   
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -389,11 +390,12 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
   foreach_gpe_copy_field;
 #undef _
 
-  rv = vnet_vxlan_gpe_add_del_tunnel (a, 0 /* hw_if_indexp */);
+  rv = vnet_vxlan_gpe_add_del_tunnel (a, &sw_if_index);
 
   switch(rv)
     {
     case 0:
+      vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
       break;
     case VNET_API_ERROR_INVALID_DECAP_NEXT:
       return clib_error_return (0, "invalid decap-next...");

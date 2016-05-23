@@ -90,7 +90,8 @@ netmap_main_t netmap_main;
 extern vnet_device_class_t netmap_device_class;
 extern vlib_node_registration_t netmap_input_node;
 
-int netmap_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set, u8 is_pipe, u8 is_master);
+int netmap_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
+                     u8 is_pipe, u8 is_master, u32 *sw_if_index);
 int netmap_delete_if(vlib_main_t * vm, u8 * host_if_name);
 
 

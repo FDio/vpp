@@ -5914,7 +5914,7 @@ vl_api_af_packet_create_t_handler
     vec_add1 (host_if_name, 0);
 
     rv = af_packet_create_if(vm, host_if_name,
-                             mp->use_random_hw_addr ? 0 : mp->hw_addr);
+                             mp->use_random_hw_addr ? 0 : mp->hw_addr, 0);
 
     vec_free(host_if_name);
 
@@ -6061,7 +6061,7 @@ vl_api_netmap_create_t_handler
     vec_add1 (if_name, 0);
 
     rv = netmap_create_if(vm, if_name, mp->use_random_hw_addr ? 0 : mp->hw_addr,
-                          mp->is_pipe, mp->is_master);
+                          mp->is_pipe, mp->is_master, 0);
 
     vec_free(if_name);
 

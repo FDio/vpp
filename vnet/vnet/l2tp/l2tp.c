@@ -466,6 +466,7 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
   switch(rv)
     {
     case 0:
+      vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
       break;
     case VNET_API_ERROR_INVALID_VALUE:
       return clib_error_return (0, "session already exists...");

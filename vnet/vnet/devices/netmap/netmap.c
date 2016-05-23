@@ -80,7 +80,7 @@ close_netmap_if(netmap_main_t * nm, netmap_if_t * nif)
 
 int
 netmap_create_if(vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
-		 u8 is_pipe, u8 is_master)
+		 u8 is_pipe, u8 is_master, u32 *sw_if_index)
 {
   netmap_main_t * nm = &netmap_main;
   int ret = 0;
@@ -193,6 +193,9 @@ netmap_create_if(vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
   mhash_set_mem (&nm->if_index_by_host_if_name, if_name, &nif->if_index, 0);
+
+  if (sw_if_index)
+    *sw_if_index = nif->sw_if_index;
 
   return 0;
 

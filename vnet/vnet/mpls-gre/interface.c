@@ -1083,6 +1083,8 @@ create_mpls_gre_tunnel_command_fn (vlib_main_t * vm,
   switch (rv) 
     {
     case 0:
+      if (!is_del)
+        vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), tunnel_intfc_sw_if_index);
       break;
 
     case VNET_API_ERROR_NO_SUCH_INNER_FIB:
@@ -1521,6 +1523,7 @@ create_mpls_ethernet_tunnel_command_fn (vlib_main_t * vm,
   u8 is_del = 0;
   u8 l2_only = 0;
   u32 tx_sw_if_index;
+  u32 sw_if_index = ~0;
   
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -1560,11 +1563,15 @@ create_mpls_ethernet_tunnel_command_fn (vlib_main_t * vm,
 
   rv = vnet_mpls_ethernet_add_del_tunnel (dst, &intfc, mask_width, 
                                           inner_fib_id, tx_sw_if_index, 
-                                          0 /* tunnel sw_if_index */, 
+                                          &sw_if_index,
                                           l2_only, !is_del);
 
   switch (rv) 
     {
+    case 0:
+      if (!is_del)
+        vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
+      break;
     case VNET_API_ERROR_NO_SUCH_FIB:
       return clib_error_return (0, "rx fib ID %d doesn't exist\n",
                                 inner_fib_id);
@@ -1582,6 +1589,7 @@ create_mpls_ethernet_tunnel_command_fn (vlib_main_t * vm,
       break;
       
     default:
+      return clib_error_return (0, "vnet_mpls_ethernet_add_del_tunnel returned %d", rv);
       break;
     }
   return 0;
@@ -1902,6 +1910,10 @@ create_mpls_ethernet_policy_tunnel_command_fn (vlib_main_t * vm,
                                                  l2_only, !is_del);
   switch (rv) 
     {
+    case 0:
+      if (!is_del)
+        vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), new_tunnel_index);
+      break;
     case VNET_API_ERROR_NO_SUCH_FIB:
       return clib_error_return (0, "rx fib ID %d doesn't exist\n",
                                 inner_fib_id);
@@ -1919,11 +1931,9 @@ create_mpls_ethernet_policy_tunnel_command_fn (vlib_main_t * vm,
       break;
       
     default:
+      return clib_error_return (0, "vnet_mpls_ethernet_add_del_policy_tunnel returned %d", rv);
       break;
     }
-
-  if (!is_del)
-    vlib_cli_output (vm, "tunnel index %d", new_tunnel_index);
 
   return 0;
 }
