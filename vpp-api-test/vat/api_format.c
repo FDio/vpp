@@ -8062,8 +8062,10 @@ static int api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
     unformat_input_t * line_input = vam->input;
     vl_api_vxlan_gpe_add_del_tunnel_t *mp;
     f64 timeout;
-    ip4_address_t local, remote;
+    ip4_address_t local4, remote4;
+    ip6_address_t local6, remote6;
     u8 is_add = 1;
+    u8 ipv4_set = 0, ipv6_set = 0;
     u8 local_set = 0;
     u8 remote_set = 0;
     u32 encap_vrf_id = 0;
@@ -8076,11 +8078,29 @@ static int api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
         if (unformat (line_input, "del"))
             is_add = 0;
         else if (unformat (line_input, "local %U", 
-                           unformat_ip4_address, &local))
+                           unformat_ip4_address, &local4))
+        {
             local_set = 1;
+            ipv4_set = 1;
+        }
         else if (unformat (line_input, "remote %U",
-                           unformat_ip4_address, &remote))
+                           unformat_ip4_address, &remote4))
+        {
             remote_set = 1;
+            ipv4_set = 1;
+        }
+        else if (unformat (line_input, "local %U",
+                           unformat_ip6_address, &local6))
+        {
+            local_set = 1;
+            ipv6_set = 1;
+        }
+        else if (unformat (line_input, "remote %U",
+                           unformat_ip6_address, &remote6))
+        {
+            remote_set = 1;
+            ipv6_set = 1;
+        }
         else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
             ;
         else if (unformat (line_input, "decap-vrf-id %d", &decap_vrf_id))
@@ -8109,6 +8129,10 @@ static int api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
         errmsg ("tunnel remote address not specified\n");
         return -99;
     }
+    if (ipv4_set && ipv6_set) {
+        errmsg ("both IPv4 and IPv6 addresses specified");
+        return -99;
+    }
 
     if (vni_set == 0) {
         errmsg ("vni not specified\n");
@@ -8117,14 +8141,21 @@ static int api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
 
     M(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel);
     
-    mp->local = local.as_u32;
-    mp->remote = remote.as_u32;
+
+    if (ipv6_set) {
+        clib_memcpy(&mp->local, &local6, sizeof(local6));
+        clib_memcpy(&mp->remote, &remote6, sizeof(remote6));
+    } else {
+        clib_memcpy(&mp->local, &local4, sizeof(local4));
+        clib_memcpy(&mp->remote, &remote4, sizeof(remote4));
+    }
+
     mp->encap_vrf_id = ntohl(encap_vrf_id);
     mp->decap_vrf_id = ntohl(decap_vrf_id);
     mp->protocol = ntohl(protocol);
     mp->vni = ntohl(vni);
     mp->is_add = is_add;
-
+    mp->is_ipv6 = ipv6_set;
 
     S; W;
     /* NOTREACHED */

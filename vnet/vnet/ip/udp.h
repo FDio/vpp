@@ -51,6 +51,7 @@ _ (547, dhcpv6_to_server)                       \
 _ (546, dhcpv6_to_client)			\
 _ (4341, lisp_gpe6)                             \
 _ (4342, lisp_cp6)                          	\
+_ (4790, vxlan6_gpe)      \
 _ (6633, vpath6_3)
 
 typedef enum {
