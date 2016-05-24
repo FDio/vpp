@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_8910a54f",
+        "filename": "vnet/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-24T09:44:31Z",
+      "side": 1,
+      "message": "Just a nit: did you consider using ip_udp_encap_one/two from https://git.fd.io/cgit/vpp/tree/vnet/vnet/ip/udp.h ?",
+      "range": {
+        "startLine": 190,
+        "startChar": 1,
+        "endLine": 190,
+        "endChar": 7
+      },
+      "revId": "6e0ffddfe1340b5b584f88971135c78a34344f81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
