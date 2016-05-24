@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_defe556b",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_c_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-24T06:06:28Z",
+      "side": 1,
+      "message": "short is signed, we currently map u16 to char",
+      "range": {
+        "startLine": 98,
+        "startChar": 49,
+        "endLine": 98,
+        "endChar": 70
+      },
+      "revId": "0cff5f236572aaa44d8ee62a76b53467990ff3d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_be03a172",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_c_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-05-24T06:06:28Z",
+      "side": 1,
+      "message": "jlong is signed, u64 should be mapped to BigInteger",
+      "range": {
+        "startLine": 121,
+        "startChar": 48,
+        "endLine": 121,
+        "endChar": 68
+      },
+      "revId": "0cff5f236572aaa44d8ee62a76b53467990ff3d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
