@@ -2,6 +2,52 @@
   "comments": [
     {
       "key": {
+        "uuid": "da141535_49ee0dee",
+        "filename": "vnet/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-24T13:51:57Z",
+      "side": 1,
+      "message": "We use \"u8\" instead of \"char\" everywhere else",
+      "range": {
+        "startLine": 63,
+        "startChar": 6,
+        "endLine": 63,
+        "endChar": 10
+      },
+      "revId": "6e0ffddfe1340b5b584f88971135c78a34344f81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_29bbd9e6",
+        "filename": "vnet/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-24T13:51:57Z",
+      "side": 1,
+      "message": "Indentation looks broken (could be gerrit though)",
+      "range": {
+        "startLine": 134,
+        "startChar": 0,
+        "endLine": 136,
+        "endChar": 30
+      },
+      "revId": "6e0ffddfe1340b5b584f88971135c78a34344f81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_8910a54f",
         "filename": "vnet/vnet/vxlan-gpe/encap.c",
         "patchSetId": 1
@@ -18,6 +64,75 @@
         "startChar": 1,
         "endLine": 190,
         "endChar": 7
+      },
+      "revId": "6e0ffddfe1340b5b584f88971135c78a34344f81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_49c5ed59",
+        "filename": "vnet/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-24T13:51:57Z",
+      "side": 1,
+      "message": "Just a comment; I notice you\u0027re doing the same \"prefer v4 for now\" that I did with the other VXLAN. Assuming things don\u0027t go awry I should have two other implementations to try this week and to profile their relative performance. Basically I am trying two methods to optimize out the \"if (is_ipv4)\" condition.",
+      "range": {
+        "startLine": 191,
+        "startChar": 10,
+        "endLine": 191,
+        "endChar": 39
+      },
+      "revId": "6e0ffddfe1340b5b584f88971135c78a34344f81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_29a2b9ae",
+        "filename": "vnet/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-24T13:51:57Z",
+      "side": 1,
+      "message": "stray indent?",
+      "range": {
+        "startLine": 382,
+        "startChar": 3,
+        "endLine": 382,
+        "endChar": 7
+      },
+      "revId": "6e0ffddfe1340b5b584f88971135c78a34344f81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_09a7f5be",
+        "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-24T13:51:57Z",
+      "side": 1,
+      "message": "Since you define it in udp.h, \"vxlan6_gpe\"?",
+      "range": {
+        "startLine": 204,
+        "startChar": 55,
+        "endLine": 204,
+        "endChar": 65
       },
       "revId": "6e0ffddfe1340b5b584f88971135c78a34344f81",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
