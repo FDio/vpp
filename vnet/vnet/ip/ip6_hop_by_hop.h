@@ -12,9 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __included_ip6_hop_by_hop_h__
-#define __included_ip6_hop_by_hop_h__
+#ifndef __included_ip6_hop_by_hop_ioam_h__
+#define __included_ip6_hop_by_hop_ioam_h__
 
+#include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/ip.h>
 
@@ -62,9 +63,9 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
-} ip6_hop_by_hop_main_t;
+} ip6_hop_by_hop_ioam_main_t;
 
-extern ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
+extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
 
 extern u8 * format_path_map(u8 * s, va_list * args);
 extern clib_error_t *
@@ -102,5 +103,5 @@ static inline u8 is_zero_ip6_address (ip6_address_t *a)
   return ((a->as_u64[0] == 0) && (a->as_u64[1] == 0));
 }
 
-extern ip6_hop_by_hop_main_t * hm;
-#endif /* __included_ip6_hop_by_hop_h__ */
+extern ip6_hop_by_hop_ioam_main_t * hm;
+#endif /* __included_ip6_hop_by_hop_ioam_h__ */
