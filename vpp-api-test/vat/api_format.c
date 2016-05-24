@@ -474,7 +474,23 @@ u8 * format_ip6_address (u8 * s, va_list * args)
 u8 * format_ip46_address (u8 * s, va_list * args)
 {
   ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
-  return ip46_address_is_ip4(ip46)?
+  ip46_type_t type = va_arg (*args, ip46_type_t);
+  int is_ip4;
+
+  switch (type)
+    {
+      case IP46_TYPE_ANY:
+       is_ip4 = ip46_address_is_ip4(ip46);
+       break;
+      case IP46_TYPE_IP4:
+       is_ip4 = 0;
+       break;
+      case IP46_TYPE_IP6:
+       is_ip4 = 0;
+       break;
+    }
+
+  return is_ip4 ?
       format(s, "%U", format_ip4_address, &ip46->ip4):
       format(s, "%U", format_ip6_address, &ip46->ip6);
 }
@@ -7522,7 +7538,9 @@ static void vl_api_vxlan_tunnel_details_t_handler
     fformat(vam->ofp, "%11d%24U%24U%14d%18d%13d\n",
             ntohl(mp->sw_if_index),
             format_ip46_address, &(mp->src_address[0]),
+	    mp->is_ip6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
             format_ip46_address, &(mp->dst_address[0]),
+	    mp->is_ip6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4
             ntohl(mp->encap_vrf_id),
             ntohl(mp->decap_next_index),
             ntohl(mp->vni));

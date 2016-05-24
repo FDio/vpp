@@ -45,8 +45,8 @@ u8 * format_vxlan_tunnel (u8 * s, va_list * args)
   s = format (s, 
               "[%d] %U (src) %U (dst) vni %d encap_fib_index %d",
               t - ngm->tunnels,
-              format_ip46_address, &t->src,
-              format_ip46_address, &t->dst,
+              format_ip46_address, &t->src, IP46_TYPE_ANY,
+              format_ip46_address, &t->dst, IP46_TYPE_ANY,
               t->vni,
               t->encap_fib_index);
   s = format (s, " decap_next %U\n", format_decap_next, t->decap_next_index);
