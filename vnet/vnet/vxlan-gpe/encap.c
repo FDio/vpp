@@ -38,6 +38,7 @@ typedef enum {
 
 typedef enum {
   VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
+  VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP,
   VXLAN_GPE_ENCAP_NEXT_DROP,
   VXLAN_GPE_ENCAP_N_NEXT
 } vxlan_gpe_encap_next_t;
@@ -58,7 +59,10 @@ u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
   return s;
 }
 
-#define foreach_fixed_header_offset             \
+#define foreach_fixed_header4_offset             \
+_(0) _(1) _(2) _(3)
+
+#define foreach_fixed_header6_offset            \
 _(0) _(1) _(2) _(3) _(4) _(5) _(6)
 
 static uword
@@ -92,12 +96,13 @@ vxlan_gpe_encap (vlib_main_t * vm,
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
           u32 bi0, bi1;
-	  vlib_buffer_t * b0, * b1;
-	  u32 next0 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
+	      vlib_buffer_t * b0, * b1;
+	      u32 next0 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
           u32 next1 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
           u32 sw_if_index0, sw_if_index1, len0, len1;
           vnet_hw_interface_t * hi0, * hi1;
-          ip4_header_t * ip0, * ip1;
+          ip4_header_t * ip4_0, * ip4_1;
+          ip6_header_t * ip6_0, * ip6_1;
           udp_header_t * udp0, * udp1;
           u64 * copy_src0, * copy_dst0;
           u64 * copy_src1, * copy_dst1;
@@ -106,6 +111,8 @@ vxlan_gpe_encap (vlib_main_t * vm,
           vxlan_gpe_tunnel_t * t0, * t1;
           u16 new_l0, new_l1;
           ip_csum_t sum0, sum1;
+          u8 is_ip4_0, is_ip4_1;
+
 
 	  /* Prefetch next iteration. */
 	  {
@@ -144,80 +151,148 @@ vxlan_gpe_encap (vlib_main_t * vm,
           t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
           t1 = pool_elt_at_index (ngm->tunnels, hi1->dev_instance);
 
-          ASSERT(vec_len(t0->rewrite) >= 24);
-          ASSERT(vec_len(t1->rewrite) >= 24);
+          is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+          is_ip4_1 = (t1->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+
+          if (PREDICT_FALSE(!is_ip4_0)) next0 = VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP;
+          if (PREDICT_FALSE(!is_ip4_1)) next1 = VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP;
+
+    	  /* IP4 VXLAN header sizeof(ip4_vxlan_gpe_header_t) should be 36 octects */
+          /* IP6 VXLAN header sizeof(ip6_vxlan_gpe_header_t) should be 56 octects */
+    	  if (PREDICT_TRUE(is_ip4_0))
+            ASSERT(vec_len(t0->rewrite) == 36);
+          else
+            ASSERT(vec_len(t0->rewrite) == 56);
+
+          if (PREDICT_TRUE(is_ip4_1))
+            ASSERT(vec_len(t1->rewrite) == 36);
+          else
+            ASSERT(vec_len(t1->rewrite) == 56);
 
           /* Apply the rewrite string. $$$$ vnet_rewrite? */
           vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));
           vlib_buffer_advance (b1, -(word)_vec_len(t1->rewrite));
 
-          ip0 = vlib_buffer_get_current(b0);
-          ip1 = vlib_buffer_get_current(b1);
+          /* assign both v4 and v6 */
+          ip4_0 = vlib_buffer_get_current(b0);
+          ip6_0 = (void *)ip4_0;
+          ip4_1 = vlib_buffer_get_current(b1);
+          ip6_1 = (void *)ip4_1;
+
           /* Copy the fixed header */
-          copy_dst0 = (u64 *) ip0;
+          copy_dst0 = (u64 *) ip4_0;
           copy_src0 = (u64 *) t0->rewrite;
-          copy_dst1 = (u64 *) ip1;
+
+          copy_dst1 = (u64 *) ip4_1;
           copy_src1 = (u64 *) t1->rewrite;
 
-          ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
-
-          /* Copy first 36 octets 8-bytes at a time */
+          /* Copy first 32 (ip4)/56 (ip6) octets 8-bytes at a time */
 #define _(offs) copy_dst0[offs] = copy_src0[offs];
-          foreach_fixed_header_offset;
+          if (PREDICT_TRUE(is_ip4_0)) {
+            foreach_fixed_header4_offset;
+          } else {
+            foreach_fixed_header6_offset;
+          }
 #undef _
 #define _(offs) copy_dst1[offs] = copy_src1[offs];
-          foreach_fixed_header_offset;
+          if (PREDICT_TRUE(is_ip4_1)) {
+            foreach_fixed_header4_offset;
+          } else {
+            foreach_fixed_header6_offset;
+          }
 #undef _
 
           /* Last 4 octets. Hopefully gcc will be our friend */
-          copy_dst_last0 = (u32 *)(&copy_dst0[7]);
-          copy_src_last0 = (u32 *)(&copy_src0[7]);
-          copy_dst_last1 = (u32 *)(&copy_dst1[7]);
-          copy_src_last1 = (u32 *)(&copy_src1[7]);
-          
-          copy_dst_last0[0] = copy_src_last0[0];
-          copy_dst_last1[0] = copy_src_last1[0];
+          if (PREDICT_TRUE(is_ip4_0)) {
+              copy_dst_last0 = (u32 *)(&copy_dst0[4]);
+              copy_src_last0 = (u32 *)(&copy_src0[4]);
+              copy_dst_last0[0] = copy_src_last0[0];
+          }
+          if (PREDICT_TRUE(is_ip4_1)) {
+              copy_dst_last1 = (u32 *)(&copy_dst1[4]);
+              copy_src_last1 = (u32 *)(&copy_src1[4]);
+              copy_dst_last1[0] = copy_src_last1[0];
+          }
 
-          /* If there are TLVs to copy, do so */
-          if (PREDICT_FALSE (_vec_len(t0->rewrite) > 64))
-            clib_memcpy (&copy_dst0[3], t0->rewrite + 64 , 
-                    _vec_len (t0->rewrite)-64);
+          if (PREDICT_TRUE(is_ip4_0)) {
+            /* fix the outer-IP checksum */
+            sum0 = ip4_0->checksum;
 
-          if (PREDICT_FALSE (_vec_len(t1->rewrite) > 64))
-            clib_memcpy (&copy_dst0[3], t1->rewrite + 64 , 
-                    _vec_len (t1->rewrite)-64);
+            /* old_l0 always 0, see the rewrite setup */
+            new_l0 =
+              clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+              sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
+                                   length /* changed member */);
+            ip4_0->checksum = ip_csum_fold (sum0);
+            ip4_0->length = new_l0;
+          } else {
+            new_l0 =
+              clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                           - sizeof(*ip6_0));
+            ip6_0->payload_length = new_l0;
+          }
 
-          /* fix the <bleep>ing outer-IP checksum */
-          sum0 = ip0->checksum;
-          /* old_l0 always 0, see the rewrite setup */
-          new_l0 = 
-            clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-          
-          sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-                                 length /* changed member */);
-          ip0->checksum = ip_csum_fold (sum0);
-          ip0->length = new_l0;
+          if (PREDICT_TRUE(is_ip4_1)) {
+            /* fix the outer-IP checksum */
+            sum1 = ip4_1->checksum;
 
-          sum1 = ip1->checksum;
-          /* old_l1 always 0, see the rewrite setup */
-          new_l1 = 
-            clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
-          
-          sum1 = ip_csum_update (sum1, old_l1, new_l1, ip4_header_t,
-                                 length /* changed member */);
-          ip1->checksum = ip_csum_fold (sum1);
-          ip1->length = new_l1;
+            /* old_l1 always 0, see the rewrite setup */
+            new_l1 =
+              clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
+              sum1 = ip_csum_update (sum1, old_l1, new_l1, ip4_header_t,
+                                   length /* changed member */);
+            ip4_1->checksum = ip_csum_fold (sum1);
+            ip4_1->length = new_l1;
+          } else {
+            new_l1 =
+              clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
+                                           - sizeof(*ip6_1));
+            ip6_1->payload_length = new_l1;
+          }
           
           /* Fix UDP length */
-          udp0 = (udp_header_t *)(ip0+1);
-          new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
-                                         - sizeof (*ip0));
-          udp1 = (udp_header_t *)(ip1+1);
-          new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
-                                         - sizeof (*ip1));
+          if (PREDICT_TRUE(is_ip4_0)) {
+            udp0 = (udp_header_t *)(ip4_0+1);
+            new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                           - sizeof (*ip4_0));
+          } else {
+            udp0 = (udp_header_t *)(ip6_0+1);
+            new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                           - sizeof (*ip6_0));
+          }
+          if (PREDICT_TRUE(is_ip4_1)) {
+            udp1 = (udp_header_t *)(ip4_1+1);
+            new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
+                                           - sizeof (*ip4_1));
+          } else {
+            udp1 = (udp_header_t *)(ip6_1+1);
+            new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
+                                           - sizeof (*ip6_1));
+          }
 
           udp0->length = new_l0;
           udp1->length = new_l1;
+
+
+          if (PREDICT_FALSE(!is_ip4_0)) {
+                int bogus = 0;
+                /* IPv6 UDP checksum is mandatory */
+                udp0->checksum = ip6_tcp_udp_icmp_compute_checksum(vm, b0,
+                                                        ip6_0, &bogus);
+                ASSERT(bogus == 0);
+                if (udp0->checksum == 0)
+                    udp0->checksum = 0xffff;
+          }
+
+          if (PREDICT_FALSE(!is_ip4_1)) {
+                int bogus = 0;
+                /* IPv6 UDP checksum is mandatory */
+                udp1->checksum = ip6_tcp_udp_icmp_compute_checksum(vm, b1,
+                                                        ip6_1, &bogus);
+                ASSERT(bogus == 0);
+                if (udp1->checksum == 0)
+                    udp1->checksum = 0xffff;
+          }
 
           /* Reset to look up tunnel partner in the configured FIB */
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
@@ -283,14 +358,16 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  vlib_buffer_t * b0;
 	  u32 next0 = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
 	  u32 sw_if_index0, len0;
-          vnet_hw_interface_t * hi0;
-          ip4_header_t * ip0;
-          udp_header_t * udp0;
-          u64 * copy_src0, * copy_dst0;
-          u32 * copy_src_last0, * copy_dst_last0;
-          vxlan_gpe_tunnel_t * t0;
-          u16 new_l0;
-          ip_csum_t sum0;
+      vnet_hw_interface_t * hi0;
+      ip4_header_t * ip4_0;
+      ip6_header_t * ip6_0;
+      udp_header_t * udp0;
+      u64 * copy_src0, * copy_dst0;
+      u32 * copy_src_last0, * copy_dst_last0;
+      vxlan_gpe_tunnel_t * t0;
+      u16 new_l0;
+      ip_csum_t sum0;
+      u8 is_ip4_0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -302,56 +379,92 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
           /* 1-wide cache? */
-	  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
+	      sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
           hi0 = vnet_get_sup_hw_interface
             (vnm, vnet_buffer(b0)->sw_if_index[VLIB_TX]);
 
           t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
 
-          ASSERT(vec_len(t0->rewrite) >= 24);
+          is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+
+          if (PREDICT_FALSE(!is_ip4_0)) next0 = VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP;
+
+    	  /* IP4 VXLAN header sizeof(ip4_vxlan_header_t) should be 36 octets */
+              /* IP6 VXLAN header sizeof(ip4_vxlan_header_t) should be 56 octets */
+    	  if (PREDICT_TRUE(is_ip4_0))
+            ASSERT(vec_len(t0->rewrite) == 36);
+          else
+            ASSERT(vec_len(t0->rewrite) == 56);
 
           /* Apply the rewrite string. $$$$ vnet_rewrite? */
           vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));
 
-          ip0 = vlib_buffer_get_current(b0);
-          /* Copy the fixed header */
-          copy_dst0 = (u64 *) ip0;
+          /* assign both v4 and v6; avoid a branch, optimizer will help us */
+          ip4_0 = vlib_buffer_get_current(b0);
+          ip6_0 = (void *)ip4_0;
+
+          /* Copy the fixed header (v4 and v6 variables point to the same
+           * place at this point)
+           */
+          copy_dst0 = (u64 *) ip4_0;
           copy_src0 = (u64 *) t0->rewrite;
 
-          ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
-
-          /* Copy first 36 octets 8-bytes at a time */
+          /* Copy first 32 octets 8-bytes at a time */
 #define _(offs) copy_dst0[offs] = copy_src0[offs];
-          foreach_fixed_header_offset;
+          if (PREDICT_TRUE(is_ip4_0)) {
+            foreach_fixed_header4_offset;
+          } else {
+            foreach_fixed_header6_offset;
+          }
 #undef _
-          /* Last 4 octets. Hopefully gcc will be our friend */
-          copy_dst_last0 = (u32 *)(&copy_dst0[7]);
-          copy_src_last0 = (u32 *)(&copy_src0[7]);
-          
-          copy_dst_last0[0] = copy_src_last0[0];
+          if (PREDICT_TRUE(is_ip4_0)) {
+            /* Last 4 octets. Hopefully gcc will be our friend */
+            copy_dst_last0 = (u32 *)(&copy_dst0[4]);
+            copy_src_last0 = (u32 *)(&copy_src0[4]);
 
-          /* If there are TLVs to copy, do so */
-          if (PREDICT_FALSE (_vec_len(t0->rewrite) > 64))
-            clib_memcpy (&copy_dst0[3], t0->rewrite + 64 , 
-                    _vec_len (t0->rewrite)-64);
+            copy_dst_last0[0] = copy_src_last0[0];
+          }
 
-          /* fix the <bleep>ing outer-IP checksum */
-          sum0 = ip0->checksum;
-          /* old_l0 always 0, see the rewrite setup */
-          new_l0 = 
-            clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-          
-          sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
+          if (PREDICT_TRUE(is_ip4_0)) {
+            /* fix the outer-IP checksum */
+            sum0 = ip4_0->checksum;
+
+            /* old_l0 always 0, see the rewrite setup */
+            new_l0 =
+              clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+              sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
                                  length /* changed member */);
-          ip0->checksum = ip_csum_fold (sum0);
-          ip0->length = new_l0;
+            ip4_0->checksum = ip_csum_fold (sum0);
+            ip4_0->length = new_l0;
+          } else {
+            new_l0 =
+              clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                           - sizeof(*ip6_0));
+            ip6_0->payload_length = new_l0;
+          }
 
           /* Fix UDP length */
-          udp0 = (udp_header_t *)(ip0+1);
-          new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
-                                         - sizeof (*ip0));
+          if (PREDICT_TRUE(is_ip4_0)) {
+            udp0 = (udp_header_t *)(ip4_0+1);
+            new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                           - sizeof (*ip4_0));
+          } else {
+            udp0 = (udp_header_t *)(ip6_0+1);
+            new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+                                           - sizeof (*ip6_0));
+          }
 
           udp0->length = new_l0;
+
+          if (PREDICT_FALSE(!is_ip4_0)) {
+                int bogus = 0;
+                /* IPv6 UDP checksum is mandatory */
+                udp0->checksum = ip6_tcp_udp_icmp_compute_checksum(vm, b0,
+                                                        ip6_0, &bogus);
+                ASSERT(bogus == 0);
+                if (udp0->checksum == 0)
+                    udp0->checksum = 0xffff;
+          }
 
           /* Reset to look up tunnel partner in the configured FIB */
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
@@ -419,6 +532,7 @@ VLIB_REGISTER_NODE (vxlan_gpe_encap_node) = {
 
   .next_nodes = {
         [VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
+		[VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP] = "ip6-lookup",
         [VXLAN_GPE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
