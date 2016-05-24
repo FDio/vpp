@@ -89,7 +89,8 @@ u64_struct_setter_template = Template("""
 u8_array_struct_setter_template = Template("""
     {
         jsize cnt = (*env)->GetArrayLength (env, ${java_name});
-        if (cnt > sizeof(mp->${c_name})) cnt = sizeof(mp->${c_name});
+        size_t max_size = ${field_length};
+        if (max_size != 0 && cnt > max_size) cnt = max_size;
         (*env)->GetByteArrayRegion(env, ${java_name}, 0, cnt, (jbyte *)mp->${c_name});
     }
 """)
@@ -97,8 +98,11 @@ u8_array_struct_setter_template = Template("""
 u32_array_struct_setter_template = Template("""
     jint * ${java_name}ArrayElements = (*env)->GetIntArrayElements(env, ${java_name}, NULL);
     {
-        int _i;
-        for (_i = 0; _i < 0; _i++) {
+        size_t _i;
+        jsize cnt = (*env)->GetArrayLength (env, ${java_name});
+        size_t max_size = ${field_length};
+        if (max_size != 0 && cnt > max_size) cnt = max_size;
+        for (_i = 0; _i < cnt; _i++) {
             mp->${c_name}[_i] = clib_host_to_net_u32(${java_name}ArrayElements[_i]);
         }
     }
@@ -180,16 +184,18 @@ def generate_jni_impl(func_list, inputfile):
                         jni_getter=jni_getter)
 
             # field setters
-            for t in zip(f['c_types'], f['args']):
+            for t in zip(f['c_types'], f['args'], f['lengths']):
                 c_type = t[0]
                 c_name = t[1]
+                field_length = t[2]
                 java_field_name = util.underscore_to_camelcase(c_name)
 
                 struct_setter_template = struct_setter_templates[c_type]
 
                 struct_setters += struct_setter_template.substitute(
                         c_name=c_name,
-                        java_name=java_field_name)
+                        java_name=java_field_name,
+                        field_length=field_length)
 
         jni_impl.append(jni_impl_template.substitute(
                 inputfile=inputfile,
@@ -221,23 +227,23 @@ u64_dto_field_setter_template = Template("""
 """)
 
 u8_array_dto_field_setter_template = Template("""
-    jbyteArray ${java_name} = (*env)->NewByteArray(env, sizeof(mp->${c_name}));
-    (*env)->SetByteArrayRegion(env, ${java_name}, 0, sizeof(mp->${c_name}), (const jbyte*)mp->${c_name});
+    jbyteArray ${java_name} = (*env)->NewByteArray(env, ${field_length});
+    (*env)->SetByteArrayRegion(env, ${java_name}, 0, ${field_length}, (const jbyte*)mp->${c_name});
     (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
 """)
 
 # For each u64 array we get its elements. Then we convert values to host byte order.
 # All changes to  jint* buffer are written to jlongArray (isCopy is set to NULL)
 u64_array_dto_field_setter_template = Template("""
-    jlongArray ${java_name} = (*env)->NewLongArray(env, sizeof(mp->${c_name}));
     {
+        jlongArray ${java_name} = (*env)->NewLongArray(env, ${field_length});
         jlong * ${java_name}ArrayElements = (*env)->GetLongArrayElements(env, ${java_name}, NULL);
-        int _i;
-        for (_i = 0; _i < 0; _i++) {
+        unsigned int _i;
+        for (_i = 0; _i < ${field_length}; _i++) {
             ${java_name}ArrayElements[_i] = clib_net_to_host_u64(mp->${c_name}[_i]);
         }
+        (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
     }
-    (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
 """)
 
 dto_field_setter_templates = {'u8': default_dto_field_setter_template,
@@ -282,10 +288,11 @@ def generate_msg_handlers(func_list, inputfile):
 
         dto_setters = ''
         # dto setters
-        for t in zip(f['c_types'], f['types'], f['args']):
+        for t in zip(f['c_types'], f['types'], f['args'], f['lengths']):
             c_type = t[0]
             jni_type = t[1]
             c_name = t[2]
+            field_length = t[3]
 
             java_field_name = util.underscore_to_camelcase(c_name)
             jni_signature = util.jni_2_signature_mapping[jni_type]
@@ -302,7 +309,8 @@ def generate_msg_handlers(func_list, inputfile):
                     java_name=java_field_name,
                     jni_signature=jni_signature,
                     c_name=c_name,
-                    jni_setter=jni_setter)
+                    jni_setter=jni_setter,
+                    field_length=field_length)
 
         handlers.append(msg_handler_template.substitute(
                 inputfile=inputfile,
