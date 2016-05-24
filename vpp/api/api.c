@@ -4568,12 +4568,24 @@ vl_api_vxlan_gpe_add_del_tunnel_t_handler
         decap_fib_index = ntohl(mp->decap_vrf_id);
     }
 
+    /* Check src & dst are different */
+    if ((a->is_ip6 && memcmp(mp->local, mp->remote, 16) == 0) ||
+       (!a->is_ip6 && memcmp(mp->local, mp->remote, 4) == 0)) {
+        rv = VNET_API_ERROR_SAME_SRC_DST;
+        goto out;
+    }
     memset (a, 0, sizeof (*a));
 
     a->is_add = mp->is_add;
+    a->is_ip6 = mp->is_ipv6;
     /* ip addresses sent in network byte order */
-    a->local.as_u32 = ntohl(mp->local);
-    a->remote.as_u32 = ntohl(mp->remote);
+    if (a->is_ip6) {
+      clib_memcpy(&(a->local.ip6), mp->local, 16);
+      clib_memcpy(&(a->remote.ip6), mp->remote, 16);
+    } else {
+      clib_memcpy(&(a->local.ip4), mp->local, 4);
+      clib_memcpy(&(a->remote.ip4), mp->remote, 4);
+    }
     a->encap_fib_index = encap_fib_index;
     a->decap_fib_index = decap_fib_index;
     a->protocol = protocol;
