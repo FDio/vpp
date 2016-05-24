@@ -26,8 +26,10 @@
 
 #include <vnet/devices/af_packet/af_packet.h>
 
-#define foreach_af_packet_tx_func_error	       \
-_(FRAME_NOT_READY, "tx frame not ready")
+#define foreach_af_packet_tx_func_error               \
+_(FRAME_NOT_READY, "tx frame not ready")              \
+_(KERNEL_EAGAIN,   "tx sendto temporary failure")     \
+_(KERNEL_FATAL,    "tx sendto fatal failure")
 
 typedef enum {
 #define _(f,s) AF_PACKET_TX_ERROR_##f,
@@ -96,7 +98,7 @@ af_packet_interface_tx (vlib_main_t * vm,
 
       tph = (struct tpacket2_hdr *) (block_start + tx_frame * frame_size);
 
-      if(tph->tp_status & (TP_STATUS_SEND_REQUEST | TP_STATUS_SENDING))
+      if (PREDICT_FALSE(tph->tp_status & (TP_STATUS_SEND_REQUEST | TP_STATUS_SENDING)))
 	{
 	  frame_not_ready++;
 	  goto next;
@@ -121,14 +123,37 @@ next:
 
   CLIB_MEMORY_BARRIER();
 
-  if (n_sent)
+  if (PREDICT_TRUE(n_sent))
     {
       apif->next_tx_frame = tx_frame;
-      if (sendto(apif->fd, NULL, 0, MSG_DONTWAIT, NULL, 0) == -1)
-	clib_unix_error("tx sendto failure");
+
+      if (PREDICT_FALSE(sendto(apif->fd, NULL, 0,
+                               MSG_DONTWAIT, NULL, 0) == -1))
+        {
+          if (PREDICT_FALSE(unix_error_is_fatal(errno)))
+            {
+              /* give up now, drop the packet, move on */
+              vlib_error_count (vm, node->node_index,
+                                AF_PACKET_TX_ERROR_KERNEL_FATAL, 1);
+            }
+          else
+            {
+              /* try a second time */
+              if (PREDICT_FALSE(sendto(apif->fd, NULL, 0,
+                                MSG_DONTWAIT, NULL, 0) == -1))
+                {
+                  /* meh, drop & move on, but count whether it was fatal or not */
+                  vlib_error_count (vm, node->node_index,
+                                    unix_error_is_fatal(errno) ?
+                                    AF_PACKET_TX_ERROR_KERNEL_FATAL :
+                                    AF_PACKET_TX_ERROR_KERNEL_EAGAIN,
+                                    1);
+                }
+            }
+        }
     }
 
-  if (frame_not_ready)
+  if (PREDICT_FALSE(frame_not_ready))
     vlib_error_count (vm, node->node_index, AF_PACKET_TX_ERROR_FRAME_NOT_READY,
 		      frame_not_ready);
 
