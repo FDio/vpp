@@ -43,6 +43,7 @@ _ (4739, ipfix)                                 \
 _ (4789, vxlan)					\
 _ (4789, vxlan6)				\
 _ (4790, vxlan_gpe)				\
+_ (4790, vxlan6_gpe)			\
 _ (6633, vpath_3)
 
 
