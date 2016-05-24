@@ -42,8 +42,9 @@
 
 #include <vlib/mc.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/lookup.h>
-
+#include <stdbool.h>
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_template.h>
 
@@ -176,6 +177,9 @@ typedef struct ip6_main_t {
 
     u8 pad[3];
   } host_config;
+
+  /* HBH processing enabled? */
+  u8 hbh_enabled;
 } ip6_main_t;
 
 /* Global ip6 main structure. */
@@ -520,5 +524,24 @@ ip6_compute_flow_hash (ip6_header_t * ip, u32 flow_hash_config)
     hash_mix64 (a, b, c);
     return (u32) c;
 }
+
+/*
+ * Hop-by-Hop handling
+ */
+typedef struct {
+  /* Array of function pointers to HBH option handling routines */
+  int (*options[256])(vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt);
+  u8 *(*trace[256])(u8 *s, ip6_hop_by_hop_option_t *opt);
+} ip6_hop_by_hop_main_t;
+
+extern ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
+
+int ip6_hbh_register_option (u8 option,
+			     int options(vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt),
+			     u8 *trace(u8 *s, ip6_hop_by_hop_option_t *opt));
+int ip6_hbh_unregister_option (u8 option);
+
+/* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
+#define OI_DECAP   100
 
 #endif /* included_ip_ip6_h */
