@@ -26,8 +26,11 @@
 
 #include <vnet/devices/af_packet/af_packet.h>
 
-#define foreach_af_packet_tx_func_error	       \
-_(FRAME_NOT_READY, "tx frame not ready")
+#define foreach_af_packet_tx_func_error               \
+_(FRAME_NOT_READY, "tx frame not ready")              \
+_(TXRING_EAGAIN,   "tx sendto temporary failure")     \
+_(TXRING_FATAL,    "tx sendto fatal failure")         \
+_(TXRING_OVERRUN,  "tx ring overrun")
 
 typedef enum {
 #define _(f,s) AF_PACKET_TX_ERROR_##f,
@@ -96,7 +99,7 @@ af_packet_interface_tx (vlib_main_t * vm,
 
       tph = (struct tpacket2_hdr *) (block_start + tx_frame * frame_size);
 
-      if(tph->tp_status & (TP_STATUS_SEND_REQUEST | TP_STATUS_SENDING))
+      if (PREDICT_FALSE(tph->tp_status & (TP_STATUS_SEND_REQUEST | TP_STATUS_SENDING)))
 	{
 	  frame_not_ready++;
 	  goto next;
@@ -116,21 +119,41 @@ af_packet_interface_tx (vlib_main_t * vm,
       tph->tp_status = TP_STATUS_SEND_REQUEST;
       n_sent++;
 next:
+      /* check if we've exhausted the ring */
+      if (PREDICT_FALSE(frame_not_ready + n_sent == frame_num))
+        break;
+
       tx_frame = (tx_frame + 1) % frame_num;
     }
 
   CLIB_MEMORY_BARRIER();
 
-  if (n_sent)
+  if (PREDICT_TRUE(n_sent))
     {
       apif->next_tx_frame = tx_frame;
-      if (sendto(apif->fd, NULL, 0, MSG_DONTWAIT, NULL, 0) == -1)
-	clib_unix_error("tx sendto failure");
+
+      if (PREDICT_FALSE(sendto(apif->fd, NULL, 0,
+                               MSG_DONTWAIT, NULL, 0) == -1))
+        {
+          /* Uh-oh, drop & move on, but count whether it was fatal or not.
+           * Note that we have no reliable way to properly determine the
+           * disposition of the packets we just enqueued for delivery.
+           */
+          vlib_error_count (vm, node->node_index,
+                            unix_error_is_fatal(errno) ?
+                            AF_PACKET_TX_ERROR_TXRING_FATAL :
+                            AF_PACKET_TX_ERROR_TXRING_EAGAIN,
+                            n_sent);
+        }
     }
 
-  if (frame_not_ready)
+  if (PREDICT_FALSE(frame_not_ready))
     vlib_error_count (vm, node->node_index, AF_PACKET_TX_ERROR_FRAME_NOT_READY,
-		      frame_not_ready);
+                      frame_not_ready);
+
+  if (PREDICT_FALSE(frame_not_ready + n_sent == frame_num))
+    vlib_error_count (vm, node->node_index, AF_PACKET_TX_ERROR_TXRING_OVERRUN,
+                      n_left);
 
   vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
   return frame->n_vectors;

@@ -115,7 +115,7 @@ create_packet_v2_sock(u8 * name, tpacket_req_t * rx_req, tpacket_req_t * tx_req,
   int opt = 1;
   if ((err = setsockopt(*fd, SOL_PACKET, PACKET_LOSS, &opt, sizeof(opt))) < 0)
     {
-      DBG_SOCK("Failed to set rx packet interface version");
+      DBG_SOCK("Failed to set packet tx ring error handling option");
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
