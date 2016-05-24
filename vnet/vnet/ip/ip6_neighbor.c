@@ -3241,7 +3241,7 @@ ip6_neighbor_add_del_adj_cb (struct ip_lookup_main_t * lm,
         {
           if (!n)
             clib_warning("Adjacency contains unknown ND next hop %U (del)",
-                         format_ip46_address, &adj->arp.next_hop);
+                         format_ip46_address, &adj->arp.next_hop, IP46_TYPE_IP6);
           else
             ip6_neighbor_entry_del_adj(n, adj->heap_handle);
         }
@@ -3249,7 +3249,7 @@ ip6_neighbor_add_del_adj_cb (struct ip_lookup_main_t * lm,
         {
           if (!n)
             clib_warning("Adjacency contains unknown ND next hop %U (add)",
-                         format_ip46_address, &adj->arp.next_hop);
+                         format_ip46_address, &adj->arp.next_hop, IP46_TYPE_IP6);
           else
             ip6_neighbor_entry_add_adj(n, adj->heap_handle);
         }
