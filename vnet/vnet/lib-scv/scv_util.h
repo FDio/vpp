@@ -206,7 +206,7 @@ static inline u16 scv_get_next_profile_id(vlib_main_t * vm, u16 id)
 }
 
 static inline void
-scv_profile_invalidate(vlib_main_t * vm, ip6_hop_by_hop_main_t * hm,
+scv_profile_invalidate(vlib_main_t * vm, ip6_hop_by_hop_ioam_main_t * hm,
     u16 id, u8 is_encap)
 {
     scv_profile *p = scv_profile_find(id);

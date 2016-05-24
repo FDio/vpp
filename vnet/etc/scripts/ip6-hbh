@@ -1,0 +1,84 @@
+tap connect tap0
+set int state tap-0 up
+set int ip address tap-0 1::1/64
+packet-generator new {
+  name hbh1
+  limit 1
+  node ip6-input
+  size 48-48
+  no-recycle
+  data {
+    IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
+    hex 0x3B00010403040506
+    incrementing 100
+  }
+}
+packet-generator new {
+  name hbh2
+  limit 1
+  node ip6-input
+  size 48-48
+  no-recycle
+  data {
+    IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
+    hex 0x3B00C10403040506
+    incrementing 100
+  }
+}
+
+packet-generator new {
+  name hbh3
+  limit 1
+  node ip6-input
+  size 48-48
+  no-recycle
+  data {
+    IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
+    hex 0x3BffC10403040506
+    incrementing 100
+  }
+}
+
+packet-generator new {
+  name hbh4
+  limit 1
+  node ip6-input
+  size 64-64
+  no-recycle
+  data {
+    IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
+    hex 0x3BffC10403040506
+    incrementing 100
+  }
+}
+
+packet-generator new {
+  name hbh5
+  limit 1
+  node ip6-input
+  size 56-56
+  no-recycle
+  data {
+    IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
+    length 16
+    hex 0x3B010104030405060106030405060708
+    incrementing 100
+  }
+}
+
+packet-generator new {
+  name hbh6
+  limit 1
+  node ip6-input
+  size 56-56
+  no-recycle
+  data {
+    IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
+    length 16
+    hex 0x3a00050200000100
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+tr add pg-input 100
