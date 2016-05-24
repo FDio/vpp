@@ -2113,8 +2113,9 @@ manual_java define l2_fib_table_dump {
 define vxlan_gpe_add_del_tunnel {
     u32 client_index;
     u32 context;
-    u32 local;
-    u32 remote;
+    u8 is_ipv6;
+    u8 local[16];
+    u8 remote[16];
     u32 encap_vrf_id;
     u32 decap_vrf_id;
     u8 protocol;

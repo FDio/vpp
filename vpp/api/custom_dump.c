@@ -1580,8 +1580,9 @@ static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
 
     s = format (0, "SCRIPT: vxlan_gpe_add_del_tunnel ");
 
-    s = format (s, "local %U remote %U ", format_ip4_address, &mp->local,
-                format_ip4_address, &mp->remote);
+    s = format (s, "local %U ", format_ip46_address, &mp->local, mp->is_ipv6);
+
+    s = format (s, "remote %U ", format_ip46_address, &mp->remote, mp->is_ipv6);
 
     s = format (s, "protocol %d ", ntohl(mp->protocol));
 
