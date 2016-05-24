@@ -72,16 +72,19 @@ def get_args(t, filter):
 def get_types(t, filter):
     types_list = []
     c_types_list = []
+    lengths_list = []
     for i in t:
         if not filter(i[1]):
             continue
         if len(i) is 3:  # array type
             types_list.append(vpp_2_jni_type_mapping[i[0]] + 'Array')
             c_types_list.append(i[0] + '[]')
+            lengths_list.append(i[2])
         else:  # primitive type
             types_list.append(vpp_2_jni_type_mapping[i[0]])
             c_types_list.append(i[0])
-    return types_list, c_types_list
+            lengths_list.append(0)
+    return types_list, c_types_list, lengths_list
 
 
 def get_definitions():
@@ -96,18 +99,18 @@ def get_definitions():
 
         # For replies include all the arguments except message_id
         if util.is_reply(java_name):
-            types, c_types = get_types(a[1:], is_response_field)
+            types, c_types, lengths = get_types(a[1:], is_response_field)
             func_name[a[0]] = dict(
                 [('name', a[0]), ('java_name', java_name),
                  ('args', get_args(a[1:], is_response_field)), ('full_args', get_args(a[1:], lambda x: True)),
-                 ('types', types), ('c_types', c_types)])
+                 ('types', types), ('c_types', c_types), ('lengths', lengths)])
         # For requests skip message_id, client_id and context
         else:
-            types, c_types = get_types(a[1:], is_request_field)
+            types, c_types, lengths = get_types(a[1:], is_request_field)
             func_name[a[0]] = dict(
                 [('name', a[0]), ('java_name', java_name),
                  ('args', get_args(a[1:], is_request_field)), ('full_args', get_args(a[1:], lambda x: True)),
-                 ('types', types), ('c_types', c_types)])
+                 ('types', types), ('c_types', c_types), ('lengths', lengths)])
 
         # Indexed by name
         func_list.append(func_name[a[0]])
