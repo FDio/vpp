@@ -1443,7 +1443,7 @@ typedef enum
 typedef struct
 {
   gid_address_t dst_eid;
-  ip4_address_t map_resolver_ip;
+  ip_address_t map_resolver_ip;
 } lisp_cp_lookup_trace_t;
 
 u8 *
@@ -1828,10 +1828,15 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
             {
               lisp_cp_lookup_trace_t *tr = vlib_add_trace (vm, node, p0,
                                                           sizeof(*tr));
+
+              memset(tr, 0, sizeof(*tr));
               gid_address_copy (&tr->dst_eid, &dst);
-              clib_memcpy (&tr->map_resolver_ip,
-                      vec_elt_at_index(lcm->map_resolvers, 0),
-                      sizeof(ip_address_t));
+              if (vec_len(lcm->map_resolvers) > 0)
+                {
+                  clib_memcpy (&tr->map_resolver_ip,
+                               vec_elt_at_index(lcm->map_resolvers, 0),
+                               sizeof(ip_address_t));
+                }
             }
         }
 
