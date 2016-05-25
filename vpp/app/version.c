@@ -63,7 +63,7 @@ show_vpe_version_command_fn (vlib_main_t * vm,
       _("Current PID", "%d", getpid());
 #if DPDK > 0
       _("DPDK Version", "%s", rte_version());
-      _("DPDK EAL init args", "%s", dpdk_main.eal_init_args_str);
+      _("DPDK EAL init args", "%s", dpdk_config_main.eal_init_args_str);
 #endif
 #undef _
     }

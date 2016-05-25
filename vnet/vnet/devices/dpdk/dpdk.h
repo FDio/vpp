@@ -309,6 +309,44 @@ typedef struct dpdk_efd_t {
 
 typedef struct {
 
+  /* Config stuff */
+  u8 ** eal_init_args;
+  u8 * eal_init_args_str;
+  u8 * eth_if_blacklist;
+  u8 * eth_if_whitelist;
+  u8 * uio_driver_name;
+  u8 no_multi_seg;
+  u8 enable_tcp_udp_checksum;
+
+  /* Required config parameters */
+  u8 coremask_set_manually;
+  u8 nchannels_set_manually;
+  u32 coremask;
+  u32 nchannels;
+  u32 num_mbufs;
+  u32 use_rss;
+  u32 max_tx_queues;
+  u8 num_kni;/* while kni_init allows u32, port_id in callback fn is only u8 */
+
+  /*
+   * format interface names ala xxxEthernet%d/%d/%d instead of
+   * xxxEthernet%x/%x/%x. For VIRL.
+   */
+  u8 interface_name_format_decimal;
+
+  /* virtio vhost-user switch */
+  u8 use_virtio_vhost;
+
+  /* vhost-user coalescence frames config */
+  u32 vhost_coalesce_frames;
+  f64 vhost_coalesce_time;
+
+} dpdk_config_main_t;
+
+dpdk_config_main_t dpdk_config_main;
+
+typedef struct {
+
   /* Devices */
   dpdk_device_t * devices;
   dpdk_device_and_queue_t ** devices_by_cpu;
@@ -325,33 +363,9 @@ typedef struct {
   /* vlib buffer free list, must be same size as an rte_mbuf */
   u32 vlib_buffer_free_list_index;
 
-  /*
-   * format interface names ala xxxEthernet%d/%d/%d instead of
-   * xxxEthernet%x/%x/%x. For VIRL.
-   */
-  u8 interface_name_format_decimal;
-
-
   /* dpdk worker "threads" */
   dpdk_worker_t * workers;
 
-  /* Config stuff */
-  u8 ** eal_init_args;
-  u8 * eal_init_args_str;
-  u8 * eth_if_blacklist;
-  u8 * eth_if_whitelist;
-  u8 * uio_driver_name;
-  u8 no_multi_seg;
-
-  /* Required config parameters */
-  u8 coremask_set_manually;
-  u8 nchannels_set_manually;
-  u32 coremask;
-  u32 nchannels;
-  u32 num_mbufs;
-  u32 use_rss;
-  u32 max_tx_queues;
-  u8 num_kni; /* while kni_init allows u32, port_id in callback fn is only u8 */
 
   /* Ethernet input node index */
   u32 ethernet_input_node_index;
@@ -365,13 +379,6 @@ typedef struct {
   u8 * pcap_filename;
   u32 pcap_sw_if_index;
   u32 pcap_pkts_to_capture;
-
-  /* virtio vhost-user switch */
-  u8 use_virtio_vhost;
-
-  /* vhost-user coalescence frames config */
-  u32 vhost_coalesce_frames;
-  f64 vhost_coalesce_time;
 
   /* hashes */
   uword * dpdk_device_by_kni_port_id;
@@ -407,6 +414,7 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
+  dpdk_config_main_t * conf;
 } dpdk_main_t;
 
 dpdk_main_t dpdk_main;

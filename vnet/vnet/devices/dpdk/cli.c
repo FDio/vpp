@@ -847,7 +847,7 @@ set_efd (vlib_main_t *vm, unformat_input_t *input,
 
     if (dm->efd.enabled)
 	rt->function = dpdk_input_efd_multiarch_select();
-    else if (dm->use_rss)
+    else if (dm->conf->use_rss)
 	rt->function = dpdk_input_rss_multiarch_select();
     else
 	rt->function = dpdk_input_multiarch_select();

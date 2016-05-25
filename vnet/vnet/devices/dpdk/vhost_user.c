@@ -204,7 +204,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
   dpdk_vu_intf_t *vui = NULL;
 
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
-  num_qpairs = dm->use_rss < 1 ? 1 : tm->n_vlib_mains;
+  num_qpairs = dm->conf->use_rss < 1 ? 1 : tm->n_vlib_mains;
 #endif
 
   dpdk_device_t * xd = NULL;
@@ -857,7 +857,7 @@ dpdk_vhost_user_send_interrupt(vlib_main_t * vm, dpdk_device_t * xd, int idx)
     if((vring->callfd > 0) && !(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)) {
         eventfd_write(vring->callfd, (eventfd_t)1);
         vring->n_since_last_int = 0;
-        vring->int_deadline = vlib_time_now(vm) + dm->vhost_coalesce_time;
+        vring->int_deadline = vlib_time_now(vm) + dm->conf->vhost_coalesce_time;
     }
 }
 
@@ -1400,7 +1400,7 @@ int dpdk_vhost_user_create_if(vnet_main_t * vnm, vlib_main_t * vm,
   int rv = 0;
 
   // using virtio vhost user?
-  if (dm->use_virtio_vhost) {
+  if (dm->conf->use_virtio_vhost) {
       return vhost_user_create_if(vnm, vm, sock_filename, is_server,
               sw_if_index, feature_mask, renumber, custom_dev_instance, hwaddr);
   }
@@ -1446,7 +1446,7 @@ int dpdk_vhost_user_modify_if(vnet_main_t * vnm, vlib_main_t * vm,
   int rv = 0;
 
   // using virtio vhost user?
-  if (dm->use_virtio_vhost) {
+  if (dm->conf->use_virtio_vhost) {
       return vhost_user_modify_if(vnm, vm, sock_filename, is_server,
               sw_if_index, feature_mask, renumber, custom_dev_instance);
   }
@@ -1490,7 +1490,7 @@ int dpdk_vhost_user_delete_if(vnet_main_t * vnm, vlib_main_t * vm,
   int rv = 0;
 
   // using virtio vhost user?
-  if (dm->use_virtio_vhost) {
+  if (dm->conf->use_virtio_vhost) {
       return vhost_user_delete_if(vnm, vm, sw_if_index);
   }
 
@@ -1532,7 +1532,7 @@ int dpdk_vhost_user_dump_ifs(vnet_main_t * vnm, vlib_main_t * vm, vhost_user_int
         return -1;
 
     // using virtio vhost user?
-    if (dm->use_virtio_vhost) {
+    if (dm->conf->use_virtio_vhost) {
         return vhost_user_dump_ifs(vnm, vm, out_vuids);
     }
 
@@ -1667,7 +1667,7 @@ dpdk_vhost_user_connect_command_fn (vlib_main_t * vm,
   u8 hwaddr[6];
   u8 *hw = NULL;
 
-  if (dm->use_virtio_vhost) {
+  if (dm->conf->use_virtio_vhost) {
       return vhost_user_connect_command_fn(vm, input, cmd);
   }
 
@@ -1722,7 +1722,7 @@ dpdk_vhost_user_delete_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, * line_input = &_line_input;
   u32 sw_if_index = ~0;
 
-  if (dm->use_virtio_vhost) {
+  if (dm->conf->use_virtio_vhost) {
       return vhost_user_delete_command_fn(vm, input, cmd);
   }
 
@@ -1789,7 +1789,7 @@ show_dpdk_vhost_user_command_fn (vlib_main_t * vm,
   { .str = NULL }
   };
 
-  if (dm->use_virtio_vhost) {
+  if (dm->conf->use_virtio_vhost) {
     return show_vhost_user_command_fn(vm, input, cmd);
   }
 
@@ -1815,7 +1815,7 @@ show_dpdk_vhost_user_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "DPDK vhost-user interfaces");
   vlib_cli_output (vm, "Global:\n  coalesce frames %d time %e\n\n",
-                   dm->vhost_coalesce_frames, dm->vhost_coalesce_time);
+                   dm->conf->vhost_coalesce_frames, dm->conf->vhost_coalesce_time);
 
   for (i = 0; i < vec_len (hw_if_indices); i++) {
     hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);

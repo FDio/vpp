@@ -207,7 +207,7 @@ u8 * format_dpdk_device_name (u8 * s, va_list * args)
   struct rte_eth_dev_info dev_info;
   u8 * ret;
 
-  if (dm->interface_name_format_decimal)
+  if (dm->conf->interface_name_format_decimal)
     devname_format = "%s%d/%d/%d";
   else
     devname_format = "%s%x/%x/%x";

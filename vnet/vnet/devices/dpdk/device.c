@@ -399,7 +399,7 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
 
                     f64 now = vlib_time_now (vm);
                     if (vring->int_deadline < now ||
-                        vring->n_since_last_int > dm->vhost_coalesce_frames)
+                        vring->n_since_last_int > dm->conf->vhost_coalesce_frames)
                       dpdk_vhost_user_send_interrupt(vm, xd, offset + VIRTIO_RXQ);
                   }
 
@@ -437,7 +437,7 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
 
                     f64 now = vlib_time_now (vm);
                     if (vring->int_deadline < now ||
-                        vring->n_since_last_int > dm->vhost_coalesce_frames)
+                        vring->n_since_last_int > dm->conf->vhost_coalesce_frames)
                       dpdk_vhost_user_send_interrupt(vm, xd, offset + VIRTIO_RXQ);
                   }
 
@@ -1297,7 +1297,7 @@ u32 dpdk_num_mbufs (void)
 {
   dpdk_main_t * dm = &dpdk_main;
 
-  return dm->num_mbufs;
+  return dm->conf->num_mbufs;
 }
 
 /*

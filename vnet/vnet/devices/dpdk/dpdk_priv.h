@@ -111,7 +111,7 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
           vring->n_since_last_int += n_buffers;
 
           if ((vring->n_since_last_int && (vring->int_deadline < now))
-              || (vring->n_since_last_int > dm->vhost_coalesce_frames))
+              || (vring->n_since_last_int > dm->conf->vhost_coalesce_frames))
             dpdk_vhost_user_send_interrupt(vm, xd, offset + VIRTIO_TXQ);
       }
 

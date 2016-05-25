@@ -296,6 +296,10 @@ dpdk_lib_init (dpdk_main_t * dm)
       vlib_buffer_get_or_create_free_list (
           vm, VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES, "dpdk rx");
 
+  if (dm->conf->enable_tcp_udp_checksum)
+    dm->buffer_flags_template &= ~(IP_BUFFER_L4_CHECKSUM_CORRECT
+				   | IP_BUFFER_L4_CHECKSUM_COMPUTED);
+
   for (i = 0; i < nports; i++)
     {
       u8 addr[6];
@@ -313,7 +317,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       clib_memcpy(&xd->tx_conf, &dev_info.default_txconf,
              sizeof(struct rte_eth_txconf));
-      if (dm->no_multi_seg)
+      if (dm->conf->no_multi_seg)
         {
           xd->tx_conf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
           port_conf_template.rxmode.jumbo_frame = 0;
@@ -328,12 +332,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       xd->tx_q_used = clib_min(dev_info.max_tx_queues, tm->n_vlib_mains);
 
-      if (dm->max_tx_queues)
-        xd->tx_q_used = clib_min(xd->tx_q_used, dm->max_tx_queues);
+      if (dm->conf->max_tx_queues)
+        xd->tx_q_used = clib_min(xd->tx_q_used, dm->conf->max_tx_queues);
 
-      if (dm->use_rss > 1 && dev_info.max_rx_queues >= dm->use_rss)
+      if (dm->conf->use_rss > 1 && dev_info.max_rx_queues >= dm->conf->use_rss)
         {
-          xd->rx_q_used = dm->use_rss;
+          xd->rx_q_used = dm->conf->use_rss;
           xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
           xd->port_conf.rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
         }
@@ -652,10 +656,10 @@ dpdk_lib_init (dpdk_main_t * dm)
     }
 
 #ifdef RTE_LIBRTE_KNI
-  if (dm->num_kni) {
+  if (dm->conf->num_kni) {
     clib_warning("Initializing KNI interfaces...");
-    rte_kni_init(dm->num_kni);
-    for (i = 0; i < dm->num_kni; i++)
+    rte_kni_init(dm->conf->num_kni);
+    for (i = 0; i < dm->conf->num_kni; i++)
     {
       u8 addr[6];
       int j;
@@ -730,9 +734,9 @@ dpdk_lib_init (dpdk_main_t * dm)
   }
 #endif
 
-  if (nb_desc > dm->num_mbufs) 
+  if (nb_desc > dm->conf->num_mbufs) 
     clib_warning ("%d mbufs allocated but total rx/tx ring size is %d\n",
-                  dm->num_mbufs, nb_desc);
+                  dm->conf->num_mbufs, nb_desc);
 
   /* init next vhost-user if index */
   dm->next_vu_if_id = 0;
@@ -741,7 +745,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 }
 
 static void
-dpdk_bind_devices_to_uio (dpdk_main_t * dm)
+dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 {
   vlib_pci_main_t * pm = &pci_main;
   clib_error_t * error;
@@ -758,8 +762,8 @@ dpdk_bind_devices_to_uio (dpdk_main_t * dm)
       continue;
 
     /* if whitelist exists process only whitelisted devices */
-    if (dm->eth_if_whitelist &&
-        !strstr ((char *) dm->eth_if_whitelist, (char *) pci_addr))
+    if (conf->eth_if_whitelist &&
+        !strstr ((char *) conf->eth_if_whitelist, (char *) pci_addr))
     continue;
 
     /* virtio */
@@ -785,13 +789,13 @@ dpdk_bind_devices_to_uio (dpdk_main_t * dm)
         continue;
       }
 
-    error = vlib_pci_bind_to_uio (d, (char *) dm->uio_driver_name);
+    error = vlib_pci_bind_to_uio (d, (char *) conf->uio_driver_name);
 
     if (error)
       {
-	if (!dm->eth_if_whitelist)
-	  dm->eth_if_blacklist = format (dm->eth_if_blacklist, "%U ",
-					 format_vlib_pci_addr, &d->bus_address);
+	if (!conf->eth_if_whitelist)
+	  conf->eth_if_blacklist = format (conf->eth_if_blacklist, "%U ",
+					       format_vlib_pci_addr, &d->bus_address);
 	clib_error_report (error);
       }
   }));
@@ -802,7 +806,7 @@ static clib_error_t *
 dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 {
   clib_error_t * error = 0;
-  dpdk_main_t * dm = &dpdk_main;
+  dpdk_config_main_t * conf = &dpdk_config_main;
   vlib_thread_main_t * tm = vlib_get_thread_main();
   vlib_node_runtime_t * rt = vlib_node_get_runtime (vm, dpdk_input_node.index);
   u8 * s, * tmp = 0;
@@ -824,45 +828,42 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 * socket_mem = 0;
 
   // MATT-FIXME: inverted virtio-vhost logic to use virtio by default
-  dm->use_virtio_vhost = 1;
+  conf->use_virtio_vhost = 1;
 
   while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
     {
       /* Prime the pump */
       if (unformat (input, "no-hugetlb"))
         {
-          vec_add1 (dm->eal_init_args, (u8 *) "no-huge");
+          vec_add1 (conf->eal_init_args, (u8 *) "no-huge");
           no_huge = 1;
         }
 
       else if (unformat (input, "enable-tcp-udp-checksum"))
-        {
-          dm->buffer_flags_template &= 
-            ~(IP_BUFFER_L4_CHECKSUM_CORRECT | IP_BUFFER_L4_CHECKSUM_COMPUTED);
-        }
+	conf->enable_tcp_udp_checksum = 1;
 
       else if (unformat (input, "decimal-interface-names"))
-        dm->interface_name_format_decimal = 1;
+        conf->interface_name_format_decimal = 1;
 
       else if (unformat (input, "no-multi-seg"))
-        dm->no_multi_seg = 1;
+        conf->no_multi_seg = 1;
 
       else if (unformat (input, "dev %s", &pci_dev_id))
 	{
-	  if (dm->eth_if_whitelist)
+	  if (conf->eth_if_whitelist)
 	    {
 	      /*
 	       * Don't add duplicate device id's.
 	       */
-	      if (strstr ((char *)dm->eth_if_whitelist, (char *)pci_dev_id))
+	      if (strstr ((char *)conf->eth_if_whitelist, (char *)pci_dev_id))
 		continue;
 
-	      _vec_len (dm->eth_if_whitelist) -= 1; // chomp trailing NULL.
-	      dm->eth_if_whitelist = format (dm->eth_if_whitelist, " %s%c",
-					     pci_dev_id, 0);
+	      _vec_len (conf->eth_if_whitelist) -= 1; // chomp trailing NULL.
+	      conf->eth_if_whitelist = format (conf->eth_if_whitelist, " %s%c",
+					       pci_dev_id, 0);
 	    }
 	  else
-	    dm->eth_if_whitelist = format (0, "%s%c", pci_dev_id, 0);
+	    conf->eth_if_whitelist = format (0, "%s%c", pci_dev_id, 0);
 	}
 
 #ifdef NETMAP
@@ -886,23 +887,23 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       }
 #endif
 
-      else if (unformat (input, "num-mbufs %d", &dm->num_mbufs))
+      else if (unformat (input, "num-mbufs %d", &conf->num_mbufs))
         ;
-      else if (unformat (input, "max-tx-queues %d", &dm->max_tx_queues))
+      else if (unformat (input, "max-tx-queues %d", &conf->max_tx_queues))
         ;
-      else if (unformat (input, "kni %d", &dm->num_kni))
+      else if (unformat (input, "kni %d", &conf->num_kni))
         ;
-      else if (unformat (input, "uio-driver %s", &dm->uio_driver_name))
+      else if (unformat (input, "uio-driver %s", &conf->uio_driver_name))
 	;
       else if (unformat (input, "socket-mem %s", &socket_mem))
 	;
-      else if (unformat (input, "vhost-user-coalesce-frames %d", &dm->vhost_coalesce_frames))
+      else if (unformat (input, "vhost-user-coalesce-frames %d", &conf->vhost_coalesce_frames))
         ;
-      else if (unformat (input, "vhost-user-coalesce-time %f", &dm->vhost_coalesce_time))
+      else if (unformat (input, "vhost-user-coalesce-time %f", &conf->vhost_coalesce_time))
         ;
       else if (unformat (input, "enable-vhost-user"))
-        dm->use_virtio_vhost = 0;
-      else if (unformat (input, "rss %d", &dm->use_rss))
+        conf->use_virtio_vhost = 0;
+      else if (unformat (input, "rss %d", &conf->use_rss))
         ;
 
 #define _(a)                                    \
@@ -911,7 +912,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
           if (!strncmp(#a, "no-pci", 6))        \
             no_pci = 1;                         \
           tmp = format (0, "--%s%c", #a, 0);    \
-          vec_add1 (dm->eal_init_args, tmp);    \
+          vec_add1 (conf->eal_init_args, tmp);    \
         }
       foreach_eal_double_hyphen_predicate_arg
 #undef _
@@ -924,9 +925,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
             else if (!strncmp(#a, "file-prefix", 11)) \
               file_prefix = 1;                        \
 	    tmp = format (0, "--%s%c", #a, 0);	      \
-	    vec_add1 (dm->eal_init_args, tmp);	      \
+	    vec_add1 (conf->eal_init_args, tmp);      \
 	    vec_add1 (s, 0);			      \
-	    vec_add1 (dm->eal_init_args, s);	      \
+	    vec_add1 (conf->eal_init_args, s);	      \
 	  }
 	foreach_eal_double_hyphen_arg
 #undef _
@@ -935,9 +936,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  else if (unformat(input, #a " %s", &s))	\
 	    {						\
 	      tmp = format (0, "-%s%c", #b, 0);		\
-	      vec_add1 (dm->eal_init_args, tmp);	\
+	      vec_add1 (conf->eal_init_args, tmp);	\
 	      vec_add1 (s, 0);				\
-	      vec_add1 (dm->eal_init_args, s);		\
+	      vec_add1 (conf->eal_init_args, s);	\
 	    }
 	  foreach_eal_single_hyphen_arg
 #undef _
@@ -946,10 +947,10 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	    else if (unformat(input, #a " %s", &s))	\
 	      {						\
 		tmp = format (0, "-%s%c", #b, 0);	\
-		vec_add1 (dm->eal_init_args, tmp);	\
+		vec_add1 (conf->eal_init_args, tmp);	\
 		vec_add1 (s, 0);			\
-		vec_add1 (dm->eal_init_args, s);	\
-		dm->a##_set_manually = 1;		\
+		vec_add1 (conf->eal_init_args, s);	\
+		conf->a##_set_manually = 1;		\
 	      }
 	    foreach_eal_single_hyphen_mandatory_arg
 #undef _
@@ -965,8 +966,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	    }
     }
 
-  if (!dm->uio_driver_name)
-    dm->uio_driver_name = format (0, "igb_uio%c", 0);
+  if (!conf->uio_driver_name)
+    conf->uio_driver_name = format (0, "igb_uio%c", 0);
 
   /*
    * Use 1G huge pages if available.
@@ -1116,15 +1117,15 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         }
 
       tmp = format (0, "--huge-dir%c", 0);
-      vec_add1 (dm->eal_init_args, tmp);
+      vec_add1 (conf->eal_init_args, tmp);
       tmp = format (0, "%s%c", DEFAULT_HUGE_DIR, 0);
-      vec_add1 (dm->eal_init_args, tmp);
+      vec_add1 (conf->eal_init_args, tmp);
       if (!file_prefix)
         {
           tmp = format (0, "--file-prefix%c", 0);
-          vec_add1 (dm->eal_init_args, tmp);
+          vec_add1 (conf->eal_init_args, tmp);
           tmp = format (0, "vpp%c", 0);
-          vec_add1 (dm->eal_init_args, tmp);
+          vec_add1 (conf->eal_init_args, tmp);
         }
     }
 
@@ -1135,7 +1136,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     return error;
 
   /* I'll bet that -c and -n must be the first and second args... */
-  if (!dm->coremask_set_manually)
+  if (!conf->coremask_set_manually)
     {
       vlib_thread_registration_t * tr;
       uword * coremask = 0;
@@ -1150,32 +1151,32 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
           coremask = clib_bitmap_or(coremask, tr->coremask);
         }
 
-      vec_insert (dm->eal_init_args, 2, 1);
-      dm->eal_init_args[1] = (u8 *) "-c";
+      vec_insert (conf->eal_init_args, 2, 1);
+      conf->eal_init_args[1] = (u8 *) "-c";
       tmp = format (0, "%U%c", format_bitmap_hex, coremask, 0);
-      dm->eal_init_args[2] = tmp;
+      conf->eal_init_args[2] = tmp;
       clib_bitmap_free(coremask);
     }
 
-  if (!dm->nchannels_set_manually)
+  if (!conf->nchannels_set_manually)
     {
-      vec_insert (dm->eal_init_args, 2, 3);
-      dm->eal_init_args[3] = (u8 *) "-n";
-      tmp = format (0, "%d", dm->nchannels);
-      dm->eal_init_args[4] = tmp;
+      vec_insert (conf->eal_init_args, 2, 3);
+      conf->eal_init_args[3] = (u8 *) "-n";
+      tmp = format (0, "%d", conf->nchannels);
+      conf->eal_init_args[4] = tmp;
     }
 
   if (no_pci == 0 && geteuid() == 0)
-    dpdk_bind_devices_to_uio(dm);
+    dpdk_bind_devices_to_uio(conf);
 
   /*
    * If there are whitelisted devices,
    * add the whitelist option & device list to the dpdk arg list...
    */
-  if (dm->eth_if_whitelist)
+  if (conf->eth_if_whitelist)
     {
-      unformat_init_string (in, (char *)dm->eth_if_whitelist,
-			    vec_len(dm->eth_if_whitelist) - 1);
+      unformat_init_string (in, (char *) conf->eth_if_whitelist,
+			    vec_len (conf->eth_if_whitelist) - 1);
       fmt = "-w%c";
     }
 
@@ -1184,34 +1185,34 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
    */
   else
     {
-      unformat_init_string (in, (char *)dm->eth_if_blacklist,
-			    vec_len(dm->eth_if_blacklist) - 1);
+      unformat_init_string (in, (char *)conf->eth_if_blacklist,
+			    vec_len(conf->eth_if_blacklist) - 1);
       fmt = "-b%c";
     }
 
   while (unformat_check_input (in) != UNFORMAT_END_OF_INPUT)
     {
       tmp = format (0, fmt, 0);
-      vec_add1 (dm->eal_init_args, tmp);
+      vec_add1 (conf->eal_init_args, tmp);
       unformat (in, "%s", &pci_dev_id);
-      vec_add1 (dm->eal_init_args, pci_dev_id);
+      vec_add1 (conf->eal_init_args, pci_dev_id);
     }
 
   /* set master-lcore */
   tmp = format (0, "--master-lcore%c", 0);
-  vec_add1 (dm->eal_init_args, tmp);
+  vec_add1 (conf->eal_init_args, tmp);
   tmp = format (0, "%u%c", tm->main_lcore, 0);
-  vec_add1 (dm->eal_init_args, tmp);
+  vec_add1 (conf->eal_init_args, tmp);
 
   /* set socket-mem */
   tmp = format (0, "--socket-mem%c", 0);
-  vec_add1 (dm->eal_init_args, tmp);
+  vec_add1 (conf->eal_init_args, tmp);
   tmp = format (0, "%s%c", socket_mem, 0);
-  vec_add1 (dm->eal_init_args, tmp);
+  vec_add1 (conf->eal_init_args, tmp);
 
   /* NULL terminate the "argv" vector, in case of stupidity */
-  vec_add1 (dm->eal_init_args, 0);
-  _vec_len(dm->eal_init_args) -= 1;
+  vec_add1 (conf->eal_init_args, 0);
+  _vec_len(conf->eal_init_args) -= 1;
 
   /* Set up DPDK eal and packet mbuf pool early. */
 
@@ -1219,14 +1220,14 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   rte_set_log_level (log_level);
 
-  vm = dm->vlib_main;
+  vm = vlib_get_main ();
 
   /* make copy of args as rte_eal_init tends to mess up with arg array */
-  for (i = 1; i < vec_len(dm->eal_init_args); i++)
-    dm->eal_init_args_str = format(dm->eal_init_args_str, "%s ",
-                                   dm->eal_init_args[i]);
+  for (i = 1; i < vec_len(conf->eal_init_args); i++)
+    conf->eal_init_args_str = format(conf->eal_init_args_str, "%s ",
+                                     conf->eal_init_args[i]);
 
-  ret = rte_eal_init(vec_len(dm->eal_init_args), (char **) dm->eal_init_args);
+  ret = rte_eal_init(vec_len(conf->eal_init_args), (char **) conf->eal_init_args);
 
   /* lazy umount hugepages */
   umount2(DEFAULT_HUGE_DIR, MNT_DETACH);
@@ -1239,19 +1240,19 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   rte_dump_physmem_layout(stdout);
 
   /* main thread 1st */
-  error = vlib_buffer_pool_create(vm, dm->num_mbufs, rte_socket_id());
+  error = vlib_buffer_pool_create(vm, conf->num_mbufs, rte_socket_id());
   if (error)
     return error;
 
   for (i = 0; i < RTE_MAX_LCORE; i++)
     {
-      error = vlib_buffer_pool_create(vm, dm->num_mbufs,
+      error = vlib_buffer_pool_create(vm, conf->num_mbufs,
                                       rte_lcore_to_socket_id(i));
       if (error)
         return error;
     }
 
-  if (dm->use_rss)
+  if (conf->use_rss)
     rt->function = dpdk_input_rss_multiarch_select();
   else
     rt->function = dpdk_input_multiarch_select();
@@ -1586,6 +1587,7 @@ dpdk_init (vlib_main_t * vm)
 
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main();
+  dm->conf = &dpdk_config_main;
 
   ei = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
   if (ei == 0)
@@ -1593,9 +1595,9 @@ dpdk_init (vlib_main_t * vm)
 
   dm->ethernet_input_node_index = ei->index;
 
-  dm->nchannels = 4;
-  dm->num_mbufs = dm->num_mbufs ? dm->num_mbufs : NB_MBUF;
-  vec_add1 (dm->eal_init_args, (u8 *) "vnet");
+  dm->conf->nchannels = 4;
+  dm->conf->num_mbufs = dm->conf->num_mbufs ? dm->conf->num_mbufs : NB_MBUF;
+  vec_add1 (dm->conf->eal_init_args, (u8 *) "vnet");
 
   dm->dpdk_device_by_kni_port_id = hash_create (0, sizeof (uword));
   dm->vu_sw_if_index_by_listener_fd = hash_create (0, sizeof (uword));
@@ -1612,8 +1614,8 @@ dpdk_init (vlib_main_t * vm)
       DPDK_EFD_DEFAULT_CONSEC_FULL_FRAMES_HI_THRESH;
 
   /* vhost-user coalescence frames defaults */
-  dm->vhost_coalesce_frames = 32;
-  dm->vhost_coalesce_time = 1e-3;
+  dm->conf->vhost_coalesce_frames = 32;
+  dm->conf->vhost_coalesce_time = 1e-3;
 
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
   dm->buffer_flags_template = 
