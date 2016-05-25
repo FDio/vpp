@@ -204,7 +204,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
   dpdk_vu_intf_t *vui = NULL;
 
 #if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
-  num_qpairs = dm->conf->use_rss < 1 ? 1 : tm->n_vlib_mains;
+  num_qpairs = dm->use_rss < 1 ? 1 : tm->n_vlib_mains;
 #endif
 
   dpdk_device_t * xd = NULL;
