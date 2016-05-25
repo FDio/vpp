@@ -911,7 +911,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   h->length = (header_length/8) - 1;
   h->type = ROUTING_HEADER_TYPE_SR;
   h->segments_left = vec_len (a->segments);
-  h->first_segment = vec_len(a->segments) -1;
+  h->first_segment = vec_len(a->segments) ? vec_len(a->segments) - 1 : 0;
   if (a->shared_secret)
     h->hmac_key = hmac_key_index & 0xFF;
 
