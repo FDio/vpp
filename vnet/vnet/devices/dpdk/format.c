@@ -452,6 +452,7 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
   dpdk_device_t * xd = vec_elt_at_index (dm->devices, dev_instance);
   uword indent = format_get_indent (s);
   f64 now = vlib_time_now (dm->vlib_main);
+  struct rte_eth_dev_info di;
 
   dpdk_update_counters (xd, now);
   dpdk_update_link_state (xd, now);
@@ -461,15 +462,15 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
 	      format_white_space, indent + 2,
 	      format_dpdk_link_status, xd);
 
+  rte_eth_dev_info_get(xd->device_index, &di);
+
   if (verbose > 1 && xd->dev_type == VNET_DPDK_DEV_ETH)
     {
-      struct rte_eth_dev_info di;
       struct rte_pci_device * pci;
       struct rte_eth_rss_conf rss_conf;
       int vlan_off;
 
       rss_conf.rss_key = 0;
-      rte_eth_dev_info_get(xd->device_index, &di);
       rte_eth_dev_rss_hash_conf_get(xd->device_index, &rss_conf);
       pci = di.pci_dev;
 
@@ -495,10 +496,6 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
                  vlan_off & ETH_VLAN_STRIP_OFFLOAD ? "on" : "off",
                  vlan_off & ETH_VLAN_FILTER_OFFLOAD ? "on" : "off",
                  vlan_off & ETH_VLAN_EXTEND_OFFLOAD ? "on" : "off");
-      s = format(s, "%Uqueue size (max):  rx %d (%d) tx %d (%d)\n",
-                 format_white_space, indent + 2,
-                 xd->rx_q_used, di.max_rx_queues,
-                 xd->tx_q_used, di.max_tx_queues);
       s = format(s, "%Urx offload caps:   %U\n",
                  format_white_space, indent + 2,
                  format_dpdk_rx_offload_caps, di.rx_offload_capa);
@@ -521,9 +518,11 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
     }
 
   if (xd->cpu_socket > -1)
-    s = format (s, "%Ucpu socket %d",
+    s = format (s, "%Ucpu socket %d\n%Uqueues rx %d (%d) tx %d (%d)",
+                format_white_space, indent + 2, xd->cpu_socket,
                 format_white_space, indent + 2,
-                xd->cpu_socket);
+                xd->rx_q_used, di.max_rx_queues,
+                xd->tx_q_used, di.max_tx_queues);
 
   /* $$$ MIB counters  */
 
