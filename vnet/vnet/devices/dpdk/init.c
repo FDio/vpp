@@ -235,6 +235,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   clib_error_t * error;
   vlib_main_t * vm = vlib_get_main();
   vlib_thread_main_t * tm = vlib_get_thread_main();
+  vlib_node_runtime_t * rt;
   vnet_sw_interface_t * sw;
   vnet_hw_interface_t * hi;
   dpdk_device_t * xd;
@@ -246,6 +247,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 
   dm->input_cpu_first_index = 0;
   dm->input_cpu_count = 1;
+
+  rt = vlib_node_get_runtime (vm, dpdk_input_node.index);
+  rt->function = dpdk_input_multiarch_select();
 
   /* find out which cpus will be used for input */
   p = hash_get_mem (tm->thread_registrations_by_name, "io");
@@ -307,13 +311,27 @@ dpdk_lib_init (dpdk_main_t * dm)
       struct rte_eth_dev_info dev_info;
       clib_error_t * rv;
       struct rte_eth_link l;
+      dpdk_device_config_t * devconf = 0;
+      vlib_pci_addr_t pci_addr;
+      uword * p;
+
+      rte_eth_dev_info_get(i, &dev_info);
+      pci_addr.domain = dev_info.pci_dev->addr.domain;
+      pci_addr.bus = dev_info.pci_dev->addr.bus;
+      pci_addr.slot = dev_info.pci_dev->addr.devid;
+      pci_addr.function = dev_info.pci_dev->addr.function;
+      p = hash_get (dm->conf->device_config_index_by_pci_addr, pci_addr.as_u32);
+
+      if (p)
+	devconf = pool_elt_at_index (dm->conf->dev_confs, p[0]);
+      else
+	devconf = &dm->conf->default_devconf;
 
       /* Create vnet interface */
       vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
       xd->nb_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
       xd->nb_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
       xd->cpu_socket = (i8) rte_eth_dev_socket_id(i);
-      rte_eth_dev_info_get(i, &dev_info);
 
       clib_memcpy(&xd->tx_conf, &dev_info.default_txconf,
              sizeof(struct rte_eth_txconf));
@@ -332,12 +350,18 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       xd->tx_q_used = clib_min(dev_info.max_tx_queues, tm->n_vlib_mains);
 
-      if (dm->conf->max_tx_queues)
-        xd->tx_q_used = clib_min(xd->tx_q_used, dm->conf->max_tx_queues);
+      if (devconf->num_tx_queues > 0 && devconf->num_tx_queues < xd->tx_q_used)
+        xd->tx_q_used = clib_min(xd->tx_q_used, devconf->num_tx_queues);
 
-      if (dm->conf->use_rss > 1 && dev_info.max_rx_queues >= dm->conf->use_rss)
+      if (devconf->num_rx_queues > 1 && dm->use_rss == 0)
+	{
+	  rt->function = dpdk_input_rss_multiarch_select();
+	  dm->use_rss = 1;
+	}
+
+      if (devconf->num_rx_queues > 1 && dev_info.max_rx_queues >= devconf->num_rx_queues)
         {
-          xd->rx_q_used = dm->conf->use_rss;
+          xd->rx_q_used = devconf->num_rx_queues;
           xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
           xd->port_conf.rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
         }
@@ -751,8 +775,10 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
   vlib_pci_device_t * d;
   pci_config_header_t * c;
   u8 * pci_addr = 0;
+  int num_whitelisted = vec_len (conf->dev_confs);
 
   pool_foreach (d, pm->pci_devs, ({
+    dpdk_device_config_t * devconf = 0;
     c = &d->config0.header;
     vec_reset_length (pci_addr);
     pci_addr = format (pci_addr, "%U%c", format_vlib_pci_addr, &d->bus_address, 0);
@@ -760,10 +786,15 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     if (c->device_class != PCI_CLASS_NETWORK_ETHERNET)
       continue;
 
-    /* if whitelist exists process only whitelisted devices */
-    if (conf->eth_if_whitelist &&
-        !strstr ((char *) conf->eth_if_whitelist, (char *) pci_addr))
-    continue;
+    if (num_whitelisted)
+      {
+	uword * p = hash_get (conf->device_config_index_by_pci_addr, d->bus_address.as_u32);
+
+	if (!p)
+	  continue;
+
+	devconf = pool_elt_at_index (conf->dev_confs, p[0]);
+      }
 
     /* virtio */
     if (c->vendor_id == 0x1af4 && c->device_id == 0x1000)
@@ -792,13 +823,64 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 
     if (error)
       {
-	if (!conf->eth_if_whitelist)
-	  conf->eth_if_blacklist = format (conf->eth_if_blacklist, "%U ",
-					       format_vlib_pci_addr, &d->bus_address);
+	if (devconf == 0)
+	  {
+	    pool_get (conf->dev_confs, devconf);
+	    hash_set (conf->device_config_index_by_pci_addr, d->bus_address.as_u32,
+		      devconf - conf->dev_confs);
+	    devconf->pci_addr.as_u32 = d->bus_address.as_u32;
+	  }
+	devconf->is_blacklisted = 1;
 	clib_error_report (error);
       }
   }));
   vec_free (pci_addr);
+}
+
+static clib_error_t *
+dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr, unformat_input_t * input, u8 is_default)
+{
+  clib_error_t * error = 0;
+  uword * p;
+  dpdk_device_config_t * devconf;
+
+  if (is_default)
+    {
+      devconf = &conf->default_devconf;
+    }
+  else
+    {
+      p = hash_get (conf->device_config_index_by_pci_addr, pci_addr.as_u32);
+
+      if (!p)
+	{
+	  pool_get (conf->dev_confs, devconf);
+	  hash_set (conf->device_config_index_by_pci_addr, pci_addr.as_u32, devconf - conf->dev_confs);
+	}
+      else
+	return clib_error_return(0, "duplicate configuration for PCI address %U",
+				 format_vlib_pci_addr, &pci_addr);
+    }
+
+  devconf->pci_addr.as_u32 = pci_addr.as_u32;
+
+  if (!input)
+    return 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "num-rx-queues %u", &devconf->num_rx_queues))
+	;
+      if (unformat (input, "num-tx-queues %u", &devconf->num_tx_queues))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  break;
+	}
+    }
+  return error;
 }
 
 static clib_error_t *
@@ -808,24 +890,25 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   dpdk_main_t * dm = &dpdk_main;
   dpdk_config_main_t * conf = &dpdk_config_main;
   vlib_thread_main_t * tm = vlib_get_thread_main();
-  vlib_node_runtime_t * rt = vlib_node_get_runtime (vm, dpdk_input_node.index);
+  dpdk_device_config_t * devconf;
+  vlib_pci_addr_t pci_addr;
+  unformat_input_t sub_input;
   u8 * s, * tmp = 0;
-  u8 * pci_dev_id = 0;
   u8 * rte_cmd = 0, * ethname = 0;
   u32 log_level;
   int ret, i;
-  char * fmt;
+  int num_whitelisted = 0;
 #ifdef NETMAP
   int rxrings, txrings, rxslots, txslots, txburst;
   char * nmnam;
 #endif
-  unformat_input_t _in;
-  unformat_input_t * in = &_in;
   u8 no_pci = 0;
   u8 no_huge = 0;
   u8 huge_dir = 0;
   u8 file_prefix = 0;
   u8 * socket_mem = 0;
+
+  conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
 
   // MATT-FIXME: inverted virtio-vhost logic to use virtio by default
   conf->use_virtio_vhost = 1;
@@ -848,22 +931,32 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "no-multi-seg"))
         conf->no_multi_seg = 1;
 
-      else if (unformat (input, "dev %s", &pci_dev_id))
+      else if (unformat (input, "dev default %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
 	{
-	  if (conf->eth_if_whitelist)
-	    {
-	      /*
-	       * Don't add duplicate device id's.
-	       */
-	      if (strstr ((char *)conf->eth_if_whitelist, (char *)pci_dev_id))
-		continue;
+	  error = dpdk_device_config (conf, (vlib_pci_addr_t) (u32) ~1, &sub_input, 1);
 
-	      _vec_len (conf->eth_if_whitelist) -= 1; // chomp trailing NULL.
-	      conf->eth_if_whitelist = format (conf->eth_if_whitelist, " %s%c",
-					       pci_dev_id, 0);
-	    }
-	  else
-	    conf->eth_if_whitelist = format (0, "%s%c", pci_dev_id, 0);
+	  if (error)
+	    return error;
+	}
+      else if (unformat (input, "dev %U %U", unformat_vlib_pci_addr, &pci_addr,
+			 unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  error = dpdk_device_config (conf, pci_addr, &sub_input, 0);
+
+	  if (error)
+	    return error;
+
+	  num_whitelisted++;
+	}
+      else if (unformat (input, "dev %U", unformat_vlib_pci_addr, &pci_addr))
+	{
+	  error = dpdk_device_config (conf, pci_addr, 0, 0);
+
+	  if (error)
+	    return error;
+
+	  num_whitelisted++;
 	}
 
 #ifdef NETMAP
@@ -889,8 +982,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "num-mbufs %d", &conf->num_mbufs))
         ;
-      else if (unformat (input, "max-tx-queues %d", &conf->max_tx_queues))
-        ;
       else if (unformat (input, "kni %d", &conf->num_kni))
         ;
       else if (unformat (input, "uio-driver %s", &conf->uio_driver_name))
@@ -903,10 +994,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         ;
       else if (unformat (input, "enable-vhost-user"))
         conf->use_virtio_vhost = 0;
-      else if (unformat (input, "rss %d", &conf->use_rss))
-        ;
       else if (unformat (input, "poll-sleep %d", &dm->poll_sleep))
         ;
+
 #define _(a)                                    \
       else if (unformat(input, #a))             \
         {                                       \
@@ -1170,34 +1260,33 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   if (no_pci == 0 && geteuid() == 0)
     dpdk_bind_devices_to_uio(conf);
 
-  /*
-   * If there are whitelisted devices,
-   * add the whitelist option & device list to the dpdk arg list...
-   */
-  if (conf->eth_if_whitelist)
-    {
-      unformat_init_string (in, (char *) conf->eth_if_whitelist,
-			    vec_len (conf->eth_if_whitelist) - 1);
-      fmt = "-w%c";
-    }
+#define _(x) \
+    if (devconf->x == 0 && conf->default_devconf.x > 0) \
+      devconf->x = conf->default_devconf.x ;
 
-  /*
-   * Otherwise add the blacklisted devices to the dpdk arg list.
-   */
-  else
-    {
-      unformat_init_string (in, (char *)conf->eth_if_blacklist,
-			    vec_len(conf->eth_if_blacklist) - 1);
-      fmt = "-b%c";
-    }
+  pool_foreach (devconf, conf->dev_confs, ({
 
-  while (unformat_check_input (in) != UNFORMAT_END_OF_INPUT)
-    {
-      tmp = format (0, fmt, 0);
-      vec_add1 (conf->eal_init_args, tmp);
-      unformat (in, "%s", &pci_dev_id);
-      vec_add1 (conf->eal_init_args, pci_dev_id);
-    }
+    /* default per-device config items */
+    foreach_dpdk_device_config_item
+
+    /* add DPDK EAL whitelist/blacklist entry */
+    if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
+      {
+	tmp = format (0, "-w%c", 0);
+	vec_add1 (conf->eal_init_args, tmp);
+	tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr);
+	vec_add1 (conf->eal_init_args, tmp);
+      }
+    else if (num_whitelisted == 0 && devconf->is_blacklisted != 0)
+      {
+	tmp = format (0, "-b%c", 0);
+	vec_add1 (conf->eal_init_args, tmp);
+	tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr);
+	vec_add1 (conf->eal_init_args, tmp);
+      }
+  }));
+
+#undef _
 
   /* set master-lcore */
   tmp = format (0, "--master-lcore%c", 0);
@@ -1253,10 +1342,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         return error;
     }
 
-  if (conf->use_rss)
-    rt->function = dpdk_input_rss_multiarch_select();
-  else
-    rt->function = dpdk_input_multiarch_select();
  done:
   return error;
 }
