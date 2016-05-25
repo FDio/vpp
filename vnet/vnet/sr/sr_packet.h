@@ -163,7 +163,11 @@
  *      Policy List Flags MUST be set to 0x0.
  */
 
-#define ROUTING_HEADER_TYPE_SR	 4
+#ifndef IPPROTO_IPV6_ROUTE
+#define IPPROTO_IPV6_ROUTE        43
+#endif
+
+#define ROUTING_HEADER_TYPE_SR    4
 
 typedef struct {
   /* Protocol for next header. */
