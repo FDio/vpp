@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_84652ce3",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2467,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-05-25T05:17:04Z",
+      "side": 1,
+      "message": "This was done for the iOAM proof of work so not required here",
+      "range": {
+        "startLine": 2467,
+        "startChar": 2,
+        "endLine": 2467,
+        "endChar": 14
+      },
+      "revId": "23ced1124a9ae04a86f4cd590bf6bb5480837c5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_646218da",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2516,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-05-25T05:17:04Z",
+      "side": 1,
+      "message": "\u0026 HBH_OPTION_TYPE_MASK, as type for tracing is registered ignoring the top 2 bits\nOr the registration has to change to include the top 2 bits.",
+      "range": {
+        "startLine": 2516,
+        "startChar": 22,
+        "endLine": 2516,
+        "endChar": 23
+      },
+      "revId": "23ced1124a9ae04a86f4cd590bf6bb5480837c5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_445f140f",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2599,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-05-25T05:17:04Z",
+      "side": 1,
+      "message": "\u0026 HBH_OPTION_TYPE_MASK, as type for tracing is registered ignoring the top 2 bits\nOr the registration has to change to include the top 2 bits.",
+      "range": {
+        "startLine": 2599,
+        "startChar": 7,
+        "endLine": 2599,
+        "endChar": 8
+      },
+      "revId": "23ced1124a9ae04a86f4cd590bf6bb5480837c5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_04a11cf8",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2652,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-05-25T05:17:04Z",
+      "side": 1,
+      "message": "iOAM pop function to remove the options/header depends on OI_DECAP tag set during classification. Based on this tag hop by hop node was doing this:\n next0 \u003d (vnet_buffer(b0)-\u003el2_classify.opaque_index \u003d\u003d OI_DECAP) ?\n            IP6_HBYH_INPUT_NEXT_IP6_POP_HBYH : IP6_HBYH_INPUT_NEXT_IP6_REWRITE\n\nThis will not work now. \n\nThinking of an alternate way to add pop node following hop by hop.. perhaps set pop using ip add adjacency based on results of classification..",
+      "range": {
+        "startLine": 2652,
+        "startChar": 0,
+        "endLine": 2652,
+        "endChar": 0
+      },
+      "revId": "23ced1124a9ae04a86f4cd590bf6bb5480837c5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
