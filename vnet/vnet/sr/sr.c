@@ -789,7 +789,15 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   /* If the name exists, find the tunnel by name else... */
   if (a->name)
     p = hash_get_mem(sm->tunnel_index_by_name, a->name);
-  else if (p==0)
+  else
+    p = 0;
+
+   if (!a->is_del && p)
+        return -1;  /* name collision */
+
+   /* if the name is not given or not found then use the key.
+    * if this is an "add" then p will always be 0 at this point. */
+  if (p == 0)
     p = hash_get_mem (sm->tunnel_index_by_key, &key);
 
   if (p)
