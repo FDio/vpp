@@ -30,12 +30,16 @@ u8 * format_vxlan_gpe_tunnel (u8 * s, va_list * args)
     {
     case VXLAN_GPE_PROTOCOL_IP4:
       s = format (s, "next-protocol ip4");
+      break;
     case VXLAN_GPE_PROTOCOL_IP6:
       s = format (s, "next-protocol ip6");
+      break;
     case VXLAN_GPE_PROTOCOL_ETHERNET:
       s = format (s, "next-protocol ethernet");
+      break;
     case VXLAN_GPE_PROTOCOL_NSH:
       s = format (s, "next-protocol nsh");
+      break;
     default:
       s = format (s, "next-protocol unknown %d", t->protocol);
     }
