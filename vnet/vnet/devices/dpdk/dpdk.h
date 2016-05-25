@@ -61,6 +61,8 @@
 #define always_inline static inline __attribute__ ((__always_inline__))
 #endif
 
+#include <vlib/pci/pci.h>
+
 #define NB_MBUF   (32<<10)
 
 extern vnet_device_class_t dpdk_device_class;
@@ -307,13 +309,23 @@ typedef struct dpdk_efd_t {
   u16 pad;
 } dpdk_efd_t;
 
+#define foreach_dpdk_device_config_item \
+  _ (num_rx_queues) \
+  _ (num_tx_queues)
+
+typedef struct {
+    vlib_pci_addr_t pci_addr;
+    u8 is_blacklisted;
+#define _(x) uword x;
+    foreach_dpdk_device_config_item
+#undef _
+} dpdk_device_config_t;
+
 typedef struct {
 
   /* Config stuff */
   u8 ** eal_init_args;
   u8 * eal_init_args_str;
-  u8 * eth_if_blacklist;
-  u8 * eth_if_whitelist;
   u8 * uio_driver_name;
   u8 no_multi_seg;
   u8 enable_tcp_udp_checksum;
@@ -325,7 +337,6 @@ typedef struct {
   u32 nchannels;
   u32 num_mbufs;
   u32 use_rss;
-  u32 max_tx_queues;
   u8 num_kni;/* while kni_init allows u32, port_id in callback fn is only u8 */
 
   /*
@@ -340,6 +351,11 @@ typedef struct {
   /* vhost-user coalescence frames config */
   u32 vhost_coalesce_frames;
   f64 vhost_coalesce_time;
+
+  /* per-device config */
+  dpdk_device_config_t default_devconf;
+  dpdk_device_config_t * dev_confs;
+  uword * device_config_index_by_pci_addr;
 
 } dpdk_config_main_t;
 

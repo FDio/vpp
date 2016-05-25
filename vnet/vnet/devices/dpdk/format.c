@@ -495,7 +495,7 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
                  vlan_off & ETH_VLAN_STRIP_OFFLOAD ? "on" : "off",
                  vlan_off & ETH_VLAN_FILTER_OFFLOAD ? "on" : "off",
                  vlan_off & ETH_VLAN_EXTEND_OFFLOAD ? "on" : "off");
-      s = format(s, "%Uqueue size (max):  rx %d (%d) tx %d (%d)\n",
+      s = format(s, "%Uqueues (max):      rx %d (%d) tx %d (%d)\n",
                  format_white_space, indent + 2,
                  xd->rx_q_used, di.max_rx_queues,
                  xd->tx_q_used, di.max_tx_queues);
