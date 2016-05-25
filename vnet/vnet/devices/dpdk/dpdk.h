@@ -62,6 +62,8 @@
 #define always_inline static inline __attribute__ ((__always_inline__))
 #endif
 
+#include <vlib/pci/pci.h>
+
 #define NB_MBUF   (32<<10)
 
 extern vnet_device_class_t dpdk_device_class;
@@ -316,21 +318,21 @@ typedef struct dpdk_efd_t {
   _ ("ETH_RSS_PROTO_MASK", ETH_RSS_PROTO_MASK)
 
 typedef struct {
-  vlib_pci_addr_t pci_dev_address;
+  vlib_pci_addr_t pci_addr;
+  u8 is_blacklisted;
   u32 rx_mq_mode;
   u32 rss_hf;
   u32 rx_queues;
   u32 tx_queue_size;
   u32 rx_queue_size;
-} dpdk_startup_config_t;
+  //uword rss;
+} dpdk_device_config_t;
 
 typedef struct {
 
   /* Config stuff */
   u8 ** eal_init_args;
   u8 * eal_init_args_str;
-  u8 * eth_if_blacklist;
-  u8 * eth_if_whitelist;
   u8 * uio_driver_name;
   u8 no_multi_seg;
   u8 enable_tcp_udp_checksum;
@@ -344,8 +346,6 @@ typedef struct {
   u32 use_rss;
   u32 max_tx_queues;
   u8 num_kni;/* while kni_init allows u32, port_id in callback fn is only u8 */
-  dpdk_startup_config_t *pci_dev_startup_cfg;
-  uword * startup_config_by_pci_addr;
 
   /*
    * format interface names ala xxxEthernet%d/%d/%d instead of
@@ -359,6 +359,10 @@ typedef struct {
   /* vhost-user coalescence frames config */
   u32 vhost_coalesce_frames;
   f64 vhost_coalesce_time;
+
+  /* per-device config */
+  dpdk_device_config_t * dev_confs;
+  uword * device_config_index_by_pci_addr;
 
 } dpdk_config_main_t;
 
