@@ -133,7 +133,7 @@ vlib_cli_sub_command_match (vlib_cli_command_t * c, unformat_input_t * input)
 }
 
 /* Looks for string based sub-input formatted { SUB-INPUT }. */
-static uword unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args)
+uword unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args)
 {
   unformat_input_t * sub_input = va_arg (*args, unformat_input_t *);
   u8 * s;

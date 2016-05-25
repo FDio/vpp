@@ -752,8 +752,10 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
   vlib_pci_device_t * d;
   pci_config_header_t * c;
   u8 * pci_addr = 0;
+  int num_whitelisted = vec_len (conf->dev_confs);
 
   pool_foreach (d, pm->pci_devs, ({
+    dpdk_device_config_t * devconf = 0;
     c = &d->config0.header;
     vec_reset_length (pci_addr);
     pci_addr = format (pci_addr, "%U%c", format_vlib_pci_addr, &d->bus_address, 0);
@@ -761,10 +763,15 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     if (c->device_class != PCI_CLASS_NETWORK_ETHERNET)
       continue;
 
-    /* if whitelist exists process only whitelisted devices */
-    if (conf->eth_if_whitelist &&
-        !strstr ((char *) conf->eth_if_whitelist, (char *) pci_addr))
-    continue;
+    if (num_whitelisted)
+      {
+	uword * p = hash_get (conf->device_config_index_by_pci_addr, d->bus_address.as_u32);
+
+	if (!p)
+	  continue;
+
+	devconf = pool_elt_at_index (conf->dev_confs, p[0]);
+      }
 
     /* virtio */
     if (c->vendor_id == 0x1af4 && c->device_id == 0x1000)
@@ -793,13 +800,55 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 
     if (error)
       {
-	if (!conf->eth_if_whitelist)
-	  conf->eth_if_blacklist = format (conf->eth_if_blacklist, "%U ",
-					       format_vlib_pci_addr, &d->bus_address);
+	if (devconf == 0)
+	  {
+	    pool_get (conf->dev_confs, devconf);
+	    hash_set (conf->device_config_index_by_pci_addr, d->bus_address.as_u32,
+		      devconf - conf->dev_confs);
+	    devconf->pci_addr.as_u32 = d->bus_address.as_u32;
+	  }
+	devconf->is_blacklisted = 1;
 	clib_error_report (error);
       }
   }));
   vec_free (pci_addr);
+}
+
+static clib_error_t *
+dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t * pci_addr, unformat_input_t * input)
+{
+  clib_error_t * error = 0;
+  uword * p;
+  dpdk_device_config_t * devconf;
+
+  p = hash_get (conf->device_config_index_by_pci_addr, pci_addr->as_u32);
+
+  if (!p)
+    {
+      pool_get (conf->dev_confs, devconf);
+      hash_set (conf->device_config_index_by_pci_addr, pci_addr->as_u32, devconf - conf->dev_confs);
+    }
+  else
+    return clib_error_return(0, "duplicate configuration for PCI address %U",
+			     format_vlib_pci_addr, pci_addr);
+
+  devconf->pci_addr.as_u32 = pci_addr->as_u32;
+
+  if (!input)
+    return 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "rss %u", &devconf->rss))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  break;
+	}
+    }
+  return error;
 }
 
 static clib_error_t *
@@ -809,23 +858,25 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   dpdk_config_main_t * conf = &dpdk_config_main;
   vlib_thread_main_t * tm = vlib_get_thread_main();
   vlib_node_runtime_t * rt = vlib_node_get_runtime (vm, dpdk_input_node.index);
+  dpdk_device_config_t * devconf;
+  vlib_pci_addr_t pci_addr;
+  unformat_input_t sub_input;
   u8 * s, * tmp = 0;
-  u8 * pci_dev_id = 0;
   u8 * rte_cmd = 0, * ethname = 0;
   u32 log_level;
   int ret, i;
-  char * fmt;
+  int num_whitelisted = 0;
 #ifdef NETMAP
   int rxrings, txrings, rxslots, txslots, txburst;
   char * nmnam;
 #endif
-  unformat_input_t _in;
-  unformat_input_t * in = &_in;
   u8 no_pci = 0;
   u8 no_huge = 0;
   u8 huge_dir = 0;
   u8 file_prefix = 0;
   u8 * socket_mem = 0;
+
+  conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
 
   // MATT-FIXME: inverted virtio-vhost logic to use virtio by default
   conf->use_virtio_vhost = 1;
@@ -848,22 +899,24 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "no-multi-seg"))
         conf->no_multi_seg = 1;
 
-      else if (unformat (input, "dev %s", &pci_dev_id))
+      else if (unformat (input, "dev %U %U", unformat_vlib_pci_addr, &pci_addr,
+			 unformat_vlib_cli_sub_input, &sub_input))
 	{
-	  if (conf->eth_if_whitelist)
-	    {
-	      /*
-	       * Don't add duplicate device id's.
-	       */
-	      if (strstr ((char *)conf->eth_if_whitelist, (char *)pci_dev_id))
-		continue;
+	  error = dpdk_device_config (conf, &pci_addr, &sub_input);
 
-	      _vec_len (conf->eth_if_whitelist) -= 1; // chomp trailing NULL.
-	      conf->eth_if_whitelist = format (conf->eth_if_whitelist, " %s%c",
-					       pci_dev_id, 0);
-	    }
-	  else
-	    conf->eth_if_whitelist = format (0, "%s%c", pci_dev_id, 0);
+	  if (error)
+	    return error;
+
+	  num_whitelisted++;
+	}
+      else if (unformat (input, "dev %U", unformat_vlib_pci_addr, &pci_addr))
+	{
+	  error = dpdk_device_config (conf, &pci_addr, 0);
+
+	  if (error)
+	    return error;
+
+	  num_whitelisted++;
 	}
 
 #ifdef NETMAP
@@ -1169,34 +1222,22 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   if (no_pci == 0 && geteuid() == 0)
     dpdk_bind_devices_to_uio(conf);
 
-  /*
-   * If there are whitelisted devices,
-   * add the whitelist option & device list to the dpdk arg list...
-   */
-  if (conf->eth_if_whitelist)
-    {
-      unformat_init_string (in, (char *) conf->eth_if_whitelist,
-			    vec_len (conf->eth_if_whitelist) - 1);
-      fmt = "-w%c";
-    }
-
-  /*
-   * Otherwise add the blacklisted devices to the dpdk arg list.
-   */
-  else
-    {
-      unformat_init_string (in, (char *)conf->eth_if_blacklist,
-			    vec_len(conf->eth_if_blacklist) - 1);
-      fmt = "-b%c";
-    }
-
-  while (unformat_check_input (in) != UNFORMAT_END_OF_INPUT)
-    {
-      tmp = format (0, fmt, 0);
-      vec_add1 (conf->eal_init_args, tmp);
-      unformat (in, "%s", &pci_dev_id);
-      vec_add1 (conf->eal_init_args, pci_dev_id);
-    }
+  pool_foreach (devconf, conf->dev_confs, ({
+    if (num_whitelisted > 0 && devconf->is_blacklisted == 0)
+      {
+	tmp = format (0, "-w%c", 0);
+	vec_add1 (conf->eal_init_args, tmp);
+	tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr);
+	vec_add1 (conf->eal_init_args, tmp);
+      }
+    else if (num_whitelisted == 0 && devconf->is_blacklisted != 0)
+      {
+	tmp = format (0, "-b%c", 0);
+	vec_add1 (conf->eal_init_args, tmp);
+	tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr);
+	vec_add1 (conf->eal_init_args, tmp);
+      }
+  }));
 
   /* set master-lcore */
   tmp = format (0, "--master-lcore%c", 0);
