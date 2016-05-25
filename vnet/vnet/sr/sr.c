@@ -306,8 +306,6 @@ sr_rewrite (vlib_main_t * vm,
           ip_adjacency_t * adj0, * adj1;
           ip6_sr_header_t * sr0, * sr1;
           ip6_sr_tunnel_t * t0, *t1;
-          u64 * copy_src0, * copy_dst0;
-          u64 * copy_src1, * copy_dst1;
 	  u32 next0 = SR_REWRITE_NEXT_IP6_LOOKUP;
 	  u32 next1 = SR_REWRITE_NEXT_IP6_LOOKUP;
           u16 new_l0 = 0;
@@ -364,7 +362,7 @@ sr_rewrite (vlib_main_t * vm,
            * service has the original dst address, and will already
            * have an SR header. If so, send it to sr-local 
            */
-          if (PREDICT_FALSE(ip0->protocol == 43))
+          if (PREDICT_FALSE(ip0->protocol == IPPROTO_IPV6_ROUTE))
             {
               vlib_buffer_advance (b0, sizeof(ip0));
               sr0 = (ip6_sr_header_t *) (ip0+1);
@@ -373,33 +371,32 @@ sr_rewrite (vlib_main_t * vm,
             }
           else
             {
-              copy_dst0 = (u64 *)(((u8 *)ip0) - vec_len (t0->rewrite));
-              copy_src0 = (u64 *) ip0;
-
               /* 
                * Copy data before the punch-in point left by the 
                * required amount. Assume (for the moment) that only 
                * the main packet header needs to be copied.
                */
-              copy_dst0 [0] = copy_src0 [0];
-              copy_dst0 [1] = copy_src0 [1];
-              copy_dst0 [2] = copy_src0 [2];
-              copy_dst0 [3] = copy_src0 [3];
-              copy_dst0 [4] = copy_src0 [4];
+              clib_memcpy (((u8 *)ip0) - vec_len (t0->rewrite),
+                           ip0, sizeof (ip6_header_t));
               vlib_buffer_advance (b0, - (word) vec_len(t0->rewrite));
               ip0 = vlib_buffer_get_current (b0);
               sr0 = (ip6_sr_header_t *) (ip0+1);
               /* $$$ tune */
               clib_memcpy (sr0, t0->rewrite, vec_len (t0->rewrite));
+
               /* Fix the next header chain */
               sr0->protocol = ip0->protocol;
-              ip0->protocol = 43; /* routing extension header */
+              ip0->protocol = IPPROTO_IPV6_ROUTE; /* routing extension header */
               new_l0 = clib_net_to_host_u16(ip0->payload_length) +
                 vec_len (t0->rewrite);
               ip0->payload_length = clib_host_to_net_u16(new_l0);
-              /* Rewrite the ip6 dst address */
-              ip0->dst_address.as_u64[0] = t0->first_hop.as_u64[0];
-              ip0->dst_address.as_u64[1] = t0->first_hop.as_u64[1];
+
+              /* Copy dst address into the DA slot in the segment list */
+              clib_memcpy (sr0->segments, ip0->dst_address.as_u64,
+                           sizeof (ip6_address_t));
+              /* Rewrite the ip6 dst address with the first hop */
+              clib_memcpy (ip0->dst_address.as_u64, t0->first_hop.as_u64,
+                           sizeof (ip6_address_t));
 
               sr_fix_hmac (sm, ip0, sr0);
 
@@ -418,7 +415,7 @@ sr_rewrite (vlib_main_t * vm,
               }
             }
 
-          if (PREDICT_FALSE(ip1->protocol == 43))
+          if (PREDICT_FALSE(ip1->protocol == IPPROTO_IPV6_ROUTE))
             {
               vlib_buffer_advance (b1, sizeof(ip1));
               sr1 = (ip6_sr_header_t *) (ip1+1);
@@ -427,25 +424,25 @@ sr_rewrite (vlib_main_t * vm,
             }
           else
             {
-              copy_dst1 = (u64 *)(((u8 *)ip1) - vec_len (t1->rewrite));
-              copy_src1 = (u64 *) ip1;
-              
-              copy_dst1 [0] = copy_src1 [0];
-              copy_dst1 [1] = copy_src1 [1];
-              copy_dst1 [2] = copy_src1 [2];
-              copy_dst1 [3] = copy_src1 [3];
-              copy_dst1 [4] = copy_src1 [4];
+              clib_memcpy (((u8 *)ip0) - vec_len (t0->rewrite),
+                           ip0, sizeof (ip6_header_t));
               vlib_buffer_advance (b1, - (word) vec_len(t1->rewrite));
               ip1 = vlib_buffer_get_current (b1);
               sr1 = (ip6_sr_header_t *) (ip1+1);
               clib_memcpy (sr1, t1->rewrite, vec_len (t1->rewrite));
+
               sr1->protocol = ip1->protocol;
-              ip1->protocol = 43; 
+              ip1->protocol = IPPROTO_IPV6_ROUTE;
               new_l1 = clib_net_to_host_u16(ip1->payload_length) +
                 vec_len (t1->rewrite);
               ip1->payload_length = clib_host_to_net_u16(new_l1);
-              ip1->dst_address.as_u64[0] = t1->first_hop.as_u64[0];
-              ip1->dst_address.as_u64[1] = t1->first_hop.as_u64[1];
+
+              /* Copy dst address into the DA slot in the segment list */
+              clib_memcpy (sr1->segments, ip1->dst_address.as_u64,
+                           sizeof (ip6_address_t));
+              /* Rewrite the ip6 dst address with the first hop */
+              clib_memcpy (ip1->dst_address.as_u64, t1->first_hop.as_u64,
+                           sizeof (ip6_address_t));
 
               sr_fix_hmac (sm, ip1, sr1);
 
@@ -504,7 +501,6 @@ sr_rewrite (vlib_main_t * vm,
           ip_adjacency_t * adj0;
           ip6_sr_header_t * sr0 = 0;
           ip6_sr_tunnel_t * t0;
-          u64 * copy_src0, * copy_dst0;
 	  u32 next0 = SR_REWRITE_NEXT_IP6_LOOKUP;
           u16 new_l0 = 0;
 
@@ -548,7 +544,7 @@ sr_rewrite (vlib_main_t * vm,
            * service has the original dst address, and will already
            * have an SR header. If so, send it to sr-local 
            */
-          if (PREDICT_FALSE(ip0->protocol == 43))
+          if (PREDICT_FALSE(ip0->protocol == IPPROTO_IPV6_ROUTE))
             {
               vlib_buffer_advance (b0, sizeof(ip0));
               sr0 = (ip6_sr_header_t *) (ip0+1);
@@ -557,33 +553,32 @@ sr_rewrite (vlib_main_t * vm,
             }
           else
             {
-              copy_dst0 = (u64 *)(((u8 *)ip0) - vec_len (t0->rewrite));
-              copy_src0 = (u64 *) ip0;
-
               /* 
                * Copy data before the punch-in point left by the 
                * required amount. Assume (for the moment) that only 
                * the main packet header needs to be copied.
                */
-              copy_dst0 [0] = copy_src0 [0];
-              copy_dst0 [1] = copy_src0 [1];
-              copy_dst0 [2] = copy_src0 [2];
-              copy_dst0 [3] = copy_src0 [3];
-              copy_dst0 [4] = copy_src0 [4];
+              clib_memcpy (((u8 *)ip0) - vec_len (t0->rewrite),
+                           ip0, sizeof (ip6_header_t));
               vlib_buffer_advance (b0, - (word) vec_len(t0->rewrite));
               ip0 = vlib_buffer_get_current (b0);
               sr0 = (ip6_sr_header_t *) (ip0+1);
               /* $$$ tune */
               clib_memcpy (sr0, t0->rewrite, vec_len (t0->rewrite));
+
               /* Fix the next header chain */
               sr0->protocol = ip0->protocol;
-              ip0->protocol = 43; /* routing extension header */
+              ip0->protocol = IPPROTO_IPV6_ROUTE; /* routing extension header */
               new_l0 = clib_net_to_host_u16(ip0->payload_length) +
                 vec_len (t0->rewrite);
               ip0->payload_length = clib_host_to_net_u16(new_l0);
-              /* Rewrite the ip6 dst address */
-              ip0->dst_address.as_u64[0] = t0->first_hop.as_u64[0];
-              ip0->dst_address.as_u64[1] = t0->first_hop.as_u64[1];
+
+              /* Copy dst address into the DA slot in the segment list */
+              clib_memcpy (sr0->segments, ip0->dst_address.as_u64,
+                           sizeof (ip6_address_t));
+              /* Rewrite the ip6 dst address with the first hop */
+              clib_memcpy (ip0->dst_address.as_u64, t0->first_hop.as_u64,
+                           sizeof (ip6_address_t));
 
               sr_fix_hmac (sm, ip0, sr0);
 
@@ -886,24 +881,20 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   t->rx_fib_index = rx_fib_index;
   t->tx_fib_index = tx_fib_index;
   
-  /* The first specified hop goes right into the dst address */
-  if (vec_len(a->segments))
-    {
-      t->first_hop = a->segments[0];
-      /* It won't feel nice if we do it twice */
-      vec_delete (a->segments, 1, 0);
-    }
-  else  /* there must be at least one segment... */
+  if (!vec_len (a->segments))
+      /* there must be at least one segment... */
       return -4;
+
+  /* The first specified hop goes right into the dst address */
+  clib_memcpy(&t->first_hop, &a->segments[0], sizeof (ip6_address_t));
 
   /* 
    * Create the sr header rewrite string
-   * We append the dst address to the set of next hops
-   * so the ultimate recipient can tell where the
-   * packet entered the SR domain
+   * The list of segments needs an extra slot for the ultimate destination
+   * which is taken from the packet we add the SRH to.
    */
   header_length = sizeof (*h) + 
-    sizeof (ip6_address_t) * (vec_len (a->segments) + vec_len (a->tags));
+    sizeof (ip6_address_t) * (vec_len (a->segments) + 1 + vec_len (a->tags));
   
   if (a->shared_secret)
     {
@@ -927,21 +918,36 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
 
   h->length = (header_length/8) - 1;
   h->type = ROUTING_HEADER_TYPE_SR;
-  h->segments_left = vec_len (a->segments);
-  h->first_segment = vec_len(a->segments) -1;
+
+  /* first_segment and segments_left need to have the index of the last
+   * element in the list; a->segments has one element less than ends up
+   * in the header (it does not have the DA in it), so vec_len(a->segments)
+   * is the value we want.
+   */
+  h->first_segment = h->segments_left = vec_len (a->segments);
+
   if (a->shared_secret)
     h->hmac_key = hmac_key_index & 0xFF;
 
   h->flags = a->flags_net_byte_order;
 
-  /* Paint on the segment list, in reverse */
-  addrp = h->segments + (vec_len (a->segments) - 1);
+  /* Paint on the segment list, in reverse.
+   * This is offset by one to leave room at the start for the ultimate
+   * destination.
+   */
+  addrp = h->segments + vec_len (a->segments);
 
   vec_foreach (this_address, a->segments)
     {
       clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
       addrp--;
     }
+
+  /*
+   * Since the ultimate destination address is not yet known, set that slot
+   * to a value we will instantly recognize as bogus.
+   */
+  memset (h->segments, 0xfe, sizeof (ip6_address_t));
 
   /* Paint on the tag list, not reversed */
   addrp = h->segments + vec_len(a->segments);
@@ -1857,7 +1863,7 @@ sr_fix_dst_addr (vlib_main_t * vm,
           sr0 = (ip6_sr_header_t *) (ip0+1);
           
           /* We'd better find an SR header... */
-          if (PREDICT_FALSE(ip0->protocol != 43))
+          if (PREDICT_FALSE(ip0->protocol != IPPROTO_IPV6_ROUTE))
             {
               b0->error = node->errors[SR_FIX_DST_ERROR_NO_SR_HEADER];
               goto do_trace0;
@@ -1976,7 +1982,7 @@ static clib_error_t * sr_init (vlib_main_t * vm)
 
   sm->hmac_key_by_shared_secret = hash_create_string (0, sizeof(uword));
 
-  ip6_register_protocol (43, sr_local_node.index);
+  ip6_register_protocol (IPPROTO_IPV6_ROUTE, sr_local_node.index);
 
   ip6_lookup_node = vlib_get_node_by_name (vm, (u8 *)"ip6-lookup");
   ASSERT(ip6_lookup_node);
