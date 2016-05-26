@@ -4679,7 +4679,7 @@ vl_api_lisp_add_del_locator_set_t_handler(vl_api_lisp_add_del_locator_set_t *mp)
     a->is_add = mp->is_add;
     a->local = 1;
 
-    rv = vnet_lisp_add_del_locator_set_name(a, &ls_index);
+    rv = vnet_lisp_add_del_locator_set(a, &ls_index);
 
     vec_free(locator_name);
 
@@ -4713,7 +4713,7 @@ vl_api_lisp_add_del_locator_t_handler(
     a->is_add = mp->is_add;
     a->local = 1;
 
-    rv = vnet_lisp_add_del_locator(a, &ls_index);
+    rv = vnet_lisp_add_del_locator(a, NULL, &ls_index);
 
     vec_free(locators);
     vec_free(locator_name);
