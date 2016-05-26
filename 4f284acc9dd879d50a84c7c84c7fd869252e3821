@@ -1,0 +1,188 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_8ad893f0",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-26T15:34:27Z",
+      "side": 1,
+      "message": "As far as I can tell, this returns a locator-set index not a locator. So, since it\u0027s a static function, I would call it \"get_locator_set_index\". Also, you\u0027re both passing the result as an argument and returning it. It would suffice just to return it.",
+      "range": {
+        "startLine": 555,
+        "startChar": 7,
+        "endLine": 555,
+        "endChar": 28
+      },
+      "revId": "4f284acc9dd879d50a84c7c84c7fd869252e3821",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_eae82f7e",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-26T15:34:27Z",
+      "side": 1,
+      "message": "Call it loc instead of \"itloc\" which in my mind stands for locator iterator. Maybe pass lcm as a parameter as well, since callers have a handle to it already (this way you avoid calling vnet_lisp_cp_get_main()).",
+      "range": {
+        "startLine": 577,
+        "startChar": 67,
+        "endLine": 577,
+        "endChar": 72
+      },
+      "revId": "4f284acc9dd879d50a84c7c84c7fd869252e3821",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_0af48359",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-26T15:34:27Z",
+      "side": 1,
+      "message": "This is also static so I\u0027d call it \"is_locator_in_locator_set\" or something along these lines.",
+      "range": {
+        "startLine": 577,
+        "startChar": 4,
+        "endLine": 577,
+        "endChar": 36
+      },
+      "revId": "4f284acc9dd879d50a84c7c84c7fd869252e3821",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_aa02373c",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 601,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-26T15:34:27Z",
+      "side": 1,
+      "message": "Static function, remove \"vnet_lisp_*\" prefix.",
+      "range": {
+        "startLine": 601,
+        "startChar": 5,
+        "endLine": 601,
+        "endChar": 15
+      },
+      "revId": "4f284acc9dd879d50a84c7c84c7fd869252e3821",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_8aff7334",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 636,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-26T15:34:27Z",
+      "side": 1,
+      "message": "remove ending \"s\" -\u003e \"doesn\u0027t exist\"",
+      "range": {
+        "startLine": 636,
+        "startChar": 48,
+        "endLine": 636,
+        "endChar": 49
+      },
+      "revId": "4f284acc9dd879d50a84c7c84c7fd869252e3821",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_0a9b6319",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 640,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-26T15:34:27Z",
+      "side": 1,
+      "message": "Typically we use 0 instead of NULL. Not mandatory to change this, but it\u0027s more in line with the current code style.",
+      "range": {
+        "startLine": 640,
+        "startChar": 12,
+        "endLine": 640,
+        "endChar": 16
+      },
+      "revId": "4f284acc9dd879d50a84c7c84c7fd869252e3821",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_caa44b59",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 820,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-26T15:34:27Z",
+      "side": 1,
+      "message": "Ah, this was probably a source of trouble :-)",
+      "range": {
+        "startLine": 820,
+        "startChar": 6,
+        "endLine": 820,
+        "endChar": 16
+      },
+      "revId": "4f284acc9dd879d50a84c7c84c7fd869252e3821",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_6a4e5fc3",
+        "filename": "vnet/vnet/lisp-cp/control.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-05-26T15:34:27Z",
+      "side": 1,
+      "message": "formatting",
+      "range": {
+        "startLine": 135,
+        "startChar": 0,
+        "endLine": 137,
+        "endChar": 43
+      },
+      "revId": "4f284acc9dd879d50a84c7c84c7fd869252e3821",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
