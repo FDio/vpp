@@ -610,6 +610,27 @@ VLIB_CLI_COMMAND (lisp_add_del_remote_mapping_command) = {
     .function = lisp_add_del_remote_mapping_command_fn,
 };
 
+static clib_error_t *
+lisp_show_map_resolvers_command_fn (vlib_main_t * vm,
+                                    unformat_input_t * input,
+                                    vlib_cli_command_t * cmd)
+{
+  ip_address_t * addr;
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+
+  vec_foreach (addr, lcm->map_resolvers)
+    {
+      vlib_cli_output (vm, "%U", format_ip_address, addr);
+    }
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lisp_show_map_resolvers_command) = {
+    .path = "show lisp map-resolvers",
+    .short_help = "show lisp map-resolvers",
+    .function = lisp_show_map_resolvers_command_fn,
+};
+
 int
 vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add)
 {
