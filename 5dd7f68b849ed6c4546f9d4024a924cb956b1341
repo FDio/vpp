@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "da141535_0a880370",
+        "filename": "vnet/vnet/sr/sr.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 877,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2016-05-26T10:05:09Z",
+      "side": 1,
+      "message": "The first segment should also be present in the SRH. Hence, this line should be removed.",
+      "revId": "5dd7f68b849ed6c4546f9d4024a924cb956b1341",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_ea7caf74",
+        "filename": "vnet/vnet/sr/sr.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 913,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2016-05-26T10:05:09Z",
+      "side": 1,
+      "message": "h-\u003esegments_left \u003d vec_len (a-\u003esegments) - 1;",
+      "revId": "5dd7f68b849ed6c4546f9d4024a924cb956b1341",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_af02493c",
         "filename": "vnet/vnet/sr/sr.c",
         "patchSetId": 1
@@ -13,6 +47,30 @@
       "writtenOn": "2016-05-26T04:42:47Z",
       "side": 1,
       "message": "Has this actually happened and caused an issue? Note that on input we explicitly error out if there are 0 segments, making it a possible outcome here seems wrong, and that an error seems more appropriate... the binary API also errors out if n_segments\u003d0..",
+      "range": {
+        "startLine": 914,
+        "startChar": 40,
+        "endLine": 914,
+        "endChar": 73
+      },
+      "revId": "5dd7f68b849ed6c4546f9d4024a924cb956b1341",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_ca81eb4b",
+        "filename": "vnet/vnet/sr/sr.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 914,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2016-05-26T10:05:09Z",
+      "side": 1,
+      "message": "No need to check on vector length, since at least it will always be 1. Hence first_segment will never be smaller than zero. \nh-\u003efirst_segment \u003d vec_len(a-\u003esegments) -1;",
+      "parentUuid": "da141535_af02493c",
       "range": {
         "startLine": 914,
         "startChar": 40,
