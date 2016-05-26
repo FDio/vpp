@@ -132,10 +132,8 @@ int
 vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 			       u32 * ls_index);
 int
-vnet_lisp_add_del_locator_set_name (vnet_lisp_add_del_locator_set_args_t * a,
-                                    u32 * ls_index);
-int
 vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
+                           locator_set_t *ls,
                            u32 * ls_index);
 
 typedef struct
