@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_6ffc313f",
+        "filename": "vnet/vnet/sr/sr.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 801,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-26T04:51:59Z",
+      "side": 1,
+      "message": "Why not just do\nif (name)\n  get by name\nelse \n  get by key",
+      "range": {
+        "startLine": 793,
+        "startChar": 0,
+        "endLine": 801,
+        "endChar": 53
+      },
+      "revId": "9c2c6f9543b58b0ca88844ef5bf6f15692495696",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_2f9639f1",
+        "filename": "vnet/vnet/sr/sr.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 853,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-26T04:51:59Z",
+      "side": 1,
+      "message": "This handles the adding a tunnel that exists case.",
+      "range": {
+        "startLine": 852,
+        "startChar": 5,
+        "endLine": 853,
+        "endChar": 18
+      },
+      "revId": "9c2c6f9543b58b0ca88844ef5bf6f15692495696",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_4ff96d4c",
+        "filename": "vnet/vnet/sr/sr.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 860,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-05-26T04:51:59Z",
+      "side": 1,
+      "message": "This handles the delete and no name case.",
+      "range": {
+        "startLine": 857,
+        "startChar": 0,
+        "endLine": 860,
+        "endChar": 5
+      },
+      "revId": "9c2c6f9543b58b0ca88844ef5bf6f15692495696",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
