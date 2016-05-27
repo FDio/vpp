@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_de941039",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-27T11:54:37Z",
+      "side": 1,
+      "message": "Don\u0027t forget to document in the help output",
+      "range": {
+        "startLine": 165,
+        "startChar": 0,
+        "endLine": 165,
+        "endChar": 7
+      },
+      "revId": "c419df499ed0c8d386ad34930956e10ef2c81cf4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
