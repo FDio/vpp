@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_3e766c3f",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-27T11:42:30Z",
+      "side": 1,
+      "message": "This isn\u0027t necessary when the hash accessor functions used are native types - the hash gets initialized on first use.\n\nIn this case you\u0027re initializing the hash as an arbitrary memory block (not a uword), but the accesses are all still based on the uword value - the difference is that _mem hashes expect a pointer in hash_get \u0026 _put, not a value.\n\nIt\u0027s the difference between\np0 \u003d hash_get (vxm-\u003evxlan4_tunnel_by_key, key4_0.as_u64);\nand\np0 \u003d hash_get (vxm-\u003evxlan6_tunnel_by_key, pointer_to_uword(\u0026key6_0));\n\nNow at some point I\u0027ve considered switching vxlan over to use _mem for both v4 and v6 mostly because the v4 key is designed to fit into a 64-bit uword; meaning it falls down on a 32-bit platform. I\u0027ll accept this patch if that is what you want to do, but probably not on the stable branch.",
+      "range": {
+        "startLine": 574,
+        "startChar": 0,
+        "endLine": 577,
+        "endChar": 23
+      },
+      "revId": "c55efa01be8f7c9f73273df811b7acbc59b22ec8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
