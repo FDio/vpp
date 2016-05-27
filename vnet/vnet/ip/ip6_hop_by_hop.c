@@ -440,8 +440,12 @@ ip6_hop_by_hop_node_fn (vlib_main_t * vm,
                       if (trace0->ioam_trace_type & BIT_TIMESTAMP)
                         {
                             /* Send least significant 32 bits */
+#ifdef VIRL
+                            f64 time_f64 = unix_time_now();
+#else
                             f64 time_f64 = (f64)(((f64)hm->unix_time_0) +
                               (vlib_time_now(hm->vlib_main) - hm->vlib_time_0));
+#endif
 
                             time_u64.as_u64 = 
                                time_f64 * trace_tsp_mul[hm->trace_tsp];
