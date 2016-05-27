@@ -133,6 +133,13 @@ typedef struct {
   /* Free vlib hw_if_indices */
   u32 * free_vxlan_gpe_tunnel_hw_if_indices;
 
+  /* Dummy rewrite for deleted vxlangpe_tunnels with hw_if_indices as above */
+  u64 dummy4_str [sizeof(ip4_vxlan_gpe_header_t)/sizeof(u64) + 2];
+#define vxlan4_gpe_dummy_rewrite ((u8 *) &vxlan_gpe_main.dummy4_str[1])
+
+  u64 dummy6_str [sizeof(ip6_vxlan_gpe_header_t)/sizeof(u64) + 2];
+#define vxlan6_gpe_dummy_rewrite ((u8 *) &vxlan_gpe_main.dummy6_str[1])
+
   /* show device instance by real device instance */
   u32 * dev_inst_by_real;
 
