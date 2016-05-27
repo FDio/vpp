@@ -106,7 +106,7 @@ ifeq ($(OS_ID),ubuntu)
 	fi ; \
 	exit 0
 endif
-	@echo "SOURCE_PATH = $(WS_ROOT)"                   > $(BR)/build-config.mk
+	@echo "SOURCE_PATH = $(WS_ROOT) $(WS_ROOT)/plugins"> $(BR)/build-config.mk
 	@echo "#!/bin/bash\n"                              > $(BR)/path_setup
 	@echo 'export PATH=$(BR)/tools/ccache-bin:$$PATH' >> $(BR)/path_setup
 	@echo 'export PATH=$(BR)/tools/bin:$$PATH'        >> $(BR)/path_setup
@@ -161,6 +161,12 @@ wipe-release: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM),vpp-wipe)
 
 rebuild-release: wipe-release build-release
+
+plugins: $(BR)/.bootstrap.ok
+	$(call make,$(PLATFORM)_debug,sample-plugin-install)
+
+plugins-release: $(BR)/.bootstrap.ok
+	$(call make,$(PLATFORM),sample-plugin-install)
 
 STARTUP_DIR ?= $(PWD)
 ifeq ("$(wildcard $(STARTUP_CONF))","")
