@@ -43,6 +43,14 @@
 #include <vppinfra/byte_order.h>
 #include <vppinfra/error.h>
 
+#undef always_inline
+
+#if CLIB_DEBUG > 0
+#define always_inline static inline
+#else
+#define always_inline static inline __attribute__ ((__always_inline__))
+#endif
+
 typedef enum {
   PCI_CLASS_NOT_DEFINED = 0x0000,
   PCI_CLASS_NOT_DEFINED_VGA = 0x0001,
