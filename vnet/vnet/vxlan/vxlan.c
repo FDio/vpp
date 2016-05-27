@@ -571,6 +571,11 @@ clib_error_t *vxlan_init (vlib_main_t *vm)
   vxm->vnet_main = vnet_get_main();
   vxm->vlib_main = vm;
 
+  /* initialize the ip4 hash */
+  vxm->vxlan4_tunnel_by_key = hash_create_mem(0,
+        sizeof(vxlan4_tunnel_key_t),
+        sizeof(uword));
+
   /* initialize the ip6 hash */
   vxm->vxlan6_tunnel_by_key = hash_create_mem(0,
         sizeof(vxlan6_tunnel_key_t),
