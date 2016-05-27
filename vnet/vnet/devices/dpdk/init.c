@@ -21,6 +21,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/dpdk/dpdk.h>
 #include <vlib/unix/physmem.h>
+#include <vlib/pci/pci_config.h>
 #include <vlib/pci/pci.h>
 
 #include <stdio.h>
@@ -59,6 +60,17 @@ static struct rte_eth_conf port_conf_template = {
   .txmode = {
     .mq_mode = ETH_MQ_TX_NONE,
   },
+};
+
+static dpdk_startup_config_t  pci_dev_dflt_config = {
+  .pci_dev_address = {
+    .as_u32 = 0,
+  },
+  .rx_mq_mode    = ETH_MQ_RX_NONE,
+  .rss_hf        = 0,
+  .rx_queues     = 1,
+  .tx_queue_size = 0,
+  .rx_queue_size = 0,
 };
 
 clib_error_t *
@@ -300,6 +312,8 @@ dpdk_lib_init (dpdk_main_t * dm)
     dm->buffer_flags_template &= ~(IP_BUFFER_L4_CHECKSUM_CORRECT
 				   | IP_BUFFER_L4_CHECKSUM_COMPUTED);
 
+  vlib_pci_addr_t* bus_address = 0;
+  uword* cfgidx = 0;
   for (i = 0; i < nports; i++)
     {
       u8 addr[6];
@@ -314,6 +328,10 @@ dpdk_lib_init (dpdk_main_t * dm)
       xd->nb_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
       xd->cpu_socket = (i8) rte_eth_dev_socket_id(i);
       rte_eth_dev_info_get(i, &dev_info);
+
+      // lets peek into the startup-config for this pci-dev
+      bus_address = (vlib_pci_addr_t *)&dev_info.pci_dev->addr;
+      cfgidx = hash_get(dm->conf->startup_config_by_pci_addr, bus_address->as_u32);
 
       clib_memcpy(&xd->tx_conf, &dev_info.default_txconf,
              sizeof(struct rte_eth_txconf));
@@ -335,14 +353,12 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (dm->conf->max_tx_queues)
         xd->tx_q_used = clib_min(xd->tx_q_used, dm->conf->max_tx_queues);
 
-      if (dm->conf->use_rss > 1 && dev_info.max_rx_queues >= dm->conf->use_rss)
-        {
-          xd->rx_q_used = dm->conf->use_rss;
-          xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
-          xd->port_conf.rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
-        }
-      else
-        xd->rx_q_used = 1;
+      if (cfgidx && dev_info.max_rx_queues >= dm->conf->pci_dev_startup_cfg[cfgidx[0]].rx_queues)
+	{
+	  xd->rx_q_used = dm->conf->pci_dev_startup_cfg[cfgidx[0]].rx_queues;
+	  xd->port_conf.rxmode.mq_mode = dm->conf->pci_dev_startup_cfg[cfgidx[0]].rx_mq_mode;
+	  xd->port_conf.rx_adv_conf.rss_conf.rss_hf = dm->conf->pci_dev_startup_cfg[cfgidx[0]].rss_hf;
+	}
 
       xd->dev_type = VNET_DPDK_DEV_ETH;
 
@@ -825,12 +841,18 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 huge_dir = 0;
   u8 file_prefix = 0;
   u8 * socket_mem = 0;
+  u8 * rss_hf_str = 0;
+  u8 enable_rss = 0;
 
   // MATT-FIXME: inverted virtio-vhost logic to use virtio by default
   conf->use_virtio_vhost = 1;
+  conf->startup_config_by_pci_addr = hash_create(0, sizeof(uword));
 
+  dpdk_startup_config_t sc;
+  conf->pci_dev_startup_cfg = 0;
   while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
     {
+      clib_memcpy(&sc, &pci_dev_dflt_config, sizeof(dpdk_startup_config_t));
       /* Prime the pump */
       if (unformat (input, "no-hugetlb"))
         {
@@ -847,8 +869,38 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "no-multi-seg"))
         conf->no_multi_seg = 1;
 
-      else if (unformat (input, "dev %s", &pci_dev_id))
-	{
+      else if (unformat (input, "dev %U {", unformat_vlib_pci_addr, &sc.pci_dev_address))
+        {
+	  while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
+	    {
+	      if (unformat (input, "rx-queues %d", &sc.rx_queues))
+		{
+		  sc.rx_mq_mode = ETH_MQ_RX_RSS;
+		  enable_rss = 1;
+                  conf->use_rss = 2;
+		}
+	      else if (unformat (input, "tx-q-size %d", &sc.tx_queue_size))
+		;
+	      else if (unformat (input, "rx-q-size %d", &sc.rx_queue_size))
+		;
+	      else if (unformat (input, "rss-hf %s", &rss_hf_str))
+		{
+#define _(s, f) else if (!strcmp((char *)rss_hf_str, s))	\
+		  sc.rss_hf |= f;
+		  if (0)
+		    ;
+		  foreach_dpdk_rss_hfn
+#undef _
+		  else
+		    sc.rss_hf = ETH_RSS_IP;
+		}
+	      else if (unformat (input, "}"))
+		break;
+	    }
+	  vec_add1(conf->pci_dev_startup_cfg, sc);
+	  hash_set(conf->startup_config_by_pci_addr, sc.pci_dev_address.as_u32, vec_len(conf->pci_dev_startup_cfg) - 1);
+
+	  pci_dev_id = format(pci_dev_id, "%U ", format_vlib_pci_addr, &sc.pci_dev_address);
 	  if (conf->eth_if_whitelist)
 	    {
 	      /*
@@ -902,8 +954,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         ;
       else if (unformat (input, "enable-vhost-user"))
         conf->use_virtio_vhost = 0;
-      else if (unformat (input, "rss %d", &conf->use_rss))
-        ;
 
 #define _(a)                                    \
       else if (unformat(input, #a))             \
@@ -1251,7 +1301,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         return error;
     }
 
-  if (conf->use_rss)
+  if (enable_rss)
     rt->function = dpdk_input_rss_multiarch_select();
   else
     rt->function = dpdk_input_multiarch_select();

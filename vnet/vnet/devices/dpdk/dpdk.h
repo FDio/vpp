@@ -54,6 +54,7 @@
 
 #include <vnet/unix/pcap.h>
 #include <vnet/devices/virtio/vhost-user.h>
+#include <vlib/pci/pci.h>
 
 #if CLIB_DEBUG > 0
 #define always_inline static inline
@@ -307,6 +308,22 @@ typedef struct dpdk_efd_t {
   u16 pad;
 } dpdk_efd_t;
 
+#define foreach_dpdk_rss_hfn      \
+  _ ("ETH_RSS_IP", ETH_RSS_IP)    \
+  _ ("ETH_RSS_UDP", ETH_RSS_UDP)  \
+  _ ("ETH_RSS_TCP", ETH_RSS_TCP)  \
+  _ ("ETH_RSS_SCTP", ETH_RSS_SCTP) \
+  _ ("ETH_RSS_PROTO_MASK", ETH_RSS_PROTO_MASK)
+
+typedef struct {
+  vlib_pci_addr_t pci_dev_address;
+  u32 rx_mq_mode;
+  u32 rss_hf;
+  u32 rx_queues;
+  u32 tx_queue_size;
+  u32 rx_queue_size;
+} dpdk_startup_config_t;
+
 typedef struct {
 
   /* Config stuff */
@@ -327,6 +344,8 @@ typedef struct {
   u32 use_rss;
   u32 max_tx_queues;
   u8 num_kni;/* while kni_init allows u32, port_id in callback fn is only u8 */
+  dpdk_startup_config_t *pci_dev_startup_cfg;
+  uword * startup_config_by_pci_addr;
 
   /*
    * format interface names ala xxxEthernet%d/%d/%d instead of
