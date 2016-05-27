@@ -4330,8 +4330,8 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
     encap_fib_index = p[0];
 
     /* Check src & dst are different */
-    if ((a->is_ip6 && memcmp(mp->src_address, mp->dst_address, 16) == 0) ||
-       (!a->is_ip6 && memcmp(mp->src_address, mp->dst_address, 4) == 0)) {
+    if ((mp->is_ipv6 && memcmp(mp->src_address, mp->dst_address, 16) == 0) ||
+       (!mp->is_ipv6 && memcmp(mp->src_address, mp->dst_address, 4) == 0)) {
         rv = VNET_API_ERROR_SAME_SRC_DST;
         goto out;
     }
