@@ -6,7 +6,7 @@ endif
 
 DPDK_TUNE = $(strip $($(PLATFORM)_mtune))
 ifeq ($(DPDK_TUNE),)
-	DPDK_MARCH="generic"
+	DPDK_TUNE="generic"
 endif
 
 ifneq (,$(findstring debug,$(TAG)))
