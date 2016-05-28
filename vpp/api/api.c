@@ -4569,8 +4569,8 @@ vl_api_vxlan_gpe_add_del_tunnel_t_handler
     }
 
     /* Check src & dst are different */
-    if ((a->is_ip6 && memcmp(mp->local, mp->remote, 16) == 0) ||
-       (!a->is_ip6 && memcmp(mp->local, mp->remote, 4) == 0)) {
+    if ((mp->is_ipv6 && memcmp(mp->local, mp->remote, 16) == 0) ||
+       (!mp->is_ipv6 && memcmp(mp->local, mp->remote, 4) == 0)) {
         rv = VNET_API_ERROR_SAME_SRC_DST;
         goto out;
     }
