@@ -385,16 +385,15 @@ dpdk_lib_init (dpdk_main_t * dm)
           case VNET_DPDK_PMD_VICE:
           case VNET_DPDK_PMD_ENIC:
             rte_eth_link_get_nowait(i, &l);
+	    xd->nb_rx_desc = DPDK_NB_RX_DESC_ENIC;
             if (l.link_speed == 40000)
               {
                 xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
-                xd->nb_rx_desc = DPDK_NB_RX_DESC_40GE;
                 xd->nb_tx_desc = DPDK_NB_TX_DESC_40GE;
               }
             else
               {
                 xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
-                xd->nb_rx_desc = DPDK_NB_RX_DESC_10GE;
                 xd->nb_tx_desc = DPDK_NB_TX_DESC_10GE;
               }
             break;
