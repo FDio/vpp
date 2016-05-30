@@ -744,7 +744,7 @@ VLIB_CLI_COMMAND (lisp_cp_show_local_eid_table_command) = {
 static void
 clean_locator_to_locator_set (lisp_cp_main_t * lcm, u32 lsi)
 {
-  u32 i, j, *loc_indexp, *ls_indexp, **ls_indexes;
+  u32 i, j, *loc_indexp, *ls_indexp, **ls_indexes, *to_be_deleted = 0;
   locator_set_t * ls = pool_elt_at_index(lcm->locator_set_pool, lsi);
   for (i = 0; i < vec_len(ls->locator_indices); i++)
     {
@@ -763,9 +763,23 @@ clean_locator_to_locator_set (lisp_cp_main_t * lcm, u32 lsi)
 
       /* delete locator if it's part of no locator-set */
       if (vec_len (ls_indexes[0]) == 0)
-        pool_put_index(lcm->locator_pool, loc_indexp[0]);
+        {
+          pool_put_index (lcm->locator_pool, loc_indexp[0]);
+          vec_add1 (to_be_deleted, i);
+        }
+    }
+
+  if (to_be_deleted)
+    {
+      for (i = 0; i < vec_len (to_be_deleted); i++)
+        {
+          loc_indexp = vec_elt_at_index (to_be_deleted, i);
+          vec_del1 (ls->locator_indices, loc_indexp[0]);
+        }
+      vec_free (to_be_deleted);
     }
 }
+
 int
 vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
                                u32 * ls_result)
