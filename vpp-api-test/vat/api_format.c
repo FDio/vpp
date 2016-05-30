@@ -2484,7 +2484,8 @@ _(MODIFY_VHOST_USER_IF_REPLY, modify_vhost_user_if_reply)               \
 _(DELETE_VHOST_USER_IF_REPLY, delete_vhost_user_if_reply)               \
 _(SHOW_VERSION_REPLY, show_version_reply)                               \
 _(L2_FIB_TABLE_ENTRY, l2_fib_table_entry)				\
-_(VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)	\
+_(VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)	    \
+_(VXLAN_GPE_TUNNEL_DETAILS, vxlan_gpe_tunnel_details)                   \
 _(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
 _(WANT_IP4_ARP_EVENTS_REPLY, want_ip4_arp_events_reply)			\
 _(IP4_ARP_EVENT, ip4_arp_event)                                         \
@@ -8162,6 +8163,97 @@ static int api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
     return 0;
 }
 
+static void vl_api_vxlan_gpe_tunnel_details_t_handler
+(vl_api_vxlan_gpe_tunnel_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+
+    fformat(vam->ofp, "%11d%24U%24U%13d%12d%14d%14d\n",
+            ntohl(mp->sw_if_index),
+            format_ip46_address, &(mp->local[0]),
+            format_ip46_address, &(mp->remote[0]),
+			ntohl(mp->vni),
+            ntohl(mp->protocol),
+            ntohl(mp->encap_vrf_id),
+            ntohl(mp->decap_vrf_id));
+}
+
+static void vl_api_vxlan_gpe_tunnel_details_t_handler_json
+(vl_api_vxlan_gpe_tunnel_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    struct in_addr ip4;
+    struct in6_addr ip6;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_uint(node, "sw_if_index", ntohl(mp->sw_if_index));
+    if (mp->is_ipv6) {
+        clib_memcpy(&ip6, &(mp->local[0]), sizeof(ip6));
+        vat_json_object_add_ip6(node, "local", ip6);
+        clib_memcpy(&ip6, &(mp->remote[0]), sizeof(ip6));
+        vat_json_object_add_ip6(node, "remote", ip6);
+    } else {
+        clib_memcpy(&ip4, &(mp->local[0]), sizeof(ip4));
+        vat_json_object_add_ip4(node, "local", ip4);
+        clib_memcpy(&ip4, &(mp->remote[0]), sizeof(ip4));
+        vat_json_object_add_ip4(node, "remote", ip4);
+    }
+    vat_json_object_add_uint(node, "vni", ntohl(mp->vni));
+    vat_json_object_add_uint(node, "protocol", ntohl(mp->protocol));
+    vat_json_object_add_uint(node, "encap_vrf_id", ntohl(mp->encap_vrf_id));
+    vat_json_object_add_uint(node, "decap_vrf_id", ntohl(mp->decap_vrf_id));
+    vat_json_object_add_uint(node, "is_ipv6", mp->is_ipv6 ? 1 : 0);
+}
+
+static int api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_vxlan_gpe_tunnel_dump_t *mp;
+    f64 timeout;
+    u32 sw_if_index;
+    u8 sw_if_index_set = 0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "sw_if_index %d", &sw_if_index))
+            sw_if_index_set = 1;
+        else
+            break;
+    }
+
+    if (sw_if_index_set == 0) {
+        sw_if_index = ~0;
+    }
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%11s%24s%24s%13s%15s%14s%14s\n",
+                "sw_if_index", "local", "remote", "vni",
+				"protocol","encap_vrf_id", "decap_vrf_id");
+    }
+
+    /* Get list of vxlan-tunnel interfaces */
+    M(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump);
+
+    mp->sw_if_index = htonl(sw_if_index);
+
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    W;
+}
+
 u8 * format_l2_fib_mac_address (u8 * s, va_list * args)
 {
   u8 * a = va_arg (*args, u8 *);
@@ -11072,10 +11164,11 @@ _(modify_vhost_user_if,                                                 \
 _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
 _(sw_interface_vhost_user_dump, "")                                     \
 _(show_version, "")                                                     \
-_(vxlan_gpe_add_del_tunnel,						\
-  "local <ip4-addr> remote <ip4-addr> vni <nn>\n"                       \
-    "[encap-vrf-id <nn>] [decap-vrf-id <nn>] [next-ip4][next-ip6]"	\
-  "[next-ethernet] [next-nsh]\n")					\
+_(vxlan_gpe_add_del_tunnel,                                             \
+  "local <addr> remote <addr> vni <nn>\n"                               \
+    "[encap-vrf-id <nn>] [decap-vrf-id <nn>] [next-ip4][next-ip6]"      \
+  "[next-ethernet] [next-nsh]\n")                                       \
+_(vxlan_gpe_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                \
 _(l2_fib_table_dump, "bd_id <bridge-domain-id>")			\
 _(interface_name_renumber,                                              \
   "<intfc> | sw_if_index <nn> new_show_dev_instance <nn>")		\

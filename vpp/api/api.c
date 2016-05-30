@@ -291,7 +291,8 @@ _(SW_INTERFACE_VHOST_USER_DETAILS, sw_interface_vhost_user_details)	\
 _(SHOW_VERSION, show_version)						\
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)	                                \
 _(L2_FIB_TABLE_ENTRY, l2_fib_table_entry)                               \
-_(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)			\
+_(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)                   \
+_(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
@@ -4597,6 +4598,67 @@ out:
     ({
         rmp->sw_if_index = ntohl (sw_if_index);
     }));
+}
+
+static void send_vxlan_gpe_tunnel_details
+(vxlan_gpe_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
+{
+    vl_api_vxlan_gpe_tunnel_details_t * rmp;
+    ip4_main_t * im4 = &ip4_main;
+    ip6_main_t * im6 = &ip6_main;
+    u8 is_ipv6 = !(t->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_VXLAN_GPE_TUNNEL_DETAILS);
+    if (is_ipv6) {
+        memcpy(rmp->local, &(t->local.ip6), 16);
+        memcpy(rmp->remote, &(t->remote.ip6), 16);
+        rmp->encap_vrf_id = htonl(im6->fibs[t->encap_fib_index].table_id);
+        rmp->decap_vrf_id = htonl(im6->fibs[t->decap_fib_index].table_id);
+    } else {
+        memcpy(rmp->local, &(t->local.ip4), 4);
+        memcpy(rmp->remote, &(t->remote.ip4), 4);
+        rmp->encap_vrf_id = htonl(im4->fibs[t->encap_fib_index].table_id);
+        rmp->decap_vrf_id = htonl(im4->fibs[t->decap_fib_index].table_id);
+    }
+    rmp->vni = htonl(t->vni);
+    rmp->protocol = t->protocol;
+    rmp->sw_if_index = htonl(t->sw_if_index);
+    rmp->is_ipv6 = is_ipv6;
+    rmp->context = context;
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void vl_api_vxlan_gpe_tunnel_dump_t_handler
+(vl_api_vxlan_gpe_tunnel_dump_t * mp)
+{
+    unix_shared_memory_queue_t * q;
+    vxlan_gpe_main_t * vgm = &vxlan_gpe_main;
+    vxlan_gpe_tunnel_t * t;
+    u32 sw_if_index;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+
+    sw_if_index = ntohl(mp->sw_if_index);
+
+    if (~0 == sw_if_index) {
+        pool_foreach (t, vgm->tunnels,
+        ({
+            send_vxlan_gpe_tunnel_details(t, q, mp->context);
+        }));
+    } else {
+        if ((sw_if_index >= vec_len(vgm->tunnel_index_by_sw_if_index)) ||
+                (~0 == vgm->tunnel_index_by_sw_if_index[sw_if_index])) {
+            return;
+        }
+        t = &vgm->tunnels[vgm->tunnel_index_by_sw_if_index[sw_if_index]];
+        send_vxlan_gpe_tunnel_details(t, q, mp->context);
+    }
 }
 
 static void

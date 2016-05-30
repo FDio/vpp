@@ -56,30 +56,10 @@ u8 * format_vxlan_gpe_tunnel (u8 * s, va_list * args)
 
 static u8 * format_vxlan_gpe_name (u8 * s, va_list * args)
 {
-  vxlan_gpe_main_t * gm = &vxlan_gpe_main;
-  u32 i = va_arg (*args, u32);
-  u32 show_dev_instance = ~0;
-
-  if (i < vec_len (gm->dev_inst_by_real))
-    show_dev_instance = gm->dev_inst_by_real[i];
-
-  if (show_dev_instance != ~0)
-    i = show_dev_instance;
-
-  return format (s, "vxlan_gpe_tunnel%d", i);
+  u32 dev_instance = va_arg (*args, u32);
+  return format (s, "vxlan_gpe_tunnel%d", dev_instance);
 }
 
-static int vxlan_gpe_name_renumber (vnet_hw_interface_t * hi,
-                                        u32 new_dev_instance)
-{
-  vxlan_gpe_main_t * gm = &vxlan_gpe_main;
-
-  vec_validate_init_empty (gm->dev_inst_by_real, hi->dev_instance, ~0);
-
-  gm->dev_inst_by_real [hi->dev_instance] = new_dev_instance;
-
-  return 0;
-}
 
 static uword dummy_interface_tx (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
@@ -88,6 +68,12 @@ static uword dummy_interface_tx (vlib_main_t * vm,
   clib_warning ("you shouldn't be here, leaking buffers...");
   return frame->n_vectors;
 }
+VNET_DEVICE_CLASS (vxlan_gpe_device_class,static) = {
+  .name = "VXLAN_GPE",
+  .format_device_name = format_vxlan_gpe_name,
+  .format_tx_trace = format_vxlan_gpe_encap_trace,
+  .tx_function = dummy_interface_tx,
+};
 
 static uword dummy_set_rewrite (vnet_main_t * vnm,
                                 u32 sw_if_index,
@@ -99,13 +85,6 @@ static uword dummy_set_rewrite (vnet_main_t * vnm,
   return 0;
 }
 
-VNET_DEVICE_CLASS (vxlan_gpe_device_class,static) = {
-  .name = "VXLAN_GPE",
-  .format_device_name = format_vxlan_gpe_name,
-  .format_tx_trace = format_vxlan_gpe_encap_trace,
-  .tx_function = dummy_interface_tx,
-  .name_renumber = vxlan_gpe_name_renumber,
-};
 
 static u8 * format_vxlan_gpe_header_with_length (u8 * s, va_list * args)
 {

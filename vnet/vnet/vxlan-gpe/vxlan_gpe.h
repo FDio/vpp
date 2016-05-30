@@ -133,8 +133,8 @@ typedef struct {
   /* Free vlib hw_if_indices */
   u32 * free_vxlan_gpe_tunnel_hw_if_indices;
 
-  /* show device instance by real device instance */
-  u32 * dev_inst_by_real;
+  /* Mapping from sw_if_index to tunnel index */
+  u32 * tunnel_index_by_sw_if_index;
 
   /* convenience */
   vlib_main_t * vlib_main;

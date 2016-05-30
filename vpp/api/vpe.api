@@ -2129,6 +2129,23 @@ define vxlan_gpe_add_del_tunnel_reply {
     u32 sw_if_index;
 };
 
+manual_java define vxlan_gpe_tunnel_dump {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+};
+
+manual_java define vxlan_gpe_tunnel_details {
+    u32 context;
+    u32 sw_if_index;
+    u8 local[16];
+    u8 remote[16];
+    u32 vni;
+    u8 protocol;
+    u32 encap_vrf_id;
+    u32 decap_vrf_id;
+    u8 is_ipv6;
+};
 
 /** \brief add or delete locator_set
     @param client_index - opaque cookie to identify the sender
