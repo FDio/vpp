@@ -4994,8 +4994,8 @@ vl_api_lisp_add_del_remote_mapping_t_handler (
         vec_add1 (rlocs, rloc);
     }
 
-    rv = vnet_lisp_add_del_remote_mapping (deid, seid, rlocs,
-                                           mp->action, mp->is_add);
+    rv = vnet_lisp_add_del_remote_mapping (deid, seid, rlocs, mp->action,
+                                           mp->is_add, mp->del_all);
     vec_free (rlocs);
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
 }
