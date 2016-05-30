@@ -2369,6 +2369,7 @@ define lisp_pitr_set_locator_set_reply {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
+    @param del_all - if set, delete all remote mappings
     @param vni - virtual network instance
     @param action - negative map-reply action
     @param eid_is_ip4 - ipv4/6 of source and destination EIDs
@@ -2381,6 +2382,7 @@ define lisp_add_del_remote_mapping {
     u32 client_index;
     u32 context;
     u8  is_add;
+    u8 del_all;
     u32 vni;
     u8 action;
     u8 eid_is_ip4;

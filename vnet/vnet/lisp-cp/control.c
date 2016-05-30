@@ -366,11 +366,13 @@ lisp_add_del_negative_static_mapping (gid_address_t * deid,
  * @param rlocs vector of remote locators
  * @param action action for negative map-reply
  * @param is_add add mapping if non-zero, delete otherwise
+ * @param del_all if set, delete all remote mappings
  * @return return code
  */
 int
 vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
-                                  ip_address_t * rlocs, u8 action, u8 is_add)
+                                  ip_address_t * rlocs, u8 action, u8 is_add,
+                                  u8 del_all)
 {
   vnet_lisp_add_del_mapping_args_t _dm_args, * dm_args = &_dm_args;
   vnet_lisp_add_del_mapping_args_t _sm_args, * sm_args = &_sm_args;
@@ -380,6 +382,9 @@ vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
   locator_t loc;
   ip_address_t * dl;
   int rc = -1;
+
+  if (del_all)
+    return vnet_lisp_clear_all_remote_mappings ();
 
   memset (sm_args, 0, sizeof (sm_args[0]));
   memset (dm_args, 0, sizeof (dm_args[0]));
@@ -487,6 +492,50 @@ done:
   return rc;
 }
 
+int
+vnet_lisp_clear_all_remote_mappings (void)
+{
+  int rv = 0;
+  u32 mi, * map_indices = 0, * map_indexp;
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  vnet_lisp_add_del_mapping_args_t _dm_args, * dm_args = &_dm_args;
+  vnet_lisp_add_del_locator_set_args_t _ls, * ls = &_ls;
+
+  pool_foreach_index (mi, lcm->mapping_pool,
+    ({
+      vec_add1 (map_indices, mi);
+    }));
+
+  vec_foreach (map_indexp, map_indices)
+    {
+      mapping_t * map = pool_elt_at_index (lcm->mapping_pool, map_indexp[0]);
+      if (!map->local)
+        {
+          del_fwd_entry (lcm, 0, map_indexp[0]);
+
+          dm_args->is_add = 0;
+          gid_address_copy (&dm_args->deid, &map->eid);
+          dm_args->locator_set_index = map->locator_set_index;
+
+          /* delete mapping associated to fwd entry */
+          vnet_lisp_add_del_mapping (dm_args, 0);
+
+          ls->is_add = 0;
+          ls->local = 0;
+          ls->index = map->locator_set_index;
+          /* delete locator set */
+          rv = vnet_lisp_add_del_locator_set (ls, 0);
+          if (rv != 0)
+            goto cleanup;
+        }
+    }
+
+cleanup:
+  if (map_indices)
+    vec_free (map_indices);
+  return rv;
+}
+
 /**
  * Handler for add/del remote mapping CLI.
  *
@@ -502,7 +551,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
 {
   clib_error_t * error = 0;
   unformat_input_t _line_input, * line_input = &_line_input;
-  u8 is_add = 1;
+  u8 is_add = 1, del_all = 0;
   ip_address_t rloc, * rlocs = 0;
   ip_prefix_t * deid_ippref, * seid_ippref;
   gid_address_t seid, deid;
@@ -525,9 +574,11 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "del"))
+      if (unformat (line_input, "del-all"))
+        del_all = 1;
+      else if (unformat (line_input, "del"))
         is_add = 0;
-      if (unformat (line_input, "add"))
+      else if (unformat (line_input, "add"))
         ;
       else if (unformat (line_input, "deid %U",
                          unformat_ip_prefix, deid_ippref))
@@ -567,30 +618,33 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
         }
     }
 
-  if (!deid_set)
+  if (!del_all)
     {
-      clib_warning ("missing deid!");
-      goto done;
-    }
+      if (!deid_set)
+        {
+          clib_warning ("missing deid!");
+          goto done;
+        }
 
-  if (is_add
-      && (ip_prefix_version (deid_ippref)
-        != ip_prefix_version (seid_ippref)))
-    {
-      clib_warning ("source and destination EIDs are not"
-                    " in the same IP family!");
-      goto done;
-    }
+      if (is_add
+          && (ip_prefix_version (deid_ippref)
+            != ip_prefix_version (seid_ippref)))
+        {
+          clib_warning ("source and destination EIDs are not"
+                        " in the same IP family!");
+          goto done;
+        }
 
-  if (is_add && (~0 == action)
-      && 0 == vec_len (rlocs))
-    {
-      clib_warning ("no action set for negative map-reply!");
-      goto done;
+      if (is_add && (~0 == action)
+          && 0 == vec_len (rlocs))
+        {
+          clib_warning ("no action set for negative map-reply!");
+          goto done;
+        }
     }
 
   int rv = vnet_lisp_add_del_remote_mapping (&deid, &seid, rlocs,
-                                             action, is_add);
+                                             action, is_add, del_all);
   if (rv)
     clib_warning ("failed to %s remote mapping!",
                   is_add ? "add" : "delete");
@@ -604,7 +658,7 @@ done:
 
 VLIB_CLI_COMMAND (lisp_add_del_remote_mapping_command) = {
     .path = "lisp remote-mapping",
-    .short_help = "lisp remote-mapping add|del vni <vni>"
+    .short_help = "lisp remote-mapping add|del [del-all] vni <vni>"
      "deid <dest-eid> seid <src-eid> [action <no-action|natively-forward|"
      "send-map-request|drop>] rloc <dst-locator> [rloc <dst-locator> ... ]",
     .function = lisp_add_del_remote_mapping_command_fn,

@@ -180,9 +180,12 @@ u8 vnet_lisp_enable_disable_status (void);
 
 int
 vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
-                                  ip_address_t * dlocs, u8 action, u8 is_add);
+                                  ip_address_t * dlocs, u8 action, u8 is_add,
+                                  u8 del_all);
 
 int
 vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add);
+
+int vnet_lisp_clear_all_remote_mappings (void);
 
 #endif /* VNET_CONTROL_H_ */

@@ -10194,13 +10194,15 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
     ip6_address_t seid6, deid6, rloc6;
     u32 seid_len = 0, deid_len = 0, len;
     u8 deid_is_ip4 = 0, seid_is_ip4 = 0;
-    u8 is_add = 1;
+    u8 is_add = 1, del_all = 0;
     u32 action = ~0;
     rloc_t * rlocs = 0, rloc;
 
     /* Parse args required to build the message */
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
-        if (unformat(input, "del")) {
+        if (unformat(input, "del-all")) {
+            del_all = 1;
+        } else if (unformat(input, "del")) {
             is_add = 0;
         } else if (unformat(input, "add")) {
             is_add = 1;
@@ -10264,6 +10266,7 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
     mp->seid_len = seid_len;
     mp->action = (u8) action;
     mp->deid_len = deid_len;
+    mp->del_all = del_all;
     if (seid_is_ip4) {
         mp->eid_is_ip4 = 1;
         clib_memcpy (mp->seid, &seid4, sizeof (seid4));
