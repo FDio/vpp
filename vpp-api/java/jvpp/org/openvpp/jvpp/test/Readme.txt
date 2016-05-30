@@ -10,3 +10,4 @@ CallbackApiTest - Similar to ControlPingTest, invokes more complex calls (e.g. i
 FutureApiTest - Execution of more complex calls using Future based JVpp facade
 CallbackJVppFacadeTest - Execution of more complex calls using Callback based JVpp facade
 L2AclTest - Tests L2 ACL creation
+CreateSubInterfaceTest - Tests sub-interface creation

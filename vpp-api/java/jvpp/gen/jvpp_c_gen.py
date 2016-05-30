@@ -116,7 +116,7 @@ vl_api_ip6_fib_counter_t_array_struct_setter_template = Template("""
     // vl_api_ip6_fib_counter_t_array_field_setter_template FIXME""")
 
 struct_setter_templates = {'u8': u8_struct_setter_template,
-                          'u16': u32_struct_setter_template,
+                          'u16': u16_struct_setter_template,
                           'u32': u32_struct_setter_template,
                           'i32': u32_struct_setter_template,
                           'u64': u64_struct_setter_template,
@@ -218,6 +218,10 @@ default_dto_field_setter_template = Template("""
     (*env)->Set${jni_setter}(env, dto, ${java_name}FieldId, mp->${c_name});
 """)
 
+u16_dto_field_setter_template = Template("""
+    (*env)->Set${jni_setter}(env, dto, ${java_name}FieldId, clib_net_to_host_u16(mp->${c_name}));
+""")
+
 u32_dto_field_setter_template = Template("""
     (*env)->Set${jni_setter}(env, dto, ${java_name}FieldId, clib_net_to_host_u32(mp->${c_name}));
 """)
@@ -247,11 +251,11 @@ u64_array_dto_field_setter_template = Template("""
 """)
 
 dto_field_setter_templates = {'u8': default_dto_field_setter_template,
-                      'u16': u32_dto_field_setter_template,
+                      'u16': u16_dto_field_setter_template,
                       'u32': u32_dto_field_setter_template,
                       'i32': u32_dto_field_setter_template,
                       'u64': u64_dto_field_setter_template,
-                      'f64': default_dto_field_setter_template,
+                      'f64': default_dto_field_setter_template, #fixme
                       'u64[]': u64_array_dto_field_setter_template,
                       'u8[]': u8_array_dto_field_setter_template
                       }
