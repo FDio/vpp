@@ -1600,6 +1600,18 @@ static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
     FINISH;
 }
 
+static void * vl_api_vxlan_gpe_tunnel_dump_t_print
+(vl_api_vxlan_gpe_tunnel_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: vxlan_gpe_tunnel_dump ");
+
+    s = format (s, "sw_if_index %d ", ntohl(mp->sw_if_index));
+
+    FINISH;
+}
+
 static void *vl_api_interface_name_renumber_t_print 
 (vl_api_interface_name_renumber_t * mp, void * handle)
 {
@@ -1789,7 +1801,8 @@ _(MEMCLNT_CREATE, memclnt_create)					\
 _(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)           \
 _(SHOW_VERSION, show_version)                                           \
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                 \
-_(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)			\
+_(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)			        \
+_(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
