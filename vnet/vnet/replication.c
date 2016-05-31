@@ -148,7 +148,6 @@ static void replication_recycle_callback (vlib_main_t *vm,
   u32 * to_next = 0;
   u32 bi0, pi0;
   vlib_buffer_t *b0;
-  vlib_buffer_t *bnext0;
   int i;
   replication_main_t * rm = &replication_main;
   replication_context_t * ctx;
@@ -208,8 +207,8 @@ static void replication_recycle_callback (vlib_main_t *vm,
               pi0 = from[1];
               vlib_prefetch_buffer_with_index(vm,pi0,LOAD);
             }
-        
-          bnext0 = b0 = vlib_get_buffer (vm, bi0);
+
+	  b0 = vlib_get_buffer (vm, bi0);
 
           // Mark that this buffer was just recycled
           b0->flags |= VLIB_BUFFER_IS_RECYCLED;
@@ -218,12 +217,6 @@ static void replication_recycle_callback (vlib_main_t *vm,
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
               f->flags |= VLIB_FRAME_TRACE;
 
-          while (bnext0->flags & VLIB_BUFFER_NEXT_PRESENT)
-            {
-              from += 1;
-              n_left_from -= 1;
-              bnext0 = vlib_get_buffer (vm, bnext0->next_buffer);
-            }
           to_next[0] = bi0;
 
           from++;
