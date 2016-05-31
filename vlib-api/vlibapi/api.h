@@ -134,6 +134,10 @@ typedef struct {
     /* vector of message ranges */
     vl_api_msg_range_t *msg_ranges;
 
+    /* gid for the api shared memory region */
+    int api_gid;
+    int api_uid;
+
     /* Client-only data structures */
     unix_shared_memory_queue_t *vl_input_queue;
 

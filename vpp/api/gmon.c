@@ -166,6 +166,9 @@ gmon_init (vlib_main_t *vm)
     pid_t *swp = 0;
     f64 *v = 0;
 
+    /* Make sure that /global-vm is owned as directed */
+    svm_region_init_chroot_uid_gid (am->root_path, am->api_uid, am->api_gid);
+
     gm->vlib_main = vm;
     gm->svmdb_client = svmdb_map_chroot(am->root_path);
 
@@ -223,7 +226,8 @@ static clib_error_t *gmon_exit (vlib_main_t *vm)
         *gm->vpef_pid_ptr = 0;
         *gm->input_rate_ptr = 0.0;
         *gm->sig_error_rate_ptr = 0.0;
-        svmdb_unmap (gm->svmdb_client);
+        svm_region_unmap ((void *) gm->svmdb_client->db_rp);
+        vec_free(gm->svmdb_client);
     }
     return 0;
 }
