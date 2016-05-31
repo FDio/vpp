@@ -22,6 +22,30 @@
       "revId": "d1de18b64d61910528f97dd4afb955cceb3986ab",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_d282c1ff",
+        "filename": "svm/svm.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-05-31T18:29:06Z",
+      "side": 1,
+      "message": "I second Chris here.  Allowing world writability is likely to be a problem.  Restricting to a specific unix group would allow controlled access, but being *slightly* broader than root.",
+      "parentUuid": "da141535_12895926",
+      "range": {
+        "startLine": 394,
+        "startChar": 3,
+        "endLine": 395,
+        "endChar": 48
+      },
+      "revId": "d1de18b64d61910528f97dd4afb955cceb3986ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
