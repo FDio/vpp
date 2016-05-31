@@ -148,15 +148,21 @@ unconventional_naming_rep_req = {
 #
 # FIXME no convention in the naming of events (notifications) in vpe.api
 notifications_message_suffixes = ("event", "counters")
-notification_messages = ["from_netconf_client", "from_netconf_server", "to_netconf_client", "to_netconf_server"]
+notification_messages_reused = ["sw_interface_set_flags"]
 
 # messages that must be ignored. These messages are INSUFFICIENTLY marked as disabled in vpe.api
 # FIXME
 ignored_messages = ["is_address_reachable"]
 
 
-def is_notification(param):
-    return param.lower().endswith(notifications_message_suffixes) or param.lower() in notification_messages
+def is_notification(name):
+    """ Returns true if the structure is a notification regardless of its no other use """
+    return is_just_notification(name) or name.lower() in notification_messages_reused
+
+
+def is_just_notification(name):
+    """ Returns true if the structure is just a notification and has no other use """
+    return name.lower().endswith(notifications_message_suffixes)
 
 
 def is_ignored(param):
@@ -179,3 +185,11 @@ def api_message_to_javadoc(api_message):
     """ Converts vpe.api message description to javadoc """
     str = pprint.pformat(api_message, indent=4, width=120, depth=None)
     return " * " + str.replace("\n", "\n * ")
+
+
+notification_dto_suffix = "Notification"
+
+
+def add_notification_suffix(camel_case_dto_name):
+    camel_case_dto_name += notification_dto_suffix
+    return camel_case_dto_name

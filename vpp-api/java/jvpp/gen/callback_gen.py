@@ -31,7 +31,7 @@ package $base_package.$callback_package;
 $docs
  * </pre>
  */
-public interface $cls_name extends $base_package.$callback_package.JVppCallback {
+public interface $cls_name extends $base_package.$callback_package.$callback_type {
 
     $callback_method
 
@@ -61,15 +61,21 @@ def generate_callbacks(func_list, base_package, callback_package, dto_package, i
     callbacks = []
     for func in func_list:
 
-        if util.is_notification(func['name']) or util.is_ignored(func['name']):
-            # FIXME handle notifications
+        if util.is_ignored(func['name']):
             continue
 
         camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
-        if not util.is_reply(camel_case_name_with_suffix):
+        if not util.is_reply(camel_case_name_with_suffix) and not util.is_notification(func['name']):
             continue
 
-        camel_case_name = util.remove_reply_suffix(camel_case_name_with_suffix)
+        if util.is_reply(camel_case_name_with_suffix):
+            camel_case_name = util.remove_reply_suffix(camel_case_name_with_suffix)
+            callback_type = "JVppCallback"
+        else:
+            camel_case_name_with_suffix = util.add_notification_suffix(camel_case_name_with_suffix)
+            camel_case_name = camel_case_name_with_suffix
+            callback_type = "JVppNotificationCallback"
+
         callbacks.append("{0}.{1}.{2}".format(base_package, callback_package, camel_case_name + callback_suffix))
         callback_path = os.path.join(callback_package, camel_case_name + callback_suffix + ".java")
         callback_file = open(callback_path, 'w')
@@ -82,7 +88,8 @@ def generate_callbacks(func_list, base_package, callback_package, dto_package, i
                                          cls_name=camel_case_name + callback_suffix,
                                          callback_method=method,
                                          base_package=base_package,
-                                         callback_package=callback_package))
+                                         callback_package=callback_package,
+                                         callback_type=callback_type))
         callback_file.flush()
         callback_file.close()
 
