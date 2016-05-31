@@ -273,25 +273,8 @@ int vl_map_shmem (char *region_name, int is_vlib)
             /* Clean up the root region client list */
             pthread_mutex_lock (&root_rp->mutex);
             svm_client_scan_this_region_nolock (root_rp);
-            pthread_mutex_unlock (&root_rp->mutex);
-        } else {
-            pthread_mutex_unlock (&vlib_rp->mutex);
-            /* 
-             * Make sure the vlib app is really there...
-             * Wait up to 100 seconds... 
-             */
-            for (i = 0; i < 10000; i++) {
-                /* Yup, it's there, off we go... */
-                if (kill (am->shmem_hdr->vl_pid, 0) >= 0)
-                    break;
-
-                ts.tv_sec = 0;
-                ts.tv_nsec = 10000*1000;  /* 10 ms */
-                while (nanosleep(&ts, &tsrem) < 0)
-                    ts = tsrem;
-            }
-        }
-
+        } 
+        pthread_mutex_unlock (&vlib_rp->mutex);
         am->vlib_rp = vlib_rp;
         vec_add1(am->mapped_shmem_regions, vlib_rp);
         return 0;

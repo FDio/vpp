@@ -1414,9 +1414,8 @@ static void vlib_main_loop (vlib_main_t * vm)
 				      /* frame */ 0,
 				      cpu_time_now);
 
-      if (PREDICT_FALSE(vm->queue_signal_pending))
-          if (vm->queue_signal_callback)
-              vm->queue_signal_callback (vm);
+      if (PREDICT_TRUE (vm->queue_signal_pending == 0))
+          vm->queue_signal_callback (vm);
 
       /* Next handle interrupts. */
       {
@@ -1533,10 +1532,14 @@ vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_EARLY_CONFIG_FUNCTION (vlib_main_configure, "vlib");
 
+static void dummy_queue_signal_callback (vlib_main_t * vm) { }
+
 /* Main function. */
 int vlib_main (vlib_main_t * vm, unformat_input_t * input)
 {
   clib_error_t * error;
+
+  vm->queue_signal_callback = dummy_queue_signal_callback;
 
   clib_time_init (&vm->clib_time);
 

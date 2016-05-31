@@ -391,6 +391,8 @@ void *svm_map_region (svm_map_region_args_t *a)
     svm_fd = shm_open((char *) shm_name, O_RDWR | O_CREAT | O_EXCL, 0777);
 
     if (svm_fd >= 0) {
+        if (fchmod (svm_fd, 0777) < 0)
+            clib_unix_warning ("segment chmod");
 
         vec_free(shm_name);
 
