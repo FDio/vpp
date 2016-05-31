@@ -204,24 +204,38 @@ jvpp_facade_callback_method_template = Template("""
     }
 """)
 
+jvpp_facade_callback_notification_method_template = Template("""
+    @Override
+    @SuppressWarnings("unchecked")
+    public void on$callback_dto($base_package.$dto_package.$callback_dto reply) {
+
+    }
+""")
+
 
 def generate_callback(func_list, base_package, dto_package, callback_package, callback_facade_package, inputfile):
     callbacks = []
     for func in func_list:
 
-        if util.is_notification(func['name']) or util.is_ignored(func['name']):
-            # TODO handle notifications
+        if util.is_ignored(func['name']):
             continue
 
         camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
-        if not util.is_reply(camel_case_name_with_suffix):
-            continue
 
-        callbacks.append(jvpp_facade_callback_method_template.substitute(base_package=base_package,
-                                                                         dto_package=dto_package,
-                                                                         callback_package=callback_package,
-                                                                         callback=util.remove_reply_suffix(camel_case_name_with_suffix) + callback_gen.callback_suffix,
-                                                                         callback_dto=camel_case_name_with_suffix))
+        if util.is_reply(camel_case_name_with_suffix):
+            callbacks.append(jvpp_facade_callback_method_template.substitute(base_package=base_package,
+                                                                             dto_package=dto_package,
+                                                                             callback_package=callback_package,
+                                                                             callback=util.remove_reply_suffix(camel_case_name_with_suffix) + callback_gen.callback_suffix,
+                                                                             callback_dto=camel_case_name_with_suffix))
+
+        if util.is_notification(func["name"]):
+            with_notification_suffix = util.add_notification_suffix(camel_case_name_with_suffix)
+            callbacks.append(jvpp_facade_callback_notification_method_template.substitute(base_package=base_package,
+                                                                             dto_package=dto_package,
+                                                                             callback_package=callback_package,
+                                                                             callback=with_notification_suffix + callback_gen.callback_suffix,
+                                                                             callback_dto=with_notification_suffix))
 
     jvpp_file = open(os.path.join(callback_facade_package, "CallbackJVppFacadeCallback.java"), 'w')
     jvpp_file.write(jvpp_facade_callback_template.substitute(inputfile=inputfile,

@@ -46,19 +46,24 @@ def generate_class_cache(func_list):
         class_name = util.underscore_to_camelcase_upper(c_name)
         ref_name = util.underscore_to_camelcase(c_name)
 
-        if not util.is_reply(class_name) or util.is_ignored(c_name) or util.is_notification(c_name):
-            # TODO handle notifications
+        if util.is_ignored(c_name):
             continue
 
-        class_references.append(class_reference_template.substitute(
+        if util.is_reply(class_name):
+            class_references.append(class_reference_template.substitute(
                 ref_name=ref_name))
-
-        find_class_invocations.append(find_class_invocation_template.substitute(
+            find_class_invocations.append(find_class_invocation_template.substitute(
                 ref_name=ref_name,
                 class_name=class_name))
+        elif util.is_notification(c_name):
+            class_references.append(class_reference_template.substitute(
+                ref_name=util.add_notification_suffix(ref_name)))
+            find_class_invocations.append(find_class_invocation_template.substitute(
+                ref_name=util.add_notification_suffix(ref_name),
+                class_name=util.add_notification_suffix(class_name)))
 
     return class_cache_template.substitute(
-            class_references="".join(class_references), find_class_invocations="".join(find_class_invocations))
+        class_references="".join(class_references), find_class_invocations="".join(find_class_invocations))
 
 
 # TODO: cache method and field identifiers to achieve better performance
@@ -116,15 +121,15 @@ vl_api_ip6_fib_counter_t_array_struct_setter_template = Template("""
     // vl_api_ip6_fib_counter_t_array_field_setter_template FIXME""")
 
 struct_setter_templates = {'u8': u8_struct_setter_template,
-                          'u16': u32_struct_setter_template,
-                          'u32': u32_struct_setter_template,
-                          'i32': u32_struct_setter_template,
-                          'u64': u64_struct_setter_template,
-                          'u8[]': u8_array_struct_setter_template,
-                          'u32[]': u32_array_struct_setter_template,
-                          'vl_api_ip4_fib_counter_t[]': vl_api_ip4_fib_counter_t_array_struct_setter_template,
-                          'vl_api_ip6_fib_counter_t[]': vl_api_ip6_fib_counter_t_array_struct_setter_template
-                  }
+                           'u16': u32_struct_setter_template,
+                           'u32': u32_struct_setter_template,
+                           'i32': u32_struct_setter_template,
+                           'u64': u64_struct_setter_template,
+                           'u8[]': u8_array_struct_setter_template,
+                           'u32[]': u32_array_struct_setter_template,
+                           'vl_api_ip4_fib_counter_t[]': vl_api_ip4_fib_counter_t_array_struct_setter_template,
+                           'vl_api_ip6_fib_counter_t[]': vl_api_ip6_fib_counter_t_array_struct_setter_template
+                           }
 
 jni_impl_template = Template("""
 /**
@@ -134,19 +139,31 @@ $api_data
  */
 JNIEXPORT jint JNICALL Java_org_openvpp_jvpp_JVppImpl_${java_name}0
 (JNIEnv * env, jclass clazz$args) {
+    printf("1 ${java_name}\\n");
     vppjni_main_t *jm = &vppjni_main;
+    printf("2 ${java_name}\\n");
     vl_api_${c_name}_t * mp;
+    printf("3 ${java_name}\\n");
     u32 my_context_id;
+    printf("4 ${java_name}\\n");
     int rv;
     rv = vppjni_sanity_check (jm);
+    printf("5 ${java_name}\\n");
     if (rv) return rv;
     my_context_id = vppjni_get_context_id (jm);
+    printf("6 ${java_name}\\n");
     $request_class
+    printf("7 ${java_name}\\n");
     $field_identifiers
+    printf("8 ${java_name}\\n");
     M(${c_name_uppercase}, ${c_name});
+    printf("9 ${java_name}\\n");
     mp->context = clib_host_to_net_u32 (my_context_id);
+    printf("10 ${java_name}\\n");
     $struct_setters
+    printf("11 ${java_name}\\n");
     S;
+    printf("12 ${java_name}\\n");
     return my_context_id;
 }""")
 
@@ -178,10 +195,10 @@ def generate_jni_impl(func_list, inputfile):
                 jni_signature = util.jni_2_signature_mapping[jni_type]
                 jni_getter = util.jni_field_accessors[jni_type]
                 field_identifiers += request_field_identifier_template.substitute(
-                        jni_type=jni_type,
-                        java_name=java_field_name,
-                        jni_signature=jni_signature,
-                        jni_getter=jni_getter)
+                    jni_type=jni_type,
+                    java_name=java_field_name,
+                    jni_signature=jni_signature,
+                    jni_getter=jni_getter)
 
             # field setters
             for t in zip(f['c_types'], f['args'], f['lengths']):
@@ -193,20 +210,20 @@ def generate_jni_impl(func_list, inputfile):
                 struct_setter_template = struct_setter_templates[c_type]
 
                 struct_setters += struct_setter_template.substitute(
-                        c_name=c_name,
-                        java_name=java_field_name,
-                        field_length=field_length)
+                    c_name=c_name,
+                    java_name=java_field_name,
+                    field_length=field_length)
 
         jni_impl.append(jni_impl_template.substitute(
-                inputfile=inputfile,
-                api_data=util.api_message_to_javadoc(f),
-                java_name=camel_case_function_name,
-                c_name_uppercase=f_name_uppercase,
-                c_name=f_name,
-                request_class=request_class,
-                field_identifiers=field_identifiers,
-                struct_setters=struct_setters,
-                args=arguments))
+            inputfile=inputfile,
+            api_data=util.api_message_to_javadoc(f),
+            java_name=camel_case_function_name,
+            c_name_uppercase=f_name_uppercase,
+            c_name=f_name,
+            request_class=request_class,
+            field_identifiers=field_identifiers,
+            struct_setters=struct_setters,
+            args=arguments))
 
     return "\n".join(jni_impl)
 
@@ -247,14 +264,14 @@ u64_array_dto_field_setter_template = Template("""
 """)
 
 dto_field_setter_templates = {'u8': default_dto_field_setter_template,
-                      'u16': u32_dto_field_setter_template,
-                      'u32': u32_dto_field_setter_template,
-                      'i32': u32_dto_field_setter_template,
-                      'u64': u64_dto_field_setter_template,
-                      'f64': default_dto_field_setter_template,
-                      'u64[]': u64_array_dto_field_setter_template,
-                      'u8[]': u8_array_dto_field_setter_template
-                      }
+                              'u16': u32_dto_field_setter_template,
+                              'u32': u32_dto_field_setter_template,
+                              'i32': u32_dto_field_setter_template,
+                              'u64': u64_dto_field_setter_template,
+                              'f64': default_dto_field_setter_template,
+                              'u64[]': u64_array_dto_field_setter_template,
+                              'u8[]': u8_array_dto_field_setter_template
+                              }
 
 msg_handler_template = Template("""
 /**
@@ -282,9 +299,15 @@ def generate_msg_handlers(func_list, inputfile):
         dto_name = util.underscore_to_camelcase_upper(handler_name)
         ref_name = util.underscore_to_camelcase(handler_name)
 
-        if is_manually_generated(handler_name) or not util.is_reply(dto_name) or util.is_ignored(handler_name) or util.is_notification(handler_name):
-            # TODO handle notifications
+        if is_manually_generated(handler_name) or util.is_ignored(handler_name):
             continue
+
+        if not util.is_reply(dto_name) and not util.is_notification(handler_name):
+            continue
+
+        if util.is_notification(handler_name):
+            dto_name = util.add_notification_suffix(dto_name)
+            ref_name = util.add_notification_suffix(ref_name)
 
         dto_setters = ''
         # dto setters
@@ -299,26 +322,26 @@ def generate_msg_handlers(func_list, inputfile):
             jni_setter = util.jni_field_accessors[jni_type]
 
             dto_setters += dto_field_id_template.substitute(
-                    java_name=java_field_name,
-                    class_ref_name=ref_name,
-                    jni_signature=jni_signature)
+                java_name=java_field_name,
+                class_ref_name=ref_name,
+                jni_signature=jni_signature)
 
             dto_setter_template = dto_field_setter_templates[c_type]
 
             dto_setters += dto_setter_template.substitute(
-                    java_name=java_field_name,
-                    jni_signature=jni_signature,
-                    c_name=c_name,
-                    jni_setter=jni_setter,
-                    field_length=field_length)
+                java_name=java_field_name,
+                jni_signature=jni_signature,
+                c_name=c_name,
+                jni_setter=jni_setter,
+                field_length=field_length)
 
         handlers.append(msg_handler_template.substitute(
-                inputfile=inputfile,
-                api_data=util.api_message_to_javadoc(f),
-                handler_name=handler_name,
-                dto_name=dto_name,
-                class_ref_name=ref_name,
-                dto_setters=dto_setters))
+            inputfile=inputfile,
+            api_data=util.api_message_to_javadoc(f),
+            handler_name=handler_name,
+            dto_name=dto_name,
+            class_ref_name=ref_name,
+            dto_setters=dto_setters))
 
     return "\n".join(handlers)
 
@@ -333,13 +356,12 @@ def generate_handler_registration(func_list):
         name = f['name']
         camelcase_name = util.underscore_to_camelcase(f['name'])
 
-        if not util.is_reply(camelcase_name) or util.is_ignored(name) or util.is_notification(name):
-            # TODO handle notifications
+        if (not util.is_reply(camelcase_name) and not util.is_notification(name)) or util.is_ignored(name):
             continue
 
         handler_registration.append(handler_registration_template.substitute(
-                name=name,
-                upercase_name=name.upper()))
+            name=name,
+            upercase_name=name.upper()))
 
     return "".join(handler_registration)
 
@@ -374,11 +396,11 @@ def generate_jvpp(func_list, inputfile):
 
     jvpp_c_file = open("jvpp_gen.h", 'w')
     jvpp_c_file.write(jvpp_c_template.substitute(
-            inputfile=inputfile,
-            class_cache=class_cache,
-            jni_implementations=jni_impl,
-            msg_handlers=msg_handlers,
-            handler_registration=handler_registration))
+        inputfile=inputfile,
+        class_cache=class_cache,
+        jni_implementations=jni_impl,
+        msg_handlers=msg_handlers,
+        handler_registration=handler_registration))
     jvpp_c_file.flush()
     jvpp_c_file.close()
 
