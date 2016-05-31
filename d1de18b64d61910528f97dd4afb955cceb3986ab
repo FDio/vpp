@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_12895926",
+        "filename": "svm/svm.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-05-31T18:22:53Z",
+      "side": 1,
+      "message": "Ideally we\u0027d make use of posix a group and only allow clients in a specific group to use the shm (ie, 0770 would be the desired mode, and fchown() the shm to the group in question)",
+      "range": {
+        "startLine": 394,
+        "startChar": 3,
+        "endLine": 395,
+        "endChar": 48
+      },
+      "revId": "d1de18b64d61910528f97dd4afb955cceb3986ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
