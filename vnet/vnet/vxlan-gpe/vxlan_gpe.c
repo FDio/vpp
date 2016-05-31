@@ -572,6 +572,10 @@ VLIB_CLI_COMMAND (show_vxlan_gpe_tunnel_command, static) = {
 clib_error_t *vxlan_gpe_init (vlib_main_t *vm)
 {
   vxlan_gpe_main_t *gm = &vxlan_gpe_main;
+  ip4_vxlan_gpe_header_t * hdr4;
+  ip4_header_t * ip4;
+  ip6_vxlan_gpe_header_t * hdr6;
+  ip6_header_t * ip6;
   
   gm->vnet_main = vnet_get_main();
   gm->vlib_main = vm;
@@ -582,6 +586,20 @@ clib_error_t *vxlan_gpe_init (vlib_main_t *vm)
   gm->vxlan6_gpe_tunnel_by_key
     = hash_create_mem (0, sizeof(vxlan6_gpe_tunnel_key_t), sizeof (uword));
 
+  /* init dummy rewrite string for deleted vxlan-gpe tunnels */
+  _vec_len(vxlan4_gpe_dummy_rewrite) = sizeof(ip4_vxlan_gpe_header_t);
+  hdr4 = (ip4_vxlan_gpe_header_t *) vxlan4_gpe_dummy_rewrite;
+  ip4 = &hdr4->ip4;
+  /* minimal rewrite setup, see vxlan_gpe_rewite() above as reference */
+  ip4->ip_version_and_header_length = 0x45;
+  ip4->checksum = ip4_header_checksum (ip4);
+
+  /* Same again for IPv6 */
+  _vec_len(vxlan6_gpe_dummy_rewrite) = sizeof(ip6_vxlan_gpe_header_t);
+  hdr6 = (ip6_vxlan_gpe_header_t *) vxlan6_gpe_dummy_rewrite;
+  ip6 = &hdr6->ip6;
+  /* minimal rewrite setup, see vxlan_rewite() above as reference */
+  ip6->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(6 << 28);
 
   udp_register_dst_port (vm, UDP_DST_PORT_vxlan_gpe,
                          vxlan4_gpe_input_node.index, 1 /* is_ip4 */);
