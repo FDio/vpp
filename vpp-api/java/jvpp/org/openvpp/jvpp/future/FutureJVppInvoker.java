@@ -21,11 +21,12 @@ import org.openvpp.jvpp.dto.JVppReply;
 import org.openvpp.jvpp.dto.JVppRequest;
 
 import java.util.concurrent.CompletionStage;
+import org.openvpp.jvpp.notification.NotificationRegistryProvider;
 
 /**
 * Future facade on top of JVpp
 */
-public interface FutureJVppInvoker extends AutoCloseable {
+public interface FutureJVppInvoker extends NotificationRegistryProvider, AutoCloseable {
 
     /**
      * Invoke asynchronous operation on VPP
