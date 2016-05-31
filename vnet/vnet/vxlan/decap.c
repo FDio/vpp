@@ -186,21 +186,21 @@ vxlan_input (vlib_main_t * vm,
             key6_0.vni = vxlan0->vni_reserved;
 
             if (PREDICT_FALSE (memcmp(&key6_0, &last_key6, sizeof(last_key6)) != 0))
-            {
-                p0 = hash_get (vxm->vxlan6_tunnel_by_key, pointer_to_uword(&key6_0));
+              {
+                p0 = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_0);
 
-              if (p0 == 0)
-                {
-                  error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-                  next0 = VXLAN_INPUT_NEXT_DROP;
-                  goto trace0;
-                }
+                if (p0 == 0)
+                  {
+                    error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
+                    next0 = VXLAN_INPUT_NEXT_DROP;
+                    goto trace0;
+                  }
 
-                last_key6 = key6_0;
-              tunnel_index0 = last_tunnel_index = p0[0];
-            }
-          else
-            tunnel_index0 = last_tunnel_index;
+                clib_memcpy (&last_key6, &key6_0, sizeof(key6_0));
+                tunnel_index0 = last_tunnel_index = p0[0];
+              }
+            else
+              tunnel_index0 = last_tunnel_index;
           }
 
           t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
@@ -276,21 +276,21 @@ vxlan_input (vlib_main_t * vm,
             key6_1.vni = vxlan1->vni_reserved;
 
             if (PREDICT_FALSE (memcmp(&key6_1, &last_key6, sizeof(last_key6)) != 0))
-            {
-                p1 = hash_get (vxm->vxlan6_tunnel_by_key, pointer_to_uword(&key6_1));
+              {
+                p1 = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_1);
 
-              if (p1 == 0)
-                {
-                  error1 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-                  next1 = VXLAN_INPUT_NEXT_DROP;
-                  goto trace1;
-                }
+                if (p1 == 0)
+                  {
+                    error1 = VXLAN_ERROR_NO_SUCH_TUNNEL;
+                    next1 = VXLAN_INPUT_NEXT_DROP;
+                    goto trace1;
+                  }
 
-                last_key6 = key6_1;
-              tunnel_index1 = last_tunnel_index = p1[0];
-            }
-          else
-            tunnel_index1 = last_tunnel_index;
+                clib_memcpy (&last_key6, &key6_1, sizeof(key6_1));
+                tunnel_index1 = last_tunnel_index = p1[0];
+              }
+            else
+              tunnel_index1 = last_tunnel_index;
           }
 
           t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
@@ -420,21 +420,21 @@ vxlan_input (vlib_main_t * vm,
             key6_0.vni = vxlan0->vni_reserved;
 
             if (PREDICT_FALSE (memcmp(&key6_0, &last_key6, sizeof(last_key6)) != 0))
-            {
-                p0 = hash_get (vxm->vxlan6_tunnel_by_key, pointer_to_uword(&key6_0));
+              {
+                p0 = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6_0);
 
-              if (p0 == 0)
-                {
-                  error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
-                  next0 = VXLAN_INPUT_NEXT_DROP;
-                  goto trace00;
-                }
+                if (p0 == 0)
+                  {
+                    error0 = VXLAN_ERROR_NO_SUCH_TUNNEL;
+                    next0 = VXLAN_INPUT_NEXT_DROP;
+                    goto trace00;
+                  }
 
-                last_key6 = key6_0;
-              tunnel_index0 = last_tunnel_index = p0[0];
-            }
-          else
-            tunnel_index0 = last_tunnel_index;
+                clib_memcpy (&last_key6, &key6_0, sizeof(key6_0));
+                tunnel_index0 = last_tunnel_index = p0[0];
+              }
+            else
+              tunnel_index0 = last_tunnel_index;
           }
 
           t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
