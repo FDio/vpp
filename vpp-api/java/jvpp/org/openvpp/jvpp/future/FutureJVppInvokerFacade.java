@@ -25,11 +25,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import org.openvpp.jvpp.notification.NotificationRegistryProviderContext;
 
 /**
 * Future facade on top of JVpp
 */
-public class FutureJVppInvokerFacade implements FutureJVppInvoker {
+public class FutureJVppInvokerFacade extends NotificationRegistryProviderContext implements FutureJVppInvoker {
 
     private final JVpp jvpp;
 
@@ -39,7 +40,7 @@ public class FutureJVppInvokerFacade implements FutureJVppInvoker {
     private final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requests;
 
     public FutureJVppInvokerFacade(final JVpp jvpp,
-                     final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requestMap) {
+                                   final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requestMap) {
         this.jvpp =  Objects.requireNonNull(jvpp, "Null jvpp");
         // Request map represents the shared state between this facade and it's callback
         // where facade puts futures in and callback completes + removes them

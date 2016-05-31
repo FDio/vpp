@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os, util
+import os
 from string import Template
+
+import util
 
 dto_template = Template("""
 package $base_package.$dto_package;
@@ -40,6 +42,7 @@ send_template = Template("""    @Override
         return jvpp.$method_name($args);
     }\n""")
 
+
 def generate_dtos(func_list, base_package, dto_package, inputfile):
     """ Generates dto objects in a dedicated package """
     print "Generating DTOs"
@@ -52,8 +55,7 @@ def generate_dtos(func_list, base_package, dto_package, inputfile):
         camel_case_method_name = util.underscore_to_camelcase(func['name'])
         dto_path = os.path.join(dto_package, camel_case_dto_name + ".java")
 
-        if util.is_notification(func['name']) or util.is_ignored(func['name']):
-            # TODO handle notifications
+        if util.is_ignored(func['name']):
             continue
 
         fields = ""
@@ -66,42 +68,61 @@ def generate_dtos(func_list, base_package, dto_package, inputfile):
                                                 name=field_name)
         methods = ""
         base_type = ""
-        if util.is_reply(camel_case_dto_name):
-            description = "vpe.api reply DTO"
-            request_dto_name = get_request_name(camel_case_dto_name, func['name'])
-            if util.is_details(camel_case_dto_name):
-                # FIXME assumption that dump calls end with "Dump" suffix. Not enforced in vpe.api
-                base_type += "JVppReply<%s.%s.%s>" % (base_package, dto_package, request_dto_name + "Dump")
-                generate_dump_reply_dto(request_dto_name, base_package, dto_package, camel_case_dto_name,
-                                        camel_case_method_name, func)
-            else:
-                base_type += "JVppReply<%s.%s.%s>" % (base_package, dto_package, request_dto_name)
-        else:
-            args = "" if fields is "" else "this"
-            methods = send_template.substitute(method_name=camel_case_method_name,
-                                               base_package=base_package,
-                                               args=args)
-            if util.is_dump(camel_case_dto_name):
-                base_type += "JVppDump"
-                description = "vpe.api dump request DTO"
-            else:
-                base_type += "JVppRequest"
-                description = "vpe.api request DTO"
 
-        dto_file = open(dto_path, 'w')
-        dto_file.write(dto_template.substitute(inputfile=inputfile,
-                                               description=description,
-                                               docs=util.api_message_to_javadoc(func),
-                                               cls_name=camel_case_dto_name,
-                                               fields=fields,
-                                               methods=methods,
-                                               base_package=base_package,
-                                               base_type=base_type,
-                                               dto_package=dto_package))
-        dto_file.flush()
-        dto_file.close()
+        # Generate request/reply or dump/dumpReply even if structure can be used as notification
+        if not util.is_just_notification(func["name"]):
+            if util.is_reply(camel_case_dto_name):
+                description = "vpe.api reply DTO"
+                request_dto_name = get_request_name(camel_case_dto_name, func['name'])
+                if util.is_details(camel_case_dto_name):
+                    # FIXME assumption that dump calls end with "Dump" suffix. Not enforced in vpe.api
+                    base_type += "JVppReply<%s.%s.%s>" % (base_package, dto_package, request_dto_name + "Dump")
+                    generate_dump_reply_dto(request_dto_name, base_package, dto_package, camel_case_dto_name,
+                                            camel_case_method_name, func)
+                else:
+                    base_type += "JVppReply<%s.%s.%s>" % (base_package, dto_package, request_dto_name)
+            else:
+                args = "" if fields is "" else "this"
+                methods = send_template.substitute(method_name=camel_case_method_name,
+                                                   base_package=base_package,
+                                                   args=args)
+                if util.is_dump(camel_case_dto_name):
+                    base_type += "JVppDump"
+                    description = "vpe.api dump request DTO"
+                else:
+                    base_type += "JVppRequest"
+                    description = "vpe.api request DTO"
+
+            write_dto_file(base_package, base_type, camel_case_dto_name, description, dto_package, dto_path, fields, func,
+                           inputfile, methods)
+
+        # for structures that are also used as notifications, generate dedicated notification DTO
+        if util.is_notification(func["name"]):
+            base_type = "JVppNotification"
+            description = "vpe.api notification DTO"
+            camel_case_dto_name = util.add_notification_suffix(camel_case_dto_name)
+            methods = ""
+            dto_path = os.path.join(dto_package, camel_case_dto_name + ".java")
+            write_dto_file(base_package, base_type, camel_case_dto_name, description, dto_package, dto_path, fields, func,
+                           inputfile, methods)
 
     flush_dump_reply_dtos(inputfile)
+
+
+def write_dto_file(base_package, base_type, camel_case_dto_name, description, dto_package, dto_path, fields, func,
+                   inputfile, methods):
+    dto_file = open(dto_path, 'w')
+    dto_file.write(dto_template.substitute(inputfile=inputfile,
+                                           description=description,
+                                           docs=util.api_message_to_javadoc(func),
+                                           cls_name=camel_case_dto_name,
+                                           fields=fields,
+                                           methods=methods,
+                                           base_package=base_package,
+                                           base_type=base_type,
+                                           dto_package=dto_package))
+    dto_file.flush()
+    dto_file.close()
 
 
 dump_dto_suffix = "ReplyDump"

@@ -53,16 +53,21 @@ def generate_class_cache(func_list):
         class_name = util.underscore_to_camelcase_upper(c_name)
         ref_name = util.underscore_to_camelcase(c_name)
 
-        if not util.is_reply(class_name) or util.is_ignored(c_name) or util.is_notification(c_name):
-            # TODO handle notifications
+        if util.is_ignored(c_name):
             continue
 
-        class_references.append(class_reference_template.substitute(
+        if util.is_reply(class_name):
+            class_references.append(class_reference_template.substitute(
                 ref_name=ref_name))
-
-        find_class_invocations.append(find_class_invocation_template.substitute(
+            find_class_invocations.append(find_class_invocation_template.substitute(
                 ref_name=ref_name,
                 class_name=class_name))
+        elif util.is_notification(c_name):
+            class_references.append(class_reference_template.substitute(
+                ref_name=util.add_notification_suffix(ref_name)))
+            find_class_invocations.append(find_class_invocation_template.substitute(
+                ref_name=util.add_notification_suffix(ref_name),
+                class_name=util.add_notification_suffix(class_name)))
 
     # add exception class to class cache
     ref_name = 'callbackException'
@@ -73,7 +78,7 @@ def generate_class_cache(func_list):
             ref_name=ref_name,
             class_name=class_name))
     return class_cache_template.substitute(
-            class_references="".join(class_references), find_class_invocations="".join(find_class_invocations))
+        class_references="".join(class_references), find_class_invocations="".join(find_class_invocations))
 
 
 # TODO: cache method and field identifiers to achieve better performance
@@ -174,7 +179,7 @@ def generate_jni_impl(func_list, inputfile):
         f_name = f['name']
         camel_case_function_name = util.underscore_to_camelcase(f_name)
         if is_manually_generated(f_name) or util.is_reply(camel_case_function_name) \
-                or util.is_ignored(f_name) or util.is_notification(f_name):
+                or util.is_ignored(f_name) or util.is_just_notification(f_name):
             continue
 
         arguments = ''
@@ -331,9 +336,15 @@ def generate_msg_handlers(func_list, inputfile):
         dto_name = util.underscore_to_camelcase_upper(handler_name)
         ref_name = util.underscore_to_camelcase(handler_name)
 
-        if is_manually_generated(handler_name) or not util.is_reply(dto_name) or util.is_ignored(handler_name) or util.is_notification(handler_name):
-            # TODO handle notifications
+        if is_manually_generated(handler_name) or util.is_ignored(handler_name):
             continue
+
+        if not util.is_reply(dto_name) and not util.is_notification(handler_name):
+            continue
+
+        if util.is_notification(handler_name):
+            dto_name = util.add_notification_suffix(dto_name)
+            ref_name = util.add_notification_suffix(ref_name)
 
         dto_setters = ''
         err_handler = ''
@@ -391,13 +402,12 @@ def generate_handler_registration(func_list):
         name = f['name']
         camelcase_name = util.underscore_to_camelcase(f['name'])
 
-        if not util.is_reply(camelcase_name) or util.is_ignored(name) or util.is_notification(name):
-            # TODO handle notifications
+        if (not util.is_reply(camelcase_name) and not util.is_notification(name)) or util.is_ignored(name):
             continue
 
         handler_registration.append(handler_registration_template.substitute(
-                name=name,
-                upercase_name=name.upper()))
+            name=name,
+            upercase_name=name.upper()))
 
     return "".join(handler_registration)
 
