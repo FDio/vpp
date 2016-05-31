@@ -121,8 +121,8 @@ def generate_jvpp(func_list, base_package, dto_package, inputfile):
     methods_impl = []
     for func in func_list:
 
-        if util.is_notification(func['name']) or util.is_ignored(func['name']):
-            # TODO handle notifications
+        # Skip structures that are used only as notifications
+        if util.is_just_notification(func['name']) or util.is_ignored(func['name']):
             continue
 
         camel_case_name = util.underscore_to_camelcase(func['name'])
