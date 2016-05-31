@@ -140,6 +140,38 @@ static u8 * format_policer_type (u8 * s, va_list * va)
   return s;
 }
 
+static u8 * format_dscp (u8 * s, va_list * va)
+{
+  u32 i = va_arg (*va, u32);
+  char * t = 0;
+
+  switch (i) {
+  #define _(v,f,str) case VNET_DSCP_##f: t = str; break;
+    foreach_vnet_dscp
+  #undef _
+    default:
+      return format (s, "ILLEGAL");
+  }
+  s = format (s, "%s", t);
+  return s;
+}
+
+static u8 * format_policer_action_type (u8 * s, va_list * va)
+{
+  sse2_qos_pol_action_params_st * a
+    = va_arg (*va, sse2_qos_pol_action_params_st *);
+
+  if (a->action_type == SSE2_QOS_ACTION_DROP)
+    s = format (s, "drop");
+  else if (a->action_type == SSE2_QOS_ACTION_TRANSMIT)
+    s = format (s, "transmit");
+  else if (a->action_type == SSE2_QOS_ACTION_MARK_AND_TRANSMIT)
+    s = format (s, "mark-and-transmit %U", format_dscp, a->dscp);
+  else
+    s = format (s, "ILLEGAL");
+  return s;
+}
+
 u8 * format_policer_config (u8 * s, va_list * va)
 {
   sse2_qos_pol_cfg_params_st * c 
@@ -154,6 +186,10 @@ u8 * format_policer_config (u8 * s, va_list * va)
   s = format (s, "rate type %U, round type %U\n",
               format_policer_rate_type, c,
               format_policer_round_type, c);
+  s = format (s, "conform action %U, exceed action %U, violate action %U\n",
+              format_policer_action_type, &c->conform_action,
+              format_policer_action_type, &c->exceed_action,
+              format_policer_action_type, &c->violate_action);
   return s;
 }
 
@@ -263,6 +299,54 @@ unformat_policer_eb (unformat_input_t * input, va_list * va)
   return 0;
 }
 
+static uword
+unformat_dscp (unformat_input_t * input, va_list * va)
+{
+  u8 * r = va_arg (*va, u8 *);
+
+  if (0) ;
+#define _(v,f,str) else if (unformat (input, str)) *r = VNET_DSCP_##f;
+      foreach_vnet_dscp
+#undef _
+  else
+    return 0;
+  return 1;
+}
+
+static uword
+unformat_policer_action_type (unformat_input_t * input, va_list * va)
+{
+  sse2_qos_pol_action_params_st * a
+    = va_arg (*va, sse2_qos_pol_action_params_st *);
+
+  if (unformat (input, "drop"))
+    a->action_type = SSE2_QOS_ACTION_DROP;
+  else if (unformat (input, "transmit"))
+    a->action_type = SSE2_QOS_ACTION_TRANSMIT;
+  else if (unformat (input, "mark-and-transmit %U", unformat_dscp, &a->dscp))
+    a->action_type = SSE2_QOS_ACTION_MARK_AND_TRANSMIT;
+  else
+    return 0;
+  return 1;
+}
+
+static uword
+unformat_policer_action (unformat_input_t * input, va_list * va)
+{
+  sse2_qos_pol_cfg_params_st * c
+    = va_arg (*va, sse2_qos_pol_cfg_params_st *);
+
+  if (unformat (input, "conform-action %U", unformat_policer_action_type,
+      &c->conform_action))
+    return 1;
+  else if (unformat (input, "exceed-action %U", unformat_policer_action_type,
+      &c->exceed_action))
+    return 1;
+  else if (unformat (input, "violate-action %U", unformat_policer_action_type,
+      &c->violate_action))
+    return 1;
+  return 0;
+}
 
 #define foreach_config_param                    \
 _(eb)                                           \
@@ -271,7 +355,8 @@ _(eir)                                          \
 _(cir)                                          \
 _(rate_type)                                    \
 _(round_type)                                   \
-_(type)
+_(type)                                         \
+_(action)
 
 static clib_error_t *
 configure_policer_command_fn (vlib_main_t * vm,

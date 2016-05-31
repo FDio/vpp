@@ -63,7 +63,9 @@ typedef struct {
     uint32_t single_rate;    // 1 = single rate policer, 0 = two rate policer
     uint32_t color_aware;    // for hierarchical policing
     uint32_t scale;          // power-of-2 shift amount for lower rates
-    uint32_t pad[2];
+    uint8_t action[3];
+    uint8_t mark_dscp[3];
+    uint8_t pad[2];
 
     // Fields are marked as 2R if they are only used for a 2-rate policer,
     // and MOD if they are modified as part of the update operation.

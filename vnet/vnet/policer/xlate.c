@@ -1129,6 +1129,13 @@ sse2_pol_logical_2_physical (sse2_qos_pol_cfg_params_st    *cfg,
     kbps_cfg.rnd_type  = cfg->rnd_type;
     kbps_cfg.rfc       = cfg->rfc;
 
+    phys->action[POLICE_CONFORM]    = cfg->conform_action.action_type;
+    phys->mark_dscp[POLICE_CONFORM] = cfg->conform_action.dscp;
+    phys->action[POLICE_EXCEED]     = cfg->exceed_action.action_type;
+    phys->mark_dscp[POLICE_EXCEED]  = cfg->exceed_action.dscp;
+    phys->action[POLICE_VIOLATE]    = cfg->violate_action.action_type;
+    phys->mark_dscp[POLICE_VIOLATE] = cfg->violate_action.dscp;
+
 #if !defined (INTERNAL_SS) && !defined (X86)
     // convert logical into hw params which involves qos calculations
     rc = sse2_pol_compute_hw_params(&kbps_cfg, &pol_hw);

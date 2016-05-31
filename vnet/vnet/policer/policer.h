@@ -48,12 +48,40 @@ typedef enum {
   VNET_POLICER_INDEX_BY_EITHER,
 } vnet_policer_index_t;
 
-typedef 
-enum {
+typedef enum {
   VNET_POLICER_NEXT_TRANSMIT,
   VNET_POLICER_NEXT_DROP,
   VNET_POLICER_N_NEXT,
 } vnet_policer_next_t;
+
+#define foreach_vnet_dscp \
+  _(0 , CS0,  "CS0")  \
+  _(8 , CS1,  "CS1")  \
+  _(10, AF11, "AF11") \
+  _(12, AF12, "AF12") \
+  _(14, AF13, "AF13") \
+  _(16, CS2,  "CS2")  \
+  _(18, AF21, "AF21") \
+  _(20, AF22, "AF22") \
+  _(22, AF23, "AF23") \
+  _(24, CS3,  "CS3")  \
+  _(26, AF31, "AF31") \
+  _(28, AF32, "AF32") \
+  _(30, AF33, "AF33") \
+  _(32, CS4,  "CS4")  \
+  _(34, AF41, "AF41") \
+  _(36, AF42, "AF42") \
+  _(38, AF43, "AF43") \
+  _(40, CS5,  "CS5")  \
+  _(46, EF,   "EF")   \
+  _(48, CS6,  "CS6")  \
+  _(50, CS7,  "CS7")
+
+typedef enum {
+#define _(v,f,str) VNET_DSCP_##f = v,
+  foreach_vnet_dscp
+#undef _
+} vnet_dscp_t;
 
 u8 * format_policer_instance (u8 * s, va_list * va);
 clib_error_t * policer_add_del (vlib_main_t *vm,
