@@ -90,11 +90,6 @@ typedef struct {
   u32 hw_if_index;
   u32 sw_if_index;
 
-  union { /* storage for the hash key */
-	vxlan4_gpe_tunnel_key_t key4;
-	vxlan6_gpe_tunnel_key_t key6;
-  };
-
   /* flags */
   u32 flags;
 } vxlan_gpe_tunnel_t;

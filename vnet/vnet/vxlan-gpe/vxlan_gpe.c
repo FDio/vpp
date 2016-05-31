@@ -228,7 +228,7 @@ int vnet_vxlan_gpe_add_del_tunnel
     key6.remote.as_u64[1] = a->remote.ip6.as_u64[1];
     key6.vni = clib_host_to_net_u32 (a->vni << 8);
 
-    p = hash_get(gm->vxlan6_gpe_tunnel_by_key, &key6);
+    p = hash_get_mem(gm->vxlan6_gpe_tunnel_by_key, &key6);
   }
   
   if (a->is_add)
@@ -249,11 +249,6 @@ int vnet_vxlan_gpe_add_del_tunnel
       if (!a->is_ip6) foreach_copy_ipv4
       else            foreach_copy_ipv6
 #undef _
-
-      if (a->is_ip6) {
-        /* copy the key */
-        t->key6 = key6;
-      }
 
       if (!a->is_ip6) t->flags |= VXLAN_GPE_TUNNEL_IS_IPV4;
 
@@ -279,8 +274,8 @@ int vnet_vxlan_gpe_add_del_tunnel
       else
       {
           key6_copy = clib_mem_alloc (sizeof (*key6_copy));
-          clib_memcpy (key6_copy, &key4, sizeof (*key6_copy));
-          hash_set_mem (gm->vxlan4_gpe_tunnel_by_key, key6_copy,
+          clib_memcpy (key6_copy, &key6, sizeof (*key6_copy));
+          hash_set_mem (gm->vxlan6_gpe_tunnel_by_key, key6_copy,
                         t - gm->tunnels);
       }
       
