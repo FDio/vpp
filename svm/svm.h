@@ -74,6 +74,9 @@ typedef struct svm_map_region_args_ {
     uword flags;
     char *backing_file;
     uword backing_mmap_size;
+    /* uid, gid to own the svm region(s) */
+    int uid;
+    int gid;
 } svm_map_region_args_t;
 
 
@@ -108,6 +111,7 @@ typedef struct {
 void *svm_region_find_or_create (svm_map_region_args_t *a);
 void svm_region_init(void);
 void svm_region_init_chroot(char *root_path);
+void svm_region_init_chroot_uid_gid(char *root_path, int uid, int gid);
 void svm_region_exit (void);
 void svm_region_unmap(void *rp_arg);
 void svm_client_scan (char *root_path);
