@@ -391,6 +391,11 @@ void *svm_map_region (svm_map_region_args_t *a)
     svm_fd = shm_open((char *) shm_name, O_RDWR | O_CREAT | O_EXCL, 0777);
 
     if (svm_fd >= 0) {
+        if (fchmod (svm_fd, 0770) < 0)
+            clib_unix_warning ("segment chmod");
+        /* This turns out to fail harmlessly if the client starts first */
+        if (fchown (svm_fd, a->uid, a->gid) < 0)
+            clib_unix_warning ("segment chown [ok if client starts first]");
 
         vec_free(shm_name);
 
@@ -615,17 +620,18 @@ static void svm_mutex_cleanup (void)
     }
 }
 
-static void svm_region_init_internal (char *root_path)
+static void svm_region_init_internal (char *root_path, int uid, int gid)
 {
     svm_region_t *rp;
-    svm_map_region_args_t *a=0;
+    svm_map_region_args_t _a, *a=&_a;
     u64 ticks = clib_cpu_time_now();
     uword randomize_baseva;
 
     /* guard against klutz calls */
-    root_rp_refcount++;
     if (root_rp)
         return;
+
+    root_rp_refcount++;
 
     atexit(svm_mutex_cleanup);
 
@@ -635,12 +641,14 @@ static void svm_region_init_internal (char *root_path)
     else
         randomize_baseva = (ticks & 3) * MMAP_PAGESIZE;
 
-    vec_validate(a,0);
+    memset (a, 0, sizeof (*a));
     a->root_path = root_path;
     a->name = SVM_GLOBAL_REGION_NAME;
     a->baseva = SVM_GLOBAL_REGION_BASEVA + randomize_baseva;
     a->size = SVM_GLOBAL_REGION_SIZE;
     a->flags = SVM_FLAGS_NODATA;
+    a->uid = uid;
+    a->gid = gid;
 
     rp = svm_map_region (a);
     ASSERT(rp);
@@ -663,18 +671,22 @@ static void svm_region_init_internal (char *root_path)
         svm_pop_heap (oldheap);
     }
     region_unlock(rp);
-    vec_free (a);
     root_rp = rp;
 }
 
 void svm_region_init (void)
 {
-    svm_region_init_internal (0);
+    svm_region_init_internal (0, 0 /* uid */, 0 /* gid */);
 }
 
 void svm_region_init_chroot (char *root_path)
 {
-    svm_region_init_internal (root_path);
+    svm_region_init_internal (root_path, 0 /* uid */, 0 /* gid */);
+}
+
+void svm_region_init_chroot_uid_gid (char *root_path, int uid, int gid)
+{
+    svm_region_init_internal (root_path, uid, gid);
 }
 
 void *svm_region_find_or_create (svm_map_region_args_t *a)
