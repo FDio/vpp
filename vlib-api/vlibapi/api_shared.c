@@ -647,6 +647,14 @@ vl_api_init (vlib_main_t *vm)
     once = 1;
 
     am->region_name = "/unset";
+    /* 
+     * Eventually passed to fchown, -1 => "current user" 
+     * instead of 0 => "root". A very fine disctinction at best.
+     */
+    if (am->api_uid == 0)
+        am->api_uid = -1;
+    if (am->api_gid == 0)
+        am->api_gid = -1;
 
     return (0);
 }

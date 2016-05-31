@@ -6301,9 +6301,10 @@ vpe_api_init (vlib_main_t *vm)
 VLIB_INIT_FUNCTION(vpe_api_init);
 
 static clib_error_t *
-chroot_config (vlib_main_t * vm, unformat_input_t * input)
+api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 {
   u8 * chroot_path;
+  int uid, gid;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -6312,13 +6313,17 @@ chroot_config (vlib_main_t * vm, unformat_input_t * input)
           vec_add1 (chroot_path, 0);
           vl_set_memory_root_path ((char *)chroot_path);
         }
+      else if (unformat (input, "uid %d", &uid))
+        vl_set_memory_uid (uid);
+      else if (unformat (input, "gid %d", &gid))
+        vl_set_memory_gid (gid);
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+        return clib_error_return (0, "unknown input `%U'",
+                                  format_unformat_error, input);
     }
   return 0;
 }
-VLIB_EARLY_CONFIG_FUNCTION (chroot_config, "chroot");
+VLIB_EARLY_CONFIG_FUNCTION (api_segment_config, "api-segment");
 
 void * get_unformat_vnet_sw_interface (void)
 {

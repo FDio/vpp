@@ -133,6 +133,8 @@ int vl_client_api_map (char *region_name);
 void vl_client_api_unmap (void);
 void vl_set_memory_region_name (char *name);
 void vl_set_memory_root_path (char *root_path);
+void vl_set_memory_uid (int uid);
+void vl_set_memory_gid (int gid);
 void vl_enable_disable_memory_api (vlib_main_t *vm, int yesno);
 void vl_client_disconnect_from_vlib (void);
 int vl_client_connect_to_vlib(char *svm_name, char *client_name, 
