@@ -136,6 +136,13 @@ typedef struct {
   /* Mapping from sw_if_index to tunnel index */
   u32 * tunnel_index_by_sw_if_index;
 
+  /* Dummy rewrite for deleted vxlangpe_tunnels with hw_if_indices as above */
+  u64 dummy4_str [sizeof(ip4_vxlan_gpe_header_t)/sizeof(u64) + 2];
+#define vxlan4_gpe_dummy_rewrite ((u8 *) &vxlan_gpe_main.dummy4_str[1])
+
+  u64 dummy6_str [sizeof(ip6_vxlan_gpe_header_t)/sizeof(u64) + 2];
+#define vxlan6_gpe_dummy_rewrite ((u8 *) &vxlan_gpe_main.dummy6_str[1])
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;

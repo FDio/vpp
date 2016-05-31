@@ -21,7 +21,8 @@
 
 /* Statistics (not really errors) */
 #define foreach_vxlan_gpe_encap_error    \
-_(ENCAPSULATED, "good packets encapsulated")
+_(ENCAPSULATED, "good packets encapsulated") \
+_(DEL_TUNNEL, "deleted tunnel packets")
 
 static char * vxlan_gpe_encap_error_strings[] = {
 #define _(sym,string) string,
@@ -177,6 +178,22 @@ vxlan_gpe_encap (vlib_main_t * vm,
       is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
       is_ip4_1 = (t1->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
 
+      /* Check rewrite string and drop packet if tunnel is deleted */
+      if (PREDICT_FALSE(t0->rewrite == vxlan4_gpe_dummy_rewrite ||
+                        t0->rewrite == vxlan6_gpe_dummy_rewrite))
+      {
+        next0 = VXLAN_GPE_ENCAP_NEXT_DROP;
+        b0->error = node->errors[VXLAN_GPE_ENCAP_ERROR_DEL_TUNNEL];
+        pkts_encapsulated --;
+      }  /* Still go through normal encap with dummy rewrite */
+      if (PREDICT_FALSE(t1->rewrite == vxlan4_gpe_dummy_rewrite ||
+                        t1->rewrite == vxlan6_gpe_dummy_rewrite))
+      {
+        next1 = VXLAN_GPE_ENCAP_NEXT_DROP;
+        b1->error = node->errors[VXLAN_GPE_ENCAP_ERROR_DEL_TUNNEL];
+        pkts_encapsulated --;
+      }  /* Still go through normal encap with dummy rewrite */
+
       if (PREDICT_TRUE(is_ip4_0 == is_ip4_1))
       {
         vxlan_gpe_encap_two_inline (ngm, b0, b1, t0, t1, &next0, &next1,is_ip4_0);
@@ -272,6 +289,15 @@ vxlan_gpe_encap (vlib_main_t * vm,
       t0 = pool_elt_at_index(ngm->tunnels, hi0->dev_instance);
 
       is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
+
+      /* Check rewrite string and drop packet if tunnel is deleted */
+      if (PREDICT_FALSE(t0->rewrite == vxlan4_gpe_dummy_rewrite ||
+                        t0->rewrite == vxlan6_gpe_dummy_rewrite))
+      {
+        next0 = VXLAN_GPE_ENCAP_NEXT_DROP;
+        b0->error = node->errors[VXLAN_GPE_ENCAP_ERROR_DEL_TUNNEL];
+        pkts_encapsulated --;
+      }  /* Still go through normal encap with dummy rewrite */
 
       vxlan_gpe_encap_one_inline (ngm, b0, t0, &next0, is_ip4_0);
 
