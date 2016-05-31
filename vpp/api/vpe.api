@@ -3519,6 +3519,12 @@ define af_packet_delete_reply {
     @param rate_type - rate type
     @param round_type - rounding type
     @param type - policer algorithm
+    @param conform_action_type - conform action type
+    @param conform_dscp - DSCP for conform mar-and-transmit action
+    @param exceed_action_type - exceed action type
+    @param exceed_dscp - DSCP for exceed mar-and-transmit action
+    @param violate_action_type - violate action type
+    @param violate_dscp - DSCP for violate mar-and-transmit action
 */
 define policer_add_del {
     u32 client_index;
@@ -3533,6 +3539,12 @@ define policer_add_del {
     u8 rate_type;
     u8 round_type;
     u8 type;
+    u8 conform_action_type;
+    u8 conform_dscp;
+    u8 exceed_action_type;
+    u8 exceed_dscp;
+    u8 violate_action_type;
+    u8 violate_dscp;
 };
 
 /** \brief Add/del policer response
@@ -3568,6 +3580,12 @@ define policer_dump {
     @param rate_type - rate type
     @param round_type - rounding type
     @param type - policer algorithm
+    @param conform_action_type - conform action type
+    @param conform_dscp - DSCP for conform mar-and-transmit action
+    @param exceed_action_type - exceed action type
+    @param exceed_dscp - DSCP for exceed mar-and-transmit action
+    @param violate_action_type - violate action type
+    @param violate_dscp - DSCP for violate mar-and-transmit action
     @param single_rate - 1 = single rate policer, 0 = two rate policer
     @param color_aware - for hierarchical policing
     @param scale - power-of-2 shift amount for lower rates
@@ -3590,6 +3608,12 @@ manual_java define policer_details {
     u8 rate_type;
     u8 round_type;
     u8 type;
+    u8 conform_action_type;
+    u8 conform_dscp;
+    u8 exceed_action_type;
+    u8 exceed_dscp;
+    u8 violate_action_type;
+    u8 violate_dscp;
     u8 single_rate;
     u8 color_aware;
     u32 scale;

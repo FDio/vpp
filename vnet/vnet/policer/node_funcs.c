@@ -18,6 +18,12 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/policer/policer.h>
+#include <vnet/ip/ip.h>
+
+#define IP4_NON_DSCP_BITS 0x03
+#define IP4_DSCP_SHIFT    2
+#define IP6_NON_DSCP_BITS 0xf03fffff
+#define IP6_DSCP_SHIFT    22
 
 /* Dispatch functions meant to be instantiated elsewhere */
 
@@ -56,6 +62,37 @@ static char * vnet_policer_error_strings[] = {
 #undef _
 };
 
+static_always_inline
+void vnet_policer_mark (vlib_buffer_t * b, u8 dscp)
+{
+  ethernet_header_t * eh;
+  ip4_header_t * ip4h;
+  ip6_header_t * ip6h;
+  u16 type;
+
+  eh = (ethernet_header_t *) b->data;
+  type = clib_net_to_host_u16 (eh->type);
+
+  if (PREDICT_TRUE(type == ETHERNET_TYPE_IP4))
+    {
+      ip4h = (ip4_header_t *) &(b->data[sizeof(ethernet_header_t)]);;
+      ip4h->tos &= IP4_NON_DSCP_BITS;
+      ip4h->tos |= dscp << IP4_DSCP_SHIFT;
+      ip4h->checksum = ip4_header_checksum (ip4h);
+    }
+  else
+    {
+      if (PREDICT_TRUE(type == ETHERNET_TYPE_IP6))
+        {
+          ip6h = (ip6_header_t *) &(b->data[sizeof(ethernet_header_t)]);
+          ip6h->ip_version_traffic_class_and_flow_label &=
+            clib_host_to_net_u32(IP6_NON_DSCP_BITS);
+          ip6h->ip_version_traffic_class_and_flow_label |=
+            clib_host_to_net_u32(dscp << IP6_DSCP_SHIFT);
+        }
+    }
+}
+
 static inline
 uword vnet_policer_inline (vlib_main_t * vm,
                            vlib_node_runtime_t * node,
@@ -92,6 +129,7 @@ uword vnet_policer_inline (vlib_main_t * vm,
           u32 len0, len1;
           u32 col0, col1;
           policer_read_response_type_st * pol0, * pol1;
+          u8 act0, act1;
           
 	  /* Prefetch next iteration. */
 	  {
@@ -149,28 +187,38 @@ uword vnet_policer_inline (vlib_main_t * vm,
           col0 = vnet_police_packet (pol0, len0, 
                                      POLICE_CONFORM /* no chaining */,
                                      time_in_policer_periods);
+          act0 = pol0->action[col0];
 
           len1 = vlib_buffer_length_in_chain (vm, b1);
           pol1 = &pm->policers [pi1];
           col1 = vnet_police_packet (pol1, len1, 
                                      POLICE_CONFORM /* no chaining */,
                                      time_in_policer_periods);
-          
-          if (PREDICT_FALSE(col0 > 0))
+          act1 = pol1->action[col1];
+
+          if (PREDICT_FALSE(act0 == SSE2_QOS_ACTION_DROP)) /* drop action */
             {
               next0 = VNET_POLICER_NEXT_DROP;
               b0->error = node->errors[VNET_POLICER_ERROR_DROP];
             }
-          else
-            transmitted++;
-          
-          if (PREDICT_FALSE(col1 > 0))
+          else /* transmit or mark-and-transmit action */
+            {
+              if (PREDICT_TRUE(act0 == SSE2_QOS_ACTION_MARK_AND_TRANSMIT))
+                vnet_policer_mark(b0, pol0->mark_dscp[col0]);
+              transmitted++;
+            }
+
+          if (PREDICT_FALSE(act1 == SSE2_QOS_ACTION_DROP)) /* drop action */
             {
               next1 = VNET_POLICER_NEXT_DROP;
               b1->error = node->errors[VNET_POLICER_ERROR_DROP];
             }
-          else
-            transmitted++;
+          else /* transmit or mark-and-transmit action */
+            {
+              if (PREDICT_TRUE(act1 == SSE2_QOS_ACTION_MARK_AND_TRANSMIT))
+                vnet_policer_mark(b1, pol1->mark_dscp[col1]);
+              transmitted++;
+            }
 
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)))
@@ -207,6 +255,7 @@ uword vnet_policer_inline (vlib_main_t * vm,
           u32 len0;
           u32 col0;
           policer_read_response_type_st * pol0;
+          u8 act0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -238,14 +287,17 @@ uword vnet_policer_inline (vlib_main_t * vm,
           col0 = vnet_police_packet (pol0, len0, 
                                      POLICE_CONFORM /* no chaining */,
                                      time_in_policer_periods);
+          act0 = pol0->action[col0];
           
-          if (PREDICT_FALSE(col0 > 0))
+          if (PREDICT_FALSE(act0 == SSE2_QOS_ACTION_DROP)) /* drop action */
             {
               next0 = VNET_POLICER_NEXT_DROP;
               b0->error = node->errors[VNET_POLICER_ERROR_DROP];
             }
-          else
+          else /* transmit or mark-and-transmit action */
             {
+              if (PREDICT_TRUE(act0 == SSE2_QOS_ACTION_MARK_AND_TRANSMIT))
+                vnet_policer_mark(b0, pol0->mark_dscp[col0]);
               transmitted++;
             }
           

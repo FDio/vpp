@@ -44,6 +44,7 @@
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/policer/xlate.h>
+#include <vnet/policer/policer.h>
 
 #include "vat/json_format.h"
 
@@ -410,6 +411,37 @@ unformat_policer_type (unformat_input_t * input, va_list * args)
     *r = SSE2_QOS_POLICER_TYPE_2R3C_RFC_4115;
   else if (unformat (input, "2r3c-mef5cf1"))
     *r = SSE2_QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1;
+  else
+    return 0;
+  return 1;
+}
+
+uword
+unformat_dscp (unformat_input_t * input, va_list * va)
+{
+  u8 * r = va_arg (*va, u8 *);
+
+  if (0) ;
+#define _(v,f,str) else if (unformat (input, str)) *r = VNET_DSCP_##f;
+      foreach_vnet_dscp
+#undef _
+  else
+    return 0;
+  return 1;
+}
+
+uword
+unformat_policer_action_type (unformat_input_t * input, va_list * va)
+{
+  sse2_qos_pol_action_params_st * a
+    = va_arg (*va, sse2_qos_pol_action_params_st *);
+
+  if (unformat (input, "drop"))
+    a->action_type = SSE2_QOS_ACTION_DROP;
+  else if (unformat (input, "transmit"))
+    a->action_type = SSE2_QOS_ACTION_TRANSMIT;
+  else if (unformat (input, "mark-and-transmit %U", unformat_dscp, &a->dscp))
+    a->action_type = SSE2_QOS_ACTION_MARK_AND_TRANSMIT;
   else
     return 0;
   return 1;
@@ -2280,15 +2312,63 @@ static u8 * format_policer_round_type (u8 * s, va_list * va)
   return s;
 }
 
+static u8 * format_policer_action_type (u8 * s, va_list * va)
+{
+    u32 i = va_arg (*va, u32);
+
+    if (i == SSE2_QOS_ACTION_DROP)
+        s = format (s, "drop");
+    else if (i == SSE2_QOS_ACTION_TRANSMIT)
+        s = format (s, "transmit");
+    else if (i == SSE2_QOS_ACTION_MARK_AND_TRANSMIT)
+        s = format (s, "mark-and-transmit");
+    else
+        s = format (s, "ILLEGAL");
+    return s;
+}
+
+static u8 * format_dscp (u8 * s, va_list * va)
+{
+  u32 i = va_arg (*va, u32);
+  char * t = 0;
+
+  switch (i) {
+  #define _(v,f,str) case VNET_DSCP_##f: t = str; break;
+    foreach_vnet_dscp
+  #undef _
+    default:
+      return format (s, "ILLEGAL");
+  }
+  s = format (s, "%s", t);
+  return s;
+}
+
 static void vl_api_policer_details_t_handler
 (vl_api_policer_details_t * mp)
 {
     vat_main_t * vam = &vat_main;
+    u8 *conform_dscp_str, *exceed_dscp_str, *violate_dscp_str;
+
+    if (mp->conform_action_type == SSE2_QOS_ACTION_MARK_AND_TRANSMIT)
+        conform_dscp_str = format(0, "%U", format_dscp, mp->conform_dscp);
+    else
+        conform_dscp_str = format(0, "");
+
+    if (mp->exceed_action_type == SSE2_QOS_ACTION_MARK_AND_TRANSMIT)
+        exceed_dscp_str = format(0, "%U", format_dscp, mp->exceed_dscp);
+    else
+        exceed_dscp_str = format(0, "");
+
+    if (mp->violate_action_type == SSE2_QOS_ACTION_MARK_AND_TRANSMIT)
+        violate_dscp_str = format(0, "%U", format_dscp, mp->violate_dscp);
+    else
+        violate_dscp_str = format(0, "");
 
     fformat (vam->ofp, "Name \"%s\", type %U, cir %u, eir %u, cb %u, eb %u, "
              "rate type %U, round type %U, %s rate, %s color-aware, "
              "cir %u tok/period, pir %u tok/period, scale %u, cur lim %u, "
-             "cur bkt %u, ext lim %u, ext bkt %u, last update %llu\n",
+             "cur bkt %u, ext lim %u, ext bkt %u, last update %llu"
+             "conform action %U%s, exceed action %U%s, violate action %U%s\n",
              mp->name,
              format_policer_type, mp->type,
              ntohl(mp->cir),
@@ -2306,7 +2386,17 @@ static void vl_api_policer_details_t_handler
              ntohl(mp->current_bucket),
              ntohl(mp->extended_limit),
              ntohl(mp->extended_bucket),
-             clib_net_to_host_u64(mp->last_update_time));
+             clib_net_to_host_u64(mp->last_update_time),
+             format_policer_action_type, mp->conform_action_type,
+             conform_dscp_str,
+             format_policer_action_type, mp->exceed_action_type,
+             exceed_dscp_str,
+             format_policer_action_type, mp->violate_action_type,
+             violate_dscp_str);
+
+    vec_free(conform_dscp_str);
+    vec_free(exceed_dscp_str);
+    vec_free(violate_dscp_str);
 }
 
 static void vl_api_policer_details_t_handler_json
@@ -2315,10 +2405,17 @@ static void vl_api_policer_details_t_handler_json
     vat_main_t * vam = &vat_main;
     vat_json_node_t *node;
     u8 *rate_type_str, *round_type_str, *type_str;
+    u8 *conform_action_str, *exceed_action_str, *violate_action_str;
 
     rate_type_str = format(0, "%U", format_policer_rate_type, mp->rate_type);
     round_type_str = format(0, "%U", format_policer_round_type, mp->round_type);
     type_str = format(0, "%U", format_policer_type, mp->type);
+    conform_action_str = format(0, "%U", format_policer_action_type,
+                                mp->conform_action_type);
+    exceed_action_str = format(0, "%U", format_policer_action_type,
+                                mp->exceed_action_type);
+    violate_action_str = format(0, "%U", format_policer_action_type,
+                                mp->violate_action_type);
 
     if (VAT_JSON_ARRAY != vam->json_tree.type) {
         ASSERT(VAT_JSON_NONE == vam->json_tree.type);
@@ -2349,10 +2446,31 @@ static void vl_api_policer_details_t_handler_json
                              ntohl(mp->extended_bucket));
     vat_json_object_add_uint(node, "last_update_time",
                              ntohl(mp->last_update_time));
+    vat_json_object_add_string_copy(node, "conform_action", conform_action_str);
+    if (mp->conform_action_type == SSE2_QOS_ACTION_MARK_AND_TRANSMIT) {
+        u8 *dscp_str = format(0, "%U", format_dscp, mp->conform_dscp);
+        vat_json_object_add_string_copy(node, "conform_dscp", dscp_str);
+        vec_free(dscp_str);
+    }
+    vat_json_object_add_string_copy(node, "exceed_action", exceed_action_str);
+    if (mp->exceed_action_type == SSE2_QOS_ACTION_MARK_AND_TRANSMIT) {
+        u8 *dscp_str = format(0, "%U", format_dscp, mp->exceed_dscp);
+        vat_json_object_add_string_copy(node, "exceed_dscp", dscp_str);
+        vec_free(dscp_str);
+    }
+    vat_json_object_add_string_copy(node, "violate_action", violate_action_str);
+    if (mp->violate_action_type == SSE2_QOS_ACTION_MARK_AND_TRANSMIT) {
+        u8 *dscp_str = format(0, "%U", format_dscp, mp->violate_dscp);
+        vat_json_object_add_string_copy(node, "violate_dscp", dscp_str);
+        vec_free(dscp_str);
+    }
 
     vec_free(rate_type_str);
     vec_free(round_type_str);
     vec_free(type_str);
+    vec_free(conform_action_str);
+    vec_free(exceed_action_str);
+    vec_free(violate_action_str);
 }
 
 
@@ -10785,6 +10903,7 @@ api_policer_add_del (vat_main_t * vam)
     u8 rate_type = 0;
     u8 round_type = 0;
     u8 type = 0;
+    sse2_qos_pol_action_params_st conform_action, exceed_action, violate_action;
 
     while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
         if (unformat (i, "del"))
@@ -10806,6 +10925,15 @@ api_policer_add_del (vat_main_t * vam)
                            &round_type))
             ;
         else if (unformat (i, "type %U", unformat_policer_type, &type))
+            ;
+        else if (unformat (i, "conform_action %U", unformat_policer_action_type,
+                           &conform_action))
+            ;
+        else if (unformat (i, "exceed_action %U", unformat_policer_action_type,
+                           &exceed_action))
+            ;
+        else if (unformat (i, "violate_action %U", unformat_policer_action_type,
+                           &violate_action))
             ;
         else
           break;
@@ -10833,6 +10961,12 @@ api_policer_add_del (vat_main_t * vam)
     mp->rate_type = rate_type;
     mp->round_type = round_type;
     mp->type = type;
+    mp->conform_action_type = conform_action.action_type;
+    mp->conform_dscp = conform_action.dscp;
+    mp->exceed_action_type = exceed_action.action_type;
+    mp->exceed_dscp = exceed_action.dscp;
+    mp->violate_action_type = violate_action.action_type;
+    mp->violate_dscp = violate_action.dscp;
 
     S; W;
     /* NOTREACHED */

@@ -63,6 +63,30 @@ typedef enum {
     SSE2_QOS_RATE_INVALID
 } sse2_qos_rate_type_en;
 
+/*
+ * edt: * enum
+ * Defines type of policer actions.
+ */
+typedef enum {
+    SSE2_QOS_ACTION_DROP = 0,
+    SSE2_QOS_ACTION_TRANSMIT,
+    SSE2_QOS_ACTION_MARK_AND_TRANSMIT
+} sse2_qos_action_type_en;
+
+/*
+ * edt * struct sse2_qos_pol_action_params_st
+ * This structure is used to hold user configured police action parameters.
+ *
+ * element: action_type
+ *      Action type (see sse2_qos_action_type_en).
+ * elemtnt: dscp
+ *      DSCP value to set when action is SSE2_QOS_ACTION_MARK_AND_TRANSMIT.
+ */
+typedef struct sse2_qos_pol_action_params_st_ {
+    uint8_t  action_type;
+    uint8_t  dscp;
+} sse2_qos_pol_action_params_st;
+
 /* 
  * edt: * struct sse2_qos_pol_cfg_params_st
  *
@@ -115,6 +139,9 @@ typedef struct sse2_qos_pol_cfg_params_st_ {
     uint8_t  overwrite_bucket; /* for debugging purposes */
     uint32_t current_bucket;   /* for debugging purposes */
     uint32_t extended_bucket;  /* for debugging purposes */
+    sse2_qos_pol_action_params_st conform_action;
+    sse2_qos_pol_action_params_st exceed_action;
+    sse2_qos_pol_action_params_st violate_action;
 } sse2_qos_pol_cfg_params_st;
 
 
