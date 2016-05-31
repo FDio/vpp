@@ -343,7 +343,6 @@ typedef enum {
 
 static u64 vector_rate_histogram[SLEEP_N_BUCKETS];
 
-static void memclnt_queue_signal (int signum);
 static void memclnt_queue_callback (vlib_main_t *vm);
 
 static uword
@@ -362,8 +361,6 @@ memclnt_process (vlib_main_t * vm,
     f64 vector_rate;
     
     vlib_set_queue_signal_callback (vm, memclnt_queue_callback);
-    am->vlib_signal = SIGUSR1;
-    signal (am->vlib_signal, memclnt_queue_signal);
     
     if ((rv = memory_api_init(am->region_name)) < 0) {
         clib_warning("memory_api_init returned %d, wait for godot...", rv);
@@ -458,6 +455,7 @@ memclnt_process (vlib_main_t * vm,
         }
 
 	event_type = vlib_process_wait_for_event_or_clock (vm, sleep_time);
+        vm->queue_signal_pending = 0;
         vlib_process_get_events (vm, 0 /* event_data */);
 
         if (vlib_time_now (vm) > dead_client_scan_time) {
@@ -621,27 +619,33 @@ VLIB_REGISTER_NODE (memclnt_node,static) = {
     .state = VLIB_NODE_STATE_DISABLED,
 };
 
-static void
-memclnt_queue_signal (int signum)
-{
-    vlib_main_t * vm = vlib_get_main();
-
-    vm->queue_signal_pending = 1;
-    vm->api_queue_nonempty = 1;
-}
-
 static void 
 memclnt_queue_callback (vlib_main_t *vm)
 {
-#if 0
-    /* If we need to manually suspend / resume the memclnt process */
-    vlib_node_t * n = vlib_get_node (vm, memclnt_node.index);
-    vlib_process_t * p = vlib_get_process_from_node (vm, n);
-#endif
+  static volatile int * cursizep;
 
-    vm->queue_signal_pending = 0;
-    vlib_process_signal_event 
-        (vm, memclnt_node.index, /* event_type */ 0, /* event_data */ 0);
+  if (PREDICT_FALSE (cursizep == 0))
+    {
+      api_main_t *am = &api_main;
+      vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
+      unix_shared_memory_queue_t * q;            
+      
+      if (shmem_hdr == 0)
+        return;
+      
+      q = shmem_hdr->vl_input_queue;
+      if (q == 0)
+        return;
+      cursizep = &q->cursize;
+    }
+  
+  if (*cursizep >= 1)
+    {
+      vm->queue_signal_pending = 1;
+      vm->api_queue_nonempty = 1;
+      vlib_process_signal_event (vm, memclnt_node.index, 
+                                 /* event_type */ 0, /* event_data */ 0);
+    }
 }
 
 void vl_enable_disable_memory_api (vlib_main_t *vm, int enable)
@@ -1049,8 +1053,8 @@ clib_error_t *
 vlibmemory_init (vlib_main_t * vm)
 {
   api_main_t *am = &api_main;
-  /* Normally NULL, can be set by cmd line "chroot {prefix foo}" */
-  svm_region_init_chroot (am->root_path);
+  /* Normally NULL / 0, set by cmd line "api-segment" */
+  svm_region_init_chroot_uid_gid (am->root_path, am->api_uid, am->api_gid);
   return 0;
 }
 
