@@ -15,13 +15,12 @@ fi
 
 if [ "$1" = "rpm-release" ]; then
   [ -z "${ADD}" ] && echo release && exit
-  CMT=$(git describe --dirty --match 'v*'| cut -s -d- -f3,4 | sed 's/-/_/')
-  echo ${ADD}~${CMT}${BLD}
+  echo ${ADD}${CMT:+~${CMT}}${BLD}
   exit
 fi
 
 if [ -n "${ADD}" ]; then
-  echo ${TAG}-${ADD}~${CMT}${BLD}
+  echo ${TAG}-${ADD}${CMT:+~${CMT}}${BLD}
 else
   echo ${TAG}
 fi
