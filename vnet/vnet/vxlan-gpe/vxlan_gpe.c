@@ -228,7 +228,7 @@ int vnet_vxlan_gpe_add_del_tunnel
     key6.remote.as_u64[1] = a->remote.ip6.as_u64[1];
     key6.vni = clib_host_to_net_u32 (a->vni << 8);
 
-    p = hash_get(gm->vxlan6_gpe_tunnel_by_key, &key6);
+    p = hash_get_mem(gm->vxlan6_gpe_tunnel_by_key, &key6);
   }
   
   if (a->is_add)
