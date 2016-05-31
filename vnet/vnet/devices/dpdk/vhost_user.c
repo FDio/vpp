@@ -589,6 +589,14 @@ dpdk_vhost_user_set_vring_addr(u32 hw_if_index, u8 idx, uword desc, \
     clib_warning("falied to set vring addr");
   }
 
+  if (vq->last_used_idx != vq->used->idx) {
+    clib_warning("last_used_idx (%u) and vq->used->idx (%u) mismatches; "
+                 "some packets maybe resent for Tx and dropped for Rx",
+                 vq->last_used_idx, vq->used->idx);
+      vq->last_used_idx     = vq->used->idx;
+      vq->last_used_idx_res = vq->used->idx;
+  }
+
   /*
    * Inform the guest that there is no need to inform (kick) the
    * host when it adds buffers. kick results in vmexit and will
