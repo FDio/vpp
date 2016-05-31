@@ -197,9 +197,23 @@ void vl_set_memory_root_path (char *name)
     am->root_path = name;
 }
 
+void vl_set_memory_uid (int uid)
+{
+    api_main_t *am = &api_main;
+
+    am->api_uid = uid;
+}
+
+void vl_set_memory_gid (int gid)
+{
+    api_main_t *am = &api_main;
+
+    am->api_gid = gid;
+}
+
 int vl_map_shmem (char *region_name, int is_vlib)
 {
-    svm_map_region_args_t *a = 0;
+    svm_map_region_args_t _a, *a = &_a;
     svm_region_t *vlib_rp, *root_rp;
     void *oldheap;
     vl_shmem_hdr_t *shmem_hdr=0;
@@ -210,16 +224,16 @@ int vl_map_shmem (char *region_name, int is_vlib)
     if (is_vlib == 0)
         svm_region_init_chroot(am->root_path);
 
-    vec_validate (a, 0);
+    memset (a, 0, sizeof (*a));
 
     a->name = region_name;
     a->size = 16<<20;
     a->flags = SVM_FLAGS_MHEAP;
+    a->uid = am->api_uid;
+    a->gid = am->api_gid;
 
     vlib_rp = svm_region_find_or_create (a);
     
-    vec_free (a);
-
     if (vlib_rp == 0)
         return (-2);
 
@@ -273,25 +287,8 @@ int vl_map_shmem (char *region_name, int is_vlib)
             /* Clean up the root region client list */
             pthread_mutex_lock (&root_rp->mutex);
             svm_client_scan_this_region_nolock (root_rp);
-            pthread_mutex_unlock (&root_rp->mutex);
-        } else {
-            pthread_mutex_unlock (&vlib_rp->mutex);
-            /* 
-             * Make sure the vlib app is really there...
-             * Wait up to 100 seconds... 
-             */
-            for (i = 0; i < 10000; i++) {
-                /* Yup, it's there, off we go... */
-                if (kill (am->shmem_hdr->vl_pid, 0) >= 0)
-                    break;
-
-                ts.tv_sec = 0;
-                ts.tv_nsec = 10000*1000;  /* 10 ms */
-                while (nanosleep(&ts, &tsrem) < 0)
-                    ts = tsrem;
-            }
-        }
-
+        } 
+        pthread_mutex_unlock (&vlib_rp->mutex);
         am->vlib_rp = vlib_rp;
         vec_add1(am->mapped_shmem_regions, vlib_rp);
         return 0;
