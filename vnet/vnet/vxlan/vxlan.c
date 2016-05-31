@@ -218,7 +218,7 @@ int vnet_vxlan_add_del_tunnel
     key6.src.as_u64[1] = a->dst.ip6.as_u64[1];
     key6.vni = clib_host_to_net_u32 (a->vni << 8);
 
-    p = hash_get (vxm->vxlan6_tunnel_by_key, pointer_to_uword(&key6));
+    p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6);
   }
   
   if (a->is_add)
@@ -243,10 +243,16 @@ int vnet_vxlan_add_del_tunnel
       else            foreach_copy_ipv6
 #undef _
       
-      if (a->is_ip6) {
-        /* copy the key */
-        t->key6 = key6;
-      }
+      /* copy the key */
+      if (a->is_ip6)
+        {
+          t->key6 = clib_mem_alloc (sizeof(vxlan6_tunnel_key_t));
+          clib_memcpy (t->key6, &key6, sizeof(key6));
+        }
+      else
+        {
+          t->key4 = 0; /* not yet used */
+        }
 
       if (!a->is_ip6) t->flags |= VXLAN_TUNNEL_IS_IPV4;
 
@@ -265,7 +271,7 @@ int vnet_vxlan_add_del_tunnel
       if (!a->is_ip6)
         hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
       else
-        hash_set (vxm->vxlan6_tunnel_by_key, pointer_to_uword(&t->key6), t - vxm->tunnels);
+        hash_set_mem (vxm->vxlan6_tunnel_by_key, t->key6, t - vxm->tunnels);
       
       if (vec_len (vxm->free_vxlan_tunnel_hw_if_indices) > 0)
         {
@@ -340,14 +346,21 @@ int vnet_vxlan_add_del_tunnel
       if (!a->is_ip6)
         hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
       else
-        hash_unset (vxm->vxlan6_tunnel_by_key, pointer_to_uword(&key6));
+        hash_unset_mem (vxm->vxlan6_tunnel_by_key, t->key6);
 
       vec_free (t->rewrite);
-      if (!a->is_ip6) {
-        t->rewrite = vxlan4_dummy_rewrite;
-      } else {
-        t->rewrite = vxlan6_dummy_rewrite;
-      }
+      if (!a->is_ip6)
+        {
+          t->rewrite = vxlan4_dummy_rewrite;
+          t->key4 = 0;
+        }
+      else
+        {
+          t->rewrite = vxlan6_dummy_rewrite;
+          clib_mem_free (t->key6);
+          t->key6 = 0;
+        }
+
       pool_put (vxm->tunnels, t);
     }
 
