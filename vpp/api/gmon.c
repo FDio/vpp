@@ -166,6 +166,9 @@ gmon_init (vlib_main_t *vm)
     pid_t *swp = 0;
     f64 *v = 0;
 
+    /* Make sure that /global-vm is owned as directed */
+    svm_region_init_chroot_uid_gid (am->root_path, am->api_uid, am->api_gid);
+
     gm->vlib_main = vm;
     gm->svmdb_client = svmdb_map_chroot(am->root_path);
 
