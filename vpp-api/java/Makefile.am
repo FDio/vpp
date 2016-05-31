@@ -119,14 +119,15 @@ jvpp/org_openvpp_jvpp_VppJNIConnection.h: $(prefix)/../vpp/api/vpe.api
 	cp -rf jvpp/org/openvpp/jvpp/* -t jvpp/gen/target/org/openvpp/jvpp/;	\
 	$(CC) $(CPPFLAGS) -E -P -C -x c $<			                  \
 	| vppapigen --input - --python defs_vpp_papi.py; 				\
-	mkdir -p dto future callfacade callback; 	\
+	mkdir -p dto future callfacade callback notification; 	\
 	./jvpp/gen/jvpp_gen.py -i defs_vpp_papi.py;				\
-	cp -rf dto future callfacade callback *.java -t jvpp/gen/target/org/openvpp/jvpp/;	\
+	cp -rf dto future callfacade callback notification *.java -t jvpp/gen/target/org/openvpp/jvpp/;	\
 	cp -rf jvpp_gen.h -t jvpp/gen/target;	\
-	rm -rf dto future callfacade callback *.java jvpp_gen.h;	\
+	rm -rf dto future callfacade callback notification *.java jvpp_gen.h;	\
 	$(JAVAC) -classpath . -d . jvpp/gen/target/org/openvpp/jvpp/*.java \
 		jvpp/gen/target/org/openvpp/jvpp/dto/*.java  \
 		jvpp/gen/target/org/openvpp/jvpp/callback/*.java \
+		jvpp/gen/target/org/openvpp/jvpp/notification/*.java \
 		jvpp/gen/target/org/openvpp/jvpp/callfacade/*.java \
 		jvpp/gen/target/org/openvpp/jvpp/future/*.java 	\
 		jvpp/gen/target/org/openvpp/jvpp/test/*.java	\
