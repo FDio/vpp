@@ -84,8 +84,8 @@ typedef struct {
   u32 sw_if_index;
 
   union { /* storage for the hash key */
-    vxlan4_tunnel_key_t key4;
-    vxlan6_tunnel_key_t key6;
+    vxlan4_tunnel_key_t *key4;
+    vxlan6_tunnel_key_t *key6;
   };
 
   /* flags */
