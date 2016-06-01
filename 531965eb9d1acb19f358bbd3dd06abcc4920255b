@@ -22,6 +22,30 @@
       "revId": "531965eb9d1acb19f358bbd3dd06abcc4920255b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_c1267168",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "great, it works ok in both calls",
+      "parentUuid": "da141535_de3c1096",
+      "range": {
+        "startLine": 52,
+        "startChar": 8,
+        "endLine": 62,
+        "endChar": 13
+      },
+      "revId": "531965eb9d1acb19f358bbd3dd06abcc4920255b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
