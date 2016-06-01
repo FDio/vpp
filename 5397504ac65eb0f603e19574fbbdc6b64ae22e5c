@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_01b7c9d9",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/OnErrorControlPingTest.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Either test is to be removed or simulation of failed condition changed, so ControlPing failes with negative value.\n\nWill test it manually only, so the file will be removed.",
+      "range": {
+        "startLine": 48,
+        "startChar": 3,
+        "endLine": 48,
+        "endChar": 21
+      },
+      "revId": "5397504ac65eb0f603e19574fbbdc6b64ae22e5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
