@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da141535_0d06d8ce",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/FutureApiTest.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-06-01T07:51:18Z",
+      "side": 0,
+      "message": "we don\u0027t have logging in vpp yet, so I think printing stack trace is ok (provides full info)",
+      "range": {
+        "startLine": 47,
+        "startChar": 12,
+        "endLine": 47,
+        "endChar": 32
+      },
+      "revId": "6a2e4392e9206fe4398e1ccdd431446097fc5503",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
