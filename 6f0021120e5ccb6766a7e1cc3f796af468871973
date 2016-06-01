@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_cddd8044",
+        "filename": "vpp-api/java/jvpp/gen/dto_gen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Done, util.is_retval_field(name) introduced;",
+      "parentUuid": "da141535_4de73041",
+      "range": {
+        "startLine": 63,
+        "startChar": 54,
+        "endLine": 63,
+        "endChar": 77
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_2de4fc39",
         "filename": "vpp-api/java/jvpp/gen/jvpp_c_gen.py",
         "patchSetId": 5
@@ -36,6 +60,30 @@
       "writtenOn": "2016-06-01T07:51:18Z",
       "side": 1,
       "message": "redundant",
+      "range": {
+        "startLine": 241,
+        "startChar": 4,
+        "endLine": 241,
+        "endChar": 79
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_0dbb78e6",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_c_gen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_2de4fc39",
       "range": {
         "startLine": 241,
         "startChar": 4,
@@ -71,6 +119,53 @@
     },
     {
       "key": {
+        "uuid": "da141535_edbf24cf",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_c_gen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_0dd13857",
+      "range": {
+        "startLine": 251,
+        "startChar": 4,
+        "endLine": 251,
+        "endChar": 72
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_cdb460f4",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_c_gen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Replaced with util.is_retval_field",
+      "range": {
+        "startLine": 314,
+        "startChar": 12,
+        "endLine": 314,
+        "endChar": 34
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_cdca20a1",
         "filename": "vpp-api/java/jvpp/gen/jvpp_callback_facade_gen.py",
         "patchSetId": 5
@@ -82,6 +177,30 @@
       "writtenOn": "2016-06-01T07:51:18Z",
       "side": 1,
       "message": "should stay as it was or perhaps, to make it more clear:\n\nImplementation of JVppGlobalCallback interface for Java Callback API",
+      "range": {
+        "startLine": 176,
+        "startChar": 6,
+        "endLine": 176,
+        "endChar": 32
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_8dce6882",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_callback_facade_gen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Changed as suggested, it\u0027s more clear",
+      "parentUuid": "da141535_cdca20a1",
       "range": {
         "startLine": 176,
         "startChar": 6,
@@ -117,6 +236,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_4dc85074",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_future_facade_gen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Type - removed",
+      "parentUuid": "da141535_cd41000d",
+      "range": {
+        "startLine": 262,
+        "startChar": 0,
+        "endLine": 262,
+        "endChar": 1
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_ad5daceb",
         "filename": "vpp-api/java/jvpp/jvpp.c",
         "patchSetId": 5
@@ -128,6 +271,30 @@
       "writtenOn": "2016-06-01T07:51:18Z",
       "side": 1,
       "message": "can be cached (also GetMethodID), but we already have jira issue (HONEYCOMB-42)",
+      "range": {
+        "startLine": 182,
+        "startChar": 36,
+        "endLine": 182,
+        "endChar": 97
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_6d231406",
+        "filename": "vpp-api/java/jvpp/jvpp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Added to cache just by adding it in generate_class_cache method",
+      "parentUuid": "da141535_ad5daceb",
       "range": {
         "startLine": 182,
         "startChar": 36,
@@ -163,6 +330,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_4d2050f7",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppCallbackException.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da141535_edd5e443",
+      "range": {
+        "startLine": 20,
+        "startChar": 22,
+        "endLine": 20,
+        "endChar": 34
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_ed0a84d1",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/callback/JVppCallback.java",
         "patchSetId": 5
@@ -174,6 +365,30 @@
       "writtenOn": "2016-06-01T07:51:18Z",
       "side": 1,
       "message": "It is not generated file, so fully qualified names.\nUsing ex as DTO for code, name and ctxId seems to be ok,\nbut not sure about adding throws declaration (currently we do not throw the exception in onError implementations).",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 28,
+        "endChar": 104
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_cd5a2083",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/callback/JVppCallback.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Yes, I know about it is not throwing exception.\nBut looked at some sources it is possible to use throws even when exception is not thrown and just make it more clear in user implementation can be thrown or in this case just re-thrown.",
+      "parentUuid": "da141535_ed0a84d1",
       "range": {
         "startLine": 28,
         "startChar": 0,
@@ -209,6 +424,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_6dd8b4ef",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackApiTest.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Yes, it is redundant indeed for case you would like to rethrow the exception in onError handling. \nIn such case it would be caught overhere (it was more just like possibility)",
+      "parentUuid": "da141535_6d6f9493",
+      "range": {
+        "startLine": 87,
+        "startChar": 3,
+        "endLine": 91,
+        "endChar": 5
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_adcfecaf",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackJVppFacadeTest.java",
         "patchSetId": 5
@@ -220,6 +459,30 @@
       "writtenOn": "2016-06-01T07:51:18Z",
       "side": 1,
       "message": "it does not need to be in static block",
+      "range": {
+        "startLine": 40,
+        "startChar": 4,
+        "endLine": 80,
+        "endChar": 5
+      },
+      "revId": "6f0021120e5ccb6766a7e1cc3f796af468871973",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_adedac8d",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackJVppFacadeTest.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-01T12:35:24Z",
+      "side": 1,
+      "message": "Yes, doesn\u0027t need to be, it remained static as it was before. Intelij suggested to convert it to static block. Has no influence on running TC.",
+      "parentUuid": "da141535_adcfecaf",
       "range": {
         "startLine": 40,
         "startChar": 4,
