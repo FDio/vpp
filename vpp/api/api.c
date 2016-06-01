@@ -30,6 +30,9 @@
 #include <time.h>
 #include <fcntl.h>
 #include <string.h>
+#include <pwd.h>
+#include <grp.h>
+
 #include <vppinfra/clib.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/hash.h>
@@ -6086,11 +6089,15 @@ vpe_api_init (vlib_main_t *vm)
 
 VLIB_INIT_FUNCTION(vpe_api_init);
 
+
 static clib_error_t *
 api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 {
   u8 * chroot_path;
-  int uid, gid;
+  int uid, gid, rv;
+  char *s, buf[128];
+  struct passwd _pw, *pw;
+  struct group _grp, *grp;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -6103,6 +6110,54 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
         vl_set_memory_uid (uid);
       else if (unformat (input, "gid %d", &gid))
         vl_set_memory_gid (gid);
+      else if (unformat (input, "uid %s", &s))
+        {
+          /* lookup the username */
+          pw = NULL;
+          rv = getpwnam_r(s, &_pw, buf, sizeof(buf), &pw);
+          if (rv < 0)
+            {
+              clib_error_t *e;
+              e = clib_error_return_code(0, rv,
+                       CLIB_ERROR_ERRNO_VALID | CLIB_ERROR_FATAL,
+                       "cannot fetch username %s", s);
+              vec_free (s);
+              return e;
+            }
+          if (pw == NULL)
+            {
+              clib_error_t *e;
+              e = clib_error_return_fatal(0, "username %s does not exist", s);
+              vec_free (s);
+              return e;
+            }
+          vl_set_memory_uid (pw->pw_uid);
+        }
+      else if (unformat (input, "gid %s", &s))
+        {
+          /* lookup the group name */
+          grp = NULL;
+          rv = getgrnam_r(s, &_grp, buf, sizeof(buf), &grp);
+          if (rv != 0)
+            {
+              clib_error_t *e;
+
+              e = clib_error_return_code(0, rv,
+                       CLIB_ERROR_ERRNO_VALID | CLIB_ERROR_FATAL,
+                       "cannot fetch group %s", s);
+              vec_free (s);
+
+              return e;
+            }
+          if (grp == NULL)
+            {
+              clib_error_t *e;
+              e = clib_error_return_fatal(0, "group %s does not exist", s);
+              vec_free (s);
+              return e;
+            }
+          vl_set_memory_gid (grp->gr_gid);
+        }
       else
         return clib_error_return (0, "unknown input `%U'",
                                   format_unformat_error, input);
