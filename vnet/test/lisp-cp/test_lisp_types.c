@@ -154,21 +154,19 @@ static clib_error_t * test_gid_parse_lcaf ()
   _assert (18 == len);
   gid_address_copy (gid_addr_copy, gid_addr);
   _assert (0 == gid_address_cmp (gid_addr_copy, gid_addr));
+  _assert (GID_ADDR_IP_PREFIX == gid_address_type (gid_addr));
+  _assert (9 == gid_address_vni (gid_addr));
+  _assert (0x18 == gid_address_vni_mask (gid_addr));
+  _assert (0xddccbb10 == gid_addr->ippref.addr.ip.v4.as_u32);
 
-  lcaf_t * lcaf = &gid_address_lcaf (gid_addr_copy);
-  vni_t * vni = (vni_t *) lcaf;
-  _assert (lcaf->type == LCAF_INSTANCE_ID);
-  _assert (vni->vni == 9);
-  _assert (vni->vni_mask_len == 0x18);
-
-  gid_address_t * g = vni_gid (vni);
-  _assert (gid_address_type (g) == GID_ADDR_IP_PREFIX);
 done:
   gid_address_free (gid_addr);
   gid_address_free (gid_addr_copy);
   return error;
 }
 
+/* recursive LCAFs are not supported */
+#if 0
 static clib_error_t * test_gid_parse_lcaf_complex ()
 {
   clib_error_t * error = 0;
@@ -262,59 +260,7 @@ done:
   gid_address_free (gid_addr_copy);
   return error;
 }
-
-static clib_error_t * test_format_unformat_gid_address (void)
-{
-  u8 * s = 0;
-  clib_error_t * error = 0;
-  unformat_input_t _input;
-  unformat_input_t * input = &_input;
-  gid_address_t _gid_addr, * gid_addr = &_gid_addr;
-  gid_address_t unformated_gid;
-
-  /* format/unformat IPv4 global ID address */
-  gid_address_type(gid_addr) = GID_ADDR_IP_PREFIX;
-  gid_address_ippref_len(gid_addr) = 24;
-  ip_prefix_version(&gid_addr->ippref) = IP4;
-  gid_addr->ippref.addr.ip.v4.as_u32 = 0x20304050;
-
-  s = format(0, "%U", format_gid_address, gid_addr);
-  vec_add1(s, 0);
-  unformat_init_string(input, (char *)s, vec_len(s));
-
-  _assert (unformat(input, "%U",
-        unformat_gid_address, &unformated_gid));
-  _assert (0 == gid_address_cmp (&unformated_gid, gid_addr));
-
-  unformat_free(input);
-  vec_free(s);
-  s = 0;
-
-  /* format/unformat IPv6 global ID address */
-  gid_address_type(gid_addr) = GID_ADDR_IP_PREFIX;
-  gid_address_ippref_len(gid_addr) = 64;
-  ip_prefix_version(&gid_addr->ippref) = IP6;
-  u8 ipv6[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf};
-  clib_memcpy(gid_addr->ippref.addr.ip.v6.as_u8, ipv6, sizeof(ipv6));
-
-  s = format(0, "%U", format_gid_address, gid_addr);
-  vec_add1(s, 0);
-  unformat_init_string(input, (char *)s, vec_len(s));
-
-  _assert (unformat (input, "%U", unformat_gid_address,
-        &unformated_gid));
-  _assert (0 == gid_address_cmp(&unformated_gid, gid_addr));
-
-  /* test address copy */
-  gid_address_t gid_addr_copy;
-  gid_address_copy(&gid_addr_copy, gid_addr);
-  _assert (0 == gid_address_cmp (&gid_addr_copy, gid_addr));
-
-done:
-  unformat_free(input);
-  vec_free(s);
-  return error;
-}
+#endif
 
 #if 0 /* uncomment this once VNI is supported */
 static clib_error_t * test_write_mac_in_lcaf (void)
@@ -393,34 +339,22 @@ static clib_error_t * test_gid_address_write (void)
   memset(b, 0, 500);
 
   ip_prefix_version (ippref) = IP4;
+  ip_prefix_len (ippref) = 9;
   ip4_address_t * ip4 = &ip_prefix_v4 (ippref);
   ip4->as_u32 = 0xaabbccdd;
 
-  gid_address_t nested_gid =
+  gid_address_t g =
     {
       .ippref = ippref[0],
       .type = GID_ADDR_IP_PREFIX,
+      .vni = 0x01020304,
+      .vni_mask = 0x18
     };
 
-  lcaf_t lcaf =
-    {
-      .type = LCAF_INSTANCE_ID,
-      .uni =
-        {
-          .vni_mask_len = 0x18,
-          .vni = 0x01020304,
-          .gid_addr = &nested_gid
-        }
-    };
+  _assert (18 == gid_address_size_to_put (&g));
+  _assert (gid_address_len (&g) == 9);
 
-  gid_address_t gid =
-    {
-      .type = GID_ADDR_LCAF,
-      .lcaf = lcaf
-    };
-  _assert (18 == gid_address_size_to_put (&gid));
-
-  u16 write_len = gid_address_put (b, &gid);
+  u16 write_len = gid_address_put (b, &g);
   _assert (18 == write_len);
 
   u8 expected_gid_data[] =
@@ -443,12 +377,10 @@ done:
 }
 
 #define foreach_test_case                 \
-  _(format_unformat_gid_address)          \
   _(locator_type)                         \
   _(gid_parse_ip_pref)                    \
   _(gid_parse_mac)                        \
   _(gid_parse_lcaf)                       \
-  _(gid_parse_lcaf_complex)               \
   _(mac_address_write)                    \
   _(gid_address_write)
 

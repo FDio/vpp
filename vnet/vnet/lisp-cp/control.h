@@ -100,6 +100,9 @@ typedef struct
   /* Lookup vrf by vni */
   uword * table_id_by_vni;
 
+  /* Lookup vni by vrf */
+  uword * vni_by_table_id;
+
   /* Number of src prefixes in a vni that use an interface */
   uword * dp_if_refcount_by_vni;
 
@@ -199,5 +202,7 @@ int
 vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a);
 
 int vnet_lisp_clear_all_remote_mappings (void);
+
+int vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_add);
 
 #endif /* VNET_CONTROL_H_ */
