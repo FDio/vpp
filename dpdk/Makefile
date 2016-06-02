@@ -25,12 +25,12 @@ DPDK_DEBUG            ?= n
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
 DPDK_VERSION ?= 16.04
-DPDK_BASE_URL ?= https://nexus.fd.io/content/repositories/thirdparty/
-DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.gz
+DPDK_BASE_URL ?= http://fast.dpdk.org/rel
+DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
-DPDK_2.1.0_TARBALL_MD5_CKSUM := 205a0d12bfd6eb717d57506272f43519
-DPDK_2.2.0_TARBALL_MD5_CKSUM := 22e2fd68cd5504f43fe9a5a6fd6dd938
-DPDK_16.04_TARBALL_MD5_CKSUM := 0728d506d7f56eb64233e824fa3c098a
+DPDK_2.1.0_TARBALL_MD5_CKSUM := a0d69f78f360e03dbdf38ae93fad32d4
+DPDK_2.2.0_TARBALL_MD5_CKSUM := bfa10283b49d56264c82519d130458cc
+DPDK_16.04_TARBALL_MD5_CKSUM := d1f82e7d7589b3b2f623c155442b8306
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 
 ifneq (,$(findstring clang,$(CC)))
@@ -151,7 +151,7 @@ download: $(B)/.download.ok
 
 $(B)/.extract.ok: $(B)/.download.ok
 	@echo --- extracting $(DPDK_TARBALL) ---
-	@tar --directory $(B) --extract --file $(CURDIR)/$(DPDK_TARBALL) --gzip
+	@tar --directory $(B) --extract --file $(CURDIR)/$(DPDK_TARBALL)
 	@touch $@
 
 .PHONY: extract
