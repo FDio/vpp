@@ -81,6 +81,14 @@ struct _gid_address_t;
 
 typedef struct
 {
+  u8 src_len;
+  u8 dst_len;
+  struct _gid_address_t *src;
+  struct _gid_address_t *dst;
+} source_dest_t;
+
+typedef struct
+{
   u8 vni_mask_len;
   u32 vni;
   struct _gid_address_t *gid_addr;
@@ -89,14 +97,6 @@ typedef struct
 #define vni_vni(_a) (_a)->vni
 #define vni_mask_len(_a) (_a)->vni_mask_len
 #define vni_gid(_a) (_a)->gid_addr
-
-typedef struct
-{
-  u8 src_len;
-  u8 dst_len;
-  struct _gid_address_t *src;
-  struct _gid_address_t *dst;
-} source_dest_t;
 
 typedef struct
 {
@@ -112,7 +112,6 @@ typedef struct
 #define lcaf_type(_a) (_a)->type
 #define lcaf_vni(_a) vni_vni(& (_a)->uni)
 #define lcaf_vni_len(_a) vni_mask_len(& (_a)->uni)
-#define lcaf_gid (_a) vni_gid(& (_a)->uni)
 
 /* might want to expand this in the future :) */
 typedef struct _gid_address_t
@@ -124,6 +123,8 @@ typedef struct _gid_address_t
     u8 mac[6];
   };
   u8 type;
+  u32 vni;
+  u8 vni_mask;
 } gid_address_t;
 
 u8 * format_ip_address (u8 * s, va_list * args);
@@ -169,11 +170,8 @@ u32 gid_address_parse (u8 * offset, gid_address_t *a);
 #define gid_address_ip_version(_a) ip_addr_version(&gid_address_ip(_a))
 #define gid_address_lcaf(_a) (_a)->lcaf
 #define gid_address_mac(_a) (_a)->mac
-#define gid_address_vni(_a) ( (GID_ADDR_LCAF == gid_address_type(_a)) ? \
-                              lcaf_vni(&gid_address_lcaf(_a)) : 0)
-/* setter for vni  */
-#define gid_address_set_vni(_a, _val) \
-  (lcaf_vni(&gid_address_lcaf(_a)) = (_val))
+#define gid_address_vni(_a) (_a)->vni
+#define gid_address_vni_mask(_a) (_a)->vni_mask
 
 /* 'sub'address functions */
 #define foreach_gid_address_type_fcns  \
@@ -234,5 +232,7 @@ typedef struct
 
   u8 local;
 } mapping_t;
+
+lcaf_t lcaf_iid_init (u32 vni);
 
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */

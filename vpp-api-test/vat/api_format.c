@@ -1984,7 +1984,8 @@ vl_api_lisp_local_eid_table_details_t_handler (
     vat_main_t *vam = &vat_main;
     u8 *prefix;
 
-    prefix = format(0, "%U/%d",
+    prefix = format(0, "[&d] %U/%d",
+                    clib_net_to_host_u32 (mp->vni),
                     mp->eid_is_ipv6 ? format_ip6_address : format_ip4_address,
                     mp->eid_ip_address,
                     mp->eid_prefix_len);
@@ -2019,6 +2020,7 @@ vl_api_lisp_local_eid_table_details_t_handler_json (
         clib_memcpy(&ip4, mp->eid_ip_address, sizeof(ip4));
         vat_json_object_add_ip4(node, "eid address", ip4);
     }
+    vat_json_object_add_uint(node, "vni", clib_net_to_host_u32 (mp->vni));
     vat_json_object_add_uint(node, "eid prefix len", mp->eid_prefix_len);
 }
 
@@ -2449,6 +2451,7 @@ _(lisp_gpe_add_del_iface_reply)                         \
 _(lisp_enable_disable_reply)                            \
 _(lisp_pitr_set_locator_set_reply)                      \
 _(lisp_add_del_map_request_itr_rlocs_reply)             \
+_(lisp_eid_table_add_del_map_reply)                     \
 _(vxlan_gpe_add_del_tunnel_reply)			\
 _(af_packet_delete_reply)                               \
 _(policer_add_del_reply)                                \
@@ -2627,6 +2630,7 @@ _(LISP_ADD_DEL_MAP_RESOLVER_REPLY, lisp_add_del_map_resolver_reply)     \
 _(LISP_GPE_ENABLE_DISABLE_REPLY, lisp_gpe_enable_disable_reply)         \
 _(LISP_ENABLE_DISABLE_REPLY, lisp_enable_disable_reply)                 \
 _(LISP_PITR_SET_LOCATOR_SET_REPLY, lisp_pitr_set_locator_set_reply)     \
+_(LISP_EID_TABLE_ADD_DEL_MAP_REPLY, lisp_eid_table_add_del_map_reply)   \
 _(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
 _(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
 _(LISP_LOCAL_EID_TABLE_DETAILS, lisp_local_eid_table_details)           \
@@ -9910,11 +9914,14 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
     u8 eid_lenght = ~0;
     u8 *locator_set_name = NULL;
     u8 locator_set_name_set = 0;
+    u32 vni = 0;
 
     /* Parse args required to build the message */
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
         if (unformat(input, "del")) {
             is_add = 0;
+        } else if (unformat(input, "vni &d", &vni)) {
+            ;
         } else if (unformat(input, "eid %U/%d", unformat_ip4_address,
             &eidv4, &tmp_eid_lenght)) {
             eid_lenght = tmp_eid_lenght;
@@ -9977,6 +9984,7 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
         clib_memcpy(mp->ip_address, &eidv4, sizeof(eidv4));
     }
     mp->prefix_len = eid_lenght;
+    mp->vni = clib_host_to_net_u32(vni);
     clib_memcpy(mp->locator_set_name, locator_set_name,
            vec_len(locator_set_name));
     vec_free(locator_set_name);
@@ -10287,6 +10295,53 @@ api_lisp_pitr_set_locator_set (vat_main_t * vam)
   mp->is_add = is_add;
   clib_memcpy (mp->ls_name, ls_name, vec_len (ls_name));
   vec_free (ls_name);
+
+  /* send */
+  S;
+
+  /* wait for reply */
+  W;
+
+  /* notreached*/
+  return 0;
+}
+
+/**
+ * Add/delete mapping between vni and vrf
+ */
+static int
+api_lisp_eid_table_add_del_map (vat_main_t * vam)
+{
+  f64 timeout = ~0;
+  unformat_input_t * input = vam->input;
+  vl_api_lisp_eid_table_add_del_map_t *mp;
+  u8 is_add = 1, vni_set = 0, vrf_set = 0;
+  u32 vni, vrf;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+        is_add = 0;
+      else if (unformat(input, "vrf %d", &vrf))
+        vrf_set = 1;
+      else if (unformat(input, "vni %d", &vni))
+        vni_set = 1;
+      else
+        break;
+    }
+
+  if (!vni_set || !vrf_set)
+    {
+      errmsg ("missing arguments!");
+      return -99;
+    }
+
+  M(LISP_EID_TABLE_ADD_DEL_MAP, lisp_eid_table_add_del_map);
+
+  mp->is_add = is_add;
+  mp->vni = htonl (vni);
+  mp->vrf = htonl (vrf);
 
   /* send */
   S;
@@ -11447,6 +11502,7 @@ _(lisp_add_del_remote_mapping, "add|del vni <vni> table-id <id> "       \
                                "[rloc <loc> ... ]")                     \
 _(lisp_pitr_set_locator_set, "locator-set <loc-set-name> | del")        \
 _(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
+_(lisp_eid_table_add_del_map, "[del] vni <vni> vrf <vrf>")              \
 _(lisp_locator_set_dump, "")                                            \
 _(lisp_local_eid_table_dump, "")                                        \
 _(lisp_gpe_tunnel_dump, "")                                             \
