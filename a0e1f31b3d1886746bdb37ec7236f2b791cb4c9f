@@ -16,6 +16,24 @@
       "revId": "a0e1f31b3d1886746bdb37ec7236f2b791cb4c9f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_984a55ab",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 6121,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-06-02T13:09:25Z",
+      "side": 1,
+      "message": "Normally, yes. But not so with this particular function.\n\n       On success, getpwnam_r() and getpwuid_r() return zero, and set *result to pwd.  If no matching password record was  found,  these\n       functions return 0 and store NULL in *result.  In case of error, an error number is returned, and NULL is stored in *result.",
+      "parentUuid": "ba092121_b8751934",
+      "revId": "a0e1f31b3d1886746bdb37ec7236f2b791cb4c9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
