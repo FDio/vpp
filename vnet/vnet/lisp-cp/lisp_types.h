@@ -110,7 +110,7 @@ typedef struct
 #define lcaf_type(_a) (_a)->type
 #define lcaf_vni(_a) vni_vni(& (_a)->uni)
 #define lcaf_vni_len(_a) vni_mask_len(& (_a)->uni)
-#define lcaf_gid (_a) vni_gid(& (_a)->uni)
+#define lcaf_gid(_a) vni_gid(& (_a)->uni)
 
 /* might want to expand this in the future :) */
 typedef struct _gid_address_t
@@ -226,5 +226,9 @@ typedef struct
 
   u8 local;
 } mapping_t;
+
+gid_address_t gid_build_lcaf (lcaf_t * lcaf, gid_address_t * a);
+lcaf_t lcaf_iid_init (u32 vni);
+gid_address_t * gid_addr_skip_lcaf (gid_address_t * g);
 
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */

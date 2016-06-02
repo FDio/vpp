@@ -106,10 +106,11 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
   uword * p;
   int rv;
   lisp_gpe_tunnel_key_t key;
+  gid_address_t * deid = gid_addr_skip_lcaf (&a->deid);
 
   /* prepare tunnel key */
   memset(&key, 0, sizeof(key));
-  ip_prefix_copy(&key.eid, &gid_address_ippref(&a->deid));
+  ip_prefix_copy(&key.eid, &gid_address_ippref(deid));
   ip_address_copy(&key.dst_loc, &a->dlocator);
   key.iid = clib_host_to_net_u32 (a->vni);
 
@@ -136,6 +137,20 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
       ip_address_copy(&t->dst, &a->dlocator);
 
       t->flags |= LISP_GPE_FLAGS_P;
+      if (gid_address_type (&a->deid) == GID_ADDR_LCAF)
+        {
+          lcaf_t * lcaf = &gid_address_lcaf (&a->deid);
+          switch (lcaf_type (lcaf))
+            {
+            case LCAF_INSTANCE_ID:
+              t->flags |= LISP_GPE_FLAGS_I;
+              t->vni = a->vni;
+              break;
+            default:
+              clib_warning ("unsupported LCAF type: %d!", lcaf_type (lcaf));
+              break;
+            }
+        }
       t->next_protocol = ip_prefix_version(&key.eid) == IP4 ?
           LISP_GPE_NEXT_PROTO_IP4 : LISP_GPE_NEXT_PROTO_IP6;
 
@@ -226,13 +241,15 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
   ip_prefix_t * dpref, * spref;
   uword * lookup_next_index, * lgpe_sw_if_index, * lnip;
   u8 ip_ver;
+  gid_address_t * deid = gid_addr_skip_lcaf (&a->deid);
+  gid_address_t * seid = gid_addr_skip_lcaf (&a->seid);
 
   /* treat negative fwd entries separately */
   if (a->is_negative)
     return add_del_negative_fwd_entry (lgm, a);
 
-  dpref = &gid_address_ippref(&a->deid);
-  spref = &gid_address_ippref(&a->seid);
+  dpref = &gid_address_ippref(deid);
+  spref = &gid_address_ippref(seid);
   ip_ver = ip_prefix_version(dpref);
 
   /* add/del tunnel to tunnels pool and prepares rewrite */
