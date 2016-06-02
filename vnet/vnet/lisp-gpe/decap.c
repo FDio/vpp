@@ -180,8 +180,10 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           /* map iid/vni to lisp-gpe sw_if_index which is used by ipx_input to
            * decide the rx vrf and the input features to be applied */
-          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, lh0->iid);
-          si1 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, lh1->iid);
+          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni,
+                         clib_net_to_host_u32 (lh0->iid));
+          si1 = hash_get(lgm->tunnel_term_sw_if_index_by_vni,
+                         clib_net_to_host_u32 (lh1->iid));
 
           if (si0)
             {
@@ -297,7 +299,8 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           /* map iid/vni to lisp-gpe sw_if_index which is used by ipx_input to
            * decide the rx vrf and the input features to be applied */
-          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni, lh0->iid);
+          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni,
+                         clib_net_to_host_u32 (lh0->iid));
 
           if (si0)
             {

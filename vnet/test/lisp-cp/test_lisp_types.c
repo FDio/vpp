@@ -303,6 +303,7 @@ static clib_error_t * test_gid_address_write (void)
   memset(b, 0, 500);
 
   ip_prefix_version (ippref) = IP4;
+  ip_prefix_len (ippref) = 9;
   ip4_address_t * ip4 = &ip_prefix_v4 (ippref);
   ip4->as_u32 = 0xaabbccdd;
 
@@ -329,6 +330,7 @@ static clib_error_t * test_gid_address_write (void)
       .lcaf = lcaf
     };
   _assert (18 == gid_address_size_to_put (&gid));
+  _assert (gid_address_len (&gid) == 9);
 
   u16 write_len = gid_address_put (b, &gid);
   _assert (18 == write_len);

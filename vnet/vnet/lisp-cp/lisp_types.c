@@ -148,6 +148,22 @@ unformat_ip_prefix (unformat_input_t * input, va_list * args)
 }
 
 u8 *
+format_lcaf (u8 * s, va_list * args)
+{
+  lcaf_t * a = va_arg (*args, lcaf_t *);
+  u8 type = lcaf_type (a);
+  switch (type)
+    {
+    case LCAF_INSTANCE_ID:
+      return format (s, "[lcaf-iid %d: %U]", lcaf_vni (a), format_gid_address,
+                     lcaf_gid (a));
+    default:
+      clib_warning ("Can't format LCAF type: %d", type);
+      return 0;
+    }
+}
+
+u8 *
 format_gid_address (u8 * s, va_list * args)
 {
   gid_address_t * a = va_arg(*args, gid_address_t *);
@@ -155,7 +171,10 @@ format_gid_address (u8 * s, va_list * args)
   switch (type)
     {
     case GID_ADDR_IP_PREFIX:
-      return format (s, "%U", format_ip_prefix, &gid_address_ippref(a));
+      return format (s, "[%d] %U", gid_address_vni(a), format_ip_prefix,
+                     &gid_address_ippref(a));
+    case GID_ADDR_LCAF:
+      return format (s, "%U", format_lcaf, &gid_address_lcaf(a));
     default:
       clib_warning("Can't format gid type %d", type);
       return 0;
@@ -518,7 +537,8 @@ lcaf_copy (void * dst , void * src)
 u8
 lcaf_prefix_length (void *a)
 {
-  return 0;
+  lcaf_t * lcaf = a;
+  return gid_address_len (lcaf_gid (lcaf));
 }
 
 void *
@@ -658,6 +678,7 @@ gid_address_copy(gid_address_t * dst, gid_address_t * src)
   gid_address_type_t type = gid_address_type(src);
   (*copy_fcts[type])((*cast_fcts[type])(dst), (*cast_fcts[type])(src));
   gid_address_type(dst) = type;
+  gid_address_vni(dst) = gid_address_vni(src);
 }
 
 u32
@@ -734,6 +755,8 @@ gid_address_cmp (gid_address_t * a1, gid_address_t * a2)
   if (!a1 || !a2)
     return -1;
   if (gid_address_type(a1) != gid_address_type(a2))
+    return -1;
+  if (gid_address_vni(a1) != gid_address_vni(a2))
     return -1;
 
   switch (gid_address_type(a1))
@@ -818,4 +841,48 @@ locator_free (locator_t * l)
 {
   if (!l->local)
     gid_address_free (&l->address);
+}
+
+gid_address_t
+gid_build_lcaf (lcaf_t * lcaf, gid_address_t * a)
+{
+  gid_address_t lcaf_eid;
+
+  memset (&lcaf_eid, 0, sizeof (lcaf_eid));
+  gid_address_type (&lcaf_eid) = GID_ADDR_LCAF;
+  lcaf_t * lcaf0 = &gid_address_lcaf (&lcaf_eid);
+  lcaf0[0] = lcaf[0];
+  lcaf_gid(lcaf0) = clib_mem_alloc (sizeof (gid_address_t));
+  gid_address_copy (lcaf_gid(lcaf0), a);
+  return lcaf_eid;
+}
+
+lcaf_t
+lcaf_iid_init (u32 vni)
+{
+  lcaf_t lcaf;
+  memset (&lcaf, 0, sizeof (lcaf));
+  lcaf.type = LCAF_INSTANCE_ID;
+  lcaf_vni (&lcaf) = vni;
+  return lcaf;
+}
+
+gid_address_t *
+gid_addr_skip_lcaf (gid_address_t * g)
+{
+  lcaf_t * lcaf;
+  if (gid_address_type (g) == GID_ADDR_LCAF)
+    {
+      lcaf = &gid_address_lcaf (g);
+      switch (lcaf_type (lcaf))
+        {
+        case LCAF_INSTANCE_ID:
+          g = lcaf_gid (lcaf);
+          break;
+        default:
+          clib_warning ("unsupported LCAF type %d!", lcaf_type (lcaf));
+          return 0;
+        }
+    }
+  return g;
 }

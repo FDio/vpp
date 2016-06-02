@@ -110,7 +110,7 @@ typedef struct
 #define lcaf_type(_a) (_a)->type
 #define lcaf_vni(_a) vni_vni(& (_a)->uni)
 #define lcaf_vni_len(_a) vni_mask_len(& (_a)->uni)
-#define lcaf_gid (_a) vni_gid(& (_a)->uni)
+#define lcaf_gid(_a) vni_gid(& (_a)->uni)
 
 /* might want to expand this in the future :) */
 typedef struct _gid_address_t
@@ -121,6 +121,7 @@ typedef struct _gid_address_t
     lcaf_t lcaf;
   };
   u8 type;
+  u32 vni;
 } gid_address_t;
 
 u8 * format_ip_address (u8 * s, va_list * args);
@@ -163,11 +164,7 @@ u32 gid_address_parse (u8 * offset, gid_address_t *a);
 #define gid_address_ippref_len(_a) (_a)->ippref.len
 #define gid_address_ip(_a) ip_prefix_addr(&gid_address_ippref(_a))
 #define gid_address_lcaf(_a) (_a)->lcaf
-#define gid_address_vni(_a) ( (GID_ADDR_LCAF == gid_address_type(_a)) ? \
-                              lcaf_vni(&gid_address_lcaf(_a)) : 0)
-/* setter for vni  */
-#define gid_address_set_vni(_a, _val) \
-  (lcaf_vni(&gid_address_lcaf(_a)) = (_val))
+#define gid_address_vni(_a) (_a)->vni
 
 /* 'sub'address functions */
 u16 ip_prefix_size_to_write (void * pref);
@@ -226,5 +223,9 @@ typedef struct
 
   u8 local;
 } mapping_t;
+
+gid_address_t gid_build_lcaf (lcaf_t * lcaf, gid_address_t * a);
+lcaf_t lcaf_iid_init (u32 vni);
+gid_address_t * gid_addr_skip_lcaf (gid_address_t * g);
 
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */

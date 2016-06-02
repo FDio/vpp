@@ -114,7 +114,20 @@ lisp_msg_push_ecm (vlib_main_t * vm, vlib_buffer_t *b, int lp, int rp,
                    gid_address_t *la, gid_address_t *ra)
 {
   ecm_hdr_t *h;
-  ASSERT(gid_address_type(la) == GID_ADDR_IP_PREFIX);
+  lcaf_t * lcaf;
+
+  switch (gid_address_type (la))
+    {
+    case GID_ADDR_LCAF:
+      lcaf = &gid_address_lcaf (la);
+      la = lcaf_gid (lcaf);
+      lcaf = &gid_address_lcaf (ra);
+      ra = lcaf_gid (lcaf);
+    case GID_ADDR_IP_PREFIX:
+      break;
+    default:
+      ASSERT (0);
+    }
 
   /* Push inner ip and udp */
   pkt_push_udp_and_ip (vm, b, lp, rp, &gid_address_ip(la),
@@ -202,6 +215,26 @@ lisp_msg_parse_loc (vlib_buffer_t * b, locator_t * loc)
   return len;
 }
 
+static void
+lisp_gid_update_ippref_len (gid_address_t * gid, u8 len)
+{
+  lcaf_t * lcaf;
+  if (gid_address_type (gid) == GID_ADDR_LCAF)
+    {
+      lcaf = &gid_address_lcaf (gid);
+      switch (lcaf_type (lcaf))
+        {
+        case LCAF_INSTANCE_ID:
+          gid = lcaf_gid (lcaf);
+          break;
+        default:
+          clib_warning ("unsupported LCAF type: %d!", lcaf_type (lcaf));
+        }
+    }
+
+  gid_address_ippref_len(gid) = len;
+}
+
 u32
 lisp_msg_parse_mapping_record (vlib_buffer_t * b, gid_address_t * eid,
                                locator_t ** locs, locator_t * probed_)
@@ -218,7 +251,7 @@ lisp_msg_parse_mapping_record (vlib_buffer_t * b, gid_address_t * eid,
     return len;
 
   vlib_buffer_pull (b, len);
-  gid_address_ippref_len(eid) = MAP_REC_EID_PLEN(h);
+  lisp_gid_update_ippref_len (eid, MAP_REC_EID_PLEN (h));
 
   for (i = 0; i < MAP_REC_LOC_COUNT(h); i++)
     {
