@@ -334,10 +334,12 @@ _(LISP_ENABLE_DISABLE, lisp_enable_disable)                             \
 _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
 _(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping)             \
 _(LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set)                 \
+_(LISP_EID_TABLE_ADD_DEL_MAP, lisp_eid_table_add_del_map)               \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump)                 \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
+_(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
 _(LISP_ENABLE_DISABLE_STATUS_DUMP,                                      \
   lisp_enable_disable_status_dump)                                      \
 _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
@@ -4749,6 +4751,7 @@ vl_api_lisp_add_del_local_eid_t_handler(
     u32 locator_set_index = ~0, map_index = ~0;
     vnet_lisp_add_del_mapping_args_t _a, *a = &_a;
     u8 *name = NULL;
+    memset (a, 0, sizeof (a[0]));
 
     prefp = &gid_address_ippref(&eid);
     ip_eid = &ip_prefix_addr(prefp);
@@ -4775,16 +4778,28 @@ vl_api_lisp_add_del_local_eid_t_handler(
 
   /* XXX treat batch configuration */
     a->is_add = mp->is_add;
+    gid_address_vni (&eid) = clib_net_to_host_u32 (mp->vni);
     a->deid = eid;
     a->locator_set_index = locator_set_index;
     a->local = 1;
-
     rv = vnet_lisp_add_del_local_mapping(a, &map_index);
 
 out:
     vec_free(name);
+    gid_address_free (&a->deid);
 
     REPLY_MACRO(VL_API_LISP_ADD_DEL_LOCAL_EID_REPLY);
+}
+
+static void
+vl_api_lisp_eid_table_add_del_map_t_handler(
+    vl_api_lisp_eid_table_add_del_map_t *mp)
+{
+    vl_api_lisp_eid_table_add_del_map_reply_t *rmp;
+    int rv = 0;
+    rv = vnet_lisp_eid_table_map (clib_net_to_host_u32 (mp->vni),
+                                  clib_net_to_host_u32 (mp->vrf), mp->is_add);
+    REPLY_MACRO(VL_API_LISP_EID_TABLE_ADD_DEL_MAP_REPLY)
 }
 
 static void
@@ -4977,8 +4992,8 @@ vl_api_lisp_add_del_remote_mapping_t_handler (
     ip_address_t * deid_addr = &ip_prefix_addr(deid_pref);
     ip_prefix_len(seid_pref) = mp->seid_len;
     ip_prefix_len(deid_pref) = mp->deid_len;
-    gid_address_set_vni (seid, ntohl (mp->vni));
-    gid_address_set_vni (deid, ntohl (mp->vni));
+    gid_address_vni (seid) = ntohl (mp->vni);
+    gid_address_vni (deid) = ntohl (mp->vni);
 
     if (mp->eid_is_ip4) {
         ip_prefix_version(seid_pref) = IP4;
@@ -5130,7 +5145,7 @@ send_lisp_local_eid_table_details (mapping_t *mapit,
     }
     rmp->eid_prefix_len = ip_prefix_len(ip_prefix);
     rmp->context = context;
-
+    rmp->vni = clib_host_to_net_u32 (gid_address_vni (gid));
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
 
@@ -5187,7 +5202,7 @@ send_lisp_gpe_tunnel_details (lisp_gpe_tunnel_t *tunnel,
 
 static void
 vl_api_lisp_gpe_tunnel_dump_t_handler (
-    vl_api_lisp_local_eid_table_dump_t *mp)
+    vl_api_lisp_gpe_tunnel_dump_t *mp)
 {
     unix_shared_memory_queue_t * q = NULL;
     lisp_gpe_main_t * lgm = &lisp_gpe_main;
@@ -5240,7 +5255,7 @@ send_lisp_map_resolver_details (ip_address_t *ip,
 
 static void
 vl_api_lisp_map_resolver_dump_t_handler (
-    vl_api_lisp_local_eid_table_dump_t *mp)
+    vl_api_lisp_map_resolver_dump_t *mp)
 {
     unix_shared_memory_queue_t * q = NULL;
     lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
@@ -5255,6 +5270,28 @@ vl_api_lisp_map_resolver_dump_t_handler (
         send_lisp_map_resolver_details(ip, q, mp->context);
     }
 
+}
+
+static void
+vl_api_lisp_eid_table_map_dump_t_handler (
+    vl_api_lisp_eid_table_map_dump_t *mp)
+{
+    unix_shared_memory_queue_t * q = NULL;
+    lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+    hash_pair_t * p;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+    hash_foreach_pair (p, lcm->table_id_by_vni, {
+        vl_api_lisp_eid_table_map_details_t * rmp = NULL;
+        memset (rmp, 0, sizeof (*rmp));
+        rmp->_vl_msg_id = ntohs(VL_API_LISP_EID_TABLE_MAP_DETAILS);
+        rmp->vni = p->key;
+        rmp->vrf = p->value[0];
+        rmp->context = mp->context;
+    });
 }
 
 static void

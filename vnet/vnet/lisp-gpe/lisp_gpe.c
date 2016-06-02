@@ -135,6 +135,13 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
       ip_address_copy(&t->src, &a->slocator);
       ip_address_copy(&t->dst, &a->dlocator);
 
+      /* if vni is non-default */
+      if (a->vni)
+        {
+          t->flags = LISP_GPE_FLAGS_I;
+          t->vni = a->vni;
+        }
+
       t->flags |= LISP_GPE_FLAGS_P;
       t->next_protocol = ip_prefix_version(&key.eid) == IP4 ?
           LISP_GPE_NEXT_PROTO_IP4 : LISP_GPE_NEXT_PROTO_IP6;

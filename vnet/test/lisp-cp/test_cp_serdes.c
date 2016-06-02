@@ -183,6 +183,8 @@ build_map_request (lisp_cp_main_t * lcm, vlib_buffer_t * b,
   u8 is_smr_invoked = 1;
   u64 nonce = 0;
   map_request_hdr_t * h = 0;
+  memset (deid, 0, sizeof (deid[0]));
+  memset (seid, 0, sizeof (seid[0]));
 
   gid_address_type (seid) = GID_ADDR_IP_PREFIX;
   ip_address_t * ip_addr = &gid_address_ip (seid);
@@ -205,6 +207,7 @@ static void
 generate_rlocs (gid_address_t **rlocs, u32 * count)
 {
   gid_address_t gid_addr_data, * gid_addr = &gid_addr_data;
+  memset (gid_addr, 0, sizeof (gid_addr[0]));
   ip_address_t * addr = &gid_address_ip (gid_addr);
 
   gid_address_type (gid_addr) = GID_ADDR_IP_PREFIX;
@@ -277,34 +280,20 @@ static clib_error_t * test_lisp_msg_put_mreq_with_lcaf ()
   clib_error_t * error = 0;
   map_request_hdr_t *h = 0;
   gid_address_t * rlocs = 0;
-  gid_address_t rloc;
 
   ip_prefix_t ippref;
   ip_prefix_version (&ippref) = IP4;
   ip4_address_t * ip = &ip_prefix_v4 (&ippref);
   ip->as_u32 = 0x11223344;
 
-  gid_address_t gid1 =
+  gid_address_t g =
     {
       .type = GID_ADDR_IP_PREFIX,
-      .ippref = ippref
+      .ippref = ippref,
+      .vni = 0x90919293,
+      .vni_mask = 0x17
     };
-
-  lcaf_t lcaf1 =
-    {
-      .type = LCAF_INSTANCE_ID,
-      .uni =
-        {
-          .vni_mask_len = 0x17,
-          .vni = 0x90919293,
-          .gid_addr = &gid1
-        }
-    };
-
-  gid_address_type (&rloc) = GID_ADDR_LCAF;
-  gid_address_lcaf (&rloc) = lcaf1;
-
-  vec_add1 (rlocs, rloc);
+  vec_add1 (rlocs, g);
 
   u8 * data = clib_mem_alloc (500);
   memset (data, 0, 500);
@@ -482,16 +471,9 @@ test_lisp_parse_lcaf ()
   _assert (locs[0].mpriority == 0xc);
   _assert (locs[0].mweight == 0xd);
 
-  /* check LCAF header data */
-  lcaf_t * lcaf = &gid_address_lcaf (&locs[0].address);
-  _assert (gid_address_type (&locs[0].address) == GID_ADDR_LCAF);
-  _assert (lcaf_type (lcaf) == LCAF_INSTANCE_ID);
-  vni_t * v = (vni_t *) lcaf;
-  _assert (vni_vni (v) == 0x09);
-
-  gid_address_t * nested_gid = vni_gid (v);
-  _assert (GID_ADDR_IP_PREFIX == gid_address_type (nested_gid));
-  ip_prefix_t * ip_pref = &gid_address_ippref (nested_gid);
+  _assert (gid_address_type (&locs[0].address) == GID_ADDR_IP_PREFIX);
+  _assert (gid_address_vni (&locs[0].address) == 0x09);
+  ip_prefix_t * ip_pref = &gid_address_ippref (&locs[0].address);
   _assert (IP4 == ip_prefix_version (ip_pref));
 
   /* 2nd locator - LCAF entry with ipv6 address */
@@ -501,16 +483,9 @@ test_lisp_parse_lcaf ()
   _assert (locs[1].mpriority == 0x5);
   _assert (locs[1].mweight == 0x4);
 
-  /* LCAF header */
-  _assert (gid_address_type (&locs[1].address) == GID_ADDR_LCAF);
-  lcaf = &gid_address_lcaf (&locs[1].address);
-  _assert (lcaf_type (lcaf) == LCAF_INSTANCE_ID);
-  v = (vni_t *) lcaf;
-  _assert (vni_vni (v) == 0x22446688);
-
-  nested_gid = vni_gid (v);
-  _assert (GID_ADDR_IP_PREFIX == gid_address_type (nested_gid));
-  ip_pref = &gid_address_ippref (nested_gid);
+  _assert (gid_address_type (&locs[1].address) == GID_ADDR_IP_PREFIX);
+  _assert (0x22446688 == gid_address_vni (&locs[1].address));
+  ip_pref = &gid_address_ippref (&locs[1].address);
   _assert (IP6 == ip_prefix_version (ip_pref));
 
   /* 3rd locator - simple ipv4 address */
