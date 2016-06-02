@@ -1783,8 +1783,10 @@ ip4_local (vlib_main_t * vm,
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 0);
 	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 0);
 
-	  proto0 = ip0->protocol;
-	  proto1 = ip1->protocol;
+	  /* Treat IP frag packets as "experimental" protocol for now
+	     until support of IP frag reassembly is implemented */
+	  proto0 = (ip0->flags_and_fragment_offset << 2) ? 0xfe : ip0->protocol;
+	  proto1 = (ip1->flags_and_fragment_offset << 2) ? 0xfe : ip1->protocol;
 	  is_udp0 = proto0 == IP_PROTOCOL_UDP;
 	  is_udp1 = proto1 == IP_PROTOCOL_UDP;
 	  is_tcp_udp0 = is_udp0 || proto0 == IP_PROTOCOL_TCP;
@@ -1976,7 +1978,9 @@ ip4_local (vlib_main_t * vm,
 
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 0);
 
-	  proto0 = ip0->protocol;
+	  /* Treat IP frag packets as "experimental" protocol for now
+	     until support of IP frag reassembly is implemented */
+	  proto0 = (ip0->flags_and_fragment_offset << 2) ? 0xfe : ip0->protocol;
 	  is_udp0 = proto0 == IP_PROTOCOL_UDP;
 	  is_tcp_udp0 = is_udp0 || proto0 == IP_PROTOCOL_TCP;
 
