@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_b802b9b2",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppBaseCallException.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-02T15:16:51Z",
+      "side": 1,
+      "message": "I made a fat interface for simplicity\n(also base exception description is created from all data)",
+      "parentUuid": "ba092121_985135db",
+      "range": {
+        "startLine": 35,
+        "startChar": 57,
+        "endLine": 35,
+        "endChar": 74
+      },
+      "revId": "025c5865a029f8cc2bbf534a9ddc6aaa5f34664e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_785e61eb",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppInvocationException.java",
         "patchSetId": 8
@@ -36,6 +60,30 @@
       "writtenOn": "2016-06-02T09:23:36Z",
       "side": 1,
       "message": "wrong order, but I thing xtxId should be removed anyway",
+      "range": {
+        "startLine": 31,
+        "startChar": 26,
+        "endLine": 31,
+        "endChar": 38
+      },
+      "revId": "025c5865a029f8cc2bbf534a9ddc6aaa5f34664e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_782c214b",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppInvocationException.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-02T15:16:51Z",
+      "side": 1,
+      "message": "Corrected, left fat interface for VppBaseException",
+      "parentUuid": "ba092121_785e61eb",
       "range": {
         "startLine": 31,
         "startChar": 26,
