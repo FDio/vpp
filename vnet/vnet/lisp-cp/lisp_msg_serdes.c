@@ -202,6 +202,12 @@ lisp_msg_parse_loc (vlib_buffer_t * b, locator_t * loc)
   return len;
 }
 
+static void
+lisp_gid_update_ippref_len (gid_address_t * gid, u8 len)
+{
+  gid_address_ippref_len(gid) = len;
+}
+
 u32
 lisp_msg_parse_mapping_record (vlib_buffer_t * b, gid_address_t * eid,
                                locator_t ** locs, locator_t * probed_)
@@ -218,7 +224,7 @@ lisp_msg_parse_mapping_record (vlib_buffer_t * b, gid_address_t * eid,
     return len;
 
   vlib_buffer_pull (b, len);
-  gid_address_ippref_len(eid) = MAP_REC_EID_PLEN(h);
+  lisp_gid_update_ippref_len (eid, MAP_REC_EID_PLEN (h));
 
   for (i = 0; i < MAP_REC_LOC_COUNT(h); i++)
     {

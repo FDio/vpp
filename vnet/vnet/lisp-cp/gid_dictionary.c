@@ -97,12 +97,17 @@ ip_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t *key)
 u32
 gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key)
 {
-  /* XXX for now this only works with ip-prefixes, no lcafs */
+  lcaf_t * lcaf;
+  gid_address_t * gid;
+
   switch (gid_address_type (key))
     {
     case GID_ADDR_IP_PREFIX:
       return ip_lookup (db, gid_address_vni(key), &gid_address_ippref(key));
-      break;
+    case GID_ADDR_LCAF:
+      lcaf = &gid_address_lcaf (key);
+      gid = lcaf_gid (lcaf);
+      return ip_lookup (db, gid_address_vni(key), &gid_address_ippref(gid));
     default:
       clib_warning ("address type %d not supported!", gid_address_type(key));
       break;
@@ -257,6 +262,25 @@ add_del_ip (gid_dictionary_t *db, u32 vni, ip_prefix_t *key, u32 value,
   return ~0;
 }
 
+static u32
+lcaf_add_del_ip (gid_dictionary_t * db, lcaf_t * lcaf, u32 value, u8 is_add)
+{
+  u32 type = lcaf_type (lcaf);
+  gid_address_t * gid;
+
+  switch (type)
+    {
+    case LCAF_INSTANCE_ID:
+      gid = lcaf_gid (lcaf);
+      return add_del_ip (db, lcaf_vni (lcaf), &gid_address_ippref (gid),
+                         value, is_add);
+    default:
+      clib_warning ("LCAF type %d not supported!", type);
+      break;
+    }
+  return ~0;
+}
+
 u32
 gid_dictionary_add_del (gid_dictionary_t *db, gid_address_t *key, u32 value,
                         u8 is_add)
@@ -267,7 +291,8 @@ gid_dictionary_add_del (gid_dictionary_t *db, gid_address_t *key, u32 value,
     case GID_ADDR_IP_PREFIX:
       return add_del_ip (db, gid_address_vni(key), &gid_address_ippref(key),
                          value, is_add);
-      break;
+    case GID_ADDR_LCAF:
+      return lcaf_add_del_ip (db, &gid_address_lcaf (key), value, is_add);
     default:
       clib_warning ("address type %d not supported!", gid_address_type (key));
       break;

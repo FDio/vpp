@@ -15,6 +15,9 @@
 
 #include <vnet/lisp-cp/lisp_types.h>
 
+static u16 gid_address_put_no_vni (u8 * b, gid_address_t * gid);
+static u16 gid_address_size_to_put_no_vni (gid_address_t * gid);
+
 typedef u16 (*size_to_write_fct)(void *);
 typedef void * (*cast_fct)(gid_address_t *);
 typedef u16 (*serdes_fct)(u8 *, void *);
@@ -155,7 +158,8 @@ format_gid_address (u8 * s, va_list * args)
   switch (type)
     {
     case GID_ADDR_IP_PREFIX:
-      return format (s, "%U", format_ip_prefix, &gid_address_ippref(a));
+      return format (s, "[%d] %U", gid_address_vni(a), format_ip_prefix,
+                     &gid_address_ippref(a));
     default:
       clib_warning("Can't format gid type %d", type);
       return 0;
@@ -335,16 +339,17 @@ lcaf_hdr_parse (void * offset, lcaf_t * lcaf)
 u16
 vni_parse (u8 * p, void * a)
 {
-  vni_t * v = a;
+  lcaf_t * lcaf = a;
+  gid_address_t * g = a;
   u16 size = 0;
-  vni_vni (v) = clib_net_to_host_u32 ( *(u32 *) p);
+
+  gid_address_vni (g) = clib_net_to_host_u32 ( *(u32 *) p);
   size += sizeof (u32);
+  gid_address_vni_mask (g) = lcaf_vni_len (lcaf);
 
-  vni_gid (v) = clib_mem_alloc (sizeof (gid_address_t));
-  gid_address_t * gid = vni_gid (v);
-  memset (gid, 0, sizeof (gid[0]));
-
-  size += gid_address_parse (p + size, gid);
+  /* nested LCAFs are not supported - it is expected that nested AFI type is
+     IP address */
+  size += gid_address_parse (p + size, g);
   return size;
 }
 
@@ -441,9 +446,11 @@ ip_prefix_size_to_write (void * pref)
 }
 
 u16
-ip_prefix_write (u8 * p, void * pref)
+ip_prefix_write (u8 * p, void * gid)
 {
-  ip_prefix_t *a = (ip_prefix_t *) pref;
+  gid_address_t * g = gid;
+  ip_prefix_t *a = &gid_address_ippref (g);
+
   switch (ip_prefix_version (a))
   {
     case IP4:
@@ -518,7 +525,8 @@ lcaf_copy (void * dst , void * src)
 u8
 lcaf_prefix_length (void *a)
 {
-  return 0;
+  lcaf_t * lcaf = a;
+  return gid_address_len (lcaf_gid (lcaf));
 }
 
 void *
@@ -556,9 +564,6 @@ lcaf_write (u8 * p, void * a)
   u16 lcaf_len = (*lcaf_body_length_fcts[type])(lcaf);
   LCAF_LENGTH (h) = clib_host_to_net_u16 (lcaf_len);
 
-  if (LCAF_INSTANCE_ID == type)
-    LCAF_RES2 (h) = lcaf_vni_len(lcaf);
-
   clib_memcpy (p + size, h, sizeof (h[0]));
   size += sizeof (h[0]);
   len = (*lcaf_write_fcts[type])(p + size, lcaf);
@@ -572,12 +577,30 @@ lcaf_write (u8 * p, void * a)
 u16
 vni_write (u8 * p, void * a)
 {
-  vni_t * v = a;
+  lcaf_hdr_t _h, *h = &_h;
+  gid_address_t * g = a;
   u16 size = 0, len;
 
-  *(u32 *)p = clib_host_to_net_u32 (vni_vni (v));
+  /* put lcaf header */
+  *(u16 *) p = clib_host_to_net_u16 (LISP_AFI_LCAF);
+  size += sizeof (u16);
+  memset (h, 0, sizeof (h[0]));
+  LCAF_TYPE (h) = LCAF_INSTANCE_ID;
+  u16 lcaf_len = sizeof (u32) /* Instance ID size */
+    + gid_address_size_to_put_no_vni (g);
+  LCAF_LENGTH (h) = clib_host_to_net_u16 (lcaf_len);
+  LCAF_RES2 (h) = gid_address_vni_mask (g);
+
+  /* put vni header */
+  clib_memcpy (p + size, h, sizeof (h[0]));
+  size += sizeof (h[0]);
+
+  u32 * afip = (u32 *)(p + size);
+  afip[0] = clib_host_to_net_u32 (gid_address_vni (g));
   size += sizeof (u32);
-  len = gid_address_put (p + size, vni_gid (v));
+
+  /* write the actual address */
+  len = gid_address_put_no_vni (p + size, g);
 
   if ((u16)~0 == len)
     return ~0;
@@ -601,12 +624,11 @@ no_addr_size_to_write (void * a)
 u16
 vni_size_to_write (void * a)
 {
-  vni_t * v =  a;
-  u16 size = sizeof (vni_vni (v));
-
-  gid_address_t * gid = vni_gid (v);
-  return (size + sizeof (lcaf_hdr_t)
-    + gid_address_size_to_put (gid));
+  gid_address_t * g =  a;
+  return (sizeof (u32) /* vni size */
+          + sizeof (u16) /* LCAF AFI field size */
+          + sizeof (lcaf_hdr_t)
+    + gid_address_size_to_put_no_vni (g));
 }
 
 u16
@@ -632,18 +654,36 @@ gid_address_len (gid_address_t *a)
   return (*addr_len_fcts[type])((*cast_fcts[type])(a));
 }
 
-u16
-gid_address_put (u8 * b, gid_address_t * gid)
+static u16
+gid_address_put_no_vni (u8 * b, gid_address_t * gid)
 {
   gid_address_type_t type = gid_address_type (gid);
   return (*write_fcts[type])(b, (*cast_fcts[type])(gid));
 }
 
 u16
-gid_address_size_to_put (gid_address_t * gid)
+gid_address_put (u8 * b, gid_address_t * gid)
+{
+  if (0 != gid_address_vni (gid))
+    return vni_write (b, gid);
+
+  return gid_address_put_no_vni (b, gid);
+}
+
+static u16
+gid_address_size_to_put_no_vni (gid_address_t * gid)
 {
   gid_address_type_t type = gid_address_type (gid);
   return (*size_to_write_fcts[type])((*cast_fcts[type])(gid));
+}
+
+u16
+gid_address_size_to_put (gid_address_t * gid)
+{
+  if (0 != gid_address_vni (gid))
+    return vni_size_to_write (gid);
+
+  return gid_address_size_to_put_no_vni (gid);
 }
 
 void *
@@ -658,6 +698,8 @@ gid_address_copy(gid_address_t * dst, gid_address_t * src)
   gid_address_type_t type = gid_address_type(src);
   (*copy_fcts[type])((*cast_fcts[type])(dst), (*cast_fcts[type])(src));
   gid_address_type(dst) = type;
+  gid_address_vni(dst) = gid_address_vni(src);
+  gid_address_vni_mask(dst) = gid_address_vni_mask(src);
 }
 
 u32
@@ -690,8 +732,8 @@ gid_address_parse (u8 * offset, gid_address_t *a)
       gid_address_ippref_len(a) = 128;
       break;
     case LISP_AFI_LCAF:
-      len = lcaf_parse (offset, a);
       gid_address_type(a) = GID_ADDR_LCAF;
+      len = lcaf_parse (offset, a);
       break;
     default:
       clib_warning("LISP AFI %d not supported!", afi);
@@ -734,6 +776,10 @@ gid_address_cmp (gid_address_t * a1, gid_address_t * a2)
   if (!a1 || !a2)
     return -1;
   if (gid_address_type(a1) != gid_address_type(a2))
+    return -1;
+  if (gid_address_vni(a1) != gid_address_vni(a2))
+    return -1;
+  if (gid_address_vni_mask(a1) != gid_address_vni_mask(a2))
     return -1;
 
   switch (gid_address_type(a1))
@@ -818,4 +864,48 @@ locator_free (locator_t * l)
 {
   if (!l->local)
     gid_address_free (&l->address);
+}
+
+gid_address_t
+gid_build_lcaf (lcaf_t * lcaf, gid_address_t * a)
+{
+  gid_address_t lcaf_eid;
+
+  memset (&lcaf_eid, 0, sizeof (lcaf_eid));
+  gid_address_type (&lcaf_eid) = GID_ADDR_LCAF;
+  lcaf_t * lcaf0 = &gid_address_lcaf (&lcaf_eid);
+  lcaf0[0] = lcaf[0];
+  lcaf_gid(lcaf0) = clib_mem_alloc (sizeof (gid_address_t));
+  gid_address_copy (lcaf_gid(lcaf0), a);
+  return lcaf_eid;
+}
+
+lcaf_t
+lcaf_iid_init (u32 vni)
+{
+  lcaf_t lcaf;
+  memset (&lcaf, 0, sizeof (lcaf));
+  lcaf.type = LCAF_INSTANCE_ID;
+  lcaf_vni (&lcaf) = vni;
+  return lcaf;
+}
+
+gid_address_t *
+gid_addr_skip_lcaf (gid_address_t * g)
+{
+  lcaf_t * lcaf;
+  if (gid_address_type (g) == GID_ADDR_LCAF)
+    {
+      lcaf = &gid_address_lcaf (g);
+      switch (lcaf_type (lcaf))
+        {
+        case LCAF_INSTANCE_ID:
+          g = lcaf_gid (lcaf);
+          break;
+        default:
+          clib_warning ("unsupported LCAF type %d!", lcaf_type (lcaf));
+          return 0;
+        }
+    }
+  return g;
 }

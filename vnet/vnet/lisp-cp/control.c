@@ -47,13 +47,13 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
       if (mi != GID_LOOKUP_MISS && !gid_address_cmp (&old_map->eid,
                                                      &a->deid))
         {
-          clib_warning("eid %U found in the eid-table", format_ip_address,
+          clib_warning ("eid %U found in the eid-table", format_gid_address,
                        &a->deid);
           return VNET_API_ERROR_VALUE_EXIST;
         }
 
       pool_get(lcm->mapping_pool, m);
-      m->eid = a->deid;
+      gid_address_copy (&m->eid, &a->deid);
       m->locator_set_index = a->locator_set_index;
       m->ttl = a->ttl;
       m->action = a->action;
@@ -87,7 +87,7 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
     {
       if (mi == GID_LOOKUP_MISS)
         {
-          clib_warning("eid %U not found in the eid-table", format_ip_address,
+          clib_warning("eid %U not found in the eid-table", format_gid_address,
                        &a->deid);
           return VNET_API_ERROR_INVALID_VALUE;
         }
@@ -123,6 +123,7 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
 
       /* remove mapping from dictionary */
       gid_dictionary_add_del (&lcm->mapping_index_by_gid, &a->deid, 0, 0);
+      gid_address_free (&m->eid);
       pool_put_index (lcm->mapping_pool, mi);
     }
 
@@ -150,7 +151,7 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
 
   if (!table_id)
     {
-      clib_warning ("vni %d not associated to a vrf!", vni);
+      clib_warning ("vni %d not associated to any vrf!", vni);
       return VNET_API_ERROR_INVALID_VALUE;
     }
 
@@ -210,9 +211,9 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 locator_set_index = 0, map_index = 0;
   uword * p;
   vnet_lisp_add_del_mapping_args_t _a, * a = &_a;
+  u32 vni = 0;
 
-  gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
-
+  memset (&eid, 0, sizeof (eid));
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -223,6 +224,8 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
         is_add = 1;
       else if (unformat (line_input, "del"))
         is_add = 0;
+      else if (unformat (line_input, "vni %d", &vni))
+        gid_address_vni (&eid) = vni;
       else if (unformat (line_input, "eid %U", unformat_ip_prefix, prefp))
         {
           vec_add1(eids, eid);
@@ -244,8 +247,9 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
           goto done;
         }
     }
-
   /* XXX treat batch configuration */
+
+  gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
   a->deid = eid;
   a->is_add = is_add;
   a->locator_set_index = locator_set_index;
@@ -256,13 +260,97 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vec_free(eids);
   if (locator_set_name)
     vec_free (locator_set_name);
+  gid_address_free (&a->deid);
   return error;
 }
 
 VLIB_CLI_COMMAND (lisp_add_del_local_eid_command) = {
     .path = "lisp eid-table",
-    .short_help = "lisp eid-table add/del eid <eid> locator-set <locator-set>",
+    .short_help = "lisp eid-table add/del [vni <vni>] eid <eid> "
+      "locator-set <locator-set>",
     .function = lisp_add_del_local_eid_command_fn,
+};
+
+int
+vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_add)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  uword * table_id, * vnip;
+
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return -1;
+    }
+
+  if (vni == 0 || vrf == 0)
+    {
+      clib_warning ("can't add/del default vni-vrf mapping!");
+      return -1;
+    }
+
+  table_id = hash_get (lcm->table_id_by_vni, vni);
+  vnip = hash_get (lcm->vni_by_table_id, vrf);
+
+  if (is_add)
+    {
+      if (table_id || vnip)
+        {
+          clib_warning ("vni %d or vrf %d already used in any vrf/vni "
+                        "mapping!", vni, vrf);
+          return -1;
+        }
+      hash_set (lcm->table_id_by_vni, vni, vrf);
+      hash_set (lcm->vni_by_table_id, vrf, vni);
+    }
+  else
+    {
+      if (!table_id || !vnip)
+        {
+          clib_warning ("vni %d or vrf %d not used in any vrf/vni! "
+                        "mapping!", vni, vrf);
+          return -1;
+        }
+      hash_unset (lcm->table_id_by_vni, vni);
+      hash_unset (lcm->vni_by_table_id, vrf);
+    }
+  return 0;
+}
+
+static clib_error_t *
+lisp_eid_table_map_command_fn (vlib_main_t * vm,
+                               unformat_input_t * input,
+                               vlib_cli_command_t * cmd)
+{
+  u8 is_add = 1;
+  u32 vni = 0, vrf = 0;
+  unformat_input_t _line_input, * line_input = &_line_input;
+
+  /* Get a line of input. */
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+        is_add = 0;
+      else if (unformat (line_input, "vni %d", &vni))
+        ;
+      else if (unformat (line_input, "vrf %d", &vrf))
+        ;
+      else
+        {
+          return unformat_parse_error (line_input);
+        }
+    }
+  vnet_lisp_eid_table_map (vni, vrf, is_add);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lisp_eid_table_map_command) = {
+    .path = "lisp eid-table map",
+    .short_help = "lisp eid-table map [del] vni <vni> vrf <vrf>",
+    .function = lisp_eid_table_map_command_fn,
 };
 
 static int
@@ -587,8 +675,8 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
         }
       else if (unformat (line_input, "vni %u", &vni))
         {
-          gid_address_set_vni (&seid, vni);
-          gid_address_set_vni (&deid, vni);
+          gid_address_vni (&seid) = vni;
+          gid_address_vni (&deid) = vni;
         }
       else if (unformat (line_input, "seid %U",
                          unformat_ip_prefix, seid_ippref))
@@ -773,13 +861,13 @@ lisp_show_local_eid_table_command_fn (vlib_main_t * vm,
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
   mapping_t * mapit;
 
-  vlib_cli_output (vm, "%=20s%=16s", "EID", "Locator");
+  vlib_cli_output (vm, "%=30s%=16s", "EID", "Locator");
   pool_foreach (mapit, lcm->mapping_pool,
   ({
     u8 * msg = 0;
     locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
                                             mapit->locator_set_index);
-    vlib_cli_output (vm, "%-16U%16v", format_gid_address, &mapit->eid,
+    vlib_cli_output (vm, "%-30U%16v", format_gid_address, &mapit->eid,
                      ls->name);
     vec_free (msg);
   }));
@@ -1237,6 +1325,28 @@ VLIB_CLI_COMMAND (lisp_show_status_command) = {
     .short_help = "show lisp status",
     .function = lisp_show_status_command_fn,
 };
+
+static clib_error_t *
+lisp_show_eid_table_map_command_fn (vlib_main_t * vm, unformat_input_t * input,
+                                    vlib_cli_command_t * cmd)
+{
+  hash_pair_t * p;
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+
+  vlib_cli_output (vm, "%=10s%=10s", "VNI", "VRF");
+  hash_foreach_pair (p, lcm->table_id_by_vni,
+    {
+      vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
+    });
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lisp_show_eid_table_map_command) = {
+    .path = "show lisp eid-table map",
+    .short_help = "show lisp eid-table vni to vrf mappings",
+    .function = lisp_show_eid_table_map_command_fn,
+};
+
 static clib_error_t *
 lisp_add_del_locator_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
                                      vlib_cli_command_t * cmd)
@@ -1579,6 +1689,7 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
   ip_prefix_t * ippref = &gid_address_ippref (gid);
   ip_address_t * rloc = &ip_prefix_addr (ippref);
 
+  memset (gid, 0, sizeof (gid[0]));
   gid_address_type (gid) = GID_ADDR_IP_PREFIX;
   for (i = 0; i < vec_len(loc_set->locator_indices); i++)
     {
@@ -1749,6 +1860,43 @@ get_src_and_dst (void *hdr, ip_address_t * src, ip_address_t *dst)
     }
 }
 
+static u32
+lisp_get_vni_from_buffer (vlib_buffer_t * b, u8 version)
+{
+  uword * vnip;
+  u32 vni = ~0, table_id = ~0, fib_index;
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+
+  if (version == IP4)
+    {
+      ip4_fib_t * fib;
+      ip4_main_t * im4 = &ip4_main;
+      fib_index = vec_elt (im4->fib_index_by_sw_if_index,
+                           vnet_buffer (b)->sw_if_index[VLIB_RX]);
+      fib = find_ip4_fib_by_table_index_or_id (im4, fib_index,
+                                               IP4_ROUTE_FLAG_FIB_INDEX);
+      table_id = fib->table_id;
+    }
+  else
+    {
+      ip6_fib_t * fib;
+      ip6_main_t * im6 = &ip6_main;
+      fib_index = vec_elt (im6->fib_index_by_sw_if_index,
+                           vnet_buffer (b)->sw_if_index[VLIB_RX]);
+      fib = find_ip6_fib_by_table_index_or_id (im6, fib_index,
+                                               IP6_ROUTE_FLAG_FIB_INDEX);
+      table_id = fib->table_id;
+    }
+
+  vnip = hash_get (lcm->vni_by_table_id, table_id);
+  if (vnip)
+    vni = vnip[0];
+  else
+    clib_warning ("vrf %d is not mapped to any vni!", table_id);
+
+  return vni;
+}
+
 static uword
 lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               vlib_frame_t * from_frame)
@@ -1768,7 +1916,7 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       while (n_left_from > 0 && n_left_to_next_drop > 0)
         {
-          u32 pi0;
+          u32 pi0, vni;
           vlib_buffer_t * p0;
           ip4_header_t * ip0;
           gid_address_t src, dst;
@@ -1794,6 +1942,10 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           get_src_and_dst (ip0, &ip_prefix_addr(spref), &ip_prefix_addr(dpref));
           ip_prefix_len(spref) = ip_address_max_len (ip_prefix_version(spref));
           ip_prefix_len(dpref) = ip_address_max_len (ip_prefix_version(dpref));
+
+          vni = lisp_get_vni_from_buffer (p0, ip_prefix_version (spref));
+          gid_address_vni (&dst) = vni;
+          gid_address_vni (&src) = vni;
 
           /* if we have remote mapping for destination already in map-chache
              add forwarding tunnel directly. If not send a map-request */
@@ -1840,6 +1992,8 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                                sizeof(ip_address_t));
                 }
             }
+          gid_address_free (&dst);
+          gid_address_free (&src);
         }
 
       vlib_put_next_frame (vm, node, LISP_CP_LOOKUP_NEXT_DROP, n_left_to_next_drop);
@@ -2004,8 +2158,8 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
     {
       u32 li = vec_elt (dst_ls->locator_indices, i);
       locator_t * l = pool_elt_at_index (lcm->locator_pool, li);
-      if (l->priority < minp && gid_address_type(&l->address)
-            == GID_ADDR_IP_PREFIX)
+      if (l->priority < minp && (gid_address_type(&l->address)
+            == GID_ADDR_IP_PREFIX))
         {
           minp = l->priority;
           dl = l;
@@ -2044,7 +2198,7 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
   /* insert data plane forwarding entry */
   a->is_add = 1;
   if (dl)
-    a->dlocator = gid_address_ip(&dl->address);
+    a->dlocator = gid_address_ip (&dl->address);
   else
     {
       a->is_negative = 1;
@@ -2065,6 +2219,7 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
   gid_address_copy (&fe->deid, &a->deid);
   hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
             fe - lcm->fwd_entry_pool);
+  gid_address_free (&a->deid);
 }
 
 /* return 0 if the two locator sets are identical 1 otherwise */
@@ -2339,6 +2494,7 @@ lisp_cp_init (vlib_main_t *vm)
 
   /* default vrf mapped to vni 0 */
   hash_set(lcm->table_id_by_vni, 0, 0);
+  hash_set(lcm->vni_by_table_id, 0, 0);
 
   udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp,
                          lisp_cp_input_node.index, 1 /* is_ip4 */);
