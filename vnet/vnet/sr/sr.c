@@ -750,7 +750,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   ip_lookup_main_t * lm = &im->lookup_main;
   ip6_sr_tunnel_key_t key;
   ip6_sr_tunnel_t * t;
-  uword * p;
+  uword * p, * n;
   ip6_sr_header_t * h = 0;
   u32 header_length;
   ip6_address_t * addrp, *this_address;
@@ -786,69 +786,94 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   clib_memcpy (key.src.as_u8, a->src_address->as_u8, sizeof (key.src));
   clib_memcpy (key.dst.as_u8, a->dst_address->as_u8, sizeof (key.dst));
 
-  /* If the name exists, find the tunnel by name else... */
+  /* When adding a tunnel:
+   * - If a "name" is given, it must not exist.
+   * - The "key" is always checked, and must not exist.
+   * When deleting a tunnel:
+   * - If the "name" is given, and it exists, then use it.
+   * - If the "name" is not given, use the "key".
+   * - If the "name" and the "key" are given, then both must point to the same
+   *   thing.
+   */
+
+  /* Lookup the key */
+  p = hash_get_mem (sm->tunnel_index_by_key, &key);
+
+  /* If the name is given, look it up */
   if (a->name)
-    p = hash_get_mem(sm->tunnel_index_by_name, a->name);
-  else if (p==0)
-    p = hash_get_mem (sm->tunnel_index_by_key, &key);
+    n = hash_get_mem(sm->tunnel_index_by_name, a->name);
+  else
+    n = 0;
 
-  if (p)
+  /* validate key/name parameters */
+  if (!a->is_del) /* adding a tunnel */
     {
-      if (a->is_del)
-        {
-          hash_pair_t *hp;
-          
-          /* Delete existing tunnel */
-          t = pool_elt_at_index (sm->tunnels, p[0]);
-
-          ip6_delete_route_no_next_hop (&t->key.dst, t->dst_mask_width, 
-                                        a->rx_table_id);
-          vec_free (t->rewrite);
-	  /* Remove tunnel from any policy if associated */
-	  if (t->policy_index != ~0)
-	    {
-	      pt=pool_elt_at_index (sm->policies, t->policy_index);
-	      for (i=0; i< vec_len (pt->tunnel_indices); i++)
-		{
-		  if (pt->tunnel_indices[i] == t - sm->tunnels)
-		    {
-		      vec_delete (pt->tunnel_indices, 1, i);
-		      goto found;
-		    }
-		}
-	      clib_warning ("Tunnel index %d not found in policy_index %d", 
-			   t - sm->tunnels, pt - sm->policies);
-	    found: 
-	      /* If this is last tunnel in the  policy, clean up the policy too */
-	      if (vec_len (pt->tunnel_indices) == 0)
-		{
-		  hash_unset_mem (sm->policy_index_by_policy_name, pt->name);
-		  vec_free (pt->name);
-		  pool_put (sm->policies, pt);
-		}
-	    }
-
-	  /* Clean up the tunnel by name */
-	  if (t->name)
-	    {
-	      hash_unset_mem (sm->tunnel_index_by_name, t->name);
-	      vec_free (t->name);
-	    }
-          pool_put (sm->tunnels, t);
-          hp = hash_get_pair (sm->tunnel_index_by_key, &key);
-          key_copy = (void *)(hp->key);
-          hash_unset_mem (sm->tunnel_index_by_key, &key);
-          vec_free (key_copy);
-          return 0;
-        }
-      else /* create; tunnel already exists; complain */
+      if (a->name && n) /* name given & exists already */
+        return -1;
+      if (p) /* key exists already */
         return -1;
     }
-  else
+  else /* deleting a tunnel */
     {
-      /* delete; tunnel does not exist; complain */
-      if (a->is_del)
+      if (!p) /* key doesn't exist */
         return -2;
+      if (a->name && !n) /* name given & it doesn't exist */
+        return -2;
+
+      if (n) /* name given & found */
+        {
+          if (n[0] != p[0]) /* name and key do not point to the same thing */
+            return -2;
+        }
+    }
+
+
+  if (a->is_del) /* delete the tunnel */
+    {
+      hash_pair_t *hp;
+
+      /* Delete existing tunnel */
+      t = pool_elt_at_index (sm->tunnels, p[0]);
+
+      ip6_delete_route_no_next_hop (&t->key.dst, t->dst_mask_width,
+                                    a->rx_table_id);
+      vec_free (t->rewrite);
+      /* Remove tunnel from any policy if associated */
+      if (t->policy_index != ~0)
+        {
+          pt=pool_elt_at_index (sm->policies, t->policy_index);
+          for (i=0; i< vec_len (pt->tunnel_indices); i++)
+            {
+              if (pt->tunnel_indices[i] == t - sm->tunnels)
+                {
+                  vec_delete (pt->tunnel_indices, 1, i);
+                  goto found;
+                }
+            }
+          clib_warning ("Tunnel index %d not found in policy_index %d",
+                         t - sm->tunnels, pt - sm->policies);
+        found:
+           /* If this is last tunnel in the  policy, clean up the policy too */
+          if (vec_len (pt->tunnel_indices) == 0)
+            {
+              hash_unset_mem (sm->policy_index_by_policy_name, pt->name);
+              vec_free (pt->name);
+              pool_put (sm->policies, pt);
+            }
+        }
+
+      /* Clean up the tunnel by name */
+      if (t->name)
+        {
+          hash_unset_mem (sm->tunnel_index_by_name, t->name);
+          vec_free (t->name);
+        }
+      pool_put (sm->tunnels, t);
+      hp = hash_get_pair (sm->tunnel_index_by_key, &key);
+      key_copy = (void *)(hp->key);
+      hash_unset_mem (sm->tunnel_index_by_key, &key);
+      vec_free (key_copy);
+      return 0;
     }
 
   /* create a new tunnel */
@@ -1158,7 +1183,9 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (sr_tunnel_command, static) = {
     .path = "sr tunnel",
     .short_help = 
-    "sr tunnel [del] [name <name>] src <addr> dst <addr> [next <addr>] [cleanup] [reroute] [key %s] [policy <policy_name>",
+      "sr tunnel [del] [name <name>] src <addr> dst <addr> [next <addr>] "
+      "[clean] [reroute] [key <secret>] [policy <policy_name>]"
+      "[rx-fib-id <fib_id>] [tx-fib-id <fib_id>]",
     .function = sr_add_del_tunnel_command_fn,
 };
 
