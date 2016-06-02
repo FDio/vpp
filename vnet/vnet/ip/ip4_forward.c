@@ -73,7 +73,7 @@ ip4_fib_lookup_with_table (ip4_main_t * im, u32 fib_index,
     }
     
   /* Nothing matches in table. */
-  ai = lm->miss_adj_index;
+  ai = lm->miss_adj_index
 
  done:
   return ai;
