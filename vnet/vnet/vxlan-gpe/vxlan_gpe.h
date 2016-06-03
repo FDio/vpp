@@ -90,6 +90,11 @@ typedef struct {
   u32 hw_if_index;
   u32 sw_if_index;
 
+  union { /* storage for the hash key */
+	vxlan4_gpe_tunnel_key_t *key4;
+	vxlan6_gpe_tunnel_key_t *key6;
+  };
+
   /* flags */
   u32 flags;
 } vxlan_gpe_tunnel_t;
@@ -147,7 +152,8 @@ u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args);
 typedef struct {
   u8 is_add;
   u8 is_ip6;
-  ip46_address_t local, remote;
+  ip46_address_t local;
+  ip46_address_t remote;
   u8 protocol;
   u32 encap_fib_index;
   u32 decap_fib_index;
