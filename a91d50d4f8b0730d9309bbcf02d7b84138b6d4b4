@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_1eecedc6",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 43
+      },
+      "writtenOn": "2016-06-03T08:56:38Z",
+      "side": 1,
+      "message": "you should split this patch: you bring 2 features here,\n  1- using the CDN fast\n  2- move from tar.gz to tar.xz",
+      "revId": "a91d50d4f8b0730d9309bbcf02d7b84138b6d4b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
