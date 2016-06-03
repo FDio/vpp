@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_9e547d22",
+        "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-06-03T11:46:27Z",
+      "side": 0,
+      "message": "Why do you prefer storing the pointers locally instead of getting them from the hash like this? I was considering moving VXLAN to do the same as this.",
+      "range": {
+        "startLine": 320,
+        "startChar": 7,
+        "endLine": 320,
+        "endChar": 65
+      },
+      "revId": "227fe26987738d69cdc58fbee0b2ccbecf3ae97b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
