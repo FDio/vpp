@@ -219,9 +219,8 @@ int vnet_vxlan_gpe_add_del_tunnel
   u32 hw_if_index = ~0;
   u32 sw_if_index = ~0;
   int rv;
-  vxlan4_gpe_tunnel_key_t key4, *key4_copy;
-  vxlan6_gpe_tunnel_key_t key6, *key6_copy;
-  hash_pair_t *hp;
+  vxlan4_gpe_tunnel_key_t key4;
+  vxlan6_gpe_tunnel_key_t key6;
 
   if (!a->is_ip6)
   {
@@ -262,6 +261,18 @@ int vnet_vxlan_gpe_add_del_tunnel
       else            foreach_copy_ipv6
 #undef _
 
+      /* copy the key */
+      if (a->is_ip6)
+      {
+        t->key6 = clib_mem_alloc(sizeof(vxlan6_gpe_tunnel_key_t));
+        clib_memcpy (t->key6, &key6, sizeof(key6));
+      }
+      else
+      {
+        t->key4 = clib_mem_alloc(sizeof(vxlan4_gpe_tunnel_key_t));
+        clib_memcpy (t->key4, &key4, sizeof(key4));
+      }
+
       if (!a->is_ip6) t->flags |= VXLAN_GPE_TUNNEL_IS_IPV4;
 
       if (!a->is_ip6) {
@@ -278,17 +289,11 @@ int vnet_vxlan_gpe_add_del_tunnel
 
       if (!a->is_ip6)
       {
-        key4_copy = clib_mem_alloc (sizeof (*key4_copy));
-        clib_memcpy (key4_copy, &key4, sizeof (*key4_copy));
-        hash_set_mem (gm->vxlan4_gpe_tunnel_by_key, key4_copy,
-                      t - gm->tunnels);
+        hash_set_mem (gm->vxlan4_gpe_tunnel_by_key, t->key4, t - gm->tunnels);
       }
       else
       {
-          key6_copy = clib_mem_alloc (sizeof (*key6_copy));
-          clib_memcpy (key6_copy, &key6, sizeof (*key6_copy));
-          hash_set_mem (gm->vxlan6_gpe_tunnel_by_key, key6_copy,
-                        t - gm->tunnels);
+        hash_set_mem (gm->vxlan6_gpe_tunnel_by_key, t->key6, t - gm->tunnels);
       }
 
       if (vec_len (gm->free_vxlan_gpe_tunnel_hw_if_indices) > 0)
@@ -329,20 +334,24 @@ int vnet_vxlan_gpe_add_del_tunnel
 
       if (!a->is_ip6)
       {
-        hp = hash_get_pair (gm->vxlan4_gpe_tunnel_by_key, &key4);
-        key4_copy = (void *)(hp->key);
-        hash_unset_mem (gm->vxlan4_gpe_tunnel_by_key, &key4);
-        clib_mem_free (key4_copy);
+        hash_unset_mem (gm->vxlan4_gpe_tunnel_by_key, t->key4);
       }
       else
       {
-        hp = hash_get_pair (gm->vxlan6_gpe_tunnel_by_key, &key6);
-        key6_copy = (void *)(hp->key);
-        hash_unset_mem (gm->vxlan4_gpe_tunnel_by_key, &key6);
-        clib_mem_free (key6_copy);
+        hash_unset_mem (gm->vxlan4_gpe_tunnel_by_key, t->key6);
       }
 
       vec_free (t->rewrite);
+      if (!a->is_ip6)
+      {
+        clib_mem_free (t->key4);
+        t->key4 = 0;
+      }
+      else
+      {
+        clib_mem_free (t->key6);
+        t->key6 = 0;
+      }
       pool_put (gm->tunnels, t);
     }
 
