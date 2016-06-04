@@ -759,24 +759,22 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
   return mb_index;
 }
 
-#if VIRL > 0
-#define VIRL_SPEED_LIMIT()                         \
-  /* Limit the input rate to 1000 vectors / sec */ \
-  {                                                \
-    struct timespec ts, tsrem;                     \
-                                                   \
-    ts.tv_sec = 0;                                 \
-    ts.tv_nsec = 1000*1000; /* 1ms */              \
-                                                   \
-    while (nanosleep(&ts, &tsrem) < 0)             \
-      {                                            \
-        ts = tsrem;                                \
-      }                                            \
-  }
-#else
-#define VIRL_SPEED_LIMIT()
-#endif
+static inline void poll_rate_limit(dpdk_main_t * dm)
+{
+  /* Limit the poll rate by sleeping for N msec between polls */
+  if (PREDICT_FALSE (dm->poll_sleep != 0))
+  {
+    struct timespec ts, tsrem;
 
+    ts.tv_sec = 0;
+    ts.tv_nsec = 1000*1000*dm->poll_sleep; /* 1ms */
+
+    while (nanosleep(&ts, &tsrem) < 0)
+      {
+        ts = tsrem;
+      }
+  }
+}
 
 static uword
 dpdk_input (vlib_main_t * vm,
@@ -799,7 +797,7 @@ dpdk_input (vlib_main_t * vm,
       n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, 0, 0);
     }
 
-  VIRL_SPEED_LIMIT()
+  poll_rate_limit(dm);
 
   return n_rx_packets;
 }
@@ -824,7 +822,7 @@ dpdk_input_rss (vlib_main_t * vm,
       n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id, 0);
     }
 
-  VIRL_SPEED_LIMIT()
+  poll_rate_limit(dm);
 
   return n_rx_packets;
 }
@@ -849,7 +847,7 @@ dpdk_input_efd (vlib_main_t * vm,
       n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id, 1);
     }
 
-  VIRL_SPEED_LIMIT()
+  poll_rate_limit(dm);
 
   return n_rx_packets;
 }

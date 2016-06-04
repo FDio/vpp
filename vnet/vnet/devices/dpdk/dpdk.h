@@ -411,6 +411,9 @@ typedef struct {
   frame_queue_trace_t        *frame_queue_traces;
   frame_queue_nelt_counter_t *frame_queue_histogram;
 
+  /* Sleep for this many MS after each device poll */
+  u32 poll_sleep;
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;

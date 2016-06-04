@@ -805,6 +805,7 @@ static clib_error_t *
 dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 {
   clib_error_t * error = 0;
+  dpdk_main_t * dm = &dpdk_main;
   dpdk_config_main_t * conf = &dpdk_config_main;
   vlib_thread_main_t * tm = vlib_get_thread_main();
   vlib_node_runtime_t * rt = vlib_node_get_runtime (vm, dpdk_input_node.index);
@@ -904,7 +905,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         conf->use_virtio_vhost = 0;
       else if (unformat (input, "rss %d", &conf->use_rss))
         ;
-
+      else if (unformat (input, "poll-sleep %d", &dm->poll_sleep))
+        ;
 #define _(a)                                    \
       else if (unformat(input, #a))             \
         {                                       \
