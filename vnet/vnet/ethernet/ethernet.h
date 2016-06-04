@@ -472,6 +472,14 @@ eth_identify_subint (vnet_hw_interface_t * hi,
   return 1;
 }
 
+// Compare two ethernet macs. Return 1 if they are the same, 0 if different
+always_inline u32
+eth_mac_equal (u8 * mac1, u8 * mac2) {
+  return (*((u32 *)(mac1+0)) == *((u32 *)(mac2+0)) &&
+          *((u32 *)(mac1+2)) == *((u32 *)(mac2+2)));
+}
+
+
 always_inline ethernet_main_t * 
 vnet_get_ethernet_main (void)
 {
