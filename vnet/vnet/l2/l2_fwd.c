@@ -75,7 +75,7 @@ static vlib_node_registration_t l2fwd_node;
 _(L2FWD,         "L2 forward packets")			\
 _(FLOOD,         "L2 forward misses")			\
 _(HIT,           "L2 forward hits")			\
-_(BVI_TAGGED,    "BVI packet with vlan tag")		\
+_(BVI_BAD_MAC,   "BVI L3 MAC mismatch")  		\
 _(BVI_ETHERTYPE, "BVI packet with unhandled ethertype")	\
 _(FILTER_DROP,   "Filter Mac Drop")			\
 _(REFLECT_DROP,  "Reflection Drop")
@@ -155,8 +155,8 @@ l2fwd_process (vlib_main_t * vm,
                       next0);
 
       if (PREDICT_FALSE(rc)) {
-        if (rc == TO_BVI_ERR_TAGGED) {
-          b0->error = node->errors[L2FWD_ERROR_BVI_TAGGED];
+        if (rc == TO_BVI_ERR_BAD_MAC) {
+          b0->error = node->errors[L2FWD_ERROR_BVI_BAD_MAC];
           *next0 = L2FWD_NEXT_DROP;
         } else if (rc == TO_BVI_ERR_ETHERTYPE) {
           b0->error = node->errors[L2FWD_ERROR_BVI_ETHERTYPE];

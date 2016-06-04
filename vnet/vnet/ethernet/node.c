@@ -81,14 +81,6 @@ typedef enum {
 } ethernet_input_variant_t;
 
 
-// Compare two ethernet macs. Return 1 if they are the same, 0 if different
-static_always_inline u32
-eth_mac_equal (u8 * mac1, u8 * mac2) {
-  return (*((u32 *)(mac1+0)) == *((u32 *)(mac2+0)) &&
-          *((u32 *)(mac1+2)) == *((u32 *)(mac2+2)));
-}
-
-
 // Parse the ethernet header to extract vlan tags and innermost ethertype
 static_always_inline void
 parse_header (ethernet_input_variant_t variant,

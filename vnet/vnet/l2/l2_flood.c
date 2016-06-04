@@ -87,7 +87,7 @@ static vlib_node_registration_t l2flood_node;
 _(L2FLOOD,           "L2 flood packets")			\
 _(REPL_FAIL,         "L2 replication failures")			\
 _(NO_MEMBERS,        "L2 replication complete")			\
-_(BVI_TAGGED,        "BVI packet with vlan tag")		\
+_(BVI_BAD_MAC,       "BVI L3 mac mismatch")		        \
 _(BVI_ETHERTYPE,     "BVI packet with unhandled ethertype")
 
 typedef enum {
@@ -247,8 +247,8 @@ l2flood_process (vlib_main_t * vm,
                     next0);
 
     if (PREDICT_FALSE(rc)) {
-      if (rc == TO_BVI_ERR_TAGGED) {
-        b0->error = node->errors[L2FLOOD_ERROR_BVI_TAGGED];
+      if (rc == TO_BVI_ERR_BAD_MAC) {
+        b0->error = node->errors[L2FLOOD_ERROR_BVI_BAD_MAC];
         *next0 = L2FLOOD_NEXT_DROP;
       } else if (rc == TO_BVI_ERR_ETHERTYPE) {
         b0->error = node->errors[L2FLOOD_ERROR_BVI_ETHERTYPE];

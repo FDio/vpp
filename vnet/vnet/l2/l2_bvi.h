@@ -25,7 +25,7 @@
 #include <vnet/l2/l2_input.h>
 
 #define TO_BVI_ERR_OK        0
-#define TO_BVI_ERR_TAGGED    1
+#define TO_BVI_ERR_BAD_MAC   1
 #define TO_BVI_ERR_ETHERTYPE 2
 
 // Send a packet from L2 processing to L3 via the BVI interface.
@@ -43,6 +43,17 @@ l2_to_bvi (vlib_main_t * vlib_main,
   u8 l2_len;
   u16 ethertype;
   u8 * l3h;
+  ethernet_header_t * e0;
+  vnet_hw_interface_t * hi;
+
+  e0 = vlib_buffer_get_current (b0);
+  hi = vnet_get_sup_hw_interface (vnet_main, bvi_sw_if_index);
+
+  // Perform L3 my-mac filter
+  if ((!ethernet_address_cast(e0->dst_address)) &&
+      (!eth_mac_equal((u8 *)e0, hi->hw_address))) {
+      return TO_BVI_ERR_BAD_MAC;
+  }
 
   // Save L2 header position which may be changed due to packet replication
   vnet_buffer (b0)->ethernet.start_of_ethernet_header = b0->current_data;
