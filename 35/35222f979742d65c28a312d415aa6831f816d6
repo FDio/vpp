@@ -1,0 +1,10 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Yoann Desmouceaux <ydesmouc@cisco.com>
+Code-Review+1: Chris Luke <chris_luke@cable.comcast.com>
+Code-Review-1: Dave Wallace <dwallacelf@gmail.com>
+Code-Review+2: Dave Barach <openvpp@barachs.net>
+Submitted-by: Dave Barach <openvpp@barachs.net>
+Submitted-at: Sun, 05 Jun 2016 13:56:19 +0000
+Reviewed-on: https://gerrit.fd.io/r/1286
+Project: vpp
+Branch: refs/heads/master
