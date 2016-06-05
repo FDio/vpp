@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_4c9f5f04",
+        "filename": "vnet/vnet/lib-scv/scv_util.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-05T14:25:20Z",
+      "side": 1,
+      "message": "Fix the date",
+      "revId": "d2a3e7e33bc536d1c7ed8b02ac707b4966fbe946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_ccfb6f46",
+        "filename": "vnet/vnet/lib-scv/scv_util.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-05T14:25:20Z",
+      "side": 1,
+      "message": "This is not idiomatic vpp code. \n\nAll of global variables shall be grouped into an scv_main_t.\n\nI don\u0027t care for use of #define MAX_SERVICE_PROFILE. Pool or vector.\n\nChain_path_name should be a vector.",
+      "revId": "d2a3e7e33bc536d1c7ed8b02ac707b4966fbe946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_6c9a2316",
+        "filename": "vnet/vnet/lib-scv/scv_util.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-05T14:25:20Z",
+      "side": 1,
+      "message": "strcmp is a security hole",
+      "revId": "d2a3e7e33bc536d1c7ed8b02ac707b4966fbe946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_2ca42b56",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 3420,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-05T14:25:20Z",
+      "side": 1,
+      "message": "Please change scv_profile_list[256] to scv_profile_list[0] and add the length explicitly.",
+      "revId": "d2a3e7e33bc536d1c7ed8b02ac707b4966fbe946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_0c8967ca",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 3448,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-05T14:25:20Z",
+      "side": 1,
+      "message": "Same as previous comment",
+      "revId": "d2a3e7e33bc536d1c7ed8b02ac707b4966fbe946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_ec8513ae",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 3496,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-05T14:25:20Z",
+      "side": 1,
+      "message": "Same as previous comment",
+      "revId": "d2a3e7e33bc536d1c7ed8b02ac707b4966fbe946",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
