@@ -134,7 +134,7 @@ JNIEXPORT jint JNICALL Java_org_openvpp_jvpp_VppJNIConnection_clientConnect
             S;
 
             // wait for results:
-            timeout = clib_time_now (&clib_time) + 1.0;
+            timeout = clib_time_now (&clib_time) + 10.0;
             rv = VNET_API_ERROR_RESPONSE_NOT_READY;
             while (clib_time_now (&clib_time) < timeout) {
               if (jm->result_ready == 1) {
