@@ -43,6 +43,12 @@
 u8 cnat_db_init_done = 0;
 
 typedef struct {
+  /* Locks for multi thread support */
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  pthread_spinlock_t *main_db_lockp;
+  pthread_spinlock_t *user_db_lockp;
+  pthread_spinlock_t *session_db_lockp;
+
   u32 cached_next_index;
   /* $$$$ add data here */
 
@@ -52,10 +58,6 @@ typedef struct {
 } cnat_db_v2_main_t;
 
 cnat_db_v2_main_t cnat_db_v2_main;
-
-pthread_mutex_t main_db_lock;
-pthread_mutex_t user_db_lock;
-pthread_mutex_t session_db_lock;
 
 #if 1
 /* TOBE_PORTED : Remove the following once fixed */
@@ -547,7 +549,7 @@ void cnat_user_db_delete (cnat_user_db_entry_t *up)
         return;
     }
 
-    pthread_mutex_lock(&user_db_lock);
+    pthread_spin_lock(cnat_db_v2_main.user_db_lockp);
 #if 1
     if(PREDICT_FALSE(up->flags & CNAT_USER_DB_DSLITE_FLAG)) {
         dslite_key_t dk = {
@@ -594,7 +596,7 @@ void cnat_user_db_delete (cnat_user_db_entry_t *up)
 
  found:
     pool_put(cnat_user_db, up);    
-    pthread_mutex_unlock(&user_db_lock);
+    pthread_spin_unlock(cnat_db_v2_main.user_db_lockp);
 }
 
 cnat_user_db_entry_t*
@@ -628,7 +630,7 @@ cnat_user_db_create_entry(cnat_db_key_bucket_t *uki,
 {
     cnat_user_db_entry_t *udb = NULL;
 
-    pthread_mutex_lock(&user_db_lock);
+    pthread_spin_lock(cnat_db_v2_main.user_db_lockp);
     pool_get(cnat_user_db, udb);
     memset(udb, 0, sizeof(*udb));
 
@@ -643,7 +645,7 @@ cnat_user_db_create_entry(cnat_db_key_bucket_t *uki,
 #ifndef NO_BULK_LOGGING
     INIT_BULK_CACHE(udb)
 #endif /* NO_BULK_LOGGING */
-    pthread_mutex_unlock(&user_db_lock);
+    pthread_spin_unlock(cnat_db_v2_main.user_db_lockp);
     return udb;
 }
 
@@ -781,7 +783,7 @@ void cnat_delete_main_db_entry_v2 (cnat_main_db_entry_t *ep)
         return;
     }
 
-   pthread_mutex_lock(&main_db_lock);
+   pthread_spin_lock(cnat_db_v2_main.main_db_lockp);
    if(PREDICT_FALSE(ep->flags & 
         CNAT_DB_FLAG_PPTP_TUNNEL_ACTIVE)) {
       pptp_clear_all_channels(ep);
@@ -931,9 +933,9 @@ delete_entry:
 
     main_db_index = ep - cnat_main_db;
 
-    pthread_mutex_lock(&user_db_lock);
+    pthread_spin_lock(cnat_db_v2_main.user_db_lockp);
     up->ntranslations--;
-    pthread_mutex_unlock(&user_db_lock);
+    pthread_spin_unlock(cnat_db_v2_main.user_db_lockp);
 
     /*
      * when user reaches max allowed port limit
@@ -987,7 +989,7 @@ delete_entry:
     nat44_dslite_common_stats[instance].active_translations--;
     nat44_dslite_global_stats[!!(instance - 1)].translation_delete_count ++;
 unlock:
-    pthread_mutex_unlock(&main_db_lock);
+    pthread_spin_unlock(cnat_db_v2_main.main_db_lockp);
 }
 
 cnat_main_db_entry_t*
@@ -1381,9 +1383,9 @@ _cnat_get_main_db_entry_v2(cnat_db_key_bucket_t *ki,
         /*
          * increment port in use for this user
          */
-        pthread_mutex_lock(&user_db_lock);
+        pthread_spin_lock(cnat_db_v2_main.user_db_lockp);
         udb->ntranslations += 1;
-        pthread_mutex_unlock(&user_db_lock);
+        pthread_spin_unlock(cnat_db_v2_main.user_db_lockp);
 	
     } else {
         /*
@@ -1607,9 +1609,9 @@ _cnat_get_main_db_entry_v2(cnat_db_key_bucket_t *ki,
        db2->vrfmap_index = my_vrfmap - cnat_map_by_vrf;
        db2->entry_expires = cnat_current_time;
        db2->flags |= CNAT_DB_FLAG_ALG_ENTRY;
-       pthread_mutex_lock(&user_db_lock);
+       pthread_spin_lock(cnat_db_v2_main.user_db_lockp);
        udb->ntranslations += 1;
-       pthread_mutex_unlock(&user_db_lock);
+       pthread_spin_unlock(cnat_db_v2_main.user_db_lockp);
        db2->dst_ipv4 = dest_info->k.ipv4;
        db2->dst_port = dest_info->k.port;
        db2->nsessions = 0; /* For ALG db, set sessions to 0 - CSCuf78420 */
@@ -1650,10 +1652,10 @@ cnat_get_main_db_entry_v2(cnat_db_key_bucket_t *ki,
 {
 
     cnat_main_db_entry_t *db;
-    pthread_mutex_lock(&main_db_lock);
+    pthread_spin_lock(cnat_db_v2_main.main_db_lockp);
     db = _cnat_get_main_db_entry_v2(ki, port_pair_type,
         port_type, info, dest_info);
-    pthread_mutex_unlock(&main_db_lock);
+    pthread_spin_unlock(cnat_db_v2_main.main_db_lockp);
     return db;
 }
 
@@ -2673,7 +2675,7 @@ cnat_create_session_db_entry(cnat_key_t *ko,
         return NULL;
     }
 
-    pthread_mutex_lock(&session_db_lock);
+    pthread_spin_lock(cnat_db_v2_main.session_db_lockp);
     pool_get(cnat_session_db, db);
     memset(db, 0, sizeof(*db));
 
@@ -2733,7 +2735,7 @@ cnat_create_session_db_entry(cnat_key_t *ko,
        newly established sessions */
     db->entry_expires = cnat_current_time;
     nat44_dslite_common_stats[instance].sessions++;
-    pthread_mutex_unlock(&session_db_lock);
+    pthread_spin_unlock(cnat_db_v2_main.session_db_lockp);
     return db;
 }
 
@@ -2866,9 +2868,9 @@ _cnat_delete_session_db_entry (cnat_session_entry_t *ep, u8 log)
 
 void cnat_delete_session_db_entry (cnat_session_entry_t *ep, u8 log)
 {
-    pthread_mutex_lock(&session_db_lock);
+    pthread_spin_lock(cnat_db_v2_main.session_db_lockp);
     _cnat_delete_session_db_entry (ep, log);
-    pthread_mutex_unlock(&session_db_lock);
+    pthread_spin_unlock(cnat_db_v2_main.session_db_lockp);
 }
 
 cnat_main_db_entry_t*
@@ -3774,9 +3776,24 @@ void cnat_db_v2_init (void)
     }
 #endif
 
-    ASSERT (pthread_mutex_init(&main_db_lock, NULL) == 0);
-    ASSERT (pthread_mutex_init(&user_db_lock, NULL) == 0);
-    ASSERT (pthread_mutex_init(&session_db_lock, NULL) == 0);
+    cnat_db_v2_main.main_db_lockp =
+        clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+            CLIB_CACHE_LINE_BYTES);
+
+    cnat_db_v2_main.user_db_lockp =
+        clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+            CLIB_CACHE_LINE_BYTES);
+
+    cnat_db_v2_main.session_db_lockp =
+        clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+            CLIB_CACHE_LINE_BYTES);
+
+    ASSERT (pthread_spin_init(cnat_db_v2_main.main_db_lockp,
+        PTHREAD_PROCESS_PRIVATE) == 0);
+    ASSERT (pthread_spin_init(cnat_db_v2_main.user_db_lockp,
+        PTHREAD_PROCESS_PRIVATE) == 0);
+    ASSERT (pthread_spin_init(cnat_db_v2_main.session_db_lockp,
+        PTHREAD_PROCESS_PRIVATE) == 0);
 
     cnat_db_init_done = 1;
     printf("CNAT DB init is successful\n");
