@@ -2122,6 +2122,8 @@ vl_api_lisp_enable_disable_status_details_t_handler_json
     gpe_status = format (0, "%s", mp->gpe_status ? "enabled" : "disabled");
     feature_status = format (0, "%s",
                             mp->feature_status ? "enabled" : "disabled");
+    vec_add1 (gpe_status, 0);
+    vec_add1 (feature_status, 0);
 
     if (VAT_JSON_ARRAY != vam->json_tree.type) {
         ASSERT(VAT_JSON_NONE == vam->json_tree.type);
