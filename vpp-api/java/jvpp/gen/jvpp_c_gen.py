@@ -236,8 +236,20 @@ u8_array_dto_field_setter_template = Template("""
     (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
 """)
 
+u32_array_dto_field_setter_template = Template("""
+    {
+        jintArray ${java_name} = (*env)->NewIntArray(env, ${field_length});
+        jint * ${java_name}ArrayElements = (*env)->GetIntArrayElements(env, ${java_name}, NULL);
+        unsigned int _i;
+        for (_i = 0; _i < ${field_length}; _i++) {
+            ${java_name}ArrayElements[_i] = clib_net_to_host_u32(mp->${c_name}[_i]);
+        }
+        (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
+    }
+""")
+
 # For each u64 array we get its elements. Then we convert values to host byte order.
-# All changes to  jint* buffer are written to jlongArray (isCopy is set to NULL)
+# All changes to  jlong* buffer are written to jlongArray (isCopy is set to NULL)
 u64_array_dto_field_setter_template = Template("""
     {
         jlongArray ${java_name} = (*env)->NewLongArray(env, ${field_length});
@@ -256,8 +268,9 @@ dto_field_setter_templates = {'u8': default_dto_field_setter_template,
                       'i32': u32_dto_field_setter_template,
                       'u64': u64_dto_field_setter_template,
                       'f64': default_dto_field_setter_template, #fixme
-                      'u64[]': u64_array_dto_field_setter_template,
-                      'u8[]': u8_array_dto_field_setter_template
+                      'u8[]': u8_array_dto_field_setter_template,
+                      'u32[]': u32_array_dto_field_setter_template,
+                      'u64[]': u64_array_dto_field_setter_template
                       }
 
 msg_handler_template = Template("""
