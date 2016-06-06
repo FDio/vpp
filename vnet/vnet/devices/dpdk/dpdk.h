@@ -311,7 +311,9 @@ typedef struct dpdk_efd_t {
 
 #define foreach_dpdk_device_config_item \
   _ (num_rx_queues) \
-  _ (num_tx_queues)
+  _ (num_tx_queues) \
+  _ (num_rx_desc) \
+  _ (num_tx_desc)
 
 typedef struct {
     vlib_pci_addr_t pci_addr;

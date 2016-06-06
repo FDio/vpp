@@ -486,6 +486,8 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
                    pci->addr.devid, pci->addr.function);
       s = format(s, "%Umax rx packet len: %d\n",
                  format_white_space, indent + 2, di.max_rx_pktlen);
+      s = format(s, "%Umax num of queues: rx %d tx %d\n",
+                 format_white_space, indent + 2, di.max_rx_queues, di.max_tx_queues);
       s = format(s, "%Upromiscuous:       unicast %s all-multicast %s\n",
                  format_white_space, indent + 2,
                  rte_eth_promiscuous_get(xd->device_index) ? "on" : "off",
@@ -517,12 +519,14 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
                  xd->tx_q_used, xd->tx_q_used);
     }
 
+  s = format (s, "%Urx queues %d, rx desc %d, tx queues %d, tx desc %d\n",
+              format_white_space, indent + 2,
+              xd->rx_q_used, xd->nb_rx_desc,
+              xd->tx_q_used, xd->nb_tx_desc);
+
   if (xd->cpu_socket > -1)
-    s = format (s, "%Ucpu socket %d\n%Uqueues rx %d (%d) tx %d (%d)",
-                format_white_space, indent + 2, xd->cpu_socket,
-                format_white_space, indent + 2,
-                xd->rx_q_used, di.max_rx_queues,
-                xd->tx_q_used, di.max_tx_queues);
+    s = format (s, "%Ucpu socket %d\n",
+                format_white_space, indent + 2, xd->cpu_socket);
 
   /* $$$ MIB counters  */
 

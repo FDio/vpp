@@ -504,7 +504,11 @@ dpdk_lib_init (dpdk_main_t * dm)
             xd->port_type = VNET_DPDK_PORT_TYPE_NETMAP;
           }
   #endif
+	if (devconf->num_rx_desc)
+	  xd->nb_rx_desc = devconf->num_rx_desc;
 
+	if (devconf->num_tx_desc)
+	  xd->nb_tx_desc = devconf->num_tx_desc;
       }
 
       /*
@@ -871,7 +875,11 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr, unforma
     {
       if (unformat (input, "num-rx-queues %u", &devconf->num_rx_queues))
 	;
-      if (unformat (input, "num-tx-queues %u", &devconf->num_tx_queues))
+      else if (unformat (input, "num-tx-queues %u", &devconf->num_tx_queues))
+	;
+      else if (unformat (input, "num-rx-desc %u", &devconf->num_rx_desc))
+	;
+      else if (unformat (input, "num-tx-desc %u", &devconf->num_tx_desc))
 	;
       else
 	{
