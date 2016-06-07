@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_c268d389",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackJVppFacadeNotificationTest.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-06-07T16:38:13Z",
+      "side": 1,
+      "message": "Copied from CallbackJVppFacadeTest. It also applies here,\nbut we could describe more how notifications work.",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 30,
+        "endChar": 3
+      },
+      "revId": "b35b9b9aef4013ca95892d0ced7dc28937a74bef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_62dd8742",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/CallbackJVppFacadeNotificationTest.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-06-07T16:38:13Z",
+      "side": 1,
+      "message": "We need to wait a bit before we close jvpp connection. It usually ends with SIGSEGV if we don\u0027t (we get .\nIn non\u003dnotification tests we had Thread.sleep(2000);\n\nApplies also to CallbackJVppFacadeTest",
+      "range": {
+        "startLine": 82,
+        "startChar": 7,
+        "endLine": 82,
+        "endChar": 21
+      },
+      "revId": "b35b9b9aef4013ca95892d0ced7dc28937a74bef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_1fdd0471",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/Notificationutils.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-06-07T16:38:13Z",
+      "side": 1,
+      "message": "why not NotifcationUtils?",
+      "range": {
+        "startLine": 8,
+        "startChar": 12,
+        "endLine": 8,
+        "endChar": 29
+      },
+      "revId": "b35b9b9aef4013ca95892d0ced7dc28937a74bef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
