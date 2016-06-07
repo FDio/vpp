@@ -78,7 +78,8 @@ _(SR_POLICY_NAME_NOT_PRESENT, -84, "Segement routing policy name required") \
 _(NOT_RUNNING_AS_ROOT, -85, "Not running as root") \
 _(ALREADY_CONNECTED, -86, "Connection to the data plane already exists") \
 _(UNSUPPORTED_JNI_VERSION, -87, "Unsupported JNI version") \
-_(FAILED_TO_ATTACH_TO_JAVA_THREAD, -88, "Failed to attach to Java thread")
+_(FAILED_TO_ATTACH_TO_JAVA_THREAD, -88, "Failed to attach to Java thread") \
+_(INVALID_WORKER, -89, "Invalid worker thread")
 
 typedef enum {
 #define _(a,b,c) VNET_API_ERROR_##a = (b),

@@ -22,6 +22,7 @@
 #include <vnet/devices/dpdk/dpdk.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/mpls-gre/packet.h>
+#include <vnet/handoff.h>
 
 #include "dpdk_priv.h"
 
@@ -48,240 +49,45 @@
  */
 #define VMWARE_LENGTH_BUG_WORKAROUND 0
 
-typedef struct {
-  u32 cached_next_index;
-
-  /* convenience variables */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
-} handoff_dispatch_main_t;
-
-typedef struct {
-  u32 buffer_index;
-  u32 next_index;
-  u32 sw_if_index;
-} handoff_dispatch_trace_t;
-
-/* packet trace format function */
-static u8 * format_handoff_dispatch_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  handoff_dispatch_trace_t * t = va_arg (*args, handoff_dispatch_trace_t *);
-
-  s = format (s, "HANDOFF_DISPATCH: sw_if_index %d next_index %d buffer 0x%x",
-      t->sw_if_index,
-      t->next_index,
-      t->buffer_index);
-  return s;
-}
-
-handoff_dispatch_main_t handoff_dispatch_main;
-
-vlib_node_registration_t handoff_dispatch_node;
-
-#define foreach_handoff_dispatch_error \
-_(EXAMPLE, "example packets")
-
-typedef enum {
-#define _(sym,str) HANDOFF_DISPATCH_ERROR_##sym,
-  foreach_handoff_dispatch_error
-#undef _
-  HANDOFF_DISPATCH_N_ERROR,
-} handoff_dispatch_error_t;
-
-static char * handoff_dispatch_error_strings[] = {
-#define _(sym,string) string,
-  foreach_handoff_dispatch_error
-#undef _
-};
-
-static inline
-void vlib_put_handoff_queue_elt (vlib_frame_queue_elt_t * hf)
-{
-  CLIB_MEMORY_BARRIER();
-  hf->valid = 1;
-}
-
-static uword
-handoff_dispatch_node_fn (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame)
-{
-  u32 n_left_from, * from, * to_next;
-  dpdk_rx_next_t next_index;
-
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
-
-  while (n_left_from > 0)
-    {
-      u32 n_left_to_next;
-
-      vlib_get_next_frame (vm, node, next_index,
-			   to_next, n_left_to_next);
-
-      while (n_left_from >= 4 && n_left_to_next >= 2)
-	{
-          u32 bi0, bi1;
-	  vlib_buffer_t * b0, * b1;
-          u32 next0, next1;
-          u32 sw_if_index0, sw_if_index1;
-          
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t * p2, * p3;
-            
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-            
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-	  }
-
-          /* speculatively enqueue b0 and b1 to the current next frame */
-	  to_next[0] = bi0 = from[0];
-	  to_next[1] = bi1 = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-
-          next0 = vnet_buffer(b0)->io_handoff.next_index;
-          next1 = vnet_buffer(b1)->io_handoff.next_index;
-
-          if (PREDICT_FALSE(vm->trace_main.trace_active_hint))
-            {
-            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-              {
-                vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
-                handoff_dispatch_trace_t *t =
-                  vlib_add_trace (vm, node, b0, sizeof (*t));
-                sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-                t->sw_if_index = sw_if_index0;
-                t->next_index = next0;
-                t->buffer_index = bi0;
-              }
-            if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
-              {
-                vlib_trace_buffer (vm, node, next1, b1, /* follow_chain */ 0);
-                handoff_dispatch_trace_t *t =
-                  vlib_add_trace (vm, node, b1, sizeof (*t));
-                sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
-                t->sw_if_index = sw_if_index1;
-                t->next_index = next1;
-                t->buffer_index = bi1;
-              }
-            }
-            
-          /* verify speculative enqueues, maybe switch current next frame */
-          vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-                                           to_next, n_left_to_next,
-                                           bi0, bi1, next0, next1);
-        }
-      
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-          u32 bi0;
-	  vlib_buffer_t * b0;
-          u32 next0;
-          u32 sw_if_index0;
-
-          /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-
-          next0 = vnet_buffer(b0)->io_handoff.next_index;
-
-          if (PREDICT_FALSE(vm->trace_main.trace_active_hint))
-            {
-            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-              {
-                vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
-                handoff_dispatch_trace_t *t =
-                  vlib_add_trace (vm, node, b0, sizeof (*t));
-                sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-                t->sw_if_index = sw_if_index0;
-                t->next_index = next0;
-                t->buffer_index = bi0;
-              }
-            }
-
-          /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-
-  return frame->n_vectors;
-}
-
-VLIB_REGISTER_NODE (handoff_dispatch_node) = {
-  .function = handoff_dispatch_node_fn,
-  .name = "handoff-dispatch",
-  .vector_size = sizeof (u32),
-  .format_trace = format_handoff_dispatch_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .flags = VLIB_NODE_FLAG_IS_HANDOFF,
-  
-  .n_errors = ARRAY_LEN(handoff_dispatch_error_strings),
-  .error_strings = handoff_dispatch_error_strings,
-
-  .n_next_nodes = DPDK_RX_N_NEXT,
-
-  .next_nodes = {
-        [DPDK_RX_NEXT_DROP] = "error-drop",
-        [DPDK_RX_NEXT_ETHERNET_INPUT] = "ethernet-input",
-        [DPDK_RX_NEXT_IP4_INPUT] = "ip4-input",
-        [DPDK_RX_NEXT_IP6_INPUT] = "ip6-input",
-        [DPDK_RX_NEXT_MPLS_INPUT] = "mpls-gre-input",
-  },
-};
-
-VLIB_NODE_FUNCTION_MULTIARCH (handoff_dispatch_node, handoff_dispatch_node_fn)
-
-clib_error_t *handoff_dispatch_init (vlib_main_t *vm)
-{
-  handoff_dispatch_main_t * mp = &handoff_dispatch_main;
-    
-  mp->vlib_main = vm;
-  mp->vnet_main = &vnet_main;
-
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (handoff_dispatch_init);
-
-u32 dpdk_get_handoff_node_index (void)
-{
-  return handoff_dispatch_node.index;
-}
-
 static char * dpdk_error_strings[] = {
 #define _(n,s) s,
     foreach_dpdk_error
 #undef _
 };
 
+always_inline int
+dpdk_mbuf_is_ip4(struct rte_mbuf *mb)
+{
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 1, 0, 0)
+  return RTE_ETH_IS_IPV4_HDR(mb->packet_type) != 0;
+#else
+  return (mb_flags & (PKT_RX_IPV4_HDR | PKT_RX_IPV4_HDR_EXT)) != 0;
+#endif
+}
+
+always_inline int
+dpdk_mbuf_is_ip6(struct rte_mbuf *mb)
+{
+#if RTE_VERSION >= RTE_VERSION_NUM(2, 1, 0, 0)
+  return RTE_ETH_IS_IPV6_HDR(mb->packet_type) != 0;
+#else
+  return (mb_flags & (PKT_RX_IPV6_HDR | PKT_RX_IPV6_HDR_EXT)) != 0;
+#endif
+}
+
+always_inline int
+vlib_buffer_is_mpls(vlib_buffer_t * b)
+{
+  ethernet_header_t *h = (ethernet_header_t *) b->data;
+  return (h->type == clib_host_to_net_u16(ETHERNET_TYPE_MPLS_UNICAST));
+}
+
 always_inline void
 dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t *xd, struct rte_mbuf *mb,
                                          vlib_buffer_t *b0,
 					 u8 * next0, u8 * error0)
 {
-  u8 is0_ip4, is0_ip6, is0_mpls, n0;
+  u8 n0;
   uint16_t mb_flags = mb->ol_flags;
 
   if (PREDICT_FALSE(mb_flags & (
@@ -306,37 +112,30 @@ dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t *xd, struct rte_mbuf *mb,
     {
       *error0 = DPDK_ERROR_NONE;
       if (PREDICT_FALSE(xd->per_interface_next_index != ~0))
-	n0 = xd->per_interface_next_index;
+	{
+	  n0 = xd->per_interface_next_index;
+	  b0->flags |= BUFFER_HANDOFF_NEXT_VALID;
+	  if (PREDICT_TRUE (dpdk_mbuf_is_ip4(mb)))
+	    vnet_buffer(b0)->handoff.next_index = HANDOFF_DISPATCH_NEXT_IP4_INPUT;
+	  else if (PREDICT_TRUE(dpdk_mbuf_is_ip6(mb)))
+	    vnet_buffer(b0)->handoff.next_index = HANDOFF_DISPATCH_NEXT_IP6_INPUT;
+          else if (PREDICT_TRUE(vlib_buffer_is_mpls(b0)))
+	    vnet_buffer(b0)->handoff.next_index = HANDOFF_DISPATCH_NEXT_MPLS_INPUT;
+	  else
+	    vnet_buffer(b0)->handoff.next_index = HANDOFF_DISPATCH_NEXT_ETHERNET_INPUT;
+	}
       else if (PREDICT_FALSE(xd->vlan_subifs || (mb_flags & PKT_RX_VLAN_PKT)))
 	n0 = DPDK_RX_NEXT_ETHERNET_INPUT;
       else
 	{
-	  n0 = DPDK_RX_NEXT_ETHERNET_INPUT;
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 1, 0, 0)
-	  is0_ip4 = RTE_ETH_IS_IPV4_HDR(mb->packet_type) != 0;
-#else
-	  is0_ip4 = (mb_flags & (PKT_RX_IPV4_HDR | PKT_RX_IPV4_HDR_EXT)) != 0;
-#endif
-
-	  if (PREDICT_TRUE(is0_ip4))
+	  if (PREDICT_TRUE (dpdk_mbuf_is_ip4(mb)))
 	    n0 = DPDK_RX_NEXT_IP4_INPUT;
+	  else if (PREDICT_TRUE(dpdk_mbuf_is_ip6(mb)))
+	    n0 = DPDK_RX_NEXT_IP6_INPUT;
+          else if (PREDICT_TRUE(vlib_buffer_is_mpls(b0)))
+	    n0 = DPDK_RX_NEXT_MPLS_INPUT;
 	  else
-	    {
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 1, 0, 0)
-	      is0_ip6 = RTE_ETH_IS_IPV6_HDR(mb->packet_type) != 0;
-#else
-	      is0_ip6 = 
-		      (mb_flags & (PKT_RX_IPV6_HDR | PKT_RX_IPV6_HDR_EXT)) != 0;
-#endif
-              if (PREDICT_TRUE(is0_ip6))
-	        n0 = DPDK_RX_NEXT_IP6_INPUT;
-              else
-                {
-                  ethernet_header_t *h0 = (ethernet_header_t *) b0->data;
-                  is0_mpls = (h0->type == clib_host_to_net_u16(ETHERNET_TYPE_MPLS_UNICAST));
-	          n0 = is0_mpls ? DPDK_RX_NEXT_MPLS_INPUT : n0;
-                }
-	    }
+	    n0 = DPDK_RX_NEXT_ETHERNET_INPUT;
 	}
     }
   *next0 = n0;
@@ -908,194 +707,6 @@ void dpdk_set_next_node (dpdk_rx_next_t next, char *name)
     }
 }
 
-inline vlib_frame_queue_elt_t * 
-vlib_get_handoff_queue_elt (u32 vlib_worker_index) 
-{
-  vlib_frame_queue_t *fq;
-  vlib_frame_queue_elt_t *elt;
-  u64 new_tail;
-  
-  fq = vlib_frame_queues[vlib_worker_index];
-  ASSERT (fq);
-
-  new_tail = __sync_add_and_fetch (&fq->tail, 1);
-
-  /* Wait until a ring slot is available */
-  while (new_tail >= fq->head_hint + fq->nelts)
-      vlib_worker_thread_barrier_check ();
-
-  elt = fq->elts + (new_tail & (fq->nelts-1));
-
-  /* this would be very bad... */
-  while (elt->valid) 
-    ;
-
-  elt->msg_type = VLIB_FRAME_QUEUE_ELT_DISPATCH_FRAME;
-  elt->last_n_vectors = elt->n_vectors = 0;
-
-  return elt;
-}
-
-static inline vlib_frame_queue_elt_t *
-dpdk_get_handoff_queue_elt ( 
-    u32 vlib_worker_index, 
-    vlib_frame_queue_elt_t ** handoff_queue_elt_by_worker_index)
-{
-  vlib_frame_queue_elt_t *elt;
-
-  if (handoff_queue_elt_by_worker_index [vlib_worker_index])
-      return handoff_queue_elt_by_worker_index [vlib_worker_index];
-
-  elt = vlib_get_handoff_queue_elt (vlib_worker_index);
-
-  handoff_queue_elt_by_worker_index [vlib_worker_index] = elt;
-
-  return elt;
-}
-
-static inline vlib_frame_queue_t *
-is_vlib_handoff_queue_congested (
-    u32 vlib_worker_index,
-    u32 queue_hi_thresh,
-    vlib_frame_queue_t ** handoff_queue_by_worker_index)
-{
-  vlib_frame_queue_t *fq;
-
-  fq = handoff_queue_by_worker_index [vlib_worker_index];
-  if (fq != (vlib_frame_queue_t *)(~0)) 
-      return fq;
-  
-  fq = vlib_frame_queues[vlib_worker_index];
-  ASSERT (fq);
-
-  if (PREDICT_FALSE(fq->tail >= (fq->head_hint + queue_hi_thresh))) {
-    /* a valid entry in the array will indicate the queue has reached
-     * the specified threshold and is congested
-     */
-    handoff_queue_by_worker_index [vlib_worker_index] = fq;
-    fq->enqueue_full_events++;
-    return fq;
-  }
-
-  return NULL;
-}
-
-static inline u64 ipv4_get_key (ip4_header_t *ip)
-{
-   u64  hash_key;
-
-   hash_key = *((u64*)(&ip->address_pair)) ^ ip->protocol;
-
-   return hash_key;
-}
-
-static inline u64 ipv6_get_key (ip6_header_t *ip)
-{
-   u64  hash_key;
-
-   hash_key = ip->src_address.as_u64[0] ^
-              rotate_left(ip->src_address.as_u64[1],13) ^
-              rotate_left(ip->dst_address.as_u64[0],26) ^
-              rotate_left(ip->dst_address.as_u64[1],39) ^
-              ip->protocol;
-
-   return hash_key;
-}
-
-
-#define MPLS_BOTTOM_OF_STACK_BIT_MASK   0x00000100U
-#define MPLS_LABEL_MASK                 0xFFFFF000U
-
-static inline u64 mpls_get_key (mpls_unicast_header_t *m)
-{
-   u64                     hash_key;
-   u8                      ip_ver;
-
-
-   /* find the bottom of the MPLS label stack. */
-   if (PREDICT_TRUE(m->label_exp_s_ttl & 
-                    clib_net_to_host_u32(MPLS_BOTTOM_OF_STACK_BIT_MASK))) {
-       goto bottom_lbl_found;
-   }
-   m++;
-
-   if (PREDICT_TRUE(m->label_exp_s_ttl & 
-                    clib_net_to_host_u32(MPLS_BOTTOM_OF_STACK_BIT_MASK))) {
-       goto bottom_lbl_found;
-   }
-   m++;
-
-   if (m->label_exp_s_ttl & clib_net_to_host_u32(MPLS_BOTTOM_OF_STACK_BIT_MASK)) {
-       goto bottom_lbl_found;
-   }
-   m++;
-
-   if (m->label_exp_s_ttl & clib_net_to_host_u32(MPLS_BOTTOM_OF_STACK_BIT_MASK)) {
-       goto bottom_lbl_found;
-   }
-   m++;
-
-   if (m->label_exp_s_ttl & clib_net_to_host_u32(MPLS_BOTTOM_OF_STACK_BIT_MASK)) {
-       goto bottom_lbl_found;
-   }
-   
-   /* the bottom label was not found - use the last label */
-   hash_key = m->label_exp_s_ttl & clib_net_to_host_u32(MPLS_LABEL_MASK);
-
-   return hash_key;
-   
-
-bottom_lbl_found:
-   m++;
-   ip_ver = (*((u8 *)m) >> 4);
-
-   /* find out if it is IPV4 or IPV6 header */
-   if (PREDICT_TRUE(ip_ver == 4)) {
-       hash_key = ipv4_get_key((ip4_header_t *)m);
-   } else if (PREDICT_TRUE(ip_ver == 6)) {
-       hash_key = ipv6_get_key((ip6_header_t *)m);
-   } else {
-       /* use the bottom label */
-       hash_key = (m-1)->label_exp_s_ttl & clib_net_to_host_u32(MPLS_LABEL_MASK);
-   }
-
-   return hash_key;
-
-}
-
-static inline u64 eth_get_key (ethernet_header_t *h0)
-{
-   u64 hash_key;
-
-
-   if (PREDICT_TRUE(h0->type) == clib_host_to_net_u16(ETHERNET_TYPE_IP4)) {
-       hash_key = ipv4_get_key((ip4_header_t *)(h0+1));
-   } else if (h0->type == clib_host_to_net_u16(ETHERNET_TYPE_IP6)) {
-       hash_key = ipv6_get_key((ip6_header_t *)(h0+1));
-   } else if (h0->type == clib_host_to_net_u16(ETHERNET_TYPE_MPLS_UNICAST)) {
-       hash_key = mpls_get_key((mpls_unicast_header_t *)(h0+1));
-   } else if ((h0->type == clib_host_to_net_u16(ETHERNET_TYPE_VLAN)) || 
-              (h0->type == clib_host_to_net_u16(ETHERNET_TYPE_DOT1AD))) {
-       ethernet_vlan_header_t * outer = (ethernet_vlan_header_t *)(h0 + 1);
-       
-       outer = (outer->type == clib_host_to_net_u16(ETHERNET_TYPE_VLAN)) ? 
-                                  outer+1 : outer;
-       if (PREDICT_TRUE(outer->type) == clib_host_to_net_u16(ETHERNET_TYPE_IP4)) {
-           hash_key = ipv4_get_key((ip4_header_t *)(outer+1));
-       } else if (outer->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP6)) {
-           hash_key = ipv6_get_key((ip6_header_t *)(outer+1));
-       } else if (outer->type == clib_host_to_net_u16(ETHERNET_TYPE_MPLS_UNICAST)) {
-           hash_key = mpls_get_key((mpls_unicast_header_t *)(outer+1));
-       }  else {
-           hash_key = outer->type; 
-       }
-   } else {
-       hash_key  = 0;
-   }
-
-   return hash_key;
-}
-
 /*
  * This function is used when dedicated IO threads feed the worker threads.
  *
@@ -1395,7 +1006,7 @@ void dpdk_io_thread (vlib_worker_thread_t * w,
                 
               vnet_buffer(b0)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
               vnet_buffer(b0)->sw_if_index[VLIB_TX] = (u32)~0;
-              vnet_buffer(b0)->io_handoff.next_index = next0;
+              vnet_buffer(b0)->handoff.next_index = next0;
               n_rx_bytes += mb->pkt_len;
 
               /* Process subsequent segments of multi-segment packets */
@@ -1796,7 +1407,7 @@ dpdk_io_input (vlib_main_t * vm,
 
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = (u32)~0;
-          vnet_buffer(b0)->io_handoff.next_index = next0;
+          vnet_buffer(b0)->handoff.next_index = next0;
           n_rx_bytes += mb->pkt_len;
 
           /* Process subsequent segments of multi-segment packets */

@@ -495,10 +495,6 @@ void dpdk_set_flowcontrol_callback (vlib_main_t *vm,
 
 u32 dpdk_interface_tx_vector (vlib_main_t * vm, u32 dev_instance);
 
-vlib_frame_queue_elt_t * vlib_get_handoff_queue_elt (u32 vlib_worker_index);
-
-u32 dpdk_get_handoff_node_index (void);
-
 void set_efd_bitmap (u8 *bitmap, u32 value, u32 op);
 
 struct rte_mbuf * dpdk_replicate_packet_mb (vlib_buffer_t * b);
