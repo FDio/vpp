@@ -3610,3 +3610,120 @@ define netmap_delete_reply {
     u32 context;
     i32 retval;
 };
+
+/** \brief Classify get table IDs request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define classify_table_ids {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply for classify get table IDs request
+    @param context - sender context which was passed in the request
+    @param count - number of ids returned in response
+    @param ids - array of classify table ids
+*/
+manual_java define classify_table_ids_reply {
+    u32 context;
+    u32 retval;
+    u32 count;
+    u32 ids[0];
+};
+
+/** \brief Classify table ids by interface index request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface
+*/
+define classify_table_by_interface {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+};
+
+/** \brief Reply for classify table id by interface index request
+    @param context - sender context which was passed in the request
+    @param count - number of ids returned in response
+    @param sw_if_index - index of the interface
+    @param l2_table_id - l2 classify table index
+    @param ip4_table_id - ip4 classify table index
+    @param ip6_table_id - ip6 classify table index
+*/
+manual_java define classify_table_by_interface_reply {
+    u32 context;
+    u32 retval;
+    u32 sw_if_index;
+    u32 l2_table_id;
+    u32 ip4_table_id;
+    u32 ip6_table_id;
+};
+
+/** \brief Classify table info
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_id - classify table index
+*/
+define classify_table_info {
+    u32 client_index;
+    u32 context;
+    u32 table_id;
+};
+
+/** \brief Reply for classify table info request
+    @param context - sender context which was passed in the request
+    @param count - number of ids returned in response
+    @param table_id - classify table index
+    @param nbuckets - number of buckets when adding a table
+    @param match_n_vectors - number of match vectors
+    @param skip_n_vectors - number of skip_n_vectors
+    @param active_sessions - number of sessions (active entries)
+    @param next_table_index - index of next table
+    @param miss_next_index - index of miss table
+    @param mask[] - match mask
+*/
+manual_java define classify_table_info_reply {
+    u32 context;
+    i32 retval;
+    u32 table_id;
+    u32 nbuckets;
+    u32 match_n_vectors;
+    u32 skip_n_vectors;
+    u32 active_sessions;
+    u32 next_table_index;
+    u32 miss_next_index;
+    u32 mask_length;
+    u8  mask[0];
+};
+
+/** \brief Classify sessions dump request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_id - classify table index
+*/
+define classify_session_dump {
+    u32 client_index;
+    u32 context;
+    u32 table_id;
+};
+
+/** \brief Reply for classify table session dump request
+    @param context - sender context which was passed in the request
+    @param count - number of ids returned in response
+    @param table_id - classify table index
+    @param hit_next_index - hit_next_index of session
+    @param opaque_index - for add, opaque_index of session
+    @param advance - advance value of session
+    @param match[] - match value for session
+*/ 
+manual_java define classify_session_details {
+    u32 context;
+    i32 retval;
+    u32 table_id;
+    u32 hit_next_index;
+    i32 advance;
+    u32 opaque_index;
+    u32 match_length;
+    u8 match[0];
+};
