@@ -346,7 +346,12 @@ _(AF_PACKET_DELETE, af_packet_delete)                                   \
 _(POLICER_ADD_DEL, policer_add_del)                                     \
 _(POLICER_DUMP, policer_dump)                                           \
 _(NETMAP_CREATE, netmap_create)                                         \
-_(NETMAP_DELETE, netmap_delete)
+_(NETMAP_DELETE, netmap_delete)                                         \
+_(CLASSIFY_TABLE_IDS,classify_table_ids)                                \
+_(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
+_(CLASSIFY_TABLE_INFO,classify_table_info)                              \
+_(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
+_(CLASSIFY_SESSION_DETAILS,classify_session_details)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -6177,6 +6182,193 @@ vl_api_netmap_delete_t_handler
     vec_free(if_name);
 
     REPLY_MACRO(VL_API_NETMAP_DELETE_REPLY);
+}
+
+static void vl_api_classify_table_ids_t_handler (vl_api_classify_table_ids_t *mp)
+{
+    unix_shared_memory_queue_t * q;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0)
+        return;
+
+    vnet_classify_main_t * cm = &vnet_classify_main;
+    vnet_classify_table_t * t;
+    u32 * table_ids = 0;
+    u32 count;
+
+    pool_foreach (t, cm->tables,
+    ({
+        vec_add1 (table_ids, t - cm->tables);
+    }));
+    count = vec_len(table_ids);
+
+    vl_api_classify_table_ids_reply_t *rmp;
+    rmp = vl_msg_api_alloc_as_if_client(sizeof (*rmp) + count);
+    rmp->_vl_msg_id = ntohs (VL_API_CLASSIFY_TABLE_IDS_REPLY);
+    rmp->count = ntohl(count);
+    clib_memcpy(rmp->ids, table_ids, count * sizeof(32));
+    rmp->retval = 0;
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+
+    vec_free (table_ids);
+}
+
+static void vl_api_classify_table_by_interface_t_handler (vl_api_classify_table_by_interface_t *mp)
+{
+    vl_api_classify_table_by_interface_reply_t *rmp;
+    int rv = 0;
+
+    u32 sw_if_index = ntohl(mp->sw_if_index);
+    u32 * acl = 0;
+
+    vec_validate (acl, INPUT_ACL_N_TABLES - 1);
+    vec_set (acl, ~0);
+
+    VALIDATE_SW_IF_INDEX(mp);
+
+    input_acl_main_t * am = &input_acl_main;
+
+    int if_idx;
+    u32 type;
+
+    for (type = 0; type < INPUT_ACL_N_TABLES; type++)
+    {
+    	u32 * vec_tbl = am->classify_table_index_by_sw_if_index[type];
+		if (vec_len(vec_tbl)) {
+			for (if_idx = 0; if_idx < vec_len (vec_tbl); if_idx++)
+			{
+			    if (vec_elt(vec_tbl, if_idx) == ~0 || sw_if_index != if_idx) {
+				    continue;
+			    }
+			    acl[type] = vec_elt(vec_tbl, if_idx);
+			}
+		}
+    }
+
+    BAD_SW_IF_INDEX_LABEL;
+
+    REPLY_MACRO2(VL_API_CLASSIFY_TABLE_BY_INTERFACE_REPLY,
+    ({
+       rmp->sw_if_index = ntohl(sw_if_index);
+       rmp->l2_table_id = ntohl(acl[INPUT_ACL_TABLE_L2]);
+       rmp->ip4_table_id = ntohl(acl[INPUT_ACL_TABLE_IP4]);
+       rmp->ip6_table_id = ntohl(acl[INPUT_ACL_TABLE_IP6]);
+    }));
+    vec_free(acl);
+}
+
+static void vl_api_classify_table_info_t_handler (vl_api_classify_table_info_t *mp)
+{
+    unix_shared_memory_queue_t * q;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0)
+        return;
+
+    vl_api_classify_table_info_reply_t *rmp = 0;
+
+    vnet_classify_main_t * cm = &vnet_classify_main;
+    u32 table_id = ntohl(mp->table_id);
+    vnet_classify_table_t * t;
+
+    pool_foreach (t, cm->tables,
+    ({
+        if (table_id == t - cm->tables) {
+            rmp = vl_msg_api_alloc_as_if_client(sizeof (*rmp) + t->match_n_vectors * sizeof (u32x4));
+            rmp->_vl_msg_id = ntohs (VL_API_CLASSIFY_TABLE_INFO_REPLY);
+            rmp->table_id = ntohl(table_id);
+            rmp->nbuckets = ntohl(t->nbuckets);
+            rmp->match_n_vectors = ntohl(t->match_n_vectors);
+            rmp->skip_n_vectors = ntohl(t->skip_n_vectors);
+            rmp->active_sessions = ntohl(t->active_elements);
+            rmp->next_table_index = ntohl(t->next_table_index);
+            rmp->miss_next_index = ntohl(t->miss_next_index);
+            rmp->mask_length = ntohl(t->match_n_vectors * sizeof (u32x4));
+            clib_memcpy(rmp->mask, t->mask, t->match_n_vectors * sizeof(u32x4));
+            rmp->retval = 0;
+            break;
+        }
+    }));
+
+    if (rmp == 0) {
+        rmp = vl_msg_api_alloc (sizeof (*rmp));
+        rmp->_vl_msg_id = ntohs((VL_API_CLASSIFY_TABLE_INFO_REPLY));
+        rmp->context = mp->context;
+        rmp->retval = ntohl(VNET_API_ERROR_CLASSIFY_TABLE_NOT_FOUND);
+    }
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void vl_api_classify_session_details_t_handler (vl_api_classify_session_details_t * mp)
+{
+    clib_warning ("BUG");
+}
+
+static void send_classify_session_details (unix_shared_memory_queue_t * q,
+                                           u32 table_id,
+                                           u32 match_length,
+                                           vnet_classify_entry_t * e,
+                                           u32 context)
+{
+    vl_api_classify_session_details_t *rmp;
+
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_CLASSIFY_SESSION_DETAILS);
+
+    rmp->table_id = ntohl(table_id);
+    rmp->hit_next_index = ntohl(e->next_index);
+    rmp->advance = ntohl(e->advance);
+    rmp->opaque_index = ntohl(e->opaque_index);
+    rmp->match_length = ntohl(match_length);
+    clib_memcpy(rmp->match, e->key, match_length);
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void vl_api_classify_session_dump_t_handler (vl_api_classify_session_dump_t *mp)
+{
+    vnet_classify_main_t * cm = &vnet_classify_main;
+    unix_shared_memory_queue_t * q;
+
+    u32 table_id = ntohl(mp->table_id);
+    vnet_classify_table_t * t;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+
+    pool_foreach (t, cm->tables,
+    ({
+        if (table_id == t - cm->tables) {
+            vnet_classify_bucket_t * b;
+            vnet_classify_entry_t * v, * save_v;
+            int i, j, k;
+
+            for (i = 0; i < t->nbuckets; i++)
+            {
+                b = &t->buckets [i];
+                if (b->offset == 0)
+                   continue;
+
+                save_v = vnet_classify_get_entry (t, b->offset);
+                for (j = 0; j < (1<<b->log2_pages); j++)
+                {
+                	for (k = 0; k < t->entries_per_page; k++)
+                	{
+                	    v = vnet_classify_entry_at_index (t, save_v, j*t->entries_per_page + k);
+                	    if (vnet_classify_entry_is_free (v))
+                	        continue;
+
+                		send_classify_session_details(q, table_id,
+                				t->match_n_vectors * sizeof (u32x4), v, mp->context);
+                	}
+                }
+            }
+            break;
+        }
+    }));
 }
 
 #define BOUNCE_HANDLER(nn)                                              \
