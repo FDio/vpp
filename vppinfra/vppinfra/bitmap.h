@@ -338,6 +338,26 @@ always_inline uword clib_bitmap_first_set (uword * ai)
   return ~0;
 }
 
+/* Return highest numbered set bit in bitmap.
+
+    Return infinity (~0) if bitmap is zero. */
+always_inline uword clib_bitmap_last_set (uword * ai)
+{
+  uword i;
+
+  for (i = vec_len (ai) - 1; i >= 0 ; i--)
+    {
+      uword x = ai[i];
+      if (x != 0)
+	{
+	  uword first_bit;
+	  count_leading_zeros (first_bit, x);
+	  return (i + 1) * BITS (ai[0]) - first_bit - 1;
+	}
+    }
+  return ~0;
+}
+
 /* Return lowest numbered clear bit in bitmap. */
 always_inline uword
 clib_bitmap_first_clear (uword * ai)
