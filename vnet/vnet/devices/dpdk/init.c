@@ -1282,14 +1282,14 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       {
 	tmp = format (0, "-w%c", 0);
 	vec_add1 (conf->eal_init_args, tmp);
-	tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr);
+	tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr, 0);
 	vec_add1 (conf->eal_init_args, tmp);
       }
     else if (num_whitelisted == 0 && devconf->is_blacklisted != 0)
       {
 	tmp = format (0, "-b%c", 0);
 	vec_add1 (conf->eal_init_args, tmp);
-	tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr);
+	tmp = format (0, "%U%c", format_vlib_pci_addr, &devconf->pci_addr, 0);
 	vec_add1 (conf->eal_init_args, tmp);
       }
   }));
