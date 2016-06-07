@@ -1799,6 +1799,52 @@ static void *vl_api_mpls_fib_decap_dump_t_print
     FINISH;
 }
 
+static void *vl_api_classify_table_ids_t_print
+(vl_api_classify_table_ids_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: classify_table_ids ");
+
+    FINISH;
+}
+
+static void *vl_api_classify_table_by_interface_t_print
+(vl_api_classify_table_by_interface_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: classify_table_by_interface ");
+    if (mp->sw_if_index != ~0)
+      s = format (s, "sw_if_index %d ", ntohl(mp->sw_if_index));
+
+    FINISH;
+}
+
+static void *vl_api_classify_table_info_t_print
+(vl_api_classify_table_info_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: classify_table_info ");
+    if (mp->table_id != ~0)
+      s = format (s, "table_id %d ", ntohl(mp->table_id));
+
+    FINISH;
+}
+
+static void *vl_api_classify_session_dump_t_print
+(vl_api_classify_session_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: classify_session_dump ");
+    if (mp->table_id != ~0)
+      s = format (s, "table_id %d ", ntohl(mp->table_id));
+
+    FINISH;
+}
+
 #define foreach_custom_print_function                                   \
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
@@ -1890,7 +1936,11 @@ _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
 _(MPLS_GRE_TUNNEL_DUMP, mpls_gre_tunnel_dump)                           \
 _(MPLS_ETH_TUNNEL_DUMP, mpls_eth_tunnel_dump)                           \
 _(MPLS_FIB_ENCAP_DUMP, mpls_fib_encap_dump)                             \
-_(MPLS_FIB_DECAP_DUMP, mpls_fib_decap_dump)
+_(MPLS_FIB_DECAP_DUMP, mpls_fib_decap_dump)                             \
+_(CLASSIFY_TABLE_IDS,classify_table_ids)                                \
+_(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
+_(CLASSIFY_TABLE_INFO,classify_table_info)                              \
+_(CLASSIFY_SESSION_DUMP,classify_session_dump)
 
 void vl_msg_api_custom_dump_configure (api_main_t *am) 
 {
