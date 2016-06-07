@@ -1,7 +1,7 @@
-From 454eb71eca1912e32a509c738a99a340cc2488cf Mon Sep 17 00:00:00 2001
+From d91c4e2de969086ebc8c3a1dfa30913ea3de37b4 Mon Sep 17 00:00:00 2001
 From: John Daley <johndale@cisco.com>
 Date: Mon, 25 Apr 2016 16:24:53 -0700
-Subject: [PATCH 2/3] enic: fix misalignment of Rx mbuf data
+Subject: [PATCH 11/17] enic: fix misalignment of Rx mbuf data
 
 Data DMA used m->data_off of uninitialized mbufs instead of
 RTE_PKTMBUF_HEADROOM, potentially causing Rx data to be
@@ -15,10 +15,10 @@ Signed-off-by: John Daley <johndale@cisco.com>
  2 files changed, 7 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
-index be4e9e5..646d87f 100644
+index 06cacd4..b164307 100644
 --- a/drivers/net/enic/enic_main.c
 +++ b/drivers/net/enic/enic_main.c
-@@ -354,10 +354,11 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
+@@ -355,10 +355,11 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
  			return -ENOMEM;
  		}
  
@@ -51,5 +51,5 @@ index 232987a..39bb55c 100644
  		/* Fill in the rest of the mbuf */
  		rxmb->data_off = RTE_PKTMBUF_HEADROOM;
 -- 
-2.7.0
+2.7.4
 

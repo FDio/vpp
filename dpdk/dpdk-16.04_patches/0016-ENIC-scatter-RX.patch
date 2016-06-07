@@ -1,7 +1,22 @@
-diff -r -u dpdk-16.04.orig2/drivers/net/enic/base/rq_enet_desc.h dpdk-16.04/drivers/net/enic/base/rq_enet_desc.h
---- dpdk-16.04.orig2/drivers/net/enic/base/rq_enet_desc.h	2016-05-13 18:09:07.523938072 -0700
-+++ dpdk-16.04/drivers/net/enic/base/rq_enet_desc.h	2016-05-13 18:09:54.359743075 -0700
-@@ -55,7 +55,7 @@
+From f03d5a02fc2b3cc24bf059a273ea1473cdb9993b Mon Sep 17 00:00:00 2001
+From: John Lo <loj@cisco.com>
+Date: Tue, 7 Jun 2016 12:40:07 +0200
+Subject: [PATCH 16/17] ENIC scatter RX
+
+---
+ drivers/net/enic/base/rq_enet_desc.h |   2 +-
+ drivers/net/enic/base/vnic_rq.c      |  12 +-
+ drivers/net/enic/base/vnic_rq.h      |  18 ++-
+ drivers/net/enic/enic.h              |  10 ++
+ drivers/net/enic/enic_main.c         | 236 +++++++++++++++++++++++++++--------
+ drivers/net/enic/enic_rxtx.c         | 139 ++++++++++++++-------
+ 6 files changed, 313 insertions(+), 104 deletions(-)
+
+diff --git a/drivers/net/enic/base/rq_enet_desc.h b/drivers/net/enic/base/rq_enet_desc.h
+index 7292d9d..13e24b4 100644
+--- a/drivers/net/enic/base/rq_enet_desc.h
++++ b/drivers/net/enic/base/rq_enet_desc.h
+@@ -55,7 +55,7 @@ enum rq_enet_type_types {
  #define RQ_ENET_TYPE_BITS		2
  #define RQ_ENET_TYPE_MASK		((1 << RQ_ENET_TYPE_BITS) - 1)
  
@@ -10,10 +25,11 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/base/rq_enet_desc.h dpdk-16.04/driv
  	u64 address, u8 type, u16 length)
  {
  	desc->address = cpu_to_le64(address);
-diff -r -u dpdk-16.04.orig2/drivers/net/enic/base/vnic_rq.c dpdk-16.04/drivers/net/enic/base/vnic_rq.c
---- dpdk-16.04.orig2/drivers/net/enic/base/vnic_rq.c	2016-05-13 18:09:07.533938883 -0700
-+++ dpdk-16.04/drivers/net/enic/base/vnic_rq.c	2016-05-13 18:09:54.360743158 -0700
-@@ -84,11 +84,16 @@
+diff --git a/drivers/net/enic/base/vnic_rq.c b/drivers/net/enic/base/vnic_rq.c
+index cb62c5e..d97f93e 100644
+--- a/drivers/net/enic/base/vnic_rq.c
++++ b/drivers/net/enic/base/vnic_rq.c
+@@ -84,11 +84,16 @@ void vnic_rq_init_start(struct vnic_rq *rq, unsigned int cq_index,
  	iowrite32(cq_index, &rq->ctrl->cq_index);
  	iowrite32(error_interrupt_enable, &rq->ctrl->error_interrupt_enable);
  	iowrite32(error_interrupt_offset, &rq->ctrl->error_interrupt_offset);
@@ -32,7 +48,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/base/vnic_rq.c dpdk-16.04/drivers/n
  }
  
  void vnic_rq_init(struct vnic_rq *rq, unsigned int cq_index,
-@@ -96,6 +101,7 @@
+@@ -96,6 +101,7 @@ void vnic_rq_init(struct vnic_rq *rq, unsigned int cq_index,
  	unsigned int error_interrupt_offset)
  {
  	u32 fetch_index = 0;
@@ -40,7 +56,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/base/vnic_rq.c dpdk-16.04/drivers/n
  	/* Use current fetch_index as the ring starting point */
  	fetch_index = ioread32(&rq->ctrl->fetch_index);
  
-@@ -110,6 +116,8 @@
+@@ -110,6 +116,8 @@ void vnic_rq_init(struct vnic_rq *rq, unsigned int cq_index,
  		error_interrupt_offset);
  	rq->rxst_idx = 0;
  	rq->tot_pkts = 0;
@@ -49,10 +65,11 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/base/vnic_rq.c dpdk-16.04/drivers/n
  }
  
  void vnic_rq_error_out(struct vnic_rq *rq, unsigned int error)
-diff -r -u dpdk-16.04.orig2/drivers/net/enic/base/vnic_rq.h dpdk-16.04/drivers/net/enic/base/vnic_rq.h
---- dpdk-16.04.orig2/drivers/net/enic/base/vnic_rq.h	2016-05-13 18:09:07.540939452 -0700
-+++ dpdk-16.04/drivers/net/enic/base/vnic_rq.h	2016-05-13 18:09:54.362743322 -0700
-@@ -60,10 +60,18 @@
+diff --git a/drivers/net/enic/base/vnic_rq.h b/drivers/net/enic/base/vnic_rq.h
+index 424415c..d1e2f52 100644
+--- a/drivers/net/enic/base/vnic_rq.h
++++ b/drivers/net/enic/base/vnic_rq.h
+@@ -60,10 +60,18 @@ struct vnic_rq_ctrl {
  	u32 pad7;
  	u32 error_status;		/* 0x48 */
  	u32 pad8;
@@ -73,7 +90,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/base/vnic_rq.h dpdk-16.04/drivers/n
  };
  
  struct vnic_rq {
-@@ -82,6 +90,12 @@
+@@ -82,6 +90,12 @@ struct vnic_rq {
  	struct rte_mempool *mp;
  	uint16_t rxst_idx;
  	uint32_t tot_pkts;
@@ -86,10 +103,11 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/base/vnic_rq.h dpdk-16.04/drivers/n
  };
  
  static inline unsigned int vnic_rq_desc_avail(struct vnic_rq *rq)
-diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic.h dpdk-16.04/drivers/net/enic/enic.h
---- dpdk-16.04.orig2/drivers/net/enic/enic.h	2016-05-13 18:09:07.553940507 -0700
-+++ dpdk-16.04/drivers/net/enic/enic.h	2016-05-13 18:09:54.365743565 -0700
-@@ -142,6 +142,16 @@
+diff --git a/drivers/net/enic/enic.h b/drivers/net/enic/enic.h
+index 7c1b5c9..d2de6ee 100644
+--- a/drivers/net/enic/enic.h
++++ b/drivers/net/enic/enic.h
+@@ -142,6 +142,16 @@ struct enic {
  	struct enic_soft_stats soft_stats;
  };
  
@@ -106,10 +124,11 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic.h dpdk-16.04/drivers/net/enic/
  static inline unsigned int enic_cq_rq(__rte_unused struct enic *enic, unsigned int rq)
  {
  	return rq;
-diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/enic/enic_main.c
---- dpdk-16.04.orig2/drivers/net/enic/enic_main.c	2016-05-13 18:09:07.557940834 -0700
-+++ dpdk-16.04/drivers/net/enic/enic_main.c	2016-05-13 18:10:40.099459001 -0700
-@@ -248,15 +248,23 @@
+diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
+index a00565a..be17707 100644
+--- a/drivers/net/enic/enic_main.c
++++ b/drivers/net/enic/enic_main.c
+@@ -247,15 +247,23 @@ void enic_init_vnic_resources(struct enic *enic)
  	unsigned int error_interrupt_offset = 0;
  	unsigned int index = 0;
  	unsigned int cq_idx;
@@ -134,7 +153,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
  		cq_idx = enic_cq_rq(enic, index);
  		vnic_cq_init(&enic->cq[cq_idx],
  			0 /* flow_control_enable */,
-@@ -306,6 +314,9 @@
+@@ -305,6 +313,9 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
  	unsigned i;
  	dma_addr_t dma_addr;
  
@@ -144,7 +163,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
  	dev_debug(enic, "queue %u, allocating %u rx queue mbufs\n", rq->index,
  		  rq->ring.desc_count);
  
-@@ -317,20 +328,20 @@
+@@ -316,20 +327,20 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
  			return -ENOMEM;
  		}
  
@@ -173,7 +192,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
  	rq->rx_nb_hold = 0;
  
  	dev_debug(enic, "port=%u, qidx=%u, Write %u posted idx, %u sw held\n",
-@@ -338,6 +349,8 @@
+@@ -337,6 +348,8 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
  	iowrite32(rq->posted_index, &rq->ctrl->posted_index);
  	rte_rmb();
  
@@ -182,7 +201,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
  	return 0;
  
  }
-@@ -399,17 +412,25 @@
+@@ -398,17 +411,25 @@ int enic_enable(struct enic *enic)
  			"Flow director feature will not work\n");
  
  	for (index = 0; index < enic->rq_count; index++) {
@@ -212,7 +231,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
  
  	vnic_dev_enable_wait(enic->vdev);
  
-@@ -441,14 +462,26 @@
+@@ -440,14 +461,26 @@ int enic_alloc_intr_resources(struct enic *enic)
  
  void enic_free_rq(void *rxq)
  {
@@ -221,7 +240,12 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
 +	struct vnic_rq *rq_sop = (struct vnic_rq *)rxq;
 +	struct enic *enic = vnic_dev_priv(rq_sop->vdev);
 +	struct vnic_rq *rq_data = &enic->rq[rq_sop->data_queue_idx];
-+
+ 
+-	enic_rxmbuf_queue_release(enic, rq);
+-	rte_free(rq->mbuf_ring);
+-	rq->mbuf_ring = NULL;
+-	vnic_rq_free(rq);
+-	vnic_cq_free(&enic->cq[rq->index]);
 +	enic_rxmbuf_queue_release(enic, rq_sop);
 +	if (rq_data->in_use)
 +		enic_rxmbuf_queue_release(enic, rq_data);
@@ -236,17 +260,12 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
 +	vnic_rq_free(rq_sop);
 +	if (rq_data->in_use)
 +		vnic_rq_free(rq_data);
- 
--	enic_rxmbuf_queue_release(enic, rq);
--	rte_free(rq->mbuf_ring);
--	rq->mbuf_ring = NULL;
--	vnic_rq_free(rq);
--	vnic_cq_free(&enic->cq[rq->index]);
++
 +	vnic_cq_free(&enic->cq[rq_sop->index]);
  }
  
  void enic_start_wq(struct enic *enic, uint16_t queue_idx)
-@@ -463,12 +496,32 @@
+@@ -462,12 +495,32 @@ int enic_stop_wq(struct enic *enic, uint16_t queue_idx)
  
  void enic_start_rq(struct enic *enic, uint16_t queue_idx)
  {
@@ -281,7 +300,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
  }
  
  int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
-@@ -476,53 +529,128 @@
+@@ -475,53 +528,128 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
  	uint16_t nb_desc)
  {
  	int rc;
@@ -364,13 +383,13 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
  	}
 +	dev_info(enic, "For mtu %d and mbuf size %d valid rx descriptor range is %d to %d\n",
 +		 enic->config.mtu, mbuf_size, min_sop + min_data, max_sop + max_data);
-+
-+	dev_info(enic, "Using %d rx descriptors (sop %d, data %d)\n",
-+		 nb_sop_desc + nb_data_desc, nb_sop_desc, nb_data_desc);
  
 -	/* Allocate queue resources */
 -	rc = vnic_rq_alloc(enic->vdev, rq, queue_idx,
 -		nb_desc, sizeof(struct rq_enet_desc));
++	dev_info(enic, "Using %d rx descriptors (sop %d, data %d)\n",
++		 nb_sop_desc + nb_data_desc, nb_sop_desc, nb_data_desc);
++
 +	/* Allocate sop queue resources */
 +	rc = vnic_rq_alloc(enic->vdev, rq_sop, sop_queue_idx,
 +		nb_sop_desc, sizeof(struct rq_enet_desc));
@@ -379,8 +398,9 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
 +		dev_err(enic, "error in allocation of sop rq\n");
  		goto err_exit;
  	}
+-
 +	nb_sop_desc = rq_sop->ring.desc_count;
- 
++
 +	if (rq_data->in_use) {
 +		/* Allocate data queue resources */
 +		rc = vnic_rq_alloc(enic->vdev, rq_data, data_queue_idx,
@@ -441,11 +461,11 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/
  err_exit:
  	return -ENOMEM;
  }
-
-diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_rxtx.c dpdk-16.04/drivers/net/enic/enic_rxtx.c
---- dpdk-16.04.orig2/drivers/net/enic/enic_rxtx.c	2016-05-13 18:09:07.556940752 -0700
-+++ dpdk-16.04/drivers/net/enic/enic_rxtx.c	2016-05-13 18:12:22.225755674 -0700
-@@ -242,22 +242,27 @@
+diff --git a/drivers/net/enic/enic_rxtx.c b/drivers/net/enic/enic_rxtx.c
+index 174486b..463b954 100644
+--- a/drivers/net/enic/enic_rxtx.c
++++ b/drivers/net/enic/enic_rxtx.c
+@@ -242,22 +242,27 @@ uint16_t
  enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  	       uint16_t nb_pkts)
  {
@@ -469,21 +489,20 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_rxtx.c dpdk-16.04/drivers/net/
 +	uint16_t seg_length;
 +	struct rte_mbuf *first_seg = sop_rq->pkt_first_seg;
 +	struct rte_mbuf *last_seg = sop_rq->pkt_last_seg;
-+
-+	cq = &enic->cq[enic_cq_rq(enic, sop_rq->index)];
-+	cq_idx = cq->to_clean;		/* index of cqd, rqd, mbuf_table */
-+	cqd_ptr = (struct cq_desc *)(cq->ring.descs) + cq_idx;
  
 -	cq = &enic->cq[enic_cq_rq(enic, rq->index)];
 -	rx_id = cq->to_clean;		/* index of cqd, rqd, mbuf_table */
 -	cqd_ptr = (struct cq_desc *)(cq->ring.descs) + rx_id;
--
++	cq = &enic->cq[enic_cq_rq(enic, sop_rq->index)];
++	cq_idx = cq->to_clean;		/* index of cqd, rqd, mbuf_table */
++	cqd_ptr = (struct cq_desc *)(cq->ring.descs) + cq_idx;
+ 
 -	nb_hold = rq->rx_nb_hold;	/* mbufs held by software */
 +	data_rq = &enic->rq[sop_rq->data_queue_idx];
  
  	while (nb_rx < nb_pkts) {
  		volatile struct rq_enet_desc *rqd_ptr;
-@@ -265,6 +270,7 @@
+@@ -265,6 +270,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  		struct cq_desc cqd;
  		uint64_t ol_err_flags;
  		uint8_t packet_error;
@@ -491,7 +510,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_rxtx.c dpdk-16.04/drivers/net/
  
  		/* Check for pkts available */
  		color = (cqd_ptr->type_color >> CQ_DESC_COLOR_SHIFT)
-@@ -272,9 +278,13 @@
+@@ -272,9 +278,13 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  		if (color == cq->last_color)
  			break;
  
@@ -507,7 +526,7 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_rxtx.c dpdk-16.04/drivers/net/
  
  		/* allocate a new mbuf */
  		nmb = rte_rxmbuf_alloc(rq->mp);
-@@ -287,67 +297,106 @@
+@@ -287,67 +297,106 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  		packet_error = enic_cq_rx_to_pkt_err_flags(&cqd, &ol_err_flags);
  
  		/* Get the mbuf to return and replace with one just allocated */
@@ -648,3 +667,6 @@ diff -r -u dpdk-16.04.orig2/drivers/net/enic/enic_rxtx.c dpdk-16.04/drivers/net/
  
  	return nb_rx;
  }
+-- 
+2.7.4
+
