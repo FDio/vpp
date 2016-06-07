@@ -287,6 +287,7 @@ int vl_map_shmem (char *region_name, int is_vlib)
             /* Clean up the root region client list */
             pthread_mutex_lock (&root_rp->mutex);
             svm_client_scan_this_region_nolock (root_rp);
+            pthread_mutex_unlock (&root_rp->mutex);
         } 
         pthread_mutex_unlock (&vlib_rp->mutex);
         am->vlib_rp = vlib_rp;
