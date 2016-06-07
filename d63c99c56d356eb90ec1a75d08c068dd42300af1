@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_62a58703",
+        "filename": "vnet/vnet/lisp-gpe/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-07T14:50:41Z",
+      "side": 1,
+      "message": "return -1. Value zero means success",
+      "revId": "d63c99c56d356eb90ec1a75d08c068dd42300af1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_42aa83d5",
+        "filename": "vnet/vnet/lisp-gpe/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 569,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-07T14:50:41Z",
+      "side": 1,
+      "message": "return -1",
+      "revId": "d63c99c56d356eb90ec1a75d08c068dd42300af1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
