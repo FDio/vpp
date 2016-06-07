@@ -2259,6 +2259,175 @@ static void vl_api_policer_details_t_handler_json
     vec_free(type_str);
 }
 
+static void vl_api_classify_table_ids_reply_t_handler (vl_api_classify_table_ids_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    int i, count = ntohl(mp->count);
+
+    if (count>0)
+    	fformat (vam->ofp, "classify table ids (%d) : ", count);
+    for (i = 0; i < count; i++)
+    {
+        fformat (vam->ofp, "%d", ((u32*)mp->ids)[i]);
+        fformat (vam->ofp, (i<count-1)?",":"\n");
+    }
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
+static void vl_api_classify_table_ids_reply_t_handler_json (vl_api_classify_table_ids_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    int i, count = ntohl(mp->count);
+
+    if (count>0) {
+        vat_json_node_t node;
+
+        vat_json_init_object(&node);
+	    for (i = 0; i < count; i++)
+	    {
+	    	vat_json_object_add_uint(&node, "table id", ((u32*)mp->ids)[i]);
+	    }
+	    vat_json_print(vam->ofp, &node);
+	    vat_json_free(&node);
+    }
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
+static void vl_api_classify_table_by_interface_reply_t_handler (vl_api_classify_table_by_interface_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    u32 table_id;
+
+    table_id = ntohl(mp->l2_table_id);
+    if (table_id != ~0)
+    	fformat (vam->ofp, "l2 table id : %d\n", table_id);
+    else
+    	fformat (vam->ofp, "l2 table id : No input ACL tables configured\n");
+    table_id = ntohl(mp->ip4_table_id);
+    if (table_id != ~0)
+    	fformat (vam->ofp, "ip4 table id : %d\n", table_id);
+    else
+    	fformat (vam->ofp, "ip4 table id : No input ACL tables configured\n");
+    table_id = ntohl(mp->ip6_table_id);
+    if (table_id != ~0)
+    	fformat (vam->ofp, "ip6 table id : %d\n", table_id);
+    else
+    	fformat (vam->ofp, "ip6 table id : No input ACL tables configured\n");
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
+static void vl_api_classify_table_by_interface_reply_t_handler_json (vl_api_classify_table_by_interface_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t node;
+
+    vat_json_init_object(&node);
+
+    vat_json_object_add_int(&node, "l2 table id", ntohl(mp->l2_table_id));
+    vat_json_object_add_int(&node, "ip4 table id", ntohl(mp->ip4_table_id));
+    vat_json_object_add_int(&node, "ip6 table id", ntohl(mp->ip6_table_id));
+
+    vat_json_print(vam->ofp, &node);
+    vat_json_free(&node);
+
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
+/* Format hex dump. */
+u8 * format_hex_bytes (u8 * s, va_list * va)
+{
+    u8 * bytes = va_arg (*va, u8 *);
+    int n_bytes = va_arg (*va, int);
+    uword i;
+
+    /* Print short or long form depending on byte count. */
+    uword short_form = n_bytes <= 32;
+    uword indent = format_get_indent (s);
+
+    if (n_bytes == 0)
+        return s;
+
+    for (i = 0; i < n_bytes; i++)
+    {
+        if (! short_form && (i % 32) == 0)
+            s = format (s, "%08x: ", i);
+        s = format (s, "%02x", bytes[i]);
+        if (! short_form && ((i + 1) % 32) == 0 && (i + 1) < n_bytes)
+            s = format (s, "\n%U", format_white_space, indent);
+    }
+
+    return s;
+}
+
+static void vl_api_classify_table_info_reply_t_handler (vl_api_classify_table_info_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    i32 retval = ntohl(mp->retval);
+    if (retval == 0) {
+        fformat (vam->ofp, "classify table info :\n");
+        fformat (vam->ofp, "sessions: %d nexttbl: %d nextnode: %d\n", ntohl(mp->active_sessions), ntohl(mp->next_table_index), ntohl(mp->miss_next_index));
+        fformat (vam->ofp, "nbuckets: %d skip: %d match: %d\n", ntohl(mp->nbuckets), ntohl(mp->skip_n_vectors), ntohl(mp->match_n_vectors));
+        fformat (vam->ofp, "mask: %U\n", format_hex_bytes, mp->mask, ntohl(mp->mask_length));
+    }
+    vam->retval = retval;
+    vam->result_ready = 1;
+}
+
+static void vl_api_classify_table_info_reply_t_handler_json (vl_api_classify_table_info_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t node;
+
+    i32 retval = ntohl(mp->retval);
+    if (retval == 0) {
+        vat_json_init_object(&node);
+
+        vat_json_object_add_int(&node, "sessions", ntohl(mp->active_sessions));
+        vat_json_object_add_int(&node, "nexttbl", ntohl(mp->next_table_index));
+        vat_json_object_add_int(&node, "nextnode", ntohl(mp->miss_next_index));
+        vat_json_object_add_int(&node, "nbuckets", ntohl(mp->nbuckets));
+        vat_json_object_add_int(&node, "skip", ntohl(mp->skip_n_vectors));
+        vat_json_object_add_int(&node, "match", ntohl(mp->match_n_vectors));
+        u8 * s = format (0, "%U%c",format_hex_bytes, mp->mask, ntohl(mp->mask_length), 0);
+        vat_json_object_add_string_copy(&node, "mask", s);
+
+        vat_json_print(vam->ofp, &node);
+        vat_json_free(&node);
+    }
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
+static void vl_api_classify_session_details_t_handler (vl_api_classify_session_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+
+    fformat (vam->ofp, "next_index: %d advance: %d opaque: %d ", ntohl(mp->hit_next_index), ntohl(mp->advance), ntohl(mp->opaque_index));
+    fformat (vam->ofp, "mask: %U\n", format_hex_bytes, mp->match, ntohl(mp->match_length));
+}
+
+static void vl_api_classify_session_details_t_handler_json (vl_api_classify_session_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_int(node, "next_index", ntohl(mp->hit_next_index));
+    vat_json_object_add_int(node, "advance", ntohl(mp->advance));
+    vat_json_object_add_int(node, "opaque", ntohl(mp->opaque_index));
+    u8 * s = format (0, "%U%c",format_hex_bytes, mp->match, ntohl(mp->match_length), 0);
+    vat_json_object_add_string_copy(node, "match", s);
+}
 
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
@@ -2543,7 +2712,11 @@ _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
 _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
 _(POLICER_DETAILS, policer_details)                                     \
 _(NETMAP_CREATE_REPLY, netmap_create_reply)                             \
-_(NETMAP_DELETE_REPLY, netmap_delete_reply)
+_(NETMAP_DELETE_REPLY, netmap_delete_reply)                             \
+_(CLASSIFY_TABLE_IDS_REPLY, classify_table_ids_reply)                   \
+_(CLASSIFY_TABLE_BY_INTERFACE_REPLY, classify_table_by_interface_reply) \
+_(CLASSIFY_TABLE_INFO_REPLY, classify_table_info_reply)                 \
+_(CLASSIFY_SESSION_DETAILS, classify_session_details)
 
 /* M: construct, but don't yet send a message */
 
@@ -10761,6 +10934,113 @@ api_netmap_delete (vat_main_t * vam)
     return 0;
 }
 
+int api_classify_table_ids (vat_main_t *vam)
+{
+    vl_api_classify_table_ids_t *mp;
+    f64 timeout;
+
+    /* Construct the API message */
+    M(CLASSIFY_TABLE_IDS, classify_table_ids);
+    mp->context = 0;
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+int api_classify_table_by_interface (vat_main_t *vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_classify_table_by_interface_t *mp;
+    f64 timeout;
+
+    u32 sw_if_index = ~0;
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (input, "%U", unformat_sw_if_index, vam, &sw_if_index))
+            ;
+        else if (unformat (input, "sw_if_index %d", &sw_if_index))
+            ;
+        else
+            break;
+    }
+    if (sw_if_index == ~0) {
+        errmsg ("missing interface name or sw_if_index\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface);
+    mp->context = 0;
+    mp->sw_if_index = ntohl(sw_if_index);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+int api_classify_table_info (vat_main_t *vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_classify_table_info_t *mp;
+    f64 timeout;
+
+    u32 table_id = ~0;
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (input, "table_id %d", &table_id))
+            ;
+        else
+            break;
+    }
+    if (table_id == ~0) {
+        errmsg ("missing table id\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(CLASSIFY_TABLE_INFO, classify_table_info);
+    mp->context = 0;
+    mp->table_id = ntohl(table_id);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+int api_classify_session_dump (vat_main_t *vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_classify_session_dump_t *mp;
+    f64 timeout;
+
+    u32 table_id = ~0;
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (input, "table_id %d", &table_id))
+            ;
+        else
+            break;
+    }
+    if (table_id == ~0) {
+        errmsg ("missing table id\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(CLASSIFY_SESSION_DUMP, classify_session_dump);
+    mp->context = 0;
+    mp->table_id = ntohl(table_id);
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    W;
+    /* NOTREACHED */
+    return 0;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -11254,7 +11534,11 @@ _(policer_add_del, "name <policer name> <params> [del]")                \
 _(policer_dump, "[name <policer name>]")                                \
 _(netmap_create, "name <interface name> [hw-addr <mac>] [pipe] "        \
     "[master|slave]")                                                   \
-_(netmap_delete, "name <interface name>")
+_(netmap_delete, "name <interface name>")                               \
+_(classify_table_ids, "")                                               \
+_(classify_table_by_interface, "sw_if_index <sw_if_index>")             \
+_(classify_table_info, "table_id <nn>")                                 \
+_(classify_session_dump, "table_id <nn>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
