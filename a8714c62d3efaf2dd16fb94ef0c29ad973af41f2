@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_e2751733",
+        "filename": "vnet/vnet/devices/dpdk/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 672,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-07T19:29:27Z",
+      "side": 1,
+      "message": "Note that if offset % 16 !\u003d 0, the classifier may give trouble...",
+      "revId": "a8714c62d3efaf2dd16fb94ef0c29ad973af41f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
