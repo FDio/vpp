@@ -1,7 +1,7 @@
-From ca6bbb723880e91d006de6cc485259da988859aa Mon Sep 17 00:00:00 2001
+From 4e1872a43b3ad824e37f840c9ed1e0c1f1b24a32 Mon Sep 17 00:00:00 2001
 From: John Daley <johndale@cisco.com>
 Date: Tue, 5 Apr 2016 15:19:06 -0700
-Subject: [PATCH 3/3] enic: Optimization of Tx path to reduce Host CPU
+Subject: [PATCH 12/17] enic: Optimization of Tx path to reduce Host CPU
  overhead, cleanup
 
 Optimizations and cleanup:
@@ -642,7 +642,7 @@ index 6bea940..697ff82 100644
  	pdev = eth_dev->pci_dev;
  	rte_eth_copy_pci_info(eth_dev, pdev);
 diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
-index 646d87f..ba73604 100644
+index b164307..9bfdec1 100644
 --- a/drivers/net/enic/enic_main.c
 +++ b/drivers/net/enic/enic_main.c
 @@ -40,11 +40,11 @@
@@ -773,7 +773,7 @@ index 646d87f..ba73604 100644
  
  void enic_dev_stats_clear(struct enic *enic)
  {
-@@ -297,12 +217,28 @@ void enic_init_vnic_resources(struct enic *enic)
+@@ -298,12 +218,28 @@ void enic_init_vnic_resources(struct enic *enic)
  	unsigned int error_interrupt_enable = 1;
  	unsigned int error_interrupt_offset = 0;
  	unsigned int index = 0;
@@ -802,7 +802,7 @@ index 646d87f..ba73604 100644
  	}
  
  	for (index = 0; index < enic->wq_count; index++) {
-@@ -310,22 +246,19 @@ void enic_init_vnic_resources(struct enic *enic)
+@@ -311,22 +247,19 @@ void enic_init_vnic_resources(struct enic *enic)
  			enic_cq_wq(enic, index),
  			error_interrupt_enable,
  			error_interrupt_offset);
@@ -830,7 +830,7 @@ index 646d87f..ba73604 100644
  	}
  
  	vnic_intr_init(&enic->intr,
-@@ -569,6 +502,7 @@ void enic_free_wq(void *txq)
+@@ -570,6 +503,7 @@ void enic_free_wq(void *txq)
  	struct vnic_wq *wq = (struct vnic_wq *)txq;
  	struct enic *enic = vnic_dev_priv(wq->vdev);
  
@@ -838,7 +838,7 @@ index 646d87f..ba73604 100644
  	vnic_wq_free(wq);
  	vnic_cq_free(&enic->cq[enic->rq_count + wq->index]);
  }
-@@ -579,6 +513,8 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
+@@ -580,6 +514,8 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
  	int err;
  	struct vnic_wq *wq = &enic->wq[queue_idx];
  	unsigned int cq_index = enic_cq_wq(enic, queue_idx);
@@ -847,7 +847,7 @@ index 646d87f..ba73604 100644
  
  	wq->socket_id = socket_id;
  	if (nb_desc) {
-@@ -614,6 +550,18 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
+@@ -615,6 +551,18 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
  		dev_err(enic, "error in allocation of cq for wq\n");
  	}
  
@@ -1840,5 +1840,5 @@ index 0000000..71ca34e
 +	return index;
 +}
 -- 
-2.7.0
+2.7.4
 

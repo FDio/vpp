@@ -1,17 +1,17 @@
-From af8bfd030fdaa0acb3222296ab7a24bc4ac196f5 Mon Sep 17 00:00:00 2001
+From 2c75df63533e1eaa97c24f41bbd6a5b131ff52ce Mon Sep 17 00:00:00 2001
 From: Georgi Savov <gsavov@cisco.com>
 Date: Tue, 10 May 2016 10:59:55 -0400
-Subject: [PATCH 30/31] i40e Set PKT_RX_VLAN_PKT flag for VLAN packets
+Subject: [PATCH 17/17] i40e Set PKT_RX_VLAN_PKT flag for VLAN packets
 
 ---
  drivers/net/i40e/i40e_rxtx.c | 18 +++++++++++++++++-
  1 file changed, 17 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/net/i40e/i40e_rxtx.c b/drivers/net/i40e/i40e_rxtx.c
-index 39d94ec..07341df 100644
+index 4d35d83..a2bb9a9 100644
 --- a/drivers/net/i40e/i40e_rxtx.c
 +++ b/drivers/net/i40e/i40e_rxtx.c
-@@ -99,7 +99,23 @@ i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union i40e_rx_desc *rxdp)
+@@ -94,7 +94,23 @@ i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union i40e_rx_desc *rxdp)
  		PMD_RX_LOG(DEBUG, "Descriptor l2tag1: %u",
  			   rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1));
  	} else {
@@ -37,5 +37,5 @@ index 39d94ec..07341df 100644
  #ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
  	if (rte_le_to_cpu_16(rxdp->wb.qword2.ext_status) &
 -- 
-1.9.1
+2.7.4
 

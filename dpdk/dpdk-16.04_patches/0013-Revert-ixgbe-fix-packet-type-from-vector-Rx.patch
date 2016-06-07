@@ -1,7 +1,7 @@
-From 379d9246e60eb289edd911fbc27929cf73a038ac Mon Sep 17 00:00:00 2001
+From 33f94cb41621f2816db702b6b104f4642eefa857 Mon Sep 17 00:00:00 2001
 From: Damjan Marion <damarion@cisco.com>
 Date: Fri, 29 Apr 2016 19:51:35 +0200
-Subject: [PATCH] Revert "ixgbe: fix packet type from vector Rx"
+Subject: [PATCH 13/17] Revert "ixgbe: fix packet type from vector Rx"
 
 This reverts commit d9a2009a81089093645fea2e04b51dd37edf3e6f.
 ---
@@ -10,10 +10,10 @@ This reverts commit d9a2009a81089093645fea2e04b51dd37edf3e6f.
  2 files changed, 26 insertions(+), 12 deletions(-)
 
 diff --git a/drivers/net/ixgbe/ixgbe_ethdev.c b/drivers/net/ixgbe/ixgbe_ethdev.c
-index eec607c..b24cdbd 100644
+index 3f1ebc1..c48cb52 100644
 --- a/drivers/net/ixgbe/ixgbe_ethdev.c
 +++ b/drivers/net/ixgbe/ixgbe_ethdev.c
-@@ -2996,7 +2996,9 @@ ixgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+@@ -3000,7 +3000,9 @@ ixgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
  	if (dev->rx_pkt_burst == ixgbe_recv_pkts ||
  	    dev->rx_pkt_burst == ixgbe_recv_pkts_lro_single_alloc ||
  	    dev->rx_pkt_burst == ixgbe_recv_pkts_lro_bulk_alloc ||
