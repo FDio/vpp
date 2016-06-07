@@ -33,6 +33,24 @@
       "revId": "2dc8038b2c8283e0fc3f8b05b0bc22b0afd74dbe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_df92ecf5",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4676,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-06-07T13:55:22Z",
+      "side": 1,
+      "message": "Agree with Filip. The vnet_lisp_add_del_locator_set fn needs to check it anyway.",
+      "parentUuid": "ba092121_1f950440",
+      "revId": "2dc8038b2c8283e0fc3f8b05b0bc22b0afd74dbe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
