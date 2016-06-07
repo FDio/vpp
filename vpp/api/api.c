@@ -4903,7 +4903,7 @@ vl_api_lisp_gpe_add_del_iface_t_handler(
     a->is_add = mp->is_add;
     a->table_id = mp->table_id;
     a->vni = mp->vni;
-    vnet_lisp_gpe_add_del_iface (a, 0);
+    rv = vnet_lisp_gpe_add_del_iface (a, 0);
 
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
 }

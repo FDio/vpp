@@ -480,7 +480,7 @@ lisp_gpe_iface_set_table (u32 sw_if_index, u32 table_id, u8 is_ip4)
     }
 }
 
-void
+int
 vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
                              u32 * hw_if_indexp)
 {
@@ -490,6 +490,12 @@ vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
   u32 hw_if_index = ~0, lookup_next_index4, lookup_next_index6, flen;
   uword * hip, * vni;
 
+  if (vnet_lisp_gpe_enable_disable_status() == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLE;
+    }
+
   hip = hash_get(lgm->lisp_gpe_hw_if_index_by_table_id, a->table_id);
 
   if (a->is_add)
@@ -497,7 +503,7 @@ vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
       if (hip)
         {
           clib_warning ("Interface for vrf %d already exists", a->table_id);
-          return;
+          return 0;
         }
 
       /* create hw lisp_gpeX iface if needed, otherwise reuse existing */
@@ -560,7 +566,7 @@ vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
       if (hip == 0)
         {
           clib_warning("The interface for vrf %d doesn't exist", a->table_id);
-          return;
+          return 0;
         }
       hi = vnet_get_hw_interface (vnm, hip[0]);
 
@@ -579,6 +585,8 @@ vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
       add_del_lisp_gpe_default_route (a->table_id, /* is_v4 */1, 0);
       add_del_lisp_gpe_default_route (a->table_id, /* is_v4 */0, 0);
     }
+
+  return 0;
 }
 
 static clib_error_t *
@@ -587,6 +595,8 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1;
+  clib_error_t * error = 0;
+  int rv = 0;
   u32 table_id;
 
   vnet_lisp_gpe_add_del_iface_args_t _a, * a = &_a;
@@ -612,8 +622,14 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   a->is_add = is_add;
   a->table_id = table_id;
-  vnet_lisp_gpe_add_del_iface (a, 0);
-  return 0;
+  rv = vnet_lisp_gpe_add_del_iface (a, 0);
+  if (0 != rv)
+    {
+      error = clib_error_return(0, "failed to %s gpe iface!",
+                                is_add ? "add" : "delete");
+    }
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (add_del_lisp_gpe_iface_command, static) = {
