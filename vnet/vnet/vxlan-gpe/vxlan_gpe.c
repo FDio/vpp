@@ -68,11 +68,23 @@ static uword dummy_interface_tx (vlib_main_t * vm,
   clib_warning ("you shouldn't be here, leaking buffers...");
   return frame->n_vectors;
 }
+static clib_error_t *
+vxlan_gpe_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+{
+  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    vnet_hw_interface_set_flags (vnm, hw_if_index, VNET_HW_INTERFACE_FLAG_LINK_UP);
+  else
+    vnet_hw_interface_set_flags (vnm, hw_if_index, 0);
+
+  return 0;
+}
+
 VNET_DEVICE_CLASS (vxlan_gpe_device_class,static) = {
   .name = "VXLAN_GPE",
   .format_device_name = format_vxlan_gpe_name,
   .format_tx_trace = format_vxlan_gpe_encap_trace,
   .tx_function = dummy_interface_tx,
+  .admin_up_down_function = vxlan_gpe_interface_admin_up_down,
 };
 
 static uword dummy_set_rewrite (vnet_main_t * vnm,
@@ -196,7 +208,7 @@ static int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t)
   return (0);
 }
 
-int vnet_vxlan_gpe_add_del_tunnel 
+int vnet_vxlan_gpe_add_del_tunnel
 (vnet_vxlan_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp)
 {
   vxlan_gpe_main_t * gm = &vxlan_gpe_main;
@@ -210,7 +222,7 @@ int vnet_vxlan_gpe_add_del_tunnel
   vxlan4_gpe_tunnel_key_t key4, *key4_copy;
   vxlan6_gpe_tunnel_key_t key6, *key6_copy;
   hash_pair_t *hp;
-  
+
   if (!a->is_ip6)
   {
     key4.local = a->local.ip4.as_u32;
@@ -230,19 +242,19 @@ int vnet_vxlan_gpe_add_del_tunnel
 
     p = hash_get_mem(gm->vxlan6_gpe_tunnel_by_key, &key6);
   }
-  
+
   if (a->is_add)
     {
       /* adding a tunnel: tunnel must not already exist */
-      if (p) 
+      if (p)
         return VNET_API_ERROR_INVALID_VALUE;
-      
+
       if (a->decap_next_index >= VXLAN_GPE_INPUT_N_NEXT)
         return VNET_API_ERROR_INVALID_DECAP_NEXT;
-      
+
       pool_get_aligned (gm->tunnels, t, CLIB_CACHE_LINE_BYTES);
       memset (t, 0, sizeof (*t));
-      
+
       /* copy from arg structure */
 #define _(x) t->x = a->x;
       foreach_gpe_copy_field;
@@ -278,18 +290,18 @@ int vnet_vxlan_gpe_add_del_tunnel
           hash_set_mem (gm->vxlan6_gpe_tunnel_by_key, key6_copy,
                         t - gm->tunnels);
       }
-      
+
       if (vec_len (gm->free_vxlan_gpe_tunnel_hw_if_indices) > 0)
         {
           hw_if_index = gm->free_vxlan_gpe_tunnel_hw_if_indices
             [vec_len (gm->free_vxlan_gpe_tunnel_hw_if_indices)-1];
           _vec_len (gm->free_vxlan_gpe_tunnel_hw_if_indices) -= 1;
-          
+
           hi = vnet_get_hw_interface (vnm, hw_if_index);
           hi->dev_instance = t - gm->tunnels;
           hi->hw_instance = hi->dev_instance;
         }
-      else 
+      else
         {
           hw_if_index = vnet_register_interface
             (vnm, vxlan_gpe_device_class.index, t - gm->tunnels,
@@ -297,17 +309,17 @@ int vnet_vxlan_gpe_add_del_tunnel
           hi = vnet_get_hw_interface (vnm, hw_if_index);
           hi->output_node_index = vxlan_gpe_encap_node.index;
         }
-      
+
       t->hw_if_index = hw_if_index;
       t->sw_if_index = sw_if_index = hi->sw_if_index;
-      
-      vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 
+
+      vnet_sw_interface_set_flags (vnm, hi->sw_if_index,
                                    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
     }
   else
     {
       /* deleting a tunnel: tunnel must exist */
-      if (!p) 
+      if (!p)
         return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       t = pool_elt_at_index (gm->tunnels, p[0]);
@@ -368,7 +380,7 @@ static uword unformat_gpe_decap_next (unformat_input_t * input, va_list * args)
 {
   u32 * result = va_arg (*args, u32 *);
   u32 tmp;
-  
+
   if (unformat (input, "drop"))
     *result = VXLAN_GPE_INPUT_NEXT_DROP;
   else if (unformat (input, "ip4"))
@@ -399,14 +411,14 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
   u32 encap_fib_index = 0;
   u32 decap_fib_index = 0;
   u8 protocol = VXLAN_GPE_PROTOCOL_IP4;
-  u32 decap_next_index = VXLAN_GPE_INPUT_NEXT_IP4_INPUT; 
+  u32 decap_next_index = VXLAN_GPE_INPUT_NEXT_IP4_INPUT;
   u32 vni;
   u8 vni_set = 0;
   int rv;
   u32 tmp;
   vnet_vxlan_gpe_add_del_tunnel_args_t _a, * a = &_a;
   u32 sw_if_index;
-  
+
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -414,7 +426,7 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
     if (unformat (line_input, "del"))
       is_add = 0;
-    else if (unformat (line_input, "local %U", 
+    else if (unformat (line_input, "local %U",
                        unformat_ip4_address, &local.ip4))
     {
       local_set = 1;
@@ -459,7 +471,7 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
         if (decap_fib_index == ~0)
           return clib_error_return (0, "nonexistent decap fib id %d", tmp);
       }
-    else if (unformat (line_input, "decap-next %U", unformat_gpe_decap_next, 
+    else if (unformat (line_input, "decap-next %U", unformat_gpe_decap_next,
                        &decap_next_index))
       ;
     else if (unformat (line_input, "vni %d", &vni))
@@ -472,8 +484,8 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
       protocol = VXLAN_GPE_PROTOCOL_ETHERNET;
     else if (unformat(line_input, "next-nsh"))
       protocol = VXLAN_GPE_PROTOCOL_NSH;
-    else 
-      return clib_error_return (0, "parse error: '%U'", 
+    else
+      return clib_error_return (0, "parse error: '%U'",
                                 format_unformat_error, line_input);
   }
 
@@ -523,7 +535,7 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "tunnel does not exist...");
 
     default:
-      return clib_error_return 
+      return clib_error_return
         (0, "vnet_vxlan_gpe_add_del_tunnel returned %d", rv);
     }
 
@@ -532,7 +544,7 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (create_vxlan_gpe_tunnel_command, static) = {
   .path = "create vxlan-gpe tunnel",
-  .short_help = 
+  .short_help =
   "create vxlan-gpe tunnel local <local-addr> remote <remote-addr>"
   " vni <nn> [next-ip4][next-ip6][next-ethernet][next-nsh]"
   " [encap-vrf-id <nn>] [decap-vrf-id <nn>]"
@@ -547,7 +559,7 @@ show_vxlan_gpe_tunnel_command_fn (vlib_main_t * vm,
 {
   vxlan_gpe_main_t * gm = &vxlan_gpe_main;
   vxlan_gpe_tunnel_t * t;
-  
+
   if (pool_elts (gm->tunnels) == 0)
     vlib_cli_output (vm, "No vxlan-gpe tunnels configured.");
 
@@ -555,7 +567,7 @@ show_vxlan_gpe_tunnel_command_fn (vlib_main_t * vm,
   ({
     vlib_cli_output (vm, "%U", format_vxlan_gpe_tunnel, t);
   }));
-  
+
   return 0;
 }
 
@@ -567,7 +579,7 @@ VLIB_CLI_COMMAND (show_vxlan_gpe_tunnel_command, static) = {
 clib_error_t *vxlan_gpe_init (vlib_main_t *vm)
 {
   vxlan_gpe_main_t *gm = &vxlan_gpe_main;
-  
+
   gm->vnet_main = vnet_get_main();
   gm->vlib_main = vm;
 
