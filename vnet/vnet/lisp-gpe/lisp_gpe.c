@@ -299,6 +299,12 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   clib_error_t * error = 0;
   u32 i;
 
+  if (vnet_lisp_gpe_enable_disable_status() == 0)
+    {
+      error = clib_error_return(0, "Lisp is disable");
+      goto done;
+    }
+
   prefp = &gid_address_ippref(&eid);
 
   /* Get a line of input. */

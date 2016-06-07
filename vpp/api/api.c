@@ -4673,6 +4673,11 @@ vl_api_lisp_add_del_locator_set_t_handler(vl_api_lisp_add_del_locator_set_t *mp)
     u32 ls_index = ~0;
     u8 *locator_name = NULL;
 
+    if (vnet_lisp_enable_disable_status() == 0) {
+      rv = VNET_API_ERROR_LISP_DISABLE;
+      goto out;
+    }
+
     memset(a, 0, sizeof(a[0]));
 
     locator_name = format(0, "%s", mp->locator_set_name);
@@ -4686,6 +4691,7 @@ vl_api_lisp_add_del_locator_set_t_handler(vl_api_lisp_add_del_locator_set_t *mp)
 
     vec_free(locator_name);
 
+out:
     REPLY_MACRO(VL_API_LISP_ADD_DEL_LOCATOR_SET_REPLY);
 }
 
@@ -4699,6 +4705,11 @@ vl_api_lisp_add_del_locator_t_handler(
     vnet_lisp_add_del_locator_set_args_t _a, *a = &_a;
     u32 ls_index = ~0;
     u8 *locator_name = NULL;
+
+    if (vnet_lisp_enable_disable_status() == 0) {
+      rv = VNET_API_ERROR_LISP_DISABLE;
+      goto out;
+    }
 
     memset(&locator, 0, sizeof(locator));
     memset(a, 0, sizeof(a[0]));
@@ -4721,6 +4732,7 @@ vl_api_lisp_add_del_locator_t_handler(
     vec_free(locators);
     vec_free(locator_name);
 
+out:
     REPLY_MACRO(VL_API_LISP_ADD_DEL_LOCATOR_REPLY);
 }
 
@@ -4738,6 +4750,11 @@ vl_api_lisp_add_del_local_eid_t_handler(
     u32 locator_set_index = ~0, map_index = ~0;
     vnet_lisp_add_del_mapping_args_t _a, *a = &_a;
     u8 *name = NULL;
+
+    if (vnet_lisp_enable_disable_status() == 0) {
+      rv = VNET_API_ERROR_LISP_DISABLE;
+      goto out;
+    }
 
     prefp = &gid_address_ippref(&eid);
     ip_eid = &ip_prefix_addr(prefp);
@@ -4827,6 +4844,11 @@ vl_api_lisp_gpe_add_del_fwd_entry_t_handler(
     gid_address_t eid;
     vnet_lisp_gpe_add_del_fwd_entry_args_t a;
 
+    if (vnet_lisp_gpe_enable_disable_status() == 0) {
+      rv = VNET_API_ERROR_LISP_DISABLE;
+      goto out;
+    }
+
     lisp_gpe_add_del_fwd_entry_set_address(mp, &slocator, &dlocator, &eid);
 
     memset (&a, 0, sizeof(a));
@@ -4837,6 +4859,7 @@ vl_api_lisp_gpe_add_del_fwd_entry_t_handler(
     a.dlocator = dlocator;
     rv = vnet_lisp_gpe_add_del_fwd_entry (&a, 0);
 
+out:
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY);
 }
 
@@ -4848,6 +4871,11 @@ vl_api_lisp_add_del_map_resolver_t_handler(
     int rv = 0;
     ip_address_t *ip_addr = NULL;
     vnet_lisp_add_del_map_resolver_args_t _a, * a = &_a;
+
+    if (vnet_lisp_enable_disable_status() == 0) {
+      rv = VNET_API_ERROR_LISP_DISABLE;
+      goto out;
+    }
 
     a->is_add = mp->is_add;
     ip_addr = &a->address;
@@ -4864,6 +4892,7 @@ vl_api_lisp_add_del_map_resolver_t_handler(
 
     rv = vnet_lisp_add_del_map_resolver (a);
 
+out:
     REPLY_MACRO(VL_API_LISP_ADD_DEL_MAP_RESOLVER_REPLY);
 }
 
@@ -4900,11 +4929,17 @@ vl_api_lisp_gpe_add_del_iface_t_handler(
     int rv = 0;
     vnet_lisp_gpe_add_del_iface_args_t _a, * a = &_a;
 
+    if (vnet_lisp_gpe_enable_disable_status() == 0) {
+      rv = VNET_API_ERROR_LISP_DISABLE;
+      goto out;
+    }
+
     a->is_add = mp->is_add;
     a->table_id = mp->table_id;
     a->vni = mp->vni;
     vnet_lisp_gpe_add_del_iface (a, 0);
 
+out:
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
 }
 
@@ -4916,10 +4951,16 @@ vl_api_lisp_pitr_set_locator_set_t_handler(
     int rv = 0;
     u8 * ls_name = 0;
 
+    if (vnet_lisp_enable_disable_status() == 0) {
+      rv = VNET_API_ERROR_LISP_DISABLE;
+      goto out;
+    }
+
     ls_name = format (0, "%s", mp->ls_name);
     rv = vnet_lisp_pitr_set_locator_set (ls_name, mp->is_add);
     vec_free (ls_name);
 
+out:
     REPLY_MACRO(VL_API_LISP_PITR_SET_LOCATOR_SET_REPLY);
 }
 
@@ -4959,6 +5000,11 @@ vl_api_lisp_add_del_remote_mapping_t_handler (
     gid_address_t _deid, * deid = &_deid;
     ip_prefix_t * seid_pref = &gid_address_ippref(seid);
     ip_prefix_t * deid_pref = &gid_address_ippref(deid);
+
+    if (vnet_lisp_enable_disable_status() == 0) {
+      rv = VNET_API_ERROR_LISP_DISABLE;
+      goto out;
+    }
 
     gid_address_type(seid) = GID_ADDR_IP_PREFIX;
     gid_address_type(deid) = GID_ADDR_IP_PREFIX;
@@ -5000,6 +5046,8 @@ vl_api_lisp_add_del_remote_mapping_t_handler (
     rv = vnet_lisp_add_del_remote_mapping (deid, seid, rlocs, mp->action,
                                            mp->is_add, mp->del_all);
     vec_free (rlocs);
+
+out:
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
 }
 

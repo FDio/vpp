@@ -211,6 +211,12 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   uword * p;
   vnet_lisp_add_del_mapping_args_t _a, * a = &_a;
 
+  if (vnet_lisp_enable_disable_status() == 0)
+    {
+      error = clib_error_return(0, "Lisp is disable");
+      goto done;
+    }
+
   gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
 
   /* Get a line of input. */
@@ -559,6 +565,12 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   u8 * s = 0;
   u32 vni, action = ~0;
 
+  if (vnet_lisp_enable_disable_status() == 0)
+    {
+      error = clib_error_return(0, "Lisp is disable");
+      goto done;
+    }
+
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -730,7 +742,14 @@ lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
   u8 locator_name_set = 0;
   u8 * locator_set_name = 0;
   u8 is_add = 1;
+  clib_error_t * error = 0;
   unformat_input_t _line_input, * line_input = &_line_input;
+
+  if (vnet_lisp_enable_disable_status() == 0)
+    {
+      error = clib_error_return(0, "Lisp is disable");
+      goto done;
+    }
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -756,7 +775,7 @@ lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
 done:
   if (locator_set_name)
     vec_free (locator_set_name);
-  return 0;
+  return error;
 }
 
 VLIB_CLI_COMMAND (lisp_pitr_set_locator_set_command) = {
@@ -1251,6 +1270,12 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vnet_lisp_add_del_locator_set_args_t _a, * a = &_a;
   u32 ls_index = 0;
 
+  if (vnet_lisp_enable_disable_status() == 0)
+    {
+      error = clib_error_return(0, "Lisp is disable");
+      goto done;
+    }
+
   memset(&locator, 0, sizeof(locator));
   memset(a, 0, sizeof(a[0]));
 
@@ -1382,6 +1407,12 @@ lisp_add_del_map_resolver_command_fn (vlib_main_t * vm,
   ip_address_t ip_addr;
   clib_error_t * error = 0;
   vnet_lisp_add_del_map_resolver_args_t _a, * a = &_a;
+
+  if (vnet_lisp_enable_disable_status() == 0)
+    {
+      error = clib_error_return(0, "Lisp is disable");
+      goto done;
+    }
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
