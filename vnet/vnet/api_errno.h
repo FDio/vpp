@@ -79,7 +79,8 @@ _(NOT_RUNNING_AS_ROOT, -85, "Not running as root") \
 _(ALREADY_CONNECTED, -86, "Connection to the data plane already exists") \
 _(UNSUPPORTED_JNI_VERSION, -87, "Unsupported JNI version") \
 _(FAILED_TO_ATTACH_TO_JAVA_THREAD, -88, "Failed to attach to Java thread") \
-_(INVALID_WORKER, -89, "Invalid worker thread")
+_(INVALID_WORKER, -89, "Invalid worker thread")                         \
+_(CLASSIFY_TABLE_NOT_FOUND, -90, "Classify table not found")
 
 typedef enum {
 #define _(a,b,c) VNET_API_ERROR_##a = (b),
