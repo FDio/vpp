@@ -26,6 +26,7 @@ TESTS =
 ########################################
 libvnet_la_SOURCES +=					\
   vnet/config.c						\
+  vnet/handoff.c					\
   vnet/interface.c					\
   vnet/interface_cli.c					\
   vnet/interface_format.c				\
