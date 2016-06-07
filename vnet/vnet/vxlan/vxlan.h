@@ -20,6 +20,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_output.h>
 #include <vnet/l2/l2_bd.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/vxlan/vxlan_packet.h>
@@ -125,13 +126,6 @@ typedef struct {
 
   /* Free vlib hw_if_indices */
   u32 * free_vxlan_tunnel_hw_if_indices;
-
-  /* Dummy rewrite for deleted vxlan_tunnels with hw_if_indices as above */
-  u64 dummy4_str [sizeof(ip4_vxlan_header_t)/sizeof(u64) + 2];
-#define vxlan4_dummy_rewrite ((u8 *) &vxlan_main.dummy4_str[1])
-
-  u64 dummy6_str [sizeof(ip6_vxlan_header_t)/sizeof(u64) + 2];
-#define vxlan6_dummy_rewrite ((u8 *) &vxlan_main.dummy6_str[1])
 
   /* Mapping from sw_if_index to tunnel index */
   u32 * tunnel_index_by_sw_if_index;

@@ -62,30 +62,11 @@ static u8 * format_l2output_trace (u8 * s, va_list * args)
 }
 
 
-#define foreach_l2output_error				\
-_(L2OUTPUT,     "L2 output packets")			\
-_(EFP_DROP,     "L2 EFP filter pre-rewrite drops")	\
-_(VTR_DROP,     "L2 output tag rewrite drops")		\
-_(SHG_DROP,     "L2 split horizon drops")		\
-_(DROP,         "L2 output drops")
-
-typedef enum {
-#define _(sym,str) L2OUTPUT_ERROR_##sym,
-  foreach_l2output_error
-#undef _
-  L2OUTPUT_N_ERROR,
-} l2output_error_t;
-
 static char * l2output_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2output_error
 #undef _
 };
-
-typedef enum {
-  L2OUTPUT_NEXT_DROP,
-  L2OUTPUT_N_NEXT,
-} l2output_next_t;
 
 // Return 0 if split horizon check passes, otherwise return non-zero
 // Packets should not be transmitted out an interface with the same
@@ -411,8 +392,113 @@ VLIB_REGISTER_NODE (l2output_node,static) = {
   /* edit / add dispositions here */
   .next_nodes = {
         [L2OUTPUT_NEXT_DROP] = "error-drop",
+        [L2OUTPUT_NEXT_DEL_TUNNEL] = "l2-output-del-tunnel",
   },
 };
+
+
+#define foreach_l2output_del_tunnel_error	\
+_(DROP,     "L2 output to deleted tunnel")
+
+static char * l2output_del_tunnel_error_strings[] = {
+#define _(sym,string) string,
+  foreach_l2output_del_tunnel_error
+#undef _
+};
+
+typedef enum {
+#define _(sym,str) L2OUTPUT_DEL_TUNNEL_ERROR_##sym,
+  foreach_l2output_del_tunnel_error
+#undef _
+  L2OUTPUT_DEL_TUNNEL_N_ERROR,
+} l2output_del_tunnel_error_t;
+
+
+// Output node for tunnels which was in L2 BD's but were deleted.
+// On deletion of any tunnel which was on a L2 BD, its entry in 
+// l2_output_main table next_nodes.output_node_index_vec[sw_if_index] 
+// MUST be set to the value of L2OUTPUT_NEXT_DEL_TUNNEL. Thus, if there
+// are stale entries in the L2FIB for this tunnel sw_if_index, l2-output 
+// will send packets for this sw_if_index to the l2-output-tunnel-del
+// node which just setup the proper drop reason before sending packets
+// to the error-drop node to drop the packet. Then, stale L2FIB entries
+// for delted tunnels won't cause possible packet or memory corrpution.
+static vlib_node_registration_t l2output_del_tunnel_node;
+
+static uword
+l2output_del_tunnel_node_fn (vlib_main_t * vm,
+			     vlib_node_runtime_t * node,
+			     vlib_frame_t * frame)
+{
+  u32 n_left_from, * from, * to_next;
+  l2output_next_t next_index = 0;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors; // number of packets to process
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      // get space to enqueue frame to graph node "next_index"
+      vlib_get_next_frame (vm, node, next_index,
+			   to_next, n_left_to_next);
+
+      while (n_left_from >= 4 && n_left_to_next >= 2)
+	{
+          u32 bi0, bi1;
+	  vlib_buffer_t * b0, * b1;
+
+ 	  to_next[0] = bi0 = from[0];
+	  to_next[1] = bi1 = from[1];
+	  from += 2;
+	  to_next += 2;
+	  n_left_from -= 2;
+	  n_left_to_next -= 2;
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+ 	  b0->error = node->errors[L2OUTPUT_DEL_TUNNEL_ERROR_DROP];
+ 	  b1->error = node->errors[L2OUTPUT_DEL_TUNNEL_ERROR_DROP];
+        }
+      
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+          u32 bi0;
+	  vlib_buffer_t * b0;
+
+ 	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+	  b0 = vlib_get_buffer (vm, bi0);
+ 	  b0->error = node->errors[L2OUTPUT_DEL_TUNNEL_ERROR_DROP];
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (l2output_del_tunnel_node,static) = {
+  .function = l2output_del_tunnel_node_fn,
+  .name = "l2-output-del-tunnel",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  
+  .n_errors =  ARRAY_LEN(l2output_del_tunnel_error_strings),
+  .error_strings = l2output_del_tunnel_error_strings,
+
+  .n_next_nodes = 1,
+
+  /* edit / add dispositions here */
+  .next_nodes = {
+	[0] = "error-drop",
+  },
+};
+
 
 VLIB_NODE_FUNCTION_MULTIARCH (l2output_node, l2output_node_fn)
 

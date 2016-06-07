@@ -104,6 +104,26 @@ typedef enum {
 #undef _
 } l2output_feat_masks_t;
            
+#define foreach_l2output_error				\
+_(L2OUTPUT,     "L2 output packets")			\
+_(EFP_DROP,     "L2 EFP filter pre-rewrite drops")	\
+_(VTR_DROP,     "L2 output tag rewrite drops")		\
+_(SHG_DROP,     "L2 split horizon drops")		\
+_(DROP,         "L2 output drops")
+
+typedef enum {
+  L2OUTPUT_NEXT_DROP,
+  L2OUTPUT_NEXT_DEL_TUNNEL,
+  L2OUTPUT_N_NEXT,
+} l2output_next_t;
+
+typedef enum {
+#define _(sym,str) L2OUTPUT_ERROR_##sym,
+  foreach_l2output_error
+#undef _
+  L2OUTPUT_N_ERROR,
+} l2output_error_t;
+
 // Return an array of strings containing graph node names of each feature
 char **l2output_get_feat_names(void);
 

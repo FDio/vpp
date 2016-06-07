@@ -207,6 +207,7 @@ int vnet_vxlan_add_del_tunnel
   int rv;
   vxlan4_tunnel_key_t key4;
   vxlan6_tunnel_key_t key6;
+  l2output_main_t * l2om = &l2output_main;
 
   if (!a->is_ip6) {
     key4.src = a->dst.ip4.as_u32; /* decap src in key is encap dst in config */
@@ -318,6 +319,15 @@ int vnet_vxlan_add_del_tunnel
 	  l2im->configs[sw_if_index].feature_bitmap = L2INPUT_FEAT_DROP;
 	  l2im->configs[sw_if_index].bd_index = 0;
 	}
+      
+      /* 
+       * Directs the l2 output path to work out the interface
+       * output next-arc itself. Needed when recycling a tunnel.
+       */
+      vec_validate_init_empty(l2om->next_nodes.output_node_index_vec, 
+                              sw_if_index, ~0);
+      l2om->next_nodes.output_node_index_vec[t->sw_if_index] 
+        = ~0;
       vnet_sw_interface_set_flags (vnm, sw_if_index, 
                                    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
       if (!a->is_ip6) {
@@ -343,24 +353,16 @@ int vnet_vxlan_add_del_tunnel
 
       vxm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 
+      /* Directs the l2 path to turf packets sent to this sw_if_index */
+      l2om->next_nodes.output_node_index_vec[t->sw_if_index] 
+        = L2OUTPUT_NEXT_DEL_TUNNEL;
+
       if (!a->is_ip6)
         hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
       else
         hash_unset_mem (vxm->vxlan6_tunnel_by_key, t->key6);
 
       vec_free (t->rewrite);
-      if (!a->is_ip6)
-        {
-          t->rewrite = vxlan4_dummy_rewrite;
-          t->key4 = 0;
-        }
-      else
-        {
-          t->rewrite = vxlan6_dummy_rewrite;
-          clib_mem_free (t->key6);
-          t->key6 = 0;
-        }
-
       pool_put (vxm->tunnels, t);
     }
 
@@ -579,10 +581,6 @@ VLIB_CLI_COMMAND (show_vxlan_tunnel_command, static) = {
 clib_error_t *vxlan_init (vlib_main_t *vm)
 {
   vxlan_main_t * vxm = &vxlan_main;
-  ip4_vxlan_header_t * hdr4;
-  ip4_header_t * ip4;
-  ip6_vxlan_header_t * hdr6;
-  ip6_header_t * ip6;
   
   vxm->vnet_main = vnet_get_main();
   vxm->vlib_main = vm;
@@ -592,21 +590,6 @@ clib_error_t *vxlan_init (vlib_main_t *vm)
         sizeof(vxlan6_tunnel_key_t),
         sizeof(uword));
 
-  /* init dummy rewrite string for deleted vxlan tunnels */
-  _vec_len(vxlan4_dummy_rewrite) = sizeof(ip4_vxlan_header_t);
-  hdr4 = (ip4_vxlan_header_t *) vxlan4_dummy_rewrite;
-  ip4 = &hdr4->ip4;
-  /* minimal rewrite setup, see vxlan_rewite() above as reference */
-  ip4->ip_version_and_header_length = 0x45;
-  ip4->checksum = ip4_header_checksum (ip4);
-
-  /* Same again for IPv6 */
-  _vec_len(vxlan6_dummy_rewrite) = sizeof(ip6_vxlan_header_t);
-  hdr6 = (ip6_vxlan_header_t *) vxlan6_dummy_rewrite;
-  ip6 = &hdr6->ip6;
-  /* minimal rewrite setup, see vxlan_rewite() above as reference */
-  ip6->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(6 << 28);
- 
   udp_register_dst_port (vm, UDP_DST_PORT_vxlan, 
                          vxlan4_input_node.index, /* is_ip4 */ 1);
   udp_register_dst_port (vm, UDP_DST_PORT_vxlan6,

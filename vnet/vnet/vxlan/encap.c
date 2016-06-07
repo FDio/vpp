@@ -21,8 +21,7 @@
 
 /* Statistics (not all errors) */
 #define foreach_vxlan_encap_error    \
-_(ENCAPSULATED, "good packets encapsulated") \
-_(DEL_TUNNEL, "deleted tunnel packets")
+_(ENCAPSULATED, "good packets encapsulated")
 
 static char * vxlan_encap_error_strings[] = {
 #define _(sym,string) string,
@@ -159,22 +158,6 @@ vxlan_encap (vlib_main_t * vm,
 
           if (PREDICT_FALSE(!is_ip4_0)) next0 = VXLAN_ENCAP_NEXT_IP6_LOOKUP;
           if (PREDICT_FALSE(!is_ip4_1)) next1 = VXLAN_ENCAP_NEXT_IP6_LOOKUP;
-
-	  /* Check rewrite string and drop packet if tunnel is deleted */
-	  if (PREDICT_FALSE(t0->rewrite == vxlan4_dummy_rewrite || 
-                            t0->rewrite == vxlan6_dummy_rewrite))
-	    {
-	      next0 = VXLAN_ENCAP_NEXT_DROP;
-	      b0->error = node->errors[VXLAN_ENCAP_ERROR_DEL_TUNNEL];
-	      pkts_encapsulated --;
-	    }  /* Still go through normal encap with dummy rewrite */
-	  if (PREDICT_FALSE(t1->rewrite == vxlan4_dummy_rewrite || 
-                            t1->rewrite == vxlan6_dummy_rewrite))
-	    {
-	      next1 = VXLAN_ENCAP_NEXT_DROP;
-	      b1->error = node->errors[VXLAN_ENCAP_ERROR_DEL_TUNNEL];
-	      pkts_encapsulated --;
-	    }  /* Still go through normal encap with dummy rewrite */
 
 	  /* IP4 VXLAN header sizeof(ip4_vxlan_header_t) should be 36 octects */
           /* IP6 VXLAN header sizeof(ip6_vxlan_header_t) should be 56 octects */
@@ -417,16 +400,6 @@ vxlan_encap (vlib_main_t * vm,
           is_ip4_0 = (t0->flags & VXLAN_TUNNEL_IS_IPV4);
 
           if (PREDICT_FALSE(!is_ip4_0)) next0 = VXLAN_ENCAP_NEXT_IP6_LOOKUP;
-
-	  /* Check rewrite string and drop packet if tunnel is deleted */
-	  if (PREDICT_FALSE(t0->rewrite == vxlan4_dummy_rewrite || 
-                            t0->rewrite == vxlan6_dummy_rewrite))
-	    {
-	      next0 = VXLAN_ENCAP_NEXT_DROP;
-	      b0->error = node->errors[VXLAN_ENCAP_ERROR_DEL_TUNNEL];
-	      pkts_encapsulated --;
-	    }  /* Still go through normal encap with dummy rewrite */
-
 
 	  /* IP4 VXLAN header sizeof(ip4_vxlan_header_t) should be 36 octets */
           /* IP6 VXLAN header sizeof(ip4_vxlan_header_t) should be 56 octets */
