@@ -139,6 +139,12 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
   vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
 
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
   vni = gid_address_vni(&a->deid);
 
   /* store/remove mapping from map-cache */
@@ -210,6 +216,7 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 locator_set_index = 0, map_index = 0;
   uword * p;
   vnet_lisp_add_del_mapping_args_t _a, * a = &_a;
+  int rv = 0;
 
   gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
 
@@ -251,7 +258,12 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   a->locator_set_index = locator_set_index;
   a->local = 1;
 
-  vnet_lisp_add_del_local_mapping (a, &map_index);
+  rv = vnet_lisp_add_del_local_mapping (a, &map_index);
+  if (0 != rv)
+   {
+      error = clib_error_return(0, "failed to %s eid-table!",
+                                is_add ? "add" : "delete");
+   }
  done:
   vec_free(eids);
   if (locator_set_name)
@@ -382,6 +394,12 @@ vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
   locator_t loc;
   ip_address_t * dl;
   int rc = -1;
+
+  if (vnet_lisp_enable_disable_status() == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
 
   if (del_all)
     return vnet_lisp_clear_all_remote_mappings ();
@@ -700,6 +718,12 @@ vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add)
   mapping_t * m;
   uword * p;
 
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
   p = hash_get_mem (lcm->locator_set_index_by_name, locator_set_name);
   if (!p)
     {
@@ -738,6 +762,8 @@ lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
   u8 * locator_set_name = 0;
   u8 is_add = 1;
   unformat_input_t _line_input, * line_input = &_line_input;
+  clib_error_t * error = 0;
+  int rv = 0;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -758,12 +784,17 @@ lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
       clib_warning ("No locator set specified!");
       goto done;
     }
-  vnet_lisp_pitr_set_locator_set (locator_set_name, is_add);
+  rv = vnet_lisp_pitr_set_locator_set (locator_set_name, is_add);
+  if (0 != rv)
+    {
+      error = clib_error_return(0, "failed to %s pitr!",
+                                is_add ? "add" : "delete");
+    }
 
 done:
   if (locator_set_name)
     vec_free (locator_set_name);
-  return 0;
+  return error;
 }
 
 VLIB_CLI_COMMAND (lisp_pitr_set_locator_set_command) = {
@@ -917,6 +948,12 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
 
   ASSERT(a != NULL);
 
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
   p = get_locator_set_index(a, p);
   if (!p)
     {
@@ -1001,6 +1038,12 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
   u32 ls_index;
   u32 ** eid_indexes;
   int ret = 0;
+
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
 
   if (a->is_add)
     {
@@ -1264,6 +1307,7 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
   locator_t locator, * locators = 0;
   vnet_lisp_add_del_locator_set_args_t _a, * a = &_a;
   u32 ls_index = 0;
+  int rv = 0;
 
   memset(&locator, 0, sizeof(locator));
   memset(a, 0, sizeof(a[0]));
@@ -1297,7 +1341,12 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
   a->is_add = is_add;
   a->local = 1;
 
-  vnet_lisp_add_del_locator_set(a, &ls_index);
+  rv = vnet_lisp_add_del_locator_set(a, &ls_index);
+  if (0 != rv)
+    {
+      error = clib_error_return(0, "failed to %s locator-set!",
+                                is_add ? "add" : "delete");
+    }
 
  done:
   vec_free(locators);
@@ -1358,6 +1407,12 @@ vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a)
   ip_address_t * addr;
   u32 i;
 
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
   if (a->is_add)
     {
       vec_foreach(addr, lcm->map_resolvers)
@@ -1395,6 +1450,7 @@ lisp_add_del_map_resolver_command_fn (vlib_main_t * vm,
   u8 is_add = 1;
   ip_address_t ip_addr;
   clib_error_t * error = 0;
+  int rv = 0;
   vnet_lisp_add_del_map_resolver_args_t _a, * a = &_a;
 
   /* Get a line of input. */
@@ -1417,7 +1473,12 @@ lisp_add_del_map_resolver_command_fn (vlib_main_t * vm,
     }
   a->is_add = is_add;
   a->address = ip_addr;
-  vnet_lisp_add_del_map_resolver (a);
+  rv = vnet_lisp_add_del_map_resolver (a);
+  if (0 != rv)
+    {
+      error = clib_error_return(0, "failed to %s map-resolver!",
+                                is_add ? "add" : "delete");
+    }
 
  done:
   return error;
