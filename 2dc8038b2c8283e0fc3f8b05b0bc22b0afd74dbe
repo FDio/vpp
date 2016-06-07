@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_df9e6c63",
+        "filename": "vnet/vnet/api_errno.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-07T12:21:44Z",
+      "side": 1,
+      "message": "*disabled",
+      "revId": "2dc8038b2c8283e0fc3f8b05b0bc22b0afd74dbe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_1f950440",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4676,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-07T12:21:44Z",
+      "side": 1,
+      "message": "I would not check enable/disable state here but inside appropriate vnet_* API function (in this case in  vnet_lisp_add_del_locator_set).",
+      "revId": "2dc8038b2c8283e0fc3f8b05b0bc22b0afd74dbe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
