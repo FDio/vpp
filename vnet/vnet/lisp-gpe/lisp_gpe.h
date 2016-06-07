@@ -180,7 +180,7 @@ typedef struct
 
 u8
 vnet_lisp_gpe_enable_disable_status(void);
-void
+int
 vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t *a,
 			     u32 * hw_if_indexp);
 
