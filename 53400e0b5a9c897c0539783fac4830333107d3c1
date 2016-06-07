@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_9f8fd423",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_callback_facade_gen.py",
+        "patchSetId": 13
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-06-07T12:38:42Z",
+      "side": 1,
+      "message": "Resulting message will be configusing, how about something like this:\n\n                ex.addSuppressed(reply);\n                LOG.log(Level.WARNING, String.format(\"Callback: %s failed while handling exception: %s\", failedCall, reply), ex);",
+      "range": {
+        "startLine": 201,
+        "startChar": 16,
+        "endLine": 201,
+        "endChar": 116
+      },
+      "revId": "53400e0b5a9c897c0539783fac4830333107d3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_1fa3c49f",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppBaseCallException.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-06-07T12:38:42Z",
+      "side": 1,
+      "message": "unnecessary comment\n\nif it were, it should be above the field",
+      "range": {
+        "startLine": 23,
+        "startChar": 40,
+        "endLine": 23,
+        "endChar": 70
+      },
+      "revId": "53400e0b5a9c897c0539783fac4830333107d3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_bfa9787d",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppInvocationException.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-06-07T12:38:42Z",
+      "side": 1,
+      "message": "// FIXME-REVIEW: If you have to inject static constant for context ID into super constructor, than the object hierarchy\n    // is probably imperfect",
+      "range": {
+        "startLine": 31,
+        "startChar": 26,
+        "endLine": 31,
+        "endChar": 27
+      },
+      "revId": "53400e0b5a9c897c0539783fac4830333107d3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_9fb6b4db",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppInvoker.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-06-07T12:38:42Z",
+      "side": 1,
+      "message": "Is this still being thrown ? \nShouldn\u0027t it be caught in implementation and return in future ? If so, it shouldn\u0027t be declared here as thrown",
+      "range": {
+        "startLine": 36,
+        "startChar": 98,
+        "endLine": 36,
+        "endChar": 144
+      },
+      "revId": "53400e0b5a9c897c0539783fac4830333107d3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
