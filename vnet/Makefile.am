@@ -26,6 +26,7 @@ TESTS =
 ########################################
 libvnet_la_SOURCES +=					\
   vnet/config.c						\
+  vnet/handoff.c					\
   vnet/interface.c					\
   vnet/interface_cli.c					\
   vnet/interface_format.c				\
@@ -39,6 +40,7 @@ nobase_include_HEADERS +=			\
   vnet/buffer.h					\
   vnet/config.h					\
   vnet/global_funcs.h				\
+  vnet/handoff.h				\
   vnet/interface.h				\
   vnet/interface_funcs.h			\
   vnet/l3_types.h				\
