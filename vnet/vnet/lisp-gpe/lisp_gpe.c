@@ -227,6 +227,12 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
   uword * lookup_next_index, * lgpe_sw_if_index, * lnip;
   u8 ip_ver;
 
+  if (vnet_lisp_gpe_enable_disable_status() == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
   /* treat negative fwd entries separately */
   if (a->is_negative)
     return add_del_negative_fwd_entry (lgm, a);
@@ -298,6 +304,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   gid_address_t * eids = 0, eid;
   clib_error_t * error = 0;
   u32 i;
+  int rv;
 
   prefp = &gid_address_ippref(&eid);
 
@@ -350,7 +357,13 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
       a.deid = eids[i];
       a.slocator = slocators[i];
       a.dlocator = dlocators[i];
-      vnet_lisp_gpe_add_del_fwd_entry (&a, 0);
+      rv = vnet_lisp_gpe_add_del_fwd_entry (&a, 0);
+      if (0 != rv)
+        {
+          error = clib_error_return(0, "failed to %s gpe maptunnel!",
+                                    is_add ? "add" : "delete");
+          break;
+        }
     }
 
  done:
