@@ -726,6 +726,9 @@ resolver_process (vlib_main_t * vm,
                 int is_adr = 1;
                 adr = &pr->r;
                 pme = &pr->t;
+		//Bug fix for VPP-21
+		 if(pr->resolve_type==(RESOLVE_IP4_ADD_DEL_ROUTE||RESOLVE_IP6_ADD_DEL_ROUTE))
+			break;
 
                 /* May fail, e.g. due to interface down */
                 switch (pr->resolve_type) {
