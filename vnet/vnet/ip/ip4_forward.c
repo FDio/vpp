@@ -632,6 +632,12 @@ void ip4_delete_matching_routes (ip4_main_t * im,
   ip4_maybe_remap_adjacencies (im, table_index_or_table_id, flags);
 }
 
+void
+ip4_forward_next_trace (vlib_main_t * vm,
+                        vlib_node_runtime_t * node,
+                        vlib_frame_t * frame,
+                        vlib_rx_or_tx_t which_adj_index);
+
 always_inline uword
 ip4_lookup_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
@@ -649,6 +655,9 @@ ip4_lookup_inline (vlib_main_t * vm,
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next = node->cached_next_index;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+      ip4_forward_next_trace(vm, node, frame, VLIB_TX);
 
   while (n_left_from > 0)
     {
@@ -1344,11 +1353,14 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip4_sw_interface_add_del);
 
+static u8 * format_ip4_forward_next_trace (u8 * s, va_list * args);
 
 VLIB_REGISTER_NODE (ip4_lookup_node) = {
   .function = ip4_lookup,
   .name = "ip4-lookup",
   .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_forward_next_trace,
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
@@ -1368,6 +1380,8 @@ VLIB_REGISTER_NODE (ip4_indirect_node) = {
   .function = ip4_indirect,
   .name = "ip4-indirect",
   .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_forward_next_trace,
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
@@ -1455,9 +1469,15 @@ static u8 * format_ip4_forward_next_trace (u8 * s, va_list * args)
   ip4_main_t * im = &ip4_main;
   ip_adjacency_t * adj;
   uword indent = format_get_indent (s);
+  char *fib_or_interface = "fib";
+  if ((node == vlib_get_node(vm, ip4_rewrite_node.index)) ||
+      (node == vlib_get_node(vm, ip4_rewrite_local_node.index))) {
+    fib_or_interface = "tx_sw_if_index";
+  }
 
   adj = ip_get_adjacency (&im->lookup_main, t->adj_index);
-  s = format (s, "fib %d adj-idx %d : %U flow hash: 0x%08x",
+  s = format (s, "%s %d adj-idx %d : %U flow hash: 0x%08x",
+              fib_or_interface,
 	      t->fib_index, t->adj_index, format_ip_adjacency,
 	      vnm, &im->lookup_main, t->adj_index, t->flow_hash);
   switch (adj->lookup_next_index)
@@ -1511,8 +1531,11 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
-                             vnet_buffer(b0)->sw_if_index[VLIB_RX]);
+	  t0->fib_index = (vnet_buffer(b0)->sw_if_index[VLIB_TX] != (u32)~0) ?
+	      vnet_buffer(b0)->sw_if_index[VLIB_TX] :
+	      vec_elt (im->fib_index_by_sw_if_index,
+	               vnet_buffer(b0)->sw_if_index[VLIB_RX]);
+
 	  clib_memcpy (t0->packet_data,
 		  vlib_buffer_get_current (b0),
 		  sizeof (t0->packet_data));
@@ -1522,8 +1545,10 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
 	  t1->adj_index = vnet_buffer (b1)->ip.adj_index[which_adj_index];
 	  t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
-	  t1->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
-                             vnet_buffer(b1)->sw_if_index[VLIB_RX]);
+	  t1->fib_index = (vnet_buffer(b1)->sw_if_index[VLIB_TX] != (u32)~0) ?
+	      vnet_buffer(b1)->sw_if_index[VLIB_TX] :
+	      vec_elt (im->fib_index_by_sw_if_index,
+	               vnet_buffer(b1)->sw_if_index[VLIB_RX]);
 	  clib_memcpy (t1->packet_data,
 		  vlib_buffer_get_current (b1),
 		  sizeof (t1->packet_data));
@@ -1547,8 +1572,10 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
-                             vnet_buffer(b0)->sw_if_index[VLIB_RX]);
+	  t0->fib_index = (vnet_buffer(b0)->sw_if_index[VLIB_TX] != (u32)~0) ?
+	      vnet_buffer(b0)->sw_if_index[VLIB_TX] :
+	      vec_elt (im->fib_index_by_sw_if_index,
+	               vnet_buffer(b0)->sw_if_index[VLIB_RX]);
 	  clib_memcpy (t0->packet_data,
 		  vlib_buffer_get_current (b0),
 		  sizeof (t0->packet_data));
@@ -2747,7 +2774,7 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
   },
 };
 
-VLIB_REGISTER_NODE (ip4_rewrite_local_node,static) = {
+VLIB_REGISTER_NODE (ip4_rewrite_local_node) = {
   .function = ip4_rewrite_local,
   .name = "ip4-rewrite-local",
   .vector_size = sizeof (u32),
@@ -2827,6 +2854,9 @@ ip4_lookup_multicast (vlib_main_t * vm,
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next = node->cached_next_index;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    ip4_forward_next_trace(vm, node, frame, VLIB_TX);
 
   while (n_left_from > 0)
     {
@@ -3031,6 +3061,8 @@ VLIB_REGISTER_NODE (ip4_lookup_multicast_node,static) = {
   .function = ip4_lookup_multicast,
   .name = "ip4-lookup-multicast",
   .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_forward_next_trace,
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
