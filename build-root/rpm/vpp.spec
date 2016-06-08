@@ -49,6 +49,10 @@ allocator (mheap.c), extendable printf-like interface built on top of vectors
 time-based function calls (timer.c).
 TODO: reference and describe only the .h files
 
+%pre
+# Add the vpp group
+sudo groupadd -f -r vpp
+
 %install
 #
 # binaries
