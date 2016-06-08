@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_626d8704",
+        "filename": "vpp-api/java/jvpp/gen/jvpp_callback_facade_gen.py",
+        "patchSetId": 13
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-08T12:37:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ba092121_9f8fd423",
+      "range": {
+        "startLine": 201,
+        "startChar": 16,
+        "endLine": 201,
+        "endChar": 116
+      },
+      "revId": "53400e0b5a9c897c0539783fac4830333107d3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_1fa3c49f",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppBaseCallException.java",
         "patchSetId": 13
@@ -36,6 +60,30 @@
       "writtenOn": "2016-06-07T12:38:42Z",
       "side": 1,
       "message": "unnecessary comment\n\nif it were, it should be above the field",
+      "range": {
+        "startLine": 23,
+        "startChar": 40,
+        "endLine": 23,
+        "endChar": 70
+      },
+      "revId": "53400e0b5a9c897c0539783fac4830333107d3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_225e6f46",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppBaseCallException.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-08T12:37:51Z",
+      "side": 1,
+      "message": "Removed all param comments",
+      "parentUuid": "ba092121_1fa3c49f",
       "range": {
         "startLine": 23,
         "startChar": 40,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_22254fc2",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/VppInvocationException.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-08T12:37:51Z",
+      "side": 1,
+      "message": "removed ctxId from VppBaseCallException and shifted to VppCallbackExeption",
+      "parentUuid": "ba092121_bfa9787d",
+      "range": {
+        "startLine": 31,
+        "startChar": 26,
+        "endLine": 31,
+        "endChar": 27
+      },
+      "revId": "53400e0b5a9c897c0539783fac4830333107d3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_2289cfca",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/callback/JVppCallback.java",
         "patchSetId": 13
@@ -82,6 +154,30 @@
       "writtenOn": "2016-06-08T05:44:59Z",
       "side": 1,
       "message": "FQN?",
+      "range": {
+        "startLine": 25,
+        "startChar": 17,
+        "endLine": 25,
+        "endChar": 54
+      },
+      "revId": "53400e0b5a9c897c0539783fac4830333107d3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_02224bb9",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/callback/JVppCallback.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-08T12:37:51Z",
+      "side": 1,
+      "message": "not needed, not generated file",
+      "parentUuid": "ba092121_2289cfca",
       "range": {
         "startLine": 25,
         "startChar": 17,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_c22b3393",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/callback/JVppCallback.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-08T12:37:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ba092121_42a4c356",
+      "range": {
+        "startLine": 27,
+        "startChar": 17,
+        "endLine": 27,
+        "endChar": 54
+      },
+      "revId": "53400e0b5a9c897c0539783fac4830333107d3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_9fb6b4db",
         "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppInvoker.java",
         "patchSetId": 13
@@ -128,6 +248,30 @@
       "writtenOn": "2016-06-07T12:38:42Z",
       "side": 1,
       "message": "Is this still being thrown ? \nShouldn\u0027t it be caught in implementation and return in future ? If so, it shouldn\u0027t be declared here as thrown",
+      "range": {
+        "startLine": 36,
+        "startChar": 98,
+        "endLine": 36,
+        "endChar": 144
+      },
+      "revId": "53400e0b5a9c897c0539783fac4830333107d3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_55a59b02",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppInvoker.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-08T12:37:51Z",
+      "side": 1,
+      "message": "Removed, better so; try-cache is now caught in parent class and removed from generated file (each method)",
+      "parentUuid": "ba092121_9fb6b4db",
       "range": {
         "startLine": 36,
         "startChar": 98,
