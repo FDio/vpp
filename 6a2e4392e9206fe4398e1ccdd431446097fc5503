@@ -46,6 +46,30 @@
       "revId": "6a2e4392e9206fe4398e1ccdd431446097fc5503",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_0286cbb9",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/test/FutureApiTest.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-06-08T05:44:59Z",
+      "side": 0,
+      "message": "in testGetNodeIndex and testSwInterfaceDump",
+      "parentUuid": "da141535_6d8674bb",
+      "range": {
+        "startLine": 47,
+        "startChar": 12,
+        "endLine": 47,
+        "endChar": 32
+      },
+      "revId": "6a2e4392e9206fe4398e1ccdd431446097fc5503",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
