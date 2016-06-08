@@ -173,6 +173,7 @@ extern ip4_main_t ip4_main;
 extern vlib_node_registration_t ip4_input_node;
 extern vlib_node_registration_t ip4_lookup_node;
 extern vlib_node_registration_t ip4_rewrite_node;
+extern vlib_node_registration_t ip4_rewrite_local_node;
 extern vlib_node_registration_t ip4_arp_node;
 
 u32 ip4_fib_lookup_with_table (ip4_main_t * im, u32 fib_index, ip4_address_t * dst,
