@@ -298,6 +298,8 @@ clib_error_t *l2_outacl_init (vlib_main_t *vm)
 
 VLIB_INIT_FUNCTION (l2_outacl_init);
 
+#if 0
+/** @todo maybe someone will add output ACL's in the future */
 // set subinterface outacl enable/disable
 // The CLI format is:
 //    set interface acl output <interface> [disable]
@@ -335,3 +337,4 @@ VLIB_CLI_COMMAND (int_l2_outacl_cli, static) = {
   .short_help = "set interface acl output <interface> [disable]",
   .function = int_l2_outacl,
 };
+#endif
