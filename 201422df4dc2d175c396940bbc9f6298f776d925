@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_18f87a7b",
+        "filename": "vnet/vnet/l2/l2_output_acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-06-08T23:09:48Z",
+      "side": 1,
+      "message": "Why delete one case and #if 0 the other? Shouldn\u0027t we just delete both?",
+      "range": {
+        "startLine": 299,
+        "startChar": 0,
+        "endLine": 299,
+        "endChar": 5
+      },
+      "revId": "201422df4dc2d175c396940bbc9f6298f776d925",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
