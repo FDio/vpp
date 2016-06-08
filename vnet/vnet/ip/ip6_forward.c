@@ -653,6 +653,12 @@ void ip6_delete_matching_routes (ip6_main_t * im,
   ip6_maybe_remap_adjacencies (im, table_index_or_table_id, flags);
 }
 
+void
+ip6_forward_next_trace (vlib_main_t * vm,
+                        vlib_node_runtime_t * node,
+                        vlib_frame_t * frame,
+                        vlib_rx_or_tx_t which_adj_index);
+
 always_inline uword
 ip6_lookup_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
@@ -669,6 +675,9 @@ ip6_lookup_inline (vlib_main_t * vm,
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next = node->cached_next_index;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    ip6_forward_next_trace(vm, node, frame, VLIB_TX);
 
   while (n_left_from > 0)
     {
@@ -1251,10 +1260,14 @@ ip6_lookup (vlib_main_t * vm,
   return ip6_lookup_inline (vm, node, frame, /* is_indirect */ 0);
 }
 
+static u8 * format_ip6_forward_next_trace (u8 * s, va_list * args);
+
 VLIB_REGISTER_NODE (ip6_lookup_node) = {
   .function = ip6_lookup,
   .name = "ip6-lookup",
   .vector_size = sizeof (u32),
+
+  .format_trace = format_ip6_forward_next_trace,
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP6_LOOKUP_NEXT_NODES,
@@ -1276,6 +1289,8 @@ VLIB_REGISTER_NODE (ip6_indirect_node) = {
   .name = "ip6-indirect",
   .vector_size = sizeof (u32),
 
+  .format_trace = format_ip6_forward_next_trace,
+
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP6_LOOKUP_NEXT_NODES,
 };
@@ -1294,16 +1309,23 @@ typedef struct {
 
 static u8 * format_ip6_forward_next_trace (u8 * s, va_list * args)
 {
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  vlib_main_t * vm = va_arg (*args, vlib_main_t *);
+  vlib_node_t * node = va_arg (*args, vlib_node_t *);
   ip6_forward_next_trace_t * t = va_arg (*args, ip6_forward_next_trace_t *);
   vnet_main_t * vnm = vnet_get_main();
   ip6_main_t * im = &ip6_main;
   ip_adjacency_t * adj;
   uword indent = format_get_indent (s);
 
+  char *fib_or_interface = "fib";
+  if ((node == vlib_get_node(vm, ip6_rewrite_node.index)) ||
+      (node == vlib_get_node(vm, ip6_rewrite_local_node.index))) {
+    fib_or_interface = "tx_sw_if_index";
+  }
+
   adj = ip_get_adjacency (&im->lookup_main, t->adj_index);
-  s = format (s, "fib %d adj-idx %d : %U flow hash: 0x%08x",
+  s = format (s, "%s %d adj-idx %d : %U flow hash: 0x%08x",
+              fib_or_interface,
 	      t->fib_index, t->adj_index, format_ip_adjacency,
 	      vnm, &im->lookup_main, t->adj_index, t->flow_hash);
   switch (adj->lookup_next_index)
@@ -1335,7 +1357,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
 
   n_left = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
-  
+
   while (n_left >= 4)
     {
       u32 bi0, bi1;
@@ -1357,8 +1379,11 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
           t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
-                             vnet_buffer(b0)->sw_if_index[VLIB_RX]);
+          t0->fib_index = (vnet_buffer(b0)->sw_if_index[VLIB_TX] != (u32)~0) ?
+              vnet_buffer(b0)->sw_if_index[VLIB_TX] :
+              vec_elt (im->fib_index_by_sw_if_index,
+                       vnet_buffer(b0)->sw_if_index[VLIB_RX]);
+
 	  clib_memcpy (t0->packet_data,
 		  vlib_buffer_get_current (b0),
 		  sizeof (t0->packet_data));
@@ -1368,8 +1393,11 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
 	  t1->adj_index = vnet_buffer (b1)->ip.adj_index[which_adj_index];
           t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
-	  t1->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
-                             vnet_buffer(b1)->sw_if_index[VLIB_RX]);
+          t1->fib_index = (vnet_buffer(b1)->sw_if_index[VLIB_TX] != (u32)~0) ?
+              vnet_buffer(b1)->sw_if_index[VLIB_TX] :
+              vec_elt (im->fib_index_by_sw_if_index,
+                       vnet_buffer(b1)->sw_if_index[VLIB_RX]);
+
 	  clib_memcpy (t1->packet_data,
 		  vlib_buffer_get_current (b1),
 		  sizeof (t1->packet_data));
@@ -1393,8 +1421,11 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
           t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index = vec_elt (im->fib_index_by_sw_if_index, 
-                             vnet_buffer(b0)->sw_if_index[VLIB_RX]);
+          t0->fib_index = (vnet_buffer(b0)->sw_if_index[VLIB_TX] != (u32)~0) ?
+              vnet_buffer(b0)->sw_if_index[VLIB_TX] :
+              vec_elt (im->fib_index_by_sw_if_index,
+                       vnet_buffer(b0)->sw_if_index[VLIB_RX]);
+
 	  clib_memcpy (t0->packet_data,
 		  vlib_buffer_get_current (b0),
 		  sizeof (t0->packet_data));
@@ -2438,7 +2469,7 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_node, ip6_rewrite_transit)
 
-VLIB_REGISTER_NODE (ip6_rewrite_local_node,static) = {
+VLIB_REGISTER_NODE (ip6_rewrite_local_node) = {
   .function = ip6_rewrite_local,
   .name = "ip6-rewrite-local",
   .vector_size = sizeof (u32),
