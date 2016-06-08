@@ -3610,3 +3610,141 @@ define netmap_delete_reply {
     u32 context;
     i32 retval;
 };
+
+/** \brief Dump mpls gre tunnel table
+    @param client_index - opaque cookie to identify the sender
+    @param tunnel_index - gre tunnel identifier or -1 in case of all tunnels
+*/
+define mpls_gre_tunnel_dump {
+    u32 client_index;
+    u32 context;
+    i32 tunnel_index;
+};
+
+/** \brief mpls gre tunnel operational state response
+    @param tunnel_index - gre tunnel identifier
+    @param intfc_address - interface ipv4 addr
+    @param mask_width - interface ipv4 addr mask
+    @param hw_if_index - interface id
+    @param l2_only -
+    @param tunnel_src - tunnel source ipv4 addr
+    @param tunnel_dst - tunnel destination ipv4 addr
+    @param outer_fib_index - gre tunnel identifier
+    @param encap_index - reference to mpls label table
+    @param nlabels - number of resolved labels
+    @param labels - resolved labels
+*/
+manual_java define mpls_gre_tunnel_details {
+    u32 context;
+    u32 tunnel_index;
+
+    u32 intfc_address;
+    u32 inner_fib_index;
+    u32 mask_width;
+    u32 encap_index;
+    u32 hw_if_index;
+    u8  l2_only;
+    u32 tunnel_src;
+    u32 tunnel_dst;
+    u32 outer_fib_index;
+    u32 nlabels;
+    u32 labels[0];
+};
+
+/** \brief Dump mpls eth tunnel table
+    @param client_index - opaque cookie to identify the sender
+    @param tunnel_index - eth tunnel identifier or -1 in case of all tunnels
+*/
+define mpls_eth_tunnel_dump {
+    u32 client_index;
+    u32 context;
+    i32 tunnel_index;
+};
+
+/** \brief mpls eth tunnel operational state response
+    @param tunnel_index - eth tunnel identifier
+    @param intfc_address - interface ipv4 addr
+    @param mask_width - interface ipv4 addr mask
+    @param hw_if_index - interface id
+    @param l2_only -
+    @param tunnel_dst_mac -
+    @param tx_sw_if_index -
+    @param encap_index - reference to mpls label table
+    @param nlabels - number of resolved labels
+    @param labels - resolved labels
+*/
+manual_java define mpls_eth_tunnel_details {
+    u32 context;
+    u32 tunnel_index;
+
+    u32 intfc_address;
+    u32 inner_fib_index;
+    u32 mask_width;
+    u32 encap_index;
+    u32 hw_if_index;
+    u8  l2_only;
+    u8  tunnel_dst_mac[6];
+    u32 tx_sw_if_index;
+    u32 nlabels;
+    u32 labels[0];
+};
+
+/** \brief Dump mpls fib table
+    @param client_index - opaque cookie to identify the sender
+    @param fib_index    - mpls fib entry identifier or -1 in case of all entries
+*/
+define mpls_fib_encap_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief mpls fib encap table response
+    @param fib_index - fib table id
+    @param dest - destination ipv4 addr
+    @param s_bit -
+    @param entry_index - reference to mpls label table
+    @param nlabels - number of resolved labels
+    @param labels - resolved labels
+*/
+manual_java define mpls_fib_encap_details {
+    u32 context;
+
+    u32 fib_index;
+    u32 entry_index;
+    u32 dest;
+    u32 s_bit;
+    u32 nlabels;
+    u32 labels[0];
+};
+
+/** \brief Dump mpls fib decap table
+    @param client_index - opaque cookie to identify the sender
+    @param fib_index    - mpls fib entry identifier or -1 in case of all entries
+*/
+define mpls_fib_decap_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief mpls fib decap table response
+    @param fib_index - fib table id
+    @param entry_index - reference to mpls label table
+    @param dest - destination ipv4 addr
+    @param s_bit -
+    @param label - mpls labels
+    @param rx_table_id - rx fib id
+    @param tx_table_id - tx fib id
+    @param swif_tag -
+*/
+manual_java define mpls_fib_decap_details {
+    u32 context;
+
+    u32 fib_index;
+    u32 entry_index;
+    u32 dest;
+    u32 s_bit;
+    u32 label;
+    u32 rx_table_id;
+    u32 tx_table_id;
+    u8  swif_tag[8];
+};
