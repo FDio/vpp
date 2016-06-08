@@ -22,6 +22,30 @@
       "revId": "4a88e0c2d58c7df70389557049595586e9068b39",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_7563ffb1",
+        "filename": "vpp-api/java/jvpp/org/openvpp/jvpp/future/FutureJVppInvokerFacade.java",
+        "patchSetId": 14
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 401
+      },
+      "writtenOn": "2016-06-08T12:37:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ba092121_d5540bcc",
+      "range": {
+        "startLine": 76,
+        "startChar": 76,
+        "endLine": 76,
+        "endChar": 114
+      },
+      "revId": "4a88e0c2d58c7df70389557049595586e9068b39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
