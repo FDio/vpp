@@ -22,6 +22,30 @@
       "revId": "201422df4dc2d175c396940bbc9f6298f776d925",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_580cb294",
+        "filename": "vnet/vnet/l2/l2_output_acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-06-08T23:24:03Z",
+      "side": 1,
+      "message": "I left this code here because output ACL is not implemented in VPP yet. So I decided to leave it here as an example of how to link output ACL in the L2 output path, for whoever may implement output ACL in the future.",
+      "parentUuid": "ba092121_18f87a7b",
+      "range": {
+        "startLine": 299,
+        "startChar": 0,
+        "endLine": 299,
+        "endChar": 5
+      },
+      "revId": "201422df4dc2d175c396940bbc9f6298f776d925",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
