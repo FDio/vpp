@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_b8c06e2b",
+        "filename": "build-root/rpm/vpp.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-06-08T22:52:41Z",
+      "side": 1,
+      "message": "Just noticed this - shouldn\u0027t this be the new startup.conf that references uio_pci_generic?",
+      "range": {
+        "startLine": 8,
+        "startChar": 26,
+        "endLine": 8,
+        "endChar": 47
+      },
+      "revId": "43f87e2d23efd8b98eec952a448878914baa39f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
