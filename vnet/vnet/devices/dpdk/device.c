@@ -1136,7 +1136,10 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
   dpdk_device_t * xd = vec_elt_at_index (xm->devices, hw->dev_instance);
   vnet_sw_interface_t * t = (vnet_sw_interface_t *) st;
   int r, vlan_offload;
+  u32 prev_subifs = xd->vlan_subifs;
 
+  if (is_add) xd->vlan_subifs++;
+  else if (xd->vlan_subifs) xd->vlan_subifs--;
 
   if (xd->dev_type != VNET_DPDK_DEV_ETH)
         return 0;
@@ -1149,21 +1152,26 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
   if (t->sub.eth.flags.no_tags == 1)
         return 0;
 
-  if ((t->sub.eth.flags.one_tag != 1) || (t->sub.eth.flags.exact_match != 1 ))
+  if ((t->sub.eth.flags.one_tag != 1) || (t->sub.eth.flags.exact_match != 1 )) {
+        xd->vlan_subifs = prev_subifs;
         return clib_error_return (0, "unsupported VLAN setup");
-
+  }
 
   vlan_offload = rte_eth_dev_get_vlan_offload(xd->device_index);
   vlan_offload |= ETH_VLAN_FILTER_OFFLOAD;
 
-  if ((r = rte_eth_dev_set_vlan_offload(xd->device_index, vlan_offload)))
+  if ((r = rte_eth_dev_set_vlan_offload(xd->device_index, vlan_offload))) {
+        xd->vlan_subifs = prev_subifs;
         return clib_error_return (0, "rte_eth_dev_set_vlan_offload[%d]: err %d",
                                   xd->device_index, r);
+  }
 
 
-  if ((r = rte_eth_dev_vlan_filter(xd->device_index, t->sub.eth.outer_vlan_id, is_add)))
+  if ((r = rte_eth_dev_vlan_filter(xd->device_index, t->sub.eth.outer_vlan_id, is_add))) {
+        xd->vlan_subifs = prev_subifs;
         return clib_error_return (0, "rte_eth_dev_vlan_filter[%d]: err %d",
                                  xd->device_index, r);
+  }
 
   return 0;
 }
