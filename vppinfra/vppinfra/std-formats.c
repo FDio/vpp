@@ -36,6 +36,7 @@
 */
 
 #include <vppinfra/format.h>
+#include <ctype.h>
 
 /* Format vectors. */
 u8 * format_vec32 (u8 * s, va_list * va)
@@ -254,6 +255,45 @@ u8 * format_c_identifier (u8 * s, va_list * va)
 	  c = ' ';
 	vec_add1 (s, c);
       }
+
+  return s;
+}
+
+u8 *
+format_hexdump (u8 * s, va_list * args)
+{
+  u8 * data = va_arg (*args, u8 *);
+  uword len = va_arg (*args, uword);
+  int i, index =0;
+  const int line_len = 16;
+  u8 * line_hex = 0;
+  u8 * line_str = 0;
+  uword indent = format_get_indent (s);
+
+  for(i=0; i < len; i++)
+    {
+      line_hex = format (line_hex, "%02x ",  data[i]);
+      line_str = format (line_str, "%c", isprint (data[i]) ? data[i] : '.');
+      if (!( (i + 1) % line_len))
+	{
+	  s = format (s, "%U%05x: %v[%v]\n",
+		      format_white_space, index ? indent : 0,
+		      index, line_hex, line_str);
+	  index = i + 1;
+	  vec_reset_length(line_hex);
+	  vec_reset_length(line_str);
+	}
+    }
+
+  while (i++ % line_len)
+    line_hex = format (line_hex, "   ");
+
+  s = format (s, "%U%05x: %v[%v]",
+	      format_white_space, indent,
+	      index, line_hex, line_str);
+
+  vec_free(line_hex);
+  vec_free(line_str);
 
   return s;
 }
