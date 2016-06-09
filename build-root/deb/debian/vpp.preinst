@@ -1,4 +1,4 @@
 #!/bin/sh -e
 
 # Add the vpp group
-sudo groupadd -f -r vpp
+groupadd -f -r vpp
