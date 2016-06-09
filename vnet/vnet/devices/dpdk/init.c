@@ -313,14 +313,17 @@ dpdk_lib_init (dpdk_main_t * dm)
       struct rte_eth_link l;
       dpdk_device_config_t * devconf = 0;
       vlib_pci_addr_t pci_addr;
-      uword * p;
+      uword * p = 0;
 
       rte_eth_dev_info_get(i, &dev_info);
-      pci_addr.domain = dev_info.pci_dev->addr.domain;
-      pci_addr.bus = dev_info.pci_dev->addr.bus;
-      pci_addr.slot = dev_info.pci_dev->addr.devid;
-      pci_addr.function = dev_info.pci_dev->addr.function;
-      p = hash_get (dm->conf->device_config_index_by_pci_addr, pci_addr.as_u32);
+      if (dev_info.pci_dev) /* bonded interface has no pci info */
+        {
+	  pci_addr.domain = dev_info.pci_dev->addr.domain;
+	  pci_addr.bus = dev_info.pci_dev->addr.bus;
+	  pci_addr.slot = dev_info.pci_dev->addr.devid;
+	  pci_addr.function = dev_info.pci_dev->addr.function;
+	  p = hash_get (dm->conf->device_config_index_by_pci_addr, pci_addr.as_u32);
+        }
 
       if (p)
 	devconf = pool_elt_at_index (dm->conf->dev_confs, p[0]);
@@ -371,7 +374,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       xd->dev_type = VNET_DPDK_DEV_ETH;
 
       /* workaround for drivers not setting driver_name */
-      if (!dev_info.driver_name)
+      if ((!dev_info.driver_name) && (dev_info.pci_dev))
         dev_info.driver_name = dev_info.pci_dev->driver->name;
       ASSERT(dev_info.driver_name);
 
