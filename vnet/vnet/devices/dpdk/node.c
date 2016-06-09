@@ -380,6 +380,7 @@ void dpdk_rx_trace (dpdk_main_t * dm,
       clib_memcpy (&t0->mb, mb, sizeof (t0->mb));
       clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
       clib_memcpy (t0->buffer.pre_data, b0->data, sizeof (t0->buffer.pre_data));
+      clib_memcpy (&t0->data, mb->buf_addr + mb->data_off, sizeof (t0->data));
 
 #ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
       /*

@@ -81,6 +81,9 @@ typedef struct {
 
   /* Per node trace counts. */
   vlib_trace_node_t * nodes;
+
+  /* verbosity */
+  int verbose;
 } vlib_trace_main_t;
 
 #endif /* included_vlib_trace_h */
