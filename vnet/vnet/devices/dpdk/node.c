@@ -303,9 +303,9 @@ dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t *xd, struct rte_mbuf *mb,
   else
     {
       *error0 = DPDK_ERROR_NONE;
-      if (xd->per_interface_next_index != ~0)
+      if (PREDICT_FALSE(xd->per_interface_next_index != ~0))
 	n0 = xd->per_interface_next_index;
-      else if (mb_flags & PKT_RX_VLAN_PKT)
+      else if (PREDICT_FALSE(xd->vlan_subifs || (mb_flags & PKT_RX_VLAN_PKT)))
 	n0 = DPDK_RX_NEXT_ETHERNET_INPUT;
       else
 	{

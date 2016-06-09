@@ -208,6 +208,9 @@ typedef struct {
   /* per-worker destination frame queue */
   dpdk_frame_t * frames;
 
+  /* number of sub-interfaces */
+  u16 vlan_subifs;
+
   dpdk_device_type_t dev_type:8;
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
