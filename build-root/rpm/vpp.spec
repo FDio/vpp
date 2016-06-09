@@ -51,7 +51,7 @@ TODO: reference and describe only the .h files
 
 %pre
 # Add the vpp group
-sudo groupadd -f -r vpp
+groupadd -f -r vpp
 
 %install
 #
