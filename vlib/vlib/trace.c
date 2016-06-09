@@ -359,12 +359,18 @@ cli_add_trace_buffer (vlib_main_t * vm,
   vlib_trace_main_t * tm;
   vlib_trace_node_t * tn;
   u32 node_index, add;
+  u8 verbose = 0;
 
-  if (unformat (input, "%U %d", unformat_vlib_node, vm, &node_index, &add))
-    ;
-  else
-    return clib_error_create ("expected NODE COUNT, got `%U'",
-                              format_unformat_error, input);
+  while (unformat_check_input(input) != (uword)UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U %d", unformat_vlib_node, vm, &node_index, &add))
+	;
+      else if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	return clib_error_create ("expected NODE COUNT, got `%U'",
+				  format_unformat_error, input);
+    }
 
   foreach_vlib_main (
   ({
@@ -372,6 +378,7 @@ cli_add_trace_buffer (vlib_main_t * vm,
     tm = &this_vlib_main->trace_main;
 
     tm->trace_active_hint = 1;
+    tm->verbose = verbose;
 
     oldheap = clib_mem_set_heap (this_vlib_main->heap_base);
 

@@ -464,6 +464,7 @@ typedef struct {
   u16 queue_index;
   struct rte_mbuf mb;
   vlib_buffer_t buffer; /* Copy of VLIB buffer; pkt data stored in pre_data. */
+  u8 data[256];         /* First 256 data bytes, used for hexdump */
 } dpdk_rx_dma_trace_t;
 
 void vnet_buffer_needs_dpdk_mb (vlib_buffer_t * b);

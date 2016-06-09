@@ -662,6 +662,14 @@ u8 * format_dpdk_rx_dma_trace (u8 * s, va_list * va)
 	      format_white_space, indent,
 	      format_dpdk_rte_mbuf, &t->mb);
 #endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
+  if (vm->trace_main.verbose)
+    {
+      s = format (s, "\n%UPacket Dump%s", format_white_space, indent + 2,
+		  t->mb.data_len > sizeof(t->data) ? " (truncated)": "");
+      s = format (s, "\n%U%U", format_white_space, indent + 4,
+		  format_hexdump, &t->data,
+		  t->mb.data_len > sizeof(t->data) ? sizeof(t->data) : t->mb.data_len);
+    }
   f = node->format_buffer;
   if (!f)
     f = format_hex_bytes;
@@ -726,11 +734,11 @@ u8 * format_dpdk_rte_mbuf (u8 * s, va_list * va)
   uword indent = format_get_indent (s) + 2;
 
   s = format (s, "PKT MBUF: port %d, nb_segs %d, pkt_len %d"
-              "\n%Ubuf_len %d, data_len %d, ol_flags 0x%x,"
+              "\n%Ubuf_len %d, data_len %d, ol_flags 0x%x, data_off %d"
               "\n%Upacket_type 0x%x",
               mb->port, mb->nb_segs, mb->pkt_len,
               format_white_space, indent,
-              mb->buf_len, mb->data_len, mb->ol_flags,
+              mb->buf_len, mb->data_len, mb->ol_flags, mb->data_off,
               format_white_space, indent,
               mb->packet_type);
 
