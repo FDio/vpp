@@ -1570,12 +1570,6 @@ int vlib_main (vlib_main_t * vm, unformat_input_t * input)
     vm->random_seed = clib_cpu_time_now ();
   clib_random_buffer_init (&vm->random_buffer, vm->random_seed);
 
-  /* See unix/main.c; most likely already set up */
-  if (vm->init_functions_called == 0)
-      vm->init_functions_called = hash_create (0, /* value bytes */ 0);
-  if ((error = vlib_call_all_init_functions (vm)))
-    goto done;
-
   /* Initialize node graph. */
   if ((error = vlib_node_main_init (vm)))
     {
@@ -1585,6 +1579,12 @@ int vlib_main (vlib_main_t * vm, unformat_input_t * input)
       else
 	goto done;
     }
+
+  /* See unix/main.c; most likely already set up */
+  if (vm->init_functions_called == 0)
+      vm->init_functions_called = hash_create (0, /* value bytes */ 0);
+  if ((error = vlib_call_all_init_functions (vm)))
+    goto done;
 
   /* Create default buffer free list. */
   vlib_buffer_get_or_create_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES,
