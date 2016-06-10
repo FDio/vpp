@@ -2810,11 +2810,7 @@ VLIB_REGISTER_NODE (ip4_rewrite_local_node) = {
 
   .format_trace = format_ip4_rewrite_trace,
 
-  .n_next_nodes = 2,
-  .next_nodes = {
-    [IP4_REWRITE_NEXT_DROP] = "error-drop",
-    [IP4_REWRITE_NEXT_ARP] = "ip4-arp",
-  },
+  .n_next_nodes = 0,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_local_node, ip4_rewrite_local)
