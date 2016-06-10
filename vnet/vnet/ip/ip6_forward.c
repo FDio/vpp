@@ -2427,7 +2427,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
       
 	  next0 = (error0 == IP6_ERROR_NONE) ?
             adj0[0].rewrite_header.next_index : IP6_REWRITE_NEXT_DROP;
-
+	  clib_warning("Rewrite_header.next_index: %d / %d\n", adj0[0].rewrite_header.next_index, next0);
 	  p0->error = error_node->errors[error0];
 
 	  from += 1;
@@ -2492,10 +2492,7 @@ VLIB_REGISTER_NODE (ip6_rewrite_local_node) = {
 
   .format_trace = format_ip6_rewrite_trace,
 
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [IP6_REWRITE_NEXT_DROP] = "error-drop",
-  },
+  .n_next_nodes = 0,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_local_node, ip6_rewrite_local)
@@ -2711,13 +2708,13 @@ ip6_hop_by_hop (vlib_main_t * vm,
 VLIB_REGISTER_NODE (ip6_hop_by_hop_node) = {
   .function = ip6_hop_by_hop,
   .name = "ip6-hop-by-hop",
+  .sibling_of = "ip6-lookup",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_hop_by_hop_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN(ip6_hop_by_hop_error_strings),
   .error_strings = ip6_hop_by_hop_error_strings,
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP6_LOOKUP_NEXT_NODES,
+  .n_next_nodes = 0,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_hop_by_hop_node, ip6_hop_by_hop)

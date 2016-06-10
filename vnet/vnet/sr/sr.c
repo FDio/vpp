@@ -1953,8 +1953,6 @@ static clib_error_t * sr_init (vlib_main_t * vm)
   ip6_sr_main_t * sm = &sr_main;
   clib_error_t * error = 0;
   vlib_node_t * ip6_lookup_node, * ip6_rewrite_node;
-  vlib_node_t * ip6_rewrite_local_node;
-  u32 verify_next_index;
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
@@ -1989,10 +1987,6 @@ static clib_error_t * sr_init (vlib_main_t * vm)
 
   ip6_rewrite_node = vlib_get_node_by_name (vm, (u8 *)"ip6-rewrite");
   ASSERT(ip6_rewrite_node);
-
-  ip6_rewrite_local_node = vlib_get_node_by_name (vm, 
-                                                  (u8 *)"ip6-rewrite-local");
-  ASSERT(ip6_rewrite_local_node);
   
   /* Add a disposition to ip6_lookup for the sr rewrite node */
   sm->ip6_lookup_sr_next_index = 
@@ -2008,15 +2002,6 @@ static clib_error_t * sr_init (vlib_main_t * vm)
   sm->ip6_rewrite_sr_next_index = 
     vlib_node_add_next (vm, ip6_rewrite_node->index, 
                         sr_fix_dst_addr_node.index);
-  /* 
-   * Fix ip6-rewrite-local, sibling of the above. The sibling bitmap
-   * isn't set up at this point, so we have to do it manually
-   */
-  verify_next_index = vlib_node_add_next 
-      (vm, ip6_rewrite_local_node->index, 
-       sr_fix_dst_addr_node.index);
-
-  ASSERT(sm->ip6_rewrite_sr_next_index == verify_next_index);
 
   OpenSSL_add_all_digests();
 
