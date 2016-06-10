@@ -689,8 +689,8 @@ vnet_register_interface (vnet_main_t * vnm,
       r.flags = 0;
       r.name = output_node_name;
       r.function =  dev_class->no_flatten_output_chains ?
-          vnet_interface_output_node_no_flatten : 
-          vnet_interface_output_node;
+          vnet_interface_output_node_no_flatten_multiarch_select() :
+          vnet_interface_output_node_multiarch_select() ;
       r.format_trace = format_vnet_interface_output_trace;
 
       {
