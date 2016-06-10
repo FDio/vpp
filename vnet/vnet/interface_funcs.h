@@ -179,14 +179,8 @@ typedef struct {
 } vnet_interface_output_runtime_t;
 
 /* Interface output functions. */
-uword
-vnet_interface_output_node (vlib_main_t * vm,
-			    vlib_node_runtime_t * node,
-			    vlib_frame_t * frame);
-uword
-vnet_interface_output_node_no_flatten (vlib_main_t * vm,
-                                       vlib_node_runtime_t * node,
-                                       vlib_frame_t * frame);
+void * vnet_interface_output_node_multiarch_select (void);
+void * vnet_interface_output_node_no_flatten_multiarch_select (void);
 
 word vnet_sw_interface_compare (vnet_main_t * vnm, uword sw_if_index0, uword sw_if_index1);
 word vnet_hw_interface_compare (vnet_main_t * vnm, uword hw_if_index0, uword hw_if_index1);
