@@ -149,6 +149,37 @@ vlib_node_runtime_update (vlib_main_t * vm,
   vlib_worker_thread_barrier_release(vm);
 }
 
+static void
+vlib_node_generate_sibling_relationship (vlib_main_t * vm, vlib_node_t * n)
+{
+  vlib_node_main_t * nm = &vm->node_main;
+  vlib_node_t * sib;
+  uword si;
+
+  if (! n->sibling_of)
+    return;
+
+  sib = vlib_get_node_by_name (vm, (u8 *) n->sibling_of);
+  if (! sib)
+    clib_error ("sibling `%s' not found for node `%v'", n->sibling_of, n->name);
+
+  clib_bitmap_foreach (si, sib->sibling_bitmap, ({
+	vlib_node_t * m = vec_elt (nm->nodes, si);
+
+	/* Connect all of sibling's siblings to us. */
+	m->sibling_bitmap = clib_bitmap_ori (m->sibling_bitmap, n->index);
+
+	/* Connect us to all of sibling's siblings. */
+	n->sibling_bitmap = clib_bitmap_ori (n->sibling_bitmap, si);
+      }));
+
+  /* Connect sibling to us. */
+  sib->sibling_bitmap = clib_bitmap_ori (sib->sibling_bitmap, n->index);
+
+  /* Connect us to sibling. */
+  n->sibling_bitmap = clib_bitmap_ori (n->sibling_bitmap, sib->index);
+}
+
 /* Add next node to given node in given slot. */
 uword
 vlib_node_add_next_with_slot (vlib_main_t * vm,
@@ -167,6 +198,7 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
   if (slot == ~0 && ! (nm->flags & VLIB_NODE_MAIN_RUNTIME_STARTED))
     {
       uword i;
+      vlib_node_generate_sibling_relationship(vm, node);
       for (i = 0; i < vec_len (node->next_node_names); i++)
 	{
 	  char * a = node->next_node_names[i];
@@ -473,6 +505,18 @@ vlib_node_main_init (vlib_main_t * vm)
 
   nm->flags |= VLIB_NODE_MAIN_RUNTIME_STARTED;
 
+  /* Generate sibling relationships */
+  for (ni = 0; ni < vec_len (nm->nodes); ni++)
+    {
+      uword i;
+      n = vec_elt (nm->nodes, ni);
+      for (i = 0; i < vec_len (n->next_node_names); i++)
+	{
+	  vlib_node_generate_sibling_relationship(vm, n);
+	}
+    }
+
+
   /* Resolve next names into next indices. */
   for (ni = 0; ni < vec_len (nm->nodes); ni++)
     {
@@ -542,40 +586,6 @@ vlib_node_main_init (vlib_main_t * vm)
 	    if (next->flags & VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH)
 	      nf[i].flags |= VLIB_FRAME_NO_FREE_AFTER_DISPATCH;
 	  }
-      }
-  }
-
-  /* Generate node sibling relationships. */
-  {
-    vlib_node_t * n, * sib;
-    uword si;
-
-    for (ni = 0; ni < vec_len (nm->nodes); ni++)
-      {
-	n = vec_elt (nm->nodes, ni);
-
-	if (! n->sibling_of)
-	  continue;
-
-	sib = vlib_get_node_by_name (vm, (u8 *) n->sibling_of);
-	if (! sib)
-	  clib_error ("sibling `%s' not found for node `%v'", n->sibling_of, n->name);
-
-	clib_bitmap_foreach (si, sib->sibling_bitmap, ({
-	  vlib_node_t * m = vec_elt (nm->nodes, si);
-
-	  /* Connect all of sibling's siblings to us. */
-	  m->sibling_bitmap = clib_bitmap_ori (m->sibling_bitmap, n->index);
-
-	  /* Connect us to all of sibling's siblings. */
-	  n->sibling_bitmap = clib_bitmap_ori (n->sibling_bitmap, si);
-	}));
-
-	/* Connect sibling to us. */
-	sib->sibling_bitmap = clib_bitmap_ori (sib->sibling_bitmap, n->index);
-
-	/* Connect us to sibling. */
-	n->sibling_bitmap = clib_bitmap_ori (n->sibling_bitmap, sib->index);
       }
   }
 

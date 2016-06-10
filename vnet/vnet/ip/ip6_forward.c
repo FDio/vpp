@@ -2458,7 +2458,7 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) = {
   .function = ip6_rewrite_transit,
   .name = "ip6-rewrite",
   .vector_size = sizeof (u32),
-
+  .sibling_of = "ip6-rewrite-local",
   .format_trace = format_ip6_forward_next_trace,
 
   .n_next_nodes = 1,
