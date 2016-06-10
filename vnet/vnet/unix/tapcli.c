@@ -369,7 +369,7 @@ tapcli_rx (vlib_main_t * vm,
   }));
 
   if (vec_len (ready_interface_indices) == 0)
-    return 1;
+    return 0;
 
   for (i = 0; i < vec_len(ready_interface_indices); i++)
   {
