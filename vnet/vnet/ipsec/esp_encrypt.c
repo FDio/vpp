@@ -203,6 +203,7 @@ esp_encrypt_node_fn (vlib_main_t * vm,
           last_empty_buffer = vec_len (empty_buffers) - 1;
           o_bi0 = empty_buffers[last_empty_buffer];
           o_b0 = vlib_get_buffer (vm, o_bi0);
+          o_b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
           o_b0->current_data = sizeof(ethernet_header_t);
           ih0 = vlib_buffer_get_current (i_b0);
           vlib_prefetch_buffer_with_index (vm, empty_buffers[last_empty_buffer-1], STORE);
@@ -271,8 +272,11 @@ esp_encrypt_node_fn (vlib_main_t * vm,
           else
             {
               next0 = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+              o_b0->flags |= BUFFER_OUTPUT_FEAT_DONE;
               vnet_buffer (o_b0)->sw_if_index[VLIB_TX] =
                 vnet_buffer (i_b0)->sw_if_index[VLIB_TX];
+              vnet_buffer(o_b0)->output_features.bitmap =
+                vnet_buffer(i_b0)->output_features.bitmap;
             }
 
           ASSERT(sa0->crypto_alg < IPSEC_CRYPTO_N_ALG);
@@ -301,7 +305,6 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 
             vnet_buffer (o_b0)->sw_if_index[VLIB_RX] =
               vnet_buffer (i_b0)->sw_if_index[VLIB_RX];
-            o_b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
             u8 iv[16];
             RAND_bytes(iv, sizeof(iv));
