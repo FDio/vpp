@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_e9da9a16",
+        "filename": "build-data/platforms/dpaa2.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-06-10T13:50:03Z",
+      "side": 1,
+      "message": "Please include the Apache 2.0 license header with a Apache 2.0 compatible copyright message.",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 3,
+        "endChar": 1
+      },
+      "revId": "1dc8eb75117ef1fd5a3cf1cd2be45c1fe7c8525f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
