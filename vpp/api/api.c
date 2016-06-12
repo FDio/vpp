@@ -4557,7 +4557,7 @@ vl_api_vxlan_gpe_add_del_tunnel_t_handler
     }
     encap_fib_index = p[0];
 
-    protocol = ntohl(mp->protocol);
+    protocol = mp->protocol;
 
     /* Interpret decap_vrf_id as an opaque if sending to other-than-ip4-input */
     if (protocol == VXLAN_GPE_INPUT_NEXT_IP4_INPUT) {
