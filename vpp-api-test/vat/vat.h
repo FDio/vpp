@@ -125,6 +125,7 @@ typedef struct {
     u32 async_errors;
     volatile u32 result_ready;
     volatile i32 retval;
+    volatile u32 sw_if_index;
     volatile u8 *shmem_result;
 
     /* our client index */

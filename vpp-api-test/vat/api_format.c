@@ -533,12 +533,41 @@ static void vl_api_create_loopback_reply_t_handler
     i32 retval = ntohl(mp->retval);
 
     vam->retval = retval;
-    vam->result_ready = 1;
     vam->regenerate_interface_table = 1;
+    vam->sw_if_index = ntohl (mp->sw_if_index);
+    vam->result_ready = 1;
 }
 
 static void vl_api_create_loopback_reply_t_handler_json
 (vl_api_create_loopback_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t node;
+
+    vat_json_init_object(&node);
+    vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
+    vat_json_object_add_uint(&node, "sw_if_index", ntohl(mp->sw_if_index));
+
+    vat_json_print(vam->ofp, &node);
+    vat_json_free(&node);
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
+static void vl_api_af_packet_create_reply_t_handler 
+(vl_api_af_packet_create_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    i32 retval = ntohl(mp->retval);
+
+    vam->retval = retval;
+    vam->regenerate_interface_table = 1;
+    vam->sw_if_index = ntohl (mp->sw_if_index);
+    vam->result_ready = 1;
+}
+
+static void vl_api_af_packet_create_reply_t_handler_json
+(vl_api_af_packet_create_reply_t * mp)
 {
     vat_main_t * vam = &vat_main;
     vat_json_node_t node;
@@ -561,8 +590,9 @@ static void vl_api_create_vlan_subif_reply_t_handler
     i32 retval = ntohl(mp->retval);
 
     vam->retval = retval;
-    vam->result_ready = 1;
     vam->regenerate_interface_table = 1;
+    vam->sw_if_index = ntohl (mp->sw_if_index);
+    vam->result_ready = 1;
 }
 
 static void vl_api_create_vlan_subif_reply_t_handler_json
@@ -589,8 +619,9 @@ static void vl_api_create_subif_reply_t_handler
     i32 retval = ntohl(mp->retval);
 
     vam->retval = retval;
-    vam->result_ready = 1;
     vam->regenerate_interface_table = 1;
+    vam->sw_if_index = ntohl (mp->sw_if_index);
+    vam->result_ready = 1;
 }
 
 static void vl_api_create_subif_reply_t_handler_json
@@ -617,8 +648,8 @@ static void vl_api_interface_name_renumber_reply_t_handler
     i32 retval = ntohl(mp->retval);
 
     vam->retval = retval;
-    vam->result_ready = 1;
     vam->regenerate_interface_table = 1;
+    vam->result_ready = 1;
 }
 
 static void vl_api_interface_name_renumber_reply_t_handler_json
@@ -784,7 +815,6 @@ static void vl_api_classify_add_del_table_reply_t_handler
         vam->async_errors += (retval < 0);
     } else {
         vam->retval = retval;
-        vam->result_ready = 1;
         if (retval == 0 && 
             ((mp->new_table_index != 0xFFFFFFFF) ||
              (mp->skip_n_vectors != 0xFFFFFFFF) ||
@@ -796,6 +826,7 @@ static void vl_api_classify_add_del_table_reply_t_handler
             errmsg ("new index %d, skip_n_vectors %d, match_n_vectors %d\n",
                     ntohl(mp->new_table_index),
                     ntohl(mp->skip_n_vectors), ntohl(mp->match_n_vectors));
+	vam->result_ready = 1;
     }
 }
 
@@ -827,9 +858,9 @@ static void vl_api_get_node_index_reply_t_handler
         vam->async_errors += (retval < 0);
     } else {
         vam->retval = retval;
-        vam->result_ready = 1;
         if (retval == 0)
             errmsg ("node index %d\n", ntohl(mp->node_index));
+        vam->result_ready = 1;
     }
 }
 
@@ -859,9 +890,9 @@ static void vl_api_add_node_next_reply_t_handler
         vam->async_errors += (retval < 0);
     } else {
         vam->retval = retval;
-        vam->result_ready = 1;
         if (retval == 0)
             errmsg ("next index %d\n", ntohl(mp->next_index));
+        vam->result_ready = 1;
     }
 }
 
@@ -1159,8 +1190,10 @@ static void vl_api_tap_connect_reply_t_handler
         vam->async_errors += (retval < 0);
     } else {
         vam->retval = retval;
-        vam->result_ready = 1;
+	vam->sw_if_index = ntohl (mp->sw_if_index);
+	vam->result_ready = 1;
     }
+    
 }
 
 static void vl_api_tap_connect_reply_t_handler_json
@@ -1178,6 +1211,7 @@ static void vl_api_tap_connect_reply_t_handler_json
 
     vam->retval = ntohl(mp->retval);
     vam->result_ready = 1;
+    
 }
 
 static void vl_api_tap_modify_reply_t_handler
@@ -1189,6 +1223,7 @@ static void vl_api_tap_modify_reply_t_handler
         vam->async_errors += (retval < 0);
     } else {
         vam->retval = retval;
+	vam->sw_if_index = ntohl (mp->sw_if_index);
         vam->result_ready = 1;
     }
 }
@@ -1278,6 +1313,7 @@ static void vl_api_l2tpv3_create_tunnel_reply_t_handler
         vam->async_errors += (retval < 0);
     } else {
         vam->retval = retval;
+	vam->sw_if_index = ntohl (mp->sw_if_index);
         vam->result_ready = 1;
     }
 }
@@ -1308,6 +1344,7 @@ static void vl_api_vxlan_add_del_tunnel_reply_t_handler
         vam->async_errors += (retval < 0);
     } else {
         vam->retval = retval;
+	vam->sw_if_index = ntohl (mp->sw_if_index);
         vam->result_ready = 1;
     }
 }
@@ -1338,6 +1375,7 @@ static void vl_api_gre_add_del_tunnel_reply_t_handler
         vam->async_errors += (retval < 0);
     } else {
         vam->retval = retval;
+	vam->sw_if_index = ntohl (mp->sw_if_index);
         vam->result_ready = 1;
     }
 }
@@ -1368,6 +1406,7 @@ static void vl_api_create_vhost_user_if_reply_t_handler
         vam->async_errors += (retval < 0);
     } else {
         vam->retval = retval;
+	vam->sw_if_index = ntohl (mp->sw_if_index);
         vam->result_ready = 1;
     }
 }
@@ -2371,7 +2410,6 @@ _(lisp_gpe_add_del_iface_reply)                         \
 _(lisp_enable_disable_reply)                            \
 _(lisp_pitr_set_locator_set_reply)                      \
 _(vxlan_gpe_add_del_tunnel_reply)			\
-_(af_packet_create_reply)                               \
 _(af_packet_delete_reply)                               \
 _(policer_add_del_reply)                                \
 _(netmap_create_reply)                                  \
@@ -2595,6 +2633,20 @@ do {                                            \
     while (vat_time_now (vam) < timeout) {      \
         if (vam->result_ready == 1) {           \
             return (vam->retval);               \
+        }                                       \
+    }                                           \
+    return -99;                                 \
+} while(0);
+
+/* W2: wait for results, with timeout */
+#define W2(body)				\
+do {                                            \
+    timeout = vat_time_now (vam) + 1.0;         \
+                                                \
+    while (vat_time_now (vam) < timeout) {      \
+        if (vam->result_ready == 1) {           \
+	  (body);				\
+	  return (vam->retval);			\
         }                                       \
     }                                           \
     return -99;                                 \
@@ -10554,7 +10606,7 @@ api_af_packet_create (vat_main_t * vam)
     mp->use_random_hw_addr = random_hw_addr;
     vec_free (host_if_name);
 
-    S; W;
+    S; W2(fprintf(vam->ofp," new sw_if_index = %d ", vam->sw_if_index));
     /* NOTREACHED */
     return 0;
 }

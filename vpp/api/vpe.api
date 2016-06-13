@@ -3443,6 +3443,7 @@ define af_packet_create {
 define af_packet_create_reply {
     u32 context;
     i32 retval;
+    u32 sw_if_index;
 };
 
 /** \brief Delete host-interface
