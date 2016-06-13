@@ -70,6 +70,16 @@ typedef CLIB_PACKED(struct _vnet_classify_entry {
     u64 opaque_count;
   };
 
+  /* put into vnet_buffer(b)->l2_classfy.opaque_index1 */
+  union {
+    struct {
+      u32 opaque_index1;
+      /* advance on hit, note it's a signed quantity... */
+      i32 advance1;
+    };
+    u64 opaque_count1;
+  };
+
   /* Really only need 1 bit */
   u32 flags;
 #define VNET_CLASSIFY_ENTRY_FREE	(1<<0)
@@ -447,6 +457,7 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
                                    u8 * match, 
                                    u32 hit_next_index,
                                    u32 opaque_index, 
+                                   u32 opaque_index1, 
                                    i32 advance,
                                    int is_add);
 

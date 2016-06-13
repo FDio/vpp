@@ -33,6 +33,7 @@ typedef struct {
 #define HBH_OPTION_TYPE_DISCARD_UNKNOWN_ICMP_NOT_MCAST (0xc0)
 #define HBH_OPTION_TYPE_HIGH_ORDER_BITS (0xc0)
 #define HBH_OPTION_TYPE_DATA_CHANGE_ENROUTE (1<<5)
+#define HBH_OPTION_TYPE_MASK (0x1F)
   u8 type;
   /* Length in octets of the option data field */
   u8 length;

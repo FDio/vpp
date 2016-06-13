@@ -1531,6 +1531,7 @@ define classify_add_del_table_reply {
     @param table_index - index of the table to add/del the session, required
     @param hit_next_index - for add, hit_next_index of new session, required
     @param opaque_index - for add, opaque_index of new session
+    @param opaque_index1 - for add, opaque_index1 of new session
     @param advance -for add, advance value for session
     @param match[] - for add, match value for session, required
 */
@@ -1541,6 +1542,7 @@ define classify_add_del_session {
     u32 table_index;
     u32 hit_next_index;
     u32 opaque_index;
+    u32 opaque_index1;
     i32 advance;
     u8 match[0];
 };

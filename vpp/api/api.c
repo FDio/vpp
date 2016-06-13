@@ -3597,17 +3597,18 @@ static void vl_api_classify_add_del_session_t_handler
     vnet_classify_main_t * cm = &vnet_classify_main;
     vl_api_classify_add_del_session_reply_t * rmp;
     int rv;
-    u32 table_index, hit_next_index, opaque_index;
+    u32 table_index, hit_next_index, opaque_index, opaque_index1;
     i32 advance;
 
     table_index = ntohl (mp->table_index);
     hit_next_index = ntohl (mp->hit_next_index);
     opaque_index = ntohl (mp->opaque_index);
+    opaque_index1 = ntohl (mp->opaque_index1);
     advance = ntohl (mp->advance);
 
     rv = vnet_classify_add_del_session
         (cm, table_index, mp->match, hit_next_index, opaque_index,
-         advance, mp->is_add);
+         opaque_index1, advance, mp->is_add);
 
     REPLY_MACRO(VL_API_CLASSIFY_ADD_DEL_SESSION_REPLY);
 }
