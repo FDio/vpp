@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_64358f45",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2289,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2016-06-13T06:13:46Z",
+      "side": 1,
+      "message": "table_id, no spaces in JSON object name",
+      "range": {
+        "startLine": 2289,
+        "startChar": 39,
+        "endLine": 2289,
+        "endChar": 47
+      },
+      "revId": "466377fdf1c9cb97fcc6a50110acf97476d9be54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_443a8b37",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2331,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2016-06-13T06:13:46Z",
+      "side": 1,
+      "message": "no spaces in JSON object name",
+      "range": {
+        "startLine": 2329,
+        "startChar": 0,
+        "endLine": 2331,
+        "endChar": 76
+      },
+      "revId": "466377fdf1c9cb97fcc6a50110acf97476d9be54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
