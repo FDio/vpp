@@ -45,6 +45,8 @@
 #include <vppinfra/error.h>
 #include <vppinfra/bitops.h>	/* for count_set_bits */
 
+typedef uword clib_bitmap_t;
+
 /* Returns 1 if the entire bitmap is zero, 0 otherwise */
 always_inline uword
 clib_bitmap_is_zero (uword * ai)
