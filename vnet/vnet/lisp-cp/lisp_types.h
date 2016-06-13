@@ -35,6 +35,11 @@ typedef CLIB_PACKED(struct ip_address
   u8 version;
 }) ip_address_t;
 
+#define ip_addr_addr(_a) (_a)->ip
+#define ip_addr_v4(_a) (_a)->ip.v4
+#define ip_addr_v6(_a) (_a)->ip.v6
+#define ip_addr_version(_a) (_a)->version
+
 int ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2);
 void ip_address_copy (ip_address_t * dst , ip_address_t * src);
 void ip_address_copy_addr (void * dst , ip_address_t * src);
@@ -44,11 +49,6 @@ typedef CLIB_PACKED(struct ip_prefix
   ip_address_t addr;
   u8 len;
 }) ip_prefix_t;
-
-#define ip_addr_addr(_a) (_a)->ip
-#define ip_addr_v4(_a) (_a)->ip.v4
-#define ip_addr_v6(_a) (_a)->ip.v6
-#define ip_addr_version(_a) (_a)->version
 
 #define ip_prefix_addr(_a) (_a)->addr
 #define ip_prefix_version(_a) ip_addr_version(&ip_prefix_addr(_a))
@@ -162,6 +162,7 @@ u32 gid_address_parse (u8 * offset, gid_address_t *a);
 #define gid_address_ippref(_a) (_a)->ippref
 #define gid_address_ippref_len(_a) (_a)->ippref.len
 #define gid_address_ip(_a) ip_prefix_addr(&gid_address_ippref(_a))
+#define gid_address_ip_version(_a) ip_addr_version(&gid_address_ip(_a))
 #define gid_address_lcaf(_a) (_a)->lcaf
 #define gid_address_vni(_a) ( (GID_ADDR_LCAF == gid_address_type(_a)) ? \
                               lcaf_vni(&gid_address_lcaf(_a)) : 0)
