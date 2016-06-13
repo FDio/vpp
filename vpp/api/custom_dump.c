@@ -1717,6 +1717,32 @@ static void * vl_api_cop_whitelist_enable_disable_t_print
     FINISH;
 }
 
+static void * vl_api_af_packet_create_t_print 
+(vl_api_af_packet_create_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: af_packet_create ");
+    s = format (s, "host_if_name %s ", mp->host_if_name);
+    if ( mp->use_random_hw_addr)
+      s = format (s, "hw_addr random ");
+    else
+      s = format (s, "hw_addr %U ", format_ethernet_address, mp->hw_addr);
+
+    FINISH;
+}
+
+static void * vl_api_af_packet_delete_t_print 
+(vl_api_af_packet_delete_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: af_packet_delete ");
+    s = format (s, "host_if_name %s ", mp->host_if_name);
+
+    FINISH;
+}
+
 static void *vl_api_sw_interface_clear_stats_t_print
 (vl_api_sw_interface_clear_stats_t * mp, void *handle)
 {
@@ -1814,6 +1840,8 @@ _(DELETE_LOOPBACK, delete_loopback)                                     \
 _(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)					\
 _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable) 		\
 _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)           \
+_(AF_PACKET_CREATE, af_packet_create)					\
+_(AF_PACKET_DELETE, af_packet_delete)					\
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)
 
 void vl_msg_api_custom_dump_configure (api_main_t *am) 

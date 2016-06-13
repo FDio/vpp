@@ -6001,16 +6001,18 @@ vl_api_af_packet_create_t_handler
     vl_api_af_packet_create_reply_t *rmp;
     int rv = 0;
     u8 *host_if_name = NULL;
+    u32 sw_if_index;
 
     host_if_name = format(0, "%s", mp->host_if_name);
     vec_add1 (host_if_name, 0);
 
     rv = af_packet_create_if(vm, host_if_name,
-                             mp->use_random_hw_addr ? 0 : mp->hw_addr, 0);
+                             mp->use_random_hw_addr ? 0 : mp->hw_addr, &sw_if_index);
 
     vec_free(host_if_name);
 
-    REPLY_MACRO(VL_API_AF_PACKET_CREATE_REPLY);
+    REPLY_MACRO2(VL_API_AF_PACKET_CREATE_REPLY,
+		 rmp->sw_if_index = clib_host_to_net_u32(sw_if_index));
 }
 
 static void
