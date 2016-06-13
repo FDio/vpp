@@ -513,11 +513,14 @@ clib_error_t *handoff_init (vlib_main_t *vm)
   vlib_thread_registration_t * tr;
   /* Only the standard vnet worker threads are supported */
   p = hash_get_mem (tm->thread_registrations_by_name, "workers");
-  tr = (vlib_thread_registration_t *) p[0];
-  if (tr)
+  if (p)
     {
-      hm->num_workers = tr->count;
-      hm->first_worker_index = tr->first_index;
+      tr = (vlib_thread_registration_t *) p[0];
+      if (tr)
+        {
+          hm->num_workers = tr->count;
+          hm->first_worker_index = tr->first_index;
+        }
     }
 
   hm->vlib_main = vm;
