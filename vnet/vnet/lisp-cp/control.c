@@ -1472,9 +1472,28 @@ ip_fib_lookup_with_table (lisp_cp_main_t * lcm, u32 fib_index,
       return ip6_fib_lookup_with_table (lcm->im6, fib_index, &ip_addr_v6(dst));
 }
 
+static u32
+get_egress_iface_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst)
+{
+  u32 adj_index;
+  ip_adjacency_t * adj;
+  ip_lookup_main_t * lm;
+
+  lm = ip_addr_version (dst) == IP4 ?
+      &lcm->im4->lookup_main : &lcm->im6->lookup_main;
+
+  adj_index = ip_fib_lookup_with_table (lcm, 0, dst);
+  adj = ip_get_adjacency (lm, adj_index);
+
+  if (adj == 0)
+    return ~0;
+
+  return adj->rewrite_header.sw_if_index;
+}
+
 void
-get_mr_and_local_iface_ip (lisp_cp_main_t *lcm, ip_address_t * mr_ip,
-                            ip_address_t * sloc)
+get_first_local_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
+                            ip_address_t * result)
 {
   u32 adj_index;
   ip_adjacency_t * adj;
@@ -1482,6 +1501,68 @@ get_mr_and_local_iface_ip (lisp_cp_main_t *lcm, ip_address_t * mr_ip,
   ip_lookup_main_t * lm;
   ip4_address_t * l4 = 0;
   ip6_address_t * l6 = 0;
+
+  ASSERT(result != 0);
+
+  lm = ip_addr_version (dst) == IP4 ?
+      &lcm->im4->lookup_main : &lcm->im6->lookup_main;
+
+  adj_index = ip_fib_lookup_with_table (lcm, 0, dst);
+  adj = ip_get_adjacency (lm, adj_index);
+
+  if (adj == 0)
+    return;
+
+  if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP)
+    {
+      ia = pool_elt_at_index(lm->if_address_pool, adj->if_address_index);
+      if (ip_addr_version(dst) == IP4)
+        {
+          l4 = ip_interface_address_get_address (lm, ia);
+        }
+      else
+        {
+          l6 = ip_interface_address_get_address (lm, ia);
+        }
+    }
+  else if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
+    {
+      /* find sw_if_index in rewrite header */
+      u32 sw_if_index = adj->rewrite_header.sw_if_index;
+
+      /* find suitable address */
+      if (ip_addr_version(dst) == IP4)
+        {
+          /* find the first ip address */
+          foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
+                                        sw_if_index, 1 /* unnumbered */,
+          ({
+            l4 = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
+            break;
+          }));
+        }
+      else
+        {
+          /* find the first ip address */
+          foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
+                                        sw_if_index, 1 /* unnumbered */,
+          ({
+            l6 = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
+            break;
+          }));
+        }
+    }
+
+  if (l4)
+    ip_address_set (result, l4, IP4);
+  else if (l6)
+    ip_address_set (result, l6, IP6);
+}
+
+void
+get_mr_and_local_iface_ip (lisp_cp_main_t *lcm, ip_address_t * mr_ip,
+                           ip_address_t * sloc)
+{
   ip_address_t * mrit;
 
   if (vec_len(lcm->map_resolvers) == 0)
@@ -1494,71 +1575,11 @@ get_mr_and_local_iface_ip (lisp_cp_main_t *lcm, ip_address_t * mr_ip,
    * iface that has a route to it */
   vec_foreach(mrit, lcm->map_resolvers)
     {
-      lm = ip_addr_version (mrit) == IP4 ?
-          &lcm->im4->lookup_main : &lcm->im6->lookup_main;
-
-      adj_index = ip_fib_lookup_with_table (lcm, 0, mrit);
-      adj = ip_get_adjacency (lm, adj_index);
-
-      if (adj == 0)
-        continue;
-
-      if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP)
-        {
-          ia = pool_elt_at_index(lm->if_address_pool, adj->if_address_index);
-          if (ip_addr_version(mrit) == IP4)
-            {
-              l4 = ip_interface_address_get_address (lm, ia);
-            }
-          else
-            {
-              l6 = ip_interface_address_get_address (lm, ia);
-            }
-        }
-      else if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
-        {
-          /* find sw_if_index in rewrite header */
-          u32 sw_if_index = adj->rewrite_header.sw_if_index;
-
-          /* find suitable address */
-          if (ip_addr_version(mrit) == IP4)
-            {
-              /* find the first ip address */
-              foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
-                                            sw_if_index, 1 /* unnumbered */,
-              ({
-                l4 = ip_interface_address_get_address (&lcm->im4->lookup_main,
-                                                       ia);
-                break;
-              }));
-            }
-          else
-            {
-              /* find the first ip address */
-              foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
-                                            sw_if_index, 1 /* unnumbered */,
-              ({
-                l6 = ip_interface_address_get_address (&lcm->im6->lookup_main,
-                                                       ia);
-                break;
-              }));
-            }
-        }
-
-      if (l4)
-        {
-          ip_addr_v4(sloc).as_u32 = l4->as_u32;
-          ip_addr_version(sloc) = IP4;
+      get_first_local_ip_for_dst (lcm, mrit, sloc);
+      if (0 != sloc) {
           ip_address_copy(mr_ip, mrit);
           return;
-        }
-      else if (l6)
-        {
-          clib_memcpy (&ip_addr_v6(sloc), l6, sizeof(*l6));
-          ip_addr_version(sloc) = IP6;
-          ip_address_copy(mr_ip, mrit);
-          return;
-        }
+      }
     }
 
   clib_warning("Can't find map-resolver and local interface ip!");
@@ -1734,18 +1755,14 @@ get_src_and_dst (void *hdr, ip_address_t * src, ip_address_t *dst)
 
   if ((ip4->ip_version_and_header_length & 0xF0) == 0x40)
     {
-      ip_addr_v4(src).as_u32 = ip4->src_address.as_u32;
-      ip_addr_version(src) = IP4;
-      ip_addr_v4(dst).as_u32 = ip4->dst_address.as_u32;
-      ip_addr_version(dst) = IP4;
+      ip_address_set(src, &ip4->src_address, IP4);
+      ip_address_set(dst, &ip4->dst_address, IP4);
     }
   else
     {
       ip6 = hdr;
-      clib_memcpy (&ip_addr_v6(src), &ip6->src_address, sizeof(ip6->src_address));
-      ip_addr_version(src) = IP6;
-      clib_memcpy (&ip_addr_v6(dst), &ip6->dst_address, sizeof(ip6->dst_address));
-      ip_addr_version(dst) = IP6;
+      ip_address_set(src, &ip6->src_address, IP6);
+      ip_address_set(dst, &ip6->dst_address, IP6);
     }
 }
 
@@ -1926,13 +1943,45 @@ ip_interface_get_first_interface_address (ip_lookup_main_t *lm, u32 sw_if_index,
   return pool_elt_at_index((lm)->if_address_pool, ia);
 }
 
-void *
-ip_interface_get_first_ip_addres (ip_lookup_main_t *lm, u32 sw_if_index,
-                                   u8 loop)
+int
+ip_interface_get_first_ip_addres (lisp_cp_main_t * lcm, u32 sw_if_index,
+                                  u8 version, ip_address_t * addr)
 {
-  ip_interface_address_t * ia = ip_interface_get_first_interface_address (
-      lm, sw_if_index, loop);
-  return ip_interface_address_get_address (lm, ia);
+  if (version == IP4)
+    {
+      ip4_address_t * l4;
+      ip_lookup_main_t * lm = &lcm->im4->lookup_main;
+      ip_interface_address_t * ia = ip_interface_get_first_interface_address (
+          lm, sw_if_index, 1 /* unnumbered */);
+
+      if (!ia)
+        return 0;
+
+      l4 = ip_interface_address_get_address (lm, ia);
+
+      if (!l4)
+        return 0;
+
+      ip_addr_v4(addr) = *l4;
+      ip_addr_version(addr) = IP4;
+    }
+  else
+    {
+      ip6_address_t * l6;
+      ip_lookup_main_t * lm = &lcm->im6->lookup_main;
+      ip_interface_address_t * ia = ip_interface_get_first_interface_address (
+          lm, sw_if_index, 1 /* unnumbered */);
+      if (!ia)
+        return 0;
+
+      l6 = ip_interface_address_get_address (lm, ia);
+      if (!l6)
+        return 0;
+
+      ip_addr_v6(addr) = *l6;
+      ip_addr_version(addr) = IP6;
+    }
+  return 1;
 }
 
 static void
@@ -1965,13 +2014,92 @@ del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index,
   pool_put(lcm->fwd_entry_pool, fe);
 }
 
+/**
+ * Finds first remote locator with best (lowest) priority that has a local
+ * peer locator with an underlying route to it.
+ *
+ */
+static u32
+get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
+                  ip_address_t * lcl_loc, ip_address_t * rmt_loc)
+{
+  u32 i, rv, minp = ~0, limitp = 0, li, check_index = 0, done = 0, esi;
+  locator_set_t * rmt_ls, * lcl_ls;
+  ip_address_t _lcl, * lcl = &_lcl;
+  locator_t * l, * rmt = 0;
+  uword * checked = 0;
+
+  rmt_ls = pool_elt_at_index(lcm->locator_set_pool, rmt_map->locator_set_index);
+  lcl_ls = pool_elt_at_index(lcm->locator_set_pool, lcl_map->locator_set_index);
+
+  if (!rmt_ls || vec_len(rmt_ls->locator_indices) == 0)
+    return 0;
+
+  while (!done)
+    {
+      /* find unvisited remote locator with best priority */
+      for (i = 0; i < vec_len(rmt_ls->locator_indices); i++)
+        {
+          if (0 != hash_get(checked, i))
+            continue;
+
+          li = vec_elt(rmt_ls->locator_indices, i);
+          l = pool_elt_at_index(lcm->locator_pool, li);
+
+          /* we don't support non-IP locators for now */
+          if (gid_address_type(&l->address) != GID_ADDR_IP_PREFIX)
+            continue;
+
+          if (l->priority < minp && l->priority >= limitp)
+            {
+              minp = l->priority;
+              rmt = l;
+              check_index = i;
+            }
+        }
+      /* check if a local locator with a route to remote locator exists */
+      if (rmt != 0)
+        {
+          esi = get_egress_iface_for_dst (lcm, &gid_address_ip(&rmt->address));
+          if ((u32) ~0 == esi)
+            continue;
+
+          for (i = 0; i < vec_len(lcl_ls->locator_indices); i++)
+            {
+              li = vec_elt (lcl_ls->locator_indices, i);
+              locator_t * sl = pool_elt_at_index (lcm->locator_pool, li);
+
+              /* found local locator */
+              if (sl->sw_if_index == esi)
+                {
+                  rv = ip_interface_get_first_ip_addres (lcm, sl->sw_if_index,
+                             gid_address_ip_version(&rmt->address), lcl);
+
+                  if (!rv)
+                    continue;
+
+                  ip_address_copy(rmt_loc, &gid_address_ip(&rmt->address));
+                  ip_address_copy(lcl_loc, lcl);
+                  done = 2;
+                }
+            }
+
+          /* skip this remote locator in next searches */
+          limitp = minp;
+          hash_set(checked, check_index, 1);
+        }
+      else
+        done = 1;
+    }
+  hash_free(checked);
+  return (done == 2) ? 1 : 0;
+}
+
 static void
 add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
 {
   mapping_t * src_map, * dst_map;
-  locator_set_t * dst_ls, * src_ls;
-  u32 i, minp = ~0, sw_if_index;
-  locator_t * dl = 0;
+  u32 sw_if_index;
   uword * feip = 0, * tidp;
   fwd_entry_t* fe;
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
@@ -1997,56 +2125,13 @@ add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
     }
   a->table_id = tidp[0];
 
-  /* XXX simple forwarding policy: first lowest (value) priority locator */
-  dst_ls = pool_elt_at_index (lcm->locator_set_pool,
-                              dst_map->locator_set_index);
-  for (i = 0; i < vec_len (dst_ls->locator_indices); i++)
-    {
-      u32 li = vec_elt (dst_ls->locator_indices, i);
-      locator_t * l = pool_elt_at_index (lcm->locator_pool, li);
-      if (l->priority < minp && gid_address_type(&l->address)
-            == GID_ADDR_IP_PREFIX)
-        {
-          minp = l->priority;
-          dl = l;
-        }
-    }
-  if (dl)
-    {
-      src_ls = pool_elt_at_index(lcm->locator_set_pool,
-                                 src_map->locator_set_index);
-      for (i = 0; i < vec_len(src_ls->locator_indices); i++)
-        {
-          u32 li = vec_elt (src_ls->locator_indices, i);
-          locator_t * sl = pool_elt_at_index (lcm->locator_pool, li);
-
-          if (ip_addr_version(&gid_address_ip(&dl->address)) == IP4)
-            {
-              ip4_address_t * l4;
-              l4 = ip_interface_get_first_ip_addres (&lcm->im4->lookup_main,
-                                                     sl->sw_if_index,
-                                                     1 /* unnumbered */);
-              ip_addr_v4(&a->slocator) = *l4;
-              ip_addr_version(&a->slocator) = IP4;
-            }
-          else
-            {
-              ip6_address_t * l6;
-              l6 = ip_interface_get_first_ip_addres (&lcm->im6->lookup_main,
-                                                     sl->sw_if_index,
-                                                     1 /* unnumbered */);
-              ip_addr_v6(&a->slocator) = *l6;
-              ip_addr_version(&a->slocator) = IP6;
-            }
-        }
-    }
-
   /* insert data plane forwarding entry */
   a->is_add = 1;
-  if (dl)
-    a->dlocator = gid_address_ip(&dl->address);
-  else
+
+  /* find best locator pair that 1) verifies LISP policy 2) are connected */
+  if (0 == get_locator_pair (lcm, src_map, dst_map, &a->slocator, &a->dlocator))
     {
+      /* negative entry */
       a->is_negative = 1;
       a->action = dst_map->action;
     }
