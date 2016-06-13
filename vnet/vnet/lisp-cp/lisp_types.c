@@ -427,6 +427,13 @@ ip_address_copy_addr (void * dst , ip_address_t * src)
   clib_memcpy (dst, src, ip_address_size(src));
 }
 
+void
+ip_address_set(ip_address_t * dst, void * src, u8 version)
+{
+  clib_memcpy(dst, src, ip_version_to_size(version));
+  ip_addr_version(dst) = version;
+}
+
 void *
 ip_prefix_cast (gid_address_t * a)
 {
