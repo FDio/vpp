@@ -17,6 +17,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/api_errno.h>     /* for API error numbers */
 #include <vnet/l2/l2_classify.h> /* for L2_CLASSIFY_NEXT_xxx */
+#include <vnet/ip/ip6_hop_by_hop.h>
 
 vnet_classify_main_t vnet_classify_main;
 
@@ -563,9 +564,9 @@ static u8 * format_classify_entry (u8 * s, va_list * args)
   vnet_classify_entry_t * e = va_arg (*args, vnet_classify_entry_t *);
 
   s = format
-    (s, "[%u]: next_index %d advance %d opaque %d\n",
+    (s, "[%u]: next_index %d advance %d opaque %d opaque1 %d\n",
      vnet_classify_get_offset (t, e), e->next_index, e->advance, 
-     e->opaque_index);
+     e->opaque_index, e->opaque_index1);
 
 
   s = format (s, "        k: %U\n", format_hex_bytes, e->key,
@@ -1141,6 +1142,10 @@ uword unformat_acl_next_index (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+uword unformat_ioam_next_index (unformat_input_t * input, va_list * args)
+{
+    return unformat_acl_next_index (input, args);
+}
 static clib_error_t *
 classify_table_command_fn (vlib_main_t * vm,
                            unformat_input_t * input,
@@ -1701,6 +1706,7 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
                                    u8 * match, 
                                    u32 hit_next_index,
                                    u32 opaque_index, 
+                                   u32 opaque_index1, 
                                    i32 advance,
                                    int is_add)
 {
@@ -1717,6 +1723,7 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
   e = (vnet_classify_entry_t *)&_max_e;
   e->next_index = hit_next_index;
   e->opaque_index = opaque_index;
+  e->opaque_index1 = opaque_index1;
   e->advance = advance;
   e->hits = 0;
   e->last_heard = 0;
@@ -1736,6 +1743,18 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
   return 0;
 }
 
+static u64
+ioam_session_init()
+{
+  ioam_ipfix_elts_t * t;
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+
+  pool_get_aligned (hm->ioam_sessions, t, CLIB_CACHE_LINE_BYTES);
+  memset(t, 0, sizeof (*t));
+
+  return (t - hm->ioam_sessions);
+}
+
 static clib_error_t *
 classify_session_command_fn (vlib_main_t * vm,
                              unformat_input_t * input,
@@ -1746,8 +1765,10 @@ classify_session_command_fn (vlib_main_t * vm,
   u32 table_index = ~0;
   u32 hit_next_index = ~0;
   u64 opaque_index = ~0;
+  u64 opaque_index1 = ~0;
   u8 * match = 0;
   i32 advance = 0;
+  u8 ioam_set = 0;
   int i, rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) 
@@ -1763,6 +1784,9 @@ classify_session_command_fn (vlib_main_t * vm,
       else if (unformat (input, "acl-hit-next %U", unformat_acl_next_index,
                          &hit_next_index))
         ;
+      else if (unformat (input, "ioam-hit-next %U", unformat_ioam_next_index,
+                         &hit_next_index))
+        ioam_set = 1;
       else if (unformat (input, "opaque-index %lld", &opaque_index))
         ;
       else if (unformat (input, "match %U", unformat_classify_match,
@@ -1793,9 +1817,14 @@ classify_session_command_fn (vlib_main_t * vm,
   if (is_add && match == 0)
     return clib_error_return (0, "Match value required");
 
+  if (ioam_set)
+    {
+      opaque_index1 = ioam_session_init ();
+    }
   rv = vnet_classify_add_del_session (cm, table_index, match, 
                                       hit_next_index,
-                                      opaque_index, advance, is_add);
+                                      opaque_index, opaque_index1, 
+                                      advance, is_add);
 
   switch(rv)
     {
@@ -2014,6 +2043,7 @@ test_classify_command_fn (vlib_main_t * vm,
           rv = vnet_classify_add_del_session (cm, t - cm->tables, (u8 *) data,
                                               IP_LOOKUP_NEXT_DROP,
                                               i+100 /* opaque_index */, 
+                                              i+200 /* opaque_index1 */, 
                                               0 /* advance */, 
                                               1 /* is_add */);
 
@@ -2046,6 +2076,7 @@ test_classify_command_fn (vlib_main_t * vm,
       if (e == 0)
         continue;
       ASSERT (e->opaque_index == (i+100));
+      ASSERT (e->opaque_index1 == (i+200));
 
       key_minus_skip = (u8 *)e->key;
       key_minus_skip -= t->skip_n_vectors * sizeof (u32x4);
@@ -2053,6 +2084,7 @@ test_classify_command_fn (vlib_main_t * vm,
       rv = vnet_classify_add_del_session (cm, t - cm->tables, key_minus_skip,
                                           IP_LOOKUP_NEXT_DROP,
                                           i+100 /* opaque_index */, 
+                                          i+200 /* opaque_index1 */, 
                                           0 /* advance */, 
                                           0 /* is_add */);
       if (rv != 0)

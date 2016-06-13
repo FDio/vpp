@@ -2639,6 +2639,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
 	      error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
 	      goto out0;
 	    }
+
 	  } else {
 	    /* Unrecognized mandatory option, check the two high order bits */
 	    switch (opt0->type & HBH_OPTION_TYPE_HIGH_ORDER_BITS) {

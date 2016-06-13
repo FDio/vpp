@@ -237,6 +237,7 @@ ip_inacl_inline (vlib_main_t * vm,
                                 /* # bytes of config data */ 0);
 
           vnet_buffer(b0)->l2_classify.opaque_index = ~0;
+          vnet_buffer(b0)->l2_classify.opaque_index1 = ~0;
 
           if (PREDICT_TRUE(table_index0 != ~0))
             {
@@ -249,6 +250,8 @@ ip_inacl_inline (vlib_main_t * vm,
                 {
                   vnet_buffer(b0)->l2_classify.opaque_index
                     = e0->opaque_index;
+                  vnet_buffer(b0)->l2_classify.opaque_index1
+                    = e0->opaque_index1;
                   vlib_buffer_advance (b0, e0->advance);
 
                   next0 = (e0->next_index < n_next_nodes)?
@@ -295,6 +298,8 @@ ip_inacl_inline (vlib_main_t * vm,
                         {
                           vnet_buffer(b0)->l2_classify.opaque_index
                             = e0->opaque_index;
+                          vnet_buffer(b0)->l2_classify.opaque_index1
+                            = e0->opaque_index1;
                           vlib_buffer_advance (b0, e0->advance);
                           next0 = (e0->next_index < n_next_nodes)?
                                    e0->next_index:next0;

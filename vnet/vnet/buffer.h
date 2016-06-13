@@ -176,7 +176,8 @@ typedef struct {
 
     /* L2 classify */
     struct {
-      u64 pad;
+      u32 pad;
+      u32 opaque_index1;
       u32 opaque_index;
       u32 table_index;
       u64 hash;

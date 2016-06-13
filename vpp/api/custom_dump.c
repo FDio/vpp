@@ -1174,6 +1174,7 @@ static void *vl_api_classify_add_del_session_t_print
     s = format (s, "table_index %d ", ntohl (mp->table_index));
     s = format (s, "hit_next_index %d ", ntohl (mp->hit_next_index));
     s = format (s, "opaque_index %d ", ntohl (mp->opaque_index));
+    s = format (s, "opaque_index1 %d ", ntohl (mp->opaque_index1));
     s = format (s, "advance %d ", ntohl (mp->advance));
     if (mp->is_add == 0)
         s = format (s, "del ");
