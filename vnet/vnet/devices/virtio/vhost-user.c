@@ -1648,7 +1648,7 @@ static void vhost_user_vui_register(vlib_main_t * vm, vhost_user_intf_t *vui)
   if (tm->n_vlib_mains == 1)
     vlib_node_set_state (vm, vhost_user_input_node.index,
                          VLIB_NODE_STATE_POLLING);
-  else if (!dm->have_io_threads)
+  else
     vlib_node_set_state (vlib_mains[cpu_index], vhost_user_input_node.index,
                          VLIB_NODE_STATE_POLLING);
 
@@ -1665,17 +1665,9 @@ int vhost_user_create_if(vnet_main_t * vnm, vlib_main_t * vm,
                          u8 *hwaddr)
 {
   vhost_user_intf_t * vui = NULL;
-  dpdk_main_t * dm = &dpdk_main;
-  vlib_thread_main_t * tm = vlib_get_thread_main();
   u32 sw_if_idx = ~0;
   int sockfd = -1;
   int rv = 0;
-
-  if (tm->n_vlib_mains > 1 && dm->have_io_threads)
-    {
-      clib_warning("vhost-user interfaces are not supported with multiple io threads");
-      return -1;
-    }
 
   if (is_server) {
       if ((rv = vhost_user_init_server_sock (sock_filename, &sockfd)) != 0) {

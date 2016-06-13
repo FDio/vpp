@@ -392,10 +392,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
       if (tm->n_vlib_mains == 1 && dpdk_input_node.state != VLIB_NODE_STATE_POLLING)
         vlib_node_set_state (vm, dpdk_input_node.index, VLIB_NODE_STATE_POLLING);
 
-      if (tm->n_vlib_mains > 1 && tm->main_thread_is_io_node)
-        vlib_node_set_state (vm, dpdk_io_input_node.index, VLIB_NODE_STATE_POLLING);
-
-      if (tm->n_vlib_mains > 1 && !tm->main_thread_is_io_node)
+      if (tm->n_vlib_mains > 1)
         vlib_node_set_state (vlib_mains[cpu], dpdk_input_node.index,
                              VLIB_NODE_STATE_POLLING);
       next_cpu++;
