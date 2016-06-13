@@ -252,19 +252,8 @@ dpdk_lib_init (dpdk_main_t * dm)
   rt->function = dpdk_input_multiarch_select();
 
   /* find out which cpus will be used for input */
-  p = hash_get_mem (tm->thread_registrations_by_name, "io");
+  p = hash_get_mem (tm->thread_registrations_by_name, "workers");
   tr = p ? (vlib_thread_registration_t *) p[0] : 0;
-
-  if (!tr || tr->count == 0)
-    {
-      /* no io threads, workers doing input */
-      p = hash_get_mem (tm->thread_registrations_by_name, "workers");
-      tr = p ? (vlib_thread_registration_t *) p[0] : 0;
-    }
-  else
-    {
-      dm->have_io_threads = 1;
-    }
 
   if (tr && tr->count > 0)
     {
@@ -1521,10 +1510,7 @@ dpdk_process (vlib_main_t * vm,
         if (tm->n_vlib_mains == 1)
           vlib_node_set_state (vm, dpdk_input_node.index,
                                VLIB_NODE_STATE_POLLING);
-        else if (tm->main_thread_is_io_node)
-          vlib_node_set_state (vm, dpdk_io_input_node.index,
-                               VLIB_NODE_STATE_POLLING);
-        else if (!dm->have_io_threads)
+        else
           for (i=0; i < tm->n_vlib_mains; i++)
             if (vec_len(dm->devices_by_cpu[i]) > 0)
               vlib_node_set_state (vlib_mains[i], dpdk_input_node.index,
@@ -1536,7 +1522,7 @@ dpdk_process (vlib_main_t * vm,
 
   dpdk_vhost_user_process_init(&vu_state);
 
-  dm->io_thread_release = 1;
+  dm->worker_thread_release = 1;
 
   f64 now = vlib_time_now (vm);
   vec_foreach (xd, dm->devices)

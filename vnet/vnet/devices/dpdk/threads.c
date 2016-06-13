@@ -166,7 +166,7 @@ static inline int vlib_frame_queue_dequeue_internal (vlib_main_t *vm)
   return processed;
 }
 
-int dpdk_frame_queue_dequeue (vlib_main_t *vm) 
+int dpdk_frame_queue_dequeue (vlib_main_t *vm)
 {
   return vlib_frame_queue_dequeue_internal (vm);
 }
@@ -176,17 +176,12 @@ int dpdk_frame_queue_dequeue (vlib_main_t *vm)
  *
  * w
  *     Information for the current thread
- * io_name
- *     The name of thread performing dpdk device IO (if any). If there are no
- *     instances of that thread, then the current thread will do dpdk device
- *     polling. Ports will be divided among instances of the current thread.
  * callback
  *     If not null, this function will be called once during each main loop.
  */
 static_always_inline void
 dpdk_worker_thread_internal (vlib_main_t *vm,
-                             dpdk_worker_thread_callback_t callback,
-                             int have_io_threads)
+                             dpdk_worker_thread_callback_t callback)
 {
   vlib_node_main_t * nm = &vm->node_main;
   u64 cpu_time_now = clib_cpu_time_now ();
@@ -201,17 +196,13 @@ dpdk_worker_thread_internal (vlib_main_t *vm,
       if (PREDICT_FALSE(callback != NULL))
           callback(vm);
 
-      if (!have_io_threads)
-        {
-          vlib_node_runtime_t * n;
-          vec_foreach (n, nm->nodes_by_type[VLIB_NODE_TYPE_INPUT])
-            {
-              cpu_time_now = dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
-                                            VLIB_NODE_STATE_POLLING, /* frame */ 0,
-                                            cpu_time_now);
-            }
-
-        }
+      vlib_node_runtime_t * n;
+      vec_foreach (n, nm->nodes_by_type[VLIB_NODE_TYPE_INPUT])
+	{
+	  cpu_time_now = dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
+					VLIB_NODE_STATE_POLLING, /* frame */ 0,
+					cpu_time_now);
+	}
 
       if (_vec_len (nm->pending_frames))
         {
@@ -235,13 +226,9 @@ dpdk_worker_thread_internal (vlib_main_t *vm,
 }
 
 void dpdk_worker_thread (vlib_worker_thread_t * w,
-                         char *io_name,
                          dpdk_worker_thread_callback_t callback)
 {
   vlib_main_t *vm;
-  uword * p;
-  vlib_thread_main_t * tm = vlib_get_thread_main();
-  vlib_thread_registration_t * tr;
   dpdk_main_t * dm = &dpdk_main;
 
   vm = vlib_get_main();
@@ -252,24 +239,17 @@ void dpdk_worker_thread (vlib_worker_thread_t * w,
   clib_mem_set_heap (w->thread_mheap);
 
   /* Wait until the dpdk init sequence is complete */
-  while (dm->io_thread_release == 0)
+  while (dm->worker_thread_release == 0)
     vlib_worker_thread_barrier_check ();
 
-  /* any I/O threads? */
-  p = hash_get_mem (tm->thread_registrations_by_name, io_name);
-  tr = (vlib_thread_registration_t *)p[0];
-
-  if (tr && tr->count > 0)
-    dpdk_worker_thread_internal(vm, callback, /* have_io_threads */ 1);
-  else
-    dpdk_worker_thread_internal(vm, callback, /* have_io_threads */ 0);
+  dpdk_worker_thread_internal(vm, callback);
 }
 
 void dpdk_worker_thread_fn (void * arg)
 {
   vlib_worker_thread_t *w = (vlib_worker_thread_t *) arg;
   vlib_worker_thread_init (w);
-  dpdk_worker_thread (w, "io", 0);
+  dpdk_worker_thread (w, 0);
 }
 
 #if VIRL == 0
@@ -277,21 +257,6 @@ VLIB_REGISTER_THREAD (worker_thread_reg, static) = {
   .name = "workers",
   .short_name = "wk",
   .function = dpdk_worker_thread_fn,
-};
-#endif
-
-void dpdk_io_thread_fn (void * arg)
-{
-  vlib_worker_thread_t *w = (vlib_worker_thread_t *) arg;
-  vlib_worker_thread_init (w);
-  dpdk_io_thread (w, 0, 0, "workers", 0);
-}
-
-#if VIRL == 0
-VLIB_REGISTER_THREAD (io_thread_reg, static) = {
-  .name = "io",
-  .short_name = "io",
-  .function = dpdk_io_thread_fn,
 };
 #endif
 

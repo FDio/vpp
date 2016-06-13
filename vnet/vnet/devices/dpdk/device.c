@@ -1309,16 +1309,6 @@ u32 dpdk_num_mbufs (void)
 }
 
 /*
- * Return the io_thread_release
- */
-int dpdk_io_thread_release (void)
-{
-  dpdk_main_t * dm = &dpdk_main;
-
-  return dm->io_thread_release;
-}
-
-/*
  * Return the pmd type for a given hardware interface
  */
 dpdk_pmd_t dpdk_get_pmd_type (vnet_hw_interface_t *hi)

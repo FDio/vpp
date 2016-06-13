@@ -983,9 +983,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
   while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "main-thread-io"))
-        tm->main_thread_is_io_node = 1;
-      else if (unformat (input, "use-pthreads"))
+      if (unformat (input, "use-pthreads"))
         tm->use_pthreads = 1;
       else if (unformat (input, "thread-prefix %v", &tm->thread_prefix))
           ;

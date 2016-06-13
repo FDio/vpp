@@ -264,9 +264,6 @@ typedef struct {
 
   vlib_worker_thread_t * worker_threads;
 
-  /* thread / cpu / io thread parameters */
-  u32 main_thread_is_io_node;
-
   /* 
    * Launch all threads as pthreads, 
    * not eal_rte_launch (strict affinity) threads 

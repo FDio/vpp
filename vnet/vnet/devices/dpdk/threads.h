@@ -20,7 +20,6 @@
 typedef void (*dpdk_worker_thread_callback_t) (vlib_main_t *vm);
 
 void dpdk_worker_thread (vlib_worker_thread_t * w,
-                         char *io_name,
                          dpdk_worker_thread_callback_t callback);
 
 int dpdk_frame_queue_dequeue (vlib_main_t *vm);
