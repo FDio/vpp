@@ -323,6 +323,7 @@ typedef struct {
 #define _(x) uword x;
     foreach_dpdk_device_config_item
 #undef _
+    clib_bitmap_t * workers;
 } dpdk_device_config_t;
 
 typedef struct {

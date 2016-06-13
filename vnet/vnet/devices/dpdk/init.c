@@ -571,29 +571,44 @@ dpdk_lib_init (dpdk_main_t * dm)
       dpdk_device_and_queue_t * dq;
       int q;
 
-      for (q = 0; q < xd->rx_q_used; q++)
-        {
-          int cpu = dm->input_cpu_first_index + next_cpu;
-          unsigned lcore = vlib_worker_threads[cpu].dpdk_lcore_id;
+      if (devconf->workers)
+	{
+	  int i;
+	  q = 0;
+	  clib_bitmap_foreach (i, devconf->workers, ({
+	    int cpu = dm->input_cpu_first_index + i;
+	    unsigned lcore = vlib_worker_threads[cpu].dpdk_lcore_id;
+	    vec_validate(xd->cpu_socket_id_by_queue, q);
+	    xd->cpu_socket_id_by_queue[q] = rte_lcore_to_socket_id(lcore);
+	    vec_add2(dm->devices_by_cpu[cpu], dq, 1);
+	    dq->device = xd->device_index;
+	    dq->queue_id = q++;
+	  }));
+	}
+      else
+	for (q = 0; q < xd->rx_q_used; q++)
+	  {
+	    int cpu = dm->input_cpu_first_index + next_cpu;
+	    unsigned lcore = vlib_worker_threads[cpu].dpdk_lcore_id;
 
-          /*
-           * numa node for worker thread handling this queue
-           * needed for taking buffers from the right mempool
-           */
-          vec_validate(xd->cpu_socket_id_by_queue, q);
-          xd->cpu_socket_id_by_queue[q] = rte_lcore_to_socket_id(lcore);
+	    /*
+	     * numa node for worker thread handling this queue
+	     * needed for taking buffers from the right mempool
+	     */
+	    vec_validate(xd->cpu_socket_id_by_queue, q);
+	    xd->cpu_socket_id_by_queue[q] = rte_lcore_to_socket_id(lcore);
 
-          /*
-           * construct vector of (device,queue) pairs for each worker thread
-           */
-          vec_add2(dm->devices_by_cpu[cpu], dq, 1);
-          dq->device = xd->device_index;
-          dq->queue_id = q;
+	    /*
+	     * construct vector of (device,queue) pairs for each worker thread
+	     */
+	    vec_add2(dm->devices_by_cpu[cpu], dq, 1);
+	    dq->device = xd->device_index;
+	    dq->queue_id = q;
 
-          next_cpu++;
-          if (next_cpu == dm->input_cpu_count)
-            next_cpu = 0;
-        }
+	    next_cpu++;
+	    if (next_cpu == dm->input_cpu_count)
+	      next_cpu = 0;
+	  }
 
       vec_validate_aligned (xd->tx_vectors, tm->n_vlib_mains,
                             CLIB_CACHE_LINE_BYTES);
@@ -873,6 +888,9 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr, unforma
 	;
       else if (unformat (input, "num-tx-desc %u", &devconf->num_tx_desc))
 	;
+      else if (unformat (input, "workers %U", unformat_bitmap_list,
+			 &devconf->workers))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -880,6 +898,18 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr, unforma
 	  break;
 	}
     }
+
+  if (error)
+    return error;
+
+  if (devconf->workers && devconf->num_rx_queues == 0)
+    devconf->num_rx_queues = clib_bitmap_count_set_bits(devconf->workers);
+  else if (devconf->workers &&
+	   clib_bitmap_count_set_bits(devconf->workers) != devconf->num_rx_queues)
+    error = clib_error_return (0, "%U: number of worker threadds must be "
+			       "equal to number of rx queues",
+			       format_vlib_pci_addr, &pci_addr);
+
   return error;
 }
 
