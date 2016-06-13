@@ -676,9 +676,6 @@ ip6_lookup_inline (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
   next = node->cached_next_index;
 
-  if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace(vm, node, frame, VLIB_TX);
-
   while (n_left_from > 0)
     {
       vlib_get_next_frame (vm, node, next,
@@ -936,6 +933,9 @@ ip6_lookup_inline (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next, n_left_to_next);
     }
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+      ip6_forward_next_trace(vm, node, frame, VLIB_TX);
 
   return frame->n_vectors;
 }
@@ -1260,14 +1260,14 @@ ip6_lookup (vlib_main_t * vm,
   return ip6_lookup_inline (vm, node, frame, /* is_indirect */ 0);
 }
 
-static u8 * format_ip6_forward_next_trace (u8 * s, va_list * args);
+static u8 * format_ip6_lookup_trace (u8 * s, va_list * args);
 
 VLIB_REGISTER_NODE (ip6_lookup_node) = {
   .function = ip6_lookup,
   .name = "ip6-lookup",
   .vector_size = sizeof (u32),
 
-  .format_trace = format_ip6_forward_next_trace,
+  .format_trace = format_ip6_lookup_trace,
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP6_LOOKUP_NEXT_NODES,
@@ -1289,7 +1289,7 @@ VLIB_REGISTER_NODE (ip6_indirect_node) = {
   .name = "ip6-indirect",
   .vector_size = sizeof (u32),
 
-  .format_trace = format_ip6_forward_next_trace,
+  .format_trace = format_ip6_lookup_trace,
 
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP6_LOOKUP_NEXT_NODES,
@@ -1309,39 +1309,53 @@ typedef struct {
 
 static u8 * format_ip6_forward_next_trace (u8 * s, va_list * args)
 {
-  vlib_main_t * vm = va_arg (*args, vlib_main_t *);
-  vlib_node_t * node = va_arg (*args, vlib_node_t *);
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  ip6_forward_next_trace_t * t = va_arg (*args, ip6_forward_next_trace_t *);
+  uword indent = format_get_indent (s);
+
+  s = format(s, "%U%U",
+             format_white_space, indent,
+             format_ip6_header, t->packet_data);
+  return s;
+}
+
+static u8 * format_ip6_lookup_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip6_forward_next_trace_t * t = va_arg (*args, ip6_forward_next_trace_t *);
   vnet_main_t * vnm = vnet_get_main();
   ip6_main_t * im = &ip6_main;
-  ip_adjacency_t * adj;
   uword indent = format_get_indent (s);
 
-  char *fib_or_interface = "fib";
-  if ((node == vlib_get_node(vm, ip6_rewrite_node.index)) ||
-      (node == vlib_get_node(vm, ip6_rewrite_local_node.index))) {
-    fib_or_interface = "tx_sw_if_index";
-  }
+  s = format (s, "fib %d adj-idx %d : %U flow hash: 0x%08x",
+              t->fib_index, t->adj_index, format_ip_adjacency,
+              vnm, &im->lookup_main, t->adj_index, t->flow_hash);
+  s = format(s, "\n%U%U",
+             format_white_space, indent,
+             format_ip6_header, t->packet_data);
+  return s;
+}
 
-  adj = ip_get_adjacency (&im->lookup_main, t->adj_index);
-  s = format (s, "%s %d adj-idx %d : %U flow hash: 0x%08x",
-              fib_or_interface,
-	      t->fib_index, t->adj_index, format_ip_adjacency,
-	      vnm, &im->lookup_main, t->adj_index, t->flow_hash);
-  switch (adj->lookup_next_index)
-    {
-    case IP_LOOKUP_NEXT_REWRITE:
-      s = format (s, "\n%U%U",
-		  format_white_space, indent,
-		  format_ip_adjacency_packet_data,
-		  vnm, &im->lookup_main, t->adj_index,
-		  t->packet_data, sizeof (t->packet_data));
-      break;
 
-    default:
-      break;
-    }
+static u8 * format_ip6_rewrite_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  ip6_forward_next_trace_t * t = va_arg (*args, ip6_forward_next_trace_t *);
+  vnet_main_t * vnm = vnet_get_main();
+  ip6_main_t * im = &ip6_main;
+  uword indent = format_get_indent (s);
 
+  s = format (s, "tx_sw_if_index %d adj-idx %d : %U flow hash: 0x%08x",
+              t->fib_index, t->adj_index, format_ip_adjacency,
+              vnm, &im->lookup_main, t->adj_index, t->flow_hash);
+  s = format (s, "\n%U%U",
+              format_white_space, indent,
+              format_ip_adjacency_packet_data,
+              vnm, &im->lookup_main, t->adj_index,
+              t->packet_data, sizeof (t->packet_data));
   return s;
 }
 
@@ -2459,7 +2473,7 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) = {
   .name = "ip6-rewrite",
   .vector_size = sizeof (u32),
 
-  .format_trace = format_ip6_forward_next_trace,
+  .format_trace = format_ip6_rewrite_trace,
 
   .n_next_nodes = 1,
   .next_nodes = {
@@ -2476,7 +2490,7 @@ VLIB_REGISTER_NODE (ip6_rewrite_local_node) = {
 
   .sibling_of = "ip6-rewrite",
 
-  .format_trace = format_ip6_forward_next_trace,
+  .format_trace = format_ip6_rewrite_trace,
 
   .n_next_nodes = 1,
   .next_nodes = {
