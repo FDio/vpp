@@ -173,10 +173,12 @@ ifeq ("$(wildcard $(STARTUP_CONF))","")
 define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
 	@echo "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
+	@sudo rm -f /dev/shm/vpe-api /dev/shm/db /dev/shm/global_vm
 	@cd $(STARTUP_DIR) && sudo $(1) $(MINIMAL_STARTUP_CONF)
 endef
 else
 define run
+	@sudo rm -f /dev/shm/vpe-api /dev/shm/db /dev/shm/global_vm
 	@cd $(STARTUP_DIR) && sudo $(1) -c $(STARTUP_CONF)
 endef
 endif
