@@ -974,7 +974,18 @@ static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
         }
 
         nh_adj = ip_get_adjacency (lm, ai);
-        vec_add1 (add_adj, nh_adj[0]);
+	if (nh_adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+	    nh_adj->arp.next_hop.ip4.as_u32 == 0) {
+	    /* the next-hop resovles via a glean adj. create and use
+	     * a ARP adj for the next-hop */
+	    a.adj_index = vnet_arp_glean_add(fib_index, &next_hop_address);
+	    a.add_adj = NULL;
+	    a.n_add_adj = 0;
+	    ip4_add_del_route (im, &a);
+
+	    goto done;
+	}
+	vec_add1 (add_adj, nh_adj[0]);
         if (mp->lookup_in_vrf) {
             p = hash_get (im->fib_index_by_table_id, ntohl(mp->lookup_in_vrf));
             if (p)
@@ -1016,6 +1027,7 @@ do_add_del:
 
     vec_free (add_adj);
 
+done:
     dsunlock (sm);
     return 0;
 }
