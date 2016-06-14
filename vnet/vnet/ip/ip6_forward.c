@@ -2277,6 +2277,7 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)
 
 typedef enum {
   IP6_REWRITE_NEXT_DROP,
+  IP6_REWRITE_NEXT_ICMP_ERROR,
 } ip6_rewrite_next_t;
 
 always_inline uword
@@ -2345,6 +2346,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  ip1 = vlib_buffer_get_current (p1);
 
 	  error0 = error1 = IP6_ERROR_NONE;
+          next0 = next1 = IP6_REWRITE_NEXT_DROP;
 
 	  if (! rewrite_for_locally_received_packets)
 	    {
@@ -2360,8 +2362,26 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	      ip0->hop_limit = hop_limit0;
 	      ip1->hop_limit = hop_limit1;
 
-	      error0 = hop_limit0 <= 0 ? IP6_ERROR_TIME_EXPIRED : error0;
-	      error1 = hop_limit1 <= 0 ? IP6_ERROR_TIME_EXPIRED : error1;
+              /*
+               * If the hop count drops below 1 when forwarding, generate
+               * an ICMP response.
+               */
+              if (hop_limit0 <= 0)
+                {
+                  error0 = IP6_ERROR_TIME_EXPIRED;
+                  next0 = IP6_REWRITE_NEXT_ICMP_ERROR;
+                  vnet_buffer (p0)->sw_if_index[VLIB_TX] = (u32)~0;
+                  icmp6_error_set_vnet_buffer(p0, ICMP6_time_exceeded,
+                        ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
+                }
+              if (hop_limit1 <= 0)
+                {
+                  error1 = IP6_ERROR_TIME_EXPIRED;
+                  next1 = IP6_REWRITE_NEXT_ICMP_ERROR;
+                  vnet_buffer (p1)->sw_if_index[VLIB_TX] = (u32)~0;
+                  icmp6_error_set_vnet_buffer(p1, ICMP6_time_exceeded,
+                        ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
+                }
 	    }
 
 	  adj0 = ip_get_adjacency (lm, adj_index0);
@@ -2403,19 +2423,26 @@ ip6_rewrite_inline (vlib_main_t * vm,
 		    ? IP6_ERROR_MTU_EXCEEDED
 		    : error1);
 
-	  p0->current_data -= rw_len0;
-	  p1->current_data -= rw_len1;
+          /* Don't adjust the buffer for hop count issue; icmp-error node
+           * wants to see the IP headerr */
+          if (PREDICT_TRUE(error0 == IP6_ERROR_NONE))
+            {
+              p0->current_data -= rw_len0;
+              p0->current_length += rw_len0;
 
-	  p0->current_length += rw_len0;
-	  p1->current_length += rw_len1;
+              vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+                  adj0[0].rewrite_header.sw_if_index;
+              next0 = adj0[0].rewrite_header.next_index;
+            }
+          if (PREDICT_TRUE(error1 == IP6_ERROR_NONE))
+            {
+              p1->current_data -= rw_len1;
+              p1->current_length += rw_len1;
 
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = adj0[0].rewrite_header.sw_if_index;
-	  vnet_buffer (p1)->sw_if_index[VLIB_TX] = adj1[0].rewrite_header.sw_if_index;
-      
-	  next0 = (error0 == IP6_ERROR_NONE) ? 
-            adj0[0].rewrite_header.next_index : IP6_REWRITE_NEXT_DROP;
-	  next1 = (error1 == IP6_ERROR_NONE) ? 
-            adj1[0].rewrite_header.next_index : IP6_REWRITE_NEXT_DROP;
+	      vnet_buffer (p1)->sw_if_index[VLIB_TX] =
+                  adj1[0].rewrite_header.sw_if_index;
+              next1 = adj1[0].rewrite_header.next_index;
+            }
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_two_headers (adj0[0], adj1[0],
@@ -2449,6 +2476,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 
 	  error0 = IP6_ERROR_NONE;
+          next0 = IP6_REWRITE_NEXT_DROP;
 
 	  /* Check hop limit */
 	  if (! rewrite_for_locally_received_packets)
@@ -2461,7 +2489,18 @@ ip6_rewrite_inline (vlib_main_t * vm,
 
 	      ip0->hop_limit = hop_limit0;
 
-	      error0 = hop_limit0 <= 0 ? IP6_ERROR_TIME_EXPIRED : error0;
+              if (hop_limit0 <= 0)
+                {
+                  /*
+                   * If the hop count drops below 1 when forwarding, generate
+                   * an ICMP response.
+                   */
+                  error0 = IP6_ERROR_TIME_EXPIRED;
+                  next0 = IP6_REWRITE_NEXT_ICMP_ERROR;
+                  vnet_buffer (p0)->sw_if_index[VLIB_TX] = (u32)~0;
+                  icmp6_error_set_vnet_buffer(p0, ICMP6_time_exceeded,
+                        ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
+                }
 	    }
 
           if (rewrite_for_locally_received_packets)
@@ -2488,12 +2527,17 @@ ip6_rewrite_inline (vlib_main_t * vm,
 		    ? IP6_ERROR_MTU_EXCEEDED
 		    : error0);
 
-	  p0->current_data -= rw_len0;
-	  p0->current_length += rw_len0;
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = adj0[0].rewrite_header.sw_if_index;
-      
-	  next0 = (error0 == IP6_ERROR_NONE) ?
-            adj0[0].rewrite_header.next_index : IP6_REWRITE_NEXT_DROP;
+          /* Don't adjust the buffer for hop count issue; icmp-error node
+           * wants to see the IP headerr */
+          if (PREDICT_TRUE(error0 == IP6_ERROR_NONE))
+            {
+	      p0->current_data -= rw_len0;
+	      p0->current_length += rw_len0;
+
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+                  adj0[0].rewrite_header.sw_if_index;
+              next0 = adj0[0].rewrite_header.next_index;
+            }
 
 	  p0->error = error_node->errors[error0];
 
@@ -2542,9 +2586,10 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) = {
 
   .format_trace = format_ip6_rewrite_trace,
 
-  .n_next_nodes = 1,
+  .n_next_nodes = 2,
   .next_nodes = {
     [IP6_REWRITE_NEXT_DROP] = "error-drop",
+    [IP6_REWRITE_NEXT_ICMP_ERROR] = "ip6-icmp-error",
   },
 };
 
