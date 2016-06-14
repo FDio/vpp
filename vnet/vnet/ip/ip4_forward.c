@@ -1284,26 +1284,250 @@ ip4_sw_interface_admin_up_down (vnet_main_t * vnm,
  
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip4_sw_interface_admin_up_down);
 
-static clib_error_t *
-ip4_sw_interface_add_del (vnet_main_t * vnm,
-			  u32 sw_if_index,
-			  u32 is_add)
+/* Built-in ip4 unicast rx feature path definition */
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_inacl, static) = {
+  .node_name = "ip4-inacl", 
+  .runs_before = "ip4-source-check-via-rx",
+  .feature_index = &ip4_main.ip4_rx_feature_check_access,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_check_1, static) = {
+  .node_name = "ip4-source-check-via-rx",
+  .runs_before = {"ip4-source-check-via-any", 0},
+  .feature_index = 
+  &ip4_main.ip4_unicast_rx_feature_check_source_reachable_via_rx,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_check_2, static) = {
+  .node_name = "ip4-source-check-via-any",
+  .runs_before = {"ipsec-input-ip4", 0},
+  .feature_index = 
+  &ip4_main.ip4_unicast_rx_feature_check_source_reachable_via_any,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_ipsec, static) = {
+  .node_name = "ipsec-input-ip4",
+  .runs_before = {"vpath-input-ip4", 0},
+  .feature_index = &ip4_main.ip4_unicast_rx_feature_ipsec,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_vpath, static) = {
+  .node_name = "vpath-input-ip4",
+  .runs_before = {"ip4-lookup", 0},
+  .feature_index = &ip4_main.ip4_unicast_rx_feature_vpath,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_lookup, static) = {
+  .node_name = "ip4-lookup",
+  .runs_before = {0}, /* not before any other features */
+  .feature_index = &ip4_main.ip4_unicast_rx_feature_lookup,
+};
+
+/* Built-in ip4 multicast rx feature path definition */
+VNET_IP4_MULTICAST_FEATURE_INIT (ip4_vpath_mc, static) = {
+  .node_name = "vpath-input-ip4",
+  .runs_before = {"ip4-lookup-multicast", 0},
+  .feature_index = &ip4_main.ip4_multicast_rx_feature_vpath,
+};
+
+VNET_IP4_MULTICAST_FEATURE_INIT (ip4_lookup_mc, static) = {
+  .node_name = "ip4-lookup-multicast",
+  .runs_before = {0}, /* not before any other features */
+  .feature_index = &ip4_main.ip4_multicast_rx_feature_lookup,
+};
+
+static char * ip4_feature_start_nodes[] = 
+  { "ip4-input", "ip4-input-no-checksum"};
+
+static int comma_split (u8 *s, u8 **a, u8 **b)
 {
-  vlib_main_t * vm = vnm->vlib_main;
-  ip4_main_t * im = &ip4_main;
+  *a = s;
+
+  while (*s && *s != ',')
+    s++;
+
+  if (*s == ',')
+    *s = 0;
+  else
+    return 1;
+
+  *b = (u8 *) (s+1);
+  return 0;
+}
+
+clib_error_t *
+ip4_feature_init_cast (vlib_main_t * vm,
+                       ip_lookup_main_t * im,
+                       ip_config_main_t * cm,
+                       vnet_config_main_t * vcm,
+                       vnet_cast_t cast)
+{
+  uword * index_by_name;
+  uword * reg_by_index;
+  u8 ** node_names = 0;
+  u8 * node_name;
+  char ** these_constraints;
+  char * this_constraint_c;
+  u8 ** constraints = 0;
+  u8 * constraint_tuple;
+  u8 * this_constraint;
+  u8 ** orig;
+  uword * p;
+  int i, j, k;
+  u8 * a_name, * b_name;
+  int a_index, b_index;
+  int n_features;
+  u32 * result = 0;
+  vnet_ip_feature_registration_t * this_reg, * first_reg;
+  char ** feature_nodes = 0;
+  hash_pair_t * hp;
+  u8 ** keys_to_delete = 0;
+
+  index_by_name = hash_create_string (0, sizeof (uword));
+  reg_by_index = hash_create (0, sizeof (uword));
+
+  if (cast == VNET_UNICAST)
+    first_reg = im->next_uc_feature;
+  else
+    first_reg = im->next_mc_feature;
+  
+  this_reg = first_reg;
+
+  /* pass 1, collect feature node names, construct a before b pairs */
+  while (this_reg)
+    {
+      node_name = format (0, "%s%c", this_reg->node_name, 0);
+      hash_set (reg_by_index, vec_len(node_names), (uword) this_reg);
+
+      hash_set_mem (index_by_name, node_name, vec_len(node_names));
+
+      vec_add1 (node_names, node_name);
+
+      these_constraints = reg->runs_before;
+
+      while (these_constraints [0])
+        {
+          this_constraint_c = these_constraints[0];
+
+          constraint_tuple = fformat (0, "%s,%s%c", node_name,
+                                      this_constraint_c, 0);
+          vec_add1 (constraints, constraint_tuple);
+          these_constraints++;
+        }
+    }
+
+  n_features = vec_len (node_names);
+  orig = clib_ptclosure_alloc (n_features);
+
+  for (i = 0; i < vec_len (constraints); i++)
+    {
+      this_constraint = constraints[i];
+
+      if (comma_split (this_constraint, &a_name, &b_name))
+        return clib_error_return (0, "comma_split failed!");
+      
+      p = hash_get_mem (index_by_name, a_name);
+      if (p == 0)
+        return clib_error_return (0, "feature node '%s' not found", a_name);
+      a_index = p[0];
+
+      p = hash_get_mem (index_by_name, b_name);
+      if (p == 0)
+        return clib_error_return (0, "feature node '%s' not found", b_name);
+      b_index = p[0];
+
+      /* add a before b to the original set of constraints */
+      orig[a_index][b_index] = 1;
+      vec_free (this_constraint);
+    }
+  
+  /* Compute the positive transitive closure of the original constraints */
+  closure = clib_ptclosure (orig);
+
+  /* Compute a partial order across feature nodes, if one exists. */
+ again:
+  for (i = 0; i < n_features; i++)
+    {
+      for (j = 0; j < n_features; j++)
+        {
+          if (closure[i][j])
+            goto item_constrained;
+        }
+      /* Item i can be output */
+      vec_add1 (result, i);
+      {
+        int k;
+        for (k = 0; k < n_features; k++)
+          closure [k][i] = 0;
+        /* 
+         * Add a "Magic" a before a constraint. 
+         * This means we'll never output it again
+         */
+        closure [i][i] = 1;
+        goto again;
+      }
+    item_constrained:
+      ;
+    }
+
+  /* see if we got a partial order... */
+  if (vec_len (result) != n_features)
+    return clib_error_return (0, "ip4_feature_init_cast (cast=%d), no PO!");
+
+  /* 
+   * We win.
+   * Bind the index variables, and output the feature node name vector
+   * using the partial order we just computed.
+   */
+  for (i = 0; i < n_features: i++)
+    {
+      p = hash_get (reg_by_index, result[i]);
+      ASSERT (p != 0);
+      this_reg = (vnet_ip_feature_registration_t *)p[0];
+      *this_reg->feature_index = i;
+      vec_add1 (feature_nodes, this_reg->node_name);
+    }
+  
+  /* Set up the config infrastructure */
+  vnet_config_init (vm, vcm,
+                    ip4_feature_start_nodes, 
+                    ARRAY_LEN (ip4_feature_start_nodes),
+                    feature_nodes, vec_len(feature_nodes));
+
+  /* Finally, clean up all the shit we allocated */
+  hash_foreach_pair (hp, index_by_name,
+  ({
+    vec_add1 (keys_to_delete, (u8 *)hp->key);
+  }));
+  hash_free (index_by_name);
+  for (i = 0; i < vec_len(keys_to_delete); i++)
+    vec_free (keys[i]);
+  vec_free (keys);
+  hash_free (reg_by_index);
+  vec_free (result);
+  clib_ptclosure_free (orig);
+  clib_ptclosure_free (closure);
+  return 0;
+}
+
+static clib_error_t *
+ip4_feature_init (vlib_main_t * vm, ip4_main_t * im)
+{
   ip_lookup_main_t * lm = &im->lookup_main;
-  u32 ci, cast;
+  clib_error_t * error;
+  vnet_cast_t cast;
 
   for (cast = 0; cast < VNET_N_CAST; cast++)
     {
       ip_config_main_t * cm = &lm->rx_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
-      if (! vcm->node_index_by_feature_index)
-	{
+      if ((error = ip4_feature_init_cast (vm, im, cm, vcm, cast)))
+        return error;
+      
+
 	  if (cast == VNET_UNICAST)
 	    {
-	      static char * start_nodes[] = { "ip4-input", "ip4-input-no-checksum", };
 	      static char * feature_nodes[] = {
 		[IP4_RX_FEATURE_CHECK_ACCESS] = "ip4-inacl",
 		[IP4_RX_FEATURE_SOURCE_CHECK_REACHABLE_VIA_RX] = "ip4-source-check-via-rx",
@@ -1313,9 +1537,6 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 		[IP4_RX_FEATURE_LOOKUP] = "ip4-lookup",
 	      };
 
-	      vnet_config_init (vm, vcm,
-				start_nodes, ARRAY_LEN (start_nodes),
-				feature_nodes, ARRAY_LEN (feature_nodes));
 	    }
 	  else
 	    {
@@ -1330,6 +1551,25 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 				feature_nodes, ARRAY_LEN (feature_nodes));
 	    }
 	}
+
+
+
+
+
+static clib_error_t *
+ip4_sw_interface_add_del (vnet_main_t * vnm,
+			  u32 sw_if_index,
+			  u32 is_add)
+{
+  vlib_main_t * vm = vnm->vlib_main;
+  ip4_main_t * im = &ip4_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
+  u32 ci, cast;
+
+  for (cast = 0; cast < VNET_N_CAST; cast++)
+    {
+      ip_config_main_t * cm = &lm->rx_config_mains[cast];
+      vnet_config_main_t * vcm = &cm->config_main;
 
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
       ci = cm->config_index_by_sw_if_index[sw_if_index];
@@ -1450,6 +1690,8 @@ ip4_lookup_init (vlib_main_t * vm)
 			       /* alloc chunk size */ 8,
 			       "ip4 arp");
   }
+
+  ip4_feature_init (vm, im
 
   return 0;
 }

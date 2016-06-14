@@ -101,6 +101,7 @@ typedef struct {
   uword function_opaque;
 } ip4_add_del_interface_address_callback_t;
 
+#if 0
 typedef enum {
   /* First check access list to either permit or deny this
      packet based on classification. */
@@ -124,6 +125,7 @@ typedef enum {
 
   IP4_N_RX_FEATURE,
 } ip4_rx_feature_type_t;
+#endif
 
 typedef struct ip4_main_t {
   ip_lookup_main_t lookup_main;
@@ -152,6 +154,10 @@ typedef struct ip4_main_t {
   /* Template used to generate IP4 ARP packets. */
   vlib_packet_template_t ip4_arp_request_packet_template;
 
+  /* feature path configuration lists */
+  vnet_feature_registration_t * next_uc_feature;
+  vnet_feature_registration_t * next_mc_feature;
+
   /* Seed for Jenkins hash used to compute ip4 flow hash. */
   u32 flow_hash_seed;
 
@@ -168,6 +174,31 @@ typedef struct ip4_main_t {
 
 /* Global ip4 main structure. */
 extern ip4_main_t ip4_main;
+
+#define VNET_IP4_UNICAST_FEATURE_INIT(x,...)                    \
+  __VA_ARGS__ vnet_ip_feature_registration_t uc_##x;               \
+static void __vnet_add_feature_registration_uc_##x (void)       \
+  __attribute__((__constructor__)) ;                            \
+static void __vnet_add_feature_registration_uc_##x (void)       \
+{                                                               \
+  ip4_main_t * im = &ip4_main;                                  \
+  x.next = im->next_uc_feature;                                 \
+  im->next_uc_feature = &uc_##x;                                \
+}                                                               \
+__VA_ARGS__ vnet_ip_feature_registration_t uc_##x 
+
+#define VNET_IP4_UNICAST_FEATURE_INIT(x,...)                    \
+  __VA_ARGS__ vnet_feature_registration_t mc_##x;               \
+static void __vnet_add_feature_registration_mc_##x (void)       \
+  __attribute__((__constructor__)) ;                            \
+static void __vnet_add_feature_registration_mc_##x (void)       \
+{                                                               \
+  ip4_main_t * im = &ip4_main;                                  \
+  x.next = im->next_mc_feature;                                 \
+  im->next_mc_feature = &mc_##x;                                \
+}                                                               \
+__VA_ARGS__ vnet_ip_feature_registration_t mc_##x 
+
 
 /* Global ip4 input node.  Errors get attached to ip4 input node. */
 extern vlib_node_registration_t ip4_input_node;

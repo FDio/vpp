@@ -216,4 +216,11 @@ void ip_del_all_interface_addresses (vlib_main_t *vm, u32 sw_if_index);
 extern vlib_node_registration_t ip4_inacl_node;
 extern vlib_node_registration_t ip6_inacl_node;
 
+typedef struct _vnet_ip_feature_registration {
+  struct _vnet_ip_feature_registration * next;
+  char * node_name;
+  char * runs_before[];
+  u32 * feature_index;
+} vnet_ip_feature_registration_t;
+
 #endif /* included_ip_main_h */
