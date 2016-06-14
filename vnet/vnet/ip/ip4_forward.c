@@ -1364,7 +1364,7 @@ VLIB_REGISTER_NODE (ip4_lookup_node) = {
 
   .format_trace = format_ip4_lookup_trace,
 
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
+  .n_next_nodes = IP4_LOOKUP_N_NEXT,
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
@@ -1384,11 +1384,10 @@ VLIB_REGISTER_NODE (ip4_indirect_node) = {
   .function = ip4_indirect,
   .name = "ip4-indirect",
   .vector_size = sizeof (u32),
-
+  .sibling_of = "ip4-lookup",
   .format_trace = format_ip4_lookup_trace,
 
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP4_LOOKUP_NEXT_NODES,
+  .n_next_nodes = 0,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_indirect_node, ip4_indirect)
@@ -3088,11 +3087,10 @@ VLIB_REGISTER_NODE (ip4_lookup_multicast_node,static) = {
   .function = ip4_lookup_multicast,
   .name = "ip4-lookup-multicast",
   .vector_size = sizeof (u32),
-
+  .sibling_of = "ip4-lookup",
   .format_trace = format_ip4_lookup_trace,
 
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP4_LOOKUP_NEXT_NODES,
+  .n_next_nodes = 0,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_multicast_node, ip4_lookup_multicast)

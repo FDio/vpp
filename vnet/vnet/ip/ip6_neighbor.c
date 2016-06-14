@@ -751,7 +751,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
               /* Allow all realistic-looking rewrite adjacencies to pass */
               ni0 = adj0->lookup_next_index;
               is_rewrite0 = (ni0 >= IP_LOOKUP_NEXT_ARP) &&
-                (ni0 < IP_LOOKUP_N_NEXT);
+                (ni0 < IP6_LOOKUP_N_NEXT);
 
 	      error0 = ((adj0->rewrite_header.sw_if_index != sw_if_index0
                          || ! is_rewrite0)

@@ -121,9 +121,6 @@ do {						\
   if ((error = vlib_call_init_function (vm, ip6_hop_by_hop_init)))
     return error;
 
-  if ((error = vlib_call_init_function (vm, ip4_hop_by_hop_init)))
-    return error;
-
   if ((error = vlib_call_init_function (vm, udp_local_init)))
     return error;
 
