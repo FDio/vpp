@@ -94,6 +94,9 @@ typedef struct
   /* vector of map-resolver addresses */
   ip_address_t * map_resolvers;
 
+  /* map-request  locator set name*/
+  u8 * map_request_itr_rloc;
+
   /* Lookup vrf by vni */
   uword * table_id_by_vni;
 
@@ -167,6 +170,12 @@ typedef struct
   ip_address_t address;
 } vnet_lisp_add_del_map_resolver_args_t;
 
+typedef struct
+{
+  u8 is_add;
+  u8 * locator_set_name;
+} vnet_lisp_add_del_map_request_args_t;
+
 int
 vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a);
 
@@ -185,6 +194,9 @@ vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
 
 int
 vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add);
+
+int
+vnet_lisp_add_del_map_request (vnet_lisp_add_del_map_request_args_t * a);
 
 int vnet_lisp_clear_all_remote_mappings (void);
 

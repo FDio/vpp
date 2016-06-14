@@ -994,6 +994,7 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
   u32 ls_index;
   u32 ** eid_indexes;
   int ret = 0;
+  u8 tmp_map_request;
 
   if (a->is_add)
     {
@@ -1026,7 +1027,10 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
       else
         {
           pool_get(lcm->locator_set_pool, ls);
+          //TODO: What should I do with map_request when I "reset" locator_set?
+          tmp_map_request = ls->map_request_rloc_use;
           memset(ls, 0, sizeof(*ls));
+          ls->map_request_rloc_use = tmp_map_request;
           ls_index = ls - lcm->locator_set_pool;
 
           if (a->local)
@@ -1065,6 +1069,13 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
       if (!ls)
         {
           clib_warning("locator-set with index %d doesn't exists", p[0]);
+          return -1;
+        }
+
+      if (ls->map_request_rloc_use)
+        {
+          clib_warning ("Can't delete a locator_set that supports"
+                        "a map_request!");
           return -1;
         }
 
@@ -1415,6 +1426,121 @@ VLIB_CLI_COMMAND (lisp_add_del_map_resolver_command) = {
     .function = lisp_add_del_map_resolver_command_fn,
 };
 
+int
+vnet_lisp_add_del_map_request (vnet_lisp_add_del_map_request_args_t * a)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+  locator_set_t * ls;
+  uword * p = 0;
+
+  //TODO: Wait for merge https://gerrit.fd.io/r/#/c/1427/
+//   if (vnet_lisp_enable_disable_status () == 0)
+//     {
+//       clib_warning ("LISP is disabled!");
+//       return VNET_API_ERROR_LISP_DISABLED;
+//     }
+
+  if (a->is_add)
+    {
+      p = hash_get_mem(lcm->locator_set_index_by_name, a->locator_set_name);
+      if (!p)
+        {
+          clib_warning("locator-set %v doesn't exist", a->locator_set_name);
+          return VNET_API_ERROR_INVALID_ARGUMENT;
+        }
+
+      ls = pool_elt_at_index(lcm->locator_set_pool, p[0]);
+      ls->map_request_rloc_use = 1;
+      //TODO: What should I do when the map_request is set, rest map_request or return error?
+      vec_free(lcm->map_request_itr_rloc);
+      lcm->map_request_itr_rloc = vec_dup(a->locator_set_name);
+    }
+  else
+    {
+      p = hash_get_mem(lcm->locator_set_index_by_name,
+                       lcm->map_request_itr_rloc);
+      if (p)
+        {
+          ls = pool_elt_at_index(lcm->locator_set_pool, p[0]);
+          ls->map_request_rloc_use = 0;
+        }
+      else
+        {
+          clib_warning("locator-set %v doesn't exist", lcm->map_request_itr_rloc);
+        }
+      vec_free(lcm->map_request_itr_rloc);
+    }
+
+  return 0;
+}
+
+static clib_error_t *
+lisp_add_del_map_request_command_fn(vlib_main_t * vm, unformat_input_t * input,
+                                    vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, * line_input = &_line_input;
+  u8 is_add = 1;
+  u8 * locator_set_name = 0;
+  clib_error_t * error = 0;
+  int rv = 0;
+  vnet_lisp_add_del_map_request_args_t _a, * a = &_a;
+
+  /* Get a line of input. */
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+        is_add = 0;
+      else if (unformat (line_input, "add itr-rloc %s", &locator_set_name))
+        is_add = 1;
+      else
+        {
+          error = unformat_parse_error(line_input);
+          goto done;
+        }
+    }
+
+  a->is_add = is_add;
+  a->locator_set_name = locator_set_name;
+  rv = vnet_lisp_add_del_map_request (a);
+  if (0 != rv)
+    {
+      error = clib_error_return(0, "failed to %s map-request!",
+                                is_add ? "add" : "delete");
+    }
+
+ done:
+  return error;
+
+}
+
+VLIB_CLI_COMMAND (lisp_add_del_map_request_command) = {
+    .path = "lisp map-request",
+    .short_help = "lisp map-request add/del itr-rloc <ip_address> ",
+    .function = lisp_add_del_map_request_command_fn,
+};
+
+static clib_error_t *
+lisp_show_map_request_command_fn (vlib_main_t * vm,
+                                  unformat_input_t * input,
+                                  vlib_cli_command_t * cmd)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+
+  vlib_cli_output (vm, "%=20s", "itr-rloc");
+  vlib_cli_output (vm, "%=20s", lcm->map_request_itr_rloc);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lisp_show_map_request_command) = {
+    .path = "show lisp map-request",
+    .short_help = "Shows map-request",
+    .function = lisp_show_map_request_command_fn,
+};
+
 /* Statistics (not really errors) */
 #define foreach_lisp_cp_lookup_error           \
 _(DROP, "drop")                                \
@@ -1565,6 +1691,24 @@ get_mr_and_local_iface_ip (lisp_cp_main_t *lcm, ip_address_t * mr_ip,
   return;
 }
 
+always_inline void
+set_ip_prefix_for_itr_rloc (ip_prefix_t * ippref)
+{
+  ASSERT(ippref != 0);
+
+  switch (ip_prefix_version(ippref))
+    {
+    case IP4:
+      ip_prefix_len (ippref) = 32;
+      break;
+    case IP6:
+      ip_prefix_len (ippref) = 128;
+      break;
+    default:
+      ASSERT(0);
+    }
+}
+
 static gid_address_t *
 build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
 {
@@ -1665,10 +1809,26 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   mapping_t * map;
   pending_map_request_t * pmr;
   ip_address_t mr_ip, sloc;
+  u32 locator_set_index;
+  uword * p;
 
-  /* get locator-set for seid */
-  if (!lcm->lisp_pitr)
+  if (vec_len(lcm->map_request_itr_rloc))
     {
+      p = hash_get_mem(lcm->locator_set_index_by_name,
+                       lcm->map_request_itr_rloc);
+      if (!p)
+        {
+          clib_warning("locator-set %v doesn't exist",
+                       lcm->map_request_itr_rloc);
+          return;
+        }
+      locator_set_index = p[0];
+      //TODO: I don`t know what set here
+      map_index = 0;
+    }
+  else if (!lcm->lisp_pitr)
+    {
+      /* get locator-set for seid */
       map_index = gid_dictionary_lookup (&lcm->mapping_index_by_gid, seid);
       if (map_index == ~0)
         {
@@ -1685,14 +1845,16 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
                        format_gid_address, seid);
           return;
         }
+      locator_set_index = map->locator_set_index;
     }
   else
     {
       map_index = lcm->pitr_map_index;
       map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+      locator_set_index = map->locator_set_index;
     }
 
-  loc_set = pool_elt_at_index (lcm->locator_set_pool, map->locator_set_index);
+  loc_set = pool_elt_at_index (lcm->locator_set_pool, locator_set_index);
 
   /* get local iface ip to use in map-request XXX fib 0 for now*/
   get_mr_and_local_iface_ip (lcm, &mr_ip, &sloc);

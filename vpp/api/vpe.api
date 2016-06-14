@@ -2404,6 +2404,29 @@ define lisp_add_del_remote_mapping_reply {
     i32 retval;
 };
 
+/** \brief add or delete map request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param locator_set_name - locator set name
+*/
+define lisp_add_del_map_request {
+    u32 client_index;
+    u32 context;
+    u8 is_add;
+    u8 locator_set_name[64];
+};
+
+/** \brief Reply for lisp_add_del_map_request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+
+define lisp_add_del_map_request_reply {
+    u32 context;
+    i32 retval;
+};
+
 /** \brief LISP locator_set status
     @param locator_set_name - name of the locator_set
     @param sw_if_index - sw_if_index of the locator
@@ -2515,6 +2538,25 @@ manual_java define lisp_enable_disable_status_details {
     @param context - sender context, to match reply w/ request
 */
 define lisp_enable_disable_status_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief LISP map request status
+    @param locator_set_name - name of the locator_set
+    @param is_ipv4 - if non-zero the address is ipv4, else ipv6
+    @param ip_address - array of address bytes
+ */
+manual_java define lisp_map_request_details {
+    u32 context;
+    u8 locator_set_name[64];
+};
+
+/** \brief Request for map request summary status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define lisp_map_request_dump {
     u32 client_index;
     u32 context;
 };

@@ -211,6 +211,7 @@ typedef struct
   /* vector of locator indices */
   u32 * locator_indices;
   u8 local;
+  u8 map_request_rloc_use;
 } locator_set_t;
 
 typedef struct
