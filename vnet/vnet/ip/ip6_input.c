@@ -177,8 +177,8 @@ ip6_input (vlib_main_t * vm,
            * like dhcpv6 packets from client has hop-limit 1, which should not
            * be dropped.
            */
-	  error0 = ip0->hop_limit <= 1 ? IP6_ERROR_TIME_EXPIRED : error0;
-	  error1 = ip1->hop_limit <= 1 ? IP6_ERROR_TIME_EXPIRED : error1;
+	  error0 = ip0->hop_limit < 1 ? IP6_ERROR_TIME_EXPIRED : error0;
+	  error1 = ip1->hop_limit < 1 ? IP6_ERROR_TIME_EXPIRED : error1;
 
 	  /* L2 length must be at least minimal IP header. */
 	  error0 = p0->current_length < sizeof (ip0[0]) ? IP6_ERROR_TOO_SHORT : error0;
@@ -252,7 +252,7 @@ ip6_input (vlib_main_t * vm,
            * like dhcpv6 packets from client has hop-limit 1, which should not
            * be dropped.
            */
-	  error0 = ip0->hop_limit <= 1 ? IP6_ERROR_TIME_EXPIRED : error0;
+	  error0 = ip0->hop_limit < 1 ? IP6_ERROR_TIME_EXPIRED : error0;
 
 	  /* L2 length must be at least minimal IP header. */
 	  error0 = p0->current_length < sizeof (ip0[0]) ? IP6_ERROR_TOO_SHORT : error0;

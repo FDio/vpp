@@ -2509,6 +2509,7 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
 typedef enum {
   IP4_REWRITE_NEXT_DROP,
   IP4_REWRITE_NEXT_ARP,
+  IP4_REWRITE_NEXT_ICMP_ERROR,
 } ip4_rewrite_next_t;
 
 always_inline uword
@@ -2641,14 +2642,33 @@ ip4_rewrite_inline (vlib_main_t * vm,
           /* Worth pipelining. No guarantee that adj0,1 are hot... */
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  rw_len1 = adj1[0].rewrite_header.data_bytes;
-	  next0 = (error0 == IP4_ERROR_NONE) 
-            ? adj0[0].rewrite_header.next_index : 0;
+
+          if (PREDICT_FALSE(error0 == IP4_ERROR_TIME_EXPIRED))
+            {
+              icmp4_error_set_vnet_buffer(p0, ICMP4_time_exceeded,
+                            ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
+              next0 = IP4_REWRITE_NEXT_ICMP_ERROR;
+            }
+          else
+            {
+              next0 = (error0 == IP4_ERROR_NONE)
+                ? adj0[0].rewrite_header.next_index : 0;
+            }
 
           if (rewrite_for_locally_received_packets)
               next0 = next0 && next0_override ? next0_override : next0;
 
-	  next1 = (error1 == IP4_ERROR_NONE)
-            ? adj1[0].rewrite_header.next_index : 0;
+          if (PREDICT_FALSE(error1 == IP4_ERROR_TIME_EXPIRED))
+            {
+              icmp4_error_set_vnet_buffer(p1, ICMP4_time_exceeded,
+                            ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
+              next1 = IP4_REWRITE_NEXT_ICMP_ERROR;
+            }
+          else
+            {
+              next1 = (error1 == IP4_ERROR_NONE)
+                ? adj1[0].rewrite_header.next_index : 0;
+            }
 
           if (rewrite_for_locally_received_packets)
               next1 = next1 && next1_override ? next1_override : next1;
@@ -2794,9 +2814,18 @@ ip4_rewrite_inline (vlib_main_t * vm,
           p0->current_length += rw_len0;
           vnet_buffer (p0)->sw_if_index[VLIB_TX] = 
             adj0[0].rewrite_header.sw_if_index;
-          
-          next0 = (error0 == IP4_ERROR_NONE)
-            ? adj0[0].rewrite_header.next_index : 0;
+
+          if (PREDICT_FALSE(error0 == IP4_ERROR_TIME_EXPIRED))
+            {
+              icmp4_error_set_vnet_buffer(p0, ICMP4_time_exceeded,
+                            ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
+              next0 = IP4_REWRITE_NEXT_ICMP_ERROR;
+            }
+          else
+            {
+              next0 = (error0 == IP4_ERROR_NONE)
+                ? adj0[0].rewrite_header.next_index : 0;
+            }
 
           if (rewrite_for_locally_received_packets)
               next0 = next0 && next0_override ? next0_override : next0;
@@ -2850,6 +2879,7 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
   .next_nodes = {
     [IP4_REWRITE_NEXT_DROP] = "error-drop",
     [IP4_REWRITE_NEXT_ARP] = "ip4-arp",
+    [IP4_REWRITE_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 };
 
