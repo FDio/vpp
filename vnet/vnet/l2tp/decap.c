@@ -198,7 +198,7 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
       ip6_l2tpv3_config_t * c0;
 
       vnet_get_config_data (&cm->config_main,
-                            &vnet_buffer (b)->ip.current_config_index,
+                            &b->current_config_index,
                             &next_index,
                             sizeof (c0[0]));
     }

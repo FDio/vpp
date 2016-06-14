@@ -76,6 +76,15 @@ vnet_main_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, vnet_interface_init)))
     return error;
 
+  if ((error = vlib_call_init_function (vm, ip_main_init)))
+    return error;
+
+  if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
+    return error;
+
+  if ((error = vlib_call_init_function (vm, ip6_lookup_init)))
+    return error;
+
   vnm->vlib_main = vm;
 
   hw_if_index = vnet_register_interface

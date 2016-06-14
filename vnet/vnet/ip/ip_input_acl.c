@@ -232,7 +232,7 @@ ip_inacl_inline (vlib_main_t * vm,
           e0 = 0;
           t0 = 0;
           vnet_get_config_data (am->vnet_config_main[tid],
-                                &vnet_buffer(b0)->ip.current_config_index,
+                                &b0->current_config_index,
                                 &next0,
                                 /* # bytes of config data */ 0);
 

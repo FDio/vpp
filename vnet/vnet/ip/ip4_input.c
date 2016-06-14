@@ -150,18 +150,18 @@ ip4_input_inline (vlib_main_t * vm,
 	  cm0 = lm->rx_config_mains + cast0;
 	  cm1 = lm->rx_config_mains + cast1;
 
-	  vnet_buffer (p0)->ip.current_config_index = vec_elt (cm0->config_index_by_sw_if_index, sw_if_index0);
-	  vnet_buffer (p1)->ip.current_config_index = vec_elt (cm1->config_index_by_sw_if_index, sw_if_index1);
+	  p0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index, sw_if_index0);
+	  p1->current_config_index = vec_elt (cm1->config_index_by_sw_if_index, sw_if_index1);
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = ~0;
 
 	  vnet_get_config_data (&cm0->config_main,
-				&vnet_buffer (p0)->ip.current_config_index,
+				&p0->current_config_index,
 				&next0,
 				/* # bytes of config data */ 0);
 	  vnet_get_config_data (&cm1->config_main,
-				&vnet_buffer (p1)->ip.current_config_index,
+				&p1->current_config_index,
 				&next1,
 				/* # bytes of config data */ 0);
 
@@ -264,10 +264,10 @@ ip4_input_inline (vlib_main_t * vm,
 
 	  cast0 = ip4_address_is_multicast (&ip0->dst_address) ? VNET_MULTICAST : VNET_UNICAST;
 	  cm0 = lm->rx_config_mains + cast0;
-	  vnet_buffer (p0)->ip.current_config_index = vec_elt (cm0->config_index_by_sw_if_index, sw_if_index0);
+	  p0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index, sw_if_index0);
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
 	  vnet_get_config_data (&cm0->config_main,
-				&vnet_buffer (p0)->ip.current_config_index,
+				&p0->current_config_index,
 				&next0,
 				/* # bytes of config data */ 0);
 
