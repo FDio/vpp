@@ -72,13 +72,14 @@
   _ (rx_errors, q_errors)
 
 #define foreach_dpdk_rss_hf                    \
-  _(ETH_RSS_IPV4,               "ipv4")        \
   _(ETH_RSS_FRAG_IPV4,          "ipv4-frag")   \
   _(ETH_RSS_NONFRAG_IPV4_TCP,   "ipv4-tcp")    \
   _(ETH_RSS_NONFRAG_IPV4_UDP,   "ipv4-udp")    \
   _(ETH_RSS_NONFRAG_IPV4_SCTP,  "ipv4-sctp")   \
   _(ETH_RSS_NONFRAG_IPV4_OTHER, "ipv4-other")  \
-  _(ETH_RSS_IPV6,               "ipv6")        \
+  _(ETH_RSS_IPV4,               "ipv4")        \
+  _(ETH_RSS_IPV6_TCP_EX,        "ipv6-tcp-ex") \
+  _(ETH_RSS_IPV6_UDP_EX,        "ipv6-udp-ex") \
   _(ETH_RSS_FRAG_IPV6,          "ipv6-frag")   \
   _(ETH_RSS_NONFRAG_IPV6_TCP,   "ipv6-tcp")    \
   _(ETH_RSS_NONFRAG_IPV6_UDP,   "ipv6-udp")    \
@@ -86,8 +87,8 @@
   _(ETH_RSS_NONFRAG_IPV6_OTHER, "ipv6-other")  \
   _(ETH_RSS_L2_PAYLOAD,         "l2-payload")  \
   _(ETH_RSS_IPV6_EX,            "ipv6-ex")     \
-  _(ETH_RSS_IPV6_TCP_EX,        "ipv6-tcp-ex") \
-  _(ETH_RSS_IPV6_UDP_EX,        "ipv6-udp-ex")
+  _(ETH_RSS_IPV6,               "ipv6")
+
 
 #define foreach_dpdk_rx_offload_caps            \
   _(DEV_RX_OFFLOAD_VLAN_STRIP, "vlan-strip")    \
@@ -832,4 +833,28 @@ unformat_socket_mem (unformat_input_t * input, va_list * va)
 
 done:
   return 1;
+}
+
+clib_error_t *
+unformat_rss_fn (unformat_input_t * input, uword * rss_fn)
+{
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (0)
+        ;
+#undef _
+#define _(f, s)                                 \
+      else if (unformat (input, s))             \
+        *rss_fn |= f;
+
+      foreach_dpdk_rss_hf
+#undef _
+
+      else
+        {
+          return clib_error_return (0, "unknown input `%U'",
+                                     format_unformat_error, input);
+        }
+    }
+  return 0;
 }

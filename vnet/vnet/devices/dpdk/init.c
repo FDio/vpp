@@ -355,7 +355,10 @@ dpdk_lib_init (dpdk_main_t * dm)
         {
           xd->rx_q_used = devconf->num_rx_queues;
           xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
-          xd->port_conf.rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
+          if (devconf->rss_fn == 0)
+            xd->port_conf.rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
+          else
+            xd->port_conf.rx_adv_conf.rss_conf.rss_hf = devconf->rss_fn;
         }
       else
         xd->rx_q_used = 1;
@@ -854,6 +857,7 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr, unforma
   clib_error_t * error = 0;
   uword * p;
   dpdk_device_config_t * devconf;
+  unformat_input_t sub_input;
 
   if (is_default)
     {
@@ -891,6 +895,12 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr, unforma
       else if (unformat (input, "workers %U", unformat_bitmap_list,
 			 &devconf->workers))
 	;
+      else if (unformat (input, "rss %U", unformat_vlib_cli_sub_input, &sub_input))
+        {
+          error = unformat_rss_fn(&sub_input, &devconf->rss_fn);
+          if (error)
+            break;
+        }
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",

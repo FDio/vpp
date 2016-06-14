@@ -315,7 +315,8 @@ typedef struct dpdk_efd_t {
   _ (num_rx_queues) \
   _ (num_tx_queues) \
   _ (num_rx_desc) \
-  _ (num_tx_desc)
+  _ (num_tx_desc) \
+  _ (rss_fn)
 
 typedef struct {
     vlib_pci_addr_t pci_addr;
@@ -617,6 +618,7 @@ format_function_t format_dpdk_rx_dma_trace;
 format_function_t format_dpdk_rte_mbuf;
 format_function_t format_dpdk_rx_rte_mbuf;
 unformat_function_t unformat_socket_mem;
+clib_error_t * unformat_rss_fn(unformat_input_t * input, uword * rss_fn);
 
 
 static inline void
