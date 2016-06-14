@@ -68,11 +68,15 @@ ip_classify_inline (vlib_main_t * vm,
   u32 hits = 0;
   u32 misses = 0;
   u32 chain_hits = 0;
+  u32 n_next;
 
-  if (is_ip4)
+  if (is_ip4) {
     lm = &ip4_main.lookup_main;
-  else
+    n_next = IP4_LOOKUP_N_NEXT;
+  } else {
     lm = &ip6_main.lookup_main;
+    n_next = IP6_LOOKUP_N_NEXT;
+  }
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -253,8 +257,8 @@ ip_classify_inline (vlib_main_t * vm,
                                                 t0->next_table_index);
                       else
                         {
-                          next0 = (t0->miss_next_index < IP_LOOKUP_N_NEXT)?
-                                   t0->miss_next_index:next0;
+                          next0 = (t0->miss_next_index < n_next) ?
+                                   t0->miss_next_index : next0;
                           misses++;
                           break;
                         }
@@ -321,12 +325,12 @@ VLIB_REGISTER_NODE (ip4_classify_node) = {
   .function = ip4_classify,
   .name = "ip4-classify",
   .vector_size = sizeof (u32),
+  .sibling_of = "ip4-lookup",
   .format_trace = format_ip_classify_trace,
   .n_errors = ARRAY_LEN(ip_classify_error_strings),
   .error_strings = ip_classify_error_strings,
 
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP4_LOOKUP_NEXT_NODES,
+  .n_next_nodes = 0,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_classify_node, ip4_classify)
@@ -344,12 +348,12 @@ VLIB_REGISTER_NODE (ip6_classify_node) = {
   .function = ip6_classify,
   .name = "ip6-classify",
   .vector_size = sizeof (u32),
+  .sibling_of = "ip6-lookup",
   .format_trace = format_ip_classify_trace,
   .n_errors = ARRAY_LEN(ip_classify_error_strings),
   .error_strings = ip_classify_error_strings,
 
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP6_LOOKUP_NEXT_NODES,
+  .n_next_nodes = 0,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_classify_node, ip6_classify)

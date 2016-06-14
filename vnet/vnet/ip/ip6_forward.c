@@ -762,9 +762,9 @@ ip6_lookup_inline (vlib_main_t * vm,
 
 	  /* Only process the HBH Option Header if explicitly configured to do so */
           next0 = (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS) && im->hbh_enabled &&
-	    adj_index0 ? IP_LOOKUP_NEXT_HOP_BY_HOP : adj0->lookup_next_index;
+	    adj_index0 ? IP6_LOOKUP_NEXT_HOP_BY_HOP : adj0->lookup_next_index;
           next1 = (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS) && im->hbh_enabled &&
-	    adj_index1 ? IP_LOOKUP_NEXT_HOP_BY_HOP : adj1->lookup_next_index;
+	    adj_index1 ? IP6_LOOKUP_NEXT_HOP_BY_HOP : adj1->lookup_next_index;
 
           vnet_buffer (p0)->ip.flow_hash = 
             vnet_buffer(p1)->ip.flow_hash = 0;
@@ -893,7 +893,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 
 	  /* Only process the HBH Option Header if explicitly configured to do so */
           next0 = (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS) && im->hbh_enabled &&
-	    adj_index0 ? IP_LOOKUP_NEXT_HOP_BY_HOP : adj0->lookup_next_index;
+	    adj_index0 ? IP6_LOOKUP_NEXT_HOP_BY_HOP : adj0->lookup_next_index;
 
           vnet_buffer (p0)->ip.flow_hash = 0;
 
@@ -1271,7 +1271,7 @@ VLIB_REGISTER_NODE (ip6_lookup_node) = {
 
   .format_trace = format_ip6_lookup_trace,
 
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
+  .n_next_nodes = IP6_LOOKUP_N_NEXT,
   .next_nodes = IP6_LOOKUP_NEXT_NODES,
 };
 
@@ -1290,11 +1290,9 @@ VLIB_REGISTER_NODE (ip6_indirect_node) = {
   .function = ip6_indirect,
   .name = "ip6-indirect",
   .vector_size = sizeof (u32),
-
+  .sibling_of = "ip6-lookup",
   .format_trace = format_ip6_lookup_trace,
-
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP6_LOOKUP_NEXT_NODES,
+  .n_next_nodes = 0,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_indirect_node, ip6_indirect)
@@ -2685,7 +2683,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
     out0:
       /* Has the classifier flagged this buffer for special treatment? */
       if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
-	next0 = IP_LOOKUP_NEXT_POP_HOP_BY_HOP;
+	next0 = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
 
       if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) {
 	ip6_hop_by_hop_trace_t *t = vlib_add_trace(vm, node, b0, sizeof (*t));

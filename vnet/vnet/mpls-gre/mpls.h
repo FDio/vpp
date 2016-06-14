@@ -95,8 +95,9 @@ typedef struct {
   mpls_decap_t * decaps;
   uword * mpls_decap_by_rx_fib_and_label;
 
-  /* mpls-o-e policy tunnel next index for ip4-classify */
-  u32 ip_classify_mpls_policy_encap_next_index;
+  /* mpls-o-e policy tunnel next index for ip4/ip6-classify */
+  u32 ip4_classify_mpls_policy_encap_next_index;
+  u32 ip6_classify_mpls_policy_encap_next_index;
 
   /* convenience */
   vlib_main_t * vlib_main;

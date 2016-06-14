@@ -798,13 +798,12 @@ VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_pop_hop_by_hop_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  
+  .sibling_of = "ip6-lookup",
   .n_errors = ARRAY_LEN(ip6_pop_hop_by_hop_error_strings),
   .error_strings = ip6_pop_hop_by_hop_error_strings,
 
   /* See ip/lookup.h */
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP6_LOOKUP_NEXT_NODES,
+  .n_next_nodes = 0,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_pop_hop_by_hop_node,
@@ -1148,10 +1147,10 @@ int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width, u32 vrf_id,
     adj->saved_lookup_next_index = adj->lookup_next_index;
 
   if (is_add)
-    adj->lookup_next_index = IP_LOOKUP_NEXT_ADD_HOP_BY_HOP;
+    adj->lookup_next_index = IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP;
 
   if (is_pop)
-    adj->lookup_next_index = IP_LOOKUP_NEXT_POP_HOP_BY_HOP;
+    adj->lookup_next_index = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
 
   hm->adj = *addr;
   hm->ioam_flag = (is_add ? IOAM_HBYH_ADD :
