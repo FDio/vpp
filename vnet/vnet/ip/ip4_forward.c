@@ -2641,6 +2641,15 @@ ip4_rewrite_inline (vlib_main_t * vm,
           /* Worth pipelining. No guarantee that adj0,1 are hot... */
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  rw_len1 = adj1[0].rewrite_header.data_bytes;
+
+          /* Check MTU of outgoing interface. */
+          error0 = (vlib_buffer_length_in_chain (vm, p0) > adj0[0].rewrite_header.max_l3_packet_bytes
+                    ? IP4_ERROR_MTU_EXCEEDED
+                    : error0);
+          error1 = (vlib_buffer_length_in_chain (vm, p1) > adj1[0].rewrite_header.max_l3_packet_bytes
+                    ? IP4_ERROR_MTU_EXCEEDED
+                    : error1);
+
 	  next0 = (error0 == IP4_ERROR_NONE) 
             ? adj0[0].rewrite_header.next_index : 0;
 
@@ -2669,14 +2678,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
                    cpu_index, adj_index1, 
                    /* packet increment */ 0,
                    /* byte increment */ rw_len1-sizeof(ethernet_header_t));
-
-	  /* Check MTU of outgoing interface. */
-	  error0 = (vlib_buffer_length_in_chain (vm, p0) > adj0[0].rewrite_header.max_l3_packet_bytes
-		    ? IP4_ERROR_MTU_EXCEEDED
-		    : error0);
-	  error1 = (vlib_buffer_length_in_chain (vm, p1) > adj1[0].rewrite_header.max_l3_packet_bytes
-		    ? IP4_ERROR_MTU_EXCEEDED
-		    : error1);
 
 	  p0->current_data -= rw_len0;
 	  p1->current_data -= rw_len1;
