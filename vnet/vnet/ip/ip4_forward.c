@@ -2515,6 +2515,7 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
 typedef enum {
   IP4_REWRITE_NEXT_DROP,
   IP4_REWRITE_NEXT_ARP,
+  IP4_REWRITE_NEXT_ICMP_ERROR,
 } ip4_rewrite_next_t;
 
 always_inline uword
@@ -2584,6 +2585,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  ip1 = vlib_buffer_get_current (p1);
 
 	  error0 = error1 = IP4_ERROR_NONE;
+          next0 = next1 = IP4_REWRITE_NEXT_DROP;
 
 	  /* Decrement TTL & update checksum.
 	     Works either endian, so no need for byte swap. */
@@ -2610,8 +2612,26 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      ip0->ttl = ttl0;
 	      ip1->ttl = ttl1;
 
-	      error0 = ttl0 <= 0 ? IP4_ERROR_TIME_EXPIRED : error0;
-	      error1 = ttl1 <= 0 ? IP4_ERROR_TIME_EXPIRED : error1;
+              /*
+               * If the ttl drops below 1 when forwarding, generate
+               * an ICMP response.
+               */
+              if (ttl0 <= 0)
+                {
+                  error0 = IP4_ERROR_TIME_EXPIRED;
+                  vnet_buffer (p0)->sw_if_index[VLIB_TX] = (u32)~0;
+                  icmp4_error_set_vnet_buffer(p0, ICMP4_time_exceeded,
+                              ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
+                  next0 = IP4_REWRITE_NEXT_ICMP_ERROR;
+                }
+              if (ttl1 <= 0)
+                {
+                  error1 = IP4_ERROR_TIME_EXPIRED;
+                  vnet_buffer (p1)->sw_if_index[VLIB_TX] = (u32)~0;
+                  icmp4_error_set_vnet_buffer(p1, ICMP4_time_exceeded,
+                              ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
+                  next1 = IP4_REWRITE_NEXT_ICMP_ERROR;
+                }
 
 	      /* Verify checksum. */
 	      ASSERT (ip0->checksum == ip4_header_checksum (ip0));
@@ -2656,14 +2676,14 @@ ip4_rewrite_inline (vlib_main_t * vm,
                     ? IP4_ERROR_MTU_EXCEEDED
                     : error1);
 
-	  next0 = (error0 == IP4_ERROR_NONE) 
-            ? adj0[0].rewrite_header.next_index : 0;
+          next0 = (error0 == IP4_ERROR_NONE)
+            ? adj0[0].rewrite_header.next_index : next0;
 
           if (rewrite_for_locally_received_packets)
               next0 = next0 && next0_override ? next0_override : next0;
 
-	  next1 = (error1 == IP4_ERROR_NONE)
-            ? adj1[0].rewrite_header.next_index : 0;
+          next1 = (error1 == IP4_ERROR_NONE)
+            ? adj1[0].rewrite_header.next_index : next1;
 
           if (rewrite_for_locally_received_packets)
               next1 = next1 && next1_override ? next1_override : next1;
@@ -2685,17 +2705,24 @@ ip4_rewrite_inline (vlib_main_t * vm,
                    /* packet increment */ 0,
                    /* byte increment */ rw_len1-sizeof(ethernet_header_t));
 
-	  p0->current_data -= rw_len0;
-	  p1->current_data -= rw_len1;
-
-	  p0->current_length += rw_len0;
-	  p1->current_length += rw_len1;
-
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = adj0[0].rewrite_header.sw_if_index;
-	  vnet_buffer (p1)->sw_if_index[VLIB_TX] = adj1[0].rewrite_header.sw_if_index;
-      
-	  p0->error = error_node->errors[error0];
-	  p1->error = error_node->errors[error1];
+          /* Don't adjust the buffer for ttl issue; icmp-error node wants
+           * to see the IP headerr */
+          if (error0 != IP4_ERROR_TIME_EXPIRED)
+            {
+              p0->current_data -= rw_len0;
+              p0->current_length += rw_len0;
+              p0->error = error_node->errors[error0];
+              vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+                  adj0[0].rewrite_header.sw_if_index;
+            }
+          if (error1 != IP4_ERROR_TIME_EXPIRED)
+            {
+              p1->current_data -= rw_len1;
+              p1->current_length += rw_len1;
+              p1->error = error_node->errors[error1];
+              vnet_buffer (p1)->sw_if_index[VLIB_TX] =
+                  adj1[0].rewrite_header.sw_if_index;
+            }
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_two_headers (adj0[0], adj1[0],
@@ -2732,7 +2759,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 
 	  error0 = IP4_ERROR_NONE;
-          next0 = 0;            /* drop on error */
+          next0 = IP4_REWRITE_NEXT_DROP;            /* drop on error */
 
 	  /* Decrement TTL & update checksum. */
 	  if (! rewrite_for_locally_received_packets)
@@ -2753,7 +2780,18 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
 	      ASSERT (ip0->checksum == ip4_header_checksum (ip0));
 
-	      error0 = ttl0 <= 0 ? IP4_ERROR_TIME_EXPIRED : error0;
+              if (ttl0 <= 0)
+                {
+                  /*
+                   * If the ttl drops below 1 when forwarding, generate
+                   * an ICMP response.
+                   */
+                  error0 = IP4_ERROR_TIME_EXPIRED;
+                  next0 = IP4_REWRITE_NEXT_ICMP_ERROR;
+                  vnet_buffer (p0)->sw_if_index[VLIB_TX] = (u32)~0;
+                  icmp4_error_set_vnet_buffer(p0, ICMP4_time_exceeded,
+                              ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
+                }
 	    }
 
           if (rewrite_for_locally_received_packets)
@@ -2795,15 +2833,20 @@ ip4_rewrite_inline (vlib_main_t * vm,
                     > adj0[0].rewrite_header.max_l3_packet_bytes
                     ? IP4_ERROR_MTU_EXCEEDED
                     : error0);
-          
+
 	  p0->error = error_node->errors[error0];
-          p0->current_data -= rw_len0;
-          p0->current_length += rw_len0;
-          vnet_buffer (p0)->sw_if_index[VLIB_TX] = 
-            adj0[0].rewrite_header.sw_if_index;
-          
-          next0 = (error0 == IP4_ERROR_NONE)
-            ? adj0[0].rewrite_header.next_index : 0;
+
+          /* Don't adjust the buffer for ttl issue; icmp-error node wants
+           * to see the IP headerr */
+          if (error0 != IP4_ERROR_TIME_EXPIRED)
+            {
+              p0->current_data -= rw_len0;
+              p0->current_length += rw_len0;
+
+              vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+                  adj0[0].rewrite_header.sw_if_index;
+              next0 = adj0[0].rewrite_header.next_index;
+            }
 
           if (rewrite_for_locally_received_packets)
               next0 = next0 && next0_override ? next0_override : next0;
@@ -2853,10 +2896,11 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
 
   .format_trace = format_ip4_rewrite_trace,
 
-  .n_next_nodes = 2,
+  .n_next_nodes = 3,
   .next_nodes = {
     [IP4_REWRITE_NEXT_DROP] = "error-drop",
     [IP4_REWRITE_NEXT_ARP] = "ip4-arp",
+    [IP4_REWRITE_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 };
 
