@@ -378,6 +378,8 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
             else
             {
 	      ip_adjacency_t add_adj;
+	      memset (&add_adj, 0, sizeof(add_adj));
+	      add_adj.n_adj = 1;
 	      add_adj.lookup_next_index = IP_LOOKUP_NEXT_INDIRECT;
 	      add_adj.indirect.next_hop.ip6.as_u64[0] = next_hop->as_u64[0];
 	      add_adj.indirect.next_hop.ip6.as_u64[1] = next_hop->as_u64[1];

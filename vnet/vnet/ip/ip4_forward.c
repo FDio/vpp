@@ -344,6 +344,8 @@ ip4_add_del_route_next_hop (ip4_main_t * im,
 		{
 		  /* Next hop is not known, so create indirect adj */
 		  ip_adjacency_t add_adj;
+		  memset (&add_adj, 0, sizeof(add_adj));
+		  add_adj.n_adj = 1;
 		  add_adj.lookup_next_index = IP_LOOKUP_NEXT_INDIRECT;
 		  add_adj.indirect.next_hop.ip4.as_u32 = next_hop->as_u32;
 		  add_adj.explicit_fib_index = explicit_fib_index;
