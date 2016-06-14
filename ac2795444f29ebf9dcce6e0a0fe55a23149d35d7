@@ -22,6 +22,30 @@
       "revId": "ac2795444f29ebf9dcce6e0a0fe55a23149d35d7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_b08d1e34",
+        "filename": "vlib/vlib/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 476,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-06-14T16:46:13Z",
+      "side": 1,
+      "message": "Don\u0027t get me started on the GNU style braces. ;-)\nIn general try to follow the style in whatever file you edit. Not sure if I succeeded 100% here or not.",
+      "parentUuid": "ba092121_b0bf5ed0",
+      "range": {
+        "startLine": 476,
+        "startChar": 0,
+        "endLine": 476,
+        "endChar": 1
+      },
+      "revId": "ac2795444f29ebf9dcce6e0a0fe55a23149d35d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
