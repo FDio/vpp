@@ -69,7 +69,7 @@ typedef struct {
   uword * tunnel_by_key;
 
   /* Free vlib hw_if_indices */
-  u32 * free_vxlan_tunnel_hw_if_indices;
+  u32 * free_gre_tunnel_hw_if_indices;
 
   /* Mapping from sw_if_index to tunnel index */
   u32 * tunnel_index_by_sw_if_index;

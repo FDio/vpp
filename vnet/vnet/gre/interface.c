@@ -65,12 +65,12 @@ int vnet_gre_add_del_tunnel
     pool_get_aligned (gm->tunnels, t, CLIB_CACHE_LINE_BYTES);
     memset (t, 0, sizeof (*t));
 
-    if (vec_len (gm->free_vxlan_tunnel_hw_if_indices) > 0) {
+    if (vec_len (gm->free_gre_tunnel_hw_if_indices) > 0) {
         vnet_interface_main_t * im = &vnm->interface_main;
 
-        hw_if_index = gm->free_vxlan_tunnel_hw_if_indices
-          [vec_len (gm->free_vxlan_tunnel_hw_if_indices)-1];
-          _vec_len (gm->free_vxlan_tunnel_hw_if_indices) -= 1;
+        hw_if_index = gm->free_gre_tunnel_hw_if_indices
+          [vec_len (gm->free_gre_tunnel_hw_if_indices)-1];
+          _vec_len (gm->free_gre_tunnel_hw_if_indices) -= 1;
 
         hi = vnet_get_hw_interface (vnm, hw_if_index);
         hi->dev_instance = t - gm->tunnels;
@@ -133,7 +133,7 @@ int vnet_gre_add_del_tunnel
     vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */);
     /* make sure tunnel is removed from l2 bd or xconnect */
     set_int_l2_mode(gm->vlib_main, vnm, MODE_L3, sw_if_index, 0, 0, 0, 0);
-    vec_add1 (gm->free_vxlan_tunnel_hw_if_indices, t->hw_if_index);
+    vec_add1 (gm->free_gre_tunnel_hw_if_indices, t->hw_if_index);
     gm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
 
     hash_unset (gm->tunnel_by_key, key);
