@@ -28,7 +28,7 @@
   _ (DST_LOOKUP_MISS, "icmp6 dst address lookup misses")                \
   _ (DEST_UNREACH_SENT, "destination unreachable response sent")	\
   _ (TTL_EXPIRE_SENT, "hop limit exceeded response sent")		\
-  _ (PARAM_PROBLEM_SENT, "parameter Pproblem response sent")		\
+  _ (PARAM_PROBLEM_SENT, "parameter problem response sent")		\
   _ (DROP, "error message dropped")
 
 typedef enum {
