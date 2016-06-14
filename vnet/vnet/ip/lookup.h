@@ -45,7 +45,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 
-/* Next index stored in adjacency. */
+/* Common (IP4/IP6) next index stored in adjacency. */
 typedef enum {
   /* Packet does not match any route in table. */
   IP_LOOKUP_NEXT_MISS,
@@ -82,15 +82,22 @@ typedef enum {
   /* This packets needs to go to indirect next hop */
   IP_LOOKUP_NEXT_INDIRECT,
 
-  /* Hop-by-hop header handling */
-  IP_LOOKUP_NEXT_HOP_BY_HOP,
-  IP_LOOKUP_NEXT_ADD_HOP_BY_HOP,
-  IP_LOOKUP_NEXT_POP_HOP_BY_HOP,
-
   IP_LOOKUP_NEXT_ICMP_ERROR,
 
   IP_LOOKUP_N_NEXT,
 } ip_lookup_next_t;
+
+typedef enum {
+  IP4_LOOKUP_N_NEXT = IP_LOOKUP_N_NEXT,
+} ip4_lookup_next_t;
+
+typedef enum {
+  /* Hop-by-hop header handling */
+  IP6_LOOKUP_NEXT_HOP_BY_HOP = IP_LOOKUP_N_NEXT,
+  IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP,
+  IP6_LOOKUP_NEXT_POP_HOP_BY_HOP,
+  IP6_LOOKUP_N_NEXT,
+} ip6_lookup_next_t;
 
 #define IP4_LOOKUP_NEXT_NODES {					\
     [IP_LOOKUP_NEXT_MISS] = "ip4-miss",				\
@@ -103,9 +110,6 @@ typedef enum {
     [IP_LOOKUP_NEXT_MAP] = "ip4-map",				\
     [IP_LOOKUP_NEXT_MAP_T] = "ip4-map-t",			\
     [IP_LOOKUP_NEXT_SIXRD] = "ip4-sixrd",			\
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip4-hop-by-hop",		\
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip4-add-hop-by-hop",	\
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip4-pop-hop-by-hop",	\
     [IP_LOOKUP_NEXT_INDIRECT] = "ip4-indirect",			\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip4-icmp-error",		\
 }
@@ -121,11 +125,11 @@ typedef enum {
     [IP_LOOKUP_NEXT_MAP] = "ip6-map",				\
     [IP_LOOKUP_NEXT_MAP_T] = "ip6-map-t",			\
     [IP_LOOKUP_NEXT_SIXRD] = "ip6-sixrd",			\
-    [IP_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",		\
-    [IP_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop",	\
-    [IP_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop",	\
     [IP_LOOKUP_NEXT_INDIRECT] = "ip6-indirect",			\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip6-icmp-error",		\
+    [IP6_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",		\
+    [IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop",	\
+    [IP6_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop",	\
 }
 
 /* Flow hash configuration */

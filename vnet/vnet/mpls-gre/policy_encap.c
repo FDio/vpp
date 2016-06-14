@@ -160,29 +160,19 @@ mpls_policy_encap_init (vlib_main_t * vm)
 {
   mpls_main_t * mm = &mpls_main;
   clib_error_t * error;
-  u32 ip6_next_index;
 
   if ((error = vlib_call_init_function (vm, mpls_init)))
     return error;
   
-  mm->ip_classify_mpls_policy_encap_next_index = 
+  mm->ip4_classify_mpls_policy_encap_next_index =
     vlib_node_add_next (mm->vlib_main,
                         ip4_classify_node.index, 
                         mpls_policy_encap_node.index);
 
-  /* 
-   * Must add the same arc to ip6_classify so the
-   * next-index vectors are congruent
-   */
-  ip6_next_index = 
+  mm->ip6_classify_mpls_policy_encap_next_index =
     vlib_node_add_next (mm->vlib_main,
                         ip6_classify_node.index, 
                         mpls_policy_encap_node.index);
-
-  if (ip6_next_index != mm->ip_classify_mpls_policy_encap_next_index)
-    return clib_error_return 
-      (0, "ip4/ip6 classifier next vector botch: %d vs %d", 
-       ip6_next_index, mm->ip_classify_mpls_policy_encap_next_index);
 
   return 0;
 }
