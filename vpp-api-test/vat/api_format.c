@@ -2194,6 +2194,45 @@ vl_api_lisp_enable_disable_status_details_t_handler_json
     vec_free (feature_status);
 }
 
+static void
+vl_api_lisp_get_map_request_itr_rlocs_reply_t_handler (
+    vl_api_lisp_get_map_request_itr_rlocs_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    i32 retval = ntohl(mp->retval);
+
+    if (retval >= 0) {
+      fformat(vam->ofp, "%=20s\n",
+              mp->locator_set_name);
+    }
+
+    vam->retval = retval;
+    vam->result_ready = 1;
+}
+
+static void
+vl_api_lisp_get_map_request_itr_rlocs_reply_t_handler_json (
+    vl_api_lisp_get_map_request_itr_rlocs_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t * node = NULL;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_string_copy(node, "itr-rlocs", mp->locator_set_name);
+
+    vat_json_print(vam->ofp, node);
+    vat_json_free(node);
+
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
 static u8 * format_policer_type (u8 * s, va_list * va)
 {
     u32 i = va_arg (*va, u32);
@@ -2409,6 +2448,7 @@ _(lisp_gpe_enable_disable_reply)                        \
 _(lisp_gpe_add_del_iface_reply)                         \
 _(lisp_enable_disable_reply)                            \
 _(lisp_pitr_set_locator_set_reply)                      \
+_(lisp_add_del_map_request_itr_rlocs_reply)             \
 _(vxlan_gpe_add_del_tunnel_reply)			\
 _(af_packet_delete_reply)                               \
 _(policer_add_del_reply)                                \
@@ -2594,6 +2634,10 @@ _(LISP_GPE_TUNNEL_DETAILS, lisp_gpe_tunnel_details)                     \
 _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
 _(LISP_ENABLE_DISABLE_STATUS_DETAILS,                                   \
   lisp_enable_disable_status_details)                                   \
+_(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY,                             \
+  lisp_add_del_map_request_itr_rlocs_reply)                             \
+_(LISP_GET_MAP_REQUEST_ITR_RLOCS_REPLY,                                 \
+  lisp_get_map_request_itr_rlocs_reply)                                 \
 _(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
 _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
 _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
@@ -10424,6 +10468,65 @@ api_lisp_gpe_add_del_iface(vat_main_t * vam)
     return 0;
 }
 
+/**
+ * Add/del map request itr rlocs from LISP control plane and updates
+ *
+ * @param vam vpp API test context
+ * @return return code
+ */
+static int
+api_lisp_add_del_map_request_itr_rlocs(vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_lisp_add_del_map_request_itr_rlocs_t *mp;
+    f64 timeout = ~0;
+    u8 *locator_set_name = 0;
+    u8  locator_set_name_set = 0;
+    u8 is_add = 1;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "del")) {
+            is_add = 0;
+        } else if (unformat(input, "%_%v%_", &locator_set_name)) {
+            locator_set_name_set = 1;
+        } else {
+            clib_warning ("parse error '%U'", format_unformat_error, input);
+            return -99;
+        }
+    }
+
+    if (is_add && !locator_set_name_set) {
+        errmsg ("itr-rloc is not set!");
+        return -99;
+    }
+
+    if (is_add && vec_len(locator_set_name) > 64) {
+        errmsg ("itr-rloc locator-set name too long\n");
+        vec_free(locator_set_name);
+        return -99;
+    }
+
+    M(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS, lisp_add_del_map_request_itr_rlocs);
+    mp->is_add = is_add;
+    if (is_add) {
+      clib_memcpy (mp->locator_set_name , locator_set_name,
+                   vec_len(locator_set_name));
+    } else {
+      memset(mp->locator_set_name, 0, sizeof(mp->locator_set_name));
+    }
+    vec_free (locator_set_name);
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
 static int
 api_lisp_locator_set_dump(vat_main_t *vam)
 {
@@ -10561,6 +10664,27 @@ api_lisp_enable_disable_status_dump(vat_main_t *vam)
         M(CONTROL_PING, control_ping);
         S;
     }
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_lisp_get_map_request_itr_rlocs(vat_main_t *vam)
+{
+    vl_api_lisp_get_map_request_itr_rlocs_t *mp;
+    f64 timeout = ~0;
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%=20s\n",
+                "itr-rlocs:");
+    }
+
+    M(LISP_GET_MAP_REQUEST_ITR_RLOCS, lisp_get_map_request_itr_rlocs);
+    /* send it... */
+    S;
     /* Wait for a reply... */
     W;
 
@@ -11322,11 +11446,13 @@ _(lisp_add_del_remote_mapping, "add|del vni <vni> table-id <id> "       \
                                " <src-eid> rloc <locator> "             \
                                "[rloc <loc> ... ]")                     \
 _(lisp_pitr_set_locator_set, "locator-set <loc-set-name> | del")        \
+_(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
 _(lisp_locator_set_dump, "")                                            \
 _(lisp_local_eid_table_dump, "")                                        \
 _(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \
 _(lisp_enable_disable_status_dump, "")                                  \
+_(lisp_get_map_request_itr_rlocs, "")                                   \
 _(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
 _(af_packet_delete, "name <host interface name>")                       \
 _(policer_add_del, "name <policer name> <params> [del]")                \
