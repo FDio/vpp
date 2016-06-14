@@ -340,6 +340,9 @@ _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_ENABLE_DISABLE_STATUS_DUMP,                                      \
   lisp_enable_disable_status_dump)                                      \
+_(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
+  lisp_add_del_map_request_itr_rlocs)                                   \
+_(LISP_GET_MAP_REQUEST_ITR_RLOCS, lisp_get_map_request_itr_rlocs)       \
 _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
 _(AF_PACKET_CREATE, af_packet_create)                                   \
 _(AF_PACKET_DELETE, af_packet_delete)                                   \
@@ -4934,6 +4937,27 @@ vl_api_lisp_pitr_set_locator_set_t_handler(
     REPLY_MACRO(VL_API_LISP_PITR_SET_LOCATOR_SET_REPLY);
 }
 
+static void
+vl_api_lisp_add_del_map_request_itr_rlocs_t_handler
+(vl_api_lisp_add_del_map_request_itr_rlocs_t *mp)
+{
+    vl_api_lisp_add_del_map_request_itr_rlocs_reply_t *rmp;
+    int rv = 0;
+    u8 * locator_set_name = NULL;
+    vnet_lisp_add_del_mreq_itr_rloc_args_t _a, * a = &_a;
+
+    locator_set_name = format (0, "%s", mp->locator_set_name);
+
+    a->is_add = mp->is_add;
+    a->locator_set_name = locator_set_name;
+
+    rv = vnet_lisp_add_del_mreq_itr_rlocs(a);
+
+    vec_free(locator_set_name);
+
+    REPLY_MACRO(VL_API_LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY);
+}
+
 /** Used for transferring locators via VPP API */
 typedef CLIB_PACKED(struct
 {
@@ -5240,7 +5264,7 @@ send_lisp_map_resolver_details (ip_address_t *ip,
 
 static void
 vl_api_lisp_map_resolver_dump_t_handler (
-    vl_api_lisp_local_eid_table_dump_t *mp)
+    vl_api_lisp_map_resolver_dump_t *mp)
 {
     unix_shared_memory_queue_t * q = NULL;
     lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
@@ -5286,6 +5310,38 @@ vl_api_lisp_enable_disable_status_dump_t_handler
     }
 
     send_lisp_enable_disable_details(q, mp->context);
+}
+
+static void
+vl_api_lisp_get_map_request_itr_rlocs_t_handler (
+    vl_api_lisp_get_map_request_itr_rlocs_t *mp)
+{
+    unix_shared_memory_queue_t * q = NULL;
+    vl_api_lisp_get_map_request_itr_rlocs_reply_t *rmp = NULL;
+    lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+    locator_set_t * loc_set = 0;
+    u8 * tmp_str = 0;
+    int rv = 0;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+
+    if (~0 == lcm->mreq_itr_rlocs) {
+      tmp_str = format(0, " ");
+    } else {
+      loc_set = pool_elt_at_index (lcm->locator_set_pool, lcm->mreq_itr_rlocs);
+      tmp_str = format(0, "%s", loc_set->name);
+    }
+
+    REPLY_MACRO2(VL_API_LISP_GET_MAP_REQUEST_ITR_RLOCS_REPLY,
+    ({
+      strncpy((char *) rmp->locator_set_name, (char *) tmp_str,
+              ARRAY_LEN(rmp->locator_set_name) - 1);
+    }));
+
+    vec_free(tmp_str);
 }
 
 static void

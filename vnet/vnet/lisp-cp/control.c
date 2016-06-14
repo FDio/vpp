@@ -1075,6 +1075,13 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
           return -1;
         }
 
+      if (lcm->mreq_itr_rlocs == p[0])
+        {
+          clib_warning ("Can't delete the locator-set used to constrain "
+                        "the itr-rlocs in map-requests!");
+          return -1;
+        }
+
       if (vec_len(lcm->locator_set_to_eids) != 0)
       {
           eid_indexes = vec_elt_at_index(lcm->locator_set_to_eids, p[0]);
@@ -1422,6 +1429,117 @@ VLIB_CLI_COMMAND (lisp_add_del_map_resolver_command) = {
     .function = lisp_add_del_map_resolver_command_fn,
 };
 
+int
+vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+  uword * p = 0;
+
+  //TODO: Wait for merge https://gerrit.fd.io/r/#/c/1427/
+//   if (vnet_lisp_enable_disable_status () == 0)
+//     {
+//       clib_warning ("LISP is disabled!");
+//       return VNET_API_ERROR_LISP_DISABLED;
+//     }
+
+  if (a->is_add)
+    {
+      p = hash_get_mem(lcm->locator_set_index_by_name, a->locator_set_name);
+      if (!p)
+        {
+          clib_warning("locator-set %v doesn't exist", a->locator_set_name);
+          return VNET_API_ERROR_INVALID_ARGUMENT;
+        }
+
+      lcm->mreq_itr_rlocs = p[0];
+    }
+  else
+    {
+      lcm->mreq_itr_rlocs = ~0;
+    }
+
+  return 0;
+}
+
+static clib_error_t *
+lisp_add_del_mreq_itr_rlocs_command_fn(vlib_main_t * vm,
+                                       unformat_input_t * input,
+                                       vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, * line_input = &_line_input;
+  u8 is_add = 1;
+  u8 * locator_set_name = 0;
+  clib_error_t * error = 0;
+  int rv = 0;
+  vnet_lisp_add_del_mreq_itr_rloc_args_t _a, * a = &_a;
+
+  /* Get a line of input. */
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+        is_add = 0;
+      else if (unformat (line_input, "add %s", &locator_set_name))
+        is_add = 1;
+      else
+        {
+          error = unformat_parse_error(line_input);
+          goto done;
+        }
+    }
+
+  a->is_add = is_add;
+  a->locator_set_name = locator_set_name;
+  rv = vnet_lisp_add_del_mreq_itr_rlocs (a);
+  if (0 != rv)
+    {
+      error = clib_error_return(0, "failed to %s map-request itr-rlocs!",
+                                is_add ? "add" : "delete");
+    }
+
+  vec_free(locator_set_name);
+
+ done:
+  return error;
+
+}
+
+VLIB_CLI_COMMAND (lisp_add_del_map_request_command) = {
+    .path = "lisp map-request itr-rlocs",
+    .short_help = "lisp map-request itr-rlocs add/del <locator_set_name>",
+    .function = lisp_add_del_mreq_itr_rlocs_command_fn,
+};
+
+static clib_error_t *
+lisp_show_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
+                                    unformat_input_t * input,
+                                    vlib_cli_command_t * cmd)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+  locator_set_t * loc_set;
+
+  vlib_cli_output (vm, "%=20s", "itr-rlocs");
+
+  if (~0 == lcm->mreq_itr_rlocs)
+    {
+      return 0;
+    }
+
+  loc_set = pool_elt_at_index (lcm->locator_set_pool, lcm->mreq_itr_rlocs);
+
+  vlib_cli_output (vm, "%=20s", loc_set->name);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lisp_show_map_request_command) = {
+    .path = "show lisp map-request itr-rlocs",
+    .short_help = "Shows map-request itr-rlocs",
+    .function = lisp_show_mreq_itr_rlocs_command_fn,
+};
+
 /* Statistics (not really errors) */
 #define foreach_lisp_cp_lookup_error           \
 _(DROP, "drop")                                \
@@ -1693,6 +1811,7 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   mapping_t * map;
   pending_map_request_t * pmr;
   ip_address_t mr_ip, sloc;
+  u32 ls_index;
 
   /* get locator-set for seid */
   if (!lcm->lisp_pitr)
@@ -1713,14 +1832,22 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
                        format_gid_address, seid);
           return;
         }
+      ls_index = map->locator_set_index;
     }
   else
     {
       map_index = lcm->pitr_map_index;
       map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+      ls_index = map->locator_set_index;
     }
 
-  loc_set = pool_elt_at_index (lcm->locator_set_pool, map->locator_set_index);
+  /* overwrite locator set if map-request itr-rlocs configured */
+  if (~0 != lcm->mreq_itr_rlocs)
+    {
+      ls_index = lcm->mreq_itr_rlocs;
+    }
+
+  loc_set = pool_elt_at_index (lcm->locator_set_pool, ls_index);
 
   /* get local iface ip to use in map-request XXX fib 0 for now*/
   get_mr_and_local_iface_ip (lcm, &mr_ip, &sloc);
@@ -2426,6 +2553,7 @@ lisp_cp_init (vlib_main_t *vm)
   lcm->im6 = &ip6_main;
   lcm->vlib_main = vm;
   lcm->vnet_main = vnet_get_main();
+  lcm->mreq_itr_rlocs = ~0;
 
   gid_dictionary_init (&lcm->mapping_index_by_gid);
 
