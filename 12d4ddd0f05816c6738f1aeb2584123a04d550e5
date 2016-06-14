@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_10b96a2e",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2359,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-06-14T14:08:23Z",
+      "side": 1,
+      "message": "Damjan added a hexdump format thingy recently actually",
+      "parentUuid": "ba092121_f05ef611",
+      "range": {
+        "startLine": 2359,
+        "startChar": 0,
+        "endLine": 2359,
+        "endChar": 44
+      },
+      "revId": "12d4ddd0f05816c6738f1aeb2584123a04d550e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_30658ee1",
         "filename": "vpp-api-test/vat/api_format.c",
         "patchSetId": 3
