@@ -42,6 +42,7 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/heap.h>		/* adjacency heap */
+#include <vppinfra/ptclosure.h>
 
 #include <vnet/vnet.h>
 

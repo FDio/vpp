@@ -20,7 +20,7 @@ endif
 
 lib_LIBRARIES =
 
-TESTS =
+TESTS = 
 
 if ENABLE_TESTS
 TESTS  +=  test_bihash_template \
@@ -37,6 +37,7 @@ TESTS  +=  test_bihash_template \
 	   test_pfhash \
 	   test_phash \
 	   test_pool_iterate \
+	   test_ptclosure \
 	   test_qhash \
 	   test_random \
 	   test_random_isaac \
@@ -66,6 +67,7 @@ test_mheap_SOURCES = vppinfra/test_mheap.c
 test_pfhash_SOURCES = vppinfra/test_pfhash.c
 test_phash_SOURCES = vppinfra/test_phash.c
 test_pool_iterate_SOURCES = vppinfra/test_pool_iterate.c
+test_ptclosure_SOURCES = vppinfra/test_ptclosure.c
 test_qhash_SOURCES = vppinfra/test_qhash.c
 test_random_SOURCES = vppinfra/test_random.c
 test_random_isaac_SOURCES = vppinfra/test_random_isaac.c
@@ -93,6 +95,7 @@ test_mheap_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_pfhash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_phash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_pool_iterate_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_ptclosure_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_qhash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_random_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -118,6 +121,7 @@ test_mheap_LDADD =	libvppinfra.la
 test_pfhash_LDADD =	libvppinfra.la
 test_phash_LDADD =	libvppinfra.la
 test_pool_iterate_LDADD =	libvppinfra.la
+test_ptclosure_LDADD =	libvppinfra.la
 test_qhash_LDADD =	libvppinfra.la
 test_random_LDADD =	libvppinfra.la
 test_random_isaac_LDADD =	libvppinfra.la
@@ -143,6 +147,7 @@ test_mheap_LDFLAGS = -static
 test_pfhash_LDFLAGS = -static
 test_phash_LDFLAGS = -static
 test_pool_iterate_LDFLAGS = -static
+test_ptclosure_LDFLAGS = -static
 test_qhash_LDFLAGS = -static
 test_random_LDFLAGS = -static
 test_random_isaac_LDFLAGS = -static
@@ -199,6 +204,7 @@ nobase_include_HEADERS = \
   vppinfra/phash.h \
   vppinfra/pipeline.h \
   vppinfra/pool.h \
+  vppinfra/ptclosure.h \
   vppinfra/qhash.h \
   vppinfra/random.h \
   vppinfra/random_buffer.h \
@@ -249,6 +255,7 @@ CLIB_CORE = \
   vppinfra/mem_mheap.c \
   vppinfra/pfhash.c \
   vppinfra/phash.c \
+  vppinfra/ptclosure.c \
   vppinfra/qhash.c \
   vppinfra/random.c \
   vppinfra/random_buffer.c \

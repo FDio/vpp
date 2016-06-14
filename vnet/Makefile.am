@@ -281,6 +281,7 @@ nobase_include_HEADERS +=			\
  vnet/ip/icmp6.h				\
  vnet/ip/igmp_packet.h				\
  vnet/ip/ip.h					\
+ vnet/ip/ip_feature_registration.h		\
  vnet/ip/ip4.h					\
  vnet/ip/ip4_mtrie.h				\
  vnet/ip/ip4_error.h				\

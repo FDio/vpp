@@ -73,7 +73,7 @@ ipsec_set_interface_spd(vlib_main_t * vm, u32 sw_if_index, u32 spd_id, int is_ad
   ci = (is_add ? vnet_config_add_feature : vnet_config_del_feature)
     (vm, &rx_cm->config_main,
      ci,
-     IP4_RX_FEATURE_IPSEC,
+     ip4_main.ip4_unicast_rx_feature_ipsec,
      &config,
      sizeof (config));
   rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
