@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_f05ef611",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2359,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-14T14:06:57Z",
+      "side": 1,
+      "message": "Nice idea, let me check somehting like this doesn\u0027t already exist in VLIB ... there\u0027s a lot of Easter Eggs in there :)",
+      "range": {
+        "startLine": 2359,
+        "startChar": 0,
+        "endLine": 2359,
+        "endChar": 44
+      },
+      "revId": "12d4ddd0f05816c6738f1aeb2584123a04d550e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_30658ee1",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 10964,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-14T14:06:57Z",
+      "side": 1,
+      "message": "May want something more descriptive like \"dump_\" I note that this seems to be a personal choice amongst folks whether to use dump_xxx or xxx_dump",
+      "range": {
+        "startLine": 10964,
+        "startChar": 4,
+        "endLine": 10964,
+        "endChar": 26
+      },
+      "revId": "12d4ddd0f05816c6738f1aeb2584123a04d550e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_d09bf2c7",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 11036,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-14T14:06:57Z",
+      "side": 1,
+      "message": "Dump for session, info for table?",
+      "range": {
+        "startLine": 11036,
+        "startChar": 4,
+        "endLine": 11036,
+        "endChar": 29
+      },
+      "revId": "12d4ddd0f05816c6738f1aeb2584123a04d550e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_b0a07ef5",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 6197,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-14T14:06:57Z",
+      "side": 1,
+      "message": "I\u0027m seeing this creep in more and more... typically we use 0.",
+      "range": {
+        "startLine": 6197,
+        "startChar": 4,
+        "endLine": 6197,
+        "endChar": 26
+      },
+      "revId": "12d4ddd0f05816c6738f1aeb2584123a04d550e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_70aae6d5",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 3614,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-14T14:06:57Z",
+      "side": 1,
+      "message": "See prior comment, if its a dump call it a dump",
+      "range": {
+        "startLine": 3614,
+        "startChar": 11,
+        "endLine": 3614,
+        "endChar": 15
+      },
+      "revId": "12d4ddd0f05816c6738f1aeb2584123a04d550e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_50afe2e3",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 3628,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-14T14:06:57Z",
+      "side": 1,
+      "message": "I\u0027ll be honest, I\u0027m not as familiar with this syntax as I should be. Does this mean its ONLY available for JVPP or will the standard C Binary pick this up too ? (note I will be testing this anyways just thought I\u0027d check)",
+      "range": {
+        "startLine": 3628,
+        "startChar": 0,
+        "endLine": 3628,
+        "endChar": 11
+      },
+      "revId": "12d4ddd0f05816c6738f1aeb2584123a04d550e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
