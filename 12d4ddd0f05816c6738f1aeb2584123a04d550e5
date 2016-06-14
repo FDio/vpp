@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_50200249",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 10964,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-06-14T15:48:32Z",
+      "side": 1,
+      "message": "For messages with dump suffix, VPP convention (as Pavel mentioned) is to have variable number of replies (in this case one table id in one reply). JVPP relies on the convention (due to vpe.api IDL limits), expects xxx_details messages as responses and provides some utils on top of that (like aggregation replies in one list).",
+      "parentUuid": "ba092121_90f33a0a",
+      "range": {
+        "startLine": 10964,
+        "startChar": 4,
+        "endLine": 10964,
+        "endChar": 26
+      },
+      "revId": "12d4ddd0f05816c6738f1aeb2584123a04d550e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_d09bf2c7",
         "filename": "vpp-api-test/vat/api_format.c",
         "patchSetId": 3
@@ -248,6 +272,30 @@
       "writtenOn": "2016-06-14T14:06:57Z",
       "side": 1,
       "message": "I\u0027ll be honest, I\u0027m not as familiar with this syntax as I should be. Does this mean its ONLY available for JVPP or will the standard C Binary pick this up too ? (note I will be testing this anyways just thought I\u0027d check)",
+      "range": {
+        "startLine": 3628,
+        "startChar": 0,
+        "endLine": 3628,
+        "endChar": 11
+      },
+      "revId": "12d4ddd0f05816c6738f1aeb2584123a04d550e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_b00abed0",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 3628,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-06-14T15:48:32Z",
+      "side": 1,
+      "message": "It means that to make it available to japi (the old Java api), it should be manually coded. \nWe would like to deprecate japi (https://jira.fd.io/browse/HONEYCOMB-16), then the manual_java flag could be removed.\n\nIt is available to C, Python and Java(jvpp) clients.\nHowever it will not work properly in current jvpp version, because of the array of zero length (u8 ids[0]). \nWe started working on improving jvpp (https://jira.fd.io/browse/VPP-118).",
+      "parentUuid": "ba092121_50afe2e3",
       "range": {
         "startLine": 3628,
         "startChar": 0,
