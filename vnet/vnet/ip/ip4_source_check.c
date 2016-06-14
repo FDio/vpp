@@ -142,11 +142,11 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  ip1 = vlib_buffer_get_current (p1);
 
 	  c0 = vnet_get_config_data (&cm->config_main,
-				     &vnet_buffer (p0)->ip.current_config_index,
+				     &p0->current_config_index,
 				     &next0,
 				     sizeof (c0[0]));
 	  c1 = vnet_get_config_data (&cm->config_main,
-				     &vnet_buffer (p1)->ip.current_config_index,
+				     &p1->current_config_index,
 				     &next1,
 				     sizeof (c1[0]));
 
@@ -223,7 +223,7 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 
 	  c0 = vnet_get_config_data (&cm->config_main,
-				     &vnet_buffer (p0)->ip.current_config_index,
+				     &p0->current_config_index,
 				     &next0,
 				     sizeof (c0[0]));
 
@@ -329,7 +329,7 @@ set_ip_source_check (vlib_main_t * vm,
   clib_error_t * error = 0;
   u32 sw_if_index, is_del, ci;
   ip4_source_check_config_t config;
-  ip4_rx_feature_type_t type;
+  u32 feature_index;
 
   sw_if_index = ~0;
 
@@ -343,7 +343,7 @@ set_ip_source_check (vlib_main_t * vm,
   is_del = 0;
   config.no_default_route = 0;
   config.fib_index = im->fib_index_by_sw_if_index[sw_if_index];
-  type = IP4_RX_FEATURE_SOURCE_CHECK_REACHABLE_VIA_RX;
+  feature_index = im->ip4_unicast_rx_feature_source_reachable_via_rx;
   if (unformat (input, "del"))
     is_del = 1;
 
@@ -353,7 +353,7 @@ set_ip_source_check (vlib_main_t * vm,
 	: vnet_config_add_feature)
     (vm, &rx_cm->config_main,
      ci,
-     type,
+     feature_index,
      &config,
      sizeof (config));
   rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;

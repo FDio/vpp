@@ -103,33 +103,6 @@ typedef struct {
   uword function_opaque;
 } ip6_add_del_interface_address_callback_t;
 
-typedef enum {
-  /* First check access list to either permit or deny this
-     packet based on classification. */
-  IP6_RX_FEATURE_CHECK_ACCESS,
-
-  /* RPF check: verify that source address is reachable via
-     RX interface or via any interface. */
-  IP6_RX_FEATURE_CHECK_SOURCE_REACHABLE_VIA_RX,
-  IP6_RX_FEATURE_CHECK_SOURCE_REACHABLE_VIA_ANY,
-
-  /* IPSec */
-  IP6_RX_FEATURE_IPSEC,
-
-  /* Intercept and decap L2TPv3 packets. */
-  IP6_RX_FEATURE_L2TPV3,
-
-  /* vPath forwarding: won't return to call next feature
-     so any feature needed before vPath forwarding must be prior
-     to this entry */
-  IP6_RX_FEATURE_VPATH,
-
-  /* Must be last: perform forwarding lookup. */
-  IP6_RX_FEATURE_LOOKUP,
-
-  IP6_N_RX_FEATURE,
-} ip6_rx_feature_type_t;
-
 typedef struct ip6_main_t {
   BVT(clib_bihash) ip6_lookup_table;
 
@@ -168,6 +141,21 @@ typedef struct ip6_main_t {
   u32 lookup_table_nbuckets;
   uword lookup_table_size;
 
+  /* feature path configuration lists */
+  vnet_ip_feature_registration_t * next_uc_feature;
+  vnet_ip_feature_registration_t * next_mc_feature;
+
+  /* Built-in unicast feature path indices, see ip_feature_init_cast(...)  */
+  u32 ip6_unicast_rx_feature_check_access;
+  u32 ip6_unicast_rx_feature_ipsec;
+  u32 ip6_unicast_rx_feature_l2tp_decap;
+  u32 ip6_unicast_rx_feature_vpath;
+  u32 ip6_unicast_rx_feature_lookup;
+
+  /* Built-in multicast feature path indices */
+  u32 ip6_multicast_rx_feature_vpath;
+  u32 ip6_multicast_rx_feature_lookup;
+
   /* Seed for Jenkins hash used to compute ip6 flow hash. */
   u32 flow_hash_seed;
 
@@ -184,6 +172,30 @@ typedef struct ip6_main_t {
 
 /* Global ip6 main structure. */
 extern ip6_main_t ip6_main;
+
+#define VNET_IP6_UNICAST_FEATURE_INIT(x,...)                    \
+  __VA_ARGS__ vnet_ip_feature_registration_t uc_##x;            \
+static void __vnet_add_feature_registration_uc_##x (void)       \
+  __attribute__((__constructor__)) ;                            \
+static void __vnet_add_feature_registration_uc_##x (void)       \
+{                                                               \
+  ip6_main_t * im = &ip6_main;                                  \
+  uc_##x.next = im->next_uc_feature;                            \
+  im->next_uc_feature = &uc_##x;                                \
+}                                                               \
+__VA_ARGS__ vnet_ip_feature_registration_t uc_##x 
+
+#define VNET_IP6_MULTICAST_FEATURE_INIT(x,...)                  \
+  __VA_ARGS__ vnet_ip_feature_registration_t mc_##x;            \
+static void __vnet_add_feature_registration_mc_##x (void)       \
+  __attribute__((__constructor__)) ;                            \
+static void __vnet_add_feature_registration_mc_##x (void)       \
+{                                                               \
+  ip6_main_t * im = &ip6_main;                                  \
+  mc_##x.next = im->next_mc_feature;                            \
+  im->next_mc_feature = &mc_##x;                                \
+}                                                               \
+__VA_ARGS__ vnet_ip_feature_registration_t mc_##x 
 
 /* Global ip6 input node.  Errors get attached to ip6 input node. */
 extern vlib_node_registration_t ip6_input_node;

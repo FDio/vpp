@@ -41,12 +41,12 @@ vnet_inacl_ip_feature_enable (vlib_main_t * vnm,
       if (tid == INPUT_ACL_TABLE_IP4)
         {
           lm = &ip4_main.lookup_main;
-          ftype = IP4_RX_FEATURE_CHECK_ACCESS;
+          ftype = ip4_main.ip4_unicast_rx_feature_check_access;
         }
       else
         {
           lm = &ip6_main.lookup_main;
-          ftype = IP6_RX_FEATURE_CHECK_ACCESS;
+          ftype = ip6_main.ip6_unicast_rx_feature_check_access;
         }
 
       ipcm = &lm->rx_config_mains[VNET_UNICAST];

@@ -1345,6 +1345,8 @@ static void
 vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t *mp)
 {
     vlib_main_t *vm = vlib_get_main();
+    ip4_main_t * im4 = &ip4_main;
+    ip6_main_t * im6 = &ip6_main;
     vl_api_sw_interface_set_vpath_reply_t * rmp;
     int rv = 0;
     u32 ci;
@@ -1364,36 +1366,52 @@ vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t *mp)
     if (mp->enable) {
         ci = rx_cm4u->config_index_by_sw_if_index[sw_if_index]; //IP4 unicast
         ci = vnet_config_add_feature(vm, &rx_cm4u->config_main,
-                                     ci, IP4_RX_FEATURE_VPATH, 0, 0);
+                                     ci, 
+                                     im4->ip4_unicast_rx_feature_vpath,
+                                     0, 0);
         rx_cm4u->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm4m->config_index_by_sw_if_index[sw_if_index]; //IP4 mcast
         ci = vnet_config_add_feature(vm, &rx_cm4m->config_main,
-                                     ci, IP4_RX_FEATURE_VPATH, 0, 0);
+                                     ci, 
+                                     im4->ip4_multicast_rx_feature_vpath,
+                                     0, 0);
         rx_cm4m->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm6u->config_index_by_sw_if_index[sw_if_index]; //IP6 unicast
         ci = vnet_config_add_feature(vm, &rx_cm6u->config_main,
-                                     ci, IP6_RX_FEATURE_VPATH, 0, 0);
+                                     ci, 
+                                     im6->ip6_unicast_rx_feature_vpath,
+                                     0, 0);
         rx_cm6u->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm6m->config_index_by_sw_if_index[sw_if_index]; //IP6 mcast
         ci = vnet_config_add_feature(vm, &rx_cm6m->config_main,
-                                     ci, IP6_RX_FEATURE_VPATH, 0, 0);
+                                     ci, 
+                                     im6->ip6_multicast_rx_feature_vpath,
+                                     0, 0);
         rx_cm6m->config_index_by_sw_if_index[sw_if_index] = ci;
     } else {
         ci = rx_cm4u->config_index_by_sw_if_index[sw_if_index]; //IP4 unicast
         ci = vnet_config_del_feature(vm, &rx_cm4u->config_main,
-                                     ci, IP4_RX_FEATURE_VPATH, 0, 0);
+                                     ci, 
+                                     im4->ip4_unicast_rx_feature_vpath,
+                                     0, 0);
         rx_cm4u->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm4m->config_index_by_sw_if_index[sw_if_index]; //IP4 mcast
         ci = vnet_config_del_feature(vm, &rx_cm4m->config_main,
-                                     ci, IP4_RX_FEATURE_VPATH, 0, 0);
+                                     ci, 
+                                     im4->ip4_multicast_rx_feature_vpath,
+                                     0, 0);
         rx_cm4m->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm6u->config_index_by_sw_if_index[sw_if_index]; //IP6 unicast
         ci = vnet_config_del_feature(vm, &rx_cm6u->config_main,
-                                     ci, IP6_RX_FEATURE_VPATH, 0, 0);
+                                     ci, 
+                                     im6->ip6_unicast_rx_feature_vpath,
+                                     0, 0);
         rx_cm6u->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm6m->config_index_by_sw_if_index[sw_if_index]; //IP6 mcast
         ci = vnet_config_del_feature(vm, &rx_cm6m->config_main,
-                                     ci, IP6_RX_FEATURE_VPATH, 0, 0);
+                                     ci, 
+                                     im6->ip6_multicast_rx_feature_vpath,
+                                     0, 0);
         rx_cm6m->config_index_by_sw_if_index[sw_if_index] = ci;
     }
 

@@ -212,7 +212,7 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 
           b0 = vlib_get_buffer (vm, bi0);
           c0 = vnet_get_config_data (&cm->config_main,
-                                     &vnet_buffer (b0)->ip.current_config_index,
+                                     &b0->current_config_index,
                                      &next0, sizeof (c0[0]));
 
           spd0 = pool_elt_at_index(im->spds, c0->spd_index);
@@ -335,7 +335,7 @@ ipsec_input_ip6_node_fn (vlib_main_t * vm,
 
           b0 = vlib_get_buffer (vm, bi0);
           c0 = vnet_get_config_data (&cm->config_main,
-                                     &vnet_buffer (b0)->ip.current_config_index,
+                                     &b0->current_config_index,
                                      &next0, sizeof (c0[0]));
 
           spd0 = pool_elt_at_index(im->spds, c0->spd_index);

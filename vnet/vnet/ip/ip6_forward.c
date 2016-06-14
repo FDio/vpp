@@ -1200,6 +1200,75 @@ ip6_sw_interface_admin_up_down (vnet_main_t * vnm,
 
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip6_sw_interface_admin_up_down);
 
+/* Built-in ip6 unicast rx feature path definition */
+VNET_IP6_UNICAST_FEATURE_INIT (ip6_inacl, static) = {
+  .node_name = "ip6-inacl", 
+  .runs_before = {"ipsec-input-ip6", 0}, 
+  .feature_index = &ip6_main.ip6_unicast_rx_feature_check_access,
+};
+
+VNET_IP6_UNICAST_FEATURE_INIT (ip6_ipsec, static) = {
+  .node_name = "ipsec-input-ip6",
+  .runs_before = {"l2tp-decap", 0},
+  .feature_index = &ip6_main.ip6_unicast_rx_feature_ipsec,
+};
+
+VNET_IP6_UNICAST_FEATURE_INIT (ip6_l2tp, static) = {
+  .node_name = "l2tp-decap",
+  .runs_before = {"vpath-input-ip6", 0},
+  .feature_index = &ip6_main.ip6_unicast_rx_feature_l2tp_decap,
+};
+
+VNET_IP6_UNICAST_FEATURE_INIT (ip6_vpath, static) = {
+  .node_name = "vpath-input-ip6",
+  .runs_before = {"ip6-lookup", 0},
+  .feature_index = &ip6_main.ip6_unicast_rx_feature_vpath,
+};
+
+VNET_IP6_UNICAST_FEATURE_INIT (ip6_lookup, static) = {
+  .node_name = "ip6-lookup",
+  .runs_before = {0}, /* not before any other features */
+  .feature_index = &ip6_main.ip6_unicast_rx_feature_lookup,
+};
+
+/* Built-in ip6 multicast rx feature path definition (none now) */
+VNET_IP6_MULTICAST_FEATURE_INIT (ip4_vpath_mc, static) = {
+  .node_name = "vpath-input-ip6",
+  .runs_before = {"ip6-lookup", 0},
+  .feature_index = &ip6_main.ip6_multicast_rx_feature_vpath,
+};
+
+VNET_IP6_MULTICAST_FEATURE_INIT (ip6_lookup, static) = {
+  .node_name = "ip6-lookup",
+  .runs_before = {0}, /* not before any other features */
+  .feature_index = &ip6_main.ip6_multicast_rx_feature_lookup,
+};
+
+static char * feature_start_nodes[] = 
+  {"ip6-input"};
+
+static clib_error_t *
+ip6_feature_init (vlib_main_t * vm, ip6_main_t * im)
+{
+  ip_lookup_main_t * lm = &im->lookup_main;
+  clib_error_t * error;
+  vnet_cast_t cast;
+  
+  for (cast = 0; cast < VNET_N_CAST; cast++)
+    {
+      ip_config_main_t * cm = &lm->rx_config_mains[cast];
+      vnet_config_main_t * vcm = &cm->config_main;
+      
+      if ((error = ip_feature_init_cast (vm, cm, vcm, 
+                                         feature_start_nodes,
+                                         ARRAY_LEN(feature_start_nodes),
+                                         cast,
+                                         0 /* is_ip4 */)))
+        return error;
+    }
+  return 0;
+}
+
 clib_error_t *
 ip6_sw_interface_add_del (vnet_main_t * vnm,
 			  u32 sw_if_index,
@@ -1209,41 +1278,31 @@ ip6_sw_interface_add_del (vnet_main_t * vnm,
   ip6_main_t * im = &ip6_main;
   ip_lookup_main_t * lm = &im->lookup_main;
   u32 ci, cast;
+  u32 feature_index;
 
   for (cast = 0; cast < VNET_N_CAST; cast++)
     {
       ip_config_main_t * cm = &lm->rx_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
-      /* FIXME multicast. */
-      if (! vcm->node_index_by_feature_index)
-	{
-	  char * start_nodes[] = { "ip6-input", };
-	  char * feature_nodes[] = {
-	    [IP6_RX_FEATURE_CHECK_ACCESS] = "ip6-inacl",
-            [IP6_RX_FEATURE_IPSEC] = "ipsec-input-ip6",
-	    [IP6_RX_FEATURE_L2TPV3] = "l2tp-decap",
-	    [IP6_RX_FEATURE_VPATH]  = "vpath-input-ip6",
-	    [IP6_RX_FEATURE_LOOKUP] = "ip6-lookup",
-	  };
-	  vnet_config_init (vm, vcm,
-			    start_nodes, ARRAY_LEN (start_nodes),
-			    feature_nodes, ARRAY_LEN (feature_nodes));
-	}
-
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
       ci = cm->config_index_by_sw_if_index[sw_if_index];
+
+      if (cast == VNET_UNICAST)
+        feature_index = im->ip6_unicast_rx_feature_lookup;
+      else
+        feature_index = im->ip6_multicast_rx_feature_lookup;
 
       if (is_add)
 	ci = vnet_config_add_feature (vm, vcm,
 				      ci,
-				      IP6_RX_FEATURE_LOOKUP,
+                                      feature_index,
 				      /* config data */ 0,
 				      /* # bytes of config data */ 0);
       else
 	ci = vnet_config_del_feature (vm, vcm,
 				      ci,
-				      IP6_RX_FEATURE_LOOKUP,
+                                      feature_index,
 				      /* config data */ 0,
 				      /* # bytes of config data */ 0);
 
@@ -2856,6 +2915,8 @@ ip6_lookup_init (vlib_main_t * vm)
 			       /* alloc chunk size */ 8,
 			       "ip6 neighbor discovery");
   }
+
+  ip6_feature_init (vm, im);
 
   return 0;
 }
