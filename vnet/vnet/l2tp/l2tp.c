@@ -577,12 +577,12 @@ int l2tpv3_interface_enable_disable (vnet_main_t * vnm,
   ip_config_main_t * rx_cm = &lm->rx_config_mains[VNET_UNICAST];
   u32 ci;
   ip6_l2tpv3_config_t config;
-  ip6_rx_feature_type_t type;
+  u32 feature_index;
 
   if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  type = IP6_RX_FEATURE_L2TPV3;
+  feature_index = im->ip6_unicast_rx_feature_ipsec;
 
   ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
   ci = (enable_disable
@@ -590,7 +590,7 @@ int l2tpv3_interface_enable_disable (vnet_main_t * vnm,
         : vnet_config_del_feature)
     (vlib_get_main(), &rx_cm->config_main,
      ci,
-     type,
+     feature_index,
      &config,
      sizeof (config));
   rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;

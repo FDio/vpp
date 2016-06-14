@@ -108,15 +108,9 @@ typedef struct {
      total length given here give total number of bytes in buffer chain.
   */
 
-
   u32 next_buffer;   /**< Next buffer for this linked-list of buffers.
                         Only valid if VLIB_BUFFER_NEXT_PRESENT flag is set. 
                      */
-
-  u32 trace_index; /**< Specifies index into trace buffer 
-                      if VLIB_PACKET_IS_TRACED flag is set. 
-                   */
-
 
   u32 clone_count; /**< Specifies whether this buffer should be 
                       reinitialized when freed. It will be reinitialized 
@@ -129,13 +123,19 @@ typedef struct {
   vlib_error_t error;   /**< Error code for buffers to be enqueued 
                            to error handler. 
                         */
+  u32 current_config_index; /**< Used by feature subgraph arcs to
+                               visit enabled feature nodes
+                            */
 
   u32 opaque[8]; /**< Opaque data used by sub-graphs for their own purposes. 
                     See .../vnet/vnet/buffer.h
                  */
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
 
-  u32 opaque2[16];  /**< More opaque data, in its own cache line */
+  u32 trace_index; /**< Specifies index into trace buffer 
+                      if VLIB_PACKET_IS_TRACED flag is set. 
+                   */
+  u32 opaque2[15];  /**< More opaque data, currently unused */
 
   /***** end of second cache line */
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline2);

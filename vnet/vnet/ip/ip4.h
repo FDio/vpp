@@ -43,6 +43,7 @@
 #include <vnet/ip/ip4_mtrie.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/lookup.h>
+#include <vnet/ip/ip_feature_registration.h>
 
 typedef struct ip4_fib_t {
   /* Hash table for each prefix length mapping. */
@@ -101,30 +102,6 @@ typedef struct {
   uword function_opaque;
 } ip4_add_del_interface_address_callback_t;
 
-typedef enum {
-  /* First check access list to either permit or deny this
-     packet based on classification. */
-  IP4_RX_FEATURE_CHECK_ACCESS,
-
-  /* RPF check: verify that source address is reachable via
-     RX interface or via any interface. */
-  IP4_RX_FEATURE_SOURCE_CHECK_REACHABLE_VIA_RX,
-  IP4_RX_FEATURE_SOURCE_CHECK_REACHABLE_VIA_ANY,
-
-  /* IPSec */
-  IP4_RX_FEATURE_IPSEC,
-
-  /* vPath forwarding: won't return to call next feature
-     so any feature needed before vPath forwarding must be prior
-     to this entry */
-  IP4_RX_FEATURE_VPATH,
-
-  /* Must be last: perform forwarding lookup. */
-  IP4_RX_FEATURE_LOOKUP,
-
-  IP4_N_RX_FEATURE,
-} ip4_rx_feature_type_t;
-
 typedef struct ip4_main_t {
   ip_lookup_main_t lookup_main;
 
@@ -152,6 +129,22 @@ typedef struct ip4_main_t {
   /* Template used to generate IP4 ARP packets. */
   vlib_packet_template_t ip4_arp_request_packet_template;
 
+  /* feature path configuration lists */
+  vnet_ip_feature_registration_t * next_uc_feature;
+  vnet_ip_feature_registration_t * next_mc_feature;
+
+  /* Built-in unicast feature path indices, see ip_feature_init_cast(...)  */
+  u32 ip4_unicast_rx_feature_check_access;
+  u32 ip4_unicast_rx_feature_source_reachable_via_rx;
+  u32 ip4_unicast_rx_feature_source_reachable_via_any;
+  u32 ip4_unicast_rx_feature_ipsec;
+  u32 ip4_unicast_rx_feature_vpath;
+  u32 ip4_unicast_rx_feature_lookup;
+
+  /* Built-in multicast feature path indices */
+  u32 ip4_multicast_rx_feature_vpath;
+  u32 ip4_multicast_rx_feature_lookup;
+  
   /* Seed for Jenkins hash used to compute ip4 flow hash. */
   u32 flow_hash_seed;
 
@@ -168,6 +161,31 @@ typedef struct ip4_main_t {
 
 /* Global ip4 main structure. */
 extern ip4_main_t ip4_main;
+
+#define VNET_IP4_UNICAST_FEATURE_INIT(x,...)                    \
+  __VA_ARGS__ vnet_ip_feature_registration_t uc_##x;            \
+static void __vnet_add_feature_registration_uc_##x (void)       \
+  __attribute__((__constructor__)) ;                            \
+static void __vnet_add_feature_registration_uc_##x (void)       \
+{                                                               \
+  ip4_main_t * im = &ip4_main;                                  \
+  uc_##x.next = im->next_uc_feature;                            \
+  im->next_uc_feature = &uc_##x;                                \
+}                                                               \
+__VA_ARGS__ vnet_ip_feature_registration_t uc_##x 
+
+#define VNET_IP4_MULTICAST_FEATURE_INIT(x,...)                  \
+  __VA_ARGS__ vnet_ip_feature_registration_t mc_##x;            \
+static void __vnet_add_feature_registration_mc_##x (void)       \
+  __attribute__((__constructor__)) ;                            \
+static void __vnet_add_feature_registration_mc_##x (void)       \
+{                                                               \
+  ip4_main_t * im = &ip4_main;                                  \
+  mc_##x.next = im->next_mc_feature;                            \
+  im->next_mc_feature = &mc_##x;                                \
+}                                                               \
+__VA_ARGS__ vnet_ip_feature_registration_t mc_##x 
+
 
 /* Global ip4 input node.  Errors get attached to ip4 input node. */
 extern vlib_node_registration_t ip4_input_node;

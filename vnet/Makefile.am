@@ -248,6 +248,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/format.c				\
  vnet/ip/icmp4.c				\
  vnet/ip/icmp6.c				\
+ vnet/ip/ip_feature_registration.c		\
  vnet/ip/ip46_cli.c				\
  vnet/ip/ip4_format.c				\
  vnet/ip/ip4_forward.c				\
@@ -281,6 +282,7 @@ nobase_include_HEADERS +=			\
  vnet/ip/icmp6.h				\
  vnet/ip/igmp_packet.h				\
  vnet/ip/ip.h					\
+ vnet/ip/ip_feature_registration.h		\
  vnet/ip/ip4.h					\
  vnet/ip/ip4_mtrie.h				\
  vnet/ip/ip4_error.h				\

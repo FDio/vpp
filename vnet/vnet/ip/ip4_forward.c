@@ -1284,6 +1284,83 @@ ip4_sw_interface_admin_up_down (vnet_main_t * vnm,
  
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip4_sw_interface_admin_up_down);
 
+/* Built-in ip4 unicast rx feature path definition */
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_inacl, static) = {
+  .node_name = "ip4-inacl", 
+  .runs_before = {"ip4-source-check-via-rx", 0}, 
+  .feature_index = &ip4_main.ip4_unicast_rx_feature_check_access,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_check_1, static) = {
+  .node_name = "ip4-source-check-via-rx",
+  .runs_before = {"ip4-source-check-via-any", 0},
+  .feature_index = 
+  &ip4_main.ip4_unicast_rx_feature_source_reachable_via_rx,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_check_2, static) = {
+  .node_name = "ip4-source-check-via-any",
+  .runs_before = {"ipsec-input-ip4", 0},
+  .feature_index = 
+  &ip4_main.ip4_unicast_rx_feature_source_reachable_via_any,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_ipsec, static) = {
+  .node_name = "ipsec-input-ip4",
+  .runs_before = {"vpath-input-ip4", 0},
+  .feature_index = &ip4_main.ip4_unicast_rx_feature_ipsec,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_vpath, static) = {
+  .node_name = "vpath-input-ip4",
+  .runs_before = {"ip4-lookup", 0},
+  .feature_index = &ip4_main.ip4_unicast_rx_feature_vpath,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_lookup, static) = {
+  .node_name = "ip4-lookup",
+  .runs_before = {0}, /* not before any other features */
+  .feature_index = &ip4_main.ip4_unicast_rx_feature_lookup,
+};
+
+/* Built-in ip4 multicast rx feature path definition */
+VNET_IP4_MULTICAST_FEATURE_INIT (ip4_vpath_mc, static) = {
+  .node_name = "vpath-input-ip4",
+  .runs_before = {"ip4-lookup-multicast", 0},
+  .feature_index = &ip4_main.ip4_multicast_rx_feature_vpath,
+};
+
+VNET_IP4_MULTICAST_FEATURE_INIT (ip4_lookup_mc, static) = {
+  .node_name = "ip4-lookup-multicast",
+  .runs_before = {0}, /* not before any other features */
+  .feature_index = &ip4_main.ip4_multicast_rx_feature_lookup,
+};
+
+static char * feature_start_nodes[] = 
+  { "ip4-input", "ip4-input-no-checksum"};
+
+static clib_error_t *
+ip4_feature_init (vlib_main_t * vm, ip4_main_t * im)
+{
+  ip_lookup_main_t * lm = &im->lookup_main;
+  clib_error_t * error;
+  vnet_cast_t cast;
+
+  for (cast = 0; cast < VNET_N_CAST; cast++)
+    {
+      ip_config_main_t * cm = &lm->rx_config_mains[cast];
+      vnet_config_main_t * vcm = &cm->config_main;
+
+      if ((error = ip_feature_init_cast (vm, cm, vcm, 
+                                         feature_start_nodes,
+                                         ARRAY_LEN(feature_start_nodes),
+                                         cast,
+                                         1 /* is_ip4 */)))
+        return error;
+    }
+  return 0;
+}
+
 static clib_error_t *
 ip4_sw_interface_add_del (vnet_main_t * vnm,
 			  u32 sw_if_index,
@@ -1293,57 +1370,31 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
   ip4_main_t * im = &ip4_main;
   ip_lookup_main_t * lm = &im->lookup_main;
   u32 ci, cast;
+  u32 feature_index;
 
   for (cast = 0; cast < VNET_N_CAST; cast++)
     {
       ip_config_main_t * cm = &lm->rx_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
-      if (! vcm->node_index_by_feature_index)
-	{
-	  if (cast == VNET_UNICAST)
-	    {
-	      static char * start_nodes[] = { "ip4-input", "ip4-input-no-checksum", };
-	      static char * feature_nodes[] = {
-		[IP4_RX_FEATURE_CHECK_ACCESS] = "ip4-inacl",
-		[IP4_RX_FEATURE_SOURCE_CHECK_REACHABLE_VIA_RX] = "ip4-source-check-via-rx",
-		[IP4_RX_FEATURE_SOURCE_CHECK_REACHABLE_VIA_ANY] = "ip4-source-check-via-any",
-		[IP4_RX_FEATURE_IPSEC] = "ipsec-input-ip4",
-		[IP4_RX_FEATURE_VPATH] = "vpath-input-ip4",
-		[IP4_RX_FEATURE_LOOKUP] = "ip4-lookup",
-	      };
-
-	      vnet_config_init (vm, vcm,
-				start_nodes, ARRAY_LEN (start_nodes),
-				feature_nodes, ARRAY_LEN (feature_nodes));
-	    }
-	  else
-	    {
-	      static char * start_nodes[] = { "ip4-input", "ip4-input-no-checksum", };
-	      static char * feature_nodes[] = {
-		[IP4_RX_FEATURE_VPATH] = "vpath-input-ip4",
-		[IP4_RX_FEATURE_LOOKUP] = "ip4-lookup-multicast",
-	      };
-
-	      vnet_config_init (vm, vcm,
-				start_nodes, ARRAY_LEN (start_nodes),
-				feature_nodes, ARRAY_LEN (feature_nodes));
-	    }
-	}
-
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
       ci = cm->config_index_by_sw_if_index[sw_if_index];
+
+      if (cast == VNET_UNICAST)
+        feature_index = im->ip4_unicast_rx_feature_lookup;
+      else
+        feature_index = im->ip4_multicast_rx_feature_lookup;
 
       if (is_add)
 	ci = vnet_config_add_feature (vm, vcm,
 				      ci,
-				      IP4_RX_FEATURE_LOOKUP,
+                                      feature_index,
 				      /* config data */ 0,
 				      /* # bytes of config data */ 0);
       else
 	ci = vnet_config_del_feature (vm, vcm,
 				      ci,
-				      IP4_RX_FEATURE_LOOKUP,
+                                      feature_index,
 				      /* config data */ 0,
 				      /* # bytes of config data */ 0);
 
@@ -1450,6 +1501,8 @@ ip4_lookup_init (vlib_main_t * vm)
 			       /* alloc chunk size */ 8,
 			       "ip4 arp");
   }
+
+  ip4_feature_init (vm, im);
 
   return 0;
 }

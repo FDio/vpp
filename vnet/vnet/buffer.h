@@ -113,9 +113,6 @@ typedef struct {
 
       union {
 	struct {
-	  /* Current configuration index. */
-	  u32 current_config_index;
-
 	  /* Flow hash value for this packet computed from IP src/dst address
 	     protocol and ports. */
 	  u32 flow_hash;
