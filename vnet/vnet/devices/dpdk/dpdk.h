@@ -170,6 +170,7 @@ typedef struct {
 #endif
   u64 region_addr[VHOST_MEMORY_MAX_NREGIONS];
   u32 region_fd[VHOST_MEMORY_MAX_NREGIONS];
+  u64 region_offset[VHOST_MEMORY_MAX_NREGIONS];
 } dpdk_vu_intf_t;
 
 typedef void (*dpdk_flowcontrol_callback_t) (vlib_main_t *vm,
