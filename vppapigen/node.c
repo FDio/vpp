@@ -1161,7 +1161,11 @@ void node_vector_generate (node_t *this, enum passid which, FILE *fp)
         fprintf(fp, "}\n");
         break;
     case PYTHON_PASS:
-        fprintf(fp, "'%s', '%d'),\n", CDATA0, IDATA1);
+        if (CDATA2 != 0) { // variable length vector
+            fprintf(fp, "'%s', '%d', '%s'),\n", CDATA0, IDATA1, CDATA2);
+        } else {
+            fprintf(fp, "'%s', '%d'),\n", CDATA0, IDATA1);
+        }
         break;
 
     default:
@@ -1457,6 +1461,21 @@ YYSTYPE add_vector_vbl (YYSTYPE a1, YYSTYPE a2)
     np = make_node(NODE_VECTOR);
     np->data[0] = (void *) a1;
     np->data[1] = (void *) a2;
+    return ((YYSTYPE) np);
+}
+
+/*
+ * add_vector_vbl (char *vector_name, char *vector_length_var)
+ */
+
+YYSTYPE add_variable_length_vector_vbl (YYSTYPE vector_name, YYSTYPE vector_length_var)
+{
+    node_t *np;
+
+    np = make_node(NODE_VECTOR);
+    np->data[0] = (void *) vector_name;
+    np->data[1] = (void *) 0; // vector size used for vpe.api.h generation (array of length zero)
+    np->data[2] = (void *) vector_length_var; // name of the variable that stores vector length
     return ((YYSTYPE) np);
 }
 

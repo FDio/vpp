@@ -210,7 +210,10 @@ def generate_jni_impl(func_list, inputfile):
             for t in zip(f['c_types'], f['args'], f['lengths']):
                 c_type = t[0]
                 c_name = t[1]
-                field_length = t[2]
+                # variable length arrays do not need special handling in requests,
+                # because the length of Java array is known:
+                field_length = t[2][0]
+
                 java_field_name = util.underscore_to_camelcase(c_name)
 
                 struct_setter_template = struct_setter_templates[c_type]
@@ -241,6 +244,9 @@ default_dto_field_setter_template = Template("""
     (*env)->Set${jni_setter}(env, dto, ${java_name}FieldId, mp->${c_name});
 """)
 
+variable_length_array_value_template = Template("""mp->${length_var_name}""")
+variable_length_array_template = Template("""clib_net_to_host_${length_field_type}(${value})""")
+
 u16_dto_field_setter_template = Template("""
     (*env)->Set${jni_setter}(env, dto, ${java_name}FieldId, clib_net_to_host_u16(mp->${c_name}));
 """)
@@ -267,6 +273,8 @@ u32_array_dto_field_setter_template = Template("""
         for (_i = 0; _i < ${field_length}; _i++) {
             ${java_name}ArrayElements[_i] = clib_net_to_host_u32(mp->${c_name}[_i]);
         }
+
+        (*env)->ReleaseIntArrayElements(env,  ${java_name}, ${java_name}ArrayElements, 0);
         (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
     }
 """)
@@ -281,6 +289,8 @@ u64_array_dto_field_setter_template = Template("""
         for (_i = 0; _i < ${field_length}; _i++) {
             ${java_name}ArrayElements[_i] = clib_net_to_host_u64(mp->${c_name}[_i]);
         }
+
+        (*env)->ReleaseLongArrayElements(env,  ${java_name}, ${java_name}ArrayElements, 0);
         (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
     }
 """)
@@ -353,7 +363,16 @@ def generate_msg_handlers(func_list, inputfile):
             c_type = t[0]
             jni_type = t[1]
             c_name = t[2]
-            field_length = t[3]
+            field_length = t[3][0]
+
+            # check if we are processing variable length array
+            if t[3][1]:
+                length_var_name = t[3][0]
+                length_field_type = f['c_types'][f['args'].index(length_var_name)]
+                field_length = variable_length_array_value_template.substitute(length_var_name=length_var_name)
+                if length_field_type != 'u8':  # we need net to host conversion:
+                    field_length = variable_length_array_template.substitute(
+                        length_field_type=length_field_type, value=field_length)
 
             # for retval don't generate setters and generate retval check
             if util.is_retval_field(c_name):
