@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_39a339a0",
+        "filename": "vnet/vnet/vcgn/README",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 43
+      },
+      "writtenOn": "2016-06-15T23:26:31Z",
+      "side": 1,
+      "message": "Please, can you be more specific about \"None of the ALGs\" since the code provides some feeling of some ALGs:\n  https://gerrit.fd.io/r/gitweb?p\u003dvpp.git;a\u003dblob_plain;f\u003dvnet/vnet/vcgn/cnat_v4_ftp_alg.h\n\nI understand that dead code should be removed.",
+      "revId": "445d6658d0bbfbea42514cd24de8eab0db493d83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
