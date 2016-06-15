@@ -2,6 +2,213 @@
   "comments": [
     {
       "key": {
+        "uuid": "ba092121_5e17f351",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "itr-rlocs in map-requests not source locator",
+      "range": {
+        "startLine": 7,
+        "startChar": 17,
+        "endLine": 7,
+        "endChar": 31
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_d9479d4a",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1033,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Remove, see lower.",
+      "range": {
+        "startLine": 1033,
+        "startChar": 0,
+        "endLine": 1033,
+        "endChar": 53
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_193e35b9",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1075,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Instead of this compare the locator-set index with that stored in lcm-\u003emap_request_itr_rloc (see comment lower). We shouldn\u0027t be changing the locator-set definition for such use-cases.",
+      "range": {
+        "startLine": 1075,
+        "startChar": 0,
+        "endLine": 1075,
+        "endChar": 35
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_f94a6154",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1077,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "\"Can\u0027t delete locator-set %s since it\u0027s used to constrain the itr-rlocs in map-requests\", conver_locator_set_index_to_string(ls)",
+      "range": {
+        "startLine": 1077,
+        "startChar": 9,
+        "endLine": 1077,
+        "endChar": 66
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_d919dd7a",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1430,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "vnet_lisp_add_del_mreq_itr_rlocs",
+      "range": {
+        "startLine": 1430,
+        "startChar": 0,
+        "endLine": 1430,
+        "endChar": 29
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_b92629b9",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1453,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "I\u0027d rather we didn\u0027t do this.",
+      "range": {
+        "startLine": 1453,
+        "startChar": 0,
+        "endLine": 1453,
+        "endChar": 35
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_992b6582",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1454,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Remove the previous itr-rlocs locator set and add the new one.",
+      "range": {
+        "startLine": 1454,
+        "startChar": 55,
+        "endLine": 1454,
+        "endChar": 58
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_99524512",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1456,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Maybe instead of the string we could store the index, it\u0027s easier to work with it that way.",
+      "range": {
+        "startLine": 1456,
+        "startChar": 11,
+        "endLine": 1456,
+        "endChar": 31
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_1910754d",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1496,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "rloc*s*",
+      "range": {
+        "startLine": 1496,
+        "startChar": 46,
+        "endLine": 1496,
+        "endChar": 50
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_feda4716",
         "filename": "vnet/vnet/lisp-cp/control.c",
         "patchSetId": 1
@@ -13,6 +220,300 @@
       "writtenOn": "2016-06-15T16:05:44Z",
       "side": 1,
       "message": "a-\u003elocator_set_name is not freed",
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_f91ca16c",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1506,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Good point!",
+      "parentUuid": "ba092121_feda4716",
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_590eed35",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1520,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Any reason why this isn\u0027t \"lisp map-request itr-rlocs\" ?",
+      "range": {
+        "startLine": 1520,
+        "startChar": 29,
+        "endLine": 1520,
+        "endChar": 30
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_3913395e",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1521,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "this should be \"lisp map-request add/del itr-rlocs \u003clocatr-set-name\u003e\"",
+      "range": {
+        "startLine": 1521,
+        "startChar": 37,
+        "endLine": 1521,
+        "endChar": 67
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_99048516",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1539,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "path should include itr-rlocs: \" show lisp map-request itr-rlocs\"",
+      "range": {
+        "startLine": 1539,
+        "startChar": 23,
+        "endLine": 1539,
+        "endChar": 34
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_7909b12b",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1541,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "As per the comment above, if the name of the function is too long just convert it to: \"lisp_show_mreq_itr_rlocs_command_fn\" or something like that.",
+      "range": {
+        "startLine": 1541,
+        "startChar": 16,
+        "endLine": 1541,
+        "endChar": 48
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_9987e561",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1818,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Instead of getting this by name, get it by index",
+      "range": {
+        "startLine": 1817,
+        "startChar": 0,
+        "endLine": 1818,
+        "endChar": 50
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_59814d49",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1824,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Replace with ASSERT(p !\u003d 0). Basically it\u0027s a bug if p is null.",
+      "range": {
+        "startLine": 1819,
+        "startChar": 0,
+        "endLine": 1824,
+        "endChar": 9
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_99eec521",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1826,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Ultimately, these 3 cases should find a value of loc_set. So your approach with locator_set_index is okay (although I\u0027d call it ls_index). map_index is not really needed lower",
+      "range": {
+        "startLine": 1826,
+        "startChar": 0,
+        "endLine": 1826,
+        "endChar": 40
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_3e0c3f42",
+        "filename": "vnet/vnet/lisp-cp/control.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "I would end with \"s\" to indicate there can be multiple rlocs",
+      "range": {
+        "startLine": 98,
+        "startChar": 26,
+        "endLine": 98,
+        "endChar": 27
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_19acf5ec",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Remove this. See comments in the rest of the code on how to avoid it.",
+      "range": {
+        "startLine": 214,
+        "startChar": 0,
+        "endLine": 214,
+        "endChar": 26
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_b974e99c",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2150,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Why do we have these changes? This builds a list of map-resolver ips, no?",
+      "range": {
+        "startLine": 2150,
+        "startChar": 39,
+        "endLine": 2150,
+        "endChar": 47
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_99792596",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2198,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "map_request_itr_rlocs or mreq_itr_rlocs",
+      "range": {
+        "startLine": 2198,
+        "startChar": 12,
+        "endLine": 2198,
+        "endChar": 23
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_796e51cb",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "It should be MAP_REQUEST_ITR_RLOCS. This should be changed everywhere.",
+      "range": {
+        "startLine": 343,
+        "startChar": 15,
+        "endLine": 343,
+        "endChar": 26
+      },
       "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -47,6 +548,29 @@
       "writtenOn": "2016-06-15T16:05:44Z",
       "side": 1,
       "message": "Do we need \u0027dump\u0027 mechanism for this? There will always be only one reply message",
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_b982a950",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 2413,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:24:33Z",
+      "side": 1,
+      "message": "Same comment as always. map_request_itr_rlocs",
+      "range": {
+        "startLine": 2413,
+        "startChar": 7,
+        "endLine": 2413,
+        "endChar": 31
+      },
       "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
