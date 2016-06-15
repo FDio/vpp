@@ -1,0 +1,97 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+/** \brief Proof of Transit(POT): Set POT profile
+    @param id - id of the profile 
+    @param validator - True/False to indicate if this is verifier
+    @param secret_key - Verification key
+    @param secret_share - Share of the 1st polynomial
+    @param prime - Prime number used for modulo operation
+    @param max_bits - Max bits to be used for Random number generation
+    @param lpc - Lagrange basis polynomial
+    @param polynomial_public - pre-evaluated public polynomial 
+    @param list_name_len - length of the name of this profile list
+    @param list_name - name of this profile list
+*/
+define pot_profile_add {
+  u32 client_index;
+  u32 context;
+  u8 id;
+  u8 validator;
+  u64 secret_key;
+  u64 secret_share;
+  u64 prime;
+  u8  max_bits;
+  u64 lpc;
+  u64 polynomial_public;
+  u8 list_name_len;
+  u8 list_name[0];
+};
+
+/** \brief Proof of Transit profile add / del response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define pot_profile_add_reply {
+    u32 context;
+    i32 retval;
+};
+
+
+/** \brief Proof of Transit(POT): Activate POT profile in the list
+    @param id - id of the profile 
+    @param list_name_len - length of the name of this profile list
+    @param list_name - name of this profile list
+*/
+define pot_profile_activate {
+  u32 client_index;
+  u32 context;
+  u8 id;
+  u8 list_name_len;
+  u8 list_name[0];
+};
+
+/** \brief Proof of Transit profile activate response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request 
+*/
+define pot_profile_activate_reply {
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Delete POT Profile 
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param list_name_len - length of the name of the profile list
+    @param list_name - name of profile list to delete
+*/
+define pot_profile_del {
+  u32 client_index;
+  u32 context;
+  u8 list_name_len;
+  u8 list_name[0];
+};
+
+/** \brief Proof of Transit profile add / del response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define pot_profile_del_reply {
+    u32 context;
+    i32 retval;
+};
