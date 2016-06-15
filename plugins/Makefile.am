@@ -27,9 +27,40 @@ BUILT_SOURCES =
 
 lib_LTLIBRARIES = libsixrd_plugin.la
 
+########################################
+# iOAM Proof of Transit
+########################################
+
+ioam_pot_plugin_la_SOURCES = plugins/ioam/lib-pot/pot_util.c plugins/ioam/encap/ip6_ioam_pot.c \
+	plugins/ioam/lib-pot/pot_util.h plugins/ioam/lib-pot/math64.h plugins/ioam/lib-pot/pot_api.c
+ioam_pot_plugin_la_LDFLAGS = -module
+
+BUILT_SOURCES = plugins/ioam/lib-pot/pot.api.h
+SUFFIXES = .api.h .api
+
+%.api.h: %.api
+	mkdir -p `dirname $@` ; \
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
+	| vppapigen --input - --output $@ --show-name $@
+
+nobase_include_HEADERS =                        \
+  plugins/ioam/lib-pot/pot_all_api_h.h  	\
+  plugins/ioam/lib-pot/pot_msg_enum.h		\
+  plugins/ioam/lib-pot/pot.api.h                \
+  plugins/ioam/lib-pot/pot_util.h               \
+  plugins/ioam/lib-pot/math64.h
+
+ioam_pot_test_plugin_la_SOURCES = plugins/ioam/lib-pot/pot_test.c plugins/ioam/lib-pot/pot_plugin.api.h
+ioam_pot_test_plugin_la_LDFLAGS = -module
+
+lib_LTLIBRARIES += ioam_pot_plugin.la ioam_pot_test_plugin.la
+
 if WITH_PLUGIN_TOOLKIT
 install-data-hook:
 	mkdir /usr/lib/vpp_plugins || true
 	mkdir /usr/lib/vpp_api_test_plugins || true
 	cp $(prefix)/lib/sixrd_plugin.so.*.*.* /usr/lib/vpp_plugins
+	cp $(prefix)/lib/ioam_pot_plugin.so.*.*.* /usr/lib/vpp_plugins
+	cp $(prefix)/lib/ioam_pot_test_plugin.so.*.*.* \
+		/usr/lib/vpp_api_test_plugins
 endif
