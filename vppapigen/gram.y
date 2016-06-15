@@ -31,6 +31,7 @@ void generate (YYSTYPE);
  YYSTYPE add_union(YYSTYPE, YYSTYPE);
  YYSTYPE add_scalar_vbl(YYSTYPE);
  YYSTYPE add_vector_vbl(YYSTYPE, YYSTYPE);
+ YYSTYPE add_variable_length_vector_vbl(YYSTYPE, YYSTYPE);
  YYSTYPE set_flags(YYSTYPE, YYSTYPE);
 %}
 
@@ -86,4 +87,5 @@ onedef:   PRIMTYPE vbl SEMI      {$$ = add_primtype($1, $2, 0);}
 
 vbl:      NAME                      {$$ = add_scalar_vbl($1);}
         | NAME LBRACK NUMBER RBRACK {$$ = add_vector_vbl($1, $3);}
+        | NAME LBRACK NAME RBRACK {$$ = add_variable_length_vector_vbl($1, $3);}
           ;
