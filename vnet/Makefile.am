@@ -720,16 +720,6 @@ libvnetplugin_la_SOURCES +=                    \
 nobase_include_HEADERS +=                      \
   vnet/plugin/plugin.h
 
-########################################
-# Service Chain verification util
-########################################
-libvnet_la_SOURCES +=       \
- vnet/lib-scv/scv_util.c
-
-nobase_include_HEADERS +=                       \
- vnet/lib-scv/scv_util.h                        \
- vnet/lib-scv/math64.h
-
 lib_LTLIBRARIES = libvnet.la libvnetplugin.la
 
 dpdk_libs = 
