@@ -40,7 +40,7 @@ typedef struct {
 
 /* $$$$ IANA banana constants */
 #define HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST 59 /* Third highest bit set (change en-route) */
-#define HBH_OPTION_TYPE_IOAM_PROOF_OF_WORK 60   /* Third highest bit set (change en-route) */
+#define HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT 60   /* Third highest bit set (change en-route) */
 #define HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE 29
 
 /*
@@ -171,14 +171,6 @@ typedef CLIB_PACKED(struct {
   u32 elts[0]; /* Variable type. So keep it generic */
 }) ioam_trace_option_t;
 
-typedef CLIB_PACKED(struct {
-  ip6_hop_by_hop_option_t hdr;
-  u8 pow_type;
-#define PROFILE_ID_MASK 0xF
-  u8 reserved_profile_id; /* 4 bits reserved, 4 bits to carry profile id */
-  u64 random;
-  u64 cumulative;
-}) ioam_pow_option_t;
 
 typedef CLIB_PACKED(struct {
   ip6_hop_by_hop_option_t hdr;
