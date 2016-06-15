@@ -116,8 +116,7 @@ VNET_HW_INTERFACE_CLASS (vxlan_gpe_hw_class) = {
 _(vni)                                          \
 _(protocol)                                \
 _(encap_fib_index)                              \
-_(decap_fib_index)                              \
-_(decap_next_index)
+_(decap_fib_index)
 
 #define foreach_copy_ipv4 {                     \
   _(local.ip4.as_u32)                           \
@@ -249,9 +248,6 @@ int vnet_vxlan_gpe_add_del_tunnel
       if (p)
         return VNET_API_ERROR_INVALID_VALUE;
 
-      if (a->decap_next_index >= VXLAN_GPE_INPUT_N_NEXT)
-        return VNET_API_ERROR_INVALID_DECAP_NEXT;
-
       pool_get_aligned (gm->tunnels, t, CLIB_CACHE_LINE_BYTES);
       memset (t, 0, sizeof (*t));
 
@@ -376,26 +372,6 @@ static u32 fib6_index_from_fib_id (u32 fib_id)
   return p[0];
 }
 
-static uword unformat_gpe_decap_next (unformat_input_t * input, va_list * args)
-{
-  u32 * result = va_arg (*args, u32 *);
-  u32 tmp;
-
-  if (unformat (input, "drop"))
-    *result = VXLAN_GPE_INPUT_NEXT_DROP;
-  else if (unformat (input, "ip4"))
-    *result = VXLAN_GPE_INPUT_NEXT_IP4_INPUT;
-  else if (unformat (input, "ip6"))
-    *result = VXLAN_GPE_INPUT_NEXT_IP6_INPUT;
-  else if (unformat (input, "ethernet"))
-    *result = VXLAN_GPE_INPUT_NEXT_ETHERNET_INPUT;
-  else if (unformat (input, "%d", &tmp))
-    *result = tmp;
-  else
-    return 0;
-  return 1;
-}
-
 static clib_error_t *
 vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
                                    unformat_input_t * input,
@@ -411,7 +387,6 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
   u32 encap_fib_index = 0;
   u32 decap_fib_index = 0;
   u8 protocol = VXLAN_GPE_PROTOCOL_IP4;
-  u32 decap_next_index = VXLAN_GPE_INPUT_NEXT_IP4_INPUT;
   u32 vni;
   u8 vni_set = 0;
   int rv;
@@ -471,9 +446,6 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
         if (decap_fib_index == ~0)
           return clib_error_return (0, "nonexistent decap fib id %d", tmp);
       }
-    else if (unformat (line_input, "decap-next %U", unformat_gpe_decap_next,
-                       &decap_next_index))
-      ;
     else if (unformat (line_input, "vni %d", &vni))
       vni_set = 1;
     else if (unformat(line_input, "next-ip4"))

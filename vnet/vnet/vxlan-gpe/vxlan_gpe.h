@@ -40,8 +40,8 @@ typedef CLIB_PACKED (struct {
 }) ip6_vxlan_gpe_header_t;
 
 typedef CLIB_PACKED(struct {
-  /* 
-   * Key fields: local remote, vni 
+  /*
+   * Key fields: local remote, vni
    * all fields in NET byte order
    */
   union {
@@ -83,9 +83,6 @@ typedef struct {
   /* vxlan VNI in HOST byte order, shifted left 8 bits */
   u32 vni;
 
-  /*decap next index*/
-  u32 decap_next_index;
-
   /* vnet intfc hw/sw_if_index */
   u32 hw_if_index;
   u32 sw_if_index;
@@ -101,7 +98,7 @@ typedef struct {
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")                       \
-_(ETHERNET_INPUT, "ethernet-input")             
+_(ETHERNET_INPUT, "ethernet-input")
 
 typedef enum {
 #define _(s,n) VXLAN_GPE_INPUT_NEXT_##s,
@@ -151,12 +148,11 @@ typedef struct {
   u8 protocol;
   u32 encap_fib_index;
   u32 decap_fib_index;
-  u32 decap_next_index;
   u32 vni;
 } vnet_vxlan_gpe_add_del_tunnel_args_t;
 
 
-int vnet_vxlan_gpe_add_del_tunnel 
+int vnet_vxlan_gpe_add_del_tunnel
 (vnet_vxlan_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
 
 
