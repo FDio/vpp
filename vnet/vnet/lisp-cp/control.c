@@ -555,7 +555,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   ip_address_t rloc, * rlocs = 0;
   ip_prefix_t * deid_ippref, * seid_ippref;
   gid_address_t seid, deid;
-  u8 deid_set = 0;
+  u8 deid_set = 0, seid_set = 0;
   u8 * s = 0;
   u32 vni, action = ~0;
 
@@ -592,7 +592,9 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
         }
       else if (unformat (line_input, "seid %U",
                          unformat_ip_prefix, seid_ippref))
-        ;
+        {
+          seid_set = 1;
+        }
       else if (unformat (line_input, "rloc %U", unformat_ip_address, &rloc))
         vec_add1 (rlocs, rloc);
       else if (unformat (line_input, "action %s", &s))
@@ -626,9 +628,14 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
           goto done;
         }
 
-      if (is_add
-          && (ip_prefix_version (deid_ippref)
-            != ip_prefix_version (seid_ippref)))
+      /* if seid not set, make sure the ip version is the same as that of the
+       * deid. This ensures the seid to be configured will be either 0/0 or
+       * ::/0 */
+      if (!seid_set)
+        ip_prefix_version(seid_ippref) = ip_prefix_version(deid_ippref);
+
+      if (is_add &&
+          (ip_prefix_version (deid_ippref) != ip_prefix_version(seid_ippref)))
         {
           clib_warning ("source and destination EIDs are not"
                         " in the same IP family!");
