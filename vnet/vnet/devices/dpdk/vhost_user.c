@@ -527,7 +527,11 @@ dpdk_vhost_user_set_mem_table(u32 hw_if_index, vhost_user_memory_t * vum, int fd
     mapped_address +=  vum->regions[i].mmap_offset;
     vui->region_addr[i] = mapped_address;
     vui->region_fd[i] = fd[i];
+    vui->region_offset[i] = vum->regions[i].mmap_offset;
     mem->regions[i].address_offset = mapped_address - mem->regions[i].guest_phys_address;
+
+    DBG_SOCK("map memory region %d addr 0x%lx off 0x%lx len 0x%lx",
+      i, vui->region_addr[i], vui->region_offset[i], mapped_size);
 
     if (vum->regions[i].guest_phys_addr == 0) {
       mem->base_address = vum->regions[i].userspace_addr;
@@ -913,6 +917,36 @@ dpdk_vhost_user_vui_register(vlib_main_t * vm, dpdk_device_t *xd)
             xd->vlib_sw_if_index);
 }
 
+static void dpdk_unmap_all_mem_regions(dpdk_device_t * xd)
+{
+  int i, r;
+  dpdk_vu_intf_t *vui = xd->vu_intf;
+  struct virtio_memory * mem = xd->vu_vhost_dev.mem;
+
+  for (i=0; i<mem->nregions; i++) {
+    if (vui->region_addr[i] != -1) {
+
+      long page_sz = get_huge_page_size(vui->region_fd[i]);
+
+      ssize_t map_sz = (mem->regions[i].memory_size +
+        vui->region_offset[i] + page_sz) & ~(page_sz - 1);
+
+      r = munmap((void *)(vui->region_addr[i] - vui->region_offset[i]), map_sz);
+
+      DBG_SOCK("unmap memory region %d addr 0x%lx off 0x%lx len 0x%lx page_sz 0x%x",
+        i, vui->region_addr[i], vui->region_offset[i], map_sz, page_sz);
+
+      vui->region_addr[i]= -1;
+
+      if (r == -1) {
+        clib_warning("failed to unmap memory region (errno %d)", errno);
+      }
+      close(vui->region_fd[i]);
+    }
+  }
+  mem->nregions = 0;
+}
+
 static inline void
 dpdk_vhost_user_if_disconnect(dpdk_device_t * xd)
 {
@@ -934,6 +968,7 @@ dpdk_vhost_user_if_disconnect(dpdk_device_t * xd)
     vui->unix_fd = -1;
     vui->is_up = 0;
 
+    dpdk_unmap_all_mem_regions(xd);
     DBG_SOCK("interface ifindex %d disconnected", xd->vlib_sw_if_index);
 }
 
