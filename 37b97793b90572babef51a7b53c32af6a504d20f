@@ -22,6 +22,30 @@
       "revId": "37b97793b90572babef51a7b53c32af6a504d20f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_59f82de5",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-06-15T20:22:11Z",
+      "side": 1,
+      "message": "Likewise.  Mild feeling this shouldn\u0027t be kept to LISP for its own use, though :)  But we can worry about that later.",
+      "parentUuid": "ba092121_de542323",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 41,
+        "endChar": 41
+      },
+      "revId": "37b97793b90572babef51a7b53c32af6a504d20f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
