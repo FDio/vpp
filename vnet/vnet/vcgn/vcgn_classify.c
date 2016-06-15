@@ -39,12 +39,13 @@ typedef struct {
   u32 cached_next_index;
 
   /* inside, outside interface handles */
-  u32 inside_sw_if_index;
-  u32 outside_sw_if_index;
+  u32 * inside_sw_if_index_table;
+  u32 * outside_sw_if_index_table;
 
   /* convenience variables */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
+  u8 cnat_db_initalized;
 } vcgn_classify_main_t;
 
 typedef struct {
@@ -273,18 +274,24 @@ vcgn_classify_node_fn (vlib_main_t * vm,
               next0 = VCGN_CLASSIFY_NEXT_IP4_INPUT;
               counter = VCGN_CLASSIFY_ERROR_V4_PACKETS_PROCESSED;
 
-              if (protocol_type == 0x11) { /* UDP# 17 */ 
-                  next0 = (sw_if_index0 == vcm->inside_sw_if_index) ? 
-                      VCGN_CLASSIFY_NEXT_UDP_INSIDE : next0;
+              if (protocol_type == 0x11) { /* UDP# 17 */
+                  next0 = (sw_if_index0 < vec_len(vcm->inside_sw_if_index_table) &&
+                    vcm->inside_sw_if_index_table[sw_if_index0] != EMPTY) ?
+                        VCGN_CLASSIFY_NEXT_UDP_INSIDE : next0;
 
-                  next0 = (sw_if_index0 == vcm->outside_sw_if_index) ? 
-                      VCGN_CLASSIFY_NEXT_UDP_OUTSIDE : next0;
+                  next0 = (sw_if_index0 < vec_len(vcm->outside_sw_if_index_table) &&
+                    vcm->outside_sw_if_index_table[sw_if_index0] != EMPTY) ?
+                        VCGN_CLASSIFY_NEXT_UDP_OUTSIDE : next0;
+
               } else if (protocol_type == 0x06) { /* TCP# 6 */
-                  next0 = (sw_if_index0 == vcm->inside_sw_if_index) ? 
-                      VCGN_CLASSIFY_NEXT_TCP_INSIDE : next0;
+                  next0 = (sw_if_index0 < vec_len(vcm->inside_sw_if_index_table) &&
+                    vcm->inside_sw_if_index_table[sw_if_index0] != EMPTY) ?
+                        VCGN_CLASSIFY_NEXT_TCP_INSIDE : next0;
 
-                  next0 = (sw_if_index0 == vcm->outside_sw_if_index) ? 
-                      VCGN_CLASSIFY_NEXT_TCP_OUTSIDE : next0;
+                  next0 = (sw_if_index0 < vec_len(vcm->outside_sw_if_index_table) &&
+                    vcm->outside_sw_if_index_table[sw_if_index0] != EMPTY) ?
+                        VCGN_CLASSIFY_NEXT_TCP_OUTSIDE : next0;
+
               } else if (protocol_type == 0x01) { /* ICMP # 1 */
 
                   ipv4_hdr_len = (h0->ip_version_and_header_length & 0xf) << 2;
@@ -293,18 +300,22 @@ vcgn_classify_node_fn (vlib_main_t * vm,
 
                   if ((icmp_type == ICMPV4_ECHO) || 
                           (icmp_type == ICMPV4_ECHOREPLY)) {
-                      next0 = (sw_if_index0 == vcm->inside_sw_if_index) ? 
-                          VCGN_CLASSIFY_NEXT_ICMP_Q_INSIDE : next0;
+                      next0 = (sw_if_index0 < vec_len(vcm->inside_sw_if_index_table) &&
+                        vcm->inside_sw_if_index_table[sw_if_index0] != EMPTY) ?
+                            VCGN_CLASSIFY_NEXT_ICMP_Q_INSIDE : next0;
 
-                      next0 = (sw_if_index0 == vcm->outside_sw_if_index) ? 
-                          VCGN_CLASSIFY_NEXT_ICMP_Q_OUTSIDE : next0;
+                      next0 = (sw_if_index0 < vec_len(vcm->outside_sw_if_index_table) &&
+                        vcm->outside_sw_if_index_table[sw_if_index0] != EMPTY) ?
+                            VCGN_CLASSIFY_NEXT_ICMP_Q_OUTSIDE : next0;
+
                   } else {
-                      next0 = (sw_if_index0 == vcm->inside_sw_if_index) ? 
-                          VCGN_CLASSIFY_NEXT_ICMP_E_INSIDE : next0;
+                      next0 = (sw_if_index0 < vec_len(vcm->inside_sw_if_index_table) &&
+                        vcm->inside_sw_if_index_table[sw_if_index0] != EMPTY) ?
+                            VCGN_CLASSIFY_NEXT_ICMP_E_INSIDE : next0;
 
-                      next0 = (sw_if_index0 == vcm->outside_sw_if_index) ? 
-                          VCGN_CLASSIFY_NEXT_ICMP_E_OUTSIDE : next0;
-
+                      next0 = (sw_if_index0 < vec_len(vcm->outside_sw_if_index_table) &&
+                        vcm->outside_sw_if_index_table[sw_if_index0] != EMPTY) ?
+                            VCGN_CLASSIFY_NEXT_ICMP_E_OUTSIDE : next0;
                   }
               } else {
                  /* cannot do NATting with this L4 protocol */
@@ -394,8 +405,21 @@ clib_error_t *vcgn_classify_init (vlib_main_t *vm)
     
   mp->vlib_main = vm;
   mp->vnet_main = vnet_get_main();
-  mp->inside_sw_if_index = 1;
-  mp->outside_sw_if_index = 0;
+  u32 inside_sw_if_index = 1;
+  u32 outside_sw_if_index = 0;
+
+  vec_validate_init_empty (mp->inside_sw_if_index_table,
+    inside_sw_if_index + 1, EMPTY);
+  vec_validate_init_empty (mp->outside_sw_if_index_table,
+    outside_sw_if_index + 1, EMPTY);
+
+  /*
+   * inside_sw_if_index cell of the table stores outside_sw_if_index
+   * and vice versa. This is ensurs pair of indices being remembered
+   * using one mem-location.
+   */
+  mp->inside_sw_if_index_table[inside_sw_if_index] = outside_sw_if_index;
+  mp->outside_sw_if_index_table[outside_sw_if_index] = inside_sw_if_index;
 
 #if DPDK==1
   dpdk_set_next_node (DPDK_RX_NEXT_IP4_INPUT, "vcgn-classify");
@@ -440,15 +464,14 @@ show_vcgn_inside_translation_command_fn (vlib_main_t * vm,
                          unformat_input_t * input,
                          vlib_cli_command_t * cmd)
 {
-    /*
     vnet_main_t * vnm = vnet_get_main();
-    */
     vcgn_classify_main_t * vcm = &vcgn_classify_main;
     spp_api_cnat_v4_show_inside_entry_req_t inside_req;
     u8 *proto; 
     ip4_address_t inside_addr;
     u32 start_port = 1;
     u32 end_port = 65535;
+    u32 inside_sw_if_index = EMPTY;
     
     inside_req.start_port = start_port;
     inside_req.end_port = end_port;
@@ -461,6 +484,12 @@ show_vcgn_inside_translation_command_fn (vlib_main_t * vm,
             } else {
                 inside_req.protocol = 3;
             } 
+        } else if (unformat (input, "interface %U", 
+		    unformat_vnet_sw_interface, vnm, &inside_sw_if_index)) {
+            if (inside_sw_if_index > vec_len(vcm->inside_sw_if_index_table) ||
+                vcm->inside_sw_if_index_table[inside_sw_if_index] == EMPTY) {
+                    return clib_error_return (0, "Could not find the inside interface");
+            }
         } else if (unformat (input, "inside-addr %U", 
                        unformat_ip4_address, &inside_addr)) {
             inside_req.ipv4_addr = clib_net_to_host_u32(inside_addr.as_u32); 
@@ -470,7 +499,7 @@ show_vcgn_inside_translation_command_fn (vlib_main_t * vm,
             inside_req.end_port = end_port;
         } else { break;}
     }
-    inside_req.vrf_id = vcm->inside_sw_if_index;
+    inside_req.vrf_id = inside_sw_if_index;
     inside_req.flags |= CNAT_TRANSLATION_ENTRY_DYNAMIC; /* as of now only dynamic */  
     inside_req.all_entries = 0; /* we can see it later */
 #if DEBUG
@@ -480,7 +509,7 @@ show_vcgn_inside_translation_command_fn (vlib_main_t * vm,
                 inside_req.ipv4_addr,
                 inside_req.start_port,
                 inside_req.end_port,
-                vcm->inside_sw_if_index);
+                inside_sw_if_index);
 #endif
     if (cnat_db_init_done) {
         cnat_v4_show_inside_entry_req_t_handler(&inside_req, vm);
@@ -498,12 +527,15 @@ show_vcgn_outside_translation_command_fn (vlib_main_t * vm,
 {
     void cnat_v4_show_outside_entry_req_t_handler
         (spp_api_cnat_v4_show_outside_entry_req_t *mp, vlib_main_t *vm);
+    vnet_main_t * vnm = vnet_get_main();
     vcgn_classify_main_t * vcm = &vcgn_classify_main;
     spp_api_cnat_v4_show_outside_entry_req_t outside_req;
     u8 *proto; 
     ip4_address_t outside_addr;
     u32 start_port = 1;
     u32 end_port = 65535;
+    u32 outside_sw_if_index = EMPTY;
+    
     
     outside_req.start_port = start_port;
     outside_req.end_port = end_port;
@@ -516,6 +548,12 @@ show_vcgn_outside_translation_command_fn (vlib_main_t * vm,
             } else {
                 outside_req.protocol = 3;
             } 
+        } else if (unformat (input, "interface %U", 
+            unformat_vnet_sw_interface, vnm, &outside_sw_if_index)) {
+            if (outside_sw_if_index > vec_len(vcm->outside_sw_if_index_table) ||
+                vcm->outside_sw_if_index_table[outside_sw_if_index] == EMPTY) {
+                    return clib_error_return (0, "Could not find the outside interface");
+            }
         } else if (unformat (input, "outside-addr %U", 
                        unformat_ip4_address, &outside_addr)) {
             outside_req.ipv4_addr = clib_net_to_host_u32(outside_addr.as_u32); 
@@ -525,7 +563,7 @@ show_vcgn_outside_translation_command_fn (vlib_main_t * vm,
             outside_req.end_port = end_port;
         } else { break;}
     }
-    outside_req.vrf_id = vcm->outside_sw_if_index;
+    outside_req.vrf_id = outside_sw_if_index;
     outside_req.flags |= CNAT_TRANSLATION_ENTRY_DYNAMIC; /* as of now only dynamic */  
 #if DEBUG
     vlib_cli_output(vm, "proto %d, outside-addr 0x%x, start_port %u, "
@@ -534,7 +572,7 @@ show_vcgn_outside_translation_command_fn (vlib_main_t * vm,
                 outside_req.ipv4_addr,
                 outside_req.start_port,
                 outside_req.end_port,
-                vcm->outside_sw_if_index);
+                outside_sw_if_index);
 #endif
     if (cnat_db_init_done) {
         cnat_v4_show_outside_entry_req_t_handler(&outside_req, vm);
@@ -574,13 +612,36 @@ set_vcgn_inside_command_fn (vlib_main_t * vm,
     if (inside_sw_if_index == outside_sw_if_index)
       return clib_error_return (0, "inside and outside interfaces can't be the same...");
 
-    vcm->inside_sw_if_index = inside_sw_if_index;
-    vcm->outside_sw_if_index = outside_sw_if_index;
+    /*
+     * Initialize in/out sw_if_index table. Could use
+     * non-indexed table to reduce memory. However, this
+     * is consulted in vcgn_classify for every packet.
+     * Therefore, table is indexed by sw_if_index.
+     */
+    vec_validate_init_empty (vcm->inside_sw_if_index_table,
+        inside_sw_if_index + 1, EMPTY);
+    vec_validate_init_empty (vcm->outside_sw_if_index_table,
+        outside_sw_if_index + 1, EMPTY);
 
-    cnat_db_v2_init();
-    
-    /* Turn on the db scanner process */
-    cnat_scanner_db_process_turn_on(vm);
+    /*
+     * inside_sw_if_index cell of the table stores outside_sw_if_index
+     * and vice versa. This is ensurs pair of indices being remembered
+     * using one mem-location.
+     */
+    vcm->inside_sw_if_index_table[inside_sw_if_index] = outside_sw_if_index;
+    vcm->outside_sw_if_index_table[outside_sw_if_index] = inside_sw_if_index;
+
+    if (! vcm->cnat_db_initalized) {
+        int i;
+        cnat_db_v2_init();
+        
+        for (i = 0; i < CNAT_MAX_VRFMAP_ENTRIES; i++) {
+            vrf_map_array[i] = VRF_MAP_ENTRY_EMPTY;
+        }
+        /* Turn on the db scanner process */
+        cnat_scanner_db_process_turn_on(vm);
+        vcm->cnat_db_initalized = 1;
+    }
     return 0;
 }
 
@@ -589,13 +650,20 @@ set_vcgn_map_command_fn (vlib_main_t * vm,
 			 unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
+  vnet_main_t * vnm = vnet_get_main();
   vcgn_classify_main_t * vcm = &vcgn_classify_main;
   ip4_address_t lo, hi;
   spp_api_cnat_v4_add_vrf_map_t map;
-  int i;
+  u32 inside_sw_if_index = EMPTY;
+  u32 outside_sw_if_index;
 
   vnet_hw_interface_t *inside_hw_if_index = NULL;
   vnet_hw_interface_t *outside_hw_if_index = NULL;
+
+  if (! unformat(input, "inside %U", 
+       unformat_vnet_sw_interface, vnm, &inside_sw_if_index))
+    return clib_error_return (0, "unknown input `%U'",
+                  format_unformat_error, input);
 
   if (!unformat (input, "%U", unformat_ip4_address, &lo))
     return clib_error_return (0, "unknown input `%U'",
@@ -608,26 +676,30 @@ set_vcgn_map_command_fn (vlib_main_t * vm,
 
   /* Fill the structure spp_api_cnat_v4_add_vrf_map_t & let this API handle it */
   /* i_vrf_id & o_vrf_id are 32-bit & i_vrf, o_vrf are 16 bit */
-  map.i_vrf_id = vcm->inside_sw_if_index; 
-  map.o_vrf_id = vcm->outside_sw_if_index; 
-  map.i_vrf    = vcm->inside_sw_if_index;
-  map.o_vrf    = vcm->outside_sw_if_index;
+
+  if (inside_sw_if_index > vec_len(vcm->inside_sw_if_index_table) ||
+    vcm->inside_sw_if_index_table[inside_sw_if_index] == EMPTY) {
+      return clib_error_return (0, "Could not find the inside interface");
+  }
+  outside_sw_if_index = vcm->inside_sw_if_index_table[inside_sw_if_index];
+
+  map.i_vrf_id = inside_sw_if_index; 
+  map.o_vrf_id = outside_sw_if_index; 
+  map.i_vrf    = inside_sw_if_index;
+  map.o_vrf    = outside_sw_if_index;
 
   map.start_addr[0] = clib_net_to_host_u32(lo.as_u32); 
   map.end_addr[0]   = clib_net_to_host_u32(hi.as_u32); 
 
-  for (i = 0; i < CNAT_MAX_VRFMAP_ENTRIES; i++) {
-        vrf_map_array[i] = VRF_MAP_ENTRY_EMPTY;
-  }
   cnat_nat44_add_vrf_map_t_handler(&map, vm);
 
 #if 1
-  inside_hw_if_index = vnet_get_sup_hw_interface(vcm->vnet_main, vcm->inside_sw_if_index);
+  inside_hw_if_index = vnet_get_sup_hw_interface(vcm->vnet_main, inside_sw_if_index);
   if (inside_hw_if_index) {
     vnet_hw_interface_rx_redirect_to_node(vcm->vnet_main, 
             inside_hw_if_index->hw_if_index, vcgn_classify_node.index);
   }
-  outside_hw_if_index = vnet_get_sup_hw_interface(vcm->vnet_main, vcm->outside_sw_if_index);
+  outside_hw_if_index = vnet_get_sup_hw_interface(vcm->vnet_main, outside_sw_if_index);
   if (outside_hw_if_index) {
     vnet_hw_interface_rx_redirect_to_node(vcm->vnet_main, 
             outside_hw_if_index->hw_if_index, vcgn_classify_node.index);
@@ -940,22 +1012,23 @@ set_vcgn_nfv9_logging_cofig_command_fn (vlib_main_t * vm,
     cnat_nfv9_logging_info_t *my_nfv9_logging_info = NULL;
     cnat_nfv9_logging_info_t *my_nfv9_logging_info_tmp = NULL;
     cnat_vrfmap_t *my_vrfmap = 0, *my_vrfmap_temp = 0; 
-    u16           i_vrf;
-    u32           i_vrf_id;
+    u16           i_vrf = ~0;
+    u32           i_vrf_id = ~0;
     u8            found;
+    u32 inside_sw_if_index = EMPTY;
     /*
      * Init NFv9 logging info as needed, this will be done only once
      */
     cnat_nfv9_logging_init();
 
-    i_vrf    = vcm->inside_sw_if_index;
-    i_vrf_id = vcm->inside_sw_if_index; 
-
     found = 0;
   
 /* vcgn changes end*/
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
-        if (unformat (input, "server %U", unformat_ip4_address, &server_addr))
+        if (unformat (input, "inside %U", 
+               unformat_vnet_sw_interface, &inside_sw_if_index)) {
+            /* Do nothing */
+        } else if (unformat (input, "server %U", unformat_ip4_address, &server_addr))
             ip_addr = clib_net_to_host_u32(server_addr.as_u32);
         else if (unformat(input, "port %u", &port)) 
         ;
@@ -970,6 +1043,12 @@ set_vcgn_nfv9_logging_cofig_command_fn (vlib_main_t * vm,
         else break;
     }
 
+    if (inside_sw_if_index > vec_len(vcm->inside_sw_if_index_table) ||
+        vcm->inside_sw_if_index_table[inside_sw_if_index] == EMPTY) {
+            return clib_error_return (0, "Could not find the inside interface");
+    }
+    i_vrf    = inside_sw_if_index;
+    i_vrf_id = inside_sw_if_index; 
 
     #if 0
     vlib_cli_output(vm, "ip 0x%x, port %u, refresh %u, "
@@ -982,8 +1061,8 @@ set_vcgn_nfv9_logging_cofig_command_fn (vlib_main_t * vm,
 
     nfv9_conf.enable = enable;
     nfv9_conf.ipv4_address = ip_addr;
-    nfv9_conf.i_vrf_id = vcm->inside_sw_if_index;
-    nfv9_conf.i_vrf = vcm->inside_sw_if_index;
+    nfv9_conf.i_vrf_id = inside_sw_if_index;
+    nfv9_conf.i_vrf = inside_sw_if_index;
     nfv9_conf.port = port;
     nfv9_conf.refresh_rate = refresh_rate;
     nfv9_conf.timeout_rate = timeout;
@@ -1329,7 +1408,9 @@ VLIB_CLI_COMMAND (set_vcgn_port_limit_command) = {
 
 VLIB_CLI_COMMAND (set_vcgn_nfv9_logging_cofig_command) = {
     .path = "set vcgn nfv9",
-    .short_help = "set vcgn nfv9 [del] server <ip-addr> port <port> [refresh-rate <n>] [timeout <n>] [pmtu <n>]",
+    .short_help = "set vcgn nfv9 [del] inside <interface> "
+                  "server <ip-addr> port <port> [refresh-rate <n>] "
+                  "[timeout <n>] [pmtu <n>]",
     .function = set_vcgn_nfv9_logging_cofig_command_fn,
 };
 
@@ -1350,14 +1431,16 @@ VLIB_CLI_COMMAND (show_vcgn_stat_command) = {
 VLIB_CLI_COMMAND (show_vcgn_inside_translation_command) = {
     .path = "show vcgn inside-translation",
     .short_help = "show vcgn inside-translation protocol <tcp/udp/icmp> "
-                  "inside-addr <ip-addr> [start-port <n>] [end-port <n>]",
+                  "interface <inside-if> inside-addr <ip-addr> "
+                  "[start-port <n>] [end-port <n>]",
     .function = show_vcgn_inside_translation_command_fn,
 };
 
 VLIB_CLI_COMMAND (show_vcgn_outside_translation_command) = {
     .path = "show vcgn outside-translation",
     .short_help = "show vcgn outside-translation protocol <tcp/udp/icmp> "
-                  "outside-addr <ip-addr> [start-port <n>] [end-port <n>]",
+                  "interface <outside-if> outside-addr <ip-addr> "
+                  "[start-port <n>] [end-port <n>]",
     .function = show_vcgn_outside_translation_command_fn,
 };
 
