@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_3ece7f84",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-06-15T14:58:33Z",
+      "side": 1,
+      "message": "Move to C99 and use structure initialisers? Those are defaulted to zero for uninitialised members.",
+      "revId": "a55cf2c1e5ee791e7bc1d657c75eb65255ce050f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
