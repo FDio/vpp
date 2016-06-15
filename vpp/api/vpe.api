@@ -643,7 +643,7 @@ typeonly manual_print manual_endian define ip4_fib_counter {
 manual_java manual_print manual_endian define vnet_ip4_fib_counters {
     u32 vrf_id;
     u32 count;
-    vl_api_ip4_fib_counter_t c[0];
+    vl_api_ip4_fib_counter_t c[count];
 };
 
 typeonly manual_print manual_endian define ip6_fib_counter {
@@ -656,7 +656,7 @@ typeonly manual_print manual_endian define ip6_fib_counter {
 manual_java manual_print manual_endian define vnet_ip6_fib_counters {
     u32 vrf_id;
     u32 count;
-    vl_api_ip6_fib_counter_t c[0];
+    vl_api_ip6_fib_counter_t c[count];
 };
 
 /** \brief Request for a single block of summary stats

@@ -67,7 +67,7 @@ def get_pack(t):
     j = -1
     for i in t:
         j += 1
-        if len(i) is 3:
+        if len(i) is 3 or len(i) is 4:  # TODO: add support for variable length arrays (VPP-162)
             size = type_size[i[0]]
             bytecount += size * int(i[2])
             # Check if we have a zero length array
