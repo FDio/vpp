@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_feda4716",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1506,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-15T16:05:44Z",
+      "side": 1,
+      "message": "a-\u003elocator_set_name is not freed",
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_ded783ec",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4948,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-15T16:05:44Z",
+      "side": 1,
+      "message": "free locator_set_name when done",
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_3ed1dffb",
+        "filename": "vpp/api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 5313,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-15T16:05:44Z",
+      "side": 1,
+      "message": "Do we need \u0027dump\u0027 mechanism for this? There will always be only one reply message",
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
