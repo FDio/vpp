@@ -1,0 +1,100 @@
+                =================================
+                CARRIER GRADE NAT - NAT44 README
+                =================================
+ 
+What is implemented:
+====================
+* NAT44 UDP, TCP, ICMP protocols
+* Show and config commands for various parameters for the same
+* NF9 logging is implemented but is not tested
+ 
+What is not implemented:
+=========================
+* TCP MSS
+* TCP refresh direction
+* Static port forwarding
+* Syslog support
+* Destination based logging or session logging
+* None of the ALGs
+* Performance optimization
+* Binary APIs, suitable for configuring the feature from netconf/restconf/yang
+* Support for VLANs
+ 
+Setup
+=====
+                
+                              +--------------+
++------------+      GEb/0/0  |              |
+| Tester     +-------------->+  vCGN/vPE-f  |
+|            +<--------------+  VM in UCS   |
++------------+      GE13/0/0 |              |
+                              +--------------+
+ 
+Configure Interfaces and add routes in vPE-f 
+=============================================
+set int ip address GigabitEthernetb/0/0 10.4.5.2/24 
+set int state GigabitEthernetb/0/0 up 
+set int ip address GigabitEthernet13/0/0 20.4.5.2/24 
+set int state GigabitEthernet13/0/0 up 
+ip route add 4.4.4.0/24 via GigabitEthernet13/0/0 
+ip route add 1.2.3.0/24 via GigabitEthernetb/0/0 show ip fib
+ 
+Configure vCGN NAT44 for UDP/TCP/ICMP
+=======================================
+set vcgn inside GigabitEthernetb/0/0 outside GigabitEthernet13/0/0 
+set vcgn port limit 65535 set vcgn dynamic port start 5641 
+set vcgn map 10.1.1.0 - 10.1.1.31 set vcgn tcp timeout active 65535 init 65535 
+set vcgn udp timeout active 65535 init 65535 set vcgn icmp timeout 65535
+ 
+Set ARP entries for CGN to Tester
+==================================
+set ip arp GigabitEthernet13/0/0 4.4.4.4 11:22:33:44:55:00 
+set ip arp GigabitEthernetb/0/0 1.2.3.0 11:22:33:44:55:10 
+set ip arp GigabitEthernetb/0/0 1.2.3.1 11:22:33:44:55:12 
+set ip arp GigabitEthernetb/0/0 1.2.3.2 11:22:33:44:55:13 
+set ip arp GigabitEthernetb/0/0 1.2.3.3 11:22:33:44:55:14 
+set ip arp GigabitEthernetb/0/0 1.2.3.4 11:22:33:4e:55:11 
+set ip arp GigabitEthernetb/0/0 1.2.3.5 11:22:33:44:55:15 
+set ip arp GigabitEthernetb/0/0 1.2.3.6 11:22:33:44:55:16 
+set ip arp GigabitEthernetb/0/0 1.2.3.7 11:22:33:44:55:17 
+set ip arp GigabitEthernetb/0/0 1.2.3.8 11:22:33:44:55:18 
+set ip arp GigabitEthernetb/0/0 1.2.3.9 11:22:33:44:55:19 
+set ip arp GigabitEthernetb/0/0 1.2.3.10 11:22:33:44:55:1a 
+set ip arp GigabitEthernetb/0/0 1.2.3.11 11:22:33:44:55:1b 
+set ip arp GigabitEthernetb/0/0 1.2.3.12 11:22:33:44:55:1c 
+set ip arp GigabitEthernetb/0/0 1.2.3.13 11:22:33:44:55:1d 
+set ip arp GigabitEthernetb/0/0 1.2.3.14 11:22:33:44:55:1e 
+set ip arp GigabitEthernetb/0/0 1.2.3.15 11:22:33:44:55:1f 
+set ip arp GigabitEthernetb/0/0 1.2.3.16 11:22:33:44:50:01 
+set ip arp GigabitEthernetb/0/0 1.2.3.17 11:22:33:44:51:01 
+set ip arp GigabitEthernetb/0/0 1.2.3.18 11:22:33:44:52:01 
+set ip arp GigabitEthernetb/0/0 1.2.3.19 11:22:33:44:53:01 
+set ip arp GigabitEthernetb/0/0 1.2.3.20 11:22:33:44:54:02 
+set ip arp GigabitEthernetb/0/0 1.2.3.21 11:22:33:44:55:01 
+set ip arp GigabitEthernetb/0/0 1.2.3.22 11:22:33:44:56:02 
+set ip arp GigabitEthernetb/0/0 1.2.3.23 11:22:33:44:57:00 
+set ip arp GigabitEthernetb/0/0 1.2.3.24 11:22:33:44:58:02 
+set ip arp GigabitEthernetb/0/0 1.2.3.25 11:22:33:44:59:03 
+set ip arp GigabitEthernetb/0/0 1.2.3.26 11:22:33:44:5a:01 
+set ip arp GigabitEthernetb/0/0 1.2.3.27 11:22:33:44:5b:02 
+set ip arp GigabitEthernetb/0/0 1.2.3.28 11:22:33:44:5c:03 
+set ip arp GigabitEthernetb/0/0 1.2.3.29 11:22:33:44:5d:04 
+set ip arp GigabitEthernetb/0/0 1.2.3.30 11:22:33:44:5e:05 
+set ip arp GigabitEthernetb/0/0 1.2.3.31 11:22:33:44:5f:06
+ 
+ 
+Show commands
+=============
+show vcgn config
+show vcgn statistics
+show node counters
+show interface
+ 
+Show commands to show translations
+==================================
+show vcgn inside-translation protocol tcp inside-addr 1.2.3.4 start-port 5641 end-port 5645 
+show vcgn outside-translation protocol tcp outside-addr 10.1.1.31 start-port 7000 end-port 8000 
+show vcgn inside-translation protocol icmp inside-addr 1.2.3.4 start-port 7000 end-port 8000 
+show vcgn outside-translation protocol icmp outside-addr 10.1.1.31 start-port 7000 end-port 8000
+ 
+
