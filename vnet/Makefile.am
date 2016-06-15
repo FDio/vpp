@@ -346,15 +346,11 @@ libvnet_la_SOURCES +=                           \
  vnet/map/map.c                                 \
  vnet/map/ip4_map.c                             \
  vnet/map/ip6_map.c                             \
- vnet/map/sixrd.c                               \
- vnet/map/ip4_sixrd.c                           \
- vnet/map/ip6_sixrd.c                           \
  vnet/map/ip4_map_t.c                           \
  vnet/map/ip6_map_t.c
 
 nobase_include_HEADERS +=                       \
- vnet/map/map.h                                 \
- vnet/map/sixrd.h
+ vnet/map/map.h
 
 ########################################
 # Tunnel protocol: gre

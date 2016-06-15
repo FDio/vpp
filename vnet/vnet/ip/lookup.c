@@ -947,7 +947,6 @@ u8 * format_ip_lookup_next (u8 * s, va_list * args)
     case IP_LOOKUP_NEXT_CLASSIFY: t = "classify"; break;
     case IP_LOOKUP_NEXT_MAP: t = "map"; break;
     case IP_LOOKUP_NEXT_MAP_T: t = "map-t"; break;
-    case IP_LOOKUP_NEXT_SIXRD: t = "sixrd"; break;
     case IP_LOOKUP_NEXT_INDIRECT: t="indirect"; break;
     case IP_LOOKUP_NEXT_REWRITE:
       break;
