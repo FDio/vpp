@@ -17,6 +17,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/api_errno.h>     /* for API error numbers */
 #include <vnet/l2/l2_classify.h> /* for L2_CLASSIFY_NEXT_xxx */
+#include <vnet/ip/ip6_hop_by_hop.h>
 
 vnet_classify_main_t vnet_classify_main;
 
@@ -365,6 +366,8 @@ split_and_rehash (vnet_classify_table_t * t,
   return new_values;
 }
 
+void (*vc_app_add)(vnet_classify_table_t * t, vnet_classify_entry_t * v);
+void (*vc_app_del)(vnet_classify_table_t * t, vnet_classify_entry_t * v);
 int vnet_classify_add_del (vnet_classify_table_t * t, 
                            vnet_classify_entry_t * add_v,
                            int is_add)
@@ -415,6 +418,11 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
       b->as_u64 = tmp_b.as_u64;
       t->active_elements ++;
 
+      if (vc_app_add) 
+      {
+        vc_app_add(t, v);
+        vc_app_add = 0;
+      }
       goto unlock;
     }
   
@@ -440,6 +448,11 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
                       t->match_n_vectors * sizeof(u32x4));
               v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
 
+              if (vc_app_add) 
+              {
+                vc_app_add(t, v);
+                vc_app_add = 0;
+              }
               CLIB_MEMORY_BARRIER();
               /* Restore the previous (k,v) pairs */
               b->as_u64 = t->saved_bucket.as_u64;
@@ -455,6 +468,11 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
               clib_memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
                       t->match_n_vectors * sizeof(u32x4));
               v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
+              if (vc_app_add) 
+              {
+                vc_app_add(t, v);
+                vc_app_add = 0;
+              }
               CLIB_MEMORY_BARRIER();
               b->as_u64 = t->saved_bucket.as_u64;
               t->active_elements ++;
@@ -471,6 +489,11 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
 
           if (!memcmp (v->key, add_v->key, t->match_n_vectors * sizeof (u32x4)))
             {
+              if (vc_app_del) 
+              {
+                vc_app_del(t, v);
+                vc_app_del = 0;
+              }
               memset (v, 0xff, sizeof (vnet_classify_entry_t) +
                       t->match_n_vectors * sizeof(u32x4));
               v->flags |= VNET_CLASSIFY_ENTRY_FREE;
@@ -1141,6 +1164,11 @@ uword unformat_acl_next_index (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+uword unformat_ioam_next_index (unformat_input_t * input, va_list * args)
+{
+    return unformat_acl_next_index (input, args);
+}
+
 static clib_error_t *
 classify_table_command_fn (vlib_main_t * vm,
                            unformat_input_t * input,
@@ -1763,6 +1791,12 @@ classify_session_command_fn (vlib_main_t * vm,
       else if (unformat (input, "acl-hit-next %U", unformat_acl_next_index,
                          &hit_next_index))
         ;
+      else if (unformat (input, "ioam-hit-next %U", unformat_ioam_next_index,
+                         &hit_next_index))
+      {
+        vc_app_add = ioam_flow_add;
+        vc_app_del = ioam_flow_del;
+      }
       else if (unformat (input, "opaque-index %lld", &opaque_index))
         ;
       else if (unformat (input, "match %U", unformat_classify_match,
@@ -1919,6 +1953,9 @@ vnet_classify_init (vlib_main_t * vm)
 
   vnet_classify_register_unformat_acl_next_index_fn
     (unformat_acl_next_node);
+
+  vc_app_add = 0;
+  vc_app_del = 0;
 
   return 0;
 }

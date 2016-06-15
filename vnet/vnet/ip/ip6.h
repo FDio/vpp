@@ -542,7 +542,4 @@ int ip6_hbh_register_option (u8 option,
 			     u8 *trace(u8 *s, ip6_hop_by_hop_option_t *opt));
 int ip6_hbh_unregister_option (u8 option);
 
-/* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
-#define OI_DECAP   100
-
 #endif /* included_ip_ip6_h */

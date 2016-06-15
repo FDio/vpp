@@ -169,6 +169,68 @@ ip6_hbh_ioam_proof_of_work_trace_handler (u8 *s, ip6_hop_by_hop_option_t *opt)
   return (s);
 }
 
+static void
+copy_ipfix_info(ip6_header_t * ip, u32 opaque_index)
+{
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+  ioam_ipfix_elts_t *ipfix;
+  ip6_hop_by_hop_header_t *hbh = (ip6_hop_by_hop_header_t *)(ip+1);
+  u8 type;
+  ioam_trace_option_t *to = (ioam_trace_option_t *)(hbh+1);
+  udp_header_t *u;
+
+  while (__sync_lock_test_and_set (hm->writer_lock, 1))
+    ;
+
+  ipfix = get_ipfix_flow(opaque_index);
+  if (!ipfix)
+    goto out;
+
+  /* Copy required fields into ipfix location for ths elts */
+  copy_ip6_address(&ipfix->src_addr, &ip->src_address);
+  copy_ip6_address(&ipfix->dst_addr, &ip->dst_address);
+  ipfix->protocol = hbh->protocol;
+  ipfix->src_port = 0;
+  ipfix->dst_port = 0;
+  //FIXME look for l4 header not assume l4 header to follow hbyh
+  if(ipfix->protocol == IP_PROTOCOL_TCP ||
+     ipfix->protocol == IP_PROTOCOL_UDP)
+  {
+    u16 hlen = (hbh->length+1)<<3;
+    u = (udp_header_t *) (((u8*)hbh)+hlen);
+    ipfix->src_port = clib_net_to_host_u16(u->src_port);
+    ipfix->dst_port = clib_net_to_host_u16(u->dst_port);
+  }
+  ipfix->pkt_counter++;
+  ipfix->bytes_counter += clib_net_to_host_u16 (ip->payload_length)
+                                                - ((hbh->length+1)<<3);
+
+  type = to->hdr.type;
+
+  if (type == HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST)
+  {
+    u32 size_of_traceopt_per_node = fetch_trace_data_size(to->ioam_trace_type);
+    u32 size_of_all_traceopts = to->hdr.length - 2; /*ioam_trace_type,data_list_elts_left*/
+    u8 i;
+    u32 *ptr = to->elts;
+
+    ipfix->num_nodes = size_of_all_traceopts / size_of_traceopt_per_node;
+
+    for(i = 0; i < ipfix->num_nodes; i++)
+    {
+      ptr = (u32 *) ((u8*)to->elts + (size_of_traceopt_per_node * i));
+      ipfix->path[i].node_id = clib_net_to_host_u32 (*ptr) & 0x00ffffff;
+      if (to->ioam_trace_type == TRACE_TYPE_IF_TS_APP ||
+         to->ioam_trace_type == TRACE_TYPE_IF)
+          ipfix->path[i].ingress_if = (u16)(((*(ptr+1)) & 0xffff0000) >> 16);
+        ipfix->path[i].egress_if  = (u16)((*(ptr+1)) & 0x0000ffff);
+    }
+  }
+
+out:
+  *(hm->writer_lock) = 0;
+}
+
 int
 ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt)
 {
@@ -218,6 +280,14 @@ ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t *b, ip6_header_t *ip, ip6_ho
       elt++;
     }
   }
+
+  /* RANGAN:This is only for UT purposes and should be removed before checkin */
+  if (hm->enable_ipfix_ut)
+  {
+    u32 opaque_index = vnet_buffer(b)->l2_classify.opaque_index;
+    copy_ipfix_info(ip, opaque_index);
+  }
+
   return (rv);
 }
 
@@ -625,6 +695,7 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
   u32 n_left_from, * from, * to_next;
   ip_lookup_next_t next_index;
   u32 processed = 0;
+  u32 opaque_index;
   u32 no_header = 0;
   u32 (*ioam_end_of_path_cb) (vlib_main_t *, vlib_node_runtime_t *,
                               vlib_buffer_t *, ip6_header_t *, 
@@ -753,6 +824,10 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 
 	  /* TODO:Temporarily doing it here.. do this validation in end_of_path_cb */
 	  ioam_end_of_path_validation(vm, ip0, hbh0);
+          /* Before popping, hbh field, copy the required info for ipfix */
+          opaque_index = vnet_buffer(b0)->l2_classify.opaque_index;
+          copy_ipfix_info(ip0, opaque_index);
+
 	  /* Pop the trace data */
 	  vlib_buffer_advance (b0, (hbh0->length+1)<<3);
 	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
@@ -814,6 +889,9 @@ static clib_error_t *
 ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
 {
   ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+  void ip6_ioam_flow_report_reference (void);
+
+  ip6_ioam_flow_report_reference();
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main();
@@ -821,6 +899,11 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
   hm->vlib_time_0 = vlib_time_now (vm);
   hm->ioam_flag = IOAM_HBYH_MOD;
   hm->trace_tsp = TSP_MICROSECONDS; /* Micro seconds */
+  hm->ioam_flows = 0;
+
+  hm->writer_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+                                            CLIB_CACHE_LINE_BYTES);
+  *(hm->writer_lock) = 0;
 
   /*
    * Register the handlers
@@ -1159,6 +1242,30 @@ int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width, u32 vrf_id,
   return 0;
 }
                               
+void ioam_flow_add(vnet_classify_table_t * t, vnet_classify_entry_t * v)
+{
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+  ioam_ipfix_elts_t * ipfix = 0;
+
+  if (v->opaque_index == ~0)
+    return;
+
+  pool_get_aligned (hm->ioam_flows, ipfix, CLIB_CACHE_LINE_BYTES);
+  memset(ipfix, 0, sizeof (ioam_ipfix_elts_t));
+  ipfix->my_node_id = hm->node_id;
+  ipfix->sfc_id = 10; /* Arbit number */
+  v->opaque_index = ipfix - hm->ioam_flows;
+}
+
+void ioam_flow_del(vnet_classify_table_t * t, vnet_classify_entry_t * v)
+{
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+  ioam_ipfix_elts_t * ipfix = 0;
+
+  ipfix = pool_elt_at_index (hm->ioam_flows, v->opaque_index);
+  pool_put (hm->ioam_flows, ipfix);
+}
+
 static clib_error_t *
 ip6_set_ioam_destination_command_fn (vlib_main_t * vm,
                                      unformat_input_t * input,
@@ -1212,6 +1319,23 @@ VLIB_CLI_COMMAND (ip6_set_ioam_destination_cmd, static) = {
   .path = "set ioam destination",
   .short_help = "set ioam destination <ip6-address>/<width> add | pop | none",
   .function = ip6_set_ioam_destination_command_fn,
+};
+
+static clib_error_t *
+ip6_set_ioam_test_fn (vlib_main_t * vm,
+                      unformat_input_t * input,
+                      vlib_cli_command_t * cmd)
+{
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+
+  hm->enable_ipfix_ut = 1;
+  return 0;
+}
+
+VLIB_CLI_COMMAND (ip6_set_ioam_test_cmd, static) = {
+  .path = "set ioam test",
+  .short_help = "ioam enables for ipfix UT (internal command only)",
+  .function = ip6_set_ioam_test_fn,
 };
 
 
