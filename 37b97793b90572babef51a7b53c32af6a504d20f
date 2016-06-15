@@ -46,6 +46,30 @@
       "revId": "37b97793b90572babef51a7b53c32af6a504d20f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_b9d06954",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-15T20:30:35Z",
+      "side": 1,
+      "message": "We can always move them to a standalone, ip specific header file. The reason for them being here has to do with the fact that when defined, there was no ip46_address_t in vpp and I thought they wouldn\u0027t be needed in the data plane ...",
+      "parentUuid": "ba092121_59f82de5",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 41,
+        "endChar": 41
+      },
+      "revId": "37b97793b90572babef51a7b53c32af6a504d20f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
