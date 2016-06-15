@@ -80,11 +80,15 @@ def get_types(t, filter):
         if len(i) is 3:  # array type
             types_list.append(vpp_2_jni_type_mapping[i[0]] + 'Array')
             c_types_list.append(i[0] + '[]')
-            lengths_list.append(i[2])
+            lengths_list.append((i[2], False))
+        elif len(i) is 4:  # variable length array type
+            types_list.append(vpp_2_jni_type_mapping[i[0]] + 'Array')
+            c_types_list.append(i[0] + '[]')
+            lengths_list.append((i[3], True))
         else:  # primitive type
             types_list.append(vpp_2_jni_type_mapping[i[0]])
             c_types_list.append(i[0])
-            lengths_list.append(0)
+            lengths_list.append((0, False))
     return types_list, c_types_list, lengths_list
 
 
