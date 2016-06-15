@@ -1,3 +1,4 @@
-# UUID                                                              	Group Name
+# UUID                                                                   	Group Name
 #
-ldap:cn=fdio-gerrit-vpp-committers,ou=Groups,dc=freestandards,dc=org	ldap/fdio-gerrit-vpp-committers
+ldap:cn=fdio-gerrit-deb_dpdk-committers,ou=Groups,dc=freestandards,dc=org	ldap/fdio-gerrit-deb_dpdk-committers
+ldap:cn=fdio-gerrit-vpp-committers,ou=Groups,dc=freestandards,dc=org     	ldap/fdio-gerrit-vpp-committers
