@@ -44,6 +44,9 @@ typedef struct {
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+  u32 ip4_lookup_next_index;
+  u32 ip6_lookup_next_index;
 } sixrd_main_t;
 
 #define foreach_sixrd_error				\

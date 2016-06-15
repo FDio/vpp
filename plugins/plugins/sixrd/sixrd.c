@@ -14,6 +14,7 @@
  */
 
 #include "sixrd.h"
+#include <vnet/plugin/plugin.h>
 
 /*
  * This code supports the following sixrd modes:
@@ -63,7 +64,6 @@ sixrd_create_domain (ip6_address_t *ip6_prefix,
   /* Init IP adjacency */
   memset(&adj, 0, sizeof(adj));
   adj.explicit_fib_index = ~0;
-  adj.lookup_next_index = IP_LOOKUP_NEXT_SIXRD;
   p = (u32 *)&adj.rewrite_data[0];
   *p = (u32) (*sixrd_domain_index);
 
@@ -77,6 +77,7 @@ sixrd_create_domain (ip6_address_t *ip6_prefix,
   args6.adj_index = ~0;
   args6.add_adj = &adj;
   args6.n_add_adj = 1;
+  adj.lookup_next_index = mm->ip6_lookup_next_index;
   ip6_add_del_route(im6, &args6);
 
   /* Multiple SIXRD domains may share same source IPv4 TEP */
@@ -85,7 +86,7 @@ sixrd_create_domain (ip6_address_t *ip6_prefix,
     u32 ai = q[0];
     ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
     ip_adjacency_t *adj4 = ip_get_adjacency(lm4, ai);
-    if (adj4->lookup_next_index != IP_LOOKUP_NEXT_SIXRD) {
+    if (adj4->lookup_next_index != mm->ip4_lookup_next_index) {
       clib_warning("BR source address already assigned: %U", format_ip4_address, ip4_src);
       pool_put(mm->domains, d);
       return -1;
@@ -106,6 +107,7 @@ sixrd_create_domain (ip6_address_t *ip6_prefix,
     args4.adj_index = ~0;
     args4.add_adj = &adj;
     args4.n_add_adj = 1;
+    adj.lookup_next_index = mm->ip4_lookup_next_index;
     ip4_add_del_route(im4, &args4);
   }
 
@@ -135,7 +137,6 @@ sixrd_delete_domain (u32 sixrd_domain_index)
 
   memset(&adj, 0, sizeof(adj));
   adj.explicit_fib_index = ~0;
-  adj.lookup_next_index = IP_LOOKUP_NEXT_SIXRD;
 
   /* Delete ip6 adjacency */
   memset(&args6, 0, sizeof (args6));
@@ -339,17 +340,40 @@ VLIB_CLI_COMMAND(show_sixrd_stats_command, static) = {
   .function = show_sixrd_stats_command_fn,
 };
 
-/*
- * sixrd_init
+/* 
+ * This routine exists to convince the vlib plugin framework that
+ * we haven't accidentally copied a random .dll into the plugin directory.
+ *
+ * Also collects global variable pointers passed from the vpp engine
  */
-clib_error_t *sixrd_init (vlib_main_t *vm)
+clib_error_t * 
+vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
+                      int from_early_init)
 {
+  clib_error_t * error = 0;
   sixrd_main_t *mm = &sixrd_main;
 
   mm->vnet_main = vnet_get_main();
   mm->vlib_main = vm;
 
-  return 0;
+  return error;
 }
 
-VLIB_INIT_FUNCTION(sixrd_init);
+static clib_error_t * sixrd_init (vlib_main_t * vm)
+{
+  clib_error_t * error = 0;
+  sixrd_main_t *mm = &sixrd_main;
+
+  vlib_node_t * ip6_lookup_node = vlib_get_node_by_name(vm, (u8 *)"ip6-lookup");
+  vlib_node_t * ip4_lookup_node = vlib_get_node_by_name(vm, (u8 *)"ip4-lookup");
+  vlib_node_t * ip6_sixrd_node = vlib_get_node_by_name(vm, (u8 *)"ip6-sixrd");
+  vlib_node_t * ip4_sixrd_node = vlib_get_node_by_name(vm, (u8 *)"ip4-sixrd");
+  ASSERT(ip6_lookup_node && ip4_lookup_node && ip6_sixrd_node && ip4_sixrd_node);
+
+  mm->ip6_lookup_next_index = vlib_node_add_next(vm, ip6_lookup_node->index, ip6_sixrd_node->index);
+  mm->ip4_lookup_next_index = vlib_node_add_next(vm, ip4_lookup_node->index, ip4_sixrd_node->index);
+
+  return error;
+}
+
+VLIB_INIT_FUNCTION (sixrd_init);

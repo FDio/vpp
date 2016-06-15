@@ -76,9 +76,6 @@ typedef enum {
   /* This packet needs to go to MAP with Translation - RFC7599 */
   IP_LOOKUP_NEXT_MAP_T,
 
-  /* This packets needs to go to 6RD (RFC5969) */
-  IP_LOOKUP_NEXT_SIXRD,
-
   /* This packets needs to go to indirect next hop */
   IP_LOOKUP_NEXT_INDIRECT,
 
@@ -109,7 +106,6 @@ typedef enum {
     [IP_LOOKUP_NEXT_CLASSIFY] = "ip4-classify",			\
     [IP_LOOKUP_NEXT_MAP] = "ip4-map",				\
     [IP_LOOKUP_NEXT_MAP_T] = "ip4-map-t",			\
-    [IP_LOOKUP_NEXT_SIXRD] = "ip4-sixrd",			\
     [IP_LOOKUP_NEXT_INDIRECT] = "ip4-indirect",			\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip4-icmp-error",		\
 }
@@ -124,7 +120,6 @@ typedef enum {
     [IP_LOOKUP_NEXT_CLASSIFY] = "ip6-classify",			\
     [IP_LOOKUP_NEXT_MAP] = "ip6-map",				\
     [IP_LOOKUP_NEXT_MAP_T] = "ip6-map-t",			\
-    [IP_LOOKUP_NEXT_SIXRD] = "ip6-sixrd",			\
     [IP_LOOKUP_NEXT_INDIRECT] = "ip6-indirect",			\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip6-icmp-error",		\
     [IP6_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",		\

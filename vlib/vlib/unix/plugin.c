@@ -61,11 +61,13 @@ load_one_plugin (plugin_main_t *pm, plugin_info_t *pi, int from_early_init)
   
   pi->handle = handle;
 
+
   register_handle = dlsym (pi->handle, "vlib_plugin_register");
   if (register_handle == 0)
     {
       dlclose (handle);
-      return 0;
+      clib_warning("Plugin missing vlib_plugin_register: %s\n", (char *)pi->name);
+      return 1;
     }
 
   fp = register_handle;
@@ -148,9 +150,12 @@ int vlib_load_new_plugins (plugin_main_t *pm, int from_early_init)
 
           plugin_name = format (0, "%s/%s%c", plugin_path[i],
                                 entry->d_name, 0);
-          
+
+	  /* Only accept .so */
+	  char * ext = strrchr((const char *)plugin_name, '.');
           /* unreadable */
-          if (stat ((char *)plugin_name, &statb) < 0)
+	  if(!ext || (strcmp(ext, ".so") != 0) ||
+	     stat ((char *)plugin_name, &statb) < 0)
             {
             ignore:
               vec_free (plugin_name);

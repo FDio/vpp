@@ -53,7 +53,7 @@ endif
 
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
-.PHONY: ctags cscope doxygen wipe-doxygen
+.PHONY: ctags cscope doxygen wipe-doxygen plugins plugins-release
 
 help:
 	@echo "Make Targets:"
@@ -163,10 +163,10 @@ wipe-release: $(BR)/.bootstrap.ok
 rebuild-release: wipe-release build-release
 
 plugins: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM)_debug,sample-plugin-install)
+	$(call make,$(PLATFORM)_debug,plugins-install)
 
 plugins-release: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM),sample-plugin-install)
+	$(call make,$(PLATFORM),plugins-install)
 
 STARTUP_DIR ?= $(PWD)
 ifeq ("$(wildcard $(STARTUP_CONF))","")
