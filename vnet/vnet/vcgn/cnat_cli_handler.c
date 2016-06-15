@@ -339,9 +339,9 @@ void cnat_nat44_handle_show_config(vlib_main_t *vm)
 
     pool_foreach(my_vrfmap, cnat_map_by_vrf, ({
                 hw = vnet_get_hw_interface (dm->vnet_main, my_vrfmap->i_vrf);
-                vlib_cli_output(vm, "\tInside Interface  : %s\n", hw->name);
+                vlib_cli_output(vm, "\tInside Interface  : %v\n", hw->name);
                 hw = vnet_get_hw_interface (dm->vnet_main, my_vrfmap->o_vrf);
-                vlib_cli_output(vm, "\tOutside Interface : %s\n", hw->name);
+                vlib_cli_output(vm, "\tOutside Interface : %v\n", hw->name);
 
                 memset(status_str, 0x00, sizeof(status_str));
                 switch(my_vrfmap->status) {
