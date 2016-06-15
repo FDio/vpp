@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_53548c53",
+        "filename": "vpp/api/vpe.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 3633,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-06-15T09:55:29Z",
+      "side": 1,
+      "message": "Please use the API conventions for dump messages.\n_dump() / _details()",
+      "range": {
+        "startLine": 3614,
+        "startChar": 0,
+        "endLine": 3633,
+        "endChar": 2
+      },
+      "revId": "46cd0579216ec37a33a3fef6ef272a198fbea095",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
