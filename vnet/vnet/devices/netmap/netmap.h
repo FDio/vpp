@@ -42,6 +42,7 @@
 
 typedef struct {
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  volatile u32 * lockp;
   u8 * host_if_name;
   uword if_index;
   u32 hw_if_index;
@@ -77,13 +78,19 @@ typedef struct {
   uword * pending_input_bitmap;
 
   /* rx buffer cache */
-  u32 * rx_buffers;
+  u32 ** rx_buffers;
 
   /* hash of host interface names */
   mhash_t if_index_by_host_if_name;
 
   /* vector of memory regions */
   netmap_mem_region_t * mem_regions;
+
+  /* first cpu index */
+  u32 input_cpu_first_index;
+
+  /* total cpu count */
+  u32 input_cpu_count;
 } netmap_main_t;
 
 netmap_main_t netmap_main;

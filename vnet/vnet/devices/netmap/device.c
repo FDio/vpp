@@ -103,6 +103,12 @@ netmap_interface_tx (vlib_main_t * vm,
   netmap_if_t * nif = pool_elt_at_index (nm->interfaces, rd->dev_instance);
   int cur_ring;
 
+  if (PREDICT_FALSE(nif->lockp != 0))
+    {
+      while (__sync_lock_test_and_set (nif->lockp, 1))
+        ;
+    }
+
   cur_ring = nif->first_tx_ring;
 
   while(n_left && cur_ring <= nif->last_tx_ring)
@@ -155,6 +161,9 @@ netmap_interface_tx (vlib_main_t * vm,
 
   if (n_left < frame->n_vectors)
       ioctl(nif->fd, NIOCTXSYNC, NULL);
+
+  if (PREDICT_FALSE(nif->lockp != 0))
+      *nif->lockp = 0;
 
   if (n_left)
     vlib_error_count (vm, node->node_index,
