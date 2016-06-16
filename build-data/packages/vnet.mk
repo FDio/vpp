@@ -22,6 +22,9 @@ endif
 
 # Platform dependent configure flags
 vnet_configure_args += $(vnet_configure_args_$(PLATFORM))
+ifeq ($($(PLATFORM)_dpdk_inline_buf),no)
+vnet_configure_args += --with-non-inline-data
+endif
 
 # include & link with openssl only if needed
 ifneq ($($(PLATFORM)_uses_openssl),no)

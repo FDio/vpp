@@ -628,7 +628,7 @@ u8 * format_dpdk_tx_dma_trace (u8 * s, va_list * va)
 
   s = format (s, "\n%U%U", format_white_space, indent,
 	      format_ethernet_header_with_length, t->buffer.pre_data,
-	      sizeof (t->buffer.pre_data));
+	      VLIB_BUFFER_PRE_DATA_SIZE);
 
   return s;
 }
@@ -675,7 +675,7 @@ u8 * format_dpdk_rx_dma_trace (u8 * s, va_list * va)
   if (!f)
     f = format_hex_bytes;
   s = format (s, "\n%U%U", format_white_space, indent,
-	      f, t->buffer.pre_data, sizeof (t->buffer.pre_data));
+	      f, t->buffer.pre_data, VLIB_BUFFER_PRE_DATA_SIZE);
 
   return s;
 }

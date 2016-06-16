@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @DPDK@ @IPSEC@ @VCGN@ @IPV6SR@
+AM_CFLAGS = -Wall @DPDK@ @IPSEC@ @VCGN@ @IPV6SR@ @INLINE_DATA@
 
 noinst_PROGRAMS = 
 BUILT_SOURCES =

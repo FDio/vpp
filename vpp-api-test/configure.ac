@@ -25,6 +25,13 @@ AC_ARG_WITH(dpdk,
             [with_dpdk=1],
             [with_dpdk=0])
 
+AC_ARG_WITH(non_inline_data,
+            AC_HELP_STRING([--with-non-inline-data],
+            [For handling non-inline data buffer]),
+            [with_inline_data=0],
+            [with_inline_data=1])
+
+AC_SUBST(INLINE_DATA,[-DINLINE_DATA=${with_inline_data}])
 AC_SUBST(Q_PLATFORM_DEFINE,[-DQ_PLATFORM_${with_q_platform}])
 AC_SUBST(Q_PLATFORM_PLUGPATH,[-DQ_PLUGIN_PREFIX=${with_q_plugin_prefix}])
 AC_SUBST(DPDK,[-DDPDK=${with_dpdk}])

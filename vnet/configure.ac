@@ -39,6 +39,13 @@ AC_ARG_ENABLE(tests,
               [enable_tests=1],
               [enable_tests=0])
 
+AC_ARG_WITH(non_inline_data,
+            AC_HELP_STRING([--with-non-inline-data],
+            [For handling non-inline data buffer]),
+            [with_inline_data=0],
+            [with_inline_data=1])
+
+AC_SUBST(INLINE_DATA,[-DINLINE_DATA=${with_inline_data}])
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AC_SUBST(DPDK,[-DDPDK=${with_dpdk}])
 

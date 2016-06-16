@@ -24,7 +24,10 @@ dpaa2_native_tools = vppapigen
 dpaa2_root_packages = vpp vlib vlib-api vnet svm vpp-api-test
 
 # DPDK configuration parameters
-#
+
+#Use following, if dpdk buffer data & meta-data are not inline
+#dpaa2_dpdk_inline_buf = no
+
 # We are using external DPDK module with NXP-DPAA2 platform support.
 # Compile DPDK only if "DPDK_PATH" variable is defined where we have
 # installed DPDK libraries and headers.

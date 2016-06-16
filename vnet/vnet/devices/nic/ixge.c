@@ -565,7 +565,7 @@ static u8 * format_ixge_rx_dma_trace (u8 * s, va_list * va)
   f = node->format_buffer;
   if (! f || ! t->is_start_of_packet)
     f = format_hex_bytes;
-  s = format (s, "%U", f, t->buffer.pre_data, sizeof (t->buffer.pre_data));
+  s = format (s, "%U", f, t->buffer.pre_data, VLIB_BUFFER_PRE_DATA_SIZE);
 
   return s;
 }
@@ -760,12 +760,12 @@ ixge_rx_trace (ixge_main_t * xm,
       t1->after.rx_to_hw = ad[1];
       t0->buffer_index = bi0;
       t1->buffer_index = bi1;
-      memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
-      memcpy (&t1->buffer, b1, sizeof (b1[0]) - sizeof (b0->pre_data));
+      memcpy (&t0->buffer, b0, sizeof (b0[0]) - VLIB_BUFFER_PRE_DATA_SIZE);
+      memcpy (&t1->buffer, b1, sizeof (b1[0]) - VLIB_BUFFER_PRE_DATA_SIZE);
       memcpy (t0->buffer.pre_data, b0->data + b0->current_data,
-	      sizeof (t0->buffer.pre_data));
+	      VLIB_BUFFER_PRE_DATA_SIZE);
       memcpy (t1->buffer.pre_data, b1->data + b1->current_data,
-	      sizeof (t1->buffer.pre_data));
+	      VLIB_BUFFER_PRE_DATA_SIZE);
 
       b += 2;
       bd += 2;
@@ -799,9 +799,9 @@ ixge_rx_trace (ixge_main_t * xm,
       t0->before.rx_from_hw = bd[0];
       t0->after.rx_to_hw = ad[0];
       t0->buffer_index = bi0;
-      memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
+      memcpy (&t0->buffer, b0, sizeof (b0[0]) - VLIB_BUFFER_PRE_DATA_SIZE);
       memcpy (t0->buffer.pre_data, b0->data + b0->current_data,
-	      sizeof (t0->buffer.pre_data));
+	      VLIB_BUFFER_PRE_DATA_SIZE);
 
       b += 1;
       bd += 1;
@@ -857,7 +857,7 @@ static u8 * format_ixge_tx_dma_trace (u8 * s, va_list * va)
   f = format_ethernet_header_with_length;
   if (! f || ! t->is_start_of_packet)
     f = format_hex_bytes;
-  s = format (s, "%U", f, t->buffer.pre_data, sizeof (t->buffer.pre_data));
+  s = format (s, "%U", f, t->buffer.pre_data, VLIB_BUFFER_PRE_DATA_SIZE);
 
   return s;
 }
@@ -920,12 +920,12 @@ ixge_tx_trace (ixge_main_t * xm,
       t1->descriptor = d[1];
       t0->buffer_index = bi0;
       t1->buffer_index = bi1;
-      memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
-      memcpy (&t1->buffer, b1, sizeof (b1[0]) - sizeof (b0->pre_data));
+      memcpy (&t0->buffer, b0, sizeof (b0[0]) - VLIB_BUFFER_PRE_DATA_SIZE);
+      memcpy (&t1->buffer, b1, sizeof (b1[0]) - VLIB_BUFFER_PRE_DATA_SIZE);
       memcpy (t0->buffer.pre_data, b0->data + b0->current_data,
-	      sizeof (t0->buffer.pre_data));
+	      VLIB_BUFFER_PRE_DATA_SIZE);
       memcpy (t1->buffer.pre_data, b1->data + b1->current_data,
-	      sizeof (t1->buffer.pre_data));
+	      VLIB_BUFFER_PRE_DATA_SIZE);
 
       b += 2;
       d += 2;
@@ -950,9 +950,9 @@ ixge_tx_trace (ixge_main_t * xm,
       t0->device_index = xd->device_index;
       t0->descriptor = d[0];
       t0->buffer_index = bi0;
-      memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
+      memcpy (&t0->buffer, b0, sizeof (b0[0]) - VLIB_BUFFER_PRE_DATA_SIZE);
       memcpy (t0->buffer.pre_data, b0->data + b0->current_data,
-	      sizeof (t0->buffer.pre_data));
+	      VLIB_BUFFER_PRE_DATA_SIZE);
 
       b += 1;
       d += 1;

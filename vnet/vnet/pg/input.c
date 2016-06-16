@@ -1529,11 +1529,11 @@ static u8 * format_pg_input_trace (u8 * s, va_list * va)
   if (n && n->format_buffer)
     s = format (s, "%U", n->format_buffer,
 		t->buffer.pre_data,
-		sizeof (t->buffer.pre_data));
+		VLIB_BUFFER_PRE_DATA_SIZE);
   else
     s = format (s, "%U", 
 		format_hex_bytes, t->buffer.pre_data,
-		ARRAY_LEN (t->buffer.pre_data));
+		VLIB_BUFFER_PRE_DATA_SIZE / sizeof (t->buffer.pre_data[0]));
   return s;
 }
 
@@ -1578,11 +1578,11 @@ pg_input_trace (pg_main_t * pg,
       t0->packet_length = vlib_buffer_length_in_chain (vm, b0);
       t1->packet_length = vlib_buffer_length_in_chain (vm, b1);
 
-      clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
-      clib_memcpy (&t1->buffer, b1, sizeof (b1[0]) - sizeof (b1->pre_data));
+      clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - VLIB_BUFFER_PRE_DATA_SIZE);
+      clib_memcpy (&t1->buffer, b1, sizeof (b1[0]) - VLIB_BUFFER_PRE_DATA_SIZE);
 
-      clib_memcpy (t0->buffer.pre_data, b0->data, sizeof (t0->buffer.pre_data));
-      clib_memcpy (t1->buffer.pre_data, b1->data, sizeof (t1->buffer.pre_data));
+      clib_memcpy (t0->buffer.pre_data, b0->data, VLIB_BUFFER_PRE_DATA_SIZE);
+      clib_memcpy (t1->buffer.pre_data, b1->data, VLIB_BUFFER_PRE_DATA_SIZE);
     }
 
   while (n_left >= 1)
@@ -1602,8 +1602,8 @@ pg_input_trace (pg_main_t * pg,
 
       t0->stream_index = stream_index;
       t0->packet_length = vlib_buffer_length_in_chain (vm, b0);
-      clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
-      clib_memcpy (t0->buffer.pre_data, b0->data, sizeof (t0->buffer.pre_data));
+      clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - VLIB_BUFFER_PRE_DATA_SIZE);
+      clib_memcpy (t0->buffer.pre_data, b0->data, VLIB_BUFFER_PRE_DATA_SIZE);
     }
 }
 

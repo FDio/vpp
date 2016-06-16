@@ -234,9 +234,9 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm,
   t0->device_index = xd->device_index;
   t0->buffer_index = buffer_index;
   clib_memcpy (&t0->mb, mb, sizeof (t0->mb));
-  clib_memcpy (&t0->buffer, buffer, sizeof (buffer[0]) - sizeof (buffer->pre_data));
+  clib_memcpy (&t0->buffer, buffer, sizeof (buffer[0]) - VLIB_BUFFER_PRE_DATA_SIZE);
   clib_memcpy (t0->buffer.pre_data, buffer->data + buffer->current_data,
-	  sizeof (t0->buffer.pre_data));
+	  VLIB_BUFFER_PRE_DATA_SIZE);
 }
 
 /*
