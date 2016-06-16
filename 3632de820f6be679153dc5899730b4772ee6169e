@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_84577c02",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:45:01Z",
+      "side": 1,
+      "message": "- Tested successfully \"vRouter \" functionality,on NXP platform, using both INLINE_DATA\u003d1 \u0026 INLINE_DATA\u003d0 modes.\n\n- For non-inline data mode testing, I have still used DPDK with inline buffer but VLIB API always update pre_data \u0026 data pointers for incoming buffer using RTE_MBUFs buffer pointer.\n\nSame should work when anyone implements non-inline buffer approach in DPDK.",
+      "revId": "3632de820f6be679153dc5899730b4772ee6169e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_645c6826",
+        "filename": "build-data/packages/vlib.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:45:01Z",
+      "side": 1,
+      "message": "Here, We are converting the platform specific variable \"xx_dpdk_inline_buf\" to compatible configure_args if it is set to \"NO\". This helps in keeping current INLINE mode as default.",
+      "revId": "3632de820f6be679153dc5899730b4772ee6169e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_44416438",
+        "filename": "vlib/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:45:01Z",
+      "side": 1,
+      "message": "Here, We are introducing flag \"INLINE_DATA\" and default value is \"1\". Currently, No one is using this flag so, all the existing functionality should not have any impact",
+      "revId": "3632de820f6be679153dc5899730b4772ee6169e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

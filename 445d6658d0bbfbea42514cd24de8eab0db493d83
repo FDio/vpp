@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "ba092121_044b6c5a",
+        "filename": "vlib/vlib/buffer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:45:01Z",
+      "side": 0,
+      "message": "I have chosen compile time flag to decide buffer inline/non-inline mode in order to avoid any run-time processing hits, per packet, to decide buffer mode. And we know that DPDK is using INLINE mode only, as of now, so keeping it platform specific compile time option.",
+      "revId": "445d6658d0bbfbea42514cd24de8eab0db493d83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_640ea836",
         "filename": "vnet/vnet/devices/dpdk/device.c",
         "patchSetId": 1
@@ -13,6 +30,23 @@
       "writtenOn": "2016-06-16T09:01:35Z",
       "side": 0,
       "message": "- In case of non-inline buffer, \"pre_data\" is pointer of 8 byte and not an array of \"128\" byte.\n- Also, sizeof(pre_data) will always be 128 bytes.\nThats why replacing this usage with \"VLIB_BUFFER_PRE_DATA_SIZE\" will satisfy both the scenarios whether pre_data is array or pointer.",
+      "revId": "445d6658d0bbfbea42514cd24de8eab0db493d83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_e447584a",
+        "filename": "vnet/vnet/pg/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1537,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:45:01Z",
+      "side": 0,
+      "message": "Need to replace the MACRO with manual expression as it is required for non-inline case when \"pre_data\" is pointer and not array of \"128\" bytes.",
       "revId": "445d6658d0bbfbea42514cd24de8eab0db493d83",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
