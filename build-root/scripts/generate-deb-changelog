@@ -30,7 +30,7 @@ if [ -n "${ADDS}" ]; then
 	print_changelog_item
 fi
 
-for TAG in $(git tag -l 'v[0-9].[0-9].[0-9]' | sort -r ); do
+for TAG in $(git tag -l 'v[0-9][0-9].[0-9][0-9]' | sort -r ); do
 	VER=$(echo ${TAG}| sed -e 's/^v//')
 	DESC=$(git tag -l -n20 ${TAG} | tail -n+2 | sed -e 's/^ */  /')
 	print_changelog_item
