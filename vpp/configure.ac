@@ -31,6 +31,13 @@ AC_ARG_WITH(ipv6sr,
             [with_ipv6sr=0],
             [with_ipv6sr=1])
 
+AC_ARG_WITH(non_inline_data,
+            AC_HELP_STRING([--with-non-inline-data],
+            [For handling non-inline data buffer]),
+            [with_inline_data=0],
+            [with_inline_data=1])
+
+AC_SUBST(INLINE_DATA,[-DINLINE_DATA=${with_inline_data}])
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AM_CONDITIONAL(ENABLE_DPDK_SHARED, test "$enable_dpdk_shared" = "1")
 AC_SUBST(DPDK,["-DDPDK=${with_dpdk} -DDPDK_SHARED_LIB=${enable_dpdk_shared}"])

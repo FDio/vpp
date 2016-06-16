@@ -14,7 +14,9 @@ endif
 
 # Platform dependent configure flags
 vpp_configure_args += $(vpp_configure_args_$(PLATFORM))
-
+ifeq ($($(PLATFORM)_dpdk_inline_buf),no)
+vpp_configure_args += --with-non-inline-data
+endif
 
 vpp_CPPFLAGS = $(call installed_includes_fn,	\
 	vppinfra				\

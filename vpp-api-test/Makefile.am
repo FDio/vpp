@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @Q_PLATFORM_DEFINE@ @Q_PLATFORM_PLUGPATH@ @DPDK@
+AM_CFLAGS = -Wall @Q_PLATFORM_DEFINE@ @Q_PLATFORM_PLUGPATH@ @DPDK@ @INLINE_DATA@
 
 libvatplugin_la_SOURCES = \
   vat/plugin_api.c

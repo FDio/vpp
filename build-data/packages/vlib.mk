@@ -14,3 +14,6 @@ vlib_CPPFLAGS += $(call installed_includes_fn, dpdk)
 vlib_LDFLAGS += $(call installed_libs_fn, dpdk)
 endif
 endif
+ifeq ($($(PLATFORM)_dpdk_inline_buf),no)
+vlib_configure_args += --with-non-inline-data
+endif

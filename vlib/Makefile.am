@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @DPDK@
+AM_CFLAGS = -Wall @DPDK@ @INLINE_DATA@
 
 PRE_DATA_SIZE=@PRE_DATA_SIZE@
 

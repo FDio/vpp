@@ -139,15 +139,20 @@ typedef struct {
 
   /***** end of second cache line */
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline2);
-  u8 pre_data [VLIB_BUFFER_PRE_DATA_SIZE]; /**< Space for inserting data
+#if INLINE_DATA > 0
+  u8 pre_data[VLIB_BUFFER_PRE_DATA_SIZE]; /**< Space for inserting data
                                                before buffer start.
                                                Packet rewrite string will be
                                                rewritten backwards and may extend
                                                back before buffer->data[0].
                                                Must come directly before packet data.
                                             */
-
   u8 data[0]; /**< Packet data. Hardware DMA here */
+#else
+  u8 *pre_data; /**< Non-inline start of buffer */
+  u8 *data; /**< Non-inline start of packet data. Hardware DMA here */
+  u8 unused[VLIB_BUFFER_PRE_DATA_SIZE - (sizeof(void *) * 2)];
+#endif
 } vlib_buffer_t;  /* Must be a multiple of 64B. */
 
 #define VLIB_BUFFER_HDR_SIZE  (sizeof(vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE)
@@ -364,9 +369,18 @@ serialize_vlib_buffer_n_bytes (serialize_main_t * m)
 
 #if DPDK > 0
 #define rte_mbuf_from_vlib_buffer(x) (((struct rte_mbuf *)x) - 1)
+#if INLINE_DATA > 0
 #define vlib_buffer_from_rte_mbuf(x) ((vlib_buffer_t *)(x+1))
+#else
+#define vlib_buffer_from_rte_mbuf(x) ({\
+	vlib_buffer_t *vlib_buf = ((vlib_buffer_t *)(x+1));\
+	vlib_buf->pre_data = x->buf_addr;\
+	vlib_buf->data = x->buf_addr + VLIB_BUFFER_PRE_DATA_SIZE;\
+	vlib_buf; /* Last statement to return pointer */ \
+	})
 #endif
 
+#endif /* DPDK */
 /*
  */
 
