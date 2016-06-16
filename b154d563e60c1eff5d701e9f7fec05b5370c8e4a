@@ -140,6 +140,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_a4796095",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2201,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-16T10:30:27Z",
+      "side": 1,
+      "message": "While working on this patch I had changed logic around this line but then reverted that because it turned out to be wrong. Just didn\u0027t revert it properly :-) Usually I don\u0027t put an empty space if that would be the only change on that line.",
+      "parentUuid": "ba092121_7912d163",
+      "range": {
+        "startLine": 2201,
+        "startChar": 33,
+        "endLine": 2201,
+        "endChar": 35
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_d902fd0a",
         "filename": "vnet/vnet/lisp-cp/control.c",
         "patchSetId": 3
@@ -151,6 +175,30 @@
       "writtenOn": "2016-06-16T09:02:55Z",
       "side": 1,
       "message": "I like that you added these. However, a thing I\u0027m not very sure about is the following: when we know for certain that the gid won\u0027t have a recursive address within it (so no malloc magic happens behind the curtains) should we still do the free, to avoid future unexpected breakage, or shouldn\u0027t we. I\u0027m on the fence with this one ...",
+      "range": {
+        "startLine": 2222,
+        "startChar": 2,
+        "endLine": 2222,
+        "endChar": 18
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_24ac30ed",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2222,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-16T10:30:27Z",
+      "side": 1,
+      "message": "Just a wild thought: could a src/dest LCAF manage to get here by any chance?",
+      "parentUuid": "ba092121_d902fd0a",
       "range": {
         "startLine": 2222,
         "startChar": 2,
@@ -186,6 +234,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_e4b51832",
+        "filename": "vnet/vnet/lisp-cp/lisp_msg_serdes.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-16T10:30:27Z",
+      "side": 1,
+      "message": "This is a relic from my previous change set when VNI was stored in lcaf_t instead of gid_address_t. I was thinking it will be needed when src/dest takes place.",
+      "parentUuid": "ba092121_f980218d",
+      "range": {
+        "startLine": 227,
+        "startChar": 2,
+        "endLine": 227,
+        "endChar": 28
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_59726de6",
         "filename": "vnet/vnet/lisp-cp/lisp_types.c",
         "patchSetId": 3
@@ -209,6 +281,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_c4821452",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-16T10:30:27Z",
+      "side": 1,
+      "message": "Right. I\u0027ll change that",
+      "parentUuid": "ba092121_59726de6",
+      "range": {
+        "startLine": 350,
+        "startChar": 12,
+        "endLine": 350,
+        "endChar": 17
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_a404c015",
         "filename": "vnet/vnet/lisp-cp/lisp_types.h",
         "patchSetId": 3
@@ -220,6 +316,30 @@
       "writtenOn": "2016-06-16T09:02:55Z",
       "side": 1,
       "message": "I guess this is just legacy code from previous patches. We may have a function like this in the the future that just extracts the ip out of an non vni LCAF. But as is, this macro is not needed anymore.",
+      "range": {
+        "startLine": 113,
+        "startChar": 0,
+        "endLine": 113,
+        "endChar": 41
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_847c1c74",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-06-16T10:30:27Z",
+      "side": 1,
+      "message": "I\u0027ll remove that.",
+      "parentUuid": "ba092121_a404c015",
       "range": {
         "startLine": 113,
         "startChar": 0,
