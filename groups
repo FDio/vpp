@@ -1,4 +1,3 @@
 # UUID                                                              	Group Name
 #
-2aaed3f0d47a350bf16450c8353d3c2c924b2329                            	Administrators
 ldap:cn=fdio-gerrit-vpp-committers,ou=Groups,dc=freestandards,dc=org	ldap/fdio-gerrit-vpp-committers
