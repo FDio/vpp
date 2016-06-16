@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_d92b1d93",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:01:35Z",
+      "side": 1,
+      "message": "- Tested successfully \"vRouter \" functionality,on NXP platform, using both INLINE_DATA\u003d1 \u0026 INLINE_DATA\u003d0 modes.\n\n- For non-inline data mode testing, I have still used DPDK with inline buffer but VLIB API always update pre_data \u0026 data pointers for incoming buffer using RTE_MBUFs buffer pointer.\nSame should work when anyone implements non-inline buffer approach in DPDK.",
+      "revId": "9979813c1f0636d2bd497f42269f09a5c112e414",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_f905c114",
+        "filename": "build-data/packages/vlib.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:01:35Z",
+      "side": 1,
+      "message": "Here, We are converting the platform specific variable \"xx_dpdk_inline_buf\" to compatible configure_args if it is set to \"NO\".\nThis helps in keeping current INLINE mode as default.",
+      "revId": "9979813c1f0636d2bd497f42269f09a5c112e414",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_390c5942",
+        "filename": "vlib/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:01:35Z",
+      "side": 1,
+      "message": "Here, I am introducing flag \"INLINE_DATA\" and default value is \"1\".\nCurrently, No one is using this flag so, all the existing functionality should not have any impact",
+      "revId": "9979813c1f0636d2bd497f42269f09a5c112e414",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_c4ffb400",
+        "filename": "vlib/vlib/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:01:35Z",
+      "side": 1,
+      "message": "I have chosen compile time flag to decide buffer inline/non-inline mode in order to avoid any run-time processing hits, per packet, to decide buffer mode.\nAnd we know that DPDK is using INLINE mode only, as of now, so keeping it platform specific compile time option.",
+      "revId": "9979813c1f0636d2bd497f42269f09a5c112e414",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_8409bc2e",
+        "filename": "vlib/vlib/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:01:35Z",
+      "side": 1,
+      "message": "In above non-inline case, \"unused[]\" bytes are used to equate the vlib_buffer_t structure size same as of current.\n\nI have seen at some places we are calculating vlib_buffer size after reducing \"cacheline2\" space size. This approach should satisfy that code too.",
+      "revId": "9979813c1f0636d2bd497f42269f09a5c112e414",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_041dac66",
+        "filename": "vnet/vnet/pg/input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1536,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T09:01:35Z",
+      "side": 1,
+      "message": "Need to replace the MACRO with manual expression as it is required for non-inline case when \"pre_data\" is pointer and not array of \"128\" bytes.",
+      "revId": "9979813c1f0636d2bd497f42269f09a5c112e414",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
