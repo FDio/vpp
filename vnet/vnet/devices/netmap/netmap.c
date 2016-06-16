@@ -92,6 +92,7 @@ netmap_create_if(vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
   uword * p;
   struct nmreq * req = 0;
   netmap_mem_region_t * reg;
+  vlib_thread_main_t * tm = vlib_get_thread_main();
   int fd;
 
   p = mhash_get (&nm->if_index_by_host_if_name, if_name);
@@ -151,6 +152,13 @@ netmap_create_if(vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
   nif->last_tx_ring = 0;
   nif->host_if_name = if_name;
   nif->per_interface_next_index = ~0;
+
+  if (tm->n_vlib_mains > 1)
+  {
+    nif->lockp = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+                                         CLIB_CACHE_LINE_BYTES);
+    memset ((void *) nif->lockp, 0, CLIB_CACHE_LINE_BYTES);
+  }
 
   {
     unix_file_t template = {0};
@@ -232,10 +240,36 @@ static clib_error_t *
 netmap_init (vlib_main_t * vm)
 {
   netmap_main_t * nm = &netmap_main;
+  vlib_thread_main_t * tm = vlib_get_thread_main();
+  vlib_thread_registration_t * tr;
+  uword * p;
 
   memset (nm, 0, sizeof (netmap_main_t));
 
+  nm->input_cpu_first_index = 0;
+  nm->input_cpu_count = 1;
+
+  /* find out which cpus will be used for input */
+  p = hash_get_mem (tm->thread_registrations_by_name, "io");
+  tr = p ? (vlib_thread_registration_t *) p[0] : 0;
+
+  if (!tr || tr->count == 0)
+    {
+      /* no io threads, workers doing input */
+      p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+      tr = p ? (vlib_thread_registration_t *) p[0] : 0;
+    }
+
+  if (tr && tr->count > 0)
+    {
+      nm->input_cpu_first_index = tr->first_index;
+      nm->input_cpu_count = tr->count;
+    }
+
   mhash_init_vec_string (&nm->if_index_by_host_if_name, sizeof (uword));
+
+  vec_validate_aligned (nm->rx_buffers, tm->n_vlib_mains - 1,
+                        CLIB_CACHE_LINE_BYTES);
 
   return 0;
 }

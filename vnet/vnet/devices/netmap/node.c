@@ -99,30 +99,30 @@ buffer_add_to_chain(vlib_main_t *vm, u32 bi, u32 first_bi, u32 prev_bi)
 
 always_inline uword
 netmap_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame, u32 device_idx)
+			    vlib_frame_t * frame, netmap_if_t * nif)
 {
   u32 next_index = NETMAP_INPUT_NEXT_ETHERNET_INPUT;
   uword n_trace = vlib_get_trace_count (vm, node);
   netmap_main_t * nm = &netmap_main;
-  netmap_if_t * nif = pool_elt_at_index(nm->interfaces, device_idx);
   u32 n_rx_packets = 0;
   u32 n_rx_bytes = 0;
   u32 * to_next = 0;
   u32 n_free_bufs;
   struct netmap_ring * ring;
   int cur_ring;
+  u32 cpu_index = os_get_cpu_number();
   u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm,
     VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   if (nif->per_interface_next_index != ~0)
       next_index = nif->per_interface_next_index;
 
-  n_free_bufs = vec_len (nm->rx_buffers);
+  n_free_bufs = vec_len (nm->rx_buffers[cpu_index]);
   if (PREDICT_FALSE(n_free_bufs < VLIB_FRAME_SIZE))
     {
-      vec_validate(nm->rx_buffers, VLIB_FRAME_SIZE + n_free_bufs - 1);
-      n_free_bufs += vlib_buffer_alloc(vm, &nm->rx_buffers[n_free_bufs], VLIB_FRAME_SIZE);
-      _vec_len (nm->rx_buffers) = n_free_bufs;
+      vec_validate(nm->rx_buffers[cpu_index], VLIB_FRAME_SIZE + n_free_bufs - 1);
+      n_free_bufs += vlib_buffer_alloc(vm, &nm->rx_buffers[cpu_index][n_free_bufs], VLIB_FRAME_SIZE);
+      _vec_len (nm->rx_buffers[cpu_index]) = n_free_bufs;
     }
 
   cur_ring = nif->first_rx_ring;
@@ -168,11 +168,11 @@ netmap_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      while (data_len && n_free_bufs)
 		{
 		  /* grab free buffer */
-		  u32 last_empty_buffer = vec_len (nm->rx_buffers) - 1;
+		  u32 last_empty_buffer = vec_len (nm->rx_buffers[cpu_index]) - 1;
 		  prev_bi0 = bi0;
-		  bi0 = nm->rx_buffers[last_empty_buffer];
+		  bi0 = nm->rx_buffers[cpu_index][last_empty_buffer];
 		  b0 = vlib_get_buffer (vm, bi0);
-		  _vec_len (nm->rx_buffers) = last_empty_buffer;
+		  _vec_len (nm->rx_buffers[cpu_index]) = last_empty_buffer;
 		  n_free_bufs--;
 
 		  /* copy data */
@@ -258,14 +258,17 @@ netmap_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   int i;
   u32 n_rx_packets = 0;
-
+  u32 cpu_index = os_get_cpu_number();
   netmap_main_t * nm = &netmap_main;
+  netmap_if_t * nmi;
 
-  clib_bitmap_foreach (i, nm->pending_input_bitmap,
-    ({
-      clib_bitmap_set (nm->pending_input_bitmap, i, 0);
-      n_rx_packets += netmap_device_input_fn(vm, node, frame, i);
-    }));
+  for(i = 0; i < vec_len(nm->interfaces); i++ )
+    {
+      nmi = vec_elt_at_index(nm->interfaces, i);
+      if (nmi->is_admin_up &&
+         (i % nm->input_cpu_count) == (cpu_index - nm->input_cpu_first_index))
+        n_rx_packets += netmap_device_input_fn(vm, node, frame, nmi);
+    }
 
   return n_rx_packets;
 }
@@ -275,7 +278,7 @@ VLIB_REGISTER_NODE (netmap_input_node) = {
   .name = "netmap-input",
   .format_trace = format_netmap_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
-  .state = VLIB_NODE_STATE_INTERRUPT,
+  .state = VLIB_NODE_STATE_POLLING,
   .n_errors = NETMAP_INPUT_N_ERROR,
   .error_strings = netmap_input_error_strings,
 
