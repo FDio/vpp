@@ -50,6 +50,40 @@
       "revId": "3632de820f6be679153dc5899730b4772ee6169e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_c49b34c8",
+        "filename": "vlib/vlib/buffer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T10:08:01Z",
+      "side": 1,
+      "message": "In above non-inline case, \"unused[]\" bytes are used to equate the vlib_buffer_t structure size same as of current.\n\nI have seen at some places we are calculating vlib_buffer size after reducing \"cacheline2\" space size. This approach should satisfy that code too.",
+      "revId": "3632de820f6be679153dc5899730b4772ee6169e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_a4a040f5",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-16T10:08:01Z",
+      "side": 1,
+      "message": "In case of non-inline buffer, \"pre_data\" is pointer of 8/4 bytes and not an array of \"128\" byte.\nAlso, sizeof(pre_data) will always be 128 bytes.\nThats why replacing this usage with \"VLIB_BUFFER_PRE_DATA_SIZE\" will satisfy both the scenarios whether pre_data is array or pointer",
+      "revId": "3632de820f6be679153dc5899730b4772ee6169e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
