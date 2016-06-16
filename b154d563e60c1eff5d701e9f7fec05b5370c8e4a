@@ -211,6 +211,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_e45198d9",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2222,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T11:21:57Z",
+      "side": 1,
+      "message": "When I said I\u0027m \"on the fence with this one\" I didn\u0027t mean this use in particular, but this \"problem\" in general. Apologies for not being clear. \n\nNow, concerning your point: I\u0027d like to keep the dp unaware of src/dst so if any would reach this point we\u0027d probably parse them into \u0027constituents\u0027. Hence, the seid and deid should be \"simple\" addresses like IP-prefixes or MACs.",
+      "parentUuid": "ba092121_24ac30ed",
+      "range": {
+        "startLine": 2222,
+        "startChar": 2,
+        "endLine": 2222,
+        "endChar": 18
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_f980218d",
         "filename": "vnet/vnet/lisp-cp/lisp_msg_serdes.c",
         "patchSetId": 3
