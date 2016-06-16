@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_a49a8012",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1081,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T15:27:23Z",
+      "side": 1,
+      "message": "Can\u0027t delete the locator-set used to constrain the itr-rlocs in map-requests.",
+      "range": {
+        "startLine": 1080,
+        "startChar": 25,
+        "endLine": 1081,
+        "endChar": 48
+      },
+      "revId": "3a7edf6c1cd832918f2684afeab4d06ecc7517ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_c4633419",
+        "filename": "vnet/vnet/lisp-cp/control.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T15:27:23Z",
+      "side": 1,
+      "message": "Could you move this directly above vnet_lisp_add_del_mreq_itr_rlocs to have them grouped?",
+      "range": {
+        "startLine": 173,
+        "startChar": 0,
+        "endLine": 177,
+        "endChar": 41
+      },
+      "revId": "3a7edf6c1cd832918f2684afeab4d06ecc7517ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
