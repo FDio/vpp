@@ -1468,6 +1468,49 @@ format_lisp_cp_lookup_trace (u8 * s, va_list * args)
   return s;
 }
 
+ip_interface_address_t *
+ip_interface_get_first_interface_address (ip_lookup_main_t *lm, u32 sw_if_index,
+                                          u8 loop)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_sw_interface_t * swif = vnet_get_sw_interface (vnm, sw_if_index);
+  if (loop && swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
+    sw_if_index = swif->unnumbered_sw_if_index;
+  u32 ia =
+      (vec_len((lm)->if_address_pool_index_by_sw_if_index) > (sw_if_index)) ?
+          vec_elt((lm)->if_address_pool_index_by_sw_if_index, (sw_if_index)) :
+          (u32) ~0;
+  return pool_elt_at_index((lm)->if_address_pool, ia);
+}
+
+void *
+ip_interface_get_first_address (ip_lookup_main_t * lm, u32 sw_if_index,
+                                u8 version)
+{
+  ip_interface_address_t * ia;
+
+  ia = ip_interface_get_first_interface_address (lm, sw_if_index, 1);
+  if (!ia)
+    return 0;
+  return ip_interface_address_get_address (lm, ia);
+}
+
+int
+ip_interface_get_first_ip_address (lisp_cp_main_t * lcm, u32 sw_if_index,
+                                   u8 version, ip_address_t * result)
+{
+  ip_lookup_main_t * lm;
+  void * addr;
+
+  lm = (version == IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
+  addr = ip_interface_get_first_address (lm, sw_if_index, version);
+  if (!addr)
+    return 0;
+
+  ip_address_set (result, addr, version);
+  return 1;
+}
+
 static u32
 ip_fib_lookup_with_table (lisp_cp_main_t * lcm, u32 fib_index,
                           ip_address_t * dst)
@@ -1479,15 +1522,13 @@ ip_fib_lookup_with_table (lisp_cp_main_t * lcm, u32 fib_index,
       return ip6_fib_lookup_with_table (lcm->im6, fib_index, &ip_addr_v6(dst));
 }
 
-static u32
-get_egress_iface_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst)
+u32
+ip_fib_get_egress_iface_for_dst_with_lm (lisp_cp_main_t * lcm,
+                                         ip_address_t * dst,
+                                         ip_lookup_main_t * lm)
 {
   u32 adj_index;
   ip_adjacency_t * adj;
-  ip_lookup_main_t * lm;
-
-  lm = ip_addr_version (dst) == IP4 ?
-      &lcm->im4->lookup_main : &lcm->im6->lookup_main;
 
   adj_index = ip_fib_lookup_with_table (lcm, 0, dst);
   adj = ip_get_adjacency (lm, adj_index);
@@ -1495,79 +1536,63 @@ get_egress_iface_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst)
   if (adj == 0)
     return ~0;
 
+  /* we only want outgoing routes */
+  if (adj->lookup_next_index != IP_LOOKUP_NEXT_ARP
+      && adj->lookup_next_index != IP_LOOKUP_NEXT_REWRITE)
+    return ~0;
+
   return adj->rewrite_header.sw_if_index;
 }
 
-void
-get_first_local_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
-                            ip_address_t * result)
+/**
+ * Find the sw_if_index of the interface that would be used to egress towards
+ * dst.
+ */
+u32
+ip_fib_get_egress_iface_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst)
 {
-  u32 adj_index;
-  ip_adjacency_t * adj;
-  ip_interface_address_t * ia = 0;
   ip_lookup_main_t * lm;
-  ip4_address_t * l4 = 0;
-  ip6_address_t * l6 = 0;
-
-  ASSERT(result != 0);
 
   lm = ip_addr_version (dst) == IP4 ?
       &lcm->im4->lookup_main : &lcm->im6->lookup_main;
 
-  adj_index = ip_fib_lookup_with_table (lcm, 0, dst);
-  adj = ip_get_adjacency (lm, adj_index);
-
-  if (adj == 0)
-    return;
-
-  if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP)
-    {
-      ia = pool_elt_at_index(lm->if_address_pool, adj->if_address_index);
-      if (ip_addr_version(dst) == IP4)
-        {
-          l4 = ip_interface_address_get_address (lm, ia);
-        }
-      else
-        {
-          l6 = ip_interface_address_get_address (lm, ia);
-        }
-    }
-  else if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
-    {
-      /* find sw_if_index in rewrite header */
-      u32 sw_if_index = adj->rewrite_header.sw_if_index;
-
-      /* find suitable address */
-      if (ip_addr_version(dst) == IP4)
-        {
-          /* find the first ip address */
-          foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
-                                        sw_if_index, 1 /* unnumbered */,
-          ({
-            l4 = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
-            break;
-          }));
-        }
-      else
-        {
-          /* find the first ip address */
-          foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
-                                        sw_if_index, 1 /* unnumbered */,
-          ({
-            l6 = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
-            break;
-          }));
-        }
-    }
-
-  if (l4)
-    ip_address_set (result, l4, IP4);
-  else if (l6)
-    ip_address_set (result, l6, IP6);
+  return ip_fib_get_egress_iface_for_dst_with_lm (lcm, dst, lm);
 }
 
-void
-get_mr_and_local_iface_ip (lisp_cp_main_t *lcm, ip_address_t * mr_ip,
+/**
+ * Find first IP of the interface that would be used to egress towards dst.
+ * Returns 1 if the address is found 0 otherwise.
+ */
+int
+ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
+                                    ip_address_t * result)
+{
+  u32 si;
+  ip_lookup_main_t * lm;
+  void * addr = 0;
+  u8 ipver;
+
+  ASSERT(result != 0);
+
+  ipver = ip_addr_version(dst);
+
+  lm = (ipver == IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
+  si = ip_fib_get_egress_iface_for_dst_with_lm (lcm, dst, lm);
+
+  if ((u32) ~0 == si)
+    return 0;
+
+  /* find the first ip address */
+  addr = ip_interface_get_first_address (lm, si, ipver);
+  if (0 == addr)
+    return 0;
+
+  ip_address_set (result, addr, ipver);
+  return 1;
+}
+
+int
+get_mr_and_local_iface_ip (lisp_cp_main_t * lcm, ip_address_t * mr_ip,
                            ip_address_t * sloc)
 {
   ip_address_t * mrit;
@@ -1575,29 +1600,27 @@ get_mr_and_local_iface_ip (lisp_cp_main_t *lcm, ip_address_t * mr_ip,
   if (vec_len(lcm->map_resolvers) == 0)
     {
       clib_warning("No map-resolver configured");
-      return;
+      return 0;
     }
 
   /* find the first mr ip we have a route to and the ip of the
    * iface that has a route to it */
   vec_foreach(mrit, lcm->map_resolvers)
     {
-      get_first_local_ip_for_dst (lcm, mrit, sloc);
-      if (0 != sloc) {
+      if (0 != ip_fib_get_first_egress_ip_for_dst (lcm, mrit, sloc)) {
           ip_address_copy(mr_ip, mrit);
-          return;
+          return 1;
       }
     }
 
   clib_warning("Can't find map-resolver and local interface ip!");
-  return;
+  return 0;
 }
 
 static gid_address_t *
 build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
 {
-  ip4_address_t * l4;
-  ip6_address_t * l6;
+  void * addr;
   u32 i;
   locator_t * loc;
   u32 * loc_indexp;
@@ -1613,24 +1636,22 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
       loc_indexp = vec_elt_at_index(loc_set->locator_indices, i);
       loc = pool_elt_at_index (lcm->locator_pool, loc_indexp[0]);
 
-      ip_addr_version(rloc) = IP4;
       /* Add ipv4 locators first TODO sort them */
       foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
 				    loc->sw_if_index, 1 /* unnumbered */,
       ({
-	l4 = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
-        ip_addr_v4 (rloc) = l4[0];
+	addr = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
+	ip_address_set (rloc, addr, IP4);
         ip_prefix_len (ippref) = 32;
         vec_add1 (rlocs, gid[0]);
       }));
 
-      ip_addr_version(rloc) = IP6;
       /* Add ipv6 locators */
       foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
 				    loc->sw_if_index, 1 /* unnumbered */,
       ({
-        l6 = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
-        ip_addr_v6 (rloc) = l6[0];
+        addr = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
+        ip_address_set (rloc, addr, IP6);
         ip_prefix_len (ippref) = 128;
         vec_add1 (rlocs, gid[0]);
       }));
@@ -1675,8 +1696,7 @@ build_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
 
   bi_res[0] = bi;
 
-  if (rlocs)
-    vec_free(rlocs);
+  vec_free(rlocs);
   return b;
 }
 
@@ -1722,8 +1742,9 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
 
   loc_set = pool_elt_at_index (lcm->locator_set_pool, map->locator_set_index);
 
-  /* get local iface ip to use in map-request XXX fib 0 for now*/
-  get_mr_and_local_iface_ip (lcm, &mr_ip, &sloc);
+  /* get local iface ip to use in map-request */
+  if (0 == get_mr_and_local_iface_ip (lcm, &mr_ip, &sloc))
+    return;
 
   /* build the encapsulated map request */
   b = build_encapsulated_map_request (vm, lcm, seid, deid, loc_set, &mr_ip,
@@ -1935,62 +1956,6 @@ format_lisp_cp_input_trace (u8 * s, va_list * args)
   return s;
 }
 
-ip_interface_address_t *
-ip_interface_get_first_interface_address (ip_lookup_main_t *lm, u32 sw_if_index,
-                                          u8 loop)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_sw_interface_t * swif = vnet_get_sw_interface (vnm, sw_if_index);
-  if (loop && swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
-    sw_if_index = swif->unnumbered_sw_if_index;
-  u32 ia =
-      (vec_len((lm)->if_address_pool_index_by_sw_if_index) > (sw_if_index)) ?
-          vec_elt((lm)->if_address_pool_index_by_sw_if_index, (sw_if_index)) :
-          (u32) ~0;
-  return pool_elt_at_index((lm)->if_address_pool, ia);
-}
-
-int
-ip_interface_get_first_ip_addres (lisp_cp_main_t * lcm, u32 sw_if_index,
-                                  u8 version, ip_address_t * addr)
-{
-  if (version == IP4)
-    {
-      ip4_address_t * l4;
-      ip_lookup_main_t * lm = &lcm->im4->lookup_main;
-      ip_interface_address_t * ia = ip_interface_get_first_interface_address (
-          lm, sw_if_index, 1 /* unnumbered */);
-
-      if (!ia)
-        return 0;
-
-      l4 = ip_interface_address_get_address (lm, ia);
-
-      if (!l4)
-        return 0;
-
-      ip_addr_v4(addr) = *l4;
-      ip_addr_version(addr) = IP4;
-    }
-  else
-    {
-      ip6_address_t * l6;
-      ip_lookup_main_t * lm = &lcm->im6->lookup_main;
-      ip_interface_address_t * ia = ip_interface_get_first_interface_address (
-          lm, sw_if_index, 1 /* unnumbered */);
-      if (!ia)
-        return 0;
-
-      l6 = ip_interface_address_get_address (lm, ia);
-      if (!l6)
-        return 0;
-
-      ip_addr_v6(addr) = *l6;
-      ip_addr_version(addr) = IP6;
-    }
-  return 1;
-}
-
 static void
 del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index,
                u32 dst_map_index)
@@ -2030,7 +1995,7 @@ static u32
 get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
                   ip_address_t * lcl_loc, ip_address_t * rmt_loc)
 {
-  u32 i, rv, minp = ~0, limitp = 0, li, check_index = 0, done = 0, esi;
+  u32 i, minp = ~0, limitp = 0, li, check_index = 0, done = 0, esi;
   locator_set_t * rmt_ls, * lcl_ls;
   ip_address_t _lcl, * lcl = &_lcl;
   locator_t * l, * rmt = 0;
@@ -2067,7 +2032,8 @@ get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
       /* check if a local locator with a route to remote locator exists */
       if (rmt != 0)
         {
-          esi = get_egress_iface_for_dst (lcm, &gid_address_ip(&rmt->address));
+          esi = ip_fib_get_egress_iface_for_dst (
+              lcm, &gid_address_ip(&rmt->address));
           if ((u32) ~0 == esi)
             continue;
 
@@ -2079,10 +2045,9 @@ get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
               /* found local locator */
               if (sl->sw_if_index == esi)
                 {
-                  rv = ip_interface_get_first_ip_addres (lcm, sl->sw_if_index,
-                             gid_address_ip_version(&rmt->address), lcl);
-
-                  if (!rv)
+                  if (0 == ip_interface_get_first_ip_address (lcm,
+                             sl->sw_if_index,
+                             gid_address_ip_version(&rmt->address), lcl))
                     continue;
 
                   ip_address_copy(rmt_loc, &gid_address_ip(&rmt->address));
