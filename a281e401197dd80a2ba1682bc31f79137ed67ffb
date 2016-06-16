@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_19ce355b",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1292,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-06-16T03:46:40Z",
+      "side": 1,
+      "message": "Just pondering. Hypothetically we might want ip4-inacl before *everything*. (whether true or not, just posit this for the scenario)\n\nIf someone adds a feature that is merely \"before ip4-lookup\" is the algo likely to always put it as adjacent to ip4-lookup as it can get? (Noting other features may have the same constraint this would imply they\u0027ll all end up in a group of indeterminate order adjacent to ip4-lookup)\n\nOr will it end up \"anywhere before\" it, possibly before \"in-acl\" and if so, how might we further constrain things per my posit above?\n\nI\u0027ve only used the algo before for graph path testing, not sorting, so I don\u0027t know the answer to this off the top of my head.",
+      "range": {
+        "startLine": 1287,
+        "startChar": 0,
+        "endLine": 1292,
+        "endChar": 2
+      },
+      "revId": "a281e401197dd80a2ba1682bc31f79137ed67ffb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
