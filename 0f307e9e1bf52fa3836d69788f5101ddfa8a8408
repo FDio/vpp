@@ -291,6 +291,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_d9543d23",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1520,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T08:22:57Z",
+      "side": 1,
+      "message": "Yep, and del takes no arguments, since we have only one locator-set.",
+      "parentUuid": "ba092121_79b6518c",
+      "range": {
+        "startLine": 1520,
+        "startChar": 29,
+        "endLine": 1520,
+        "endChar": 30
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_3913395e",
         "filename": "vnet/vnet/lisp-cp/control.c",
         "patchSetId": 1
@@ -464,6 +488,30 @@
       "side": 1,
       "message": "But don`t we yesterday agree there will be only one rlocs (locator-set), or I miss something?\n\nIf there be multiple, can we have a meeting today? I will have some dump question then.\nThanks",
       "parentUuid": "ba092121_3e0c3f42",
+      "range": {
+        "startLine": 98,
+        "startChar": 26,
+        "endLine": 98,
+        "endChar": 27
+      },
+      "revId": "0f307e9e1bf52fa3836d69788f5101ddfa8a8408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_f9570125",
+        "filename": "vnet/vnet/lisp-cp/control.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T08:22:57Z",
+      "side": 1,
+      "message": "It\u0027s only one locator set, but the locator set has multiple rlocs. Therefore instead of saying itr_rloc_locator_set I recommended we call it itr_rlocs. Also, the type can now be u32 and not a pointer, if we store here just the index of the locator-set :-)",
+      "parentUuid": "ba092121_99c125e7",
       "range": {
         "startLine": 98,
         "startChar": 26,
