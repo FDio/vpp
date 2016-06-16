@@ -308,6 +308,8 @@ int vnet_vxlan_gpe_add_del_tunnel
 
       t->hw_if_index = hw_if_index;
       t->sw_if_index = sw_if_index = hi->sw_if_index;
+      vec_validate_init_empty (gm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
+      gm->tunnel_index_by_sw_if_index[sw_if_index] = t - gm->tunnels;
 
       vnet_sw_interface_set_flags (vnm, hi->sw_if_index,
                                    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
@@ -322,6 +324,8 @@ int vnet_vxlan_gpe_add_del_tunnel
 
       vnet_sw_interface_set_flags (vnm, t->sw_if_index, 0 /* down */);
       vec_add1 (gm->free_vxlan_gpe_tunnel_hw_if_indices, t->hw_if_index);
+
+      gm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 
       if (!a->is_ip6)
       {
