@@ -1,0 +1,234 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_59494d8a",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T09:02:55Z",
+      "side": 1,
+      "message": "good catch :-)",
+      "range": {
+        "startLine": 50,
+        "startChar": 57,
+        "endLine": 50,
+        "endChar": 75
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_395e9946",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T09:02:55Z",
+      "side": 1,
+      "message": "Same here!",
+      "range": {
+        "startLine": 56,
+        "startChar": 6,
+        "endLine": 56,
+        "endChar": 22
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_195bd555",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T09:02:55Z",
+      "side": 1,
+      "message": "perfect!",
+      "range": {
+        "startLine": 126,
+        "startChar": 6,
+        "endLine": 126,
+        "endChar": 22
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_9936c502",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T09:02:55Z",
+      "side": 1,
+      "message": "This is fine. But just a note, for now I enforced the mapping between vni 0 and vrf 0, it may be that in the future we\u0027ll want to be more flexible and allow the default vrf to be mapped to another vni. Just a heads up.",
+      "range": {
+        "startLine": 286,
+        "startChar": 0,
+        "endLine": 286,
+        "endChar": 27
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_b9186985",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2162,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T09:02:55Z",
+      "side": 1,
+      "message": "I think this conflicts with a patch that just got merged.",
+      "range": {
+        "startLine": 2161,
+        "startChar": 0,
+        "endLine": 2162,
+        "endChar": 35
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_7912d163",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2201,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T09:02:55Z",
+      "side": 1,
+      "message": "Did vim insert the space automatically at format time? Eclipse unfortunately adds no space for macros. Therefore it\u0027s either that gnu style recommends that or that eclipse has a bug. Bottom line, for macros I\u0027m fine with either space or no space :-)",
+      "range": {
+        "startLine": 2201,
+        "startChar": 33,
+        "endLine": 2201,
+        "endChar": 35
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_d902fd0a",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2222,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T09:02:55Z",
+      "side": 1,
+      "message": "I like that you added these. However, a thing I\u0027m not very sure about is the following: when we know for certain that the gid won\u0027t have a recursive address within it (so no malloc magic happens behind the curtains) should we still do the free, to avoid future unexpected breakage, or shouldn\u0027t we. I\u0027m on the fence with this one ...",
+      "range": {
+        "startLine": 2222,
+        "startChar": 2,
+        "endLine": 2222,
+        "endChar": 18
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_f980218d",
+        "filename": "vnet/vnet/lisp-cp/lisp_msg_serdes.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T09:02:55Z",
+      "side": 1,
+      "message": "Any reason why you don\u0027t call directly: gid_address_ippref_len(eid) \u003d MAP_REC_EID_PLEN(h); ? The function could then be removed.",
+      "range": {
+        "startLine": 227,
+        "startChar": 2,
+        "endLine": 227,
+        "endChar": 28
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_59726de6",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T09:02:55Z",
+      "side": 1,
+      "message": "I guess this is meant to be nested VNIs, not LCAFs, right?",
+      "range": {
+        "startLine": 350,
+        "startChar": 12,
+        "endLine": 350,
+        "endChar": 17
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_a404c015",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-16T09:02:55Z",
+      "side": 1,
+      "message": "I guess this is just legacy code from previous patches. We may have a function like this in the the future that just extracts the ip out of an non vni LCAF. But as is, this macro is not needed anymore.",
+      "range": {
+        "startLine": 113,
+        "startChar": 0,
+        "endLine": 113,
+        "endChar": 41
+      },
+      "revId": "b154d563e60c1eff5d701e9f7fec05b5370c8e4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
