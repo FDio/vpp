@@ -48,7 +48,11 @@
 always_inline void * mheap_get (void * v, uword size, uword * offset_return)
 { return mheap_get_aligned (v, size, 0, 0, offset_return); }
 
-/* Create allocation heap of given size. */
+/* Create allocation heap of given size.
+ * The actual usable size is smaller than the requested size.
+ * memory_bytes must be greater than mheap_page_size + sizeof (mheap_t) + 16.
+ * Otherwise, allocation may fail and return 0.
+ */
 void * mheap_alloc (void * memory, uword memory_bytes);
 void * mheap_alloc_with_flags (void * memory, uword memory_bytes, uword flags);
 

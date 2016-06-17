@@ -874,6 +874,15 @@ void * mheap_alloc_with_flags (void * memory, uword memory_size, uword flags)
     h = uword_to_pointer (ah, void *);
     v = mheap_vector (h);
 
+    if (PREDICT_FALSE(memory + memory_size < v)) {
+	/*
+	 * This will happen when the requested memory_size is too
+	 * small to cope with the heap header and/or memory alignment.
+	 */
+	clib_mem_vm_free(memory, memory_size);
+	return 0;
+    }
+
     size = memory + memory_size - v;
   }
 
