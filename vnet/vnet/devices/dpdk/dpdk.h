@@ -92,7 +92,8 @@ typedef enum {
   _ ("AF_PACKET PMD", AF_PACKET)  \
   _ ("rte_bond_pmd", BOND)        \
   _ ("rte_pmd_fm10k", FM10K)      \
-  _ ("rte_cxgbe_pmd", CXGBE)
+  _ ("rte_cxgbe_pmd", CXGBE)      \
+  _ ("rte_dpaa2_dpni", DPAA2)
 
 typedef enum {
   VNET_DPDK_PMD_NONE,
@@ -682,6 +683,10 @@ dpdk_pmd_constructor_init()
 
 #ifdef RTE_LIBRTE_PMD_BOND
   _(bond_drv)
+#endif
+
+#ifdef RTE_LIBRTE_DPAA2_PMD
+  _(pmd_dpaa2_drv)
 #endif
 
 #undef _
