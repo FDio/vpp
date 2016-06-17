@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_9188d9e8",
+        "filename": "vnet/vnet/devices/netmap/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-06-17T12:31:37Z",
+      "side": 1,
+      "message": "please keep INTERRUPT as default, and during the init switch to polling if n_vlib_mains \u003e 1\n\nLater we will make worker threads more friendly to input nodes in interrupt mode...",
+      "range": {
+        "startLine": 281,
+        "startChar": 11,
+        "endLine": 281,
+        "endChar": 34
+      },
+      "revId": "3da76dc6813212194b34918950c998ae20b467b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
