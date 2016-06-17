@@ -166,7 +166,6 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
           while (1)
             {
               vlib_buffer_init_for_free_list (b0, fl);
-              b0->clone_count = 0;
               
               b0->current_data = elt->current_data_hint;
               b0->current_length = elt->length_this_buffer;

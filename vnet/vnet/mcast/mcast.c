@@ -193,7 +193,8 @@ mcast_prep_node_fn (vlib_main_t * vm,
               /* 
                * Make sure that intermediate "frees" don't screw up 
                */
-              b0->clone_count = vec_len (g0->members);
+              b0->recycle_count = vec_len (g0->members);
+              b0->flags |= VLIB_BUFFER_RECYCLE;
 
               /* Set up for the recycle node */
               vnet_buffer(b0)->mcast.mcast_current_index = 1;
@@ -394,11 +395,12 @@ mcast_recycle_node_fn (vlib_main_t * vm,
                                   vnet_buffer(b0)->mcast.mcast_group_index);
 
           /* No more replicas? */
-          if (b0->clone_count == 1)
+          if (b0->recycle_count == 1)
             {
               /* Restore the original free list index */
               b0->free_list_index = 
                 vnet_buffer(b0)->mcast.original_free_list_index;
+              b0->flags &= ~(VLIB_BUFFER_RECYCLE);
             }
           current_member0 = vnet_buffer(b0)->mcast.mcast_current_index;
           

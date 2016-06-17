@@ -36,7 +36,6 @@ typedef struct {
   u32  recycle_node_index;   // feature's recycle node index
 
   // data saved from the start of replication and restored at the end of replication
-  u32  saved_clone_count;     // from vlib buffer
   u32  saved_free_list_index; // from vlib buffer
 
   // data saved from the original packet and restored for each replica
@@ -93,7 +92,7 @@ replication_get_ctx (vlib_buffer_t * b0)
   replication_main_t * rm = &replication_main;
 
   return replication_is_recycled (b0) ? 
-   pool_elt_at_index (rm->contexts[os_get_cpu_number()], b0->clone_count) :
+   pool_elt_at_index (rm->contexts[os_get_cpu_number()], b0->recycle_count) :
    0;
 }
 

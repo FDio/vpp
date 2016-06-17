@@ -672,10 +672,12 @@ dpdk_interface_tx (vlib_main_t * vm,
       mb0 = rte_mbuf_from_vlib_buffer(b0);
       mb1 = rte_mbuf_from_vlib_buffer(b1);
 
-      any_clone = b0->clone_count | b1->clone_count;
+      any_clone = (b0->flags & VLIB_BUFFER_RECYCLE)
+          | (b1->flags & VLIB_BUFFER_RECYCLE);
       if (PREDICT_FALSE(any_clone != 0))
         {
-          if (PREDICT_FALSE(b0->clone_count != 0))
+            if (PREDICT_FALSE
+                ((b0->flags & VLIB_BUFFER_RECYCLE) != 0))
 	    {
 	      struct rte_mbuf * mb0_new = dpdk_replicate_packet_mb (b0);
 	      if (PREDICT_FALSE(mb0_new == 0))
@@ -688,7 +690,8 @@ dpdk_interface_tx (vlib_main_t * vm,
 		mb0 = mb0_new;
 	      vec_add1 (dm->recycle[my_cpu], bi0);
 	    }
-          if (PREDICT_FALSE(b1->clone_count != 0))
+          if (PREDICT_FALSE
+              ((b1->flags & VLIB_BUFFER_RECYCLE) != 0))
 	    {
 	      struct rte_mbuf * mb1_new = dpdk_replicate_packet_mb (b1);
 	      if (PREDICT_FALSE(mb1_new == 0))
@@ -772,7 +775,7 @@ dpdk_interface_tx (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
 
       mb0 = rte_mbuf_from_vlib_buffer(b0);
-      if (PREDICT_FALSE(b0->clone_count != 0))
+      if (PREDICT_FALSE((b0->flags & VLIB_BUFFER_RECYCLE) != 0))
 	{
 	  struct rte_mbuf * mb0_new = dpdk_replicate_packet_mb (b0);
 	  if (PREDICT_FALSE(mb0_new == 0))

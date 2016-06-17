@@ -708,7 +708,9 @@ vlib_buffer_free_inline (vlib_main_t * vm,
         {
           int j;
           
-          add_buffer_to_free_list (vm, fl, buffers[i], b->clone_count == 0);
+          add_buffer_to_free_list 
+              (vm, fl, buffers[i], 
+               (b->flags & VLIB_BUFFER_RECYCLE) == 0);
           
           for (j = 0; j < vec_len (bm->announce_list); j++)
             {
@@ -721,7 +723,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
         }
       else
         {
-	  if (PREDICT_TRUE (b->clone_count == 0))
+          if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_RECYCLE) == 0))
 	    {
 	      mb = rte_mbuf_from_vlib_buffer(b);
 	      ASSERT(rte_mbuf_refcnt_read(mb) == 1);

@@ -901,8 +901,8 @@ vlib_buffer_free_inline (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
 
-      free0 = b0->clone_count == 0;
-      free1 = b1->clone_count == 0;
+      free0 = (b0->flags & VLIB_BUFFER_RECYCLE) == 0;
+      free1 = (b1->flags & VLIB_BUFFER_RECYCLE) == 0;
 
       /* Must be before init which will over-write buffer flags. */
       if (follow_buffer_next)
@@ -986,7 +986,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
 
       b0 = vlib_get_buffer (vm, bi0);
 
-      free0 = b0->clone_count == 0;
+      free0 = (b0->flags & VLIB_BUFFER_RECYCLE) == 0;
 
       /* Must be before init which will over-write buffer flags. */
       if (follow_buffer_next)
