@@ -2128,7 +2128,7 @@ static char * ixge_error_strings[] = {
 #undef _
 };
 
-static vlib_node_registration_t ixge_input_node = {
+VLIB_REGISTER_NODE (ixge_input_node, static) = {
   .function = ixge_input,
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "ixge-input",
@@ -2753,7 +2753,6 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_device_t * dev)
   if (vec_len (xm->devices) == 1)
     {
       ixge_input_node.function = ixge_input_multiarch_select();
-      vlib_register_node (vm, &ixge_input_node);
     }
 
   xd->pci_device = dev[0];
