@@ -350,7 +350,7 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
               ip6_adjacency_set_interface_route (vnm, adj, 
                                                  next_hop_sw_if_index, ~0);
               ip_call_add_del_adjacency_callbacks 
-                (lm, next_hop_sw_if_index, /* is_del */ 0);
+                (lm, nh_adj_index, /* is_del */ 0);
               hash_set (im->interface_route_adj_index_by_sw_if_index, 
                         next_hop_sw_if_index, nh_adj_index);
             }
