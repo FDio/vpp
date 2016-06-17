@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_31b90d2f",
+        "filename": "build-data/platforms/dpaa2.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-17T09:13:24Z",
+      "side": 1,
+      "message": "Above change is allowing compilation with inbuilt DPDK.(along with NXP DPAA2 patch applied)",
+      "revId": "351c224cfff47bf9a7da6db82a41264d0d4c9cbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_f1827551",
+        "filename": "dpdk/dpdk-16.04_patches/0017-NXP-DPAA2-Poll-Mode-Driver-Support.patch",
+        "patchSetId": 1
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-17T09:13:24Z",
+      "side": 1,
+      "message": "All above Files are DPAA2 platform driver specific.",
+      "revId": "351c224cfff47bf9a7da6db82a41264d0d4c9cbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_b17cfd73",
+        "filename": "dpdk/dpdk-16.04_patches/0017-NXP-DPAA2-Poll-Mode-Driver-Support.patch",
+        "patchSetId": 1
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-17T09:13:24Z",
+      "side": 1,
+      "message": "The rest of changes in common LIB files have been taken care under \"RTE_LIBRTE_DPAA2_PMD\" flag.\nSo, will not impact any of the existing functionality",
+      "revId": "351c224cfff47bf9a7da6db82a41264d0d4c9cbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
