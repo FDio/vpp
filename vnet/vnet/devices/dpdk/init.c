@@ -399,6 +399,9 @@ dpdk_lib_init (dpdk_main_t * dm)
             xd->nb_rx_desc = DPDK_NB_RX_DESC_10GE;
             xd->nb_tx_desc = DPDK_NB_TX_DESC_10GE;
             break;
+	  case VNET_DPDK_PMD_DPAA2:
+	    xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
+	    break;
 
           /* Cisco VIC */
           case VNET_DPDK_PMD_VICE:
