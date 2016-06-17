@@ -24,9 +24,8 @@ dpaa2_native_tools = vppapigen
 dpaa2_root_packages = vpp vlib vlib-api vnet svm vpp-api-test
 
 # DPDK configuration parameters
-#
-# We are using external DPDK module with NXP-DPAA2 platform support.
-# Compile DPDK only if "DPDK_PATH" variable is defined where we have
+dpaa2_uses_dpdk = yes
+# Compile with external DPDK only if "DPDK_PATH" variable is defined where we have
 # installed DPDK libraries and headers.
 ifeq ($(PLATFORM),dpaa2)
 ifneq ($(DPDK_PATH),)
@@ -35,7 +34,10 @@ dpaa2_uses_external_dpdk = yes
 dpaa2_dpdk_inc_dir = $(DPDK_PATH)/include/dpdk
 dpaa2_dpdk_lib_dir = $(DPDK_PATH)/lib
 else
-$(error Please define path <DPDK_PATH> for installed DPDK headers and libs)
+# compile using internal DPDK + NXP DPAA2 Driver patch
+dpaa2_dpdk_arch = "armv8a"
+dpaa2_dpdk_target = "arm64-dpaa2-linuxapp-gcc"
+dpaa2_dpdk_make_extra_args = "CROSS=$(dpaa2_target)-"
 endif
 endif
 
