@@ -288,8 +288,9 @@ int vl_map_shmem (char *region_name, int is_vlib)
             pthread_mutex_lock (&root_rp->mutex);
             svm_client_scan_this_region_nolock (root_rp);
             pthread_mutex_unlock (&root_rp->mutex);
-        } 
-        pthread_mutex_unlock (&vlib_rp->mutex);
+        } else {
+            pthread_mutex_unlock (&vlib_rp->mutex);
+        }
         am->vlib_rp = vlib_rp;
         vec_add1(am->mapped_shmem_regions, vlib_rp);
         return 0;
