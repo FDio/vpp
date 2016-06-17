@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_df73fd13",
+        "filename": "vnet/vnet/devices/dpdk/dpdk.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 687,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-17T04:15:51Z",
+      "side": 1,
+      "message": "Will come into picture when DPDK is compiled with DPAA2 PMD support.",
+      "revId": "1d2e5279103367fb995bb368911c7e3a38ce8260",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
