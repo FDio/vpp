@@ -243,7 +243,11 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
   /* setup adjacency for eid */
   memset (&adj, 0, sizeof(adj));
   adj.n_adj = 1;
-  adj.explicit_fib_index = ~0;
+
+  /* fill in lookup_next_index with a 'legal' value to avoid problems */
+  adj.lookup_next_index = (ip_ver == IP4) ?
+          lgm->ip4_lookup_next_lgpe_ip4_lookup :
+          lgm->ip6_lookup_next_lgpe_ip6_lookup;
 
   if (a->is_add)
     {
@@ -261,7 +265,8 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
       ASSERT(lookup_next_index != 0);
       ASSERT(lgpe_sw_if_index != 0);
 
-      adj.lookup_next_index = lookup_next_index[0];
+      /* hijack explicit fib index to store lisp interface node index */
+      adj.explicit_fib_index = lookup_next_index[0];
       adj.rewrite_header.node_index = tun_index;
       adj.rewrite_header.sw_if_index = lgpe_sw_if_index[0];
     }

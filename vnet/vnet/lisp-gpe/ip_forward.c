@@ -245,6 +245,12 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
           /* dst adj should point to lisp gpe lookup */
           dst_adj.lookup_next_index = lgm->ip4_lookup_next_lgpe_ip4_lookup;
 
+          /* make sure we have different signatures for adj in different tables
+           * but with the same lookup_next_index */
+          dst_adj.explicit_fib_index = table_id;
+
+          dst_adj.n_adj = 1;
+
           memset(&a, 0, sizeof(a));
           a.flags = IP4_ROUTE_FLAG_TABLE_ID;
           a.table_index_or_table_id = table_id; /* vrf */
@@ -262,6 +268,14 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
                              dst_address_length);
 
           ASSERT(p != 0);
+
+          /* make sure insertion succeeded */
+          if (CLIB_DEBUG)
+            {
+              dst_adjp = ip_get_adjacency (lgm->lm4, p[0]);
+              ASSERT(dst_adjp->rewrite_header.sw_if_index
+                      == dst_adj.rewrite_header.sw_if_index);
+            }
         }
     }
   else
@@ -277,6 +291,12 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 
   dst_adjp = ip_get_adjacency (lgm->lm4, p[0]);
 
+  /* make sure adj signature is unique, i.e., fill in mcast_group_index
+   * and saved_lookup_next index with data that makes this adj unique.
+   * All these fields are (and should stay that way) unused by LISP. */
+  add_adj->mcast_group_index = table_id;
+  add_adj->saved_lookup_next_index = dst_adjp->rewrite_header.sw_if_index;
+
   /* add/del src prefix to src fib */
   memset(&a, 0, sizeof(a));
   a.flags = IP4_ROUTE_FLAG_TABLE_ID;
@@ -289,6 +309,18 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
   a.dst_address_length = src_address_length;
   a.dst_address = src;
   ip4_sd_fib_add_del_src_route (lgm, &a);
+
+  /* make sure insertion succeeded */
+  if (CLIB_DEBUG)
+    {
+      uword * sai;
+      ip_adjacency_t * src_adjp;
+      sai = ip4_sd_get_src_route (lgm, dst_adjp->rewrite_header.sw_if_index,
+                                  &src, src_address_length);
+      src_adjp = ip_get_adjacency(lgm->lm4, sai[0]);
+      ASSERT(src_adjp->rewrite_header.node_index
+              == add_adj->rewrite_header.node_index);
+    }
 
   /* if a delete, check if there are elements left in the src fib */
   if (!is_add)
@@ -559,6 +591,10 @@ ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
           /* dst adj should point to lisp gpe ip lookup */
           dst_adj.lookup_next_index = lgm->ip6_lookup_next_lgpe_ip6_lookup;
 
+          /* make sure we have different signatures for adj in different tables
+           * but with the same lookup_next_index */
+          dst_adj.explicit_fib_index = table_id;
+
           memset(&a, 0, sizeof(a));
           a.flags = IP6_ROUTE_FLAG_TABLE_ID;
           a.table_index_or_table_id = table_id; /* vrf */
@@ -576,6 +612,14 @@ ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
                                      dst_address_length);
 
           ASSERT(adj_index != 0);
+
+          /* make sure insertion succeeded */
+          if (CLIB_DEBUG)
+            {
+              dst_adjp = ip_get_adjacency (lgm->lm6, adj_index);
+              ASSERT(dst_adjp->rewrite_header.sw_if_index
+                      == dst_adj.rewrite_header.sw_if_index);
+            }
         }
     }
   else
@@ -591,6 +635,12 @@ ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 
   dst_adjp = ip_get_adjacency (lgm->lm6, adj_index);
 
+  /* make sure adj signature is unique, i.e., fill in mcast_group_index
+   * and saved_lookup_next index with data that makes this adj unique.
+   * All these fields are (and should stay that way) unused by LISP. */
+  add_adj->mcast_group_index = table_id;
+  add_adj->saved_lookup_next_index = dst_adjp->rewrite_header.sw_if_index;
+
   /* add/del src prefix to src fib */
   memset(&a, 0, sizeof(a));
   a.flags = IP6_ROUTE_FLAG_TABLE_ID;
@@ -603,6 +653,18 @@ ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
   a.dst_address_length = src_address_length;
   a.dst_address = src;
   ip6_sd_fib_add_del_src_route (lgm, &a);
+
+  /* make sure insertion succeeded */
+  if (CLIB_DEBUG)
+    {
+      u32 sai;
+      ip_adjacency_t * src_adjp;
+      sai = ip6_sd_get_src_route (lgm, dst_adjp->rewrite_header.sw_if_index,
+                                  &src, src_address_length);
+      src_adjp = ip_get_adjacency(lgm->lm6, sai);
+      ASSERT(src_adjp->rewrite_header.node_index
+              == add_adj->rewrite_header.node_index);
+    }
 
   /* if a delete, check if there are elements left in the src fib */
   if (!is_add)
@@ -825,8 +887,8 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               src_adj0 = ip_get_adjacency (lgm->lm4, src_adj_index0);
               src_adj1 = ip_get_adjacency (lgm->lm4, src_adj_index1);
 
-              next0 = src_adj0->lookup_next_index;
-              next1 = src_adj1->lookup_next_index;
+              next0 = src_adj0->explicit_fib_index;
+              next1 = src_adj1->explicit_fib_index;
 
               /* prepare buffer for lisp-gpe output node */
               vnet_buffer (b0)->sw_if_index[VLIB_TX] =
@@ -842,7 +904,7 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                                           &ip0->src_address, &src_adj_index0);
                   vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
                   src_adj0 = ip_get_adjacency (lgm->lm4, src_adj_index0);
-                  next0 = src_adj0->lookup_next_index;
+                  next0 = src_adj0->explicit_fib_index;
                   vnet_buffer (b0)->sw_if_index[VLIB_TX] =
                       src_adj0->rewrite_header.sw_if_index;
                 }
@@ -852,7 +914,7 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                                           &ip1->src_address, &src_adj_index1);
                   vnet_buffer(b1)->ip.adj_index[VLIB_TX] = src_adj_index1;
                   src_adj1 = ip_get_adjacency (lgm->lm4, src_adj_index1);
-                  next1 = src_adj1->lookup_next_index;
+                  next1 = src_adj1->explicit_fib_index;
                   vnet_buffer (b1)->sw_if_index[VLIB_TX] =
                       src_adj1->rewrite_header.sw_if_index;
                 }
@@ -894,7 +956,7 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                                       &src_adj_index0);
               vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
               src_adj0 = ip_get_adjacency (lgm->lm4, src_adj_index0);
-              next0 = src_adj0->lookup_next_index;
+              next0 = src_adj0->explicit_fib_index;
 
               /* prepare packet for lisp-gpe output node */
               vnet_buffer (b0)->sw_if_index[VLIB_TX] =
@@ -1041,8 +1103,8 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               src_adj0 = ip_get_adjacency (lgm->lm6, src_adj_index0);
               src_adj1 = ip_get_adjacency (lgm->lm6, src_adj_index1);
 
-              next0 = src_adj0->lookup_next_index;
-              next1 = src_adj1->lookup_next_index;
+              next0 = src_adj0->explicit_fib_index;
+              next1 = src_adj1->explicit_fib_index;
 
               /* prepare buffer for lisp-gpe output node */
               vnet_buffer (b0)->sw_if_index[VLIB_TX] =
@@ -1058,7 +1120,7 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                                                        &ip0->src_address);
                   vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
                   src_adj0 = ip_get_adjacency (lgm->lm6, src_adj_index0);
-                  next0 = src_adj0->lookup_next_index;
+                  next0 = src_adj0->explicit_fib_index;
                   vnet_buffer (b0)->sw_if_index[VLIB_TX] =
                       src_adj0->rewrite_header.sw_if_index;
                 }
@@ -1068,7 +1130,7 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                                                        &ip1->src_address);
                   vnet_buffer(b1)->ip.adj_index[VLIB_TX] = src_adj_index1;
                   src_adj1 = ip_get_adjacency (lgm->lm6, src_adj_index1);
-                  next1 = src_adj1->lookup_next_index;
+                  next1 = src_adj1->explicit_fib_index;
                   vnet_buffer (b1)->sw_if_index[VLIB_TX] =
                       src_adj1->rewrite_header.sw_if_index;
                 }
@@ -1111,7 +1173,7 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
 
               vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
               src_adj0 = ip_get_adjacency (lgm->lm6, src_adj_index0);
-              next0 = src_adj0->lookup_next_index;
+              next0 = src_adj0->explicit_fib_index;
 
               /* prepare packet for lisp-gpe output node */
               vnet_buffer (b0)->sw_if_index[VLIB_TX] =
