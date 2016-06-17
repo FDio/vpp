@@ -1263,7 +1263,7 @@ dispatch_process (vlib_main_t * vm,
       p->suspended_process_frame_index = pf - nm->suspended_process_frames;
 
       if (p->flags & VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK)
-	timing_wheel_insert (&nm->timing_wheel, p->resume_cpu_time,
+	timing_wheel_insert (&nm->timing_wheel, last_time_stamp,
 			     vlib_timing_wheel_data_set_suspended_process (node->runtime_index));
     }
   else
@@ -1285,7 +1285,7 @@ void vlib_start_process (vlib_main_t * vm, uword process_index)
 {
   vlib_node_main_t * nm = &vm->node_main;
   vlib_process_t * p = vec_elt (nm->processes, process_index);
-  dispatch_process (vm, p, /* frame */ 0, /* cpu_time_now */ 0);
+  dispatch_process (vm, p, /* frame */ 0, /* cpu_time_now */ clib_cpu_time_now ());
 }
 
 static u64
@@ -1333,7 +1333,7 @@ dispatch_suspended_process (vlib_main_t * vm,
       n_vectors = 0;
       p->n_suspends += 1;
       if (p->flags & VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK)
-	timing_wheel_insert (&nm->timing_wheel, p->resume_cpu_time,
+	timing_wheel_insert (&nm->timing_wheel, last_time_stamp,
 			     vlib_timing_wheel_data_set_suspended_process (node->runtime_index));
     }
   else
