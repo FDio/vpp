@@ -45,13 +45,13 @@ replication_prep (vlib_main_t * vm,
   ctx_id = ctx - rm->contexts[cpu_number];
 
   // Save state from vlib buffer
-  ctx->saved_clone_count = b0->clone_count;
   ctx->saved_free_list_index = b0->free_list_index;
   ctx->current_data = b0->current_data;
 
   // Set up vlib buffer hooks
-  b0->clone_count = ctx_id;
+  b0->recycle_count = ctx_id;
   b0->free_list_index = rm->recycle_list_index;
+  b0->flags |= VLIB_BUFFER_RECYCLE;
 
   // Save feature state
   ctx->recycle_node_index = recycle_node_index;
@@ -95,7 +95,7 @@ replication_recycle (vlib_main_t * vm,
   ip4_header_t * ip;
 
   // Get access to the replication context
-  ctx = pool_elt_at_index (rm->contexts[cpu_number], b0->clone_count);
+  ctx = pool_elt_at_index (rm->contexts[cpu_number], b0->recycle_count);
 
   // Restore vnet buffer state
   clib_memcpy (vnet_buffer(b0), ctx->vnet_buffer, sizeof(vnet_buffer_opaque_t));
@@ -121,7 +121,6 @@ replication_recycle (vlib_main_t * vm,
   if (is_last) {
     // This is the last replication in the list. 
     // Restore original buffer free functionality.
-    b0->clone_count = ctx->saved_clone_count;
     b0->free_list_index = ctx->saved_free_list_index;
 
     // Free context back to its pool
@@ -162,12 +161,12 @@ static void replication_recycle_callback (vlib_main_t *vm,
     bi0 = fl->aligned_buffers[0];
     b0 = vlib_get_buffer (vm, bi0);
     ctx = pool_elt_at_index (rm->contexts[cpu_number],
-                             b0->clone_count);
+                             b0->recycle_count);
     feature_node_index = ctx->recycle_node_index;
   } else if (vec_len (fl->unaligned_buffers) > 0) {
     bi0 = fl->unaligned_buffers[0];
     b0 = vlib_get_buffer (vm, bi0);
-    ctx = pool_elt_at_index (rm->contexts[cpu_number], b0->clone_count);
+    ctx = pool_elt_at_index (rm->contexts[cpu_number], b0->recycle_count);
     feature_node_index = ctx->recycle_node_index;
   }
 

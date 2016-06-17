@@ -261,7 +261,6 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
     vec_validate (tm->iovecs, tm->mtu_buffers - 1);
     for (j = 0; j < tm->mtu_buffers; j++) {
       b = vlib_get_buffer (vm, tm->rx_buffers[i_rx - j]);
-      b->clone_count = 0;
       tm->iovecs[j].iov_base = b->data;
       tm->iovecs[j].iov_len = buffer_size;
     }

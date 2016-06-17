@@ -183,7 +183,6 @@ netmap_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  bytes_to_copy);
 
 		  /* fill buffer header */
-		  b0->clone_count = 0;
 		  b0->current_length = bytes_to_copy;
 
 		  if (offset == 0)

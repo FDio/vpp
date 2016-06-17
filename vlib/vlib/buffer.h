@@ -86,6 +86,7 @@ typedef struct {
                 <br> VLIB_BUFFER_NEXT_PRESENT: this is a multi-chunk buffer.
                 <br> VLIB_BUFFER_TOTAL_LENGTH_VALID: as it says
                 <br> VLIB_BUFFER_REPL_FAIL: packet replication failure
+                <br> VLIB_BUFFER_RECYCLE: as it says
                 <br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N
              */
 #define VLIB_BUFFER_IS_TRACED (1 << 0)
@@ -94,6 +95,7 @@ typedef struct {
 #define VLIB_BUFFER_IS_RECYCLED (1 << 2) 
 #define VLIB_BUFFER_TOTAL_LENGTH_VALID (1 << 3)
 #define VLIB_BUFFER_REPL_FAIL (1 << 4) 
+#define VLIB_BUFFER_RECYCLE (1 << 5)
 
   /* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
@@ -112,20 +114,17 @@ typedef struct {
                         Only valid if VLIB_BUFFER_NEXT_PRESENT flag is set. 
                      */
 
-  u32 clone_count; /**< Specifies whether this buffer should be 
-                      reinitialized when freed. It will be reinitialized 
-                      if the value is 0. This field can be used
-                      as a counter or for other state during packet 
-                      replication. The buffer free function does not 
-                      modify this value. 
-                   */
-
   vlib_error_t error;   /**< Error code for buffers to be enqueued 
                            to error handler. 
                         */
   u32 current_config_index; /**< Used by feature subgraph arcs to
                                visit enabled feature nodes
                             */
+
+  u32 dont_waste_me; /**< Available space in the (precious)
+                        first 32 octets of buffer metadata
+                        Before allocating any of it, discussion required!
+                     */
 
   u32 opaque[8]; /**< Opaque data used by sub-graphs for their own purposes. 
                     See .../vnet/vnet/buffer.h
@@ -135,7 +134,8 @@ typedef struct {
   u32 trace_index; /**< Specifies index into trace buffer 
                       if VLIB_PACKET_IS_TRACED flag is set. 
                    */
-  u32 opaque2[15];  /**< More opaque data, currently unused */
+  u32 recycle_count; /**< Used by L2 path recycle code */
+  u32 opaque2[14];  /**< More opaque data, currently unused */
 
   /***** end of second cache line */
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline2);

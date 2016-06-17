@@ -439,7 +439,6 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
             }
 
           vlib_buffer_init_for_free_list (b0, fl);
-          b0->clone_count = 0;
           
           bi0 = vlib_get_buffer_index (vm, b0);
 
@@ -490,7 +489,6 @@ static inline u32 dpdk_device_input ( dpdk_main_t * dm,
 
 	      b_seg = vlib_buffer_from_rte_mbuf(mb_seg);
 	      vlib_buffer_init_for_free_list (b_seg, fl);
-              b_seg->clone_count = 0;
 
 	      ASSERT((b_seg->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
 	      ASSERT(b_seg->current_data == 0);
