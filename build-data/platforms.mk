@@ -72,6 +72,7 @@ install-rpm: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	      $(ROOT_PACKAGES))	|| exit 1;				\
 									\
 	cd rpm ;							\
-	rpmbuild -bb --define "_topdir $$PWD"  vpp.spec ; 		\
+	rpmbuild -bb --define "_topdir $$PWD" --define			\
+		"_install_dir $(INSTALL_PREFIX)$(ARCH)" vpp.spec ;	\
 	mv $$(find RPMS -name \*.rpm -type f) ..
 

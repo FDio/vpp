@@ -1,4 +1,4 @@
-%define _vpp_install_dir ../install-vpp-native
+%define _vpp_install_dir ../%{_install_dir}
 %define _vpp_build_dir   ../build-tool-native
 %define _unitdir         /lib/systemd/system
 %define _topdir          %(pwd)
