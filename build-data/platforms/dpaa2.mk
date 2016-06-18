@@ -18,7 +18,8 @@ dpaa2_target = aarch64-linux-gnu
 dpaa2_mtune = cortex-A57
 dpaa2_march = "armv8-a+fp+simd+crc+crypto"
 dpaa2_cross_ldflags = \
-	-Wl,--dynamic-linker=/lib/ld-linux-aarch64.so.1
+	-Wl,--dynamic-linker=/lib/ld-linux-aarch64.so.1 \
+	-Wl,-rpath=/usr/lib64
 
 dpaa2_native_tools = vppapigen
 dpaa2_root_packages = vpp vlib vlib-api vnet svm vpp-api-test
