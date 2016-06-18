@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_4779632e",
+        "filename": "vnet/vnet/lisp-gpe/ip_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-18T15:00:51Z",
+      "side": 1,
+      "message": "heh... cool",
+      "range": {
+        "startLine": 243,
+        "startChar": 10,
+        "endLine": 243,
+        "endChar": 75
+      },
+      "revId": "c3affcbb746b57f0c85173f7642fd4021dc56bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_27766f3f",
+        "filename": "vnet/vnet/lisp-gpe/ip_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-18T15:00:51Z",
+      "side": 1,
+      "message": "How do you *know* though? It maybe implied as part of the LISP impl ... so apologies... just wanna make sure you don\u0027t shoot yourself in the foot inadvertently like I would :D",
+      "range": {
+        "startLine": 252,
+        "startChar": 9,
+        "endLine": 252,
+        "endChar": 28
+      },
+      "revId": "c3affcbb746b57f0c85173f7642fd4021dc56bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_e78f5722",
+        "filename": "vnet/vnet/lisp-gpe/ip_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-18T15:00:51Z",
+      "side": 1,
+      "message": "Ok maybe this is the bit I am not getting, so please educate me, and maybe its high time we did a LISP webex :D ... \nSo if LISP can use normal things like \"interface IP\" or a \"loopback\" as an RLOC ... then so can other things... and with shared adjacencies, is there anyway to ensure you are the single owner of this adjacency ?",
+      "range": {
+        "startLine": 297,
+        "startChar": 2,
+        "endLine": 298,
+        "endChar": 74
+      },
+      "revId": "c3affcbb746b57f0c85173f7642fd4021dc56bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_c7945339",
+        "filename": "vnet/vnet/lisp-gpe/ip_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-18T15:00:51Z",
+      "side": 1,
+      "message": "... yet you don\u0027t set n_adj \u003d 1 here ... so I totally trust you dude, just I\u0027d like to understand why.",
+      "range": {
+        "startLine": 596,
+        "startChar": 9,
+        "endLine": 596,
+        "endChar": 48
+      },
+      "revId": "c3affcbb746b57f0c85173f7642fd4021dc56bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_a7995f70",
+        "filename": "vnet/vnet/lisp-gpe/lisp_gpe.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-18T15:00:51Z",
+      "side": 1,
+      "message": "Ok so see prior comments ... maybe this explains the incongruity between prior file use of n_adj \u003d 1 ... still would like to grok though so I can give you decent code reviews.",
+      "range": {
+        "startLine": 245,
+        "startChar": 2,
+        "endLine": 245,
+        "endChar": 16
+      },
+      "revId": "c3affcbb746b57f0c85173f7642fd4021dc56bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
