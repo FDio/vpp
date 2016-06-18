@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_07eecbec",
+        "filename": "build-data/platforms.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-18T10:37:09Z",
+      "side": 1,
+      "message": "Introducing \"_install_dir\" to pass current platform install directory name",
+      "revId": "693b7026a8da00d4b325f1cde09959d88696b294",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_e7bab7e0",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-18T10:37:09Z",
+      "side": 1,
+      "message": "This will set \"_vpp_install_dir\" to ....\n\n- \"install-vpp-native\" for PLATFORM\u003dvpp\n- \"install-dpaa2-aarch64\" for PLATFORM\u003ddpaa2  and so on..",
+      "revId": "693b7026a8da00d4b325f1cde09959d88696b294",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
