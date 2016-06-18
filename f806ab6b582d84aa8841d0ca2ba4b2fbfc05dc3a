@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_c7bb33c3",
+        "filename": "build-data/platforms/dpaa2.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 471
+      },
+      "writtenOn": "2016-06-18T15:49:18Z",
+      "side": 1,
+      "message": "VPP application was looking in /usr/lib/ for shared Libs.",
+      "revId": "f806ab6b582d84aa8841d0ca2ba4b2fbfc05dc3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
