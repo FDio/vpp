@@ -1,61 +1,28 @@
-VPP has now been built, installed, and started.
+INTRO:
 
-To give it a spin, we can create a tap interface and try a simple ping
-(with trace).
+This is a vagrant environment for VPP.
 
-Make sure you have run:
+VPP currently works under Linux and has support for:
 
-$ vagrant ssh
+- Ubuntu 14.04, Ubuntu 16.04 and Centos7.2
 
-To get to the vagrant VM:
+The VM builds VPP from source which can be located at /vpp
 
-vagrant@localhost:~$
+VM PARTICULARS:
+This vagrant environment creates a VM based on environment variables found in ./env.sh
+To use, edit env.sh then
+  source ./env.sh
+  vagrant up
 
-Confirm that vpp is running with
+By default, the VM created is/has:
+- Ubuntu 14.04
+- 2 vCPUs
+- 2G of RAM
+- 2 NICs (1 x NAT - host access, 1 x VPP DPDK enabled)
 
-vagrant@localhost:~$ sudo status vpp
-vpp start/running, process 25202
+PROVIDERS:
 
-To create the tap:
+Supported vagrant providers are:
 
-vagrant@localhost:~$ sudo vppctl tap connect foobar
-Created tap-0 for Linux tap 'foobar'
-vagrant@localhost:~$ sudo vppctl show int
+- Virtualbox, VMware Fusion/Workstation, Libvirt
 
-To assign it an ip address (and 'up' the interface):
-
-vagrant@localhost:~$ sudo vppctl set int ip address tap-0 192.168.1.1/24
-vagrant@localhost:~$ sudo vppctl set int state tap-0 up
-
-To turn on packet tracing for the tap interface:
-vagrant@localhost:~$ sudo vppctl trace add tapcli-rx 10
-
-Now, to set up and try the other end:
-vagrant@localhost:~$ sudo ip addr add 192.168.1.2/24 dev foobar
-vagrant@localhost:~$ ping -c 3 192.168.1.1
-
-To look at the trace:
-vagrant@localhost:~$ sudo vppctl show trace
-
-And to stop tracing:
-
-vagrant@localhost:~$ sudo vppctl clear trace
-
-Other fun things to look at:
-
-The vlib packet processing graph:
-vagrant@localhost:~$ sudo vppctl show vlib graph
-
-which will produce output like:
-
-           Name                      Next                    Previous
-ip4-icmp-input                  error-punt [0]               ip4-local
-                                ip4-icmp-echo-request [1]
-                                vpe-icmp4-oam [2]
-
-To read this, the first column (Name) is the name of the node.
-The second column (Next) is the name of the children of that node.
-The third column (Previous) is the name of the parents of this node.
-
-To see this README again:
-cat /vagrant/README
