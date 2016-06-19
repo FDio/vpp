@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_6726a718",
+        "filename": "vnet/vnet/lisp-gpe/ip_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-19T18:19:37Z",
+      "side": 1,
+      "message": "Mate, always feel free to ask, especially since I\u0027m an experienced own foot shooter myself :)\n\nHere we\u0027re inserting a route in the main IP4 FIB, the one that does the dest lookup in the two stage dest/src FIB. (I was about to give way more context here but I think it\u0027s much more useful if we talk about it over a webex :)). The adjacency associated to the route stores the index of the second stage (src) lookup FIB. Therefore, here we know for sure we want to insert only one adjacency in the main FIB (look at this code more like the internals of the generic source/dest (or in fact dest and then src) FIB.",
+      "parentUuid": "ba092121_27766f3f",
+      "range": {
+        "startLine": 252,
+        "startChar": 9,
+        "endLine": 252,
+        "endChar": 28
+      },
+      "revId": "c3affcbb746b57f0c85173f7642fd4021dc56bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_e78f5722",
         "filename": "vnet/vnet/lisp-gpe/ip_forward.c",
         "patchSetId": 1
@@ -59,6 +83,30 @@
       "writtenOn": "2016-06-18T15:00:51Z",
       "side": 1,
       "message": "Ok maybe this is the bit I am not getting, so please educate me, and maybe its high time we did a LISP webex :D ... \nSo if LISP can use normal things like \"interface IP\" or a \"loopback\" as an RLOC ... then so can other things... and with shared adjacencies, is there anyway to ensure you are the single owner of this adjacency ?",
+      "range": {
+        "startLine": 297,
+        "startChar": 2,
+        "endLine": 298,
+        "endChar": 74
+      },
+      "revId": "c3affcbb746b57f0c85173f7642fd4021dc56bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_077ecbae",
+        "filename": "vnet/vnet/lisp-gpe/ip_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-19T18:19:37Z",
+      "side": 1,
+      "message": "Just let me know when you have a bit of time and let\u0027s do the webex! ;-)\n\nHere we\u0027re inserting a route + adj in the src FIB. The actual IPs of the interfaces/loopbacks are not part of the adjacencies, they\u0027re just keys used for the lookup. Instead, the adj have a number of fields that make them unique (check in ip_adjacency_t everything\u0027s that between signature start and end). This means that if anyone else adds an adj with the same fields (and they\u0027re not that many) we\u0027ll have an overlap and the adj will be shared. Could be a problem however, the code right now uses 3 fields to try and make LISP SD FIB adjs unique: explicit_fib_index (holds the useful data, instead of lookup_next_index), mcast_group_index and saved_lookup_next_index. The latter two are filled in with data such that the adj are kept unique between LISP\u0027s tenants (table_id) for all source FIBs.",
+      "parentUuid": "ba092121_e78f5722",
       "range": {
         "startLine": 297,
         "startChar": 2,
@@ -94,6 +142,30 @@
     },
     {
       "key": {
+        "uuid": "ba092121_c71d7375",
+        "filename": "vnet/vnet/lisp-gpe/ip_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-19T18:19:37Z",
+      "side": 1,
+      "message": "Good catch, will fix in a future patch, although it should not matter as long as we don\u0027t have non-multipath adj overlaps (and from LISP perspective we shouldn\u0027t). The interesting part is that n_adj is part of the signature however at allocation time it is set to n_add_adj post signature check. I guess this could be a source of surprising behavior, i.e., one could save an adj with n_adj \u003d 0 and n_add_adj \u003d 1 so the sharing of the adj could be avoided",
+      "parentUuid": "ba092121_c7945339",
+      "range": {
+        "startLine": 596,
+        "startChar": 9,
+        "endLine": 596,
+        "endChar": 48
+      },
+      "revId": "c3affcbb746b57f0c85173f7642fd4021dc56bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_a7995f70",
         "filename": "vnet/vnet/lisp-gpe/lisp_gpe.c",
         "patchSetId": 1
@@ -105,6 +177,30 @@
       "writtenOn": "2016-06-18T15:00:51Z",
       "side": 1,
       "message": "Ok so see prior comments ... maybe this explains the incongruity between prior file use of n_adj \u003d 1 ... still would like to grok though so I can give you decent code reviews.",
+      "range": {
+        "startLine": 245,
+        "startChar": 2,
+        "endLine": 245,
+        "endChar": 16
+      },
+      "revId": "c3affcbb746b57f0c85173f7642fd4021dc56bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_a7127f60",
+        "filename": "vnet/vnet/lisp-gpe/lisp_gpe.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-19T18:19:37Z",
+      "side": 1,
+      "message": "Ah, so this is the \"src adj\", the one we actually store in the SD FIB, i.e., the one returned if we were to do a ip_sd_fib_lookup(fib, src, dst). The two other cases we discussed concerned the dst adjacency, i.e., the one that keeps a pointer to the src FIB (for v6 I forgot to set n_adj\u003d1). We can really go over the SD FIB in more detail over a webex. It\u0027s also a sign I should really start adding content to the LISP arch wiki page I have planned.",
+      "parentUuid": "ba092121_a7995f70",
       "range": {
         "startLine": 245,
         "startChar": 2,
