@@ -4,7 +4,7 @@
 Vagrant.configure(2) do |config|
 
   # Pick the right distro and bootstrap, default is ubuntu1404
-  distro = ENV['VPP_VAGRANT_DISTRO']
+  distro = ( ENV['VPP_VAGRANT_DISTRO'] || "ubuntu1404")
   if distro == 'centos7'
     config.vm.box = "puppetlabs/centos-7.2-64-nocm"
   else
@@ -44,10 +44,7 @@ Vagrant.configure(2) do |config|
   end
 
   # Define some physical ports for your VMs to be used by DPDK
-  nics = 2
-  if ENV.key?('VPP_VAGRANT_NICS')
-    nics = ENV['VPP_VAGRANT_NICS'].to_i(10)
-  end
+  nics = (ENV['VPP_VAGRANT_NICS'] || 2).to_i(10)
   for i in 1..nics
     config.vm.network "private_network", type: "dhcp"
   end
@@ -59,21 +56,25 @@ Vagrant.configure(2) do |config|
    config.proxy.no_proxy = "localhost,127.0.0.1"
   end
 
+  vmcpu=(ENV['VPP_VAGRANT_VMCPU'] || 2)
+  vmram=(ENV['VPP_VAGRANT_VMRAM'] || 2048)
+  
   config.vm.synced_folder "../../", "/vpp", disabled: false
   config.vm.provider "virtualbox" do |vb|
       vb.customize ["modifyvm", :id, "--ioapic", "on"]
-      vb.memory = 4096
-      vb.cpus = 2
+      vb.memory = "#{vmram}"
+      vb.cpus = "#{vmcpu}"
   end
   config.vm.provider "vmware_fusion" do |fusion,override|
-    fusion.vmx["memsize"] = "4096"
+    fusion.vmx["memsize"] = "#{vmram}"
+    fusion.vmx["numvcpus"] = "#{vmcpu}"
   end
   config.vm.provider "libvirt" do |lv|
-    lv.memory = 4096
-    lv.cpus = 8
+    lv.memory = "#{vmram}"
+    lv.cpus = "#{vmcpu}"
   end
   config.vm.provider "vmware_workstation" do |vws,override|
-    vws.vmx["memsize"] = "8192"
-    vws.vmx["numvcpus"] = "4"
+    vws.vmx["memsize"] = "#{vmram}"
+    vws.vmx["numvcpus"] = "#{vmcpu}"
   end
 end
