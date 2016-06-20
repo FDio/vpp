@@ -189,8 +189,9 @@ typedef struct {
 
     /* vnet policer */
     struct {
-      u32 pad[8 -VLIB_N_RX_TX -1];  /* to end of opaque */
+      u32 pad[8 -VLIB_N_RX_TX -2];  /* to end of opaque */
       u32 index;
+      u32 color;
     } policer;
 
     /* interface output features */

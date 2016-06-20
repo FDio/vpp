@@ -34,6 +34,7 @@
 #include <vnet/l2/l2_classify.h> 
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/classify/input_acl.h>
+#include <vnet/classify/policer_classify.h>
 #include <vnet/mpls-gre/mpls.h>
 #if DPDK > 0
 #include <vnet/ipsec/ipsec.h>
@@ -46,6 +47,7 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/policer/xlate.h>
 #include <vnet/policer/policer.h>
+#include <vnet/policer/police.h>
 
 #include "vat/json_format.h"
 
@@ -445,6 +447,25 @@ unformat_policer_action_type (unformat_input_t * input, va_list * va)
     a->action_type = SSE2_QOS_ACTION_MARK_AND_TRANSMIT;
   else
     return 0;
+  return 1;
+}
+
+uword
+unformat_classify_table_type (unformat_input_t * input, va_list * va)
+{
+  u32 * r = va_arg (*va, u32 *);
+  u32 tid;
+
+  if (unformat (input, "ip4"))
+    tid = POLICER_CLASSIFY_TABLE_IP4;
+  else if (unformat (input, "ip6"))
+    tid = POLICER_CLASSIFY_TABLE_IP6;
+  else if (unformat (input, "l2"))
+    tid = POLICER_CLASSIFY_TABLE_L2;
+  else
+    return 0;
+
+  *r = tid;
   return 1;
 }
 
@@ -2398,8 +2419,8 @@ static void vl_api_policer_details_t_handler
              format_policer_type, mp->type,
              ntohl(mp->cir),
              ntohl(mp->eir),
-             ntohl(mp->cb),
-             ntohl(mp->eb),
+             clib_net_to_host_u64(mp->cb),
+             clib_net_to_host_u64(mp->eb),
              format_policer_rate_type, mp->rate_type,
              format_policer_round_type, mp->round_type,
              mp->single_rate ? "single" : "dual",
@@ -2576,6 +2597,42 @@ static void vl_api_classify_table_by_interface_reply_t_handler_json (vl_api_clas
     vam->result_ready = 1;
 }
 
+static void vl_api_policer_add_del_reply_t_handler
+(vl_api_policer_add_del_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    i32 retval = ntohl(mp->retval);
+    if (vam->async_mode) {
+        vam->async_errors += (retval < 0);
+    } else {
+        vam->retval = retval;
+        vam->result_ready = 1;
+        if (retval == 0 && mp->policer_index != 0xFFFFFFFF)
+            /*
+             * Note: this is just barely thread-safe, depends on
+             * the main thread spinning waiting for an answer...
+             */
+            errmsg ("policer index %d\n", ntohl(mp->policer_index));
+    }
+}
+
+static void vl_api_policer_add_del_reply_t_handler_json
+(vl_api_policer_add_del_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t node;
+
+    vat_json_init_object(&node);
+    vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
+    vat_json_object_add_uint(&node, "policer_index", ntohl(mp->policer_index));
+
+    vat_json_print(vam->ofp, &node);
+    vat_json_free(&node);
+
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
 /* Format hex dump. */
 u8 * format_hex_bytes (u8 * s, va_list * va)
 {
@@ -2667,6 +2724,33 @@ static void vl_api_classify_session_details_t_handler_json (vl_api_classify_sess
     u8 * s = format (0, "%U%c",format_hex_bytes, mp->match, ntohl(mp->match_length), 0);
     vat_json_object_add_string_copy(node, "match", s);
 }
+
+static void vl_api_policer_classify_details_t_handler
+(vl_api_policer_classify_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+
+    fformat (vam->ofp, "%10d%20d\n", ntohl(mp->sw_if_index),
+             ntohl(mp->table_index));
+}
+
+static void vl_api_policer_classify_details_t_handler_json
+(vl_api_policer_classify_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t * node;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_uint(node, "sw_if_index", ntohl(mp->sw_if_index));
+    vat_json_object_add_uint(node, "table_index", ntohl(mp->table_index));
+}
+
 
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
@@ -2764,7 +2848,7 @@ _(lisp_add_del_map_request_itr_rlocs_reply)             \
 _(lisp_eid_table_add_del_map_reply)                     \
 _(vxlan_gpe_add_del_tunnel_reply)			\
 _(af_packet_delete_reply)                               \
-_(policer_add_del_reply)                                \
+_(policer_classify_set_interface_reply)                 \
 _(netmap_create_reply)                                  \
 _(netmap_delete_reply)
 
@@ -2956,6 +3040,8 @@ _(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
 _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
 _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
 _(POLICER_DETAILS, policer_details)                                     \
+_(POLICER_CLASSIFY_SET_INTERFACE_REPLY, policer_classify_set_interface_reply) \
+_(POLICER_CLASSIFY_DETAILS, policer_classify_details)                   \
 _(NETMAP_CREATE_REPLY, netmap_create_reply)                             \
 _(NETMAP_DELETE_REPLY, netmap_delete_reply)                             \
 _(MPLS_GRE_TUNNEL_DETAILS, mpls_gre_tunnel_details)                     \
@@ -6848,6 +6934,20 @@ uword unformat_acl_next_index (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+uword unformat_policer_precolor (unformat_input_t * input, va_list * args)
+{
+  u32 * r = va_arg (*args, u32 *);
+
+  if (unformat (input, "conform-color"))
+    *r = POLICE_CONFORM;
+  else if (unformat (input, "exceed-color"))
+    *r = POLICE_EXCEED;
+  else
+    return 0;
+
+  return 1;
+}
+
 static int api_classify_add_del_table (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
@@ -7340,6 +7440,10 @@ static int api_classify_add_del_session (vat_main_t * vam)
             ;
         else if (unformat (i, "acl-hit-next %U", unformat_acl_next_index,
                            &hit_next_index))
+            ;
+        else if (unformat (i, "policer-hit-next %d", &hit_next_index))
+            ;
+        else if (unformat (i, "%U", unformat_policer_precolor, &opaque_index))
             ;
         else if (unformat (i, "opaque-index %d", &opaque_index))
             ;
@@ -11178,6 +11282,7 @@ api_policer_add_del (vat_main_t * vam)
     u8 rate_type = 0;
     u8 round_type = 0;
     u8 type = 0;
+    u8 color_aware = 0;
     sse2_qos_pol_action_params_st conform_action, exceed_action, violate_action;
 
     while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
@@ -11210,6 +11315,8 @@ api_policer_add_del (vat_main_t * vam)
         else if (unformat (i, "violate_action %U", unformat_policer_action_type,
                            &violate_action))
             ;
+        else if (unformat (i, "color-aware"))
+            color_aware = 1;
         else
           break;
     }
@@ -11242,6 +11349,7 @@ api_policer_add_del (vat_main_t * vam)
     mp->exceed_dscp = exceed_action.dscp;
     mp->violate_action_type = violate_action.action_type;
     mp->violate_dscp = violate_action.dscp;
+    mp->color_aware = color_aware;
 
     S; W;
     /* NOTREACHED */
@@ -11269,6 +11377,93 @@ api_policer_dump(vat_main_t *vam)
     mp->match_name_valid = match_name_valid;
     clib_memcpy (mp->match_name, match_name, vec_len (match_name));
     vec_free (match_name);
+    /* send it... */
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_policer_classify_set_interface (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_policer_classify_set_interface_t *mp;
+    f64 timeout;
+    u32 sw_if_index;
+    int sw_if_index_set;
+    u32 ip4_table_index = ~0;
+    u32 ip6_table_index = ~0;
+    u32 l2_table_index = ~0;
+    u8 is_add = 1;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+	if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+            sw_if_index_set = 1;
+	else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	    sw_if_index_set = 1;
+        else if (unformat (i, "del"))
+            is_add = 0;
+	else if (unformat (i, "ip4-table %d", &ip4_table_index))
+	    ;
+	else if (unformat (i, "ip6-table %d", &ip6_table_index))
+	    ;
+	else if (unformat (i, "l2-table %d", &l2_table_index))
+	    ;
+        else {
+            clib_warning ("parse error '%U'", format_unformat_error, i);
+            return -99;
+        }
+    }
+
+    if (sw_if_index_set == 0) {
+        errmsg ("missing interface name or sw_if_index\n");
+        return -99;
+    }
+
+    M(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface);
+
+    mp->sw_if_index = ntohl(sw_if_index);
+    mp->ip4_table_index = ntohl(ip4_table_index);
+    mp->ip6_table_index = ntohl(ip6_table_index);
+    mp->l2_table_index = ntohl(l2_table_index);
+    mp->is_add = is_add;
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
+api_policer_classify_dump(vat_main_t *vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_policer_classify_dump_t *mp;
+    f64 timeout = ~0;
+    u8 type = POLICER_CLASSIFY_N_TABLES;
+
+    if (unformat (i, "type %U", unformat_classify_table_type, &type))
+        ;
+    else {
+        errmsg ("classify table type must be specified\n");
+        return -99;
+    }
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%10s%20s\n", "Intfc idx", "Classify table");
+    }
+
+    M(POLICER_CLASSIFY_DUMP, policer_classify_dump);
+    mp->type = type;
     /* send it... */
     S;
 
@@ -12141,8 +12336,9 @@ _(classify_add_del_table,                                               \
   "[del] mask <mask-value>\n"						\
   " [l2-miss-next | miss-next | acl-miss-next] <name|nn>") 		\
 _(classify_add_del_session,                                             \
-  "[hit-next|l2-hit-next|acl-hit-next] <name|nn> table-index <nn>\n"    \
-  "skip_n <nn> match_n <nn> match [hex] [l2] [l3 [ip4|ip6]]")		\
+  "[hit-next|l2-hit-next|acl-hit-next|policer-hit-next] <name|nn>\n"    \
+  "  table-index <nn> skip_n <nn> match_n <nn> match [hex] [l2]\n"      \
+  "  [l3 [ip4|ip6]]")                                   		\
 _(classify_set_interface_ip_table,                                      \
   "<intfc> | sw_if_index <nn> table <nn>")				\
 _(classify_set_interface_l2_tables,                                     \
@@ -12272,6 +12468,10 @@ _(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
 _(af_packet_delete, "name <host interface name>")                       \
 _(policer_add_del, "name <policer name> <params> [del]")                \
 _(policer_dump, "[name <policer name>]")                                \
+_(policer_classify_set_interface,                                       \
+  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
+  "  [l2-table <nn>] [del]")                                            \
+_(policer_classify_dump, "type [ip4|ip6|l2]")                           \
 _(netmap_create, "name <interface name> [hw-addr <mac>] [pipe] "        \
     "[master|slave]")                                                   \
 _(netmap_delete, "name <interface name>")                               \

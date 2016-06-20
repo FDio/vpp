@@ -162,6 +162,7 @@ struct _vnet_classify_main {
   unformat_function_t ** unformat_l2_next_index_fns;
   unformat_function_t ** unformat_ip_next_index_fns;
   unformat_function_t ** unformat_acl_next_index_fns;
+  unformat_function_t ** unformat_policer_next_index_fns;
   unformat_function_t ** unformat_opaque_index_fns;
 
   /* convenience variables */
@@ -482,6 +483,9 @@ void vnet_classify_register_unformat_l2_next_index_fn
 (unformat_function_t * fn);
 
 void vnet_classify_register_unformat_acl_next_index_fn 
+(unformat_function_t * fn);
+
+void  vnet_classify_register_unformat_policer_next_index_fn
 (unformat_function_t * fn);
 
 void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t * fn);

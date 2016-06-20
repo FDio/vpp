@@ -27,6 +27,9 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/sr/sr_packet.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <vnet/classify/policer_classify.h>
+#include <vnet/policer/xlate.h>
+#include <vnet/policer/policer.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
@@ -1743,6 +1746,157 @@ static void * vl_api_af_packet_delete_t_print
     FINISH;
 }
 
+static u8 * format_policer_action (u8 * s, va_list * va)
+{
+    u32 action = va_arg (*va, u32);
+    u32 dscp = va_arg (*va, u32);
+    char * t = 0;
+
+    if (action == SSE2_QOS_ACTION_DROP)
+        s = format (s, "drop");
+    else if (action == SSE2_QOS_ACTION_TRANSMIT)
+        s = format (s, "transmit");
+    else if (action == SSE2_QOS_ACTION_MARK_AND_TRANSMIT) {
+        s = format (s, "mark-and-transmit ");
+        switch (dscp) {
+        #define _(v,f,str) case VNET_DSCP_##f: t = str; break;
+            foreach_vnet_dscp
+        #undef _
+        default:
+            break;
+        }
+        s = format (s, "%s", t);
+    }
+
+    return s;
+}
+
+static void * vl_api_policer_add_del_t_print
+(vl_api_policer_add_del_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: policer_add_del ");
+    s = format (s, "name %s ", mp->name);
+    s = format (s, "cir %d ", mp->cir);
+    s = format (s, "eir %d ", mp->eir);
+    s = format (s, "cb %d ", mp->cb);
+    s = format (s, "eb %d ", mp->eb);
+
+    switch (mp->rate_type) {
+    case SSE2_QOS_RATE_KBPS:
+        s = format (s, "rate_type kbps ");
+        break;
+    case SSE2_QOS_RATE_PPS:
+        s = format (s, "rate_type pps ");
+        break;
+    default:
+        break;
+    }
+
+    switch (mp->round_type) {
+    case SSE2_QOS_ROUND_TO_CLOSEST:
+        s = format (s, "round_type closest ");
+        break;
+    case SSE2_QOS_ROUND_TO_UP:
+        s = format (s, "round_type up ");
+        break;
+    case SSE2_QOS_ROUND_TO_DOWN:
+        s = format (s, "round_type down ");
+        break;
+    default:
+        break;
+    }
+
+    switch (mp->type) {
+    case SSE2_QOS_POLICER_TYPE_1R2C:
+        s = format (s, "type 1r2c ");
+        break;
+    case SSE2_QOS_POLICER_TYPE_1R3C_RFC_2697:
+        s = format (s, "type 1r3c ");
+        break;
+    case SSE2_QOS_POLICER_TYPE_2R3C_RFC_2698:
+        s = format (s, "type 2r3c-2698 ");
+        break;
+    case SSE2_QOS_POLICER_TYPE_2R3C_RFC_4115:
+        s = format (s, "type 2r3c-4115 ");
+        break;
+    case SSE2_QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1:
+        s = format (s, "type 2r3c-mef5cf1 ");
+        break;
+    default:
+         break;
+    }
+
+    s = format (s, "conform_action %U ", format_policer_action,
+                mp->conform_action_type, mp->conform_dscp);
+    s = format (s, "exceed_action %U ", format_policer_action,
+                mp->exceed_action_type, mp->exceed_dscp);
+    s = format (s, "violate_action %U ", format_policer_action,
+                mp->violate_action_type, mp->violate_dscp);
+
+    if (mp->color_aware)
+        s = format (s, "color-aware ");
+    if (mp->is_add == 0)
+        s = format (s, "del ");
+
+    FINISH;
+}
+
+static void * vl_api_policer_dump_t_print
+(vl_api_policer_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: policer_dump ");
+    if (mp->match_name_valid)
+        s = format (s, "name %s ", mp->match_name);
+
+    FINISH;
+}
+
+static void * vl_api_policer_classify_set_interface_t_print
+(vl_api_policer_classify_set_interface_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: policer_classify_set_interface ");
+    s = format (s, "sw_if_index %d ", ntohl(mp->sw_if_index));
+    if (mp->ip4_table_index != ~0)
+        s = format (s, "ip4-table %d ", ntohl(mp->ip4_table_index));
+    if (mp->ip6_table_index != ~0)
+        s = format (s, "ip6-table %d ", ntohl(mp->ip6_table_index));
+    if (mp->l2_table_index != ~0)
+        s = format (s, "l2-table %d ", ntohl(mp->l2_table_index));
+    if (mp->is_add == 0)
+        s = format (s, "del ");
+
+    FINISH;
+}
+
+static void * vl_api_policer_classify_dump_t_print
+(vl_api_policer_classify_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: policer_classify_dump ");
+    switch (mp->type) {
+    case POLICER_CLASSIFY_TABLE_IP4:
+        s = format (s, "type ip4 ");
+        break;
+    case POLICER_CLASSIFY_TABLE_IP6:
+        s = format (s, "type ip6 ");
+        break;
+    case POLICER_CLASSIFY_TABLE_L2:
+        s = format (s, "type l2 ");
+        break;
+    default:
+        break;
+    }
+
+    FINISH;
+}
+
 static void *vl_api_sw_interface_clear_stats_t_print
 (vl_api_sw_interface_clear_stats_t * mp, void *handle)
 {
@@ -1940,7 +2094,11 @@ _(MPLS_FIB_DECAP_DUMP, mpls_fib_decap_dump)                             \
 _(CLASSIFY_TABLE_IDS,classify_table_ids)                                \
 _(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
 _(CLASSIFY_TABLE_INFO,classify_table_info)                              \
-_(CLASSIFY_SESSION_DUMP,classify_session_dump)
+_(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
+_(POLICER_ADD_DEL, policer_add_del)                                     \
+_(POLICER_DUMP, policer_dump)                                           \
+_(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \
+_(POLICER_CLASSIFY_DUMP, policer_classify_dump)
 
 void vl_msg_api_custom_dump_configure (api_main_t *am) 
 {

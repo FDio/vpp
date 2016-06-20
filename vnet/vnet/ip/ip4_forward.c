@@ -1300,9 +1300,16 @@ VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_check_1, static) = {
 
 VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_check_2, static) = {
   .node_name = "ip4-source-check-via-any",
-  .runs_before = {"ipsec-input-ip4", 0},
+  .runs_before = {"ip4-policer-classify", 0},
   .feature_index = 
   &ip4_main.ip4_unicast_rx_feature_source_reachable_via_any,
+};
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_policer_classify, static) = {
+  .node_name = "ip4-policer-classify",
+  .runs_before = {"ipsec-input-ip4", 0},
+  .feature_index =
+  &ip4_main.ip4_unicast_rx_feature_policer_classify,
 };
 
 VNET_IP4_UNICAST_FEATURE_INIT (ip4_ipsec, static) = {

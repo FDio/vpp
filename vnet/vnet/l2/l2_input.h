@@ -109,7 +109,8 @@ l2input_bd_config_from_index (l2input_main_t * l2im, u32 bd_index)
  _(ACL,           "l2-input-acl")               \
  _(QOS,           "feature-bitmap-drop")        \
  _(CFM,           "feature-bitmap-drop")        \
- _(SPAN,          "feature-bitmap-drop")
+ _(SPAN,          "feature-bitmap-drop")        \
+ _(POLICER_CLAS,  "l2-policer-classify")
 
 // Feature bitmap positions
 typedef enum {
