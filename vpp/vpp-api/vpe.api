@@ -1073,6 +1073,28 @@ manual_java define control_ping_reply {
     u32 vpe_pid;
 };
 
+/** \brief Lisp control ping from client to api server request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+manual_java define lisp_control_ping {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Lisp control ping from the client to the server response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param vpe_pid - the pid of the vpe, returned by the server
+*/
+manual_java define lisp_control_ping_reply {
+    u32 context;
+    i32 retval;
+    u32 client_index;
+    u32 vpe_pid;
+};
+
 /** \brief Process a vpe parser cli string request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -2459,22 +2481,40 @@ define lisp_eid_table_add_del_map_reply {
     i32 retval;
 };
 
+define lisp_locator_dump {
+    u32 client_index;
+    u32 context;
+    u32 locator_set_index;
+};
+
 /** \brief LISP locator_set status
+    @param local - if is set, then locator is local
     @param locator_set_name - name of the locator_set
     @param sw_if_index - sw_if_index of the locator
     @param priority - locator priority
     @param weight - locator weight
+  */
+manual_java define lisp_locator_details {
+    u32 context;
+    u8  local;
+    u32 sw_if_index;
+    u8  is_ipv6;
+    u8  ip_address[16];
+    u8  priority;
+    u8  weight;
+};
+
+/** \brief LISP locator_set status
+    @param locator_set_name - name of the locator_set
+    @param local - if is set, then locator_set is local
+    @param locator_count - number of locator this stats block includes
+    @param locator - locator data
  */
 manual_java define lisp_locator_set_details {
     u32 context;
     u8  local;
+    u32 locator_set_index;
     u8  locator_set_name[64];
-    u32 sw_if_index;
-    u8  is_ipv6;
-    u8  ip_address[16];
-    u8  prefix_len;
-    u8  priority;
-    u8  weight;
 };
 
 /** \brief Request for locator_set summary status
@@ -2575,23 +2615,24 @@ define lisp_map_resolver_dump {
     u32 context;
 };
 
-/** \brief Status of lisp-gpe protocol, enable or disable
-    @param context - sender context, to match reply w/ request
-    @param is_en - enable protocol if non-zero, else disable
-*/
-manual_java define lisp_enable_disable_status_details {
-    u32 context;
-    u8 feature_status;
-    u8 gpe_status;
-};
-
 /** \brief Request for lisp-gpe protocol status
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
-define lisp_enable_disable_status_dump {
+define show_lisp_status{
     u32 client_index;
     u32 context;
+};
+
+/** \brief Status of lisp, enable or disable
+    @param context - sender context, to match reply w/ request
+    @param gpe_status - lisp enable if non-zero, else disable
+*/
+define show_lisp_status_reply{
+    u32 context;
+    i32 retval;
+    u8 feature_status;
+    u8 gpe_status;
 };
 
 /** \brief Get LISP map request itr rlocs status

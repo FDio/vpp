@@ -85,6 +85,20 @@ typedef struct {
 } ip6_fib_counter_t;
 
 typedef struct {
+    u8 * locator_set_name;
+    u32 locator_set_index;
+} locator_set_msg_t;
+
+typedef struct {
+    u8 local;
+    u32 sw_if_index;
+    u8 is_ipv6;
+    u8 ip_address[16];
+    u8 priority;
+    u8 weight;
+}locator_msg_t;
+
+typedef struct {
     /* vpe input queue */
     unix_shared_memory_queue_t * vl_input_queue;
 
@@ -170,6 +184,11 @@ typedef struct {
     u32 *ip4_fib_counters_vrf_id_by_index;
     ip6_fib_counter_t **ip6_fib_counters;
     u32 *ip6_fib_counters_vrf_id_by_index;
+
+    /* Lisp */
+    u8 format_locator_in_locator_set;
+    locator_set_msg_t * locator_set_msg;
+    locator_msg_t * locator_msg;
 
 } vat_main_t;
 
