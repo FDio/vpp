@@ -1357,9 +1357,80 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (lisp_cp_add_del_locator_set_command) = {
     .path = "lisp locator-set",
-    .short_help = "lisp locator-set add/del <name> iface <iface-name> "
-        "p <priority> w <weight>",
+    .short_help = "lisp locator-set add/del <name> [iface <iface-name> "
+        "p <priority> w <weight>]",
     .function = lisp_add_del_locator_set_command_fn,
+};
+
+static clib_error_t *
+lisp_add_del_locator_in_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
+                                     vlib_cli_command_t * cmd)
+{
+  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+  vnet_main_t * vnm = lgm->vnet_main;
+  unformat_input_t _line_input, * line_input = &_line_input;
+  u8 is_add = 1;
+  clib_error_t * error = 0;
+  u8 * locator_set_name = 0;
+  u8 locator_set_name_set = 0;
+  locator_t locator, * locators = 0;
+  vnet_lisp_add_del_locator_set_args_t _a, * a = &_a;
+  u32 ls_index = 0;
+
+  memset(&locator, 0, sizeof(locator));
+  memset(a, 0, sizeof(a[0]));
+
+  /* Get a line of input. */
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "add"))
+        is_add = 1;
+      else if (unformat (line_input, "del"))
+        is_add = 0;
+      else if (unformat(line_input, "locator-set %_%v%_", &locator_set_name))
+        locator_set_name_set = 1;
+      else if (unformat (line_input, "iface %U p %d w %d",
+                         unformat_vnet_sw_interface, vnm, &locator.sw_if_index,
+                         &locator.priority, &locator.weight))
+        {
+          locator.local = 1;
+          vec_add1(locators, locator);
+        }
+      else
+        {
+          error = unformat_parse_error(line_input);
+          goto done;
+        }
+    }
+
+  if (!locator_set_name_set)
+    {
+      error = clib_error_return(0, "locator_set name not set!");
+      goto done;
+  }
+
+  a->name = locator_set_name;
+  a->locators = locators;
+  a->is_add = is_add;
+  a->local = 1;
+
+  vnet_lisp_add_del_locator(a, 0, &ls_index);
+
+ done:
+  vec_free(locators);
+  if (locator_set_name)
+    vec_free (locator_set_name);
+  return error;
+}
+
+VLIB_CLI_COMMAND (lisp_cp_add_del_locator_in_set_command) = {
+    .path = "lisp locator",
+    .short_help = "lisp locator add/del locator-set <name> iface <iface-name> "
+                  "p <priority> w <weight>",
+    .function = lisp_add_del_locator_in_set_command_fn,
 };
 
 static clib_error_t *
@@ -1377,16 +1448,23 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
   pool_foreach (lsit, lcm->locator_set_pool,
   ({
     u8 * msg = 0;
-    msg = format (msg, "%-16v", lsit->name);
+    int next_line = 0;
+    msg = format (msg, "%=16v", lsit->name);
     vec_foreach (locit, lsit->locator_indices)
       {
+        if (next_line)
+          {
+            msg = format (msg, "%16s", " ");
+          }
         loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
         if (loc->local)
-          msg = format (msg, "%16d%16d%16d", loc->sw_if_index, loc->priority,
+          msg = format (msg, "%16d%16d%16d\n", loc->sw_if_index, loc->priority,
                         loc->weight);
         else
-          msg = format (msg, "%16U%16d%16d", format_gid_address, &loc->address,
-                        loc->priority, loc->weight);
+          msg = format (msg, "%16U%16d%16d\n", format_ip_address,
+                        gid_address_ip(&loc->address), loc->priority,
+                        loc->weight);
+        next_line = 1;
       }
     vlib_cli_output (vm, "%v", msg);
     vec_free (msg);
