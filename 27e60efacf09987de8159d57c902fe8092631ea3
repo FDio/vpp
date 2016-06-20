@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_8a88a2e8",
+        "filename": "plugins/netcp-plugin/netcp/netcp.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-06-20T12:36:02Z",
+      "side": 1,
+      "message": "s/ip4_address_t/ip6_address_t",
+      "revId": "27e60efacf09987de8159d57c902fe8092631ea3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
