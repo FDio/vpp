@@ -22,6 +22,30 @@
       "revId": "a66e0f1c459254d4eda8f1af860398cd68e15bbb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_e574ef9d",
+        "filename": "vnet/vnet/l2tp/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-06-20T15:10:03Z",
+      "side": 1,
+      "message": "A narrative ? Hum. Well.\nOnce upon a time, a session-less l2tp packet arrived to l2tp-decap node. It visited stage1 function, got looked-up by a beardy dark haired switch at line 83 which told him: \"Thou have no session ! Thou shall not pass\". And he stamped him at line 99 with a blue all-caps mystic symbol: L2T_DECAP_NEXT_NO_INTERCEPT right in his l2t.next_index meta-data field. Poor pal...\nWhen the packet later visited last_stage, it was still wearing that demonic mark, and got therefore rightfully dropped. And he died later on in vlib_buffer_free.",
+      "parentUuid": "ba092121_253427dd",
+      "range": {
+        "startLine": 197,
+        "startChar": 0,
+        "endLine": 199,
+        "endChar": 37
+      },
+      "revId": "a66e0f1c459254d4eda8f1af860398cd68e15bbb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
