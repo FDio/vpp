@@ -32,6 +32,9 @@ typedef struct {
   /* Config by name hash */
   uword * policer_config_by_name;
 
+  /* Policer by name hash */
+  uword * policer_index_by_name;
+
   /* Policer by sw_if_index vector */
   u32 * policer_index_by_sw_if_index;
 
@@ -85,7 +88,9 @@ typedef enum {
 
 u8 * format_policer_instance (u8 * s, va_list * va);
 clib_error_t * policer_add_del (vlib_main_t *vm,
-                                u8 * name, sse2_qos_pol_cfg_params_st * cfg,
+                                u8 * name,
+                                sse2_qos_pol_cfg_params_st * cfg,
+                                u32 * policer_index,
                                 u8 is_add);
 
 #endif /* __included_policer_h__ */

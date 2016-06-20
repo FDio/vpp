@@ -66,6 +66,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/classify/input_acl.h>
+#include <vnet/classify/policer_classify.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/gre/gre.h>
@@ -348,6 +349,8 @@ _(AF_PACKET_CREATE, af_packet_create)                                   \
 _(AF_PACKET_DELETE, af_packet_delete)                                   \
 _(POLICER_ADD_DEL, policer_add_del)                                     \
 _(POLICER_DUMP, policer_dump)                                           \
+_(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \
+_(POLICER_CLASSIFY_DUMP, policer_classify_dump)                         \
 _(NETMAP_CREATE, netmap_create)                                         \
 _(NETMAP_DELETE, netmap_delete)
 
@@ -6130,6 +6133,7 @@ vl_api_policer_add_del_t_handler
     u8 *name = NULL;
     sse2_qos_pol_cfg_params_st cfg;
     clib_error_t * error;
+    u32 policer_index;
 
     name = format(0, "%s", mp->name);
 
@@ -6147,13 +6151,20 @@ vl_api_policer_add_del_t_handler
     cfg.exceed_action.dscp = mp->exceed_dscp;
     cfg.violate_action.action_type = mp->violate_action_type;
     cfg.violate_action.dscp = mp->violate_dscp;
+    cfg.color_aware = mp->color_aware;
 
-    error = policer_add_del(vm, name, &cfg, mp->is_add);
+    error = policer_add_del(vm, name, &cfg, &policer_index, mp->is_add);
 
     if (error)
       rv = VNET_API_ERROR_UNSPECIFIED;
 
-    REPLY_MACRO(VL_API_POLICER_ADD_DEL_REPLY);
+    REPLY_MACRO2(VL_API_POLICER_ADD_DEL_REPLY,
+    ({
+        if (rv == 0 &&  mp->is_add)
+          rmp->policer_index = ntohl(policer_index);
+        else
+          rmp->policer_index = ~0;
+    }));
 }
 
 static void
@@ -6237,6 +6248,75 @@ vl_api_policer_dump_t_handler
             templ = pool_elt_at_index (pm->policer_templates, pool_index);
             send_policer_details(name, config, templ, q, mp->context);
         }));
+    }
+}
+
+static void
+vl_api_policer_classify_set_interface_t_handler
+(vl_api_policer_classify_set_interface_t * mp)
+{
+    vlib_main_t *vm = vlib_get_main();
+    vl_api_policer_classify_set_interface_reply_t * rmp;
+    int rv;
+    u32 sw_if_index, ip4_table_index, ip6_table_index, l2_table_index;
+
+    ip4_table_index = ntohl(mp->ip4_table_index);
+    ip6_table_index = ntohl(mp->ip6_table_index);
+    l2_table_index = ntohl(mp->l2_table_index);
+    sw_if_index = ntohl(mp->sw_if_index);
+
+    VALIDATE_SW_IF_INDEX(mp);
+
+    rv = vnet_set_policer_classify_intfc(vm, sw_if_index, ip4_table_index,
+                                         ip6_table_index, l2_table_index,
+                                         mp->is_add);
+
+    BAD_SW_IF_INDEX_LABEL;
+
+    REPLY_MACRO(VL_API_POLICER_CLASSIFY_SET_INTERFACE_REPLY);
+}
+
+static void
+send_policer_classify_details (u32 sw_if_index,
+                               u32 table_index,
+                               unix_shared_memory_queue_t *q,
+                               u32 context)
+{
+    vl_api_policer_classify_details_t * mp;
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset (mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (VL_API_POLICER_CLASSIFY_DETAILS);
+    mp->context = context;
+    mp->sw_if_index= htonl(sw_if_index);
+    mp->table_index= htonl(table_index);
+
+    vl_msg_api_send_shmem (q, (u8 *)&mp);
+}
+
+static void
+vl_api_policer_classify_dump_t_handler
+(vl_api_policer_classify_dump_t *mp)
+{
+    unix_shared_memory_queue_t * q;
+    policer_classify_main_t * pcm = &policer_classify_main;
+    u32 * vec_tbl;
+    int i;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0)
+        return;
+
+    vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
+
+    if (vec_len(vec_tbl)) {
+        for (i = 0; i < vec_len (vec_tbl); i++) {
+            if (vec_elt(vec_tbl, i) == ~0)
+                continue;
+
+            send_policer_classify_details(i, vec_elt(vec_tbl, i), q,
+                                          mp->context);
+        }
     }
 }
 

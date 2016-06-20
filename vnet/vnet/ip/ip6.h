@@ -147,6 +147,7 @@ typedef struct ip6_main_t {
 
   /* Built-in unicast feature path indices, see ip_feature_init_cast(...)  */
   u32 ip6_unicast_rx_feature_check_access;
+  u32 ip6_unicast_rx_feature_policer_classify;
   u32 ip6_unicast_rx_feature_ipsec;
   u32 ip6_unicast_rx_feature_l2tp_decap;
   u32 ip6_unicast_rx_feature_vpath;

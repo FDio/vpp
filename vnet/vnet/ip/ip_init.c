@@ -133,6 +133,9 @@ do {						\
   if ((error = vlib_call_init_function (vm, input_acl_init)))
     return error;
 
+  if ((error = vlib_call_init_function (vm, policer_classify_init)))
+    return error;
+
   return error;
 }
 
