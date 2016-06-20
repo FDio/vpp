@@ -26,7 +26,8 @@
 #define foreach_l2t_decap_error                                   \
 _(USER_TO_NETWORK, "L2TP user (ip6) to L2 network pkts")        \
 _(SESSION_ID_MISMATCH, "l2tpv3 local session id mismatches")    \
-_(COOKIE_MISMATCH, "l2tpv3 local cookie mismatches")  
+_(COOKIE_MISMATCH, "l2tpv3 local cookie mismatches")            \
+_(NO_SESSION, "l2tpv3 session not found")
 
 static char * l2t_decap_error_strings[] = {
 #define _(sym,string) string,
@@ -114,7 +115,7 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
     vlib_buffer_t *b = vlib_get_buffer (vm, bi);
     l2t_main_t *lm = &l2t_main;
     ip6_header_t * ip6 = vlib_buffer_get_current (b);
-    vlib_node_t *n = vlib_get_node (vm, l2t_decap_node.index);
+    vlib_node_t *n = vlib_get_node (vm, node->node_index);
     u32 node_counter_base_index = n->error_heap_index;
     vlib_error_main_t * em = &vm->error_main;
     l2tpv3_header_t * l2tp;
@@ -122,6 +123,7 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
     l2t_session_t * session;
     u32 session_index;
     u32 next_index;
+    u8 l2tp_decap_local = (l2t_decap_local_node.index == n->index);
     
     /* Other-than-output pkt? We're done... */
     if (vnet_buffer(b)->l2t.next_index != L2T_DECAP_NEXT_L2_INPUT) {
@@ -191,16 +193,22 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
 
  done:
    if (next_index == L2T_DECAP_NEXT_NO_INTERCEPT) {
-      // Go to next node on the ip6 configuration chain
-      ip6_main_t * im = &ip6_main;
-      ip_lookup_main_t * lm = &im->lookup_main;
-      ip_config_main_t * cm = &lm->rx_config_mains[VNET_UNICAST];
-      ip6_l2tpv3_config_t * c0;
+       // Small behavioral change between l2tp-decap and l2tp-decap-local
+       if (l2tp_decap_local) {
+	   b->error = node->errors[L2T_DECAP_ERROR_NO_SESSION];
+	   next_index = L2T_DECAP_NEXT_DROP;
+       } else {
+	   // Go to next node on the ip6 configuration chain
+	   ip6_main_t * im = &ip6_main;
+	   ip_lookup_main_t * lm = &im->lookup_main;
+	   ip_config_main_t * cm = &lm->rx_config_mains[VNET_UNICAST];
+	   ip6_l2tpv3_config_t * c0;
 
-      vnet_get_config_data (&cm->config_main,
-                            &b->current_config_index,
-                            &next_index,
-                            sizeof (c0[0]));
+	   vnet_get_config_data (&cm->config_main,
+				 &b->current_config_index,
+				 &next_index,
+				 sizeof (c0[0]));
+       }
     }
 
     if (PREDICT_FALSE(b->flags & VLIB_BUFFER_IS_TRACED)) {
@@ -228,6 +236,12 @@ static uword l2t_decap_node_fn (vlib_main_t * vm,
     return dispatch_pipeline (vm, node, frame);
 }
 
+/*
+ * l2tp-decap and l2tp-decap-local have very slightly different behavior.
+ * When a packet has no associated session l2tp-decap let it go to ip6 forward,
+ * while l2tp-decap-local drops it.
+ */
+
 VLIB_REGISTER_NODE (l2t_decap_node) = {
   .function = l2t_decap_node_fn,
   .name = "l2tp-decap",
@@ -249,7 +263,26 @@ VLIB_REGISTER_NODE (l2t_decap_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (l2t_decap_node, l2t_decap_node_fn)
 
+VLIB_REGISTER_NODE (l2t_decap_local_node) = {
+  .function = l2t_decap_node_fn,
+  .name = "l2tp-decap-local",
+  .vector_size = sizeof (u32),
+  .format_trace = format_l2t_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(l2t_decap_error_strings),
+  .error_strings = l2t_decap_error_strings,
+
+  .n_next_nodes = L2T_DECAP_N_NEXT,
+
+  /* edit / add dispositions here */
+  .next_nodes = {
+        [L2T_DECAP_NEXT_L2_INPUT] = "l2-input",
+        [L2T_DECAP_NEXT_DROP] = "error-drop",
+  },
+};
+
 void l2tp_decap_init (void) 
 {
-  ip6_register_protocol (IP_PROTOCOL_L2TP, l2t_decap_node.index);
+  ip6_register_protocol (IP_PROTOCOL_L2TP, l2t_decap_local_node.index);
 }
