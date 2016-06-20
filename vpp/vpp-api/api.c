@@ -263,6 +263,7 @@ _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS, 				\
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)		\
 _(CREATE_LOOPBACK, create_loopback)					\
 _(CONTROL_PING, control_ping)                                           \
+_(NOPRINT_CONTROL_PING, noprint_control_ping)                           \
 _(CLI_REQUEST, cli_request)                                             \
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)			\
 _(L2_PATCH_ADD_DEL, l2_patch_add_del)					\
@@ -336,12 +337,12 @@ _(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping)             \
 _(LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set)                 \
 _(LISP_EID_TABLE_ADD_DEL_MAP, lisp_eid_table_add_del_map)               \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
+_(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
 _(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump)                 \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
-_(LISP_ENABLE_DISABLE_STATUS_DUMP,                                      \
-  lisp_enable_disable_status_dump)                                      \
+_(SHOW_LISP_STATUS, show_lisp_status)                                   \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
   lisp_add_del_map_request_itr_rlocs)                                   \
 _(LISP_GET_MAP_REQUEST_ITR_RLOCS, lisp_get_map_request_itr_rlocs)       \
@@ -3343,6 +3344,18 @@ static void vl_api_control_ping_t_handler
     }));
 }
 
+static void vl_api_noprint_control_ping_t_handler
+(vl_api_noprint_control_ping_t *mp)
+{
+    vl_api_noprint_control_ping_reply_t * rmp;
+    int rv = 0;
+
+    REPLY_MACRO2(VL_API_NOPRINT_CONTROL_PING_REPLY,
+    ({
+        rmp->vpe_pid = ntohl (getpid());
+    }));
+}
+
 static void shmem_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 {
     u8 **shmem_vecp = (u8 **)arg;
@@ -5027,23 +5040,6 @@ typedef CLIB_PACKED(struct
 }) rloc_t;
 
 static void
-send_lisp_locator_set_details_set_address
-(vl_api_lisp_locator_set_details_t *rmp,
- gid_address_t *gid_address)
-{
-    ip_prefix_t *ip_addr;
-
-    if (gid_address_type(gid_address) != GID_ADDR_IP_PREFIX) {
-        return;
-    }
-
-    ip_addr = &gid_address_ippref(gid_address);
-    rmp->prefix_len = ip_prefix_len(ip_addr);
-    rmp->is_ipv6 = ip_prefix_version(ip_addr);
-    ip_address_copy_addr(rmp->ip_address, &ip_prefix_addr(ip_addr));
-}
-
-static void
 vl_api_lisp_add_del_remote_mapping_t_handler (
     vl_api_lisp_add_del_remote_mapping_t *mp)
 {
@@ -5120,42 +5116,84 @@ send_reply:
 }
 
 static void
+send_lisp_locator_details (lisp_cp_main_t *lcm,
+                           locator_t *loc,
+                           unix_shared_memory_queue_t *q,
+                           u32 context)
+{
+    vl_api_lisp_locator_details_t *rmp;
+
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_LISP_LOCATOR_DETAILS);
+    rmp->context = context;
+
+    rmp->local = loc->local;
+    if (loc->local) {
+        rmp->sw_if_index = ntohl(loc->sw_if_index);
+    } else {
+        rmp->is_ipv6 = gid_address_ip_version(&loc->address);
+        ip_address_copy_addr(rmp->ip_address, &gid_address_ip(&loc->address));
+    }
+    rmp->priority = loc->priority;
+    rmp->weight = loc->weight;
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void
+vl_api_lisp_locator_dump_t_handler (vl_api_lisp_locator_dump_t *mp)
+{
+    unix_shared_memory_queue_t * q = 0;
+    lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+    locator_set_t * lsit = 0;
+    locator_t * loc = 0;
+    u32 ls_index = ~0, * locit = 0;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+
+    ls_index = htonl(mp->locator_set_index);
+
+    lsit = pool_elt_at_index(lcm->locator_set_pool, ls_index);
+
+    vec_foreach(locit, lsit->locator_indices) {
+        loc = pool_elt_at_index(lcm->locator_pool, locit[0]);
+        send_lisp_locator_details(lcm, loc, q, mp->context);
+    };
+}
+
+static void
 send_lisp_locator_set_details (lisp_cp_main_t *lcm,
                                locator_set_t *lsit,
                                unix_shared_memory_queue_t *q,
                                u32 context,
-                               u32 index)
+                               u32 ls_index)
 {
     vl_api_lisp_locator_set_details_t *rmp;
-    locator_t *loc = NULL;
-    u32 * locit = NULL;
-    u8 * str = NULL;
+    u8 * str = 0;
 
-    vec_foreach (locit, lsit->locator_indices) {
-        loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
-        rmp = vl_msg_api_alloc (sizeof (*rmp));
-        memset (rmp, 0, sizeof (*rmp));
-        rmp->_vl_msg_id = ntohs(VL_API_LISP_LOCATOR_SET_DETAILS);
-        rmp->local = lsit->local;
-        if (lsit->local) {
-            ASSERT(lsit->name != NULL);
-            strncpy((char *) rmp->locator_set_name,
-                    (char *) lsit->name, ARRAY_LEN(rmp->locator_set_name) - 1);
-            rmp->sw_if_index = htonl(loc->sw_if_index);
-        } else {
-            str = format(0, "remote-%d", index);
-            strncpy((char *) rmp->locator_set_name, (char *) str,
-                    ARRAY_LEN(rmp->locator_set_name) - 1);
-            send_lisp_locator_set_details_set_address(rmp, &loc->address);
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_LISP_LOCATOR_SET_DETAILS);
+    rmp->context = context;
 
-            vec_free(str);
-        }
-        rmp->priority = loc->priority;
-        rmp->weight = loc->weight;
-        rmp->context = context;
-
-        vl_msg_api_send_shmem (q, (u8 *)&rmp);
+    rmp->local = lsit->local;
+    rmp->locator_set_index= htonl(ls_index);
+    if (lsit->local) {
+      ASSERT(lsit->name != NULL);
+      strncpy((char *) rmp->locator_set_name,
+              (char *) lsit->name, ARRAY_LEN(rmp->locator_set_name) - 1);
+    } else {
+      str = format(0, "remote-%d", ls_index);
+      strncpy((char *) rmp->locator_set_name, (char *) str,
+              ARRAY_LEN(rmp->locator_set_name) - 1);
+      vec_free(str);
     }
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
 
 static void
@@ -5386,34 +5424,23 @@ vl_api_lisp_eid_table_map_dump_t_handler (
 }
 
 static void
-send_lisp_enable_disable_details (unix_shared_memory_queue_t *q,
-                                      u32 context)
-{
-    vl_api_lisp_enable_disable_status_details_t *rmp = NULL;
-
-    rmp = vl_msg_api_alloc (sizeof (*rmp));
-    memset (rmp, 0, sizeof (*rmp));
-    rmp->_vl_msg_id = ntohs(VL_API_LISP_ENABLE_DISABLE_STATUS_DETAILS);
-
-    rmp->gpe_status = vnet_lisp_gpe_enable_disable_status ();
-    rmp->feature_status = vnet_lisp_enable_disable_status ();
-    rmp->context = context;
-
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);
-}
-
-static void
-vl_api_lisp_enable_disable_status_dump_t_handler
-(vl_api_lisp_enable_disable_status_dump_t *mp)
+vl_api_show_lisp_status_t_handler
+(vl_api_show_lisp_status_t *mp)
 {
     unix_shared_memory_queue_t * q = NULL;
+    vl_api_show_lisp_status_reply_t *rmp = NULL;
+    int rv = 0;
 
     q = vl_api_client_index_to_input_queue (mp->client_index);
     if (q == 0) {
         return;
     }
 
-    send_lisp_enable_disable_details(q, mp->context);
+    REPLY_MACRO2(VL_API_SHOW_LISP_STATUS_REPLY,
+    ({
+      rmp->gpe_status = vnet_lisp_gpe_enable_disable_status ();
+      rmp->feature_status = vnet_lisp_enable_disable_status ();
+    }));
 }
 
 static void
