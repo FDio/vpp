@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_253427dd",
+        "filename": "vnet/vnet/l2tp/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-06-20T14:55:58Z",
+      "side": 1,
+      "message": "Could you give me a narrative as for how this identifies session-less packets? i think I get it but want to be sure.",
+      "range": {
+        "startLine": 197,
+        "startChar": 0,
+        "endLine": 199,
+        "endChar": 37
+      },
+      "revId": "a66e0f1c459254d4eda8f1af860398cd68e15bbb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
