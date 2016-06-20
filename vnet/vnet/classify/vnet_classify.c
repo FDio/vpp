@@ -88,6 +88,14 @@ vnet_classify_register_unformat_acl_next_index_fn (unformat_function_t * fn)
   vec_add1 (cm->unformat_acl_next_index_fns, fn);
 }
 
+void
+vnet_classify_register_unformat_policer_next_index_fn (unformat_function_t * fn)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+
+  vec_add1 (cm->unformat_policer_next_index_fns, fn);
+}
+
 void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t * fn)
 {
   vnet_classify_main_t * cm = &vnet_classify_main;
@@ -1141,6 +1149,37 @@ uword unformat_acl_next_index (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+uword unformat_policer_next_index (unformat_input_t * input, va_list * args)
+{
+  u32 * next_indexp = va_arg (*args, u32 *);
+  vnet_classify_main_t * cm = &vnet_classify_main;
+  u32 next_index = 0;
+  u32 tmp;
+  int i;
+
+  /* First try registered unformat fns, allowing override... */
+  for (i = 0; i < vec_len (cm->unformat_policer_next_index_fns); i++)
+    {
+      if (unformat (input, "%U", cm->unformat_policer_next_index_fns[i], &tmp))
+        {
+          next_index = tmp;
+          goto out;
+        }
+    }
+
+  if (unformat (input, "%d", &tmp))
+    {
+      next_index = tmp;
+      goto out;
+    }
+
+  return 0;
+
+ out:
+  *next_indexp = next_index;
+  return 1;
+}
+
 static clib_error_t *
 classify_table_command_fn (vlib_main_t * vm,
                            unformat_input_t * input,
@@ -1763,6 +1802,9 @@ classify_session_command_fn (vlib_main_t * vm,
       else if (unformat (input, "acl-hit-next %U", unformat_acl_next_index,
                          &hit_next_index))
         ;
+      else if (unformat (input, "policer-hit-next %U",
+                         unformat_policer_next_index, &hit_next_index))
+        ;
       else if (unformat (input, "opaque-index %lld", &opaque_index))
         ;
       else if (unformat (input, "match %U", unformat_classify_match,
@@ -1813,7 +1855,8 @@ classify_session_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (classify_session_command, static) = {
     .path = "classify session",
     .short_help = 
-    "classify session [hit-next|l2-hit-next|acl-hit-next <next_index>]"
+    "classify session [hit-next|l2-hit-next|acl-hit-next <next_index>|"
+    "policer-hit-next <policer_name>]"
     "\n table-index <nn> match [hex] [l2] [l3 ip4] [opaque-index <index>]",
     .function = classify_session_command_fn,
 };
