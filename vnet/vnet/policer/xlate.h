@@ -136,6 +136,7 @@ typedef struct sse2_qos_pol_cfg_params_st_ {
     uint8_t  rate_type;        /* sse2_qos_rate_type_en */
     uint8_t  rnd_type;         /* sse2_qos_round_type_en */
     uint8_t  rfc;              /* sse2_qos_policer_type_en */
+    uint8_t  color_aware;
     uint8_t  overwrite_bucket; /* for debugging purposes */
     uint32_t current_bucket;   /* for debugging purposes */
     uint32_t extended_bucket;  /* for debugging purposes */
