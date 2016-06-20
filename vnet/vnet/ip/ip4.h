@@ -137,6 +137,7 @@ typedef struct ip4_main_t {
   u32 ip4_unicast_rx_feature_check_access;
   u32 ip4_unicast_rx_feature_source_reachable_via_rx;
   u32 ip4_unicast_rx_feature_source_reachable_via_any;
+  u32 ip4_unicast_rx_feature_policer_classify;
   u32 ip4_unicast_rx_feature_ipsec;
   u32 ip4_unicast_rx_feature_vpath;
   u32 ip4_unicast_rx_feature_lookup;

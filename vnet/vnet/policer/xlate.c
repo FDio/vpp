@@ -1045,10 +1045,6 @@ x86_pol_compute_hw_params (sse2_qos_pol_cfg_params_st *cfg,
                (cfg->rfc == SSE2_QOS_POLICER_TYPE_2R3C_RFC_4115)) {
         // Two-rate policer
 
-        if (cfg->rfc == SSE2_QOS_POLICER_TYPE_2R3C_RFC_4115) {
-            hw->color_aware = 1;
-        }
-
         if ((cfg->rb.kbps.cir_kbps == 0) || (cfg->rb.kbps.eir_kbps == 0) || (cfg->rb.kbps.eir_kbps < cfg->rb.kbps.cir_kbps) ||
                 (cfg->rb.kbps.cb_bytes == 0) || (cfg->rb.kbps.eb_bytes == 0)) {
             SSE2_QOS_DEBUG_ERROR("Config parameter validation failed.");
@@ -1135,6 +1131,8 @@ sse2_pol_logical_2_physical (sse2_qos_pol_cfg_params_st    *cfg,
     phys->mark_dscp[POLICE_EXCEED]  = cfg->exceed_action.dscp;
     phys->action[POLICE_VIOLATE]    = cfg->violate_action.action_type;
     phys->mark_dscp[POLICE_VIOLATE] = cfg->violate_action.dscp;
+
+    phys->color_aware = cfg->color_aware;
 
 #if !defined (INTERNAL_SS) && !defined (X86)
     // convert logical into hw params which involves qos calculations
