@@ -2035,7 +2035,7 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
                         loc->weight);
         else
           msg = format (msg, "%16U%16d%16d\n", format_ip_address,
-                        gid_address_ip(&loc->address), loc->priority,
+                        &gid_address_ip(&loc->address), loc->priority,
                         loc->weight);
         next_line = 1;
       }
