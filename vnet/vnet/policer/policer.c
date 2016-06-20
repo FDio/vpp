@@ -14,28 +14,41 @@
  */
 #include <stdint.h>
 #include <vnet/policer/policer.h>
+#include <vnet/classify/vnet_classify.h>
 
 clib_error_t *
 policer_add_del (vlib_main_t *vm,
-                 u8 * name, sse2_qos_pol_cfg_params_st * cfg,
+                 u8 * name,
+                 sse2_qos_pol_cfg_params_st * cfg,
+                 u32 * policer_index,
                  u8 is_add)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
   policer_read_response_type_st test_policer;
+  policer_read_response_type_st * policer;
   uword * p;
+  u32 pi;
   int rv;
+
+  p = hash_get_mem (pm->policer_config_by_name, name);
 
   if (is_add == 0)
     {
-      p = hash_get_mem (pm->policer_config_by_name, name);
       if (p == 0)
         {
           vec_free(name);
           return clib_error_return (0, "No such policer configuration");
         }
       hash_unset_mem (pm->policer_config_by_name, name);
+      hash_unset_mem (pm->policer_index_by_name, name);
       vec_free(name);
       return 0;
+    }
+
+  if (p != 0)
+    {
+      vec_free(name);
+      return clib_error_return (0, "Policer already exists");
     }
 
   /* Vet the configuration before adding it to the table */
@@ -55,6 +68,11 @@ policer_add_del (vlib_main_t *vm,
       clib_memcpy (pp, &test_policer, sizeof (*pp));
 
       hash_set_mem (pm->policer_config_by_name, name, cp - pm->configs);
+      pool_get_aligned (pm->policers, policer, CLIB_CACHE_LINE_BYTES);
+      policer[0] = pp[0];
+      pi = policer - pm->policers;
+      hash_set_mem (pm->policer_index_by_name, name, pi);
+      *policer_index = pi;
     }
   else
     {
@@ -348,6 +366,44 @@ unformat_policer_action (unformat_input_t * input, va_list * va)
   return 0;
 }
 
+static uword
+unformat_policer_classify_next_index (unformat_input_t * input, va_list * va)
+{
+  u32 * r = va_arg (*va, u32 *);
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  uword * p;
+  u8 * match_name = 0;
+
+  if (unformat (input, "%s", &match_name))
+    ;
+  else
+    return 0;
+
+  p = hash_get_mem (pm->policer_index_by_name, match_name);
+
+  if (p == 0)
+    return 0;
+
+  *r = p[0];
+
+  return 1;
+}
+
+static uword
+unformat_policer_classify_precolor (unformat_input_t * input, va_list * va)
+{
+  u32 * r = va_arg (*va, u32 *);
+
+  if (unformat (input, "conform-color"))
+    *r = POLICE_CONFORM;
+  else if (unformat (input, "exceed-color"))
+    *r = POLICE_EXCEED;
+  else
+    return 0;
+
+  return 1;
+}
+
 #define foreach_config_param                    \
 _(eb)                                           \
 _(cb)                                           \
@@ -367,6 +423,7 @@ configure_policer_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1;
   u8 * name = 0;
+  u32 pi;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -380,6 +437,8 @@ configure_policer_command_fn (vlib_main_t * vm,
         is_add = 0;
       else if (unformat(line_input, "name %s", &name))
         ;
+      else if (unformat(line_input, "color-aware"))
+        c.color_aware = 1;
 
 #define _(a) else if (unformat (line_input, "%U", unformat_policer_##a, &c)) ;
       foreach_config_param
@@ -392,7 +451,7 @@ configure_policer_command_fn (vlib_main_t * vm,
 
   unformat_free (line_input);
 
-  return policer_add_del(vm, name, &c, is_add);
+  return policer_add_del(vm, name, &c, &pi, is_add);
 }
 
 VLIB_CLI_COMMAND (configure_policer_command, static) = {
@@ -453,6 +512,13 @@ clib_error_t *policer_init (vlib_main_t * vm)
   pm->vnet_main = vnet_get_main();
 
   pm->policer_config_by_name = hash_create_string (0, sizeof (uword));
+  pm->policer_index_by_name = hash_create_string (0, sizeof (uword));
+
+  vnet_classify_register_unformat_policer_next_index_fn
+    (unformat_policer_classify_next_index);
+  vnet_classify_register_unformat_opaque_index_fn
+    (unformat_policer_classify_precolor);
+
   return 0;
 }
 
