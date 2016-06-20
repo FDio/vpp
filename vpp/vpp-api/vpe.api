@@ -2453,22 +2453,40 @@ define lisp_eid_table_add_del_map_reply {
     i32 retval;
 };
 
+define lisp_locator_dump {
+    u32 client_index;
+    u32 context;
+    u32 locator_index;
+};
+
 /** \brief LISP locator_set status
+    @param local - if is set, then locator is local
     @param locator_set_name - name of the locator_set
     @param sw_if_index - sw_if_index of the locator
     @param priority - locator priority
     @param weight - locator weight
+  */
+manual_java define lisp_locator_details {
+    u32 context;
+    u8  local;
+    u32 sw_if_index;
+    u8  is_ipv6;
+    u8  ip_address[16];
+    u8  priority;
+    u8  weight;
+};
+
+/** \brief LISP locator_set status
+    @param locator_set_name - name of the locator_set
+    @param local - if is set, then locator_set is local
+    @param locator_count - number of locator this stats block includes
+    @param locator - locator data
  */
 manual_java define lisp_locator_set_details {
     u32 context;
     u8  local;
+    u32 locator_index;
     u8  locator_set_name[64];
-    u32 sw_if_index;
-    u8  is_ipv6;
-    u8  ip_address[16];
-    u8  prefix_len;
-    u8  priority;
-    u8  weight;
 };
 
 /** \brief Request for locator_set summary status

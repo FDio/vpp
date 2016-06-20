@@ -1107,6 +1107,12 @@ static void vl_api_control_ping_reply_t_handler_json
     vat_main_t * vam = &vat_main;
     i32 retval = ntohl(mp->retval);
 
+    if (vam->format_locator_in_locator_set) {
+      vam->retval = retval;
+      vam->result_ready = 1;
+      return;
+    }
+
     if (VAT_JSON_NONE != vam->json_tree.type) {
         vat_json_print(vam->ofp, &vam->json_tree);
         vat_json_free(&vam->json_tree);
@@ -1918,30 +1924,107 @@ static void vl_api_get_node_graph_reply_t_handler_json
 }
 
 static void
+vl_api_lisp_locator_details_t_handler (
+    vl_api_lisp_locator_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+    locator_msg_t loc;
+    u8 * tmp_str = 0;
+
+    if (vam->format_locator_in_locator_set) {
+      loc.local = mp->local;
+      loc.priority = mp->priority;
+      loc.weight = mp->weight;
+      if (loc.local) {
+        loc.sw_if_index = ntohl(mp->sw_if_index);
+      } else {
+        clib_memcpy(loc.ip_address, mp->ip_address, sizeof(loc.ip_address));
+      }
+      vec_add1(vam->locator_msg, loc);
+    } else {
+      if (mp->local) {
+        tmp_str = format(tmp_str, "%=16d%=16d%=16d\n",
+                         ntohl(mp->sw_if_index),
+                         mp->priority,
+                         mp->weight);
+      } else {
+        tmp_str = format(tmp_str, "%=16U%=16d%=16d\n",
+                         mp->is_ipv6 ? format_ip6_address :
+                         format_ip4_address,
+                         mp->ip_address,
+                         mp->priority,
+                         mp->weight);
+      }
+
+      fformat(vam->ofp, "%s", tmp_str);
+
+      vec_free(tmp_str);
+    }
+}
+
+static void
+vl_api_lisp_locator_details_t_handler_json (
+    vl_api_lisp_locator_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    locator_msg_t loc;
+    struct in6_addr ip6;
+    struct in_addr ip4;
+
+    if (vam->format_locator_in_locator_set) {
+        loc.local = mp->local;
+        loc.priority = mp->priority;
+        loc.weight = mp->weight;
+        if (loc.local) {
+            loc.sw_if_index = ntohl(mp->sw_if_index);
+        } else {
+            clib_memcpy(loc.ip_address, mp->ip_address, sizeof(loc.ip_address));
+        }
+        vec_add1(vam->locator_msg, loc);
+        return;
+    }
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+
+    if (mp->local) {
+        vat_json_object_add_uint(node, "locator_index", ntohl(mp->sw_if_index));
+    } else {
+      if (mp->is_ipv6) {
+        clib_memcpy(&ip6, mp->ip_address, sizeof(ip6));
+        vat_json_object_add_ip6(node, "locator", ip6);
+      } else {
+        clib_memcpy(&ip4, mp->ip_address, sizeof(ip4));
+        vat_json_object_add_ip4(node, "locator", ip4);
+      }
+    }
+    vat_json_object_add_uint(node, "priority", mp->priority);
+    vat_json_object_add_uint(node, "weight", mp->weight);
+}
+
+static void
 vl_api_lisp_locator_set_details_t_handler (
     vl_api_lisp_locator_set_details_t *mp)
 {
     vat_main_t *vam = &vat_main;
-    u8 * tmp_str = NULL;
+    locator_set_msg_t ls;
+    u32 locator_index;
 
-    if (mp->local) {
-      fformat(vam->ofp, "%=20s%=16d%=16d%=16d\n",
-              mp->locator_set_name,
-              ntohl(mp->sw_if_index),
-              mp->priority,
-              mp->weight);
+    locator_index = ntohl(mp->locator_index);
+
+    if (vam->format_locator_in_locator_set) {
+        ls.locator_index = locator_index;
+        strncpy((char *) ls.locator_set_name, (char *) mp->locator_set_name,
+                sizeof(ls.locator_set_name));
+        vec_add1(vam->locator_set_msg, ls);
     } else {
-      tmp_str = format(0,"%U/%d",
-              mp->is_ipv6 ? format_ip6_address : format_ip4_address,
-              mp->ip_address,
-              mp->prefix_len);
-
-      fformat(vam->ofp, "%=20s%=16s%=16d%=16d\n",
-              mp->locator_set_name,
-              tmp_str,
-              mp->priority,
-              mp->weight);
-      vec_free(tmp_str);
+        fformat(vam->ofp, "%=20s%=16u\n", mp->locator_set_name, locator_index);
     }
 }
 
@@ -1950,9 +2033,16 @@ vl_api_lisp_locator_set_details_t_handler_json (
     vl_api_lisp_locator_set_details_t *mp)
 {
     vat_main_t *vam = &vat_main;
+    locator_set_msg_t ls;
     vat_json_node_t *node = NULL;
-    struct in6_addr ip6;
-    struct in_addr ip4;
+
+    if (vam->format_locator_in_locator_set) {
+        ls.locator_index = ntohl(mp->locator_index);
+        strncpy((char *) ls.locator_set_name, (char *) mp->locator_set_name,
+                sizeof(ls.locator_set_name));
+        vec_add1(vam->locator_set_msg, ls);
+        return;
+    }
 
     if (VAT_JSON_ARRAY != vam->json_tree.type) {
         ASSERT(VAT_JSON_NONE == vam->json_tree.type);
@@ -1962,20 +2052,8 @@ vl_api_lisp_locator_set_details_t_handler_json (
 
     vat_json_init_object(node);
     vat_json_object_add_string_copy(node, "locator-set", mp->locator_set_name);
-    if (mp->local) {
-        vat_json_object_add_uint(node, "locator", ntohl(mp->sw_if_index));
-    } else {
-        if (mp->is_ipv6) {
-            clib_memcpy(&ip6, mp->ip_address, sizeof(ip6));
-            vat_json_object_add_ip6(node, "locator", ip6);
-        } else {
-            clib_memcpy(&ip4, mp->ip_address, sizeof(ip4));
-            vat_json_object_add_ip4(node, "locator", ip4);
-        }
-        vat_json_object_add_uint(node, "prefix-length", mp->prefix_len);
-    }
-    vat_json_object_add_uint(node, "priority", mp->priority);
-    vat_json_object_add_uint(node, "weight", mp->weight);
+    vat_json_object_add_uint(node, "locator-set-index",
+                             ntohl(mp->locator_index));
 }
 
 static void
@@ -2803,6 +2881,7 @@ _(LISP_PITR_SET_LOCATOR_SET_REPLY, lisp_pitr_set_locator_set_reply)     \
 _(LISP_EID_TABLE_ADD_DEL_MAP_REPLY, lisp_eid_table_add_del_map_reply)   \
 _(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
 _(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
+_(LISP_LOCATOR_DETAILS, lisp_locator_details)                           \
 _(LISP_LOCAL_EID_TABLE_DETAILS, lisp_local_eid_table_details)           \
 _(LISP_GPE_TUNNEL_DETAILS, lisp_gpe_tunnel_details)                     \
 _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
@@ -2875,6 +2954,21 @@ do {                                            \
 	  return (vam->retval);			\
         }                                       \
     }                                           \
+    return -99;                                 \
+} while(0);
+
+/* W_L: wait for results, with timeout */
+#define W_L(body)                                \
+do {                                            \
+    timeout = vat_time_now (vam) + 1.0;         \
+                                                \
+    while (vat_time_now (vam) < timeout) {      \
+        if (vam->result_ready == 1) {           \
+          (body);                               \
+          return (vam->retval);                 \
+        }                                       \
+    }                                           \
+    vam->format_locator_in_locator_set = 0;     \
     return -99;                                 \
 } while(0);
 
@@ -10761,28 +10855,232 @@ api_lisp_add_del_map_request_itr_rlocs(vat_main_t * vam)
 }
 
 static int
-api_lisp_locator_set_dump(vat_main_t *vam)
+lisp_locator_dump_send_msg(vat_main_t * vam, u32 locator_index)
 {
-    vl_api_lisp_locator_set_dump_t *mp;
+    vl_api_lisp_locator_dump_t *mp;
     f64 timeout = ~0;
 
+    M(LISP_LOCATOR_DUMP, lisp_locator_dump);
+
+    mp->locator_index = ntohl(locator_index);
+
+    /* send it... */
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+      vl_api_control_ping_t * mp;
+      M(CONTROL_PING, control_ping);
+      S;
+    }
+    /* Wait for a reply... */
+    W;
+}
+
+static int
+api_lisp_locator_dump(vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vam->format_locator_in_locator_set = 0;
+    u32 locator_index = ~0;
+    u8 locator_index_set = 0;
+    int ret = 0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "locator-set-index %u", &locator_index)) {
+            locator_index_set = 1;
+        } else {
+          clib_warning ("parse error '%U'", format_unformat_error);
+          return -99;
+        }
+    }
+
+    if (!locator_index_set) {
+      clib_warning("locator-set-index is not set!");
+      return -99;
+    }
+
     if (!vam->json_output) {
+        fformat(vam->ofp, "%=20s%=16s%=16s\n",
+                "locator", "priority", "weight");
+    }
+
+    ret = lisp_locator_dump_send_msg(vam, locator_index);
+
+    return ret;
+}
+
+static int
+print_locator_in_locator_set(vat_main_t * vam)
+{
+    locator_set_msg_t * ls;
+    locator_msg_t * loc;
+    u8 * tmp_str = 0;
+    int i = 0, ret = 0;
+
+    vec_foreach(ls, vam->locator_set_msg) {
+        ret = lisp_locator_dump_send_msg(vam, ls->locator_index);
+        if (ret) {
+            vec_free(vam->locator_msg);
+            vec_free(vam->locator_set_msg);
+            return ret;
+        }
+
+        tmp_str = format(0, "%=20s", ls->locator_set_name);
+        i = 0;
+        vec_foreach(loc, vam->locator_msg) {
+            if (i) {
+                tmp_str = format(tmp_str, "%=20s", " ");
+            }
+            if (loc->local) {
+                tmp_str = format(tmp_str, "%=16d%=16d%=16d\n",
+                                 loc->sw_if_index,
+                                 loc->priority,
+                                 loc->weight);
+            } else {
+                tmp_str = format(tmp_str, "%=16d%=16d%=16d\n",
+                                 loc->is_ipv6 ? format_ip6_address :
+                                 format_ip4_address,
+                                 loc->ip_address,
+                                 loc->priority,
+                                 loc->weight);
+            }
+            i++;
+        }
+
+        fformat(vam->ofp, "%s", tmp_str);
+        vec_free(tmp_str);
+        vec_free(vam->locator_msg);
+    }
+
+    vec_free(vam->locator_set_msg);
+
+    return ret;
+}
+
+static int
+json_locator_in_locator_set(vat_main_t * vam)
+{
+    locator_set_msg_t * ls;
+    locator_msg_t * loc;
+    vat_json_node_t * node = NULL;
+    vat_json_node_t * locator_array;
+    vat_json_node_t * locator;
+    struct in6_addr ip6;
+    struct in_addr ip4;
+    int ret = 0;
+
+    if (!vec_len(vam->locator_set_msg)) {
+        /* just print [] */
+        vat_json_init_array(&vam->json_tree);
+        vat_json_print(vam->ofp, &vam->json_tree);
+        vam->json_tree.type = VAT_JSON_NONE;
+        return ret;
+    }
+
+    vec_foreach(ls, vam->locator_set_msg) {
+        ret = lisp_locator_dump_send_msg(vam, ls->locator_index);
+        if (ret) {
+            vec_free(vam->locator_msg);
+            vec_free(vam->locator_set_msg);
+            vat_json_free(&vam->json_tree);
+            vam->json_tree.type = VAT_JSON_NONE;
+            return ret;
+        }
+
+        if (VAT_JSON_ARRAY != vam->json_tree.type) {
+            ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+            vat_json_init_array(&vam->json_tree);
+        }
+
+        node = vat_json_array_add(&vam->json_tree);
+        vat_json_init_object(node);
+
+        vat_json_object_add_string_copy(node, "locator-set",
+                                        ls->locator_set_name);
+        locator_array = vat_json_object_add_list(node, "locator");
+        vec_foreach(loc, vam->locator_msg) {
+            locator = vat_json_array_add(locator_array);
+            vat_json_init_object(locator);
+            if (loc->local) {
+                vat_json_object_add_uint(locator, "locator-index",
+                                         loc->sw_if_index);
+            } else {
+                if (loc->is_ipv6) {
+                    clib_memcpy(&ip6, loc->ip_address, sizeof(ip6));
+                    vat_json_object_add_ip6(locator, "locator", ip6);
+                } else {
+                    clib_memcpy(&ip4, loc->ip_address, sizeof(ip4));
+                    vat_json_object_add_ip4(locator, "locator", ip4);
+                }
+            }
+            vat_json_object_add_uint(locator, "priority", loc->priority);
+            vat_json_object_add_uint(locator, "weight", loc->weight);
+        }
+
+        vat_json_print(vam->ofp, &vam->json_tree);
+        vat_json_free(&vam->json_tree);
+        vam->json_tree.type = VAT_JSON_NONE;
+
+        vec_free(vam->locator_msg);
+    }
+
+    vec_free(vam->locator_set_msg);
+
+    return ret;
+}
+
+static int
+api_lisp_locator_set_dump(vat_main_t *vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_lisp_locator_set_dump_t *mp;
+    vam->format_locator_in_locator_set = 0;
+    f64 timeout = ~0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "locator_dump")) {
+            vam->format_locator_in_locator_set = 1;
+        } else {
+            break;
+        }
+    }
+
+    if (!vam->json_output) {
+      if (!vam->format_locator_in_locator_set) {
+        fformat(vam->ofp, "%=20s%=16s\n",
+                "Locator-set", "Locator-index");
+      } else {
         fformat(vam->ofp, "%=20s%=16s%=16s%=16s\n",
-                "Locator-set", "Locator", "Priority", "Weight");
+                "Locator-set", "locator", "priority", "weight");
+      }
     }
 
     M(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump);
     /* send it... */
     S;
 
-    /* Use a control ping for synchronization */
-    {
-        vl_api_control_ping_t * mp;
-        M(CONTROL_PING, control_ping);
-        S;
-    }
+   /* Use a control ping for synchronization */
+   {
+     vl_api_control_ping_t * mp;
+     M(CONTROL_PING, control_ping);
+     S;
+   }
+
     /* Wait for a reply... */
-    W;
+    W_L({
+      if (vam->format_locator_in_locator_set) {
+          if (!vam->json_output) {
+              print_locator_in_locator_set(vam);
+          } else {
+              json_locator_in_locator_set(vam);
+          }
+      }
+
+      vam->format_locator_in_locator_set = 0;
+    });
 
     /* NOTREACHED */
     return 0;
@@ -12086,7 +12384,8 @@ _(lisp_add_del_remote_mapping, "add|del vni <vni> table-id <id> "       \
 _(lisp_pitr_set_locator_set, "locator-set <loc-set-name> | del")        \
 _(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
 _(lisp_eid_table_add_del_map, "[del] vni <vni> vrf <vrf>")              \
-_(lisp_locator_set_dump, "")                                            \
+_(lisp_locator_set_dump, "[locator_dump]")                              \
+_(lisp_locator_dump, "locator-set-index <ls_index>")                    \
 _(lisp_local_eid_table_dump, "")                                        \
 _(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \
