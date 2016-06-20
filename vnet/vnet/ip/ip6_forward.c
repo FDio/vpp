@@ -1260,8 +1260,14 @@ VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip6_sw_interface_admin_up_down);
 /* Built-in ip6 unicast rx feature path definition */
 VNET_IP6_UNICAST_FEATURE_INIT (ip6_inacl, static) = {
   .node_name = "ip6-inacl", 
-  .runs_before = {"ipsec-input-ip6", 0}, 
+  .runs_before = {"ip6-policer-classify", 0},
   .feature_index = &ip6_main.ip6_unicast_rx_feature_check_access,
+};
+
+VNET_IP6_UNICAST_FEATURE_INIT (ip6_policer_classify, static) = {
+  .node_name = "ip6-policer-classify",
+  .runs_before = {"ipsec-input-ip6", 0},
+  .feature_index = &ip6_main.ip6_unicast_rx_feature_policer_classify,
 };
 
 VNET_IP6_UNICAST_FEATURE_INIT (ip6_ipsec, static) = {
