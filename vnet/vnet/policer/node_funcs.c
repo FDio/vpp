@@ -128,6 +128,7 @@ uword vnet_policer_inline (vlib_main_t * vm,
           u32 pi0 = 0, pi1 = 0;
           u32 len0, len1;
           u32 col0, col1;
+          u32 precol0 = POLICE_CONFORM, precol1 = POLICE_CONFORM;
           policer_read_response_type_st * pol0, * pol1;
           u8 act0, act1;
           
@@ -170,6 +171,10 @@ uword vnet_policer_inline (vlib_main_t * vm,
             {
               pi0 = vnet_buffer(b0)->policer.index;
               pi1 = vnet_buffer(b1)->policer.index;
+              if (vnet_buffer(b0)->policer.color != ~0)
+                precol0 = vnet_buffer(b0)->policer.color;
+              if (vnet_buffer(b1)->policer.color != ~0)
+                precol1 = vnet_buffer(b1)->policer.color;
             }
 
           if (which == VNET_POLICER_INDEX_BY_EITHER)
@@ -177,22 +182,24 @@ uword vnet_policer_inline (vlib_main_t * vm,
               pi0 = vnet_buffer(b0)->policer.index;
               pi0 = (pi0 != ~0) ? pi0 : 
                 pm->policer_index_by_sw_if_index [sw_if_index0];
+              if (vnet_buffer(b0)->policer.color != ~0)
+                precol0 = vnet_buffer(b0)->policer.color;
               pi1 = vnet_buffer(b1)->policer.index;
               pi1 = (pi1 != ~0) ? pi1 : 
                 pm->policer_index_by_sw_if_index [sw_if_index1];
+              if (vnet_buffer(b1)->policer.color != ~0)
+                precol1 = vnet_buffer(b1)->policer.color;
             }
 
           len0 = vlib_buffer_length_in_chain (vm, b0);
           pol0 = &pm->policers [pi0];
-          col0 = vnet_police_packet (pol0, len0, 
-                                     POLICE_CONFORM /* no chaining */,
+          col0 = vnet_police_packet (pol0, len0, precol0,
                                      time_in_policer_periods);
           act0 = pol0->action[col0];
 
           len1 = vlib_buffer_length_in_chain (vm, b1);
           pol1 = &pm->policers [pi1];
-          col1 = vnet_police_packet (pol1, len1, 
-                                     POLICE_CONFORM /* no chaining */,
+          col1 = vnet_police_packet (pol1, len1, precol1,
                                      time_in_policer_periods);
           act1 = pol1->action[col1];
 
@@ -254,6 +261,7 @@ uword vnet_policer_inline (vlib_main_t * vm,
           u32 pi0 = 0;
           u32 len0;
           u32 col0;
+          u32 precol0 = POLICE_CONFORM;
           policer_read_response_type_st * pol0;
           u8 act0;
 
@@ -273,19 +281,25 @@ uword vnet_policer_inline (vlib_main_t * vm,
             pi0 = pm->policer_index_by_sw_if_index[sw_if_index0];
 
           if (which == VNET_POLICER_INDEX_BY_OPAQUE)
-            pi0 = vnet_buffer(b0)->policer.index;
+            {
+              pi0 = vnet_buffer(b0)->policer.index;
+              if (vnet_buffer(b0)->policer.color != ~0)
+                precol0 = vnet_buffer(b0)->policer.color;
+            }
 
           if (which == VNET_POLICER_INDEX_BY_EITHER)
             {
               pi0 = vnet_buffer(b0)->policer.index;
               pi0 = (pi0 != ~0) ? pi0 : 
                 pm->policer_index_by_sw_if_index [sw_if_index0];
+              if (vnet_buffer(b0)->policer.color != ~0)
+                precol0 = vnet_buffer(b0)->policer.color;
             }
+          clib_warning("policer sw_if_index0 %d policer_index %d", sw_if_index0, pi0);
 
           len0 = vlib_buffer_length_in_chain (vm, b0);
           pol0 = &pm->policers [pi0];
-          col0 = vnet_police_packet (pol0, len0, 
-                                     POLICE_CONFORM /* no chaining */,
+          col0 = vnet_police_packet (pol0, len0, precol0,
                                      time_in_policer_periods);
           act0 = pol0->action[col0];
           
@@ -352,6 +366,80 @@ uword vnet_policer_by_either (vlib_main_t * vm,
 
 void vnet_policer_node_funcs_reference (void) { }
 
+static uword vnet_policer_by_opaque_ip4 (vlib_main_t * vm,
+                                         vlib_node_runtime_t * node,
+                                         vlib_frame_t * frame)
+{
+  return vnet_policer_by_opaque (vm , node, frame);
+}
+
+VLIB_REGISTER_NODE (policer_by_opaque_ip4_node, static) = {
+  .function = vnet_policer_by_opaque_ip4,
+  .name = "policer-by-opaque-ip4",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(vnet_policer_error_strings),
+  .error_strings = vnet_policer_error_strings,
+  .n_next_nodes = VNET_POLICER_N_NEXT,
+  .next_nodes = {
+    [VNET_POLICER_NEXT_TRANSMIT] = "ip4-lookup",
+    [VNET_POLICER_NEXT_DROP] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (policer_by_opaque_ip4_node,
+                              vnet_policer_by_opaque_ip4);
+
+static uword vnet_policer_by_opaque_ip6 (vlib_main_t * vm,
+                                         vlib_node_runtime_t * node,
+                                         vlib_frame_t * frame)
+{
+  return vnet_policer_by_opaque (vm , node, frame);
+}
+
+VLIB_REGISTER_NODE (policer_by_opaque_ip6_node, static) = {
+  .function = vnet_policer_by_opaque_ip6,
+  .name = "policer-by-opaque-ip6",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(vnet_policer_error_strings),
+  .error_strings = vnet_policer_error_strings,
+  .n_next_nodes = VNET_POLICER_N_NEXT,
+  .next_nodes = {
+    [VNET_POLICER_NEXT_TRANSMIT] = "ip6-lookup",
+    [VNET_POLICER_NEXT_DROP] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (policer_by_opaque_ip6_node,
+                              vnet_policer_by_opaque_ip6);
+
+static uword vnet_policer_by_opaque_l2 (vlib_main_t * vm,
+                                        vlib_node_runtime_t * node,
+                                        vlib_frame_t * frame)
+{
+  return vnet_policer_by_opaque (vm , node, frame);
+}
+
+VLIB_REGISTER_NODE (policer_by_opaque_l2_node, static) = {
+  .function = vnet_policer_by_opaque_l2,
+  .name = "policer-by-opaque-l2",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(vnet_policer_error_strings),
+  .error_strings = vnet_policer_error_strings,
+  .n_next_nodes = VNET_POLICER_N_NEXT,
+  .next_nodes = {
+    [VNET_POLICER_NEXT_TRANSMIT] = "l2-output",
+    [VNET_POLICER_NEXT_DROP] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (policer_by_opaque_l2_node,
+                              vnet_policer_by_opaque_l2);
 
 #define TEST_CODE 1
 
