@@ -71,11 +71,13 @@ vpp_LDADD += -lsvm -lsvmdb -lrt
 vpp_LDADD += -lvnetplugin
 
 if WITH_DPDK
+vpp_LDFLAGS = -Wl,--whole-archive
 if ENABLE_DPDK_SHARED
-vpp_LDADD += -ldpdk
+vpp_LDFLAGS += -ldpdk
 else
-vpp_LDADD += -l:libdpdk.a
+vpp_LDFLAGS += -l:libdpdk.a
 endif
+vpp_LDFLAGS += -Wl,--no-whole-archive
 endif
 
 vpp_LDADD += -lvppinfra -lm -lpthread -ldl
