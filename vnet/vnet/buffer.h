@@ -81,7 +81,8 @@ _(policer)                                      \
 _(output_features)				\
 _(map)						\
 _(map_t)					\
-_(ip_frag)
+_(ip_frag)                                      \
+_(plugin_metadata)
 
 /*
  * vnet stack buffer opaque array overlay structure.
@@ -327,6 +328,9 @@ typedef struct
       /* overlay address family */
       u16 overlay_afi;
     } lisp;
+
+    /* Is used to pass metadata between VPP core and Plugin */
+    u32 plugin_metadata[6];
 
     u32 unused[6];
   };
