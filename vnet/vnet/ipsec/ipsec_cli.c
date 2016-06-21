@@ -585,12 +585,11 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   ipsec_add_del_tunnel_args_t a;
-  ipsec_main_t *im = &ipsec_main;
   int rv;
   u32 num_m_args = 0;
+
+  memset(&a, 0, sizeof(a));
   a.is_add = 1;
-  a.anti_replay = 0;
-  a.esn = 0;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -616,7 +615,7 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
   if (num_m_args < 4)
       return clib_error_return (0, "mandatory argument(s) missing");
 
-  rv = ipsec_add_del_tunnel_if (im->vnet_main, &a);
+  rv = ipsec_add_del_tunnel_if (&a);
 
  switch(rv)
     {

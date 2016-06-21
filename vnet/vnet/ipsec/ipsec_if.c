@@ -21,6 +21,8 @@
 
 #include <vnet/ipsec/ipsec.h>
 
+void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+
 static u8 * format_ipsec_name (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
@@ -46,8 +48,30 @@ VNET_HW_INTERFACE_CLASS (ipsec_hw_class) = {
   .name = "IPSec",
 };
 
-u32
-ipsec_add_del_tunnel_if (vnet_main_t * vnm, ipsec_add_del_tunnel_args_t * args)
+
+static int
+ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
+                                  ipsec_add_del_tunnel_args_t * args);
+
+static int
+ipsec_add_del_tunnel_if_rpc_callback (ipsec_add_del_tunnel_args_t *a)
+{
+  vnet_main_t * vnm = vnet_get_main();
+  ASSERT(os_get_cpu_number() == 0);
+
+  return ipsec_add_del_tunnel_if_internal(vnm, a);
+}
+
+int
+ipsec_add_del_tunnel_if (ipsec_add_del_tunnel_args_t * args)
+{
+  vl_api_rpc_call_main_thread (ipsec_add_del_tunnel_if_rpc_callback,
+                               (u8 *) args, sizeof(*args));
+  return 0;
+}
+
+int
+ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm, ipsec_add_del_tunnel_args_t * args)
 {
   ipsec_tunnel_if_t * t;
   ipsec_main_t * im = &ipsec_main;
@@ -77,6 +101,18 @@ ipsec_add_del_tunnel_if (vnet_main_t * vnm, ipsec_add_del_tunnel_args_t * args)
       sa->is_tunnel = 1;
       sa->use_esn = args->esn;
       sa->use_anti_replay = args->anti_replay;
+      sa->integ_alg = args->integ_alg;
+      if (args->remote_integ_key_len <= sizeof(args->remote_integ_key))
+        {
+          sa->integ_key_len = args->remote_integ_key_len;
+          clib_memcpy(sa->integ_key, args->remote_integ_key, args->remote_integ_key_len);
+        }
+      sa->crypto_alg = args->crypto_alg;
+      if (args->remote_crypto_key_len <= sizeof(args->remote_crypto_key))
+        {
+          sa->crypto_key_len = args->remote_crypto_key_len;
+          clib_memcpy(sa->crypto_key, args->remote_crypto_key, args->remote_crypto_key_len);
+        }
 
       pool_get (im->sad, sa);
       memset (sa, 0, sizeof (*sa));
@@ -88,6 +124,18 @@ ipsec_add_del_tunnel_if (vnet_main_t * vnm, ipsec_add_del_tunnel_args_t * args)
       sa->seq = 1;
       sa->use_esn = args->esn;
       sa->use_anti_replay = args->anti_replay;
+      sa->integ_alg = args->integ_alg;
+      if (args->local_integ_key_len <= sizeof(args->local_integ_key))
+        {
+          sa->integ_key_len = args->local_integ_key_len;
+          clib_memcpy(sa->integ_key, args->local_integ_key, args->local_integ_key_len);
+        }
+      sa->crypto_alg = args->crypto_alg;
+      if (args->local_crypto_key_len <= sizeof(args->local_crypto_key))
+        {
+          sa->crypto_key_len = args->local_crypto_key_len;
+          clib_memcpy(sa->crypto_key, args->local_crypto_key, args->local_crypto_key_len);
+        }
 
       hash_set (im->ipsec_if_pool_index_by_key, key, t - im->tunnel_interfaces);
 

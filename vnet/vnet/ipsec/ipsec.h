@@ -107,6 +107,16 @@ typedef struct {
   ip4_address_t local_ip, remote_ip;
   u32 local_spi;
   u32 remote_spi;
+  ipsec_crypto_alg_t crypto_alg;
+  u8 local_crypto_key_len;
+  u8 local_crypto_key[128];
+  u8 remote_crypto_key_len;
+  u8 remote_crypto_key[128];
+  ipsec_integ_alg_t integ_alg;
+  u8 local_integ_key_len;
+  u8 local_integ_key[128];
+  u8 remote_integ_key_len;
+  u8 remote_integ_key[128];
 } ipsec_add_del_tunnel_args_t;
 
 typedef enum {
@@ -225,7 +235,8 @@ uword unformat_ipsec_policy_action (unformat_input_t * input, va_list * args);
 uword unformat_ipsec_crypto_alg (unformat_input_t * input, va_list * args);
 uword unformat_ipsec_integ_alg (unformat_input_t * input, va_list * args);
 
-u32 ipsec_add_del_tunnel_if (vnet_main_t * vnm, ipsec_add_del_tunnel_args_t * args);
+/*u32 ipsec_add_del_tunnel_if (vnet_main_t * vnm, ipsec_add_del_tunnel_args_t * args); */
+int ipsec_add_del_tunnel_if (ipsec_add_del_tunnel_args_t * args);
 int ipsec_set_interface_key(vnet_main_t * vnm, u32 hw_if_index, ipsec_if_set_key_type_t type, u8 alg, u8 * key);
 
 
