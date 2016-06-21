@@ -41,7 +41,7 @@ typedef CLIB_PACKED (struct {
 }) ip6_vxlan_header_t;
 
 typedef CLIB_PACKED(struct {
-  /* 
+  /*
    * Key fields: ip src and vxlan vni on incoming VXLAN packet
    * all fields in NET byte order
    */
@@ -100,7 +100,8 @@ typedef struct {
 _(DROP, "error-drop")                   \
 _(L2_INPUT, "l2-input")                 \
 _(IP4_INPUT, "ip4-input")               \
-_(IP6_INPUT, "ip6-input")
+_(IP6_INPUT, "ip6-input")               \
+_(NSH_PROXY_ENCAP, "nsh-proxy-encap")
 
 typedef enum {
 #define _(s,n) VXLAN_INPUT_NEXT_##s,
@@ -108,6 +109,8 @@ typedef enum {
 #undef _
   VXLAN_INPUT_N_NEXT,
 } vxlan_input_next_t;
+
+#define NSH_PROXY_OUTBOUND_TRANSPORT_VXLAN 2
 
 typedef enum {
 #define vxlan_error(n,s) VXLAN_ERROR_##n,
@@ -155,7 +158,7 @@ typedef struct {
   u32 vni;
 } vnet_vxlan_add_del_tunnel_args_t;
 
-int vnet_vxlan_add_del_tunnel 
+int vnet_vxlan_add_del_tunnel
 (vnet_vxlan_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
 
 #endif /* included_vnet_vxlan_h */
