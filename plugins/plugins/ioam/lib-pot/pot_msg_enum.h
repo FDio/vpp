@@ -19,7 +19,7 @@
 
 #define vl_msg_id(n,h) n,
 typedef enum {
-#include <lib-pot/pot_all_api_h.h>
+#include <ioam/lib-pot/pot_all_api_h.h>
     /* We'll want to know how many messages IDs we need... */
     VL_MSG_FIRST_AVAILABLE,
 } vl_msg_id_t;

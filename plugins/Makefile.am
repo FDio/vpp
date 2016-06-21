@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@
+AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@ -I@TOOLKIT_INCLUDE@/plugins -I$(srcdir)/plugins
 
 
 ########################################
@@ -35,7 +35,7 @@ ioam_pot_plugin_la_SOURCES = plugins/ioam/lib-pot/pot_util.c plugins/ioam/encap/
 	plugins/ioam/lib-pot/pot_util.h plugins/ioam/lib-pot/math64.h plugins/ioam/lib-pot/pot_api.c
 ioam_pot_plugin_la_LDFLAGS = -module
 
-BUILT_SOURCES = plugins/ioam/lib-pot/pot.api.h
+BUILT_SOURCES += plugins/ioam/lib-pot/pot.api.h
 SUFFIXES = .api.h .api
 
 %.api.h: %.api
@@ -43,7 +43,7 @@ SUFFIXES = .api.h .api
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
 
-nobase_include_HEADERS =                        \
+nobase_include_HEADERS +=                       \
   plugins/ioam/lib-pot/pot_all_api_h.h  	\
   plugins/ioam/lib-pot/pot_msg_enum.h		\
   plugins/ioam/lib-pot/pot.api.h                \

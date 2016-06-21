@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 /* Include the generated file, see BUILT_SOURCES in Makefile.am */
-#include <lib-pot/pot.api.h>
+#include <ioam/lib-pot/pot.api.h>

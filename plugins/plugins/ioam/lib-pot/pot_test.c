@@ -25,28 +25,28 @@
 #include <vppinfra/error.h>
 
 /* Declare message IDs */
-#include <lib-pot/pot_msg_enum.h>
+#include <plugins/ioam/lib-pot/pot_msg_enum.h>
 
 /* define message structures */
 #define vl_typedefs
-#include <lib-pot/pot_all_api_h.h> 
+#include <plugins/ioam/lib-pot/pot_all_api_h.h>
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
 #define vl_endianfun             /* define message structures */
-#include <lib-pot/pot_all_api_h.h> 
+#include <plugins/ioam/lib-pot/pot_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <lib-pot/pot_all_api_h.h> 
+#include <plugins/ioam/lib-pot/pot_all_api_h.h>
 #undef vl_printfun
 
 /* Get the API version number. */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <lib-pot/pot_all_api_h.h>
+#include <plugins/ioam/lib-pot/pot_all_api_h.h>
 #undef vl_api_version
 
 

@@ -21,34 +21,34 @@
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
-#include <lib-pot/pot_util.h>
+#include <ioam/lib-pot/pot_util.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
 
 /* define message IDs */
-#include <lib-pot/pot_msg_enum.h>
+#include <ioam/lib-pot/pot_msg_enum.h>
 
 /* define message structures */
 #define vl_typedefs
-#include <lib-pot/pot_all_api_h.h> 
+#include <ioam/lib-pot/pot_all_api_h.h>
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <lib-pot/pot_all_api_h.h> 
+#include <ioam/lib-pot/pot_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <lib-pot/pot_all_api_h.h> 
+#include <ioam/lib-pot/pot_all_api_h.h>
 #undef vl_printfun
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <lib-pot/pot_all_api_h.h>
+#include <ioam/lib-pot/pot_all_api_h.h>
 #undef vl_api_version
 
 /* 
