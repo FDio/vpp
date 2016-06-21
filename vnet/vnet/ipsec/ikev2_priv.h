@@ -213,14 +213,18 @@ typedef struct {
     /* pool of IKEv2 Security Associations */
     ikev2_sa_t * sas;
 
+    /* hash */
+    uword * sa_by_rspi;
+} ikev2_main_per_thread_data_t;
+
+typedef struct {
     /* pool of IKEv2 profiles */
     ikev2_profile_t * profiles;
 
     /* vector of supported transform types */
     ikev2_sa_transform_t * supported_transforms;
 
-    /* hashes */
-    uword * sa_by_rspi;
+    /* hash */
     mhash_t profile_index_by_name;
 
     /* local private key */
@@ -229,6 +233,9 @@ typedef struct {
     /* convenience */
     vlib_main_t * vlib_main;
     vnet_main_t * vnet_main;
+
+    ikev2_main_per_thread_data_t * per_thread_data;
+
 } ikev2_main_t;
 
 ikev2_main_t ikev2_main;
