@@ -65,7 +65,7 @@ get_one_tunnel_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0,
   else
     adj0 = ip_get_adjacency (lgm->lm6, adj_index0);
 
-  tunnel_index0 = adj0->rewrite_header.node_index;
+  tunnel_index0 = adj0->if_address_index;
   t0[0] = pool_elt_at_index(lgm->tunnels, tunnel_index0);
 
   ASSERT(t0[0] != 0);
@@ -114,8 +114,8 @@ get_two_tunnels_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0,
       adj1 = ip_get_adjacency (lgm->lm6, adj_index1);
     }
 
-  tunnel_index0 = adj0->rewrite_header.node_index;
-  tunnel_index1 = adj1->rewrite_header.node_index;
+  tunnel_index0 = adj0->if_address_index;
+  tunnel_index1 = adj1->if_address_index;
 
   t0[0] = pool_elt_at_index(lgm->tunnels, tunnel_index0);
   t1[0] = pool_elt_at_index(lgm->tunnels, tunnel_index1);

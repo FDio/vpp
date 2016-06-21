@@ -245,11 +245,15 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
           /* dst adj should point to lisp gpe lookup */
           dst_adj.lookup_next_index = lgm->ip4_lookup_next_lgpe_ip4_lookup;
 
-          /* make sure we have different signatures for adj in different tables
-           * but with the same lookup_next_index */
-          dst_adj.explicit_fib_index = table_id;
-
+          /* explicit_fib_index is used in IP6 FIB lookup, don't reuse it */
+          dst_adj.explicit_fib_index = ~0;
           dst_adj.n_adj = 1;
+
+          /* make sure we have different signatures for adj in different tables
+           * but with the same lookup_next_index and for adj in the same table
+           * but associated to different destinations */
+          dst_adj.if_address_index = table_id;
+          dst_adj.indirect.next_hop.ip4 = dst;
 
           memset(&a, 0, sizeof(a));
           a.flags = IP4_ROUTE_FLAG_TABLE_ID;
@@ -267,11 +271,10 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
           p = ip4_get_route (lgm->im4, table_id, 0, dst.as_u8,
                              dst_address_length);
 
-          ASSERT(p != 0);
-
           /* make sure insertion succeeded */
           if (CLIB_DEBUG)
             {
+              ASSERT(p != 0);
               dst_adjp = ip_get_adjacency (lgm->lm4, p[0]);
               ASSERT(dst_adjp->rewrite_header.sw_if_index
                       == dst_adj.rewrite_header.sw_if_index);
@@ -291,12 +294,6 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 
   dst_adjp = ip_get_adjacency (lgm->lm4, p[0]);
 
-  /* make sure adj signature is unique, i.e., fill in mcast_group_index
-   * and saved_lookup_next index with data that makes this adj unique.
-   * All these fields are (and should stay that way) unused by LISP. */
-  add_adj->mcast_group_index = table_id;
-  add_adj->saved_lookup_next_index = dst_adjp->rewrite_header.sw_if_index;
-
   /* add/del src prefix to src fib */
   memset(&a, 0, sizeof(a));
   a.flags = IP4_ROUTE_FLAG_TABLE_ID;
@@ -311,15 +308,15 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
   ip4_sd_fib_add_del_src_route (lgm, &a);
 
   /* make sure insertion succeeded */
-  if (CLIB_DEBUG)
+  if (CLIB_DEBUG && is_add)
     {
       uword * sai;
       ip_adjacency_t * src_adjp;
       sai = ip4_sd_get_src_route (lgm, dst_adjp->rewrite_header.sw_if_index,
                                   &src, src_address_length);
+      ASSERT(sai != 0);
       src_adjp = ip_get_adjacency(lgm->lm4, sai[0]);
-      ASSERT(src_adjp->rewrite_header.node_index
-              == add_adj->rewrite_header.node_index);
+      ASSERT(src_adjp->if_address_index == add_adj->if_address_index);
     }
 
   /* if a delete, check if there are elements left in the src fib */
@@ -383,30 +380,23 @@ static u32
 ip6_sd_get_src_route (lisp_gpe_main_t * lgm, u32 src_fib_index,
                       ip6_address_t * src, u32 address_length)
 {
-  int i, len;
   int rv;
   BVT(clib_bihash_kv) kv, value;
   ip6_src_fib_t * fib = pool_elt_at_index (lgm->ip6_src_fibs, src_fib_index);
 
-  len = vec_len (fib->prefix_lengths_in_search_order);
+  ip6_address_t * mask;
 
-  for (i = 0; i < len; i++)
-    {
-      int dst_address_length = fib->prefix_lengths_in_search_order[i];
-      ip6_address_t * mask;
+  ASSERT(address_length <= 128);
 
-      ASSERT(dst_address_length >= 0 && dst_address_length <= 128);
+  mask = &fib->fib_masks[address_length];
 
-      mask = &fib->fib_masks[dst_address_length];
+  kv.key[0] = src->as_u64[0] & mask->as_u64[0];
+  kv.key[1] = src->as_u64[1] & mask->as_u64[1];
+  kv.key[2] = address_length;
 
-      kv.key[0] = src->as_u64[0] & mask->as_u64[0];
-      kv.key[1] = src->as_u64[1] & mask->as_u64[1];
-      kv.key[2] = dst_address_length;
-
-      rv = BV(clib_bihash_search_inline_2)(&fib->ip6_lookup_table, &kv, &value);
-      if (rv == 0)
-        return value.value;
-    }
+  rv = BV(clib_bihash_search_inline_2)(&fib->ip6_lookup_table, &kv, &value);
+  if (rv == 0)
+    return value.value;
 
   return 0;
 }
@@ -577,7 +567,6 @@ ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
       /* insert dst prefix to ip6 fib, if it's not in yet */
       if (adj_index == 0)
         {
-
           /* allocate and init src ip6 fib */
           pool_get(lgm->ip6_src_fibs, src_fib);
           memset(src_fib, 0, sizeof(src_fib[0]));
@@ -591,9 +580,15 @@ ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
           /* dst adj should point to lisp gpe ip lookup */
           dst_adj.lookup_next_index = lgm->ip6_lookup_next_lgpe_ip6_lookup;
 
+          /* explicit_fib_index is used in IP6 FIB lookup, don't reuse it */
+          dst_adj.explicit_fib_index = ~0;
+          dst_adj.n_adj = 1;
+
           /* make sure we have different signatures for adj in different tables
-           * but with the same lookup_next_index */
-          dst_adj.explicit_fib_index = table_id;
+           * but with the same lookup_next_index and for adj in the same table
+           * but associated to different destinations */
+          dst_adj.if_address_index = table_id;
+          dst_adj.indirect.next_hop.ip6 = dst;
 
           memset(&a, 0, sizeof(a));
           a.flags = IP6_ROUTE_FLAG_TABLE_ID;
@@ -611,11 +606,10 @@ ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
           adj_index = ip6_get_route (lgm->im6, table_id, 0, &dst,
                                      dst_address_length);
 
-          ASSERT(adj_index != 0);
-
           /* make sure insertion succeeded */
           if (CLIB_DEBUG)
             {
+              ASSERT(adj_index != 0);
               dst_adjp = ip_get_adjacency (lgm->lm6, adj_index);
               ASSERT(dst_adjp->rewrite_header.sw_if_index
                       == dst_adj.rewrite_header.sw_if_index);
@@ -627,19 +621,12 @@ ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
       if (adj_index == 0)
         {
           clib_warning("Trying to delete inexistent dst route for %U. Aborting",
-                       format_ip6_address_and_length, dst.as_u8,
-                       dst_address_length);
+                       format_ip_prefix, dst_prefix);
           return -1;
         }
     }
 
   dst_adjp = ip_get_adjacency (lgm->lm6, adj_index);
-
-  /* make sure adj signature is unique, i.e., fill in mcast_group_index
-   * and saved_lookup_next index with data that makes this adj unique.
-   * All these fields are (and should stay that way) unused by LISP. */
-  add_adj->mcast_group_index = table_id;
-  add_adj->saved_lookup_next_index = dst_adjp->rewrite_header.sw_if_index;
 
   /* add/del src prefix to src fib */
   memset(&a, 0, sizeof(a));
@@ -655,12 +642,13 @@ ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
   ip6_sd_fib_add_del_src_route (lgm, &a);
 
   /* make sure insertion succeeded */
-  if (CLIB_DEBUG)
+  if (CLIB_DEBUG && is_add)
     {
       u32 sai;
       ip_adjacency_t * src_adjp;
       sai = ip6_sd_get_src_route (lgm, dst_adjp->rewrite_header.sw_if_index,
                                   &src, src_address_length);
+      ASSERT(sai != 0);
       src_adjp = ip_get_adjacency(lgm->lm6, sai);
       ASSERT(src_adjp->rewrite_header.node_index
               == add_adj->rewrite_header.node_index);
