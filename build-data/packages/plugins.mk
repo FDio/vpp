@@ -1,11 +1,16 @@
 plugins_configure_depend = 			\
     vppinfra-install 				\
     vlib-api-install 				\
+    vpp-api-test-install 			\
+    vnet-install                                \
     vlib-install 
 
 plugins_CPPFLAGS = $(call installed_includes_fn, 	\
     vppinfra 					\
     vlib 					\
+    vnet 					\
+    svm 					\
+    vpp-api-test 				\
     vlib-api)
 
 plugins_LDFLAGS = $(call installed_libs_fn, 	\

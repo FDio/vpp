@@ -25,7 +25,7 @@
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
 
-#include <lib-pot/pot_util.h>
+#include <plugins/ioam/lib-pot/pot_util.h>
 
 typedef CLIB_PACKED(struct {
   ip6_hop_by_hop_option_t hdr;
