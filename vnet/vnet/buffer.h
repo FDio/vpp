@@ -293,6 +293,15 @@ typedef struct {
         u32 current_config_index;
     } cop;
 
+    /* nsh-proxy, only valid there */
+    struct {
+        u32 spi_si;       /* nsp<<8 + nsi */
+        u32 vid;
+        u32 sw_if_index;
+        u8  tunnel_type;  /* 1:nsh-vxlan-gpe; 2:nsh-gre; 3:nsh-ethernet */
+        u8  si_minus_one; /* 1: nsh si need to minus one */
+    } nsh_proxy;
+
     u32 unused[6];
   };
 } vnet_buffer_opaque_t;
