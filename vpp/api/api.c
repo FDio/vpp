@@ -351,7 +351,15 @@ _(AF_PACKET_DELETE, af_packet_delete)                                   \
 _(POLICER_ADD_DEL, policer_add_del)                                     \
 _(POLICER_DUMP, policer_dump)                                           \
 _(NETMAP_CREATE, netmap_create)                                         \
-_(NETMAP_DELETE, netmap_delete)
+_(NETMAP_DELETE, netmap_delete)                                         \
+_(MPLS_GRE_TUNNEL_DUMP, mpls_gre_tunnel_dump)                           \
+_(MPLS_GRE_TUNNEL_DETAILS, mpls_gre_tunnel_details)                     \
+_(MPLS_ETH_TUNNEL_DUMP, mpls_eth_tunnel_dump)                           \
+_(MPLS_ETH_TUNNEL_DETAILS, mpls_eth_tunnel_details)                     \
+_(MPLS_FIB_ENCAP_DUMP, mpls_fib_encap_dump)                             \
+_(MPLS_FIB_ENCAP_DETAILS, mpls_fib_encap_details)                       \
+_(MPLS_FIB_DECAP_DUMP, mpls_fib_decap_dump)                             \
+_(MPLS_FIB_DECAP_DETAILS, mpls_fib_decap_details)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -6302,6 +6310,355 @@ vl_api_netmap_delete_t_handler
     vec_free(if_name);
 
     REPLY_MACRO(VL_API_NETMAP_DELETE_REPLY);
+}
+
+static void vl_api_mpls_gre_tunnel_details_t_handler (
+    vl_api_mpls_gre_tunnel_details_t * mp)
+{
+    clib_warning ("BUG");
+}
+
+static void send_mpls_gre_tunnel_entry (vpe_api_main_t * am,
+                                    unix_shared_memory_queue_t *q,
+                                    mpls_gre_tunnel_t * gt,
+                                    u32 index,
+                                    u32 context)
+{
+    vl_api_mpls_gre_tunnel_details_t * mp;
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset (mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs(VL_API_MPLS_GRE_TUNNEL_DETAILS);
+    mp->context = context;
+
+    if (gt != NULL) {
+        mp->tunnel_index    = htonl(index);
+        mp->tunnel_src      = gt->tunnel_src.as_u32;
+        mp->tunnel_dst      = gt->tunnel_dst.as_u32;
+        mp->intfc_address   = gt->intfc_address.as_u32;
+        mp->mask_width      = htonl(gt->mask_width);
+        mp->inner_fib_index = htonl(gt->inner_fib_index);
+        mp->outer_fib_index = htonl(gt->outer_fib_index);
+        mp->encap_index     = htonl(gt->encap_index);
+        mp->hw_if_index     = htonl(gt->hw_if_index);
+        mp->l2_only         = htonl(gt->l2_only);
+    }
+
+    mpls_main_t * mm = &mpls_main;
+    mpls_encap_t * e;
+    int i;
+    u32 len = 0;
+
+    e = pool_elt_at_index (mm->encaps, gt->encap_index);
+    len = vec_len (e->labels);
+    mp->nlabels = htonl(len);
+
+    for (i = 0; i < len; i++) {
+        mp->labels[i] = htonl(vnet_mpls_uc_get_label(
+                clib_host_to_net_u32(e->labels[i].label_exp_s_ttl)));
+    }
+
+    vl_msg_api_send_shmem (q, (u8 *)&mp);
+}
+
+static void
+vl_api_mpls_gre_tunnel_dump_t_handler (vl_api_mpls_gre_tunnel_dump_t *mp)
+{
+    vpe_api_main_t * am = &vpe_api_main;
+    unix_shared_memory_queue_t * q;
+    vlib_main_t * vm = &vlib_global_main;
+    mpls_main_t * mm = &mpls_main;
+    mpls_gre_tunnel_t * gt;
+    u32 index = ntohl(mp->tunnel_index);
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0)
+        return;
+
+    if (pool_elts (mm->gre_tunnels)) {
+        if(mp->tunnel_index >= 0) {
+            vlib_cli_output (vm, "MPLS-GRE tunnel %u", index);
+            gt = pool_elt_at_index (mm->gre_tunnels, index);
+            send_mpls_gre_tunnel_entry (am, q, gt, gt - mm->gre_tunnels, mp->context);
+        } else {
+            vlib_cli_output (vm, "MPLS-GRE tunnels");
+            pool_foreach (gt, mm->gre_tunnels,
+            ({
+              send_mpls_gre_tunnel_entry (am, q, gt, gt - mm->gre_tunnels, mp->context);
+            }));
+        }
+    } else {
+        vlib_cli_output (vm, "No MPLS-GRE tunnels");
+    }
+}
+
+static void vl_api_mpls_eth_tunnel_details_t_handler (
+    vl_api_mpls_eth_tunnel_details_t * mp)
+{
+    clib_warning ("BUG");
+}
+
+static void send_mpls_eth_tunnel_entry (vpe_api_main_t * am,
+                                    unix_shared_memory_queue_t *q,
+                                    mpls_eth_tunnel_t * et,
+                                    u32 index,
+                                    u32 context)
+{
+    vl_api_mpls_eth_tunnel_details_t * mp;
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset (mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs(VL_API_MPLS_ETH_TUNNEL_DETAILS);
+    mp->context = context;
+
+    if (et != NULL) {
+        mp->tunnel_index    = htonl(index);
+        memcpy(mp->tunnel_dst_mac, et->tunnel_dst, 6);
+        mp->intfc_address   = et->intfc_address.as_u32;
+        mp->tx_sw_if_index  = htonl(et->tx_sw_if_index);
+        mp->inner_fib_index = htonl(et->inner_fib_index);
+        mp->mask_width      = htonl(et->mask_width);
+        mp->encap_index     = htonl(et->encap_index);
+        mp->hw_if_index     = htonl(et->hw_if_index);
+        mp->l2_only         = htonl(et->l2_only);
+    }
+
+    mpls_main_t * mm = &mpls_main;
+    mpls_encap_t * e;
+    int i;
+    u32 len = 0;
+
+    e = pool_elt_at_index (mm->encaps, et->encap_index);
+    len = vec_len (e->labels);
+    mp->nlabels = htonl(len);
+
+    for (i = 0; i < len; i++) {
+        mp->labels[i] = htonl(vnet_mpls_uc_get_label(
+                clib_host_to_net_u32(e->labels[i].label_exp_s_ttl)));
+    }
+
+    vl_msg_api_send_shmem (q, (u8 *)&mp);
+}
+
+static void
+vl_api_mpls_eth_tunnel_dump_t_handler (vl_api_mpls_eth_tunnel_dump_t *mp)
+{
+    vpe_api_main_t * am = &vpe_api_main;
+    unix_shared_memory_queue_t * q;
+    vlib_main_t * vm = &vlib_global_main;
+    mpls_main_t * mm = &mpls_main;
+    mpls_eth_tunnel_t * et;
+    u32 index = ntohl(mp->tunnel_index);
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0)
+        return;
+
+    clib_warning("Received mpls_eth_tunnel_dump");
+    clib_warning("Received tunnel index: %u from client %u", index, mp->client_index);
+
+    if (pool_elts (mm->eth_tunnels)) {
+        if(mp->tunnel_index >= 0) {
+            vlib_cli_output (vm, "MPLS-Ethernet tunnel %u", index);
+            et = pool_elt_at_index (mm->eth_tunnels, index);
+            send_mpls_eth_tunnel_entry (am, q, et, et - mm->eth_tunnels, mp->context);
+        } else {
+            clib_warning("MPLS-Ethernet tunnels");
+            pool_foreach (et, mm->eth_tunnels,
+            ({
+                send_mpls_eth_tunnel_entry (am, q, et, et - mm->eth_tunnels, mp->context);
+            }));
+        }
+    } else {
+        clib_warning("No MPLS-Ethernet tunnels");
+    }
+}
+
+static void vl_api_mpls_fib_encap_details_t_handler (
+    vl_api_mpls_fib_encap_details_t * mp)
+{
+    clib_warning ("BUG");
+}
+
+static void send_mpls_fib_encap_details (vpe_api_main_t * am,
+                                    unix_shared_memory_queue_t *q,
+                                    show_mpls_fib_t *s,
+                                    u32 context)
+{
+    vl_api_mpls_fib_encap_details_t * mp;
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset (mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs(VL_API_MPLS_FIB_ENCAP_DETAILS);
+    mp->context = context;
+
+    mp->fib_index   = htonl(s->fib_index);
+    mp->entry_index = htonl(s->entry_index);
+    mp->dest        = s->dest;
+    mp->s_bit       = htonl(s->s_bit);
+
+    mpls_main_t * mm = &mpls_main;
+    mpls_encap_t * e;
+    int i;
+    u32 len = 0;
+
+    e = pool_elt_at_index (mm->encaps, s->entry_index);
+    len = vec_len (e->labels);
+    mp->nlabels = htonl(len);
+
+    for (i = 0; i < len; i++) {
+        mp->labels[i] = htonl(vnet_mpls_uc_get_label(
+                clib_host_to_net_u32(e->labels[i].label_exp_s_ttl)));
+    }
+
+    vl_msg_api_send_shmem (q, (u8 *)&mp);
+}
+
+static void
+vl_api_mpls_fib_encap_dump_t_handler (vl_api_mpls_fib_encap_dump_t *mp)
+{
+    vpe_api_main_t * am = &vpe_api_main;
+    unix_shared_memory_queue_t * q;
+    vlib_main_t * vm = &vlib_global_main;
+    u64 key;
+    u32 value;
+    show_mpls_fib_t *records = 0;
+    show_mpls_fib_t *s;
+    mpls_main_t * mm = &mpls_main;
+    ip4_main_t * im = &ip4_main;
+    ip4_fib_t * rx_fib;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0)
+        return;
+
+    hash_foreach (key, value, mm->mpls_encap_by_fib_and_dest,
+    ({
+        vec_add2 (records, s, 1);
+        s->fib_index = (u32)(key>>32);
+        s->dest = (u32)(key & 0xFFFFFFFF);
+        s->entry_index = (u32) value;
+    }));
+
+    if (0 == vec_len(records)) {
+        vlib_cli_output(vm, "MPLS encap table empty");
+        goto out;
+    }
+
+    /* sort output by dst address within fib */
+    vec_sort_with_function(records, mpls_dest_cmp);
+    vec_sort_with_function(records, mpls_fib_index_cmp);
+    vlib_cli_output(vm, "MPLS encap table");
+    vlib_cli_output(vm, "%=6s%=16s%=16s", "Table", "Dest address", "Labels");
+    vec_foreach (s, records)
+    {
+        rx_fib = vec_elt_at_index(im->fibs, s->fib_index);
+        vlib_cli_output(vm, "%=6d%=16U%=16U", rx_fib->table_id,
+                format_ip4_address, &s->dest, format_mpls_encap_index, mm,
+                s->entry_index);
+        send_mpls_fib_encap_details (am, q, s, mp->context);
+    }
+
+out:
+    vec_free(records);
+}
+
+static void vl_api_mpls_fib_decap_details_t_handler (
+    vl_api_mpls_fib_decap_details_t * mp)
+{
+    clib_warning ("BUG");
+}
+
+static void send_mpls_fib_decap_details (vpe_api_main_t * am,
+                                    unix_shared_memory_queue_t *q,
+                                    show_mpls_fib_t *s,
+                                    u32 rx_table_id,
+                                    u32 tx_table_id,
+                                    char *swif_tag,
+                                    u32 context)
+{
+    vl_api_mpls_fib_decap_details_t * mp;
+
+    mp = vl_msg_api_alloc (sizeof (*mp));
+    memset (mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs(VL_API_MPLS_FIB_DECAP_DETAILS);
+    mp->context = context;
+
+    mp->fib_index   = htonl(s->fib_index);
+    mp->entry_index = htonl(s->entry_index);
+    mp->dest        = s->dest;
+    mp->s_bit       = htonl(s->s_bit);
+    mp->label       = htonl(s->label);
+    mp->rx_table_id = htonl(rx_table_id);
+    mp->tx_table_id = htonl(tx_table_id);
+    strncpy ((char *) mp->swif_tag,
+             (char *) swif_tag, ARRAY_LEN(mp->swif_tag)-1);
+
+    vl_msg_api_send_shmem (q, (u8 *)&mp);
+}
+
+static void
+vl_api_mpls_fib_decap_dump_t_handler (vl_api_mpls_fib_decap_dump_t *mp)
+{
+    vpe_api_main_t * am = &vpe_api_main;
+    unix_shared_memory_queue_t * q;
+    vlib_main_t * vm = &vlib_global_main;
+    u64 key;
+    u32 value;
+    show_mpls_fib_t *records = 0;
+    show_mpls_fib_t *s;
+    mpls_main_t * mm = &mpls_main;
+    ip4_main_t * im = &ip4_main;
+    ip4_fib_t * rx_fib;
+    ip4_fib_t *tx_fib;
+    u32 tx_table_id;
+    char *swif_tag;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0)
+        return;
+
+    hash_foreach (key, value, mm->mpls_decap_by_rx_fib_and_label,
+    ({
+        vec_add2 (records, s, 1);
+        s->fib_index = (u32)(key>>32);
+        s->entry_index = (u32) value;
+        s->label = ((u32) key)>>12;
+        s->s_bit = (key & (1<<8)) != 0;
+    }));
+
+    if (!vec_len(records)) {
+        vlib_cli_output(vm, "MPLS decap table empty");
+        goto out;
+    }
+
+    vec_sort_with_function(records, mpls_label_cmp);
+    vlib_cli_output(vm, "MPLS decap table");
+    vlib_cli_output(vm, "%=10s%=15s%=6s%=6s", "RX Table", "TX Table/Intfc",
+            "Label", "S-bit");
+    vec_foreach (s, records)
+    {
+        mpls_decap_t * d;
+        d = pool_elt_at_index(mm->decaps, s->entry_index);
+        if (d->next_index == MPLS_INPUT_NEXT_IP4_INPUT) {
+            tx_fib = vec_elt_at_index(im->fibs, d->tx_fib_index);
+            tx_table_id = tx_fib->table_id;
+            swif_tag = "     ";
+        } else {
+            tx_table_id = d->tx_fib_index;
+            swif_tag = "(i)  ";
+        }
+        rx_fib = vec_elt_at_index(im->fibs, s->fib_index);
+
+        vlib_cli_output(vm, "%=10d%=10d%=5s%=6d%=6d", rx_fib->table_id,
+                tx_table_id, swif_tag, s->label, s->s_bit);
+
+        send_mpls_fib_decap_details (am, q, s, rx_fib->table_id,
+                tx_table_id, swif_tag, mp->context);
+    }
+
+out:
+    vec_free(records);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

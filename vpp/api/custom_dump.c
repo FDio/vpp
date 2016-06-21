@@ -1755,6 +1755,50 @@ static void *vl_api_sw_interface_clear_stats_t_print
     FINISH;
 }
 
+static void *vl_api_mpls_gre_tunnel_dump_t_print
+(vl_api_mpls_gre_tunnel_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: mpls_gre_tunnel_dump ");
+
+    s = format (s, "tunnel_index %d ", ntohl(mp->tunnel_index));
+
+    FINISH;
+}
+
+static void *vl_api_mpls_eth_tunnel_dump_t_print
+(vl_api_mpls_eth_tunnel_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: mpls_eth_tunnel_dump ");
+
+    s = format (s, "tunnel_index %d ", ntohl(mp->tunnel_index));
+
+    FINISH;
+}
+
+static void *vl_api_mpls_fib_encap_dump_t_print
+(vl_api_mpls_fib_encap_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: mpls_fib_encap_dump ");
+
+    FINISH;
+}
+
+static void *vl_api_mpls_fib_decap_dump_t_print
+(vl_api_mpls_fib_decap_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: mpls_fib_decap_dump ");
+
+    FINISH;
+}
+
 #define foreach_custom_print_function                                   \
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
@@ -1842,7 +1886,11 @@ _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable) 		\
 _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)           \
 _(AF_PACKET_CREATE, af_packet_create)					\
 _(AF_PACKET_DELETE, af_packet_delete)					\
-_(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)
+_(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
+_(MPLS_GRE_TUNNEL_DUMP, mpls_gre_tunnel_dump)                           \
+_(MPLS_ETH_TUNNEL_DUMP, mpls_eth_tunnel_dump)                           \
+_(MPLS_FIB_ENCAP_DUMP, mpls_fib_encap_dump)                             \
+_(MPLS_FIB_DECAP_DUMP, mpls_fib_decap_dump)
 
 void vl_msg_api_custom_dump_configure (api_main_t *am) 
 {

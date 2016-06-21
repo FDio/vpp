@@ -34,6 +34,7 @@
 #include <vnet/l2/l2_classify.h> 
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/classify/input_acl.h>
+#include <vnet/mpls-gre/mpls.h>
 #if DPDK > 0
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
@@ -2647,7 +2648,11 @@ _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
 _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
 _(POLICER_DETAILS, policer_details)                                     \
 _(NETMAP_CREATE_REPLY, netmap_create_reply)                             \
-_(NETMAP_DELETE_REPLY, netmap_delete_reply)
+_(NETMAP_DELETE_REPLY, netmap_delete_reply)                             \
+_(MPLS_GRE_TUNNEL_DETAILS, mpls_gre_tunnel_details)                     \
+_(MPLS_ETH_TUNNEL_DETAILS, mpls_eth_tunnel_details)                     \
+_(MPLS_FIB_ENCAP_DETAILS, mpls_fib_encap_details)                       \
+_(MPLS_FIB_DECAP_DETAILS, mpls_fib_decap_details)
 
 /* M: construct, but don't yet send a message */
 
@@ -11019,6 +11024,304 @@ api_netmap_delete (vat_main_t * vam)
     return 0;
 }
 
+static void vl_api_mpls_gre_tunnel_details_t_handler
+(vl_api_mpls_gre_tunnel_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    i32 i;
+    i32 len = ntohl(mp->nlabels);
+
+    if (mp->l2_only == 0) {
+        fformat(vam->ofp, "[%d]: src %U, dst %U, adj %U/%d, labels ",
+                ntohl(mp->tunnel_index),
+                format_ip4_address, &mp->tunnel_src,
+                format_ip4_address, &mp->tunnel_dst,
+                format_ip4_address, &mp->intfc_address,
+                ntohl(mp->mask_width));
+        for (i = 0; i < len; i++) {
+            fformat(vam->ofp, "%u ", ntohl(mp->labels[i]));
+        }
+        fformat(vam->ofp, "\n");
+        fformat(vam->ofp, "      inner fib index %d, outer fib index %d\n",
+                ntohl(mp->inner_fib_index), ntohl(mp->outer_fib_index));
+    } else {
+        fformat(vam->ofp, "[%d]: src %U, dst %U, key %U, labels ",
+                ntohl(mp->tunnel_index),
+                format_ip4_address, &mp->tunnel_src,
+                format_ip4_address, &mp->tunnel_dst,
+                format_ip4_address, &mp->intfc_address);
+        for (i = 0; i < len; i++) {
+            fformat(vam->ofp, "%u ", ntohl(mp->labels[i]));
+        }
+        fformat(vam->ofp, "\n");
+        fformat(vam->ofp, "      l2 interface %d, outer fib index %d\n",
+                ntohl(mp->hw_if_index), ntohl(mp->outer_fib_index));
+    }
+}
+
+static void vl_api_mpls_gre_tunnel_details_t_handler_json
+(vl_api_mpls_gre_tunnel_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    struct in_addr ip4;
+    i32 i;
+    i32 len = ntohl(mp->nlabels);
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_uint(node, "tunnel_index", ntohl(mp->tunnel_index));
+    clib_memcpy(&ip4, &(mp->intfc_address), sizeof(ip4));
+    vat_json_object_add_ip4(node, "intfc_address", ip4);
+    vat_json_object_add_uint(node, "inner_fib_index", ntohl(mp->inner_fib_index));
+    vat_json_object_add_uint(node, "mask_width", ntohl(mp->mask_width));
+    vat_json_object_add_uint(node, "encap_index", ntohl(mp->encap_index));
+    vat_json_object_add_uint(node, "hw_if_index", ntohl(mp->hw_if_index));
+    vat_json_object_add_uint(node, "l2_only", ntohl(mp->l2_only));
+    clib_memcpy(&ip4, &(mp->tunnel_src), sizeof(ip4));
+    vat_json_object_add_ip4(node, "tunnel_src", ip4);
+    clib_memcpy(&ip4, &(mp->tunnel_dst), sizeof(ip4));
+    vat_json_object_add_ip4(node, "tunnel_dst", ip4);
+    vat_json_object_add_uint(node, "outer_fib_index", ntohl(mp->outer_fib_index));
+    vat_json_object_add_uint(node, "label_count", len);
+    for (i = 0; i < len; i++) {
+        vat_json_object_add_uint(node, "label", ntohl(mp->labels[i]));
+    }
+}
+
+static int api_mpls_gre_tunnel_dump (vat_main_t * vam)
+{
+    vl_api_mpls_gre_tunnel_dump_t *mp;
+    f64 timeout;
+    i32 index = -1;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (vam->input) != UNFORMAT_END_OF_INPUT) {
+        if (!unformat (vam->input, "tunnel_index %d", &index)) {
+            index = -1;
+            break;
+        }
+    }
+
+    fformat(vam->ofp, "  tunnel_index %d\n", index);
+
+    M(MPLS_GRE_TUNNEL_DUMP, mpls_gre_tunnel_dump);
+    mp->tunnel_index = htonl(index);
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    W;
+}
+
+static void vl_api_mpls_eth_tunnel_details_t_handler
+(vl_api_mpls_eth_tunnel_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    i32 i;
+    i32 len = ntohl(mp->nlabels);
+
+    fformat(vam->ofp, "[%d]: dst %U, adj %U/%d, labels ",
+            ntohl(mp->tunnel_index),
+            format_ethernet_address, &mp->tunnel_dst_mac,
+            format_ip4_address, &mp->intfc_address,
+            ntohl(mp->mask_width));
+    for (i = 0; i < len; i++) {
+        fformat(vam->ofp, "%u ", ntohl(mp->labels[i]));
+    }
+    fformat(vam->ofp, "\n");
+    fformat(vam->ofp, "      tx on %d, rx fib index %d\n",
+            ntohl(mp->tx_sw_if_index),
+            ntohl(mp->inner_fib_index));
+}
+
+static void vl_api_mpls_eth_tunnel_details_t_handler_json
+(vl_api_mpls_eth_tunnel_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    struct in_addr ip4;
+    i32 i;
+    i32 len = ntohl(mp->nlabels);
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_uint(node, "tunnel_index", ntohl(mp->tunnel_index));
+    clib_memcpy(&ip4, &(mp->intfc_address), sizeof(ip4));
+    vat_json_object_add_ip4(node, "intfc_address", ip4);
+    vat_json_object_add_uint(node, "inner_fib_index", ntohl(mp->inner_fib_index));
+    vat_json_object_add_uint(node, "mask_width", ntohl(mp->mask_width));
+    vat_json_object_add_uint(node, "encap_index", ntohl(mp->encap_index));
+    vat_json_object_add_uint(node, "hw_if_index", ntohl(mp->hw_if_index));
+    vat_json_object_add_uint(node, "l2_only", ntohl(mp->l2_only));
+    vat_json_object_add_string_copy(node, "tunnel_dst_mac",
+            format(0, "%U", format_ethernet_address, &mp->tunnel_dst_mac));
+    vat_json_object_add_uint(node, "tx_sw_if_index", ntohl(mp->tx_sw_if_index));
+    vat_json_object_add_uint(node, "label_count", len);
+    for (i = 0; i < len; i++) {
+        vat_json_object_add_uint(node, "label", ntohl(mp->labels[i]));
+    }
+}
+
+static int api_mpls_eth_tunnel_dump (vat_main_t * vam)
+{
+    vl_api_mpls_eth_tunnel_dump_t *mp;
+    f64 timeout;
+    i32 index = -1;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (vam->input) != UNFORMAT_END_OF_INPUT) {
+        if (!unformat (vam->input, "tunnel_index %d", &index)) {
+            index = -1;
+            break;
+        }
+    }
+
+    fformat(vam->ofp, "  tunnel_index %d\n", index);
+
+    M(MPLS_ETH_TUNNEL_DUMP, mpls_eth_tunnel_dump);
+    mp->tunnel_index = htonl(index);
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    W;
+}
+
+static void vl_api_mpls_fib_encap_details_t_handler
+(vl_api_mpls_fib_encap_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    i32 i;
+    i32 len = ntohl(mp->nlabels);
+
+    fformat(vam->ofp, "table %d, dest %U, label ",
+            ntohl(mp->fib_index),
+            format_ip4_address, &mp->dest,
+            len);
+    for (i = 0; i < len; i++) {
+        fformat(vam->ofp, "%u ", ntohl(mp->labels[i]));
+    }
+    fformat(vam->ofp, "\n");
+}
+
+static void vl_api_mpls_fib_encap_details_t_handler_json
+(vl_api_mpls_fib_encap_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    i32 i;
+    i32 len = ntohl(mp->nlabels);
+    struct in_addr ip4;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_uint(node, "table", ntohl(mp->fib_index));
+    vat_json_object_add_uint(node, "entry_index", ntohl(mp->entry_index));
+    clib_memcpy(&ip4, &(mp->dest), sizeof(ip4));
+    vat_json_object_add_ip4(node, "dest", ip4);
+    vat_json_object_add_uint(node, "s_bit", ntohl(mp->s_bit));
+    vat_json_object_add_uint(node, "label_count", len);
+    for (i = 0; i < len; i++) {
+        vat_json_object_add_uint(node, "label", ntohl(mp->labels[i]));
+    }
+}
+
+static int api_mpls_fib_encap_dump (vat_main_t * vam)
+{
+    vl_api_mpls_fib_encap_dump_t *mp;
+    f64 timeout;
+
+    M(MPLS_FIB_ENCAP_DUMP, mpls_fib_encap_dump);
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    W;
+}
+
+static void vl_api_mpls_fib_decap_details_t_handler
+(vl_api_mpls_fib_decap_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+
+    fformat(vam->ofp, "RX table %d, TX table/intfc %u, swif_tag '%s', label %u, s_bit %u\n",
+            ntohl(mp->rx_table_id),
+            ntohl(mp->tx_table_id),
+            mp->swif_tag,
+            ntohl(mp->label),
+            ntohl(mp->s_bit));
+}
+
+static void vl_api_mpls_fib_decap_details_t_handler_json
+(vl_api_mpls_fib_decap_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t *node = NULL;
+    struct in_addr ip4;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+
+    vat_json_init_object(node);
+    vat_json_object_add_uint(node, "table", ntohl(mp->fib_index));
+    vat_json_object_add_uint(node, "entry_index", ntohl(mp->entry_index));
+    clib_memcpy(&ip4, &(mp->dest), sizeof(ip4));
+    vat_json_object_add_ip4(node, "dest", ip4);
+    vat_json_object_add_uint(node, "s_bit", ntohl(mp->s_bit));
+    vat_json_object_add_uint(node, "label", ntohl(mp->label));
+    vat_json_object_add_uint(node, "rx_table_id", ntohl(mp->rx_table_id));
+    vat_json_object_add_uint(node, "tx_table_id", ntohl(mp->tx_table_id));
+    vat_json_object_add_string_copy(node, "swif_tag", mp->swif_tag);
+}
+
+static int api_mpls_fib_decap_dump (vat_main_t * vam)
+{
+    vl_api_mpls_fib_decap_dump_t *mp;
+    f64 timeout;
+
+    M(MPLS_FIB_DECAP_DUMP, mpls_fib_decap_dump);
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    W;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -11515,7 +11818,11 @@ _(policer_add_del, "name <policer name> <params> [del]")                \
 _(policer_dump, "[name <policer name>]")                                \
 _(netmap_create, "name <interface name> [hw-addr <mac>] [pipe] "        \
     "[master|slave]")                                                   \
-_(netmap_delete, "name <interface name>")
+_(netmap_delete, "name <interface name>")                               \
+_(mpls_gre_tunnel_dump, "tunnel_index <tunnel-id>")                     \
+_(mpls_eth_tunnel_dump, "tunnel_index <tunnel-id>")                     \
+_(mpls_fib_encap_dump, "")                                              \
+_(mpls_fib_decap_dump, "")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
