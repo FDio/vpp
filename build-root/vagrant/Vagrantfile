@@ -44,7 +44,7 @@ Vagrant.configure(2) do |config|
   end
 
   # Define some physical ports for your VMs to be used by DPDK
-  nics = (ENV['VPP_VAGRANT_NICS'] || 2).to_i(10)
+  nics = (ENV['VPP_VAGRANT_NICS'] || "2").to_i(10)
   for i in 1..nics
     config.vm.network "private_network", type: "dhcp"
   end
