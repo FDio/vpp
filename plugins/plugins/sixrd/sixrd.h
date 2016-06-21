@@ -134,7 +134,7 @@ ip4_sixrd_get_domain (u32 adj_index, ip6_address_t *addr,
 
   u32 ai = ip6_fib_lookup_with_table(im6, 0, addr);
   ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai);
-  if (PREDICT_TRUE(adj6->lookup_next_index == IP_LOOKUP_NEXT_SIXRD)) {
+  if (PREDICT_TRUE(adj6->lookup_next_index == mm->ip6_lookup_next_index)) {
     uword *p = (uword *)adj6->rewrite_data;
     *sixrd_domain_index = p[0];
     return pool_elt_at_index(mm->domains, *sixrd_domain_index);
