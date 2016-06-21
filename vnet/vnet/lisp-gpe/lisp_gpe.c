@@ -179,13 +179,20 @@ add_del_negative_fwd_entry (lisp_gpe_main_t * lgm,
                             vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
 {
   ip_adjacency_t adj;
+  ip_prefix_t * dpref = &gid_address_ippref(&a->deid);
+  ip_prefix_t * spref = &gid_address_ippref(&a->seid);
+
   /* setup adjacency for eid */
   memset (&adj, 0, sizeof(adj));
   adj.n_adj = 1;
-  adj.explicit_fib_index = ~0;
 
-  ip_prefix_t * dpref = &gid_address_ippref(&a->deid);
-  ip_prefix_t * spref = &gid_address_ippref(&a->seid);
+  /* fill in 'legal' data to avoid issues */
+  adj.lookup_next_index =  (ip_prefix_version(dpref) == IP4) ?
+                                  lgm->ip4_lookup_next_lgpe_ip4_lookup :
+                                  lgm->ip6_lookup_next_lgpe_ip6_lookup;
+
+  adj.rewrite_header.sw_if_index = ~0;
+  adj.rewrite_header.next_index = ~0;
 
   switch (a->action)
     {
@@ -196,16 +203,15 @@ add_del_negative_fwd_entry (lisp_gpe_main_t * lgm,
        * more specific for the eid with the next-hop found */
     case SEND_MAP_REQUEST:
       /* insert tunnel that always sends map-request */
-      adj.rewrite_header.sw_if_index = ~0;
-      adj.lookup_next_index = (u32) (ip_prefix_version(dpref) == IP4) ?
-                                     LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP:
-                                     LGPE_IP6_LOOKUP_NEXT_LISP_CP_LOOKUP;
+      adj.explicit_fib_index = (ip_prefix_version(dpref) == IP4) ?
+                               LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP:
+                               LGPE_IP6_LOOKUP_NEXT_LISP_CP_LOOKUP;
       /* add/delete route for prefix */
       return ip_sd_fib_add_del_route (lgm, dpref, spref, a->table_id, &adj,
                                       a->is_add);
     case DROP:
       /* for drop fwd entries, just add route, no need to add encap tunnel */
-      adj.lookup_next_index =  (u32) (ip_prefix_version(dpref) == IP4 ?
+      adj.explicit_fib_index =  (ip_prefix_version(dpref) == IP4 ?
               LGPE_IP4_LOOKUP_NEXT_DROP : LGPE_IP6_LOOKUP_NEXT_DROP);
 
       /* add/delete route for prefix */
@@ -259,7 +265,7 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
     {
       /* send packets that hit this adj to lisp-gpe interface output node in
        * requested vrf. */
-      lnip = ip_ver == IP4 ?
+      lnip = (ip_ver == IP4) ?
               lgm->lgpe_ip4_lookup_next_index_by_table_id :
               lgm->lgpe_ip6_lookup_next_index_by_table_id;
       lookup_next_index = hash_get(lnip, a->table_id);
@@ -271,9 +277,10 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
       ASSERT(lookup_next_index != 0);
       ASSERT(lgpe_sw_if_index != 0);
 
-      /* hijack explicit fib index to store lisp interface node index */
+      /* hijack explicit fib index to store lisp interface node index and
+       * if_address_index for the tunnel index */
       adj.explicit_fib_index = lookup_next_index[0];
-      adj.rewrite_header.node_index = tun_index;
+      adj.if_address_index = tun_index;
       adj.rewrite_header.sw_if_index = lgpe_sw_if_index[0];
     }
 
@@ -291,7 +298,7 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
                                adj_index);
 
       ASSERT(adjp != 0);
-      ASSERT(adjp->rewrite_header.node_index == tun_index);
+      ASSERT(adjp->if_address_index == tun_index);
     }
 
   return rv;
