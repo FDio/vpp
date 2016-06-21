@@ -15,4 +15,4 @@
  
 lisp_gpe_error (ENCAPSULATED, "good packets encapsulated")
 lisp_gpe_error (DECAPSULATED, "good packets decapsulated")
-lisp_gpe_error (NO_SUCH_TUNNEL, "no such tunnel packets")
+lisp_gpe_error (NO_TUNNEL, "tunnel does not exist")
