@@ -577,15 +577,7 @@ VLIB_CLI_COMMAND (mpls_del_decap_command, static) = {
   .function = mpls_del_decap_command_fn,
 };
 
-typedef struct {
-  u32 fib_index;
-  u32 entry_index;
-  u32 dest;
-  u32 s_bit;
-  u32 label;
-} show_mpls_fib_t;
-
-static int
+int
 mpls_dest_cmp(void * a1, void * a2)
 {
   show_mpls_fib_t * r1 = a1;
@@ -594,7 +586,7 @@ mpls_dest_cmp(void * a1, void * a2)
   return clib_net_to_host_u32(r1->dest) - clib_net_to_host_u32(r2->dest);
 }
 
-static int
+int
 mpls_fib_index_cmp(void * a1, void * a2)
 {
   show_mpls_fib_t * r1 = a1;
@@ -603,7 +595,7 @@ mpls_fib_index_cmp(void * a1, void * a2)
   return r1->fib_index - r2->fib_index;
 }
 
-static int
+int
 mpls_label_cmp(void * a1, void * a2)
 {
   show_mpls_fib_t * r1 = a1;

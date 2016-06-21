@@ -229,4 +229,21 @@ typedef struct {
 
 u8 * format_mpls_eth_tx_trace (u8 * s, va_list * args);
 
+typedef struct {
+  u32 fib_index;
+  u32 entry_index;
+  u32 dest;
+  u32 s_bit;
+  u32 label;
+} show_mpls_fib_t;
+
+int
+mpls_dest_cmp(void * a1, void * a2);
+
+int
+mpls_fib_index_cmp(void * a1, void * a2);
+
+int
+mpls_label_cmp(void * a1, void * a2);
+
 #endif /* included_vnet_mpls_gre_h */
