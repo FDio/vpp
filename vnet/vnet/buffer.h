@@ -81,9 +81,10 @@ _(policer)                                      \
 _(output_features)				\
 _(map)						\
 _(map_t)					\
-_(ip_frag)
+_(ip_frag)                                      \
+_(plugin_metadata)
 
-/* 
+/*
  * vnet stack buffer opaque array overlay structure.
  * The vnet_buffer_opaque_t *must* be the same size as the
  * vlib_buffer_t "opaque" structure member, 32 bytes.
@@ -143,7 +144,7 @@ typedef struct {
 
     /* Multicast replication */
     struct {
-      u32 pad[3];  
+      u32 pad[3];
       u32 mcast_group_index;
       u32 mcast_current_index;
       u32 original_free_list_index;
@@ -204,7 +205,7 @@ typedef struct {
     /* vcgn udp inside input, only valid there */
     struct {
       /* This part forms context of the packet. The structure should be
-       * exactly same as spp_ctx_t. Also this should be the first 
+       * exactly same as spp_ctx_t. Also this should be the first
        * element of this vcgn_uii structure.
        */
       /****** BEGIN spp_ctx_t section ***********************/
@@ -232,7 +233,7 @@ typedef struct {
                                   * segment size
                                   * (set by 6rd defrag node)
                                   */
-    
+
           u32  direction:1;     /* 0-Outside, 1-Inside */
           u32  frag:1;          /*IP fragment-1, Otherwise-0*/
           u32  option:1;        /* 0-No IP option (v4) present, non-fragHdr
@@ -292,6 +293,9 @@ typedef struct {
         /* Current configuration index. */
         u32 current_config_index;
     } cop;
+
+    /* Is used to pass metadata between VPP codebase and Plugins */
+    u32 plugin_metadata[6];
 
     u32 unused[6];
   };
