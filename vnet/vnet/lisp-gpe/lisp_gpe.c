@@ -257,8 +257,8 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
               lgm->lgpe_ip4_lookup_next_index_by_table_id :
               lgm->lgpe_ip6_lookup_next_index_by_table_id;
       lookup_next_index = hash_get(lnip, a->table_id);
-      lgpe_sw_if_index = hash_get(lgm->lisp_gpe_hw_if_index_by_table_id,
-                                  a->table_id);
+      lgpe_sw_if_index = hash_get(lgm->tunnel_term_sw_if_index_by_vni,
+                                  a->vni);
 
       /* the assumption is that the interface must've been created before
        * programming the dp */

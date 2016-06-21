@@ -154,7 +154,6 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, next_index, * from, * to_next;
   lisp_gpe_main_t * lgm = &lisp_gpe_main;
-  u32 pkts_encapsulated = 0;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -249,8 +248,6 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
               tr->tunnel_index = t1 - lgm->tunnels;
             }
 
-          pkts_encapsulated += 2;
-
           vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
                                           n_left_to_next, bi0, bi1, next0,
                                           next1);
@@ -281,8 +278,6 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
           /* Reset to look up tunnel partner in the configured FIB */
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
 
-          pkts_encapsulated++;
-
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
             {
               lisp_gpe_tx_trace_t *tr = vlib_add_trace (vm, node, b0,
@@ -295,8 +290,7 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, node->node_index,
-                               LISP_GPE_ERROR_ENCAPSULATED, pkts_encapsulated);
+
   return from_frame->n_vectors;
 }
 
