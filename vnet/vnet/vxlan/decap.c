@@ -213,6 +213,16 @@ vxlan_input (vlib_main_t * vm,
           if (PREDICT_TRUE(next0 == VXLAN_INPUT_NEXT_L2_INPUT))
             vnet_update_l2_len (b0);
 
+          if (next0 == VXLAN_INPUT_NEXT_NSH_PROXY_ENCAP)
+          {
+              /*
+               * Save vni, spi_si, tunnel_type and sw_if_index to buffer's opaque.
+               */
+              vnet_buffer(b0)->nsh_proxy.vni = vxlan0->vni_reserved << 8;
+              vnet_buffer(b0)->nsh_proxy.tunnel_type = NSH_PROXY_OUTBOUND_TRANSPORT_VXLAN;
+              vnet_buffer(b0)->nsh_proxy.sw_if_index = t0->sw_if_index;
+          }
+
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
 
@@ -303,6 +313,15 @@ vxlan_input (vlib_main_t * vm,
           if (PREDICT_TRUE(next1 == VXLAN_INPUT_NEXT_L2_INPUT))
             vnet_update_l2_len (b1);
 
+          if (next1 == VXLAN_INPUT_NEXT_NSH_PROXY_ENCAP)
+          {
+              /*
+               * Save src, vni, spi_si, tunnel_type and sw_if_index to buffer's opaque.
+               */
+              vnet_buffer(b1)->nsh_proxy.vni = vxlan1->vni_reserved << 8;
+              vnet_buffer(b1)->nsh_proxy.tunnel_type = NSH_PROXY_OUTBOUND_TRANSPORT_VXLAN;
+              vnet_buffer(b1)->nsh_proxy.sw_if_index = t1->sw_if_index;
+          }
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b1)->sw_if_index[VLIB_RX] = sw_if_index1;
 
@@ -447,6 +466,15 @@ vxlan_input (vlib_main_t * vm,
           if (PREDICT_TRUE(next0 == VXLAN_INPUT_NEXT_L2_INPUT))
             vnet_update_l2_len (b0);
 
+          if (next0 == VXLAN_INPUT_NEXT_NSH_PROXY_ENCAP)
+          {
+              /*
+               * Save src, vni, spi_si, tunnel_type and sw_if_index to buffer's opaque.
+               */
+              vnet_buffer(b0)->nsh_proxy.vni = vxlan0->vni_reserved << 8;
+              vnet_buffer(b0)->nsh_proxy.tunnel_type = NSH_PROXY_OUTBOUND_TRANSPORT_VXLAN;
+              vnet_buffer(b0)->nsh_proxy.sw_if_index = t0->sw_if_index;
+          }
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
 

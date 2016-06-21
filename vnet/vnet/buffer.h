@@ -81,7 +81,8 @@ _(policer)                                      \
 _(output_features)				\
 _(map)						\
 _(map_t)					\
-_(ip_frag)
+_(ip_frag)        \
+_(nsh_proxy)
 
 /* 
  * vnet stack buffer opaque array overlay structure.
@@ -292,6 +293,16 @@ typedef struct {
         /* Current configuration index. */
         u32 current_config_index;
     } cop;
+
+    /* nsh-proxy, only valid there */
+    struct {
+        u32 src_ip;
+        u32 vni;
+        u32 spi_si;       /* nsp<<8 + nsi */
+        u32 sw_if_index;
+        u8  tunnel_type;  /* 1:nsh-vxlan-gpe; 2:nsh-gre; 3:nsh-ethernet */
+        u8  si_minus_one; /* 1: nsh si need to minus one */
+    } nsh_proxy;
 
     u32 unused[6];
   };
