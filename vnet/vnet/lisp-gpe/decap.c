@@ -77,14 +77,39 @@ next_protocol_to_next_index (lisp_gpe_header_t * lgh, u8 * next_header)
     return LISP_GPE_INPUT_NEXT_DROP;
 }
 
+static_always_inline void
+incr_stats (vnet_main_t * vnm, u32 cpu_index, u32 length, u32 sw_if_index,
+            u32 * last_sw_if_index, u32 * n_packets, u32 * n_bytes) {
+  vnet_interface_main_t * im;
+
+  if (PREDICT_TRUE (sw_if_index == *last_sw_if_index)) {
+    *n_packets += 1;
+    *n_bytes += length;
+  } else {
+    if (PREDICT_TRUE (*last_sw_if_index != ~0)) {
+      im = &vnm->interface_main;
+
+      vlib_increment_combined_counter (im->combined_sw_if_counters
+                                       + VNET_INTERFACE_COUNTER_RX,
+                                       cpu_index, *last_sw_if_index,
+                                       *n_packets, *n_bytes);
+    }
+    *last_sw_if_index = sw_if_index;
+    *n_packets = 1;
+    *n_bytes = length;
+  }
+}
+
+
 static uword
 lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
                        vlib_frame_t * from_frame, u8 is_v4)
 {
-  u32 n_left_from, next_index, * from, * to_next;
-  u32 pkts_decapsulated = 0;
+  u32 n_left_from, next_index, * from, * to_next, cpu_index;
+  u32 n_bytes = 0, n_packets = 0, last_sw_if_index = ~0;
   lisp_gpe_main_t * lgm = &lisp_gpe_main;
 
+  cpu_index = os_get_cpu_number();
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
@@ -185,8 +210,10 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           if (si0)
             {
+              incr_stats (lgm->vnet_main, cpu_index,
+                          vlib_buffer_length_in_chain (vm, b0), si0[0],
+                          &last_sw_if_index, &n_packets, &n_bytes);
               vnet_buffer(b0)->sw_if_index[VLIB_RX] = si0[0];
-              pkts_decapsulated++;
               error0 = 0;
             }
           else
@@ -197,8 +224,10 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           if (si1)
             {
+              incr_stats (lgm->vnet_main, cpu_index,
+                          vlib_buffer_length_in_chain (vm, b1), si1[0],
+                          &last_sw_if_index, &n_packets, &n_bytes);
               vnet_buffer(b1)->sw_if_index[VLIB_RX] = si1[0];
-              pkts_decapsulated++;
               error1 = 0;
             }
           else
@@ -301,8 +330,10 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
           if (si0)
             {
+              incr_stats (lgm->vnet_main, cpu_index,
+                          vlib_buffer_length_in_chain (vm, b0), si0[0],
+                          &last_sw_if_index, &n_packets, &n_bytes);
               vnet_buffer(b0)->sw_if_index[VLIB_RX] = si0[0];
-              pkts_decapsulated++;
               error0 = 0;
             }
           else
@@ -329,9 +360,10 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, lisp_gpe_ip4_input_node.index,
-                               LISP_GPE_ERROR_DECAPSULATED, 
-                               pkts_decapsulated);
+
+  /* flush iface stats */
+  incr_stats (lgm->vnet_main, cpu_index, 0, ~0, &last_sw_if_index, &n_packets,
+              &n_bytes);
   return from_frame->n_vectors;
 }
 
@@ -349,22 +381,11 @@ lisp_gpe_ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   return lisp_gpe_input_inline(vm, node, from_frame, 0);
 }
 
-static char * lisp_gpe_error_strings[] = {
-#define lisp_gpe_error(n,s) s,
-#include <vnet/lisp-gpe/lisp_gpe_error.def>
-#undef lisp_gpe_error
-#undef _
-};
-
 VLIB_REGISTER_NODE (lisp_gpe_ip4_input_node) = {
   .function = lisp_gpe_ip4_input,
   .name = "lisp-gpe-ip4-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
-
-  .n_errors = LISP_GPE_N_ERROR,
-  .error_strings = lisp_gpe_error_strings,
-
   .n_next_nodes = LISP_GPE_INPUT_N_NEXT,
   .next_nodes = {
 #define _(s,n) [LISP_GPE_INPUT_NEXT_##s] = n,
@@ -382,10 +403,6 @@ VLIB_REGISTER_NODE (lisp_gpe_ip6_input_node) = {
   .name = "lisp-gpe-ip6-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
-
-  .n_errors = LISP_GPE_N_ERROR,
-  .error_strings = lisp_gpe_error_strings,
-
   .n_next_nodes = LISP_GPE_INPUT_N_NEXT,
   .next_nodes = {
 #define _(s,n) [LISP_GPE_INPUT_NEXT_##s] = n,
