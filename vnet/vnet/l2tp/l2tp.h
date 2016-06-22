@@ -42,6 +42,8 @@ typedef struct {
     u8  l2tp_hdr_size;
     u8  l2_sublayer_present;
     u8  cookie_flags;           /* in host byte order */
+
+    u8 admin_up;
 } l2t_session_t;
 
 typedef enum {

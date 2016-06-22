@@ -25,7 +25,8 @@
 /* Statistics (not really errors) */
 #define foreach_l2t_encap_error					\
 _(NETWORK_TO_USER, "L2TP L2 network to user (ip6) pkts")	\
-_(LOOKUP_FAIL_TO_L3, "L2TP L2 session lookup failed pkts")
+_(LOOKUP_FAIL_TO_L3, "L2TP L2 session lookup failed pkts")      \
+_(ADMIN_DOWN, "L2TP tunnel is down")
 
 static char * l2t_encap_error_strings[] = {
 #define _(sym,string) string,
@@ -129,6 +130,11 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
                                      vlib_buffer_length_in_chain (vm, b));
     
     s = pool_elt_at_index (lm->sessions, session_index);
+
+    if (PREDICT_FALSE(!(s->admin_up))) {
+	b->error = node->errors[L2T_ENCAP_ERROR_ADMIN_DOWN];
+	return L2T_ENCAP_NEXT_DROP;
+    }
 
     /* Paint on an l2tpv3 hdr */
     vlib_buffer_advance (b, -(s->l2tp_hdr_size));
