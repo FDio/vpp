@@ -1993,6 +1993,7 @@ typedef enum {
 typedef enum {
   IP6_DISCOVER_NEIGHBOR_ERROR_DROP,
   IP6_DISCOVER_NEIGHBOR_ERROR_REQUEST_SENT,
+  IP6_DISCOVER_NEIGHBOR_ERROR_NO_SOURCE_ADDRESS,
 } ip6_discover_neighbor_error_t;
 
 static uword
@@ -2123,8 +2124,13 @@ ip6_discover_neighbor (vlib_main_t * vm,
              * Choose source address based on destination lookup 
              * adjacency. 
              */
-	    ip6_src_address_for_packet (im, p0, &h0->ip.src_address, 
-                                        sw_if_index0);
+	    if (ip6_src_address_for_packet (im, p0, &h0->ip.src_address,
+	                                        sw_if_index0)) {
+		//There is no address on the interface
+		p0->error = node->errors[IP6_DISCOVER_NEIGHBOR_ERROR_NO_SOURCE_ADDRESS];
+		vlib_buffer_free(vm, &bi0, 1);
+		continue;
+	    }
 
 	    /* 
              * Destination address is a solicited node multicast address.  
@@ -2175,6 +2181,8 @@ static char * ip6_discover_neighbor_error_strings[] = {
   [IP6_DISCOVER_NEIGHBOR_ERROR_DROP] = "address overflow drops",
   [IP6_DISCOVER_NEIGHBOR_ERROR_REQUEST_SENT] 
   = "neighbor solicitations sent",
+  [IP6_DISCOVER_NEIGHBOR_ERROR_NO_SOURCE_ADDRESS]
+    = "no source address for ND solicitation",
 };
 
 VLIB_REGISTER_NODE (ip6_discover_neighbor_node) = {
