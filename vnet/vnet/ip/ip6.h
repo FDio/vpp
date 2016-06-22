@@ -289,13 +289,16 @@ ip6_unaligned_destination_matches_route (ip6_main_t * im,
   return 1;
 }
 
-always_inline void
+always_inline int
 ip6_src_address_for_packet (ip6_main_t * im, vlib_buffer_t * p, ip6_address_t * src, u32 sw_if_index)
 {
   ip_lookup_main_t * lm = &im->lookup_main;
   ip_interface_address_t * ia = ip_interface_address_for_packet (lm, p, sw_if_index);
+  if (ia == NULL)
+    return -1;
   ip6_address_t * a = ip_interface_address_get_address (lm, ia);
   *src = a[0];
+  return 0;
 }
 
 always_inline u32

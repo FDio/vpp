@@ -2373,7 +2373,12 @@ ip4_arp (vlib_main_t * vm,
 	    clib_memcpy (h0->ip4_over_ethernet[0].ethernet, hw_if0->hw_address,
 		    sizeof (h0->ip4_over_ethernet[0].ethernet));
 
-	    ip4_src_address_for_packet (im, p0, &h0->ip4_over_ethernet[0].ip4, sw_if_index0);
+	    if (ip4_src_address_for_packet (im, p0, &h0->ip4_over_ethernet[0].ip4, sw_if_index0)) {
+		//No source address available
+		p0->error = node->errors[IP4_ARP_ERROR_NO_SOURCE_ADDRESS];
+		vlib_buffer_free(vm, &bi0, 1);
+		continue;
+	    }
 
 	    /* Copy in destination address we are requesting. */
 	    h0->ip4_over_ethernet[1].ip4.data_u32 = ip0->dst_address.data_u32;
@@ -2400,6 +2405,7 @@ static char * ip4_arp_error_strings[] = {
   [IP4_ARP_ERROR_NON_ARP_ADJ] = "ARPs to non-ARP adjacencies",
   [IP4_ARP_ERROR_REPLICATE_DROP] = "ARP replication completed",
   [IP4_ARP_ERROR_REPLICATE_FAIL] = "ARP replication failed",
+  [IP4_ARP_ERROR_NO_SOURCE_ADDRESS] = "no source address for ARP request",
 };
 
 VLIB_REGISTER_NODE (ip4_arp_node) = {
