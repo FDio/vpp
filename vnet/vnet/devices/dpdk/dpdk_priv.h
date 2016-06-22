@@ -92,12 +92,20 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
         return 0;
 #endif
 
-      n_buffers = rte_vhost_dequeue_burst(&xd->vu_vhost_dev, offset + VIRTIO_TXQ,
-                                          bm->pktmbuf_pools[socket_id],
-                                          xd->rx_vectors[queue_id], VLIB_FRAME_SIZE);
+      struct rte_mbuf **pkts = xd->rx_vectors[queue_id];
+      while (n_left) {
+          n_this_chunk = rte_vhost_dequeue_burst(&xd->vu_vhost_dev,
+                                                 offset + VIRTIO_TXQ,
+                                                 bm->pktmbuf_pools[socket_id],
+                                                 pkts + n_buffers,
+                                                 n_left);
+          n_buffers += n_this_chunk;
+          n_left -= n_this_chunk;
+          if (n_this_chunk == 0)
+              break;
+      }
 
       int i; u32 bytes = 0;
-      struct rte_mbuf **pkts = xd->rx_vectors[queue_id];
       for (i = 0; i < n_buffers; i++) {
           struct rte_mbuf *buff = pkts[i];
           bytes += rte_pktmbuf_data_len(buff);
