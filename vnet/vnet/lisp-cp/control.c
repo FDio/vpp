@@ -891,32 +891,74 @@ VLIB_CLI_COMMAND (lisp_pitr_set_locator_set_command) = {
     .function = lisp_pitr_set_locator_set_command_fn,
 };
 
+
+static u8 *
+format_eid_entry (u8 * s, va_list * args)
+{
+  vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
+  lisp_cp_main_t * lcm = va_arg (*args, lisp_cp_main_t *);
+  gid_address_t * gid = va_arg (*args, gid_address_t *);
+  locator_set_t * ls = va_arg (*args, locator_set_t *);
+  u32 * loc_index;
+  u8 first_line = 1;
+  u8 * loc;
+
+  u8 * type = ls->local ? format(0, "local(%s)", ls->name)
+                        : format(0, "remote");
+
+  if (vec_len (ls->locator_indices) == 0)
+    {
+      s = format (s, "%-35U%-20s", format_gid_address, gid, type);
+    }
+  else
+    {
+      vec_foreach (loc_index, ls->locator_indices)
+        {
+          locator_t * l = pool_elt_at_index (lcm->locator_pool, loc_index[0]);
+          if (l->local)
+            loc = format (0, "%U", format_vnet_sw_if_index_name, vnm,
+                          l->sw_if_index);
+          else
+            loc = format (0, "%U", format_ip_address,
+                          &gid_address_ip (&l->address));
+
+          if (first_line)
+            {
+              s = format (s, "%-35U%-20s%-v\n", format_gid_address,
+                          gid, type, loc);
+              first_line = 0;
+            }
+          else
+            s = format (s, "%55s%v\n", "", loc);
+        }
+    }
+  return s;
+}
+
 static clib_error_t *
-lisp_show_local_eid_table_command_fn (vlib_main_t * vm,
-                                      unformat_input_t * input,
-                                      vlib_cli_command_t * cmd)
+lisp_show_eid_table_command_fn (vlib_main_t * vm,
+                                unformat_input_t * input,
+                                vlib_cli_command_t * cmd)
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
   mapping_t * mapit;
 
-  vlib_cli_output (vm, "%=30s%=16s", "EID", "Locator");
+  vlib_cli_output (vm, "%-35s%-20s%-s", "EID", "type", "locators");
   pool_foreach (mapit, lcm->mapping_pool,
   ({
-    u8 * msg = 0;
     locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
                                             mapit->locator_set_index);
-    vlib_cli_output (vm, "%-30U%16v", format_gid_address, &mapit->eid,
-                     ls->name);
-    vec_free (msg);
+    vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
+                     lcm, &mapit->eid, ls);
   }));
 
   return 0;
 }
 
-VLIB_CLI_COMMAND (lisp_cp_show_local_eid_table_command) = {
+VLIB_CLI_COMMAND (lisp_cp_show_eid_table_command) = {
     .path = "show lisp eid-table",
-    .short_help = "Shows local EID table",
-    .function = lisp_show_local_eid_table_command_fn,
+    .short_help = "Shows EID table",
+    .function = lisp_show_eid_table_command_fn,
 };
 
 /* cleans locator to locator-set data and removes locators not part of
