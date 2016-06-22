@@ -2373,7 +2373,10 @@ ip4_arp (vlib_main_t * vm,
 	    clib_memcpy (h0->ip4_over_ethernet[0].ethernet, hw_if0->hw_address,
 		    sizeof (h0->ip4_over_ethernet[0].ethernet));
 
-	    ip4_src_address_for_packet (im, p0, &h0->ip4_over_ethernet[0].ip4, sw_if_index0);
+	    if (ip4_src_address_for_packet (im, p0, &h0->ip4_over_ethernet[0].ip4, sw_if_index0)) {
+		//Use undefined source address
+		h0->ip4_over_ethernet[0].ip4.as_u32 = 0;
+	    }
 
 	    /* Copy in destination address we are requesting. */
 	    h0->ip4_over_ethernet[1].ip4.data_u32 = ip0->dst_address.data_u32;

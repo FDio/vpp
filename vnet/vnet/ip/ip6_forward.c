@@ -2123,8 +2123,12 @@ ip6_discover_neighbor (vlib_main_t * vm,
              * Choose source address based on destination lookup 
              * adjacency. 
              */
-	    ip6_src_address_for_packet (im, p0, &h0->ip.src_address, 
-                                        sw_if_index0);
+	    if (ip6_src_address_for_packet (im, p0, &h0->ip.src_address,
+	                                        sw_if_index0)) {
+		//If there is not source address available. Use undefined address.
+		h0->ip.src_address.as_u64[0] = 0;
+		h0->ip.src_address.as_u64[1] = 0;
+	    }
 
 	    /* 
              * Destination address is a solicited node multicast address.  
