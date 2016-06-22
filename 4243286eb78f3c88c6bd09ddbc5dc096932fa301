@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_3648db2c",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1425,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-22T10:07:19Z",
+      "side": 1,
+      "message": "vec_free can be called with null values",
+      "range": {
+        "startLine": 1424,
+        "startChar": 2,
+        "endLine": 1425,
+        "endChar": 32
+      },
+      "revId": "4243286eb78f3c88c6bd09ddbc5dc096932fa301",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
