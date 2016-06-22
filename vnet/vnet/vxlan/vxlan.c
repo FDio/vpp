@@ -31,6 +31,8 @@ static u8 * format_decap_next (u8 * s, va_list * args)
       return format (s, "ip4");
     case VXLAN_INPUT_NEXT_IP6_INPUT:
       return format (s, "ip6");
+    case VXLAN_INPUT_NEXT_NSH_PROXY_ENCAP:
+      return format (s, "nsh-proxy");
     default:
       return format (s, "unknown %d", next_index);
     }
@@ -409,6 +411,8 @@ static uword unformat_decap_next (unformat_input_t * input, va_list * args)
     *result = VXLAN_INPUT_NEXT_IP4_INPUT;
   else if (unformat (input, "ip6"))
     *result = VXLAN_INPUT_NEXT_IP6_INPUT;
+  else if (unformat (input, "nsh-proxy"))
+    *result = VXLAN_INPUT_NEXT_NSH_PROXY_ENCAP;
   else if (unformat (input, "%d", &tmp))
     *result = tmp;
   else
@@ -549,7 +553,7 @@ VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
   .path = "create vxlan tunnel",
   .short_help = 
   "create vxlan tunnel src <local-vtep-addr> dst <remote-vtep-addr> vni <nn>" 
-  " [encap-vrf-id <nn>] [decap-next [l2|ip4|ip6] [del]\n",
+  " [encap-vrf-id <nn>] [decap-next [l2|ip4|ip6|nsh-proxy] [del]\n",
   .function = vxlan_add_del_tunnel_command_fn,
 };
 
