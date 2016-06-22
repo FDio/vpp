@@ -531,7 +531,7 @@ ip_interface_address_for_packet (ip_lookup_main_t * lm, vlib_buffer_t * b, u32 s
 		      vec_elt (lm->if_address_pool_index_by_sw_if_index, sw_if_index)
 		      : if_address_index);
 
-  return pool_elt_at_index (lm->if_address_pool, if_address_index);
+  return (if_address_index != ~0)?pool_elt_at_index (lm->if_address_pool, if_address_index):NULL;
 }
 
 #define foreach_ip_interface_address(lm,a,sw_if_index,loop,body)        \

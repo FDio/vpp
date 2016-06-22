@@ -237,13 +237,16 @@ ip4_unaligned_destination_matches_route (ip4_main_t * im,
 					 uword dest_length)
 { return 0 == ((clib_mem_unaligned (&key->data_u32, u32) ^ dest->data_u32) & im->fib_masks[dest_length]); }
 
-always_inline void
+always_inline int
 ip4_src_address_for_packet (ip4_main_t * im, vlib_buffer_t * p, ip4_address_t * src, u32 sw_if_index)
 {
   ip_lookup_main_t * lm = &im->lookup_main;
   ip_interface_address_t * ia = ip_interface_address_for_packet (lm, p, sw_if_index);
+  if (ia == NULL)
+    return -1;
   ip4_address_t * a = ip_interface_address_get_address (lm, ia);
   *src = a[0];
+  return 0;
 }
 
 /* Find interface address which matches destination. */
