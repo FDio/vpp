@@ -27,7 +27,8 @@
 _(USER_TO_NETWORK, "L2TP user (ip6) to L2 network pkts")        \
 _(SESSION_ID_MISMATCH, "l2tpv3 local session id mismatches")    \
 _(COOKIE_MISMATCH, "l2tpv3 local cookie mismatches")            \
-_(NO_SESSION, "l2tpv3 session not found")
+_(NO_SESSION, "l2tpv3 session not found")                       \
+_(ADMIN_DOWN, "l2tpv3 tunnel is down")
 
 static char * l2t_decap_error_strings[] = {
 #define _(sym,string) string,
@@ -168,6 +169,12 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 
     vnet_buffer(b)->sw_if_index[VLIB_RX] = session->sw_if_index;
+
+    if (PREDICT_FALSE(!(session->admin_up))) {
+	b->error = node->errors[L2T_DECAP_ERROR_ADMIN_DOWN];
+	next_index = L2T_DECAP_NEXT_DROP;
+	goto done;
+    }
 
     /* strip the ip6 and L2TP header */
     vlib_buffer_advance (b, sizeof (*ip6) + session->l2tp_hdr_size);

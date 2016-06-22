@@ -25,7 +25,8 @@
 /* Statistics (not really errors) */
 #define foreach_l2t_encap_error					\
 _(NETWORK_TO_USER, "L2TP L2 network to user (ip6) pkts")	\
-_(LOOKUP_FAIL_TO_L3, "L2TP L2 session lookup failed pkts")
+_(LOOKUP_FAIL_TO_L3, "L2TP L2 session lookup failed pkts")      \
+_(ADMIN_DOWN, "L2TP tunnel is down")
 
 static char * l2t_encap_error_strings[] = {
 #define _(sym,string) string,
@@ -105,6 +106,7 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
     l2t_session_t *s;
     ip6_header_t *ip6;
     u16 payload_length;
+    u32 next_index = L2T_ENCAP_NEXT_IP6_LOOKUP;
 
     /* Other-than-output pkt? We're done... */
     if (vnet_buffer(b)->l2t.next_index != L2T_ENCAP_NEXT_IP6_LOOKUP)
@@ -144,6 +146,12 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
     vlib_buffer_advance (b, -(sizeof (*ip6)));
     ip6 = vlib_buffer_get_current (b);
 
+    if (PREDICT_FALSE(!(s->admin_up))) {
+	b->error = node->errors[L2T_ENCAP_ERROR_ADMIN_DOWN];
+	next_index = L2T_ENCAP_NEXT_DROP;
+	goto done;
+    }
+
     ip6->ip_version_traffic_class_and_flow_label = 
         clib_host_to_net_u32 (0x6<<28);
 
@@ -159,6 +167,8 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
     ip6->dst_address.as_u64[0] = s->client_address.as_u64[0];
     ip6->dst_address.as_u64[1] = s->client_address.as_u64[1];
 
+
+ done:
     if (PREDICT_FALSE(b->flags & VLIB_BUFFER_IS_TRACED)) {
         l2t_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
         t->is_user_to_network = 0;
@@ -173,7 +183,7 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
         t->session_index = session_index;
     }
 
-    return L2T_ENCAP_NEXT_IP6_LOOKUP;
+    return next_index;
 }
 
 #include <vnet/pipeline.h>
