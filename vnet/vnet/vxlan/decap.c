@@ -205,7 +205,8 @@ vxlan_input (vlib_main_t * vm,
 
           t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
 
-          next0 = t0->decap_next_index;
+          next0 = (t0->decap_next_index < node->n_next_nodes) ?
+                       t0->decap_next_index : VXLAN_INPUT_NEXT_DROP;
           sw_if_index0 = t0->sw_if_index;
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -213,6 +214,15 @@ vxlan_input (vlib_main_t * vm,
           if (PREDICT_TRUE(next0 == VXLAN_INPUT_NEXT_L2_INPUT))
             vnet_update_l2_len (b0);
 
+          if (next0 == VXLAN_INPUT_NEXT_NSH_PROXY_ENCAP)
+          {
+              /*
+               * Save vni, tunnel_type and sw_if_index to buffer's opaque.
+               */
+              vnet_buffer(b0)->plugin_metadata[1] = vxlan0->vni_reserved << 8;
+              vnet_buffer(b0)->plugin_metadata[3] = NSH_PROXY_OUTBOUND_TRANSPORT_VXLAN;
+              vnet_buffer(b0)->plugin_metadata[2] = t0->sw_if_index;
+          }
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
 
@@ -295,7 +305,8 @@ vxlan_input (vlib_main_t * vm,
 
           t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
 
-          next1 = t1->decap_next_index;
+          next1 = (t1->decap_next_index < node->n_next_nodes) ?
+                       t1->decap_next_index : VXLAN_INPUT_NEXT_DROP;
           sw_if_index1 = t1->sw_if_index;
           len1 = vlib_buffer_length_in_chain (vm, b1);
 
@@ -303,6 +314,15 @@ vxlan_input (vlib_main_t * vm,
           if (PREDICT_TRUE(next1 == VXLAN_INPUT_NEXT_L2_INPUT))
             vnet_update_l2_len (b1);
 
+          if (next1 == VXLAN_INPUT_NEXT_NSH_PROXY_ENCAP)
+          {
+              /*
+               * Save vni, tunnel_type and sw_if_index to buffer's opaque.
+               */
+              vnet_buffer(b1)->plugin_metadata[1] = vxlan1->vni_reserved << 8;
+              vnet_buffer(b1)->plugin_metadata[3] = NSH_PROXY_OUTBOUND_TRANSPORT_VXLAN;
+              vnet_buffer(b1)->plugin_metadata[2] = t1->sw_if_index;
+          }
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b1)->sw_if_index[VLIB_RX] = sw_if_index1;
 
@@ -439,7 +459,8 @@ vxlan_input (vlib_main_t * vm,
 
           t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
 
-          next0 = t0->decap_next_index;
+          next0 = (t0->decap_next_index < node->n_next_nodes) ?
+                       t0->decap_next_index : VXLAN_INPUT_NEXT_DROP;
           sw_if_index0 = t0->sw_if_index;
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -447,6 +468,15 @@ vxlan_input (vlib_main_t * vm,
           if (PREDICT_TRUE(next0 == VXLAN_INPUT_NEXT_L2_INPUT))
             vnet_update_l2_len (b0);
 
+          if (next0 == VXLAN_INPUT_NEXT_NSH_PROXY_ENCAP)
+          {
+              /*
+               * Save vni, tunnel_type and sw_if_index to buffer's opaque.
+               */
+              vnet_buffer(b0)->plugin_metadata[1] = vxlan0->vni_reserved << 8;
+              vnet_buffer(b0)->plugin_metadata[3] = NSH_PROXY_OUTBOUND_TRANSPORT_VXLAN;
+              vnet_buffer(b0)->plugin_metadata[2] = t0->sw_if_index;
+          }
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
 

@@ -109,6 +109,10 @@ typedef enum {
   VXLAN_INPUT_N_NEXT,
 } vxlan_input_next_t;
 
+/* Used for NSH-Proxy */
+#define VXLAN_INPUT_NEXT_NSH_PROXY_ENCAP     4
+#define NSH_PROXY_OUTBOUND_TRANSPORT_VXLAN   2
+
 typedef enum {
 #define vxlan_error(n,s) VXLAN_ERROR_##n,
 #include <vnet/vxlan/vxlan_error.def>
