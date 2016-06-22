@@ -64,6 +64,7 @@ typedef enum
   GID_ADDR_IP_PREFIX,
   GID_ADDR_LCAF,
   GID_ADDR_MAC,
+  GID_ADDR_SRC_DST,
   GID_ADDR_NO_ADDRESS,
   GID_ADDR_TYPES
 } gid_address_type_t;
@@ -86,6 +87,10 @@ typedef struct
   struct _gid_address_t *src;
   struct _gid_address_t *dst;
 } source_dest_t;
+
+#define SD_CAST (source_dest_t *)
+#define sd_dst_gid(_a) (SD_CAST _a)->dst
+#define sd_src_gid(_a) (SD_CAST _a)->src
 
 typedef struct
 {
@@ -172,6 +177,10 @@ u32 gid_address_parse (u8 * offset, gid_address_t *a);
 #define gid_address_mac(_a) (_a)->mac
 #define gid_address_vni(_a) (_a)->vni
 #define gid_address_vni_mask(_a) (_a)->vni_mask
+#define gid_address_sd_dest_pref(_a) \
+  gid_address_ippref(sd_dst_gid(_a))
+#define gid_address_sd_source_pref(_a) \
+  gid_address_ippref(sd_src_gid(_a))
 
 /* 'sub'address functions */
 #define foreach_gid_address_type_fcns  \
