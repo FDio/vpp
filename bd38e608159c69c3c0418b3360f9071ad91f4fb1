@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_5490e894",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-22T14:25:11Z",
+      "side": 1,
+      "message": "This is 0 just because for now e don\u0027t have any LCAF, righ? (since vni is treated separately)",
+      "range": {
+        "startLine": 534,
+        "startChar": 2,
+        "endLine": 534,
+        "endChar": 11
+      },
+      "revId": "bd38e608159c69c3c0418b3360f9071ad91f4fb1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_54b9082d",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-22T14:25:11Z",
+      "side": 1,
+      "message": "I like this :D \n\nJust one nit, maybe it would be better to call it foreach_gid_address_type_fcns.",
+      "range": {
+        "startLine": 179,
+        "startChar": 0,
+        "endLine": 179,
+        "endChar": 35
+      },
+      "revId": "bd38e608159c69c3c0418b3360f9071ad91f4fb1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
