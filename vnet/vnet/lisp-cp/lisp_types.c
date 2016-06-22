@@ -40,15 +40,15 @@ u16 no_addr_length (void * a);
 int no_addr_cmp (void * a1, void * a2);
 
 size_to_write_fct size_to_write_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_size_to_write, lcaf_size_to_write };
+  { ip_prefix_size_to_write, lcaf_size_to_write, mac_size_to_write };
 serdes_fct write_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_write, lcaf_write };
+  { ip_prefix_write, lcaf_write, mac_write };
 cast_fct cast_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_cast, lcaf_cast };
+  { ip_prefix_cast, lcaf_cast, mac_cast };
 addr_len_fct addr_len_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_length, lcaf_prefix_length };
+  { ip_prefix_length, lcaf_length, mac_length };
 copy_fct copy_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_copy, lcaf_copy };
+  { ip_prefix_copy, lcaf_copy, mac_copy };
 
 cmp_fct lcaf_cmp_fcts[LCAF_TYPES] =
   {
@@ -475,6 +475,12 @@ ip_prefix_copy (void * dst , void * src)
   clib_memcpy (dst, src, sizeof (ip_prefix_t));
 }
 
+void
+mac_copy (void * dst , void * src)
+{
+  clib_memcpy (dst, src, 6);
+}
+
 int
 ip_prefix_cmp(ip_prefix_t * p1, ip_prefix_t * p2)
 {
@@ -523,7 +529,13 @@ lcaf_copy (void * dst , void * src)
 }
 
 u8
-lcaf_prefix_length (void *a)
+lcaf_length (void *a)
+{
+  return 0;
+}
+
+u8
+mac_length (void *a)
 {
   return 0;
 }
@@ -532,6 +544,12 @@ void *
 lcaf_cast (gid_address_t * a)
 {
   return &gid_address_lcaf (a);
+}
+
+void *
+mac_cast (gid_address_t * a)
+{
+  return &gid_address_mac (a);
 }
 
 u16
@@ -574,6 +592,14 @@ lcaf_write (u8 * p, void * a)
     return ~0;
 
   return size + len;
+}
+
+u16
+mac_write (u8 * p, void * a)
+{
+  *(u16 *)p = clib_host_to_net_u16 (LISP_AFI_MAC);
+  clib_memcpy(p + sizeof (u16), a, 6);
+  return mac_size_to_write (a);
 }
 
 u16
@@ -632,6 +658,12 @@ lcaf_size_to_write (void * a)
   return size + len;
 }
 
+u16
+mac_size_to_write (void * a)
+{
+  return sizeof (u16) + 6;
+}
+
 u8
 gid_address_len (gid_address_t *a)
 {
@@ -668,6 +700,16 @@ gid_address_copy(gid_address_t * dst, gid_address_t * src)
 }
 
 u32
+mac_parse (u8 * offset, gid_address_t * a)
+{
+  /* skip AFI field */
+  offset += sizeof (u16);
+
+  memcpy (gid_address_mac (a), offset, sizeof (gid_address_mac (a)));
+  return (sizeof (u16) + sizeof (gid_address_mac (a)));
+}
+
+u32
 gid_address_parse (u8 * offset, gid_address_t *a)
 {
   lisp_afi_e afi;
@@ -699,6 +741,10 @@ gid_address_parse (u8 * offset, gid_address_t *a)
     case LISP_AFI_LCAF:
       len = lcaf_parse (offset, a);
       gid_address_type(a) = GID_ADDR_LCAF;
+      break;
+    case LISP_AFI_MAC:
+      len = mac_parse (offset, a);
+      gid_address_type(a) = GID_ADDR_MAC;
       break;
     default:
       clib_warning("LISP AFI %d not supported!", afi);
@@ -759,6 +805,10 @@ gid_address_cmp (gid_address_t * a1, gid_address_t * a2)
       lcaf2 = &gid_address_lcaf (a2);
       if (lcaf_type (lcaf1) == lcaf_type (lcaf2))
         cmp = (*lcaf_cmp_fcts[lcaf_type (lcaf1)])(lcaf1, lcaf2);
+      break;
+    case GID_ADDR_MAC:
+      cmp = memcmp (gid_address_mac (a1), gid_address_mac (a2),
+                    sizeof (gid_address_mac (a1)));
       break;
     default:
       break;

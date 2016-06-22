@@ -63,6 +63,7 @@ typedef enum
    * instead */
   GID_ADDR_IP_PREFIX,
   GID_ADDR_LCAF,
+  GID_ADDR_MAC,
   GID_ADDR_NO_ADDRESS,
   GID_ADDR_TYPES
 } gid_address_type_t;
@@ -120,6 +121,7 @@ typedef struct _gid_address_t
   {
     ip_prefix_t ippref;
     lcaf_t lcaf;
+    u8 mac[6];
   };
   u8 type;
 } gid_address_t;
@@ -144,6 +146,7 @@ typedef enum {
     LISP_AFI_NO_ADDR,
     LISP_AFI_IP,
     LISP_AFI_IP6,
+    LISP_AFI_MAC = 6,
     LISP_AFI_LCAF = 16387
 } lisp_afi_e;
 
@@ -165,6 +168,7 @@ u32 gid_address_parse (u8 * offset, gid_address_t *a);
 #define gid_address_ip(_a) ip_prefix_addr(&gid_address_ippref(_a))
 #define gid_address_ip_version(_a) ip_addr_version(&gid_address_ip(_a))
 #define gid_address_lcaf(_a) (_a)->lcaf
+#define gid_address_mac(_a) (_a)->mac
 #define gid_address_vni(_a) ( (GID_ADDR_LCAF == gid_address_type(_a)) ? \
                               lcaf_vni(&gid_address_lcaf(_a)) : 0)
 /* setter for vni  */
@@ -172,18 +176,20 @@ u32 gid_address_parse (u8 * offset, gid_address_t *a);
   (lcaf_vni(&gid_address_lcaf(_a)) = (_val))
 
 /* 'sub'address functions */
-u16 ip_prefix_size_to_write (void * pref);
-u16 ip_prefix_write (u8 * p, void * pref);
-u8 ip_prefix_length (void *a);
-void *ip_prefix_cast (gid_address_t * a);
-void ip_prefix_copy (void * dst , void * src);
+#define foreach_gid_address_type_fcns  \
+  _(ip_prefix)                    \
+  _(lcaf)                         \
+  _(mac)
 
-int lcaf_cmp (lcaf_t * lcaf1, lcaf_t * lcaf2);
-u16 lcaf_size_to_write (void * pref);
-u16 lcaf_write (u8 * p, void * pref);
-u8 lcaf_prefix_length (void *a);
-void *lcaf_cast (gid_address_t * a);
-void lcaf_copy (void * dst , void * src);
+#define _(_n)                                 \
+u16    _n ## _size_to_write (void * pref);    \
+u16    _n ## _write (u8 * p, void * pref);    \
+u8     _n ## _length (void *a);               \
+void * _n ## _cast (gid_address_t * a);       \
+void   _n ## _copy (void * dst , void * src);
+
+foreach_sub_address_fcns
+#undef _
 
 typedef struct
 {

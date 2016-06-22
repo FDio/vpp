@@ -105,6 +105,28 @@ done:
   return error;
 }
 
+static clib_error_t * test_gid_parse_mac ()
+{
+  clib_error_t * error = 0;
+  gid_address_t _gid, * gid = &_gid;
+  gid_address_t _gid_copy, * gid_copy = &_gid_copy;
+
+  u8 data[] =
+    {
+      0x00, 0x06,             /* AFI = MAC address */
+      0x10, 0xbb, 0xcc, 0xdd, /* MAC */
+      0x77, 0x99,
+    };
+
+  u32 len = gid_address_parse (data, gid);
+  _assert (8 == len);
+  _assert (GID_ADDR_MAC == gid_address_type (gid));
+  gid_address_copy (gid_copy, gid);
+  _assert (0 == gid_address_cmp (gid_copy, gid));
+done:
+  return error;
+}
+
 static clib_error_t * test_gid_parse_lcaf ()
 {
   clib_error_t * error = 0;
@@ -294,6 +316,74 @@ done:
   return error;
 }
 
+#if 0 /* uncomment this once VNI is supported */
+static clib_error_t * test_write_mac_in_lcaf (void)
+{
+  clib_error_t * error = 0;
+
+  u8 * b = clib_mem_alloc(500);
+  memset(b, 0, 500);
+
+  gid_address_t g =
+    {
+      .mac = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6},
+      .vni = 0x30,
+      .vni_mask = 0x10,
+      .type = GID_ADDR_MAC,
+    };
+
+  u16 len = gid_address_put (b, &g);
+  _assert (8 == len);
+
+  u8 expected[] =
+    {
+      0x40, 0x03,             /* AFI = LCAF */
+      0x00,                   /* reserved1 */
+      0x00,                   /* flags */
+      0x02,                   /* LCAF type = Instance ID */
+      0x20,                   /* IID/VNI mask len */
+      0x00, 0x0a,             /* length */
+      0x01, 0x02, 0x03, 0x04, /* Instance ID / VNI */
+
+      0x00, 0x06,             /* AFI = MAC */
+      0x01, 0x02, 0x03, 0x04,
+      0x05, 0x06              /* MAC */
+    }
+  _assert (0 == memcmp (expected, b, len));
+done:
+  clib_mem_free (b);
+  return error;
+}
+#endif
+
+static clib_error_t * test_mac_address_write (void)
+{
+  clib_error_t * error = 0;
+
+  u8 * b = clib_mem_alloc(500);
+  memset(b, 0, 500);
+
+  gid_address_t g =
+    {
+      .mac = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6},
+      .type = GID_ADDR_MAC,
+    };
+
+  u16 len = gid_address_put (b, &g);
+  _assert (8 == len);
+
+  u8 expected[] =
+    {
+      0x00, 0x06,             /* AFI = MAC */
+      0x01, 0x02, 0x03, 0x04,
+      0x05, 0x06              /* MAC */
+    };
+  _assert (0 == memcmp (expected, b, len));
+done:
+  clib_mem_free (b);
+  return error;
+}
+
 static clib_error_t * test_gid_address_write (void)
 {
   clib_error_t * error = 0;
@@ -356,8 +446,10 @@ done:
   _(format_unformat_gid_address)          \
   _(locator_type)                         \
   _(gid_parse_ip_pref)                    \
+  _(gid_parse_mac)                        \
   _(gid_parse_lcaf)                       \
   _(gid_parse_lcaf_complex)               \
+  _(mac_address_write)                    \
   _(gid_address_write)
 
 int run_tests (void)
