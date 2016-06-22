@@ -891,6 +891,32 @@ VLIB_CLI_COMMAND (lisp_pitr_set_locator_set_command) = {
     .function = lisp_pitr_set_locator_set_command_fn,
 };
 
+
+static u8 *
+format_eid_entry (u8 * s, va_list * args)
+{
+  vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
+  lisp_cp_main_t * lcm = va_arg (*args, lisp_cp_main_t *);
+  gid_address_t * gid = va_arg (*args, gid_address_t *);
+  locator_set_t * ls = va_arg (*args, locator_set_t *);
+  u32 * loc_index;
+
+  s = format (s, "%U %s %s\n", format_gid_address, gid,
+          ls->local ? "local" : "remote",
+          ls->name ? ls->name : (u8 *)"");
+  vec_foreach (loc_index, ls->locator_indices)
+    {
+      locator_t * l = pool_elt_at_index (lcm->locator_pool, loc_index[0]);
+      if (l->local)
+        s = format (s, "  %U\n", format_vnet_sw_if_index_name, vnm,
+                    l->sw_if_index);
+      else
+        s = format (s, "  %U\n", format_ip_address,
+                    &gid_address_ip (&l->address));
+    }
+  return s;
+}
+
 static clib_error_t *
 lisp_show_local_eid_table_command_fn (vlib_main_t * vm,
                                       unformat_input_t * input,
@@ -898,16 +924,13 @@ lisp_show_local_eid_table_command_fn (vlib_main_t * vm,
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
   mapping_t * mapit;
+  vnet_main_t * vnm = vnet_get_main ();
 
-  vlib_cli_output (vm, "%=30s%=16s", "EID", "Locator");
   pool_foreach (mapit, lcm->mapping_pool,
   ({
-    u8 * msg = 0;
     locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
                                             mapit->locator_set_index);
-    vlib_cli_output (vm, "%-30U%16v", format_gid_address, &mapit->eid,
-                     ls->name);
-    vec_free (msg);
+    vlib_cli_output (vm, "%U", format_eid_entry, vnm, lcm, &mapit->eid, ls);
   }));
 
   return 0;

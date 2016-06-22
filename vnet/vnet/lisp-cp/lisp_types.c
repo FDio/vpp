@@ -160,6 +160,10 @@ format_gid_address (u8 * s, va_list * args)
     case GID_ADDR_IP_PREFIX:
       return format (s, "[%d] %U", gid_address_vni(a), format_ip_prefix,
                      &gid_address_ippref(a));
+    case GID_ADDR_SRC_DST:
+      return format (s, "[%d] %U|%U", gid_address_vni(a),
+                     format_ip_prefix, &gid_address_sd_source_pref(a),
+                     format_ip_prefix, &gid_address_sd_dest_pref(a));
     default:
       clib_warning("Can't format gid type %d", type);
       return 0;
