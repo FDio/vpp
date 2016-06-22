@@ -345,6 +345,7 @@ int create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
   s->l2tp_hdr_size = l2_sublayer_present ? 
     sizeof (l2tpv3_header_t) :
     sizeof (l2tpv3_header_t) - sizeof(l2tp_hdr.l2_specific_sublayer);
+  s->admin_up = 0;
 
   /* Setup hash table entries */
   switch (lm->lookup_type) {
@@ -401,9 +402,6 @@ int create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
 
   if (sw_if_index)
     *sw_if_index = hi->sw_if_index;
-
-  vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 
-                               VNET_SW_INTERFACE_FLAG_ADMIN_UP);
 
   return 0;
 }
@@ -664,6 +662,25 @@ l2tp_config (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (l2tp_config, "l2tp");
+
+
+clib_error_t *
+l2tp_sw_interface_up_down (vnet_main_t * vnm,
+				   u32 sw_if_index,
+				   u32 flags)
+{
+  l2t_main_t *lm = &l2t_main;
+  vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  if (hi->hw_class_index != l2tpv3_hw_class.index)
+    return 0;
+
+  u32 session_index = hi->dev_instance;
+  l2t_session_t *s = pool_elt_at_index (lm->sessions, session_index);
+  s->admin_up = !! (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+  return 0;
+}
+
+VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (l2tp_sw_interface_up_down);
 
 clib_error_t *l2tp_init (vlib_main_t *vm)
 {
