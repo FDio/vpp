@@ -24,7 +24,6 @@ typedef struct
 {
   gid_address_t src;
   gid_address_t dst;
-  u32 src_mapping_index;
 } pending_map_request_t;
 
 typedef struct
@@ -104,7 +103,7 @@ typedef struct
   uword * vni_by_table_id;
 
   /* Number of src prefixes in a vni that use an interface */
-  uword * dp_if_refcount_by_vni;
+  uword * dp_intf_by_vni;
 
   /* Proxy ETR map index */
   u32 pitr_map_index;
@@ -128,6 +127,11 @@ extern vlib_node_registration_t lisp_cp_lookup_node;
 clib_error_t *
 lisp_cp_init ();
 
+always_inline lisp_cp_main_t *
+vnet_lisp_cp_get_main() {
+  return &lisp_control_main;
+}
+
 typedef struct
 {
   u8 is_add;
@@ -150,7 +154,7 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
 typedef struct
 {
   u8 is_add;
-  gid_address_t deid;
+  gid_address_t eid;
   u32 locator_set_index;
 
   u32 ttl;
@@ -161,11 +165,16 @@ typedef struct
 } vnet_lisp_add_del_mapping_args_t;
 
 int
-vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t *a,
+vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t *a,
 			   u32 * map_index);
 int
 vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
                                  u32 * map_index_result);
+
+int
+vnet_lisp_add_del_mapping (gid_address_t * deid, locator_t * dlocs, u8 action,
+                           u8 authoritative, u32 ttl, u8 is_add,
+                           u32 * res_map_index);
 
 typedef struct
 {
@@ -176,18 +185,10 @@ typedef struct
 int
 vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a);
 
-always_inline lisp_cp_main_t *
-vnet_lisp_cp_get_main() {
-  return &lisp_control_main;
-}
-
-clib_error_t * vnet_lisp_enable_disable (u8 is_enabled);
-u8 vnet_lisp_enable_disable_status (void);
-
-int
-vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
-                                  ip_address_t * dlocs, u8 action, u8 is_add,
-                                  u8 del_all);
+clib_error_t *
+vnet_lisp_enable_disable (u8 is_enabled);
+u8
+vnet_lisp_enable_disable_status (void);
 
 int
 vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add);
@@ -201,8 +202,10 @@ typedef struct
 int
 vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a);
 
-int vnet_lisp_clear_all_remote_mappings (void);
+int
+vnet_lisp_clear_all_remote_adjacencies (void);
 
-int vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_add);
+int
+vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_add);
 
 #endif /* VNET_CONTROL_H_ */
