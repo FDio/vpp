@@ -2029,6 +2029,7 @@ vl_api_lisp_local_eid_table_details_t_handler_json (
       case 0:
         clib_memcpy(&ip4, mp->eid, sizeof(ip4));
         vat_json_object_add_ip4(node, "eid-address", ip4);
+        break;
       case 1:
         clib_memcpy(&ip6, mp->eid, sizeof(ip6));
         vat_json_object_add_ip6(node, "eid-address", ip6);
