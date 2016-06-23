@@ -750,6 +750,10 @@ u8 * format_dpdk_rte_mbuf (u8 * s, va_list * va)
   if (mb->packet_type)
     s = format (s, "\n%U%U", format_white_space, indent,
                 format_dpdk_pkt_types, &mb->packet_type);
+
+  if (mb->ol_flags & PKT_RX_VLAN_PKT)
+    s = format (s, "\n vlan_tci 0x%x, outer_vlan_tci 0x%x",
+                mb->vlan_tci, mb->vlan_tci_outer);
   return s;
 }
 

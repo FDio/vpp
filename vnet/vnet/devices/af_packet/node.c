@@ -65,7 +65,7 @@ static u8 * format_af_packet_input_trace (u8 * s, va_list * args)
 	      t->hw_if_index, t->next_index);
 
   s = format (s, "\n%Utpacket2_hdr:\n%Ustatus 0x%x len %u snaplen %u mac %u net %u"
-	      "\n%Usec 0x%x nsec 0x%x vlan_tci %u"
+	      "\n%Usec 0x%x nsec 0x%x vlan_tci 0x%x"
 #ifdef TP_STATUS_VLAN_TPID_VALID
 	      " vlan_tpid %u"
 #endif
@@ -80,11 +80,11 @@ static u8 * format_af_packet_input_trace (u8 * s, va_list * args)
 	      format_white_space, indent + 4,
 	      t->tph.tp_sec,
 	      t->tph.tp_nsec,
-	      t->tph.tp_vlan_tci,
+	      t->tph.tp_vlan_tci
 #ifdef TP_STATUS_VLAN_TPID_VALID
-	      t->tph.tp_vlan_tpid,
+	      , t->tph.tp_vlan_tpid
 #endif
-	      t->tph.tp_net);
+	      );
   return s;
 }
 
