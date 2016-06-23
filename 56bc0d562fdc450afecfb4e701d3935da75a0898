@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_97956242",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-23T11:50:45Z",
+      "side": 1,
+      "message": "The code will most likely run faster if you set these fields unconditionally. If there\u0027s no downside, please do that.\n\nWhy aren\u0027t you using plugin_metadata[0]?",
+      "revId": "56bc0d562fdc450afecfb4e701d3935da75a0898",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
