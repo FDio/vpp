@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_9789e2cc",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 927,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-23T15:25:56Z",
+      "side": 1,
+      "message": "We have pointer to it in lcm",
+      "range": {
+        "startLine": 927,
+        "startChar": 22,
+        "endLine": 927,
+        "endChar": 35
+      },
+      "revId": "649e13cd52cefc110cc71cf352d7dfc7d3b48c5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_f7681ef7",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 929,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-23T15:25:56Z",
+      "side": 1,
+      "message": "Could we have a table header here, something like: EID | type | [name] | locators. Also, would it be possible to align the data with the columns?",
+      "revId": "649e13cd52cefc110cc71cf352d7dfc7d3b48c5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
