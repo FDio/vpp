@@ -782,6 +782,8 @@ gid_address_parse (u8 * offset, gid_address_t *a)
   if (!a)
     return 0;
 
+  /* NOTE: since gid_adress_parse may be called by vni_parse, we can't 0
+   * the gid address here */
   afi = clib_net_to_host_u16 (*((u16 *) offset));
 
   switch (afi)
