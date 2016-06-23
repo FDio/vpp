@@ -4813,14 +4813,14 @@ vl_api_lisp_add_del_local_eid_t_handler(
   /* XXX treat batch configuration */
     a->is_add = mp->is_add;
     gid_address_vni (&eid) = clib_net_to_host_u32 (mp->vni);
-    a->deid = eid;
+    a->eid = eid;
     a->locator_set_index = locator_set_index;
     a->local = 1;
     rv = vnet_lisp_add_del_local_mapping(a, &map_index);
 
 out:
     vec_free(name);
-    gid_address_free (&a->deid);
+    gid_address_free (&a->eid);
 
     REPLY_MACRO(VL_API_LISP_ADD_DEL_LOCAL_EID_REPLY);
 }
@@ -5033,7 +5033,7 @@ vl_api_lisp_add_del_remote_mapping_t_handler (
     vl_api_lisp_add_del_remote_mapping_t *mp)
 {
     u32 i;
-    ip_address_t rloc, * rlocs = 0;
+    locator_t rloc, * rlocs = 0;
     vl_api_lisp_add_del_remote_mapping_reply_t * rmp;
     int rv = 0;
     gid_address_t _seid, * seid = &_seid;
@@ -5068,18 +5068,22 @@ vl_api_lisp_add_del_remote_mapping_t_handler (
 
     for (i = 0; i < mp->rloc_num; i++) {
         rloc_t * r = &((rloc_t *) mp->rlocs)[i];
-        if (r->is_ip4) {
-            clib_memcpy (&ip_addr_v4(&rloc), &r->addr, sizeof (rloc_t));
-            ip_addr_version (&rloc) = IP4;
-        } else {
-            clib_memcpy (&ip_addr_v6(&rloc), &r->addr, sizeof (rloc_t));
-            ip_addr_version (&rloc) = IP6;
-        }
+        ip_address_set(&gid_address_ip(&rloc.address), &r->addr,
+                       r->is_ip4 ? IP4 : IP6);
+        gid_address_type(&rloc.address) = GID_ADDR_IP_PREFIX;
         vec_add1 (rlocs, rloc);
     }
 
-    rv = vnet_lisp_add_del_remote_mapping (deid, seid, rlocs, mp->action,
-                                           mp->is_add, mp->del_all);
+    /* TODO build src/dst with seid */
+
+    /* NOTE: for now this works as a static remote mapping, i.e.,
+     * not authoritative and ttl not set. */
+    rv = vnet_lisp_add_del_mapping (deid, rlocs, mp->action, 0, ~0, mp->is_add,
+                                    0);
+
+    if (mp->del_all)
+      vnet_lisp_clear_all_remote_adjacencies ();
+
     vec_free (rlocs);
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
 }
