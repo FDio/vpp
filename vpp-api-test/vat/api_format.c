@@ -2029,6 +2029,7 @@ vl_api_lisp_local_eid_table_details_t_handler_json (
       case 0:
         clib_memcpy(&ip4, mp->eid, sizeof(ip4));
         vat_json_object_add_ip4(node, "eid-address", ip4);
+        break;
       case 1:
         clib_memcpy(&ip6, mp->eid, sizeof(ip6));
         vat_json_object_add_ip6(node, "eid-address", ip6);
@@ -2636,6 +2637,8 @@ _(trace_profile_del_reply)                              \
 _(lisp_add_del_locator_set_reply)                       \
 _(lisp_add_del_locator_reply)                           \
 _(lisp_add_del_local_eid_reply)                         \
+_(lisp_add_del_remote_mapping_reply)                    \
+_(lisp_add_del_adjacency_reply)                         \
 _(lisp_gpe_add_del_fwd_entry_reply)                     \
 _(lisp_add_del_map_resolver_reply)                      \
 _(lisp_gpe_enable_disable_reply)                        \
@@ -2817,6 +2820,8 @@ _(TRACE_PROFILE_DEL_REPLY, trace_profile_del_reply)                     \
 _(LISP_ADD_DEL_LOCATOR_SET_REPLY, lisp_add_del_locator_set_reply)       \
 _(LISP_ADD_DEL_LOCATOR_REPLY, lisp_add_del_locator_reply)               \
 _(LISP_ADD_DEL_LOCAL_EID_REPLY, lisp_add_del_local_eid_reply)           \
+_(LISP_ADD_DEL_REMOTE_MAPPING_REPLY, lisp_add_del_remote_mapping_reply) \
+_(LISP_ADD_DEL_ADJACENCY_REPLY, lisp_add_del_adjacency_reply)           \
 _(LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY, lisp_gpe_add_del_fwd_entry_reply)   \
 _(LISP_ADD_DEL_MAP_RESOLVER_REPLY, lisp_add_del_map_resolver_reply)     \
 _(LISP_GPE_ENABLE_DISABLE_REPLY, lisp_gpe_enable_disable_reply)         \
@@ -10565,8 +10570,7 @@ api_lisp_eid_table_add_del_map (vat_main_t * vam)
 }
 
 /**
- * Add/del remote mapping from LISP control plane and updates
- * forwarding entries in data-plane accordingly.
+ * Add/del remote mapping to/from LISP control plane
  *
  * @param vam vpp API test context
  * @return return code
@@ -10661,6 +10665,135 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
     mp->action = (u8) action;
     mp->deid_len = deid_len;
     mp->del_all = del_all;
+    mp->eid_type = deid_type;
+
+    switch (mp->eid_type) {
+    case 0:
+        clib_memcpy (mp->seid, &seid4, sizeof (seid4));
+        clib_memcpy (mp->deid, &deid4, sizeof (deid4));
+        break;
+    case 1:
+        clib_memcpy (mp->seid, &seid6, sizeof (seid6));
+        clib_memcpy (mp->deid, &deid6, sizeof (deid6));
+        break;
+    case 2:
+        clib_memcpy (mp->seid, seid_mac, 6);
+        clib_memcpy (mp->deid, deid_mac, 6);
+        break;
+    default:
+        errmsg ("unknown EID type %d!", mp->eid_type);
+        return 0;
+    }
+
+    mp->rloc_num = vec_len (rlocs);
+    clib_memcpy (mp->rlocs, rlocs, (sizeof (rloc_t) * vec_len (rlocs)));
+    vec_free (rlocs);
+
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+/**
+ * Add/del LISP adjacency. Saves mapping in LISP control plane and updates
+ * forwarding entries in data-plane accordingly.
+ *
+ * @param vam vpp API test context
+ * @return return code
+ */
+static int
+api_lisp_add_del_adjacency (vat_main_t * vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_lisp_add_del_adjacency_t *mp;
+    f64 timeout = ~0;
+    u32 vni = 0;
+    ip4_address_t seid4, deid4, rloc4;
+    ip6_address_t seid6, deid6, rloc6;
+    u8 deid_mac[6] = {0};
+    u8 seid_mac[6] = {0};
+    u8 deid_type, seid_type;
+    u32 seid_len = 0, deid_len = 0, len;
+    u8 is_add = 1;
+    u32 action = ~0;
+    rloc_t * rlocs = 0, rloc;
+
+    memset(mp, 0, sizeof(mp[0]));
+    seid_type = deid_type =  (u8)~0;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat(input, "del")) {
+            is_add = 0;
+        } else if (unformat(input, "add")) {
+            is_add = 1;
+        } else if (unformat(input, "deid %U/%d", unformat_ip4_address,
+                            &deid4, &len)) {
+            deid_type = 0; /* ipv4 */
+            deid_len = len;
+        } else if (unformat(input, "deid %U/%d", unformat_ip6_address,
+                            &deid6, &len)) {
+            deid_type = 1; /* ipv6 */
+            deid_len = len;
+        } else if (unformat(input, "deid %U", unformat_ethernet_address,
+                            deid_mac)) {
+            deid_type = 2; /* mac */
+        } else if (unformat(input, "seid %U/%d", unformat_ip4_address,
+                            &seid4, &len)) {
+            seid_type = 0; /* ipv4 */
+            seid_len = len;
+        } else if (unformat(input, "seid %U/%d", unformat_ip6_address,
+                            &seid6, &len)) {
+            seid_type = 1; /* ipv6 */
+            seid_len = len;
+        } else if (unformat(input, "seid %U", unformat_ethernet_address,
+                            seid_mac)) {
+            seid_type = 2; /* mac */
+        } else if (unformat(input, "vni %d", &vni)) {
+            ;
+        } else if (unformat(input, "rloc %U", unformat_ip4_address, &rloc4)) {
+            rloc.is_ip4 = 1;
+            clib_memcpy (&rloc.addr, &rloc4, sizeof (rloc4));
+            vec_add1 (rlocs, rloc);
+        } else if (unformat(input, "rloc %U", unformat_ip6_address, &rloc6)) {
+            rloc.is_ip4 = 0;
+            clib_memcpy (&rloc.addr, &rloc6, sizeof (rloc6));
+            vec_add1 (rlocs, rloc);
+        } else if (unformat(input, "action %d", &action)) {
+            ;
+        } else {
+            clib_warning ("parse error '%U'", format_unformat_error, input);
+            return -99;
+        }
+    }
+
+    if ((u8)~0 == deid_type) {
+        errmsg ("missing params!");
+        return -99;
+    }
+
+    if (seid_type != deid_type) {
+        errmsg ("source and destination EIDs are of different types!");
+        return -99;
+    }
+
+    if (is_add && (~0 == action)
+        && 0 == vec_len (rlocs)) {
+          errmsg ("no action set for negative map-reply!");
+          return -99;
+    }
+
+    M(LISP_ADD_DEL_ADJACENCY, lisp_add_del_adjacency);
+    mp->is_add = is_add;
+    mp->vni = htonl (vni);
+    mp->seid_len = seid_len;
+    mp->action = (u8) action;
+    mp->deid_len = deid_len;
     mp->eid_type = deid_type;
 
     switch (mp->eid_type) {
@@ -12121,10 +12254,12 @@ _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
 _(lisp_gpe_enable_disable, "enable|disable")                            \
 _(lisp_enable_disable, "enable|disable")                                \
 _(lisp_gpe_add_del_iface, "up|down")                                    \
-_(lisp_add_del_remote_mapping, "add|del vni <vni> table-id <id> "       \
-                               "deid <dest-eid> seid"                   \
+_(lisp_add_del_remote_mapping, "add|del vni <vni> deid <dest-eid> seid" \
                                " <src-eid> rloc <locator> "             \
-                               "[rloc <loc> ... ]")                     \
+                               "[rloc <loc> ... ] action <action>")     \
+_(lisp_add_del_adjacency, "add|del vni <vni> deid <dest-eid> seid"      \
+                              " <src-eid> rloc <locator> "              \
+                              "[rloc <loc> ... ] action <action>")      \
 _(lisp_pitr_set_locator_set, "locator-set <loc-set-name> | del")        \
 _(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
 _(lisp_eid_table_add_del_map, "[del] vni <vni> vrf <vrf>")              \
