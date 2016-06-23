@@ -95,6 +95,9 @@ typedef struct {
   /* Interior feature processing nodes (not including start and end nodes). */
   u32 * node_index_by_feature_index;
 
+  /* vnet_config pool index by user index */
+  u32 * config_pool_index_by_user_index;
+
   /* Temporary vector for holding config strings.  Used to avoid continually
      allocating vectors. */
   u32 * config_string_temp;

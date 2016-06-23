@@ -276,8 +276,15 @@ u32 vnet_config_add_feature (vlib_main_t * vm,
   new = find_config_with_features (vm, cm, new_features);
   new->reference_count += 1;
 
-  /* User gets pointer to config string first element (which defines the pool index
-     this config string comes from). */
+  /* 
+   * User gets pointer to config string first element 
+   * (which defines the pool index
+   * this config string comes from). 
+   */
+  vec_validate (cm->config_pool_index_by_user_index,
+                new->config_string_heap_index + 1);
+  cm->config_pool_index_by_user_index [new->config_string_heap_index + 1]
+      = new - cm->config_pool;
   return new->config_string_heap_index + 1;
 }
 
@@ -327,5 +334,9 @@ u32 vnet_config_del_feature (vlib_main_t * vm,
   new = find_config_with_features (vm, cm, new_features);
   new->reference_count += 1;
 
+  vec_validate (cm->config_pool_index_by_user_index,
+                new->config_string_heap_index + 1);
+  cm->config_pool_index_by_user_index [new->config_string_heap_index + 1]
+      = new - cm->config_pool;
   return new->config_string_heap_index + 1;
 }

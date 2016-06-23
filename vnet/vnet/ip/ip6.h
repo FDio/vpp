@@ -157,6 +157,9 @@ typedef struct ip6_main_t {
   u32 ip6_multicast_rx_feature_vpath;
   u32 ip6_multicast_rx_feature_lookup;
 
+  /* Save results for show command */
+  char ** feature_nodes[VNET_N_CAST];
+
   /* Seed for Jenkins hash used to compute ip6 flow hash. */
   u32 flow_hash_seed;
 

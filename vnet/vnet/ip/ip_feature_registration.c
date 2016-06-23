@@ -163,7 +163,9 @@ ip_feature_init_cast (vlib_main_t * vm,
 
   /* see if we got a partial order... */
   if (vec_len (result) != n_features)
-    return clib_error_return (0, "ip4_feature_init_cast (cast=%d), no PO!");
+      return clib_error_return 
+        (0, "ip%s_feature_init_cast (cast=%d), no partial order!",
+         is_ip4 ? "4" : "6", cast);
 
   /* 
    * We win.
@@ -189,6 +191,12 @@ ip_feature_init_cast (vlib_main_t * vm,
                     feature_nodes, 
                     vec_len(feature_nodes));
 
+  /* Save a copy for show command */
+  if (is_ip4)
+    im4->feature_nodes[cast] = feature_nodes;
+  else
+    im6->feature_nodes[cast] = feature_nodes;
+
   /* Finally, clean up all the shit we allocated */
   hash_foreach_pair (hp, index_by_name,
   ({
@@ -204,4 +212,120 @@ ip_feature_init_cast (vlib_main_t * vm,
   clib_ptclosure_free (closure);
   return 0;
 }
+
+#define foreach_af_cast                         \
+_(4, VNET_UNICAST, "ip4 unicast")               \
+_(4, VNET_MULTICAST, "ip4 multicast")           \
+_(6, VNET_UNICAST, "ip6 unicast")               \
+_(6, VNET_MULTICAST, "ip6 multicast")
+
+static clib_error_t *
+show_ip_features_command_fn (vlib_main_t * vm,
+		 unformat_input_t * input,
+		 vlib_cli_command_t * cmd)
+{
+  ip4_main_t * im4 = &ip4_main;
+  ip6_main_t * im6 = &ip6_main;
+  int i;
+  char ** features;
+
+  vlib_cli_output (vm, "Available IP feature nodes");
+
+#define _(a,c,s)                                        \
+  do {                                                  \
+    features = im##a->feature_nodes[c];                 \
+    vlib_cli_output (vm, "%s:", s);                     \
+    for (i = 0; i < vec_len(features); i++)             \
+      vlib_cli_output (vm, "  %s\n", features[i]);      \
+  } while(0);
+  foreach_af_cast;
+#undef _
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_ip_features_command, static) = {
+  .path = "show ip features",
+  .short_help = "show ip features",
+  .function = show_ip_features_command_fn,
+};
+
+static clib_error_t *
+show_ip_interface_features_command_fn (vlib_main_t * vm,
+                                       unformat_input_t * input,
+                                       vlib_cli_command_t * cmd)
+{
+  vnet_main_t * vnm = vnet_get_main();
+  ip4_main_t * im4 = &ip4_main;
+  ip_lookup_main_t * lm4 = &im4->lookup_main;
+  ip6_main_t * im6 = &ip6_main;
+  ip_lookup_main_t * lm6 = &im6->lookup_main;
+  
+  ip_lookup_main_t * lm;
+  ip_config_main_t * cm;
+  vnet_config_main_t * vcm;
+  vnet_config_t * cfg;
+  u32 cfg_index;
+  vnet_config_feature_t * feat;
+  vlib_node_t * n;
+  u32 sw_if_index;
+  u32 node_index;
+  u32 current_config_index;
+  int i, af;
+  u32 cast;
+
+  if (! unformat (input, "%U", unformat_vnet_sw_interface, 
+                  vnm, &sw_if_index))
+    return clib_error_return (0, "Interface not specified...");
+
+  vlib_cli_output (vm, "IP feature paths configured on %U...",
+                   format_vnet_sw_if_index_name, vnm, sw_if_index);
+
+  
+  for (af = 0; af < 2; af++)
+    {
+      if (af == 0)
+        lm = lm4;
+      else
+        lm = lm6;
+
+      for (cast = VNET_UNICAST; cast < VNET_N_CAST; cast++)
+        {
+          cm = lm->rx_config_mains + cast;
+          vcm = &cm->config_main;
+      
+          vlib_cli_output (vm, "\nipv%s %scast:", 
+                           (af == 0) ? "4" : "6",
+                           cast == VNET_UNICAST ?
+                           "uni": "multi");
+
+          current_config_index = vec_elt (cm->config_index_by_sw_if_index, 
+                                          sw_if_index);
+
+          ASSERT(current_config_index 
+                 < vec_len (vcm->config_pool_index_by_user_index));
+          
+          cfg_index = 
+            vcm->config_pool_index_by_user_index[current_config_index];
+          cfg = pool_elt_at_index (vcm->config_pool, cfg_index);
+
+          for (i = 0; i < vec_len(cfg->features); i++)
+            {
+              feat = cfg->features + i;
+              node_index = feat->node_index;
+              n = vlib_get_node (vm, node_index);
+              vlib_cli_output (vm, "  %v", n->name);
+            }
+        }
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_ip_interface_features_command, static) = {
+  .path = "show ip interface features",
+  .short_help = "show ip interface features <intfc>",
+  .function = show_ip_interface_features_command_fn,
+};
+
 
