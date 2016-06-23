@@ -392,6 +392,12 @@ lisp_gpe_ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   return lisp_gpe_input_inline(vm, node, from_frame, 0);
 }
 
+static char * lisp_gpe_ip4_input_error_strings[] = {
+#define lisp_gpe_error(n,s) s,
+#include <vnet/lisp-gpe/lisp_gpe_error.def>
+#undef lisp_gpe_error
+};
+
 VLIB_REGISTER_NODE (lisp_gpe_ip4_input_node) = {
   .function = lisp_gpe_ip4_input,
   .name = "lisp-gpe-ip4-input",
@@ -403,6 +409,9 @@ VLIB_REGISTER_NODE (lisp_gpe_ip4_input_node) = {
     foreach_lisp_gpe_ip_input_next
 #undef _
   },
+
+  .n_errors = ARRAY_LEN (lisp_gpe_ip4_input_error_strings),
+  .error_strings = lisp_gpe_ip4_input_error_strings,
 
   .format_buffer = format_lisp_gpe_header_with_length,
   .format_trace = format_lisp_gpe_rx_trace,
@@ -420,6 +429,9 @@ VLIB_REGISTER_NODE (lisp_gpe_ip6_input_node) = {
     foreach_lisp_gpe_ip_input_next
 #undef _
   },
+
+  .n_errors = ARRAY_LEN (lisp_gpe_ip4_input_error_strings),
+  .error_strings = lisp_gpe_ip4_input_error_strings,
 
   .format_buffer = format_lisp_gpe_header_with_length,
   .format_trace = format_lisp_gpe_rx_trace,
