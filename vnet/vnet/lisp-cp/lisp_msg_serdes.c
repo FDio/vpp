@@ -149,7 +149,9 @@ lisp_msg_pull_hdr (vlib_buffer_t * b, lisp_msg_type_e type)
 u32
 lisp_msg_parse_addr (vlib_buffer_t * b, gid_address_t * eid)
 {
-  u32 len = gid_address_parse (vlib_buffer_get_current (b), eid);
+  u32 len;
+  memset(eid, 0, sizeof(*eid));
+  len = gid_address_parse (vlib_buffer_get_current (b), eid);
   if (len != ~0)
     vlib_buffer_pull (b, len);
   return len;
@@ -159,7 +161,9 @@ u32
 lisp_msg_parse_eid_rec (vlib_buffer_t * b, gid_address_t * eid)
 {
   eid_record_hdr_t * h = vlib_buffer_get_current (b);
-  u32 len = gid_address_parse (EID_REC_ADDR(h), eid);
+  u32 len;
+  memset(eid, 0, sizeof(*eid));
+  len = gid_address_parse (EID_REC_ADDR(h), eid);
   if (len == ~0)
     return len;
 
@@ -213,6 +217,7 @@ lisp_msg_parse_mapping_record (vlib_buffer_t * b, gid_address_t * eid,
   h = vlib_buffer_get_current (b);
   vlib_buffer_pull (b, sizeof(mapping_record_hdr_t));
 
+  memset(eid, 0, sizeof(*eid));
   len = gid_address_parse (vlib_buffer_get_current (b), eid);
   if (len == ~0)
     return len;

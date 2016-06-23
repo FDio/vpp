@@ -1985,7 +1985,7 @@ vl_api_lisp_local_eid_table_details_t_handler (
     vat_main_t *vam = &vat_main;
     u8 *prefix;
 
-    prefix = format(0, "[&d] %U/%d",
+    prefix = format(0, "[%d] %U/%d",
                     clib_net_to_host_u32 (mp->vni),
                     mp->eid_is_ipv6 ? format_ip6_address : format_ip4_address,
                     mp->eid_ip_address,
