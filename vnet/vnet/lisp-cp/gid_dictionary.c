@@ -125,7 +125,7 @@ gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key)
       clib_warning ("address type %d not supported!", gid_address_type(key));
       break;
     }
-  return ~0;
+  return GID_LOOKUP_MISS;
 }
 
 static void

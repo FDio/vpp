@@ -18,49 +18,381 @@
 #include <vnet/lisp-cp/lisp_msg_serdes.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
-static void
-add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index);
+ip_interface_address_t *
+ip_interface_get_first_interface_address (ip_lookup_main_t *lm, u32 sw_if_index,
+                                          u8 loop)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_sw_interface_t * swif = vnet_get_sw_interface (vnm, sw_if_index);
+  if (loop && swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
+    sw_if_index = swif->unnumbered_sw_if_index;
+  u32 ia =
+      (vec_len((lm)->if_address_pool_index_by_sw_if_index) > (sw_if_index)) ?
+          vec_elt((lm)->if_address_pool_index_by_sw_if_index, (sw_if_index)) :
+          (u32) ~0;
+  return pool_elt_at_index((lm)->if_address_pool, ia);
+}
 
-static void
-del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index);
+void *
+ip_interface_get_first_address (ip_lookup_main_t * lm, u32 sw_if_index,
+                                u8 version)
+{
+  ip_interface_address_t * ia;
 
-static u8
-compare_locators (lisp_cp_main_t *lcm, u32 * old_ls_indexes,
-                  locator_t * new_locators);
+  ia = ip_interface_get_first_interface_address (lm, sw_if_index, 1);
+  if (!ia)
+    return 0;
+  return ip_interface_address_get_address (lm, ia);
+}
 
-/* Stores mapping in map-cache. It does NOT program data plane forwarding for
- * remote/learned mappings. */
 int
-vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
-                           u32 * map_index_result)
+ip_interface_get_first_ip_address (lisp_cp_main_t * lcm, u32 sw_if_index,
+                                   u8 version, ip_address_t * result)
+{
+  ip_lookup_main_t * lm;
+  void * addr;
+
+  lm = (version == IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
+  addr = ip_interface_get_first_address (lm, sw_if_index, version);
+  if (!addr)
+    return 0;
+
+  ip_address_set (result, addr, version);
+  return 1;
+}
+
+static u32
+ip_fib_lookup_with_table (lisp_cp_main_t * lcm, u32 fib_index,
+                          ip_address_t * dst)
+{
+  if (ip_addr_version (dst) == IP4)
+      return ip4_fib_lookup_with_table (lcm->im4, fib_index, &ip_addr_v4(dst),
+                                        0);
+  else
+      return ip6_fib_lookup_with_table (lcm->im6, fib_index, &ip_addr_v6(dst));
+}
+
+u32
+ip_fib_get_egress_iface_for_dst_with_lm (lisp_cp_main_t * lcm,
+                                         ip_address_t * dst,
+                                         ip_lookup_main_t * lm)
+{
+  u32 adj_index;
+  ip_adjacency_t * adj;
+
+  adj_index = ip_fib_lookup_with_table (lcm, 0, dst);
+  adj = ip_get_adjacency (lm, adj_index);
+
+  if (adj == 0)
+    return ~0;
+
+  /* we only want outgoing routes */
+  if (adj->lookup_next_index != IP_LOOKUP_NEXT_ARP
+      && adj->lookup_next_index != IP_LOOKUP_NEXT_REWRITE)
+    return ~0;
+
+  return adj->rewrite_header.sw_if_index;
+}
+
+/**
+ * Find the sw_if_index of the interface that would be used to egress towards
+ * dst.
+ */
+u32
+ip_fib_get_egress_iface_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst)
+{
+  ip_lookup_main_t * lm;
+
+  lm = ip_addr_version (dst) == IP4 ?
+      &lcm->im4->lookup_main : &lcm->im6->lookup_main;
+
+  return ip_fib_get_egress_iface_for_dst_with_lm (lcm, dst, lm);
+}
+
+/**
+ * Find first IP of the interface that would be used to egress towards dst.
+ * Returns 1 if the address is found 0 otherwise.
+ */
+int
+ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
+                                    ip_address_t * result)
+{
+  u32 si;
+  ip_lookup_main_t * lm;
+  void * addr = 0;
+  u8 ipver;
+
+  ASSERT(result != 0);
+
+  ipver = ip_addr_version(dst);
+
+  lm = (ipver == IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
+  si = ip_fib_get_egress_iface_for_dst_with_lm (lcm, dst, lm);
+
+  if ((u32) ~0 == si)
+    return 0;
+
+  /* find the first ip address */
+  addr = ip_interface_get_first_address (lm, si, ipver);
+  if (0 == addr)
+    return 0;
+
+  ip_address_set (result, addr, ipver);
+  return 1;
+}
+
+static int
+dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_add)
+{
+  uword * table_id, * intf;
+  vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
+
+  table_id = hash_get(lcm->table_id_by_vni, vni);
+
+  if (!table_id)
+    {
+      clib_warning ("vni %d not associated to a vrf!", vni);
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  intf = hash_get(lcm->dp_intf_by_vni, vni);
+
+  /* enable/disable data-plane interface */
+  if (is_add)
+    {
+      /* create interface or update refcount */
+      if (!intf)
+        {
+          ai->is_add = 1;
+          ai->vni = vni;
+          ai->table_id = table_id[0];
+          vnet_lisp_gpe_add_del_iface (ai, 0);
+
+          /* counts the number of eids in a vni that use the interface */
+          hash_set(lcm->dp_intf_by_vni, vni, 1);
+        }
+    }
+  else
+    {
+      if (intf == 0)
+        {
+          clib_warning("interface for vni %d doesn't exist!", vni);
+          return VNET_API_ERROR_INVALID_VALUE;
+        }
+
+      ai->is_add = 0;
+      ai->vni = vni;
+      ai->table_id = table_id[0];
+      vnet_lisp_gpe_add_del_iface (ai, 0);
+      hash_unset(lcm->dp_intf_by_vni, vni);
+    }
+
+  return 0;
+}
+
+static void
+dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
+{
+  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
+  fwd_entry_t * fe = 0;
+  uword * feip = 0;
+  memset(a, 0, sizeof(*a));
+
+  feip = hash_get(lcm->fwd_entry_by_mapping_index, dst_map_index);
+  if (!feip)
+    return;
+
+  fe = pool_elt_at_index(lcm->fwd_entry_pool, feip[0]);
+
+  /* delete dp fwd entry */
+  u32 sw_if_index;
+  a->is_add = 0;
+  a->dlocator = fe->dst_loc;
+  a->slocator = fe->src_loc;
+  a->vni = gid_address_vni(&a->deid);
+  gid_address_copy(&a->deid, &fe->deid);
+
+  vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
+
+  /* delete entry in fwd table */
+  hash_unset(lcm->fwd_entry_by_mapping_index, dst_map_index);
+  pool_put(lcm->fwd_entry_pool, fe);
+}
+
+/**
+ * Finds first remote locator with best (lowest) priority that has a local
+ * peer locator with an underlying route to it.
+ *
+ */
+static u32
+get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
+                  ip_address_t * lcl_loc, ip_address_t * rmt_loc)
+{
+  u32 i, minp = ~0, limitp = 0, li, check_index = 0, done = 0, esi;
+  locator_set_t * rmt_ls, * lcl_ls;
+  ip_address_t _lcl, * lcl = &_lcl;
+  locator_t * l, * rmt = 0;
+  uword * checked = 0;
+
+  rmt_ls = pool_elt_at_index(lcm->locator_set_pool, rmt_map->locator_set_index);
+  lcl_ls = pool_elt_at_index(lcm->locator_set_pool, lcl_map->locator_set_index);
+
+  if (!rmt_ls || vec_len(rmt_ls->locator_indices) == 0)
+    return 0;
+
+  while (!done)
+    {
+      rmt = 0;
+
+      /* find unvisited remote locator with best priority */
+      for (i = 0; i < vec_len(rmt_ls->locator_indices); i++)
+        {
+          if (0 != hash_get(checked, i))
+            continue;
+
+          li = vec_elt(rmt_ls->locator_indices, i);
+          l = pool_elt_at_index(lcm->locator_pool, li);
+
+          /* we don't support non-IP locators for now */
+          if (gid_address_type(&l->address) != GID_ADDR_IP_PREFIX)
+            continue;
+
+          if (l->priority < minp && l->priority >= limitp)
+            {
+              minp = l->priority;
+              rmt = l;
+              check_index = i;
+            }
+        }
+      /* check if a local locator with a route to remote locator exists */
+      if (rmt != 0)
+        {
+          esi = ip_fib_get_egress_iface_for_dst (
+              lcm, &gid_address_ip(&rmt->address));
+          if ((u32) ~0 == esi)
+            continue;
+
+          for (i = 0; i < vec_len(lcl_ls->locator_indices); i++)
+            {
+              li = vec_elt (lcl_ls->locator_indices, i);
+              locator_t * sl = pool_elt_at_index (lcm->locator_pool, li);
+
+              /* found local locator */
+              if (sl->sw_if_index == esi)
+                {
+                  if (0 == ip_interface_get_first_ip_address (lcm,
+                             sl->sw_if_index,
+                             gid_address_ip_version(&rmt->address), lcl))
+                    continue;
+
+                  ip_address_copy(rmt_loc, &gid_address_ip(&rmt->address));
+                  ip_address_copy(lcl_loc, lcl);
+                  done = 2;
+                }
+            }
+
+          /* skip this remote locator in next searches */
+          limitp = minp;
+          hash_set(checked, check_index, 1);
+        }
+      else
+        done = 1;
+    }
+  hash_free(checked);
+  return (done == 2) ? 1 : 0;
+}
+
+static void
+dp_add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
+{
+  mapping_t * src_map, * dst_map;
+  u32 sw_if_index;
+  uword * feip = 0, * tidp;
+  fwd_entry_t* fe;
+  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
+
+  memset (a, 0, sizeof(*a));
+
+  /* remove entry if it already exists */
+  feip = hash_get (lcm->fwd_entry_by_mapping_index, dst_map_index);
+  if (feip)
+    dp_del_fwd_entry (lcm, src_map_index, dst_map_index);
+
+  src_map = pool_elt_at_index (lcm->mapping_pool, src_map_index);
+  dst_map = pool_elt_at_index (lcm->mapping_pool, dst_map_index);
+
+  gid_address_copy (&a->deid, &dst_map->eid);
+  a->vni = gid_address_vni(&a->deid);
+
+  tidp = hash_get(lcm->table_id_by_vni, a->vni);
+  if (!tidp)
+    {
+      clib_warning("vni %d not associated to a vrf!", a->vni);
+      return;
+    }
+  a->table_id = tidp[0];
+
+  /* insert data plane forwarding entry */
+  a->is_add = 1;
+
+  /* find best locator pair that 1) verifies LISP policy 2) are connected */
+  if (0 == get_locator_pair (lcm, src_map, dst_map, &a->slocator, &a->dlocator))
+    {
+      /* negative entry */
+      a->is_negative = 1;
+      a->action = dst_map->action;
+    }
+
+  /* TODO remove */
+  u8 ipver = ip_prefix_version(&gid_address_ippref(&a->deid));
+  a->decap_next_index = (ipver == IP4) ?
+          LISP_GPE_INPUT_NEXT_IP4_INPUT : LISP_GPE_INPUT_NEXT_IP6_INPUT;
+
+  vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
+
+  /* add tunnel to fwd entry table XXX check return value from DP insertion */
+  pool_get (lcm->fwd_entry_pool, fe);
+  fe->dst_loc = a->dlocator;
+  fe->src_loc = a->slocator;
+  gid_address_copy (&fe->deid, &a->deid);
+  hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
+            fe - lcm->fwd_entry_pool);
+}
+
+/**
+ * Add/remove mapping to/from map-cache. Overwriting not allowed.
+ */
+int
+vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
+                             u32 * map_index_result)
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
   u32 mi, * map_indexp, map_index, i;
   mapping_t * m, * old_map;
   u32 ** eid_indexes;
 
-  mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->deid);
+  mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->eid);
   old_map = mi != ~0 ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
   if (a->is_add)
     {
       /* TODO check if overwriting and take appropriate actions */
       if (mi != GID_LOOKUP_MISS && !gid_address_cmp (&old_map->eid,
-                                                     &a->deid))
+                                                     &a->eid))
         {
           clib_warning ("eid %U found in the eid-table", format_gid_address,
-                       &a->deid);
+                       &a->eid);
           return VNET_API_ERROR_VALUE_EXIST;
         }
 
       pool_get(lcm->mapping_pool, m);
-      gid_address_copy (&m->eid, &a->deid);
+      gid_address_copy (&m->eid, &a->eid);
       m->locator_set_index = a->locator_set_index;
       m->ttl = a->ttl;
       m->action = a->action;
       m->local = a->local;
 
       map_index = m - lcm->mapping_pool;
-      gid_dictionary_add_del (&lcm->mapping_index_by_gid, &a->deid, map_index,
+      gid_dictionary_add_del (&lcm->mapping_index_by_gid, &a->eid, map_index,
                               1);
 
       if (pool_is_free_index(lcm->locator_set_pool, a->locator_set_index))
@@ -88,7 +420,7 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
       if (mi == GID_LOOKUP_MISS)
         {
           clib_warning("eid %U not found in the eid-table", format_gid_address,
-                       &a->deid);
+                       &a->eid);
           return VNET_API_ERROR_INVALID_VALUE;
         }
 
@@ -116,13 +448,9 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
             }
           vec_del1(lcm->local_mappings_indexes, k);
         }
-      else
-        {
-          /* remove tunnel ??? */
-        }
 
       /* remove mapping from dictionary */
-      gid_dictionary_add_del (&lcm->mapping_index_by_gid, &a->deid, 0, 0);
+      gid_dictionary_add_del (&lcm->mapping_index_by_gid, &a->eid, 0, 0);
       gid_address_free (&m->eid);
       pool_put_index (lcm->mapping_pool, mi);
     }
@@ -130,14 +458,16 @@ vnet_lisp_add_del_mapping (vnet_lisp_add_del_mapping_args_t * a,
   return 0;
 }
 
-/* Stores mapping in map-cache and programs data plane for local mappings. */
+/**
+ *  Add/update/delete mapping to/in/from map-cache.
+ */
 int
 vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
                                  u32 * map_index_result)
 {
-  uword * table_id, * refc;
-  u32 rv, vni;
-  vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
+  uword * table_id;
+  u32 vni;
+
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
 
   if (vnet_lisp_enable_disable_status () == 0)
@@ -146,13 +476,7 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
       return VNET_API_ERROR_LISP_DISABLED;
     }
 
-  vni = gid_address_vni(&a->deid);
-
-  /* store/remove mapping from map-cache */
-  rv = vnet_lisp_add_del_mapping (a, map_index_result);
-  if (rv)
-    return rv;
-
+  vni = gid_address_vni(&a->eid);
   table_id = hash_get(lcm->table_id_by_vni, vni);
 
   if (!table_id)
@@ -161,45 +485,8 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
       return VNET_API_ERROR_INVALID_VALUE;
     }
 
-  refc = hash_get(lcm->dp_if_refcount_by_vni, vni);
-
-  /* enable/disable data-plane interface */
-  if (a->is_add)
-    {
-      /* create interface or update refcount */
-      if (!refc)
-        {
-          ai->is_add = 1;
-          ai->vni = vni;
-          ai->table_id = table_id[0];
-          vnet_lisp_gpe_add_del_iface (ai, 0);
-
-          /* counts the number of eids in a vni that use the interface */
-          hash_set(lcm->dp_if_refcount_by_vni, vni, 1);
-        }
-      else
-        {
-          refc[0]++;
-        }
-    }
-  else
-    {
-      /* since this is a remove for an existing eid, the iface should exist */
-      ASSERT(refc != 0);
-      refc[0]--;
-
-      /* remove iface if needed */
-      if (refc[0] == 0)
-        {
-          ai->is_add = 0;
-          ai->vni = vni;
-          ai->table_id = table_id[0];
-          vnet_lisp_gpe_add_del_iface (ai, 0);
-          hash_unset (lcm->dp_if_refcount_by_vni, vni);
-        }
-    }
-
-  return rv;
+  /* store/remove mapping from map-cache */
+  return vnet_lisp_map_cache_add_del (a, map_index_result);
 }
 
 static clib_error_t *
@@ -263,7 +550,7 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   /* XXX treat batch configuration */
 
-  a->deid = eid;
+  a->eid = eid;
   a->is_add = is_add;
   a->locator_set_index = locator_set_index;
   a->local = 1;
@@ -271,14 +558,14 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   rv = vnet_lisp_add_del_local_mapping (a, &map_index);
   if (0 != rv)
    {
-      error = clib_error_return(0, "failed to %s eid-table!",
+      error = clib_error_return(0, "failed to %s local mapping!",
                                 is_add ? "add" : "delete");
    }
  done:
   vec_free(eids);
   if (locator_set_name)
     vec_free (locator_set_name);
-  gid_address_free (&a->deid);
+  gid_address_free (&a->eid);
   return error;
 }
 
@@ -320,6 +607,9 @@ vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_add)
         }
       hash_set (lcm->table_id_by_vni, vni, vrf);
       hash_set (lcm->vni_by_table_id, vrf, vni);
+
+      /* create dp iface */
+      dp_add_del_iface (lcm, vni, 1);
     }
   else
     {
@@ -331,6 +621,9 @@ vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_add)
         }
       hash_unset (lcm->table_id_by_vni, vni);
       hash_unset (lcm->vni_by_table_id, vrf);
+
+      /* remove dp iface */
+      dp_add_del_iface (lcm, vni, 0);
     }
   return 0;
 }
@@ -371,123 +664,50 @@ VLIB_CLI_COMMAND (lisp_eid_table_map_command) = {
     .function = lisp_eid_table_map_command_fn,
 };
 
-static int
-lisp_add_del_negative_static_mapping (gid_address_t * deid,
-    vnet_lisp_add_del_locator_set_args_t * ls, u8 action, u8 is_add)
+
+/* return 0 if the two locator sets are identical 1 otherwise */
+static u8
+compare_locators (lisp_cp_main_t *lcm, u32 * old_ls_indexes,
+                  locator_t * new_locators)
 {
-  uword * p;
-  mapping_t * map;
-  u32 mi = ~0;
-  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
-  uword * refc;
-  vnet_lisp_add_del_mapping_args_t _dm_args, * dm_args = &_dm_args;
-  int rv = 0;
-  u32 ls_index = 0, dst_map_index;
-  vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
+  u32 i, old_li;
+  locator_t * old_loc, * new_loc;
 
-  memset (dm_args, 0, sizeof (dm_args[0]));
-  u32 vni = gid_address_vni (deid);
-  refc = hash_get (lcm->dp_if_refcount_by_vni, vni);
+  if (vec_len (old_ls_indexes) != vec_len(new_locators))
+    return 1;
 
-  p = hash_get (lcm->table_id_by_vni, vni);
-  if (!p)
+  for (i = 0; i < vec_len(new_locators); i++)
     {
-      clib_warning ("vni %d not associated to a vrf!", vni);
-      return VNET_API_ERROR_INVALID_VALUE;
+      old_li = vec_elt(old_ls_indexes, i);
+      old_loc = pool_elt_at_index(lcm->locator_pool, old_li);
+
+      new_loc = vec_elt_at_index(new_locators, i);
+
+      if (locator_cmp (old_loc, new_loc))
+        return 1;
     }
-
-  if (is_add)
-    {
-      vnet_lisp_add_del_locator_set (ls, &ls_index);
-      /* add mapping */
-      gid_address_copy (&dm_args->deid, deid);
-      dm_args->is_add = 1;
-      dm_args->action = action;
-      dm_args->locator_set_index = ls_index;
-
-      /* create interface or update refcount */
-      if (!refc)
-        {
-          vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
-          ai->is_add = 1;
-          ai->vni = vni;
-          ai->table_id = p[0];
-          vnet_lisp_gpe_add_del_iface (ai, 0);
-
-          /* counts the number of eids in a vni that use the interface */
-          hash_set (lcm->dp_if_refcount_by_vni, vni, 1);
-        }
-      else
-        refc[0]++;
-
-      rv = vnet_lisp_add_del_local_mapping (dm_args, &dst_map_index);
-      if (!rv)
-        add_fwd_entry (lcm, lcm->pitr_map_index, dst_map_index);
-    }
-  else
-    {
-      mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, deid);
-      if ((u32)~0 == mi)
-        {
-          clib_warning ("eid %U marked for removal, but not found in "
-                        "map-cache!", unformat_gid_address, deid);
-          return VNET_API_ERROR_INVALID_VALUE;
-        }
-
-      /* delete forwarding entry */
-      del_fwd_entry (lcm, 0, mi);
-
-      dm_args->is_add = 0;
-      gid_address_copy (&dm_args->deid, deid);
-      map = pool_elt_at_index (lcm->mapping_pool, mi);
-      dm_args->locator_set_index = map->locator_set_index;
-
-      /* delete mapping associated to fwd entry */
-      vnet_lisp_add_del_mapping (dm_args, 0);
-
-      refc = hash_get (lcm->dp_if_refcount_by_vni, vni);
-      ASSERT(refc != 0);
-      refc[0]--;
-
-      /* remove iface if needed */
-      if (refc[0] == 0)
-        {
-          ai->is_add = 0;
-          ai->vni = vni;
-          ai->table_id = p[0];
-          vnet_lisp_gpe_add_del_iface (ai, 0);
-          hash_unset (lcm->dp_if_refcount_by_vni, vni);
-        }
-    }
-  return rv;
+  return 0;
 }
 
 /**
- * Adds/removes/updates static remote mapping.
- *
- * This function also modifies forwarding entries if needed.
+ * Adds/removes/updates mapping. Does not program forwarding.
  *
  * @param deid destination EID
- * @param seid source EID
  * @param rlocs vector of remote locators
  * @param action action for negative map-reply
  * @param is_add add mapping if non-zero, delete otherwise
- * @param del_all if set, delete all remote mappings
  * @return return code
  */
 int
-vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
-                                  ip_address_t * rlocs, u8 action, u8 is_add,
-                                  u8 del_all)
+vnet_lisp_add_del_mapping (gid_address_t * deid, locator_t * rlocs, u8 action,
+                           u8 authoritative, u32 ttl, u8 is_add,
+                           u32 * res_map_index)
 {
-  vnet_lisp_add_del_mapping_args_t _dm_args, * dm_args = &_dm_args;
-  vnet_lisp_add_del_mapping_args_t _sm_args, * sm_args = &_sm_args;
-  vnet_lisp_add_del_locator_set_args_t _ls, * ls = &_ls;
+  vnet_lisp_add_del_mapping_args_t _m_args, * m_args = &_m_args;
+  vnet_lisp_add_del_locator_set_args_t _ls_args, * ls_args = &_ls_args;
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
-  u32 mi, ls_index = 0, dst_map_index, src_map_index;
-  locator_t loc;
-  ip_address_t * dl;
-  int rc = -1;
+  u32 mi, ls_index = 0, dst_map_index;
+  mapping_t * old_map;
 
   if (vnet_lisp_enable_disable_status() == 0)
     {
@@ -495,117 +715,90 @@ vnet_lisp_add_del_remote_mapping (gid_address_t * deid, gid_address_t * seid,
       return VNET_API_ERROR_LISP_DISABLED;
     }
 
-  if (del_all)
-    return vnet_lisp_clear_all_remote_mappings ();
+  if (res_map_index)
+    res_map_index[0] = ~0;
 
-  memset (sm_args, 0, sizeof (sm_args[0]));
-  memset (dm_args, 0, sizeof (dm_args[0]));
-  memset (ls, 0, sizeof (ls[0]));
+  memset (m_args, 0, sizeof (m_args[0]));
+  memset (ls_args, 0, sizeof (ls_args[0]));
 
-  /* prepare remote locator set */
-  vec_foreach (dl, rlocs)
-    {
-      memset (&loc, 0, sizeof (loc));
-      gid_address_ip (&loc.address) = dl[0];
-      vec_add1 (ls->locators, loc);
-    }
-  src_map_index = gid_dictionary_lookup (&lcm->mapping_index_by_gid, seid);
+  ls_args->locators = rlocs;
 
   mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, deid);
-  /* new mapping */
-  if ((u32)~0 == mi)
+  old_map = ((u32) ~0 != mi) ? pool_elt_at_index(lcm->mapping_pool, mi) : 0;
+
+  if (is_add)
     {
-      ls->is_add = 1;
-      ls->index = ~0;
-
-      /* process a negative mapping */
-      if (0 == vec_len (rlocs))
-        return lisp_add_del_negative_static_mapping (deid, ls,
-                                                     action, is_add);
-
-      if ((u32)~0 == src_map_index)
+      /* overwrite: if mapping already exists, decide if locators should be
+       * updated and be done */
+      if (old_map && gid_address_cmp (&old_map->eid, deid) == 0)
         {
-          clib_warning ("seid %U not found!", format_gid_address, seid);
-          goto done;
-        }
-
-      if (!is_add)
-        {
-          clib_warning ("deid %U marked for removal but not "
-                        "found!", format_gid_address, deid);
-          goto done;
-        }
-
-      vnet_lisp_add_del_locator_set (ls, &ls_index);
-
-      /* add mapping */
-      gid_address_copy (&dm_args->deid, deid);
-      dm_args->is_add = 1;
-      dm_args->action = action;
-      dm_args->locator_set_index = ls_index;
-      vnet_lisp_add_del_mapping (dm_args, &dst_map_index);
-
-      /* add fwd tunnel */
-      add_fwd_entry (lcm, src_map_index, dst_map_index);
-    }
-  else
-    {
-      /* delete mapping */
-      if (!is_add)
-        {
-          /* delete forwarding entry */
-          del_fwd_entry (lcm, 0, mi);
-          dm_args->is_add = 0;
-          gid_address_copy (&dm_args->deid, deid);
-          mapping_t * map = pool_elt_at_index (lcm->mapping_pool, mi);
-          dm_args->locator_set_index = map->locator_set_index;
-
-          /* delete mapping associated to fwd entry */
-          vnet_lisp_add_del_mapping (dm_args, 0);
-
-          ls->is_add = 0;
-          ls->index = map->locator_set_index;
-          /* delete locator set */
-          vnet_lisp_add_del_locator_set (ls, 0);
-        }
-      /* update existing locator set */
-      else
-        {
-          if ((u32)~0 == src_map_index)
-            {
-              clib_warning ("seid %U not found!", format_gid_address, seid);
-              goto done;
-            }
-
-          mapping_t * old_map;
           locator_set_t * old_ls;
-          old_map = pool_elt_at_index (lcm->mapping_pool, mi);
 
           /* update mapping attributes */
           old_map->action = action;
+          old_map->authoritative = authoritative;
+          old_map->ttl = ttl;
 
           old_ls = pool_elt_at_index(lcm->locator_set_pool,
                                      old_map->locator_set_index);
           if (compare_locators (lcm, old_ls->locator_indices,
-                                ls->locators))
+                                ls_args->locators))
             {
               /* set locator-set index to overwrite */
-              ls->is_add = 1;
-              ls->index = old_map->locator_set_index;
-              vnet_lisp_add_del_locator_set (ls, 0);
-              add_fwd_entry (lcm, src_map_index, mi);
+              ls_args->is_add = 1;
+              ls_args->index = old_map->locator_set_index;
+              vnet_lisp_add_del_locator_set (ls_args, 0);
+              if (res_map_index)
+                res_map_index[0] = mi;
             }
         }
+      /* new mapping */
+      else
+        {
+          ls_args->is_add = 1;
+          ls_args->index = ~0;
+
+          vnet_lisp_add_del_locator_set (ls_args, &ls_index);
+
+          /* add mapping */
+          gid_address_copy (&m_args->eid, deid);
+          m_args->is_add = 1;
+          m_args->action = action;
+          m_args->locator_set_index = ls_index;
+          vnet_lisp_map_cache_add_del (m_args, &dst_map_index);
+
+          if (res_map_index)
+            res_map_index[0] = dst_map_index;
+        }
     }
+  else
+    {
+      if (old_map == 0 || gid_address_cmp (&old_map->eid, deid) != 0)
+        {
+          clib_warning("cannot delete mapping for eid %U", format_gid_address,
+                       deid);
+          return -1;
+        }
+
+      m_args->is_add = 0;
+      gid_address_copy (&m_args->eid, deid);
+      m_args->locator_set_index = old_map->locator_set_index;
+
+      /* delete mapping associated from map-cache */
+      vnet_lisp_map_cache_add_del (m_args, 0);
+
+      ls_args->is_add = 0;
+      ls_args->index = old_map->locator_set_index;
+      /* delete locator set */
+      vnet_lisp_add_del_locator_set (ls_args, 0);
+    }
+
   /* success */
-  rc = 0;
-done:
-  vec_free (ls->locators);
-  return rc;
+  return 0;
 }
 
 int
-vnet_lisp_clear_all_remote_mappings (void)
+vnet_lisp_clear_all_remote_adjacencies (void)
 {
   int rv = 0;
   u32 mi, * map_indices = 0, * map_indexp;
@@ -623,14 +816,14 @@ vnet_lisp_clear_all_remote_mappings (void)
       mapping_t * map = pool_elt_at_index (lcm->mapping_pool, map_indexp[0]);
       if (!map->local)
         {
-          del_fwd_entry (lcm, 0, map_indexp[0]);
+          dp_del_fwd_entry (lcm, 0, map_indexp[0]);
 
           dm_args->is_add = 0;
-          gid_address_copy (&dm_args->deid, &map->eid);
+          gid_address_copy (&dm_args->eid, &map->eid);
           dm_args->locator_set_index = map->locator_set_index;
 
           /* delete mapping associated to fwd entry */
-          vnet_lisp_add_del_mapping (dm_args, 0);
+          vnet_lisp_map_cache_add_del (dm_args, 0);
 
           ls->is_add = 0;
           ls->local = 0;
@@ -649,6 +842,57 @@ cleanup:
 }
 
 /**
+ * Adds remote mapping and sets it as adjacency for local eid or removes
+ * forwarding entry associated to remote mapping. Note that for now adjacencies
+ * are not stored, they only result in forwarding entries being created.
+ */
+int
+vnet_lisp_add_del_adjacency (gid_address_t * deid, gid_address_t * seid,
+                             locator_t * rlocs, u8 action, u8 authoritative,
+                             u32 ttl, u8 is_add)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  u32 src_map_index, dst_map_index = ~0;
+
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
+  /* insert/update mappings cache */
+  vnet_lisp_add_del_mapping (deid, rlocs, action, authoritative, ttl, is_add,
+                             &dst_map_index);
+
+  /* TODO check if src/dst */
+
+  /* check if source eid has an associated mapping. If pitr mode is on, just
+   * use the pitr's mapping */
+  src_map_index = lcm->lisp_pitr ? lcm->pitr_map_index :
+          gid_dictionary_lookup (&lcm->mapping_index_by_gid, seid);
+
+
+  if (GID_LOOKUP_MISS == src_map_index)
+    {
+      clib_warning("seid %d not found. Cannot program forwarding!",
+                   format_gid_address, seid);
+
+      return -1;
+    }
+
+  if (is_add)
+    {
+      /* update forwarding if a destination mapping index was found */
+      if ((u32) ~0 != dst_map_index)
+        dp_add_fwd_entry (lcm, src_map_index, dst_map_index);
+    }
+  else
+    dp_del_fwd_entry (lcm, 0, dst_map_index);
+
+  return 0;
+}
+
+/**
  * Handler for add/del remote mapping CLI.
  *
  * @param vm vlib context
@@ -664,7 +908,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   clib_error_t * error = 0;
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1, del_all = 0;
-  ip_address_t rloc, * rlocs = 0;
+  locator_t rloc, * rlocs = 0;
   ip_prefix_t * deid_ippref, * seid_ippref;
   gid_address_t seid, deid;
   u8 * dmac = gid_address_mac (&deid);
@@ -672,13 +916,15 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   u8 deid_set = 0, seid_set = 0;
   u8 * s = 0;
   u32 vni, action = ~0;
+  int rv;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  memset (&deid, 0, sizeof (deid));
-  memset (&seid, 0, sizeof (seid));
+  memset(&deid, 0, sizeof(deid));
+  memset(&seid, 0, sizeof(seid));
+  memset(&rloc, 0, sizeof(rloc));
 
   seid_ippref = &gid_address_ippref(&seid);
   deid_ippref = &gid_address_ippref(&deid);
@@ -720,7 +966,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
           gid_address_type (&seid) = GID_ADDR_MAC;
           seid_set = 1;
         }
-      else if (unformat (line_input, "rloc %U", unformat_ip_address, &rloc))
+      else if (unformat (line_input, "rloc %U", unformat_ip_address, &rloc.address))
         vec_add1 (rlocs, rloc);
       else if (unformat (line_input, "action %s", &s))
         {
@@ -778,12 +1024,27 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
           goto done;
         }
     }
+  else
+    {
+      vnet_lisp_clear_all_remote_adjacencies ();
+      goto done;
+    }
 
-  int rv = vnet_lisp_add_del_remote_mapping (&deid, &seid, rlocs,
-                                             action, is_add, del_all);
+  /* TODO build src/dst with seid*/
+
+  /* if it's a delete, clean forwarding */
+  if (!is_add)
+    {
+      lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+      u32 di = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &deid);
+      dp_del_fwd_entry (lcm, 0, di);
+    }
+
+  /* add as static remote mapping, i.e., not authoritative and infinite ttl */
+  rv = vnet_lisp_add_del_mapping (&deid, rlocs, action, 0, ~0, is_add, 0);
+
   if (rv)
-    clib_warning ("failed to %s remote mapping!",
-                  is_add ? "add" : "delete");
+    clib_warning("failed to %s remote mapping!", is_add ? "add" : "delete");
 
 done:
   unformat_free (line_input);
@@ -1025,9 +1286,8 @@ clean_locator_to_locator_set (lisp_cp_main_t * lcm, u32 lsi)
     }
 }
 
-static inline
-uword *get_locator_set_index(vnet_lisp_add_del_locator_set_args_t * a,
-                             uword * p)
+static inline uword *
+get_locator_set_index (vnet_lisp_add_del_locator_set_args_t * a, uword * p)
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
 
@@ -1047,9 +1307,9 @@ uword *get_locator_set_index(vnet_lisp_add_del_locator_set_args_t * a,
   return p;
 }
 
-static inline
-int is_locator_in_locator_set(lisp_cp_main_t * lcm, locator_set_t * ls,
-                              locator_t * loc)
+static inline int
+is_locator_in_locator_set (lisp_cp_main_t * lcm, locator_set_t * ls,
+                           locator_t * loc)
 {
   locator_t * itloc;
   u32 * locit;
@@ -1071,9 +1331,9 @@ int is_locator_in_locator_set(lisp_cp_main_t * lcm, locator_set_t * ls,
   return 0;
 }
 
-static inline
-void remove_locator_from_locator_set(locator_set_t * ls, u32 * locit,
-                                     u32 ls_index, u32 loc_id)
+static inline void
+remove_locator_from_locator_set (locator_set_t * ls, u32 * locit, u32 ls_index,
+                                 u32 loc_id)
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
   u32 ** ls_indexes = NULL;
@@ -1314,16 +1574,14 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 }
 
 clib_error_t *
-vnet_lisp_enable_disable (u8 is_enabled)
+vnet_lisp_enable_disable (u8 is_enable)
 {
-  vnet_lisp_gpe_add_del_iface_args_t _ai, * ai= &_ai;
-  uword * table_id, * refc;
-  u32 i;
+  u32 vni, table_id;
   clib_error_t * error = 0;
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
   vnet_lisp_gpe_enable_disable_args_t _a, * a = &_a;
 
-  a->is_en = is_enabled;
+  a->is_en = is_enable;
   error = vnet_lisp_gpe_enable_disable (a);
   if (error)
     {
@@ -1331,54 +1589,30 @@ vnet_lisp_enable_disable (u8 is_enabled)
                                 a->is_en ? "enable" : "disable");
     }
 
-  if (is_enabled)
+  if (is_enable)
     {
       /* enable all ifaces */
-      for (i = 0; i < vec_len (lcm->local_mappings_indexes); i++)
-        {
-          mapping_t * m = vec_elt_at_index (lcm->mapping_pool, i);
-          ai->is_add = 1;
-          ai->vni = gid_address_vni (&m->eid);
-
-          refc = hash_get (lcm->dp_if_refcount_by_vni, ai->vni);
-          if (!refc)
-            {
-              table_id = hash_get (lcm->table_id_by_vni, ai->vni);
-              if (table_id)
-                {
-                  ai->table_id = table_id[0];
-                  /* enables interface and adds defaults */
-                  vnet_lisp_gpe_add_del_iface (ai, 0);
-                }
-              else
-                return clib_error_return (0, "no table_id found for vni %u!",
-                                          ai->vni);
-
-              hash_set (lcm->dp_if_refcount_by_vni, ai->vni, 1);
-            }
-          else
-            {
-              refc[0]++;
-            }
-        }
+      hash_foreach(vni, table_id, lcm->table_id_by_vni, ({
+        dp_add_del_iface(lcm, vni, 1);
+      }));
     }
   else
     {
       /* clear refcount table */
-      hash_free (lcm->dp_if_refcount_by_vni);
+      hash_free (lcm->dp_intf_by_vni);
       hash_free (lcm->fwd_entry_by_mapping_index);
       pool_free (lcm->fwd_entry_pool);
     }
 
   /* update global flag */
-  lcm->is_enabled = is_enabled;
+  lcm->is_enabled = is_enable;
 
   return 0;
 }
 
 static clib_error_t *
 lisp_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
-                                   vlib_cli_command_t * cmd)
+                                vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_enabled = 0;
@@ -1695,8 +1929,8 @@ vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a)
 
 static clib_error_t *
 lisp_add_del_map_resolver_command_fn (vlib_main_t * vm,
-                                         unformat_input_t * input,
-                                         vlib_cli_command_t * cmd)
+                                      unformat_input_t * input,
+                                      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1;
@@ -1748,12 +1982,11 @@ vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a)
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
   uword * p = 0;
 
-  //TODO: Wait for merge https://gerrit.fd.io/r/#/c/1427/
-//   if (vnet_lisp_enable_disable_status () == 0)
-//     {
-//       clib_warning ("LISP is disabled!");
-//       return VNET_API_ERROR_LISP_DISABLED;
-//     }
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
 
   if (a->is_add)
     {
@@ -1775,9 +2008,9 @@ vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a)
 }
 
 static clib_error_t *
-lisp_add_del_mreq_itr_rlocs_command_fn(vlib_main_t * vm,
-                                       unformat_input_t * input,
-                                       vlib_cli_command_t * cmd)
+lisp_add_del_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
+                                        unformat_input_t * input,
+                                        vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1;
@@ -1897,129 +2130,6 @@ format_lisp_cp_lookup_trace (u8 * s, va_list * args)
               format_ip_address, &t->map_resolver_ip, format_gid_address,
               &t->dst_eid);
   return s;
-}
-
-ip_interface_address_t *
-ip_interface_get_first_interface_address (ip_lookup_main_t *lm, u32 sw_if_index,
-                                          u8 loop)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_sw_interface_t * swif = vnet_get_sw_interface (vnm, sw_if_index);
-  if (loop && swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
-    sw_if_index = swif->unnumbered_sw_if_index;
-  u32 ia =
-      (vec_len((lm)->if_address_pool_index_by_sw_if_index) > (sw_if_index)) ?
-          vec_elt((lm)->if_address_pool_index_by_sw_if_index, (sw_if_index)) :
-          (u32) ~0;
-  return pool_elt_at_index((lm)->if_address_pool, ia);
-}
-
-void *
-ip_interface_get_first_address (ip_lookup_main_t * lm, u32 sw_if_index,
-                                u8 version)
-{
-  ip_interface_address_t * ia;
-
-  ia = ip_interface_get_first_interface_address (lm, sw_if_index, 1);
-  if (!ia)
-    return 0;
-  return ip_interface_address_get_address (lm, ia);
-}
-
-int
-ip_interface_get_first_ip_address (lisp_cp_main_t * lcm, u32 sw_if_index,
-                                   u8 version, ip_address_t * result)
-{
-  ip_lookup_main_t * lm;
-  void * addr;
-
-  lm = (version == IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
-  addr = ip_interface_get_first_address (lm, sw_if_index, version);
-  if (!addr)
-    return 0;
-
-  ip_address_set (result, addr, version);
-  return 1;
-}
-
-static u32
-ip_fib_lookup_with_table (lisp_cp_main_t * lcm, u32 fib_index,
-                          ip_address_t * dst)
-{
-  if (ip_addr_version (dst) == IP4)
-      return ip4_fib_lookup_with_table (lcm->im4, fib_index, &ip_addr_v4(dst),
-                                        0);
-  else
-      return ip6_fib_lookup_with_table (lcm->im6, fib_index, &ip_addr_v6(dst));
-}
-
-u32
-ip_fib_get_egress_iface_for_dst_with_lm (lisp_cp_main_t * lcm,
-                                         ip_address_t * dst,
-                                         ip_lookup_main_t * lm)
-{
-  u32 adj_index;
-  ip_adjacency_t * adj;
-
-  adj_index = ip_fib_lookup_with_table (lcm, 0, dst);
-  adj = ip_get_adjacency (lm, adj_index);
-
-  if (adj == 0)
-    return ~0;
-
-  /* we only want outgoing routes */
-  if (adj->lookup_next_index != IP_LOOKUP_NEXT_ARP
-      && adj->lookup_next_index != IP_LOOKUP_NEXT_REWRITE)
-    return ~0;
-
-  return adj->rewrite_header.sw_if_index;
-}
-
-/**
- * Find the sw_if_index of the interface that would be used to egress towards
- * dst.
- */
-u32
-ip_fib_get_egress_iface_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst)
-{
-  ip_lookup_main_t * lm;
-
-  lm = ip_addr_version (dst) == IP4 ?
-      &lcm->im4->lookup_main : &lcm->im6->lookup_main;
-
-  return ip_fib_get_egress_iface_for_dst_with_lm (lcm, dst, lm);
-}
-
-/**
- * Find first IP of the interface that would be used to egress towards dst.
- * Returns 1 if the address is found 0 otherwise.
- */
-int
-ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
-                                    ip_address_t * result)
-{
-  u32 si;
-  ip_lookup_main_t * lm;
-  void * addr = 0;
-  u8 ipver;
-
-  ASSERT(result != 0);
-
-  ipver = ip_addr_version(dst);
-
-  lm = (ipver == IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
-  si = ip_fib_get_egress_iface_for_dst_with_lm (lcm, dst, lm);
-
-  if ((u32) ~0 == si)
-    return 0;
-
-  /* find the first ip address */
-  addr = ip_interface_get_first_address (lm, si, ipver);
-  if (0 == addr)
-    return 0;
-
-  ip_address_set (result, addr, ipver);
-  return 1;
 }
 
 int
@@ -2194,8 +2304,8 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   if (!b)
     return;
 
-  /* set fib index and lookup node */
-  vnet_buffer(b)->sw_if_index[VLIB_TX] = ~0;
+  /* set fib index to default and lookup node */
+  vnet_buffer(b)->sw_if_index[VLIB_TX] = 0;
   next_index = (ip_addr_version(&mr_ip) == IP4) ?
       ip4_lookup_node.index : ip6_lookup_node.index;
 
@@ -2211,7 +2321,6 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   pool_get(lcm->pending_map_requests_pool, pmr);
   gid_address_copy (&pmr->src, seid);
   gid_address_copy (&pmr->dst, deid);
-  pmr->src_mapping_index = map_index;
   hash_set(lcm->pending_map_requests_by_nonce, nonce,
            pmr - lcm->pending_map_requests_pool);
 }
@@ -2342,7 +2451,7 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                                                &src);
                   if (~0 != si)
                     {
-                      add_fwd_entry (lcm, si, di);
+                      dp_add_fwd_entry (lcm, si, di);
                     }
                 }
             }
@@ -2399,8 +2508,8 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_node) = {
 };
 
 /* lisp_cp_input statistics */
-#define foreach_lisp_cp_input_error                   \
-_(DROP, "drop")                                        \
+#define foreach_lisp_cp_input_error                     \
+_(DROP, "drop")                                         \
 _(MAP_REPLIES_RECEIVED, "map-replies received")
 
 static char * lisp_cp_input_error_strings[] = {
@@ -2440,213 +2549,19 @@ format_lisp_cp_input_trace (u8 * s, va_list * args)
   return s;
 }
 
-static void
-del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index,
-               u32 dst_map_index)
-{
-  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
-  fwd_entry_t * fe = 0;
-  uword * feip = 0;
-  memset(a, 0, sizeof(*a));
-
-  feip = hash_get(lcm->fwd_entry_by_mapping_index, dst_map_index);
-  if (!feip)
-    return;
-
-  fe = pool_elt_at_index(lcm->fwd_entry_pool, feip[0]);
-
-  /* delete dp fwd entry */
-  u32 sw_if_index;
-  a->is_add = 0;
-  a->dlocator = fe->dst_loc;
-  a->slocator = fe->src_loc;
-  a->vni = gid_address_vni(&a->deid);
-  gid_address_copy(&a->deid, &fe->deid);
-
-  vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
-
-  /* delete entry in fwd table */
-  hash_unset(lcm->fwd_entry_by_mapping_index, dst_map_index);
-  pool_put(lcm->fwd_entry_pool, fe);
-}
-
-/**
- * Finds first remote locator with best (lowest) priority that has a local
- * peer locator with an underlying route to it.
- *
- */
-static u32
-get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
-                  ip_address_t * lcl_loc, ip_address_t * rmt_loc)
-{
-  u32 i, minp = ~0, limitp = 0, li, check_index = 0, done = 0, esi;
-  locator_set_t * rmt_ls, * lcl_ls;
-  ip_address_t _lcl, * lcl = &_lcl;
-  locator_t * l, * rmt = 0;
-  uword * checked = 0;
-
-  rmt_ls = pool_elt_at_index(lcm->locator_set_pool, rmt_map->locator_set_index);
-  lcl_ls = pool_elt_at_index(lcm->locator_set_pool, lcl_map->locator_set_index);
-
-  if (!rmt_ls || vec_len(rmt_ls->locator_indices) == 0)
-    return 0;
-
-  while (!done)
-    {
-      /* find unvisited remote locator with best priority */
-      for (i = 0; i < vec_len(rmt_ls->locator_indices); i++)
-        {
-          if (0 != hash_get(checked, i))
-            continue;
-
-          li = vec_elt(rmt_ls->locator_indices, i);
-          l = pool_elt_at_index(lcm->locator_pool, li);
-
-          /* we don't support non-IP locators for now */
-          if (gid_address_type(&l->address) != GID_ADDR_IP_PREFIX)
-            continue;
-
-          if (l->priority < minp && l->priority >= limitp)
-            {
-              minp = l->priority;
-              rmt = l;
-              check_index = i;
-            }
-        }
-      /* check if a local locator with a route to remote locator exists */
-      if (rmt != 0)
-        {
-          esi = ip_fib_get_egress_iface_for_dst (
-              lcm, &gid_address_ip(&rmt->address));
-          if ((u32) ~0 == esi)
-            continue;
-
-          for (i = 0; i < vec_len(lcl_ls->locator_indices); i++)
-            {
-              li = vec_elt (lcl_ls->locator_indices, i);
-              locator_t * sl = pool_elt_at_index (lcm->locator_pool, li);
-
-              /* found local locator */
-              if (sl->sw_if_index == esi)
-                {
-                  if (0 == ip_interface_get_first_ip_address (lcm,
-                             sl->sw_if_index,
-                             gid_address_ip_version(&rmt->address), lcl))
-                    continue;
-
-                  ip_address_copy(rmt_loc, &gid_address_ip(&rmt->address));
-                  ip_address_copy(lcl_loc, lcl);
-                  done = 2;
-                }
-            }
-
-          /* skip this remote locator in next searches */
-          limitp = minp;
-          hash_set(checked, check_index, 1);
-        }
-      else
-        done = 1;
-    }
-  hash_free(checked);
-  return (done == 2) ? 1 : 0;
-}
-
-static void
-add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
-{
-  mapping_t * src_map, * dst_map;
-  u32 sw_if_index;
-  uword * feip = 0, * tidp;
-  fwd_entry_t* fe;
-  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
-
-  memset (a, 0, sizeof(*a));
-
-  /* remove entry if it already exists */
-  feip = hash_get (lcm->fwd_entry_by_mapping_index, dst_map_index);
-  if (feip)
-    del_fwd_entry (lcm, src_map_index, dst_map_index);
-
-  src_map = pool_elt_at_index (lcm->mapping_pool, src_map_index);
-  dst_map = pool_elt_at_index (lcm->mapping_pool, dst_map_index);
-
-  gid_address_copy (&a->deid, &dst_map->eid);
-  a->vni = gid_address_vni(&a->deid);
-
-  tidp = hash_get(lcm->table_id_by_vni, a->vni);
-  if (!tidp)
-    {
-      clib_warning("vni %d not associated to a vrf!", a->vni);
-      return;
-    }
-  a->table_id = tidp[0];
-
-  /* insert data plane forwarding entry */
-  a->is_add = 1;
-
-  /* find best locator pair that 1) verifies LISP policy 2) are connected */
-  if (0 == get_locator_pair (lcm, src_map, dst_map, &a->slocator, &a->dlocator))
-    {
-      /* negative entry */
-      a->is_negative = 1;
-      a->action = dst_map->action;
-    }
-
-  /* TODO remove */
-  u8 ipver = ip_prefix_version(&gid_address_ippref(&a->deid));
-  a->decap_next_index = (ipver == IP4) ?
-          LISP_GPE_INPUT_NEXT_IP4_INPUT : LISP_GPE_INPUT_NEXT_IP6_INPUT;
-
-  vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
-
-  /* add tunnel to fwd entry table XXX check return value from DP insertion */
-  pool_get (lcm->fwd_entry_pool, fe);
-  fe->dst_loc = a->dlocator;
-  fe->src_loc = a->slocator;
-  gid_address_copy (&fe->deid, &a->deid);
-  hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
-            fe - lcm->fwd_entry_pool);
-}
-
-/* return 0 if the two locator sets are identical 1 otherwise */
-static u8
-compare_locators (lisp_cp_main_t *lcm, u32 * old_ls_indexes,
-                  locator_t * new_locators)
-{
-  u32 i, old_li;
-  locator_t * old_loc, * new_loc;
-
-  if (vec_len (old_ls_indexes) != vec_len(new_locators))
-    return 1;
-
-  for (i = 0; i < vec_len(new_locators); i++)
-    {
-      old_li = vec_elt(old_ls_indexes, i);
-      old_loc = pool_elt_at_index(lcm->locator_pool, old_li);
-
-      new_loc = vec_elt_at_index(new_locators, i);
-
-      if (locator_cmp (old_loc, new_loc))
-        return 1;
-    }
-  return 0;
-}
-
 void
 process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
 {
-  mapping_t * old_map;
-  locator_t * loc;
-  u32 len = 0, i, ls_index = 0;
+  u32 len = 0, i, ttl;
   void * h;
-  vnet_lisp_add_del_locator_set_args_t _ls_arg, * ls_arg = &_ls_arg;
-  vnet_lisp_add_del_mapping_args_t _m_args, * m_args = &_m_args;
   pending_map_request_t * pmr;
   locator_t probed;
   map_reply_hdr_t * mrep_hdr;
   u64 nonce;
-  u32 dst_map_index, mi;
+  gid_address_t deid;
   uword * pmr_index;
+  u8 authoritative, action;
+  locator_t * locators = 0, * loc;
 
   mrep_hdr = vlib_buffer_get_current (b);
 
@@ -2664,71 +2579,28 @@ process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
 
   for (i = 0; i < MREP_REC_COUNT(mrep_hdr); i++)
     {
-      memset (ls_arg, 0, sizeof(*ls_arg));
-      memset (m_args, 0, sizeof(*m_args));
 
       h = vlib_buffer_get_current (b);
-      m_args->ttl = clib_net_to_host_u32 (MAP_REC_TTL(h));
-      m_args->action = MAP_REC_ACTION(h);
-      m_args->authoritative = MAP_REC_AUTH(h);
+      ttl = clib_net_to_host_u32 (MAP_REC_TTL(h));
+      action = MAP_REC_ACTION(h);
+      authoritative = MAP_REC_AUTH(h);
 
-      len = lisp_msg_parse_mapping_record (b, &m_args->deid, &ls_arg->locators,
-                                           &probed);
+      len = lisp_msg_parse_mapping_record (b, &deid, &locators, &probed);
       if (len == ~0)
         {
           clib_warning ("Failed to parse mapping record!");
-          vec_foreach (loc, ls_arg->locators)
+          vec_foreach (loc, locators)
             {
               locator_free (loc);
             }
-          vec_free(ls_arg->locators);
+          vec_free(locators);
           return;
         }
 
-      mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &m_args->deid);
-      old_map = mi != ~0 ? pool_elt_at_index(lcm->mapping_pool, mi) : 0;
+      vnet_lisp_add_del_adjacency (&deid, &pmr->src, locators, action,
+                                   authoritative, ttl, 1);
 
-      /* if mapping already exists, decide if locators (and forwarding) should
-       * be updated and be done */
-      if (old_map != 0 && !gid_address_cmp (&old_map->eid, &m_args->deid))
-        {
-          locator_set_t * old_ls;
-
-          /* update mapping attributes */
-          old_map->action = m_args->action;
-          old_map->authoritative = m_args->authoritative;
-          old_map->ttl = m_args->ttl;
-
-          old_ls = pool_elt_at_index(lcm->locator_set_pool,
-                                     old_map->locator_set_index);
-          /* if the two locators are not equal, update them and forwarding
-           * otherwise there's nothing to be done */
-          if (compare_locators (lcm, old_ls->locator_indices, ls_arg->locators))
-            {
-              /* set locator-set index to overwrite */
-              ls_arg->is_add = 1;
-              ls_arg->index = old_map->locator_set_index;
-              vnet_lisp_add_del_locator_set (ls_arg, 0);
-              add_fwd_entry (lcm, pmr->src_mapping_index, mi);
-            }
-        }
-      /* new mapping */
-      else
-        {
-          /* add locator-set */
-          ls_arg->is_add = 1;
-          ls_arg->index = ~0;
-          vnet_lisp_add_del_locator_set (ls_arg, &ls_index);
-
-          /* add mapping */
-          m_args->is_add = 1;
-          m_args->locator_set_index = ls_index;
-          vnet_lisp_add_del_mapping (m_args, &dst_map_index);
-
-          /* add forwarding tunnel */
-          add_fwd_entry (lcm, pmr->src_mapping_index, dst_map_index);
-        }
-      vec_free(ls_arg->locators);
+      vec_free(locators);
     }
 
   /* remove pending map request entry */
@@ -2876,6 +2748,7 @@ lisp_cp_init (vlib_main_t *vm)
   lcm->vlib_main = vm;
   lcm->vnet_main = vnet_get_main();
   lcm->mreq_itr_rlocs = ~0;
+  lcm->lisp_pitr = 0;
 
   gid_dictionary_init (&lcm->mapping_index_by_gid);
 

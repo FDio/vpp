@@ -244,6 +244,4 @@ typedef struct
   u8 local;
 } mapping_t;
 
-lcaf_t lcaf_iid_init (u32 vni);
-
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */
