@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_d70cfa96",
+        "filename": "vpp-api/python/pneum/api-gen.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-06-23T13:39:19Z",
+      "side": 1,
+      "message": "Why is variable length array support missing here?  \n\nThis should included in this commit or a JIRA opened to track this task.",
+      "range": {
+        "startLine": 70,
+        "startChar": 40,
+        "endLine": 70,
+        "endChar": 86
+      },
+      "revId": "5c2addec6109cf12d7bf674730ffe0e2d49d0a8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
