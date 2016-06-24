@@ -739,11 +739,11 @@ u8 * format_dpdk_rte_mbuf (u8 * s, va_list * va)
   uword indent = format_get_indent (s) + 2;
 
   s = format (s, "PKT MBUF: port %d, nb_segs %d, pkt_len %d"
-              "\n%Ubuf_len %d, data_len %d, ol_flags 0x%x, data_off %d"
+              "\n%Ubuf_len %d, data_len %d, ol_flags 0x%x, data_off %d, phys_addr 0x%x"
               "\n%Upacket_type 0x%x",
               mb->port, mb->nb_segs, mb->pkt_len,
               format_white_space, indent,
-              mb->buf_len, mb->data_len, mb->ol_flags, mb->data_off,
+              mb->buf_len, mb->data_len, mb->ol_flags, mb->data_off, mb->buf_physaddr,
               format_white_space, indent,
               mb->packet_type);
 
