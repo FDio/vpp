@@ -16,6 +16,24 @@
       "revId": "56bc0d562fdc450afecfb4e701d3935da75a0898",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_3ae43d3a",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-06-24T01:20:32Z",
+      "side": 1,
+      "message": "(1). Have changed code to set fields unconditionally.\n(2).The complete definition of plugin_metadata for NSH-Proxy is as follows: defined in nsh-proxy.h:\n/* Define plugin_metadata\u0027s fields in vnet_buffer_opaque_t:\n * plugin_metadata[0]: spi_si;\n * plugin_metadata[1]: vid;\n * plugin_metadata[2]: sw_if_index;\n * plugin_metadata[3]: tunnel_type;\n * plugin_metadata[4]: si_minus_one;\n */",
+      "parentUuid": "ba092121_97956242",
+      "revId": "56bc0d562fdc450afecfb4e701d3935da75a0898",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
