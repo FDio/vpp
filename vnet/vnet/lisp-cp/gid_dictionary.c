@@ -16,6 +16,23 @@
 #include <vnet/lisp-cp/gid_dictionary.h>
 
 static u32
+mac_lookup (gid_dictionary_t * db, u32 vni, u8 * key)
+{
+  int rv;
+  BVT(clib_bihash_kv) kv, value;
+
+  kv.key[0] = ((u64 *)key)[0];
+  kv.key[1] = (u64)vni;
+  kv.key[2] = 0;
+
+  rv = BV(clib_bihash_search_inline_2)(&db->mac_lookup_table, &kv, &value);
+  if (rv == 0)
+    return value.value;
+
+  return GID_LOOKUP_MISS;
+}
+
+static u32
 ip4_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t *key)
 {
   int i, len;
@@ -102,7 +119,8 @@ gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key)
     {
     case GID_ADDR_IP_PREFIX:
       return ip_lookup (db, gid_address_vni(key), &gid_address_ippref(key));
-      break;
+    case GID_ADDR_MAC:
+      return mac_lookup (db, gid_address_vni(key), gid_address_mac(key));
     default:
       clib_warning ("address type %d not supported!", gid_address_type(key));
       break;
@@ -239,6 +257,29 @@ add_del_ip6_key (gid_dictionary_t *db, u32 vni, ip_prefix_t *pref, u32 val,
 }
 
 static u32
+add_del_mac (gid_dictionary_t * db, u32 vni, u8 * mac, u32 val, u8 is_add)
+{
+  BVT(clib_bihash_kv) kv, value;
+  u32 old_val = ~0;
+
+  kv.key[0] = ((u64 *)mac)[0];
+  kv.key[1] = (u64)vni;
+  kv.key[2] = 0;
+
+  if (BV(clib_bihash_search) (&db->mac_lookup_table, &kv, &value) == 0)
+    old_val = value.value;
+
+  if (!is_add)
+    BV(clib_bihash_add_del) (&db->mac_lookup_table, &kv, 0 /* is_add */);
+  else
+    {
+      kv.value = val;
+      BV(clib_bihash_add_del) (&db->mac_lookup_table, &kv, 1 /* is_add */);
+    }
+  return old_val;
+}
+
+static u32
 add_del_ip (gid_dictionary_t *db, u32 vni, ip_prefix_t *key, u32 value,
             u8 is_add)
 {
@@ -267,7 +308,9 @@ gid_dictionary_add_del (gid_dictionary_t *db, gid_address_t *key, u32 value,
     case GID_ADDR_IP_PREFIX:
       return add_del_ip (db, gid_address_vni(key), &gid_address_ippref(key),
                          value, is_add);
-      break;
+    case GID_ADDR_MAC:
+      return add_del_mac (db, gid_address_vni(key), gid_address_mac(key),
+                          value, is_add);
     default:
       clib_warning ("address type %d not supported!", gid_address_type (key));
       break;
@@ -338,10 +381,27 @@ ip6_lookup_init (gid_dictionary_t * db)
                          db->ip6_lookup_table_nbuckets, db->ip6_lookup_table_size);
 }
 
+static void
+mac_lookup_init (gid_dictionary_t * db)
+{
+  if (db->mac_lookup_table_nbuckets == 0)
+    db->mac_lookup_table_nbuckets = MAC_LOOKUP_DEFAULT_HASH_NUM_BUCKETS;
+
+  db->mac_lookup_table_nbuckets = 1 << max_log2 (db->mac_lookup_table_nbuckets);
+
+  if (db->mac_lookup_table_size == 0)
+    db->mac_lookup_table_size = MAC_LOOKUP_DEFAULT_HASH_MEMORY_SIZE;
+
+  BV(clib_bihash_init) (&db->mac_lookup_table, "mac lookup table",
+                        db->mac_lookup_table_nbuckets,
+                        db->mac_lookup_table_size);
+}
+
 void
 gid_dictionary_init (gid_dictionary_t * db)
 {
   ip4_lookup_init (db);
   ip6_lookup_init (db);
+  mac_lookup_init (db);
 }
 

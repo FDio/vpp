@@ -31,6 +31,10 @@
 #define IP6_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define IP6_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
 
+/* Default size of the MAC hash table */
+#define MAC_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define MAC_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+
 typedef struct
 {
   BVT(clib_bihash) ip4_lookup_table;
@@ -56,6 +60,12 @@ typedef struct
   /* ip6 lookup table config parameters */
   u32 ip6_lookup_table_nbuckets;
   uword ip6_lookup_table_size;
+
+  BVT(clib_bihash) mac_lookup_table;
+
+  /* mac lookup table config parameters */
+  u32 mac_lookup_table_nbuckets;
+  uword mac_lookup_table_size;
 
 } gid_dictionary_t;
 

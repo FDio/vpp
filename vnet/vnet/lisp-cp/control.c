@@ -211,6 +211,7 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 is_add = 1;
   gid_address_t eid;
   ip_prefix_t * prefp = &gid_address_ippref(&eid);
+  u8 * mac = gid_address_mac(&eid);
   gid_address_t * eids = 0;
   clib_error_t * error = 0;
   u8 * locator_set_name = 0;
@@ -235,6 +236,12 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
         gid_address_vni (&eid) = vni;
       else if (unformat (line_input, "eid %U", unformat_ip_prefix, prefp))
         {
+          gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
+          vec_add1(eids, eid);
+        }
+      else if (unformat (line_input, "eid %U", unformat_mac_address, mac))
+        {
+          gid_address_type (&eid) = GID_ADDR_MAC;
           vec_add1(eids, eid);
         }
       else if (unformat (line_input, "locator-set %_%v%_", &locator_set_name))
@@ -256,7 +263,6 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   /* XXX treat batch configuration */
 
-  gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
   a->deid = eid;
   a->is_add = is_add;
   a->locator_set_index = locator_set_index;
@@ -661,6 +667,8 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   ip_address_t rloc, * rlocs = 0;
   ip_prefix_t * deid_ippref, * seid_ippref;
   gid_address_t seid, deid;
+  u8 * dmac = gid_address_mac (&deid);
+  u8 * smac = gid_address_mac (&seid);
   u8 deid_set = 0, seid_set = 0;
   u8 * s = 0;
   u32 vni, action = ~0;
@@ -675,9 +683,6 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   seid_ippref = &gid_address_ippref(&seid);
   deid_ippref = &gid_address_ippref(&deid);
 
-  gid_address_type (&deid) = GID_ADDR_IP_PREFIX;
-  gid_address_type (&seid) = GID_ADDR_IP_PREFIX;
-
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "del-all"))
@@ -689,6 +694,13 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "deid %U",
                          unformat_ip_prefix, deid_ippref))
         {
+          gid_address_type (&deid) = GID_ADDR_IP_PREFIX;
+          deid_set = 1;
+        }
+      else if (unformat (line_input, "deid %U",
+                         unformat_mac_address, dmac))
+        {
+          gid_address_type (&deid) = GID_ADDR_MAC;
           deid_set = 1;
         }
       else if (unformat (line_input, "vni %u", &vni))
@@ -699,6 +711,13 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "seid %U",
                          unformat_ip_prefix, seid_ippref))
         {
+          gid_address_type (&seid) = GID_ADDR_IP_PREFIX;
+          seid_set = 1;
+        }
+      else if (unformat (line_input, "seid %U",
+                         unformat_mac_address, smac))
+        {
+          gid_address_type (&seid) = GID_ADDR_MAC;
           seid_set = 1;
         }
       else if (unformat (line_input, "rloc %U", unformat_ip_address, &rloc))
@@ -734,18 +753,22 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
           goto done;
         }
 
-      /* if seid not set, make sure the ip version is the same as that of the
-       * deid. This ensures the seid to be configured will be either 0/0 or
-       * ::/0 */
-      if (!seid_set)
-        ip_prefix_version(seid_ippref) = ip_prefix_version(deid_ippref);
-
-      if (is_add &&
-          (ip_prefix_version (deid_ippref) != ip_prefix_version(seid_ippref)))
+      if (GID_ADDR_IP_PREFIX == gid_address_type (&deid))
         {
-          clib_warning ("source and destination EIDs are not"
-                        " in the same IP family!");
-          goto done;
+          /* if seid not set, make sure the ip version is the same as that
+           * of the deid. This ensures the seid to be configured will be
+           * either 0/0 or ::/0 */
+          if (!seid_set)
+            ip_prefix_version(seid_ippref) = ip_prefix_version(deid_ippref);
+
+          if (is_add &&
+              (ip_prefix_version (deid_ippref)
+               != ip_prefix_version(seid_ippref)))
+            {
+              clib_warning ("source and destination EIDs are not"
+                            " in the same IP family!");
+              goto done;
+            }
         }
 
       if (is_add && (~0 == action)

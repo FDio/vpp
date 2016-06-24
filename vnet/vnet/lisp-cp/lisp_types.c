@@ -150,6 +150,22 @@ unformat_ip_prefix (unformat_input_t * input, va_list * args)
                    &ip_prefix_len(a));
 }
 
+uword
+unformat_mac_address (unformat_input_t * input, va_list * args)
+{
+  u8 * a = va_arg(*args, u8 *);
+  return unformat (input, "%x:%x:%x:%x:%x:%x", &a[0], &a[1], &a[2], &a[3],
+                   &a[4], &a[5]);
+}
+
+u8 *
+format_mac_address (u8 * s, va_list * args)
+{
+  u8 * a = va_arg (*args, u8 *);
+  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
+                 a[0], a[1], a[2], a[3], a[4], a[5]);
+}
+
 u8 *
 format_gid_address (u8 * s, va_list * args)
 {
@@ -164,6 +180,9 @@ format_gid_address (u8 * s, va_list * args)
       return format (s, "[%d] %U|%U", gid_address_vni(a),
                      format_ip_prefix, &gid_address_sd_source_pref(a),
                      format_ip_prefix, &gid_address_sd_dest_pref(a));
+    case GID_ADDR_MAC:
+      return format (s, "[%d] %U", gid_address_vni(a), format_mac_address,
+                     &gid_address_mac(a));
     default:
       clib_warning("Can't format gid type %d", type);
       return 0;

@@ -136,6 +136,8 @@ u8 * format_ip_address (u8 * s, va_list * args);
 uword unformat_ip_address (unformat_input_t * input, va_list * args);
 u8 * format_ip_prefix (u8 * s, va_list * args);
 uword unformat_ip_prefix (unformat_input_t * input, va_list * args);
+u8 * format_mac_address (u8 * s, va_list * args);
+uword unformat_mac_address (unformat_input_t * input, va_list * args);
 
 u16 ip4_address_size_to_put ();
 u16 ip6_address_size_to_put ();
