@@ -42,9 +42,9 @@ dpaa2_dpdk_make_extra_args = "CROSS=$(dpaa2_target)-"
 endif
 endif
 
-vpp_configure_args_dpaa2 = --with-dpdk --without-ipsec --without-vcgn \
+vpp_configure_args_dpaa2 = --with-dpdk --without-ipsec \
 	--without-ipv6sr --with-sysroot=$(SYSROOT)
-vnet_configure_args_dpaa2 = --with-dpdk --without-ipsec --without-vcgn \
+vnet_configure_args_dpaa2 = --with-dpdk --without-ipsec \
 	--without-ipv6sr --with-sysroot=$(SYSROOT)
 
 # Set these parameters carefully. The vlib_buffer_t is 128 bytes, i.e.

@@ -11,10 +11,10 @@ qppc_root_packages = vppinfra vlib vlib-api vnet svm \
 	vpp vpp-api-test
 
 vnet_configure_args_qppc = \
-	--without-ipsec --without-vcgn --without-ipv6sr
+	--without-ipsec --without-ipv6sr
 
 vpp_configure_args_qppc = \
-	--without-ipsec --without-vcgn --without-ipv6sr
+	--without-ipsec --without-ipv6sr
 
 vlib_configure_args_qppc = --with-pre-data=128
 
