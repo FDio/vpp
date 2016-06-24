@@ -24,6 +24,9 @@ endif
 
 # Platform dependent configure flags
 plugins_configure_args += $(plugins_configure_args_$(PLATFORM))
+plugins_configure_args += --enable-sixrd-plugin
+plugins_configure_args += --enable-ioam-plugin
+plugins_configure_args += --enable-vcgn-plugin
 
 # include & link with openssl only if needed
 ifneq ($($(PLATFORM)_uses_openssl),no)
