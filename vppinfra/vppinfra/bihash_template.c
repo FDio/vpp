@@ -418,7 +418,6 @@ u8 * BV(format_bihash) (u8 * s, va_list * args)
 
   s = format (s, "    %lld active elements\n", active_elements);
   s = format (s, "    %d free lists\n", vec_len (h->freelists));
-  s = format (s, "    %U\n", format_mheap, h->mheap, 1 /* verbose */);
 
   return s;
 }
