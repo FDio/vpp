@@ -23,7 +23,7 @@ plugins_configure_args += --enable-tests
 endif
 
 # Platform dependent configure flags
-plugins_configure_args += $(plugins_configure_args_$(PLATFORM))
+plugins_configure_args += $(plugins_configure_args_$(PLATFORM)) --enable-sixrd-plugin --enable-ioam-plugin --enable-vcgn-plugin
 
 # include & link with openssl only if needed
 ifneq ($($(PLATFORM)_uses_openssl),no)
