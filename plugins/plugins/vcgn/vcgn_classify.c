@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/plugin/plugin.h>
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
@@ -1492,4 +1493,16 @@ vcgn_init (vlib_main_t * vm)
   return error;
 }
 
-VLIB_INIT_FUNCTION (vcgn_init);
+/* 
+ * This routine exists to convince the vlib plugin framework that
+ * we haven't accidentally copied a random .dll into the plugin
+ * directory. This is used in lieu of VLIB_INIT_FUNCTION(vcgn_init).
+ *
+ * Also collects global variable pointers passed from the vpp engine
+ */
+clib_error_t *
+vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
+                      int from_early_init)
+{
+    return vcgn_init(vm);
+}
