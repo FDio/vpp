@@ -57,6 +57,24 @@
       "revId": "649e13cd52cefc110cc71cf352d7dfc7d3b48c5c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_7acbd572",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 929,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-24T09:07:51Z",
+      "side": 1,
+      "message": "I was not thinking about having all locators in one line, just have them aligned with the table header. That is, add some tabs to each locator to move them to the right.",
+      "parentUuid": "ba092121_7af635d9",
+      "revId": "649e13cd52cefc110cc71cf352d7dfc7d3b48c5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
