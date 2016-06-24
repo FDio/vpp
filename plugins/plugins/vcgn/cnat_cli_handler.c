@@ -327,7 +327,7 @@ void cnat_nat44_handle_show_config(vlib_main_t *vm)
         *global_nfv9_logging_info = 0;
 
     vnet_hw_interface_t * hw;
-    dpdk_main_t * dm = &dpdk_main;
+    vnet_main_t * vnm = vnet_get_main();
 
     void cnat_nfv9_show_collector 
         (vlib_main_t *vm, cnat_nfv9_logging_info_t *my_nfv9_logging_info);
@@ -338,9 +338,9 @@ void cnat_nat44_handle_show_config(vlib_main_t *vm)
     vlib_cli_output(vm, "\tdynamic port start range : %u\n", cnat_static_port_range);
 
     pool_foreach(my_vrfmap, cnat_map_by_vrf, ({
-                hw = vnet_get_hw_interface (dm->vnet_main, my_vrfmap->i_vrf);
+                hw = vnet_get_hw_interface (vnm, my_vrfmap->i_vrf);
                 vlib_cli_output(vm, "\tInside Interface  : %v\n", hw->name);
-                hw = vnet_get_hw_interface (dm->vnet_main, my_vrfmap->o_vrf);
+                hw = vnet_get_hw_interface (vnm, my_vrfmap->o_vrf);
                 vlib_cli_output(vm, "\tOutside Interface : %v\n", hw->name);
 
                 memset(status_str, 0x00, sizeof(status_str));
@@ -504,7 +504,7 @@ void cnat_v4_show_inside_entry_req_t_handler
     u8 display_entry;
     u8 flag_str[11];
     vnet_hw_interface_t * hw;
-    dpdk_main_t * dm = &dpdk_main;
+    vnet_main_t * vnm = vnet_get_main();
 
     ki.k.k.ipv4 = mp->ipv4_addr;
     ki.k.k.vrf = mp->vrf_id;
@@ -724,7 +724,7 @@ next_entry:
     else strncpy((char *)transl_str, "Unknown", 7); /* currently we are not supporting static/alg entries */
 
     ip.s_addr = clib_net_to_host_u32(u_ki.k.k.ipv4);
-    hw = vnet_get_hw_interface (dm->vnet_main, u_ki.k.k.vrf);
+    hw = vnet_get_hw_interface (vnm, u_ki.k.k.vrf);
 
     vlib_cli_output (vm, "Inside-translation details\n");
     vlib_cli_output (vm, "--------------------------\n");
@@ -791,7 +791,7 @@ void cnat_v4_show_outside_entry_req_t_handler
     u8 display_entry;
     u8 flag_str[11];
     vnet_hw_interface_t * hw;
-    dpdk_main_t * dm = &dpdk_main;
+    vnet_main_t * vnm = vnet_get_main();
 
     ko.k.k.ipv4 = mp->ipv4_addr;
     ko.k.k.vrf = mp->vrf_id;
@@ -912,7 +912,7 @@ void cnat_v4_show_outside_entry_req_t_handler
     else strncpy((char *)transl_str, "Unknown", 7); /* currently we are not supporting static/alg entries */
 
     ip.s_addr = clib_net_to_host_u32(ko.k.k.ipv4);
-    hw = vnet_get_hw_interface (dm->vnet_main, (ko.k.k.vrf & CNAT_VRF_MASK));
+    hw = vnet_get_hw_interface (vnm, (ko.k.k.vrf & CNAT_VRF_MASK));
 
     vlib_cli_output (vm, "Outside-translation details\n");
     vlib_cli_output (vm, "--------------------------\n");

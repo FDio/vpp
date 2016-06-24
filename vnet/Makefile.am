@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @DPDK@ @VIRL@ @IPSEC@ @VCGN@ @IPV6SR@
+AM_CFLAGS = -Wall @DPDK@ @VIRL@ @IPSEC@ @IPV6SR@
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -522,41 +522,6 @@ nobase_include_HEADERS +=			\
  vnet/sr/sr_packet.h				\
  vnet/sr/sr_error.def				\
  vnet/sr/sr.h
-
-########################################
-# CGN
-#########################################
-
-if WITH_VCGN
-libvnet_la_SOURCES +=						\
- vnet/vcgn/cnat_bulk_port.c					\
- vnet/vcgn/cnat_config.c					\
- vnet/vcgn/cnat_db_scanner.c					\
- vnet/vcgn/cnat_db_v2.c						\
- vnet/vcgn/cnat_debug_msg_handler.c				\
- vnet/vcgn/cnat_cli_handler.c					\
- vnet/vcgn/cnat_global.c					\
- vnet/vcgn/cnat_ipv4_udp_inside_input.c				\
- vnet/vcgn/cnat_ipv4_udp_inside_input_exceptions.c		\
- vnet/vcgn/cnat_ipv4_udp_outside_input.c			\
- vnet/vcgn/cnat_ipv4_tcp_inside_input.c				\
- vnet/vcgn/cnat_ipv4_tcp_inside_input_exceptions.c		\
- vnet/vcgn/cnat_ipv4_tcp_outside_input.c			\
- vnet/vcgn/cnat_ipv4_icmp_query_inside_input.c			\
- vnet/vcgn/cnat_ipv4_icmp_query_inside_input_exception.c	\
- vnet/vcgn/cnat_ipv4_icmp_query_outside_input.c			\
- vnet/vcgn/cnat_ipv4_icmp_error_inside_input.c			\
- vnet/vcgn/cnat_ipv4_icmp_error_outside_input.c			\
- vnet/vcgn/cnat_logging.c					\
- vnet/vcgn/cnat_ports.c						\
- vnet/vcgn/cnat_util.c						\
- vnet/vcgn/cnat_show.c						\
- vnet/vcgn/cnat_syslog.c					\
- vnet/vcgn/cnat_v4_functions.c					\
- vnet/vcgn/index_list.c						\
- vnet/vcgn/spp_platform_trace_log.c				\
- vnet/vcgn/vcgn_classify.c
-endif
 
 ########################################
 # DHCPv6 proxy

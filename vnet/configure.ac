@@ -24,11 +24,6 @@ AC_ARG_WITH(ipsec,
             [with_ipsec=0],
             [with_ipsec=1])
 
-AC_ARG_WITH(vcgn,
-            AC_HELP_STRING([--without-vcgn],[Disable vcgn]),
-            [with_vcgn=0],
-            [with_vcgn=1])
-
 AC_ARG_WITH(ipv6sr,
             AC_HELP_STRING([--without-ipv6sr],[Disable ipv6sr]),
             [with_ipv6sr=0],
@@ -47,9 +42,6 @@ AC_SUBST(VIRL,[-DVIRL=${with_virl}])
 
 AM_CONDITIONAL(WITH_IPSEC, test "$with_ipsec" = "1")
 AC_SUBST(IPSEC,[-DIPSEC=${with_ipsec}])
-
-AM_CONDITIONAL(WITH_VCGN, test "$with_vcgn" = "1")
-AC_SUBST(VCGN,[-DVCGN=${with_vcgn}])
 
 AM_CONDITIONAL(WITH_IPV6SR, test "$with_ipv6sr" = "1")
 AC_SUBST(IPV6SR,[-DIPV6SR=${with_ipv6sr}])
