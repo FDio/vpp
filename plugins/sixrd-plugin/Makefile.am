@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Cisco and/or its affiliates.
+# Copyright (c) 2015 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -13,19 +13,25 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-SUBDIRS =
-if ENABLE_SAMPLE_PLUGIN
-SUBDIRS += sample-plugin
-endif
+AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@
 
-if ENABLE_SIXRD_PLUGIN
-SUBDIRS += sixrd-plugin
-endif
+libsixrd_plugin_la_SOURCES =			\
+	sixrd/sixrd.c				\
+	sixrd/ip4_sixrd.c			\
+	sixrd/ip6_sixrd.c
 
-if ENABLE_IOAM_PLUGIN
-SUBDIRS += ioam-plugin
-endif
+nobase_include_HEADERS =			\
+	sixrd/sixrd.h
 
-if ENABLE_VCGN_PLUGIN
-SUBDIRS += vcgn-plugin
+libsixrd_plugin_la_LDFLAGS = -module
+
+BUILT_SOURCES =
+
+lib_LTLIBRARIES = libsixrd_plugin.la
+
+if WITH_PLUGIN_TOOLKIT
+install-data-hook:
+	mkdir /usr/lib/vpp_plugins || true
+	mkdir /usr/lib/vpp_api_test_plugins || true
+	cp $(prefix)/lib/libsixrd_plugin.so.*.*.* /usr/lib/vpp_plugins
 endif
