@@ -15,12 +15,21 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@
 
-lib_LTLIBRARIES = sample_plugin.la sample_test_plugin.la
-sample_plugin_la_SOURCES = sample/sample.c sample/node.c \
-	sample/sample_plugin.api.h 
-sample_plugin_la_LDFLAGS = -module
+########################################
+# iOAM Proof of Transit
+########################################
 
-BUILT_SOURCES = sample/sample.api.h
+ioam_pot_plugin_la_SOURCES =			\
+	ioam/lib-pot/pot_util.c			\
+	ioam/encap/ip6_ioam_pot.c		\
+	ioam/lib-pot/pot_util.h			\
+	ioam/lib-pot/math64.h			\
+	ioam/lib-pot/pot_api.c
+
+ioam_pot_plugin_la_LDFLAGS = -module
+
+BUILT_SOURCES =					\
+	ioam/lib-pot/pot.api.h
 
 SUFFIXES = .api.h .api
 
@@ -30,17 +39,24 @@ SUFFIXES = .api.h .api
 	| vppapigen --input - --output $@ --show-name $@
 
 nobase_include_HEADERS =			\
-  sample/sample_all_api_h.h			\
-  sample/sample_msg_enum.h			\
-  sample/sample.api.h
+  ioam/lib-pot/pot_all_api_h.h			\
+  ioam/lib-pot/pot_msg_enum.h			\
+  ioam/lib-pot/pot.api.h			\
+  ioam/lib-pot/pot_util.h			\
+  ioam/lib-pot/math64.h
 
-sample_test_plugin_la_SOURCES = sample/sample_test.c sample/sample_plugin.api.h
-sample_test_plugin_la_LDFLAGS = -module
+ioam_pot_test_plugin_la_SOURCES =		\
+	ioam/lib-pot/pot_test.c			\
+	ioam/lib-pot/pot_plugin.api.h
+
+ioam_pot_test_plugin_la_LDFLAGS = -module
+
+lib_LTLIBRARIES = ioam_pot_plugin.la ioam_pot_test_plugin.la
 
 if WITH_PLUGIN_TOOLKIT
 install-data-hook:
 	mkdir /usr/lib/vpp_plugins || true
 	mkdir /usr/lib/vpp_api_test_plugins || true
-	cp -L $(prefix)/lib/sample_plugin.so /usr/lib/vpp_plugins
-	cp -L $(prefix)/lib/sample_test_plugin.so /usr/lib/vpp_api_test_plugins
+	cp -L $(prefix)/lib/ioam_pot_plugin.so /usr/lib/vpp_plugins
+	cp -L $(prefix)/lib/ioam_pot_test_plugin.so /usr/lib/vpp_api_test_plugins
 endif

@@ -24,8 +24,8 @@ vpp_lite_root_packages = vpp vlib vlib-api vnet svm vpp-api-test \
 
 vlib_configure_args_vpp_lite = --with-pre-data=128
 
-vnet_configure_args_vpp_lite = --without-vcgn
-vpp_configure_args_vpp_lite = --without-vcgn
+vnet_configure_args_vpp_lite =
+vpp_configure_args_vpp_lite =
 
 vpp_lite_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
 	-fstack-protector-all -fPIC -Werror
