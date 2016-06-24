@@ -24,6 +24,7 @@ TESTS =
 
 if ENABLE_TESTS
 TESTS  +=  test_bihash_template \
+	   test_dlist \
 	   test_elog \
 	   test_elf \
 	   test_fifo \
@@ -54,6 +55,7 @@ noinst_PROGRAMS = $(TESTS)
 check_PROGRAMS	= $(TESTS)
 
 test_bihash_template_SOURCES = vppinfra/test_bihash_template.c
+test_dlist_SOURCES = vppinfra/test_dlist.c
 test_elog_SOURCES = vppinfra/test_elog.c
 test_elf_SOURCES = vppinfra/test_elf.c
 test_fifo_SOURCES = vppinfra/test_fifo.c
@@ -82,6 +84,7 @@ test_zvec_SOURCES = vppinfra/test_zvec.c
 # All unit tests use ASSERT for failure
 # So we'll need -DDEBUG to enable ASSERTs
 test_bihash_template_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_dlist_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_elog_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_elf_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_fifo_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -108,6 +111,7 @@ test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 
 test_bihash_template_LDADD =	libvppinfra.la
+test_dlist_LDADD =	libvppinfra.la
 test_elog_LDADD =	libvppinfra.la
 test_elf_LDADD =	libvppinfra.la
 test_fifo_LDADD =	libvppinfra.la
@@ -134,6 +138,7 @@ test_vec_LDADD =	libvppinfra.la
 test_zvec_LDADD =	libvppinfra.la
 
 test_bihash_template_LDFLAGS = -static
+test_dlist_LDFLAGS = -static
 test_elog_LDFLAGS = -static
 test_elf_LDFLAGS = -static
 test_fifo_LDFLAGS = -static
@@ -178,6 +183,7 @@ nobase_include_HEADERS = \
   vppinfra/cache.h \
   vppinfra/clib.h \
   vppinfra/cpu.h \
+  vppinfra/dlist.h \
   vppinfra/elf.h \
   vppinfra/elf_clib.h \
   vppinfra/elog.h \
