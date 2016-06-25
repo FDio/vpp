@@ -265,6 +265,11 @@ always_inline uword
 ip6_address_is_local_unicast (ip6_address_t * a)
 { return (a->as_u8[0] & 0xfe) == 0xfc; }
 
+/* Check for unique global unicast 2000::/3. */
+always_inline uword
+ip6_address_is_global_unicast (ip6_address_t * a)
+{ return (a->as_u8[0] & 0xe0) == 0x20; }
+
 /* Check for solicited node multicast 0xff02::1:ff00:0/104 */
 always_inline uword
 ip6_is_solicited_node_multicast_address (ip6_address_t * a)
