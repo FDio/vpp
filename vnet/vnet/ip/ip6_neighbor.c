@@ -2658,6 +2658,24 @@ ip6_neighbor_cmd(vlib_main_t * vm, unformat_input_t * main_input, vlib_cli_comma
   return error;
 }
 
+static void
+ip6_print_addrs(vlib_main_t * vm,
+                u32 *addrs)
+{
+  ip_lookup_main_t * lm = &ip6_main.lookup_main;
+  u32 i;
+
+  for (i = 0; i < vec_len (addrs); i++)
+    {
+      ip_interface_address_t * a = pool_elt_at_index(lm->if_address_pool, addrs[i]);
+      ip6_address_t * address = ip_interface_address_get_address (lm, a);
+
+      vlib_cli_output (vm, "\t\t%U/%d",
+                       format_ip6_address, address,
+                       a->address_length);
+    }
+}
+
 static clib_error_t *
 show_ip6_interface_cmd (vlib_main_t * vm,
 		    unformat_input_t * input,
@@ -2690,8 +2708,9 @@ show_ip6_interface_cmd (vlib_main_t * vm,
 			   vnet_get_sw_interface (vnm, sw_if_index),
 			   (vnet_sw_interface_is_admin_up (vnm, sw_if_index) ? "up" : "down"));
       
-	  u32 ai; 
-	  u32 *global_scope = 0,i;
+	  u32 ai;
+	  u32 *link_scope = 0, *global_scope = 0;
+	  u32 *local_scope = 0, *unknown_scope = 0;
 	  ip_interface_address_t * a;
 
 	  vec_validate_init_empty (lm->if_address_pool_index_by_sw_if_index, sw_if_index, ~0);
@@ -2702,33 +2721,46 @@ show_ip6_interface_cmd (vlib_main_t * vm,
 	      a = pool_elt_at_index(lm->if_address_pool, ai);
 	      ip6_address_t * address = ip_interface_address_get_address (lm, a);
 
-	      if( ip6_address_is_link_local_unicast (address))
-		vlib_cli_output (vm, "\tIPv6 is enabled, link-local address is %U\n", format_ip6_address, 
-				 address);
-
-	      if((address->as_u8[0] & 0xe0) == 0x20)
+	      if (ip6_address_is_link_local_unicast (address))
+		vec_add1 (link_scope, ai);
+	      else if(ip6_address_is_global_unicast (address))
 		vec_add1 (global_scope, ai);
+	      else if(ip6_address_is_local_unicast (address))
+		vec_add1 (local_scope, ai);
+	      else
+		vec_add1 (unknown_scope, ai);
 
 	      ai = a->next_this_sw_interface;
 	    }
 
-	  vlib_cli_output (vm, "\tGlobal unicast address(es):\n");
-	  for (i = 0; i < vec_len (global_scope); i++)
-	    { 
-	      a = pool_elt_at_index(lm->if_address_pool, global_scope[i]);
-	      ip6_address_t * address = ip_interface_address_get_address (lm, a);
-	      ip6_address_t mask, subnet;
+          if (vec_len (link_scope))
+            {
+              vlib_cli_output (vm, "\tLink-local address(es):\n");
+              ip6_print_addrs (vm, link_scope);
+              vec_free (link_scope);
+            }
 
-	      subnet = *address;
-	      ip6_address_mask_from_width(&mask, a->address_length);
-	      ip6_address_mask(&subnet, &mask);
+          if (vec_len (local_scope))
+            {
+              vlib_cli_output (vm, "\tLocal unicast address(es):\n");
+              ip6_print_addrs (vm, local_scope);
+              vec_free (local_scope);
+            }
 
-	      vlib_cli_output (vm, "\t\t%U, subnet is %U/%d", 
-			       format_ip6_address, address, 
-			       format_ip6_address,&subnet,
-			       a->address_length);
-	    }
-	  vec_free (global_scope);
+          if (vec_len (global_scope))
+            {
+              vlib_cli_output (vm, "\tGlobal unicast address(es):\n");
+              ip6_print_addrs (vm, global_scope);
+              vec_free (global_scope);
+            }
+
+          if (vec_len (unknown_scope))
+            {
+              vlib_cli_output (vm, "\tOther-scope address(es):\n");
+              ip6_print_addrs (vm, unknown_scope);
+              vec_free (unknown_scope);
+            }
+
 	  vlib_cli_output (vm, "\tJoined group address(es):\n");
 	  ip6_mldp_group_t *m;
 	  pool_foreach (m, radv_info->mldp_group_pool, ({
@@ -2767,7 +2799,7 @@ show_ip6_interface_cmd (vlib_main_t * vm,
 	}
       else
 	{
-	  error = clib_error_return (0, "Ipv6 not enabled on interface",
+	  error = clib_error_return (0, "IPv6 not enabled on interface",
 				     format_unformat_error, input);
 
 	}
@@ -2778,7 +2810,7 @@ show_ip6_interface_cmd (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_ip6_interface_command, static) = {
   .path = "show ip6 interface",
   .function = show_ip6_interface_cmd,
-  .short_help = "Show ip6 interface <iface name>",
+  .short_help = "show ip6 interface <iface name>",
 };
 
 clib_error_t *
