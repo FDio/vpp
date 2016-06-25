@@ -17,7 +17,7 @@ To use, edit env.sh then
 By default, the VM created is/has:
 - Ubuntu 14.04
 - 2 vCPUs
-- 2G of RAM
+- 4G of RAM
 - 2 NICs (1 x NAT - host access, 1 x VPP DPDK enabled)
 
 PROVIDERS:
