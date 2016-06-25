@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_3d1797ef",
+        "filename": "vpp/api/custom_dump.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1894,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-25T23:30:47Z",
+      "side": 1,
+      "message": "oooops",
+      "range": {
+        "startLine": 1894,
+        "startChar": 71,
+        "endLine": 1894,
+        "endChar": 73
+      },
+      "revId": "7918978bba0030de3b9153ce2ac9a86e4e011731",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
