@@ -71,6 +71,12 @@ BUILT_SOURCES += vpp_plugin_configure
 
 .PHONY: vpp_plugin_configure
 
+if WITH_DPDK
+PLUGIN_DPDK_ARG="--with-dpdk"
+else
+PLUGIN_DPDK_ARG=""
+endif
+
 vpp_plugin_configure:
 	@echo "PLUGIN CONFIGURE " $@ 
 	@echo "#!/bin/bash" > $@
@@ -78,10 +84,10 @@ vpp_plugin_configure:
 	@echo "set +eu" >> $@
 	@echo " " >> $@
 	@echo "if [ -f ./configure ] ; then" >> $@
-	@echo "    CFLAGS='$(CFLAGS) $(AM_CFLAGS) -I/usr/include/vpp-dpdk' ./configure --with-plugin-toolkit" >> $@
+	@echo "    CFLAGS='$(CFLAGS) $(AM_CFLAGS) -I/usr/include/vpp-dpdk' ./configure --with-plugin-toolkit $(PLUGIN_DPDK_ARG)" >> $@
 	@echo "else" >> $@
 	@echo "    if [ -f ../configure ] ; then" >> $@
-	@echo "        CFLAGS='$(CFLAGS) $(AM_CFLAGS) -I/usr/include/vpp-dpdk' ../configure --with-plugin-toolkit" >> $@
+	@echo "        CFLAGS='$(CFLAGS) $(AM_CFLAGS) -I/usr/include/vpp-dpdk' ../configure --with-plugin-toolkit $(PLUGIN_DPDK_ARG)" >> $@
 	@echo "    else" >> $@
 	@echo "        echo Couldnt find ./configure or ../configure " >> $@
 	@echo "        exit 1" >> $@

@@ -29,3 +29,7 @@ endif
 if ENABLE_VCGN_PLUGIN
 SUBDIRS += vcgn-plugin
 endif
+
+if ENABLE_SNAT_PLUGIN
+SUBDIRS += snat-plugin
+endif
