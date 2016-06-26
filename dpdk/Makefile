@@ -108,7 +108,9 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBEAL_USE_HPET,y)
 	$(call set,RTE_BUILD_COMBINE_LIBS,y)
 	$(call set,RTE_LIBRTE_I40E_16BYTE_RX_DESC,y)
-	$(call set,RTE_LIBRTE_I40E_ITR_INTERVAL,16)
+	$(call set,RTE_PCI_CONFIG,y)
+	$(call set,RTE_PCI_EXTENDED_TAG,"on")
+	$(call set,RTE_PCI_MAX_READ_REQUEST_SIZE,4096)
 	@# enable debug init for device drivers
 	$(call set,RTE_LIBRTE_I40E_DEBUG_INIT,$(DPDK_DEBUG))
 	$(call set,RTE_LIBRTE_IXGBE_DEBUG_INIT,$(DPDK_DEBUG))
