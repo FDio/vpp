@@ -22,6 +22,30 @@
       "revId": "092b2ee705f82cb57e675503a212ed323f4efeef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_9d7c6322",
+        "filename": "build-data/packages/plugins.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-06-26T17:18:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ba092121_dd82dbff",
+      "range": {
+        "startLine": 26,
+        "startChar": 0,
+        "endLine": 26,
+        "endChar": 127
+      },
+      "revId": "092b2ee705f82cb57e675503a212ed323f4efeef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
