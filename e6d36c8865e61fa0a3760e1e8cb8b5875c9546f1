@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_1dbbb3e6",
+        "filename": "plugins/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-26T12:00:32Z",
+      "side": 1,
+      "message": "Please add \n\nif ENABLE_xxx_PLUGIN\nSUBDIRS +\u003d xxx-plugin\nendif\n\nstanzas for sixrd, vcgn. Otherwise, they won\u0027t be built no matter what you specify in build-data/platforms/xxx.mk...",
+      "revId": "e6d36c8865e61fa0a3760e1e8cb8b5875c9546f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_fdbfdfce",
+        "filename": "plugins/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-26T12:00:32Z",
+      "side": 1,
+      "message": "missing endif",
+      "revId": "e6d36c8865e61fa0a3760e1e8cb8b5875c9546f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
