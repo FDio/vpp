@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ba092121_bdb967eb",
+        "filename": "plugins/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-06-26T12:46:45Z",
+      "side": 1,
+      "message": "Artefact of the diff tool, those lines are below.",
+      "parentUuid": "ba092121_1dbbb3e6",
+      "revId": "e6d36c8865e61fa0a3760e1e8cb8b5875c9546f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba092121_fdbfdfce",
         "filename": "plugins/Makefile.am",
         "patchSetId": 1
