@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_bde28701",
+        "filename": "vnet/vnet/buffer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-06-26T00:01:34Z",
+      "side": 1,
+      "message": "Should probably have a discussion about a sane way of doing this without treading on things. The heaviest user of this is \"IP\" so that would leave IIRC 4 bytes to spare.\nSo if we went with something like:\nstruct {\n   union {\n    struct plugin_metadata_hi2lo {\n      u32 plugin_metadata_5;\n      u32 plugin_metadata_4;\n      ... \n     u32 plugin_metadata_0;\n    }\n    u32 plugin_metadata[6];\n}\n\nThen it hints that you should start filling plugin_metadata_0, so that other plugins who want just a \"bit\" of metadata but want to preserve IP still can. \n\nNot sure if thats obfuscating things too much but we can always comment it very well explaining why.",
+      "range": {
+        "startLine": 298,
+        "startChar": 4,
+        "endLine": 298,
+        "endChar": 27
+      },
+      "revId": "2be1c68655fa92e5d53142dc062c37cfd0bfefb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
