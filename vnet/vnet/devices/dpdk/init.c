@@ -1147,7 +1147,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
 	    {
 	      vec_validate(mem_by_socket, c);
-	      mem_by_socket[c] = 512; /* default per-socket mem */
+	      mem_by_socket[c] = 256; /* default per-socket mem */
 	    }
 	  ));
 	}

@@ -63,7 +63,7 @@
 
 #include <vlib/pci/pci.h>
 
-#define NB_MBUF   (32<<10)
+#define NB_MBUF   (16<<10)
 
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
