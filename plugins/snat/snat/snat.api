@@ -1,0 +1,24 @@
+define snat_add_address_range {
+  u32 client_index;
+  u32 context;
+  u8 first_ip4_address[4];
+  u8 last_ip4_address[4];
+};
+
+define snat_add_address_range_reply {
+  u32 context;
+  i32 retval;
+};
+
+define snat_interface_add_del_feature {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+define snat_interface_add_del_feature_reply {
+  u32 context;
+  i32 retval;
+};
