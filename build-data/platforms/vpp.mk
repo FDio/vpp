@@ -38,6 +38,10 @@ vnet_configure_args_vpp = --with-dpdk
 # Set these parameters carefully. The vlib_buffer_t is 128 bytes, i.e.
 vlib_configure_args_vpp = --with-pre-data=128
 
+# Enable plugins here, and no place else, via multiple --enable-XXX-plugin
+# stanzas.
+plugins_configure_args_vpp = --with-dpdk --enable-sixrd-plugin 
+
 # DPDK configuration parameters
 # vpp_uses_external_dpdk = yes
 # vpp_dpdk_inc_dir = /usr/include/dpdk
