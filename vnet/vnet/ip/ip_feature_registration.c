@@ -119,6 +119,12 @@ ip_feature_init_cast (vlib_main_t * vm,
         return clib_error_return (0, "comma_split failed!");
       
       p = hash_get_mem (index_by_name, a_name);
+      /* 
+       * Note: the next two errors mean that the xxx_FEATURE_INIT macros are
+       * b0rked. As in: if you code "A depends on B," and you forget
+       * to define a FEATURE_INIT macro for B, you lose. 
+       * Nonexistent graph nodes are tolerated.
+       */
       if (p == 0)
         return clib_error_return (0, "feature node '%s' not found", a_name);
       a_index = p[0];

@@ -386,6 +386,10 @@ void ip4_adjacency_set_interface_route (vnet_main_t * vnm,
 					u32 sw_if_index,
 					u32 if_address_index);
 
+ip4_address_t *
+ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
+                             ip_interface_address_t ** result_ia);
+
 /* Send an ARP request to see if given destination is reachable on given interface. */
 clib_error_t *
 ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index);

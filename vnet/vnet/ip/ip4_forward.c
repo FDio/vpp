@@ -1451,6 +1451,7 @@ clib_error_t *
 ip4_lookup_init (vlib_main_t * vm)
 {
   ip4_main_t * im = &ip4_main;
+  clib_error_t * error;
   uword i;
 
   for (i = 0; i < ARRAY_LEN (im->fib_masks); i++)
@@ -1501,9 +1502,9 @@ ip4_lookup_init (vlib_main_t * vm)
 			       "ip4 arp");
   }
 
-  ip4_feature_init (vm, im);
+  error = ip4_feature_init (vm, im);
 
-  return 0;
+  return error;
 }
 
 VLIB_INIT_FUNCTION (ip4_lookup_init);

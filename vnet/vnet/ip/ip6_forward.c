@@ -2858,6 +2858,7 @@ static clib_error_t *
 ip6_lookup_init (vlib_main_t * vm)
 {
   ip6_main_t * im = &ip6_main;
+  clib_error_t * error;
   uword i;
 
   for (i = 0; i < ARRAY_LEN (im->fib_masks); i++)
@@ -2924,9 +2925,9 @@ ip6_lookup_init (vlib_main_t * vm)
 			       "ip6 neighbor discovery");
   }
 
-  ip6_feature_init (vm, im);
+  error = ip6_feature_init (vm, im);
 
-  return 0;
+  return error;
 }
 
 VLIB_INIT_FUNCTION (ip6_lookup_init);

@@ -93,24 +93,6 @@ u8 * format_dhcp_proxy_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-/* get first interface address */
-static ip4_address_t *
-ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index)
-{
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_interface_address_t * ia = 0;
-  ip4_address_t * result = 0;
-
-  foreach_ip_interface_address (lm, ia, sw_if_index, 
-                                1 /* honor unnumbered */,
-  ({
-    ip4_address_t * a = ip_interface_address_get_address (lm, ia);
-    result = a;
-    break;
-  }));
-  return result;
-}
-
 static uword
 dhcp_proxy_to_server_input (vlib_main_t * vm,
                             vlib_node_runtime_t * node,
@@ -290,7 +272,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
                    * RX interface, if not unnumbered. otherwise use
                    * the loopback interface's ip address.
                    */
-                  ia0 = ip4_interface_first_address(&ip4_main, sw_if_index);
+                  ia0 = ip4_interface_first_address(&ip4_main, sw_if_index, 0);
                   
                   if (ia0 == 0)
                     {
@@ -597,7 +579,7 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
       if (swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
           sw_if_index = swif->unnumbered_sw_if_index;
 
-      ia0 = ip4_interface_first_address (&ip4_main, sw_if_index);
+      ia0 = ip4_interface_first_address (&ip4_main, sw_if_index, 0);
       if (ia0 == 0)
         {
           error0 = DHCP_PROXY_ERROR_NO_INTERFACE_ADDRESS;
@@ -1113,7 +1095,7 @@ dhcp_option_82_address_show_command_fn (vlib_main_t * vm,
           swif = vnet_get_sw_interface (vnm, sw_if_index0);
           sw_if_index = (swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED) ?
             swif->unnumbered_sw_if_index : sw_if_index0;
-          ia0 = ip4_interface_first_address(&ip4_main, sw_if_index);
+          ia0 = ip4_interface_first_address(&ip4_main, sw_if_index, 0);
           if (ia0)
             {
               vlib_cli_output (vm, "%=20s%=20s", "interface", 
