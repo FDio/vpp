@@ -593,13 +593,11 @@ libvnet_la_SOURCES +=				\
   vnet/devices/dpdk/format.c		\
   vnet/devices/dpdk/init.c			\
   vnet/devices/dpdk/node.c			\
-  vnet/devices/dpdk/threads.c       \
   vnet/devices/dpdk/vhost_user.c    \
   vnet/devices/dpdk/cli.c
 
 nobase_include_HEADERS +=			\
-  vnet/devices/dpdk/dpdk.h			\
-  vnet/devices/dpdk/threads.h
+  vnet/devices/dpdk/dpdk.h
 else
 libvnet_la_SOURCES +=				\
   vnet/devices/nic/ixge.c                       \

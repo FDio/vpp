@@ -260,22 +260,6 @@ typedef struct {
   u8 need_txlock; /* Used by VNET_DPDK_DEV_VHOST_USER */
 } dpdk_device_t;
 
-#define MAX_NELTS 32
-typedef struct {
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  u64 head;
-  u64 head_hint;
-  u64 tail;
-  u32 n_in_use;
-  u32 nelts;
-  u32 written;
-  u32 threshold;
-  i32 n_vectors[MAX_NELTS];
-} frame_queue_trace_t;
-
-typedef struct {
-  u64 count[MAX_NELTS];
-} frame_queue_nelt_counter_t;
 
 #define DPDK_TX_RING_SIZE (4 * 1024)
 
@@ -393,9 +377,6 @@ typedef struct {
   /* Ethernet input node index */
   u32 ethernet_input_node_index;
 
-  /* dpdk i/o thread initialization barrier */
-  volatile u32 worker_thread_release;
-
   /* pcap tracing [only works if (CLIB_DEBUG > 0)] */
   int tx_pcap_enable;
   pcap_main_t pcap_main;
@@ -429,10 +410,6 @@ typedef struct {
   /* control interval of dpdk link state and stat polling */
   f64 link_state_poll_interval;
   f64 stat_poll_interval;
-
-  /* for frame queue tracing */
-  frame_queue_trace_t        *frame_queue_traces;
-  frame_queue_nelt_counter_t *frame_queue_histogram;
 
   /* Sleep for this many MS after each device poll */
   u32 poll_sleep;

@@ -663,4 +663,22 @@ typedef struct {
   vlib_node_registration_t * node_registrations;
 } vlib_node_main_t;
 
+
+#define FRAME_QUEUE_MAX_NELTS 32
+typedef struct {
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  u64 head;
+  u64 head_hint;
+  u64 tail;
+  u32 n_in_use;
+  u32 nelts;
+  u32 written;
+  u32 threshold;
+  i32 n_vectors[FRAME_QUEUE_MAX_NELTS];
+} frame_queue_trace_t;
+
+typedef struct {
+  u64 count[FRAME_QUEUE_MAX_NELTS];
+} frame_queue_nelt_counter_t;
+
 #endif /* included_vlib_node_h */

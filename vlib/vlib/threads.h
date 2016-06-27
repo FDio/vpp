@@ -298,7 +298,17 @@ typedef struct {
   uword * cpu_socket_bitmap;
 
   vlib_efd_t efd;
-  
+
+  /* handoff node index */
+  u32 handoff_dispatch_node_index;
+
+  /* for frame queue tracing */
+  frame_queue_trace_t        *frame_queue_traces;
+  frame_queue_nelt_counter_t *frame_queue_histogram;
+
+  /* worker thread initialization barrier */
+  volatile u32 worker_thread_release;
+
 } vlib_thread_main_t;
 
 vlib_thread_main_t vlib_thread_main;
