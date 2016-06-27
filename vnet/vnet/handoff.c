@@ -508,7 +508,11 @@ clib_error_t *handoff_init (vlib_main_t *vm)
 {
   handoff_main_t * hm = &handoff_main;
   vlib_thread_main_t * tm = vlib_get_thread_main();
+  clib_error_t * error;
   uword * p;
+
+  if ((error = vlib_call_init_function (vm, threads_init)))
+    return error;
 
   vlib_thread_registration_t * tr;
   /* Only the standard vnet worker threads are supported */
@@ -525,6 +529,9 @@ clib_error_t *handoff_init (vlib_main_t *vm)
 
   hm->vlib_main = vm;
   hm->vnet_main = &vnet_main;
+
+  ASSERT (tm->handoff_dispatch_node_index == ~0);
+  tm->handoff_dispatch_node_index = handoff_dispatch_node.index;
 
   return 0;
 }
