@@ -1984,12 +1984,21 @@ vl_api_lisp_local_eid_table_details_t_handler (
 {
     vat_main_t *vam = &vat_main;
     u8 *prefix;
+    u8 * (*format_eid)(u8 *, va_list *) = 0;
 
-    prefix = format(0, "[&d] %U/%d",
+    switch (mp->eid_type)
+      {
+      case 0: format_eid = format_ip4_address; break;
+      case 1: format_eid = format_ip6_address; break;
+      case 2: format_eid = format_ethernet_address; break;
+      default:
+        errmsg ("unknown EID type %d!", mp->eid_type);
+        return;
+      }
+
+    prefix = format(0, "[%d] %U/%d",
                     clib_net_to_host_u32 (mp->vni),
-                    mp->eid_is_ipv6 ? format_ip6_address : format_ip4_address,
-                    mp->eid_ip_address,
-                    mp->eid_prefix_len);
+                    format_eid, mp->eid, mp->eid_prefix_len);
 
     fformat(vam->ofp, "%=20s%=30s\n",
             mp->locator_set_name, prefix);
@@ -2005,6 +2014,7 @@ vl_api_lisp_local_eid_table_details_t_handler_json (
     vat_json_node_t *node = NULL;
     struct in6_addr ip6;
     struct in_addr ip4;
+    u8 * s = 0;
 
     if (VAT_JSON_ARRAY != vam->json_tree.type) {
         ASSERT(VAT_JSON_NONE == vam->json_tree.type);
@@ -2014,15 +2024,27 @@ vl_api_lisp_local_eid_table_details_t_handler_json (
 
     vat_json_init_object(node);
     vat_json_object_add_string_copy(node, "locator-set", mp->locator_set_name);
-    if (mp->eid_is_ipv6) {
-        clib_memcpy(&ip6, mp->eid_ip_address, sizeof(ip6));
-        vat_json_object_add_ip6(node, "eid address", ip6);
-    } else {
-        clib_memcpy(&ip4, mp->eid_ip_address, sizeof(ip4));
-        vat_json_object_add_ip4(node, "eid address", ip4);
-    }
+    switch (mp->eid_type)
+      {
+      case 0:
+        clib_memcpy(&ip4, mp->eid, sizeof(ip4));
+        vat_json_object_add_ip4(node, "eid-address", ip4);
+      case 1:
+        clib_memcpy(&ip6, mp->eid, sizeof(ip6));
+        vat_json_object_add_ip6(node, "eid-address", ip6);
+        break;
+      case 2:
+        s = format (0, "%U", format_ethernet_address, mp->eid);
+        vec_add1(s, 0);
+        vat_json_object_add_string_copy(node, "eid-address", s);
+        vec_free(s);
+        break;
+      default:
+        errmsg ("unknown EID type %d!", mp->eid_type);
+        return;
+      }
     vat_json_object_add_uint(node, "vni", clib_net_to_host_u32 (mp->vni));
-    vat_json_object_add_uint(node, "eid prefix len", mp->eid_prefix_len);
+    vat_json_object_add_uint(node, "eid-prefix-len", mp->eid_prefix_len);
 }
 
 static u8 *
@@ -10086,8 +10108,10 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
     u8 is_add = 1;
     u8 eidv4_set = 0;
     u8 eidv6_set = 0;
+    u8 eid_type = (u8)~0;
     ip4_address_t eidv4;
     ip6_address_t eidv6;
+    u8 mac[6] = {0};
     u8 tmp_eid_lenght = ~0;
     u8 eid_lenght = ~0;
     u8 *locator_set_name = NULL;
@@ -10104,10 +10128,14 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
             &eidv4, &tmp_eid_lenght)) {
             eid_lenght = tmp_eid_lenght;
             eidv4_set = 1;
+            eid_type = 0; /* ipv4 type */
         } else if (unformat(input, "eid %U/%d", unformat_ip6_address,
             &eidv6, &tmp_eid_lenght)) {
             eid_lenght = tmp_eid_lenght;
             eidv6_set = 1;
+            eid_type = 1; /* ipv6 type */
+        } else if (unformat(input, "eid %U", unformat_ethernet_address, mac)) {
+            eid_type = 2; /* mac type */
         } else if (unformat(input, "locator-set %s", &locator_set_name)) {
             locator_set_name_set = 1;
         } else
@@ -10116,6 +10144,12 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
 
     if (locator_set_name_set == 0) {
         errmsg ("missing locator-set name\n");
+        return -99;
+    }
+
+    if ((u8)~0 == eid_type) {
+        errmsg ("EID address not set!");
+        vec_free(locator_set_name);
         return -99;
     }
 
@@ -10128,12 +10162,6 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
 
     if (eidv4_set && eidv6_set) {
         errmsg ("both eid v4 and v6 addresses set\n");
-        vec_free(locator_set_name);
-        return -99;
-    }
-
-    if (!eidv4_set && !eidv6_set) {
-        errmsg ("eid addresses not set\n");
         vec_free(locator_set_name);
         return -99;
     }
@@ -10154,13 +10182,18 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
     M(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid);
 
     mp->is_add = is_add;
-    if (eidv6_set) {
-        mp->is_ipv6 = 1;
-        clib_memcpy(mp->ip_address, &eidv6, sizeof(eidv6));
-    } else {
-        mp->is_ipv6 = 0;
-        clib_memcpy(mp->ip_address, &eidv4, sizeof(eidv4));
+    switch (eid_type) {
+    case 0: /* ipv4 */
+      clib_memcpy (mp->eid, &eidv4, sizeof(eidv4));
+      break;
+    case 1: /* ipv6 */
+      clib_memcpy (mp->eid, &eidv6, sizeof(eidv6));
+      break;
+    case 2: /* mac */
+      clib_memcpy (mp->eid, mac, 6);
+      break;
     }
+    mp->eid_type = eid_type;
     mp->prefix_len = eid_lenght;
     mp->vni = clib_host_to_net_u32(vni);
     clib_memcpy(mp->locator_set_name, locator_set_name,
@@ -10545,14 +10578,17 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
     vl_api_lisp_add_del_remote_mapping_t *mp;
     f64 timeout = ~0;
     u32 vni = 0;
-    u8 seid_set = 0, deid_set = 0;
     ip4_address_t seid4, deid4, rloc4;
     ip6_address_t seid6, deid6, rloc6;
+    u8 deid_mac[6] = {0};
+    u8 seid_mac[6] = {0};
+    u8 deid_type, seid_type;
     u32 seid_len = 0, deid_len = 0, len;
-    u8 deid_is_ip4 = 0, seid_is_ip4 = 0;
     u8 is_add = 1, del_all = 0;
     u32 action = ~0;
     rloc_t * rlocs = 0, rloc;
+
+    seid_type = deid_type =  (u8)~0;
 
     /* Parse args required to build the message */
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
@@ -10564,24 +10600,26 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
             is_add = 1;
         } else if (unformat(input, "deid %U/%d", unformat_ip4_address,
                             &deid4, &len)) {
-            deid_set = 1;
-            deid_is_ip4 = 1;
+            deid_type = 0; /* ipv4 */
             deid_len = len;
         } else if (unformat(input, "deid %U/%d", unformat_ip6_address,
                             &deid6, &len)) {
-            deid_set = 1;
-            deid_is_ip4 = 0;
+            deid_type = 1; /* ipv6 */
             deid_len = len;
+        } else if (unformat(input, "deid %U", unformat_ethernet_address,
+                            deid_mac)) {
+            deid_type = 2; /* mac */
         } else if (unformat(input, "seid %U/%d", unformat_ip4_address,
                             &seid4, &len)) {
-            seid_set = 1;
-            seid_is_ip4 = 1;
+            seid_type = 0; /* ipv4 */
             seid_len = len;
         } else if (unformat(input, "seid %U/%d", unformat_ip6_address,
                             &seid6, &len)) {
-            seid_set = 1;
-            seid_is_ip4 = 0;
+            seid_type = 1; /* ipv6 */
             seid_len = len;
+        } else if (unformat(input, "seid %U", unformat_ethernet_address,
+                            seid_mac)) {
+            seid_type = 2; /* mac */
         } else if (unformat(input, "vni %d", &vni)) {
             ;
         } else if (unformat(input, "rloc %U", unformat_ip4_address, &rloc4)) {
@@ -10600,13 +10638,13 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
         }
     }
 
-    if (!seid_set || !deid_set) {
+    if ((u8)~0 == deid_type) {
         errmsg ("missing params!");
         return -99;
     }
 
-    if (seid_is_ip4 != deid_is_ip4) {
-        errmsg ("source and destination EIDs are not in " "same IP family!");
+    if (seid_type != deid_type) {
+        errmsg ("source and destination EIDs are of different types!");
         return -99;
     }
 
@@ -10623,20 +10661,24 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
     mp->action = (u8) action;
     mp->deid_len = deid_len;
     mp->del_all = del_all;
-    if (seid_is_ip4) {
-        mp->eid_is_ip4 = 1;
-        clib_memcpy (mp->seid, &seid4, sizeof (seid4));
-    } else {
-        mp->eid_is_ip4 = 0;
-        clib_memcpy (mp->seid, &seid6, sizeof (seid6));
-    }
+    mp->eid_type = deid_type;
 
-    if (deid_is_ip4) {
-        mp->eid_is_ip4 = 1;
+    switch (mp->eid_type) {
+    case 0:
+        clib_memcpy (mp->seid, &seid4, sizeof (seid4));
         clib_memcpy (mp->deid, &deid4, sizeof (deid4));
-    } else {
-        mp->eid_is_ip4 = 0;
+        break;
+    case 1:
+        clib_memcpy (mp->seid, &seid6, sizeof (seid6));
         clib_memcpy (mp->deid, &deid6, sizeof (deid6));
+        break;
+    case 2:
+        clib_memcpy (mp->seid, seid_mac, 6);
+        clib_memcpy (mp->deid, deid_mac, 6);
+        break;
+    default:
+        errmsg ("unknown EID type %d!", mp->eid_type);
+        return 0;
     }
 
     mp->rloc_num = vec_len (rlocs);
