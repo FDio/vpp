@@ -41,6 +41,7 @@ libvlib_la_SOURCES =				\
   vlib/pci/pci.c				\
   vlib/pci/linux_pci.c				\
   vlib/threads.c				\
+  vlib/threads_cli.c				\
   vlib/trace.c
 
 if WITH_DPDK

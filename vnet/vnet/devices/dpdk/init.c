@@ -1565,7 +1565,7 @@ dpdk_process (vlib_main_t * vm,
 
   dpdk_vhost_user_process_init(&vu_state);
 
-  dm->worker_thread_release = 1;
+  tm->worker_thread_release = 1;
 
   f64 now = vlib_time_now (vm);
   vec_foreach (xd, dm->devices)
