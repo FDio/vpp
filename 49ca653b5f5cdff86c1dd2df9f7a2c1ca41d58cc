@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_88dae376",
+        "filename": "build-data/packages/plugins.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-27T11:50:47Z",
+      "side": 1,
+      "message": "I\u0027m in favor of adding the list of of enabled plugins to plugins_configure_args_$(PLATFORM), rather than enabling any of them here. Better to have a one-stop shop, I think.\n\nBuilding the sixrd plugin all the time would be more or less OK; the vcgn plugin needs to have an accident.",
+      "revId": "49ca653b5f5cdff86c1dd2df9f7a2c1ca41d58cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_c8f8dbe7",
+        "filename": "plugins/ioam-plugin/Makefile.am",
+        "patchSetId": 3
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-27T11:50:47Z",
+      "side": 1,
+      "message": "Danger Danger Will Robinson. .../vlib/vlib/unix/plugin.c only loads plugins named \"mrplugin.so\", not \"mrplugin.so.0.0.0\"\n\nI use \"cp -L $(prefix)/lib/mrplugin.so /usr/lib/vpp_plugins\" and so forth.",
+      "revId": "49ca653b5f5cdff86c1dd2df9f7a2c1ca41d58cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_68e78f41",
+        "filename": "plugins/sixrd-plugin/Makefile.am",
+        "patchSetId": 3
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-27T11:50:47Z",
+      "side": 1,
+      "message": "Same as previous comment, \"cp -L\"",
+      "revId": "49ca653b5f5cdff86c1dd2df9f7a2c1ca41d58cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_48e4cb3a",
+        "filename": "plugins/vcgn-plugin/Makefile.am",
+        "patchSetId": 3
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-06-27T11:50:47Z",
+      "side": 1,
+      "message": "Same as previous comment, \"cp -L\"",
+      "revId": "49ca653b5f5cdff86c1dd2df9f7a2c1ca41d58cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
