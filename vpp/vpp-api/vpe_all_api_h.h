@@ -12,17 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef included_vpe_msg_enum_h
-#define included_vpe_msg_enum_h
+/*
+ * Add to the bottom of the #include list, or elves will steal your
+ * keyboard in the middle of the night! 
+ */
 
-#include <vppinfra/byte_order.h>
+/* Inherited from vlib */
+#include <vlibmemory/vl_memory_api_h.h>
 
-#define vl_msg_id(n,h) n,
-typedef enum {
-    VL_ILLEGAL_MESSAGE_ID=0,
-#include <api/vpe_all_api_h.h>
-    VL_MSG_FIRST_AVAILABLE,
-} vl_msg_id_t;
-#undef vl_msg_id
-
-#endif /* included_vpe_msg_enum_h */
+/* Here are the vpe forwarder specific API definitions */
+#include <vpp-api/vpe.api.h>

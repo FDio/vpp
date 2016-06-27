@@ -54,7 +54,7 @@ japi/org_openvpp_vppjapi_vppConn.h: 					\
     japi/org/openvpp/vppjapi/vppVxlanTunnelDetails.java 		\
     japi/org/openvpp/vppjapi/vppConn.java 				\
     japi/org/openvpp/vppjapi/vppApiCallbacks.java 			\
-    ../../vpp/api/vpe.api.h
+    ../../vpp/vpp-api/vpe.api.h
 	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppVersion.java ;				\
 	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppVersion ;						\
 	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppInterfaceDetails.java ;			\
@@ -79,8 +79,8 @@ japi/org_openvpp_vppjapi_vppConn.h: 					\
 japi/vppapi.c: japi/org_openvpp_vppjapi_vppConn.h
 	pushd .. ; dir=`pwd` ; popd ;								\
 	instdir=`echo $${dir} | sed -e 's:build-root/build:build-root/install:'` ;		\
-	vppapigen --input $${instdir}/../vpp/api/vpe.api --jni  japi/vppapi.c --app vpe ;	\
-	vppapigen --input $${instdir}/../vpp/api/vpe.api --java japi/vppApi.java --app vpe ;	\
+	vppapigen --input $${instdir}/../vpp/vpp-api/vpe.api --jni  japi/vppapi.c --app vpe ;	\
+	vppapigen --input $${instdir}/../vpp/vpp-api/vpe.api --java japi/vppApi.java --app vpe ;	\
 	$(JAVAC) -classpath . -d . japi/vppApi.java ;						\
 	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppApi ;				\
 	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppApiCallbacks.java ;	\
@@ -112,7 +112,7 @@ JAVAROOT = .
 
 BUILT_SOURCES += jvpp/org_openvpp_jvpp_VppJNIConnection.h jvpp/jvpp.c
 
-jvpp/org_openvpp_jvpp_VppJNIConnection.h: $(prefix)/../vpp/api/vpe.api
+jvpp/org_openvpp_jvpp_VppJNIConnection.h: $(prefix)/../vpp/vpp-api/vpe.api
 	@echo "  jVpp API";				\
 	cp -rf @srcdir@/jvpp/* -t jvpp/;			\
 	mkdir -p jvpp/gen/target/org/openvpp/jvpp;				\

@@ -38,14 +38,14 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_vtr.h>
 
-#include <api/vpe_msg_enum.h>
+#include <vpp-api/vpe_msg_enum.h>
 
 #define vl_typedefs             /* define message structures */
-#include <api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h> 
 #undef vl_typedefs
 
 #define vl_endianfun             /* define message structures */
-#include <api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h> 
 #undef vl_endianfun
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)

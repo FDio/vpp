@@ -16,7 +16,7 @@
 #include <vnet/vnet.h>
 
 #define vl_api_version(n,v) static u32 vpe_api_version = (v);
-#include <api/vpe.api.h>
+#include <vpp-api/vpe.api.h>
 #undef vl_api_version
 
 #include <jni.h>
@@ -26,19 +26,19 @@
 #include <japi/org_openvpp_vppjapi_vppConn.h>
 #include <japi/org_openvpp_vppjapi_vppApi.h>
 
-#include <api/vpe_msg_enum.h>
+#include <vpp-api/vpe_msg_enum.h>
 #define vl_typedefs             /* define message structures */
-#include <api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_typedefs
 
 #define vl_endianfun
-#include <api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_printfun
 
 #ifndef VPPJNI_DEBUG

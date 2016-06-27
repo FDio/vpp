@@ -47,7 +47,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-#include <api/vpe_msg_enum.h>
+#include <vpp-api/vpe_msg_enum.h>
 
 #include <vnet/ip/ip.h>
 #include <vnet/interface.h>
@@ -56,17 +56,17 @@
 #define f64_print(a,b)
 
 #define vl_typedefs             /* define message structures */
-#include <api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h> 
 #undef vl_typedefs
 
 #define vl_endianfun             /* define message structures */
-#include <api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h> 
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) 
 #define vl_printfun
-#include <api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_printfun
 
 vl_shmem_hdr_t *shmem_hdr;
@@ -1523,7 +1523,7 @@ int main (int argc, char ** argv)
 
 #undef vl_api_version
 #define vl_api_version(n,v) static u32 vpe_api_version = v;
-#include <api/vpe.api.h>
+#include <vpp-api/vpe.api.h>
 #undef vl_api_version
 
 void vl_client_add_api_signatures (vl_api_memclnt_create_t *mp) 
