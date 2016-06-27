@@ -36,13 +36,13 @@
 #include <vlibmemory/api.h>
 #include <vnet/ip/ip.h>
 
-#include <api/vpe_msg_enum.h>
+#include <vpp-api/vpe_msg_enum.h>
 #include <signal.h>
 #include <setjmp.h>
 #include "pneum.h"
 
 #define vl_typedefs             /* define message structures */
-#include <api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h> 
 #undef vl_typedefs
 
 volatile int sigterm_received = 0;

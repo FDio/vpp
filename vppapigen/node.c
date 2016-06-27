@@ -1976,24 +1976,24 @@ void generate_jni_top_boilerplate(FILE *fp)
     fprintf (fp, 
              "#define vl_api_version(n,v) static u32 %s_api_version %s = v;\n",
 	     vlib_app_name, "__attribute__((unused))");
-    fprintf (fp, "#include <api/%s.api.h>\n", vlib_app_name);
+    fprintf (fp, "#include <vpp-api/%s.api.h>\n", vlib_app_name);
     fprintf (fp, "#undef vl_api_version\n\n");
 
     fprintf (fp, "#include <japi/org_openvpp_vppjapi_vppConn.h>\n");
     fprintf (fp, "#include <japi/org_openvpp_vppjapi_%s.h>\n\n", java_class);
 
-    fprintf (fp, "#include <api/%s_msg_enum.h>\n", vlib_app_name);
+    fprintf (fp, "#include <vpp-api/%s_msg_enum.h>\n", vlib_app_name);
     fprintf (fp, "#define vl_typedefs /* define message structures */\n");
-    fprintf (fp, "#include <api/%s_all_api_h.h> \n", vlib_app_name);
+    fprintf (fp, "#include <vpp-api/%s_all_api_h.h> \n", vlib_app_name);
     fprintf (fp, "#undef vl_typedefs\n\n");
 
     fprintf (fp, "#define vl_endianfun \n");
-    fprintf (fp, "#include <api/%s_all_api_h.h> \n", vlib_app_name);
+    fprintf (fp, "#include <vpp-api/%s_all_api_h.h> \n", vlib_app_name);
     fprintf (fp, "#undef vl_endianfun\n\n");
 
     fprintf (fp, "#define vl_print(handle, ...)\n");
     fprintf (fp, "#define vl_printfun\n");
-    fprintf (fp, "#include <api/%s_all_api_h.h>\n", vlib_app_name);
+    fprintf (fp, "#include <vpp-api/%s_all_api_h.h>\n", vlib_app_name);
     fprintf (fp, "#undef vl_printfun\n\n");
 }
 

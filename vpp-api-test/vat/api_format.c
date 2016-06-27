@@ -30,7 +30,7 @@
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
-#include <api/vpe_msg_enum.h>
+#include <vpp-api/vpe_msg_enum.h>
 #include <vnet/l2/l2_classify.h> 
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/classify/input_acl.h>
@@ -49,19 +49,19 @@
 #include "vat/json_format.h"
 
 #define vl_typedefs             /* define message structures */
-#include <api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h> 
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
 #define vl_endianfun             /* define message structures */
-#include <api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h> 
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_printfun
 
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args)
@@ -12188,7 +12188,7 @@ void vat_api_hookup (vat_main_t *vam)
 
 #undef vl_api_version
 #define vl_api_version(n,v) static u32 vpe_api_version = v;
-#include <api/vpe.api.h>
+#include <vpp-api/vpe.api.h>
 #undef vl_api_version
 
 void vl_client_add_api_signatures (vl_api_memclnt_create_t *mp) 

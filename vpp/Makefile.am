@@ -30,25 +30,25 @@ vpp_SOURCES =					\
   stats/stats.c
 
 vpp_SOURCES +=					\
-  api/api.c					\
-  api/custom_dump.c
+  vpp-api/api.c					\
+  vpp-api/custom_dump.c
 
 # comment out to disable stats upload to gmond 
 
 vpp_SOURCES +=					\
-  api/gmon.c	
+  vpp-api/gmon.c	
 
 nobase_include_HEADERS =			\
-  api/vpe_all_api_h.h				\
-  api/vpe_msg_enum.h				\
-  api/vpe.api.h
+  vpp-api/vpe_all_api_h.h			\
+  vpp-api/vpe_msg_enum.h			\
+  vpp-api/vpe.api.h
 
 # install the API definition, so we can produce java bindings, etc.
 
-apidir = $(prefix)/api
-api_DATA = api/vpe.api
+apidir = $(prefix)/vpp-api
+api_DATA = vpp-api/vpe.api
 
-BUILT_SOURCES += api/vpe.api.h app/version.h
+BUILT_SOURCES += vpp-api/vpe.api.h app/version.h
 
 app/version.o:	app/version.h
 
@@ -61,6 +61,32 @@ app/version.h:
 	@echo "#define VPP_BUILD_HOST \"$$(hostname)\"" >> $@
 	@echo "#define VPP_BUILD_TOPDIR \"$$(git rev-parse --show-toplevel)\"" 	>> $@
 	@echo "#define VPP_BUILD_VER \"$$(../../scripts/version)\"" >> $@
+
+# Generate a plugin configuration script. Misconfiguring a
+# plugin can cause very subtle problems.
+
+bin_SCRIPTS = vpp_plugin_configure
+
+BUILT_SOURCES += vpp_plugin_configure
+
+.PHONY: vpp_plugin_configure
+
+vpp_plugin_configure:
+	@echo "PLUGIN CONFIGURE " $@ 
+	@echo "#!/bin/bash" > $@
+	@echo " " >> $@
+	@echo "set +eu" >> $@
+	@echo " " >> $@
+	@echo "if [ -f ./configure ] ; then" >> $@
+	@echo "    CFLAGS='$(CFLAGS) $(AM_CFLAGS) -I/usr/include/vpp-dpdk' ./configure --with-plugin-toolkit" >> $@
+	@echo "else" >> $@
+	@echo "    if [ -f ../configure ] ; then" >> $@
+	@echo "        CFLAGS='$(CFLAGS) $(AM_CFLAGS) -I/usr/include/vpp-dpdk' ../configure --with-plugin-toolkit" >> $@
+	@echo "    else" >> $@
+	@echo "        echo Couldnt find ./configure or ../configure " >> $@
+	@echo "        exit 1" >> $@
+	@echo "    fi" >> $@
+	@echo "fi" >> $@
 
 vpp_LDADD = -lvlibapi -lvlibmemory  -lvlib_unix -lvlib
 
@@ -97,13 +123,13 @@ SUFFIXES = .api.h .api
 
 noinst_PROGRAMS += test_client
 
-test_client_SOURCES = api/test_client.c
+test_client_SOURCES = vpp-api/test_client.c
 test_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
 	-lpthread -lm -lrt
 
 noinst_PROGRAMS += test_client test_ha
 
-test_ha_SOURCES = api/test_ha.c
+test_ha_SOURCES = vpp-api/test_ha.c
 test_ha_LDADD = -lvlibmemoryclient -lvlibapi -lsvmdb -lsvm -lvppinfra \
 		-lpthread -lm -lrt
 
@@ -111,6 +137,6 @@ test_ha_LDADD = -lvlibmemoryclient -lvlibapi -lsvmdb -lsvm -lvppinfra \
 
 noinst_PROGRAMS += summary_stats_client
 
-summary_stats_client_SOURCES = api/summary_stats_client.c
+summary_stats_client_SOURCES = vpp-api/summary_stats_client.c
 summary_stats_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
 	-lpthread -lm -lrt

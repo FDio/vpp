@@ -33,11 +33,11 @@ libpneum_la_CPPFLAGS =
 
 BUILT_SOURCES += vpp_papi.py
 
-vpp_papi.py: $(prefix)/../vpp/api/vpe.api pneum/api-gen.py
+vpp_papi.py: $(prefix)/../vpp/vpp-api/vpe.api pneum/api-gen.py
 	@echo "  PYTHON API";                                            	  \
 	$(CC) $(CPPFLAGS) -E -P -C -x c $<			                  \
 	| vppapigen --input - --python defs_$@;                                   \
-	echo "#include <api/vpe_msg_enum.h>"                                      \
+	echo "#include <vpp-api/vpe_msg_enum.h>"                                      \
 	| $(CC) $(CPPFLAGS) -E -P -x c - | grep VL_API                            \
 	| @srcdir@/pneum/api-gen.py -i defs_$@ > @srcdir@/vpp_papi/$@
 

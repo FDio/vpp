@@ -49,7 +49,7 @@
 #include <svm.h>
 #include <svmdb.h>
 
-#include <api/vpe_msg_enum.h>
+#include <vpp-api/vpe_msg_enum.h>
 
 #include <vnet/ip/ip.h>
 
@@ -57,17 +57,17 @@
 #define f64_print(a,b)
 
 #define vl_typedefs             /* define message structures */
-#include <api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h> 
 #undef vl_typedefs
 
 #define vl_endianfun             /* define message structures */
-#include <api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h> 
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) 
 #define vl_printfun
-#include <api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_printfun
 
 vl_shmem_hdr_t *shmem_hdr;

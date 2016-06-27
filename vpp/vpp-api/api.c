@@ -101,23 +101,23 @@
 
 #include <vnet/l2/l2_fib.h>
 #include <vnet/l2/l2_bd.h>
-#include <api/vpe_msg_enum.h>
+#include <vpp-api/vpe_msg_enum.h>
 
 #define f64_endian(a)
 #define f64_print(a,b)
 
 #define vl_typedefs             /* define message structures */
-#include <api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_typedefs
 
 #define vl_endianfun             /* define message structures */
-#include <api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <api/vpe_all_api_h.h>
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_printfun
 
 #define REPLY_MACRO(t)                                          \
@@ -7059,7 +7059,7 @@ void * get_unformat_vnet_sw_interface (void)
 
 #undef vl_api_version
 #define vl_api_version(n,v) static u32 vpe_api_version = v;
-#include <api/vpe.api.h>
+#include <vpp-api/vpe.api.h>
 #undef vl_api_version
 
 int vl_msg_api_version_check (vl_api_memclnt_create_t * mp)
