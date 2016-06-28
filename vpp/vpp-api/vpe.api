@@ -857,7 +857,7 @@ define set_ip_flow_hash_reply {
 /** \brief IPv6 router advertisement config request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param surpress -
+    @param suppress -
     @param managed -
     @param other -
     @param ll_option -
@@ -875,7 +875,7 @@ define sw_interface_ip6nd_ra_config {
     u32 client_index;
     u32 context;
     u32 sw_if_index;
-    u8 surpress;
+    u8 suppress;
     u8  managed;
     u8 other;
     u8 ll_option;

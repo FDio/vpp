@@ -5743,7 +5743,7 @@ static int api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
     f64 timeout;
     u32 sw_if_index;
     u8 sw_if_index_set = 0;
-    u8 surpress = 0;
+    u8 suppress = 0;
     u8 managed = 0;
     u8 other = 0;
     u8 ll_option = 0;
@@ -5774,8 +5774,8 @@ static int api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
             ;
         else if (unformat (i, "interval %d", &initial_interval))
             ;
-	else if (unformat (i, "surpress"))
-	    surpress = 1;
+	else if (unformat (i, "suppress") || unformat (i, "surpress"))
+	    suppress = 1;
 	else if (unformat (i, "managed"))
 	    managed = 1;
 	else if (unformat (i, "other"))
@@ -5810,7 +5810,7 @@ static int api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
     mp->lifetime = ntohl(lifetime);
     mp->initial_count = ntohl(initial_count);
     mp->initial_interval = ntohl(initial_interval);
-    mp->surpress = surpress;
+    mp->suppress = suppress;
     mp->managed = managed;
     mp->other = other;
     mp->ll_option = ll_option;
@@ -11982,7 +11982,7 @@ _(sw_interface_ip6nd_ra_prefix,                                         \
   "[nolink] [isno]")                                                    \
 _(sw_interface_ip6nd_ra_config,                                         \
   "<intfc> | sw_if_index <id> [maxint <n>] [minint <n>]\n"              \
-  "[life <n>] [count <n>] [interval <n>] [surpress]\n"                  \
+  "[life <n>] [count <n>] [interval <n>] [suppress]\n"                  \
   "[managed] [other] [ll] [send] [cease] [isno] [def]")                 \
 _(set_arp_neighbor_limit, "arp_nbr_limit <n> [ipv6]")                   \
 _(l2_patch_add_del,                                                     \

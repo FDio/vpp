@@ -468,7 +468,7 @@ int vnet_set_ip6_flow_hash (u32 table_id, u32 flow_hash_config);
 
 int
 ip6_neighbor_ra_config(vlib_main_t * vm, u32 sw_if_index, 
-		       u8 surpress, u8 managed, u8 other,
+		       u8 suppress, u8 managed, u8 other,
 		       u8 ll_option,  u8 send_unicast,  u8 cease, 
 		       u8 use_lifetime,  u32 lifetime,
 		       u32 initial_count,  u32 initial_interval,  
