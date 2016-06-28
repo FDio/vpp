@@ -3111,10 +3111,10 @@ vl_api_sw_interface_ip6nd_ra_config_t_handler
 {
    vl_api_sw_interface_ip6nd_ra_config_reply_t * rmp;
     int rv = 0;
-    u8  is_no,  surpress, managed, other, ll_option, send_unicast, cease, default_router;
+    u8  is_no,  suppress, managed, other, ll_option, send_unicast, cease, default_router;
 
     is_no = mp->is_no == 1;
-    surpress = mp->surpress == 1;
+    suppress = mp->suppress == 1;
     managed = mp->managed == 1;
    other = mp->other == 1;
     ll_option = mp->ll_option == 1;
@@ -3125,7 +3125,7 @@ vl_api_sw_interface_ip6nd_ra_config_t_handler
     VALIDATE_SW_IF_INDEX(mp);
 
     rv = ip6_neighbor_ra_config(vm, ntohl(mp->sw_if_index),
-				surpress,  managed,  other,
+				suppress,  managed,  other,
 				ll_option,  send_unicast,  cease,
 				default_router, ntohl (mp->lifetime),
 				ntohl(mp->initial_count),  ntohl(mp->initial_interval),

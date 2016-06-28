@@ -2229,7 +2229,7 @@ VLIB_REGISTER_NODE (ip6_icmp_neighbor_advertisement_node,static) = {
 /* API  support functions */
 int
 ip6_neighbor_ra_config(vlib_main_t * vm, u32 sw_if_index, 
-		       u8 surpress, u8 managed, u8 other,
+		       u8 suppress, u8 managed, u8 other,
 		       u8 ll_option,  u8 send_unicast,  u8 cease, 
 		       u8 use_lifetime,  u32 lifetime,
 		       u32 initial_count,  u32 initial_interval,  
@@ -2282,7 +2282,7 @@ ip6_neighbor_ra_config(vlib_main_t * vm, u32 sw_if_index,
 	 if "flag" is set and is_no is true then restore default value else set value corresponding to "flag" 
 	 if "flag" is clear  don't change corresponding value  
       */
-      radv_info->send_radv =  (surpress != 0) ? ( (is_no  != 0) ? 1 : 0 ) : radv_info->send_radv;
+      radv_info->send_radv =  (suppress != 0) ? ( (is_no  != 0) ? 1 : 0 ) : radv_info->send_radv;
       radv_info->adv_managed_flag = ( managed  != 0) ? ( (is_no) ? 0 : 1) : radv_info->adv_managed_flag;
       radv_info->adv_other_flag  = (other  != 0) ? ( (is_no) ?  0: 1) : radv_info->adv_other_flag;
       radv_info->adv_link_layer_address = ( ll_option != 0) ? ( (is_no) ? 1 : 0) : radv_info->adv_link_layer_address;
@@ -2449,8 +2449,8 @@ ip6_neighbor_cmd(vlib_main_t * vm, unformat_input_t * main_input, vlib_cli_comma
   ip6_neighbor_main_t * nm = &ip6_neighbor_main;
   clib_error_t * error = 0;
   u8 is_no = 0;
-  u8 surpress = 0,  managed = 0,  other = 0;
-  u8 surpress_ll_option = 0,  send_unicast = 0,  cease= 0; 
+  u8 suppress = 0,  managed = 0,  other = 0;
+  u8 suppress_ll_option = 0,  send_unicast = 0,  cease= 0; 
   u8 use_lifetime = 0;
   u32 sw_if_index, ra_lifetime = 0, ra_initial_count = 0, ra_initial_interval = 0;
   u32 ra_max_interval = 0 , ra_min_interval = 0;
@@ -2534,14 +2534,14 @@ ip6_neighbor_cmd(vlib_main_t * vm, unformat_input_t * main_input, vlib_cli_comma
 	  other = 1;
 	  break;
 	}
-      else if (unformat (line_input, "ra-surpress"))
+      else if (unformat (line_input, "ra-suppress"))
 	{
-	  surpress = 1;
+	  suppress = 1;
 	  break;
 	}
-      else if (unformat (line_input, "ra-surpress-link-layer"))
+      else if (unformat (line_input, "ra-suppress-link-layer"))
 	{
-	  surpress_ll_option = 1;
+	  suppress_ll_option = 1;
 	  break;
 	}
       else if (unformat (line_input, "ra-send-unicast"))
@@ -2583,8 +2583,8 @@ ip6_neighbor_cmd(vlib_main_t * vm, unformat_input_t * main_input, vlib_cli_comma
   if(add_radv_info)
     {
       ip6_neighbor_ra_config(vm,  sw_if_index, 
-			     surpress, managed, other,
-			     surpress_ll_option,  send_unicast,  cease, 
+			     suppress, managed, other,
+			     suppress_ll_option,  send_unicast,  cease, 
 			     use_lifetime,  ra_lifetime,
 			     ra_initial_count,  ra_initial_interval,  
 			     ra_max_interval,  ra_min_interval,

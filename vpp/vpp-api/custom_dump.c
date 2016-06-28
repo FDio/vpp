@@ -943,8 +943,8 @@ static void *vl_api_sw_interface_ip6nd_ra_config_t_print
 
     s = format (s, "interval %d ", ntohl(mp->initial_interval));
 
-    if (mp->surpress)
-        s = format (s, "surpress ");
+    if (mp->suppress)
+        s = format (s, "suppress ");
 
     if (mp->managed)
         s = format (s, "managed ");
