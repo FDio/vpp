@@ -13,8 +13,13 @@
 
 # vector packet processor
 vpp_lite_arch = native
+ifeq ($(shell uname -m),x86_64)
 vpp_lite_march = corei7				# Nehalem Instruction set
 vpp_lite_mtune = corei7-avx			# Optimize for Sandy Bridge
+else
+vpp_lite_march = native
+vpp_lite_mtune = generic
+endif
 vpp_lite_native_tools = vppapigen
 
 vpp_lite_uses_dpdk = no

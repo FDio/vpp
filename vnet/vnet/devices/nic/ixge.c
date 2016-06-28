@@ -20,6 +20,7 @@
  *   Please use supported DPDK driver instead.
  */
 
+#if __x86_64__
 #include <vppinfra/vector.h>
 
 #ifndef CLIB_HAVE_VEC128
@@ -2815,3 +2816,4 @@ void ixge_set_next_node (ixge_rx_next_t next, char *name)
       break;
     }
 }
+#endif

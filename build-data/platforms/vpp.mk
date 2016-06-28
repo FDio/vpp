@@ -13,9 +13,15 @@
 
 # vector packet processor
 vpp_arch = native
+ifeq ($(shell uname -m),x86_64)
 vpp_march = corei7			# Nehalem Instruction set
 vpp_mtune = corei7-avx			# Optimize for Sandy Bridge
 vpp_dpdk_arch = corei7
+else
+vpp_march = native
+vpp_mtune = generic
+vpp_dpdk_arch = native
+endif
 vpp_native_tools = vppapigen
 
 vpp_uses_dpdk = yes
