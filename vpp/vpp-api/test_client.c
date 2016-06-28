@@ -1124,7 +1124,7 @@ void ip6nd_ra_config(test_main_t *tm, int is_no)
     mp->sw_if_index = ntohl(5);
     mp->is_no = is_no;
    
-    mp->surpress = 1; 
+    mp->suppress = 1; 
 
 
     mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_IP6ND_RA_CONFIG);
