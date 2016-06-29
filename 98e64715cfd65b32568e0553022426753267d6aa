@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_696c319d",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 5092,
+      "author": {
+        "id": 103
+      },
+      "writtenOn": "2016-06-29T10:36:56Z",
+      "side": 1,
+      "message": "Maybe add\ndefault:\n        ASSERT(0);\nto the end of the switch?",
+      "revId": "98e64715cfd65b32568e0553022426753267d6aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
