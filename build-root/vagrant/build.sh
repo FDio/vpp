@@ -66,6 +66,7 @@ fi
 # Build and install packaging
 $SUDOCMD make bootstrap
 if [ $DISTRIB_ID == "Ubuntu" ]; then
+    $SUDOCMD make PLATFORM=vpp_lite build-release
     $SUDOCMD make pkg-deb
 elif [ $DISTRIB_ID == "CentOS" ]; then
     $SUDOCMD make pkg-rpm
