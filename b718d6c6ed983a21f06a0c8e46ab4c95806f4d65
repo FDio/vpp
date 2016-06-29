@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_c9e21d03",
+        "filename": "vnet/vnet/devices/af_packet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-06-29T12:14:08Z",
+      "side": 1,
+      "message": "I would prefer to keep vlan number in decimal notation. It is more common.",
+      "range": {
+        "startLine": 68,
+        "startChar": 40,
+        "endLine": 68,
+        "endChar": 42
+      },
+      "revId": "b718d6c6ed983a21f06a0c8e46ab4c95806f4d65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_89e4250e",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 755,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-06-29T12:14:08Z",
+      "side": 1,
+      "message": "Please use decimal...",
+      "range": {
+        "startLine": 755,
+        "startChar": 32,
+        "endLine": 755,
+        "endChar": 57
+      },
+      "revId": "b718d6c6ed983a21f06a0c8e46ab4c95806f4d65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
