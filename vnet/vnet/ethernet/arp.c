@@ -399,6 +399,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
   /* Note: always install the route. It might have been deleted */
   memset(&adj, 0, sizeof(adj));
   adj.lookup_next_index = IP_LOOKUP_NEXT_REWRITE;
+  adj.n_adj = 1; /*  otherwise signature compare fails */
 
   vnet_rewrite_for_sw_interface
     (vnm,
@@ -432,15 +433,22 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
     }
   else
     {
-      /* create new adj */
-      args.table_index_or_table_id = fib_index;
-      args.flags = IP4_ROUTE_FLAG_FIB_INDEX | IP4_ROUTE_FLAG_ADD | IP4_ROUTE_FLAG_NEIGHBOR;
-      args.dst_address = a->ip4;
-      args.dst_address_length = 32;
-      args.adj_index = ~0;
-      args.add_adj = &adj;
-      args.n_add_adj = 1;
-      ip4_add_del_route (im, &args);
+      /* Check that new adjacency actually isn't exactly the same as
+       *  what is already there. If we over-write the adjacency with
+       *  exactly the same info, its technically a new adjacency with
+       *  new counters, but to user it appears as counters reset.
+       */
+      if (vnet_ip_adjacency_share_compare (&adj, existing_adj) == 0) {
+        /* create new adj */
+        args.table_index_or_table_id = fib_index;
+        args.flags = IP4_ROUTE_FLAG_FIB_INDEX | IP4_ROUTE_FLAG_ADD | IP4_ROUTE_FLAG_NEIGHBOR;
+        args.dst_address = a->ip4;
+        args.dst_address_length = 32;
+        args.adj_index = ~0;
+        args.add_adj = &adj;
+        args.n_add_adj = 1;
+        ip4_add_del_route (im, &args);
+      }
     }
 
   if (make_new_arp_cache_entry)
