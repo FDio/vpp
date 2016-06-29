@@ -347,14 +347,14 @@ always_inline uword clib_bitmap_last_set (uword * ai)
 {
   uword i;
 
-  for (i = vec_len (ai) - 1; i >= 0 ; i--)
+  for (i = vec_len (ai); i > 0 ; i--)
     {
-      uword x = ai[i];
+      uword x = ai[i - 1];
       if (x != 0)
 	{
 	  uword first_bit;
 	  count_leading_zeros (first_bit, x);
-	  return (i + 1) * BITS (ai[0]) - first_bit - 1;
+	  return (i) * BITS (ai[0]) - first_bit - 1;
 	}
     }
   return ~0;

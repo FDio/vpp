@@ -1079,10 +1079,10 @@ int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width, u32 vrf_id,
     adj->saved_lookup_next_index = adj->lookup_next_index;
 
   if (is_add)
-    adj->lookup_next_index = IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP;
+    adj->lookup_next_index = (ip_lookup_next_t) IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP;
 
   if (is_pop)
-    adj->lookup_next_index = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
+    adj->lookup_next_index = (ip_lookup_next_t) IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
 
   hm->adj = *addr;
   hm->ioam_flag = (is_add ? IOAM_HBYH_ADD :
