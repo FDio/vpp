@@ -16,6 +16,47 @@
       "revId": "98e64715cfd65b32568e0553022426753267d6aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_49ee0dee",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 5092,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-29T12:27:49Z",
+      "side": 1,
+      "message": "And a warning message, for all default cases.",
+      "parentUuid": "ba092121_696c319d",
+      "revId": "98e64715cfd65b32568e0553022426753267d6aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_69c8b174",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 5104,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-06-29T12:27:49Z",
+      "side": 1,
+      "message": "This will be a conflict with 1802 but I\u0027ll handle it.",
+      "range": {
+        "startLine": 5104,
+        "startChar": 0,
+        "endLine": 5104,
+        "endChar": 31
+      },
+      "revId": "98e64715cfd65b32568e0553022426753267d6aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
