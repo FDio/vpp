@@ -10013,9 +10013,9 @@ api_lisp_add_del_locator(vat_main_t * vam)
     u32 sw_if_index = ~0;
     u8  sw_if_index_set = 0;
     u8  sw_if_index_if_name_set = 0;
-    u8  priority = ~0;
+    u32  priority = ~0;
     u8  priority_set = 0;
-    u8  weight = ~0;
+    u32  weight = ~0;
     u8  weight_set = 0;
     u8  is_add = 1;
     u8  *locator_set_name = NULL;
