@@ -122,6 +122,7 @@ replication_recycle (vlib_main_t * vm,
     // This is the last replication in the list. 
     // Restore original buffer free functionality.
     b0->free_list_index = ctx->saved_free_list_index;
+    b0->flags &= ~VLIB_BUFFER_RECYCLE;
 
     // Free context back to its pool
     pool_put (rm->contexts[cpu_number], ctx);
