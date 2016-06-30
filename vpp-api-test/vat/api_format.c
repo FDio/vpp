@@ -10013,9 +10013,9 @@ api_lisp_add_del_locator(vat_main_t * vam)
     u32 sw_if_index = ~0;
     u8  sw_if_index_set = 0;
     u8  sw_if_index_if_name_set = 0;
-    u8  priority = ~0;
+    u32  priority = ~0;
     u8  priority_set = 0;
-    u8  weight = ~0;
+    u32  weight = ~0;
     u8  weight_set = 0;
     u8  is_add = 1;
     u8  *locator_set_name = NULL;
@@ -10112,7 +10112,7 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
     ip4_address_t eidv4;
     ip6_address_t eidv6;
     u8 mac[6] = {0};
-    u8 tmp_eid_lenght = ~0;
+    u32 tmp_eid_lenght = ~0;
     u8 eid_lenght = ~0;
     u8 *locator_set_name = NULL;
     u8 locator_set_name_set = 0;
@@ -10221,7 +10221,7 @@ api_lisp_gpe_add_del_fwd_entry(vat_main_t * vam)
     u8 eidv6_set = 0, slocv6_set = 0, dlocv6_set = 0;
     ip4_address_t eidv4, slocv4, dlocv4;
     ip6_address_t eidv6, slocv6, dlocv6;
-    u8 tmp_eid_lenght = ~0;
+    u32 tmp_eid_lenght = ~0;
     u8 eid_lenght = ~0;
 
     /* Parse args required to build the message */
