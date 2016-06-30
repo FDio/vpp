@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_5ea0fe8f",
+        "filename": "dpdk/dpdk-16.04_patches/0019-enic-fix_Rx_queue_init_after_restart_a_device_vpp.patch",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-06-30T21:45:04Z",
+      "side": 1,
+      "message": "Hi John, this doesn\u0027t look like valid patch...",
+      "range": {
+        "startLine": 12,
+        "startChar": 1,
+        "endLine": 12,
+        "endChar": 58
+      },
+      "revId": "23cf0cc10a25cca668aa94a8b52a967f8b195ea5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
