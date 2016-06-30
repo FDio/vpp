@@ -1,0 +1,12 @@
+diff -ru dpdk-16.04-orig/drivers/net/enic/enic_main.c dpdk-16.04/drivers/net/enic/enic_main.c
+--- dpdk-16.04-orig/drivers/net/enic/enic_main.c	2016-06-29 16:43:27.485236749 -0700
++++ dpdk-16.04/drivers/net/enic/enic_main.c	2016-06-29 16:44:18.503387401 -0700
+@@ -346,6 +346,7 @@
+ 	dev_debug(enic, "port=%u, qidx=%u, Write %u posted idx, %u sw held\n",
+ 		enic->port_id, rq->index, rq->posted_index, rq->rx_nb_hold);
+ 	iowrite32(rq->posted_index, &rq->ctrl->posted_index);
++	iowrite32(0, &rq->ctrl->fetch_index);
+ 	rte_rmb();
+ 
+ //	printf("posted %d buffers to %s rq\n", rq->ring.desc_count,
+Only in dpdk/dpdk-16.04/drivers/net/enic: enic_main.c.orig

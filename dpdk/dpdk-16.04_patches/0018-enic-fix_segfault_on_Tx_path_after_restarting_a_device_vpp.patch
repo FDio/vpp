@@ -1,0 +1,24 @@
+diff -ru dpdk-16.04-orig/drivers/net/enic/base/vnic_wq.c dpdk-16.04/drivers/net/enic/base/vnic_wq.c
+--- dpdk-16.04-orig/drivers/net/enic/base/vnic_wq.c	2016-06-29 16:38:27.641845312 -0700
++++ dpdk-16.04/drivers/net/enic/base/vnic_wq.c	2016-06-29 16:39:17.570906574 -0700
+@@ -206,6 +206,8 @@
+ 
+ 	wq->head_idx = 0;
+ 	wq->tail_idx = 0;
++	wq->last_completed_index = 0;
++	*((uint32_t *)wq->cqmsg_rz->addr) = 0;
+ 
+ 	iowrite32(0, &wq->ctrl->fetch_index);
+ 	iowrite32(0, &wq->ctrl->posted_index);
+Only in dpdk/dpdk-16.04/drivers/net/enic/base: vnic_wq.c.orig
+diff -ru dpdk-16.04-orig/drivers/net/enic/base/vnic_wq.h dpdk-16.04/drivers/net/enic/base/vnic_wq.h
+--- dpdk-16.04-orig/drivers/net/enic/base/vnic_wq.h	2016-06-29 16:38:27.642845393 -0700
++++ dpdk-16.04/drivers/net/enic/base/vnic_wq.h	2016-06-29 16:40:11.359281908 -0700
+@@ -38,6 +38,7 @@
+ 
+ #include "vnic_dev.h"
+ #include "vnic_cq.h"
++#include <rte_memzone.h>
+ 
+ /* Work queue control */
+ struct vnic_wq_ctrl {
