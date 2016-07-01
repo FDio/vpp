@@ -74,9 +74,10 @@ typedef struct flow_report {
 typedef struct flow_report_main {
   flow_report_t * reports;
 
-  /* ipfix collector, our ip address */
+  /* ipfix collector, our ip address, fib index */
   ip4_address_t ipfix_collector;
   ip4_address_t src_address;
+  u32 fib_index;
 
   /* time scale transform. Joy. */
   u32 unix_time_0;
