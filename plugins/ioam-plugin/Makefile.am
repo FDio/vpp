@@ -53,10 +53,46 @@ ioam_pot_test_plugin_la_LDFLAGS = -module
 
 lib_LTLIBRARIES = ioam_pot_plugin.la ioam_pot_test_plugin.la
 
+########################################
+# iOAM trace export
+########################################
+
+ioam_export_plugin_la_SOURCES =      \
+ioam/export/ioam_export.c    \
+ioam/export/node.c           \
+ioam/export/ioam_export.api.h
+
+ioam_export_plugin_la_LDFLAGS = -module
+
+BUILT_SOURCES += ioam/export/ioam_export.api.h
+
+SUFFIXES = .api.h .api
+
+%.api.h: %.api
+	mkdir -p `dirname $@` ; \
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
+	| vppapigen --input - --output $@ --show-name $@
+
+nobase_include_HEADERS +=       		\
+  ioam/export/ioam_export_all_api_h.h	\
+  ioam/export/ioam_export_msg_enum.h	\
+  ioam/export/ioam_export.api.h
+
+ioam_export_test_plugin_la_SOURCES =          \
+  ioam/export/ioam_export_test.c      \
+  ioam/export/ioam_export_plugin.api.h
+
+ioam_export_test_plugin_la_LDFLAGS = -module
+
+lib_LTLIBRARIES += ioam_export_plugin.la ioam_export_test_plugin.la
+
+
 if WITH_PLUGIN_TOOLKIT
 install-data-hook:
 	mkdir /usr/lib/vpp_plugins || true
 	mkdir /usr/lib/vpp_api_test_plugins || true
 	cp -L $(prefix)/lib/ioam_pot_plugin.so /usr/lib/vpp_plugins
 	cp -L $(prefix)/lib/ioam_pot_test_plugin.so /usr/lib/vpp_api_test_plugins
+	cp -L $(prefix)/lib/ioam_export_plugin.so /usr/lib/vpp_plugins
+	cp -L $(prefix)/lib/ioam_export_test_plugin.so /usr/lib/vpp_api_test_plugins
 endif
