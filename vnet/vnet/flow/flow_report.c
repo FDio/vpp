@@ -66,8 +66,7 @@ int send_template_packet (flow_report_main_t *frm,
   b0->current_length = vec_len (fr->rewrite);
   b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-  /* $$$ for now, look up in fib-0. Later: arbitrary TX fib */
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
 
   tp = vlib_buffer_get_current (b0);
   ip = (ip4_header_t *) &tp->ip4;
@@ -217,6 +216,8 @@ set_ipfix_command_fn (vlib_main_t * vm,
 {
   flow_report_main_t * frm = &flow_report_main;
   ip4_address_t collector, src;
+  u32 fib_id;
+  u32 fib_index = ~0;
   
   collector.as_u32 = 0;
   src.as_u32 = 0;
@@ -226,6 +227,15 @@ set_ipfix_command_fn (vlib_main_t * vm,
       ;
     else if (unformat (input, "src %U", unformat_ip4_address, &src))
       ;
+    else if (unformat (input, "fib-id %u", &fib_id))
+      {
+        ip4_main_t * im = &ip4_main;
+        uword * p = hash_get (im->fib_index_by_table_id, fib_id);
+        if (! p)
+          return clib_error_return (0, "fib ID %d doesn't exist\n",
+                                    fib_id);
+        fib_index = p[0];
+      }
     else
       break;
   }
@@ -238,10 +248,11 @@ set_ipfix_command_fn (vlib_main_t * vm,
 
   frm->ipfix_collector.as_u32 = collector.as_u32;
   frm->src_address.as_u32 = src.as_u32;
+  frm->fib_index = fib_index;
   
-  vlib_cli_output (vm, "Collector %U, src address %U",
+  vlib_cli_output (vm, "Collector %U, src address %U, fib index %d",
                    format_ip4_address, &frm->ipfix_collector,
-                   format_ip4_address, &frm->src_address);
+                   format_ip4_address, &frm->src_address, fib_index);
   
   /* Turn on the flow reporting process */
   vlib_process_signal_event (vm, flow_report_process_node.index,
@@ -251,7 +262,8 @@ set_ipfix_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (set_ipfix_command, static) = {
     .path = "set ipfix",
-    .short_help = "set ipfix collector <ip4-address> src <ip4-address>",
+    .short_help = "set ipfix collector <ip4-address> "
+                  "src <ip4-address> [fib-id <fib-id>]",
     .function = set_ipfix_command_fn,
 };
 
