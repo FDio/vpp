@@ -236,7 +236,7 @@ ip_inacl_inline (vlib_main_t * vm,
                                 &next0,
                                 /* # bytes of config data */ 0);
 
-          vnet_buffer(b0)->l2_classify.opaque_index = ~0;
+          vnet_buffer(b0)->l2_classify.opaque_index = 0x7FFFFFFF;
 
           if (PREDICT_TRUE(table_index0 != ~0))
             {
