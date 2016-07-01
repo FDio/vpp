@@ -240,6 +240,7 @@ static void *vl_api_l2fib_add_del_t_print
 	s = format (s, "sw_if_index %d ", ntohl(mp->sw_if_index));
         if (mp->static_mac) s = format (s, "%s", "static ");
         if (mp->filter_mac) s = format (s, "%s", "filter ");
+        if (mp->bvi_mac) s = format (s, "%s", "bvi ");
     } else {
 	s = format (s, "del ");
     }

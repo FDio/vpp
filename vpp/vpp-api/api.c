@@ -1652,6 +1652,7 @@ vl_api_l2fib_add_del_t_handler (
     u32 bd_index;
     u32 static_mac;
     u32 filter_mac;
+    u32 bvi_mac;
     uword * p;
 
     mac = mp->mac;
@@ -1678,8 +1679,9 @@ vl_api_l2fib_add_del_t_handler (
 	}
         static_mac = mp->static_mac ? 1 : 0;
 	filter_mac = mp->filter_mac ? 1 : 0;
+    bvi_mac = mp->bvi_mac ? 1 : 0;
 	l2fib_add_entry(mac, bd_index, sw_if_index, static_mac, filter_mac,
-                        0 /* bvi_mac */);
+                        bvi_mac);
     } else {
 	l2fib_del_entry(mac, bd_index);
     }
