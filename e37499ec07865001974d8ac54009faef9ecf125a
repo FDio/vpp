@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba092121_716d3332",
+        "filename": "plugins/snat-plugin/snat/in2out.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-07-01T14:51:15Z",
+      "side": 1,
+      "message": "So, there is per-user recycling, but is there an overall sessions recycling mechanism too ?\nWhat happens if a user opens a bunch of connexions and just disappears. Is there a way to reuse the used ports at some point ?",
+      "revId": "e37499ec07865001974d8ac54009faef9ecf125a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_9188c7e8",
+        "filename": "plugins/snat-plugin/snat/in2out.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-07-01T14:51:15Z",
+      "side": 1,
+      "message": "The fib index can also be stored in sw_if_index[VLIB_TX] (cf ip4_forward)",
+      "revId": "e37499ec07865001974d8ac54009faef9ecf125a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
