@@ -170,8 +170,25 @@ ip6_hbh_ioam_proof_of_transit_handler (vlib_buffer_t *b,
   return (rv);
 }
 
+static void
+update_ipfix_info (u32 opaque_index, int result)
+{
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+  ioam_ipfix_elts_t *ipfix;
+
+  while (__sync_lock_test_and_set (hm->writer_lock, 1))
+    ;
+
+  ipfix = get_ipfix_flow(opaque_index);
+  if (ipfix)
+    result == 1? ipfix->sfc_validated_count++:ipfix->sfc_invalidated_count++;
+  
+  *(hm->writer_lock) = 0;
+}
+
 int
-ip6_hbh_ioam_proof_of_transit_pop_handler (ip6_header_t *ip,
+ip6_hbh_ioam_proof_of_transit_pop_handler (vlib_buffer_t *b,
+					   ip6_header_t *ip,
 					   ip6_hop_by_hop_option_t *opt0)
 {
   ioam_pot_option_t * pot0;
@@ -180,6 +197,7 @@ ip6_hbh_ioam_proof_of_transit_pop_handler (ip6_header_t *ip,
   int rv = 0;
   pot_profile *pot_profile = 0;
   u8 result = 0;
+  u32 opaque_index = vnet_buffer(b)->l2_classify.opaque_index;
   
   pot0 = (ioam_pot_option_t *) opt0;
   random = clib_net_to_host_u64(pot0->random);
@@ -187,7 +205,7 @@ ip6_hbh_ioam_proof_of_transit_pop_handler (ip6_header_t *ip,
   pot_profile = pot_profile_get_active();
   result =  pot_validate (pot_profile,
 			  cumulative, random);
-	  
+  update_ipfix_info(opaque_index, result);
   if (result == 1) 
     {
       ip6_ioam_stats_increment_counter (IP6_IOAM_POT_PASSED, 1);

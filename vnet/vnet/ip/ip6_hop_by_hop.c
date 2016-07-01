@@ -140,12 +140,129 @@ ip6_hbh_ioam_trace_data_list_trace_handler (u8 *s, ip6_hop_by_hop_option_t *opt)
   return (s);
 }
 
+static u8 * ip6_hbh_ioam_e2e_trace_handler (u8 * s, ip6_hop_by_hop_option_t *opt)
+{
+  ioam_e2e_option_t * e2e = (ioam_e2e_option_t *)opt;
+  u32 ppc = 0;
+  if (e2e) {
+    ppc = clib_net_to_host_u32 (e2e->e2e_data);
+  }
+
+  s = format (s, "ppc = 0x%Lx", ppc);
+  return s;
+}
+
+static void
+copy_ipfix_info(ip6_header_t * ip, u32 opaque_index)
+{
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+  ioam_ipfix_elts_t *ipfix;
+  ip6_hop_by_hop_header_t *hbh = (ip6_hop_by_hop_header_t *)(ip+1);
+  u8 type;
+  ioam_trace_option_t *to = (ioam_trace_option_t *)(hbh+1);
+  udp_header_t *u;
+
+  while (__sync_lock_test_and_set (hm->writer_lock, 1))
+    ;
+
+  ipfix = get_ipfix_flow(opaque_index);
+  if (!ipfix)
+    goto out;
+
+  /* Copy required fields into ipfix location for ths elts */
+  copy_ip6_address(&ipfix->src_addr, &ip->src_address);
+  copy_ip6_address(&ipfix->dst_addr, &ip->dst_address);
+  ipfix->protocol = hbh->protocol;
+  ipfix->src_port = 0;
+  ipfix->dst_port = 0;
+  //FIXME look for l4 header not assume l4 header to follow hbyh
+  if(ipfix->protocol == IP_PROTOCOL_TCP ||
+     ipfix->protocol == IP_PROTOCOL_UDP)
+  {
+    u16 hlen = (hbh->length+1)<<3;
+    u = (udp_header_t *) (((u8*)hbh)+hlen);
+    ipfix->src_port = clib_net_to_host_u16(u->src_port);
+    ipfix->dst_port = clib_net_to_host_u16(u->dst_port);
+  }
+  ipfix->pkt_counter++;
+  ipfix->bytes_counter += clib_net_to_host_u16 (ip->payload_length)
+                                                - ((hbh->length+1)<<3);
+
+  type = to->hdr.type;
+
+  if (type == HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST)
+  {
+    u32 size_of_traceopt_per_node = fetch_trace_data_size(to->ioam_trace_type);
+    u32 size_of_all_traceopts = to->hdr.length - 2; /*ioam_trace_type,data_list_elts_left*/
+    u8 i;
+    u32 *ptr = to->elts;
+
+    ipfix->num_nodes = size_of_all_traceopts / size_of_traceopt_per_node;
+
+    for(i = 0; i < ipfix->num_nodes; i++)
+    {
+      ptr = (u32 *) ((u8*)to->elts + (size_of_traceopt_per_node * i));
+      ipfix->path[i].node_id = clib_net_to_host_u32 (*ptr) & 0x00ffffff;
+      if (to->ioam_trace_type == TRACE_TYPE_IF_TS_APP ||
+         to->ioam_trace_type == TRACE_TYPE_IF)
+          ipfix->path[i].ingress_if = (u16)(((*(ptr+1)) & 0xffff0000) >> 16);
+        ipfix->path[i].egress_if  = (u16)((*(ptr+1)) & 0x0000ffff);
+    }
+  }
+
+out:
+  *(hm->writer_lock) = 0;
+}
+
+int
+ip6_hbh_ioam_ppc_handler (vlib_buffer_t *b, ip6_header_t *ip, 
+                          ip6_hop_by_hop_option_t *opt)
+{
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+  u32 opaque_index = (vnet_buffer(b)->l2_classify.opaque_index) & 0x7fffffff;
+  ioam_e2e_option_t * e2e;
+  int rv = 0;
+
+  if (hm->has_ppc_option == PPC_ENCAP)
+  {
+    ioam_ipfix_elts_t *ipfix = 0;
+    u32 ppc = 0;
+
+    ipfix = get_ipfix_flow(opaque_index);
+    if (PREDICT_FALSE(hm->ppc_array_num))
+    {
+        ppc = hm->ppc_array[hm->ppc_array_num-1];
+        hm->ppc_array_num--;
+    }
+    else
+      if (ipfix)
+        ppc = ++ipfix->seq_num;
+    e2e = (ioam_e2e_option_t *) opt;
+    e2e->e2e_data = clib_host_to_net_u32(ppc);
+
+    ioam6_check_ppc(&ipfix->ppc_rx, (u64)ppc);
+  }
+  else if (hm->has_ppc_option == PPC_DECAP)
+  {
+    ioam_ipfix_elts_t *ipfix = 0;
+    u32 ppc;
+
+    ipfix = get_ipfix_flow(opaque_index);
+    e2e = (ioam_e2e_option_t *) opt;
+    ppc = clib_net_to_host_u32(e2e->e2e_data);
+    if (ipfix)
+      ioam6_check_ppc(&ipfix->ppc_rx, (u64)ppc);
+  }
+
+  return (rv);
+}
+
 int
 ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt)
 {
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
   ip6_main_t * im = &ip6_main;
   ip_lookup_main_t * lm = &im->lookup_main;
-  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
   u8 elt_index = 0;
   ioam_trace_option_t *trace = (ioam_trace_option_t *)opt;
   u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
@@ -176,8 +293,8 @@ ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t *b, ip6_header_t *ip, ip6_ho
                  
     if (trace->ioam_trace_type & BIT_TIMESTAMP) {
       /* Send least significant 32 bits */
-      f64 time_f64 = (f64)(((f64)hm->unix_time_0) + (vlib_time_now(hm->vlib_main) - hm->vlib_time_0));
-
+      /* f64 time_f64 = (f64)(((f64)hm->unix_time_0) + (vlib_time_now(hm->vlib_main) - hm->vlib_time_0)); */
+      f64 time_f64 = unix_time_now();
       time_u64.as_u64 = time_f64 * trace_tsp_mul[hm->trace_tsp];
       *elt = clib_host_to_net_u32(time_u64.as_u32[0]);
       elt++;
@@ -189,6 +306,14 @@ ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t *b, ip6_header_t *ip, ip6_ho
       elt++;
     }
   }
+
+  /* RANGAN:This is only for UT purposes and should be removed before checkin */
+  if (hm->enable_ipfix_ut)
+  {
+    u32 opaque_index = (vnet_buffer(b)->l2_classify.opaque_index) & 0x7fffffff;
+    copy_ipfix_info(ip, opaque_index);
+  }
+
   return (rv);
 }
 
@@ -469,7 +594,8 @@ static u8 * format_ip6_pop_hop_by_hop_trace (u8 * s, va_list * args)
 
 int
 ip6_hbh_pop_register_option (u8 option,
-			     int options(ip6_header_t *ip, ip6_hop_by_hop_option_t *opt))
+			     int options(vlib_buffer_t *b,
+					 ip6_header_t *ip, ip6_hop_by_hop_option_t *opt))
 {
   ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
 
@@ -520,6 +646,7 @@ static char * ip6_pop_hop_by_hop_error_strings[] = {
 };
 
 static inline void ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
+						   vlib_buffer_t *b0,
                                                 ip6_header_t *ip0,
                                                 ip6_hop_by_hop_header_t *hbh0)
 {
@@ -547,7 +674,7 @@ static inline void ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
 	default:
 	  if (hm->pop_options[type0])
 	    {
-	      if ((*hm->pop_options[type0])(ip0, opt0) < 0)
+	      if ((*hm->pop_options[type0])(b0, ip0, opt0) < 0)
 	      {
 		vlib_node_increment_counter (vm, ip6_pop_hop_by_hop_node.index, 
                                IP6_POP_HOP_BY_HOP_ERROR_OPTION_FAILED, 1);
@@ -563,11 +690,12 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
 		  vlib_frame_t * frame)
 {
-  ip6_main_t * im = &ip6_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
   u32 n_left_from, * from, * to_next;
   ip_lookup_next_t next_index;
+  ip6_main_t * im = &ip6_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
   u32 processed = 0;
+  u32 opaque_index;
   u32 no_header = 0;
   
   from = vlib_frame_vector_args (frame);
@@ -687,7 +815,11 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 	  hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
           
 	  /* TODO:Temporarily doing it here.. do this validation in end_of_path_cb */
-	  ioam_pop_hop_by_hop_processing(vm, ip0, hbh0);
+	  ioam_pop_hop_by_hop_processing(vm, b0, ip0, hbh0);
+          /* Before popping, hbh field, copy the required info for ipfix */
+          opaque_index = (vnet_buffer(b0)->l2_classify.opaque_index)&0x7fffffff;
+          copy_ipfix_info(ip0, opaque_index);
+
 	  /* Pop the trace data */
 	  vlib_buffer_advance (b0, (hbh0->length+1)<<3);
 	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
@@ -748,6 +880,9 @@ static clib_error_t *
 ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
 {
   ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+  void ip6_ioam_flow_report_reference (void);
+
+  ip6_ioam_flow_report_reference();
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main();
@@ -758,6 +893,12 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
   memset(hm->add_options, 0, sizeof(hm->add_options));
   memset(hm->pop_options, 0, sizeof(hm->pop_options));
   memset(hm->options_size, 0, sizeof(hm->options_size));
+  hm->ioam_flows = 0;
+
+  hm->writer_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+                                            CLIB_CACHE_LINE_BYTES);
+  *(hm->writer_lock) = 0;
+
 
   /*
    * Register the handlers
@@ -765,6 +906,9 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
    */
   if (ip6_hbh_register_option(HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST, ip6_hbh_ioam_trace_data_list_handler,
 			      ip6_hbh_ioam_trace_data_list_trace_handler) < 0)
+    return (clib_error_create("registration of HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST failed"));
+
+  if (ip6_hbh_register_option(HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE, ip6_hbh_ioam_ppc_handler, ip6_hbh_ioam_e2e_trace_handler) < 0)
     return (clib_error_create("registration of HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST failed"));
 
   return (0);
@@ -782,10 +926,11 @@ int ip6_ioam_set_rewrite (u8 **rwp, u32 trace_type, u32 trace_option_elts,
   ioam_trace_option_t * trace_option;
   u8 *current;
   u8 trace_data_size = 0;  
+  ioam_e2e_option_t *e2e_option;
 
   vec_free (*rwp);
 
-  if (trace_option_elts == 0 && has_pot_option == 0)
+  if (trace_option_elts == 0 && has_pot_option == 0 && has_ppc_option == 0)
     return -1;
 
   /* Work out how much space we need */
@@ -808,6 +953,11 @@ int ip6_ioam_set_rewrite (u8 **rwp, u32 trace_type, u32 trace_option_elts,
     {
       size += sizeof (ip6_hop_by_hop_option_t);
       size += hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT];
+    }
+  if (has_ppc_option)
+    {
+      size += sizeof (ip6_hop_by_hop_option_t);
+      size += sizeof (ioam_e2e_option_t);
     }
 
   /* Round to a multiple of 8 octets */
@@ -838,8 +988,18 @@ int ip6_ioam_set_rewrite (u8 **rwp, u32 trace_type, u32 trace_option_elts,
     {
       if (0 == hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT](current,
 					hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT]))
-	  current += sizeof (hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT]);
+	current += hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT];
     }
+  if (has_ppc_option) 
+    {
+      e2e_option = (ioam_e2e_option_t *)current;
+      e2e_option->hdr.type = HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE
+        | HBH_OPTION_TYPE_SKIP_UNKNOWN;
+      e2e_option->hdr.length = sizeof (ioam_e2e_option_t) -
+        sizeof (ip6_hop_by_hop_option_t);
+      current += sizeof (ioam_e2e_option_t);
+    }
+
   
   *rwp = rewrite;
   return 0;
@@ -1016,12 +1176,43 @@ VLIB_CLI_COMMAND (ip6_show_ioam_run_cmd, static) = {
   .function = ip6_show_ioam_summary_cmd_fn,
 };
 
+static clib_error_t *
+ip6_show_ioam_ppc_cmd_fn (vlib_main_t * vm,
+                      unformat_input_t * input,
+                      vlib_cli_command_t * cmd)
+{
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+  int i;
+  u8 *s = 0;
+
+  if (hm->ppc_array_num)
+  {
+    s = format(s, "Next %d sequence numbers : ",
+                            hm->ppc_array_num);
+
+    for (i = hm->ppc_array_num-1; i>=0; i--)
+      s = format(s, "%lu ", hm->ppc_array[i]);
+
+      s = format(s, "\n\n");
+  }
+
+  vlib_cli_output(vm, "%v", s);
+  vec_free(s);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (ip6_show_ioam_ppc_cmd, static) = {
+  .path = "show ioam ppc",
+  .short_help = "show ioam ppc",
+  .function = ip6_show_ioam_ppc_cmd_fn,
+};
+
+#if 0
 int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width, u32 vrf_id,
                               int is_add, int is_pop, int is_none)
 {
-  ip6_main_t * im = &ip6_main;
   ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
   ip_adjacency_t * adj;
   u32 fib_index;
   u32 len, adj_index;
@@ -1089,7 +1280,80 @@ int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width, u32 vrf_id,
                   (is_pop ? IOAM_HBYH_POP : IOAM_HBYH_MOD));
   return 0;
 }
+#endif
                               
+static clib_error_t *
+ip6_set_ioam_testppc_fn (vlib_main_t * vm,
+                      unformat_input_t * input,
+                      vlib_cli_command_t * cmd)
+{
+  u32 *ppc_array, i, num = 0;
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+
+  ppc_array = 0;
+
+  if (unformat (input, "num %d", &num))
+  {
+    vec_validate (ppc_array, sizeof(u32)*num);
+
+    for (i = 0; i < num; i++)
+      if (unformat (input, "%d", &ppc_array[num-1-i]))
+            ;
+  }
+  hm->ppc_array = ppc_array;
+  hm->ppc_array_num = num;
+
+  return 0;
+}
+
+int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width,
+                        u32 vrf_id, int is_add, int is_pop, int is_none)
+{
+  return 0;
+}
+VLIB_CLI_COMMAND (ip6_set_ioam_testppc_cmd, static) = {
+  .path = "set ioam testppc",
+  .short_help = "set ioam testppc num <num> <ppc_value> [.. num - 1   values ]",
+  .function = ip6_set_ioam_testppc_fn,
+};
+
+void ioam_flow_add(vnet_classify_table_t * t,
+		   vnet_classify_entry_t * v, u8 is_dec)
+{
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+  ioam_ipfix_elts_t * ipfix = 0;
+
+  pool_get_aligned (hm->ioam_flows, ipfix, CLIB_CACHE_LINE_BYTES);
+  memset(ipfix, 0, sizeof (ioam_ipfix_elts_t));
+  ipfix->my_node_id = hm->node_id;
+  ipfix->sfc_id = 0xBABA; /* Arbit number */
+  ppc_init_flow(ipfix);
+
+  v->opaque_index = ipfix - hm->ioam_flows;
+  if (is_dec)
+    v->opaque_index |= 0x80000000;
+}
+
+void ioam_flow_add_enc(vnet_classify_table_t * t, vnet_classify_entry_t * v)
+{
+  ioam_flow_add(t, v, 0);
+}
+
+void ioam_flow_add_dec(vnet_classify_table_t * t, vnet_classify_entry_t * v)
+{
+  ioam_flow_add(t, v, 1);
+}
+
+void ioam_flow_del(vnet_classify_table_t * t, vnet_classify_entry_t * v)
+{
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+  ioam_ipfix_elts_t * ipfix = 0;
+
+  ipfix = pool_elt_at_index (hm->ioam_flows, v->opaque_index);
+  pool_put (hm->ioam_flows, ipfix);
+}
+
+#if 0
 static clib_error_t *
 ip6_set_ioam_destination_command_fn (vlib_main_t * vm,
                                      unformat_input_t * input,
@@ -1143,6 +1407,23 @@ VLIB_CLI_COMMAND (ip6_set_ioam_destination_cmd, static) = {
   .path = "set ioam destination",
   .short_help = "set ioam destination <ip6-address>/<width> add | pop | none",
   .function = ip6_set_ioam_destination_command_fn,
+};
+#endif
+static clib_error_t *
+ip6_set_ioam_test_fn (vlib_main_t * vm,
+                      unformat_input_t * input,
+                      vlib_cli_command_t * cmd)
+{
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+
+  hm->enable_ipfix_ut = 1;
+  return 0;
+}
+
+VLIB_CLI_COMMAND (ip6_set_ioam_test_cmd, static) = {
+  .path = "set ioam test",
+  .short_help = "ioam enables for ipfix UT (internal command only)",
+  .function = ip6_set_ioam_test_fn,
 };
 
 

@@ -275,7 +275,7 @@ l2_classify_node_fn (vlib_main_t * vm,
           h0 = vlib_buffer_get_current(b0);
           table_index0 = vnet_buffer(b0)->l2_classify.table_index;
           e0 = 0;
-          vnet_buffer(b0)->l2_classify.opaque_index = ~0;
+          vnet_buffer(b0)->l2_classify.opaque_index = 0x7FFFFFFF;
 
           if (PREDICT_TRUE(table_index0 != ~0))
             {
