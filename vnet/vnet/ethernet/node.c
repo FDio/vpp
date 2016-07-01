@@ -337,6 +337,9 @@ ethernet_input_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
+	  vnet_buffer(b0)->l2_classify.opaque_index = 0x7FFFFFFF;
+	  vnet_buffer(b1)->l2_classify.opaque_index = 0x7FFFFFFF;
+
 	  error0 = error1 = ETHERNET_ERROR_NONE;
 
           parse_header (variant, 
@@ -501,7 +504,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-
+          vnet_buffer(b0)->l2_classify.opaque_index = 0x7FFFFFFF;
+	  
 	  error0 = ETHERNET_ERROR_NONE;
 
           parse_header (variant, 
