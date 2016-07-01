@@ -102,6 +102,23 @@ void ip_del_all_interface_addresses (vlib_main_t *vm, u32 sw_if_index)
 }
 
 static clib_error_t *
+ip_address_delete_cleanup (vnet_main_t * vnm, u32 hw_if_index, u32 is_create)
+{
+  vlib_main_t * vm = vlib_get_main();
+  vnet_hw_interface_t * hw;
+
+  if (is_create)
+    return 0;
+  
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
+
+  ip_del_all_interface_addresses (vm, hw->sw_if_index);
+  return 0;
+}
+
+VNET_HW_INTERFACE_ADD_DEL_FUNCTION (ip_address_delete_cleanup);
+
+static clib_error_t *
 add_del_ip_address (vlib_main_t * vm,
 		    unformat_input_t * input,
 		    vlib_cli_command_t * cmd)

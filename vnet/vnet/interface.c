@@ -656,7 +656,16 @@ vnet_register_interface (vnet_main_t * vnm,
       rt = vlib_node_get_runtime_data (vm, hw->output_node_index);
       ASSERT (rt->is_deleted == 1);
       rt->is_deleted = 0;
+      rt->hw_if_index = hw_index; 
+      rt->sw_if_index = hw->sw_if_index;
+      rt->dev_instance = hw->dev_instance;
 
+      rt = vlib_node_get_runtime_data (vm, hw->tx_node_index);
+      rt->hw_if_index = hw_index;
+      rt->sw_if_index = hw->sw_if_index;
+      rt->dev_instance = hw->dev_instance;
+
+      vlib_worker_thread_node_runtime_update();
       _vec_len (im->deleted_hw_interface_nodes) -= 1;
     }
   else

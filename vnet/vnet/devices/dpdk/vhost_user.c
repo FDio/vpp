@@ -939,7 +939,7 @@ static void dpdk_unmap_all_mem_regions(dpdk_device_t * xd)
       vui->region_addr[i]= -1;
 
       if (r == -1) {
-        clib_warning("failed to unmap memory region (errno %d)", errno);
+        clib_unix_warning("failed to unmap memory region");
       }
       close(vui->region_fd[i]);
     }
