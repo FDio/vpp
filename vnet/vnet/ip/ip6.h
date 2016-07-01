@@ -389,6 +389,14 @@ void ip6_add_del_route_next_hop (ip6_main_t * im,
 				 u32 next_hop_sw_if_index,
 				 u32 next_hop_weight, u32 adj_index,
                                  u32 explicit_fib_index);
+
+u32
+ip6_route_get_next_hop_adj (ip6_main_t * im,
+			    u32 fib_index,
+			    ip6_address_t *next_hop,
+			    u32 next_hop_sw_if_index,
+			    u32 explicit_fib_index);
+
 u32
 ip6_get_route (ip6_main_t * im,
 	       u32 fib_index_or_table_id,

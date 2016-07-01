@@ -862,7 +862,7 @@ static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
     uword * p;
     clib_error_t * e;
     u32 ai;
-    ip_adjacency_t *nh_adj, *add_adj = 0;
+    ip_adjacency_t *adj;
 
     p = hash_get (im->fib_index_by_table_id, ntohl(mp->vrf_id));
     if (!p) {
@@ -879,7 +879,8 @@ static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
         fib_index = p[0];
     }
 
-    if (pool_is_free_index (vnm->interface_main.sw_interfaces,
+    if (~0 != mp->next_hop_sw_if_index &&
+	pool_is_free_index (vnm->interface_main.sw_interfaces,
                             ntohl(mp->next_hop_sw_if_index)))
         return VNET_API_ERROR_NO_MATCHING_INTERFACE;
 
@@ -887,7 +888,7 @@ static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
             sizeof (next_hop_address.data));
 
     /* Arp for the next_hop if necessary */
-    if (mp->is_add && mp->resolve_if_needed) {
+    if (mp->is_add && mp->resolve_if_needed && ~0 != mp->next_hop_sw_if_index) {
         u32 lookup_result;
         ip_adjacency_t * adj;
 
@@ -971,50 +972,43 @@ static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
         else if (mp->is_local)
             ai = lm->local_adj_index;
         else if (mp->is_classify) {
-            ip_adjacency_t cadj;
-            memset(&cadj, 0, sizeof(cadj));
-            cadj.lookup_next_index = IP_LOOKUP_NEXT_CLASSIFY;
-            cadj.classify.table_index = ntohl(mp->classify_table_index);
-            if (pool_is_free_index (cm->tables, cadj.classify.table_index)) {
+	    if (pool_is_free_index (cm->tables, ntohl(mp->classify_table_index))) {
                 dsunlock(sm);
                 return VNET_API_ERROR_NO_SUCH_TABLE;
             }
-            vec_add1 (add_adj, cadj);
-            goto do_add_del;
-        }
-        else {
-            ai = ip4_fib_lookup_with_table
-                (im, fib_index, &next_hop_address,
-                 1 /* disable default route */);
-            if (ai == lm->miss_adj_index) {
-                dsunlock(sm);
-                return VNET_API_ERROR_NEXT_HOP_NOT_IN_FIB;
-            }
-        }
+	    adj = ip_add_adjacency (lm,
+				    /* template */ 0,
+				    /* block size */ 1,
+				    &ai);
 
-        nh_adj = ip_get_adjacency (lm, ai);
-	if (nh_adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
-	    nh_adj->arp.next_hop.ip4.as_u32 == 0) {
-	    /* the next-hop resovles via a glean adj. create and use
-	     * a ARP adj for the next-hop */
-	    a.adj_index = vnet_arp_glean_add(fib_index, &next_hop_address);
-	    a.add_adj = NULL;
-	    a.n_add_adj = 0;
-	    ip4_add_del_route (im, &a);
-
-	    goto done;
+            adj->lookup_next_index = IP_LOOKUP_NEXT_CLASSIFY;
+            adj->classify.table_index = ntohl(mp->classify_table_index);
 	}
-	vec_add1 (add_adj, nh_adj[0]);
-        if (mp->lookup_in_vrf) {
+        else if (mp->lookup_in_vrf) {
             p = hash_get (im->fib_index_by_table_id, ntohl(mp->lookup_in_vrf));
-            if (p)
-                add_adj[0].explicit_fib_index = p[0];
+            if (p) {
+		adj = ip_add_adjacency (lm,
+					/* template */ 0,
+					/* block size */ 1,
+					&ai);
+                adj->explicit_fib_index = p[0];
+	    }
             else {
-                vec_free (add_adj);
                 dsunlock(sm);
-                return VNET_API_ERROR_NO_SUCH_INNER_FIB;
-            }
-        }
+		return VNET_API_ERROR_NO_SUCH_INNER_FIB;
+	    }
+	}
+        else
+	    ai = ip4_route_get_next_hop_adj (im,
+					     fib_index,
+					     &next_hop_address,
+					     ntohl(mp->next_hop_sw_if_index),
+					     fib_index);
+
+	if (ai == lm->miss_adj_index) {
+	    dsunlock(sm);
+	    return VNET_API_ERROR_NO_SUCH_INNER_FIB;
+       }
     } else {
         ip_adjacency_t * adj;
         int disable_default_route = 1;
@@ -1038,15 +1032,9 @@ static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
         }
     }
 
-do_add_del:
-    a.adj_index = ~0;
-    a.add_adj = add_adj;
-    a.n_add_adj = vec_len(add_adj);
+    a.adj_index = ai;
     ip4_add_del_route (im, &a);
 
-    vec_free (add_adj);
-
-done:
     dsunlock (sm);
     return 0;
 }
@@ -1067,7 +1055,7 @@ static int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
     u32 fib_index;
     uword * p;
     clib_error_t * e;
-    ip_adjacency_t * nh_adj, * add_adj = 0;
+    ip_adjacency_t *adj = 0;
     u32 ai;
 
     p = hash_get (im->fib_index_by_table_id, ntohl(mp->vrf_id));
@@ -1086,7 +1074,8 @@ static int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
         fib_index = p[0];
     }
 
-    if (pool_is_free_index (vnm->interface_main.sw_interfaces,
+    if (~0 != mp->next_hop_sw_if_index &&
+	pool_is_free_index (vnm->interface_main.sw_interfaces,
                             ntohl(mp->next_hop_sw_if_index)))
         return VNET_API_ERROR_NO_MATCHING_INTERFACE;
 
@@ -1094,7 +1083,7 @@ static int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
             sizeof (next_hop_address.as_u8));
 
     /* Arp for the next_hop if necessary */
-    if (mp->is_add && mp->resolve_if_needed) {
+    if (mp->is_add && mp->resolve_if_needed && ~0 != mp->next_hop_sw_if_index) {
         u32 lookup_result;
         ip_adjacency_t * adj;
 
@@ -1176,27 +1165,30 @@ static int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
             ai = lm->drop_adj_index;
         else if (mp->is_local)
             ai = lm->local_adj_index;
-        else {
-            ai = ip6_fib_lookup_with_table
-                (im, fib_index, &next_hop_address);
-            if (ai == lm->miss_adj_index) {
-                dsunlock(sm);
-                return VNET_API_ERROR_NEXT_HOP_NOT_IN_FIB;
-            }
-        }
-
-        nh_adj = ip_get_adjacency (lm, ai);
-        vec_add1 (add_adj, nh_adj[0]);
-        if (mp->lookup_in_vrf) {
+	else if (mp->lookup_in_vrf) {
             p = hash_get (im->fib_index_by_table_id, ntohl(mp->lookup_in_vrf));
-            if (p)
-                add_adj[0].explicit_fib_index = p[0];
+            if (p) {
+		adj = ip_add_adjacency (lm,
+					/* template */ 0,
+					/* block size */ 1,
+					&ai);
+                adj->explicit_fib_index = p[0];
+	    }
             else {
-                vec_free (add_adj);
-                dsunlock(sm);
+		dsunlock(sm);
                 return VNET_API_ERROR_NO_SUCH_INNER_FIB;
-            }
-        }
+	    }
+	}
+       else
+	   ai = ip6_route_get_next_hop_adj (im,
+					    fib_index,
+					    &next_hop_address,
+					    ntohl(mp->next_hop_sw_if_index),
+					    fib_index);
+      if (ai == lm->miss_adj_index) {
+	  dsunlock(sm);
+	  return VNET_API_ERROR_NEXT_HOP_NOT_IN_FIB;
+      }
     } else {
         ip_adjacency_t * adj;
 
@@ -1213,12 +1205,8 @@ static int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t *mp)
         }
     }
 
-    a.adj_index = ~0;
-    a.add_adj = add_adj;
-    a.n_add_adj = vec_len(add_adj);
+    a.adj_index = ai;
     ip6_add_del_route (im, &a);
-
-    vec_free (add_adj);
 
     dsunlock (sm);
     return 0;
