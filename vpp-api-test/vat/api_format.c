@@ -4259,7 +4259,7 @@ static int api_ip_add_del_route (vat_main_t * vam)
     unformat_input_t * i = vam->input;
     vl_api_ip_add_del_route_t *mp;
     f64 timeout;
-    u32 sw_if_index = 0, vrf_id = 0;
+    u32 sw_if_index = ~0, vrf_id = 0;
     u8 sw_if_index_set = 0;
     u8 is_ipv6 = 0;
     u8 is_local = 0, is_drop = 0;

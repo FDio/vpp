@@ -270,6 +270,85 @@ void ip4_add_del_route (ip4_main_t * im, ip4_add_del_route_args_t * a)
     ip_del_adjacency (lm, old_adj_index);
 }
 
+
+u32
+ip4_route_get_next_hop_adj (ip4_main_t * im,
+			    u32 fib_index,
+			    ip4_address_t *next_hop,
+			    u32 next_hop_sw_if_index,
+			    u32 explicit_fib_index)
+{
+  ip_lookup_main_t * lm = &im->lookup_main;
+  vnet_main_t * vnm = vnet_get_main();
+  uword * nh_hash, * nh_result;
+  int is_interface_next_hop;
+  u32 nh_adj_index;
+  ip4_fib_t * fib;
+
+  fib = vec_elt_at_index (im->fibs, fib_index);
+
+  is_interface_next_hop = next_hop->data_u32 == 0;
+  if (is_interface_next_hop)
+    {
+      nh_result = hash_get (im->interface_route_adj_index_by_sw_if_index, next_hop_sw_if_index);
+      if (nh_result)
+	  nh_adj_index = *nh_result;
+      else
+        {
+	   ip_adjacency_t * adj;
+	   adj = ip_add_adjacency (lm, /* template */ 0, /* block size */ 1,
+				   &nh_adj_index);
+	   ip4_adjacency_set_interface_route (vnm, adj, next_hop_sw_if_index, /* if_address_index */ ~0);
+	   ip_call_add_del_adjacency_callbacks (lm, nh_adj_index, /* is_del */ 0);
+	   hash_set (im->interface_route_adj_index_by_sw_if_index, next_hop_sw_if_index, nh_adj_index);
+	}
+    }
+  else if (next_hop_sw_if_index == ~0)
+    {
+      /* next-hop is recursive. we always need a indirect adj
+       * for recursive paths. Any LPM we perform now will give
+       * us a valid adj, but without tracking the next-hop we
+       * have no way to keep it valid.
+       */
+      ip_adjacency_t add_adj;
+      memset (&add_adj, 0, sizeof(add_adj));
+      add_adj.n_adj = 1;
+      add_adj.lookup_next_index = IP_LOOKUP_NEXT_INDIRECT;
+      add_adj.indirect.next_hop.ip4.as_u32 = next_hop->as_u32;
+      add_adj.explicit_fib_index = explicit_fib_index;
+      ip_add_adjacency (lm, &add_adj, 1, &nh_adj_index);
+    }
+  else
+    {
+      nh_hash = fib->adj_index_by_dst_address[32];
+      nh_result = hash_get (nh_hash, next_hop->data_u32);
+
+      /* Next hop must be known. */
+      if (! nh_result)
+        {
+	  ip_adjacency_t * adj;
+
+	  /* no /32 exists, get the longest prefix match */
+	  nh_adj_index = ip4_fib_lookup_with_table (im, fib_index,
+						    next_hop, 0);
+	  adj = ip_get_adjacency (lm, nh_adj_index);
+	  /* if ARP interface adjacency is present, we need to
+	     install ARP adjaceny for specific next hop */
+	  if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+	      adj->arp.next_hop.ip4.as_u32 == 0)
+	    {
+	      nh_adj_index = vnet_arp_glean_add(fib_index, next_hop);
+	    }
+	}
+      else
+        {
+	  nh_adj_index = *nh_result;
+	}
+    }
+
+  return (nh_adj_index);
+}
+
 void
 ip4_add_del_route_next_hop (ip4_main_t * im,
 			    u32 flags,
@@ -287,11 +366,9 @@ ip4_add_del_route_next_hop (ip4_main_t * im,
   u32 dst_address_u32, old_mp_adj_index, new_mp_adj_index;
   u32 dst_adj_index, nh_adj_index;
   uword * dst_hash, * dst_result;
-  uword * nh_hash, * nh_result;
   ip_adjacency_t * dst_adj;
   ip_multipath_adjacency_t * old_mp, * new_mp;
   int is_del = (flags & IP4_ROUTE_FLAG_DEL) != 0;
-  int is_interface_next_hop;
   clib_error_t * error = 0;
 
   if (explicit_fib_index == (u32)~0)
@@ -300,61 +377,14 @@ ip4_add_del_route_next_hop (ip4_main_t * im,
       fib_index = explicit_fib_index;
 
   fib = vec_elt_at_index (im->fibs, fib_index);
-  
+
   /* Lookup next hop to be added or deleted. */
-  is_interface_next_hop = next_hop->data_u32 == 0;
   if (adj_index == (u32)~0)
     {
-      if (is_interface_next_hop)
-        {
-          nh_result = hash_get (im->interface_route_adj_index_by_sw_if_index, next_hop_sw_if_index);
-          if (nh_result)
-            nh_adj_index = *nh_result;
-          else
-            {
-              ip_adjacency_t * adj;
-              adj = ip_add_adjacency (lm, /* template */ 0, /* block size */ 1,
-                                      &nh_adj_index);
-              ip4_adjacency_set_interface_route (vnm, adj, next_hop_sw_if_index, /* if_address_index */ ~0);
-              ip_call_add_del_adjacency_callbacks (lm, nh_adj_index, /* is_del */ 0);
-              hash_set (im->interface_route_adj_index_by_sw_if_index, next_hop_sw_if_index, nh_adj_index);
-            }
-        }
-      else
-        {
-          nh_hash = fib->adj_index_by_dst_address[32];
-          nh_result = hash_get (nh_hash, next_hop->data_u32);
-          
-          /* Next hop must be known. */
-          if (! nh_result)
-            {
-	      ip_adjacency_t * adj;
-
-	      nh_adj_index = ip4_fib_lookup_with_table (im, fib_index,
-							next_hop, 0);
-	      adj = ip_get_adjacency (lm, nh_adj_index);
-	      /* if ARP interface adjacencty is present, we need to
-		 install ARP adjaceny for specific next hop */
-	      if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
-		  adj->arp.next_hop.ip4.as_u32 == 0)
-		{
-		  nh_adj_index = vnet_arp_glean_add(fib_index, next_hop);
-		}
-	      else
-		{
-		  /* Next hop is not known, so create indirect adj */
-		  ip_adjacency_t add_adj;
-		  memset (&add_adj, 0, sizeof(add_adj));
-		  add_adj.n_adj = 1;
-		  add_adj.lookup_next_index = IP_LOOKUP_NEXT_INDIRECT;
-		  add_adj.indirect.next_hop.ip4.as_u32 = next_hop->as_u32;
-		  add_adj.explicit_fib_index = explicit_fib_index;
-		  ip_add_adjacency (lm, &add_adj, 1, &nh_adj_index);
-		}
-	    }
-	  else
-	    nh_adj_index = *nh_result;
-	}
+	nh_adj_index = ip4_route_get_next_hop_adj(im, fib_index,
+						  next_hop,
+						  next_hop_sw_if_index,
+						  explicit_fib_index);
     }
   else
     {

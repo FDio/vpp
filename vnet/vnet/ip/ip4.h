@@ -355,6 +355,13 @@ void ip4_add_del_route_next_hop (ip4_main_t * im,
                                  u32 next_hop_weight, u32 adj_index, 
                                  u32 explicit_fib_index);
 
+u32
+ip4_route_get_next_hop_adj (ip4_main_t * im,
+			    u32 fib_index,
+			    ip4_address_t *next_hop,
+			    u32 next_hop_sw_if_index,
+			    u32 explicit_fib_index);
+
 void *
 ip4_get_route (ip4_main_t * im,
 	       u32 fib_index_or_table_id,
