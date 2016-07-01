@@ -1392,6 +1392,7 @@ define l2fib_add_del {
     u8 is_add;
     u8 static_mac;
     u8 filter_mac;
+    u8 bvi_mac;
 };
 
 /** \brief L2 FIB add entry response

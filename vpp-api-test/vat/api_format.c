@@ -3900,6 +3900,7 @@ static int api_l2fib_add_del (vat_main_t * vam)
     u8 is_add = 1;
     u8 static_mac = 0;
     u8 filter_mac = 0;
+    u8 bvi_mac = 0;
 
     /* Parse args required to build the message */
     while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
@@ -3920,6 +3921,9 @@ static int api_l2fib_add_del (vat_main_t * vam)
 	else if (unformat (i, "filter")) {
 		filter_mac = 1;
 		static_mac = 1;
+    } else if (unformat (i, "bvi")) {
+        bvi_mac = 1;
+        static_mac = 1;
 	} else if (unformat (i, "del"))
 		is_add = 0;
 	else
@@ -3951,6 +3955,7 @@ static int api_l2fib_add_del (vat_main_t * vam)
         mp->sw_if_index = ntohl(sw_if_index);
         mp->static_mac = static_mac;
         mp->filter_mac = filter_mac;
+        mp->bvi_mac = bvi_mac;
     }
     
     S; W;
