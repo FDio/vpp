@@ -19,6 +19,41 @@
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/ip.h>
 
+#define IOAM_FLOW_TEMPLATE_ID    260
+#define MAX_NODES  16
+#define PPC_WINDOW_SIZE 2048
+
+typedef CLIB_PACKED (struct {
+  u16 ingress_if;
+  u16 egress_if;
+  u32 node_id;
+}) ioam_path_map_t;
+
+/* This structure is 64-byte aligned */
+typedef CLIB_PACKED (struct {
+  /* one cache line (64 bytes) */
+  ip6_address_t src_addr; //Address of source originating flow
+  ip6_address_t dst_addr; // Address of destination destined for
+  u32 my_node_id;    // Egress VPP node id (this node id)
+  u32 pkt_counter;   // Num of pkts within start and end timestamps
+  u32 bytes_counter; // Num of bytes within start and end timestamps
+  u32 sfc_id;        // Service fn chain id (a const value for now)
+  u32 sfc_validated_count; // Number of packets validated (passes through the service chain) within the timestamps
+  u32 sfc_invalidated_count; // Number of packets invalidated (failed through the service chain) within the timestamps
+  u32 start_timestamp; // Timestamp since the collector started to monitor (unit in seconds since Jan 1 1970) (1433433271 for eg)
+  u32 end_timestamp;  // End time stamp
+
+  /* second cache line */
+  u16 src_port;       // L4 Port of source originating the flow
+  u16 dst_port;       // L4 Port of the destination 
+  u16 protocol;       // Protocol field in the IPv6 header of the flow
+  u16 num_nodes;      // Number of nodes
+  u64 pad2[7];
+
+  /* third cache line */
+  ioam_path_map_t path[MAX_NODES];
+}) ioam_ipfix_elts_t;
+
 typedef struct {
   /* The current rewrite we're using */
   u8 * rewrite;
@@ -32,6 +67,7 @@ typedef struct {
 #define IOAM_HBYH_MOD  1
 #define IOAM_HBYH_POP  2
   u8 ioam_flag;
+
   /* time scale transform. Joy. */
   u32 unix_time_0;
   f64 vlib_time_0;
@@ -60,10 +96,19 @@ typedef struct {
   /* Time stamp precision. This is enumerated to above four options */
   u32 trace_tsp;
   
+  /* IOAM sessions used in decap node only */
+  ioam_ipfix_elts_t * ioam_flows;
+  
+  /* Writer (only) lock for this table */
+  volatile u32 * writer_lock;
+  u8 ipfix_enabled;
+  u8 enable_ipfix_ut;
+
+
   /* Array of function pointers to ADD and POP HBH option handling routines */
   u8 options_size[256];
   int (*add_options[256])(u8 *rewrite_string, u8 rewrite_size);
-  int (*pop_options[256])(ip6_header_t *ip, ip6_hop_by_hop_option_t *opt);
+  int (*pop_options[256])(vlib_buffer_t *b,ip6_header_t *ip, ip6_hop_by_hop_option_t *opt);
   
   /* convenience */
   vlib_main_t * vlib_main;
@@ -108,13 +153,29 @@ static inline u8 is_zero_ip6_address (ip6_address_t *a)
   return ((a->as_u64[0] == 0) && (a->as_u64[1] == 0));
 }
 
+static inline ioam_ipfix_elts_t * get_ipfix_flow(u32 index)
+{
+  ioam_ipfix_elts_t *ipfix = 0;
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+
+  if (pool_is_free_index (hm->ioam_flows, index))
+    return 0;
+
+  ipfix = pool_elt_at_index (hm->ioam_flows, index);
+
+  return ipfix;
+}
+
+void ioam_flow_add(vnet_classify_table_t * t, vnet_classify_entry_t * v);
+void ioam_flow_del(vnet_classify_table_t * t, vnet_classify_entry_t * v);
+
 int ip6_hbh_add_register_option (u8 option,
 				 u8 size,
 				 int rewrite_options(u8 *rewrite_string, u8 size));
 int ip6_hbh_add_unregister_option (u8 option);
 
 int ip6_hbh_pop_register_option (u8 option,
-				 int options(ip6_header_t *ip, ip6_hop_by_hop_option_t *opt));
+				 int options(vlib_buffer_t *b,ip6_header_t *ip, ip6_hop_by_hop_option_t *opt));
 int ip6_hbh_pop_unregister_option (u8 option);
 
 

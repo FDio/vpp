@@ -259,6 +259,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip6_format.c				\
  vnet/ip/ip6_forward.c				\
  vnet/ip/ip6_hop_by_hop.c			\
+ vnet/ip/ip6_ioam_flow_report.c                 \
  vnet/ip/ip6_input.c				\
  vnet/ip/ip6_neighbor.c				\
  vnet/ip/ip6_pg.c				\
@@ -290,6 +291,7 @@ nobase_include_HEADERS +=			\
  vnet/ip/ip6_error.h				\
  vnet/ip/ip6_hop_by_hop.h			\
  vnet/ip/ip6_hop_by_hop_packet.h		\
+ vnet/ip/ip6_ioam_flow_report.h                 \
  vnet/ip/ip6_packet.h				\
  vnet/ip/lookup.h				\
  vnet/ip/ip_packet.h				\
