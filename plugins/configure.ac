@@ -29,87 +29,31 @@ AM_CONDITIONAL(ENABLE_TESTS, test "$enable_tests" = "1")
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AC_SUBST(DPDK,["-DDPDK=${with_dpdk}"])
 
-
-#
-# Please DO NOT, UNDER ANY CIRCUMSTANCES enable or disable
-# plugins by "clever" manipulation of the arguments to AC_ARG_ENABLE
-#
-# Instead, please configure the default set of plugins in 
-# .../build-data/platforms/<platform>.mk, by adding --enable-XXX-plugin
-# stanzas to plugins_configure_args_<platform> 
-
-# The following per-plugin boilerplate is begging for an additional
-# macro, but the first 10 tries at making one didn't work. Another day.
-
-#
-# Sample plugin
-#
-AC_ARG_ENABLE(sample_plugin,
-              AC_HELP_STRING([--enable-sample-plugin], [Build sample plugin]),
-              [enable_sample_plugin=1],
-              [enable_sample_plugin=0])
-
-if test "x$enable_sample_plugin" = x1; then
-   AC_CONFIG_SUBDIRS([sample-plugin])
+AC_DEFUN([PLUGIN],
+[
+   AC_ARG_ENABLE($1_plugin,
+       AC_HELP_STRING([--enable-$1-plugin], [Build $1 plugin]),
+              [enable_the_plugin=1],
+              [enable_the_plugin=0])
+if test "x$enable_the_plugin" = x1; then
+   AC_CONFIG_SUBDIRS($1-plugin)
 fi
+AM_CONDITIONAL(ENABLE_$1_PLUGIN, test "$enable_the_plugin" = "1")
+])
 
-AM_CONDITIONAL(ENABLE_SAMPLE_PLUGIN, test "$enable_sample_plugin" = "1")
-
+# To add a new plugin subdirectory:
+# 
+# add PLUGIN(new) below, and
+# add the following to Makefile.am:
 #
-# SIXRD plugin
-#
-AC_ARG_ENABLE(sixrd_plugin,
-              AC_HELP_STRING([--enable-sixrd-plugin], [Build sixrd plugin]),
-              [enable_sixrd_plugin=1],
-              [enable_sixrd_plugin=0])
+# if ENABLE_new_PLUGIN
+# SUBDIRS += new-plugin
+# endif
 
-if test "x$enable_sixrd_plugin" = x1; then
-   AC_CONFIG_SUBDIRS([sixrd-plugin])
-fi
-
-AM_CONDITIONAL(ENABLE_SIXRD_PLUGIN, test "$enable_sixrd_plugin" = "1")
-
-#
-# IOAM plugin
-#
-AC_ARG_ENABLE(ioam_plugin,
-              AC_HELP_STRING([--enable-ioam-plugin], [Build ioam plugin]),
-              [enable_ioam_plugin=1],
-              [enable_ioam_plugin=0])
-
-if test "x$enable_ioam_plugin" = x1; then
-   AC_CONFIG_SUBDIRS([ioam-plugin])
-fi
-
-AM_CONDITIONAL(ENABLE_IOAM_PLUGIN, test "$enable_ioam_plugin" = "1")
-
-#
-# VCGN plugin
-#
-AC_ARG_ENABLE(vcgn_plugin,
-              AC_HELP_STRING([--enable-vcgn-plugin], [Build vcgn plugin]),
-              [enable_vcgn_plugin=1],
-              [enable_vcgn_plugin=0])
-
-if test "x$enable_vcgn_plugin" = x1; then
-   AC_CONFIG_SUBDIRS([vcgn-plugin])
-fi
-
-AM_CONDITIONAL(ENABLE_VCGN_PLUGIN, test "$enable_vcgn_plugin" = "1")
-
-#
-# SNAT plugin
-#
-AC_ARG_ENABLE(snat_plugin,
-              AC_HELP_STRING([--enable-snat-plugin], [Build snat plugin]),
-              [enable_snat_plugin=1],
-              [enable_snat_plugin=0])
-
-if test "x$enable_snat_plugin" = x1; then
-   AC_CONFIG_SUBDIRS([snat-plugin])
-fi
-
-AM_CONDITIONAL(ENABLE_SNAT_PLUGIN, test "$enable_snat_plugin" = "1")
-
+PLUGIN(sample)
+PLUGIN(sixrd)
+PLUGIN(ioam)
+PLUGIN(vcgn)
+PLUGIN(snat)
 
 AC_OUTPUT([Makefile])

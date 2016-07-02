@@ -13,23 +13,33 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
+# To add a new plugin subdirectory:
+#
+# add a stanza here:
+# if ENABLE_new_PLUGIN
+# SUBDIRS += new-plugin
+# endif
+#
+# Also: add PLUGIN(new) to configure.ac
+
 SUBDIRS =
-if ENABLE_SAMPLE_PLUGIN
+
+if ENABLE_sample_PLUGIN
 SUBDIRS += sample-plugin
 endif
 
-if ENABLE_SIXRD_PLUGIN
+if ENABLE_sixrd_PLUGIN
 SUBDIRS += sixrd-plugin
 endif
 
-if ENABLE_IOAM_PLUGIN
+if ENABLE_ioam_PLUGIN
 SUBDIRS += ioam-plugin
 endif
 
-if ENABLE_VCGN_PLUGIN
+if ENABLE_vcgn_PLUGIN
 SUBDIRS += vcgn-plugin
 endif
 
-if ENABLE_SNAT_PLUGIN
+if ENABLE_snat_PLUGIN
 SUBDIRS += snat-plugin
 endif
