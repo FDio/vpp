@@ -219,6 +219,9 @@ ctags: ctags.files
 	@ctags --totals --tag-relative -L $<
 	@rm $<
 
+gtags: ctags
+	@gtags --gtagslabel=ctags
+
 cscope: cscope.files
 	@cscope -b -q -v
 
