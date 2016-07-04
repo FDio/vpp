@@ -354,6 +354,8 @@ typedef struct vnet_hw_interface_t {
 
 } vnet_hw_interface_t;
 
+extern vnet_device_class_t vnet_local_interface_device_class;
+
 typedef enum {
   /* A hw interface. */
   VNET_SW_INTERFACE_TYPE_HARDWARE,
