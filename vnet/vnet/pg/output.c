@@ -38,15 +38,35 @@
  */
 
 #include <vlib/vlib.h>
+#include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
+#include <vnet/ethernet/ethernet.h>
 
 uword
 pg_output (vlib_main_t * vm,
 	   vlib_node_runtime_t * node,
 	   vlib_frame_t * frame)
 {
+  pg_main_t * pg = &pg_main;
   u32 * buffers = vlib_frame_args (frame);
   uword n_buffers = frame->n_vectors;
-  vlib_buffer_free_no_next (vm, buffers, n_buffers);
+  uword n_left = n_buffers;
+  vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
+  pg_interface_t * pif = pool_elt_at_index (pg->interfaces, rd->dev_instance);
+
+  if (pif->pcap_file_name != 0)
+    {
+      while (n_left > 0)
+	{
+	  n_left--;
+	  u32 bi0 = buffers[0];
+	  buffers++;
+
+	  pcap_add_buffer (&pif->pcap_main, vm, bi0, ETHERNET_MAX_PACKET_BYTES);
+	}
+      pcap_write (&pif->pcap_main);
+    }
+
+  vlib_buffer_free_no_next (vm, vlib_frame_args (frame), n_buffers);
   return n_buffers;
 }
