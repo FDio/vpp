@@ -208,8 +208,8 @@ void unserialize_vnet_interface_state (serialize_main_t * m, va_list * va)
 }
 
 static clib_error_t *
-call_elf_section_interface_callbacks (vnet_main_t * vnm, u32 if_index, 
-                                      u32 flags, 
+call_elf_section_interface_callbacks (vnet_main_t * vnm, u32 if_index,
+                                      u32 flags,
                                       _vnet_interface_function_list_elt_t *elt)
 {
   clib_error_t * error = 0;
@@ -240,7 +240,7 @@ call_hw_interface_add_del_callbacks (vnet_main_t * vnm, u32 hw_if_index, u32 is_
       && (error = dev_class->interface_add_del_function (vnm, hw_if_index, is_create)))
     return error;
 
-  error = call_elf_section_interface_callbacks 
+  error = call_elf_section_interface_callbacks
     (vnm, hw_if_index, is_create, vnm->hw_interface_add_del_functions);
 
   return error;
@@ -249,7 +249,7 @@ call_hw_interface_add_del_callbacks (vnet_main_t * vnm, u32 hw_if_index, u32 is_
 static clib_error_t *
 call_sw_interface_add_del_callbacks (vnet_main_t * vnm, u32 sw_if_index, u32 is_create)
 {
-  return call_elf_section_interface_callbacks 
+  return call_elf_section_interface_callbacks
     (vnm, sw_if_index, is_create, vnm->sw_interface_add_del_functions);
 }
 
@@ -302,9 +302,9 @@ vnet_hw_interface_set_flags_helper (vnet_main_t * vnm, u32 hw_if_index, u32 flag
 						       flags)))
 	goto done;
 
-      error = call_elf_section_interface_callbacks 
+      error = call_elf_section_interface_callbacks
 	(vnm, hw_if_index, is_create, vnm->hw_interface_link_up_down_functions);
-      
+
       if (error)
 	goto done;
     }
@@ -356,17 +356,21 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index, u32 flag
 
 	  if (flags != (si_sup->flags & mask))
 	    {
-	      error = clib_error_return (0, "super-interface %U must be %U",
-					 format_vnet_sw_interface_name, vnm, si_sup,
-					 format_vnet_sw_interface_flags, flags);
-	      goto done;
+			/* Check to see if we're bringing down the soft interface and if it's parent is up */
+			if (!((flags == 0) && ((si_sup->flags & mask) == 1)))
+			  {
+				error = clib_error_return (0, "super-interface %U must be %U",
+						   format_vnet_sw_interface_name, vnm, si_sup,
+						   format_vnet_sw_interface_flags, flags);
+				goto done;
+			  }
 	    }
 	}
 
       /* Donot change state for slave link of bonded interfaces */
       if (si->flags & VNET_SW_INTERFACE_FLAG_BOND_SLAVE)
         {
-	  error = clib_error_return 
+	  error = clib_error_return
 	      (0, "not allowed as %U belong to a BondEthernet interface",
 	       format_vnet_sw_interface_name, vnm, si);
 	  goto done;
@@ -395,7 +399,7 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index, u32 flag
 	  mc_serialize (vm->mc_main, &vnet_sw_interface_set_flags_msg, &s);
 	}
 
-      error = call_elf_section_interface_callbacks 
+      error = call_elf_section_interface_callbacks
         (vnm, sw_if_index, flags, vnm->sw_interface_admin_up_down_functions);
 
       if (error)
@@ -497,9 +501,9 @@ vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm, vnet_sw_interface_t * 
 
     for (i = 0; i < vec_len (im->combined_sw_if_counters); i++)
       {
-	vlib_validate_combined_counter (&im->combined_sw_if_counters[i], 
+	vlib_validate_combined_counter (&im->combined_sw_if_counters[i],
                                         sw_if_index);
-	vlib_zero_combined_counter (&im->combined_sw_if_counters[i], 
+	vlib_zero_combined_counter (&im->combined_sw_if_counters[i],
                                     sw_if_index);
       }
 
@@ -564,7 +568,7 @@ static void setup_tx_node (vlib_main_t * vm,
 
   n->function = dev_class->tx_function;
   n->format_trace = dev_class->format_tx_trace;
-  vlib_register_errors (vm, node_index, 
+  vlib_register_errors (vm, node_index,
                         dev_class->tx_function_n_errors,
                         dev_class->tx_function_error_strings);
 }
@@ -656,7 +660,7 @@ vnet_register_interface (vnet_main_t * vnm,
       rt = vlib_node_get_runtime_data (vm, hw->output_node_index);
       ASSERT (rt->is_deleted == 1);
       rt->is_deleted = 0;
-      rt->hw_if_index = hw_index; 
+      rt->hw_if_index = hw_index;
       rt->sw_if_index = hw->sw_if_index;
       rt->dev_instance = hw->dev_instance;
 
@@ -884,13 +888,13 @@ vnet_hw_interface_set_class (vnet_main_t * vnm, u32 hw_if_index, u32 hw_class_in
 { return vnet_hw_interface_set_class_helper (vnm, hw_if_index, hw_class_index, /* redistribute */ 1); }
 
 static int
-vnet_hw_interface_rx_redirect_to_node_helper (vnet_main_t * vnm, 
-                                              u32 hw_if_index, 
-                                              u32 node_index, 
+vnet_hw_interface_rx_redirect_to_node_helper (vnet_main_t * vnm,
+                                              u32 hw_if_index,
+                                              u32 node_index,
                                               u32 redistribute)
 {
   vnet_hw_interface_t * hi = vnet_get_hw_interface (vnm, hw_if_index);
-  vnet_device_class_t * dev_class = vnet_get_device_class 
+  vnet_device_class_t * dev_class = vnet_get_device_class
     (vnm, hi->dev_class_index);
 
   if (redistribute)
@@ -959,12 +963,12 @@ vnet_interface_init (vlib_main_t * vm)
     foreach_buffer_opaque_union_subtype;
 #undef _
 
-     return clib_error_return 
+     return clib_error_return
            (0, "FATAL: size of vlib buffer opaque %d, size of vnet opaque %d",
            sizeof(b->opaque), sizeof (vnet_buffer_opaque_t));
     }
 
-  im->sw_if_counter_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, 
+  im->sw_if_counter_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
                                                    CLIB_CACHE_LINE_BYTES);
   im->sw_if_counter_lock[0] = 1; /* should be no need */
 
@@ -1005,13 +1009,13 @@ vnet_interface_init (vlib_main_t * vm)
   im->hw_interface_class_by_name = hash_create_string (/* size */ 0,
 						       sizeof (uword));
 
-  im->sw_if_index_by_sup_and_sub = hash_create_mem (0, sizeof(u64), 
+  im->sw_if_index_by_sup_and_sub = hash_create_mem (0, sizeof(u64),
                                                     sizeof (uword));
   {
     vnet_hw_interface_class_t * c;
 
     c = vnm->hw_interface_class_registrations;
-    
+
     while (c)
       {
         c->index = vec_len (im->hw_interface_classes);
@@ -1041,7 +1045,7 @@ int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance)
   vnet_interface_main_t * im = &vnm->interface_main;
   vnet_hw_interface_t * hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
-  vnet_device_class_t * dev_class = vnet_get_device_class 
+  vnet_device_class_t * dev_class = vnet_get_device_class
     (vnm, hi->dev_class_index);
 
   if (dev_class->name_renumber == 0 || dev_class->format_device_name == 0)
@@ -1055,9 +1059,9 @@ int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance)
   hash_unset_mem (im->hw_interface_by_name, hi->name);
   vec_free (hi->name);
   /* Use the mapping we set up to call it Ishmael */
-  hi->name = format (0, "%U", dev_class->format_device_name, 
+  hi->name = format (0, "%U", dev_class->format_device_name,
                      hi->dev_instance);
-  
+
   hash_set_mem (im->hw_interface_by_name, hi->name, hi->hw_if_index);
   return rv;
 }
