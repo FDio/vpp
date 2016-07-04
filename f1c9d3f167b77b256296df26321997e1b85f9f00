@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_9d19237c",
+        "filename": "vnet/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-04T19:30:23Z",
+      "side": 1,
+      "message": "Nit picking: This indentation looks messed up.",
+      "range": {
+        "startLine": 359,
+        "startChar": 1,
+        "endLine": 359,
+        "endChar": 3
+      },
+      "revId": "f1c9d3f167b77b256296df26321997e1b85f9f00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_bd1ce76b",
+        "filename": "vnet/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-04T19:30:23Z",
+      "side": 1,
+      "message": "Do you intend to check for 1? What macro covers this value (which would better describe the comparison)? Or did you mean to check for non-zero?",
+      "range": {
+        "startLine": 360,
+        "startChar": 52,
+        "endLine": 360,
+        "endChar": 53
+      },
+      "revId": "f1c9d3f167b77b256296df26321997e1b85f9f00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
