@@ -160,7 +160,7 @@ u8 * format_ip6_sr_header (u8 * s, va_list * args)
 
   s = format (s, "\n  Segments (in processing order):");
 
-  for (i = h->first_segment; i >= 0; i--)
+  for (i = h->first_segment; i >= 1; i--)
     s = format (s, "\n  %U", format_ip6_address, h->segments + i);
 
   s = format (s, "\n  Policy List:");
