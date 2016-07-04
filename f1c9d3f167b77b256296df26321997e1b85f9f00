@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_5d2b8b82",
+        "filename": "vnet/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 33
+      },
+      "writtenOn": "2016-07-04T19:36:06Z",
+      "side": 1,
+      "message": "Yeah I feel the same. It\u0027s kinda a messy bracket placement in this source so I was trying to mimic it, but seems I might have created a mess.",
+      "parentUuid": "9a0e1d27_9d19237c",
+      "range": {
+        "startLine": 359,
+        "startChar": 1,
+        "endLine": 359,
+        "endChar": 3
+      },
+      "revId": "f1c9d3f167b77b256296df26321997e1b85f9f00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_bd1ce76b",
         "filename": "vnet/vnet/interface.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2016-07-04T19:30:23Z",
       "side": 1,
       "message": "Do you intend to check for 1? What macro covers this value (which would better describe the comparison)? Or did you mean to check for non-zero?",
+      "range": {
+        "startLine": 360,
+        "startChar": 52,
+        "endLine": 360,
+        "endChar": 53
+      },
+      "revId": "f1c9d3f167b77b256296df26321997e1b85f9f00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_3d20d79a",
+        "filename": "vnet/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 33
+      },
+      "writtenOn": "2016-07-04T19:36:06Z",
+      "side": 1,
+      "message": "I\u0027m actually checking of the first bit to be toggled, which indicates the interface is set to ADMIN_UP, not sure if a macro exists for it.",
+      "parentUuid": "9a0e1d27_bd1ce76b",
       "range": {
         "startLine": 360,
         "startChar": 52,
