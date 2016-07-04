@@ -1391,15 +1391,50 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
   mapping_t * mapit;
+  unformat_input_t _line_input, * line_input = &_line_input;
+  u32 mi;
+  gid_address_t eid;
+  u8 print_all = 1;
+
+  memset (&eid, 0, sizeof(eid));
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "eid %U", unformat_gid_address, &eid))
+        print_all = 0;
+      else
+        return clib_error_return (0, "parse error: '%U'",
+                                  format_unformat_error, line_input);
+    }
 
   vlib_cli_output (vm, "%-35s%-20s%-s", "EID", "type", "locators");
-  pool_foreach (mapit, lcm->mapping_pool,
-  ({
-    locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
-                                            mapit->locator_set_index);
-    vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
-                     lcm, &mapit->eid, ls);
-  }));
+
+  if (print_all)
+    {
+      pool_foreach (mapit, lcm->mapping_pool,
+      ({
+        locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
+                                                mapit->locator_set_index);
+        vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
+                         lcm, &mapit->eid, ls);
+      }));
+    }
+  else
+    {
+      mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &eid);
+      if ((u32)~0 == mi)
+        return 0;
+
+      mapit = pool_elt_at_index (lcm->mapping_pool, mi);
+      locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
+                                              mapit->locator_set_index);
+      vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
+                       lcm, &mapit->eid, ls);
+    }
 
   return 0;
 }

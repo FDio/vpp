@@ -10966,8 +10966,34 @@ api_lisp_locator_set_dump(vat_main_t *vam)
 static int
 api_lisp_local_eid_table_dump(vat_main_t *vam)
 {
+    unformat_input_t * i = vam->input;
     vl_api_lisp_local_eid_table_dump_t *mp;
     f64 timeout = ~0;
+    struct in_addr ip4;
+    struct in6_addr ip6;
+    u8 mac[6];
+    u8 eid_type = ~0, eid_set;
+    u32 prefix_length = ~0, t, vni = 0;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "eid %U/%d", unformat_ip4_address, &ip4, &t)) {
+            eid_set = 1;
+            eid_type = 0;
+            prefix_length = t;
+        } else if (unformat (i, "eid %U/%d", unformat_ip6_address, &ip6, &t)) {
+            eid_set = 1;
+            eid_type = 1;
+            prefix_length = t;
+        } else if (unformat (i, "eid %U", unformat_ethernet_address, mac)) {
+            eid_set = 1;
+            eid_type = 2;
+        } else if (unformat (i, "vni %d", &t))
+            vni = t;
+        else {
+            errmsg ("parse error '%U'", format_unformat_error, i);
+            return -99;
+        }
+    }
 
     if (!vam->json_output) {
         fformat(vam->ofp, "%=20s%=30s\n",
@@ -10975,6 +11001,29 @@ api_lisp_local_eid_table_dump(vat_main_t *vam)
     }
 
     M(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump);
+
+    if (eid_set) {
+        mp->eid_set = 1;
+        mp->vni = htonl (vni);
+        mp->eid_type = eid_type;
+        switch (eid_type) {
+        case 0:
+            mp->prefix_length = prefix_length;
+            clib_memcpy (mp->eid, &ip4, sizeof (ip4));
+            break;
+        case 1:
+            mp->prefix_length = prefix_length;
+            clib_memcpy (mp->eid, &ip6, sizeof (ip6));
+            break;
+        case 2:
+            clib_memcpy (mp->eid, mac, sizeof (mac));
+            break;
+        default:
+            errmsg ("unknown EID type %d!", eid_type);
+            return -99;
+        }
+    }
+
     /* send it... */
     S;
 
