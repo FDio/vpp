@@ -56,7 +56,7 @@ vnet_local_interface_tx (vlib_main_t * vm,
   return f->n_vectors;
 }
 
-VNET_DEVICE_CLASS (vnet_local_interface_device_class,static) = {
+VNET_DEVICE_CLASS (vnet_local_interface_device_class) = {
   .name = "local",
   .tx_function = vnet_local_interface_tx,
 };

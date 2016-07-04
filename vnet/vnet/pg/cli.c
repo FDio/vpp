@@ -37,6 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <sys/stat.h>
+
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 
@@ -248,6 +250,7 @@ new_stream (vlib_main_t * vm,
   s.node_index = ~0;
   s.max_packet_bytes = s.min_packet_bytes = 64;
   s.buffer_bytes = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+  s.if_id = 0;
   pcap_file_name = 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -266,6 +269,9 @@ new_stream (vlib_main_t * vm,
 	  s.node_index = hi->output_node_index;
 	  s.sw_if_index[VLIB_TX] = hi->sw_if_index;
 	}
+
+      else if (unformat (input, "source pg%u",&s.if_id))
+	;
 
       else if (unformat (input, "node %U",
 			 unformat_vlib_node, vm, &s.node_index))
@@ -429,6 +435,113 @@ VLIB_CLI_COMMAND (change_stream_parameters_cli, static) = {
   .path = "packet-generator configure",
   .short_help = "Change packet generator stream parameters",
   .function = change_stream_parameters,
+};
+
+static clib_error_t *
+pg_capture_cmd_fn (vlib_main_t * vm,
+		  unformat_input_t * input,
+		  vlib_cli_command_t * cmd)
+{
+  pg_main_t * pg = &pg_main;
+  clib_error_t * error = 0;
+  vnet_main_t * vnm = vnet_get_main();
+  unformat_input_t _line_input, * line_input = &_line_input;
+  vnet_hw_interface_t * hi = 0;
+  pg_interface_t * pi;
+  u8 * pcap_file_name = 0;
+  u32 hw_if_index;
+  u32 count = ~0;
+
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U",
+			 unformat_vnet_hw_interface, vnm, &hw_if_index))
+	{
+	  hi = vnet_get_hw_interface (vnm, hw_if_index);
+	}
+
+      else if (unformat (line_input, "pcap %s", &pcap_file_name))
+	;
+      else if (unformat (line_input, "count %u", &count))
+	;
+
+      else
+	{
+	  error = clib_error_create ("unknown input `%U'",
+				     format_unformat_error, input);
+	  return error;
+	}
+    }
+
+  if (!hi)
+    return clib_error_return (0, "Please specify interface name");
+
+  if (hi->dev_class_index != pg_dev_class.index)
+    return clib_error_return (0, "Please specify packet-generator interface");
+
+  if (!pcap_file_name)
+    return clib_error_return (0, "Please specify pcap file name");
+
+  {
+    struct stat sb;
+    if (stat ((char *) pcap_file_name, &sb) != -1)
+      return clib_error_return (0, "Cannot create pcap file");
+  }
+
+  unformat_free (line_input);
+
+  pi = pool_elt_at_index (pg->interfaces, hi->dev_instance);
+  vec_free (pi->pcap_file_name);
+  pi->pcap_file_name = pcap_file_name;
+  memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
+  pi->pcap_main.file_name = (char *) pi->pcap_file_name;
+  pi->pcap_main.n_packets_to_capture = count;
+  pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (pg_capture_cmd, static) = {
+  .path = "packet-generator capture",
+  .short_help = "packet-generator capture <interface name> pcap <filename> [count <n>]",
+  .function = pg_capture_cmd_fn,
+};
+
+static clib_error_t *
+create_pg_if_cmd_fn (vlib_main_t * vm,
+		     unformat_input_t * input,
+		     vlib_cli_command_t * cmd)
+{
+  pg_main_t * pg = &pg_main;
+  unformat_input_t _line_input, * line_input = &_line_input;
+  u32 if_id;
+
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "interface pg%u", &if_id))
+	;
+
+      else
+	return clib_error_create ("unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  unformat_free (line_input);
+
+  pg_interface_add_or_get (pg, if_id);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (create_pg_if_cmd, static) = {
+  .path = "create packet-generator",
+  .short_help = "create packet-generator interface <interface name>",
+  .function = create_pg_if_cmd_fn,
 };
 
 /* Dummy init function so that we can be linked in. */

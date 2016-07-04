@@ -43,6 +43,10 @@
 #include <vlib/vlib.h>		/* for VLIB_N_RX_TX */
 #include <vnet/pg/edit.h>
 #include <vppinfra/fifo.h>		/* for buffer_fifo */
+#include <vnet/unix/pcap.h>
+#include <vnet/interface.h>
+
+extern vnet_device_class_t pg_dev_class;
 
 struct pg_main_t;
 struct pg_stream_t;
@@ -139,6 +143,8 @@ typedef struct pg_stream_t {
 
   /* Output next index to reach output node from stream input node. */
   u32 next_index;
+
+  u32 if_id;
 
   /* Number of packets currently generated. */
   u64 n_packets_generated;
@@ -281,7 +287,10 @@ typedef struct {
   u32 hw_if_index, sw_if_index;
 
   /* Identifies stream for this interface. */
-  u32 stream_index;
+  u32 id;
+
+  pcap_main_t pcap_main;
+  u8 * pcap_file_name;
 } pg_interface_t;
 
 /* Per VLIB node data. */
@@ -303,13 +312,12 @@ typedef struct pg_main_t {
   /* Hash mapping name -> stream index. */
   uword * stream_index_by_name;
 
-  /* Vector of interfaces. */
+  /* Pool of interfaces. */
   pg_interface_t * interfaces;
+  uword * if_index_by_if_id;
 
   /* Per VLIB node information. */
   pg_node_t * nodes;
-
-  u32 * free_interfaces;
 } pg_main_t;
 
 /* Global main structure. */
@@ -329,7 +337,7 @@ void pg_stream_add (pg_main_t * pg, pg_stream_t * s_init);
 void pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s, int is_enable);
 
 /* Find/create free packet-generator interface index. */
-u32 pg_interface_find_free (pg_main_t * pg, uword stream_index);
+u32 pg_interface_add_or_get (pg_main_t * pg, uword stream_index);
 
 always_inline pg_node_t *
 pg_get_node (uword node_index)

@@ -39,12 +39,13 @@
 
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
+#include <vnet/ethernet/ethernet.h>
 
 /* Mark stream active or inactive. */
 void pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s, int want_enabled)
 {
   vnet_main_t * vnm = vnet_get_main();
-  pg_interface_t * pi = vec_elt_at_index (pg->interfaces, s->pg_if_index);
+  pg_interface_t * pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
 
   want_enabled = want_enabled != 0;
 
@@ -63,15 +64,14 @@ void pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s, int want_enabled
   pg->enabled_streams
     = clib_bitmap_set (pg->enabled_streams, s - pg->streams, want_enabled);
 
-  vnet_hw_interface_set_flags (vnm, pi->hw_if_index,
-			       (want_enabled
-				? VNET_HW_INTERFACE_FLAG_LINK_UP
-				: 0));
+  if (want_enabled)
+    {
+      vnet_hw_interface_set_flags (vnm, pi->hw_if_index,
+				    VNET_HW_INTERFACE_FLAG_LINK_UP);
 
-  vnet_sw_interface_set_flags (vnm, pi->sw_if_index,
-			       (want_enabled
-				? VNET_SW_INTERFACE_FLAG_ADMIN_UP
-				: 0));
+      vnet_sw_interface_set_flags (vnm, pi->sw_if_index,
+				    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+    }
 			       
   vlib_node_set_state (pg->vlib_main,
 		       pg_input_node.index,
@@ -89,16 +89,30 @@ static u8 * format_pg_interface_name (u8 * s, va_list * args)
   u32 if_index = va_arg (*args, u32);
   pg_interface_t * pi;
 
-  pi = vec_elt_at_index (pg->interfaces, if_index);
-  s = format (s, "pg/stream-%d", pi->stream_index);
+  pi = pool_elt_at_index (pg->interfaces, if_index);
+  s = format (s, "pg%d", pi->id);
 
   return s;
 }
 
-VNET_DEVICE_CLASS (pg_dev_class,static) = {
+static clib_error_t *
+pg_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+{
+  u32 hw_flags = 0;
+
+  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    hw_flags = VNET_HW_INTERFACE_FLAG_LINK_UP;
+
+  vnet_hw_interface_set_flags(vnm, hw_if_index, hw_flags);
+
+  return 0;
+}
+
+VNET_DEVICE_CLASS (pg_dev_class) = {
   .name = "pg",
   .tx_function = pg_output,
   .format_device_name = format_pg_interface_name,
+  .admin_up_down_function = pg_interface_admin_up_down,
 };
 
 static uword pg_set_rewrite (vnet_main_t * vnm,
@@ -122,31 +136,50 @@ VNET_HW_INTERFACE_CLASS (pg_interface_class,static) = {
   .set_rewrite = pg_set_rewrite,
 };
 
-u32 pg_interface_find_free (pg_main_t * pg, uword stream_index)
+static u32
+pg_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
+{
+  /* nothing for now */
+  return 0;
+}
+
+u32 pg_interface_add_or_get (pg_main_t * pg, uword if_id)
 {
   vnet_main_t * vnm = vnet_get_main();
+  vlib_main_t * vm = vlib_get_main();
   pg_interface_t * pi;
   vnet_hw_interface_t * hi;
-  u32 i, l;
+  uword *p;
+  u32 i;
 
-  if ((l = vec_len (pg->free_interfaces)) > 0)
+  p = hash_get (pg->if_index_by_if_id, if_id);
+
+  if (p)
     {
-      i = pg->free_interfaces[l - 1];
-      _vec_len (pg->free_interfaces) = l - 1;
-      pi = vec_elt_at_index (pg->interfaces, i);
-      pi->stream_index = stream_index;
-    }    
+      return p[0];
+    }
   else
     {
-      i = vec_len (pg->interfaces);
-      vec_add2 (pg->interfaces, pi, 1);
+      u8 hw_addr[6];
+      f64 now = vlib_time_now(vm);
+      u32 rnd;
 
-      pi->stream_index = stream_index;
-      pi->hw_if_index = vnet_register_interface (vnm,
-						 pg_dev_class.index, i,
-						 pg_interface_class.index, stream_index);
+      pool_get (pg->interfaces, pi);
+      i = pi - pg->interfaces;
+
+      rnd = (u32) (now * 1e6);
+      rnd = random_u32 (&rnd);
+      clib_memcpy (hw_addr+2, &rnd, sizeof(rnd));
+      hw_addr[0] = 2;
+      hw_addr[1] = 0xfe;
+
+      pi->id = if_id;
+      ethernet_register_interface (vnm, pg_dev_class.index, i, hw_addr,
+				   &pi->hw_if_index, pg_eth_flag_change);
       hi = vnet_get_hw_interface (vnm, pi->hw_if_index);
       pi->sw_if_index = hi->sw_if_index;
+
+      hash_set (pg->if_index_by_if_id, if_id, i);
     }
 
   return i;
@@ -379,10 +412,10 @@ void pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   }
 
   /* Find an interface to use. */
-  s->pg_if_index = pg_interface_find_free (pg, s - pg->streams);
+  s->pg_if_index = pg_interface_add_or_get (pg, s->if_id);
 
   {
-    pg_interface_t * pi = vec_elt_at_index (pg->interfaces, s->pg_if_index);
+    pg_interface_t * pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
     vlib_rx_or_tx_t rx_or_tx;
 
     vlib_foreach_rx_tx (rx_or_tx)
@@ -405,7 +438,6 @@ void pg_stream_del (pg_main_t * pg, uword index)
   s = pool_elt_at_index (pg->streams, index);
 
   pg_stream_enable_disable (pg, s, /* want_enabled */ 0);
-  vec_add1 (pg->free_interfaces, s->pg_if_index);
   hash_unset_mem (pg->stream_index_by_name, s->name);
 
   vec_foreach (bi, s->buffer_indices)
