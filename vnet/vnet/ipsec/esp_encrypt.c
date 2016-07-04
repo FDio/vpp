@@ -144,9 +144,10 @@ esp_encrypt_node_fn (vlib_main_t * vm,
   ipsec_main_t *im = &ipsec_main;
   u32 * recycle = 0;
   u32 cpu_index = os_get_cpu_number();
-  u32 * empty_buffers = im->empty_buffers[cpu_index];
 
   ipsec_alloc_empty_buffers(vm, im);
+
+  u32 * empty_buffers = im->empty_buffers[cpu_index];
 
   if (PREDICT_FALSE(vec_len (empty_buffers) < n_left_from)){
     vlib_node_increment_counter (vm, esp_encrypt_node.index,
