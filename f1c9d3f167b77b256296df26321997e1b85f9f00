@@ -93,6 +93,30 @@
       "revId": "f1c9d3f167b77b256296df26321997e1b85f9f00",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_7d740f9c",
+        "filename": "vnet/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-04T20:53:18Z",
+      "side": 1,
+      "message": "Quick grep reveals:\nvnet/vnet/interface.h:#define VNET_SW_INTERFACE_FLAG_ADMIN_UP (1 \u003c\u003c 0)\n\nI suspect this is the one you want to use.\n\nAny reason to not collapse the two \"if\" statements together?",
+      "parentUuid": "9a0e1d27_3d20d79a",
+      "range": {
+        "startLine": 360,
+        "startChar": 52,
+        "endLine": 360,
+        "endChar": 53
+      },
+      "revId": "f1c9d3f167b77b256296df26321997e1b85f9f00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
