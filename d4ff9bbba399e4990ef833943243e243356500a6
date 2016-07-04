@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_da08c12f",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 12
+      },
+      "lineNbr": 2414,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-04T18:48:44Z",
+      "side": 1,
+      "message": "Nit: For a future update perhaps, did you intend to say \"adjacency\" twice?",
+      "range": {
+        "startLine": 2414,
+        "startChar": 30,
+        "endLine": 2414,
+        "endChar": 49
+      },
+      "revId": "d4ff9bbba399e4990ef833943243e243356500a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
