@@ -137,6 +137,7 @@ u8 * format_ip6_sr_header_flags (u8 * s, va_list * args)
 u8 * format_ip6_sr_header (u8 * s, va_list * args)
 {
   ip6_sr_header_t * h = va_arg (*args, ip6_sr_header_t *);
+  ip6_address_t placeholder_addr = {{254,254,254,254,254,254,254,254,254,254,254,254,254,254,254,254}};
   int print_hmac = va_arg (*args, int);
   int i, pl_index, max_segs;
   int flags_host_byte_order = clib_net_to_host_u16(h->flags);
@@ -160,8 +161,12 @@ u8 * format_ip6_sr_header (u8 * s, va_list * args)
 
   s = format (s, "\n  Segments (in processing order):");
 
-  for (i = h->first_segment; i >= 0; i--)
+  for (i = h->first_segment; i >= 1; i--)
     s = format (s, "\n  %U", format_ip6_address, h->segments + i);
+  if (ip6_address_is_equal(&placeholder_addr, h->segments))
+	s = format (s, "\n  (empty placeholder)");
+  else
+	s = format (s, "\n  %U", format_ip6_address, h->segments);
 
   s = format (s, "\n  Policy List:");
 
