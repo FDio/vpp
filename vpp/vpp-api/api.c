@@ -5629,11 +5629,17 @@ static void vl_api_ipsec_spd_add_del_entry_t_handler
     p.is_outbound = mp->is_outbound;
     p.is_ipv6 = mp->is_ipv6;
 
-    clib_memcpy(&p.raddr.start, mp->remote_address_start, 16);
-    clib_memcpy(&p.raddr.stop, mp->remote_address_stop, 16);
-    clib_memcpy(&p.laddr.start, mp->local_address_start, 16);
-    clib_memcpy(&p.laddr.stop, mp->local_address_stop, 16);
-
+    if (mp->is_ipv6) {
+        clib_memcpy(&p.raddr.start, mp->remote_address_start, 16);
+        clib_memcpy(&p.raddr.stop, mp->remote_address_stop, 16);
+        clib_memcpy(&p.laddr.start, mp->local_address_start, 16);
+        clib_memcpy(&p.laddr.stop, mp->local_address_stop, 16);
+    } else {
+        clib_memcpy(&p.raddr.start.ip4.data, mp->remote_address_start, 4);
+        clib_memcpy(&p.raddr.stop.ip4.data, mp->remote_address_stop, 4);
+        clib_memcpy(&p.laddr.start.ip4.data, mp->local_address_start, 4);
+        clib_memcpy(&p.laddr.stop.ip4.data, mp->local_address_stop, 4);
+    }
     p.protocol = mp->protocol;
     p.rport.start = ntohs(mp->remote_port_start);
     p.rport.stop  = ntohs(mp->remote_port_stop);
@@ -5710,8 +5716,13 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
     sa.use_esn = mp->use_extended_sequence_number;
     sa.is_tunnel = mp->is_tunnel;
     sa.is_tunnel_ip6 = mp->is_tunnel_ipv6;
-    clib_memcpy(&sa.tunnel_src_addr, mp->tunnel_src_address, 16);
-    clib_memcpy(&sa.tunnel_dst_addr, mp->tunnel_dst_address, 16);
+    if (sa.is_tunnel_ip6) {
+        clib_memcpy(&sa.tunnel_src_addr, mp->tunnel_src_address, 16);
+        clib_memcpy(&sa.tunnel_dst_addr, mp->tunnel_dst_address, 16);
+    } else {
+        clib_memcpy(&sa.tunnel_src_addr.ip4.data, mp->tunnel_src_address, 4);
+        clib_memcpy(&sa.tunnel_dst_addr.ip4.data, mp->tunnel_dst_address, 4);
+    }
 
     rv = ipsec_add_del_sa(vm, &sa, mp->is_add);
 #else
