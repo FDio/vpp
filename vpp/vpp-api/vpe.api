@@ -2504,10 +2504,25 @@ manual_java define lisp_local_eid_table_details {
 /** \brief Request for local eid table summary status
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param eid_set - if non-zero request info about specific mapping
+    @param vni - virtual network instance; valid only if eid_set != 0
+    @param prefix_length - prefix length if EID is IP address;
+      valid only if eid_set != 0
+    @param eid_type - EID type; valid only if eid_set != 0
+      Supported values:
+        0: EID is IPv4
+        1: EID is IPv6
+        2: EID is ethernet address
+    @param eid - endpoint identifier
  */
 define lisp_local_eid_table_dump {
     u32 client_index;
     u32 context;
+    u8  eid_set;
+    u8  prefix_length;
+    u32 vni;
+    u8  eid_type;
+    u8  eid[16];
 };
 
 /** \brief Shows relationship between vni and vrf

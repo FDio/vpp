@@ -192,11 +192,30 @@ format_gid_address (u8 * s, va_list * args)
 uword
 unformat_gid_address (unformat_input_t * input, va_list * args)
 {
+  u32 vni;
   gid_address_t * a = va_arg(*args, gid_address_t *);
-  if (unformat (input, "%U", unformat_ip_prefix, &gid_address_ippref(a)))
-    gid_address_type(a) = GID_ADDR_IP_PREFIX;
-  else
-    return 0;
+  u8 mac[6] = {0};
+  ip_prefix_t ippref;
+
+  memset (&ippref, 0, sizeof (ippref));
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_ip_prefix, &ippref))
+        {
+          clib_memcpy (&gid_address_ippref(a), &ippref, sizeof (ippref));
+          gid_address_type(a) = GID_ADDR_IP_PREFIX;
+        }
+      else if (unformat (input, "%U", unformat_mac_address, mac))
+        {
+          clib_memcpy (gid_address_mac(a), mac, sizeof (mac));
+          gid_address_type(a) = GID_ADDR_MAC;
+        }
+      else if (unformat (input, "[%d]", &vni))
+        gid_address_vni(a) = vni;
+      else
+        return 0;
+    }
   return 1;
 }
 

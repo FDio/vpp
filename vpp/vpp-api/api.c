@@ -5244,19 +5244,50 @@ static void
 vl_api_lisp_local_eid_table_dump_t_handler (
     vl_api_lisp_local_eid_table_dump_t *mp)
 {
+    u32 mi;
     unix_shared_memory_queue_t * q = NULL;
     lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
     mapping_t * mapit = NULL;
+    gid_address_t _eid, * eid = &_eid;
 
     q = vl_api_client_index_to_input_queue (mp->client_index);
     if (q == 0) {
         return;
     }
 
-    pool_foreach (mapit, lcm->mapping_pool,
+    if (mp->eid_set) {
+        memset (eid, 0, sizeof (*eid));
+        gid_address_vni(eid) = ntohl(mp->vni);
+        switch (mp->eid_type) {
+        case 0:
+            gid_address_type(eid) = GID_ADDR_IP_PREFIX;
+            gid_address_ippref_len(eid) = mp->prefix_length;
+            gid_address_ip_version(eid) = IP4;
+            clib_memcpy (&gid_address_ippref(eid), mp->eid, 4);
+            break;
+        case 1:
+            gid_address_type(eid) = GID_ADDR_IP_PREFIX;
+            gid_address_ippref_len(eid) = mp->prefix_length;
+            gid_address_ip_version(eid) = IP6;
+            clib_memcpy (&gid_address_ippref(eid), mp->eid, 16);
+            break;
+        case 2:
+            gid_address_type(eid) = GID_ADDR_MAC;
+            clib_memcpy (gid_address_mac(eid), mp->eid, 6);
+            break;
+        }
+        mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, eid);
+        if ((u32)~0 == mi)
+          return;
+
+        mapit = pool_elt_at_index (lcm->mapping_pool, mi);
+        send_lisp_local_eid_table_details(mapit, q, mp->context);
+    } else {
+        pool_foreach (mapit, lcm->mapping_pool,
         ({
             send_lisp_local_eid_table_details(mapit, q, mp->context);
         }));
+    }
 }
 
 static void
