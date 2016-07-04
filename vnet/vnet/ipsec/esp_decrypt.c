@@ -237,9 +237,10 @@ esp_decrypt_node_fn (vlib_main_t * vm,
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
   u32 cpu_index = os_get_cpu_number();
-  u32 * empty_buffers = im->empty_buffers[cpu_index];
 
   ipsec_alloc_empty_buffers(vm, im);
+
+  u32 * empty_buffers = im->empty_buffers[cpu_index];
 
   if (PREDICT_FALSE(vec_len (empty_buffers) < n_left_from)){
     vlib_node_increment_counter (vm, esp_decrypt_node.index,
