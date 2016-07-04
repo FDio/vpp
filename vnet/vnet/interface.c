@@ -354,7 +354,9 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index, u32 flag
 	{
 	  si_sup = vnet_get_sw_interface (vnm, si->sup_sw_if_index);
 
-	  if (flags != (si_sup->flags & mask))
+	  /* Check to see if we're bringing down the soft interface and if it's parent is up */
+	  if ((flags != (si_sup->flags & mask)) && 
+		  (!((flags == 0) && ((si_sup->flags & mask) == VNET_SW_INTERFACE_FLAG_ADMIN_UP))))
 	    {
 	      error = clib_error_return (0, "super-interface %U must be %U",
 					 format_vnet_sw_interface_name, vnm, si_sup,
