@@ -23,7 +23,7 @@
 ip6_sr_main_t sr_main;
 static vlib_node_registration_t sr_local_node;
 
-void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip, 
+void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
                          ip6_sr_header_t * sr)
 {
   u32 key_index;
@@ -59,8 +59,8 @@ void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
 
   /* octet w/ bit 0 = "clean" flag */
   vec_add2 (keybuf, copy_target, 1);
-  copy_target[0] 
-    = (sr->flags & clib_host_to_net_u16 (IP6_SR_HEADER_FLAG_CLEANUP)) 
+  copy_target[0]
+    = (sr->flags & clib_host_to_net_u16 (IP6_SR_HEADER_FLAG_CLEANUP))
     ? 0x80 : 0;
 
   /* hmac key id */
@@ -145,10 +145,10 @@ u8 * format_ip6_sr_header (u8 * s, va_list * args)
               h->protocol, (h->length<<3)+8, h->type);
   s = format (s, "\n      segs left %d, first_segment %d, hmac key %d",
               h->segments_left, h->first_segment, h->hmac_key);
-  s = format (s, "\n      flags %U", format_ip6_sr_header_flags, 
+  s = format (s, "\n      flags %U", format_ip6_sr_header_flags,
               flags_host_byte_order, 0 /* bswap needed */ );
 
-  /* 
+  /*
    * Header length is in 8-byte units (minus one), so
    * divide by 2 to ascertain the number of ip6 addresses in the
    * segment list
@@ -160,7 +160,7 @@ u8 * format_ip6_sr_header (u8 * s, va_list * args)
 
   s = format (s, "\n  Segments (in processing order):");
 
-  for (i = h->first_segment; i >= 0; i--)
+  for (i = h->first_segment; i >= 1; i--)
     s = format (s, "\n  %U", format_ip6_address, h->segments + i);
 
   s = format (s, "\n  Policy List:");
@@ -174,7 +174,7 @@ u8 * format_ip6_sr_header (u8 * s, va_list * args)
       tag = tags[0];
       if (pl_index >=1 && pl_index <= 4)
         {
-          int this_pl_flag = ip6_sr_policy_list_flags 
+          int this_pl_flag = ip6_sr_policy_list_flags
             (flags_host_byte_order, pl_index);
           tag = tags[this_pl_flag];
         }
@@ -196,7 +196,7 @@ u8 * format_ip6_sr_header_with_length (u8 * s, va_list * args)
     return format (s, "ip6_sr header truncated");
 
   s = format (s, "IP6: %U\n", format_ip6_header, h, max_header_bytes);
-  s = format (s, "SR: %U\n", format_ip6_sr_header, (ip6_sr_header_t *)(h+1), 
+  s = format (s, "SR: %U\n", format_ip6_sr_header, (ip6_sr_header_t *)(h+1),
               0 /* print_hmac */, max_header_bytes);
   return s;
 }
@@ -211,7 +211,7 @@ _(SR_REPLICATE,"sr-replicate")
 #define foreach_sr_rewrite_next                 \
 _(ERROR, "error-drop")                          \
 _(IP6_LOOKUP, "ip6-lookup")                     \
-_(SR_LOCAL, "sr-local")                         
+_(SR_LOCAL, "sr-local")
 #endif /* DPDK */
 
 typedef enum {
@@ -252,21 +252,21 @@ u8 * format_sr_rewrite_trace (u8 * s, va_list * args)
   ip6_sr_main_t * sm = &sr_main;
   ip6_sr_tunnel_t *tun = pool_elt_at_index (sm->tunnels, t->tunnel_index);
   ip6_fib_t * rx_fib, * tx_fib;
-  
-  rx_fib = find_ip6_fib_by_table_index_or_id (im, tun->rx_fib_index, 
+
+  rx_fib = find_ip6_fib_by_table_index_or_id (im, tun->rx_fib_index,
                                               IP6_ROUTE_FLAG_FIB_INDEX);
 
-  tx_fib = find_ip6_fib_by_table_index_or_id (im, tun->tx_fib_index, 
+  tx_fib = find_ip6_fib_by_table_index_or_id (im, tun->tx_fib_index,
                                               IP6_ROUTE_FLAG_FIB_INDEX);
 
-  s = format 
-    (s, "SR-REWRITE: next %s ip6 src %U dst %U len %u\n" 
-     "           rx-fib-id %d tx-fib-id %d\n%U", 
-     (t->next_index == SR_REWRITE_NEXT_SR_LOCAL) 
+  s = format
+    (s, "SR-REWRITE: next %s ip6 src %U dst %U len %u\n"
+     "           rx-fib-id %d tx-fib-id %d\n%U",
+     (t->next_index == SR_REWRITE_NEXT_SR_LOCAL)
      ? "sr-local" : "ip6-lookup",
-     format_ip6_address, &t->src, 
-     format_ip6_address, &t->dst, t->length, 
-     rx_fib->table_id, tx_fib->table_id, 
+     format_ip6_address, &t->src,
+     format_ip6_address, &t->dst, t->length,
+     rx_fib->table_id, tx_fib->table_id,
      format_ip6_sr_header, t->sr, 0 /* print_hmac */);
   return s;
 }
@@ -281,7 +281,7 @@ sr_rewrite (vlib_main_t * vm,
   ip_lookup_main_t * lm = &im->lookup_main;
   ip6_sr_main_t * sm = &sr_main;
   u32 (*sr_local_cb) (vlib_main_t *, vlib_node_runtime_t *,
-                      vlib_buffer_t *, ip6_header_t *, 
+                      vlib_buffer_t *, ip6_header_t *,
                       ip6_sr_header_t *);
   sr_local_cb = sm->sr_local_cb;
 
@@ -317,7 +317,7 @@ sr_rewrite (vlib_main_t * vm,
 
 	    p2 = vlib_get_buffer (vm, from[2]);
 	    p3 = vlib_get_buffer (vm, from[3]);
-            
+
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 	  }
@@ -334,33 +334,33 @@ sr_rewrite (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-          /* 
+          /*
            * $$$ parse through header(s) to pick the point
            * where we punch in the SR extention header
            */
-          
+
           adj0 = ip_get_adjacency (lm, vnet_buffer(b0)->ip.adj_index[VLIB_TX]);
           adj1 = ip_get_adjacency (lm, vnet_buffer(b1)->ip.adj_index[VLIB_TX]);
-          t0 = pool_elt_at_index (sm->tunnels, 
+          t0 = pool_elt_at_index (sm->tunnels,
                                   adj0->rewrite_header.sw_if_index);
-          t1 = pool_elt_at_index (sm->tunnels, 
+          t1 = pool_elt_at_index (sm->tunnels,
                                   adj1->rewrite_header.sw_if_index);
 
           ASSERT (VLIB_BUFFER_PRE_DATA_SIZE
                   >= ((word) vec_len (t0->rewrite)) + b0->current_data);
           ASSERT (VLIB_BUFFER_PRE_DATA_SIZE
                   >= ((word) vec_len (t1->rewrite)) + b1->current_data);
-          
+
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->tx_fib_index;
           vnet_buffer(b1)->sw_if_index[VLIB_TX] = t1->tx_fib_index;
 
           ip0 = vlib_buffer_get_current (b0);
           ip1 = vlib_buffer_get_current (b1);
 
-          /* 
+          /*
            * SR-unaware service chaining case: pkt coming back from
            * service has the original dst address, and will already
-           * have an SR header. If so, send it to sr-local 
+           * have an SR header. If so, send it to sr-local
            */
           if (PREDICT_FALSE(ip0->protocol == IPPROTO_IPV6_ROUTE))
             {
@@ -371,9 +371,9 @@ sr_rewrite (vlib_main_t * vm,
             }
           else
             {
-              /* 
-               * Copy data before the punch-in point left by the 
-               * required amount. Assume (for the moment) that only 
+              /*
+               * Copy data before the punch-in point left by the
+               * required amount. Assume (for the moment) that only
                * the main packet header needs to be copied.
                */
               clib_memcpy (((u8 *)ip0) - vec_len (t0->rewrite),
@@ -403,14 +403,14 @@ sr_rewrite (vlib_main_t * vm,
               next0 = sr_local_cb ? sr_local_cb (vm, node, b0, ip0, sr0) :
                   next0;
 
-              /* 
+              /*
                * Ignore "do not rewrite" shtik in this path
                */
               if (PREDICT_FALSE (next0 & 0x80000000))
               {
                   next0 ^= 0xFFFFFFFF;
                   if (PREDICT_FALSE(next0 == SR_REWRITE_NEXT_ERROR))
-                      b0->error = 
+                      b0->error =
                           node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
               }
             }
@@ -449,21 +449,21 @@ sr_rewrite (vlib_main_t * vm,
               next1 = sr_local_cb ? sr_local_cb (vm, node, b1, ip1, sr1) :
                   next1;
 
-              /* 
+              /*
                * Ignore "do not rewrite" shtik in this path
                */
               if (PREDICT_FALSE (next1 & 0x80000000))
               {
                   next1 ^= 0xFFFFFFFF;
                   if (PREDICT_FALSE(next1 == SR_REWRITE_NEXT_ERROR))
-                      b1->error = 
+                      b1->error =
                           node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
               }
             }
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              sr_rewrite_trace_t *tr = vlib_add_trace (vm, node, 
+              sr_rewrite_trace_t *tr = vlib_add_trace (vm, node,
                                                        b0, sizeof (*tr));
               tr->tunnel_index = t0 - sm->tunnels;
               clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
@@ -474,9 +474,9 @@ sr_rewrite (vlib_main_t * vm,
               tr->next_index = next0;
               clib_memcpy (tr->sr, sr0, sizeof (tr->sr));
             }
-          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
             {
-              sr_rewrite_trace_t *tr = vlib_add_trace (vm, node, 
+              sr_rewrite_trace_t *tr = vlib_add_trace (vm, node,
                                                        b1, sizeof (*tr));
               tr->tunnel_index = t1 - sm->tunnels;
               clib_memcpy (tr->src.as_u8, ip1->src_address.as_u8,
@@ -513,13 +513,13 @@ sr_rewrite (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-          /* 
+          /*
            * $$$ parse through header(s) to pick the point
            * where we punch in the SR extention header
            */
-          
+
           adj0 = ip_get_adjacency (lm, vnet_buffer(b0)->ip.adj_index[VLIB_TX]);
-          t0 = pool_elt_at_index (sm->tunnels, 
+          t0 = pool_elt_at_index (sm->tunnels,
                                   adj0->rewrite_header.sw_if_index);
 
 #if DPDK > 0 /* Cannot call replication node yet without DPDK */
@@ -534,15 +534,15 @@ sr_rewrite (vlib_main_t * vm,
 
           ASSERT (VLIB_BUFFER_PRE_DATA_SIZE
                   >= ((word) vec_len (t0->rewrite)) + b0->current_data);
-          
+
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->tx_fib_index;
 
           ip0 = vlib_buffer_get_current (b0);
 
-          /* 
+          /*
            * SR-unaware service chaining case: pkt coming back from
            * service has the original dst address, and will already
-           * have an SR header. If so, send it to sr-local 
+           * have an SR header. If so, send it to sr-local
            */
           if (PREDICT_FALSE(ip0->protocol == IPPROTO_IPV6_ROUTE))
             {
@@ -553,9 +553,9 @@ sr_rewrite (vlib_main_t * vm,
             }
           else
             {
-              /* 
-               * Copy data before the punch-in point left by the 
-               * required amount. Assume (for the moment) that only 
+              /*
+               * Copy data before the punch-in point left by the
+               * required amount. Assume (for the moment) that only
                * the main packet header needs to be copied.
                */
               clib_memcpy (((u8 *)ip0) - vec_len (t0->rewrite),
@@ -585,14 +585,14 @@ sr_rewrite (vlib_main_t * vm,
               next0 = sr_local_cb ? sr_local_cb (vm, node, b0, ip0, sr0) :
                   next0;
 
-              /* 
+              /*
                * Ignore "do not rewrite" shtik in this path
                */
               if (PREDICT_FALSE (next0 & 0x80000000))
               {
                   next0 ^= 0xFFFFFFFF;
                   if (PREDICT_FALSE(next0 == SR_REWRITE_NEXT_ERROR))
-                      b0->error = 
+                      b0->error =
                           node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
               }
             }
@@ -600,9 +600,9 @@ sr_rewrite (vlib_main_t * vm,
 #if DPDK > 0 /* Cannot run replicate without DPDK and only replicate uses this label */
 	trace0:
 #endif /* DPDK */
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              sr_rewrite_trace_t *tr = vlib_add_trace (vm, node, 
+              sr_rewrite_trace_t *tr = vlib_add_trace (vm, node,
                                                        b0, sizeof (*tr));
               tr->tunnel_index = t0 - sm->tunnels;
 	      if (ip0)
@@ -650,8 +650,8 @@ VLIB_REGISTER_NODE (sr_rewrite_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (sr_rewrite_node, sr_rewrite)
 
-static int ip6_delete_route_no_next_hop (ip6_address_t *dst_address_arg, 
-                                         u32 dst_address_length, 
+static int ip6_delete_route_no_next_hop (ip6_address_t *dst_address_arg,
+                                         u32 dst_address_length,
                                          u32 rx_table_id)
 {
   ip6_add_del_route_args_t a;
@@ -659,22 +659,22 @@ static int ip6_delete_route_no_next_hop (ip6_address_t *dst_address_arg,
   ip6_fib_t * fib;
   ip6_main_t * im6 = &ip6_main;
   BVT(clib_bihash_kv) kv, value;
-  
-  fib = find_ip6_fib_by_table_index_or_id (im6, rx_table_id, 
+
+  fib = find_ip6_fib_by_table_index_or_id (im6, rx_table_id,
                                            IP6_ROUTE_FLAG_TABLE_ID);
   memset (&a, 0, sizeof (a));
   a.flags |= IP4_ROUTE_FLAG_DEL;
   a.dst_address_length = dst_address_length;
 
   dst_address = *dst_address_arg;
-  
-  ip6_address_mask (&dst_address, 
+
+  ip6_address_mask (&dst_address,
                     &im6->fib_masks[dst_address_length]);
-  
+
   kv.key[0] = dst_address.as_u64[0];
   kv.key[1] = dst_address.as_u64[1];
   kv.key[2] = ((u64)((fib - im6->fibs))<<32) | dst_address_length;
-  
+
   if (BV(clib_bihash_search)(&im6->ip6_lookup_table, &kv, &value) < 0)
     {
       clib_warning ("%U/%d not in FIB",
@@ -685,13 +685,13 @@ static int ip6_delete_route_no_next_hop (ip6_address_t *dst_address_arg,
 
   a.adj_index = value.value;
   a.dst_address = dst_address;
-  
+
   ip6_add_del_route (im6, &a);
   ip6_maybe_remap_adjacencies (im6, rx_table_id, IP6_ROUTE_FLAG_TABLE_ID);
   return 0;
 }
 
-static ip6_sr_hmac_key_t * 
+static ip6_sr_hmac_key_t *
 find_or_add_shared_secret (ip6_sr_main_t * sm, u8 * secret, u32 * indexp)
 {
   uword * p;
@@ -730,7 +730,7 @@ find_or_add_shared_secret (ip6_sr_main_t * sm, u8 * secret, u32 * indexp)
 
   key->shared_secret = vec_dup (secret);
 
-  hash_set_mem (sm->hmac_key_by_shared_secret, key->shared_secret, 
+  hash_set_mem (sm->hmac_key_by_shared_secret, key->shared_secret,
                 key - sm->hmac_keys);
 
   if (indexp)
@@ -762,7 +762,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
 
   /* Make sure that the rx FIB exists */
   p = hash_get (im->fib_index_by_table_id, a->rx_table_id);
-  
+
   if (p == 0)
     return -3;
 
@@ -771,7 +771,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
 
   /* Make sure that the supplied FIB exists */
   p = hash_get (im->fib_index_by_table_id, a->tx_table_id);
-  
+
   if (p == 0)
     return -4;
 
@@ -880,7 +880,7 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   t->dst_mask_width = a->dst_mask_width;
   t->rx_fib_index = rx_fib_index;
   t->tx_fib_index = tx_fib_index;
-  
+
   if (!vec_len (a->segments))
       /* there must be at least one segment... */
       return -4;
@@ -888,19 +888,19 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   /* The first specified hop goes right into the dst address */
   clib_memcpy(&t->first_hop, &a->segments[0], sizeof (ip6_address_t));
 
-  /* 
+  /*
    * Create the sr header rewrite string
    * The list of segments needs an extra slot for the ultimate destination
    * which is taken from the packet we add the SRH to.
    */
-  header_length = sizeof (*h) + 
+  header_length = sizeof (*h) +
     sizeof (ip6_address_t) * (vec_len (a->segments) + 1 + vec_len (a->tags));
-  
+
   if (a->shared_secret)
     {
       /* Allocate a new key slot if we don't find the secret key */
       hmac_key_index_u32 = 0;
-      (void) find_or_add_shared_secret (sm, a->shared_secret, 
+      (void) find_or_add_shared_secret (sm, a->shared_secret,
                                         &hmac_key_index_u32);
 
       /* Hey Vinz Clortho: Gozzer is pissed.. you're out of keys! */
@@ -968,25 +968,25 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   adj.lookup_next_index = IP_LOOKUP_NEXT_REWRITE;
   adj.lookup_next_index = sm->ip6_lookup_sr_next_index;
   adj.explicit_fib_index = ~0;
-  
+
   ap = ip_add_adjacency (lm, &adj, 1 /* one adj */,
                          &adj_index);
 
-  /* 
+  /*
    * Stick the tunnel index into the rewrite header.
-   * 
+   *
    * Unfortunately, inserting an SR header according to the various
    * RFC's requires parsing through the ip6 header, perhaps consing a
    * buffer onto the head of the vlib_buffer_t, etc. We don't use the
    * normal reverse bcopy rewrite code.
-   * 
+   *
    * We don't handle ugly RFC-related cases yet, but I'm sure PL will complain
    * at some point...
    */
   ap->rewrite_header.sw_if_index = t - sm->tunnels;
-  
+
   vec_add1 (add_adj, ap[0]);
-  
+
   clib_memcpy (aa.dst_address.as_u8, a->dst_address, sizeof (aa.dst_address.as_u8));
   aa.dst_address_length = a->dst_mask_width;
 
@@ -1067,7 +1067,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
         ;
       else if (unformat (input, "policy %s", &policy_name))
         ;
-      else if (unformat (input, "dst %U/%d", 
+      else if (unformat (input, "dst %U/%d",
                          unformat_ip6_address, &dst_address,
                          &dst_mask_width))
         dst_address_set = 1;
@@ -1095,18 +1095,18 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
           if (pl_index <= 0 || pl_index > 4)
             {
             pl_index_range_error:
-              return clib_error_return 
+              return clib_error_return
                 (0, "Policy List Element Index %d out of range (1-4)", pl_index);
-              
+
             }
-          flags |= IP6_SR_HEADER_FLAG_PL_ELT_INGRESS_PE 
+          flags |= IP6_SR_HEADER_FLAG_PL_ELT_INGRESS_PE
             << ip6_sr_policy_list_shift_from_index (pl_index);
         }
       else if (unformat (input, "EgPE %d", &pl_index))
         {
           if (pl_index <= 0 || pl_index > 4)
             goto pl_index_range_error;
-          flags |= IP6_SR_HEADER_FLAG_PL_ELT_EGRESS_PE 
+          flags |= IP6_SR_HEADER_FLAG_PL_ELT_EGRESS_PE
             << ip6_sr_policy_list_shift_from_index (pl_index);
         }
       else if (unformat (input, "OrgSrc %d", &pl_index))
@@ -1116,7 +1116,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
           flags |= IP6_SR_HEADER_FLAG_PL_ELT_ORIG_SRC_ADDR
             << ip6_sr_policy_list_shift_from_index (pl_index);
         }
-      else 
+      else
         break;
     }
 
@@ -1142,7 +1142,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
   a->shared_secret = shared_secret;
 
   if (vec_len(name))
-    a->name = name; 
+    a->name = name;
   else
     a->name = 0;
 
@@ -1152,7 +1152,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
     a->policy_name = 0;
 
   rv = ip6_sr_add_del_tunnel (a);
-  
+
   vec_free (segments);
   vec_free (tags);
   vec_free (shared_secret);
@@ -1171,7 +1171,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "SR tunnel src %U dst %U does not exist",
                                 format_ip6_address, &src_address,
                                 format_ip6_address, &dst_address);
-      
+
     case -3:
       return clib_error_return (0, "FIB table %d does not exist", rx_table_id);
 
@@ -1188,7 +1188,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (sr_tunnel_command, static) = {
     .path = "sr tunnel",
-    .short_help = 
+    .short_help =
       "sr tunnel [del] [name <name>] src <addr> dst <addr> [next <addr>] "
       "[clean] [reroute] [key <secret>] [policy <policy_name>]"
       "[rx-fib-id <fib_id>] [tx-fib-id <fib_id>]",
@@ -1204,22 +1204,22 @@ ip6_sr_tunnel_display (vlib_main_t * vm,
   ip6_fib_t * rx_fib, * tx_fib;
   ip6_sr_policy_t * pt;
 
-  rx_fib = find_ip6_fib_by_table_index_or_id (im, t->rx_fib_index, 
+  rx_fib = find_ip6_fib_by_table_index_or_id (im, t->rx_fib_index,
                                                   IP6_ROUTE_FLAG_FIB_INDEX);
-      
-  tx_fib = find_ip6_fib_by_table_index_or_id (im, t->tx_fib_index, 
+
+  tx_fib = find_ip6_fib_by_table_index_or_id (im, t->tx_fib_index,
                                                   IP6_ROUTE_FLAG_FIB_INDEX);
 
   if (t->name)
     vlib_cli_output (vm,"sr tunnel name: %s", (char *)t->name);
 
-  vlib_cli_output (vm, "src %U dst %U first hop %U", 
+  vlib_cli_output (vm, "src %U dst %U first hop %U",
 		   format_ip6_address, &t->key.src,
 		   format_ip6_address, &t->key.dst,
 		   format_ip6_address, &t->first_hop);
   vlib_cli_output (vm, "    rx-fib-id %d tx-fib-id %d",
 		   rx_fib->table_id, tx_fib->table_id);
-  vlib_cli_output (vm, "  sr: %U", format_ip6_sr_header, t->rewrite, 
+  vlib_cli_output (vm, "  sr: %U", format_ip6_sr_header, t->rewrite,
 		   0 /* print_hmac */);
 
   if (t->policy_index != ~0)
@@ -1246,13 +1246,13 @@ show_sr_tunnel_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "name %s", &name)) 
+      if (unformat (input, "name %s", &name))
 	{
 	  p=hash_get_mem (sm->tunnel_index_by_name, name);
 	  if(!p)
 	    vlib_cli_output (vm, "No SR tunnel with name: %s. Showing all.", name);
 	 }
-      else 
+      else
         break;
     }
 
@@ -1260,7 +1260,7 @@ show_sr_tunnel_fn (vlib_main_t * vm,
 
   if(!p) /* Either name parm not passed or no tunnel with that name found, show all */
     {
-  pool_foreach (t, sm->tunnels, 
+  pool_foreach (t, sm->tunnels,
   ({
     vec_add1 (tunnels, t);
   }));
@@ -1276,7 +1276,7 @@ show_sr_tunnel_fn (vlib_main_t * vm,
       t = tunnels[i];
       ip6_sr_tunnel_display (vm, t);
     }
-  
+
   return 0;
 }
 
@@ -1301,15 +1301,15 @@ int ip6_sr_add_del_policy (ip6_sr_add_del_policy_args_t * a)
 	{
 	  p=hash_get_mem (sm->policy_index_by_policy_name, a->name);
 	  if (!p)
-	    return -6; /* policy name not found */ 
+	    return -6; /* policy name not found */
 
 	  policy = pool_elt_at_index(sm->policies, p[0]);
-	  
+
 	  vec_foreach_index (i, policy->tunnel_indices)
 	    {
 	      t = pool_elt_at_index (sm->tunnels, policy->tunnel_indices[i]);
 	      t->policy_index = ~0;
-	    }	    
+	    }
 	  hash_unset_mem (sm->policy_index_by_policy_name, a->name);
 	  pool_put (sm->policies, policy);
 	  return 0;
@@ -1325,27 +1325,27 @@ int ip6_sr_add_del_policy (ip6_sr_add_del_policy_args_t * a)
 	{
 	  p = hash_get_mem (sm->tunnel_index_by_name, a->tunnel_names[i]);
 	  if (!p)
-	    return -4; /* tunnel name not found case */ 
-	  
-	  t = pool_elt_at_index (sm->tunnels, p[0]); 
+	    return -4; /* tunnel name not found case */
+
+	  t = pool_elt_at_index (sm->tunnels, p[0]);
 	  /*
 	    No need to check t==0. -3 condition above ensures name
 	  */
 	  if (t->policy_index != ~0)
 	    return -5; /* tunnel name already associated with a policy */
-	  
+
 	  /* Add to tunnel indicies */
 	  vec_add1 (tunnel_indices, p[0]);
 	}
-      
+
       /* Add policy to ip6_sr_main_t */
       pool_get (sm->policies, policy);
-      policy->name = a->name; 
+      policy->name = a->name;
       policy->tunnel_indices = tunnel_indices;
       hash_set_mem (sm->policy_index_by_policy_name, policy->name, policy - sm->policies);
-      
+
       /* Yes, this could be construed as overkill but the last thing you should do is set
-	 the policy_index on the tunnel after everything is set in ip6_sr_main_t. 
+	 the policy_index on the tunnel after everything is set in ip6_sr_main_t.
 	 If this is deemed overly cautious, could set this in the vec_len(tunnel_names) loop.
       */
       for (i=0; i < vec_len(policy->tunnel_indices); i++)
@@ -1384,7 +1384,7 @@ sr_add_del_policy_command_fn (vlib_main_t * vm,
 	      tunnel_name = 0;
 	    }
 	}
-      else 
+      else
         break;
     }
 
@@ -1393,7 +1393,7 @@ sr_add_del_policy_command_fn (vlib_main_t * vm,
 
 
   memset(a, 0, sizeof(*a));
-  
+
   a->is_del = is_del;
   a->name = name;
   a->tunnel_names = tunnel_names;
@@ -1409,7 +1409,7 @@ sr_add_del_policy_command_fn (vlib_main_t * vm,
 
     case -3:
       return clib_error_return (0, "tunnel name to associate to SR policy is required");
-      
+
     case -4:
       return clib_error_return (0, "tunnel name not found");
 
@@ -1424,14 +1424,14 @@ sr_add_del_policy_command_fn (vlib_main_t * vm,
 
     default:
       return clib_error_return (0, "BUG: ip6_sr_add_del_policy returns %d", rv);
-  
+
     }
   return 0;
 }
 
 VLIB_CLI_COMMAND (sr_policy_command, static) = {
     .path = "sr policy",
-    .short_help = 
+    .short_help =
     "sr policy [del] name <policy-name> tunnel <sr-tunnel-name> [tunnel <sr-tunnel-name>]*",
     .function = sr_add_del_policy_command_fn,
 };
@@ -1451,13 +1451,13 @@ show_sr_policy_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "name %s", &name)) 
+      if (unformat (input, "name %s", &name))
 	{
 	  p=hash_get_mem (sm->policy_index_by_policy_name, name);
 	  if(!p)
 	    vlib_cli_output (vm, "policy with name %s not found. Showing all.", name);
 	 }
-      else 
+      else
         break;
     }
 
@@ -1465,7 +1465,7 @@ show_sr_policy_fn (vlib_main_t * vm,
 
   if(!p) /* Either name parm not passed or no policy with that name found, show all */
     {
-  pool_foreach (policy, sm->policies, 
+  pool_foreach (policy, sm->policies,
   ({
     vec_add1 (policies, policy);
   }));
@@ -1491,7 +1491,7 @@ show_sr_policy_fn (vlib_main_t * vm,
 	  ip6_sr_tunnel_display (vm, t);
 	}
     }
-  
+
   return 0;
 
 }
@@ -1530,7 +1530,7 @@ int ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
 
   pt=pool_elt_at_index (sm->policies, p[0]);
 
-  /* 
+  /*
      Get the first tunnel associated with policy populate the fib adjacency.
      From there, since this tunnel will have it's policy_index != ~0 it will
      be the trigger in the dual_loop to pull up the policy and make a copy-rewrite
@@ -1545,25 +1545,25 @@ int ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
   /* Create an adjacency and add to v6 fib */
   adj.lookup_next_index = sm->ip6_lookup_sr_replicate_index;
   adj.explicit_fib_index = ~0;
-  
+
   ap = ip_add_adjacency (lm, &adj, 1 /* one adj */,
 			 &adj_index);
 
-  /* 
+  /*
    * Stick the tunnel index into the rewrite header.
-   * 
+   *
    * Unfortunately, inserting an SR header according to the various
    * RFC's requires parsing through the ip6 header, perhaps consing a
    * buffer onto the head of the vlib_buffer_t, etc. We don't use the
    * normal reverse bcopy rewrite code.
-   * 
+   *
    * We don't handle ugly RFC-related cases yet, but I'm sure PL will complain
    * at some point...
    */
   ap->rewrite_header.sw_if_index = t - sm->tunnels;
-  
+
   vec_add1 (add_adj, ap[0]);
-  
+
   memcpy (aa.dst_address.as_u8, a->multicast_address, sizeof (aa.dst_address.as_u8));
   aa.dst_address_length = 128;
 
@@ -1589,7 +1589,7 @@ int ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
   /* else */
 
   hash_set_mem (sm->policy_index_by_multicast_address, mcast_copy, pt - sm->policies);
-  
+
 
   return 0;
 }
@@ -1614,7 +1614,7 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
 	multicast_address_set = 1;
       else if (unformat (input, "sr-policy %s", &policy_name))
         ;
-      else 
+      else
         break;
     }
 
@@ -1625,7 +1625,7 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
     return clib_error_return (0, "multicast address required");
 
   memset(a, 0, sizeof(*a));
-  
+
   a->is_del = is_del;
   a->multicast_address = &multicast_address;
   a->policy_name = policy_name;
@@ -1648,13 +1648,13 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
 
     case -3:
       return clib_error_return (0, "tunnel name to associate to SR policy is required");
-      
+
     case -7:
       return clib_error_return (0, "TODO: deleting policy name %s", policy_name);
 
     default:
       return clib_error_return (0, "BUG: ip6_sr_add_del_policy returns %d", rv);
-  
+
     }
   return 0;
 
@@ -1663,7 +1663,7 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (sr_multicast_map_command, static) = {
     .path = "sr multicast-map",
-    .short_help = 
+    .short_help =
     "sr multicast-map address <multicast-ip6-address> sr-policy <sr-policy-name> [del]",
     .function = sr_add_del_multicast_map_command_fn,
 };
@@ -1685,21 +1685,21 @@ show_sr_multicast_map_fn (vlib_main_t * vm,
   ({
     if (!key)
 	vlib_cli_output (vm, "no multicast maps configured");
-    else 
+    else
       {
 	multicast_address = *((ip6_address_t *)key);
 	pt = pool_elt_at_index (sm->policies, value);
 	if (pt)
 	  {
-	    vlib_cli_output (vm, "address: %U policy: %s", 
+	    vlib_cli_output (vm, "address: %U policy: %s",
 			     format_ip6_address, &multicast_address,
 			     pt->name);
 	  }
 	else
-	  vlib_cli_output (vm, "BUG: policy not found for address: %U with policy index %d", 
+	  vlib_cli_output (vm, "BUG: policy not found for address: %U with policy index %d",
 			     format_ip6_address, &multicast_address,
 			     value);
-			   
+
       }
 
   }));
@@ -1761,15 +1761,15 @@ u8 * format_sr_fix_addr_trace (u8 * s, va_list * args)
       hi = vnet_get_sup_hw_interface (vnm, adj->rewrite_header.sw_if_index);
     }
 
-  s = format (s, "SR-FIX_ADDR: next %s ip6 src %U dst %U\n", 
-              (t->next_index == SR_FIX_DST_ADDR_NEXT_DROP) 
+  s = format (s, "SR-FIX_ADDR: next %s ip6 src %U dst %U\n",
+              (t->next_index == SR_FIX_DST_ADDR_NEXT_DROP)
               ? "drop" : "output",
-              format_ip6_address, &t->src, 
+              format_ip6_address, &t->src,
               format_ip6_address, &t->dst);
   if (t->next_index != SR_FIX_DST_ADDR_NEXT_DROP)
     {
       s = format (s, "%U\n", format_ip6_sr_header, t->sr, 1 /* print_hmac */);
-      s = format (s, "   output via %s", hi ? (char *)(hi->name) 
+      s = format (s, "   output via %s", hi ? (char *)(hi->name)
                   : "Invalid adj");
     }
   return s;
@@ -1810,7 +1810,7 @@ sr_fix_dst_addr (vlib_main_t * vm,
 
 	    p2 = vlib_get_buffer (vm, from[2]);
 	    p3 = vlib_get_buffer (vm, from[3]);
-            
+
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 	  }
@@ -1853,7 +1853,7 @@ sr_fix_dst_addr (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-          
+
           adj0 = ip_get_adjacency (lm, vnet_buffer(b0)->ip.adj_index[VLIB_TX]);
           next0 = adj0->mcast_group_index;
 
@@ -1861,7 +1861,7 @@ sr_fix_dst_addr (vlib_main_t * vm,
           eh0 = vlib_buffer_get_current (b0);
           ip0 = (ip6_header_t *)(eh0+1);
           sr0 = (ip6_sr_header_t *) (ip0+1);
-          
+
           /* We'd better find an SR header... */
           if (PREDICT_FALSE(ip0->protocol != IPPROTO_IPV6_ROUTE))
             {
@@ -1870,22 +1870,22 @@ sr_fix_dst_addr (vlib_main_t * vm,
             }
           else
             {
-              /* 
+              /*
                * We get here from sr_rewrite or sr_local, with
                * sr->segments_left pointing at the (copy of the original) dst
                * address. Use it, then increment sr0->segments_left.
                */
-              
+
               /* Out of segments? Turf the packet */
               if (PREDICT_FALSE (sr0->segments_left == 0))
                 {
                   b0->error = node->errors[SR_FIX_DST_ERROR_NO_MORE_SEGMENTS];
                   goto do_trace0;
                 }
-              
-              /* 
-               * Rewrite the packet with the original dst address 
-               * We assume that the last segment (in processing order) contains 
+
+              /*
+               * Rewrite the packet with the original dst address
+               * We assume that the last segment (in processing order) contains
                * the original dst address. The list is reversed, so sr0->segments
                * contains the original dst address.
                */
@@ -1893,12 +1893,12 @@ sr_fix_dst_addr (vlib_main_t * vm,
               ip0->dst_address.as_u64[0] = new_dst0->as_u64[0];
               ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
             }
-          
+
         do_trace0:
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              sr_fix_addr_trace_t *t = vlib_add_trace (vm, node, 
+              sr_fix_addr_trace_t *t = vlib_add_trace (vm, node,
                                                        b0, sizeof (*t));
               t->next_index = next0;
               t->adj_index = ~0;
@@ -1962,17 +1962,17 @@ static clib_error_t * sr_init (vlib_main_t * vm)
 
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main();
-  
+
   vec_validate (sm->hmac_keys, 0);
   sm->hmac_keys[0].shared_secret = (u8 *) 0xdeadbeef;
 
-  sm->tunnel_index_by_key = 
+  sm->tunnel_index_by_key =
     hash_create_mem (0, sizeof (ip6_sr_tunnel_key_t), sizeof (uword));
 
-  sm->tunnel_index_by_name = 
+  sm->tunnel_index_by_name =
     hash_create_string (0, sizeof (uword));
 
-  sm->policy_index_by_policy_name = 
+  sm->policy_index_by_policy_name =
     hash_create_string(0, sizeof (uword));
 
   sm->policy_index_by_multicast_address =
@@ -1987,20 +1987,20 @@ static clib_error_t * sr_init (vlib_main_t * vm)
 
   ip6_rewrite_node = vlib_get_node_by_name (vm, (u8 *)"ip6-rewrite");
   ASSERT(ip6_rewrite_node);
-  
+
   /* Add a disposition to ip6_lookup for the sr rewrite node */
-  sm->ip6_lookup_sr_next_index = 
+  sm->ip6_lookup_sr_next_index =
     vlib_node_add_next (vm, ip6_lookup_node->index, sr_rewrite_node.index);
 
 #if DPDK > 0 /* Cannot run replicate without DPDK */
   /* Add a disposition to sr_replicate for the sr multicast replicate node */
-  sm->ip6_lookup_sr_replicate_index = 
+  sm->ip6_lookup_sr_replicate_index =
     vlib_node_add_next (vm, ip6_lookup_node->index, sr_replicate_node.index);
 #endif /* DPDK */
 
   /* Add a disposition to ip6_rewrite for the sr dst address hack node */
-  sm->ip6_rewrite_sr_next_index = 
-    vlib_node_add_next (vm, ip6_rewrite_node->index, 
+  sm->ip6_rewrite_sr_next_index =
+    vlib_node_add_next (vm, ip6_rewrite_node->index,
                         sr_fix_dst_addr_node.index);
 
   OpenSSL_add_all_digests();
@@ -2050,9 +2050,9 @@ u8 * format_sr_local_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   sr_local_trace_t * t = va_arg (*args, sr_local_trace_t *);
-    
-  s = format (s, "SR-LOCAL: src %U dst %U len %u next_index %d", 
-              format_ip6_address, &t->src, 
+
+  s = format (s, "SR-LOCAL: src %U dst %U len %u next_index %d",
+              format_ip6_address, &t->src,
               format_ip6_address, &t->dst, t->length, t->next_index);
   if (t->sr_valid)
     s = format (s, "\n  %U", format_ip6_sr_header, t->sr, 1 /* print_hmac */);
@@ -2065,7 +2065,7 @@ u8 * format_sr_local_trace (u8 * s, va_list * args)
 
 /* $$$$ fixme: smp, don't copy data, cache input, output (maybe) */
 
-static int sr_validate_hmac (ip6_sr_main_t * sm, ip6_header_t * ip, 
+static int sr_validate_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
                              ip6_sr_header_t * sr)
 {
   u32 key_index;
@@ -2104,8 +2104,8 @@ static int sr_validate_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
 
   /* octet w/ bit 0 = "clean" flag */
   vec_add2 (keybuf, copy_target, 1);
-  copy_target[0] 
-    = (sr->flags & clib_host_to_net_u16 (IP6_SR_HEADER_FLAG_CLEANUP)) 
+  copy_target[0]
+    = (sr->flags & clib_host_to_net_u16 (IP6_SR_HEADER_FLAG_CLEANUP))
     ? 0x80 : 0;
 
   /* hmac key id */
@@ -2125,7 +2125,7 @@ static int sr_validate_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
     }
 
   if (sm->is_debug)
-      clib_warning ("verify key index %d keybuf: %U", key_index, 
+      clib_warning ("verify key index %d keybuf: %U", key_index,
                     format_hex_bytes, keybuf, vec_len(keybuf));
 
   /* shared secret */
@@ -2144,13 +2144,13 @@ static int sr_validate_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
   HMAC_CTX_cleanup(sm->hmac_ctx);
 
   if (sm->is_debug)
-      clib_warning ("computed signature len %d, value %U", sig_len, 
+      clib_warning ("computed signature len %d, value %U", sig_len,
                     format_hex_bytes, signature, vec_len(signature));
 
   /* Point at the SHA signature in the packet */
   addrp++;
   if (sm->is_debug)
-      clib_warning ("read signature %U", format_hex_bytes, addrp, 
+      clib_warning ("read signature %U", format_hex_bytes, addrp,
                     SHA256_DIGEST_LENGTH);
 
   return memcmp (signature, addrp, SHA256_DIGEST_LENGTH);
@@ -2164,7 +2164,7 @@ sr_local (vlib_main_t * vm,
   u32 n_left_from, next_index, * from, * to_next;
   ip6_sr_main_t * sm = &sr_main;
   u32 (*sr_local_cb) (vlib_main_t *, vlib_node_runtime_t *,
-                      vlib_buffer_t *, ip6_header_t *, 
+                      vlib_buffer_t *, ip6_header_t *,
                       ip6_sr_header_t *);
   sr_local_cb = sm->sr_local_cb;
 
@@ -2245,14 +2245,14 @@ sr_local (vlib_main_t * vm,
           next0 = sr_local_cb ? sr_local_cb (vm, node, b0, ip0, sr0) :
               next0;
 
-          /* 
-           * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx 
+          /*
+           * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx
            */
           if (PREDICT_FALSE (next0 & 0x80000000))
           {
               next0 ^= 0xFFFFFFFF;
               if (PREDICT_FALSE(next0 == SR_LOCAL_NEXT_ERROR))
-                  b0->error = 
+                  b0->error =
                   node->errors[SR_LOCAL_ERROR_APP_CALLBACK];
             }
           else
@@ -2260,36 +2260,36 @@ sr_local (vlib_main_t * vm,
               u32 segment_index0;
 
               segment_index0 = sr0->segments_left - 1;
-              
+
               /* Rewrite the packet */
               new_dst0 = (ip6_address_t *)(sr0->segments + segment_index0);
               ip0->dst_address.as_u64[0] = new_dst0->as_u64[0];
               ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
-              
+
               if (PREDICT_TRUE (sr0->segments_left > 0))
                   sr0->segments_left -= 1;
             }
 
           /* End of the path. Clean up the SR header, or not */
-          if (PREDICT_FALSE 
-              (sr0->segments_left == 0 && 
+          if (PREDICT_FALSE
+              (sr0->segments_left == 0 &&
                (sr0->flags & clib_host_to_net_u16(IP6_SR_HEADER_FLAG_CLEANUP))))
           {
               u64 *copy_dst0, *copy_src0;
               u16 new_l0;
-              /* 
+              /*
                * Copy the ip6 header right by the (real) length of the
                * sr header. Here's another place which assumes that
                * the sr header is the only extention header.
                */
-              
+
               ip0->protocol = sr0->protocol;
               vlib_buffer_advance (b0, (sr0->length+1)*8);
 
               new_l0 = clib_net_to_host_u16(ip0->payload_length) -
                   (sr0->length+1)*8;
               ip0->payload_length = clib_host_to_net_u16(new_l0);
-              
+
               copy_src0 = (u64 *)ip0;
               copy_dst0 = copy_src0 + (sr0->length + 1);
 
@@ -2298,14 +2298,14 @@ sr_local (vlib_main_t * vm,
               copy_dst0 [2] = copy_src0[2];
               copy_dst0 [1] = copy_src0[1];
               copy_dst0 [0] = copy_src0[0];
-              
+
               sr0 = 0;
             }
 
         do_trace0:
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              sr_local_trace_t *tr = vlib_add_trace (vm, node, 
+              sr_local_trace_t *tr = vlib_add_trace (vm, node,
                                                      b0, sizeof (*tr));
               clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
                       sizeof (tr->src.as_u8));
@@ -2350,14 +2350,14 @@ sr_local (vlib_main_t * vm,
           next1 = sr_local_cb ? sr_local_cb (vm, node, b1, ip1, sr1) :
               next1;
 
-          /* 
-           * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx 
+          /*
+           * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx
            */
           if (PREDICT_FALSE (next1 & 0x80000000))
           {
               next1 ^= 0xFFFFFFFF;
               if (PREDICT_FALSE(next1 == SR_LOCAL_NEXT_ERROR))
-                  b1->error = 
+                  b1->error =
                   node->errors[SR_LOCAL_ERROR_APP_CALLBACK];
             }
           else
@@ -2370,31 +2370,31 @@ sr_local (vlib_main_t * vm,
               new_dst1 = (ip6_address_t *)(sr1->segments + segment_index1);
               ip1->dst_address.as_u64[0] = new_dst1->as_u64[0];
               ip1->dst_address.as_u64[1] = new_dst1->as_u64[1];
-              
+
               if (PREDICT_TRUE (sr1->segments_left > 0))
                   sr1->segments_left -= 1;
             }
 
           /* End of the path. Clean up the SR header, or not */
-          if (PREDICT_FALSE 
-              (sr1->segments_left == 0 && 
+          if (PREDICT_FALSE
+              (sr1->segments_left == 0 &&
                (sr1->flags & clib_host_to_net_u16(IP6_SR_HEADER_FLAG_CLEANUP))))
             {
               u64 *copy_dst1, *copy_src1;
               u16 new_l1;
-              /* 
+              /*
                * Copy the ip6 header right by the (real) length of the
                * sr header. Here's another place which assumes that
                * the sr header is the only extention header.
                */
-              
+
               ip1->protocol = sr1->protocol;
               vlib_buffer_advance (b1, (sr1->length+1)*8);
 
               new_l1 = clib_net_to_host_u16(ip1->payload_length) -
                   (sr1->length+1)*8;
               ip1->payload_length = clib_host_to_net_u16(new_l1);
-              
+
               copy_src1 = (u64 *)ip1;
               copy_dst1 = copy_src1 + (sr1->length + 1);
 
@@ -2403,14 +2403,14 @@ sr_local (vlib_main_t * vm,
               copy_dst1 [2] = copy_src1[2];
               copy_dst1 [1] = copy_src1[1];
               copy_dst1 [0] = copy_src1[0];
-              
+
               sr1 = 0;
             }
 
         do_trace1:
-          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
             {
-              sr_local_trace_t *tr = vlib_add_trace (vm, node, 
+              sr_local_trace_t *tr = vlib_add_trace (vm, node,
                                                      b1, sizeof (*tr));
               clib_memcpy (tr->src.as_u8, ip1->src_address.as_u8,
                       sizeof (tr->src.as_u8));
@@ -2427,7 +2427,7 @@ sr_local (vlib_main_t * vm,
 					   to_next, n_left_to_next,
 					   bi0, bi1, next0, next1);
 	}
-    
+
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
@@ -2476,14 +2476,14 @@ sr_local (vlib_main_t * vm,
           next0 = sr_local_cb ? sr_local_cb (vm, node, b0, ip0, sr0) :
             next0;
 
-          /* 
-           * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx 
+          /*
+           * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx
            */
           if (PREDICT_FALSE (next0 & 0x80000000))
             {
               next0 ^= 0xFFFFFFFF;
               if (PREDICT_FALSE(next0 == SR_LOCAL_NEXT_ERROR))
-                b0->error = 
+                b0->error =
                   node->errors[SR_LOCAL_ERROR_APP_CALLBACK];
             }
           else
@@ -2496,31 +2496,31 @@ sr_local (vlib_main_t * vm,
               new_dst0 = (ip6_address_t *)(sr0->segments + segment_index0);
               ip0->dst_address.as_u64[0] = new_dst0->as_u64[0];
               ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
-              
+
               if (PREDICT_TRUE (sr0->segments_left > 0))
                   sr0->segments_left -= 1;
             }
 
           /* End of the path. Clean up the SR header, or not */
-          if (PREDICT_FALSE 
-              (sr0->segments_left == 0 && 
+          if (PREDICT_FALSE
+              (sr0->segments_left == 0 &&
                (sr0->flags & clib_host_to_net_u16(IP6_SR_HEADER_FLAG_CLEANUP))))
             {
               u64 *copy_dst0, *copy_src0;
               u16 new_l0;
-              /* 
+              /*
                * Copy the ip6 header right by the (real) length of the
                * sr header. Here's another place which assumes that
                * the sr header is the only extention header.
                */
-              
+
               ip0->protocol = sr0->protocol;
               vlib_buffer_advance (b0, (sr0->length+1)*8);
 
               new_l0 = clib_net_to_host_u16(ip0->payload_length) -
                   (sr0->length+1)*8;
               ip0->payload_length = clib_host_to_net_u16(new_l0);
-              
+
               copy_src0 = (u64 *)ip0;
               copy_dst0 = copy_src0 + (sr0->length + 1);
 
@@ -2529,14 +2529,14 @@ sr_local (vlib_main_t * vm,
               copy_dst0 [2] = copy_src0[2];
               copy_dst0 [1] = copy_src0[1];
               copy_dst0 [0] = copy_src0[0];
-              
+
               sr0 = 0;
             }
 
         do_trace:
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              sr_local_trace_t *tr = vlib_add_trace (vm, node, 
+              sr_local_trace_t *tr = vlib_add_trace (vm, node,
                                                      b0, sizeof (*tr));
               clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
                       sizeof (tr->src.as_u8));
@@ -2557,7 +2557,7 @@ sr_local (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   vlib_node_increment_counter (vm, sr_local_node.index,
-                               SR_LOCAL_ERROR_PKTS_PROCESSED, 
+                               SR_LOCAL_ERROR_PKTS_PROCESSED,
                                from_frame->n_vectors);
   return from_frame->n_vectors;
 }
@@ -2611,7 +2611,7 @@ set_ip6_sr_rewrite_fn (vlib_main_t * vm,
   vnet_main_t * vnm = vnet_get_main();
 
   if (!unformat (input, "%U", unformat_ip6_address, &a))
-    return clib_error_return (0, "ip6 address missing in '%U'", 
+    return clib_error_return (0, "ip6 address missing in '%U'",
                               format_unformat_error, input);
 
   if (unformat (input, "rx-table-id %d", &fib_id))
@@ -2625,7 +2625,7 @@ set_ip6_sr_rewrite_fn (vlib_main_t * vm,
   adj_index = ip6_fib_lookup_with_table (im, fib_index, &a);
 
   if (adj_index == lm->miss_adj_index)
-    return clib_error_return (0, "no match for %U", 
+    return clib_error_return (0, "no match for %U",
                               format_ip6_address, &a);
 
   adj = ip_get_adjacency (lm, adj_index);
@@ -2641,9 +2641,9 @@ set_ip6_sr_rewrite_fn (vlib_main_t * vm,
   adj->rewrite_header.node_index = sr_fix_dst_addr_node.index;
 
   /* $$$$$ hack... steal the mcast group index */
-  adj->mcast_group_index = 
+  adj->mcast_group_index =
     vlib_node_add_next (vm, sr_fix_dst_addr_node.index, hi->output_node_index);
-  
+
   return 0;
 }
 
@@ -2656,7 +2656,7 @@ VLIB_CLI_COMMAND (set_ip6_sr_rewrite, static) = {
 void vnet_register_sr_app_callback (void *cb)
 {
   ip6_sr_main_t * sm = &sr_main;
- 
+
   sm->sr_local_cb = cb;
 }
 
@@ -2666,17 +2666,17 @@ test_sr_hmac_validate_fn (vlib_main_t * vm,
                     vlib_cli_command_t * cmd)
 {
   ip6_sr_main_t * sm = &sr_main;
-  
+
   if (unformat (input, "validate on"))
     sm->validate_hmac = 1;
   else if (unformat (input, "chunk-offset off"))
     sm->validate_hmac = 0;
   else
-    return clib_error_return (0, "expected validate on|off in '%U'", 
+    return clib_error_return (0, "expected validate on|off in '%U'",
                               format_unformat_error, input);
 
   vlib_cli_output (vm, "hmac signature validation %s",
-                   sm->validate_hmac ? 
+                   sm->validate_hmac ?
                    "on" : "off");
   return 0;
 }
@@ -2699,7 +2699,7 @@ i32 sr_hmac_add_del_key (ip6_sr_main_t * sm, u32 key_id, u8 * shared_secret,
       if (key_id && vec_len (sm->hmac_keys) > key_id
           && sm->hmac_keys[key_id].shared_secret)
         return -2;
-      
+
       index = key_id;
       key = find_or_add_shared_secret (sm, shared_secret, &index);
       ASSERT(index == key_id);
@@ -2719,7 +2719,7 @@ i32 sr_hmac_add_del_key (ip6_sr_main_t * sm, u32 key_id, u8 * shared_secret,
       vec_free (key->shared_secret);
       return 0;
     }
-  
+
   index = 0;
   key = find_or_add_shared_secret (sm, shared_secret, &index);
   hash_unset_mem (sm->hmac_key_by_shared_secret, key->shared_secret);
@@ -2739,7 +2739,7 @@ sr_hmac_add_del_key_fn (vlib_main_t * vm,
   u8 key_id_set = 0;
   u8 * shared_secret = 0;
   i32 rv;
-  
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "del"))
@@ -2751,7 +2751,7 @@ sr_hmac_add_del_key_fn (vlib_main_t * vm,
           /* Do not include the trailing NULL byte. Guaranteed interop issue */
           _vec_len (shared_secret) -= 1;
         }
-      else 
+      else
         break;
     }
 
@@ -2771,7 +2771,7 @@ sr_hmac_add_del_key_fn (vlib_main_t * vm,
       break;
 
     default:
-      return clib_error_return (0, "sr_hmac_add_del_key returned %d", 
+      return clib_error_return (0, "sr_hmac_add_del_key returned %d",
                                 rv);
     }
 
@@ -2804,7 +2804,7 @@ show_sr_hmac_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (show_sr_hmac, static) = {
     .path = "show sr hmac",
-    .short_help = "show sr hmac", 
+    .short_help = "show sr hmac",
     .function = show_sr_hmac_fn,
 };
 
@@ -2814,13 +2814,13 @@ test_sr_debug_fn (vlib_main_t * vm,
                     vlib_cli_command_t * cmd)
 {
   ip6_sr_main_t * sm = &sr_main;
-  
+
   if (unformat (input, "on"))
     sm->is_debug = 1;
   else if (unformat (input, "off"))
     sm->is_debug = 0;
   else
-    return clib_error_return (0, "expected on|off in '%U'", 
+    return clib_error_return (0, "expected on|off in '%U'",
                               format_unformat_error, input);
 
   vlib_cli_output (vm, "debug trace now %s", sm->is_debug ? "on" : "off");
