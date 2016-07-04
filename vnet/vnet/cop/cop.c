@@ -22,6 +22,7 @@ cop_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   cop_main_t * cm = &cop_main;
   cop_config_data_t _data, *data = &_data;
   vlib_main_t * vm = cm->vlib_main;
+  vnet_sw_interface_t * sw = vnet_get_sw_interface (vnm, sw_if_index);;
   cop_config_main_t * ccm;
   int address_family;
   u32 ci, default_next;
@@ -32,7 +33,7 @@ cop_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
    * Ignore local interface, pg interfaces. $$$ need a #define for the
    * first "real" interface. The answer is 5 at the moment.
    */
-  if (sw_if_index < 5)
+  if (sw->type == VNET_SW_INTERFACE_TYPE_LOCAL)
     return 0;
 
    for (address_family = VNET_COP_IP4; address_family < VNET_N_COPS;

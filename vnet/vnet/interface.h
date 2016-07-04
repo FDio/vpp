@@ -360,6 +360,9 @@ typedef enum {
 
   /* A sub-interface. */
   VNET_SW_INTERFACE_TYPE_SUB,
+
+  /* Local interface */
+  VNET_SW_INTERFACE_TYPE_LOCAL,
 } vnet_sw_interface_type_t;
 
 typedef struct {

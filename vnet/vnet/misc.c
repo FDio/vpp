@@ -72,6 +72,7 @@ vnet_main_init (vlib_main_t * vm)
   clib_error_t * error;
   u32 hw_if_index;
   vnet_hw_interface_t * hw;
+  vnet_sw_interface_t * sw;
 
   if ((error = vlib_call_init_function (vm, vnet_interface_init)))
     return error;
@@ -92,6 +93,8 @@ vnet_main_init (vlib_main_t * vm)
      vnet_local_interface_device_class.index, /* instance */ 0,
      vnet_local_interface_hw_class.index, /* instance */ 0);
   hw = vnet_get_hw_interface (vnm, hw_if_index);
+  sw = vnet_get_sw_interface (vnm, hw->sw_if_index);
+  sw->type = VNET_SW_INTERFACE_TYPE_LOCAL;
 
   vnm->local_interface_hw_if_index = hw_if_index;
   vnm->local_interface_sw_if_index = hw->sw_if_index;

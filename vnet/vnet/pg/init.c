@@ -47,29 +47,15 @@ static clib_error_t * pg_init (vlib_main_t * vm)
 {
   clib_error_t * error;
   pg_main_t * pg = &pg_main;
-  int i, j;
 
   pg->vlib_main = vm;
+  pg->if_index_by_if_id = hash_create (0, sizeof (uword));
 
   if ((error = vlib_call_init_function (vm, vnet_main_init)))
     goto done;
 
   if ((error = vlib_call_init_function (vm, pg_cli_init)))
     goto done;
-
-  /* Create/free interfaces so that they exist and can be
-     used as a destination interface for streams.  Also, create
-     a fixed number of pg interfaces so that interface numbering can
-     be made to be deterministic (at least if <= 4 streams are ever used). */
-  for (i = 0; i < 4; i++)
-    {
-      j = pg_interface_find_free (pg, i);
-      ASSERT (j == i);
-    }
-
-  /* Free interfaces. */
-  for (i = j; i >= 0; i--)
-    vec_add1 (pg->free_interfaces, i);
 
  done:
   return error;
