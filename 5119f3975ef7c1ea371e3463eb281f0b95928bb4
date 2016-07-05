@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_9da9237e",
+        "filename": "vnet/vnet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-05T23:24:08Z",
+      "side": 1,
+      "message": "Okay, this makes more sense now.\n\nIf the parent interface is up and the sub down, can we set the sub up?\n\nIt may be because this is the end of a long day but I\u0027m not seeing the path that lets me up the sub when the parent is up. Perhaps you can talk me through it. :)\n\nAlso, shouldn\u0027t (flags \u003d\u003d 0) be (flags !\u003d VNET_SW_INTERFACE_ADMIN_UP) in case other flags are set?",
+      "range": {
+        "startLine": 357,
+        "startChar": 0,
+        "endLine": 359,
+        "endChar": 85
+      },
+      "revId": "5119f3975ef7c1ea371e3463eb281f0b95928bb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
