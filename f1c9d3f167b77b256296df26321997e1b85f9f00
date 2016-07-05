@@ -117,6 +117,30 @@
       "revId": "f1c9d3f167b77b256296df26321997e1b85f9f00",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_5dd5cb41",
+        "filename": "vnet/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 33
+      },
+      "writtenOn": "2016-07-05T13:32:15Z",
+      "side": 1,
+      "message": "Ah thank you, should have thought of that. I can collapse the two if\u0027s, I\u0027ll push a patchset soon with the corrections and clear the whitespace noise.",
+      "parentUuid": "9a0e1d27_7d740f9c",
+      "range": {
+        "startLine": 360,
+        "startChar": 52,
+        "endLine": 360,
+        "endChar": 53
+      },
+      "revId": "f1c9d3f167b77b256296df26321997e1b85f9f00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
