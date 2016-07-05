@@ -358,25 +358,36 @@ ip6_route_get_next_hop_adj (ip6_main_t * im,
       kv.key[0] = next_hop->as_u64[0];
       kv.key[1] = next_hop->as_u64[1];
       kv.key[2] = ((u64)((fib - im->fibs))<<32) | 128;
-
+after_nd:
       if (BV(clib_bihash_search)(&im->ip6_lookup_table, &kv, &value) < 0)
         {
-	  ip_adjacency_t * adj;
-	  nh_adj_index = ip6_fib_lookup_with_table (im, fib_index, next_hop);
-	  adj = ip_get_adjacency (lm, nh_adj_index);
-	  /* if ND interface adjacencty is present, we need to
-	     install ND adjaceny for specific next hop */
-	  if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
-	      adj->arp.next_hop.ip6.as_u64[0] == 0 &&
-	      adj->arp.next_hop.ip6.as_u64[1] == 0)
-           {
+          ip_adjacency_t * adj;
+          nh_adj_index = ip6_fib_lookup_with_table (im, fib_index, next_hop);
+          adj = ip_get_adjacency (lm, nh_adj_index);
+          /* if ND interface adjacencty is present, we need to
+           install ND adjaceny for specific next hop */
+          if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
+              adj->arp.next_hop.ip6.as_u64[0] == 0 &&
+              adj->arp.next_hop.ip6.as_u64[1] == 0)
+            {
               nh_adj_index = vnet_ip6_neighbor_glean_add(fib_index, next_hop);
-	    }
-	}
+            }
+          else if (next_hop->as_u8[0] == 0xfe)
+            {
+              //Next hop is link-local. No indirect in this case.
+              //Let's add it as a possible neighbor on this interface
+              ip6_address_t null_addr= {};
+              ip6_add_del_route_next_hop (im, IP6_ROUTE_FLAG_ADD,
+                                          next_hop, 128,
+                                          &null_addr, next_hop_sw_if_index,
+                                          1, ~0, fib_index);
+              goto after_nd;
+            }
+        }
       else
         {
-	  nh_adj_index = value.value;
-	}
+          nh_adj_index = value.value;
+        }
     }
 
   return (nh_adj_index);
