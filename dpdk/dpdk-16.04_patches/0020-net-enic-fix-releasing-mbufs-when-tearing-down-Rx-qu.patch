@@ -1,0 +1,43 @@
+From 3f276178609472585a85fe440b549013a64d9327 Mon Sep 17 00:00:00 2001
+From: Nelson Escobar <neescoba@cisco.com>
+Date: Tue, 14 Jun 2016 16:55:34 -0700
+Subject: [PATCH 20/25] net/enic: fix releasing mbufs when tearing down Rx
+ queue
+
+When trying to release the mbufs, the function was incorrectly
+iterating over the max size configured instead of the actual size
+of the ring.
+
+Fixes: 947d860c821f ("enic: improve Rx performance")
+
+Signed-off-by: Nelson Escobar <neescoba@cisco.com>
+Reviewed-by: John Daley <johndale@cisco.com>
+---
+ drivers/net/enic/enic_main.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
+index 68532d3..56ec96e 100644
+--- a/drivers/net/enic/enic_main.c
++++ b/drivers/net/enic/enic_main.c
+@@ -91,7 +91,7 @@ static int is_eth_addr_valid(uint8_t *addr)
+ }
+ 
+ static void
+-enic_rxmbuf_queue_release(struct enic *enic, struct vnic_rq *rq)
++enic_rxmbuf_queue_release(__rte_unused struct enic *enic, struct vnic_rq *rq)
+ {
+ 	uint16_t i;
+ 
+@@ -100,7 +100,7 @@ enic_rxmbuf_queue_release(struct enic *enic, struct vnic_rq *rq)
+ 		return;
+ 	}
+ 
+-	for (i = 0; i < enic->config.rq_desc_count; i++) {
++	for (i = 0; i < rq->ring.desc_count; i++) {
+ 		if (rq->mbuf_ring[i]) {
+ 			rte_pktmbuf_free_seg(rq->mbuf_ring[i]);
+ 			rq->mbuf_ring[i] = NULL;
+-- 
+2.7.0
+

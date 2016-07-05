@@ -1,0 +1,169 @@
+From 3131adb7f4195771bf54b294b2ee496055c3e65d Mon Sep 17 00:00:00 2001
+From: Nelson Escobar <neescoba@cisco.com>
+Date: Tue, 14 Jun 2016 11:54:01 -0700
+Subject: [PATCH 25/25] enic: fixup of Rx Scatter patch
+
+A version of the Rx Scatter patch was used by VPP before the
+patch was accepted in dpdk.org. This patch contains the change
+made to the patch before it was accepted.
+
+Composed of internal dpdk devel patches:
+enic: fixup rq count usage in wake of rx scatter
+enic: update checks since RX scatter uses 2 VIC RQs per app RQ.
+enic: fix packet type and flags when doing scatter Rx
+
+fixes: ENIC scatter RX
+
+Signed-off-by: Nelson Escobar <neescoba@cisco.com>
+---
+ drivers/net/enic/enic.h        | 12 ++++++++++--
+ drivers/net/enic/enic_ethdev.c |  7 +++++--
+ drivers/net/enic/enic_main.c   | 19 +++++++++++--------
+ drivers/net/enic/enic_res.c    |  5 +++--
+ drivers/net/enic/enic_rxtx.c   |  7 +++++--
+ 5 files changed, 34 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/net/enic/enic.h b/drivers/net/enic/enic.h
+index 8b0fa05..9cc9f0b 100644
+--- a/drivers/net/enic/enic.h
++++ b/drivers/net/enic/enic.h
+@@ -55,8 +55,11 @@
+ #define DRV_COPYRIGHT		"Copyright 2008-2015 Cisco Systems, Inc"
+ 
+ #define ENIC_WQ_MAX		8
+-#define ENIC_RQ_MAX		8
+-#define ENIC_CQ_MAX		(ENIC_WQ_MAX + ENIC_RQ_MAX)
++/* With Rx scatter support, we use two RQs on VIC per RQ used by app. Both
++ * RQs use the same CQ.
++ */
++#define ENIC_RQ_MAX		16
++#define ENIC_CQ_MAX		(ENIC_WQ_MAX + (ENIC_RQ_MAX / 2))
+ #define ENIC_INTR_MAX		(ENIC_CQ_MAX + 2)
+ 
+ #define VLAN_ETH_HLEN           18
+@@ -163,6 +166,11 @@ static inline unsigned int enic_data_rq(__rte_unused struct enic *enic, unsigned
+ 	return rq * 2 + 1;
+ }
+ 
++static inline unsigned int enic_vnic_rq_count(struct enic *enic)
++{
++	return (enic->rq_count * 2);
++}
++
+ static inline unsigned int enic_cq_rq(__rte_unused struct enic *enic, unsigned int rq)
+ {
+ 	/* Scatter rx uses two receive queues together with one
+diff --git a/drivers/net/enic/enic_ethdev.c b/drivers/net/enic/enic_ethdev.c
+index 697ff82..e5b84e1 100644
+--- a/drivers/net/enic/enic_ethdev.c
++++ b/drivers/net/enic/enic_ethdev.c
+@@ -269,9 +269,12 @@ static int enicpmd_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
+ 	struct enic *enic = pmd_priv(eth_dev);
+ 
+ 	ENICPMD_FUNC_TRACE();
+-	if (queue_idx >= ENIC_RQ_MAX) {
++	/* With Rx scatter support, two RQs are now used on VIC per RQ used
++	 * by the application.
++	 */
++	if (queue_idx * 2 >= ENIC_RQ_MAX) {
+ 		dev_err(enic,
+-			"Max number of RX queues exceeded.  Max is %d\n",
++			"Max number of RX queues exceeded.  Max is %d. This PMD uses 2 RQs on VIC per RQ used by DPDK.\n",
+ 			ENIC_RQ_MAX);
+ 		return -EINVAL;
+ 	}
+diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
+index 976c9da..ff94ee2 100644
+--- a/drivers/net/enic/enic_main.c
++++ b/drivers/net/enic/enic_main.c
+@@ -133,7 +133,7 @@ static void enic_log_q_error(struct enic *enic)
+ 				error_status);
+ 	}
+ 
+-	for (i = 0; i < enic->rq_count; i++) {
++	for (i = 0; i < enic_vnic_rq_count(enic); i++) {
+ 		error_status = vnic_rq_error_status(&enic->rq[i]);
+ 		if (error_status)
+ 			dev_err(enic, "RQ[%d] error_status %d\n", i,
+@@ -486,7 +486,7 @@ int enic_alloc_intr_resources(struct enic *enic)
+ 
+ 	dev_info(enic, "vNIC resources used:  "\
+ 		"wq %d rq %d cq %d intr %d\n",
+-		enic->wq_count, enic->rq_count,
++		enic->wq_count, enic_vnic_rq_count(enic),
+ 		enic->cq_count, enic->intr_count);
+ 
+ 	err = vnic_intr_alloc(enic->vdev, &enic->intr, 0);
+@@ -790,10 +790,12 @@ int enic_disable(struct enic *enic)
+ 		if (err)
+ 			return err;
+ 	}
+-	for (i = 0; i < enic->rq_count; i++) {
+-		err = vnic_rq_disable(&enic->rq[i]);
+-		if (err)
+-			return err;
++	for (i = 0; i < enic_vnic_rq_count(enic); i++) {
++		if (enic->rq[i].in_use) {
++			err = vnic_rq_disable(&enic->rq[i]);
++			if (err)
++				return err;
++		}
+ 	}
+ 
+ 	vnic_dev_set_reset_flag(enic->vdev, 1);
+@@ -802,8 +804,9 @@ int enic_disable(struct enic *enic)
+ 	for (i = 0; i < enic->wq_count; i++)
+ 		vnic_wq_clean(&enic->wq[i], enic_free_wq_buf);
+ 
+-	for (i = 0; i < enic->rq_count; i++)
+-		vnic_rq_clean(&enic->rq[i], enic_free_rq_buf);
++	for (i = 0; i < enic_vnic_rq_count(enic); i++)
++		if (enic->rq[i].in_use)
++			vnic_rq_clean(&enic->rq[i], enic_free_rq_buf);
+ 	for (i = 0; i < enic->cq_count; i++)
+ 		vnic_cq_clean(&enic->cq[i]);
+ 	vnic_intr_clean(&enic->intr);
+diff --git a/drivers/net/enic/enic_res.c b/drivers/net/enic/enic_res.c
+index ebe379d..42edd84 100644
+--- a/drivers/net/enic/enic_res.c
++++ b/drivers/net/enic/enic_res.c
+@@ -196,8 +196,9 @@ void enic_free_vnic_resources(struct enic *enic)
+ 
+ 	for (i = 0; i < enic->wq_count; i++)
+ 		vnic_wq_free(&enic->wq[i]);
+-	for (i = 0; i < enic->rq_count; i++)
+-		vnic_rq_free(&enic->rq[i]);
++	for (i = 0; i < enic_vnic_rq_count(enic); i++)
++		if (enic->rq[i].in_use)
++			vnic_rq_free(&enic->rq[i]);
+ 	for (i = 0; i < enic->cq_count; i++)
+ 		vnic_cq_free(&enic->cq[i]);
+ 	vnic_intr_free(&enic->intr);
+diff --git a/drivers/net/enic/enic_rxtx.c b/drivers/net/enic/enic_rxtx.c
+index 463b954..c68bbfb 100644
+--- a/drivers/net/enic/enic_rxtx.c
++++ b/drivers/net/enic/enic_rxtx.c
+@@ -326,8 +326,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+ 
+ 		/* Fill in the rest of the mbuf */
+ 		seg_length = enic_cq_rx_desc_n_bytes(&cqd);
+-		rxmb->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
+-		enic_cq_rx_to_pkt_flags(&cqd, rxmb);
++
+ 		if (rq->is_sop) {
+ 			first_seg = rxmb;
+ 			first_seg->nb_segs = 1;
+@@ -350,6 +349,10 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+ 			continue;
+ 		}
+ 
++		/* cq rx flags are only valid if eop bit is set */
++		first_seg->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
++		enic_cq_rx_to_pkt_flags(&cqd, first_seg);
++
+ 		if (unlikely(packet_error)) {
+ 			rte_pktmbuf_free(first_seg);
+ 			rte_atomic64_inc(&enic->soft_stats.rx_packet_errors);
+-- 
+2.7.0
+

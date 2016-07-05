@@ -1,0 +1,238 @@
+From 2040a8f4e47d3bc4b7f0f11faa863a4bd8d8891d Mon Sep 17 00:00:00 2001
+From: Nelson Escobar <neescoba@cisco.com>
+Date: Thu, 23 Jun 2016 16:14:58 -0700
+Subject: [PATCH 23/25] net/enic: fix memory freeing
+
+enic_alloc_consistent() allocated memory, but enic_free_consistent()
+was an empty function, so allocated memory was never freed.
+
+This commit adds a list and lock to the enic structure to keep track
+of the memzones allocated in enic_alloc_consistent(), and
+enic_free_consistent() uses that information to properly free memory.
+
+Fixes: fefed3d1e62c ("enic: new driver")
+
+Signed-off-by: Nelson Escobar <neescoba@cisco.com>
+Reviewed-by: John Daley <johndale@cisco.com>
+---
+ drivers/net/enic/base/vnic_dev.c | 14 +++++------
+ drivers/net/enic/base/vnic_dev.h |  2 +-
+ drivers/net/enic/enic.h          | 11 ++++++++
+ drivers/net/enic/enic_main.c     | 54 ++++++++++++++++++++++++++++++++++------
+ 4 files changed, 65 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/net/enic/base/vnic_dev.c b/drivers/net/enic/base/vnic_dev.c
+index e8a5028..fc2e4cc 100644
+--- a/drivers/net/enic/base/vnic_dev.c
++++ b/drivers/net/enic/base/vnic_dev.c
+@@ -83,7 +83,7 @@ struct vnic_dev {
+ 	struct vnic_intr_coal_timer_info intr_coal_timer_info;
+ 	void *(*alloc_consistent)(void *priv, size_t size,
+ 		dma_addr_t *dma_handle, u8 *name);
+-	void (*free_consistent)(struct rte_pci_device *hwdev,
++	void (*free_consistent)(void *priv,
+ 		size_t size, void *vaddr,
+ 		dma_addr_t dma_handle);
+ };
+@@ -101,7 +101,7 @@ void *vnic_dev_priv(struct vnic_dev *vdev)
+ void vnic_register_cbacks(struct vnic_dev *vdev,
+ 	void *(*alloc_consistent)(void *priv, size_t size,
+ 	    dma_addr_t *dma_handle, u8 *name),
+-	void (*free_consistent)(struct rte_pci_device *hwdev,
++	void (*free_consistent)(void *priv,
+ 	    size_t size, void *vaddr,
+ 	    dma_addr_t dma_handle))
+ {
+@@ -807,7 +807,7 @@ int vnic_dev_notify_unsetcmd(struct vnic_dev *vdev)
+ int vnic_dev_notify_unset(struct vnic_dev *vdev)
+ {
+ 	if (vdev->notify && !vnic_dev_in_reset(vdev)) {
+-		vdev->free_consistent(vdev->pdev,
++		vdev->free_consistent(vdev->priv,
+ 			sizeof(struct vnic_devcmd_notify),
+ 			vdev->notify,
+ 			vdev->notify_pa);
+@@ -924,16 +924,16 @@ void vnic_dev_unregister(struct vnic_dev *vdev)
+ {
+ 	if (vdev) {
+ 		if (vdev->notify)
+-			vdev->free_consistent(vdev->pdev,
++			vdev->free_consistent(vdev->priv,
+ 				sizeof(struct vnic_devcmd_notify),
+ 				vdev->notify,
+ 				vdev->notify_pa);
+ 		if (vdev->stats)
+-			vdev->free_consistent(vdev->pdev,
++			vdev->free_consistent(vdev->priv,
+ 				sizeof(struct vnic_stats),
+ 				vdev->stats, vdev->stats_pa);
+ 		if (vdev->fw_info)
+-			vdev->free_consistent(vdev->pdev,
++			vdev->free_consistent(vdev->priv,
+ 				sizeof(struct vnic_devcmd_fw_info),
+ 				vdev->fw_info, vdev->fw_info_pa);
+ 		kfree(vdev);
+@@ -1041,7 +1041,7 @@ int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
+ 
+ 		ret = vnic_dev_cmd(vdev, CMD_ADD_FILTER, &a0, &a1, wait);
+ 		*entry = (u16)a0;
+-		vdev->free_consistent(vdev->pdev, tlv_size, tlv_va, tlv_pa);
++		vdev->free_consistent(vdev->priv, tlv_size, tlv_va, tlv_pa);
+ 	} else if (cmd == CLSF_DEL) {
+ 		a0 = *entry;
+ 		ret = vnic_dev_cmd(vdev, CMD_DEL_FILTER, &a0, &a1, wait);
+diff --git a/drivers/net/enic/base/vnic_dev.h b/drivers/net/enic/base/vnic_dev.h
+index 113d6ac..689442f 100644
+--- a/drivers/net/enic/base/vnic_dev.h
++++ b/drivers/net/enic/base/vnic_dev.h
+@@ -102,7 +102,7 @@ unsigned int vnic_dev_get_res_count(struct vnic_dev *vdev,
+ void vnic_register_cbacks(struct vnic_dev *vdev,
+ 	void *(*alloc_consistent)(void *priv, size_t size,
+ 		dma_addr_t *dma_handle, u8 *name),
+-	void (*free_consistent)(struct rte_pci_device *hwdev,
++	void (*free_consistent)(void *priv,
+ 		size_t size, void *vaddr,
+ 		dma_addr_t dma_handle));
+ void __iomem *vnic_dev_get_res(struct vnic_dev *vdev, enum vnic_res_type type,
+diff --git a/drivers/net/enic/enic.h b/drivers/net/enic/enic.h
+index d2de6ee..175adb8 100644
+--- a/drivers/net/enic/enic.h
++++ b/drivers/net/enic/enic.h
+@@ -46,6 +46,8 @@
+ #include "vnic_rss.h"
+ #include "enic_res.h"
+ #include "cq_enet_desc.h"
++#include <sys/queue.h>
++#include <rte_spinlock.h>
+ 
+ #define DRV_NAME		"enic_pmd"
+ #define DRV_DESCRIPTION		"Cisco VIC Ethernet NIC Poll-mode Driver"
+@@ -96,6 +98,11 @@ struct enic_soft_stats {
+ 	rte_atomic64_t rx_packet_errors;
+ };
+ 
++struct enic_memzone_entry {
++	const struct rte_memzone *rz;
++	LIST_ENTRY(enic_memzone_entry) entries;
++};
++
+ /* Per-instance private data structure */
+ struct enic {
+ 	struct enic *next;
+@@ -140,6 +147,10 @@ struct enic {
+ 	unsigned int intr_count;
+ 
+ 	struct enic_soft_stats soft_stats;
++
++	/* linked list storing memory allocations */
++	LIST_HEAD(enic_memzone_list, enic_memzone_entry) memzone_list;
++	rte_spinlock_t memzone_list_lock;
+ };
+ 
+ static inline unsigned int enic_sop_rq(__rte_unused struct enic *enic, unsigned int rq)
+diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
+index 43e4af1..0547f3b 100644
+--- a/drivers/net/enic/enic_main.c
++++ b/drivers/net/enic/enic_main.c
+@@ -356,12 +356,14 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
+ }
+ 
+ static void *
+-enic_alloc_consistent(__rte_unused void *priv, size_t size,
++enic_alloc_consistent(void *priv, size_t size,
+ 	dma_addr_t *dma_handle, u8 *name)
+ {
+ 	void *vaddr;
+ 	const struct rte_memzone *rz;
+ 	*dma_handle = 0;
++	struct enic *enic = (struct enic *)priv;
++	struct enic_memzone_entry *mze;
+ 
+ 	rz = rte_memzone_reserve_aligned((const char *)name,
+ 					 size, SOCKET_ID_ANY, 0, ENIC_ALIGN);
+@@ -374,16 +376,49 @@ enic_alloc_consistent(__rte_unused void *priv, size_t size,
+ 	vaddr = rz->addr;
+ 	*dma_handle = (dma_addr_t)rz->phys_addr;
+ 
++	mze = rte_malloc("enic memzone entry",
++			 sizeof(struct enic_memzone_entry), 0);
++
++	if (!mze) {
++		pr_err("%s : Failed to allocate memory for memzone list\n",
++		       __func__);
++		rte_memzone_free(rz);
++	}
++
++	mze->rz = rz;
++
++	rte_spinlock_lock(&enic->memzone_list_lock);
++	LIST_INSERT_HEAD(&enic->memzone_list, mze, entries);
++	rte_spinlock_unlock(&enic->memzone_list_lock);
++
+ 	return vaddr;
+ }
+ 
+ static void
+-enic_free_consistent(__rte_unused struct rte_pci_device *hwdev,
+-	__rte_unused size_t size,
+-	__rte_unused void *vaddr,
+-	__rte_unused dma_addr_t dma_handle)
++enic_free_consistent(void *priv,
++		     __rte_unused size_t size,
++		     void *vaddr,
++		     dma_addr_t dma_handle)
+ {
+-	/* Nothing to be done */
++	struct enic_memzone_entry *mze;
++	struct enic *enic = (struct enic *)priv;
++
++	rte_spinlock_lock(&enic->memzone_list_lock);
++	LIST_FOREACH(mze, &enic->memzone_list, entries) {
++		if (mze->rz->addr == vaddr &&
++		    mze->rz->phys_addr == dma_handle)
++			break;
++	}
++	if (mze == NULL) {
++		rte_spinlock_unlock(&enic->memzone_list_lock);
++		dev_warning(enic,
++			    "Tried to free memory, but couldn't find it in the memzone list\n");
++		return;
++	}
++	LIST_REMOVE(mze, entries);
++	rte_spinlock_unlock(&enic->memzone_list_lock);
++	rte_memzone_free(mze->rz);
++	rte_free(mze);
+ }
+ 
+ static void
+@@ -840,7 +875,7 @@ static int enic_set_rsskey(struct enic *enic)
+ 		rss_key_buf_pa,
+ 		sizeof(union vnic_rss_key));
+ 
+-	enic_free_consistent(enic->pdev, sizeof(union vnic_rss_key),
++	enic_free_consistent(enic, sizeof(union vnic_rss_key),
+ 		rss_key_buf_va, rss_key_buf_pa);
+ 
+ 	return err;
+@@ -867,7 +902,7 @@ static int enic_set_rsscpu(struct enic *enic, u8 rss_hash_bits)
+ 		rss_cpu_buf_pa,
+ 		sizeof(union vnic_rss_cpu));
+ 
+-	enic_free_consistent(enic->pdev, sizeof(union vnic_rss_cpu),
++	enic_free_consistent(enic, sizeof(union vnic_rss_cpu),
+ 		rss_cpu_buf_va, rss_cpu_buf_pa);
+ 
+ 	return err;
+@@ -1049,6 +1084,9 @@ int enic_probe(struct enic *enic)
+ 		goto err_out;
+ 	}
+ 
++	LIST_INIT(&enic->memzone_list);
++	rte_spinlock_init(&enic->memzone_list_lock);
++
+ 	vnic_register_cbacks(enic->vdev,
+ 		enic_alloc_consistent,
+ 		enic_free_consistent);
+-- 
+2.7.0
+
