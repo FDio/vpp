@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_3db0d7dc",
+        "filename": "vnet/vnet/sr/sr.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-05T23:25:38Z",
+      "side": 1,
+      "message": "I\u0027m sure there\u0027s a better way to do this, but we can leave that for another day.",
+      "range": {
+        "startLine": 140,
+        "startChar": 2,
+        "endLine": 140,
+        "endChar": 103
+      },
+      "revId": "29b584ea5fa63347fd1fb8524dd68b262817fcf2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
