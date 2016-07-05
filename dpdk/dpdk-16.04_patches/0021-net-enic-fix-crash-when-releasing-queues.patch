@@ -1,0 +1,61 @@
+From 38e154305ee5fd2ee454c19218ca144ffd1535f1 Mon Sep 17 00:00:00 2001
+From: John Daley <johndale@cisco.com>
+Date: Sat, 11 Jun 2016 10:27:04 -0700
+Subject: [PATCH 21/25] net/enic: fix crash when releasing queues
+
+If device configuration failed due to a lack of resources, such as
+if more queues are requested than are available, the queue release
+functions are called with NULL pointers which were being dereferenced.
+
+Skip releasing queues if they are NULL pointers.
+
+Fixes: fefed3d1e62c ("enic: new driver")
+
+Signed-off-by: John Daley <johndale@cisco.com>
+---
+ drivers/net/enic/enic_main.c | 21 ++++++++++++++++-----
+ 1 file changed, 16 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
+index 56ec96e..4e5594f 100644
+--- a/drivers/net/enic/enic_main.c
++++ b/drivers/net/enic/enic_main.c
+@@ -462,9 +462,15 @@ int enic_alloc_intr_resources(struct enic *enic)
+ 
+ void enic_free_rq(void *rxq)
+ {
+-	struct vnic_rq *rq_sop = (struct vnic_rq *)rxq;
+-	struct enic *enic = vnic_dev_priv(rq_sop->vdev);
+-	struct vnic_rq *rq_data = &enic->rq[rq_sop->data_queue_idx];
++	struct vnic_rq *rq_sop, *rq_data;
++	struct enic *enic;
++
++	if (rxq == NULL)
++		return;
++
++	rq_sop = (struct vnic_rq *)rxq;
++	enic = vnic_dev_priv(rq_sop->vdev);
++	rq_data = &enic->rq[rq_sop->data_queue_idx];
+ 
+ 	enic_rxmbuf_queue_release(enic, rq_sop);
+ 	if (rq_data->in_use)
+@@ -657,9 +663,14 @@ err_exit:
+ 
+ void enic_free_wq(void *txq)
+ {
+-	struct vnic_wq *wq = (struct vnic_wq *)txq;
+-	struct enic *enic = vnic_dev_priv(wq->vdev);
++	struct vnic_wq *wq;
++	struct enic *enic;
++
++	if (txq == NULL)
++		return;
+ 
++	wq = (struct vnic_wq *)txq;
++	enic = vnic_dev_priv(wq->vdev);
+ 	rte_memzone_free(wq->cqmsg_rz);
+ 	vnic_wq_free(wq);
+ 	vnic_cq_free(&enic->cq[enic->rq_count + wq->index]);
+-- 
+2.7.0
+
