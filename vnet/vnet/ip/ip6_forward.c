@@ -457,8 +457,10 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
      to existing non-multipath adjacency */
   if (dst_adj_index == ~0 && next_hop_weight == 1 && next_hop_sw_if_index == ~0)
   {
-    /* create new adjacency */
+    /* create / delete additional mapping of existing adjacency */
     ip6_add_del_route_args_t a;
+    ip_adjacency_t * nh_adj = ip_get_adjacency (lm, nh_adj_index);
+
     a.table_index_or_table_id = fib_index;
     a.flags = ((is_del ? IP6_ROUTE_FLAG_DEL : IP6_ROUTE_FLAG_ADD)
         | IP6_ROUTE_FLAG_FIB_INDEX
@@ -472,6 +474,9 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
     a.n_add_adj = 0;
 
     ip6_add_del_route (im, &a);
+    /* adjust share count. This cannot be the only use of the adjacency */
+    nh_adj->share_count += is_del ? -1 : 1;
+
     goto done;
   }
 
@@ -500,6 +505,8 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
   if (old_mp != new_mp)
     {
       ip6_add_del_route_args_t a;
+      ip_adjacency_t * adj;
+
       a.table_index_or_table_id = fib_index;
       a.flags = ((is_del ? IP6_ROUTE_FLAG_DEL : IP6_ROUTE_FLAG_ADD)
 		 | IP6_ROUTE_FLAG_FIB_INDEX
@@ -512,6 +519,10 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
       a.n_add_adj = 0;
 
       ip6_add_del_route (im, &a);
+
+      adj = ip_get_adjacency (lm, new_mp ? new_mp->adj_index : dst_adj_index);
+      if (adj->n_adj == 1)
+        adj->share_count += is_del ? -1 : 1;
     }
 
  done:
