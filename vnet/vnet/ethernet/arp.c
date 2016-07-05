@@ -263,31 +263,36 @@ ethernet_arp_sw_interface_up_down (vnet_main_t * vnm,
 {
   ethernet_arp_main_t * am = &ethernet_arp_main;
   ethernet_arp_ip4_entry_t * e;
+  u32 i;
+  u32 * to_add_del = 0;
 
-  if (! (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
+  pool_foreach (e, am->ip4_entry_pool, ({
+    if (e->key.sw_if_index == sw_if_index)
+	vec_add1 (to_add_del, e - am->ip4_entry_pool);
+  }));
+
+  for (i = 0; i < vec_len (to_add_del); i++)
     {
-      u32 i, * to_delete = 0;
+      ethernet_arp_ip4_over_ethernet_address_t arp_add;
+      e = pool_elt_at_index (am->ip4_entry_pool, to_add_del[i]);
 
-      pool_foreach (e, am->ip4_entry_pool, ({
-	if (e->key.sw_if_index == sw_if_index)
-	  vec_add1 (to_delete, e - am->ip4_entry_pool);
-      }));
+      clib_memcpy (&arp_add.ethernet, e->ethernet_address, 6);
+      arp_add.ip4.as_u32 = e->key.ip4_address.as_u32;
 
-      for (i = 0; i < vec_len (to_delete); i++)
-	{
-          ethernet_arp_ip4_over_ethernet_address_t delme;
-	  e = pool_elt_at_index (am->ip4_entry_pool, to_delete[i]);
-
-          clib_memcpy (&delme.ethernet, e->ethernet_address, 6);
-          delme.ip4.as_u32 = e->key.ip4_address.as_u32;
-
-          vnet_arp_unset_ip4_over_ethernet (vnm, e->key.sw_if_index,
-                                            e->key.fib_index, &delme);
-	}
-
-      vec_free (to_delete);
+      if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+        {
+	  vnet_arp_set_ip4_over_ethernet (vnm,
+	      e->key.sw_if_index, e->key.fib_index, &arp_add, 
+	      e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC);
+        }
+      else if ((e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC) == 0)
+        {
+	  vnet_arp_unset_ip4_over_ethernet (vnm,
+	      e->key.sw_if_index, e->key.fib_index, &arp_add);
+        }
     }
 
+  vec_free (to_add_del);
   return 0;
 }
 
