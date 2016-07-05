@@ -361,7 +361,7 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
           kv.key[0] = next_hop->as_u64[0];
           kv.key[1] = next_hop->as_u64[1];
           kv.key[2] = ((u64)((fib - im->fibs))<<32) | 128;
-
+after_nd:
           if (BV(clib_bihash_search)(&im->ip6_lookup_table, &kv, &value) < 0)
           {
             ip_adjacency_t * adj;
@@ -374,6 +374,17 @@ ip6_add_del_route_next_hop (ip6_main_t * im,
                 adj->arp.next_hop.ip6.as_u64[1] == 0)
             {
               nh_adj_index = vnet_ip6_neighbor_glean_add(fib_index, next_hop);
+            }
+            else if (next_hop->as_u8[0] == 0xfe)
+            {
+              //Next hop is link-local. No indirect in this case.
+              //Let's add it as a possible neighbor on this interface
+              ip6_address_t null_addr= {};
+              ip6_add_del_route_next_hop (im, IP6_ROUTE_FLAG_ADD,
+                                          next_hop, 128,
+                                          &null_addr, next_hop_sw_if_index,
+                                          1, ~0, fib_index);
+              goto after_nd;
             }
             else
             {
