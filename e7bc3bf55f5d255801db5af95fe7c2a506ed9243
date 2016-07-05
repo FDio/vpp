@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_fdc37f88",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-05T13:54:01Z",
+      "side": 1,
+      "message": "It would be good to make sure that both vni and vni_mask are 0 by default.",
+      "revId": "e7bc3bf55f5d255801db5af95fe7c2a506ed9243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
