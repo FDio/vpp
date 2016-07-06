@@ -45,6 +45,10 @@
 #include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
 #include <vnet/api_errno.h>     /* for API error numbers */
 
+/** \file
+    vnet ip4 forwarding 
+*/
+
 /* This is really, really simple but stupid fib. */
 u32
 ip4_fib_lookup_with_table (ip4_main_t * im, u32 fib_index,
@@ -1002,6 +1006,38 @@ ip4_lookup_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+/** \brief IPv4 lookup node.
+    @node ip4-lookup
+
+    This is the main IPv4 lookup dispatch node.
+
+    @param vm vlib_main_t corresponding to the current thread
+    @param node vlib_node_runtime_t
+    @param frame vlib_frame_t whose contents should be dispatched
+
+    @par Graph mechanics: buffer metadata, next index usage
+
+    @em Uses:
+    - <code>vnet_buffer(b)->sw_if_index[VLIB_RX]</code>
+        - Indicates the @c sw_if_index value of the interface that the
+	  packet was received on.
+    - <code>vnet_buffer(b)->sw_if_index[VLIB_TX]</code>
+        - When the value is @c ~0 then the node performs a longest prefix
+          match (LPM) for the packet destination address in the FIB attached
+          to the receive interface.
+        - Otherwise perform LPM for the packet destination address in the
+          indicated FIB. In this case <code>[VLIB_TX]</code> is a FIB index
+          value (0, 1, ...) and not a VRF id.
+
+    @em Sets:
+    - <code>vnet_buffer(b)->ip.adj_index[VLIB_TX]</code>
+        - The lookup result adjacency index.
+
+    <em>Next Index:</em>
+    - Dispatches the packet to the node index found in
+      ip_adjacency_t @c adj->lookup_next_index
+      (where @c adj is the lookup result adjacency).
+*/
 static uword
 ip4_lookup (vlib_main_t * vm,
 	    vlib_node_runtime_t * node,

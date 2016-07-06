@@ -37,14 +37,33 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/** \file 
+    vlib node functions
+*/
+
+
 #ifndef included_vlib_node_funcs_h
 #define included_vlib_node_funcs_h
 
 #include <vppinfra/fifo.h>
 
+/** \brief Get vlib node by index.
+ @warning This function will ASSERT if @c i is out of range.
+ @param vm vlib_main_t pointer, varies by thread
+ @param i node index.
+ @return pointer to the requested vlib_node_t.
+*/
+
 always_inline vlib_node_t *
 vlib_get_node (vlib_main_t * vm, u32 i)
 { return vec_elt (vm->node_main.nodes, i); }
+
+/** \brief Get vlib node by graph arc (next) index.
+ @param vm vlib_main_t pointer, varies by thread
+ @param node_index index of original node
+ @param next_index graph arc index
+ @return pointer to the vlib_node_t at the end of the indicated arc
+*/
 
 always_inline vlib_node_t *
 vlib_get_next_node (vlib_main_t * vm, u32 node_index, u32 next_index)
@@ -56,6 +75,12 @@ vlib_get_next_node (vlib_main_t * vm, u32 node_index, u32 next_index)
   ASSERT (next_index < vec_len (n->next_nodes));
   return vlib_get_node (vm, n->next_nodes[next_index]);
 }
+
+/** \brief Get node runtime by node index.
+ @param vm vlib_main_t pointer, varies by thread
+ @param node_index index of node
+ @return pointer to the indicated vlib_node_runtime_t
+*/
 
 always_inline vlib_node_runtime_t *
 vlib_node_get_runtime (vlib_main_t * vm, u32 node_index)
@@ -72,12 +97,25 @@ vlib_node_get_runtime (vlib_main_t * vm, u32 node_index)
     }
 }
 
+/** \brief Get node runtime private data by node index.
+ @param vm vlib_main_t pointer, varies by thread
+ @param node_index index of the node
+ @return pointer to the indicated vlib_node_runtime_t private data
+*/
+
 always_inline void *
 vlib_node_get_runtime_data (vlib_main_t * vm, u32 node_index)
 {
   vlib_node_runtime_t * r = vlib_node_get_runtime (vm, node_index);
   return r->runtime_data;
 }
+
+/** \brief Set node runtime private data.
+ @param vm vlib_main_t pointer, varies by thread
+ @param node_index index of the node
+ @param runtime_data arbitrary runtime private data
+ @param n_runtime_data_bytes size of runtime private data
+*/
 
 always_inline void
 vlib_node_set_runtime_data (vlib_main_t * vm, u32 node_index,
@@ -96,6 +134,11 @@ vlib_node_set_runtime_data (vlib_main_t * vm, u32 node_index,
     clib_memcpy (r->runtime_data, n->runtime_data, vec_len (n->runtime_data));
 }
 
+/** \brief Set node dispatch state.
+ @param vm vlib_main_t pointer, varies by thread
+ @param node_index index of the node
+ @param new_state new state for node, see vlib_node_state_t
+*/
 always_inline void
 vlib_node_set_state (vlib_main_t * vm, u32 node_index, vlib_node_state_t new_state)
 {
@@ -198,13 +241,27 @@ vlib_frame_vector_byte_offset (u32 scalar_size)
 		     VLIB_FRAME_VECTOR_ALIGN);
 }
 
+/** \brief Get pointer to frame vector data.
+ @param f vlib_frame_t pointer
+ @return pointer to first vector element in frame
+*/
 always_inline void *
 vlib_frame_vector_args (vlib_frame_t * f)
 {
   return (void *) f + vlib_frame_vector_byte_offset (f->scalar_size);
 }
 
-/* Scalar data lies before aligned vector data. */
+/** \brief Get pointer to frame scalar data.
+
+ @warning This is almost certainly not the function you wish to call.
+ See @ref vlib_frame_vector_args instead.
+
+ @param f vlib_frame_t pointer
+
+ @return arbitrary node scalar data
+
+ @sa vlib_frame_vector_args
+*/
 always_inline void *
 vlib_frame_args (vlib_frame_t * f)
 { return vlib_frame_vector_args (f) - f->scalar_size; }
@@ -231,6 +288,20 @@ vlib_node_runtime_get_next_frame (vlib_main_t * vm,
 
   return nf;
 }
+
+/** \brief Get pointer to frame by (@c node_index, @c next_index).
+
+ @warning This is not a function that you should call directly.
+ See @ref vlib_get_next_frame instead.
+
+ @param vm vlib_main_t pointer, varies by thread
+ @param node_index index of the node
+ @param next_index graph arc index
+
+ @return pointer to the requested vlib_next_frame_t
+
+ @sa vlib_get_next_frame
+*/
 
 always_inline vlib_next_frame_t *
 vlib_node_get_next_frame (vlib_main_t * vm,
@@ -262,6 +333,19 @@ do {									\
   (n_vectors_left) = VLIB_FRAME_SIZE - _n;				\
 } while (0)
 
+
+/** \brief Get pointer to next frame vector data by 
+    (@c vlib_node_runtime_t, @c next_index).
+ Standard single/dual loop boilerplate element.
+ @attention This is a MACRO, with SIDE EFFECTS.
+
+ @param vm vlib_main_t pointer, varies by thread
+ @param node current node vlib_node_runtime_t pointer
+ @param next_index requested graph arc index
+
+ @return @c vectors -- pointer to next available vector slot
+ @return @c n_vectors_left -- number of vector slots available
+*/
 #define vlib_get_next_frame(vm,node,next_index,vectors,n_vectors_left)	\
   vlib_get_next_frame_macro (vm, node, next_index,			\
 			     vectors, n_vectors_left,			\
@@ -272,6 +356,13 @@ do {									\
 			     vectors, n_vectors_left,			\
 			     /* alloc new frame */ 1)
 
+/** \brief Release pointer to next frame vector data.
+ Standard single/dual loop boilerplate element.
+ @param vm vlib_main_t pointer, varies by thread
+ @param r current node vlib_node_runtime_t pointer
+ @param next_index graph arc index
+ @param n_packets_left number of slots still available in vector
+*/
 void
 vlib_put_next_frame (vlib_main_t * vm,
 		     vlib_node_runtime_t * r,
