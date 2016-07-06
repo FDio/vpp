@@ -152,8 +152,7 @@ static u32 dpdk_flag_change (vnet_main_t * vnm,
        *            driver to dynamically change the mtu.  If/when the 
        *            VIC firmware gets fixed, then this should be removed.
        */
-      if (xd->pmd == VNET_DPDK_PMD_VICE ||
-          xd->pmd == VNET_DPDK_PMD_ENIC)
+      if (xd->pmd == VNET_DPDK_PMD_ENIC)
 	{
 	  struct rte_eth_dev_info dev_info;
 
@@ -195,10 +194,6 @@ static u32 dpdk_flag_change (vnet_main_t * vnm,
     }
   return old;
 }
-
-#ifdef NETMAP
-extern int rte_netmap_probe(void);
-#endif
 
 void
 dpdk_device_lock_init(dpdk_device_t * xd)
@@ -266,11 +261,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 
   vec_validate_aligned (dm->workers, tm->n_vlib_mains - 1,
                         CLIB_CACHE_LINE_BYTES);
-
-#ifdef NETMAP
-  if(rte_netmap_probe() < 0)
-    return clib_error_return (0, "rte netmap probe failed");
-#endif
 
   nports = rte_eth_dev_count();
   if (nports < 1) 
@@ -404,7 +394,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    break;
 
           /* Cisco VIC */
-          case VNET_DPDK_PMD_VICE:
           case VNET_DPDK_PMD_ENIC:
             rte_eth_link_get_nowait(i, &l);
 	    xd->nb_rx_desc = DPDK_NB_RX_DESC_ENIC;
@@ -494,14 +483,6 @@ dpdk_lib_init (dpdk_main_t * dm)
             xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
         }
 
-  #ifdef NETMAP
-	if(strncmp(dev_info.driver_name, "vale", 4) == 0
-	     || strncmp(dev_info.driver_name, "netmap", 6) == 0)
-          {
-            xd->pmd = VNET_DPDK_PMD_NETMAP;
-            xd->port_type = VNET_DPDK_PORT_TYPE_NETMAP;
-          }
-  #endif
 	if (devconf->num_rx_desc)
 	  xd->nb_rx_desc = devconf->num_rx_desc;
 
@@ -664,8 +645,7 @@ dpdk_lib_init (dpdk_main_t * dm)
        *            driver to dynamically change the mtu.  If/when the 
        *            VIC firmware gets fixed, then this should be removed.
        */
-      if (xd->pmd == VNET_DPDK_PMD_VICE ||
-          xd->pmd == VNET_DPDK_PMD_ENIC)
+      if (xd->pmd == VNET_DPDK_PMD_ENIC)
 	{
 	  /*
 	   * Initialize mtu to what has been set by CIMC in the firmware cfg.
@@ -941,10 +921,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u32 log_level;
   int ret, i;
   int num_whitelisted = 0;
-#ifdef NETMAP
-  int rxrings, txrings, rxslots, txslots, txburst;
-  char * nmnam;
-#endif
   u8 no_pci = 0;
   u8 no_huge = 0;
   u8 huge_dir = 0;
@@ -1001,28 +977,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  num_whitelisted++;
 	}
-
-#ifdef NETMAP
-     else if (unformat(input, "netmap %s/%d:%d/%d:%d/%d",
-                  &nmname, &rxrings, &rxslots, &txrings, &txslots, &txburst)) {
-        char * rv;
-        rv = (char *)
-          eth_nm_args(nmname, rxrings, rxslots, txrings, txslots, txburst);
-        if (rv) {
-          error = clib_error_return (0, "%s", rv);
-          goto done;
-        }
-      }else if (unformat(input, "netmap %s", &nmname)) {
-        char * rv;
-        rv = (char *)
-          eth_nm_args(nmname, 0, 0, 0, 0, 0);
-        if (rv) {
-          error = clib_error_return (0, "%s", rv);
-          goto done;
-        }
-      }
-#endif
-
       else if (unformat (input, "num-mbufs %d", &conf->num_mbufs))
         ;
       else if (unformat (input, "kni %d", &conf->num_kni))

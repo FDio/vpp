@@ -24,7 +24,6 @@
 #include "dpdk_priv.h"
 #include <vppinfra/error.h>
 
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
 #define foreach_dpdk_counter                    \
   _ (tx_frames_ok, opackets)                    \
   _ (tx_bytes_ok, obytes)                       \
@@ -39,30 +38,6 @@
   _ (rx_no_bufs, rx_nombuf)                     \
   _ (rx_loopback_frames_ok, ilbpackets)         \
   _ (rx_loopback_bytes_ok, ilbbytes)
-#else
-#define foreach_dpdk_counter                    \
-  _ (tx_frames_ok, opackets)                    \
-  _ (tx_bytes_ok, obytes)                       \
-  _ (tx_errors, oerrors)                        \
-  _ (tx_loopback_frames_ok, olbpackets)         \
-  _ (tx_loopback_bytes_ok, olbbytes)            \
-  _ (rx_frames_ok, ipackets)                    \
-  _ (rx_bytes_ok, ibytes)                       \
-  _ (rx_errors, ierrors)                        \
-  _ (rx_missed, imissed)                        \
-  _ (rx_bad_crc, ibadcrc)                       \
-  _ (rx_bad_length, ibadlen)                    \
-  _ (rx_multicast_frames_ok, imcasts)           \
-  _ (rx_no_bufs, rx_nombuf)                     \
-  _ (rx_filter_match, fdirmatch)                \
-  _ (rx_filter_miss, fdirmiss)                  \
-  _ (tx_pause_xon, tx_pause_xon)                \
-  _ (rx_pause_xon, rx_pause_xon)                \
-  _ (tx_pause_xoff, tx_pause_xoff)              \
-  _ (rx_pause_xoff, rx_pause_xoff)              \
-  _ (rx_loopback_frames_ok, ilbpackets)         \
-  _ (rx_loopback_bytes_ok, ilbbytes)
-#endif
 
 #define foreach_dpdk_q_counter                  \
   _ (rx_frames_ok, q_ipackets)                  \
@@ -109,8 +84,6 @@
   _(DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, "outer-ipv4-cksum") \
   _(DEV_TX_OFFLOAD_QINQ_INSERT, "qinq-insert")
 
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 1, 0, 0)
-
 #define foreach_dpdk_pkt_rx_offload_flag                                \
   _ (PKT_RX_VLAN_PKT, "RX packet is a 802.1q VLAN packet")              \
   _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                 \
@@ -156,23 +129,6 @@
   _ (INNER_L4, SCTP, "Inner SCTP (Stream Control Transmission Protocol) packet") \
   _ (INNER_L4, ICMP, "Inner ICMP packet")                               \
   _ (INNER_L4, NONFRAG, "Inner non-fragmented IP packet")
-
-#else
-#define foreach_dpdk_pkt_rx_offload_flag                                \
-  _ (PKT_RX_VLAN_PKT, "RX packet is a 802.1q VLAN packet")              \
-  _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                 \
-  _ (PKT_RX_FDIR, "RX packet with FDIR infos")                          \
-  _ (PKT_RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")              \
-  _ (PKT_RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")              \
-  _ (PKT_RX_IPV4_HDR, "RX packet with IPv4 header")                     \
-  _ (PKT_RX_IPV4_HDR_EXT, "RX packet with extended IPv4 header")        \
-  _ (PKT_RX_IPV6_HDR, "RX packet with IPv6 header")                     \
-  _ (PKT_RX_IPV6_HDR_EXT, "RX packet with extended IPv6 header")        \
-  _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")          \
-  _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")
-
-#define foreach_dpdk_pkt_type /* Dummy */
-#endif /* RTE_VERSION */
 
 #define foreach_dpdk_pkt_tx_offload_flag                                \
   _ (PKT_TX_VLAN_PKT, "TX packet is a 802.1q VLAN packet")              \
@@ -241,12 +197,6 @@ u8 * format_dpdk_device_name (u8 * s, va_list * args)
     case VNET_DPDK_PORT_TYPE_ETH_SWITCH:
       device_name = "EthernetSwitch";
       break;
-
-  #ifdef NETMAP
-    case VNET_DPDK_PORT_TYPE_NETMAP:
-	rte_eth_dev_info_get(i, &dev_info);
-	return format(s, "netmap:%s", dev_info.driver_name);
-  #endif
 
     case VNET_DPDK_PORT_TYPE_AF_PACKET:
       rte_eth_dev_info_get(i, &dev_info);
@@ -332,7 +282,6 @@ static u8 * format_dpdk_device_type (u8 * s, va_list * args)
 	dev_type = "Intel 82599";
 	break;
 
-    case VNET_DPDK_PMD_VICE:
     case VNET_DPDK_PMD_ENIC:
 	dev_type = "Cisco VIC";
 	break;
@@ -344,12 +293,6 @@ static u8 * format_dpdk_device_type (u8 * s, va_list * args)
     case VNET_DPDK_PMD_VMXNET3:
 	dev_type = "VMware VMXNET3";
 	break;
-
-#ifdef NETMAP
-    case VNET_DPDK_PMD_NETMAP:
-	dev_type = "Netmap/Vale";
-	break;
-#endif
 
     case VNET_DPDK_PMD_AF_PACKET:
 	dev_type = "af_packet";

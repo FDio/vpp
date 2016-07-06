@@ -86,7 +86,6 @@ typedef enum {
   _ ("rte_i40e_pmd", I40E)        \
   _ ("rte_i40evf_pmd", I40EVF)    \
   _ ("rte_virtio_pmd", VIRTIO)    \
-  _ ("rte_vice_pmd", VICE)        \
   _ ("rte_enic_pmd", ENIC)        \
   _ ("rte_vmxnet3_pmd", VMXNET3)  \
   _ ("AF_PACKET PMD", AF_PACKET)  \
@@ -100,9 +99,6 @@ typedef enum {
 #define _(s,f) VNET_DPDK_PMD_##f,
   foreach_dpdk_pmd
 #undef _
-#ifdef NETMAP
-  VNET_DPDK_PMD_NETMAP,
-#endif
   VNET_DPDK_PMD_UNKNOWN, /* must be last */
 } dpdk_pmd_t;
 
@@ -112,9 +108,6 @@ typedef enum {
   VNET_DPDK_PORT_TYPE_ETH_40G,
   VNET_DPDK_PORT_TYPE_ETH_BOND,
   VNET_DPDK_PORT_TYPE_ETH_SWITCH,
-#ifdef NETMAP
-  VNET_DPDK_PORT_TYPE_NETMAP,
-#endif
   VNET_DPDK_PORT_TYPE_AF_PACKET,
   VNET_DPDK_PORT_TYPE_UNKNOWN,
 } dpdk_port_type_t;
@@ -142,9 +135,7 @@ typedef struct {
   int callfd;
   int kickfd;
   int errfd;
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
   int enabled;
-#endif
   u32 callfd_idx;
   u32 n_since_last_int;
   f64 int_deadline;
@@ -164,11 +155,7 @@ typedef struct {
 
   u64 feature_mask;
   u32 num_vrings;
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
   dpdk_vu_vring vrings[VHOST_MAX_QUEUE_PAIRS * 2];
-#else
-  dpdk_vu_vring vrings[2];
-#endif
   u64 region_addr[VHOST_MEMORY_MAX_NREGIONS];
   u32 region_fd[VHOST_MEMORY_MAX_NREGIONS];
   u64 region_offset[VHOST_MEMORY_MAX_NREGIONS];
