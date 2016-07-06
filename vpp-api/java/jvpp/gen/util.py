@@ -124,7 +124,7 @@ jni_field_accessors = {
 # http://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/types.html
 vpp_2_jni_type_mapping = {'u8': 'jbyte',  # fixme
                           'i8': 'jbyte',
-                          'u16': 'jchar',
+                          'u16': 'jshort',
                           'i16': 'jshort',
                           'u32': 'jint',  # fixme
                           'i32': 'jint',
