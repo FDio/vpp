@@ -75,12 +75,14 @@ u8 * format_ethernet_header_with_length (u8 * s, va_list * args)
   ethernet_header_t * e = &m->ethernet;
   ethernet_vlan_header_t * v;
   ethernet_type_t type = clib_net_to_host_u16 (e->type);
+  ethernet_type_t vlan_type[ARRAY_LEN(m->vlan)];
   u32 n_vlan = 0, i, header_bytes;
   uword indent;
 
-  while (type == ETHERNET_TYPE_VLAN
+  while ((type == ETHERNET_TYPE_VLAN || type == ETHERNET_TYPE_DOT1AD)
 	 && n_vlan < ARRAY_LEN (m->vlan))
     {
+      vlan_type[n_vlan] = type;
       v = m->vlan + n_vlan;
       type = clib_net_to_host_u16 (v->type);
       n_vlan++;
@@ -104,7 +106,11 @@ u8 * format_ethernet_header_with_length (u8 * s, va_list * args)
       u32 cfi = (v >> 12) & 1;
       u32 pri = (v >> 13);
 
-      s = format (s, " vlan %d", vid);
+      if (vlan_type[i] == ETHERNET_TYPE_VLAN)
+	s = format (s, " vlan.1q %d", vid);
+      else
+	s = format (s, " vlan.1ad %d", vid);
+
       if (pri != 0)
 	s = format (s, " priority %d", pri);
       if (cfi != 0)
