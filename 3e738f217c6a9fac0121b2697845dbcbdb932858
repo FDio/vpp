@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_2be2d103",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 11008,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-06T16:43:09Z",
+      "side": 1,
+      "message": "I just noticed this line is doubled. Unfortunately, I missed it at first scan.",
+      "range": {
+        "startLine": 11008,
+        "startChar": 12,
+        "endLine": 11008,
+        "endChar": 20
+      },
+      "revId": "3e738f217c6a9fac0121b2697845dbcbdb932858",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
