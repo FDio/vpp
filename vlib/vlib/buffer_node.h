@@ -40,6 +40,31 @@
 #ifndef included_vlib_buffer_node_h
 #define included_vlib_buffer_node_h
 
+/** \file 
+    vlib buffer/node functions
+*/
+
+/** \brief Finish enqueueing two buffers forward in the graph
+ Standard dual loop boilerplate element. This is a MACRO,
+ with MULTIPLE SIDE EFFECTS. In the ideal case, 
+ <code>next_index == next0 == next1</code>,
+ which means that the speculative enqueue at the top of the dual loop
+ has correctly dealt with both packets. In that case, the macro does
+ nothing at all.
+ @param vm vlib_main_t pointer, varies by thread
+ @param node current node vlib_node_runtime_t pointer
+ @param next_index speculated next index used for both packets
+ @param to_next speculated vector pointer used for both packets
+ @param n_left_to_next number of slots left in speculated vector
+ @param bi0 first buffer index
+ @param bi1 second buffer index
+ @param next0 actual next index to be used for the first packet
+ @param next1 actual next index to be used for the second packet
+ @return next_index--speculative next index to be used for future packets
+ @return to_next--speculative frame to be used for future packets
+ @return n_left_to_next--number of slots left in speculative frame
+*/
+
 #define vlib_validate_buffer_enqueue_x2(vm,node,next_index,to_next,n_left_to_next,bi0,bi1,next0,next1) \
 do {									\
   int enqueue_code = (next0 != next_index) + 2*(next1 != next_index);	\
@@ -80,6 +105,23 @@ do {									\
     }									\
 } while (0)
 
+/** \brief Finish enqueueing one buffer forward in the graph
+ Standard single loop boilerplate element. This is a MACRO,
+ with MULTIPLE SIDE EFFECTS. In the ideal case, next_index == next0,
+ which means that the speculative enqueue at the top of the single loop
+ has correctly dealt with the packet in hand. In that case, the macro does
+ nothing at all.
+ @param vm vlib_main_t pointer, varies by thread
+ @param node current node vlib_node_runtime_t pointer
+ @param next_index speculated next index used for both packets
+ @param to_next speculated vector pointer used for both packets
+ @param n_left_to_next number of slots left in speculated vector
+ @param bi0 first buffer index
+ @param next0 actual next index to be used for the first packet
+ @return next_index--speculative next index to be used for future packets
+ @return to_next-- speculative frame to be used for future packets
+ @return n_left_to_next--number of slots left in speculative frame
+*/
 #define vlib_validate_buffer_enqueue_x1(vm,node,next_index,to_next,n_left_to_next,bi0,next0) \
 do {									\
   if (PREDICT_FALSE (next0 != next_index))				\
