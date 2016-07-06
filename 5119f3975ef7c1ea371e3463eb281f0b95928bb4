@@ -22,6 +22,30 @@
       "revId": "5119f3975ef7c1ea371e3463eb281f0b95928bb4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_2bf891e4",
+        "filename": "vnet/vnet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 33
+      },
+      "writtenOn": "2016-07-06T14:37:19Z",
+      "side": 1,
+      "message": "\u003e If the parent interface is up and the sub down, can we set the sub up?\n\nYeah we can change it\u0027s state to up. \n\n\u003e Perhaps you can talk me through it. \n\nSure, it took me a bit of time to wrap my head around it as well. So, the flags variable will hold the state of the interface to which we want to change it to. So if we\u0027re bringing down the interface, the LSB will be set to zero. The si_sup-\u003eflags \u0026 mask is to check the current up/down (or other flags) state of the parent interface. The first check on line 358 is what was triggering the issue in the first place as it was not looking at all possible states of the interface. So if we\u0027re bringing up the soft interface, the flags variable will be set to 1, and if the parent interface is up, the si_sup-\u003eflags \u0026 mask, bit will be set to 1. Line 358 will then evaluate as zero.\nI kept the line there in case it needs to check for other flags than the admin state. Line 359 is my change where it checks for the condition of of the bug. There\u0027s another check that should be done, but it\u0027s not in this section, and it\u0027s possible to bring down the parent interface whilst there are soft interfaces still up and running (another patch maybe?).",
+      "parentUuid": "9a0e1d27_9da9237e",
+      "range": {
+        "startLine": 357,
+        "startChar": 0,
+        "endLine": 359,
+        "endChar": 85
+      },
+      "revId": "5119f3975ef7c1ea371e3463eb281f0b95928bb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
