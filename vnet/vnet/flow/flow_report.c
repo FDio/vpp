@@ -211,6 +211,17 @@ int vnet_flow_report_add_del (flow_report_main_t *frm,
   return 0;
 }
 
+void vnet_flow_reports_reset (flow_report_main_t * frm)
+{
+  flow_report_t *fr;
+  vec_foreach (fr, frm->reports)
+    {
+	  fr->sequence_number = 0;
+      fr->update_rewrite = 1;
+      fr->last_template_sent = 0;
+    }
+}
+
 static clib_error_t *
 set_ipfix_command_fn (vlib_main_t * vm,
 		 unformat_input_t * input,
@@ -262,6 +273,12 @@ set_ipfix_command_fn (vlib_main_t * vm,
 
   if (path_mtu < 68)
 	return clib_error_return (0, "too small path-mtu value, minimum is 68");
+
+  /* Reset report streams if we are reconfiguring IP addresses */
+  if (frm->ipfix_collector.as_u32 != collector.as_u32 ||
+      frm->src_address.as_u32 != src.as_u32 ||
+      frm->collector_port != collector_port)
+    vnet_flow_reports_reset(frm);
 
   frm->ipfix_collector.as_u32 = collector.as_u32;
   frm->collector_port = collector_port;
