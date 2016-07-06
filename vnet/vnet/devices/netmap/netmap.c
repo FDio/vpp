@@ -79,6 +79,29 @@ close_netmap_if(netmap_main_t * nm, netmap_if_t * nif)
 }
 
 int
+netmap_worker_thread_enable()
+{
+  /* if worker threads are enabled, switch to polling mode */
+  foreach_vlib_main (
+  ({
+      vlib_node_set_state(this_vlib_main, netmap_input_node.index, VLIB_NODE_STATE_POLLING);
+  }));
+
+  return 0;
+}
+
+int
+netmap_worker_thread_disable()
+{
+  foreach_vlib_main (
+  ({
+      vlib_node_set_state(this_vlib_main, netmap_input_node.index, VLIB_NODE_STATE_INTERRUPT);
+  }));
+
+  return 0;
+}
+
+int
 netmap_create_if(vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
 		 u8 is_pipe, u8 is_master, u32 *sw_if_index)
 {
@@ -202,6 +225,9 @@ netmap_create_if(vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
   if (sw_if_index)
     *sw_if_index = nif->sw_if_index;
 
+  if (tm->n_vlib_mains > 1 && pool_elts(nm->interfaces) == 1)
+    netmap_worker_thread_enable();
+
   return 0;
 
 error:
@@ -216,6 +242,7 @@ netmap_delete_if(vlib_main_t *vm, u8 *host_if_name)
   netmap_main_t *nm = &netmap_main;
   netmap_if_t *nif;
   uword *p;
+  vlib_thread_main_t * tm = vlib_get_thread_main();
 
   p = mhash_get(&nm->if_index_by_host_if_name, host_if_name);
   if (p == NULL) {
@@ -230,6 +257,10 @@ netmap_delete_if(vlib_main_t *vm, u8 *host_if_name)
   ethernet_delete_interface(vnm, nif->hw_if_index);
 
   close_netmap_if(nm, nif);
+
+  if (tm->n_vlib_mains > 1 && pool_elts(nm->interfaces) == 0)
+    netmap_worker_thread_disable();
+
   return 0;
 }
 
@@ -255,13 +286,6 @@ netmap_init (vlib_main_t * vm)
       nm->input_cpu_first_index = tr->first_index;
       nm->input_cpu_count = tr->count;
     }
-
-  /* if worker threads are enabled, switch to polling mode */
-  if (tm->n_vlib_mains > 1)
-    foreach_vlib_main (
-    ({
-        vlib_node_set_state(this_vlib_main, netmap_input_node.index, VLIB_NODE_STATE_POLLING);
-    }));
 
   mhash_init_vec_string (&nm->if_index_by_host_if_name, sizeof (uword));
 
