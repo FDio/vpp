@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_203af036",
+        "filename": "vnet/vnet/ethernet/arp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-07-06T11:22:28Z",
+      "side": 1,
+      "message": "Please use prevailing bracing style.",
+      "revId": "8c77c610eee3a7b09be46c46414a3cc9457fc637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
