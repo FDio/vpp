@@ -79,7 +79,6 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
       unsigned socket_id = rte_socket_id();
       u32 offset = 0;
 
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
       offset = queue_id * VIRTIO_QNUM;
 
       struct vhost_virtqueue *vq =
@@ -87,10 +86,6 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 
       if (PREDICT_FALSE(!vq->enabled))
         return 0;
-#else
-      if (PREDICT_FALSE(!xd->vu_is_running))
-        return 0;
-#endif
 
       struct rte_mbuf **pkts = xd->rx_vectors[queue_id];
       while (n_left) {
@@ -216,15 +211,8 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
                                          xd->stats.imissed -
                                          xd->last_stats.imissed);
         }
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
       rxerrors = xd->stats.ierrors;
       last_rxerrors = xd->last_stats.ierrors;
-#else
-      rxerrors = xd->stats.ibadcrc
-        + xd->stats.ibadlen + xd->stats.ierrors;
-      last_rxerrors = xd->last_stats.ibadcrc
-        + xd->last_stats.ibadlen + xd->last_stats.ierrors;
-#endif
 
       if (PREDICT_FALSE (rxerrors != last_rxerrors))
         {

@@ -362,7 +362,6 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
             queue_id = 0;
             while (__sync_lock_test_and_set (xd->lockp[queue_id], 1));
           }
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 2, 0, 0)
           else {
               dpdk_device_and_queue_t * dq;
               vec_foreach (dq, dm->devices_by_cpu[vm->cpu_index])
@@ -373,7 +372,6 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
               assert (dq);
               offset = dq->queue_id * VIRTIO_QNUM;
           }
-#endif
           if (PREDICT_TRUE(tx_head > tx_tail)) 
             {
               int i; u32 bytes = 0;

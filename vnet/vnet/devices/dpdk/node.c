@@ -58,21 +58,13 @@ static char * dpdk_error_strings[] = {
 always_inline int
 dpdk_mbuf_is_ip4(struct rte_mbuf *mb)
 {
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 1, 0, 0)
   return RTE_ETH_IS_IPV4_HDR(mb->packet_type) != 0;
-#else
-  return (mb_flags & (PKT_RX_IPV4_HDR | PKT_RX_IPV4_HDR_EXT)) != 0;
-#endif
 }
 
 always_inline int
 dpdk_mbuf_is_ip6(struct rte_mbuf *mb)
 {
-#if RTE_VERSION >= RTE_VERSION_NUM(2, 1, 0, 0)
   return RTE_ETH_IS_IPV6_HDR(mb->packet_type) != 0;
-#else
-  return (mb_flags & (PKT_RX_IPV6_HDR | PKT_RX_IPV6_HDR_EXT)) != 0;
-#endif
 }
 
 always_inline int
