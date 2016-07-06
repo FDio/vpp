@@ -332,7 +332,7 @@ typedef struct {
 
   /*
    * format interface names ala xxxEthernet%d/%d/%d instead of
-   * xxxEthernet%x/%x/%x. For VIRL.
+   * xxxEthernet%x/%x/%x.
    */
   u8 interface_name_format_decimal;
 

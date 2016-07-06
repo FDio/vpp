@@ -14,11 +14,6 @@ AC_ARG_WITH(dpdk,
             [with_dpdk=1],
             [with_dpdk=0])
 
-AC_ARG_WITH(virl,
-            AC_HELP_STRING([--with-virl],[Compile for virl citizenship]),
-            [with_virl=1],
-            [with_virl=0])
-
 AC_ARG_WITH(ipsec,
             AC_HELP_STRING([--without-ipsec],[Disable ipsec]),
             [with_ipsec=0],
@@ -36,9 +31,6 @@ AC_ARG_ENABLE(tests,
 
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AC_SUBST(DPDK,[-DDPDK=${with_dpdk}])
-
-AM_CONDITIONAL(WITH_VIRL, test "$with_virl" = "1")
-AC_SUBST(VIRL,[-DVIRL=${with_virl}])
 
 AM_CONDITIONAL(WITH_IPSEC, test "$with_ipsec" = "1")
 AC_SUBST(IPSEC,[-DIPSEC=${with_ipsec}])

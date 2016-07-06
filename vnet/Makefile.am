@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @DPDK@ @VIRL@ @IPSEC@ @IPV6SR@
+AM_CFLAGS = -Wall @DPDK@ @IPSEC@ @IPV6SR@
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
