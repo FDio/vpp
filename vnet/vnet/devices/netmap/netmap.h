@@ -91,6 +91,9 @@ typedef struct {
 
   /* total cpu count */
   u32 input_cpu_count;
+
+  /* interfaces count */
+  u32 int_count;
 } netmap_main_t;
 
 netmap_main_t netmap_main;
@@ -101,6 +104,8 @@ int netmap_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
                      u8 is_pipe, u8 is_master, u32 *sw_if_index);
 int netmap_delete_if(vlib_main_t * vm, u8 * host_if_name);
 
+int netmap_worker_thread_enable(void);
+int netmap_worker_thread_disable(void);
 
 /* Macros and helper functions from sys/net/netmap_user.h */
 
