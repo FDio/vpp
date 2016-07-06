@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_eb917953",
+        "filename": "vlib/vlib/buffer_node.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-06T19:11:12Z",
+      "side": 1,
+      "message": "It\u0027s cosmetic but I\u0027d be inclined to put expressions like this inside \u003ccode\u003e blocks so they contrast with their surroundings. For single-word expressions (such as variables or constants that don\u0027t get auto-detected) then using \u0027\\c\u0027 before it would do the trick.",
+      "range": {
+        "startLine": 49,
+        "startChar": 48,
+        "endLine": 49,
+        "endChar": 76
+      },
+      "revId": "9c239df7fdd40482941113e773b2397f15d1b21a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_0bd14dfb",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1019,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-06T19:11:12Z",
+      "side": 1,
+      "message": "\u003ccode\u003evnet_buffer(b)-\u003esw_if_index[VLIB_RX] \u003d sw_if_index\u003c/code\u003e",
+      "range": {
+        "startLine": 1019,
+        "startChar": 0,
+        "endLine": 1019,
+        "endChar": 50
+      },
+      "revId": "9c239df7fdd40482941113e773b2397f15d1b21a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
