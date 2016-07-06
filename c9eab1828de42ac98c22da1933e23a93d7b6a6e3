@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_0096cc94",
+        "filename": "vnet/vnet/devices/netmap/netmap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-06T09:22:18Z",
+      "side": 1,
+      "message": "Why not using pool_elts(nm-\u003einterfaces) ?",
+      "range": {
+        "startLine": 240,
+        "startChar": 30,
+        "endLine": 240,
+        "endChar": 48
+      },
+      "revId": "c9eab1828de42ac98c22da1933e23a93d7b6a6e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_e092b89e",
+        "filename": "vnet/vnet/devices/netmap/netmap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-06T09:22:18Z",
+      "side": 1,
+      "message": "not needed if pool_elts(...) is used",
+      "range": {
+        "startLine": 243,
+        "startChar": 0,
+        "endLine": 243,
+        "endChar": 21
+      },
+      "revId": "c9eab1828de42ac98c22da1933e23a93d7b6a6e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_60eea824",
+        "filename": "vnet/vnet/devices/netmap/netmap.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-06T09:22:18Z",
+      "side": 1,
+      "message": "Not needed if pool_elts(nm-\u003einterfaces) is used...",
+      "range": {
+        "startLine": 96,
+        "startChar": 15,
+        "endLine": 96,
+        "endChar": 16
+      },
+      "revId": "c9eab1828de42ac98c22da1933e23a93d7b6a6e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_80e9bc1c",
+        "filename": "vnet/vnet/devices/netmap/netmap.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-06T09:22:18Z",
+      "side": 1,
+      "message": "Why do you need this, those functions are defined and used in the same file....",
+      "range": {
+        "startLine": 107,
+        "startChar": 0,
+        "endLine": 108,
+        "endChar": 39
+      },
+      "revId": "c9eab1828de42ac98c22da1933e23a93d7b6a6e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
