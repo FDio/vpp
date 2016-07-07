@@ -64,6 +64,8 @@ help:
 	@echo " wipe-release        - wipe all products of release build "
 	@echo " build               - build debug binaries"
 	@echo " build-release       - build release binaries"
+	@echo " plugins             - build debug plugin binaries"
+	@echo " plugins-release     - build release plugin binaries"
 	@echo " rebuild             - wipe and build debug binares"
 	@echo " rebuild-release     - wipe and build release binares"
 	@echo " run                 - run debug binary"
@@ -75,6 +77,7 @@ help:
 	@echo " pkg-deb             - build DEB packages"
 	@echo " pkg-rpm             - build RPM packages"
 	@echo " ctags               - (re)generate ctags database"
+	@echo " gtags               - (re)generate gtags database"
 	@echo " cscope              - (re)generate cscope database"
 	@echo " doxygen             - (re)generate documentation"
 	@echo " wipe-doxygen        - wipe all generated documentation"
@@ -174,13 +177,13 @@ ifeq ("$(wildcard $(STARTUP_CONF))","")
 define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
 	@echo "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
-	@sudo rm -f /dev/shm/vpe-api /dev/shm/db /dev/shm/global_vm
-	@cd $(STARTUP_DIR) && sudo $(1) $(MINIMAL_STARTUP_CONF)
+	@cd $(STARTUP_DIR) && \
+	  sudo $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) plugin_path $(1)/plugins/lib64
 endef
 else
 define run
-	@sudo rm -f /dev/shm/vpe-api /dev/shm/db /dev/shm/global_vm
-	@cd $(STARTUP_DIR) && sudo $(1) -c $(STARTUP_CONF)
+	@cd $(STARTUP_DIR) && \
+	  sudo $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') plugin_path $(1)/plugins/lib64
 endef
 endif
 
@@ -192,16 +195,16 @@ endif
 .FORCE:
 
 run:
-	$(call run, $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp)
+	$(call run, $(BR)/install-$(PLATFORM)_debug-native)
 
 run-release:
-	$(call run, $(BR)/install-$(PLATFORM)-native/vpp/bin/vpp)
+	$(call run, $(BR)/install-$(PLATFORM)-native)
 
 debug:
-	$(call run, $(GDB) $(GDB_ARGS) --args $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp)
+	$(call run, $(BR)/install-$(PLATFORM)_debug-native,$(GDB) $(GDB_ARGS) --args)
 
 debug-release:
-	$(call run, $(GDB) $(GDB_ARGS) --args $(BR)/install-$(PLATFORM)-native/vpp/bin/vpp)
+	$(call run, $(BR)/install-$(PLATFORM)-native,$(GDB) $(GDB_ARGS) --args)
 
 build-vat:
 	$(call make,$(PLATFORM)_debug,vpp-api-test-install)
