@@ -558,6 +558,48 @@ static inline void poll_rate_limit(dpdk_main_t * dm)
   }
 }
 
+/** \brief Main DPDK input node
+    @node dpdk-input
+
+    This is the main DPDK input node: across each assigned interface,
+    call rte_eth_rx_burst(...) or similar to obtain a vector of
+    packets to process. Handle early packet discard. Derive @c
+    vlib_buffer_t metadata from <code>struct rte_mbuf</code> metadata,
+    Depending on the resulting metadata: adjust <code>b->current_data,
+    b->current_length </code> and dispatch directly to
+    ip4-input-no-checksum, or ip6-input. Trace the packet if required.
+
+    @param vm vlib_main_t corresponding to the current thread
+    @param node vlib_node_runtime_t
+    @param frame vlib_frame_t input-node, not used.
+
+    @par Graph mechanics: buffer metadata, next index usage
+
+    @em Uses:
+    - <code>struct rte_mbuf mb->ol_flags</code>
+        - PKT_EXT_RX_PKT_ERROR, PKT_EXT_RX_BAD_FCS
+        PKT_RX_IP_CKSUM_BAD, PKT_RX_L4_CKSUM_BAD
+    - <code> RTE_ETH_IS_xxx_HDR(mb->packet_type) </code>
+        - packet classification result
+
+    @em Sets:
+    - <code>b->error</code> if the packet is to be dropped immediately
+    - <code>b->current_data, b->current_length</code>
+        - adjusted as needed to skip the L2 header in  direct-dispatch cases
+    - <code>vnet_buffer(b)->sw_if_index[VLIB_RX]</code>
+        - rx interface sw_if_index
+    - <code>vnet_buffer(b)->sw_if_index[VLIB_TX] = ~0</code>
+        - required by ipX-lookup
+    - <code>b->flags</code>
+        - to indicate multi-segment pkts (VLIB_BUFFER_NEXT_PRESENT), etc.
+
+    <em>Next Nodes:</em>
+    - Static arcs to: error-drop, ethernet-input,
+      ip4-input-no-checksum, ip6-input, mpls-gre-input 
+    - per-interface redirection, controlled by
+      <code>xd->per_interface_next_index</code>
+*/
+
 static uword
 dpdk_input (vlib_main_t * vm,
 	    vlib_node_runtime_t * node,

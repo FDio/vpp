@@ -328,6 +328,41 @@ ip4_input_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+/** \brief IPv4 input node.
+    @node ip4-input
+
+    This is the IPv4 input node: validates ip4 header checksums,
+    verifies ip header lengths, discards pkts with expired TTLs,
+    and sends pkts to the set of ip feature nodes configured on
+    the rx interface.
+
+    @param vm vlib_main_t corresponding to the current thread
+    @param node vlib_node_runtime_t
+    @param frame vlib_frame_t whose contents should be dispatched
+
+    @par Graph mechanics: buffer metadata, next index usage
+
+    @em Uses:
+    - ip_config_main_t cm corresponding to each pkt's dst address unicast / 
+      multicast status.
+    - <code>b->current_config_index</code> corresponding to each pkt's
+      rx sw_if_index. 
+         - This sets the per-packet graph trajectory, ensuring that
+           each packet visits the per-interface features in order.
+
+    - <code>vnet_buffer(b)->sw_if_index[VLIB_RX]</code>
+        - Indicates the @c sw_if_index value of the interface that the
+	  packet was received on.
+
+    @em Sets:
+    - <code>vnet_buffer(b)->ip.adj_index[VLIB_TX]</code>
+        - The lookup result adjacency index.
+
+    <em>Next Indices:</em>
+    - Dispatches pkts to the (first) feature node:
+      <code> vnet_get_config_data (... &next0 ...); </code>
+      or @c error-drop 
+*/
 static uword
 ip4_input (vlib_main_t * vm,
 	   vlib_node_runtime_t * node,

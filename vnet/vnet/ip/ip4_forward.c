@@ -2919,6 +2919,38 @@ ip4_rewrite_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+
+/** \brief IPv4 transit rewrite node.
+    @node ip4-rewrite-transit
+
+    This is the IPv4 transit-rewrite node: decrement TTL, fix the ipv4
+    header checksum, fetch the ip adjacency, check the outbound mtu,
+    apply the adjacency rewrite, and send pkts to the adjacency
+    rewrite header's rewrite_next_index.
+
+    @param vm vlib_main_t corresponding to the current thread
+    @param node vlib_node_runtime_t
+    @param frame vlib_frame_t whose contents should be dispatched
+
+    @par Graph mechanics: buffer metadata, next index usage
+
+    @em Uses:
+    - <code>vnet_buffer(b)->ip.adj_index[VLIB_TX]</code>
+        - the rewrite adjacency index
+    - <code>adj->lookup_next_index</code>
+        - Must be IP_LOOKUP_NEXT_REWRITE or IP_LOOKUP_NEXT_ARP, otherwise
+          the packet will be dropped. 
+    - <code>adj->rewrite_header</code>
+        - Rewrite string length, rewrite string, next_index
+
+    @em Sets:
+    - <code>b->current_data, b->current_length</code>
+        - Updated net of applying the rewrite string
+
+    <em>Next Indices:</em>
+    - <code> adj->rewrite_header.next_index </code>
+      or @c error-drop 
+*/
 static uword
 ip4_rewrite_transit (vlib_main_t * vm,
 		     vlib_node_runtime_t * node,
@@ -2927,6 +2959,39 @@ ip4_rewrite_transit (vlib_main_t * vm,
   return ip4_rewrite_inline (vm, node, frame,
 			     /* rewrite_for_locally_received_packets */ 0);
 }
+
+/** \brief IPv4 local rewrite node.
+    @node ip4-rewrite-local
+
+    This is the IPv4 local rewrite node. Fetch the ip adjacency, check
+    the outbound interface mtu, apply the adjacency rewrite, and send
+    pkts to the adjacency rewrite header's rewrite_next_index. Deal
+    with hemorrhoids of the form "some clown sends an icmp4 w/ src =
+    dst = interface addr."
+
+    @param vm vlib_main_t corresponding to the current thread
+    @param node vlib_node_runtime_t
+    @param frame vlib_frame_t whose contents should be dispatched
+
+    @par Graph mechanics: buffer metadata, next index usage
+
+    @em Uses:
+    - <code>vnet_buffer(b)->ip.adj_index[VLIB_RX]</code>
+        - the rewrite adjacency index
+    - <code>adj->lookup_next_index</code>
+        - Must be IP_LOOKUP_NEXT_REWRITE or IP_LOOKUP_NEXT_ARP, otherwise
+          the packet will be dropped. 
+    - <code>adj->rewrite_header</code>
+        - Rewrite string length, rewrite string, next_index
+
+    @em Sets:
+    - <code>b->current_data, b->current_length</code>
+        - Updated net of applying the rewrite string
+
+    <em>Next Indices:</em>
+    - <code> adj->rewrite_header.next_index </code>
+      or @c error-drop 
+*/
 
 static uword
 ip4_rewrite_local (vlib_main_t * vm,
