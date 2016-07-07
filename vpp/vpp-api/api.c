@@ -5010,6 +5010,8 @@ vl_api_lisp_add_del_map_request_itr_rlocs_t_handler
 typedef CLIB_PACKED(struct
 {
   u8 is_ip4; /**< is locator an IPv4 address */
+  u8 priority; /**< locator priority */
+  u8 weight;   /**< locator weight */
   u8 addr[16]; /**< IPv4/IPv6 address */
 }) rloc_t;
 
@@ -5087,9 +5089,8 @@ vl_api_lisp_add_del_remote_mapping_t_handler (
                        r->is_ip4 ? IP4 : IP6);
         gid_address_ippref_len(&rloc.address) = r->is_ip4 ? 32: 128;
         gid_address_type(&rloc.address) = GID_ADDR_IP_PREFIX;
-        /* TODO fix API to pass priority and weight */
-        rloc.priority = 1;
-        rloc.weight = 1;
+        rloc.priority = r->priority;
+        rloc.weight = r->weight;
         vec_add1 (rlocs, rloc);
     }
 
@@ -5181,9 +5182,8 @@ vl_api_lisp_add_del_adjacency_t_handler (
                        r->is_ip4 ? IP4 : IP6);
         gid_address_ippref_len(&rloc.address) = r->is_ip4 ? 32: 128;
         gid_address_type(&rloc.address) = GID_ADDR_IP_PREFIX;
-        /* TODO fix API to pass priority and weight */
-        rloc.priority = 1;
-        rloc.weight = 1;
+        rloc.priority = r->priority;
+        rloc.weight = r->weight;
         vec_add1 (a->locators, rloc);
     }
 
