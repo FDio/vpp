@@ -13,7 +13,8 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@
+AM_CFLAGS = -Wall
+AM_LDFLAGS = -module -shared -avoid-version
 
 ########################################
 # iOAM Proof of Transit
@@ -26,8 +27,6 @@ ioam_pot_plugin_la_SOURCES =			\
 	ioam/lib-pot/math64.h			\
 	ioam/lib-pot/pot_api.c
 
-ioam_pot_plugin_la_LDFLAGS = -module
-
 BUILT_SOURCES =					\
 	ioam/lib-pot/pot.api.h
 
@@ -38,7 +37,7 @@ SUFFIXES = .api.h .api
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
 
-nobase_include_HEADERS =			\
+noinst_HEADERS =				\
   ioam/lib-pot/pot_all_api_h.h			\
   ioam/lib-pot/pot_msg_enum.h			\
   ioam/lib-pot/pot.api.h			\
@@ -49,14 +48,14 @@ ioam_pot_test_plugin_la_SOURCES =		\
 	ioam/lib-pot/pot_test.c			\
 	ioam/lib-pot/pot_plugin.api.h
 
-ioam_pot_test_plugin_la_LDFLAGS = -module
+vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
+vpppluginsdir = ${libdir}/vpp_plugins
 
-lib_LTLIBRARIES = ioam_pot_plugin.la ioam_pot_test_plugin.la
+vppapitestplugins_LTLIBRARIES = ioam_pot_test_plugin.la
+vppplugins_LTLIBRARIES = ioam_pot_plugin.la
 
-if WITH_PLUGIN_TOOLKIT
+
+# Remove *.la files
 install-data-hook:
-	mkdir /usr/lib/vpp_plugins || true
-	mkdir /usr/lib/vpp_api_test_plugins || true
-	cp -L $(prefix)/lib/ioam_pot_plugin.so /usr/lib/vpp_plugins
-	cp -L $(prefix)/lib/ioam_pot_test_plugin.so /usr/lib/vpp_api_test_plugins
-endif
+	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
+	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))

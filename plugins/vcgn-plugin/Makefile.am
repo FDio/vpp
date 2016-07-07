@@ -13,7 +13,8 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@
+AM_CFLAGS = -Wall
+AM_LDFLAGS = -module -shared -avoid-version
 
 ########################################
 # Virtual Carrier Grade NAT
@@ -87,13 +88,10 @@ nobase_include_HEADERS =			\
 	vcgn/tcp_header_definitions.h		\
 	vcgn/vcgn_db.h
 
-libvcgn_plugin_la_LDFLAGS = -module
+vpppluginsdir = ${libdir}/vpp_plugins
 
-lib_LTLIBRARIES = libvcgn_plugin.la
+vppplugins_LTLIBRARIES = libvcgn_plugin.la
 
-if WITH_PLUGIN_TOOLKIT
+# Remove *.la files
 install-data-hook:
-	mkdir /usr/lib/vpp_plugins || true
-	mkdir /usr/lib/vpp_api_test_plugins || true
-	cp -L $(prefix)/lib/libvcgn_plugin.so /usr/lib/vpp_plugins
-endif
+	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
