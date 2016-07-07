@@ -12,7 +12,7 @@ ADD_TO_PATH="$build_root/tools/ccache-bin:$build_root/tools/bin"
 
 # Construct build-config.mk
 cd $build_root
-echo SOURCE_PATH = $wsroot $wsroot/plugins/ > build-config.mk
+echo SOURCE_PATH = $wsroot > build-config.mk
 echo 
 echo Saving PATH settings in `pwd`/path_setup
 echo Source this file later, as needed
