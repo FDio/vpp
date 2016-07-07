@@ -791,6 +791,9 @@ vnet_lisp_add_del_mapping (gid_address_t * deid, locator_t * rlocs, u8 action,
       ls_args->index = old_map->locator_set_index;
       /* delete locator set */
       vnet_lisp_add_del_locator_set (ls_args, 0);
+
+      /* return old mapping index */
+      res_map_index[0] = mi;
     }
 
   /* success */
