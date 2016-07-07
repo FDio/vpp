@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@
+AM_CFLAGS = -Wall
 
 ########################################
 # Virtual Carrier Grade NAT
@@ -89,11 +89,6 @@ nobase_include_HEADERS =			\
 
 libvcgn_plugin_la_LDFLAGS = -module
 
-lib_LTLIBRARIES = libvcgn_plugin.la
+vpppluginsdir = ${libdir}/vpp_plugins
 
-if WITH_PLUGIN_TOOLKIT
-install-data-hook:
-	mkdir /usr/lib/vpp_plugins || true
-	mkdir /usr/lib/vpp_api_test_plugins || true
-	cp -L $(prefix)/lib/libvcgn_plugin.so /usr/lib/vpp_plugins
-endif
+vppplugins_LTLIBRARIES = libvcgn_plugin.la
