@@ -491,11 +491,7 @@ vlib_buffer_chain_append_data(vlib_main_t *vm,
   u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm, free_list_index);
   ASSERT(n_buffer_bytes >= last->current_length + last->current_data);
   u16 len = clib_min(data_len, n_buffer_bytes - last->current_length - last->current_data);
-#if DPDK == 1
   clib_memcpy(vlib_buffer_get_current (last) + last->current_length, data, len);
-#else
-  clib_memcpy(vlib_buffer_get_current (last) + last->current_length, data, len);
-#endif
   vlib_buffer_chain_increase_length(first, last, len);
   return len;
 }
