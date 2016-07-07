@@ -356,24 +356,6 @@ u16 cnat_nfv9_pad_end_of_record_length (u16 record_length)
     return ((record_length + pad_value) & (~pad_value));
 }
 
-/* get first interface address */
-static ip4_address_t *
-ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index)
-{
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_interface_address_t * ia = 0;
-  ip4_address_t * result = 0;
-
-  foreach_ip_interface_address (lm, ia, sw_if_index,
-                                1 /* honor unnumbered */,
-  ({
-    ip4_address_t * a = ip_interface_address_get_address (lm, ia);
-    result = a;
-    break;
-  }));
-  return result;
-}
-
 void fill_ip_n_udp_hdr (u32 ipv4_addr, u16 port, 
                        cnat_nfv9_logging_info_t *nfv9_logging_info)
 { 
@@ -403,7 +385,7 @@ void fill_ip_n_udp_hdr (u32 ipv4_addr, u16 port,
     ip_header->dest_addr =  clib_host_to_net_u32(ipv4_addr);
     ip_length = vlib_buffer_length_in_chain (vm, b0);
     ip_header->total_len_bytes = clib_host_to_net_u16(pkt_len);
-    ia0 = ip4_interface_first_address(&ip4_main, nfv9_logging_info->i_vrf_id);
+    ia0 = ip4_interface_first_address(&ip4_main, nfv9_logging_info->i_vrf_id, 0);
     ip_header->src_addr =  ia0->as_u32;
     udp_header->src_port = clib_host_to_net_u16(src_port);
     udp_header->dest_port = clib_host_to_net_u16(port);
