@@ -79,6 +79,7 @@
 #include <vnet/devices/af_packet/af_packet.h>
 #include <vnet/policer/policer.h>
 #include <vnet/devices/netmap/netmap.h>
+#include <vnet/flow/flow_report.h>
 
 #undef BIHASH_TYPE
 #undef __included_bihash_template_h__
@@ -365,7 +366,9 @@ _(CLASSIFY_TABLE_IDS,classify_table_ids)                                \
 _(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
 _(CLASSIFY_TABLE_INFO,classify_table_info)                              \
 _(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
-_(CLASSIFY_SESSION_DETAILS,classify_session_details)
+_(CLASSIFY_SESSION_DETAILS,classify_session_details)                    \
+_(IPFIX_ENABLE,ipfix_enable)                                            \
+_(IPFIX_DUMP,ipfix_dump)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -7024,6 +7027,106 @@ static void vl_api_classify_session_dump_t_handler (vl_api_classify_session_dump
             break;
         }
     }));
+}
+
+static void vl_api_ipfix_enable_t_handler (vl_api_ipfix_enable_t *mp)
+{
+    vlib_main_t *vm = vlib_get_main();
+	flow_report_main_t * frm = &flow_report_main;
+	vl_api_ipfix_enable_reply_t *rmp;
+	ip4_address_t collector, src;
+	u16 collector_port = UDP_DST_PORT_ipfix;
+    u32 path_mtu;
+    u32 template_interval;
+	u32 fib_id;
+	u32 fib_index = ~0;
+	int rv = 0;
+
+    memcpy(collector.data, mp->collector_address, sizeof(collector.data));
+    collector_port = ntohs(mp->collector_port);
+    if (collector_port == (u16)~0)
+        collector_port = UDP_DST_PORT_ipfix;
+	memcpy(src.data, mp->src_address, sizeof(src.data));
+	fib_id = ntohl(mp->vrf_id);
+
+    ip4_main_t * im = &ip4_main;
+    uword * p = hash_get (im->fib_index_by_table_id, fib_id);
+    if (! p) {
+        rv = VNET_API_ERROR_NO_SUCH_FIB;
+        goto out;
+    }
+    fib_index = p[0];
+
+    path_mtu = ntohl(mp->path_mtu);
+    if (path_mtu == ~0)
+        path_mtu = 512; // RFC 7011 section 10.3.3.
+    template_interval = ntohl(mp->template_interval);
+    if (template_interval == ~0)
+        template_interval = 20;
+
+    if (collector.as_u32 == 0) {
+        rv = VNET_API_ERROR_INVALID_VALUE;
+        goto out;
+    }
+
+    if (src.as_u32 == 0) {
+        rv = VNET_API_ERROR_INVALID_VALUE;
+        goto out;
+    }
+
+    if (path_mtu > 1450 /* vpp does not support fragmentation */) {
+        rv = VNET_API_ERROR_INVALID_VALUE;
+        goto out;
+    }
+
+    if (path_mtu < 68) {
+        rv = VNET_API_ERROR_INVALID_VALUE;
+        goto out;
+    }
+
+    /* Reset report streams if we are reconfiguring IP addresses */
+    if (frm->ipfix_collector.as_u32 != collector.as_u32 ||
+        frm->src_address.as_u32 != src.as_u32 ||
+        frm->collector_port != collector_port)
+            vnet_flow_reports_reset(frm);
+
+    frm->ipfix_collector.as_u32 = collector.as_u32;
+    frm->collector_port = collector_port;
+    frm->src_address.as_u32 = src.as_u32;
+    frm->fib_index = fib_index;
+    frm->path_mtu = path_mtu;
+    frm->template_interval = template_interval;
+
+    /* Turn on the flow reporting process */
+    vlib_process_signal_event (vm, flow_report_process_node.index,
+                               1, 0);
+
+out:
+    REPLY_MACRO(VL_API_IPFIX_ENABLE_REPLY);
+}
+
+static void vl_api_ipfix_dump_t_handler (vl_api_ipfix_dump_t *mp)
+{
+    flow_report_main_t * frm = &flow_report_main;
+    unix_shared_memory_queue_t * q;
+    vl_api_ipfix_details_t *rmp;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_IPFIX_DETAILS);
+    rmp->context = mp->context;
+    memcpy(rmp->collector_address, frm->ipfix_collector.data,
+           sizeof(frm->ipfix_collector.data));
+    rmp->collector_port = htons(frm->collector_port);
+    memcpy(rmp->src_address, frm->src_address.data,
+           sizeof(frm->src_address.data));
+    rmp->fib_index = htonl(frm->fib_index);
+    rmp->path_mtu = htonl(frm->path_mtu);
+    rmp->template_interval = htonl(frm->template_interval);
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

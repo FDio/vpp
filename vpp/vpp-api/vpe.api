@@ -4011,3 +4011,60 @@ manual_java define classify_session_details {
     u32 match_length;
     u8 match[match_length];
 };
+
+/** \brief Enable and configure IPFIX exporter process request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param collector_address - address of IPFIX collector
+    @param collector_port - port of IPFIX IPFIX collector
+    @param src_address - address of IPFIX exporter
+    @param vrf_id - VRF / fib table ID
+    @param path_mtu - Path MTU between exporter and collector
+    @param template_interval - number of seconds after which to resend template
+*/
+define ipfix_enable {
+    u32 client_index;
+    u32 context;
+    u8 collector_address[16];
+    u16 collector_port;
+    u8 src_address[16];
+    u32 vrf_id;
+    u32 path_mtu;
+    u32 template_interval;
+};
+
+/** \brief Reply to IPFIX enable and configure request
+    @param context - sender context which was passed in the request
+*/
+define ipfix_enable_reply {
+    u32 context;
+    u32 retval;
+};
+
+/** \brief IPFIX dump request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ipfix_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply to IPFIX dump request
+    @param context - sender context which was passed in the request
+    @param collector_address - address of IPFIX collector
+    @param collector_port - port of IPFIX IPFIX collector
+    @param src_address - address of IPFIX exporter
+    @param fib_index - fib table index
+    @param path_mtu - Path MTU between exporter and collector
+    @param template_interval - number of seconds after which to resend template
+*/
+manual_java define ipfix_details {
+    u32 context;
+    u8 collector_address[16];
+    u16 collector_port;
+    u8 src_address[16];
+    u32 fib_index;
+    u32 path_mtu;
+    u32 template_interval;
+};

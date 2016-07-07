@@ -1845,6 +1845,35 @@ static void *vl_api_classify_session_dump_t_print
     FINISH;
 }
 
+static void *vl_api_ipfix_enable_t_print
+(vl_api_ipfix_enable_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: ipfix_enable ");
+
+    s = format (s, "collector-address %U ", format_ip4_address,
+                (ip4_address_t *) mp->collector_address);
+    s = format (s, "collector-port %d ", ntohs(mp->collector_port));
+    s = format (s, "src-address %U ", format_ip4_address,
+                (ip4_address_t *) mp->src_address);
+    s = format (s, "vrf-id %d ", ntohl(mp->vrf_id));
+    s = format (s, "path-mtu %d ", ntohl(mp->path_mtu));
+    s = format (s, "template-interval %d ", ntohl(mp->template_interval));
+
+    FINISH;
+}
+
+static void *vl_api_ipfix_dump_t_print
+(vl_api_ipfix_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: ipfix_dump ");
+
+    FINISH;
+}
+
 #define foreach_custom_print_function                                   \
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
@@ -1940,7 +1969,9 @@ _(MPLS_FIB_DECAP_DUMP, mpls_fib_decap_dump)                             \
 _(CLASSIFY_TABLE_IDS,classify_table_ids)                                \
 _(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
 _(CLASSIFY_TABLE_INFO,classify_table_info)                              \
-_(CLASSIFY_SESSION_DUMP,classify_session_dump)
+_(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
+_(IPFIX_ENABLE,ipfix_enable)                                            \
+_(IPFIX_DUMP,ipfix_dump)
 
 void vl_msg_api_custom_dump_configure (api_main_t *am) 
 {
