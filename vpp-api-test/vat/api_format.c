@@ -2651,7 +2651,8 @@ _(vxlan_gpe_add_del_tunnel_reply)			\
 _(af_packet_delete_reply)                               \
 _(policer_add_del_reply)                                \
 _(netmap_create_reply)                                  \
-_(netmap_delete_reply)
+_(netmap_delete_reply)                                  \
+_(ipfix_enable_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -2852,7 +2853,9 @@ _(MPLS_FIB_DECAP_DETAILS, mpls_fib_decap_details)                       \
 _(CLASSIFY_TABLE_IDS_REPLY, classify_table_ids_reply)                   \
 _(CLASSIFY_TABLE_BY_INTERFACE_REPLY, classify_table_by_interface_reply) \
 _(CLASSIFY_TABLE_INFO_REPLY, classify_table_info_reply)                 \
-_(CLASSIFY_SESSION_DETAILS, classify_session_details)
+_(CLASSIFY_SESSION_DETAILS, classify_session_details)                   \
+_(IPFIX_ENABLE_REPLY, ipfix_enable_reply)                               \
+_(IPFIX_DETAILS, ipfix_details)
 
 /* M: construct, but don't yet send a message */
 
@@ -7362,6 +7365,64 @@ static int api_classify_set_interface_l2_tables (vat_main_t * vam)
     return 0;
 }
 
+static int api_ipfix_enable (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_ipfix_enable_t *mp;
+    ip4_address_t collector_address;
+    u8 collector_address_set = 0;
+    u32 collector_port = ~0;
+    ip4_address_t src_address;
+    u8 src_address_set = 0;
+    u32 vrf_id = ~0;
+    u32 path_mtu = ~0;
+    u32 template_interval = ~0;
+    f64 timeout;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "collector_address %U", unformat_ip4_address,
+            &collector_address))
+            collector_address_set = 1;
+        else if (unformat (i, "collector_port %d", &collector_port))
+            ;
+        else if (unformat (i, "src_address %U", unformat_ip4_address,
+                 &src_address))
+            src_address_set = 1;
+        else if (unformat (i, "vrf_id %d", &vrf_id))
+            ;
+        else if (unformat (i, "path_mtu %d", &path_mtu))
+            ;
+        else if (unformat (i, "template_interval %d", &template_interval))
+            ;
+        else
+            break;
+    }
+
+    if (collector_address_set == 0) {
+        errmsg ("collector_address required\n");
+        return -99;
+    }
+
+    if (src_address_set == 0) {
+        errmsg ("src_address required\n");
+        return -99;
+    }
+
+    M (IPFIX_ENABLE, ipfix_enable);
+
+    memcpy(mp->collector_address, collector_address.data,
+           sizeof(collector_address.data));
+    mp->collector_port = htons((u16)collector_port);
+    memcpy(mp->src_address, src_address.data,
+           sizeof(src_address.data));
+    mp->vrf_id = htonl(vrf_id);
+    mp->path_mtu = htonl(path_mtu);
+    mp->template_interval = htonl(template_interval);
+
+    S; W;
+    /* NOTREACHED */
+}
+
 static int api_get_node_index (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
@@ -11831,6 +11892,65 @@ int api_classify_session_dump (vat_main_t *vam)
     return 0;
 }
 
+static void vl_api_ipfix_details_t_handler (vl_api_ipfix_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+
+    fformat(vam->ofp, "collector_address %U, collector_port %d, "
+                      "src_address %U, fib_index %u, path_mtu %u, "
+                      "template_interval %u\n",
+            format_ip4_address, mp->collector_address,
+            ntohs(mp->collector_port),
+            format_ip4_address, mp->src_address,
+            ntohl(mp->fib_index),
+            ntohl(mp->path_mtu),
+            ntohl(mp->template_interval));
+
+    vam->retval = 0;
+    vam->result_ready = 1;
+}
+
+static void vl_api_ipfix_details_t_handler_json
+(vl_api_ipfix_details_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t node;
+    struct in_addr collector_address;
+    struct in_addr src_address;
+
+    vat_json_init_object(&node);
+    clib_memcpy(&collector_address, &mp->collector_address,
+                sizeof(collector_address));
+    vat_json_object_add_ip4(&node, "collector_address", collector_address);
+    vat_json_object_add_uint(&node, "collector_port",
+                             ntohs(mp->collector_port));
+    clib_memcpy(&src_address, &mp->src_address, sizeof(src_address));
+    vat_json_object_add_ip4(&node, "src_address", src_address);
+    vat_json_object_add_uint(&node, "fib_index", ntohl(mp->fib_index));
+    vat_json_object_add_uint(&node, "path_mtu", ntohl(mp->path_mtu));
+    vat_json_object_add_uint(&node, "template_interval",
+                             ntohl(mp->template_interval));
+
+    vat_json_print(vam->ofp, &node);
+    vat_json_free(&node);
+    vam->retval = 0;
+    vam->result_ready = 1;
+}
+
+int api_ipfix_dump (vat_main_t *vam)
+{
+    vl_api_ipfix_dump_t *mp;
+    f64 timeout;
+
+    /* Construct the API message */
+    M(IPFIX_DUMP, ipfix_dump);
+    mp->context = 0;
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -12337,7 +12457,11 @@ _(mpls_fib_decap_dump, "")                                              \
 _(classify_table_ids, "")                                               \
 _(classify_table_by_interface, "sw_if_index <sw_if_index>")             \
 _(classify_table_info, "table_id <nn>")                                 \
-_(classify_session_dump, "table_id <nn>")
+_(classify_session_dump, "table_id <nn>")                               \
+_(ipfix_enable, "collector_address <ip4> [collector_port <nn>] "        \
+                "src_address <ip4> [fib_id <nn>] [path_mtu <nn>] "      \
+                "[template_interval <nn>]")                             \
+_(ipfix_dump, "")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
