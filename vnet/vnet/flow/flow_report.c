@@ -87,6 +87,9 @@ int send_template_packet (flow_report_main_t *frm,
   udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
 
   *buffer_indexp = bi0;
+
+  fr->last_template_sent = vlib_time_now (vm);
+
   return 0;
 }
 
@@ -259,6 +262,8 @@ flow_report_init (vlib_main_t *vm)
 
   frm->vlib_main = vm;
   frm->vnet_main = vnet_get_main();
+  frm->unix_time_0 = time(0);
+  frm->vlib_time_0 = vlib_time_now(frm->vlib_main);
 
   return 0;
 }

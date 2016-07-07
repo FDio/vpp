@@ -153,7 +153,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
   u32 bi0 = ~0;
   int i, j, k;
   ip4_ipfix_template_packet_t * tp;
-  ipfix_message_header_t * h;
+  ipfix_message_header_t * h = 0;
   ipfix_set_header_t * s = 0;
   ip4_header_t * ip;
   udp_header_t * udp;
@@ -191,9 +191,12 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                     goto flush;
                   b0 = vlib_get_buffer (vm, bi0);
                   
-                  clib_memcpy (b0->data, fr->rewrite, vec_len (fr->rewrite));
+                  u32 copy_len = sizeof(ip4_header_t) +
+                                 sizeof(udp_header_t) +
+                                 sizeof(ipfix_message_header_t);
+                  clib_memcpy (b0->data, fr->rewrite, copy_len);
                   b0->current_data = 0;
-                  b0->current_length = vec_len (fr->rewrite);
+                  b0->current_length = copy_len;
                   b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
                   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
                   /* $$$ for now, look up in fib-0. Later: arbitrary TX fib */
@@ -212,8 +215,9 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                   h->export_time = clib_host_to_net_u32(h->export_time);
                   
                   /* FIXUP: message header sequence_number */
-                  h->sequence_number = fr->sequence_number++;
+                  h->sequence_number = fr->sequence_number;
                   h->sequence_number = clib_host_to_net_u32 (h->sequence_number);
+
                   next_offset = (u32) (((u8 *)(s+1)) - (u8 *)tp);
                   records_this_buffer = 0;
                 }
@@ -241,6 +245,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                 next_offset += sizeof (packets);
               }
               records_this_buffer++;
+              fr->sequence_number++;
               
               if (next_offset > 1450)
                 {
@@ -248,6 +253,8 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                                                           next_offset - 
                                                           (sizeof (*ip) + sizeof (*udp) +
                                                            sizeof (*h)));
+                  h->version_length = version_length (next_offset -
+                                                      (sizeof (*ip) + sizeof (*udp)));
                   b0->current_length = next_offset;
                   b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
                   
@@ -256,7 +263,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                   udp = (udp_header_t *) (ip+1);
                   
                   sum0 = ip->checksum;
-                  old_l0 = clib_net_to_host_u16 (ip->length);
+                  old_l0 = ip->length;
                   new_l0 = 
                     clib_host_to_net_u16 ((u16)next_offset);
                   
@@ -266,8 +273,10 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                   ip->checksum = ip_csum_fold (sum0);
                   ip->length = new_l0;
                   udp->length = 
-                      clib_host_to_net_u16 (b0->current_length - sizeof (ip));
+                      clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
                   
+                  ASSERT (ip->checksum == ip4_header_checksum (ip));
+
                   to_next[0] = bi0;
                   f->n_vectors++;
                   to_next++;
@@ -293,6 +302,8 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                                                 next_offset - 
                                                 (sizeof (*ip) + sizeof (*udp) +
                                                  sizeof (*h)));
+        h->version_length = version_length (next_offset -
+                                            (sizeof (*ip) + sizeof (*udp)));
       b0->current_length = next_offset;
       b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
       
