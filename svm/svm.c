@@ -545,10 +545,10 @@ void *svm_map_region (svm_map_region_args_t *a)
          * <bleep>-ed? 
          */
         if (rp->version == 0) {
-            close(svm_fd);
-            munmap(rp, a->size);
             clib_warning("rp->version %d not %d", rp->version,
                          SVM_VERSION);
+            close(svm_fd);
+            munmap(rp, a->size);
             return (0);
         } 
         /* Remap now that the region has been placed */
