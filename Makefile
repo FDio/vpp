@@ -110,7 +110,7 @@ ifeq ($(OS_ID),ubuntu)
 	fi ; \
 	exit 0
 endif
-	@echo "SOURCE_PATH = $(WS_ROOT) $(WS_ROOT)/plugins"> $(BR)/build-config.mk
+	@echo "SOURCE_PATH = $(WS_ROOT)"                   > $(BR)/build-config.mk
 	@echo "#!/bin/bash\n"                              > $(BR)/path_setup
 	@echo 'export PATH=$(BR)/tools/ccache-bin:$$PATH' >> $(BR)/path_setup
 	@echo 'export PATH=$(BR)/tools/bin:$$PATH'        >> $(BR)/path_setup
@@ -178,12 +178,12 @@ define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
 	@echo "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
 	@cd $(STARTUP_DIR) && \
-	  sudo $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) plugin_path $(1)/plugins/lib64
+	  sudo $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) plugin_path $(1)/plugins/lib64/vpp_plugins
 endef
 else
 define run
 	@cd $(STARTUP_DIR) && \
-	  sudo $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') plugin_path $(1)/plugins/lib64
+	  sudo $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') plugin_path $(1)/plugins/lib64/vpp_plugins
 endef
 endif
 
