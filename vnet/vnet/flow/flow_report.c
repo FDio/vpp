@@ -50,7 +50,8 @@ int send_template_packet (flow_report_main_t *frm,
     {
       fr->rewrite = fr->rewrite_callback (frm, fr,
                                           &frm->ipfix_collector,
-                                          &frm->src_address);
+                                          &frm->src_address,
+                                          frm->collector_port);
       fr->update_rewrite = 0;
     }
 
@@ -130,7 +131,8 @@ flow_report_process (vlib_main_t * vm,
           now = vlib_time_now (vm);
 
           /* Need to send a template packet? */
-          send_template = now > (fr->last_template_sent + 20.0);
+          send_template =
+              now > (fr->last_template_sent + frm->template_interval);
           send_template += fr->last_template_sent == 0;
           template_bi = ~0;
 	  rv = 0;
@@ -216,14 +218,19 @@ set_ipfix_command_fn (vlib_main_t * vm,
 {
   flow_report_main_t * frm = &flow_report_main;
   ip4_address_t collector, src;
+  u16 collector_port = UDP_DST_PORT_ipfix;
   u32 fib_id;
   u32 fib_index = ~0;
   
   collector.as_u32 = 0;
   src.as_u32 = 0;
+  u32 path_mtu = 512; // RFC 7011 section 10.3.3.
+  u32 template_interval = 20;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
     if (unformat (input, "collector %U", unformat_ip4_address, &collector))
+      ;
+    else if (unformat (input, "port %u", &collector_port))
       ;
     else if (unformat (input, "src %U", unformat_ip4_address, &src))
       ;
@@ -236,6 +243,10 @@ set_ipfix_command_fn (vlib_main_t * vm,
                                     fib_id);
         fib_index = p[0];
       }
+    else if (unformat (input, "path-mtu %u", &path_mtu))
+      ;
+    else if (unformat (input, "template-interval %u", &template_interval))
+      ;
     else
       break;
   }
@@ -246,14 +257,26 @@ set_ipfix_command_fn (vlib_main_t * vm,
   if (src.as_u32 == 0)
     return clib_error_return (0, "src address required");
 
+  if (path_mtu > 1450 /* vpp does not support fragmentation */)
+	return clib_error_return (0, "too big path-mtu value, maximum is 1450");
+
+  if (path_mtu < 68)
+	return clib_error_return (0, "too small path-mtu value, minimum is 68");
+
   frm->ipfix_collector.as_u32 = collector.as_u32;
+  frm->collector_port = collector_port;
   frm->src_address.as_u32 = src.as_u32;
   frm->fib_index = fib_index;
+  frm->path_mtu = path_mtu;
+  frm->template_interval = template_interval;
   
-  vlib_cli_output (vm, "Collector %U, src address %U, fib index %d",
+  vlib_cli_output (vm, "Collector %U, src address %U, "
+		           "fib index %d, path MTU %u, "
+		           "template resend interval %us",
                    format_ip4_address, &frm->ipfix_collector,
-                   format_ip4_address, &frm->src_address, fib_index);
-  
+                   format_ip4_address, &frm->src_address,
+                   fib_index, path_mtu, template_interval);
+
   /* Turn on the flow reporting process */
   vlib_process_signal_event (vm, flow_report_process_node.index,
                              1, 0);
@@ -263,7 +286,10 @@ set_ipfix_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_ipfix_command, static) = {
     .path = "set ipfix",
     .short_help = "set ipfix collector <ip4-address> "
-                  "src <ip4-address> [fib-id <fib-id>]",
+                  "[port <port>] "
+                  "src <ip4-address> [fib-id <fib-id>] "
+                  "[path-mtu <path-mtu>] "
+                  "[template-interval <template-interval>]",
     .function = set_ipfix_command_fn,
 };
 
