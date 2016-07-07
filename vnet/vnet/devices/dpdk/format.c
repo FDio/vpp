@@ -604,11 +604,11 @@ u8 * format_dpdk_rx_dma_trace (u8 * s, va_list * va)
 #ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
   s = format (s, "\n%U%U",
 	      format_white_space, indent,
-	      format_dpdk_rx_rte_mbuf, &t->mb);
+	      format_dpdk_rx_rte_mbuf, &t->mb, &t->data);
 #else
   s = format (s, "\n%U%U",
 	      format_white_space, indent,
-	      format_dpdk_rte_mbuf, &t->mb);
+	      format_dpdk_rte_mbuf, &t->mb, &t->data);
 #endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
   if (vm->trace_main.verbose)
     {
@@ -676,9 +676,28 @@ static inline u8 * format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
   return s;
 }
 
+u8 * format_dpdk_rte_mbuf_vlan (u8 * s, va_list * va)
+{
+    ethernet_vlan_header_tv_t * vlan_hdr = va_arg (*va, ethernet_vlan_header_tv_t *);
+
+    if (clib_net_to_host_u16(vlan_hdr->type) == ETHERNET_TYPE_DOT1AD) {
+          s = format (s, "%U vlan 802.1q ",
+                  format_ethernet_vlan_tci,
+                  clib_net_to_host_u16(vlan_hdr->priority_cfi_and_id));
+        vlan_hdr++;
+    }
+
+    s = format (s, "%U",
+          format_ethernet_vlan_tci,
+          clib_net_to_host_u16(vlan_hdr->priority_cfi_and_id));
+
+    return s;
+}
+
 u8 * format_dpdk_rte_mbuf (u8 * s, va_list * va)
 {
   struct rte_mbuf * mb = va_arg (*va, struct rte_mbuf *);
+  ethernet_header_t *eth_hdr = va_arg (*va, ethernet_header_t *);
   uword indent = format_get_indent (s) + 2;
 
   s = format (s, "PKT MBUF: port %d, nb_segs %d, pkt_len %d"
@@ -694,9 +713,15 @@ u8 * format_dpdk_rte_mbuf (u8 * s, va_list * va)
     s = format (s, "\n%U%U", format_white_space, indent,
                 format_dpdk_pkt_offload_flags, &mb->ol_flags);
 
+  if (mb->ol_flags & PKT_RX_VLAN_PKT) {
+    ethernet_vlan_header_tv_t * vlan_hdr = ((ethernet_vlan_header_tv_t *)&(eth_hdr->type));
+    s = format (s, " %U", format_dpdk_rte_mbuf_vlan, vlan_hdr);
+  }
+
   if (mb->packet_type)
     s = format (s, "\n%U%U", format_white_space, indent,
                 format_dpdk_pkt_types, &mb->packet_type);
+
   return s;
 }
 
@@ -729,6 +754,7 @@ static inline u8 * format_dpdk_pkt_rx_offload_flags (u8 * s, va_list * va)
 u8 * format_dpdk_rx_rte_mbuf (u8 * s, va_list * va)
 {
   struct rte_mbuf * mb = va_arg (*va, struct rte_mbuf *);
+  ethernet_header_t *eth_hdr = va_arg (*args, ethernet_header_t *);
   uword indent = format_get_indent (s) + 2;
 
   /*
@@ -748,9 +774,15 @@ u8 * format_dpdk_rx_rte_mbuf (u8 * s, va_list * va)
     s = format (s, "\n%U%U", format_white_space, indent,
                 format_dpdk_pkt_rx_offload_flags, &mb->ol_flags);
 
+  if (mb->ol_flags & PKT_RX_VLAN_PKT) {
+    ethernet_vlan_header_tv_t * vlan_hdr = ((ethernet_vlan_header_tv_t *)&(eth_hdr->type));
+    s = format (s, " %U", format_dpdk_rte_mbuf_vlan, vlan_hdr);
+  }
+
   if (mb->packet_type)
     s = format (s, "\n%U%U", format_white_space, indent,
                 format_dpdk_pkt_types, &mb->packet_type);
+
   return s;
 }
 #endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
