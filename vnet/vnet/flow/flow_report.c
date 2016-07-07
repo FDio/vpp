@@ -203,6 +203,7 @@ int vnet_flow_report_add_del (flow_report_main_t *frm,
 
   fr->sequence_number = 0;
   fr->domain_id = a->domain_id;
+  fr->src_port = a->src_port;
   fr->update_rewrite = 1;
   fr->opaque = a->opaque;
   fr->rewrite_callback = a->rewrite_callback;
