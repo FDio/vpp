@@ -44,7 +44,8 @@ struct flow_report;
 typedef u8 * (vnet_flow_rewrite_callback_t)(struct flow_report_main *, 
                                             struct flow_report *,
                                             ip4_address_t *,
-                                            ip4_address_t *);
+                                            ip4_address_t *,
+                                            u16);
 
 typedef vlib_frame_t * (vnet_flow_data_callback_t) (struct flow_report_main *, 
                                                     struct flow_report *,
@@ -74,10 +75,17 @@ typedef struct flow_report {
 typedef struct flow_report_main {
   flow_report_t * reports;
 
-  /* ipfix collector, our ip address, fib index */
+  /* ipfix collector ip address, port, our ip address, fib index */
   ip4_address_t ipfix_collector;
+  u16 collector_port;
   ip4_address_t src_address;
   u32 fib_index;
+
+  /* Path MTU */
+  u32 path_mtu;
+
+  /* time interval in seconds after which to resend templates */
+  u32 template_interval;
 
   /* time scale transform. Joy. */
   u32 unix_time_0;

@@ -25,7 +25,8 @@ flow_report_sample_main_t flow_report_sample_main;
 static u8 * template_rewrite (flow_report_main_t * frm,
                               flow_report_t * fr,
                               ip4_address_t * collector_address,
-                              ip4_address_t * src_address)
+                              ip4_address_t * src_address,
+                              u16 collector_port)
 {
   vnet_classify_table_t * tblp;
   vnet_classify_main_t * vcm = &vnet_classify_main;
@@ -92,7 +93,7 @@ static u8 * template_rewrite (flow_report_main_t * frm,
   ip->src_address.as_u32 = src_address->as_u32;
   ip->dst_address.as_u32 = collector_address->as_u32;
   udp->src_port = clib_host_to_net_u16 (4739 /* $$FIXME */);
-  udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipfix);
+  udp->dst_port = clib_host_to_net_u16 (collector_port);
   udp->length = clib_host_to_net_u16 (vec_len(rewrite) - sizeof (*ip));
 
   /* FIXUP: message header export_time */ 
@@ -150,6 +151,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
   vnet_classify_entry_t * v, * save_v;
   vlib_buffer_t *b0 = 0;
   u32 next_offset = 0;
+  u32 record_offset = 0;
   u32 bi0 = ~0;
   int i, j, k;
   ip4_ipfix_template_packet_t * tp;
@@ -218,6 +220,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                   h->sequence_number = clib_host_to_net_u32 (h->sequence_number);
 
                   next_offset = (u32) (((u8 *)(s+1)) - (u8 *)tp);
+                  record_offset = next_offset;
                   records_this_buffer = 0;
                 }
               
@@ -246,7 +249,11 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
               records_this_buffer++;
               fr->sequence_number++;
               
-              if (next_offset > 1450)
+              /* Next record will have the same size as this record */
+              u32 next_record_size = next_offset - record_offset;
+              record_offset = next_offset;
+
+              if (next_offset + next_record_size > frm->path_mtu)
                 {
                   s->set_id_length = ipfix_set_id_length (256 /* template ID*/, 
                                                           next_offset - 
