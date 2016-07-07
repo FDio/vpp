@@ -92,7 +92,7 @@ static u8 * template_rewrite (flow_report_main_t * frm,
   ip->protocol = IP_PROTOCOL_UDP;
   ip->src_address.as_u32 = src_address->as_u32;
   ip->dst_address.as_u32 = collector_address->as_u32;
-  udp->src_port = clib_host_to_net_u16 (4739 /* $$FIXME */);
+  udp->src_port = clib_host_to_net_u16 (fr->src_port);
   udp->dst_port = clib_host_to_net_u16 (collector_port);
   udp->length = clib_host_to_net_u16 (vec_len(rewrite) - sizeof (*ip));
 
@@ -353,6 +353,7 @@ flow_sample_command_fn (vlib_main_t * vm,
   int rv;
   int is_add = 1;
   u32 domain_id = 0;
+  u32 src_port = UDP_DST_PORT_ipfix;
 
   domain_id = 0;
   fsm->classify_table_index = ~0;
@@ -362,6 +363,8 @@ flow_sample_command_fn (vlib_main_t * vm,
     if (unformat (input, "table %d", &fsm->classify_table_index))
       ;
     else if (unformat (input, "domain %d", &domain_id))
+      ;
+    else if (unformat (input, "src-port %d", &src_port))
       ;
     else if (unformat (input, "del"))
       is_add = 0;
@@ -378,6 +381,7 @@ flow_sample_command_fn (vlib_main_t * vm,
   args.flow_data_callback = send_flows;
   args.is_add = is_add;
   args.domain_id = domain_id;
+  args.src_port = (u16)src_port;
 
   rv = vnet_flow_report_add_del (frm, &args);
 
