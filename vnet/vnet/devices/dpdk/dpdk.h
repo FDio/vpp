@@ -294,6 +294,11 @@ typedef struct dpdk_efd_t {
 typedef struct {
     vlib_pci_addr_t pci_addr;
     u8 is_blacklisted;
+    u8 vlan_strip_offload;
+#define DPDK_DEVICE_VLAN_STRIP_DEFAULT 0
+#define DPDK_DEVICE_VLAN_STRIP_OFF 1
+#define DPDK_DEVICE_VLAN_STRIP_ON  2
+
 #define _(x) uword x;
     foreach_dpdk_device_config_item
 #undef _
