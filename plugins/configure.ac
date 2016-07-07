@@ -11,25 +11,29 @@ AC_ARG_ENABLE(tests,
               [enable_tests=1],
               [enable_tests=0])
 
-AC_ARG_WITH(plugin-toolkit,
-            AC_HELP_STRING([--with-plugin-toolkit],
-            [build using the vpp toolkit]),
-            [with_plugin_toolkit=${prefix}/include],
-            [with_plugin_toolkit=.])
-
 AC_ARG_WITH(dpdk,
             AC_HELP_STRING([--with-dpdk],[Use the Intel dpdk]),
             [with_dpdk=1],
             [with_dpdk=0])
 
-AC_SUBST(TOOLKIT_INCLUDE,[${with_plugin_toolkit}])
-AM_CONDITIONAL(WITH_PLUGIN_TOOLKIT, test "$with_plugin_toolkit" != ".")
 AM_CONDITIONAL(ENABLE_TESTS, test "$enable_tests" = "1")
 
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AC_SUBST(DPDK,["-DDPDK=${with_dpdk}"])
 
-AC_DEFUN([PLUGIN],
+AC_DEFUN([PLUGIN_ENABLED],
+[
+   AC_ARG_ENABLE($1_plugin,
+       AC_HELP_STRING([--disable-$1-plugin], [Do not build $1 plugin]),
+              [enable_the_plugin=0],
+              [enable_the_plugin=1])
+if test "x$enable_the_plugin" = x1; then
+   AC_CONFIG_SUBDIRS($1-plugin)
+fi
+AM_CONDITIONAL(ENABLE_$1_PLUGIN, test "$enable_the_plugin" = "1")
+])
+
+AC_DEFUN([PLUGIN_DISABLED],
 [
    AC_ARG_ENABLE($1_plugin,
        AC_HELP_STRING([--enable-$1-plugin], [Build $1 plugin]),
@@ -50,10 +54,13 @@ AM_CONDITIONAL(ENABLE_$1_PLUGIN, test "$enable_the_plugin" = "1")
 # SUBDIRS += new-plugin
 # endif
 
-PLUGIN(sample)
-PLUGIN(sixrd)
-PLUGIN(ioam)
-PLUGIN(vcgn)
-PLUGIN(snat)
+PLUGIN_ENABLED(sixrd)
+PLUGIN_ENABLED(ioam)
+PLUGIN_ENABLED(snat)
+
+
+# Disabled plugins, require --enable-XXX-plugin
+PLUGIN_DISABLED(vcgn)
+PLUGIN_DISABLED(sample)
 
 AC_OUTPUT([Makefile])

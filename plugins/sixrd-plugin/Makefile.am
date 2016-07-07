@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@
+AM_CFLAGS = -Wall
 
 libsixrd_plugin_la_SOURCES =			\
 	sixrd/sixrd.c				\
@@ -27,11 +27,7 @@ libsixrd_plugin_la_LDFLAGS = -module
 
 BUILT_SOURCES =
 
-lib_LTLIBRARIES = libsixrd_plugin.la
+vpppluginsdir = ${libdir}/vpp_plugins
 
-if WITH_PLUGIN_TOOLKIT
-install-data-hook:
-	mkdir /usr/lib/vpp_plugins || true
-	mkdir /usr/lib/vpp_api_test_plugins || true
-	cp -L $(prefix)/lib/libsixrd_plugin.so /usr/lib/vpp_plugins
-endif
+vppplugins_LTLIBRARIES = libsixrd_plugin.la
+

@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@
+AM_CFLAGS = -Wall
 
 ########################################
 # iOAM Proof of Transit
@@ -51,12 +51,9 @@ ioam_pot_test_plugin_la_SOURCES =		\
 
 ioam_pot_test_plugin_la_LDFLAGS = -module
 
-lib_LTLIBRARIES = ioam_pot_plugin.la ioam_pot_test_plugin.la
+vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
+vpppluginsdir = ${libdir}/vpp_plugins
 
-if WITH_PLUGIN_TOOLKIT
-install-data-hook:
-	mkdir /usr/lib/vpp_plugins || true
-	mkdir /usr/lib/vpp_api_test_plugins || true
-	cp -L $(prefix)/lib/ioam_pot_plugin.so /usr/lib/vpp_plugins
-	cp -L $(prefix)/lib/ioam_pot_test_plugin.so /usr/lib/vpp_api_test_plugins
-endif
+vppapitestplugins_LTLIBRARIES = ioam_pot_test_plugin.la
+vppplugins_LTLIBRARIES = ioam_pot_plugin.la
+

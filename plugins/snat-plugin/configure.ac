@@ -15,13 +15,4 @@ AC_ARG_WITH(dpdk,
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AC_SUBST(DPDK,["-DDPDK=${with_dpdk}"])
 
-AC_ARG_WITH(plugin-toolkit,
-            AC_HELP_STRING([--with-plugin-toolkit],
-            [build using the vpp toolkit]),
-            [with_plugin_toolkit=${prefix}/include],
-            [with_plugin_toolkit=.])
-
-AC_SUBST(TOOLKIT_INCLUDE,[${with_plugin_toolkit}])
-AM_CONDITIONAL(WITH_PLUGIN_TOOLKIT, test "$with_plugin_toolkit" != ".")
-
 AC_OUTPUT([Makefile])
