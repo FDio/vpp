@@ -13,12 +13,17 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@
+AM_CFLAGS = -Wall
+AM_LDFLAGS = -module -shared -avoid-version
 
-lib_LTLIBRARIES = sample_plugin.la sample_test_plugin.la
+vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
+vpppluginsdir = ${libdir}/vpp_plugins
+
+vppapitestplugins_LTLIBRARIES = sample_test_plugin.la
+vppplugins_LTLIBRARIES = sample_plugin.la
+
 sample_plugin_la_SOURCES = sample/sample.c sample/node.c \
-	sample/sample_plugin.api.h 
-sample_plugin_la_LDFLAGS = -module
+	sample/sample_plugin.api.h
 
 BUILT_SOURCES = sample/sample.api.h
 
@@ -29,18 +34,14 @@ SUFFIXES = .api.h .api
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
 
-nobase_include_HEADERS =			\
+noinst_HEADERS =				\
   sample/sample_all_api_h.h			\
   sample/sample_msg_enum.h			\
   sample/sample.api.h
 
 sample_test_plugin_la_SOURCES = sample/sample_test.c sample/sample_plugin.api.h
-sample_test_plugin_la_LDFLAGS = -module
 
-if WITH_PLUGIN_TOOLKIT
+# Remove *.la files
 install-data-hook:
-	mkdir /usr/lib/vpp_plugins || true
-	mkdir /usr/lib/vpp_api_test_plugins || true
-	cp -L $(prefix)/lib/sample_plugin.so /usr/lib/vpp_plugins
-	cp -L $(prefix)/lib/sample_test_plugin.so /usr/lib/vpp_api_test_plugins
-endif
+	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
+	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
