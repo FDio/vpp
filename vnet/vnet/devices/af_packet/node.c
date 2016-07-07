@@ -54,6 +54,18 @@ typedef struct {
   struct tpacket2_hdr tph;
 } af_packet_input_trace_t;
 
+static u8 * format_dpdk_vlan_tci (u8 * s, va_list * args)
+{
+    u16 *vlan_tci = va_arg (*args, u16 *);
+
+    s = format (s, "PCP %u DEI %u VID %u",
+                    (*vlan_tci & 0xE000) >> 13,
+                    (*vlan_tci & 0x1000) >> 12,
+                    (*vlan_tci & 0x0FFF));
+
+    return s;
+}
+
 static u8 * format_af_packet_input_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -65,7 +77,7 @@ static u8 * format_af_packet_input_trace (u8 * s, va_list * args)
 	      t->hw_if_index, t->next_index);
 
   s = format (s, "\n%Utpacket2_hdr:\n%Ustatus 0x%x len %u snaplen %u mac %u net %u"
-	      "\n%Usec 0x%x nsec 0x%x vlan_tci %u"
+	      "\n%Usec 0x%x nsec 0x%x vlan %U"
 #ifdef TP_STATUS_VLAN_TPID_VALID
 	      " vlan_tpid %u"
 #endif
@@ -80,11 +92,11 @@ static u8 * format_af_packet_input_trace (u8 * s, va_list * args)
 	      format_white_space, indent + 4,
 	      t->tph.tp_sec,
 	      t->tph.tp_nsec,
-	      t->tph.tp_vlan_tci,
+	      format_dpdk_vlan_tci, t->tph.tp_vlan_tci
 #ifdef TP_STATUS_VLAN_TPID_VALID
-	      t->tph.tp_vlan_tpid,
+	      , t->tph.tp_vlan_tpid
 #endif
-	      t->tph.tp_net);
+	      );
   return s;
 }
 

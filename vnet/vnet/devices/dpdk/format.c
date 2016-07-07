@@ -733,6 +733,18 @@ static inline u8 * format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
   return s;
 }
 
+static u8 * format_dpdk_vlan_tci (u8 * s, va_list * va)
+{
+    u16 *vlan_tci = va_arg (*va, u16 *);
+
+    s = format (s, "PCP %u DEI %u VID %u",
+                    (*vlan_tci & 0xE000) >> 13,
+                    (*vlan_tci & 0x1000) >> 12,
+                    (*vlan_tci & 0x0FFF));
+
+    return s;
+}
+
 u8 * format_dpdk_rte_mbuf (u8 * s, va_list * va)
 {
   struct rte_mbuf * mb = va_arg (*va, struct rte_mbuf *);
@@ -754,6 +766,12 @@ u8 * format_dpdk_rte_mbuf (u8 * s, va_list * va)
   if (mb->packet_type)
     s = format (s, "\n%U%U", format_white_space, indent,
                 format_dpdk_pkt_types, &mb->packet_type);
+
+  if (mb->ol_flags & PKT_RX_VLAN_PKT)
+    s = format (s, "\n%Uvlan %U, outer vlan %U",
+                format_white_space, indent,
+                format_dpdk_vlan_tci, mb->vlan_tci,
+                format_dpdk_vlan_tci, mb->vlan_tci_outer);
   return s;
 }
 
@@ -808,6 +826,12 @@ u8 * format_dpdk_rx_rte_mbuf (u8 * s, va_list * va)
   if (mb->packet_type)
     s = format (s, "\n%U%U", format_white_space, indent,
                 format_dpdk_pkt_types, &mb->packet_type);
+
+  if (mb->ol_flags & PKT_RX_VLAN_PKT)
+    s = format (s, "\n%Uvlan %U, outer vlan %U",
+                  format_white_space, indent,
+                  format_dpdk_vlan_tci, mb->vlan_tci,
+                  format_dpdk_vlan_tci, mb->vlan_tci_outer);
   return s;
 }
 #endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
