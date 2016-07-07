@@ -10533,6 +10533,8 @@ api_lisp_enable_disable (vat_main_t * vam)
 typedef CLIB_PACKED(struct
 {
     u8 is_ip4; /**< is locator an IPv4 address? */
+    u8 priority; /**< locator priority */
+    u8 weight;   /**< locator weight */
     u8 addr[16]; /**< IPv4/IPv6 address */
 }) rloc_t;
 
@@ -10655,8 +10657,8 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
     u8 deid_type, seid_type;
     u32 seid_len = 0, deid_len = 0, len;
     u8 is_add = 1, del_all = 0;
-    u32 action = ~0;
-    rloc_t * rlocs = 0, rloc;
+    u32 action = ~0, p, w;
+    rloc_t * rlocs = 0, rloc, * curr_rloc = 0;
 
     seid_type = deid_type =  (u8)~0;
 
@@ -10692,14 +10694,23 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
             seid_type = 2; /* mac */
         } else if (unformat(input, "vni %d", &vni)) {
             ;
+        } else if (unformat(input, "p %d w %d", &p, &w)) {
+            if (!curr_rloc) {
+              errmsg ("No RLOC configured for setting priority/weight!");
+              return -99;
+            }
+            curr_rloc->priority = p;
+            curr_rloc->weight = w;
         } else if (unformat(input, "rloc %U", unformat_ip4_address, &rloc4)) {
             rloc.is_ip4 = 1;
             clib_memcpy (&rloc.addr, &rloc4, sizeof (rloc4));
             vec_add1 (rlocs, rloc);
+            curr_rloc = &rlocs[vec_len (rlocs) - 1];
         } else if (unformat(input, "rloc %U", unformat_ip6_address, &rloc6)) {
             rloc.is_ip4 = 0;
             clib_memcpy (&rloc.addr, &rloc6, sizeof (rloc6));
             vec_add1 (rlocs, rloc);
+            curr_rloc = &rlocs[vec_len (rlocs) - 1];
         } else if (unformat(input, "action %d", &action)) {
             ;
         } else {
@@ -10786,10 +10797,9 @@ api_lisp_add_del_adjacency (vat_main_t * vam)
     u8 deid_type, seid_type;
     u32 seid_len = 0, deid_len = 0, len;
     u8 is_add = 1;
-    u32 action = ~0;
-    rloc_t * rlocs = 0, rloc;
+    u32 action = ~0, p, w;
+    rloc_t * rlocs = 0, rloc, * curr_rloc = 0;
 
-    memset(mp, 0, sizeof(mp[0]));
     seid_type = deid_type =  (u8)~0;
 
     /* Parse args required to build the message */
@@ -10822,18 +10832,27 @@ api_lisp_add_del_adjacency (vat_main_t * vam)
             seid_type = 2; /* mac */
         } else if (unformat(input, "vni %d", &vni)) {
             ;
+        } else if (unformat(input, "p %d w %d", &p, &w)) {
+            if (!curr_rloc) {
+              errmsg ("No RLOC configured for setting priority/weight!");
+              return -99;
+            }
+            curr_rloc->priority = p;
+            curr_rloc->weight = w;
         } else if (unformat(input, "rloc %U", unformat_ip4_address, &rloc4)) {
             rloc.is_ip4 = 1;
             clib_memcpy (&rloc.addr, &rloc4, sizeof (rloc4));
             vec_add1 (rlocs, rloc);
+            curr_rloc = &rlocs[vec_len (rlocs) - 1];
         } else if (unformat(input, "rloc %U", unformat_ip6_address, &rloc6)) {
             rloc.is_ip4 = 0;
             clib_memcpy (&rloc.addr, &rloc6, sizeof (rloc6));
             vec_add1 (rlocs, rloc);
+            curr_rloc = &rlocs[vec_len (rlocs) - 1];
         } else if (unformat(input, "action %d", &action)) {
             ;
         } else {
-            clib_warning ("parse error '%U'", format_unformat_error, input);
+            errmsg ("parse error '%U'", format_unformat_error, input);
             return -99;
         }
     }
@@ -12429,11 +12448,12 @@ _(lisp_gpe_enable_disable, "enable|disable")                            \
 _(lisp_enable_disable, "enable|disable")                                \
 _(lisp_gpe_add_del_iface, "up|down")                                    \
 _(lisp_add_del_remote_mapping, "add|del vni <vni> deid <dest-eid> seid" \
-                               " <src-eid> rloc <locator> "             \
-                               "[rloc <loc> ... ] action <action>")     \
-_(lisp_add_del_adjacency, "add|del vni <vni> deid <dest-eid> seid"      \
-                              " <src-eid> rloc <locator> "              \
-                              "[rloc <loc> ... ] action <action>")      \
+                               " <src-eid> rloc <locator> p <prio> "    \
+                               "w <weight> [rloc <loc> ... ] "          \
+                               "action <action>")                       \
+_(lisp_add_del_adjacency, "add|del vni <vni> deid <dest-eid> seid "     \
+                          "<src-eid> rloc <locator> p <prio> w <weight>"\
+                          "[rloc <loc> ... ] action <action>")          \
 _(lisp_pitr_set_locator_set, "locator-set <loc-set-name> | del")        \
 _(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
 _(lisp_eid_table_add_del_map, "[del] vni <vni> vrf <vrf>")              \

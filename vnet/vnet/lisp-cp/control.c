@@ -918,14 +918,14 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   clib_error_t * error = 0;
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1, del_all = 0;
-  locator_t rloc, * rlocs = 0;
+  locator_t rloc, * rlocs = 0, * curr_rloc = 0;
   ip_prefix_t * deid_ippref, * seid_ippref;
   gid_address_t seid, deid;
   u8 * dmac = gid_address_mac (&deid);
   u8 * smac = gid_address_mac (&seid);
   u8 deid_set = 0, seid_set = 0;
   u8 * s = 0;
-  u32 vni, action = ~0;
+  u32 vni, action = ~0, p, w;
   int rv;
 
   /* Get a line of input. */
@@ -976,8 +976,22 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
           gid_address_type (&seid) = GID_ADDR_MAC;
           seid_set = 1;
         }
-      else if (unformat (line_input, "rloc %U", unformat_ip_address, &rloc.address))
-        vec_add1 (rlocs, rloc);
+      else if (unformat (line_input, "p %d w %d", &p, &w))
+        {
+          if (!curr_rloc)
+            {
+              clib_warning ("No RLOC configured for setting priority/weight!");
+              goto done;
+            }
+          curr_rloc->priority = p;
+          curr_rloc->weight = w;
+        }
+      else if (unformat (line_input, "rloc %U", unformat_ip_address,
+                         &rloc.address))
+        {
+          vec_add1 (rlocs, rloc);
+          curr_rloc = &rlocs[vec_len (rlocs) - 1];
+        }
       else if (unformat (line_input, "action %s", &s))
         {
           if (!strcmp ((char *)s, "no-action"))
@@ -1062,6 +1076,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
     clib_warning("failed to %s remote mapping!", is_add ? "add" : "delete");
 
 done:
+  vec_free (rlocs);
   unformat_free (line_input);
   if (s)
     vec_free (s);
@@ -2073,7 +2088,7 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
                         loc->weight);
         else
           msg = format (msg, "%16U%16d%16d\n", format_ip_address,
-                        gid_address_ip(&loc->address), loc->priority,
+                        &gid_address_ip(&loc->address), loc->priority,
                         loc->weight);
         next_line = 1;
       }
