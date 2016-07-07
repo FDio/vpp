@@ -225,14 +225,22 @@ static int svm_data_region_create (svm_map_region_args_t *a,
 
         if (fstat(fd, &statb) < 0) {
             clib_unix_warning("fstat");
+            close (fd);
             return -2;
         }
 
         if (statb.st_mode & S_IFREG) {
             if (statb.st_size == 0) {
-                lseek(fd, map_size, SEEK_SET);
-                if (write(fd, &junk, 1) != 1)
+                if (lseek(fd, map_size, SEEK_SET) == (off_t) -1) {
+                    clib_unix_warning ("seek region size");
+                    close (fd);
+                    return -3;
+                }
+                if (write(fd, &junk, 1) != 1) {
                     clib_unix_warning ("set region size");
+                    close (fd);
+                    return -3;
+                }
             } else {
                 map_size = rnd_pagesize (statb.st_size);
             }
@@ -246,6 +254,7 @@ static int svm_data_region_create (svm_map_region_args_t *a,
         if (mmap (rp->data_base, map_size, PROT_READ | PROT_WRITE,
                   MAP_SHARED | MAP_FIXED, fd, 0) == MAP_FAILED) {
             clib_unix_warning("mmap");
+            close (fd);
             return -3;
         }
         close(fd);
@@ -283,14 +292,22 @@ static int svm_data_region_map (svm_map_region_args_t *a,
 
         if (fstat(fd, &statb) < 0) {
             clib_unix_warning("fstat");
+            close (fd);
             return -2;
         }
 
         if (statb.st_mode & S_IFREG) {
             if (statb.st_size == 0) {
-                lseek(fd, map_size, SEEK_SET);
-                if (write(fd, &junk, 1) != 1)
+                if (lseek(fd, map_size, SEEK_SET) == (off_t) -1) {
+                    clib_unix_warning ("seek region size");
+                    close (fd);
+                    return -3;
+                }
+                if (write(fd, &junk, 1) != 1) {
                     clib_unix_warning ("set region size");
+                    close (fd);
+                    return -3;
+                }
             } else {
                 map_size = rnd_pagesize (statb.st_size);
             }
@@ -304,6 +321,7 @@ static int svm_data_region_map (svm_map_region_args_t *a,
         if (mmap (rp->data_base, map_size, PROT_READ | PROT_WRITE,
                   MAP_SHARED | MAP_FIXED, fd, 0) == MAP_FAILED) {
             clib_unix_warning("mmap");
+            close (fd);
             return -3;
         }
         close(fd);
@@ -399,15 +417,23 @@ void *svm_map_region (svm_map_region_args_t *a)
 
         vec_free(shm_name);
 
-        lseek(svm_fd, a->size, SEEK_SET);
-        if (write(svm_fd, &junk, 1) != 1)
+        if (lseek(svm_fd, a->size, SEEK_SET) == (off_t) -1) {
+            clib_warning ("seek region size");
+            close (svm_fd);
+            return (0);
+        }
+        if (write(svm_fd, &junk, 1) != 1) {
             clib_warning ("set region size");
+            close (svm_fd);
+            return (0);
+        }
 
         rp = mmap((void *)a->baseva, a->size, 
                   PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, svm_fd, 0);
         
         if (rp == (svm_region_t *) MAP_FAILED) {
             clib_unix_warning ("mmap create");
+            close (svm_fd);
             return (0);
         }
         close(svm_fd);
@@ -509,6 +535,7 @@ void *svm_map_region (svm_map_region_args_t *a)
         while (1) {
             if (0 != fstat(svm_fd, &stat)) {
                 clib_warning("fstat failed: %d", errno);
+                close (svm_fd);
                 return (0);
             }
             if (stat.st_size > 0) {
@@ -516,6 +543,7 @@ void *svm_map_region (svm_map_region_args_t *a)
             }
             if (0 == time_left) {
                 clib_warning("waiting for resize of shm file timed out");
+                close (svm_fd);
                 return (0);
             }
             ts.tv_sec = 0;
@@ -545,10 +573,10 @@ void *svm_map_region (svm_map_region_args_t *a)
          * <bleep>-ed? 
          */
         if (rp->version == 0) {
-            close(svm_fd);
-            munmap(rp, a->size);
             clib_warning("rp->version %d not %d", rp->version,
                          SVM_VERSION);
+            close(svm_fd);
+            munmap(rp, a->size);
             return (0);
         } 
         /* Remap now that the region has been placed */
@@ -561,6 +589,7 @@ void *svm_map_region (svm_map_region_args_t *a)
                             MAP_SHARED | MAP_FIXED, svm_fd, 0);
         if ((uword)rp == (uword)MAP_FAILED) {
             clib_unix_warning ("mmap");
+            close (svm_fd);
             return (0);
         }
         
