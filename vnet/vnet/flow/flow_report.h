@@ -97,7 +97,7 @@ typedef struct flow_report_main {
   vnet_main_t * vnet_main;
 } flow_report_main_t;
 
-flow_report_main_t flow_report_main;
+extern flow_report_main_t flow_report_main;
 
 extern vlib_node_registration_t flow_report_process_node;
 
@@ -114,5 +114,7 @@ typedef struct {
 
 int vnet_flow_report_add_del (flow_report_main_t *frm, 
                               vnet_flow_report_add_del_args_t *a);
+
+void vnet_flow_reports_reset (flow_report_main_t * frm);
 
 #endif /* __included_vnet_flow_report_h__ */

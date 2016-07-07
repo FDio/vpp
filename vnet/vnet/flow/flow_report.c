@@ -18,6 +18,8 @@
 #include <vnet/flow/flow_report.h>
 #include <vnet/api_errno.h>
 
+flow_report_main_t flow_report_main;
+
 int send_template_packet (flow_report_main_t *frm, 
                           flow_report_t *fr,
                           u32 * buffer_indexp)
