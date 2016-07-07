@@ -228,6 +228,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   u32 nb_desc = 0;
   int i;
   clib_error_t * error;
+  dpdk_config_main_t * dpdk_conf = &dpdk_config_main;
   vlib_main_t * vm = vlib_get_main();
   vlib_thread_main_t * tm = vlib_get_thread_main();
   vlib_node_runtime_t * rt;
@@ -651,14 +652,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 	   * Initialize mtu to what has been set by CIMC in the firmware cfg.
 	   */
 	  hi->max_packet_bytes = dev_info.max_rx_pktlen;
-          /*
-           * remove vlan tag from VIC port to fix VLAN0 issue.
-           * TODO Handle VLAN tagged traffic
-           */
-          int vlan_off;
-          vlan_off = rte_eth_dev_get_vlan_offload(xd->device_index);
-          vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
-          rte_eth_dev_set_vlan_offload(xd->device_index, vlan_off);
+	  if (dpdk_conf->enic_keep_vlan == 0)
+	    { /* remove vlan tag from VIC port */
+	      int vlan_off;
+	      vlan_off = rte_eth_dev_get_vlan_offload(xd->device_index);
+	      vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
+	      rte_eth_dev_set_vlan_offload(xd->device_index, vlan_off);
+	    }
 	}
 
 #if RTE_VERSION < RTE_VERSION_NUM(16, 4, 0, 0) 
@@ -991,6 +991,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         ;
       else if (unformat (input, "enable-vhost-user"))
         conf->use_virtio_vhost = 0;
+      else if (unformat (input, "enic-keep-vlan"))
+        conf->enic_keep_vlan = 1;
       else if (unformat (input, "poll-sleep %d", &dm->poll_sleep))
         ;
 

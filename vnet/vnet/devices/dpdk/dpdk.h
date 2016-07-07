@@ -330,6 +330,9 @@ typedef struct {
   u32 vhost_coalesce_frames;
   f64 vhost_coalesce_time;
 
+  /* ENIC driver VLAN strip setting (default of 0 means VLAN strip enabled) */
+  u8 enic_keep_vlan;
+
   /* per-device config */
   dpdk_device_config_t default_devconf;
   dpdk_device_config_t * dev_confs;
