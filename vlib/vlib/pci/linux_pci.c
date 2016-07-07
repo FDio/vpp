@@ -123,6 +123,11 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char * uio_driver_name)
     }
 
   fd = socket(PF_INET, SOCK_DGRAM, 0);
+  if (fd < 0)
+    {
+      error = clib_error_return_unix (0, "socket");
+      goto done;
+    }
 
   while((e = readdir (dir)))
     {
@@ -135,17 +140,28 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char * uio_driver_name)
       memset(&ifr, 0, sizeof ifr);
       memset(&drvinfo, 0, sizeof drvinfo);
       ifr.ifr_data = (char *) &drvinfo;
-      strncpy(ifr.ifr_name, e->d_name, IFNAMSIZ);
+      strncpy(ifr.ifr_name, e->d_name, IFNAMSIZ - 1);
       drvinfo.cmd = ETHTOOL_GDRVINFO;
-      ioctl (fd, SIOCETHTOOL, &ifr);
+      if (ioctl (fd, SIOCETHTOOL, &ifr) < 0)
+        {
+          error = clib_error_return_unix (0, "ioctl fetch intf %s bus info",
+                e->d_name);
+          close (fd);
+          goto done;
+        }
 
       if (strcmp ((char *) s, drvinfo.bus_info))
 	continue;
 
       memset (&ifr, 0, sizeof(ifr));
-      strncpy (ifr.ifr_name, e->d_name, IFNAMSIZ);
-      ioctl (fd, SIOCGIFFLAGS, &ifr);
-      close (fd);
+      strncpy (ifr.ifr_name, e->d_name, IFNAMSIZ - 1);
+      if (ioctl (fd, SIOCGIFFLAGS, &ifr) < 0)
+        {
+          error = clib_error_return_unix (0, "ioctl fetch intf %s flags",
+                e->d_name);
+          close (fd);
+          goto done;
+        }
 
       if (ifr.ifr_flags & IFF_UP)
 	{
@@ -153,6 +169,7 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char * uio_driver_name)
 				     "interface %s is up",
 				     format_vlib_pci_addr, &d->bus_address,
 				     e->d_name);
+          close (fd);
 	  goto done;
 	}
     }
@@ -352,7 +369,7 @@ os_map_pci_resource_internal (uword os_handle,
  done:
   if (error)
     {
-      if (fd > 0)
+      if (fd >= 0)
 	close (fd);
     }
   vec_free (file_name);
@@ -478,6 +495,7 @@ scan_device (void * arg, u8 * dev_dir_name, u8 * ignored)
     {
       pool_put (pm->pci_devs, dev);
       error = clib_error_return_unix (0, "read `%s'", f);
+      close (fd);
       goto done;
     }
 
@@ -490,6 +508,7 @@ scan_device (void * arg, u8 * dev_dir_name, u8 * ignored)
       {
         pool_put (pm->pci_devs, dev);
 	error = clib_error_return (0, "invalid PCI config for `%s'", f);
+        close (fd);
 	goto done;
       }
   }
