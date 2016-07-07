@@ -56,6 +56,7 @@ typedef struct flow_report {
   u8 * rewrite;
   u32 sequence_number;
   u32 domain_id;
+  u16 src_port;
   f64 last_template_sent;
   int update_rewrite;
 
@@ -108,6 +109,7 @@ typedef struct {
   void * opaque;
   int is_add;
   u32 domain_id;
+  u16 src_port;
 } vnet_flow_report_add_del_args_t;  
 
 int vnet_flow_report_add_del (flow_report_main_t *frm, 
