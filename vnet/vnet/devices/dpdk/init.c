@@ -286,6 +286,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   for (i = 0; i < nports; i++)
     {
       u8 addr[6];
+      u8 vlan_strip = 0;
       int j;
       struct rte_eth_dev_info dev_info;
       clib_error_t * rv;
@@ -651,15 +652,24 @@ dpdk_lib_init (dpdk_main_t * dm)
 	   * Initialize mtu to what has been set by CIMC in the firmware cfg.
 	   */
 	  hi->max_packet_bytes = dev_info.max_rx_pktlen;
-          /*
-           * remove vlan tag from VIC port to fix VLAN0 issue.
-           * TODO Handle VLAN tagged traffic
-           */
-          int vlan_off;
-          vlan_off = rte_eth_dev_get_vlan_offload(xd->device_index);
-          vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
-          rte_eth_dev_set_vlan_offload(xd->device_index, vlan_off);
+	  if (devconf->vlan_strip_offload != DPDK_DEVICE_VLAN_STRIP_OFF)
+	    vlan_strip = 1; /* remove vlan tag from VIC port by default */
+	  else
+	    clib_warning("VLAN strip disabled for interface\n");
 	}
+      else if (devconf->vlan_strip_offload == DPDK_DEVICE_VLAN_STRIP_ON)
+	vlan_strip = 1;
+
+      if (vlan_strip)
+        { 
+	  int vlan_off;
+	  vlan_off = rte_eth_dev_get_vlan_offload(xd->device_index);
+	  vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
+	  if (rte_eth_dev_set_vlan_offload(xd->device_index, vlan_off) == 0)
+	    clib_warning("VLAN strip enabled for interface\n");
+	  else
+	    clib_warning("VLAN strip cannot be supported by interface\n");
+        }
 
 #if RTE_VERSION < RTE_VERSION_NUM(16, 4, 0, 0) 
       /*
@@ -884,6 +894,10 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr, unforma
           if (error)
             break;
         }
+      else if (unformat (input, "vlan-strip-offload off"))
+	  devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_OFF;
+      else if (unformat (input, "vlan-strip-offload on"))
+	  devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_ON;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
