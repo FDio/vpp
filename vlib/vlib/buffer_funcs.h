@@ -519,7 +519,8 @@ typedef struct {
   /* Vector of packet data. */
   u8 * packet_data;
 
-#if DPDK == 0
+  /* Note: the next three fields are unused if DPDK == 1 */
+
   /* Number of buffers to allocate in each call to physmem
      allocator. */
   u32 min_n_buffers_each_physmem_alloc;
@@ -528,7 +529,6 @@ typedef struct {
   u32 free_list_index;
 
   u32 * free_buffers;
-#endif
 } vlib_packet_template_t;
 
 void vlib_packet_template_get_packet_helper (vlib_main_t * vm,
