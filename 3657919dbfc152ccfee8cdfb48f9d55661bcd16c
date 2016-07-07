@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_46829c01",
+        "filename": "vnet/vnet/devices/af_packet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-07T09:32:01Z",
+      "side": 1,
+      "message": "not needed, use format_ethernet_dot1q_tci",
+      "range": {
+        "startLine": 57,
+        "startChar": 12,
+        "endLine": 57,
+        "endChar": 32
+      },
+      "revId": "3657919dbfc152ccfee8cdfb48f9d55661bcd16c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_868f9423",
+        "filename": "vnet/vnet/devices/af_packet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-07T09:32:01Z",
+      "side": 1,
+      "message": "Use format_ethernet_dot1q_tci",
+      "range": {
+        "startLine": 95,
+        "startChar": 7,
+        "endLine": 95,
+        "endChar": 27
+      },
+      "revId": "3657919dbfc152ccfee8cdfb48f9d55661bcd16c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_a6729847",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 746,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-07T09:32:01Z",
+      "side": 1,
+      "message": "not needed, use format_ethernet_dot1q_tci",
+      "range": {
+        "startLine": 736,
+        "startChar": 0,
+        "endLine": 746,
+        "endChar": 1
+      },
+      "revId": "3657919dbfc152ccfee8cdfb48f9d55661bcd16c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_c6758c33",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 773,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-07T09:32:01Z",
+      "side": 1,
+      "message": "Use format_ethernet_dot1q_tci instead",
+      "range": {
+        "startLine": 773,
+        "startChar": 16,
+        "endLine": 773,
+        "endChar": 36
+      },
+      "revId": "3657919dbfc152ccfee8cdfb48f9d55661bcd16c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_e678902d",
+        "filename": "vnet/vnet/ethernet/format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-07T09:32:01Z",
+      "side": 1,
+      "message": "make a separate format function out of this code called format_ethernet_dot1q_tci",
+      "range": {
+        "startLine": 112,
+        "startChar": 32,
+        "endLine": 117,
+        "endChar": 24
+      },
+      "revId": "3657919dbfc152ccfee8cdfb48f9d55661bcd16c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
