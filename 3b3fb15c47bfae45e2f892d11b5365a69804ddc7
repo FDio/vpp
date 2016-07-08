@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_8009b797",
+        "filename": "vlib/vlib/unix/mc_socket.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1045,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-08T14:18:19Z",
+      "side": 1,
+      "message": "Looks like trailing whitespace is present in all footers..",
+      "range": {
+        "startLine": 1039,
+        "startChar": 0,
+        "endLine": 1045,
+        "endChar": 3
+      },
+      "revId": "3b3fb15c47bfae45e2f892d11b5365a69804ddc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
