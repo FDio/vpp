@@ -1,7 +1,7 @@
 /*
  *------------------------------------------------------------------
  * api.h
- * 
+ *
  * Copyright (c) 2009 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,20 +30,21 @@
 /* Allocated in shared memory */
 
 /*
- * Ring-allocation scheme for client API messages 
- * 
- * Only one proc/thread has control of a given message buffer. 
- * To free a buffer allocated from one of these rings, we clear 
- * a field in the buffer (header), and leave. 
- * 
+ * Ring-allocation scheme for client API messages
+ *
+ * Only one proc/thread has control of a given message buffer.
+ * To free a buffer allocated from one of these rings, we clear
+ * a field in the buffer (header), and leave.
+ *
  * No locks, no hits, no errors...
  */
-typedef struct ring_alloc_ {
-    unix_shared_memory_queue_t *rp;
-    u16 size;
-    u16 nitems;
-    u32 hits;
-    u32 misses;
+typedef struct ring_alloc_
+{
+  unix_shared_memory_queue_t *rp;
+  u16 size;
+  u16 nitems;
+  u32 hits;
+  u32 misses;
 } ring_alloc_t;
 
 /*
@@ -61,36 +62,38 @@ _(1024+8, 1024)                                 \
 _(2048+8, 128)                                  \
 _(4096+8, 8)
 
-typedef struct vl_shmem_hdr_ {
-    int version;
+typedef struct vl_shmem_hdr_
+{
+  int version;
 
-    /* getpid () for the VLIB client process */
-    volatile int vl_pid;
+  /* getpid () for the VLIB client process */
+  volatile int vl_pid;
 
-    /* Client sends VLIB msgs here. */
-    unix_shared_memory_queue_t *vl_input_queue;
+  /* Client sends VLIB msgs here. */
+  unix_shared_memory_queue_t *vl_input_queue;
 
-    /* Vector of rings; one for each size. */
+  /* Vector of rings; one for each size. */
 
-    /* VLIB allocates buffers to send msgs to clients here. */
-    ring_alloc_t *vl_rings;
+  /* VLIB allocates buffers to send msgs to clients here. */
+  ring_alloc_t *vl_rings;
 
-    /* Clients allocate buffer to send msgs to VLIB here. */
-    ring_alloc_t *client_rings;
+  /* Clients allocate buffer to send msgs to VLIB here. */
+  ring_alloc_t *client_rings;
 
-    /* Number of detected application restarts */
-    u32 application_restarts;
+  /* Number of detected application restarts */
+  u32 application_restarts;
 
-    /* Number of messages reclaimed during application restart */
-    u32 restart_reclaims;
+  /* Number of messages reclaimed during application restart */
+  u32 restart_reclaims;
 
 } vl_shmem_hdr_t;
 
 /* Note that the size of the structure is 16 bytes, with 4 bytes of padding after data[0]. */
-typedef struct msgbuf_ {
-    unix_shared_memory_queue_t *q;
-    u32 data_len;
-    u8 data[0];
+typedef struct msgbuf_
+{
+  unix_shared_memory_queue_t *q;
+  u32 data_len;
+  u8 data[0];
 } msgbuf_t;
 
 #define VL_SHM_VERSION 2
@@ -98,33 +101,37 @@ typedef struct msgbuf_ {
 #define VL_API_EPOCH_MASK 0xFF
 #define VL_API_EPOCH_SHIFT 8
 
-static inline u32 vl_msg_api_handle_get_epoch (u32 index)
+static inline u32
+vl_msg_api_handle_get_epoch (u32 index)
 {
-    return (index & VL_API_EPOCH_MASK);
-}
-static inline u32 vl_msg_api_handle_get_index (u32 index)
-{
-    return (index >> VL_API_EPOCH_SHIFT);
+  return (index & VL_API_EPOCH_MASK);
 }
 
-static inline u32 vl_msg_api_handle_from_index_and_epoch (u32 index, u32 epoch)
+static inline u32
+vl_msg_api_handle_get_index (u32 index)
 {
-    u32 handle;
-    ASSERT (index < 0x00FFFFFF);
-
-    handle = (index<<VL_API_EPOCH_SHIFT) | (epoch & VL_API_EPOCH_MASK);
-    return handle;
+  return (index >> VL_API_EPOCH_SHIFT);
 }
-    
-void *vl_msg_api_alloc(int nbytes);
+
+static inline u32
+vl_msg_api_handle_from_index_and_epoch (u32 index, u32 epoch)
+{
+  u32 handle;
+  ASSERT (index < 0x00FFFFFF);
+
+  handle = (index << VL_API_EPOCH_SHIFT) | (epoch & VL_API_EPOCH_MASK);
+  return handle;
+}
+
+void *vl_msg_api_alloc (int nbytes);
 void *vl_msg_api_alloc_as_if_client (int nbytes);
-void vl_msg_api_free(void *a);
+void vl_msg_api_free (void *a);
 int vl_map_shmem (char *region_name, int is_vlib);
-void vl_register_mapped_shmem_region(svm_region_t *rp);
+void vl_register_mapped_shmem_region (svm_region_t * rp);
 void vl_unmap_shmem (void);
-void vl_msg_api_send_shmem (unix_shared_memory_queue_t *q, u8 *elem);
-void vl_msg_api_send_shmem_nolock (unix_shared_memory_queue_t *q, u8 *elem);
-void vl_msg_api_send (vl_api_registration_t *rp, u8 *elem);
+void vl_msg_api_send_shmem (unix_shared_memory_queue_t * q, u8 * elem);
+void vl_msg_api_send_shmem_nolock (unix_shared_memory_queue_t * q, u8 * elem);
+void vl_msg_api_send (vl_api_registration_t * rp, u8 * elem);
 int vl_client_connect (char *name, int ctx_quota, int input_queue_size);
 void vl_client_disconnect (void);
 unix_shared_memory_queue_t *vl_api_client_index_to_input_queue (u32 index);
@@ -135,14 +142,23 @@ void vl_set_memory_region_name (char *name);
 void vl_set_memory_root_path (char *root_path);
 void vl_set_memory_uid (int uid);
 void vl_set_memory_gid (int gid);
-void vl_enable_disable_memory_api (vlib_main_t *vm, int yesno);
+void vl_enable_disable_memory_api (vlib_main_t * vm, int yesno);
 void vl_client_disconnect_from_vlib (void);
-int vl_client_connect_to_vlib(char *svm_name, char *client_name, 
-                              int rx_queue_size);
-int vl_client_connect_to_vlib_no_rx_pthread (char *svm_name, char *client_name, 
-                                             int rx_queue_size);
-u16 vl_client_get_first_plugin_msg_id (char * plugin_name);
+int vl_client_connect_to_vlib (char *svm_name, char *client_name,
+			       int rx_queue_size);
+int vl_client_connect_to_vlib_no_rx_pthread (char *svm_name,
+					     char *client_name,
+					     int rx_queue_size);
+u16 vl_client_get_first_plugin_msg_id (char *plugin_name);
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 
 #endif /* included_vlibmemory_api_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
