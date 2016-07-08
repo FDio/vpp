@@ -2,6 +2,7 @@ AC_INIT(ioam_plugin, 1.0)
 LT_INIT
 AM_INIT_AUTOMAKE
 AC_PREFIX_DEFAULT([/usr])
+AM_SILENT_RULES([yes])
 
 AC_PROG_CC
 

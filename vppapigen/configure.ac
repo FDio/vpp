@@ -5,10 +5,10 @@
 
 AC_INIT(vppapigen, 1.0)
 AM_INIT_AUTOMAKE
+AM_SILENT_RULES([yes])
 
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_YACC
-AM_PROG_CC_C_O
 
 AC_OUTPUT([Makefile])

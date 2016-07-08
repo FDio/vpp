@@ -1,10 +1,9 @@
 AC_INIT(vpp-api-test, 1.0)
 LT_INIT
 AM_INIT_AUTOMAKE
+AM_SILENT_RULES([yes])
 
-AM_PROG_AS
 AC_PROG_CC
-AM_PROG_CC_C_O
 
 AC_ARG_WITH(q-plugin-prefix,
             AC_HELP_STRING([--with-q-plugin-prefix],[vlib plugin prefix]),
