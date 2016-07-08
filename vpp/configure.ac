@@ -2,9 +2,7 @@ AC_INIT(vpp, 1.1)
 AM_INIT_AUTOMAKE
 AM_SILENT_RULES([yes])
 
-AM_PROG_AS
 AC_PROG_CC
-AM_PROG_CC_C_O
 
 AC_ARG_WITH(dpdk,
             AC_HELP_STRING([--with-dpdk],[Use the Intel dpdk]),

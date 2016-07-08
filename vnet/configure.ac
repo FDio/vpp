@@ -6,8 +6,6 @@ AM_INIT_AUTOMAKE
 AM_SILENT_RULES([yes])
 
 AC_PROG_CC
-AM_PROG_CC_C_O
-AM_PROG_AS
 
 AC_ARG_WITH(dpdk,
             AC_HELP_STRING([--with-dpdk],[Use the Intel dpdk]),
