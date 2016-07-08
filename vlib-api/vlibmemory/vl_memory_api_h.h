@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * vl_memory_api_h.h - memory API headers, in a specific order.
  *
@@ -19,7 +19,15 @@
 
 /*
  * Add to the bottom of the #include list, or elves will steal your
- * keyboard in the middle of the night! 
+ * keyboard in the middle of the night!
  */
 #include <vlibmemory/memclnt.api.h>
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

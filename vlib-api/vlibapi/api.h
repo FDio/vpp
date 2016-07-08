@@ -1,7 +1,7 @@
 /*
  *------------------------------------------------------------------
  * api.h
- * 
+ *
  * Copyright (c) 2009-2015 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,205 +26,221 @@
 #include <vlibmemory/unix_shared_memory_queue.h>
 #include <vlib/unix/unix.h>
 
-typedef enum {
-    REGISTRATION_TYPE_FREE=0,
-    REGISTRATION_TYPE_SHMEM,
-    REGISTRATION_TYPE_SOCKET_LISTEN,
-    REGISTRATION_TYPE_SOCKET_SERVER,
-    REGISTRATION_TYPE_SOCKET_CLIENT,
+typedef enum
+{
+  REGISTRATION_TYPE_FREE = 0,
+  REGISTRATION_TYPE_SHMEM,
+  REGISTRATION_TYPE_SOCKET_LISTEN,
+  REGISTRATION_TYPE_SOCKET_SERVER,
+  REGISTRATION_TYPE_SOCKET_CLIENT,
 } vl_registration_type_t;
 
-typedef struct vl_api_registration_ {
-    vl_registration_type_t registration_type;
+typedef struct vl_api_registration_
+{
+  vl_registration_type_t registration_type;
 
-    /* Index in VLIB's brain (not shared memory). */
-    u32 vl_api_registration_pool_index;
-    
-    u8 *name;
+  /* Index in VLIB's brain (not shared memory). */
+  u32 vl_api_registration_pool_index;
 
-    /*
-     * The following groups of data could be unioned, but my fingers are
-     * going to be sore enough.
-     */
+  u8 *name;
 
-    /* shared memory only */
-    unix_shared_memory_queue_t *vl_input_queue;
+  /*
+   * The following groups of data could be unioned, but my fingers are
+   * going to be sore enough.
+   */
 
-    /* socket server and client */
-    u32 unix_file_index;
-    i8 * unprocessed_input;
-    u32 unprocessed_msg_length;
-    u8 * output_vector;
+  /* shared memory only */
+  unix_shared_memory_queue_t *vl_input_queue;
 
-    /* socket client only */
-    u32 server_handle;
-    u32 server_index;
+  /* socket server and client */
+  u32 unix_file_index;
+  i8 *unprocessed_input;
+  u32 unprocessed_msg_length;
+  u8 *output_vector;
+
+  /* socket client only */
+  u32 server_handle;
+  u32 server_index;
 
 } vl_api_registration_t;
 
 
 /* Trace configuration for a single message */
-typedef struct {
-    int size;
-    int trace_enable;
-    int replay_enable;
+typedef struct
+{
+  int size;
+  int trace_enable;
+  int replay_enable;
 } trace_cfg_t;
 
 /*
  * API recording
  */
-typedef struct {
-    u8 endian;
-    u8 enabled;
-    u8 wrapped;
-    u8 pad;
-    u32 nitems;
-    u32 curindex;
-    u8 **traces;
+typedef struct
+{
+  u8 endian;
+  u8 enabled;
+  u8 wrapped;
+  u8 pad;
+  u32 nitems;
+  u32 curindex;
+  u8 **traces;
 } vl_api_trace_t;
 
-typedef CLIB_PACKED (struct {
-    u8 endian;
-    u8 wrapped;
-    u32 nitems;
-}) vl_api_trace_file_header_t;
+typedef CLIB_PACKED (struct
+		     {
+		     u8 endian; u8 wrapped;
+		     u32 nitems;
+		     }) vl_api_trace_file_header_t;
 
-typedef enum {
-    VL_API_TRACE_TX,
-    VL_API_TRACE_RX,
+typedef enum
+{
+  VL_API_TRACE_TX,
+  VL_API_TRACE_RX,
 } vl_api_trace_which_t;
 
 #define VL_API_LITTLE_ENDIAN 0x00
 #define VL_API_BIG_ENDIAN 0x01
 
-typedef struct {
-    u8 * name;
-    u16 first_msg_id;
-    u16 last_msg_id;
+typedef struct
+{
+  u8 *name;
+  u16 first_msg_id;
+  u16 last_msg_id;
 } vl_api_msg_range_t;
 
-typedef struct {
-    void (**msg_handlers)(void *);
-    int  (**pd_msg_handlers)(void *, int);
-    void (**msg_cleanup_handlers)(void *);
-    void (**msg_endian_handlers)(void *);
-    void (**msg_print_handlers)(void *, void *);
-    char **msg_names;
-    u8 *message_bounce;
-    u8 *is_mp_safe;
-    struct ring_alloc_ *arings;
-    u32 ring_misses;
-    u32 missing_clients;
-    vl_api_trace_t *rx_trace;
-    vl_api_trace_t *tx_trace;
-    int msg_print_flag;
-    trace_cfg_t *api_trace_cfg;
-    int our_pid;
-    svm_region_t *vlib_rp;
-    svm_region_t **mapped_shmem_regions;
-    struct vl_shmem_hdr_ *shmem_hdr;
-    vl_api_registration_t **vl_clients;
+typedef struct
+{
+  void (**msg_handlers) (void *);
+  int (**pd_msg_handlers) (void *, int);
+  void (**msg_cleanup_handlers) (void *);
+  void (**msg_endian_handlers) (void *);
+  void (**msg_print_handlers) (void *, void *);
+  char **msg_names;
+  u8 *message_bounce;
+  u8 *is_mp_safe;
+  struct ring_alloc_ *arings;
+  u32 ring_misses;
+  u32 missing_clients;
+  vl_api_trace_t *rx_trace;
+  vl_api_trace_t *tx_trace;
+  int msg_print_flag;
+  trace_cfg_t *api_trace_cfg;
+  int our_pid;
+  svm_region_t *vlib_rp;
+  svm_region_t **mapped_shmem_regions;
+  struct vl_shmem_hdr_ *shmem_hdr;
+  vl_api_registration_t **vl_clients;
 
-    /* For plugin msg allocator */
-    u16 first_available_msg_id;
+  /* For plugin msg allocator */
+  u16 first_available_msg_id;
 
-    /* message range by name hash */
-    uword * msg_range_by_name;
+  /* message range by name hash */
+  uword *msg_range_by_name;
 
-    /* vector of message ranges */
-    vl_api_msg_range_t *msg_ranges;
+  /* vector of message ranges */
+  vl_api_msg_range_t *msg_ranges;
 
-    /* gid for the api shared memory region */
-    int api_gid;
-    int api_uid;
+  /* gid for the api shared memory region */
+  int api_gid;
+  int api_uid;
 
-    /* Client-only data structures */
-    unix_shared_memory_queue_t *vl_input_queue;
+  /* Client-only data structures */
+  unix_shared_memory_queue_t *vl_input_queue;
 
-    /*
-     * All VLIB-side message handlers use my_client_index to identify 
-     * the queue / client. This works in sim replay.
-     */
-    int my_client_index;
-    /*
-     * This is the (shared VM) address of the registration,
-     * don't use it to id the connection since it can't possibly
-     * work in simulator replay.
-     */
-    vl_api_registration_t *my_registration;
+  /*
+   * All VLIB-side message handlers use my_client_index to identify
+   * the queue / client. This works in sim replay.
+   */
+  int my_client_index;
+  /*
+   * This is the (shared VM) address of the registration,
+   * don't use it to id the connection since it can't possibly
+   * work in simulator replay.
+   */
+  vl_api_registration_t *my_registration;
 
-    i32 vlib_signal;
+  i32 vlib_signal;
 
-    char *region_name;
-    char *root_path;
+  char *region_name;
+  char *root_path;
 } api_main_t;
 
 api_main_t api_main;
 
-typedef struct {
-    int id;
-    char *name;
-    void *handler;
-    void *cleanup;
-    void *endian;
-    void *print;
-    int size;
-    int traced;
-    int replay;
-    int message_bounce;
-    int is_mp_safe;
+typedef struct
+{
+  int id;
+  char *name;
+  void *handler;
+  void *cleanup;
+  void *endian;
+  void *print;
+  int size;
+  int traced;
+  int replay;
+  int message_bounce;
+  int is_mp_safe;
 } vl_msg_api_msg_config_t;
 
 /* api_shared.c prototypes */
-int vl_msg_api_rx_trace_enabled(api_main_t *am);
-int vl_msg_api_tx_trace_enabled(api_main_t *am);
-void vl_msg_api_trace(api_main_t *am, vl_api_trace_t *tp, void *msg);
-int vl_msg_api_trace_onoff(api_main_t *am, vl_api_trace_which_t which, 
-                           int onoff);
-int vl_msg_api_trace_free(api_main_t *am, vl_api_trace_which_t which);
-int vl_msg_api_trace_save(api_main_t *am, 
-                          vl_api_trace_which_t which, FILE *fp);
-int vl_msg_api_trace_configure(api_main_t *am, vl_api_trace_which_t which, 
-                               u32 nitems);
-void vl_msg_api_handler_with_vm_node (api_main_t *am, 
-                                      void *the_msg, vlib_main_t *vm, 
-                                      vlib_node_runtime_t *node);
+int vl_msg_api_rx_trace_enabled (api_main_t * am);
+int vl_msg_api_tx_trace_enabled (api_main_t * am);
+void vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg);
+int vl_msg_api_trace_onoff (api_main_t * am, vl_api_trace_which_t which,
+			    int onoff);
+int vl_msg_api_trace_free (api_main_t * am, vl_api_trace_which_t which);
+int vl_msg_api_trace_save (api_main_t * am,
+			   vl_api_trace_which_t which, FILE * fp);
+int vl_msg_api_trace_configure (api_main_t * am, vl_api_trace_which_t which,
+				u32 nitems);
+void vl_msg_api_handler_with_vm_node (api_main_t * am,
+				      void *the_msg, vlib_main_t * vm,
+				      vlib_node_runtime_t * node);
 void vl_msg_api_handler (void *the_msg);
 void vl_msg_api_handler_no_free (void *the_msg);
 void vl_msg_api_handler_no_trace_no_free (void *the_msg);
 void vl_msg_api_trace_only (void *the_msg);
 void vl_msg_api_cleanup_handler (void *the_msg);
-void vl_msg_api_replay_handler(void *the_msg);
-void vl_msg_api_socket_handler(void *the_msg);
-void vl_msg_api_set_handlers(int msg_id, char *msg_name, 
-                             void *handler, 
-                             void *cleanup,
-                             void *endian,
-                             void *print,
-                             int msg_size, int traced);
+void vl_msg_api_replay_handler (void *the_msg);
+void vl_msg_api_socket_handler (void *the_msg);
+void vl_msg_api_set_handlers (int msg_id, char *msg_name,
+			      void *handler,
+			      void *cleanup,
+			      void *endian,
+			      void *print, int msg_size, int traced);
 void vl_msg_api_config (vl_msg_api_msg_config_t *);
-void vl_msg_api_set_cleanup_handler(int msg_id, void *fp);
-void vl_msg_api_queue_handler(unix_shared_memory_queue_t *q);
-vl_api_trace_t *vl_msg_api_trace_get(api_main_t *am, 
-                                     vl_api_trace_which_t which);
+void vl_msg_api_set_cleanup_handler (int msg_id, void *fp);
+void vl_msg_api_queue_handler (unix_shared_memory_queue_t * q);
+vl_api_trace_t *vl_msg_api_trace_get (api_main_t * am,
+				      vl_api_trace_which_t which);
 
 void vl_msg_api_free (void *);
 void vl_noop_handler (void *mp);
-clib_error_t *vl_api_init (vlib_main_t *vm);
-void vl_msg_api_increment_missing_client_counter(void);
+clib_error_t *vl_api_init (vlib_main_t * vm);
+void vl_msg_api_increment_missing_client_counter (void);
 void vl_msg_api_post_mortem_dump (void);
-void vl_msg_api_register_pd_handler (void *handler, u16 msg_id_host_byte_order);
+void vl_msg_api_register_pd_handler (void *handler,
+				     u16 msg_id_host_byte_order);
 int vl_msg_api_pd_handler (void *mp, int rv);
 
 void vl_msg_api_set_first_available_msg_id (u16 first_avail);
-u16 vl_msg_api_get_msg_ids (char * name, int n);
+u16 vl_msg_api_get_msg_ids (char *name, int n);
 
 /* node_serialize.c prototypes */
-u8 * vlib_node_serialize (vlib_node_main_t *nm, u8 * vector,
-                          u32 max_threads, int include_nexts, 
-                          int include_stats);
-vlib_node_t ** vlib_node_unserialize (u8 * vector);
+u8 *vlib_node_serialize (vlib_node_main_t * nm, u8 * vector,
+			 u32 max_threads, int include_nexts,
+			 int include_stats);
+vlib_node_t **vlib_node_unserialize (u8 * vector);
 
 #define VLIB_API_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,api_init)
 
 #endif /* included_api_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
