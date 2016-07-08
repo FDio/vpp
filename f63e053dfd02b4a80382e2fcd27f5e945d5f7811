@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_a08f1b23",
+        "filename": "vlib/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1404,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-08T12:37:06Z",
+      "side": 1,
+      "message": "Some trailing whitespace here :)",
+      "range": {
+        "startLine": 1398,
+        "startChar": 0,
+        "endLine": 1404,
+        "endChar": 3
+      },
+      "revId": "f63e053dfd02b4a80382e2fcd27f5e945d5f7811",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
