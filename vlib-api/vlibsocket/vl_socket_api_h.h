@@ -23,3 +23,11 @@
  */
 #include <vlibmemory/vl_memory_api_h.h>
 #include <vlibsocket/sockclnt.api.h>
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

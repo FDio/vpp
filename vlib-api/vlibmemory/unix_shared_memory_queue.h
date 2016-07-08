@@ -23,38 +23,47 @@
 #include <pthread.h>
 #include <vppinfra/mem.h>
 
-typedef struct _unix_shared_memory_queue {
-    pthread_mutex_t mutex;      /* 8 bytes */
-    pthread_cond_t condvar;     /* 8 bytes */
-    int head;
-    int tail;
-    int cursize;
-    int maxsize;
-    int elsize;
-    int consumer_pid;
-    int signal_when_queue_non_empty;
-    char data[0];
+typedef struct _unix_shared_memory_queue
+{
+  pthread_mutex_t mutex;	/* 8 bytes */
+  pthread_cond_t condvar;	/* 8 bytes */
+  int head;
+  int tail;
+  int cursize;
+  int maxsize;
+  int elsize;
+  int consumer_pid;
+  int signal_when_queue_non_empty;
+  char data[0];
 } unix_shared_memory_queue_t;
 
-unix_shared_memory_queue_t *
-unix_shared_memory_queue_init(int nels, 
-                              int elsize, 
-                              int consumer_pid,
-                              int signal_when_queue_non_empty);
-void unix_shared_memory_queue_free(unix_shared_memory_queue_t *q);
-int unix_shared_memory_queue_add (unix_shared_memory_queue_t *q, 
-                                  u8 *elem, int nowait);
-int unix_shared_memory_queue_sub(unix_shared_memory_queue_t *q, 
-                                 u8 *elem, int nowait);
-void unix_shared_memory_queue_lock (unix_shared_memory_queue_t *q);
-void unix_shared_memory_queue_unlock (unix_shared_memory_queue_t *q);
-int unix_shared_memory_queue_is_full (unix_shared_memory_queue_t *q);
-int unix_shared_memory_queue_add_nolock (unix_shared_memory_queue_t *q, 
-                                         u8 *elem);
+unix_shared_memory_queue_t *unix_shared_memory_queue_init (int nels,
+							   int elsize,
+							   int consumer_pid,
+							   int
+							   signal_when_queue_non_empty);
+void unix_shared_memory_queue_free (unix_shared_memory_queue_t * q);
+int unix_shared_memory_queue_add (unix_shared_memory_queue_t * q,
+				  u8 * elem, int nowait);
+int unix_shared_memory_queue_sub (unix_shared_memory_queue_t * q,
+				  u8 * elem, int nowait);
+void unix_shared_memory_queue_lock (unix_shared_memory_queue_t * q);
+void unix_shared_memory_queue_unlock (unix_shared_memory_queue_t * q);
+int unix_shared_memory_queue_is_full (unix_shared_memory_queue_t * q);
+int unix_shared_memory_queue_add_nolock (unix_shared_memory_queue_t * q,
+					 u8 * elem);
 
-int unix_shared_memory_queue_sub_raw (unix_shared_memory_queue_t *q, 
-                                      u8 *elem);
-int unix_shared_memory_queue_add_raw (unix_shared_memory_queue_t *q, 
-                                      u8 *elem);
+int unix_shared_memory_queue_sub_raw (unix_shared_memory_queue_t * q,
+				      u8 * elem);
+int unix_shared_memory_queue_add_raw (unix_shared_memory_queue_t * q,
+				      u8 * elem);
 
 #endif /* included_unix_shared_memory_queue_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
