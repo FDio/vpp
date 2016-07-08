@@ -4914,12 +4914,12 @@ static int api_ip_neighbor_add_del (vat_main_t * vam)
     
     /* Parse args required to build the message */
     while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
-	if (unformat (i, "mac %U", unformat_ethernet_address, mac_address)) {
+        if (unformat (i, "mac %U", unformat_ethernet_address, mac_address)) {
             mac_set = 1;
         }
         else if (unformat (i, "del"))
             is_add = 0;
-	else if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+        else if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
             sw_if_index_set = 1;
         else if (unformat (i, "sw_if_index %d", &sw_if_index))
             sw_if_index_set = 1;
@@ -4948,7 +4948,7 @@ static int api_ip_neighbor_add_del (vat_main_t * vam)
         return -99;
     }
     if (!v4_address_set && !v6_address_set) {
-        errmsg ("no addresses set\n");
+        errmsg ("no address set\n");
         return -99;
     }
 
@@ -12277,7 +12277,8 @@ _(mpls_gre_add_del_tunnel,                                              \
 _(sw_interface_set_unnumbered,                                          \
   "<intfc> | sw_if_index <id> unnum_if_index <id> [del]")               \
 _(ip_neighbor_add_del,                                                  \
-  "<intfc> | sw_if_index <id> dst <ip46-address> mac <mac-addr>")       \
+  "(<intfc> | sw_if_index <id>) dst <ip46-address> "                    \
+  "[mac <mac-addr>] [vrf <vrf-id>] [is_static] [del]")                  \
 _(reset_vrf, "vrf <id> [ipv6]")                                         \
 _(create_vlan_subif, "<intfc> | sw_if_index <id> vlan <n>")             \
 _(create_subif, "<intfc> | sw_if_index <id> sub_id <n>\n"               \
