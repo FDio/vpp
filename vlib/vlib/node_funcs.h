@@ -37,7 +37,7 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/** \file 
+/** \file
     vlib node functions
 */
 
@@ -56,7 +56,9 @@
 
 always_inline vlib_node_t *
 vlib_get_node (vlib_main_t * vm, u32 i)
-{ return vec_elt (vm->node_main.nodes, i); }
+{
+  return vec_elt (vm->node_main.nodes, i);
+}
 
 /** \brief Get vlib node by graph arc (next) index.
  @param vm vlib_main_t pointer, varies by thread
@@ -68,8 +70,8 @@ vlib_get_node (vlib_main_t * vm, u32 i)
 always_inline vlib_node_t *
 vlib_get_next_node (vlib_main_t * vm, u32 node_index, u32 next_index)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_t * n;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n;
 
   n = vec_elt (nm->nodes, node_index);
   ASSERT (next_index < vec_len (n->next_nodes));
@@ -85,9 +87,9 @@ vlib_get_next_node (vlib_main_t * vm, u32 node_index, u32 next_index)
 always_inline vlib_node_runtime_t *
 vlib_node_get_runtime (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_t * n = vec_elt (nm->nodes, node_index);
-  vlib_process_t * p;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n = vec_elt (nm->nodes, node_index);
+  vlib_process_t *p;
   if (n->type != VLIB_NODE_TYPE_PROCESS)
     return vec_elt_at_index (nm->nodes_by_type[n->type], n->runtime_index);
   else
@@ -106,7 +108,7 @@ vlib_node_get_runtime (vlib_main_t * vm, u32 node_index)
 always_inline void *
 vlib_node_get_runtime_data (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_runtime_t * r = vlib_node_get_runtime (vm, node_index);
+  vlib_node_runtime_t *r = vlib_node_get_runtime (vm, node_index);
   return r->runtime_data;
 }
 
@@ -119,11 +121,10 @@ vlib_node_get_runtime_data (vlib_main_t * vm, u32 node_index)
 
 always_inline void
 vlib_node_set_runtime_data (vlib_main_t * vm, u32 node_index,
-			    void * runtime_data,
-			    u32 n_runtime_data_bytes)
+			    void *runtime_data, u32 n_runtime_data_bytes)
 {
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  vlib_node_runtime_t * r = vlib_node_get_runtime (vm, node_index);
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  vlib_node_runtime_t *r = vlib_node_get_runtime (vm, node_index);
 
   n->runtime_data_bytes = n_runtime_data_bytes;
   vec_free (n->runtime_data);
@@ -140,16 +141,17 @@ vlib_node_set_runtime_data (vlib_main_t * vm, u32 node_index,
  @param new_state new state for node, see vlib_node_state_t
 */
 always_inline void
-vlib_node_set_state (vlib_main_t * vm, u32 node_index, vlib_node_state_t new_state)
+vlib_node_set_state (vlib_main_t * vm, u32 node_index,
+		     vlib_node_state_t new_state)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_t * n;
-  vlib_node_runtime_t * r;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n;
+  vlib_node_runtime_t *r;
 
   n = vec_elt (nm->nodes, node_index);
   if (n->type == VLIB_NODE_TYPE_PROCESS)
     {
-      vlib_process_t * p = vec_elt (nm->processes, n->runtime_index);
+      vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
       r = &p->node_runtime;
 
       /* When disabling make sure flags are cleared. */
@@ -176,8 +178,8 @@ vlib_node_set_state (vlib_main_t * vm, u32 node_index, vlib_node_state_t new_sta
 always_inline void
 vlib_node_set_interrupt_pending (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_t * n = vec_elt (nm->nodes, node_index);
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n = vec_elt (nm->nodes, node_index);
   ASSERT (n->type == VLIB_NODE_TYPE_INPUT);
   vec_add1 (nm->pending_interrupt_node_runtime_indices, n->runtime_index);
 }
@@ -185,7 +187,7 @@ vlib_node_set_interrupt_pending (vlib_main_t * vm, u32 node_index)
 always_inline vlib_process_t *
 vlib_get_process_from_node (vlib_main_t * vm, vlib_node_t * node)
 {
-  vlib_node_main_t * nm = &vm->node_main;
+  vlib_node_main_t *nm = &vm->node_main;
   ASSERT (node->type == VLIB_NODE_TYPE_PROCESS);
   return vec_elt (nm->processes, node->runtime_index);
 }
@@ -194,7 +196,7 @@ vlib_get_process_from_node (vlib_main_t * vm, vlib_node_t * node)
 always_inline vlib_frame_t *
 vlib_get_frame_no_check (vlib_main_t * vm, uword frame_index)
 {
-  vlib_frame_t * f;
+  vlib_frame_t *f;
   u32 cpu_index = frame_index & VLIB_CPU_MASK;
   u32 offset = frame_index & VLIB_OFFSET_MASK;
   vm = vlib_mains ? vlib_mains[cpu_index] : vm;
@@ -207,7 +209,7 @@ vlib_frame_index_no_check (vlib_main_t * vm, vlib_frame_t * f)
 {
   u32 i;
 
-  ASSERT (((uword)f & VLIB_CPU_MASK)==0);
+  ASSERT (((uword) f & VLIB_CPU_MASK) == 0);
 
   vm = vlib_mains ? vlib_mains[f->cpu_index] : vm;
 
@@ -218,7 +220,7 @@ vlib_frame_index_no_check (vlib_main_t * vm, vlib_frame_t * f)
 always_inline vlib_frame_t *
 vlib_get_frame (vlib_main_t * vm, uword frame_index)
 {
-  vlib_frame_t * f = vlib_get_frame_no_check (vm, frame_index);
+  vlib_frame_t *f = vlib_get_frame_no_check (vm, frame_index);
   ASSERT (f->flags & VLIB_FRAME_IS_ALLOCATED);
   return f;
 }
@@ -264,23 +266,23 @@ vlib_frame_vector_args (vlib_frame_t * f)
 */
 always_inline void *
 vlib_frame_args (vlib_frame_t * f)
-{ return vlib_frame_vector_args (f) - f->scalar_size; }
+{
+  return vlib_frame_vector_args (f) - f->scalar_size;
+}
 
 always_inline vlib_next_frame_t *
 vlib_node_runtime_get_next_frame (vlib_main_t * vm,
-				  vlib_node_runtime_t * n,
-				  u32 next_index)
+				  vlib_node_runtime_t * n, u32 next_index)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_next_frame_t * nf;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_next_frame_t *nf;
 
   ASSERT (next_index < n->n_next_nodes);
-  nf = vec_elt_at_index (nm->next_frames,
-			 n->next_frame_index + next_index);
+  nf = vec_elt_at_index (nm->next_frames, n->next_frame_index + next_index);
 
   if (CLIB_DEBUG > 0)
     {
-      vlib_node_t * node, * next;
+      vlib_node_t *node, *next;
       node = vec_elt (nm->nodes, n->node_index);
       next = vec_elt (nm->nodes, node->next_nodes[next_index]);
       ASSERT (nf->node_runtime_index == next->runtime_index);
@@ -304,24 +306,21 @@ vlib_node_runtime_get_next_frame (vlib_main_t * vm,
 */
 
 always_inline vlib_next_frame_t *
-vlib_node_get_next_frame (vlib_main_t * vm,
-			  u32 node_index,
-			  u32 next_index)
+vlib_node_get_next_frame (vlib_main_t * vm, u32 node_index, u32 next_index)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_t * n;
-  vlib_node_runtime_t * r;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n;
+  vlib_node_runtime_t *r;
 
   n = vec_elt (nm->nodes, node_index);
   r = vec_elt_at_index (nm->nodes_by_type[n->type], n->runtime_index);
   return vlib_node_runtime_get_next_frame (vm, r, next_index);
 }
 
-vlib_frame_t *
-vlib_get_next_frame_internal (vlib_main_t * vm,
-			      vlib_node_runtime_t * node,
-			      u32 next_index,
-			      u32 alloc_new_frame);
+vlib_frame_t *vlib_get_next_frame_internal (vlib_main_t * vm,
+					    vlib_node_runtime_t * node,
+					    u32 next_index,
+					    u32 alloc_new_frame);
 
 #define vlib_get_next_frame_macro(vm,node,next_index,vectors,n_vectors_left,alloc_new_frame) \
 do {									\
@@ -334,7 +333,7 @@ do {									\
 } while (0)
 
 
-/** \brief Get pointer to next frame vector data by 
+/** \brief Get pointer to next frame vector data by
     (@c vlib_node_runtime_t, @c next_index).
  Standard single/dual loop boilerplate element.
  @attention This is a MACRO, with SIDE EFFECTS.
@@ -366,8 +365,7 @@ do {									\
 void
 vlib_put_next_frame (vlib_main_t * vm,
 		     vlib_node_runtime_t * r,
-		     u32 next_index,
-		     u32 n_packets_left);
+		     u32 next_index, u32 n_packets_left);
 
 /* Combination get plus put.  Returns vector argument just added. */
 #define vlib_set_next_frame(vm,node,next_index,v)			\
@@ -382,43 +380,49 @@ vlib_put_next_frame (vlib_main_t * vm,
 always_inline void
 vlib_set_next_frame_buffer (vlib_main_t * vm,
 			    vlib_node_runtime_t * node,
-			    u32 next_index,
-			    u32 buffer_index)
+			    u32 next_index, u32 buffer_index)
 {
-  u32 * p;
+  u32 *p;
   p = vlib_set_next_frame (vm, node, next_index, p);
   p[0] = buffer_index;
 }
 
-vlib_frame_t * vlib_get_frame_to_node (vlib_main_t * vm, u32 to_node_index);
-void vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index, vlib_frame_t * f);
+vlib_frame_t *vlib_get_frame_to_node (vlib_main_t * vm, u32 to_node_index);
+void vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index,
+			     vlib_frame_t * f);
 
 always_inline vlib_process_t *
 vlib_get_current_process (vlib_main_t * vm)
 {
-  vlib_node_main_t * nm = &vm->node_main;
+  vlib_node_main_t *nm = &vm->node_main;
   return vec_elt (nm->processes, nm->current_process_index);
 }
 
 always_inline uword
 vlib_in_process_context (vlib_main_t * vm)
-{ return vm->node_main.current_process_index != ~0; }
+{
+  return vm->node_main.current_process_index != ~0;
+}
 
 always_inline uword
 vlib_current_process (vlib_main_t * vm)
-{ return vlib_get_current_process (vm)->node_runtime.node_index; }
+{
+  return vlib_get_current_process (vm)->node_runtime.node_index;
+}
 
 /* Anything less than 1e-6 is considered zero. */
 always_inline uword
 vlib_process_suspend_time_is_zero (f64 dt)
-{ return dt < 1e-6; }
+{
+  return dt < 1e-6;
+}
 
 always_inline uword
 vlib_process_suspend (vlib_main_t * vm, f64 dt)
 {
   uword r;
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_process_t * p = vec_elt (nm->processes, nm->current_process_index);
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_process_t *p = vec_elt (nm->processes, nm->current_process_index);
   u64 dt_cpu = dt * vm->clib_time.clocks_per_second;
 
   if (vlib_process_suspend_time_is_zero (dt))
@@ -436,9 +440,10 @@ vlib_process_suspend (vlib_main_t * vm, f64 dt)
 }
 
 always_inline void
-vlib_process_free_event_type (vlib_process_t * p, uword t, uword is_one_time_event)
+vlib_process_free_event_type (vlib_process_t * p, uword t,
+			      uword is_one_time_event)
 {
-  ASSERT (! pool_is_free_index (p->event_type_pool, t));
+  ASSERT (!pool_is_free_index (p->event_type_pool, t));
   pool_put_index (p->event_type_pool, t);
   if (is_one_time_event)
     p->one_time_event_type_bitmap =
@@ -448,19 +453,20 @@ vlib_process_free_event_type (vlib_process_t * p, uword t, uword is_one_time_eve
 always_inline void
 vlib_process_maybe_free_event_type (vlib_process_t * p, uword t)
 {
-  ASSERT (! pool_is_free_index (p->event_type_pool, t));
+  ASSERT (!pool_is_free_index (p->event_type_pool, t));
   if (clib_bitmap_get (p->one_time_event_type_bitmap, t))
     vlib_process_free_event_type (p, t, /* is_one_time_event */ 1);
 }
 
 always_inline void *
-vlib_process_get_event_data (vlib_main_t * vm, uword * return_event_type_opaque)
+vlib_process_get_event_data (vlib_main_t * vm,
+			     uword * return_event_type_opaque)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_process_t * p;
-  vlib_process_event_type_t * et;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_process_t *p;
+  vlib_process_event_type_t *et;
   uword t, l;
-  void * event_data_vector;
+  void *event_data_vector;
 
   p = vec_elt (nm->processes, nm->current_process_index);
 
@@ -470,7 +476,8 @@ vlib_process_get_event_data (vlib_main_t * vm, uword * return_event_type_opaque)
   if (t == ~0)
     return 0;
 
-  p->non_empty_event_type_bitmap = clib_bitmap_andnoti (p->non_empty_event_type_bitmap, t);
+  p->non_empty_event_type_bitmap =
+    clib_bitmap_andnoti (p->non_empty_event_type_bitmap, t);
 
   l = _vec_len (p->pending_event_data_by_type_index[t]);
   ASSERT (l > 0);
@@ -490,9 +497,9 @@ vlib_process_get_event_data (vlib_main_t * vm, uword * return_event_type_opaque)
 /* Return event data vector for later reuse.  We reuse event data to avoid
    repeatedly allocating event vectors in cases where we care about speed. */
 always_inline void
-vlib_process_put_event_data (vlib_main_t * vm, void * event_data)
+vlib_process_put_event_data (vlib_main_t * vm, void *event_data)
 {
-  vlib_node_main_t * nm = &vm->node_main;
+  vlib_node_main_t *nm = &vm->node_main;
   vec_add1 (nm->recycled_event_data_vectors, event_data);
 }
 
@@ -500,9 +507,9 @@ vlib_process_put_event_data (vlib_main_t * vm, void * event_data)
 always_inline uword
 vlib_process_get_events (vlib_main_t * vm, uword ** data_vector)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_process_t * p;
-  vlib_process_event_type_t * et;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_process_t *p;
+  vlib_process_event_type_t *et;
   uword r, t, l;
 
   p = vec_elt (nm->processes, nm->current_process_index);
@@ -513,7 +520,8 @@ vlib_process_get_events (vlib_main_t * vm, uword ** data_vector)
   if (t == ~0)
     return t;
 
-  p->non_empty_event_type_bitmap = clib_bitmap_andnoti (p->non_empty_event_type_bitmap, t);
+  p->non_empty_event_type_bitmap =
+    clib_bitmap_andnoti (p->non_empty_event_type_bitmap, t);
 
   l = _vec_len (p->pending_event_data_by_type_index[t]);
   if (data_vector)
@@ -531,11 +539,13 @@ vlib_process_get_events (vlib_main_t * vm, uword ** data_vector)
 }
 
 always_inline uword
-vlib_process_get_events_helper (vlib_process_t * p, uword t, uword ** data_vector)
+vlib_process_get_events_helper (vlib_process_t * p, uword t,
+				uword ** data_vector)
 {
   uword l;
 
-  p->non_empty_event_type_bitmap = clib_bitmap_andnoti (p->non_empty_event_type_bitmap, t);
+  p->non_empty_event_type_bitmap =
+    clib_bitmap_andnoti (p->non_empty_event_type_bitmap, t);
 
   l = _vec_len (p->pending_event_data_by_type_index[t]);
   if (data_vector)
@@ -553,19 +563,19 @@ always_inline uword
 vlib_process_get_events_with_type (vlib_main_t * vm, uword ** data_vector,
 				   uword with_type_opaque)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_process_t * p;
-  uword t, * h;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_process_t *p;
+  uword t, *h;
 
   p = vec_elt (nm->processes, nm->current_process_index);
   h = hash_get (p->event_type_index_by_type_opaque, with_type_opaque);
-  if (! h)
+  if (!h)
     /* This can happen when an event has not yet been
        signaled with given opaque type. */
     return 0;
 
   t = h[0];
-  if (! clib_bitmap_get (p->non_empty_event_type_bitmap, t))
+  if (!clib_bitmap_get (p->non_empty_event_type_bitmap, t))
     return 0;
 
   return vlib_process_get_events_helper (p, t, data_vector);
@@ -574,17 +584,19 @@ vlib_process_get_events_with_type (vlib_main_t * vm, uword ** data_vector,
 always_inline uword *
 vlib_process_wait_for_event (vlib_main_t * vm)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_process_t * p;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_process_t *p;
   uword r;
 
   p = vec_elt (nm->processes, nm->current_process_index);
   if (clib_bitmap_is_zero (p->non_empty_event_type_bitmap))
     {
       p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT;
-      r = clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
+      r =
+	clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
       if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
-	clib_longjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
+	clib_longjmp (&p->return_longjmp,
+		      VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
     }
 
   return p->non_empty_event_type_bitmap;
@@ -595,18 +607,20 @@ vlib_process_wait_for_one_time_event (vlib_main_t * vm,
 				      uword ** data_vector,
 				      uword with_type_index)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_process_t * p;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_process_t *p;
   uword r;
 
   p = vec_elt (nm->processes, nm->current_process_index);
-  ASSERT (! pool_is_free_index (p->event_type_pool, with_type_index));
-  while (! clib_bitmap_get (p->non_empty_event_type_bitmap, with_type_index))
+  ASSERT (!pool_is_free_index (p->event_type_pool, with_type_index));
+  while (!clib_bitmap_get (p->non_empty_event_type_bitmap, with_type_index))
     {
       p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT;
-      r = clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
+      r =
+	clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
       if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
-	clib_longjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
+	clib_longjmp (&p->return_longjmp,
+		      VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
     }
 
   return vlib_process_get_events_helper (p, with_type_index, data_vector);
@@ -617,21 +631,23 @@ vlib_process_wait_for_event_with_type (vlib_main_t * vm,
 				       uword ** data_vector,
 				       uword with_type_opaque)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_process_t * p;
-  uword r, * h;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_process_t *p;
+  uword r, *h;
 
   p = vec_elt (nm->processes, nm->current_process_index);
   h = hash_get (p->event_type_index_by_type_opaque, with_type_opaque);
-  while (! h || ! clib_bitmap_get (p->non_empty_event_type_bitmap, h[0]))
+  while (!h || !clib_bitmap_get (p->non_empty_event_type_bitmap, h[0]))
     {
       p->flags |= VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT;
-      r = clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
+      r =
+	clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
       if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
-	clib_longjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
+	clib_longjmp (&p->return_longjmp,
+		      VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
 
       /* See if unknown event type has been signaled now. */
-      if (! h)
+      if (!h)
 	h = hash_get (p->event_type_index_by_type_opaque, with_type_opaque);
     }
 
@@ -641,15 +657,15 @@ vlib_process_wait_for_event_with_type (vlib_main_t * vm,
 always_inline f64
 vlib_process_wait_for_event_or_clock (vlib_main_t * vm, f64 dt)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_process_t * p;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_process_t *p;
   f64 wakeup_time;
   uword r;
 
   p = vec_elt (nm->processes, nm->current_process_index);
 
   if (vlib_process_suspend_time_is_zero (dt)
-      || ! clib_bitmap_is_zero (p->non_empty_event_type_bitmap))
+      || !clib_bitmap_is_zero (p->non_empty_event_type_bitmap))
     return dt;
 
   wakeup_time = vlib_time_now (vm) + dt;
@@ -674,33 +690,36 @@ vlib_process_wait_for_event_or_clock (vlib_main_t * vm, f64 dt)
 always_inline vlib_process_event_type_t *
 vlib_process_new_event_type (vlib_process_t * p, uword with_type_opaque)
 {
-  vlib_process_event_type_t * et;
+  vlib_process_event_type_t *et;
   pool_get (p->event_type_pool, et);
   et->opaque = with_type_opaque;
   return et;
 }
 
 always_inline uword
-vlib_process_create_one_time_event (vlib_main_t * vm, uword node_index, uword with_type_opaque)
+vlib_process_create_one_time_event (vlib_main_t * vm, uword node_index,
+				    uword with_type_opaque)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  vlib_process_t * p = vec_elt (nm->processes, n->runtime_index);
-  vlib_process_event_type_t * et;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
+  vlib_process_event_type_t *et;
   uword t;
 
   et = vlib_process_new_event_type (p, with_type_opaque);
   t = et - p->event_type_pool;
-  p->one_time_event_type_bitmap = clib_bitmap_ori (p->one_time_event_type_bitmap, t);
+  p->one_time_event_type_bitmap =
+    clib_bitmap_ori (p->one_time_event_type_bitmap, t);
   return t;
 }
 
 always_inline void
-vlib_process_delete_one_time_event (vlib_main_t * vm, uword node_index, uword t)
+vlib_process_delete_one_time_event (vlib_main_t * vm, uword node_index,
+				    uword t)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  vlib_process_t * p = vec_elt (nm->processes, n->runtime_index);
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
 
   ASSERT (clib_bitmap_get (p->one_time_event_type_bitmap, t));
   vlib_process_free_event_type (p, t, /* is_one_time_event */ 1);
@@ -711,22 +730,21 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 				  vlib_node_t * n,
 				  vlib_process_t * p,
 				  uword t,
-				  uword n_data_elts,
-				  uword n_data_elt_bytes)
+				  uword n_data_elts, uword n_data_elt_bytes)
 {
   uword p_flags, add_to_pending, delete_from_wheel;
-  void * data_to_be_written_by_caller;
+  void *data_to_be_written_by_caller;
 
-  ASSERT (! pool_is_free_index (p->event_type_pool, t));
+  ASSERT (!pool_is_free_index (p->event_type_pool, t));
 
   vec_validate (p->pending_event_data_by_type_index, t);
 
   /* Resize data vector and return caller's data to be written. */
   {
-    void * data_vec = p->pending_event_data_by_type_index[t];
+    void *data_vec = p->pending_event_data_by_type_index[t];
     uword l;
 
-    if (! data_vec && vec_len (nm->recycled_event_data_vectors))
+    if (!data_vec && vec_len (nm->recycled_event_data_vectors))
       {
 	data_vec = vec_pop (nm->recycled_event_data_vectors);
 	_vec_len (data_vec) = 0;
@@ -736,14 +754,16 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
 
     data_vec = _vec_resize (data_vec,
 			    /* length_increment */ n_data_elts,
-			    /* total size after increment */ (l + n_data_elts) * n_data_elt_bytes,
+			    /* total size after increment */
+			    (l + n_data_elts) * n_data_elt_bytes,
 			    /* header_bytes */ 0, /* data_align */ 0);
 
     p->pending_event_data_by_type_index[t] = data_vec;
     data_to_be_written_by_caller = data_vec + l * n_data_elt_bytes;
   }
 
-  p->non_empty_event_type_bitmap = clib_bitmap_ori (p->non_empty_event_type_bitmap, t);
+  p->non_empty_event_type_bitmap =
+    clib_bitmap_ori (p->non_empty_event_type_bitmap, t);
 
   p_flags = p->flags;
 
@@ -773,7 +793,7 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
       p->flags = p_flags | VLIB_PROCESS_RESUME_PENDING;
       vec_add1 (nm->data_from_advancing_timing_wheel, x);
       if (delete_from_wheel)
-        timing_wheel_delete (&nm->timing_wheel, x);
+	timing_wheel_delete (&nm->timing_wheel, x);
     }
 
   return data_to_be_written_by_caller;
@@ -783,25 +803,26 @@ always_inline void *
 vlib_process_signal_event_data (vlib_main_t * vm,
 				uword node_index,
 				uword type_opaque,
-				uword n_data_elts,
-				uword n_data_elt_bytes)
+				uword n_data_elts, uword n_data_elt_bytes)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  vlib_process_t * p = vec_elt (nm->processes, n->runtime_index);
-  uword * h, t;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
+  uword *h, t;
 
   h = hash_get (p->event_type_index_by_type_opaque, type_opaque);
-  if (! h)
+  if (!h)
     {
-      vlib_process_event_type_t * et = vlib_process_new_event_type (p, type_opaque);
+      vlib_process_event_type_t *et =
+	vlib_process_new_event_type (p, type_opaque);
       t = et - p->event_type_pool;
       hash_set (p->event_type_index_by_type_opaque, type_opaque, t);
     }
   else
     t = h[0];
 
-  return vlib_process_signal_event_helper (nm, n, p, t, n_data_elts, n_data_elt_bytes);
+  return vlib_process_signal_event_helper (nm, n, p, t, n_data_elts,
+					   n_data_elt_bytes);
 }
 
 always_inline void *
@@ -809,18 +830,18 @@ vlib_process_signal_event_at_time (vlib_main_t * vm,
 				   f64 dt,
 				   uword node_index,
 				   uword type_opaque,
-				   uword n_data_elts,
-				   uword n_data_elt_bytes)
+				   uword n_data_elts, uword n_data_elt_bytes)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  vlib_process_t * p = vec_elt (nm->processes, n->runtime_index);
-  uword * h, t;
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
+  uword *h, t;
 
   h = hash_get (p->event_type_index_by_type_opaque, type_opaque);
-  if (! h)
+  if (!h)
     {
-      vlib_process_event_type_t * et = vlib_process_new_event_type (p, type_opaque);
+      vlib_process_event_type_t *et =
+	vlib_process_new_event_type (p, type_opaque);
       t = et - p->event_type_pool;
       hash_set (p->event_type_index_by_type_opaque, type_opaque, t);
     }
@@ -828,10 +849,11 @@ vlib_process_signal_event_at_time (vlib_main_t * vm,
     t = h[0];
 
   if (vlib_process_suspend_time_is_zero (dt))
-    return vlib_process_signal_event_helper (nm, n, p, t, n_data_elts, n_data_elt_bytes);
+    return vlib_process_signal_event_helper (nm, n, p, t, n_data_elts,
+					     n_data_elt_bytes);
   else
     {
-      vlib_signal_timed_event_data_t * te;
+      vlib_signal_timed_event_data_t *te;
       u64 dt_cpu = dt * vm->clib_time.clocks_per_second;
 
       pool_get_aligned (nm->signal_timed_event_data_pool, te, sizeof (te[0]));
@@ -849,7 +871,9 @@ vlib_process_signal_event_at_time (vlib_main_t * vm,
       te->event_type_index = t;
 
       timing_wheel_insert (&nm->timing_wheel, clib_cpu_time_now () + dt_cpu,
-			   vlib_timing_wheel_data_set_timed_event (te - nm->signal_timed_event_data_pool));
+			   vlib_timing_wheel_data_set_timed_event (te -
+								   nm->
+								   signal_timed_event_data_pool));
 
       /* Inline data big enough to hold event? */
       if (te->n_data_bytes < sizeof (te->inline_event_data))
@@ -870,68 +894,70 @@ vlib_process_signal_one_time_event_data (vlib_main_t * vm,
 					 uword n_data_elts,
 					 uword n_data_elt_bytes)
 {
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  vlib_process_t * p = vec_elt (nm->processes, n->runtime_index);
-  return vlib_process_signal_event_helper (nm, n, p, type_index, n_data_elts, n_data_elt_bytes);
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
+  return vlib_process_signal_event_helper (nm, n, p, type_index, n_data_elts,
+					   n_data_elt_bytes);
 }
 
 always_inline void
 vlib_process_signal_event (vlib_main_t * vm,
-			   uword node_index,
-			   uword type_opaque,
-			   uword data)
+			   uword node_index, uword type_opaque, uword data)
 {
-  uword * d = vlib_process_signal_event_data (vm, node_index, type_opaque,
-					      1 /* elts */, sizeof (uword));
+  uword *d = vlib_process_signal_event_data (vm, node_index, type_opaque,
+					     1 /* elts */ , sizeof (uword));
   d[0] = data;
 }
 
 always_inline void
 vlib_process_signal_event_pointer (vlib_main_t * vm,
 				   uword node_index,
-				   uword type_opaque,
-				   void * data)
+				   uword type_opaque, void *data)
 {
-  void ** d = vlib_process_signal_event_data (vm, node_index, type_opaque,
-					      1 /* elts */, sizeof (data));
+  void **d = vlib_process_signal_event_data (vm, node_index, type_opaque,
+					     1 /* elts */ , sizeof (data));
   d[0] = data;
 }
 
 always_inline void
 vlib_process_signal_one_time_event (vlib_main_t * vm,
 				    uword node_index,
-				    uword type_index,
-				    uword data)
+				    uword type_index, uword data)
 {
-  uword * d = vlib_process_signal_one_time_event_data (vm, node_index, type_index,
-							1 /* elts */, sizeof (uword));
+  uword *d =
+    vlib_process_signal_one_time_event_data (vm, node_index, type_index,
+					     1 /* elts */ , sizeof (uword));
   d[0] = data;
 }
 
 always_inline void
-vlib_signal_one_time_waiting_process (vlib_main_t * vm, vlib_one_time_waiting_process_t * p)
+vlib_signal_one_time_waiting_process (vlib_main_t * vm,
+				      vlib_one_time_waiting_process_t * p)
 {
-  vlib_process_signal_one_time_event (vm, p->node_index, p->one_time_event, /* data */ ~0);
+  vlib_process_signal_one_time_event (vm, p->node_index, p->one_time_event,
+				      /* data */ ~0);
   memset (p, ~0, sizeof (p[0]));
 }
 
 always_inline void
 vlib_signal_one_time_waiting_process_vector (vlib_main_t * vm,
-					     vlib_one_time_waiting_process_t ** wps)
+					     vlib_one_time_waiting_process_t
+					     ** wps)
 {
-  vlib_one_time_waiting_process_t * wp;
-  vec_foreach (wp, *wps)
-    vlib_signal_one_time_waiting_process (vm, wp);
+  vlib_one_time_waiting_process_t *wp;
+  vec_foreach (wp, *wps) vlib_signal_one_time_waiting_process (vm, wp);
   vec_free (*wps);
 }
 
 always_inline void
-vlib_current_process_wait_for_one_time_event (vlib_main_t * vm, vlib_one_time_waiting_process_t * p)
+vlib_current_process_wait_for_one_time_event (vlib_main_t * vm,
+					      vlib_one_time_waiting_process_t
+					      * p)
 {
   p->node_index = vlib_current_process (vm);
-  p->one_time_event =
-    vlib_process_create_one_time_event (vm, p->node_index, /* type opaque */ ~0);
+  p->one_time_event = vlib_process_create_one_time_event (vm, p->node_index,	/* type opaque */
+							  ~0);
   vlib_process_wait_for_one_time_event (vm,
 					/* don't care about data */ 0,
 					p->one_time_event);
@@ -939,9 +965,10 @@ vlib_current_process_wait_for_one_time_event (vlib_main_t * vm, vlib_one_time_wa
 
 always_inline void
 vlib_current_process_wait_for_one_time_event_vector (vlib_main_t * vm,
-						     vlib_one_time_waiting_process_t ** wps)
+						     vlib_one_time_waiting_process_t
+						     ** wps)
 {
-  vlib_one_time_waiting_process_t * wp;
+  vlib_one_time_waiting_process_t *wp;
   vec_add2 (*wps, wp, 1);
   vlib_current_process_wait_for_one_time_event (vm, wp);
 }
@@ -960,7 +987,9 @@ vlib_node_runtime_update_main_loop_vector_stats (vlib_main_t * vm,
   i0 = i ^ 0;
   i1 = i ^ 1;
   d = ((vm->main_loop_count >> VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE)
-       - (node->main_loop_count_last_dispatch >> VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE));
+       -
+       (node->main_loop_count_last_dispatch >>
+	VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE));
   vi0 = node->main_loop_vector_stats[i0];
   vi1 = node->main_loop_vector_stats[i1];
   vi0 = d == 0 ? vi0 : 0;
@@ -976,59 +1005,57 @@ vlib_node_runtime_update_main_loop_vector_stats (vlib_main_t * vm,
 always_inline f64
 vlib_node_vectors_per_main_loop_as_float (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_runtime_t * rt = vlib_node_get_runtime (vm, node_index);
+  vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, node_index);
   u32 v;
 
-  v = vlib_node_runtime_update_main_loop_vector_stats (vm, rt, /* n_vectors */ 0);
+  v = vlib_node_runtime_update_main_loop_vector_stats (vm, rt,	/* n_vectors */
+						       0);
   return (f64) v / (1 << VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE);
 }
 
 always_inline u32
 vlib_node_vectors_per_main_loop_as_integer (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_runtime_t * rt = vlib_node_get_runtime (vm, node_index);
+  vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, node_index);
   u32 v;
 
-  v = vlib_node_runtime_update_main_loop_vector_stats (vm, rt, /* n_vectors */ 0);
+  v = vlib_node_runtime_update_main_loop_vector_stats (vm, rt,	/* n_vectors */
+						       0);
   return v >> VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE;
 }
 
 void
-vlib_frame_free (vlib_main_t * vm,
-		 vlib_node_runtime_t * r,
-		 vlib_frame_t * f);
+vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f);
 
 /* Add next node to given node in given slot. */
 uword
 vlib_node_add_next_with_slot (vlib_main_t * vm,
-			      uword node,
-			      uword next_node,
-			      uword slot);
+			      uword node, uword next_node, uword slot);
 
 /* As above but adds to end of node's next vector. */
 always_inline uword
 vlib_node_add_next (vlib_main_t * vm, uword node, uword next_node)
-{ return vlib_node_add_next_with_slot (vm, node, next_node, ~0); }
+{
+  return vlib_node_add_next_with_slot (vm, node, next_node, ~0);
+}
 
 /* Add next node to given node in given slot. */
 uword
 vlib_node_add_named_next_with_slot (vlib_main_t * vm,
-				    uword node,
-				    char * next_name,
-				    uword slot);
+				    uword node, char *next_name, uword slot);
 
 /* As above but adds to end of node's next vector. */
 always_inline uword
-vlib_node_add_named_next (vlib_main_t * vm,
-			  uword node,
-			  char * name)
-{ return vlib_node_add_named_next_with_slot (vm, node, name, ~0); }
+vlib_node_add_named_next (vlib_main_t * vm, uword node, char *name)
+{
+  return vlib_node_add_named_next_with_slot (vm, node, name, ~0);
+}
 
 /* Query node given name. */
-vlib_node_t * vlib_get_node_by_name (vlib_main_t * vm, u8 * name);
+vlib_node_t *vlib_get_node_by_name (vlib_main_t * vm, u8 * name);
 
 /* Rename a node. */
-void vlib_node_rename (vlib_main_t * vm, u32 node_index, char * fmt, ...);
+void vlib_node_rename (vlib_main_t * vm, u32 node_index, char *fmt, ...);
 
 /* Register new packet processing node.  Nodes can be registered
    dynamically via this call or statically via the VLIB_REGISTER_NODE
@@ -1042,11 +1069,10 @@ void vlib_register_all_static_nodes (vlib_main_t * vm);
 void vlib_start_process (vlib_main_t * vm, uword process_index);
 
 /* Sync up runtime and main node stats. */
-void
-vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
+void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
 
 /* Node graph initialization function. */
-clib_error_t * vlib_node_main_init (vlib_main_t * vm);
+clib_error_t *vlib_node_main_init (vlib_main_t * vm);
 
 format_function_t format_vlib_node_graph;
 format_function_t format_vlib_node_name;
@@ -1057,14 +1083,22 @@ format_function_t format_vlib_time;
 /* Parse node name -> node index. */
 unformat_function_t unformat_vlib_node;
 
-always_inline void 
-vlib_node_increment_counter (vlib_main_t *vm, u32 node_index, 
-                             u32 counter_index, u64 increment)
+always_inline void
+vlib_node_increment_counter (vlib_main_t * vm, u32 node_index,
+			     u32 counter_index, u64 increment)
 {
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  vlib_error_main_t * em = &vm->error_main;
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  vlib_error_main_t *em = &vm->error_main;
   u32 node_counter_base_index = n->error_heap_index;
   em->counters[node_counter_base_index + counter_index] += increment;
 }
 
 #endif /* included_vlib_node_funcs_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

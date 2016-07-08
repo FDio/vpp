@@ -45,17 +45,18 @@
 always_inline void
 vlib_error_elog_count (vlib_main_t * vm, uword counter, uword increment)
 {
-  elog_main_t * em = &vm->elog_main;
+  elog_main_t *em = &vm->elog_main;
   if (VLIB_ELOG_MAIN_LOOP > 0 && increment > 0)
-    elog (em, vec_elt_at_index (vm->error_elog_event_types, counter), increment);
+    elog (em, vec_elt_at_index (vm->error_elog_event_types, counter),
+	  increment);
 }
 
 always_inline void
 vlib_error_count (vlib_main_t * vm, uword node_index,
 		  uword counter, uword increment)
 {
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  vlib_error_main_t * em = &vm->error_main;
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  vlib_error_main_t *em = &vm->error_main;
 
   ASSERT (counter < n->n_errors);
   counter += n->error_heap_index;
@@ -74,7 +75,14 @@ vlib_error_drop_buffers (vlib_main_t * vm,
 			 u32 next_buffer_stride,
 			 u32 n_buffers,
 			 u32 error_next_index,
-			 u32 error_node,
-			 u32 error_code);
+			 u32 error_node, u32 error_code);
 
 #endif /* included_vlib_error_funcs_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

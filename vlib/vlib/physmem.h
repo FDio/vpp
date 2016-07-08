@@ -40,11 +40,13 @@
 #ifndef included_vlib_physmem_h
 #define included_vlib_physmem_h
 
-typedef struct {
+typedef struct
+{
   uword start, end, size;
 } vlib_physmem_region_t;
 
-typedef struct {
+typedef struct
+{
   vlib_physmem_region_t virtual;
 
   uword log2_n_bytes_per_page;
@@ -52,7 +54,7 @@ typedef struct {
   /* 1 << log2_n_bytes_per_page - 1. */
   uword page_mask;
 
-  u64 * page_table;
+  u64 *page_table;
 
   /* is fake physmem */
   u8 is_fake;
@@ -69,10 +71,12 @@ vlib_physmem_offset_to_physical (vlib_physmem_main_t * pm, uword o)
 
 always_inline int
 vlib_physmem_is_virtual (vlib_physmem_main_t * pm, uword p)
-{ return p >= pm->virtual.start && p < pm->virtual.end; }
+{
+  return p >= pm->virtual.start && p < pm->virtual.end;
+}
 
 always_inline uword
-vlib_physmem_offset_of (vlib_physmem_main_t * pm, void * p)
+vlib_physmem_offset_of (vlib_physmem_main_t * pm, void *p)
 {
   uword a = pointer_to_uword (p);
   uword o;
@@ -94,3 +98,11 @@ vlib_physmem_at_offset (vlib_physmem_main_t * pm, uword offset)
 }
 
 #endif /* included_vlib_physmem_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

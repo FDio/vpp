@@ -21,44 +21,46 @@
 
 plugin_main_t vlib_plugin_main;
 
-void vlib_set_get_handoff_structure_cb (void *cb)
+void
+vlib_set_get_handoff_structure_cb (void *cb)
 {
-  plugin_main_t * pm = &vlib_plugin_main;
+  plugin_main_t *pm = &vlib_plugin_main;
   pm->handoff_structure_get_cb = cb;
 }
 
-static void * vnet_get_handoff_structure (void)
+static void *
+vnet_get_handoff_structure (void)
 {
-  void * (*fp)(void);
+  void *(*fp) (void);
 
   fp = vlib_plugin_main.handoff_structure_get_cb;
   if (fp == 0)
     return 0;
   else
-    return (*fp)();
+    return (*fp) ();
 }
 
-static int 
-load_one_plugin (plugin_main_t *pm, plugin_info_t *pi, int from_early_init)
+static int
+load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 {
   void *handle, *register_handle;
-  clib_error_t * (*fp)(vlib_main_t *, void *, int);
-  clib_error_t * error;
+  clib_error_t *(*fp) (vlib_main_t *, void *, int);
+  clib_error_t *error;
   void *handoff_structure;
-  
-  handle = dlopen ((char *)pi->name, RTLD_LAZY);
 
-  /* 
+  handle = dlopen ((char *) pi->name, RTLD_LAZY);
+
+  /*
    * Note: this can happen if the plugin has an undefined symbol reference,
    * so print a warning. Otherwise, the poor slob won't know what happened.
    * Ask me how I know that...
    */
   if (handle == 0)
     {
-      clib_warning ("%s", dlerror());
+      clib_warning ("%s", dlerror ());
       return -1;
     }
-  
+
   pi->handle = handle;
 
 
@@ -66,18 +68,19 @@ load_one_plugin (plugin_main_t *pm, plugin_info_t *pi, int from_early_init)
   if (register_handle == 0)
     {
       dlclose (handle);
-      clib_warning("Plugin missing vlib_plugin_register: %s\n", (char *)pi->name);
+      clib_warning ("Plugin missing vlib_plugin_register: %s\n",
+		    (char *) pi->name);
       return 1;
     }
 
   fp = register_handle;
 
-  handoff_structure = vnet_get_handoff_structure();
+  handoff_structure = vnet_get_handoff_structure ();
 
   if (handoff_structure == 0)
     error = clib_error_return (0, "handoff structure callback returned 0");
   else
-    error = (*fp)(pm->vlib_main, handoff_structure, from_early_init);
+    error = (*fp) (pm->vlib_main, handoff_structure, from_early_init);
 
   if (error)
     {
@@ -91,7 +94,8 @@ load_one_plugin (plugin_main_t *pm, plugin_info_t *pi, int from_early_init)
   return 0;
 }
 
-static u8 **split_plugin_path (plugin_main_t *pm)
+static u8 **
+split_plugin_path (plugin_main_t * pm)
 {
   int i;
   u8 **rv = 0;
@@ -101,11 +105,11 @@ static u8 **split_plugin_path (plugin_main_t *pm)
   for (i = 0; i < vec_len (pm->plugin_path); i++)
     {
       if (path[i] != ':')
-        {
-          vec_add1(this, path[i]);
-          continue;
-        }
-      vec_add1(this, 0);
+	{
+	  vec_add1 (this, path[i]);
+	  continue;
+	}
+      vec_add1 (this, 0);
       vec_add1 (rv, this);
       this = 0;
     }
@@ -117,7 +121,8 @@ static u8 **split_plugin_path (plugin_main_t *pm)
   return rv;
 }
 
-int vlib_load_new_plugins (plugin_main_t *pm, int from_early_init)
+int
+vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
 {
   DIR *dp;
   struct dirent *entry;
@@ -128,76 +133,78 @@ int vlib_load_new_plugins (plugin_main_t *pm, int from_early_init)
   int i;
 
   plugin_path = split_plugin_path (pm);
-  
+
   for (i = 0; i < vec_len (plugin_path); i++)
     {
-      dp = opendir ((char *)plugin_path[i]);
-  
-      if (dp == 0)
-        continue;
-      
-      while ((entry = readdir (dp)))
-        {
-          u8 *plugin_name;
-          
-          if (pm->plugin_name_filter)
-            {
-              int j;
-              for (j = 0; j < vec_len (pm->plugin_name_filter); j++)
-                if (entry->d_name[j] != pm->plugin_name_filter[j])
-                  goto next;
-            }
+      dp = opendir ((char *) plugin_path[i]);
 
-          plugin_name = format (0, "%s/%s%c", plugin_path[i],
-                                entry->d_name, 0);
+      if (dp == 0)
+	continue;
+
+      while ((entry = readdir (dp)))
+	{
+	  u8 *plugin_name;
+
+	  if (pm->plugin_name_filter)
+	    {
+	      int j;
+	      for (j = 0; j < vec_len (pm->plugin_name_filter); j++)
+		if (entry->d_name[j] != pm->plugin_name_filter[j])
+		  goto next;
+	    }
+
+	  plugin_name = format (0, "%s/%s%c", plugin_path[i],
+				entry->d_name, 0);
 
 	  /* Only accept .so */
-	  char * ext = strrchr((const char *)plugin_name, '.');
-          /* unreadable */
-	  if(!ext || (strcmp(ext, ".so") != 0) ||
-	     stat ((char *)plugin_name, &statb) < 0)
-            {
-            ignore:
-              vec_free (plugin_name);
-              continue;
-            }
-          
-          /* a dir or other things which aren't plugins */
-          if (!S_ISREG(statb.st_mode))
-            goto ignore;
-          
-          p = hash_get_mem (pm->plugin_by_name_hash, plugin_name);
-          if (p == 0) 
-            {
-              vec_add2 (pm->plugin_info, pi, 1);
-              pi->name = plugin_name;
-              pi->file_info = statb;
-              
-              if (load_one_plugin (pm, pi, from_early_init))
-                {
-                  vec_free (plugin_name);
-                  _vec_len (pm->plugin_info) = vec_len (pm->plugin_info) - 1;
-                  continue;
-                }
-              memset (pi, 0, sizeof (*pi));
-              hash_set_mem (pm->plugin_by_name_hash, plugin_name, 
-                            pi - pm->plugin_info);
-            }
-        next:
-          ;
-        }
+	  char *ext = strrchr ((const char *) plugin_name, '.');
+	  /* unreadable */
+	  if (!ext || (strcmp (ext, ".so") != 0) ||
+	      stat ((char *) plugin_name, &statb) < 0)
+	    {
+	    ignore:
+	      vec_free (plugin_name);
+	      continue;
+	    }
+
+	  /* a dir or other things which aren't plugins */
+	  if (!S_ISREG (statb.st_mode))
+	    goto ignore;
+
+	  p = hash_get_mem (pm->plugin_by_name_hash, plugin_name);
+	  if (p == 0)
+	    {
+	      vec_add2 (pm->plugin_info, pi, 1);
+	      pi->name = plugin_name;
+	      pi->file_info = statb;
+
+	      if (load_one_plugin (pm, pi, from_early_init))
+		{
+		  vec_free (plugin_name);
+		  _vec_len (pm->plugin_info) = vec_len (pm->plugin_info) - 1;
+		  continue;
+		}
+	      memset (pi, 0, sizeof (*pi));
+	      hash_set_mem (pm->plugin_by_name_hash, plugin_name,
+			    pi - pm->plugin_info);
+	    }
+	next:
+	  ;
+	}
       closedir (dp);
       vec_free (plugin_path[i]);
     }
   vec_free (plugin_path);
   return 0;
 }
-char *vlib_plugin_path __attribute__((weak));
+
+char *vlib_plugin_path __attribute__ ((weak));
 char *vlib_plugin_path = "";
-char *vlib_plugin_name_filter __attribute__((weak));
+char *vlib_plugin_name_filter __attribute__ ((weak));
 char *vlib_plugin_name_filter = 0;
 
-int vlib_plugin_early_init (vlib_main_t *vm)
+int
+vlib_plugin_early_init (vlib_main_t * vm)
 {
   plugin_main_t *pm = &vlib_plugin_main;
 
@@ -210,6 +217,14 @@ int vlib_plugin_early_init (vlib_main_t *vm)
 
   pm->plugin_by_name_hash = hash_create_string (0, sizeof (uword));
   pm->vlib_main = vm;
-  
-  return vlib_load_new_plugins (pm, 1 /* from_early_init */);
+
+  return vlib_load_new_plugins (pm, 1 /* from_early_init */ );
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

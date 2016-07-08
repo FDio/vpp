@@ -41,11 +41,11 @@
 #define included_vlib_format_h
 
 /* Format vlib_rx_or_tx_t/vlib_read_or_write_t enum as string. */
-u8 * format_vlib_rx_tx (u8 * s, va_list * args);
-u8 * format_vlib_read_write (u8 * s, va_list * args);
+u8 *format_vlib_rx_tx (u8 * s, va_list * args);
+u8 *format_vlib_read_write (u8 * s, va_list * args);
 
 /* Formats buffer data as printable ascii or as hex. */
-u8 * format_vlib_buffer_data (u8 * s, va_list * args);
+u8 *format_vlib_buffer_data (u8 * s, va_list * args);
 
 /* Enable/on => 1; disable/off => 0. */
 uword unformat_vlib_enable_disable (unformat_input_t * input, va_list * args);
@@ -65,3 +65,11 @@ uword unformat_vlib_number (unformat_input_t * input, va_list * args);
 #define FORMAT_VLIB_HEADER_NO_RECURSION (~0)
 
 #endif /* included_vlib_format_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

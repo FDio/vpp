@@ -45,11 +45,15 @@ typedef u32 vlib_error_t;
 
 always_inline u32
 vlib_error_get_node (vlib_error_t e)
-{ return e >> 12; }
+{
+  return e >> 12;
+}
 
 always_inline u32
 vlib_error_get_code (vlib_error_t e)
-{ return e & 0xfff; }
+{
+  return e & 0xfff;
+}
 
 always_inline vlib_error_t
 vlib_error_set (u32 node_index, u32 code)
@@ -68,22 +72,30 @@ vlib_error_set_code (vlib_error_t e, u32 code)
   return e;
 }
 
-typedef struct {
+typedef struct
+{
   /* Error counters. */
-  u64 * counters;
+  u64 *counters;
 
   /* Counter values as of last counter clear. */
-  u64 * counters_last_clear;
+  u64 *counters_last_clear;
 
   /* Error name strings in heap.  Heap index
      indexes counter vector. */
-  char ** error_strings_heap;
+  char **error_strings_heap;
 } vlib_error_main_t;
 
 /* Per node error registration. */
-void vlib_register_errors (struct vlib_main_t * vm,
+void vlib_register_errors (struct vlib_main_t *vm,
 			   u32 node_index,
-			   u32 n_errors,
-			   char * error_strings[]);
+			   u32 n_errors, char *error_strings[]);
 
 #endif /* included_vlib_error_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -56,7 +56,8 @@
 #define VLIB_ELOG_MAIN_LOOP 0
 #endif
 
-typedef struct vlib_main_t {
+typedef struct vlib_main_t
+{
   /* Instruction level timing state. */
   clib_time_t clib_time;
 
@@ -91,25 +92,24 @@ typedef struct vlib_main_t {
 #define VLIB_MAIN_LOOP_EXIT_CLI 2
 
   /* Error marker to use when exiting main loop. */
-  clib_error_t * main_loop_error;
+  clib_error_t *main_loop_error;
 
   /* Name for e.g. syslog. */
-  char * name;
+  char *name;
 
   /* Start and size of CLIB heap. */
-  void * heap_base;
+  void *heap_base;
   uword heap_size;
 
-  vlib_buffer_main_t * buffer_main;
+  vlib_buffer_main_t *buffer_main;
 
   vlib_physmem_main_t physmem_main;
 
   /* Allocate/free buffer memory for DMA transfers, descriptor rings, etc.
      buffer memory is guaranteed to be cache-aligned. */
-  void * (* os_physmem_alloc_aligned) (vlib_physmem_main_t * pm,
-				       uword n_bytes,
-				       uword alignment);
-  void (* os_physmem_free) (void * x);
+  void *(*os_physmem_alloc_aligned) (vlib_physmem_main_t * pm,
+				     uword n_bytes, uword alignment);
+  void (*os_physmem_free) (void *x);
 
   /* Node graph main structure. */
   vlib_node_main_t node_main;
@@ -125,26 +125,26 @@ typedef struct vlib_main_t {
 
   /* Punt packets to underlying operating system for when fast switching
      code does not know what to do. */
-  void (* os_punt_frame) (struct vlib_main_t * vm,
-                          struct vlib_node_runtime_t * node,
-			  vlib_frame_t * frame);
+  void (*os_punt_frame) (struct vlib_main_t * vm,
+			 struct vlib_node_runtime_t * node,
+			 vlib_frame_t * frame);
 
   /* Multicast distribution.  Set to zero for MC disabled. */
-  mc_main_t * mc_main;
+  mc_main_t *mc_main;
 
   /* Stream index to use for distribution when MC is enabled. */
   u32 mc_stream_index;
 
-  vlib_one_time_waiting_process_t * procs_waiting_for_mc_stream_join;
+  vlib_one_time_waiting_process_t *procs_waiting_for_mc_stream_join;
 
   /* Event logger. */
   elog_main_t elog_main;
 
   /* Node call and return event types. */
-  elog_event_type_t * node_call_elog_event_types;
-  elog_event_type_t * node_return_elog_event_types;
+  elog_event_type_t *node_call_elog_event_types;
+  elog_event_type_t *node_return_elog_event_types;
 
-  elog_event_type_t * error_elog_event_types;
+  elog_event_type_t *error_elog_event_types;
 
   /* Seed for random number generator. */
   uword random_seed;
@@ -153,7 +153,7 @@ typedef struct vlib_main_t {
   clib_random_buffer_t random_buffer;
 
   /* Hash table to record which init functions have been called. */
-  uword * init_functions_called;
+  uword *init_functions_called;
 
   /* to compare with node runtime */
   u32 cpu_index;
@@ -166,12 +166,12 @@ typedef struct vlib_main_t {
   _vlib_init_function_list_elt_t *main_loop_exit_function_registrations;
   _vlib_init_function_list_elt_t *api_init_function_registrations;
   vlib_config_function_runtime_t *config_function_registrations;
-  mc_serialize_msg_t *mc_msg_registrations; /* mc_main is a pointer... */
+  mc_serialize_msg_t *mc_msg_registrations;	/* mc_main is a pointer... */
 
   /* control-plane API queue signal pending, length indication */
   volatile u32 queue_signal_pending;
   volatile u32 api_queue_nonempty;
-  void (*queue_signal_callback)(struct vlib_main_t *);
+  void (*queue_signal_callback) (struct vlib_main_t *);
   u8 **argv;
 } vlib_main_t;
 
@@ -180,11 +180,15 @@ vlib_main_t vlib_global_main;
 
 always_inline f64
 vlib_time_now (vlib_main_t * vm)
-{ return clib_time_now (&vm->clib_time); }
+{
+  return clib_time_now (&vm->clib_time);
+}
 
 always_inline f64
 vlib_time_now_ticks (vlib_main_t * vm, u64 n)
-{ return clib_time_now_internal (&vm->clib_time, n); }
+{
+  return clib_time_now_internal (&vm->clib_time, n);
+}
 
 /* Busy wait for specified time. */
 always_inline void
@@ -231,7 +235,9 @@ vlib_panic_with_error (vlib_main_t * vm, clib_error_t * error)
 
 always_inline void
 vlib_panic (vlib_main_t * vm)
-{ vlib_panic_with_error (vm, 0); }
+{
+  vlib_panic_with_error (vm, 0);
+}
 
 always_inline u32
 vlib_vector_input_stats_index (vlib_main_t * vm, word delta)
@@ -284,7 +290,7 @@ vlib_increment_main_loop_counter (vlib_main_t * vm)
   is_wrap = (c & pow2_mask (VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE)) == 0;
 
   if (is_wrap)
-      wraps++;
+    wraps++;
 
   i = vlib_vector_input_stats_index (vm, /* delta */ is_wrap);
 
@@ -299,8 +305,8 @@ vlib_increment_main_loop_counter (vlib_main_t * vm)
   vm->node_counts_per_main_loop[i] = n;
 }
 
-always_inline void vlib_set_queue_signal_callback 
-(vlib_main_t *vm, void (*fp)(vlib_main_t *))
+always_inline void vlib_set_queue_signal_callback
+  (vlib_main_t * vm, void (*fp) (vlib_main_t *))
 {
   vm->queue_signal_callback = fp;
 }
@@ -317,3 +323,11 @@ u32 vlib_app_num_thread_stacks_needed (void) __attribute__ ((weak));
 extern void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
 
 #endif /* included_vlib_main_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

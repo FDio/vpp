@@ -59,21 +59,21 @@ unix_main_t unix_main;
 static clib_error_t *
 unix_main_init (vlib_main_t * vm)
 {
-  unix_main_t * um = &unix_main;
+  unix_main_t *um = &unix_main;
   um->vlib_main = vm;
   return vlib_call_init_function (vm, unix_input_init);
 }
 
 VLIB_INIT_FUNCTION (unix_main_init);
 
-static void unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
+static void
+unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
 {
   uword fatal;
-  u8 * msg = 0;
+  u8 *msg = 0;
 
   msg = format (msg, "received signal %U, PC %U",
-		format_signal, signum,
-		format_ucontext_pc, uc);
+		format_signal, signum, format_ucontext_pc, uc);
 
   if (signum == SIGSEGV)
     msg = format (msg, ", faulting address %p", si->si_addr);
@@ -82,13 +82,13 @@ static void unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
     {
       /* these (caught) signals cause the application to exit */
     case SIGTERM:
-      if (unix_main.vlib_main->main_loop_exit_set) 
-        {
-          syslog (LOG_ERR | LOG_DAEMON, "received SIGTERM, exiting...");
+      if (unix_main.vlib_main->main_loop_exit_set)
+	{
+	  syslog (LOG_ERR | LOG_DAEMON, "received SIGTERM, exiting...");
 
-          clib_longjmp (&unix_main.vlib_main->main_loop_exit, 
-                        VLIB_MAIN_LOOP_EXIT_CLI);
-        }
+	  clib_longjmp (&unix_main.vlib_main->main_loop_exit,
+			VLIB_MAIN_LOOP_EXIT_CLI);
+	}
     case SIGQUIT:
     case SIGINT:
     case SIGILL:
@@ -133,21 +133,21 @@ setup_signal_handlers (unix_main_t * um)
 
       switch (i)
 	{
-          /* these signals take the default action */
-        case SIGABRT:
+	  /* these signals take the default action */
+	case SIGABRT:
 	case SIGKILL:
 	case SIGSTOP:
-        case SIGUSR1:
-        case SIGUSR2:
+	case SIGUSR1:
+	case SIGUSR2:
 	  continue;
 
-          /* ignore SIGPIPE, SIGCHLD */
+	  /* ignore SIGPIPE, SIGCHLD */
 	case SIGPIPE:
 	case SIGCHLD:
 	  sa.sa_sigaction = (void *) SIG_IGN;
 	  break;
 
-          /* catch and handle all other signals */
+	  /* catch and handle all other signals */
 	default:
 	  break;
 	}
@@ -159,9 +159,10 @@ setup_signal_handlers (unix_main_t * um)
   return 0;
 }
 
-static void unix_error_handler (void * arg, u8 * msg, int msg_len)
+static void
+unix_error_handler (void *arg, u8 * msg, int msg_len)
 {
-  unix_main_t * um = arg;
+  unix_main_t *um = arg;
 
   /* Echo to stderr when interactive. */
   if (um->flags & UNIX_FLAG_INTERACTIVE)
@@ -173,46 +174,46 @@ static void unix_error_handler (void * arg, u8 * msg, int msg_len)
       char save = msg[msg_len - 1];
 
       /* Null Terminate. */
-      msg[msg_len-1] = 0;
+      msg[msg_len - 1] = 0;
 
       syslog (LOG_ERR | LOG_DAEMON, "%s", msg);
 
-      msg[msg_len-1] = save;
+      msg[msg_len - 1] = save;
     }
 }
 
-void vlib_unix_error_report (vlib_main_t * vm, clib_error_t * error)
+void
+vlib_unix_error_report (vlib_main_t * vm, clib_error_t * error)
 {
-    unix_main_t * um = &unix_main;
+  unix_main_t *um = &unix_main;
 
-    if (um->flags & UNIX_FLAG_INTERACTIVE || error == 0)
-      return;
+  if (um->flags & UNIX_FLAG_INTERACTIVE || error == 0)
+    return;
 
-    {
-      char save;
-      u8 * msg;
-      u32 msg_len;
+  {
+    char save;
+    u8 *msg;
+    u32 msg_len;
 
-      msg = error->what;
-      msg_len = vec_len(msg);
+    msg = error->what;
+    msg_len = vec_len (msg);
 
-      /* Null Terminate. */
-      save = msg[msg_len-1];
-      msg[msg_len-1] = 0;
+    /* Null Terminate. */
+    save = msg[msg_len - 1];
+    msg[msg_len - 1] = 0;
 
-      syslog (LOG_ERR | LOG_DAEMON, "%s", msg);
+    syslog (LOG_ERR | LOG_DAEMON, "%s", msg);
 
-      msg[msg_len-1] = save;
-    }
+    msg[msg_len - 1] = save;
+  }
 }
 
 static uword
 startup_config_process (vlib_main_t * vm,
-                 vlib_node_runtime_t * rt,
-                 vlib_frame_t * f)
+			vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
-  unix_main_t * um = &unix_main;
-  u8 * buf = 0;
+  unix_main_t *um = &unix_main;
+  u8 *buf = 0;
   uword l, n = 1;
 
   vlib_process_suspend (vm, 2.0);
@@ -220,91 +221,95 @@ startup_config_process (vlib_main_t * vm,
   while (um->unix_config_complete == 0)
     vlib_process_suspend (vm, 0.1);
 
-  if (um->startup_config_filename) {
-    unformat_input_t sub_input;
-    int fd;
-    struct stat s;
-    char *fn = (char *)um->startup_config_filename;
-        
-    fd = open (fn, O_RDONLY);
-    if (fd < 0) {
-      clib_warning ("failed to open `%s'", fn);
-      return 0;
-    }
+  if (um->startup_config_filename)
+    {
+      unformat_input_t sub_input;
+      int fd;
+      struct stat s;
+      char *fn = (char *) um->startup_config_filename;
 
-    if (fstat (fd, &s) < 0) {
-      clib_warning ("failed to stat `%s'", fn);
-    bail:
-      close(fd);
-      return 0;
-    }
-    
-    if (! (S_ISREG (s.st_mode) || S_ISLNK (s.st_mode))) {
-      clib_warning ("not a regular file: `%s'", fn);
-      goto bail;
-    }
-
-    while (n > 0)
-      {
-        l = vec_len (buf);
-        vec_resize (buf, 4096);
-        n = read (fd, buf + l, 4096);
-        if (n > 0)
-          {
-            _vec_len (buf) = l + n;
-            if (n < 4096)
-              break;
-          }
-        else
-          break;
-      }
-    if (um->log_fd && vec_len (buf))
-      {
-        u8 * lv = 0;
-        lv = format (lv, "%U: ***** Startup Config *****\n%v", 
-                     format_timeval,
-                     0 /* current bat-time */,
-                     0 /* current bat-format */,
-                     buf);
+      fd = open (fn, O_RDONLY);
+      if (fd < 0)
 	{
-	  int rv __attribute__((unused)) = 
-	    write (um->log_fd, lv, vec_len(lv));
+	  clib_warning ("failed to open `%s'", fn);
+	  return 0;
 	}
-        vec_reset_length (lv);
-        lv = format (lv, "%U: ***** End Startup Config *****\n", 
-                     format_timeval,
-                     0 /* current bat-time */,
-                     0 /* current bat-format */);
-	{
-	  int rv __attribute__((unused)) = 
-	    write (um->log_fd, lv, vec_len(lv));
-	}
-        vec_free (lv);
-      }
 
-    if (vec_len(buf))
-      {
-        unformat_init_vector (&sub_input, buf);
-        vlib_cli_input (vm, &sub_input, 0, 0);
-        /* frees buf for us */
-        unformat_free (&sub_input);
-      }
-    close(fd);
-  }
+      if (fstat (fd, &s) < 0)
+	{
+	  clib_warning ("failed to stat `%s'", fn);
+	bail:
+	  close (fd);
+	  return 0;
+	}
+
+      if (!(S_ISREG (s.st_mode) || S_ISLNK (s.st_mode)))
+	{
+	  clib_warning ("not a regular file: `%s'", fn);
+	  goto bail;
+	}
+
+      while (n > 0)
+	{
+	  l = vec_len (buf);
+	  vec_resize (buf, 4096);
+	  n = read (fd, buf + l, 4096);
+	  if (n > 0)
+	    {
+	      _vec_len (buf) = l + n;
+	      if (n < 4096)
+		break;
+	    }
+	  else
+	    break;
+	}
+      if (um->log_fd && vec_len (buf))
+	{
+	  u8 *lv = 0;
+	  lv = format (lv, "%U: ***** Startup Config *****\n%v",
+		       format_timeval, 0 /* current bat-time */ ,
+		       0 /* current bat-format */ ,
+		       buf);
+	  {
+	    int rv __attribute__ ((unused)) =
+	      write (um->log_fd, lv, vec_len (lv));
+	  }
+	  vec_reset_length (lv);
+	  lv = format (lv, "%U: ***** End Startup Config *****\n",
+		       format_timeval, 0 /* current bat-time */ ,
+		       0 /* current bat-format */ );
+	  {
+	    int rv __attribute__ ((unused)) =
+	      write (um->log_fd, lv, vec_len (lv));
+	  }
+	  vec_free (lv);
+	}
+
+      if (vec_len (buf))
+	{
+	  unformat_init_vector (&sub_input, buf);
+	  vlib_cli_input (vm, &sub_input, 0, 0);
+	  /* frees buf for us */
+	  unformat_free (&sub_input);
+	}
+      close (fd);
+    }
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (startup_config_node,static) = {
     .function = startup_config_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "startup-config-process",
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 unix_config (vlib_main_t * vm, unformat_input_t * input)
 {
-  unix_main_t * um = &unix_main;
-  clib_error_t * error = 0;
+  unix_main_t *um = &unix_main;
+  clib_error_t *error = 0;
 
   /* Defaults */
   um->cli_pager_buffer_limit = UNIX_CLI_DEFAULT_PAGER_LIMIT;
@@ -312,76 +317,76 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      char * cli_prompt;
+      char *cli_prompt;
       if (unformat (input, "interactive"))
 	um->flags |= UNIX_FLAG_INTERACTIVE;
       else if (unformat (input, "nodaemon"))
-        um->flags |= UNIX_FLAG_NODAEMON;  
+	um->flags |= UNIX_FLAG_NODAEMON;
       else if (unformat (input, "cli-prompt %s", &cli_prompt))
 	vlib_unix_cli_set_prompt (cli_prompt);
-      else if (unformat (input, "cli-listen %s", &um->cli_listen_socket.config))
+      else
+	if (unformat (input, "cli-listen %s", &um->cli_listen_socket.config))
 	;
       else if (unformat (input, "cli-line-mode"))
-        um->cli_line_mode = 1;
+	um->cli_line_mode = 1;
       else if (unformat (input, "cli-no-banner"))
-        um->cli_no_banner = 1;
+	um->cli_no_banner = 1;
       else if (unformat (input, "cli-no-pager"))
-        um->cli_no_pager = 1;
+	um->cli_no_pager = 1;
       else if (unformat (input, "cli-pager-buffer-limit %d",
-                                        &um->cli_pager_buffer_limit))
-        ;
-      else if (unformat (input, "cli-history-limit %d", &um->cli_history_limit))
-        ;
+			 &um->cli_pager_buffer_limit))
+	;
+      else
+	if (unformat (input, "cli-history-limit %d", &um->cli_history_limit))
+	;
       else if (unformat (input, "full-coredump"))
-        {
-          int fd;
+	{
+	  int fd;
 
-          fd = open ("/proc/self/coredump_filter", O_WRONLY);
-          if (fd > 0)
-            {
-              if (write (fd, "0x6f\n", 5) != 5)
-                clib_unix_warning ("coredump filter write failed!");
-              close(fd);
-            }
-          else
-            clib_unix_warning ("couldn't open /proc/self/coredump_filter");
-        }
-      else if (unformat (input, "startup-config %s", 
-                         &um->startup_config_filename))
-        ;
-      else if (unformat (input, "exec %s",
-                         &um->startup_config_filename))
-        ;
+	  fd = open ("/proc/self/coredump_filter", O_WRONLY);
+	  if (fd > 0)
+	    {
+	      if (write (fd, "0x6f\n", 5) != 5)
+		clib_unix_warning ("coredump filter write failed!");
+	      close (fd);
+	    }
+	  else
+	    clib_unix_warning ("couldn't open /proc/self/coredump_filter");
+	}
+      else if (unformat (input, "startup-config %s",
+			 &um->startup_config_filename))
+	;
+      else if (unformat (input, "exec %s", &um->startup_config_filename))
+	;
       else if (unformat (input, "log %s", &um->log_filename))
-        {
-          um->log_fd = open ((char *) um->log_filename, 
-                             O_CREAT | O_WRONLY | O_APPEND, 0644);
-          if (um->log_fd < 0)
-            {
-              clib_warning ("couldn't open log '%s'\n", um->log_filename);
-              um->log_fd = 0;
-            }
-          else
-            {
-              u8 * lv = 0;
-              lv = format (0, "%U: ***** Start: PID %d *****\n", 
-                           format_timeval,
-                           0 /* current bat-time */,
-                           0 /* current bat-format */,
-                           getpid());
+	{
+	  um->log_fd = open ((char *) um->log_filename,
+			     O_CREAT | O_WRONLY | O_APPEND, 0644);
+	  if (um->log_fd < 0)
+	    {
+	      clib_warning ("couldn't open log '%s'\n", um->log_filename);
+	      um->log_fd = 0;
+	    }
+	  else
+	    {
+	      u8 *lv = 0;
+	      lv = format (0, "%U: ***** Start: PID %d *****\n",
+			   format_timeval, 0 /* current bat-time */ ,
+			   0 /* current bat-format */ ,
+			   getpid ());
 	      {
-		int rv __attribute__((unused)) = 
-		  write (um->log_fd, lv, vec_len(lv));
+		int rv __attribute__ ((unused)) =
+		  write (um->log_fd, lv, vec_len (lv));
 	      }
-              vec_free (lv);
-            }
-        }
+	      vec_free (lv);
+	    }
+	}
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
 
-  if (! (um->flags & UNIX_FLAG_INTERACTIVE))
+  if (!(um->flags & UNIX_FLAG_INTERACTIVE))
     {
       error = setup_signal_handlers (um);
       if (error)
@@ -390,9 +395,9 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
       openlog (vm->name, LOG_CONS | LOG_PERROR | LOG_PID, LOG_DAEMON);
       clib_error_register_handler (unix_error_handler, um);
 
-      if (! (um->flags & UNIX_FLAG_NODAEMON)
-	  && daemon (/* chdir to / */ 0,
-		     /* stdin/stdout/stderr -> /dev/null */ 0) < 0)
+      if (!(um->flags & UNIX_FLAG_NODAEMON) && daemon ( /* chdir to / */ 0,
+						       /* stdin/stdout/stderr -> /dev/null */
+						       0) < 0)
 	clib_error_return (0, "daemon () fails");
     }
   um->unix_config_complete = 1;
@@ -415,54 +420,56 @@ VLIB_MAIN_LOOP_EXIT_FUNCTION (unix_exit);
 
 u8 **vlib_thread_stacks;
 
-static uword thread0 (uword arg)
+static uword
+thread0 (uword arg)
 {
-  vlib_main_t * vm = (vlib_main_t *)arg;
+  vlib_main_t *vm = (vlib_main_t *) arg;
   unformat_input_t input;
   int i;
-  
-  unformat_init_command_line (&input, (char **)vm->argv);
+
+  unformat_init_command_line (&input, (char **) vm->argv);
   i = vlib_main (vm, &input);
   unformat_free (&input);
-  
-  return i;
- }
 
-int vlib_unix_main (int argc, char * argv[])
+  return i;
+}
+
+int
+vlib_unix_main (int argc, char *argv[])
 {
-  vlib_main_t * vm = &vlib_global_main; /* one and only time for this! */
-  
-  clib_smp_main_t * sm = &clib_smp_main;
-  vlib_thread_main_t * tm = &vlib_thread_main;
+  vlib_main_t *vm = &vlib_global_main;	/* one and only time for this! */
+
+  clib_smp_main_t *sm = &clib_smp_main;
+  vlib_thread_main_t *tm = &vlib_thread_main;
   unformat_input_t input;
-  u8 * thread_stacks;
-  clib_error_t * e;
+  u8 *thread_stacks;
+  clib_error_t *e;
   int i;
 
-  vm->argv = (u8 **)argv;
+  vm->argv = (u8 **) argv;
   vm->name = argv[0];
   vm->heap_base = clib_mem_get_heap ();
-  ASSERT(vm->heap_base);
+  ASSERT (vm->heap_base);
 
   i = vlib_plugin_early_init (vm);
   if (i)
     return i;
-  
-  unformat_init_command_line (&input, (char **)vm->argv);
+
+  unformat_init_command_line (&input, (char **) vm->argv);
   if (vm->init_functions_called == 0)
-      vm->init_functions_called = hash_create (0, /* value bytes */ 0);
-  e = vlib_call_all_config_functions (vm, &input, 1 /* early */);
+    vm->init_functions_called = hash_create (0, /* value bytes */ 0);
+  e = vlib_call_all_config_functions (vm, &input, 1 /* early */ );
   if (e != 0)
     {
-      clib_error_report(e);
+      clib_error_report (e);
       return 1;
     }
   unformat_free (&input);
 
   /* allocate N x 1mb stacks, aligned e.g. to a 16mb boundary */
-  thread_stacks = clib_mem_alloc_aligned 
-      (tm->n_thread_stacks * VLIB_THREAD_STACK_SIZE,
-       (VLIB_MAX_CPUS << VLIB_LOG2_THREAD_STACK_SIZE));
+  thread_stacks = clib_mem_alloc_aligned
+    (tm->n_thread_stacks * VLIB_THREAD_STACK_SIZE,
+     (VLIB_MAX_CPUS << VLIB_LOG2_THREAD_STACK_SIZE));
 
   sm->vm_base = thread_stacks;
   sm->log2_n_per_cpu_vm_bytes = VLIB_LOG2_THREAD_STACK_SIZE;
@@ -472,17 +479,26 @@ int vlib_unix_main (int argc, char * argv[])
     {
       vlib_thread_stacks[i] = thread_stacks;
 
-      /* 
+      /*
        * Disallow writes to the bottom page of the stack, to
        * catch stack overflows.
        */
-      if (mprotect (thread_stacks, clib_mem_get_page_size(), PROT_READ) < 0)
-          clib_unix_warning ("thread stack");
+      if (mprotect (thread_stacks, clib_mem_get_page_size (), PROT_READ) < 0)
+	clib_unix_warning ("thread stack");
 
       thread_stacks += VLIB_THREAD_STACK_SIZE;
     }
-  
-  i = clib_calljmp (thread0, (uword) vm, 
-                    (void *)(vlib_thread_stacks[0] + VLIB_THREAD_STACK_SIZE));
+
+  i = clib_calljmp (thread0, (uword) vm,
+		    (void *) (vlib_thread_stacks[0] +
+			      VLIB_THREAD_STACK_SIZE));
   return i;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

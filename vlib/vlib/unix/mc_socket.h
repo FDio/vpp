@@ -21,24 +21,27 @@
 #include <vlib/unix/unix.h>
 #include <netinet/in.h>
 
-typedef struct {
+typedef struct
+{
   int socket;
   struct sockaddr_in tx_addr;
 } mc_multicast_socket_t;
 
 /* TCP catchup socket */
-typedef struct {
+typedef struct
+{
   int socket;
   u32 unix_file_index;
 
-  u8 * input_vector;
-  u8 * output_vector;
+  u8 *input_vector;
+  u8 *output_vector;
   u32 output_vector_n_written;
 
   u32 connect_in_progress;
 } mc_socket_catchup_t;
 
-typedef struct mc_socket_main_t {
+typedef struct mc_socket_main_t
+{
   mc_main_t mc_main;
 
   /* Multicast mastership/to-relay/from-relay sockets. */
@@ -53,7 +56,7 @@ typedef struct mc_socket_main_t {
   /* Pool of stream-private catchup sockets */
   mc_socket_catchup_t *catchups;
 
-  uword * catchup_index_by_file_descriptor;
+  uword *catchup_index_by_file_descriptor;
 
   u32 rx_mtu_n_bytes;
 
@@ -61,19 +64,19 @@ typedef struct mc_socket_main_t {
   u32 rx_mtu_n_buffers;
 
   /* Vector of RX VLIB buffers. */
-  u32 * rx_buffers;
+  u32 *rx_buffers;
   /* Vector of scatter/gather descriptors for sending/receiving VLIB buffers
      via kernel. */
-  struct iovec * iovecs;
+  struct iovec *iovecs;
 
   /* IP address of interface to use for multicast. */
   u32 if_ip4_address_net_byte_order;
-  
+
   u32 ack_udp_port;
   u32 catchup_tcp_port;
 
   /* Interface on which to listen for multicasts. */
-  char * multicast_interface_name;
+  char *multicast_interface_name;
 
   /* Multicast address to use (e.g. 0xefff0000).
      Host byte order. */
@@ -92,15 +95,15 @@ always_inline u32
 mc_socket_peer_id_get_address (mc_peer_id_t i)
 {
   u32 a = ((i.as_u8[0] << 24)
-           | (i.as_u8[1] << 16)
-           | (i.as_u8[2] << 8)
-           | (i.as_u8[3] << 0));
+	   | (i.as_u8[1] << 16) | (i.as_u8[2] << 8) | (i.as_u8[3] << 0));
   return clib_host_to_net_u32 (a);
 }
 
 always_inline u32
 mc_socket_peer_id_get_port (mc_peer_id_t i)
-{ return clib_host_to_net_u16 ((i.as_u8[4] << 8) | i.as_u8[5]); }
+{
+  return clib_host_to_net_u16 ((i.as_u8[4] << 8) | i.as_u8[5]);
+}
 
 static_always_inline mc_peer_id_t
 mc_socket_set_peer_id (u32 address_net_byte_order, u32 port_host_byte_order)
@@ -110,17 +113,25 @@ mc_socket_set_peer_id (u32 address_net_byte_order, u32 port_host_byte_order)
   u32 p = port_host_byte_order;
   i.as_u8[0] = (a >> 24) & 0xff;
   i.as_u8[1] = (a >> 16) & 0xff;
-  i.as_u8[2] = (a >>  8) & 0xff;
-  i.as_u8[3] = (a >>  0) & 0xff;
-  i.as_u8[4] = (p >>  8) & 0xff;
-  i.as_u8[5] = (p >>  0) & 0xff;
+  i.as_u8[2] = (a >> 8) & 0xff;
+  i.as_u8[3] = (a >> 0) & 0xff;
+  i.as_u8[4] = (p >> 8) & 0xff;
+  i.as_u8[5] = (p >> 0) & 0xff;
   i.as_u8[6] = 0;
   i.as_u8[7] = 0;
   return i;
 }
 
-clib_error_t * 
-mc_socket_main_init (mc_socket_main_t * msm, char **intfc_probe_list,
-                     int n_intfcs_to_probe);
+clib_error_t *mc_socket_main_init (mc_socket_main_t * msm,
+				   char **intfc_probe_list,
+				   int n_intfcs_to_probe);
 #endif /* __included_mc_socket_h__ */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

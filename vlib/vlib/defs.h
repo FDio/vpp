@@ -41,7 +41,8 @@
 #define included_vlib_defs_h
 
 /* Receive or transmit. */
-typedef enum {
+typedef enum
+{
   VLIB_RX,
   VLIB_TX,
   VLIB_N_RX_TX = 2,		/* Used to size arrays. */
@@ -50,21 +51,32 @@ typedef enum {
 #define vlib_foreach_rx_tx(v) for (v = 0; v < VLIB_N_RX_TX; v++)
 
 /* Read/write. */
-typedef enum {
+typedef enum
+{
   VLIB_READ,
   VLIB_WRITE,
 } vlib_read_or_write_t;
 
 /* Up/down. */
-typedef enum {
+typedef enum
+{
   VLIB_DOWN = 0,
   VLIB_UP = 1,
 } vlib_up_or_down_t;
 
 /* Enable/disable. */
-typedef enum {
+typedef enum
+{
   VLIB_DISABLE = 0,
   VLIB_ENABLE = 1,
 } vlib_enable_or_disable_t;
 
 #endif /* included_vlib_defs_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

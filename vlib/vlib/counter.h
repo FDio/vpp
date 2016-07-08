@@ -40,40 +40,39 @@
 #ifndef included_vlib_counter_h
 #define included_vlib_counter_h
 
-/* 
+/*
  * Annoyingly enough, counters are created long before
  * the CPU configuration is available, so we have to
  * preallocate the mini-counter per-cpu vectors
  */
 
-typedef struct {
+typedef struct
+{
   /* Compact counters that (rarely) can overflow. */
-  u16 ** minis;
+  u16 **minis;
 
   /* Counters to hold overflow. */
-  u64 * maxi;
+  u64 *maxi;
 
   /* Counter values as of last clear. */
-  u64 * value_at_last_clear;
+  u64 *value_at_last_clear;
 
   /* Values as of last serialize. */
-  u64 * value_at_last_serialize;
+  u64 *value_at_last_serialize;
 
   /* Last counter index serialized incrementally. */
   u32 last_incremental_serialize_index;
 
   /* Counter name. */
-  char * name;
+  char *name;
 } vlib_simple_counter_main_t;
 
 always_inline void
 vlib_increment_simple_counter (vlib_simple_counter_main_t * cm,
-                               u32 cpu_index,
-			       u32 index,
-			       u32 increment)
+			       u32 cpu_index, u32 index, u32 increment)
 {
-  u16 * my_minis;
-  u16 * mini;
+  u16 *my_minis;
+  u16 *mini;
   u32 old, new;
 
   my_minis = cm->minis[cpu_index];
@@ -100,7 +99,7 @@ vlib_get_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 
   v = 0;
 
-  for (i = 0; i < vec_len(cm->minis); i++)
+  for (i = 0; i < vec_len (cm->minis); i++)
     {
       my_minis = cm->minis[i];
       mini = vec_elt_at_index (my_minis, index);
@@ -121,12 +120,12 @@ vlib_get_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 always_inline void
 vlib_zero_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 {
-  u16 * my_minis;
+  u16 *my_minis;
   int i;
 
   ASSERT (index < vec_len (cm->maxi));
 
-  for (i = 0; i < vec_len(cm->minis); i++)
+  for (i = 0; i < vec_len (cm->minis); i++)
     {
       my_minis = cm->minis[i];
       my_minis[index] = 0;
@@ -140,7 +139,8 @@ vlib_zero_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 
 /* Combined counters hold both packets and byte differences. */
 /* Maxi-packet/byte counter. */
-typedef struct {
+typedef struct
+{
   u64 packets, bytes;
 } vlib_counter_t;
 
@@ -162,10 +162,13 @@ vlib_counter_sub (vlib_counter_t * a, vlib_counter_t * b)
 
 always_inline void
 vlib_counter_zero (vlib_counter_t * a)
-{ a->packets = a->bytes = 0; }
+{
+  a->packets = a->bytes = 0;
+}
 
 /* Micro-counter: 16 bits of packets and 16 bits of byte difference. */
-typedef struct {
+typedef struct
+{
   /* Packet count. */
   u16 packets;
 
@@ -173,21 +176,22 @@ typedef struct {
   i16 bytes;
 } vlib_mini_counter_t;
 
-typedef struct {
+typedef struct
+{
   /* Compact counters that (rarely) can overflow. */
-  vlib_mini_counter_t ** minis;
+  vlib_mini_counter_t **minis;
 
   /* Counters to hold overflow. */
-  vlib_counter_t * maxi;
+  vlib_counter_t *maxi;
 
   /* Debug counters for testing. */
-  vlib_counter_t * debug;
+  vlib_counter_t *debug;
 
   /* Counter values as of last clear. */
-  vlib_counter_t * value_at_last_clear;
+  vlib_counter_t *value_at_last_clear;
 
   /* Counter values as of last serialize. */
-  vlib_counter_t * value_at_last_serialize;
+  vlib_counter_t *value_at_last_serialize;
 
   /* Last counter index serialized incrementally. */
   u32 last_incremental_serialize_index;
@@ -199,7 +203,7 @@ typedef struct {
   u32 ave_packets, ave_bytes;
 
   /* Counter name. */
-  char * name;
+  char *name;
 
 } vlib_combined_counter_main_t;
 
@@ -208,12 +212,11 @@ void vlib_clear_combined_counters (vlib_combined_counter_main_t * cm);
 
 always_inline void
 vlib_increment_combined_counter (vlib_combined_counter_main_t * cm,
-                                 u32 cpu_index,
+				 u32 cpu_index,
 				 u32 index,
-				 u32 packet_increment,
-				 u32 byte_increment)
+				 u32 packet_increment, u32 byte_increment)
 {
-  vlib_mini_counter_t * my_minis, * mini;
+  vlib_mini_counter_t *my_minis, *mini;
   u32 old_packets, new_packets;
   i32 old_bytes, new_bytes;
 
@@ -233,7 +236,7 @@ vlib_increment_combined_counter (vlib_combined_counter_main_t * cm,
   /* Bytes always overflow before packets.. */
   if (PREDICT_FALSE (mini->bytes != new_bytes))
     {
-      vlib_counter_t * maxi = vec_elt_at_index (cm->maxi, index);
+      vlib_counter_t *maxi = vec_elt_at_index (cm->maxi, index);
 
       __sync_fetch_and_add (&maxi->packets, new_packets);
       __sync_fetch_and_add (&maxi->bytes, new_bytes);
@@ -246,17 +249,16 @@ vlib_increment_combined_counter (vlib_combined_counter_main_t * cm,
 /* This is never done in the speed path */
 static inline void
 vlib_get_combined_counter (vlib_combined_counter_main_t * cm,
-			   u32 index,
-			   vlib_counter_t * result)
+			   u32 index, vlib_counter_t * result)
 {
-  vlib_mini_counter_t * my_minis, * mini;
-  vlib_counter_t * maxi;
+  vlib_mini_counter_t *my_minis, *mini;
+  vlib_counter_t *maxi;
   int i;
 
   result->packets = 0;
   result->bytes = 0;
 
-  for (i = 0; i < vec_len(cm->minis); i++)
+  for (i = 0; i < vec_len (cm->minis); i++)
     {
       my_minis = cm->minis[i];
 
@@ -274,13 +276,12 @@ vlib_get_combined_counter (vlib_combined_counter_main_t * cm,
 }
 
 always_inline void
-vlib_zero_combined_counter (vlib_combined_counter_main_t * cm,
-			    u32 index)
+vlib_zero_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 {
-  vlib_mini_counter_t * mini, * my_minis;
+  vlib_mini_counter_t *mini, *my_minis;
   int i;
 
-  for (i = 0; i < vec_len(cm->minis); i++)
+  for (i = 0; i < vec_len (cm->minis); i++)
     {
       my_minis = cm->minis[i];
 
@@ -294,13 +295,25 @@ vlib_zero_combined_counter (vlib_combined_counter_main_t * cm,
     vlib_counter_zero (&cm->value_at_last_clear[index]);
 }
 
-void vlib_validate_simple_counter (vlib_simple_counter_main_t *cm, u32 index);
-void vlib_validate_combined_counter (vlib_combined_counter_main_t *cm, u32 index);
+void vlib_validate_simple_counter (vlib_simple_counter_main_t * cm,
+				   u32 index);
+void vlib_validate_combined_counter (vlib_combined_counter_main_t * cm,
+				     u32 index);
 
 /* Number of simple/combined counters allocated. */
 #define vlib_counter_len(cm) vec_len((cm)->maxi)
 
-serialize_function_t serialize_vlib_simple_counter_main, unserialize_vlib_simple_counter_main;
-serialize_function_t serialize_vlib_combined_counter_main, unserialize_vlib_combined_counter_main;
+serialize_function_t serialize_vlib_simple_counter_main,
+  unserialize_vlib_simple_counter_main;
+serialize_function_t serialize_vlib_combined_counter_main,
+  unserialize_vlib_combined_counter_main;
 
 #endif /* included_vlib_counter_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

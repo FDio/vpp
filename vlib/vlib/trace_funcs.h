@@ -43,22 +43,20 @@
 always_inline void
 vlib_validate_trace (vlib_trace_main_t * tm, vlib_buffer_t * b)
 {
-  /* 
-   * this assert seems right, but goes off constantly. 
+  /*
+   * this assert seems right, but goes off constantly.
    * disabling it appears to make the pain go away
    */
   ASSERT (1 || b->flags & VLIB_BUFFER_IS_TRACED);
-  ASSERT (! pool_is_free_index (tm->trace_buffer_pool, b->trace_index));
+  ASSERT (!pool_is_free_index (tm->trace_buffer_pool, b->trace_index));
 }
 
 always_inline void *
 vlib_add_trace (vlib_main_t * vm,
-		vlib_node_runtime_t * r,
-		vlib_buffer_t * b,
-		u32 n_data_bytes)
+		vlib_node_runtime_t * r, vlib_buffer_t * b, u32 n_data_bytes)
 {
-  vlib_trace_main_t * tm = &vm->trace_main;
-  vlib_trace_header_t * h;
+  vlib_trace_main_t *tm = &vm->trace_main;
+  vlib_trace_header_t *h;
   u32 n_data_words;
 
   vlib_validate_trace (tm, b);
@@ -66,8 +64,7 @@ vlib_add_trace (vlib_main_t * vm,
   n_data_bytes = round_pow2 (n_data_bytes, sizeof (h[0]));
   n_data_words = n_data_bytes / sizeof (h[0]);
   vec_add2_aligned (tm->trace_buffer_pool[b->trace_index], h,
-                    1 + n_data_words,
-                    sizeof (h[0]));
+		    1 + n_data_words, sizeof (h[0]));
 
   h->time = vm->cpu_time_last_node_dispatch;
   h->n_data = n_data_words;
@@ -75,15 +72,17 @@ vlib_add_trace (vlib_main_t * vm,
 
   return h->data;
 }
-				      
+
 always_inline vlib_trace_header_t *
 vlib_trace_header_next (vlib_trace_header_t * h)
-{ return h + 1 + h->n_data; }
+{
+  return h + 1 + h->n_data;
+}
 
 always_inline void
 vlib_free_trace (vlib_main_t * vm, vlib_buffer_t * b)
 {
-  vlib_trace_main_t * tm = &vm->trace_main;
+  vlib_trace_main_t *tm = &vm->trace_main;
   vlib_validate_trace (tm, b);
   _vec_len (tm->trace_buffer_pool[b->trace_index]) = 0;
   pool_put_index (tm->trace_buffer_pool, b->trace_index);
@@ -91,10 +90,9 @@ vlib_free_trace (vlib_main_t * vm, vlib_buffer_t * b)
 
 always_inline void
 vlib_trace_next_frame (vlib_main_t * vm,
-		       vlib_node_runtime_t * r,
-		       u32 next_index)
+		       vlib_node_runtime_t * r, u32 next_index)
 {
-  vlib_next_frame_t * nf;
+  vlib_next_frame_t *nf;
   nf = vlib_node_runtime_get_next_frame (vm, r, next_index);
   nf->flags |= VLIB_FRAME_TRACE;
 }
@@ -105,12 +103,10 @@ void trace_apply_filter (vlib_main_t * vm);
 always_inline void
 vlib_trace_buffer (vlib_main_t * vm,
 		   vlib_node_runtime_t * r,
-		   u32 next_index,
-		   vlib_buffer_t * b,
-		   int follow_chain)
+		   u32 next_index, vlib_buffer_t * b, int follow_chain)
 {
-  vlib_trace_main_t * tm = &vm->trace_main;
-  vlib_trace_header_t ** h;
+  vlib_trace_main_t *tm = &vm->trace_main;
+  vlib_trace_header_t **h;
 
   /*
    * Apply filter to existing traces to keep number of allocated traces low.
@@ -126,16 +122,19 @@ vlib_trace_buffer (vlib_main_t * vm,
 
   pool_get (tm->trace_buffer_pool, h);
 
-  do {
-    b->flags |= VLIB_BUFFER_IS_TRACED;
-    b->trace_index = h - tm->trace_buffer_pool;
-  } while (follow_chain && (b = vlib_get_next_buffer (vm, b)));
+  do
+    {
+      b->flags |= VLIB_BUFFER_IS_TRACED;
+      b->trace_index = h - tm->trace_buffer_pool;
+    }
+  while (follow_chain && (b = vlib_get_next_buffer (vm, b)));
 }
 
 always_inline void
-vlib_buffer_copy_trace_flag (vlib_main_t * vm, vlib_buffer_t * b, u32 bi_target)
+vlib_buffer_copy_trace_flag (vlib_main_t * vm, vlib_buffer_t * b,
+			     u32 bi_target)
 {
-  vlib_buffer_t * b_target = vlib_get_buffer (vm, bi_target);
+  vlib_buffer_t *b_target = vlib_get_buffer (vm, bi_target);
   b_target->flags |= b->flags & VLIB_BUFFER_IS_TRACED;
   b_target->trace_index = b->trace_index;
 }
@@ -143,8 +142,8 @@ vlib_buffer_copy_trace_flag (vlib_main_t * vm, vlib_buffer_t * b, u32 bi_target)
 always_inline u32
 vlib_get_trace_count (vlib_main_t * vm, vlib_node_runtime_t * rt)
 {
-  vlib_trace_main_t * tm = &vm->trace_main;
-  vlib_trace_node_t * tn;
+  vlib_trace_main_t *tm = &vm->trace_main;
+  vlib_trace_node_t *tn;
   int n;
 
   if (rt->node_index >= vec_len (tm->nodes))
@@ -157,11 +156,10 @@ vlib_get_trace_count (vlib_main_t * vm, vlib_node_runtime_t * rt)
 }
 
 always_inline void
-vlib_set_trace_count (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		      u32 count)
+vlib_set_trace_count (vlib_main_t * vm, vlib_node_runtime_t * rt, u32 count)
 {
-  vlib_trace_main_t * tm = &vm->trace_main;
-  vlib_trace_node_t * tn = vec_elt_at_index (tm->nodes, rt->node_index);
+  vlib_trace_main_t *tm = &vm->trace_main;
+  vlib_trace_node_t *tn = vec_elt_at_index (tm->nodes, rt->node_index);
 
   ASSERT (count <= tn->limit);
   tn->count = tn->limit - count;
@@ -177,3 +175,11 @@ vlib_trace_frame_buffers_only (vlib_main_t * vm,
 			       uword n_buffer_data_bytes_in_trace);
 
 #endif /* included_vlib_trace_funcs_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

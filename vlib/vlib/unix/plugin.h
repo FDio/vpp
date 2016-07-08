@@ -28,12 +28,12 @@
  * vlib plugin scheme
  *
  * Almost anything which can be made to work in a vlib unix
- * application will also work in a vlib plugin. 
- * 
- * The elf-section magic which registers static objects 
+ * application will also work in a vlib plugin.
+ *
+ * The elf-section magic which registers static objects
  * works so long as plugins are preset when the vlib unix process
- * starts. But wait: there's more... 
- * 
+ * starts. But wait: there's more...
+ *
  * If an application calls vlib_load_new_plugins() -- possibly after
  * changing vlib_plugin_main.plugin_path / vlib_plugin_main.plugin_name_filter,
  * -- new plugins will be loaded. That, in turn, allows considerable
@@ -55,16 +55,18 @@
  * An application can change these parameters at any time and call
  * vlib_load_new_plugins().
  */
- 
 
 
-typedef struct {
+
+typedef struct
+{
   u8 *name;
   struct stat file_info;
   void *handle;
 } plugin_info_t;
 
-typedef struct {
+typedef struct
+{
   /* loaded plugin info */
   plugin_info_t *plugin_info;
   uword *plugin_by_name_hash;
@@ -82,7 +84,15 @@ typedef struct {
 
 plugin_main_t vlib_plugin_main;
 
-int vlib_plugin_early_init (vlib_main_t *vm);
-int vlib_load_new_plugins (plugin_main_t *pm, int from_early_init);
+int vlib_plugin_early_init (vlib_main_t * vm);
+int vlib_load_new_plugins (plugin_main_t * pm, int from_early_init);
 
 #endif /* __included_plugin_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
