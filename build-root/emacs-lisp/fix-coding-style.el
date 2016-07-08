@@ -1,15 +1,5 @@
 #!/usr/bin/emacs --script
 
-(fset 'fix-foreach
-   [?\C-u ?\C-s ?_ ?f ?o ?r ?e ?a ?c ?h ?  ?* ?\( ?\C-a ?\C-o tab ?/ ?* ?  ?* ?I ?N ?D ?E ?N ?T ?- ?O ?F ?F ?* ?  ?* ?/ ?\C-u ?\C-s ?\C-s ?\C-b escape ?\C-f ?\C-e ?\C-j ?/ ?* ?  ?* ?I ?N ?D ?E ?N ?T ?- ?O ?N ?* ?  ?* ?/])
-(fset 'fix-cli-command
-   [?\C-s ?C ?L ?I ?_ ?C ?O ?M ?M ?A ?N ?D ?\C-a ?\C-o ?/ ?* ?  ?* ?I ?N ?D ?E ?N ?T ?- ?O ?F ?F ?* ?  ?* ?/ ?\C-s ?\} ?\C-e ?\C-j ?/ ?* ?  ?I ?N ?D ?E ?N backspace backspace backspace backspace backspace ?* ?I ?N ?D ?E ?N ?T ?- ?O ?N ?* ?  ?* ?/])
-(fset 'fix-node
-   [?\C-s ?R ?E ?G ?I ?S ?T ?E ?R ?_ ?N ?O ?D ?E ?\C-a ?\C-o ?/ ?* ?  ?* ?I ?N ?D ?E ?N ?T ?- ?O ?F ?F ?* ?  ?* ?/ ?\C-a ?\C-n ?\C-s ?\{ ?\C-b escape ?\C-f ?\C-e ?\C-j ?/ ?* ?\S-  ?* ?I ?N ?D ?E ?N ?T ?- ?O ?N ?* ?  ?* ?/])
-
-(fset 'fix-elog-type
-   [?\C-s ?E ?L ?O ?G ?_ ?T ?Y ?P ?E ?_ ?D ?E ?C ?L ?A ?R ?E ?\C-a ?\C-o tab ?/ ?* ?  ?* ?I ?N ?D ?E ?N ?T ?- ?O ?F ?F ?* ?  ?* ?/ ?\C-a ?\C-n ?\C-n tab escape ?\C-f ?\C-e ?\C-j tab ?/ ?* ?  ?* ?I ?N ?D ?E ?N ?T ?- ?O ?N ?* ?  ?* ?/ ?\C-a ?\C-n])
-
 ;; insert style boilerplate
 (defun insert-style-boilerplate () (interactive)
        (save-excursion (goto-char (point-max))
@@ -22,24 +12,64 @@
  * End:
  */")))
 
+;;
+(defun fix-foreach () (interactive)
+       (save-excursion (goto-char (point-min))
+                       (while (search-forward-regexp 
+                               "[pool|hash|clib_fifo|clib_bitmap]_foreach"
+                               (point-max) t)
+                         (move-beginning-of-line nil)
+                         (open-line 1)
+                         (c-indent-line-or-region)
+                         (insert "/* *INDENT-OFF* */")
+                         (search-forward "{")
+                         (backward-char)
+                         (forward-sexp)
+                         (move-end-of-line nil)
+                         (newline 1)
+                         (c-indent-line-or-region)
+                         (insert "/* *INDENT-ON* */"))))
+
+(defun fix-initializer (what) (interactive)
+       (save-excursion 
+         (goto-char (point-min))
+         (while (search-forward-regexp what (point-max) t)
+           (move-beginning-of-line nil)
+           (open-line 1)
+           (c-indent-line-or-region)
+           (insert "/* *INDENT-OFF* */")
+           (search-forward "{")
+           (backward-char)
+           (forward-sexp)
+           (move-end-of-line nil)
+           (newline 1)
+           (c-indent-line-or-region)
+           (insert "/* *INDENT-ON* */"))))
+
+(defun fix-vlib-register-thread () (interactive)
+       (fix-initializer "VLIB_REGISTER_THREAD *("))
+
+(defun fix-vlib-cli-command () (interactive)
+       (fix-initializer "VLIB_CLI_COMMAND *("))
+
+(defun fix-vlib-register-node () (interactive)
+       (fix-initializer "VLIB_REGISTER_NODE *("))
+
+
 ;; Driver routine which runs the set of keyboard macros
 ;; defined above, as well as the bottom boilerplate lisp fn.
 
 (defun fd-io-styleify () (interactive)
-       (save-excursion (goto-char (point-min))
-                       (ignore-errors (execute-kbd-macro 'fix-foreach 0)))
-       (save-excursion (goto-char (point-min))
-                       (ignore-errors (execute-kbd-macro 'fix-cli-command 0)))
-       (save-excursion (goto-char (point-min))
-                       (ignore-errors (execute-kbd-macro 'fix-node 0)))
-       (save-excursion (goto-char (point-min))
-                       (ignore-errors (execute-kbd-macro 'fix-elog-type 0)))
+       (fix-foreach)
+       (fix-vlib-register-thread)
+       (fix-vlib-cli-command)
+       (fix-vlib-register-node)
        (insert-style-boilerplate))
 
-;;(setq index 0)
-;;(while (elt argv index)
-;;  (message "Processing argv %d is %s" index (elt argv index))
-;;  (find-file (elt argv index))
-;;  (fd-io-styleify)
-;;  (setq index (1+ index)))
-;; (save-buffers-kill-emacs)
+(setq index 0)
+(while (elt argv index)
+  (message "Processing %s..." (elt argv index))
+  (find-file (elt argv index))
+  (fd-io-styleify)
+  (setq index (1+ index)))
+(save-buffers-kill-emacs t)

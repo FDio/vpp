@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* 
+/*
  *------------------------------------------------------------------
  * svm_test.c -- brain police
  *------------------------------------------------------------------
@@ -43,28 +43,37 @@
 #include "svm.h"
 
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
-    svm_region_t *root_rp, *rp;
-    svm_map_region_args_t *a = 0;
+  svm_region_t *root_rp, *rp;
+  svm_map_region_args_t *a = 0;
 
-    vec_validate (a, 0);
+  vec_validate (a, 0);
 
-    root_rp = svm_region_init();
+  root_rp = svm_region_init ();
 
-    ASSERT (root_rp);
+  ASSERT (root_rp);
 
-    a->name = "/qvnet";
-    a->size = (4<<10);
+  a->name = "/qvnet";
+  a->size = (4 << 10);
 
-    rp = svm_region_find_or_create (root_rp, a);
+  rp = svm_region_find_or_create (root_rp, a);
 
-    ASSERT (rp);
+  ASSERT (rp);
 
-    *((u32 *)rp->data_base) = 0xdeadbeef;
-    svm_region_unmap (root_rp, rp);
+  *((u32 *) rp->data_base) = 0xdeadbeef;
+  svm_region_unmap (root_rp, rp);
 
-    fformat(stdout, "exiting...\n");
+  fformat (stdout, "exiting...\n");
 
-    exit (0);
+  exit (0);
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
