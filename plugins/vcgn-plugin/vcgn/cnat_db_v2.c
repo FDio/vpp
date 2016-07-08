@@ -3675,7 +3675,7 @@ VLIB_REGISTER_NODE (cnat_db_v2_node) = {
 void cnat_db_v2_init (void)
 {
 
-    u32 i, n;
+    u32 i, n, lockinit;
     cnat_timeout_db_entry_t * tdb __attribute__((unused));
 
     cgse_nat_db_entry_t *comb_db __attribute__((unused));
@@ -3788,15 +3788,19 @@ void cnat_db_v2_init (void)
         clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
             CLIB_CACHE_LINE_BYTES);
 
-    ASSERT (pthread_spin_init(cnat_db_v2_main.main_db_lockp,
-        PTHREAD_PROCESS_PRIVATE) == 0);
-    ASSERT (pthread_spin_init(cnat_db_v2_main.user_db_lockp,
-        PTHREAD_PROCESS_PRIVATE) == 0);
-    ASSERT (pthread_spin_init(cnat_db_v2_main.session_db_lockp,
-        PTHREAD_PROCESS_PRIVATE) == 0);
+    lockinit = pthread_spin_init(cnat_db_v2_main.main_db_lockp,
+				 PTHREAD_PROCESS_PRIVATE);
+    ASSERT (lockinit == 0);
+
+    lockinit = pthread_spin_init(cnat_db_v2_main.user_db_lockp,
+				 PTHREAD_PROCESS_PRIVATE);
+    ASSERT (lockinit == 0);
+
+    lockinit = pthread_spin_init(cnat_db_v2_main.session_db_lockp,
+				 PTHREAD_PROCESS_PRIVATE);
+    ASSERT (lockinit == 0);
 
     cnat_db_init_done = 1;
     printf("CNAT DB init is successful\n");
     return;
-    //return 0;
 }
