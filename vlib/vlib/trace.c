@@ -49,16 +49,16 @@ vlib_trace_frame_buffers_only (vlib_main_t * vm,
 			       uword next_buffer_stride,
 			       uword n_buffer_data_bytes_in_trace)
 {
-  u32 n_left, * from;
+  u32 n_left, *from;
 
   n_left = n_buffers;
   from = buffers;
-  
+
   while (n_left >= 4)
     {
       u32 bi0, bi1;
-      vlib_buffer_t * b0, * b1;
-      u8 * t0, * t1;
+      vlib_buffer_t *b0, *b1;
+      u8 *t0, *t1;
 
       /* Prefetch next iteration. */
       vlib_prefetch_buffer_with_index (vm, from[2], LOAD);
@@ -74,13 +74,13 @@ vlib_trace_frame_buffers_only (vlib_main_t * vm,
 	{
 	  t0 = vlib_add_trace (vm, node, b0, n_buffer_data_bytes_in_trace);
 	  clib_memcpy (t0, b0->data + b0->current_data,
-		  n_buffer_data_bytes_in_trace);
+		       n_buffer_data_bytes_in_trace);
 	}
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t1 = vlib_add_trace (vm, node, b1, n_buffer_data_bytes_in_trace);
 	  clib_memcpy (t1, b1->data + b1->current_data,
-		  n_buffer_data_bytes_in_trace);
+		       n_buffer_data_bytes_in_trace);
 	}
       from += 2;
       n_left -= 2;
@@ -89,8 +89,8 @@ vlib_trace_frame_buffers_only (vlib_main_t * vm,
   while (n_left >= 1)
     {
       u32 bi0;
-      vlib_buffer_t * b0;
-      u8 * t0;
+      vlib_buffer_t *b0;
+      u8 *t0;
 
       bi0 = from[0];
 
@@ -100,7 +100,7 @@ vlib_trace_frame_buffers_only (vlib_main_t * vm,
 	{
 	  t0 = vlib_add_trace (vm, node, b0, n_buffer_data_bytes_in_trace);
 	  clib_memcpy (t0, b0->data + b0->current_data,
-		  n_buffer_data_bytes_in_trace);
+		       n_buffer_data_bytes_in_trace);
 	}
       from += 1;
       n_left -= 1;
@@ -112,8 +112,9 @@ always_inline void
 clear_trace_buffer (void)
 {
   int i;
-  vlib_trace_main_t * tm;
+  vlib_trace_main_t *tm;
 
+  /* *INDENT-OFF* */
   foreach_vlib_main (
   ({
     void *mainheap;
@@ -129,17 +130,19 @@ clear_trace_buffer (void)
     pool_free (tm->trace_buffer_pool);
     clib_mem_set_heap (mainheap);
   }));
+  /* *INDENT-ON* */
 }
 
-static u8 * format_vlib_trace (u8 * s, va_list * va)
+static u8 *
+format_vlib_trace (u8 * s, va_list * va)
 {
-  vlib_main_t * vm = va_arg (*va, vlib_main_t *);
-  vlib_trace_header_t * h = va_arg (*va, vlib_trace_header_t *);
-  vlib_trace_header_t * e = vec_end (h);
-  vlib_node_t * node, * prev_node;
-  clib_time_t * ct = &vm->clib_time;
+  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
+  vlib_trace_header_t *h = va_arg (*va, vlib_trace_header_t *);
+  vlib_trace_header_t *e = vec_end (h);
+  vlib_node_t *node, *prev_node;
+  clib_time_t *ct = &vm->clib_time;
   f64 t;
-  
+
   prev_node = 0;
   while (h < e)
     {
@@ -147,19 +150,18 @@ static u8 * format_vlib_trace (u8 * s, va_list * va)
 
       if (node != prev_node)
 	{
-	  t = (h->time - vm->cpu_time_main_loop_start) * ct->seconds_per_clock;
-	  s = format (s, "\n%U: %v",
-		      format_time_interval, "h:m:s:u", t,
-		      node->name);
+	  t =
+	    (h->time - vm->cpu_time_main_loop_start) * ct->seconds_per_clock;
+	  s =
+	    format (s, "\n%U: %v", format_time_interval, "h:m:s:u", t,
+		    node->name);
 	}
       prev_node = node;
 
       if (node->format_trace)
-	s = format (s, "\n  %U",
-		    node->format_trace, vm, node, h->data);
+	s = format (s, "\n  %U", node->format_trace, vm, node, h->data);
       else
-	s = format (s, "\n  %U",
-		    node->format_buffer, h->data);
+	s = format (s, "\n  %U", node->format_buffer, h->data);
 
       h = vlib_trace_header_next (h);
     }
@@ -168,16 +170,18 @@ static u8 * format_vlib_trace (u8 * s, va_list * va)
 }
 
 /* Root of all trace cli commands. */
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (trace_cli_command,static) = {
   .path = "trace",
   .short_help = "Packet tracer commands",
 };
+/* *INDENT-ON* */
 
 static int
-trace_cmp (void * a1, void * a2)
+trace_cmp (void *a1, void *a2)
 {
-  vlib_trace_header_t ** t1 = a1;
-  vlib_trace_header_t ** t2 = a2;
+  vlib_trace_header_t **t1 = a1;
+  vlib_trace_header_t **t2 = a2;
   i64 dt = t1[0]->time - t2[0]->time;
   return dt < 0 ? -1 : (dt > 0 ? +1 : 0);
 }
@@ -185,32 +189,34 @@ trace_cmp (void * a1, void * a2)
 /*
  * Return 1 if this packet passes the trace filter, or 0 otherwise
  */
-u32 filter_accept (vlib_trace_main_t * tm, vlib_trace_header_t * h)
+u32
+filter_accept (vlib_trace_main_t * tm, vlib_trace_header_t * h)
 {
-  vlib_trace_header_t * e = vec_end (h);
+  vlib_trace_header_t *e = vec_end (h);
 
-  if (tm->filter_flag == 0) return 1;
+  if (tm->filter_flag == 0)
+    return 1;
 
   if (tm->filter_flag == FILTER_FLAG_INCLUDE)
     {
       while (h < e)
-        {
-          if (h->node_index == tm->filter_node_index)
-            return 1;
-          h = vlib_trace_header_next (h);
-        }
+	{
+	  if (h->node_index == tm->filter_node_index)
+	    return 1;
+	  h = vlib_trace_header_next (h);
+	}
       return 0;
-   }
-  else /* FILTER_FLAG_EXCLUDE */
+    }
+  else				/* FILTER_FLAG_EXCLUDE */
     {
       while (h < e)
-        {
-          if (h->node_index == tm->filter_node_index)
-            return 0;
-          h = vlib_trace_header_next (h);
-        }
+	{
+	  if (h->node_index == tm->filter_node_index)
+	    return 0;
+	  h = vlib_trace_header_next (h);
+	}
       return 1;
-   }
+    }
 
   return 0;
 }
@@ -218,11 +224,12 @@ u32 filter_accept (vlib_trace_main_t * tm, vlib_trace_header_t * h)
 /*
  * Remove traces from the trace buffer pool that don't pass the filter
  */
-void trace_apply_filter (vlib_main_t * vm)
+void
+trace_apply_filter (vlib_main_t * vm)
 {
-  vlib_trace_main_t * tm = &vm->trace_main;
-  vlib_trace_header_t ** h;
-  vlib_trace_header_t *** traces_to_remove = 0;
+  vlib_trace_main_t *tm = &vm->trace_main;
+  vlib_trace_header_t **h;
+  vlib_trace_header_t ***traces_to_remove = 0;
   u32 index;
   u32 trace_index;
   u32 n_accepted;
@@ -237,6 +244,7 @@ void trace_apply_filter (vlib_main_t * vm)
    * of any N traces.
    */
   n_accepted = 0;
+  /* *INDENT-OFF* */
   pool_foreach (h, tm->trace_buffer_pool,
    ({
       accept = filter_accept(tm, h[0]);
@@ -246,9 +254,10 @@ void trace_apply_filter (vlib_main_t * vm)
       else
           n_accepted++;
   }));
+  /* *INDENT-ON* */
 
   /* remove all traces that we don't want to keep */
-  for (index=0; index<vec_len(traces_to_remove); index++)
+  for (index = 0; index < vec_len (traces_to_remove); index++)
     {
       trace_index = traces_to_remove[index] - tm->trace_buffer_pool;
       _vec_len (tm->trace_buffer_pool[trace_index]) = 0;
@@ -260,14 +269,13 @@ void trace_apply_filter (vlib_main_t * vm)
 
 static clib_error_t *
 cli_show_trace_buffer (vlib_main_t * vm,
-		       unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vlib_trace_main_t * tm;
-  vlib_trace_header_t ** h, ** traces;
+  vlib_trace_main_t *tm;
+  vlib_trace_header_t **h, **traces;
   u32 i, index = 0;
-  char * fmt;
-  u8 * s = 0;
+  char *fmt;
+  u8 *s = 0;
   u32 max;
 
   /*
@@ -275,18 +283,19 @@ cli_show_trace_buffer (vlib_main_t * vm,
    * specify a max. This prevents unexpectedly huge outputs.
    */
   max = 50;
-  while (unformat_check_input(input) != (uword)UNFORMAT_END_OF_INPUT)
+  while (unformat_check_input (input) != (uword) UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "max %d", &max))
-        ;
+	;
       else
-        return clib_error_create ("expected 'max COUNT', got `%U'",
-                                  format_unformat_error, input);
+	return clib_error_create ("expected 'max COUNT', got `%U'",
+				  format_unformat_error, input);
     }
 
 
   /* Get active traces from pool. */
 
+  /* *INDENT-OFF* */
   foreach_vlib_main (
   ({
     void *mainheap;
@@ -301,21 +310,21 @@ cli_show_trace_buffer (vlib_main_t * vm,
     trace_apply_filter(this_vlib_main);
 
     traces = 0;
-    pool_foreach (h, tm->trace_buffer_pool, 
+    pool_foreach (h, tm->trace_buffer_pool,
     ({
       vec_add1 (traces, h[0]);
     }));
-    
+
     if (vec_len (traces) == 0)
       {
         clib_mem_set_heap (mainheap);
         s = format (s, "No packets in trace buffer\n");
         goto done;
       }
-    
+
     /* Sort them by increasing time. */
     vec_sort_with_function (traces, trace_cmp);
-    
+
     for (i = 0; i < vec_len (traces); i++)
       {
         if (i == max)
@@ -326,44 +335,47 @@ cli_show_trace_buffer (vlib_main_t * vm,
           }
 
         clib_mem_set_heap (mainheap);
-        
+
         s = format (s, "Packet %d\n%U\n\n", i + 1,
                          format_vlib_trace, vm, traces[i]);
 
         mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
       }
-    
+
   done:
     vec_free (traces);
     clib_mem_set_heap (mainheap);
 
     index++;
   }));
+  /* *INDENT-ON* */
 
   vlib_cli_output (vm, (char *) s);
   vec_free (s);
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_trace_cli,static) = {
   .path = "show trace",
   .short_help = "Show trace buffer [max COUNT]",
   .function = cli_show_trace_buffer,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 cli_add_trace_buffer (vlib_main_t * vm,
-		      unformat_input_t * input,
-		      vlib_cli_command_t * cmd)
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vlib_trace_main_t * tm;
-  vlib_trace_node_t * tn;
+  vlib_trace_main_t *tm;
+  vlib_trace_node_t *tn;
   u32 node_index, add;
   u8 verbose = 0;
 
-  while (unformat_check_input(input) != (uword)UNFORMAT_END_OF_INPUT)
+  while (unformat_check_input (input) != (uword) UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U %d", unformat_vlib_node, vm, &node_index, &add))
+      if (unformat
+	  (input, "%U %d", unformat_vlib_node, vm, &node_index, &add))
 	;
       else if (unformat (input, "verbose"))
 	verbose = 1;
@@ -372,30 +384,29 @@ cli_add_trace_buffer (vlib_main_t * vm,
 				  format_unformat_error, input);
     }
 
-  foreach_vlib_main (
-  ({
-    void *oldheap;
-    tm = &this_vlib_main->trace_main;
-
-    tm->trace_active_hint = 1;
-    tm->verbose = verbose;
-
-    oldheap = clib_mem_set_heap (this_vlib_main->heap_base);
-
-    vec_validate (tm->nodes, node_index);
-    tn = tm->nodes + node_index;
-    tn->limit += add;
-    clib_mem_set_heap (oldheap);
-  }));
+  foreach_vlib_main ((
+		       {
+		       void *oldheap;
+		       tm = &this_vlib_main->trace_main;
+		       tm->trace_active_hint = 1;
+		       tm->verbose = verbose;
+		       oldheap =
+		       clib_mem_set_heap (this_vlib_main->heap_base);
+		       vec_validate (tm->nodes, node_index);
+		       tn = tm->nodes + node_index;
+		       tn->limit += add; clib_mem_set_heap (oldheap);
+		       }));
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (add_trace_cli,static) = {
   .path = "trace add",
   .short_help = "Trace given number of packets",
   .function = cli_add_trace_buffer,
 };
+/* *INDENT-ON* */
 
 
 /*
@@ -437,22 +448,22 @@ VLIB_CLI_COMMAND (add_trace_cli,static) = {
  */
 static clib_error_t *
 cli_filter_trace (vlib_main_t * vm,
-                  unformat_input_t * input,
-                  vlib_cli_command_t * cmd)
+		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vlib_trace_main_t * tm = &vm->trace_main;
+  vlib_trace_main_t *tm = &vm->trace_main;
   u32 filter_node_index;
   u32 filter_flag;
   u32 filter_count;
   void *mainheap;
 
   if (unformat (input, "include %U %d",
-      unformat_vlib_node, vm, &filter_node_index, &filter_count))
+		unformat_vlib_node, vm, &filter_node_index, &filter_count))
     {
       filter_flag = FILTER_FLAG_INCLUDE;
     }
   else if (unformat (input, "exclude %U %d",
-      unformat_vlib_node, vm, &filter_node_index, &filter_count))
+		     unformat_vlib_node, vm, &filter_node_index,
+		     &filter_count))
     {
       filter_flag = FILTER_FLAG_EXCLUDE;
     }
@@ -463,11 +474,14 @@ cli_filter_trace (vlib_main_t * vm,
       filter_count = 0;
     }
   else
-    return clib_error_create ("expected 'include NODE COUNT' or 'exclude NODE COUNT' or 'none', got `%U'",
-                              format_unformat_error, input);
+    return
+      clib_error_create
+      ("expected 'include NODE COUNT' or 'exclude NODE COUNT' or 'none', got `%U'",
+       format_unformat_error, input);
 
+  /* *INDENT-OFF* */
   foreach_vlib_main (
-  ({
+    ({
     tm = &this_vlib_main->trace_main;
     tm->filter_node_index = filter_node_index;
     tm->filter_flag = filter_flag;
@@ -481,30 +495,45 @@ cli_filter_trace (vlib_main_t * vm,
     vec_free (tm->nodes);
     clib_mem_set_heap (mainheap);
   }));
+  /* *INDENT-ON* */
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (filter_trace_cli,static) = {
   .path = "trace filter",
   .short_help = "filter trace output - include NODE COUNT | exclude NODE COUNT | none",
   .function = cli_filter_trace,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 cli_clear_trace_buffer (vlib_main_t * vm,
-			unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   clear_trace_buffer ();
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_trace_cli,static) = {
   .path = "clear trace",
   .short_help = "Clear trace buffer and free memory",
   .function = cli_clear_trace_buffer,
 };
+/* *INDENT-ON* */
 
 /* Dummy function to get us linked in. */
-void vlib_trace_cli_reference (void) {}
+void
+vlib_trace_cli_reference (void)
+{
+}
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

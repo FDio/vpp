@@ -42,7 +42,8 @@
 
 #include <vppinfra/pool.h>
 
-typedef struct {
+typedef struct
+{
   /* CPU time stamp trace was made. */
   u64 time;
 
@@ -56,7 +57,8 @@ typedef struct {
   u8 data[0];
 } vlib_trace_header_t;
 
-typedef struct {
+typedef struct
+{
   /* Current number of traces in buffer. */
   u32 count;
 
@@ -64,9 +66,10 @@ typedef struct {
   u32 limit;
 } vlib_trace_node_t;
 
-typedef struct {
+typedef struct
+{
   /* Pool of trace buffers. */
-  vlib_trace_header_t ** trace_buffer_pool;
+  vlib_trace_header_t **trace_buffer_pool;
 
   u32 last_main_loop_count;
   u32 filter_node_index;
@@ -80,10 +83,18 @@ typedef struct {
   u32 trace_active_hint;
 
   /* Per node trace counts. */
-  vlib_trace_node_t * nodes;
+  vlib_trace_node_t *nodes;
 
   /* verbosity */
   int verbose;
 } vlib_trace_main_t;
 
 #endif /* included_vlib_trace_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

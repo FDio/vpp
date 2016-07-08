@@ -43,7 +43,7 @@
 #include <vppinfra/hash.h>
 
 #if DPDK == 1
-#undef always_inline // dpdk and clib use conflicting always_inline macros.
+#undef always_inline		// dpdk and clib use conflicting always_inline macros.
 #include <rte_config.h>
 #include <rte_mbuf.h>
 
@@ -64,12 +64,12 @@
     @param vm - (vlib_main_t *) vlib main data structure pointer
     @param buffer_index - (u32) buffer index
     @return - (vlib_buffer_t *) buffer pointer
-*/    
+*/
 always_inline vlib_buffer_t *
 vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
 {
-  return vlib_physmem_at_offset (&vm->physmem_main, ((uword)buffer_index)
-                                 << CLIB_LOG2_CACHE_LINE_BYTES);
+  return vlib_physmem_at_offset (&vm->physmem_main, ((uword) buffer_index)
+				 << CLIB_LOG2_CACHE_LINE_BYTES);
 }
 
 /** \brief Translate buffer pointer into buffer index
@@ -77,12 +77,12 @@ vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
     @param vm - (vlib_main_t *) vlib main data structure pointer
     @param b - (void *) buffer pointer
     @return - (u32) buffer index
-*/    
+*/
 always_inline u32
-vlib_get_buffer_index (vlib_main_t * vm, void * p)
+vlib_get_buffer_index (vlib_main_t * vm, void *p)
 {
   uword offset = vlib_physmem_offset_of (&vm->physmem_main, p);
-  ASSERT((offset % (1<<CLIB_LOG2_CACHE_LINE_BYTES)) == 0);
+  ASSERT ((offset % (1 << CLIB_LOG2_CACHE_LINE_BYTES)) == 0);
   return offset >> CLIB_LOG2_CACHE_LINE_BYTES;
 }
 
@@ -91,23 +91,23 @@ vlib_get_buffer_index (vlib_main_t * vm, void * p)
     @param vm - (vlib_main_t *) vlib main data structure pointer
     @param b - (void *) buffer pointer
     @return - (vlib_buffer_t *) next buffer, or NULL
-*/    
+*/
 always_inline vlib_buffer_t *
 vlib_get_next_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
   return (b->flags & VLIB_BUFFER_NEXT_PRESENT
-	  ? vlib_get_buffer (vm, b->next_buffer)
-	  : 0);
+	  ? vlib_get_buffer (vm, b->next_buffer) : 0);
 }
 
-uword vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm, vlib_buffer_t * b_first);
+uword vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
+					     vlib_buffer_t * b_first);
 
 /** \brief Get length in bytes of the buffer chain
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
     @param b - (void *) buffer pointer
     @return - (uword) length of buffer chain
-*/    
+*/
 always_inline uword
 vlib_buffer_length_in_chain (vlib_main_t * vm, vlib_buffer_t * b)
 {
@@ -124,11 +124,11 @@ vlib_buffer_length_in_chain (vlib_main_t * vm, vlib_buffer_t * b)
     @param vm - (vlib_main_t *) vlib main data structure pointer
     @param bi - (u32) buffer index
     @return - (uword) length of buffer chain
-*/    
+*/
 always_inline uword
 vlib_buffer_index_length_in_chain (vlib_main_t * vm, u32 bi)
 {
-  vlib_buffer_t * b = vlib_get_buffer (vm, bi);
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   return vlib_buffer_length_in_chain (vm, b);
 }
 
@@ -138,13 +138,13 @@ vlib_buffer_index_length_in_chain (vlib_main_t * vm, u32 bi)
     @param bi - (u32) buffer index
     @param contents - (u8 *) memory, <strong>must be large enough</strong>
     @return - (uword) length of buffer chain
-*/    
+*/
 always_inline uword
 vlib_buffer_contents (vlib_main_t * vm, u32 buffer_index, u8 * contents)
 {
   uword content_len = 0;
   uword l;
-  vlib_buffer_t * b;
+  vlib_buffer_t *b;
 
   while (1)
     {
@@ -152,7 +152,7 @@ vlib_buffer_contents (vlib_main_t * vm, u32 buffer_index, u8 * contents)
       l = b->current_length;
       clib_memcpy (contents + content_len, b->data + b->current_data, l);
       content_len += l;
-      if (! (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
 	break;
       buffer_index = b->next_buffer;
     }
@@ -165,9 +165,10 @@ always_inline u64
 vlib_get_buffer_data_physical_address (vlib_main_t * vm, u32 buffer_index)
 {
   return vlib_physmem_offset_to_physical (&vm->physmem_main,
-                                          (((uword)buffer_index) <<
+					  (((uword) buffer_index) <<
 					   CLIB_LOG2_CACHE_LINE_BYTES) +
-                                           STRUCT_OFFSET_OF (vlib_buffer_t, data));
+					  STRUCT_OFFSET_OF (vlib_buffer_t,
+							    data));
 }
 
 /** \brief Prefetch buffer metadata by buffer index
@@ -208,7 +209,8 @@ do {                                                             \
 
 #if DPDK == 0
 
-typedef enum {
+typedef enum
+{
   /* Index is unknown. */
   VLIB_BUFFER_UNKNOWN,
 
@@ -220,10 +222,10 @@ typedef enum {
 always_inline vlib_buffer_known_state_t
 vlib_buffer_is_known (vlib_main_t * vm, u32 buffer_index)
 {
-  vlib_buffer_main_t * bm = vm->buffer_main;
-  ASSERT(os_get_cpu_number() == 0);
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  ASSERT (os_get_cpu_number () == 0);
 
-  uword * p = hash_get (bm->buffer_known_hash, buffer_index);
+  uword *p = hash_get (bm->buffer_known_hash, buffer_index);
   return p ? p[0] : VLIB_BUFFER_UNKNOWN;
 }
 
@@ -232,55 +234,56 @@ vlib_buffer_set_known_state (vlib_main_t * vm,
 			     u32 buffer_index,
 			     vlib_buffer_known_state_t state)
 {
-  vlib_buffer_main_t * bm = vm->buffer_main;
-  ASSERT(os_get_cpu_number() == 0);
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  ASSERT (os_get_cpu_number () == 0);
   hash_set (bm->buffer_known_hash, buffer_index, state);
 }
 
 /* Validates sanity of a single buffer.
    Returns format'ed vector with error message if any. */
-u8 * vlib_validate_buffer (vlib_main_t * vm, u32 buffer_index, uword follow_chain);
+u8 *vlib_validate_buffer (vlib_main_t * vm, u32 buffer_index,
+			  uword follow_chain);
 
 /* Validate an array of buffers.  As above. */
-u8 * vlib_validate_buffers (vlib_main_t * vm,
-			    u32 * buffers,
-			    uword next_buffer_stride,
-			    uword n_buffers,
-                            vlib_buffer_known_state_t known_state,
-			    uword follow_chain);
+u8 *vlib_validate_buffers (vlib_main_t * vm,
+			   u32 * buffers,
+			   uword next_buffer_stride,
+			   uword n_buffers,
+			   vlib_buffer_known_state_t known_state,
+			   uword follow_chain);
 
 #endif /* DPDK == 0 */
 
-clib_error_t *
-vlib_buffer_pool_create(vlib_main_t * vm, unsigned num_mbufs,
-                        unsigned socket_id);
+clib_error_t *vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
+				       unsigned socket_id);
 
 /** \brief Allocate buffers into supplied array
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
     @param buffers - (u32 * ) buffer index array
     @param n_buffers - (u32) number of buffers requested
-    @return - (u32) number of buffers actually allocated, may be 
+    @return - (u32) number of buffers actually allocated, may be
     less than the number requested or zero
 */
 u32 vlib_buffer_alloc (vlib_main_t * vm, u32 * buffers, u32 n_buffers);
 
 always_inline u32
 vlib_buffer_round_size (u32 size)
-{ return round_pow2 (size, sizeof (vlib_buffer_t)); }
+{
+  return round_pow2 (size, sizeof (vlib_buffer_t));
+}
 
 /** \brief Allocate buffers from specific freelist into supplied array
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
     @param buffers - (u32 * ) buffer index array
     @param n_buffers - (u32) number of buffers requested
-    @return - (u32) number of buffers actually allocated, may be 
+    @return - (u32) number of buffers actually allocated, may be
     less than the number requested or zero
 */
 u32 vlib_buffer_alloc_from_free_list (vlib_main_t * vm,
 				      u32 * buffers,
-				      u32 n_buffers,
-				      u32 free_list_index);
+				      u32 n_buffers, u32 free_list_index);
 
 /** \brief Free buffers
     Frees the entire buffer chain for each buffer
@@ -310,7 +313,7 @@ void vlib_buffer_free_no_next (vlib_main_t * vm,
 			       u32 n_buffers);
 
 /** \brief Free one buffer
-    Shorthand to free a single buffer chain. 
+    Shorthand to free a single buffer chain.
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
     @param buffer_index - (u32) buffer index to free
@@ -322,17 +325,19 @@ vlib_buffer_free_one (vlib_main_t * vm, u32 buffer_index)
 }
 
 /* Add/delete buffer free lists. */
-u32 vlib_buffer_create_free_list (vlib_main_t * vm, u32 n_data_bytes, char * fmt, ...);
+u32 vlib_buffer_create_free_list (vlib_main_t * vm, u32 n_data_bytes,
+				  char *fmt, ...);
 void vlib_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index);
 
 /* Find already existing public free list with given size or create one. */
-u32 vlib_buffer_get_or_create_free_list (vlib_main_t * vm, u32 n_data_bytes, char * fmt, ...);
+u32 vlib_buffer_get_or_create_free_list (vlib_main_t * vm, u32 n_data_bytes,
+					 char *fmt, ...);
 
 always_inline vlib_buffer_free_list_t *
 vlib_buffer_get_free_list (vlib_main_t * vm, u32 free_list_index)
 {
-  vlib_buffer_main_t * bm = vm->buffer_main;
-  vlib_buffer_free_list_t * f;
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_free_list_t *f;
 
   f = pool_elt_at_index (bm->buffer_free_list_pool, free_list_index);
 
@@ -345,12 +350,12 @@ vlib_buffer_get_free_list (vlib_main_t * vm, u32 free_list_index)
 always_inline u32
 vlib_buffer_free_list_buffer_size (vlib_main_t * vm, u32 free_list_index)
 {
-  vlib_buffer_free_list_t * f = vlib_buffer_get_free_list (vm, free_list_index);
+  vlib_buffer_free_list_t *f =
+    vlib_buffer_get_free_list (vm, free_list_index);
   return f->n_data_bytes;
 }
 
-void
-vlib_aligned_memcpy (void * _dst, void * _src, int n_bytes);
+void vlib_aligned_memcpy (void *_dst, void *_src, int n_bytes);
 
 /* Reasonably fast buffer copy routine. */
 always_inline void
@@ -379,9 +384,12 @@ always_inline void *
 vlib_physmem_alloc_aligned (vlib_main_t * vm, clib_error_t ** error,
 			    uword n_bytes, uword alignment)
 {
-  void * r = vm->os_physmem_alloc_aligned (&vm->physmem_main, n_bytes, alignment);
-  if (! r)
-    *error = clib_error_return (0, "failed to allocate %wd bytes of I/O memory", n_bytes);
+  void *r =
+    vm->os_physmem_alloc_aligned (&vm->physmem_main, n_bytes, alignment);
+  if (!r)
+    *error =
+      clib_error_return (0, "failed to allocate %wd bytes of I/O memory",
+			 n_bytes);
   else
     *error = 0;
   return r;
@@ -390,16 +398,21 @@ vlib_physmem_alloc_aligned (vlib_main_t * vm, clib_error_t ** error,
 /* By default allocate I/O memory with cache line alignment. */
 always_inline void *
 vlib_physmem_alloc (vlib_main_t * vm, clib_error_t ** error, uword n_bytes)
-{ return vlib_physmem_alloc_aligned (vm, error, n_bytes, CLIB_CACHE_LINE_BYTES); }
+{
+  return vlib_physmem_alloc_aligned (vm, error, n_bytes,
+				     CLIB_CACHE_LINE_BYTES);
+}
 
 always_inline void
-vlib_physmem_free (vlib_main_t * vm, void * mem)
-{ return vm->os_physmem_free (mem); }
+vlib_physmem_free (vlib_main_t * vm, void *mem)
+{
+  return vm->os_physmem_free (mem);
+}
 
 always_inline u64
-vlib_physmem_virtual_to_physical (vlib_main_t * vm, void * mem)
+vlib_physmem_virtual_to_physical (vlib_main_t * vm, void *mem)
 {
-  vlib_physmem_main_t * pm = &vm->physmem_main;
+  vlib_physmem_main_t *pm = &vm->physmem_main;
   uword o = pointer_to_uword (mem) - pm->virtual.start;
   return vlib_physmem_offset_to_physical (pm, o);
 }
@@ -407,8 +420,7 @@ vlib_physmem_virtual_to_physical (vlib_main_t * vm, void * mem)
 /* Append given data to end of buffer, possibly allocating new buffers. */
 u32 vlib_buffer_add_data (vlib_main_t * vm,
 			  u32 free_list_index,
-			  u32 buffer_index,
-			  void * data, u32 n_data_bytes);
+			  u32 buffer_index, void *data, u32 n_data_bytes);
 
 /*
  * vlib_buffer_chain_* functions provide a way to create long buffers.
@@ -417,40 +429,39 @@ u32 vlib_buffer_add_data (vlib_main_t * vm,
 
 /* Initializes the buffer as an empty packet with no chained buffers. */
 always_inline void
-vlib_buffer_chain_init(vlib_buffer_t *first)
+vlib_buffer_chain_init (vlib_buffer_t * first)
 {
   first->total_length_not_including_first_buffer = 0;
   first->current_length = 0;
   first->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
   first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 #if DPDK == 1
-  struct rte_mbuf * mb = rte_mbuf_from_vlib_buffer(first);
-  rte_pktmbuf_reset(mb);
+  struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer (first);
+  rte_pktmbuf_reset (mb);
   mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + first->current_data;
 #endif
 }
 
 /* The provided next_bi buffer index is appended to the end of the packet. */
 always_inline vlib_buffer_t *
-vlib_buffer_chain_buffer(vlib_main_t *vm,
-                    vlib_buffer_t *first,
-                    vlib_buffer_t *last,
-                    u32 next_bi)
+vlib_buffer_chain_buffer (vlib_main_t * vm,
+			  vlib_buffer_t * first,
+			  vlib_buffer_t * last, u32 next_bi)
 {
-  vlib_buffer_t *next_buffer = vlib_get_buffer(vm, next_bi);
+  vlib_buffer_t *next_buffer = vlib_get_buffer (vm, next_bi);
   last->next_buffer = next_bi;
   last->flags |= VLIB_BUFFER_NEXT_PRESENT;
   next_buffer->current_length = 0;
   next_buffer->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 #if DPDK == 1
-  struct rte_mbuf * mb;
-  mb = rte_mbuf_from_vlib_buffer(first);
+  struct rte_mbuf *mb;
+  mb = rte_mbuf_from_vlib_buffer (first);
   mb->nb_segs++;
 
-  mb = rte_mbuf_from_vlib_buffer(last);
-  mb->next = rte_mbuf_from_vlib_buffer(next_buffer);
+  mb = rte_mbuf_from_vlib_buffer (last);
+  mb->next = rte_mbuf_from_vlib_buffer (next_buffer);
 
-  mb = rte_mbuf_from_vlib_buffer(next_buffer);
+  mb = rte_mbuf_from_vlib_buffer (next_buffer);
   mb->data_len = 0;
   mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + next_buffer->current_data;
   mb->next = 0;
@@ -463,16 +474,15 @@ vlib_buffer_chain_buffer(vlib_main_t *vm,
  * Therefore, the added length must be compatible
  * with the last buffer. */
 always_inline void
-vlib_buffer_chain_increase_length(vlib_buffer_t *first,
-                             vlib_buffer_t *last,
-                             i32 len)
+vlib_buffer_chain_increase_length (vlib_buffer_t * first,
+				   vlib_buffer_t * last, i32 len)
 {
   last->current_length += len;
   if (first != last)
     first->total_length_not_including_first_buffer += len;
 #if DPDK == 1
-  struct rte_mbuf * mb_first = rte_mbuf_from_vlib_buffer(first);
-  struct rte_mbuf * mb_last = rte_mbuf_from_vlib_buffer(last);
+  struct rte_mbuf *mb_first = rte_mbuf_from_vlib_buffer (first);
+  struct rte_mbuf *mb_last = rte_mbuf_from_vlib_buffer (last);
   mb_first->pkt_len += len;
   mb_last->data_len += len;
 #endif
@@ -482,17 +492,20 @@ vlib_buffer_chain_increase_length(vlib_buffer_t *first,
  * It does not allocate new buffers.
  * Returns the number of copied bytes. */
 always_inline u16
-vlib_buffer_chain_append_data(vlib_main_t *vm,
-                             u32 free_list_index,
-                             vlib_buffer_t *first,
-                             vlib_buffer_t *last,
-                             void *data, u16 data_len)
+vlib_buffer_chain_append_data (vlib_main_t * vm,
+			       u32 free_list_index,
+			       vlib_buffer_t * first,
+			       vlib_buffer_t * last, void *data, u16 data_len)
 {
-  u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm, free_list_index);
-  ASSERT(n_buffer_bytes >= last->current_length + last->current_data);
-  u16 len = clib_min(data_len, n_buffer_bytes - last->current_length - last->current_data);
-  clib_memcpy(vlib_buffer_get_current (last) + last->current_length, data, len);
-  vlib_buffer_chain_increase_length(first, last, len);
+  u32 n_buffer_bytes =
+    vlib_buffer_free_list_buffer_size (vm, free_list_index);
+  ASSERT (n_buffer_bytes >= last->current_length + last->current_data);
+  u16 len = clib_min (data_len,
+		      n_buffer_bytes - last->current_length -
+		      last->current_data);
+  clib_memcpy (vlib_buffer_get_current (last) + last->current_length, data,
+	       len);
+  vlib_buffer_chain_increase_length (first, last, len);
   return len;
 }
 
@@ -502,18 +515,20 @@ vlib_buffer_chain_append_data(vlib_main_t *vm,
  * 'last' value is modified whenever new buffers are allocated and
  * chained and points to the last buffer in the chain. */
 u16
-vlib_buffer_chain_append_data_with_alloc(vlib_main_t *vm,
-                             u32 free_list_index,
-                             vlib_buffer_t *first,
-                             vlib_buffer_t **last,
-                             void * data, u16 data_len);
-void vlib_buffer_chain_validate(vlib_main_t *vm, vlib_buffer_t *first);
+vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
+					  u32 free_list_index,
+					  vlib_buffer_t * first,
+					  vlib_buffer_t ** last,
+					  void *data, u16 data_len);
+void vlib_buffer_chain_validate (vlib_main_t * vm, vlib_buffer_t * first);
 
-format_function_t format_vlib_buffer, format_vlib_buffer_and_data, format_vlib_buffer_contents;
+format_function_t format_vlib_buffer, format_vlib_buffer_and_data,
+  format_vlib_buffer_contents;
 
-typedef struct {
+typedef struct
+{
   /* Vector of packet data. */
-  u8 * packet_data;
+  u8 *packet_data;
 
   /* Note: the next three fields are unused if DPDK == 1 */
 
@@ -524,7 +539,7 @@ typedef struct {
   /* Buffer free list for this template. */
   u32 free_list_index;
 
-  u32 * free_buffers;
+  u32 *free_buffers;
 } vlib_packet_template_t;
 
 void vlib_packet_template_get_packet_helper (vlib_main_t * vm,
@@ -532,15 +547,14 @@ void vlib_packet_template_get_packet_helper (vlib_main_t * vm,
 
 void vlib_packet_template_init (vlib_main_t * vm,
 				vlib_packet_template_t * t,
-				void * packet_data,
+				void *packet_data,
 				uword n_packet_data_bytes,
 				uword min_n_buffers_each_physmem_alloc,
-				char * fmt, ...);
+				char *fmt, ...);
 
-void *
-vlib_packet_template_get_packet (vlib_main_t * vm, 
-                                 vlib_packet_template_t * t,
-                                 u32 * bi_result);
+void *vlib_packet_template_get_packet (vlib_main_t * vm,
+				       vlib_packet_template_t * t,
+				       u32 * bi_result);
 
 always_inline void
 vlib_packet_template_free (vlib_main_t * vm, vlib_packet_template_t * t)
@@ -551,16 +565,17 @@ vlib_packet_template_free (vlib_main_t * vm, vlib_packet_template_t * t)
 always_inline u32
 unserialize_vlib_buffer_n_bytes (serialize_main_t * m)
 {
-  serialize_stream_t * s = &m->stream;
-  vlib_serialize_buffer_main_t * sm
-    = uword_to_pointer (m->stream.data_function_opaque, vlib_serialize_buffer_main_t *);
-  vlib_main_t * vm = sm->vlib_main;
-  u32 n, * f;
+  serialize_stream_t *s = &m->stream;
+  vlib_serialize_buffer_main_t *sm
+    = uword_to_pointer (m->stream.data_function_opaque,
+			vlib_serialize_buffer_main_t *);
+  vlib_main_t *vm = sm->vlib_main;
+  u32 n, *f;
 
   n = s->n_buffer_bytes - s->current_buffer_index;
   if (sm->last_buffer != ~0)
     {
-      vlib_buffer_t * b = vlib_get_buffer (vm, sm->last_buffer);
+      vlib_buffer_t *b = vlib_get_buffer (vm, sm->last_buffer);
       while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
 	  b = vlib_get_buffer (vm, b->next_buffer);
@@ -568,17 +583,21 @@ unserialize_vlib_buffer_n_bytes (serialize_main_t * m)
 	}
     }
 
+  /* *INDENT-OFF* */
   clib_fifo_foreach (f, sm->rx.buffer_fifo, ({
     n += vlib_buffer_index_length_in_chain (vm, f[0]);
   }));
+/* *INDENT-ON* */
 
   return n;
 }
 
-typedef union {
+typedef union
+{
   vlib_buffer_t b;
   vlib_copy_unit_t i[sizeof (vlib_buffer_t) / sizeof (vlib_copy_unit_t)];
-} vlib_buffer_union_t;
+}
+vlib_buffer_union_t;
 
 /* Set a buffer quickly into "uninitialized" state.  We want this to
    be extremely cheap and arrange for all fields that need to be
@@ -587,13 +606,16 @@ always_inline void
 vlib_buffer_init_for_free_list (vlib_buffer_t * _dst,
 				vlib_buffer_free_list_t * fl)
 {
-  vlib_buffer_union_t * dst = (vlib_buffer_union_t *) _dst;
-  vlib_buffer_union_t * src = (vlib_buffer_union_t *) &fl->buffer_init_template;
+  vlib_buffer_union_t *dst = (vlib_buffer_union_t *) _dst;
+  vlib_buffer_union_t *src =
+    (vlib_buffer_union_t *) & fl->buffer_init_template;
 
   /* Make sure vlib_buffer_t is cacheline aligned and sized */
-  ASSERT(STRUCT_OFFSET_OF(vlib_buffer_t, cacheline0) == 0);
-  ASSERT(STRUCT_OFFSET_OF(vlib_buffer_t, cacheline1) == CLIB_CACHE_LINE_BYTES);
-  ASSERT(STRUCT_OFFSET_OF(vlib_buffer_t, cacheline2) == CLIB_CACHE_LINE_BYTES * 2);
+  ASSERT (STRUCT_OFFSET_OF (vlib_buffer_t, cacheline0) == 0);
+  ASSERT (STRUCT_OFFSET_OF (vlib_buffer_t, cacheline1) ==
+	  CLIB_CACHE_LINE_BYTES);
+  ASSERT (STRUCT_OFFSET_OF (vlib_buffer_t, cacheline2) ==
+	  CLIB_CACHE_LINE_BYTES * 2);
 
   /* Make sure buffer template is sane. */
   ASSERT (fl->index == fl->buffer_init_template.free_list_index);
@@ -607,10 +629,10 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * _dst,
 
   /* Make sure it really worked. */
 #define _(f) ASSERT (dst->b.f == src->b.f)
-  _ (current_data);
-  _ (current_length);
-  _ (flags);
-  _ (free_list_index);
+  _(current_data);
+  _(current_length);
+  _(flags);
+  _(free_list_index);
 #undef _
   ASSERT (dst->b.total_length_not_including_first_buffer == 0);
 }
@@ -620,9 +642,10 @@ vlib_buffer_init_two_for_free_list (vlib_buffer_t * _dst0,
 				    vlib_buffer_t * _dst1,
 				    vlib_buffer_free_list_t * fl)
 {
-  vlib_buffer_union_t * dst0 = (vlib_buffer_union_t *) _dst0;
-  vlib_buffer_union_t * dst1 = (vlib_buffer_union_t *) _dst1;
-  vlib_buffer_union_t * src = (vlib_buffer_union_t *) &fl->buffer_init_template;
+  vlib_buffer_union_t *dst0 = (vlib_buffer_union_t *) _dst0;
+  vlib_buffer_union_t *dst1 = (vlib_buffer_union_t *) _dst1;
+  vlib_buffer_union_t *src =
+    (vlib_buffer_union_t *) & fl->buffer_init_template;
 
   /* Make sure buffer template is sane. */
   ASSERT (fl->index == fl->buffer_init_template.free_list_index);
@@ -636,27 +659,27 @@ vlib_buffer_init_two_for_free_list (vlib_buffer_t * _dst0,
 
   /* Make sure it really worked. */
 #define _(f) ASSERT (dst0->b.f == src->b.f && dst1->b.f == src->b.f)
-  _ (current_data);
-  _ (current_length);
-  _ (flags);
-  _ (free_list_index);
+  _(current_data);
+  _(current_length);
+  _(flags);
+  _(free_list_index);
 #undef _
   ASSERT (dst0->b.total_length_not_including_first_buffer == 0);
   ASSERT (dst1->b.total_length_not_including_first_buffer == 0);
 }
 
 #if CLIB_DEBUG > 0
-u32 * vlib_buffer_state_validation_lock;
-uword * vlib_buffer_state_validation_hash;
-void * vlib_buffer_state_heap;
+u32 *vlib_buffer_state_validation_lock;
+uword *vlib_buffer_state_validation_hash;
+void *vlib_buffer_state_heap;
 #endif
 
-static inline void 
+static inline void
 vlib_validate_buffer_in_use (vlib_buffer_t * b, u32 expected)
 {
 #if CLIB_DEBUG > 0
-  uword * p;
-  void * oldheap;
+  uword *p;
+  void *oldheap;
 
   oldheap = clib_mem_set_heap (vlib_buffer_state_heap);
 
@@ -671,36 +694,35 @@ vlib_validate_buffer_in_use (vlib_buffer_t * b, u32 expected)
       hash_set (vlib_buffer_state_validation_hash, b, expected);
       goto out;
     }
-  
+
   if (p[0] != expected)
     {
-      void cj_stop(void);
+      void cj_stop (void);
       u32 bi;
-      vlib_main_t * vm = &vlib_global_main;
-      
-      cj_stop();
-      
+      vlib_main_t *vm = &vlib_global_main;
+
+      cj_stop ();
+
       bi = vlib_get_buffer_index (vm, b);
 
       clib_mem_set_heap (oldheap);
-      clib_warning ("%.6f buffer %llx (%d): %s, not %s", 
-                    vlib_time_now(vm), bi,
-                    p[0] ? "busy" : "free",
-                    expected ? "busy" : "free");
-      os_panic();
+      clib_warning ("%.6f buffer %llx (%d): %s, not %s",
+		    vlib_time_now (vm), bi,
+		    p[0] ? "busy" : "free", expected ? "busy" : "free");
+      os_panic ();
     }
- out:
-  CLIB_MEMORY_BARRIER();
+out:
+  CLIB_MEMORY_BARRIER ();
   *vlib_buffer_state_validation_lock = 0;
   clib_mem_set_heap (oldheap);
 #endif
 }
 
-static inline void 
+static inline void
 vlib_validate_buffer_set_in_use (vlib_buffer_t * b, u32 expected)
 {
 #if CLIB_DEBUG > 0
-  void * oldheap;
+  void *oldheap;
 
   oldheap = clib_mem_set_heap (vlib_buffer_state_heap);
 
@@ -709,10 +731,18 @@ vlib_validate_buffer_set_in_use (vlib_buffer_t * b, u32 expected)
 
   hash_set (vlib_buffer_state_validation_hash, b, expected);
 
-  CLIB_MEMORY_BARRIER();
+  CLIB_MEMORY_BARRIER ();
   *vlib_buffer_state_validation_lock = 0;
   clib_mem_set_heap (oldheap);
-#endif  
+#endif
 }
 
 #endif /* included_vlib_buffer_funcs_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

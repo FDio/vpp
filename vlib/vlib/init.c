@@ -40,30 +40,31 @@
 #include <vlib/vlib.h>
 
 clib_error_t *
-vlib_call_init_exit_functions (vlib_main_t * vm, 
-                               _vlib_init_function_list_elt_t *head, 
-                               int call_once)
+vlib_call_init_exit_functions (vlib_main_t * vm,
+			       _vlib_init_function_list_elt_t * head,
+			       int call_once)
 {
-  clib_error_t * error = 0;
-  _vlib_init_function_list_elt_t * i;
+  clib_error_t *error = 0;
+  _vlib_init_function_list_elt_t *i;
 
   i = head;
   while (i)
     {
       if (call_once && !hash_get (vm->init_functions_called, i->f))
-        {
-          if (call_once)
-            hash_set1 (vm->init_functions_called, i->f);
-          error = i->f (vm);
-          if (error)
-            return error;
-        }
+	{
+	  if (call_once)
+	    hash_set1 (vm->init_functions_called, i->f);
+	  error = i->f (vm);
+	  if (error)
+	    return error;
+	}
       i = i->next_init_function;
     }
   return error;
 }
 
-clib_error_t * vlib_call_all_init_functions (vlib_main_t * vm)
+clib_error_t *
+vlib_call_all_init_functions (vlib_main_t * vm)
 {
   /* Call dummy functions to make sure purely static modules are
      linked in. */
@@ -71,29 +72,31 @@ clib_error_t * vlib_call_all_init_functions (vlib_main_t * vm)
   foreach_vlib_module_reference;
 #undef _
 
-  return vlib_call_init_exit_functions 
-    (vm, vm->init_function_registrations, 1 /* call_once */);
+  return vlib_call_init_exit_functions
+    (vm, vm->init_function_registrations, 1 /* call_once */ );
 }
 
-clib_error_t * vlib_call_all_main_loop_enter_functions (vlib_main_t * vm)
-{ 
-  return vlib_call_init_exit_functions 
-    (vm, vm->main_loop_enter_function_registrations, 1 /* call_once */); 
-}
-
-clib_error_t * vlib_call_all_main_loop_exit_functions (vlib_main_t * vm)
-{ 
-  return vlib_call_init_exit_functions 
-    (vm, vm->main_loop_exit_function_registrations, 1 /* call_once */); 
-}
-
-clib_error_t * vlib_call_all_config_functions (vlib_main_t * vm,
-					       unformat_input_t * input,
-                                               int is_early)
+clib_error_t *
+vlib_call_all_main_loop_enter_functions (vlib_main_t * vm)
 {
-  clib_error_t * error = 0;
-  vlib_config_function_runtime_t * c, ** all;
-  uword * hash = 0, * p;
+  return vlib_call_init_exit_functions
+    (vm, vm->main_loop_enter_function_registrations, 1 /* call_once */ );
+}
+
+clib_error_t *
+vlib_call_all_main_loop_exit_functions (vlib_main_t * vm)
+{
+  return vlib_call_init_exit_functions
+    (vm, vm->main_loop_exit_function_registrations, 1 /* call_once */ );
+}
+
+clib_error_t *
+vlib_call_all_config_functions (vlib_main_t * vm,
+				unformat_input_t * input, int is_early)
+{
+  clib_error_t *error = 0;
+  vlib_config_function_runtime_t *c, **all;
+  uword *hash = 0, *p;
   uword i;
 
   hash = hash_create_string (0, sizeof (uword));
@@ -111,10 +114,9 @@ clib_error_t * vlib_call_all_config_functions (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      u8 * s, * v;
+      u8 *s, *v;
 
-      if (! unformat (input, "%s %v", &s, &v)
-	  || ! (p = hash_get_mem (hash, s)))
+      if (!unformat (input, "%s %v", &s, &v) || !(p = hash_get_mem (hash, s)))
 	{
 	  error = clib_error_create ("unknown input `%s %v'", s, v);
 	  goto done;
@@ -134,7 +136,7 @@ clib_error_t * vlib_call_all_config_functions (vlib_main_t * vm,
 
       /* Is this an early config? Are we doing early configs? */
       if (is_early ^ c->is_early)
-        continue;
+	continue;
 
       /* Already called? */
       if (hash_get (vm->init_functions_called, c->function))
@@ -146,7 +148,7 @@ clib_error_t * vlib_call_all_config_functions (vlib_main_t * vm,
 	goto done;
     }
 
- done:
+done:
   for (i = 0; i < vec_len (all); i++)
     {
       c = all[i];
@@ -156,3 +158,11 @@ clib_error_t * vlib_call_all_config_functions (vlib_main_t * vm,
   hash_free (hash);
   return error;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

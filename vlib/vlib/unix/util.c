@@ -46,21 +46,21 @@
 #include <dirent.h>
 
 clib_error_t *
-foreach_directory_file (char * dir_name,
-			clib_error_t * (* f) (void * arg, u8 * path_name, u8 * file_name),
-			void * arg,
+foreach_directory_file (char *dir_name,
+			clib_error_t * (*f) (void *arg, u8 * path_name,
+					     u8 * file_name), void *arg,
 			int scan_dirs)
 {
-  DIR * d;
-  struct dirent * e;
-  clib_error_t * error = 0;
-  u8 * s, * t;
+  DIR *d;
+  struct dirent *e;
+  clib_error_t *error = 0;
+  u8 *s, *t;
 
   d = opendir (dir_name);
-  if (! d)
+  if (!d)
     {
       if (errno == ENOENT)
-        return 0;
+	return 0;
       return clib_error_return_unix (0, "open `%s'", dir_name);
     }
 
@@ -68,13 +68,12 @@ foreach_directory_file (char * dir_name,
   while (1)
     {
       e = readdir (d);
-      if (! e)
+      if (!e)
 	break;
       if (scan_dirs)
 	{
 	  if (e->d_type == DT_DIR
-	      && (! strcmp (e->d_name, ".")
-		  || ! strcmp (e->d_name, "..")))
+	      && (!strcmp (e->d_name, ".") || !strcmp (e->d_name, "..")))
 	    continue;
 	}
       else
@@ -100,9 +99,9 @@ foreach_directory_file (char * dir_name,
 }
 
 clib_error_t *
-vlib_sysfs_write (char * file_name, char * fmt, ...)
+vlib_sysfs_write (char *file_name, char *fmt, ...)
 {
-  u8 * s;
+  u8 *s;
   int fd;
 
   fd = open (file_name, O_WRONLY);
@@ -123,10 +122,10 @@ vlib_sysfs_write (char * file_name, char * fmt, ...)
 }
 
 clib_error_t *
-vlib_sysfs_read (char * file_name, char * fmt, ...)
+vlib_sysfs_read (char *file_name, char *fmt, ...)
 {
   unformat_input_t input;
-  u8 * s = 0;
+  u8 *s = 0;
   int fd;
   ssize_t sz;
   uword result;
@@ -135,18 +134,18 @@ vlib_sysfs_read (char * file_name, char * fmt, ...)
   if (fd < 0)
     return clib_error_return_unix (0, "open `%s'", file_name);
 
-  vec_validate(s, 4095);
+  vec_validate (s, 4095);
 
-  sz = read(fd, s, vec_len (s));
+  sz = read (fd, s, vec_len (s));
   if (sz < 0)
     {
-      close(fd);
-      vec_free(s);
+      close (fd);
+      vec_free (s);
       return clib_error_return_unix (0, "read `%s'", file_name);
     }
 
-  _vec_len(s) = sz;
-  unformat_init_vector(&input, s);
+  _vec_len (s) = sz;
+  unformat_init_vector (&input, s);
 
   va_list va;
   va_start (va, fmt);
@@ -163,27 +162,35 @@ vlib_sysfs_read (char * file_name, char * fmt, ...)
 }
 
 u8 *
-vlib_sysfs_link_to_name(char * link)
+vlib_sysfs_link_to_name (char *link)
 {
   char *p, buffer[64];
   unformat_input_t in;
   u8 *s = 0;
   int r;
 
-  r = readlink(link, buffer, sizeof(buffer) - 1);
+  r = readlink (link, buffer, sizeof (buffer) - 1);
 
   if (r < 0)
     return 0;
 
   buffer[r] = 0;
-  p = strrchr(buffer, '/');
+  p = strrchr (buffer, '/');
 
   if (!p)
     return 0;
 
-  unformat_init_string (&in, p+1, strlen (p+1));
-  unformat(&in, "%s", &s);
+  unformat_init_string (&in, p + 1, strlen (p + 1));
+  unformat (&in, "%s", &s);
   unformat_free (&in);
 
   return s;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

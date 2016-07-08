@@ -16,7 +16,8 @@
 #include <vlib/unix/unix.h>
 #include <math.h>
 
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   return vlib_unix_main (argc, argv);
 }
@@ -24,30 +25,33 @@ int main (int argc, char * argv[])
 static clib_error_t *
 main_stub_init (vlib_main_t * vm)
 {
-  clib_error_t * error;
+  clib_error_t *error;
 
-  if ((error = unix_physmem_init (vm, /* fail_if_physical_memory_not_present */ 0)))
+  if ((error =
+       unix_physmem_init (vm, /* fail_if_physical_memory_not_present */ 0)))
     return error;
 
- if ((error = vlib_call_init_function (vm, unix_cli_init)))
-   return error;
+  if ((error = vlib_call_init_function (vm, unix_cli_init)))
+    return error;
 
- return error;
+  return error;
 }
 
 VLIB_INIT_FUNCTION (main_stub_init);
 
 #if 0
 /* Node test code. */
-typedef struct {
+typedef struct
+{
   int scalar;
   int vector[0];
 } my_frame_t;
 
-static u8 * format_my_node_frame (u8 * s, va_list * va)
+static u8 *
+format_my_node_frame (u8 * s, va_list * va)
 {
-  vlib_frame_t * f = va_arg (*va, vlib_frame_t *);
-  my_frame_t * g = vlib_frame_args (f);
+  vlib_frame_t *f = va_arg (*va, vlib_frame_t *);
+  my_frame_t *g = vlib_frame_args (f);
   int i;
 
   s = format (s, "scalar %d, vector { ", g->scalar);
@@ -59,12 +63,10 @@ static u8 * format_my_node_frame (u8 * s, va_list * va)
 }
 
 static uword
-my_func (vlib_main_t * vm,
-	 vlib_node_runtime_t * rt,
-	 vlib_frame_t * f)
+my_func (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
-  vlib_node_t * node;
-  my_frame_t * y;
+  vlib_node_t *node;
+  my_frame_t *y;
   u32 i, n_left = 0;
   static int serial;
   int verbose;
@@ -79,7 +81,7 @@ my_func (vlib_main_t * vm,
 
   if (rt->n_next_nodes > 0)
     {
-      vlib_frame_t * next = vlib_get_next_frame (vm, rt, /* next index */ 0);
+      vlib_frame_t *next = vlib_get_next_frame (vm, rt, /* next index */ 0);
       n_left = VLIB_FRAME_SIZE - next->n_vectors;
       y = vlib_frame_args (next);
       y->scalar = serial++;
@@ -105,6 +107,7 @@ my_func (vlib_main_t * vm,
   return i;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (my_node1,static) = {
   .function = my_func,
   .type = VLIB_NODE_TYPE_INPUT,
@@ -116,40 +119,44 @@ VLIB_REGISTER_NODE (my_node1,static) = {
     [0] = "my-node2",
   },
 };
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (my_node2,static) = {
   .function = my_func,
   .name = "my-node2",
   .scalar_size = sizeof (my_frame_t),
   .vector_size = STRUCT_SIZE_OF (my_frame_t, vector[0]),
 };
+/* *INDENT-ON* */
 
 #endif
 
 #if 0
 
-typedef enum {
+typedef enum
+{
   MY_EVENT_TYPE1,
   MY_EVENT_TYPE2,
 } my_process_completion_type_t;
 
-typedef struct {
+typedef struct
+{
   int a;
   f64 b;
 } my_process_event_data_t;
 
-static u8 * format_my_process_event_data (u8 * s, va_list * va)
+static u8 *
+format_my_process_event_data (u8 * s, va_list * va)
 {
-  my_process_event_data_t * d = va_arg (*va, my_process_event_data_t *);
+  my_process_event_data_t *d = va_arg (*va, my_process_event_data_t *);
   return format (s, "{ a %d b %.6f}", d->a, d->b);
 }
 
 static uword
-my_proc (vlib_main_t * vm,
-	 vlib_node_runtime_t * rt,
-	 vlib_frame_t * f)
+my_proc (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
-  vlib_node_t * node;
+  vlib_node_t *node;
   u32 i;
 
   node = vlib_get_node (vm, rt->node_index);
@@ -159,14 +166,14 @@ my_proc (vlib_main_t * vm,
   for (i = 0; i < 5; i++)
     {
       vlib_cli_output (vm, "%v: %d", node->name, i);
-      vlib_process_suspend (vm, 1e0 /* secs */);
+      vlib_process_suspend (vm, 1e0 /* secs */ );
     }
 
   vlib_cli_output (vm, "%v: return frame %p", node->name, f);
 
   if (0)
     {
-      uword n_events_seen, type, * data = 0;
+      uword n_events_seen, type, *data = 0;
 
       for (n_events_seen = 0; n_events_seen < 2;)
 	{
@@ -174,8 +181,8 @@ my_proc (vlib_main_t * vm,
 	  type = vlib_process_get_events (vm, &data);
 	  n_events_seen += vec_len (data);
 	  vlib_cli_output (vm, "%U %v: completion #%d type %d data 0x%wx",
-			   format_time_interval, "h:m:s:u", vlib_time_now (vm),
-			   node->name, i, type, data[0]);
+			   format_time_interval, "h:m:s:u",
+			   vlib_time_now (vm), node->name, i, type, data[0]);
 	  _vec_len (data) = 0;
 	}
 
@@ -184,15 +191,17 @@ my_proc (vlib_main_t * vm,
   else
     {
       uword n_events_seen, i, type;
-      my_process_event_data_t * data;
+      my_process_event_data_t *data;
       for (n_events_seen = 0; n_events_seen < 2;)
 	{
 	  vlib_process_wait_for_event (vm);
 	  data = vlib_process_get_event_data (vm, &type);
-	  vec_foreach_index (i, data) {
+	  vec_foreach_index (i, data)
+	  {
 	    vlib_cli_output (vm, "%U event type %d data %U",
-			     format_time_interval, "h:m:s:u", vlib_time_now (vm),
-			     type, format_my_process_event_data, data);
+			     format_time_interval, "h:m:s:u",
+			     vlib_time_now (vm), type,
+			     format_my_process_event_data, data);
 	  }
 	  n_events_seen += vec_len (data);
 	  vlib_process_put_event_data (vm, data);
@@ -202,16 +211,16 @@ my_proc (vlib_main_t * vm,
   return i;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (my_proc_node,static) = {
   .function = my_proc,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "my-proc",
 };
+/* *INDENT-ON* */
 
 static uword
-my_proc_input (vlib_main_t * vm,
-	       vlib_node_runtime_t * rt,
-	       vlib_frame_t * f)
+my_proc_input (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
   static int i;
 
@@ -223,13 +232,15 @@ my_proc_input (vlib_main_t * vm,
 				   0x12340000 + i);
       else
 	{
-	  my_process_event_data_t * d;
+	  my_process_event_data_t *d;
 	  f64 dt = 5;
 	  d = vlib_process_signal_event_at_time (vm,
 						 i * dt,
 						 my_proc_node.index,
-						 i == 1 ? MY_EVENT_TYPE1 : MY_EVENT_TYPE2,
-						 1 /* elts */,
+						 i ==
+						 1 ? MY_EVENT_TYPE1 :
+						 MY_EVENT_TYPE2,
+						 1 /* elts */ ,
 						 sizeof (d[0]));
 	  d->a = i;
 	  d->b = vlib_time_now (vm);
@@ -238,23 +249,26 @@ my_proc_input (vlib_main_t * vm,
   else
     vlib_node_set_state (vm, rt->node_index, VLIB_NODE_STATE_DISABLED);
 
-  return 0; 
+  return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (my_proc_input_node,static) = {
   .function = my_proc_input,
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "my-proc-input",
 };
+/* *INDENT-ON* */
 
-static uword _unformat_farith (unformat_input_t * i, va_list * args)
+static uword
+_unformat_farith (unformat_input_t * i, va_list * args)
 {
   u32 prec = va_arg (*args, u32);
-  f64 * result = va_arg (*args, f64 *);
+  f64 *result = va_arg (*args, f64 *);
   f64 tmp[2];
 
   /* Binary operations in from lowest to highest precedence. */
-  char * binops[] = {
+  char *binops[] = {
     "+%U", "-%U", "/%U", "*%U", "^%U",
   };
 
@@ -264,17 +278,27 @@ static uword _unformat_farith (unformat_input_t * i, va_list * args)
       int p;
       for (p = prec; p < ARRAY_LEN (binops); p++)
 	{
-	  if (unformat (i, binops[p],
-			_unformat_farith, prec + 0, &tmp[1]))
+	  if (unformat (i, binops[p], _unformat_farith, prec + 0, &tmp[1]))
 	    {
 	      switch (binops[p][0])
 		{
-		case '+': result[0] = tmp[0] + tmp[1]; break;
-		case '-': result[0] = tmp[0] - tmp[1]; break;
-		case '/': result[0] = tmp[0] / tmp[1]; break;
-		case '*': result[0] = tmp[0] * tmp[1]; break;
-		case '^': result[0] = pow (tmp[0], tmp[1]); break;
-		default: abort ();
+		case '+':
+		  result[0] = tmp[0] + tmp[1];
+		  break;
+		case '-':
+		  result[0] = tmp[0] - tmp[1];
+		  break;
+		case '/':
+		  result[0] = tmp[0] / tmp[1];
+		  break;
+		case '*':
+		  result[0] = tmp[0] * tmp[1];
+		  break;
+		case '^':
+		  result[0] = pow (tmp[0], tmp[1]);
+		  break;
+		default:
+		  abort ();
 		}
 	      return 1;
 	    }
@@ -283,15 +307,13 @@ static uword _unformat_farith (unformat_input_t * i, va_list * args)
       return 1;
     }
 
-  else if (unformat (i, "-%U",
-		     _unformat_farith, prec + 0, &tmp[0]))
+  else if (unformat (i, "-%U", _unformat_farith, prec + 0, &tmp[0]))
     {
       result[0] = -tmp[0];
       return 1;
     }
 
-  else if (unformat (i, "(%U)",
-		     _unformat_farith, 0, &tmp[0]))
+  else if (unformat (i, "(%U)", _unformat_farith, 0, &tmp[0]))
     {
       result[0] = tmp[0];
       return 1;
@@ -304,64 +326,67 @@ static uword _unformat_farith (unformat_input_t * i, va_list * args)
     return 0;
 }
 
-static uword unformat_farith (unformat_input_t * i, va_list * args)
+static uword
+unformat_farith (unformat_input_t * i, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  f64 * result = va_arg (*args, f64 *);
+  f64 *result = va_arg (*args, f64 *);
   return unformat_user (i, _unformat_farith, 0, result);
 }
 
-static uword unformat_integer (unformat_input_t * i, va_list * args)
+static uword
+unformat_integer (unformat_input_t * i, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  u32 * data = va_arg (*args, u32 *);
+  u32 *data = va_arg (*args, u32 *);
   return unformat (i, "%d", data);
 }
 
-static VLIB_CLI_PARSE_RULE (my_parse_rule1) = {
-  .name = "decimal_integer",
-  .short_help = "a decimal integer",
-  .unformat_function = unformat_integer,
-  .data_size = sizeof (u32),
-};
+static VLIB_CLI_PARSE_RULE (my_parse_rule1) =
+{
+.name = "decimal_integer",.short_help =
+    "a decimal integer",.unformat_function = unformat_integer,.data_size =
+    sizeof (u32),};
 
-static VLIB_CLI_PARSE_RULE (my_parse_rule2) = {
-  .name = "float_expression",
-  .short_help = "floating point expression",
-  .unformat_function = unformat_farith,
-  .data_size = sizeof (f64),
-};
+static VLIB_CLI_PARSE_RULE (my_parse_rule2) =
+{
+.name = "float_expression",.short_help =
+    "floating point expression",.unformat_function =
+    unformat_farith,.data_size = sizeof (f64),};
 
 static clib_error_t *
 bar_command (vlib_main_t * vm,
-	     unformat_input_t * input,
-	     vlib_cli_command_t * cmd)
+	     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   switch (cmd->function_arg)
     {
-    case 2: {
-      u32 * d, * e;
-      d = vlib_cli_get_parse_rule_result (vm, 0);
-      e = vlib_cli_get_parse_rule_result (vm, 1);
-      vlib_cli_output (vm, "bar2 %d %d", d[0], e[0]);
-      break;
-    }
+    case 2:
+      {
+	u32 *d, *e;
+	d = vlib_cli_get_parse_rule_result (vm, 0);
+	e = vlib_cli_get_parse_rule_result (vm, 1);
+	vlib_cli_output (vm, "bar2 %d %d", d[0], e[0]);
+	break;
+      }
 
-    case 1: {
-      u32 * d = vlib_cli_get_parse_rule_result (vm, 0);
-      vlib_cli_output (vm, "bar1 %d", d[0]);
-      break;
-    }
+    case 1:
+      {
+	u32 *d = vlib_cli_get_parse_rule_result (vm, 0);
+	vlib_cli_output (vm, "bar1 %d", d[0]);
+	break;
+      }
 
-    case 3: {
-      f64 * d = vlib_cli_get_parse_rule_result (vm, 0);
-      vlib_cli_output (vm, "expr %.6f", d[0]);
-    }
+    case 3:
+      {
+	f64 *d = vlib_cli_get_parse_rule_result (vm, 0);
+	vlib_cli_output (vm, "expr %.6f", d[0]);
+      }
     }
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bar_command2, static) = {
   .path = "bar %decimal_integer",
   .short_help = "bar1 command",
@@ -380,6 +405,14 @@ VLIB_CLI_COMMAND (bar_command3, static) = {
   .function = bar_command,
   .function_arg = 3,
 };
+/* *INDENT-ON* */
 
 #endif
 
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

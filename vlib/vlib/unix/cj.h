@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * cj.h
  *
@@ -20,25 +20,27 @@
 #ifndef __included_cj_h__
 #define __included_cj_h__
 
-typedef struct {
+typedef struct
+{
   f64 time;
   u32 cpu;
   u32 type;
   u64 data[2];
 } cj_record_t;
 
-typedef struct {
+typedef struct
+{
   volatile u64 tail;
-  cj_record_t * records;
+  cj_record_t *records;
   u32 num_records;
   volatile u32 enable;
-  
-  vlib_main_t * vlib_main;
+
+  vlib_main_t *vlib_main;
 } cj_main_t;
 
-void cj_log (u32 type, void * data0, void * data1);
+void cj_log (u32 type, void *data0, void *data1);
 
-/* 
+/*
  * Supply in application main, so we can log from any library...
  * Declare a weak reference in the library, off you go.
  */
@@ -60,9 +62,18 @@ cj_global_log (unsigned type, void * data0, void * data1)       \
 }
 
 #define CJ_GLOBAL_LOG_PROTOTYPE
-void cj_global_log (unsigned type, void * data0, void * data1)  \
-  __attribute__ ((weak));                                       \
+void
+cj_global_log (unsigned type, void *data0, void *data1)
+__attribute__ ((weak));
 
-void cj_stop(void);
+void cj_stop (void);
 
 #endif /* __included_cj_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
