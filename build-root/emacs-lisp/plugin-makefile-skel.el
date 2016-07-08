@@ -26,9 +26,9 @@ nil
 # Licensed under the Apache License, Version 2.0 (the \"License\");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an \"AS IS\" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,12 +37,18 @@ nil
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -I@TOOLKIT_INCLUDE@
+AM_CFLAGS = -Wall
+AM_LDFLAGS = -module -shared -avoid-version
 
-lib_LTLIBRARIES = " plugin-name "_plugin.la " plugin-name "_test_plugin.la
+vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
+vpppluginsdir = ${libdir}/vpp_plugins
+
+vppplugins_LTLIBRARIES = " plugin-name "_plugin.la
+vppapitestplugins_LTLIBRARIES = " plugin-name "_test_plugin.la
+
 " plugin-name "_plugin_la_SOURCES = " plugin-name "/" plugin-name ".c  \\
         " plugin-name "/node.c \\
-	" plugin-name "/" plugin-name "_plugin.api.h 
+	" plugin-name "/" plugin-name "_plugin.api.h
 " plugin-name "_plugin_la_LDFLAGS = -module
 
 BUILT_SOURCES = " plugin-name "/" plugin-name ".api.h
@@ -54,23 +60,17 @@ SUFFIXES = .api.h .api
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \\
 	| vppapigen --input - --output $@ --show-name $@
 
-nobase_include_HEADERS =			\\
+noinst_HEADERS =			\\
   " plugin-name "/" plugin-name "_all_api_h.h			\\
   " plugin-name "/" plugin-name "_msg_enum.h			\\
   " plugin-name "/" plugin-name ".api.h
 
 " plugin-name "_test_plugin_la_SOURCES = \\
   " plugin-name "/" plugin-name "_test.c " plugin-name "/" plugin-name "_plugin.api.h
-" plugin-name "_test_plugin_la_LDFLAGS = -module
 
-if WITH_PLUGIN_TOOLKIT
+# Remove *.la files
 install-data-hook:
-	mkdir /usr/lib/vpp_plugins || true
-	mkdir /usr/lib/vpp_api_test_plugins || true
-	cp $(prefix)/lib/" plugin-name "_plugin.so.*.*.* /usr/lib/vpp_plugins
-	cp $(prefix)/lib/" plugin-name "_test_plugin.so.*.*.* \\
-		/usr/lib/vpp_api_test_plugins
-	rm -f $(prefix)/lib/" plugin-name "_plugin.*
-	rm -f $(prefix)/lib/" plugin-name "_test_plugin.*
+	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
+	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
 endif
 ")
