@@ -4,9 +4,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE
 AM_SILENT_RULES([yes])
 
-AM_PROG_AS
 AC_PROG_CC
-AM_PROG_CC_C_O
 
 if test -f /usr/bin/lsb_release  && test `lsb_release -si` == "Ubuntu"  && test `lsb_release -sr` == "14.04"  && test -d /usr/lib/jvm/java-8-openjdk-amd64/ ; then
     JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
