@@ -16,7 +16,7 @@
 #define __included_physmem_h__
 
 /* Manage I/O physical memory. */
-#define _GNU_SOURCE 
+#define _GNU_SOURCE
 #include <sched.h>
 #include <vppinfra/cache.h>
 #include <vppinfra/error.h>
@@ -35,15 +35,16 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-typedef struct {
+typedef struct
+{
   /* Virtual memory via mmaped. */
-  void * mem;
+  void *mem;
 
   /* Size in bytes. */
   uword mem_size;
 
   /* Heap allocated out of virtual memory. */
-  void * heap;
+  void *heap;
 
   /* huge TLB segment id */
   int shmid;
@@ -54,3 +55,11 @@ typedef struct {
 } physmem_main_t;
 
 #endif /* __included_physmem_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

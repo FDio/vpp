@@ -19,10 +19,11 @@
 #include <vlib/unix/mc_socket.h>
 
 #include <sys/ioctl.h>		/* for FIONBIO */
-#include <netinet/tcp.h>        /* for TCP_NODELAY */
+#include <netinet/tcp.h>	/* for TCP_NODELAY */
 #include <net/if.h>		/* for struct ifreq */
 
-static u8 * format_socket_peer_id (u8 * s, va_list * args)
+static u8 *
+format_socket_peer_id (u8 * s, va_list * args)
 {
   u64 peer_id_as_u64 = va_arg (*args, u64);
   mc_peer_id_t peer_id;
@@ -30,36 +31,34 @@ static u8 * format_socket_peer_id (u8 * s, va_list * args)
   u32 a = mc_socket_peer_id_get_address (peer_id);
   u32 p = mc_socket_peer_id_get_port (peer_id);
 
-  s = format (s, "%U:%04x", format_network_address, AF_INET, &a,
-	      ntohs (p));
+  s = format (s, "%U:%04x", format_network_address, AF_INET, &a, ntohs (p));
 
   return s;
 }
 
-typedef void (mc_msg_handler_t) (mc_main_t * mcm, void * msg, u32 buffer_index);
+typedef void (mc_msg_handler_t) (mc_main_t * mcm, void *msg,
+				 u32 buffer_index);
 
-always_inline void msg_handler (mc_main_t * mcm,
-				u32 buffer_index,
-				u32 handler_frees_buffer,
-				void * _h)
+always_inline void
+msg_handler (mc_main_t * mcm,
+	     u32 buffer_index, u32 handler_frees_buffer, void *_h)
 {
-  vlib_main_t * vm = mcm->vlib_main;
-  mc_msg_handler_t * h = _h;
-  vlib_buffer_t * b = vlib_get_buffer (vm, buffer_index);
-  void * the_msg = vlib_buffer_get_current (b);
+  vlib_main_t *vm = mcm->vlib_main;
+  mc_msg_handler_t *h = _h;
+  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
+  void *the_msg = vlib_buffer_get_current (b);
 
   h (mcm, the_msg, buffer_index);
-  if (! handler_frees_buffer)
+  if (!handler_frees_buffer)
     vlib_buffer_free_one (vm, buffer_index);
 }
 
 static uword
 append_buffer_index_to_iovec (vlib_main_t * vm,
-			      u32 buffer_index,
-			      struct iovec ** iovs_return)
+			      u32 buffer_index, struct iovec **iovs_return)
 {
-  struct iovec * i;
-  vlib_buffer_t * b;
+  struct iovec *i;
+  vlib_buffer_t *b;
   u32 bi = buffer_index;
   u32 l = 0;
 
@@ -70,7 +69,7 @@ append_buffer_index_to_iovec (vlib_main_t * vm,
       i->iov_base = vlib_buffer_get_current (b);
       i->iov_len = b->current_length;
       l += i->iov_len;
-      if (! (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
 	break;
       bi = b->next_buffer;
     }
@@ -80,11 +79,9 @@ append_buffer_index_to_iovec (vlib_main_t * vm,
 
 static clib_error_t *
 sendmsg_helper (mc_socket_main_t * msm,
-		int socket,
-		struct sockaddr_in * tx_addr,
-		u32 buffer_index)
+		int socket, struct sockaddr_in *tx_addr, u32 buffer_index)
 {
-  vlib_main_t * vm = msm->mc_main.vlib_main;
+  vlib_main_t *vm = msm->mc_main.vlib_main;
   struct msghdr h;
   word n_bytes, n_bytes_tx, n_retries;
 
@@ -105,7 +102,7 @@ sendmsg_helper (mc_socket_main_t * msm,
 
   n_retries = 0;
   while ((n_bytes_tx = sendmsg (socket, &h, /* flags */ 0)) != n_bytes
-         && errno == EAGAIN)
+	 && errno == EAGAIN)
     n_retries++;
   if (n_bytes_tx != n_bytes)
     {
@@ -114,11 +111,13 @@ sendmsg_helper (mc_socket_main_t * msm,
     }
   if (n_retries)
     {
-      ELOG_TYPE_DECLARE (e) = {
-        .format = "sendmsg-helper: %d retries",
-        .format_args = "i4",
-      };
-      struct { u32 retries; } * ed = 0;
+      ELOG_TYPE_DECLARE (e) =
+      {
+      .format = "sendmsg-helper: %d retries",.format_args = "i4",};
+      struct
+      {
+	u32 retries;
+      } *ed = 0;
 
       ed = ELOG_DATA (&vm->elog_main, e);
       ed->retries = n_retries;
@@ -127,12 +126,12 @@ sendmsg_helper (mc_socket_main_t * msm,
 }
 
 static clib_error_t *
-tx_buffer (void * transport, mc_transport_type_t type, u32 buffer_index)
+tx_buffer (void *transport, mc_transport_type_t type, u32 buffer_index)
 {
-  mc_socket_main_t *msm = (mc_socket_main_t *)transport;
-  vlib_main_t * vm = msm->mc_main.vlib_main;
-  mc_multicast_socket_t * ms = &msm->multicast_sockets[type];
-  clib_error_t * error;
+  mc_socket_main_t *msm = (mc_socket_main_t *) transport;
+  vlib_main_t *vm = msm->mc_main.vlib_main;
+  mc_multicast_socket_t *ms = &msm->multicast_sockets[type];
+  clib_error_t *error;
   error = sendmsg_helper (msm, ms->socket, &ms->tx_addr, buffer_index);
   if (type != MC_TRANSPORT_USER_REQUEST_TO_RELAY)
     vlib_buffer_free_one (vm, buffer_index);
@@ -143,9 +142,9 @@ static clib_error_t *
 tx_ack (void *transport, mc_peer_id_t dest_peer_id, u32 buffer_index)
 {
   struct sockaddr_in tx_addr;
-  mc_socket_main_t *msm = (mc_socket_main_t *)transport;
-  vlib_main_t * vm = msm->mc_main.vlib_main;
-  clib_error_t * error;
+  mc_socket_main_t *msm = (mc_socket_main_t *) transport;
+  vlib_main_t *vm = msm->mc_main.vlib_main;
+  clib_error_t *error;
 
   memset (&tx_addr, 0, sizeof (tx_addr));
   tx_addr.sin_family = AF_INET;
@@ -160,12 +159,11 @@ tx_ack (void *transport, mc_peer_id_t dest_peer_id, u32 buffer_index)
 static clib_error_t *
 recvmsg_helper (mc_socket_main_t * msm,
 		int socket,
-		struct sockaddr_in * rx_addr,
-		u32 * buffer_index,
-		u32 drop_message)
+		struct sockaddr_in *rx_addr,
+		u32 * buffer_index, u32 drop_message)
 {
-  vlib_main_t * vm = msm->mc_main.vlib_main;
-  vlib_buffer_t * b;
+  vlib_main_t *vm = msm->mc_main.vlib_main;
+  vlib_buffer_t *b;
   uword n_left, n_alloc, n_mtu, i, i_rx;
   const uword buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
   word n_bytes_left;
@@ -177,7 +175,8 @@ recvmsg_helper (mc_socket_main_t * msm,
     {
       uword max_alloc = 8 * n_mtu;
       vec_validate (msm->rx_buffers, max_alloc - 1);
-      n_alloc = vlib_buffer_alloc (vm, msm->rx_buffers + n_left, max_alloc - n_left);
+      n_alloc =
+	vlib_buffer_alloc (vm, msm->rx_buffers + n_left, max_alloc - n_left);
       _vec_len (msm->rx_buffers) = n_left + n_alloc;
     }
 
@@ -225,7 +224,8 @@ recvmsg_helper (mc_socket_main_t * msm,
 
       b->flags = 0;
       b->current_data = 0;
-      b->current_length = n_bytes_left < buffer_size ? n_bytes_left : buffer_size;
+      b->current_length =
+	n_bytes_left < buffer_size ? n_bytes_left : buffer_size;
 
       n_bytes_left -= buffer_size;
 
@@ -239,19 +239,22 @@ recvmsg_helper (mc_socket_main_t * msm,
 
   _vec_len (msm->rx_buffers) = i_rx;
 
-  return 0 /* no error */;
+  return 0 /* no error */ ;
 }
 
-static clib_error_t * mastership_socket_read_ready (unix_file_t * uf)
+static clib_error_t *
+mastership_socket_read_ready (unix_file_t * uf)
 {
-  mc_socket_main_t *msm = (mc_socket_main_t *)uf->private_data;
-  mc_main_t * mcm = &msm->mc_main;
-  mc_multicast_socket_t * ms = &msm->multicast_sockets[MC_TRANSPORT_MASTERSHIP];
-  clib_error_t * error;
+  mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
+  mc_main_t *mcm = &msm->mc_main;
+  mc_multicast_socket_t *ms =
+    &msm->multicast_sockets[MC_TRANSPORT_MASTERSHIP];
+  clib_error_t *error;
   u32 bi;
 
-  error = recvmsg_helper (msm, ms->socket, /* rx_addr */ 0, &bi, /* drop_message */ 0);
-  if (! error)
+  error = recvmsg_helper (msm, ms->socket, /* rx_addr */ 0, &bi,	/* drop_message */
+			  0);
+  if (!error)
     msg_handler (mcm, bi,
 		 /* handler_frees_buffer */ 0,
 		 mc_msg_master_assert_handler);
@@ -259,45 +262,53 @@ static clib_error_t * mastership_socket_read_ready (unix_file_t * uf)
   return error;
 }
 
-static clib_error_t * to_relay_socket_read_ready (unix_file_t * uf)
+static clib_error_t *
+to_relay_socket_read_ready (unix_file_t * uf)
 {
-  mc_socket_main_t *msm = (mc_socket_main_t *)uf->private_data;
+  mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_main_t *mcm = &msm->mc_main;
-  vlib_main_t * vm = msm->mc_main.vlib_main;
-  mc_multicast_socket_t * ms_to_relay = &msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_TO_RELAY];
-  mc_multicast_socket_t * ms_from_relay = &msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY];
-  clib_error_t * error;
+  vlib_main_t *vm = msm->mc_main.vlib_main;
+  mc_multicast_socket_t *ms_to_relay =
+    &msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_TO_RELAY];
+  mc_multicast_socket_t *ms_from_relay =
+    &msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY];
+  clib_error_t *error;
   u32 bi;
   u32 is_master = mcm->relay_state == MC_RELAY_STATE_MASTER;
 
   /* Not the ordering master? Turf the msg */
   error = recvmsg_helper (msm, ms_to_relay->socket, /* rx_addr */ 0, &bi,
-			  /* drop_message */ ! is_master);
+			  /* drop_message */ !is_master);
 
   /* If we are the master, number and rebroadcast the msg. */
-  if (! error && is_master)
+  if (!error && is_master)
     {
-      vlib_buffer_t * b = vlib_get_buffer (vm, bi);
-      mc_msg_user_request_t * mp = vlib_buffer_get_current (b);
+      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+      mc_msg_user_request_t *mp = vlib_buffer_get_current (b);
       mp->global_sequence = clib_host_to_net_u32 (mcm->relay_global_sequence);
       mcm->relay_global_sequence++;
-      error = sendmsg_helper (msm, ms_from_relay->socket, &ms_from_relay->tx_addr, bi);
+      error =
+	sendmsg_helper (msm, ms_from_relay->socket, &ms_from_relay->tx_addr,
+			bi);
       vlib_buffer_free_one (vm, bi);
     }
 
   return error;
 }
 
-static clib_error_t * from_relay_socket_read_ready (unix_file_t * uf)
+static clib_error_t *
+from_relay_socket_read_ready (unix_file_t * uf)
 {
-  mc_socket_main_t *msm = (mc_socket_main_t *)uf->private_data;
-  mc_main_t * mcm = &msm->mc_main;
-  mc_multicast_socket_t * ms = &msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY];
-  clib_error_t * error;
+  mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
+  mc_main_t *mcm = &msm->mc_main;
+  mc_multicast_socket_t *ms =
+    &msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY];
+  clib_error_t *error;
   u32 bi;
 
-  error = recvmsg_helper (msm, ms->socket, /* rx_addr */ 0, &bi, /* drop_message */ 0);
-  if (! error)
+  error = recvmsg_helper (msm, ms->socket, /* rx_addr */ 0, &bi,	/* drop_message */
+			  0);
+  if (!error)
     {
       msg_handler (mcm, bi, /* handler_frees_buffer */ 1,
 		   mc_msg_user_request_handler);
@@ -305,20 +316,22 @@ static clib_error_t * from_relay_socket_read_ready (unix_file_t * uf)
   return error;
 }
 
-static clib_error_t * join_socket_read_ready (unix_file_t * uf)
+static clib_error_t *
+join_socket_read_ready (unix_file_t * uf)
 {
-  mc_socket_main_t *msm = (mc_socket_main_t *)uf->private_data;
-  mc_main_t * mcm = &msm->mc_main;
-  vlib_main_t * vm = mcm->vlib_main;
-  mc_multicast_socket_t * ms = &msm->multicast_sockets[MC_TRANSPORT_JOIN];
-  clib_error_t * error;
+  mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
+  mc_main_t *mcm = &msm->mc_main;
+  vlib_main_t *vm = mcm->vlib_main;
+  mc_multicast_socket_t *ms = &msm->multicast_sockets[MC_TRANSPORT_JOIN];
+  clib_error_t *error;
   u32 bi;
 
-  error = recvmsg_helper (msm, ms->socket, /* rx_addr */ 0, &bi, /* drop_message */ 0);
-  if (! error)
+  error = recvmsg_helper (msm, ms->socket, /* rx_addr */ 0, &bi,	/* drop_message */
+			  0);
+  if (!error)
     {
-      vlib_buffer_t * b = vlib_get_buffer (vm, bi);
-      mc_msg_join_or_leave_request_t * mp = vlib_buffer_get_current (b);
+      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+      mc_msg_join_or_leave_request_t *mp = vlib_buffer_get_current (b);
 
       switch (clib_host_to_net_u32 (mp->type))
 	{
@@ -340,23 +353,25 @@ static clib_error_t * join_socket_read_ready (unix_file_t * uf)
   return error;
 }
 
-static clib_error_t * ack_socket_read_ready (unix_file_t * uf)
+static clib_error_t *
+ack_socket_read_ready (unix_file_t * uf)
 {
-  mc_socket_main_t *msm = (mc_socket_main_t *)uf->private_data;
-  mc_main_t * mcm = &msm->mc_main;
-  clib_error_t * error;
+  mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
+  mc_main_t *mcm = &msm->mc_main;
+  clib_error_t *error;
   u32 bi;
 
-  error = recvmsg_helper (msm, msm->ack_socket, /* rx_addr */ 0, &bi, /* drop_message */ 0);
-  if (! error)
+  error = recvmsg_helper (msm, msm->ack_socket, /* rx_addr */ 0, &bi,
+			  /* drop_message */ 0);
+  if (!error)
     msg_handler (mcm, bi, /* handler_frees_buffer */ 0,
 		 mc_msg_user_ack_handler);
   return error;
 }
 
-static void catchup_cleanup (mc_socket_main_t *msm,
-                             mc_socket_catchup_t *c,
-                             unix_main_t *um, unix_file_t *uf)
+static void
+catchup_cleanup (mc_socket_main_t * msm,
+		 mc_socket_catchup_t * c, unix_main_t * um, unix_file_t * uf)
 {
   hash_unset (msm->catchup_index_by_file_descriptor, uf->file_descriptor);
   unix_file_del (um, uf);
@@ -366,23 +381,29 @@ static void catchup_cleanup (mc_socket_main_t *msm,
 }
 
 static mc_socket_catchup_t *
-find_catchup_from_file_descriptor (mc_socket_main_t * msm, int file_descriptor)
+find_catchup_from_file_descriptor (mc_socket_main_t * msm,
+				   int file_descriptor)
 {
-  uword * p = hash_get (msm->catchup_index_by_file_descriptor, file_descriptor);
+  uword *p =
+    hash_get (msm->catchup_index_by_file_descriptor, file_descriptor);
   return p ? pool_elt_at_index (msm->catchups, p[0]) : 0;
 }
 
-static clib_error_t * catchup_socket_read_ready (unix_file_t * uf, int is_server)
+static clib_error_t *
+catchup_socket_read_ready (unix_file_t * uf, int is_server)
 {
-  unix_main_t * um = &unix_main;
-  mc_socket_main_t *msm = (mc_socket_main_t *)uf->private_data;
+  unix_main_t *um = &unix_main;
+  mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_main_t *mcm = &msm->mc_main;
-  mc_socket_catchup_t * c = find_catchup_from_file_descriptor (msm, uf->file_descriptor);
+  mc_socket_catchup_t *c =
+    find_catchup_from_file_descriptor (msm, uf->file_descriptor);
   word l, n, is_eof;
 
   l = vec_len (c->input_vector);
   vec_resize (c->input_vector, 4096);
-  n = read (uf->file_descriptor, c->input_vector + l, vec_len (c->input_vector) - l);
+  n =
+    read (uf->file_descriptor, c->input_vector + l,
+	  vec_len (c->input_vector) - l);
   is_eof = n == 0;
 
   if (n < 0)
@@ -402,43 +423,50 @@ static clib_error_t * catchup_socket_read_ready (unix_file_t * uf, int is_server
     {
       if (is_server)
 	{
-	  mc_msg_catchup_request_handler (mcm, (void *) c->input_vector, c - msm->catchups);
+	  mc_msg_catchup_request_handler (mcm, (void *) c->input_vector,
+					  c - msm->catchups);
 	  _vec_len (c->input_vector) = 0;
 	}
       else
 	{
-	  mc_msg_catchup_reply_handler (mcm, (void *) c->input_vector, c - msm->catchups);
+	  mc_msg_catchup_reply_handler (mcm, (void *) c->input_vector,
+					c - msm->catchups);
 	  c->input_vector = 0;	/* reply handler is responsible for freeing vector */
 	  catchup_cleanup (msm, c, um, uf);
 	}
     }
 
-  return 0 /* no error */;
+  return 0 /* no error */ ;
 }
 
-static clib_error_t * catchup_server_read_ready (unix_file_t * uf)
-{ return catchup_socket_read_ready (uf, /* is_server */ 1); }
-
-static clib_error_t * catchup_client_read_ready (unix_file_t * uf)
-{ 
-    if (MC_EVENT_LOGGING)
-      {
-        mc_socket_main_t *msm = (mc_socket_main_t *)uf->private_data;        
-        vlib_main_t * vm = msm->mc_main.vlib_main;
-        
-        ELOG_TYPE (e, "catchup_client_read_ready");
-        ELOG (&vm->elog_main, e, 0);
-      }
-    return catchup_socket_read_ready (uf, /* is_server */ 0); 
+static clib_error_t *
+catchup_server_read_ready (unix_file_t * uf)
+{
+  return catchup_socket_read_ready (uf, /* is_server */ 1);
 }
 
-static clib_error_t * 
+static clib_error_t *
+catchup_client_read_ready (unix_file_t * uf)
+{
+  if (MC_EVENT_LOGGING)
+    {
+      mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
+      vlib_main_t *vm = msm->mc_main.vlib_main;
+
+      ELOG_TYPE (e, "catchup_client_read_ready");
+      ELOG (&vm->elog_main, e, 0);
+    }
+  return catchup_socket_read_ready (uf, /* is_server */ 0);
+}
+
+static clib_error_t *
 catchup_socket_write_ready (unix_file_t * uf, int is_server)
 {
-  unix_main_t * um = &unix_main;
-  mc_socket_main_t *msm = (mc_socket_main_t *)uf->private_data;
-  mc_socket_catchup_t *c = find_catchup_from_file_descriptor (msm, uf->file_descriptor);
-  clib_error_t * error = 0;
+  unix_main_t *um = &unix_main;
+  mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
+  mc_socket_catchup_t *c =
+    find_catchup_from_file_descriptor (msm, uf->file_descriptor);
+  clib_error_t *error = 0;
   int n;
 
   if (c->connect_in_progress)
@@ -447,50 +475,54 @@ catchup_socket_write_ready (unix_file_t * uf, int is_server)
 
       c->connect_in_progress = 0;
       len = sizeof (value);
-      if (getsockopt (c->socket, SOL_SOCKET,
-		      SO_ERROR, &value, &len) < 0)
+      if (getsockopt (c->socket, SOL_SOCKET, SO_ERROR, &value, &len) < 0)
 	{
 	  error = clib_error_return_unix (0, "getsockopt SO_ERROR");
 	  goto error_quit;
 	}
       if (value != 0)
 	{
-	  error = clib_error_return_code (0, value, CLIB_ERROR_ERRNO_VALID, "connect fails");
+	  error =
+	    clib_error_return_code (0, value, CLIB_ERROR_ERRNO_VALID,
+				    "connect fails");
 	  goto error_quit;
 	}
     }
 
-  while (1) 
+  while (1)
     {
       u32 n_this_write;
-      
-      n_this_write = 
-        clib_min (vec_len (c->output_vector) - c->output_vector_n_written,
-                  msm->rx_mtu_n_bytes - 64 /* ip + tcp + option allowance */);
+
+      n_this_write =
+	clib_min (vec_len (c->output_vector) - c->output_vector_n_written,
+		  msm->rx_mtu_n_bytes -
+		  64 /* ip + tcp + option allowance */ );
 
       if (n_this_write <= 0)
-        break;
+	break;
 
-      do {
-        n = write (uf->file_descriptor,
-                   c->output_vector + c->output_vector_n_written,
-                   n_this_write);
-      } while (n < 0 && errno == EAGAIN);
-      
+      do
+	{
+	  n = write (uf->file_descriptor,
+		     c->output_vector + c->output_vector_n_written,
+		     n_this_write);
+	}
+      while (n < 0 && errno == EAGAIN);
+
       if (n < 0)
-        {
-          error = clib_error_return_unix (0, "write");
-          goto error_quit;
-        }
+	{
+	  error = clib_error_return_unix (0, "write");
+	  goto error_quit;
+	}
       c->output_vector_n_written += n;
-  }
+    }
 
   if (c->output_vector_n_written >= vec_len (c->output_vector))
     {
-      if (! is_server)
+      if (!is_server)
 	{
-          uf->flags &= ~UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
-          unix_main.file_update (uf, UNIX_FILE_UPDATE_MODIFY);
+	  uf->flags &= ~UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
+	  unix_main.file_update (uf, UNIX_FILE_UPDATE_MODIFY);
 	  /* Send EOF to other side. */
 	  shutdown (uf->file_descriptor, SHUT_WR);
 	  return error;
@@ -504,41 +536,48 @@ catchup_socket_write_ready (unix_file_t * uf, int is_server)
   return error;
 }
 
-static clib_error_t * 
+static clib_error_t *
 catchup_server_write_ready (unix_file_t * uf)
-{ return catchup_socket_write_ready (uf, /* is_server */ 1); }
+{
+  return catchup_socket_write_ready (uf, /* is_server */ 1);
+}
 
-static clib_error_t * 
+static clib_error_t *
 catchup_client_write_ready (unix_file_t * uf)
-{ return catchup_socket_write_ready (uf, /* is_server */ 0); }
+{
+  return catchup_socket_write_ready (uf, /* is_server */ 0);
+}
 
-static clib_error_t *catchup_socket_error_ready (unix_file_t *uf)
+static clib_error_t *
+catchup_socket_error_ready (unix_file_t * uf)
 {
   unix_main_t *um = &unix_main;
-  mc_socket_main_t *msm = (mc_socket_main_t *)uf->private_data;
-  mc_socket_catchup_t *c = find_catchup_from_file_descriptor (msm, uf->file_descriptor);
+  mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
+  mc_socket_catchup_t *c =
+    find_catchup_from_file_descriptor (msm, uf->file_descriptor);
   catchup_cleanup (msm, c, um, uf);
   return clib_error_return (0, "error");
 }
 
-static clib_error_t *catchup_listen_read_ready (unix_file_t * uf)
+static clib_error_t *
+catchup_listen_read_ready (unix_file_t * uf)
 {
-  mc_socket_main_t *msm = (mc_socket_main_t *)uf->private_data;
+  mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   struct sockaddr_in client_addr;
   int client_len;
   mc_socket_catchup_t *c;
-  unix_file_t template = {0};
+  unix_file_t template = { 0 };
 
   pool_get (msm->catchups, c);
-  memset(c, 0, sizeof (c[0]));
+  memset (c, 0, sizeof (c[0]));
 
-  client_len = sizeof(client_addr);
-    
+  client_len = sizeof (client_addr);
+
   /* Acquires the non-blocking attrib from the server socket. */
-  c->socket = accept (uf->file_descriptor, 
-		      (struct sockaddr *)&client_addr, 
-		      (socklen_t *)&client_len);
-    
+  c->socket = accept (uf->file_descriptor,
+		      (struct sockaddr *) &client_addr,
+		      (socklen_t *) & client_len);
+
   if (c->socket < 0)
     {
       pool_put (msm->catchups, c);
@@ -547,26 +586,29 @@ static clib_error_t *catchup_listen_read_ready (unix_file_t * uf)
 
   if (MC_EVENT_LOGGING)
     {
-      mc_main_t * mcm = &msm->mc_main;
-      vlib_main_t * vm = mcm->vlib_main;
+      mc_main_t *mcm = &msm->mc_main;
+      vlib_main_t *vm = mcm->vlib_main;
 
-      ELOG_TYPE_DECLARE (e) = {
-	.format = "catchup accepted from 0x%lx",
-	.format_args = "i4",
-      };
-      struct { u32 addr; } * ed = 0;
+      ELOG_TYPE_DECLARE (e) =
+      {
+      .format = "catchup accepted from 0x%lx",.format_args = "i4",};
+      struct
+      {
+	u32 addr;
+      } *ed = 0;
 
       ed = ELOG_DATA (&vm->elog_main, e);
-      ed->addr = ntohl(client_addr.sin_addr.s_addr);
+      ed->addr = ntohl (client_addr.sin_addr.s_addr);
     }
 
   /* Disable the Nagle algorithm, ship catchup pkts immediately */
   {
     int one = 1;
-    if ((setsockopt(c->socket, IPPROTO_TCP, 
-                    TCP_NODELAY, (void *)&one, sizeof(one))) < 0) {
-      clib_unix_warning("catchup socket: set TCP_NODELAY");
-    }
+    if ((setsockopt (c->socket, IPPROTO_TCP,
+		     TCP_NODELAY, (void *) &one, sizeof (one))) < 0)
+      {
+	clib_unix_warning ("catchup socket: set TCP_NODELAY");
+      }
   }
 
   template.read_function = catchup_server_read_ready;
@@ -575,19 +617,21 @@ static clib_error_t *catchup_listen_read_ready (unix_file_t * uf)
   template.file_descriptor = c->socket;
   template.private_data = pointer_to_uword (msm);
   c->unix_file_index = unix_file_add (&unix_main, &template);
-  hash_set (msm->catchup_index_by_file_descriptor, c->socket, c - msm->catchups);
+  hash_set (msm->catchup_index_by_file_descriptor, c->socket,
+	    c - msm->catchups);
 
   return 0;
 }
 
 /* Return and bind to an unused port. */
-static word find_and_bind_to_free_port (word sock, word port)
+static word
+find_and_bind_to_free_port (word sock, word port)
 {
   for (; port < 1 << 16; port++)
     {
       struct sockaddr_in a;
 
-      memset (&a, 0, sizeof(a)); /* Warnings be gone */
+      memset (&a, 0, sizeof (a));	/* Warnings be gone */
 
       a.sin_family = PF_INET;
       a.sin_addr.s_addr = INADDR_ANY;
@@ -596,54 +640,57 @@ static word find_and_bind_to_free_port (word sock, word port)
       if (bind (sock, (struct sockaddr *) &a, sizeof (a)) >= 0)
 	break;
     }
-	
+
   return port < 1 << 16 ? port : -1;
 }
 
 static clib_error_t *
 setup_mutlicast_socket (mc_socket_main_t * msm,
 			mc_multicast_socket_t * ms,
-			char * type,
-			uword udp_port)
+			char *type, uword udp_port)
 {
   int one = 1;
   struct ip_mreq mcast_req;
 
-  if (! msm->multicast_ttl)
+  if (!msm->multicast_ttl)
     msm->multicast_ttl = 1;
 
   /* mastership (multicast) TX socket */
   if ((ms->socket = socket (PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
-    return clib_error_return_unix(0, "%s socket", type);
+    return clib_error_return_unix (0, "%s socket", type);
 
   {
     u8 ttl = msm->multicast_ttl;
 
-    if ((setsockopt(ms->socket, IPPROTO_IP, 
-		    IP_MULTICAST_TTL, (void *)&ttl, sizeof(ttl))) < 0)
-      return clib_error_return_unix(0, "%s set multicast ttl", type);
+    if ((setsockopt (ms->socket, IPPROTO_IP,
+		     IP_MULTICAST_TTL, (void *) &ttl, sizeof (ttl))) < 0)
+      return clib_error_return_unix (0, "%s set multicast ttl", type);
   }
 
-  if (setsockopt(ms->socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)) < 0)
+  if (setsockopt (ms->socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one)) <
+      0)
     return clib_error_return_unix (0, "%s setsockopt SO_REUSEADDR", type);
 
   memset (&ms->tx_addr, 0, sizeof (ms->tx_addr));
   ms->tx_addr.sin_family = AF_INET;
-  ms->tx_addr.sin_addr.s_addr = htonl (msm->multicast_tx_ip4_address_host_byte_order);
+  ms->tx_addr.sin_addr.s_addr =
+    htonl (msm->multicast_tx_ip4_address_host_byte_order);
   ms->tx_addr.sin_port = htons (udp_port);
-    
-  if (bind(ms->socket, (struct sockaddr *)&ms->tx_addr, 
-	   sizeof (ms->tx_addr)) < 0)
-    return clib_error_return_unix(0, "%s bind", type);
+
+  if (bind (ms->socket, (struct sockaddr *) &ms->tx_addr,
+	    sizeof (ms->tx_addr)) < 0)
+    return clib_error_return_unix (0, "%s bind", type);
 
   memset (&mcast_req, 0, sizeof (mcast_req));
-  mcast_req.imr_multiaddr.s_addr = htonl (msm->multicast_tx_ip4_address_host_byte_order);
+  mcast_req.imr_multiaddr.s_addr =
+    htonl (msm->multicast_tx_ip4_address_host_byte_order);
   mcast_req.imr_interface.s_addr = msm->if_ip4_address_net_byte_order;
 
-  if ((setsockopt(ms->socket, IPPROTO_IP, 
-		  IP_ADD_MEMBERSHIP, (void *)&mcast_req, 
-		  sizeof (mcast_req))) < 0)
-    return clib_error_return_unix(0, "%s IP_ADD_MEMBERSHIP setsockopt", type);
+  if ((setsockopt (ms->socket, IPPROTO_IP,
+		   IP_ADD_MEMBERSHIP, (void *) &mcast_req,
+		   sizeof (mcast_req))) < 0)
+    return clib_error_return_unix (0, "%s IP_ADD_MEMBERSHIP setsockopt",
+				   type);
 
   if (ioctl (ms->socket, FIONBIO, &one) < 0)
     return clib_error_return_unix (0, "%s set FIONBIO", type);
@@ -652,7 +699,7 @@ setup_mutlicast_socket (mc_socket_main_t * msm,
   {
     u32 len = 1 << 20;
     socklen_t sl = sizeof (len);
-    if (setsockopt(ms->socket, SOL_SOCKET, SO_SNDBUF, &len, sl) < 0)
+    if (setsockopt (ms->socket, SOL_SOCKET, SO_SNDBUF, &len, sl) < 0)
       clib_unix_error ("setsockopt");
   }
 
@@ -660,92 +707,96 @@ setup_mutlicast_socket (mc_socket_main_t * msm,
 }
 
 static clib_error_t *
-socket_setup (mc_socket_main_t *msm)
+socket_setup (mc_socket_main_t * msm)
 {
   int one = 1;
-  clib_error_t * error;
+  clib_error_t *error;
   u32 port;
 
-  if (! msm->base_multicast_udp_port_host_byte_order)
-    msm->base_multicast_udp_port_host_byte_order = 
-        0xffff - ((MC_N_TRANSPORT_TYPE + 2 /* ack socket, catchup socket */) 
-                  - 1);
+  if (!msm->base_multicast_udp_port_host_byte_order)
+    msm->base_multicast_udp_port_host_byte_order =
+      0xffff - ((MC_N_TRANSPORT_TYPE + 2 /* ack socket, catchup socket */ )
+		- 1);
 
   port = msm->base_multicast_udp_port_host_byte_order;
 
   error = setup_mutlicast_socket (msm,
-				  &msm->multicast_sockets[MC_TRANSPORT_MASTERSHIP],
-				  "mastership",
+				  &msm->multicast_sockets
+				  [MC_TRANSPORT_MASTERSHIP], "mastership",
 				  port++);
   if (error)
     return error;
 
   error = setup_mutlicast_socket (msm,
 				  &msm->multicast_sockets[MC_TRANSPORT_JOIN],
-				  "join",
-				  port++);
+				  "join", port++);
   if (error)
     return error;
 
   error = setup_mutlicast_socket (msm,
-				  &msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_TO_RELAY],
-				  "to relay",
-				  port++);
+				  &msm->multicast_sockets
+				  [MC_TRANSPORT_USER_REQUEST_TO_RELAY],
+				  "to relay", port++);
   if (error)
     return error;
 
   error = setup_mutlicast_socket (msm,
-				  &msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY],
-				  "from relay",
-				  port++);
+				  &msm->multicast_sockets
+				  [MC_TRANSPORT_USER_REQUEST_FROM_RELAY],
+				  "from relay", port++);
   if (error)
     return error;
 
   /* ACK rx socket */
   msm->ack_socket = socket (PF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (msm->ack_socket < 0)
-    return clib_error_return_unix(0, "ack socket");
+    return clib_error_return_unix (0, "ack socket");
 
   msm->ack_udp_port = find_and_bind_to_free_port (msm->ack_socket, port++);
 
   if (ioctl (msm->ack_socket, FIONBIO, &one) < 0)
     return clib_error_return_unix (0, "ack socket FIONBIO");
 
-  msm->catchup_server_socket = socket(AF_INET, SOCK_STREAM, 0);
+  msm->catchup_server_socket = socket (AF_INET, SOCK_STREAM, 0);
   if (msm->catchup_server_socket < 0)
     return clib_error_return_unix (0, "catchup server socket");
-    
-  msm->catchup_tcp_port = find_and_bind_to_free_port (msm->catchup_server_socket, port++);
+
+  msm->catchup_tcp_port =
+    find_and_bind_to_free_port (msm->catchup_server_socket, port++);
 
   if (ioctl (msm->catchup_server_socket, FIONBIO, &one) < 0)
     return clib_error_return_unix (0, "catchup server socket FIONBIO");
 
-  if (listen(msm->catchup_server_socket, 5) < 0)
+  if (listen (msm->catchup_server_socket, 5) < 0)
     return clib_error_return_unix (0, "catchup server socket listen");
-    
+
   /* epoll setup for multicast mastership socket */
   {
-    unix_file_t template = {0};
+    unix_file_t template = { 0 };
 
     template.read_function = mastership_socket_read_ready;
-    template.file_descriptor = msm->multicast_sockets[MC_TRANSPORT_MASTERSHIP].socket;
+    template.file_descriptor =
+      msm->multicast_sockets[MC_TRANSPORT_MASTERSHIP].socket;
     template.private_data = (uword) msm;
     unix_file_add (&unix_main, &template);
 
     /* epoll setup for multicast to_relay socket */
     template.read_function = to_relay_socket_read_ready;
-    template.file_descriptor = msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_TO_RELAY].socket;
+    template.file_descriptor =
+      msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_TO_RELAY].socket;
     template.private_data = (uword) msm;
     unix_file_add (&unix_main, &template);
 
     /* epoll setup for multicast from_relay socket */
     template.read_function = from_relay_socket_read_ready;
-    template.file_descriptor = msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY].socket;
+    template.file_descriptor =
+      msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY].socket;
     template.private_data = (uword) msm;
     unix_file_add (&unix_main, &template);
 
     template.read_function = join_socket_read_ready;
-    template.file_descriptor = msm->multicast_sockets[MC_TRANSPORT_JOIN].socket;
+    template.file_descriptor =
+      msm->multicast_sockets[MC_TRANSPORT_JOIN].socket;
     template.private_data = (uword) msm;
     unix_file_add (&unix_main, &template);
 
@@ -766,11 +817,12 @@ socket_setup (mc_socket_main_t *msm)
 }
 
 static void *
-catchup_add_pending_output (mc_socket_catchup_t * c, uword n_bytes, u8 * set_output_vector)
+catchup_add_pending_output (mc_socket_catchup_t * c, uword n_bytes,
+			    u8 * set_output_vector)
 {
-  unix_file_t * uf = pool_elt_at_index (unix_main.file_pool,
-                                        c->unix_file_index);
-  u8 * result=0;
+  unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+				       c->unix_file_index);
+  u8 *result = 0;
 
   if (set_output_vector)
     c->output_vector = set_output_vector;
@@ -780,19 +832,19 @@ catchup_add_pending_output (mc_socket_catchup_t * c, uword n_bytes, u8 * set_out
     {
       int skip_update = 0 != (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
       uf->flags |= UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
-      if (! skip_update)
+      if (!skip_update)
 	unix_main.file_update (uf, UNIX_FILE_UPDATE_MODIFY);
     }
   return result;
 }
 
-static uword catchup_request_fun (void *transport_main, 
-                                  u32 stream_index,
-                                  mc_peer_id_t catchup_peer_id)
+static uword
+catchup_request_fun (void *transport_main,
+		     u32 stream_index, mc_peer_id_t catchup_peer_id)
 {
-  mc_socket_main_t *msm = (mc_socket_main_t *)transport_main;
-  mc_main_t * mcm = &msm->mc_main;
-  vlib_main_t * vm = mcm->vlib_main;
+  mc_socket_main_t *msm = (mc_socket_main_t *) transport_main;
+  mc_main_t *mcm = &msm->mc_main;
+  vlib_main_t *vm = mcm->vlib_main;
   mc_socket_catchup_t *c;
   struct sockaddr_in addr;
   unix_main_t *um = &unix_main;
@@ -801,7 +853,7 @@ static uword catchup_request_fun (void *transport_main,
   pool_get (msm->catchups, c);
   memset (c, 0, sizeof (*c));
 
-  c->socket = socket(AF_INET, SOCK_STREAM, 0);
+  c->socket = socket (AF_INET, SOCK_STREAM, 0);
   if (c->socket < 0)
     {
       clib_unix_warning ("socket");
@@ -814,35 +866,37 @@ static uword catchup_request_fun (void *transport_main,
       return 0;
     }
 
-  memset(&addr, 0, sizeof(addr));
+  memset (&addr, 0, sizeof (addr));
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = mc_socket_peer_id_get_address (catchup_peer_id);
   addr.sin_port = mc_socket_peer_id_get_port (catchup_peer_id);
-    
+
   c->connect_in_progress = 1;
 
   if (MC_EVENT_LOGGING)
     {
-      ELOG_TYPE_DECLARE (e) = {
-	.format = "connecting to peer 0x%Lx",
-	.format_args = "i8",
-      };
-      struct { u64 peer; } * ed;
+      ELOG_TYPE_DECLARE (e) =
+      {
+      .format = "connecting to peer 0x%Lx",.format_args = "i8",};
+      struct
+      {
+	u64 peer;
+      } *ed;
       ed = ELOG_DATA (&vm->elog_main, e);
       ed->peer = catchup_peer_id.as_u64;
     }
-      
-  if (connect(c->socket, (const void *)&addr,sizeof(addr)) 
+
+  if (connect (c->socket, (const void *) &addr, sizeof (addr))
       < 0 && errno != EINPROGRESS)
     {
       clib_unix_warning ("connect to %U fails",
 			 format_socket_peer_id, catchup_peer_id);
       return 0;
     }
-  
+
   {
-    unix_file_t template = {0};
-    
+    unix_file_t template = { 0 };
+
     template.read_function = catchup_client_read_ready;
     template.write_function = catchup_client_write_ready;
     template.error_function = catchup_socket_error_ready;
@@ -850,13 +904,15 @@ static uword catchup_request_fun (void *transport_main,
     template.private_data = (uword) msm;
     c->unix_file_index = unix_file_add (um, &template);
 
-    hash_set (msm->catchup_index_by_file_descriptor, c->socket, c - msm->catchups);
+    hash_set (msm->catchup_index_by_file_descriptor, c->socket,
+	      c - msm->catchups);
   }
 
   {
-    mc_msg_catchup_request_t * mp;
-    mp = catchup_add_pending_output (c, sizeof (mp[0]), /* set_output_vector */ 0);
-    mp->peer_id = msm->mc_main.transport.our_catchup_peer_id; 
+    mc_msg_catchup_request_t *mp;
+    mp = catchup_add_pending_output (c, sizeof (mp[0]),	/* set_output_vector */
+				     0);
+    mp->peer_id = msm->mc_main.transport.our_catchup_peer_id;
     mp->stream_index = stream_index;
     mc_byte_swap_msg_catchup_request (mp);
   }
@@ -864,33 +920,36 @@ static uword catchup_request_fun (void *transport_main,
   return c - msm->catchups;
 }
 
-static void catchup_send_fun (void *transport_main, uword opaque, u8 * data)
+static void
+catchup_send_fun (void *transport_main, uword opaque, u8 * data)
 {
-  mc_socket_main_t *msm = (mc_socket_main_t *)transport_main;
+  mc_socket_main_t *msm = (mc_socket_main_t *) transport_main;
   mc_socket_catchup_t *c = pool_elt_at_index (msm->catchups, opaque);
   catchup_add_pending_output (c, 0, data);
 }
 
 static int
-find_interface_ip4_address (char * if_name, u32 * ip4_address, u32 * mtu)
+find_interface_ip4_address (char *if_name, u32 * ip4_address, u32 * mtu)
 {
   int fd;
   struct ifreq ifr;
-  struct sockaddr_in * sa;
+  struct sockaddr_in *sa;
 
   /* Dig up our IP address */
   fd = socket (PF_INET, AF_INET, 0);
-  if (fd < 0) {
-    clib_unix_error ("socket");
-    return -1;
-  }
+  if (fd < 0)
+    {
+      clib_unix_error ("socket");
+      return -1;
+    }
 
   ifr.ifr_addr.sa_family = AF_INET;
-  strncpy (ifr.ifr_name, if_name, sizeof(ifr.ifr_name)-1);
-  if (ioctl (fd, SIOCGIFADDR, &ifr) < 0) {
-    clib_unix_error ("ioctl(SIOCFIGADDR)");
-    return -1;
-  }
+  strncpy (ifr.ifr_name, if_name, sizeof (ifr.ifr_name) - 1);
+  if (ioctl (fd, SIOCGIFADDR, &ifr) < 0)
+    {
+      clib_unix_error ("ioctl(SIOCFIGADDR)");
+      return -1;
+    }
 
   sa = (void *) &ifr.ifr_addr;
   clib_memcpy (ip4_address, &sa->sin_addr.s_addr, sizeof (ip4_address[0]));
@@ -898,7 +957,7 @@ find_interface_ip4_address (char * if_name, u32 * ip4_address, u32 * mtu)
   if (ioctl (fd, SIOCGIFMTU, &ifr) < 0)
     return -1;
   if (mtu)
-    *mtu = ifr.ifr_mtu - (/* IP4 header */ 20 + /* UDP header */ 8);
+    *mtu = ifr.ifr_mtu - ( /* IP4 header */ 20 + /* UDP header */ 8);
 
   close (fd);
 
@@ -907,16 +966,16 @@ find_interface_ip4_address (char * if_name, u32 * ip4_address, u32 * mtu)
 
 clib_error_t *
 mc_socket_main_init (mc_socket_main_t * msm, char **intfc_probe_list,
-                     int n_intfcs_to_probe)
+		     int n_intfcs_to_probe)
 {
-  clib_error_t * error;
-  mc_main_t * mcm;
+  clib_error_t *error;
+  mc_main_t *mcm;
   u32 mtu;
 
   mcm = &msm->mc_main;
 
   /* 239.255.0.7 */
-  if (! msm->multicast_tx_ip4_address_host_byte_order)
+  if (!msm->multicast_tx_ip4_address_host_byte_order)
     msm->multicast_tx_ip4_address_host_byte_order = 0xefff0007;
 
   {
@@ -925,12 +984,14 @@ mc_socket_main_init (mc_socket_main_t * msm, char **intfc_probe_list,
     win = 0;
     if (msm->multicast_interface_name)
       {
-	win = ! find_interface_ip4_address (msm->multicast_interface_name, &a, &mtu);
+	win =
+	  !find_interface_ip4_address (msm->multicast_interface_name, &a,
+				       &mtu);
       }
     else
       {
 	for (i = 0; i < n_intfcs_to_probe; i++)
-	  if (! find_interface_ip4_address (intfc_probe_list[i], &a, &mtu))
+	  if (!find_interface_ip4_address (intfc_probe_list[i], &a, &mtu))
 	    {
 	      win = 1;
 	      msm->multicast_interface_name = intfc_probe_list[i];
@@ -938,25 +999,29 @@ mc_socket_main_init (mc_socket_main_t * msm, char **intfc_probe_list,
 	    }
       }
 
-    if (! win)
+    if (!win)
       return clib_error_return (0, "can't find interface ip4 address");
 
     msm->if_ip4_address_net_byte_order = a;
   }
 
   msm->rx_mtu_n_bytes = mtu;
-  msm->rx_mtu_n_buffers = msm->rx_mtu_n_bytes / VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
-  msm->rx_mtu_n_buffers += (msm->rx_mtu_n_bytes % VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES) != 0;
+  msm->rx_mtu_n_buffers =
+    msm->rx_mtu_n_bytes / VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+  msm->rx_mtu_n_buffers +=
+    (msm->rx_mtu_n_bytes % VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES) != 0;
 
   error = socket_setup (msm);
   if (error)
     return error;
 
   mcm->transport.our_ack_peer_id =
-    mc_socket_set_peer_id (msm->if_ip4_address_net_byte_order, msm->ack_udp_port);
+    mc_socket_set_peer_id (msm->if_ip4_address_net_byte_order,
+			   msm->ack_udp_port);
 
   mcm->transport.our_catchup_peer_id =
-    mc_socket_set_peer_id (msm->if_ip4_address_net_byte_order, msm->catchup_tcp_port);
+    mc_socket_set_peer_id (msm->if_ip4_address_net_byte_order,
+			   msm->catchup_tcp_port);
 
   mcm->transport.tx_buffer = tx_buffer;
   mcm->transport.tx_ack = tx_ack;
@@ -970,3 +1035,11 @@ mc_socket_main_init (mc_socket_main_t * msm, char **intfc_probe_list,
 
   return error;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

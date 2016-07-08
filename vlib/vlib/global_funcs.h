@@ -22,16 +22,24 @@
 always_inline vlib_main_t *
 vlib_get_main (void)
 {
-  vlib_main_t * vm;
-  vm = vlib_mains ? vlib_mains[os_get_cpu_number()] : &vlib_global_main;
-  ASSERT(vm);
+  vlib_main_t *vm;
+  vm = vlib_mains ? vlib_mains[os_get_cpu_number ()] : &vlib_global_main;
+  ASSERT (vm);
   return vm;
 }
 
 always_inline vlib_thread_main_t *
-vlib_get_thread_main()
+vlib_get_thread_main ()
 {
   return &vlib_thread_main;
 }
 
 #endif /* included_vlib_global_funcs_h_ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

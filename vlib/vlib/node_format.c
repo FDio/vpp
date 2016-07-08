@@ -39,24 +39,24 @@
 
 #include <vlib/vlib.h>
 
-u8 * format_vlib_node_graph (u8 * s, va_list * va)
+u8 *
+format_vlib_node_graph (u8 * s, va_list * va)
 {
-  vlib_node_main_t * nm = va_arg (*va, vlib_node_main_t *);
-  vlib_node_t * n = va_arg (*va, vlib_node_t *);
+  vlib_node_main_t *nm = va_arg (*va, vlib_node_main_t *);
+  vlib_node_t *n = va_arg (*va, vlib_node_t *);
   int i, j;
   uword indent;
-  typedef struct {
+  typedef struct
+  {
     u32 next_node;
     u32 next_slot;
     u32 prev_node;
   } tmp_t;
-  tmp_t * tmps = 0;
-  tmp_t empty = { .next_node = ~0, .prev_node = ~0 };
+  tmp_t *tmps = 0;
+  tmp_t empty = {.next_node = ~0,.prev_node = ~0 };
 
-  if (! n)
-    return format (s,
-		   "%=26s%=26s%=26s",
-		   "Name", "Next", "Previous");
+  if (!n)
+    return format (s, "%=26s%=26s%=26s", "Name", "Next", "Previous");
 
   s = format (s, "%-26v", n->name);
 
@@ -73,11 +73,13 @@ u8 * format_vlib_node_graph (u8 * s, va_list * va)
     }
 
   j = 0;
+  /* *INDENT-OFF* */
   clib_bitmap_foreach (i, n->prev_node_bitmap, ({
 	vec_validate_init_empty (tmps, j, empty);
 	tmps[j].prev_node = i;
 	j++;
       }));
+  /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (tmps); i++)
     {
@@ -86,8 +88,8 @@ u8 * format_vlib_node_graph (u8 * s, va_list * va)
 
       if (tmps[i].next_node != ~0)
 	{
-	  vlib_node_t * x;
-	  u8 * t = 0;
+	  vlib_node_t *x;
+	  u8 *t = 0;
 
 	  x = vec_elt (nm->nodes, tmps[i].next_node);
 	  t = format (t, "%v [%d]", x->name, tmps[i].next_slot);
@@ -99,7 +101,7 @@ u8 * format_vlib_node_graph (u8 * s, va_list * va)
 
       if (tmps[i].prev_node != ~0)
 	{
-	  vlib_node_t * x;
+	  vlib_node_t *x;
 	  x = vec_elt (nm->nodes, tmps[i].prev_node);
 	  s = format (s, "%=26v", x->name);
 	}
@@ -110,60 +112,76 @@ u8 * format_vlib_node_graph (u8 * s, va_list * va)
   return s;
 }
 
-u8 * format_vlib_node_and_next (u8 * s, va_list * va)
+u8 *
+format_vlib_node_and_next (u8 * s, va_list * va)
 {
-  vlib_main_t * vm = va_arg (*va, vlib_main_t *);
-  vlib_node_t * n = va_arg (*va, vlib_node_t *);
+  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
+  vlib_node_t *n = va_arg (*va, vlib_node_t *);
   u32 next_index = va_arg (*va, u32);
-  vlib_node_t * n_next;
-  u32 * ni;
+  vlib_node_t *n_next;
+  u32 *ni;
 
   ni = vec_elt_at_index (n->next_nodes, next_index);
   n_next = vlib_get_node (vm, ni[0]);
   return format (s, "%v -> %v", n->name, n_next->name);
 }
 
-u8 * format_vlib_node_name (u8 * s, va_list * va)
+u8 *
+format_vlib_node_name (u8 * s, va_list * va)
 {
-  vlib_main_t * vm = va_arg (*va, vlib_main_t *);
+  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   u32 node_index = va_arg (*va, u32);
-  vlib_node_t * n = vlib_get_node (vm, node_index);
+  vlib_node_t *n = vlib_get_node (vm, node_index);
 
   return format (s, "%v", n->name);
 }
 
-u8 * format_vlib_next_node_name (u8 * s, va_list * va)
+u8 *
+format_vlib_next_node_name (u8 * s, va_list * va)
 {
-  vlib_main_t * vm = va_arg (*va, vlib_main_t *);
+  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   u32 node_index = va_arg (*va, u32);
   u32 next_index = va_arg (*va, u32);
-  vlib_node_t * next = vlib_get_next_node (vm, node_index, next_index);
+  vlib_node_t *next = vlib_get_next_node (vm, node_index, next_index);
   return format (s, "%v", next->name);
 }
 
 /* Parse node name -> node index. */
-uword unformat_vlib_node (unformat_input_t * input, va_list * args)
+uword
+unformat_vlib_node (unformat_input_t * input, va_list * args)
 {
-  vlib_main_t * vm = va_arg (*args, vlib_main_t *);
-  u32 * result = va_arg (*args, u32 *);
+  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
+  u32 *result = va_arg (*args, u32 *);
 
   return unformat_user (input, unformat_hash_vec_string,
 			vm->node_main.node_by_name, result);
 }
 
-u8 * format_vlib_time (u8 * s, va_list * va)
+u8 *
+format_vlib_time (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   f64 time = va_arg (*va, f64);
   return format (s, "%12.4f", time);
 }
 
-u8 * format_vlib_cpu_time (u8 * s, va_list * va)
+u8 *
+format_vlib_cpu_time (u8 * s, va_list * va)
 {
-  vlib_main_t * vm = va_arg (*va, vlib_main_t *);
+  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   u64 cpu_time = va_arg (*va, u64);
   f64 dt;
-  
-  dt = (cpu_time - vm->clib_time.init_cpu_time) * vm->clib_time.seconds_per_clock;
+
+  dt =
+    (cpu_time -
+     vm->clib_time.init_cpu_time) * vm->clib_time.seconds_per_clock;
   return format (s, "%U", format_vlib_time, vm, dt);
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

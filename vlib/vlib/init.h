@@ -48,27 +48,29 @@
    functions are typically used to register and setup packet
    processing nodes.  */
 
-typedef clib_error_t * (vlib_init_function_t) (struct vlib_main_t * vm);
+typedef clib_error_t *(vlib_init_function_t) (struct vlib_main_t * vm);
 
-typedef struct _vlib_init_function_list_elt {
-  struct _vlib_init_function_list_elt * next_init_function;
-  vlib_init_function_t * f;
+typedef struct _vlib_init_function_list_elt
+{
+  struct _vlib_init_function_list_elt *next_init_function;
+  vlib_init_function_t *f;
 } _vlib_init_function_list_elt_t;
 
 /* Configuration functions: called with configuration input just before
    main polling loop starts. */
-typedef clib_error_t * (vlib_config_function_t) (struct vlib_main_t * vm,
-						 unformat_input_t * input);
+typedef clib_error_t *(vlib_config_function_t) (struct vlib_main_t * vm,
+						unformat_input_t * input);
 
-typedef struct vlib_config_function_runtime_t {
+typedef struct vlib_config_function_runtime_t
+{
   /* Function to call.  Set to null once function has already been called. */
-  vlib_config_function_t * function;
+  vlib_config_function_t *function;
 
   /* Input for function. */
   unformat_input_t input;
 
   /* next config function registration */
-  struct vlib_config_function_runtime_t * next_registration;
+  struct vlib_config_function_runtime_t *next_registration;
 
   /* To be invoked as soon as the clib heap is available */
   u8 is_early;
@@ -104,7 +106,7 @@ static void __vlib_add_##tag##_function_##x (void)              \
     = vm->tag##_function_registrations;                         \
   vm->tag##_function_registrations = &_vlib_init_function;      \
  _vlib_init_function.f = &x;                                    \
-} 
+}
 
 #define VLIB_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,init)
 
@@ -207,16 +209,16 @@ static void __vlib_add_config_function_##x (void)               \
   })
 
 /* External functions. */
-clib_error_t * vlib_call_all_init_functions (struct vlib_main_t * vm);
-clib_error_t * vlib_call_all_config_functions (struct vlib_main_t * vm,
-					       unformat_input_t * input,
-                                               int is_early);
-clib_error_t * vlib_call_all_main_loop_enter_functions (struct vlib_main_t * vm);
-clib_error_t * vlib_call_all_main_loop_exit_functions (struct vlib_main_t * vm);
-clib_error_t * 
-vlib_call_init_exit_functions (struct vlib_main_t * vm,
-                               _vlib_init_function_list_elt_t *head, 
-                               int call_once);
+clib_error_t *vlib_call_all_init_functions (struct vlib_main_t *vm);
+clib_error_t *vlib_call_all_config_functions (struct vlib_main_t *vm,
+					      unformat_input_t * input,
+					      int is_early);
+clib_error_t *vlib_call_all_main_loop_enter_functions (struct vlib_main_t
+						       *vm);
+clib_error_t *vlib_call_all_main_loop_exit_functions (struct vlib_main_t *vm);
+clib_error_t *vlib_call_init_exit_functions (struct vlib_main_t *vm,
+					     _vlib_init_function_list_elt_t *
+					     head, int call_once);
 
 #define foreach_vlib_module_reference		\
   _ (node_cli)					\
@@ -226,5 +228,11 @@ vlib_call_init_exit_functions (struct vlib_main_t * vm,
 #define _(x) void vlib_##x##_reference (void);
 foreach_vlib_module_reference
 #undef _
-
 #endif /* included_vlib_init_h */
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

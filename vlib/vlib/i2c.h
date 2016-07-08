@@ -22,16 +22,18 @@
 #define I2C_MSG_FLAG_WRITE  0
 #define I2C_MSG_FLAG_READ   1
 
-typedef struct {
-    u8 addr;
-    u8 flags;
-    u16 len;
-    u8 * buffer;
+typedef struct
+{
+  u8 addr;
+  u8 flags;
+  u16 len;
+  u8 *buffer;
 } i2c_msg_t;
 
-typedef struct i2c_bus_t {
-  void (* put_bits) (struct i2c_bus_t * b, int  scl, int  sda);
-  void (* get_bits) (struct i2c_bus_t * b, int *scl, int *sda);
+typedef struct i2c_bus_t
+{
+  void (*put_bits) (struct i2c_bus_t * b, int scl, int sda);
+  void (*get_bits) (struct i2c_bus_t * b, int *scl, int *sda);
 
   int timeout;
   u32 clock;
@@ -45,13 +47,21 @@ typedef struct i2c_bus_t {
 
 void vlib_i2c_init (i2c_bus_t * bus);
 void vlib_i2c_xfer (i2c_bus_t * bus, i2c_msg_t * msgs);
-void vlib_i2c_read_eeprom (i2c_bus_t * bus, u8 i2c_addr, u16 start_addr, u16 length, u8 * data);
+void vlib_i2c_read_eeprom (i2c_bus_t * bus, u8 i2c_addr, u16 start_addr,
+			   u16 length, u8 * data);
 
 static inline int
-vlib_i2c_bus_timed_out(i2c_bus_t * bus)
+vlib_i2c_bus_timed_out (i2c_bus_t * bus)
 {
   return bus->timeout;
 }
 
 #endif /* included_vlib_i2c_h */
 
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -39,20 +39,21 @@
 
 #include <vlib/vlib.h>
 
-void vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)
+void
+vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)
 {
   uword i, j;
-  u16 * my_minis;
+  u16 *my_minis;
 
-  for (i = 0; i < vec_len(cm->minis); i++)
+  for (i = 0; i < vec_len (cm->minis); i++)
     {
       my_minis = cm->minis[i];
-      
+
       for (j = 0; j < vec_len (my_minis); j++)
-        {
-          cm->maxi[j] += my_minis[j];
-          my_minis[j] = 0;
-        }
+	{
+	  cm->maxi[j] += my_minis[j];
+	  my_minis[j] = 0;
+	}
     }
 
   j = vec_len (cm->maxi);
@@ -62,22 +63,23 @@ void vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)
     cm->value_at_last_clear[i] = cm->maxi[i];
 }
 
-void vlib_clear_combined_counters (vlib_combined_counter_main_t * cm)
+void
+vlib_clear_combined_counters (vlib_combined_counter_main_t * cm)
 {
   uword i, j;
-  vlib_mini_counter_t * my_minis;
+  vlib_mini_counter_t *my_minis;
 
-  for (i = 0; i < vec_len(cm->minis); i++)
+  for (i = 0; i < vec_len (cm->minis); i++)
     {
       my_minis = cm->minis[i];
-      
+
       for (j = 0; j < vec_len (my_minis); j++)
-        {
-          cm->maxi[j].packets += my_minis[j].packets;
-          cm->maxi[j].bytes += my_minis[j].bytes;
-          my_minis[j].packets = 0;
-          my_minis[j].bytes = 0;
-        }
+	{
+	  cm->maxi[j].packets += my_minis[j].packets;
+	  cm->maxi[j].bytes += my_minis[j].bytes;
+	  my_minis[j].packets = 0;
+	  my_minis[j].bytes = 0;
+	}
     }
 
   j = vec_len (cm->maxi);
@@ -86,15 +88,16 @@ void vlib_clear_combined_counters (vlib_combined_counter_main_t * cm)
 
   for (i = 0; i < j; i++)
     {
-      vlib_counter_t * c = vec_elt_at_index (cm->value_at_last_clear, i);
+      vlib_counter_t *c = vec_elt_at_index (cm->value_at_last_clear, i);
 
       c[0] = cm->maxi[i];
     }
 }
 
-void vlib_validate_simple_counter (vlib_simple_counter_main_t *cm, u32 index)
+void
+vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 {
-  vlib_thread_main_t * tm = vlib_get_thread_main();
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
 
   vec_validate (cm->minis, tm->n_vlib_mains - 1);
@@ -103,33 +106,46 @@ void vlib_validate_simple_counter (vlib_simple_counter_main_t *cm, u32 index)
   vec_validate_aligned (cm->maxi, index, CLIB_CACHE_LINE_BYTES);
 }
 
-void vlib_validate_combined_counter (vlib_combined_counter_main_t *cm, u32 index)
+void
+vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 {
-  vlib_thread_main_t * tm = vlib_get_thread_main();
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
 
   vec_validate (cm->minis, tm->n_vlib_mains - 1);
-  for (i = 0; i < tm->n_vlib_mains ; i++)
+  for (i = 0; i < tm->n_vlib_mains; i++)
     vec_validate_aligned (cm->minis[i], index, CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (cm->maxi, index, CLIB_CACHE_LINE_BYTES);
 }
 
-void serialize_vlib_simple_counter_main (serialize_main_t * m, va_list * va)
+void
+serialize_vlib_simple_counter_main (serialize_main_t * m, va_list * va)
 {
   clib_warning ("unimplemented");
 }
 
-void unserialize_vlib_simple_counter_main (serialize_main_t * m, va_list * va)
+void
+unserialize_vlib_simple_counter_main (serialize_main_t * m, va_list * va)
 {
   clib_warning ("unimplemented");
 }
 
-void serialize_vlib_combined_counter_main (serialize_main_t * m, va_list * va)
+void
+serialize_vlib_combined_counter_main (serialize_main_t * m, va_list * va)
 {
   clib_warning ("unimplemented");
 }
 
-void unserialize_vlib_combined_counter_main (serialize_main_t * m, va_list * va)
+void
+unserialize_vlib_combined_counter_main (serialize_main_t * m, va_list * va)
 {
   clib_warning ("unimplemented");
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

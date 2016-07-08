@@ -50,12 +50,13 @@
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
 
-typedef struct {
+typedef struct
+{
   /* /sys/bus/pci/devices/... directory name for this device. */
-  u8 * dev_dir_name;
+  u8 *dev_dir_name;
 
   /* Resource file descriptors. */
-  int * resource_fds;
+  int *resource_fds;
 
   /* File descriptor for config space read/write. */
   int config_fd;
@@ -72,9 +73,10 @@ typedef struct {
 } linux_pci_device_t;
 
 /* Pool of PCI devices. */
-typedef struct {
-  vlib_main_t * vlib_main;
-  linux_pci_device_t * linux_pci_devices;
+typedef struct
+{
+  vlib_main_t *vlib_main;
+  linux_pci_device_t *linux_pci_devices;
 } linux_pci_main_t;
 
 extern linux_pci_main_t linux_pci_main;
@@ -82,22 +84,23 @@ extern linux_pci_main_t linux_pci_main;
 /* Call to allocate/initialize the pci subsystem.
    This is not an init function so that users can explicitly enable
    pci only when it's needed. */
-clib_error_t * pci_bus_init (vlib_main_t * vm);
+clib_error_t *pci_bus_init (vlib_main_t * vm);
 
-clib_error_t * vlib_pci_bind_to_uio (vlib_pci_device_t * d, char * uio_driver_name);
+clib_error_t *vlib_pci_bind_to_uio (vlib_pci_device_t * d,
+				    char *uio_driver_name);
 
 linux_pci_main_t linux_pci_main;
 
 clib_error_t *
-vlib_pci_bind_to_uio (vlib_pci_device_t * d, char * uio_driver_name)
+vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
 {
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
   u8 *s = 0;
   DIR *dir = 0;
   struct dirent *e;
   int fd;
-  pci_config_header_t * c;
-  u8 * dev_dir_name = format(0, "/sys/bus/pci/devices/%U",
+  pci_config_header_t *c;
+  u8 *dev_dir_name = format (0, "/sys/bus/pci/devices/%U",
 			     format_vlib_pci_addr, &d->bus_address);
 
   c = &d->config0.header;
@@ -105,14 +108,14 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char * uio_driver_name)
   /* if uio sub-directory exists, we are fine, device is
      already bound to UIO driver */
   s = format (s, "%v/uio%c", dev_dir_name, 0);
-  if (access ( (char *) s, F_OK) == 0)
+  if (access ((char *) s, F_OK) == 0)
     goto done;
   vec_reset_length (s);
 
   /* walk trough all linux interfaces and if interface belonging to
      this device is founf check if interface is admin up  */
   dir = opendir ("/sys/class/net");
-  s = format(s, "%U%c", format_vlib_pci_addr, &d->bus_address, 0);
+  s = format (s, "%U%c", format_vlib_pci_addr, &d->bus_address, 0);
 
   if (!dir)
     {
@@ -122,50 +125,50 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char * uio_driver_name)
       goto done;
     }
 
-  fd = socket(PF_INET, SOCK_DGRAM, 0);
+  fd = socket (PF_INET, SOCK_DGRAM, 0);
   if (fd < 0)
     {
       error = clib_error_return_unix (0, "socket");
       goto done;
     }
 
-  while((e = readdir (dir)))
+  while ((e = readdir (dir)))
     {
       struct ifreq ifr;
       struct ethtool_drvinfo drvinfo;
 
-      if (e->d_name[0] == '.') /* skip . and .. */
+      if (e->d_name[0] == '.')	/* skip . and .. */
 	continue;
 
-      memset(&ifr, 0, sizeof ifr);
-      memset(&drvinfo, 0, sizeof drvinfo);
+      memset (&ifr, 0, sizeof ifr);
+      memset (&drvinfo, 0, sizeof drvinfo);
       ifr.ifr_data = (char *) &drvinfo;
-      strncpy(ifr.ifr_name, e->d_name, IFNAMSIZ - 1);
+      strncpy (ifr.ifr_name, e->d_name, IFNAMSIZ - 1);
       drvinfo.cmd = ETHTOOL_GDRVINFO;
       if (ioctl (fd, SIOCETHTOOL, &ifr) < 0)
-        {
-          if (errno == ENOTSUP)
-            /* Some interfaces (eg "lo") don't support this ioctl */
-            continue;
+	{
+	  if (errno == ENOTSUP)
+	    /* Some interfaces (eg "lo") don't support this ioctl */
+	    continue;
 
-          error = clib_error_return_unix (0, "ioctl fetch intf %s bus info",
-                e->d_name);
-          close (fd);
-          goto done;
-        }
+	  error = clib_error_return_unix (0, "ioctl fetch intf %s bus info",
+					  e->d_name);
+	  close (fd);
+	  goto done;
+	}
 
       if (strcmp ((char *) s, drvinfo.bus_info))
 	continue;
 
-      memset (&ifr, 0, sizeof(ifr));
+      memset (&ifr, 0, sizeof (ifr));
       strncpy (ifr.ifr_name, e->d_name, IFNAMSIZ - 1);
       if (ioctl (fd, SIOCGIFFLAGS, &ifr) < 0)
-        {
-          error = clib_error_return_unix (0, "ioctl fetch intf %s flags",
-                e->d_name);
-          close (fd);
-          goto done;
-        }
+	{
+	  error = clib_error_return_unix (0, "ioctl fetch intf %s flags",
+					  e->d_name);
+	  close (fd);
+	  goto done;
+	}
 
       if (ifr.ifr_flags & IFF_UP)
 	{
@@ -173,7 +176,7 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char * uio_driver_name)
 				     "interface %s is up",
 				     format_vlib_pci_addr, &d->bus_address,
 				     e->d_name);
-          close (fd);
+	  close (fd);
 	  goto done;
 	}
     }
@@ -201,51 +204,54 @@ done:
 
 
 static clib_error_t *
-scan_uio_dir (void * arg, u8 * path_name, u8 * file_name)
+scan_uio_dir (void *arg, u8 * path_name, u8 * file_name)
 {
-  linux_pci_device_t * l = arg;
+  linux_pci_device_t *l = arg;
   unformat_input_t input;
 
   unformat_init_string (&input, (char *) file_name, vec_len (file_name));
 
-  if (! unformat (&input, "uio%d", &l->uio_minor))
+  if (!unformat (&input, "uio%d", &l->uio_minor))
     abort ();
 
   unformat_free (&input);
   return 0;
 }
 
-static clib_error_t * linux_pci_uio_read_ready (unix_file_t * uf)
+static clib_error_t *
+linux_pci_uio_read_ready (unix_file_t * uf)
 {
-  vlib_pci_main_t * pm = &pci_main;
-  vlib_pci_device_t * d;
+  vlib_pci_main_t *pm = &pci_main;
+  vlib_pci_device_t *d;
   int __attribute__ ((unused)) rv;
 
   u32 icount;
-  rv = read(uf->file_descriptor, &icount, 4);
+  rv = read (uf->file_descriptor, &icount, 4);
 
   d = pool_elt_at_index (pm->pci_devs, uf->private_data);
 
   if (d->interrupt_handler)
-    d->interrupt_handler(d);
+    d->interrupt_handler (d);
 
-  vlib_pci_intr_enable(d);
+  vlib_pci_intr_enable (d);
 
   return /* no error */ 0;
 }
 
-static clib_error_t *linux_pci_uio_error_ready (unix_file_t *uf)
+static clib_error_t *
+linux_pci_uio_error_ready (unix_file_t * uf)
 {
   u32 error_index = (u32) uf->private_data;
 
   return clib_error_return (0, "pci device %d: error", error_index);
 }
 
-static void add_device (vlib_pci_device_t * dev, linux_pci_device_t * pdev)
+static void
+add_device (vlib_pci_device_t * dev, linux_pci_device_t * pdev)
 {
-  vlib_pci_main_t * pm = &pci_main;
-  linux_pci_main_t * lpm = &linux_pci_main;
-  linux_pci_device_t * l;
+  vlib_pci_main_t *pm = &pci_main;
+  linux_pci_main_t *lpm = &linux_pci_main;
+  linux_pci_device_t *l;
 
   pool_get (lpm->linux_pci_devices, l);
   l[0] = pdev[0];
@@ -255,13 +261,14 @@ static void add_device (vlib_pci_device_t * dev, linux_pci_device_t * pdev)
   dev->os_handle = l - lpm->linux_pci_devices;
 
   {
-    u8 * uio_dir = format (0, "%s/uio", l->dev_dir_name);
-    foreach_directory_file ((char *) uio_dir, scan_uio_dir, l, /* scan_dirs */ 1);
+    u8 *uio_dir = format (0, "%s/uio", l->dev_dir_name);
+    foreach_directory_file ((char *) uio_dir, scan_uio_dir, l,	/* scan_dirs */
+			    1);
     vec_free (uio_dir);
   }
 
   {
-    char * uio_name = (char *) format (0, "/dev/uio%d%c", l->uio_minor, 0);
+    char *uio_name = (char *) format (0, "/dev/uio%d%c", l->uio_minor, 0);
     l->uio_fd = open (uio_name, O_RDWR);
     if (l->uio_fd < 0)
       clib_unix_error ("open `%s'", uio_name);
@@ -269,8 +276,8 @@ static void add_device (vlib_pci_device_t * dev, linux_pci_device_t * pdev)
   }
 
   {
-    unix_file_t template = {0};
-    unix_main_t * um = &unix_main;
+    unix_file_t template = { 0 };
+    unix_main_t *um = &unix_main;
 
     template.read_function = linux_pci_uio_read_ready;
     template.file_descriptor = l->uio_fd;
@@ -281,7 +288,8 @@ static void add_device (vlib_pci_device_t * dev, linux_pci_device_t * pdev)
   }
 }
 
-static void linux_pci_device_free (linux_pci_device_t * l)
+static void
+linux_pci_device_free (linux_pci_device_t * l)
 {
   int i;
   for (i = 0; i < vec_len (l->resource_fds); i++)
@@ -299,12 +307,10 @@ static void linux_pci_device_free (linux_pci_device_t * l)
 clib_error_t *
 vlib_pci_read_write_config (vlib_pci_device_t * dev,
 			    vlib_read_or_write_t read_or_write,
-			    uword address,
-			    void * data,
-			    u32 n_bytes)
+			    uword address, void *data, u32 n_bytes)
 {
-  linux_pci_main_t * lpm = &linux_pci_main;
-  linux_pci_device_t * p;
+  linux_pci_main_t *lpm = &linux_pci_main;
+  linux_pci_device_t *p;
   int n;
 
   p = pool_elt_at_index (lpm->linux_pci_devices, dev->os_handle);
@@ -324,16 +330,14 @@ vlib_pci_read_write_config (vlib_pci_device_t * dev,
 
 static clib_error_t *
 os_map_pci_resource_internal (uword os_handle,
-                              u32 resource,
-                              u8 *addr,
-                              void ** result)
+			      u32 resource, u8 * addr, void **result)
 {
-  linux_pci_main_t * pm = &linux_pci_main;
-  linux_pci_device_t * p;
+  linux_pci_main_t *pm = &linux_pci_main;
+  linux_pci_device_t *p;
   struct stat stat_buf;
-  u8 * file_name;
+  u8 *file_name;
   int fd;
-  clib_error_t * error;
+  clib_error_t *error;
   int flags = MAP_SHARED;
 
   error = 0;
@@ -360,8 +364,7 @@ os_map_pci_resource_internal (uword os_handle,
 
   *result = mmap (addr,
 		  /* size */ stat_buf.st_size,
-		  PROT_READ | PROT_WRITE,
-                  flags,
+		  PROT_READ | PROT_WRITE, flags,
 		  /* file */ fd,
 		  /* offset */ 0);
   if (*result == (void *) -1)
@@ -370,7 +373,7 @@ os_map_pci_resource_internal (uword os_handle,
       goto done;
     }
 
- done:
+done:
   if (error)
     {
       if (fd >= 0)
@@ -381,34 +384,33 @@ os_map_pci_resource_internal (uword os_handle,
 }
 
 clib_error_t *
-vlib_pci_map_resource (vlib_pci_device_t * dev,
-		       u32 resource,
-		       void ** result)
+vlib_pci_map_resource (vlib_pci_device_t * dev, u32 resource, void **result)
 {
-  return (os_map_pci_resource_internal (dev->os_handle, resource, 0 /* addr */,
-                                        result));
+  return (os_map_pci_resource_internal
+	  (dev->os_handle, resource, 0 /* addr */ ,
+	   result));
 }
 
 clib_error_t *
 vlib_pci_map_resource_fixed (vlib_pci_device_t * dev,
-			    u32 resource,
-			    u8 *addr,
-			    void ** result)
+			     u32 resource, u8 * addr, void **result)
 {
-  return (os_map_pci_resource_internal (dev->os_handle, resource, addr, result));
+  return (os_map_pci_resource_internal
+	  (dev->os_handle, resource, addr, result));
 }
 
-void vlib_pci_free_device (vlib_pci_device_t * dev)
+void
+vlib_pci_free_device (vlib_pci_device_t * dev)
 {
-  linux_pci_main_t * pm = &linux_pci_main;
-  linux_pci_device_t * l;
+  linux_pci_main_t *pm = &linux_pci_main;
+  linux_pci_device_t *l;
 
   l = pool_elt_at_index (pm->linux_pci_devices, dev->os_handle);
   linux_pci_device_free (l);
   pool_put (pm->linux_pci_devices, l);
 }
 
-pci_device_registration_t * __attribute__((unused))
+pci_device_registration_t * __attribute__ ((unused))
 pci_device_next_registered (pci_device_registration_t * r)
 {
   uword i;
@@ -425,11 +427,11 @@ init_device_from_registered (vlib_main_t * vm,
 			     vlib_pci_device_t * dev,
 			     linux_pci_device_t * pdev)
 {
-  vlib_pci_main_t * pm = &pci_main;
-  pci_device_registration_t * r;
-  pci_device_id_t * i;
-  pci_config_header_t * c;
-  clib_error_t * error;
+  vlib_pci_main_t *pm = &pci_main;
+  pci_device_registration_t *r;
+  pci_device_id_t *i;
+  pci_config_header_t *c;
+  clib_error_t *error;
 
   c = &dev->config0.header;
 
@@ -438,8 +440,8 @@ init_device_from_registered (vlib_main_t * vm,
   while (r)
     {
       for (i = r->supported_devices; i->vendor_id != 0; i++)
-        if (i->vendor_id == c->vendor_id && i->device_id == c->device_id)
-          {
+	if (i->vendor_id == c->vendor_id && i->device_id == c->device_id)
+	  {
 	    error = vlib_pci_bind_to_uio (dev, "uio_pci_generic");
 	    if (error)
 	      {
@@ -447,12 +449,12 @@ init_device_from_registered (vlib_main_t * vm,
 		continue;
 	      }
 
-            add_device (dev, pdev);
+	    add_device (dev, pdev);
 	    dev->interrupt_handler = r->interrupt_handler;
-            return r->init_function (vm, dev);
-          }
+	    return r->init_function (vm, dev);
+	  }
       r = r->next_registration;
-  }
+    }
   /* No driver, close the PCI config-space FD */
   close (pdev->config_fd);
   return 0;
@@ -460,22 +462,21 @@ init_device_from_registered (vlib_main_t * vm,
 
 static clib_error_t *
 init_device (vlib_main_t * vm,
-	     vlib_pci_device_t * dev,
-	     linux_pci_device_t * pdev)
+	     vlib_pci_device_t * dev, linux_pci_device_t * pdev)
 {
   return init_device_from_registered (vm, dev, pdev);
 }
 
 static clib_error_t *
-scan_device (void * arg, u8 * dev_dir_name, u8 * ignored)
+scan_device (void *arg, u8 * dev_dir_name, u8 * ignored)
 {
-  vlib_main_t * vm = arg;
-  vlib_pci_main_t * pm = &pci_main;
+  vlib_main_t *vm = arg;
+  vlib_pci_main_t *pm = &pci_main;
   int fd;
-  u8 * f;
-  clib_error_t * error = 0;
-  vlib_pci_device_t * dev;
-  linux_pci_device_t pdev = {0};
+  u8 *f;
+  clib_error_t *error = 0;
+  vlib_pci_device_t *dev;
+  linux_pci_device_t pdev = { 0 };
 
   f = format (0, "%v/config%c", dev_dir_name, 0);
   fd = open ((char *) f, O_RDWR);
@@ -494,8 +495,10 @@ scan_device (void * arg, u8 * dev_dir_name, u8 * ignored)
 
   /* You can only read more that 64 bytes of config space as root; so we try to
      read the full space but fall back to just the first 64 bytes. */
-  if (read (fd, &dev->config_data, sizeof (dev->config_data)) != sizeof (dev->config_data)
-      && read (fd, &dev->config0, sizeof (dev->config0)) != sizeof (dev->config0))
+  if (read (fd, &dev->config_data, sizeof (dev->config_data)) !=
+      sizeof (dev->config_data)
+      && read (fd, &dev->config0,
+	       sizeof (dev->config0)) != sizeof (dev->config0))
     {
       pool_put (pm->pci_devs, dev);
       error = clib_error_return_unix (0, "read `%s'", f);
@@ -508,11 +511,11 @@ scan_device (void * arg, u8 * dev_dir_name, u8 * ignored)
     if (all_ones.vendor_id == 0)
       memset (&all_ones, ~0, sizeof (all_ones));
 
-    if (! memcmp (&dev->config0.header, &all_ones, sizeof (all_ones)))
+    if (!memcmp (&dev->config0.header, &all_ones, sizeof (all_ones)))
       {
-        pool_put (pm->pci_devs, dev);
+	pool_put (pm->pci_devs, dev);
 	error = clib_error_return (0, "invalid PCI config for `%s'", f);
-        close (fd);
+	close (fd);
 	goto done;
       }
   }
@@ -529,8 +532,8 @@ scan_device (void * arg, u8 * dev_dir_name, u8 * ignored)
     unformat_init_string (&input, (char *) dev_dir_name,
 			  vec_len (dev_dir_name));
 
-    if (! unformat (&input, "/sys/bus/pci/devices/%U",
-		    unformat_vlib_pci_addr, &dev->bus_address))
+    if (!unformat (&input, "/sys/bus/pci/devices/%U",
+		   unformat_vlib_pci_addr, &dev->bus_address))
       abort ();
 
     unformat_free (&input);
@@ -541,20 +544,20 @@ scan_device (void * arg, u8 * dev_dir_name, u8 * ignored)
   pdev.config_fd = fd;
   pdev.dev_dir_name = dev_dir_name;
 
-  hash_set(pm->pci_dev_index_by_pci_addr, dev->bus_address.as_u32,
-	   dev - pm->pci_devs);
+  hash_set (pm->pci_dev_index_by_pci_addr, dev->bus_address.as_u32,
+	    dev - pm->pci_devs);
 
   error = init_device (vm, dev, &pdev);
 
-  vec_reset_length(f);
+  vec_reset_length (f);
   f = format (f, "%v/vpd%c", dev_dir_name, 0);
   fd = open ((char *) f, O_RDONLY);
-  if (fd >=  0)
+  if (fd >= 0)
     {
       while (1)
 	{
 	  u8 tag[3];
-	  u8 * data = 0;
+	  u8 *data = 0;
 	  int len;
 
 	  if (read (fd, &tag, 3) != 3)
@@ -564,7 +567,7 @@ scan_device (void * arg, u8 * dev_dir_name, u8 * ignored)
 	    break;
 
 	  len = (tag[2] << 8) | tag[1];
-	  vec_validate(data, len);
+	  vec_validate (data, len);
 
 	  if (read (fd, data, len) != len)
 	    {
@@ -583,34 +586,36 @@ scan_device (void * arg, u8 * dev_dir_name, u8 * ignored)
       close (fd);
     }
 
-  vec_reset_length(f);
+  vec_reset_length (f);
   f = format (f, "%v/driver%c", dev_dir_name, 0);
-  dev->driver_name = vlib_sysfs_link_to_name((char *) f);
+  dev->driver_name = vlib_sysfs_link_to_name ((char *) f);
 
   dev->numa_node = -1;
-  vec_reset_length(f);
+  vec_reset_length (f);
   f = format (f, "%v/numa_node%c", dev_dir_name, 0);
   vlib_sysfs_read ((char *) f, "%u", &dev->numa_node);
 
- done:
+done:
   vec_free (f);
   return error;
 }
 
-clib_error_t * linux_pci_init (vlib_main_t * vm)
+clib_error_t *
+linux_pci_init (vlib_main_t * vm)
 {
-  vlib_pci_main_t * pm = &pci_main;
-  clib_error_t * error;
+  vlib_pci_main_t *pm = &pci_main;
+  clib_error_t *error;
 
   pm->vlib_main = vm;
 
   if ((error = vlib_call_init_function (vm, unix_input_init)))
     return error;
 
-  ASSERT(sizeof(vlib_pci_addr_t) == sizeof(u32));
+  ASSERT (sizeof (vlib_pci_addr_t) == sizeof (u32));
   pm->pci_dev_index_by_pci_addr = hash_create (0, sizeof (uword));
 
-  error = foreach_directory_file ("/sys/bus/pci/devices", scan_device, vm, /* scan_dirs */ 0);
+  error = foreach_directory_file ("/sys/bus/pci/devices", scan_device, vm,
+				  /* scan_dirs */ 0);
 
   /* Complain and continue. might not be root, etc. */
   if (error)
@@ -620,3 +625,11 @@ clib_error_t * linux_pci_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (linux_pci_init);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

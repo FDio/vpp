@@ -39,32 +39,46 @@
 
 #include <vlib/vlib.h>
 
-u8 * format_vlib_rx_tx (u8 * s, va_list * args)
+u8 *
+format_vlib_rx_tx (u8 * s, va_list * args)
 {
   vlib_rx_or_tx_t r = va_arg (*args, vlib_rx_or_tx_t);
-  char * t;
+  char *t;
 
   switch (r)
     {
-    case VLIB_RX: t = "rx"; break;
-    case VLIB_TX: t = "tx"; break;
-    default: t = "INVALID"; break;
+    case VLIB_RX:
+      t = "rx";
+      break;
+    case VLIB_TX:
+      t = "tx";
+      break;
+    default:
+      t = "INVALID";
+      break;
     }
 
   vec_add (s, t, strlen (t));
   return s;
 }
 
-u8 * format_vlib_read_write (u8 * s, va_list * args)
+u8 *
+format_vlib_read_write (u8 * s, va_list * args)
 {
   vlib_rx_or_tx_t r = va_arg (*args, vlib_rx_or_tx_t);
-  char * t;
+  char *t;
 
   switch (r)
     {
-    case VLIB_READ:  t = "read"; break;
-    case VLIB_WRITE: t = "write"; break;
-    default: t = "INVALID"; break;
+    case VLIB_READ:
+      t = "read";
+      break;
+    case VLIB_WRITE:
+      t = "write";
+      break;
+    default:
+      t = "INVALID";
+      break;
     }
 
   vec_add (s, t, strlen (t));
@@ -72,9 +86,10 @@ u8 * format_vlib_read_write (u8 * s, va_list * args)
 }
 
 /* Formats buffer data as printable ascii or as hex. */
-u8 * format_vlib_buffer_data (u8 * s, va_list * args)
+u8 *
+format_vlib_buffer_data (u8 * s, va_list * args)
 {
-  u8 * data = va_arg (*args, u8 *);
+  u8 *data = va_arg (*args, u8 *);
   u32 n_data_bytes = va_arg (*args, u32);
   u32 i, is_printable;
 
@@ -87,7 +102,7 @@ u8 * format_vlib_buffer_data (u8 * s, va_list * args)
       else if (c >= 0x7f)
 	is_printable = 0;
     }
-      
+
   if (is_printable)
     vec_add (s, data, n_data_bytes);
   else
@@ -97,9 +112,10 @@ u8 * format_vlib_buffer_data (u8 * s, va_list * args)
 }
 
 /* Enable/on => 1; disable/off => 0. */
-uword unformat_vlib_enable_disable (unformat_input_t * input, va_list * args)
+uword
+unformat_vlib_enable_disable (unformat_input_t * input, va_list * args)
 {
-  int * result = va_arg (*args, int *);
+  int *result = va_arg (*args, int *);
   int enable;
 
   if (unformat (input, "enable") || unformat (input, "on"))
@@ -114,9 +130,10 @@ uword unformat_vlib_enable_disable (unformat_input_t * input, va_list * args)
 }
 
 /* rx/tx => VLIB_RX/VLIB_TX. */
-uword unformat_vlib_rx_tx (unformat_input_t * input, va_list * args)
+uword
+unformat_vlib_rx_tx (unformat_input_t * input, va_list * args)
 {
-  int * result = va_arg (*args, int *);
+  int *result = va_arg (*args, int *);
   if (unformat (input, "rx"))
     *result = VLIB_RX;
   else if (unformat (input, "tx"))
@@ -127,29 +144,29 @@ uword unformat_vlib_rx_tx (unformat_input_t * input, va_list * args)
 }
 
 /* Parse an int either %d or 0x%x. */
-uword unformat_vlib_number (unformat_input_t * input, va_list * args)
+uword
+unformat_vlib_number (unformat_input_t * input, va_list * args)
 {
-  int * result = va_arg (*args, int *);
+  int *result = va_arg (*args, int *);
 
-  return (unformat (input, "0x%x", result)
-	  || unformat (input, "%d", result));
+  return (unformat (input, "0x%x", result) || unformat (input, "%d", result));
 }
 
 /* Parse a-zA-Z0-9_ token and hash to value. */
-uword unformat_vlib_number_by_name (unformat_input_t * input, va_list * args)
+uword
+unformat_vlib_number_by_name (unformat_input_t * input, va_list * args)
 {
-  uword * hash = va_arg (*args, uword *);
-  int * result = va_arg (*args, int *);
-  uword * p;
-  u8 * token;
+  uword *hash = va_arg (*args, uword *);
+  int *result = va_arg (*args, int *);
+  uword *p;
+  u8 *token;
   int i;
 
-  if (! unformat_user (input, unformat_token, "a-zA-Z0-9_", &token))
+  if (!unformat_user (input, unformat_token, "a-zA-Z0-9_", &token))
     return 0;
 
   /* Null terminate. */
-  if (vec_len (token) > 0 &&
-      token[vec_len (token) - 1] != 0)
+  if (vec_len (token) > 0 && token[vec_len (token) - 1] != 0)
     vec_add1 (token, 0);
 
   /* Check for exact match. */
@@ -163,9 +180,17 @@ uword unformat_vlib_number_by_name (unformat_input_t * input, va_list * args)
       token[i] = 'A' + token[i] - 'a';
   p = hash_get_mem (hash, token);
 
- done:
+done:
   vec_free (token);
   if (p)
     *result = p[0];
   return p != 0;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

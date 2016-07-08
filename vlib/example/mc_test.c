@@ -19,7 +19,8 @@
 #include <vlib/unix/mc_socket.h>
 #include <vppinfra/random.h>
 
-typedef struct {
+typedef struct
+{
   u32 min_n_msg_bytes;
   u32 max_n_msg_bytes;
   u32 tx_serial;
@@ -37,17 +38,20 @@ choose_msg_size (mc_test_main_t * tm)
 {
   u32 r = tm->min_n_msg_bytes;
   if (tm->max_n_msg_bytes > tm->min_n_msg_bytes)
-    r += random_u32 (&tm->seed) % (1 + tm->max_n_msg_bytes - tm->min_n_msg_bytes);
+    r +=
+      random_u32 (&tm->seed) % (1 + tm->max_n_msg_bytes -
+				tm->min_n_msg_bytes);
   return r;
 }
 
 static mc_test_main_t mc_test_main;
 
-static void serialize_test_msg (serialize_main_t * m, va_list * va)
+static void
+serialize_test_msg (serialize_main_t * m, va_list * va)
 {
-  mc_test_main_t * tm = &mc_test_main;
+  mc_test_main_t *tm = &mc_test_main;
   u32 n_bytes = choose_msg_size (tm);
-  u8 * msg;
+  u8 *msg;
   int i;
   serialize_integer (m, n_bytes, sizeof (n_bytes));
   msg = serialize_get (m, n_bytes);
@@ -56,11 +60,12 @@ static void serialize_test_msg (serialize_main_t * m, va_list * va)
   tm->tx_serial += n_bytes;
 }
 
-static void unserialize_test_msg (serialize_main_t * m, va_list * va)
+static void
+unserialize_test_msg (serialize_main_t * m, va_list * va)
 {
-  mc_test_main_t * tm = &mc_test_main;
+  mc_test_main_t *tm = &mc_test_main;
   u32 i, n_bytes, dump_msg = tm->verbose;
-  u8 * p;
+  u8 *p;
   unserialize_integer (m, &n_bytes, sizeof (n_bytes));
   p = unserialize_get (m, n_bytes);
   if (tm->validate)
@@ -76,45 +81,43 @@ static void unserialize_test_msg (serialize_main_t * m, va_list * va)
   tm->rx_serial += n_bytes;
 }
 
-MC_SERIALIZE_MSG (test_msg, static) = {
-  .name = "test_msg",
-  .serialize = serialize_test_msg,
-  .unserialize = unserialize_test_msg,
-};
+MC_SERIALIZE_MSG (test_msg, static) =
+{
+.name = "test_msg",.serialize = serialize_test_msg,.unserialize =
+    unserialize_test_msg,};
 
 #define SERIALIZE 1
 
 #define EVENT_JOIN_STREAM 	10
 #define EVENT_SEND_DATA 	11
 
-static void test_rx_callback (mc_main_t * mcm,
-			      mc_stream_t * stream,
-			      mc_peer_id_t peer_id,
-			      u32 buffer_index)
+static void
+test_rx_callback (mc_main_t * mcm,
+		  mc_stream_t * stream,
+		  mc_peer_id_t peer_id, u32 buffer_index)
 {
   if (SERIALIZE)
     {
-        return mc_unserialize (mcm, stream, buffer_index);
+      return mc_unserialize (mcm, stream, buffer_index);
     }
   else
     {
 #if DEBUG > 1
-      vlib_main_t * vm = mcm->vlib_main;
-      vlib_buffer_t * b = vlib_get_buffer (vm, buffer_index);
-      u8 * dp = vlib_buffer_get_current (b);
+      vlib_main_t *vm = mcm->vlib_main;
+      vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
+      u8 *dp = vlib_buffer_get_current (b);
 
-      fformat(stdout, "RX from %U %U\n",
-	      stream->transport->format_peer_id, peer_id,
-	      format_hex_bytes, dp, tm->n_msg_bytes);
-            
+      fformat (stdout, "RX from %U %U\n",
+	       stream->transport->format_peer_id, peer_id,
+	       format_hex_bytes, dp, tm->n_msg_bytes);
+
 #endif
     }
 }
 
 static u8 *
 test_snapshot_callback (mc_main_t * mcm,
-			u8 * data_vector,
-			u32 last_global_sequence_processed)
+			u8 * data_vector, u32 last_global_sequence_processed)
 {
   if (SERIALIZE)
     {
@@ -133,9 +136,7 @@ test_snapshot_callback (mc_main_t * mcm,
 }
 
 static void
-test_handle_snapshot_callback (mc_main_t * mcm,
-			       u8 * data,
-			       u32 n_data_bytes)
+test_handle_snapshot_callback (mc_main_t * mcm, u8 * data, u32 n_data_bytes)
 {
   if (SERIALIZE)
     {
@@ -150,19 +151,18 @@ static mc_socket_main_t mc_socket_main;
 
 static uword
 mc_test_process (vlib_main_t * vm,
-		 vlib_node_runtime_t * node,
-		 vlib_frame_t * f)
+		 vlib_node_runtime_t * node, vlib_frame_t * f)
 {
-  mc_test_main_t * tm = &mc_test_main;
-  mc_socket_main_t * msm = &mc_socket_main;
+  mc_test_main_t *tm = &mc_test_main;
+  mc_socket_main_t *msm = &mc_socket_main;
   mc_main_t *mcm = &msm->mc_main;
   uword event_type, *event_data = 0;
-  u32 data_serial=0, stream_index;
+  u32 data_serial = 0, stream_index;
   f64 delay;
   mc_stream_config_t config;
-  clib_error_t * error;
+  clib_error_t *error;
   int i;
-  char *intfcs[] =  { "eth1", "eth0", "ce" };
+  char *intfcs[] = { "eth1", "eth0", "ce" };
 
   memset (&config, 0, sizeof (config));
   config.name = "test";
@@ -175,7 +175,7 @@ mc_test_process (vlib_main_t * vm,
   msm->multicast_tx_ip4_address_host_byte_order = 0xefff0100;
   msm->base_multicast_udp_port_host_byte_order = 0xffab;
 
-  error = mc_socket_main_init (&mc_socket_main, intfcs, ARRAY_LEN(intfcs));
+  error = mc_socket_main_init (&mc_socket_main, intfcs, ARRAY_LEN (intfcs));
   if (error)
     {
       clib_error_report (error);
@@ -195,61 +195,66 @@ mc_test_process (vlib_main_t * vm,
 	  stream_index = mc_stream_join (mcm, &config);
 	  break;
 
-	case EVENT_SEND_DATA: {
-          f64 times[2];
+	case EVENT_SEND_DATA:
+	  {
+	    f64 times[2];
 
-          if (stream_index == ~0)
-	    stream_index = mc_stream_join (mcm, &config);
+	    if (stream_index == ~0)
+	      stream_index = mc_stream_join (mcm, &config);
 
-          times[0] = vlib_time_now (vm);
-	  for (i = 0; i < event_data[0]; i++)
-	    {
-	      u32 bi;
-	      if (SERIALIZE)
-		{
-		  mc_serialize_stream (mcm, stream_index, &test_msg, data_serial);
-		}
-	      else
-		{
-		  u8 * mp;
-		  mp = mc_get_vlib_buffer (vm, sizeof (mp[0]), &bi);
-		  mp[0] = data_serial;
-		  mc_stream_send (mcm, stream_index, bi);
-		}
-	      if (tm->min_delay > 0)
-		{
-		  delay = tm->min_delay + random_f64 (&tm->seed) * (tm->max_delay - tm->min_delay);
-		  vlib_process_suspend (vm, delay);
-		}
-	      data_serial++;
-	    }
-          times[1] = vlib_time_now (vm);
-          clib_warning ("done sending %d; %.4e per sec",
-                        event_data[0],
-                        (f64) event_data[0] / (times[1] - times[0]));
-	  break;
-        }
+	    times[0] = vlib_time_now (vm);
+	    for (i = 0; i < event_data[0]; i++)
+	      {
+		u32 bi;
+		if (SERIALIZE)
+		  {
+		    mc_serialize_stream (mcm, stream_index, &test_msg,
+					 data_serial);
+		  }
+		else
+		  {
+		    u8 *mp;
+		    mp = mc_get_vlib_buffer (vm, sizeof (mp[0]), &bi);
+		    mp[0] = data_serial;
+		    mc_stream_send (mcm, stream_index, bi);
+		  }
+		if (tm->min_delay > 0)
+		  {
+		    delay =
+		      tm->min_delay +
+		      random_f64 (&tm->seed) * (tm->max_delay -
+						tm->min_delay);
+		    vlib_process_suspend (vm, delay);
+		  }
+		data_serial++;
+	      }
+	    times[1] = vlib_time_now (vm);
+	    clib_warning ("done sending %d; %.4e per sec",
+			  event_data[0],
+			  (f64) event_data[0] / (times[1] - times[0]));
+	    break;
+	  }
 
 	default:
 	  clib_warning ("bug");
 	  break;
 	}
-            
+
       if (event_data)
 	_vec_len (event_data) = 0;
     }
 }
 
-VLIB_REGISTER_NODE (mc_test_process_node,static) = {
-  .function = mc_test_process,
-  .type = VLIB_NODE_TYPE_PROCESS,
-  .name = "mc-test-process",
-};
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (mc_test_process_node, static) =
+{
+.function = mc_test_process,.type = VLIB_NODE_TYPE_PROCESS,.name =
+    "mc-test-process",};
+/* *INDENT-ON* */
 
 static clib_error_t *
 mc_test_command (vlib_main_t * vm,
-		 unformat_input_t * input,
-		 vlib_cli_command_t * cmd)
+		 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   f64 npkts = 10;
 
@@ -260,63 +265,63 @@ mc_test_command (vlib_main_t * vm,
 				 EVENT_JOIN_STREAM, 0);
       return 0;
     }
-  else if (unformat (input, "send %f", &npkts) 
-	   || unformat(input, "send"))
+  else if (unformat (input, "send %f", &npkts) || unformat (input, "send"))
     {
       vlib_process_signal_event (vm, mc_test_process_node.index,
 				 EVENT_SEND_DATA, (uword) npkts);
       vlib_cli_output (vm, "Send %.0f pkts...\n", npkts);
-    
+
       return 0;
     }
   else
     return unformat_parse_error (input);
 }
 
-VLIB_CLI_COMMAND (test_mc_command, static) = {
-  .path = "test mc",
-  .short_help = "Test mc command",
-  .function = mc_test_command,
-};
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_mc_command, static) =
+{
+.path = "test mc",.short_help = "Test mc command",.function =
+    mc_test_command,};
+/* *INDENT-ON* */
 
 static clib_error_t *
 mc_show_command (vlib_main_t * vm,
-		 unformat_input_t * input,
-		 vlib_cli_command_t * cmd)
+		 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   mc_main_t *mcm = &mc_socket_main.mc_main;
   vlib_cli_output (vm, "%U", format_mc_main, mcm);
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_mc_command, static) = {
-  .path = "show mc",
-  .short_help = "Show mc command",
-  .function = mc_show_command,
-};
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_mc_command, static) =
+{
+.path = "show mc",.short_help = "Show mc command",.function =
+    mc_show_command,};
+/* *INDENT-ON* */
 
 static clib_error_t *
 mc_clear_command (vlib_main_t * vm,
-		  unformat_input_t * input,
-		  vlib_cli_command_t * cmd)
+		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  mc_main_t * mcm = &mc_socket_main.mc_main;
+  mc_main_t *mcm = &mc_socket_main.mc_main;
   mc_clear_stream_stats (mcm);
   return 0;
 }
 
-VLIB_CLI_COMMAND (clear_mc_command, static) = {
-  .path = "clear mc",
-  .short_help = "Clear mc command",
-  .function = mc_clear_command,
-};
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (clear_mc_command, static) =
+{
+.path = "clear mc",.short_help = "Clear mc command",.function =
+    mc_clear_command,};
+/* *INDENT-ON* */
 
 static clib_error_t *
 mc_config (vlib_main_t * vm, unformat_input_t * input)
 {
-  mc_test_main_t * tm = &mc_test_main;
-  mc_socket_main_t * msm = &mc_socket_main;
-  clib_error_t * error = 0;
+  mc_test_main_t *tm = &mc_test_main;
+  mc_socket_main_t *msm = &mc_socket_main;
+  clib_error_t *error = 0;
 
   tm->min_n_msg_bytes = 4;
   tm->max_n_msg_bytes = 4;
@@ -362,9 +367,18 @@ mc_config (vlib_main_t * vm, unformat_input_t * input)
 
   if (tm->n_packets_to_send > 0)
     vlib_process_signal_event (vm, mc_test_process_node.index,
-			       EVENT_SEND_DATA, (uword) tm->n_packets_to_send);
+			       EVENT_SEND_DATA,
+			       (uword) tm->n_packets_to_send);
 
   return error;
 }
 
 VLIB_CONFIG_FUNCTION (mc_config, "mc");
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
