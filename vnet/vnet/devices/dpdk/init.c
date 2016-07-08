@@ -54,7 +54,7 @@ static struct rte_eth_conf port_conf_template = {
     .header_split   = 0, /**< Header Split disabled */
     .hw_ip_checksum = 0, /**< IP checksum offload disabled */
     .hw_vlan_filter = 0, /**< VLAN filtering disabled */
-    .hw_strip_crc   = 1, /**< CRC stripped by hardware */
+    .hw_strip_crc   = 0, /**< CRC stripped by hardware */
   },
   .txmode = {
     .mq_mode = ETH_MQ_TX_NONE,
