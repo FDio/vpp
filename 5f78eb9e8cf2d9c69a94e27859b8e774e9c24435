@@ -22,6 +22,30 @@
       "revId": "5f78eb9e8cf2d9c69a94e27859b8e774e9c24435",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba092121_f1602337",
+        "filename": "vnet/vnet/ip/ip_frag.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 198
+      },
+      "writtenOn": "2016-07-08T14:11:31Z",
+      "side": 1,
+      "message": "If I\u0027m correct vlib_buffer_get_current(p) + p-\u003ecurrent_length - 1 is the last byte of the buffer, and we want to make sure we don\u0027t go past it.",
+      "parentUuid": "ba092121_9e5fb672",
+      "range": {
+        "startLine": 277,
+        "startChar": 20,
+        "endLine": 277,
+        "endChar": 83
+      },
+      "revId": "5f78eb9e8cf2d9c69a94e27859b8e774e9c24435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
