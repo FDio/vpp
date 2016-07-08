@@ -369,7 +369,8 @@ void pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   hash_set_mem (pg->stream_index_by_name, s->name, s - pg->streams);
 
   /* Get fixed part of buffer data. */
-  perform_fixed_edits (s);
+  if (s->edit_groups)
+    perform_fixed_edits (s);
 
   /* Determine packet size. */
   switch (s->packet_size_edit_type)

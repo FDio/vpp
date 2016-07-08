@@ -182,6 +182,10 @@ pg_pcap_read (pg_stream_t * s, char * file_name)
   s->buffer_bytes = pm.max_packet_bytes;
   /* For PCAP buffers we never re-use buffers. */
   s->flags |= PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE;
+
+  if (s->n_packets_limit == 0)
+    s->n_packets_limit = vec_len (pm.packets_read);
+
   return error;
 #endif /* CLIB_UNIX */
 }
@@ -314,8 +318,16 @@ new_stream (vlib_main_t * vm,
 
   if (s.node_index == ~0)
     {
-      error = clib_error_create ("output interface or node not given");
-      goto done;
+      if (pcap_file_name != 0)
+	{
+	  vlib_node_t * n = vlib_get_node_by_name(vm, (u8 *) "ethernet-input");
+	  s.node_index = n->index;
+	}
+      else
+	{
+	  error = clib_error_create ("output interface or node not given");
+	  goto done;
+	}
     }
 
   {
@@ -368,7 +380,8 @@ VLIB_CLI_COMMAND (new_stream_cli, static) = {
   "name STRING          sets stream name\n"
   "interface STRING     interface for stream output \n"
   "node NODE-NAME       node for stream output\n"
-  "data STRING          specifies packet data\n",
+  "data STRING          specifies packet data\n"
+  "pcap FILENAME        read packet data from pcap file\n",
 };
 
 static clib_error_t *
