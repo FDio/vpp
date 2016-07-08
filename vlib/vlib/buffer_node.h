@@ -146,20 +146,20 @@ generic_buffer_node_inline (vlib_main_t * vm,
 			    vlib_node_runtime_t * node,
 			    vlib_frame_t * frame,
 			    uword sizeof_trace,
-			    void * opaque1,
+			    void *opaque1,
 			    uword opaque2,
-			    void (* two_buffers) (vlib_main_t * vm,
-						  void * opaque1,
-						  uword opaque2,
-						  vlib_buffer_t * b0, vlib_buffer_t * b1,
-						  u32 * next0, u32 * next1),
-			    void (* one_buffer) (vlib_main_t * vm,
-						 void * opaque1,
+			    void (*two_buffers) (vlib_main_t * vm,
+						 void *opaque1,
 						 uword opaque2,
 						 vlib_buffer_t * b0,
-						 u32 * next0))
+						 vlib_buffer_t * b1,
+						 u32 * next0, u32 * next1),
+			    void (*one_buffer) (vlib_main_t * vm,
+						void *opaque1, uword opaque2,
+						vlib_buffer_t * b0,
+						u32 * next0))
 {
-  u32 n_left_from, * from, * to_next;
+  u32 n_left_from, *from, *to_next;
   u32 next_index;
 
   from = vlib_frame_vector_args (frame);
@@ -174,18 +174,17 @@ generic_buffer_node_inline (vlib_main_t * vm,
     {
       u32 n_left_to_next;
 
-      vlib_get_next_frame (vm, node, next_index,
-			   to_next, n_left_to_next);
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-	  vlib_buffer_t * p0, * p1;
+	  vlib_buffer_t *p0, *p1;
 	  u32 pi0, next0;
 	  u32 pi1, next1;
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t * p2, * p3;
+	    vlib_buffer_t *p2, *p3;
 
 	    p2 = vlib_get_buffer (vm, from[2]);
 	    p3 = vlib_get_buffer (vm, from[3]);
@@ -213,10 +212,10 @@ generic_buffer_node_inline (vlib_main_t * vm,
 					   to_next, n_left_to_next,
 					   pi0, pi1, next0, next1);
 	}
-    
+
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  vlib_buffer_t * p0;
+	  vlib_buffer_t *p0;
 	  u32 pi0, next0;
 
 	  pi0 = from[0];
@@ -242,3 +241,11 @@ generic_buffer_node_inline (vlib_main_t * vm,
 }
 
 #endif /* included_vlib_buffer_node_h */
+
+/* 
+ * fd.io coding-style-patch-verification: ON
+ * 
+ * Local Variables: 
+ * eval: (c-set-style "gnu") 
+ * End:
+ */
