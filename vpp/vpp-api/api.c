@@ -5097,29 +5097,24 @@ vl_api_lisp_add_del_remote_mapping_t_handler (
         vec_add1 (rlocs, rloc);
     }
 
-    /* TODO Uncomment once https://gerrit.fd.io/r/#/c/1802 is merged and CSIT
-     * is switched to lisp_add_del_adjacency */
-//    if (!mp->is_add) {
-//        vnet_lisp_add_del_adjacency_args_t _a, * a = &_a;
-//        gid_address_copy(&a->deid, deid);
-//        a->is_add = 0;
-//        rv = vnet_lisp_add_del_adjacency (a);
-//    } else {
-//        /* NOTE: for now this works as a static remote mapping, i.e.,
-//         * not authoritative and ttl infinite. */
-//        rv = vnet_lisp_add_del_mapping (deid, rlocs, mp->action, 0, ~0,
-//                                        mp->is_add, 0);
-//    }
+    if (!mp->is_add) {
+        vnet_lisp_add_del_adjacency_args_t _a, * a = &_a;
+        gid_address_copy(&a->deid, deid);
+        a->is_add = 0;
+        rv = vnet_lisp_add_del_adjacency (a);
+    } else {
+        /* NOTE: for now this works as a static remote mapping, i.e.,
+         * not authoritative and ttl infinite. */
+        rv = vnet_lisp_add_del_mapping (deid, rlocs, mp->action, 0, ~0,
+                                        mp->is_add, 0);
 
-    /* TODO: remove once the above is merged */
-    vnet_lisp_add_del_adjacency_args_t _a, * a = &_a;
-    a->is_add = mp->is_add;
-    a->authoritative = 0;
-    a->action = mp->action;
-    a->locators = rlocs;
-    gid_address_copy(&a->seid, seid);
-    gid_address_copy(&a->deid, deid);
-    rv = vnet_lisp_add_del_adjacency (a);
+        /* TODO remove once CSIT switched to lisp_add_del_adjacency */
+        vnet_lisp_add_del_adjacency_args_t _a, * a = &_a;
+        gid_address_copy(&a->seid, seid);
+        gid_address_copy(&a->deid, deid);
+        a->is_add = 1;
+        vnet_lisp_add_del_adjacency (a);
+    }
 
     if (mp->del_all)
       vnet_lisp_clear_all_remote_adjacencies ();
@@ -5133,8 +5128,6 @@ static void
 vl_api_lisp_add_del_adjacency_t_handler (
     vl_api_lisp_add_del_adjacency_t *mp)
 {
-    u32 i;
-    locator_t rloc;
     vl_api_lisp_add_del_adjacency_reply_t * rmp;
     vnet_lisp_add_del_adjacency_args_t _a, * a = &_a;
 
@@ -5178,29 +5171,9 @@ vl_api_lisp_add_del_adjacency_t_handler (
         goto send_reply;
       }
 
-    for (i = 0; i < mp->rloc_num; i++) {
-        rloc_t * r = &((rloc_t *) mp->rlocs)[i];
-        memset(&rloc, 0, sizeof(rloc));
-        ip_address_set(&gid_address_ip(&rloc.address), &r->addr,
-                       r->is_ip4 ? IP4 : IP6);
-        gid_address_ippref_len(&rloc.address) = r->is_ip4 ? 32: 128;
-        gid_address_type(&rloc.address) = GID_ADDR_IP_PREFIX;
-        rloc.priority = r->priority;
-        rloc.weight = r->weight;
-        vec_add1 (a->locators, rloc);
-    }
-
-    a->action = mp->action;
     a->is_add = mp->is_add;
-
-    /* NOTE: the remote mapping is static, i.e.,  not authoritative and
-     * ttl is infinite. */
-    a->authoritative = 0;
-    a->ttl = ~0;
-
     rv = vnet_lisp_add_del_adjacency (a);
 
-    vec_free (a->locators);
 send_reply:
     REPLY_MACRO(VL_API_LISP_ADD_DEL_ADJACENCY_REPLY);
 }

@@ -180,10 +180,6 @@ typedef struct
 {
   gid_address_t deid;
   gid_address_t seid;
-  locator_t * locators;
-  u8 action;
-  u8 authoritative;
-  u32 ttl;
   u8 is_add;
 } vnet_lisp_add_del_adjacency_args_t;
 

@@ -692,14 +692,16 @@ compare_locators (lisp_cp_main_t *lcm, u32 * old_ls_indexes,
 /**
  * Adds/removes/updates mapping. Does not program forwarding.
  *
- * @param deid destination EID
+ * @param eid end-host identifier
  * @param rlocs vector of remote locators
  * @param action action for negative map-reply
  * @param is_add add mapping if non-zero, delete otherwise
+ * @param res_map_index the map-index that was created/updated/removed. It is
+ *                      set to ~0 if no action is taken.
  * @return return code
  */
 int
-vnet_lisp_add_del_mapping (gid_address_t * deid, locator_t * rlocs, u8 action,
+vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
                            u8 authoritative, u32 ttl, u8 is_add,
                            u32 * res_map_index)
 {
@@ -723,14 +725,14 @@ vnet_lisp_add_del_mapping (gid_address_t * deid, locator_t * rlocs, u8 action,
 
   ls_args->locators = rlocs;
 
-  mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, deid);
+  mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, eid);
   old_map = ((u32) ~0 != mi) ? pool_elt_at_index(lcm->mapping_pool, mi) : 0;
 
   if (is_add)
     {
       /* overwrite: if mapping already exists, decide if locators should be
        * updated and be done */
-      if (old_map && gid_address_cmp (&old_map->eid, deid) == 0)
+      if (old_map && gid_address_cmp (&old_map->eid, eid) == 0)
         {
           locator_set_t * old_ls;
 
@@ -761,7 +763,7 @@ vnet_lisp_add_del_mapping (gid_address_t * deid, locator_t * rlocs, u8 action,
           vnet_lisp_add_del_locator_set (ls_args, &ls_index);
 
           /* add mapping */
-          gid_address_copy (&m_args->eid, deid);
+          gid_address_copy (&m_args->eid, eid);
           m_args->is_add = 1;
           m_args->action = action;
           m_args->locator_set_index = ls_index;
@@ -773,15 +775,15 @@ vnet_lisp_add_del_mapping (gid_address_t * deid, locator_t * rlocs, u8 action,
     }
   else
     {
-      if (old_map == 0 || gid_address_cmp (&old_map->eid, deid) != 0)
+      if (old_map == 0 || gid_address_cmp (&old_map->eid, eid) != 0)
         {
           clib_warning("cannot delete mapping for eid %U", format_gid_address,
-                       deid);
+                       eid);
           return -1;
         }
 
       m_args->is_add = 0;
-      gid_address_copy (&m_args->eid, deid);
+      gid_address_copy (&m_args->eid, eid);
       m_args->locator_set_index = old_map->locator_set_index;
 
       /* delete mapping associated from map-cache */
@@ -845,15 +847,15 @@ cleanup:
 }
 
 /**
- * Adds remote mapping and sets it as adjacency for local eid or removes
- * forwarding entry associated to remote mapping. Note that adjacencies
- * are not stored, they only result in forwarding entries being created.
+ * Adds adjacency or removes forwarding entry associated to remote mapping.
+ * Note that adjacencies are not stored, they only result in forwarding entries
+ * being created.
  */
 int
-lisp_add_del_adjacency (lisp_cp_main_t * lcm,
-                             vnet_lisp_add_del_adjacency_args_t * a)
+lisp_add_del_adjacency (lisp_cp_main_t * lcm, gid_address_t * local_eid,
+                        gid_address_t * remote_eid, u8 is_add)
 {
-  u32 src_map_index, dst_map_index = ~0;
+  u32 local_mi, remote_mi = ~0;
 
   if (vnet_lisp_enable_disable_status () == 0)
     {
@@ -861,36 +863,39 @@ lisp_add_del_adjacency (lisp_cp_main_t * lcm,
       return VNET_API_ERROR_LISP_DISABLED;
     }
 
-  /* insert/update mappings cache */
-  vnet_lisp_add_del_mapping (&a->deid, a->locators, a->action,
-                             a->authoritative, a->ttl, a->is_add,
-                             &dst_map_index);
+  remote_mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, remote_eid);
+  if (GID_LOOKUP_MISS == remote_mi)
+    {
+      clib_warning("Remote eid %U not found. Cannot add adjacency!",
+                   format_gid_address, remote_eid);
 
-  if (a->is_add)
+      return -1;
+    }
+
+  if (is_add)
     {
       /* TODO 1) check if src/dst 2) once we have src/dst working, use it in
        * delete*/
 
       /* check if source eid has an associated mapping. If pitr mode is on,
        * just use the pitr's mapping */
-      src_map_index = lcm->lisp_pitr ? lcm->pitr_map_index :
-              gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->seid);
+      local_mi = lcm->lisp_pitr ? lcm->pitr_map_index :
+              gid_dictionary_lookup (&lcm->mapping_index_by_gid, local_eid);
 
 
-      if (GID_LOOKUP_MISS == src_map_index)
+      if (GID_LOOKUP_MISS == local_mi)
         {
-          clib_warning("seid %U not found. Cannot program forwarding!",
-                       format_gid_address, &a->seid);
+          clib_warning("Local eid %U not found. Cannot add adjacency!",
+                       format_gid_address, local_eid);
 
           return -1;
         }
 
-      /* update forwarding if a destination mapping index was found */
-      if ((u32) ~0 != dst_map_index)
-        dp_add_fwd_entry (lcm, src_map_index, dst_map_index);
+      /* update forwarding */
+      dp_add_fwd_entry (lcm, local_mi, remote_mi);
     }
   else
-    dp_del_fwd_entry (lcm, 0, dst_map_index);
+    dp_del_fwd_entry (lcm, 0, remote_mi);
 
   return 0;
 }
@@ -899,7 +904,7 @@ int
 vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a)
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
-  return lisp_add_del_adjacency(lcm, a);
+  return lisp_add_del_adjacency(lcm, &a->seid, &a->deid, a->is_add);
 }
 
 /**
@@ -1060,10 +1065,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   if (!is_add)
     {
       lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
-      vnet_lisp_add_del_adjacency_args_t _a, * a = &_a;
-      gid_address_copy(&a->deid, &deid);
-      a->is_add = 0;
-      rv = lisp_add_del_adjacency (lcm, a);
+      rv = lisp_add_del_adjacency (lcm, 0, &deid, /* is_add */ 0);
     }
   else
     {
@@ -1158,24 +1160,6 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
           gid_address_type (&seid) = GID_ADDR_MAC;
           seid_set = 1;
         }
-      else if (unformat (line_input, "rloc %U", unformat_ip_address, &rloc.address))
-        vec_add1 (rlocs, rloc);
-      else if (unformat (line_input, "action %s", &s))
-        {
-          if (!strcmp ((char *)s, "no-action"))
-            action = ACTION_NONE;
-          if (!strcmp ((char *)s, "natively-forward"))
-            action = ACTION_NATIVELY_FORWARDED;
-          if (!strcmp ((char *)s, "send-map-request"))
-            action = ACTION_SEND_MAP_REQUEST;
-          else if (!strcmp ((char *)s, "drop"))
-            action = ACTION_DROP;
-          else
-            {
-              clib_warning ("invalid action: '%s'", s);
-              goto done;
-            }
-        }
       else
         {
           clib_warning ("parse error");
@@ -1215,14 +1199,10 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   memset(a, 0, sizeof(a[0]));
-  a->action = action;
+  gid_address_copy (&a->seid, &deid);
+  gid_address_copy (&a->deid, &seid);
+
   a->is_add = is_add;
-
-  /* NOTE: the remote mapping is static, i.e.,  not authoritative and
-   * ttl is infinite. */
-  a->authoritative = 0;
-  a->ttl = ~0;
-
   rv = vnet_lisp_add_del_adjacency (a);
 
   if (rv)
@@ -2770,7 +2750,7 @@ format_lisp_cp_input_trace (u8 * s, va_list * args)
 void
 process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
 {
-  u32 len = 0, i, ttl;
+  u32 len = 0, i, ttl, dst_map_index = 0;
   void * h;
   pending_map_request_t * pmr;
   locator_t probed;
@@ -2780,7 +2760,6 @@ process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
   uword * pmr_index;
   u8 authoritative, action;
   locator_t * locators = 0, * loc;
-  vnet_lisp_add_del_adjacency_args_t _a, * a = &_a;
 
   mrep_hdr = vlib_buffer_get_current (b);
 
@@ -2816,16 +2795,13 @@ process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
           return;
         }
 
-      memset(a, 0, sizeof(*a));
-      a->action = action;
-      a->authoritative = authoritative;
-      a->ttl = ttl;
-      a->locators = locators;
-      gid_address_copy(&a->seid, &pmr->src);
-      gid_address_copy(&a->deid, &deid);
-      a->is_add = 1;
+      /* insert/update mappings cache */
+      vnet_lisp_add_del_mapping (&deid, locators, action, authoritative, ttl, 1,
+                                 &dst_map_index);
 
-      lisp_add_del_adjacency (lcm, a);
+      /* try to program forwarding only if mapping saved or updated*/
+      if ((u32) ~0 != dst_map_index)
+        lisp_add_del_adjacency (lcm, &pmr->src, &deid, 1);
 
       vec_free(locators);
     }
