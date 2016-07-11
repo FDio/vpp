@@ -210,9 +210,11 @@ def generate_jni_impl(func_list, inputfile):
             for t in zip(f['c_types'], f['args'], f['lengths']):
                 c_type = t[0]
                 c_name = t[1]
-                # variable length arrays do not need special handling in requests,
-                # because the length of Java array is known:
                 field_length = t[2][0]
+
+                # check if we are processing variable length array:
+                if t[2][1]:
+                    field_length = util.underscore_to_camelcase(t[2][0])
 
                 java_field_name = util.underscore_to_camelcase(c_name)
 
