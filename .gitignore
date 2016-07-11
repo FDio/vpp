@@ -69,3 +69,6 @@ GTAGS
 
 # indent backup files
 *.BAK
+
+# Python bytecode
+*.pyc
