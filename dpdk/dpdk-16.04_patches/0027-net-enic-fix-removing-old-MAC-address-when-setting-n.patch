@@ -1,0 +1,34 @@
+From 620b173ae0f77c1a5af2592a27b5db8a6ce88bb6 Mon Sep 17 00:00:00 2001
+From: Nelson Escobar <neescoba@cisco.com>
+Date: Thu, 7 Jul 2016 18:11:08 -0700
+Subject: [PATCH 2/2] net/enic: fix removing old MAC address when setting new
+ one
+
+enic_set_mac_address() meant to remove the old MAC address before
+setting the new one, but accidentally tried removing the new MAC
+address before setting the new MAC address.
+
+Fixes: fefed3d1e62c ("enic: new driver")
+
+Signed-off-by: Nelson Escobar <neescoba@cisco.com>
+Reviewed-by: John Daley <johndale@cisco.com>
+---
+ drivers/net/enic/enic_main.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/enic/enic_main.c b/drivers/net/enic/enic_main.c
+index 5d47c01..d8669cc 100644
+--- a/drivers/net/enic/enic_main.c
++++ b/drivers/net/enic/enic_main.c
+@@ -215,7 +215,7 @@ void enic_set_mac_address(struct enic *enic, uint8_t *mac_addr)
+ 		return;
+ 	}
+ 
+-	err = vnic_dev_del_addr(enic->vdev, mac_addr);
++	err = vnic_dev_del_addr(enic->vdev, enic->mac_addr);
+ 	if (err) {
+ 		dev_err(enic, "del mac addr failed\n");
+ 		return;
+-- 
+2.7.0
+
