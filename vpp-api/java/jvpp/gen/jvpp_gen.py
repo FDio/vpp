@@ -17,6 +17,7 @@
 import argparse
 import importlib
 import sys
+import os
 
 import callback_gen
 import notification_gen
@@ -40,11 +41,20 @@ from util import vpp_2_jni_type_mapping
 
 parser = argparse.ArgumentParser(description='VPP Java API generator')
 parser.add_argument('-i', action="store", dest="inputfile")
+parser.add_argument('-p', action="store", dest="prefix")
+parser.add_argument('--base_package', action="store", dest="base_package",default='org.openvpp.jvpp')
 args = parser.parse_args()
 
 sys.path.append(".")
 
-inputfile = args.inputfile.replace('.py', '')
+print "args.inputfile %s" % args.inputfile
+importdir = os.path.dirname(args.inputfile)
+print "importdir %s" % importdir
+inputfile = os.path.basename(args.inputfile)
+inputfile = inputfile.replace('.py', '')
+print "inputfile %s" % inputfile
+base_package = args.base_package
+sys.path.append(importdir)
 cfg = importlib.import_module(inputfile, package=None)
 
 
@@ -124,7 +134,6 @@ def get_definitions():
 
 func_list, func_name = get_definitions()
 
-base_package = 'org.openvpp.jvpp'
 dto_package = 'dto'
 callback_package = 'callback'
 notification_package = 'notification'
