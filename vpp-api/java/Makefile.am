@@ -23,7 +23,10 @@ lib_LTLIBRARIES =
 
 nobase_include_HEADERS =		\
   japi/org_openvpp_vppjapi_vppApi.h	\
-  japi/org_openvpp_vppjapi_vppConn.h
+  japi/org_openvpp_vppjapi_vppConn.h \
+  japi/vppjni.h \
+  japi/vppjni_env.h \
+  japi/vppjni_bridge_domain.h
 
 lib_LTLIBRARIES += libvppjni.la
 
