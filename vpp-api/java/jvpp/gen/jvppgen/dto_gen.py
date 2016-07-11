@@ -39,7 +39,7 @@ field_template = Template("""    public $type $name;\n""")
 
 send_template = Template("""    @Override
     public int send(final $base_package.JVpp jvpp) throws org.openvpp.jvpp.VppInvocationException {
-        return jvpp.$method_name($args);
+        return (($base_package.JVppCore)jvpp).$method_name($args);
     }\n""")
 
 
