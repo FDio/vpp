@@ -526,6 +526,15 @@ void increment_v6_address (ip6_address_t * a)
     a->as_u64[1] = clib_net_to_host_u64 (v1);
 }
 
+void increment_mac_address (u64 *mac)
+{
+    u64 tmp = *mac;
+
+    tmp = clib_net_to_host_u64(tmp);
+    tmp += 1<<16; /* skip unused (least significant) octets */
+    tmp = clib_host_to_net_u64 (tmp);
+    *mac = tmp;
+}
 
 static void vl_api_create_loopback_reply_t_handler 
 (vl_api_create_loopback_reply_t * mp)
@@ -3909,6 +3918,9 @@ static int api_l2fib_add_del (vat_main_t * vam)
     u8 static_mac = 0;
     u8 filter_mac = 0;
     u8 bvi_mac = 0;
+    int count = 1;
+    f64 before = 0;
+    int j;
 
     /* Parse args required to build the message */
     while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
@@ -3920,22 +3932,24 @@ static int api_l2fib_add_del (vat_main_t * vam)
             sw_if_index_set = 1;	
 	else if (unformat (i, "sw_if")) {
 	    if (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
-                if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
-                    sw_if_index_set = 1;
+		if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+		    sw_if_index_set = 1;
 	    } else
 		break;
 	} else if (unformat (i, "static"))
-		static_mac = 1;
+	    static_mac = 1;
 	else if (unformat (i, "filter")) {
-		filter_mac = 1;
-		static_mac = 1;
-    } else if (unformat (i, "bvi")) {
-        bvi_mac = 1;
-        static_mac = 1;
+	    filter_mac = 1;
+	    static_mac = 1;
+	} else if (unformat (i, "bvi")) {
+	    bvi_mac = 1;
+	    static_mac = 1;
 	} else if (unformat (i, "del"))
-		is_add = 0;
+	    is_add = 0;
+        else if (unformat (i, "count %d", &count))
+	    ;
 	else
-            break;
+	    break;
     }
 
     if (mac_set == 0) {
@@ -3953,22 +3967,66 @@ static int api_l2fib_add_del (vat_main_t * vam)
         return -99;
     }
 
-    M(L2FIB_ADD_DEL, l2fib_add_del);
-
-    mp->mac = mac;
-    mp->bd_id = ntohl(bd_id);
-    mp->is_add = is_add;
-
-    if (is_add) {
-        mp->sw_if_index = ntohl(sw_if_index);
-        mp->static_mac = static_mac;
-        mp->filter_mac = filter_mac;
-        mp->bvi_mac = bvi_mac;
+    if (count > 1) {
+        /* Turn on async mode */
+        vam->async_mode = 1;
+        vam->async_errors = 0;
+        before = vat_time_now(vam);
     }
-    
-    S; W;
-    /* NOTREACHED */
-    return 0;
+
+    for (j = 0; j < count; j++) {
+	M(L2FIB_ADD_DEL, l2fib_add_del);
+	
+	mp->mac = mac;
+	mp->bd_id = ntohl(bd_id);
+	mp->is_add = is_add;
+	
+	if (is_add) {
+	    mp->sw_if_index = ntohl(sw_if_index);
+	    mp->static_mac = static_mac;
+	    mp->filter_mac = filter_mac;
+	    mp->bvi_mac = bvi_mac;
+	}
+	increment_mac_address (&mac);
+	/* send it... */
+        S;
+    }
+
+    if (count > 1) {
+        vl_api_control_ping_t * mp;
+        f64 after;
+
+        /* Shut off async mode */
+        vam->async_mode = 0;
+
+        M(CONTROL_PING, control_ping);
+        S;
+
+        timeout = vat_time_now(vam) + 1.0;
+        while (vat_time_now (vam) < timeout)
+            if (vam->result_ready == 1)
+                goto out;
+        vam->retval = -99;
+
+    out:
+        if (vam->retval == -99)
+            errmsg ("timeout\n");
+
+        if (vam->async_errors > 0) {
+            errmsg ("%d asynchronous errors\n", vam->async_errors);
+            vam->retval = -98;
+        }
+        vam->async_errors = 0;
+        after = vat_time_now(vam);
+
+        fformat(vam->ofp, "%d routes in %.6f secs, %.2f routes/sec\n",
+                count, after - before, count / (after - before));
+    } else {
+        /* Wait for a reply... */
+        W;
+    }
+    /* Return the good/bad news */
+    return (vam->retval);
 }
 
 static int api_l2_flags (vat_main_t * vam)
@@ -12214,7 +12272,7 @@ _(bridge_domain_add_del,                                                \
   "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] [learn 1|0] [arp-term 1|0] [del]\n")\
 _(bridge_domain_dump, "[bd_id <bridge-domain-id>]\n")     \
 _(l2fib_add_del,                                                        \
-  "mac <mac-addr> bd_id <bridge-domain-id> [del] | sw_if <intfc> | sw_if_index <id> [static] [filter] [bvi]\n") \
+  "mac <mac-addr> bd_id <bridge-domain-id> [del] | sw_if <intfc> | sw_if_index <id> [static] [filter] [bvi] [count <nn>]\n") \
 _(l2_flags,                                                             \
   "sw_if <intfc> | sw_if_index <id> [learn] [forward] [uu-flood] [flood]\n")       \
 _(bridge_flags,                                                         \
