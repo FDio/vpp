@@ -61,6 +61,8 @@ mkdir -p -m755 %{buildroot}%{_bindir}
 mkdir -p -m755 %{buildroot}%{_unitdir}
 install -p -m 755 %{_vpp_install_dir}/*/bin/* %{buildroot}%{_bindir}
 install -p -m 755 %{_vpp_build_dir}/vppapigen/vppapigen %{buildroot}%{_bindir}
+install -p -m 755 ../../vpp-api/java/jvpp/gen/jvpp_gen.py %{buildroot}%{_bindir}
+install -p -m 644 ../../vpp-api/java/jvpp/gen/jvpp_gen/*.py %{python2_sitelib}/jvppgen
 #
 # configs
 #
