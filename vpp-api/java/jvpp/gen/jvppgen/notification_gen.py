@@ -135,30 +135,30 @@ def generate_notification_registry(func_list, base_package, notification_package
                                                                 dto_package=dto_package,
                                                                 notification=notification_dto,
                                                                 callback=callback_ifc))
+    if(callbacks):
+      callback_file = open(os.path.join(notification_package, "NotificationRegistry.java"), 'w')
+      callback_file.write(notification_registry_template.substitute(inputfile=inputfile,
+                                                                    register_callback_methods="\n    ".join(register_callback_methods),
+                                                                    base_package=base_package,
+                                                                    notification_package=notification_package))
+      callback_file.flush()
+      callback_file.close()
 
-    callback_file = open(os.path.join(notification_package, "NotificationRegistry.java"), 'w')
-    callback_file.write(notification_registry_template.substitute(inputfile=inputfile,
-                                                                  register_callback_methods="\n    ".join(register_callback_methods),
-                                                                  base_package=base_package,
-                                                                  notification_package=notification_package))
-    callback_file.flush()
-    callback_file.close()
+      callback_file = open(os.path.join(notification_package, "GlobalNotificationCallback.java"), 'w')
+      callback_file.write(global_notification_callback_template.substitute(inputfile=inputfile,
+                                                                           callbacks=", ".join(callbacks),
+                                                                           base_package=base_package,
+                                                                           notification_package=notification_package))
+      callback_file.flush()
+      callback_file.close()
 
-    callback_file = open(os.path.join(notification_package, "GlobalNotificationCallback.java"), 'w')
-    callback_file.write(global_notification_callback_template.substitute(inputfile=inputfile,
-                                                                         callbacks=", ".join(callbacks),
+      callback_file = open(os.path.join(notification_package, "NotificationRegistryImpl.java"), 'w')
+      callback_file.write(notification_registry_impl_template.substitute(inputfile=inputfile,
+                                                                         callback_package=callback_package,
+                                                                         dto_package=dto_package,
+                                                                         register_callback_methods="".join(register_callback_methods_impl),
+                                                                         handler_methods="".join(handler_methods),
                                                                          base_package=base_package,
                                                                          notification_package=notification_package))
-    callback_file.flush()
-    callback_file.close()
-
-    callback_file = open(os.path.join(notification_package, "NotificationRegistryImpl.java"), 'w')
-    callback_file.write(notification_registry_impl_template.substitute(inputfile=inputfile,
-                                                                       callback_package=callback_package,
-                                                                       dto_package=dto_package,
-                                                                       register_callback_methods="".join(register_callback_methods_impl),
-                                                                       handler_methods="".join(handler_methods),
-                                                                       base_package=base_package,
-                                                                       notification_package=notification_package))
-    callback_file.flush()
-    callback_file.close()
+      callback_file.flush()
+      callback_file.close()
