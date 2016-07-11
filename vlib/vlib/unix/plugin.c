@@ -221,6 +221,38 @@ vlib_plugin_early_init (vlib_main_t * vm)
   return vlib_load_new_plugins (pm, 1 /* from_early_init */ );
 }
 
+static clib_error_t *
+vlib_plugins_show_cmd_fn (vlib_main_t * vm,
+                      unformat_input_t * input,
+                      vlib_cli_command_t * cmd)
+{
+  plugin_main_t *pm = &vlib_plugin_main;
+  u8 *s = 0;
+  u8 *key = 0;
+  uword *value = 0;
+  int index = 1;
+
+  s = format(s, " Plugin path is: %s\n",pm->plugin_path);
+  if (vlib_plugin_name_filter)
+    s = format(s," Plugin filter: %s\n",vlib_plugin_name_filter);
+
+  s = format(s, " Plugins loaded: \n");
+  hash_foreach_mem (key, value, pm->plugin_by_name_hash, {
+      if (key != 0)
+        s = format(s, "  %d.%s\n",index, key);
+      index++;
+    });
+
+  vlib_cli_output(vm, "%v", s);
+  vec_free(s);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (plugins_show_cmd, static) = {
+  .path = "show plugins",
+  .short_help = "show loaded plugins",
+  .function = vlib_plugins_show_cmd_fn,
+};
 /*
  * fd.io coding-style-patch-verification: ON
  *
