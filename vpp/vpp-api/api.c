@@ -5746,7 +5746,7 @@ static void vl_api_ipsec_spd_add_del_entry_t_handler
     p.is_outbound = mp->is_outbound;
     p.is_ipv6 = mp->is_ipv6;
 
-    if (mp->is_ipv6) {
+    if (mp->is_ipv6 || mp->is_ip_any) {
         clib_memcpy(&p.raddr.start, mp->remote_address_start, 16);
         clib_memcpy(&p.raddr.stop, mp->remote_address_stop, 16);
         clib_memcpy(&p.laddr.start, mp->local_address_start, 16);

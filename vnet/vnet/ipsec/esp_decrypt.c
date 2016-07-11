@@ -42,7 +42,8 @@ typedef enum {
  _(NO_BUFFER, "No buffer (packed dropped)")         \
  _(DECRYPTION_FAILED, "ESP decryption failed")      \
  _(INTEG_ERROR, "Integrity check failed")           \
- _(REPLAY, "SA replayed packet")
+ _(REPLAY, "SA replayed packet")                    \
+ _(NOT_IP, "Not IP packet (dropped)")
 
 
 typedef enum {
@@ -265,6 +266,11 @@ esp_decrypt_node_fn (vlib_main_t * vm,
           ipsec_sa_t * sa0;
           u32 sa_index0 = ~0;
           u32 seq;
+          ip4_header_t *ih4 = 0, *oh4 = 0;
+          ip6_header_t *ih6 = 0, *oh6 = 0;
+          u8 tunnel_mode = 1;
+          u8 transport_ip6 = 0;
+
 
           i_bi0 = from[0];
           from += 1;
@@ -345,34 +351,103 @@ esp_decrypt_node_fn (vlib_main_t * vm,
             const int BLOCK_SIZE = 16;
             const int IV_SIZE = 16;
             esp_footer_t * f0;
+            u8 ip_hdr_size = 0;
 
             int blocks = (i_b0->current_length - sizeof (esp_header_t) - IV_SIZE) / BLOCK_SIZE;
 
             o_b0->current_data = sizeof(ethernet_header_t);
 
+            /* transport mode */
+            if (PREDICT_FALSE(!sa0->is_tunnel && !sa0->is_tunnel_ip6))
+              {
+                tunnel_mode = 0;
+                ih4 = (ip4_header_t *) (i_b0->data + sizeof(ethernet_header_t));
+                if (PREDICT_TRUE((ih4->ip_version_and_header_length & 0xF0 ) != 0x40))
+                  {
+                    if (PREDICT_TRUE((ih4->ip_version_and_header_length & 0xF0 ) == 0x60))
+                      {
+                        transport_ip6 = 1;
+                        ip_hdr_size = sizeof(ip6_header_t);
+                        ih6 = (ip6_header_t *) (i_b0->data + sizeof(ethernet_header_t));
+                        oh6 = vlib_buffer_get_current (o_b0);
+                      }
+                    else
+                      {
+                        vlib_node_increment_counter (vm, esp_decrypt_node.index,
+                                                     ESP_DECRYPT_ERROR_NOT_IP,
+                                                     1);
+                        o_b0 = 0;
+                        goto trace;
+                      }
+                  }
+                else
+                  {
+                    oh4 = vlib_buffer_get_current (o_b0);
+                    ip_hdr_size = sizeof(ip4_header_t);
+                  }
+              }
+
             esp_decrypt_aes_cbc(sa0->crypto_alg,
                                 esp0->data + IV_SIZE,
-                                (u8 *) vlib_buffer_get_current (o_b0),
+                                (u8 *) vlib_buffer_get_current (o_b0) + ip_hdr_size,
                                 BLOCK_SIZE * blocks,
                                 sa0->crypto_key,
                                 esp0->data);
 
-            o_b0->current_length = (blocks * 16) - 2;
+            o_b0->current_length = (blocks * 16) - 2 + ip_hdr_size;
             o_b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
             f0 = (esp_footer_t *) ((u8 *) vlib_buffer_get_current (o_b0) + o_b0->current_length);
             o_b0->current_length -= f0->pad_length;
-            if (PREDICT_TRUE(f0->next_header == IP_PROTOCOL_IP_IN_IP))
-              next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
-            else if (f0->next_header == IP_PROTOCOL_IPV6)
-              next0 = ESP_DECRYPT_NEXT_IP6_INPUT;
+
+            /* tunnel mode */
+            if (PREDICT_TRUE(tunnel_mode))
+              {
+                if (PREDICT_TRUE(f0->next_header == IP_PROTOCOL_IP_IN_IP))
+                  next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
+                else if (f0->next_header == IP_PROTOCOL_IPV6)
+                  next0 = ESP_DECRYPT_NEXT_IP6_INPUT;
+                else
+                  {
+                    clib_warning("next header: 0x%x", f0->next_header);
+                    vlib_node_increment_counter (vm, esp_decrypt_node.index,
+                                                 ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
+                                                 1);
+                    o_b0 = 0;
+                    goto trace;
+                  }
+              }
+            /* transport mode */
             else
               {
-                clib_warning("next header: 0x%x", f0->next_header);
-                vlib_node_increment_counter (vm, esp_decrypt_node.index,
-                                             ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
-                                             1);
-                o_b0 = 0;
-                goto trace;
+                if (PREDICT_FALSE(transport_ip6))
+                  {
+                    next0 = ESP_DECRYPT_NEXT_IP6_INPUT;
+                    oh6->ip_version_traffic_class_and_flow_label =
+                        ih6->ip_version_traffic_class_and_flow_label;
+                    oh6->protocol = f0->next_header;
+                    oh6->hop_limit = ih6->hop_limit;
+                    oh6->src_address.as_u64[0] = ih6->src_address.as_u64[0];
+                    oh6->src_address.as_u64[1] = ih6->src_address.as_u64[1];
+                    oh6->dst_address.as_u64[0] = ih6->dst_address.as_u64[0];
+                    oh6->dst_address.as_u64[1] = ih6->dst_address.as_u64[1];
+                    oh6->payload_length = clib_host_to_net_u16 (
+                        vlib_buffer_length_in_chain (vm, o_b0) - sizeof(ip6_header_t));
+                  }
+                else
+                  {
+                    next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
+                    oh4->ip_version_and_header_length = 0x45;
+                    oh4->tos = ih4->tos;
+                    oh4->fragment_id = 0;
+                    oh4->flags_and_fragment_offset = 0;
+                    oh4->ttl = ih4->ttl;
+                    oh4->protocol = f0->next_header;
+                    oh4->src_address.as_u32 = ih4->src_address.as_u32;
+                    oh4->dst_address.as_u32 = ih4->dst_address.as_u32;
+                    oh4->length = clib_host_to_net_u16 (
+                        vlib_buffer_length_in_chain (vm, o_b0));
+                    oh4->checksum = ip4_header_checksum (oh4);
+                  }
               }
 
             to_next[0] = o_bi0;

@@ -147,8 +147,8 @@ ip6_addr_match_range (ip6_address_t * a, ip6_address_t * la, ip6_address_t * ua)
 
 always_inline ipsec_policy_t *
 ipsec_output_ip6_policy_match (ipsec_spd_t * spd,
-                               ip6_address_t * sa,
-                               ip6_address_t * da,
+                               ip6_address_t * la,
+                               ip6_address_t * ra,
                                u16 lp,
                                u16 rp,
                                u8 pr)
@@ -162,10 +162,10 @@ ipsec_output_ip6_policy_match (ipsec_spd_t * spd,
       if (PREDICT_FALSE(p->protocol && (p->protocol != pr)))
         continue;
 
-      if (!ip6_addr_match_range(sa, &p->raddr.start.ip6, &p->raddr.stop.ip6))
+      if (!ip6_addr_match_range(ra, &p->raddr.start.ip6, &p->raddr.stop.ip6))
         continue;
 
-      if (!ip6_addr_match_range(da, &p->laddr.start.ip6, &p->laddr.stop.ip6))
+      if (!ip6_addr_match_range(la, &p->laddr.start.ip6, &p->laddr.stop.ip6))
         continue;
 
       if (PREDICT_FALSE((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP)))
