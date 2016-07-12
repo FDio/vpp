@@ -463,6 +463,7 @@ pg_capture_cmd_fn (vlib_main_t * vm,
   pg_interface_t * pi;
   u8 * pcap_file_name = 0;
   u32 hw_if_index;
+  u32 is_disable = 0;
   u32 count = ~0;
 
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -480,6 +481,8 @@ pg_capture_cmd_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "count %u", &count))
 	;
+      else if (unformat (line_input, "disable"))
+	is_disable = 1;
 
       else
 	{
@@ -495,21 +498,26 @@ pg_capture_cmd_fn (vlib_main_t * vm,
   if (hi->dev_class_index != pg_dev_class.index)
     return clib_error_return (0, "Please specify packet-generator interface");
 
-  if (!pcap_file_name)
+  if (!pcap_file_name && is_disable == 0)
     return clib_error_return (0, "Please specify pcap file name");
 
-  {
-    struct stat sb;
-    if (stat ((char *) pcap_file_name, &sb) != -1)
-      return clib_error_return (0, "Cannot create pcap file");
-  }
+  if (is_disable == 0)
+    {
+      struct stat sb;
+      if (stat ((char *) pcap_file_name, &sb) != -1)
+	return clib_error_return (0, "Cannot create pcap file");
+    }
 
   unformat_free (line_input);
 
   pi = pool_elt_at_index (pg->interfaces, hi->dev_instance);
   vec_free (pi->pcap_file_name);
-  pi->pcap_file_name = pcap_file_name;
   memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
+
+  if (is_disable)
+    return 0;
+
+  pi->pcap_file_name = pcap_file_name;
   pi->pcap_main.file_name = (char *) pi->pcap_file_name;
   pi->pcap_main.n_packets_to_capture = count;
   pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;

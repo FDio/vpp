@@ -166,7 +166,7 @@ pcap_add_buffer (pcap_main_t * pm,
   f64 time_now = vlib_time_now (vm);
   void * d;
 
-  d = pcap_add_packet (pm, time_now, n_bytes_in_trace, n_left);
+  d = pcap_add_packet (pm, time_now, n_left, n);
   while (1)
     {
       u32 copy_length = clib_min ((u32) n_left, b->current_length);

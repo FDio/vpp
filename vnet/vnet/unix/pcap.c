@@ -59,6 +59,15 @@ file will be written after n_packets_to_capture or call to pcap_write (&pcap).
 */
 
 clib_error_t *
+pcap_close (pcap_main_t * pm)
+{
+  close (pm->file_descriptor);
+  pm->flags &= ~PCAP_MAIN_INIT_DONE;
+  pm->file_descriptor = -1;
+  return 0;
+}
+
+clib_error_t *
 pcap_write (pcap_main_t * pm)
 {
   clib_error_t * error = 0;
@@ -101,34 +110,29 @@ pcap_write (pcap_main_t * pm)
 	}
     }
 
-  do {
-    int n = vec_len (pm->pcap_data) - pm->n_pcap_data_written;
+  while (vec_len (pm->pcap_data) > pm->n_pcap_data_written)
+    {
+      int n = vec_len (pm->pcap_data) - pm->n_pcap_data_written;
 
-    if (n > 0)
-      {
-	n = write (pm->file_descriptor,
-		   vec_elt_at_index (pm->pcap_data, pm->n_pcap_data_written),
-		   n);
-	if (n < 0 && unix_error_is_fatal (errno))
-	  {
-	    error = clib_error_return_unix (0, "write `%s'", pm->file_name);
-	    goto done;
-	  }
+      n = write (pm->file_descriptor,
+		 vec_elt_at_index (pm->pcap_data, pm->n_pcap_data_written), n);
+
+      if (n < 0 && unix_error_is_fatal (errno))
+	{
+	  error = clib_error_return_unix (0, "write `%s'", pm->file_name);
+	  goto done;
+	}
+        pm->n_pcap_data_written += n;
       }
-    pm->n_pcap_data_written += n;
-    if (pm->n_pcap_data_written >= vec_len (pm->pcap_data))
-      {
-        vec_reset_length (pm->pcap_data);
-	break;
-      }
-  } while (pm->n_packets_captured >= pm->n_packets_to_capture);
+
+  if (pm->n_pcap_data_written >= vec_len (pm->pcap_data))
+    {
+      vec_reset_length (pm->pcap_data);
+      pm->n_pcap_data_written = 0;
+    }
 
   if (pm->n_packets_captured >= pm->n_packets_to_capture)
-    {
-      close (pm->file_descriptor);
-      pm->flags &= ~PCAP_MAIN_INIT_DONE;
-      pm->file_descriptor = -1;
-    }
+    pcap_close(pm);
 
  done:
   if (error)
