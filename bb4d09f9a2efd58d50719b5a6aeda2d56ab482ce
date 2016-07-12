@@ -42,6 +42,30 @@
     },
     {
       "key": {
+        "uuid": "da141535_710f93e2",
+        "filename": "vnet/vnet/ip/ping.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-07-12T16:19:53Z",
+      "side": 1,
+      "message": "vlib_cli_output() automatically adds \"\\n\", so the \"!\" and \".\" patterns that I tried to make in the lines 265 and 269 above become vertical... thoughts on the best way to fix that ? Add a vlib_cli_output_nonl() in vlib/vlib/cli.c ? Or a special handling for some \"anti-newline\" special character which would inhibit the addition of the \"\\n\" within the existing function ? (discussed in an email)",
+      "parentUuid": "da141535_b39bf871",
+      "range": {
+        "startLine": 280,
+        "startChar": 4,
+        "endLine": 280,
+        "endChar": 11
+      },
+      "revId": "bb4d09f9a2efd58d50719b5a6aeda2d56ab482ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da141535_9388f423",
         "filename": "vnet/vnet/ip/ping.c",
         "patchSetId": 2
