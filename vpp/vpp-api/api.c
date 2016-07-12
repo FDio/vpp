@@ -368,7 +368,10 @@ _(CLASSIFY_TABLE_INFO,classify_table_info)                              \
 _(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
 _(CLASSIFY_SESSION_DETAILS,classify_session_details)                    \
 _(IPFIX_ENABLE,ipfix_enable)                                            \
-_(IPFIX_DUMP,ipfix_dump)
+_(IPFIX_DUMP,ipfix_dump)                                                \
+_(PG_CREATE_INTERFACE, pg_create_interface)                             \
+_(PG_CAPTURE, pg_capture)                                               \
+_(PG_ENABLE_DISABLE, pg_enable_disable)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -7090,6 +7093,91 @@ static void vl_api_ipfix_dump_t_handler (vl_api_ipfix_dump_t *mp)
     rmp->template_interval = htonl(frm->template_interval);
 
     vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t *mp)
+{
+    vl_api_pg_create_interface_reply_t *rmp;
+    int rv = 0;
+
+    pg_main_t * pg = &pg_main;
+    u32 sw_if_index = pg_interface_add_or_get (pg, ntohl(mp->interface_id));
+
+    REPLY_MACRO2(VL_API_PG_CREATE_INTERFACE_REPLY,
+    ({
+       rmp->sw_if_index = ntohl(sw_if_index);
+    }));
+}
+
+static void vl_api_pg_capture_t_handler (vl_api_pg_capture_t *mp)
+{
+    vl_api_pg_capture_reply_t *rmp;
+    int rv = 0;
+
+    vnet_main_t * vnm = vnet_get_main();
+    vnet_interface_main_t * im = &vnm->interface_main;
+    pg_main_t * pg = &pg_main;
+    vnet_hw_interface_t * hi = 0;
+    pg_interface_t * pi;
+
+    u8 * intf_name = format (0, "pg%d", ntohl(mp->interface_id), 0);
+    u32 hw_if_index;
+    uword * p = hash_get_mem (im->hw_interface_by_name, intf_name);
+    if (p)
+    	hw_if_index = *p;
+    vec_free (intf_name);
+
+    u32 len = ntohl(mp->pcap_name_length)-1;
+    u8 * pcap_file_name = vec_new(u8, len);
+    clib_memcpy(pcap_file_name, mp->pcap_file_name, len);
+
+    hi = vnet_get_sup_hw_interface (vnm, hw_if_index);
+    pi = pool_elt_at_index (pg->interfaces, hi->dev_instance);
+    vec_free (pi->pcap_file_name);
+    pi->pcap_file_name = pcap_file_name;
+    memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
+    pi->pcap_main.file_name = (char *) pi->pcap_file_name;
+    pi->pcap_main.n_packets_to_capture = ntohl(mp->count);
+    pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+
+    REPLY_MACRO(VL_API_PG_CAPTURE_REPLY);
+}
+
+static void vl_api_pg_enable_disable_t_handler (vl_api_pg_enable_disable_t *mp)
+{
+    vl_api_pg_enable_disable_reply_t *rmp;
+    int rv = 0;
+
+    pg_main_t * pg = &pg_main;
+    pg_stream_t * s;
+    u32 stream_index = ~0;
+
+    int is_enable = mp->is_enabled != 0;
+    u32 len = ntohl(mp->stream_name_length)-1;
+
+    if (len>0) {
+        u8 * stream_name = vec_new(u8, len);
+        clib_memcpy(stream_name, mp->stream_name, len);
+        uword * p = hash_get_mem (pg->stream_index_by_name, stream_name);
+        if (p)
+            stream_index = *p;
+        vec_free(stream_name);
+
+        if (stream_index != ~0) {
+        	/* enable/disable specified stream. */
+        	s = pool_elt_at_index (pg->streams, stream_index);
+        	pg_stream_enable_disable (pg, s, is_enable);
+        }
+    }
+    else {
+		/* No stream specified: enable/disable all streams. */
+		if (stream_index == ~0)
+			pool_foreach (s, pg->streams, ({
+				pg_stream_enable_disable (pg, s, is_enable);
+			}));
+    }
+
+    REPLY_MACRO(VL_API_PG_ENABLE_DISABLE_REPLY);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

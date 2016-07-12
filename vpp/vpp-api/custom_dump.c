@@ -1875,6 +1875,45 @@ static void *vl_api_ipfix_dump_t_print
     FINISH;
 }
 
+static void *vl_api_pg_create_interface_t_print
+(vl_api_pg_create_interface_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: pg_create_interface ");
+    s = format (0, "if_id %d", ntohl(mp->interface_id));
+
+    FINISH;
+}
+
+static void *vl_api_pg_capture_t_print
+(vl_api_pg_capture_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: pg_capture ");
+    s = format (0, "if_id %d ", ntohl(mp->interface_id));
+    s = format (0, "pcap %s", mp->pcap_file_name);
+    if (mp->count != ~0)
+      s = format (s, "count %d ", ntohl(mp->count));
+
+    FINISH;
+}
+
+static void *vl_api_pg_enable_disable_t_print
+(vl_api_pg_enable_disable_t * mp, void *handle)
+{
+	u8 * s;
+
+    s = format (0, "SCRIPT: pg_enable_disable ");
+    if (ntohl(mp->stream_name_length) > 0)
+      s = format (s, "stream %s", mp->stream_name);
+    if (!mp->is_enabled)
+      s = format (s, "disable");
+
+    FINISH;
+}
+
 #define foreach_custom_print_function                                   \
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
@@ -1972,7 +2011,10 @@ _(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
 _(CLASSIFY_TABLE_INFO,classify_table_info)                              \
 _(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
 _(IPFIX_ENABLE,ipfix_enable)                                            \
-_(IPFIX_DUMP,ipfix_dump)
+_(IPFIX_DUMP,ipfix_dump)                                                \
+_(PG_CREATE_INTERFACE,pg_create_interface)                              \
+_(PG_CAPTURE, pg_capture)                                               \
+_(PG_ENABLE_DISABLE, pg_enable_disable)
 
 void vl_msg_api_custom_dump_configure (api_main_t *am) 
 {
