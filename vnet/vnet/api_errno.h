@@ -82,7 +82,8 @@ _(FAILED_TO_ATTACH_TO_JAVA_THREAD, -88, "Failed to attach to Java thread") \
 _(INVALID_WORKER, -89, "Invalid worker thread")                         \
 _(LISP_DISABLED, -90, "LISP is disabled")                               \
 _(CLASSIFY_TABLE_NOT_FOUND, -91, "Classify table not found")            \
-_(INVALID_EID_TYPE, -92, "Unsupported LSIP EID type")
+_(INVALID_EID_TYPE, -92, "Unsupported LSIP EID type")                   \
+_(CANNOT_CREATE_PCAP_FILE, -93, "Cannot create pcap file")
 
 typedef enum {
 #define _(a,b,c) VNET_API_ERROR_##a = (b),

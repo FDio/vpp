@@ -49,6 +49,8 @@
 
 #include "vat/json_format.h"
 
+#include <sys/stat.h>
+
 #define vl_typedefs             /* define message structures */
 #include <vpp-api/vpe_all_api_h.h> 
 #undef vl_typedefs
@@ -2781,13 +2783,41 @@ static void vl_api_classify_session_details_t_handler_json (vl_api_classify_sess
     vat_json_object_add_string_copy(node, "match", s);
 }
 
+static void vl_api_pg_create_interface_reply_t_handler
+(vl_api_pg_create_interface_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
+static void vl_api_pg_create_interface_reply_t_handler_json
+(vl_api_pg_create_interface_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t node;
+
+    i32 retval = ntohl(mp->retval);
+    if (retval == 0) {
+        vat_json_init_object(&node);
+
+        vat_json_object_add_int(&node, "sw_if_index", ntohl(mp->sw_if_index));
+
+        vat_json_print(vam->ofp, &node);
+        vat_json_free(&node);
+    }
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_print vl_noop_handler
 
 /* 
- * Generate boilerplate reply handlers, which 
+ * Generate boilerplate reply handlers, which
  * dig the return value out of the xxx_reply_t API message,
  * stick it into vam->retval, and set vam->result_ready
  *
@@ -2882,7 +2912,9 @@ _(af_packet_delete_reply)                               \
 _(policer_add_del_reply)                                \
 _(netmap_create_reply)                                  \
 _(netmap_delete_reply)                                  \
-_(ipfix_enable_reply)
+_(ipfix_enable_reply)                                   \
+_(pg_capture_reply)                                     \
+_(pg_enable_disable_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3088,7 +3120,10 @@ _(CLASSIFY_TABLE_INFO_REPLY, classify_table_info_reply)                 \
 _(CLASSIFY_SESSION_DETAILS, classify_session_details)                   \
 _(IPFIX_ENABLE_REPLY, ipfix_enable_reply)                               \
 _(IPFIX_DETAILS, ipfix_details)                                         \
-_(GET_NEXT_INDEX_REPLY, get_next_index_reply)
+_(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
+_(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
+_(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
+_(PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -12329,6 +12364,127 @@ int api_ipfix_dump (vat_main_t *vam)
     return 0;
 }
 
+int api_pg_create_interface (vat_main_t *vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_pg_create_interface_t *mp;
+    f64 timeout;
+
+    u32 if_id = ~0;
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (input, "if_id %d", &if_id))
+            ;
+        else
+            break;
+    }
+    if (if_id == ~0) {
+        errmsg ("missing pg interface index\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(PG_CREATE_INTERFACE, pg_create_interface);
+    mp->context = 0;
+    mp->interface_id = ntohl(if_id);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+int api_pg_capture (vat_main_t *vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_pg_capture_t *mp;
+    f64 timeout;
+
+    u32 if_id = ~0;
+    u8 enable = 1;
+    u32 count = 1;
+    u8 pcap_file_set = 0;
+    u8 * pcap_file = 0;
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (input, "if_id %d", &if_id))
+            ;
+        else if (unformat (input, "pcap %s", &pcap_file))
+            pcap_file_set = 1;
+        else if (unformat (input, "count %d", &count))
+            ;
+        else if (unformat (input, "disable"))
+            enable = 0;
+        else
+            break;
+    }
+    if (if_id == ~0) {
+        errmsg ("missing pg interface index\n");
+        return -99;
+    }
+    if (pcap_file_set>0) {
+    	if (vec_len (pcap_file) > 255) {
+    	    errmsg ("pcap file name is too long\n");
+    	    return -99;
+    	}
+    }
+
+    u32 name_len = vec_len(pcap_file);
+    /* Construct the API message */
+    M(PG_CAPTURE, pg_capture);
+    mp->context = 0;
+    mp->interface_id = ntohl(if_id);
+    mp->is_enabled = enable;
+    mp->count = ntohl(count);
+    mp->pcap_name_length = ntohl(name_len);
+    if (pcap_file_set != 0) {
+        clib_memcpy(mp->pcap_file_name, pcap_file, name_len);
+    }
+    vec_free(pcap_file);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+int api_pg_enable_disable (vat_main_t *vam)
+{
+    unformat_input_t * input = vam->input;
+    vl_api_pg_enable_disable_t *mp;
+    f64 timeout;
+
+    u8 enable = 1;
+    u8 stream_name_set = 0;
+    u8 * stream_name = 0;
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (input, "stream %s", &stream_name))
+            stream_name_set = 1;
+    	else if (unformat (input, "disable"))
+            enable = 0;
+        else
+            break;
+    }
+
+    if (stream_name_set>0) {
+    	if (vec_len (stream_name) > 255) {
+            errmsg ("stream name too long\n");
+            return -99;
+    	}
+    }
+
+    u32 name_len = vec_len(stream_name);
+    /* Construct the API message */
+    M(PG_ENABLE_DISABLE, pg_enable_disable);
+    mp->context = 0;
+    mp->is_enabled = enable;
+    if (stream_name_set != 0) {
+        mp->stream_name_length = ntohl(name_len);
+        clib_memcpy(mp->stream_name, stream_name, name_len);
+    }
+    vec_free(stream_name);
+
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
 static int q_or_quit (vat_main_t * vam)
 {
     longjmp (vam->jump_buf, 1);
@@ -12844,7 +13000,10 @@ _(ipfix_enable, "collector_address <ip4> [collector_port <nn>] "        \
                 "src_address <ip4> [fib_id <nn>] [path_mtu <nn>] "      \
                 "[template_interval <nn>]")                             \
 _(ipfix_dump, "")                                                       \
-_(get_next_index, "node-name <node-name> next-node-name <node-name>")
+_(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
+_(pg_create_interface, "if_id <nn>")                                    \
+_(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \
+_(pg_enable_disable, "[stream <id>] disable")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

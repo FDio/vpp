@@ -352,4 +352,16 @@ void pg_edit_group_get_fixed_packet_data (pg_stream_t * s,
 					  void * fixed_packet_data,
 					  void * fixed_packet_data_mask);
 
+void pg_enable_disable (u32 stream_index, int is_enable);
+
+typedef struct {
+  u32  hw_if_index;
+  u32  dev_instance;
+  u8   is_enabled;
+  u8 * pcap_file_name;
+  u32  count;
+} pg_capture_args_t;
+
+clib_error_t * pg_capture (pg_capture_args_t *a);
+
 #endif /* included_vlib_pg_h */
