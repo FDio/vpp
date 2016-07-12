@@ -52,13 +52,58 @@ VLIB_CLI_COMMAND (vlib_cli_pg_command, static) = {
   .short_help = "Packet generator commands",
 };
 
+void pg_enable_disable (u32 stream_index, int is_enable)
+{
+    pg_main_t * pg = &pg_main;
+    pg_stream_t * s;
+
+    if (stream_index == ~0) {
+        /* No stream specified: enable/disable all streams. */
+        pool_foreach (s, pg->streams, ({
+            pg_stream_enable_disable (pg, s, is_enable);
+        }));
+    }
+    else
+    {
+        /* enable/disable specified stream. */
+        s = pool_elt_at_index (pg->streams, stream_index);
+        pg_stream_enable_disable (pg, s, is_enable);
+    }
+}
+
+clib_error_t * pg_capture (pg_capture_args_t *a)
+{
+    pg_main_t * pg = &pg_main;
+    pg_interface_t * pi;
+
+    if (a->is_enabled == 1)
+    {
+        struct stat sb;
+        if (stat ((char *) a->pcap_file_name, &sb) != -1)
+            return clib_error_return (0, "Cannot create pcap file");
+    }
+
+    pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
+    vec_free (pi->pcap_file_name);
+    memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
+
+    if (a->is_enabled == 0)
+        return 0;
+
+    pi->pcap_file_name = a->pcap_file_name;
+    pi->pcap_main.file_name = (char *) pi->pcap_file_name;
+    pi->pcap_main.n_packets_to_capture = a->count;
+    pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+
+    return 0;
+}
+
 static clib_error_t *
 enable_disable_stream (vlib_main_t * vm,
 		       unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
 {
   pg_main_t * pg = &pg_main;
-  pg_stream_t * s;
   int is_enable = cmd->function_arg != 0;
   u32 stream_index = ~0;
 
@@ -71,18 +116,8 @@ enable_disable_stream (vlib_main_t * vm,
     return clib_error_create ("unknown input `%U'",
 			      format_unformat_error, input);
 
-  /* No stream specified: enable/disable all streams. */
-  if (stream_index == ~0)
-    pool_foreach (s, pg->streams, ({
-      pg_stream_enable_disable (pg, s, is_enable);
-    }));
-  else
-    {
-      /* enable/disable specified stream. */
-      s = pool_elt_at_index (pg->streams, stream_index);
-      pg_stream_enable_disable (pg, s, is_enable);
-    }
-		      
+  pg_enable_disable (stream_index, is_enable);
+
   return 0;
 }
 
@@ -455,12 +490,10 @@ pg_capture_cmd_fn (vlib_main_t * vm,
 		  unformat_input_t * input,
 		  vlib_cli_command_t * cmd)
 {
-  pg_main_t * pg = &pg_main;
   clib_error_t * error = 0;
   vnet_main_t * vnm = vnet_get_main();
   unformat_input_t _line_input, * line_input = &_line_input;
   vnet_hw_interface_t * hi = 0;
-  pg_interface_t * pi;
   u8 * pcap_file_name = 0;
   u32 hw_if_index;
   u32 is_disable = 0;
@@ -501,28 +534,18 @@ pg_capture_cmd_fn (vlib_main_t * vm,
   if (!pcap_file_name && is_disable == 0)
     return clib_error_return (0, "Please specify pcap file name");
 
-  if (is_disable == 0)
-    {
-      struct stat sb;
-      if (stat ((char *) pcap_file_name, &sb) != -1)
-	return clib_error_return (0, "Cannot create pcap file");
-    }
-
   unformat_free (line_input);
 
-  pi = pool_elt_at_index (pg->interfaces, hi->dev_instance);
-  vec_free (pi->pcap_file_name);
-  memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
+  pg_capture_args_t _a, *a=&_a;
 
-  if (is_disable)
-    return 0;
+  a->hw_if_index = hw_if_index;
+  a->dev_instance = hi->dev_instance;
+  a->is_enabled = !is_disable;
+  a->pcap_file_name = pcap_file_name;
+  a->count = count;
 
-  pi->pcap_file_name = pcap_file_name;
-  pi->pcap_main.file_name = (char *) pi->pcap_file_name;
-  pi->pcap_main.n_packets_to_capture = count;
-  pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
-
-  return 0;
+  error = pg_capture (a);
+  return error;
 }
 
 VLIB_CLI_COMMAND (pg_capture_cmd, static) = {
