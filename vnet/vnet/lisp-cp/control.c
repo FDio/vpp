@@ -1393,6 +1393,7 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
   u32 mi;
   gid_address_t eid;
   u8 print_all = 1;
+  u8 filter = 0;
 
   memset (&eid, 0, sizeof(eid));
 
@@ -1404,6 +1405,10 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "eid %U", unformat_gid_address, &eid))
         print_all = 0;
+      else if (unformat (line_input, "local"))
+        filter = 1;
+      else if (unformat(line_input, "remote"))
+        filter = 2;
       else
         return clib_error_return (0, "parse error: '%U'",
                                   format_unformat_error, line_input);
@@ -1417,6 +1422,11 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
       ({
         locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
                                                 mapit->locator_set_index);
+        if (filter && !((1 == filter && ls->local) ||
+          (2 == filter && !ls->local)))
+          {
+            continue;
+          }
         vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
                          lcm, &mapit->eid, ls);
       }));
@@ -1430,6 +1440,13 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
       mapit = pool_elt_at_index (lcm->mapping_pool, mi);
       locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
                                               mapit->locator_set_index);
+
+      if (filter && !((1 == filter && ls->local) ||
+        (2 == filter && !ls->local)))
+        {
+          return 0;
+        }
+
       vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
                        lcm, &mapit->eid, ls);
     }
