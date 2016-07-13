@@ -146,16 +146,7 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
       strncpy (ifr.ifr_name, e->d_name, IFNAMSIZ - 1);
       drvinfo.cmd = ETHTOOL_GDRVINFO;
       if (ioctl (fd, SIOCETHTOOL, &ifr) < 0)
-	{
-	  if (errno == ENOTSUP)
-	    /* Some interfaces (eg "lo") don't support this ioctl */
-	    continue;
-
-	  error = clib_error_return_unix (0, "ioctl fetch intf %s bus info",
-					  e->d_name);
-	  close (fd);
-	  goto done;
-	}
+	continue;
 
       if (strcmp ((char *) s, drvinfo.bus_info))
 	continue;
