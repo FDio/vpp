@@ -2048,6 +2048,36 @@ vl_api_lisp_local_eid_table_details_t_handler (
 }
 
 static void
+vl_api_lisp_eid_table_map_details_t_handler (
+    vl_api_lisp_eid_table_map_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+
+    u8 * line = format(0, "%=10d%=10d",
+                       clib_net_to_host_u32 (mp->vni),
+                       clib_net_to_host_u32 (mp->vrf));
+    fformat(vam->ofp, "%v\n", line);
+    vec_free(line);
+}
+
+static void
+vl_api_lisp_eid_table_map_details_t_handler_json (
+    vl_api_lisp_eid_table_map_details_t *mp)
+{
+    vat_main_t *vam = &vat_main;
+    vat_json_node_t *node = NULL;
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+        vat_json_init_array(&vam->json_tree);
+    }
+    node = vat_json_array_add(&vam->json_tree);
+    vat_json_init_object(node);
+    vat_json_object_add_uint(node, "vrf", clib_net_to_host_u32 (mp->vrf));
+    vat_json_object_add_uint(node, "vni", clib_net_to_host_u32 (mp->vni));
+}
+
+static void
 vl_api_lisp_local_eid_table_details_t_handler_json (
     vl_api_lisp_local_eid_table_details_t *mp)
 {
@@ -2959,6 +2989,7 @@ _(LISP_EID_TABLE_ADD_DEL_MAP_REPLY, lisp_eid_table_add_del_map_reply)   \
 _(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
 _(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
 _(LISP_LOCAL_EID_TABLE_DETAILS, lisp_local_eid_table_details)           \
+_(LISP_EID_TABLE_MAP_DETAILS, lisp_eid_table_map_details)               \
 _(LISP_GPE_TUNNEL_DETAILS, lisp_gpe_tunnel_details)                     \
 _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
 _(LISP_ENABLE_DISABLE_STATUS_DETAILS,                                   \
@@ -11193,6 +11224,34 @@ api_lisp_locator_set_dump(vat_main_t *vam)
 }
 
 static int
+api_lisp_eid_table_map_dump(vat_main_t *vam)
+{
+    vl_api_lisp_eid_table_map_dump_t *mp;
+    f64 timeout = ~0;
+
+    if (!vam->json_output) {
+        fformat (vam->ofp, "%=10s%=10s\n", "VNI", "VRF");
+    }
+
+    M(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump);
+
+    /* send it... */
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_control_ping_t * mp;
+        M(CONTROL_PING, control_ping);
+        S;
+    }
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static int
 api_lisp_local_eid_table_dump(vat_main_t *vam)
 {
     unformat_input_t * i = vam->input;
@@ -12620,6 +12679,7 @@ _(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
 _(lisp_eid_table_add_del_map, "[del] vni <vni> vrf <vrf>")              \
 _(lisp_locator_set_dump, "")                                            \
 _(lisp_local_eid_table_dump, "")                                        \
+_(lisp_eid_table_map_dump, "")                                          \
 _(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \
 _(lisp_enable_disable_status_dump, "")                                  \

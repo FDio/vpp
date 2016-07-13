@@ -601,7 +601,7 @@ vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_add)
     {
       if (table_id || vnip)
         {
-          clib_warning ("vni %d or vrf %d already used in any vrf/vni "
+          clib_warning ("vni %d or vrf %d already used in vrf/vni "
                         "mapping!", vni, vrf);
           return -1;
         }
