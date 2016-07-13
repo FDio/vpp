@@ -99,6 +99,17 @@ typedef struct {
 } locator_msg_t;
 
 typedef struct {
+    u32 locator_set_index;
+    u8 is_local;
+    u8 eid_type;
+    u32 vni;
+    u8 eid[16];
+    u8 eid_prefix_len;
+    u32 ttl;
+    u8 authoritative;
+} eid_table_t;
+
+typedef struct {
     /* vpe input queue */
     unix_shared_memory_queue_t * vl_input_queue;
 
@@ -189,6 +200,7 @@ typedef struct {
     u8 noprint_msg;
     locator_set_msg_t * locator_set_msg;
     locator_msg_t * locator_msg;
+    eid_table_t * eid_tables;
 
 } vat_main_t;
 
