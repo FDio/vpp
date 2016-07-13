@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_4a873610",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 7155,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-13T18:15:59Z",
+      "side": 1,
+      "message": "Try to avoid duplicate code, modify code in vnet/vnet/pg so it exports function called both by cli and api code.\nTake \"cop_whitelist_enable_disable\" as a sample. use struct similar to (cop_whitelist_enable_disable_args_t to pass parameters.",
+      "range": {
+        "startLine": 7142,
+        "startChar": 0,
+        "endLine": 7155,
+        "endChar": 5
+      },
+      "revId": "c14a1baedfb7f0dfe7ed96799d8128f3b10bca31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_2a7c0220",
+        "filename": "vpp/vpp-api/custom_dump.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1894,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-13T18:15:59Z",
+      "side": 1,
+      "message": "Add \"disable\" keyword.",
+      "range": {
+        "startLine": 1894,
+        "startChar": 0,
+        "endLine": 1894,
+        "endChar": 42
+      },
+      "revId": "c14a1baedfb7f0dfe7ed96799d8128f3b10bca31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_2a952240",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 4117,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-13T18:15:59Z",
+      "side": 1,
+      "message": "please remove trailing whitespace",
+      "range": {
+        "startLine": 4117,
+        "startChar": 62,
+        "endLine": 4117,
+        "endChar": 64
+      },
+      "revId": "c14a1baedfb7f0dfe7ed96799d8128f3b10bca31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
