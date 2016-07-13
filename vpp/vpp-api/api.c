@@ -5454,6 +5454,23 @@ vl_api_lisp_map_resolver_dump_t_handler (
 }
 
 static void
+send_eid_table_map_pair (hash_pair_t * p,
+                         unix_shared_memory_queue_t * q,
+                         u32 context)
+{
+    vl_api_lisp_eid_table_map_details_t * rmp = NULL;
+
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs(VL_API_LISP_EID_TABLE_MAP_DETAILS);
+
+    rmp->vni = clib_host_to_net_u32 (p->key);
+    rmp->vrf = clib_host_to_net_u32 (p->value[0]);
+    rmp->context = context;
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+static void
 vl_api_lisp_eid_table_map_dump_t_handler (
     vl_api_lisp_eid_table_map_dump_t *mp)
 {
@@ -5466,12 +5483,7 @@ vl_api_lisp_eid_table_map_dump_t_handler (
         return;
     }
     hash_foreach_pair (p, lcm->table_id_by_vni, {
-        vl_api_lisp_eid_table_map_details_t * rmp = NULL;
-        memset (rmp, 0, sizeof (*rmp));
-        rmp->_vl_msg_id = ntohs(VL_API_LISP_EID_TABLE_MAP_DETAILS);
-        rmp->vni = p->key;
-        rmp->vrf = p->value[0];
-        rmp->context = mp->context;
+        send_eid_table_map_pair (p, q, mp->context);
     });
 }
 
