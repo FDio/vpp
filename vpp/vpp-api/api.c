@@ -3791,9 +3791,9 @@ vl_api_l2_interface_vlan_tag_rewrite_t_handler (vl_api_l2_interface_vlan_tag_rew
 static void
 vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t *mp)
 {
-#if DPDK > 0
     int rv = 0;
     vl_api_create_vhost_user_if_reply_t * rmp;
+#if DPDK > 0 && DPDK_VHOST_USER
     u32 sw_if_index = (u32)~0;
 
     vnet_main_t * vnm = vnet_get_main();
@@ -3808,15 +3808,18 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t *mp)
     ({
       rmp->sw_if_index = ntohl (sw_if_index);
     }));
+#else
+    rv = VNET_API_ERROR_UNIMPLEMENTED;
+    REPLY_MACRO(VL_API_CREATE_VHOST_USER_IF_REPLY);
 #endif
 }
 
 static void
 vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t *mp)
 {
-#if DPDK > 0
     int rv = 0;
     vl_api_modify_vhost_user_if_reply_t * rmp;
+#if DPDK > 0 && DPDK_VHOST_USER
     u32 sw_if_index = ntohl(mp->sw_if_index);
 
     vnet_main_t * vnm = vnet_get_main();
@@ -3825,18 +3828,19 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t *mp)
     rv = dpdk_vhost_user_modify_if(vnm, vm, (char *)mp->sock_filename,
                               mp->is_server, sw_if_index, (u64)~0,
                               mp->renumber, ntohl(mp->custom_dev_instance));
-
-    REPLY_MACRO(VL_API_MODIFY_VHOST_USER_IF_REPLY);
+#else
+    rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
+    REPLY_MACRO(VL_API_MODIFY_VHOST_USER_IF_REPLY);
 }
 
 static void
 vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t *mp)
 {
-#if DPDK > 0
     int rv = 0;
-    vpe_api_main_t * vam = &vpe_api_main;
     vl_api_delete_vhost_user_if_reply_t * rmp;
+#if DPDK > 0 && DPDK_VHOST_USER
+    vpe_api_main_t * vam = &vpe_api_main;
     u32 sw_if_index = ntohl(mp->sw_if_index);
 
     vnet_main_t * vnm = vnet_get_main();
@@ -3853,6 +3857,9 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t *mp)
 
         send_sw_interface_flags_deleted (vam, q, sw_if_index);
     }
+#else
+    rv = VNET_API_ERROR_UNIMPLEMENTED;
+    REPLY_MACRO(VL_API_DELETE_VHOST_USER_IF_REPLY);
 #endif
 }
 
@@ -3862,7 +3869,7 @@ static void vl_api_sw_interface_vhost_user_details_t_handler (
     clib_warning ("BUG");
 }
 
-#if DPDK > 0
+#if DPDK > 0 && DPDK_VHOST_USER
 static void send_sw_interface_vhost_user_details (vpe_api_main_t * am,
                                        unix_shared_memory_queue_t *q,
                                        vhost_user_intf_details_t * vui,
@@ -3894,7 +3901,7 @@ static void
 vl_api_sw_interface_vhost_user_dump_t_handler (
         vl_api_sw_interface_vhost_user_dump_t *mp)
 {
-#if DPDK > 0
+#if DPDK > 0 && DPDK_VHOST_USER
     int rv = 0;
     vpe_api_main_t * am = &vpe_api_main;
     vnet_main_t * vnm = vnet_get_main();

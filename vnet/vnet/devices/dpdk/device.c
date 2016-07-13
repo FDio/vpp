@@ -355,6 +355,7 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
               n_retry = (rv == DPDK_TX_RING_SIZE - tx_tail) ? 1 : 0;
             }
         } 
+#if DPDK_VHOST_USER
       else if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
         {
           u32 offset = 0;
@@ -450,6 +451,7 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
           if (xd->need_txlock)
             *xd->lockp[queue_id] = 0;
         }
+#endif
 #if RTE_LIBRTE_KNI
       else if (xd->dev_type == VNET_DPDK_DEV_KNI)
         {
@@ -878,6 +880,7 @@ dpdk_interface_tx (vlib_main_t * vm,
 static int dpdk_device_renumber (vnet_hw_interface_t * hi,
                                  u32 new_dev_instance)
 {
+#if DPDK_VHOST_USER
   dpdk_main_t * dm = &dpdk_main;
   dpdk_device_t * xd = vec_elt_at_index (dm->devices, hi->dev_instance);
 
@@ -888,6 +891,7 @@ static int dpdk_device_renumber (vnet_hw_interface_t * hi,
   }
 
   xd->vu_if_id = new_dev_instance;
+#endif
   return 0;
 }
 
@@ -926,6 +930,7 @@ static void dpdk_clear_hw_interface_counters (u32 instance)
       memset (&xd->last_stats, 0, sizeof (xd->last_stats));
     }
 
+#if DPDK_VHOST_USER
   if (PREDICT_FALSE(xd->dev_type == VNET_DPDK_DEV_VHOST_USER)) {
     int i;
     for (i = 0; i < xd->rx_q_used * VIRTIO_QNUM; i++) {
@@ -933,6 +938,7 @@ static void dpdk_clear_hw_interface_counters (u32 instance)
       xd->vu_intf->vrings[i].bytes = 0;
     }
   }
+#endif
 }
 
 #ifdef RTE_LIBRTE_KNI
@@ -1027,6 +1033,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
       return 0;
   }
 #endif
+#if DPDK_VHOST_USER
   if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
     {
       if (is_up)
@@ -1045,6 +1052,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
       return 0;
     }
+#endif
 
 
   if (is_up)

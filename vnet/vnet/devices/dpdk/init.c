@@ -1539,7 +1539,9 @@ dpdk_process (vlib_main_t * vm,
   ethernet_main_t * em = &ethernet_main;
   dpdk_device_t * xd;
   vlib_thread_main_t * tm = vlib_get_thread_main();
+#if DPDK_VHOST_USER
   void *vu_state;
+#endif
   int i;
 
   error = dpdk_lib_init (dm);
@@ -1564,7 +1566,9 @@ dpdk_process (vlib_main_t * vm,
   if (error)
     clib_error_report (error);
 
+#if DPDK_VHOST_USER
   dpdk_vhost_user_process_init(&vu_state);
+#endif
 
   tm->worker_thread_release = 1;
 
@@ -1654,13 +1658,17 @@ dpdk_process (vlib_main_t * vm,
           if ((now - xd->time_last_link_update) >= dm->link_state_poll_interval)
 	    dpdk_update_link_state (xd, now);
 
+#if DPDK_VHOST_USER
       if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
           if (dpdk_vhost_user_process_if(vm, xd, vu_state) != 0)
               continue;
+#endif
 	}
     }
 
+#if DPDK_VHOST_USER
   dpdk_vhost_user_process_cleanup(vu_state);
+#endif
 
   return 0; 
 }

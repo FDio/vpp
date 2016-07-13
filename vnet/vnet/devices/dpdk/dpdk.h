@@ -61,6 +61,12 @@
 #define always_inline static inline __attribute__ ((__always_inline__))
 #endif
 
+#if RTE_VERSION < RTE_VERSION_NUM(16, 7, 0, 0)
+#define DPDK_VHOST_USER 1
+#else
+#define DPDK_VHOST_USER 0
+#endif
+
 #include <vlib/pci/pci.h>
 
 #define NB_MBUF   (16<<10)
@@ -131,6 +137,7 @@ typedef struct {
   u32 total_packet_cnt;
 } dpdk_efd_agent_t;
 
+#if DPDK_VHOST_USER
 typedef struct {
   int callfd;
   int kickfd;
@@ -160,6 +167,7 @@ typedef struct {
   u32 region_fd[VHOST_MEMORY_MAX_NREGIONS];
   u64 region_offset[VHOST_MEMORY_MAX_NREGIONS];
 } dpdk_vu_intf_t;
+#endif
 
 typedef void (*dpdk_flowcontrol_callback_t) (vlib_main_t *vm,
                                              u32 hw_if_index,
@@ -225,11 +233,13 @@ typedef struct {
   struct rte_kni *kni;
   u8 kni_port_id;
 
+#if DPDK_VHOST_USER
   /* vhost-user related */
   u32 vu_if_id;
   struct virtio_net  vu_vhost_dev;
   u32 vu_is_running;
   dpdk_vu_intf_t *vu_intf;
+#endif
 
   /* af_packet */
   u8 af_packet_port_id;
@@ -240,8 +250,13 @@ typedef struct {
   struct rte_eth_stats stats;
   struct rte_eth_stats last_stats;
   struct rte_eth_stats last_cleared_stats;
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 7, 0, 0)
+  struct rte_eth_xstat * xstats;
+  struct rte_eth_xstat * last_cleared_xstats;
+#else
   struct rte_eth_xstats * xstats;
   struct rte_eth_xstats * last_cleared_xstats;
+#endif
   f64 time_last_stats_update;
   dpdk_port_type_t port_type;
 
@@ -509,10 +524,12 @@ u32 is_efd_discardable(vlib_thread_main_t *tm,
                        vlib_buffer_t * b0,
                        struct rte_mbuf *mb);
 
+#if DPDK_VHOST_USER
 /* dpdk vhost-user interrupt management */
 u8 dpdk_vhost_user_want_interrupt (dpdk_device_t *xd, int idx);
 void dpdk_vhost_user_send_interrupt (vlib_main_t * vm, dpdk_device_t * xd,
                                     int idx);
+#endif
 
 
 static inline u64 vnet_get_aggregate_rx_packets (void)
@@ -544,6 +561,7 @@ void efd_config(u32 enabled,
 
 void post_sw_interface_set_flags (vlib_main_t *vm, u32 sw_if_index, u32 flags);
 
+#if DPDK_VHOST_USER
 typedef struct vhost_user_memory vhost_user_memory_t;
 
 void dpdk_vhost_user_process_init (void **ctx);
@@ -568,6 +586,7 @@ int dpdk_vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
                               u32 sw_if_index);
 int dpdk_vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
                              vhost_user_intf_details_t **out_vuids);
+#endif
 
 u32 dpdk_get_admin_up_down_in_progress (void);
 

@@ -28,16 +28,11 @@
   _ (tx_frames_ok, opackets)                    \
   _ (tx_bytes_ok, obytes)                       \
   _ (tx_errors, oerrors)                        \
-  _ (tx_loopback_frames_ok, olbpackets)         \
-  _ (tx_loopback_bytes_ok, olbbytes)            \
   _ (rx_frames_ok, ipackets)                    \
   _ (rx_bytes_ok, ibytes)                       \
   _ (rx_errors, ierrors)                        \
   _ (rx_missed, imissed)                        \
-  _ (rx_multicast_frames_ok, imcasts)           \
-  _ (rx_no_bufs, rx_nombuf)                     \
-  _ (rx_loopback_frames_ok, ilbpackets)         \
-  _ (rx_loopback_bytes_ok, ilbbytes)
+  _ (rx_no_bufs, rx_nombuf)
 
 #define foreach_dpdk_q_counter                  \
   _ (rx_frames_ok, q_ipackets)                  \
@@ -174,9 +169,11 @@ u8 * format_dpdk_device_name (u8 * s, va_list * args)
        return format(s, "kni%d", dm->devices[i].kni_port_id);
   } else
 #endif
+#if DPDK_VHOST_USER
   if (dm->devices[i].dev_type == VNET_DPDK_DEV_VHOST_USER) {
        return format(s, "VirtualEthernet0/0/%d", dm->devices[i].vu_if_id);
   }
+#endif
   switch (dm->devices[i].port_type)
     {
     case VNET_DPDK_PORT_TYPE_ETH_1G:
@@ -463,7 +460,6 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
                 format_white_space, indent + 2, xd->cpu_socket);
 
   /* $$$ MIB counters  */
-
   {
 #define _(N, V)							\
     if ((xd->stats.V - xd->last_cleared_stats.V) != 0) {       \
@@ -479,21 +475,33 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
 
   u8 * xs = 0;
   u32 i = 0;
+#if RTE_VERSION < RTE_VERSION_NUM(16, 7, 0, 0)
+  struct rte_eth_xstats * xstat, * last_xstat;
+#else
+  struct rte_eth_xstat * xstat, * last_xstat;
+  struct rte_eth_xstat_name * xstat_names = 0;
+  int len = rte_eth_xstats_get_names (xd->device_index, NULL, 0);
+  vec_validate (xstat_names, len - 1);
+  rte_eth_xstats_get_names (xd->device_index, xstat_names, len);
+#endif
 
   ASSERT(vec_len(xd->xstats) == vec_len(xd->last_cleared_xstats));
 
   vec_foreach_index(i, xd->xstats)
     {
       u64 delta = 0;
-      struct rte_eth_xstats* xstat = vec_elt_at_index(xd->xstats, i);
-      struct rte_eth_xstats* last_xstat =
-        vec_elt_at_index(xd->last_cleared_xstats, i);
+      xstat = vec_elt_at_index(xd->xstats, i);
+      last_xstat = vec_elt_at_index(xd->last_cleared_xstats, i);
 
       delta = xstat->value - last_xstat->value;
       if (verbose == 2 || (verbose && delta))
         {
           /* format_c_identifier doesn't like c strings inside vector */
+#if RTE_VERSION < RTE_VERSION_NUM(16, 7, 0, 0)
           u8 * name = format(0,"%s", xstat->name);
+#else
+          u8 * name = format(0,"%s", xstat_names[i].name);
+#endif
           xs = format(xs, "\n%U%-38U%16Ld",
                       format_white_space, indent + 4,
                       format_c_identifier, name, delta);
@@ -501,6 +509,11 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
         }
     }
 
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 7, 0, 0)
+  vec_free (xstat_names);
+#endif
+
+#if DPDK_VHOST_USER
     if (verbose && xd->dev_type == VNET_DPDK_DEV_VHOST_USER) {
         int i;
         for (i = 0; i < xd->rx_q_used * VIRTIO_QNUM; i++) {
@@ -528,6 +541,7 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
             }
         }
     }
+#endif
 
   if (xs)
     {

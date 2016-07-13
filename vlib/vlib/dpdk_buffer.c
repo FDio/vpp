@@ -62,6 +62,7 @@
 #include <rte_ring.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+#include <rte_version.h>
 
 #include <vlib/vlib.h>
 
@@ -989,7 +990,11 @@ vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
   if (rmp)
     {
       new_start = pointer_to_uword (rmp);
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 7, 0, 0)
+      new_size = (uintptr_t)STAILQ_FIRST(&rmp->mem_list)->addr + STAILQ_FIRST(&rmp->mem_list)->len - new_start;
+#else
       new_size = rmp->elt_va_end - new_start;
+#endif
 
       if (vpm->virtual.size > 0)
 	{

@@ -23,6 +23,15 @@
 #define DPDK_NB_TX_DESC_40GE    1024
 #define DPDK_NB_RX_DESC_ENIC    1024
 
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 7, 0, 0)
+#define I40E_DEV_ID_SFP_XL710           0x1572
+#define I40E_DEV_ID_QSFP_A              0x1583
+#define I40E_DEV_ID_QSFP_B              0x1584
+#define I40E_DEV_ID_QSFP_C              0x1585
+#define I40E_DEV_ID_10G_BASE_T          0x1586
+#define I40E_DEV_ID_VF                  0x154C
+#endif
+
 /* These args appear by themselves */
 #define foreach_eal_double_hyphen_predicate_arg \
 _(no-shconf)                                    \
@@ -72,6 +81,7 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
             break;
       }
     }
+#if DPDK_VHOST_USER
   else if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
     {
       vlib_main_t * vm = vlib_get_main();
@@ -129,6 +139,7 @@ dpdk_rx_burst ( dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
       }
 
     }
+#endif
 #ifdef RTE_LIBRTE_KNI
   else if (xd->dev_type == VNET_DPDK_DEV_KNI)
     {

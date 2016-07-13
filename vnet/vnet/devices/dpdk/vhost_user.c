@@ -39,6 +39,8 @@
 #define DBG_SOCK(args...)
 #endif
 
+#if DPDK_VHOST_USER
+
 static const char *vhost_message_str[] __attribute__((unused)) = {
     [VHOST_USER_NONE] = "VHOST_USER_NONE",
     [VHOST_USER_GET_FEATURES] = "VHOST_USER_GET_FEATURES",
@@ -1917,3 +1919,4 @@ VLIB_CLI_COMMAND (show_vhost_user_command, static) = {
     .short_help = "show vhost-user interface",
     .function = show_dpdk_vhost_user_command_fn,
 };
+#endif
