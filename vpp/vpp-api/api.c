@@ -3788,7 +3788,7 @@ vl_api_l2_interface_vlan_tag_rewrite_t_handler (vl_api_l2_interface_vlan_tag_rew
 static void
 vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t *mp)
 {
-#if DPDK > 0
+#if DPDK > 0 && DPDK_VHOST_USER
     int rv = 0;
     vl_api_create_vhost_user_if_reply_t * rmp;
     u32 sw_if_index = (u32)~0;
@@ -3811,7 +3811,7 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t *mp)
 static void
 vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t *mp)
 {
-#if DPDK > 0
+#if DPDK > 0 && DPDK_VHOST_USER
     int rv = 0;
     vl_api_modify_vhost_user_if_reply_t * rmp;
     u32 sw_if_index = ntohl(mp->sw_if_index);
@@ -3830,7 +3830,7 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t *mp)
 static void
 vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t *mp)
 {
-#if DPDK > 0
+#if DPDK > 0 && DPDK_VHOST_USER
     int rv = 0;
     vpe_api_main_t * vam = &vpe_api_main;
     vl_api_delete_vhost_user_if_reply_t * rmp;
@@ -3859,7 +3859,7 @@ static void vl_api_sw_interface_vhost_user_details_t_handler (
     clib_warning ("BUG");
 }
 
-#if DPDK > 0
+#if DPDK > 0 && DPDK_VHOST_USER
 static void send_sw_interface_vhost_user_details (vpe_api_main_t * am,
                                        unix_shared_memory_queue_t *q,
                                        vhost_user_intf_details_t * vui,
@@ -3891,7 +3891,7 @@ static void
 vl_api_sw_interface_vhost_user_dump_t_handler (
         vl_api_sw_interface_vhost_user_dump_t *mp)
 {
-#if DPDK > 0
+#if DPDK > 0 && DPDK_VHOST_USER
     int rv = 0;
     vpe_api_main_t * am = &vpe_api_main;
     vnet_main_t * vnm = vnet_get_main();
