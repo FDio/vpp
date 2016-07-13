@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_caa9067d",
+        "filename": "vnet/vnet/span/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-13T18:26:57Z",
+      "side": 1,
+      "message": "consider checking BUFFER_HANDOFF_NEXT_VALID flag to bypass ethernet-input and send packet straight to ip4-input-no-checksum and friends.\nLook into vnet/vnet/handoff.c for similar code...",
+      "range": {
+        "startLine": 212,
+        "startChar": 0,
+        "endLine": 215,
+        "endChar": 59
+      },
+      "revId": "eb76d5c7f18314ed55f52cf55ce40d485177ca7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_8a942e38",
+        "filename": "vnet/vnet/span/span.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-13T18:26:57Z",
+      "side": 1,
+      "message": "can we rename this to \"set interface span\"",
+      "range": {
+        "startLine": 70,
+        "startChar": 0,
+        "endLine": 70,
+        "endChar": 23
+      },
+      "revId": "eb76d5c7f18314ed55f52cf55ce40d485177ca7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
