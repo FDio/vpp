@@ -147,14 +147,10 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
       drvinfo.cmd = ETHTOOL_GDRVINFO;
       if (ioctl (fd, SIOCETHTOOL, &ifr) < 0)
 	{
-	  if (errno == ENOTSUP)
-	    /* Some interfaces (eg "lo") don't support this ioctl */
-	    continue;
-
-	  error = clib_error_return_unix (0, "ioctl fetch intf %s bus info",
-					  e->d_name);
-	  close (fd);
-	  goto done;
+	  /* Some interfaces (eg "lo") don't support this ioctl */
+	  if ((errno != ENOTSUP) && (errno != ENODEV))
+	    clib_unix_warning ("ioctl fetch intf %s bus info error", e->d_name);
+	  continue;
 	}
 
       if (strcmp ((char *) s, drvinfo.bus_info))
