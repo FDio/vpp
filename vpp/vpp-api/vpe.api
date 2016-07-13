@@ -2581,22 +2581,35 @@ define lisp_locator_set_dump {
     u8  filter;
 };
 
-/** \brief LISP local eid table status
-    @param locator_set_name - name of the locator_set
-    @param eid_type - ip4, ip6 or l2 mac address
-    @param eid - array of address bytes
-    @param eid_prefix_len - prefix len
- */
-define lisp_local_eid_table_details {
+/** \brief Dump lisp eid-table
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param locator_set_index - index of locator_set
+    @param is_local - local if non-zero, else remote
+    @param eid_type:
+      0 : ipv4
+      1 : ipv6
+      2 : mac
+    @param eid - EID can be ip4, ip6 or mac
+    @param prefix_len - prefix len
+    @param vni - virtual network instance
+    @param ttl - time to live
+    @param authoritative - authoritative
+*/
+
+define lisp_eid_table_details {
     u32 context;
-    u8  locator_set_name[64];
+    u32 locator_set_index;
+    u8  is_local;
     u8  eid_type;
     u32 vni;
     u8  eid[16];
     u8  eid_prefix_len;
+    u32 ttl;
+    u8  authoritative;
 };
 
-/** \brief Request for local eid table summary status
+/** \brief Request for eid table summary status
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param eid_set - if non-zero request info about specific mapping
@@ -2609,8 +2622,13 @@ define lisp_local_eid_table_details {
         1: EID is IPv6
         2: EID is ethernet address
     @param eid - endpoint identifier
+    @param filter - filter type;
+      Support values:
+        0: all eid
+        1: local eid
+        2: remote eid
  */
-define lisp_local_eid_table_dump {
+define lisp_eid_table_dump {
     u32 client_index;
     u32 context;
     u8  eid_set;
@@ -2618,6 +2636,7 @@ define lisp_local_eid_table_dump {
     u32 vni;
     u8  eid_type;
     u8  eid[16];
+    u8  filter;
 };
 
 /** \brief Shows relationship between vni and vrf

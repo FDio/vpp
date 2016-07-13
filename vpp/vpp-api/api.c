@@ -341,7 +341,7 @@ _(LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set)                 \
 _(LISP_EID_TABLE_ADD_DEL_MAP, lisp_eid_table_add_del_map)               \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
-_(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump)                 \
+_(LISP_EID_TABLE_DUMP, lisp_eid_table_dump)                             \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
@@ -5380,37 +5380,49 @@ vl_api_lisp_locator_set_dump_t_handler (vl_api_lisp_locator_set_dump_t *mp)
 }
 
 static void
-send_lisp_local_eid_table_details (mapping_t *mapit,
+send_lisp_eid_table_details (mapping_t *mapit,
                                    unix_shared_memory_queue_t *q,
-                                   u32 context)
+                                   u32 context, u8 filter)
 {
-    vl_api_lisp_local_eid_table_details_t *rmp = NULL;
+    vl_api_lisp_eid_table_details_t *rmp = NULL;
     lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
     locator_set_t *ls = NULL;
     gid_address_t *gid = NULL;
     u8 * mac = 0;
     ip_prefix_t *ip_prefix = NULL;
-    u8 * str = NULL;
 
     ls = pool_elt_at_index (lcm->locator_set_pool,
                             mapit->locator_set_index);
+
+    switch (filter) {
+    case 0:
+        break;
+    case 1:
+        if (!ls->local) {
+          return;
+        }
+        break;
+    case 2:
+        if (ls->local) {
+          return;
+        }
+        break;
+    default:
+        clib_warning("Filter error, unknown filter: %d\n", filter);
+        return;
+    }
+
     gid = &mapit->eid;
     ip_prefix = &gid_address_ippref(gid);
     mac = gid_address_mac(gid);
 
     rmp = vl_msg_api_alloc (sizeof (*rmp));
     memset (rmp, 0, sizeof (*rmp));
-    rmp->_vl_msg_id = ntohs(VL_API_LISP_LOCAL_EID_TABLE_DETAILS);
-    if (ls->local) {
-        ASSERT(ls->name != NULL);
-        strncpy((char *) rmp->locator_set_name,
-                (char *) ls->name, ARRAY_LEN(rmp->locator_set_name) - 1);
-    } else {
-            str = format(0, "remote-%d", mapit->locator_set_index);
-            strncpy((char *) rmp->locator_set_name, (char *) str,
-                    ARRAY_LEN(rmp->locator_set_name) - 1);
-            vec_free(str);
-    }
+    rmp->_vl_msg_id = ntohs(VL_API_LISP_EID_TABLE_DETAILS);
+    rmp->locator_set_index = mapit->locator_set_index;
+    rmp->is_local = ls->local;
+    rmp->ttl = mapit->ttl;
+    rmp->authoritative = mapit->authoritative;
 
     switch (gid_address_type (gid))
       {
@@ -5442,8 +5454,8 @@ send_lisp_local_eid_table_details (mapping_t *mapit,
 }
 
 static void
-vl_api_lisp_local_eid_table_dump_t_handler (
-    vl_api_lisp_local_eid_table_dump_t *mp)
+vl_api_lisp_eid_table_dump_t_handler (
+    vl_api_lisp_eid_table_dump_t *mp)
 {
     u32 mi;
     unix_shared_memory_queue_t * q = NULL;
@@ -5482,11 +5494,12 @@ vl_api_lisp_local_eid_table_dump_t_handler (
           return;
 
         mapit = pool_elt_at_index (lcm->mapping_pool, mi);
-        send_lisp_local_eid_table_details(mapit, q, mp->context);
+        send_lisp_eid_table_details(mapit, q, mp->context, mp->filter);
     } else {
         pool_foreach (mapit, lcm->mapping_pool,
         ({
-            send_lisp_local_eid_table_details(mapit, q, mp->context);
+            send_lisp_eid_table_details(mapit, q, mp->context,
+                                        mp->filter);
         }));
     }
 }

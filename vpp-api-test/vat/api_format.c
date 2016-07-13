@@ -2167,31 +2167,41 @@ vl_api_lisp_locator_set_details_t_handler_json (
 }
 
 static void
-vl_api_lisp_local_eid_table_details_t_handler (
-    vl_api_lisp_local_eid_table_details_t *mp)
+vl_api_lisp_eid_table_details_t_handler (
+    vl_api_lisp_eid_table_details_t * mp)
 {
     vat_main_t *vam = &vat_main;
-    u8 *prefix;
-    u8 * (*format_eid)(u8 *, va_list *) = 0;
+    eid_table_t eid_table;
 
-    switch (mp->eid_type)
-      {
-      case 0: format_eid = format_ip4_address; break;
-      case 1: format_eid = format_ip6_address; break;
-      case 2: format_eid = format_ethernet_address; break;
-      default:
-        errmsg ("unknown EID type %d!", mp->eid_type);
-        return;
-      }
+    memset(&eid_table, 0, sizeof(eid_table));
+    eid_table.is_local = mp->is_local;
+    eid_table.locator_set_index = mp->locator_set_index;
+    eid_table.eid_type = mp->eid_type;
+    eid_table.vni = mp->vni;
+    eid_table.eid_prefix_len = mp->eid_prefix_len;
+    eid_table.ttl = mp->ttl;
+    eid_table.authoritative = mp->authoritative;
+    clib_memcpy(eid_table.eid, mp->eid, sizeof(eid_table.eid));
+    vec_add1(vam->eid_tables, eid_table);
+}
 
-    prefix = format(0, "[%d] %U/%d",
-                    clib_net_to_host_u32 (mp->vni),
-                    format_eid, mp->eid, mp->eid_prefix_len);
+static void
+vl_api_lisp_eid_table_details_t_handler_json (
+    vl_api_lisp_eid_table_details_t * mp)
+{
+    vat_main_t *vam = &vat_main;
+    eid_table_t eid_table;
 
-    fformat(vam->ofp, "%=20s%=30s\n",
-            mp->locator_set_name, prefix);
-
-    vec_free(prefix);
+    memset(&eid_table, 0, sizeof(eid_table));
+    eid_table.is_local = mp->is_local;
+    eid_table.locator_set_index = mp->locator_set_index;
+    eid_table.eid_type = mp->eid_type;
+    eid_table.vni = mp->vni;
+    eid_table.eid_prefix_len = mp->eid_prefix_len;
+    eid_table.ttl = mp->ttl;
+    eid_table.authoritative = mp->authoritative;
+    clib_memcpy(eid_table.eid, mp->eid, sizeof(eid_table.eid));
+    vec_add1(vam->eid_tables, eid_table);
 }
 
 static void
@@ -2224,48 +2234,7 @@ vl_api_lisp_eid_table_map_details_t_handler_json (
     vat_json_object_add_uint(node, "vni", clib_net_to_host_u32 (mp->vni));
 }
 
-static void
-vl_api_lisp_local_eid_table_details_t_handler_json (
-    vl_api_lisp_local_eid_table_details_t *mp)
-{
-    vat_main_t *vam = &vat_main;
-    vat_json_node_t *node = NULL;
-    struct in6_addr ip6;
-    struct in_addr ip4;
-    u8 * s = 0;
 
-    if (VAT_JSON_ARRAY != vam->json_tree.type) {
-        ASSERT(VAT_JSON_NONE == vam->json_tree.type);
-        vat_json_init_array(&vam->json_tree);
-    }
-    node = vat_json_array_add(&vam->json_tree);
-
-    vat_json_init_object(node);
-    vat_json_object_add_string_copy(node, "locator-set", mp->locator_set_name);
-    switch (mp->eid_type)
-      {
-      case 0:
-        clib_memcpy(&ip4, mp->eid, sizeof(ip4));
-        vat_json_object_add_ip4(node, "eid", ip4);
-        vat_json_object_add_uint(node, "eid-prefix-len", mp->eid_prefix_len);
-        break;
-      case 1:
-        clib_memcpy(&ip6, mp->eid, sizeof(ip6));
-        vat_json_object_add_ip6(node, "eid", ip6);
-        vat_json_object_add_uint(node, "eid-prefix-len", mp->eid_prefix_len);
-        break;
-      case 2:
-        s = format (0, "%U", format_ethernet_address, mp->eid);
-        vec_add1(s, 0);
-        vat_json_object_add_string_copy(node, "eid", s);
-        vec_free(s);
-        break;
-      default:
-        errmsg ("unknown EID type %d!", mp->eid_type);
-        return;
-      }
-    vat_json_object_add_uint(node, "vni", clib_net_to_host_u32 (mp->vni));
-}
 
 static u8 *
 format_decap_next (u8 * s, va_list * args)
@@ -3278,7 +3247,7 @@ _(LISP_EID_TABLE_ADD_DEL_MAP_REPLY, lisp_eid_table_add_del_map_reply)   \
 _(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
 _(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
 _(LISP_LOCATOR_DETAILS, lisp_locator_details)                           \
-_(LISP_LOCAL_EID_TABLE_DETAILS, lisp_local_eid_table_details)           \
+_(LISP_EID_TABLE_DETAILS, lisp_eid_table_details)                       \
 _(LISP_EID_TABLE_MAP_DETAILS, lisp_eid_table_map_details)               \
 _(LISP_GPE_TUNNEL_DETAILS, lisp_gpe_tunnel_details)                     \
 _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
@@ -11640,6 +11609,18 @@ lisp_locator_dump_send_msg(vat_main_t * vam, u32 locator_set_index, u8 filter)
     W;
 }
 
+static inline void
+clean_locator_set_message(vat_main_t * vam)
+{
+    locator_set_msg_t * ls = 0;
+
+    vec_foreach (ls, vam->locator_set_msg) {
+        vec_free(ls->locator_set_name);
+    }
+
+    vec_free(vam->locator_set_msg);
+}
+
 static int
 print_locator_in_locator_set(vat_main_t * vam, u8 filter)
 {
@@ -11651,9 +11632,8 @@ print_locator_in_locator_set(vat_main_t * vam, u8 filter)
     vec_foreach(ls, vam->locator_set_msg) {
         ret = lisp_locator_dump_send_msg(vam, ls->locator_set_index, filter);
         if (ret) {
-            vec_free(ls->locator_set_name);
             vec_free(vam->locator_msg);
-            vec_free(vam->locator_set_msg);
+            clean_locator_set_message(vam);
             return ret;
         }
 
@@ -11683,11 +11663,10 @@ print_locator_in_locator_set(vat_main_t * vam, u8 filter)
 
         fformat(vam->ofp, "%s", tmp_str);
         vec_free(tmp_str);
-        vec_free(ls->locator_set_name);
         vec_free(vam->locator_msg);
     }
 
-    vec_free(vam->locator_set_msg);
+    clean_locator_set_message(vam);
 
     return ret;
 }
@@ -11966,16 +11945,381 @@ api_lisp_eid_table_map_dump(vat_main_t *vam)
 }
 
 static int
-api_lisp_local_eid_table_dump(vat_main_t *vam)
+get_locator_set(vat_main_t * vam)
+{
+    vl_api_lisp_locator_set_dump_t *mp;
+    f64 timeout = ~0;
+
+    M(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump);
+    /* send it... */
+    S;
+
+   /* Use a control ping for synchronization */
+   {
+     vl_api_noprint_control_ping_t * mp;
+     M(NOPRINT_CONTROL_PING, noprint_control_ping);
+     S;
+   }
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
+static inline u8 *
+format_eid_for_eid_table(vat_main_t *vam, u8 * str, eid_table_t * eid_table,
+                         int *ret)
+{
+    u8 * (*format_eid)(u8 *, va_list *) = 0;
+
+    ASSERT(vam != NULL);
+    ASSERT(eid_table != NULL);
+
+    if (ret) {
+        *ret = 0;
+    }
+
+    switch (eid_table->eid_type)
+    {
+      case 0:
+      case 1:
+        format_eid = (eid_table->eid_type ? format_ip6_address :
+          format_ip4_address);
+        str = format(0, "[%d] %U/%d",
+                          clib_net_to_host_u32 (eid_table->vni),
+                          format_eid, eid_table->eid, eid_table->eid_prefix_len);
+        break;
+      case 2:
+        str = format(0, "[%d] %U",
+                          clib_net_to_host_u32 (eid_table->vni),
+                          format_ethernet_address, eid_table->eid);
+        break;
+      default:
+        errmsg ("unknown EID type %d!", eid_table->eid_type);
+        if (ret) {
+            *ret = -99;
+        }
+        return 0;
+    }
+
+    return str;
+}
+
+static inline u8 *
+format_locator_set_for_eid_table(vat_main_t * vam, u8 * str,
+                                 eid_table_t * eid_table)
+{
+    locator_set_msg_t * ls = 0;
+
+    ASSERT(vam != NULL);
+    ASSERT(eid_table != NULL);
+
+    if (eid_table->is_local) {
+        vec_foreach (ls, vam->locator_set_msg) {
+            if (ls->locator_set_index == eid_table->locator_set_index) {
+                str = format(0, "local(%s)", ls->locator_set_name);
+                return str;
+            }
+        }
+
+        str = format(0, "local(N/A)");
+    } else {
+        str = format(0, "remote");
+    }
+
+    return str;
+}
+
+static inline u8 *
+format_locator_for_eid_table(vat_main_t * vam, u8 * str,
+                             eid_table_t * eid_table)
+{
+    locator_msg_t * loc = 0;
+    int first_line = 1;
+
+    ASSERT(vam != NULL);
+    ASSERT(eid_table != NULL);
+
+    vec_foreach(loc, vam->locator_msg) {
+        if (!first_line) {
+            if (loc->local) {
+                str = format(str, "%-55s%-d\n", " ", loc->sw_if_index);
+            } else {
+                str = format(str, "%=55s%-U\n", " ",
+                             loc->is_ipv6 ? format_ip6_address :
+                             format_ip4_address,
+                               loc->ip_address);
+            }
+
+            continue;
+        }
+
+        if (loc->local) {
+            str = format(str, "%-30d%-20u%-u\n", loc->sw_if_index,
+                         eid_table->ttl, eid_table->authoritative);
+        } else {
+            str = format(str, "%-30U%-20u%-u\n",
+                         loc->is_ipv6 ? format_ip6_address :
+                         format_ip4_address,
+                         loc->ip_address, eid_table->ttl,
+                         eid_table->authoritative);
+        }
+        first_line = 0;
+    }
+
+    return str;
+}
+
+static int
+print_lisp_eid_table_dump(vat_main_t * vam)
+{
+    eid_table_t * eid_table = 0;
+    u8 * tmp_str = 0, * tmp_str2 = 0;
+    int ret = 0;
+
+    ASSERT(vam != NULL);
+
+    ret = get_locator_set(vam);
+    if (ret) {
+        vec_free(vam->eid_tables);
+        return ret;
+    }
+
+    fformat(vam->ofp, "%-35s%-20s%-30s%-20s%-s\n", "EID", "type", "locators",
+                                                   "ttl", "authoritative");
+
+    vec_foreach(eid_table, vam->eid_tables) {
+        ret = lisp_locator_dump_send_msg(vam, eid_table->locator_set_index, 0);
+        if (ret) {
+          vec_free(vam->locator_msg);
+          clean_locator_set_message(vam);
+          vec_free(vam->eid_tables);
+          return ret;
+        }
+
+        tmp_str2 = format_eid_for_eid_table(vam, tmp_str2, eid_table, &ret);
+        if (ret) {
+          vec_free(vam->locator_msg);
+          clean_locator_set_message(vam);
+          vec_free(vam->eid_tables);
+          return ret;
+        }
+
+        tmp_str = format(0, "%-35s", tmp_str2);
+        vec_free(tmp_str2);
+
+        tmp_str2 = format_locator_set_for_eid_table(vam, tmp_str2, eid_table);
+        tmp_str = format(tmp_str, "%-20s", tmp_str2);
+        vec_free(tmp_str2);
+
+        tmp_str2 = format_locator_for_eid_table(vam, tmp_str2, eid_table);
+        tmp_str = format(tmp_str, "%-s", tmp_str2);
+        vec_free(tmp_str2);
+
+        fformat(vam->ofp, "%s", tmp_str);
+        vec_free(tmp_str);
+        vec_free(vam->locator_msg);
+    }
+
+    clean_locator_set_message(vam);
+    vec_free(vam->eid_tables);
+
+    return ret;
+}
+
+static inline void
+json_locator_set_for_eid_table(vat_main_t * vam, vat_json_node_t * node,
+                               eid_table_t * eid_table)
+{
+    locator_set_msg_t * ls = 0;
+    u8 * s = 0;
+
+    ASSERT(vam != NULL);
+    ASSERT(node != NULL);
+    ASSERT(eid_table != NULL);
+
+    if (eid_table->is_local) {
+        vec_foreach (ls, vam->locator_set_msg) {
+            if (ls->locator_set_index == eid_table->locator_set_index) {
+                vat_json_object_add_string_copy(node, "locator-set",
+                                                ls->locator_set_name);
+                return;
+            }
+        }
+
+        s = format(0, "N/A");
+        vec_add1(s, 0);
+        vat_json_object_add_string_copy(node, "locator-set", s);
+        vec_free(s);
+    } else {
+        s = format(0, "remote");
+        vec_add1(s, 0);
+        vat_json_object_add_string_copy(node, "locator-set", s);
+        vec_free(s);
+    }
+}
+
+static inline int
+json_eid_for_eid_table(vat_main_t * vam, vat_json_node_t * node,
+                       eid_table_t * eid_table)
+{
+    u8 * s = 0;
+    struct in6_addr ip6;
+    struct in_addr ip4;
+
+    ASSERT(vam != NULL);
+    ASSERT(node != NULL);
+    ASSERT(eid_table != NULL);
+
+    switch (eid_table->eid_type)
+    {
+      case 0:
+        clib_memcpy(&ip4, eid_table->eid, sizeof(ip4));
+        vat_json_object_add_ip4(node, "eid", ip4);
+        vat_json_object_add_uint(node, "eid-prefix-len",
+                                 eid_table->eid_prefix_len);
+        break;
+      case 1:
+        clib_memcpy(&ip6, eid_table->eid, sizeof(ip6));
+        vat_json_object_add_ip6(node, "eid", ip6);
+        vat_json_object_add_uint(node, "eid-prefix-len",
+                                 eid_table->eid_prefix_len);
+        break;
+      case 2:
+        s = format (0, "%U", format_ethernet_address, eid_table->eid);
+        vec_add1(s, 0);
+        vat_json_object_add_string_copy(node, "eid", s);
+        vec_free(s);
+        break;
+      default:
+        errmsg ("unknown EID type %d!", eid_table->eid_type);
+        return -99;
+    }
+
+    return 0;
+}
+
+static inline void
+json_locator_for_eid_table(vat_main_t * vam, vat_json_node_t * node,
+                           eid_table_t * eid_table)
+{
+    locator_msg_t * loc = 0;
+    vat_json_node_t * locator_array = 0;
+    vat_json_node_t * locator = 0;
+    struct in6_addr ip6;
+    struct in_addr ip4;
+
+    ASSERT(vam != NULL);
+    ASSERT(node != NULL);
+    ASSERT(eid_table != NULL);
+
+    locator_array = vat_json_object_add_list(node, "locator");
+    vec_foreach(loc, vam->locator_msg) {
+        locator = vat_json_array_add(locator_array);
+        vat_json_init_object(locator);
+        if (loc->local) {
+            vat_json_object_add_uint(locator, "locator-index",
+                                     loc->sw_if_index);
+        } else {
+            if (loc->is_ipv6) {
+                clib_memcpy(&ip6, loc->ip_address, sizeof(ip6));
+                vat_json_object_add_ip6(locator, "locator", ip6);
+            } else {
+                clib_memcpy(&ip4, loc->ip_address, sizeof(ip4));
+                vat_json_object_add_ip4(locator, "locator", ip4);
+            }
+        }
+    }
+}
+
+static int
+json_lisp_eid_table_dump(vat_main_t * vam)
+{
+    eid_table_t * eid_table;
+    vat_json_node_t * node = 0;
+    int ret = 0;
+
+    ASSERT(vam != NULL);
+
+    ret = get_locator_set(vam);
+    if (ret) {
+        vec_free(vam->eid_tables);
+        return ret;
+    }
+
+    if (!vec_len(vam->eid_tables)) {
+        /* just print [] */
+        vat_json_init_array(&vam->json_tree);
+        vat_json_print(vam->ofp, &vam->json_tree);
+        vam->json_tree.type = VAT_JSON_NONE;
+        return ret;
+    }
+
+    if (VAT_JSON_ARRAY != vam->json_tree.type) {
+      ASSERT(VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array(&vam->json_tree);
+    }
+
+    vec_foreach(eid_table, vam->eid_tables) {
+        ret = lisp_locator_dump_send_msg(vam, eid_table->locator_set_index, 0);
+        if (ret) {
+            vec_free(vam->locator_msg);
+            vec_free(vam->eid_tables);
+            clean_locator_set_message(vam);
+            vat_json_free(&vam->json_tree);
+            vam->json_tree.type = VAT_JSON_NONE;
+            return ret;
+        }
+
+        node = vat_json_array_add(&vam->json_tree);
+        vat_json_init_object(node);
+
+        vat_json_object_add_uint(node, "vni", eid_table->vni);
+
+        json_locator_set_for_eid_table(vam, node, eid_table);
+        ret = json_eid_for_eid_table(vam, node, eid_table);
+        if (ret) {
+            vec_free(vam->locator_msg);
+            vec_free(vam->eid_tables);
+            clean_locator_set_message(vam);
+            vat_json_free(&vam->json_tree);
+            vam->json_tree.type = VAT_JSON_NONE;
+            return ret;
+        }
+
+        json_locator_for_eid_table(vam, node, eid_table);
+
+        vat_json_object_add_uint(node, "ttl", eid_table->ttl);
+        vat_json_object_add_uint(node, "authoritative",
+                                eid_table->authoritative);
+
+        vec_free(vam->locator_msg);
+    }
+
+    vat_json_print(vam->ofp, &vam->json_tree);
+    vat_json_free(&vam->json_tree);
+    vam->json_tree.type = VAT_JSON_NONE;
+
+    clean_locator_set_message(vam);
+    vec_free(vam->eid_tables);
+
+    return ret;
+}
+
+static int
+api_lisp_eid_table_dump(vat_main_t *vam)
 {
     unformat_input_t * i = vam->input;
-    vl_api_lisp_local_eid_table_dump_t *mp;
+    vl_api_lisp_eid_table_dump_t *mp;
     f64 timeout = ~0;
     struct in_addr ip4;
     struct in6_addr ip6;
     u8 mac[6];
     u8 eid_type = ~0, eid_set = 0;
     u32 prefix_length = ~0, t, vni = 0;
+    u8 filter = 0;
 
     while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
         if (unformat (i, "eid %U/%d", unformat_ip4_address, &ip4, &t)) {
@@ -11989,21 +12333,21 @@ api_lisp_local_eid_table_dump(vat_main_t *vam)
         } else if (unformat (i, "eid %U", unformat_ethernet_address, mac)) {
             eid_set = 1;
             eid_type = 2;
-        } else if (unformat (i, "vni %d", &t))
+        } else if (unformat (i, "vni %d", &t)) {
             vni = t;
-        else {
+        } else if (unformat (i, "local")) {
+            filter = 1;
+        } else if (unformat (i, "remote")) {
+            filter = 2;
+        } else {
             errmsg ("parse error '%U'", format_unformat_error, i);
             return -99;
         }
     }
 
-    if (!vam->json_output) {
-        fformat(vam->ofp, "%=20s%=30s\n",
-                "Locator-set", "Eid");
-    }
+    M(LISP_EID_TABLE_DUMP, lisp_eid_table_dump);
 
-    M(LISP_LOCAL_EID_TABLE_DUMP, lisp_local_eid_table_dump);
-
+    mp->filter = filter;
     if (eid_set) {
         mp->eid_set = 1;
         mp->vni = htonl (vni);
@@ -12026,17 +12370,30 @@ api_lisp_local_eid_table_dump(vat_main_t *vam)
         }
     }
 
+    vam->noprint_msg = 1;
+
     /* send it... */
     S;
 
     /* Use a control ping for synchronization */
     {
-        vl_api_control_ping_t * mp;
-        M(CONTROL_PING, control_ping);
+        vl_api_noprint_control_ping_t * mp;
+        M(NOPRINT_CONTROL_PING, noprint_control_ping);
         S;
     }
+
     /* Wait for a reply... */
-    W;
+    W_L({
+      if (vam->noprint_msg) {
+          if (!vam->json_output) {
+              vam->retval = print_lisp_eid_table_dump(vam);
+          } else {
+              vam->retval = json_lisp_eid_table_dump(vam);
+          }
+      }
+
+      vam->noprint_msg = 0;
+    });
 
     /* NOTREACHED */
     return 0;
@@ -13601,7 +13958,8 @@ _(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
 _(lisp_eid_table_add_del_map, "[del] vni <vni> vrf <vrf>")              \
 _(lisp_locator_set_dump, "[locator-set-index <ls-index> | "             \
                          "locator-set <loc-set-name>] [local | remote]")\
-_(lisp_local_eid_table_dump, "")                                        \
+_(lisp_eid_table_dump, "[eid <ipv4|ipv6>/<prefix> | <mac>] [vni] "      \
+                       "[local] | [remote]")                            \
 _(lisp_eid_table_map_dump, "")                                          \
 _(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \

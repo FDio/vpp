@@ -1359,8 +1359,11 @@ format_eid_entry (u8 * s, va_list * args)
 {
   vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
   lisp_cp_main_t * lcm = va_arg (*args, lisp_cp_main_t *);
-  gid_address_t * gid = va_arg (*args, gid_address_t *);
+  mapping_t * mapit = va_arg (*args, mapping_t *);
   locator_set_t * ls = va_arg (*args, locator_set_t *);
+  gid_address_t * gid = &mapit->eid;
+  u32 ttl = mapit->ttl;
+  u8 aut = mapit->authoritative;
   u32 * loc_index;
   u8 first_line = 1;
   u8 * loc;
@@ -1370,7 +1373,8 @@ format_eid_entry (u8 * s, va_list * args)
 
   if (vec_len (ls->locator_indices) == 0)
     {
-      s = format (s, "%-35U%-20s", format_gid_address, gid, type);
+      s = format (s, "%-35U%-30s%-20u%-u", format_gid_address, gid,
+                                           type, ttl, aut);
     }
   else
     {
@@ -1386,8 +1390,8 @@ format_eid_entry (u8 * s, va_list * args)
 
           if (first_line)
             {
-              s = format (s, "%-35U%-20s%-v\n", format_gid_address,
-                          gid, type, loc);
+              s = format (s, "%-35U%-20s%-30v%-20u%-u\n", format_gid_address,
+                          gid, type, loc, ttl, aut);
               first_line = 0;
             }
           else
@@ -1408,6 +1412,7 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
   u32 mi;
   gid_address_t eid;
   u8 print_all = 1;
+  u8 filter = 0;
 
   memset (&eid, 0, sizeof(eid));
 
@@ -1419,12 +1424,17 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "eid %U", unformat_gid_address, &eid))
         print_all = 0;
+      else if (unformat (line_input, "local"))
+        filter = 1;
+      else if (unformat(line_input, "remote"))
+        filter = 2;
       else
         return clib_error_return (0, "parse error: '%U'",
                                   format_unformat_error, line_input);
     }
 
-  vlib_cli_output (vm, "%-35s%-20s%-s", "EID", "type", "locators");
+  vlib_cli_output (vm, "%-35s%-20s%-30s%-20s%-s",
+                   "EID", "type", "locators", "ttl", "autoritative");
 
   if (print_all)
     {
@@ -1432,8 +1442,13 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
       ({
         locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
                                                 mapit->locator_set_index);
+        if (filter && !((1 == filter && ls->local) ||
+          (2 == filter && !ls->local)))
+          {
+            continue;
+          }
         vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
-                         lcm, &mapit->eid, ls);
+                         lcm, mapit, ls);
       }));
     }
   else
@@ -1445,8 +1460,15 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
       mapit = pool_elt_at_index (lcm->mapping_pool, mi);
       locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
                                               mapit->locator_set_index);
-      vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
-                       lcm, &mapit->eid, ls);
+
+      if (filter && !((1 == filter && ls->local) ||
+        (2 == filter && !ls->local)))
+        {
+          return 0;
+        }
+
+      vlib_cli_output (vm, "%U,", format_eid_entry, lcm->vnet_main,
+                       lcm, mapit, ls);
     }
 
   return 0;
