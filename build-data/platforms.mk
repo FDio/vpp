@@ -31,12 +31,17 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	: need symbolic links in the lib pkg ; 				\
 	find $(INSTALL_PREFIX)$(ARCH)/*/lib* \( -type f -o  -type l \)  \
 	  -print | egrep -e '*\.so\.*\.*\.*'				\
+	  | grep -v plugins\/						\
 	  | sed -e 's:.*:../& /usr/lib/x86_64-linux-gnu:'		\
 	    > deb/debian/vpp-lib.install ;				\
 									\
 	: dev package ;							\
 	./scripts/find-dev-contents $(INSTALL_PREFIX)$(ARCH)		\
 	 deb/debian/vpp-dev.install ;					\
+									\
+	: plugins package ;						\
+	./scripts/find-plugins-contents $(INSTALL_PREFIX)$(ARCH)	\
+	 deb/debian/vpp-plugins.install ;				\
 									\
 	: dpdk headers ;						\
 	./scripts/find-dpdk-contents $(INSTALL_PREFIX)$(ARCH)		\

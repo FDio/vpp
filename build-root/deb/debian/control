@@ -47,6 +47,13 @@ Description: Vector Packet Processing--runtime libraries
  vlib-api - binary API library
  vnet -  network stack library
 
+Package: vpp-plugins
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Vector Packet Processing--runtime plugins
+ This package contains VPP plugins
+ .
+
 Package: vpp-dpdk-dkms
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
