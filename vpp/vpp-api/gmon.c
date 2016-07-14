@@ -288,6 +288,6 @@ set_significant_error_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (set_significant_error_command, static) = {
     .path = "set significant error",
-    .short_help = "set significant error <counter-index-nnn>",
+    .short_help = "set significant error <counter-index-nnn> [disable]",
     .function = set_significant_error_command_fn,
 };
