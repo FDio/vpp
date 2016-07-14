@@ -140,9 +140,14 @@ test_ha_LDADD = -lvlibmemoryclient -lvlibapi -lsvmdb -lsvm -lvppinfra \
 		-lpthread -lm -lrt
 
 
-
 noinst_PROGRAMS += summary_stats_client
 
 summary_stats_client_SOURCES = vpp-api/summary_stats_client.c
 summary_stats_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
 	-lpthread -lm -lrt
+
+bin_PROGRAMS += vpp_get_metrics
+
+vpp_get_metrics_SOURCES = vpp-api/vpp_get_metrics.c
+vpp_get_metrics_LDADD = -lsvmdb -lsvm -lvppinfra \
+		-lpthread -lm -lrt
