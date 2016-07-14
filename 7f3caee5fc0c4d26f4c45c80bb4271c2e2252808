@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_e5487dce",
+        "filename": "vnet/vnet/ethernet/format.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-14T14:43:32Z",
+      "side": 1,
+      "message": "lowercase please",
+      "range": {
+        "startLine": 78,
+        "startChar": 20,
+        "endLine": 78,
+        "endChar": 22
+      },
+      "revId": "7f3caee5fc0c4d26f4c45c80bb4271c2e2252808",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
