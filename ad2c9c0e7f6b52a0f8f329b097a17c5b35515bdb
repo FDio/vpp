@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_a57965fe",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-07-14T14:07:41Z",
+      "side": 1,
+      "message": "Should this be .1ad here?",
+      "range": {
+        "startLine": 684,
+        "startChar": 38,
+        "endLine": 684,
+        "endChar": 40
+      },
+      "revId": "ad2c9c0e7f6b52a0f8f329b097a17c5b35515bdb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
