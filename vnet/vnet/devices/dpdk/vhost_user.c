@@ -909,6 +909,8 @@ dpdk_vhost_user_if_disconnect(dpdk_device_t * xd)
     dpdk_vu_intf_t *vui = xd->vu_intf;
     vnet_main_t * vnm = vnet_get_main();
     dpdk_main_t * dm = &dpdk_main;
+    struct vhost_virtqueue *vq;
+    int q;
 
     xd->admin_up = 0;
     vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index,  0);
@@ -923,6 +925,20 @@ dpdk_vhost_user_if_disconnect(dpdk_device_t * xd)
     close(vui->unix_fd);
     vui->unix_fd = -1;
     vui->is_up = 0;
+
+    for (q = 0; q < vui->num_vrings; q++) {
+        vq = xd->vu_vhost_dev.virtqueue[q];
+        vui->vrings[q].enabled = 0; /* Reset local copy */
+        vui->vrings[q].callfd = -1; /* Reset FD */
+        vq->enabled = 0;
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
+        vq->log_guest_addr = 0;
+#endif
+        vq->desc = NULL;
+        vq->used = NULL;
+        vq->avail = NULL;
+    }
+    xd->vu_is_running = 0;
 
     dpdk_unmap_all_mem_regions(xd);
     DBG_SOCK("interface ifindex %d disconnected", xd->vlib_sw_if_index);
