@@ -249,7 +249,9 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
           vlib_buffer_alloc_from_free_list(vm, &tm->rx_buffers[len],
                             VLIB_FRAME_SIZE - len, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
       if (PREDICT_FALSE(vec_len(tm->rx_buffers) < tm->mtu_buffers)) {
-        clib_warning("vlib_buffer_alloc failed");
+          vlib_node_increment_counter(vm, tapcli_rx_node.index,
+                                      TAPCLI_ERROR_BUFFER_ALLOC,
+                                      tm->mtu_buffers - vec_len(tm->rx_buffers));
         break;
       }
     }
