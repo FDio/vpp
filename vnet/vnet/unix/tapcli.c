@@ -213,7 +213,7 @@ enum {
   TAPCLI_RX_N_NEXT,
 };
 
-
+static f64 last_buffer_alloc_failure = 0;
 
 static uword tapcli_rx_iface(vlib_main_t * vm,
                             vlib_node_runtime_t * node,
@@ -249,7 +249,11 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
           vlib_buffer_alloc_from_free_list(vm, &tm->rx_buffers[len],
                             VLIB_FRAME_SIZE - len, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
       if (PREDICT_FALSE(vec_len(tm->rx_buffers) < tm->mtu_buffers)) {
-        clib_warning("vlib_buffer_alloc failed");
+        f64 now = vlib_time_now(vm);
+        if (last_buffer_alloc_failure == 0 || now > last_buffer_alloc_failure + 2) {
+          clib_warning("vlib_buffer_alloc failed");
+          last_buffer_alloc_failure = now;
+        }
         break;
       }
     }
