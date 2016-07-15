@@ -166,8 +166,8 @@ l2_rw_node_fn(vlib_main_t * vm,
 
         vlib_prefetch_buffer_header (p2, LOAD);
         vlib_prefetch_buffer_header (p3, LOAD);
-        CLIB_PREFETCH (p2->data, prefetch_size, LOAD);
-        CLIB_PREFETCH (p3->data, prefetch_size, LOAD);
+        CLIB_PREFETCH (vlib_buffer_get_current(p2), prefetch_size, LOAD);
+        CLIB_PREFETCH (vlib_buffer_get_current(p3), prefetch_size, LOAD);
       }
 
       bi0 = from[0];
