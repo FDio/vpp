@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_ec1625f1",
+        "filename": "vnet/vnet/unix/tapcli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-15T12:39:28Z",
+      "side": 1,
+      "message": "put this into tapcli_main?",
+      "range": {
+        "startLine": 216,
+        "startChar": 0,
+        "endLine": 216,
+        "endChar": 41
+      },
+      "revId": "2bbf5ee1c62f02d4481042c17d608809023f8f65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_ccd36137",
+        "filename": "vnet/vnet/unix/tapcli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-15T12:39:28Z",
+      "side": 1,
+      "message": "we should count alloc errors, too, I think; possibly instead of emitting a warning.",
+      "range": {
+        "startLine": 252,
+        "startChar": 0,
+        "endLine": 256,
+        "endChar": 9
+      },
+      "revId": "2bbf5ee1c62f02d4481042c17d608809023f8f65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
