@@ -407,6 +407,7 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
       b = vlib_get_buffer (vm, f->unaligned_buffers[i]);
       mb = rte_mbuf_from_vlib_buffer (b);
       ASSERT (rte_mbuf_refcnt_read (mb) == 1);
+      rte_mbuf_refcnt_set(mb, 0);
       rte_pktmbuf_free (mb);
     }
   for (i = 0; i < vec_len (f->aligned_buffers); i++)
@@ -414,6 +415,7 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
       b = vlib_get_buffer (vm, f->aligned_buffers[i]);
       mb = rte_mbuf_from_vlib_buffer (b);
       ASSERT (rte_mbuf_refcnt_read (mb) == 1);
+      rte_mbuf_refcnt_set(mb, 0);
       rte_pktmbuf_free (mb);
     }
   vec_free (f->name);
@@ -738,6 +740,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
 	    {
 	      mb = rte_mbuf_from_vlib_buffer (b);
 	      ASSERT (rte_mbuf_refcnt_read (mb) == 1);
+	      rte_mbuf_refcnt_set(mb, 0);
 	      rte_pktmbuf_free (mb);
 	    }
 	}
