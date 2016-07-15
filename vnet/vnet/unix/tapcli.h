@@ -22,6 +22,7 @@
   /* Must be first. */                                  \
  _(NONE, "no error")                                    \
  _(READ, "read error")                                  \
+ _(BUFFER_ALLOC, "buffer allocation error")             \
  _(UNKNOWN, "unknown error")
 
 typedef enum {
