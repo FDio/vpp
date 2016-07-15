@@ -39,6 +39,8 @@ typedef struct {
     u32 hw_if_index;
     u32 sw_if_index;
 
+    u32 encap_fib_index; //fib index used for outgoing encapsulated packets
+
     u8  l2tp_hdr_size;
     u8  l2_sublayer_present;
     u8  cookie_flags;           /* in host byte order */
@@ -119,7 +121,8 @@ int create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
                                u32 remote_session_id,
                                u64 local_cookie,
                                u64 remote_cookie,
-                               int l2_sublayer_present, 
+                               int l2_sublayer_present,
+                               u32 encap_fib_index,
                                u32 * sw_if_index);
 
 int l2tpv3_set_tunnel_cookies (l2t_main_t * lm,
