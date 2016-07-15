@@ -1091,7 +1091,7 @@ define cli_request {
 */
 define cli_reply {
     u32 context;
-    u32 retval;
+    i32 retval;
     u64 reply_in_shmem;
 };
 
@@ -1425,7 +1425,7 @@ define l2_flags {
 */
 define l2_flags_reply {
     u32 context;
-    u32 retval;
+    i32 retval;
     u32 resulting_feature_bitmap;
 };
 
@@ -1452,7 +1452,7 @@ define bridge_flags {
 */
 define bridge_flags_reply {
     u32 context;
-    u32 retval;
+    i32 retval;
     u32 resulting_feature_bitmap;
 };
 
@@ -1481,7 +1481,7 @@ define bd_ip_mac_add_del {
 */
 define bd_ip_mac_add_del_reply {
     u32 context;
-    u32 retval;
+    i32 retval;
 };
 
 /** \brief Add/Delete classification table request
@@ -2742,7 +2742,7 @@ define bridge_domain_add_del {
 */
 define bridge_domain_add_del_reply {
     u32 context;
-    u32 retval;
+    i32 retval;
 };
 
 /** \brief L2 bridge domain request operational state details
@@ -3930,7 +3930,7 @@ define classify_table_ids {
 */
 manual_java define classify_table_ids_reply {
     u32 context;
-    u32 retval;
+    i32 retval;
     u32 count;
     u32 ids[count];
 };
@@ -3956,7 +3956,7 @@ define classify_table_by_interface {
 */
 manual_java define classify_table_by_interface_reply {
     u32 context;
-    u32 retval;
+    i32 retval;
     u32 sw_if_index;
     u32 l2_table_id;
     u32 ip4_table_id;
@@ -4057,7 +4057,7 @@ define ipfix_enable {
 */
 define ipfix_enable_reply {
     u32 context;
-    u32 retval;
+    i32 retval;
 };
 
 /** \brief IPFIX dump request
