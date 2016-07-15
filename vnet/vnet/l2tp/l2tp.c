@@ -296,7 +296,8 @@ int create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
                                u32 remote_session_id,
                                u64 local_cookie,
                                u64 remote_cookie,
-                               int l2_sublayer_present, 
+                               int l2_sublayer_present,
+                               u32 encap_fib_index,
                                u32 * sw_if_index)
 {
   l2t_session_t *s = 0;
@@ -346,6 +347,7 @@ int create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
     sizeof (l2tpv3_header_t) :
     sizeof (l2tpv3_header_t) - sizeof(l2tp_hdr.l2_specific_sublayer);
   s->admin_up = 0;
+  s->encap_fib_index = encap_fib_index;
 
   /* Setup hash table entries */
   switch (lm->lookup_type) {
@@ -420,6 +422,8 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
   int l2_sublayer_present = 0;
   int rv;
   u32 sw_if_index;
+  u32 encap_fib_id = ~0;
+  u32 encap_fib_index = ~0;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -442,6 +446,9 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
     else if (unformat (line_input, "remote-session-id %d", 
                        &remote_session_id))
       ;
+    else if (unformat (line_input, "fib-id %d",
+                           &encap_fib_id))
+          ;
     else if (unformat (line_input, "l2-sublayer-present"))
       l2_sublayer_present = 1;
     else 
@@ -450,6 +457,16 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
   }
 
   unformat_free (line_input);
+
+  if (encap_fib_id != ~0) {
+      uword *p;
+      ip6_main_t *im = &ip6_main;
+      if (!(p = hash_get (im->fib_index_by_table_id, encap_fib_id)))
+          return clib_error_return (0, "No fib with id %d", encap_fib_id);
+      encap_fib_index = p[0];
+  } else {
+      encap_fib_index = ~0;
+  }
 
   if (our_address_set == 0)
     return clib_error_return (0, "our address not specified");
@@ -460,6 +477,7 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
                                   local_session_id, remote_session_id,
                                   local_cookie, remote_cookie,
                                   l2_sublayer_present, 
+                                  encap_fib_index,
                                   &sw_if_index);
   switch(rv)
     {

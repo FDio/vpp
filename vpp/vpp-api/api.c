@@ -4329,6 +4329,20 @@ static void vl_api_l2tpv3_create_tunnel_t_handler
         goto out;
     }
 
+    u32 encap_fib_index;
+
+    if (mp->encap_vrf_id != ~0) {
+        uword *p;
+        ip6_main_t *im = &ip6_main;
+        if (!(p = hash_get (im->fib_index_by_table_id, ntohl(mp->encap_vrf_id)))) {
+            rv = VNET_API_ERROR_NO_SUCH_FIB;
+            goto out;
+        }
+        encap_fib_index = p[0];
+    } else {
+        encap_fib_index = ~0;
+    }
+
     rv = create_l2tpv3_ipv6_tunnel (lm,
                                (ip6_address_t *) mp->client_address,
                                (ip6_address_t *) mp->our_address,
@@ -4337,6 +4351,7 @@ static void vl_api_l2tpv3_create_tunnel_t_handler
                                clib_net_to_host_u64(mp->local_cookie),
                                clib_net_to_host_u64(mp->remote_cookie),
                                mp->l2_sublayer_present,
+                               encap_fib_index,
                                &sw_if_index);
 
 out:
