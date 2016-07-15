@@ -1694,6 +1694,7 @@ define dhcp_proxy_config_2_reply {
     @param remote_session_id - remote tunnel session id
     @param local_cookie - local tunnel cookie
     @param l2_sublayer_present - l2 sublayer is present in packets if non-zero
+    @param encap_vrf_id - fib identifier used for outgoing encapsulated packets
 */
 define l2tpv3_create_tunnel {
     u32 client_index;
@@ -1706,6 +1707,7 @@ define l2tpv3_create_tunnel {
     u64 local_cookie;
     u64 remote_cookie;
     u8 l2_sublayer_present;
+    u32 encap_vrf_id;
 };
 
 /** \brief l2tpv3 tunnel interface create response

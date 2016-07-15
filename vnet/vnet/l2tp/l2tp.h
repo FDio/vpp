@@ -27,8 +27,6 @@ typedef struct {
     ip6_address_t our_address;
     ip6_address_t client_address;
 
-    /* $$$$ maybe add encap-path lookup fib ID? */
-
     /* l2tpv3 header parameters */
     u64 local_cookie[2];
     u64 remote_cookie;
@@ -38,6 +36,8 @@ typedef struct {
     /* tunnel interface */
     u32 hw_if_index;
     u32 sw_if_index;
+
+    u32 encap_fib_index; //fib index used for outgoing encapsulated packets
 
     u8  l2tp_hdr_size;
     u8  l2_sublayer_present;
@@ -119,7 +119,8 @@ int create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
                                u32 remote_session_id,
                                u64 local_cookie,
                                u64 remote_cookie,
-                               int l2_sublayer_present, 
+                               int l2_sublayer_present,
+                               u32 encap_fib_index,
                                u32 * sw_if_index);
 
 int l2tpv3_set_tunnel_cookies (l2t_main_t * lm,

@@ -112,9 +112,6 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
     if (vnet_buffer(b)->l2t.next_index != L2T_ENCAP_NEXT_IP6_LOOKUP)
         return vnet_buffer(b)->l2t.next_index;
 
-    /* clear so it is not interpreted as fib_index */
-    vnet_buffer(b)->sw_if_index[VLIB_TX] = (u32)~0;
-
     em->counters[node_counter_base_index + L2T_ENCAP_ERROR_NETWORK_TO_USER] += 1;
     
     session_index = vnet_buffer(b)->l2t.session_index;
@@ -131,6 +128,8 @@ static inline u32 last_stage (vlib_main_t *vm, vlib_node_runtime_t *node,
                                      vlib_buffer_length_in_chain (vm, b));
     
     s = pool_elt_at_index (lm->sessions, session_index);
+
+    vnet_buffer(b)->sw_if_index[VLIB_TX] = s->encap_fib_index;
 
     /* Paint on an l2tpv3 hdr */
     vlib_buffer_advance (b, -(s->l2tp_hdr_size));
