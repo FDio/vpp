@@ -56,6 +56,7 @@ AM_CONDITIONAL(ENABLE_$1_PLUGIN, test "$enable_the_plugin" = "1")
 PLUGIN_ENABLED(sixrd)
 PLUGIN_ENABLED(ioam)
 PLUGIN_ENABLED(snat)
+PLUGIN_ENABLED(ila)
 
 # Disabled plugins, require --enable-XXX-plugin
 PLUGIN_DISABLED(vcgn)
