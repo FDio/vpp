@@ -7033,8 +7033,8 @@ static void vl_api_ipfix_enable_t_handler (vl_api_ipfix_enable_t *mp)
     collector_port = ntohs(mp->collector_port);
     if (collector_port == (u16)~0)
         collector_port = UDP_DST_PORT_ipfix;
-	memcpy(src.data, mp->src_address, sizeof(src.data));
-	fib_id = ntohl(mp->vrf_id);
+    memcpy(src.data, mp->src_address, sizeof(src.data));
+    fib_id = ntohl(mp->vrf_id);
 
     ip4_main_t * im = &ip4_main;
     uword * p = hash_get (im->fib_index_by_table_id, fib_id);
