@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_ec4505b4",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 7030,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-16T10:36:17Z",
+      "side": 1,
+      "message": "While at it, it would be good to fix the rest of the function :-)",
+      "range": {
+        "startLine": 7028,
+        "startChar": 0,
+        "endLine": 7030,
+        "endChar": 12
+      },
+      "revId": "471109f938bb6c55c215712b53da6e853c648726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
