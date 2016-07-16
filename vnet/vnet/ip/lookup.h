@@ -146,6 +146,7 @@ _(dport, IP_FLOW_HASH_DST_PORT)                 \
 _(proto, IP_FLOW_HASH_PROTO)	                \
 _(reverse, IP_FLOW_HASH_REVERSE_SRC_DST)
 
+#define IP_ADJACENCY_OPAQUE_SZ 16
 /* IP unicast adjacency. */
 typedef struct {
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
@@ -187,6 +188,7 @@ typedef struct {
     struct {
         ip46_address_t next_hop;
     } indirect;
+    u8 opaque[IP_ADJACENCY_OPAQUE_SZ];
   };
 
   STRUCT_MARK(signature_end);

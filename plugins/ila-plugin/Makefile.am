@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Cisco and/or its affiliates.
+# Copyright (c) 2016 Cisco Systems, Inc.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -13,37 +13,17 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-# To add a new plugin subdirectory:
-#
-# add a stanza here:
-# if ENABLE_new_PLUGIN
-# SUBDIRS += new-plugin
-# endif
-#
-# Also: add PLUGIN(new) to configure.ac
+AM_CFLAGS = -Wall
+AM_LDFLAGS = -module -shared -avoid-version
 
-SUBDIRS =
+vpppluginsdir = ${libdir}/vpp_plugins
 
-if ENABLE_sample_PLUGIN
-SUBDIRS += sample-plugin
-endif
+vppplugins_LTLIBRARIES = ila_plugin.la
 
-if ENABLE_sixrd_PLUGIN
-SUBDIRS += sixrd-plugin
-endif
+ila_plugin_la_SOURCES = ila/ila.c
 
-if ENABLE_ioam_PLUGIN
-SUBDIRS += ioam-plugin
-endif
+noinst_HEADERS = ila/ila.h
 
-if ENABLE_vcgn_PLUGIN
-SUBDIRS += vcgn-plugin
-endif
-
-if ENABLE_snat_PLUGIN
-SUBDIRS += snat-plugin
-endif
-
-if ENABLE_ila_PLUGIN
-SUBDIRS += ila-plugin
-endif
+# Remove *.la files
+install-data-hook:
+	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
