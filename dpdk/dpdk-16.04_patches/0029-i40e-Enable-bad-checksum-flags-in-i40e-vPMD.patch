@@ -1,0 +1,114 @@
+From ff4d874754e5e420671cc78d82829cd7317542ad Mon Sep 17 00:00:00 2001
+From: Damjan Marion <damarion@cisco.com>
+Date: Thu, 14 Jul 2016 09:59:02 -0700
+Subject: [PATCH 29/29] i40e: Enable bad checksum flags in i40e vPMD
+
+Decode the checksum flags from the rx descriptor, setting
+the appropriate bit in the mbuf ol_flags field when the flag
+indicates a bad checksum.
+
+Signed-off-by: Damjan Marion <damarion@cisco.com>
+Signed-off-by: Jeff Shaw <jeffrey.b.shaw@intel.com>
+---
+ drivers/net/i40e/i40e_rxtx_vec.c | 55 +++++++++++++++++++++++-----------------
+ 1 file changed, 32 insertions(+), 23 deletions(-)
+
+diff --git a/drivers/net/i40e/i40e_rxtx_vec.c b/drivers/net/i40e/i40e_rxtx_vec.c
+index defa581..09ec6e6 100644
+--- a/drivers/net/i40e/i40e_rxtx_vec.c
++++ b/drivers/net/i40e/i40e_rxtx_vec.c
+@@ -138,18 +138,14 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
+ static inline void
+ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
+ {
+-	__m128i vlan0, vlan1, rss;
+-	union {
+-		uint16_t e[4];
+-		uint64_t dword;
+-	} vol;
++	__m128i vlan0, vlan1, rss, l3_l4e;
+ 
+-	/* mask everything except rss and vlan flags
+-	*bit2 is for vlan tag, bits 13:12 for rss
+-	*/
+-	const __m128i rss_vlan_msk = _mm_set_epi16(
+-			0x0000, 0x0000, 0x0000, 0x0000,
+-			0x3004, 0x3004, 0x3004, 0x3004);
++	/* mask everything except RSS, flow director and VLAN flags
++	 * bit2 is for VLAN tag, bit11 for flow director indication
++	 * bit13:12 for RSS indication.
++	 */
++	const __m128i rss_vlan_msk = _mm_set_epi32(
++			0x1c03004, 0x1c03004, 0x1c03004, 0x1c03004);
+ 
+ 	/* map rss and vlan type to rss hash and vlan flag */
+ 	const __m128i vlan_flags = _mm_set_epi8(0, 0, 0, 0,
+@@ -162,23 +158,36 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
+ 			0, 0, 0, 0,
+ 			PKT_RX_FDIR, 0, PKT_RX_RSS_HASH, 0);
+ 
+-	vlan0 = _mm_unpackhi_epi16(descs[0], descs[1]);
+-	vlan1 = _mm_unpackhi_epi16(descs[2], descs[3]);
+-	vlan0 = _mm_unpacklo_epi32(vlan0, vlan1);
++	const __m128i l3_l4e_flags = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
++			PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
++			PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
++			PKT_RX_EIP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
++			PKT_RX_EIP_CKSUM_BAD,
++			PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
++			PKT_RX_L4_CKSUM_BAD,
++			PKT_RX_IP_CKSUM_BAD,
++			0);
++
++	vlan0 = _mm_unpackhi_epi32(descs[0], descs[1]);
++	vlan1 = _mm_unpackhi_epi32(descs[2], descs[3]);
++	vlan0 = _mm_unpacklo_epi64(vlan0, vlan1);
+ 
+ 	vlan1 = _mm_and_si128(vlan0, rss_vlan_msk);
+ 	vlan0 = _mm_shuffle_epi8(vlan_flags, vlan1);
+ 
+-	rss = _mm_srli_epi16(vlan1, 12);
++	rss = _mm_srli_epi32(vlan1, 12);
+ 	rss = _mm_shuffle_epi8(rss_flags, rss);
+ 
++	l3_l4e = _mm_srli_epi32(vlan1, 22);
++	l3_l4e = _mm_shuffle_epi8(l3_l4e_flags, l3_l4e);
++
+ 	vlan0 = _mm_or_si128(vlan0, rss);
+-	vol.dword = _mm_cvtsi128_si64(vlan0);
++	vlan0 = _mm_or_si128(vlan0, l3_l4e);
+ 
+-	rx_pkts[0]->ol_flags = vol.e[0];
+-	rx_pkts[1]->ol_flags = vol.e[1];
+-	rx_pkts[2]->ol_flags = vol.e[2];
+-	rx_pkts[3]->ol_flags = vol.e[3];
++	rx_pkts[0]->ol_flags = _mm_extract_epi16(vlan0, 0);
++	rx_pkts[1]->ol_flags = _mm_extract_epi16(vlan0, 2);
++	rx_pkts[2]->ol_flags = _mm_extract_epi16(vlan0, 4);
++	rx_pkts[3]->ol_flags = _mm_extract_epi16(vlan0, 6);
+ }
+ #else
+ #define desc_to_olflags_v(desc, rx_pkts) do {} while (0)
+@@ -770,7 +779,8 @@ i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
+ #ifndef RTE_LIBRTE_I40E_RX_OLFLAGS_ENABLE
+ 	/* whithout rx ol_flags, no VP flag report */
+ 	if (rxmode->hw_vlan_strip != 0 ||
+-	    rxmode->hw_vlan_extend != 0)
++	    rxmode->hw_vlan_extend != 0 ||
++	    rxmode->hw_ip_checksum != 0)
+ 		return -1;
+ #endif
+ 
+@@ -781,8 +791,7 @@ i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
+ 	 /* - no csum error report support
+ 	 * - no header split support
+ 	 */
+-	if (rxmode->hw_ip_checksum == 1 ||
+-	    rxmode->header_split == 1)
++	if (rxmode->header_split == 1)
+ 		return -1;
+ 
+ 	return 0;
+-- 
+2.7.4
+
