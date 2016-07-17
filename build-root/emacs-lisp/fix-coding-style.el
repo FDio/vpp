@@ -1,34 +1,26 @@
 #!/usr/bin/emacs --script
 
-;; insert style boilerplate
+;; Insert style boilerplate
+;;
+;; Breaking the string in half keeps emacs
+;; from trying to interpret the local variable
+;; settings e.g. when it reads the lisp source code
+
 (defun insert-style-boilerplate () (interactive)
        (save-excursion (goto-char (point-max))
                        (insert "
 /*
  * fd.io coding-style-patch-verification: ON
  *
- * Local Variables:
+ * Local Var" "iables:
  * eval: (c-set-style \"gnu\")
  * End:
  */")))
 
-;;
-(defun fix-foreach () (interactive)
-       (save-excursion (goto-char (point-min))
-                       (while (search-forward-regexp 
-                               "[pool|hash|clib_fifo|clib_bitmap]_foreach"
-                               (point-max) t)
-                         (move-beginning-of-line nil)
-                         (open-line 1)
-                         (c-indent-line-or-region)
-                         (insert "/* *INDENT-OFF* */")
-                         (search-forward "{")
-                         (backward-char)
-                         (forward-sexp)
-                         (move-end-of-line nil)
-                         (newline 1)
-                         (c-indent-line-or-region)
-                         (insert "/* *INDENT-ON* */"))))
+;; Insert indent-off ... indent-on brackets around
+;; a certain xxx_foreach macro, etc. which "indent"
+;; completely screws up. Doesn't handle nesting, of which there
+;; are few examples (fortunately).
 
 (defun fix-initializer (what) (interactive)
        (save-excursion 
@@ -46,6 +38,24 @@
            (c-indent-line-or-region)
            (insert "/* *INDENT-ON* */"))))
 
+(defun fix-pool-foreach () (interactive)
+       (fix-initializer "pool_foreach *("))
+
+(defun fix-hash-foreach () (interactive)
+       (fix-initializer "hash_foreach *("))
+
+(defun fix-hash-foreach-pair () (interactive)
+       (fix-initializer "hash_foreach_pair *("))
+
+(defun fix-clib-fifo-foreach () (interactive)
+       (fix-initializer "clib_fifo_foreach *("))
+
+(defun fix-clib-bitmap-foreach () (interactive)
+       (fix-initializer "clib_bitmap_foreach *("))
+
+(defun fix-foreach-ip-interface-address () (interactive)
+       (fix-initializer "foreach_ip_interface_address *("))
+
 (defun fix-vlib-register-thread () (interactive)
        (fix-initializer "VLIB_REGISTER_THREAD *("))
 
@@ -56,20 +66,34 @@
        (fix-initializer "VLIB_REGISTER_NODE *("))
 
 
-;; Driver routine which runs the set of keyboard macros
-;; defined above, as well as the bottom boilerplate lisp fn.
+;; Driver routine which runs the set of functions
+;; defined above, as well as the bottom boilerplate function
 
 (defun fd-io-styleify () (interactive)
-       (fix-foreach)
+       (fix-pool-foreach)
+       (fix-hash-foreach)
+       (fix-hash-foreach-pair)
+       (fix-foreach-ip-interface-address)
+       (fix-clib-fifo-foreach)
+       (fix-clib-bitmap-foreach)
        (fix-vlib-register-thread)
        (fix-vlib-cli-command)
        (fix-vlib-register-node)
        (insert-style-boilerplate))
 
-(setq index 0)
-(while (elt argv index)
-  (message "Processing %s..." (elt argv index))
-  (find-file (elt argv index))
-  (fd-io-styleify)
-  (setq index (1+ index)))
-(save-buffers-kill-emacs t)
+
+;; When run as a script, this sexp
+;; walks the list of files supplied on the command line.
+;; 
+;; (elt argv index) returns nil if you M-x eval-buffer
+;; or M-x load-file the file, so we won't accidentally
+;; evaluate (save-buffers-kill-emacs)...
+
+(let ((index 0))
+  (if (elt argv index)
+      (while (elt argv index)
+        (message "Processing %s..." (elt argv index))
+        (find-file (elt argv index))
+        (fd-io-styleify)
+        (setq index (1+ index))
+        (save-buffers-kill-emacs t))))
