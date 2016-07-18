@@ -1094,6 +1094,18 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
        */
       if (xd->pmd != VNET_DPDK_PMD_VMXNET3)
 	  rte_eth_dev_stop (xd->device_index);
+
+      /* For bonded interface, stop slave links */
+      if (xd->pmd == VNET_DPDK_PMD_BOND) 
+        {
+	  u8  slink[16];
+	  int nlink = rte_eth_bond_slaves_get(xd->device_index, slink, 16);
+	  while (nlink >=1) 
+	    {
+	      u8 dpdk_port = slink[--nlink];
+	      rte_eth_dev_stop (dpdk_port);
+	    }
+        }
     }
 
   if (rv < 0)
