@@ -347,6 +347,7 @@ _(LISP_ENABLE_DISABLE_STATUS_DUMP,                                      \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
   lisp_add_del_map_request_itr_rlocs)                                   \
 _(LISP_GET_MAP_REQUEST_ITR_RLOCS, lisp_get_map_request_itr_rlocs)       \
+_(SHOW_LISP_PITR, show_lisp_pitr)                                       \
 _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
 _(AF_PACKET_CREATE, af_packet_create)                                   \
 _(AF_PACKET_DELETE, af_packet_delete)                                   \
@@ -5606,6 +5607,43 @@ vl_api_lisp_get_map_request_itr_rlocs_t_handler (
     }));
 
     vec_free(tmp_str);
+}
+
+static void
+vl_api_show_lisp_pitr_t_handler (vl_api_show_lisp_pitr_t * mp)
+{
+    unix_shared_memory_queue_t * q = NULL;
+    vl_api_show_lisp_pitr_reply_t * rmp = NULL;
+    lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
+    mapping_t * m;
+    locator_set_t * ls = 0;
+    u8 * tmp_str = 0;
+    int rv = 0;
+
+    q = vl_api_client_index_to_input_queue (mp->client_index);
+    if (q == 0) {
+        return;
+    }
+
+    if (~0 == lcm->pitr_map_index) {
+      tmp_str = format(0, "N/A");
+    } else {
+      m = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+      if (~0 != m->locator_set_index) {
+        ls = pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
+        tmp_str = format(0, "%s", ls->name);
+      } else {
+        tmp_str = format(0, "N/A");
+      }
+    }
+    vec_add1(tmp_str, 0);
+
+    REPLY_MACRO2(VL_API_SHOW_LISP_PITR_REPLY,
+    ({
+      rmp->status = lcm->lisp_pitr;
+      strncpy((char *) rmp->locator_set_name, (char *) tmp_str,
+              ARRAY_LEN(rmp->locator_set_name) - 1);
+    }));
 }
 
 static void

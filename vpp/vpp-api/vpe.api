@@ -2661,6 +2661,27 @@ define lisp_get_map_request_itr_rlocs_reply {
     u8 locator_set_name[64];
 };
 
+/** \brief Request for lisp pitr status
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_lisp_pitr {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Status of lisp pitr, enable or disable
+    @param context - sender context, to match reply w/ request
+    @param status - lisp pitr enable if non-zero, else disable
+    @param locator_set_name -  name of the locator_set
+*/
+define show_lisp_pitr_reply {
+    u32 context;
+    i32 retval;
+    u8  status;
+    u8  locator_set_name[64];
+};
+
 /* Gross kludge, DGMS */
 define interface_name_renumber {
     u32 client_index;

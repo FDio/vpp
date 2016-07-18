@@ -2362,6 +2362,47 @@ vl_api_lisp_get_map_request_itr_rlocs_reply_t_handler_json (
     vam->result_ready = 1;
 }
 
+static void
+vl_api_show_lisp_pitr_reply_t_handler (vl_api_show_lisp_pitr_reply_t * mp)
+{
+    vat_main_t *vam = &vat_main;
+    i32 retval = ntohl(mp->retval);
+
+    if (0 <= retval) {
+      fformat(vam->ofp, "%-20s%-16s\n",
+              mp->status ? "enabled" : "disabled",
+              mp->status ? (char *) mp->locator_set_name : "");
+    }
+
+    vam->retval = retval;
+    vam->result_ready = 1;
+}
+
+static void
+vl_api_show_lisp_pitr_reply_t_handler_json (vl_api_show_lisp_pitr_reply_t * mp)
+{
+    vat_main_t *vam = &vat_main;
+    vat_json_node_t node;
+    u8 * status = 0;
+
+    status = format (0, "%s", mp->status ? "enabled" : "disabled");
+    vec_add1 (status, 0);
+
+    vat_json_init_object(&node);
+    vat_json_object_add_string_copy(&node, "status", status);
+    if (mp->status) {
+      vat_json_object_add_string_copy(&node, "locator_set", mp->locator_set_name);
+    }
+
+    vec_free (status);
+
+    vat_json_print(vam->ofp, &node);
+    vat_json_free(&node);
+
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
 static u8 * format_policer_type (u8 * s, va_list * va)
 {
     u32 i = va_arg (*va, u32);
@@ -3030,6 +3071,7 @@ _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY,                             \
   lisp_add_del_map_request_itr_rlocs_reply)                             \
 _(LISP_GET_MAP_REQUEST_ITR_RLOCS_REPLY,                                 \
   lisp_get_map_request_itr_rlocs_reply)                                 \
+_(SHOW_LISP_PITR_REPLY, show_lisp_pitr_reply)                           \
 _(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
 _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
 _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
@@ -10873,6 +10915,28 @@ api_lisp_pitr_set_locator_set (vat_main_t * vam)
   return 0;
 }
 
+static int
+api_show_lisp_pitr (vat_main_t * vam)
+{
+    vl_api_show_lisp_pitr_t *mp;
+    f64 timeout = ~0;
+
+    if (!vam->json_output) {
+        fformat(vam->ofp, "%=20s\n",
+                "lisp status:");
+    }
+
+    M(SHOW_LISP_PITR, show_lisp_pitr);
+    /* send it... */
+    S;
+
+    /* Wait for a reply... */
+    W;
+
+    /* NOTREACHED */
+    return 0;
+}
+
 /**
  * Add/delete mapping between vni and vrf
  */
@@ -11470,8 +11534,8 @@ api_lisp_enable_disable_status_dump(vat_main_t *vam)
     f64 timeout = ~0;
 
     if (!vam->json_output) {
-        fformat(vam->ofp, "%=20s\n",
-                "lisp status:");
+        fformat(vam->ofp, "%-20s%-16s\n",
+                "lisp status", "locator-set");
     }
 
     M(LISP_ENABLE_DISABLE_STATUS_DUMP,
@@ -12760,6 +12824,7 @@ _(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \
 _(lisp_enable_disable_status_dump, "")                                  \
 _(lisp_get_map_request_itr_rlocs, "")                                   \
+_(show_lisp_pitr, "")                                                   \
 _(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
 _(af_packet_delete, "name <host interface name>")                       \
 _(policer_add_del, "name <policer name> <params> [del]")                \

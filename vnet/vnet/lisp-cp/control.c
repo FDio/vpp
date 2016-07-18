@@ -1338,6 +1338,50 @@ VLIB_CLI_COMMAND (lisp_pitr_set_locator_set_command) = {
     .function = lisp_pitr_set_locator_set_command_fn,
 };
 
+static clib_error_t *
+lisp_show_pitr_command_fn (vlib_main_t * vm,
+                           unformat_input_t * input,
+                           vlib_cli_command_t * cmd)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  mapping_t * m;
+  locator_set_t * ls;
+  u8 * tmp_str = 0;
+
+  vlib_cli_output (vm, "%=20s%=16s",
+                   "pitr", lcm->lisp_pitr ? "locator-set" : "");
+
+  if (!lcm->lisp_pitr) {
+    vlib_cli_output (vm, "%=20s", "disable");
+    return 0;
+  }
+
+  if (~0 == lcm->pitr_map_index) {
+    tmp_str = format(0, "N/A");
+  } else {
+    m = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+    if (~0 != m->locator_set_index) {
+      ls = pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
+      tmp_str = format(0, "%s", ls->name);
+    } else {
+      tmp_str = format(0, "N/A");
+    }
+  }
+  vec_add1(tmp_str, 0);
+
+  vlib_cli_output (vm, "%=20s%=16s",
+                   "enable", tmp_str);
+
+  vec_free(tmp_str);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lisp_show_pitr_command) = {
+    .path = "show lisp pitr",
+    .short_help = "Show pitr",
+    .function = lisp_show_pitr_command_fn,
+};
 
 static u8 *
 format_eid_entry (u8 * s, va_list * args)
