@@ -1541,12 +1541,12 @@ dpdk_process (vlib_main_t * vm,
       dpdk_update_link_state (xd, now);
     }
 
-{ // Extra set up for bond interfaces:
-  // 1. Setup MACs for bond interfaces and their slave links which was set
-  //    in dpdk_port_setup() but needs to be done again here to take effect.
-  // 2. Set max L3 packet size of each bond interface to the lowerst value of 
-  //    its slave links 
-  // 3. Set up info for bond interface related CLI support.
+{ /* 
+   * Extra set up for bond interfaces:
+   *  1. Setup MACs for bond interfaces and their slave links which was set
+   *     in dpdk_port_setup() but needs to be done again here to take effect.
+   *  2. Set up info for bond interface related CLI support. 
+   */
   int nports = rte_eth_dev_count();
   if (nports > 0) {
       for (i = 0; i < nports; i++) {
@@ -1592,12 +1592,6 @@ dpdk_process (vlib_main_t * vm,
 		      ssi = vnet_get_sw_interface(vnm, sdev->vlib_sw_if_index);
 		      shi->bond_info = VNET_HW_INTERFACE_BOND_INFO_SLAVE;
 		      ssi->flags |= VNET_SW_INTERFACE_FLAG_BOND_SLAVE;
-		      /* Set l3 packet size allowed as the lowest of slave */
-		      if (bhi->max_l3_packet_bytes[VLIB_RX] >
-			  shi->max_l3_packet_bytes[VLIB_RX]) 
-			  bhi->max_l3_packet_bytes[VLIB_RX] =
-			  bhi->max_l3_packet_bytes[VLIB_TX] =
-			      shi->max_l3_packet_bytes[VLIB_RX];
 		  }
 	      }
 	  }
