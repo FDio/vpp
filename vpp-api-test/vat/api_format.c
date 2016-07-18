@@ -10400,7 +10400,7 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
         if (unformat(input, "del")) {
             is_add = 0;
-        } else if (unformat(input, "vni &d", &vni)) {
+        } else if (unformat(input, "vni %d", &vni)) {
             ;
         } else if (unformat(input, "eid %U/%d", unformat_ip4_address,
             &eidv4, &tmp_eid_lenght)) {
