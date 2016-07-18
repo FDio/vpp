@@ -756,24 +756,28 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
       goto error;
     }
 
-  if (ioctl (dev_tap_fd, SIOCGIFHWADDR, &ifr) < 0)
-    {
-      rv = VNET_API_ERROR_SYSCALL_ERROR_1;
-      goto error;
-    }
-
   ti = tapcli_get_new_tapif();
   ti->per_interface_next_index = ~0;
 
   if (hwaddr_arg != 0)
     clib_memcpy(hwaddr, hwaddr_arg, 6);
+  else
+    {
+      f64 now = vlib_time_now(vm);
+      u32 rnd;
+      rnd = (u32) (now * 1e6);
+      rnd = random_u32 (&rnd);
+
+      memcpy (hwaddr+2, &rnd, sizeof(rnd));
+      hwaddr[0] = 2;
+      hwaddr[1] = 0xfe;
+    }
 
   error = ethernet_register_interface
         (tm->vnet_main,
          tapcli_dev_class.index,
          ti - tm->tapcli_interfaces /* device instance */,
-         hwaddr_arg != 0 ? hwaddr :
-         (u8 *) ifr.ifr_hwaddr.sa_data /* ethernet address */,
+         hwaddr /* ethernet address */,
          &ti->hw_if_index, 
          tapcli_flag_change);
 
@@ -995,7 +999,7 @@ tap_modify_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (tap_modify_command, static) = {
     .path = "tap modify",
-    .short_help = "tap modify <vpp-tap-intfc-name> <linux-intfc-name> [hwaddr [<addr> | random]]",
+    .short_help = "tap modify <vpp-tap-intfc-name> <linux-intfc-name> [hwaddr <addr>]",
     .function = tap_modify_command_fn,
 };
 
@@ -1006,7 +1010,6 @@ tap_connect_command_fn (vlib_main_t * vm,
 {
   u8 * intfc_name;
   tapcli_main_t * tm = &tapcli_main;
-  int user_hwaddr = 0;
   u8 hwaddr[6];
   u8 *hwaddr_arg = 0;
   u32 sw_if_index;
@@ -1024,21 +1027,11 @@ tap_connect_command_fn (vlib_main_t * vm,
   
   if (unformat(input, "hwaddr %U", unformat_ethernet_address,
                &hwaddr))
-    user_hwaddr = 1;
+    hwaddr_arg = hwaddr;
 
+  /* It is here for backward compatibility */
   if (unformat(input, "hwaddr random"))
-    {
-      f64 now = vlib_time_now(vm);
-      u32 rnd;
-      rnd = (u32) (now * 1e6);
-      rnd = random_u32 (&rnd);
-
-      clib_memcpy (hwaddr+2, &rnd, sizeof(rnd));
-      hwaddr[0] = 2;
-      hwaddr[1] = 0xfe;
-      user_hwaddr = 1;
-    }
-  if (user_hwaddr) hwaddr_arg = hwaddr;
+    ;
 
   int rv = vnet_tap_connect(vm, intfc_name, hwaddr_arg, &sw_if_index);
   if (rv) {
@@ -1095,7 +1088,7 @@ tap_connect_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (tap_connect_command, static) = {
     .path = "tap connect",
-    .short_help = "tap connect <intfc-name> [hwaddr [<addr> | random]]",
+    .short_help = "tap connect <intfc-name> [hwaddr <addr>]",
     .function = tap_connect_command_fn,
 };
 
