@@ -166,6 +166,7 @@ gmon_init (vlib_main_t *vm)
     pid_t *swp = 0;
     f64 *v = 0;
     clib_error_t * error;
+    svmdb_map_args_t _ma, *ma= &_ma;
 
     if ((error = vlib_call_init_function(vm, vpe_api_init)))
         return(error);
@@ -174,7 +175,13 @@ gmon_init (vlib_main_t *vm)
     svm_region_init_chroot_uid_gid (am->root_path, am->api_uid, am->api_gid);
 
     gm->vlib_main = vm;
-    gm->svmdb_client = svmdb_map_chroot(am->root_path);
+
+    memset (ma, 0, sizeof (*ma));
+    ma->root_path = am->root_path;
+    ma->uid = am->api_uid;
+    ma->gid = am->api_gid;
+
+    gm->svmdb_client = svmdb_map (ma);
 
     /* Find or create, set to zero */
     vec_add1 (v, 0.0);

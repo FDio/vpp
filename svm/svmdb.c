@@ -66,8 +66,8 @@ region_unlock (svm_region_t * rp)
   pthread_mutex_unlock (&rp->mutex);
 }
 
-static svmdb_client_t *
-svmdb_map_internal (char *root_path, uword size)
+svmdb_client_t *
+svmdb_map (svmdb_map_args_t * dba)
 {
   svmdb_client_t *client = 0;
   svm_map_region_args_t *a = 0;
@@ -78,12 +78,14 @@ svmdb_map_internal (char *root_path, uword size)
   vec_validate (client, 0);
   vec_validate (a, 0);
 
-  svm_region_init_chroot (root_path);
+  svm_region_init_chroot_uid_gid (dba->root_path, dba->uid, dba->gid);
 
-  a->root_path = root_path;
+  a->root_path = dba->root_path;
   a->name = "/db";
-  a->size = size ? size : SVMDB_DEFAULT_SIZE;
+  a->size = dba->size ? dba->size : SVMDB_DEFAULT_SIZE;
   a->flags = SVM_FLAGS_MHEAP;
+  a->uid = dba->uid;
+  a->gid = dba->gid;
 
   db_rp = client->db_rp = svm_region_find_or_create (a);
 
@@ -125,30 +127,6 @@ svmdb_map_internal (char *root_path, uword size)
   client->pid = getpid ();
 
   return (client);
-}
-
-svmdb_client_t *
-svmdb_map (void)
-{
-  return svmdb_map_internal (0, 0);
-}
-
-svmdb_client_t *
-svmdb_map_size (uword size)
-{
-  return svmdb_map_internal (0, size);
-}
-
-svmdb_client_t *
-svmdb_map_chroot (char *root_path)
-{
-  return svmdb_map_internal (root_path, 0);
-}
-
-svmdb_client_t *
-svmdb_map_chroot_size (char *root_path, uword size)
-{
-  return svmdb_map_internal (root_path, size);
 }
 
 void

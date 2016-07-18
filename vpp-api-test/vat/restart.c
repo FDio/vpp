@@ -40,6 +40,7 @@ int restart_main_fn (unformat_input_t * i)
   struct stat statb;
   ino_t old_inode;
   int sleeps;
+  svmdb_map_args_t _ma, *ma= &_ma;
 
   struct timespec _req, *req = &_req;
   struct timespec _rem, *rem = &_rem;
@@ -63,7 +64,10 @@ int restart_main_fn (unformat_input_t * i)
   /* 
    * Step 1: look up the current VPP pid in the shared-memory database 
    */
-  svmdb_client = svmdb_map_chroot ((char *) chroot_path);
+  memset (ma, 0, sizeof (*ma));
+  ma->root_path = (char *)chroot_path;
+
+  svmdb_client = svmdb_map (ma);
 
   pidp = svmdb_local_get_variable_reference (svmdb_client,
                                              SVMDB_NAMESPACE_VEC, 
@@ -173,7 +177,7 @@ int restart_main_fn (unformat_input_t * i)
   /* 
    * Step 6: remap the SVM database 
    */
-  svmdb_client = svmdb_map_chroot ((char *) chroot_path);
+  svmdb_client = svmdb_map (ma);
   
   pidp = svmdb_local_get_variable_reference (svmdb_client,
                                              SVMDB_NAMESPACE_VEC, 

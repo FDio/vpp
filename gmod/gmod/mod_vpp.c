@@ -33,6 +33,7 @@ static int vpp_metric_init (apr_pool_t *p)
     apr_array_header_t *list_params = vpp_module.module_params_list;
     mmparam *params;
     char *chroot_path = 0;
+    svmdb_map_args_t _ma, *ma= &_ma;
     int i;
 
     if (str_params) {
@@ -47,7 +48,10 @@ static int vpp_metric_init (apr_pool_t *p)
         }
     }
 
-    svmdb_client = svmdb_map_chroot (chroot_path);
+    memset (ma, 0, sizeof (*ma));
+    ma->root_path = (char *)chroot_path;
+
+    svmdb_client = svmdb_map (ma);
 
 
     /* Initialize the metadata storage for each of the metrics and then

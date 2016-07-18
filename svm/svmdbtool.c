@@ -18,6 +18,8 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <pwd.h>
+#include <grp.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <pthread.h>
@@ -38,13 +40,39 @@
 #include <vppinfra/serialize.h>
 #include "svmdb.h"
 
+typedef struct
+{
+  svmdb_map_args_t map_args;
+  int uid, gid;
+  uword size;
+} svmdbtool_main_t;
+
+svmdbtool_main_t svmdbtool_main;
+
+static inline 
+svmdb_map_args_t * map_arg_setup (char *chroot_path)
+{
+  svmdbtool_main_t *sm = &svmdbtool_main;
+  svmdb_map_args_t *ma = &sm->map_args;
+
+  memset (ma, 0, sizeof (*ma));
+  ma->root_path = chroot_path;
+  ma->size = sm->size;
+  ma->uid = sm->uid;
+  ma->gid = sm->gid;
+  return ma;
+}
+
 static void
 get_string (char *chroot_path, u8 * vbl)
 {
   svmdb_client_t *c;
   char *rv;
+  svmdb_map_args_t *ma;
 
-  c = svmdb_map_chroot (chroot_path);
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
 
   rv = svmdb_local_get_string_variable (c, (char *) vbl);
 
@@ -57,8 +85,11 @@ static void
 set_string (char *chroot_path, u8 * vbl, u8 * value)
 {
   svmdb_client_t *c;
+  svmdb_map_args_t *ma;
 
-  c = svmdb_map_chroot (chroot_path);
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
   svmdb_local_set_string_variable (c, (char *) vbl, (char *) value);
   svmdb_unmap (c);
 }
@@ -67,8 +98,11 @@ static void
 unset_string (char *chroot_path, u8 * vbl)
 {
   svmdb_client_t *c;
+  svmdb_map_args_t *ma;
 
-  c = svmdb_map_chroot (chroot_path);
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
   svmdb_local_unset_string_variable (c, (char *) vbl);
   svmdb_unmap (c);
 }
@@ -77,8 +111,11 @@ static void
 dump_strings (char *chroot_path)
 {
   svmdb_client_t *c;
+  svmdb_map_args_t *ma;
 
-  c = svmdb_map_chroot (chroot_path);
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
   svmdb_local_dump_strings (c);
   svmdb_unmap (c);
 }
@@ -88,10 +125,13 @@ test_vlib_vec_rate (char *chroot_path, f64 vr)
 {
   svmdb_client_t *c;
   f64 *tv = 0;
+  svmdb_map_args_t *ma;
+
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
 
   vec_add1 (tv, vr);
-
-  c = svmdb_map_chroot (chroot_path);
 
   svmdb_local_set_vec_variable (c, "vlib_vector_rate", (char *) tv,
 				sizeof (*tv));
@@ -108,6 +148,11 @@ test_vec (char *chroot_path, u8 * vbl)
   svmdb_client_t *c;
   u64 *tv = 0;
   int i;
+  svmdb_map_args_t *ma;
+
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
 
   /* my amp goes to 11 */
   for (i = 0; i < 11; i++)
@@ -115,7 +160,6 @@ test_vec (char *chroot_path, u8 * vbl)
       vec_add1 (tv, i);
     }
 
-  c = svmdb_map_chroot (chroot_path);
   svmdb_local_set_vec_variable (c, (char *) vbl, (char *) tv, sizeof (tv[0]));
   svmdb_unmap (c);
 
@@ -132,8 +176,11 @@ fake_install (char *chroot_path, u8 * add_value)
   u8 *value;
   int nitems = 0, i;
   serialize_main_t m;
+  svmdb_map_args_t *ma;
 
-  c = svmdb_map_chroot (chroot_path);
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
 
   oldvalue = svmdb_local_get_vec_variable (c, "installed_sw", 1);
   if (oldvalue)
@@ -192,6 +239,9 @@ test_reg (char *chroot_path, u8 * vbl)
   svmdb_notification_args_t args;
   svmdb_notification_args_t *a = &args;
   struct sigaction sa;
+  svmdb_map_args_t *ma;
+
+  ma = map_arg_setup (chroot_path);
 
   memset (&sa, 0, sizeof (sa));
   sa.sa_sigaction = sigaction_handler;
@@ -204,7 +254,7 @@ test_reg (char *chroot_path, u8 * vbl)
 
   memset (a, 0, sizeof (*a));
 
-  c = svmdb_map_chroot (chroot_path);
+  c = svmdb_map (ma);
 
   a->add_del = 1 /* add */ ;
   a->nspace = SVMDB_NAMESPACE_STRING;
@@ -230,8 +280,12 @@ static void
 unset_vec (char *chroot_path, u8 * vbl)
 {
   svmdb_client_t *c;
+  svmdb_map_args_t *ma;
 
-  c = svmdb_map_chroot (chroot_path);
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
+
   svmdb_local_unset_vec_variable (c, (char *) vbl);
   svmdb_unmap (c);
 }
@@ -240,8 +294,12 @@ static void
 dump_vecs (char *chroot_path)
 {
   svmdb_client_t *c;
+  svmdb_map_args_t *ma;
 
-  c = svmdb_map_chroot (chroot_path);
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
+
   svmdb_local_dump_vecs (c);
   svmdb_unmap (c);
 }
@@ -250,8 +308,11 @@ static void
 crash_test (char *chroot_path)
 {
   svmdb_client_t *c;
+  svmdb_map_args_t *ma;
 
-  c = svmdb_map_chroot (chroot_path);
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
 
   clib_warning ("Grab region mutex and crash deliberately!");
   c->db_rp->mutex_owner_pid = getpid ();
@@ -265,7 +326,13 @@ static void
 map_with_size (char *chroot_path, uword size)
 {
   svmdb_client_t *c;
-  c = svmdb_map_chroot_size (chroot_path, size);
+  svmdb_map_args_t *ma;
+
+  svmdbtool_main.size = size;
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
+
   svmdb_unmap (c);
 }
 
@@ -279,6 +346,13 @@ main (int argc, char **argv)
   u8 *chroot_path_u8;
   uword size;
   f64 vr;
+  int uid, gid, rv;
+  struct passwd _pw, *pw;
+  struct group _grp, *grp;
+  char *s, buf[128];
+
+  svmdbtool_main.uid = geteuid();
+  svmdbtool_main.gid = getegid();
 
   unformat_init_command_line (&input, argv);
 
@@ -353,6 +427,46 @@ main (int argc, char **argv)
 	  map_with_size (chroot_path, size);
 	  parsed++;
 	}
+      else if (unformat (&input, "uid %d", &uid))
+        svmdbtool_main.uid = uid;
+      else if (unformat (&input, "gid %d", &gid))
+        svmdbtool_main.gid = gid;
+      else if (unformat (&input, "uid %s", &s))
+        {
+          /* lookup the username */
+          pw = NULL;
+          rv = getpwnam_r(s, &_pw, buf, sizeof(buf), &pw);
+          if (rv < 0)
+            {
+              fformat (stderr, "cannot fetch username %s", s);
+              exit (1);
+            }
+          if (pw == NULL)
+            {
+              fformat (stderr, "username %s does not exist", s);
+              exit (1);
+            }
+          vec_free (s);
+          svmdbtool_main.uid = pw->pw_uid;
+        }
+      else if (unformat (&input, "gid %s", &s))
+        {
+          /* lookup the group name */
+          grp = NULL;
+          rv = getgrnam_r(s, &_grp, buf, sizeof(buf), &grp);
+          if (rv != 0)
+            {
+              fformat (stderr, "cannot fetch group %s", s);
+              exit (1);
+            }
+          if (grp == NULL)
+            {
+              fformat (stderr, "group %s does not exist", s);
+              exit (1);
+            }
+          vec_free (s);
+          svmdbtool_main.gid = grp->gr_gid;
+        }
       else
 	{
 	  break;
@@ -368,6 +482,8 @@ main (int argc, char **argv)
       fformat (stdout, "      unset-string <name> | dump-strings\n");
       fformat (stdout, "      test-vec <name> |\n");
       fformat (stdout, "      unset-vec <name> | dump-vecs\n");
+      fformat (stdout, "      chroot <prefix> [uid <nnn-or-userid>]\n");
+      fformat (stdout, "      [gid <nnn-or-group-name>]\n");
     }
 
   exit (0);

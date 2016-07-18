@@ -81,19 +81,21 @@ typedef struct
   u32 opaque:28;
 } svmdb_notification_args_t;
 
+typedef struct
+{
+  char *root_path;
+  uword size;
+  u32 uid;
+  u32 gid;
+} svmdb_map_args_t;
+
 /*
  * Must be a reasonable number, several mb smaller than
  * SVM_GLOBAL_REGION_SIZE, or no donut for you...
  */
 #define SVMDB_DEFAULT_SIZE (4<<20)
 
-svmdb_client_t *svmdb_map (void);
-
-svmdb_client_t *svmdb_map_size (uword size);
-
-svmdb_client_t *svmdb_map_chroot (char *root_path);
-
-svmdb_client_t *svmdb_map_chroot_size (char *root_path, uword size);
+svmdb_client_t *svmdb_map (svmdb_map_args_t *);
 
 void svmdb_unmap (svmdb_client_t * client);
 void svmdb_local_unset_string_variable (svmdb_client_t * client, char *var);
