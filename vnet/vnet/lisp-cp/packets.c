@@ -200,7 +200,7 @@ pkt_push_ip (vlib_main_t * vm, vlib_buffer_t *b, ip_address_t *src,
 {
   if (ip_addr_version (src) != ip_addr_version(dst))
     {
-      clib_warning("src %s and dst %s IP have different AFI! Discarding!",
+      clib_warning("src %U and dst %U IP have different AFI! Discarding!",
                    format_ip_address, src, format_ip_address, dst);
       return 0;
     }
