@@ -5502,15 +5502,15 @@ vl_api_lisp_map_resolver_dump_t_handler (
 {
     unix_shared_memory_queue_t * q = NULL;
     lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
-    ip_address_t *ip = NULL;
+    map_resolver_t * mr;
 
     q = vl_api_client_index_to_input_queue (mp->client_index);
     if (q == 0) {
         return;
     }
 
-    vec_foreach(ip, lcm->map_resolvers) {
-        send_lisp_map_resolver_details(ip, q, mp->context);
+    vec_foreach(mr, lcm->map_resolvers) {
+        send_lisp_map_resolver_details(&mr->address, q, mp->context);
     }
 
 }
