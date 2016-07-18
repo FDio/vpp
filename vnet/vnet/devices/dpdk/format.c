@@ -681,7 +681,7 @@ u8 * format_dpdk_rte_mbuf_vlan (u8 * s, va_list * va)
     ethernet_vlan_header_tv_t * vlan_hdr = va_arg (*va, ethernet_vlan_header_tv_t *);
 
     if (clib_net_to_host_u16(vlan_hdr->type) == ETHERNET_TYPE_DOT1AD) {
-          s = format (s, "%U vlan 802.1q ",
+          s = format (s, "%U 802.1q vlan ",
                   format_ethernet_vlan_tci,
                   clib_net_to_host_u16(vlan_hdr->priority_cfi_and_id));
         vlan_hdr++;

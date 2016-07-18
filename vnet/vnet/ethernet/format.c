@@ -75,7 +75,7 @@ u8 * format_ethernet_vlan_tci (u8 * s, va_list * va)
     u32 cfi = (vlan_tci >> 12) & 1;
     u32 pri = (vlan_tci >> 13);
 
-    s = format (s, "id %d", vid);
+    s = format (s, "%d", vid);
     if (pri != 0)
         s = format (s, " priority %d", pri);
     if (cfi != 0)
@@ -120,9 +120,9 @@ u8 * format_ethernet_header_with_length (u8 * s, va_list * args)
     {
       u32 v = clib_net_to_host_u16 (m->vlan[i].priority_cfi_and_id);
       if (*vlan_type == ETHERNET_TYPE_VLAN)
-          s = format (s, " vlan 802.1q %U", format_ethernet_vlan_tci, v);
+          s = format (s, " 802.1q vlan %U", format_ethernet_vlan_tci, v);
       else
-          s = format (s, " vlan 802.1ad %U", format_ethernet_vlan_tci, v);
+          s = format (s, " 802.1ad vlan %U", format_ethernet_vlan_tci, v);
     }
 
   if (max_header_bytes != 0 && header_bytes < max_header_bytes)
