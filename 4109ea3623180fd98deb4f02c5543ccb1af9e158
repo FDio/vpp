@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_92dd8045",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1099,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-18T23:52:45Z",
+      "side": 1,
+      "message": "Please use gnu indent style",
+      "range": {
+        "startLine": 1099,
+        "startChar": 41,
+        "endLine": 1099,
+        "endChar": 42
+      },
+      "revId": "4109ea3623180fd98deb4f02c5543ccb1af9e158",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
