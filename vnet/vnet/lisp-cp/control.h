@@ -20,10 +20,19 @@
 #include <vnet/lisp-cp/gid_dictionary.h>
 #include <vnet/lisp-cp/lisp_types.h>
 
+#define NUMBER_OF_RETRIES                   1
+#define PENDING_MREQ_EXPIRATION_TIME        3.0 /* seconds */
+#define PENDING_MREQ_QUEUE_LEN              2
+
 typedef struct
 {
   gid_address_t src;
   gid_address_t dst;
+  u32 retries_num;
+  f64 time_to_expire;
+  u8 is_smr_invoked;
+  u64 * nonces;
+  u8 to_be_removed;
 } pending_map_request_t;
 
 typedef struct
@@ -38,6 +47,13 @@ typedef enum
   IP4_MISS_PACKET,
   IP6_MISS_PACKET
 } miss_packet_type_t;
+
+typedef struct
+{
+  u8 is_down;
+  f64 last_update;
+  ip_address_t address;
+} map_resolver_t;
 
 typedef struct
 {
@@ -88,9 +104,18 @@ typedef struct
 
   /* pool of pending map requests */
   pending_map_request_t * pending_map_requests_pool;
+  volatile u32 *pending_map_request_lock;
 
-  /* vector of map-resolver addresses */
-  ip_address_t * map_resolvers;
+  /* vector of map-resolvers */
+  map_resolver_t * map_resolvers;
+
+  /* map resolver address currently being used for sending requests.
+   * This has to be an actual address and not an index to map_resolvers vector
+   * since the vector may be modified during request resend/retry procedure
+   * and break things :-) */
+  ip_address_t active_map_resolver;
+
+  u8 do_map_resolver_election;
 
   /* map-request  locator set index */
   u32 mreq_itr_rlocs;
@@ -219,5 +244,20 @@ vnet_lisp_clear_all_remote_adjacencies (void);
 
 int
 vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_l2, u8 is_add);
+
+static inline void
+lisp_pending_map_request_lock (lisp_cp_main_t * lcm)
+{
+  if (lcm->pending_map_request_lock)
+    while (__sync_lock_test_and_set (lcm->pending_map_request_lock, 1))
+      /* sweet dreams */ ;
+}
+
+static inline void
+lisp_pending_map_request_unlock (lisp_cp_main_t * lcm)
+{
+  if (lcm->pending_map_request_lock)
+    *lcm->pending_map_request_lock = 0;
+}
 
 #endif /* VNET_CONTROL_H_ */
