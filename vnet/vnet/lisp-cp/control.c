@@ -17,6 +17,10 @@
 #include <vnet/lisp-cp/packets.h>
 #include <vnet/lisp-cp/lisp_msg_serdes.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
+#include <pthread.h>
+
+#define NUMBER_OF_RETRIES   1
+#define PENDING_MR_EXPIRATION_TIME 2.0
 
 ip_interface_address_t *
 ip_interface_get_first_interface_address (ip_lookup_main_t *lm, u32 sw_if_index,
@@ -1229,12 +1233,12 @@ lisp_show_map_resolvers_command_fn (vlib_main_t * vm,
                                     unformat_input_t * input,
                                     vlib_cli_command_t * cmd)
 {
-  ip_address_t * addr;
+  map_resolver_t * mr;
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
 
-  vec_foreach (addr, lcm->map_resolvers)
+  vec_foreach (mr, lcm->map_resolvers)
     {
-      vlib_cli_output (vm, "%U", format_ip_address, addr);
+      vlib_cli_output (vm, "%U", format_ip_address, &mr->address);
     }
   return 0;
 }
@@ -2128,12 +2132,31 @@ VLIB_CLI_COMMAND (lisp_cp_show_locator_sets_command) = {
     .function = lisp_cp_show_locator_sets_command_fn,
 };
 
+static map_resolver_t *
+get_map_resolver (ip_address_t * a)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  map_resolver_t * mr;
+
+  pthread_mutex_lock (&lcm->map_resolvers_mutex);
+  vec_foreach (mr, lcm->map_resolvers)
+    {
+      if (!ip_address_cmp (&mr->address, a))
+        {
+          pthread_mutex_unlock (&lcm->map_resolvers_mutex);
+          return mr;
+        }
+    }
+  pthread_mutex_unlock (&lcm->map_resolvers_mutex);
+  return 0;
+}
+
 int
 vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a)
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
-  ip_address_t * addr;
   u32 i;
+  map_resolver_t _mr, * mr = &_mr;
 
   if (vnet_lisp_enable_disable_status () == 0)
     {
@@ -2143,28 +2166,33 @@ vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a)
 
   if (a->is_add)
     {
-      vec_foreach(addr, lcm->map_resolvers)
+
+      if (get_map_resolver (&a->address))
         {
-          if (!ip_address_cmp (addr, &a->address))
-            {
-              clib_warning("map-resolver %U already exists!", format_ip_address,
-                           &a->address);
-              return -1;
-            }
+          clib_warning("map-resolver %U already exists!", format_ip_address,
+                       &a->address);
+          return -1;
         }
-      vec_add1(lcm->map_resolvers, a->address);
+
+      memset (mr, 0, sizeof (*mr));
+      ip_address_copy(&mr->address, &a->address);
+      pthread_mutex_lock (&lcm->map_resolvers_mutex);
+      vec_add1(lcm->map_resolvers, *mr);
+      pthread_mutex_unlock (&lcm->map_resolvers_mutex);
     }
   else
     {
+      pthread_mutex_lock (&lcm->map_resolvers_mutex);
       for (i = 0; i < vec_len(lcm->map_resolvers); i++)
         {
-          addr = vec_elt_at_index(lcm->map_resolvers, i);
-          if (!ip_address_cmp (addr, &a->address))
+          mr = vec_elt_at_index(lcm->map_resolvers, i);
+          if (!ip_address_cmp (&mr->address, &a->address))
             {
               vec_delete(lcm->map_resolvers, 1, i);
               break;
             }
         }
+      pthread_mutex_unlock (&lcm->map_resolvers_mutex);
     }
   return 0;
 }
@@ -2378,7 +2406,8 @@ int
 get_mr_and_local_iface_ip (lisp_cp_main_t * lcm, ip_address_t * mr_ip,
                            ip_address_t * sloc)
 {
-  ip_address_t * mrit;
+  map_resolver_t * mrit;
+  ip_address_t * a;
 
   if (vec_len(lcm->map_resolvers) == 0)
     {
@@ -2390,10 +2419,16 @@ get_mr_and_local_iface_ip (lisp_cp_main_t * lcm, ip_address_t * mr_ip,
    * iface that has a route to it */
   vec_foreach(mrit, lcm->map_resolvers)
     {
-      if (0 != ip_fib_get_first_egress_ip_for_dst (lcm, mrit, sloc)) {
-          ip_address_copy(mr_ip, mrit);
+      a = &mrit->address;
+      if (!mrit->is_down
+            && 0 != ip_fib_get_first_egress_ip_for_dst (lcm, a, sloc))
+        {
+          ip_address_copy(mr_ip, a);
+
+          /* also update globals */
+          ip_address_copy (&lcm->active_map_resolver, a);
           return 1;
-      }
+        }
     }
 
   clib_warning("Can't find map-resolver and local interface ip!");
@@ -2485,9 +2520,22 @@ build_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
 }
 
 static void
-send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
-                               gid_address_t * seid, gid_address_t * deid,
-                               u8 is_smr_invoked)
+reset_pending_mr_counters (pending_map_request_t * r)
+{
+  r->time_to_expire = PENDING_MR_EXPIRATION_TIME;
+  r->retries_num = 0;
+}
+
+#define send_encapsulated_map_request(vm, lcm, seid, deid, smr) \
+  _send_encapsulated_map_request(vm, lcm, seid, deid, smr, 0)
+
+#define resend_encapsulated_map_request(vm, lcm, seid, deid, smr) \
+  _send_encapsulated_map_request(vm, lcm, seid, deid, smr, 1)
+
+static int
+_send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
+                                gid_address_t * seid, gid_address_t * deid,
+                                u8 is_smr_invoked, u8 is_resend)
 {
   u32 next_index, bi = 0, * to_next, map_index;
   vlib_buffer_t * b;
@@ -2495,9 +2543,26 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   u64 nonce = 0;
   locator_set_t * loc_set;
   mapping_t * map;
-  pending_map_request_t * pmr;
+  pending_map_request_t * pmr, * duplicate_mr = 0;
   ip_address_t mr_ip, sloc;
   u32 ls_index;
+
+  /* if there is already a pending request remember it */
+  pool_foreach(pmr, lcm->pending_map_requests_pool,
+  ({
+    if (!gid_address_cmp (&pmr->src, seid)
+        && !gid_address_cmp (&pmr->dst, deid))
+      {
+        duplicate_mr = pmr;
+        break;
+      }
+  }));
+
+  if (!is_resend && duplicate_mr)
+    {
+      /* don't send the request if there is a pending map request already */
+      return 0;
+    }
 
   /* get locator-set for seid */
   if (!lcm->lisp_pitr)
@@ -2507,7 +2572,7 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
         {
           clib_warning("No local mapping found in eid-table for %U!",
                        format_gid_address, seid);
-          return;
+          return -1;
         }
 
       map = pool_elt_at_index (lcm->mapping_pool, map_index);
@@ -2516,7 +2581,7 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
         {
           clib_warning("Mapping found for src eid %U is not marked as local!",
                        format_gid_address, seid);
-          return;
+          return -1;
         }
       ls_index = map->locator_set_index;
     }
@@ -2537,14 +2602,14 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
 
   /* get local iface ip to use in map-request */
   if (0 == get_mr_and_local_iface_ip (lcm, &mr_ip, &sloc))
-    return;
+    return -1;
 
   /* build the encapsulated map request */
   b = build_encapsulated_map_request (vm, lcm, seid, deid, loc_set, &mr_ip,
                                       &sloc, is_smr_invoked, &nonce, &bi);
 
   if (!b)
-    return;
+    return -1;
 
   /* set fib index to default and lookup node */
   vnet_buffer(b)->sw_if_index[VLIB_TX] = 0;
@@ -2559,12 +2624,29 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
   f->n_vectors = 1;
   vlib_put_frame_to_node (vm, next_index, f);
 
-  /* add map-request to pending requests table */
-  pool_get(lcm->pending_map_requests_pool, pmr);
-  gid_address_copy (&pmr->src, seid);
-  gid_address_copy (&pmr->dst, deid);
-  hash_set(lcm->pending_map_requests_by_nonce, nonce,
-           pmr - lcm->pending_map_requests_pool);
+  if (duplicate_mr)
+    /* if there is a pending request already update it */
+    {
+      hash_unset (lcm->pending_map_requests_by_nonce, duplicate_mr->nonce);
+      duplicate_mr->nonce = nonce;
+      hash_set (lcm->pending_map_requests_by_nonce, duplicate_mr->nonce,
+                duplicate_mr - lcm->pending_map_requests_pool);
+    }
+  else
+    {
+      /* add map-request to pending requests table */
+      pool_get(lcm->pending_map_requests_pool, pmr);
+      memset (pmr, 0, sizeof (*pmr));
+      gid_address_copy (&pmr->src, seid);
+      gid_address_copy (&pmr->dst, deid);
+      pmr->nonce = nonce;
+      pmr->is_smr_invoked = is_smr_invoked;
+      reset_pending_mr_counters (pmr);
+      hash_set (lcm->pending_map_requests_by_nonce, nonce,
+                pmr - lcm->pending_map_requests_pool);
+    }
+
+  return 0;
 }
 
 static void
@@ -2809,10 +2891,12 @@ process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
 
   /* Check pending requests table and nonce */
   nonce = MREP_NONCE(mrep_hdr);
+  pthread_mutex_lock (&lcm->pending_map_request_mutex);
   pmr_index = hash_get(lcm->pending_map_requests_by_nonce, nonce);
   if (!pmr_index)
     {
       clib_warning("No pending map-request entry with nonce %lu!", nonce);
+      pthread_mutex_unlock (&lcm->pending_map_request_mutex);
       return;
     }
   pmr = pool_elt_at_index(lcm->pending_map_requests_pool, pmr_index[0]);
@@ -2836,6 +2920,7 @@ process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
               locator_free (loc);
             }
           vec_free(locators);
+          pthread_mutex_unlock (&lcm->pending_map_request_mutex);
           return;
         }
 
@@ -2853,6 +2938,7 @@ process_map_reply (lisp_cp_main_t * lcm, vlib_buffer_t * b)
   /* remove pending map request entry */
   hash_unset(lcm->pending_map_requests_by_nonce, nonce);
   pool_put(lcm->pending_map_requests_pool, pmr);
+  pthread_mutex_unlock (&lcm->pending_map_request_mutex);
 }
 
 void
@@ -2996,6 +3082,8 @@ lisp_cp_init (vlib_main_t *vm)
   lcm->vnet_main = vnet_get_main();
   lcm->mreq_itr_rlocs = ~0;
   lcm->lisp_pitr = 0;
+  pthread_mutex_init (&lcm->map_resolvers_mutex, NULL);
+  pthread_mutex_init (&lcm->pending_map_request_mutex, NULL);
 
   gid_dictionary_init (&lcm->mapping_index_by_gid);
 
@@ -3010,5 +3098,126 @@ lisp_cp_init (vlib_main_t *vm)
 
   return 0;
 }
+
+/**
+ * Take an action with a pending map request depending on expiration time
+ * and re-try counters.
+ * return -1 if map request needs to be deleted; 0 otherwise
+ */
+static int
+update_pending_request (pending_map_request_t * r, f64 dt)
+{
+  int rc;
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  map_resolver_t * mr;
+
+  if (r->time_to_expire - dt < 0)
+    /* it's time to decide what to do with this pending request */
+    {
+      if (r->retries_num >= NUMBER_OF_RETRIES)
+        /* too many retries -> assume current map resolver is not available */
+        {
+          mr = get_map_resolver (&lcm->active_map_resolver);
+          if (!mr)
+            {
+              clib_warning ("Map resolver %U not found - probably deleted "
+                            "by the user recently.", format_ip_address,
+                            &lcm->active_map_resolver);
+            }
+          else
+            {
+              clib_warning ("map resolver %U is unreachable, ignoring",
+                            format_ip_address, &lcm->active_map_resolver);
+              /* mark this MR unavailable so it won't be selected next time */
+              mr->is_down = 1;
+              mr->last_update = vlib_time_now (lcm->vlib_main);
+            }
+
+          reset_pending_mr_counters (r);
+          /* try to find a next eligible map resolver and re-send */
+          rc = resend_encapsulated_map_request (lcm->vlib_main, lcm, &r->src,
+                                                &r->dst, r->is_smr_invoked);
+          if (rc < 0)
+            /* map resolver list exhausted or internal error occured -
+             * in both cases there is nothing to do just remove the pending
+             * map request */
+            {
+              clib_warning ("map resolver list exhausted!");
+              /* delete the request */
+              return -1;
+            }
+        }
+      else
+        {
+          /* try again */
+          resend_encapsulated_map_request (lcm->vlib_main, lcm, &r->src,
+                                           &r->dst, r->is_smr_invoked);
+          r->retries_num++;
+          r->time_to_expire = PENDING_MR_EXPIRATION_TIME;
+        }
+    }
+  else
+    r->time_to_expire -= dt;
+
+  return 0;
+}
+
+static uword
+lisp_retry_service (vlib_main_t * vm,
+                    vlib_node_runtime_t * rt,
+                    vlib_frame_t * f)
+{
+  int rc;
+  f64 period = 1.0;
+  uword event_type, * pmr_index;
+  pending_map_request_t * pmr;
+  u64 * to_be_deleted = 0, * nonce;
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+
+  while (1)
+    {
+      vlib_process_wait_for_event_or_clock (vm, period);
+      event_type = vlib_process_get_events (vm, 0);
+
+      switch (event_type)
+        {
+          /* currently no signals are expected */
+
+          case ~0: /* period end */
+            pthread_mutex_lock (&lcm->pending_map_request_mutex);
+            pool_foreach (pmr, lcm->pending_map_requests_pool,
+              ({
+                rc = update_pending_request (pmr, period);
+                if (rc < 0)
+                  vec_add1 (to_be_deleted, pmr->nonce);
+              }));
+
+            vec_foreach (nonce, to_be_deleted)
+              {
+                pmr_index = hash_get (lcm->pending_map_requests_by_nonce,
+                                      nonce[0]);
+                pmr = pool_elt_at_index (lcm->pending_map_requests_pool,
+                                         pmr_index[0]);
+                hash_unset (lcm->pending_map_requests_by_nonce, nonce);
+                pool_put (lcm->pending_map_requests_pool, pmr);
+              }
+
+            pthread_mutex_unlock (&lcm->pending_map_request_mutex);
+            vec_free (to_be_deleted);
+            to_be_deleted = 0;
+            break;
+        }
+    }
+
+  /* unreachable */
+  return 0;
+}
+
+VLIB_REGISTER_NODE (lisp_retry_service_node,static) = {
+    .function = lisp_retry_service,
+    .type = VLIB_NODE_TYPE_PROCESS,
+    .name = "lisp-retry-service",
+    .process_log2_n_stack_bytes = 16,
+};
 
 VLIB_INIT_FUNCTION(lisp_cp_init);

@@ -19,11 +19,16 @@
 #include <vnet/vnet.h>
 #include <vnet/lisp-cp/gid_dictionary.h>
 #include <vnet/lisp-cp/lisp_types.h>
+#include <pthread.h>
 
 typedef struct
 {
   gid_address_t src;
   gid_address_t dst;
+  u32 retries_num;
+  f64 time_to_expire;
+  u8 is_smr_invoked;
+  u64 nonce;
 } pending_map_request_t;
 
 typedef struct
@@ -39,6 +44,13 @@ typedef enum
   IP4_MISS_PACKET,
   IP6_MISS_PACKET
 } miss_packet_type_t;
+
+typedef struct
+{
+  u8 is_down;
+  f64 last_update;
+  ip_address_t address;
+} map_resolver_t;
 
 typedef struct
 {
@@ -90,8 +102,20 @@ typedef struct
   /* pool of pending map requests */
   pending_map_request_t * pending_map_requests_pool;
 
-  /* vector of map-resolver addresses */
-  ip_address_t * map_resolvers;
+  /* mutex for pending map requests */
+  pthread_mutex_t pending_map_request_mutex;
+
+  /* vector of map-resolvers */
+  map_resolver_t * map_resolvers;
+
+  /* mutex for map_resolvers */
+  pthread_mutex_t map_resolvers_mutex;
+
+  /* map resolver address currently being used for sending requests.
+   * This has to be an actual address and not an index to map_resolvers vector
+   * since the vector may be modified during request resend/retry procedure
+   * and break things :-) */
+  ip_address_t active_map_resolver;
 
   /* map-request  locator set index */
   u32 mreq_itr_rlocs;
