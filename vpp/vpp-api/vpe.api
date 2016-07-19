@@ -4087,3 +4087,27 @@ manual_java define ipfix_details {
     u32 path_mtu;
     u32 template_interval;
 };
+
+/** \brief Query relative index via node names
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param node_name - name of node to find relative index from
+    @param next_name - next node from node_name to find relative index of
+*/
+define get_next_index {
+    u32 client_index;
+    u32 context;
+    u8 node_name[64];
+    u8 next_name[64];
+};
+
+/** \brief Reply for get next node index
+    @param context - sender context which was passed in the request
+    @param retval - return value
+    @param next_index - index of the next_node
+*/
+define get_next_index_reply {
+    u32 context;
+    i32 retval;
+    u32 next_index;
+};

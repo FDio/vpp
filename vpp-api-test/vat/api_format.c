@@ -923,6 +923,38 @@ static void vl_api_get_node_index_reply_t_handler_json
     vam->result_ready = 1;
 }
 
+static void vl_api_get_next_index_reply_t_handler
+(vl_api_get_next_index_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    i32 retval = ntohl(mp->retval);
+    if (vam->async_mode) {
+        vam->async_errors += (retval < 0);
+    } else {
+        vam->retval = retval;
+        if (retval == 0)
+            errmsg ("next node index %d\n", ntohl(mp->next_index));
+        vam->result_ready = 1;
+    }
+}
+
+static void vl_api_get_next_index_reply_t_handler_json
+(vl_api_get_next_index_reply_t * mp)
+{
+    vat_main_t * vam = &vat_main;
+    vat_json_node_t node;
+
+    vat_json_init_object(&node);
+    vat_json_object_add_int(&node, "retval", ntohl(mp->retval));
+    vat_json_object_add_uint(&node, "next_index", ntohl(mp->next_index));
+
+    vat_json_print(vam->ofp, &node);
+    vat_json_free(&node);
+
+    vam->retval = ntohl(mp->retval);
+    vam->result_ready = 1;
+}
+
 static void vl_api_add_node_next_reply_t_handler
 (vl_api_add_node_next_reply_t * mp)
 {
@@ -3013,7 +3045,8 @@ _(CLASSIFY_TABLE_BY_INTERFACE_REPLY, classify_table_by_interface_reply) \
 _(CLASSIFY_TABLE_INFO_REPLY, classify_table_info_reply)                 \
 _(CLASSIFY_SESSION_DETAILS, classify_session_details)                   \
 _(IPFIX_ENABLE_REPLY, ipfix_enable_reply)                               \
-_(IPFIX_DETAILS, ipfix_details)
+_(IPFIX_DETAILS, ipfix_details)                                         \
+_(GET_NEXT_INDEX_REPLY, get_next_index_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -7656,6 +7689,49 @@ static int api_get_node_index (vat_main_t * vam)
     clib_memcpy (mp->node_name, name, vec_len(name));
     vec_free(name);
     
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
+
+static int api_get_next_index (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_get_next_index_t * mp;
+    f64 timeout;
+    u8 * node_name = 0, * next_node_name = 0;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "node-name %s", &node_name))
+            ;
+        else if (unformat (i, "next-node-name %s", &next_node_name))
+            break;
+    }
+
+    if (node_name == 0) {
+        errmsg ("node name required\n");
+        return -99;
+    }
+    if (vec_len (node_name) >= ARRAY_LEN(mp->node_name)) {
+        errmsg ("node name too long, max %d\n", ARRAY_LEN(mp->node_name));
+        return -99;
+    }
+
+    if (next_node_name == 0) {
+        errmsg ("next node name required\n");
+        return -99;
+    }
+    if (vec_len (next_node_name) >= ARRAY_LEN(mp->next_name)) {
+        errmsg ("next node name too long, max %d\n", ARRAY_LEN(mp->next_name));
+        return -99;
+    }
+
+    M(GET_NEXT_INDEX, get_next_index);
+    clib_memcpy (mp->node_name, node_name, vec_len(node_name));
+    clib_memcpy (mp->next_name, next_node_name, vec_len(next_node_name));
+    vec_free(node_name);
+    vec_free(next_node_name);
+
     S; W;
     /* NOTREACHED */
     return 0;
@@ -12702,7 +12778,8 @@ _(classify_session_dump, "table_id <nn>")                               \
 _(ipfix_enable, "collector_address <ip4> [collector_port <nn>] "        \
                 "src_address <ip4> [fib_id <nn>] [path_mtu <nn>] "      \
                 "[template_interval <nn>]")                             \
-_(ipfix_dump, "")
+_(ipfix_dump, "")                                                       \
+_(get_next_index, "node-name <node-name> next-node-name <node-name>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

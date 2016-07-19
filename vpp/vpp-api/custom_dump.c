@@ -1875,6 +1875,18 @@ static void *vl_api_ipfix_dump_t_print
     FINISH;
 }
 
+static void *vl_api_get_next_index_t_print
+(vl_api_get_next_index_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: get_next_index ");
+    s = format (s, "node-name %s ", mp->node_name);
+    s = format (s, "next-node-name %s ", mp->next_name);
+
+    FINISH;
+}
+
 #define foreach_custom_print_function                                   \
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
@@ -1972,9 +1984,10 @@ _(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
 _(CLASSIFY_TABLE_INFO,classify_table_info)                              \
 _(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
 _(IPFIX_ENABLE,ipfix_enable)                                            \
-_(IPFIX_DUMP,ipfix_dump)
+_(IPFIX_DUMP,ipfix_dump)                                                \
+_(GET_NEXT_INDEX, get_next_index)
 
-void vl_msg_api_custom_dump_configure (api_main_t *am) 
+void vl_msg_api_custom_dump_configure (api_main_t *am)
 {
 #define _(n,f) am->msg_print_handlers[VL_API_##n]       \
     = (void *) vl_api_##f##_t_print;

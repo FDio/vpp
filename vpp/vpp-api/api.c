@@ -368,7 +368,8 @@ _(CLASSIFY_TABLE_INFO,classify_table_info)                              \
 _(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
 _(CLASSIFY_SESSION_DETAILS,classify_session_details)                    \
 _(IPFIX_ENABLE,ipfix_enable)                                            \
-_(IPFIX_DUMP,ipfix_dump)
+_(IPFIX_DUMP,ipfix_dump)                                                \
+_(GET_NEXT_INDEX, get_next_index)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -4241,6 +4242,48 @@ static void vl_api_get_node_index_t_handler
     ({
         rmp->node_index = ntohl(node_index);
     }))
+}
+
+static void vl_api_get_next_index_t_handler
+(vl_api_get_next_index_t * mp)
+{
+    vlib_main_t * vm = vlib_get_main();
+    vl_api_get_next_index_reply_t * rmp;
+    vlib_node_t * node, * next_node;
+    int rv = 0;
+    u32 next_node_index = ~0, next_index = ~0;
+    uword * p;
+
+    node = vlib_get_node_by_name (vm, mp->node_name);
+
+    if (node == 0) {
+        rv = VNET_API_ERROR_NO_SUCH_NODE;
+        goto out;
+    }
+
+    next_node = vlib_get_node_by_name (vm, mp->next_name);
+
+    if (next_node == 0) {
+        rv = VNET_API_ERROR_NO_SUCH_NODE2;
+        goto out;
+    }
+    else
+        next_node_index = next_node->index;
+
+    p = hash_get (node->next_slot_by_node, next_node_index);
+
+    if (p == 0) {
+        rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+        goto out;
+    }
+    else
+        next_index = p[0];
+
+ out:
+    REPLY_MACRO2(VL_API_GET_NEXT_INDEX_REPLY,
+    ({
+        rmp->next_index = ntohl(next_index);
+    }));
 }
 
 static void vl_api_add_node_next_t_handler
