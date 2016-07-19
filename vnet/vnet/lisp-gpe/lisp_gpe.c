@@ -318,14 +318,12 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1;
-  ip_address_t slocator, dlocator, *slocators = 0, *dlocators = 0;
-  ip_prefix_t * prefp;
-  gid_address_t * eids = 0, eid;
+  ip_address_t lloc, rloc, *llocs = 0, *rlocs = 0;
   clib_error_t * error = 0;
-  u32 i;
+  gid_address_t _reid, * reid = &_reid, _leid, * leid = &_leid;
+  u8 reid_set = 0, leid_set = 0, is_negative = 0, vrf_set = 0, vni_set = 0;
+  u32 vni, vrf, action = ~0;
   int rv;
-
-  prefp = &gid_address_ippref(&eid);
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -337,14 +335,38 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
         is_add = 0;
       else if (unformat (line_input, "add"))
         is_add = 1;
-      else if (unformat (line_input, "eid %U slocator %U dlocator %U",
-                         unformat_ip_prefix, prefp,
-                         unformat_ip_address, &slocator,
-                         unformat_ip_address, &dlocator))
+      else if (unformat (line_input, "leid %U",
+                         unformat_gid_address, leid))
         {
-          vec_add1 (eids, eid);
-          vec_add1 (slocators, slocator);
-          vec_add1 (dlocators, dlocator);
+          leid_set = 1;
+        }
+      else if (unformat (line_input, "reid %U",
+                         unformat_gid_address, reid))
+        {
+          reid_set = 1;
+        }
+      else if (unformat (line_input, "vni %u", &vni))
+        {
+          gid_address_vni (leid) = vni;
+          gid_address_vni (reid) = vni;
+          vni_set = 1;
+        }
+      else if (unformat (line_input, "vrf %u", &vrf))
+        {
+          vrf_set = 1;
+        }
+      else if (unformat (line_input, "negative action %U",
+                         unformat_negative_mapping_action, &action))
+        {
+          is_negative = 1;
+        }
+      else if (unformat (line_input, "lloc %U rloc %U",
+                         unformat_ip_address, &lloc,
+                         unformat_ip_address, &rloc))
+        {
+          /* TODO: support p and w */
+          vec_add1 (llocs, lloc);
+          vec_add1 (rlocs, rloc);
         }
       else
         {
@@ -354,48 +376,84 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
     }
   unformat_free (line_input);
 
-  if (vec_len (eids) + vec_len (slocators) == 0)
+  if (!vni_set || !vrf_set)
     {
-      error = clib_error_return (0, "expected ip4/ip6 eids/locators.");
+      error = clib_error_return(0, "vni and vrf must be set!");
       goto done;
     }
 
-  if (vec_len (eids) != vec_len (slocators))
+  if (!reid_set)
     {
-      error = clib_error_return (0, "number of eids not equal to that of "
-          "locators.");
+      error = clib_error_return(0, "remote eid must be set!");
       goto done;
     }
 
-  for (i = 0; i < vec_len(eids); i++)
+  if (is_negative)
     {
-      vnet_lisp_gpe_add_del_fwd_entry_args_t a;
-      memset (&a, 0, sizeof(a));
-
-      a.is_add = is_add;
-      a.deid = eids[i];
-      a.slocator = slocators[i];
-      a.dlocator = dlocators[i];
-      rv = vnet_lisp_gpe_add_del_fwd_entry (&a, 0);
-      if (0 != rv)
+      if (~0 == action)
         {
-          error = clib_error_return(0, "failed to %s gpe maptunnel!",
-                                    is_add ? "add" : "delete");
-          break;
+          error = clib_error_return(0, "no action set for negative tunnel!");
+          goto done;
+        }
+    }
+  else
+    {
+      if (vec_len (llocs) == 0)
+        {
+          error = clib_error_return (0, "expected ip4/ip6 locators.");
+          goto done;
+        }
+
+      if (vec_len (llocs) != 1)
+        {
+          error = clib_error_return (0, "multihoming not supported for now!");
+          goto done;
         }
     }
 
+
+
+  if (!leid_set)
+    {
+      /* if leid not set, make sure it's the same AFI like reid */
+      gid_address_type(leid) = gid_address_type(reid);
+      if (GID_ADDR_IP_PREFIX == gid_address_type (reid))
+        gid_address_ip_version(leid) = gid_address_ip_version(reid);
+    }
+
+  /* add fwd entry */
+  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
+  memset (a, 0, sizeof(a[0]));
+
+  a->is_add = is_add;
+  a->vni = vni;
+  a->table_id = vrf;
+  gid_address_copy(&a->seid, leid);
+  gid_address_copy(&a->deid, reid);
+
+  if (!is_negative)
+    {
+      a->slocator = llocs[0];
+      a->dlocator = rlocs[0];
+    }
+
+  rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
+  if (0 != rv)
+    {
+      error = clib_error_return(0, "failed to %s gpe tunnel!",
+                                is_add ? "add" : "delete");
+    }
+
  done:
-  vec_free(eids);
-  vec_free(slocators);
-  vec_free(dlocators);
+  vec_free(llocs);
+  vec_free(rlocs);
   return error;
 }
 
 VLIB_CLI_COMMAND (lisp_gpe_add_del_fwd_entry_command, static) = {
-  .path = "lisp gpe maptunnel",
-  .short_help = "lisp gpe maptunnel eid <eid> sloc <src-locator> "
-      "dloc <dst-locator> [del]",
+  .path = "lisp gpe tunnel",
+  .short_help = "lisp gpe tunnel add/del vni <vni> vrf <vrf> [leid <leid>]"
+      "reid <reid> [lloc <sloc> rloc <rloc>] [negative action <action>]",
   .function = lisp_gpe_add_del_fwd_entry_command_fn,
 };
 

@@ -244,4 +244,7 @@ typedef struct
   u8 local;
 } mapping_t;
 
+uword
+unformat_negative_mapping_action (unformat_input_t * input, va_list * args);
+
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */

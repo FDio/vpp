@@ -198,25 +198,54 @@ unformat_gid_address (unformat_input_t * input, va_list * args)
   ip_prefix_t ippref;
 
   memset (&ippref, 0, sizeof (ippref));
-  memset (a, 0, sizeof (a[0]));
+  memset(a, 0, sizeof(a[0]));
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (unformat (input, "%U", unformat_ip_prefix, &ippref))
     {
-      if (unformat (input, "%U", unformat_ip_prefix, &ippref))
-        {
-          clib_memcpy (&gid_address_ippref(a), &ippref, sizeof (ippref));
-          gid_address_type(a) = GID_ADDR_IP_PREFIX;
-        }
-      else if (unformat (input, "%U", unformat_mac_address, mac))
-        {
-          clib_memcpy (gid_address_mac(a), mac, sizeof (mac));
-          gid_address_type(a) = GID_ADDR_MAC;
-        }
-      else if (unformat (input, "[%d]", &vni))
-        gid_address_vni(a) = vni;
-      else
-        return 0;
+      clib_memcpy (&gid_address_ippref(a), &ippref, sizeof(ippref));
+      gid_address_type(a) = GID_ADDR_IP_PREFIX;
     }
+  else if (unformat (input, "%U", unformat_mac_address, mac))
+    {
+      clib_memcpy (gid_address_mac(a), mac, sizeof(mac));
+      gid_address_type(a) = GID_ADDR_MAC;
+    }
+  else if (unformat (input, "[%d]", &vni))
+    gid_address_vni(a) = vni;
+  else
+    return 0;
+
+  return 1;
+}
+
+uword
+unformat_negative_mapping_action (unformat_input_t * input, va_list * args)
+{
+  u32 * action = va_arg(*args, u32 *);
+  u8 * s = 0;
+
+  if (unformat (input, "%s", &s))
+    {
+      int len = vec_len(s);
+      clib_warning ("len = %d", len);
+      if (!strcmp ((char *) s, "no-action"))
+        action[0] = ACTION_NONE;
+      if (!strcmp ((char *) s, "natively-forward"))
+        action[0] = ACTION_NATIVELY_FORWARDED;
+      if (!strcmp ((char *) s, "send-map-request"))
+        action[0] = ACTION_SEND_MAP_REQUEST;
+      else if (!strcmp ((char *) s, "drop"))
+        action[0] = ACTION_DROP;
+      else
+        {
+          clib_warning("invalid action: '%s'", s);
+          action[0] = ACTION_DROP;
+          return 0;
+        }
+    }
+  else
+    return 0;
+
   return 1;
 }
 
