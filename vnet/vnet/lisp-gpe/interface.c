@@ -607,7 +607,8 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 is_add = 1;
   clib_error_t * error = 0;
   int rv = 0;
-  u32 table_id;
+  u32 table_id, vni;
+  u8 vni_is_set = 0, vrf_is_set = 0;
 
   vnet_lisp_gpe_add_del_iface_args_t _a, * a = &_a;
 
@@ -622,7 +623,13 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "del"))
         is_add = 0;
       else if (unformat (line_input, "vrf %d", &table_id))
-        ;
+        {
+          vrf_is_set = 1;
+        }
+      else if (unformat (line_input, "vni %d", &vni))
+        {
+          vni_is_set = 1;
+        }
       else
         {
           return clib_error_return (0, "parse error: '%U'",
@@ -630,8 +637,14 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
         }
     }
 
+  if (!vni_is_set || !vrf_is_set)
+    {
+      return clib_error_return (0, "Both vni and vrf must be set!");
+    }
+
   a->is_add = is_add;
   a->table_id = table_id;
+  a->vni = vni;
   rv = vnet_lisp_gpe_add_del_iface (a, 0);
   if (0 != rv)
     {
@@ -644,6 +657,6 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (add_del_lisp_gpe_iface_command, static) = {
   .path = "lisp gpe iface",
-  .short_help = "lisp gpe iface add/del table-index <table_index> vrf <vrf>",
+  .short_help = "lisp gpe iface add/del vni <vni> vrf <vrf>",
   .function = lisp_gpe_add_del_iface_command_fn,
 };
