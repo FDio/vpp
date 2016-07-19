@@ -482,7 +482,8 @@ vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
   vnet_main_t * vnm = lgm->vnet_main;
   vnet_hw_interface_t * hi;
   u32 hw_if_index = ~0, lookup_next_index4, lookup_next_index6, flen;
-  uword * hip, * vni;
+  uword * hip, * vni, * si;
+  u8 * new_name;
 
   if (vnet_lisp_gpe_enable_disable_status() == 0)
     {
@@ -496,7 +497,14 @@ vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
     {
       if (hip)
         {
-          clib_warning ("Interface for vrf %d already exists", a->table_id);
+          clib_warning ("vrf %d already mapped to a vni", a->table_id);
+          return -1;
+        }
+
+      si = hash_get(lgm->tunnel_term_sw_if_index_by_vni, a->vni);
+      if (si)
+        {
+          clib_warning ("Interface for vni %d already exists", a->vni);
           return -1;
         }
 
@@ -508,6 +516,13 @@ vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
           _vec_len(lgm->free_lisp_gpe_tunnel_hw_if_indices) -= 1;
 
           hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+          /* rename interface */
+          new_name = format (0, "%U", lisp_gpe_device_class.format_device_name,
+                             a->vni);
+          vec_add1(new_name, 0);
+          vnet_rename_interface (vnm, hw_if_index, (char *) new_name);
+          vec_free(new_name);
 
           /* clear old stats of freed interface before reuse */
           vnet_interface_main_t * im = &vnm->interface_main;
@@ -527,7 +542,7 @@ vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
         {
           hw_if_index = vnet_register_interface (vnm,
                                                  lisp_gpe_device_class.index,
-                                                 a->table_id,
+                                                 a->vni,
                                                  lisp_gpe_hw_class.index, 0);
           hi = vnet_get_hw_interface (vnm, hw_if_index);
         }
