@@ -28,8 +28,7 @@
 #include "node.h"
 #include "gram.h"
 
-FILE *ifp, *ofp, *javafp, *jnifp, *pythonfp;
-char *java_class = "vppApi";
+FILE *ifp, *ofp, *pythonfp;
 char *vlib_app_name = "vpp";
 int dump_tree;
 time_t starttime;
@@ -258,8 +257,6 @@ int main (int argc, char **argv)
 {
     int curarg = 1;
     char *ofile=0;
-    char *jofile=0;
-    char *jnifile=0;
     char *pythonfile=0;
     char *show_name=0;
 
@@ -331,40 +328,6 @@ int main (int argc, char **argv)
             }
             continue;
         }
-        if (!strncmp (argv [curarg], "--java", 4)) {
-            curarg++;
-            if (curarg < argc) {
-                javafp = fopen (argv[curarg], "w");
-                if (javafp == NULL) {
-                    fprintf (stderr, "Couldn't open java output file %s\n", 
-                         argv[curarg]);
-                    exit (1);
-                }
-                jofile = argv[curarg];
-                curarg++;
-            } else {
-                fprintf(stderr, "Missing filename after --java\n");
-                exit(1);
-            }
-            continue;
-        }
-        if (!strncmp (argv [curarg], "--jni", 4)) {
-            curarg++;
-            if (curarg < argc) {
-                jnifp = fopen (argv[curarg], "w");
-                if (jnifp == NULL) {
-                    fprintf (stderr, "Couldn't open jni output file %s\n", 
-                         argv[curarg]);
-                    exit (1);
-                }
-                jnifile = argv[curarg];
-                curarg++;
-            } else {
-                fprintf(stderr, "Missing filename after --jni\n");
-                exit(1);
-            }
-            continue;
-        }
         if (!strncmp (argv [curarg], "--python", 8)) {
             curarg++;
             if (curarg < argc) {
@@ -393,29 +356,12 @@ int main (int argc, char **argv)
             }
             continue;
         }
-        if (!strncmp (argv [curarg], "--class", 3)) {
-            curarg++;
-            if (curarg < argc) {
-                java_class = argv[curarg];
-                curarg++;
-            } else {
-                fprintf(stderr, "Missing class name after --class\n");
-                exit(1);
-            }
-            continue;
-        }
 
         usage(argv[0]);
         exit (1);
     }
     if (ofp == NULL) {
         ofile = 0;
-    }
-    if (javafp == NULL) {
-        jofile = 0;
-    }
-    if (jnifp == NULL) {
-        jnifile = 0;
     }
     if (pythonfp == NULL) {
         pythonfile = 0;
@@ -437,14 +383,6 @@ int main (int argc, char **argv)
             printf ("Output written to %s\n", ofile);
             fclose (ofp);
         }
-        if (jofile) {
-            printf ("Java class defn written to %s\n", jofile);
-            fclose (javafp);
-        }
-        if (jnifile) {
-            printf ("Java native bindings written to %s\n", jnifile);
-            fclose (jnifp);
-        }
         if (pythonfile) {
             printf ("Python bindings written to %s\n", pythonfile);
             fclose (pythonfp);
@@ -456,15 +394,6 @@ int main (int argc, char **argv)
         if (ofile) {
             printf ("Removing %s\n", ofile);
             unlink (ofile);
-        }
-        fclose (javafp);
-        if (jofile) {
-            printf ("Removing %s\n", jofile);
-            unlink (jofile);
-        }
-        if (jnifile) {
-            printf ("Removing %s\n", jnifile);
-            unlink (jnifile);
         }
         if (pythonfile) {
             printf ("Removing %s\n", pythonfile);
@@ -926,7 +855,6 @@ int yylex (void)
     case NOVERSION:          crc = CRC16 (crc, 274); break;
     case MANUAL_PRINT:       crc = CRC16 (crc, 275); break;
     case MANUAL_ENDIAN:      crc = CRC16 (crc, 276); break;
-    case MANUAL_JAVA:        crc = CRC16 (crc, 277); break;
     case TYPEONLY:           crc = CRC16 (crc, 278); break;
     case DONT_TRACE:         crc = CRC16 (crc, 279); break;
         
@@ -965,7 +893,6 @@ static struct keytab {
     {"i64",             NODE_I64},
     {"i8",              NODE_I8},
     {"manual_endian",   NODE_MANUAL_ENDIAN},
-    {"manual_java",     NODE_MANUAL_JAVA},
     {"manual_print",    NODE_MANUAL_PRINT},
     {"noversion",       NODE_NOVERSION},
     {"packed",          NODE_PACKED},
@@ -1024,10 +951,6 @@ static int name_check (const char *s, YYSTYPE *token_value)
             case NODE_MANUAL_ENDIAN:
                 *token_value = (YYSTYPE) NODE_FLAG_MANUAL_ENDIAN;
                 return (MANUAL_ENDIAN);
-
-            case NODE_MANUAL_JAVA:
-                *token_value = (YYSTYPE) NODE_FLAG_MANUAL_JAVA;
-                return (MANUAL_JAVA);
 
             case NODE_TYPEONLY:
                 *token_value = (YYSTYPE) NODE_FLAG_TYPEONLY;

@@ -38,7 +38,7 @@ void generate (YYSTYPE);
 %token NAME RPAR LPAR SEMI LBRACK RBRACK NUMBER PRIMTYPE BARF
 %token TPACKED DEFINE LCURLY RCURLY STRING UNION
 %token HELPER_STRING COMMA 
-%token NOVERSION MANUAL_PRINT MANUAL_ENDIAN MANUAL_JAVA TYPEONLY DONT_TRACE
+%token NOVERSION MANUAL_PRINT MANUAL_ENDIAN TYPEONLY DONT_TRACE
 
 %%
 
@@ -62,7 +62,6 @@ flist:    flist flag            {$$ = (YYSTYPE)(unsigned long long)
 flag:   
           MANUAL_PRINT          {$$ = $1;}
         | MANUAL_ENDIAN         {$$ = $1;}
-        | MANUAL_JAVA           {$$ = $1;}
         | DONT_TRACE            {$$ = $1;}
         | TYPEONLY              {$$ = $1;}
           ;

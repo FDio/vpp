@@ -19,7 +19,7 @@ arm32_uses_dpdk = yes
 arm32_uses_openssl = no
 
 arm32_root_packages = vpp vlib vlib-api vnet svm vpp-api-test \
-	vpp-japi gmod
+	jvpp gmod
 
 vlib_configure_args_arm32 = --with-pre-data=128
 vnet_configure_args_arm32 = --with-dpdk --without-ipsec --without-ipv6sr
