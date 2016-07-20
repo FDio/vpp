@@ -47,12 +47,24 @@ typedef enum {
   ILA_CSUM_N_TYPES
 } ila_csum_mode_t;
 
+#define ila_foreach_direction \
+_(BIDIR, 0, "bidir") \
+_(SIR2ILA, 1, "sir2ila") \
+_(ILA2SIR, 2, "ila2sir")
+
+typedef enum {
+#define _(i,n,s) ILA_DIR_##i = n,
+  ila_foreach_direction
+#undef _
+} ila_direction_t;
+
 typedef struct {
   ila_type_t type;
   ip6_address_t sir_address;
   ip6_address_t ila_address;
   u32 ila_adj_index;
   ila_csum_mode_t csum_mode;
+  ila_direction_t dir;
 } ila_entry_t;
 
 typedef struct {
@@ -79,6 +91,7 @@ typedef struct {
   u32 vnid;
   u32 local_adj_index;
   ila_csum_mode_t csum_mode;
+  ila_direction_t dir;
   u8 is_del;
 } ila_add_del_entry_args_t;
 
