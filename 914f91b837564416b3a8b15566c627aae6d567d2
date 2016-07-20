@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_833bf4ea",
+        "filename": "vpp-api/java/japi/vppjni.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 121
+      },
+      "writtenOn": "2016-07-20T21:06:34Z",
+      "side": 0,
+      "message": ",2016",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "914f91b837564416b3a8b15566c627aae6d567d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_6340e056",
+        "filename": "vpp-api/java/japi/vppjni.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 121
+      },
+      "writtenOn": "2016-07-20T21:06:34Z",
+      "side": 0,
+      "message": "d",
+      "revId": "914f91b837564416b3a8b15566c627aae6d567d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
