@@ -21,80 +21,11 @@ bin_PROGRAMS =
 CLEANFILES = 
 lib_LTLIBRARIES = 
 
-nobase_include_HEADERS =		\
-  japi/org_openvpp_vppjapi_vppApi.h	\
-  japi/org_openvpp_vppjapi_vppConn.h
-
-lib_LTLIBRARIES += libvppjni.la
-
-libvppjni_la_SOURCES = japi/vppjni.c japi/vppapi.c japi/vppjni_env.h japi/vppjni_env.c
-libvppjni_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
-	              -lpthread -lm -lrt
-libvppjni_la_LDFLAGS = -module
-libvppjni_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
-
-jarfile = vppjapi-$(PACKAGE_VERSION).jar
-packagedir = org/openvpp/vppjapi
-JAVAROOT = .
-
-$(jarfile): libvppjni.la
-	cd .libs ; $(JAR) cf $(JARFLAGS) ../$@ libvppjni.so.0.0.0 ../$(packagedir)/*.class ; cd ..
-
-BUILT_SOURCES += japi/org_openvpp_vppjapi_vppConn.h japi/vppapi.c 
-
-japi/org_openvpp_vppjapi_vppConn.h: 					\
-    japi/org/openvpp/vppjapi/vppVersion.java 				\
-    japi/org/openvpp/vppjapi/vppInterfaceDetails.java 			\
-    japi/org/openvpp/vppjapi/vppInterfaceCounters.java 			\
-    japi/org/openvpp/vppjapi/vppBridgeDomainDetails.java 		\
-    japi/org/openvpp/vppjapi/vppBridgeDomainInterfaceDetails.java	\
-    japi/org/openvpp/vppjapi/vppL2Fib.java 				\
-    japi/org/openvpp/vppjapi/vppIPv4Address.java 			\
-    japi/org/openvpp/vppjapi/vppIPv6Address.java 			\
-    japi/org/openvpp/vppjapi/vppVxlanTunnelDetails.java 		\
-    japi/org/openvpp/vppjapi/vppConn.java 				\
-    japi/org/openvpp/vppjapi/vppApiCallbacks.java 			\
-    ../../vpp/vpp-api/vpe.api.h
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppVersion.java ;				\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppVersion ;						\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppInterfaceDetails.java ;			\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppInterfaceDetails ;					\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppInterfaceCounters.java ;		\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppInterfaceCounters ;				\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppBridgeDomainInterfaceDetails.java ;	\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppBridgeDomainInterfaceDetails ;			\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppBridgeDomainDetails.java ;		\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppBridgeDomainDetails ;				\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppL2Fib.java ;				\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppL2Fib ;						\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppIPv4Address.java ;			\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppIPv4Address ;					\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppIPv6Address.java ;			\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppIPv6Address ;					\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppVxlanTunnelDetails.java ;		\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppVxlanTunnelDetails ;				\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppConn.java ;				\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppConn ;
-
-japi/vppapi.c: japi/org_openvpp_vppjapi_vppConn.h
-	pushd .. ; dir=`pwd` ; popd ;								\
-	instdir=`echo $${dir} | sed -e 's:build-root/build:build-root/install:'` ;		\
-	vppapigen --input $${instdir}/../vpp/vpp-api/vpe.api --jni  japi/vppapi.c --app vpe ;	\
-	vppapigen --input $${instdir}/../vpp/vpp-api/vpe.api --java japi/vppApi.java --app vpe ;	\
-	$(JAVAC) -classpath . -d . japi/vppApi.java ;						\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppApi ;				\
-	$(JAVAC) -classpath . -d . @srcdir@/japi/org/openvpp/vppjapi/vppApiCallbacks.java ;	\
-	$(JAVAH) -classpath . -d japi org.openvpp.vppjapi.vppApiCallbacks ;
-
-demo = japi/test/demo.class
-$(demo): $(jarfile)
-	$(JAVAC) -cp $(jarfile) -d $(JAVAROOT) @srcdir@/japi/test/demo.java
-
 #
 # jVpp binding
 #
 
-nobase_include_HEADERS +=		\
+nobase_include_HEADERS =		\
   jvpp/org_openvpp_jvpp_VppJNIConnection.h
 
 lib_LTLIBRARIES += libjvpp.la
@@ -138,4 +69,4 @@ jvpp/org_openvpp_jvpp_VppJNIConnection.h: $(prefix)/../vpp/vpp-api/vpe.api
 $(jarfile_jvpp): libjvpp.la
 	cd .libs ; $(JAR) cf $(JARFLAGS) ../$@ libjvpp.so.0.0.0 ../$(packagedir_jvpp)/* ; cd ..;
 
-all-local: $(jarfile) $(jarfile_jvpp) $(demo)
+all-local: $(jarfile_jvpp)
