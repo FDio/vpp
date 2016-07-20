@@ -52,7 +52,6 @@ enum node_subclass {  /* WARNING: indices must match the vft... */
     NODE_TYPEONLY,
     NODE_MANUAL_PRINT,
     NODE_MANUAL_ENDIAN,
-    NODE_MANUAL_JAVA,
     NODE_DONT_TRACE,
 };
 
@@ -61,8 +60,6 @@ enum passid {
     UNION_DEF_PASS,
     ENDIANFUN_PASS,
     PRINTFUN_PASS,
-    JAVA_METHOD_PASS,
-    JAVA_JNI_PASS,
     PYTHON_PASS,
 };
 
@@ -83,7 +80,6 @@ typedef struct node_ {
 
 #define NODE_FLAG_MANUAL_PRINT (1<<0)
 #define NODE_FLAG_MANUAL_ENDIAN (1<<1)
-#define NODE_FLAG_MANUAL_JAVA (1<<2)
 #define NODE_FLAG_TYPEONLY (1<<3)
 #define NODE_FLAG_DONT_TRACE (1<<4)
 
@@ -91,11 +87,6 @@ typedef struct node_vft_ {
     void (*print)(struct node_ *);
     void (*generate)(struct node_ *, enum passid id, FILE *ofp);
     char *endian_converter;
-    void (*java_method_function)(struct node_ *, enum passid id, FILE *ofp);
-    void (*java_jni_parameter)(struct node_ *, enum passid id, FILE *ofp);
-    void (*java_jni_setup)(struct node_ *, enum passid id, FILE *ofp);
-    void (*java_jni_code)(struct node_ *, enum passid id, FILE *ofp);
-    void (*java_jni_teardown)(struct node_ *, enum passid id, FILE *ofp);
 } node_vft_t;    
 
 #endif /* _node_h */

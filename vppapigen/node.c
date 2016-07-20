@@ -32,10 +32,7 @@
 #define YYSTYPE void *
 
 FILE *ofp;
-FILE *javafp;
-FILE *jnifp;
 FILE *pythonfp;
-char *java_class;
 time_t starttime;
 char *vlib_app_name;
 char *input_filename;
@@ -53,11 +50,6 @@ static char current_id;
 static char current_is_complex;
 static char *current_endianfun;
 static char *current_type_name;
-static int current_java_parameter_number;
-static int current_java_emitted_parameter;
-static int current_java_parameter_need_comma_space;
-void *current_java_methodfun;
-void *current_java_jnifun;
 
 void indent_me(FILE *ofp)
 {
@@ -99,31 +91,6 @@ char *lowercase (char *s)
     return(tmpbuf);
 }
 
-/* 
- * javah maps foo_bar to foo_1bar for whatever freakin' reason
- * So, adjust java names accordingly.
- */
-char *java_name_mangle (void * name_arg)
-{
-    char * name = name_arg;
-    static u8 * s;
-    int i;
-
-    vec_reset_length (s);
-
-    s = format (s, "%s%c", name, 0);
-
-    for (i = 0; i < vec_len(s); i++)
-        if (s[i] == '_') {
-            vec_delete (s, 1, i);
-            if (s[i] >= 'a' && s[i] <= 'z')
-                s[i] -= ('a' - 'A');
-        }
-    vec_add1 (s, 0);
-    
-    return ((char *) s);
-}
-
 void primtype_recursive_print(node_t *this, i8 *fmt)
 {
     fputs((char *)fmt, stdout);
@@ -157,11 +124,6 @@ void primtype_recursive_generate(node_t *this, enum passid which, FILE *ofp,
         current_endianfun = vftp->endian_converter;
         break;
 
-    case JAVA_METHOD_PASS:
-        vftp = the_vft[this->type];
-        current_java_methodfun = vftp->java_method_function;
-        break;
-
     case PYTHON_PASS:
         fputs("('", pythonfp);
         fputs((char *)type_name, pythonfp);
@@ -179,163 +141,6 @@ void primtype_recursive_generate(node_t *this, enum passid which, FILE *ofp,
     }
 }
 
-static int hidden_from_java(const node_t * deeper)
-{
-    if (current_java_parameter_number++ < 3) {
-        if (!strncmp ((char *)(deeper->data[0]), "client_index", 12))
-            return 1;
-        else if (!strncmp ((char *)(deeper->data[0]), "context", 7))
-            return 1;
-        else if (!strncmp ((char *)(deeper->data[0]), "_vl_msg_id", 10))
-            return 1;
-    }
-
-    return 0;
-}
-
-void primtype_java_method (node_t * this, enum passid which, FILE *ofp, 
-                           char *java_type_name)
-{
-    node_t * deeper;
-
-    deeper = this->deeper;
-
-    /* We'll take care of _msg_id, client_index, and context ourselves */
-    if (hidden_from_java(deeper)) {
-        return;
-    }
-
-    if (deeper->type == NODE_SCALAR)
-        fprintf (ofp, "%s %s", java_type_name, 
-                 java_name_mangle(deeper->data[0]));
-    else
-        fprintf (ofp, "%s [] %s", java_type_name, 
-                 java_name_mangle(deeper->data[0]));
-
-    current_java_emitted_parameter = 1;
-}
-
-void primtype_java_parameter (node_t * this, enum passid which, FILE *ofp, 
-                              char *java_type_name)
-{
-    node_t * deeper;
-
-    deeper = this->deeper;
-
-    /* We'll take care of _msg_id, client_index, and context ourselves */
-    if (hidden_from_java(deeper)) {
-        return;
-    }
-    if (current_java_parameter_need_comma_space) {
-        current_java_parameter_need_comma_space = 0;
-        fputs (", ", ofp);
-    }
-
-    if (deeper->type == NODE_SCALAR)
-        fprintf (ofp, "%s %s", java_type_name, (char *)(deeper->data[0]));
-    else
-        fprintf (ofp, "%sArray %s", java_type_name, (char *)(deeper->data[0]));
-
-    current_java_emitted_parameter = 1;
-}
-
-void primtype_java_setup (node_t * this, enum passid which, FILE *ofp, 
-                          char *java_type_name, char *array_element_name)
-{
-    node_t * deeper;
-
-    deeper = this->deeper;
-
-    /* We'll take care of _msg_id, client_index, and context ourselves */
-    if (hidden_from_java(deeper)) {
-        return;
-    }
-
-    if (deeper->type == NODE_VECTOR) {
-        indent_me(ofp);
-        fprintf (ofp, 
-                 "%s * %sP = (*env)->Get%sArrayElements (env, %s, NULL);\n",
-                 java_type_name, (char *)(deeper->data[0]),
-                 array_element_name, (char *)(deeper->data[0]));
-    }
-                 
-    current_java_emitted_parameter = 1;
-}
-
-void primtype_java_code (node_t * this, enum passid which, FILE *ofp, 
-                         char *java_type_name, char * swapper)
-{
-    node_t * deeper;
-    char * s;
-
-    deeper = this->deeper;
-
-    /* We'll take care of _msg_id, client_index, and context ourselves */
-    if (hidden_from_java(deeper)) {
-        return;
-    }
-
-    indent_me(ofp);
-
-    s = (char *)(deeper->data[0]);
-
-    if (swapper == 0) {
-        if (deeper->type == NODE_VECTOR)
-            fprintf (ofp, "memcpy (mp->%s, %sP, sizeof (mp->%s));\n",
-                     s, s, s);
-        else
-            fprintf (ofp, "mp->%s = %s;\n", s, s);
-    } else {
-        if (deeper->type == NODE_VECTOR) {
-            fprintf(ofp, "{\n");
-            indent += 4;
-            indent_me(ofp);
-            fprintf(ofp, "int _i;\n");
-            indent_me(ofp);
-            fprintf(ofp, "for (_i = 0; _i < %lu; _i++) {\n",
-                    (u64)(deeper->data[1]));
-            indent += 4;
-            indent_me(ofp);
-            fprintf(ofp, "mp->%s[_i] = %s(%sP[_i]);\n",
-                    s, swapper, s);
-            indent -= 4;
-            indent_me(ofp);
-            fprintf(ofp, "}\n");
-            indent -= 4;
-            indent_me(ofp);
-            fprintf(ofp, "}\n");
-        } else {
-            fprintf (ofp, "mp->%s = %s(%s);\n", s, swapper, s);
-        }
-    }
-
-    current_java_emitted_parameter = 1;
-}
-
-void primtype_java_teardown (node_t * this, enum passid which, FILE *ofp, 
-                             char * array_element_name)
-{
-    node_t * deeper;
-
-    deeper = this->deeper;
-
-    /* We'll take care of _msg_id, client_index, and context ourselves */
-    if (hidden_from_java(deeper)) {
-        return;
-    }
-
-    if (deeper->type == NODE_VECTOR) {
-        indent_me(ofp);
-        fprintf (ofp, 
-                 "(*env)->Release%sArrayElements (env, %s, %sP, 0);\n",
-                 array_element_name, 
-                 (char *)(deeper->data[0]), 
-                 (char *)(deeper->data[0]));
-    }
-
-    current_java_emitted_parameter = 1;
-}
-
 void node_illegal_print (node_t *this)
 {
     fprintf(stderr, "node_illegal_print called\n");
@@ -348,24 +153,10 @@ void node_illegal_generate (node_t *this, enum passid notused, FILE *ofp)
     exit(0);
 }
 
-void node_illegal_java_method (node_t *this, enum passid notused, FILE *ofp)
-{
-    fprintf(stderr, "node_illegal_java_method called\n");
-    exit(0);
-}
-
-void node_illegal_java_jni (node_t *this, enum passid notused, FILE *ofp)
-{
-    fprintf(stderr, "node_illegal_java_jni called\n");
-    exit(0);
-}
-
 node_vft_t node_illegal_vft = {
     node_illegal_print,
     node_illegal_generate,
-    "illegal",
-    node_illegal_java_method,
-    node_illegal_java_jni,
+    "illegal"
 };
 
 void node_u8_print (node_t *this)
@@ -378,40 +169,10 @@ void node_u8_generate (node_t *this, enum passid which, FILE *ofp)
     primtype_recursive_generate(this, which, ofp, "u8", "%u", "(unsigned)");
 }
 
-void node_u8_java_method (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_method (this, which, ofp, "byte");
-}
-
-void node_u8_java_parameter (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_parameter (this, which, ofp, "jbyte");
-}
-
-void node_u8_java_setup (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_setup (this, which, ofp, "jbyte", "Byte");
-}
-
-void node_u8_java_code (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_code (this, which, ofp, "jbyte", 0 /* swapper */);
-}
-
-void node_u8_java_teardown (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_teardown (this, which, ofp, "Byte");
-}
-
 node_vft_t node_u8_vft = {
     node_u8_print,
     node_u8_generate,
-    "", 
-    node_u8_java_method,
-    node_u8_java_parameter,
-    node_u8_java_setup,
-    node_u8_java_code,
-    node_u8_java_teardown,
+    ""
 };
 
 void node_u16_print (node_t *this)
@@ -424,40 +185,10 @@ void node_u16_generate (node_t *this, enum passid which, FILE *ofp)
     primtype_recursive_generate(this, which, ofp, "u16", "%u", "(unsigned)");
 }
 
-void node_u16_java_method (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_method (this, which, ofp, "short");
-}
-
-void node_u16_java_parameter (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_parameter (this, which, ofp, "jshort");
-}
-
-void node_u16_java_setup (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_setup (this, which, ofp, "jshort", "Short");
-}
-
-void node_u16_java_code (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_code (this, which, ofp, "jshort", "clib_host_to_net_u16");
-}
-
-void node_u16_java_teardown (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_teardown (this, which, ofp, "Short");
-}
-
 node_vft_t node_u16_vft = {
     node_u16_print,
     node_u16_generate,
-    "clib_net_to_host_u16",
-    node_u16_java_method,
-    node_u16_java_parameter,
-    node_u16_java_setup,
-    node_u16_java_code,
-    node_u16_java_teardown,
+    "clib_net_to_host_u16"
 };
 
 void node_u32_print (node_t *this)
@@ -470,40 +201,10 @@ void node_u32_generate (node_t *this, enum passid which, FILE *ofp)
     primtype_recursive_generate(this, which, ofp, "u32", "%u", "(unsigned)");
 }
 
-void node_u32_java_method (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_method (this, which, ofp, "int");
-}
-
-void node_u32_java_parameter (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_parameter (this, which, ofp, "jint");
-}
-
-void node_u32_java_setup (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_setup (this, which, ofp, "jint", "Int");
-}
-
-void node_u32_java_code (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_code (this, which, ofp, "jint", "clib_host_to_net_u32");
-}
-
-void node_u32_java_teardown (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_teardown (this, which, ofp, "Int");
-}
-
 node_vft_t node_u32_vft = {
     node_u32_print,
     node_u32_generate,
     "clib_net_to_host_u32",
-    node_u32_java_method,
-    node_u32_java_parameter,
-    node_u32_java_setup,
-    node_u32_java_code,
-    node_u32_java_teardown,
 };
 
 void node_u64_print (node_t *this)
@@ -517,40 +218,10 @@ void node_u64_generate (node_t *this, enum passid which, FILE *ofp)
                                 "(long long)");
 }
 
-void node_u64_java_method (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_method (this, which, ofp, "long");
-}
-
-void node_u64_java_parameter (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_parameter (this, which, ofp, "jlong");
-}
-
-void node_u64_java_setup (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_setup (this, which, ofp, "jlong", "Long");
-}
-
-void node_u64_java_code (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_code (this, which, ofp, "jlong", "clib_host_to_net_u64");
-}
-
-void node_u64_java_teardown (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_teardown (this, which, ofp, "Long");
-}
-
 node_vft_t node_u64_vft = {
     node_u64_print,
     node_u64_generate,
-    "clib_net_to_host_u64",
-    node_u64_java_method,
-    node_u64_java_parameter,
-    node_u64_java_setup,
-    node_u64_java_code,
-    node_u64_java_teardown,
+    "clib_net_to_host_u64"
 };
 
 void node_i8_print (node_t *this)
@@ -566,12 +237,7 @@ void node_i8_generate (node_t *this, enum passid which, FILE *ofp)
 node_vft_t node_i8_vft = {
     node_i8_print,
     node_i8_generate,
-    "",
-    node_u8_java_method,
-    node_u8_java_parameter,
-    node_u8_java_setup,
-    node_u8_java_code,
-    node_u8_java_teardown,
+    ""
 };
 
 void node_i16_print (node_t *this)
@@ -587,12 +253,7 @@ void node_i16_generate (node_t *this, enum passid which, FILE *ofp)
 node_vft_t node_i16_vft = {
     node_i16_print,
     node_i16_generate,
-    "clib_net_to_host_u16",
-    node_u16_java_method,
-    node_u16_java_parameter,
-    node_u16_java_setup,
-    node_u16_java_code,
-    node_u16_java_teardown,
+    "clib_net_to_host_u16"
 };
 
 void node_i32_print (node_t *this)
@@ -608,12 +269,7 @@ void node_i32_generate (node_t *this, enum passid which, FILE *ofp)
 node_vft_t node_i32_vft = {
     node_i32_print,
     node_i32_generate,
-    "clib_net_to_host_u32",
-    node_u32_java_method,
-    node_u32_java_parameter,
-    node_u32_java_setup,
-    node_u32_java_code,
-    node_u32_java_teardown,
+    "clib_net_to_host_u32"
 };
 
 void node_i64_print (node_t *this)
@@ -630,12 +286,7 @@ void node_i64_generate (node_t *this, enum passid which, FILE *ofp)
 node_vft_t node_i64_vft = {
     node_i64_print,
     node_i64_generate,
-    "clib_net_to_host_u64",
-    node_u64_java_method,
-    node_u64_java_parameter,
-    node_u64_java_setup,
-    node_u64_java_code,
-    node_u64_java_teardown,
+    "clib_net_to_host_u64"
 };
 
 void node_f64_print (node_t *this)
@@ -648,44 +299,11 @@ void node_f64_generate (node_t *this, enum passid which, FILE *ofp)
     primtype_recursive_generate(this, which, ofp, "f64", "%.2f", 
                                 "(double)");
 }
-void node_f64_java_method (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_method (this, which, ofp, "double");
-}
-
-void node_f64_java_parameter (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_parameter (this, which, ofp, "jdouble");
-}
-
-void node_f64_java_setup (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_setup (this, which, ofp, "jdouble", "Double");
-}
-
-void node_f64_java_code (node_t *this, enum passid which, FILE *ofp)
-{
-    /* 
-     * Current API code doesn't try to endian-swap doubles
-     * FP formats aren't portable yadda yadda yadda
-     */
-    primtype_java_code (this, which, ofp, "jdouble", 0 /* $$$ */);
-}
-
-void node_f64_java_teardown (node_t *this, enum passid which, FILE *ofp)
-{
-    primtype_java_teardown (this, which, ofp, "Double");
-}
 
 node_vft_t node_f64_vft = {
     node_f64_print,
     node_f64_generate,
     " ",                        /* FP numbers are sent in host byte order */
-    node_f64_java_method,
-    node_f64_java_parameter,
-    node_f64_java_setup,
-    node_f64_java_code,
-    node_f64_java_teardown,
 };
 
 
@@ -716,18 +334,6 @@ void node_define_print (node_t *this)
     fprintf(stdout, "};\n");
 }
 
-static void emit_java_arg_declaration(node_t *child, FILE *fp) {
-    current_java_parameter_number = 0;
-    while (child) {
-        node_vft_t *vftp = the_vft[child->type];
-        current_java_emitted_parameter = 0;
-        vftp->java_method_function(child, JAVA_METHOD_PASS, fp);
-        child = child->peer;
-        if (child && current_java_emitted_parameter)
-            fputs (", ", fp);
-    }
-}
-
 void node_define_generate (node_t *this, enum passid which, FILE *fp)
 {
     node_t *child, *save_child;
@@ -755,132 +361,6 @@ void node_define_generate (node_t *this, enum passid which, FILE *fp)
             vftp->generate(child, which, fp);
             child = child->peer;
         }
-        break;
-
-    case JAVA_METHOD_PASS:
-        indent += 4;
-        indent_me(fp);
-
-        /* Generate private native declaration */
-        fprintf (fp, "private static native int %s0(", java_name_mangle(CDATA0));
-        emit_java_arg_declaration(this->deeper, fp);
-        fputs (");\n", fp);
-
-        /* Generate public Java method */
-        indent_me(fp);
-        fprintf (fp, "public final int %s(", java_name_mangle(CDATA0));
-        emit_java_arg_declaration(this->deeper, fp);
-        fputs (") {\n", fp);
-
-        indent += 4;
-        indent_me(fp);
-        fputs ("checkConnected();\n", fp);
-        indent_me(fp);
-        fprintf (fp, "return %s.%s0(", java_class, java_name_mangle(CDATA0));
-
-        child = this->deeper;
-        current_java_parameter_number = 0;
-        while (child && hidden_from_java(child->deeper)) {
-            child = child->peer;
-        }
-        while (child) {
-            fputs(java_name_mangle((char *)(child->deeper->data[0])), fp);
-            child = child->peer;
-            if (child)
-                fputs (", ", fp);
-        }
-
-        fputs (");\n", fp);
-        indent -= 4;
-        indent_me(fp);
-        fputs ("}\n\n", fp);
-        indent -= 4;
-        break;
-
-    case JAVA_JNI_PASS:
-        /* Generate function prototype */
-        fprintf (fp, "JNIEXPORT jint JNICALL Java_org_openvpp_vppjapi_%s_%s0\n", 
-                 java_class, java_name_mangle(CDATA0));
-
-        fprintf (fp, "(JNIEnv * env, jclass clazz");
-        current_java_parameter_need_comma_space = 1;
-        child = this->deeper;
-        save_child = child;
-        while (child) {
-            node_vft_t *vftp = the_vft[child->type];
-            current_java_emitted_parameter = 0;
-            vftp->java_jni_parameter(child, which, fp);
-            child = child->peer;
-            if (child && current_java_emitted_parameter)
-                fputs (", ", fp);
-        }
-        fprintf (fp, ")\n{\n");
-        indent += 4;
-
-        /* define the api message pointer */
-        indent_me(fp);
-        fprintf (fp, "vppjni_main_t *jm = &vppjni_main;\n");
-        indent_me(fp);
-        fprintf (fp, "vl_api_%s_t * mp;\n", current_def_name);
-        indent_me(fp);
-        fprintf (fp, "u32 my_context_id;\n");
-        indent_me(fp);
-        fprintf (fp, "int rv;\n");
-
-        indent_me(fp);
-        fprintf (fp, "rv = vppjni_sanity_check (jm);\n");
-        indent_me(fp);
-        fprintf (fp, "if (rv) return rv;\n");
-
-        indent_me(fp);
-        fprintf (fp, "my_context_id = vppjni_get_context_id (jm);\n");
-
-        /* Generate array setups, if any */
-        child = save_child;
-        while (child) {
-            node_vft_t *vftp = the_vft[child->type];
-            current_java_parameter_number = 0;
-            current_java_emitted_parameter = 0;
-            vftp->java_jni_setup(child, which, fp);
-            child = child->peer;
-        }
-
-        /* Setup the API message */
-        indent_me(fp);
-        fprintf (fp, "M(%s, %s);\n", uppercase(current_def_name),
-                 current_def_name);
-        indent_me(fp);
-        fprintf (fp, "mp->context = clib_host_to_net_u32 (my_context_id);\n");
-        /* $$$ Set up context hash table or some such... */
-
-        /* Generate code */
-        child = save_child;
-        while (child) {
-            node_vft_t *vftp = the_vft[child->type];
-            current_java_parameter_number = 0;
-            current_java_emitted_parameter = 0;
-            vftp->java_jni_code(child, which, fp);
-            child = child->peer;
-        }
-
-        /* Generate array teardowns */
-        child = save_child;
-        while (child) {
-            node_vft_t *vftp = the_vft[child->type];
-            current_java_parameter_number = 0;
-            current_java_emitted_parameter = 0;
-            vftp->java_jni_teardown(child, which, fp);
-            child = child->peer;
-        }
-
-        /* Send the message, return context_id */
-        indent_me (fp);
-        fprintf (fp, "S;\n");
-        indent_me (fp);
-        fprintf (fp, "return my_context_id;\n");
-        
-        indent -= 4;
-        fprintf (fp, "}\n\n");
         break;
 
     case PYTHON_PASS:
@@ -1834,214 +1314,6 @@ void add_msg_ids(YYSTYPE a1)
     }
 }
 
-void generate_java_top_boilerplate(FILE *fp)
-
-{
-    char *datestring = ctime(&starttime);
-    fixed_name = fixup_input_filename();
-
-    datestring[24] = 0;
-
-    fprintf (fp, "/*\n");
-    fprintf (fp, " * VLIB API java binding %s\n", datestring);
-    fprintf (fp, " * Input file: %s\n", input_filename);
-    fprintf (fp, " * Automatically generated: please edit the input file ");
-    fprintf (fp, "NOT this file!\n");
-    fprintf (fp, " */\n\n");
-
-    fprintf (fp, "package org.openvpp.vppjapi;\n\n");
-    fprintf (fp, "import java.io.IOException;\n\n");
-    fprintf (fp, "public class %s extends vppConn {\n",
-             java_class);
-    fprintf (fp, "    public %s(String clientName) throws IOException {\n", java_class);
-    fprintf (fp, "        super(clientName);\n");
-    fprintf (fp, "    }\n\n");
-}
-
-void generate_java_bottom_boilerplate(FILE *fp)
-{
-    fprintf (fp, "}\n");
-}
-
-
-void generate_java_class_definition (YYSTYPE a1, FILE *fp)
-{
-    node_t *np = (node_t *)a1;
-    node_vft_t *vftp;
-
-    fprintf(fp, "/****** API methods *****/\n\n");
-
-    /* Walk the top-level node-list */
-    while (np) {
-        if (np->type == NODE_DEFINE) {
-            if (!(np->flags & (NODE_FLAG_MANUAL_JAVA | NODE_FLAG_TYPEONLY))) {
-                /* Suppress messages named "xyz_reply" */
-                char * cp = (char *) np->data[0];
-                while (*cp)
-                    cp++;
-                cp -= 6;
-                if (strncmp (cp, "_reply", 6)) {
-                    current_java_parameter_number = 0;
-                    vftp = the_vft[np->type];
-                    vftp->generate(np, JAVA_METHOD_PASS, fp);
-                }
-            }
-        }
-        np = np->peer;
-    }
-
-    fprintf(fp, "\n/****** end of API methods *****/\n");
-}
-
-void generate_jni_reply_handler_list (YYSTYPE a1, FILE *fp)
-{
-    node_t *np = (node_t *)a1;
-    node_vft_t *vftp;
-
-    fprintf (fp, "#define foreach_api_reply_handler \\\n");
-
-    /* Walk the top-level node-list */
-    while (np) {
-        if (np->type == NODE_DEFINE) {
-            if (!(np->flags & (NODE_FLAG_MANUAL_JAVA | NODE_FLAG_TYPEONLY))) {
-                /* emit messages named "xyz_reply" */
-                char * cp = (char *) np->data[0];
-                while (*cp)
-                    cp++;
-                cp -= 6;
-                if (!strncmp (cp, "_reply", 6)) {
-                    fprintf (fp, "_(%s, %s) \\\n", 
-                             uppercase(np->data[0]), (char *)(np->data[0]));
-                }
-            }
-        }
-        np = np->peer;
-    }
-
-    fprintf (fp, "\n\n");
-}
-
-char * m_macro_boilerplate =     
-"#define M(T,t)                                      \\\n"
-"do {                                                \\\n"
-"    api_result_ready = 0;                           \\\n"
-"    mp = vl_msg_api_alloc(sizeof(*mp));             \\\n"
-"    memset (mp, 0, sizeof (*mp));                   \\\n"
-"    mp->_vl_msg_id = ntohs (VL_API_##T);            \\\n"
-"    mp->client_index = api_main.my_client_index;    \\\n"
-"} while(0);\n\n"
-"#define M2(T,t,n)                                   \\\n"
-"do {                                                \\\n"
-"    api_result_ready = 0;                           \\\n"
-"    mp = vl_msg_api_alloc(sizeof(*mp)+(n));         \\\n"
-"    memset (mp, 0, sizeof (*mp));                   \\\n"
-"    mp->_vl_msg_id = ntohs (VL_API_##T);            \\\n"
-"    mp->client_index = api_main.my_client_index;    \\\n"
-"} while(0);\n\n";
-
-char * s_macro_boilerplate = 
-"#define S (vl_msg_api_send_shmem (api_main.shmem_hdr->vl_input_queue, \\\n"
-"(u8 *)&mp));\n\n";
-
-char * w_macro_boilerplate = 
-"#define W                                               \\\n"
-"do {                                                    \\\n"
-"    timeout = clib_time_now (&clib_time) + 1.0;         \\\n"
-"                                                        \\\n"
-"    while (clib_time_now (&clib_time) < timeout) {      \\\n"
-"        if (api_result_ready == 1) {                    \\\n"
-"            return ((jint) api_result);                 \\\n"    
-"        }                                               \\\n"
-"    }                                                   \\\n"
-"    return -99;                                         \\\n"   
-"} while(0);\n\n";
-
-void generate_jni_top_boilerplate(FILE *fp)
-
-{
-    char *datestring = ctime(&starttime);
-    fixed_name = fixup_input_filename();
-
-    datestring[24] = 0;
-
-    fprintf (fp, "/*\n");
-    fprintf (fp, " * VLIB Java native code %s\n", datestring);
-    fprintf (fp, " * Input file: %s\n", input_filename);
-    fprintf (fp, " * Automatically generated: please edit the input file ");
-    fprintf (fp, "NOT this file!\n");
-    fprintf (fp, " */\n\n");
-
-    fprintf (fp, "#include <japi/vppjni.h>\n");
-
-    fprintf (fp, 
-             "#define vl_api_version(n,v) static u32 %s_api_version %s = v;\n",
-	     vlib_app_name, "__attribute__((unused))");
-    fprintf (fp, "#include <vpp-api/%s.api.h>\n", vlib_app_name);
-    fprintf (fp, "#undef vl_api_version\n\n");
-
-    fprintf (fp, "#include <japi/org_openvpp_vppjapi_vppConn.h>\n");
-    fprintf (fp, "#include <japi/org_openvpp_vppjapi_%s.h>\n\n", java_class);
-
-    fprintf (fp, "#include <vpp-api/%s_msg_enum.h>\n", vlib_app_name);
-    fprintf (fp, "#define vl_typedefs /* define message structures */\n");
-    fprintf (fp, "#include <vpp-api/%s_all_api_h.h> \n", vlib_app_name);
-    fprintf (fp, "#undef vl_typedefs\n\n");
-
-    fprintf (fp, "#define vl_endianfun \n");
-    fprintf (fp, "#include <vpp-api/%s_all_api_h.h> \n", vlib_app_name);
-    fprintf (fp, "#undef vl_endianfun\n\n");
-
-    fprintf (fp, "#define vl_print(handle, ...)\n");
-    fprintf (fp, "#define vl_printfun\n");
-    fprintf (fp, "#include <vpp-api/%s_all_api_h.h>\n", vlib_app_name);
-    fprintf (fp, "#undef vl_printfun\n\n");
-}
-
-void generate_jni_code (YYSTYPE a1, FILE *fp)
-{
-    node_t *np = (node_t *)a1;
-    node_vft_t *vftp;
-
-    /* Walk the top-level node-list */
-    while (np) {
-        if (np->type == NODE_DEFINE) {
-            if (!(np->flags & (NODE_FLAG_MANUAL_JAVA | NODE_FLAG_TYPEONLY))) {
-                /* Suppress messages named "xyz_reply" */
-                char * cp = (char *) np->data[0];
-                while (*cp)
-                    cp++;
-                cp -= 6;
-                if (strncmp (cp, "_reply", 6)) {
-                    current_def_name = np->data[0];
-                    current_java_parameter_number = 0;
-                    vftp = the_vft[np->type];
-                    vftp->generate(np, JAVA_JNI_PASS, fp);
-                }
-            }
-        }
-        np = np->peer;
-    }
-}
-
-char *hookup_boilerplate = 
-"void vl_msg_reply_handler_hookup (void)\n"
-"{\n"
-"#define _(N,n)	\\\n"
-"    vl_msg_api_set_handlers (VL_API_##N, #n, \\\n"
-"        vl_api_generic_reply_handler, \\\n"
-"        vl_noop_handler, \\\n"
-"        vl_api_##n##_t_endian, \\\n"
-"        vl_api_##n##_t_print, \\\n"
-"        sizeof(vl_api_##n##_t), 1); \n"
-"    foreach_api_reply_handler;\n"
-"#undef _\n\n"
-"}\n\n";
-    
-void generate_jni_bottom_boilerplate(FILE *fp)
-{
-    fputs (hookup_boilerplate, fp);
-}
-
 void generate_python (YYSTYPE a1, FILE *fp)
 {
   node_t *np = (node_t *)a1;
@@ -2078,18 +1350,6 @@ void generate(YYSTYPE a1)
         generate_endianfun(a1, ofp);
         
         generate_bottom_boilerplate(ofp);
-    }
-
-    if (javafp) {
-        generate_java_top_boilerplate(javafp);
-        generate_java_class_definition(a1, javafp);
-        generate_java_bottom_boilerplate(javafp);
-    }
-    if (jnifp) {
-        generate_jni_top_boilerplate(jnifp);
-        generate_jni_reply_handler_list (a1, jnifp);
-        generate_jni_code(a1, jnifp);
-        generate_jni_bottom_boilerplate(jnifp);
     }
     if (pythonfp) {
       generate_python(a1, pythonfp);
