@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_3e41db39",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3791,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-07-20T23:24:28Z",
+      "side": 1,
+      "message": "Please make these APIs return VNET_API_ERROR_UNIMPLEMENTED when DPDK \u003d\u003d 0 or DPDK_VHOST_USER \u003d\u003d 0... \n\nAs things stand, if the control-plane sends one of these and the dpdk vhost_user driver isn\u0027t present, it will never get an answer...",
+      "revId": "a54258188b3c45aea3bc184ad9ced219a9c55905",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
