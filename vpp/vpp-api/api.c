@@ -247,6 +247,9 @@ _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
 _(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)               \
+_(SW_INTERFACE_SET_DPDK_HQOS_PIPE, sw_interface_set_dpdk_hqos_pipe)     \
+_(SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, sw_interface_set_dpdk_hqos_subport) \
+_(SW_INTERFACE_SET_DPDK_HQOS_TCTBL, sw_interface_set_dpdk_hqos_tctbl)   \
 _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                         \
 _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                               \
 _(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)                         \
@@ -1675,6 +1678,131 @@ static void
   BAD_RX_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_L2_BRIDGE_REPLY);
+}
+
+static void
+  vl_api_sw_interface_set_dpdk_hqos_pipe_t_handler
+  (vl_api_sw_interface_set_dpdk_hqos_pipe_t * mp)
+{
+#if DPDK
+  dpdk_main_t *dm = &dpdk_main;
+  dpdk_device_t *xd;
+  vl_api_sw_interface_set_dpdk_hqos_pipe_reply_t *rmp;
+  int rv = 0;
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u32 subport = ntohl (mp->subport);
+  u32 pipe = ntohl (mp->pipe);
+  u32 profile = ntohl (mp->profile);
+  vnet_hw_interface_t *hw;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  /* hw_if & dpdk device */
+  hw = vnet_get_sup_hw_interface (dm->vnet_main, sw_if_index);
+
+  xd = vec_elt_at_index (dm->devices, hw->dev_instance);
+
+  rv = rte_sched_pipe_config (xd->hqos_iotx->hqos, subport, pipe, profile);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_DPDK_HQOS_PIPE_REPLY);
+#endif
+}
+
+static void
+  vl_api_sw_interface_set_dpdk_hqos_subport_t_handler
+  (vl_api_sw_interface_set_dpdk_hqos_subport_t * mp)
+{
+#if DPDK
+  dpdk_main_t *dm = &dpdk_main;
+  dpdk_device_t *xd;
+  vl_api_sw_interface_set_dpdk_hqos_subport_reply_t *rmp;
+  struct rte_sched_subport_params p;
+  int rv = 0;
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u32 subport = ntohl (mp->subport);
+  p.tb_rate = ntohl (mp->tb_rate);
+  p.tb_size = ntohl (mp->tb_size);
+  p.tc_rate[0] = ntohl (mp->tc_rate[0]);
+  p.tc_rate[1] = ntohl (mp->tc_rate[1]);
+  p.tc_rate[2] = ntohl (mp->tc_rate[2]);
+  p.tc_rate[3] = ntohl (mp->tc_rate[3]);
+  p.tc_period = ntohl (mp->tc_period);
+
+  vnet_hw_interface_t *hw;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  /* hw_if & dpdk device */
+  hw = vnet_get_sup_hw_interface (dm->vnet_main, sw_if_index);
+
+  xd = vec_elt_at_index (dm->devices, hw->dev_instance);
+
+  rv = rte_sched_subport_config (xd->hqos_iotx->hqos, subport, &p);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_DPDK_HQOS_SUBPORT_REPLY);
+#endif
+}
+
+static void
+  vl_api_sw_interface_set_dpdk_hqos_tctbl_t_handler
+  (vl_api_sw_interface_set_dpdk_hqos_tctbl_t * mp)
+{
+#if DPDK
+  dpdk_main_t *dm = &dpdk_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  dpdk_device_t *xd;
+  vl_api_sw_interface_set_dpdk_hqos_tctbl_reply_t *rmp;
+  int rv = 0;
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u32 entry = ntohl (mp->entry);
+  u32 tc = ntohl (mp->tc);
+  u32 queue = ntohl (mp->queue);
+  u32 val, i;
+
+  vnet_hw_interface_t *hw;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  /* hw_if & dpdk device */
+  hw = vnet_get_sup_hw_interface (dm->vnet_main, sw_if_index);
+
+  xd = vec_elt_at_index (dm->devices, hw->dev_instance);
+
+  if (tc >= RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE)
+    {
+      clib_warning ("invalid traffic class !!");
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+  if (queue >= RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS)
+    {
+      clib_warning ("invalid queue !!");
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  /* Detect the set of worker threads */
+  uword *p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+  vlib_thread_registration_t *tr = (vlib_thread_registration_t *) p[0];
+  int worker_thread_first = tr->first_index;
+  int worker_thread_count = tr->count;
+
+  val = tc * RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS + queue;
+  for (i = 0; i < worker_thread_count; i++)
+    xd->hqos_worker[worker_thread_first + i].hqos_tc_table[entry] = val;
+
+  BAD_SW_IF_INDEX_LABEL;
+
+done:
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_DPDK_HQOS_TCTBL_REPLY);
+#endif
 }
 
 static void
