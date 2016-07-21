@@ -195,6 +195,38 @@ static void *vl_api_sw_interface_set_l2_bridge_t_print
     FINISH;
 }
 
+static void *vl_api_sw_interface_set_dpdk_hqos_pipe_t_print
+(vl_api_sw_interface_set_dpdk_hqos_pipe_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: sw_interface_set_dpdk_hqos_pipe ");
+
+    s = format (s, "sw_if_index %u ", ntohl(mp->sw_if_index));
+
+    s = format (s, "subport %u  pipe %u  profile %u ",
+        ntohl(mp->subport), ntohl(mp->pipe), ntohl(mp->profile));
+
+    FINISH;
+}
+
+static void *vl_api_sw_interface_set_dpdk_hqos_subport_t_print
+(vl_api_sw_interface_set_dpdk_hqos_subport_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: sw_interface_set_dpdk_hqos_subport ");
+
+    s = format (s, "sw_if_index %u ", ntohl(mp->sw_if_index));
+
+    s = format (s, "subport %u  rate %u  bkt_size %u  tc0 %u tc1 %u tc2 %u tc3 %u period %u",
+        ntohl(mp->subport), ntohl(mp->tb_rate), ntohl(mp->tb_size),
+        ntohl(mp->tc_rate[0]), ntohl(mp->tc_rate[1]), ntohl(mp->tc_rate[2]), ntohl(mp->tc_rate[3]),
+        ntohl(mp->tc_period));
+
+    FINISH;
+}
+
 static void * vl_api_bridge_domain_add_del_t_print
 (vl_api_bridge_domain_add_del_t * mp, void *handle)
 {
@@ -2128,6 +2160,8 @@ _(BRIDGE_FLAGS, bridge_flags)                                           \
 _(CLASSIFY_ADD_DEL_TABLE, classify_add_del_table)			\
 _(CLASSIFY_ADD_DEL_SESSION, classify_add_del_session)			\
 _(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)		\
+_(SW_INTERFACE_SET_DPDK_HQOS_PIPE, sw_interface_set_dpdk_hqos_pipe)     \
+_(SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, sw_interface_set_dpdk_hqos_subport)\
 _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                         \
 _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                               \
 _(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)	\

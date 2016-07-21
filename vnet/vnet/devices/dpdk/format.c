@@ -837,3 +837,522 @@ unformat_rss_fn (unformat_input_t * input, uword * rss_fn)
     }
   return 0;
 }
+
+
+
+static clib_error_t *
+unformat_hqos_thread (unformat_input_t * input, dpdk_device_config_hqos_t * hqos)
+{
+  clib_error_t * error = 0;
+  u32 t[64];
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (input, "swq_size %u", &hqos->swq_size))
+      ;
+
+    else if (unformat (input, "burst_enq %u", &hqos->burst_enq))
+      ;
+
+    else if (unformat (input, "burst_deq %u", &hqos->burst_deq))
+      ;
+
+    else if (unformat (input, "pktfield0_slabpos %u", &hqos->pktfield0_slabpos))
+      ;
+
+    else if (unformat (input, "pktfield0_slabmask %llx", &hqos->pktfield0_slabmask))
+      ;
+
+    else if (unformat (input, "pktfield1_slabpos %u", &hqos->pktfield1_slabpos))
+      ;
+
+    else if (unformat (input, "pktfield1_slabmask %llx", &hqos->pktfield1_slabmask))
+      ;
+
+    else if (unformat (input, "pktfield2_slabpos %u", &hqos->pktfield2_slabpos))
+      ;
+
+    else if (unformat (input, "pktfield2_slabmask %llx", &hqos->pktfield2_slabmask))
+      ;
+
+    else if (unformat (input, "pktfield3_table "
+      "%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u "
+      "%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u "
+      "%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u "
+      "%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
+      &t[ 0], &t[ 1], &t[ 2], &t[ 3], &t[ 4], &t[ 5], &t[ 6], &t[ 7],
+      &t[ 8], &t[ 9], &t[10], &t[11], &t[12], &t[13], &t[14], &t[15],
+      &t[16], &t[17], &t[18], &t[19], &t[20], &t[21], &t[22], &t[23],
+      &t[24], &t[25], &t[26], &t[27], &t[28], &t[29], &t[30], &t[31],
+      &t[32], &t[33], &t[34], &t[35], &t[36], &t[37], &t[38], &t[39],
+      &t[40], &t[41], &t[42], &t[43], &t[44], &t[45], &t[46], &t[47],
+      &t[48], &t[49], &t[50], &t[51], &t[52], &t[53], &t[54], &t[55],
+      &t[56], &t[57], &t[58], &t[59], &t[60], &t[61], &t[62], &t[63])) {
+        u32 i;
+        for (i = 0; i < RTE_DIM(t); i++)
+          if (t[i] > RTE_SCHED_QUEUES_PER_PIPE) {
+            error = clib_error_return (0, "invalid table value `%U'", format_unformat_error, input);
+            break;
+        }
+
+        memcpy(hqos->tc_table, t, sizeof(t));
+      }
+
+    else {
+      error = clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+      break;
+    }
+  }
+
+  return error;
+}
+
+static clib_error_t *
+unformat_hqos_port (unformat_input_t * input, dpdk_device_config_hqos_t * hqos)
+{
+  clib_error_t * error = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (input, "rate %u", &hqos->port.rate))
+    ;
+
+    else if (unformat (input, "mtu %u", &hqos->port.mtu))
+    ;
+
+    if (unformat (input, "frame_overhead %u", &hqos->port.frame_overhead))
+    ;
+
+    else if (unformat (input, "n_subports_per_port %u", &hqos->port.n_subports_per_port))
+    ;
+
+    else if (unformat (input, "n_pipes_per_subport %u", &hqos->port.n_pipes_per_subport))
+    ;
+
+    else if (unformat (input, "queue_sizes %u %u %u %u",
+      &hqos->port.qsize[0],
+      &hqos->port.qsize[1],
+      &hqos->port.qsize[2],
+      &hqos->port.qsize[3]))
+     ;
+
+    else {
+      error = clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+      break;
+    }
+  }
+
+  return error;
+}
+
+static clib_error_t *
+unformat_hqos_subport(unformat_input_t * input, dpdk_device_config_hqos_t * hqos, u32 subport_id)
+{
+  clib_error_t * error = 0;
+  u32 pipe_id_from, pipe_id_to, pipe_profile_id, i;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (input, "tb_rate %u", &hqos->subport[subport_id].tb_rate))
+    ;
+
+    else if (unformat (input, "tb_size %u", &hqos->subport[subport_id].tb_size))
+    ;
+
+    else if (unformat (input, "tc0_rate %u", &hqos->subport[subport_id].tc_rate[0]))
+    ;
+
+    else if (unformat (input, "tc1_rate %u", &hqos->subport[subport_id].tc_rate[1]))
+    ;
+
+    else if (unformat (input, "tc2_rate %u", &hqos->subport[subport_id].tc_rate[2]))
+    ;
+
+    else if (unformat (input, "tc3_rate %u", &hqos->subport[subport_id].tc_rate[3]))
+    ;
+
+    else if (unformat (input, "tc_period %u", &hqos->subport[subport_id].tc_period))
+    ;
+
+    else if (unformat (input, "pipe %u %u profile %u", &pipe_id_from, &pipe_id_to, &pipe_profile_id)) {
+      if ((pipe_id_from >= hqos->port.n_pipes_per_subport) || 
+        (pipe_id_to >= hqos->port.n_pipes_per_subport)) {
+        error = clib_error_return (0, "invalid pipe ID `%U'", format_unformat_error, input);
+        break;
+      }
+
+      for (i = pipe_id_from; i < pipe_id_to; i++) {
+        u32 pos = subport_id * hqos->port.n_pipes_per_subport + i;
+
+        hqos->pipe_map[pos] = pipe_profile_id;
+      }
+    } else {
+      error = clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+      break;
+    }
+  }
+
+  return error;
+}
+
+static clib_error_t *
+unformat_hqos_pipe_profile(unformat_input_t * input, dpdk_device_config_hqos_t * hqos, u32 pipe_profile_id)
+{
+  clib_error_t * error = 0;
+  u32 w[4], tc_ov_weight;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if(unformat (input, "tb_rate %u", &hqos->pipe[pipe_profile_id].tb_rate))
+    ;
+
+    else if (unformat (input, "tb_size %u", &hqos->pipe[pipe_profile_id].tb_size))
+    ;
+
+    else if (unformat (input, "tc0_rate %u", &hqos->pipe[pipe_profile_id].tc_rate[0]))
+    ;
+
+    else if (unformat (input, "tc1_rate %u", &hqos->pipe[pipe_profile_id].tc_rate[1]))
+    ;
+
+    else if (unformat (input, "tc2_rate %u", &hqos->pipe[pipe_profile_id].tc_rate[2]))
+    ;
+
+    else if (unformat (input, "tc3_rate %u", &hqos->pipe[pipe_profile_id].tc_rate[3]))
+    ;
+
+    else if (unformat (input, "tc_period %u", &hqos->pipe[pipe_profile_id].tc_period))
+    ;
+
+    else if (unformat (input, "tc3_oversubscription_weight %u", &tc_ov_weight)) {
+#ifdef RTE_SCHED_SUBPORT_TC_OV
+      hqos->pipe[pipe_profile_id].tc_ov_weight = tc_ov_weight;
+#endif
+    }
+
+    else if (unformat (input, "tc0_wrr_weights %u %u %u %u", &w[0], &w[1], &w[2], &w[3])) {
+	hqos->pipe[pipe_profile_id].wrr_weights[0] = (u8) w[0];
+	hqos->pipe[pipe_profile_id].wrr_weights[1] = (u8) w[1];
+	hqos->pipe[pipe_profile_id].wrr_weights[2] = (u8) w[2];
+	hqos->pipe[pipe_profile_id].wrr_weights[3] = (u8) w[3];
+    }
+
+    else if (unformat (input, "tc1_wrr_weights %u %u %u %u", &w[0], &w[1], &w[2], &w[3])) {
+	hqos->pipe[pipe_profile_id].wrr_weights[4] = (u8) w[0];
+	hqos->pipe[pipe_profile_id].wrr_weights[5] = (u8) w[1];
+	hqos->pipe[pipe_profile_id].wrr_weights[6] = (u8) w[2];
+	hqos->pipe[pipe_profile_id].wrr_weights[7] = (u8) w[3];
+    }
+
+    else if (unformat (input, "tc2_wrr_weights %u %u %u %u", &w[0], &w[1], &w[2], &w[3])) {
+	hqos->pipe[pipe_profile_id].wrr_weights[8] = (u8) w[0];
+	hqos->pipe[pipe_profile_id].wrr_weights[9] = (u8) w[1];
+	hqos->pipe[pipe_profile_id].wrr_weights[10] = (u8) w[2];
+	hqos->pipe[pipe_profile_id].wrr_weights[11] = (u8) w[3];
+    }
+
+    else if (unformat (input, "tc3_wrr_weights %u %u %u %u", &w[0], &w[1], &w[2], &w[3])) {
+	hqos->pipe[pipe_profile_id].wrr_weights[12] = (u8) w[0];
+	hqos->pipe[pipe_profile_id].wrr_weights[13] = (u8) w[1];
+	hqos->pipe[pipe_profile_id].wrr_weights[14] = (u8) w[2];
+	hqos->pipe[pipe_profile_id].wrr_weights[15] = (u8) w[3];
+    }
+
+    else {
+      error = clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+      break;
+    }
+  }
+
+  return error;
+}
+
+static clib_error_t *
+unformat_hqos_red(unformat_input_t * input, dpdk_device_config_hqos_t * hqos)
+{
+  clib_error_t * error = 0;
+  u32 v[3];
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (input, "tc0_wred_min %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[0][e_RTE_METER_GREEN].min_th = v[0];
+      hqos->port.red_params[0][e_RTE_METER_YELLOW].min_th = v[1];
+      hqos->port.red_params[0][e_RTE_METER_RED].min_th = v[2];
+#endif
+    }
+
+    if (unformat (input, "tc1_wred_min %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[1][e_RTE_METER_GREEN].min_th = v[0];
+      hqos->port.red_params[1][e_RTE_METER_YELLOW].min_th = v[1];
+      hqos->port.red_params[1][e_RTE_METER_RED].min_th = v[2];
+#endif
+    }
+
+    if (unformat (input, "tc2_wred_min %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[2][e_RTE_METER_GREEN].min_th = v[0];
+      hqos->port.red_params[2][e_RTE_METER_YELLOW].min_th = v[1];
+      hqos->port.red_params[2][e_RTE_METER_RED].min_th = v[2];
+#endif
+    }
+
+    if (unformat (input, "tc3_wred_min %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[3][e_RTE_METER_GREEN].min_th = v[0];
+      hqos->port.red_params[3][e_RTE_METER_YELLOW].min_th = v[1];
+      hqos->port.red_params[3][e_RTE_METER_RED].min_th = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc0_wred_max %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[0][e_RTE_METER_GREEN].max_th = v[0];
+      hqos->port.red_params[0][e_RTE_METER_YELLOW].max_th = v[1];
+      hqos->port.red_params[0][e_RTE_METER_RED].max_th = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc1_wred_max %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[1][e_RTE_METER_GREEN].max_th = v[0];
+      hqos->port.red_params[1][e_RTE_METER_YELLOW].max_th = v[1];
+      hqos->port.red_params[1][e_RTE_METER_RED].max_th = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc2_wred_max %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[2][e_RTE_METER_GREEN].max_th = v[0];
+      hqos->port.red_params[2][e_RTE_METER_YELLOW].max_th = v[1];
+      hqos->port.red_params[2][e_RTE_METER_RED].max_th = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc3_wred_max %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[3][e_RTE_METER_GREEN].max_th = v[0];
+      hqos->port.red_params[3][e_RTE_METER_YELLOW].max_th = v[1];
+      hqos->port.red_params[3][e_RTE_METER_RED].max_th = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc0_wred_inv_prob %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[0][e_RTE_METER_GREEN].maxp_inv = v[0];
+      hqos->port.red_params[0][e_RTE_METER_YELLOW].maxp_inv = v[1];
+      hqos->port.red_params[0][e_RTE_METER_RED].maxp_inv = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc1_wred_inv_prob %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[1][e_RTE_METER_GREEN].maxp_inv = v[0];
+      hqos->port.red_params[1][e_RTE_METER_YELLOW].maxp_inv = v[1];
+      hqos->port.red_params[1][e_RTE_METER_RED].maxp_inv = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc2_wred_inv_prob %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[2][e_RTE_METER_GREEN].maxp_inv = v[0];
+      hqos->port.red_params[2][e_RTE_METER_YELLOW].maxp_inv = v[1];
+      hqos->port.red_params[2][e_RTE_METER_RED].maxp_inv = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc3_wred_inv_prob %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[3][e_RTE_METER_GREEN].maxp_inv = v[0];
+      hqos->port.red_params[3][e_RTE_METER_YELLOW].maxp_inv = v[1];
+      hqos->port.red_params[3][e_RTE_METER_RED].maxp_inv = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc0_wred_weight %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[0][e_RTE_METER_GREEN].wq_log2 = v[0];
+      hqos->port.red_params[0][e_RTE_METER_YELLOW].wq_log2 = v[1];
+      hqos->port.red_params[0][e_RTE_METER_RED].wq_log2 = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc1_wred_weight %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[1][e_RTE_METER_GREEN].wq_log2 = v[0];
+      hqos->port.red_params[1][e_RTE_METER_YELLOW].wq_log2 = v[1];
+      hqos->port.red_params[1][e_RTE_METER_RED].wq_log2 = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc2_wred_weight %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[2][e_RTE_METER_GREEN].wq_log2 = v[0];
+      hqos->port.red_params[2][e_RTE_METER_YELLOW].wq_log2 = v[1];
+      hqos->port.red_params[2][e_RTE_METER_RED].wq_log2 = v[2];
+#endif
+    }
+
+    else if (unformat (input, "tc3_wred_weight %u %u %u", &v[0], &v[1], &v[2])) {
+#ifdef RTE_SCHED_RED
+      hqos->port.red_params[3][e_RTE_METER_GREEN].wq_log2 = v[0];
+      hqos->port.red_params[3][e_RTE_METER_YELLOW].wq_log2 = v[1];
+      hqos->port.red_params[3][e_RTE_METER_RED].wq_log2 = v[2];
+#endif
+    }
+
+    else {
+      error = clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+      break;
+    }
+  }
+
+  return error;
+}
+
+static clib_error_t *
+dpdk_hqos_params_parse (unformat_input_t * input, dpdk_device_config_hqos_t *hqos)
+{
+  clib_error_t * error = 0;
+  unformat_input_t sub_input;
+  u32 subport_id, pipe_profile_id;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (input, "thread %U", unformat_vlib_cli_sub_input, &sub_input)) {
+      error = unformat_hqos_thread(&sub_input, hqos);
+      if (error)
+        break;
+    } else if (unformat (input, "port %U", unformat_vlib_cli_sub_input, &sub_input)) {
+      error = unformat_hqos_port(&sub_input, hqos);
+      if (error)
+        break;
+
+      vec_validate(hqos->subport, hqos->port.n_subports_per_port - 1);
+      for (subport_id = 1; subport_id < vec_len(hqos->subport); subport_id++)
+        memcpy(&hqos->subport[subport_id], &hqos->subport[0], sizeof(hqos->subport[0]));
+
+      vec_validate(hqos->pipe_map, hqos->port.n_subports_per_port * hqos->port.n_pipes_per_subport - 1);
+      memset(hqos->pipe_map, 0, vec_len(hqos->pipe_map) * sizeof(hqos->pipe_map[0]));
+    } else if(unformat (input, "subport %u %U", &subport_id, unformat_vlib_cli_sub_input, &sub_input)) {
+      if (subport_id >= hqos->port.n_subports_per_port) {
+        error = clib_error_return (0, "invalid subport ID `%U'", format_unformat_error, input);
+        break;
+      }
+
+      error = unformat_hqos_subport(&sub_input, hqos, subport_id);
+      if (error)
+        break;
+    } else if(unformat (input, "pipe_profile %u %U", &pipe_profile_id, unformat_vlib_cli_sub_input, &sub_input)) {
+      if (pipe_profile_id >= RTE_SCHED_PIPE_PROFILES_PER_PORT) {
+        error = clib_error_return (0, "invalid subport ID `%U'", format_unformat_error, input);
+        break;
+      }
+
+      vec_validate(hqos->pipe, pipe_profile_id);
+      dpdk_device_config_hqos_pipe_profile_default(hqos, pipe_profile_id);
+      hqos->port.pipe_profiles = hqos->pipe;
+      if (hqos->port.n_pipe_profiles <= pipe_profile_id)
+        hqos->port.n_pipe_profiles = pipe_profile_id + 1;
+
+      error = unformat_hqos_pipe_profile(&sub_input, hqos, pipe_profile_id);
+      if (error)
+        break;
+    } else if(unformat (input, "red %U", unformat_vlib_cli_sub_input, &sub_input)) {
+      error = unformat_hqos_red(&sub_input, hqos);
+      if (error)
+        break;
+    } else {
+      error = clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+        break;
+    }
+  }
+
+  return error;
+}
+
+static clib_error_t *
+dpdk_hqos_config_file_parse (dpdk_device_config_hqos_t * hqos)
+{
+  clib_error_t * error = 0;
+  unformat_input_t input;
+  FILE * fp;
+  char inbuf[4096];
+  int argc = 0;
+  char ** argv = NULL;
+  char * arg = NULL;
+  char *p;
+  uword i;
+
+  fp = fopen ((char *)hqos->config_file, "r");
+  if (fp == NULL)
+     return clib_error_return (0, "open configuration file '%s' failed\n",
+       (char *)hqos->config_file);
+
+  while (1) {
+    if (fgets(inbuf, 4096, fp) == 0)
+      break;
+
+    p = strtok(inbuf, " \t\n");
+    while (p != NULL) {
+      if (*p == '#')
+        break;
+
+      argc++;
+      char ** tmp = realloc(argv, argc * sizeof(char *));
+
+      if (tmp == NULL)
+        return clib_error_return (0, "memory allocation failed\n");
+       
+      argv = tmp;
+      arg = strndup(p, 1024);
+      if (arg == NULL)
+        return clib_error_return (0, "memory allocation failed\n");
+
+      argv[argc - 1] = arg;
+      p = strtok(NULL, " \t\n");
+    }
+  }
+
+  fclose(fp);
+
+  char ** tmp = realloc(argv, (argc + 1) * sizeof(char *));
+  if (tmp == NULL)
+    return clib_error_return (0, "memory allocation failed\n");
+
+  argv = tmp;
+  argv[argc] = NULL;
+
+  unformat_init (&input, 0, 0);
+
+  /* Concatenate argument strings with space in between. */
+  for (i = 0; argv[i]; i++) {
+      vec_add (input.buffer, argv[i], strlen (argv[i]));
+      if (argv[i + 1])
+        vec_add1 (input.buffer, ' ');
+  }
+
+  error = dpdk_hqos_params_parse(&input, hqos);
+  unformat_free (&input);
+
+ return error;
+}
+
+clib_error_t *
+unformat_hqos (unformat_input_t * input, dpdk_device_config_hqos_t * hqos)
+{
+  clib_error_t * error = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (input, "config-file %s", &hqos->config_file)) {
+      error = dpdk_hqos_config_file_parse(hqos);
+      if (error)
+        break;
+    } else if (unformat (input, "iotx %u", &hqos->iotx))
+      hqos->iotx_valid = 1;
+    else {
+      error = clib_error_return (0, "unknown input `%U'",
+        format_unformat_error, input);
+      break;
+    }
+  }
+
+  return error;
+}
+
