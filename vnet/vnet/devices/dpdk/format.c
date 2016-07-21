@@ -213,22 +213,8 @@ u8 * format_dpdk_device_name (u8 * s, va_list * args)
 		 dev_info.pci_dev->addr.devid,
 		 dev_info.pci_dev->addr.function);
 
-  /* address Chelsio cards which share PCI address */
-	if (dm->devices[i].pmd ==  VNET_DPDK_PMD_CXGBE) {
-    struct rte_eth_dev_info di;
-
-    di.pci_dev = 0;
-    rte_eth_dev_info_get(i+1, &di);
-    if (di.pci_dev && memcmp(&dev_info.pci_dev->addr, &di.pci_dev->addr,
-        sizeof(struct rte_pci_addr)) == 0)
-	    return format(ret, "/0");
-
-    di.pci_dev = 0;
-    rte_eth_dev_info_get(i-1, &di);
-    if (di.pci_dev && memcmp(&dev_info.pci_dev->addr, &di.pci_dev->addr,
-        sizeof(struct rte_pci_addr)) == 0)
-	    return format(ret, "/1");
-	}
+  if (dm->devices[i].interface_name_suffix)
+    return format (ret, "/%s", dm->devices[i].interface_name_suffix);
   return ret;
 }
 
