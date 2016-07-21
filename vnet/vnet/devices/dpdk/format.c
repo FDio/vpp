@@ -864,6 +864,26 @@ unformat_rss_fn (unformat_input_t * input, uword * rss_fn)
   return 0;
 }
 
+clib_error_t *
+unformat_hqos (unformat_input_t * input, dpdk_device_config_hqos_t * hqos)
+{
+  clib_error_t *error = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "hqos-thread %u", &hqos->hqos_thread))
+	hqos->hqos_thread_valid = 1;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  break;
+	}
+    }
+
+  return error;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
