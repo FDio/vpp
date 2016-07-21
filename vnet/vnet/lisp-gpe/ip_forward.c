@@ -895,6 +895,12 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vnet_buffer (b0)->sw_if_index[VLIB_TX] =
                       src_adj0->rewrite_header.sw_if_index;
                 }
+              else
+                {
+                  next0 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
+                  vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP;
+                }
+
               if (src_fib_index1 != (u32) ~0)
                 {
                   ip4_src_fib_lookup_one (lgm, src_fib_index1,
@@ -904,6 +910,11 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   next1 = src_adj1->explicit_fib_index;
                   vnet_buffer (b1)->sw_if_index[VLIB_TX] =
                       src_adj1->rewrite_header.sw_if_index;
+                }
+              else
+                {
+                  next1 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
+                  vnet_buffer (b1)->lisp.overlay_afi = LISP_AFI_IP;
                 }
             }
 
@@ -948,6 +959,11 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               /* prepare packet for lisp-gpe output node */
               vnet_buffer (b0)->sw_if_index[VLIB_TX] =
                   src_adj0->rewrite_header.sw_if_index;
+            }
+          else
+            {
+              next0 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
+              vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP;
             }
 
           vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
@@ -1111,6 +1127,12 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vnet_buffer (b0)->sw_if_index[VLIB_TX] =
                       src_adj0->rewrite_header.sw_if_index;
                 }
+              else
+                {
+                  next0 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
+                  vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP6;
+                }
+
               if (src_fib_index1 != (u32) ~0)
                 {
                   src_adj_index1 = ip6_src_fib_lookup (lgm, src_fib_index1,
@@ -1120,6 +1142,11 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   next1 = src_adj1->explicit_fib_index;
                   vnet_buffer (b1)->sw_if_index[VLIB_TX] =
                       src_adj1->rewrite_header.sw_if_index;
+                }
+              else
+                {
+                  next1 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
+                  vnet_buffer (b1)->lisp.overlay_afi = LISP_AFI_IP6;
                 }
             }
 
@@ -1165,6 +1192,11 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               /* prepare packet for lisp-gpe output node */
               vnet_buffer (b0)->sw_if_index[VLIB_TX] =
                   src_adj0->rewrite_header.sw_if_index;
+            }
+          else
+            {
+              next0 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
+              vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP6;
             }
 
           vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
