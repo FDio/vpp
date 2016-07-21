@@ -52,17 +52,18 @@ next_proto_to_next_index[LISP_GPE_NEXT_PROTOS] = {
     LISP_GPE_INPUT_NEXT_DROP,
     LISP_GPE_INPUT_NEXT_IP4_INPUT,
     LISP_GPE_INPUT_NEXT_IP6_INPUT,
+    LISP_GPE_INPUT_NEXT_L2_INPUT,
     LISP_GPE_INPUT_NEXT_DROP
 };
 
-static u32
+always_inline u32
 next_protocol_to_next_index (lisp_gpe_header_t * lgh, u8 * next_header)
 {
   /* lisp-gpe router */
   if (PREDICT_TRUE((lgh->flags & LISP_GPE_FLAGS_P)
       && lgh->next_protocol < LISP_GPE_NEXT_PROTOS))
     return next_proto_to_next_index[lgh->next_protocol];
-  /* legay lisp router */
+  /* legacy lisp router */
   else if ((lgh->flags & LISP_GPE_FLAGS_P) == 0)
     {
       ip4_header_t * iph = (ip4_header_t *) next_header;
@@ -75,6 +76,18 @@ next_protocol_to_next_index (lisp_gpe_header_t * lgh, u8 * next_header)
     }
   else
     return LISP_GPE_INPUT_NEXT_DROP;
+}
+
+always_inline tunnel_lookup_t *
+next_index_to_iface (lisp_gpe_main_t * lgm, u32 next_index)
+{
+  if (LISP_GPE_INPUT_NEXT_IP4_INPUT == next_index
+      || LISP_GPE_INPUT_NEXT_IP6_INPUT == next_index)
+    return &lgm->l3_ifaces;
+  else if (LISP_GPE_INPUT_NEXT_L2_INPUT == next_index)
+    return &lgm->l2_ifaces;
+  clib_warning("next_index not associated to an interface!");
+  return 0;
 }
 
 static_always_inline void
@@ -110,7 +123,7 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, next_index, * from, * to_next, cpu_index;
   u32 n_bytes = 0, n_packets = 0, last_sw_if_index = ~0, drops = 0;
-  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+  lisp_gpe_main_t * lgm = vnet_lisp_gpe_get_main ();
 
   cpu_index = os_get_cpu_number();
   from = vlib_frame_vector_args (from_frame);
@@ -133,6 +146,7 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
           lisp_gpe_header_t * lh0, * lh1;
           u32 next0, next1, error0, error1;
           uword * si0, * si1;
+          tunnel_lookup_t * tl0, * tl1;
 
           /* Prefetch next iteration. */
           {
@@ -202,16 +216,21 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
           next1 = next_protocol_to_next_index (lh1,
                                                vlib_buffer_get_current (b1));
 
-          /* Required to make the l2 tag push / pop code work on l2 subifs */
-          vnet_update_l2_len (b0);
-          vnet_update_l2_len (b1);
+          /* determine if tunnel is l2 or l3 */
+          tl0 = next_index_to_iface(lgm, next0);
+          tl1 = next_index_to_iface(lgm, next1);
 
           /* map iid/vni to lisp-gpe sw_if_index which is used by ipx_input to
            * decide the rx vrf and the input features to be applied */
-          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni,
+          si0 = hash_get(tl0->sw_if_index_by_vni,
                          clib_net_to_host_u32 (lh0->iid));
-          si1 = hash_get(lgm->tunnel_term_sw_if_index_by_vni,
+          si1 = hash_get(tl1->sw_if_index_by_vni,
                          clib_net_to_host_u32 (lh1->iid));
+
+
+          /* Required to make the l2 tag push / pop code work on l2 subifs */
+          vnet_update_l2_len (b0);
+          vnet_update_l2_len (b1);
 
           if (si0)
             {
@@ -279,6 +298,7 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
           lisp_gpe_header_t * lh0;
           u32 error0;
           uword * si0;
+          tunnel_lookup_t * tl0;
 
           bi0 = from[0];
           to_next[0] = bi0;
@@ -328,13 +348,16 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
           next0 = next_protocol_to_next_index (lh0,
                                                vlib_buffer_get_current (b0));
 
-          /* Required to make the l2 tag push / pop code work on l2 subifs */
-          vnet_update_l2_len (b0);
+          /* determine if tunnel is l2 or l3 */
+          tl0 = next_index_to_iface(lgm, next0);
 
           /* map iid/vni to lisp-gpe sw_if_index which is used by ipx_input to
            * decide the rx vrf and the input features to be applied */
-          si0 = hash_get(lgm->tunnel_term_sw_if_index_by_vni,
+          si0 = hash_get(tl0->sw_if_index_by_vni,
                          clib_net_to_host_u32 (lh0->iid));
+
+          /* Required to make the l2 tag push / pop code work on l2 subifs */
+          vnet_update_l2_len (b0);
 
           if (si0)
             {

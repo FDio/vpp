@@ -66,6 +66,9 @@ vlib_buffer_make_headroom (vlib_buffer_t *b, u8 size)
 always_inline void *
 vlib_buffer_pull (vlib_buffer_t * b, u8 size)
 {
+  if (b->current_length < size)
+    return 0;
+
   void * data = vlib_buffer_get_current (b);
   vlib_buffer_advance (b, size);
   return data;
