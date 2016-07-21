@@ -251,10 +251,10 @@ dpdk_lib_init (dpdk_main_t * dm)
   dpdk_device_t *xd;
   vlib_pci_addr_t last_pci_addr;
   u32 last_pci_addr_port = 0;
-  vlib_thread_registration_t *tr;
-  uword *p;
+  vlib_thread_registration_t *tr, *tr_hqos;
+  uword *p, *p_hqos;
 
-  u32 next_cpu = 0;
+  u32 next_cpu = 0, next_hqos_cpu = 0;
   u8 af_packet_port_id = 0;
   last_pci_addr.as_u32 = ~0;
 
@@ -279,6 +279,30 @@ dpdk_lib_init (dpdk_main_t * dm)
 
   vec_validate_aligned (dm->workers, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
+
+  dm->hqos_cpu_first_index = 0;
+  dm->hqos_cpu_count = 0;
+
+  /* find out which cpus will be used for I/O TX */
+  p_hqos = hash_get_mem (tm->thread_registrations_by_name, "hqos-threads");
+  tr_hqos = p_hqos ? (vlib_thread_registration_t *) p_hqos[0] : 0;
+
+  if (tr_hqos && tr_hqos->count > 0)
+    {
+      dm->hqos_cpu_first_index = tr_hqos->first_index;
+      dm->hqos_cpu_count = tr_hqos->count;
+    }
+
+  vec_validate_aligned (dm->devices_by_hqos_cpu, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+  vec_validate_aligned (dm->hqos_threads, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+#ifdef NETMAP
+  if (rte_netmap_probe () < 0)
+    return clib_error_return (0, "rte netmap probe failed");
+#endif
 
   nports = rte_eth_dev_count ();
   if (nports < 1)
@@ -662,6 +686,42 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      next_cpu = 0;
 	  }
 
+
+      if (devconf->hqos_enabled)
+	{
+	  xd->flags |= DPDK_DEVICE_FLAG_HQOS;
+
+	  if (devconf->hqos.hqos_thread_valid)
+	    {
+	      int cpu = dm->hqos_cpu_first_index + devconf->hqos.hqos_thread;
+
+	      if (devconf->hqos.hqos_thread >= dm->hqos_cpu_count)
+		return clib_error_return (0, "invalid HQoS thread index");
+
+	      vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
+	      dq->device = xd->device_index;
+	      dq->queue_id = 0;
+	    }
+	  else
+	    {
+	      int cpu = dm->hqos_cpu_first_index + next_hqos_cpu;
+
+	      if (dm->hqos_cpu_count == 0)
+		return clib_error_return (0, "no HQoS threads available");
+
+	      vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
+	      dq->device = xd->device_index;
+	      dq->queue_id = 0;
+
+	      next_hqos_cpu++;
+	      if (next_hqos_cpu == dm->hqos_cpu_count)
+		next_hqos_cpu = 0;
+
+	      devconf->hqos.hqos_thread_valid = 1;
+	      devconf->hqos.hqos_thread = cpu;
+	    }
+	}
+
       vec_validate_aligned (xd->tx_vectors, tm->n_vlib_mains,
 			    CLIB_CACHE_LINE_BYTES);
       for (j = 0; j < tm->n_vlib_mains; j++)
@@ -684,6 +744,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       if (rv)
 	return rv;
+
+      if (devconf->hqos_enabled)
+	{
+	  rv = dpdk_port_setup_hqos (xd, &devconf->hqos);
+	  if (rv < 0)
+	    return rv;
+	}
 
       /* count the number of descriptors used for this device */
       nb_desc += xd->nb_rx_desc + xd->nb_tx_desc * xd->tx_q_used;
@@ -927,6 +994,8 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
     }
 
   devconf->pci_addr.as_u32 = pci_addr.as_u32;
+  devconf->hqos_enabled = 0;
+  dpdk_device_config_hqos_default (&devconf->hqos);
 
   if (!input)
     return 0;
@@ -956,6 +1025,19 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 	devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_OFF;
       else if (unformat (input, "vlan-strip-offload on"))
 	devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_ON;
+      else
+	if (unformat
+	    (input, "hqos %U", unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  devconf->hqos_enabled = 1;
+	  error = unformat_hqos (&sub_input, &devconf->hqos);
+	  if (error)
+	    break;
+	}
+      else if (unformat (input, "hqos"))
+	{
+	  devconf->hqos_enabled = 1;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",

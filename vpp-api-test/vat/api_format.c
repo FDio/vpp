@@ -3390,6 +3390,9 @@ _(sw_interface_add_del_address_reply)                   \
 _(sw_interface_set_table_reply)                         \
 _(sw_interface_set_vpath_reply)                         \
 _(sw_interface_set_l2_bridge_reply)                     \
+_(sw_interface_set_dpdk_hqos_pipe_reply)                \
+_(sw_interface_set_dpdk_hqos_subport_reply)             \
+_(sw_interface_set_dpdk_hqos_tctbl_reply)               \
 _(bridge_domain_add_del_reply)                          \
 _(sw_interface_set_l2_xconnect_reply)                   \
 _(l2fib_add_del_reply)                                  \
@@ -3532,6 +3535,12 @@ _(SW_INTERFACE_SET_L2_XCONNECT_REPLY,                                   \
   sw_interface_set_l2_xconnect_reply)                                   \
 _(SW_INTERFACE_SET_L2_BRIDGE_REPLY,                                     \
   sw_interface_set_l2_bridge_reply)                                     \
+_(SW_INTERFACE_SET_DPDK_HQOS_PIPE_REPLY,                                \
+  sw_interface_set_dpdk_hqos_pipe_reply)                                \
+_(SW_INTERFACE_SET_DPDK_HQOS_SUBPORT_REPLY,                             \
+  sw_interface_set_dpdk_hqos_subport_reply)                             \
+_(SW_INTERFACE_SET_DPDK_HQOS_TCTBL_REPLY,                               \
+  sw_interface_set_dpdk_hqos_tctbl_reply)                               \
 _(BRIDGE_DOMAIN_ADD_DEL_REPLY, bridge_domain_add_del_reply)             \
 _(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)                         \
 _(BRIDGE_DOMAIN_SW_IF_DETAILS, bridge_domain_sw_if_details)             \
@@ -4498,6 +4507,225 @@ api_sw_interface_clear_stats (vat_main_t * vam)
 
   /* Wait for a reply, return the good/bad news... */
   W;
+}
+
+static int
+api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_dpdk_hqos_pipe_t *mp;
+  f64 timeout;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u32 subport;
+  u8 subport_set = 0;
+  u32 pipe;
+  u8 pipe_set = 0;
+  u32 profile;
+  u8 profile_set = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "rx %U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %u", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "subport %u", &subport))
+	subport_set = 1;
+      else if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "pipe %u", &pipe))
+	pipe_set = 1;
+      else if (unformat (i, "profile %u", &profile))
+	profile_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  if (subport_set == 0)
+    {
+      errmsg ("missing subport \n");
+      return -99;
+    }
+
+  if (pipe_set == 0)
+    {
+      errmsg ("missing pipe\n");
+      return -99;
+    }
+
+  if (profile_set == 0)
+    {
+      errmsg ("missing profile\n");
+      return -99;
+    }
+
+  M (SW_INTERFACE_SET_DPDK_HQOS_PIPE, sw_interface_set_dpdk_hqos_pipe);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->subport = ntohl (subport);
+  mp->pipe = ntohl (pipe);
+  mp->profile = ntohl (profile);
+
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
+api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_dpdk_hqos_subport_t *mp;
+  f64 timeout;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u32 subport;
+  u8 subport_set = 0;
+  u32 tb_rate = 1250000000;	/* 10GbE */
+  u32 tb_size = 1000000;
+  u32 tc_rate[] = { 1250000000, 1250000000, 1250000000, 1250000000 };
+  u32 tc_period = 10;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "rx %U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %u", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "subport %u", &subport))
+	subport_set = 1;
+      else if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "rate %u", &tb_rate))
+	{
+	  u32 tc_id;
+
+	  for (tc_id = 0; tc_id < (sizeof (tc_rate) / sizeof (tc_rate[0]));
+	       tc_id++)
+	    tc_rate[tc_id] = tb_rate;
+	}
+      else if (unformat (i, "bktsize %u", &tb_size))
+	;
+      else if (unformat (i, "tc0 %u", &tc_rate[0]))
+	;
+      else if (unformat (i, "tc1 %u", &tc_rate[1]))
+	;
+      else if (unformat (i, "tc2 %u", &tc_rate[2]))
+	;
+      else if (unformat (i, "tc3 %u", &tc_rate[3]))
+	;
+      else if (unformat (i, "period %u", &tc_period))
+	;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  if (subport_set == 0)
+    {
+      errmsg ("missing subport \n");
+      return -99;
+    }
+
+  M (SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, sw_interface_set_dpdk_hqos_subport);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->subport = ntohl (subport);
+  mp->tb_rate = ntohl (tb_rate);
+  mp->tb_size = ntohl (tb_size);
+  mp->tc_rate[0] = ntohl (tc_rate[0]);
+  mp->tc_rate[1] = ntohl (tc_rate[1]);
+  mp->tc_rate[2] = ntohl (tc_rate[2]);
+  mp->tc_rate[3] = ntohl (tc_rate[3]);
+  mp->tc_period = ntohl (tc_period);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
+api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_dpdk_hqos_tctbl_t *mp;
+  f64 timeout;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u8 entry_set = 0;
+  u8 tc_set = 0;
+  u8 queue_set = 0;
+  u32 entry, tc, queue;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "rx %U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %u", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "entry %d", &entry))
+	entry_set = 1;
+      else if (unformat (i, "tc %d", &tc))
+	tc_set = 1;
+      else if (unformat (i, "queue %d", &queue))
+	queue_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  if (entry_set == 0)
+    {
+      errmsg ("missing entry \n");
+      return -99;
+    }
+
+  if (tc_set == 0)
+    {
+      errmsg ("missing traffic class \n");
+      return -99;
+    }
+
+  if (queue_set == 0)
+    {
+      errmsg ("missing queue \n");
+      return -99;
+    }
+
+  M (SW_INTERFACE_SET_DPDK_HQOS_TCTBL, sw_interface_set_dpdk_hqos_tctbl);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->entry = ntohl (entry);
+  mp->tc = ntohl (tc);
+  mp->queue = ntohl (queue);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
 }
 
 static int
@@ -15298,6 +15526,14 @@ _(sw_interface_set_l2_bridge,                                           \
   "<intfc> | sw_if_index <id> bd_id <bridge-domain-id>\n"         \
   "[shg <split-horizon-group>] [bvi]\n"                                 \
   "enable | disable")                                                   \
+_(sw_interface_set_dpdk_hqos_pipe,                                      \
+  "rx <intfc> | sw_if_index <id> subport <subport-id> pipe <pipe-id>\n" \
+  "profile <profile-id>\n")                                             \
+_(sw_interface_set_dpdk_hqos_subport,                                   \
+  "rx <intfc> | sw_if_index <id> subport <subport-id> [rate <n>]\n"     \
+  "[bktsize <n>] [tc0 <n>] [tc1 <n>] [tc2 <n>] [tc3 <n>] [period <n>]\n") \
+_(sw_interface_set_dpdk_hqos_tctbl,                                     \
+  "rx <intfc> | sw_if_index <id> entry <n> tc <n> queue <n>\n")         \
 _(bridge_domain_add_del,                                                \
   "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] [learn 1|0] [arp-term 1|0] [del]\n")\
 _(bridge_domain_dump, "[bd_id <bridge-domain-id>]\n")     \

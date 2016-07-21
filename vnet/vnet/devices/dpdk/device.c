@@ -332,7 +332,48 @@ static_always_inline
 	    queue_id = (queue_id + 1) % xd->tx_q_used;
 	}
 
-      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
+      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_HQOS))	/* HQoS ON */
+	{
+	  if (PREDICT_TRUE (tx_head > tx_tail))
+	    {
+	      /* no wrap, transmit in one burst */
+	      dpdk_device_hqos_per_worker_thread_t *hqos =
+		&xd->hqos_wt[vm->cpu_index];
+
+	      dpdk_hqos_metadata_set (hqos,
+				      &tx_vector[tx_tail], tx_head - tx_tail);
+	      rv = rte_ring_sp_enqueue_burst (hqos->swq,
+					      (void **) &tx_vector[tx_tail],
+					      (uint16_t) (tx_head - tx_tail));
+	    }
+	  else
+	    {
+	      /*
+	       * This can only happen if there is a flowcontrol callback.
+	       * We need to split the transmit into two calls: one for
+	       * the packets up to the wrap point, and one to continue
+	       * at the start of the ring.
+	       * Transmit pkts up to the wrap point.
+	       */
+	      dpdk_device_hqos_per_worker_thread_t *hqos =
+		&xd->hqos_wt[vm->cpu_index];
+
+	      dpdk_hqos_metadata_set (hqos,
+				      &tx_vector[tx_tail],
+				      xd->nb_tx_desc - tx_tail);
+	      rv = rte_ring_sp_enqueue_burst (hqos->swq,
+					      (void **) &tx_vector[tx_tail],
+					      (uint16_t) (xd->nb_tx_desc -
+							  tx_tail));
+	      /*
+	       * If we transmitted everything we wanted, then allow 1 retry
+	       * so we can try to transmit the rest. If we didn't transmit
+	       * everything, stop now.
+	       */
+	      n_retry = (rv == xd->nb_tx_desc - tx_tail) ? 1 : 0;
+	    }
+	}
+      else if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
 	  if (PREDICT_TRUE (tx_head > tx_tail))
 	    {
