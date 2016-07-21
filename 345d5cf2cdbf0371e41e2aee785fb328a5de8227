@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_3e5e7b46",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 17
+      },
+      "lineNbr": 1080,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-07-21T11:06:35Z",
+      "side": 1,
+      "message": "needs to be removed, manual_java is no longer available (not needed after japi removal)",
+      "range": {
+        "startLine": 1080,
+        "startChar": 0,
+        "endLine": 1080,
+        "endChar": 11
+      },
+      "revId": "345d5cf2cdbf0371e41e2aee785fb328a5de8227",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
