@@ -2,6 +2,46 @@
   "comments": [
     {
       "key": {
+        "uuid": "9a0e1d27_fe2ec3a4",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 495,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2016-07-21T12:26:32Z",
+      "side": 1,
+      "message": "is xstate and last_xstat required?\nxstat_names appears to be used instead.",
+      "range": {
+        "startLine": 495,
+        "startChar": 32,
+        "endLine": 495,
+        "endChar": 33
+      },
+      "revId": "a54258188b3c45aea3bc184ad9ced219a9c55905",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_32346fdd",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 507,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2016-07-21T12:26:32Z",
+      "side": 1,
+      "message": "is this used for RTE_VERSION_NUM(16, 7, 0, 0)?",
+      "revId": "a54258188b3c45aea3bc184ad9ced219a9c55905",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_3e41db39",
         "filename": "vpp/vpp-api/api.c",
         "patchSetId": 1
