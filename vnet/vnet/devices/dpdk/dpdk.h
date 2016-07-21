@@ -51,6 +51,7 @@
 #include <rte_pci_dev_ids.h>
 #include <rte_version.h>
 #include <rte_eth_bond.h>
+#include <rte_sched.h>
 
 #include <vnet/unix/pcap.h>
 #include <vnet/devices/virtio/vhost-user.h>
@@ -184,6 +185,34 @@ typedef struct
 
 typedef struct
 {
+  struct rte_ring *swq;
+
+  u64 hqos_field0_slabmask;
+  u32 hqos_field0_slabpos;
+  u32 hqos_field0_slabshr;
+  u64 hqos_field1_slabmask;
+  u32 hqos_field1_slabpos;
+  u32 hqos_field1_slabshr;
+  u64 hqos_field2_slabmask;
+  u32 hqos_field2_slabpos;
+  u32 hqos_field2_slabshr;
+  u32 hqos_tc_table[64];
+} dpdk_device_hqos_per_worker_thread_t;
+
+typedef struct
+{
+  struct rte_ring **swq;
+  struct rte_mbuf **pkts_enq;
+  struct rte_mbuf **pkts_deq;
+  struct rte_sched_port *hqos;
+  u32 hqos_burst_enq;
+  u32 hqos_burst_deq;
+  u32 pkts_enq_len;
+  u32 swq_pos;
+} dpdk_device_hqos_per_hqos_thread_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 **lockp;
 
@@ -213,6 +242,7 @@ typedef struct
 #define DPDK_DEVICE_FLAG_KNI            (1 << 3)
 #define DPDK_DEVICE_FLAG_VHOST_USER     (1 << 4)
 #define DPDK_DEVICE_FLAG_HAVE_SUBIF     (1 << 5)
+#define DPDK_DEVICE_FLAG_HQOS           (1 << 6)
 
   u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -229,6 +259,10 @@ typedef struct
   u16 *cpu_socket_id_by_queue;
   struct rte_eth_conf port_conf;
   struct rte_eth_txconf tx_conf;
+
+  /* HQoS related */
+  dpdk_device_hqos_per_worker_thread_t *hqos_wt;
+  dpdk_device_hqos_per_hqos_thread_t *hqos_ht;
 
   /* KNI related */
   struct rte_kni *kni;
@@ -281,6 +315,14 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /* total input packet counter */
+  u64 aggregate_rx_packets;
+} dpdk_hqos_thread_t;
+
+typedef struct
+{
   u32 device;
   u16 queue_id;
 } dpdk_device_and_queue_t;
@@ -302,6 +344,42 @@ typedef struct dpdk_efd_t
   u16 pad;
 } dpdk_efd_t;
 
+#ifndef DPDK_HQOS_DBG_BYPASS
+#define DPDK_HQOS_DBG_BYPASS 0
+#endif
+
+typedef struct dpdk_device_config_hqos_t
+{
+  u32 hqos_thread;
+  u32 hqos_thread_valid;
+
+  u32 swq_size;
+  u32 burst_enq;
+  u32 burst_deq;
+
+  u32 pktfield0_slabpos;
+  u32 pktfield1_slabpos;
+  u32 pktfield2_slabpos;
+  u64 pktfield0_slabmask;
+  u64 pktfield1_slabmask;
+  u64 pktfield2_slabmask;
+  u32 tc_table[64];
+
+  struct rte_sched_port_params port;
+  struct rte_sched_subport_params *subport;
+  struct rte_sched_pipe_params *pipe;
+  uint32_t *pipe_map;
+} dpdk_device_config_hqos_t;
+
+int dpdk_hqos_validate_mask (u64 mask, u32 n);
+void dpdk_device_config_hqos_pipe_profile_default (dpdk_device_config_hqos_t *
+						   hqos, u32 pipe_profile_id);
+void dpdk_device_config_hqos_default (dpdk_device_config_hqos_t * hqos);
+clib_error_t *dpdk_port_setup_hqos (dpdk_device_t * xd,
+				    dpdk_device_config_hqos_t * hqos);
+void dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,
+			     struct rte_mbuf **pkts, u32 n_pkts);
+
 #define foreach_dpdk_device_config_item \
   _ (num_rx_queues) \
   _ (num_tx_queues) \
@@ -322,6 +400,8 @@ typedef struct
     foreach_dpdk_device_config_item
 #undef _
     clib_bitmap_t * workers;
+  u32 hqos_enabled;
+  dpdk_device_config_hqos_t hqos;
 } dpdk_device_config_t;
 
 typedef struct
@@ -370,6 +450,7 @@ typedef struct
   /* Devices */
   dpdk_device_t *devices;
   dpdk_device_and_queue_t **devices_by_cpu;
+  dpdk_device_and_queue_t **devices_by_hqos_cpu;
 
   /* per-thread recycle lists */
   u32 **recycle;
@@ -386,6 +467,8 @@ typedef struct
   /* dpdk worker "threads" */
   dpdk_worker_t *workers;
 
+  /* dpdk HQoS "threads" */
+  dpdk_hqos_thread_t *hqos_threads;
 
   /* Ethernet input node index */
   u32 ethernet_input_node_index;
@@ -419,6 +502,10 @@ typedef struct
   /* which cpus are running dpdk-input */
   int input_cpu_first_index;
   int input_cpu_count;
+
+  /* which cpus are running I/O TX */
+  int hqos_cpu_first_index;
+  int hqos_cpu_count;
 
   /* control interval of dpdk link state and stat polling */
   f64 link_state_poll_interval;
@@ -618,6 +705,8 @@ format_function_t format_dpdk_rte_mbuf;
 format_function_t format_dpdk_rx_rte_mbuf;
 unformat_function_t unformat_socket_mem;
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
+clib_error_t *unformat_hqos (unformat_input_t * input,
+			     dpdk_device_config_hqos_t * hqos);
 
 
 static inline void
