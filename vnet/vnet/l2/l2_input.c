@@ -518,6 +518,7 @@ u32 set_int_l2_mode (vlib_main_t * vm,
                      u32 xc_sw_if_index) // peer interface for xconnect
 {
   l2input_main_t * mp = &l2input_main;
+  l2output_main_t * l2om = &l2output_main;
   vnet_main_t * vnm = vnet_get_main();
   vnet_hw_interface_t * hi;
   l2_output_config_t * out_config;
@@ -567,6 +568,12 @@ u32 set_int_l2_mode (vlib_main_t * vm,
     config->shg = 0;
     config->bd_index = 0;
     config->feature_bitmap = L2INPUT_FEAT_DROP;
+    // Directs the l2 output path to work out the interface
+    // output next-arc itself. Needed when recycling a sw_if_index.
+    vec_validate_init_empty(l2om->next_nodes.output_node_index_vec, 
+			    sw_if_index, ~0);
+    l2om->next_nodes.output_node_index_vec[sw_if_index] = ~0;
+
   } else if (mode == MODE_L2_CLASSIFY) {
       config->xconnect = 1;
       config->bridge = 0;
