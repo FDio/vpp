@@ -210,6 +210,8 @@ typedef struct {
 
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
 
+  u8 * interface_name_suffix;
+
   /* PMD related */
   u16 tx_q_used;
   u16 rx_q_used;
