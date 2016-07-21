@@ -466,10 +466,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 
           case VNET_DPDK_PMD_CXGBE:
             switch (dev_info.pci_dev->id.device_id) {
+              case 0x540d: /* T580-CR */
               case 0x5410: /* T580-LP-cr */
                 xd->nb_rx_desc = DPDK_NB_RX_DESC_40GE;
                 xd->nb_tx_desc = DPDK_NB_TX_DESC_40GE;
                 xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
+                break;
+              case 0x5403: /* T540-CR */
+                xd->nb_rx_desc = DPDK_NB_RX_DESC_10GE;
+                xd->nb_tx_desc = DPDK_NB_TX_DESC_10GE;
+                xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
                 break;
               default:
                 xd->nb_rx_desc = DPDK_NB_RX_DESC_10GE;
