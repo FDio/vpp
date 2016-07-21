@@ -27,6 +27,7 @@
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/lisp-gpe/lisp_gpe_packet.h>
 
+/* encap headers */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;             /* 20 bytes */
   udp_header_t udp;             /* 8 bytes */
@@ -45,9 +46,14 @@ typedef struct
   {
     struct
     {
-      ip_prefix_t eid;          /* within the dp only ip and mac can be eids */
-      ip_address_t dst_loc;
-      u32 iid;
+      /* within the dp only ip and mac can be eids */
+      union
+      {
+        ip_prefix_t rmt_ippref;
+        u8 rmt_mac[6];
+      };
+      ip_address_t rmt_loc;
+      u32 vni;
     };
     u8 as_u8[40];
   };
@@ -73,6 +79,9 @@ typedef struct
   u32 hw_if_index;
   u32 sw_if_index;
 
+  /* action for 'negative' tunnels */
+  u8 action;
+
   /* LISP header fields in HOST byte order */
   u8 flags;
   u8 ver_res;
@@ -85,7 +94,7 @@ typedef struct
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")                       \
-_(ETHERNET_INPUT, "ethernet-input")
+_(L2_INPUT, "l2-input")
 
 typedef enum {
 #define _(s,n) LISP_GPE_INPUT_NEXT_##s,
@@ -121,27 +130,37 @@ typedef struct ip6_src_fib
   uword lookup_table_size;
 } ip6_src_fib_t;
 
+typedef struct tunnel_lookup
+{
+  /* Lookup lisp-gpe interfaces by dp table (eg. vrf/bridge index) */
+  uword * hw_if_index_by_dp_table;
+
+  /* lookup decap tunnel termination sw_if_index by vni and vice versa */
+  uword * sw_if_index_by_vni;
+  uword * vni_by_sw_if_index;
+} tunnel_lookup_t;
+
 typedef struct lisp_gpe_main
 {
-  /* Pool of src fibs that are paired with dst fibs */
-  ip4_src_fib_t * ip4_src_fibs;
-  ip6_src_fib_t * ip6_src_fibs;
-
-  /* vector of encap tunnel instances */
+  /* pool of encap tunnel instances */
   lisp_gpe_tunnel_t * tunnels;
 
   /* lookup tunnel by key */
   mhash_t lisp_gpe_tunnel_by_key;
 
-  /* lookup decap tunnel termination sw_if_index by vni and vice versa */
-  uword * tunnel_term_sw_if_index_by_vni;
-  uword * vni_by_tunnel_term_sw_if_index;
-
   /* Free vlib hw_if_indices */
-  u32 * free_lisp_gpe_tunnel_hw_if_indices;
+  u32 * free_tunnel_hw_if_indices;
 
-  /* Lookup lisp-gpe interfaces by vrf */
-  uword * lisp_gpe_hw_if_index_by_table_id;
+  u8 is_en;
+
+  /* L3 data structures
+   * ================== */
+
+  /* Pool of src fibs that are paired with dst fibs */
+  ip4_src_fib_t * ip4_src_fibs;
+  ip6_src_fib_t * ip6_src_fibs;
+
+  tunnel_lookup_t l3_ifaces;
 
   /* Lookup lgpe_ipX_lookup_next by vrf */
   uword * lgpe_ip4_lookup_next_index_by_table_id;
@@ -151,6 +170,14 @@ typedef struct lisp_gpe_main
   u32 ip4_lookup_next_lgpe_ip4_lookup;
   u32 ip6_lookup_next_lgpe_ip6_lookup;
 
+  /* L2 data structures
+   * ================== */
+
+  /* l2 lisp fib */
+  BVT(clib_bihash) l2_fib;
+
+  tunnel_lookup_t l2_ifaces;
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
@@ -158,10 +185,14 @@ typedef struct lisp_gpe_main
   ip6_main_t * im6;
   ip_lookup_main_t * lm4;
   ip_lookup_main_t * lm6;
-  u8 is_en;
 } lisp_gpe_main_t;
 
 lisp_gpe_main_t lisp_gpe_main;
+
+always_inline lisp_gpe_main_t *
+vnet_lisp_gpe_get_main() {
+  return &lisp_gpe_main;
+}
 
 extern vlib_node_registration_t lgpe_ip4_lookup_node;
 extern vlib_node_registration_t lgpe_ip6_lookup_node;
@@ -174,8 +205,19 @@ format_lisp_gpe_header_with_length (u8 * s, va_list * args);
 typedef struct
 {
   u8 is_add;
-  u32 table_id; /* vrf */
-  u32 vni;      /* host byte order */
+  union
+  {
+    /* vrf */
+    u32 table_id;
+
+    /* bridge domain */
+    u16 bd_id;
+
+    /* generic access */
+    u32 dp_table;
+  };
+  u8 is_l2;
+  u32 vni; /* host byte order */
 } vnet_lisp_gpe_add_del_iface_args_t;
 
 u8
@@ -192,29 +234,21 @@ typedef struct
 clib_error_t *
 vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t *a);
 
-typedef enum
-{
-  NO_ACTION,
-  FORWARD_NATIVE,
-  SEND_MAP_REQUEST,
-  DROP
-} negative_fwd_actions_e;
-
 typedef struct
 {
   u8 is_add;
 
   /* type of mapping */
   u8 is_negative;
-  negative_fwd_actions_e action;
+  u8 action;
 
   /* local and remote eids */
-  gid_address_t seid; /* TODO convert to ip4, ip6, mac ? */
-  gid_address_t deid;
+  gid_address_t lcl_eid;
+  gid_address_t rmt_eid;
 
   /* local and remote locators (underlay attachment points) */
-  ip_address_t slocator;
-  ip_address_t dlocator;
+  ip_address_t lcl_loc;
+  ip_address_t rmt_loc;
 
   /* FIB indices to lookup remote locator at encap and inner IP at decap */
   u32 encap_fib_index;
@@ -225,8 +259,12 @@ typedef struct
   /* VNI/tenant id in HOST byte order */
   u32 vni;
 
-  /* vrf where fwd entry should be inserted */
-  u32 table_id;
+  /* vrf or bd where fwd entry should be inserted */
+  union
+  {
+    u32 table_id;
+    u16 bd_id;
+  };
 } vnet_lisp_gpe_add_del_fwd_entry_args_t;
 
 int
@@ -266,5 +304,12 @@ typedef enum lgpe_ip6_lookup_next
 } lgpe_ip6_lookup_next_t;
 
 u8 * format_vnet_lisp_gpe_status (u8 * s, va_list * args);
+
+#define L2_FIB_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define L2_FIB_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+
+u32
+lisp_l2_fib_lookup (lisp_gpe_main_t * lgm, u16 bd_index, u8 src_mac[8],
+                    u8 dst_mac[8]);
 
 #endif /* included_vnet_lisp_gpe_h */
