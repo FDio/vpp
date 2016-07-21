@@ -156,8 +156,8 @@ typedef enum {
     LISP_AFI_NO_ADDR,
     LISP_AFI_IP,
     LISP_AFI_IP6,
-    LISP_AFI_MAC = 6,
-    LISP_AFI_LCAF = 16387
+    LISP_AFI_LCAF = 16387,
+    LISP_AFI_MAC = 16389
 } lisp_afi_e;
 
 u8 *format_gid_address (u8 * s, va_list * args);
@@ -201,6 +201,8 @@ void   _n ## _copy (void * dst , void * src);
 
 foreach_gid_address_type_fcns
 #undef _
+
+#define MAC_BIT_MASK (((u64)1 << 48) - 1)
 
 typedef struct
 {

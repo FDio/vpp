@@ -293,6 +293,12 @@ typedef struct {
         u32 current_config_index;
     } cop;
 
+    /* LISP */
+    struct {
+      /* overlay address family */
+      u16 overlay_afi;
+    } lisp;
+
     u32 unused[6];
   };
 } vnet_buffer_opaque_t;

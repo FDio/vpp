@@ -11198,8 +11198,8 @@ api_lisp_eid_table_add_del_map (vat_main_t * vam)
   f64 timeout = ~0;
   unformat_input_t * input = vam->input;
   vl_api_lisp_eid_table_add_del_map_t *mp;
-  u8 is_add = 1, vni_set = 0, vrf_set = 0;
-  u32 vni, vrf;
+  u8 is_add = 1, vni_set = 0, vrf_set = 0, bd_index_set = 0;
+  u32 vni, vrf, bd_index;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -11208,13 +11208,15 @@ api_lisp_eid_table_add_del_map (vat_main_t * vam)
         is_add = 0;
       else if (unformat(input, "vrf %d", &vrf))
         vrf_set = 1;
+      else if (unformat(input, "bd_index %d", &bd_index))
+        bd_index_set = 1;
       else if (unformat(input, "vni %d", &vni))
         vni_set = 1;
       else
         break;
     }
 
-  if (!vni_set || !vrf_set)
+  if (!vni_set || (!vrf_set && !bd_index_set))
     {
       errmsg ("missing arguments!");
       return -99;
@@ -11224,7 +11226,8 @@ api_lisp_eid_table_add_del_map (vat_main_t * vam)
 
   mp->is_add = is_add;
   mp->vni = htonl (vni);
-  mp->vrf = htonl (vrf);
+  mp->dp_table = htonl (vrf);
+  mp->is_l2 = bd_index_set;
 
   /* send */
   S;

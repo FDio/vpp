@@ -62,7 +62,7 @@ typedef struct {
   /* config vector indexed by sw_if_index */
   l2_input_config_t *configs;
 
-  /* bridge domain config vector indexed by BD ID */
+  /* bridge domain config vector indexed by bd_index */
   l2_bridge_domain_t *bd_configs;
 
   /* convenience variables */

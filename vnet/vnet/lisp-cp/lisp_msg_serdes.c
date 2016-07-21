@@ -114,11 +114,21 @@ lisp_msg_push_ecm (vlib_main_t * vm, vlib_buffer_t *b, int lp, int rp,
                    gid_address_t *la, gid_address_t *ra)
 {
   ecm_hdr_t *h;
-  ASSERT(gid_address_type(la) == GID_ADDR_IP_PREFIX);
+  ip_address_t _src_ip, * src_ip = &_src_ip, _dst_ip, * dst_ip = &_dst_ip;
+  if (gid_address_type(la) != GID_ADDR_IP_PREFIX)
+    {
+      /* empty ip4 */
+      memset(src_ip, 0, sizeof(src_ip[0]));
+      memset(dst_ip, 0, sizeof(dst_ip[0]));
+    }
+  else
+    {
+      src_ip = &gid_address_ip(la);
+      dst_ip = &gid_address_ip(ra);
+    }
 
   /* Push inner ip and udp */
-  pkt_push_udp_and_ip (vm, b, lp, rp, &gid_address_ip(la),
-                              &gid_address_ip(ra));
+  pkt_push_udp_and_ip (vm, b, lp, rp, src_ip, dst_ip);
 
   /* Push lisp ecm hdr */
   h = pkt_push_ecm_hdr (b);

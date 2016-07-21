@@ -241,17 +241,17 @@ unformat_negative_mapping_action (unformat_input_t * input, va_list * args)
       int len = vec_len(s);
       clib_warning ("len = %d", len);
       if (!strcmp ((char *) s, "no-action"))
-        action[0] = ACTION_NONE;
+        action[0] = LISP_NO_ACTION;
       if (!strcmp ((char *) s, "natively-forward"))
-        action[0] = ACTION_NATIVELY_FORWARDED;
+        action[0] = LISP_FORWARD_NATIVE;
       if (!strcmp ((char *) s, "send-map-request"))
-        action[0] = ACTION_SEND_MAP_REQUEST;
+        action[0] = LISP_SEND_MAP_REQUEST;
       else if (!strcmp ((char *) s, "drop"))
-        action[0] = ACTION_DROP;
+        action[0] = LISP_DROP;
       else
         {
           clib_warning("invalid action: '%s'", s);
-          action[0] = ACTION_DROP;
+          action[0] = LISP_DROP;
           return 0;
         }
     }
@@ -907,7 +907,7 @@ mac_parse (u8 * offset, gid_address_t * a)
   /* skip AFI field */
   offset += sizeof (u16);
 
-  memcpy (gid_address_mac (a), offset, sizeof (gid_address_mac (a)));
+  clib_memcpy (gid_address_mac (a), offset, sizeof (gid_address_mac (a)));
   return (sizeof (u16) + sizeof (gid_address_mac (a)));
 }
 

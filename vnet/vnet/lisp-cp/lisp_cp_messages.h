@@ -214,12 +214,6 @@ char *map_request_hdr_to_char(map_request_hdr_t *h);
  * MAP-REPLY MESSAGE
  */
 
- /*  Map Reply action codes */
- #define LISP_ACTION_NO_ACTION           0
- #define LISP_ACTION_FORWARD             1
- #define LISP_ACTION_DROP                2
- #define LISP_ACTION_SEND_MAP_REQUEST    3
-
  /*
   * Map-Reply Message Format
   *
@@ -418,10 +412,10 @@ void mapping_record_init_hdr(mapping_record_hdr_t *h);
 
 typedef enum
 {
-  ACTION_NONE,
-  ACTION_NATIVELY_FORWARDED,
-  ACTION_SEND_MAP_REQUEST,
-  ACTION_DROP
+  LISP_NO_ACTION,
+  LISP_FORWARD_NATIVE,
+  LISP_SEND_MAP_REQUEST,
+  LISP_DROP
 } lisp_action_e;
 
 typedef enum lisp_authoritative

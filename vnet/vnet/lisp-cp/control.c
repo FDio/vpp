@@ -142,20 +142,32 @@ ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
 }
 
 static int
-dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_add)
+dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_l2, u8 is_add)
 {
-  uword * table_id, * intf;
+  uword * dp_table, * intf;
   vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
 
-  table_id = hash_get(lcm->table_id_by_vni, vni);
-
-  if (!table_id)
+  if (!is_l2)
     {
-      clib_warning ("vni %d not associated to a vrf!", vni);
-      return VNET_API_ERROR_INVALID_VALUE;
+      dp_table = hash_get(lcm->table_id_by_vni, vni);
+
+      if (!dp_table)
+        {
+          clib_warning("vni %d not associated to a vrf!", vni);
+          return VNET_API_ERROR_INVALID_VALUE;
+        }
+    }
+  else
+    {
+      dp_table = hash_get(lcm->bd_id_by_vni, vni);
+      if (!dp_table)
+        {
+          clib_warning("vni %d not associated to a bridge domain!", vni);
+          return VNET_API_ERROR_INVALID_VALUE;
+        }
     }
 
-  intf = hash_get(lcm->dp_intf_by_vni, vni);
+  intf = hash_get(is_l2 ? lcm->l2_dp_intf_by_vni :lcm->dp_intf_by_vni, vni);
 
   /* enable/disable data-plane interface */
   if (is_add)
@@ -165,7 +177,9 @@ dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_add)
         {
           ai->is_add = 1;
           ai->vni = vni;
-          ai->table_id = table_id[0];
+          ai->is_l2 = is_l2;
+          ai->dp_table = dp_table[0];
+
           vnet_lisp_gpe_add_del_iface (ai, 0);
 
           /* keep track of vnis for which interfaces have been created */
@@ -182,7 +196,7 @@ dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_add)
 
       ai->is_add = 0;
       ai->vni = vni;
-      ai->table_id = table_id[0];
+      ai->dp_table = dp_table[0];
       vnet_lisp_gpe_add_del_iface (ai, 0);
       hash_unset(lcm->dp_intf_by_vni, vni);
     }
@@ -207,10 +221,10 @@ dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   /* delete dp fwd entry */
   u32 sw_if_index;
   a->is_add = 0;
-  a->dlocator = fe->dst_loc;
-  a->slocator = fe->src_loc;
-  a->vni = gid_address_vni(&a->deid);
-  gid_address_copy(&a->deid, &fe->deid);
+  a->rmt_loc = fe->dst_loc;
+  a->lcl_loc = fe->src_loc;
+  a->vni = gid_address_vni(&a->rmt_eid);
+  gid_address_copy(&a->rmt_eid, &fe->deid);
 
   vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
 
@@ -305,11 +319,12 @@ get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
 static void
 dp_add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
 {
+  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
   mapping_t * src_map, * dst_map;
   u32 sw_if_index;
-  uword * feip = 0, * tidp;
+  uword * feip = 0, * dpid;
   fwd_entry_t* fe;
-  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
+  u8 type;
 
   memset (a, 0, sizeof(*a));
 
@@ -321,22 +336,37 @@ dp_add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
   src_map = pool_elt_at_index (lcm->mapping_pool, src_map_index);
   dst_map = pool_elt_at_index (lcm->mapping_pool, dst_map_index);
 
-  gid_address_copy (&a->deid, &dst_map->eid);
-  a->vni = gid_address_vni(&a->deid);
-
-  tidp = hash_get(lcm->table_id_by_vni, a->vni);
-  if (!tidp)
-    {
-      clib_warning("vni %d not associated to a vrf!", a->vni);
-      return;
-    }
-  a->table_id = tidp[0];
-
   /* insert data plane forwarding entry */
   a->is_add = 1;
 
+  gid_address_copy (&a->rmt_eid, &dst_map->eid);
+  a->vni = gid_address_vni(&a->rmt_eid);
+
+  /* get vrf or bd_index associated to vni */
+  type = gid_address_type(&dst_map->eid);
+  if (GID_ADDR_IP_PREFIX == type)
+    {
+      dpid = hash_get(lcm->table_id_by_vni, a->vni);
+      if (!dpid)
+        {
+          clib_warning("vni %d not associated to a vrf!", a->vni);
+          return;
+        }
+      a->table_id = dpid[0];
+    }
+  else if (GID_ADDR_MAC == type)
+    {
+      dpid = hash_get(lcm->bd_id_by_vni, a->vni);
+      if (!dpid)
+        {
+          clib_warning("vni %d not associated to a bridge domain !", a->vni);
+          return;
+        }
+      a->bd_id = dpid[0];
+    }
+
   /* find best locator pair that 1) verifies LISP policy 2) are connected */
-  if (0 == get_locator_pair (lcm, src_map, dst_map, &a->slocator, &a->dlocator))
+  if (0 == get_locator_pair (lcm, src_map, dst_map, &a->lcl_loc, &a->rmt_loc))
     {
       /* negative entry */
       a->is_negative = 1;
@@ -344,7 +374,7 @@ dp_add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
     }
 
   /* TODO remove */
-  u8 ipver = ip_prefix_version(&gid_address_ippref(&a->deid));
+  u8 ipver = ip_prefix_version(&gid_address_ippref(&a->rmt_eid));
   a->decap_next_index = (ipver == IP4) ?
           LISP_GPE_INPUT_NEXT_IP4_INPUT : LISP_GPE_INPUT_NEXT_IP6_INPUT;
 
@@ -352,9 +382,9 @@ dp_add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
 
   /* add tunnel to fwd entry table XXX check return value from DP insertion */
   pool_get (lcm->fwd_entry_pool, fe);
-  fe->dst_loc = a->dlocator;
-  fe->src_loc = a->slocator;
-  gid_address_copy (&fe->deid, &a->deid);
+  fe->dst_loc = a->rmt_loc;
+  fe->src_loc = a->lcl_loc;
+  gid_address_copy (&fe->deid, &a->rmt_eid);
   hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
             fe - lcm->fwd_entry_pool);
 }
@@ -465,8 +495,9 @@ int
 vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
                                  u32 * map_index_result)
 {
-  uword * table_id;
+  uword * dp_table = 0;
   u32 vni;
+  u8 type;
 
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
 
@@ -477,11 +508,16 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
     }
 
   vni = gid_address_vni(&a->eid);
-  table_id = hash_get(lcm->table_id_by_vni, vni);
+  type = gid_address_type(&a->eid);
+  if (GID_ADDR_IP_PREFIX == type)
+    dp_table = hash_get(lcm->table_id_by_vni, vni);
+  else if (GID_ADDR_MAC == type)
+    dp_table = hash_get(lcm->bd_id_by_vni, vni);
 
-  if (!table_id)
+  if (!dp_table)
     {
-      clib_warning ("vni %d not associated to a vrf!", vni);
+      clib_warning("vni %d not associated to a %s!", vni,
+                   GID_ADDR_IP_PREFIX == type ? "vrf" : "bd");
       return VNET_API_ERROR_INVALID_VALUE;
     }
 
@@ -577,10 +613,10 @@ VLIB_CLI_COMMAND (lisp_add_del_local_eid_command) = {
 };
 
 int
-vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_add)
+vnet_lisp_eid_table_map (u32 vni, u32 dp_id, u8 is_l2, u8 is_add)
 {
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
-  uword * table_id, * vnip;
+  uword * dp_idp, * vnip, ** dp_table_by_vni, ** vni_by_dp_table;
 
   if (vnet_lisp_enable_disable_status () == 0)
     {
@@ -588,44 +624,48 @@ vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_add)
       return -1;
     }
 
-  if (vni == 0 || vrf == 0)
+  dp_table_by_vni = is_l2 ? &lcm->bd_id_by_vni : &lcm->table_id_by_vni;
+  vni_by_dp_table = is_l2 ? &lcm->vni_by_bd_id : &lcm->vni_by_table_id;
+
+  if (!is_l2 && (vni == 0 || dp_id == 0))
     {
       clib_warning ("can't add/del default vni-vrf mapping!");
       return -1;
     }
 
-  table_id = hash_get (lcm->table_id_by_vni, vni);
-  vnip = hash_get (lcm->vni_by_table_id, vrf);
+  dp_idp = hash_get (dp_table_by_vni[0], vni);
+  vnip = hash_get (vni_by_dp_table[0], dp_id);
 
   if (is_add)
     {
-      if (table_id || vnip)
+      if (dp_idp || vnip)
         {
           clib_warning ("vni %d or vrf %d already used in vrf/vni "
-                        "mapping!", vni, vrf);
+                        "mapping!", vni, dp_id);
           return -1;
         }
-      hash_set (lcm->table_id_by_vni, vni, vrf);
-      hash_set (lcm->vni_by_table_id, vrf, vni);
+      hash_set (dp_table_by_vni[0], vni, dp_id);
+      hash_set (vni_by_dp_table[0], dp_id, vni);
 
       /* create dp iface */
-      dp_add_del_iface (lcm, vni, 1);
+      dp_add_del_iface (lcm, vni, is_l2, 1);
     }
   else
     {
-      if (!table_id || !vnip)
+      if (!dp_idp || !vnip)
         {
           clib_warning ("vni %d or vrf %d not used in any vrf/vni! "
-                        "mapping!", vni, vrf);
+                        "mapping!", vni, dp_id);
           return -1;
         }
-      hash_unset (lcm->table_id_by_vni, vni);
-      hash_unset (lcm->vni_by_table_id, vrf);
+      hash_unset (dp_table_by_vni[0], vni);
+      hash_unset (vni_by_dp_table[0], dp_id);
 
       /* remove dp iface */
-      dp_add_del_iface (lcm, vni, 0);
+      dp_add_del_iface (lcm, vni, is_l2, 0);
     }
   return 0;
+
 }
 
 static clib_error_t *
@@ -633,8 +673,8 @@ lisp_eid_table_map_command_fn (vlib_main_t * vm,
                                unformat_input_t * input,
                                vlib_cli_command_t * cmd)
 {
-  u8 is_add = 1;
-  u32 vni = 0, vrf = 0;
+  u8 is_add = 1, is_l2 = 0;
+  u32 vni = 0, dp_id = 0;
   unformat_input_t _line_input, * line_input = &_line_input;
 
   /* Get a line of input. */
@@ -647,20 +687,22 @@ lisp_eid_table_map_command_fn (vlib_main_t * vm,
         is_add = 0;
       else if (unformat (line_input, "vni %d", &vni))
         ;
-      else if (unformat (line_input, "vrf %d", &vrf))
+      else if (unformat (line_input, "vrf %d", &dp_id))
         ;
+      else if (unformat (line_input, "bd %d", &dp_id))
+        is_l2 = 1;
       else
         {
           return unformat_parse_error (line_input);
         }
     }
-  vnet_lisp_eid_table_map (vni, vrf, is_add);
+  vnet_lisp_eid_table_map (vni, dp_id, is_l2, is_add);
   return 0;
 }
 
 VLIB_CLI_COMMAND (lisp_eid_table_map_command) = {
     .path = "lisp eid-table map",
-    .short_help = "lisp eid-table map [del] vni <vni> vrf <vrf>",
+    .short_help = "lisp eid-table map [del] vni <vni> vrf <vrf> | bd <bdi>",
     .function = lisp_eid_table_map_command_fn,
 };
 
@@ -985,13 +1027,13 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "action %s", &s))
         {
           if (!strcmp ((char *)s, "no-action"))
-            action = ACTION_NONE;
+            action = LISP_NO_ACTION;
           if (!strcmp ((char *)s, "natively-forward"))
-            action = ACTION_NATIVELY_FORWARDED;
+            action = LISP_FORWARD_NATIVE;
           if (!strcmp ((char *)s, "send-map-request"))
-            action = ACTION_SEND_MAP_REQUEST;
+            action = LISP_SEND_MAP_REQUEST;
           else if (!strcmp ((char *)s, "drop"))
-            action = ACTION_DROP;
+            action = LISP_DROP;
           else
             {
               clib_warning ("invalid action: '%s'", s);
@@ -1811,7 +1853,7 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 clib_error_t *
 vnet_lisp_enable_disable (u8 is_enable)
 {
-  u32 vni, table_id;
+  u32 vni, dp_table;
   clib_error_t * error = 0;
   lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
   vnet_lisp_gpe_enable_disable_args_t _a, * a = &_a;
@@ -1826,9 +1868,13 @@ vnet_lisp_enable_disable (u8 is_enable)
 
   if (is_enable)
     {
-      /* enable all ifaces */
-      hash_foreach(vni, table_id, lcm->table_id_by_vni, ({
-        dp_add_del_iface(lcm, vni, 1);
+      /* enable all l2 and l3 ifaces */
+      hash_foreach(vni, dp_table, lcm->table_id_by_vni, ({
+        dp_add_del_iface(lcm, vni, 0, 1);
+      }));
+
+      hash_foreach(vni, dp_table, lcm->bd_id_by_vni, ({
+        dp_add_del_iface(lcm, vni, /* is_l2 */ 1, 1);
       }));
     }
   else
@@ -2577,7 +2623,7 @@ send_encapsulated_map_request (vlib_main_t * vm, lisp_cp_main_t *lcm,
 }
 
 static void
-get_src_and_dst (void *hdr, ip_address_t * src, ip_address_t *dst)
+get_src_and_dst_ip (void *hdr, ip_address_t * src, ip_address_t *dst)
 {
   ip4_header_t * ip4 = hdr;
   ip6_header_t * ip6;
@@ -2596,11 +2642,11 @@ get_src_and_dst (void *hdr, ip_address_t * src, ip_address_t *dst)
 }
 
 static u32
-lisp_get_vni_from_buffer (vlib_buffer_t * b, u8 version)
+lisp_get_vni_from_buffer_ip (lisp_cp_main_t * lcm, vlib_buffer_t * b,
+                             u8 version)
 {
   uword * vnip;
   u32 vni = ~0, table_id = ~0, fib_index;
-  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
 
   if (version == IP4)
     {
@@ -2632,6 +2678,79 @@ lisp_get_vni_from_buffer (vlib_buffer_t * b, u8 version)
   return vni;
 }
 
+always_inline u32
+lisp_get_vni_from_buffer_eth (lisp_cp_main_t * lcm, vlib_buffer_t * b)
+{
+  uword * vnip;
+  u32 vni = ~0;
+  u32 sw_if_index0;
+
+  l2input_main_t * l2im = &l2input_main;
+  l2_input_config_t * config;
+  l2_bridge_domain_t * bd_config;
+
+  sw_if_index0 = vnet_buffer(b)->sw_if_index[VLIB_RX];
+  config = vec_elt_at_index(l2im->configs, sw_if_index0);
+  bd_config = vec_elt_at_index (l2im->bd_configs, config->bd_index);
+
+  vnip = hash_get (lcm->vni_by_bd_id, bd_config->bd_id);
+  if (vnip)
+    vni = vnip[0];
+  else
+    clib_warning("bridge domain %d is not mapped to any vni!",
+                 config->bd_index);
+
+  return vni;
+}
+
+always_inline void
+get_src_and_dst_eids_from_buffer (lisp_cp_main_t *lcm, vlib_buffer_t * b,
+                                  gid_address_t * src, gid_address_t * dst)
+{
+  u32 vni = 0;
+  u16 type;
+
+  type = vnet_buffer(b)->lisp.overlay_afi;
+
+  if (LISP_AFI_IP == type || LISP_AFI_IP6 == type)
+    {
+      ip4_header_t * ip;
+      u8 version, preflen;
+
+      gid_address_type(src) = GID_ADDR_IP_PREFIX;
+      gid_address_type(dst) = GID_ADDR_IP_PREFIX;
+
+      ip = vlib_buffer_get_current (b);
+      get_src_and_dst_ip (ip, &gid_address_ip(src), &gid_address_ip(dst));
+
+      version = gid_address_ip_version(src);
+      preflen = ip_address_max_len (version);
+      gid_address_ippref_len(src) = preflen;
+      gid_address_ippref_len(dst) = preflen;
+
+      vni = lisp_get_vni_from_buffer_ip (lcm, b, version);
+      gid_address_vni (dst) = vni;
+      gid_address_vni (src) = vni;
+    }
+  else if (LISP_AFI_MAC == type)
+    {
+      ethernet_header_t * eh;
+
+      eh = vlib_buffer_get_current (b);
+
+      gid_address_type(src) = GID_ADDR_MAC;
+      gid_address_type(dst) = GID_ADDR_MAC;
+      mac_copy(&gid_address_mac(src), eh->src_address);
+      mac_copy(&gid_address_mac(dst), eh->dst_address);
+
+      /* get vni */
+      vni = lisp_get_vni_from_buffer_eth (lcm, b);
+
+      gid_address_vni (dst) = vni;
+      gid_address_vni (src) = vni;
+    }
+}
+
 static uword
 lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               vlib_frame_t * from_frame)
@@ -2651,16 +2770,9 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       while (n_left_from > 0 && n_left_to_next_drop > 0)
         {
-          u32 pi0, vni;
-          vlib_buffer_t * p0;
-          ip4_header_t * ip0;
+          u32 pi0;
+          vlib_buffer_t * b0;
           gid_address_t src, dst;
-          ip_prefix_t * spref, * dpref;
-
-          gid_address_type (&src) = GID_ADDR_IP_PREFIX;
-          spref = &gid_address_ippref(&src);
-          gid_address_type (&dst) = GID_ADDR_IP_PREFIX;
-          dpref = &gid_address_ippref(&dst);
 
           pi0 = from[0];
           from += 1;
@@ -2669,18 +2781,11 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           to_next_drop += 1;
           n_left_to_next_drop -= 1;
 
-          p0 = vlib_get_buffer (vm, pi0);
-          p0->error = node->errors[LISP_CP_LOOKUP_ERROR_DROP];
+          b0 = vlib_get_buffer (vm, pi0);
+          b0->error = node->errors[LISP_CP_LOOKUP_ERROR_DROP];
 
           /* src/dst eid pair */
-          ip0 = vlib_buffer_get_current (p0);
-          get_src_and_dst (ip0, &ip_prefix_addr(spref), &ip_prefix_addr(dpref));
-          ip_prefix_len(spref) = ip_address_max_len (ip_prefix_version(spref));
-          ip_prefix_len(dpref) = ip_address_max_len (ip_prefix_version(dpref));
-
-          vni = lisp_get_vni_from_buffer (p0, ip_prefix_version (spref));
-          gid_address_vni (&dst) = vni;
-          gid_address_vni (&src) = vni;
+          get_src_and_dst_eids_from_buffer (lcm, b0, &src, &dst);
 
           /* if we have remote mapping for destination already in map-chache
              add forwarding tunnel directly. If not send a map-request */
@@ -2690,7 +2795,7 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               mapping_t * m =  vec_elt_at_index (lcm->mapping_pool, di);
               /* send a map-request also in case of negative mapping entry
                 with corresponding action */
-              if (m->action == ACTION_SEND_MAP_REQUEST)
+              if (m->action == LISP_SEND_MAP_REQUEST)
                 {
                   /* send map-request */
                   send_encapsulated_map_request (vm, lcm, &src, &dst, 0);
@@ -2713,9 +2818,9 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               pkts_mapped++;
             }
 
-          if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              lisp_cp_lookup_trace_t *tr = vlib_add_trace (vm, node, p0,
+              lisp_cp_lookup_trace_t *tr = vlib_add_trace (vm, node, b0,
                                                           sizeof(*tr));
 
               memset(tr, 0, sizeof(*tr));

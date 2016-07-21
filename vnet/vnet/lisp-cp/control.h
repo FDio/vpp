@@ -96,14 +96,17 @@ typedef struct
   /* map-request  locator set index */
   u32 mreq_itr_rlocs;
 
-  /* Lookup vrf by vni */
+  /* vni to vrf hash tables */
   uword * table_id_by_vni;
-
-  /* Lookup vni by vrf */
   uword * vni_by_table_id;
 
-  /* Number of src prefixes in a vni that use an interface */
+  /* vni to bd-index hash tables */
+  uword * bd_id_by_vni;
+  uword * vni_by_bd_id;
+
+  /* track l2 and l3 interfaces that have been created for vni */
   uword * dp_intf_by_vni;
+  uword * l2_dp_intf_by_vni;
 
   /* Proxy ETR map index */
   u32 pitr_map_index;
@@ -216,6 +219,6 @@ int
 vnet_lisp_clear_all_remote_adjacencies (void);
 
 int
-vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_add);
+vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_l2, u8 is_add);
 
 #endif /* VNET_CONTROL_H_ */

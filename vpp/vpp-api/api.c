@@ -4949,7 +4949,8 @@ vl_api_lisp_eid_table_add_del_map_t_handler(
     vl_api_lisp_eid_table_add_del_map_reply_t *rmp;
     int rv = 0;
     rv = vnet_lisp_eid_table_map (clib_net_to_host_u32 (mp->vni),
-                                  clib_net_to_host_u32 (mp->vrf), mp->is_add);
+                                  clib_net_to_host_u32 (mp->dp_table),
+                                  mp->is_l2, mp->is_add);
     REPLY_MACRO(VL_API_LISP_EID_TABLE_ADD_DEL_MAP_REPLY)
 }
 
@@ -5010,9 +5011,9 @@ vl_api_lisp_gpe_add_del_fwd_entry_t_handler(
     memset (&a, 0, sizeof(a));
 
     a.is_add = mp->is_add;
-    a.deid = eid;
-    a.slocator = slocator;
-    a.dlocator = dlocator;
+    a.rmt_eid = eid;
+    a.lcl_loc = slocator;
+    a.rmt_loc = dlocator;
     rv = vnet_lisp_gpe_add_del_fwd_entry (&a, 0);
 
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY);

@@ -2495,11 +2495,11 @@ define lisp_add_del_map_request_itr_rlocs_reply {
     i32 retval;
 };
 
-/** \brief map/unmap vni to vrf
+/** \brief map/unmap vni/bd_index to vrf
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add or delete mapping
-    @param vni - virtual network id
+    @param dp_table - virtual network id/bridge domain index
     @param vrf - vrf
 */
 define lisp_eid_table_add_del_map {
@@ -2507,7 +2507,8 @@ define lisp_eid_table_add_del_map {
     u32 context;
     u8 is_add;
     u32 vni;
-    u32 vrf;
+    u32 dp_table;
+    u8 is_l2;
 };
 
 /** \brief Reply for lisp_eid_table_add_del_map
