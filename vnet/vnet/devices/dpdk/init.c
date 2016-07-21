@@ -61,6 +61,246 @@ static struct rte_eth_conf port_conf_template = {
   },
 };
 
+static struct rte_sched_subport_params hqos_subport_params_default = {
+  .tb_rate = 1250000000,
+  .tb_size = 1000000,
+  .tc_rate = {1250000000, 1250000000, 1250000000, 1250000000},
+  .tc_period = 10,
+};
+
+static struct rte_sched_pipe_params hqos_pipe_params_default = {
+  .tb_rate = 305175,
+  .tb_size = 1000000,
+  .tc_rate = {305175, 305175, 305175, 305175},
+  .tc_period = 40,
+#ifdef RTE_SCHED_SUBPORT_TC_OV
+  .tc_ov_weight = 1,
+#endif
+  .wrr_weights = {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
+};
+
+static struct rte_sched_port_params hqos_port_params_default = {
+  .name = NULL, /* Set at init */
+  .socket = 0,  /* Set at init */
+  .rate = 1250000000, /* Assuming 10GbE port */
+  .mtu = 6 + 6 + 2 + 1500, /* Assuming Ethernet/IPv4 pkt (Ethernet FCS not included) */
+  .frame_overhead = RTE_SCHED_FRAME_OVERHEAD_DEFAULT,
+  .n_subports_per_port = 1,
+  .n_pipes_per_subport = 4096,
+  .qsize = {64, 64, 64, 64},
+  .pipe_profiles = NULL, /* Set at config */
+  .n_pipe_profiles = 1,
+
+#ifdef RTE_SCHED_RED
+  .red_params = {
+    /* Traffic Class 0 Colors Green / Yellow / Red */
+    [0][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+    [0][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+    [0][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+
+    /* Traffic Class 1 - Colors Green / Yellow / Red */
+    [1][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+    [1][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+    [1][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+
+    /* Traffic Class 2 - Colors Green / Yellow / Red */
+    [2][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+    [2][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+    [2][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+
+    /* Traffic Class 3 - Colors Green / Yellow / Red */
+    [3][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+    [3][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
+    [3][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9}
+}
+#endif /* RTE_SCHED_RED */
+};
+
+static u32 hqos_tc_table_default[] = {
+    0, 1 , 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    0, 1 , 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    0, 1 , 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    0, 1 , 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+};
+
+static dpdk_device_config_hqos_t hqos_params_default = {
+  .config_file = NULL,
+  .iotx_valid = 0,
+
+  .swq_size = 4096,
+  .burst_enq = 256,
+  .burst_deq = 220,
+
+  /* Assuming Ethernet/IPv4/UDP packet: payload bits 0 .. 11 */
+  .pktfield0_slabpos = 40,
+  .pktfield0_slabmask = 0x0000FFF000000000LLU,
+
+  /* Assuming Ethernet/IPv4/UDP packet: payload bits 12 .. 23  */
+  .pktfield1_slabpos = 40,
+  .pktfield1_slabmask = 0x0000000FFF000000LLU,
+
+  /* Assuming Ethernet/IPv4/UDP packet: IPv4 DSCP field */
+  .pktfield2_slabpos = 8,
+  .pktfield2_slabmask = 0x00000000000000FCLLU,
+};
+
+void
+dpdk_device_config_hqos_pipe_profile_default(dpdk_device_config_hqos_t * hqos, u32 pipe_profile_id)
+{
+    memcpy(&hqos->pipe[pipe_profile_id], &hqos_pipe_params_default, sizeof(hqos_pipe_params_default));
+}
+
+static void
+dpdk_device_config_hqos_default(dpdk_device_config_hqos_t * hqos)
+{
+  struct rte_sched_subport_params *subport_params;
+  struct rte_sched_pipe_params *pipe_params;
+  u32 *pipe_map;
+  u32 i;
+
+  memcpy(hqos, &hqos_params_default, sizeof(hqos_params_default));
+
+  memcpy(hqos->tc_table, hqos_tc_table_default, sizeof(hqos_tc_table_default));
+
+  /* port */
+  memcpy(&hqos->port,
+    &hqos_port_params_default,
+    sizeof(hqos_port_params_default));
+
+  /* pipe */
+  vec_add2(hqos->pipe,
+    pipe_params,
+    hqos->port.n_pipe_profiles);
+
+  for (i = 0; i < vec_len(hqos->pipe); i++)    
+    memcpy(&pipe_params[i],
+      &hqos_pipe_params_default,
+      sizeof(hqos_pipe_params_default));
+
+  hqos->port.pipe_profiles = hqos->pipe;
+
+  /* subport */
+  vec_add2(hqos->subport,
+    subport_params,
+    hqos->port.n_subports_per_port);
+
+  for (i = 0; i < vec_len(hqos->subport); i++)
+    memcpy(&subport_params[i],
+      &hqos_subport_params_default,
+      sizeof(hqos_subport_params_default));
+
+  /* pipe profile */
+  vec_add2(hqos->pipe_map,
+    pipe_map,
+    hqos->port.n_subports_per_port * hqos->port.n_pipes_per_subport);
+
+  for (i = 0; i < vec_len(hqos->pipe_map); i++)
+    pipe_map[i] = 0;
+}
+
+static clib_error_t *
+dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t *hqos)
+{
+  vlib_thread_main_t * tm = vlib_get_thread_main();
+  char name[32];
+  u32 subport_id, i;
+  int rv;
+
+  /* Detect the set of worker threads */
+  int worker_thread_first = 0;
+  int worker_thread_count = 0;
+
+  uword *p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+  vlib_thread_registration_t *tr = p ? (vlib_thread_registration_t *) p[0] : 0;
+
+  if (tr && tr->count > 0) {
+    worker_thread_first = tr->first_index;
+    worker_thread_count = tr->count;
+  }
+
+  /* Allocate the per-thread device data array */
+  vec_validate_aligned (xd->hqos, tm->n_vlib_mains - 1, CLIB_CACHE_LINE_BYTES);
+  memset(xd->hqos, 0, tm->n_vlib_mains * sizeof(xd->hqos[0]));
+
+  /* Allocate space for one SWQ per worker thread in the I/O TX thread data structure */
+  vec_validate(xd->hqos[hqos->iotx].iotx.swq, worker_thread_count - 1);
+  memset(xd->hqos[hqos->iotx].iotx.swq, 0, sizeof(xd->hqos[hqos->iotx].iotx.swq[0]));
+
+  /* SWQ */
+  for (i = 0; i < worker_thread_count; i++) {
+    u32 swq_flags = RING_F_SP_ENQ | RING_F_SC_DEQ;
+
+    snprintf(name, sizeof(name), "SWQ-worker%u-to-device%u", i, xd->device_index);
+    xd->hqos[hqos->iotx].iotx.swq[i] = rte_ring_create(name, hqos->swq_size, xd->cpu_socket, swq_flags);
+    if (xd->hqos[hqos->iotx].iotx.swq[i] == NULL)
+      return clib_error_return (0, "SWQ-worker%u-to-device%u: rte_ring_create err", i, xd->device_index);
+  }
+
+  /*
+   * HQoS
+   */
+
+  /* HQoS port */
+  snprintf(name, sizeof(name), "HQoS%u", xd->device_index);
+  hqos->port.name = strdup(name);
+  if (hqos->port.name == NULL)
+    return clib_error_return (0, "HQoS%u: strdup err", xd->device_index);
+
+  hqos->port.socket = rte_eth_dev_socket_id(xd->device_index);
+  if (hqos->port.socket == SOCKET_ID_ANY)
+    hqos->port.socket = 0;
+
+  xd->hqos[hqos->iotx].iotx.hqos = rte_sched_port_config(&hqos->port);
+  if (xd->hqos[hqos->iotx].iotx.hqos == NULL)
+    return clib_error_return (0, "HQoS%u: rte_sched_port_config err", xd->device_index);
+
+  /* HQoS subport */
+  for (subport_id = 0; subport_id < hqos->port.n_subports_per_port; subport_id ++) {
+    u32 pipe_id;
+
+    rv = rte_sched_subport_config(xd->hqos[hqos->iotx].iotx.hqos, subport_id, &hqos->subport[subport_id]);
+    if (rv)
+      return clib_error_return (0, "HQoS%u subport %u: rte_sched_subport_config err (%d)", xd->device_index, subport_id, rv);
+
+    /* HQoS pipe */
+    for (pipe_id = 0; pipe_id < hqos->port.n_pipes_per_subport; pipe_id ++) {
+      u32 pos = subport_id * hqos->port.n_pipes_per_subport + pipe_id;
+      u32 profile_id = hqos->pipe_map[pos];
+
+      rv = rte_sched_pipe_config(xd->hqos[hqos->iotx].iotx.hqos, subport_id, pipe_id, profile_id);
+      if (rv)
+        return clib_error_return (0, "HQoS%u subport %u pipe %u: rte_sched_pipe_config err (%d)", xd->device_index, subport_id, pipe_id, rv);
+    }
+  }
+
+  /* Set up per-thread device data for the I/O TX thread */
+  xd->hqos[hqos->iotx].iotx.hqos_burst_enq = hqos->burst_enq;
+  xd->hqos[hqos->iotx].iotx.hqos_burst_deq = hqos->burst_deq;
+  vec_validate(xd->hqos[hqos->iotx].iotx.pkts_enq, 2 * hqos->burst_enq - 1);
+  vec_validate(xd->hqos[hqos->iotx].iotx.pkts_deq, hqos->burst_deq - 1);
+  xd->hqos[hqos->iotx].iotx.pkts_enq_len = 0;
+  xd->hqos[hqos->iotx].iotx.swq_pos = 0;
+
+  /* Set up per-thread device data for each worker thread */
+  for (i = 0; i < worker_thread_count; i++) {
+    u32 tid = worker_thread_first + i;
+
+    xd->hqos[tid].worker.swq = xd->hqos[hqos->iotx].iotx.swq[i];
+    xd->hqos[tid].worker.hqos_field0_slabpos = hqos->pktfield0_slabpos;
+    xd->hqos[tid].worker.hqos_field0_slabmask = hqos->pktfield0_slabmask;
+    xd->hqos[tid].worker.hqos_field0_slabshr = __builtin_ctzll(hqos->pktfield0_slabmask);
+    xd->hqos[tid].worker.hqos_field1_slabpos = hqos->pktfield1_slabpos;
+    xd->hqos[tid].worker.hqos_field1_slabmask = hqos->pktfield1_slabmask;
+    xd->hqos[tid].worker.hqos_field1_slabshr = __builtin_ctzll(hqos->pktfield1_slabmask);
+    xd->hqos[tid].worker.hqos_field2_slabpos = hqos->pktfield2_slabpos;
+    xd->hqos[tid].worker.hqos_field2_slabmask = hqos->pktfield2_slabmask;
+    xd->hqos[tid].worker.hqos_field2_slabshr = __builtin_ctzll(hqos->pktfield2_slabmask);
+    memcpy(xd->hqos[tid].worker.hqos_tc_table, hqos->tc_table, sizeof(hqos->tc_table));
+  }
+
+  return 0;
+}
+
 clib_error_t *
 dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
 {
@@ -234,10 +474,10 @@ dpdk_lib_init (dpdk_main_t * dm)
   vnet_sw_interface_t * sw;
   vnet_hw_interface_t * hi;
   dpdk_device_t * xd;
-  vlib_thread_registration_t * tr;
-  uword * p;
+  vlib_thread_registration_t * tr, *tr_iotx;
+  uword * p, * p_iotx;
 
-  u32 next_cpu = 0;
+  u32 next_cpu = 0, next_iotx_cpu = 0;
   u8 af_packet_port_id = 0;
 
   dm->input_cpu_first_index = 0;
@@ -261,6 +501,30 @@ dpdk_lib_init (dpdk_main_t * dm)
 
   vec_validate_aligned (dm->workers, tm->n_vlib_mains - 1,
                         CLIB_CACHE_LINE_BYTES);
+
+  dm->iotx_cpu_first_index = 0;
+  dm->iotx_cpu_count = 0;
+
+  /* find out which cpus will be used for I/O TX */
+  p_iotx = hash_get_mem (tm->thread_registrations_by_name, "iotx");
+  tr_iotx = p_iotx ? (vlib_thread_registration_t *) p_iotx[0] : 0;
+
+  if (tr_iotx && tr_iotx->count > 0)
+    {
+      dm->iotx_cpu_first_index = tr_iotx->first_index;
+      dm->iotx_cpu_count = tr_iotx->count;
+    }
+
+  vec_validate_aligned (dm->devices_by_iotx_cpu, tm->n_vlib_mains - 1,
+                        CLIB_CACHE_LINE_BYTES);
+
+  vec_validate_aligned (dm->iotx, tm->n_vlib_mains - 1,
+                        CLIB_CACHE_LINE_BYTES);
+
+#ifdef NETMAP
+  if(rte_netmap_probe() < 0)
+    return clib_error_return (0, "rte netmap probe failed");
+#endif
 
   nports = rte_eth_dev_count();
   if (nports < 1) 
@@ -598,6 +862,36 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      next_cpu = 0;
 	  }
 
+
+      if (devconf->hqos_enabled) {
+        if (devconf->hqos.iotx_valid) {
+          int cpu = dm->iotx_cpu_first_index + devconf->hqos.iotx;
+
+          if (devconf->hqos.iotx >= dm->iotx_cpu_count)
+            return clib_error_return (0, "invalid I/O TX thread index");
+
+          vec_add2(dm->devices_by_iotx_cpu[cpu], dq, 1);
+          dq->device = xd->device_index;
+          dq->queue_id = 0;
+        } else {
+          int cpu = dm->iotx_cpu_first_index + next_iotx_cpu;
+
+          if (dm->iotx_cpu_count == 0)
+            return clib_error_return (0, "no I/O TX threads available");
+
+          vec_add2(dm->devices_by_iotx_cpu[cpu], dq, 1);
+          dq->device = xd->device_index;
+          dq->queue_id = 0;
+
+          next_iotx_cpu++;
+          if (next_iotx_cpu == dm->iotx_cpu_count)
+            next_iotx_cpu = 0;
+
+          devconf->hqos.iotx_valid = 1;
+          devconf->hqos.iotx = cpu;
+        }
+      }
+
       vec_validate_aligned (xd->tx_vectors, tm->n_vlib_mains,
                             CLIB_CACHE_LINE_BYTES);
       for (j = 0; j < tm->n_vlib_mains; j++)
@@ -623,6 +917,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       if (rv < 0)
         return rv;
+
+      if (devconf->hqos_enabled) {
+        rv = dpdk_port_setup_hqos(xd, &devconf->hqos);
+        if (rv < 0)
+          return rv;
+      }
 
       /* count the number of descriptors used for this device */
       nb_desc += xd->nb_rx_desc + xd->nb_tx_desc * xd->tx_q_used;
@@ -871,6 +1171,8 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr, unforma
     }
 
   devconf->pci_addr.as_u32 = pci_addr.as_u32;
+  devconf->hqos_enabled = 0;
+  dpdk_device_config_hqos_default(&devconf->hqos);
 
   if (!input)
     return 0;
@@ -894,10 +1196,17 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr, unforma
           if (error)
             break;
         }
-      else if (unformat (input, "vlan-strip-offload off"))
-	  devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_OFF;
-      else if (unformat (input, "vlan-strip-offload on"))
-	  devconf->vlan_strip_offload = DPDK_DEVICE_VLAN_STRIP_ON;
+      else if (unformat (input, "hqos %U", unformat_vlib_cli_sub_input, &sub_input))
+        {
+          devconf->hqos_enabled = 1;
+          error = unformat_hqos(&sub_input, &devconf->hqos);
+          if (error)
+            break;
+        }
+      else if (unformat (input, "hqos"))
+        {
+          devconf->hqos_enabled = 1;
+        }
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -946,6 +1255,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   // MATT-FIXME: inverted virtio-vhost logic to use virtio by default
   conf->use_virtio_vhost = 1;
 
+  conf->hqos_dbg_bypass = 0;
+
   while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
     {
       /* Prime the pump */
@@ -963,6 +1274,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "no-multi-seg"))
         conf->no_multi_seg = 1;
+
+      else if (unformat (input, "hqos-dbg-bypass"))
+        conf->hqos_dbg_bypass = 1;
 
       else if (unformat (input, "dev default %U", unformat_vlib_cli_sub_input,
 			 &sub_input))

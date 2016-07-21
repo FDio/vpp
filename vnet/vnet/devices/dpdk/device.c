@@ -239,6 +239,113 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm,
 	  sizeof (t0->buffer.pre_data));
 }
 
+#define BITFIELD(byte_array, slab_pos, slab_mask, slab_shr)     \
+({                                                              \
+  u64 slab = *((u64 *) &byte_array[slab_pos]);                  \
+  u64 val = (rte_be_to_cpu_64(slab) & slab_mask) >> slab_shr;   \
+  val;                                                          \
+})
+
+#define RTE_SCHED_PORT_HIERARCHY(subport, pipe, traffic_class, queue, color) \
+  ((((uint64_t) (queue)) & 0x3) |                               \
+  ((((uint64_t) (traffic_class)) & 0x3) << 2) |                 \
+  ((((uint64_t) (color)) & 0x3) << 4) |                         \
+  ((((uint64_t) (subport)) & 0xFFFF) << 16) |                   \
+  ((((uint64_t) (pipe)) & 0xFFFFFFFF) << 32))
+
+static void
+dpdk_hqos_metadata_set(dpdk_device_hqos_per_worker_thread_t *hqos, struct rte_mbuf **pkts, uint32_t n_pkts)
+{
+  u32 i;
+
+  for (i = 0; i < (n_pkts & (~0x3)); i += 4) {
+    struct rte_mbuf *pkt0 = pkts[i];
+    struct rte_mbuf *pkt1 = pkts[i + 1];
+    struct rte_mbuf *pkt2 = pkts[i + 2];
+    struct rte_mbuf *pkt3 = pkts[i + 3];
+
+    u8 *pkt0_data = rte_pktmbuf_mtod(pkt0, u8 *);
+    u8 *pkt1_data = rte_pktmbuf_mtod(pkt1, u8 *);
+    u8 *pkt2_data = rte_pktmbuf_mtod(pkt2, u8 *);
+    u8 *pkt3_data = rte_pktmbuf_mtod(pkt3, u8 *);
+
+    u64 pkt0_subport = BITFIELD(pkt0_data, hqos->hqos_field0_slabpos, hqos->hqos_field0_slabmask, hqos->hqos_field0_slabshr);
+    u64 pkt0_pipe = BITFIELD(pkt0_data, hqos->hqos_field1_slabpos, hqos->hqos_field1_slabmask, hqos->hqos_field1_slabshr);
+    u64 pkt0_dscp = BITFIELD(pkt0_data, hqos->hqos_field2_slabpos, hqos->hqos_field2_slabmask, hqos->hqos_field2_slabshr);
+    u32 pkt0_tc = hqos->hqos_tc_table[pkt0_dscp & 0x3F] >> 2;
+    u32 pkt0_tc_q = hqos->hqos_tc_table[pkt0_dscp & 0x3F] & 0x3;
+
+    u64 pkt1_subport = BITFIELD(pkt1_data, hqos->hqos_field0_slabpos, hqos->hqos_field0_slabmask, hqos->hqos_field0_slabshr);
+    u64 pkt1_pipe = BITFIELD(pkt1_data, hqos->hqos_field1_slabpos, hqos->hqos_field1_slabmask, hqos->hqos_field1_slabshr);
+    u64 pkt1_dscp = BITFIELD(pkt1_data, hqos->hqos_field2_slabpos, hqos->hqos_field2_slabmask, hqos->hqos_field2_slabshr);
+    u32 pkt1_tc = hqos->hqos_tc_table[pkt1_dscp & 0x3F] >> 2;
+    u32 pkt1_tc_q = hqos->hqos_tc_table[pkt1_dscp & 0x3F] & 0x3;
+
+    u64 pkt2_subport = BITFIELD(pkt2_data, hqos->hqos_field0_slabpos, hqos->hqos_field0_slabmask, hqos->hqos_field0_slabshr);
+    u64 pkt2_pipe = BITFIELD(pkt2_data, hqos->hqos_field1_slabpos, hqos->hqos_field1_slabmask, hqos->hqos_field1_slabshr);
+    u64 pkt2_dscp = BITFIELD(pkt2_data, hqos->hqos_field2_slabpos, hqos->hqos_field2_slabmask, hqos->hqos_field2_slabshr);
+    u32 pkt2_tc = hqos->hqos_tc_table[pkt2_dscp & 0x3F] >> 2;
+    u32 pkt2_tc_q = hqos->hqos_tc_table[pkt2_dscp & 0x3F] & 0x3;
+
+    u64 pkt3_subport = BITFIELD(pkt3_data, hqos->hqos_field0_slabpos, hqos->hqos_field0_slabmask, hqos->hqos_field0_slabshr);
+    u64 pkt3_pipe = BITFIELD(pkt3_data, hqos->hqos_field1_slabpos, hqos->hqos_field1_slabmask, hqos->hqos_field1_slabshr);
+    u64 pkt3_dscp = BITFIELD(pkt3_data, hqos->hqos_field2_slabpos, hqos->hqos_field2_slabmask, hqos->hqos_field2_slabshr);
+    u32 pkt3_tc = hqos->hqos_tc_table[pkt3_dscp & 0x3F] >> 2;
+    u32 pkt3_tc_q = hqos->hqos_tc_table[pkt3_dscp & 0x3F] & 0x3;
+
+    u64 pkt0_sched = RTE_SCHED_PORT_HIERARCHY(pkt0_subport,
+      pkt0_pipe,
+      pkt0_tc,
+      pkt0_tc_q,
+      0);
+    u64 pkt1_sched = RTE_SCHED_PORT_HIERARCHY(pkt1_subport,
+      pkt1_pipe,
+      pkt1_tc,
+      pkt1_tc_q,
+      0);
+    u64 pkt2_sched = RTE_SCHED_PORT_HIERARCHY(pkt2_subport,
+      pkt2_pipe,
+      pkt2_tc,
+      pkt2_tc_q,
+      0);
+    u64 pkt3_sched = RTE_SCHED_PORT_HIERARCHY(pkt3_subport,
+      pkt3_pipe,
+      pkt3_tc,
+      pkt3_tc_q,
+      0);
+
+    pkt0->hash.sched.lo = pkt0_sched & 0xFFFFFFFF;
+    pkt0->hash.sched.hi = pkt0_sched >> 32;
+    pkt1->hash.sched.lo = pkt1_sched & 0xFFFFFFFF;
+    pkt1->hash.sched.hi = pkt1_sched >> 32;
+    pkt2->hash.sched.lo = pkt2_sched & 0xFFFFFFFF;
+    pkt2->hash.sched.hi = pkt2_sched >> 32;
+    pkt3->hash.sched.lo = pkt3_sched & 0xFFFFFFFF;
+    pkt3->hash.sched.hi = pkt3_sched >> 32;
+  }
+
+  for ( ; i < n_pkts; i++) {
+    struct rte_mbuf *pkt = pkts[i];
+
+    u8 *pkt_data = rte_pktmbuf_mtod(pkt, u8 *);
+
+    u64 pkt_subport = BITFIELD(pkt_data, hqos->hqos_field0_slabpos, hqos->hqos_field0_slabmask, hqos->hqos_field0_slabshr);
+    u64 pkt_pipe = BITFIELD(pkt_data, hqos->hqos_field1_slabpos, hqos->hqos_field1_slabmask, hqos->hqos_field1_slabshr);
+    u64 pkt_dscp = BITFIELD(pkt_data, hqos->hqos_field2_slabpos, hqos->hqos_field2_slabmask, hqos->hqos_field2_slabshr);
+    u32 pkt_tc = hqos->hqos_tc_table[pkt_dscp & 0x3F] >> 2;
+    u32 pkt_tc_q = hqos->hqos_tc_table[pkt_dscp & 0x3F] & 0x3;
+
+    u64 pkt_sched = RTE_SCHED_PORT_HIERARCHY(pkt_subport,
+      pkt_pipe,
+      pkt_tc,
+      pkt_tc_q,
+      0);
+
+    pkt->hash.sched.lo = pkt_sched & 0xFFFFFFFF;
+    pkt->hash.sched.hi = pkt_sched >> 32;
+  }
+}
+
 /*
  * This function calls the dpdk's tx_burst function to transmit the packets
  * on the tx_vector. It manages a lock per-device if the device does not
@@ -328,10 +435,21 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
           if (PREDICT_TRUE(tx_head > tx_tail)) 
             {
               /* no wrap, transmit in one burst */
-              rv = rte_eth_tx_burst(xd->device_index, 
+              if (xd->hqos == NULL)
+                    rv = rte_eth_tx_burst(xd->device_index, 
                                     (uint16_t) queue_id,
                                     &tx_vector[tx_tail], 
                                     (uint16_t) (tx_head-tx_tail));
+              else {
+                    dpdk_device_hqos_per_worker_thread_t *hqos = &xd->hqos[vm->cpu_index].worker;
+
+                    dpdk_hqos_metadata_set(hqos,
+                                    &tx_vector[tx_tail],
+                                    tx_head-tx_tail);
+                    rv = rte_ring_sp_enqueue_burst(hqos->swq, 
+                                    (void **) &tx_vector[tx_tail], 
+                                    (uint16_t) (tx_head-tx_tail));
+              }
             }
           else 
             {
@@ -342,11 +460,21 @@ u32 tx_burst_vector_internal (vlib_main_t * vm,
                * at the start of the ring.
                * Transmit pkts up to the wrap point.
                */
-              rv = rte_eth_tx_burst(xd->device_index, 
+              if (xd->hqos == NULL)
+                    rv = rte_eth_tx_burst(xd->device_index, 
                                     (uint16_t) queue_id,
                                     &tx_vector[tx_tail], 
                                     (uint16_t) (DPDK_TX_RING_SIZE - tx_tail));
+              else {
+                    dpdk_device_hqos_per_worker_thread_t *hqos = &xd->hqos[vm->cpu_index].worker;
 
+                    dpdk_hqos_metadata_set(hqos,
+                                    &tx_vector[tx_tail],
+                                    DPDK_TX_RING_SIZE - tx_tail);
+                    rv = rte_ring_sp_enqueue_burst(hqos->swq, 
+                                    (void **) &tx_vector[tx_tail], 
+                                    (uint16_t) (DPDK_TX_RING_SIZE - tx_tail));
+              }
               /* 
                * If we transmitted everything we wanted, then allow 1 retry 
                * so we can try to transmit the rest. If we didn't transmit

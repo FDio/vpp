@@ -593,6 +593,7 @@ libvnet_la_SOURCES +=				\
   vnet/devices/dpdk/format.c		\
   vnet/devices/dpdk/init.c			\
   vnet/devices/dpdk/node.c			\
+  vnet/devices/dpdk/threads.c			\
   vnet/devices/dpdk/vhost_user.c    \
   vnet/devices/dpdk/cli.c
 
