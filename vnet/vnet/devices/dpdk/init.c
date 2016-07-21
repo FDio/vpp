@@ -234,11 +234,14 @@ dpdk_lib_init (dpdk_main_t * dm)
   vnet_sw_interface_t * sw;
   vnet_hw_interface_t * hi;
   dpdk_device_t * xd;
+  vlib_pci_addr_t last_pci_addr;
+  u32 last_pci_addr_port = 0;
   vlib_thread_registration_t * tr;
   uword * p;
 
   u32 next_cpu = 0;
   u8 af_packet_port_id = 0;
+  last_pci_addr.as_u32 = ~0;
 
   dm->input_cpu_first_index = 0;
   dm->input_cpu_count = 1;
@@ -315,6 +318,30 @@ dpdk_lib_init (dpdk_main_t * dm)
       xd->nb_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
       xd->nb_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
       xd->cpu_socket = (i8) rte_eth_dev_socket_id(i);
+
+      /* Handle interface naming for devices with multiple ports sharing same PCI ID */
+      if (dev_info.pci_dev)
+	{
+	  struct rte_eth_dev_info di = {0};
+	  rte_eth_dev_info_get (i + 1, &di);
+	  if (di.pci_dev && pci_addr.as_u32 != last_pci_addr.as_u32 &&
+	      memcmp(&dev_info.pci_dev->addr, &di.pci_dev->addr, sizeof(struct rte_pci_addr)) == 0)
+	    {
+	      xd->interface_name_suffix = format (0, "0");
+	      last_pci_addr.as_u32 = pci_addr.as_u32;
+	      last_pci_addr_port = i;
+	    }
+	  else if (pci_addr.as_u32 == last_pci_addr.as_u32)
+	    {
+	      xd->interface_name_suffix = format (0, "%u", i - last_pci_addr_port);
+	    }
+	  else
+	    {
+	      last_pci_addr.as_u32 = ~0;
+	    }
+	}
+      else
+	last_pci_addr.as_u32 = ~0;
 
       clib_memcpy(&xd->tx_conf, &dev_info.default_txconf,
              sizeof(struct rte_eth_txconf));
