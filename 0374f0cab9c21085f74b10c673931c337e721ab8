@@ -211,6 +211,30 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_e82cc84c",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-22T14:17:13Z",
+      "side": 1,
+      "message": "Ow, so you want to avoid computing the mask if not needed. Okay, that\u0027s fine!",
+      "parentUuid": "9a0e1d27_285520c6",
+      "range": {
+        "startLine": 555,
+        "startChar": 6,
+        "endLine": 555,
+        "endChar": 22
+      },
+      "revId": "0374f0cab9c21085f74b10c673931c337e721ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_e84de873",
         "filename": "vnet/vnet/lisp-cp/lisp_types.c",
         "patchSetId": 1
@@ -246,6 +270,30 @@
       "side": 1,
       "message": "1, Agree\n2, Only reason for doing it here is that, on many place we create the prefix ip manually and it possible we forgot set the mask.\nRight now I found some place when, we don`t do it, I will fix it.\nI thinking about that I create function to create ip_prefix.",
       "parentUuid": "9a0e1d27_e84de873",
+      "range": {
+        "startLine": 644,
+        "startChar": 0,
+        "endLine": 647,
+        "endChar": 26
+      },
+      "revId": "0374f0cab9c21085f74b10c673931c337e721ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_0817fcee",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 647,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-22T14:17:13Z",
+      "side": 1,
+      "message": "Right, so that\u0027s sloppiness on our side :-(\n\nIt does make lots of sense to have a function that generates normalized ip prefixes. And speaking of that: let\u0027s call the function ip_prefix_normalize, instead of ip_prefix_mask.",
+      "parentUuid": "9a0e1d27_28be4000",
       "range": {
         "startLine": 644,
         "startChar": 0,
