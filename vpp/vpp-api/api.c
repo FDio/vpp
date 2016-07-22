@@ -1378,50 +1378,50 @@ vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t *mp)
     if (mp->enable) {
         ci = rx_cm4u->config_index_by_sw_if_index[sw_if_index]; //IP4 unicast
         ci = vnet_config_add_feature(vm, &rx_cm4u->config_main,
-                                     ci, 
+                                     ci,
                                      im4->ip4_unicast_rx_feature_vpath,
                                      0, 0);
         rx_cm4u->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm4m->config_index_by_sw_if_index[sw_if_index]; //IP4 mcast
         ci = vnet_config_add_feature(vm, &rx_cm4m->config_main,
-                                     ci, 
+                                     ci,
                                      im4->ip4_multicast_rx_feature_vpath,
                                      0, 0);
         rx_cm4m->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm6u->config_index_by_sw_if_index[sw_if_index]; //IP6 unicast
         ci = vnet_config_add_feature(vm, &rx_cm6u->config_main,
-                                     ci, 
+                                     ci,
                                      im6->ip6_unicast_rx_feature_vpath,
                                      0, 0);
         rx_cm6u->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm6m->config_index_by_sw_if_index[sw_if_index]; //IP6 mcast
         ci = vnet_config_add_feature(vm, &rx_cm6m->config_main,
-                                     ci, 
+                                     ci,
                                      im6->ip6_multicast_rx_feature_vpath,
                                      0, 0);
         rx_cm6m->config_index_by_sw_if_index[sw_if_index] = ci;
     } else {
         ci = rx_cm4u->config_index_by_sw_if_index[sw_if_index]; //IP4 unicast
         ci = vnet_config_del_feature(vm, &rx_cm4u->config_main,
-                                     ci, 
+                                     ci,
                                      im4->ip4_unicast_rx_feature_vpath,
                                      0, 0);
         rx_cm4u->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm4m->config_index_by_sw_if_index[sw_if_index]; //IP4 mcast
         ci = vnet_config_del_feature(vm, &rx_cm4m->config_main,
-                                     ci, 
+                                     ci,
                                      im4->ip4_multicast_rx_feature_vpath,
                                      0, 0);
         rx_cm4m->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm6u->config_index_by_sw_if_index[sw_if_index]; //IP6 unicast
         ci = vnet_config_del_feature(vm, &rx_cm6u->config_main,
-                                     ci, 
+                                     ci,
                                      im6->ip6_unicast_rx_feature_vpath,
                                      0, 0);
         rx_cm6u->config_index_by_sw_if_index[sw_if_index] = ci;
         ci = rx_cm6m->config_index_by_sw_if_index[sw_if_index]; //IP6 mcast
         ci = vnet_config_del_feature(vm, &rx_cm6m->config_main,
-                                     ci, 
+                                     ci,
                                      im6->ip6_multicast_rx_feature_vpath,
                                      0, 0);
         rx_cm6m->config_index_by_sw_if_index[sw_if_index] = ci;
@@ -4533,33 +4533,33 @@ static void vl_api_gre_add_del_tunnel_t_handler
     vl_api_gre_add_del_tunnel_reply_t * rmp;
     int rv = 0;
     vnet_gre_add_del_tunnel_args_t _a, *a = &_a;
-    u32 outer_table_id;
+    u32 outer_fib_id;
     uword * p;
     ip4_main_t * im = &ip4_main;
     u32 sw_if_index = ~0;
 
-    p = hash_get (im->fib_index_by_table_id, ntohl(mp->outer_table_id));
+    p = hash_get (im->fib_index_by_table_id, ntohl(mp->outer_fib_id));
     if (! p) {
         rv = VNET_API_ERROR_NO_SUCH_FIB;
         goto out;
     }
-    outer_table_id = p[0];
+    outer_fib_id = p[0];
 
     /* Check src & dst are different */
-    if (memcmp(&mp->src_address, &mp->dst_address, 4) == 0) {
+    if ((mp->is_ipv6 && memcmp(mp->src_address, mp->dst_address, 16) == 0) ||
+       (!mp->is_ipv6 && memcmp(mp->src_address, mp->dst_address, 4) == 0)) {
         rv = VNET_API_ERROR_SAME_SRC_DST;
         goto out;
     }
-
     memset (a, 0, sizeof (*a));
 
     a->is_add = mp->is_add;
 
     /* ip addresses sent in network byte order */
-    a->src.as_u32 = mp->src_address;
-    a->dst.as_u32 = mp->dst_address;
+    clib_memcpy(&(a->src), mp->src_address, 4);
+    clib_memcpy(&(a->dst), mp->dst_address, 4);
 
-    a->outer_table_id = outer_table_id;
+    a->outer_fib_id = outer_fib_id;
     rv = vnet_gre_add_del_tunnel (a, &sw_if_index);
 
 out:
@@ -4578,9 +4578,9 @@ static void send_gre_tunnel_details
     rmp = vl_msg_api_alloc (sizeof (*rmp));
     memset (rmp, 0, sizeof (*rmp));
     rmp->_vl_msg_id = ntohs(VL_API_GRE_TUNNEL_DETAILS);
-    rmp->src_address = t->tunnel_src.data_u32;
-    rmp->dst_address = t->tunnel_dst.data_u32;
-    rmp->outer_table_id = htonl(im->fibs[t->outer_fib_index].table_id);
+    clib_memcpy(rmp->src_address, &(t->tunnel_src), 4);
+    clib_memcpy(rmp->dst_address, &(t->tunnel_dst), 4);
+    rmp->outer_fib_id = htonl(im->fibs[t->outer_fib_index].table_id);
     rmp->sw_if_index = htonl(t->sw_if_index);
     rmp->context = context;
 
