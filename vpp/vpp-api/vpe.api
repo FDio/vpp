@@ -2412,8 +2412,7 @@ define lisp_pitr_set_locator_set_reply {
       0 : ipv4
       1 : ipv6
       2 : mac
-    @param deid - destination EID
-    @param seid - source EID
+    @param eid - EID
     @param rloc_num - number of remote locators
     @param rlocs - remote locator data
 */
@@ -2425,10 +2424,8 @@ define lisp_add_del_remote_mapping {
     u32 vni;
     u8 action;
     u8 eid_type;
-    u8 deid[16];
-    u8 seid[16];
-    u8 deid_len;
-    u8 seid_len;
+    u8 eid[16];
+    u8 eid_len;
     u32 rloc_num;
     u8 rlocs[0];
 };
