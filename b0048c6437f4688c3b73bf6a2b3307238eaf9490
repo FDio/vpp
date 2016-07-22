@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_75dd3170",
+        "filename": "vnet/vnet/devices/dpdk/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-22T02:44:00Z",
+      "side": 1,
+      "message": "Minor thing: since you don\u0027t work for Cisco and this is a new file this can be your organizations name (assuming you wrote the contents, of course!)",
+      "range": {
+        "startLine": 2,
+        "startChar": 3,
+        "endLine": 2,
+        "endChar": 50
+      },
+      "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
