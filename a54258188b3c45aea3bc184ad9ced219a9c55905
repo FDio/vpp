@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_f58f0122",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 495,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-22T07:09:59Z",
+      "side": 1,
+      "message": "delta \u003d xstat-\u003evalue - last_xstat-\u003evalue; so it is still needed....",
+      "parentUuid": "9a0e1d27_fe2ec3a4",
+      "range": {
+        "startLine": 495,
+        "startChar": 32,
+        "endLine": 495,
+        "endChar": 33
+      },
+      "revId": "a54258188b3c45aea3bc184ad9ced219a9c55905",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_32346fdd",
         "filename": "vnet/vnet/devices/dpdk/format.c",
         "patchSetId": 1
