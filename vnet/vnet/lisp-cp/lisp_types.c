@@ -146,8 +146,20 @@ uword
 unformat_ip_prefix (unformat_input_t * input, va_list * args)
 {
   ip_prefix_t * a = va_arg(*args, ip_prefix_t *);
-  return unformat (input, "%U/%d", unformat_ip_address, &ip_prefix_addr(a),
-                   &ip_prefix_len(a));
+  if (unformat (input, "%U/%d", unformat_ip_address, &ip_prefix_addr(a),
+                   &ip_prefix_len(a)))
+    {
+      if ((ip_prefix_version(a) == IP4 && 32 < ip_prefix_len(a)) ||
+          (ip_prefix_version(a) == IP6 && 128 < ip_prefix_length(a)))
+        {
+          clib_warning("Prefix length to big: %d!", ip_prefix_len(a));
+          return 0;
+        }
+      ip_prefix_normalize(a);
+    }
+  else
+      return 0;
+  return 1;
 }
 
 uword
@@ -511,6 +523,63 @@ ip_address_set(ip_address_t * dst, void * src, u8 version)
   ip_addr_version(dst) = version;
 }
 
+void
+ip_prefix_normalize(ip_prefix_t * a)
+{
+  ip_address_t * ip;
+  ip4_address_t * ip4;
+  ip6_address_t * ip6;
+  int preflen = ip_prefix_len(a);
+  u32 mask = ~0;
+  u64 mask_6[2];
+  u32 * m;
+  u32 j, i0, i1;
+
+  ip = &ip_prefix_addr (a);
+  switch (ip_addr_version (ip))
+  {
+    case IP4:
+      if (32 <= preflen)
+        {
+          break;
+        }
+
+      ip4 = &ip_addr_v4 (ip);
+      mask = pow2_mask (preflen) << (32 - preflen);
+      mask = clib_host_to_net_u32 (mask);
+      ip4->data_u32 &= mask;
+      break;
+
+    case IP6:
+      if (128 <= preflen)
+        {
+          break;
+        }
+      ip6 = &ip_addr_v6 (ip);
+      memset(mask_6, 0, sizeof(mask_6));
+      m = (u32 * ) mask_6;
+
+      i0 = preflen / 32;
+      i1 = preflen % 32;
+      for (j = 0; j < i0; j++)
+        {
+          m[j] = ~0;
+        }
+
+      if (i1)
+        {
+          m[i0] = clib_host_to_net_u32 (pow2_mask(i1) << (32 - i1));
+        }
+
+      ip6->as_u64[0] &= mask_6[0];
+      ip6->as_u64[1] &= mask_6[1];
+      break;
+
+    default:
+      ASSERT(0);
+  }
+}
+
 void *
 ip_prefix_cast (gid_address_t * a)
 {
@@ -564,6 +633,10 @@ int
 ip_prefix_cmp(ip_prefix_t * p1, ip_prefix_t * p2)
 {
   int cmp = 0;
+
+  ip_prefix_normalize (p1);
+  ip_prefix_normalize (p2);
+
   cmp = ip_address_cmp (&ip_prefix_addr(p1), &ip_prefix_addr(p2));
   if (cmp == 0)
   {
