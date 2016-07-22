@@ -1,0 +1,188 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_e874c89d",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 929,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-22T12:58:58Z",
+      "side": 1,
+      "message": "Should rename deid to eid all throughout the function",
+      "range": {
+        "startLine": 929,
+        "startChar": 16,
+        "endLine": 929,
+        "endChar": 20
+      },
+      "revId": "0374f0cab9c21085f74b10c673931c337e721ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_48da9479",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1029,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-22T12:58:58Z",
+      "side": 1,
+      "message": "Kind of: we need to come up with some format for LCAF addresses like source/dests. That is, we have only a \"remote eid\" that we configure, and the value can be simple ip-prefix or src/dst. Will get to that at one point :-)",
+      "range": {
+        "startLine": 1029,
+        "startChar": 0,
+        "endLine": 1029,
+        "endChar": 38
+      },
+      "revId": "0374f0cab9c21085f74b10c673931c337e721ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_885c2c27",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-22T12:58:58Z",
+      "side": 1,
+      "message": "Actually, I\u0027d return a format error here since we can\u0027t accurately speculate what the user wanted.",
+      "range": {
+        "startLine": 156,
+        "startChar": 2,
+        "endLine": 158,
+        "endChar": 25
+      },
+      "revId": "0374f0cab9c21085f74b10c673931c337e721ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_6841d838",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 539,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-22T12:58:58Z",
+      "side": 1,
+      "message": "Cool! We were missing this!",
+      "range": {
+        "startLine": 539,
+        "startChar": 0,
+        "endLine": 539,
+        "endChar": 14
+      },
+      "revId": "0374f0cab9c21085f74b10c673931c337e721ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_284be05a",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 544,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-22T12:58:58Z",
+      "side": 1,
+      "message": "Use ip_prefix_len macro for this.",
+      "range": {
+        "startLine": 544,
+        "startChar": 15,
+        "endLine": 544,
+        "endChar": 21
+      },
+      "revId": "0374f0cab9c21085f74b10c673931c337e721ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_08481c5a",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 544,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-22T12:58:58Z",
+      "side": 1,
+      "message": "Maybe rename to preflen",
+      "range": {
+        "startLine": 544,
+        "startChar": 6,
+        "endLine": 544,
+        "endChar": 12
+      },
+      "revId": "0374f0cab9c21085f74b10c673931c337e721ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_483e14ba",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-22T12:58:58Z",
+      "side": 1,
+      "message": "We should assume correctly formatted prefixes here so no need to test for this.",
+      "range": {
+        "startLine": 555,
+        "startChar": 6,
+        "endLine": 555,
+        "endChar": 22
+      },
+      "revId": "0374f0cab9c21085f74b10c673931c337e721ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_e84de873",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 647,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-22T12:58:58Z",
+      "side": 1,
+      "message": "I\u0027d like to avoid copying the prefixes. We have two options:\n1. Mask the prefixes as they are. Any reason for not doing it, especially since they\u0027re not in standard format and we should expect them to be all throughout the code?\n2. Do we still need this, especially since you\u0027ve upgraded the unformat ip_prefix function?",
+      "range": {
+        "startLine": 644,
+        "startChar": 0,
+        "endLine": 647,
+        "endChar": 26
+      },
+      "revId": "0374f0cab9c21085f74b10c673931c337e721ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
