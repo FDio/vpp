@@ -2,6 +2,178 @@
   "comments": [
     {
       "key": {
+        "uuid": "9a0e1d27_35aa191a",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-22T09:50:11Z",
+      "side": 1,
+      "message": "Please try to do all configuration trough Binary API / Debug CLI.",
+      "range": {
+        "startLine": 45,
+        "startChar": 3,
+        "endLine": 45,
+        "endChar": 31
+      },
+      "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_157ef5ae",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-22T09:50:11Z",
+      "side": 1,
+      "message": "s/iotx/hqos/",
+      "range": {
+        "startLine": 61,
+        "startChar": 11,
+        "endLine": 61,
+        "endChar": 15
+      },
+      "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_f5638118",
+        "filename": "vnet/vnet/devices/dpdk/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 841,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-22T09:50:11Z",
+      "side": 1,
+      "message": "Please use gnu indention style.",
+      "range": {
+        "startLine": 841,
+        "startChar": 34,
+        "endLine": 841,
+        "endChar": 35
+      },
+      "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_95bb2572",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-22T09:50:11Z",
+      "side": 1,
+      "message": "u64 please",
+      "range": {
+        "startLine": 254,
+        "startChar": 6,
+        "endLine": 254,
+        "endChar": 14
+      },
+      "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_d5c19de5",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-22T09:50:11Z",
+      "side": 1,
+      "message": "please create VNET_DPDK_DEV_HQOS",
+      "range": {
+        "startLine": 433,
+        "startChar": 39,
+        "endLine": 433,
+        "endChar": 56
+      },
+      "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_b5b62989",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 435,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-22T09:50:11Z",
+      "side": 1,
+      "message": "please take care for trailing whitespace",
+      "range": {
+        "startLine": 435,
+        "startChar": 46,
+        "endLine": 435,
+        "endChar": 47
+      },
+      "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_757771d5",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-22T09:50:11Z",
+      "side": 1,
+      "message": "Maybe move all hqos related code to hqos.c...",
+      "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_d54f5d91",
+        "filename": "vnet/vnet/devices/dpdk/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-22T09:50:11Z",
+      "side": 1,
+      "message": "Please rename file to hqos.c",
+      "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_75dd3170",
         "filename": "vnet/vnet/devices/dpdk/threads.c",
         "patchSetId": 1
@@ -18,6 +190,29 @@
         "startChar": 3,
         "endLine": 2,
         "endChar": 50
+      },
+      "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_f54a6182",
+        "filename": "vnet/vnet/devices/dpdk/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-22T09:50:11Z",
+      "side": 1,
+      "message": "hqos",
+      "range": {
+        "startLine": 247,
+        "startChar": 11,
+        "endLine": 247,
+        "endChar": 15
       },
       "revId": "b0048c6437f4688c3b73bf6a2b3307238eaf9490",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
