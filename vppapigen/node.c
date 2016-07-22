@@ -172,7 +172,7 @@ void node_u8_generate (node_t *this, enum passid which, FILE *ofp)
 node_vft_t node_u8_vft = {
     node_u8_print,
     node_u8_generate,
-    ""
+    NULL
 };
 
 void node_u16_print (node_t *this)
@@ -527,7 +527,7 @@ void node_scalar_generate (node_t *this, enum passid which, FILE *fp)
                         CDATA0, current_endianfun, 
                         union_prefix, CDATA0);
             } else {
-                fprintf(fp, "/* a->%s%s = a->%s%s */\n",
+                fprintf(fp, "/* a->%s%s = a->%s%s (no-op) */\n",
                         union_prefix, CDATA0, 
                         union_prefix, CDATA0);
             }
@@ -611,6 +611,16 @@ void node_vector_generate (node_t *this, enum passid which, FILE *fp)
         /* Don't bother about "u8 data [0];" et al. */
         if (IDATA1 == 0)
             break;
+        /* If this is a simple endian swap, but the endian swap method is a no-op,
+         * then indicate this is a no-op in a comment.
+         */
+	if (!current_is_complex && current_endianfun == NULL) {
+            indent_me(fp);
+            fprintf(fp, "/* a->%s%s[0..%d] = a->%s%s[0..%d] (no-op) */\n",
+                    union_prefix, CDATA0, IDATA1 - 1,
+                    union_prefix, CDATA0, IDATA1 - 1);
+            break;
+        }
 
         indent_me(fp);
         fprintf(fp, "{\n");
