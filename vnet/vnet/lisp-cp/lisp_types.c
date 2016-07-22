@@ -146,8 +146,32 @@ uword
 unformat_ip_prefix (unformat_input_t * input, va_list * args)
 {
   ip_prefix_t * a = va_arg(*args, ip_prefix_t *);
-  return unformat (input, "%U/%d", unformat_ip_address, &ip_prefix_addr(a),
-                   &ip_prefix_len(a));
+  if (unformat (input, "%U/%d", unformat_ip_address, &ip_prefix_addr(a),
+                   &ip_prefix_len(a)))
+    {
+      if ((ip_prefix_version(a) == IP4 && 32 < ip_prefix_len(a)) ||
+          (ip_prefix_version(a) == IP6 && 128 < ip_prefix_length(a)))
+        {
+          clib_warning("Prefix length to big: %d!", ip_prefix_len(a));
+          /* unformat don`t return an error, but still continue,
+          so set max prefix it`s look better solution to me*/
+          /* return 0; */
+          switch (ip_prefix_version(a))
+            {
+            case IP4:
+              ip_prefix_len(a) = 32;
+              break;
+            case IP6:
+              ip_prefix_len(a) = 128;
+            default:
+              ASSERT(0);
+            }
+        }
+      ip_prefix_mask(a);
+    }
+  else
+      return 0;
+  return 1;
 }
 
 uword
@@ -511,6 +535,57 @@ ip_address_set(ip_address_t * dst, void * src, u8 version)
   ip_addr_version(dst) = version;
 }
 
+void
+ip_prefix_mask(ip_prefix_t * a)
+{
+  ip_address_t * ip;
+  ip4_address_t * ip4;
+  ip6_address_t * ip6;
+  int prefix = a->len;
+  u32 mask = ~0;
+  u64 mask_6[2];
+  u32 * m;
+  u32 j, i0, i1;
+
+  ip = &ip_prefix_addr (a);
+  switch (ip_addr_version (ip))
+  {
+    case IP4:
+      ip4 = &ip_addr_v4 (ip);
+      if (32 > prefix)
+        {
+          mask = pow2_mask (prefix) << (32 - prefix);
+        }
+      mask = clib_host_to_net_u32 (mask);
+      ip4->data_u32 &= mask;
+      break;
+
+    case IP6:
+      ip6 = &ip_addr_v6 (ip);
+      memset(mask_6, 0, sizeof(mask_6));
+      m = (u32 * ) &mask_6[0];
+
+      i0 = prefix / 32;
+      i1 = prefix % 32;
+      for (j = 0; j < i0; j++)
+        {
+          m[j] = ~0;
+        }
+
+      if (i1)
+        {
+          m[i0] = clib_host_to_net_u32 (pow2_mask(i1) << (32 - i1));
+        }
+
+      ip6->as_u64[0] &= mask_6[0];
+      ip6->as_u64[1] &= mask_6[1];
+      break;
+
+    default:
+      ASSERT(0);
+  }
+}
+
 void *
 ip_prefix_cast (gid_address_t * a)
 {
@@ -564,7 +639,14 @@ int
 ip_prefix_cmp(ip_prefix_t * p1, ip_prefix_t * p2)
 {
   int cmp = 0;
-  cmp = ip_address_cmp (&ip_prefix_addr(p1), &ip_prefix_addr(p2));
+  ip_prefix_t tmp_p1, tmp_p2;
+
+  ip_prefix_copy(&tmp_p1, p1);
+  ip_prefix_mask(&tmp_p1);
+  ip_prefix_copy(&tmp_p2, p2);
+  ip_prefix_mask(&tmp_p2);
+
+  cmp = ip_address_cmp (&ip_prefix_addr(&tmp_p1), &ip_prefix_addr(&tmp_p2));
   if (cmp == 0)
   {
     if (ip_prefix_len(p1) < ip_prefix_len(p2))

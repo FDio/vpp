@@ -11036,13 +11036,13 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
     ip6_address_t seid6, deid6, rloc6;
     u8 deid_mac[6] = {0};
     u8 seid_mac[6] = {0};
-    u8 deid_type, seid_type;
-    u32 seid_len = 0, deid_len = 0, len;
+    u8 deid_type;
+    u32 deid_len = 0, len;
     u8 is_add = 1, del_all = 0;
     u32 action = ~0, p, w;
     rloc_t * rlocs = 0, rloc, * curr_rloc = 0;
 
-    seid_type = deid_type =  (u8)~0;
+    deid_type = (u8)~0;
 
     /* Parse args required to build the message */
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
@@ -11055,25 +11055,31 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
         } else if (unformat(input, "deid %U/%d", unformat_ip4_address,
                             &deid4, &len)) {
             deid_type = 0; /* ipv4 */
+            if (32 < len) {
+              clib_warning ("Deid prefix length to big, %d!", len);
+              return -99;
+            }
             deid_len = len;
         } else if (unformat(input, "deid %U/%d", unformat_ip6_address,
                             &deid6, &len)) {
             deid_type = 1; /* ipv6 */
+            if (128 < len) {
+              clib_warning ("Deid prefix length to big, %d!", len);
+              return -99;
+            }
             deid_len = len;
         } else if (unformat(input, "deid %U", unformat_ethernet_address,
                             deid_mac)) {
             deid_type = 2; /* mac */
+            //TODO: Need remove, but first must be remove from CSIT test
         } else if (unformat(input, "seid %U/%d", unformat_ip4_address,
                             &seid4, &len)) {
-            seid_type = 0; /* ipv4 */
-            seid_len = len;
         } else if (unformat(input, "seid %U/%d", unformat_ip6_address,
                             &seid6, &len)) {
-            seid_type = 1; /* ipv6 */
-            seid_len = len;
+          ;
         } else if (unformat(input, "seid %U", unformat_ethernet_address,
                             seid_mac)) {
-            seid_type = 2; /* mac */
+          ;
         } else if (unformat(input, "vni %d", &vni)) {
             ;
         } else if (unformat(input, "p %d w %d", &p, &w)) {
@@ -11106,11 +11112,6 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
         return -99;
     }
 
-    if (seid_type != deid_type) {
-        errmsg ("source and destination EIDs are of different types!");
-        return -99;
-    }
-
     if (is_add && (~0 == action)
         && 0 == vec_len (rlocs)) {
           errmsg ("no action set for negative map-reply!");
@@ -11120,7 +11121,6 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
     M(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping);
     mp->is_add = is_add;
     mp->vni = htonl (vni);
-    mp->seid_len = seid_len;
     mp->action = (u8) action;
     mp->deid_len = deid_len;
     mp->del_all = del_all;
@@ -11128,15 +11128,12 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
 
     switch (mp->eid_type) {
     case 0:
-        clib_memcpy (mp->seid, &seid4, sizeof (seid4));
         clib_memcpy (mp->deid, &deid4, sizeof (deid4));
         break;
     case 1:
-        clib_memcpy (mp->seid, &seid6, sizeof (seid6));
         clib_memcpy (mp->deid, &deid6, sizeof (deid6));
         break;
     case 2:
-        clib_memcpy (mp->seid, seid_mac, 6);
         clib_memcpy (mp->deid, deid_mac, 6);
         break;
     default:
@@ -12963,10 +12960,10 @@ _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
 _(lisp_gpe_enable_disable, "enable|disable")                            \
 _(lisp_enable_disable, "enable|disable")                                \
 _(lisp_gpe_add_del_iface, "up|down")                                    \
-_(lisp_add_del_remote_mapping, "add|del vni <vni> deid <dest-eid> seid" \
-                               " <src-eid> rloc <locator> p <prio> "    \
+_(lisp_add_del_remote_mapping, "add|del vni <vni> deid <dest-eid> "     \
+                               "rloc <locator> p <prio> "               \
                                "w <weight> [rloc <loc> ... ] "          \
-                               "action <action>")                       \
+                               "action <action> [del-all]")             \
 _(lisp_add_del_adjacency, "add|del vni <vni> deid <dest-eid> seid "     \
                           "<src-eid> rloc <locator> p <prio> w <weight>"\
                           "[rloc <loc> ... ] action <action>")          \

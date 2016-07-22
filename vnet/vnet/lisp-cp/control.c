@@ -795,7 +795,8 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
       vnet_lisp_add_del_locator_set (ls_args, 0);
 
       /* return old mapping index */
-      res_map_index[0] = mi;
+      if (res_map_index)
+        res_map_index[0] = mi;
     }
 
   /* success */
@@ -924,11 +925,10 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1, del_all = 0;
   locator_t rloc, * rlocs = 0, * curr_rloc = 0;
-  ip_prefix_t * deid_ippref, * seid_ippref;
-  gid_address_t seid, deid;
+  ip_prefix_t * deid_ippref;
+  gid_address_t deid;
   u8 * dmac = gid_address_mac (&deid);
-  u8 * smac = gid_address_mac (&seid);
-  u8 deid_set = 0, seid_set = 0;
+  u8 deid_set = 0;
   u8 * s = 0;
   u32 vni, action = ~0, p, w;
   int rv;
@@ -938,10 +938,8 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
     return 0;
 
   memset(&deid, 0, sizeof(deid));
-  memset(&seid, 0, sizeof(seid));
   memset(&rloc, 0, sizeof(rloc));
 
-  seid_ippref = &gid_address_ippref(&seid);
   deid_ippref = &gid_address_ippref(&deid);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
@@ -966,20 +964,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
         }
       else if (unformat (line_input, "vni %u", &vni))
         {
-          gid_address_vni (&seid) = vni;
           gid_address_vni (&deid) = vni;
-        }
-      else if (unformat (line_input, "seid %U",
-                         unformat_ip_prefix, seid_ippref))
-        {
-          gid_address_type (&seid) = GID_ADDR_IP_PREFIX;
-          seid_set = 1;
-        }
-      else if (unformat (line_input, "seid %U",
-                         unformat_mac_address, smac))
-        {
-          gid_address_type (&seid) = GID_ADDR_MAC;
-          seid_set = 1;
         }
       else if (unformat (line_input, "p %d w %d", &p, &w))
         {
@@ -1028,24 +1013,6 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
           goto done;
         }
 
-      if (GID_ADDR_IP_PREFIX == gid_address_type (&deid))
-        {
-          /* if seid not set, make sure the ip version is the same as that
-           * of the deid. This ensures the seid to be configured will be
-           * either 0/0 or ::/0 */
-          if (!seid_set)
-            ip_prefix_version(seid_ippref) = ip_prefix_version(deid_ippref);
-
-          if (is_add &&
-              (ip_prefix_version (deid_ippref)
-               != ip_prefix_version(seid_ippref)))
-            {
-              clib_warning ("source and destination EIDs are not"
-                            " in the same IP family!");
-              goto done;
-            }
-        }
-
       if (is_add && (~0 == action)
           && 0 == vec_len (rlocs))
         {
@@ -1059,6 +1026,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
       goto done;
     }
 
+   //FIXME: is this TODO still actual?
   /* TODO build src/dst with seid*/
 
   /* if it's a delete, clean forwarding */
@@ -1066,13 +1034,15 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
     {
       lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
       rv = lisp_add_del_adjacency (lcm, 0, &deid, /* is_add */ 0);
+      if (rv)
+        {
+          goto done;
+        }
     }
-  else
-    {
-      /* add as static remote mapping, i.e., not authoritative and infinite
-       * ttl */
-      rv = vnet_lisp_add_del_mapping (&deid, rlocs, action, 0, ~0, is_add, 0);
-    }
+
+  /* add as static remote mapping, i.e., not authoritative and infinite
+   * ttl */
+  rv = vnet_lisp_add_del_mapping (&deid, rlocs, action, 0, ~0, is_add, 0);
 
   if (rv)
     clib_warning("failed to %s remote mapping!", is_add ? "add" : "delete");
@@ -1087,8 +1057,8 @@ done:
 
 VLIB_CLI_COMMAND (lisp_add_del_remote_mapping_command) = {
     .path = "lisp remote-mapping",
-    .short_help = "lisp remote-mapping add|del [del-all] vni <vni>"
-     "deid <dest-eid> seid <src-eid> [action <no-action|natively-forward|"
+    .short_help = "lisp remote-mapping add|del [del-all] vni <vni> "
+     "deid <dest-eid> [action <no-action|natively-forward|"
      "send-map-request|drop>] rloc <dst-locator> [rloc <dst-locator> ... ]",
     .function = lisp_add_del_remote_mapping_command_fn,
 };

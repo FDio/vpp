@@ -5105,41 +5105,29 @@ vl_api_lisp_add_del_remote_mapping_t_handler (
     locator_t rloc, * rlocs = 0;
     vl_api_lisp_add_del_remote_mapping_reply_t * rmp;
     int rv = 0;
-    gid_address_t _seid, * seid = &_seid;
     gid_address_t _deid, * deid = &_deid;
-    ip_prefix_t * seid_pref = &gid_address_ippref(seid);
     ip_prefix_t * deid_pref = &gid_address_ippref(deid);
 
-    /* TODO remove seid from API */
-    memset (seid, 0, sizeof (seid[0]));
     memset (deid, 0, sizeof (deid[0]));
-    ip_address_t * seid_addr = &ip_prefix_addr(seid_pref);
     ip_address_t * deid_addr = &ip_prefix_addr(deid_pref);
-    ip_prefix_len(seid_pref) = mp->seid_len;
     ip_prefix_len(deid_pref) = mp->deid_len;
-    u8 * seid_mac = gid_address_mac (seid);
     u8 * deid_mac = gid_address_mac (deid);
-    gid_address_vni (seid) = ntohl (mp->vni);
     gid_address_vni (deid) = ntohl (mp->vni);
 
     switch (mp->eid_type)
       {
       case 0: /* ipv4 */
-        gid_address_type(seid) = GID_ADDR_IP_PREFIX;
         gid_address_type(deid) = GID_ADDR_IP_PREFIX;
-        ip_address_set (seid_addr, mp->seid, IP4);
         ip_address_set (deid_addr, mp->deid, IP4);
+        ip_prefix_mask(deid_pref);
         break;
       case 1: /* ipv6 */
-        gid_address_type(seid) = GID_ADDR_IP_PREFIX;
         gid_address_type(deid) = GID_ADDR_IP_PREFIX;
-        ip_address_set (seid_addr, mp->seid, IP6);
         ip_address_set (deid_addr, mp->deid, IP6);
+        ip_prefix_mask(deid_pref);
         break;
       case 2: /* l2 mac */
-        gid_address_type(seid) = GID_ADDR_MAC;
         gid_address_type(deid) = GID_ADDR_MAC;
-        clib_memcpy (seid_mac, mp->seid, 6);
         clib_memcpy (deid_mac, mp->deid, 6);
         break;
       default:
@@ -5164,23 +5152,20 @@ vl_api_lisp_add_del_remote_mapping_t_handler (
         gid_address_copy(&a->deid, deid);
         a->is_add = 0;
         rv = vnet_lisp_add_del_adjacency (a);
-    } else {
-        /* NOTE: for now this works as a static remote mapping, i.e.,
-         * not authoritative and ttl infinite. */
-        rv = vnet_lisp_add_del_mapping (deid, rlocs, mp->action, 0, ~0,
-                                        mp->is_add, 0);
-
-        /* TODO remove once CSIT switched to lisp_add_del_adjacency */
-        vnet_lisp_add_del_adjacency_args_t _a, * a = &_a;
-        gid_address_copy(&a->seid, seid);
-        gid_address_copy(&a->deid, deid);
-        a->is_add = 1;
-        vnet_lisp_add_del_adjacency (a);
+        if (rv) {
+          goto out;
+        }
     }
+
+    /* NOTE: for now this works as a static remote mapping, i.e.,
+     * not authoritative and ttl infinite. */
+    rv = vnet_lisp_add_del_mapping (deid, rlocs, mp->action, 0, ~0,
+                                    mp->is_add, 0);
 
     if (mp->del_all)
       vnet_lisp_clear_all_remote_adjacencies ();
 
+out:
     vec_free (rlocs);
 send_reply:
     REPLY_MACRO(VL_API_LISP_ADD_DEL_REMOTE_MAPPING_REPLY);
