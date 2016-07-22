@@ -56,7 +56,7 @@ int vnet_gre_add_del_tunnel
     if (p)
       return VNET_API_ERROR_INVALID_VALUE;
 
-    p = hash_get (im->fib_index_by_table_id, a->outer_table_id);
+    p = hash_get (im->fib_index_by_table_id, a->outer_fib_id);
     if (! p)
       return VNET_API_ERROR_NO_SUCH_FIB;
 
@@ -188,7 +188,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 
   memset (a, 0, sizeof (*a));
   a->is_add = is_add;
-  a->outer_table_id = outer_fib_id;
+  a->outer_fib_id = outer_fib_id;
   clib_memcpy(&a->src, &src, sizeof(src));
   clib_memcpy(&a->dst, &dst, sizeof(dst));
 

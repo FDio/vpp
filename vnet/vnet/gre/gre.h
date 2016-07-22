@@ -126,7 +126,7 @@ typedef struct {
   u8 is_add;
 
   ip4_address_t src, dst;
-  u32 outer_table_id;
+  u32 outer_fib_id;
 } vnet_gre_add_del_tunnel_args_t;
 
 int vnet_gre_add_del_tunnel
