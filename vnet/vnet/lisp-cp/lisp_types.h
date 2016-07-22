@@ -57,6 +57,8 @@ typedef CLIB_PACKED(struct ip_prefix
 #define ip_prefix_v4(_a) ip_addr_v4(&ip_prefix_addr(_a))
 #define ip_prefix_v6(_a) ip_addr_v6(&ip_prefix_addr(_a))
 
+void ip_prefix_normalize(ip_prefix_t * a);
+
 typedef enum
 {
   /* NOTE: ip addresses are left out on purpose. Use max masked ip-prefixes
