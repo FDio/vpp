@@ -6953,7 +6953,7 @@ static void vl_api_classify_table_ids_t_handler (vl_api_classify_table_ids_t *mp
     count = vec_len(table_ids);
 
     vl_api_classify_table_ids_reply_t *rmp;
-    rmp = vl_msg_api_alloc_as_if_client(sizeof (*rmp) + count);
+    rmp = vl_msg_api_alloc_as_if_client(sizeof (*rmp) + count * sizeof(u32));
     rmp->_vl_msg_id = ntohs (VL_API_CLASSIFY_TABLE_IDS_REPLY);
     rmp->context = mp->context;
     rmp->count = ntohl(count);
