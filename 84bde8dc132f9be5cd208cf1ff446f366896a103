@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_0b9016eb",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1506,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-07-25T15:56:10Z",
+      "side": 0,
+      "message": "Agree, after strcpy the addition of the lens appears wrong but....",
+      "range": {
+        "startLine": 1501,
+        "startChar": 0,
+        "endLine": 1506,
+        "endChar": 70
+      },
+      "revId": "84bde8dc132f9be5cd208cf1ff446f366896a103",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
