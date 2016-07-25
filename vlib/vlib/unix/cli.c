@@ -42,6 +42,7 @@
  * Provides a command line interface so humans can interact with VPP.
  * This is predominantly a debugging and testing mechanism.
  */
+/*? %%clicmd:group_label Debug CLI %% ?*/
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -146,9 +147,13 @@ typedef struct
      CLI process. */
   u8 *input_vector;
 
+  /** This session has command history. */
   u8 has_history;
+  /** Array of vectors of commands in the history. */
   u8 **command_history;
+  /** The command currently pointed at by the history cursor. */
   u8 *current_command;
+  /** How far from the end of the history array the user has browsed. */
   i32 excursion;
 
   /** Maximum number of history entries this session will store. */
@@ -157,7 +162,12 @@ typedef struct
   /** Current command line counter */
   u32 command_number;
 
+  /** The string being searched for in the history. */
   u8 *search_key;
+  /** If non-zero then the CLI is searching in the history array.
+   * - @c -1 means search backwards.
+   * - @c 1 means search forwards.
+   */
   int search_mode;
 
   /** Position of the insert cursor on the current input line */
@@ -232,41 +242,41 @@ unix_cli_file_free (unix_cli_file_t * f)
 /** CLI actions */
 typedef enum
 {
-  UNIX_CLI_PARSE_ACTION_NOACTION = 0,  /**< No action */
-  UNIX_CLI_PARSE_ACTION_CRLF,	       /**< Carriage return, newline or enter */
-  UNIX_CLI_PARSE_ACTION_TAB,	       /**< Tab key */
-  UNIX_CLI_PARSE_ACTION_ERASE,	       /**< Erase cursor left */
-  UNIX_CLI_PARSE_ACTION_ERASERIGHT,    /**< Erase cursor right */
-  UNIX_CLI_PARSE_ACTION_UP,	       /**< Up arrow */
-  UNIX_CLI_PARSE_ACTION_DOWN,	       /**< Down arrow */
-  UNIX_CLI_PARSE_ACTION_LEFT,
-  UNIX_CLI_PARSE_ACTION_RIGHT,
-  UNIX_CLI_PARSE_ACTION_HOME,
-  UNIX_CLI_PARSE_ACTION_END,
-  UNIX_CLI_PARSE_ACTION_WORDLEFT,
-  UNIX_CLI_PARSE_ACTION_WORDRIGHT,
-  UNIX_CLI_PARSE_ACTION_ERASELINELEFT,
-  UNIX_CLI_PARSE_ACTION_ERASELINERIGHT,
-  UNIX_CLI_PARSE_ACTION_CLEAR,
-  UNIX_CLI_PARSE_ACTION_REVSEARCH,
-  UNIX_CLI_PARSE_ACTION_FWDSEARCH,
-  UNIX_CLI_PARSE_ACTION_YANK,
-  UNIX_CLI_PARSE_ACTION_TELNETIAC,
+  UNIX_CLI_PARSE_ACTION_NOACTION = 0,	/**< No action */
+  UNIX_CLI_PARSE_ACTION_CRLF,		/**< Carriage return, newline or enter */
+  UNIX_CLI_PARSE_ACTION_TAB,		/**< Tab key */
+  UNIX_CLI_PARSE_ACTION_ERASE,		/**< Erase cursor left */
+  UNIX_CLI_PARSE_ACTION_ERASERIGHT,	/**< Erase cursor right */
+  UNIX_CLI_PARSE_ACTION_UP,		/**< Up arrow */
+  UNIX_CLI_PARSE_ACTION_DOWN,		/**< Down arrow */
+  UNIX_CLI_PARSE_ACTION_LEFT,		/**< Left arrow */
+  UNIX_CLI_PARSE_ACTION_RIGHT,		/**< Right arrow */
+  UNIX_CLI_PARSE_ACTION_HOME,		/**< Home key (jump to start of line) */
+  UNIX_CLI_PARSE_ACTION_END,		/**< End key (jump to end of line) */
+  UNIX_CLI_PARSE_ACTION_WORDLEFT,	/**< Jump cursor to start of left word */
+  UNIX_CLI_PARSE_ACTION_WORDRIGHT,	/**< Jump cursor to start of right word */
+  UNIX_CLI_PARSE_ACTION_ERASELINELEFT,	/**< Erase line to left of cursor */
+  UNIX_CLI_PARSE_ACTION_ERASELINERIGHT,	/**< Erase line to right & including cursor */
+  UNIX_CLI_PARSE_ACTION_CLEAR,		/**< Clear the terminal */
+  UNIX_CLI_PARSE_ACTION_REVSEARCH,	/**< Search backwards in command history */
+  UNIX_CLI_PARSE_ACTION_FWDSEARCH,	/**< Search forwards in command history */
+  UNIX_CLI_PARSE_ACTION_YANK,		/**< Undo last erase action */
+  UNIX_CLI_PARSE_ACTION_TELNETIAC,	/**< Telnet control code */
 
-  UNIX_CLI_PARSE_ACTION_PAGER_CRLF,
-  UNIX_CLI_PARSE_ACTION_PAGER_QUIT,
-  UNIX_CLI_PARSE_ACTION_PAGER_NEXT,
-  UNIX_CLI_PARSE_ACTION_PAGER_DN,
-  UNIX_CLI_PARSE_ACTION_PAGER_UP,
-  UNIX_CLI_PARSE_ACTION_PAGER_TOP,
-  UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM,
-  UNIX_CLI_PARSE_ACTION_PAGER_PGDN,
-  UNIX_CLI_PARSE_ACTION_PAGER_PGUP,
-  UNIX_CLI_PARSE_ACTION_PAGER_REDRAW,
-  UNIX_CLI_PARSE_ACTION_PAGER_SEARCH,
+  UNIX_CLI_PARSE_ACTION_PAGER_CRLF,	/**< Enter pressed (CR, CRLF, LF, etc) */
+  UNIX_CLI_PARSE_ACTION_PAGER_QUIT,	/**< Exit the pager session */
+  UNIX_CLI_PARSE_ACTION_PAGER_NEXT,	/**< Scroll to next page */
+  UNIX_CLI_PARSE_ACTION_PAGER_DN,	/**< Scroll to next line */
+  UNIX_CLI_PARSE_ACTION_PAGER_UP,	/**< Scroll to previous line */
+  UNIX_CLI_PARSE_ACTION_PAGER_TOP,	/**< Scroll to first line */
+  UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM,	/**< Scroll to last line */
+  UNIX_CLI_PARSE_ACTION_PAGER_PGDN,	/**< Scroll to next page */
+  UNIX_CLI_PARSE_ACTION_PAGER_PGUP,	/**< Scroll to previous page */
+  UNIX_CLI_PARSE_ACTION_PAGER_REDRAW,	/**< Clear and redraw the page on the terminal */
+  UNIX_CLI_PARSE_ACTION_PAGER_SEARCH,	/**< Search the pager buffer */
 
-  UNIX_CLI_PARSE_ACTION_PARTIALMATCH,
-  UNIX_CLI_PARSE_ACTION_NOMATCH
+  UNIX_CLI_PARSE_ACTION_PARTIALMATCH,	/**< Action parser found a partial match */
+  UNIX_CLI_PARSE_ACTION_NOMATCH		/**< Action parser did not find any match */
 } unix_cli_parse_action_t;
 
 /** @brief Mapping of input buffer strings to action values.
@@ -485,6 +495,9 @@ unix_cli_match_action (unix_cli_parse_actions_t * a,
 }
 
 
+/** Add bytes to the output vector and then flagg the I/O system that bytes
+ * are available to be sent.
+ */
 static void
 unix_cli_add_pending_output (unix_file_t * uf,
 			     unix_cli_file_t * cf,
@@ -502,6 +515,9 @@ unix_cli_add_pending_output (unix_file_t * uf,
     }
 }
 
+/** Delete all bytes from the output vector and flag the I/O system
+ * that no more bytes are available to be sent.
+ */
 static void
 unix_cli_del_pending_output (unix_file_t * uf,
 			     unix_cli_file_t * cf, uword n_bytes)
@@ -983,13 +999,13 @@ unix_vlib_cli_output (uword cli_file_index, u8 * buffer, uword buffer_bytes)
 
 /** Identify whether a terminal type is ANSI capable.
  *
- * Compares the string given in @term with a list of terminal types known
+ * Compares the string given in @c term with a list of terminal types known
  * to support ANSI escape sequences.
  *
  * This list contains, for example, @c xterm, @c screen and @c ansi.
  *
  * @param term A string with a terminal type in it.
- * @param len The length of the string in @term.
+ * @param len The length of the string in @c term.
  *
  * @return @c 1 if the terminal type is recognized as supporting ANSI
  *         terminal sequences; @c 0 otherwise.
@@ -2059,6 +2075,10 @@ done:
     goto more;
 }
 
+/** Destroy a CLI session.
+ * @note If we destroy the @c stdin session this additionally signals
+ *       the shutdown of VPP.
+ */
 static void
 unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
 {
@@ -2088,6 +2108,7 @@ unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
   pool_put (cm->cli_file_pool, cf);
 }
 
+/** Handle system events. */
 static uword
 unix_cli_process (vlib_main_t * vm,
 		  vlib_node_runtime_t * rt, vlib_frame_t * f)
@@ -2130,6 +2151,8 @@ done:
   return 0;
 }
 
+/** Called when a CLI session file descriptor can be written to without
+ * blocking. */
 static clib_error_t *
 unix_cli_write_ready (unix_file_t * uf)
 {
@@ -2152,6 +2175,7 @@ unix_cli_write_ready (unix_file_t * uf)
   return /* no error */ 0;
 }
 
+/** Called when a CLI session file descriptor has data to be read. */
 static clib_error_t *
 unix_cli_read_ready (unix_file_t * uf)
 {
@@ -2482,8 +2506,8 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (unix_cli_config, "unix-cli");
 
-/** Called when VPP is shutting down, this resets the system
- * terminal state, if previously saved.
+/** Called when VPP is shutting down, this restores the system
+ * terminal state if previously saved.
  */
 static clib_error_t *
 unix_cli_exit (vlib_main_t * vm)
@@ -2500,7 +2524,7 @@ unix_cli_exit (vlib_main_t * vm)
 VLIB_MAIN_LOOP_EXIT_FUNCTION (unix_cli_exit);
 
 /** Set the CLI prompt.
- * @param The C string to set the prompt to.
+ * @param prompt The C string to set the prompt to.
  * @note This setting is global; it impacts all current
  *       and future CLI sessions.
  */
@@ -2531,6 +2555,12 @@ unix_cli_quit (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Terminates the current CLI session.
+ *
+ * If VPP is running in @em interactive mode and this is the console session
+ * (that is, the session on @c stdin) then this will also terminate VPP.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (unix_cli_quit_command, static) = {
   .path = "quit",
@@ -2597,6 +2627,13 @@ done:
   return error;
 }
 
+/*?
+ * Executes a sequence of CLI commands which are read from a file.
+ *
+ * If a command is unrecognised or otherwise invalid then the usual CLI
+ * feedback will be generated, however execution of subsequent commands
+ * from the file will continue.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_exec, static) = {
   .path = "exec",
@@ -2706,6 +2743,9 @@ unix_cli_show_history (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Displays the command history for the current session, if any.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_show_history, static) = {
   .path = "history",
@@ -2755,6 +2795,24 @@ unix_cli_show_terminal (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Displays various information about the state of the current terminal
+ * session.
+ *
+ * @cliexpar
+ * @cliexstart{show terminal}
+ * Terminal name:   unix-cli-stdin
+ * Terminal mode:   char-by-char
+ * Terminal width:  123
+ * Terminal height: 48
+ * ANSI capable:    yes
+ * History enabled: yes
+ * History limit:   50
+ * Pager enabled:   yes
+ * Pager limit:     100000
+ * CRLF mode:       LF
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_show_terminal, static) = {
   .path = "show terminal",
@@ -2799,6 +2857,13 @@ unix_cli_set_terminal_pager (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Enables or disables the terminal pager for this session. Generally
+ * this defaults to enabled.
+ *
+ * Additionally allows the pager buffer size to be set; though note that
+ * this value is set globally and not per session.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_pager, static) = {
   .path = "set terminal pager",
@@ -2850,6 +2915,13 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Enables or disables the command history function of the current
+ * terminal. Generally this defaults to enabled.
+ *
+ * This command also allows the maximum size of the history buffer for
+ * this session to be altered.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_history, static) = {
   .path = "set terminal history",
@@ -2880,6 +2952,14 @@ unix_cli_set_terminal_ansi (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Enables or disables the use of ANSI control sequences by this terminal.
+ * The default will vary based on terminal detection at the start of the
+ * session.
+ *
+ * ANSI control sequences are used in a small number of places to provide,
+ * for example, color text output and to control the cursor in the pager.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_ansi, static) = {
   .path = "set terminal ansi",

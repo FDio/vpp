@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
  * Copyright (c) 2016 Comcast Cable Communications Management, LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /* Doxygen directory documentation */
+
 /**
 @dir
-@brief VLIB application library source.
+@brief VLIB Unix interface
+
+VLIB application library Unix interface layer.
+
 */
-/*? %%clicmd:group_label VLIB application library%% ?*/
+/*? %%clicmd:group_label VLIB Unix stuff%% ?*/
 
