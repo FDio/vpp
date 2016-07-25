@@ -1487,8 +1487,8 @@ int vhost_user_delete_if(vnet_main_t * vnm, vlib_main_t * vm,
 // init server socket on specified sock_filename
 static int vhost_user_init_server_sock(const char * sock_filename, int *sockfd)
 {
-  int rv = 0, len;
-  struct sockaddr_un un;
+  int rv = 0;
+  struct sockaddr_un un = {};
   int fd;
   /* create listening socket */
   fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -1503,9 +1503,7 @@ static int vhost_user_init_server_sock(const char * sock_filename, int *sockfd)
   /* remove if exists */
   unlink( (char *) sock_filename);
 
-  len = strlen((char *) un.sun_path) + strlen((char *) sock_filename);
-
-  if (bind(fd, (struct sockaddr *) &un, len) == -1) {
+  if (bind(fd, (struct sockaddr *) &un, sizeof(un)) == -1) {
     rv = VNET_API_ERROR_SYSCALL_ERROR_2;
     goto error;
   }
@@ -1778,9 +1776,13 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 
   vnet_main_t *vnm = vnet_get_main();
 
-  vhost_user_create_if(vnm, vm, (char *)sock_filename,
+  int rv;
+  if ((rv = vhost_user_create_if(vnm, vm, (char *)sock_filename,
                        is_server, &sw_if_index, feature_mask,
-                       renumber, custom_dev_instance, hw);
+                       renumber, custom_dev_instance, hw))) {
+      vec_free(sock_filename);
+      return clib_error_return (0, "vhost_user_create_if returned %d", rv);
+  }
 
   vec_free(sock_filename);
   vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
