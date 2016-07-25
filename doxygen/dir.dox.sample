@@ -18,7 +18,7 @@
 
 /**
 @dir
-@brief Someone please fix this description
+@brief Someone please fix this description.
 @todo This directory needs a description.
 
 This is where you would document the contents of a directory.
@@ -26,3 +26,4 @@ This is where you would document the contents of a directory.
 This looks like a C file but it is not part of the build; it is purely
 for documentation.
 */
+/*? %%clicmd:group_label CLI section description%% ?*/

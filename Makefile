@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-WS_ROOT=$(CURDIR)
-BR=$(WS_ROOT)/build-root
+export WS_ROOT=$(CURDIR)
+export BR=$(WS_ROOT)/build-root
 CCACHE_DIR?=$(BR)/.ccache
 GDB?=gdb
 PLATFORM?=vpp
@@ -30,7 +30,7 @@ OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
-DEB_DEPENDS += doxygen graphviz python-dev
+DEB_DEPENDS += python-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 else
@@ -40,7 +40,7 @@ endif
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
-RPM_DEPENDS += doxygen graphviz python-devel
+RPM_DEPENDS += python-devel
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
@@ -81,6 +81,7 @@ help:
 	@echo " gtags               - (re)generate gtags database"
 	@echo " cscope              - (re)generate cscope database"
 	@echo " doxygen             - (re)generate documentation"
+	@echo " bootstrap-doxygen   - setup Doxygen dependencies"
 	@echo " wipe-doxygen        - wipe all generated documentation"
 	@echo ""
 	@echo "Make Arguments:"
@@ -237,24 +238,16 @@ cscope: cscope.files
 # Build the documentation
 #
 
-DOXY_INPUT ?= \
-	README.md \
-	vppinfra \
-	svm \
-	vlib \
-	vlib-api \
-	vnet \
-	vpp \
-	vpp-api
+# Doxygen configuration and our utility scripts
+DOXY_DIR ?= $(WS_ROOT)/doxygen
+export DOXY_DIR
+
+bootstrap-doxygen:
+	@make -C $(DOXY_DIR) -e $@
 
 doxygen:
-	@mkdir -p "$(BR)/docs"
-	ROOT="$(WS_ROOT)" \
-	     BUILD_ROOT="$(BR)" \
-	     INPUT="$(addprefix $(WS_ROOT)/,$(DOXY_INPUT))" \
-	     HTML=YES \
-	     VERSION="`git describe --tags --dirty`" \
-	     doxygen doxygen/doxygen.cfg
+	@make -C $(DOXY_DIR) -e $@
 
 wipe-doxygen:
-	rm -rf "$(BR)/docs"
+	@make -C $(DOXY_DIR) -e $@
+
