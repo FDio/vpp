@@ -2756,6 +2756,15 @@ unix_cli_show_terminal (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
+/*?
+  Some stuff in _Doxy-markdown_ format.
+
+  This command shows the current session terminal settings.
+
+  @note This is a note
+
+  @todo Need to turn this into real doc before merging it!
+?*/
 VLIB_CLI_COMMAND (cli_unix_cli_show_terminal, static) = {
   .path = "show terminal",
   .short_help = "Show current session terminal settings",
