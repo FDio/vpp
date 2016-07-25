@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_08f93c4d",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1010,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-07-25T08:10:38Z",
+      "side": 1,
+      "message": "Only this \"deid\" survived :-)",
+      "range": {
+        "startLine": 1010,
+        "startChar": 29,
+        "endLine": 1010,
+        "endChar": 30
+      },
+      "revId": "77ae0326860c6bb74f9fc4996c8c3632226422f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
