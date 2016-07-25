@@ -30,7 +30,7 @@ OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
-DEB_DEPENDS += doxygen graphviz
+DEB_DEPENDS += doxygen graphviz python-pyparsing
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 else
@@ -40,7 +40,7 @@ endif
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
-RPM_DEPENDS += doxygen graphviz
+RPM_DEPENDS += doxygen graphviz pyparsing
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
@@ -233,6 +233,10 @@ cscope: cscope.files
 # Build the documentation
 #
 
+# Doxygen configuration and our utility scripts
+DOXY_DIR ?= $(WS_ROOT)/doxygen
+
+# Input directories and files
 DOXY_INPUT ?= \
 	README.md \
 	vppinfra \
@@ -243,14 +247,51 @@ DOXY_INPUT ?= \
 	vpp \
 	vpp-api
 
-doxygen:
-	@mkdir -p "$(BR)/docs"
+# Target directory for doxygen output
+DOXY_OUTPUT ?= $(BR)/docs
+
+# Siphoned fragments end up in here
+SIPHON_INPUT ?= $(DOXY_OUTPUT)/siphons
+# Siphoned fragements are processed into here
+SIPHON_OUTPUT ?= $(DOXY_OUTPUT)/siphon_docs
+
+# Extra document inputs that are processed in addition to DOXY_INPUT
+EXTRA_DOXY_INPUT ?= $(SIPHON_OUTPUT)
+
+# All the siphon types we know about
+SIPHONS ?= clicmd
+
+SIPHON_FILES = $(addprefix $(SIPHON_INPUT)/,$(addsuffix .siphon,$(SIPHONS)))
+SIPHON_DOCS = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .md,$(SIPHONS)))
+
+.NOTPARALLEL: $(SIPHON_FILES)
+$(SIPHON_FILES): $(DOXY_DIR)/siphon_generate.py
+	@rm -rf "$(SIPHON_INPUT)" "$(SIPHON_OUTPUT)"
+	@mkdir -p "$(SIPHON_INPUT)" "$(SIPHON_OUTPUT)"
+	for input in $(DOXY_INPUT); do \
+		find "$$input" -type f -name '*.[ch]' -print0 | \
+			xargs -0r $(DOXY_DIR)/siphon_generate.py \
+				--output="$(SIPHON_INPUT)"; \
+	done
+
+.DELETE_ON_ERROR: $(SIPHON_DOCS)
+$(SIPHON_OUTPUT)/%.md: $(SIPHON_INPUT)/%.siphon $(DOXY_DIR)/siphon_process.py
+	$(DOXY_DIR)/siphon_process.py --type=$(basename $(notdir $<)) \
+		--output="$(SIPHON_OUTPUT)" $< > $@
+
+# This target can be used just to generate the siphoned docs
+.PHONY: doxygen-siphon
+doxygen-siphon: $(SIPHON_DOCS)
+
+# Generate the doxygen docs
+doxygen: $(SIPHON_DOCS)
+	@mkdir -p "$(DOXY_OUTPUT)"
 	ROOT="$(WS_ROOT)" \
 	     BUILD_ROOT="$(BR)" \
-	     INPUT="$(addprefix $(WS_ROOT)/,$(DOXY_INPUT))" \
+	     INPUT="$(addprefix $(WS_ROOT)/,$(DOXY_INPUT)) $(EXTRA_DOXY_INPUT)" \
 	     HTML=YES \
 	     VERSION="`git describe --tags --dirty`" \
-	     doxygen doxygen/doxygen.cfg
+	     doxygen $(DOXY_DIR)/doxygen.cfg
 
 wipe-doxygen:
 	rm -rf "$(BR)/docs"

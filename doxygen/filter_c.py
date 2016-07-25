@@ -15,13 +15,13 @@
 
 # Filter for .c files to make various preprocessor tricks Doxygenish
 
-import sys, re
+import os, sys, re
 
 if len(sys.argv) < 2:
     sys.stderr.write("Usage: %s <filename>\n" % (sys.argv[0]))
     sys.exit(1)
 
-patterns = [
+replace_patterns = [
     # Search for VLIB_CLI_COMMAND, extract its parameter and add a docblock for it
     ( re.compile("(?P<m>VLIB_CLI_COMMAND)\s*[(](?P<name>[a-zA-Z0-9_]+)(,[^)]*)?[)]"), r"/** @brief (@em constructor) \g<m> (\g<name>) */ vlib_cli_command_t \g<name>"),
 
@@ -44,9 +44,25 @@ patterns = [
     ( re.compile("(?P<pre>(^|,)\s*)(?P<name>(un)?format_[a-zA-Z0-9_]+)(?P<post>\s*(,|$))") , r"\g<pre>\g<name>()\g<post>" ),
 ]
 
-with open(sys.argv[1]) as fd:
+
+filename = sys.argv[1]
+cwd = os.getcwd()
+if filename[0:len(cwd)] == cwd:
+    filename = filename[len(cwd):]
+    if filename[0] == "/":
+        filename = filename[1:]
+
+with open(filename) as fd:
+    line_num = 0
+
     for line in fd:
+        line_num += 1
         str = line[:-1] # filter \n
-        for p in patterns:
+
+        # Look for search/replace patterns
+        for p in replace_patterns:
             str = p[0].sub(p[1], str)
+
         sys.stdout.write(str+"\n")
+
+# All done
