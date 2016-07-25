@@ -30,7 +30,7 @@ OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
-DEB_DEPENDS += doxygen graphviz python-dev
+DEB_DEPENDS += python-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 else
@@ -40,7 +40,7 @@ endif
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
-RPM_DEPENDS += doxygen graphviz python-devel
+RPM_DEPENDS += python-devel
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
@@ -54,7 +54,7 @@ endif
 
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
-.PHONY: ctags cscope doxygen wipe-doxygen plugins plugins-release build-vpp-api
+.PHONY: ctags cscope plugins plugins-release build-vpp-api
 
 help:
 	@echo "Make Targets:"
@@ -81,6 +81,7 @@ help:
 	@echo " gtags               - (re)generate gtags database"
 	@echo " cscope              - (re)generate cscope database"
 	@echo " doxygen             - (re)generate documentation"
+	@echo " bootstrap-doxygen   - setup Doxygen dependencies"
 	@echo " wipe-doxygen        - wipe all generated documentation"
 	@echo ""
 	@echo "Make Arguments:"
@@ -237,24 +238,21 @@ cscope: cscope.files
 # Build the documentation
 #
 
-DOXY_INPUT ?= \
-	README.md \
-	vppinfra \
-	svm \
-	vlib \
-	vlib-api \
-	vnet \
-	vpp \
-	vpp-api
+# Doxygen configuration and our utility scripts
+export DOXY_DIR ?= $(WS_ROOT)/doxygen
+
+define make-doxy
+	@WS_ROOT="$(WS_ROOT)" BR="$(BR)" make -C $(DOXY_DIR) $@
+endef
+
+.PHONY: bootstrap-doxygen doxygen wipe-doxygen
+
+bootstrap-doxygen:
+	$(call make-doxy)
 
 doxygen:
-	@mkdir -p "$(BR)/docs"
-	ROOT="$(WS_ROOT)" \
-	     BUILD_ROOT="$(BR)" \
-	     INPUT="$(addprefix $(WS_ROOT)/,$(DOXY_INPUT))" \
-	     HTML=YES \
-	     VERSION="`git describe --tags --dirty`" \
-	     doxygen doxygen/doxygen.cfg
+	$(call make-doxy)
 
 wipe-doxygen:
-	rm -rf "$(BR)/docs"
+	$(call make-doxy)
+
