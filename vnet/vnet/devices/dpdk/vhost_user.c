@@ -1353,8 +1353,8 @@ static clib_error_t * dpdk_vhost_user_socksvr_accept_ready (unix_file_t * uf)
 // init server socket on specified sock_filename
 static int dpdk_vhost_user_init_server_sock(const char * sock_filename, int *sockfd)
 {
-  int rv = 0, len;
-  struct sockaddr_un un;
+  int rv = 0;
+  struct sockaddr_un un = {};
   int fd;
   /* create listening socket */
   fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -1369,9 +1369,7 @@ static int dpdk_vhost_user_init_server_sock(const char * sock_filename, int *soc
   /* remove if exists */
   unlink( (char *) sock_filename);
 
-  len = strlen((char *) un.sun_path) + strlen((char *) sock_filename);
-
-  if (bind(fd, (struct sockaddr *) &un, len) == -1) {
+  if (bind(fd, (struct sockaddr *) &un, sizeof(un)) == -1) {
     rv = VNET_API_ERROR_SYSCALL_ERROR_2;
     goto error;
   }
