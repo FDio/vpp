@@ -455,8 +455,11 @@ ip4_add_del_route_next_hop (ip4_main_t * im,
 
       ip4_add_del_route (im, &a);
 
-      /* adjust share count. This cannot be the only use of the adjacency */
-      nh_adj->share_count += is_del ? -1 : 1;
+      /* adjust share count. This cannot be the only use of the adjacency 
+         unless next hop is an indiect adj where share count is already
+         incremented */
+      if (next_hop_sw_if_index != ~0) 
+	nh_adj->share_count += is_del ? -1 : 1;
         
       goto done;
     }
