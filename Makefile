@@ -233,7 +233,7 @@ cscope: cscope.files
 # Build the documentation
 #
 
-DOXY_INPUT = \
+DOXY_INPUT ?= \
 	README.md \
 	vppinfra \
 	svm \
