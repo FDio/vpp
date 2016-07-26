@@ -35,7 +35,7 @@ import org.openvpp.jvpp.callback.JVppCallback;
  */
 public final class VppJNIConnection implements VppConnection {
     private final static Logger LOG = Logger.getLogger(VppJNIConnection.class.getName());
-    private static final String LIBNAME = "libjvpp.so.0.0.0";
+    private static final String LIBNAME = "libjvpp_registry.so.0.0.0";
 
     static {
         try {
@@ -45,6 +45,8 @@ public final class VppJNIConnection implements VppConnection {
             throw new ExceptionInInitializerError(e);
         }
     }
+
+    private ConnectionInfo connectionInfo;
 
     private static void loadStream(final InputStream is) throws IOException {
         final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxr-x---");
@@ -104,14 +106,23 @@ public final class VppJNIConnection implements VppConnection {
      * @throws IOException in case the connection could not be established
      */
     public void connect(final JVppCallback callback) throws IOException {
+        _connect(callback);
+    }
+
+    @Override
+    public void connect(final JVppRegistry callback) throws IOException {
+        _connect(callback);
+    }
+
+    private void _connect(final Object callback) throws IOException {
         synchronized (VppJNIConnection.class) {
             if(connections.containsKey(clientName)) {
                 throw new IOException("Client " + clientName + " already connected");
             }
 
-            final int ret = clientConnect(clientName, callback);
-            if (ret != 0) {
-                throw new IOException("Connection returned error " + ret);
+            connectionInfo = clientConnect(clientName, callback);
+            if (connectionInfo.status != 0) {
+                throw new IOException("Connection returned error " + connectionInfo.status);
             }
             connections.put(clientName, this);
         }
@@ -125,7 +136,7 @@ public final class VppJNIConnection implements VppConnection {
     }
 
     @Override
-    public synchronized final void close() {
+    public final synchronized void close() {
         if (!disconnected) {
             disconnected = true;
             try {
@@ -138,6 +149,23 @@ public final class VppJNIConnection implements VppConnection {
         }
     }
 
-    private static native int clientConnect(String clientName, JVppCallback callback);
+    public ConnectionInfo getConnectionInfo() {
+        return connectionInfo;
+    }
+
+    public static final class ConnectionInfo {
+        public long queueAddress;
+        public int clientIndex;
+        public int status; // FIXME throw exception instead
+
+        public ConnectionInfo(long queueAddress, int clientIndex, int status) {
+            this.queueAddress = queueAddress;
+            this.clientIndex = clientIndex;
+            this.status = status;
+        }
+    }
+
+    private static native ConnectionInfo clientConnect(String clientName, Object callback);
     private static native void clientDisconnect();
+
 }

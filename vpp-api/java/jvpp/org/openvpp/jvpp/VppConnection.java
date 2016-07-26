@@ -17,6 +17,7 @@
 package org.openvpp.jvpp;
 
 import java.io.IOException;
+import org.openvpp.jvpp.callback.JVppCallback;
 
 /**
  * Representation of a management connection to VPP.
@@ -31,7 +32,9 @@ public interface VppConnection extends AutoCloseable {
      *
      * @throws IOException if connection is not established
      */
-    void connect(final org.openvpp.jvpp.callback.JVppCallback callback) throws IOException;
+    void connect(final JVppCallback callback) throws IOException; // TODO remove
+
+    void connect(final JVppRegistry registry) throws IOException;
 
     /**
      * Check if this instance connection is active.
