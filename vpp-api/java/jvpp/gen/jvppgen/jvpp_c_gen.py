@@ -17,7 +17,7 @@
 import os, util
 from string import Template
 
-def is_manually_generated(f_name):
+def is_manually_generated(f_name, plugin_name):
     return f_name in {'control_ping_reply'}
 
 
@@ -25,7 +25,7 @@ class_reference_template = Template("""jclass ${ref_name}Class;
 """)
 
 find_class_invocation_template = Template("""
-    ${ref_name}Class = (jclass)(*env)->NewGlobalRef(env, (*env)->FindClass(env, "org/openvpp/jvpp/dto/${class_name}"));
+    ${ref_name}Class = (jclass)(*env)->NewGlobalRef(env, (*env)->FindClass(env, "org/openvpp/jvpp/${plugin_name}/dto/${class_name}"));
     if ((*env)->ExceptionCheck(env)) {
         (*env)->ExceptionDescribe(env);
         return JNI_ERR;
@@ -38,53 +38,71 @@ find_class_template = Template("""
         return JNI_ERR;
     }""")
 
+delete_class_invocation_template = Template("""
+    if (${ref_name}Class) {
+        (*env)->DeleteGlobalRef(env, ${ref_name}Class);
+    }""")
+
 class_cache_template = Template("""
 $class_references
 static int cache_class_references(JNIEnv* env) {
     $find_class_invocations
     return 0;
+}
+
+static void delete_class_references(JNIEnv* env) {
+    $delete_class_invocations
 }""")
 
-def generate_class_cache(func_list):
+def generate_class_cache(func_list, plugin_name):
     class_references = []
     find_class_invocations = []
+    delete_class_invocations = []
     for f in func_list:
         c_name = f['name']
         class_name = util.underscore_to_camelcase_upper(c_name)
         ref_name = util.underscore_to_camelcase(c_name)
 
-        if util.is_ignored(c_name):
+        if util.is_ignored(c_name) or util.is_control_ping(class_name):
             continue
 
         if util.is_reply(class_name):
             class_references.append(class_reference_template.substitute(
                 ref_name=ref_name))
             find_class_invocations.append(find_class_invocation_template.substitute(
+                plugin_name=plugin_name,
                 ref_name=ref_name,
                 class_name=class_name))
+            delete_class_invocations.append(delete_class_invocation_template.substitute(ref_name=ref_name))
         elif util.is_notification(c_name):
             class_references.append(class_reference_template.substitute(
                 ref_name=util.add_notification_suffix(ref_name)))
             find_class_invocations.append(find_class_invocation_template.substitute(
+                plugin_name=plugin_name,
                 ref_name=util.add_notification_suffix(ref_name),
                 class_name=util.add_notification_suffix(class_name)))
+            delete_class_invocations.append(delete_class_invocation_template.substitute(
+                ref_name=util.add_notification_suffix(ref_name)))
 
     # add exception class to class cache
     ref_name = 'callbackException'
     class_name = 'org/openvpp/jvpp/VppCallbackException'
     class_references.append(class_reference_template.substitute(
-        ref_name=ref_name))
+            ref_name=ref_name))
     find_class_invocations.append(find_class_template.substitute(
             ref_name=ref_name,
             class_name=class_name))
+    delete_class_invocations.append(delete_class_invocation_template.substitute(ref_name=ref_name))
+
     return class_cache_template.substitute(
-        class_references="".join(class_references), find_class_invocations="".join(find_class_invocations))
+        class_references="".join(class_references), find_class_invocations="".join(find_class_invocations),
+        delete_class_invocations="".join(delete_class_invocations))
 
 
 # TODO: cache method and field identifiers to achieve better performance
 # https://jira.fd.io/browse/HONEYCOMB-42
 request_class_template = Template("""
-    jclass requestClass = (*env)->FindClass(env, "org/openvpp/jvpp/dto/${java_name_upper}");""")
+    jclass requestClass = (*env)->FindClass(env, "org/openvpp/jvpp/${plugin_name}/dto/${java_name_upper}");""")
 
 request_field_identifier_template = Template("""
     jfieldID ${java_name}FieldId = (*env)->GetFieldID(env, requestClass, "${java_name}", "${jni_signature}");
@@ -178,37 +196,40 @@ struct_setter_templates = {'u8': u8_struct_setter_template,
 
 jni_impl_template = Template("""
 /**
- * JNI binding for sending ${c_name} vpe.api message.
+ * JNI binding for sending ${c_name} message.
  * Generated based on $inputfile preparsed data:
 $api_data
  */
-JNIEXPORT jint JNICALL Java_org_openvpp_jvpp_JVppImpl_${java_name}0
+JNIEXPORT jint JNICALL Java_org_openvpp_jvpp_${plugin_name}_JVpp${java_plugin_name}Impl_${java_name}0
 (JNIEnv * env, jclass clazz$args) {
-    vppjni_main_t *jm = &vppjni_main;
+    ${plugin_name}_main_t *plugin_main = &${plugin_name}_main;
     vl_api_${c_name}_t * mp;
-    u32 my_context_id;
-    int rv;
-    rv = vppjni_sanity_check (jm);
-    if (rv) return rv;
-    my_context_id = vppjni_get_context_id (jm);
+    u32 my_context_id = vppjni_get_context_id (&jvpp_main);
     $request_class
     $field_identifiers
-    M(${c_name_uppercase}, ${c_name});
+
+    // create message:
+    mp = vl_msg_api_alloc(sizeof(*mp));
+    memset (mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (VL_API_${c_name_uppercase} + plugin_main->msg_id_base);
+    mp->client_index = plugin_main->my_client_index;
     mp->context = clib_host_to_net_u32 (my_context_id);
+
     $struct_setters
-    S;
+    // send message:
+    vl_msg_api_send_shmem (plugin_main->vl_input_queue, (u8 *)&mp);
     if ((*env)->ExceptionCheck(env)) {
         return JNI_ERR;
     }
     return my_context_id;
 }""")
 
-def generate_jni_impl(func_list, inputfile):
+def generate_jni_impl(func_list, plugin_name, inputfile):
     jni_impl = []
     for f in func_list:
         f_name = f['name']
         camel_case_function_name = util.underscore_to_camelcase(f_name)
-        if is_manually_generated(f_name) or util.is_reply(camel_case_function_name) \
+        if is_manually_generated(f_name, plugin_name) or util.is_reply(camel_case_function_name) \
                 or util.is_ignored(f_name) or util.is_just_notification(f_name):
             continue
 
@@ -222,7 +243,9 @@ def generate_jni_impl(func_list, inputfile):
             arguments = ', jobject request'
             camel_case_function_name_upper = util.underscore_to_camelcase_upper(f_name)
 
-            request_class = request_class_template.substitute(java_name_upper=camel_case_function_name_upper)
+            request_class = request_class_template.substitute(
+                    java_name_upper=camel_case_function_name_upper,
+                    plugin_name=plugin_name)
 
             # field identifiers
             for t in zip(f['types'], f['args']):
@@ -261,6 +284,8 @@ def generate_jni_impl(func_list, inputfile):
                 java_name=camel_case_function_name,
                 c_name_uppercase=f_name_uppercase,
                 c_name=f_name,
+                plugin_name=plugin_name,
+                java_plugin_name=plugin_name.title(),
                 request_class=request_class,
                 field_identifiers=field_identifiers,
                 struct_setters=struct_setters,
@@ -357,7 +382,7 @@ dto_field_setter_templates = {'u8': default_dto_field_setter_template,
 callback_err_handler_template = Template("""
     // for negative result don't send callback message but send error callback
     if (mp->retval<0) {
-        CallOnError("${handler_name}",mp->context,mp->retval);
+        call_on_error("${handler_name}", mp->context, mp->retval, plugin_main->callbackClass, plugin_main->callbackObject, callbackExceptionClass);
         return;
     }
     if (mp->retval == VNET_API_ERROR_IN_PROGRESS) {
@@ -368,32 +393,34 @@ callback_err_handler_template = Template("""
 
 msg_handler_template = Template("""
 /**
- * Handler for ${handler_name} vpe.api message.
+ * Handler for ${handler_name} message.
  * Generated based on $inputfile preparsed data:
 $api_data
  */
 static void vl_api_${handler_name}_t_handler (vl_api_${handler_name}_t * mp)
 {
-    vppjni_main_t * jm = &vppjni_main;
-    JNIEnv *env = jm->jenv;
+    ${plugin_name}_main_t *plugin_main = &${plugin_name}_main;
+    JNIEnv *env = jvpp_main.jenv;
+
     $err_handler
 
     jmethodID constructor = (*env)->GetMethodID(env, ${class_ref_name}Class, "<init>", "()V");
-    jmethodID callbackMethod = (*env)->GetMethodID(env, jm->callbackClass, "on${dto_name}", "(Lorg/openvpp/jvpp/dto/${dto_name};)V");
+    jmethodID callbackMethod = (*env)->GetMethodID(env, plugin_main->callbackClass, "on${dto_name}", "(Lorg/openvpp/jvpp/${plugin_name}/dto/${dto_name};)V");
 
     jobject dto = (*env)->NewObject(env, ${class_ref_name}Class, constructor);
     $dto_setters
-    (*env)->CallVoidMethod(env, jm->callback, callbackMethod, dto);
+
+    (*env)->CallVoidMethod(env, plugin_main->callbackObject, callbackMethod, dto);
 }""")
 
-def generate_msg_handlers(func_list, inputfile):
+def generate_msg_handlers(func_list, plugin_name, inputfile):
     handlers = []
     for f in func_list:
         handler_name = f['name']
         dto_name = util.underscore_to_camelcase_upper(handler_name)
         ref_name = util.underscore_to_camelcase(handler_name)
 
-        if is_manually_generated(handler_name) or util.is_ignored(handler_name):
+        if is_manually_generated(handler_name, plugin_name) or util.is_ignored(handler_name):
             continue
 
         if not util.is_reply(dto_name) and not util.is_notification(handler_name):
@@ -455,6 +482,7 @@ def generate_msg_handlers(func_list, inputfile):
             inputfile=inputfile,
             api_data=util.api_message_to_javadoc(f),
             handler_name=handler_name,
+            plugin_name=plugin_name,
             dto_name=dto_name,
             class_ref_name=ref_name,
             dto_setters=dto_setters,
@@ -468,12 +496,13 @@ handler_registration_template = Template("""_(${upercase_name}, ${name}) \\
 
 
 def generate_handler_registration(func_list):
-    handler_registration = ["#define foreach_vpe_api_msg \\\n"]
+    handler_registration = ["#define foreach_api_reply_handler \\\n"]
     for f in func_list:
         name = f['name']
         camelcase_name = util.underscore_to_camelcase(f['name'])
 
-        if (not util.is_reply(camelcase_name) and not util.is_notification(name)) or util.is_ignored(name):
+        if (not util.is_reply(camelcase_name) and not util.is_notification(name)) or util.is_ignored(name) \
+                or util.is_control_ping(camelcase_name):
             continue
 
         handler_registration.append(handler_registration_template.substitute(
@@ -486,10 +515,8 @@ def generate_handler_registration(func_list):
 jvpp_c_template = Template("""/**
  * This file contains JNI bindings for jvpp Java API.
  * It was generated by jvpp_c_gen.py based on $inputfile
- * (python representation of vpe.api generated by vppapigen).
+ * (python representation of api file generated by vppapigen).
  */
-
-void CallOnError(const char* call, int context, int retval);
 
 // JAVA class reference cache
 $class_cache
@@ -504,16 +531,16 @@ $msg_handlers
 $handler_registration
 """)
 
-def generate_jvpp(func_list, inputfile):
+def generate_jvpp(func_list, plugin_name, inputfile):
     """ Generates jvpp C file """
     print "Generating jvpp C"
 
-    class_cache = generate_class_cache(func_list)
-    jni_impl = generate_jni_impl(func_list, inputfile)
-    msg_handlers = generate_msg_handlers(func_list, inputfile)
+    class_cache = generate_class_cache(func_list, plugin_name)
+    jni_impl = generate_jni_impl(func_list, plugin_name, inputfile)
+    msg_handlers = generate_msg_handlers(func_list, plugin_name, inputfile)
     handler_registration = generate_handler_registration(func_list)
 
-    jvpp_c_file = open("jvpp_gen.h", 'w')
+    jvpp_c_file = open("jvpp_%s_gen.h" % plugin_name, 'w')
     jvpp_c_file.write(jvpp_c_template.substitute(
             inputfile=inputfile,
             class_cache=class_cache,
