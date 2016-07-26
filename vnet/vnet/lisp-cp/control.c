@@ -2175,7 +2175,7 @@ lisp_add_del_map_resolver_command_fn (vlib_main_t * vm,
                                       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
-  u8 is_add = 1;
+  u8 is_add = 1, addr_set = 0;
   ip_address_t ip_addr;
   clib_error_t * error = 0;
   int rv = 0;
@@ -2192,13 +2192,20 @@ lisp_add_del_map_resolver_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "del"))
         is_add = 0;
       else if (unformat (line_input, "%U", unformat_ip_address, &ip_addr))
-        ;
+        addr_set = 1;
       else
         {
           error = unformat_parse_error(line_input);
           goto done;
         }
     }
+
+  if (!addr_set)
+    {
+      error = clib_error_return(0, "Map-resolver address must be set!");
+      goto done;
+    }
+
   a->is_add = is_add;
   a->address = ip_addr;
   rv = vnet_lisp_add_del_map_resolver (a);
