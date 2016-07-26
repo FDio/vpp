@@ -1042,7 +1042,12 @@ vl_api_trace_print_file_cmd (vlib_main_t * vm, u32 first, u32 last,
 	}
       msg_id = ntohs (msg_id);
 
-      fseek (fp, -2, SEEK_CUR);
+      if (fseek (fp, -2, SEEK_CUR) < 0)
+        {
+          vlib_cli_output (vm, "fseek failed, %s", strerror(errno));
+          fclose(fp);
+          return;
+        }
 
       /* Mild sanity check */
       if (msg_id >= vec_len (am->msg_handlers))

@@ -164,6 +164,7 @@ svm_map_region_nolock (svm_map_region_args_t * a)
   if (rp->version == 0)
     {
       clib_warning ("rp->version %d not %d", rp->version, SVM_VERSION);
+      munmap (rp, MMAP_PAGESIZE);
       return (0);
     }
   /* Remap now that the region has been placed */

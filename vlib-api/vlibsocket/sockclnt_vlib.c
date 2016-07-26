@@ -114,6 +114,7 @@ sockclnt_open_index (char *client_name, char *hostname, int port)
   if (rv < 0)
     {
       clib_unix_warning ("FIONBIO");
+      close(sockfd);
       return ~0;
     }
 

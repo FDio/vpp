@@ -780,6 +780,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   if (!(statb.st_mode & S_IFREG) || (statb.st_size < sizeof (*hp)))
     {
       vlib_cli_output (vm, "File not plausible: %s\n", filename);
+      close(fd);
       return;
     }
 
@@ -814,6 +815,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
     {
       vlib_cli_output (vm, "Range (%d, %d) outside file range (0, %d)\n",
 		       first_index, last_index, nitems - 1);
+      munmap (hp, file_size);
       return;
     }
   if (hp->wrapped)
