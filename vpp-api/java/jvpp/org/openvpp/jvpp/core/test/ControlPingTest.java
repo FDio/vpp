@@ -14,44 +14,46 @@
  * limitations under the License.
  */
 
-package org.openvpp.jvpp.test;
+package org.openvpp.jvpp.core.test;
 
 import org.openvpp.jvpp.JVpp;
-import org.openvpp.jvpp.JVppImpl;
+import org.openvpp.jvpp.JVppRegistry;
+import org.openvpp.jvpp.JVppRegistryImpl;
 import org.openvpp.jvpp.VppCallbackException;
-import org.openvpp.jvpp.VppJNIConnection;
-import org.openvpp.jvpp.callback.ControlPingCallback;
-import org.openvpp.jvpp.dto.ControlPing;
-import org.openvpp.jvpp.dto.ControlPingReply;
+import org.openvpp.jvpp.core.JVppCoreImpl;
+import org.openvpp.jvpp.core.callback.ControlPingCallback;
+import org.openvpp.jvpp.core.dto.ControlPingReply;
 
 public class ControlPingTest {
 
     private static void testControlPing() throws Exception {
         System.out.println("Testing ControlPing using Java callback API");
+        JVppRegistry registry = new JVppRegistryImpl("ControlPingTest");
+        JVpp jvpp = new JVppCoreImpl();
 
-        JVpp jvpp = new JVppImpl( new VppJNIConnection("ControlPingTest"));
-        jvpp.connect( new ControlPingCallback() {
+        registry.register(jvpp, new ControlPingCallback() {
             @Override
             public void onControlPingReply(final ControlPingReply reply) {
                 System.out.printf("Received ControlPingReply: context=%d, clientIndex=%d vpePid=%d\n",
-                        reply.context, reply.clientIndex, reply.vpePid);
+                    reply.context, reply.clientIndex, reply.vpePid);
             }
 
             @Override
             public void onError(VppCallbackException ex) {
-                System.out.printf("Received onError exception: call=%s, reply=%d, context=%d ", ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
+                System.out.printf("Received onError exception: call=%s, reply=%d, context=%d ", ex.getMethodName(),
+                    ex.getErrorCode(), ex.getCtxId());
             }
 
         });
         System.out.println("Successfully connected to VPP");
         Thread.sleep(1000);
 
-        jvpp.send(new ControlPing());
+        jvpp.ping();
 
         Thread.sleep(2000);
 
         System.out.println("Disconnecting...");
-        jvpp.close();
+        registry.close();
         Thread.sleep(1000);
     }
 

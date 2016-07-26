@@ -16,63 +16,32 @@
 
 package org.openvpp.jvpp;
 
+import static org.openvpp.jvpp.NativeLibraryLoader.loadLibrary;
+
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.openvpp.jvpp.callback.JVppCallback;
 
 /**
- * JNI based representation of a management connection to VPP
+ * JNI based representation of a management connection to VPP.
  */
 public final class VppJNIConnection implements VppConnection {
-    private final static Logger LOG = Logger.getLogger(VppJNIConnection.class.getName());
-    private static final String LIBNAME = "libjvpp.so.0.0.0";
+    private static final Logger LOG = Logger.getLogger(VppJNIConnection.class.getName());
 
     static {
+        final String libName = "libjvpp_registry.so.0.0.0";
         try {
-            loadLibrary();
-        } catch (Exception e) {
-            LOG.severe("Can't find vpp jni library: " + LIBNAME);
+            loadLibrary(libName, VppJNIConnection.class);
+        } catch (IOException e) {
+            LOG.log(Level.SEVERE, String.format("Can't find vpp jni library: %s", libName), e);
             throw new ExceptionInInitializerError(e);
         }
     }
 
-    private static void loadStream(final InputStream is) throws IOException {
-        final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxr-x---");
-        final Path p = Files.createTempFile(LIBNAME, null, PosixFilePermissions.asFileAttribute(perms));
-        try {
-            Files.copy(is, p, StandardCopyOption.REPLACE_EXISTING);
-
-            try {
-                Runtime.getRuntime().load(p.toString());
-            } catch (UnsatisfiedLinkError e) {
-                throw new IOException("Failed to load library " + p, e);
-            }
-        } finally {
-            try {
-                Files.deleteIfExists(p);
-            } catch (IOException e) {
-            }
-        }
-    }
-
-    private static void loadLibrary() throws IOException {
-        try (final InputStream is = VppJNIConnection.class.getResourceAsStream('/' + LIBNAME)) {
-            if (is == null) {
-                throw new IOException("Failed to open library resource " + LIBNAME);
-            }
-            loadStream(is);
-        }
-    }
+    private ConnectionInfo connectionInfo;
 
     private final String clientName;
     private volatile boolean disconnected = false;
@@ -80,10 +49,11 @@ public final class VppJNIConnection implements VppConnection {
     /**
      * Create VPPJNIConnection instance for client connecting to VPP.
      *
-     * @param clientName client name instance to be used for communication. Single connection per clientName is allowed.
+     * @param clientName client name instance to be used for communication. Single connection per clientName is
+     *                   allowed.
      */
     public VppJNIConnection(final String clientName) {
-        this.clientName = Objects.requireNonNull(clientName,"Null clientName");
+        this.clientName = Objects.requireNonNull(clientName, "Null clientName");
     }
 
     /**
@@ -94,24 +64,27 @@ public final class VppJNIConnection implements VppConnection {
     /**
      * Initiate VPP connection for current instance
      *
-     * Multiple instances are allowed since this class is not a singleton
-     * (VPP allows multiple management connections).
+     * Multiple instances are allowed since this class is not a singleton (VPP allows multiple management connections).
      *
      * However only a single connection per clientName is allowed.
      *
-     * @param callback global callback to receive response calls from vpp
-     *
      * @throws IOException in case the connection could not be established
      */
-    public void connect(final JVppCallback callback) throws IOException {
+
+    @Override
+    public void connect() throws IOException {
+        _connect();
+    }
+
+    private void _connect() throws IOException {
         synchronized (VppJNIConnection.class) {
-            if(connections.containsKey(clientName)) {
+            if (connections.containsKey(clientName)) {
                 throw new IOException("Client " + clientName + " already connected");
             }
 
-            final int ret = clientConnect(clientName, callback);
-            if (ret != 0) {
-                throw new IOException("Connection returned error " + ret);
+            connectionInfo = clientConnect(clientName);
+            if (connectionInfo.status != 0) {
+                throw new IOException("Connection returned error " + connectionInfo.status);
             }
             connections.put(clientName, this);
         }
@@ -125,7 +98,7 @@ public final class VppJNIConnection implements VppConnection {
     }
 
     @Override
-    public synchronized final void close() {
+    public final synchronized void close() {
         if (!disconnected) {
             disconnected = true;
             try {
@@ -138,6 +111,27 @@ public final class VppJNIConnection implements VppConnection {
         }
     }
 
-    private static native int clientConnect(String clientName, JVppCallback callback);
+    public ConnectionInfo getConnectionInfo() {
+        return connectionInfo;
+    }
+
+    /**
+     * VPP connection information used by plugins to reuse the connection.
+     */
+    public static final class ConnectionInfo {
+        public final long queueAddress;
+        public final int clientIndex;
+        public final int status; // FIXME throw exception instead
+
+        public ConnectionInfo(long queueAddress, int clientIndex, int status) {
+            this.queueAddress = queueAddress;
+            this.clientIndex = clientIndex;
+            this.status = status;
+        }
+    }
+
+    private static native ConnectionInfo clientConnect(String clientName);
+
     private static native void clientDisconnect();
+
 }

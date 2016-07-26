@@ -14,24 +14,26 @@
  * limitations under the License.
  */
 
-package org.openvpp.jvpp.test;
+package org.openvpp.jvpp.core.test;
 
-import org.openvpp.jvpp.JVpp;
-import org.openvpp.jvpp.JVppImpl;
+import org.openvpp.jvpp.JVppRegistry;
+import org.openvpp.jvpp.JVppRegistryImpl;
 import org.openvpp.jvpp.VppCallbackException;
-import org.openvpp.jvpp.VppJNIConnection;
-import org.openvpp.jvpp.callback.WantInterfaceEventsCallback;
-import org.openvpp.jvpp.callfacade.CallbackJVppFacade;
-import org.openvpp.jvpp.dto.WantInterfaceEventsReply;
+import org.openvpp.jvpp.core.JVppCore;
+import org.openvpp.jvpp.core.JVppCoreImpl;
+import org.openvpp.jvpp.core.callback.WantInterfaceEventsCallback;
+import org.openvpp.jvpp.core.callfacade.CallbackJVppCoreFacade;
+import org.openvpp.jvpp.core.dto.WantInterfaceEventsReply;
 
 public class CallbackJVppFacadeNotificationTest {
 
     private static void testCallbackFacade() throws Exception {
         System.out.println("Testing CallbackJVppFacade for notifications");
 
-        JVpp jvpp = new JVppImpl(new VppJNIConnection("CallbackApiTest"));
+        final JVppRegistry registry = new JVppRegistryImpl("CallbackFacadeTest");
+        final JVppCore jvpp = new JVppCoreImpl();
 
-        CallbackJVppFacade jvppCallbackFacade = new CallbackJVppFacade(jvpp);
+        CallbackJVppCoreFacade jvppCallbackFacade = new CallbackJVppCoreFacade(registry, jvpp);
         System.out.println("Successfully connected to VPP");
 
         final AutoCloseable notificationListenerReg =
@@ -77,7 +79,7 @@ public class CallbackJVppFacadeNotificationTest {
         Thread.sleep(2000);
 
         System.out.println("Disconnecting...");
-        jvpp.close();
+        registry.close();
         Thread.sleep(1000);
     }
 

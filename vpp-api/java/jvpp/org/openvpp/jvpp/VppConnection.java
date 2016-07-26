@@ -20,21 +20,18 @@ import java.io.IOException;
 
 /**
  * Representation of a management connection to VPP.
- * Connection is initiated when instance is created, closed with close().
  */
 public interface VppConnection extends AutoCloseable {
 
     /**
-     * Open VppConnection for communication with VPP
-     *
-     * @param callback instance handling responses
+     * Opens VppConnection for communication with VPP.
      *
      * @throws IOException if connection is not established
      */
-    void connect(final org.openvpp.jvpp.callback.JVppCallback callback) throws IOException;
+    void connect() throws IOException;
 
     /**
-     * Check if this instance connection is active.
+     * Checks if this instance connection is active.
      *
      * @throws IllegalStateException if this instance was disconnected.
      */
