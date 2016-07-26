@@ -14,28 +14,30 @@
  * limitations under the License.
  */
 
-package org.openvpp.jvpp.test;
+package org.openvpp.jvpp.core.test;
 
 import java.util.Arrays;
 import javax.xml.bind.DatatypeConverter;
-import org.openvpp.jvpp.JVppImpl;
-import org.openvpp.jvpp.VppJNIConnection;
-import org.openvpp.jvpp.dto.ClassifyAddDelSession;
-import org.openvpp.jvpp.dto.ClassifyAddDelSessionReply;
-import org.openvpp.jvpp.dto.ClassifyAddDelTable;
-import org.openvpp.jvpp.dto.ClassifyAddDelTableReply;
-import org.openvpp.jvpp.dto.ClassifySessionDetails;
-import org.openvpp.jvpp.dto.ClassifySessionDetailsReplyDump;
-import org.openvpp.jvpp.dto.ClassifySessionDump;
-import org.openvpp.jvpp.dto.ClassifyTableByInterface;
-import org.openvpp.jvpp.dto.ClassifyTableByInterfaceReply;
-import org.openvpp.jvpp.dto.ClassifyTableIds;
-import org.openvpp.jvpp.dto.ClassifyTableIdsReply;
-import org.openvpp.jvpp.dto.ClassifyTableInfo;
-import org.openvpp.jvpp.dto.ClassifyTableInfoReply;
-import org.openvpp.jvpp.dto.InputAclSetInterface;
-import org.openvpp.jvpp.dto.InputAclSetInterfaceReply;
-import org.openvpp.jvpp.future.FutureJVppFacade;
+import org.openvpp.jvpp.JVpp;
+import org.openvpp.jvpp.JVppRegistry;
+import org.openvpp.jvpp.JVppRegistryImpl;
+import org.openvpp.jvpp.core.JVppCoreImpl;
+import org.openvpp.jvpp.core.dto.ClassifyAddDelSession;
+import org.openvpp.jvpp.core.dto.ClassifyAddDelSessionReply;
+import org.openvpp.jvpp.core.dto.ClassifyAddDelTable;
+import org.openvpp.jvpp.core.dto.ClassifyAddDelTableReply;
+import org.openvpp.jvpp.core.dto.ClassifySessionDetails;
+import org.openvpp.jvpp.core.dto.ClassifySessionDetailsReplyDump;
+import org.openvpp.jvpp.core.dto.ClassifySessionDump;
+import org.openvpp.jvpp.core.dto.ClassifyTableByInterface;
+import org.openvpp.jvpp.core.dto.ClassifyTableByInterfaceReply;
+import org.openvpp.jvpp.core.dto.ClassifyTableIds;
+import org.openvpp.jvpp.core.dto.ClassifyTableIdsReply;
+import org.openvpp.jvpp.core.dto.ClassifyTableInfo;
+import org.openvpp.jvpp.core.dto.ClassifyTableInfoReply;
+import org.openvpp.jvpp.core.dto.InputAclSetInterface;
+import org.openvpp.jvpp.core.dto.InputAclSetInterfaceReply;
+import org.openvpp.jvpp.core.future.FutureJVppCoreFacade;
 
 /**
  * <p>Tests L2 ACL creation and read.<br> Equivalent to the following vppctl commands:<br>
@@ -111,8 +113,8 @@ public class L2AclTest {
     }
 
     private static void print(ClassifyAddDelTableReply reply) {
-        System.out.printf("ClassifyAddDelTableReply: context=%d, " +
-                "newTableIndex=%d, skipNVectors=%d, matchNVectors=%d\n",
+        System.out.printf("ClassifyAddDelTableReply: context=%d, "
+                + "newTableIndex=%d, skipNVectors=%d, matchNVectors=%d\n",
             reply.context, reply.newTableIndex, reply.skipNVectors, reply.matchNVectors);
     }
 
@@ -164,14 +166,15 @@ public class L2AclTest {
     }
 
     private static void print(final ClassifyTableByInterfaceReply reply) {
-        System.out.printf("ClassifyAddDelTableReply: context=%d, swIfIndex=%d, l2TableId=%d, ip4TableId=%d," +
-            "ip6TableId=%d\n", reply.context, reply.swIfIndex, reply.l2TableId, reply.ip4TableId, reply.ip6TableId);
+        System.out.printf("ClassifyAddDelTableReply: context=%d, swIfIndex=%d, l2TableId=%d, ip4TableId=%d,"
+            + "ip6TableId=%d\n", reply.context, reply.swIfIndex, reply.l2TableId, reply.ip4TableId, reply.ip6TableId);
     }
 
     private static void testL2Acl() throws Exception {
         System.out.println("Testing L2 ACLs using Java callback API");
-        final JVppImpl jvpp = new JVppImpl(new VppJNIConnection("L2AclTest"));
-        final FutureJVppFacade jvppFacade = new FutureJVppFacade(jvpp);
+        final JVppRegistry registry = new JVppRegistryImpl("L2AclTest");
+        final JVpp jvpp = new JVppCoreImpl();
+        final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, jvpp);
 
         System.out.println("Successfully connected to VPP");
         Thread.sleep(1000);
@@ -208,7 +211,7 @@ public class L2AclTest {
         print(classifyTableByInterfaceReply);
 
         System.out.println("Disconnecting...");
-        jvpp.close();
+        registry.close();
         Thread.sleep(1000);
     }
 

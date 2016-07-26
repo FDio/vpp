@@ -23,51 +23,94 @@ lib_LTLIBRARIES =
 
 
 #
-# jVpp binding
+# jvpp-registry (connection management + plugin registry)
 #
 
 nobase_include_HEADERS =		\
-  jvpp/org_openvpp_jvpp_VppJNIConnection.h
+  jvpp-registry/org_openvpp_jvpp_VppJNIConnection.h \
+  jvpp-registry/jvpp_registry.h
 
-lib_LTLIBRARIES += libjvpp.la
+lib_LTLIBRARIES += libjvpp_registry.la
 
-libjvpp_la_SOURCES = jvpp/jvpp.c
-libjvpp_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
+libjvpp_registry_la_SOURCES = jvpp/jvpp_registry.c
+libjvpp_registry_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
 	              -lpthread -lm -lrt
-libjvpp_la_LDFLAGS = -module
-libjvpp_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
+libjvpp_registry_la_LDFLAGS = -module
+libjvpp_registry_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 
-# todo make two jars api jar and impl jar
-jarfile_jvpp = jvpp-$(PACKAGE_VERSION).jar
-packagedir_jvpp = org/openvpp/jvpp
-JAVAROOT = .
+jarfile_jvpp_registry = jvpp-registry-$(PACKAGE_VERSION).jar
+packagedir_jvpp_registry = org/openvpp/jvpp
+jvpp_gen = jvpp_gen.py
 
-BUILT_SOURCES += jvpp/org_openvpp_jvpp_VppJNIConnection.h jvpp/jvpp.c
+BUILT_SOURCES += jvpp-registry/org_openvpp_jvpp_VppJNIConnection.h
 
-jvpp/org_openvpp_jvpp_VppJNIConnection.h: $(prefix)/../vpp/vpp-api/vpe.api
-	@echo "  jVpp API";				\
-	cp -rf @srcdir@/jvpp/* -t jvpp/;			\
-	mkdir -p jvpp/gen/target/org/openvpp/jvpp;				\
-	cp -rf jvpp/org/openvpp/jvpp/* -t jvpp/gen/target/org/openvpp/jvpp/;	\
-	$(CC) $(CPPFLAGS) -E -P -C -x c $<			                  \
-	| vppapigen --input - --python defs_vpp_papi.py; 				\
-	mkdir -p dto future callfacade callback notification; 	\
-	./jvpp/gen/jvpp_gen.py -i defs_vpp_papi.py;				\
-	cp -rf dto future callfacade callback notification *.java -t jvpp/gen/target/org/openvpp/jvpp/;	\
-	cp -rf jvpp_gen.h -t jvpp/gen/target;	\
-	rm -rf dto future callfacade callback notification *.java jvpp_gen.h;	\
-	$(JAVAC) -classpath . -d . jvpp/gen/target/org/openvpp/jvpp/*.java \
-		jvpp/gen/target/org/openvpp/jvpp/dto/*.java  \
-		jvpp/gen/target/org/openvpp/jvpp/callback/*.java \
-		jvpp/gen/target/org/openvpp/jvpp/notification/*.java \
-		jvpp/gen/target/org/openvpp/jvpp/callfacade/*.java \
-		jvpp/gen/target/org/openvpp/jvpp/future/*.java 	\
-		jvpp/gen/target/org/openvpp/jvpp/test/*.java	\
-		|| (echo "JVpp compilation failed: $$?"; exit 1);	\
-	$(JAVAH) -classpath . -d jvpp org.openvpp.jvpp.VppJNIConnection ;	\
-	$(JAVAH) -classpath . -d jvpp org.openvpp.jvpp.JVppImpl ;
 
-$(jarfile_jvpp): libjvpp.la
-	cd .libs ; $(JAR) cf $(JARFLAGS) ../$@ libjvpp.so.0.0.0 ../$(packagedir_jvpp)/* ; cd ..;
+jvpp-registry/org_openvpp_jvpp_VppJNIConnection.h:
+	@echo " jvpp-registry.jar generation ";				\
+	mkdir jvpp-registry;				\
+	cp -rf @srcdir@/jvpp/* -t jvpp-registry/;
+	$(JAVAC) -classpath . -d . jvpp-registry/org/openvpp/jvpp/*.java \
+		jvpp-registry/org/openvpp/jvpp/dto/*.java  \
+		jvpp-registry/org/openvpp/jvpp/callback/*.java \
+		jvpp-registry/org/openvpp/jvpp/notification/*.java \
+		jvpp-registry/org/openvpp/jvpp/future/*.java 	\
+		jvpp-registry/org/openvpp/jvpp/test/*.java 	\
+		|| (echo "jvpp-registry compilation failed: $$?"; exit 1);	\
+	$(JAVAH) -classpath . -d jvpp-registry org.openvpp.jvpp.VppJNIConnection ;
 
-all-local: $(jarfile_jvpp)
+$(jarfile_jvpp_registry): libjvpp_registry.la
+	cd .libs ; $(JAR) cf $(JARFLAGS) ../$@ libjvpp_registry.so.0.0.0 ../$(packagedir_jvpp_registry)/* ; cd ..;
+
+
+#
+# jvpp-core (Java wrapper for vpe.api)
+#
+
+nobase_include_HEADERS +=		\
+  jvpp/jvpp_core.h
+
+lib_LTLIBRARIES += libjvpp_core.la
+
+libjvpp_core_la_SOURCES = jvpp/jvpp_core.c jvpp/jvpp_core.h jvpp-core/jvpp_gen.h
+libjvpp_core_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
+	              -lpthread -lm -lrt
+libjvpp_core_la_LDFLAGS = -module
+libjvpp_core_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
+
+jarfile_jvpp_core = jvpp-core-$(PACKAGE_VERSION).jar
+packagedir_jvpp_core = org/openvpp/jvpp
+api_file = $(prefix)/../vpp/vpp-api/vpe.api
+
+BUILT_SOURCES += jvpp-core/org_openvpp_jvpp_core_JVppCoreImpl.h
+
+# TODO: split jvpp dir into jvpp-registry and jvpp-core and move api/test to jvpp-core
+
+jvpp-core/org_openvpp_jvpp_core_JVppCoreImpl.h: defs_vpp_papi.py
+	mkdir -p jvpp-core/org/openvpp/jvpp/core/test/; \
+	mkdir -p jvpp-core/target; \
+	cp -rf @srcdir@/jvpp/org/openvpp/jvpp/core/test/* -t jvpp-core/org/openvpp/jvpp/core/test/; \
+	mkdir dto future callfacade callback notification; \
+	./jvpp-registry/gen/jvpp_gen.py -i defs_vpp_papi.py --plugin_name core; \
+	cp -rf dto future callfacade callback notification *.java -t jvpp-core/org/openvpp/jvpp/core/; \
+	cp -rf jvpp_gen.h -t jvpp-core;	\
+	rm -rf dto future callfacade callback notification *.java jvpp_gen.h; \
+	$(JAVAC) -classpath .:jvpp-core/target:jvpp-registry-16.09.jar -d jvpp-core/target jvpp-core/org/openvpp/jvpp/core/*.java \
+		jvpp-core/org/openvpp/jvpp/core/dto/*.java \
+		jvpp-core/org/openvpp/jvpp/core/callback/*.java \
+		jvpp-core/org/openvpp/jvpp/core/notification/*.java \
+		jvpp-core/org/openvpp/jvpp/core/future/*.java 	\
+		jvpp-core/org/openvpp/jvpp/core/callfacade/*.java 	\
+		jvpp-core/org/openvpp/jvpp/core/test/*.java \
+		|| (echo "jvpp-core compilation failed: $$?"; exit 1);
+	$(JAVAH) -classpath .:jvpp-core/target:jvpp-registry-16.09.jar -d jvpp-core org.openvpp.jvpp.core.JVppCoreImpl ;
+
+$(jarfile_jvpp_core): libjvpp_core.la
+	cp .libs/libjvpp_core.so.0.0.0 jvpp-core/target;	\
+	cd jvpp-core/target;	\
+	$(JAR) cfv $(JARFLAGS) ../../$@ libjvpp_core.so.0.0.0 $(packagedir_jvpp_core)/* ; cd ..;
+
+defs_vpp_papi.py:
+	@echo "jVpp API";				\
+	vppapigen --input $(api_file) --python defs_vpp_papi.py;
+        
+all-local: $(jarfile_jvpp_registry) $(jarfile_jvpp_core)

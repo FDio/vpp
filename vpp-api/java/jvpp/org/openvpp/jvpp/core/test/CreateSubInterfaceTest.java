@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-package org.openvpp.jvpp.test;
-
-import org.openvpp.jvpp.JVppImpl;
-import org.openvpp.jvpp.VppJNIConnection;
-import org.openvpp.jvpp.dto.CreateSubif;
-import org.openvpp.jvpp.dto.CreateSubifReply;
-import org.openvpp.jvpp.dto.SwInterfaceDetailsReplyDump;
-import org.openvpp.jvpp.dto.SwInterfaceDump;
-import org.openvpp.jvpp.future.FutureJVppFacade;
+package org.openvpp.jvpp.core.test;
 
 import static java.util.Objects.requireNonNull;
+
+import org.openvpp.jvpp.JVpp;
+import org.openvpp.jvpp.JVppRegistry;
+import org.openvpp.jvpp.JVppRegistryImpl;
+import org.openvpp.jvpp.core.JVppCoreImpl;
+import org.openvpp.jvpp.core.dto.CreateSubif;
+import org.openvpp.jvpp.core.dto.CreateSubifReply;
+import org.openvpp.jvpp.core.dto.SwInterfaceDetailsReplyDump;
+import org.openvpp.jvpp.core.dto.SwInterfaceDump;
+import org.openvpp.jvpp.core.future.FutureJVppCoreFacade;
 
 /**
  * <p>Tests sub-interface creation.<br> Equivalent to:<br>
@@ -42,7 +44,6 @@ import static java.util.Objects.requireNonNull;
  */
 public class CreateSubInterfaceTest {
 
-
     private static SwInterfaceDump createSwInterfaceDumpRequest(final String ifaceName) {
         SwInterfaceDump request = new SwInterfaceDump();
         request.nameFilter = ifaceName.getBytes();
@@ -53,8 +54,8 @@ public class CreateSubInterfaceTest {
     private static void requireSingleIface(final SwInterfaceDetailsReplyDump response, final String ifaceName) {
         if (response.swInterfaceDetails.size() != 1) {
             throw new IllegalStateException(
-                    String.format("Expected one interface matching filter %s but was %d", ifaceName,
-                            response.swInterfaceDetails.size()));
+                String.format("Expected one interface matching filter %s but was %d", ifaceName,
+                    response.swInterfaceDetails.size()));
         }
     }
 
@@ -76,15 +77,14 @@ public class CreateSubInterfaceTest {
     }
 
     private static void print(CreateSubifReply reply) {
-        System.out.printf("CreateSubifReply: context=%d, swIfIndex=%d\n",
-                reply.context,
-                reply.swIfIndex);
+        System.out.printf("CreateSubifReply: context=%d, swIfIndex=%d\n", reply.context, reply.swIfIndex);
     }
 
     private static void testCreateSubInterface() throws Exception {
         System.out.println("Testing sub-interface creation using Java callback API");
-        final JVppImpl jvpp = new JVppImpl(new VppJNIConnection("SubIfaceTest"));
-        final FutureJVppFacade jvppFacade = new FutureJVppFacade(jvpp);
+        final JVppRegistry registry = new JVppRegistryImpl("CreateSubInterface");
+        final JVpp jvpp = new JVppCoreImpl();
+        final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, jvpp);
 
         System.out.println("Successfully connected to VPP");
         Thread.sleep(1000);
@@ -92,7 +92,7 @@ public class CreateSubInterfaceTest {
         final String ifaceName = "GigabitEthernet0/9/0";
 
         final SwInterfaceDetailsReplyDump swInterfaceDetails =
-                jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(ifaceName)).toCompletableFuture().get();
+            jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(ifaceName)).toCompletableFuture().get();
 
         requireNonNull(swInterfaceDetails, "swInterfaceDump returned null");
         requireNonNull(swInterfaceDetails.swInterfaceDetails, "swInterfaceDetails is null");
@@ -102,18 +102,18 @@ public class CreateSubInterfaceTest {
         final int subId = 1;
 
         final CreateSubifReply createSubifReply =
-                jvppFacade.createSubif(createSubifRequest(swIfIndex, subId)).toCompletableFuture().get();
+            jvppFacade.createSubif(createSubifRequest(swIfIndex, subId)).toCompletableFuture().get();
         print(createSubifReply);
 
         final String subIfaceName = "GigabitEthernet0/9/0." + subId;
         final SwInterfaceDetailsReplyDump subIface =
-                jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(subIfaceName)).toCompletableFuture().get();
+            jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(subIfaceName)).toCompletableFuture().get();
         requireNonNull(swInterfaceDetails, "swInterfaceDump returned null");
         requireNonNull(subIface.swInterfaceDetails, "swInterfaceDump returned null");
         requireSingleIface(swInterfaceDetails, ifaceName);
 
         System.out.println("Disconnecting...");
-        jvpp.close();
+        registry.close();
         Thread.sleep(1000);
     }
 

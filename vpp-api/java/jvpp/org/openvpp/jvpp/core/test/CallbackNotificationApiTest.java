@@ -14,23 +14,24 @@
  * limitations under the License.
  */
 
-package org.openvpp.jvpp.test;
+package org.openvpp.jvpp.core.test;
 
-import static org.openvpp.jvpp.test.NotificationUtils.getChangeInterfaceState;
-import static org.openvpp.jvpp.test.NotificationUtils.getDisableInterfaceNotificationsReq;
-import static org.openvpp.jvpp.test.NotificationUtils.getEnableInterfaceNotificationsReq;
-import static org.openvpp.jvpp.test.NotificationUtils.printNotification;
+import static org.openvpp.jvpp.core.test.NotificationUtils.getChangeInterfaceState;
+import static org.openvpp.jvpp.core.test.NotificationUtils.getDisableInterfaceNotificationsReq;
+import static org.openvpp.jvpp.core.test.NotificationUtils.getEnableInterfaceNotificationsReq;
+import static org.openvpp.jvpp.core.test.NotificationUtils.printNotification;
 
 import org.openvpp.jvpp.JVpp;
-import org.openvpp.jvpp.JVppImpl;
+import org.openvpp.jvpp.JVppRegistry;
+import org.openvpp.jvpp.JVppRegistryImpl;
 import org.openvpp.jvpp.VppCallbackException;
-import org.openvpp.jvpp.VppJNIConnection;
-import org.openvpp.jvpp.callback.SwInterfaceSetFlagsCallback;
-import org.openvpp.jvpp.callback.SwInterfaceSetFlagsNotificationCallback;
-import org.openvpp.jvpp.callback.WantInterfaceEventsCallback;
-import org.openvpp.jvpp.dto.SwInterfaceSetFlagsNotification;
-import org.openvpp.jvpp.dto.SwInterfaceSetFlagsReply;
-import org.openvpp.jvpp.dto.WantInterfaceEventsReply;
+import org.openvpp.jvpp.core.JVppCoreImpl;
+import org.openvpp.jvpp.core.callback.SwInterfaceSetFlagsCallback;
+import org.openvpp.jvpp.core.callback.SwInterfaceSetFlagsNotificationCallback;
+import org.openvpp.jvpp.core.callback.WantInterfaceEventsCallback;
+import org.openvpp.jvpp.core.dto.SwInterfaceSetFlagsNotification;
+import org.openvpp.jvpp.core.dto.SwInterfaceSetFlagsReply;
+import org.openvpp.jvpp.core.dto.WantInterfaceEventsReply;
 
 public class CallbackNotificationApiTest {
 
@@ -63,8 +64,10 @@ public class CallbackNotificationApiTest {
 
     private static void testCallbackApi() throws Exception {
         System.out.println("Testing Java callback API for notifications");
-        JVpp jvpp = new JVppImpl( new VppJNIConnection("CallbackApiTest"));
-        jvpp.connect( new TestCallback());
+        JVppRegistry registry = new JVppRegistryImpl("CallbackNotificationTest");
+        JVpp jvpp = new JVppCoreImpl();
+
+        registry.register(jvpp, new TestCallback());
         System.out.println("Successfully connected to VPP");
 
         getEnableInterfaceNotificationsReq().send(jvpp);
@@ -74,7 +77,7 @@ public class CallbackNotificationApiTest {
         System.out.println("Changing interface configuration");
         getChangeInterfaceState().send(jvpp);
 
-        // Notification is received
+        // Notifications are received
         Thread.sleep(500);
 
         getDisableInterfaceNotificationsReq().send(jvpp);
@@ -83,7 +86,7 @@ public class CallbackNotificationApiTest {
         Thread.sleep(2000);
 
         System.out.println("Disconnecting...");
-        jvpp.close();
+        registry.close();
         Thread.sleep(1000);
     }
 

@@ -14,21 +14,12 @@
  * limitations under the License.
  */
 
-package org.openvpp.jvpp.dto;
-
-import org.openvpp.jvpp.JVpp;
-import org.openvpp.jvpp.VppInvocationException;
+package org.openvpp.jvpp.notification;
 
 /**
-* Base interface for all request DTOs
-*/
-public interface JVppRequest {
+ * Base registry for notification callbacks.
+ */
+public interface NotificationRegistry extends AutoCloseable {
 
-    /**
-     * Invoke current operation asynchronously on VPP
-     *
-     * @return context id of this request. Can be used to track incoming response
-     */
-    int send(JVpp jvpp) throws VppInvocationException;
-
+    void close();
 }

@@ -25,12 +25,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import org.openvpp.jvpp.notification.NotificationRegistryProviderContext;
 
 /**
 * Future facade on top of JVpp
 */
-public class FutureJVppInvokerFacade extends NotificationRegistryProviderContext implements FutureJVppInvoker {
+public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
 
     private final JVpp jvpp;
 
@@ -39,12 +38,11 @@ public class FutureJVppInvokerFacade extends NotificationRegistryProviderContext
      */
     private final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requests;
 
-    public FutureJVppInvokerFacade(final JVpp jvpp,
-                                   final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requestMap) {
+    protected AbstractFutureJVppInvoker(final JVpp jvpp,
+                                     final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requestMap) {
         this.jvpp =  Objects.requireNonNull(jvpp, "Null jvpp");
         // Request map represents the shared state between this facade and it's callback
         // where facade puts futures in and callback completes + removes them
-        // TODO what if the call never completes ?
         this.requests = Objects.requireNonNull(requestMap, "Null requestMap");
     }
 
@@ -70,8 +68,13 @@ public class FutureJVppInvokerFacade extends NotificationRegistryProviderContext
 
                 requests.put(contextId, replyCompletableFuture);
                 if(req instanceof JVppDump) {
-                    requests.put(jvpp.send(new ControlPing()), replyCompletableFuture);
+                    requests.put(jvpp.ping(), replyCompletableFuture);
                 }
+
+                // TODO in case of timeouts/missing replies, requests from the map are not removed
+                // consider adding cancel method, that would remove requests from the map and cancel
+                // associated replyCompletableFuture
+
                 return replyCompletableFuture;
             } catch (VppInvocationException ex) {
                 final CompletableFuture<REPLY> replyCompletableFuture = new CompletableFuture<>();
@@ -81,32 +84,32 @@ public class FutureJVppInvokerFacade extends NotificationRegistryProviderContext
         }
     }
 
-    static final class CompletableDumpFuture<T extends JVppReplyDump<?, ?>> extends CompletableFuture<T> {
+    public static final class CompletableDumpFuture<T extends JVppReplyDump<?, ?>> extends CompletableFuture<T> {
         // The reason why this is not final is the instantiation of ReplyDump DTOs
         // Their instantiation must be generated, so currently the DTOs are created in callback and set when first dump reponses
         // is handled in the callback.
         private T replyDump;
         private final long contextId;
 
-        CompletableDumpFuture(final long contextId) {
+        public CompletableDumpFuture(final long contextId) {
             this.contextId = contextId;
         }
 
-        long getContextId() {
+        public long getContextId() {
             return contextId;
         }
 
-        T getReplyDump() {
+        public T getReplyDump() {
             return replyDump;
         }
 
-        void setReplyDump(final T replyDump) {
+        public void setReplyDump(final T replyDump) {
             this.replyDump = replyDump;
         }
     }
 
     @Override
     public void close() throws Exception {
-        // NOOP
+        jvpp.close();
     }
 }

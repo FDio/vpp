@@ -14,27 +14,32 @@
  * limitations under the License.
  */
 
-package org.openvpp.jvpp.test;
+package org.openvpp.jvpp.core.test;
 
-import static org.openvpp.jvpp.test.NotificationUtils.getChangeInterfaceState;
-import static org.openvpp.jvpp.test.NotificationUtils.getDisableInterfaceNotificationsReq;
-import static org.openvpp.jvpp.test.NotificationUtils.getEnableInterfaceNotificationsReq;
+import static org.openvpp.jvpp.core.test.NotificationUtils.getChangeInterfaceState;
+import static org.openvpp.jvpp.core.test.NotificationUtils.getDisableInterfaceNotificationsReq;
+import static org.openvpp.jvpp.core.test.NotificationUtils.getEnableInterfaceNotificationsReq;
 
-import org.openvpp.jvpp.VppJNIConnection;
-import org.openvpp.jvpp.future.FutureJVppFacade;
+import org.openvpp.jvpp.JVpp;
+import org.openvpp.jvpp.JVppRegistry;
+import org.openvpp.jvpp.JVppRegistryImpl;
+import org.openvpp.jvpp.core.JVppCoreImpl;
+import org.openvpp.jvpp.core.future.FutureJVppCoreFacade;
 
 public class FutureApiNotificationTest {
 
     private static void testFutureApi() throws Exception {
         System.out.println("Testing Java future API for notifications");
 
-        final org.openvpp.jvpp.JVppImpl impl =
-                new org.openvpp.jvpp.JVppImpl(new VppJNIConnection("FutureApiTest"));
-        final FutureJVppFacade jvppFacade = new FutureJVppFacade(impl);
+        final JVppRegistry registry = new JVppRegistryImpl("FutureApiNotificationTest");
+        final JVpp jvpp = new JVppCoreImpl();
+        final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, jvpp);
+
         System.out.println("Successfully connected to VPP");
 
         final AutoCloseable notificationListenerReg =
-            jvppFacade.getNotificationRegistry().registerSwInterfaceSetFlagsNotificationCallback(NotificationUtils::printNotification);
+            jvppFacade.getNotificationRegistry()
+                .registerSwInterfaceSetFlagsNotificationCallback(NotificationUtils::printNotification);
 
         jvppFacade.wantInterfaceEvents(getEnableInterfaceNotificationsReq()).toCompletableFuture().get();
         System.out.println("Interface events started");
@@ -50,8 +55,7 @@ public class FutureApiNotificationTest {
         notificationListenerReg.close();
 
         System.out.println("Disconnecting...");
-        // TODO we should consider adding jvpp.close(); to the facade
-        impl.close();
+        registry.close();
     }
 
     public static void main(String[] args) throws Exception {
