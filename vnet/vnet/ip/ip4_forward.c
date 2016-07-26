@@ -1039,7 +1039,7 @@ ip4_lookup_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/** \brief IPv4 lookup node.
+/** @brief IPv4 lookup node.
     @node ip4-lookup
 
     This is the main IPv4 lookup dispatch node.
@@ -2960,7 +2960,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 }
 
 
-/** \brief IPv4 transit rewrite node.
+/** @brief IPv4 transit rewrite node.
     @node ip4-rewrite-transit
 
     This is the IPv4 transit-rewrite node: decrement TTL, fix the ipv4
@@ -3000,7 +3000,7 @@ ip4_rewrite_transit (vlib_main_t * vm,
 			     /* rewrite_for_locally_received_packets */ 0);
 }
 
-/** \brief IPv4 local rewrite node.
+/** @brief IPv4 local rewrite node.
     @node ip4-rewrite-local
 
     This is the IPv4 local rewrite node. Fetch the ip adjacency, check

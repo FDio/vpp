@@ -34,6 +34,12 @@
   OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+/** @file
+ * @brief Fixed length block allocator.
+   Pools are built from clib vectors and bitmaps. Use pools when
+   repeatedly allocating and freeing fixed-size data. Pools are
+   fast, and avoid memory fragmentation.
+ */
 
 #ifndef included_pool_h
 #define included_pool_h
@@ -42,27 +48,24 @@
 #include <vppinfra/error.h>
 #include <vppinfra/mheap.h>
 
-/* Pools are built from clib vectors and bitmaps. Use pools when
-   repeatedly allocating and freeing fixed-size data. Pools are
-   fast, and avoid memory fragmentation. */
 
 typedef struct {
-  /* Bitmap of indices of free objects. */
+  /** Bitmap of indices of free objects. */
   uword * free_bitmap;
 
-  /* Vector of free indices.  One element for each set bit in bitmap. */
+  /** Vector of free indices.  One element for each set bit in bitmap. */
   u32 * free_indices;
 } pool_header_t;
 
-/* Align pool header so that pointers are naturally aligned. */
+/** Align pool header so that pointers are naturally aligned. */
 #define pool_aligned_header_bytes \
   vec_aligned_header_bytes (sizeof (pool_header_t), sizeof (void *))
 
-/* Get pool header from user pool pointer */
+/** Get pool header from user pool pointer */
 always_inline pool_header_t * pool_header (void * v)
 { return vec_aligned_header (v, sizeof (pool_header_t), sizeof (void *)); }
 
-/* Validate a pool */
+/** Validate a pool */
 always_inline void pool_validate (void * v)
 {
   pool_header_t * p = pool_header (v);
@@ -93,7 +96,9 @@ do {								\
   pool_header_validate_index ((v), __pool_validate_index);	\
 } while (0)
 
-/* Number of active elements in a pool */
+/** Number of active elements in a pool.
+ * @return Number of active elements in a pool
+ */
 always_inline uword pool_elts (void * v)
 {
   uword ret = vec_len (v);
@@ -102,18 +107,19 @@ always_inline uword pool_elts (void * v)
   return ret;
 }
 
-/* Number of elements in pool vector
+/** Number of elements in pool vector.
 
-    Note: you probably want to call pool_elts() instead
+    @note You probably want to call pool_elts() instead.
 */
 #define pool_len(p)	vec_len(p)
-/* Number of elements in pool vector (usable as an lvalue)
 
-    Note: you probably don't want to use this macro
+/** Number of elements in pool vector (usable as an lvalue)
+
+    @note You probably don't want to use this macro.
 */
 #define _pool_len(p)	_vec_len(p)
 
-/*Memory usage of pool header */
+/** Memory usage of pool header. */
 always_inline uword
 pool_header_bytes (void * v)
 {
@@ -125,13 +131,13 @@ pool_header_bytes (void * v)
   return vec_bytes (p->free_bitmap) + vec_bytes (p->free_indices);
 }
 
-/*Memory usage of pool */
+/** Memory usage of pool. */
 #define pool_bytes(P) (vec_bytes (P) + pool_header_bytes (P))
 
-/*Local variable naming macro. */
+/** Local variable naming macro. */
 #define _pool_var(v) _pool_##v
 
-/*Queries whether pool has at least N_FREE free elements. */
+/** Queries whether pool has at least N_FREE free elements. */
 always_inline uword
 pool_free_elts (void * v)
 {
@@ -148,9 +154,9 @@ pool_free_elts (void * v)
   return n_free;
 }
 
-/* Allocate an object E from a pool P (general version)
+/** Allocate an object E from a pool P (general version).
 
-   First search free list.  If nothing is free extend vector of objects
+   First search free list.  If nothing is free extend vector of objects.
 */
 #define pool_get_aligned(P,E,A)						\
 do {									\
@@ -182,10 +188,10 @@ do {									\
     }									\
 } while (0)
 
-/* Allocate an object E from a pool P (unspecified alignment) */
+/** Allocate an object E from a pool P (unspecified alignment). */
 #define pool_get(P,E) pool_get_aligned(P,E,0)
 
-/* Use free bitmap to query whether given element is free */
+/** Use free bitmap to query whether given element is free. */
 #define pool_is_free(P,E)						\
 ({									\
   pool_header_t * _pool_var (p) = pool_header (P);			\
@@ -193,10 +199,10 @@ do {									\
   (_pool_var (i) < vec_len (P)) ? clib_bitmap_get (_pool_var (p)->free_bitmap, _pool_i) : 1; \
 })
   
-/* Use free bitmap to query whether given index is free */
+/** Use free bitmap to query whether given index is free */
 #define pool_is_free_index(P,I) pool_is_free((P),(P)+(I))
 
-/* Free an object E in pool P */
+/** Free an object E in pool P. */
 #define pool_put(P,E)							\
 do {									\
   pool_header_t * _pool_var (p) = pool_header (P);			\
@@ -210,14 +216,14 @@ do {									\
   vec_add1 (_pool_var (p)->free_indices, _pool_var (l));		\
 } while (0)
 
-/* Free pool element with given index. */
+/** Free pool element with given index. */
 #define pool_put_index(p,i)			\
 do {						\
   typeof (p) _e = (p) + (i);			\
   pool_put (p, _e);				\
 } while (0)
 
-/* Allocate N more free elements to pool (general version) */
+/** Allocate N more free elements to pool (general version). */
 #define pool_alloc_aligned(P,N,A)					\
 do {									\
   pool_header_t * _p;							\
@@ -229,10 +235,10 @@ do {									\
   _vec_len (_p->free_indices) -= (N);					\
 } while (0)
 
-/* Allocate N more free elements to pool (unspecified alignment) */
+/** Allocate N more free elements to pool (unspecified alignment). */
 #define pool_alloc(P,N) pool_alloc_aligned(P,N,0)
 
-/* low-level free pool operator (do not call directly) */
+/** Low-level free pool operator (do not call directly). */
 always_inline void * _pool_free (void * v)
 {
   pool_header_t * p = pool_header (v);
@@ -244,10 +250,10 @@ always_inline void * _pool_free (void * v)
   return 0;
 }
 
-/* Free a pool. */
+/** Free a pool. */
 #define pool_free(p) (p) = _pool_free(p)
 
-/* Optimized iteration through pool 
+/** Optimized iteration through pool.
 
     @param LO pointer to first element in chunk
     @param HI pointer to last element in chunk
@@ -296,34 +302,39 @@ do {									\
     }									\
 } while (0)
 
-/* Iterate through pool 
+/** Iterate through pool.
 
-    @param VAR variable of same type as pool vector
-    @param POOL pool to iterate across
-    @param BODY operation to perform. See the example below.
+    @param VAR A variable of same type as pool vector to be used as an
+               iterator.
+    @param POOL The pool to iterate across.
+    @param BODY The operation to perform, typically a code block. See
+                the example below.
 
-    call BODY with each active pool element.
-
-    Example:
-    proc_t *procs;   // a pool of processes <br>
-    proc_t *proc;    // pointer to one process <br>
-
-    pool_foreach (proc, procs, ({
-    <br>
-    &nbsp;&nbsp;if (proc->state != PROC_STATE_RUNNING)<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;continue;
-    <br>
-    &nbsp;&nbsp;<i>check a running proc in some way</i><br>
-    &nbsp;&nbsp;}));
+    This macro will call @c BODY with each active pool element.
 
     It is a bad idea to allocate or free pool element from within
-    pool_foreach. Build a vector of indices and dispose of them later.
+    @c pool_foreach. Build a vector of indices and dispose of them later.
 
-    Because pool_foreach is a macro, syntax errors can be difficult to
-    find inside BODY, let alone actual code bugs. One can temporarily
-    split a complex pool_foreach into a trivial pool_foreach which
-    builds a vector of active indices, and a vec_foreach() (or plain
-    for-loop) to walk the active index vector.
+
+    @par Example
+    @code{.c}
+    proc_t *procs;   // a pool of processes.
+    proc_t *proc;    // pointer to one process; used as the iterator.
+
+    pool_foreach (proc, procs, ({
+        if (proc->state != PROC_STATE_RUNNING)
+            continue;
+
+        // check a running proc in some way
+        ...
+    }));
+    @endcode
+
+    @warning Because @c pool_foreach is a macro, syntax errors can be
+    difficult to find inside @c BODY, let alone actual code bugs. One
+    can temporarily split a complex @c pool_foreach into a trivial
+    @c pool_foreach which builds a vector of active indices, and a
+    vec_foreach() (or plain for-loop) to walk the active index vector.
  */
 #define pool_foreach(VAR,POOL,BODY)					\
 do {									\
@@ -337,11 +348,14 @@ do {									\
     }));								\
 } while (0)
 
-/* Returns pointer to element at given index
+/** Returns pointer to element at given index.
 
-    ASSERTs that the supplied index is valid. Even though
-    one can write correct code of the form "p = pool_base + index",
-    use of pool_elt_at_index is strongly suggested. 
+    ASSERTs that the supplied index is valid.
+    Even though one can write correct code of the form
+    @code
+        p = pool_base + index;
+    @endcode
+    use of @c pool_elt_at_index is strongly suggested. 
  */
 #define pool_elt_at_index(p,i)			\
 ({						\
@@ -350,7 +364,7 @@ do {									\
   _e;						\
 })
 
-/* Return next occupied pool index after i, useful for safe iteration */
+/** Return next occupied pool index after @c i, useful for safe iteration. */
 #define pool_next_index(P,I)                                            \
 ({                                                                      \
   pool_header_t * _pool_var (p) = pool_header (P);                      \
@@ -363,6 +377,7 @@ do {									\
   _pool_var(rv);                                                        \
 })
 
+/** Iterate pool by index. */
 #define pool_foreach_index(i,v,body)		\
   for ((i) = 0; (i) < vec_len (v); (i)++)	\
     {						\

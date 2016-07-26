@@ -37,7 +37,7 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * @file vlib/vlib/unix/cli.c
+ * @file
  * @brief Unix stdin/socket command line interface.
  * Provides a command line interface so humans can interact with VPP.
  * This is predominantly a debugging and testing mechanism.
@@ -269,7 +269,7 @@ typedef enum
   UNIX_CLI_PARSE_ACTION_NOMATCH
 } unix_cli_parse_action_t;
 
-/** \brief Mapping of input buffer strings to action values.
+/** @brief Mapping of input buffer strings to action values.
  * @note This won't work as a hash since we need to be able to do
  *       partial matches on the string.
  */
@@ -428,7 +428,7 @@ typedef struct
 static unix_cli_main_t unix_cli_main;
 
 /**
- * \brief Search for a byte sequence in the action list.
+ * @brief Search for a byte sequence in the action list.
  *
  * Searches the @ref unix_cli_parse_actions_t list in @a a for a match with
  * the bytes in @a input of maximum length @a ilen bytes.
@@ -518,7 +518,7 @@ unix_cli_del_pending_output (unix_file_t * uf,
     }
 }
 
-/** \brief A bit like strchr with a buffer length limit.
+/** @brief A bit like strchr with a buffer length limit.
  * Search a buffer for the first instance of a character up to the limit of
  * the buffer length. If found then return the position of that character.
  *
@@ -544,7 +544,7 @@ unix_vlib_findchr (u8 chr, u8 * str, word len)
   return len;
 }
 
-/** \brief Send a buffer to the CLI stream if possible, enqueue it otherwise.
+/** @brief Send a buffer to the CLI stream if possible, enqueue it otherwise.
  * Attempts to write given buffer to the file descriptor of the given
  * Unix CLI session. If that session already has data in the output buffer
  * or if the write attempt tells us to try again later then the given buffer
@@ -582,7 +582,7 @@ unix_vlib_cli_output_raw (unix_cli_file_t * cf,
     }
 }
 
-/** \brief Process a buffer for CRLF handling before outputting it to the CLI.
+/** @brief Process a buffer for CRLF handling before outputting it to the CLI.
  *
  * @param cf Unix CLI session of the desired stream to write to.
  * @param uf The Unix file structure of the desired stream to write to.
@@ -625,7 +625,7 @@ unix_vlib_cli_output_cooked (unix_cli_file_t * cf,
     }
 }
 
-/** \brief Output the CLI prompt */
+/** @brief Output the CLI prompt */
 static void
 unix_cli_cli_prompt (unix_cli_file_t * cf, unix_file_t * uf)
 {
@@ -634,7 +634,7 @@ unix_cli_cli_prompt (unix_cli_file_t * cf, unix_file_t * uf)
   unix_vlib_cli_output_raw (cf, uf, cm->cli_prompt, vec_len (cm->cli_prompt));
 }
 
-/** \brief Output a pager prompt and show number of buffered lines */
+/** @brief Output a pager prompt and show number of buffered lines */
 static void
 unix_cli_pager_prompt (unix_cli_file_t * cf, unix_file_t * uf)
 {
@@ -657,7 +657,7 @@ unix_cli_pager_prompt (unix_cli_file_t * cf, unix_file_t * uf)
   vec_free (prompt);
 }
 
-/** \brief Output a pager "skipping" message */
+/** @brief Output a pager "skipping" message */
 static void
 unix_cli_pager_message (unix_cli_file_t * cf, unix_file_t * uf,
 			char *message, char *postfix)
@@ -673,7 +673,7 @@ unix_cli_pager_message (unix_cli_file_t * cf, unix_file_t * uf,
   vec_free (prompt);
 }
 
-/** \brief Erase the printed pager prompt */
+/** @brief Erase the printed pager prompt */
 static void
 unix_cli_pager_prompt_erase (unix_cli_file_t * cf, unix_file_t * uf)
 {
@@ -695,7 +695,7 @@ unix_cli_pager_prompt_erase (unix_cli_file_t * cf, unix_file_t * uf)
     }
 }
 
-/** \brief Uses an ANSI escape sequence to move the cursor */
+/** @brief Uses an ANSI escape sequence to move the cursor */
 static void
 unix_cli_ansi_cursor (unix_cli_file_t * cf, unix_file_t * uf, u16 x, u16 y)
 {
@@ -1012,7 +1012,7 @@ unix_cli_terminal_type (u8 * term, uword len)
   return 0;
 }
 
-/** \brief Emit initial welcome banner and prompt on a connection. */
+/** @brief Emit initial welcome banner and prompt on a connection. */
 static void
 unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
 {
@@ -1054,7 +1054,7 @@ unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
   cf->started = 1;
 }
 
-/** \brief A failsafe triggered on a timer to ensure we send the prompt
+/** @brief A failsafe triggered on a timer to ensure we send the prompt
  * to telnet sessions that fail to negotiate the terminal type. */
 static void
 unix_cli_file_welcome_timer (any arg, f64 delay)
@@ -1073,7 +1073,7 @@ unix_cli_file_welcome_timer (any arg, f64 delay)
     unix_cli_file_welcome (cm, cf);
 }
 
-/** \brief A mostly no-op Telnet state machine.
+/** @brief A mostly no-op Telnet state machine.
  * Process Telnet command bytes in a way that ensures we're mostly
  * transparent to the Telnet protocol. That is, it's mostly a no-op.
  *
@@ -1201,7 +1201,7 @@ unix_cli_process_telnet (unix_main_t * um,
   return consume;
 }
 
-/** \brief Process actionable input.
+/** @brief Process actionable input.
  * Based on the \c action process the input; this typically involves
  * searching the command history or editing the current command line.
  */
@@ -1883,7 +1883,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
   return 1;
 }
 
-/** \brief Process input bytes on a stream to provide line editing and
+/** @brief Process input bytes on a stream to provide line editing and
  * command history in the CLI. */
 static int
 unix_cli_line_edit (unix_cli_main_t * cm,
@@ -1961,7 +1961,7 @@ unix_cli_line_edit (unix_cli_main_t * cm,
   return 1;
 }
 
-/** \brief Process input to a CLI session. */
+/** @brief Process input to a CLI session. */
 static void
 unix_cli_process_input (unix_cli_main_t * cm, uword cli_file_index)
 {
