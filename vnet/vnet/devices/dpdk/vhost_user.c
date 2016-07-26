@@ -322,9 +322,6 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 *hwaddr)
           vec_reset_length (xd->rx_vectors[j]);
         }
 
-      vec_validate_aligned (xd->frames, tm->n_vlib_mains,
-                            CLIB_CACHE_LINE_BYTES);
-
   }
   /*
    * Generate random MAC address for the interface
