@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_c6657546",
+        "filename": "vnet/vnet/devices/dpdk/vhost_user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1355,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-26T14:08:40Z",
+      "side": 1,
+      "message": "Stevens: \"By convention, we always set the entire structure to 0 before filling it in.\" (UNIX Network Programming, 3rd Ed, pg 70)\n\nReason: Not every implementation has the same fields, and to make sure the tail end of sun_path is initialized. POSIX defines it as you pasted, but earlier implementations also had a length field; whilst it wouldn\u0027t work, ensuring that is 0 will avoid overruns, for example.\n\nIt just a good habit and costs very little here.",
+      "parentUuid": "9a0e1d27_26ad5189",
+      "range": {
+        "startLine": 1355,
+        "startChar": 2,
+        "endLine": 1355,
+        "endChar": 24
+      },
+      "revId": "6e6f52b4d2f30a7614219f282f6aaa50604bf8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_e68f5922",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 2
