@@ -14,20 +14,31 @@
  * limitations under the License.
  */
 
-package org.openvpp.jvpp.test;
+package org.openvpp.jvpp.core.test;
 
 import org.openvpp.jvpp.JVpp;
-import org.openvpp.jvpp.JVppImpl;
+import org.openvpp.jvpp.JVppRegistry;
+import org.openvpp.jvpp.JVppRegistryImpl;
 import org.openvpp.jvpp.VppCallbackException;
-import org.openvpp.jvpp.VppJNIConnection;
-import org.openvpp.jvpp.callback.GetNodeIndexCallback;
-import org.openvpp.jvpp.callback.ShowVersionCallback;
-import org.openvpp.jvpp.callback.SwInterfaceCallback;
-import org.openvpp.jvpp.dto.*;
+import org.openvpp.jvpp.core.JVppCoreImpl;
+import org.openvpp.jvpp.core.callback.GetNodeIndexCallback;
+import org.openvpp.jvpp.core.callback.ShowVersionCallback;
+import org.openvpp.jvpp.core.callback.SwInterfaceCallback;
+import org.openvpp.jvpp.core.dto.GetNodeIndex;
+import org.openvpp.jvpp.core.dto.GetNodeIndexReply;
+import org.openvpp.jvpp.core.dto.ShowVersion;
+import org.openvpp.jvpp.core.dto.ShowVersionReply;
+import org.openvpp.jvpp.core.dto.SwInterfaceDetails;
+import org.openvpp.jvpp.core.dto.SwInterfaceDump;
 
-public class CallbackApiTest {
+/**
+ * Tests the Jvpp registry with various JVpp APIs:
+ * Run using:
+ * sudo java -cp build-vpp-native/vpp-api/java/jvpp-registry-16.09.jar:build-vpp-native/vpp-api/java/jvpp-core-16.09.jar org.openvpp.jvpp.core.test.JVppRegistryTest
+ */
+public class JVppRegistryTest {
 
-    private static class TestCallback implements GetNodeIndexCallback, ShowVersionCallback, SwInterfaceCallback {
+    static class TestCallback implements GetNodeIndexCallback, ShowVersionCallback, SwInterfaceCallback {
 
         @Override
         public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
@@ -56,18 +67,24 @@ public class CallbackApiTest {
         }
     }
 
+    public static void main(String[] args) throws Exception {
+        testCallbackApi();
+    }
+
     private static void testCallbackApi() throws Exception {
-        System.out.println("Testing Java callback API");
-        JVpp jvpp = new JVppImpl(new VppJNIConnection("CallbackApiTest"));
-        jvpp.connect(new TestCallback());
-        System.out.println("Successfully connected to VPP");
+        System.out.println("Testing Java callback API with JVppRegistry");
+        JVppRegistry registry = new JVppRegistryImpl();
+        JVpp jvpp = new JVppCoreImpl();
+
+        registry.register(jvpp, new TestCallback()); // can be invoked before or after
 
         System.out.println("Sending ShowVersion request...");
-        jvpp.send(new ShowVersion());
+        final int result = jvpp.send(new ShowVersion());
+        System.out.printf("ShowVersion send result = %d\n", result);
 
         System.out.println("Sending GetNodeIndex request...");
         GetNodeIndex getNodeIndexRequest = new GetNodeIndex();
-        getNodeIndexRequest.nodeName = "node0".getBytes();
+        getNodeIndexRequest.nodeName = "non-existing-node".getBytes();
         jvpp.send(getNodeIndexRequest);
 
         System.out.println("Sending SwInterfaceDump request...");
@@ -76,14 +93,10 @@ public class CallbackApiTest {
         swInterfaceDumpRequest.nameFilter = "".getBytes();
         jvpp.send(swInterfaceDumpRequest);
 
-        Thread.sleep(5000);
+        Thread.sleep(1000);
 
         System.out.println("Disconnecting...");
-        jvpp.close();
+        registry.close();
         Thread.sleep(1000);
-    }
-
-    public static void main(String[] args) throws Exception {
-        testCallbackApi();
     }
 }
