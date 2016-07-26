@@ -203,9 +203,6 @@ typedef struct {
   /* vector of traced contexts, per device */
   u32 * d_trace_buffers;
 
-  /* per-worker destination frame queue */
-  dpdk_frame_t * frames;
-
   /* number of sub-interfaces */
   u16 vlan_subifs;
 

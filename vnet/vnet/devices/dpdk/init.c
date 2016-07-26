@@ -649,9 +649,6 @@ dpdk_lib_init (dpdk_main_t * dm)
           vec_reset_length (xd->rx_vectors[j]);
         }
 
-      vec_validate_aligned (xd->frames, tm->n_vlib_mains,
-                            CLIB_CACHE_LINE_BYTES);
-
       rv = dpdk_port_setup(dm, xd);
 
       if (rv < 0)
@@ -762,9 +759,6 @@ dpdk_lib_init (dpdk_main_t * dm)
                                 CLIB_CACHE_LINE_BYTES);
           vec_reset_length (xd->rx_vectors[j]);
         }
-
-      vec_validate_aligned (xd->frames, tm->n_vlib_mains,
-                            CLIB_CACHE_LINE_BYTES);
 
       /* FIXME Set up one TX-queue per worker thread */
 
