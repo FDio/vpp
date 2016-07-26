@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __included_vppjni_h__
-#define __included_vppjni_h__
+#ifndef __included_jvpp_registry_h__
+#define __included_jvpp_registry_h__
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
@@ -43,10 +43,6 @@ typedef struct {
 
     /* JNI Invoke Interface pointer for attachment of rx thread to java thread */
     JavaVM *jvm;
-
-    /* Callback object and class references enabling asynchronous Java calls */
-    jobject callback;
-    jclass callbackClass;
 
     /* Connected indication */
     volatile u8 is_connected;
@@ -97,16 +93,7 @@ do {                                            \
     mp->client_index = jm->my_client_index;       \
  } while(0);
 
-#define M2(T,t,n)                               \
-do {                                            \
-    jm->result_ready = 0;                         \
-    mp = vl_msg_api_alloc(sizeof(*mp)+(n));       \
-    memset (mp, 0, sizeof (*mp));                 \
-    mp->_vl_msg_id = ntohs (VL_API_##T);          \
-    mp->client_index = jm->my_client_index;       \
- } while(0);
-
 /* S: send a message */
 #define S (vl_msg_api_send_shmem (jm->vl_input_queue, (u8 *)&mp))
 
-#endif /* __included_vppjni_h__ */
+#endif /* __included_jvpp_registry_h__ */
