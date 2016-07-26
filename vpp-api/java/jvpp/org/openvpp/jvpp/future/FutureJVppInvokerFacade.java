@@ -70,7 +70,8 @@ public class FutureJVppInvokerFacade extends NotificationRegistryProviderContext
 
                 requests.put(contextId, replyCompletableFuture);
                 if(req instanceof JVppDump) {
-                    requests.put(jvpp.send(new ControlPing()), replyCompletableFuture);
+                    // FIXME can we make ControlPing part of jvpp-core?
+                    requests.put(jvpp.send(null/*new ControlPing()*/), replyCompletableFuture);
                 }
                 return replyCompletableFuture;
             } catch (VppInvocationException ex) {

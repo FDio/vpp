@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016 Cisco and/or its affiliates.
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,22 +12,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef __included_vppjni_h__
+#define __included_vppjni_h__
 
-package org.openvpp.jvpp.dto;
+#include <vnet/vnet.h>
+#include <vnet/ip/ip.h>
+#include <vnet/api_errno.h>
+#include <vlibapi/api.h>
+#include <vlibmemory/api.h>
+#include <jni.h>
 
-import org.openvpp.jvpp.JVpp;
-import org.openvpp.jvpp.VppInvocationException;
+typedef struct {
+    /* Convenience */
+    unix_shared_memory_queue_t * vl_input_queue;
+    u32 my_client_index;
 
-/**
-* Base interface for all request DTOs
-*/
-public interface JVppRequest {
+} vpp_core_main_t;
 
-    /**
-     * Invoke current operation asynchronously on VPP
-     *
-     * @return context id of this request. Can be used to track incoming response
-     */
-    int send(JVpp jvpp) throws VppInvocationException;
+vpp_core_main_t vpp_core_main __attribute__((aligned (64)));
 
-}
+
+#endif /* __included_vppjni_h__ */
