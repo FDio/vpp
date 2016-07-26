@@ -378,12 +378,21 @@ static void vl_api_${handler_name}_t_handler (vl_api_${handler_name}_t * mp)
     JNIEnv *env = jm->jenv;
     $err_handler
 
+    // TODO rename jm->callbackClass to jm->registryClass
+    jmethodID getCallbackMethod = (*env)->GetMethodID(env, jm->callbackClass, "get", "(Ljava/lang/String;)Lorg/openvpp/jvpp/callback/JVppCallback;");
+
+    // TODO rename jm->callback to jm->registry
+    // TODO make vpp-core a parameter
+    jstring pluginName = (*env)->NewStringUTF(env, "vpp-core");
+    jobject callbackObject = (*env)->CallObjectMethod(env, jm->callback, getCallbackMethod, pluginName);
+    jclass callbackClass = (*env)->GetObjectClass(env, callbackObject);
+
     jmethodID constructor = (*env)->GetMethodID(env, ${class_ref_name}Class, "<init>", "()V");
-    jmethodID callbackMethod = (*env)->GetMethodID(env, jm->callbackClass, "on${dto_name}", "(Lorg/openvpp/jvpp/dto/${dto_name};)V");
+    jmethodID callbackMethod = (*env)->GetMethodID(env, callbackClass, "on${dto_name}", "(Lorg/openvpp/jvpp/dto/${dto_name};)V");
 
     jobject dto = (*env)->NewObject(env, ${class_ref_name}Class, constructor);
     $dto_setters
-    (*env)->CallVoidMethod(env, jm->callback, callbackMethod, dto);
+    (*env)->CallVoidMethod(env, callbackObject, callbackMethod, dto);
 }""")
 
 def generate_msg_handlers(func_list, inputfile):

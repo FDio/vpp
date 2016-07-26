@@ -19,7 +19,7 @@ from string import Template
 import util
 
 dto_template = Template("""
-package $base_package.$dto_package;
+package $plugin_package.$dto_package;
 
 /**
  * <p>This class represents $description.
@@ -39,11 +39,11 @@ field_template = Template("""    public $type $name;\n""")
 
 send_template = Template("""    @Override
     public int send(final $base_package.JVpp jvpp) throws org.openvpp.jvpp.VppInvocationException {
-        return jvpp.$method_name($args);
+        return (($plugin_package.JVpp${plugin_name})jvpp).$method_name($args);
     }\n""")
 
 
-def generate_dtos(func_list, base_package, dto_package, inputfile):
+def generate_dtos(func_list, base_package, plugin_package, plugin_name, dto_package, inputfile):
     """ Generates dto objects in a dedicated package """
     print "Generating DTOs"
 
@@ -76,15 +76,17 @@ def generate_dtos(func_list, base_package, dto_package, inputfile):
                 request_dto_name = get_request_name(camel_case_dto_name, func['name'])
                 if util.is_details(camel_case_dto_name):
                     # FIXME assumption that dump calls end with "Dump" suffix. Not enforced in vpe.api
-                    base_type += "JVppReply<%s.%s.%s>" % (base_package, dto_package, request_dto_name + "Dump")
-                    generate_dump_reply_dto(request_dto_name, base_package, dto_package, camel_case_dto_name,
+                    base_type += "JVppReply<%s.%s.%s>" % (plugin_package, dto_package, request_dto_name + "Dump")
+                    generate_dump_reply_dto(request_dto_name, base_package, plugin_package, dto_package, camel_case_dto_name,
                                             camel_case_method_name, func)
                 else:
-                    base_type += "JVppReply<%s.%s.%s>" % (base_package, dto_package, request_dto_name)
+                    base_type += "JVppReply<%s.%s.%s>" % (plugin_package, dto_package, request_dto_name)
             else:
                 args = "" if fields is "" else "this"
                 methods = send_template.substitute(method_name=camel_case_method_name,
                                                    base_package=base_package,
+                                                   plugin_package=plugin_package,
+                                                   plugin_name=plugin_name,
                                                    args=args)
                 if util.is_dump(camel_case_dto_name):
                     base_type += "JVppDump"
@@ -93,7 +95,7 @@ def generate_dtos(func_list, base_package, dto_package, inputfile):
                     base_type += "JVppRequest"
                     description = "vpe.api request DTO"
 
-            write_dto_file(base_package, base_type, camel_case_dto_name, description, dto_package, dto_path, fields, func,
+            write_dto_file(base_package, plugin_package, base_type, camel_case_dto_name, description, dto_package, dto_path, fields, func,
                            inputfile, methods)
 
         # for structures that are also used as notifications, generate dedicated notification DTO
@@ -103,13 +105,13 @@ def generate_dtos(func_list, base_package, dto_package, inputfile):
             camel_case_dto_name = util.add_notification_suffix(camel_case_dto_name)
             methods = ""
             dto_path = os.path.join(dto_package, camel_case_dto_name + ".java")
-            write_dto_file(base_package, base_type, camel_case_dto_name, description, dto_package, dto_path, fields, func,
+            write_dto_file(base_package, plugin_package, base_type, camel_case_dto_name, description, dto_package, dto_path, fields, func,
                            inputfile, methods)
 
     flush_dump_reply_dtos(inputfile)
 
 
-def write_dto_file(base_package, base_type, camel_case_dto_name, description, dto_package, dto_path, fields, func,
+def write_dto_file(base_package, plugin_package, base_type, camel_case_dto_name, description, dto_package, dto_path, fields, func,
                    inputfile, methods):
     dto_file = open(dto_path, 'w')
     dto_file.write(dto_template.substitute(inputfile=inputfile,
@@ -119,6 +121,7 @@ def write_dto_file(base_package, base_type, camel_case_dto_name, description, dt
                                            fields=fields,
                                            methods=methods,
                                            base_package=base_package,
+                                           plugin_package=plugin_package,
                                            base_type=base_type,
                                            dto_package=dto_package))
     dto_file.flush()
@@ -146,6 +149,7 @@ def flush_dump_reply_dtos(inputfile):
                                                cls_name=dump_reply_artificial_dto['cls_name'],
                                                fields=dump_reply_artificial_dto['fields'],
                                                methods=dump_reply_artificial_dto['methods'],
+                                               plugin_package=dump_reply_artificial_dto['plugin_package'],
                                                base_package=dump_reply_artificial_dto['base_package'],
                                                base_type=dump_reply_artificial_dto['base_type'],
                                                dto_package=dump_reply_artificial_dto['dto_package']))
@@ -153,11 +157,11 @@ def flush_dump_reply_dtos(inputfile):
         dto_file.close()
 
 
-def generate_dump_reply_dto(request_dto_name, base_package, dto_package, camel_case_dto_name, camel_case_method_name,
+def generate_dump_reply_dto(request_dto_name, base_package, plugin_package, dto_package, camel_case_dto_name, camel_case_method_name,
                             func):
     base_type = "JVppReplyDump<%s.%s.%s, %s.%s.%s>" % (
-        base_package, dto_package, util.remove_reply_suffix(camel_case_dto_name) + "Dump",
-        base_package, dto_package, camel_case_dto_name)
+        plugin_package, dto_package, util.remove_reply_suffix(camel_case_dto_name) + "Dump",
+        plugin_package, dto_package, camel_case_dto_name)
     fields = "    public java.util.List<%s> %s = new java.util.ArrayList<>();" % (camel_case_dto_name, camel_case_method_name)
     cls_name = camel_case_dto_name + dump_dto_suffix
 
@@ -171,6 +175,7 @@ def generate_dump_reply_dto(request_dto_name, base_package, dto_package, camel_c
                                                          'cls_name': cls_name,
                                                          'fields': fields,
                                                          'methods': "",
+                                                         'plugin_package': plugin_package,
                                                          'base_package': base_package,
                                                          'base_type': base_type,
                                                          'dto_package': dto_package,
