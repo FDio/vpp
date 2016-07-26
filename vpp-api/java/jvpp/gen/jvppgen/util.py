@@ -120,15 +120,18 @@ jni_field_accessors = {
     'jfloatArray': 'ObjectField'
 }
 
-# TODO watch out for unsigned types
+# Mapping according to:
 # http://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/types.html
-vpp_2_jni_type_mapping = {'u8': 'jbyte',  # fixme
+#
+# Unsigned types are converted to signed java types that have the same size.
+# It is the API user responsibility to interpret them correctly.
+vpp_2_jni_type_mapping = {'u8': 'jbyte',
                           'i8': 'jbyte',
                           'u16': 'jshort',
                           'i16': 'jshort',
-                          'u32': 'jint',  # fixme
+                          'u32': 'jint',
                           'i32': 'jint',
-                          'u64': 'jlong',  # fixme
+                          'u64': 'jlong',
                           'i64': 'jlong',
                           'f64': 'jdouble'
                           }
@@ -179,7 +182,7 @@ def remove_suffix(camel_case_name_with_suffix, suffix):
 
 
 def is_control_ping(camel_case_name_with_suffix):
-    return "controlping" in camel_case_name_with_suffix.lower()
+    return camel_case_name_with_suffix.lower().startswith("controlping");
 
 def api_message_to_javadoc(api_message):
     """ Converts vpe.api message description to javadoc """

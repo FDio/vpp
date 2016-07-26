@@ -41,7 +41,8 @@ from jvppgen.util import vpp_2_jni_type_mapping
 
 parser = argparse.ArgumentParser(description='VPP Java API generator')
 parser.add_argument('-i', action="store", dest="inputfile")
-parser.add_argument('--base_package', action="store", dest="base_package", default='org.openvpp.jvpp')
+parser.add_argument('--plugin_name', action="store", dest="plugin_name")
+parser.add_argument('--control_ping_class', action="store", dest="control_ping_class", default="ControlPing")
 args = parser.parse_args()
 
 sys.path.append(".")
@@ -52,7 +53,10 @@ print "importdir %s" % importdir
 inputfile = os.path.basename(args.inputfile)
 inputfile = inputfile.replace('.py', '')
 print "inputfile %s" % inputfile
-base_package = args.base_package
+plugin_name = args.plugin_name
+print "plugin_name %s" % plugin_name
+control_ping_class = args.control_ping_class
+print "control_ping_class %s" % control_ping_class
 sys.path.append(importdir)
 cfg = importlib.import_module(inputfile, package=None)
 
@@ -133,17 +137,20 @@ def get_definitions():
 
 func_list, func_name = get_definitions()
 
+base_package = 'org.openvpp.jvpp'
+plugin_package = base_package + '.' + plugin_name
 dto_package = 'dto'
 callback_package = 'callback'
 notification_package = 'notification'
 future_package = 'future'
 # TODO find better package name
 callback_facade_package = 'callfacade'
+control_ping_class_fqn = "%s.%s.%s" % (plugin_package, dto_package, control_ping_class)
 
-dto_gen.generate_dtos(func_list, base_package, dto_package, args.inputfile)
-jvpp_impl_gen.generate_jvpp(func_list, base_package, dto_package, args.inputfile)
-callback_gen.generate_callbacks(func_list, base_package, callback_package, dto_package, args.inputfile)
-notification_gen.generate_notification_registry(func_list, base_package, notification_package, callback_package, dto_package, args.inputfile)
-jvpp_c_gen.generate_jvpp(func_list, args.inputfile)
-jvpp_future_facade_gen.generate_jvpp(func_list, base_package, dto_package, callback_package, notification_package, future_package, args.inputfile)
-jvpp_callback_facade_gen.generate_jvpp(func_list, base_package, dto_package, callback_package, notification_package, callback_facade_package, args.inputfile)
+dto_gen.generate_dtos(func_list, base_package, plugin_package, plugin_name.title(), dto_package, args.inputfile)
+jvpp_impl_gen.generate_jvpp(func_list, base_package, plugin_package, plugin_name, control_ping_class_fqn, dto_package, args.inputfile)
+callback_gen.generate_callbacks(func_list, base_package, plugin_package, plugin_name.title(), callback_package, dto_package, args.inputfile)
+notification_gen.generate_notification_registry(func_list, base_package, plugin_package, plugin_name.title(), notification_package, callback_package, dto_package, args.inputfile)
+jvpp_c_gen.generate_jvpp(func_list, plugin_name, args.inputfile)
+jvpp_future_facade_gen.generate_jvpp(func_list, base_package, plugin_package, plugin_name.title(), dto_package, callback_package, notification_package, future_package, args.inputfile)
+jvpp_callback_facade_gen.generate_jvpp(func_list, base_package, plugin_package, plugin_name.title(), dto_package, callback_package, notification_package, callback_facade_package, args.inputfile)
