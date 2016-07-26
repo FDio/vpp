@@ -27,7 +27,7 @@ public interface JVppRequest {
     /**
      * Invoke current operation asynchronously on VPP
      *
-     * @return context id of this request. Can be used to track incomming response
+     * @return context id of this request. Can be used to track incoming response
      */
     int send(JVpp jvpp) throws VppInvocationException;
 
