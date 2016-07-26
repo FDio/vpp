@@ -27,7 +27,7 @@ Directory name         | Description
      g2                | Event log visualization tool
      gmod              | perf related?
      perftool          | Performance tool
-     sample-plugin     | A sample plugin
+     plugins           | VPP bundled plugins directory
 @ref svm               | Shared virtual memory allocation library
      test              | Unit tests
 @ref vlib              | VPP application library source
