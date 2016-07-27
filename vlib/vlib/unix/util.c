@@ -103,6 +103,7 @@ vlib_sysfs_write (char *file_name, char *fmt, ...)
 {
   u8 *s;
   int fd;
+  clib_error_t * error = 0;
 
   fd = open (file_name, O_WRONLY);
   if (fd < 0)
@@ -114,11 +115,11 @@ vlib_sysfs_write (char *file_name, char *fmt, ...)
   va_end (va);
 
   if (write (fd, s, vec_len (s)) < 0)
-    return clib_error_return_unix (0, "write `%s'", file_name);
+    error = clib_error_return_unix (0, "write `%s'", file_name);
 
   vec_free (s);
   close (fd);
-  return 0;
+  return error;
 }
 
 clib_error_t *
@@ -181,7 +182,8 @@ vlib_sysfs_link_to_name (char *link)
     return 0;
 
   unformat_init_string (&in, p + 1, strlen (p + 1));
-  unformat (&in, "%s", &s);
+  if (unformat (&in, "%s", &s) != 1)
+    clib_unix_warning ("no string?");
   unformat_free (&in);
 
   return s;

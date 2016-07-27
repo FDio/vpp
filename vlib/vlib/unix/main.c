@@ -89,6 +89,7 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
 	  clib_longjmp (&unix_main.vlib_main->main_loop_exit,
 			VLIB_MAIN_LOOP_EXIT_CLI);
 	}
+      /* fall through */
     case SIGQUIT:
     case SIGINT:
     case SIGILL:
@@ -344,7 +345,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	  int fd;
 
 	  fd = open ("/proc/self/coredump_filter", O_WRONLY);
-	  if (fd > 0)
+	  if (fd >= 0)
 	    {
 	      if (write (fd, "0x6f\n", 5) != 5)
 		clib_unix_warning ("coredump filter write failed!");
@@ -468,7 +469,7 @@ vlib_unix_main (int argc, char *argv[])
 
   /* allocate N x 1mb stacks, aligned e.g. to a 16mb boundary */
   thread_stacks = clib_mem_alloc_aligned
-    (tm->n_thread_stacks * VLIB_THREAD_STACK_SIZE,
+    ((uword) tm->n_thread_stacks * VLIB_THREAD_STACK_SIZE,
      (VLIB_MAX_CPUS << VLIB_LOG2_THREAD_STACK_SIZE));
 
   sm->vm_base = thread_stacks;
