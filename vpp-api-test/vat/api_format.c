@@ -9661,7 +9661,7 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
     vl_api_ipsec_sad_add_del_entry_t *mp;
     f64 timeout;
     u32 sad_id, spi;
-    u8 * ck, * ik;
+    u8 * ck = 0, * ik = 0;
     u8 is_add = 1;
 
     u8 protocol = IPSEC_PROTOCOL_AH;
@@ -9773,7 +9773,7 @@ api_ipsec_sa_set_key (vat_main_t * vam)
     vl_api_ipsec_sa_set_key_t *mp;
     f64 timeout;
     u32 sa_id;
-    u8 * ck, * ik;
+    u8 * ck = 0, * ik = 0;
 
     while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
         if (unformat (i, "sa_id %d", &sa_id))

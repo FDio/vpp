@@ -67,7 +67,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, * line_input = &_line_input;
   ipsec_sa_t sa;
   int is_add = ~0;
-  u8 * ck, * ik;
+  u8 * ck = 0, * ik = 0;
 
   memset(&sa, 0, sizeof(sa));
 
@@ -287,7 +287,7 @@ set_ipsec_sa_key_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   ipsec_sa_t sa;
-  u8 * ck, * ik;
+  u8 * ck = 0, * ik = 0;
 
   memset(&sa, 0, sizeof(sa));
 
