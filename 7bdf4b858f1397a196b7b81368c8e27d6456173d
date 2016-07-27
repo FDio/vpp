@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_fc724648",
+        "filename": "vnet/vnet/ip/lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-07-27T22:02:47Z",
+      "side": 1,
+      "message": "How about an is_ip4 argument, instead of asking the caller to dig up \u0026ip4/6_main.lookup_main?",
+      "revId": "7bdf4b858f1397a196b7b81368c8e27d6456173d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
