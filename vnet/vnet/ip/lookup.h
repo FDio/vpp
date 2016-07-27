@@ -350,6 +350,18 @@ typedef struct {
   u32 * config_index_by_sw_if_index;
 } ip_config_main_t;
 
+//Function type used to register formatting of a custom adjacency formatting
+typedef u8 *(* ip_adjacency_format_fn)(u8 * s,
+                                        struct ip_lookup_main_t * lm,
+                                        ip_adjacency_t *adj);
+
+typedef struct ip_adj_register_struct {
+  struct ip_adj_register_struct *next;
+  char *node_name; //Name of the node for this registered adjacency
+  ip_adjacency_format_fn fn; //Formatting function of this adjacency
+  u32 *next_index; //some place where the next index to be used will be put at init
+} ip_adj_register_t;
+
 typedef struct ip_lookup_main_t {
   /* Adjacency heap. */
   ip_adjacency_t * adjacency_heap;
@@ -422,6 +434,9 @@ typedef struct ip_lookup_main_t {
 
   /* IP_BUILTIN_PROTOCOL_{TCP,UDP,ICMP,OTHER} by protocol in IP header. */
   u8 builtin_protocol_by_ip_protocol[256];
+
+  /* Registered adjacencies */
+  ip_adj_register_t *registered_adjacencies;
 } ip_lookup_main_t;
 
 always_inline ip_adjacency_t *
@@ -442,6 +457,37 @@ do {								\
   ip_adjacency_t * _adj = (lm)->adjacency_heap + (adj_index);	\
   CLIB_PREFETCH (_adj, sizeof (_adj[0]), type);			\
 } while (0)
+
+/* Adds a next node to ip4 or ip6 lookup node which can be then used in adjacencies.
+ * @param vlib_main pointer
+ * @param lm ip4_main.lookup_main or ip6_main.lookup_main
+ * @param reg registration structure
+ * @param next_node_index Returned index to be used in adjacencies.
+ * @return 0 on success. -1 on failure.
+ */
+int ip_register_adjacency(vlib_main_t *vm, u8 is_ip4,
+                          ip_adj_register_t *reg);
+
+/*
+ * Construction helpers to add IP adjacency at init.
+ */
+#define VNET_IP_REGISTER_ADJACENCY(ip,x,...)                     \
+  __VA_ARGS__ ip_adj_register_t ip##adj_##x;                     \
+static void __vnet_##ip##_register_adjacency_##x (void)          \
+  __attribute__((__constructor__)) ;                             \
+static void __vnet_##ip##_register_adjacency_##x (void)          \
+{                                                                \
+  ip_lookup_main_t *lm = &ip##_main.lookup_main;                 \
+  ip##adj_##x.next = lm->registered_adjacencies;                 \
+  lm->registered_adjacencies = &ip##adj_##x;                     \
+}                                                                \
+__VA_ARGS__ ip_adj_register_t ip##adj_##x
+
+#define VNET_IP4_REGISTER_ADJACENCY(x,...)                       \
+    VNET_IP_REGISTER_ADJACENCY(ip4, x, __VA_ARGS__)
+
+#define VNET_IP6_REGISTER_ADJACENCY(x,...)                       \
+    VNET_IP_REGISTER_ADJACENCY(ip6, x, __VA_ARGS__)
 
 static inline void
 ip_register_add_del_adjacency_callback(ip_lookup_main_t * lm,
