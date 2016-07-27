@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_e1886324",
+        "filename": "vnet/vnet/devices/dpdk/vhost_user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1355,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-07-27T06:35:22Z",
+      "side": 1,
+      "message": "Thanks for clarifying.",
+      "parentUuid": "9a0e1d27_c6657546",
+      "range": {
+        "startLine": 1355,
+        "startChar": 2,
+        "endLine": 1355,
+        "endChar": 24
+      },
+      "revId": "6e6f52b4d2f30a7614219f282f6aaa50604bf8fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_e68f5922",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 2
