@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_fce36631",
+        "filename": "vlib/vlib/unix/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2349,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-27T14:21:20Z",
+      "side": 1,
+      "message": "This should also return; no point continuing if we can\u0027t trust the contents of \"ws\".",
+      "range": {
+        "startLine": 2348,
+        "startChar": 0,
+        "endLine": 2349,
+        "endChar": 37
+      },
+      "revId": "cc4f2b83198307cf66255e21fcd10bc507598598",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
