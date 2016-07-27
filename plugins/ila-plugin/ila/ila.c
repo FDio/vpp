@@ -15,6 +15,7 @@
 
 #include <ila/ila.h>
 #include <vnet/plugin/plugin.h>
+#include <vnet/ip/lookup.h>
 
 static ila_main_t ila_main;
 
@@ -794,6 +795,16 @@ vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
   return error;
 }
 
+u8 *ila_format_adjacency(u8 * s,
+                        struct ip_lookup_main_t * lm,
+                        ip_adjacency_t *adj)
+{
+  ila_main_t *ilm = &ila_main;
+  ila_adj_data_t * ad = (ila_adj_data_t *) & adj->opaque;
+  ila_entry_t *ie = pool_elt_at_index (ilm->entries, ad->entry_index);
+  return format(s, "idx:%d sir:%U", ad->entry_index, format_ip6_address, &ie->sir_address);
+}
+
 clib_error_t *
 ila_init (vlib_main_t * vm)
 {
@@ -810,11 +821,16 @@ ila_init (vlib_main_t * vm)
 			 "ila id to entry index table",
 			 ilm->lookup_table_nbuckets, ilm->lookup_table_size);
 
-  vlib_node_t *ip6_lookup_node =
-    vlib_get_node_by_name (vm, (u8 *) "ip6-lookup");
+  ip_adj_register_t reg = {
+      .fn = ila_format_adjacency,
+      .short_name = "ila2sir",
+      .node_index = ila_ila2sir_node.index
+  };
 
-  ilm->ip6_lookup_next_index =
-    vlib_node_add_next (vm, ip6_lookup_node->index, ila_ila2sir_node.index);
+  ip_register_adjacency(vm,
+                        &ip6_main.lookup_main,
+                        &reg,
+                        &ilm->ip6_lookup_next_index);
   return NULL;
 }
 

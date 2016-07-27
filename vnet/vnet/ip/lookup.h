@@ -350,6 +350,17 @@ typedef struct {
   u32 * config_index_by_sw_if_index;
 } ip_config_main_t;
 
+//Function type used to register formatting of a custom adjacency formatting
+typedef u8 *(* ip_adjacency_format_fn)(u8 * s,
+                                        struct ip_lookup_main_t * lm,
+                                        ip_adjacency_t *adj);
+
+typedef struct {
+  u32 node_index; //Node index where packets must go to when forwarded with such an adjacency
+  char *short_name;
+  ip_adjacency_format_fn fn; //Formatting function of this adjacency
+} ip_adj_register_t;
+
 typedef struct ip_lookup_main_t {
   /* Adjacency heap. */
   ip_adjacency_t * adjacency_heap;
@@ -422,6 +433,9 @@ typedef struct ip_lookup_main_t {
 
   /* IP_BUILTIN_PROTOCOL_{TCP,UDP,ICMP,OTHER} by protocol in IP header. */
   u8 builtin_protocol_by_ip_protocol[256];
+
+  /* Registered adjacencies */
+  ip_adj_register_t *registered_adjacencies;
 } ip_lookup_main_t;
 
 always_inline ip_adjacency_t *
@@ -442,6 +456,18 @@ do {								\
   ip_adjacency_t * _adj = (lm)->adjacency_heap + (adj_index);	\
   CLIB_PREFETCH (_adj, sizeof (_adj[0]), type);			\
 } while (0)
+
+/* Adds a next node to ip4 or ip6 lookup node which can be then used in adjacencies.
+ * @param vlib_main pointer
+ * @param lm ip4_main.lookup_main or ip6_main.lookup_main
+ * @param reg registration structure
+ * @param next_node_index Returned index to be used in adjacencies.
+ * @return 0 on success. -1 on failure.
+ */
+int ip_register_adjacency(vlib_main_t *vm,
+                          ip_lookup_main_t *lm,
+                          ip_adj_register_t *reg,
+                          u32 *next_node_index);
 
 static inline void
 ip_register_add_del_adjacency_callback(ip_lookup_main_t * lm,
