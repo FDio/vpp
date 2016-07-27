@@ -64,7 +64,9 @@ vlib_node_registration_t vhost_user_input_node;
   _(NONE, "no error")  \
   _(NOT_READY, "vhost user state error")  \
   _(PKT_DROP_NOBUF, "tx packet drops (no available descriptors)")  \
-  _(MMAP_FAIL, "mmap failure")
+  _(PKT_DROP_NOMRG, "tx packet drops (cannot merge descriptors)")  \
+  _(MMAP_FAIL, "mmap failure") \
+  _(INDIRECT_OVERFLOW, "indirect descriptor table overflow")
 
 typedef enum {
 #define _(f,s) VHOST_USER_TX_FUNC_ERROR_##f,
@@ -83,6 +85,7 @@ static char * vhost_user_tx_func_error_strings[] = {
   _(NO_ERROR, "no error")  \
   _(NO_BUFFER, "no available buffer")  \
   _(MMAP_FAIL, "mmap failure")  \
+  _(INDIRECT_OVERFLOW, "indirect descriptor overflows table")  \
   _(UNDERSIZED_FRAME, "undersized ethernet frame received (< 14 bytes)")
 
 typedef enum {
@@ -343,6 +346,7 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
       msg.flags |= 4;
       msg.u64 = (1 << FEAT_VIRTIO_NET_F_MRG_RXBUF) |
                 (1 << FEAT_VIRTIO_F_ANY_LAYOUT) |
+                (1 << FEAT_VIRTIO_F_INDIRECT_DESC) |
                 (1 << FEAT_VHOST_F_LOG_ALL) |
                 (1 << FEAT_VIRTIO_NET_F_GUEST_ANNOUNCE) |
                 (1 << FEAT_VHOST_USER_F_PROTOCOL_FEATURES);
@@ -988,36 +992,88 @@ static u32 vhost_user_if_input ( vlib_main_t * vm,
         offset = txvq->desc[desc_current].len;
       }
 
+
+      //TOOD: The guest could make us loop indefinitely
+      //Should add a security check
+
       while(1) {
-        void * buffer_addr = map_guest_mem(vui, txvq->desc[desc_current].addr);
-        if (PREDICT_FALSE(buffer_addr == 0)) {
-          error = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
-          break;
-        }
 
-#if VHOST_USER_COPY_TX_HDR == 1
-        if (PREDICT_TRUE(offset))
-          clib_memcpy(b->pre_data, buffer_addr, sizeof(virtio_net_hdr_t)); /* 12 byte hdr is not used on tx */
-#endif
+        if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT) {
+          // TODO: Test this.
+          // I haven't been able to make Linux send packets this way.
 
-        if (txvq->desc[desc_current].len > offset) {
-          u16 len = txvq->desc[desc_current].len - offset;
-          u16 copied = vlib_buffer_chain_append_data_with_alloc(vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
-                                                   b_head, &b_current, buffer_addr + offset, len);
+          u32 table_len = txvq->desc[desc_current].len / sizeof(vring_desc_t);
+          u32 current_indirect_index = 0;
 
-          if (copied != len) {
-            error = VHOST_USER_INPUT_FUNC_ERROR_NO_BUFFER;
+          while (1) {
+            if (PREDICT_FALSE(current_indirect_index >= table_len)) { //table_len might be 0 too...
+              error = VHOST_USER_INPUT_FUNC_ERROR_INDIRECT_OVERFLOW;
+              goto out;
+            }
+
+            //Get i'th descriptor in the indirect table
+            vring_desc_t *desc = map_guest_mem(vui, txvq->desc[desc_current].addr +
+                                               current_indirect_index * sizeof(vring_desc_t));
+            if (PREDICT_FALSE(desc == 0)) {
+              error = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
+              goto out;
+            }
+
+            void * buffer_addr = map_guest_mem(vui, desc->addr);
+            if (PREDICT_FALSE(buffer_addr == 0)) {
+              error = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
+              goto out;
+            }
+
+            if (desc->len > offset) {
+              u16 len = desc->len - offset;
+              u16 copied = vlib_buffer_chain_append_data_with_alloc(vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
+                                                                    b_head, &b_current, buffer_addr + offset, len);
+
+              if (copied != len) {
+                error = VHOST_USER_INPUT_FUNC_ERROR_NO_BUFFER;
+                break;
+              }
+            }
+            offset = 0;
+
+            if (desc->flags & VIRTQ_DESC_F_NEXT)
+              current_indirect_index = desc->next;
+            else
+              break;
+          }
+
+        } else {
+          void * buffer_addr = map_guest_mem(vui, txvq->desc[desc_current].addr);
+          if (PREDICT_FALSE(buffer_addr == 0)) {
+            error = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
             break;
           }
+
+#if VHOST_USER_COPY_TX_HDR == 1
+          if (PREDICT_TRUE(offset))
+            clib_memcpy(b->pre_data, buffer_addr, sizeof(virtio_net_hdr_t)); /* 12 byte hdr is not used on tx */
+#endif
+
+          if (txvq->desc[desc_current].len > offset) {
+            u16 len = txvq->desc[desc_current].len - offset;
+            u16 copied = vlib_buffer_chain_append_data_with_alloc(vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
+                                                                  b_head, &b_current, buffer_addr + offset, len);
+            if (copied != len) {
+              error = VHOST_USER_INPUT_FUNC_ERROR_NO_BUFFER;
+              break;
+            }
+          }
+          offset = 0;
         }
-        offset = 0;
 
         /* if next flag is set, take next desc in the chain */
-        if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT )
+        if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT)
           desc_current = txvq->desc[desc_current].next;
         else
-          break;
+          goto out;
       }
+out:
 
       /* consume the descriptor and return it as used */
       txvq->last_avail_idx++;
@@ -1196,7 +1252,10 @@ vhost_user_intfc_tx (vlib_main_t * vm,
   {
       vlib_buffer_t *b0, *current_b0;
       u16 desc_chain_head, desc_current, desc_len;
+      vring_desc_t *indirect_desc;
+      uword buffer_physical_addr;
       void *buffer_addr;
+      u32 buffer_len;
       uword offset;
 
       if (n_left >= 2)
@@ -1214,18 +1273,35 @@ vhost_user_intfc_tx (vlib_main_t * vm,
       desc_current = desc_chain_head = rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
       offset = vui->virtio_net_hdr_sz;
       desc_len = offset;
-      if (PREDICT_FALSE(!(buffer_addr = map_guest_mem(vui, rxvq->desc[desc_current].addr)))) {
-        error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
-        goto done;
+
+      if (rxvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT) {
+        if (PREDICT_FALSE(rxvq->desc[desc_current].len < sizeof(vring_desc_t))) {
+          error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
+          goto done;
+        }
+        if (PREDICT_FALSE(!(indirect_desc = map_guest_mem(vui, rxvq->desc[desc_current].addr)) ||
+                          !(buffer_addr = map_guest_mem(vui, indirect_desc->addr)))) {
+          error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
+          goto done;
+        }
+        buffer_physical_addr = indirect_desc->addr;
+        buffer_len = indirect_desc->len;
+      } else {
+        if (PREDICT_FALSE(!(buffer_addr = map_guest_mem(vui, rxvq->desc[desc_current].addr)))) {
+          error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
+          goto done;
+        }
+        buffer_physical_addr = rxvq->desc[desc_current].addr;
+        buffer_len = rxvq->desc[desc_current].len;
+        indirect_desc = NULL;
       }
-      CLIB_PREFETCH(buffer_addr, clib_min(rxvq->desc[desc_current].len,
-	4*CLIB_CACHE_LINE_BYTES), STORE);
+      CLIB_PREFETCH(buffer_addr, clib_min(buffer_len, 4*CLIB_CACHE_LINE_BYTES), STORE);
 
       virtio_net_hdr_mrg_rxbuf_t * hdr = (virtio_net_hdr_mrg_rxbuf_t *) buffer_addr;
       hdr->hdr.flags = 0;
       hdr->hdr.gso_type = 0;
 
-      vhost_user_log_dirty_pages(vui, rxvq->desc[desc_current].addr, vui->virtio_net_hdr_sz);
+      vhost_user_log_dirty_pages(vui, buffer_physical_addr, vui->virtio_net_hdr_sz);
 
       if (vui->virtio_net_hdr_sz == 12)
         hdr->num_buffers = 1;
@@ -1233,11 +1309,6 @@ vhost_user_intfc_tx (vlib_main_t * vm,
       u16 bytes_left = b0->current_length;
       buffer_addr += offset;
       current_b0 = b0;
-
-      //FIXME: This was in the code but I don't think it is valid
-      /*if (PREDICT_FALSE(!vui->is_any_layout && (rxvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT))) {
-        rxvq->desc[desc_current].len = vui->virtio_net_hdr_sz;
-      }*/
 
       while(1) {
         if (!bytes_left) { //Get new input
@@ -1250,8 +1321,27 @@ vhost_user_intfc_tx (vlib_main_t * vm,
           }
         }
 
-        if (rxvq->desc[desc_current].len <= offset) { //Get new output
-          if (rxvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT) {
+        if (buffer_len <= offset) { //Get new output
+          if (indirect_desc && (indirect_desc->flags & VIRTQ_DESC_F_NEXT)) {
+            //Get next descriptor in indirect table
+            if (PREDICT_FALSE(rxvq->desc[desc_current].len < (indirect_desc->next + 1) * sizeof(vring_desc_t))) {
+              error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
+              goto done;
+            }
+            if (PREDICT_FALSE(!(indirect_desc = map_guest_mem(vui, rxvq->desc[desc_current].addr +
+                                                              indirect_desc->next * sizeof(vring_desc_t))))) {
+              error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
+              goto done;
+            }
+            if (PREDICT_FALSE(!(buffer_addr = map_guest_mem(vui, indirect_desc->addr)))) {
+              error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
+              goto done;
+            }
+            buffer_physical_addr = indirect_desc->addr;
+            buffer_len = indirect_desc->len;
+            offset = 0;
+          } else if (rxvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT) {
+            //Next one is chained
             offset = 0;
             desc_current = rxvq->desc[desc_current].next;
             if (PREDICT_FALSE(!(buffer_addr = map_guest_mem(vui, rxvq->desc[desc_current].addr)))) {
@@ -1260,6 +1350,9 @@ vhost_user_intfc_tx (vlib_main_t * vm,
               error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
               goto done;
             }
+            buffer_len = rxvq->desc[desc_current].len;
+            buffer_physical_addr = rxvq->desc[desc_current].addr;
+            indirect_desc = NULL;
           } else if (vui->virtio_net_hdr_sz == 12) { //MRG is available
 
             //Move from available to used buffer
@@ -1279,27 +1372,45 @@ vhost_user_intfc_tx (vlib_main_t * vm,
             }
 
             //Look at next one
-            desc_chain_head = rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
-            desc_current = desc_chain_head;
+            desc_chain_head = desc_current = rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
             desc_len = 0;
             offset = 0;
-            if (PREDICT_FALSE(!(buffer_addr = map_guest_mem(vui, rxvq->desc[desc_current].addr)))) {
-              //Dequeue queued descriptors for this packet
-              used_index -= hdr->num_buffers - 1;
-              rxvq->last_avail_idx -= hdr->num_buffers - 1;
-              error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
-              goto done;
+
+            //Init next output area
+            if (rxvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT) {
+              if (PREDICT_FALSE(rxvq->desc[desc_current].len < sizeof(vring_desc_t))) {
+                error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
+                goto done;
+              }
+              if (PREDICT_FALSE(!(indirect_desc = map_guest_mem(vui, rxvq->desc[desc_current].addr)) ||
+                                !(buffer_addr = map_guest_mem(vui, indirect_desc->addr)))) {
+                error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
+                goto done;
+              }
+              buffer_physical_addr = indirect_desc->addr;
+              buffer_len = indirect_desc->len;
+            } else {
+              if (PREDICT_FALSE(!(buffer_addr = map_guest_mem(vui, rxvq->desc[desc_current].addr)))) {
+                //Dequeue queued descriptors for this packet
+                used_index -= hdr->num_buffers - 1;
+                rxvq->last_avail_idx -= hdr->num_buffers - 1;
+                error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
+                goto done;
+              }
+              buffer_physical_addr = rxvq->desc[desc_current].addr;
+              buffer_len = rxvq->desc[desc_current].len;
+              indirect_desc = NULL;
             }
           } else {
-            error = VHOST_USER_TX_FUNC_ERROR_PKT_DROP_NOBUF;
+            error = VHOST_USER_TX_FUNC_ERROR_PKT_DROP_NOMRG;
             goto done;
           }
         }
 
-        u16 bytes_to_copy = bytes_left > (rxvq->desc[desc_current].len - offset) ? (rxvq->desc[desc_current].len - offset) : bytes_left;
+        u16 bytes_to_copy = bytes_left > (buffer_len - offset) ? (buffer_len - offset) : bytes_left;
         clib_memcpy(buffer_addr, vlib_buffer_get_current (current_b0) + current_b0->current_length - bytes_left, bytes_to_copy);
 
-        vhost_user_log_dirty_pages(vui, rxvq->desc[desc_current].addr + offset, bytes_to_copy);
+        vhost_user_log_dirty_pages(vui, buffer_physical_addr + offset, bytes_to_copy);
         bytes_left -= bytes_to_copy;
         offset += bytes_to_copy;
         buffer_addr += bytes_to_copy;
