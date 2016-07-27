@@ -1562,8 +1562,8 @@ is_locator_in_locator_set (lisp_cp_main_t * lcm, locator_set_t * ls,
   vec_foreach(locit, ls->locator_indices)
     {
       itloc = pool_elt_at_index(lcm->locator_pool, locit[0]);
-      if (itloc->sw_if_index == loc->sw_if_index ||
-          !gid_address_cmp(&itloc->address, &loc->address))
+      if ((ls->local && itloc->sw_if_index == loc->sw_if_index) ||
+          (!ls->local && !gid_address_cmp(&itloc->address, &loc->address)))
         {
           clib_warning("Duplicate locator");
           return VNET_API_ERROR_VALUE_EXIST;
@@ -2099,7 +2099,14 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
   ({
     u8 * msg = 0;
     int next_line = 0;
-    msg = format (msg, "%=16v", lsit->name);
+    if (lsit->local)
+      {
+        msg = format (msg, "%=16v", lsit->name);
+      }
+    else
+      {
+        msg = format (msg, "%=16s", "remote");
+      }
     vec_foreach (locit, lsit->locator_indices)
       {
         if (next_line)

@@ -4777,27 +4777,52 @@ static void vl_api_vxlan_gpe_tunnel_dump_t_handler
     }
 }
 
+/** Used for transferring locators via VPP API */
+typedef CLIB_PACKED(struct
+{
+    u32 sw_if_index; /**< locator sw_if_index */
+    u8 priority; /**< locator priority */
+    u8 weight;   /**< locator weight */
+}) ls_locator_t;
+
 static void
 vl_api_lisp_add_del_locator_set_t_handler(vl_api_lisp_add_del_locator_set_t *mp)
 {
     vl_api_lisp_add_del_locator_set_reply_t *rmp;
     int rv = 0;
     vnet_lisp_add_del_locator_set_args_t _a, *a = &_a;
+    locator_t locator;
+    ls_locator_t *ls_loc;
     u32 ls_index = ~0;
     u8 *locator_name = NULL;
+    int i;
 
     memset(a, 0, sizeof(a[0]));
 
     locator_name = format(0, "%s", mp->locator_set_name);
 
     a->name = locator_name;
-    a->locators = NULL;
     a->is_add = mp->is_add;
     a->local = 1;
 
+    memset(&locator, 0, sizeof(locator));
+    for (i = 0; i < mp->locator_num; i++) {
+        ls_loc = &((ls_locator_t *) mp->locators)[i];
+        VALIDATE_SW_IF_INDEX(ls_loc);
+
+        locator.sw_if_index = htonl(ls_loc->sw_if_index);
+        locator.priority = ls_loc->priority;
+        locator.weight = ls_loc->weight;
+        locator.local = 1;
+        vec_add1(a->locators, locator);
+    }
+
     rv = vnet_lisp_add_del_locator_set(a, &ls_index);
 
+    BAD_SW_IF_INDEX_LABEL;
+
     vec_free(locator_name);
+    vec_free(a->locators);
 
     REPLY_MACRO(VL_API_LISP_ADD_DEL_LOCATOR_SET_REPLY);
 }
