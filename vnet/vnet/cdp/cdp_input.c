@@ -461,7 +461,7 @@ u8 * cdp_input_format_trace (u8 * s, va_list * args)
         tlv = (cdp_tlv_t *)cur;
         tlv->t = ntohs(tlv->t);
         tlv->l = ntohs(tlv->l);
-        if (tlv->t > ARRAY_LEN(tlv_handlers)) {
+        if (tlv->t >= ARRAY_LEN(tlv_handlers)) {
             s = format (s, "BAD_TLV\n");
             break;
         }

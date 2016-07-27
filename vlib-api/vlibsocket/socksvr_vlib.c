@@ -602,6 +602,7 @@ socksvr_api_init (vlib_main_t * vm)
 
   if (bind (sockfd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0)
     {
+      close (sockfd);
       return clib_error_return_unix (0, "bind");
     }
 

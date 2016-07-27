@@ -2345,7 +2345,13 @@ unix_cli_resize_interrupt (int signum)
   (void) signum;
 
   /* Terminal resized, fetch the new size */
-  ioctl (UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws);
+  if (ioctl (UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws) < 0)
+    {
+      /* "Should never happen..." */
+      clib_unix_warning ("TIOCGWINSZ");
+      /* We can't trust ws.XXX... */
+      return;
+    }
   cf->width = ws.ws_col;
   cf->height = ws.ws_row;
 
@@ -2380,7 +2386,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
       /* Set stdin to be non-blocking. */
       if ((flags = fcntl (UNIX_CLI_STDIN_FD, F_GETFL, 0)) < 0)
 	flags = 0;
-      fcntl (UNIX_CLI_STDIN_FD, F_SETFL, flags | O_NONBLOCK);
+      (void) fcntl (UNIX_CLI_STDIN_FD, F_SETFL, flags | O_NONBLOCK);
 
       cf_index = unix_cli_file_add (cm, "stdin", UNIX_CLI_STDIN_FD);
       cf = pool_elt_at_index (cm->cli_file_pool, cf_index);

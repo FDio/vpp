@@ -81,10 +81,15 @@ void
 vlib_set_thread_name (char *name)
 {
   int pthread_setname_np (pthread_t __target_thread, const char *__name);
+  int rv;
   pthread_t thread = pthread_self ();
 
   if (thread)
-    pthread_setname_np (thread, name);
+    {
+      rv = pthread_setname_np (thread, name);
+      if (rv)
+        clib_warning ("pthread_setname_np returned %d", rv);
+    }
 }
 
 static int
@@ -114,7 +119,8 @@ vlib_sysfs_list_to_bitmap (char *filename)
 	  unformat_input_t in;
 	  unformat_init_string (&in, (char *) buffer,
 				strlen ((char *) buffer));
-	  unformat (&in, "%U", unformat_bitmap_list, &r);
+	  if (unformat (&in, "%U", unformat_bitmap_list, &r) != 1)
+            clib_warning ("unformat_bitmap_list failed");
 	  unformat_free (&in);
 	}
       vec_free (buffer);
