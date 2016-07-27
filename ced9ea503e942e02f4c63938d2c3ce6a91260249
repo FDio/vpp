@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_3c79de2f",
+        "filename": "vppinfra/vppinfra/bihash_8_8.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-27T22:25:27Z",
+      "side": 1,
+      "message": "You missed a space here; though in general including this hyphen I think makes the rendered documentation look a little clumsy (though I would agree it makes the source code doc easier to read, because I used to do it too!)\n\nMaybe I can parse it out in the filter if you\u0027d prefer to keep the hyphens.",
+      "range": {
+        "startLine": 45,
+        "startChar": 12,
+        "endLine": 45,
+        "endChar": 13
+      },
+      "revId": "ced9ea503e942e02f4c63938d2c3ce6a91260249",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_1c761a3f",
+        "filename": "vppinfra/vppinfra/bihash_doc.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-07-27T22:25:27Z",
+      "side": 1,
+      "message": "extraneous?",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 142,
+        "endChar": 43
+      },
+      "revId": "ced9ea503e942e02f4c63938d2c3ce6a91260249",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
