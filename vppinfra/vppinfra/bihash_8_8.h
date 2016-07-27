@@ -25,11 +25,15 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/xxhash.h>
 
+/** 8 octet key, 8 octet key value pair */
 typedef struct {
-  u64 key;
-  u64 value;
+  u64 key;                      /**< the key */
+  u64 value;                    /**< the value */
 } clib_bihash_kv_8_8_t;
 
+/** Decide if a clib_bihash_kv_8_8_t instance is free 
+    @param v- pointer to the (key,value) pair
+*/
 static inline int clib_bihash_is_free_8_8 (clib_bihash_kv_8_8_t *v)
 {
   if (v->key == ~0ULL && v->value == ~0ULL)
@@ -37,11 +41,19 @@ static inline int clib_bihash_is_free_8_8 (clib_bihash_kv_8_8_t *v)
   return 0;
 }
 
+/** Hash a clib_bihash_kv_8_8_t instance 
+    @param v - pointer to the (key,value) pair, hash the key (only)
+*/
 static inline u64 clib_bihash_hash_8_8  (clib_bihash_kv_8_8_t *v)
 {
   return clib_xxhash (v->key);
 }
 
+/** Format a clib_bihash_kv_8_8_t instance 
+    @param s - u8 * vector under construction
+    @param v (vararg) - the (key,value) pair to format
+    @return s - the u8 * vector under construction
+*/
 static inline u8 * format_bihash_kvp_8_8 (u8 * s, va_list * args)
 {
   clib_bihash_kv_8_8_t * v = va_arg (*args, clib_bihash_kv_8_8_t *);
@@ -50,6 +62,10 @@ static inline u8 * format_bihash_kvp_8_8 (u8 * s, va_list * args)
   return s;
 }
 
+/** Compare two clib_bihash_kv_8_8_t instances 
+    @param a - first key
+    @param b - second key
+*/
 static inline int clib_bihash_key_compare_8_8 (u64 a, u64 b)
 {
   return a == b;
