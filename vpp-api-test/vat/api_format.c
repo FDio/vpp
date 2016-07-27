@@ -10488,6 +10488,14 @@ static int api_get_node_graph (vat_main_t * vam)
     W;
 }
 
+/** Used for transferring locators via VPP API */
+typedef CLIB_PACKED(struct
+{
+    u32 sw_if_index; /**< locator sw_if_index */
+    u8 priority; /**< locator priority */
+    u8 weight;   /**< locator weight */
+}) ls_locator_t;
+
 static int
 api_lisp_add_del_locator_set(vat_main_t * vam)
 {
@@ -10497,6 +10505,8 @@ api_lisp_add_del_locator_set(vat_main_t * vam)
     u8  is_add = 1;
     u8 *locator_set_name = NULL;
     u8  locator_set_name_set = 0;
+    ls_locator_t locator, * locators = 0;
+    u32 sw_if_index, priority, weight;
 
     /* Parse args required to build the message */
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
@@ -10504,18 +10514,32 @@ api_lisp_add_del_locator_set(vat_main_t * vam)
             is_add = 0;
         } else if (unformat(input, "locator-set %s", &locator_set_name)) {
             locator_set_name_set = 1;
+        } else if (unformat(input, "sw_if_index %u p %u w %u",
+                            &sw_if_index, &priority, &weight)) {
+            locator.sw_if_index = htonl(sw_if_index);
+            locator.priority = priority;
+            locator.weight = weight;
+            vec_add1(locators, locator);
+        } else if (unformat(input, "iface %U p %u w %u", unformat_sw_if_index,
+                            vam, &sw_if_index, &priority, &weight)) {
+            locator.sw_if_index = htonl(sw_if_index);
+            locator.priority = priority;
+            locator.weight = weight;
+            vec_add1(locators, locator);
         } else
             break;
     }
 
     if (locator_set_name_set == 0) {
         errmsg ("missing locator-set name");
+        vec_free(locators);
         return -99;
     }
 
     if (vec_len(locator_set_name) > 64) {
         errmsg ("locator-set name too long\n");
         vec_free(locator_set_name);
+        vec_free(locators);
         return -99;
     }
     vec_add1(locator_set_name, 0);
@@ -10527,6 +10551,11 @@ api_lisp_add_del_locator_set(vat_main_t * vam)
     clib_memcpy(mp->locator_set_name, locator_set_name,
            vec_len(locator_set_name));
     vec_free(locator_set_name);
+
+    mp->locator_num = vec_len (locators);
+    clib_memcpy (mp->locators, locators,
+                 (sizeof (ls_locator_t) * vec_len (locators)));
+    vec_free (locators);
 
     /* send it... */
     S;
@@ -13147,7 +13176,9 @@ _(trace_profile_add, "id <nn> trace-type <0x1f|0x3|0x9|0x11|0x19> "     \
 _(trace_profile_apply, "id <nn> <ip6-address>/<width>"                  \
   " vrf_id <nn>  add | pop | none")                                     \
 _(trace_profile_del, "")                                                \
-_(lisp_add_del_locator_set, "locator-set <locator_name> [del]")         \
+_(lisp_add_del_locator_set, "locator-set <locator_name> [iface <intf> |"\
+                            " sw_if_index <sw_if_index> p <priority> "  \
+                            "w <weight>] [del]")                        \
 _(lisp_add_del_locator, "locator-set <locator_name> "                   \
                         "iface <intf> | sw_if_index <sw_if_index> "     \
                         "p <priority> w <weight> [del]")                \
