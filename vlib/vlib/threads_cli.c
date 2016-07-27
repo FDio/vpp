@@ -321,8 +321,8 @@ test_frame_queue_nelts (vlib_main_t * vm, unformat_input_t * input,
   u32 fqix;
   u32 nelts = 0;
 
-  unformat (input, "%d", &nelts);
-  if ((nelts != 4) && (nelts != 8) && (nelts != 16) && (nelts != 32))
+  if ((unformat (input, "%d", &nelts) != 1) ||
+      ((nelts != 4) && (nelts != 8) && (nelts != 16) && (nelts != 32)))
     {
       return clib_error_return (0, "expecting 4,8,16,32");
     }

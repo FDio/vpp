@@ -107,6 +107,7 @@ sockclnt_open_index (char *client_name, char *hostname, int port)
   if (connect (sockfd, (const void *) &serv_addr, sizeof (serv_addr)) < 0)
     {
       clib_unix_warning ("Connect failure to (%s, %d)", hostname, port);
+      close(sockfd);
       return ~0;
     }
 

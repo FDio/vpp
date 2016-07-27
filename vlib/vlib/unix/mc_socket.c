@@ -955,7 +955,10 @@ find_interface_ip4_address (char *if_name, u32 * ip4_address, u32 * mtu)
   clib_memcpy (ip4_address, &sa->sin_addr.s_addr, sizeof (ip4_address[0]));
 
   if (ioctl (fd, SIOCGIFMTU, &ifr) < 0)
-    return -1;
+    {
+      close (fd);
+      return -1;
+    }
   if (mtu)
     *mtu = ifr.ifr_mtu - ( /* IP4 header */ 20 + /* UDP header */ 8);
 

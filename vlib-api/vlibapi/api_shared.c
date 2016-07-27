@@ -774,6 +774,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   if (fstat (fd, &statb) < 0)
     {
       vlib_cli_output (vm, "Couldn't stat %s\n", filename);
+      close (fd);
       return;
     }
 
