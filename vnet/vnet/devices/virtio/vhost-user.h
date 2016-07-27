@@ -24,6 +24,7 @@
 #define VHOST_NET_VRING_NUM             2
 
 #define VIRTQ_DESC_F_NEXT               1
+#define VIRTQ_DESC_F_INDIRECT           4
 #define VHOST_USER_REPLY_MASK       (0x1 << 2)
 
 #define VHOST_USER_PROTOCOL_F_MQ   0
@@ -51,6 +52,7 @@
 #define foreach_virtio_net_feature      \
  _ (VIRTIO_NET_F_MRG_RXBUF, 15)         \
  _ (VIRTIO_F_ANY_LAYOUT, 27)            \
+ _ (VIRTIO_F_INDIRECT_DESC, 28)         \
  _ (VHOST_F_LOG_ALL, 26)                \
  _ (VIRTIO_NET_F_GUEST_ANNOUNCE, 21)    \
  _ (VHOST_USER_F_PROTOCOL_FEATURES, 30)
