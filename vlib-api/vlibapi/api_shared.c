@@ -1083,8 +1083,20 @@ api_trace_command_fn (vlib_main_t * vm,
 	    }
 	  rv = vl_msg_api_trace_save (am, which, fp);
 	  fclose (fp);
-	  if (rv < 0)
-	    vlib_cli_output (vm, "ERROR: %d", rv);
+	  if (rv == -1)
+		vlib_cli_output (vm, "API Trace data not present\n");
+	  else if (rv == -2)
+		vlib_cli_output (vm, "File for writing is closed\n");
+	  else if (rv == -10)
+		vlib_cli_output (vm, "Error while writing header to file\n");
+	  else if (rv == -11)
+		vlib_cli_output (vm, "Error while writing trace to file\n");
+	  else if (rv == -12)
+		vlib_cli_output (vm, "Error while writing end of buffer trace to file\n");
+	  else if (rv == -13)
+		vlib_cli_output (vm, "Error while writing start of buffer trace to file\n");
+	  else if (rv < 0)
+	    vlib_cli_output (vm, "Unkown error while saving: %d", rv);
 	  else
 	    vlib_cli_output (vm, "API trace saved to %s\n", chroot_filename);
 	  vec_free (chroot_filename);
