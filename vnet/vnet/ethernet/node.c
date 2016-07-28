@@ -76,7 +76,6 @@ vlib_node_registration_t ethernet_input_node;
 typedef enum {
   ETHERNET_INPUT_VARIANT_ETHERNET,
   ETHERNET_INPUT_VARIANT_ETHERNET_TYPE,
-  ETHERNET_INPUT_VARIANT_VLAN,
   ETHERNET_INPUT_VARIANT_NOT_L2,
 } ethernet_input_variant_t;
 

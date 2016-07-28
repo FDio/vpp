@@ -605,14 +605,14 @@ create_sub_interfaces (vlib_main_t * vm,
       template.sup_sw_if_index = hi->sw_if_index;
       template.sub.id = id;
       error = vnet_create_sw_interface (vnm, &template, &sw_if_index);
-      if (error) goto done;
+      if (error) 
+        goto done;
+
       hash_set (hi->sub_interface_sw_if_index_by_id, id, sw_if_index);
       hash_set_mem (im->sw_if_index_by_sup_and_sub, kp, sw_if_index);
-      vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
+      vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, 
+                      vnet_get_main(), sw_if_index);
     }
-
-  if (error)
-    goto done;
 
  done:
   return error;

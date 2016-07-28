@@ -193,7 +193,12 @@ ip4_fib_set_adj_index (ip4_main_t * im,
 			fib->new_hash_values);
 
       p = hash_get (hash, dst_address_u32);
-      clib_memcpy (p, fib->new_hash_values, vec_bytes (fib->new_hash_values));
+      /* hash_get should never return NULL here */
+      if (p)
+          clib_memcpy (p, fib->new_hash_values, 
+                       vec_bytes (fib->new_hash_values));
+      else
+          ASSERT(0);
     }
 }
 
