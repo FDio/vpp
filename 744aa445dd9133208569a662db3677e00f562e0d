@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_57f8ed7b",
+        "filename": "vnet/vnet/ip/lookup.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 975,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-07-28T12:11:18Z",
+      "side": 1,
+      "message": "This looks suspiciously like something Pierre was working on - note the \"conflicts with\" indication in Gerrit. Whichever implementation you guys choose; it\u0027d be nice to add a standard __attribute__((constructor)) macro - IP_REGISTER_ADJACENCY_FORMAT_FUNCTION or similar - to do the vec_add1\u0027s so folks won\u0027t have to explicitly call the registration API. I\u0027d go for some is_ip4 action in the registration struct so the code can select the required lookup_main_t, etc.",
+      "revId": "744aa445dd9133208569a662db3677e00f562e0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
