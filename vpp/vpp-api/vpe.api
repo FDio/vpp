@@ -2157,6 +2157,8 @@ define vxlan_gpe_tunnel_details {
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
     @param locator_set_name - locator name
+    @param locator_num - number of locators
+    @param locators - Lisp locator data
 */
 define lisp_add_del_locator_set {
     u32 client_index;
@@ -2164,7 +2166,7 @@ define lisp_add_del_locator_set {
     u8  is_add;
     u8  locator_set_name[64];
     u32 locator_num;
-    u8  locators[0];
+    u8  locators[locator_num];
 };
 
 /** \brief Reply for locator_set add/del
