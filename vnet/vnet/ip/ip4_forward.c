@@ -444,7 +444,6 @@ ip4_add_del_route_next_hop (ip4_main_t * im,
     {
       /* create / delete additional mapping of existing adjacency */
       ip4_add_del_route_args_t a;
-      ip_adjacency_t * nh_adj = ip_get_adjacency (lm, nh_adj_index);
 
       a.table_index_or_table_id = fib_index;
       a.flags = ((is_del ? IP4_ROUTE_FLAG_DEL : IP4_ROUTE_FLAG_ADD)
@@ -459,13 +458,6 @@ ip4_add_del_route_next_hop (ip4_main_t * im,
       a.n_add_adj = 0;
 
       ip4_add_del_route (im, &a);
-
-      /* adjust share count. This cannot be the only use of the adjacency 
-         unless next hop is an indiect adj where share count is already
-         incremented */
-      if (next_hop_sw_if_index != ~0) 
-	nh_adj->share_count += is_del ? -1 : 1;
-        
       goto done;
     }
 
