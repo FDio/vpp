@@ -642,7 +642,7 @@ set_dpdk_if_desc (vlib_main_t *vm, unformat_input_t *input,
 
   rv = dpdk_port_setup(dm, xd);
 
-  return rv < 0 ? rv : 0;
+  return rv;
 }
 
 VLIB_CLI_COMMAND (cmd_set_dpdk_if_desc,static) = {
