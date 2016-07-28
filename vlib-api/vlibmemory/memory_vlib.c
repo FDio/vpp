@@ -644,9 +644,9 @@ vl_api_show_histogram_command (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_api_histogram_command, static) = {
-  .path = "show api histogram",
-  .short_help = "show api histogram",
-  .function = vl_api_show_histogram_command,
+    .path = "show api histogram",
+    .short_help = "show api histogram",
+    .function = vl_api_show_histogram_command,
 };
 /* *INDENT-ON* */
 
@@ -907,6 +907,41 @@ socket_clients:
   return 0;
 }
 
+static clib_error_t *
+vl_api_status_command (vlib_main_t * vm,
+		       unformat_input_t * input, vlib_cli_command_t * cli_cmd)
+{
+  api_main_t *am = &api_main;
+
+  // check if rx_trace and tx_trace are not null pointers
+
+  if (am->rx_trace == 0)
+    {
+      vlib_cli_output (vm, "RX Trace disabled\n");
+    }
+  else
+    {
+      if (am->rx_trace->enabled == 0)
+	vlib_cli_output (vm, "RX Trace disabled\n");
+      else
+	vlib_cli_output (vm, "RX Trace enabled\n");
+    }
+
+  if (am->tx_trace == 0)
+    {
+      vlib_cli_output (vm, "TX Trace disabled\n");
+    }
+  else
+    {
+      if (am->tx_trace->enabled == 0)
+	vlib_cli_output (vm, "TX Trace disabled\n");
+      else
+	vlib_cli_output (vm, "TX Trace enabled\n");
+    }
+
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_api_command, static) = {
     .path = "show api",
@@ -927,6 +962,14 @@ VLIB_CLI_COMMAND (cli_show_api_clients_command, static) = {
     .path = "show api clients",
     .short_help = "Client information",
     .function = vl_api_client_command,
+};
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cli_show_api_status_command, static) = {
+    .path = "show api status",
+    .short_help = "Show API trace status",
+    .function = vl_api_status_command,
 };
 /* *INDENT-ON* */
 
