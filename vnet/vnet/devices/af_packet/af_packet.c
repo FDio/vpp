@@ -156,7 +156,8 @@ create_packet_v2_sock(u8 * name, tpacket_req_t * rx_req, tpacket_req_t * tx_req,
 
   return 0;
 error:
-  close(*fd);
+  if (*fd >= 0)
+    close(*fd);
   *fd = -1;
   return ret;
 }
