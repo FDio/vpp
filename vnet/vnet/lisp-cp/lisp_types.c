@@ -523,56 +523,72 @@ ip_address_set(ip_address_t * dst, void * src, u8 version)
   ip_addr_version(dst) = version;
 }
 
+static void
+ip_prefix_normalize_ip4 (ip4_address_t * ip4, u8 preflen)
+{
+  u32 mask = ~0;
+
+  ASSERT (ip4);
+
+  if (32 <= preflen)
+   {
+     return;
+   }
+
+  mask = pow2_mask (preflen) << (32 - preflen);
+  mask = clib_host_to_net_u32 (mask);
+  ip4->data_u32 &= mask;
+}
+
+static void
+ip_prefix_normalize_ip6 (ip6_address_t * ip6, u8 preflen)
+{
+  u8 mask_6[16];
+  u32 * m;
+  u8 j ,i0, i1;
+
+  ASSERT (ip6);
+
+  memset (mask_6, 0, sizeof (mask_6));
+
+  if (128 <= preflen)
+   {
+     return;
+   }
+
+  i1 = preflen % 32;
+  i0 = preflen / 32;
+  m = (u32 * ) &mask_6[0];
+
+  for (j = 0; j < i0; j++)
+    {
+      m[j] = ~0;
+    }
+
+  if (i1)
+   {
+     m[i0] = clib_host_to_net_u32 (pow2_mask(i1) << (32 - i1));
+   }
+
+  for (j = 0; j < sizeof(mask_6); j++)
+    {
+      ip6->as_u8[j] &= mask_6[j];
+    }
+}
+
 void
 ip_prefix_normalize(ip_prefix_t * a)
 {
-  ip_address_t * ip;
-  ip4_address_t * ip4;
-  ip6_address_t * ip6;
-  int preflen = ip_prefix_len(a);
-  u32 mask = ~0;
-  u64 mask_6[2];
-  u32 * m;
-  u32 j, i0, i1;
+  u8 preflen = ip_prefix_len(a);
 
-  ip = &ip_prefix_addr (a);
-  switch (ip_addr_version (ip))
+  switch (ip_prefix_version (a))
   {
     case IP4:
-      if (32 <= preflen)
-        {
-          break;
-        }
-
-      ip4 = &ip_addr_v4 (ip);
-      mask = pow2_mask (preflen) << (32 - preflen);
-      mask = clib_host_to_net_u32 (mask);
-      ip4->data_u32 &= mask;
+      ip_prefix_normalize_ip4(&ip_prefix_v4(a), preflen);
       break;
 
     case IP6:
-      if (128 <= preflen)
-        {
-          break;
-        }
-      ip6 = &ip_addr_v6 (ip);
-      memset(mask_6, 0, sizeof(mask_6));
-      m = (u32 * ) mask_6;
-
-      i0 = preflen / 32;
-      i1 = preflen % 32;
-      for (j = 0; j < i0; j++)
-        {
-          m[j] = ~0;
-        }
-
-      if (i1)
-        {
-          m[i0] = clib_host_to_net_u32 (pow2_mask(i1) << (32 - i1));
-        }
-
-      ip6->as_u64[0] &= mask_6[0];
-      ip6->as_u64[1] &= mask_6[1];
+      ip_prefix_normalize_ip6(&ip_prefix_v6(a), preflen);
       break;
 
     default:
