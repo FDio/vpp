@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_36d8da1c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-29T20:39:46Z",
+      "side": 1,
+      "message": "Please use hqos instead of iotx.",
+      "range": {
+        "startLine": 61,
+        "startChar": 11,
+        "endLine": 61,
+        "endChar": 15
+      },
+      "revId": "792f2d0cda89d8899b764029eae512ce2c97b5a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_1605d679",
+        "filename": "vnet/Makefile.am",
+        "patchSetId": 2
+      },
+      "lineNbr": 599,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-29T20:39:46Z",
+      "side": 1,
+      "message": "Can we have everything in one file? Looks like both files are not very big...",
+      "range": {
+        "startLine": 598,
+        "startChar": 0,
+        "endLine": 599,
+        "endChar": 36
+      },
+      "revId": "792f2d0cda89d8899b764029eae512ce2c97b5a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_d6fe3e6b",
+        "filename": "vnet/vnet/devices/dpdk/dpdk.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 455,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-29T20:39:46Z",
+      "side": 1,
+      "message": "Can we call this hqos threads?",
+      "range": {
+        "startLine": 455,
+        "startChar": 10,
+        "endLine": 455,
+        "endChar": 14
+      },
+      "revId": "792f2d0cda89d8899b764029eae512ce2c97b5a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_b603ca72",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1343,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-07-29T20:39:46Z",
+      "side": 1,
+      "message": "GNU indent style please - applies to whole patchset",
+      "range": {
+        "startLine": 1342,
+        "startChar": 63,
+        "endLine": 1343,
+        "endChar": 65
+      },
+      "revId": "792f2d0cda89d8899b764029eae512ce2c97b5a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
