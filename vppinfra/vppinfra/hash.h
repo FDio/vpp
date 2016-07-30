@@ -329,21 +329,32 @@ hash_forward (hash_t * h, void *v, uword n)
   return (u8 *) v + ((n * sizeof (hash_pair_t)) << h->log2_pair_size);
 }
 
-/* Iterate over hash pairs
-    @param p the current (key,value) pair
-    @param v the hash table to iterate
-    @param body the operation to perform on each (key,value) pair.
-    executes body with each active hash pair
+/** Iterate over hash pairs.
+
+    @param p    The current (key,value) pair. This should be of type
+                <code>(hash_pair_t *)</code>.
+    @param v    The hash table to iterate.
+    @param body The operation to perform on each (key,value) pair.
+
+    Executes the expression or code block @c body with each active hash pair.
 */
+/* A previous version of this macro made use of the hash_pair_union_t
+ * structure; this version does not since that approach mightily upset
+ * the static analysis tool. In the rare chance someone is reading this
+ * code, pretend that _p below is of type hash_pair_union_t and that when
+ * used as an rvalue it's really using one of the union members as the
+ * rvalue. If you were confused before you might be marginally less
+ * confused after.
+ */
 #define hash_foreach_pair(p,v,body)                                         \
 do {                                                                        \
  __label__ _hash_foreach_done;                                              \
   hash_t * _h = hash_header (v);                                            \
-  hash_pair_union_t * _p;                                                   \
+  void * _p;                                                                \
   hash_pair_t * _q, * _q_end;                                               \
   uword _i, _i1, _id, _pair_increment;                                      \
                                                                             \
-  _p = (hash_pair_union_t *) (v);                                           \
+  _p = (v);                                                                 \
   _i = 0;                                                                   \
   _pair_increment = 1;                                                      \
   if ((v))                                                                  \
@@ -356,12 +367,12 @@ do {                                                                        \
       do {                                                                  \
         if (_id & 1)                                                        \
           {                                                                 \
-            _q = &_p->direct;                                               \
+            _q = _p;                                                        \
             _q_end = _q + _pair_increment;                                  \
           }                                                                 \
         else                                                                \
           {                                                                 \
-            hash_pair_indirect_t * _pi = &_p->indirect;                     \
+            hash_pair_indirect_t * _pi = _p;                                \
             _q = _pi->pairs;                                                \
             if (_h->log2_pair_size > 0)                                     \
               _q_end = hash_forward (_h, _q, indirect_pair_get_len (_pi));  \
@@ -384,7 +395,7 @@ do {                                                                        \
             _q += _pair_increment;                                          \
           }                                                                 \
                                                                             \
-        _p = (hash_pair_union_t *) (&_p->direct + _pair_increment);         \
+        _p = (hash_pair_t *)_p + _pair_increment;                           \
         _id = _id / 2;                                                      \
         _i++;                                                               \
       } while (_i < _i1);                                                   \
