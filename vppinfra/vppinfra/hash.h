@@ -34,6 +34,10 @@
   OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+/**
+ * @file
+ * @brief Hash table functions.
+ */
 
 #ifndef included_hash_h
 #define included_hash_h
@@ -50,47 +54,47 @@ typedef uword (hash_key_sum_function_t)
 typedef uword (hash_key_equal_function_t)
   (struct hash_header *, uword key1, uword key2);
 
-/* Vector header for hash tables. */
+/** Vector header for hash tables. */
 typedef struct hash_header {
-  /* Number of elements in hash table. */
+  /** Number of elements in hash table. */
   uword elts;
 
-  /* Flags as follows. */
+  /** Flags as follows. */
   u32 flags;
 
-  /* Set if user does not want table to auto-resize when sufficiently full. */
+  /** Set if user does not want table to auto-resize when sufficiently full. */
 #define HASH_FLAG_NO_AUTO_GROW		(1 << 0)
-  /* Set if user does not want table to auto-resize when sufficiently empty. */
+  /** Set if user does not want table to auto-resize when sufficiently empty. */
 #define HASH_FLAG_NO_AUTO_SHRINK	(1 << 1)
-  /* Set when hash_next is in the process of iterating through this hash table. */
+  /** Set when hash_next is in the process of iterating through this hash table. */
 #define HASH_FLAG_HASH_NEXT_IN_PROGRESS (1 << 2)
 
   u32 log2_pair_size;
 
-  /* Function to compute the "sum" of a hash key.
+  /** Function to compute the "sum" of a hash key.
      Hash function is this sum modulo the prime size of
      the hash table (vec_len (v)). */
   hash_key_sum_function_t * key_sum;
 
   /* Special values for key_sum "function". */
-#define KEY_FUNC_NONE		(0) /*< sum = key */
-#define KEY_FUNC_POINTER_UWORD	(1) /*< sum = *(uword *) key */
-#define KEY_FUNC_POINTER_U32	(2) /*< sum = *(u32 *) key */
-#define KEY_FUNC_STRING         (3) /*< sum = string_key_sum, etc. */
+#define KEY_FUNC_NONE		(0)          /**< sum = key */
+#define KEY_FUNC_POINTER_UWORD	(1)  /**< sum = *(uword *) key */
+#define KEY_FUNC_POINTER_U32	(2)    /**< sum = *(u32 *) key */
+#define KEY_FUNC_STRING         (3)  /**< sum = string_key_sum, etc. */
 
-  /* key comparison function */
+  /** Key comparison function */
   hash_key_equal_function_t * key_equal;
 
-  /* Hook for user's data.  Used to parameterize sum/equal functions. */
+  /** Hook for user's data.  Used to parameterize sum/equal functions. */
   any user;
 
-  /* Format a (k,v) pair */
+  /** Format a (k,v) pair */
   format_function_t * format_pair;
 
-  /* Format function arg */
+  /** Format function arg */
   void * format_pair_arg;
 
-  /* Bit i is set if pair i is a user object (as opposed to being
+  /** Bit i is set if pair i is a user object (as opposed to being
      either zero or an indirect array of pairs). */
   uword is_user[0];
 } hash_t;
@@ -302,21 +306,22 @@ always_inline void * hash_forward1 (hash_t * h, void * v)
 always_inline void * hash_forward (hash_t * h, void * v, uword n)
 { return (u8 *) v + ((n * sizeof (hash_pair_t)) << h->log2_pair_size); }
 
-/* Iterate over hash pairs
-    @param p the current (key,value) pair
-    @param v the hash table to iterate
-    @param body the operation to perform on each (key,value) pair. 
-    executes body with each active hash pair
+/** Iterate over hash pairs.
+    @param p    The current (key,value) pair.
+    @param v    The hash table to iterate.
+    @param body The operation to perform on each (key,value) pair. 
+
+    Executes @c body with each active hash pair.
 */
 #define hash_foreach_pair(p,v,body)                                         \
 do {                                                                        \
  __label__ _hash_foreach_done;                                              \
   hash_t * _h = hash_header (v);                                            \
-  hash_pair_union_t * _p;                                                   \
+  void * _p;                                                                \
   hash_pair_t * _q, * _q_end;                                               \
   uword _i, _i1, _id, _pair_increment;                                      \
                                                                             \
-  _p = (hash_pair_union_t *) (v);                                           \
+  _p = (v);                                                                 \
   _i = 0;                                                                   \
   _pair_increment = 1;                                                      \
   if ((v))                                                                  \
@@ -329,12 +334,12 @@ do {                                                                        \
       do {                                                                  \
         if (_id & 1)                                                        \
           {                                                                 \
-            _q = &_p->direct;                                               \
+            _q = (hash_pair_t *)_p;                                         \
             _q_end = _q + _pair_increment;                                  \
           }                                                                 \
         else                                                                \
           {                                                                 \
-            hash_pair_indirect_t * _pi = &_p->indirect;                     \
+            hash_pair_indirect_t * _pi = (hash_pair_indirect_t *)_p;        \
             _q = _pi->pairs;                                                \
             if (_h->log2_pair_size > 0)                                     \
               _q_end = hash_forward (_h, _q, indirect_pair_get_len (_pi));  \
@@ -357,7 +362,7 @@ do {                                                                        \
             _q += _pair_increment;                                          \
           }                                                                 \
                                                                             \
-        _p = (hash_pair_union_t *) (&_p->direct + _pair_increment);         \
+        _p = (hash_pair_t *)_p + _pair_increment;                           \
         _id = _id / 2;                                                      \
         _i++;                                                               \
       } while (_i < _i1);                                                   \
@@ -367,16 +372,16 @@ do {                                                                        \
   ;                                                                         \
  } while (0)
 
-/* Iterate over key/value pairs
+/** Iterate over key/value pairs.
 
-    @param key_var the current key
-    @param value_var the current value
-    @param h the hash table to iterate across
-    @param body the operation to perform on each (key_var,value_var) pair. 
+    @param key_var   The current key
+    @param value_var The current value
+    @param h         The hash table to iterate across
+    @param body      The operation to perform on each (key_var,value_var)
+                     pair.
 
-    calls body with each active hash pair
+    Calls @c body with each active hash pair.
 */
-/* Iteratate over key/value pairs. */
 #define hash_foreach(key_var,value_var,h,body)			\
 do {								\
   hash_pair_t * _r;						\
@@ -387,14 +392,15 @@ do {								\
   });								\
 } while (0)
 
-/* Iterate over key/value pairs for pointer key hash tables
+/** Iterate over key/value pairs for pointer key hash tables.
 
-    @param key_var the current key
-    @param value_var the current value
-    @param h the hash table to iterate across
-    @param body the operation to perform on each (key_var,value_var) pair. 
+    @param key_var   The current key
+    @param value_var The current value
+    @param h         The hash table to iterate across
+    @param body      The operation to perform on each (key_var,value_var)
+                     pair.
 
-    calls body with each active hash pair
+    Calls @c body with each active hash pair.
 */
 #define hash_foreach_mem(key_var,value_var,h,body)			\
 do {									\
@@ -408,9 +414,10 @@ do {									\
 
 /* Support for iteration through hash table. */
 
-/* This struct saves iteration state for hash_next.
+/** This struct saves iteration state for hash_next.
    None of these fields are meant to be visible to the user.
-   Hence, the cryptic short-hand names. */
+   Hence, the cryptic short-hand names.
+ */
 typedef struct {
   uword i, j, f;
 } hash_next_t;
