@@ -302,11 +302,12 @@ always_inline void * hash_forward1 (hash_t * h, void * v)
 always_inline void * hash_forward (hash_t * h, void * v, uword n)
 { return (u8 *) v + ((n * sizeof (hash_pair_t)) << h->log2_pair_size); }
 
-/* Iterate over hash pairs
-    @param p the current (key,value) pair
-    @param v the hash table to iterate
-    @param body the operation to perform on each (key,value) pair. 
-    executes body with each active hash pair
+/** Iterate over hash pairs.
+    @param p    The current (key,value) pair.
+    @param v    The hash table to iterate.
+    @param body The operation to perform on each (key,value) pair. 
+
+    Executes @c body with each active hash pair.
 */
 #define hash_foreach_pair(p,v,body)                                         \
 do {                                                                        \
@@ -329,12 +330,12 @@ do {                                                                        \
       do {                                                                  \
         if (_id & 1)                                                        \
           {                                                                 \
-            _q = &_p->direct;                                               \
+            _q = (hash_pair_t *)_p;                                         \
             _q_end = _q + _pair_increment;                                  \
           }                                                                 \
         else                                                                \
           {                                                                 \
-            hash_pair_indirect_t * _pi = &_p->indirect;                     \
+            hash_pair_indirect_t * _pi = (hash_pair_indirect_t *)_p;        \
             _q = _pi->pairs;                                                \
             if (_h->log2_pair_size > 0)                                     \
               _q_end = hash_forward (_h, _q, indirect_pair_get_len (_pi));  \
@@ -357,7 +358,7 @@ do {                                                                        \
             _q += _pair_increment;                                          \
           }                                                                 \
                                                                             \
-        _p = (hash_pair_union_t *) (&_p->direct + _pair_increment);         \
+        _p = (hash_pair_union_t *) ((hash_pair_t *)_p + _pair_increment);   \
         _id = _id / 2;                                                      \
         _i++;                                                               \
       } while (_i < _i1);                                                   \
