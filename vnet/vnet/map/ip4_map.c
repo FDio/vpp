@@ -287,7 +287,7 @@ ip4_map (vlib_main_t *vm,
       if (dal60 == 0 && dar60 == 0 && error0 == MAP_ERROR_NONE && next0 != IP4_MAP_NEXT_REASS)
 	error0 = MAP_ERROR_NO_BINDING;
       if (dal61 == 0 && dar61 == 0 && error1 == MAP_ERROR_NONE && next1 != IP4_MAP_NEXT_REASS)
-	error0 = MAP_ERROR_NO_BINDING;
+	error1 = MAP_ERROR_NO_BINDING;
 
       /* construct ipv6 header */
       vlib_buffer_advance(p0, - sizeof(ip6_header_t));

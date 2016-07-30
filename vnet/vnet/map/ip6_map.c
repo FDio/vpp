@@ -274,7 +274,7 @@ ip6_map (vlib_main_t *vm,
 	    vnet_buffer(p1)->ip_frag.header_offset = 0;
 	    vnet_buffer(p1)->ip_frag.flags = 0;
 	    vnet_buffer(p1)->ip_frag.next_index = IP4_FRAG_NEXT_IP4_LOOKUP;
-	    vnet_buffer(p1)->ip_frag.mtu = d0->mtu;
+	    vnet_buffer(p1)->ip_frag.mtu = d1->mtu;
 	    next1 = IP6_MAP_NEXT_IP4_FRAGMENT;
 	  } else {
 	    next1 = ip6_map_ip4_lookup_bypass(p1, ip41) ? IP6_MAP_NEXT_IP4_REWRITE : next1;

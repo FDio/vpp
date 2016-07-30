@@ -412,7 +412,7 @@ mpls_eth_interface_tx (vlib_main_t * vm,
               tr->tunnel_id = t1 - gm->eth_tunnels;
               tr->tx_sw_if_index = t1->tx_sw_if_index;
               tr->mpls_encap_index = t1->encap_index;
-              tr->length = b0->current_length;
+              tr->length = b1->current_length;
               hi1 = vnet_get_sup_hw_interface (vnm, t1->tx_sw_if_index);
               clib_memcpy (tr->dst, hi1->hw_address, sizeof (tr->dst));
             }

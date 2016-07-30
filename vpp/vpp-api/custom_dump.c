@@ -695,7 +695,7 @@ static void *vl_api_create_subif_t_print
     if (mp->outer_vlan_id)
         s = format (s, "outer_vlan_id %d ", ntohs (mp->outer_vlan_id));
 
-    if (mp->outer_vlan_id)
+    if (mp->inner_vlan_id)
         s = format (s, "inner_vlan_id %d ", ntohs (mp->inner_vlan_id));
 
 #define _(a) if (mp->a) s = format (s, "%s ", #a);
