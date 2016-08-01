@@ -1339,6 +1339,11 @@ void generate_python (YYSTYPE a1, FILE *fp)
     np = np->peer;
   }
   fprintf (fp, "\n]\n");
+
+  /*
+   * API CRC signature
+   */
+  fprintf (fp, "vl_api_version = 0x%08x\n\n", (unsigned int)input_crc);
 }
 
 void generate(YYSTYPE a1)

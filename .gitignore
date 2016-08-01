@@ -13,7 +13,6 @@
 /build-root/*.rpm
 /build-root/*.changes
 /build-config.mk
-/vpp-api/python/vpp_papi/vpp_papi.py
 /dpdk/*.tar.gz
 /dpdk/*.tar.xz
 /path_setup
@@ -51,7 +50,7 @@ test-driver
 .settings
 # stop autotools ignore
 
-# OSX and some IDE 
+# OSX and some IDE
 .DS_Store
 .idea/
 .project
@@ -63,6 +62,7 @@ test-driver
 GPATH
 GRTAGS
 GTAGS
+TAGS
 
 # Generated documentation
 /build-root/docs

@@ -28,7 +28,7 @@ snat_plugin_la_SOURCES = snat/snat.c		\
         snat/out2in.c				\
 	snat/snat_plugin.api.h
 
-BUILT_SOURCES = snat/snat.api.h
+BUILT_SOURCES = snat/snat.api.h snat/snat.py
 
 SUFFIXES = .api.h .api
 
@@ -36,6 +36,15 @@ SUFFIXES = .api.h .api
 	mkdir -p `dirname $@` ; \
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
+
+%.py: %.api
+	$(info Creating Python binding for $@)
+	$(CC) $(CPPFLAGS) -E -P -C -x c $<				\
+	| vppapigen --input - --python -				\
+	| pyvppapigen.py --input - > $@
+
+pyapidir = ${prefix}/vpp_papi_plugins
+pyapi_DATA = snat/snat.py
 
 noinst_HEADERS =			\
   snat/snat_all_api_h.h			\
