@@ -59,7 +59,7 @@ extern int wrap_pneum_callback(char *data, int len);
  */
 void vlib_cli_output (struct vlib_main_t * vm, char * fmt, ...)
 {
-  clib_warning ("vlib_cli_output callled...");
+  clib_warning ("vlib_cli_output called...");
 }
 
 #define vl_api_version(n,v) static u32 vpe_api_version = v;
@@ -120,12 +120,6 @@ pneum_connect (char *name)
 {
   int rv = 0;
   pneum_main_t *pm = &pneum_main;
-
-  /*
-   * Bail out now if we're not running as root
-   */
-  if (geteuid() != 0)
-    return (-1);
 
   if ((rv = vl_client_api_map("/vpe-api"))) {
     clib_warning ("vl_client_api map rv %d", rv);

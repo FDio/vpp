@@ -12,10 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __included_pneum_h__
-#define __included_pneum_h__
+#ifndef included_pneum_h
+#define included_pneum_h
 
-unsigned int vpe_client_index(void);
 int pneum_connect(char *name);
 int pneum_disconnect(void);
 int pneum_read(char **data, int *l);
