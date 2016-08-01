@@ -13,7 +13,6 @@
 /build-root/*.rpm
 /build-root/*.changes
 /build-config.mk
-/vpp-api/python/vpp_papi/vpp_papi.py
 /dpdk/*.tar.gz
 /dpdk/*.tar.xz
 /path_setup
@@ -63,6 +62,9 @@ test-driver
 GPATH
 GRTAGS
 GTAGS
+TAGS
 
 # Generated documentation
 /build-root/docs
+
+*.pyc

@@ -58,6 +58,8 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	: dev package needs a couple of additions ;			\
         echo ../build-tool-native/vppapigen/vppapigen /usr/bin		\
            >> deb/debian/vpp-dev.install ;				\
+        echo ../build-tool-native/vppapigen/pyvppapigen.py /usr/bin	\
+           >> deb/debian/vpp-dev.install ;				\
 									\
 	: generate changelog;						\
 	./scripts/generate-deb-changelog 				\
