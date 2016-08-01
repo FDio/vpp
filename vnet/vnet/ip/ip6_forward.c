@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -2917,7 +2917,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
       vlib_buffer_t * b0, *b1;
       u32 next0, next1;
       ip6_header_t * ip0, *ip1;
-      ip6_hop_by_hop_header_t *hbh0, *hbh1;
+      ip6_hop_by_hop_header_t *hbh0 = NULL, *hbh1 = NULL;
       ip6_hop_by_hop_option_t *opt0, *limit0, *opt1, *limit1;
       u8 error0 = 0, error1 = 0;
 
@@ -2954,47 +2954,69 @@ ip6_hop_by_hop (vlib_main_t * vm,
       next0 = adj0->lookup_next_index;
       next1 = adj1->lookup_next_index;
 
-      ip0 = vlib_buffer_get_current (b0);
-      ip1 = vlib_buffer_get_current (b1);
-      hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
-      hbh1 = (ip6_hop_by_hop_header_t *)(ip1+1);
-      opt0 = (ip6_hop_by_hop_option_t *)(hbh0+1);
-      opt1 = (ip6_hop_by_hop_option_t *)(hbh1+1);
-      limit0 = (ip6_hop_by_hop_option_t *)((u8 *)hbh0 + ((hbh0->length + 1) << 3));
-      limit1 = (ip6_hop_by_hop_option_t *)((u8 *)hbh1 + ((hbh1->length + 1) << 3));
-
-      /*
-       * Basic validity checks
+      /* If next adj is Indirect, then skip processing hbh
+       * as it will be handled after Indirect node processing
        */
-      if ((hbh0->length + 1) << 3 > clib_net_to_host_u16(ip0->payload_length)) {
-	error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
-	next0 = IP_LOOKUP_NEXT_DROP;
-	goto outdual;
-      }
-      /* Scan the set of h-b-h options, process ones that we understand */
-      error0 = ip6_scan_hbh_options(b0, ip0, hbh0, opt0, limit0, &next0);
+      if (PREDICT_TRUE(IP_LOOKUP_NEXT_INDIRECT != next0))
+        {
+          ip0 = vlib_buffer_get_current (b0);
+          hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
+          opt0 = (ip6_hop_by_hop_option_t *)(hbh0+1);
+          limit0 = (ip6_hop_by_hop_option_t *)((u8 *)hbh0 + ((hbh0->length + 1) << 3));
 
-      if ((hbh1->length + 1) << 3 > clib_net_to_host_u16(ip1->payload_length)) {
-	error1 = IP6_HOP_BY_HOP_ERROR_FORMAT;
-	next1 = IP_LOOKUP_NEXT_DROP;
-	goto outdual;
-      }
-      /* Scan the set of h-b-h options, process ones that we understand */
-      error1 = ip6_scan_hbh_options(b1,ip1,hbh1,opt1,limit1, &next1);
+          /*
+           * Basic validity checks
+           */
+          if (PREDICT_FALSE((hbh0->length + 1) << 3 > clib_net_to_host_u16(ip0->payload_length)))
+            {
+              error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
+              next0 = IP_LOOKUP_NEXT_DROP;
+            }
+          else
+            {
+              /* Scan the set of h-b-h options, process ones that we understand */
+              error0 = ip6_scan_hbh_options(b0, ip0, hbh0, opt0, limit0, &next0);
+              /* Has the classifier flagged this buffer for special treatment? */
+              if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
+                next0 = hm->next_override;
+            }
 
-    outdual:
-      /* Has the classifier flagged this buffer for special treatment? */
-      if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
-	next0 = hm->next_override;
+          b0->error = error_node->errors[error0];
+        }
 
-      /* Has the classifier flagged this buffer for special treatment? */
-      if ((error1 == 0) && (vnet_buffer(b1)->l2_classify.opaque_index == OI_DECAP))
-	next1 = hm->next_override;
+      if (PREDICT_TRUE(IP_LOOKUP_NEXT_INDIRECT != next1))
+        {
+          ip1 = vlib_buffer_get_current (b1);
+          hbh1 = (ip6_hop_by_hop_header_t *)(ip1+1);
+          opt1 = (ip6_hop_by_hop_option_t *)(hbh1+1);
+          limit1 = (ip6_hop_by_hop_option_t *)((u8 *)hbh1 + ((hbh1->length + 1) << 3));
+
+          if (PREDICT_FALSE((hbh1->length + 1) << 3 > clib_net_to_host_u16(ip1->payload_length)))
+            {
+              error1 = IP6_HOP_BY_HOP_ERROR_FORMAT;
+              next1 = IP_LOOKUP_NEXT_DROP;
+            }
+          else
+            {
+              /* Scan the set of h-b-h options, process ones that we understand */
+              error1 = ip6_scan_hbh_options(b1,ip1,hbh1,opt1,limit1, &next1);
+              /* Has the classifier flagged this buffer for special treatment? */
+              if ((error1 == 0) && (vnet_buffer(b1)->l2_classify.opaque_index == OI_DECAP))
+                next1 = hm->next_override;
+            }
+
+          b1->error = error_node->errors[error1];
+        }
 
       if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)))
 	{
 	  if (b0->flags & VLIB_BUFFER_IS_TRACED) {
 	    ip6_hop_by_hop_trace_t *t = vlib_add_trace(vm, node, b0, sizeof (*t));
+	    if (!hbh0)
+	      {
+	        ip0 = vlib_buffer_get_current (b0);
+	        hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
+	      }
 	    u32 trace_len = (hbh0->length + 1) << 3;
 	    t->next_index = next0;
 	    /* Capture the h-b-h option verbatim */
@@ -3004,6 +3026,11 @@ ip6_hop_by_hop (vlib_main_t * vm,
 	  }
 	  if (b1->flags & VLIB_BUFFER_IS_TRACED) {
 	    ip6_hop_by_hop_trace_t *t = vlib_add_trace(vm, node, b1, sizeof (*t));
+	    if (!hbh1)
+	      {
+	        ip1 = vlib_buffer_get_current (b1);
+	        hbh1 = (ip6_hop_by_hop_header_t *)(ip1+1);
+	      }
 	    u32 trace_len = (hbh1->length + 1) << 3;
 	    t->next_index = next1;
 	    /* Capture the h-b-h option verbatim */
@@ -3011,11 +3038,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
 	    t->trace_len = trace_len;
 	    clib_memcpy(t->option_data, hbh1, trace_len);
 	  }
-
 	}
-
-      b0->error = error_node->errors[error0];
-      b1->error = error_node->errors[error1];
 
       /* verify speculative enqueue, maybe switch current next frame */
       vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next, n_left_to_next, bi0,
@@ -3027,7 +3050,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
       vlib_buffer_t * b0;
       u32 next0;
       ip6_header_t * ip0;
-      ip6_hop_by_hop_header_t *hbh0;
+      ip6_hop_by_hop_header_t *hbh0 = NULL;
       ip6_hop_by_hop_option_t *opt0, *limit0;
       u8 error0 = 0;
 
@@ -3044,6 +3067,9 @@ ip6_hop_by_hop (vlib_main_t * vm,
       ip_adjacency_t *adj0 = ip_get_adjacency(lm, adj_index0);
       /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
       next0 = adj0->lookup_next_index;
+      /* If next adj is Indirect, then process hbh after indirect adj is processed */
+      if (PREDICT_FALSE(IP_LOOKUP_NEXT_INDIRECT == next0))
+        goto enqueue;
 
       ip0 = vlib_buffer_get_current (b0);
       hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
@@ -3056,28 +3082,34 @@ ip6_hop_by_hop (vlib_main_t * vm,
       if ((hbh0->length + 1) << 3 > clib_net_to_host_u16(ip0->payload_length)) {
 	error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
 	next0 = IP_LOOKUP_NEXT_DROP;
-	goto out0;
+	goto enqueue;
       }
 
       /* Scan the set of h-b-h options, process ones that we understand */
       error0 = ip6_scan_hbh_options(b0, ip0, hbh0, opt0, limit0, &next0);
 
-    out0:
       /* Has the classifier flagged this buffer for special treatment? */
       if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
 	next0 = hm->next_override;
 
-      if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) {
-	ip6_hop_by_hop_trace_t *t = vlib_add_trace(vm, node, b0, sizeof (*t));
-	u32 trace_len = (hbh0->length + 1) << 3;
-	t->next_index = next0;
-	/* Capture the h-b-h option verbatim */
-	trace_len = trace_len < ARRAY_LEN(t->option_data) ? trace_len : ARRAY_LEN(t->option_data);
-	t->trace_len = trace_len;
-	clib_memcpy(t->option_data, hbh0, trace_len);
-      }
-
       b0->error = error_node->errors[error0];
+
+    enqueue:
+      if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+        {
+          ip6_hop_by_hop_trace_t *t = vlib_add_trace(vm, node, b0, sizeof (*t));
+          if (!hbh0)
+            {
+              ip0 = vlib_buffer_get_current (b0);
+              hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
+            }
+          u32 trace_len = (hbh0->length + 1) << 3;
+          t->next_index = next0;
+          /* Capture the h-b-h option verbatim */
+          trace_len = trace_len < ARRAY_LEN(t->option_data) ? trace_len : ARRAY_LEN(t->option_data);
+          t->trace_len = trace_len;
+          clib_memcpy(t->option_data, hbh0, trace_len);
+        }
 
       /* verify speculative enqueue, maybe switch current next frame */
       vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left_to_next, bi0, next0);
