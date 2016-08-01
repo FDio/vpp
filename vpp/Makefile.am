@@ -47,6 +47,8 @@ nobase_include_HEADERS =			\
 
 apidir = $(prefix)/vpp-api
 api_DATA = vpp-api/vpe.api
+#pyapidir = ${prefix}/vpp_papi_plugins
+#pyapi_DATA = vpp-api/vpe.py
 
 BUILT_SOURCES += vpp-api/vpe.api.h app/version.h
 
