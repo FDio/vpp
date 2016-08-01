@@ -75,3 +75,7 @@ SUFFIXES = .api.h .api
 	mkdir -p `dirname $@` ;					\
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
 	| vppapigen --input - --output $@ --show-name $@
+
+# install the API definition, so we can produce java bindings, etc.
+apidir = $(prefix)/vlibmemory
+api_DATA = vlibmemory/memclnt.api

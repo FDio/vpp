@@ -331,13 +331,17 @@ int main (int argc, char **argv)
         if (!strncmp (argv [curarg], "--python", 8)) {
             curarg++;
             if (curarg < argc) {
-                pythonfp = fopen (argv[curarg], "w");
+	        if (!strcmp(argv[curarg], "-")) {
+		    pythonfp = stdout;
+		} else {
+		    pythonfp = fopen(argv[curarg], "w");
+		    pythonfile = argv[curarg];
+		}
                 if (pythonfp == NULL) {
                     fprintf (stderr, "Couldn't open python output file %s\n",
                          argv[curarg]);
                     exit (1);
                 }
-                pythonfile = argv[curarg];
                 curarg++;
             } else {
                 fprintf(stderr, "Missing filename after --python\n");

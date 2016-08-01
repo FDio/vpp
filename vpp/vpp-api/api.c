@@ -2887,12 +2887,12 @@ vl_api_vnet_get_summary_stats_t_handler (vl_api_vnet_get_summary_stats_t * mp)
   }
   vnet_interface_counter_unlock (im);
 
-  /* Note: in HOST byte order! */
-  rmp->total_pkts[VLIB_RX] = total_pkts[VLIB_RX];
-  rmp->total_bytes[VLIB_RX] = total_bytes[VLIB_RX];
-  rmp->total_pkts[VLIB_TX] = total_pkts[VLIB_TX];
-  rmp->total_bytes[VLIB_TX] = total_bytes[VLIB_TX];
-  rmp->vector_rate = vlib_last_vector_length_per_node (sm->vlib_main);
+  rmp->total_pkts[VLIB_RX] = clib_host_to_net_u64 (total_pkts[VLIB_RX]);
+  rmp->total_bytes[VLIB_RX] = clib_host_to_net_u64 (total_bytes[VLIB_RX]);
+  rmp->total_pkts[VLIB_TX] = clib_host_to_net_u64 (total_pkts[VLIB_TX]);
+  rmp->total_bytes[VLIB_TX] = clib_host_to_net_u64 (total_bytes[VLIB_TX]);
+  rmp->vector_rate =
+    clib_host_to_net_u64 (vlib_last_vector_length_per_node (sm->vlib_main));
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }

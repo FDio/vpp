@@ -56,14 +56,16 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	   >> deb/debian/vpp.install ;					\
 									\
 	: dev package needs a couple of additions ;			\
-    echo ../build-tool-native/vppapigen/vppapigen /usr/bin		\
-       >> deb/debian/vpp-dev.install ;				\
-    echo ../../vpp-api/java/jvpp/gen/jvpp_gen.py /usr/bin    \
-       >> deb/debian/vpp-dev.install ;				 \
-    for i in $$(ls ../vpp-api/java/jvpp/gen/jvppgen/*.py); do \
-    	echo ../$${i} /usr/lib/python2.7/dist-packages/jvppgen \
-    	   >> deb/debian/vpp-dev.install; \
-   	done; \
+	echo ../build-tool-native/vppapigen/vppapigen /usr/bin		\
+	   >> deb/debian/vpp-dev.install ;				\
+	echo ../../vppapigen/pyvppapigen.py /usr/bin			\
+           >> deb/debian/vpp-dev.install ;				\
+	echo ../../vpp-api/java/jvpp/gen/jvpp_gen.py /usr/bin		\
+	   >> deb/debian/vpp-dev.install ;				\
+	for i in $$(ls ../vpp-api/java/jvpp/gen/jvppgen/*.py); do	\
+	   echo ../$${i} /usr/lib/python2.7/dist-packages/jvppgen	\
+	       >> deb/debian/vpp-dev.install;				\
+	done;								\
 									\
 	: generate changelog;						\
 	./scripts/generate-deb-changelog 				\
