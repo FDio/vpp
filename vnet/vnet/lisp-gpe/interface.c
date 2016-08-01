@@ -832,6 +832,11 @@ remove_lisp_gpe_iface (lisp_gpe_main_t * lgm, u32 hi_index, u32 dp_table,
 
   /* clean tunnel termination and vni to sw_if_index binding */
   vnip = hash_get(tuns->vni_by_sw_if_index, hi->sw_if_index);
+  if (0 == vnip)
+    {
+      clib_warning ("No vni associated to interface %d", hi->sw_if_index);
+      return;
+    }
   hash_unset(tuns->sw_if_index_by_vni, vnip[0]);
   hash_unset(tuns->vni_by_sw_if_index, hi->sw_if_index);
 }
