@@ -1,5 +1,20 @@
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License. 
+ */
+
 #include <Python.h>
-#include "pneum.h"
+#include "../pneum/pneum.h"
 
 static PyObject *pneum_callback = NULL;
 
@@ -117,16 +132,16 @@ initvpp_api (void)
 {
 #if PY_VERSION_HEX >= 0x03000000
   static struct PyModuleDef vpp_api_module = {
-# if PY_VERSION_HEX >= 0x03020000
+#if PY_VERSION_HEX >= 0x03020000
     PyModuleDef_HEAD_INIT,
-# else
+#else
     {
       PyObject_HEAD_INIT(NULL)
       NULL, /* m_init */
       0,    /* m_index */
       NULL, /* m_copy */
     },
-# endif
+#endif
     (char *) "vpp_api",
     NULL,
     -1,
