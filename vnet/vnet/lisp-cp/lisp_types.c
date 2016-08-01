@@ -238,13 +238,11 @@ unformat_negative_mapping_action (unformat_input_t * input, va_list * args)
 
   if (unformat (input, "%s", &s))
     {
-      int len = vec_len(s);
-      clib_warning ("len = %d", len);
       if (!strcmp ((char *) s, "no-action"))
         action[0] = LISP_NO_ACTION;
-      if (!strcmp ((char *) s, "natively-forward"))
+      else if (!strcmp ((char *) s, "natively-forward"))
         action[0] = LISP_FORWARD_NATIVE;
-      if (!strcmp ((char *) s, "send-map-request"))
+      else if (!strcmp ((char *) s, "send-map-request"))
         action[0] = LISP_SEND_MAP_REQUEST;
       else if (!strcmp ((char *) s, "drop"))
         action[0] = LISP_DROP;
@@ -252,12 +250,12 @@ unformat_negative_mapping_action (unformat_input_t * input, va_list * args)
         {
           clib_warning("invalid action: '%s'", s);
           action[0] = LISP_DROP;
-          return 0;
         }
     }
   else
     return 0;
 
+  vec_free(s);
   return 1;
 }
 

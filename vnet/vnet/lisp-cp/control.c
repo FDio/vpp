@@ -971,7 +971,6 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   gid_address_t eid;
   u8 * dmac = gid_address_mac (&eid);
   u8 eid_set = 0;
-  u8 * s = 0;
   u32 vni, action = ~0, p, w;
   int rv;
 
@@ -1024,22 +1023,9 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
           vec_add1 (rlocs, rloc);
           curr_rloc = &rlocs[vec_len (rlocs) - 1];
         }
-      else if (unformat (line_input, "action %s", &s))
-        {
-          if (!strcmp ((char *)s, "no-action"))
-            action = LISP_NO_ACTION;
-          if (!strcmp ((char *)s, "natively-forward"))
-            action = LISP_FORWARD_NATIVE;
-          if (!strcmp ((char *)s, "send-map-request"))
-            action = LISP_SEND_MAP_REQUEST;
-          else if (!strcmp ((char *)s, "drop"))
-            action = LISP_DROP;
-          else
-            {
-              clib_warning ("invalid action: '%s'", s);
-              goto done;
-            }
-        }
+      else if (unformat (line_input, "action %U",
+                         unformat_negative_mapping_action, &action))
+        ;
       else
         {
           clib_warning ("parse error");
@@ -1093,8 +1079,6 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
 done:
   vec_free (rlocs);
   unformat_free (line_input);
-  if (s)
-    vec_free (s);
   return error;
 }
 
