@@ -115,6 +115,20 @@ u8_array_struct_setter_template = Template("""
     }
 """)
 
+u16_array_struct_setter_template = Template("""
+    jshort * ${java_name}ArrayElements = (*env)->GetShortArrayElements(env, ${java_name}, NULL);
+    {
+        size_t _i;
+        jsize cnt = (*env)->GetArrayLength (env, ${java_name});
+        size_t max_size = ${field_length};
+        if (max_size != 0 && cnt > max_size) cnt = max_size;
+        for (_i = 0; _i < cnt; _i++) {
+            mp->${c_name}[_i] = clib_host_to_net_u16(${java_name}ArrayElements[_i]);
+        }
+    }
+    (*env)->ReleaseShortArrayElements (env, ${java_name}, ${java_name}ArrayElements, 0);
+    """)
+
 u32_array_struct_setter_template = Template("""
     jint * ${java_name}ArrayElements = (*env)->GetIntArrayElements(env, ${java_name}, NULL);
     {
@@ -129,18 +143,18 @@ u32_array_struct_setter_template = Template("""
     (*env)->ReleaseIntArrayElements (env, ${java_name}, ${java_name}ArrayElements, 0);
     """)
 
-u16_array_struct_setter_template = Template("""
-    jint * ${java_name}ArrayElements = (*env)->GetIntArrayElements(env, ${java_name}, NULL);
+u64_array_struct_setter_template = Template("""
+    jlong * ${java_name}ArrayElements = (*env)->GetLongArrayElements(env, ${java_name}, NULL);
     {
         size_t _i;
         jsize cnt = (*env)->GetArrayLength (env, ${java_name});
         size_t max_size = ${field_length};
         if (max_size != 0 && cnt > max_size) cnt = max_size;
         for (_i = 0; _i < cnt; _i++) {
-            mp->${c_name}[_i] = clib_host_to_net_u16(${java_name}ArrayElements[_i]);
+            mp->${c_name}[_i] = clib_host_to_net_u64(${java_name}ArrayElements[_i]);
         }
     }
-    (*env)->ReleaseIntArrayElements (env, ${java_name}, ${java_name}ArrayElements, 0);
+    (*env)->ReleaseLongArrayElements (env, ${java_name}, ${java_name}ArrayElements, 0);
     """)
 
 vl_api_ip4_fib_counter_t_array_struct_setter_template = Template("""
@@ -157,6 +171,7 @@ struct_setter_templates = {'u8': u8_struct_setter_template,
                           'u8[]': u8_array_struct_setter_template,
                           'u16[]': u16_array_struct_setter_template,
                           'u32[]': u32_array_struct_setter_template,
+                          'u64[]': u64_array_struct_setter_template,
                           'vl_api_ip4_fib_counter_t[]': vl_api_ip4_fib_counter_t_array_struct_setter_template,
                           'vl_api_ip6_fib_counter_t[]': vl_api_ip6_fib_counter_t_array_struct_setter_template
                   }
@@ -282,6 +297,20 @@ u8_array_dto_field_setter_template = Template("""
     (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
 """)
 
+u16_array_dto_field_setter_template = Template("""
+    {
+        jshortArray ${java_name} = (*env)->NewShortArray(env, ${field_length});
+        jshort * ${java_name}ArrayElements = (*env)->GetShortArrayElements(env, ${java_name}, NULL);
+        unsigned int _i;
+        for (_i = 0; _i < ${field_length}; _i++) {
+            ${java_name}ArrayElements[_i] = clib_net_to_host_u16(mp->${c_name}[_i]);
+        }
+
+        (*env)->ReleaseShortArrayElements(env,  ${java_name}, ${java_name}ArrayElements, 0);
+        (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
+    }
+""")
+
 u32_array_dto_field_setter_template = Template("""
     {
         jintArray ${java_name} = (*env)->NewIntArray(env, ${field_length});
@@ -319,6 +348,7 @@ dto_field_setter_templates = {'u8': default_dto_field_setter_template,
                       'u64': u64_dto_field_setter_template,
                       'f64': default_dto_field_setter_template, #fixme
                       'u8[]': u8_array_dto_field_setter_template,
+                      'u16[]': u16_array_dto_field_setter_template,
                       'u32[]': u32_array_dto_field_setter_template,
                       'u64[]': u64_array_dto_field_setter_template
                       }
