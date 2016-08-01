@@ -10,7 +10,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License. 
+ * limitations under the License.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,11 +36,11 @@
 #include "pneum.h"
 
 #define vl_typedefs             /* define message structures */
-#include <vpp-api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_typedefs
 
 #define vl_endianfun             /* define message structures */
-#include <vpp-api/vpe_all_api_h.h> 
+#include <vpp-api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 typedef struct {
@@ -54,12 +54,12 @@ pneum_main_t pneum_main;
 
 extern int wrap_pneum_callback(char *data, int len);
 
-/* 
+/*
  * Satisfy external references when -lvlib is not available.
  */
 void vlib_cli_output (struct vlib_main_t * vm, char * fmt, ...)
 {
-  clib_warning ("vlib_cli_output callled...");
+  clib_warning ("vlib_cli_output called...");
 }
 
 #define vl_api_version(n,v) static u32 vpe_api_version = v;
@@ -89,7 +89,7 @@ pneum_api_handler (void *msg)
   int l = ntohl(msgbuf->data_len);
   if (l == 0)
     clib_warning("Message ID %d has wrong length: %d\n", id, l);
-    
+
   /* Call Python callback */
   (void)wrap_pneum_callback(msg, l);
   vl_msg_api_free(msg);
@@ -120,12 +120,6 @@ pneum_connect (char *name)
 {
   int rv = 0;
   pneum_main_t *pm = &pneum_main;
-
-  /*
-   * Bail out now if we're not running as root
-   */
-  if (geteuid() != 0)
-    return (-1);
 
   if ((rv = vl_client_api_map("/vpe-api"))) {
     clib_warning ("vl_client_api map rv %d", rv);
@@ -199,7 +193,7 @@ pneum_read (char **p, int *l)
     *p = (char *)msg;
   } else {
     printf("Read failed with %d\n", rv);
-  }  
+  }
   return (rv);
 }
 

@@ -54,7 +54,7 @@ endif
 
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
-.PHONY: ctags cscope doxygen wipe-doxygen plugins plugins-release
+.PHONY: ctags cscope doxygen wipe-doxygen plugins plugins-release build-vpp-api
 
 help:
 	@echo "Make Targets:"
@@ -73,6 +73,7 @@ help:
 	@echo " debug               - run debug binary with debugger"
 	@echo " debug-release       - run release binary with debugger"
 	@echo " build-vat           - build vpp-api-test tool"
+	@echo " build-vpp-api       - build vpp-api"
 	@echo " run-vat             - run vpp-api-test tool"
 	@echo " pkg-deb             - build DEB packages"
 	@echo " pkg-rpm             - build RPM packages"
@@ -171,6 +172,9 @@ plugins: $(BR)/.bootstrap.ok
 
 plugins-release: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM),plugins-install)
+
+build-vpp-api: $(BR)/.bootstrap.ok
+	$(call make,$(PLATFORM)_debug,vpp-api-install)
 
 STARTUP_DIR ?= $(PWD)
 ifeq ("$(wildcard $(STARTUP_CONF))","")
