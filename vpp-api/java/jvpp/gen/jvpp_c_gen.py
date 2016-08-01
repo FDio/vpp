@@ -107,7 +107,7 @@ u64_struct_setter_template = Template("""
     mp->${c_name} = clib_host_to_net_u64(${java_name});""")
 
 u8_array_struct_setter_template = Template("""
-    {
+    if (${java_name}) {
         jsize cnt = (*env)->GetArrayLength (env, ${java_name});
         size_t max_size = ${field_length};
         if (max_size != 0 && cnt > max_size) cnt = max_size;
@@ -117,7 +117,7 @@ u8_array_struct_setter_template = Template("""
 
 u16_array_struct_setter_template = Template("""
     jshort * ${java_name}ArrayElements = (*env)->GetShortArrayElements(env, ${java_name}, NULL);
-    {
+    if (${java_name}) {
         size_t _i;
         jsize cnt = (*env)->GetArrayLength (env, ${java_name});
         size_t max_size = ${field_length};
@@ -131,7 +131,7 @@ u16_array_struct_setter_template = Template("""
 
 u32_array_struct_setter_template = Template("""
     jint * ${java_name}ArrayElements = (*env)->GetIntArrayElements(env, ${java_name}, NULL);
-    {
+    if (${java_name}) {
         size_t _i;
         jsize cnt = (*env)->GetArrayLength (env, ${java_name});
         size_t max_size = ${field_length};
@@ -145,7 +145,7 @@ u32_array_struct_setter_template = Template("""
 
 u64_array_struct_setter_template = Template("""
     jlong * ${java_name}ArrayElements = (*env)->GetLongArrayElements(env, ${java_name}, NULL);
-    {
+    if (${java_name}) {
         size_t _i;
         jsize cnt = (*env)->GetArrayLength (env, ${java_name});
         size_t max_size = ${field_length};
