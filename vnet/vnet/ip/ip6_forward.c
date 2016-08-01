@@ -2769,7 +2769,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
       vlib_buffer_t * b0;
       u32 next0;
       ip6_header_t * ip0;
-      ip6_hop_by_hop_header_t *hbh0;
+      ip6_hop_by_hop_header_t *hbh0 = NULL;
       ip6_hop_by_hop_option_t *opt0, *limit0;
       u8 type0;
       u8 error0 = 0;
@@ -2787,6 +2787,9 @@ ip6_hop_by_hop (vlib_main_t * vm,
       ip_adjacency_t *adj0 = ip_get_adjacency(lm, adj_index0);
       /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
       next0 = adj0->lookup_next_index;
+      /* If next adj is Indirect, then process hbh after indirect adj is processed */
+      if (PREDICT_FALSE(IP_LOOKUP_NEXT_INDIRECT == next0))
+        goto enqueue;
 
       ip0 = vlib_buffer_get_current (b0);
       hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
@@ -2852,8 +2855,16 @@ ip6_hop_by_hop (vlib_main_t * vm,
       if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
 	next0 = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
 
+      b0->error = error_node->errors[error0];
+
+    enqueue:
       if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) {
 	ip6_hop_by_hop_trace_t *t = vlib_add_trace(vm, node, b0, sizeof (*t));
+        if (!hbh0)
+          {
+            ip0 = vlib_buffer_get_current (b0);
+            hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
+          }
 	u32 trace_len = (hbh0->length + 1) << 3;
 	t->next_index = next0;
 	/* Capture the h-b-h option verbatim */
@@ -2861,8 +2872,6 @@ ip6_hop_by_hop (vlib_main_t * vm,
 	t->trace_len = trace_len;
 	clib_memcpy(t->option_data, hbh0, trace_len);
       }
-
-      b0->error = error_node->errors[error0];
 
       /* verify speculative enqueue, maybe switch current next frame */
       vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left_to_next, bi0, next0);
