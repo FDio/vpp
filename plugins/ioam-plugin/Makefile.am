@@ -28,7 +28,7 @@ ioam_pot_plugin_la_SOURCES =			\
 	ioam/lib-pot/pot_api.c
 
 BUILT_SOURCES =					\
-	ioam/lib-pot/pot.api.h
+	ioam/lib-pot/pot.api.h ioam/lib-pot/pot.py
 
 SUFFIXES = .api.h .api
 
@@ -36,6 +36,15 @@ SUFFIXES = .api.h .api
 	mkdir -p `dirname $@` ; \
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
+
+%.py: %.api
+	$(info Creating Python binding for $@)
+	$(CC) $(CPPFLAGS) -E -P -C -x c $<				\
+	| vppapigen --input - --python -				\
+	| pyvppapigen.py --input - > $@
+
+pyapidir = ${prefix}/vpp_papi_plugins
+pyapi_DATA = ioam/lib-pot/pot.py
 
 noinst_HEADERS =				\
   ioam/lib-pot/pot_all_api_h.h			\
