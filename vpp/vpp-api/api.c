@@ -7380,13 +7380,13 @@ static void vl_api_ip_source_and_port_range_check_add_del_t_handler (
     u8  is_add = mp->is_add;
     u8  mask_length = mp->mask_length;
     ip4_address_t ip4_addr;
-    //ip6_address_t ip6_addr;
-    u16 * low_ports = 0 ;
-    u16 * high_ports = 0 ;
+    ip6_address_t ip6_addr;
+    u16 * low_ports = 0;
+    u16 * high_ports = 0;
+    u32 vrf_id;
     u16 tmp_low, tmp_high;
     u8 num_ranges ;
     int i;
-    u32 vrf_id;
 
     // Validate port range
     num_ranges = mp->number_of_ranges;
@@ -7415,8 +7415,8 @@ static void vl_api_ip_source_and_port_range_check_add_del_t_handler (
     if (mask_length < 0 ||
         ( is_ipv6 && mask_length > 128) ||
         ( !is_ipv6 && mask_length > 32)) {
-            rv = VNET_API_ERROR_ADDRESS_LENGTH_MISMATCH;
-            goto reply;
+        rv = VNET_API_ERROR_ADDRESS_LENGTH_MISMATCH;
+        goto reply;
     }
 
     vrf_id = ntohl (mp->vrf_id);
@@ -7425,33 +7425,31 @@ static void vl_api_ip_source_and_port_range_check_add_del_t_handler (
         rv = VNET_API_ERROR_INVALID_VALUE;
         goto reply;
     }
-    //ip6
-    if (is_ipv6) {
-    /* clib_memcpy (ip6_addr.as_u8, mp->address, */
-    /*         sizeof (ip6_addr.as_u8)); */
-        /* rv = ip6_source_and_port_range_check_add_del (ip6_addr, */
-        /*                                               mask_length, */
-        /*                                               vrf_id, */
-        /*                                               low_ports, */
-        /*                                               high_ports, */
-        /*                                               is_add); */
 
-    //ip4
-    } else {
-        clib_memcpy (ip4_addr.data, mp->address,
-                     sizeof (ip4_addr));
-        rv = ip4_source_and_port_range_check_add_del (&ip4_addr,
+
+    if (is_ipv6) {
+        clib_memcpy (ip6_addr.as_u8, mp->address,
+                     sizeof (ip6_addr.as_u8));
+        rv = ip6_source_and_port_range_check_add_del (&ip6_addr,
                                                       mask_length,
                                                       vrf_id,
                                                       low_ports,
                                                       high_ports,
                                                       is_add);
+    } else {
+          clib_memcpy (ip4_addr.data, mp->address,
+                       sizeof (ip4_addr));
+          rv = ip4_source_and_port_range_check_add_del (&ip4_addr,
+                                                        mask_length,
+                                                        vrf_id,
+                                                        low_ports,
+                                                        high_ports,
+                                                        is_add);
     }
 
  reply:
     vec_free (low_ports);
     vec_free (high_ports);
-
     REPLY_MACRO(VL_API_IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY);
 }
 
@@ -7463,20 +7461,35 @@ vl_api_ip_source_and_port_range_check_interface_add_del_t_handler
     vl_api_ip_source_and_port_range_check_interface_add_del_reply_t * rmp;
     ip4_main_t * im = &ip4_main;
     int rv;
-    u32 sw_if_index, fib_index, vrf_id;
+    u32 sw_if_index;
+    u32 fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS];
+    u32 vrf_id[IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS];
     uword * p = 0;
+    int i;
 
-    vrf_id  = ntohl(mp->vrf_id);
+    vrf_id[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT]  = ntohl(mp->tcp_out_vrf_id);
+    vrf_id[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT]  = ntohl(mp->udp_out_vrf_id);
+    vrf_id[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN]  = ntohl(mp->tcp_in_vrf_id);
+    vrf_id[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN]  = ntohl(mp->udp_in_vrf_id);
 
-    p = hash_get (im->fib_index_by_table_id, vrf_id);
 
-    if (p == 0) {
-        rv = VNET_API_ERROR_INVALID_VALUE;
-        goto reply;
-    }
+    for (i = 0; i < IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS; i++)
+      {
+        if (vrf_id[i] !=0 && vrf_id[i] != ~0)
+          {
+            p = hash_get (im->fib_index_by_table_id, vrf_id[i]);
 
-    fib_index = p[0];
+            if (p == 0)
+              {
+                rv = VNET_API_ERROR_INVALID_VALUE;
+                goto reply;
+              }
 
+            fib_index[i] = p[0];
+          }
+        else
+            fib_index[i] = ~0;
+        }
     sw_if_index = ntohl(mp->sw_if_index);
 
     VALIDATE_SW_IF_INDEX(mp);

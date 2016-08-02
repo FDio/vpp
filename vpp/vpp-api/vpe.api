@@ -4342,7 +4342,7 @@ define pg_capture_reply {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_enabled - 1 if enabling streams, 0 if disabling
-    @param stream - stream name to be enable/disabled, if not specified handle all streams 
+    @param stream - stream name to be enable/disabled, if not specified handle all streams
 */
 define pg_enable_disable {
     u32 client_index;
@@ -4368,6 +4368,7 @@ define pg_enable_disable_reply {
     @param is_add - 1 if add, 0 if delete
     @param mask_length - mask length for address entry
     @param address - array of address bytes
+    @param number_of_ranges - length of low_port and high_port arrays (must match)
     @param low_ports[32] - up to 32 low end of port range entries (must have corresponding high_ports entry)
     @param high_ports[32] - up to 32 high end of port range entries (must have corresponding low_ports entry)
     @param vrf_id - fib table/vrf id to associate the source and port-range check with
@@ -4399,14 +4400,18 @@ define ip_source_and_port_range_check_add_del_reply {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param interface_id - interface index
-    @param vrf_id - VRF associated with source and L4 port-range check
+    @param tcp_vrf_id - VRF associated with source and TCP port-range check
+    @param udp_vrf_id - VRF associated with source and TCP port-range check
 */
 define ip_source_and_port_range_check_interface_add_del {
     u32 client_index;
     u32 context;
     u8  is_add;
     u32 sw_if_index;
-    u32 vrf_id;
+    u32 tcp_in_vrf_id;
+    u32 tcp_out_vrf_id;
+    u32 udp_in_vrf_id;
+    u32 udp_out_vrf_id;
 };
 
 /** \brief Set interface source and L4 port-range response

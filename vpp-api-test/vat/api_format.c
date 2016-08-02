@@ -13557,34 +13557,45 @@ int api_ip_source_and_port_range_check_interface_add_del (vat_main_t * vam)
     vl_api_ip_source_and_port_range_check_interface_add_del_t *mp;
     f64 timeout;
     u32 sw_if_index = ~0;
-    u32 vrf_id = ~0;
+    int vrf_set = 0;
+    u32 tcp_out_vrf_id = ~0, udp_out_vrf_id = ~0;
+    u32 tcp_in_vrf_id = ~0, udp_in_vrf_id = ~0;
     u8 is_add = 1;
 
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-        {
-            if (unformat (input, "%U", unformat_sw_if_index, vam, &sw_if_index))
+      {
+        if (unformat (input, "%U", unformat_sw_if_index, vam, &sw_if_index))
             ;
-            else if (unformat (input, "sw_if_index %d", &sw_if_index))
+        else if (unformat (input, "sw_if_index %d", &sw_if_index))
             ;
-            else if (unformat (input, "vrf %d", &vrf_id))
-                ;
-            else if (unformat (input, "del"))
-                is_add = 0;
-            else
-                break;
-        }
+        else if (unformat (input, "tcp-out-vrf %d", &tcp_out_vrf_id))
+            vrf_set=1;
+        else if (unformat (input, "udp-out-vrf %d", &udp_out_vrf_id))
+            vrf_set=1;
+        else if (unformat (input, "tcp-in-vrf %d", &tcp_in_vrf_id))
+            vrf_set=1;
+        else if (unformat (input, "udp-in-vrf %d", &udp_in_vrf_id))
+            vrf_set=1;
+        else if (unformat (input, "del"))
+            is_add = 0;
+        else
+              break;
+      }
 
     if (sw_if_index == ~0) {
-        errmsg ("Interface required but not specified\n");
-        return -99;
+          errmsg ("Interface required but not specified\n");
+          return -99;
     }
 
-    if (vrf_id == ~0) {
+    if (vrf_set == 0) {
         errmsg ("VRF ID required but not specified\n");
         return -99;
     }
 
-    if (vrf_id == 0) {
+    if (tcp_out_vrf_id == 0
+        || udp_out_vrf_id == 0
+        || tcp_in_vrf_id == 0
+        || udp_in_vrf_id == 0) {
         errmsg ("VRF ID should not be default. Should be distinct VRF for this purpose.\n");
         return -99;
     }
@@ -13594,7 +13605,10 @@ int api_ip_source_and_port_range_check_interface_add_del (vat_main_t * vam)
 
     mp->sw_if_index = ntohl (sw_if_index);
     mp->is_add = is_add;
-    mp->vrf_id = ntohl (vrf_id);
+    mp->tcp_out_vrf_id = ntohl (tcp_out_vrf_id);
+    mp->udp_out_vrf_id = ntohl (udp_out_vrf_id);
+    mp->tcp_in_vrf_id = ntohl (tcp_in_vrf_id);
+    mp->udp_in_vrf_id = ntohl (udp_in_vrf_id);
 
     /* send it... */
     S;
@@ -14135,7 +14149,8 @@ _(pg_enable_disable, "[stream <id>] disable")                           \
 _(ip_source_and_port_range_check_add_del,                               \
   "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                          \
 _(ip_source_and_port_range_check_interface_add_del,                     \
-  "<intf> | sw_if_index <nn> vrf <id>")
+  "<intf> | sw_if_index <nn> [tcp-out-vrf <id>] [tcp-in-vrf <id>]"      \
+  "[udp-in-vrf <id>] [udp-out-vrf <id>]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
