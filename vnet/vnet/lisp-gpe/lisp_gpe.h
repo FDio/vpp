@@ -46,13 +46,8 @@ typedef struct
   {
     struct
     {
-      /* within the dp only ip and mac can be eids */
-      union
-      {
-        ip_prefix_t rmt_ippref;
-        u8 rmt_mac[6];
-      };
-      ip_address_t rmt_loc;
+      dp_address_t rmt;
+      dp_address_t lcl;
       u32 vni;
     };
     u8 as_u8[40];
@@ -246,9 +241,8 @@ typedef struct
   gid_address_t lcl_eid;
   gid_address_t rmt_eid;
 
-  /* local and remote locators (underlay attachment points) */
-  ip_address_t lcl_loc;
-  ip_address_t rmt_loc;
+  /* vector of locator pairs */
+  locator_pair_t * locator_pairs;
 
   /* FIB indices to lookup remote locator at encap and inner IP at decap */
   u32 encap_fib_index;

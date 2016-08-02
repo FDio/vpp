@@ -113,12 +113,10 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
 
   /* fill in the key's remote eid */
   if (!is_l2)
-    ip_prefix_copy (&key.rmt_ippref, &gid_address_ippref(&a->rmt_eid));
+    ip_prefix_copy (&key.rmt.ippref, &gid_address_ippref(&a->rmt_eid));
   else
-    mac_copy (&key.rmt_mac, &gid_address_mac(&a->rmt_eid));
+    mac_copy (&key.rmt.mac, &gid_address_mac(&a->rmt_eid));
 
-
-  ip_address_copy(&key.rmt_loc, &a->rmt_loc);
   key.vni = clib_host_to_net_u32 (a->vni);
 
   p = mhash_get (&lgm->lisp_gpe_tunnel_by_key, &key);
@@ -140,8 +138,12 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
       foreach_copy_field;
 #undef _
 
-      ip_address_copy(&t->src, &a->lcl_loc);
-      ip_address_copy(&t->dst, &a->rmt_loc);
+      /* TODO multihoming */
+      if (!a->is_negative)
+        {
+          ip_address_copy (&t->src, &a->locator_pairs[0].lcl_loc);
+          ip_address_copy (&t->dst, &a->locator_pairs[0].rmt_loc);
+        }
 
       /* if vni is non-default */
       if (a->vni)
@@ -152,7 +154,7 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
 
       /* next proto */
       if (!is_l2)
-        t->next_protocol = ip_prefix_version(&key.rmt_ippref) == IP4 ?
+        t->next_protocol = ip_prefix_version(&key.rmt.ippref) == IP4 ?
                 LISP_GPE_NEXT_PROTO_IP4 : LISP_GPE_NEXT_PROTO_IP6;
       else
         t->next_protocol = LISP_GPE_NEXT_PROTO_ETHERNET;
@@ -194,94 +196,29 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
 }
 
 static int
-add_del_negative_ip_fwd_entry (lisp_gpe_main_t * lgm,
-                            vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+build_ip_adjacency (lisp_gpe_main_t * lgm, ip_adjacency_t * adj, u32 table_id,
+                    u32 vni, u32 tun_index, u8 is_negative, u8 action,
+                    u8 ip_ver)
 {
-  ip_adjacency_t adj;
-  ip_prefix_t * dpref = &gid_address_ippref(&a->rmt_eid);
-  ip_prefix_t * spref = &gid_address_ippref(&a->lcl_eid);
-
-  /* setup adjacency for eid */
-  memset (&adj, 0, sizeof(adj));
-  adj.n_adj = 1;
-
-  /* fill in 'legal' data to avoid issues */
-  adj.lookup_next_index =  (ip_prefix_version(dpref) == IP4) ?
-                                  lgm->ip4_lookup_next_lgpe_ip4_lookup :
-                                  lgm->ip6_lookup_next_lgpe_ip6_lookup;
-
-  adj.rewrite_header.sw_if_index = ~0;
-  adj.rewrite_header.next_index = ~0;
-
-  switch (a->action)
-    {
-    case LISP_NO_ACTION:
-      /* TODO update timers? */
-    case LISP_FORWARD_NATIVE:
-      /* TODO check if route/next-hop for eid exists in fib and add
-       * more specific for the eid with the next-hop found */
-    case LISP_SEND_MAP_REQUEST:
-      /* insert tunnel that always sends map-request */
-      adj.explicit_fib_index = (ip_prefix_version(dpref) == IP4) ?
-                               LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP:
-                               LGPE_IP6_LOOKUP_NEXT_LISP_CP_LOOKUP;
-      /* add/delete route for prefix */
-      return ip_sd_fib_add_del_route (lgm, dpref, spref, a->table_id, &adj,
-                                      a->is_add);
-    case LISP_DROP:
-      /* for drop fwd entries, just add route, no need to add encap tunnel */
-      adj.explicit_fib_index =  (ip_prefix_version(dpref) == IP4 ?
-              LGPE_IP4_LOOKUP_NEXT_DROP : LGPE_IP6_LOOKUP_NEXT_DROP);
-
-      /* add/delete route for prefix */
-      return ip_sd_fib_add_del_route (lgm, dpref, spref, a->table_id, &adj,
-                                      a->is_add);
-    default:
-      return -1;
-    }
-}
-
-static int
-add_del_ip_fwd_entry (lisp_gpe_main_t * lgm,
-                      vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
-{
-  ip_adjacency_t adj, * adjp;
-  u32 adj_index, rv, tun_index = ~0;
-  ip_prefix_t * dpref, * spref;
   uword * lookup_next_index, * lgpe_sw_if_index, * lnip;
-  u8 ip_ver;
 
-  /* treat negative fwd entries separately */
-  if (a->is_negative)
-    return add_del_negative_ip_fwd_entry (lgm, a);
-
-  /* add/del tunnel to tunnels pool and prepares rewrite */
-  rv = add_del_ip_tunnel (a, 0 /* is_l2 */, &tun_index);
-  if (rv)
-    return rv;
-
-  dpref = &gid_address_ippref(&a->rmt_eid);
-  spref = &gid_address_ippref(&a->lcl_eid);
-  ip_ver = ip_prefix_version(dpref);
-
-  /* setup adjacency for eid */
-  memset (&adj, 0, sizeof(adj));
-  adj.n_adj = 1;
-
+  memset(adj, 0, sizeof(adj[0]));
+  adj->n_adj = 1;
   /* fill in lookup_next_index with a 'legal' value to avoid problems */
-  adj.lookup_next_index = (ip_ver == IP4) ?
+  adj->lookup_next_index = (ip_ver == IP4) ?
           lgm->ip4_lookup_next_lgpe_ip4_lookup :
           lgm->ip6_lookup_next_lgpe_ip6_lookup;
 
-  if (a->is_add)
+  /* positive mapping */
+  if (!is_negative)
     {
       /* send packets that hit this adj to lisp-gpe interface output node in
        * requested vrf. */
       lnip = (ip_ver == IP4) ?
               lgm->lgpe_ip4_lookup_next_index_by_table_id :
               lgm->lgpe_ip6_lookup_next_index_by_table_id;
-      lookup_next_index = hash_get(lnip, a->table_id);
-      lgpe_sw_if_index = hash_get(lgm->l3_ifaces.sw_if_index_by_vni, a->vni);
+      lookup_next_index = hash_get(lnip, table_id);
+      lgpe_sw_if_index = hash_get(lgm->l3_ifaces.sw_if_index_by_vni, vni);
 
       /* the assumption is that the interface must've been created before
        * programming the dp */
@@ -290,19 +227,84 @@ add_del_ip_fwd_entry (lisp_gpe_main_t * lgm,
 
       /* hijack explicit fib index to store lisp interface node index and
        * if_address_index for the tunnel index */
-      adj.explicit_fib_index = lookup_next_index[0];
-      adj.if_address_index = tun_index;
-      adj.rewrite_header.sw_if_index = lgpe_sw_if_index[0];
+      adj->explicit_fib_index = lookup_next_index[0];
+      adj->if_address_index = tun_index;
+      adj->rewrite_header.sw_if_index = lgpe_sw_if_index[0];
+    }
+  /* negative mapping */
+  else
+    {
+      adj->rewrite_header.sw_if_index = ~0;
+      adj->rewrite_header.next_index = ~0;
+
+      switch (action)
+        {
+        case LISP_NO_ACTION:
+          /* TODO update timers? */
+        case LISP_FORWARD_NATIVE:
+          /* TODO check if route/next-hop for eid exists in fib and add
+           * more specific for the eid with the next-hop found */
+        case LISP_SEND_MAP_REQUEST:
+          /* insert tunnel that always sends map-request */
+          adj->explicit_fib_index = (ip_ver == IP4) ?
+                                   LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP:
+                                   LGPE_IP6_LOOKUP_NEXT_LISP_CP_LOOKUP;
+          break;
+        case LISP_DROP:
+          /* for drop fwd entries, just add route, no need to add encap tunnel */
+          adj->explicit_fib_index =  (ip_ver == IP4 ?
+                  LGPE_IP4_LOOKUP_NEXT_DROP : LGPE_IP6_LOOKUP_NEXT_DROP);
+          break;
+        default:
+          return -1;
+        }
+    }
+  return 0;
+}
+
+static int
+add_del_ip_fwd_entry (lisp_gpe_main_t * lgm,
+                      vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+{
+  ip_adjacency_t adj, * adjp;
+  u32 rv, tun_index = ~0;
+  ip_prefix_t * rmt_pref, * lcl_pref;
+  u8 ip_ver;
+
+  rmt_pref = &gid_address_ippref(&a->rmt_eid);
+  lcl_pref = &gid_address_ippref(&a->lcl_eid);
+  ip_ver = ip_prefix_version(rmt_pref);
+
+  /* add/del tunnel to tunnels pool and prepares rewrite */
+  if (!a->is_negative)
+    {
+      rv = add_del_ip_tunnel (a, 0 /* is_l2 */, &tun_index);
+      if (rv)
+        {
+          clib_warning ("failed to build tunnel!");
+          return rv;
+        }
     }
 
-  /* add/delete route for prefix */
-  rv = ip_sd_fib_add_del_route (lgm, dpref, spref, a->table_id, &adj,
+  /* setup adjacency for eid */
+  rv = build_ip_adjacency (lgm, &adj, a->table_id, a->vni, tun_index,
+                           a->is_negative, a->action, ip_ver);
+
+  /* add/delete route for eid */
+  rv |= ip_sd_fib_add_del_route (lgm, rmt_pref, lcl_pref, a->table_id, &adj,
                                 a->is_add);
+
+  if (rv)
+    {
+      clib_warning ("failed to insert route for tunnel!");
+      return rv;
+    }
 
   /* check that everything worked */
   if (CLIB_DEBUG && a->is_add)
     {
-      adj_index = ip_sd_fib_get_route (lgm, dpref, spref, a->table_id);
+      u32 adj_index;
+      adj_index = ip_sd_fib_get_route (lgm, rmt_pref, lcl_pref, a->table_id);
       ASSERT(adj_index != 0);
 
       adjp = ip_get_adjacency ((ip_ver == IP4) ? lgm->lm4 : lgm->lm6,
@@ -438,11 +440,12 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1;
-  ip_address_t lloc, rloc, *llocs = 0, *rlocs = 0;
+  ip_address_t lloc, rloc;
   clib_error_t * error = 0;
   gid_address_t _reid, * reid = &_reid, _leid, * leid = &_leid;
   u8 reid_set = 0, leid_set = 0, is_negative = 0, vrf_set = 0, vni_set = 0;
-  u32 vni, vrf, action = ~0;
+  u32 vni, vrf, action = ~0, p, w;
+  locator_pair_t pair, * pairs = 0;
   int rv;
 
   /* Get a line of input. */
@@ -480,13 +483,15 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
         {
           is_negative = 1;
         }
-      else if (unformat (line_input, "lloc %U rloc %U",
+      else if (unformat (line_input, "loc-pair %U %U p %d w %d",
                          unformat_ip_address, &lloc,
-                         unformat_ip_address, &rloc))
+                         unformat_ip_address, &rloc, &p, &w))
         {
-          /* TODO: support p and w */
-          vec_add1 (llocs, lloc);
-          vec_add1 (rlocs, rloc);
+          pair.lcl_loc = lloc;
+          pair.rmt_loc = rloc;
+          pair.priority = p;
+          pair.weight = w;
+          vec_add1(pairs, pair);
         }
       else
         {
@@ -518,15 +523,9 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
     }
   else
     {
-      if (vec_len (llocs) == 0)
+      if (vec_len (pairs) == 0)
         {
           error = clib_error_return (0, "expected ip4/ip6 locators.");
-          goto done;
-        }
-
-      if (vec_len (llocs) != 1)
-        {
-          error = clib_error_return (0, "multihoming not supported for now!");
           goto done;
         }
     }
@@ -550,12 +549,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   a->table_id = vrf;
   gid_address_copy(&a->lcl_eid, leid);
   gid_address_copy(&a->rmt_eid, reid);
-
-  if (!is_negative)
-    {
-      a->lcl_loc = llocs[0];
-      a->rmt_loc = rlocs[0];
-    }
+  a->locator_pairs = pairs;
 
   rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
   if (0 != rv)
@@ -565,8 +559,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
     }
 
  done:
-  vec_free(llocs);
-  vec_free(rlocs);
+  vec_free(pairs);
   return error;
 }
 
@@ -699,12 +692,20 @@ vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
         vec_add1(tunnels, tunnel[0]);
       }));
 
-      vec_foreach(tunnel, tunnels) {
+      vec_foreach(tunnel, tunnels)
+      {
         memset(at, 0, sizeof(at[0]));
         at->is_add = 0;
-        gid_address_type(&at->rmt_eid) = GID_ADDR_IP_PREFIX;
-        ip_prefix_copy(&gid_address_ippref(&at->rmt_eid), &tunnel->rmt_ippref);
-        ip_address_copy(&at->rmt_loc, &tunnel->rmt_loc);
+        if (tunnel->rmt.type == GID_ADDR_IP_PREFIX)
+          {
+            gid_address_type(&at->rmt_eid) = GID_ADDR_IP_PREFIX;
+            ip_prefix_copy(&gid_address_ippref(&at->rmt_eid), &tunnel->rmt.ippref);
+          }
+        else
+          {
+            gid_address_type(&at->rmt_eid) = GID_ADDR_MAC;
+            mac_copy(&gid_address_mac(&at->rmt_eid), &tunnel->rmt.mac);
+          }
         vnet_lisp_gpe_add_del_fwd_entry (at, 0);
       }
       vec_free(tunnels);

@@ -252,4 +252,25 @@ typedef struct
 uword
 unformat_negative_mapping_action (unformat_input_t * input, va_list * args);
 
+/* dp works with a subset of ids */
+typedef struct lisp_dp_address
+{
+  union
+  {
+    ip_prefix_t ippref;
+    u8 mac[6];
+  };
+  u8 type;
+} dp_address_t;
+
+typedef struct locator_pair
+{
+  /* local and remote locators (underlay attachment points) */
+  ip_address_t lcl_loc;
+  ip_address_t rmt_loc;
+
+  u8 priority;
+  u8 weight;
+} locator_pair_t;
+
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */

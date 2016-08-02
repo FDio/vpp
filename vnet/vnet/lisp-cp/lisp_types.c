@@ -210,16 +210,15 @@ unformat_gid_address (unformat_input_t * input, va_list * args)
   ip_prefix_t ippref;
 
   memset (&ippref, 0, sizeof (ippref));
-  memset(a, 0, sizeof(a[0]));
 
   if (unformat (input, "%U", unformat_ip_prefix, &ippref))
     {
-      clib_memcpy (&gid_address_ippref(a), &ippref, sizeof(ippref));
+      ip_prefix_copy (&gid_address_ippref(a), &ippref);
       gid_address_type(a) = GID_ADDR_IP_PREFIX;
     }
   else if (unformat (input, "%U", unformat_mac_address, mac))
     {
-      clib_memcpy (gid_address_mac(a), mac, sizeof(mac));
+      mac_copy (gid_address_mac(a), mac);
       gid_address_type(a) = GID_ADDR_MAC;
     }
   else if (unformat (input, "[%d]", &vni))

@@ -30,8 +30,7 @@ typedef struct
 {
   gid_address_t seid;
   gid_address_t deid;
-  ip_address_t src_loc;
-  ip_address_t dst_loc;
+  locator_pair_t * locator_pairs;
 } fwd_entry_t;
 
 typedef enum
