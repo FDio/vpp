@@ -210,7 +210,7 @@ static void __vnet_add_feature_registration_mc_##x (void)       \
 __VA_ARGS__ vnet_ip_feature_registration_t mc_##x 
 
 
-/* Global ip4 input node.  Errors get attached to ip4 input node. */
+/** Global ip4 input node.  Errors get attached to ip4 input node. */
 extern vlib_node_registration_t ip4_input_node;
 extern vlib_node_registration_t ip4_lookup_node;
 extern vlib_node_registration_t ip4_rewrite_node;
