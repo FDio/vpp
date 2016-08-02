@@ -2278,6 +2278,7 @@ define lisp_add_del_local_eid_reply {
     @param loc_num - number of locators
     @param lcl_locs - array of local locators
     @param rmt_locs - array of remote locators
+    @param action - negative action when 0 locators configured
 */
 define lisp_gpe_add_del_fwd_entry {
     u32 client_index;
@@ -2287,12 +2288,13 @@ define lisp_gpe_add_del_fwd_entry {
     u8  rmt_eid[16];
     u8  lcl_eid[16];
     u8  rmt_len;
-    u8  lcl_len;    
+    u8  lcl_len;
     u32 vni;
     u32 dp_table;
     u32 loc_num;
     u8  lcl_locs[loc_num];
     u8  rmt_locs[loc_num];
+    u8  action;
 };
 
 /** \brief Reply for gpe_fwd_entry add/del
