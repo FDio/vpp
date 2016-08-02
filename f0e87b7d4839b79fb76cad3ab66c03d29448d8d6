@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_02a7d0be",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-02T18:31:56Z",
+      "side": 1,
+      "message": "Did you intend these to be regular comments? In the documentation the contents of these in-code dockblocks will appear without the context of the source code - literally as new paragraphs in the blurb; consequently you need to be aware of the surrounding docblocks to make the documentation read clearly.",
+      "range": {
+        "startLine": 103,
+        "startChar": 2,
+        "endLine": 103,
+        "endChar": 6
+      },
+      "revId": "f0e87b7d4839b79fb76cad3ab66c03d29448d8d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
