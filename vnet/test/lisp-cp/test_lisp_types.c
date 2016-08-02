@@ -113,7 +113,7 @@ static clib_error_t * test_gid_parse_mac ()
 
   u8 data[] =
     {
-      0x00, 0x06,             /* AFI = MAC address */
+      0x40, 0x05,             /* AFI = MAC address */
       0x10, 0xbb, 0xcc, 0xdd, /* MAC */
       0x77, 0x99,
     };
@@ -320,11 +320,161 @@ static clib_error_t * test_mac_address_write (void)
 
   u8 expected[] =
     {
-      0x00, 0x06,             /* AFI = MAC */
+      0x40, 0x05,             /* AFI = MAC */
       0x01, 0x02, 0x03, 0x04,
       0x05, 0x06              /* MAC */
     };
   _assert (0 == memcmp (expected, b, len));
+done:
+  clib_mem_free (b);
+  return error;
+}
+
+static clib_error_t *
+test_src_dst_with_vni_serdes (void)
+{
+  clib_error_t * error = 0;
+  u8 * b = clib_mem_alloc (500);
+  memset (b, 0, 500);
+
+  fid_address_t src =
+    {
+      .type = FID_ADDR_IP_PREF,
+      .ippref =
+        {
+          .len = 24,
+          .addr =
+            {
+              .version = IP4,
+              .ip.v4.data = { 0x1, 0x2, 0x3, 0x0 }
+            }
+        }
+    };
+
+  fid_address_t dst =
+    {
+      .type = FID_ADDR_IP_PREF,
+      .ippref =
+        {
+          .len = 16,
+          .addr =
+            {
+              .version = IP4,
+              .ip.v4.data = { 0x9, 0x8, 0x0, 0x0 }
+            }
+        }
+    };
+
+  source_dest_t sd =
+    {
+      .src = src,
+      .dst = dst
+    };
+
+  gid_address_t g =
+    {
+      .sd = sd,
+      .type = GID_ADDR_SRC_DST,
+      .vni = 0x12345678,
+      .vni_mask = 0x9
+    };
+
+  u16 size_to_put = gid_address_size_to_put(&g);
+  _assert (36 == size_to_put);
+  _assert (0 == gid_address_len(&g));
+
+  u16 write_len = gid_address_put (b, &g);
+  printf("sizetoput %d; writelen %d\n", size_to_put, write_len);
+  _assert (size_to_put == write_len);
+
+  u8 expected_data[] =
+    {
+      0x40, 0x03, 0x00, 0x00,  /* AFI = LCAF, reserved1, flags */
+      0x02, 0x09, 0x00, 0x1c,  /* LCAF type = IID, IID mask-len, length */
+      0x12, 0x34, 0x56, 0x78,  /* reserved; source-ML, Dest-ML */
+
+      0x40, 0x03, 0x00, 0x00,  /* AFI = LCAF, reserved1, flags */
+      0x0c, 0x00, 0x00, 0x14,  /* LCAF type = source/dest key, rsvd, length */
+      0x00, 0x00, 0x18, 0x10,  /* reserved; source-ML, Dest-ML */
+
+      0x00, 0x01,              /* AFI = ip4 */
+      0x01, 0x02, 0x03, 0x00,  /* source */
+
+      0x00, 0x01,              /* AFI = ip4 */
+      0x09, 0x08, 0x00, 0x00,  /* destination */
+    };
+  _assert (0 == memcmp (expected_data, b, sizeof (expected_data)));
+
+  gid_address_t p;
+  memset (&p, 0, sizeof (p));
+  _assert (write_len == gid_address_parse (b, &p));
+  _assert (0 == gid_address_cmp (&g, &p));
+done:
+  clib_mem_free (b);
+  return error;
+}
+
+static clib_error_t *
+test_src_dst_serdes (void)
+{
+  clib_error_t * error = 0;
+
+  u8 * b = clib_mem_alloc (500);
+  memset (b, 0, 500);
+
+  fid_address_t src =
+    {
+      .type = FID_ADDR_MAC,
+      .mac = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 }
+    };
+
+  fid_address_t dst =
+    {
+      .type = FID_ADDR_MAC,
+      .mac = { 0x10, 0x21, 0x32, 0x43, 0x54, 0x65 }
+    };
+
+  source_dest_t sd =
+    {
+      .src = src,
+      .dst = dst
+    };
+
+  gid_address_t g =
+    {
+      .sd = sd,
+      .type = GID_ADDR_SRC_DST,
+      .vni = 0x0,
+      .vni_mask = 0x0
+    };
+
+  u16 size_to_put = gid_address_size_to_put(&g);
+  _assert (28 == size_to_put);
+  _assert (0 == gid_address_len(&g));
+
+  u16 write_len = gid_address_put (b, &g);
+  _assert (size_to_put == write_len);
+
+  u8 expected_data[] =
+    {
+      0x40, 0x03, 0x00, 0x00,  /* AFI = LCAF, reserved1, flags */
+      0x0c, 0x00, 0x00, 0x18,  /* LCAF type = source/dest key, rsvd, length */
+      0x00, 0x00, 0x00, 0x00,  /* reserved; source-ML, Dest-ML */
+
+      0x40, 0x05,              /* AFI = MAC */
+      0x11, 0x22, 0x33, 0x44,
+      0x55, 0x66,              /* source */
+
+      0x40, 0x05,              /* AFI = MAC */
+      0x10, 0x21, 0x32, 0x43,
+      0x54, 0x65,              /* destination */
+    };
+  _assert (0 == memcmp (expected_data, b, sizeof (expected_data)));
+
+  gid_address_t p;
+  memset (&p, 0, sizeof (p));
+  _assert (write_len == gid_address_parse (b, &p));
+  _assert (0 == gid_address_cmp (&g, &p));
 done:
   clib_mem_free (b);
   return error;
@@ -382,7 +532,9 @@ done:
   _(gid_parse_mac)                        \
   _(gid_parse_lcaf)                       \
   _(mac_address_write)                    \
-  _(gid_address_write)
+  _(gid_address_write)                    \
+  _(src_dst_serdes)                       \
+  _(src_dst_with_vni_serdes)
 
 int run_tests (void)
 {

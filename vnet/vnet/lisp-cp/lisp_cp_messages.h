@@ -451,4 +451,23 @@ typedef struct _lcaf_hdr_t
 #define LCAF_FLAGS(h) ((lcaf_hdr_t *)(h))->flags
 #define LCAF_PAYLOAD(h) (u8 *)(h)+sizeof(lcaf_hdr_t)
 
+/*
+ * Source/Dest Key Canonical Address Format:
+ *
+ *   0                   1                   2                   3
+ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |            Reserved           |   Source-ML   |    Dest-ML    |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+typedef struct _lcaf_src_dst_hdr_t
+{
+  u16 reserved;
+  u8 src_mask_len;
+  u8 dst_mask_len;
+} __attribute__ ((__packed__)) lcaf_src_dst_hdr_t;
+
+#define LCAF_SD_SRC_ML(_h) (_h)->src_mask_len
+#define LCAF_SD_DST_ML(_h) (_h)->dst_mask_len
+
 #endif /* VNET_LISP_GPE_LISP_CP_MESSAGES_H_ */
