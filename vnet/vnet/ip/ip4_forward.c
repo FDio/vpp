@@ -79,7 +79,7 @@ ip4_fib_lookup_with_table (ip4_main_t * im, u32 fib_index,
 	  goto done;
 	}
     }
-    
+
   /* Nothing matches in table. */
   ai = lm->miss_adj_index;
 
@@ -87,6 +87,11 @@ ip4_fib_lookup_with_table (ip4_main_t * im, u32 fib_index,
   return ai;
 }
 
+/** @brief Create FIB from table ID and init all hashing.
+    @param im - @ref ip4_main_t
+    @param table_id - table ID
+    @return fib - @ref ip4_fib_t
+*/
 static ip4_fib_t *
 create_fib_with_table_id (ip4_main_t * im, u32 table_id)
 {
@@ -95,6 +100,7 @@ create_fib_with_table_id (ip4_main_t * im, u32 table_id)
   vec_add2 (im->fibs, fib, 1);
   fib->table_id = table_id;
   fib->index = fib - im->fibs;
+  /* IP_FLOW_HASH_DEFAULT is net value of 5 tuple flags without "reverse" bit */
   fib->flow_hash_config = IP_FLOW_HASH_DEFAULT;
   fib->fwd_classify_table_index = ~0;
   fib->rev_classify_table_index = ~0;
@@ -102,28 +108,41 @@ create_fib_with_table_id (ip4_main_t * im, u32 table_id)
   return fib;
 }
 
+/** @brief Find existing or Create new FIB based on index
+    @param im @ref ip4_main_t
+    @param table_index_or_id - overloaded parameter referring
+           to the table or a table's index in the FIB vector
+    @param flags - used to check if table_index_or_id was a table or
+           an index (detected by @ref IP4_ROUTE_FLAG_FIB_INDEX)
+    @return either the existing or a new ip4_fib_t entry
+*/
 ip4_fib_t *
-find_ip4_fib_by_table_index_or_id (ip4_main_t * im, 
+find_ip4_fib_by_table_index_or_id (ip4_main_t * im,
                                    u32 table_index_or_id, u32 flags)
 {
   uword * p, fib_index;
 
   fib_index = table_index_or_id;
+  /* If this isn't a FIB_INDEX ... */
   if (! (flags & IP4_ROUTE_FLAG_FIB_INDEX))
     {
+      /* If passed ~0 then request the next table available */
       if (table_index_or_id == ~0) {
         table_index_or_id = 0;
         while ((p = hash_get (im->fib_index_by_table_id, table_index_or_id))) {
           table_index_or_id++;
         }
-        return create_fib_with_table_id (im, table_index_or_id);
+	/* Create the next table and return the ip4_fib_t associated with it */
+	return create_fib_with_table_id (im, table_index_or_id);
       }
-
+      /* A specific table_id was requested.. */
       p = hash_get (im->fib_index_by_table_id, table_index_or_id);
+      /* ... and if it doesn't exist create it else grab its index */
       if (! p)
 	return create_fib_with_table_id (im, table_index_or_id);
       fib_index = p[0];
     }
+  /* Return the ip4_fib_t associated with this index */
   return vec_elt_at_index (im->fibs, fib_index);
 }
 
