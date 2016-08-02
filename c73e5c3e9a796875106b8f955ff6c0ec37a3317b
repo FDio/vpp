@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_62c8cc74",
+        "filename": "vlib/vlib/dpdk_buffer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 993,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-08-02T18:13:01Z",
+      "side": 1,
+      "message": "Maybe a comment about why you had to add this code would be nice :-)",
+      "revId": "c73e5c3e9a796875106b8f955ff6c0ec37a3317b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_e2b4dcf3",
+        "filename": "vlib/vlib/dpdk_buffer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1029,
+      "author": {
+        "id": 29
+      },
+      "writtenOn": "2016-08-02T18:13:01Z",
+      "side": 1,
+      "message": "Do you need to test for end \u003d\u003d 0 or is that not possible here?",
+      "range": {
+        "startLine": 1029,
+        "startChar": 0,
+        "endLine": 1029,
+        "endChar": 8
+      },
+      "revId": "c73e5c3e9a796875106b8f955ff6c0ec37a3317b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
