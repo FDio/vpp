@@ -3814,13 +3814,13 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t *mp)
 {
     int rv = 0;
     vl_api_create_vhost_user_if_reply_t * rmp;
-#if DPDK > 0 && DPDK_VHOST_USER
+#if DPDK > 0 
     u32 sw_if_index = (u32)~0;
 
     vnet_main_t * vnm = vnet_get_main();
     vlib_main_t * vm = vlib_get_main();
 
-    rv = dpdk_vhost_user_create_if(vnm, vm, (char *)mp->sock_filename,
+    rv = vhost_user_create_if(vnm, vm, (char *)mp->sock_filename,
                               mp->is_server, &sw_if_index, (u64)~0,
                               mp->renumber, ntohl(mp->custom_dev_instance),
                               (mp->use_custom_mac)?mp->mac_address:NULL);
