@@ -2099,7 +2099,7 @@ static void *vl_api_ip_source_and_port_range_check_add_del_t_print
                     mp->mask_length);
 
     for (i = 0; i < mp->number_of_ranges; i++) {
-        s = format (s, "range %d - %d", mp->low_ports[i], mp->high_ports[i]);
+        s = format (s, "range %d - %d ", mp->low_ports[i], mp->high_ports[i]);
     }
 
     s = format (s, "vrf %d ", ntohl(mp->vrf_id));
@@ -2117,9 +2117,19 @@ static void *vl_api_ip_source_and_port_range_check_interface_add_del_t_print
 
     s = format (0, "SCRIPT: ip_source_and_port_range_check_interface_add_del ");
 
-    s = format (s, "%d ", ntohl(mp->sw_if_index));
+    s = format (s, "sw_if_index %d ", ntohl(mp->sw_if_index));
 
-    s = format (s, "vrf %d ", ntohl(mp->vrf_id));
+    if (mp->tcp_out_vrf_id != ~0)
+        s = format (s, "tcp-out-vrf %d ", ntohl(mp->tcp_out_vrf_id));
+
+    if (mp->udp_out_vrf_id != ~0)
+        s = format (s, "udp-out-vrf %d ", ntohl(mp->udp_out_vrf_id));
+
+    if (mp->tcp_in_vrf_id != ~0)
+        s = format (s, "tcp-in-vrf %d ", ntohl(mp->tcp_in_vrf_id));
+
+    if (mp->udp_in_vrf_id != ~0)
+        s = format (s, "udp-in-vrf %d ", ntohl(mp->udp_in_vrf_id));
 
     if (mp->is_add == 0)
         s = format (s, "del ");
