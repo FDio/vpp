@@ -77,22 +77,45 @@ typedef enum
   LCAF_NULL_BODY = 0,
   LCAF_AFI_LIST_TYPE,
   LCAF_INSTANCE_ID,
+  LCAF_SOURCE_DEST = 12,
   LCAF_TYPES
 } lcaf_type_t;
 
-struct _gid_address_t;
+typedef enum
+{
+  GID_SIMPLE_ADDR_IP_PREF,
+  GID_SIMPLE_ADDR_MAC
+} gid_simple_addr_type_t;
+
+/* dp works with a subset of ids */
+typedef struct lisp_dp_address
+{
+  union
+  {
+    ip_prefix_t ippref;
+    u8 mac[6];
+  };
+  u8 type;
+} dp_address_t;
+
+typedef dp_address_t simple_address_t;
+
+#define gid_simple_ippref(_a) (_a)->ippref
+#define gid_simple_mac(_a) (_a)->mac
+#define gid_simple_type(_a) (_a)->type
 
 typedef struct
 {
-  u8 src_len;
-  u8 dst_len;
-  struct _gid_address_t *src;
-  struct _gid_address_t *dst;
+  simple_address_t src;
+  simple_address_t dst;
 } source_dest_t;
 
-#define SD_CAST (source_dest_t *)
-#define sd_dst_gid(_a) (SD_CAST _a)->dst
-#define sd_src_gid(_a) (SD_CAST _a)->src
+#define sd_dst(_a) (_a)->dst
+#define sd_src(_a) (_a)->src
+#define sd_src_ippref(_a) gid_simple_ippref(&sd_src(_a))
+#define sd_dst_ippref(_a) gid_simple_ippref(&sd_dst(_a))
+#define sd_src_mac(_a) gid_simple_mac(&sd_src(_a))
+#define sd_dst_mac(_a) gid_simple_mac(&sd_dst(_a))
 
 typedef struct
 {
@@ -128,6 +151,7 @@ typedef struct _gid_address_t
     ip_prefix_t ippref;
     lcaf_t lcaf;
     u8 mac[6];
+    source_dest_t sd;
   };
   u8 type;
   u32 vni;
@@ -182,16 +206,20 @@ void gid_address_ip_set(gid_address_t * dst, void * src, u8 version);
 #define gid_address_mac(_a) (_a)->mac
 #define gid_address_vni(_a) (_a)->vni
 #define gid_address_vni_mask(_a) (_a)->vni_mask
-#define gid_address_sd_dest_pref(_a) \
-  gid_address_ippref(sd_dst_gid(_a))
-#define gid_address_sd_source_pref(_a) \
-  gid_address_ippref(sd_src_gid(_a))
+#define gid_address_sd_dst_ippref(_a) sd_dst_ippref(&(_a)->sd)
+#define gid_address_sd_src_ippref(_a) sd_src_ippref(&(_a)->sd)
+#define gid_address_sd_dst_mac(_a) sd_dst_mac(&(_a)->sd)
+#define gid_address_sd_src_mac(_a) sd_src_mac(&(_a)->sd)
+#define gid_address_sd(_a) (_a)->sd
+#define gid_address_sd_src(_a) sd_src(&gid_address_sd(_a))
+#define gid_address_sd_dst(_a) sd_dst(&gid_address_sd(_a))
 
 /* 'sub'address functions */
 #define foreach_gid_address_type_fcns  \
   _(ip_prefix)                    \
   _(lcaf)                         \
-  _(mac)
+  _(mac)                          \
+  _(sd)
 
 #define _(_n)                                 \
 u16    _n ## _size_to_write (void * pref);    \
@@ -251,17 +279,6 @@ typedef struct
 
 uword
 unformat_negative_mapping_action (unformat_input_t * input, va_list * args);
-
-/* dp works with a subset of ids */
-typedef struct lisp_dp_address
-{
-  union
-  {
-    ip_prefix_t ippref;
-    u8 mac[6];
-  };
-  u8 type;
-} dp_address_t;
 
 typedef struct locator_pair
 {
