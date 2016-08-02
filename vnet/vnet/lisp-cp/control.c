@@ -985,7 +985,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
         is_add = 0;
       else if (unformat (line_input, "add"))
         ;
-      else if (unformat (line_input, "%U", unformat_gid_address, &eid))
+      else if (unformat (line_input, "eid %U", unformat_gid_address, &eid))
         eid_set = 1;
       else if (unformat (line_input, "vni %u", &vni))
         {
