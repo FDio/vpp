@@ -37,6 +37,11 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/** @file Definitions for all things IP (v4|v6) unicast and multicast lookup related.
+    - Adjacency definitions and registration
+    - callbacks on route add
+    - callbacks on interface address change
+ */
 #ifndef included_ip_lookup_h
 #define included_ip_lookup_h
 
@@ -91,7 +96,7 @@ typedef enum {
 } ip4_lookup_next_t;
 
 typedef enum {
-  /* Hop-by-hop header handling */
+  /** Hop-by-hop header handling */
   IP6_LOOKUP_NEXT_HOP_BY_HOP = IP_LOOKUP_N_NEXT,
   IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP,
   IP6_LOOKUP_NEXT_POP_HOP_BY_HOP,
@@ -129,7 +134,7 @@ typedef enum {
     [IP6_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop",	\
 }
 
-/* Flow hash configuration */
+/** Flow hash configuration */
 #define IP_FLOW_HASH_SRC_ADDR (1<<0)
 #define IP_FLOW_HASH_DST_ADDR (1<<1)
 #define IP_FLOW_HASH_PROTO (1<<2)
@@ -137,7 +142,7 @@ typedef enum {
 #define IP_FLOW_HASH_DST_PORT (1<<4)
 #define IP_FLOW_HASH_REVERSE_SRC_DST (1<<5)
 
-/* Default: 5-tuple without the "reverse" bit */
+/** Default: 5-tuple without the "reverse" bit */
 #define IP_FLOW_HASH_DEFAULT (0x1F)
 
 #define foreach_flow_hash_bit                   \
@@ -149,52 +154,53 @@ _(proto, IP_FLOW_HASH_PROTO)	                \
 _(reverse, IP_FLOW_HASH_REVERSE_SRC_DST)
 
 #define IP_ADJACENCY_OPAQUE_SZ 16
-/* IP unicast adjacency. */
+/** @brief IP unicast adjacency.
+    @note cache aligned.
+*/
 typedef struct {
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  /* Handle for this adjacency in adjacency heap. */
+  /** Handle for this adjacency in adjacency heap. */
   u32 heap_handle;
 
   STRUCT_MARK(signature_start);
 
-  /* Interface address index for this local/arp adjacency. */
+  /** Interface address index for this local/arp adjacency. */
   u32 if_address_index;
 
-  /* Number of adjecencies in block.  Greater than 1 means multipath;
+  /** Number of adjecencies in block.  Greater than 1 means multipath;
      otherwise equal to 1. */
   u16 n_adj;
 
-  /* Next hop after ip4-lookup. */
+  /** Next hop after ip4-lookup. */
   union {
     ip_lookup_next_t lookup_next_index : 16;
     u16 lookup_next_index_as_int;
   };
 
-  /* Force re-lookup in a different FIB. ~0 => normal behavior */
+  /** Force re-lookup in a different FIB. ~0 => normal behavior */
   i16 explicit_fib_index;
   u16 mcast_group_index;  
 
-  /* Highest possible perf subgraph arc interposition, e.g. for ip6 ioam */
+  /** Highest possible perf subgraph arc interposition, e.g. for ip6 ioam */
   u16 saved_lookup_next_index;
 
   union {
-    /* IP_LOOKUP_NEXT_ARP only */
+    /** IP_LOOKUP_NEXT_ARP only */
     struct {
       ip46_address_t next_hop;
     } arp;
-    /* IP_LOOKUP_NEXT_CLASSIFY only */
+    /** IP_LOOKUP_NEXT_CLASSIFY only */
     struct {
       u16 table_index;
     } classify;
-    /* IP_LOOKUP_NEXT_INDIRECT only */
+    /** IP_LOOKUP_NEXT_INDIRECT only */
     struct {
         ip46_address_t next_hop;
     } indirect;
     u8 opaque[IP_ADJACENCY_OPAQUE_SZ];
   };
 
-  /* 
-   * Special format function for this adjacency.
+  /** @brief Special format function for this adjacency.
    * Specifically good for cases which use the entire rewrite
    * for their own purposes. Can easily reduce to a u16 or a u8 if/when
    * the first cache line reads "full" on the free space gas gauge.
@@ -202,14 +208,14 @@ typedef struct {
   u32 special_adjacency_format_function_index;  /* 0 is invalid */
   STRUCT_MARK(signature_end);
 
-  /* Number of FIB entries sharing this adjacency */
+  /** Number of FIB entries sharing this adjacency */
   u32 share_count;
-  /* Use this adjacency instead */
+  /** Use this adjacency instead */
   u32 next_adj_with_signature;
 
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
 
-  /* Rewrite in second/third cache lines */
+  /** Rewrite in second/third cache lines */
   vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
 } ip_adjacency_t;
 
@@ -372,82 +378,82 @@ typedef struct ip_adj_register_struct {
 } ip_adj_register_t;
 
 typedef struct ip_lookup_main_t {
-  /* Adjacency heap. */
+  /** Adjacency heap. */
   ip_adjacency_t * adjacency_heap;
 
-  /* Adjacency packet/byte counters indexed by adjacency index. */
+  /** Adjacency packet/byte counters indexed by adjacency index. */
   vlib_combined_counter_main_t adjacency_counters;
 
-  /* Heap of (next hop, weight) blocks.  Sorted by next hop. */
+  /** Heap of (next hop, weight) blocks.  Sorted by next hop. */
   ip_multipath_next_hop_t * next_hop_heap;
 
-  /* Indexed by heap_handle from ip_adjacency_t. */
+  /** Indexed by heap_handle from ip_adjacency_t. */
   ip_multipath_adjacency_t * multipath_adjacencies;
 
-  /* Adjacency by signature hash */
+  /** Adjacency by signature hash */
   uword * adj_index_by_signature;
 
-  /* Temporary vectors for looking up next hops in hash. */
+  /** Temporary vectors for looking up next hops in hash. */
   ip_multipath_next_hop_t * next_hop_hash_lookup_key;
   ip_multipath_next_hop_t * next_hop_hash_lookup_key_normalized;
 
-  /* Hash table mapping normalized next hops and weights
+  /** Hash table mapping normalized next hops and weights
      to multipath adjacency index. */
   uword * multipath_adjacency_by_next_hops;
 
   u32 * adjacency_remap_table;
   u32 n_adjacency_remaps;
 
-  /* If average error per adjacency is less than this threshold adjacency block
+  /** If average error per adjacency is less than this threshold adjacency block
      size is accepted. */
   f64 multipath_next_hop_error_tolerance;
 
-  /* Adjacency index for routing table misses, local punts, and drops. */
+  /** Adjacency index for routing table misses, local punts, and drops. */
   u32 miss_adj_index, drop_adj_index, local_adj_index;
 
-  /* Miss adjacency is always first in adjacency table. */
+  /** Miss adjacency is always first in adjacency table. */
 #define IP_LOOKUP_MISS_ADJ_INDEX 0
 
   ip_add_del_adjacency_callback_t * add_del_adjacency_callbacks;
 
-  /* Pool of addresses that are assigned to interfaces. */
+  /** Pool of addresses that are assigned to interfaces. */
   ip_interface_address_t * if_address_pool;
 
-  /* Hash table mapping address to index in interface address pool. */
+  /** Hash table mapping address to index in interface address pool. */
   mhash_t address_to_if_address_index;
 
-  /* Head of doubly linked list of interface addresses for each software interface.
+  /** Head of doubly linked list of interface addresses for each software interface.
      ~0 means this interface has no address. */
   u32 * if_address_pool_index_by_sw_if_index;
 
-  /* First table index to use for this interface, ~0 => none */
+  /** First table index to use for this interface, ~0 => none */
   u32 * classify_table_index_by_sw_if_index;
 
-  /* rx/tx interface/feature configuration. */
+  /** rx/tx interface/feature configuration. */
   ip_config_main_t rx_config_mains[VNET_N_CAST], tx_config_main;
 
-  /* Number of bytes in a fib result.  Must be at least
+  /** Number of bytes in a fib result.  Must be at least
      sizeof (uword).  First word is always adjacency index. */
   u32 fib_result_n_bytes, fib_result_n_words;
 
   format_function_t * format_fib_result;
 
-  /* 1 for ip6; 0 for ip4. */
+  /** 1 for ip6; 0 for ip4. */
   u32 is_ip6;
 
-  /* Either format_ip4_address_and_length or format_ip6_address_and_length. */
+  /** Either format_ip4_address_and_length or format_ip6_address_and_length. */
   format_function_t * format_address_and_length;
 
-  /* Special adjacency format functions */
+  /** Special adjacency format functions */
   format_function_t ** special_adjacency_format_functions;
 
-  /* Table mapping ip protocol to ip[46]-local node next index. */
+  /** Table mapping ip protocol to ip[46]-local node next index. */
   u8 local_next_by_ip_protocol[256];
 
-  /* IP_BUILTIN_PROTOCOL_{TCP,UDP,ICMP,OTHER} by protocol in IP header. */
+  /** IP_BUILTIN_PROTOCOL_{TCP,UDP,ICMP,OTHER} by protocol in IP header. */
   u8 builtin_protocol_by_ip_protocol[256];
 
-  /* Registered adjacencies */
+  /** Registered adjacencies */
   ip_adj_register_t *registered_adjacencies;
 } ip_lookup_main_t;
 
