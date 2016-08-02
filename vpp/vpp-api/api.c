@@ -4880,6 +4880,38 @@ vl_api_lisp_add_del_locator_t_handler(
     REPLY_MACRO(VL_API_LISP_ADD_DEL_LOCATOR_REPLY);
 }
 
+static int
+unformat_lisp_eid_api (gid_address_t * dst, u32 vni, u8 type, void * src,
+                       u8 len)
+{
+  switch (type)
+    {
+    case 0: /* ipv4 */
+      gid_address_type(dst) = GID_ADDR_IP_PREFIX;
+      gid_address_ip_set (dst, src, IP4);
+      gid_address_ippref_len(dst) = len;
+      ip_prefix_normalize (&gid_address_ippref(dst));
+      break;
+    case 1: /* ipv6 */
+      gid_address_type(dst) = GID_ADDR_IP_PREFIX;
+      gid_address_ip_set (dst, src, IP6);
+      gid_address_ippref_len(dst) = len;
+      ip_prefix_normalize (&gid_address_ippref(dst));
+      break;
+    case 2: /* l2 mac */
+      gid_address_type(dst) = GID_ADDR_MAC;
+      clib_memcpy (&gid_address_mac(dst), src, 6);
+      break;
+    default:
+      /* unknown type */
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  gid_address_vni (dst) = vni;
+
+  return 0;
+}
+
 static void
 vl_api_lisp_add_del_local_eid_t_handler(
     vl_api_lisp_add_del_local_eid_t *mp)
@@ -4887,42 +4919,18 @@ vl_api_lisp_add_del_local_eid_t_handler(
     vl_api_lisp_add_del_local_eid_reply_t *rmp;
     lisp_cp_main_t * lcm = vnet_lisp_cp_get_main();
     int rv = 0;
-    ip_prefix_t  *prefp = NULL;
-    ip_address_t *ip_eid = NULL;
-    gid_address_t eid;
-    u8 * mac = gid_address_mac (&eid);
+    gid_address_t _eid, * eid = &_eid;
     uword * p = NULL;
     u32 locator_set_index = ~0, map_index = ~0;
     vnet_lisp_add_del_mapping_args_t _a, *a = &_a;
     u8 *name = NULL;
     memset (a, 0, sizeof (a[0]));
-    memset (&eid, 0, sizeof (eid));
+    memset (eid, 0, sizeof (eid[0]));
 
-    prefp = &gid_address_ippref(&eid);
-    ip_eid = &ip_prefix_addr(prefp);
-
-    switch (mp->eid_type)
-      {
-      case 0: /* ipv4*/
-        gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
-        ip_address_set(ip_eid, mp->eid, IP4);
-        ip_prefix_len(prefp) = mp->prefix_len;
-        ip_prefix_normalize(prefp);
-        break;
-      case 1: /* ipv6 */
-        gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
-        ip_address_set(ip_eid, mp->eid, IP6);
-        ip_prefix_len(prefp) = mp->prefix_len;
-        ip_prefix_normalize(prefp);
-        break;
-      case 2: /* l2 mac */
-        gid_address_type (&eid) = GID_ADDR_MAC;
-        clib_memcpy(mac, mp->eid, 6);
-        break;
-      default:
-        rv = VNET_API_ERROR_INVALID_EID_TYPE;
-        goto out;
-      }
+    rv = unformat_lisp_eid_api (eid, clib_net_to_host_u32 (mp->vni),
+                                mp->eid_type, mp->eid, mp->prefix_len);
+    if (rv)
+      goto out;
 
     name = format(0, "%s", mp->locator_set_name);
     p = hash_get_mem(lcm->locator_set_index_by_name, name);
@@ -4932,10 +4940,9 @@ vl_api_lisp_add_del_local_eid_t_handler(
     }
     locator_set_index = p[0];
 
-  /* XXX treat batch configuration */
+    /* XXX treat batch configuration */
     a->is_add = mp->is_add;
-    gid_address_vni (&eid) = clib_net_to_host_u32 (mp->vni);
-    gid_address_copy (&a->eid, &eid);
+    gid_address_copy (&a->eid, eid);
     a->locator_set_index = locator_set_index;
     a->local = 1;
     rv = vnet_lisp_add_del_local_mapping(a, &map_index);
@@ -4959,46 +4966,32 @@ vl_api_lisp_eid_table_add_del_map_t_handler(
     REPLY_MACRO(VL_API_LISP_EID_TABLE_ADD_DEL_MAP_REPLY)
 }
 
-static void
-lisp_gpe_add_del_fwd_entry_set_address(
-    vl_api_lisp_gpe_add_del_fwd_entry_t *mp,
-    ip_address_t                        *slocator,
-    ip_address_t                        *dlocator,
-    gid_address_t                       *eid)
+/** Used for transferring locators via VPP API */
+typedef CLIB_PACKED(struct
 {
-    ip_address_t *ip_eid = NULL;
-    ip_prefix_t *prefp = NULL;
+  u8 is_ip4; /**< is locator an IPv4 address */
+  u8 priority; /**< locator priority */
+  u8 weight;   /**< locator weight */
+  u8 addr[16]; /**< IPv4/IPv6 address */
+}) rloc_t;
 
-    prefp = &gid_address_ippref(eid);
-    ip_eid = &ip_prefix_addr(prefp);
+static locator_t *
+unformat_lisp_locs (void * data, u32 rloc_num)
+{
+  u32 i;
+  locator_t rloc, * rlocs = 0;
 
-    if (mp->eid_is_ipv6) {
-        clib_memcpy(&ip_addr_v6(ip_eid), mp->eid_ip_address,
-               sizeof(ip_addr_v6(ip_eid)));
-        ip_addr_version(ip_eid) = IP6;
-    } else {
-        clib_memcpy(&ip_addr_v4(ip_eid), mp->eid_ip_address,
-               sizeof(ip_addr_v4(ip_eid)));
-        ip_addr_version(ip_eid) = IP4;
-    }
-    ip_prefix_len(prefp) = mp->eid_prefix_len;
-    ip_prefix_normalize(prefp);
-
-    if (mp->address_is_ipv6) {
-        clib_memcpy(&ip_addr_v6(slocator), mp->source_ip_address,
-               sizeof(ip_addr_v6(slocator)));
-        ip_addr_version(slocator) = IP6;
-        clib_memcpy(&ip_addr_v6(dlocator), mp->destination_ip_address,
-               sizeof(ip_addr_v6(dlocator)));
-        ip_addr_version(dlocator) = IP6;
-    } else {
-        clib_memcpy(&ip_addr_v4(slocator), mp->source_ip_address,
-               sizeof(ip_addr_v4(slocator)));
-        ip_addr_version(slocator) = IP4;
-        clib_memcpy(&ip_addr_v4(dlocator), mp->destination_ip_address,
-               sizeof(ip_addr_v4(dlocator)));
-        ip_addr_version(dlocator) = IP4;
-    }
+  for (i = 0; i < rloc_num; i++) {
+      rloc_t * r = &((rloc_t *) data)[i];
+      memset(&rloc, 0, sizeof(rloc));
+      gid_address_ip_set (&rloc.address, &r->addr, r->is_ip4 ? IP4 : IP6);
+      gid_address_ippref_len(&rloc.address) = r->is_ip4 ? 32: 128;
+      gid_address_type(&rloc.address) = GID_ADDR_IP_PREFIX;
+      rloc.priority = r->priority;
+      rloc.weight = r->weight;
+      vec_add1 (rlocs, rloc);
+  }
+  return rlocs;
 }
 
 static void
@@ -5007,20 +5000,31 @@ vl_api_lisp_gpe_add_del_fwd_entry_t_handler(
 {
     vl_api_lisp_gpe_add_del_fwd_entry_reply_t *rmp;
     int rv = 0;
-    ip_address_t slocator, dlocator;
-    gid_address_t eid;
-    vnet_lisp_gpe_add_del_fwd_entry_args_t a;
+    vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
+    locator_t * lcl_locs = 0, * rmt_locs = 0;
 
-    lisp_gpe_add_del_fwd_entry_set_address(mp, &slocator, &dlocator, &eid);
+    memset (a, 0, sizeof(a[0]));
 
-    memset (&a, 0, sizeof(a));
+    rv = unformat_lisp_eid_api (&a->rmt_eid, mp->vni, mp->eid_type,
+                                mp->rmt_eid, mp->rmt_len);
+    rv |= unformat_lisp_eid_api (&a->lcl_eid, mp->vni, mp->eid_type,
+                                 mp->lcl_eid, mp->lcl_len);
 
-    a.is_add = mp->is_add;
-    a.rmt_eid = eid;
-    a.lcl_loc = slocator;
-    a.rmt_loc = dlocator;
-    rv = vnet_lisp_gpe_add_del_fwd_entry (&a, 0);
+    lcl_locs = unformat_lisp_locs (mp->lcl_locs, mp->loc_num);
+    rmt_locs = unformat_lisp_locs (mp->rmt_locs, mp->loc_num);
 
+    if (rv || 0 == lcl_locs || 0 == lcl_locs)
+      goto send_reply;
+
+    a->is_add = mp->is_add;
+    a->lcl_loc = gid_address_ip(&lcl_locs[0].address); /* TODO support more */
+    a->rmt_loc = gid_address_ip(&rmt_locs[0].address);
+    a->dp_table = mp->dp_table;
+    a->vni = mp->vni;
+
+    rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
+
+send_reply:
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY);
 }
 
@@ -5030,21 +5034,12 @@ vl_api_lisp_add_del_map_resolver_t_handler(
 {
     vl_api_lisp_add_del_map_resolver_reply_t *rmp;
     int rv = 0;
-    ip_address_t *ip_addr = NULL;
     vnet_lisp_add_del_map_resolver_args_t _a, * a = &_a;
 
-    a->is_add = mp->is_add;
-    ip_addr = &a->address;
+    memset(a, 0, sizeof(a[0]));
 
-    if (mp->is_ipv6) {
-        clib_memcpy(&ip_addr_v6(ip_addr), mp->ip_address,
-               sizeof(ip_addr_v6(ip_addr)));
-        ip_addr_version(ip_addr) = IP6;
-    } else {
-        clib_memcpy(&ip_addr_v4(ip_addr), mp->ip_address,
-               sizeof(ip_addr_v4(ip_addr)));
-        ip_addr_version(ip_addr) = IP4;
-    }
+    a->is_add = mp->is_add;
+    ip_address_set (&a->address, mp->ip_address, mp->is_ipv6 ? IP6 : IP4);
 
     rv = vnet_lisp_add_del_map_resolver (a);
 
@@ -5085,8 +5080,9 @@ vl_api_lisp_gpe_add_del_iface_t_handler(
     vnet_lisp_gpe_add_del_iface_args_t _a, * a = &_a;
 
     a->is_add = mp->is_add;
-    a->table_id = mp->table_id;
+    a->dp_table = mp->dp_table;
     a->vni = mp->vni;
+    a->is_l2 = mp->is_l2;
     rv = vnet_lisp_gpe_add_del_iface (a, 0);
 
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
@@ -5128,64 +5124,25 @@ vl_api_lisp_add_del_map_request_itr_rlocs_t_handler
     REPLY_MACRO(VL_API_LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY);
 }
 
-/** Used for transferring locators via VPP API */
-typedef CLIB_PACKED(struct
-{
-  u8 is_ip4; /**< is locator an IPv4 address */
-  u8 priority; /**< locator priority */
-  u8 weight;   /**< locator weight */
-  u8 addr[16]; /**< IPv4/IPv6 address */
-}) rloc_t;
-
 static void
 vl_api_lisp_add_del_remote_mapping_t_handler (
     vl_api_lisp_add_del_remote_mapping_t *mp)
 {
-    u32 i;
-    locator_t rloc, * rlocs = 0;
+    locator_t * rlocs = 0;
     vl_api_lisp_add_del_remote_mapping_reply_t * rmp;
     int rv = 0;
     gid_address_t _eid, * eid = &_eid;
-    ip_prefix_t * eid_pref = &gid_address_ippref(eid);
 
     memset (eid, 0, sizeof (eid[0]));
-    ip_address_t * eid_addr = &ip_prefix_addr(eid_pref);
-    ip_prefix_len(eid_pref) = mp->eid_len;
-    u8 * eid_mac = gid_address_mac (eid);
-    gid_address_vni (eid) = ntohl (mp->vni);
 
-    switch (mp->eid_type)
-      {
-      case 0: /* ipv4 */
-        gid_address_type(eid) = GID_ADDR_IP_PREFIX;
-        ip_address_set (eid_addr, mp->eid, IP4);
-        ip_prefix_normalize (eid_pref);
-        break;
-      case 1: /* ipv6 */
-        gid_address_type(eid) = GID_ADDR_IP_PREFIX;
-        ip_address_set (eid_addr, mp->eid, IP6);
-        ip_prefix_normalize (eid_pref);
-        break;
-      case 2: /* l2 mac */
-        gid_address_type(eid) = GID_ADDR_MAC;
-        clib_memcpy (eid_mac, mp->eid, 6);
-        break;
-      default:
-        rv = VNET_API_ERROR_INVALID_EID_TYPE;
-        goto send_reply;
-      }
+    rv = unformat_lisp_eid_api (eid, clib_net_to_host_u32 (mp->vni),
+                                mp->eid_type, mp->eid, mp->eid_len);
+    if (rv)
+      goto send_reply;
 
-    for (i = 0; i < mp->rloc_num; i++) {
-        rloc_t * r = &((rloc_t *) mp->rlocs)[i];
-        memset(&rloc, 0, sizeof(rloc));
-        ip_address_set(&gid_address_ip(&rloc.address), &r->addr,
-                       r->is_ip4 ? IP4 : IP6);
-        gid_address_ippref_len(&rloc.address) = r->is_ip4 ? 32: 128;
-        gid_address_type(&rloc.address) = GID_ADDR_IP_PREFIX;
-        rloc.priority = r->priority;
-        rloc.weight = r->weight;
-        vec_add1 (rlocs, rloc);
-    }
+    rlocs = unformat_lisp_locs (mp->rlocs, mp->rloc_num);
+    if (0 == rlocs)
+      goto send_reply;
 
     if (!mp->is_add) {
         vnet_lisp_add_del_adjacency_args_t _a, * a = &_a;
@@ -5221,46 +5178,13 @@ vl_api_lisp_add_del_adjacency_t_handler (
     int rv = 0;
     memset(a, 0, sizeof(a[0]));
 
-    ip_prefix_t * seid_pref = &gid_address_ippref(&a->seid);
-    ip_prefix_t * deid_pref = &gid_address_ippref(&a->deid);
+    rv = unformat_lisp_eid_api (&a->seid, clib_net_to_host_u32 (mp->vni),
+                            mp->eid_type, mp->seid, mp->seid_len);
+    rv |= unformat_lisp_eid_api (&a->deid, clib_net_to_host_u32 (mp->vni),
+                             mp->eid_type, mp->deid, mp->deid_len);
 
-    ip_address_t * seid_addr = &ip_prefix_addr(seid_pref);
-    ip_address_t * deid_addr = &ip_prefix_addr(deid_pref);
-    ip_prefix_len(seid_pref) = mp->seid_len;
-    ip_prefix_len(deid_pref) = mp->deid_len;
-    u8 * seid_mac = gid_address_mac (&a->seid);
-    u8 * deid_mac = gid_address_mac (&a->deid);
-    gid_address_vni(&a->seid) = ntohl (mp->vni);
-    gid_address_vni(&a->deid) = ntohl (mp->vni);
-
-    switch (mp->eid_type)
-      {
-      case 0: /* ipv4 */
-        gid_address_type(&a->seid) = GID_ADDR_IP_PREFIX;
-        gid_address_type(&a->deid) = GID_ADDR_IP_PREFIX;
-        ip_address_set (seid_addr, mp->seid, IP4);
-        ip_address_set (deid_addr, mp->deid, IP4);
-        ip_prefix_normalize (seid_pref);
-        ip_prefix_normalize (deid_pref);
-        break;
-      case 1: /* ipv6 */
-        gid_address_type(&a->seid) = GID_ADDR_IP_PREFIX;
-        gid_address_type(&a->deid) = GID_ADDR_IP_PREFIX;
-        ip_address_set (seid_addr, mp->seid, IP6);
-        ip_address_set (deid_addr, mp->deid, IP6);
-        ip_prefix_normalize (seid_pref);
-        ip_prefix_normalize (deid_pref);
-        break;
-      case 2: /* l2 mac */
-        gid_address_type(&a->seid) = GID_ADDR_MAC;
-        gid_address_type(&a->deid) = GID_ADDR_MAC;
-        clib_memcpy (seid_mac, mp->seid, 6);
-        clib_memcpy (deid_mac, mp->deid, 6);
-        break;
-      default:
-        rv = VNET_API_ERROR_INVALID_EID_TYPE;
-        goto send_reply;
-      }
+    if (rv)
+      goto send_reply;
 
     a->is_add = mp->is_add;
     rv = vnet_lisp_add_del_adjacency (a);
@@ -5476,25 +5400,11 @@ vl_api_lisp_eid_table_dump_t_handler (
 
     if (mp->eid_set) {
         memset (eid, 0, sizeof (*eid));
-        gid_address_vni(eid) = ntohl(mp->vni);
-        switch (mp->eid_type) {
-        case 0:
-            gid_address_type(eid) = GID_ADDR_IP_PREFIX;
-            gid_address_ippref_len(eid) = mp->prefix_length;
-            gid_address_ip_version(eid) = IP4;
-            clib_memcpy (&gid_address_ippref(eid), mp->eid, 4);
-            break;
-        case 1:
-            gid_address_type(eid) = GID_ADDR_IP_PREFIX;
-            gid_address_ippref_len(eid) = mp->prefix_length;
-            gid_address_ip_version(eid) = IP6;
-            clib_memcpy (&gid_address_ippref(eid), mp->eid, 16);
-            break;
-        case 2:
-            gid_address_type(eid) = GID_ADDR_MAC;
-            clib_memcpy (gid_address_mac(eid), mp->eid, 6);
-            break;
-        }
+
+        unformat_lisp_eid_api (eid, mp->eid_type,
+                               clib_net_to_host_u32 (mp->vni), mp->eid,
+                               mp->prefix_length);
+
         mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, eid);
         if ((u32)~0 == mi)
           return;
