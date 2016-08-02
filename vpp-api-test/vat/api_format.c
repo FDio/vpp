@@ -10579,6 +10579,58 @@ static int api_get_node_graph (vat_main_t * vam)
     W;
 }
 
+/** Used for parsing LISP eids */
+typedef CLIB_PACKED(struct{
+  u8 addr[16];   /**< eid address */
+  u32 len;       /**< prefix length if IP */
+  u8 type;      /**< type of eid */
+}) lisp_eid_vat_t;
+
+static uword
+unformat_lisp_eid_vat (unformat_input_t * input, va_list * args)
+{
+  lisp_eid_vat_t * a = va_arg(*args, lisp_eid_vat_t *);
+
+  memset(a, 0, sizeof(a[0]));
+
+  if (unformat (input, "%U/%d", unformat_ip4_address, a->addr, &a->len)) {
+      a->type = 0; /* ipv4 type */
+  } else if (unformat (input, "%U/%d", unformat_ip6_address, a->addr,
+                       &a->len)) {
+      a->type = 1; /* ipv6 type */
+  } else if (unformat (input, "%U", unformat_ethernet_address, a->addr)) {
+      a->type = 2; /* mac type */
+  } else {
+      return 0;
+  }
+
+  if ((a->type == 0 && a->len > 32) || (a->type == 1 && a->len > 128)) {
+      return 0;
+  }
+
+  return 1;
+}
+
+static int
+lisp_eid_size_vat (u8 type)
+{
+  switch (type) {
+    case 0:
+      return 4;
+    case 1:
+      return 16;
+    case 2:
+      return 6;
+  }
+  return 0;
+}
+
+static void
+lisp_eid_put_vat (u8 * dst, u8 eid[16], u8 type)
+{
+  clib_memcpy(dst, eid, lisp_eid_size_vat(type));
+}
+
 /** Used for transferring locators via VPP API */
 typedef CLIB_PACKED(struct
 {
@@ -10761,15 +10813,9 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
     vl_api_lisp_add_del_local_eid_t *mp;
     f64 timeout = ~0;
     u8 is_add = 1;
-    u8 eidv4_set = 0;
-    u8 eidv6_set = 0;
-    u8 eid_type = (u8)~0;
-    ip4_address_t eidv4;
-    ip6_address_t eidv6;
-    u8 mac[6] = {0};
-    u32 tmp_eid_lenght = ~0;
-    u8 eid_lenght = ~0;
-    u8 *locator_set_name = NULL;
+    u8 eid_set = 0;
+    lisp_eid_vat_t _eid, *eid = &_eid;
+    u8 *locator_set_name = 0;
     u8 locator_set_name_set = 0;
     u32 vni = 0;
 
@@ -10779,18 +10825,8 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
             is_add = 0;
         } else if (unformat(input, "vni %d", &vni)) {
             ;
-        } else if (unformat(input, "eid %U/%d", unformat_ip4_address,
-            &eidv4, &tmp_eid_lenght)) {
-            eid_lenght = tmp_eid_lenght;
-            eidv4_set = 1;
-            eid_type = 0; /* ipv4 type */
-        } else if (unformat(input, "eid %U/%d", unformat_ip6_address,
-            &eidv6, &tmp_eid_lenght)) {
-            eid_lenght = tmp_eid_lenght;
-            eidv6_set = 1;
-            eid_type = 1; /* ipv6 type */
-        } else if (unformat(input, "eid %U", unformat_ethernet_address, mac)) {
-            eid_type = 2; /* mac type */
+        } else if (unformat(input, "eid %U", unformat_lisp_eid_vat, eid)) {
+            eid_set = 1;
         } else if (unformat(input, "locator-set %s", &locator_set_name)) {
             locator_set_name_set = 1;
         } else
@@ -10802,7 +10838,7 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
         return -99;
     }
 
-    if ((u8)~0 == eid_type) {
+    if (0 == eid_set) {
         errmsg ("EID address not set!");
         vec_free(locator_set_name);
         return -99;
@@ -10815,44 +10851,17 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
     }
     vec_add1(locator_set_name, 0);
 
-    if (eidv4_set && eidv6_set) {
-        errmsg ("both eid v4 and v6 addresses set\n");
-        vec_free(locator_set_name);
-        return -99;
-    }
-
-    if (eidv4_set && eid_lenght > 32) {
-        errmsg ("eid prefix to big\n");
-        vec_free(locator_set_name);
-        return -99;
-    }
-
-    if (eidv6_set && eid_lenght > 128) {
-        errmsg ("eid prefix to big\n");
-        vec_free(locator_set_name);
-        return -99;
-    }
-
     /* Construct the API message */
     M(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid);
 
     mp->is_add = is_add;
-    switch (eid_type) {
-    case 0: /* ipv4 */
-      clib_memcpy (mp->eid, &eidv4, sizeof(eidv4));
-      break;
-    case 1: /* ipv6 */
-      clib_memcpy (mp->eid, &eidv6, sizeof(eidv6));
-      break;
-    case 2: /* mac */
-      clib_memcpy (mp->eid, mac, 6);
-      break;
-    }
-    mp->eid_type = eid_type;
-    mp->prefix_len = eid_lenght;
+    lisp_eid_put_vat (mp->eid, eid->addr, eid->type);
+    mp->eid_type = eid->type;
+    mp->prefix_len = eid->len;
     mp->vni = clib_host_to_net_u32(vni);
     clib_memcpy(mp->locator_set_name, locator_set_name,
            vec_len(locator_set_name));
+
     vec_free(locator_set_name);
 
     /* send it... */
@@ -10865,6 +10874,15 @@ api_lisp_add_del_local_eid(vat_main_t * vam)
     return 0;
 }
 
+/** Used for transferring locators via VPP API */
+typedef CLIB_PACKED(struct
+{
+    u8 is_ip4; /**< is locator an IPv4 address? */
+    u8 priority; /**< locator priority */
+    u8 weight;   /**< locator weight */
+    u8 addr[16]; /**< IPv4/IPv6 address */
+}) rloc_t;
+
 static int
 api_lisp_gpe_add_del_fwd_entry(vat_main_t * vam)
 {
@@ -10872,69 +10890,62 @@ api_lisp_gpe_add_del_fwd_entry(vat_main_t * vam)
     vl_api_lisp_gpe_add_del_fwd_entry_t *mp;
     f64 timeout = ~0;
     u8 is_add = 1;
-    u8 eidv4_set = 0, slocv4_set = 0, dlocv4_set = 0;
-    u8 eidv6_set = 0, slocv6_set = 0, dlocv6_set = 0;
-    ip4_address_t eidv4, slocv4, dlocv4;
-    ip6_address_t eidv6, slocv6, dlocv6;
-    u32 tmp_eid_lenght = ~0;
-    u8 eid_lenght = ~0;
+    lisp_eid_vat_t _rmt_eid, * rmt_eid = &_rmt_eid;
+    lisp_eid_vat_t _lcl_eid, * lcl_eid = &_lcl_eid;
+    u8 rmt_eid_set = 0, lcl_eid_set = 0;
+    u32 action = ~0, p, w;
+    ip4_address_t rmt_rloc4, lcl_rloc4;
+    ip6_address_t rmt_rloc6, lcl_rloc6;
+    rloc_t * rmt_locs = 0, * lcl_locs = 0, rloc, * curr_rloc = 0;
 
     /* Parse args required to build the message */
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
         if (unformat(input, "del")) {
             is_add = 0;
-        } else if (unformat(input, "eid %U/%d", unformat_ip4_address,
-                            &eidv4, &tmp_eid_lenght)) {
-            eid_lenght = tmp_eid_lenght;
-            eidv4_set = 1;
-        } else if (unformat(input, "eid %U/%d", unformat_ip6_address,
-                            &eidv6, &tmp_eid_lenght)) {
-            eid_lenght = tmp_eid_lenght;
-            eidv6_set = 1;
-        } else if (unformat(input, "sloc %U", unformat_ip4_address, &slocv4)) {
-            slocv4_set = 1;
-        } else if (unformat(input, "sloc %U", unformat_ip6_address, &slocv6)) {
-            slocv6_set = 1;
-        } else if (unformat(input, "dloc %U", unformat_ip4_address, &dlocv4)) {
-            dlocv4_set = 1;
-        } else if (unformat(input, "dloc %U", unformat_ip6_address, &dlocv6)) {
-            dlocv6_set = 1;
-        } else
-            break;
+        } else if (unformat(input, "rmt_eid %U", unformat_lisp_eid_vat,
+                            rmt_eid)) {
+            rmt_eid_set = 1;
+        } else if (unformat(input, "lcl_eid %U", unformat_lisp_eid_vat,
+                            lcl_eid)) {
+            lcl_eid_set = 1;
+        } else if (unformat(input, "p %d w %d", &p, &w)) {
+            if (!curr_rloc) {
+              errmsg ("No RLOC configured for setting priority/weight!");
+              return -99;
+            }
+            curr_rloc->priority = p;
+            curr_rloc->weight = w;
+        } else if (unformat(input, "loc-pair %U %U", unformat_ip4_address,
+                            &lcl_rloc4, unformat_ip4_address, &rmt_rloc4)) {
+            rloc.is_ip4 = 1;
+            clib_memcpy (&rloc.addr, &lcl_rloc4, sizeof (lcl_rloc4));
+            vec_add1 (lcl_locs, rloc);
+            clib_memcpy (&rloc.addr, &rmt_rloc4, sizeof (rmt_rloc4));
+            vec_add1 (rmt_locs, rloc);
+            curr_rloc = &rmt_locs[vec_len (rmt_locs) - 1];
+        } else if (unformat(input, "loc-pair %U", unformat_ip6_address,
+                            &lcl_rloc6, unformat_ip6_address, &rmt_rloc6)) {
+            rloc.is_ip4 = 0;
+            clib_memcpy (&rloc.addr, &lcl_rloc6, sizeof (lcl_rloc6));
+            vec_add1 (lcl_locs, rloc);
+            clib_memcpy (&rloc.addr, &rmt_rloc6, sizeof (rmt_rloc6));
+            vec_add1 (rmt_locs, rloc);
+            curr_rloc = &rmt_locs[vec_len (rmt_locs) - 1];
+        } else if (unformat(input, "action %d", &action)) {
+            ;
+        } else {
+            clib_warning ("parse error '%U'", format_unformat_error, input);
+            return -99;
+        }
     }
 
-    if (eidv4_set && eidv6_set) {
-        errmsg ("both eid v4 and v6 addresses set\n");
+    if (!rmt_eid_set) {
+        errmsg ("remote eid addresses not set\n");
         return -99;
     }
 
-    if (!eidv4_set && !eidv6_set) {
-        errmsg ("eid addresses not set\n");
-        return -99;
-    }
-
-    if (slocv4_set && slocv6_set) {
-        errmsg ("both source v4 and v6 addresses set\n");
-        return -99;
-    }
-
-    if (!slocv4_set && !slocv6_set) {
-        errmsg ("source addresses not set\n");
-        return -99;
-    }
-
-    if (dlocv4_set && dlocv6_set) {
-        errmsg ("both destination v4 and v6 addresses set\n");
-        return -99;
-    }
-
-    if (dlocv4_set && dlocv6_set) {
-        errmsg ("destination addresses not set\n");
-        return -99;
-    }
-
-    if (!(slocv4_set == dlocv4_set && slocv6_set == dlocv6_set)) {
-        errmsg ("mixing type of source and destination address\n");
+    if (lcl_eid_set && rmt_eid->type != lcl_eid->type) {
+        errmsg ("eid types don't match\n");
         return -99;
     }
 
@@ -10942,23 +10953,19 @@ api_lisp_gpe_add_del_fwd_entry(vat_main_t * vam)
     M(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry);
 
     mp->is_add = is_add;
-    if (eidv6_set) {
-        mp->eid_is_ipv6 = 1;
-        clib_memcpy(mp->eid_ip_address, &eidv6, sizeof(eidv6));
-    } else {
-        mp->eid_is_ipv6 = 0;
-        clib_memcpy(mp->eid_ip_address, &eidv4, sizeof(eidv4));
-    }
-    mp->eid_prefix_len = eid_lenght;
-    if (slocv6_set) {
-        mp->address_is_ipv6 = 1;
-        clib_memcpy(mp->source_ip_address, &slocv6, sizeof(slocv6));
-        clib_memcpy(mp->destination_ip_address, &dlocv6, sizeof(dlocv6));
-    } else {
-        mp->address_is_ipv6 = 0;
-        clib_memcpy(mp->source_ip_address, &slocv4, sizeof(slocv4));
-        clib_memcpy(mp->destination_ip_address, &dlocv4, sizeof(dlocv4));
-    }
+    lisp_eid_put_vat (mp->rmt_eid, rmt_eid->addr, rmt_eid->type);
+    lisp_eid_put_vat (mp->lcl_eid, lcl_eid->addr, lcl_eid->type);
+    mp->eid_type = rmt_eid->type;
+    mp->rmt_len = rmt_eid->len;
+    mp->lcl_len = lcl_eid->len;
+
+    mp->loc_num = vec_len (rmt_locs);
+    clib_memcpy (mp->lcl_locs, lcl_locs,
+                 (sizeof(rloc_t) * vec_len(lcl_locs)));
+    clib_memcpy (mp->rmt_locs, rmt_locs,
+                 (sizeof(rloc_t) * vec_len(rmt_locs)));
+    vec_free(lcl_locs);
+    vec_free(rmt_locs);
 
     /* send it... */
     S;
@@ -11113,15 +11120,6 @@ api_lisp_enable_disable (vat_main_t * vam)
   return 0;
 }
 
-/** Used for transferring locators via VPP API */
-typedef CLIB_PACKED(struct
-{
-    u8 is_ip4; /**< is locator an IPv4 address? */
-    u8 priority; /**< locator priority */
-    u8 weight;   /**< locator weight */
-    u8 addr[16]; /**< IPv4/IPv6 address */
-}) rloc_t;
-
 /**
  * Enable/disable LISP proxy ITR.
  *
@@ -11260,17 +11258,13 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
     f64 timeout = ~0;
     u32 vni = 0;
     //TODO: seid need remove
-    ip4_address_t seid4, eid4, rloc4;
-    ip6_address_t seid6, eid6, rloc6;
-    u8 eid_mac[6] = {0};
-    u8 seid_mac[6] = {0};
-    u8 eid_type;
-    u32 eid_len = 0, len;
-    u8 is_add = 1, del_all = 0;
+    lisp_eid_vat_t _eid, * eid = &_eid;
+    lisp_eid_vat_t _seid, * seid = &_seid;
+    u8 is_add = 1, del_all = 0, eid_set = 0;
     u32 action = ~0, p, w;
+    ip4_address_t rloc4;
+    ip6_address_t rloc6;
     rloc_t * rlocs = 0, rloc, * curr_rloc = 0;
-
-    eid_type = (u8)~0;
 
     /* Parse args required to build the message */
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
@@ -11280,34 +11274,10 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
             is_add = 0;
         } else if (unformat(input, "add")) {
             is_add = 1;
-        } else if (unformat(input, "deid %U/%d", unformat_ip4_address,
-                            &eid4, &len)) {
-            eid_type = 0; /* ipv4 */
-            if (32 < len) {
-              clib_warning ("Deid prefix length to big, %d!", len);
-              return -99;
-            }
-            eid_len = len;
-        } else if (unformat(input, "deid %U/%d", unformat_ip6_address,
-                            &eid6, &len)) {
-            eid_type = 1; /* ipv6 */
-            if (128 < len) {
-              clib_warning ("Deid prefix length to big, %d!", len);
-              return -99;
-            }
-            eid_len = len;
-        } else if (unformat(input, "deid %U", unformat_ethernet_address,
-                            eid_mac)) {
-            eid_type = 2; /* mac */
+        } else if (unformat(input, "deid %U", unformat_lisp_eid_vat, eid)) {
+            eid_set = 1;
+        } else if (unformat(input, "seid %U", unformat_lisp_eid_vat, &seid)) {
             //TODO: Need remove, but first must be remove from CSIT test
-        } else if (unformat(input, "seid %U/%d", unformat_ip4_address,
-                            &seid4, &len)) {
-        } else if (unformat(input, "seid %U/%d", unformat_ip6_address,
-                            &seid6, &len)) {
-          ;
-        } else if (unformat(input, "seid %U", unformat_ethernet_address,
-                            seid_mac)) {
-          ;
         } else if (unformat(input, "vni %d", &vni)) {
             ;
         } else if (unformat(input, "p %d w %d", &p, &w)) {
@@ -11335,7 +11305,7 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
         }
     }
 
-    if ((u8)~0 == eid_type) {
+    if (0 == eid_set) {
         errmsg ("missing params!");
         return -99;
     }
@@ -11350,24 +11320,10 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
     mp->is_add = is_add;
     mp->vni = htonl (vni);
     mp->action = (u8) action;
-    mp->eid_len = eid_len;
+    mp->eid_len = eid->len;
     mp->del_all = del_all;
-    mp->eid_type = eid_type;
-
-    switch (mp->eid_type) {
-    case 0:
-        clib_memcpy (mp->eid, &eid4, sizeof (eid4));
-        break;
-    case 1:
-        clib_memcpy (mp->eid, &eid6, sizeof (eid6));
-        break;
-    case 2:
-        clib_memcpy (mp->eid, eid_mac, 6);
-        break;
-    default:
-        errmsg ("unknown EID type %d!", mp->eid_type);
-        return 0;
-    }
+    mp->eid_type = eid->type;
+    lisp_eid_put_vat(mp->eid, eid->addr, eid->type);
 
     mp->rloc_num = vec_len (rlocs);
     clib_memcpy (mp->rlocs, rlocs, (sizeof (rloc_t) * vec_len (rlocs)));
@@ -11494,9 +11450,8 @@ api_lisp_gpe_add_del_iface(vat_main_t * vam)
     unformat_input_t * input = vam->input;
     vl_api_lisp_gpe_add_del_iface_t *mp;
     f64 timeout = ~0;
-    u8 is_set = 0;
-    u8 is_add = 1;
-    u32 table_id, vni;
+    u8 is_set = 0, is_add = 1, is_l2 = 0;
+    u32 dp_table, vni;
 
     /* Parse args required to build the message */
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
@@ -11506,8 +11461,10 @@ api_lisp_gpe_add_del_iface(vat_main_t * vam)
         } else if (unformat(input, "down")) {
             is_set = 1;
             is_add = 0;
-        } else if (unformat(input, "table_id %d", &table_id)) {
+        } else if (unformat(input, "table_id %d", &dp_table)) {
             ;
+        } else if (unformat(input, "bd_id %d", &dp_table)) {
+            is_l2 = 1;
         } else if (unformat(input, "vni %d", &vni)) {
             ;
         } else
@@ -11523,7 +11480,8 @@ api_lisp_gpe_add_del_iface(vat_main_t * vam)
     M(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface);
 
     mp->is_add = is_add;
-    mp->table_id = table_id;
+    mp->dp_table = dp_table;
+    mp->is_l2 = is_l2;
     mp->vni = vni;
 
     /* send it... */
@@ -14121,8 +14079,8 @@ _(lisp_add_del_locator, "locator-set <locator_name> "                   \
 _(lisp_add_del_local_eid,"vni <vni> eid "                               \
                          "<ipv4|ipv6>/<prefix> | <L2 address> "         \
                           "locator-set <locator_name> [del]")           \
-_(lisp_gpe_add_del_fwd_entry, "eid <ip4|6-addr>/<prefix> "              \
-    "sloc <ip4/6-addr> dloc <ip4|6-addr> [del]")                        \
+_(lisp_gpe_add_del_fwd_entry, "rmt_eid <eid> [lcl_eid <eid>] vni <vni>" \
+  "dp_table <table> loc-pair <lcl_loc> <rmt_loc> ... [del]")            \
 _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
 _(lisp_gpe_enable_disable, "enable|disable")                            \
 _(lisp_enable_disable, "enable|disable")                                \

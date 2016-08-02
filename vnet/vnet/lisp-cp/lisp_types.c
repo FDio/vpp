@@ -955,6 +955,12 @@ gid_address_parse (u8 * offset, gid_address_t *a)
   return len;
 }
 
+void
+gid_address_ip_set(gid_address_t * dst, void * src, u8 version)
+{
+  ip_address_set (&gid_address_ip(dst), src, version);
+}
+
 int
 no_addr_cmp (void * a1, void * a2)
 {
