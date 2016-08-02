@@ -533,8 +533,6 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1;
   gid_address_t eid;
-  ip_prefix_t * prefp = &gid_address_ippref(&eid);
-  u8 * mac = gid_address_mac(&eid);
   gid_address_t * eids = 0;
   clib_error_t * error = 0;
   u8 * locator_set_name = 0;
@@ -545,6 +543,8 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 vni = 0;
 
   memset (&eid, 0, sizeof (eid));
+  memset (a, 0, sizeof (*a));
+
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -555,18 +555,10 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
         is_add = 1;
       else if (unformat (line_input, "del"))
         is_add = 0;
+      else if (unformat (line_input, "eid %U", unformat_gid_address, &eid))
+        ;
       else if (unformat (line_input, "vni %d", &vni))
         gid_address_vni (&eid) = vni;
-      else if (unformat (line_input, "eid %U", unformat_ip_prefix, prefp))
-        {
-          gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
-          vec_add1(eids, eid);
-        }
-      else if (unformat (line_input, "eid %U", unformat_mac_address, mac))
-        {
-          gid_address_type (&eid) = GID_ADDR_MAC;
-          vec_add1(eids, eid);
-        }
       else if (unformat (line_input, "locator-set %_%v%_", &locator_set_name))
         {
           p = hash_get_mem(lcm->locator_set_index_by_name, locator_set_name);
@@ -586,7 +578,13 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   /* XXX treat batch configuration */
 
-  a->eid = eid;
+  if (GID_ADDR_SRC_DST == gid_address_type(&eid))
+    {
+      error = clib_error_return(0, "src/dst is not supported for local EIDs!");
+      goto done;
+    }
+
+  gid_address_copy(&a->eid, &eid);
   a->is_add = is_add;
   a->locator_set_index = locator_set_index;
   a->local = 1;
@@ -967,9 +965,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1, del_all = 0;
   locator_t rloc, * rlocs = 0, * curr_rloc = 0;
-  ip_prefix_t * eid_ippref;
   gid_address_t eid;
-  u8 * dmac = gid_address_mac (&eid);
   u8 eid_set = 0;
   u32 vni, action = ~0, p, w;
   int rv;
@@ -981,8 +977,6 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   memset(&eid, 0, sizeof(eid));
   memset(&rloc, 0, sizeof(rloc));
 
-  eid_ippref = &gid_address_ippref(&eid);
-
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "del-all"))
@@ -991,18 +985,8 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
         is_add = 0;
       else if (unformat (line_input, "add"))
         ;
-      else if (unformat (line_input, "eid %U",
-                         unformat_ip_prefix, eid_ippref))
-        {
-          gid_address_type (&eid) = GID_ADDR_IP_PREFIX;
-          eid_set = 1;
-        }
-      else if (unformat (line_input, "eid %U",
-                         unformat_mac_address, dmac))
-        {
-          gid_address_type (&eid) = GID_ADDR_MAC;
-          eid_set = 1;
-        }
+      else if (unformat (line_input, "%U", unformat_gid_address, &eid))
+        eid_set = 1;
       else if (unformat (line_input, "vni %u", &vni))
         {
           gid_address_vni (&eid) = vni;
@@ -1086,7 +1070,8 @@ VLIB_CLI_COMMAND (lisp_add_del_remote_mapping_command) = {
     .path = "lisp remote-mapping",
     .short_help = "lisp remote-mapping add|del [del-all] vni <vni> "
      "eid <est-eid> [action <no-action|natively-forward|"
-     "send-map-request|drop>] rloc <dst-locator> [rloc <dst-locator> ... ]",
+     "send-map-request|drop>] rloc <dst-locator> p <prio> w <weight> "
+     "[rloc <dst-locator> ... ]",
     .function = lisp_add_del_remote_mapping_command_fn,
 };
 
