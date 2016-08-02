@@ -7553,10 +7553,12 @@ vl_api_ip_source_and_port_range_check_interface_add_del_t_handler
     vl_api_ip_source_and_port_range_check_interface_add_del_reply_t * rmp;
     ip4_main_t * im = &ip4_main;
     int rv;
-    u32 sw_if_index, fib_index, vrf_id;
+    u32 sw_if_index;
+    u32 fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOLS];
+    u32 vrf_id[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOLS];
     uword * p = 0;
 
-    vrf_id  = ntohl(mp->vrf_id);
+    vrf_id[0]  = ntohl(mp->vrf_id);
 
     p = hash_get (im->fib_index_by_table_id, vrf_id);
 
@@ -7565,7 +7567,7 @@ vl_api_ip_source_and_port_range_check_interface_add_del_t_handler
         goto reply;
     }
 
-    fib_index = p[0];
+    fib_index[0] = p[0];
 
     sw_if_index = ntohl(mp->sw_if_index);
 
