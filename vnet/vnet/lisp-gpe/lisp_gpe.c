@@ -113,12 +113,10 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
 
   /* fill in the key's remote eid */
   if (!is_l2)
-    ip_prefix_copy (&key.rmt_ippref, &gid_address_ippref(&a->rmt_eid));
+    ip_prefix_copy (&key.rmt.ippref, &gid_address_ippref(&a->rmt_eid));
   else
-    mac_copy (&key.rmt_mac, &gid_address_mac(&a->rmt_eid));
+    mac_copy (&key.rmt.mac, &gid_address_mac(&a->rmt_eid));
 
-
-  ip_address_copy(&key.rmt_loc, &a->rmt_loc);
   key.vni = clib_host_to_net_u32 (a->vni);
 
   p = mhash_get (&lgm->lisp_gpe_tunnel_by_key, &key);
@@ -140,8 +138,9 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
       foreach_copy_field;
 #undef _
 
-      ip_address_copy(&t->src, &a->lcl_loc);
-      ip_address_copy(&t->dst, &a->rmt_loc);
+      /* TODO multihoming */
+      ip_address_copy(&t->src, &a->locator_pairs[0].lcl_loc);
+      ip_address_copy(&t->dst, &a->locator_pairs[0].rmt_loc);
 
       /* if vni is non-default */
       if (a->vni)
@@ -152,7 +151,7 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
 
       /* next proto */
       if (!is_l2)
-        t->next_protocol = ip_prefix_version(&key.rmt_ippref) == IP4 ?
+        t->next_protocol = ip_prefix_version(&key.rmt.ippref) == IP4 ?
                 LISP_GPE_NEXT_PROTO_IP4 : LISP_GPE_NEXT_PROTO_IP6;
       else
         t->next_protocol = LISP_GPE_NEXT_PROTO_ETHERNET;
@@ -438,11 +437,12 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   u8 is_add = 1;
-  ip_address_t lloc, rloc, *llocs = 0, *rlocs = 0;
+  ip_address_t lloc, rloc;
   clib_error_t * error = 0;
   gid_address_t _reid, * reid = &_reid, _leid, * leid = &_leid;
   u8 reid_set = 0, leid_set = 0, is_negative = 0, vrf_set = 0, vni_set = 0;
-  u32 vni, vrf, action = ~0;
+  u32 vni, vrf, action = ~0, p, w;
+  locator_pair_t pair, * pairs = 0;
   int rv;
 
   /* Get a line of input. */
@@ -480,13 +480,15 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
         {
           is_negative = 1;
         }
-      else if (unformat (line_input, "lloc %U rloc %U",
+      else if (unformat (line_input, "loc-pair %U %U p %d w %d",
                          unformat_ip_address, &lloc,
-                         unformat_ip_address, &rloc))
+                         unformat_ip_address, &rloc, &p, &w))
         {
-          /* TODO: support p and w */
-          vec_add1 (llocs, lloc);
-          vec_add1 (rlocs, rloc);
+          pair.lcl_loc = lloc;
+          pair.rmt_loc = rloc;
+          pair.priority = p;
+          pair.weight = w;
+          vec_add1(pairs, pair);
         }
       else
         {
@@ -518,15 +520,9 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
     }
   else
     {
-      if (vec_len (llocs) == 0)
+      if (vec_len (pairs) == 0)
         {
           error = clib_error_return (0, "expected ip4/ip6 locators.");
-          goto done;
-        }
-
-      if (vec_len (llocs) != 1)
-        {
-          error = clib_error_return (0, "multihoming not supported for now!");
           goto done;
         }
     }
@@ -550,12 +546,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   a->table_id = vrf;
   gid_address_copy(&a->lcl_eid, leid);
   gid_address_copy(&a->rmt_eid, reid);
-
-  if (!is_negative)
-    {
-      a->lcl_loc = llocs[0];
-      a->rmt_loc = rlocs[0];
-    }
+  a->locator_pairs = pairs;
 
   rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
   if (0 != rv)
@@ -565,8 +556,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
     }
 
  done:
-  vec_free(llocs);
-  vec_free(rlocs);
+  vec_free(pairs);
   return error;
 }
 
@@ -699,12 +689,20 @@ vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
         vec_add1(tunnels, tunnel[0]);
       }));
 
-      vec_foreach(tunnel, tunnels) {
+      vec_foreach(tunnel, tunnels)
+      {
         memset(at, 0, sizeof(at[0]));
         at->is_add = 0;
-        gid_address_type(&at->rmt_eid) = GID_ADDR_IP_PREFIX;
-        ip_prefix_copy(&gid_address_ippref(&at->rmt_eid), &tunnel->rmt_ippref);
-        ip_address_copy(&at->rmt_loc, &tunnel->rmt_loc);
+        if (tunnel->rmt.type == GID_ADDR_IP_PREFIX)
+          {
+            gid_address_type(&at->rmt_eid) = GID_ADDR_IP_PREFIX;
+            ip_prefix_copy(&gid_address_ippref(&at->rmt_eid), &tunnel->rmt.ippref);
+          }
+        else
+          {
+            gid_address_type(&at->rmt_eid) = GID_ADDR_MAC;
+            mac_copy(&gid_address_mac(&at->rmt_eid), &tunnel->rmt.mac);
+          }
         vnet_lisp_gpe_add_del_fwd_entry (at, 0);
       }
       vec_free(tunnels);

@@ -4975,23 +4975,51 @@ typedef CLIB_PACKED(struct
   u8 addr[16]; /**< IPv4/IPv6 address */
 }) rloc_t;
 
-static locator_t *
-unformat_lisp_locs (void * data, u32 rloc_num)
+static locator_pair_t *
+unformat_lisp_loc_pairs (void * lcl_locs, void * rmt_locs, u32 rloc_num)
 {
   u32 i;
-  locator_t rloc, * rlocs = 0;
+  locator_pair_t * pairs = 0, pair;
+  rloc_t * r;
 
   for (i = 0; i < rloc_num; i++) {
-      rloc_t * r = &((rloc_t *) data)[i];
-      memset(&rloc, 0, sizeof(rloc));
-      gid_address_ip_set (&rloc.address, &r->addr, r->is_ip4 ? IP4 : IP6);
-      gid_address_ippref_len(&rloc.address) = r->is_ip4 ? 32: 128;
-      gid_address_type(&rloc.address) = GID_ADDR_IP_PREFIX;
-      rloc.priority = r->priority;
-      rloc.weight = r->weight;
-      vec_add1 (rlocs, rloc);
+      /* local locator */
+      r = &((rloc_t *) lcl_locs)[i];
+      memset(&pair.lcl_loc, 0, sizeof(pair.lcl_loc));
+      ip_address_set(&pair.lcl_loc, &r->addr, r->is_ip4 ? IP4 : IP6);
+
+      /* remote locators */
+      r = &((rloc_t *) rmt_locs)[i];
+      memset(&pair.rmt_loc, 0, sizeof(pair.rmt_loc));
+      ip_address_set(&pair.rmt_loc, &r->addr, r->is_ip4 ? IP4 : IP6);
+
+      pair.priority = r->priority;
+      pair.weight = r->weight;
+
+      vec_add1 (pairs, pair);
   }
-  return rlocs;
+  return pairs;
+}
+
+static locator_t *
+unformat_lisp_locs (void * rmt_locs, u32 rloc_num)
+{
+  u32 i;
+  locator_t * locs = 0, loc;
+  rloc_t * r;
+
+  for (i = 0; i < rloc_num; i++) {
+      /* remote locators */
+      r = &((rloc_t *) rmt_locs)[i];
+      memset(&loc, 0, sizeof(loc));
+      gid_address_ip_set(&loc.address, &r->addr, r->is_ip4 ? IP4 : IP6);
+
+      loc.priority = r->priority;
+      loc.weight = r->weight;
+
+      vec_add1 (locs, loc);
+  }
+  return locs;
 }
 
 static void
@@ -4999,9 +5027,9 @@ vl_api_lisp_gpe_add_del_fwd_entry_t_handler(
     vl_api_lisp_gpe_add_del_fwd_entry_t *mp)
 {
     vl_api_lisp_gpe_add_del_fwd_entry_reply_t *rmp;
-    int rv = 0;
     vnet_lisp_gpe_add_del_fwd_entry_args_t _a, * a = &_a;
-    locator_t * lcl_locs = 0, * rmt_locs = 0;
+    locator_pair_t * pairs = 0;
+    int rv = 0;
 
     memset (a, 0, sizeof(a[0]));
 
@@ -5010,20 +5038,19 @@ vl_api_lisp_gpe_add_del_fwd_entry_t_handler(
     rv |= unformat_lisp_eid_api (&a->lcl_eid, mp->vni, mp->eid_type,
                                  mp->lcl_eid, mp->lcl_len);
 
-    lcl_locs = unformat_lisp_locs (mp->lcl_locs, mp->loc_num);
-    rmt_locs = unformat_lisp_locs (mp->rmt_locs, mp->loc_num);
+    pairs = unformat_lisp_loc_pairs (mp->lcl_locs, mp->rmt_locs, mp->loc_num);
 
-    if (rv || 0 == lcl_locs || 0 == lcl_locs)
+    if (rv || 0 == pairs)
       goto send_reply;
 
     a->is_add = mp->is_add;
-    a->lcl_loc = gid_address_ip(&lcl_locs[0].address); /* TODO support more */
-    a->rmt_loc = gid_address_ip(&rmt_locs[0].address);
+    a->locator_pairs = pairs;
     a->dp_table = mp->dp_table;
     a->vni = mp->vni;
+    a->action = mp->action;
 
     rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
-
+    vec_free(pairs);
 send_reply:
     REPLY_MACRO(VL_API_LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY);
 }

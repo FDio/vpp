@@ -221,8 +221,7 @@ dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   /* delete dp fwd entry */
   u32 sw_if_index;
   a->is_add = 0;
-  a->rmt_loc = fe->dst_loc;
-  a->lcl_loc = fe->src_loc;
+  a->locator_pairs = fe->locator_pairs;
   a->vni = gid_address_vni(&a->rmt_eid);
   gid_address_copy(&a->rmt_eid, &fe->deid);
 
@@ -230,6 +229,7 @@ dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
 
   /* delete entry in fwd table */
   hash_unset(lcm->fwd_entry_by_mapping_index, dst_map_index);
+  vec_free(fe->locator_pairs);
   pool_put(lcm->fwd_entry_pool, fe);
 }
 
@@ -240,13 +240,14 @@ dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
  */
 static u32
 get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
-                  ip_address_t * lcl_loc, ip_address_t * rmt_loc)
+                  locator_pair_t ** locator_pairs)
 {
   u32 i, minp = ~0, limitp = 0, li, check_index = 0, done = 0, esi;
   locator_set_t * rmt_ls, * lcl_ls;
   ip_address_t _lcl, * lcl = &_lcl;
   locator_t * l, * rmt = 0;
   uword * checked = 0;
+  locator_pair_t pair;
 
   rmt_ls = pool_elt_at_index(lcm->locator_set_pool, rmt_map->locator_set_index);
   lcl_ls = pool_elt_at_index(lcm->locator_set_pool, lcl_map->locator_set_index);
@@ -299,8 +300,10 @@ get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
                              gid_address_ip_version(&rmt->address), lcl))
                     continue;
 
-                  ip_address_copy(rmt_loc, &gid_address_ip(&rmt->address));
-                  ip_address_copy(lcl_loc, lcl);
+                  memset(&pair, 0, sizeof(pair));
+                  ip_address_copy(&pair.rmt_loc, &gid_address_ip(&rmt->address));
+                  ip_address_copy(&pair.lcl_loc, lcl);
+                  vec_add1(locator_pairs[0], pair);
                   done = 2;
                 }
             }
@@ -366,7 +369,7 @@ dp_add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
     }
 
   /* find best locator pair that 1) verifies LISP policy 2) are connected */
-  if (0 == get_locator_pair (lcm, src_map, dst_map, &a->lcl_loc, &a->rmt_loc))
+  if (0 == get_locator_pair (lcm, src_map, dst_map, &a->locator_pairs))
     {
       /* negative entry */
       a->is_negative = 1;
@@ -382,8 +385,7 @@ dp_add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
 
   /* add tunnel to fwd entry table XXX check return value from DP insertion */
   pool_get (lcm->fwd_entry_pool, fe);
-  fe->dst_loc = a->rmt_loc;
-  fe->src_loc = a->lcl_loc;
+  fe->locator_pairs = a->locator_pairs;
   gid_address_copy (&fe->deid, &a->rmt_eid);
   hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
             fe - lcm->fwd_entry_pool);
@@ -985,7 +987,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
         is_add = 0;
       else if (unformat (line_input, "add"))
         ;
-      else if (unformat (line_input, "%U", unformat_gid_address, &eid))
+      else if (unformat (line_input, "eid %U", unformat_gid_address, &eid))
         eid_set = 1;
       else if (unformat (line_input, "vni %u", &vni))
         {
@@ -1002,7 +1004,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
           curr_rloc->weight = w;
         }
       else if (unformat (line_input, "rloc %U", unformat_ip_address,
-                         &rloc.address))
+                         &gid_address_ip(&rloc.address)))
         {
           vec_add1 (rlocs, rloc);
           curr_rloc = &rlocs[vec_len (rlocs) - 1];
@@ -1025,8 +1027,6 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
 
   if (!del_all)
     {
-
-
       if (is_add && (~0 == action)
           && 0 == vec_len (rlocs))
         {

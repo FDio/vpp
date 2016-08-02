@@ -10958,6 +10958,7 @@ api_lisp_gpe_add_del_fwd_entry(vat_main_t * vam)
     mp->eid_type = rmt_eid->type;
     mp->rmt_len = rmt_eid->len;
     mp->lcl_len = lcl_eid->len;
+    mp->action = action;
 
     mp->loc_num = vec_len (rmt_locs);
     clib_memcpy (mp->lcl_locs, lcl_locs,
