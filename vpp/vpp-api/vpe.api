@@ -2261,27 +2261,38 @@ define lisp_add_del_local_eid_reply {
     i32 retval;
 };
 
-/** \brief add or delete lisp gpe maptunel
+/** \brief add or delete lisp gpe tunnel
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
-    @param eid_is_ipv6 - if non-zero the address is ipv6, else ipv4
-    @param eid_ip_address - array of address bytes
-    @param eid_prefix_len - prefix len
-    @param address_is_ipv6 - if non-zero the address is ipv6, else ipv4
-    @param source_ip_address - array of address bytes
-    @param destination_ip_address - array of address bytes
+    @param eid_type -
+      0 : ipv4
+      1 : ipv6
+      2 : mac
+    @param rmt_eid - remote eid
+    @param lcl_eid - local eid
+    @param rmt_len - remote prefix len
+    @param lcl_len - local prefix len
+    @param vni - virtual network identifier
+    @param dp_table - vrf/bridge domain id
+    @param loc_num - number of locators
+    @param lcl_locs - array of local locators
+    @param rmt_locs - array of remote locators
 */
 define lisp_gpe_add_del_fwd_entry {
     u32 client_index;
     u32 context;
     u8  is_add;
-    u8  eid_is_ipv6;
-    u8  eid_ip_address[16];
-    u8  eid_prefix_len;
-    u8  address_is_ipv6;
-    u8  source_ip_address[16];
-    u8  destination_ip_address[16];
+    u8  eid_type;
+    u8  rmt_eid[16];
+    u8  lcl_eid[16];
+    u8  rmt_len;
+    u8  lcl_len;    
+    u32 vni;
+    u32 dp_table;
+    u32 loc_num;
+    u8  lcl_locs[loc_num];
+    u8  rmt_locs[loc_num];
 };
 
 /** \brief Reply for gpe_fwd_entry add/del
@@ -2366,7 +2377,8 @@ define lisp_gpe_add_del_iface {
     u32 client_index;
     u32 context;
     u8  is_add;
-    u32 table_id;
+    u8  is_l2;
+    u32 dp_table;
     u32 vni;
 };
 

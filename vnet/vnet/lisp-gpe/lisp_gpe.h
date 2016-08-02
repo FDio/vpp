@@ -264,6 +264,9 @@ typedef struct
   {
     u32 table_id;
     u16 bd_id;
+
+    /* generic access */
+    u32 dp_table;
   };
 } vnet_lisp_gpe_add_del_fwd_entry_args_t;
 

@@ -171,6 +171,7 @@ u8 gid_address_len (gid_address_t *a);
 void * gid_address_cast (gid_address_t * gid, gid_address_type_t type);
 void gid_address_copy(gid_address_t * dst, gid_address_t * src);
 u32 gid_address_parse (u8 * offset, gid_address_t *a);
+void gid_address_ip_set(gid_address_t * dst, void * src, u8 version);
 
 #define gid_address_type(_a) (_a)->type
 #define gid_address_ippref(_a) (_a)->ippref
