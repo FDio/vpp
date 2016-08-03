@@ -12,7 +12,7 @@
 # limitations under the License.
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CPPFLAGS = -Wall @VEC64@ # -Werror
+AM_CPPFLAGS = -Wall -Werror
 
 if WITH_UNIX
   lib_LTLIBRARIES = libvppinfra.la
@@ -20,7 +20,7 @@ endif
 
 lib_LIBRARIES =
 
-TESTS = 
+TESTS =
 
 if ENABLE_TESTS
 TESTS  +=  test_bihash_template \
@@ -267,5 +267,5 @@ libvppinfra_la_SOURCES =			\
 bin_PROGRAMS = elftool
 
 elftool_SOURCES = tools/elftool.c
-elftool_CPPFLAGS = -Wall
+elftool_CPPFLAGS = $(AM_CPPFLAGS)
 elftool_LDADD = libvppinfra.la -lpthread -lrt -lm

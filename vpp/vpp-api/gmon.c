@@ -180,8 +180,8 @@ gmon_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, vpe_api_init)))
     return (error);
 
-  /* Make sure that /global-vm is owned as directed */
-  svm_region_init_chroot_uid_gid (am->root_path, am->api_uid, am->api_gid);
+  if ((error = vlib_call_init_function(vm, vlibmemory_init)))
+    return(error);
 
   gm->vlib_main = vm;
 

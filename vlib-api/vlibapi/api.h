@@ -141,9 +141,25 @@ typedef struct
   /* vector of message ranges */
   vl_api_msg_range_t *msg_ranges;
 
+  /* uid for the api shared memory region */
+  int api_uid;
   /* gid for the api shared memory region */
   int api_gid;
-  int api_uid;
+
+  /* base virtual address for global VM region */
+  u64 global_baseva;
+
+  /* size of the global VM region */
+  u64 global_size;
+
+  /* size of the API region */
+  u64 api_size;
+
+  /* size of the global VM private mheap */
+  u64 global_pvt_heap_size;
+
+  /* size of the api private mheap */
+  u64 api_pvt_heap_size;
 
   /* Client-only data structures */
   unix_shared_memory_queue_t *vl_input_queue;

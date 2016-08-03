@@ -48,14 +48,5 @@ AC_ARG_WITH(unix,
 
 AM_CONDITIONAL(WITH_UNIX, test "$with_unix" = "yes")
 
-
-## Enable 64-bit vector lengths
-AC_ARG_WITH(vec64,
-	    AC_HELP_STRING([--with-vec64],[Enable 64-bit vector lengths]),
-            [with_vec64=1],
-            [with_vec64=0])
-
-AC_SUBST(VEC64,[-DCLIB_VEC64=${with_vec64}])
-
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
