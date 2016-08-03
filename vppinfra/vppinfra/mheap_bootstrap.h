@@ -50,10 +50,29 @@
 typedef struct {
   /* Number of mheap_size_t words of user data in previous object.
      Used to find mheap_elt_t for previous object. */
+#if CLIB_VEC64 > 0
+  u64 prev_n_user_data : 63;
+
+  /* Used to mark end/start of of doubly-linked list of mheap_elt_t's. */
+#define MHEAP_N_USER_DATA_INVALID (0x7fffffffffffffffULL)
+#define MHEAP_GROUNDED (~0ULL)
+
+  /* Set if previous object is free. */
+  u64 prev_is_free : 1;
+
+  /* Number of mheap_size_t words of user data that follow this object. */
+  u64 n_user_data : 63;
+
+  /* Set if this object is on free list (and therefore following free_elt
+     is valid). */
+  u64 is_free : 1;
+
+#else
   u32 prev_n_user_data : 31;
 
   /* Used to mark end/start of of doubly-linked list of mheap_elt_t's. */
 #define MHEAP_N_USER_DATA_INVALID (0x7fffffff)
+#define MHEAP_GROUNDED (~0)
 
   /* Set if previous object is free. */
   u32 prev_is_free : 1;
@@ -64,8 +83,22 @@ typedef struct {
   /* Set if this object is on free list (and therefore following free_elt
      is valid). */
   u32 is_free : 1;
-
+#endif
+    
   union {
+#if CLIB_VEC64 > 0
+    /* For allocated objects: user data follows.
+       User data is allocated in units of typeof (user_data[0]). */
+    u64 user_data[0];
+
+    /* For free objects, offsets of next and previous free objects of this size;
+       ~0 means end of doubly-linked list.
+       This is stored in user data (guaranteed to be at least 8 bytes)
+       but only for *free* objects. */
+    struct {
+      u64 next_uoffset, prev_uoffset;
+    } free_elt;
+#else
     /* For allocated objects: user data follows.
        User data is allocated in units of typeof (user_data[0]). */
     u32 user_data[0];
@@ -77,6 +110,7 @@ typedef struct {
     struct {
       u32 next_uoffset, prev_uoffset;
     } free_elt;
+#endif
   };
 } mheap_elt_t;
 
@@ -94,7 +128,11 @@ typedef struct {
   uword callers[12];
 
   /* Count of allocations with this traceback. */
+#if CLIB_VEC64 > 0
+  u64 n_allocations;
+#else
   u32 n_allocations;
+#endif
 
   /* Count of bytes allocated with this traceback. */
   u32 n_bytes;
@@ -149,6 +187,11 @@ typedef struct {
 #define MHEAP_HAVE_SMALL_OBJECT_CACHE 0
 #endif
 
+#if CLIB_VEC64 > 0
+#undef MHEAP_HAVE_SMALL_OBJECT_CACHE
+#define MHEAP_HAVE_SMALL_OBJECT_CACHE 0
+#endif
+
 /* For objects with align == 4 and align_offset == 0 (e.g. vector strings). */
 typedef struct {
   union {
@@ -168,7 +211,11 @@ typedef struct {
 /* Vec header for heaps. */
 typedef struct {
   /* User offsets for head of doubly-linked list of free objects of this size. */
+#if CLIB_VEC64 > 0
+  u64 first_free_elt_uoffset_by_bin[MHEAP_N_BINS];
+#else
   u32 first_free_elt_uoffset_by_bin[MHEAP_N_BINS];
+#endif
 
   /* Bitmap of non-empty free list bins. */
   uword non_empty_free_elt_heads[(MHEAP_N_BINS + BITS (uword) - 1) / BITS (uword)];
