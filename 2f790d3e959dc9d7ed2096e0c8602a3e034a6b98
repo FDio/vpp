@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_823c0031",
+        "filename": "vnet/vnet/ip/ip4_source_and_port_range_check.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-08-03T02:56:39Z",
+      "side": 1,
+      "message": "Yeah hadn\u0027t been to this bit more yet. I was going to do something like this but didn\u0027t like having an array of length 18 just for 3 values, but you da man... I\u0027ll do it this way. Note though it makes the API array declaration a PITA. I was going down the NUM_ENTRIES * N_PROTOCOLS route ... ie 32 max entries, 3 protocols, make a max array of 96 in the API ... then index via another array of number_of_ranges[N_PROTOCOLS] ...",
+      "parentUuid": "9a0e1d27_c2031872",
+      "revId": "2f790d3e959dc9d7ed2096e0c8602a3e034a6b98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_e2fe1c6b",
         "filename": "vnet/vnet/ip/ip_source_and_port_range_check.h",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2016-08-03T00:02:01Z",
       "side": 1,
       "message": "Perhaps IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS, to match the Eliotic way of solving the problem I\u0027m sure you\u0027re trying to solve?",
+      "revId": "2f790d3e959dc9d7ed2096e0c8602a3e034a6b98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_6249eccf",
+        "filename": "vnet/vnet/ip/ip_source_and_port_range_check.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-08-03T02:56:39Z",
+      "side": 1,
+      "message": "Ack... already made this change locally to make it more inline with existing patterns... but \"Eliotic\" is good!",
+      "parentUuid": "9a0e1d27_e2fe1c6b",
       "revId": "2f790d3e959dc9d7ed2096e0c8602a3e034a6b98",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
