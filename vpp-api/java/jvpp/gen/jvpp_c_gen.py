@@ -412,6 +412,11 @@ def generate_msg_handlers(func_list, inputfile):
             c_name = t[2]
             field_length = t[3][0]
 
+            if jni_type.endswith('Array') and field_length == '0':
+                raise Exception('Variable array \'%s\' defined in message \'%s\' '
+                                'should have defined length (e.g. \'%s[%s_length]\''
+                                % (c_name, handler_name, c_name, c_name))
+
             # check if we are processing variable length array
             if t[3][1]:
                 length_var_name = t[3][0]
