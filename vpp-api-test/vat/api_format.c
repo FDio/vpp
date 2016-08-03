@@ -15213,7 +15213,7 @@ _(sw_interface_set_l2_xconnect,                                         \
   "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
   "enable | disable")                                                   \
 _(sw_interface_set_l2_bridge,                                           \
-  "rx <intfc> | rx_sw_if_index <id> bd_id <bridge-domain-id>\n"         \
+  "<intfc> | sw_if_index <id> bd_id <bridge-domain-id>\n"         \
   "[shg <split-horizon-group>] [bvi]\n"                                 \
   "enable | disable")                                                   \
 _(bridge_domain_add_del,                                                \
