@@ -133,6 +133,7 @@ mheap_elt_set_size (void * v,
   e = mheap_elt_at_uoffset (v, uoffset);
 
   ASSERT (n_user_data_bytes % MHEAP_USER_DATA_WORD_BYTES == 0);
+
   e->n_user_data = n_user_data_bytes / MHEAP_USER_DATA_WORD_BYTES;
   e->is_free = is_free;
   ASSERT (e->prev_n_user_data * sizeof (e->user_data[0]) >= MHEAP_MIN_USER_DATA_BYTES);
@@ -152,7 +153,7 @@ always_inline void set_first_free_elt_offset (mheap_t * h, uword bin, uword uoff
   i1 = (uword) 1 << (uword) (bin % BITS (h->non_empty_free_elt_heads[0]));
 
   ASSERT (i0 < ARRAY_LEN (h->non_empty_free_elt_heads));
-  if (h->first_free_elt_uoffset_by_bin[bin] == ~0)
+  if (h->first_free_elt_uoffset_by_bin[bin] == MHEAP_GROUNDED)
     h->non_empty_free_elt_heads[i0] &= ~i1;
   else
     h->non_empty_free_elt_heads[i0] |= i1;
@@ -169,11 +170,11 @@ set_free_elt (void * v, uword uoffset, uword n_user_data_bytes)
   ASSERT (n->prev_is_free);
   ASSERT (e->is_free);
 
-  e->free_elt.prev_uoffset = ~0;
+  e->free_elt.prev_uoffset = MHEAP_GROUNDED;
   e->free_elt.next_uoffset = h->first_free_elt_uoffset_by_bin[bin];
 
   /* Fill in next free elt's previous pointer. */
-  if (e->free_elt.next_uoffset != ~0)
+  if (e->free_elt.next_uoffset != MHEAP_GROUNDED)
     {
       mheap_elt_t * nf = mheap_elt_at_uoffset (v, e->free_elt.next_uoffset);
       ASSERT (nf->is_free);
@@ -195,12 +196,17 @@ remove_free_elt (void * v, mheap_elt_t * e, uword bin)
 {
   mheap_t * h = mheap_header (v);
   mheap_elt_t * p, * n;
+#if CLIB_VEC64 > 0
+  u64 no, po;
+#else
   u32 no, po;
+#endif
 
   no = e->free_elt.next_uoffset;
-  n = no != ~0 ? mheap_elt_at_uoffset (v, no) : 0;
+
+  n = no != MHEAP_GROUNDED ? mheap_elt_at_uoffset (v, no) : 0;
   po = e->free_elt.prev_uoffset;
-  p = po != ~0 ? mheap_elt_at_uoffset (v, po) : 0;
+  p = po != MHEAP_GROUNDED ? mheap_elt_at_uoffset (v, po) : 0;
 
   if (! p)
     set_first_free_elt_offset (h, bin, no);
@@ -309,13 +315,13 @@ mheap_get_small_object (mheap_t * h, uword bin)
 {
   mheap_small_object_cache_t * c = &h->small_object_cache;
   uword mask = mheap_small_object_cache_mask (c, bin + 1);
-  uword offset = ~0;
+  uword offset = MHEAP_GROUNDED;
 
   if (mask)
     {
       uword i = min_log2 (mask);
       uword o = c->offsets[i];
-      ASSERT (o != ~0);
+      ASSERT (o != MHEAP_GROUNDED);
       c->bins.as_u8[i] = 0;
       offset = o;
     }
@@ -369,7 +375,7 @@ mheap_get_search_free_bin (void * v,
   word o0, o1, f0, f1, search_n_user_data_bytes;
   word lo_free_usize, hi_free_usize;
 
-  ASSERT (h->first_free_elt_uoffset_by_bin[bin] != ~0);
+  ASSERT (h->first_free_elt_uoffset_by_bin[bin] != MHEAP_GROUNDED);
   e = mheap_elt_at_uoffset (v, h->first_free_elt_uoffset_by_bin[bin]);
 
   search_n_user_data_bytes = *n_user_data_bytes_arg;
@@ -420,8 +426,8 @@ mheap_get_search_free_bin (void * v,
 
     next:
       /* Reached end of free list without finding large enough object. */
-      if (e->free_elt.next_uoffset == ~0)
-	return ~0;
+      if (e->free_elt.next_uoffset == MHEAP_GROUNDED)
+	return MHEAP_GROUNDED;
 
       /* Otherwise keep searching for large enough object. */
       e = mheap_elt_at_uoffset (v, e->free_elt.next_uoffset);
@@ -517,7 +523,7 @@ mheap_get_search_free_list (void * v,
     {
       uword r = mheap_get_small_object (h, bin);
       h->stats.n_small_object_cache_attempts += 1;
-      if (r != ~0)
+      if (r != MHEAP_GROUNDED)
 	{
 	  h->stats.n_small_object_cache_hits += 1;
 	  return r;
@@ -535,12 +541,12 @@ mheap_get_search_free_list (void * v,
       /* Search each occupied free bin which is large enough. */
       foreach_set_bit (bi, non_empty_bin_mask, ({
 	uword r = mheap_get_search_free_bin (v, bi + i * BITS (uword), n_user_bytes_arg, align, align_offset);
-	if (r != ~0)
+	if (r != MHEAP_GROUNDED)
 	  return r;
       }));
     }
 
-  return ~0;
+  return MHEAP_GROUNDED;
 }
 
 static never_inline void *
@@ -586,7 +592,7 @@ mheap_get_extend_vector (void * v,
   /* Make sure we have space for object plus overhead. */
   if (f1 > h->max_size)
     {
-      *offset_return = ~0;
+      *offset_return = MHEAP_GROUNDED;
       return v;
     }
 
@@ -639,7 +645,7 @@ void * mheap_get_aligned (void * v,
   /* Align offset must be multiple of minimum object size. */
   if (align_offset % STRUCT_SIZE_OF (mheap_elt_t, user_data[0]) != 0)
     {
-      *offset_return = ~0;
+      *offset_return = MHEAP_GROUNDED;
       return v;
     }
 
@@ -663,15 +669,15 @@ void * mheap_get_aligned (void * v,
   h = mheap_header (v);
 
   /* If that fails allocate object at end of heap by extending vector. */
-  if (offset == ~0 && _vec_len (v) < h->max_size)
+  if (offset == MHEAP_GROUNDED && _vec_len (v) < h->max_size)
     {
       v = mheap_get_extend_vector (v, n_user_data_bytes, align, align_offset, &offset);
       h = mheap_header (v);
-      h->stats.n_vector_expands += offset != ~0;
+      h->stats.n_vector_expands += offset != MHEAP_GROUNDED;
     }
 
   *offset_return = offset;
-  if (offset != ~0)
+  if (offset != MHEAP_GROUNDED)
     {
       h->n_elts += 1;
 
@@ -909,7 +915,8 @@ void * mheap_alloc_with_flags (void * memory, uword memory_size, uword flags)
 	      (clib_address_t) v, h->max_size);
 
   /* Initialize free list heads to empty. */
-  memset (h->first_free_elt_uoffset_by_bin, ~0, sizeof (h->first_free_elt_uoffset_by_bin));
+  memset (h->first_free_elt_uoffset_by_bin, 0xFF, 
+          sizeof (h->first_free_elt_uoffset_by_bin));
 
   return v;
 }
@@ -1310,10 +1317,10 @@ void mheap_validate (void * v)
       mheap_elt_t * e, * n;
       uword is_first;
 
-      CHECK ((h->first_free_elt_uoffset_by_bin[i] != ~0)
+      CHECK ((h->first_free_elt_uoffset_by_bin[i] != MHEAP_GROUNDED)
 	     == ((h->non_empty_free_elt_heads[i / BITS (uword)] & ((uword) 1 << (uword) (i % BITS (uword)))) != 0));
 
-      if (h->first_free_elt_uoffset_by_bin[i] == ~0)
+      if (h->first_free_elt_uoffset_by_bin[i] == MHEAP_GROUNDED)
 	continue;
 
       e = mheap_elt_at_uoffset (v, h->first_free_elt_uoffset_by_bin[i]);
@@ -1331,7 +1338,7 @@ void mheap_validate (void * v)
 	  CHECK (n->prev_is_free);
 
 	  if (is_first)
-	    CHECK (e->free_elt.prev_uoffset == ~0);
+	    CHECK (e->free_elt.prev_uoffset == MHEAP_GROUNDED);
 	  is_first = 0;
 
 	  s = mheap_elt_data_bytes (e);
@@ -1340,7 +1347,7 @@ void mheap_validate (void * v)
 	  free_count_from_free_lists += 1;
 	  free_size_from_free_lists += s;
 
-	  if (e->free_elt.next_uoffset == ~0)
+	  if (e->free_elt.next_uoffset == MHEAP_GROUNDED)
 	    break;
 
 	  n = mheap_elt_at_uoffset (v, e->free_elt.next_uoffset);

@@ -228,6 +228,46 @@ vl_set_memory_gid (int gid)
   am->api_gid = gid;
 }
 
+void
+vl_set_global_memory_baseva (u64 baseva)
+{
+  api_main_t *am = &api_main;
+
+  am->global_baseva = baseva;
+}
+
+void
+vl_set_global_memory_size (u64 size)
+{
+  api_main_t *am = &api_main;
+
+  am->global_size = size;
+}
+
+void
+vl_set_api_memory_size (u64 size)
+{
+  api_main_t *am = &api_main;
+
+  am->api_size = size;
+}
+
+void
+vl_set_global_pvt_heap_size (u64 size)
+{
+  api_main_t *am = &api_main;
+
+  am->global_pvt_heap_size = size;
+}
+
+void
+vl_set_api_pvt_heap_size (u64 size)
+{
+  api_main_t *am = &api_main;
+
+  am->api_pvt_heap_size = size;
+}
+
 int
 vl_map_shmem (char *region_name, int is_vlib)
 {
@@ -245,10 +285,11 @@ vl_map_shmem (char *region_name, int is_vlib)
   memset (a, 0, sizeof (*a));
 
   a->name = region_name;
-  a->size = 16 << 20;
+  a->size = am->api_size ? am->api_size: (16 << 20);
   a->flags = SVM_FLAGS_MHEAP;
   a->uid = am->api_uid;
   a->gid = am->api_gid;
+  a->pvt_heap_size = am->api_pvt_heap_size;
 
   vlib_rp = svm_region_find_or_create (a);
 

@@ -206,10 +206,10 @@ svm_map_region_nolock (svm_map_region_args_t * a)
  * rnd_pagesize
  * Round to a pagesize multiple, presumably 4k works
  */
-static unsigned int
-rnd_pagesize (unsigned int size)
+static u64
+rnd_pagesize (u64 size)
 {
-  unsigned int rv;
+  u64 rv;
 
   rv = (size + (MMAP_PAGESIZE - 1)) & ~(MMAP_PAGESIZE - 1);
   return (rv);
@@ -247,7 +247,8 @@ svm_existing_region_map_nolock (void *root_arg, svm_map_region_args_t * a)
   void *oldheap;
   uword *p;
 
-  a->size += MMAP_PAGESIZE + SVM_PVT_MHEAP_SIZE;
+  a->size += MMAP_PAGESIZE + 
+    (a->pvt_heap_size ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE);
   a->size = rnd_pagesize (a->size);
 
   region_lock (root_rp, 4);
