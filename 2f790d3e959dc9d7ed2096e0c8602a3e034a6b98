@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_c2031872",
+        "filename": "vnet/vnet/ip/ip4_source_and_port_range_check.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-03T00:02:01Z",
+      "side": 1,
+      "message": "fib_index \u003d ~0;\nfib_index \u003d (ip-\u003eprocotol \u003d\u003d ICMP) ? c0-\u003efib_index[ICMP] : fib_index;\nfib_index \u003d (ip-\u003eprotocol \u003d\u003d TCP) ? c0-\u003efib_index[TCP] : fib_index;\n\netc. should generate conditional moves. \n\nif (PREDICT_FALSE (fib_index \u003d\u003d ~0))\n  unknown protocol drop\n\nOr splat down a mapper table. UDP \u003d 17, TCP \u003d 6, ICMP \u003d 1.",
+      "revId": "2f790d3e959dc9d7ed2096e0c8602a3e034a6b98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_e2fe1c6b",
+        "filename": "vnet/vnet/ip/ip_source_and_port_range_check.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-03T00:02:01Z",
+      "side": 1,
+      "message": "Perhaps IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS, to match the Eliotic way of solving the problem I\u0027m sure you\u0027re trying to solve?",
+      "revId": "2f790d3e959dc9d7ed2096e0c8602a3e034a6b98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
