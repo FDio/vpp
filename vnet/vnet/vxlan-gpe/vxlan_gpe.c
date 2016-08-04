@@ -24,8 +24,8 @@ u8 * format_vxlan_gpe_tunnel (u8 * s, va_list * args)
 
   s = format (s, "[%d] local: %U remote: %U ",
               t - gm->tunnels,
-              format_ip46_address, &t->local,
-              format_ip46_address, &t->remote);
+              format_ip46_address, &t->local, IP46_TYPE_ANY,
+              format_ip46_address, &t->remote, IP46_TYPE_ANY);
 
   s = format (s, "  vxlan VNI %d ", t->vni);
 
