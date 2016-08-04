@@ -1099,12 +1099,19 @@ map_params_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (!unformat (line_input, "lifetime %u", &lifetime) &&
-	  !unformat (line_input, "ht-ratio %lf", &ht_ratio) &&
-	  !unformat (line_input, "pool-size %u", &pool_size) &&
-	  !unformat (line_input, "buffers %llu", &buffers) &&
-	  !((unformat (line_input, "ip4")) && (ip4 = 1)) &&
-	  !((unformat (line_input, "ip6")) && (ip6 = 1)))
+      if (unformat (line_input, "lifetime %u", &lifetime))
+	;
+      else if (unformat (line_input, "ht-ratio %lf", &ht_ratio))
+	;
+      else if (unformat (line_input, "pool-size %u", &pool_size))
+	;
+      else if (unformat (line_input, "buffers %llu", &buffers))
+	;
+      else if (unformat (line_input, "ip4"))
+	ip4 = 1;
+      else if (unformat (line_input, "ip6"))
+	ip6 = 1;
+      else
 	{
 	  unformat_free (line_input);
 	  return clib_error_return (0, "invalid input");
