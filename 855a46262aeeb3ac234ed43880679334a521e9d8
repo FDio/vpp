@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_e8d15bce",
+        "filename": "vnet/vnet/lisp-cp/lisp_cp_messages.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 463,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-04T14:39:09Z",
+      "side": 1,
+      "message": "Let\u0027s call it a header,i.e., lcaf_src_dst_hdr_t, since we don\u0027t want people to believe it\u0027s the whole SD",
+      "range": {
+        "startLine": 463,
+        "startChar": 15,
+        "endLine": 463,
+        "endChar": 30
+      },
+      "revId": "855a46262aeeb3ac234ed43880679334a521e9d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_484607c1",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-04T14:39:09Z",
+      "side": 1,
+      "message": "Awesome! Love what you did here!",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 67,
+        "endChar": 17
+      },
+      "revId": "855a46262aeeb3ac234ed43880679334a521e9d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_6849cbcf",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-04T14:39:09Z",
+      "side": 1,
+      "message": "Let\u0027s call this type of addresses\"flat id\"s and therefore let\u0027s rename all functions to \u003caction\u003e_fid_address ()",
+      "range": {
+        "startLine": 211,
+        "startChar": 0,
+        "endLine": 211,
+        "endChar": 25
+      },
+      "revId": "855a46262aeeb3ac234ed43880679334a521e9d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_e8839bca",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-04T14:39:09Z",
+      "side": 1,
+      "message": "Let\u0027s use the set functions instead of clib_memcpy. So here it would just be ip_prefix_set (\u0026gid_simple_ippref (a), \u0026ippref)",
+      "range": {
+        "startLine": 264,
+        "startChar": 6,
+        "endLine": 264,
+        "endChar": 17
+      },
+      "revId": "855a46262aeeb3ac234ed43880679334a521e9d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_c8d697c5",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-04T14:39:09Z",
+      "side": 1,
+      "message": "Do it the other way around. Define dp_address_t to be a type of fid_address_t. If needed we can change that in the future.",
+      "range": {
+        "startLine": 101,
+        "startChar": 8,
+        "endLine": 101,
+        "endChar": 20
+      },
+      "revId": "855a46262aeeb3ac234ed43880679334a521e9d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
