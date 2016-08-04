@@ -23,13 +23,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-typedef struct {
+typedef struct
+{
   u8 *name;
   struct stat file_info;
   void *handle;
 } plugin_info_t;
 
-typedef struct {
+typedef struct
+{
   /* loaded plugin info */
   plugin_info_t *plugin_info;
   uword *plugin_by_name_hash;
@@ -39,13 +41,21 @@ typedef struct {
   u8 *plugin_name_filter;
 
   /* convenience */
-  vat_main_t * vat_main;
-  
+  vat_main_t *vat_main;
+
 } plugin_main_t;
 
 plugin_main_t vat_plugin_main;
 
 int vat_plugin_init (vat_main_t * vam);
-int vat_load_new_plugins (plugin_main_t *pm);
+int vat_load_new_plugins (plugin_main_t * pm);
 
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -17,269 +17,315 @@
 
 vat_main_t vat_main;
 
-int connect_to_vpe(char *name)
+int
+connect_to_vpe (char *name)
 {
-    vat_main_t * vam = &vat_main;
-    api_main_t * am = &api_main;
+  vat_main_t *vam = &vat_main;
+  api_main_t *am = &api_main;
 
-    if (vl_client_connect_to_vlib("/vpe-api", name, 32) < 0)
-        return -1;
-    
-    vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
-    vam->my_client_index = am->my_client_index;
+  if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
+    return -1;
 
-    return 0;
+  vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
+  vam->my_client_index = am->my_client_index;
+
+  return 0;
 }
 
-void vlib_cli_output(struct vlib_main_t * vm, char * fmt, ...)
-{ clib_warning ("BUG");} 
-
-
-static u8 * format_api_error (u8 * s, va_list * args)
+void
+vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
 {
-    vat_main_t * vam = va_arg (*args, vat_main_t *);
-    i32 error = va_arg (*args, u32);
-    uword * p;
-
-    p = hash_get (vam->error_string_by_error_number, -error);
-
-    if (p)
-        s = format (s, "%s", p[0]);
-    else
-        s = format (s, "%d", error);
-    return s;
+  clib_warning ("BUG");
 }
 
-void do_one_file (vat_main_t * vam)
+
+static u8 *
+format_api_error (u8 * s, va_list * args)
 {
-    int rv;
-    int (*fp)(vat_main_t *vam);
-    int arg_len;
-    unformat_input_t _input;
-    u8 *cmdp, *argsp;
-    uword * p;
-    u8 * this_cmd = 0;
+  vat_main_t *vam = va_arg (*args, vat_main_t *);
+  i32 error = va_arg (*args, u32);
+  uword *p;
 
-    vam->input = &_input;
+  p = hash_get (vam->error_string_by_error_number, -error);
 
-    /* Used by the "quit" command handler */
-    if (setjmp (vam->jump_buf) != 0)
-        return;
-    
-    while (1) {
-        if (vam->ifp == stdin) {
-            if (vam->exec_mode == 0)
-                rv = write (1, "vat# ", 5);
-            else
-                rv = write (1, "exec# ", 6);
-        }
-            
-        _vec_len(vam->inbuf) = 4096;
-            
-        if (fgets ((char *)vam->inbuf, vec_len(vam->inbuf), vam->ifp) == 0)
-            break;
-            
-        vam->input_line_number ++;
+  if (p)
+    s = format (s, "%s", p[0]);
+  else
+    s = format (s, "%d", error);
+  return s;
+}
 
-        vec_free (this_cmd);
+void
+do_one_file (vat_main_t * vam)
+{
+  int rv;
+  int (*fp) (vat_main_t * vam);
+  int arg_len;
+  unformat_input_t _input;
+  u8 *cmdp, *argsp;
+  uword *p;
+  u8 *this_cmd = 0;
 
-        this_cmd = (u8 *) clib_macro_eval (&vam->macro_main, (char *)vam->inbuf,
-                                           1 /* complain */);
-            
-        if (vam->exec_mode == 0) {
-            /* Split input into cmd + args */
-            cmdp = this_cmd;
-        
-            while (cmdp < (this_cmd + vec_len(this_cmd))) {
-                if (*cmdp == ' ' || *cmdp == '\t' || *cmdp == '\n') {
-                    cmdp++;
-                } else
-                    break;
-            }
-            argsp = cmdp;
-            while (argsp < (this_cmd + vec_len(this_cmd))) {
-                if (*argsp != ' ' && *argsp != '\t' && *argsp != '\n') {
-                    argsp++;
-                } else
-                    break;
-            }
-            *argsp++ = 0;
-            while (argsp < (this_cmd + vec_len(this_cmd))) {
-                if (*argsp == ' ' || *argsp == '\t' || *argsp == '\n') {
-                    argsp++;
-                } else
-                    break;
-            }
-            
-            
-            /* Blank input line? */
-            if (*cmdp == 0)
-                continue;
-            
-            p = hash_get_mem (vam->function_by_name, cmdp);
-            if (p == 0) {
-                errmsg ("'%s': function not found\n", cmdp);
-                continue;
-            }
-            
-            arg_len = strlen((char *) argsp);
-            
-            unformat_init_string (vam->input, (char *)argsp, arg_len);
-            fp = (void *)p[0];
-        } else {
-            unformat_init_string (vam->input, (char *) this_cmd, 
-                                  strlen((char *) this_cmd));
-            cmdp = this_cmd;
-            fp = exec;
-        }
+  vam->input = &_input;
 
-        rv = (*fp)(vam);
-        if (rv < 0)
-            errmsg ("%s error: %U\n", cmdp, format_api_error, vam, rv);
-        unformat_free (vam->input);
+  /* Used by the "quit" command handler */
+  if (setjmp (vam->jump_buf) != 0)
+    return;
 
-        if (vam->regenerate_interface_table) {
-            vam->regenerate_interface_table = 0;
-            api_sw_interface_dump (vam);
-        }
+  while (1)
+    {
+      if (vam->ifp == stdin)
+	{
+	  if (vam->exec_mode == 0)
+	    rv = write (1, "vat# ", 5);
+	  else
+	    rv = write (1, "exec# ", 6);
+	}
+
+      _vec_len (vam->inbuf) = 4096;
+
+      if (fgets ((char *) vam->inbuf, vec_len (vam->inbuf), vam->ifp) == 0)
+	break;
+
+      vam->input_line_number++;
+
+      vec_free (this_cmd);
+
+      this_cmd =
+	(u8 *) clib_macro_eval (&vam->macro_main, (char *) vam->inbuf,
+				1 /* complain */ );
+
+      if (vam->exec_mode == 0)
+	{
+	  /* Split input into cmd + args */
+	  cmdp = this_cmd;
+
+	  while (cmdp < (this_cmd + vec_len (this_cmd)))
+	    {
+	      if (*cmdp == ' ' || *cmdp == '\t' || *cmdp == '\n')
+		{
+		  cmdp++;
+		}
+	      else
+		break;
+	    }
+	  argsp = cmdp;
+	  while (argsp < (this_cmd + vec_len (this_cmd)))
+	    {
+	      if (*argsp != ' ' && *argsp != '\t' && *argsp != '\n')
+		{
+		  argsp++;
+		}
+	      else
+		break;
+	    }
+	  *argsp++ = 0;
+	  while (argsp < (this_cmd + vec_len (this_cmd)))
+	    {
+	      if (*argsp == ' ' || *argsp == '\t' || *argsp == '\n')
+		{
+		  argsp++;
+		}
+	      else
+		break;
+	    }
+
+
+	  /* Blank input line? */
+	  if (*cmdp == 0)
+	    continue;
+
+	  p = hash_get_mem (vam->function_by_name, cmdp);
+	  if (p == 0)
+	    {
+	      errmsg ("'%s': function not found\n", cmdp);
+	      continue;
+	    }
+
+	  arg_len = strlen ((char *) argsp);
+
+	  unformat_init_string (vam->input, (char *) argsp, arg_len);
+	  fp = (void *) p[0];
+	}
+      else
+	{
+	  unformat_init_string (vam->input, (char *) this_cmd,
+				strlen ((char *) this_cmd));
+	  cmdp = this_cmd;
+	  fp = exec;
+	}
+
+      rv = (*fp) (vam);
+      if (rv < 0)
+	errmsg ("%s error: %U\n", cmdp, format_api_error, vam, rv);
+      unformat_free (vam->input);
+
+      if (vam->regenerate_interface_table)
+	{
+	  vam->regenerate_interface_table = 0;
+	  api_sw_interface_dump (vam);
+	}
     }
 }
 
-static void init_error_string_table (vat_main_t * vam)
+static void
+init_error_string_table (vat_main_t * vam)
 {
 
-    vam->error_string_by_error_number = hash_create (0, sizeof(uword));
+  vam->error_string_by_error_number = hash_create (0, sizeof (uword));
 
 #define _(n,v,s) hash_set (vam->error_string_by_error_number, -v, s);
-    foreach_vnet_api_error;
+  foreach_vnet_api_error;
 #undef _
 
-    hash_set (vam->error_string_by_error_number, 99, "Misc");
+  hash_set (vam->error_string_by_error_number, 99, "Misc");
 }
 
-static i8 *eval_current_file (macro_main_t *mm, i32 complain)
+static i8 *
+eval_current_file (macro_main_t * mm, i32 complain)
 {
-    vat_main_t * vam = &vat_main;
-    return ((i8 *) format (0, "%s%c", vam->current_file, 0));
+  vat_main_t *vam = &vat_main;
+  return ((i8 *) format (0, "%s%c", vam->current_file, 0));
 }
 
-static i8 *eval_current_line (macro_main_t *mm, i32 complain)
+static i8 *
+eval_current_line (macro_main_t * mm, i32 complain)
 {
-    vat_main_t * vam = &vat_main;
-    return ((i8 *) format (0, "%d%c", vam->input_line_number, 0));
+  vat_main_t *vam = &vat_main;
+  return ((i8 *) format (0, "%d%c", vam->input_line_number, 0));
 }
 
 
-int main (int argc, char ** argv)
+int
+main (int argc, char **argv)
 {
-    vat_main_t * vam = &vat_main;
-    unformat_input_t _argv, *a = &_argv;
-    u8 **input_files = 0;
-    u8 *output_file = 0;
-    u8 *chroot_prefix;
-    u8 *this_input_file;
-    u8 interactive = 1;
-    u8 json_output = 0;
-    u8 * heap;
-    mheap_t * h;
-    int i;
+  vat_main_t *vam = &vat_main;
+  unformat_input_t _argv, *a = &_argv;
+  u8 **input_files = 0;
+  u8 *output_file = 0;
+  u8 *chroot_prefix;
+  u8 *this_input_file;
+  u8 interactive = 1;
+  u8 json_output = 0;
+  u8 *heap;
+  mheap_t *h;
+  int i;
 
-    clib_mem_init (0, 128<<20);
+  clib_mem_init (0, 128 << 20);
 
-    heap = clib_mem_get_per_cpu_heap();
-    h = mheap_header (heap);
-      
-    /* make the main heap thread-safe */
-    h->flags |= MHEAP_FLAG_THREAD_SAFE;
+  heap = clib_mem_get_per_cpu_heap ();
+  h = mheap_header (heap);
 
-    clib_macro_init (&vam->macro_main);
-    clib_macro_add_builtin (&vam->macro_main, "current_file", eval_current_file);
-    clib_macro_add_builtin (&vam->macro_main, "current_line", eval_current_line);
+  /* make the main heap thread-safe */
+  h->flags |= MHEAP_FLAG_THREAD_SAFE;
 
-    init_error_string_table (vam);
+  clib_macro_init (&vam->macro_main);
+  clib_macro_add_builtin (&vam->macro_main, "current_file",
+			  eval_current_file);
+  clib_macro_add_builtin (&vam->macro_main, "current_line",
+			  eval_current_line);
 
-    unformat_init_command_line (a, argv);
+  init_error_string_table (vam);
 
-    while (unformat_check_input(a) != UNFORMAT_END_OF_INPUT) {
-        if (unformat (a, "in %s", &this_input_file))
-            vec_add1 (input_files, this_input_file);
-        else if (unformat (a, "out %s", &output_file))
-            ;
-        else if (unformat (a, "script"))
-            interactive = 0;
-        else if (unformat (a, "json"))
-            json_output = 1;
-        else if (unformat (a, "plugin_path %s", (u8 *)&vat_plugin_path))
-            vec_add1 (vat_plugin_path, 0);
-        else if (unformat (a, "plugin_name_filter %s", 
-                           (u8 *)&vat_plugin_name_filter))
-            vec_add1 (vat_plugin_name_filter, 0);
-        else if (unformat (a, "chroot prefix %s", &chroot_prefix)) {
-            vl_set_memory_root_path ((char *)chroot_prefix);
-        } else {
-            fformat (stderr, 
-                     "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n");
-            exit (1);
-        }
+  unformat_init_command_line (a, argv);
+
+  while (unformat_check_input (a) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (a, "in %s", &this_input_file))
+	vec_add1 (input_files, this_input_file);
+      else if (unformat (a, "out %s", &output_file))
+	;
+      else if (unformat (a, "script"))
+	interactive = 0;
+      else if (unformat (a, "json"))
+	json_output = 1;
+      else if (unformat (a, "plugin_path %s", (u8 *) & vat_plugin_path))
+	vec_add1 (vat_plugin_path, 0);
+      else if (unformat (a, "plugin_name_filter %s",
+			 (u8 *) & vat_plugin_name_filter))
+	vec_add1 (vat_plugin_name_filter, 0);
+      else if (unformat (a, "chroot prefix %s", &chroot_prefix))
+	{
+	  vl_set_memory_root_path ((char *) chroot_prefix);
+	}
+      else
+	{
+	  fformat (stderr,
+		   "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n");
+	  exit (1);
+	}
     }
 
-    if (output_file)
-        vam->ofp = fopen ((char *) output_file, "w");
-    else
-        vam->ofp = stdout;
+  if (output_file)
+    vam->ofp = fopen ((char *) output_file, "w");
+  else
+    vam->ofp = stdout;
 
-    if (vam->ofp == NULL) {
-        fformat (stderr, "Couldn't open output file %s\n",
-                 output_file ? (char *) output_file : "stdout");
-        exit (1);
+  if (vam->ofp == NULL)
+    {
+      fformat (stderr, "Couldn't open output file %s\n",
+	       output_file ? (char *) output_file : "stdout");
+      exit (1);
     }
 
-    clib_time_init (&vam->clib_time);
+  clib_time_init (&vam->clib_time);
 
-    vat_api_hookup(vam);
-    vat_plugin_api_reference();
+  vat_api_hookup (vam);
+  vat_plugin_api_reference ();
 
-    if (connect_to_vpe("vpp_api_test") < 0) {
-        svm_region_exit();
-        fformat (stderr, "Couldn't connect to vpe, exiting...\n");
-        exit (1);
+  if (connect_to_vpe ("vpp_api_test") < 0)
+    {
+      svm_region_exit ();
+      fformat (stderr, "Couldn't connect to vpe, exiting...\n");
+      exit (1);
     }
 
-    vam->json_output = json_output;
+  vam->json_output = json_output;
 
-    if (!json_output) {
-        api_sw_interface_dump (vam);
+  if (!json_output)
+    {
+      api_sw_interface_dump (vam);
     }
 
-    vec_validate (vam->inbuf, 4096);
+  vec_validate (vam->inbuf, 4096);
 
-    vam->current_file = (u8 *) "plugin-init";
-    vat_plugin_init (vam);
+  vam->current_file = (u8 *) "plugin-init";
+  vat_plugin_init (vam);
 
-    for (i = 0; i < vec_len (input_files); i++) {
-        vam->ifp = fopen ((char *) input_files[i], "r");
-        if (vam->ifp == NULL) {
-            fformat (stderr, "Couldn't open input file %s\n",
-                     input_files[i]);
-            continue;
-        }
-        vam->current_file = input_files[i];
-        vam->input_line_number = 0;
-        do_one_file (vam);
-        fclose (vam->ifp);
+  for (i = 0; i < vec_len (input_files); i++)
+    {
+      vam->ifp = fopen ((char *) input_files[i], "r");
+      if (vam->ifp == NULL)
+	{
+	  fformat (stderr, "Couldn't open input file %s\n", input_files[i]);
+	  continue;
+	}
+      vam->current_file = input_files[i];
+      vam->input_line_number = 0;
+      do_one_file (vam);
+      fclose (vam->ifp);
     }
 
-    if (output_file)
-        fclose (vam->ofp);
+  if (output_file)
+    fclose (vam->ofp);
 
-    if (interactive) {
-        vam->ifp = stdin;
-        vam->ofp = stdout;
-        vam->current_file = (u8 *) "interactive";
-        do_one_file (vam);
-        fclose(vam->ifp);
+  if (interactive)
+    {
+      vam->ifp = stdin;
+      vam->ofp = stdout;
+      vam->current_file = (u8 *) "interactive";
+      do_one_file (vam);
+      fclose (vam->ifp);
     }
 
-    vl_client_disconnect_from_vlib();
-    exit (0);
+  vl_client_disconnect_from_vlib ();
+  exit (0);
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -15,30 +15,32 @@
 #include <vat/vat.h>
 #include <vnet/ip/ip.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args)
+uword
+unformat_sw_if_index (unformat_input_t * input, va_list * args)
 {
-  vat_main_t * vam = va_arg (*args, vat_main_t *);
-  u32 * result = va_arg (*args, u32 *);
-  u8 * if_name;
-  uword * p;
+  vat_main_t *vam = va_arg (*args, vat_main_t *);
+  u32 *result = va_arg (*args, u32 *);
+  u8 *if_name;
+  uword *p;
 
   if (!unformat (input, "%s", &if_name))
-      return 0;
+    return 0;
 
   p = hash_get_mem (vam->sw_if_index_by_interface_name, if_name);
   if (p == 0)
-      return 0;
+    return 0;
   *result = p[0];
   return 1;
 }
 
 /* Parse an IP4 address %d.%d.%d.%d. */
-uword unformat_ip4_address (unformat_input_t * input, va_list * args)
+uword
+unformat_ip4_address (unformat_input_t * input, va_list * args)
 {
-  u8 * result = va_arg (*args, u8 *);
+  u8 *result = va_arg (*args, u8 *);
   unsigned a[4];
 
-  if (! unformat (input, "%d.%d.%d.%d", &a[0], &a[1], &a[2], &a[3]))
+  if (!unformat (input, "%d.%d.%d.%d", &a[0], &a[1], &a[2], &a[3]))
     return 0;
 
   if (a[0] >= 256 || a[1] >= 256 || a[2] >= 256 || a[3] >= 256)
@@ -55,11 +57,11 @@ uword unformat_ip4_address (unformat_input_t * input, va_list * args)
 uword
 unformat_ethernet_address (unformat_input_t * input, va_list * args)
 {
-  u8 * result = va_arg (*args, u8 *);
+  u8 *result = va_arg (*args, u8 *);
   u32 i, a[6];
 
-  if (! unformat (input, "%_%x:%x:%x:%x:%x:%x%_",
-		  &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]))
+  if (!unformat (input, "%_%x:%x:%x:%x:%x:%x%_",
+		 &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]))
     return 0;
 
   /* Check range. */
@@ -78,12 +80,11 @@ uword
 unformat_ethernet_type_host_byte_order (unformat_input_t * input,
 					va_list * args)
 {
-  u16 * result = va_arg (*args, u16 *);
+  u16 *result = va_arg (*args, u16 *);
   int type;
 
   /* Numeric type. */
-  if (unformat (input, "0x%x", &type)
-      || unformat (input, "%d", &type))
+  if (unformat (input, "0x%x", &type) || unformat (input, "%d", &type))
     {
       if (type >= (1 << 16))
 	return 0;
@@ -94,9 +95,10 @@ unformat_ethernet_type_host_byte_order (unformat_input_t * input,
 }
 
 /* Parse an IP6 address. */
-uword unformat_ip6_address (unformat_input_t * input, va_list * args)
+uword
+unformat_ip6_address (unformat_input_t * input, va_list * args)
 {
-  ip6_address_t * result = va_arg (*args, ip6_address_t *);
+  ip6_address_t *result = va_arg (*args, ip6_address_t *);
   u16 hex_quads[8];
   uword hex_quad, n_hex_quads, hex_digit, n_hex_digits;
   uword c, n_colon, double_colon_index;
@@ -135,7 +137,7 @@ uword unformat_ip6_address (unformat_input_t * input, va_list * args)
 	  n_colon = 0;
 	  n_hex_digits++;
 	}
-      
+
       /* Save position of :: */
       if (n_colon == 2)
 	{
@@ -184,18 +186,31 @@ uword unformat_ip6_address (unformat_input_t * input, va_list * args)
   }
 }
 
-u8 * format_ip4_address (u8 * s, va_list * args)
+u8 *
+format_ip4_address (u8 * s, va_list * args)
 {
-  u8 * a = va_arg (*args, u8 *);
+  u8 *a = va_arg (*args, u8 *);
   return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
 }
 
-u8 * format_ethernet_address (u8 * s, va_list * args)
+u8 *
+format_ethernet_address (u8 * s, va_list * args)
 {
-  u8 * a = va_arg (*args, u8 *);
+  u8 *a = va_arg (*args, u8 *);
 
   return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-                 a[0], a[1], a[2], a[3], a[4], a[5]);
+		 a[0], a[1], a[2], a[3], a[4], a[5]);
 }
 
-void vat_plugin_api_reference(void) { }
+void
+vat_plugin_api_reference (void)
+{
+}
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -23,26 +23,26 @@
 
 plugin_main_t vat_plugin_main;
 
-static int 
-load_one_plugin (plugin_main_t *pm, plugin_info_t *pi)
+static int
+load_one_plugin (plugin_main_t * pm, plugin_info_t * pi)
 {
   void *handle, *register_handle;
-  clib_error_t * (*fp)(vat_main_t *);
-  clib_error_t * error;
-  
-  handle = dlopen ((char *)pi->name, RTLD_LAZY);
+  clib_error_t *(*fp) (vat_main_t *);
+  clib_error_t *error;
 
-  /* 
+  handle = dlopen ((char *) pi->name, RTLD_LAZY);
+
+  /*
    * Note: this can happen if the plugin has an undefined symbol reference,
    * so print a warning. Otherwise, the poor slob won't know what happened.
    * Ask me how I know that...
    */
   if (handle == 0)
     {
-      clib_warning ("%s", dlerror());
+      clib_warning ("%s", dlerror ());
       return -1;
     }
-  
+
   pi->handle = handle;
 
   register_handle = dlsym (pi->handle, "vat_plugin_register");
@@ -51,7 +51,7 @@ load_one_plugin (plugin_main_t *pm, plugin_info_t *pi)
 
   fp = register_handle;
 
-  error = (*fp)(pm->vat_main);
+  error = (*fp) (pm->vat_main);
 
   if (error)
     {
@@ -65,7 +65,8 @@ load_one_plugin (plugin_main_t *pm, plugin_info_t *pi)
   return 0;
 }
 
-static u8 **split_plugin_path (plugin_main_t *pm)
+static u8 **
+split_plugin_path (plugin_main_t * pm)
 {
   int i;
   u8 **rv = 0;
@@ -75,11 +76,11 @@ static u8 **split_plugin_path (plugin_main_t *pm)
   for (i = 0; i < vec_len (pm->plugin_path); i++)
     {
       if (path[i] != ':')
-        {
-          vec_add1(this, path[i]);
-          continue;
-        }
-      vec_add1(this, 0);
+	{
+	  vec_add1 (this, path[i]);
+	  continue;
+	}
+      vec_add1 (this, 0);
       vec_add1 (rv, this);
       this = 0;
     }
@@ -91,7 +92,8 @@ static u8 **split_plugin_path (plugin_main_t *pm)
   return rv;
 }
 
-int vat_load_new_plugins (plugin_main_t *pm)
+int
+vat_load_new_plugins (plugin_main_t * pm)
 {
   DIR *dp;
   struct dirent *entry;
@@ -102,61 +104,61 @@ int vat_load_new_plugins (plugin_main_t *pm)
   int i;
 
   plugin_path = split_plugin_path (pm);
-  
+
   for (i = 0; i < vec_len (plugin_path); i++)
     {
-      dp = opendir ((char *)plugin_path[i]);
-  
-      if (dp == 0)
-        continue;
-      
-      while ((entry = readdir (dp)))
-        {
-          u8 *plugin_name;
-          
-          if (pm->plugin_name_filter)
-            {
-              int j;
-              for (j = 0; j < vec_len (pm->plugin_name_filter); j++)
-                if (entry->d_name[j] != pm->plugin_name_filter[j])
-                  goto next;
-            }
+      dp = opendir ((char *) plugin_path[i]);
 
-          plugin_name = format (0, "%s/%s%c", plugin_path[i],
-                                entry->d_name, 0);
-          
-          /* unreadable */
-          if (stat ((char *)plugin_name, &statb) < 0)
-            {
-            ignore:
-              vec_free (plugin_name);
-              continue;
-            }
-          
-          /* a dir or other things which aren't plugins */
-          if (!S_ISREG(statb.st_mode))
-            goto ignore;
-          
-          p = hash_get_mem (pm->plugin_by_name_hash, plugin_name);
-          if (p == 0) 
-            {
-              vec_add2 (pm->plugin_info, pi, 1);
-              pi->name = plugin_name;
-              pi->file_info = statb;
-              
-              if (load_one_plugin (pm, pi))
-                {
-                  vec_free (plugin_name);
-                  _vec_len (pm->plugin_info) = vec_len (pm->plugin_info) - 1;
-                  continue;
-                }
-              memset (pi, 0, sizeof (*pi));
-              hash_set_mem (pm->plugin_by_name_hash, plugin_name, 
-                            pi - pm->plugin_info);
-            }
-        next:
-          ;
-        }
+      if (dp == 0)
+	continue;
+
+      while ((entry = readdir (dp)))
+	{
+	  u8 *plugin_name;
+
+	  if (pm->plugin_name_filter)
+	    {
+	      int j;
+	      for (j = 0; j < vec_len (pm->plugin_name_filter); j++)
+		if (entry->d_name[j] != pm->plugin_name_filter[j])
+		  goto next;
+	    }
+
+	  plugin_name = format (0, "%s/%s%c", plugin_path[i],
+				entry->d_name, 0);
+
+	  /* unreadable */
+	  if (stat ((char *) plugin_name, &statb) < 0)
+	    {
+	    ignore:
+	      vec_free (plugin_name);
+	      continue;
+	    }
+
+	  /* a dir or other things which aren't plugins */
+	  if (!S_ISREG (statb.st_mode))
+	    goto ignore;
+
+	  p = hash_get_mem (pm->plugin_by_name_hash, plugin_name);
+	  if (p == 0)
+	    {
+	      vec_add2 (pm->plugin_info, pi, 1);
+	      pi->name = plugin_name;
+	      pi->file_info = statb;
+
+	      if (load_one_plugin (pm, pi))
+		{
+		  vec_free (plugin_name);
+		  _vec_len (pm->plugin_info) = vec_len (pm->plugin_info) - 1;
+		  continue;
+		}
+	      memset (pi, 0, sizeof (*pi));
+	      hash_set_mem (pm->plugin_by_name_hash, plugin_name,
+			    pi - pm->plugin_info);
+	    }
+	next:
+	  ;
+	}
       closedir (dp);
       vec_free (plugin_path[i]);
     }
@@ -167,17 +169,18 @@ int vat_load_new_plugins (plugin_main_t *pm)
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
 
-/* 
+/*
  * Load plugins from /usr/lib/vpp_api_test_plugins by default
  */
 char *vat_plugin_path = "/usr/lib/vpp_api_test_plugins";
-                         
+
 char *vat_plugin_name_filter = 0;
 
-int vat_plugin_init (vat_main_t * vam)
+int
+vat_plugin_init (vat_main_t * vam)
 {
   plugin_main_t *pm = &vat_plugin_main;
-  
+
 
   pm->plugin_path = format (0, "%s%c", vat_plugin_path, 0);
   if (vat_plugin_name_filter)
@@ -185,6 +188,14 @@ int vat_plugin_init (vat_main_t * vam)
 
   pm->plugin_by_name_hash = hash_create_string (0, sizeof (uword));
   pm->vat_main = vam;
-  
+
   return vat_load_new_plugins (pm);
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
