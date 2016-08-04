@@ -236,6 +236,7 @@ build_ip_adjacency (lisp_gpe_main_t * lgm, ip_adjacency_t * adj, u32 table_id,
     {
       adj->rewrite_header.sw_if_index = ~0;
       adj->rewrite_header.next_index = ~0;
+      adj->if_address_index = tun_index;
 
       switch (action)
         {
@@ -276,7 +277,7 @@ add_del_ip_fwd_entry (lisp_gpe_main_t * lgm,
   ip_ver = ip_prefix_version(rmt_pref);
 
   /* add/del tunnel to tunnels pool and prepares rewrite */
-  if (!a->is_negative)
+  if (0 != a->locator_pairs)
     {
       rv = add_del_ip_tunnel (a, 0 /* is_l2 */, &tun_index);
       if (rv)
@@ -310,8 +311,7 @@ add_del_ip_fwd_entry (lisp_gpe_main_t * lgm,
       adjp = ip_get_adjacency ((ip_ver == IP4) ? lgm->lm4 : lgm->lm6,
                                adj_index);
 
-      ASSERT(adjp != 0);
-      ASSERT(adjp->if_address_index == tun_index);
+      ASSERT(adjp != 0 && adjp->if_address_index == tun_index);
     }
 
   return rv;

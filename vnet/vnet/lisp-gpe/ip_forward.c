@@ -745,17 +745,24 @@ ip4_src_fib_lookup_one (lisp_gpe_main_t * lgm, u32 src_fib_index0,
   ip4_fib_mtrie_leaf_t leaf0, leaf1;
   ip4_fib_mtrie_t * mtrie0;
 
-  mtrie0 = &vec_elt_at_index(lgm->ip4_src_fibs, src_fib_index0)->mtrie;
+  /* if default route not hit in ip4 lookup */
+  if (PREDICT_TRUE(src_fib_index0 != (u32 ) ~0))
+    {
+      mtrie0 = &vec_elt_at_index(lgm->ip4_src_fibs, src_fib_index0)->mtrie;
 
-  leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 0);
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 1);
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 2);
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 3);
+      leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 0);
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 1);
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 2);
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 3);
 
-  /* Handle default route. */
-  leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
-  src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+      /* Handle default route. */
+      leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY) ?
+          mtrie0->default_leaf : leaf0;
+      src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+    }
+  else
+    src_adj_index0[0] = ~0;
 }
 
 always_inline void
@@ -767,28 +774,39 @@ ip4_src_fib_lookup_two (lisp_gpe_main_t * lgm, u32 src_fib_index0,
   ip4_fib_mtrie_leaf_t leaf0, leaf1;
   ip4_fib_mtrie_t * mtrie0, * mtrie1;
 
-  mtrie0 = &vec_elt_at_index(lgm->ip4_src_fibs, src_fib_index0)->mtrie;
-  mtrie1 = &vec_elt_at_index(lgm->ip4_src_fibs, src_fib_index1)->mtrie;
+  /* if default route not hit in ip4 lookup */
+  if (PREDICT_TRUE(src_fib_index0 != (u32 ) ~0 && src_fib_index1 != (u32 ) ~0))
+    {
+      mtrie0 = &vec_elt_at_index(lgm->ip4_src_fibs, src_fib_index0)->mtrie;
+      mtrie1 = &vec_elt_at_index(lgm->ip4_src_fibs, src_fib_index1)->mtrie;
 
-  leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
+      leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
 
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 0);
-  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 0);
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 0);
+      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 0);
 
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 1);
-  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 1);
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 1);
+      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 1);
 
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 2);
-  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 2);
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 2);
+      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 2);
 
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 3);
-  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 3);
+      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 3);
+      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 3);
 
-  /* Handle default route. */
-  leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
-  leaf1 = (leaf1 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie1->default_leaf : leaf1);
-  src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-  src_adj_index1[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+      /* Handle default route. */
+      leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY) ?
+              mtrie0->default_leaf : leaf0;
+      leaf1 = (leaf1 == IP4_FIB_MTRIE_LEAF_EMPTY) ?
+              mtrie1->default_leaf : leaf1;
+      src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+      src_adj_index1[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+    }
+  else
+    {
+      ip4_src_fib_lookup_one (lgm, src_fib_index0, addr0, src_adj_index0);
+      ip4_src_fib_lookup_one (lgm, src_fib_index1, addr1, src_adj_index1);
+    }
 }
 
 always_inline uword
@@ -860,14 +878,14 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           src_fib_index0 = dst_adj0->rewrite_header.sw_if_index;
           src_fib_index1 = dst_adj1->rewrite_header.sw_if_index;
 
-          /* if default route not hit in ip4 lookup */
-          if (PREDICT_TRUE(src_fib_index0 != (u32) ~0
-                           && src_fib_index1 != (u32) ~0))
-            {
-              ip4_src_fib_lookup_two (lgm, src_fib_index0, src_fib_index1,
-                                      &ip0->src_address, &ip1->src_address,
-                                      &src_adj_index0, &src_adj_index1);
+          ip4_src_fib_lookup_two (lgm, src_fib_index0, src_fib_index1,
+                                  &ip0->src_address, &ip1->src_address,
+                                  &src_adj_index0, &src_adj_index1);
 
+          /* if a source fib exists */
+          if (PREDICT_TRUE((u32) ~0 != src_adj_index0
+                           && (u32) ~0 != src_adj_index1))
+            {
               vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
               vnet_buffer(b1)->ip.adj_index[VLIB_TX] = src_adj_index1;
 
@@ -885,10 +903,8 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
             }
           else
             {
-              if (src_fib_index0 != (u32) ~0)
+              if ((u32) ~0 != src_adj_index0)
                 {
-                  ip4_src_fib_lookup_one (lgm, src_fib_index0,
-                                          &ip0->src_address, &src_adj_index0);
                   vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
                   src_adj0 = ip_get_adjacency (lgm->lm4, src_adj_index0);
                   next0 = src_adj0->explicit_fib_index;
@@ -898,13 +914,10 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               else
                 {
                   next0 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
-                  vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP;
                 }
 
-              if (src_fib_index1 != (u32) ~0)
+              if ((u32) ~0 != src_adj_index1)
                 {
-                  ip4_src_fib_lookup_one (lgm, src_fib_index1,
-                                          &ip1->src_address, &src_adj_index1);
                   vnet_buffer(b1)->ip.adj_index[VLIB_TX] = src_adj_index1;
                   src_adj1 = ip_get_adjacency (lgm->lm4, src_adj_index1);
                   next1 = src_adj1->explicit_fib_index;
@@ -914,9 +927,14 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               else
                 {
                   next1 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
-                  vnet_buffer (b1)->lisp.overlay_afi = LISP_AFI_IP;
                 }
             }
+
+          /* mark the packets for CP lookup if needed*/
+          if (PREDICT_FALSE(LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP == next0))
+            vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP;
+          if (PREDICT_FALSE(LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP == next1))
+            vnet_buffer (b1)->lisp.overlay_afi = LISP_AFI_IP;
 
           vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
                                           n_left_to_next, bi0, bi1, next0,
@@ -946,12 +964,13 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           dst_adj0 = ip_get_adjacency (lgm->lm4, dst_adj_index0);
           src_fib_index0 = dst_adj0->rewrite_header.sw_if_index;
 
-          /* if default route not hit in ip4 lookup */
-          if (PREDICT_TRUE(src_fib_index0 != (u32 ) ~0))
+          /* do src lookup */
+          ip4_src_fib_lookup_one (lgm, src_fib_index0, &ip0->src_address,
+                                  &src_adj_index0);
+
+          /* if a source fib exists */
+          if (PREDICT_TRUE((u32) ~0 != src_adj_index0))
             {
-              /* do src lookup */
-              ip4_src_fib_lookup_one (lgm, src_fib_index0, &ip0->src_address,
-                                      &src_adj_index0);
               vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
               src_adj0 = ip_get_adjacency (lgm->lm4, src_adj_index0);
               next0 = src_adj0->explicit_fib_index;
@@ -963,8 +982,10 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           else
             {
               next0 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
-              vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP;
             }
+
+          if (PREDICT_FALSE(LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP == next0))
+            vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP;
 
           vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
                                           n_left_to_next, bi0, next0);
@@ -1019,6 +1040,36 @@ ip6_src_fib_lookup (lisp_gpe_main_t * lgm, u32 src_fib_index,
     }
 
   return 0;
+}
+
+always_inline void
+ip6_src_fib_lookup_one (lisp_gpe_main_t * lgm, u32 src_fib_index0,
+                        ip6_address_t * addr0, u32 * src_adj_index0)
+{
+  /* if default route not hit in ip6 lookup */
+  if (PREDICT_TRUE(src_fib_index0 != (u32 ) ~0))
+    src_adj_index0[0] = ip6_src_fib_lookup (lgm, src_fib_index0, addr0);
+  else
+    src_adj_index0[0] = ~0;
+}
+
+always_inline void
+ip6_src_fib_lookup_two (lisp_gpe_main_t * lgm, u32 src_fib_index0,
+                        u32 src_fib_index1, ip6_address_t * addr0,
+                        ip6_address_t * addr1, u32 * src_adj_index0,
+                        u32 * src_adj_index1)
+{
+  /* if default route not hit in ip6 lookup */
+  if (PREDICT_TRUE(src_fib_index0 != (u32 ) ~0 && src_fib_index1 != (u32 ) ~0))
+    {
+      src_adj_index0[0] = ip6_src_fib_lookup(lgm, src_fib_index0, addr0);
+      src_adj_index1[0] = ip6_src_fib_lookup(lgm, src_fib_index1, addr1);
+    }
+  else
+    {
+      ip6_src_fib_lookup_one (lgm, src_fib_index0, addr0, src_adj_index0);
+      ip6_src_fib_lookup_one (lgm, src_fib_index1, addr1, src_adj_index1);
+    }
 }
 
 always_inline uword
@@ -1090,16 +1141,14 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           src_fib_index0 = dst_adj0->rewrite_header.sw_if_index;
           src_fib_index1 = dst_adj1->rewrite_header.sw_if_index;
 
-          /* if default route not hit in ip6 lookup */
-          if (PREDICT_TRUE(src_fib_index0 != (u32) ~0
-                           && src_fib_index1 != (u32) ~0))
-            {
-              /* do src lookup */
-              src_adj_index0 = ip6_src_fib_lookup (lgm, src_fib_index0,
-                                                   &ip0->src_address);
-              src_adj_index1 = ip6_src_fib_lookup (lgm, src_fib_index1,
-                                                   &ip1->src_address);
+          ip6_src_fib_lookup_two (lgm, src_fib_index0, src_fib_index1,
+                                  &ip0->src_address, &ip1->src_address,
+                                  &src_adj_index0, &src_adj_index1);
 
+          /* if a source fib exists */
+          if (PREDICT_TRUE((u32) ~0 != src_adj_index0
+                           && (u32) ~0 != src_adj_index1))
+            {
               vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
               vnet_buffer(b1)->ip.adj_index[VLIB_TX] = src_adj_index1;
 
@@ -1117,10 +1166,8 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
             }
           else
             {
-              if (src_fib_index0 != (u32) ~0)
+              if (src_adj_index0 != (u32) ~0)
                 {
-                  src_adj_index0 = ip6_src_fib_lookup (lgm, src_fib_index0,
-                                                       &ip0->src_address);
                   vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
                   src_adj0 = ip_get_adjacency (lgm->lm6, src_adj_index0);
                   next0 = src_adj0->explicit_fib_index;
@@ -1130,13 +1177,10 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               else
                 {
                   next0 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
-                  vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP6;
                 }
 
-              if (src_fib_index1 != (u32) ~0)
+              if (src_adj_index1 != (u32) ~0)
                 {
-                  src_adj_index1 = ip6_src_fib_lookup (lgm, src_fib_index1,
-                                                       &ip1->src_address);
                   vnet_buffer(b1)->ip.adj_index[VLIB_TX] = src_adj_index1;
                   src_adj1 = ip_get_adjacency (lgm->lm6, src_adj_index1);
                   next1 = src_adj1->explicit_fib_index;
@@ -1146,9 +1190,14 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               else
                 {
                   next1 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
-                  vnet_buffer (b1)->lisp.overlay_afi = LISP_AFI_IP6;
                 }
             }
+
+          /* mark the packets for CP lookup if needed*/
+          if (PREDICT_FALSE(LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP == next0))
+            vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP;
+          if (PREDICT_FALSE(LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP == next1))
+            vnet_buffer (b1)->lisp.overlay_afi = LISP_AFI_IP;
 
           vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
                                           n_left_to_next, bi0, bi1, next0,
@@ -1178,13 +1227,13 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           dst_adj0 = ip_get_adjacency (lgm->lm6, dst_adj_index0);
           src_fib_index0 = dst_adj0->rewrite_header.sw_if_index;
 
-          /* if default route not hit in ip6 lookup */
-          if (PREDICT_TRUE(src_fib_index0 != (u32 ) ~0))
-            {
-              /* do src lookup */
-              src_adj_index0 = ip6_src_fib_lookup (lgm, src_fib_index0,
-                                                   &ip0->src_address);
+          /* do src lookup */
+          ip6_src_fib_lookup_one (lgm, src_fib_index0, &ip0->src_address,
+                                  &src_adj_index0);
 
+          /* if a source fib exists */
+          if (PREDICT_TRUE(src_adj_index0 != (u32 ) ~0))
+            {
               vnet_buffer(b0)->ip.adj_index[VLIB_TX] = src_adj_index0;
               src_adj0 = ip_get_adjacency (lgm->lm6, src_adj_index0);
               next0 = src_adj0->explicit_fib_index;
@@ -1196,8 +1245,11 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           else
             {
               next0 = LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP;
-              vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP6;
             }
+
+          /* mark the packets for CP lookup if needed*/
+          if (PREDICT_FALSE(LGPE_IP4_LOOKUP_NEXT_LISP_CP_LOOKUP == next0))
+            vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_IP;
 
           vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
                                           n_left_to_next, bi0, next0);
