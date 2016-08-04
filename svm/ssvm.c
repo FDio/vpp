@@ -43,7 +43,13 @@ ssvm_master_init (ssvm_private_t * ssvm, u32 master_index)
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
-  lseek (ssvm_fd, ssvm->ssvm_size, SEEK_SET);
+  if (lseek (ssvm_fd, ssvm->ssvm_size, SEEK_SET) < 0)
+    {
+      clib_unix_warning ("lseek");
+      close (ssvm_fd);
+      return SSVM_API_ERROR_SET_SIZE;
+    }
+      
   if (write (ssvm_fd, &junk, 1) != 1)
     {
       clib_unix_warning ("set ssvm size");

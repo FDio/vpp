@@ -394,7 +394,13 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
       existing_adj->arp.next_hop.ip6.as_u64[1] == a->as_u64[1])
   {
     u32 * ai;
-    u32 * adjs = vec_dup(n->adjacencies);
+    u32 * adjs = 0;
+    
+    if (n)
+      adjs = vec_dup(n->adjacencies);
+    else
+      clib_warning ("ip6 neighbor n not set");
+    
     /* Update all adj assigned to this arp entry */
     vec_foreach(ai, adjs)
     {
