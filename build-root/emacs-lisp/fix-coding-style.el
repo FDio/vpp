@@ -47,6 +47,9 @@
 (defun fix-hash-foreach-pair () (interactive)
        (fix-initializer "hash_foreach_pair *("))
 
+(defun fix-hash-foreach-mem () (interactive)
+       (fix-initializer "hash_foreach_mem *("))
+
 (defun fix-clib-fifo-foreach () (interactive)
        (fix-initializer "clib_fifo_foreach *("))
 
@@ -73,6 +76,7 @@
        (fix-pool-foreach)
        (fix-hash-foreach)
        (fix-hash-foreach-pair)
+       (fix-hash-foreach-mem)
        (fix-foreach-ip-interface-address)
        (fix-clib-fifo-foreach)
        (fix-clib-bitmap-foreach)
