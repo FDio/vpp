@@ -57,6 +57,7 @@ PLUGIN_ENABLED(sixrd)
 PLUGIN_ENABLED(ioam)
 PLUGIN_ENABLED(snat)
 PLUGIN_ENABLED(ila)
+PLUGIN_ENABLED(lb)
 
 # Disabled plugins, require --enable-XXX-plugin
 PLUGIN_DISABLED(vcgn)
