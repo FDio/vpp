@@ -1,0 +1,71 @@
+/** \brief Configure Load-Balancer global parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip4_src_address - IPv4 address to be used as source for IPv4 GRE traffic.
+    @param ip6_src_address - IPv6 address to be used as source for IPv6 GRE traffic.
+    @param n_sticky_buckets - Number of buckets *per worker thread* in the 
+           established flow table (must be power of 2).
+    @param flow_timeout - Time in seconds after which, if no packet is received
+           for a given flow, the flow is removed from the established flow table.
+*/
+define lb_conf
+{
+  u32 client_index;
+  u32 context;
+  u32 ip4_src_address;
+  u8 ip6_src_address[16];
+  u32 sticky_buckets_per_core;
+  u32 flow_timeout;
+};
+
+define lb_conf_reply {
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Add a virtual address (or prefix)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip_prefix - IP address (IPv4 in lower order 32 bits). 
+    @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4).  
+    @param is_gre4 - Encap is ip4 GRE (ip6 GRE otherwise).
+    @param new_flows_table_length - Size of the new connections flow table used
+           for this VIP (must be power of 2).
+    @param is_del - The VIP should be removed.
+*/
+define lb_add_del_vip {
+  u32 client_index;
+  u32 context;
+  u8 ip_prefix[16];
+  u8 prefix_length;
+  u8 is_gre4;
+  u32 new_flows_table_length;
+  u8 is_del;
+};
+
+define lb_add_del_vip_reply {
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Add an application server for a given VIP
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param vip_ip_prefix - VIP IP address (IPv4 in lower order 32 bits). 
+    @param vip_ip_prefix - VIP IP prefix length (96 + 'IPv4 prefix length' for IPv4). 
+    @param as_address - The application server address (IPv4 in lower order 32 bits).
+    @param is_del - The AS should be removed.
+*/
+define lb_add_del_as {
+  u32 client_index;
+  u32 context;
+  u8 vip_ip_prefix[16];
+  u8 vip_prefix_length;
+  u8 as_address[16];
+  u8 is_del;
+};
+
+define lb_add_del_as_reply {
+  u32 context;
+  i32 retval;
+};
