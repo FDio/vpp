@@ -1107,6 +1107,8 @@ static void byte_swap_verneed (elf_main_t * em,
 }
 
 static void
+set_dynamic_verneed (elf_main_t * em) __attribute__((unused));
+static void
 set_dynamic_verneed (elf_main_t * em)
 {
   elf_dynamic_version_need_union_t * vus = em->verneed;
@@ -1122,6 +1124,8 @@ set_dynamic_verneed (elf_main_t * em)
     vec_free (vus);
 }
 
+static void
+set_symbol_table (elf_main_t * em, u32 table_index) __attribute__((unused));
 static void
 set_symbol_table (elf_main_t * em, u32 table_index)
 {
@@ -1376,11 +1380,15 @@ static u32 string_table_add_name (string_table_builder_t * b, u8 * n)
 }
 
 static u32 string_table_add_name_index (string_table_builder_t * b, u32 index)
+    __attribute__((unused));
+static u32 string_table_add_name_index (string_table_builder_t * b, u32 index)
 {
   u8 * n = b->old_table + index;
   return string_table_add_name (b, n);
 }
 
+static void string_table_init (string_table_builder_t * b, u8 * old_table)
+    __attribute__((unused));
 static void string_table_init (string_table_builder_t * b, u8 * old_table)
 {
   memset (b, 0, sizeof (b[0]));
@@ -1388,6 +1396,8 @@ static void string_table_init (string_table_builder_t * b, u8 * old_table)
   b->hash = hash_create_string (0, sizeof (uword));
 }
 
+static u8 * string_table_done (string_table_builder_t * b)
+    __attribute__((unused));
 static u8 * string_table_done (string_table_builder_t * b)
 {
   hash_free (b->hash);
@@ -1400,6 +1410,8 @@ static void layout_sections (elf_main_t * em)
   u32 n_sections_with_changed_exec_address = 0;
   u32 * deferred_symbol_and_string_sections = 0;
   u32 n_deleted_sections = 0;
+  /* note: rebuild is always zero. Intent lost in the sands of time */
+#if 0 
   int rebuild = 0;
 
   /* Re-build section string table (sections may have been deleted). */
@@ -1498,6 +1510,7 @@ static void layout_sections (elf_main_t * em)
       vec_free (s->contents);
       s->contents = string_table_done (&b);
     }
+#endif /* dead code */
 
   /* Figure file offsets and exec addresses for sections. */
   {
@@ -1613,8 +1626,10 @@ static void layout_sections (elf_main_t * em)
 
   /* Update dynamic entries now that sections have been assigned
      possibly new addresses. */
+#if 0
   if (rebuild)
     elf_set_dynamic_entries (em);
+#endif
 
   /* Update segments for changed section addresses. */
   {

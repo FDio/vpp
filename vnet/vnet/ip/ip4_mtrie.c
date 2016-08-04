@@ -436,10 +436,26 @@ maybe_remap_leaf (ip_lookup_main_t * lm, ip4_fib_mtrie_leaf_t * p)
       if (m)
 	{
 	  was_remapped_to_empty_leaf = m == ~0;
+
+          /*
+           * The intent of the original form - which dates to 2013 or
+           * earlier - is not obvious. Here's the original:
+           * 
+           * if (was_remapped_to_empty_leaf)
+           *   p[0] = (was_remapped_to_empty_leaf
+           *           ? IP4_FIB_MTRIE_LEAF_EMPTY
+           *           : ip4_fib_mtrie_leaf_set_adj_index (m - 1));
+           *
+           * Notice the outer "if (was_remapped_to_empty_leaf)"
+           * means that p[0] is always set to IP4_FIB_MTRIE_LEAF_EMPTY,
+           * and is otherwise left intact.
+           * 
+           * It seems unlikely that the adjacency mapping scheme
+           * works in detail. Coverity correctly complains that the 
+           * else-case of the original ternary expression is dead code.
+           */
 	  if (was_remapped_to_empty_leaf)
-	    p[0] = (was_remapped_to_empty_leaf
-		    ? IP4_FIB_MTRIE_LEAF_EMPTY
-		    : ip4_fib_mtrie_leaf_set_adj_index (m - 1));
+            p[0] = IP4_FIB_MTRIE_LEAF_EMPTY;
 	}
     }
   return was_remapped_to_empty_leaf;

@@ -662,7 +662,12 @@ static void guess_initial_parameters (phash_main_t * pm)
 	  a_max = 1;
 	  b_max = 1;
 	case 1: case 2: case 3: case 4: case 5: case 6: case 7: case 8:
-	  a_max = is_minimal ? s_max / 2 : s_max;
+          /* 
+           * Was: a_max = is_minimal ? s_max / 2 : s_max;
+           * However, we know that is_minimal must be true, so the
+           * if-arm of the ternary expression is always executed.
+           */
+	  a_max = s_max/2;
 	  b_max = s_max/2;
 	  break;
 	case 9: case 10: case 11: case 12: case 13:
