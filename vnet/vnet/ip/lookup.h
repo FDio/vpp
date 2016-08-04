@@ -365,16 +365,31 @@ typedef struct {
   u32 * config_index_by_sw_if_index;
 } ip_config_main_t;
 
-//Function type used to register formatting of a custom adjacency formatting
-typedef u8 *(* ip_adjacency_format_fn)(u8 * s,
-                                        struct ip_lookup_main_t * lm,
-                                        ip_adjacency_t *adj);
-
+/**
+ * This structure is used to dynamically register a custom adjacency
+ * for ip lookup.
+ * Typically used with
+ *  VNET_IP4_REGISTER_ADJACENCY or
+ *  VNET_IP6_REGISTER_ADJACENCY macros.
+ */
 typedef struct ip_adj_register_struct {
+  /** Name of the node for this registered adjacency. */
+  char *node_name;
+
+  /** Formatting function for the adjacency.
+   * Variadic arguments given to the function are:
+   * - struct ip_lookup_main_t *
+   * - ip_adjacency_t *adj
+   */
+  format_function_t *fn;
+
+  /**
+   * When the adjacency is registered, the ip-lookup next index will
+   * be written where this pointer points.
+   */
+  u32 *next_index;
+
   struct ip_adj_register_struct *next;
-  char *node_name; //Name of the node for this registered adjacency
-  ip_adjacency_format_fn fn; //Formatting function of this adjacency
-  u32 *next_index; //some place where the next index to be used will be put at init
 } ip_adj_register_t;
 
 typedef struct ip_lookup_main_t {

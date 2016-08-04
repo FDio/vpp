@@ -795,11 +795,11 @@ vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
   return error;
 }
 
-u8 *ila_format_adjacency(u8 * s,
-                        struct ip_lookup_main_t * lm,
-                        ip_adjacency_t *adj)
+u8 *ila_format_adjacency(u8 * s, va_list * va)
 {
   ila_main_t *ilm = &ila_main;
+  __attribute((unused)) ip_lookup_main_t *lm = va_arg (*va, ip_lookup_main_t *);
+  ip_adjacency_t *adj = va_arg (*va, ip_adjacency_t *);
   ila_adj_data_t * ad = (ila_adj_data_t *) & adj->opaque;
   ila_entry_t *ie = pool_elt_at_index (ilm->entries, ad->entry_index);
   return format(s, "idx:%d sir:%U", ad->entry_index, format_ip6_address, &ie->sir_address);
