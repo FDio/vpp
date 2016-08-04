@@ -1045,16 +1045,17 @@ u8 * format_ip_adjacency (u8 * s, va_list * args)
   ip_adj_register_t *reg;
 
   if (adj->lookup_next_index < vec_len (lm->registered_adjacencies))
+  {
+    reg = vec_elt_at_index(lm->registered_adjacencies,
+                           adj->lookup_next_index);
+    if (reg->fn)
     {
-      reg = vec_elt_at_index(lm->registered_adjacencies, 
-			     adj->lookup_next_index);
-      if (reg->fn) 
-	{
-	  s = format(s, " %U", reg->fn, lm, adj);
-	  goto format_done;
-	}
+      s = format(s, " ");
+      s = reg->fn(s, lm, adj);
+      goto format_done;
     }
-  
+  }
+
   switch (adj->lookup_next_index)
     {
     case IP_LOOKUP_NEXT_REWRITE:
