@@ -86,7 +86,8 @@ _(INVALID_EID_TYPE, -92, "Unsupported LSIP EID type")                   \
 _(CANNOT_CREATE_PCAP_FILE, -93, "Cannot create pcap file")              \
 _(INCORRECT_ADJACENCY_TYPE, -94, "Invalid adjacency type for this operation") \
 _(EXCEEDED_NUMBER_OF_RANGES_CAPACITY, -95, "Operation would exceed configured capacity of ranges") \
-_(EXCEEDED_NUMBER_OF_PORTS_CAPACITY, -96, "Operation would exceed capacity of number of ports")
+_(EXCEEDED_NUMBER_OF_PORTS_CAPACITY, -96, "Operation would exceed capacity of number of ports") \
+_(INVALID_ADDRESS_FAMILY, -97, "Invalid address family")
 
 typedef enum
 {

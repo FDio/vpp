@@ -47,3 +47,7 @@ endif
 if ENABLE_ila_PLUGIN
 SUBDIRS += ila-plugin
 endif
+
+if ENABLE_lb_PLUGIN
+SUBDIRS += lb-plugin
+endif
