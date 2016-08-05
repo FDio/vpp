@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_ffba2ee0",
+        "filename": "vnet/vnet/ip/ping.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 623,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-05T20:37:28Z",
+      "side": 1,
+      "message": "This keyword is probably not needed; most other places just identify the presence of IPv4 vs IPv6 based on whether it parses an IPv4 or IPv6 address. eg, something like this:\n\n...\nelse if (unformat(input, \"%U\", unformat_ip4_address, \u0026a4))\n    ping_ip4 \u003d 1;\nelse if (unformat(input, \"%U\", unformat_ip6_address, \u0026a6))\n    ping_ip6 \u003d 1;\n...\n\nThough I just saw the thing below about pinging both v4 and v6 - is thst why you chose this syntax? I still think the keyword thing is slightly redundant.",
+      "range": {
+        "startLine": 622,
+        "startChar": 0,
+        "endLine": 623,
+        "endChar": 5
+      },
+      "revId": "b386213df4097f3214e1b9fbb867372089d59d43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_dfbf6acf",
+        "filename": "vnet/vnet/ip/ping.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 659,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-05T20:37:28Z",
+      "side": 1,
+      "message": "interesting - meaning ping both v4 and v6 simultaneously? groovy.",
+      "range": {
+        "startLine": 659,
+        "startChar": 1,
+        "endLine": 659,
+        "endChar": 48
+      },
+      "revId": "b386213df4097f3214e1b9fbb867372089d59d43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_bfb4b6f2",
+        "filename": "vnet/vnet/ip/ping.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 747,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-05T20:37:28Z",
+      "side": 1,
+      "message": "Given the number of options, really need a long_help :)",
+      "range": {
+        "startLine": 747,
+        "startChar": 2,
+        "endLine": 747,
+        "endChar": 54
+      },
+      "revId": "b386213df4097f3214e1b9fbb867372089d59d43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
