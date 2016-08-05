@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -108,7 +108,7 @@ main (int argc, char **argv)
   int interval = 0;
   f64 *vector_ratep, *rx_ratep, *sig_error_ratep;
   pid_t *vpp_pidp;
-  svmdb_map_args_t _ma, *ma= &_ma;
+  svmdb_map_args_t _ma, *ma = &_ma;
   int uid, gid, rv;
   struct passwd _pw, *pw;
   struct group _grp, *grp;
@@ -116,8 +116,8 @@ main (int argc, char **argv)
 
   unformat_init_command_line (&input, argv);
 
-  uid = geteuid();
-  gid = getegid();
+  uid = geteuid ();
+  gid = getegid ();
 
   while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     {
@@ -128,45 +128,45 @@ main (int argc, char **argv)
       else if (unformat (&input, "interval %d", &interval))
 	;
       else if (unformat (&input, "uid %d", &uid))
-        ;
+	;
       else if (unformat (&input, "gid %d", &gid))
-        ;
+	;
       else if (unformat (&input, "uid %s", &s))
-        {
-          /* lookup the username */
-          pw = NULL;
-          rv = getpwnam_r(s, &_pw, buf, sizeof(buf), &pw);
-          if (rv < 0)
-            {
-              fformat (stderr, "cannot fetch username %s", s);
-              exit (1);
-            }
-          if (pw == NULL)
-            {
-              fformat (stderr, "username %s does not exist", s);
-              exit (1);
-            }
-          vec_free (s);
-          uid = pw->pw_uid;
-        }
+	{
+	  /* lookup the username */
+	  pw = NULL;
+	  rv = getpwnam_r (s, &_pw, buf, sizeof (buf), &pw);
+	  if (rv < 0)
+	    {
+	      fformat (stderr, "cannot fetch username %s", s);
+	      exit (1);
+	    }
+	  if (pw == NULL)
+	    {
+	      fformat (stderr, "username %s does not exist", s);
+	      exit (1);
+	    }
+	  vec_free (s);
+	  uid = pw->pw_uid;
+	}
       else if (unformat (&input, "gid %s", &s))
-        {
-          /* lookup the group name */
-          grp = NULL;
-          rv = getgrnam_r(s, &_grp, buf, sizeof(buf), &grp);
-          if (rv != 0)
-            {
-              fformat (stderr, "cannot fetch group %s", s);
-              exit (1);
-            }
-          if (grp == NULL)
-            {
-              fformat (stderr, "group %s does not exist", s);
-              exit (1);
-            }
-          vec_free (s);
-          gid = grp->gr_gid;
-        }
+	{
+	  /* lookup the group name */
+	  grp = NULL;
+	  rv = getgrnam_r (s, &_grp, buf, sizeof (buf), &grp);
+	  if (rv != 0)
+	    {
+	      fformat (stderr, "cannot fetch group %s", s);
+	      exit (1);
+	    }
+	  if (grp == NULL)
+	    {
+	      fformat (stderr, "group %s does not exist", s);
+	      exit (1);
+	    }
+	  vec_free (s);
+	  gid = grp->gr_gid;
+	}
       else
 	{
 	  fformat (stderr,
@@ -196,7 +196,7 @@ main (int argc, char **argv)
     svmdb_local_get_variable_reference (c, SVMDB_NAMESPACE_VEC,
 					"vpp_sig_error_rate");
 
-  /* 
+  /*
    * Make sure vpp is actually running. Otherwise, there's every
    * chance that the database region will be wiped out by the
    * process monitor script
@@ -211,9 +211,9 @@ main (int argc, char **argv)
 
   do
     {
-      /* 
+      /*
        * Once vpp exits, the svm db region will be recreated...
-       * Can't use kill (*vpp_pidp, 0) if running as non-root / 
+       * Can't use kill (*vpp_pidp, 0) if running as non-root /
        * accessing the shared-VM database via group perms.
        */
       if (*vpp_pidp == 0)

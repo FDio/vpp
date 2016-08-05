@@ -68,6 +68,8 @@
 (defun fix-vlib-register-node () (interactive)
        (fix-initializer "VLIB_REGISTER_NODE *("))
 
+(defun fix-reply-macro2 () (interactive)
+       (fix-initializer "REPLY_MACRO2 *("))
 
 ;; Driver routine which runs the set of functions
 ;; defined above, as well as the bottom boilerplate function
@@ -83,6 +85,7 @@
        (fix-vlib-register-thread)
        (fix-vlib-cli-command)
        (fix-vlib-register-node)
+       (fix-reply-macro2)
        (insert-style-boilerplate))
 
 
@@ -99,5 +102,8 @@
         (message "Processing %s..." (elt argv index))
         (find-file (elt argv index))
         (fd-io-styleify)
-        (setq index (1+ index))
-        (save-buffers-kill-emacs t))))
+        (setq index (1+ index))))
+  (if (> index 0)
+      (save-buffers-kill-emacs t)))
+  
+

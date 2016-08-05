@@ -14,7 +14,7 @@
  */
 /*
  * Add to the bottom of the #include list, or elves will steal your
- * keyboard in the middle of the night! 
+ * keyboard in the middle of the night!
  */
 
 /* Inherited from vlib */
@@ -22,3 +22,11 @@
 
 /* Here are the vpe forwarder specific API definitions */
 #include <vpp-api/vpe.api.h>
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

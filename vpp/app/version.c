@@ -22,31 +22,29 @@
 #include <vnet/devices/dpdk/dpdk.h>
 #endif /* DPDK */
 
-static char * vpe_version_string = 
-    "vpp v" VPP_BUILD_VER 
-    " built by " VPP_BUILD_USER 
-    " on " VPP_BUILD_HOST 
-    " at " VPP_BUILD_DATE;
+static char *vpe_version_string =
+  "vpp v" VPP_BUILD_VER
+  " built by " VPP_BUILD_USER " on " VPP_BUILD_HOST " at " VPP_BUILD_DATE;
 
-static char * vpe_compiler =
+static char *vpe_compiler =
 #if defined(__INTEL_COMPILER)
 #define __(x) #x
 #define _(x) __(x)
-	"icc " _(__INTEL_COMPILER) " (" __VERSION__ ")";
+  "icc " _(__INTEL_COMPILER) " (" __VERSION__ ")";
 #undef _
 #undef __
 #elif defined(__clang__)
-	"Clang/LLVM " __clang_version__;
+  "Clang/LLVM " __clang_version__;
 #elif defined (__GNUC__)
-	"GCC " __VERSION__;
+  "GCC " __VERSION__;
 #else
-	"unknown compiler";
+  "unknown compiler";
 #endif
 
 static clib_error_t *
 show_vpe_version_command_fn (vlib_main_t * vm,
-		 unformat_input_t * input,
-		 vlib_cli_command_t * cmd)
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
 {
   if (unformat (input, "verbose"))
     {
@@ -60,9 +58,9 @@ show_vpe_version_command_fn (vlib_main_t * vm,
       _("CPU model name", "%U", format_cpu_model_name);
       _("CPU microarchitecture", "%U", format_cpu_uarch);
       _("CPU flags", "%U", format_cpu_flags);
-      _("Current PID", "%d", getpid());
+      _("Current PID", "%d", getpid ());
 #if DPDK > 0
-      _("DPDK Version", "%s", rte_version());
+      _("DPDK Version", "%s", rte_version ());
       _("DPDK EAL init args", "%s", dpdk_config_main.eal_init_args_str);
 #endif
 #undef _
@@ -72,22 +70,36 @@ show_vpe_version_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .path = "show version",
   .short_help = "show version information",
   .function = show_vpe_version_command_fn,
 };
+/* *INDENT-ON* */
 
-char * vpe_api_get_build_directory (void) 
+char *
+vpe_api_get_build_directory (void)
 {
   return VPP_BUILD_TOPDIR;
 }
 
-char * vpe_api_get_version (void) 
+char *
+vpe_api_get_version (void)
 {
   return VPP_BUILD_VER;
 }
-char * vpe_api_get_build_date (void) 
+
+char *
+vpe_api_get_build_date (void)
 {
   return VPP_BUILD_DATE;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

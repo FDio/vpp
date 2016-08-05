@@ -18,11 +18,20 @@
 #include <vppinfra/byte_order.h>
 
 #define vl_msg_id(n,h) n,
-typedef enum {
-    VL_ILLEGAL_MESSAGE_ID=0,
+typedef enum
+{
+  VL_ILLEGAL_MESSAGE_ID = 0,
 #include <vpp-api/vpe_all_api_h.h>
-    VL_MSG_FIRST_AVAILABLE,
+  VL_MSG_FIRST_AVAILABLE,
 } vl_msg_id_t;
 #undef vl_msg_id
 
 #endif /* included_vpe_msg_enum_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
