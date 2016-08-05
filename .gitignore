@@ -66,3 +66,6 @@ GTAGS
 
 # Generated documentation
 /build-root/docs
+
+# indent backup files
+*.BAK
