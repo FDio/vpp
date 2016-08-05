@@ -209,7 +209,7 @@ void vnet_rewrite_for_sw_interface (vnet_main_t * vnm,
   ASSERT (hc->set_rewrite);
   n_rw_tmp = hc->set_rewrite (vnm, sw_if_index, packet_type, dst_address, rw_tmp, max_rewrite_bytes);
 
-  ASSERT (n_rw_tmp >= 0 && n_rw_tmp < max_rewrite_bytes);
+  ASSERT (n_rw_tmp < max_rewrite_bytes);
   vnet_rewrite_set_data_internal (rw, max_rewrite_bytes, rw_tmp, n_rw_tmp);
 }
 

@@ -242,8 +242,8 @@ udp46_input_inline (vlib_main_t * vm,
                                                    b0, sizeof (*tr));
               if (b0->error != node->errors[UDP_ERROR_LENGTH_ERROR])
                 {
-                  tr->src_port = h0->src_port;
-                  tr->dst_port = h0->dst_port;
+                  tr->src_port = h0 ? h0->src_port : 0;
+                  tr->dst_port = h0 ? h0->dst_port : 0;
                   tr->bound = (next0 != UDP_INPUT_NEXT_ICMP4_ERROR &&
                                next0 != UDP_INPUT_NEXT_ICMP6_ERROR);
                 }
@@ -254,8 +254,8 @@ udp46_input_inline (vlib_main_t * vm,
                                                    b1, sizeof (*tr));
               if (b1->error != node->errors[UDP_ERROR_LENGTH_ERROR])
                 {
-                  tr->src_port = h1->src_port;
-                  tr->dst_port = h1->dst_port;
+                  tr->src_port = h1 ? h1->src_port : 0;
+                  tr->dst_port = h1 ? h1->dst_port : 0;
                   tr->bound = (next1 != UDP_INPUT_NEXT_ICMP4_ERROR &&
                                next1 != UDP_INPUT_NEXT_ICMP6_ERROR);
                 }

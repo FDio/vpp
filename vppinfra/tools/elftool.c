@@ -358,10 +358,12 @@ set_interpreter_rpath (elf_tool_main_t * tm)
     }
 
  done:
-  if (mmap_length > 0)
+  if (mmap_length > 0 && idp)
     munmap (idp, mmap_length);
-  close (ifd);
-  close (ofd);
+  if (ifd >= 0)
+    close (ifd);
+  if (ofd >= 0)
+    close (ofd);
   return error;
 }
 
@@ -408,7 +410,10 @@ int main (int argc, char * argv[])
     }
 
   if (! tm->input_file)
-    clib_error ("no input file");
+    {
+      error = clib_error_return (0, "no input file");
+      goto done;
+    }
 
   /* Do the typical case a stone-simple way... */
   if (tm->quiet && tm->set_interpreter && tm->set_rpath && tm->output_file)

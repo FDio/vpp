@@ -724,8 +724,10 @@ find_or_add_shared_secret (ip6_sr_main_t * sm, u8 * secret, u32 * indexp)
       for (i = 0; i < vec_len (sm->hmac_keys); i++)
         {
           if (sm->hmac_keys[i].shared_secret == 0)
-            key = sm->hmac_keys + i;
-          goto found;
+            {
+              key = sm->hmac_keys + i;
+              goto found;
+            }
         }
       vec_validate (sm->hmac_keys, i);
       key = sm->hmac_keys + i;
@@ -970,7 +972,6 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   memset(&adj, 0, sizeof (adj));
 
   /* Create an adjacency and add to v6 fib */
-  adj.lookup_next_index = IP_LOOKUP_NEXT_REWRITE;
   adj.lookup_next_index = sm->ip6_lookup_sr_next_index;
   adj.explicit_fib_index = ~0;
   
@@ -1020,7 +1021,9 @@ int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
 	  p=hash_get_mem (sm->policy_index_by_policy_name, a->policy_name);
 	}
       vec_add1 (pt->tunnel_indices, t - sm->tunnels);
-      t->policy_index = p[0]; /* equiv. to (pt - sm->policies) */
+      if (p == 0)
+        clib_warning ("p is NULL!");
+      t->policy_index = p ? p[0] : ~0; /* equiv. to (pt - sm->policies) */
     }
 
   if (a->name)

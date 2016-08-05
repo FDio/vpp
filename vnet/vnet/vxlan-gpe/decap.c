@@ -73,7 +73,10 @@ vxlan_gpe_input (vlib_main_t * vm,
   u32 cpu_index = os_get_cpu_number ();
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
-  memset (&last_key4, 0xff, sizeof(last_key4));
+  if (is_ip4)
+      memset (&last_key4, 0xff, sizeof(last_key4));
+  else
+      memset (&last_key6, 0xff, sizeof(last_key6));
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;

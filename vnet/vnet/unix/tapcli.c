@@ -823,7 +823,8 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
 
  error:
   close (dev_net_tun_fd);
-  close (dev_tap_fd);
+  if (dev_tap_fd >= 0)
+      close (dev_tap_fd);
 
   return rv;
 }

@@ -468,7 +468,7 @@ sse2_pol_convert_cfg_rates_to_hw (sse2_qos_pol_cfg_params_st *cfg,
                             &exp, &hi_mant);
     }
 
-    denom = (1 << exp);
+    denom = (1ULL << exp);
     if (hi_rate == eir_hw) {
         hw->peak_rate_man = (uint16_t)hi_mant;
         rc = sse2_qos_pol_round((uint64_t)cir_hw, denom, &rnd_value,

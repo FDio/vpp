@@ -582,6 +582,8 @@ void elog_merge (elog_main_t * dst, u8 * dst_tag,
   elog_track_t newt;
   int i;
 
+  memset(&newt, 0, sizeof (newt));
+
   elog_get_events (src);
   elog_get_events (dst);
 

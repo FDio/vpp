@@ -304,17 +304,17 @@ sr_replicate_node_fn (vlib_main_t * vm,
               sr_replicate_trace_t *tr = vlib_add_trace (vm, node,
                                                        b0, sizeof (*tr));
               tr->tunnel_index = t0 - sm->tunnels;
+              tr->length = 0;
 	      if (hdr_ip0)
 		{
 		  memcpy (tr->src.as_u8, hdr_ip0->src_address.as_u8,
                       sizeof (tr->src.as_u8));
 		  memcpy (tr->dst.as_u8, hdr_ip0->dst_address.as_u8,
                       sizeof (tr->dst.as_u8));
+                  if (hdr_ip0->payload_length)
+                      tr->length = clib_net_to_host_u16
+                          (hdr_ip0->payload_length);
 		}
-	      if (hdr_ip0->payload_length)
-		tr->length = clib_net_to_host_u16(hdr_ip0->payload_length);
-	      else
-		tr->length = 0;
               tr->next_index = next_index;
               memcpy (tr->sr, hdr_sr0, sizeof (tr->sr));
             }

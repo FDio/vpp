@@ -1736,6 +1736,7 @@ static u8 * format_x86_reg_operand (u8 * s, va_list * va)
     {
     default:
       ASSERT (0);
+      break;
 
     case 'x':
       ASSERT (reg < 16);
@@ -1816,6 +1817,7 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
     /* Memory or reg field from modrm byte. */
     case 'M':
       ASSERT (p->flags & X86_INSN_IS_ADDRESS);
+      /* FALLTHROUGH */
     case 'E':
       if (p->flags & X86_INSN_IS_ADDRESS)
 	s = format (s, "%U", format_x86_mem_operand, p);
@@ -1836,7 +1838,7 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
     case 'I':
       {
 	u32 l = x86_insn_log2_immediate_bytes (p, insn);
-	i64 mask = pow2_mask (8 << l);
+	i64 mask = pow2_mask (8ULL << l);
 	s = format (s, "$0x%Lx", p->immediate & mask);
       }
       break;

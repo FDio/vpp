@@ -399,7 +399,7 @@ int vnet_mpls_add_del_decap (u32 rx_fib_id,
       tx_fib_index_or_output_swif_index = tx_fib_id;
     }
 
-  key = ((u64)rx_fib_index<<32) | ((u64) (label_host_byte_order<<12))
+  key = ((u64) rx_fib_index<<32) | ((u64) label_host_byte_order<<12)
     | ((u64) s_bit<<8);
 
   p = hash_get (mm->mpls_decap_by_rx_fib_and_label, key);
@@ -748,8 +748,8 @@ int mpls_fib_reset_labels (u32 fib_id)
   
   vec_foreach (s, records)
     {
-      key = ((u64)fib_index <<32) | ((u64)(s->dest<<12)) |
-        ((u64)s->s_bit);
+       key = ((u64) fib_index <<32) | ((u64) s->dest<<12) |
+        ((u64) s->s_bit);
       
       hash_unset (mm->mpls_decap_by_rx_fib_and_label, key);
       pool_put_index (mm->decaps, s->entry_index);

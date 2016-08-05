@@ -82,6 +82,9 @@ path_search (char * file)
   if (file[0] == '.' || file[0] == '/')
     return file;
 
+  if (getenv("PATH") == 0)
+    return file;
+
   ps.path = split_string (getenv ("PATH"), ':');
 
   for (i = 0; i < vec_len (ps.path); i++)
@@ -231,7 +234,10 @@ add_section (struct dl_phdr_info * info, size_t size, void * opaque)
 
       name = path_search (cem->exec_path);
       if (! name)
-	clib_error ("failed to find %s on PATH", cem->exec_path);
+        {
+          clib_error ("failed to find %s on PATH", cem->exec_path);
+          return 0;
+        }
       addr = 0;
     }
 

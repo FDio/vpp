@@ -559,7 +559,8 @@ format_elf_main (u8 * s, va_list * args)
     s = format (s, "\nSections %d at file offset 0x%Lx-0x%Lx:\n",
 		fh->section_header_count,
 		fh->section_header_file_offset,
-		fh->section_header_file_offset + fh->section_header_count * fh->section_header_size);
+		fh->section_header_file_offset + 
+                (u64) fh->section_header_count * fh->section_header_size);
     s = format (s, "%U\n", format_elf_section, em, 0);
     vec_foreach (h, copy)
       s = format (s, "%U\n", format_elf_section, em, h);
@@ -1604,7 +1605,7 @@ static void layout_sections (elf_main_t * em)
 
       fh->section_header_file_offset = file_offset;
       fh->section_header_count = vec_len (em->sections) - n_deleted_sections;
-      file_offset += fh->section_header_count * fh->section_header_size;
+      file_offset += (u64) fh->section_header_count * fh->section_header_size;
     }
 
     {
@@ -1809,7 +1810,11 @@ clib_error_t * elf_write_file (elf_main_t * em, char * file_name)
 	  continue;
 
 	if (fseek (f, s->header.file_offset, SEEK_SET) < 0)
-	  return clib_error_return_unix (0, "fseek 0x%Lx", s->header.file_offset);
+          {
+            fclose(f);
+            return clib_error_return_unix (0, "fseek 0x%Lx", 
+                                           s->header.file_offset);
+          }
 
 	if (s->header.type == ELF_SECTION_NO_BITS)
 	  /* don't write for .bss sections */;

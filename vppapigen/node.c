@@ -1034,7 +1034,7 @@ char *fixup_input_filename(void)
     if (*cp == '/')
         cp++;
 
-    strcpy (tmpbuf, cp);
+    strncpy (tmpbuf, cp, sizeof(tmpbuf)-1);
 
     cp = tmpbuf;
 

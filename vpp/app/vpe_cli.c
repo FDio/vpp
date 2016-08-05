@@ -67,6 +67,7 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
         ip_adjacency_t adj;
         u32 adj_index;
         
+        memset(&adj, 0, sizeof(adj));
         adj.lookup_next_index = IP_LOOKUP_NEXT_REWRITE;
         
         vnet_rewrite_for_sw_interface

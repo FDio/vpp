@@ -390,7 +390,8 @@ int main (int argc, char **argv)
     }
     else {
         fclose (ifp);
-        fclose (ofp);
+        if (ofp)
+            fclose (ofp);
         if (ofile) {
             printf ("Removing %s\n", ofile);
             unlink (ofile);
@@ -426,6 +427,12 @@ void yyerror (char *s)
 
 static char namebuf [MAXNAME];
 
+static inline char
+getc_char (FILE *ifp)
+{
+    return ((char)(getc(ifp) & 0x7f));
+}
+
 /*
  * yylex (well, yylex_1: The real yylex below does crc-hackery)
  */
@@ -433,7 +440,6 @@ static int yylex_1 (void)
 {
     int nameidx=0;
     char c;
-    int at_bol=1;
     enum { LP_INITIAL_WHITESPACE, LP_LINE_NUMBER,
 	   LP_PRE_FILENAME_WHITESPACE, LP_FILENAME,
 	   LP_POST_FILENAME,
@@ -446,23 +452,16 @@ static int yylex_1 (void)
          * START state -- looking for something interesting 
          */
     case START_STATE:
-        c = getc (ifp);
+        c = getc_char (ifp);
         if (feof (ifp))
             return (EOF);
 
         switch (c) {
         case '\n':
             the_lexer_linenumber++;
-            at_bol=1;
             goto again;
 
         case '#':
-            if (!at_bol) {
-                fprintf (stderr, "unknown token /%c at line %d\n",
-                         c, the_lexer_linenumber);
-                return (BARF);
-            }
-            
             the_lexer_state = LINE_PRAGMA_STATE;
             lp_substate = LP_INITIAL_WHITESPACE;
             goto again;
@@ -507,7 +506,7 @@ static int yylex_1 (void)
             goto again;
 
         case '/':
-            c = getc (ifp);
+            c = getc_char (ifp);
             if (feof (ifp))
                 return (EOF);
 
@@ -524,7 +523,7 @@ static int yylex_1 (void)
             }
 
         case '\\':
-            c = getc (ifp);
+            c = getc_char (ifp);
             if (feof (ifp))
                 return (EOF);
             
@@ -552,7 +551,7 @@ static int yylex_1 (void)
          * NAME state -- eat the rest of a name 
          */
     case NAME_STATE:
-        c = getc (ifp);
+        c = getc_char (ifp);
         if (feof (ifp))
             return (EOF);
         
@@ -573,7 +572,7 @@ static int yylex_1 (void)
          * NUMBER state -- eat the rest of a number
          */
     case NUMBER_STATE:
-        c = getc (ifp);
+        c = getc_char (ifp);
         if (feof (ifp))
             return (EOF);
         
@@ -595,11 +594,11 @@ static int yylex_1 (void)
          * C_COMMENT state -- eat a peach
          */
     case C_COMMENT_STATE:
-        c = getc (ifp);
+        c = getc_char (ifp);
         if (feof (ifp))
             return (EOF);
         if (c == '*') {
-            c = getc (ifp);
+            c = getc_char (ifp);
             if (feof (ifp))
                 return (EOF);
             if (c == '/') {
@@ -616,7 +615,7 @@ static int yylex_1 (void)
          */
 
     case CPP_COMMENT_STATE:
-        c = getc (ifp);
+        c = getc_char (ifp);
         if (feof (ifp))
             return (EOF);
         if (c == '\n') {
@@ -627,12 +626,12 @@ static int yylex_1 (void)
         goto again;
 
     case STRING_STATE:
-        c = getc (ifp);
+        c = getc_char (ifp);
         if (feof (ifp))
             return (EOF);
         switch (c) {
         case '\\':
-            c = getc (ifp);
+            c = getc_char (ifp);
             if (feof (ifp))
                 return (EOF);
             namebuf[nameidx++] = c;
@@ -658,12 +657,12 @@ static int yylex_1 (void)
         break;
 
     case HELPER_STATE:
-        c = getc (ifp);
+        c = getc_char (ifp);
         if (feof (ifp))
             return (EOF);
         switch (c) {
         case '\\':
-            c = getc (ifp);
+            c = getc_char (ifp);
             if (feof (ifp))
                 return (EOF);
             namebuf[nameidx] = c;
@@ -703,7 +702,7 @@ static int yylex_1 (void)
         switch (lp_substate) {
 
         case LP_INITIAL_WHITESPACE: /* no number seen yet */
-            c = getc(ifp);
+            c = getc_char(ifp);
             if (feof(ifp))
                 return(EOF);
             if (c >= '0' && c <= '9') {
@@ -719,7 +718,7 @@ static int yylex_1 (void)
 	    goto again;
 
         case LP_LINE_NUMBER:	/* eating linenumber */
-            c = getc(ifp);
+            c = getc_char(ifp);
             if (feof(ifp))
                 return(EOF);
             if (c >= '0' && c <= '9') {
@@ -736,7 +735,7 @@ static int yylex_1 (void)
             goto again;
 
         case LP_PRE_FILENAME_WHITESPACE: /* awaiting filename */
-            c = getc(ifp);
+            c = getc_char(ifp);
             if (feof(ifp))
                 return(EOF);
             
@@ -753,7 +752,7 @@ static int yylex_1 (void)
             goto again;
 
         case LP_FILENAME:	/* eating filename */
-            c = getc(ifp);
+            c = getc_char(ifp);
             if (feof(ifp))
                 return(EOF);
 
@@ -769,7 +768,7 @@ static int yylex_1 (void)
 
         case LP_POST_FILENAME:	/* ignoring rest of line */
         case LP_OTHER:
-            c = getc(ifp);
+            c = getc_char(ifp);
             if (feof(ifp))
                 return(EOF);
 
@@ -789,7 +788,6 @@ static int yylex_1 (void)
 		}
 	    lp_end_of_line:
                 the_lexer_state = START_STATE;
-                at_bol = 1;
                 nameidx = 0;
             }
             goto again;
@@ -986,6 +984,11 @@ char *sxerox (const char *s)
     char *rv;
 
     rv = (char *) malloc (len+1);
+    if (rv == 0) {
+        fprintf(stderr, "Out of memory...");
+        exit (1);
+    }
+        
     strcpy (rv, s);
     return (rv);
 }

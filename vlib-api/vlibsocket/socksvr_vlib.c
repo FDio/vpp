@@ -575,12 +575,14 @@ socksvr_api_init (vlib_main_t * vm)
   rv = ioctl (sockfd, FIONBIO, &one);
   if (rv < 0)
     {
+      close (sockfd);
       return clib_error_return_unix (0, "FIONBIO");
     }
 
   rv = setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one));
   if (rv < 0)
     {
+      close (sockfd);
       return clib_error_return_unix (0, "SO_REUSEADDR");
     }
 
