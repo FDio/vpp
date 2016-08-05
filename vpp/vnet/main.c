@@ -190,6 +190,10 @@ int main (int argc, char * argv[])
         argc = argc_;
         argv = argv_;
       }
+	else {
+		fprintf(stderr, "usage: vpp -c /etc/vpp/startup.conf\n");
+		return 1;
+	}
 
     /* 
      * Look for and parse the "heapsize" config parameter.
