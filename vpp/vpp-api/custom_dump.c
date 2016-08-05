@@ -2188,6 +2188,351 @@ static void *vl_api_ip_source_and_port_range_check_interface_add_del_t_print
   FINISH;
 }
 
+static void *vl_api_lisp_enable_disable_t_print
+  (vl_api_lisp_enable_disable_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_enable_disable %s",
+              mp->is_en ? "enable" : "disable");
+
+  FINISH;
+}
+
+static void *vl_api_lisp_gpe_add_del_iface_t_print
+  (vl_api_lisp_gpe_add_del_iface_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_gpe_add_del_iface ");
+
+  s = format (s, "%s ", mp->is_add ? "up" : "down");
+  s = format (s, "vni %d ", mp->vni);
+  s = format (s, "%s %d ", mp->is_l2 ? "bd_id" : "table_id", mp->dp_table);
+
+  FINISH;
+}
+
+static void *vl_api_lisp_pitr_set_locator_set_t_print
+  (vl_api_lisp_pitr_set_locator_set_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_pitr_set_locator_set ");
+
+  if (mp->is_add)
+    s = format (s, "locator-set %s ", mp->ls_name);
+  else
+    s = format (s, "del");
+
+  FINISH;
+}
+
+static u8 * format_lisp_flat_eid (u8 * s, va_list * args)
+{
+  u32 type = va_arg (*args, u32);
+  u8 * eid = va_arg (*args, u8 *);
+  u32 eid_len = va_arg (*args, u32);
+
+  switch (type)
+    {
+    case 0:
+      return format (s, "%U/%d", format_ip4_address, eid, eid_len);
+    case 1:
+      return format (s, "%U/%d", format_ip6_address, eid, eid_len);
+    case 3:
+      return format (s, "%U", format_ethernet_address, eid);
+    }
+  return 0;
+}
+
+static u8 * format_lisp_eid_vat (u8 * s, va_list * args)
+{
+  u32 type = va_arg (*args, u32);
+  u8 * eid = va_arg (*args, u8 *);
+  u32 eid_len = va_arg (*args, u32);
+  u8 * seid = va_arg (*args, u8 *);
+  u32 seid_len = va_arg (*args, u32);
+  u32 is_src_dst = va_arg (*args, u32);
+
+  if (is_src_dst)
+    s = format (s, "%U|", format_lisp_flat_eid, type, seid, seid_len);
+
+  s = format (s, "%U", format_lisp_flat_eid, type, eid, eid_len);
+
+  return s;
+}
+
+/** Used for transferring locators via VPP API */
+typedef CLIB_PACKED(struct
+{
+  u8 is_ip4; /**< is locator an IPv4 address */
+  u8 priority; /**< locator priority */
+  u8 weight;   /**< locator weight */
+  u8 addr[16]; /**< IPv4/IPv6 address */
+}) rloc_t;
+
+static u8 * format_rloc (u8 * s, va_list * args)
+{
+  rloc_t * rloc = va_arg (*args, rloc_t *);
+
+  if (rloc->is_ip4)
+    s = format (s, "%U ", format_ip4_address, rloc->addr);
+  else
+    s = format (s, "%U ", format_ip6_address, rloc->addr);
+
+  s = format (s, "p %d w %d", rloc->priority, rloc->weight);
+
+  return s;
+}
+
+static void *vl_api_lisp_add_del_remote_mapping_t_print
+  (vl_api_lisp_add_del_remote_mapping_t * mp, void * handle)
+{
+  u8 * s;
+  u32 i, rloc_num = 0;
+
+  s = format (0, "SCRIPT: lisp_add_del_remote_mapping ");
+
+  if (mp->del_all)
+    s = format (s, "del-all ");
+
+  s = format (s, "%s ", mp->is_add ? "add" : "del");
+  s = format (s, "vni %d ", clib_net_to_host_u32 (mp->vni));
+
+  s = format (s, "deid %U ", format_lisp_eid_vat,
+              mp->eid_type, mp->eid, mp->eid_len, mp->seid, mp->seid_len,
+              mp->is_src_dst);
+
+  rloc_num = mp->rloc_num;
+
+  if (0 == rloc_num)
+    s = format (s, "action %d", mp->action);
+  else
+    {
+      rloc_t * rloc = (rloc_t *) mp->rlocs;
+      for (i = 0; i < rloc_num; i++)
+        s = format (s, "%U ", format_rloc, &rloc[i]);
+    }
+
+  FINISH;
+}
+
+static void *vl_api_lisp_add_del_adjacency_t_print
+  (vl_api_lisp_add_del_adjacency_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_add_del_adjacency ");
+
+  s = format (s, "%s ", mp->is_add ? "add" : "del");
+  s = format (s, "vni %d ", clib_net_to_host_u32 (mp->vni));
+  s = format (s, "deid %U seid %U ",
+              format_lisp_flat_eid, mp->eid_type, mp->deid, mp->deid_len,
+              format_lisp_flat_eid, mp->eid_type, mp->seid, mp->seid_len);
+
+  FINISH;
+}
+
+static void *vl_api_lisp_add_del_map_request_itr_rlocs_t_print
+  (vl_api_lisp_add_del_map_request_itr_rlocs_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_add_del_map_request_itr_rlocs ");
+
+  if (mp->is_add)
+    s = format (s, "%s", mp->locator_set_name);
+  else
+    s = format (s, "del");
+
+  FINISH;
+}
+
+static void *vl_api_lisp_eid_table_add_del_map_t_print
+  (vl_api_lisp_eid_table_add_del_map_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_eid_table_add_del_map ");
+
+  if (!mp->is_add)
+    s = format (s, "del ");
+
+  s = format (s, "vni %d ", clib_net_to_host_u32 (mp->vni));
+  s = format (s, "%s %d ",
+              mp->is_l2 ? "bd_index" : "vrf",
+              clib_net_to_host_u32 (mp->dp_table));
+  FINISH;
+}
+
+static void *vl_api_lisp_add_del_local_eid_t_print
+  (vl_api_lisp_add_del_local_eid_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_add_del_local_eid ");
+
+  if (!mp->is_add)
+    s = format (s, "del ");
+
+  s = format (s, "vni %d ", clib_net_to_host_u32 (mp->vni));
+  s = format (s, "eid %U ", format_lisp_flat_eid, mp->eid_type, mp->eid,
+              mp->prefix_len);
+  s = format (s, "locator-set %s ", mp->locator_set_name);
+  FINISH;
+}
+
+static void *vl_api_lisp_gpe_add_del_fwd_entry_t_print
+  (vl_api_lisp_gpe_add_del_fwd_entry_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_gpe_add_del_fwd_entry TODO");
+
+  FINISH;
+}
+
+static void *vl_api_lisp_add_del_map_resolver_t_print
+  (vl_api_lisp_add_del_map_resolver_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_add_del_map_resolver ");
+
+  if (!mp->is_add)
+    s = format (s, "del ");
+
+  if (mp->is_ipv6)
+    s = format (s, "%U ", format_ip6_address, mp->ip_address);
+  else
+    s = format (s, "%U ", format_ip4_address, mp->ip_address);
+
+  FINISH;
+}
+
+static void *vl_api_lisp_gpe_enable_disable_t_print
+  (vl_api_lisp_gpe_enable_disable_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_gpe_enable_disable ");
+
+  s = format (s, "%s ", mp->is_en ? "enable" : "disable");
+
+  FINISH;
+}
+
+typedef CLIB_PACKED(struct
+{
+  u32 sw_if_index; /**< locator sw_if_index */
+  u8 priority; /**< locator priority */
+  u8 weight;   /**< locator weight */
+}) ls_locator_t;
+
+static u8 *
+format_locator (u8 * s, va_list * args)
+{
+  ls_locator_t * l = va_arg (*args, ls_locator_t *);
+
+  return format (s, "sw_if_index %d p %d w %d",
+                 l->sw_if_index, l->priority, l->weight);
+}
+
+static void *vl_api_lisp_add_del_locator_set_t_print
+  (vl_api_lisp_add_del_locator_set_t * mp, void * handle)
+{
+  u8 * s;
+  u32 loc_num = 0, i;
+  ls_locator_t * locs;
+
+  s = format (0, "SCRIPT: lisp_add_del_locator_set ");
+
+  if (!mp->is_add)
+    s = format (s, "del ");
+
+  s = format (s, "locator-set %s ", mp->locator_set_name);
+
+  loc_num = mp->locator_num;
+  locs = (ls_locator_t *) mp->locators;
+
+  for (i = 0; i < loc_num; i++)
+    s = format (s, "%U ", format_locator, &locs[i]);
+
+  FINISH;
+}
+
+static void *vl_api_lisp_add_del_locator_t_print
+  (vl_api_lisp_add_del_locator_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_add_del_locator ");
+
+  if (!mp->is_add)
+    s = format (s, "del ");
+
+  s = format (s, "locator-set %s ", mp->locator_set_name);
+  s = format (s, "sw_if_index %d ", mp->sw_if_index);
+  s = format (s, "p %d w %d ", mp->priority, mp->weight);
+
+  FINISH;
+}
+
+static void *vl_api_lisp_locator_set_dump_t_print
+  (vl_api_lisp_locator_set_dump_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_locator_set_dump ");
+
+  /* not possible to reconstruct original VAT command */
+
+  FINISH;
+}
+
+static void *vl_api_lisp_eid_table_dump_t_print
+  (vl_api_lisp_eid_table_dump_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: lisp_eid_table_dump ");
+
+  if (mp->eid_set)
+    {
+      s = format (s, "vni %d ", clib_net_to_host_u32 (mp->vni));
+      s = format (s, "eid %U ", format_lisp_flat_eid, mp->eid_type,
+                  mp->eid, mp->prefix_length);
+      switch (mp->filter)
+        {
+        case 1:
+          s = format (s, "local ");
+          break;
+        case 2:
+          s = format (s, "remote ");
+          break;
+        }
+    }
+
+  FINISH;
+}
+
+#define foreach_custom_print_no_arg_function                            \
+_(lisp_eid_table_map_dump)                                              \
+_(lisp_map_resolver_dump)                                               \
+_(lisp_gpe_tunnel_dump)
+
+#define _(f)                                                            \
+static void * vl_api_ ## f ## _t_print                                  \
+  (vl_api_ ## f ## _t * mp, void * handle)                              \
+{                                                                       \
+  u8 * s;                                                               \
+  s = format (0, "SCRIPT: " #f );                                       \
+  FINISH;                                                               \
+}
+foreach_custom_print_no_arg_function
+#undef _
+
 #define foreach_custom_print_function                                   \
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
@@ -2297,7 +2642,26 @@ _(POLICER_CLASSIFY_DUMP, policer_classify_dump)                         \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
   ip_source_and_port_range_check_add_del)                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
-  ip_source_and_port_range_check_interface_add_del)
+  ip_source_and_port_range_check_interface_add_del)                     \
+_(LISP_ENABLE_DISABLE, lisp_enable_disable)                             \
+_(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
+_(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
+_(LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set)                 \
+_(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping)             \
+_(LISP_ADD_DEL_ADJACENCY, lisp_add_del_adjacency)                       \
+_(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
+  lisp_add_del_map_request_itr_rlocs)                                   \
+_(LISP_EID_TABLE_ADD_DEL_MAP, lisp_eid_table_add_del_map)               \
+_(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
+_(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry)               \
+_(LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set)                   \
+_(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver)                 \
+_(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
+_(LISP_EID_TABLE_DUMP, lisp_eid_table_dump)                             \
+_(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
+_(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
+_(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
+_(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)
 
 
 void
