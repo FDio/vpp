@@ -38,7 +38,9 @@
 #ifndef included_clib_bitmap_h
 #define included_clib_bitmap_h
 
-/* Bitmaps built as vectors of machine words. */
+/** \file
+    Bitmaps built as vectors of machine words
+*/    
 
 #include <vppinfra/vec.h>
 #include <vppinfra/random.h>
@@ -47,7 +49,10 @@
 
 typedef uword clib_bitmap_t;
 
-/* Returns 1 if the entire bitmap is zero, 0 otherwise */
+/** predicate function; is an entire bitmap empty?
+    @param ai - pointer to a bitmap
+    @returns 1 if the entire bitmap is zero, 0 otherwise
+*/
 always_inline uword
 clib_bitmap_is_zero (uword * ai)
 {
@@ -58,7 +63,11 @@ clib_bitmap_is_zero (uword * ai)
   return 1;
 }
 
-/* Returns 1 if two bitmaps are equal, 0 otherwise */
+/** predicate function; are two bitmaps equal?
+    @param a - pointer to a bitmap
+    @param b - pointer to a bitmap
+    @returns 1 if the bitmaps are equal, 0 otherwise
+*/
 always_inline uword
 clib_bitmap_is_equal (uword * a, uword * b)
 {
@@ -71,19 +80,32 @@ clib_bitmap_is_equal (uword * a, uword * b)
   return 1;
 }
 
-/* Duplicate a bitmap */
+/** Duplicate a bitmap
+    @param ai - pointer to a bitmap
+    @returns a duplicate of the bitmap
+*/
 #define clib_bitmap_dup(v) vec_dup(v)
 
-/* Free a bitmap */
+/** Free a bitmap
+    @param v - pointer to the bitmap to free
+*/
 #define clib_bitmap_free(v) vec_free(v)
 
-/* Returns the number of bytes in a bitmap */
+/** Number of bytes in a bitmap
+    @param v - pointer to the bitmap
+*/
 #define clib_bitmap_bytes(v) vec_bytes(v)
 
-/* Clear a bitmap */
+/** Clear a bitmap
+    @param v - pointer to the bitmap to clear
+*/
 #define clib_bitmap_zero(v) vec_zero(v)
 
-/* Allocate bitmap with given number of bits. */
+/** Allocate a bitmap with the supplied number of bits
+    @param [out] v - the resulting bitmap
+    @param n_bits - the required number of bits
+*/
+
 #define clib_bitmap_alloc(v,n_bits) \
   v = vec_new (uword, ((n_bits) + BITS (uword) - 1) / BITS (uword))
 
@@ -108,8 +130,13 @@ _clib_bitmap_remove_trailing_zeros (uword * a)
   return a;
 }
 
-/* Sets the ith bit of a bitmap to new_value.  Returns old value. 
-   No sanity checking. Be careful. */
+/** Sets the ith bit of a bitmap to new_value.
+    No sanity checking. Be careful. 
+    @param a - pointer to the bitmap
+    @param i - the bit position to interrogate
+    @param new_value - new value for the bit
+    @returns the old value of the bit
+*/
 always_inline uword
 clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
 {
@@ -129,7 +156,13 @@ clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
   return old_value;
 }
 
-/* Set bit I to value (either non-zero or zero). */
+/** Sets the ith bit of a bitmap to new_value
+    Removes trailing zeros from the bitmap
+    @param a - pointer to the bitmap
+    @param i - the bit position to interrogate
+    @param new_value - new value for the bit
+    @returns the old value of the bit
+*/
 always_inline uword *
 clib_bitmap_set (uword * ai, uword i, uword value)
 {
@@ -155,7 +188,11 @@ clib_bitmap_set (uword * ai, uword i, uword value)
   return ai;
 }
 
-/* Fetch bit I. */
+/** Gets the ith bit value from a bitmap
+    @param ai - pointer to the bitmap
+    @param i - the bit position to interrogate
+    @returns the indicated bit value
+*/
 always_inline uword
 clib_bitmap_get (uword * ai, uword i)
 {
@@ -164,9 +201,12 @@ clib_bitmap_get (uword * ai, uword i)
   return i0 < vec_len (ai) && 0 != ((ai[i0] >> i1) & 1);
 }
 
-/* Fetch bit I. 
-
-    No sanity checking. Be careful.
+/** Gets the ith bit value from a bitmap
+    Does not sanity-check the bit position. Be careful.
+    @param ai - pointer to the bitmap
+    @param i - the bit position to interrogate
+    @returns the indicated bit value, or garbage if the bit position is
+    out of range.
 */
 always_inline uword
 clib_bitmap_get_no_check (uword * ai, uword i)
@@ -176,10 +216,6 @@ clib_bitmap_get_no_check (uword * ai, uword i)
   return 0 != ((ai[i0] >> i1) & 1);
 }
 
-/* I through I + N_BITS. 
-
-    No sanity checking. Be careful.
-*/
 always_inline uword
 clib_bitmap_get_multiple_no_check (uword * ai, uword i, uword n_bits)
 {
@@ -189,7 +225,12 @@ clib_bitmap_get_multiple_no_check (uword * ai, uword i, uword n_bits)
   return 0 != ((ai[i0] >> i1) & pow2_mask (n_bits));
 }
 
-/* Fetch bits I through I + N_BITS. */
+/** Gets the ith through ith + n_bits bit values from a bitmap
+    @param bitmap - pointer to the bitmap
+    @param i - the first bit position to retrieve
+    @param n_bits - the number of bit positions to retrieve
+    @returns the indicated range of bits
+*/
 always_inline uword
 clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)
 {
@@ -221,9 +262,14 @@ clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)
   return result;
 }
 
-/* Set bits I through I + N_BITS to given value.
+/** sets the ith through ith + n_bits bits in a bitmap
+    @param bitmap - pointer to the bitmap
+    @param i - the first bit position to retrieve
+    @param value - the values to set
+    @param n_bits - the number of bit positions to set
+    @returns a pointer to the updated bitmap, which may expand and move
+*/
 
-    New bitmap will be returned. */
 always_inline uword *
 clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
 {
@@ -266,9 +312,8 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
   return bitmap;
 }
 
-/* For a multi-word region set all bits to given value. */
 always_inline uword *
-clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
+clfib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
 {
   uword a0, a1, b0;
   uword i_end, mask;
@@ -306,7 +351,12 @@ clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
   return bitmap;
 }
 
-/* Iterate through set bits. */
+/** Macro to iterate across set bits in a bitmap
+
+    @param i - the current set bit
+    @param ai - the bitmap
+    @param body - the expression to evaluate for each set bit
+*/
 #define clib_bitmap_foreach(i,ai,body)					\
 do {									\
   uword __bitmap_i, __bitmap_ai, __bitmap_len, __bitmap_first_set;	\
@@ -325,9 +375,11 @@ do {									\
     }									\
 } while (0)
 
-/* Return lowest numbered set bit in bitmap.
 
-    Return infinity (~0) if bitmap is zero. */
+/** Return the lowest numbered set bit in a bitmap
+    @param ai - pointer to the bitmap
+    @returns lowest numbered set bit, or ~0 if the entire bitmap is zero
+*/
 always_inline uword clib_bitmap_first_set (uword * ai)
 {
   uword i;
@@ -340,9 +392,10 @@ always_inline uword clib_bitmap_first_set (uword * ai)
   return ~0;
 }
 
-/* Return highest numbered set bit in bitmap.
-
-    Return infinity (~0) if bitmap is zero. */
+/** Return the higest numbered set bit in a bitmap
+    @param ai - pointer to the bitmap
+    @returns lowest numbered set bit, or ~0 if the entire bitmap is zero
+*/
 always_inline uword clib_bitmap_last_set (uword * ai)
 {
   uword i;
@@ -360,7 +413,10 @@ always_inline uword clib_bitmap_last_set (uword * ai)
   return ~0;
 }
 
-/* Return lowest numbered clear bit in bitmap. */
+/** Return the lowest numbered clear bit in a bitmap
+    @param ai - pointer to the bitmap
+    @returns lowest numbered clear bit
+*/
 always_inline uword
 clib_bitmap_first_clear (uword * ai)
 {
@@ -374,7 +430,10 @@ clib_bitmap_first_clear (uword * ai)
   return i * BITS (ai[0]);
 }
 
-/* Count number of set bits in bitmap. */
+/** Return the number of set bits in a bitmap
+    @param ai - pointer to the bitmap
+    @returns the number of set bits in the bitmap
+*/
 always_inline uword
 clib_bitmap_count_set_bits (uword * ai)
 {
@@ -384,6 +443,50 @@ clib_bitmap_count_set_bits (uword * ai)
     n_set += count_set_bits (ai[i]);
   return n_set;
 }
+
+/** Logical operator across two bitmaps
+
+    @param ai - pointer to the destination bitmap
+    @param bi - pointer to the source bitmap
+    @returns ai = ai and bi. ai is modified, bi is not modified
+*/
+always_inline uword *
+clib_bitmap_and (uword * ai, uword * bi);
+
+/** Logical operator across two bitmaps
+
+    @param ai - pointer to the destination bitmap
+    @param bi - pointer to the source bitmap
+    @returns ai = ai & ~bi. ai is modified, bi is not modified
+*/
+always_inline uword *
+clib_bitmap_andnot (uword * ai, uword * bi);
+
+/** Logical operator across two bitmaps
+
+    @param ai - pointer to the destination bitmap
+    @param bi - pointer to the source bitmap
+    @returns ai = ai & ~bi. ai is modified, bi is not modified
+*/
+always_inline uword *
+clib_bitmap_or (uword * ai, uword * bi);
+/** Logical operator across two bitmaps
+
+    @param ai - pointer to the destination bitmap
+    @param bi - pointer to the source bitmap
+    @returns ai = ai or bi. ai is modified, bi is not modified
+*/
+always_inline uword *
+clib_bitmap_or (uword * ai, uword * bi);
+
+/** Logical operator across two bitmaps
+
+    @param ai - pointer to the destination bitmap
+    @param bi - pointer to the source bitmap
+    @returns ai = ai xor bi. ai is modified, bi is not modified
+*/
+always_inline uword *
+clib_bitmap_xor (uword * ai, uword * bi);
 
 /* ALU function definition macro for functions taking two bitmaps. */
 #define _(name, body, check_zero)				\
@@ -417,8 +520,42 @@ _ (or,  a = a | b, 0)
 _ (xor, a = a ^ b, 1)
 #undef _
 
-/* Define functions which duplicate first argument.
-   (Normal functions over-write first argument.) */
+/** Logical operator across two bitmaps which duplicates the first bitmap
+
+    @param ai - pointer to the destination bitmap
+    @param bi - pointer to the source bitmap
+    @returns aiDup = ai and bi. Neither ai nor bi are modified
+*/
+always_inline uword *
+clib_bitmap_dup_and (uword * ai, uword * bi);
+
+/** Logical operator across two bitmaps which duplicates the first bitmap
+
+    @param ai - pointer to the destination bitmap
+    @param bi - pointer to the source bitmap
+    @returns aiDup = ai & ~bi. Neither ai nor bi are modified
+*/
+always_inline uword *
+clib_bitmap_dup_andnot (uword * ai, uword * bi);
+
+/** Logical operator across two bitmaps which duplicates the first bitmap
+
+    @param ai - pointer to the destination bitmap
+    @param bi - pointer to the source bitmap
+    @returns aiDup = ai or bi. Neither ai nor bi are modified
+*/
+always_inline uword *
+clib_bitmap_dup_or (uword * ai, uword * bi);
+
+/** Logical operator across two bitmaps which duplicates the first bitmap
+
+    @param ai - pointer to the destination bitmap
+    @param bi - pointer to the source bitmap
+    @returns aiDup = ai xor bi. Neither ai nor bi are modified
+*/
+always_inline uword *
+clib_bitmap_dup_xor (uword * ai, uword * bi);
+
 #define _(name)						\
   always_inline uword *					\
   clib_bitmap_dup_##name (uword * ai, uword * bi)	\
@@ -457,7 +594,12 @@ _ (xori, a = a ^ b, 1)
 
 #undef _
 
-/* Returns random bitmap of given length. */
+/** Return a random bitmap of the requested length
+    @param ai - pointer to the destination bitmap
+    @param n_bits - number of bits to allocate
+    @param [in/out] seed - pointer to the random number seed
+    @returns a reasonably random bitmap based. See random.h.
+*/
 always_inline uword *
 clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
 {
@@ -487,7 +629,12 @@ clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
   return ai;
 }
 
-/* Returns next set bit starting at bit i (~0 if not found). */
+/** Return the next set bit in a bitmap starting at bit i
+    @param ai - pointer to the bitmap
+    @param i - first bit position to test
+    @returns first set bit position at or after i, 
+    ~0 if no further set bits are found
+*/
 always_inline uword
 clib_bitmap_next_set (uword * ai, uword i)
 {
@@ -512,7 +659,11 @@ clib_bitmap_next_set (uword * ai, uword i)
   return ~0;
 }
 
-/* Returns next clear bit at position >= i */
+/** Return the next clear bit in a bitmap starting at bit i
+    @param ai - pointer to the bitmap
+    @param i - first bit position to test
+    @returns first clear bit position at or after i
+*/
 always_inline uword
 clib_bitmap_next_clear (uword * ai, uword i)
 {
@@ -536,7 +687,17 @@ clib_bitmap_next_clear (uword * ai, uword i)
   return i;
 }
 
-/* unformat list of bits into bitmap (eg "0-3,5-7,11" ) */
+/** unformat a list of bit ranges into a bitmap (eg "0-3,5-7,11" ) 
+
+    uword * bitmap;
+    rv = unformat ("%U", unformat_bitmap_list, &bitmap);
+
+    Standard unformat_function_t arguments
+
+    @param input - pointer an unformat_input_t 
+    @param va - varargs list comprising a single uword **
+    @returns 1 on success, 0 on failure
+*/
 static inline uword
 unformat_bitmap_list(unformat_input_t * input, va_list * va)
 {
@@ -577,6 +738,17 @@ error:
   return 0;
 }
 
+/** Format a bitmap as a string of hex bytes
+
+    uword * bitmap;
+    s = format ("%U", format_bitmap_hex, bitmap);
+
+    Standard format_function_t arguments
+
+    @param s - string under construction
+    @param args - varargs list comprising a single uword *
+    @returns string under construction
+*/
 static inline u8 *
 format_bitmap_hex(u8 * s, va_list * args)
 {
