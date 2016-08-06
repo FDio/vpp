@@ -24,327 +24,363 @@
 
 static clib_error_t *
 set_interface_spd_command_fn (vlib_main_t * vm,
-                              unformat_input_t * input,
-                              vlib_cli_command_t * cmd)
+			      unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
+  unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_main_t *im = &ipsec_main;
-  u32 sw_if_index = (u32) ~0;
+  u32 sw_if_index = (u32) ~ 0;
   u32 spd_id;
   int is_add = 1;
 
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (unformat (line_input, "%U %u", unformat_vnet_sw_interface, im->vnet_main,
-                &sw_if_index, &spd_id))
+  if (unformat
+      (line_input, "%U %u", unformat_vnet_sw_interface, im->vnet_main,
+       &sw_if_index, &spd_id))
     ;
   else if (unformat (line_input, "del"))
     is_add = 0;
   else
     return clib_error_return (0, "parse error: '%U'",
-                              format_unformat_error, line_input);
+			      format_unformat_error, line_input);
 
   unformat_free (line_input);
 
-  ipsec_set_interface_spd(vm, sw_if_index, spd_id, is_add);
+  ipsec_set_interface_spd (vm, sw_if_index, spd_id, is_add);
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_spd_command, static) = {
     .path = "set interface ipsec spd",
     .short_help =
     "set interface ipsec spd <int> <id>",
     .function = set_interface_spd_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 ipsec_sa_add_del_command_fn (vlib_main_t * vm,
-                              unformat_input_t * input,
-                              vlib_cli_command_t * cmd)
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
+  unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_sa_t sa;
   int is_add = ~0;
-  u8 * ck = 0, * ik = 0;
+  u8 *ck = 0, *ik = 0;
 
-  memset(&sa, 0, sizeof(sa));
+  memset (&sa, 0, sizeof (sa));
 
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (line_input, "add %u", &sa.id))
-      is_add = 1;
-    else if (unformat (line_input, "del %u", &sa.id))
-      is_add = 0;
-    else if (unformat (line_input, "spi %u", &sa.spi))
-      ;
-    else if (unformat (line_input, "esp"))
-      sa.protocol = IPSEC_PROTOCOL_ESP;
-    else if (unformat (line_input, "ah"))
-      //sa.protocol = IPSEC_PROTOCOL_AH;
-      return clib_error_return(0, "unsupported security protocol 'AH'");
-    else if (unformat (line_input, "crypto-key %U", unformat_hex_string, &ck))
-      sa.crypto_key_len = vec_len (ck);
-    else if (unformat (line_input, "crypto-alg %U", unformat_ipsec_crypto_alg,
-                       &sa.crypto_alg))
-      {
-        if (sa.crypto_alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
-            sa.crypto_alg > IPSEC_CRYPTO_ALG_AES_CBC_256)
-          return clib_error_return(0, "unsupported crypto-alg: '%U'",
-                                   format_ipsec_crypto_alg, sa.crypto_alg);
-      }
-    else if (unformat (line_input, "integ-key %U", unformat_hex_string, &ik))
-      sa.integ_key_len = vec_len (ik);
-    else if (unformat (line_input, "integ-alg %U", unformat_ipsec_integ_alg,
-                       &sa.integ_alg))
-      {
-        if (sa.integ_alg < IPSEC_INTEG_ALG_SHA1_96 ||
-             sa.integ_alg > IPSEC_INTEG_ALG_SHA_512_256)
-          return clib_error_return(0, "unsupported integ-alg: '%U'",
-                                   format_ipsec_integ_alg, sa.integ_alg);
-      }
-    else if (unformat (line_input, "tunnel-src %U",
-                       unformat_ip4_address, &sa.tunnel_src_addr.ip4))
-      sa.is_tunnel = 1;
-    else if (unformat (line_input, "tunnel-dst %U",
-                       unformat_ip4_address, &sa.tunnel_dst_addr.ip4))
-      sa.is_tunnel = 1;
-    else if (unformat (line_input, "tunnel-src %U",
-                       unformat_ip6_address, &sa.tunnel_src_addr.ip6))
-      { sa.is_tunnel = 1; sa.is_tunnel_ip6 = 1; }
-    else if (unformat (line_input, "tunnel-dst %U",
-                       unformat_ip6_address, &sa.tunnel_dst_addr.ip6))
-      { sa.is_tunnel = 1; sa.is_tunnel_ip6 = 1; }
-    else 
-      return clib_error_return (0, "parse error: '%U'",
-                              format_unformat_error, line_input);
-  }
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "add %u", &sa.id))
+	is_add = 1;
+      else if (unformat (line_input, "del %u", &sa.id))
+	is_add = 0;
+      else if (unformat (line_input, "spi %u", &sa.spi))
+	;
+      else if (unformat (line_input, "esp"))
+	sa.protocol = IPSEC_PROTOCOL_ESP;
+      else if (unformat (line_input, "ah"))
+	//sa.protocol = IPSEC_PROTOCOL_AH;
+	return clib_error_return (0, "unsupported security protocol 'AH'");
+      else
+	if (unformat (line_input, "crypto-key %U", unformat_hex_string, &ck))
+	sa.crypto_key_len = vec_len (ck);
+      else
+	if (unformat
+	    (line_input, "crypto-alg %U", unformat_ipsec_crypto_alg,
+	     &sa.crypto_alg))
+	{
+	  if (sa.crypto_alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
+	      sa.crypto_alg > IPSEC_CRYPTO_ALG_AES_CBC_256)
+	    return clib_error_return (0, "unsupported crypto-alg: '%U'",
+				      format_ipsec_crypto_alg, sa.crypto_alg);
+	}
+      else
+	if (unformat (line_input, "integ-key %U", unformat_hex_string, &ik))
+	sa.integ_key_len = vec_len (ik);
+      else if (unformat (line_input, "integ-alg %U", unformat_ipsec_integ_alg,
+			 &sa.integ_alg))
+	{
+	  if (sa.integ_alg < IPSEC_INTEG_ALG_SHA1_96 ||
+	      sa.integ_alg > IPSEC_INTEG_ALG_SHA_512_256)
+	    return clib_error_return (0, "unsupported integ-alg: '%U'",
+				      format_ipsec_integ_alg, sa.integ_alg);
+	}
+      else if (unformat (line_input, "tunnel-src %U",
+			 unformat_ip4_address, &sa.tunnel_src_addr.ip4))
+	sa.is_tunnel = 1;
+      else if (unformat (line_input, "tunnel-dst %U",
+			 unformat_ip4_address, &sa.tunnel_dst_addr.ip4))
+	sa.is_tunnel = 1;
+      else if (unformat (line_input, "tunnel-src %U",
+			 unformat_ip6_address, &sa.tunnel_src_addr.ip6))
+	{
+	  sa.is_tunnel = 1;
+	  sa.is_tunnel_ip6 = 1;
+	}
+      else if (unformat (line_input, "tunnel-dst %U",
+			 unformat_ip6_address, &sa.tunnel_dst_addr.ip6))
+	{
+	  sa.is_tunnel = 1;
+	  sa.is_tunnel_ip6 = 1;
+	}
+      else
+	return clib_error_return (0, "parse error: '%U'",
+				  format_unformat_error, line_input);
+    }
 
   unformat_free (line_input);
 
-  if (sa.crypto_key_len > sizeof(sa.crypto_key))
-    sa.crypto_key_len = sizeof(sa.crypto_key);
+  if (sa.crypto_key_len > sizeof (sa.crypto_key))
+    sa.crypto_key_len = sizeof (sa.crypto_key);
 
-  if (sa.integ_key_len > sizeof(sa.integ_key))
-    sa.integ_key_len = sizeof(sa.integ_key);
+  if (sa.integ_key_len > sizeof (sa.integ_key))
+    sa.integ_key_len = sizeof (sa.integ_key);
 
   if (ck)
-    strncpy((char *) sa.crypto_key, (char *) ck, sa.crypto_key_len);
+    strncpy ((char *) sa.crypto_key, (char *) ck, sa.crypto_key_len);
 
   if (ik)
-    strncpy((char *) sa.integ_key, (char *) ik, sa.integ_key_len);
+    strncpy ((char *) sa.integ_key, (char *) ik, sa.integ_key_len);
 
-  ipsec_add_del_sa(vm, &sa, is_add);
+  ipsec_add_del_sa (vm, &sa, is_add);
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ipsec_sa_add_del_command, static) = {
     .path = "ipsec sa",
     .short_help =
     "ipsec sa [add|del]",
     .function = ipsec_sa_add_del_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 ipsec_spd_add_del_command_fn (vlib_main_t * vm,
-                              unformat_input_t * input,
-                              vlib_cli_command_t * cmd)
+			      unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
+  unformat_input_t _line_input, *line_input = &_line_input;
   u32 spd_id;
   int is_add = ~0;
 
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (line_input, "add"))
-      is_add = 1;
-    else if (unformat (line_input, "del"))
-      is_add = 0;
-    else if (unformat (line_input, "%u", &spd_id))
-      ;
-    else
-      return clib_error_return (0, "parse error: '%U'",
-                              format_unformat_error, line_input);
-  }
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "add"))
+	is_add = 1;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "%u", &spd_id))
+	;
+      else
+	return clib_error_return (0, "parse error: '%U'",
+				  format_unformat_error, line_input);
+    }
 
   unformat_free (line_input);
 
-  ipsec_add_del_spd(vm, spd_id, is_add);
+  ipsec_add_del_spd (vm, spd_id, is_add);
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ipsec_spd_add_del_command, static) = {
     .path = "ipsec spd",
     .short_help =
     "ipsec spd [add|del] <id>",
     .function = ipsec_spd_add_del_command_fn,
 };
+/* *INDENT-ON* */
 
 
 static clib_error_t *
 ipsec_policy_add_del_command_fn (vlib_main_t * vm,
-                                 unformat_input_t * input,
-                                 vlib_cli_command_t * cmd)
+				 unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
+  unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_policy_t p;
   int is_add = 0;
   int is_ip_any = 1;
   u32 tmp, tmp2;
 
-  memset(&p, 0, sizeof(p));
+  memset (&p, 0, sizeof (p));
   p.lport.stop = p.rport.stop = ~0;
-  p.laddr.stop.ip4.as_u32 = p.raddr.stop.ip4.as_u32 = (u32) ~0;
-  p.laddr.stop.ip6.as_u64[0] = p.laddr.stop.ip6.as_u64[1] = (u64) ~0;
-  p.raddr.stop.ip6.as_u64[0] = p.raddr.stop.ip6.as_u64[1] = (u64) ~0;
+  p.laddr.stop.ip4.as_u32 = p.raddr.stop.ip4.as_u32 = (u32) ~ 0;
+  p.laddr.stop.ip6.as_u64[0] = p.laddr.stop.ip6.as_u64[1] = (u64) ~ 0;
+  p.raddr.stop.ip6.as_u64[0] = p.raddr.stop.ip6.as_u64[1] = (u64) ~ 0;
 
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (line_input, "add"))
-      is_add = 1;
-    else if (unformat (line_input, "del"))
-      is_add = 0;
-    else if (unformat (line_input, "spd %u", &p.id))
-      ;
-    else if (unformat (line_input, "inbound"))
-      p.is_outbound = 0;
-    else if (unformat (line_input, "outbound"))
-      p.is_outbound = 1;
-    else if (unformat (line_input, "priority %d", &p.priority))
-      ;
-    else if (unformat (line_input, "protocol %u", &tmp))
-      p.protocol = (u8) tmp;
-    else if (unformat (line_input, "action %U", unformat_ipsec_policy_action,
-                       &p.policy))
-      {
-        if (p.policy == IPSEC_POLICY_ACTION_RESOLVE)
-          return clib_error_return(0, "unsupported action: 'resolve'");
-      }
-    else if (unformat (line_input, "sa %u", &p.sa_id))
-      ;
-    else if (unformat (line_input, "local-ip-range %U - %U",
-                       unformat_ip4_address, &p.laddr.start.ip4,
-                       unformat_ip4_address, &p.laddr.stop.ip4))
-      is_ip_any = 0;
-    else if (unformat (line_input, "remote-ip-range %U - %U",
-                       unformat_ip4_address, &p.raddr.start.ip4,
-                       unformat_ip4_address, &p.raddr.stop.ip4))
-      is_ip_any = 0;
-    else if (unformat (line_input, "local-ip-range %U - %U",
-                       unformat_ip6_address, &p.laddr.start.ip6,
-                       unformat_ip6_address, &p.laddr.stop.ip6))
-      {
-        p.is_ipv6 = 1;
-        is_ip_any = 0;
-      }
-    else if (unformat (line_input, "remote-ip-range %U - %U",
-                       unformat_ip6_address, &p.raddr.start.ip6,
-                       unformat_ip6_address, &p.raddr.stop.ip6))
-      {
-        p.is_ipv6 = 1;
-        is_ip_any = 0;
-      }
-    else if (unformat (line_input, "local-port-range %u - %u", &tmp, &tmp2))
-      { p.lport.start = tmp; p.lport.stop = tmp2; }
-    else if (unformat (line_input, "remote-port-range %u - %u", &tmp, &tmp2))
-      { p.rport.start = tmp; p.rport.stop = tmp2; }
-    else 
-      return clib_error_return (0, "parse error: '%U'",
-                              format_unformat_error, line_input);
-  }
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "add"))
+	is_add = 1;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "spd %u", &p.id))
+	;
+      else if (unformat (line_input, "inbound"))
+	p.is_outbound = 0;
+      else if (unformat (line_input, "outbound"))
+	p.is_outbound = 1;
+      else if (unformat (line_input, "priority %d", &p.priority))
+	;
+      else if (unformat (line_input, "protocol %u", &tmp))
+	p.protocol = (u8) tmp;
+      else
+	if (unformat
+	    (line_input, "action %U", unformat_ipsec_policy_action,
+	     &p.policy))
+	{
+	  if (p.policy == IPSEC_POLICY_ACTION_RESOLVE)
+	    return clib_error_return (0, "unsupported action: 'resolve'");
+	}
+      else if (unformat (line_input, "sa %u", &p.sa_id))
+	;
+      else if (unformat (line_input, "local-ip-range %U - %U",
+			 unformat_ip4_address, &p.laddr.start.ip4,
+			 unformat_ip4_address, &p.laddr.stop.ip4))
+	is_ip_any = 0;
+      else if (unformat (line_input, "remote-ip-range %U - %U",
+			 unformat_ip4_address, &p.raddr.start.ip4,
+			 unformat_ip4_address, &p.raddr.stop.ip4))
+	is_ip_any = 0;
+      else if (unformat (line_input, "local-ip-range %U - %U",
+			 unformat_ip6_address, &p.laddr.start.ip6,
+			 unformat_ip6_address, &p.laddr.stop.ip6))
+	{
+	  p.is_ipv6 = 1;
+	  is_ip_any = 0;
+	}
+      else if (unformat (line_input, "remote-ip-range %U - %U",
+			 unformat_ip6_address, &p.raddr.start.ip6,
+			 unformat_ip6_address, &p.raddr.stop.ip6))
+	{
+	  p.is_ipv6 = 1;
+	  is_ip_any = 0;
+	}
+      else if (unformat (line_input, "local-port-range %u - %u", &tmp, &tmp2))
+	{
+	  p.lport.start = tmp;
+	  p.lport.stop = tmp2;
+	}
+      else
+	if (unformat (line_input, "remote-port-range %u - %u", &tmp, &tmp2))
+	{
+	  p.rport.start = tmp;
+	  p.rport.stop = tmp2;
+	}
+      else
+	return clib_error_return (0, "parse error: '%U'",
+				  format_unformat_error, line_input);
+    }
 
   unformat_free (line_input);
 
-  ipsec_add_del_policy(vm, &p, is_add);
+  ipsec_add_del_policy (vm, &p, is_add);
   if (is_ip_any)
     {
       p.is_ipv6 = 1;
-      ipsec_add_del_policy(vm, &p, is_add);
+      ipsec_add_del_policy (vm, &p, is_add);
     }
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ipsec_policy_add_del_command, static) = {
     .path = "ipsec policy",
     .short_help =
     "ipsec policy [add|del] spd <id> priority <n> ",
     .function = ipsec_policy_add_del_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 set_ipsec_sa_key_command_fn (vlib_main_t * vm,
-                             unformat_input_t * input,
-                             vlib_cli_command_t * cmd)
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
+  unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_sa_t sa;
-  u8 * ck = 0, * ik = 0;
+  u8 *ck = 0, *ik = 0;
 
-  memset(&sa, 0, sizeof(sa));
+  memset (&sa, 0, sizeof (sa));
 
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (line_input, "%u", &sa.id))
-      ;
-    else if (unformat (line_input, "crypto-key %U", unformat_hex_string, &ck))
-      sa.crypto_key_len = vec_len (ck);
-    else if (unformat (line_input, "integ-key %U", unformat_hex_string, &ik))
-      sa.integ_key_len = vec_len (ik);
-    else
-      return clib_error_return (0, "parse error: '%U'", format_unformat_error,
-                                line_input);
-  }
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%u", &sa.id))
+	;
+      else
+	if (unformat (line_input, "crypto-key %U", unformat_hex_string, &ck))
+	sa.crypto_key_len = vec_len (ck);
+      else
+	if (unformat (line_input, "integ-key %U", unformat_hex_string, &ik))
+	sa.integ_key_len = vec_len (ik);
+      else
+	return clib_error_return (0, "parse error: '%U'",
+				  format_unformat_error, line_input);
+    }
 
   unformat_free (line_input);
 
-  if (sa.crypto_key_len > sizeof(sa.crypto_key))
-    sa.crypto_key_len = sizeof(sa.crypto_key);
+  if (sa.crypto_key_len > sizeof (sa.crypto_key))
+    sa.crypto_key_len = sizeof (sa.crypto_key);
 
-  if (sa.integ_key_len > sizeof(sa.integ_key))
-    sa.integ_key_len = sizeof(sa.integ_key);
+  if (sa.integ_key_len > sizeof (sa.integ_key))
+    sa.integ_key_len = sizeof (sa.integ_key);
 
   if (ck)
-    strncpy((char *) sa.crypto_key, (char *) ck, sa.crypto_key_len);
+    strncpy ((char *) sa.crypto_key, (char *) ck, sa.crypto_key_len);
 
   if (ik)
-    strncpy((char *) sa.integ_key, (char *) ik, sa.integ_key_len);
+    strncpy ((char *) sa.integ_key, (char *) ik, sa.integ_key_len);
 
-  ipsec_set_sa_key(vm, &sa);
+  ipsec_set_sa_key (vm, &sa);
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ipsec_sa_key_command, static) = {
     .path = "set ipsec sa",
     .short_help =
     "set ipsec sa <id> crypto-key <key> integ-key <key>",
     .function = set_ipsec_sa_key_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 show_ipsec_command_fn (vlib_main_t * vm,
-                       unformat_input_t * input,
-                       vlib_cli_command_t * cmd)
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  ipsec_spd_t * spd;
-  ipsec_sa_t * sa;
-  ipsec_policy_t * p;
-  ipsec_main_t * im = &ipsec_main;
-  u32 * i;
-  ipsec_tunnel_if_t * t;
-  vnet_hw_interface_t * hi;
+  ipsec_spd_t *spd;
+  ipsec_sa_t *sa;
+  ipsec_policy_t *p;
+  ipsec_main_t *im = &ipsec_main;
+  u32 *i;
+  ipsec_tunnel_if_t *t;
+  vnet_hw_interface_t *hi;
 
+  /* *INDENT-OFF* */
   pool_foreach (sa, im->sad, ({
     if (sa->id) {
       vlib_cli_output(vm, "sa %u spi %u mode %s protocol %s", sa->id, sa->spi,
@@ -370,7 +406,9 @@ show_ipsec_command_fn (vlib_main_t * vm,
       }
     }
   }));
+  /* *INDENT-ON* */
 
+  /* *INDENT-OFF* */
   pool_foreach (spd, im->spds, ({
     vlib_cli_output(vm, "spd %u", spd->id);
 
@@ -515,8 +553,10 @@ show_ipsec_command_fn (vlib_main_t * vm,
                         p->counter.bytes);
       };
   }));
+  /* *INDENT-ON* */
 
-  vlib_cli_output(vm, "tunnel interfaces");
+  vlib_cli_output (vm, "tunnel interfaces");
+  /* *INDENT-OFF* */
   pool_foreach (t, im->tunnel_interfaces, ({
     hi = vnet_get_hw_interface (im->vnet_main, t->hw_if_index);
     vlib_cli_output(vm, "  %s seq", hi->name);
@@ -545,158 +585,183 @@ show_ipsec_command_fn (vlib_main_t * vm,
                     format_ipsec_integ_alg, sa->integ_alg,
                     format_hex_bytes, sa->integ_key, sa->integ_key_len);
   }));
+  /* *INDENT-ON* */
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ipsec_command, static) = {
     .path = "show ipsec",
     .short_help = "show ipsec",
     .function = show_ipsec_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 clear_ipsec_counters_command_fn (vlib_main_t * vm,
-                                 unformat_input_t * input,
-                                 vlib_cli_command_t * cmd)
+				 unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
 {
-  ipsec_main_t * im = &ipsec_main;
-  ipsec_spd_t * spd;
-  ipsec_policy_t * p;
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_spd_t *spd;
+  ipsec_policy_t *p;
 
+  /* *INDENT-OFF* */
   pool_foreach (spd, im->spds, ({
     pool_foreach(p, spd->policies, ({
       p->counter.packets = p->counter.bytes = 0;
     }));
   }));
+  /* *INDENT-ON* */
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_ipsec_counters_command, static) = {
     .path = "clear ipsec counters",
     .short_help = "clear ipsec counters",
     .function = clear_ipsec_counters_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 create_ipsec_tunnel_command_fn (vlib_main_t * vm,
-     unformat_input_t * input,
-     vlib_cli_command_t * cmd)
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
+  unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_add_del_tunnel_args_t a;
   int rv;
   u32 num_m_args = 0;
 
-  memset(&a, 0, sizeof(a));
+  memset (&a, 0, sizeof (a));
   a.is_add = 1;
 
   /* Get a line of input. */
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (line_input, "local-ip %U", unformat_ip4_address, &a.local_ip))
-      num_m_args++;
-    else if (unformat (line_input, "remote-ip %U", unformat_ip4_address, &a.remote_ip))
-      num_m_args++;
-    else if (unformat (line_input, "local-spi %u", &a.local_spi))
-      num_m_args++;
-    else if (unformat (line_input, "remote-spi %u", &a.remote_spi))
-      num_m_args++;
-    else if (unformat (line_input, "del"))
-      a.is_add = 0;
-    else
-      return clib_error_return (0, "unknown input `%U'",
-                                format_unformat_error, input);
-  }
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "local-ip %U", unformat_ip4_address, &a.local_ip))
+	num_m_args++;
+      else
+	if (unformat
+	    (line_input, "remote-ip %U", unformat_ip4_address, &a.remote_ip))
+	num_m_args++;
+      else if (unformat (line_input, "local-spi %u", &a.local_spi))
+	num_m_args++;
+      else if (unformat (line_input, "remote-spi %u", &a.remote_spi))
+	num_m_args++;
+      else if (unformat (line_input, "del"))
+	a.is_add = 0;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
   unformat_free (line_input);
 
   if (num_m_args < 4)
-      return clib_error_return (0, "mandatory argument(s) missing");
+    return clib_error_return (0, "mandatory argument(s) missing");
 
   rv = ipsec_add_del_tunnel_if (&a);
 
- switch(rv)
+  switch (rv)
     {
     case 0:
       break;
     case VNET_API_ERROR_INVALID_VALUE:
       if (a.is_add)
-        return clib_error_return (0, "IPSec tunnel interface already exists...");
+	return clib_error_return (0,
+				  "IPSec tunnel interface already exists...");
       else
-        return clib_error_return (0, "IPSec tunnel interface not exists...");
+	return clib_error_return (0, "IPSec tunnel interface not exists...");
     default:
-      return clib_error_return (0, "ipsec_register_interface returned %d", rv);
+      return clib_error_return (0, "ipsec_register_interface returned %d",
+				rv);
     }
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_ipsec_tunnel_command, static) = {
   .path = "create ipsec tunnel",
   .short_help = "create ipsec tunnel local-ip <addr> local-spi <spi> remote-ip <addr> remote-spi <spi>",
   .function = create_ipsec_tunnel_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 set_interface_key_command_fn (vlib_main_t * vm,
-                              unformat_input_t * input,
-                              vlib_cli_command_t * cmd)
+			      unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
+  unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_main_t *im = &ipsec_main;
   ipsec_if_set_key_type_t type = IPSEC_IF_SET_KEY_TYPE_NONE;
-  u32 hw_if_index = (u32) ~0;
+  u32 hw_if_index = (u32) ~ 0;
   u32 alg;
-  u8 * key = 0;
+  u8 *key = 0;
 
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "%U",
-                    unformat_vnet_hw_interface, im->vnet_main, &hw_if_index))
-        ;
-      else if (unformat (line_input, "local crypto %U", unformat_ipsec_crypto_alg, &alg))
-        type = IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO;
-      else if (unformat (line_input, "remote crypto %U", unformat_ipsec_crypto_alg, &alg))
-        type = IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO;
-      else if (unformat (line_input, "local integ %U", unformat_ipsec_integ_alg, &alg))
-        type = IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG;
-      else if (unformat (line_input, "remote integ %U", unformat_ipsec_integ_alg, &alg))
-        type = IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG;
-      else if (unformat (line_input, "%U", unformat_hex_string, &key))
-        ;
+		    unformat_vnet_hw_interface, im->vnet_main, &hw_if_index))
+	;
       else
-        return clib_error_return (0, "parse error: '%U'",
-                                  format_unformat_error, line_input);
+	if (unformat
+	    (line_input, "local crypto %U", unformat_ipsec_crypto_alg, &alg))
+	type = IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO;
+      else
+	if (unformat
+	    (line_input, "remote crypto %U", unformat_ipsec_crypto_alg, &alg))
+	type = IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO;
+      else
+	if (unformat
+	    (line_input, "local integ %U", unformat_ipsec_integ_alg, &alg))
+	type = IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG;
+      else
+	if (unformat
+	    (line_input, "remote integ %U", unformat_ipsec_integ_alg, &alg))
+	type = IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG;
+      else if (unformat (line_input, "%U", unformat_hex_string, &key))
+	;
+      else
+	return clib_error_return (0, "parse error: '%U'",
+				  format_unformat_error, line_input);
     }
 
   unformat_free (line_input);
 
   if (type == IPSEC_IF_SET_KEY_TYPE_NONE)
-      return clib_error_return (0, "unknown key type");
+    return clib_error_return (0, "unknown key type");
 
-  if (alg > 0 && vec_len(key)==0)
-      return clib_error_return (0, "key is not specified");
+  if (alg > 0 && vec_len (key) == 0)
+    return clib_error_return (0, "key is not specified");
 
-  if (hw_if_index == (u32) ~0)
-      return clib_error_return (0, "interface not specified");
+  if (hw_if_index == (u32) ~ 0)
+    return clib_error_return (0, "interface not specified");
 
-  ipsec_set_interface_key(im->vnet_main, hw_if_index, type, alg, key);
-  vec_free(key);
+  ipsec_set_interface_key (im->vnet_main, hw_if_index, type, alg, key);
+  vec_free (key);
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_key_command, static) = {
     .path = "set interface ipsec key",
     .short_help =
     "set interface ipsec key <int> <local|remote> <crypto|integ> <key type> <key>",
     .function = set_interface_key_command_fn,
 };
+/* *INDENT-ON* */
 
 
 clib_error_t *
@@ -707,3 +772,11 @@ ipsec_cli_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ipsec_cli_init);
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

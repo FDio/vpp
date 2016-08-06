@@ -26,51 +26,56 @@
 
 typedef u8 v8;
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
-  u64  ispi;
-  u64  rspi;
-  u8   nextpayload;
-  u8   version;
-  u8   exchange;
-  u8   flags;
-  u32  msgid;
-  u32  length;
-  u8   payload[0];
+  u64 ispi;
+  u64 rspi;
+  u8 nextpayload;
+  u8 version;
+  u8 exchange;
+  u8 flags;
+  u32 msgid; u32 length; u8 payload[0];
 }) ike_header_t;
+/* *INDENT-ON* */
 
-typedef CLIB_PACKED (struct {
-  u8   nextpayload;
-  u8   flags;
-  u16  length;
-  u16  dh_group;
-  u8   reserved[2];
-  u8   payload[0];
-}) ike_ke_payload_header_t;
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct
+		     {
+		     u8 nextpayload;
+		     u8 flags;
+		     u16 length;
+		     u16 dh_group;
+		     u8 reserved[2]; u8 payload[0];}) ike_ke_payload_header_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
-  u8   nextpayload;
-  u8   flags;
-  u16  length;
-  u8   payload[0];
+  u8 nextpayload;
+  u8 flags;
+  u16 length; u8 payload[0];
 }) ike_payload_header_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
-  u8   nextpayload;
-  u8   flags;
-  u16  length;
-  u8   auth_method;
-  u8   reserved[3];
-  u8   payload[0];
+  u8 nextpayload;
+  u8 flags;
+  u16 length;
+  u8 auth_method;
+  u8 reserved[3];
+  u8 payload[0];
 }) ike_auth_payload_header_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
-  u8   nextpayload;
-  u8   flags;
-  u16  length;
-  u8   id_type;
-  u8   reserved[3];
-  u8   payload[0];
+  u8 nextpayload;
+  u8 flags;
+  u16 length;
+  u8 id_type;
+  u8 reserved[3]; u8 payload[0];
 }) ike_id_payload_header_t;
+/* *INDENT-ON* */
 
 #define IKE_VERSION_2                    0x20
 
@@ -99,9 +104,10 @@ typedef CLIB_PACKED (struct {
 #define IKEV2_PAYLOAD_TSR       45
 #define IKEV2_PAYLOAD_SK        46
 
-typedef enum {
+typedef enum
+{
   IKEV2_PROTOCOL_IKE = 1,
-  IKEV2_PROTOCOL_AH  = 2,
+  IKEV2_PROTOCOL_AH = 2,
   IKEV2_PROTOCOL_ESP = 3,
 } ikev2_protocol_id_t;
 
@@ -179,7 +185,8 @@ typedef enum {
   _(16431, SIGNATURE_HASH_ALGORITHMS)
 
 
-typedef enum {
+typedef enum
+{
 #define _(v,f) IKEV2_NOTIFY_MSG_##f = v,
   foreach_ikev2_notify_msg_type
 #undef _
@@ -193,7 +200,8 @@ typedef enum {
   _(4, DH,    "dh-group")       \
   _(5, ESN,   "esn")
 
-typedef enum {
+typedef enum
+{
 #define _(v,f,s) IKEV2_TRANSFORM_TYPE_##f = v,
   foreach_ikev2_transform_type
 #undef _
@@ -215,7 +223,8 @@ typedef enum {
   _(12, AES_CBC,   "aes-cbc")  \
   _(13, AES_CTR,   "aes-ctr")
 
-typedef enum {
+typedef enum
+{
 #define _(v,f,str) IKEV2_TRANSFORM_ENCR_TYPE_##f = v,
   foreach_ikev2_transform_encr_type
 #undef _
@@ -231,7 +240,8 @@ typedef enum {
   _(7, PRF_HMAC_SHA2_512, "hmac-sha2-512") \
   _(8, PRF_AES128_CMAC,   "aes128-cmac")
 
-typedef enum {
+typedef enum
+{
 #define _(v,f,str) IKEV2_TRANSFORM_PRF_TYPE_##f = v,
   foreach_ikev2_transform_prf_type
 #undef _
@@ -254,7 +264,8 @@ typedef enum {
   _(13, AUTH_HMAC_SHA2_384_192, "hmac-sha2-384-192") \
   _(14, AUTH_HMAC_SHA2_512_256, "hmac-sha2-512-256")
 
-typedef enum {
+typedef enum
+{
 #define _(v,f, str) IKEV2_TRANSFORM_INTEG_TYPE_##f = v,
   foreach_ikev2_transform_integ_type
 #undef _
@@ -303,7 +314,8 @@ typedef enum {
   _(25, ECP_192,       "ecp-192")
 #endif
 
-typedef enum {
+typedef enum
+{
 #define _(v,f, str) IKEV2_TRANSFORM_DH_TYPE_##f = v,
   foreach_ikev2_transform_dh_type
 #undef _
@@ -313,7 +325,8 @@ typedef enum {
   _(0, NO_ESN, "no")       \
   _(1, ESN,    "yes")
 
-typedef enum {
+typedef enum
+{
 #define _(v,f,str) IKEV2_TRANSFORM_ESN_TYPE_##f = v,
   foreach_ikev2_transform_esn_type
 #undef _
@@ -323,7 +336,8 @@ typedef enum {
  _( 1, RSA_SIG,        "rsa-sig")        \
  _( 2, SHARED_KEY_MIC, "shared-key-mic")
 
-typedef enum {
+typedef enum
+{
 #define _(v,f,s) IKEV2_AUTH_METHOD_##f = v,
   foreach_ikev2_auth_method
 #undef _
@@ -338,44 +352,59 @@ typedef enum {
  _(10, ID_DER_ASN1_GN, "der-asn1-gn") \
  _(11, ID_KEY_ID,      "key-id")
 
-typedef enum {
+typedef enum
+{
 #define _(v,f,s) IKEV2_ID_TYPE_##f = v,
   foreach_ikev2_id_type
 #undef _
 } ikev2_id_type_t;
 
-clib_error_t * ikev2_init (vlib_main_t * vm);
-clib_error_t * ikev2_set_local_key(vlib_main_t * vm, u8 * file);
-clib_error_t * ikev2_add_del_profile(vlib_main_t * vm, u8 * name, int is_add);
-clib_error_t * ikev2_set_profile_auth(vlib_main_t * vm, u8 * name,
-                                      u8 auth_method, u8 * data,
-                                      u8 data_hex_format);
-clib_error_t * ikev2_set_profile_id(vlib_main_t * vm, u8 * name,
-                                    u8 id_type, u8 * data, int is_local);
-clib_error_t * ikev2_set_profile_ts(vlib_main_t * vm, u8 * name, u8 protocol_id,
-                                    u16 start_port, u16 end_port,
-                                    ip4_address_t start_addr,
-                                    ip4_address_t end_addr, int is_local);
+clib_error_t *ikev2_init (vlib_main_t * vm);
+clib_error_t *ikev2_set_local_key (vlib_main_t * vm, u8 * file);
+clib_error_t *ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add);
+clib_error_t *ikev2_set_profile_auth (vlib_main_t * vm, u8 * name,
+				      u8 auth_method, u8 * data,
+				      u8 data_hex_format);
+clib_error_t *ikev2_set_profile_id (vlib_main_t * vm, u8 * name,
+				    u8 id_type, u8 * data, int is_local);
+clib_error_t *ikev2_set_profile_ts (vlib_main_t * vm, u8 * name,
+				    u8 protocol_id, u16 start_port,
+				    u16 end_port, ip4_address_t start_addr,
+				    ip4_address_t end_addr, int is_local);
 /* ikev2_format.c */
-u8 * format_ikev2_auth_method (u8 * s, va_list * args);
-u8 * format_ikev2_id_type (u8 * s, va_list * args);
-u8 * format_ikev2_transform_type (u8 * s, va_list * args);
-u8 * format_ikev2_notify_msg_type (u8 * s, va_list * args);
-u8 * format_ikev2_transform_encr_type(u8 * s, va_list * args);
-u8 * format_ikev2_transform_prf_type(u8 * s, va_list * args);
-u8 * format_ikev2_transform_integ_type(u8 * s, va_list * args);
-u8 * format_ikev2_transform_dh_type(u8 * s, va_list * args);
-u8 * format_ikev2_transform_esn_type(u8 * s, va_list * args);
-u8 * format_ikev2_sa_transform(u8 * s, va_list * args);
+u8 *format_ikev2_auth_method (u8 * s, va_list * args);
+u8 *format_ikev2_id_type (u8 * s, va_list * args);
+u8 *format_ikev2_transform_type (u8 * s, va_list * args);
+u8 *format_ikev2_notify_msg_type (u8 * s, va_list * args);
+u8 *format_ikev2_transform_encr_type (u8 * s, va_list * args);
+u8 *format_ikev2_transform_prf_type (u8 * s, va_list * args);
+u8 *format_ikev2_transform_integ_type (u8 * s, va_list * args);
+u8 *format_ikev2_transform_dh_type (u8 * s, va_list * args);
+u8 *format_ikev2_transform_esn_type (u8 * s, va_list * args);
+u8 *format_ikev2_sa_transform (u8 * s, va_list * args);
 
 uword unformat_ikev2_auth_method (unformat_input_t * input, va_list * args);
 uword unformat_ikev2_id_type (unformat_input_t * input, va_list * args);
-uword unformat_ikev2_transform_type (unformat_input_t * input, va_list * args);
-uword unformat_ikev2_transform_encr_type (unformat_input_t * input, va_list * args);
-uword unformat_ikev2_transform_prf_type (unformat_input_t * input, va_list * args);
-uword unformat_ikev2_transform_integ_type (unformat_input_t * input, va_list * args);
-uword unformat_ikev2_transform_dh_type (unformat_input_t * input, va_list * args);
-uword unformat_ikev2_transform_esn_type (unformat_input_t * input, va_list * args);
+uword unformat_ikev2_transform_type (unformat_input_t * input,
+				     va_list * args);
+uword unformat_ikev2_transform_encr_type (unformat_input_t * input,
+					  va_list * args);
+uword unformat_ikev2_transform_prf_type (unformat_input_t * input,
+					 va_list * args);
+uword unformat_ikev2_transform_integ_type (unformat_input_t * input,
+					   va_list * args);
+uword unformat_ikev2_transform_dh_type (unformat_input_t * input,
+					va_list * args);
+uword unformat_ikev2_transform_esn_type (unformat_input_t * input,
+					 va_list * args);
 
 #endif /* __included_ikev2_h__ */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
