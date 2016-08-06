@@ -23,21 +23,23 @@
 u8 *
 format_ikev2_id_type_and_data (u8 * s, va_list * args)
 {
-  ikev2_id_t * id = va_arg (*args, ikev2_id_t *);
+  ikev2_id_t *id = va_arg (*args, ikev2_id_t *);
 
-  if (id->type == 0 || vec_len(id->data) == 0)
-    return format(s, "none");
+  if (id->type == 0 || vec_len (id->data) == 0)
+    return format (s, "none");
 
-  s = format(s, "%U", format_ikev2_id_type, id->type);
+  s = format (s, "%U", format_ikev2_id_type, id->type);
 
   if (id->type == IKEV2_ID_TYPE_ID_FQDN ||
       id->type == IKEV2_ID_TYPE_ID_RFC822_ADDR)
     {
-      s = format(s, " %v", id->data);
+      s = format (s, " %v", id->data);
     }
   else
     {
-      s = format(s, " %U", format_hex_bytes, &id->data, (uword) (vec_len(id->data)));
+      s =
+	format (s, " %U", format_hex_bytes, &id->data,
+		(uword) (vec_len (id->data)));
     }
 
   return s;
@@ -46,17 +48,18 @@ format_ikev2_id_type_and_data (u8 * s, va_list * args)
 
 static clib_error_t *
 show_ikev2_sa_command_fn (vlib_main_t * vm,
-                          unformat_input_t * input,
-                          vlib_cli_command_t * cmd)
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  ikev2_main_t * km = &ikev2_main;
-  ikev2_main_per_thread_data_t * tkm;
-  ikev2_sa_t * sa;
-  ikev2_ts_t * ts;
-  ikev2_child_sa_t * child;
-  ikev2_sa_transform_t * tr;
+  ikev2_main_t *km = &ikev2_main;
+  ikev2_main_per_thread_data_t *tkm;
+  ikev2_sa_t *sa;
+  ikev2_ts_t *ts;
+  ikev2_child_sa_t *child;
+  ikev2_sa_transform_t *tr;
 
-  vec_foreach(tkm, km->per_thread_data) {
+  vec_foreach (tkm, km->per_thread_data)
+  {
+    /* *INDENT-OFF* */
     pool_foreach (sa, tkm->sas, ({
       u8 * s = 0;
       vlib_cli_output(vm, " iip %U ispi %lx rip %U rspi %lx",
@@ -152,154 +155,177 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
         }
       vlib_cli_output(vm, "");
     }));
+    /* *INDENT-ON* */
   }
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ikev2_sa_command, static) = {
     .path = "show ikev2 sa",
     .short_help = "show ikev2 sa",
     .function = show_ikev2_sa_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 ikev2_profile_add_del_command_fn (vlib_main_t * vm,
-                                 unformat_input_t * input,
-                                 vlib_cli_command_t * cmd)
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
-  u8 * name = 0;
-  clib_error_t * r = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 *name = 0;
+  clib_error_t *r = 0;
   u32 id_type;
-  u8 * data = 0;
+  u8 *data = 0;
   u32 tmp1, tmp2, tmp3;
   ip4_address_t ip4;
   ip4_address_t end_addr;
 
-  const char * valid_chars = "a-zA-Z0-9_";
+  const char *valid_chars = "a-zA-Z0-9_";
 
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (line_input, "add %U", unformat_token, valid_chars, &name))
-        {
-          r = ikev2_add_del_profile(vm, name, 1);
-          goto done;
-        }
-    else if (unformat (line_input, "del %U", unformat_token, valid_chars, &name))
-        {
-          r = ikev2_add_del_profile(vm, name, 0);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U auth shared-key-mic string %v",
-                       unformat_token, valid_chars, &name, &data))
-        {
-          r = ikev2_set_profile_auth(vm, name, IKEV2_AUTH_METHOD_SHARED_KEY_MIC,
-                                     data, 0);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U auth shared-key-mic hex %U",
-                       unformat_token, valid_chars, &name,
-                       unformat_hex_string, &data))
-        {
-          r = ikev2_set_profile_auth(vm, name, IKEV2_AUTH_METHOD_SHARED_KEY_MIC,
-                                     data, 1);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U auth rsa-sig cert-file %v",
-                       unformat_token, valid_chars, &name,
-                       &data))
-        {
-          r = ikev2_set_profile_auth(vm, name, IKEV2_AUTH_METHOD_RSA_SIG, data, 0);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U id local %U %U",
-                       unformat_token, valid_chars, &name,
-                       unformat_ikev2_id_type, &id_type,
-                       unformat_ip4_address, &ip4))
-        {
-          data = vec_new(u8, 4);
-          clib_memcpy(data, ip4.as_u8, 4);
-          r = ikev2_set_profile_id(vm, name, (u8) id_type, data, /*local*/ 1);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U id local %U 0x%U",
-                       unformat_token, valid_chars, &name,
-                       unformat_ikev2_id_type, &id_type,
-                       unformat_hex_string, &data))
-        {
-          r = ikev2_set_profile_id(vm, name, (u8) id_type, data, /*local*/ 1);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U id local %U %v",
-                       unformat_token, valid_chars, &name,
-                       unformat_ikev2_id_type, &id_type, &data))
-        {
-          r = ikev2_set_profile_id(vm, name, (u8) id_type, data, /*local*/ 1);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U id remote %U %U",
-                       unformat_token, valid_chars, &name,
-                       unformat_ikev2_id_type, &id_type,
-                       unformat_ip4_address, &ip4))
-        {
-          data = vec_new(u8, 4);
-          clib_memcpy(data, ip4.as_u8, 4);
-          r = ikev2_set_profile_id(vm, name, (u8) id_type, data, /*remote*/ 0);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U id remote %U 0x%U",
-                       unformat_token, valid_chars, &name,
-                       unformat_ikev2_id_type, &id_type,
-                       unformat_hex_string, &data))
-        {
-          r = ikev2_set_profile_id(vm, name, (u8) id_type, data, /*remote*/ 0);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U id remote %U %v",
-                       unformat_token, valid_chars, &name,
-                       unformat_ikev2_id_type, &id_type, &data))
-        {
-          r = ikev2_set_profile_id(vm, name, (u8) id_type, data, /*remote*/ 0);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U traffic-selector local "
-                       "ip-range %U - %U port-range %u - %u protocol %u",
-                       unformat_token, valid_chars, &name,
-                       unformat_ip4_address, &ip4,
-                       unformat_ip4_address, &end_addr,
-                       &tmp1, &tmp2, &tmp3))
-        {
-          r = ikev2_set_profile_ts(vm, name, (u8)tmp3, (u16)tmp1, (u16)tmp2,
-                                   ip4, end_addr, /*local*/ 1);
-          goto done;
-        }
-    else if (unformat (line_input, "set %U traffic-selector remote "
-                       "ip-range %U - %U port-range %u - %u protocol %u",
-                       unformat_token, valid_chars, &name,
-                       unformat_ip4_address, &ip4,
-                       unformat_ip4_address, &end_addr,
-                       &tmp1, &tmp2, &tmp3))
-        {
-          r = ikev2_set_profile_ts(vm, name, (u8)tmp3, (u16)tmp1, (u16)tmp2,
-                                   ip4, end_addr, /*remote*/ 0);
-          goto done;
-        }
-    else
-      break;
-  }
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "add %U", unformat_token, valid_chars, &name))
+	{
+	  r = ikev2_add_del_profile (vm, name, 1);
+	  goto done;
+	}
+      else
+	if (unformat
+	    (line_input, "del %U", unformat_token, valid_chars, &name))
+	{
+	  r = ikev2_add_del_profile (vm, name, 0);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U auth shared-key-mic string %v",
+			 unformat_token, valid_chars, &name, &data))
+	{
+	  r =
+	    ikev2_set_profile_auth (vm, name,
+				    IKEV2_AUTH_METHOD_SHARED_KEY_MIC, data,
+				    0);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U auth shared-key-mic hex %U",
+			 unformat_token, valid_chars, &name,
+			 unformat_hex_string, &data))
+	{
+	  r =
+	    ikev2_set_profile_auth (vm, name,
+				    IKEV2_AUTH_METHOD_SHARED_KEY_MIC, data,
+				    1);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U auth rsa-sig cert-file %v",
+			 unformat_token, valid_chars, &name, &data))
+	{
+	  r =
+	    ikev2_set_profile_auth (vm, name, IKEV2_AUTH_METHOD_RSA_SIG, data,
+				    0);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U id local %U %U",
+			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_id_type, &id_type,
+			 unformat_ip4_address, &ip4))
+	{
+	  data = vec_new (u8, 4);
+	  clib_memcpy (data, ip4.as_u8, 4);
+	  r =
+	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*local */ 1);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U id local %U 0x%U",
+			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_id_type, &id_type,
+			 unformat_hex_string, &data))
+	{
+	  r =
+	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*local */ 1);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U id local %U %v",
+			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_id_type, &id_type, &data))
+	{
+	  r =
+	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*local */ 1);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U id remote %U %U",
+			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_id_type, &id_type,
+			 unformat_ip4_address, &ip4))
+	{
+	  data = vec_new (u8, 4);
+	  clib_memcpy (data, ip4.as_u8, 4);
+	  r =
+	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*remote */
+				  0);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U id remote %U 0x%U",
+			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_id_type, &id_type,
+			 unformat_hex_string, &data))
+	{
+	  r =
+	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*remote */
+				  0);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U id remote %U %v",
+			 unformat_token, valid_chars, &name,
+			 unformat_ikev2_id_type, &id_type, &data))
+	{
+	  r =
+	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*remote */
+				  0);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U traffic-selector local "
+			 "ip-range %U - %U port-range %u - %u protocol %u",
+			 unformat_token, valid_chars, &name,
+			 unformat_ip4_address, &ip4,
+			 unformat_ip4_address, &end_addr,
+			 &tmp1, &tmp2, &tmp3))
+	{
+	  r =
+	    ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1, (u16) tmp2,
+				  ip4, end_addr, /*local */ 1);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U traffic-selector remote "
+			 "ip-range %U - %U port-range %u - %u protocol %u",
+			 unformat_token, valid_chars, &name,
+			 unformat_ip4_address, &ip4,
+			 unformat_ip4_address, &end_addr,
+			 &tmp1, &tmp2, &tmp3))
+	{
+	  r =
+	    ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1, (u16) tmp2,
+				  ip4, end_addr, /*remote */ 0);
+	  goto done;
+	}
+      else
+	break;
+    }
 
   r = clib_error_return (0, "parse error: '%U'",
-                         format_unformat_error, line_input);
+			 format_unformat_error, line_input);
 
 done:
-  vec_free(name);
-  vec_free(data);
+  vec_free (name);
+  vec_free (data);
   unformat_free (line_input);
   return r;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     .path = "ikev2 profile",
     .short_help =
@@ -312,15 +338,17 @@ VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     "protocol <protocol-number>",
     .function = ikev2_profile_add_del_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 show_ikev2_profile_command_fn (vlib_main_t * vm,
-                               unformat_input_t * input,
-                               vlib_cli_command_t * cmd)
+			       unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
 {
-  ikev2_main_t * km = &ikev2_main;
-  ikev2_profile_t * p;
+  ikev2_main_t *km = &ikev2_main;
+  ikev2_profile_t *p;
 
+  /* *INDENT-OFF* */
   pool_foreach (p, km->profiles, ({
     vlib_cli_output(vm, "profile %v", p->name);
 
@@ -383,53 +411,59 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
                       p->rem_ts.start_port, p->rem_ts.end_port,
                       p->rem_ts.protocol_id);
   }));
+  /* *INDENT-ON* */
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ikev2_profile_command, static) = {
     .path = "show ikev2 profile",
     .short_help = "show ikev2 profile",
     .function = show_ikev2_profile_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 set_ikev2_local_key_command_fn (vlib_main_t * vm,
-                                unformat_input_t * input,
-                                vlib_cli_command_t * cmd)
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
-  clib_error_t * r = 0;
-  u8 * data = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *r = 0;
+  u8 *data = 0;
 
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (line_input, "%v", &data))
-      {
-        r = ikev2_set_local_key(vm, data);
-        goto done;
-      }
-    else
-      break;
-  }
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%v", &data))
+	{
+	  r = ikev2_set_local_key (vm, data);
+	  goto done;
+	}
+      else
+	break;
+    }
 
   r = clib_error_return (0, "parse error: '%U'",
-                         format_unformat_error, line_input);
+			 format_unformat_error, line_input);
 
 done:
-  vec_free(data);
+  vec_free (data);
   unformat_free (line_input);
   return r;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ikev2_local_key_command, static) = {
     .path = "set ikev2 local key",
     .short_help =
     "set ikev2 local key <file>",
     .function = set_ikev2_local_key_command_fn,
 };
+/* *INDENT-ON* */
 
 clib_error_t *
 ikev2_cli_init (vlib_main_t * vm)
@@ -438,3 +472,11 @@ ikev2_cli_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ikev2_cli_init);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
