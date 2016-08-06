@@ -28,17 +28,19 @@
 #include <openssl/opensslv.h>
 #include <openssl/hmac.h>
 
-typedef struct {
+typedef struct
+{
   ip6_address_t src;
   ip6_address_t dst;
 } ip6_sr_tunnel_key_t;
 
-typedef struct {
+typedef struct
+{
   /* src, dst address */
   ip6_sr_tunnel_key_t key;
 
   /* optional tunnel name */
-  u8 * name;
+  u8 *name;
 
   /* mask width for FIB entry */
   u32 dst_mask_width;
@@ -51,18 +53,20 @@ typedef struct {
   u32 tx_fib_index;
 
   /* The actual ip6 sr header */
-  u8 * rewrite;
+  u8 *rewrite;
 
   /* Indicates that this tunnel is part of a policy comprising
      of multiple tunnels. */
   u32 policy_index;
 } ip6_sr_tunnel_t;
 
-typedef struct {
-  u8 * shared_secret;
+typedef struct
+{
+  u8 *shared_secret;
 } ip6_sr_hmac_key_t;
 
-typedef struct {
+typedef struct
+{
   /* Key (header imposition case) */
   ip6_address_t *src_address;
   ip6_address_t *dst_address;
@@ -71,12 +75,12 @@ typedef struct {
   u32 tx_table_id;
 
   /* optional name argument - for referencing SR tunnel/policy by name */
-  u8 * name;
+  u8 *name;
 
   /* optional policy name */
-  u8 * policy_name;
+  u8 *policy_name;
 
-  /* segment list, when inserting an ip6 SR header*/
+  /* segment list, when inserting an ip6 SR header */
   ip6_address_t *segments;
 
   /* 
@@ -84,9 +88,9 @@ typedef struct {
    * past last_seg
    */
   ip6_address_t *tags;
-     
+
   /* Shared secret => generate SHA-256 HMAC security fields */
-  u8 * shared_secret;
+  u8 *shared_secret;
 
   /* Flags, e.g. cleanup, policy-list flags */
   u16 flags_net_byte_order;
@@ -95,70 +99,74 @@ typedef struct {
   u8 is_del;
 } ip6_sr_add_del_tunnel_args_t;
 
-typedef struct {
+typedef struct
+{
   /* policy name */
-  u8 * name;
+  u8 *name;
 
   /* tunnel names */
-  u8 ** tunnel_names;
+  u8 **tunnel_names;
 
   /* Delete the policy? */
   u8 is_del;
 } ip6_sr_add_del_policy_args_t;
 
 
-typedef struct {
+typedef struct
+{
   /* name of policy */
-  u8 * name;
-  
+  u8 *name;
+
   /* vector to SR tunnel index */
-  u32 * tunnel_indices;
+  u32 *tunnel_indices;
 
 } ip6_sr_policy_t;
 
-typedef struct {
+typedef struct
+{
   /* multicast IP6 address */
   ip6_address_t *multicast_address;
 
   /* name of policy to map to */
-  u8 * policy_name;
+  u8 *policy_name;
 
   /* Delete the mapping */
   u8 is_del;
 
 } ip6_sr_add_del_multicastmap_args_t;
 
-typedef struct {
+typedef struct
+{
   /* pool of tunnel instances, sr entry only */
   ip6_sr_tunnel_t *tunnels;
 
   /* find an sr "tunnel" by its outer-IP src/dst */
-  uword * tunnel_index_by_key;
+  uword *tunnel_index_by_key;
 
   /* find an sr "tunnel" by its name */
-  uword * tunnel_index_by_name;
+  uword *tunnel_index_by_name;
 
   /* policy pool */
-  ip6_sr_policy_t * policies;
+  ip6_sr_policy_t *policies;
 
   /* find a policy by name */
-  uword * policy_index_by_policy_name;
+  uword *policy_index_by_policy_name;
 
   /* multicast address to policy mapping */
-  uword * policy_index_by_multicast_address;
+  uword *policy_index_by_multicast_address;
 
   /* ip6-lookup next index for imposition FIB entries */
   u32 ip6_lookup_sr_next_index;
 
   /* hmac key id by shared secret */
-  uword * hmac_key_by_shared_secret;
+  uword *hmac_key_by_shared_secret;
 
   /* ip6-rewrite next index for reinstalling the original dst address */
   u32 ip6_rewrite_sr_next_index;
 
   /* ip6-replicate next index for multicast tunnel */
   u32 ip6_lookup_sr_replicate_index;
-  
+
   /* application API callback */
   void *sr_local_cb;
 
@@ -166,18 +174,18 @@ typedef struct {
   u8 validate_hmac;
 
   /* pool of hmac keys */
-  ip6_sr_hmac_key_t * hmac_keys;
+  ip6_sr_hmac_key_t *hmac_keys;
 
   /* Openssl vbls */
-  EVP_MD * md;
-  HMAC_CTX * hmac_ctx;
+  EVP_MD *md;
+  HMAC_CTX *hmac_ctx;
 
   /* enable debug spew */
   u8 is_debug;
 
   /* convenience */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
 } ip6_sr_main_t;
 
 ip6_sr_main_t sr_main;
@@ -197,7 +205,15 @@ int ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a);
 
 void vnet_register_sr_app_callback (void *cb);
 
-void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip, 
+void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
 		  ip6_sr_header_t * sr);
 
 #endif /* included_vnet_sr_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

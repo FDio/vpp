@@ -169,7 +169,8 @@
 
 #define ROUTING_HEADER_TYPE_SR    4
 
-typedef struct {
+typedef struct
+{
   /* Protocol for next header. */
   u8 protocol;
   /*
@@ -202,10 +203,10 @@ typedef struct {
   /* values 0x4 - 0x7 are reserved */
   u16 flags;
   u8 hmac_key;
-  
+
   /* The segment + policy list elts */
   ip6_address_t segments[0];
-} __attribute__((packed)) ip6_sr_header_t; 
+} __attribute__ ((packed)) ip6_sr_header_t;
 
 static inline int
 ip6_sr_policy_list_shift_from_index (int pl_index)
@@ -214,7 +215,7 @@ ip6_sr_policy_list_shift_from_index (int pl_index)
 }
 
 /* pl_index is one-origined, to match the text above */
-static inline int 
+static inline int
 ip6_sr_policy_list_flags (u16 flags_host_byte_order, int pl_index)
 {
   int shift;
@@ -229,3 +230,11 @@ ip6_sr_policy_list_flags (u16 flags_host_byte_order, int pl_index)
 }
 
 #endif /* included_vnet_sr_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
