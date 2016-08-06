@@ -14,6 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ *  @file
+ *  @brief Functions for replicating packets across SR tunnels.
+ *
+ *  Leverages rte_pktmbuf_clone() so there is no memcpy for
+ *  invariant parts of the packet.
+ *
+ *  @note Currently requires DPDK
+*/
 
 #if DPDK > 0			/* Cannot run replicate without DPDK */
 #include <vlib/vlib.h>
@@ -28,6 +37,10 @@
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
 
+/**
+ *   @brief sr_replicate state.
+ *
+*/
 typedef struct
 {
   /* convenience */
@@ -37,7 +50,10 @@ typedef struct
 
 sr_replicate_main_t sr_replicate_main;
 
-
+/**
+ *    @brief Information to display in packet trace.
+ *
+*/
 typedef struct
 {
   ip6_address_t src, dst;
@@ -47,7 +63,13 @@ typedef struct
   u8 sr[256];
 } sr_replicate_trace_t;
 
-/* packet trace format function */
+/**
+ *  @brief packet trace format function.
+ *
+ *  @param *s u8 used for string output
+ *  @param *args va_list  structured input to va_arg to output @ref sr_replicate_trace_t
+ *  @return *s u8 - formatted trace output
+*/
 static u8 *
 format_sr_replicate_trace (u8 * s, va_list * args)
 {
@@ -97,12 +119,23 @@ static char *sr_replicate_error_strings[] = {
 #undef _
 };
 
+/**
+ * @brief Defines next-nodes for packet processing.
+ *
+*/
 typedef enum
 {
   SR_REPLICATE_NEXT_IP6_LOOKUP,
   SR_REPLICATE_N_NEXT,
 } sr_replicate_next_t;
 
+/**
+ *   @brief Single loop packet replicator.
+ *
+ *   @node sr-replicate
+ *   @param vm vlib_main_t
+ *   @return frame->n_vectors uword
+*/
 static uword
 sr_replicate_node_fn (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame)
