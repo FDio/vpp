@@ -5994,7 +5994,7 @@ vl_api_show_lisp_pitr_t_handler (vl_api_show_lisp_pitr_t * mp)
       return;
     }
 
-  if (~0 == lcm->pitr_map_index)
+  if (!lcm->lisp_pitr)
     {
       tmp_str = format (0, "N/A");
     }
