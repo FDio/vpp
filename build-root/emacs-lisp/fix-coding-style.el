@@ -41,6 +41,9 @@
 (defun fix-pool-foreach () (interactive)
        (fix-initializer "pool_foreach *("))
 
+(defun fix-pool-foreach-index () (interactive)
+       (fix-initializer "pool_foreach_index *("))
+
 (defun fix-hash-foreach () (interactive)
        (fix-initializer "hash_foreach *("))
 
@@ -76,6 +79,7 @@
 
 (defun fd-io-styleify () (interactive)
        (fix-pool-foreach)
+       (fix-pool-foreach-index)
        (fix-hash-foreach)
        (fix-hash-foreach-pair)
        (fix-hash-foreach-mem)
