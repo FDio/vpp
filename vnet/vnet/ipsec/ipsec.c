@@ -25,11 +25,12 @@
 #include <vnet/ipsec/ikev2.h>
 
 int
-ipsec_set_interface_spd(vlib_main_t * vm, u32 sw_if_index, u32 spd_id, int is_add)
+ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
+			 int is_add)
 {
   ipsec_main_t *im = &ipsec_main;
-  ip_lookup_main_t * lm;
-  ip_config_main_t * rx_cm;
+  ip_lookup_main_t *lm;
+  ip_config_main_t *rx_cm;
   ip4_ipsec_config_t config;
 
   u32 spd_index, ci;
@@ -37,13 +38,13 @@ ipsec_set_interface_spd(vlib_main_t * vm, u32 sw_if_index, u32 spd_id, int is_ad
 
   p = hash_get (im->spd_index_by_spd_id, spd_id);
   if (!p)
-    return VNET_API_ERROR_SYSCALL_ERROR_1; /* no such spd-id */
+    return VNET_API_ERROR_SYSCALL_ERROR_1;	/* no such spd-id */
 
   spd_index = p[0];
 
   p = hash_get (im->spd_index_by_sw_if_index, sw_if_index);
   if (p && is_add)
-    return VNET_API_ERROR_SYSCALL_ERROR_1; /* spd already assigned */
+    return VNET_API_ERROR_SYSCALL_ERROR_1;	/* spd already assigned */
 
   if (is_add)
     {
@@ -54,12 +55,12 @@ ipsec_set_interface_spd(vlib_main_t * vm, u32 sw_if_index, u32 spd_id, int is_ad
       hash_unset (im->spd_index_by_sw_if_index, sw_if_index);
     }
 
-  clib_warning("sw_if_index %u spd_id %u spd_index %u",
-               sw_if_index, spd_id, spd_index);
+  clib_warning ("sw_if_index %u spd_id %u spd_index %u",
+		sw_if_index, spd_id, spd_index);
 
   /* enable IPsec on TX */
-  vnet_interface_add_del_feature(im->vnet_main, vm, sw_if_index, 
-                                 INTF_OUTPUT_FEAT_IPSEC, is_add);
+  vnet_interface_add_del_feature (im->vnet_main, vm, sw_if_index,
+				  INTF_OUTPUT_FEAT_IPSEC, is_add);
 
   /* enable IPsec on RX */
   config.spd_index = spd_index;
@@ -72,10 +73,7 @@ ipsec_set_interface_spd(vlib_main_t * vm, u32 sw_if_index, u32 spd_id, int is_ad
 
   ci = (is_add ? vnet_config_add_feature : vnet_config_del_feature)
     (vm, &rx_cm->config_main,
-     ci,
-     ip4_main.ip4_unicast_rx_feature_ipsec,
-     &config,
-     sizeof (config));
+     ci, ip4_main.ip4_unicast_rx_feature_ipsec, &config, sizeof (config));
   rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
 
   /* IPv6 */
@@ -86,20 +84,17 @@ ipsec_set_interface_spd(vlib_main_t * vm, u32 sw_if_index, u32 spd_id, int is_ad
 
   ci = (is_add ? vnet_config_add_feature : vnet_config_del_feature)
     (vm, &rx_cm->config_main,
-     ci,
-     ip6_main.ip6_unicast_rx_feature_ipsec,
-     &config,
-     sizeof (config));
+     ci, ip6_main.ip6_unicast_rx_feature_ipsec, &config, sizeof (config));
   rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
 
   return 0;
 }
 
 int
-ipsec_add_del_spd(vlib_main_t * vm, u32 spd_id, int is_add)
+ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
 {
   ipsec_main_t *im = &ipsec_main;
-  ipsec_spd_t * spd = 0;
+  ipsec_spd_t *spd = 0;
   uword *p;
   u32 spd_index, k, v;
 
@@ -109,16 +104,18 @@ ipsec_add_del_spd(vlib_main_t * vm, u32 spd_id, int is_add)
   if (!p && !is_add)
     return VNET_API_ERROR_INVALID_VALUE;
 
-  if (!is_add) /* delete */
+  if (!is_add)			/* delete */
     {
       spd_index = p[0];
-      spd = pool_elt_at_index(im->spds, spd_index);
+      spd = pool_elt_at_index (im->spds, spd_index);
       if (!spd)
-        return VNET_API_ERROR_INVALID_VALUE;
+	return VNET_API_ERROR_INVALID_VALUE;
+      /* *INDENT-OFF* */
       hash_foreach (k, v, im->spd_index_by_sw_if_index, ({
         if (v == spd_index)
           ipsec_set_interface_spd(vm, k, spd_id, 0);
       }));
+      /* *INDENT-ON* */
       hash_unset (im->spd_index_by_spd_id, spd_id);
       pool_free (spd->policies);
       vec_free (spd->ipv4_outbound_policies);
@@ -127,7 +124,7 @@ ipsec_add_del_spd(vlib_main_t * vm, u32 spd_id, int is_add)
       vec_free (spd->ipv4_inbound_policy_discard_and_bypass_indices);
       pool_put (im->spds, spd);
     }
-  else /* create new SPD */
+  else				/* create new SPD */
     {
       pool_get (im->spds, spd);
       memset (spd, 0, sizeof (*spd));
@@ -139,40 +136,43 @@ ipsec_add_del_spd(vlib_main_t * vm, u32 spd_id, int is_add)
 }
 
 static int
-ipsec_spd_entry_sort(void * a1, void * a2)
+ipsec_spd_entry_sort (void *a1, void *a2)
 {
   ipsec_main_t *im = &ipsec_main;
-  u32 * id1 = a1;
-  u32 * id2 = a2;
-  ipsec_spd_t * spd;
-  ipsec_policy_t * p1, * p2;
+  u32 *id1 = a1;
+  u32 *id2 = a2;
+  ipsec_spd_t *spd;
+  ipsec_policy_t *p1, *p2;
 
+  /* *INDENT-OFF* */
   pool_foreach (spd, im->spds, ({
     p1 = pool_elt_at_index(spd->policies, *id1);
     p2 = pool_elt_at_index(spd->policies, *id2);
     if (p1 && p2)
       return p2->priority - p1->priority;
   }));
+  /* *INDENT-ON* */
 
   return 0;
 }
 
 int
-ipsec_add_del_policy(vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
+ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
 {
   ipsec_main_t *im = &ipsec_main;
-  ipsec_spd_t * spd = 0;
-  ipsec_policy_t * vp;
+  ipsec_spd_t *spd = 0;
+  ipsec_policy_t *vp;
   uword *p;
   u32 spd_index;
 
-  clib_warning("policy-id %u priority %d is_outbound %u",policy->id, policy->priority, policy->is_outbound);
+  clib_warning ("policy-id %u priority %d is_outbound %u", policy->id,
+		policy->priority, policy->is_outbound);
 
   if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
     {
-      p = hash_get(im->sa_index_by_sa_id, policy->sa_id);
+      p = hash_get (im->sa_index_by_sa_id, policy->sa_id);
       if (!p)
-        return VNET_API_ERROR_SYSCALL_ERROR_1;
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
       policy->sa_index = p[0];
     }
 
@@ -182,7 +182,7 @@ ipsec_add_del_policy(vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
     return VNET_API_ERROR_SYSCALL_ERROR_1;
 
   spd_index = p[0];
-  spd = pool_elt_at_index(im->spds, spd_index);
+  spd = pool_elt_at_index (im->spds, spd_index);
   if (!spd)
     return VNET_API_ERROR_SYSCALL_ERROR_1;
 
@@ -195,72 +195,75 @@ ipsec_add_del_policy(vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
       policy_index = vp - spd->policies;
 
       if (policy->is_outbound)
-        {
-          if (policy->is_ipv6)
-            {
-              vec_add1 (spd->ipv6_outbound_policies, policy_index);
-              clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
-              vec_sort_with_function (spd->ipv6_outbound_policies,
-                                      ipsec_spd_entry_sort);
-            }
-          else
-            {
-              vec_add1 (spd->ipv4_outbound_policies, policy_index);
-              clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
-              vec_sort_with_function (spd->ipv4_outbound_policies,
-                                      ipsec_spd_entry_sort);
-            }
-        }
+	{
+	  if (policy->is_ipv6)
+	    {
+	      vec_add1 (spd->ipv6_outbound_policies, policy_index);
+	      clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
+	      vec_sort_with_function (spd->ipv6_outbound_policies,
+				      ipsec_spd_entry_sort);
+	    }
+	  else
+	    {
+	      vec_add1 (spd->ipv4_outbound_policies, policy_index);
+	      clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
+	      vec_sort_with_function (spd->ipv4_outbound_policies,
+				      ipsec_spd_entry_sort);
+	    }
+	}
       else
-        {
-          if (policy->is_ipv6)
-            {
-              if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
-                {
-                  vec_add1 (spd->ipv6_inbound_protect_policy_indices,
-                            policy_index);
-                  clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
-                  vec_sort_with_function (
-                     spd->ipv6_inbound_protect_policy_indices,
-                     ipsec_spd_entry_sort);
-                }
-              else
-                {
-                  vec_add1 (spd->ipv6_inbound_policy_discard_and_bypass_indices,
-                            policy_index);
-                  clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
-                  vec_sort_with_function (
-                     spd->ipv6_inbound_policy_discard_and_bypass_indices,
-                     ipsec_spd_entry_sort);
-                }
-            }
-          else
-            {
-              if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
-                {
-                  vec_add1 (spd->ipv4_inbound_protect_policy_indices,
-                            policy_index);
-                  clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
-                  vec_sort_with_function (
-                     spd->ipv4_inbound_protect_policy_indices,
-                     ipsec_spd_entry_sort);
-                }
-              else
-                {
-                  vec_add1 (spd->ipv4_inbound_policy_discard_and_bypass_indices,
-                            policy_index);
-                  clib_memcpy(vp, policy, sizeof(ipsec_policy_t));
-                  vec_sort_with_function (
-                    spd->ipv4_inbound_policy_discard_and_bypass_indices,
-                    ipsec_spd_entry_sort);
-                }
-            }
-        }
+	{
+	  if (policy->is_ipv6)
+	    {
+	      if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
+		{
+		  vec_add1 (spd->ipv6_inbound_protect_policy_indices,
+			    policy_index);
+		  clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
+		  vec_sort_with_function (spd->
+					  ipv6_inbound_protect_policy_indices,
+					  ipsec_spd_entry_sort);
+		}
+	      else
+		{
+		  vec_add1 (spd->
+			    ipv6_inbound_policy_discard_and_bypass_indices,
+			    policy_index);
+		  clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
+		  vec_sort_with_function (spd->
+					  ipv6_inbound_policy_discard_and_bypass_indices,
+					  ipsec_spd_entry_sort);
+		}
+	    }
+	  else
+	    {
+	      if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
+		{
+		  vec_add1 (spd->ipv4_inbound_protect_policy_indices,
+			    policy_index);
+		  clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
+		  vec_sort_with_function (spd->
+					  ipv4_inbound_protect_policy_indices,
+					  ipsec_spd_entry_sort);
+		}
+	      else
+		{
+		  vec_add1 (spd->
+			    ipv4_inbound_policy_discard_and_bypass_indices,
+			    policy_index);
+		  clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
+		  vec_sort_with_function (spd->
+					  ipv4_inbound_policy_discard_and_bypass_indices,
+					  ipsec_spd_entry_sort);
+		}
+	    }
+	}
 
     }
   else
     {
       u32 i, j;
+      /* *INDENT-OFF* */
       pool_foreach_index(i, spd->policies, ({
         vp = pool_elt_at_index(spd->policies, i); 
         if (vp->priority != policy->priority)
@@ -376,18 +379,20 @@ ipsec_add_del_policy(vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
           break;
         }
       }));
+      /* *INDENT-ON* */
     }
 
   return 0;
 }
 
 static u8
-ipsec_is_sa_used(u32 sa_index)
+ipsec_is_sa_used (u32 sa_index)
 {
-  ipsec_main_t * im = &ipsec_main;
-  ipsec_spd_t * spd;
-  ipsec_policy_t * p;
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_spd_t *spd;
+  ipsec_policy_t *p;
 
+  /* *INDENT-OFF* */
   pool_foreach(spd, im->spds, ({
     pool_foreach(p, spd->policies, ({
       if (p->policy == IPSEC_POLICY_ACTION_PROTECT)
@@ -397,39 +402,40 @@ ipsec_is_sa_used(u32 sa_index)
         }
     }));
   }));
+  /* *INDENT-ON* */
 
   return 0;
 }
 
 int
-ipsec_add_del_sa(vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
+ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
 {
   ipsec_main_t *im = &ipsec_main;
-  ipsec_sa_t * sa = 0;
+  ipsec_sa_t *sa = 0;
   uword *p;
   u32 sa_index;
 
-  clib_warning("id %u spi %u", new_sa->id, new_sa->spi);
+  clib_warning ("id %u spi %u", new_sa->id, new_sa->spi);
 
   p = hash_get (im->sa_index_by_sa_id, new_sa->id);
   if (p && is_add)
-    return VNET_API_ERROR_SYSCALL_ERROR_1; /* already exists */
+    return VNET_API_ERROR_SYSCALL_ERROR_1;	/* already exists */
   if (!p && !is_add)
     return VNET_API_ERROR_SYSCALL_ERROR_1;
 
-  if (!is_add) /* delete */
+  if (!is_add)			/* delete */
     {
       sa_index = p[0];
-      sa = pool_elt_at_index(im->sad, sa_index);
-      if (ipsec_is_sa_used(sa_index))
-        {
-          clib_warning("sa_id %u used in policy", sa->id);
-          return VNET_API_ERROR_SYSCALL_ERROR_1; /* sa used in policy */
-        }
+      sa = pool_elt_at_index (im->sad, sa_index);
+      if (ipsec_is_sa_used (sa_index))
+	{
+	  clib_warning ("sa_id %u used in policy", sa->id);
+	  return VNET_API_ERROR_SYSCALL_ERROR_1;	/* sa used in policy */
+	}
       hash_unset (im->sa_index_by_sa_id, sa->id);
       pool_put (im->sad, sa);
     }
-  else /* create new SA */
+  else				/* create new SA */
     {
       pool_get (im->sad, sa);
       clib_memcpy (sa, new_sa, sizeof (*sa));
@@ -440,31 +446,33 @@ ipsec_add_del_sa(vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
 }
 
 int
-ipsec_set_sa_key(vlib_main_t * vm, ipsec_sa_t * sa_update)
+ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update)
 {
   ipsec_main_t *im = &ipsec_main;
   uword *p;
   u32 sa_index;
-  ipsec_sa_t * sa = 0;
+  ipsec_sa_t *sa = 0;
 
   p = hash_get (im->sa_index_by_sa_id, sa_update->id);
   if (!p)
-    return VNET_API_ERROR_SYSCALL_ERROR_1; /* no such sa-id */
+    return VNET_API_ERROR_SYSCALL_ERROR_1;	/* no such sa-id */
 
   sa_index = p[0];
-  sa = pool_elt_at_index(im->sad, sa_index);
+  sa = pool_elt_at_index (im->sad, sa_index);
 
   /* new crypto key */
   if (0 < sa_update->crypto_key_len)
     {
-      clib_memcpy(sa->crypto_key, sa_update->crypto_key, sa_update->crypto_key_len);
+      clib_memcpy (sa->crypto_key, sa_update->crypto_key,
+		   sa_update->crypto_key_len);
       sa->crypto_key_len = sa_update->crypto_key_len;
     }
 
   /* new integ key */
   if (0 < sa_update->integ_key_len)
     {
-      clib_memcpy(sa->integ_key, sa_update->integ_key, sa_update->integ_key_len);
+      clib_memcpy (sa->integ_key, sa_update->integ_key,
+		   sa_update->integ_key_len);
       sa->integ_key_len = sa_update->integ_key_len;
     }
 
@@ -472,52 +480,54 @@ ipsec_set_sa_key(vlib_main_t * vm, ipsec_sa_t * sa_update)
 }
 
 static void
-ipsec_rand_seed(void)
+ipsec_rand_seed (void)
 {
-  struct {
+  struct
+  {
     time_t time;
     pid_t pid;
-    void * p;
+    void *p;
   } seed_data;
 
-  seed_data.time = time(NULL);
-  seed_data.pid = getpid();
-  seed_data.p = (void *)&seed_data;
+  seed_data.time = time (NULL);
+  seed_data.pid = getpid ();
+  seed_data.p = (void *) &seed_data;
 
-  RAND_seed((const void *)&seed_data, sizeof(seed_data));
+  RAND_seed ((const void *) &seed_data, sizeof (seed_data));
 }
 
 static clib_error_t *
 ipsec_init (vlib_main_t * vm)
 {
-  clib_error_t * error;
-  ipsec_main_t * im = &ipsec_main;
-  vlib_thread_main_t * tm = vlib_get_thread_main();
-  vlib_node_t * node;
+  clib_error_t *error;
+  ipsec_main_t *im = &ipsec_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vlib_node_t *node;
 
-  ipsec_rand_seed();
+  ipsec_rand_seed ();
 
   memset (im, 0, sizeof (im[0]));
 
-  im->vnet_main = vnet_get_main();
+  im->vnet_main = vnet_get_main ();
   im->vlib_main = vm;
 
-  im->spd_index_by_spd_id      = hash_create (0, sizeof (uword));
-  im->sa_index_by_sa_id        = hash_create (0, sizeof (uword));
+  im->spd_index_by_spd_id = hash_create (0, sizeof (uword));
+  im->sa_index_by_sa_id = hash_create (0, sizeof (uword));
   im->spd_index_by_sw_if_index = hash_create (0, sizeof (uword));
 
-  vec_validate_aligned(im->empty_buffers, tm->n_vlib_mains-1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (im->empty_buffers, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
 
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
-  ASSERT(node);
+  ASSERT (node);
   im->error_drop_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "esp-encrypt");
-  ASSERT(node);
+  ASSERT (node);
   im->esp_encrypt_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "ip4-lookup");
-  ASSERT(node);
+  ASSERT (node);
   im->ip4_lookup_node_index = node->index;
 
 
@@ -527,7 +537,7 @@ ipsec_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ipsec_tunnel_if_init)))
     return error;
 
-  esp_init();
+  esp_init ();
 
   if ((error = ikev2_init (vm)))
     return error;
@@ -536,3 +546,11 @@ ipsec_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ipsec_init);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
