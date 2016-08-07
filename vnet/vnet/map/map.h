@@ -20,26 +20,28 @@
 
 #define MAP_SKIP_IP6_LOOKUP 1
 
-typedef enum {
+typedef enum
+{
   MAP_SENDER,
   MAP_RECEIVER
 } map_dir_e;
 
-int map_create_domain(ip4_address_t *ip4_prefix, u8 ip4_prefix_len,
-		      ip6_address_t *ip6_prefix, u8 ip6_prefix_len,
-		      ip6_address_t *ip6_src, u8 ip6_src_len,
-		      u8 ea_bits_len, u8 psid_offset, u8 psid_length,
-		      u32 *map_domain_index, u16 mtu, u8 flags);
-int map_delete_domain(u32 map_domain_index);
-int map_add_del_psid(u32 map_domain_index, u16 psid, ip6_address_t *tep, u8 is_add);
-u8 *format_map_trace(u8 *s, va_list *args);
-i32 ip4_get_port(ip4_header_t *ip, map_dir_e dir, u16 buffer_len);
-i32 ip6_get_port(ip6_header_t *ip6, map_dir_e dir, u16 buffer_len);
-u16 ip4_map_get_port (ip4_header_t *ip, map_dir_e dir);
+int map_create_domain (ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
+		       ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
+		       ip6_address_t * ip6_src, u8 ip6_src_len,
+		       u8 ea_bits_len, u8 psid_offset, u8 psid_length,
+		       u32 * map_domain_index, u16 mtu, u8 flags);
+int map_delete_domain (u32 map_domain_index);
+int map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
+		      u8 is_add);
+u8 *format_map_trace (u8 * s, va_list * args);
+i32 ip4_get_port (ip4_header_t * ip, map_dir_e dir, u16 buffer_len);
+i32 ip6_get_port (ip6_header_t * ip6, map_dir_e dir, u16 buffer_len);
+u16 ip4_map_get_port (ip4_header_t * ip, map_dir_e dir);
 
-typedef enum __attribute__ ((__packed__)) {
-  MAP_DOMAIN_PREFIX        = 1 << 0,
-  MAP_DOMAIN_TRANSLATION   = 1 << 1, // The domain uses MAP-T
+typedef enum __attribute__ ((__packed__))
+{
+  MAP_DOMAIN_PREFIX = 1 << 0, MAP_DOMAIN_TRANSLATION = 1 << 1,	// The domain uses MAP-T
 } map_domain_flags_e;
 
 /**
@@ -55,16 +57,16 @@ typedef enum __attribute__ ((__packed__)) {
  * In case no structure can be allocated, the fragment is dropped.
  */
 
-#define MAP_IP4_REASS_LIFETIME_DEFAULT (100) /* ms */
+#define MAP_IP4_REASS_LIFETIME_DEFAULT (100)	/* ms */
 #define MAP_IP4_REASS_HT_RATIO_DEFAULT (1.0)
-#define MAP_IP4_REASS_POOL_SIZE_DEFAULT 1024 // Number of reassembly structures
+#define MAP_IP4_REASS_POOL_SIZE_DEFAULT 1024	// Number of reassembly structures
 #define MAP_IP4_REASS_BUFFERS_DEFAULT 2048
 
-#define MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY 5    // Number of fragment per reassembly
+#define MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY 5	// Number of fragment per reassembly
 
-#define MAP_IP6_REASS_LIFETIME_DEFAULT (100) /* ms */
+#define MAP_IP6_REASS_LIFETIME_DEFAULT (100)	/* ms */
 #define MAP_IP6_REASS_HT_RATIO_DEFAULT (1.0)
-#define MAP_IP6_REASS_POOL_SIZE_DEFAULT 1024 // Number of reassembly structures
+#define MAP_IP6_REASS_POOL_SIZE_DEFAULT 1024	// Number of reassembly structures
 #define MAP_IP6_REASS_BUFFERS_DEFAULT 2048
 
 #define MAP_IP6_REASS_MAX_FRAGMENTS_PER_REASSEMBLY 5
@@ -78,7 +80,8 @@ typedef enum __attribute__ ((__packed__)) {
  * This structure _MUST_ be no larger than a single cache line (64 bytes).
  * If more space is needed make a union of ip6_prefix and *rules, those are mutually exclusive.
  */
-typedef struct {
+typedef struct
+{
   ip6_address_t ip6_src;
   ip6_address_t ip6_prefix;
   ip6_address_t *rules;
@@ -107,6 +110,7 @@ typedef struct {
 /*
  * Hash key, padded out to 16 bytes for fast compare
  */
+/* *INDENT-OFF* */
 typedef union {
   CLIB_PACKED (struct {
     ip4_address_t src;
@@ -117,8 +121,10 @@ typedef union {
   u64 as_u64[2];
   u32 as_u32[4];
 } map_ip4_reass_key_t;
+/* *INDENT-ON* */
 
-typedef struct {
+typedef struct
+{
   map_ip4_reass_key_t key;
   f64 ts;
 #ifdef MAP_IP4_REASS_COUNT_BYTES
@@ -136,7 +142,8 @@ typedef struct {
 /*
  * MAP domain counters
  */
-typedef enum {
+typedef enum
+{
   /* Simple counters */
   MAP_DOMAIN_IPV4_FRAGMENT = 0,
   /* Combined counters */
@@ -148,6 +155,7 @@ typedef enum {
 /*
  * main_main_t
  */
+/* *INDENT-OFF* */
 typedef union {
   CLIB_PACKED (struct {
     ip6_address_t src;
@@ -158,6 +166,7 @@ typedef union {
   u64 as_u64[5];
   u32 as_u32[10];
 } map_ip6_reass_key_t;
+/* *INDENT-OFF* */
 
 typedef struct {
   u32 pi; //Cached packet or ~0
@@ -565,3 +574,11 @@ map_send_all_to_node(vlib_main_t *vm, u32 *pi_vector,
     vlib_put_next_frame(vm, node, next_index, n_left_to_next);
   }
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
