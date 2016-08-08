@@ -2850,7 +2850,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
     out0:
       /* Has the classifier flagged this buffer for special treatment? */
       if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
-	next0 = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
+	next0 = hm->next_override;
 
       if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) {
 	ip6_hop_by_hop_trace_t *t = vlib_add_trace(vm, node, b0, sizeof (*t));
@@ -2892,11 +2892,18 @@ ip6_hop_by_hop_init (vlib_main_t * vm)
   ip6_hop_by_hop_main_t * hm = &ip6_hop_by_hop_main;
   memset(hm->options, 0, sizeof(hm->options));
   memset(hm->trace, 0, sizeof(hm->trace));
-
+  hm->next_override = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
   return (0);
 }
 
 VLIB_INIT_FUNCTION (ip6_hop_by_hop_init);
+
+void ip6_hbh_set_next_override (uword next)
+{
+  ip6_hop_by_hop_main_t * hm = &ip6_hop_by_hop_main;
+
+  hm->next_override = next;
+}
 
 int
 ip6_hbh_register_option (u8 option,
