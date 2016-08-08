@@ -1,0 +1,70 @@
+From 729a464f9a58fc77bf4e8f527a7848c6153e4b75 Mon Sep 17 00:00:00 2001
+From: Ray Kinsella <ray.kinsella@intel.com>
+Date: Mon, 8 Aug 2016 19:41:59 +0100
+Subject: [PATCH] drivers: reset packet_type before using buffer
+
+Ensure the packet_type is reset before the buffer is used. This can cause packets to be mishandled in systems with more than one type of driver in use.
+
+Signed-off-by: Ray Kinsella <ray.kinsella@intel.com>
+Signed-off-by: Todd Foggoa (tfoggoa) <tfoggoa@cisco.com>
+---
+ drivers/net/e1000/em_rxtx.c        | 2 ++
+ drivers/net/virtio/virtio_rxtx.c   | 2 ++
+ drivers/net/vmxnet3/vmxnet3_rxtx.c | 1 +
+ 3 files changed, 5 insertions(+)
+
+diff --git a/drivers/net/e1000/em_rxtx.c b/drivers/net/e1000/em_rxtx.c
+index 6d8750a..693dd9d 100644
+--- a/drivers/net/e1000/em_rxtx.c
++++ b/drivers/net/e1000/em_rxtx.c
+@@ -784,6 +784,7 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+ 		rxm->ol_flags = rx_desc_status_to_pkt_flags(status);
+ 		rxm->ol_flags = rxm->ol_flags |
+ 				rx_desc_error_to_pkt_flags(rxd.errors);
++		rxm->packet_type = RTE_PTYPE_UNKNOWN;
+ 
+ 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
+ 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
+@@ -1010,6 +1011,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+ 		first_seg->ol_flags = rx_desc_status_to_pkt_flags(status);
+ 		first_seg->ol_flags = first_seg->ol_flags |
+ 					rx_desc_error_to_pkt_flags(rxd.errors);
++		first_seg->packet_type = RTE_PTYPE_UNKNOWN;
+ 
+ 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
+ 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.special);
+diff --git a/drivers/net/virtio/virtio_rxtx.c b/drivers/net/virtio/virtio_rxtx.c
+index 724517e..f1a572d 100644
+--- a/drivers/net/virtio/virtio_rxtx.c
++++ b/drivers/net/virtio/virtio_rxtx.c
+@@ -677,6 +677,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+ 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+ 		rxm->ol_flags = 0;
+ 		rxm->vlan_tci = 0;
++		rxm->packet_type = RTE_PTYPE_UNKNOWN;
+ 
+ 		rxm->nb_segs = 1;
+ 		rxm->next = NULL;
+@@ -800,6 +801,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
+ 		rxm->vlan_tci = 0;
+ 		rxm->pkt_len = (uint32_t)(len[0] - hdr_size);
+ 		rxm->data_len = (uint16_t)(len[0] - hdr_size);
++		rxm->packet_type = RTE_PTYPE_UNKNOWN;
+ 
+ 		rxm->port = rxvq->port_id;
+ 		rx_pkts[nb_rx] = rxm;
+diff --git a/drivers/net/vmxnet3/vmxnet3_rxtx.c b/drivers/net/vmxnet3/vmxnet3_rxtx.c
+index 9deeb3f..ac11d82 100644
+--- a/drivers/net/vmxnet3/vmxnet3_rxtx.c
++++ b/drivers/net/vmxnet3/vmxnet3_rxtx.c
+@@ -686,6 +686,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+ 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+ 		rxm->ol_flags = 0;
+ 		rxm->vlan_tci = 0;
++		rxm->packet_type = RTE_PTYPE_UNKNOWN;
+ 
+ 		/*
+ 		 * If this is the first buffer of the received packet,
+-- 
+1.9.1
+
