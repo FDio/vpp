@@ -346,7 +346,7 @@ set_indirect_is_user (void * v,
   else
     {
       log2_bytes = 1 + hash_pair_log2_bytes (h);
-      q = clib_mem_alloc (1 << log2_bytes);
+      q = clib_mem_alloc (1ULL << log2_bytes);
     }
   clib_memcpy (q, &p->direct, hash_pair_bytes (h));
 
@@ -388,7 +388,7 @@ set_indirect (void * v, hash_pair_indirect_t * pi, uword key,
       log2_bytes = indirect_pair_get_log2_bytes (pi);
 
       new_len = len + 1;
-      if (new_len * hash_pair_bytes (h) > (1 << log2_bytes))
+      if (new_len * hash_pair_bytes (h) > (1ULL << log2_bytes))
 	{
 	  pi->pairs = clib_mem_realloc (pi->pairs,
 					1 << (log2_bytes + 1),
@@ -649,7 +649,7 @@ void * _hash_create (uword elts, hash_t * h_user)
   /* Size of hash is power of 2 >= ELTS and larger than
      number of bits in is_user bitmap elements. */
   elts = clib_max (elts, BITS (h->is_user[0]));
-  elts = 1 << max_log2 (elts);
+  elts = 1ULL << max_log2 (elts);
 
   log2_pair_size = 1;
   if (h_user)

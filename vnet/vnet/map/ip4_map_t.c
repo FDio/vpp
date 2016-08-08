@@ -376,7 +376,8 @@ _ip4_map_t_icmp (map_domain_t * d, vlib_buffer_t * p, u8 * error)
 	}
       else
 	{
-	  ASSERT (0);		// We had a port from that, so it is udp or tcp or ICMP
+          /* To shut up Coverity */
+          os_panic();
 	}
 
       //FIXME: Security check with the port found in the inner packet

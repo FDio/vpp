@@ -35,11 +35,8 @@ TESTS  +=  test_bihash_template \
 	   test_macros \
 	   test_md5 \
 	   test_mheap \
-	   test_pfhash \
-	   test_phash \
 	   test_pool_iterate \
 	   test_ptclosure \
-	   test_qhash \
 	   test_random \
 	   test_random_isaac \
 	   test_serialize \
@@ -66,11 +63,8 @@ test_longjmp_SOURCES = vppinfra/test_longjmp.c
 test_macros_SOURCES = vppinfra/test_macros.c
 test_md5_SOURCES = vppinfra/test_md5.c
 test_mheap_SOURCES = vppinfra/test_mheap.c
-test_pfhash_SOURCES = vppinfra/test_pfhash.c
-test_phash_SOURCES = vppinfra/test_phash.c
 test_pool_iterate_SOURCES = vppinfra/test_pool_iterate.c
 test_ptclosure_SOURCES = vppinfra/test_ptclosure.c
-test_qhash_SOURCES = vppinfra/test_qhash.c
 test_random_SOURCES = vppinfra/test_random.c
 test_random_isaac_SOURCES = vppinfra/test_random_isaac.c
 test_serialize_SOURCES = vppinfra/test_serialize.c
@@ -95,11 +89,8 @@ test_longjmp_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_macros_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_md5_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_mheap_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
-test_pfhash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
-test_phash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_pool_iterate_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_ptclosure_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
-test_qhash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_random_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -122,11 +113,8 @@ test_longjmp_LDADD =	libvppinfra.la
 test_macros_LDADD =	libvppinfra.la
 test_md5_LDADD =	libvppinfra.la
 test_mheap_LDADD =	libvppinfra.la
-test_pfhash_LDADD =	libvppinfra.la
-test_phash_LDADD =	libvppinfra.la
 test_pool_iterate_LDADD =	libvppinfra.la
 test_ptclosure_LDADD =	libvppinfra.la
-test_qhash_LDADD =	libvppinfra.la
 test_random_LDADD =	libvppinfra.la
 test_random_isaac_LDADD =	libvppinfra.la
 test_serialize_LDADD =	libvppinfra.la
@@ -149,11 +137,8 @@ test_longjmp_LDFLAGS = -static
 test_macros_LDFLAGS = -static
 test_md5_LDFLAGS = -static
 test_mheap_LDFLAGS = -static
-test_pfhash_LDFLAGS = -static
-test_phash_LDFLAGS = -static
 test_pool_iterate_LDFLAGS = -static
 test_ptclosure_LDFLAGS = -static
-test_qhash_LDFLAGS = -static
 test_random_LDFLAGS = -static
 test_random_isaac_LDFLAGS = -static
 test_serialize_LDFLAGS = -static
@@ -206,12 +191,9 @@ nobase_include_HEADERS = \
   vppinfra/mheap.h \
   vppinfra/mheap_bootstrap.h \
   vppinfra/os.h \
-  vppinfra/pfhash.h \
-  vppinfra/phash.h \
   vppinfra/pipeline.h \
   vppinfra/pool.h \
   vppinfra/ptclosure.h \
-  vppinfra/qhash.h \
   vppinfra/random.h \
   vppinfra/random_buffer.h \
   vppinfra/random_isaac.h \
@@ -259,10 +241,7 @@ CLIB_CORE = \
   vppinfra/mheap.c \
   vppinfra/md5.c \
   vppinfra/mem_mheap.c \
-  vppinfra/pfhash.c \
-  vppinfra/phash.c \
   vppinfra/ptclosure.c \
-  vppinfra/qhash.c \
   vppinfra/random.c \
   vppinfra/random_buffer.c \
   vppinfra/random_isaac.c \

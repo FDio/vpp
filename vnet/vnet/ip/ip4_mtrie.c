@@ -303,7 +303,7 @@ unset_leaf (ip4_fib_mtrie_t * m,
 {
   ip4_fib_mtrie_leaf_t old_leaf, del_leaf;
   i32 n_dst_bits_next_plies;
-  uword i, n_dst_bits_this_ply, old_leaf_is_terminal;
+  i32 i, n_dst_bits_this_ply, old_leaf_is_terminal;
   u8 dst_byte;
 
   ASSERT (a->dst_address_length > 0 && a->dst_address_length <= 32);

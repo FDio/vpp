@@ -2588,8 +2588,10 @@ vl_api_sw_interface_clear_stats_t_handler (vl_api_sw_interface_clear_stats_t *
   vlib_combined_counter_main_t *cm;
   static vnet_main_t **my_vnet_mains;
   int i, j, n_counters;
-
   int rv = 0;
+
+  if (mp->sw_if_index != ~0)
+    VALIDATE_SW_IF_INDEX(mp);
 
   vec_reset_length (my_vnet_mains);
 
@@ -2631,6 +2633,8 @@ vl_api_sw_interface_clear_stats_t_handler (vl_api_sw_interface_clear_stats_t *
 	    vlib_zero_simple_counter (sm, ntohl (mp->sw_if_index));
 	}
     }
+
+  BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_CLEAR_STATS_REPLY);
 }
@@ -7768,6 +7772,8 @@ vl_api_ipfix_dump_t_handler (vl_api_ipfix_dump_t * mp)
   vl_api_ipfix_details_t *rmp;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
@@ -7919,8 +7925,7 @@ static void
     }
 
   // Validate mask_length
-  if (mask_length < 0 ||
-      (is_ipv6 && mask_length > 128) || (!is_ipv6 && mask_length > 32))
+  if ((is_ipv6 && mask_length > 128) || (!is_ipv6 && mask_length > 32))
     {
       rv = VNET_API_ERROR_ADDRESS_LENGTH_MISMATCH;
       goto reply;

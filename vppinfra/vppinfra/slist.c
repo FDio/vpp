@@ -299,7 +299,8 @@ u8 * format_slist (u8 * s, va_list *args)
   
   for (i = 0; i < vec_len (head_elt->n.nexts); i++)
     {
-      s = format (s, "level %d: %d elts\n", i, sl->occupancy[i]);
+      s = format (s, "level %d: %d elts\n", i, 
+                  sl->occupancy ? sl->occupancy[i] : 0);
       
       if (verbose && head_elt->n.nexts[i] != (u32)~0)
         {

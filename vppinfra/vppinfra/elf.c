@@ -582,7 +582,7 @@ format_elf_main (u8 * s, va_list * args)
     s = format (s, "\nSegments: %d at file offset 0x%Lx-0x%Lx:\n",
 		fh->segment_header_count,
 		fh->segment_header_file_offset,
-		fh->segment_header_file_offset + fh->segment_header_count * fh->segment_header_size);
+		(u64) fh->segment_header_file_offset + fh->segment_header_count * fh->segment_header_size);
 		
     s = format (s, "%U\n", format_elf_segment, 0);
     vec_foreach (h, copy)
@@ -1827,8 +1827,12 @@ clib_error_t * elf_write_file (elf_main_t * em, char * file_name)
 
     /* Finally write section headers. */
     if (fseek (f, em->file_header.section_header_file_offset, SEEK_SET) < 0)
-      return clib_error_return_unix (0, "fseek 0x%Lx", em->file_header.section_header_file_offset);
-
+      {
+        fclose(f);
+        return clib_error_return_unix 
+          (0, "fseek 0x%Lx", em->file_header.section_header_file_offset);
+      }
+        
     vec_foreach (s, em->sections)
       {
 	elf64_section_header_t h;

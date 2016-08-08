@@ -357,7 +357,8 @@ sr_replicate_node_fn (vlib_main_t * vm,
 		      (hdr_ip0->payload_length);
 		}
 	      tr->next_index = next_index;
-	      memcpy (tr->sr, hdr_sr0, sizeof (tr->sr));
+              if (hdr_sr0)
+                memcpy (tr->sr, hdr_sr0, sizeof (tr->sr));
 	    }
 
 	}

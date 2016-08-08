@@ -1437,7 +1437,8 @@ icmp6_router_advertisement(vlib_main_t * vm,
 
 		      /* check for MTU or prefix options or .. */
 		      u8 * opt_hdr = (u8 *)(h0 + 1);
-		      while( options_len0 > 0)
+		      while( options_len0 > 0 && 
+                             opt_hdr < p0->data + p0->current_data)
 			{
 			  icmp6_neighbor_discovery_option_header_t *o0 = ( icmp6_neighbor_discovery_option_header_t *)opt_hdr;
 			  int opt_len = o0->n_data_u64s << 3;
@@ -1666,11 +1667,10 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	 a->min_delay_between_radv = MIN_DELAY_BETWEEN_RAS;
 	 a->max_delay_between_radv = MAX_DELAY_BETWEEN_RAS;
 	 a->max_rtr_default_lifetime = MAX_DEF_RTR_LIFETIME;
-	 a->seed = random_default_seed();
+	 a->seed = (u32) (clib_cpu_time_now() & 0xFFFFFFFF);
 	 
 	 /* for generating random interface ids */
-	 a->randomizer = 0x1119194911191949;
-	 a->randomizer = random_u64 ((u32 *)&a->randomizer);
+	 a->randomizer = random_u64 (&a->seed);
 	 
 	 a->initial_adverts_count = MAX_INITIAL_RTR_ADVERTISEMENTS ; 
 	 a->initial_adverts_sent = a->initial_adverts_count-1;

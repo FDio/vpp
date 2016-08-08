@@ -428,8 +428,9 @@ tuntap_exit (vlib_main_t * vm)
     clib_unix_warning ("TUNSETPERSIST");
   close(tm->dev_tap_fd);
   if (tm->dev_net_tun_fd >= 0)
-      close(tm->dev_net_tun_fd);
-  close (sfd);
+    close(tm->dev_net_tun_fd);
+  if (sfd >= 0)
+    close (sfd);
 
   return 0;
 }
@@ -792,7 +793,8 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
       if (ioctl (sockfd, SIOCSIFADDR, &ifr6) < 0)
         clib_unix_warning ("set address");
 
-      close (sockfd);
+      if (sockfd >= 0)
+        close (sockfd);
     }
   else
     {

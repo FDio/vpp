@@ -158,8 +158,8 @@ void timer_call (timer_func_t * func, any arg, f64 dt)
       /* Initialize time_resolution before first call to timer_interrupt */
       time_resolution = 0.75 / (f64) HZ;
 
+      memset (&sa, 0, sizeof (sa));
       sa.sa_handler = timer_interrupt;
-      sa.sa_flags = 0;
 
       if (sigaction (TIMER_SIGNAL, &sa, 0) < 0)
 	clib_panic ("sigaction");
