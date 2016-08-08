@@ -578,6 +578,7 @@ typedef struct {
   /* Array of function pointers to HBH option handling routines */
   int (*options[256])(vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt);
   u8 *(*trace[256])(u8 *s, ip6_hop_by_hop_option_t *opt);
+  uword next_override;
 } ip6_hop_by_hop_main_t;
 
 extern ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
@@ -586,6 +587,7 @@ int ip6_hbh_register_option (u8 option,
 			     int options(vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt),
 			     u8 *trace(u8 *s, ip6_hop_by_hop_option_t *opt));
 int ip6_hbh_unregister_option (u8 option);
+void ip6_hbh_set_next_override (uword next);
 
 /* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
 #define OI_DECAP   100

@@ -765,7 +765,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
-	  if (is_indirect)
+	  if (PREDICT_FALSE(is_indirect))
 	    {
 	      ip_adjacency_t * iadj0, * iadj1;
 	      iadj0 = ip_get_adjacency (lm, vnet_buffer(p0)->ip.adj_index[VLIB_TX]);
@@ -911,7 +911,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  if (is_indirect)
+	  if (PREDICT_FALSE(is_indirect))
 	    {
 	      ip_adjacency_t * iadj0;
 	      iadj0 = ip_get_adjacency (lm, vnet_buffer(p0)->ip.adj_index[VLIB_TX]);
@@ -2813,6 +2813,76 @@ format_ip6_hop_by_hop_trace (u8 * s, va_list * args)
   return s;
 }
 
+always_inline u8 ip6_scan_hbh_options (
+				       vlib_buffer_t * b0,
+				       ip6_header_t *ip0,
+				       ip6_hop_by_hop_header_t *hbh0,
+				       ip6_hop_by_hop_option_t *opt0,
+				       ip6_hop_by_hop_option_t *limit0,
+				       u32 *next0)
+{
+  ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
+  u8 type0;
+  u8 error0 = 0;
+
+  while (opt0 < limit0)
+    {
+      type0 = opt0->type;
+      switch (type0)
+	{
+	case 0: /* Pad1 */
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *)opt0) + 1;
+	  continue;
+	case 1: /* PadN */
+	  break;
+	default:
+	  if (hm->options[type0])
+	    {
+	      if ((*hm->options[type0])(b0, ip0, opt0) < 0)
+	        {
+		  error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
+		  return(error0);
+	        }
+	    }
+	  else
+	    {
+	      /* Unrecognized mandatory option, check the two high order bits */
+	      switch (opt0->type & HBH_OPTION_TYPE_HIGH_ORDER_BITS)
+		{
+		case HBH_OPTION_TYPE_SKIP_UNKNOWN:
+		  break;
+		case HBH_OPTION_TYPE_DISCARD_UNKNOWN:
+		  error0 = IP6_HOP_BY_HOP_ERROR_UNKNOWN_OPTION;
+		  *next0 = IP_LOOKUP_NEXT_DROP;
+		  break;
+		case HBH_OPTION_TYPE_DISCARD_UNKNOWN_ICMP:
+		  error0 = IP6_HOP_BY_HOP_ERROR_UNKNOWN_OPTION;
+		  *next0 = IP_LOOKUP_NEXT_ICMP_ERROR;
+		  icmp6_error_set_vnet_buffer(b0, ICMP6_parameter_problem,
+					      ICMP6_parameter_problem_unrecognized_option, (u8 *)opt0 - (u8 *)ip0);
+		  break;
+		case HBH_OPTION_TYPE_DISCARD_UNKNOWN_ICMP_NOT_MCAST:
+		  error0 = IP6_HOP_BY_HOP_ERROR_UNKNOWN_OPTION;
+		  if (!ip6_address_is_multicast(&ip0->dst_address))
+		    {
+		      *next0 =  IP_LOOKUP_NEXT_ICMP_ERROR;
+		      icmp6_error_set_vnet_buffer(b0, ICMP6_parameter_problem,
+						  ICMP6_parameter_problem_unrecognized_option, (u8 *)opt0 - (u8 *)ip0);
+		    }
+		  else
+		    {
+		      *next0 =  IP_LOOKUP_NEXT_DROP;
+		    }
+		  break;
+		}
+	      return(error0);
+	    }
+	}
+      opt0 = (ip6_hop_by_hop_option_t *) (((u8 *)opt0) + opt0->length + sizeof (ip6_hop_by_hop_option_t));
+    }
+  return(error0);
+}
+
 /*
  * Process the Hop-by-Hop Options header
  */
@@ -2837,6 +2907,116 @@ ip6_hop_by_hop (vlib_main_t * vm,
 
     vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
+    while (n_left_from >= 4 && n_left_to_next >= 2) {
+      u32 bi0, bi1;
+      vlib_buffer_t * b0, *b1;
+      u32 next0, next1;
+      ip6_header_t * ip0, *ip1;
+      ip6_hop_by_hop_header_t *hbh0, *hbh1;
+      ip6_hop_by_hop_option_t *opt0, *limit0, *opt1, *limit1;
+      u8 error0 = 0, error1 = 0;
+
+      /* Prefetch next iteration. */
+      {
+	vlib_buffer_t * p2, * p3;
+
+	p2 = vlib_get_buffer (vm, from[2]);
+	p3 = vlib_get_buffer (vm, from[3]);
+
+	vlib_prefetch_buffer_header (p2, LOAD);
+	vlib_prefetch_buffer_header (p3, LOAD);
+
+	CLIB_PREFETCH (p2->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+	CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+      }
+
+      /* Speculatively enqueue b0, b1 to the current next frame */
+      to_next[0] = bi0 = from[0];
+      to_next[1] = bi1 = from[1];
+      from += 2;
+      to_next += 2;
+      n_left_from -= 2;
+      n_left_to_next -= 2;
+
+      b0 = vlib_get_buffer (vm, bi0);
+      b1 = vlib_get_buffer (vm, bi1);
+      u32 adj_index0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+      ip_adjacency_t *adj0 = ip_get_adjacency(lm, adj_index0);
+      u32 adj_index1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+      ip_adjacency_t *adj1 = ip_get_adjacency(lm, adj_index1);
+
+      /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
+      next0 = adj0->lookup_next_index;
+      next1 = adj1->lookup_next_index;
+
+      ip0 = vlib_buffer_get_current (b0);
+      ip1 = vlib_buffer_get_current (b1);
+      hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
+      hbh1 = (ip6_hop_by_hop_header_t *)(ip1+1);
+      opt0 = (ip6_hop_by_hop_option_t *)(hbh0+1);
+      opt1 = (ip6_hop_by_hop_option_t *)(hbh1+1);
+      limit0 = (ip6_hop_by_hop_option_t *)((u8 *)hbh0 + ((hbh0->length + 1) << 3));
+      limit1 = (ip6_hop_by_hop_option_t *)((u8 *)hbh1 + ((hbh1->length + 1) << 3));
+
+      /*
+       * Basic validity checks
+       */
+      if ((hbh0->length + 1) << 3 > clib_net_to_host_u16(ip0->payload_length)) {
+	error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
+	next0 = IP_LOOKUP_NEXT_DROP;
+	goto outdual;
+      }
+      /* Scan the set of h-b-h options, process ones that we understand */
+      error0 = ip6_scan_hbh_options(b0, ip0, hbh0, opt0, limit0, &next0);
+
+      if ((hbh1->length + 1) << 3 > clib_net_to_host_u16(ip1->payload_length)) {
+	error1 = IP6_HOP_BY_HOP_ERROR_FORMAT;
+	next1 = IP_LOOKUP_NEXT_DROP;
+	goto outdual;
+      }
+      /* Scan the set of h-b-h options, process ones that we understand */
+      error1 = ip6_scan_hbh_options(b1,ip1,hbh1,opt1,limit1, &next1);
+
+    outdual:
+      /* Has the classifier flagged this buffer for special treatment? */
+      if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
+	next0 = hm->next_override;
+
+      /* Has the classifier flagged this buffer for special treatment? */
+      if ((error1 == 0) && (vnet_buffer(b1)->l2_classify.opaque_index == OI_DECAP))
+	next1 = hm->next_override;
+
+      if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)))
+	{
+	  if (b0->flags & VLIB_BUFFER_IS_TRACED) {
+	    ip6_hop_by_hop_trace_t *t = vlib_add_trace(vm, node, b0, sizeof (*t));
+	    u32 trace_len = (hbh0->length + 1) << 3;
+	    t->next_index = next0;
+	    /* Capture the h-b-h option verbatim */
+	    trace_len = trace_len < ARRAY_LEN(t->option_data) ? trace_len : ARRAY_LEN(t->option_data);
+	    t->trace_len = trace_len;
+	    clib_memcpy(t->option_data, hbh0, trace_len);
+	  }
+	  if (b1->flags & VLIB_BUFFER_IS_TRACED) {
+	    ip6_hop_by_hop_trace_t *t = vlib_add_trace(vm, node, b1, sizeof (*t));
+	    u32 trace_len = (hbh1->length + 1) << 3;
+	    t->next_index = next1;
+	    /* Capture the h-b-h option verbatim */
+	    trace_len = trace_len < ARRAY_LEN(t->option_data) ? trace_len : ARRAY_LEN(t->option_data);
+	    t->trace_len = trace_len;
+	    clib_memcpy(t->option_data, hbh1, trace_len);
+	  }
+
+	}
+
+      b0->error = error_node->errors[error0];
+      b1->error = error_node->errors[error1];
+
+      /* verify speculative enqueue, maybe switch current next frame */
+      vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next, n_left_to_next, bi0,
+				       bi1,next0, next1);
+    }
+
     while (n_left_from > 0 && n_left_to_next > 0) {
       u32 bi0;
       vlib_buffer_t * b0;
@@ -2844,7 +3024,6 @@ ip6_hop_by_hop (vlib_main_t * vm,
       ip6_header_t * ip0;
       ip6_hop_by_hop_header_t *hbh0;
       ip6_hop_by_hop_option_t *opt0, *limit0;
-      u8 type0;
       u8 error0 = 0;
 
       /* Speculatively enqueue b0 to the current next frame */
@@ -2876,54 +3055,12 @@ ip6_hop_by_hop (vlib_main_t * vm,
       }
 
       /* Scan the set of h-b-h options, process ones that we understand */
-      while (opt0 < limit0) {
-	type0 = opt0->type;
-	switch (type0) {
-	case 0: /* Pad1 */
-	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *)opt0) + 1;
-	  continue;
-	case 1: /* PadN */
-	  break;
-	default:
-	  if (hm->options[type0]) {
-	    if ((*hm->options[type0])(b0, ip0, opt0) < 0) {
-	      error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
-	      goto out0;
-	    }
-	  } else {
-	    /* Unrecognized mandatory option, check the two high order bits */
-	    switch (opt0->type & HBH_OPTION_TYPE_HIGH_ORDER_BITS) {
-	    case HBH_OPTION_TYPE_SKIP_UNKNOWN:
-	      break;
-	    case HBH_OPTION_TYPE_DISCARD_UNKNOWN:
-	      next0 = IP_LOOKUP_NEXT_DROP;
-	      break;
-	    case HBH_OPTION_TYPE_DISCARD_UNKNOWN_ICMP:
-	      next0 = IP_LOOKUP_NEXT_ICMP_ERROR;
-	      icmp6_error_set_vnet_buffer(b0, ICMP6_parameter_problem,
-					  ICMP6_parameter_problem_unrecognized_option, (u8 *)opt0 - (u8 *)ip0);
-	      break;
-	    case HBH_OPTION_TYPE_DISCARD_UNKNOWN_ICMP_NOT_MCAST:
-	      if (!ip6_address_is_multicast(&ip0->dst_address)) {
-		next0 =  IP_LOOKUP_NEXT_ICMP_ERROR;
-		icmp6_error_set_vnet_buffer(b0, ICMP6_parameter_problem,
-					    ICMP6_parameter_problem_unrecognized_option, (u8 *)opt0 - (u8 *)ip0);
-	      } else {
-		next0 =  IP_LOOKUP_NEXT_DROP;
-	      }
-	      break;
-	    }
-	    error0 = IP6_HOP_BY_HOP_ERROR_UNKNOWN_OPTION;
-	    goto out0;
-	  }
-	}
-	opt0 = (ip6_hop_by_hop_option_t *) (((u8 *)opt0) + opt0->length + sizeof (ip6_hop_by_hop_option_t));
-      }
+      error0 = ip6_scan_hbh_options(b0, ip0, hbh0, opt0, limit0, &next0);
 
     out0:
       /* Has the classifier flagged this buffer for special treatment? */
       if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
-	next0 = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
+	next0 = hm->next_override;
 
       if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) {
 	ip6_hop_by_hop_trace_t *t = vlib_add_trace(vm, node, b0, sizeof (*t));
@@ -2965,11 +3102,18 @@ ip6_hop_by_hop_init (vlib_main_t * vm)
   ip6_hop_by_hop_main_t * hm = &ip6_hop_by_hop_main;
   memset(hm->options, 0, sizeof(hm->options));
   memset(hm->trace, 0, sizeof(hm->trace));
-
+  hm->next_override = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
   return (0);
 }
 
 VLIB_INIT_FUNCTION (ip6_hop_by_hop_init);
+
+void ip6_hbh_set_next_override (uword next)
+{
+  ip6_hop_by_hop_main_t * hm = &ip6_hop_by_hop_main;
+
+  hm->next_override = next;
+}
 
 int
 ip6_hbh_register_option (u8 option,
