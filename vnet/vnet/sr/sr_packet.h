@@ -20,8 +20,11 @@
  * limitations under the License.
  */
 
-/*
- *   The Segment Routing Header (SRH) is defined as follows:
+/**
+ *  @file
+ *  @brief The Segment Routing Header (SRH).
+ *
+ *  The Segment Routing Header (SRH) is defined in the diagram below.
  *
  *
  *     0                   1                   2                   3
@@ -168,43 +171,51 @@
 #endif
 
 #define ROUTING_HEADER_TYPE_SR    4
-
+/**
+    @brief SR header struct.
+*/
 typedef struct
 {
-  /* Protocol for next header. */
+  /** Protocol for next header. */
   u8 protocol;
-  /*
+
+  /**
    * Length of routing header in 8 octet units,
    * not including the first 8 octets
    */
   u8 length;
 
-  /* Type of routing header; type 4 = segement routing */
+  /** Type of routing header; type 4 = segement routing */
   u8 type;
 
-  /* Next segment in the segment list */
+  /** Next segment in the segment list */
   u8 segments_left;
 
-  /*
+  /**
    * Policy list pointer: offset in the SRH of the policy
    * list - in 16-octet units - not including the first 8 octets.
    */
   u8 first_segment;
 
-  /* Flag bits */
+  /** Flag bits */
 #define IP6_SR_HEADER_FLAG_CLEANUP    (0x8000)
+  /** Flag bits */
 #define IP6_SR_HEADER_FLAG_PROTECTED  (0x4000)
+  /** Flag bits */
 #define IP6_SR_HEADER_FLAG_RESERVED   (0x3000)
-
+  /** Flag bits */
 #define IP6_SR_HEADER_FLAG_PL_ELT_NOT_PRESENT (0x0)
+    /** Flag bits */
 #define IP6_SR_HEADER_FLAG_PL_ELT_INGRESS_PE (0x1)
+    /** Flag bits */
 #define IP6_SR_HEADER_FLAG_PL_ELT_EGRESS_PE (0x2)
+    /** Flag bits */
 #define IP6_SR_HEADER_FLAG_PL_ELT_ORIG_SRC_ADDR (0x3)
-  /* values 0x4 - 0x7 are reserved */
+  /** values 0x4 - 0x7 are reserved */
   u16 flags;
   u8 hmac_key;
 
-  /* The segment + policy list elts */
+  /** The segment + policy list elts */
   ip6_address_t segments[0];
 } __attribute__ ((packed)) ip6_sr_header_t;
 
@@ -214,7 +225,7 @@ ip6_sr_policy_list_shift_from_index (int pl_index)
   return (-3 * pl_index) + 12;
 }
 
-/* pl_index is one-origined, to match the text above */
+/** pl_index is one-origined */
 static inline int
 ip6_sr_policy_list_flags (u16 flags_host_byte_order, int pl_index)
 {
