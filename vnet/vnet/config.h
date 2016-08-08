@@ -43,7 +43,8 @@
 #include <vlib/vlib.h>
 #include <vppinfra/heap.h>
 
-typedef struct {
+typedef struct
+{
   /* Features are prioritized by index.  Smaller indices get
      performed first. */
   u32 feature_index;
@@ -55,19 +56,22 @@ typedef struct {
   u32 next_index;
 
   /* Opaque per feature configuration data. */
-  u32 * feature_config;
+  u32 *feature_config;
 } vnet_config_feature_t;
 
 always_inline void
 vnet_config_feature_free (vnet_config_feature_t * f)
-{ vec_free (f->feature_config); }
+{
+  vec_free (f->feature_config);
+}
 
-typedef struct {
+typedef struct
+{
   /* Sorted vector of features for this configuration. */
-  vnet_config_feature_t * features;
+  vnet_config_feature_t *features;
 
   /* Config string as vector for hashing. */
-  u32 * config_string_vector;
+  u32 *config_string_vector;
 
   /* Config string including all next indices and feature data as a vector. */
   u32 config_string_heap_index, config_string_heap_handle;
@@ -79,36 +83,36 @@ typedef struct {
   u32 reference_count;
 } vnet_config_t;
 
-typedef struct {
+typedef struct
+{
   /* Pool of configs.  Index 0 is always null config and is never deleted. */
-  vnet_config_t * config_pool;
+  vnet_config_t *config_pool;
 
   /* Hash table mapping vector config string to config pool index. */
-  uword * config_string_hash;
+  uword *config_string_hash;
 
-  /* Global heap of configuration data. */ 
-  u32 * config_string_heap;
+  /* Global heap of configuration data. */
+  u32 *config_string_heap;
 
   /* Node index which starts/ends feature processing. */
-  u32 * start_node_indices, end_node_index;
+  u32 *start_node_indices, end_node_index;
 
   /* Interior feature processing nodes (not including start and end nodes). */
-  u32 * node_index_by_feature_index;
+  u32 *node_index_by_feature_index;
 
   /* vnet_config pool index by user index */
-  u32 * config_pool_index_by_user_index;
+  u32 *config_pool_index_by_user_index;
 
   /* Temporary vector for holding config strings.  Used to avoid continually
      allocating vectors. */
-  u32 * config_string_temp;
+  u32 *config_string_temp;
 } vnet_config_main_t;
 
 always_inline void
 vnet_config_free (vnet_config_main_t * cm, vnet_config_t * c)
 {
-  vnet_config_feature_t * f;
-  vec_foreach (f, c->features)
-    vnet_config_feature_free (f);
+  vnet_config_feature_t *f;
+  vec_foreach (f, c->features) vnet_config_feature_free (f);
   vec_free (c->features);
   heap_dealloc (cm->config_string_heap, c->config_string_heap_handle);
   vec_free (c->config_string_vector);
@@ -116,11 +120,9 @@ vnet_config_free (vnet_config_main_t * cm, vnet_config_t * c)
 
 always_inline void *
 vnet_get_config_data (vnet_config_main_t * cm,
-		      u32 * config_index,
-		      u32 * next_index,
-		      u32 n_data_bytes)
+		      u32 * config_index, u32 * next_index, u32 n_data_bytes)
 {
-  u32 i, n, * d;
+  u32 i, n, *d;
 
   i = *config_index;
 
@@ -140,24 +142,31 @@ vnet_get_config_data (vnet_config_main_t * cm,
 
 void vnet_config_init (vlib_main_t * vm,
 		       vnet_config_main_t * cm,
-		       char * start_node_names[],
+		       char *start_node_names[],
 		       int n_start_node_names,
-		       char * feature_node_names[],
-		       int n_feature_node_names);
+		       char *feature_node_names[], int n_feature_node_names);
 
 /* Calls to add/delete features from configurations. */
 u32 vnet_config_add_feature (vlib_main_t * vm,
 			     vnet_config_main_t * cm,
 			     u32 config_id,
 			     u32 feature_index,
-			     void * feature_config,
+			     void *feature_config,
 			     u32 n_feature_config_bytes);
 
 u32 vnet_config_del_feature (vlib_main_t * vm,
 			     vnet_config_main_t * cm,
 			     u32 config_id,
 			     u32 feature_index,
-			     void * feature_config,
+			     void *feature_config,
 			     u32 n_feature_config_bytes);
 
 #endif /* included_vnet_config_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

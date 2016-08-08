@@ -49,29 +49,32 @@ vnet_get_main (void)
 
 static uword
 vnet_local_interface_tx (vlib_main_t * vm,
-			 vlib_node_runtime_t * node,
-			 vlib_frame_t * f)
+			 vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   ASSERT (0);
   return f->n_vectors;
 }
 
+/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vnet_local_interface_device_class) = {
   .name = "local",
   .tx_function = vnet_local_interface_tx,
 };
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (vnet_local_interface_hw_class,static) = {
   .name = "local",
 };
+/* *INDENT-ON* */
 
 clib_error_t *
 vnet_main_init (vlib_main_t * vm)
 {
-  vnet_main_t * vnm = vnet_get_main();
-  clib_error_t * error;
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error;
   u32 hw_if_index;
-  vnet_hw_interface_t * hw;
+  vnet_hw_interface_t *hw;
 
   if ((error = vlib_call_init_function (vm, vnet_interface_init)))
     return error;
@@ -88,8 +91,7 @@ vnet_main_init (vlib_main_t * vm)
   vnm->vlib_main = vm;
 
   hw_if_index = vnet_register_interface
-    (vnm,
-     vnet_local_interface_device_class.index, /* instance */ 0,
+    (vnm, vnet_local_interface_device_class.index, /* instance */ 0,
      vnet_local_interface_hw_class.index, /* instance */ 0);
   hw = vnet_get_hw_interface (vnm, hw_if_index);
 
@@ -100,3 +102,11 @@ vnet_main_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (vnet_main_init);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

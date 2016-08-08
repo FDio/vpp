@@ -47,18 +47,18 @@ struct vnet_hw_interface_t;
 struct vnet_sw_interface_t;
 
 /* Interface up/down callback. */
-typedef clib_error_t * (vnet_interface_function_t)
+typedef clib_error_t *(vnet_interface_function_t)
   (struct vnet_main_t * vnm, u32 if_index, u32 flags);
 
 /* Sub-interface add/del callback. */
-typedef clib_error_t * (vnet_subif_add_del_function_t)
+typedef clib_error_t *(vnet_subif_add_del_function_t)
   (struct vnet_main_t * vnm, u32 if_index,
-   struct vnet_sw_interface_t * template,
-   int is_add);
+   struct vnet_sw_interface_t * template, int is_add);
 
-typedef struct _vnet_interface_function_list_elt {
-  struct _vnet_interface_function_list_elt * next_interface_function;
-  clib_error_t * (*fp) (struct vnet_main_t * vnm, u32 if_index, u32 flags);
+typedef struct _vnet_interface_function_list_elt
+{
+  struct _vnet_interface_function_list_elt *next_interface_function;
+  clib_error_t *(*fp) (struct vnet_main_t * vnm, u32 if_index, u32 flags);
 } _vnet_interface_function_list_elt_t;
 
 #define _VNET_INTERFACE_FUNCTION_DECL(f,tag)                            \
@@ -73,7 +73,7 @@ static void __vnet_interface_function_init_##tag##_##f (void)           \
  init_function.next_interface_function = vnm->tag##_functions;          \
  vnm->tag##_functions = &init_function;                                 \
  init_function.fp = (void *) &f;                                        \
-} 
+}
 
 #define VNET_HW_INTERFACE_ADD_DEL_FUNCTION(f)			\
   _VNET_INTERFACE_FUNCTION_DECL(f,hw_interface_add_del)
@@ -85,66 +85,68 @@ static void __vnet_interface_function_init_##tag##_##f (void)           \
   _VNET_INTERFACE_FUNCTION_DECL(f,sw_interface_admin_up_down)
 
 /* A class of hardware interface devices. */
-typedef struct _vnet_device_class {
+typedef struct _vnet_device_class
+{
   /* Index into main vector. */
   u32 index;
 
   /* Device name (e.g. "FOOBAR 1234a"). */
-  char * name;
+  char *name;
 
   /* Function to call when hardware interface is added/deleted. */
-  vnet_interface_function_t * interface_add_del_function;
+  vnet_interface_function_t *interface_add_del_function;
 
   /* Function to bring device administratively up/down. */
-  vnet_interface_function_t * admin_up_down_function;
+  vnet_interface_function_t *admin_up_down_function;
 
   /* Function to call when sub-interface is added/deleted */
-  vnet_subif_add_del_function_t * subif_add_del_function;
+  vnet_subif_add_del_function_t *subif_add_del_function;
 
   /* Redistribute flag changes/existence of this interface class. */
   u32 redistribute;
 
   /* Transmit function. */
-  vlib_node_function_t * tx_function;
+  vlib_node_function_t *tx_function;
 
   /* Error strings indexed by error code for this node. */
-  char ** tx_function_error_strings;
+  char **tx_function_error_strings;
 
   /* Number of error codes used by this node. */
   u32 tx_function_n_errors;
 
   /* Renumber device name [only!] support, a control-plane kludge */
-  int (*name_renumber) (struct vnet_hw_interface_t * hi, u32 new_dev_instance);
+  int (*name_renumber) (struct vnet_hw_interface_t * hi,
+			u32 new_dev_instance);
 
   /* Format device instance as name. */
-  format_function_t * format_device_name;
+  format_function_t *format_device_name;
 
   /* Parse function for device name. */
-  unformat_function_t * unformat_device_name;
+  unformat_function_t *unformat_device_name;
 
   /* Format device verbosely for this class. */
-  format_function_t * format_device;
+  format_function_t *format_device;
 
   /* Trace buffer format for TX function. */
-  format_function_t * format_tx_trace;
+  format_function_t *format_tx_trace;
 
   /* Function to clear hardware counters for device. */
-  void (* clear_counters) (u32 dev_class_instance);
+  void (*clear_counters) (u32 dev_class_instance);
 
-  uword (* is_valid_class_for_interface) (struct vnet_main_t * vnm, u32 hw_if_index, u32 hw_class_index);
+    uword (*is_valid_class_for_interface) (struct vnet_main_t * vnm,
+					   u32 hw_if_index,
+					   u32 hw_class_index);
 
   /* Called when hardware class of an interface changes. */
-  void ( * hw_class_change) (struct vnet_main_t * vnm,
-			     u32 hw_if_index,
-			     u32 new_hw_class_index);
+  void (*hw_class_change) (struct vnet_main_t * vnm,
+			   u32 hw_if_index, u32 new_hw_class_index);
 
   /* Called to redirect traffic from a specific interface instance */
-  void (* rx_redirect_to_node) (struct vnet_main_t * vnm,
-                                u32 hw_if_index,
-                                u32 node_index);
+  void (*rx_redirect_to_node) (struct vnet_main_t * vnm,
+			       u32 hw_if_index, u32 node_index);
 
   /* Link-list of all device classes set up by constructors created below */
-  struct _vnet_device_class * next_class_registration;
+  struct _vnet_device_class *next_class_registration;
 
   /* Do not splice vnet_interface_output_node into TX path */
   u8 no_flatten_output_chains;
@@ -161,7 +163,7 @@ static void __vnet_add_device_class_registration_##x (void)             \
     x.next_class_registration = vnm->device_class_registrations;        \
     vnm->device_class_registrations = &x;                               \
 }                                                                       \
-__VA_ARGS__ vnet_device_class_t x                                       
+__VA_ARGS__ vnet_device_class_t x
 
 #define VLIB_DEVICE_TX_FUNCTION_CLONE_TEMPLATE(arch, fn, tgt)		\
   uword									\
@@ -190,57 +192,60 @@ __VA_ARGS__ vnet_device_class_t x
 
 
 /* Layer-2 (e.g. Ethernet) interface class. */
-typedef struct _vnet_hw_interface_class {
+typedef struct _vnet_hw_interface_class
+{
   /* Index into main vector. */
   u32 index;
 
   /* Class name (e.g. "Ethernet"). */
-  char * name;
+  char *name;
 
   /* Function to call when hardware interface is added/deleted. */
-  vnet_interface_function_t * interface_add_del_function;
+  vnet_interface_function_t *interface_add_del_function;
 
   /* Function to bring interface administratively up/down. */
-  vnet_interface_function_t * admin_up_down_function;
+  vnet_interface_function_t *admin_up_down_function;
 
   /* Function to call when link state changes. */
-  vnet_interface_function_t * link_up_down_function;
+  vnet_interface_function_t *link_up_down_function;
 
   /* Format function to display interface name. */
-  format_function_t * format_interface_name;
+  format_function_t *format_interface_name;
 
   /* Format function to display interface address. */
-  format_function_t * format_address;
+  format_function_t *format_address;
 
   /* Format packet header for this interface class. */
-  format_function_t * format_header;
+  format_function_t *format_header;
 
   /* Format device verbosely for this class. */
-  format_function_t * format_device;
+  format_function_t *format_device;
 
   /* Parser for hardware (e.g. ethernet) address. */
-  unformat_function_t * unformat_hw_address;
+  unformat_function_t *unformat_hw_address;
 
   /* Parser for packet header for e.g. rewrite string. */
-  unformat_function_t * unformat_header;
+  unformat_function_t *unformat_header;
 
   /* Forms adjacency for given l3 packet type and destination address.
      Returns number of bytes in adjacency. */
-  uword (* set_rewrite) (struct vnet_main_t * vnm,
-			 u32 sw_if_index,
-			 u32 l3_packet_type,
-			 void * dst_address,
-			 void * rewrite,
-			 uword max_rewrite_bytes);
+    uword (*set_rewrite) (struct vnet_main_t * vnm,
+			  u32 sw_if_index,
+			  u32 l3_packet_type,
+			  void *dst_address,
+			  void *rewrite, uword max_rewrite_bytes);
 
-  uword (* is_valid_class_for_interface) (struct vnet_main_t * vnm, u32 hw_if_index, u32 hw_class_index);
+    uword (*is_valid_class_for_interface) (struct vnet_main_t * vnm,
+					   u32 hw_if_index,
+					   u32 hw_class_index);
 
   /* Called when hw interface class is changed and old hardware instance
      may want to be deleted. */
-  void (* hw_class_change) (struct vnet_main_t * vnm, u32 hw_if_index, u32 old_class_index, u32 new_class_index);
+  void (*hw_class_change) (struct vnet_main_t * vnm, u32 hw_if_index,
+			   u32 old_class_index, u32 new_class_index);
 
   /* List of hw interface classes, built by constructors */
-  struct _vnet_hw_interface_class * next_class_registration;
+  struct _vnet_hw_interface_class *next_class_registration;
 
 } vnet_hw_interface_class_t;
 
@@ -258,9 +263,10 @@ __VA_ARGS__ vnet_hw_interface_class_t x
 
 /* Hardware-interface.  This corresponds to a physical wire
    that packets flow over. */
-typedef struct vnet_hw_interface_t {
+typedef struct vnet_hw_interface_t
+{
   /* Interface name. */
-  u8 * name;
+  u8 *name;
 
   u32 flags;
   /* Hardware link state is up. */
@@ -295,7 +301,7 @@ typedef struct vnet_hw_interface_t {
 
   /* Hardware address as vector.  Zero (e.g. zero-length vector) if no
      address for this class (e.g. PPP). */
-  u8 * hw_address;
+  u8 *hw_address;
 
   /* Interface is up as far as software is concerned. */
   /* NAME.{output,tx} nodes for this interface. */
@@ -339,7 +345,7 @@ typedef struct vnet_hw_interface_t {
   u32 max_l3_packet_bytes[VLIB_N_RX_TX];
 
   /* Hash table mapping sub interface id to sw_if_index. */
-  uword * sub_interface_sw_if_index_by_id;
+  uword *sub_interface_sw_if_index_by_id;
 
   /* Count of number of L2 subinterfaces */
   u32 l2_if_count;
@@ -356,7 +362,8 @@ typedef struct vnet_hw_interface_t {
 
 extern vnet_device_class_t vnet_local_interface_device_class;
 
-typedef enum {
+typedef enum
+{
   /* A hw interface. */
   VNET_SW_INTERFACE_TYPE_HARDWARE,
 
@@ -364,26 +371,32 @@ typedef enum {
   VNET_SW_INTERFACE_TYPE_SUB,
 } vnet_sw_interface_type_t;
 
-typedef struct {
-  // Subinterface ID. A number 0-N to uniquely identify this subinterface under the
-  // main (parent?) interface
-  u32 id; 
+typedef struct
+{
+  /*
+   * Subinterface ID. A number 0-N to uniquely identify
+   * this subinterface under the main (parent?) interface
+   */
+  u32 id;
 
-  // Classification data. Used to associate packet header with subinterface.
-  struct {
+  /* Classification data. Used to associate packet header with subinterface. */
+  struct
+  {
     u16 outer_vlan_id;
     u16 inner_vlan_id;
-    union {
+    union
+    {
       u16 raw_flags;
-      struct {
-        u16 no_tags:1;
-        u16 one_tag:1;
-        u16 two_tags:1;
-        u16 dot1ad:1;   // 0 = dot1q, 1=dot1ad
-        u16 exact_match:1;
-        u16 default_sub:1;
-        u16 outer_vlan_id_any:1;
-        u16 inner_vlan_id_any:1;
+      struct
+      {
+	u16 no_tags:1;
+	u16 one_tag:1;
+	u16 two_tags:1;
+	u16 dot1ad:1;		/* 0 = dot1q, 1=dot1ad */
+	u16 exact_match:1;
+	u16 default_sub:1;
+	u16 outer_vlan_id_any:1;
+	u16 inner_vlan_id_any:1;
       } flags;
     };
   } eth;
@@ -392,8 +405,9 @@ typedef struct {
 /* Software-interface.  This corresponds to a Ethernet VLAN, ATM vc, a
    tunnel, etc.  Configuration (e.g. IP address) gets attached to
    software interface. */
-typedef struct {
-  vnet_sw_interface_type_t type : 16;
+typedef struct
+{
+  vnet_sw_interface_type_t type:16;
 
   u16 flags;
   /* Interface is "up" meaning adminstratively up.
@@ -424,19 +438,18 @@ typedef struct {
 
   u32 output_feature_bitmap;
 
-  union {
+  union
+  {
     /* VNET_SW_INTERFACE_TYPE_HARDWARE. */
     u32 hw_if_index;
 
     /* VNET_SW_INTERFACE_TYPE_SUB. */
     vnet_sub_interface_t sub;
-
-    /* SW interfaces are sorted by type and key. */
-    // u32 sort_key;
   };
 } vnet_sw_interface_t;
 
-typedef enum {
+typedef enum
+{
   /* Simple counters. */
   VNET_INTERFACE_COUNTER_DROP = 0,
   VNET_INTERFACE_COUNTER_PUNT = 1,
@@ -453,57 +466,62 @@ typedef enum {
   VNET_N_COMBINED_INTERFACE_COUNTER = 2,
 } vnet_interface_counter_type_t;
 
-typedef struct {
+typedef struct
+{
   u32 output_node_index;
   u32 tx_node_index;
 } vnet_hw_interface_nodes_t;
 
-typedef struct {
+typedef struct
+{
   /* Hardware interfaces. */
-  vnet_hw_interface_t * hw_interfaces;
+  vnet_hw_interface_t *hw_interfaces;
 
   /* Hash table mapping HW interface name to index. */
-  uword * hw_interface_by_name;
+  uword *hw_interface_by_name;
 
   /* Vectors if hardware interface classes and device classes. */
-  vnet_hw_interface_class_t * hw_interface_classes;
-  vnet_device_class_t * device_classes;
+  vnet_hw_interface_class_t *hw_interface_classes;
+  vnet_device_class_t *device_classes;
 
   /* Hash table mapping name to hw interface/device class. */
-  uword * hw_interface_class_by_name;
-  uword * device_class_by_name;
+  uword *hw_interface_class_by_name;
+  uword *device_class_by_name;
 
   /* Software interfaces. */
-  vnet_sw_interface_t * sw_interfaces;
+  vnet_sw_interface_t *sw_interfaces;
 
   /* Hash table mapping sub intfc sw_if_index by sup sw_if_index and sub id */
-  uword * sw_if_index_by_sup_and_sub;
+  uword *sw_if_index_by_sup_and_sub;
 
   /* Software interface counters both simple and combined
      packet and byte counters. */
   volatile u32 *sw_if_counter_lock;
-  vlib_simple_counter_main_t * sw_if_counters;
-  vlib_combined_counter_main_t * combined_sw_if_counters;
+  vlib_simple_counter_main_t *sw_if_counters;
+  vlib_combined_counter_main_t *combined_sw_if_counters;
 
-  vnet_hw_interface_nodes_t * deleted_hw_interface_nodes;
+  vnet_hw_interface_nodes_t *deleted_hw_interface_nodes;
 
   /* pcap drop tracing */
   int drop_pcap_enable;
   pcap_main_t pcap_main;
-  u8 * pcap_filename;
+  u8 *pcap_filename;
   u32 pcap_sw_if_index;
   u32 pcap_pkts_to_capture;
-  uword * pcap_drop_filter_hash;
+  uword *pcap_drop_filter_hash;
 
 } vnet_interface_main_t;
 
-static inline void vnet_interface_counter_lock (vnet_interface_main_t *im)
+static inline void
+vnet_interface_counter_lock (vnet_interface_main_t * im)
 {
   if (im->sw_if_counter_lock)
     while (__sync_lock_test_and_set (im->sw_if_counter_lock, 1))
       /* zzzz */ ;
 }
-static inline void vnet_interface_counter_unlock (vnet_interface_main_t *im)
+
+static inline void
+vnet_interface_counter_unlock (vnet_interface_main_t * im)
 {
   if (im->sw_if_counter_lock)
     *im->sw_if_counter_lock = 0;
@@ -521,19 +539,28 @@ int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
 #define foreach_intf_output_feat \
  _(IPSEC, "ipsec-output")
 
-// Feature bitmap positions
-typedef enum {
+/* Feature bitmap positions */
+typedef enum
+{
 #define _(sym,str) INTF_OUTPUT_FEAT_##sym,
   foreach_intf_output_feat
 #undef _
-  INTF_OUTPUT_N_FEAT,
+    INTF_OUTPUT_N_FEAT,
 } intf_output_feat_t;
 
 /* flag that we are done with feature path */
 #define INTF_OUTPUT_FEAT_DONE INTF_OUTPUT_N_FEAT
 
-int vnet_interface_add_del_feature(struct vnet_main_t * vnm, vlib_main_t * vm,
-                                   u32 sw_if_index,
-                                   intf_output_feat_t feature, int is_add);
+int vnet_interface_add_del_feature (struct vnet_main_t *vnm, vlib_main_t * vm,
+				    u32 sw_if_index,
+				    intf_output_feat_t feature, int is_add);
 
 #endif /* included_vnet_interface_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

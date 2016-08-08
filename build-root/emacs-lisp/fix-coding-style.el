@@ -74,6 +74,12 @@
 (defun fix-reply-macro2 () (interactive)
        (fix-initializer "REPLY_MACRO2 *("))
 
+(defun fix-vnet-device-class () (interactive)
+       (fix-initializer "VNET_DEVICE_CLASS *("))
+
+(defun fix-vnet-hw-interface-class () (interactive)
+       (fix-initializer "VNET_HW_INTERFACE_CLASS *("))
+
 ;; Driver routine which runs the set of functions
 ;; defined above, as well as the bottom boilerplate function
 
@@ -90,6 +96,8 @@
        (fix-vlib-cli-command)
        (fix-vlib-register-node)
        (fix-reply-macro2)
+       (fix-vnet-device-class)
+       (fix-vnet-hw-interface-class)
        (insert-style-boilerplate))
 
 

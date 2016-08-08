@@ -40,18 +40,19 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/lookup.h>
 
-void vnet_rewrite_copy_slow_path (vnet_rewrite_data_t * p0,
-				  vnet_rewrite_data_t * rw0,
-				  word n_left,
-				  uword most_likely_size)
+void
+vnet_rewrite_copy_slow_path (vnet_rewrite_data_t * p0,
+			     vnet_rewrite_data_t * rw0,
+			     word n_left, uword most_likely_size)
 {
-  uword n_done = round_pow2 (most_likely_size, sizeof (rw0[0])) / sizeof (rw0[0]);
+  uword n_done =
+    round_pow2 (most_likely_size, sizeof (rw0[0])) / sizeof (rw0[0]);
 
   p0 -= n_done;
   rw0 -= n_done;
 
   /* As we enter the cleanup loop, p0 and rw0 point to the last chunk written
-     by the fast path. Hence, the constant 1, which the 
+     by the fast path. Hence, the constant 1, which the
      vnet_rewrite_copy_one macro renders as p0[-1] = rw0[-1]. */
 
   while (n_left > 0)
@@ -63,13 +64,14 @@ void vnet_rewrite_copy_slow_path (vnet_rewrite_data_t * p0,
     }
 }
 
-u8 * format_vnet_rewrite (u8 * s, va_list * args)
+u8 *
+format_vnet_rewrite (u8 * s, va_list * args)
 {
-  vlib_main_t * vm = va_arg (*args, vlib_main_t *);
-  vnet_rewrite_header_t * rw = va_arg (*args, vnet_rewrite_header_t *);
+  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
+  vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
   u32 max_data_bytes = va_arg (*args, u32);
-  vnet_main_t * vnm = vnet_get_main();
-  vlib_node_t * next;
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_node_t *next;
   uword indent;
 
   next = vlib_get_next_node (vm, rw->node_index, rw->next_index);
@@ -78,7 +80,7 @@ u8 * format_vnet_rewrite (u8 * s, va_list * args)
 
   if (rw->sw_if_index != ~0)
     {
-      vnet_sw_interface_t * si;
+      vnet_sw_interface_t *si;
       si = vnet_get_sw_interface (vnm, rw->sw_if_index);
       s = format (s, "%U", format_vnet_sw_interface_name, vnm, si);
     }
@@ -90,19 +92,19 @@ u8 * format_vnet_rewrite (u8 * s, va_list * args)
     s = format (s, "\n%U%U",
 		format_white_space, indent,
 		next->format_buffer ? next->format_buffer : format_hex_bytes,
-		rw->data + max_data_bytes - rw->data_bytes,
-		rw->data_bytes);
+		rw->data + max_data_bytes - rw->data_bytes, rw->data_bytes);
 
   return s;
 }
 
-u8 * format_vnet_rewrite_header (u8 * s, va_list * args)
+u8 *
+format_vnet_rewrite_header (u8 * s, va_list * args)
 {
-  vlib_main_t * vm = va_arg (*args, vlib_main_t *);
-  vnet_rewrite_header_t * rw = va_arg (*args, vnet_rewrite_header_t *);
-  u8 * packet_data = va_arg (*args, u8 *);
+  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
+  vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
+  u8 *packet_data = va_arg (*args, u8 *);
   u32 packet_data_bytes = va_arg (*args, u32);
-  vlib_node_t * next;
+  vlib_node_t *next;
 
   next = vlib_get_next_node (vm, rw->node_index, rw->next_index);
 
@@ -114,15 +116,16 @@ u8 * format_vnet_rewrite_header (u8 * s, va_list * args)
   return s;
 }
 
-uword unformat_vnet_rewrite (unformat_input_t * input, va_list * args)
+uword
+unformat_vnet_rewrite (unformat_input_t * input, va_list * args)
 {
-  vlib_main_t * vm = va_arg (*args, vlib_main_t *);
-  vnet_rewrite_header_t * rw = va_arg (*args, vnet_rewrite_header_t *);
+  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
+  vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
   u32 max_data_bytes = va_arg (*args, u32);
-  vnet_main_t * vnm = vnet_get_main();
-  vlib_node_t * next;
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_node_t *next;
   u32 next_index, sw_if_index, max_packet_bytes, error;
-  u8 * rw_data;
+  u8 *rw_data;
 
   rw_data = 0;
   sw_if_index = ~0;
@@ -130,10 +133,9 @@ uword unformat_vnet_rewrite (unformat_input_t * input, va_list * args)
   error = 1;
 
   /* Parse sw interface. */
-  if (unformat (input, "%U",
-		unformat_vnet_sw_interface, vnm, &sw_if_index))
+  if (unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
     {
-      vnet_hw_interface_t * hi;
+      vnet_hw_interface_t *hi;
 
       hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
@@ -141,8 +143,7 @@ uword unformat_vnet_rewrite (unformat_input_t * input, va_list * args)
       max_packet_bytes = hi->max_l3_packet_bytes[VLIB_RX];
     }
 
-  else if (unformat (input, "%U",
-		     unformat_vlib_node, vm, &next_index))
+  else if (unformat (input, "%U", unformat_vlib_node, vm, &next_index))
     ;
 
   else
@@ -157,7 +158,7 @@ uword unformat_vnet_rewrite (unformat_input_t * input, va_list * args)
   else if (unformat_user (input, unformat_hex_string, &rw_data)
 	   || unformat (input, "0x%U", unformat_hex_string, &rw_data))
     ;
-      
+
   else
     goto done;
 
@@ -177,29 +178,33 @@ uword unformat_vnet_rewrite (unformat_input_t * input, va_list * args)
   rw->sw_if_index = sw_if_index;
   rw->max_l3_packet_bytes = max_packet_bytes;
   rw->next_index = vlib_node_add_next (vm, rw->node_index, next_index);
-  vnet_rewrite_set_data_internal (rw, max_data_bytes, rw_data, vec_len (rw_data));
+  vnet_rewrite_set_data_internal (rw, max_data_bytes, rw_data,
+				  vec_len (rw_data));
 
- done:
+done:
   vec_free (rw_data);
   return error == 0;
 }
 
-void vnet_rewrite_for_sw_interface (vnet_main_t * vnm,
-				    vnet_l3_packet_type_t packet_type,
-				    u32 sw_if_index,
-				    u32 node_index,
-				    void * dst_address,
-				    vnet_rewrite_header_t * rw,
-				    u32 max_rewrite_bytes)
+void
+vnet_rewrite_for_sw_interface (vnet_main_t * vnm,
+			       vnet_l3_packet_type_t packet_type,
+			       u32 sw_if_index,
+			       u32 node_index,
+			       void *dst_address,
+			       vnet_rewrite_header_t * rw,
+			       u32 max_rewrite_bytes)
 {
-  vnet_hw_interface_t * hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  vnet_hw_interface_class_t * hc = vnet_get_hw_interface_class (vnm, hw->hw_class_index);
-  static u8 * rw_tmp = 0;
+  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  vnet_hw_interface_class_t *hc =
+    vnet_get_hw_interface_class (vnm, hw->hw_class_index);
+  static u8 *rw_tmp = 0;
   uword n_rw_tmp;
 
   rw->sw_if_index = sw_if_index;
   rw->node_index = node_index;
-  rw->next_index = vlib_node_add_next (vnm->vlib_main, node_index, hw->output_node_index);
+  rw->next_index =
+    vlib_node_add_next (vnm->vlib_main, node_index, hw->output_node_index);
   rw->max_l3_packet_bytes = hw->max_l3_packet_bytes[VLIB_TX];
 
   ASSERT (max_rewrite_bytes > 0);
@@ -207,56 +212,62 @@ void vnet_rewrite_for_sw_interface (vnet_main_t * vnm,
   vec_validate (rw_tmp, max_rewrite_bytes - 1);
 
   ASSERT (hc->set_rewrite);
-  n_rw_tmp = hc->set_rewrite (vnm, sw_if_index, packet_type, dst_address, rw_tmp, max_rewrite_bytes);
+  n_rw_tmp =
+    hc->set_rewrite (vnm, sw_if_index, packet_type, dst_address, rw_tmp,
+		     max_rewrite_bytes);
 
   ASSERT (n_rw_tmp < max_rewrite_bytes);
   vnet_rewrite_set_data_internal (rw, max_rewrite_bytes, rw_tmp, n_rw_tmp);
 }
 
-void vnet_rewrite_for_tunnel (vnet_main_t * vnm,
-                              u32 tx_sw_if_index,
-                              u32 rewrite_node_index,
-                              u32 post_rewrite_node_index,
-                              vnet_rewrite_header_t * rw,
-                              u8 *rewrite_data,
-                              u32 rewrite_length)
+void
+vnet_rewrite_for_tunnel (vnet_main_t * vnm,
+			 u32 tx_sw_if_index,
+			 u32 rewrite_node_index,
+			 u32 post_rewrite_node_index,
+			 vnet_rewrite_header_t * rw,
+			 u8 * rewrite_data, u32 rewrite_length)
 {
-  ip_adjacency_t * adj = 0;
-  /* 
+  ip_adjacency_t *adj = 0;
+  /*
    * Installed into vnet_buffer(b)->sw_if_index[VLIB_TX] e.g.
-   * by ip4_rewrite_inline. If the post-rewrite node injects into 
-   * ipX-forward, this will be interpreted as a FIB number. 
+   * by ip4_rewrite_inline. If the post-rewrite node injects into
+   * ipX-forward, this will be interpreted as a FIB number.
    */
-  rw->sw_if_index = tx_sw_if_index; 
+  rw->sw_if_index = tx_sw_if_index;
   rw->node_index = rewrite_node_index;
-  rw->next_index = vlib_node_add_next (vnm->vlib_main, rewrite_node_index, 
-                                       post_rewrite_node_index);
-  rw->max_l3_packet_bytes = (u16) ~0; /* we can't know at this point */
+  rw->next_index = vlib_node_add_next (vnm->vlib_main, rewrite_node_index,
+				       post_rewrite_node_index);
+  rw->max_l3_packet_bytes = (u16) ~ 0;	/* we can't know at this point */
 
   ASSERT (rewrite_length < sizeof (adj->rewrite_data));
   /* Leave room for ethernet + VLAN tag */
-  vnet_rewrite_set_data_internal (rw, sizeof(adj->rewrite_data), 
-                                  rewrite_data, rewrite_length);
+  vnet_rewrite_set_data_internal (rw, sizeof (adj->rewrite_data),
+				  rewrite_data, rewrite_length);
 }
 
-void serialize_vnet_rewrite (serialize_main_t * m, va_list * va)
+void
+serialize_vnet_rewrite (serialize_main_t * m, va_list * va)
 {
-  vnet_rewrite_header_t * rw = va_arg (*va, vnet_rewrite_header_t *);
+  vnet_rewrite_header_t *rw = va_arg (*va, vnet_rewrite_header_t *);
   u32 max_data_bytes = va_arg (*va, u32);
-  u8 * p;
+  u8 *p;
 
   serialize_integer (m, rw->sw_if_index, sizeof (rw->sw_if_index));
   serialize_integer (m, rw->data_bytes, sizeof (rw->data_bytes));
-  serialize_integer (m, rw->max_l3_packet_bytes, sizeof (rw->max_l3_packet_bytes));
+  serialize_integer (m, rw->max_l3_packet_bytes,
+		     sizeof (rw->max_l3_packet_bytes));
   p = serialize_get (m, rw->data_bytes);
-  clib_memcpy (p, vnet_rewrite_get_data_internal (rw, max_data_bytes), rw->data_bytes);
+  clib_memcpy (p, vnet_rewrite_get_data_internal (rw, max_data_bytes),
+	       rw->data_bytes);
 }
 
-void unserialize_vnet_rewrite (serialize_main_t * m, va_list * va)
+void
+unserialize_vnet_rewrite (serialize_main_t * m, va_list * va)
 {
-  vnet_rewrite_header_t * rw = va_arg (*va, vnet_rewrite_header_t *);
+  vnet_rewrite_header_t *rw = va_arg (*va, vnet_rewrite_header_t *);
   u32 max_data_bytes = va_arg (*va, u32);
-  u8 * p;
+  u8 *p;
 
   /* It is up to user to fill these in. */
   rw->node_index = ~0;
@@ -264,7 +275,17 @@ void unserialize_vnet_rewrite (serialize_main_t * m, va_list * va)
 
   unserialize_integer (m, &rw->sw_if_index, sizeof (rw->sw_if_index));
   unserialize_integer (m, &rw->data_bytes, sizeof (rw->data_bytes));
-  unserialize_integer (m, &rw->max_l3_packet_bytes, sizeof (rw->max_l3_packet_bytes));
+  unserialize_integer (m, &rw->max_l3_packet_bytes,
+		       sizeof (rw->max_l3_packet_bytes));
   p = unserialize_get (m, rw->data_bytes);
-  clib_memcpy (vnet_rewrite_get_data_internal (rw, max_data_bytes), p, rw->data_bytes);
+  clib_memcpy (vnet_rewrite_get_data_internal (rw, max_data_bytes), p,
+	       rw->data_bytes);
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
