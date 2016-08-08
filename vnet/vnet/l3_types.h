@@ -41,10 +41,19 @@
 #define included_vnet_l3_types_h
 
 /* Inherit generic L3 packet types from ethernet. */
-typedef enum {
+typedef enum
+{
 #define ethernet_type(n,f) VNET_L3_PACKET_TYPE_##f,
 #include <vnet/ethernet/types.def>
 #undef ethernet_type
 } vnet_l3_packet_type_t;
 
 #endif /* included_vnet_l3_types_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

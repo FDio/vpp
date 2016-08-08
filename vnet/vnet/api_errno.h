@@ -88,11 +88,20 @@ _(INCORRECT_ADJACENCY_TYPE, -94, "Invalid adjacency type for this operation") \
 _(EXCEEDED_NUMBER_OF_RANGES_CAPACITY, -95, "Operation would exceed configured capacity of ranges") \
 _(EXCEEDED_NUMBER_OF_PORTS_CAPACITY, -96, "Operation would exceed capacity of number of ports")
 
-typedef enum {
+typedef enum
+{
 #define _(a,b,c) VNET_API_ERROR_##a = (b),
-    foreach_vnet_api_error
+  foreach_vnet_api_error
 #undef _
     VNET_API_N_ERROR,
 } vnet_api_error_t;
 
 #endif /* included_vnet_api_errno_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -42,7 +42,8 @@
 
 #include <vppinfra/types.h>
 
-typedef enum {
+typedef enum
+{
   VNET_UNICAST,
   VNET_MULTICAST,
   VNET_N_CAST,
@@ -55,27 +56,28 @@ typedef enum {
 #include <vnet/rewrite.h>
 #include <vnet/api_errno.h>
 
-typedef struct vnet_main_t {
+typedef struct vnet_main_t
+{
   u32 local_interface_hw_if_index;
   u32 local_interface_sw_if_index;
 
   vnet_interface_main_t interface_main;
 
   /* set up by constructors */
-  vnet_device_class_t * device_class_registrations;
-  vnet_hw_interface_class_t * hw_interface_class_registrations;
-  _vnet_interface_function_list_elt_t * hw_interface_add_del_functions;
-  _vnet_interface_function_list_elt_t * hw_interface_link_up_down_functions;
-  _vnet_interface_function_list_elt_t * sw_interface_add_del_functions;
-  _vnet_interface_function_list_elt_t * sw_interface_admin_up_down_functions;
+  vnet_device_class_t *device_class_registrations;
+  vnet_hw_interface_class_t *hw_interface_class_registrations;
+  _vnet_interface_function_list_elt_t *hw_interface_add_del_functions;
+  _vnet_interface_function_list_elt_t *hw_interface_link_up_down_functions;
+  _vnet_interface_function_list_elt_t *sw_interface_add_del_functions;
+  _vnet_interface_function_list_elt_t *sw_interface_admin_up_down_functions;
 
-  /* 
+  /*
    * Last "api" error, preserved so we can issue reasonable diagnostics
    * at or near the top of the food chain
    */
   vnet_api_error_t api_errno;
 
-  vlib_main_t * vlib_main;
+  vlib_main_t *vlib_main;
 } vnet_main_t;
 
 vnet_main_t vnet_main;
@@ -85,3 +87,11 @@ vnet_main_t **vnet_mains;
 #include <vnet/global_funcs.h>
 
 #endif /* included_vnet_vnet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

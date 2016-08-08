@@ -19,6 +19,14 @@
 #ifndef included_vnet_global_funcs_h_
 #define included_vnet_global_funcs_h_
 
-vnet_main_t * vnet_get_main (void);
+vnet_main_t *vnet_get_main (void);
 
 #endif /* included_vnet_global_funcs_h_ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
