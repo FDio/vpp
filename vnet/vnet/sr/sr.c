@@ -15,6 +15,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Segment Routing main functions
+ *
+ */
 #include <vnet/vnet.h>
 #include <vnet/sr/sr.h>
 
@@ -23,6 +28,13 @@
 ip6_sr_main_t sr_main;
 static vlib_node_registration_t sr_local_node;
 
+/**
+ * @brief Use passed HMAC key in ip6_sr_header_t in OpenSSL HMAC routines
+ *
+ * @param sm ip6_sr_main_t *
+ * @param ip ip6_header_t *
+ * @param sr ip6_sr_header_t *
+ */
 void
 sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip, ip6_sr_header_t * sr)
 {
@@ -92,6 +104,14 @@ sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip, ip6_sr_header_t * sr)
   HMAC_CTX_cleanup (sm->hmac_ctx);
 }
 
+/**
+ * @brief Format function for decoding various SR flags
+ *
+ * @param s u8 * - formatted string
+ * @param args va_list * - u16 flags
+ *
+ * @return formatted output string u8 *
+ */
 u8 *
 format_ip6_sr_header_flags (u8 * s, va_list * args)
 {
@@ -135,6 +155,14 @@ format_ip6_sr_header_flags (u8 * s, va_list * args)
   return s;
 }
 
+/**
+ * @brief Format function for decoding ip6_sr_header_t
+ *
+ * @param s u8 * - formatted string
+ * @param args va_list * - ip6_sr_header_t
+ *
+ * @return formatted output string u8 *
+ */
 u8 *
 format_ip6_sr_header (u8 * s, va_list * args)
 {
@@ -195,6 +223,14 @@ format_ip6_sr_header (u8 * s, va_list * args)
   return s;
 }
 
+/**
+ * @brief Format function for decoding ip6_sr_header_t with length
+ *
+ * @param s u8 * - formatted string
+ * @param args va_list * - ip6_header_t + ip6_sr_header_t
+ *
+ * @return formatted output string u8 *
+ */
 u8 *
 format_ip6_sr_header_with_length (u8 * s, va_list * args)
 {
@@ -213,7 +249,11 @@ format_ip6_sr_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-#if DPDK > 0			/* Cannot call replicate yet without DPDK */
+/**
+ * @brief Defined valid next nodes
+ * @note Cannot call replicate yet without DPDK
+*/
+#if DPDK > 0
 #define foreach_sr_rewrite_next                 \
 _(ERROR, "error-drop")                          \
 _(IP6_LOOKUP, "ip6-lookup")                     \
@@ -226,6 +266,9 @@ _(IP6_LOOKUP, "ip6-lookup")                     \
 _(SR_LOCAL, "sr-local")
 #endif /* DPDK */
 
+/**
+ * @brief Struct for defined valid next nodes
+*/
 typedef enum
 {
 #define _(s,n) SR_REWRITE_NEXT_##s,
@@ -234,6 +277,9 @@ typedef enum
     SR_REWRITE_N_NEXT,
 } sr_rewrite_next_t;
 
+/**
+ * @brief Struct for data for SR rewrite packet trace
+ */
 typedef struct
 {
   ip6_address_t src, dst;
@@ -243,12 +289,18 @@ typedef struct
   u8 sr[256];
 } sr_rewrite_trace_t;
 
+/**
+ * @brief Error strings for SR rewrite
+ */
 static char *sr_rewrite_error_strings[] = {
 #define sr_error(n,s) s,
 #include "sr_error.def"
 #undef sr_error
 };
 
+/**
+ * @brief Struct for SR rewrite error strings
+ */
 typedef enum
 {
 #define sr_error(n,s) SR_REWRITE_ERROR_##n,
@@ -258,6 +310,9 @@ typedef enum
 } sr_rewrite_error_t;
 
 
+/**
+ * @brief Format function for SR rewrite trace.
+ */
 u8 *
 format_sr_rewrite_trace (u8 * s, va_list * args)
 {
@@ -287,6 +342,16 @@ format_sr_rewrite_trace (u8 * s, va_list * args)
   return s;
 }
 
+/**
+ * @brief Main processing dual-loop for Segment Routing Rewrite
+ * @node sr-rewrite
+ *
+ * @param vm vlib_main_t *
+ * @param node vlib_node_runtime_t *
+ * @param from_frame vlib_frame_t *
+ *
+ * @return from_frame->n_vectors uword
+ */
 static uword
 sr_rewrite (vlib_main_t * vm,
 	    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
@@ -703,6 +768,15 @@ VLIB_NODE_FUNCTION_MULTIARCH (sr_rewrite_node, sr_rewrite)
   return 0;
 }
 
+/**
+ * @brief Find or add if not found - HMAC shared secret
+ *
+ * @param sm ip6_sr_main_t *
+ * @param secret u8 *
+ * @param indexp u32 *
+ *
+ * @return ip6_sr_hmac_key_t *
+ */
 static ip6_sr_hmac_key_t *
 find_or_add_shared_secret (ip6_sr_main_t * sm, u8 * secret, u32 * indexp)
 {
@@ -752,7 +826,13 @@ find_or_add_shared_secret (ip6_sr_main_t * sm, u8 * secret, u32 * indexp)
   return (key);
 }
 
-
+/**
+ * @brief Add or Delete a Segment Routing tunnel.
+ *
+ * @param a ip6_sr_add_del_tunnel_args_t *
+ *
+ * @return retval int
+ */
 int
 ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
 {
@@ -1045,6 +1125,15 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   return 0;
 }
 
+/**
+ * @brief CLI parser for Add or Delete a Segment Routing tunnel.
+ *
+ * @param vm vlib_main_t *
+ * @param input unformat_input_t *
+ * @param cmd vlib_cli_command_t *
+ *
+ * @return error clib_error_t *
+ */
 static clib_error_t *
 sr_add_del_tunnel_command_fn (vlib_main_t * vm,
 			      unformat_input_t * input,
@@ -1216,6 +1305,13 @@ VLIB_CLI_COMMAND (sr_tunnel_command, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * @brief Display Segment Routing tunnel
+ *
+ * @param vm vlib_main_t *
+ * @param t ip6_sr_tunnel_t *
+ *
+ */
 void
 ip6_sr_tunnel_display (vlib_main_t * vm, ip6_sr_tunnel_t * t)
 {
@@ -1252,6 +1348,15 @@ ip6_sr_tunnel_display (vlib_main_t * vm, ip6_sr_tunnel_t * t)
   return;
 }
 
+/**
+ * @brief CLI Parser for Display Segment Routing tunnel
+ *
+ * @param vm vlib_main_t *
+ * @param input unformat_input_t *
+ * @param cmd vlib_cli_command_t *
+ *
+ * @return error clib_error_t *
+ */
 static clib_error_t *
 show_sr_tunnel_fn (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -1310,6 +1415,13 @@ VLIB_CLI_COMMAND (show_sr_tunnel_command, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * @brief Add or Delete a Segment Routing policy
+ *
+ * @param a ip6_sr_add_del_policy_args_t *
+ *
+ * @return retval int
+ */
 int
 ip6_sr_add_del_policy (ip6_sr_add_del_policy_args_t * a)
 {
@@ -1383,7 +1495,15 @@ ip6_sr_add_del_policy (ip6_sr_add_del_policy_args_t * a)
   return 0;
 }
 
-
+/**
+ * @brief CLI Parser for Add or Delete a Segment Routing policy
+ *
+ * @param vm vlib_main_t *
+ * @param input unformat_input_t *
+ * @param cmd vlib_cli_command_t *
+ *
+ * @return error clib_error_t *
+ */
 static clib_error_t *
 sr_add_del_policy_command_fn (vlib_main_t * vm,
 			      unformat_input_t * input,
@@ -1466,6 +1586,15 @@ VLIB_CLI_COMMAND (sr_policy_command, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * @brief CLI Parser for Displaying Segment Routing policy
+ *
+ * @param vm vlib_main_t *
+ * @param input unformat_input_t *
+ * @param cmd vlib_cli_command_t *
+ *
+ * @return error clib_error_t *
+ */
 static clib_error_t *
 show_sr_policy_fn (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -1537,6 +1666,14 @@ VLIB_CLI_COMMAND (show_sr_policy_command, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * @brief Add or Delete a mapping of IP6 multicast address
+ * to Segment Routing policy.
+ *
+ * @param a ip6_sr_add_del_multicastmap_args_t *
+ *
+ * @return retval int
+ */
 int
 ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
 {
@@ -1634,6 +1771,16 @@ ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
   return 0;
 }
 
+/**
+ * @brief CLI Parser for Adding or Delete a mapping of IP6 multicast address
+ * to Segment Routing policy.
+ *
+ * @param vm vlib_main_t *
+ * @param input unformat_input_t *
+ * @param cmd vlib_cli_command_t *
+ *
+ * @return error clib_error_t *
+ */
 static clib_error_t *
 sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
 				     unformat_input_t * input,
@@ -1716,6 +1863,16 @@ VLIB_CLI_COMMAND (sr_multicast_map_command, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * @brief CLI Parser for Displaying a mapping of IP6 multicast address
+ * to Segment Routing policy.
+ *
+ * @param vm vlib_main_t *
+ * @param input unformat_input_t *
+ * @param cmd vlib_cli_command_t *
+ *
+ * @return error clib_error_t *
+ */
 static clib_error_t *
 show_sr_multicast_map_fn (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -1768,6 +1925,9 @@ VLIB_CLI_COMMAND (show_sr_multicast_map_command, static) = {
 #define foreach_sr_fix_dst_addr_next            \
 _(DROP, "error-drop")
 
+/**
+ * @brief Struct for valid next-nodes for SR fix destination address node
+ */
 typedef enum
 {
 #define _(s,n) SR_FIX_DST_ADDR_NEXT_##s,
@@ -1776,12 +1936,18 @@ typedef enum
     SR_FIX_DST_ADDR_N_NEXT,
 } sr_fix_dst_addr_next_t;
 
+/**
+ * @brief Error strings for SR Fix Destination rewrite
+ */
 static char *sr_fix_dst_error_strings[] = {
 #define sr_fix_dst_error(n,s) s,
 #include "sr_fix_dst_error.def"
 #undef sr_fix_dst_error
 };
 
+/**
+ * @brief Struct for errors for SR Fix Destination rewrite
+ */
 typedef enum
 {
 #define sr_fix_dst_error(n,s) SR_FIX_DST_ERROR_##n,
@@ -1790,6 +1956,9 @@ typedef enum
   SR_FIX_DST_N_ERROR,
 } sr_fix_dst_error_t;
 
+/**
+ * @brief Information for fix address trace
+ */
 typedef struct
 {
   ip6_address_t src, dst;
@@ -1798,6 +1967,9 @@ typedef struct
   u8 sr[256];
 } sr_fix_addr_trace_t;
 
+/**
+ * @brief Formatter for fix address trace
+ */
 u8 *
 format_sr_fix_addr_trace (u8 * s, va_list * args)
 {
@@ -1831,6 +2003,16 @@ format_sr_fix_addr_trace (u8 * s, va_list * args)
   return s;
 }
 
+/**
+ * @brief Fix SR destination address - dual-loop
+ *
+ * @node sr-fix-dst-addr
+ * @param vm vlib_main_t *
+ * @param node vlib_node_runtime_t *
+ * @param from_frame vlib_frame_t *
+ *
+ * @return from_frame->n_vectors uword
+ */
 static uword
 sr_fix_dst_addr (vlib_main_t * vm,
 		 vlib_node_runtime_t * node, vlib_frame_t * from_frame)
@@ -2067,10 +2249,16 @@ VLIB_NODE_FUNCTION_MULTIARCH (sr_fix_dst_addr_node, sr_fix_dst_addr)
 
 VLIB_INIT_FUNCTION (sr_init);
 
+/**
+ * @brief Definition of next-nodes for SR local
+ */
 #define foreach_sr_local_next                   \
   _ (ERROR, "error-drop")                       \
   _ (IP6_LOOKUP, "ip6-lookup")
 
+/**
+ * @brief Struct for definition of next-nodes for SR local
+ */
 typedef enum
 {
 #define _(s,n) SR_LOCAL_NEXT_##s,
@@ -2079,6 +2267,9 @@ typedef enum
     SR_LOCAL_N_NEXT,
 } sr_local_next_t;
 
+/**
+ * @brief Struct for packet trace of SR local
+ */
 typedef struct
 {
   u8 next_index;
@@ -2088,12 +2279,18 @@ typedef struct
   u8 sr[256];
 } sr_local_trace_t;
 
+/**
+ * @brief Definition of SR local error-strings
+ */
 static char *sr_local_error_strings[] = {
 #define sr_error(n,s) s,
 #include "sr_error.def"
 #undef sr_error
 };
 
+/**
+ * @brief Struct for definition of SR local error-strings
+ */
 typedef enum
 {
 #define sr_error(n,s) SR_LOCAL_ERROR_##n,
@@ -2102,6 +2299,14 @@ typedef enum
   SR_LOCAL_N_ERROR,
 } sr_local_error_t;
 
+/**
+ * @brief Format SR local trace
+ *
+ * @param s u8 *
+ * @param args va_list *
+ *
+ * @return s u8 *
+ */
 u8 *
 format_sr_local_trace (u8 * s, va_list * args)
 {
@@ -2123,7 +2328,15 @@ format_sr_local_trace (u8 * s, va_list * args)
 
 
 /* $$$$ fixme: smp, don't copy data, cache input, output (maybe) */
-
+/**
+ * @brief Validate the SR HMAC
+ *
+ * @param sm ip6_sr_main_t *
+ * @param ip ip6_header_t *
+ * @param sr ip6_sr_header_t *
+ *
+ * @return retval int
+ */
 static int
 sr_validate_hmac (ip6_sr_main_t * sm, ip6_header_t * ip, ip6_sr_header_t * sr)
 {
@@ -2215,6 +2428,16 @@ sr_validate_hmac (ip6_sr_main_t * sm, ip6_header_t * ip, ip6_sr_header_t * sr)
   return memcmp (signature, addrp, SHA256_DIGEST_LENGTH);
 }
 
+/**
+ * @brief SR local node
+ * @node sr-local
+ *
+ * @param vm vlib_main_t *
+ * @param node vlib_node_runtime_t *
+ * @param from_frame vlib_frame_t *
+ *
+ * @return from_frame->n_vectors uword
+ */
 static uword
 sr_local (vlib_main_t * vm,
 	  vlib_node_runtime_t * node, vlib_frame_t * from_frame)
@@ -2648,7 +2871,15 @@ VLIB_NODE_FUNCTION_MULTIARCH (sr_local_node, sr_local)
   return &sr_main;
 }
 
-
+/**
+ * @brief CLI parser for SR fix destination rewrite node
+ *
+ * @param vm vlib_main_t *
+ * @param input unformat_input_t *
+ * @param cmd vlib_cli_command_t *
+ *
+ * @return error clib_error_t *
+ */
 static clib_error_t *
 set_ip6_sr_rewrite_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -2711,6 +2942,11 @@ VLIB_CLI_COMMAND (set_ip6_sr_rewrite, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * @brief Register a callback routine to set next0 in sr_local
+ *
+ * @param cb void *
+ */
 void
 vnet_register_sr_app_callback (void *cb)
 {
@@ -2719,6 +2955,9 @@ vnet_register_sr_app_callback (void *cb)
   sm->sr_local_cb = cb;
 }
 
+/**
+ * @brief Test routine for validation of HMAC
+ */
 static clib_error_t *
 test_sr_hmac_validate_fn (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -2746,6 +2985,17 @@ VLIB_CLI_COMMAND (test_sr_hmac_validate, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * @brief Add or Delete HMAC key
+ *
+ * @param sm ip6_sr_main_t *
+ * @param key_id u32
+ * @param shared_secret u8 *
+ * @param is_del u8
+ *
+ * @return retval i32
+ */
+// $$$ fixme shouldn't return i32
 i32
 sr_hmac_add_del_key (ip6_sr_main_t * sm, u32 key_id, u8 * shared_secret,
 		     u8 is_del)
@@ -2844,7 +3094,15 @@ VLIB_CLI_COMMAND (sr_hmac, static) = {
 };
 /* *INDENT-ON* */
 
-
+/**
+ * @brief CLI parser for show HMAC key shared secrets
+ *
+ * @param vm vlib_main_t *
+ * @param input unformat_input_t *
+ * @param cmd vlib_cli_command_t *
+ *
+ * @return error clib_error_t *
+ */
 static clib_error_t *
 show_sr_hmac_fn (vlib_main_t * vm,
 		 unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -2869,6 +3127,15 @@ VLIB_CLI_COMMAND (show_sr_hmac, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * @brief Test for SR debug flag
+ *
+ * @param vm vlib_main_t *
+ * @param input unformat_input_t *
+ * @param cmd vlib_cli_command_t *
+ *
+ * @return error clib_error_t *
+ */
 static clib_error_t *
 test_sr_debug_fn (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
