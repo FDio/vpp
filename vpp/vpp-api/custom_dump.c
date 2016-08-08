@@ -30,6 +30,7 @@
 #include <vnet/classify/policer_classify.h>
 #include <vnet/policer/xlate.h>
 #include <vnet/policer/policer.h>
+#include <vnet/classify/flow_classify.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
@@ -2571,6 +2572,43 @@ static void *vl_api_lisp_eid_table_dump_t_print
   FINISH;
 }
 
+static void * vl_api_flow_classify_set_interface_t_print
+(vl_api_flow_classify_set_interface_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: flow_classify_set_interface ");
+    s = format (s, "sw_if_index %d ", ntohl(mp->sw_if_index));
+    if (mp->ip4_table_index != ~0)
+        s = format (s, "ip4-table %d ", ntohl(mp->ip4_table_index));
+    if (mp->ip6_table_index != ~0)
+        s = format (s, "ip6-table %d ", ntohl(mp->ip6_table_index));
+    if (mp->is_add == 0)
+        s = format (s, "del ");
+
+    FINISH;
+}
+
+static void * vl_api_flow_classify_dump_t_print
+(vl_api_flow_classify_dump_t * mp, void *handle)
+{
+    u8 * s;
+
+    s = format (0, "SCRIPT: flow_classify_dump ");
+    switch (mp->type) {
+    case FLOW_CLASSIFY_TABLE_IP4:
+        s = format (s, "type ip4 ");
+        break;
+    case FLOW_CLASSIFY_TABLE_IP6:
+        s = format (s, "type ip6 ");
+        break;
+    default:
+        break;
+    }
+
+    FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_map_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -2719,7 +2757,9 @@ _(LISP_EID_TABLE_DUMP, lisp_eid_table_dump)                             \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
-_(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)
+_(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
+_(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
+_(FLOW_CLASSIFY_DUMP, flow_classify_dump)
 
 
 void
