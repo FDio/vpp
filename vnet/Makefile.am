@@ -550,14 +550,14 @@ nobase_include_HEADERS +=			\
  vnet/flow/ipfix_packet.h
 
 ########################################
-# IPFIX sample code
+# IPFIX classify code
 ########################################
 
 libvnet_la_SOURCES +=				\
-  vnet/flow/flow_report_sample.c
+  vnet/flow/flow_report_classify.c
 
 nobase_include_HEADERS +=			\
-  vnet/flow/flow_report_sample.h
+  vnet/flow/flow_report_classify.h
 
 ########################################
 # lawful intercept
