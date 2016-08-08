@@ -65,11 +65,14 @@ enum {
 typedef struct {
   /* Source and destination port. */
   union {
-    struct {
-      u16 src, dst;
-    };
-    u32 src_and_dst;
-  } ports;
+    union {
+      struct {
+        u16 src, dst;
+      };
+      u32 src_and_dst;
+    } ports;
+    u16 src_port, dst_port;
+  };
 
   /* Sequence and acknowledgment number. */
   u32 seq_number, ack_number;
