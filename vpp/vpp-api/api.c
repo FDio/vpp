@@ -4773,16 +4773,18 @@ static void send_vxlan_tunnel_details
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_VXLAN_TUNNEL_DETAILS);
+  ip46_address_t *ip46_src = (ip46_address_t *)(&(rmp->src_address[0]));
+  ip46_address_t *ip46_dst = (ip46_address_t *)(&(rmp->dst_address[0]));
   if (is_ipv6)
     {
-      memcpy (rmp->src_address, &(t->src.ip6), 16);
-      memcpy (rmp->dst_address, &(t->dst.ip6), 16);
+      memcpy (&ip46_src->ip6, &(t->src.ip6), 16);
+      memcpy (&ip46_dst->ip6, &(t->dst.ip6), 16);
       rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].table_id);
     }
   else
     {
-      memcpy (rmp->src_address, &(t->src.ip4), 4);
-      memcpy (rmp->dst_address, &(t->dst.ip4), 4);
+      memcpy (&ip46_src->ip4, &(t->src.ip4), 4);
+      memcpy (&ip46_dst->ip4, &(t->dst.ip4), 4);
       rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].table_id);
     }
   rmp->vni = htonl (t->vni);
