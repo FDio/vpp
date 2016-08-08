@@ -4791,6 +4791,57 @@ define ipfix_classify_table_details {
     u8 transport_protocol;
 };
 
+/** \brief Set/unset flow classify interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to set/unset flow classify
+    @param ip4_table_index - ip4 classify table index (~0 for skip)
+    @param ip6_table_index - ip6 classify table index (~0 for skip)
+    @param l2_table_index  -  l2 classify table index (~0 for skip)
+    @param is_add - Set if non-zero, else unset
+    Note: User is recommeneded to use just one valid table_index per call.
+          (ip4_table_index, ip6_table_index, or l2_table_index)
+*/
+define flow_classify_set_interface {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+    u32 ip4_table_index;
+    u32 ip6_table_index;
+    u8  is_add;
+};
+
+/** \brief Set/unset flow classify interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define flow_classify_set_interface_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief Get list of flow classify interfaces and tables
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param type - classify table type
+*/
+define flow_classify_dump {
+    u32 client_index;
+    u32 context;
+    u8 type;
+};
+
+/** \brief Flow classify operational state response.
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software interface index
+    @param table_index - classify table index
+*/
+define flow_classify_details {
+    u32 context;
+    u32 sw_if_index;
+    u32 table_index;
+};
+
 /** \brief Query relative index via node names
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

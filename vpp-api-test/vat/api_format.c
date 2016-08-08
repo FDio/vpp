@@ -35,6 +35,7 @@
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/classify/input_acl.h>
 #include <vnet/classify/policer_classify.h>
+#include <vnet/classify/flow_classify.h>
 #include <vnet/mpls/mpls.h>
 #if DPDK > 0
 #include <vnet/ipsec/ipsec.h>
@@ -456,7 +457,7 @@ unformat_policer_action_type (unformat_input_t * input, va_list * va)
 }
 
 uword
-unformat_classify_table_type (unformat_input_t * input, va_list * va)
+unformat_policer_classify_table_type (unformat_input_t * input, va_list * va)
 {
   u32 *r = va_arg (*va, u32 *);
   u32 tid;
@@ -467,6 +468,23 @@ unformat_classify_table_type (unformat_input_t * input, va_list * va)
     tid = POLICER_CLASSIFY_TABLE_IP6;
   else if (unformat (input, "l2"))
     tid = POLICER_CLASSIFY_TABLE_L2;
+  else
+    return 0;
+
+  *r = tid;
+  return 1;
+}
+
+uword
+unformat_flow_classify_table_type (unformat_input_t * input, va_list * va)
+{
+  u32 *r = va_arg (*va, u32 *);
+  u32 tid;
+
+  if (unformat (input, "ip4"))
+    tid = FLOW_CLASSIFY_TABLE_IP4;
+  else if (unformat (input, "ip6"))
+    tid = FLOW_CLASSIFY_TABLE_IP6;
   else
     return 0;
 
@@ -3370,6 +3388,35 @@ static void vl_api_ipsec_gre_add_del_tunnel_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+static void vl_api_flow_classify_details_t_handler
+  (vl_api_flow_classify_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  fformat (vam->ofp, "%10d%20d\n", ntohl (mp->sw_if_index),
+	   ntohl (mp->table_index));
+}
+
+static void vl_api_flow_classify_details_t_handler_json
+  (vl_api_flow_classify_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_uint (node, "table_index", ntohl (mp->table_index));
+}
+
+
+
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
@@ -3477,6 +3524,7 @@ _(netmap_delete_reply)                                  \
 _(set_ipfix_exporter_reply)                             \
 _(set_ipfix_classify_stream_reply)                      \
 _(ipfix_classify_table_add_del_reply)                   \
+_(flow_classify_set_interface_reply)                    \
 _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
 _(ip_source_and_port_range_check_add_del_reply)         \
@@ -3706,6 +3754,8 @@ _(SET_IPFIX_CLASSIFY_STREAM_REPLY, set_ipfix_classify_stream_reply)     \
 _(IPFIX_CLASSIFY_STREAM_DETAILS, ipfix_classify_stream_details)         \
 _(IPFIX_CLASSIFY_TABLE_ADD_DEL_REPLY, ipfix_classify_table_add_del_reply) \
 _(IPFIX_CLASSIFY_TABLE_DETAILS, ipfix_classify_table_details)           \
+_(FLOW_CLASSIFY_SET_INTERFACE_REPLY, flow_classify_set_interface_reply) \
+_(FLOW_CLASSIFY_DETAILS, flow_classify_details)                         \
 _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
 _(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
 _(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
@@ -13999,7 +14049,7 @@ api_policer_classify_dump (vat_main_t * vam)
   f64 timeout = ~0;
   u8 type = POLICER_CLASSIFY_N_TABLES;
 
-  if (unformat (i, "type %U", unformat_classify_table_type, &type))
+  if (unformat (i, "type %U", unformat_policer_classify_table_type, &type))
     ;
   else
     {
@@ -15356,6 +15406,95 @@ api_l2_interface_pbb_tag_rewrite (vat_main_t * vam)
 }
 
 static int
+api_flow_classify_set_interface (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_flow_classify_set_interface_t *mp;
+  f64 timeout;
+  u32 sw_if_index;
+  int sw_if_index_set;
+  u32 ip4_table_index = ~0;
+  u32 ip6_table_index = ~0;
+  u8 is_add = 1;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "ip4-table %d", &ip4_table_index))
+	;
+      else if (unformat (i, "ip6-table %d", &ip6_table_index))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  M (FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->ip4_table_index = ntohl (ip4_table_index);
+  mp->ip6_table_index = ntohl (ip6_table_index);
+  mp->is_add = is_add;
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
+api_flow_classify_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_flow_classify_dump_t *mp;
+  f64 timeout = ~0;
+  u8 type = FLOW_CLASSIFY_N_TABLES;
+
+  if (unformat (i, "type %U", unformat_flow_classify_table_type, &type))
+    ;
+  else
+    {
+      errmsg ("classify table type must be specified\n");
+      return -99;
+    }
+
+  if (!vam->json_output)
+    {
+      fformat (vam->ofp, "%10s%20s\n", "Intfc idx", "Classify table");
+    }
+
+  M (FLOW_CLASSIFY_DUMP, flow_classify_dump);
+  mp->type = type;
+  /* send it... */
+  S;
+
+  /* Use a control ping for synchronization */
+  {
+    vl_api_control_ping_t *mp;
+    M (CONTROL_PING, control_ping);
+    S;
+  }
+  /* Wait for a reply... */
+  W;
+
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
 q_or_quit (vat_main_t * vam)
 {
   longjmp (vam->jump_buf, 1);
@@ -15952,7 +16091,10 @@ _(l2_interface_pbb_tag_rewrite,                                         \
   "<intfc> | sw_if_index <nn> \n"                                       \
   "[disable | push | pop | translate_pbb_stag <outer_tag>] \n"          \
   "dmac <mac> smac <mac> sid <nn> [vlanid <nn>]")                       \
-_(punt, "protocol <l4-protocol> [ip <ver>] [port <l4-port>] [del]")
+_(punt, "protocol <l4-protocol> [ip <ver>] [port <l4-port>] [del]")     \
+_(flow_classify_set_interface,                                          \
+  "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>] [del]") \
+_(flow_classify_dump, "type [ip4|ip6]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

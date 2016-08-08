@@ -797,6 +797,12 @@ ip4_add_del_interface_address (vlib_main_t * vm, u32 sw_if_index,
 }
 
 /* Built-in ip4 unicast rx feature path definition */
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_flow_classify, static) = {
+  .node_name = "ip4-flow-classify",
+  .runs_before = ORDER_CONSTRAINTS {"ip4-inacl", 0},
+  .feature_index = &ip4_main.ip4_unicast_rx_feature_flow_classify,
+};
+
 VNET_IP4_UNICAST_FEATURE_INIT (ip4_inacl, static) = {
   .node_name = "ip4-inacl", 
   .runs_before = ORDER_CONSTRAINTS {"ip4-source-check-via-rx", 0},
