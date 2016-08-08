@@ -21,7 +21,7 @@ mac_lookup (gid_dictionary_t * db, u32 vni, u8 * key)
   int rv;
   BVT(clib_bihash_kv) kv, value;
 
-  kv.key[0] = ((u64 *)key)[0] & MAC_BIT_MASK;
+  kv.key[0] = mac_to_u64(key);
   kv.key[1] = (u64)vni;
   kv.key[2] = 0;
 

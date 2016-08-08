@@ -239,13 +239,13 @@ dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
  *
  */
 static u32
-get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
-                  locator_pair_t ** locator_pairs)
+get_locator_pairs (lisp_cp_main_t* lcm, mapping_t * lcl_map,
+                   mapping_t * rmt_map, locator_pair_t ** locator_pairs)
 {
-  u32 i, minp = ~0, limitp = 0, li, check_index = 0, done = 0, esi;
+  u32 i, limitp = 0, li, found = 0, esi;
   locator_set_t * rmt_ls, * lcl_ls;
-  ip_address_t _lcl, * lcl = &_lcl;
-  locator_t * l, * rmt = 0;
+  ip_address_t _lcl_addr, * lcl_addr = &_lcl_addr;
+  locator_t * lp, * rmt = 0;
   uword * checked = 0;
   locator_pair_t pair;
 
@@ -255,7 +255,7 @@ get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
   if (!rmt_ls || vec_len(rmt_ls->locator_indices) == 0)
     return 0;
 
-  while (!done)
+  while (1)
     {
       rmt = 0;
 
@@ -266,22 +266,28 @@ get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
             continue;
 
           li = vec_elt(rmt_ls->locator_indices, i);
-          l = pool_elt_at_index(lcm->locator_pool, li);
+          lp = pool_elt_at_index(lcm->locator_pool, li);
 
           /* we don't support non-IP locators for now */
-          if (gid_address_type(&l->address) != GID_ADDR_IP_PREFIX)
+          if (gid_address_type(&lp->address) != GID_ADDR_IP_PREFIX)
             continue;
 
-          if (l->priority < minp && l->priority >= limitp)
+          if ((found && lp->priority == limitp)
+              || (!found && lp->priority >= limitp))
             {
-              minp = l->priority;
-              rmt = l;
-              check_index = i;
+              rmt = lp;
+
+              /* don't search for locators with lower priority and don't
+               * check this locator again*/
+              limitp = lp->priority;
+              hash_set(checked, i, 1);
+              break;
             }
         }
       /* check if a local locator with a route to remote locator exists */
       if (rmt != 0)
         {
+          /* find egress sw_if_index for rmt locator */
           esi = ip_fib_get_egress_iface_for_dst (
               lcm, &gid_address_ip(&rmt->address));
           if ((u32) ~0 == esi)
@@ -292,31 +298,31 @@ get_locator_pair (lisp_cp_main_t* lcm, mapping_t * lcl_map, mapping_t * rmt_map,
               li = vec_elt (lcl_ls->locator_indices, i);
               locator_t * sl = pool_elt_at_index (lcm->locator_pool, li);
 
-              /* found local locator */
+              /* found local locator with the needed sw_if_index*/
               if (sl->sw_if_index == esi)
                 {
+                  /* and it has an address */
                   if (0 == ip_interface_get_first_ip_address (lcm,
                              sl->sw_if_index,
-                             gid_address_ip_version(&rmt->address), lcl))
+                             gid_address_ip_version(&rmt->address), lcl_addr))
                     continue;
 
                   memset(&pair, 0, sizeof(pair));
-                  ip_address_copy(&pair.rmt_loc, &gid_address_ip(&rmt->address));
-                  ip_address_copy(&pair.lcl_loc, lcl);
+                  ip_address_copy (&pair.rmt_loc,
+                                   &gid_address_ip(&rmt->address));
+                  ip_address_copy(&pair.lcl_loc, lcl_addr);
+                  pair.weight = rmt->weight;
                   vec_add1(locator_pairs[0], pair);
-                  done = 2;
+                  found = 1;
                 }
             }
-
-          /* skip this remote locator in next searches */
-          limitp = minp;
-          hash_set(checked, check_index, 1);
         }
       else
-        done = 1;
+        break;
     }
+
   hash_free(checked);
-  return (done == 2) ? 1 : 0;
+  return found;
 }
 
 static void
@@ -369,7 +375,7 @@ dp_add_fwd_entry (lisp_cp_main_t* lcm, u32 src_map_index, u32 dst_map_index)
     }
 
   /* find best locator pair that 1) verifies LISP policy 2) are connected */
-  if (0 == get_locator_pair (lcm, src_map, dst_map, &a->locator_pairs))
+  if (0 == get_locator_pairs (lcm, src_map, dst_map, &a->locator_pairs))
     {
       /* negative entry */
       a->is_negative = 1;

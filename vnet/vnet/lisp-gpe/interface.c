@@ -73,19 +73,25 @@ get_one_tunnel_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0,
 
 always_inline void
 encap_one_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0,
-                  lisp_gpe_tunnel_t * t0, u32 * next0, u8 is_v4)
+                  lisp_gpe_tunnel_t * t0, u32 * next0)
 {
   ASSERT(sizeof(ip4_udp_lisp_gpe_header_t) == 36);
   ASSERT(sizeof(ip6_udp_lisp_gpe_header_t) == 56);
 
-  if (is_v4)
+  lisp_gpe_sub_tunnel_t * st0;
+  u32 * sti0;
+
+  sti0 = vec_elt_at_index(t0->sub_tunnels_lbv,
+      vnet_buffer(b0)->ip.flow_hash % t0->sub_tunnels_lbv_count);
+  st0 = vec_elt_at_index(t0->sub_tunnels, sti0[0]);
+  if (st0->is_ip4)
     {
-      ip_udp_encap_one (lgm->vlib_main, b0, t0->rewrite, 36, 1);
+      ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 36, 1);
       next0[0] = LISP_GPE_TX_NEXT_IP4_LOOKUP;
     }
   else
     {
-      ip_udp_encap_one (lgm->vlib_main, b0, t0->rewrite, 56, 0);
+      ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 56, 0);
       next0[0] = LISP_GPE_TX_NEXT_IP6_LOOKUP;
     }
 
@@ -129,22 +135,51 @@ get_two_tunnels_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0,
 always_inline void
 encap_two_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0, vlib_buffer_t * b1,
                   lisp_gpe_tunnel_t * t0, lisp_gpe_tunnel_t * t1, u32 * next0,
-                  u32 * next1, u8 is_v4)
+                  u32 * next1)
 {
   ASSERT(sizeof(ip4_udp_lisp_gpe_header_t) == 36);
   ASSERT(sizeof(ip6_udp_lisp_gpe_header_t) == 56);
 
-  if (is_v4)
+  lisp_gpe_sub_tunnel_t * st0, * st1;
+  u32 * sti0, * sti1;
+  sti0 = vec_elt_at_index(t0->sub_tunnels_lbv,
+      vnet_buffer(b0)->ip.flow_hash % t0->sub_tunnels_lbv_count);
+  sti1 = vec_elt_at_index(t1->sub_tunnels_lbv,
+      vnet_buffer(b1)->ip.flow_hash % t1->sub_tunnels_lbv_count);
+  st0 = vec_elt_at_index(t0->sub_tunnels, sti0[0]);
+  st1 = vec_elt_at_index(t1->sub_tunnels, sti1[0]);
+
+  if (PREDICT_TRUE(st0->is_ip4 == st1->is_ip4))
     {
-      ip_udp_encap_one (lgm->vlib_main, b0, t0->rewrite, 36, 1);
-      ip_udp_encap_one (lgm->vlib_main, b1, t1->rewrite, 36, 1);
-      next0[0] = next1[0] = LISP_GPE_TX_NEXT_IP4_LOOKUP;
+      if (st0->is_ip4)
+        {
+          ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 36, 1);
+          ip_udp_encap_one (lgm->vlib_main, b1, st1->rewrite, 36, 1);
+          next0[0] = next1[0] = LISP_GPE_TX_NEXT_IP4_LOOKUP;
+        }
+      else
+        {
+          ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 56, 0);
+          ip_udp_encap_one (lgm->vlib_main, b1, st1->rewrite, 56, 0);
+          next0[0] = next1[0] = LISP_GPE_TX_NEXT_IP6_LOOKUP;
+        }
     }
   else
     {
-      ip_udp_encap_one (lgm->vlib_main, b0, t0->rewrite, 56, 0);
-      ip_udp_encap_one (lgm->vlib_main, b1, t1->rewrite, 56, 0);
-      next0[0] = next1[0] = LISP_GPE_TX_NEXT_IP6_LOOKUP;
+      if (st0->is_ip4)
+        {
+          ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 36, 1);
+          ip_udp_encap_one (lgm->vlib_main, b1, st1->rewrite, 56, 1);
+          next0[0] = LISP_GPE_TX_NEXT_IP4_LOOKUP;
+          next1[0] = LISP_GPE_TX_NEXT_IP6_LOOKUP;
+        }
+      else
+        {
+          ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 56, 1);
+          ip_udp_encap_one (lgm->vlib_main, b1, st1->rewrite, 36, 1);
+          next0[0] = LISP_GPE_TX_NEXT_IP6_LOOKUP;
+          next1[0] = LISP_GPE_TX_NEXT_IP4_LOOKUP;
+        }
     }
 
   /* Reset to look up tunnel partner in the configured FIB */
@@ -223,19 +258,7 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
               get_one_tunnel_inline (lgm, b1, &t1, is_v4_eid1 ? 1 : 0);
             }
 
-          if (PREDICT_TRUE(
-              ip_addr_version(&t0->dst) == ip_addr_version(&t1->dst)))
-            {
-              encap_two_inline (lgm, b0, b1, t0, t1, &next0, &next1,
-                                ip_addr_version(&t0->dst) == IP4 ? 1 : 0);
-            }
-          else
-            {
-              encap_one_inline (lgm, b0, t0, &next0,
-                                ip_addr_version(&t0->dst) == IP4 ? 1 : 0);
-              encap_one_inline (lgm, b1, t1, &next1,
-                                ip_addr_version(&t1->dst) == IP4 ? 1 : 0);
-            }
+          encap_two_inline (lgm, b0, b1, t0, t1, &next0, &next1);
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -274,8 +297,7 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
           is_v4_0 = is_v4_packet(vlib_buffer_get_current (b0));
           get_one_tunnel_inline (lgm, b0, &t0, is_v4_0 ? 1 : 0);
 
-          encap_one_inline (lgm, b0, t0, &next0,
-                            ip_addr_version(&t0->dst) == IP4 ? 1 : 0);
+          encap_one_inline (lgm, b0, t0, &next0);
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
             {
@@ -517,6 +539,44 @@ l2_process_tunnel_action (vlib_buffer_t * b0, u8 action, u32 * next0)
     }
 }
 
+always_inline u32
+ip_flow_hash (void * data)
+{
+  ip4_header_t * iph = (ip4_header_t *) data;
+
+  if ((iph->ip_version_and_header_length & 0xF0) == 0x40)
+    return ip4_compute_flow_hash (iph, IP_FLOW_HASH_DEFAULT);
+  else
+    return ip6_compute_flow_hash ((ip6_header_t *) iph, IP_FLOW_HASH_DEFAULT);
+}
+
+always_inline u32
+l2_flow_hash (vlib_buffer_t * b0)
+{
+  ethernet_header_t * eh;
+  u64 a, b, c;
+  uword is_ip, eh_size;
+  u16 eh_type;
+
+  eh = vlib_buffer_get_current (b0);
+  eh_type = clib_net_to_host_u16(eh->type);
+  eh_size = ethernet_buffer_header_size(b0);
+
+  is_ip = (eh_type == ETHERNET_TYPE_IP4 || eh_type == ETHERNET_TYPE_IP6);
+
+  /* since we have 2 cache lines, use them */
+  if (is_ip)
+    a = ip_flow_hash ((u8 *) vlib_buffer_get_current (b0) + eh_size);
+  else
+    a = eh->type;
+
+  b = mac_to_u64((u8 *)eh->dst_address);
+  c = mac_to_u64((u8 *)eh->src_address);
+  hash_mix64 (a, b, c);
+
+  return (u32) c;
+}
+
 always_inline void
 l2_process_one (lisp_gpe_main_t * lgm, vlib_buffer_t * b0, u32 ti0, u32 * next0)
 {
@@ -527,8 +587,10 @@ l2_process_one (lisp_gpe_main_t * lgm, vlib_buffer_t * b0, u32 ti0, u32 * next0)
 
   if (PREDICT_TRUE(LISP_NO_ACTION == t0->action))
     {
-      encap_one_inline (lgm, b0, t0, next0,
-                        ip_addr_version(&t0->dst) == IP4 ? 1 : 0);
+      /* compute 'flow' hash */
+      if (PREDICT_TRUE(t0->sub_tunnels_lbv_count > 1))
+        vnet_buffer(b0)->ip.flow_hash = l2_flow_hash (b0);
+      encap_one_inline (lgm, b0, t0, next0);
     }
   else
     {
@@ -550,21 +612,26 @@ l2_process_two (lisp_gpe_main_t * lgm, vlib_buffer_t * b0, vlib_buffer_t * b1,
   if (PREDICT_TRUE(LISP_NO_ACTION == t0->action
                    && LISP_NO_ACTION == t1->action))
     {
-      encap_two_inline (lgm, b0, b1, t0, t1, next0, next1,
-                        ip_addr_version(&t0->dst) == IP4 ? 1 : 0);
+      if (PREDICT_TRUE(t0->sub_tunnels_lbv_count > 1))
+        vnet_buffer(b0)->ip.flow_hash = l2_flow_hash(b0);
+      if (PREDICT_TRUE(t1->sub_tunnels_lbv_count > 1))
+        vnet_buffer(b1)->ip.flow_hash = l2_flow_hash(b1);
+      encap_two_inline (lgm, b0, b1, t0, t1, next0, next1);
     }
   else
     {
       if (LISP_NO_ACTION == t0->action)
         {
-          encap_one_inline (lgm, b0, t0, next0,
-                            ip_addr_version(&t0->dst) == IP4 ? 1 : 0);
+          if (PREDICT_TRUE(t0->sub_tunnels_lbv_count > 1))
+            vnet_buffer(b0)->ip.flow_hash = l2_flow_hash(b0);
+          encap_one_inline (lgm, b0, t0, next0);
           l2_process_tunnel_action (b1, t1->action, next1);
         }
       else if (LISP_NO_ACTION == t1->action)
         {
-          encap_one_inline (lgm, b1, t1, next1,
-                            ip_addr_version(&t1->dst) == IP4 ? 1 : 0);
+          if (PREDICT_TRUE(t1->sub_tunnels_lbv_count > 1))
+            vnet_buffer(b1)->ip.flow_hash = l2_flow_hash(b1);
+          encap_one_inline (lgm, b1, t1, next1);
           l2_process_tunnel_action (b0, t0->action, next0);
         }
       else

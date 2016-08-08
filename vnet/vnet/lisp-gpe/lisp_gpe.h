@@ -54,17 +54,45 @@ typedef struct
   };
 } lisp_gpe_tunnel_key_t;
 
-typedef struct
+typedef struct lisp_gpe_sub_tunnel
 {
   /* Rewrite string. $$$$ embed vnet_rewrite header */
   u8 * rewrite;
+  u32 parent_index;
+  u32 locator_pair_index;
+  u8 weight;
+  u8 is_ip4;
+} lisp_gpe_sub_tunnel_t;
+
+typedef struct nomalized_sub_tunnel
+{
+  u32 sub_tunnel_index;
+  u8 weight;
+} normalized_sub_tunnel_weights_t;
+
+typedef struct
+{
+  /* tunnel src and dst addresses */
+  locator_pair_t * locator_pairs;
+
+  /* locator-pairs with best priority become sub-tunnels */
+  lisp_gpe_sub_tunnel_t * sub_tunnels;
+
+  /* sub-tunnels load balancing vector: contains list of sub-tunnel
+   * indexes replicated according to weight */
+  u32 * sub_tunnels_lbv;
+
+  /* number of entries in load balancing vector */
+  u32 sub_tunnels_lbv_count;
+
+  /* normalized sub tunnel weights */
+  normalized_sub_tunnel_weights_t * norm_sub_tunnel_weights;
 
   /* decap next index */
   u32 decap_next_index;
 
-  /* tunnel src and dst addresses */
-  ip_address_t src;
-  ip_address_t dst;
+  /* TODO remove */
+  ip_address_t src, dst;
 
   /* FIB indices */
   u32 encap_fib_index;          /* tunnel partner lookup here */
