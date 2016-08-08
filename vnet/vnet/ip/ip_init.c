@@ -136,6 +136,9 @@ do {						\
   if ((error = vlib_call_init_function (vm, policer_classify_init)))
     return error;
 
+  if ((error = vlib_call_init_function (vm, flow_classify_init)))
+    return error;
+
   return error;
 }
 
