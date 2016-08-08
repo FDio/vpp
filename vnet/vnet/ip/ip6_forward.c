@@ -576,6 +576,12 @@ ip6_sw_interface_admin_up_down (vnet_main_t * vnm,
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip6_sw_interface_admin_up_down);
 
 /* Built-in ip6 unicast rx feature path definition */
+VNET_IP6_UNICAST_FEATURE_INIT (ip6_flow_classify, static) = {
+  .node_name = "ip6-flow-classify",
+  .runs_before = ORDER_CONSTRAINTS {"ip6-inacl", 0},
+  .feature_index = &ip6_main.ip6_unicast_rx_feature_flow_classify,
+};
+
 VNET_IP6_UNICAST_FEATURE_INIT (ip6_inacl, static) = {
   .node_name = "ip6-inacl", 
   .runs_before = ORDER_CONSTRAINTS {"ip6-policer-classify", 0},

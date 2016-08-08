@@ -68,6 +68,7 @@
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/classify/input_acl.h>
 #include <vnet/classify/policer_classify.h>
+#include <vnet/classify/flow_classify.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/gre/gre.h>
@@ -425,7 +426,9 @@ _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
 _(DELETE_SUBIF, delete_subif)                                           \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
-_(PUNT, punt)
+_(PUNT, punt)                                                           \
+_(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
+_(FLOW_CLASSIFY_DUMP, flow_classify_dump)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -8524,6 +8527,73 @@ vl_api_punt_t_handler (vl_api_punt_t * mp)
     }
 
   REPLY_MACRO (VL_API_PUNT_REPLY);
+}
+
+static void
+  vl_api_flow_classify_set_interface_t_handler
+  (vl_api_flow_classify_set_interface_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_flow_classify_set_interface_reply_t *rmp;
+  int rv;
+  u32 sw_if_index, ip4_table_index, ip6_table_index;
+
+  ip4_table_index = ntohl (mp->ip4_table_index);
+  ip6_table_index = ntohl (mp->ip6_table_index);
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = vnet_set_flow_classify_intfc (vm, sw_if_index, ip4_table_index,
+				     ip6_table_index, mp->is_add);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_FLOW_CLASSIFY_SET_INTERFACE_REPLY);
+}
+
+static void
+send_flow_classify_details (u32 sw_if_index,
+			    u32 table_index,
+			    unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_flow_classify_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_FLOW_CLASSIFY_DETAILS);
+  mp->context = context;
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->table_index = htonl (table_index);
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
+vl_api_flow_classify_dump_t_handler (vl_api_flow_classify_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  flow_classify_main_t *pcm = &flow_classify_main;
+  u32 *vec_tbl;
+  int i;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
+
+  if (vec_len (vec_tbl))
+    {
+      for (i = 0; i < vec_len (vec_tbl); i++)
+	{
+	  if (vec_elt (vec_tbl, i) == ~0)
+	    continue;
+
+	  send_flow_classify_details (i, vec_elt (vec_tbl, i), q,
+				      mp->context);
+	}
+    }
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

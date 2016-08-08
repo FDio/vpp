@@ -128,6 +128,8 @@ typedef struct ip4_main_t {
   /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_policer_classify;
   /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  u32 ip4_unicast_rx_feature_flow_classify;
+  /** Built-in unicast feature path indix, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_ipsec;
   /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_vpath;
