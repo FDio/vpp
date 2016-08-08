@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_159023eb",
+        "filename": "vnet/vnet/cop/cop.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-08-08T17:47:07Z",
+      "side": 1,
+      "message": "Have a look at vnet/vnet/map/map.c L1837+ for an example",
+      "range": {
+        "startLine": 381,
+        "startChar": 0,
+        "endLine": 381,
+        "endChar": 50
+      },
+      "revId": "f0b9fbde75bd892b4d82b82cca90370c6c88f96c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
