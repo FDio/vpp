@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_72b0958b",
+        "filename": "vnet/vnet/ip/ping.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 623,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-08-08T12:49:37Z",
+      "side": 1,
+      "message": "I was thinking to have both the \"ping \u003caddress\u003e\" and the \"ping ipv4/ipv6 address\", with the potential to have hostnames for the future, maybe. Then the keyword would become more meaningful.",
+      "parentUuid": "9a0e1d27_ffba2ee0",
+      "range": {
+        "startLine": 622,
+        "startChar": 0,
+        "endLine": 623,
+        "endChar": 5
+      },
+      "revId": "b386213df4097f3214e1b9fbb867372089d59d43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_dfbf6acf",
         "filename": "vnet/vnet/ip/ping.c",
         "patchSetId": 3
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_52ad9130",
+        "filename": "vnet/vnet/ip/ping.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 659,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-08-08T12:49:37Z",
+      "side": 1,
+      "message": "Yep. I realised the way I made the send and receive paths, I can potentially spit N pings at once handle all the replies, so I thought it might be a nifty feature for pinging on both IPv4 and IPv6, since for that I just needed a CLI. Hence a bit of a spaghetti here to both accomodate the \"normal\" use case and \"fire both IPv4 and IPv6 at once\".",
+      "parentUuid": "9a0e1d27_dfbf6acf",
+      "range": {
+        "startLine": 659,
+        "startChar": 1,
+        "endLine": 659,
+        "endChar": 48
+      },
+      "revId": "b386213df4097f3214e1b9fbb867372089d59d43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_bfb4b6f2",
         "filename": "vnet/vnet/ip/ping.c",
         "patchSetId": 3
@@ -59,6 +107,30 @@
       "writtenOn": "2016-08-05T20:37:28Z",
       "side": 1,
       "message": "Given the number of options, really need a long_help :)",
+      "range": {
+        "startLine": 747,
+        "startChar": 2,
+        "endLine": 747,
+        "endChar": 54
+      },
+      "revId": "b386213df4097f3214e1b9fbb867372089d59d43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_32aa1d1a",
+        "filename": "vnet/vnet/ip/ping.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 747,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-08-08T12:49:37Z",
+      "side": 1,
+      "message": "OK, will do! :)",
+      "parentUuid": "9a0e1d27_bfb4b6f2",
       "range": {
         "startLine": 747,
         "startChar": 2,
