@@ -94,7 +94,7 @@ static inline u32 check_adj_port_range_x1 (ip_adjacency_t * adj,
       for (i = 0; i < VLIB_BUFFER_PRE_DATA_SIZE / sizeof(protocol_port_range_t); i++)
         {
           for (j = 0; j < 8; j++)
-            if (range->low.as_u16x8[j] == 65535)
+            if (range->low.as_u16[j] == 65535)
               return next;
           range++;
         }
