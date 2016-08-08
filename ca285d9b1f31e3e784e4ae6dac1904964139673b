@@ -22,6 +22,30 @@
       "revId": "ca285d9b1f31e3e784e4ae6dac1904964139673b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_501d8965",
+        "filename": "vnet/vnet/cop/ip6_whitelist.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-08T19:08:45Z",
+      "side": 1,
+      "message": "Please add a semicolon after \u0027)\u0027...",
+      "parentUuid": "9a0e1d27_9572f3e3",
+      "range": {
+        "startLine": 289,
+        "startChar": 0,
+        "endLine": 290,
+        "endChar": 35
+      },
+      "revId": "ca285d9b1f31e3e784e4ae6dac1904964139673b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
