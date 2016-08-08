@@ -14,17 +14,19 @@
  */
 
 #include <vnet/lisp-gpe/lisp_gpe.h>
+#include <vppinfra/math.h>
 
 lisp_gpe_main_t lisp_gpe_main;
 
 static int
-lisp_gpe_rewrite (lisp_gpe_tunnel_t * t)
+lisp_gpe_rewrite (lisp_gpe_tunnel_t * t, lisp_gpe_sub_tunnel_t * st,
+                  locator_pair_t * lp)
 {
   u8 *rw = 0;
   lisp_gpe_header_t * lisp0;
   int len;
 
-  if (ip_addr_version(&t->src) == IP4)
+  if (ip_addr_version(&lp->lcl_loc) == IP4)
     {
       ip4_header_t * ip0;
       ip4_udp_lisp_gpe_header_t * h0;
@@ -41,8 +43,8 @@ lisp_gpe_rewrite (lisp_gpe_tunnel_t * t)
       ip0->protocol = IP_PROTOCOL_UDP;
 
       /* we fix up the ip4 header length and checksum after-the-fact */
-      ip_address_copy_addr(&ip0->src_address, &t->src);
-      ip_address_copy_addr(&ip0->dst_address, &t->dst);
+      ip_address_copy_addr(&ip0->src_address, &lp->lcl_loc);
+      ip_address_copy_addr(&ip0->dst_address, &lp->rmt_loc);
       ip0->checksum = ip4_header_checksum (ip0);
 
       /* UDP header, randomize src port on something, maybe? */
@@ -70,8 +72,8 @@ lisp_gpe_rewrite (lisp_gpe_tunnel_t * t)
       ip0->protocol = IP_PROTOCOL_UDP;
 
       /* we fix up the ip6 header length after-the-fact */
-      ip_address_copy_addr(&ip0->src_address, &t->src);
-      ip_address_copy_addr(&ip0->dst_address, &t->dst);
+      ip_address_copy_addr(&ip0->src_address, &lp->lcl_loc);
+      ip_address_copy_addr(&ip0->dst_address, &lp->rmt_loc);
 
       /* UDP header, randomize src port on something, maybe? */
       h0->udp.src_port = clib_host_to_net_u16 (4341);
@@ -87,8 +89,131 @@ lisp_gpe_rewrite (lisp_gpe_tunnel_t * t)
   lisp0->next_protocol = t->next_protocol;
   lisp0->iid = clib_host_to_net_u32 (t->vni);
 
-  t->rewrite = rw;
+  st->is_ip4 = ip_addr_version(&lp->lcl_loc) == IP4;
+  st->rewrite = rw;
   return 0;
+}
+
+static int
+weight_cmp (normalized_sub_tunnel_weights_t *a,
+            normalized_sub_tunnel_weights_t *b)
+{
+  int cmp = a->weight - b->weight;
+  return (cmp == 0
+          ? a->sub_tunnel_index - b->sub_tunnel_index
+          : (cmp > 0 ? -1 : 1));
+}
+
+/** Computes sub tunnel load balancing vector.
+ * Algorithm is identical to that used for building unequal-cost multipath
+ * adjacencies */
+static void
+compute_sub_tunnels_balancing_vector (lisp_gpe_tunnel_t * t)
+{
+  uword n_sts, i, n_nsts, n_nsts_left;
+  f64 sum_weight, norm, error, tolerance;
+  normalized_sub_tunnel_weights_t * nsts = 0, * stp;
+  lisp_gpe_sub_tunnel_t * sts = t->sub_tunnels;
+  u32 * st_lbv = 0;
+
+  /* Accept 1% error */
+  tolerance = .01;
+
+  n_sts = vec_len (sts);
+  vec_validate(nsts, 2 * n_sts - 1);
+
+  sum_weight = 0;
+  for (i = 0; i < n_sts; i++)
+    {
+      /* Find total weight to normalize weights. */
+      sum_weight += sts[i].weight;
+
+      /* build normalized sub tunnels vector */
+      nsts[i].weight = sts[i].weight;
+      nsts[i].sub_tunnel_index = i;
+    }
+
+  n_nsts = n_sts;
+  if (n_sts == 1)
+    {
+      nsts[0].weight = 1;
+      _vec_len(nsts) = 1;
+      goto build_lbv;
+    }
+
+  /* Sort sub-tunnels by weight */
+  qsort (nsts, n_nsts, sizeof(u32), (void * )weight_cmp);
+
+  /* Save copies of all next hop weights to avoid being overwritten in loop below. */
+  for (i = 0; i < n_nsts; i++)
+    nsts[n_nsts + i].weight = nsts[i].weight;
+
+  /* Try larger and larger power of 2 sized blocks until we
+     find one where traffic flows to within 1% of specified weights. */
+  for (n_nsts = max_pow2 (n_sts); ; n_nsts *= 2)
+    {
+      error = 0;
+
+      norm = n_nsts / sum_weight;
+      n_nsts_left = n_nsts;
+      for (i = 0; i < n_sts; i++)
+        {
+          f64 nf = nsts[n_sts + i].weight * norm;
+          word n = flt_round_nearest (nf);
+
+          n = n > n_nsts_left ? n_nsts_left : n;
+          n_nsts_left -= n;
+          error += fabs (nf - n);
+          nsts[i].weight = n;
+        }
+
+      nsts[0].weight += n_nsts_left;
+
+      /* Less than 5% average error per adjacency with this size adjacency block? */
+      if (error <= tolerance * n_nsts)
+        {
+          /* Truncate any next hops with zero weight. */
+          _vec_len (nsts) = i;
+          break;
+        }
+    }
+
+ build_lbv:
+
+  /* build load balancing vector */
+  vec_foreach (stp, nsts)
+    {
+      for (i = 0; i < stp[0].weight; i++)
+        vec_add1(st_lbv, stp[0].sub_tunnel_index);
+    }
+
+  t->sub_tunnels_lbv = st_lbv;
+  t->sub_tunnels_lbv_count = n_nsts;
+  t->norm_sub_tunnel_weights = nsts;
+}
+
+static void
+create_sub_tunnels (lisp_gpe_main_t * lgm, lisp_gpe_tunnel_t * t)
+{
+  lisp_gpe_sub_tunnel_t st;
+  locator_pair_t * lp = 0;
+  int i;
+
+  /* create sub-tunnels for all locator pairs */
+  for (i = 0; i < vec_len(t->locator_pairs); i++)
+    {
+      lp = &t->locator_pairs[i];
+      st.locator_pair_index = i;
+      st.parent_index = t - lgm->tunnels;
+      st.weight = lp->weight;
+
+      /* compute rewrite for sub-tunnel */
+      lisp_gpe_rewrite (t, &st, lp);
+      vec_add1(t->sub_tunnels, st);
+    }
+
+  /* normalize weights and compute sub-tunnel load balancing vector */
+  compute_sub_tunnels_balancing_vector(t);
 }
 
 #define foreach_copy_field                      \
@@ -105,8 +230,8 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
   lisp_gpe_main_t * lgm = &lisp_gpe_main;
   lisp_gpe_tunnel_t *t = 0;
   lisp_gpe_tunnel_key_t key;
+  lisp_gpe_sub_tunnel_t * stp = 0;
   uword * p;
-  int rv;
 
   /* prepare tunnel key */
   memset(&key, 0, sizeof(key));
@@ -138,12 +263,7 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
       foreach_copy_field;
 #undef _
 
-      /* TODO multihoming */
-      if (!a->is_negative)
-        {
-          ip_address_copy (&t->src, &a->locator_pairs[0].lcl_loc);
-          ip_address_copy (&t->dst, &a->locator_pairs[0].rmt_loc);
-        }
+      t->locator_pairs = vec_dup(a->locator_pairs);
 
       /* if vni is non-default */
       if (a->vni)
@@ -159,14 +279,9 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
       else
         t->next_protocol = LISP_GPE_NEXT_PROTO_ETHERNET;
 
-      /* compute rewrite */
-      rv = lisp_gpe_rewrite (t);
-
-      if (rv)
-        {
-          pool_put(lgm->tunnels, t);
-          return rv;
-        }
+      /* build sub-tunnels for lowest priority locator-pairs */
+      if (!a->is_negative)
+        create_sub_tunnels (lgm, t);
 
       mhash_set(&lgm->lisp_gpe_tunnel_by_key, &key, t - lgm->tunnels, 0);
 
@@ -188,7 +303,13 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
 
       mhash_unset(&lgm->lisp_gpe_tunnel_by_key, &key, 0);
 
-      vec_free(t->rewrite);
+      vec_foreach(stp, t->sub_tunnels)
+      {
+        vec_free(stp->rewrite);
+      }
+      vec_free(t->sub_tunnels);
+      vec_free(t->sub_tunnels_lbv);
+      vec_free(t->locator_pairs);
       pool_put(lgm->tunnels, t);
     }
 
@@ -197,8 +318,8 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t *a, u8 is_l2,
 
 static int
 build_ip_adjacency (lisp_gpe_main_t * lgm, ip_adjacency_t * adj, u32 table_id,
-                    u32 vni, u32 tun_index, u8 is_negative, u8 action,
-                    u8 ip_ver)
+                    u32 vni, u32 tun_index, u32 n_sub_tun, u8 is_negative,
+                    u8 action, u8 ip_ver)
 {
   uword * lookup_next_index, * lgpe_sw_if_index, * lnip;
 
@@ -222,14 +343,15 @@ build_ip_adjacency (lisp_gpe_main_t * lgm, ip_adjacency_t * adj, u32 table_id,
 
       /* the assumption is that the interface must've been created before
        * programming the dp */
-      ASSERT(lookup_next_index != 0);
-      ASSERT(lgpe_sw_if_index != 0);
+      ASSERT(lookup_next_index != 0 && lgpe_sw_if_index != 0);
 
-      /* hijack explicit fib index to store lisp interface node index and
-       * if_address_index for the tunnel index */
+      /* hijack explicit fib index to store lisp interface node index,
+       * if_address_index for the tunnel index and saved lookup next index
+       * for the number of sub tunnels */
       adj->explicit_fib_index = lookup_next_index[0];
       adj->if_address_index = tun_index;
       adj->rewrite_header.sw_if_index = lgpe_sw_if_index[0];
+      adj->saved_lookup_next_index = n_sub_tun;
     }
   /* negative mapping */
   else
@@ -268,7 +390,8 @@ add_del_ip_fwd_entry (lisp_gpe_main_t * lgm,
                       vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
 {
   ip_adjacency_t adj, * adjp;
-  u32 rv, tun_index = ~0;
+  lisp_gpe_tunnel_t * t;
+  u32 rv, tun_index = ~0, n_sub_tuns = 0;
   ip_prefix_t * rmt_pref, * lcl_pref;
   u8 ip_ver;
 
@@ -285,11 +408,17 @@ add_del_ip_fwd_entry (lisp_gpe_main_t * lgm,
           clib_warning ("failed to build tunnel!");
           return rv;
         }
+      if (a->is_add)
+        {
+          t = pool_elt_at_index(lgm->tunnels, tun_index);
+          n_sub_tuns = t->sub_tunnels_lbv_count;
+        }
     }
 
   /* setup adjacency for eid */
   rv = build_ip_adjacency (lgm, &adj, a->table_id, a->vni, tun_index,
-                           a->is_negative, a->action, ip_ver);
+                           n_sub_tuns, a->is_negative, a->action,
+                           ip_ver);
 
   /* add/delete route for eid */
   rv |= ip_sd_fib_add_del_route (lgm, rmt_pref, lcl_pref, a->table_id, &adj,
@@ -321,8 +450,8 @@ static void
 make_mac_fib_key (BVT(clib_bihash_kv) *kv, u16 bd_index, u8 src_mac[6],
                   u8 dst_mac[6])
 {
-  kv->key[0] = (((u64) bd_index) << 48) | (((u64 *)dst_mac)[0] & MAC_BIT_MASK);
-  kv->key[1] = ((u64 *)src_mac)[0] & MAC_BIT_MASK;
+  kv->key[0] = (((u64) bd_index) << 48) | mac_to_u64(dst_mac);
+  kv->key[1] = mac_to_u64(src_mac);
   kv->key[2] = 0;
 }
 
@@ -593,18 +722,15 @@ u8 *
 format_lisp_gpe_tunnel (u8 * s, va_list * args)
 {
   lisp_gpe_tunnel_t * t = va_arg (*args, lisp_gpe_tunnel_t *);
-  lisp_gpe_main_t * lgm = &lisp_gpe_main;
+  lisp_gpe_main_t * lgm = vnet_lisp_gpe_get_main();
+  locator_pair_t * lp = 0;
+  normalized_sub_tunnel_weights_t * nstw;
 
-  s = format (s,
-              "[%d] %U (src) %U (dst) fibs: encap %d, decap %d",
-              t - lgm->tunnels,
-              format_ip_address, &t->src,
-              format_ip_address, &t->dst,
-              t->encap_fib_index,
-              t->decap_fib_index);
-
-  s = format (s, " decap next %U\n", format_decap_next, t->decap_next_index);
-  s = format (s, "lisp ver %d ", (t->ver_res>>6));
+  s = format (s, "tunnel %d vni %d (0x%x)\n", t - lgm->tunnels, t->vni, t->vni);
+  s = format (s, " fibs: encap %d, decap %d decap next %U\n",
+              t->encap_fib_index, t->decap_fib_index, format_decap_next,
+              t->decap_next_index);
+  s = format (s, " lisp ver %d ", (t->ver_res>>6));
 
 #define _(n,v) if (t->flags & v) s = format (s, "%s-bit ", #n);
   foreach_lisp_gpe_flag_bit;
@@ -613,7 +739,21 @@ format_lisp_gpe_tunnel (u8 * s, va_list * args)
   s = format (s, "next_protocol %d ver_res %x res %x\n",
               t->next_protocol, t->ver_res, t->res);
 
-  s = format (s, "iid %d (0x%x)\n", t->vni, t->vni);
+  s = format (s, " locator-pairs:\n");
+  vec_foreach(lp, t->locator_pairs)
+    {
+      s = format (s, "  local: %U remote: %U weight %d\n",
+                  format_ip_address, &lp->lcl_loc, format_ip_address,
+                  &lp->rmt_loc, lp->weight);
+    }
+
+  s = format (s, " active sub-tunnels:\n");
+  vec_foreach(nstw, t->norm_sub_tunnel_weights)
+    {
+      lp = vec_elt_at_index(t->locator_pairs, nstw->sub_tunnel_index);
+      s = format (s, "  local: %U remote: %U weight %d\n", format_ip_address,
+                  &lp->lcl_loc, format_ip_address, &lp->rmt_loc, nstw->weight);
+    }
   return s;
 }
 

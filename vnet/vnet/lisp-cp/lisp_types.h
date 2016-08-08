@@ -231,7 +231,7 @@ void   _n ## _copy (void * dst , void * src);
 foreach_gid_address_type_fcns
 #undef _
 
-#define MAC_BIT_MASK (((u64)1 << 48) - 1)
+#define mac_to_u64(_m) (*((u64 *)((u8 *)_m)) & 0xffffffffffff)
 
 typedef struct
 {
@@ -286,7 +286,7 @@ typedef struct locator_pair
   ip_address_t lcl_loc;
   ip_address_t rmt_loc;
 
-  u8 priority;
+  u8 priority;  /* TODO remove */
   u8 weight;
 } locator_pair_t;
 

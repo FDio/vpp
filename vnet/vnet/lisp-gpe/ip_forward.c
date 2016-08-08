@@ -832,8 +832,8 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
           u32 bi0, bi1;
           vlib_buffer_t * b0, * b1;
           ip4_header_t * ip0, * ip1;
-          u32 dst_adj_index0, src_adj_index0, src_fib_index0, dst_adj_index1,
-              src_adj_index1, src_fib_index1;
+          u32 dst_adj_index0, src_adj_index0, src_fib_index0;
+          u32 dst_adj_index1, src_adj_index1, src_fib_index1;
           ip_adjacency_t * dst_adj0, * src_adj0, * dst_adj1, * src_adj1;
           u32 next0, next1;
 
@@ -900,6 +900,17 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   src_adj0->rewrite_header.sw_if_index;
               vnet_buffer (b1)->sw_if_index[VLIB_TX] =
                   src_adj1->rewrite_header.sw_if_index;
+
+              /* if multipath: saved_lookup_next_index is reused to store
+               * nb of sub-tunnels. If greater than 1, multipath is on.
+               * Note that flow hash should be 0 after ipx lookup! */
+              if (PREDICT_TRUE(src_adj0->saved_lookup_next_index > 1))
+                vnet_buffer (b0)->ip.flow_hash = ip4_compute_flow_hash (
+                    ip0, IP_FLOW_HASH_DEFAULT);
+
+              if (PREDICT_TRUE(src_adj1->saved_lookup_next_index > 1))
+                vnet_buffer (b1)->ip.flow_hash = ip4_compute_flow_hash (
+                    ip1, IP_FLOW_HASH_DEFAULT);
             }
           else
             {
@@ -910,6 +921,10 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   next0 = src_adj0->explicit_fib_index;
                   vnet_buffer (b0)->sw_if_index[VLIB_TX] =
                       src_adj0->rewrite_header.sw_if_index;
+
+                  if (PREDICT_TRUE(src_adj0->saved_lookup_next_index > 1))
+                    vnet_buffer (b0)->ip.flow_hash = ip4_compute_flow_hash (
+                        ip0, IP_FLOW_HASH_DEFAULT);
                 }
               else
                 {
@@ -923,6 +938,9 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   next1 = src_adj1->explicit_fib_index;
                   vnet_buffer (b1)->sw_if_index[VLIB_TX] =
                       src_adj1->rewrite_header.sw_if_index;
+                  if (PREDICT_TRUE(src_adj1->saved_lookup_next_index > 1))
+                    vnet_buffer (b1)->ip.flow_hash = ip4_compute_flow_hash (
+                        ip1, IP_FLOW_HASH_DEFAULT);
                 }
               else
                 {
@@ -978,6 +996,12 @@ lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               /* prepare packet for lisp-gpe output node */
               vnet_buffer (b0)->sw_if_index[VLIB_TX] =
                   src_adj0->rewrite_header.sw_if_index;
+
+              /* if multipath: saved_lookup_next_index is reused to store
+               * nb of sub-tunnels. If greater than 1, multipath is on */
+              if (PREDICT_TRUE(src_adj0->saved_lookup_next_index > 1))
+                vnet_buffer (b0)->ip.flow_hash = ip4_compute_flow_hash (
+                    ip0, IP_FLOW_HASH_DEFAULT);
             }
           else
             {
@@ -1163,6 +1187,17 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   src_adj0->rewrite_header.sw_if_index;
               vnet_buffer (b1)->sw_if_index[VLIB_TX] =
                   src_adj1->rewrite_header.sw_if_index;
+
+              /* if multipath: saved_lookup_next_index is reused to store
+               * nb of sub-tunnels. If greater than 1, multipath is on.
+               * Note that flow hash should be 0 after ipx lookup! */
+              if (PREDICT_TRUE(src_adj0->saved_lookup_next_index > 1))
+                vnet_buffer (b0)->ip.flow_hash = ip6_compute_flow_hash (
+                    ip0, IP_FLOW_HASH_DEFAULT);
+
+              if (PREDICT_TRUE(src_adj1->saved_lookup_next_index > 1))
+                vnet_buffer (b1)->ip.flow_hash = ip6_compute_flow_hash (
+                    ip1, IP_FLOW_HASH_DEFAULT);
             }
           else
             {
@@ -1173,6 +1208,10 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   next0 = src_adj0->explicit_fib_index;
                   vnet_buffer (b0)->sw_if_index[VLIB_TX] =
                       src_adj0->rewrite_header.sw_if_index;
+
+                  if (PREDICT_TRUE(src_adj0->saved_lookup_next_index > 1))
+                    vnet_buffer (b0)->ip.flow_hash = ip6_compute_flow_hash (
+                        ip0, IP_FLOW_HASH_DEFAULT);
                 }
               else
                 {
@@ -1186,6 +1225,10 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
                   next1 = src_adj1->explicit_fib_index;
                   vnet_buffer (b1)->sw_if_index[VLIB_TX] =
                       src_adj1->rewrite_header.sw_if_index;
+
+                  if (PREDICT_TRUE(src_adj1->saved_lookup_next_index > 1))
+                    vnet_buffer (b1)->ip.flow_hash = ip6_compute_flow_hash (
+                        ip1, IP_FLOW_HASH_DEFAULT);
                 }
               else
                 {
@@ -1241,6 +1284,12 @@ lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
               /* prepare packet for lisp-gpe output node */
               vnet_buffer (b0)->sw_if_index[VLIB_TX] =
                   src_adj0->rewrite_header.sw_if_index;
+
+              /* if multipath: saved_lookup_next_index is reused to store
+               * nb of sub-tunnels. If greater than 1, multipath is on */
+              if (PREDICT_TRUE(src_adj0->saved_lookup_next_index > 1))
+                vnet_buffer (b0)->ip.flow_hash = ip6_compute_flow_hash (
+                    ip0, IP_FLOW_HASH_DEFAULT);
             }
           else
             {
