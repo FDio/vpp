@@ -54,6 +54,30 @@ vpppluginsdir = ${libdir}/vpp_plugins
 vppapitestplugins_LTLIBRARIES = ioam_pot_test_plugin.la
 vppplugins_LTLIBRARIES = ioam_pot_plugin.la
 
+########################################
+# iOAM trace export
+########################################
+
+ioam_export_plugin_la_SOURCES =   \
+ioam/export/ioam_export.c         \
+ioam/export/node.c                \
+ioam/export/ioam_export.api.h     \
+ioam/export/ioam_export_thread.c
+
+BUILT_SOURCES += ioam/export/ioam_export.api.h
+
+noinst_HEADERS +=                       \
+  ioam/export/ioam_export_all_api_h.h   \
+  ioam/export/ioam_export_msg_enum.h    \
+  ioam/export/ioam_export.api.h
+
+ioam_export_test_plugin_la_SOURCES =  \
+  ioam/export/ioam_export_test.c      \
+  ioam/export/ioam_export_plugin.api.h
+
+vppapitestplugins_LTLIBRARIES += ioam_export_test_plugin.la
+vppplugins_LTLIBRARIES += ioam_export_plugin.la
+
 
 # Remove *.la files
 install-data-hook:
