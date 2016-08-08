@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 #include <vnet/flow/flow_report.h>
-#include <vnet/flow/flow_report_sample.h>
+#include <vnet/flow/flow_report_classify.h>
 #include <vnet/api_errno.h>
 
 typedef struct {
   u32 classify_table_index;
-} flow_report_sample_main_t;
+} flow_report_classify_main_t;
 
-flow_report_sample_main_t flow_report_sample_main;
+flow_report_classify_main_t flow_report_classify_main;
 
 static u8 * template_rewrite (flow_report_main_t * frm,
                               flow_report_t * fr,
@@ -30,8 +30,8 @@ static u8 * template_rewrite (flow_report_main_t * frm,
 {
   vnet_classify_table_t * tblp;
   vnet_classify_main_t * vcm = &vnet_classify_main;
-  flow_report_sample_main_t *fsm = 
-    (flow_report_sample_main_t *) fr->opaque;
+  flow_report_classify_main_t *fcm =
+    (flow_report_classify_main_t *) fr->opaque;
   ip4_header_t * ip;
   udp_header_t * udp;
   ipfix_message_header_t * h;
@@ -45,7 +45,7 @@ static u8 * template_rewrite (flow_report_main_t * frm,
   u32 field_count = 0;
   u32 field_index = 0;
   
-  tblp = pool_elt_at_index (vcm->tables, fsm->classify_table_index);
+  tblp = pool_elt_at_index (vcm->tables, fcm->classify_table_index);
 
   /* 
    * Mumble, assumes that we're not classifying on L2 or first 2 octets
@@ -143,10 +143,10 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                                   u32 node_index)
 {
   vnet_classify_main_t * vcm = &vnet_classify_main;
-  flow_report_sample_main_t * fsm = 
-    (flow_report_sample_main_t *) fr->opaque;
+  flow_report_classify_main_t * fcm =
+    (flow_report_classify_main_t *) fr->opaque;
   vnet_classify_table_t * t = 
-    pool_elt_at_index (vcm->tables, fsm->classify_table_index);
+    pool_elt_at_index (vcm->tables, fcm->classify_table_index);
   vnet_classify_bucket_t * b;
   vnet_classify_entry_t * v, * save_v;
   vlib_buffer_t *b0 = 0;
@@ -343,11 +343,11 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
 
 
 static clib_error_t *
-flow_sample_command_fn (vlib_main_t * vm,
+flow_classify_command_fn (vlib_main_t * vm,
 		 unformat_input_t * input,
 		 vlib_cli_command_t * cmd)
 {
-  flow_report_sample_main_t *fsm = &flow_report_sample_main;
+  flow_report_classify_main_t *fcm = &flow_report_classify_main;
   flow_report_main_t *frm = &flow_report_main;
   vnet_flow_report_add_del_args_t args;
   int rv;
@@ -356,11 +356,11 @@ flow_sample_command_fn (vlib_main_t * vm,
   u32 src_port = UDP_DST_PORT_ipfix;
 
   domain_id = 0;
-  fsm->classify_table_index = ~0;
+  fcm->classify_table_index = ~0;
   memset (&args, 0, sizeof (args));
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (input, "table %d", &fsm->classify_table_index))
+    if (unformat (input, "table %d", &fcm->classify_table_index))
       ;
     else if (unformat (input, "domain %d", &domain_id))
       ;
@@ -373,10 +373,10 @@ flow_sample_command_fn (vlib_main_t * vm,
                                 format_unformat_error, input);
   }
 
-  if (fsm->classify_table_index == ~0)
+  if (fcm->classify_table_index == ~0)
     return clib_error_return (0, "classifier table not specified");
 
-  args.opaque = (void *) fsm;
+  args.opaque = (void *) fcm;
   args.rewrite_callback = template_rewrite;
   args.flow_data_callback = send_flows;
   args.is_add = is_add;
@@ -398,14 +398,14 @@ flow_sample_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (flow_sample_command, static) = {
-  .path = "flow sample",
-  .short_help = "flow sample",
-  .function = flow_sample_command_fn,
+VLIB_CLI_COMMAND (flow_classify_command, static) = {
+  .path = "flow classify",
+  .short_help = "flow classify",
+  .function = flow_classify_command_fn,
 };
 
 static clib_error_t *
-flow_report_sample_init (vlib_main_t *vm)
+flow_report_classify_init (vlib_main_t *vm)
 {
   clib_error_t * error;
 
@@ -415,4 +415,4 @@ flow_report_sample_init (vlib_main_t *vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (flow_report_sample_init);
+VLIB_INIT_FUNCTION (flow_report_classify_init);

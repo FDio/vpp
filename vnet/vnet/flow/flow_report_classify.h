@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __included_flow_report_sample_h__
-#define __included_flow_report_sample_h__
+#ifndef __included_flow_report_classify_h__
+#define __included_flow_report_classify_h__
 
 /* Note: add +2 to udp (src,dst) port enum values to get TCP values */
 #define foreach_ipfix_field                                             \
@@ -23,4 +23,4 @@ _(ip->protocol, 0xFF, protocolIdentifier, 1)                            \
 _(udp->src_port, 0xFFFF, udpSourcePort, 2)                              \
 _(udp->dst_port, 0xFFFF, udpDestinationPort, 2)
 
-#endif /* __included_flow_report_sample_h__ */
+#endif /* __included_flow_report_classify_h__ */
