@@ -16,23 +16,28 @@
 #include <vnet/flow/flow_report_classify.h>
 #include <vnet/api_errno.h>
 
+/* Common prefix of tcp and udp headers
+ * containing only source and destination port fields */
 typedef struct {
-  u32 classify_table_index;
-} flow_report_classify_main_t;
+  u16 src_port, dst_port;
+} tcpudp_header_t;
 
 flow_report_classify_main_t flow_report_classify_main;
 
-static u8 * template_rewrite (flow_report_main_t * frm,
-                              flow_report_t * fr,
-                              ip4_address_t * collector_address,
-                              ip4_address_t * src_address,
-                              u16 collector_port)
+u8 * ipfix_classify_template_rewrite (flow_report_main_t * frm,
+                                      flow_report_t * fr,
+                                      ip4_address_t * collector_address,
+                                      ip4_address_t * src_address,
+                                      u16 collector_port)
 {
+  flow_report_classify_main_t * fcm = &flow_report_classify_main;
   vnet_classify_table_t * tblp;
   vnet_classify_main_t * vcm = &vnet_classify_main;
-  flow_report_classify_main_t *fcm =
-    (flow_report_classify_main_t *) fr->opaque;
+  u32 flow_table_index = fr->opaque.as_uword;
+  u8 * ip_start;
   ip4_header_t * ip;
+  ip6_header_t * ip6;
+  tcpudp_header_t * tcpudp;
   udp_header_t * udp;
   ipfix_message_header_t * h;
   ipfix_set_header_t * s;
@@ -44,20 +49,28 @@ static u8 * template_rewrite (flow_report_main_t * frm,
   i32 l3_offset = -2;  /* sizeof (ethernet_header_t) - sizeof (u32x4) */
   u32 field_count = 0;
   u32 field_index = 0;
-  
-  tblp = pool_elt_at_index (vcm->tables, fcm->classify_table_index);
+  flow_report_stream_t * stream;
+  u8 ip_version;
+  u8 transport_protocol;
+
+  stream = &frm->streams[fr->stream_index];
+
+  ipfix_classify_table_t * table = &fcm->tables[flow_table_index];
+
+  ip_version = table->ip_version;
+  transport_protocol = table->transport_protocol;
+
+  tblp = pool_elt_at_index (vcm->tables, table->classify_table_index);
 
   /* 
    * Mumble, assumes that we're not classifying on L2 or first 2 octets
    * of L3..
    */
 
-  ip = (ip4_header_t *)(((u8 *)(tblp->mask)) + l3_offset);
-  udp = (udp_header_t *)(ip+1);
-
   /* Determine field count */
+  ip_start = ((u8 *)(tblp->mask)) + l3_offset;
 #define _(field,mask,item,length)                                       \
-  if ((field) == (mask))                                                \
+  if (memcmp(&field, &mask, length) == 0)                               \
     {                                                                   \
       field_count++;                                                    \
                                                                         \
@@ -65,9 +78,9 @@ static u8 * template_rewrite (flow_report_main_t * frm,
                                             field_index, 1);            \
     }                                                                   \
   field_index++;
-  
   foreach_ipfix_field;
 #undef _
+
   /* Add packetTotalCount manually */
   field_count += 1;
 
@@ -92,19 +105,18 @@ static u8 * template_rewrite (flow_report_main_t * frm,
   ip->protocol = IP_PROTOCOL_UDP;
   ip->src_address.as_u32 = src_address->as_u32;
   ip->dst_address.as_u32 = collector_address->as_u32;
-  udp->src_port = clib_host_to_net_u16 (fr->src_port);
+  udp->src_port = clib_host_to_net_u16 (stream->src_port);
   udp->dst_port = clib_host_to_net_u16 (collector_port);
   udp->length = clib_host_to_net_u16 (vec_len(rewrite) - sizeof (*ip));
 
   /* FIXUP: message header export_time */ 
   /* FIXUP: message header sequence_number */
-  h->domain_id = clib_host_to_net_u32 (fr->domain_id);
+  h->domain_id = clib_host_to_net_u32 (stream->domain_id);
 
   /* Take another trip through the mask and build the template */
-  ip = (ip4_header_t *)(((u8 *)(tblp->mask)) + l3_offset);
-  udp = (udp_header_t *)(ip+1);
+  ip_start = ((u8 *)(tblp->mask)) + l3_offset;
 #define _(field,mask,item,length)                               \
-  if ((field) == (mask))                                        \
+  if (memcmp(&field, &mask, length) == 0)                       \
     {                                                           \
       f->e_id_length = ipfix_e_id_length (0 /* enterprise */,   \
                                           item, length);        \
@@ -123,7 +135,7 @@ static u8 * template_rewrite (flow_report_main_t * frm,
   
   ASSERT (f - first_field);
   /* Field count in this template */
-  t->id_count = ipfix_id_count (256 /* template_id */, f - first_field);
+  t->id_count = ipfix_id_count (fr->template_id, f - first_field);
 
   /* set length in octets*/
   s->set_id_length = ipfix_set_id_length (2 /* set_id */, (u8 *) f - (u8 *)s);
@@ -137,16 +149,16 @@ static u8 * template_rewrite (flow_report_main_t * frm,
   return rewrite;
 }
 
-static vlib_frame_t * send_flows (flow_report_main_t * frm, 
-                                  flow_report_t * fr,
-                                  vlib_frame_t * f, u32 * to_next, 
-                                  u32 node_index)
+vlib_frame_t * ipfix_classify_send_flows (flow_report_main_t * frm,
+                                          flow_report_t * fr,
+                                          vlib_frame_t * f,
+                                          u32 * to_next,
+                                          u32 node_index)
 {
+  flow_report_classify_main_t * fcm = &flow_report_classify_main;
   vnet_classify_main_t * vcm = &vnet_classify_main;
-  flow_report_classify_main_t * fcm =
-    (flow_report_classify_main_t *) fr->opaque;
-  vnet_classify_table_t * t = 
-    pool_elt_at_index (vcm->tables, fcm->classify_table_index);
+  u32 flow_table_index = fr->opaque.as_uword;
+  vnet_classify_table_t * t;
   vnet_classify_bucket_t * b;
   vnet_classify_entry_t * v, * save_v;
   vlib_buffer_t *b0 = 0;
@@ -157,14 +169,28 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
   ip4_ipfix_template_packet_t * tp;
   ipfix_message_header_t * h = 0;
   ipfix_set_header_t * s = 0;
+  u8 * ip_start;
   ip4_header_t * ip;
+  ip6_header_t * ip6;
+  tcpudp_header_t * tcpudp;
   udp_header_t * udp;
   int field_index;
-  ip4_header_t * match;
   u32 records_this_buffer;
   u16 new_l0, old_l0;
   ip_csum_t sum0;
   vlib_main_t * vm = frm->vlib_main;
+  flow_report_stream_t * stream;
+  u8 ip_version;
+  u8 transport_protocol;
+
+  stream = &frm->streams[fr->stream_index];
+
+  ipfix_classify_table_t * table = &fcm->tables[flow_table_index];
+
+  ip_version = table->ip_version;
+  transport_protocol = table->transport_protocol;
+
+  t = pool_elt_at_index (vcm->tables, table->classify_table_index);
   
   while (__sync_lock_test_and_set (t->writer_lock, 1))
     ; 
@@ -216,19 +242,16 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                   h->export_time = clib_host_to_net_u32(h->export_time);
                   
                   /* FIXUP: message header sequence_number */
-                  h->sequence_number = fr->sequence_number;
+                  h->sequence_number = stream->sequence_number;
                   h->sequence_number = clib_host_to_net_u32 (h->sequence_number);
 
                   next_offset = (u32) (((u8 *)(s+1)) - (u8 *)tp);
                   record_offset = next_offset;
                   records_this_buffer = 0;
                 }
-              
+
               field_index = 0;
-              match = (ip4_header_t *) (((u8 *)v->key) - 2);
-              ip = match;
-              udp = (udp_header_t * )(ip+1);
-              
+              ip_start = ((u8 *)v->key) - 2;
 #define _(field,mask,item,length)                                       \
               if (clib_bitmap_get (fr->fields_to_send, field_index))    \
                 {                                                       \
@@ -239,7 +262,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
               field_index++;
               foreach_ipfix_field;
 #undef _
-              
+
               /* Add packetTotalCount manually */
               {
                 u64 packets = clib_host_to_net_u64 (v->hits);
@@ -247,7 +270,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                 next_offset += sizeof (packets);
               }
               records_this_buffer++;
-              fr->sequence_number++;
+              stream->sequence_number++;
               
               /* Next record will have the same size as this record */
               u32 next_record_size = next_offset - record_offset;
@@ -255,7 +278,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
 
               if (next_offset + next_record_size > frm->path_mtu)
                 {
-                  s->set_id_length = ipfix_set_id_length (256 /* template ID*/, 
+                  s->set_id_length = ipfix_set_id_length (fr->template_id,
                                                           next_offset - 
                                                           (sizeof (*ip) + sizeof (*udp) +
                                                            sizeof (*h)));
@@ -280,7 +303,15 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
                   ip->length = new_l0;
                   udp->length = 
                       clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
-                  
+
+                  if (frm->udp_checksum)
+                    {
+                      /* RFC 7011 section 10.3.2. */
+                      udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
+                      if (udp->checksum == 0)
+                        udp->checksum = 0xffff;
+                    }
+
                   ASSERT (ip->checksum == ip4_header_checksum (ip));
 
                   to_next[0] = bi0;
@@ -304,7 +335,7 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
  flush:
   if (b0)
     {
-        s->set_id_length = ipfix_set_id_length (256 /* template ID*/, 
+        s->set_id_length = ipfix_set_id_length (fr->template_id,
                                                 next_offset - 
                                                 (sizeof (*ip) + sizeof (*udp) +
                                                  sizeof (*h)));
@@ -328,6 +359,14 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
       ip->length = new_l0;
       udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
 
+      if (frm->udp_checksum)
+        {
+          /* RFC 7011 section 10.3.2. */
+          udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
+          if (udp->checksum == 0)
+          udp->checksum = 0xffff;
+        }
+
       ASSERT (ip->checksum == ip4_header_checksum (ip));
       
       to_next[0] = bi0;
@@ -341,47 +380,81 @@ static vlib_frame_t * send_flows (flow_report_main_t * frm,
   return f;
 }
 
-
 static clib_error_t *
-flow_classify_command_fn (vlib_main_t * vm,
-		 unformat_input_t * input,
-		 vlib_cli_command_t * cmd)
+ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
+                                         unformat_input_t * input,
+                                         vlib_cli_command_t * cmd)
 {
   flow_report_classify_main_t *fcm = &flow_report_classify_main;
   flow_report_main_t *frm = &flow_report_main;
   vnet_flow_report_add_del_args_t args;
+  ipfix_classify_table_t * table;
   int rv;
-  int is_add = 1;
-  u32 domain_id = 0;
-  u32 src_port = UDP_DST_PORT_ipfix;
+  int is_add = -1;
+  u32 classify_table_index;
+  u8 ip_version = 0;
+  u8 transport_protocol = 255;
 
-  domain_id = 0;
-  fcm->classify_table_index = ~0;
+  if (fcm->src_port == 0)
+    clib_error_return (0, "call 'set ipfix classify stream' first");
+
   memset (&args, 0, sizeof (args));
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (input, "table %d", &fcm->classify_table_index))
-      ;
-    else if (unformat (input, "domain %d", &domain_id))
-      ;
-    else if (unformat (input, "src-port %d", &src_port))
-      ;
+    if (unformat (input, "add"))
+      is_add = 1;
     else if (unformat (input, "del"))
       is_add = 0;
+    else if (unformat (input, "%d", &classify_table_index))
+      ;
+    else if (unformat (input, "ip4"))
+      ip_version = 4;
+    else if (unformat (input, "ip6"))
+      ip_version = 6;
+    else if (unformat (input, "tcp"))
+      transport_protocol = 6;
+    else if (unformat (input, "udp"))
+      transport_protocol = 17;
     else
       return clib_error_return (0, "unknown input `%U'",
                                 format_unformat_error, input);
   }
 
-  if (fcm->classify_table_index == ~0)
+  if (is_add == -1)
+    return clib_error_return (0, "expecting: add|del");
+  if (classify_table_index == ~0)
     return clib_error_return (0, "classifier table not specified");
+  if (ip_version == 0)
+    return clib_error_return (0, "IP version not specified");
 
-  args.opaque = (void *) fcm;
-  args.rewrite_callback = template_rewrite;
-  args.flow_data_callback = send_flows;
+  table = 0;
+  int i;
+  for (i = 0; i < vec_len(fcm->tables); i++)
+    if (ipfix_classify_table_index_valid(i))
+      if (fcm->tables[i].classify_table_index == classify_table_index) {
+        table = &fcm->tables[i];
+        break;
+      }
+
+  if (is_add) {
+    if (table)
+      return clib_error_return (0, "Specified classifier table already used");
+    table = ipfix_classify_add_table();
+    table->classify_table_index = classify_table_index;
+  } else {
+    if (!table)
+      return clib_error_return (0, "Specified classifier table not registered");
+  }
+
+  table->ip_version = ip_version;
+  table->transport_protocol = transport_protocol;
+
+  args.opaque.as_uword = table - fcm->tables;
+  args.rewrite_callback = ipfix_classify_template_rewrite;
+  args.flow_data_callback = ipfix_classify_send_flows;
   args.is_add = is_add;
-  args.domain_id = domain_id;
-  args.src_port = (u16)src_port;
+  args.domain_id = fcm->domain_id;
+  args.src_port = fcm->src_port;
 
   rv = vnet_flow_report_add_del (frm, &args);
 
@@ -390,18 +463,73 @@ flow_classify_command_fn (vlib_main_t * vm,
     case 0:
       break;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      return clib_error_return (0, "registration not found...");
+      return clib_error_return (0, "Flow report not found");
+    case VNET_API_ERROR_VALUE_EXIST:
+      return clib_error_return (0, "Flow report already exists");
+    case VNET_API_ERROR_INVALID_VALUE:
+      return clib_error_return (0, "Expecting either still unused values "
+                                   "for both domain_id and src_port "
+                                   "or already used values for both fields");
     default:
       return clib_error_return (0, "vnet_flow_report_add_del returned %d", rv);
     }
 
+  if (is_add) {
+    if (rv != 0)
+      ipfix_classify_delete_table(table - fcm->tables);
+  } else {
+    if (rv == 0)
+      ipfix_classify_delete_table(table - fcm->tables);
+  }
+
   return 0;
 }
 
-VLIB_CLI_COMMAND (flow_classify_command, static) = {
-  .path = "flow classify",
-  .short_help = "flow classify",
-  .function = flow_classify_command_fn,
+VLIB_CLI_COMMAND (ipfix_classify_table_add_del_command, static) = {
+  .path = "ipfix classify table",
+  .short_help = "ipfix classify table add|del <table-index>",
+  .function = ipfix_classify_table_add_del_command_fn,
+};
+
+static clib_error_t *
+set_ipfix_classify_stream_command_fn (vlib_main_t * vm,
+                                      unformat_input_t * input,
+                                      vlib_cli_command_t * cmd)
+{
+  flow_report_classify_main_t *fcm = &flow_report_classify_main;
+  flow_report_main_t *frm = &flow_report_main;
+  u32 domain_id = 1;
+  u32 src_port = UDP_DST_PORT_ipfix;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (input, "domain %d", &domain_id))
+      ;
+    else if (unformat (input, "src-port %d", &src_port))
+      ;
+    else
+      return clib_error_return (0, "unknown input `%U'",
+                                format_unformat_error, input);
+  }
+
+  if (fcm->src_port != 0 &&
+      (fcm->domain_id != domain_id ||
+       fcm->src_port != (u16)src_port)) {
+    int rv = vnet_stream_change (frm, fcm->domain_id, fcm->src_port,
+                                 domain_id, (u16)src_port);
+    ASSERT (rv == 0);
+  }
+
+  fcm->domain_id = domain_id;
+  fcm->src_port = (u16)src_port;
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (set_ipfix_classify_stream_command, static) = {
+  .path = "set ipfix classify stream",
+  .short_help = "set ipfix classify stream"
+                "[domain <domain-id>] [src-port <src-port>]",
+  .function = set_ipfix_classify_stream_command_fn,
 };
 
 static clib_error_t *

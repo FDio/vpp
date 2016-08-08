@@ -3426,7 +3426,9 @@ _(af_packet_delete_reply)                               \
 _(policer_classify_set_interface_reply)                 \
 _(netmap_create_reply)                                  \
 _(netmap_delete_reply)                                  \
-_(ipfix_enable_reply)                                   \
+_(set_ipfix_exporter_reply)                             \
+_(set_ipfix_classify_stream_reply)                      \
+_(ipfix_classify_table_add_del_reply)                   \
 _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
 _(ip_source_and_port_range_check_add_del_reply)         \
@@ -3641,8 +3643,12 @@ _(CLASSIFY_TABLE_IDS_REPLY, classify_table_ids_reply)                   \
 _(CLASSIFY_TABLE_BY_INTERFACE_REPLY, classify_table_by_interface_reply) \
 _(CLASSIFY_TABLE_INFO_REPLY, classify_table_info_reply)                 \
 _(CLASSIFY_SESSION_DETAILS, classify_session_details)                   \
-_(IPFIX_ENABLE_REPLY, ipfix_enable_reply)                               \
-_(IPFIX_DETAILS, ipfix_details)                                         \
+_(SET_IPFIX_EXPORTER_REPLY, set_ipfix_exporter_reply)                   \
+_(IPFIX_EXPORTER_DETAILS, ipfix_exporter_details)                       \
+_(SET_IPFIX_CLASSIFY_STREAM_REPLY, set_ipfix_classify_stream_reply)     \
+_(IPFIX_CLASSIFY_STREAM_DETAILS, ipfix_classify_stream_details)         \
+_(IPFIX_CLASSIFY_TABLE_ADD_DEL_REPLY, ipfix_classify_table_add_del_reply) \
+_(IPFIX_CLASSIFY_TABLE_DETAILS, ipfix_classify_table_details)           \
 _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
 _(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
 _(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
@@ -8618,10 +8624,10 @@ api_classify_set_interface_l2_tables (vat_main_t * vam)
 }
 
 static int
-api_ipfix_enable (vat_main_t * vam)
+api_set_ipfix_exporter (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_ipfix_enable_t *mp;
+  vl_api_set_ipfix_exporter_t *mp;
   ip4_address_t collector_address;
   u8 collector_address_set = 0;
   u32 collector_port = ~0;
@@ -8630,6 +8636,7 @@ api_ipfix_enable (vat_main_t * vam)
   u32 vrf_id = ~0;
   u32 path_mtu = ~0;
   u32 template_interval = ~0;
+  u8 udp_checksum = 0;
   f64 timeout;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -8648,6 +8655,8 @@ api_ipfix_enable (vat_main_t * vam)
 	;
       else if (unformat (i, "template_interval %d", &template_interval))
 	;
+      else if (unformat (i, "udp_checksum"))
+	udp_checksum = 1;
       else
 	break;
     }
@@ -8664,7 +8673,7 @@ api_ipfix_enable (vat_main_t * vam)
       return -99;
     }
 
-  M (IPFIX_ENABLE, ipfix_enable);
+  M (SET_IPFIX_EXPORTER, set_ipfix_exporter);
 
   memcpy (mp->collector_address, collector_address.data,
 	  sizeof (collector_address.data));
@@ -8673,6 +8682,101 @@ api_ipfix_enable (vat_main_t * vam)
   mp->vrf_id = htonl (vrf_id);
   mp->path_mtu = htonl (path_mtu);
   mp->template_interval = htonl (template_interval);
+  mp->udp_checksum = udp_checksum;
+
+  S;
+  W;
+  /* NOTREACHED */
+}
+
+static int
+api_set_ipfix_classify_stream (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_set_ipfix_classify_stream_t *mp;
+  u32 domain_id = 0;
+  u32 src_port = UDP_DST_PORT_ipfix;
+  f64 timeout;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "domain %d", &domain_id))
+	;
+      else if (unformat (i, "src_port %d", &src_port))
+	;
+      else
+	{
+	  errmsg ("unknown input `%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (SET_IPFIX_CLASSIFY_STREAM, set_ipfix_classify_stream);
+
+  mp->domain_id = htonl (domain_id);
+  mp->src_port = htons ((u16) src_port);
+
+  S;
+  W;
+  /* NOTREACHED */
+}
+
+static int
+api_ipfix_classify_table_add_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipfix_classify_table_add_del_t *mp;
+  int is_add = -1;
+  u32 classify_table_index;
+  u8 ip_version = 0;
+  u8 transport_protocol = 255;
+  f64 timeout;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "add"))
+	is_add = 1;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "table %d", &classify_table_index))
+	;
+      else if (unformat (i, "ip4"))
+	ip_version = 4;
+      else if (unformat (i, "ip6"))
+	ip_version = 6;
+      else if (unformat (i, "tcp"))
+	transport_protocol = 6;
+      else if (unformat (i, "udp"))
+	transport_protocol = 17;
+      else
+	{
+	  errmsg ("unknown input `%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (is_add == -1)
+    {
+      errmsg ("expecting: add|del");
+      return -99;
+    }
+  if (classify_table_index == ~0)
+    {
+      errmsg ("classifier table not specified");
+      return -99;
+    }
+  if (ip_version == 0)
+    {
+      errmsg ("IP version not specified");
+      return -99;
+    }
+
+  M (IPFIX_CLASSIFY_TABLE_ADD_DEL, ipfix_classify_table_add_del);
+
+  mp->is_add = is_add;
+  mp->table_id = htonl (classify_table_index);
+  mp->ip_version = ip_version;
+  mp->transport_protocol = transport_protocol;
 
   S;
   W;
@@ -14743,25 +14847,26 @@ api_classify_session_dump (vat_main_t * vam)
 }
 
 static void
-vl_api_ipfix_details_t_handler (vl_api_ipfix_details_t * mp)
+vl_api_ipfix_exporter_details_t_handler (vl_api_ipfix_exporter_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
 
   fformat (vam->ofp, "collector_address %U, collector_port %d, "
-	   "src_address %U, fib_index %u, path_mtu %u, "
-	   "template_interval %u\n",
+	   "src_address %U, vrf_id %d, path_mtu %u, "
+	   "template_interval %u, udp_checksum %d\n",
 	   format_ip4_address, mp->collector_address,
 	   ntohs (mp->collector_port),
 	   format_ip4_address, mp->src_address,
-	   ntohl (mp->fib_index),
-	   ntohl (mp->path_mtu), ntohl (mp->template_interval));
+	   ntohl (mp->vrf_id), ntohl (mp->path_mtu),
+	   ntohl (mp->template_interval), mp->udp_checksum);
 
   vam->retval = 0;
   vam->result_ready = 1;
 }
 
 static void
-vl_api_ipfix_details_t_handler_json (vl_api_ipfix_details_t * mp)
+  vl_api_ipfix_exporter_details_t_handler_json
+  (vl_api_ipfix_exporter_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t node;
@@ -14776,10 +14881,11 @@ vl_api_ipfix_details_t_handler_json (vl_api_ipfix_details_t * mp)
 			    ntohs (mp->collector_port));
   clib_memcpy (&src_address, &mp->src_address, sizeof (src_address));
   vat_json_object_add_ip4 (&node, "src_address", src_address);
-  vat_json_object_add_uint (&node, "fib_index", ntohl (mp->fib_index));
+  vat_json_object_add_int (&node, "vrf_id", ntohl (mp->vrf_id));
   vat_json_object_add_uint (&node, "path_mtu", ntohl (mp->path_mtu));
   vat_json_object_add_uint (&node, "template_interval",
 			    ntohl (mp->template_interval));
+  vat_json_object_add_int (&node, "udp_checksum", mp->udp_checksum);
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
@@ -14788,19 +14894,121 @@ vl_api_ipfix_details_t_handler_json (vl_api_ipfix_details_t * mp)
 }
 
 int
-api_ipfix_dump (vat_main_t * vam)
+api_ipfix_exporter_dump (vat_main_t * vam)
 {
-  vl_api_ipfix_dump_t *mp;
+  vl_api_ipfix_exporter_dump_t *mp;
   f64 timeout;
 
   /* Construct the API message */
-  M (IPFIX_DUMP, ipfix_dump);
+  M (IPFIX_EXPORTER_DUMP, ipfix_exporter_dump);
   mp->context = 0;
 
   S;
   W;
   /* NOTREACHED */
   return 0;
+}
+
+static int
+api_ipfix_classify_stream_dump (vat_main_t * vam)
+{
+  vl_api_ipfix_classify_stream_dump_t *mp;
+  f64 timeout;
+
+  /* Construct the API message */
+  M (IPFIX_CLASSIFY_STREAM_DUMP, ipfix_classify_stream_dump);
+  mp->context = 0;
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static void
+  vl_api_ipfix_classify_stream_details_t_handler
+  (vl_api_ipfix_classify_stream_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  fformat (vam->ofp, "domain_id %d, src_port %d\n",
+	   ntohl (mp->domain_id), ntohs (mp->src_port));
+  vam->retval = 0;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_ipfix_classify_stream_details_t_handler_json
+  (vl_api_ipfix_classify_stream_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_uint (&node, "domain_id", ntohl (mp->domain_id));
+  vat_json_object_add_uint (&node, "src_port", ntohs (mp->src_port));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+  vam->retval = 0;
+  vam->result_ready = 1;
+}
+
+static int
+api_ipfix_classify_table_dump (vat_main_t * vam)
+{
+  vl_api_ipfix_classify_table_dump_t *mp;
+  f64 timeout;
+
+  if (!vam->json_output)
+    {
+      fformat (vam->ofp, "%15s%15s%20s\n", "table_id", "ip_version",
+	       "transport_protocol");
+    }
+
+  /* Construct the API message */
+  M (IPFIX_CLASSIFY_TABLE_DUMP, ipfix_classify_table_dump);
+
+  /* send it... */
+  S;
+
+  /* Use a control ping for synchronization */
+  {
+    vl_api_control_ping_t *mp;
+    M (CONTROL_PING, control_ping);
+    S;
+  }
+  W;
+}
+
+static void
+  vl_api_ipfix_classify_table_details_t_handler
+  (vl_api_ipfix_classify_table_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  fformat (vam->ofp, "%15d%15d%20d\n", ntohl (mp->table_id), mp->ip_version,
+	   mp->transport_protocol);
+}
+
+static void
+  vl_api_ipfix_classify_table_details_t_handler_json
+  (vl_api_ipfix_classify_table_details_t * mp)
+{
+  vat_json_node_t *node = NULL;
+  vat_main_t *vam = &vat_main;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+
+  node = vat_json_array_add (&vam->json_tree);
+  vat_json_init_object (node);
+
+  vat_json_object_add_uint (node, "table_id", ntohl (mp->table_id));
+  vat_json_object_add_uint (node, "ip_version", mp->ip_version);
+  vat_json_object_add_uint (node, "transport_protocol",
+			    mp->transport_protocol);
 }
 
 int
@@ -15862,10 +16070,14 @@ _(classify_table_ids, "")                                               \
 _(classify_table_by_interface, "sw_if_index <sw_if_index>")             \
 _(classify_table_info, "table_id <nn>")                                 \
 _(classify_session_dump, "table_id <nn>")                               \
-_(ipfix_enable, "collector_address <ip4> [collector_port <nn>] "        \
-                "src_address <ip4> [fib_id <nn>] [path_mtu <nn>] "      \
-                "[template_interval <nn>]")                             \
-_(ipfix_dump, "")                                                       \
+_(set_ipfix_exporter, "collector_address <ip4> [collector_port <nn>] "  \
+    "src_address <ip4> [vrf_id <nn>] [path_mtu <nn>] "                  \
+    "[template_interval <nn>] [udp_checksum]")                          \
+_(ipfix_exporter_dump, "")                                              \
+_(set_ipfix_classify_stream, "[domain <domain-id>] [src_port <src-port>]") \
+_(ipfix_classify_stream_dump, "")                                       \
+_(ipfix_classify_table_add_del, "table <table-index> ip4|ip6 [tcp|udp]")\
+_(ipfix_classify_table_dump, "")                                        \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(pg_create_interface, "if_id <nn>")                                    \
 _(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \

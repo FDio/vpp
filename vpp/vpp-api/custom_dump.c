@@ -2093,12 +2093,12 @@ static void *vl_api_classify_session_dump_t_print
   FINISH;
 }
 
-static void *vl_api_ipfix_enable_t_print
-  (vl_api_ipfix_enable_t * mp, void *handle)
+static void *vl_api_set_ipfix_exporter_t_print
+  (vl_api_set_ipfix_exporter_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: ipfix_enable ");
+  s = format (0, "SCRIPT: set_ipfix_exporter ");
 
   s = format (s, "collector-address %U ", format_ip4_address,
 	      (ip4_address_t *) mp->collector_address);
@@ -2108,16 +2108,64 @@ static void *vl_api_ipfix_enable_t_print
   s = format (s, "vrf-id %d ", ntohl (mp->vrf_id));
   s = format (s, "path-mtu %d ", ntohl (mp->path_mtu));
   s = format (s, "template-interval %d ", ntohl (mp->template_interval));
+  s = format (s, "udp-checksum %d ", mp->udp_checksum);
 
   FINISH;
 }
 
-static void *vl_api_ipfix_dump_t_print
-  (vl_api_ipfix_dump_t * mp, void *handle)
+static void *vl_api_ipfix_exporter_dump_t_print
+  (vl_api_ipfix_exporter_dump_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: ipfix_dump ");
+  s = format (0, "SCRIPT: ipfix_exporter_dump ");
+
+  FINISH;
+}
+
+static void *vl_api_set_ipfix_classify_stream_t_print
+  (vl_api_set_ipfix_classify_stream_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: set_ipfix_classify_stream ");
+
+  s = format (s, "domain-id %d ", ntohl (mp->domain_id));
+  s = format (s, "src-port %d ", ntohs (mp->src_port));
+
+  FINISH;
+}
+
+static void *vl_api_ipfix_classify_stream_dump_t_print
+  (vl_api_ipfix_classify_stream_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ipfix_classify_stream_dump ");
+
+  FINISH;
+}
+
+static void *vl_api_ipfix_classify_table_add_del_t_print
+  (vl_api_ipfix_classify_table_add_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ipfix_classify_table_add_del ");
+
+  s = format (s, "table-id %d ", ntohl (mp->table_id));
+  s = format (s, "ip-version %d ", mp->ip_version);
+  s = format (s, "transport-protocol %d ", mp->transport_protocol);
+
+  FINISH;
+}
+
+static void *vl_api_ipfix_classify_table_dump_t_print
+  (vl_api_ipfix_classify_table_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ipfix_classify_table_dump ");
 
   FINISH;
 }
@@ -2733,8 +2781,12 @@ _(CLASSIFY_TABLE_IDS,classify_table_ids)                                \
 _(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
 _(CLASSIFY_TABLE_INFO,classify_table_info)                              \
 _(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
-_(IPFIX_ENABLE,ipfix_enable)                                            \
-_(IPFIX_DUMP,ipfix_dump)                                                \
+_(SET_IPFIX_EXPORTER, set_ipfix_exporter)                               \
+_(IPFIX_EXPORTER_DUMP, ipfix_exporter_dump)                             \
+_(SET_IPFIX_CLASSIFY_STREAM, set_ipfix_classify_stream)                 \
+_(IPFIX_CLASSIFY_STREAM_DUMP, ipfix_classify_stream_dump)               \
+_(IPFIX_CLASSIFY_TABLE_ADD_DEL, ipfix_classify_table_add_del)           \
+_(IPFIX_CLASSIFY_TABLE_DUMP, ipfix_classify_table_dump)                 \
 _(GET_NEXT_INDEX, get_next_index)                                       \
 _(PG_CREATE_INTERFACE,pg_create_interface)                              \
 _(PG_CAPTURE, pg_capture)                                               \

@@ -20,6 +20,52 @@
 
 flow_report_main_t flow_report_main;
 
+static_always_inline u8 stream_index_valid (u32 index)
+{
+  flow_report_main_t * frm = &flow_report_main;
+  return index < vec_len(frm->streams) &&
+         frm->streams[index].domain_id != ~0;
+}
+
+static_always_inline flow_report_stream_t * add_stream (void)
+{
+  flow_report_main_t * frm = &flow_report_main;
+  u32 i;
+  for (i = 0; i < vec_len(frm->streams); i++)
+    if (!stream_index_valid(i))
+      return &frm->streams[i];
+  u32 index = vec_len(frm->streams);
+  vec_validate(frm->streams, index);
+  return &frm->streams[index];
+}
+
+static_always_inline void delete_stream (u32 index)
+{
+  flow_report_main_t * frm = &flow_report_main;
+  ASSERT (index < vec_len(frm->streams));
+  ASSERT (frm->streams[index].domain_id != ~0);
+  frm->streams[index].domain_id = ~0;
+}
+
+static i32 find_stream (u32 domain_id, u16 src_port)
+{
+  flow_report_main_t * frm = &flow_report_main;
+  flow_report_stream_t * stream;
+  u32 i;
+  for (i = 0; i < vec_len(frm->streams); i++)
+    if (stream_index_valid(i)) {
+      stream = &frm->streams[i];
+      if (domain_id == stream->domain_id) {
+        if (src_port != stream->src_port)
+          return -2;
+        return i;
+      } else if (src_port == stream->src_port) {
+        return -2;
+      }
+    }
+  return -1;
+}
+
 int send_template_packet (flow_report_main_t *frm, 
                           flow_report_t *fr,
                           u32 * buffer_indexp)
@@ -31,6 +77,7 @@ int send_template_packet (flow_report_main_t *frm,
   ip4_header_t * ip;
   udp_header_t * udp;
   vlib_main_t * vm = frm->vlib_main;
+  flow_report_stream_t * stream;
 
   ASSERT (buffer_indexp);
 
@@ -82,11 +129,21 @@ int send_template_packet (flow_report_main_t *frm,
      (vlib_time_now(frm->vlib_main) - frm->vlib_time_0));
   h->export_time = clib_host_to_net_u32(h->export_time);
 
+  stream = &frm->streams[fr->stream_index];
+
   /* FIXUP: message header sequence_number. Templates do not increase it */
-  h->sequence_number = clib_host_to_net_u32(fr->sequence_number);
+  h->sequence_number = clib_host_to_net_u32(stream->sequence_number);
 
   /* FIXUP: udp length */
   udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
+
+  if (frm->udp_checksum)
+    {
+      /* RFC 7011 section 10.3.2. */
+      udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
+      if (udp->checksum == 0)
+        udp->checksum = 0xffff;
+    }
 
   *buffer_indexp = bi0;
 
@@ -178,11 +235,19 @@ int vnet_flow_report_add_del (flow_report_main_t *frm,
   int i;
   int found_index = ~0;
   flow_report_t *fr;
+  flow_report_stream_t * stream;
+  u32 si;
   
+  si = find_stream(a->domain_id, a->src_port);
+  if (si == -2)
+    return VNET_API_ERROR_INVALID_VALUE;
+  if (si == -1 && a->is_add == 0)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
   for (i = 0; i < vec_len(frm->reports); i++)
     {
       fr = vec_elt_at_index (frm->reports, i);
-      if (fr->opaque == a->opaque
+      if (fr->opaque.as_uword == a->opaque.as_uword
           && fr->rewrite_callback == a->rewrite_callback
           && fr->flow_data_callback == a->flow_data_callback)
         {
@@ -196,16 +261,37 @@ int vnet_flow_report_add_del (flow_report_main_t *frm,
       if (found_index != ~0)
         {
           vec_delete (frm->reports, 1, found_index);
+          stream = &frm->streams[si];
+          stream->n_reports--;
+          if (stream->n_reports == 0)
+            delete_stream(si);
           return 0;
         }
       return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
 
+  if (found_index != ~0)
+    return VNET_API_ERROR_VALUE_EXIST;
+
+  if (si == -1)
+    {
+      stream = add_stream();
+      stream->domain_id = a->domain_id;
+      stream->src_port = a->src_port;
+      stream->sequence_number = 0;
+      stream->n_reports = 0;
+      si = stream - frm->streams;
+    }
+  else
+    stream = &frm->streams[si];
+
+  stream->n_reports++;
+
   vec_add2 (frm->reports, fr, 1);
 
-  fr->sequence_number = 0;
-  fr->domain_id = a->domain_id;
-  fr->src_port = a->src_port;
+  fr->stream_index = si;
+  fr->template_id = 256 + stream->next_template_no;
+  stream->next_template_no = (stream->next_template_no + 1) % (65536 - 256);
   fr->update_rewrite = 1;
   fr->opaque = a->opaque;
   fr->rewrite_callback = a->rewrite_callback;
@@ -217,18 +303,51 @@ int vnet_flow_report_add_del (flow_report_main_t *frm,
 void vnet_flow_reports_reset (flow_report_main_t * frm)
 {
   flow_report_t *fr;
+  u32 i;
+
+  for (i = 0; i < vec_len(frm->streams); i++)
+    if (stream_index_valid(i))
+      frm->streams[i].sequence_number = 0;
+
   vec_foreach (fr, frm->reports)
     {
-	  fr->sequence_number = 0;
       fr->update_rewrite = 1;
       fr->last_template_sent = 0;
     }
 }
 
+void vnet_stream_reset (flow_report_main_t * frm, u32 stream_index)
+{
+  flow_report_t *fr;
+
+  frm->streams[stream_index].sequence_number = 0;
+
+  vec_foreach (fr, frm->reports)
+    if (frm->reports->stream_index == stream_index) {
+      fr->update_rewrite = 1;
+      fr->last_template_sent = 0;
+    }
+}
+
+int vnet_stream_change (flow_report_main_t * frm,
+                        u32 old_domain_id, u16 old_src_port,
+                        u32 new_domain_id, u16 new_src_port)
+{
+  i32 stream_index = find_stream (old_domain_id, old_src_port);
+  if (stream_index < 0)
+    return 1;
+  flow_report_stream_t * stream = &frm->streams[stream_index];
+  stream->domain_id = new_domain_id;
+  stream->src_port = new_src_port;
+  if (old_domain_id != new_domain_id || old_src_port != new_src_port)
+    vnet_stream_reset (frm, stream_index);
+  return 0;
+}
+
 static clib_error_t *
-set_ipfix_command_fn (vlib_main_t * vm,
-		 unformat_input_t * input,
-		 vlib_cli_command_t * cmd)
+set_ipfix_exporter_command_fn (vlib_main_t * vm,
+                               unformat_input_t * input,
+                               vlib_cli_command_t * cmd)
 {
   flow_report_main_t * frm = &flow_report_main;
   ip4_address_t collector, src;
@@ -240,6 +359,7 @@ set_ipfix_command_fn (vlib_main_t * vm,
   src.as_u32 = 0;
   u32 path_mtu = 512; // RFC 7011 section 10.3.3.
   u32 template_interval = 20;
+  u8 udp_checksum = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
     if (unformat (input, "collector %U", unformat_ip4_address, &collector))
@@ -261,6 +381,8 @@ set_ipfix_command_fn (vlib_main_t * vm,
       ;
     else if (unformat (input, "template-interval %u", &template_interval))
       ;
+    else if (unformat (input, "udp-checksum"))
+      udp_checksum = 1;
     else
       break;
   }
@@ -289,13 +411,16 @@ set_ipfix_command_fn (vlib_main_t * vm,
   frm->fib_index = fib_index;
   frm->path_mtu = path_mtu;
   frm->template_interval = template_interval;
+  frm->udp_checksum = udp_checksum;
   
   vlib_cli_output (vm, "Collector %U, src address %U, "
 		           "fib index %d, path MTU %u, "
-		           "template resend interval %us",
+		           "template resend interval %us, "
+		           "udp checksum %s",
                    format_ip4_address, &frm->ipfix_collector,
                    format_ip4_address, &frm->src_address,
-                   fib_index, path_mtu, template_interval);
+                   fib_index, path_mtu, template_interval,
+                   udp_checksum ? "enabled" : "disabled");
 
   /* Turn on the flow reporting process */
   vlib_process_signal_event (vm, flow_report_process_node.index,
@@ -303,14 +428,15 @@ set_ipfix_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (set_ipfix_command, static) = {
-    .path = "set ipfix",
-    .short_help = "set ipfix collector <ip4-address> "
-                  "[port <port>] "
+VLIB_CLI_COMMAND (set_ipfix_exporter_command, static) = {
+    .path = "set ipfix exporter",
+    .short_help = "set ipfix exporter "
+                  "collector <ip4-address> [port <port>] "
                   "src <ip4-address> [fib-id <fib-id>] "
                   "[path-mtu <path-mtu>] "
                   "[template-interval <template-interval>]",
-    .function = set_ipfix_command_fn,
+                  "[udp-checksum]",
+    .function = set_ipfix_exporter_command_fn,
 };
 
 static clib_error_t * 
@@ -322,6 +448,7 @@ flow_report_init (vlib_main_t *vm)
   frm->vnet_main = vnet_get_main();
   frm->unix_time_0 = time(0);
   frm->vlib_time_0 = vlib_time_now(frm->vlib_main);
+  frm->fib_index = ~0;
 
   return 0;
 }
