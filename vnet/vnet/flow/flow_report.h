@@ -51,12 +51,25 @@ typedef vlib_frame_t * (vnet_flow_data_callback_t) (struct flow_report_main *,
                                                     struct flow_report *,
                                                     vlib_frame_t *, u32 *, 
                                                     u32);
+
+typedef union {
+  void * as_ptr;
+  uword as_uword;
+} opaque_t;
+
+typedef struct {
+  u32 domain_id;
+  u32 sequence_number;
+  u16 src_port;
+  u16 n_reports;
+  u16 next_template_no;
+} flow_report_stream_t;
+
 typedef struct flow_report {
   /* ipfix rewrite, set by callback */
   u8 * rewrite;
-  u32 sequence_number;
-  u32 domain_id;
-  u16 src_port;
+  u16 template_id;
+  u32 stream_index;
   f64 last_template_sent;
   int update_rewrite;
 
@@ -64,7 +77,7 @@ typedef struct flow_report {
   uword * fields_to_send;
 
   /* Opaque data */
-  void * opaque;
+  opaque_t opaque;
 
   /* build-the-rewrite callback */
   vnet_flow_rewrite_callback_t *rewrite_callback;
@@ -75,6 +88,7 @@ typedef struct flow_report {
 
 typedef struct flow_report_main {
   flow_report_t * reports;
+  flow_report_stream_t * streams;
 
   /* ipfix collector ip address, port, our ip address, fib index */
   ip4_address_t ipfix_collector;
@@ -87,6 +101,9 @@ typedef struct flow_report_main {
 
   /* time interval in seconds after which to resend templates */
   u32 template_interval;
+
+  /* UDP checksum calculation enable flag */
+  u8 udp_checksum;
 
   /* time scale transform. Joy. */
   u32 unix_time_0;
@@ -106,7 +123,7 @@ int vnet_flow_report_enable_disable (u32 sw_if_index, u32 table_index,
 typedef struct {
   vnet_flow_data_callback_t *flow_data_callback;
   vnet_flow_rewrite_callback_t *rewrite_callback;
-  void * opaque;
+  opaque_t opaque;
   int is_add;
   u32 domain_id;
   u16 src_port;
@@ -116,5 +133,11 @@ int vnet_flow_report_add_del (flow_report_main_t *frm,
                               vnet_flow_report_add_del_args_t *a);
 
 void vnet_flow_reports_reset (flow_report_main_t * frm);
+
+void vnet_stream_reset (flow_report_main_t * frm, u32 stream_index);
+
+int vnet_stream_change (flow_report_main_t * frm,
+                        u32 old_domain_id, u16 old_src_port,
+                        u32 new_domain_id, u16 new_src_port);
 
 #endif /* __included_vnet_flow_report_h__ */
