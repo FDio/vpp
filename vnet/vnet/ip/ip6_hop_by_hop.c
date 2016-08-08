@@ -581,24 +581,25 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
       vlib_get_next_frame (vm, node, next_index,
 			   to_next, n_left_to_next);
 
-#if 0
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-          u32 next0 = IP6_POP_HOP_BY_HOP_NEXT_INTERFACE_OUTPUT;
-          u32 next1 = IP6_POP_HOP_BY_HOP_NEXT_INTERFACE_OUTPUT;
-          u32 sw_if_index0, sw_if_index1;
-          u8 tmp0[6], tmp1[6];
-          ethernet_header_t *en0, *en1;
           u32 bi0, bi1;
 	  vlib_buffer_t * b0, * b1;
-          
+	  u32 next0, next1;
+	  u32 adj_index0, adj_index1;
+	  ip6_header_t * ip0, *ip1;
+	  ip_adjacency_t * adj0, *adj1;
+	  ip6_hop_by_hop_header_t *hbh0, *hbh1;
+	  u64 *copy_dst0, *copy_src0, *copy_dst1, *copy_src1;
+	  u16 new_l0, new_l1;
+
 	  /* Prefetch next iteration. */
 	  {
 	    vlib_buffer_t * p2, * p3;
-            
+
 	    p2 = vlib_get_buffer (vm, from[2]);
 	    p3 = vlib_get_buffer (vm, from[3]);
-            
+
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
@@ -620,39 +621,75 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
           /* $$$$$ Dual loop: process 2 x packets here $$$$$ */
           ASSERT (b0->current_data == 0);
           ASSERT (b1->current_data == 0);
-          
+
           ip0 = vlib_buffer_get_current (b0);
-          ip1 = vlib_buffer_get_current (b0);
+          ip1 = vlib_buffer_get_current (b1);
+	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	  adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
+	  adj0 = ip_get_adjacency (lm, adj_index0);
+	  adj1 = ip_get_adjacency (lm, adj_index1);
 
-          sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-          sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
+	  next0 = adj0->lookup_next_index;
+	  next1 = adj1->lookup_next_index;
 
+	  hbh0 = (ip6_hop_by_hop_header_t *)(ip0+1);
+	  hbh1 = (ip6_hop_by_hop_header_t *)(ip1+1);
+
+	  ioam_pop_hop_by_hop_processing(vm, ip0, hbh0);
+	  ioam_pop_hop_by_hop_processing(vm, ip1, hbh1);
+
+	  vlib_buffer_advance (b0, (hbh0->length+1)<<3);
+	  vlib_buffer_advance (b1, (hbh1->length+1)<<3);
+
+	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
+	    ((hbh0->length+1)<<3);
+	  new_l1 = clib_net_to_host_u16 (ip1->payload_length) -
+	    ((hbh1->length+1)<<3);
+
+	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
+	  ip1->payload_length = clib_host_to_net_u16 (new_l1);
+
+	  ip0->protocol = hbh0->protocol;
+	  ip1->protocol = hbh1->protocol;
+
+	  copy_src0 = (u64 *)ip0;
+	  copy_src1 = (u64 *)ip1;
+	  copy_dst0 = copy_src0 + (hbh0->length+1);
+	  copy_dst0 [4] = copy_src0[4];
+	  copy_dst0 [3] = copy_src0[3];
+	  copy_dst0 [2] = copy_src0[2];
+	  copy_dst0 [1] = copy_src0[1];
+	  copy_dst0 [0] = copy_src0[0];
+	  copy_dst1 = copy_src1 + (hbh1->length+1);
+	  copy_dst1 [4] = copy_src1[4];
+	  copy_dst1 [3] = copy_src1[3];
+	  copy_dst1 [2] = copy_src1[2];
+	  copy_dst1 [1] = copy_src1[1];
+	  copy_dst1 [0] = copy_src1[0];
+	  processed+=2;
           /* $$$$$ End of processing 2 x packets $$$$$ */
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)))
             {
-              if (b0->flags & VLIB_BUFFER_IS_TRACED) 
+              if (b0->flags & VLIB_BUFFER_IS_TRACED)
                 {
-                    ip6_pop_hop_by_hop_trace_t *t = 
+                    ip6_pop_hop_by_hop_trace_t *t =
                       vlib_add_trace (vm, node, b0, sizeof (*t));
-                    t->sw_if_index = sw_if_index0;
                     t->next_index = next0;
                   }
-                if (b1->flags & VLIB_BUFFER_IS_TRACED) 
+                if (b1->flags & VLIB_BUFFER_IS_TRACED)
                   {
-                    ip6_pop_hop_by_hop_trace_t *t = 
+                    ip6_pop_hop_by_hop_trace_t *t =
                       vlib_add_trace (vm, node, b1, sizeof (*t));
-                    t->sw_if_index = sw_if_index1;
                     t->next_index = next1;
                   }
               }
-            
+
             /* verify speculative enqueues, maybe switch current next frame */
             vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
                                              to_next, n_left_to_next,
                                              bi0, bi1, next0, next1);
         }
-#endif
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
