@@ -43,13 +43,6 @@
 #include <vppinfra/memcheck.h>
 #include <vppinfra/valgrind.h>
 
-clib_smp_main_t clib_smp_main = {
-  .n_cpus = 0,
-  .log2_n_per_cpu_stack_bytes = 20,
-  .log2_n_per_cpu_vm_bytes = 28,
-  .n_tls_4k_pages = 1,
-};
-
 void * clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 
 void clib_mem_exit (void)

@@ -174,14 +174,14 @@ void os_puts (u8 * string, uword string_length, uword is_error)
 
 void os_puts (u8 * string, uword string_length, uword is_error)
 {
-  clib_smp_main_t * m = &clib_smp_main;
   int cpu = os_get_cpu_number ();
+  int ncpus = os_get_ncpus();
   char buf[64];
   int fd = is_error ? 2 : 1;
   struct iovec iovs[2];
   int n_iovs = 0;
 
-  if (m->n_cpus > 1)
+  if (ncpus > 1)
     {
       snprintf (buf, sizeof(buf), "%d: ", cpu);
 
@@ -204,4 +204,8 @@ void os_out_of_memory (void)
 
 uword os_get_cpu_number (void) __attribute__ ((weak));
 uword os_get_cpu_number (void)
-{ return os_get_cpu_number_inline(); }
+{ return 0; }
+
+uword os_get_ncpus (void) __attribute__ ((weak));
+uword os_get_ncpus (void)
+{ return 1; }

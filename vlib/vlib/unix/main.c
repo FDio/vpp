@@ -439,8 +439,6 @@ int
 vlib_unix_main (int argc, char *argv[])
 {
   vlib_main_t *vm = &vlib_global_main;	/* one and only time for this! */
-
-  clib_smp_main_t *sm = &clib_smp_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
   unformat_input_t input;
   u8 *thread_stacks;
@@ -471,9 +469,6 @@ vlib_unix_main (int argc, char *argv[])
   thread_stacks = clib_mem_alloc_aligned
     ((uword) tm->n_thread_stacks * VLIB_THREAD_STACK_SIZE,
      (VLIB_MAX_CPUS << VLIB_LOG2_THREAD_STACK_SIZE));
-
-  sm->vm_base = thread_stacks;
-  sm->log2_n_per_cpu_vm_bytes = VLIB_LOG2_THREAD_STACK_SIZE;
 
   vec_validate (vlib_thread_stacks, tm->n_thread_stacks - 1);
   for (i = 0; i < vec_len (vlib_thread_stacks); i++)

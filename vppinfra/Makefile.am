@@ -200,7 +200,6 @@ nobase_include_HEADERS = \
   vppinfra/serialize.h \
   vppinfra/slist.h \
   vppinfra/smp.h \
-  vppinfra/smp_fifo.h \
   vppinfra/socket.h \
   vppinfra/sparse_vec.h \
   vppinfra/string.h \
@@ -247,8 +246,6 @@ CLIB_CORE = \
   vppinfra/random_isaac.c \
   vppinfra/serialize.c \
   vppinfra/slist.c \
-  vppinfra/smp.c \
-  vppinfra/smp_fifo.c \
   vppinfra/std-formats.c \
   vppinfra/string.c \
   vppinfra/time.c \

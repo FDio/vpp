@@ -57,6 +57,7 @@ void os_out_of_memory (void);
 f64 os_cpu_clock_frequency (void);
 
 uword os_get_cpu_number (void);
+uword os_get_ncpus (void);
 
 #include <vppinfra/smp.h>
 

@@ -77,6 +77,18 @@ os_get_cpu_number (void)
   return n;
 }
 
+uword
+os_get_ncpus (void)
+{
+  u32 len;
+
+  len = vec_len (vlib_thread_stacks);
+  if (len == 0)
+    return 1;
+  else
+    return len;
+}
+
 void
 vlib_set_thread_name (char *name)
 {
