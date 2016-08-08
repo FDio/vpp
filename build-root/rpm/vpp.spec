@@ -1,5 +1,6 @@
 %define _vpp_install_dir ../%{_install_dir}
 %define _vpp_build_dir   ../build-tool-native
+%define _vpp_papi_dir    ../../vpp-api/python
 %define _unitdir         /lib/systemd/system
 %define _topdir          %(pwd)
 %define _builddir        %{_topdir}
@@ -49,9 +50,22 @@ allocator (mheap.c), extendable printf-like interface built on top of vectors
 time-based function calls (timer.c).
 TODO: reference and describe only the .h files
 
+%package papi
+Summary: VPP Python API
+requires: vpp-lib
+
+%description papi
+This package contains vpp Python API module.
+
 %pre
 # Add the vpp group
 groupadd -f -r vpp
+
+%build
+make -C../ PLATFORM=vpp TAG=vpp_debug vpp-api-install
+pushd %{_vpp_papi_dir}
+python setup.py build
+popd
 
 %install
 #
@@ -104,7 +118,9 @@ do
 	install -p -m 644 %{_vpp_install_dir}/../../sample-plugin/$file \
 	   %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/$file
 done
-
+pushd %{_vpp_papi_dir}
+python setup.py install --root=$RPM_BUILD_ROOT
+popd
 %post
 sysctl --system
 %systemd_post vpp.service
@@ -130,3 +146,7 @@ sysctl --system
 /usr/bin/vppapigen
 %{_includedir}/*
 /usr/share/doc/vpp/examples/sample-plugin
+
+%files papi
+%defattr(-,bin,bin)
+%{python_sitearch}/*
