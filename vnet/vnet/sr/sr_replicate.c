@@ -105,6 +105,9 @@ _(NO_BUFFERS, "error allocating buffers for replicas") \
 _(NO_REPLICAS, "no replicas were needed") \
 _(NO_BUFFER_DROPS, "sr no buffer drops")
 
+/**
+ * @brief Struct for SR replicate errors
+ */
 typedef enum
 {
 #define _(sym,str) SR_REPLICATE_ERROR_##sym,
@@ -113,6 +116,9 @@ typedef enum
     SR_REPLICATE_N_ERROR,
 } sr_replicate_error_t;
 
+/**
+ * @brief Error strings for SR replicate
+ */
 static char *sr_replicate_error_strings[] = {
 #define _(sym,string) string,
   foreach_sr_replicate_error
@@ -357,8 +363,8 @@ sr_replicate_node_fn (vlib_main_t * vm,
 		      (hdr_ip0->payload_length);
 		}
 	      tr->next_index = next_index;
-              if (hdr_sr0)
-                memcpy (tr->sr, hdr_sr0, sizeof (tr->sr));
+	      if (hdr_sr0)
+		memcpy (tr->sr, hdr_sr0, sizeof (tr->sr));
 	    }
 
 	}
