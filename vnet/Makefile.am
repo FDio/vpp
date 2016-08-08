@@ -249,12 +249,15 @@ libvnet_la_SOURCES +=				\
   vnet/classify/ip_classify.c			\
   vnet/classify/input_acl.c			\
   vnet/classify/policer_classify.c		\
+  vnet/classify/flow_classify.c                 \
+  vnet/classify/flow_classify_node.c            \
   vnet/classify/vnet_classify.h
 
 nobase_include_HEADERS +=			\
   vnet/classify/vnet_classify.h	                \
   vnet/classify/input_acl.h                     \
-  vnet/classify/policer_classify.h
+  vnet/classify/policer_classify.h              \
+  vnet/classify/flow_classify.h
 
 ########################################
 # Layer 3 protocols go here
