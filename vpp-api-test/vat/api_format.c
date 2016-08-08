@@ -9159,6 +9159,8 @@ static void vl_api_vxlan_tunnel_details_t_handler_json
   vat_json_node_t *node = NULL;
   struct in_addr ip4;
   struct in6_addr ip6;
+  ip46_address_t *ip46_src = (ip46_address_t *)(&(mp->src_address[0]));
+  ip46_address_t *ip46_dst = (ip46_address_t *)(&(mp->dst_address[0]));
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -9171,16 +9173,16 @@ static void vl_api_vxlan_tunnel_details_t_handler_json
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
   if (mp->is_ipv6)
     {
-      clib_memcpy (&ip6, &(mp->src_address[0]), sizeof (ip6));
+      clib_memcpy (&ip6, &ip46_src->ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "src_address", ip6);
-      clib_memcpy (&ip6, &(mp->dst_address[0]), sizeof (ip6));
+      clib_memcpy (&ip6, &ip46_dst->ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "dst_address", ip6);
     }
   else
     {
-      clib_memcpy (&ip4, &(mp->src_address[0]), sizeof (ip4));
+      clib_memcpy (&ip4, &ip46_src->ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "src_address", ip4);
-      clib_memcpy (&ip4, &(mp->dst_address[0]), sizeof (ip4));
+      clib_memcpy (&ip4, &ip46_dst->ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "dst_address", ip4);
     }
   vat_json_object_add_uint (node, "encap_vrf_id", ntohl (mp->encap_vrf_id));
@@ -9860,10 +9862,10 @@ static void vl_api_vxlan_gpe_tunnel_details_t_handler
 
   fformat (vam->ofp, "%11d%24U%24U%13d%12d%14d%14d\n",
 	   ntohl (mp->sw_if_index),
-	   format_ip46_address, &(mp->local[0]),
-	   format_ip46_address, &(mp->remote[0]),
+	   format_ip46_address, &(mp->local[0]), IP46_TYPE_ANY,
+	   format_ip46_address, &(mp->remote[0]), IP46_TYPE_ANY,
 	   ntohl (mp->vni),
-	   ntohl (mp->protocol),
+	   mp->protocol,
 	   ntohl (mp->encap_vrf_id), ntohl (mp->decap_vrf_id));
 }
 
@@ -9874,6 +9876,8 @@ static void vl_api_vxlan_gpe_tunnel_details_t_handler_json
   vat_json_node_t *node = NULL;
   struct in_addr ip4;
   struct in6_addr ip6;
+  ip46_address_t *ip46_local = (ip46_address_t *)(&(mp->local[0]));
+  ip46_address_t *ip46_remote = (ip46_address_t *)(&(mp->remote[0]));
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -9886,20 +9890,20 @@ static void vl_api_vxlan_gpe_tunnel_details_t_handler_json
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
   if (mp->is_ipv6)
     {
-      clib_memcpy (&ip6, &(mp->local[0]), sizeof (ip6));
+      clib_memcpy (&ip6, &ip46_local->ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "local", ip6);
-      clib_memcpy (&ip6, &(mp->remote[0]), sizeof (ip6));
+      clib_memcpy (&ip6, &ip46_remote->ip6, sizeof (ip6));
       vat_json_object_add_ip6 (node, "remote", ip6);
     }
   else
     {
-      clib_memcpy (&ip4, &(mp->local[0]), sizeof (ip4));
+      clib_memcpy (&ip4, &ip46_local->ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "local", ip4);
-      clib_memcpy (&ip4, &(mp->remote[0]), sizeof (ip4));
+      clib_memcpy (&ip4, &ip46_remote->ip4, sizeof (ip4));
       vat_json_object_add_ip4 (node, "remote", ip4);
     }
   vat_json_object_add_uint (node, "vni", ntohl (mp->vni));
-  vat_json_object_add_uint (node, "protocol", ntohl (mp->protocol));
+  vat_json_object_add_uint (node, "protocol", mp->protocol);
   vat_json_object_add_uint (node, "encap_vrf_id", ntohl (mp->encap_vrf_id));
   vat_json_object_add_uint (node, "decap_vrf_id", ntohl (mp->decap_vrf_id));
   vat_json_object_add_uint (node, "is_ipv6", mp->is_ipv6 ? 1 : 0);
