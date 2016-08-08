@@ -29,14 +29,16 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 
-typedef enum {
+typedef enum
+{
   VNET_COP_IP4,
   VNET_COP_IP6,
   VNET_COP_DEFAULT,
   VNET_N_COPS,
 } vnet_cop_t;
 
-typedef enum {
+typedef enum
+{
   /* First check src address against whitelist */
   IP4_RX_COP_WHITELIST,
   IP6_RX_COP_WHITELIST,
@@ -53,21 +55,24 @@ typedef enum {
   COP_RX_N_FEATURES,
 } cop_feature_type_t;
 
-typedef struct {
+typedef struct
+{
   vnet_config_main_t config_main;
-  u32 * config_index_by_sw_if_index;
+  u32 *config_index_by_sw_if_index;
 } cop_config_main_t;
 
-typedef struct {
+typedef struct
+{
   u32 fib_index;
 } cop_config_data_t;
 
-typedef struct {
+typedef struct
+{
   cop_config_main_t cop_config_mains[VNET_N_COPS];
 
   /* convenience */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
 } cop_main_t;
 
 cop_main_t cop_main;
@@ -76,7 +81,8 @@ extern vlib_node_registration_t cop_input_node;
 
 int cop_interface_enable_disable (u32 sw_if_index, int enable_disable);
 
-typedef struct {
+typedef struct
+{
   u32 sw_if_index;
   u8 ip4;
   u8 ip6;
@@ -84,6 +90,14 @@ typedef struct {
   u32 fib_id;
 } cop_whitelist_enable_disable_args_t;
 
-int cop_whitelist_enable_disable (cop_whitelist_enable_disable_args_t *a);
+int cop_whitelist_enable_disable (cop_whitelist_enable_disable_args_t * a);
 
 #endif /* __vnet_cop_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
