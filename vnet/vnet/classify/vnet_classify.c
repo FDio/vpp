@@ -678,6 +678,14 @@ int vnet_classify_add_del_table (vnet_classify_main_t * cm,
   return 0;
 }
 
+#define foreach_tcp_proto_field                 \
+_(src_port)                                     \
+_(dst_port)
+
+#define foreach_udp_proto_field                 \
+_(src_port)                                     \
+_(dst_port)
+
 #define foreach_ip4_proto_field                 \
 _(src_address)                                  \
 _(dst_address)                                  \
@@ -687,6 +695,125 @@ _(fragment_id)                                  \
 _(ttl)                                          \
 _(protocol)                                     \
 _(checksum)
+
+uword unformat_tcp_mask (unformat_input_t * input, va_list * args)
+{
+  u8 ** maskp = va_arg (*args, u8 **);
+  u8 * mask = 0;
+  u8 found_something = 0;
+  tcp_header_t * tcp;
+
+#define _(a) u8 a=0;
+  foreach_tcp_proto_field;
+#undef _
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (0) ;
+#define _(a) else if (unformat (input, #a)) a=1;
+      foreach_tcp_proto_field
+#undef _
+      else
+        break;
+    }
+
+#define _(a) found_something += a;
+  foreach_tcp_proto_field;
+#undef _
+
+  if (found_something == 0)
+    return 0;
+
+  vec_validate (mask, sizeof (*tcp) - 1);
+
+  tcp = (tcp_header_t *) mask;
+
+#define _(a) if (a) memset (&tcp->a, 0xff, sizeof (tcp->a));
+  foreach_tcp_proto_field;
+#undef _
+
+  *maskp = mask;
+  return 1;
+}
+
+uword unformat_udp_mask (unformat_input_t * input, va_list * args)
+{
+  u8 ** maskp = va_arg (*args, u8 **);
+  u8 * mask = 0;
+  u8 found_something = 0;
+  udp_header_t * udp;
+
+#define _(a) u8 a=0;
+  foreach_udp_proto_field;
+#undef _
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (0) ;
+#define _(a) else if (unformat (input, #a)) a=1;
+      foreach_udp_proto_field
+#undef _
+      else
+        break;
+    }
+
+#define _(a) found_something += a;
+  foreach_udp_proto_field;
+#undef _
+
+  if (found_something == 0)
+    return 0;
+
+  vec_validate (mask, sizeof (*udp) - 1);
+
+  udp = (udp_header_t *) mask;
+
+#define _(a) if (a) memset (&udp->a, 0xff, sizeof (udp->a));
+  foreach_udp_proto_field;
+#undef _
+
+  *maskp = mask;
+  return 1;
+}
+
+typedef struct {
+  u16 src_port, dst_port;
+} tcpudp_header_t;
+
+uword unformat_l4_mask (unformat_input_t * input, va_list * args)
+{
+  u8 ** maskp = va_arg (*args, u8 **);
+  u16 src_port = 0, dst_port = 0;
+  tcpudp_header_t * tcpudp;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "tcp %U", unformat_tcp_mask, maskp))
+        return 1;
+      else if (unformat (input, "udp %U", unformat_udp_mask, maskp))
+        return 1;
+      else if (unformat (input, "src_port"))
+        src_port = 0xFFFF;
+      else if (unformat (input, "dst_port"))
+        dst_port = 0xFFFF;
+      else
+        return 0;
+    }
+
+  if (!src_port && !dst_port)
+    return 0;
+
+  u8 * mask = 0;
+  vec_validate (mask, sizeof (tcpudp_header_t) - 1);
+
+  tcpudp = (tcpudp_header_t *) mask;
+  tcpudp->src_port = src_port;
+  tcpudp->dst_port = dst_port;
+
+  *maskp = mask;
+
+  return 1;
+}
 
 uword unformat_ip4_mask (unformat_input_t * input, va_list * args)
 {
@@ -959,6 +1086,7 @@ uword unformat_classify_mask (unformat_input_t * input, va_list * args)
   u8 * mask = 0;
   u8 * l2 = 0;
   u8 * l3 = 0;
+  u8 * l4 = 0;
   int i;
   
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
@@ -968,13 +1096,22 @@ uword unformat_classify_mask (unformat_input_t * input, va_list * args)
       ;
     else if (unformat (input, "l3 %U", unformat_l3_mask, &l3))
       ;
+    else if (unformat (input, "l4 %U", unformat_l4_mask, &l4))
+      ;
     else
       break;
   }
 
-  if (mask || l2 || l3)
+  if (l4 && !l3) {
+    vec_free (mask);
+    vec_free (l2);
+    vec_free (l4);
+    return 0;
+  }
+
+  if (mask || l2 || l3 || l4)
     {
-      if (l2 || l3)
+      if (l2 || l3 || l4)
         {
           /* "With a free Ethernet header in every package" */
           if (l2 == 0)
@@ -984,6 +1121,11 @@ uword unformat_classify_mask (unformat_input_t * input, va_list * args)
             {
               vec_append (mask, l3);
               vec_free (l3);
+            }
+          if (l4)
+            {
+              vec_append (mask, l4);
+              vec_free (l4);
             }
         }
 
@@ -1396,6 +1538,36 @@ VLIB_CLI_COMMAND (show_classify_table_command, static) = {
   .function = show_classify_tables_command_fn,
 };
 
+uword unformat_l4_match (unformat_input_t * input, va_list * args)
+{
+  u8 ** matchp = va_arg (*args, u8 **);
+
+  u8 * proto_header = 0;
+  int src_port = 0;
+  int dst_port = 0;
+
+  tcpudp_header_t h;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "src_port %d", &src_port))
+        ;
+      else if (unformat (input, "dst_port %d", &dst_port))
+        ;
+      else
+        return 0;
+    }
+
+  h.src_port = clib_host_to_net_u16(src_port);
+  h.dst_port = clib_host_to_net_u16(dst_port);
+  vec_validate(proto_header, sizeof(h)-1);
+  memcpy(proto_header, &h, sizeof(h));
+
+  *matchp = proto_header;
+
+  return 1;
+}
+
 uword unformat_ip4_match (unformat_input_t * input, va_list * args)
 {
   u8 ** matchp = va_arg (*args, u8 **);
@@ -1479,13 +1651,13 @@ uword unformat_ip4_match (unformat_input_t * input, va_list * args)
     ip->tos = tos_val;
   
   if (length)
-    ip->length = length_val;
+    ip->length = clib_host_to_net_u16 (length_val);
   
   if (ttl)
     ip->ttl = ttl_val;
 
   if (checksum)
-    ip->checksum = checksum_val;
+    ip->checksum = clib_host_to_net_u16 (checksum_val);
 
   *matchp = match;
   return 1;
@@ -1733,6 +1905,7 @@ uword unformat_classify_match (unformat_input_t * input, va_list * args)
   u8 * match = 0;
   u8 * l2 = 0;
   u8 * l3 = 0;
+  u8 * l4 = 0;
 
   if (pool_is_free_index (cm->tables, table_index))
     return 0;
@@ -1746,13 +1919,22 @@ uword unformat_classify_match (unformat_input_t * input, va_list * args)
       ;
     else if (unformat (input, "l3 %U", unformat_l3_match, &l3))
       ;
+    else if (unformat (input, "l4 %U", unformat_l4_match, &l4))
+      ;
     else
       break;
   }
 
-  if (match || l2 || l3)
+  if (l4 && !l3) {
+    vec_free (match);
+    vec_free (l2);
+    vec_free (l4);
+    return 0;
+  }
+
+  if (match || l2 || l3 || l4)
     {
-      if (l2 || l3)
+      if (l2 || l3 || l4)
         {
           /* "Win a free Ethernet header in every packet" */
           if (l2 == 0)
@@ -1762,6 +1944,11 @@ uword unformat_classify_match (unformat_input_t * input, va_list * args)
             {
               vec_append_aligned (match, l3, sizeof(u32x4));
               vec_free (l3);
+            }
+          if (l4)
+            {
+              vec_append_aligned (match, l4, sizeof(u32x4));
+              vec_free (l4);
             }
         }
 
