@@ -58,3 +58,68 @@ snat_test_plugin_la_SOURCES = \
 install-data-hook:
 	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
 	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
+
+
+
+#
+# Java code generation
+#
+# FIXME! How to reuse these from core build configuration ?
+JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+JAVAC=${JAVA_HOME}/bin/javac
+JAVAH=${JAVA_HOME}/bin/javah
+JAR=${JAVA_HOME}/bin/jar
+
+# FIXME! Should the package version be 1.0 ?
+jsnat_jarfile = jvpp-snat-$(PACKAGE_VERSION).jar
+jvpp_package_dir = io/fd/vpp/jvpp/snat
+jvpp_root = snat/jvpp
+jvoo_target_dir = target
+jvpp_target = $(jvpp_root)/$(jvoo_target_dir)
+api_file=$(srcdir)/snat/snat.api
+#jvpp_gen = jvpp_gen.py
+
+lib_LTLIBRARIES = libjvpp_snat.la
+libjvpp_snat_la_SOURCES = snat/snat.api.h snat/jvpp_snat.c snat/jvpp/io_fd_vpp_jvpp_snat_JVppSnatImpl.h
+libjvpp_snat_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
+	              -lpthread -lm -lrt -ljvpp_common
+libjvpp_snat_la_LDFLAGS = -module
+libjvpp_snat_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I../ -I$(srcdir)/../
+# FIXME!! How to add the dependency on jvpp_common so that th ecompilation actually works without having vpp-lib already preinstalled
+EXTRA_libjvpp_snat_la_DEPENDENCIES=../../vpp-api/java/.libs/libjvpp_common.la
+
+BUILT_SOURCES += $(jvpp_root)/io_fd_vpp_jvpp_snat_JVppSnatImpl.h
+
+# FIXME! Fix paths to jvpp_gen and jvpp core/registry jars
+
+$(jvpp_root)/io_fd_vpp_jvpp_snat_JVppSnatImpl.h: defs_snat_papi.py
+	dir=`pwd`;						\
+	mkdir -p $(jvpp_target); \
+	mkdir -p $(jvpp_root)/$(jvpp_package_dir); 		\
+	cd $(jvpp_root)/$(jvpp_package_dir);			\
+	mkdir -p dto future callfacade callback notification test; 	\
+	@srcdir@/../../vpp-api/java/jvpp/gen/jvpp_gen.py -i $${dir}/defs_snat_papi.py --plugin_name snat --control_ping_class SnatControlPing;		\
+	cd -;							\
+	mv -f $(jvpp_root)/$(jvpp_package_dir)/jvpp_snat_gen.h $(jvpp_root)/jvpp_snat_gen.h;							\
+	cp $(srcdir)/$(jvpp_root)/$(jvpp_package_dir)/test/*.java $(jvpp_root)/$(jvpp_package_dir)/test/;				\
+	cd $(jvpp_root);				\
+	$(JAVAC) -classpath .:$(jvoo_target_dir):../../../../vpp-api/java/jvpp-registry-16.12.jar -d $(jvoo_target_dir) $(jvpp_package_dir)/*.java \
+		$(jvpp_package_dir)/dto/*.java \
+		$(jvpp_package_dir)/callback/*.java \
+		$(jvpp_package_dir)/notification/*.java \
+		$(jvpp_package_dir)/future/*.java 	\
+		$(jvpp_package_dir)/callfacade/*.java 	\
+		$(jvpp_package_dir)/test/*.java \
+		|| (echo "snat jvpp compilation failed: $$?"; exit 1);	\
+	$(JAVAH) -classpath .:$(jvoo_target_dir):../../../../vpp-api/java/jvpp-registry-16.12.jar -d . io.fd.vpp.jvpp.snat.JVppSnatImpl ;
+
+$(jsnat_jarfile): libjvpp_snat.la
+	cp .libs/libjvpp_snat.so.0.0.0 $(jvpp_target);				\
+	cd $(jvpp_target);				\
+	$(JAR) cfv $(JARFLAGS) ../../../$@ libjvpp_snat.so.0.0.0 $(jvpp_package_dir)/* ; cd ..;
+
+defs_snat_papi.py:
+	@echo "  jSnat_sfc API"; \
+        vppapigen --input $(api_file) --python defs_snat_papi.py;
+
+all-local: $(jsnat_jarfile)
