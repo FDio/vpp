@@ -11,7 +11,9 @@ plugins_CPPFLAGS = $(call installed_includes_fn, 	\
     vnet 					\
     svm 					\
     vpp-api-test 				\
-    vlib-api)
+    vlib-api 				\
+    vpp-api 				\
+    vpp-api/java)					
 
 plugins_LDFLAGS = $(call installed_libs_fn, 	\
     vppinfra					\
