@@ -38,7 +38,7 @@ else
 # compile using internal DPDK + NXP DPAA2 Driver patch
 dpaa2_dpdk_arch = "armv8a"
 dpaa2_dpdk_target = "arm64-dpaa2-linuxapp-gcc"
-dpaa2_dpdk_make_extra_args = "CROSS=$(dpaa2_target)-"
+dpaa2_dpdk_make_extra_args = "CROSS=$(dpaa2_target)- DPDK_PKTMBUF_HEADROOM=256"
 endif
 endif
 
@@ -47,20 +47,20 @@ vpp_configure_args_dpaa2 = --with-dpdk --without-ipsec \
 vnet_configure_args_dpaa2 = --with-dpdk --without-ipsec \
 	--without-ipv6sr --with-sysroot=$(SYSROOT)
 
-# Set these parameters carefully. The vlib_buffer_t is 128 bytes, i.e.
-vlib_configure_args_dpaa2 = --with-pre-data=128
+# Set these parameters carefully. The vlib_buffer_t is 256 bytes, i.e.
+vlib_configure_args_dpaa2 = --with-pre-data=256
 
 
 dpaa2_debug_TAG_CFLAGS = -g -O2 -DCLIB_DEBUG -fPIC -fstack-protector-all \
-			-march=$(MARCH) -Werror
+			-march=$(MARCH) -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6
 dpaa2_debug_TAG_LDFLAGS = -g -O2 -DCLIB_DEBUG -fstack-protector-all \
-			-march=$(MARCH) -Werror
+			-march=$(MARCH) -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6
 
 # Use -rdynamic is for stack tracing, O0 for debugging....default is O2
 # Use -DCLIB_LOG2_CACHE_LINE_BYTES to change cache line size
 dpaa2_TAG_CFLAGS = -g -O2 -fPIC -march=$(MARCH) -mcpu=$(dpaa2_mtune) \
-		-mtune=$(dpaa2_mtune) -funroll-all-loops -Werror
+		-mtune=$(dpaa2_mtune) -funroll-all-loops -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6
 dpaa2_TAG_LDFLAGS = -g -O2 -fPIC -march=$(MARCH) -mcpu=$(dpaa2_mtune) \
-		-mtune=$(dpaa2_mtune) -funroll-all-loops -Werror
+		-mtune=$(dpaa2_mtune) -funroll-all-loops -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6
 
 
