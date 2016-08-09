@@ -90,6 +90,24 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_7092cd58",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-08-09T00:32:37Z",
+      "side": 1,
+      "message": "Now that I\u0027ve swapped back in how rpms work, I think the %pre is fine here :)",
+      "parentUuid": "9a0e1d27_50c8e973",
+      "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_102dd146",
         "filename": "build-root/rpm/vpp.spec",
         "patchSetId": 1
