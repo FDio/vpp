@@ -123,7 +123,7 @@ public final class JVpp${plugin_name}Impl implements $plugin_package.JVpp${plugi
 
     @Override
     public int ping() throws org.openvpp.jvpp.VppInvocationException {
-        return send(new ${control_ping_class}());
+        return 0; // FIXME send(new ${control_ping_class}());
     }
 
 $methods
