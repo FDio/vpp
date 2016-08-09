@@ -35,7 +35,7 @@ trace_profile_cleanup (trace_profile * profile)
   if (0 !=
       (rv =
        ip6_ioam_set_rewrite (&hm->rewrite, hm->has_trace_option,
-			     hm->has_pot_option, hm->has_ppc_option)))
+			     hm->has_pot_option, hm->has_seqno_option)))
     return (-1);
   return 0;
 
@@ -89,7 +89,8 @@ trace_profile_create (trace_profile * profile, u8 trace_type, u8 num_elts,
 	  if (0 !=
 	      (rv =
 	       ip6_ioam_set_rewrite (&hm->rewrite, hm->has_trace_option,
-				     hm->has_pot_option, hm->has_ppc_option)))
+				     hm->has_pot_option,
+				     hm->has_seqno_option)))
 	    return (-1);
 
 	}

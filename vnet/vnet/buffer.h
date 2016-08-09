@@ -123,11 +123,11 @@ typedef struct
 	     protocol and ports. */
 	  u32 flow_hash;
 
-	  /* next protocol */
-	  u32 save_protocol;
-
 	  /* Rewrite length */
 	  u32 save_rewrite_length;
+
+	  /* next protocol */
+	  u32 save_protocol;
 	};
 
 	/* ICMP */
