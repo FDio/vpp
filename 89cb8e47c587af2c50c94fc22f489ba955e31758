@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_50c8e973",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-08-09T00:27:42Z",
+      "side": 1,
+      "message": "The %pre makes sure that the vpp group exists.  The vpp group allows non-root application which are in group vpp to speak the low level api over the vpp shared memory.",
+      "parentUuid": "9a0e1d27_10d4b11e",
+      "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_102dd146",
         "filename": "build-root/rpm/vpp.spec",
         "patchSetId": 1
@@ -101,6 +119,24 @@
       "side": 1,
       "message": "Ideally yes, however vpp-api-install doesn\u0027t build if I don\u0027t use vpp_debug TAG.",
       "parentUuid": "9a0e1d27_102dd146",
+      "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_30c5755b",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-08-09T00:27:42Z",
+      "side": 1,
+      "message": "Looking now...",
+      "parentUuid": "9a0e1d27_b0e2a501",
       "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
