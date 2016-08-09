@@ -16,6 +16,23 @@
       "revId": "0357b052424d7093750727f386f58c327dd91fc1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_0b2c8401",
+        "filename": "vlib-api/vlibmemory/memory_vlib.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 969,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-09T13:28:52Z",
+      "side": 1,
+      "message": "After running the patch through indent (once), please manually indent the VLIB_CLI_COMMAND macros and run indent again.",
+      "revId": "0357b052424d7093750727f386f58c327dd91fc1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
