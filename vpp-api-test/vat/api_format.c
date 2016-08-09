@@ -7037,12 +7037,8 @@ api_trace_profile_add (vat_main_t * vam)
 	;
       else if (unformat (input, "pow"))
 	has_pow_option = 1;
-      else if (unformat (input, "ppc encap"))
-	has_ppc_option = PPC_ENCAP;
-      else if (unformat (input, "ppc decap"))
-	has_ppc_option = PPC_DECAP;
-      else if (unformat (input, "ppc none"))
-	has_ppc_option = PPC_NONE;
+      else if (unformat (input, "ppc"))
+        has_ppc_option = 1;
       else
 	break;
     }

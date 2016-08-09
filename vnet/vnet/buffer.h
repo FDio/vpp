@@ -119,6 +119,7 @@ typedef struct
       {
 	struct
 	{
+	  u64 pad;
 	  /* Flow hash value for this packet computed from IP src/dst address
 	     protocol and ports. */
 	  u32 flow_hash;
@@ -341,8 +342,6 @@ typedef struct
   {
   };
 } vnet_buffer_opaque2_t;
-
-
 
 #endif /* included_vnet_buffer_h */
 

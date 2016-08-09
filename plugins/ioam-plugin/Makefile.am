@@ -27,6 +27,15 @@ ioam_pot_plugin_la_SOURCES =			\
 	ioam/lib-pot/math64.h			\
 	ioam/lib-pot/pot_api.c
 
+########################################
+# iOAM E2E plugin
+########################################
+
+ioam_e2e_plugin_la_SOURCES =                    \
+	ioam/encap/ip6_ioam_e2e.c               \
+	ioam/encap/ip6_ioam_ppc.c               \
+	ioam/encap/ip6_ioam_ppc_analyse.c
+
 BUILT_SOURCES =					\
 	ioam/lib-pot/pot.api.h
 
@@ -42,7 +51,9 @@ noinst_HEADERS =				\
   ioam/lib-pot/pot_msg_enum.h			\
   ioam/lib-pot/pot.api.h			\
   ioam/lib-pot/pot_util.h			\
-  ioam/lib-pot/math64.h
+  ioam/lib-pot/math64.h				\
+  ioam/encap/ip6_ioam_e2e.h                     \
+  ioam/encap/ip6_ioam_ppc.h
 
 ioam_pot_test_plugin_la_SOURCES =		\
 	ioam/lib-pot/pot_test.c			\
@@ -52,8 +63,9 @@ vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
 vpppluginsdir = ${libdir}/vpp_plugins
 
 vppapitestplugins_LTLIBRARIES = ioam_pot_test_plugin.la
-vppplugins_LTLIBRARIES = ioam_pot_plugin.la
-
+vppplugins_LTLIBRARIES =                       \
+        ioam_pot_plugin.la                     \
+        ioam_e2e_plugin.la
 
 # Remove *.la files
 install-data-hook:
