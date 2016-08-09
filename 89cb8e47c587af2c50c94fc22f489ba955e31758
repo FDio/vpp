@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_d0263968",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 409
+      },
+      "writtenOn": "2016-08-09T00:20:07Z",
+      "side": 1,
+      "message": "Good point, will change to python-api.",
+      "parentUuid": "9a0e1d27_3000d5a9",
+      "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_500349b8",
         "filename": "build-root/rpm/vpp.spec",
         "patchSetId": 1
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_10d4b11e",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 409
+      },
+      "writtenOn": "2016-08-09T00:20:07Z",
+      "side": 1,
+      "message": "I\u0027m not sure. I didn\u0027t change this part, but I actually don\u0027t see how this group is used in vpp. \n\nWould devel package require a new group created?",
+      "parentUuid": "9a0e1d27_500349b8",
+      "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_102dd146",
         "filename": "build-root/rpm/vpp.spec",
         "patchSetId": 1
@@ -47,6 +83,24 @@
       "writtenOn": "2016-08-09T00:01:58Z",
       "side": 1,
       "message": "Do we want this to build debug given that we normally build *non* debug for vpp?",
+      "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_b0e2a501",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 409
+      },
+      "writtenOn": "2016-08-09T00:20:07Z",
+      "side": 1,
+      "message": "Ideally yes, however vpp-api-install doesn\u0027t build if I don\u0027t use vpp_debug TAG.",
+      "parentUuid": "9a0e1d27_102dd146",
       "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
