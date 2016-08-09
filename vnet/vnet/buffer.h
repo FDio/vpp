@@ -182,8 +182,8 @@ typedef struct
     struct
     {
       u64 pad;
-      u32 opaque_index;
       u32 table_index;
+      u32 opaque_index;
       u64 hash;
     } l2_classify;
 
