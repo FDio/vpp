@@ -59,8 +59,7 @@ ip6_map_fragment_cache (ip6_header_t * ip6, ip6_frag_hdr_t * frag,
   map_ip4_reass_lock ();
   map_ip4_reass_t *r = map_ip4_reass_get (map_get_ip4 (&ip6->src_address),
 					  ip6_map_t_embedded_address (d,
-								      &ip6->
-								      dst_address),
+								      &ip6->dst_address),
 					  frag_id_6to4 (frag->identification),
 					  (ip6->protocol ==
 					   IP_PROTOCOL_ICMP6) ?
@@ -82,8 +81,7 @@ ip6_map_fragment_get (ip6_header_t * ip6, ip6_frag_hdr_t * frag,
   map_ip4_reass_lock ();
   map_ip4_reass_t *r = map_ip4_reass_get (map_get_ip4 (&ip6->src_address),
 					  ip6_map_t_embedded_address (d,
-								      &ip6->
-								      dst_address),
+								      &ip6->dst_address),
 					  frag_id_6to4 (frag->identification),
 					  (ip6->protocol ==
 					   IP_PROTOCOL_ICMP6) ?
@@ -494,9 +492,8 @@ ip6_map_t_icmp (vlib_main_t * vm,
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
 					       cpu_index,
-					       vnet_buffer (p0)->
-					       map_t.map_domain_index, 1,
-					       len0);
+					       vnet_buffer (p0)->map_t.
+					       map_domain_index, 1, len0);
 	    }
 	  else
 	    {
@@ -553,20 +550,20 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 	  ip61 = vlib_buffer_get_current (p1);
 	  frag0 =
 	    (ip6_frag_hdr_t *) u8_ptr_add (ip60,
-					   vnet_buffer (p0)->map_t.
-					   v6.frag_offset);
+					   vnet_buffer (p0)->map_t.v6.
+					   frag_offset);
 	  frag1 =
 	    (ip6_frag_hdr_t *) u8_ptr_add (ip61,
-					   vnet_buffer (p1)->map_t.
-					   v6.frag_offset);
+					   vnet_buffer (p1)->map_t.v6.
+					   frag_offset);
 	  ip40 =
 	    (ip4_header_t *) u8_ptr_add (ip60,
-					 vnet_buffer (p0)->map_t.
-					 v6.l4_offset - sizeof (*ip40));
+					 vnet_buffer (p0)->map_t.v6.
+					 l4_offset - sizeof (*ip40));
 	  ip41 =
 	    (ip4_header_t *) u8_ptr_add (ip61,
-					 vnet_buffer (p1)->map_t.
-					 v6.l4_offset - sizeof (*ip40));
+					 vnet_buffer (p1)->map_t.v6.
+					 l4_offset - sizeof (*ip40));
 	  vlib_buffer_advance (p0,
 			       vnet_buffer (p0)->map_t.v6.l4_offset -
 			       sizeof (*ip40));
@@ -614,12 +611,12 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 	  ip41->ttl = ip61->hop_limit;
 	  ip40->protocol =
 	    (vnet_buffer (p0)->map_t.v6.l4_protocol ==
-	     IP_PROTOCOL_ICMP6) ? IP_PROTOCOL_ICMP : vnet_buffer (p0)->
-	    map_t.v6.l4_protocol;
+	     IP_PROTOCOL_ICMP6) ? IP_PROTOCOL_ICMP : vnet_buffer (p0)->map_t.
+	    v6.l4_protocol;
 	  ip41->protocol =
 	    (vnet_buffer (p1)->map_t.v6.l4_protocol ==
-	     IP_PROTOCOL_ICMP6) ? IP_PROTOCOL_ICMP : vnet_buffer (p1)->
-	    map_t.v6.l4_protocol;
+	     IP_PROTOCOL_ICMP6) ? IP_PROTOCOL_ICMP : vnet_buffer (p1)->map_t.
+	    v6.l4_protocol;
 	  ip40->checksum = ip4_header_checksum (ip40);
 	  ip41->checksum = ip4_header_checksum (ip41);
 
@@ -668,12 +665,12 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 	  ip60 = vlib_buffer_get_current (p0);
 	  frag0 =
 	    (ip6_frag_hdr_t *) u8_ptr_add (ip60,
-					   vnet_buffer (p0)->map_t.
-					   v6.frag_offset);
+					   vnet_buffer (p0)->map_t.v6.
+					   frag_offset);
 	  ip40 =
 	    (ip4_header_t *) u8_ptr_add (ip60,
-					 vnet_buffer (p0)->map_t.
-					 v6.l4_offset - sizeof (*ip40));
+					 vnet_buffer (p0)->map_t.v6.
+					 l4_offset - sizeof (*ip40));
 	  vlib_buffer_advance (p0,
 			       vnet_buffer (p0)->map_t.v6.l4_offset -
 			       sizeof (*ip40));
@@ -699,8 +696,8 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 	  ip40->ttl = ip60->hop_limit;
 	  ip40->protocol =
 	    (vnet_buffer (p0)->map_t.v6.l4_protocol ==
-	     IP_PROTOCOL_ICMP6) ? IP_PROTOCOL_ICMP : vnet_buffer (p0)->
-	    map_t.v6.l4_protocol;
+	     IP_PROTOCOL_ICMP6) ? IP_PROTOCOL_ICMP : vnet_buffer (p0)->map_t.
+	    v6.l4_protocol;
 	  ip40->checksum = ip4_header_checksum (ip40);
 
 	  if (vnet_buffer (p0)->map_t.mtu < p0->current_length)
@@ -760,12 +757,12 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 	  ip61 = vlib_buffer_get_current (p1);
 	  ip40 =
 	    (ip4_header_t *) u8_ptr_add (ip60,
-					 vnet_buffer (p0)->map_t.
-					 v6.l4_offset - sizeof (*ip40));
+					 vnet_buffer (p0)->map_t.v6.
+					 l4_offset - sizeof (*ip40));
 	  ip41 =
 	    (ip4_header_t *) u8_ptr_add (ip61,
-					 vnet_buffer (p1)->map_t.
-					 v6.l4_offset - sizeof (*ip40));
+					 vnet_buffer (p1)->map_t.v6.
+					 l4_offset - sizeof (*ip40));
 	  vlib_buffer_advance (p0,
 			       vnet_buffer (p0)->map_t.v6.l4_offset -
 			       sizeof (*ip40));
@@ -798,9 +795,8 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 	    {
 	      ip6_frag_hdr_t *hdr = (ip6_frag_hdr_t *) u8_ptr_add (ip60,
 								   vnet_buffer
-								   (p0)->
-								   map_t.
-								   v6.frag_offset);
+								   (p0)->map_t.v6.
+								   frag_offset);
 	      fragment_id0 = frag_id_6to4 (hdr->identification);
 	      flags0 = clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS);
 	    }
@@ -814,9 +810,8 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 	    {
 	      ip6_frag_hdr_t *hdr = (ip6_frag_hdr_t *) u8_ptr_add (ip61,
 								   vnet_buffer
-								   (p1)->
-								   map_t.
-								   v6.frag_offset);
+								   (p1)->map_t.v6.
+								   frag_offset);
 	      fragment_id1 = frag_id_6to4 (hdr->identification);
 	      flags1 = clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS);
 	    }
@@ -899,8 +894,8 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 	  ip60 = vlib_buffer_get_current (p0);
 	  ip40 =
 	    (ip4_header_t *) u8_ptr_add (ip60,
-					 vnet_buffer (p0)->map_t.
-					 v6.l4_offset - sizeof (*ip40));
+					 vnet_buffer (p0)->map_t.v6.
+					 l4_offset - sizeof (*ip40));
 	  vlib_buffer_advance (p0,
 			       vnet_buffer (p0)->map_t.v6.l4_offset -
 			       sizeof (*ip40));
@@ -922,9 +917,8 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 	      //Only the first fragment
 	      ip6_frag_hdr_t *hdr = (ip6_frag_hdr_t *) u8_ptr_add (ip60,
 								   vnet_buffer
-								   (p0)->
-								   map_t.
-								   v6.frag_offset);
+								   (p0)->map_t.v6.
+								   frag_offset);
 	      fragment_id0 = frag_id_6to4 (hdr->identification);
 	      flags0 = clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS);
 	    }
@@ -1112,24 +1106,24 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vnet_buffer (p1)->map_t.mtu = d1->mtu ? d1->mtu : ~0;
 
 	  if (PREDICT_FALSE (ip6_parse (ip60, p0->current_length,
-					&(vnet_buffer (p0)->map_t.
-					  v6.l4_protocol),
-					&(vnet_buffer (p0)->map_t.
-					  v6.l4_offset),
-					&(vnet_buffer (p0)->map_t.
-					  v6.frag_offset))))
+					&(vnet_buffer (p0)->map_t.v6.
+					  l4_protocol),
+					&(vnet_buffer (p0)->map_t.v6.
+					  l4_offset),
+					&(vnet_buffer (p0)->map_t.v6.
+					  frag_offset))))
 	    {
 	      error0 = MAP_ERROR_MALFORMED;
 	      next0 = IP6_MAPT_NEXT_DROP;
 	    }
 
 	  if (PREDICT_FALSE (ip6_parse (ip61, p1->current_length,
-					&(vnet_buffer (p1)->map_t.
-					  v6.l4_protocol),
-					&(vnet_buffer (p1)->map_t.
-					  v6.l4_offset),
-					&(vnet_buffer (p1)->map_t.
-					  v6.frag_offset))))
+					&(vnet_buffer (p1)->map_t.v6.
+					  l4_protocol),
+					&(vnet_buffer (p1)->map_t.v6.
+					  l4_offset),
+					&(vnet_buffer (p1)->map_t.v6.
+					  frag_offset))))
 	    {
 	      error1 = MAP_ERROR_MALFORMED;
 	      next1 = IP6_MAPT_NEXT_DROP;
@@ -1142,12 +1136,12 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    sizeof (*ip60) - vnet_buffer (p1)->map_t.v6.l4_offset;
 	  frag0 =
 	    (ip6_frag_hdr_t *) u8_ptr_add (ip60,
-					   vnet_buffer (p0)->map_t.
-					   v6.frag_offset);
+					   vnet_buffer (p0)->map_t.v6.
+					   frag_offset);
 	  frag1 =
 	    (ip6_frag_hdr_t *) u8_ptr_add (ip61,
-					   vnet_buffer (p1)->map_t.
-					   v6.frag_offset);
+					   vnet_buffer (p1)->map_t.v6.
+					   frag_offset);
 
 	  ip6_map_t_classify (p0, ip60, d0, &src_port0, &error0, &next0,
 			      l4_len0, frag0);
@@ -1161,7 +1155,10 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 				    src_port0)
 		   || ip60->src_address.as_u64[1] != map_get_sfx_net (d0,
 								      vnet_buffer
-								      (p0)->map_t.v6.saddr,
+								      (p0)->
+								      map_t.
+								      v6.
+								      saddr,
 								      src_port0))))
 	    {
 	      error0 = MAP_ERROR_SEC_CHECK;
@@ -1174,7 +1171,10 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 				    src_port1)
 		   || ip61->src_address.as_u64[1] != map_get_sfx_net (d1,
 								      vnet_buffer
-								      (p1)->map_t.v6.saddr,
+								      (p1)->
+								      map_t.
+								      v6.
+								      saddr,
 								      src_port1))))
 	    {
 	      error1 = MAP_ERROR_SEC_CHECK;
@@ -1184,16 +1184,17 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 			     !ip6_frag_hdr_offset ((ip6_frag_hdr_t *)
 						   u8_ptr_add (ip60,
 							       vnet_buffer
-							       (p0)->map_t.
-							       v6.frag_offset)))
+							       (p0)->map_t.v6.
+							       frag_offset)))
 	      && (src_port0 != -1) && (d0->ea_bits_len != 0 || !d0->rules)
 	      && (error0 == MAP_ERROR_NONE))
 	    {
 	      ip6_map_fragment_cache (ip60,
 				      (ip6_frag_hdr_t *) u8_ptr_add (ip60,
 								     vnet_buffer
-								     (p0)->map_t.
-								     v6.frag_offset),
+								     (p0)->
+								     map_t.v6.
+								     frag_offset),
 				      d0, src_port0);
 	    }
 
@@ -1201,16 +1202,17 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 			     !ip6_frag_hdr_offset ((ip6_frag_hdr_t *)
 						   u8_ptr_add (ip61,
 							       vnet_buffer
-							       (p1)->map_t.
-							       v6.frag_offset)))
+							       (p1)->map_t.v6.
+							       frag_offset)))
 	      && (src_port1 != -1) && (d1->ea_bits_len != 0 || !d1->rules)
 	      && (error1 == MAP_ERROR_NONE))
 	    {
 	      ip6_map_fragment_cache (ip61,
 				      (ip6_frag_hdr_t *) u8_ptr_add (ip61,
 								     vnet_buffer
-								     (p1)->map_t.
-								     v6.frag_offset),
+								     (p1)->
+								     map_t.v6.
+								     frag_offset),
 				      d1, src_port1);
 	    }
 
@@ -1219,10 +1221,10 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
 					       cpu_index,
-					       vnet_buffer (p0)->
-					       map_t.map_domain_index, 1,
-					       clib_net_to_host_u16
-					       (ip60->payload_length));
+					       vnet_buffer (p0)->map_t.
+					       map_domain_index, 1,
+					       clib_net_to_host_u16 (ip60->
+								     payload_length));
 	    }
 
 	  if (PREDICT_TRUE
@@ -1230,10 +1232,10 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
 					       cpu_index,
-					       vnet_buffer (p1)->
-					       map_t.map_domain_index, 1,
-					       clib_net_to_host_u16
-					       (ip61->payload_length));
+					       vnet_buffer (p1)->map_t.
+					       map_domain_index, 1,
+					       clib_net_to_host_u16 (ip61->
+								     payload_length));
 	    }
 
 	  next0 = (error0 != MAP_ERROR_NONE) ? IP6_MAPT_NEXT_DROP : next0;
@@ -1282,12 +1284,12 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
 
 	  if (PREDICT_FALSE (ip6_parse (ip60, p0->current_length,
-					&(vnet_buffer (p0)->map_t.
-					  v6.l4_protocol),
-					&(vnet_buffer (p0)->map_t.
-					  v6.l4_offset),
-					&(vnet_buffer (p0)->map_t.
-					  v6.frag_offset))))
+					&(vnet_buffer (p0)->map_t.v6.
+					  l4_protocol),
+					&(vnet_buffer (p0)->map_t.v6.
+					  l4_offset),
+					&(vnet_buffer (p0)->map_t.v6.
+					  frag_offset))))
 	    {
 	      error0 = MAP_ERROR_MALFORMED;
 	      next0 = IP6_MAPT_NEXT_DROP;
@@ -1298,8 +1300,8 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    sizeof (*ip60) - vnet_buffer (p0)->map_t.v6.l4_offset;
 	  frag0 =
 	    (ip6_frag_hdr_t *) u8_ptr_add (ip60,
-					   vnet_buffer (p0)->map_t.
-					   v6.frag_offset);
+					   vnet_buffer (p0)->map_t.v6.
+					   frag_offset);
 
 
 	  if (PREDICT_FALSE (vnet_buffer (p0)->map_t.v6.frag_offset &&
@@ -1352,8 +1354,8 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		  ICMP6_echo_reply
 		  || ((icmp46_header_t *)
 		      u8_ptr_add (ip60,
-				  vnet_buffer (p0)->map_t.v6.
-				  l4_offset))->code == ICMP6_echo_request)
+				  vnet_buffer (p0)->map_t.v6.l4_offset))->
+		  code == ICMP6_echo_request)
 		src_port0 =
 		  (i32) *
 		  ((u16 *)
@@ -1374,7 +1376,10 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 				    src_port0)
 		   || ip60->src_address.as_u64[1] != map_get_sfx_net (d0,
 								      vnet_buffer
-								      (p0)->map_t.v6.saddr,
+								      (p0)->
+								      map_t.
+								      v6.
+								      saddr,
 								      src_port0))))
 	    {
 	      //Security check when src_port0 is not zero (non-first fragment, UDP or TCP)
@@ -1386,16 +1391,17 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 			     !ip6_frag_hdr_offset ((ip6_frag_hdr_t *)
 						   u8_ptr_add (ip60,
 							       vnet_buffer
-							       (p0)->map_t.
-							       v6.frag_offset)))
+							       (p0)->map_t.v6.
+							       frag_offset)))
 	      && (src_port0 != -1) && (d0->ea_bits_len != 0 || !d0->rules)
 	      && (error0 == MAP_ERROR_NONE))
 	    {
 	      ip6_map_fragment_cache (ip60,
 				      (ip6_frag_hdr_t *) u8_ptr_add (ip60,
 								     vnet_buffer
-								     (p0)->map_t.
-								     v6.frag_offset),
+								     (p0)->
+								     map_t.v6.
+								     frag_offset),
 				      d0, src_port0);
 	    }
 
@@ -1404,10 +1410,10 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
 					       cpu_index,
-					       vnet_buffer (p0)->
-					       map_t.map_domain_index, 1,
-					       clib_net_to_host_u16
-					       (ip60->payload_length));
+					       vnet_buffer (p0)->map_t.
+					       map_domain_index, 1,
+					       clib_net_to_host_u16 (ip60->
+								     payload_length));
 	    }
 
 	  next0 = (error0 != MAP_ERROR_NONE) ? IP6_MAPT_NEXT_DROP : next0;

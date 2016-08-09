@@ -74,8 +74,8 @@ format_sticky_hash_miss_trace (u8 * s, va_list * args)
 
 typedef CLIB_PACKED (struct
 		     {
-		     ethernet_header_t eh; ip4_header_t ip;
-		     }) classify_data_or_mask_t;
+		     ethernet_header_t eh;
+		     ip4_header_t ip;}) classify_data_or_mask_t;
 
 sticky_hash_main_t sticky_hash_main;
 

@@ -384,8 +384,7 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 	  /* Notify everyone when the interface is created as admin up */
 	  error = call_elf_section_interface_callbacks (vnm, sw_if_index,
 							flags,
-							vnm->
-							sw_interface_admin_up_down_functions);
+							vnm->sw_interface_admin_up_down_functions);
 	  if (error)
 	    goto done;
 	}

@@ -173,8 +173,7 @@ typedef struct
 	 vlib_main;
      } vlib_parse_main_t;
 
-     vlib_parse_main_t
-       vlib_parse_main;
+vlib_parse_main_t vlib_parse_main;
 
      typedef
      vlib_parse_match_t (vlib_parse_eval_function_t)

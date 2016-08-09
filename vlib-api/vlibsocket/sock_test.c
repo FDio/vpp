@@ -38,26 +38,26 @@ typedef unsigned long uword;
 
 typedef VL_API_PACKED (struct _vl_api_sockclnt_create
 		       {
-		       u16 _vl_msg_id; u8 name[64];
-		       u32 context;
-		       }) vl_api_sockclnt_create_t;
+		       u16 _vl_msg_id;
+		       u8 name[64]; u32 context;}) vl_api_sockclnt_create_t;
 
 typedef VL_API_PACKED (struct _vl_api_sockclnt_create_reply
 		       {
-		       u16 _vl_msg_id;
-		       i32 response; u64 handle; u32 index; u32 context;
-		       }) vl_api_sockclnt_create_reply_t;
+		       u16 _vl_msg_id; i32 response;
+		       u64 handle;
+		       u32 index;
+		       u32 context;}) vl_api_sockclnt_create_reply_t;
 
 typedef VL_API_PACKED (struct _vl_api_sockclnt_delete
 		       {
-		       u16 _vl_msg_id; u32 index;
-		       u64 handle;
-		       }) vl_api_sockclnt_delete_t;
+		       u16 _vl_msg_id;
+		       u32 index; u64 handle;}) vl_api_sockclnt_delete_t;
 
 typedef VL_API_PACKED (struct _vl_api_sockclnt_delete_reply
 		       {
-		       u16 _vl_msg_id; i32 response; u64 handle;
-		       }) vl_api_sockclnt_delete_reply_t;
+		       u16 _vl_msg_id;
+		       i32 response;
+		       u64 handle;}) vl_api_sockclnt_delete_reply_t;
 
 void
 error (char *msg)

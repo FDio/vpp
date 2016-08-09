@@ -64,7 +64,8 @@ typedef CLIB_PACKED (struct
 		     /* Peer id asserting mastership. */
 		     mc_peer_id_t peer_id;
 		     /* Global sequence number asserted. */
-		     u32 global_sequence;}) mc_msg_master_assert_t;
+		     u32 global_sequence;
+		     }) mc_msg_master_assert_t;
 
 always_inline void
 mc_byte_swap_msg_master_assert (mc_msg_master_assert_t * r)
@@ -95,12 +96,14 @@ typedef enum
 /* Request to join a given stream.  Multicast over MC_TRANSPORT_JOIN. */
 typedef CLIB_PACKED (struct
 		     {
-mc_peer_id_t peer_id; mc_relay_msg_type_t type:32;
-				/* MC_MSG_TYPE_join_or_leave_request */
+		     mc_peer_id_t peer_id;
+mc_relay_msg_type_t type:32;
+		     /* MC_MSG_TYPE_join_or_leave_request */
 		     /* Stream to join or leave. */
 		     u32 stream_index;
 		     /* join = 1, leave = 0 */
-		     u8 is_join;}) mc_msg_join_or_leave_request_t;
+		     u8 is_join;
+		     }) mc_msg_join_or_leave_request_t;
 
 always_inline void
 mc_byte_swap_msg_join_or_leave_request (mc_msg_join_or_leave_request_t * r)
@@ -116,11 +119,13 @@ mc_byte_swap_msg_join_or_leave_request (mc_msg_join_or_leave_request_t * r)
 /* Join reply.  Multicast over MC_TRANSPORT_JOIN. */
 typedef CLIB_PACKED (struct
 		     {
-mc_peer_id_t peer_id; mc_relay_msg_type_t type:32;
-				/* MC_MSG_TYPE_join_reply */
+		     mc_peer_id_t peer_id;
+mc_relay_msg_type_t type:32;
+		     /* MC_MSG_TYPE_join_reply */
 		     u32 stream_index;
 		     /* Peer ID to contact to catchup with this stream. */
-		     mc_peer_id_t catchup_peer_id;}) mc_msg_join_reply_t;
+		     mc_peer_id_t catchup_peer_id;
+		     }) mc_msg_join_reply_t;
 
 always_inline void
 mc_byte_swap_msg_join_reply (mc_msg_join_reply_t * r)
@@ -138,7 +143,8 @@ mc_byte_swap_msg_join_reply (mc_msg_join_reply_t * r)
    relayed by relay master after filling in global sequence number. */
 typedef CLIB_PACKED (struct
 		     {
-		     mc_peer_id_t peer_id; u32 stream_index;
+		     mc_peer_id_t peer_id;
+		     u32 stream_index;
 		     /* Global sequence number as filled in by relay master. */
 		     u32 global_sequence;
 		     /* Local sequence number as filled in by peer sending message. */
@@ -146,7 +152,8 @@ typedef CLIB_PACKED (struct
 		     /* Size of request data. */
 		     u32 n_data_bytes;
 		     /* Opaque request data. */
-		     u8 data[0];}) mc_msg_user_request_t;
+		     u8 data[0];
+		     }) mc_msg_user_request_t;
 
 always_inline void
 mc_byte_swap_msg_user_request (mc_msg_user_request_t * r)
@@ -166,9 +173,8 @@ typedef CLIB_PACKED (struct
 		     {
 		     mc_peer_id_t peer_id;
 		     u32 global_sequence;
-		     u32 stream_index;
-		     u32 local_sequence;
-		     i32 seq_cmp_result;}) mc_msg_user_ack_t;
+		     u32 stream_index; u32 local_sequence; i32 seq_cmp_result;
+		     }) mc_msg_user_ack_t;
 
 always_inline void
 mc_byte_swap_msg_user_ack (mc_msg_user_ack_t * r)
@@ -186,8 +192,8 @@ mc_byte_swap_msg_user_ack (mc_msg_user_ack_t * r)
 /* Sent/received unicast over catchup channel (e.g. using TCP). */
 typedef CLIB_PACKED (struct
 		     {
-		     mc_peer_id_t peer_id;
-		     u32 stream_index;}) mc_msg_catchup_request_t;
+		     mc_peer_id_t peer_id; u32 stream_index;
+		     }) mc_msg_catchup_request_t;
 
 always_inline void
 mc_byte_swap_msg_catchup_request (mc_msg_catchup_request_t * r)
@@ -202,13 +208,15 @@ mc_byte_swap_msg_catchup_request (mc_msg_catchup_request_t * r)
 /* Sent/received unicast over catchup channel. */
 typedef CLIB_PACKED (struct
 		     {
-		     mc_peer_id_t peer_id; u32 stream_index;
+		     mc_peer_id_t peer_id;
+		     u32 stream_index;
 		     /* Last global sequence number included in catchup data. */
 		     u32 last_global_sequence_included;
 		     /* Size of catchup data. */
 		     u32 n_data_bytes;
 		     /* Catchup data. */
-		     u8 data[0];}) mc_msg_catchup_reply_t;
+		     u8 data[0];
+		     }) mc_msg_catchup_reply_t;
 
 always_inline void
 mc_byte_swap_msg_catchup_reply (mc_msg_catchup_reply_t * r)

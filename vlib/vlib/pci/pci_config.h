@@ -406,8 +406,8 @@ typedef enum pci_capability_type
 /* Common header for capabilities. */
 typedef CLIB_PACKED (struct
 		     {
-		     enum pci_capability_type type:8;
-		     u8 next_offset;}) pci_capability_regs_t;
+		     enum pci_capability_type type:8; u8 next_offset;
+		     }) pci_capability_regs_t;
 
 always_inline void *
 pci_config_find_capability (pci_config_type0_regs_t * t, int cap_type)
@@ -435,7 +435,8 @@ pci_config_find_capability (pci_config_type0_regs_t * t, int cap_type)
 /* Power Management Registers */
 typedef CLIB_PACKED (struct
 		     {
-		     pci_capability_regs_t header; u16 capabilities;
+		     pci_capability_regs_t header;
+		     u16 capabilities;
 #define PCI_PM_CAP_VER_MASK	0x0007	/* Version */
 #define PCI_PM_CAP_PME_CLOCK	0x0008	/* PME clock required */
 #define PCI_PM_CAP_RESERVED  0x0010	/* Reserved field */
@@ -459,13 +460,16 @@ typedef CLIB_PACKED (struct
 		     u8 extensions;
 #define PCI_PM_PPB_B2_B3	0x40	/* Stop clock when in D3hot (??) */
 #define PCI_PM_BPCC_ENABLE	0x80	/* Bus power/clock control enable (??) */
-		     u8 data;}) pci_power_management_regs_t;
+		     u8 data;
+		     }) pci_power_management_regs_t;
 
 /* AGP registers */
 typedef CLIB_PACKED (struct
 		     {
-		     pci_capability_regs_t header; u8 version;
-		     u8 rest_of_capability_flags; u32 status; u32 command;
+		     pci_capability_regs_t header;
+		     u8 version; u8 rest_of_capability_flags;
+		     u32 status;
+		     u32 command;
 		     /* Command & status common bits. */
 #define PCI_AGP_RQ_MASK	0xff000000	/* Maximum number of requests - 1 */
 #define PCI_AGP_SBA	0x0200	/* Sideband addressing supported */
@@ -480,23 +484,28 @@ typedef CLIB_PACKED (struct
 /* Vital Product Data */
 typedef CLIB_PACKED (struct
 		     {
-		     pci_capability_regs_t header; u16 address;
+		     pci_capability_regs_t header;
+		     u16 address;
 #define PCI_VPD_ADDR_MASK	0x7fff	/* Address mask */
 #define PCI_VPD_ADDR_F		0x8000	/* Write 0, 1 indicates completion */
-		     u32 data;}) pci_vpd_regs_t;
+		     u32 data;
+		     }) pci_vpd_regs_t;
 
 /* Slot Identification */
 typedef CLIB_PACKED (struct
 		     {
-		     pci_capability_regs_t header; u8 esr;
+		     pci_capability_regs_t header;
+		     u8 esr;
 #define PCI_SID_ESR_NSLOTS	0x1f	/* Number of expansion slots available */
 #define PCI_SID_ESR_FIC	0x20	/* First In Chassis Flag */
-		     u8 chassis;}) pci_sid_regs_t;
+		     u8 chassis;
+		     }) pci_sid_regs_t;
 
 /* Message Signalled Interrupts registers */
 typedef CLIB_PACKED (struct
 		     {
-		     pci_capability_regs_t header; u16 flags;
+		     pci_capability_regs_t header;
+		     u16 flags;
 #define PCI_MSI_FLAGS_ENABLE	(1 << 0)	/* MSI feature enabled */
 #define PCI_MSI_FLAGS_GET_MAX_QUEUE_SIZE(x) ((x >> 1) & 0x7)
 #define PCI_MSI_FLAGS_MAX_QUEUE_SIZE(x)     (((x) & 0x7) << 1)
@@ -504,18 +513,23 @@ typedef CLIB_PACKED (struct
 #define PCI_MSI_FLAGS_QUEUE_SIZE(x)     (((x) & 0x7) << 4)
 #define PCI_MSI_FLAGS_64BIT	(1 << 7)	/* 64-bit addresses allowed */
 #define PCI_MSI_FLAGS_MASKBIT	(1 << 8)	/* 64-bit mask bits allowed */
-		     u32 address; u32 data; u32 mask_bits;}) pci_msi32_regs_t;
+		     u32 address;
+		     u32 data;
+		     u32 mask_bits;
+		     }) pci_msi32_regs_t;
 
 typedef CLIB_PACKED (struct
 		     {
-		     pci_capability_regs_t header; u16 flags;
-		     u32 address[2];
-		     u32 data; u32 mask_bits;}) pci_msi64_regs_t;
+		     pci_capability_regs_t header;
+		     u16 flags; u32 address[2]; u32 data;
+		     u32 mask_bits;
+		     }) pci_msi64_regs_t;
 
 /* CompactPCI Hotswap Register */
 typedef CLIB_PACKED (struct
 		     {
-		     pci_capability_regs_t header; u16 control_status;
+		     pci_capability_regs_t header;
+		     u16 control_status;
 #define PCI_CHSWP_DHA		0x01	/* Device Hiding Arm */
 #define PCI_CHSWP_EIM		0x02	/* ENUM# Signal Mask */
 #define PCI_CHSWP_PIE		0x04	/* Pending Insert or Extract */
@@ -528,7 +542,8 @@ typedef CLIB_PACKED (struct
 /* PCIX registers */
 typedef CLIB_PACKED (struct
 		     {
-		     pci_capability_regs_t header; u16 command;
+		     pci_capability_regs_t header;
+		     u16 command;
 #define PCIX_CMD_DPERR_E	0x0001	/* Data Parity Error Recovery Enable */
 #define PCIX_CMD_ERO		0x0002	/* Enable Relaxed Ordering */
 #define PCIX_CMD_MAX_READ	0x000c	/* Max Memory Read Byte Count */
@@ -569,7 +584,8 @@ pcie_code_to_size (int code)
 /* PCI Express capability registers */
 typedef CLIB_PACKED (struct
 		     {
-		     pci_capability_regs_t header; u16 pcie_capabilities;
+		     pci_capability_regs_t header;
+		     u16 pcie_capabilities;
 #define PCIE_CAP_VERSION(x)	(((x) >> 0) & 0xf)
 #define PCIE_CAP_DEVICE_TYPE(x)	(((x) >> 4) & 0xf)
 #define PCIE_DEVICE_TYPE_ENDPOINT 0
@@ -611,9 +627,11 @@ typedef CLIB_PACKED (struct
 		     u16 dev_status;
 #define PCIE_DEVSTA_AUXPD	0x10	/* AUX Power Detected */
 #define PCIE_DEVSTA_TRPND	0x20	/* Transactions Pending */
-		     u32 link_capabilities; u16 link_control; u16 link_status;
-		     u32 slot_capabilities;
-		     u16 slot_control; u16 slot_status; u16 root_control;
+		     u32 link_capabilities;
+		     u16 link_control;
+		     u16 link_status; u32 slot_capabilities; u16 slot_control;
+		     u16 slot_status;
+		     u16 root_control;
 #define PCIE_RTCTL_SECEE	0x01	/* System Error on Correctable Error */
 #define PCIE_RTCTL_SENFEE	0x02	/* System Error on Non-Fatal Error */
 #define PCIE_RTCTL_SEFEE	0x04	/* System Error on Fatal Error */
@@ -626,9 +644,9 @@ typedef CLIB_PACKED (struct
 		     u16 dev_status2;
 		     u32 link_capabilities2;
 		     u16 link_control2;
-		     u16 link_status2;
-		     u32 slot_capabilities2; u16 slot_control2;
-		     u16 slot_status2;}) pcie_config_regs_t;
+		     u16 link_status2; u32 slot_capabilities2;
+		     u16 slot_control2; u16 slot_status2;
+		     }) pcie_config_regs_t;
 
 /* PCI express extended capabilities. */
 typedef enum pcie_capability_type
@@ -642,12 +660,15 @@ typedef enum pcie_capability_type
 /* Common header for capabilities. */
 typedef CLIB_PACKED (struct
 		     {
-enum pcie_capability_type type:16; u16 version: 4; u16 next_capability:12;})
-  pcie_capability_regs_t;
+		     enum pcie_capability_type type:16;
+u16 version:	     4;
+u16 next_capability:12;
+		     }) pcie_capability_regs_t;
 
 typedef CLIB_PACKED (struct
 		     {
-		     pcie_capability_regs_t header; u32 uncorrectable_status;
+		     pcie_capability_regs_t header;
+		     u32 uncorrectable_status;
 #define PCIE_ERROR_UNC_LINK_TRAINING 		(1 << 0)
 #define PCIE_ERROR_UNC_DATA_LINK_PROTOCOL 	(1 << 4)
 #define PCIE_ERROR_UNC_SURPRISE_DOWN		(1 << 5)
@@ -660,8 +681,8 @@ typedef CLIB_PACKED (struct
 #define PCIE_ERROR_UNC_MALFORMED_TLP		(1 << 18)
 #define PCIE_ERROR_UNC_CRC_ERROR		(1 << 19)
 #define PCIE_ERROR_UNC_UNSUPPORTED_REQUEST	(1 << 20)
-		     u32 uncorrectable_mask;
-		     u32 uncorrectable_severity; u32 correctable_status;
+		     u32 uncorrectable_mask; u32 uncorrectable_severity;
+		     u32 correctable_status;
 #define PCIE_ERROR_COR_RX_ERROR		(1 << 0)
 #define PCIE_ERROR_COR_BAD_TLP		(1 << 6)
 #define PCIE_ERROR_COR_BAD_DLLP		(1 << 7)
@@ -670,10 +691,9 @@ typedef CLIB_PACKED (struct
 #define PCIE_ERROR_COR_ADVISORY		(1 << 13)
 		     u32 correctable_mask;
 		     u32 control;
-		     u32 log[4];
-		     u32 root_command;
-		     u32 root_status; u16 correctable_error_source;
-		     u16 error_source;}) pcie_advanced_error_regs_t;
+		     u32 log[4]; u32 root_command; u32 root_status;
+		     u16 correctable_error_source; u16 error_source;
+		     }) pcie_advanced_error_regs_t;
 
 /* Virtual Channel */
 #define PCI_VC_PORT_REG1	4

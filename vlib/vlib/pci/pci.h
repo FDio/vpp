@@ -47,8 +47,12 @@ typedef CLIB_PACKED (union
 		     {
 		     struct
 		     {
-u16 domain; u8 bus; u8 slot: 5; u8 function:3;};
-		     u32 as_u32;}) vlib_pci_addr_t;
+		     u16 domain;
+		     u8 bus;
+  u8 slot:	     5;
+  u8 function:	     3;
+		     }; u32 as_u32;
+		     }) vlib_pci_addr_t;
 
 typedef struct vlib_pci_device
 {

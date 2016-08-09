@@ -393,9 +393,8 @@ cli_add_trace_buffer (vlib_main_t * vm,
 		       oldheap =
 		       clib_mem_set_heap (this_vlib_main->heap_base);
 		       vec_validate (tm->nodes, node_index);
-		       tn = tm->nodes + node_index;
-		       tn->limit += add; clib_mem_set_heap (oldheap);
-		       }));
+		       tn = tm->nodes + node_index; tn->limit += add;
+		       clib_mem_set_heap (oldheap);}));
 
   return 0;
 }

@@ -2397,7 +2397,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
       if (isatty (UNIX_CLI_STDIN_FD) && um->cli_line_mode == 0)
 	{
 	  /* Capture terminal resize events */
-          memset (&sa, 0, sizeof(sa));
+	  memset (&sa, 0, sizeof (sa));
 	  sa.sa_handler = unix_cli_resize_interrupt;
 	  if (sigaction (SIGWINCH, &sa, 0) < 0)
 	    clib_panic ("sigaction");

@@ -853,11 +853,11 @@ add_sub_command (vlib_cli_main_t * cm, uword parent_index, uword child_index)
 
       q = hash_get_mem (cm->parse_rule_index_by_name, sub_name);
       if (!q)
-        {
-          clib_error ("reference to unknown rule `%%%v' in path `%v'",
-                      sub_name, c->path);
-          return;
-        }
+	{
+	  clib_error ("reference to unknown rule `%%%v' in path `%v'",
+		      sub_name, c->path);
+	  return;
+	}
 
       hash_set_mem (p->sub_rule_index_by_name, sub_name,
 		    vec_len (p->sub_rules));

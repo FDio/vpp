@@ -320,12 +320,10 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ip4_map_decrement_ttl (ip40, &error0);
 	  ip4_map_decrement_ttl (ip41, &error1);
 	  bool df0 =
-	    ip40->
-	    flags_and_fragment_offset &
+	    ip40->flags_and_fragment_offset &
 	    clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT);
 	  bool df1 =
-	    ip41->
-	    flags_and_fragment_offset &
+	    ip41->flags_and_fragment_offset &
 	    clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT);
 
 	  /* MAP calc */
@@ -487,8 +485,7 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* Decrement IPv4 TTL */
 	  ip4_map_decrement_ttl (ip40, &error0);
 	  bool df0 =
-	    ip40->
-	    flags_and_fragment_offset &
+	    ip40->flags_and_fragment_offset &
 	    clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT);
 
 	  /* MAP calc */
@@ -613,11 +610,11 @@ ip4_map_reass (vlib_main_t * vm,
 				&map_domain_index0);
 
 	  map_ip4_reass_lock ();
-	  map_ip4_reass_t *r =
-	    map_ip4_reass_get (ip40->src_address.as_u32,
-			       ip40->dst_address.as_u32,
-			       ip40->fragment_id, ip40->protocol,
-			       &fragments_to_drop);
+	  map_ip4_reass_t *r = map_ip4_reass_get (ip40->src_address.as_u32,
+						  ip40->dst_address.as_u32,
+						  ip40->fragment_id,
+						  ip40->protocol,
+						  &fragments_to_drop);
 	  if (PREDICT_FALSE (!r))
 	    {
 	      // Could not create a caching entry
@@ -711,9 +708,8 @@ ip4_map_reass (vlib_main_t * vm,
 		vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
 						 cpu_index, map_domain_index0,
 						 1,
-						 clib_net_to_host_u16 (ip60->
-								       payload_length)
-						 + 40);
+						 clib_net_to_host_u16
+						 (ip60->payload_length) + 40);
 	      next0 =
 		(error0 == MAP_ERROR_NONE) ? next0 : IP4_MAP_REASS_NEXT_DROP;
 	      p0->error = error_node->errors[error0];
