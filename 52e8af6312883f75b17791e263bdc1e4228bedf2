@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_4634b3dd",
+        "filename": "plugins/ioam-plugin/ioam/export/ioam_export.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-09T15:50:22Z",
+      "side": 1,
+      "message": "Can we use ip46_address_t instead?",
+      "revId": "52e8af6312883f75b17791e263bdc1e4228bedf2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_064ebb6f",
+        "filename": "plugins/ioam-plugin/ioam/export/ioam_export.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-09T15:50:22Z",
+      "side": 1,
+      "message": "If this function is expected to handle v4 only addresses, perhaps the name can suggest it.",
+      "revId": "52e8af6312883f75b17791e263bdc1e4228bedf2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_c657a301",
+        "filename": "plugins/ioam-plugin/ioam/export/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-09T15:50:22Z",
+      "side": 1,
+      "message": "It may be useful to check the return code of both the above functions (ioam_export*buffer)",
+      "revId": "52e8af6312883f75b17791e263bdc1e4228bedf2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_a65caf26",
+        "filename": "plugins/ioam-plugin/ioam/export/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-09T15:50:22Z",
+      "side": 1,
+      "message": "Should we consider optimizing the counter increment by doing it outside the loop?",
+      "revId": "52e8af6312883f75b17791e263bdc1e4228bedf2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_e652a712",
+        "filename": "plugins/ioam-plugin/ioam/export/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-09T15:50:22Z",
+      "side": 1,
+      "message": "A suggestion - if this exports IPFIX records for IPv6 iOAM, the function name could be more specific",
+      "revId": "52e8af6312883f75b17791e263bdc1e4228bedf2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
