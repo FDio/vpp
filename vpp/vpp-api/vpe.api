@@ -3966,7 +3966,8 @@ define sw_interface_clear_stats_reply
     @param id - profile id
     @param trace_type - Trace type
     @param trace_num_elt - Number of nodes in trace path
-    @param trace_ppc - Trace PPC (none/encap/decap)
+    @param seqno - To enable Seqno Processing
+    @param analyse - Enabling analysis of iOAM at decap node 
     @param trace_tsp - Trace timestamp precision (0-sec,1-ms,2-us,3-ns)
     @param trace_app_data - Trace application data, can be any 4 bytes
     @param pow_enable - Proof of Work enabled or not flag
@@ -3979,7 +3980,8 @@ define trace_profile_add
   u16 id;
   u8 trace_type;
   u8 trace_num_elt;
-  u8 trace_ppc;
+  u8 seqno;
+  u8 analyse;
   u8 trace_tsp;
   u32 trace_app_data;
   u8 pow_enable;

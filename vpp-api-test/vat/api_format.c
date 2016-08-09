@@ -7174,7 +7174,8 @@ api_trace_profile_add (vat_main_t * vam)
   u32 trace_option_elts = 0;
   u32 trace_type = 0, node_id = 0, app_data = 0, trace_tsp = 2;
   int has_pow_option = 0;
-  int has_ppc_option = 0;
+  int has_seqno_option = 0;
+  int has_analyse_option = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -7185,12 +7186,10 @@ api_trace_profile_add (vat_main_t * vam)
 	;
       else if (unformat (input, "pow"))
 	has_pow_option = 1;
-      else if (unformat (input, "ppc encap"))
-	has_ppc_option = PPC_ENCAP;
-      else if (unformat (input, "ppc decap"))
-	has_ppc_option = PPC_DECAP;
-      else if (unformat (input, "ppc none"))
-	has_ppc_option = PPC_NONE;
+      else if (unformat (input, "seqno"))
+        has_seqno_option = 1;
+      else if (unformat (input, "analyse"))
+        has_analyse_option = 1;
       else
 	break;
     }
@@ -7198,7 +7197,8 @@ api_trace_profile_add (vat_main_t * vam)
   mp->id = htons (id);
   mp->trace_type = trace_type;
   mp->trace_num_elt = trace_option_elts;
-  mp->trace_ppc = has_ppc_option;
+  mp->seqno = has_seqno_option;
+  mp->analyse = has_analyse_option;
   mp->trace_app_data = htonl (app_data);
   mp->pow_enable = has_pow_option;
   mp->trace_tsp = trace_tsp;

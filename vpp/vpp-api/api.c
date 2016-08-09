@@ -7048,7 +7048,8 @@ static void vl_api_trace_profile_add_t_handler
 				      ntohl (mp->node_id),
 				      ntohl (mp->trace_app_data),
 				      mp->pow_enable, mp->trace_tsp,
-				      mp->trace_ppc);
+				      mp->seqno,
+				      mp->analyse);
   if (error)
     {
       clib_error_report (error);
