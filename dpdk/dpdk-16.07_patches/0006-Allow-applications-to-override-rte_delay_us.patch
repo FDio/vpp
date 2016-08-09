@@ -1,0 +1,43 @@
+From 3432c140c9c51e671a4d58bb428d5852426add1f Mon Sep 17 00:00:00 2001
+From: "Todd Foggoa (tfoggoa)" <tfoggoa@cisco.com>
+Date: Wed, 3 Feb 2016 08:35:27 -0800
+Subject: [PATCH 5/6] Allow applications to override rte_delay_us()
+
+Some applications may wish to define their own implentation of
+usec delay other than the existing blocking one. The default
+behavior remains unchanged.
+
+Signed-off-by: Todd Foggoa (tfoggoa) <tfoggoa@cisco.com>
+---
+ lib/librte_eal/common/eal_common_timer.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/lib/librte_eal/common/eal_common_timer.c b/lib/librte_eal/common/eal_common_timer.c
+index c4227cd..cc26b91 100644
+--- a/lib/librte_eal/common/eal_common_timer.c
++++ b/lib/librte_eal/common/eal_common_timer.c
+@@ -47,9 +47,21 @@
+ /* The frequency of the RDTSC timer resolution */
+ static uint64_t eal_tsc_resolution_hz;
+ 
++/* Allow an override of the rte_delay_us function */
++int rte_delay_us_override (unsigned us) __attribute__((weak));
++
++int
++rte_delay_us_override(__attribute__((unused)) unsigned us)
++{
++	return 0;
++}
++
+ void
+ rte_delay_us(unsigned us)
+ {
++	if (rte_delay_us_override(us))
++		return;
++
+ 	const uint64_t start = rte_get_timer_cycles();
+ 	const uint64_t ticks = (uint64_t)us * rte_get_timer_hz() / 1E6;
+ 	while ((rte_get_timer_cycles() - start) < ticks)
+-- 
+2.7.4
+
