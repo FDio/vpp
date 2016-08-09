@@ -11,6 +11,14 @@ AC_ARG_WITH(dpdk,
             [with_dpdk=1],
             [with_dpdk=0])
 
+if test -f /usr/bin/lsb_release  && test `lsb_release -si` == "Ubuntu"  && test `lsb_release -sr` == "14.04"  && test -d /usr/lib/jvm/java-8-openjdk-amd64/ ; then
+    JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+    JAVAC=${JAVA_HOME}/bin/javac
+    JAVAH=${JAVA_HOME}/bin/javah
+    PATH=${JAVA_HOME}/bin/:${PATH}
+    break
+fi
+
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AC_SUBST(DPDK,["-DDPDK=${with_dpdk}"])
 

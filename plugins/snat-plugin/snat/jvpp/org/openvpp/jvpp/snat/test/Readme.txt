@@ -1,0 +1,1 @@
+sudo java -cp build-vpp-native/vpp-api/java/jvpp-registry-16.12.jar:build-vpp-native/vpp-api/java/jvpp-core-16.12.jar:build-vpp-native/plugins/snat-plugin/jsnat-1.0.jar org.openvpp.jvpp.snat.test.CallbackApiTest
