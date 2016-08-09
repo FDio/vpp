@@ -4124,7 +4124,8 @@ define sw_interface_clear_stats_reply
 
 /** \brief IOAM enable : Enable in-band OAM
     @param id - profile id
-    @param trace_ppc - Trace PPC (none/encap/decap)
+    @param seqno - To enable Seqno Processing
+    @param analyse - Enabling analysis of iOAM at decap node 
     @param pow_enable - Proof of Work enabled or not flag
     @param trace_enable - iOAM Trace enabled or not flag
 */
@@ -4133,8 +4134,9 @@ define ioam_enable
   u32 client_index;
   u32 context;
   u16 id;
-  u8 trace_ppc;
-  u8 pow_enable;
+  u8 seqno;
+  u8 analyse;
+  u8 pot_enable;
   u8 trace_enable;
   u32 node_id;
 };

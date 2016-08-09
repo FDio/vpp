@@ -7814,28 +7814,28 @@ api_ioam_enable (vat_main_t * vam)
   f64 timeout;
   u32 id = 0;
   int has_trace_option = 0;
-  int has_pow_option = 0;
-  int has_ppc_option = 0;
+  int has_pot_option = 0;
+  int has_seqno_option = 0;
+  int has_analyse_option = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "trace"))
 	has_trace_option = 1;
-      else if (unformat (input, "pow"))
-	has_pow_option = 1;
-      else if (unformat (input, "ppc encap"))
-	has_ppc_option = PPC_ENCAP;
-      else if (unformat (input, "ppc decap"))
-	has_ppc_option = PPC_DECAP;
-      else if (unformat (input, "ppc none"))
-	has_ppc_option = PPC_NONE;
+      else if (unformat (input, "pot"))
+	has_pot_option = 1;
+      else if (unformat (input, "seqno"))
+	has_seqno_option = 1;
+      else if (unformat (input, "analyse"))
+	has_analyse_option = 1;
       else
 	break;
     }
   M (IOAM_ENABLE, ioam_enable);
   mp->id = htons (id);
-  mp->trace_ppc = has_ppc_option;
-  mp->pow_enable = has_pow_option;
+  mp->seqno = has_seqno_option;
+  mp->analyse = has_analyse_option;
+  mp->pot_enable = has_pot_option;
   mp->trace_enable = has_trace_option;
 
   S;
