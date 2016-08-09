@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -15,9 +15,27 @@
 #ifndef __included_ip6_hop_by_hop_ioam_h__
 #define __included_ip6_hop_by_hop_ioam_h__
 
-#include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/ip.h>
+
+
+/* To determine whether a node is decap MS bit is set */
+#define IOAM_DECAP_BIT 0x80000000
+
+#define IOAM_DEAP_ENABLED(opaque_data) (opaque_data & IOAM_DECAP_BIT)
+
+#define IOAM_SET_DECAP(opaque_data) \
+    (opaque_data |= IOAM_DECAP_BIT)
+
+#define IOAM_MASK_DECAP_BIT(x) (x & ~IOAM_DECAP_BIT)
+
+/*
+ * Stores the run time flow data of hbh options
+ */
+typedef struct {
+  u32 ctx[256];
+  u8 flow_name[64];
+} flow_data_t;
 
 typedef struct {
   /* The current rewrite we're using */
@@ -48,10 +66,8 @@ typedef struct {
   /* Pot option */
   u8 has_pot_option;
 
-#define PPC_NONE  0
-#define PPC_ENCAP 1
-#define PPC_DECAP 2
-  u8 has_ppc_option;
+  /* Per Packet Counter option */
+  u8 has_seqno_option;
 
 #define TSP_SECONDS              0
 #define TSP_MILLISECONDS         1
@@ -63,8 +79,12 @@ typedef struct {
   /* Array of function pointers to ADD and POP HBH option handling routines */
   u8 options_size[256];
   int (*add_options[256])(u8 *rewrite_string, u8 rewrite_size);
-  int (*pop_options[256])(ip6_header_t *ip, ip6_hop_by_hop_option_t *opt);
-  
+  int (*pop_options[256])(vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt);
+
+  /* Array of function pointers to handle hbh options being used with classifier */
+  u32 (*flow_handler[256])(u32 flow_ctx, u8 add);
+  flow_data_t *flows;
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
@@ -114,8 +134,47 @@ int ip6_hbh_add_register_option (u8 option,
 int ip6_hbh_add_unregister_option (u8 option);
 
 int ip6_hbh_pop_register_option (u8 option,
-				 int options(ip6_header_t *ip, ip6_hop_by_hop_option_t *opt));
+                                 int options(vlib_buffer_t *b,
+                                             ip6_header_t *ip, ip6_hop_by_hop_option_t *opt));
 int ip6_hbh_pop_unregister_option (u8 option);
 
+int ip6_hbh_flow_handler_register(u8 option,
+                                  u32 ioam_flow_handler(u32 flow_ctx, u8 add));
+
+int ip6_hbh_flow_handler_unregister(u8 option);
+
+u8 * get_flow_name_from_flow_ctx(u32 flow_ctx);
+
+static inline flow_data_t * get_flow (u32 index)
+{
+  flow_data_t *flow = NULL;
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+
+  if (pool_is_free_index (hm->flows, index))
+    return NULL;
+
+  flow = pool_elt_at_index (hm->flows, index);
+  return flow;
+}
+
+static inline u32 get_flow_data_from_flow_ctx (u32 flow_ctx, u8 option)
+{
+  flow_data_t *flow = NULL;
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+  u32 index;
+
+  index = IOAM_MASK_DECAP_BIT(flow_ctx);
+
+  if (pool_is_free_index (hm->flows, index))
+    return 0xFFFFFFFF;
+
+  flow = pool_elt_at_index (hm->flows, index);
+  return (flow->ctx[option]);
+}
+
+static inline u8 is_seqno_enabled (void)
+{
+  return (ip6_hop_by_hop_ioam_main.has_seqno_option);
+}
 
 #endif /* __included_ip6_hop_by_hop_ioam_h__ */

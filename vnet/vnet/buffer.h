@@ -119,6 +119,8 @@ typedef struct
       {
 	struct
 	{
+      /* This pad is added to preserve opaque_index in l2_classify */
+      u32 pad;
 	  /* Flow hash value for this packet computed from IP src/dst address
 	     protocol and ports. */
 	  u32 flow_hash;
