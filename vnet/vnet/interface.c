@@ -1042,6 +1042,7 @@ vnet_interface_init (vlib_main_t * vm)
   vnet_interface_main_t *im = &vnm->interface_main;
   vlib_buffer_t *b = 0;
   vnet_buffer_opaque_t *o = 0;
+  vnet_buffer_opaque2_t *o2 = NULL;
 
   /*
    * Keep people from shooting themselves in the foot.
@@ -1060,6 +1061,19 @@ vnet_interface_init (vlib_main_t * vm)
 	 sizeof (b->opaque), sizeof (vnet_buffer_opaque_t));
     }
 
+  if (sizeof(b->opaque2) != sizeof (vnet_buffer_opaque2_t))
+      {
+  #define _(a) if (sizeof(o2->a) > sizeof (o2->unused))                     \
+        clib_warning                                                      \
+          ("FATAL: size of opaque2 union subtype %s is %d (max %d)",       \
+           #a, sizeof(o2->a), sizeof (o2->unused));
+      foreach_buffer_opaque2_union_subtype;
+  #undef _
+
+       return clib_error_return
+             (0, "FATAL: size of vlib buffer opaque2 %d, size of vnet opaque2 %d",
+             sizeof(b->opaque2), sizeof (vnet_buffer_opaque2_t));
+      }
   im->sw_if_counter_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
 						   CLIB_CACHE_LINE_BYTES);
   im->sw_if_counter_lock[0] = 1;	/* should be no need */

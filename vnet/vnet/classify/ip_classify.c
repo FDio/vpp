@@ -231,6 +231,7 @@ ip_classify_inline (vlib_main_t * vm,
           e0 = 0;
           t0 = 0;
           vnet_buffer(b0)->l2_classify.opaque_index = ~0;
+          vnet_buffer2(b0)->classify_sesion_data.flow_ctx = ~0;
 
           if (PREDICT_TRUE(table_index0 != ~0))
             {
@@ -242,6 +243,8 @@ ip_classify_inline (vlib_main_t * vm,
               if (e0)
                 {
                   vnet_buffer(b0)->l2_classify.opaque_index
+                    = e0->opaque_index;
+                  vnet_buffer2(b0)->classify_sesion_data.flow_ctx
                     = e0->opaque_index;
                   vlib_buffer_advance (b0, e0->advance);
                   next0 = (e0->next_index < node->n_next_nodes)?

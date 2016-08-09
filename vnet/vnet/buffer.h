@@ -334,15 +334,24 @@ typedef struct
 
 #define vnet_buffer(b) ((vnet_buffer_opaque_t *) (b)->opaque)
 
-/* Full cache line (64 bytes) of additional space */
-typedef struct
+#define foreach_buffer_opaque2_union_subtype     \
+_(classify_sesion_data)
+
+/* Full cache line (56 bytes) of additional space */
+typedef struct 
 {
-  union
+  union 
   {
+    struct 
+	{
+      u32 flow_ctx;
+    } classify_sesion_data;
+
+    u32 unused[14];
   };
 } vnet_buffer_opaque2_t;
 
-
+#define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)
 
 #endif /* included_vnet_buffer_h */
 

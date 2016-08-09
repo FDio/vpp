@@ -2849,7 +2849,8 @@ ip6_hop_by_hop (vlib_main_t * vm,
 
     out0:
       /* Has the classifier flagged this buffer for special treatment? */
-      if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
+      if ((error0 == 0) &&
+          (vnet_buffer2(b0)->classify_sesion_data.flow_ctx & 0x80000000))
 	next0 = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
 
       if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) {
