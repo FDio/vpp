@@ -58,3 +58,58 @@ snat_test_plugin_la_SOURCES = \
 install-data-hook:
 	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
 	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
+
+
+
+#
+# Java code generation
+#
+jvpp_registry_root = ../../vpp-api/java
+jvpp_registry_version = 16.12
+jsnat_jarfile = jvpp-snat-$(PACKAGE_VERSION).jar
+jvpp_package_dir = io/fd/vpp/jvpp/snat
+jvpp_root = snat/jvpp
+jvpp_target_dir = target
+jvpp_target = $(jvpp_root)/$(jvpp_target_dir)
+api_file=$(srcdir)/snat/snat.api
+
+lib_LTLIBRARIES = libjvpp_snat.la
+libjvpp_snat_la_SOURCES = snat/snat.api.h snat/jvpp_snat.c snat/jvpp/io_fd_vpp_jvpp_snat_JVppSnatImpl.h
+libjvpp_snat_la_LIBADD = -lvlibmemoryclient -lvlibapi -lvppinfra \
+	              -lpthread -lm -lrt -L$(jvpp_registry_root)/.libs -ljvpp_common
+libjvpp_snat_la_LDFLAGS = -module
+libjvpp_snat_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I../ -I$(srcdir)/../
+
+BUILT_SOURCES += $(jvpp_root)/io_fd_vpp_jvpp_snat_JVppSnatImpl.h
+
+$(jvpp_root)/io_fd_vpp_jvpp_snat_JVppSnatImpl.h: defs_snat_papi.py
+	dir=`pwd`;						\
+	mkdir -p $(jvpp_target); \
+	mkdir -p $(jvpp_root)/$(jvpp_package_dir); 		\
+	cd $(jvpp_root)/$(jvpp_package_dir);			\
+	mkdir -p dto future callfacade callback notification test; 	\
+	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/defs_snat_papi.py --plugin_name snat --control_ping_class SnatControlPing;		\
+	cd -;							\
+	mv -f $(jvpp_root)/$(jvpp_package_dir)/jvpp_snat_gen.h $(jvpp_root)/jvpp_snat_gen.h;							\
+	cp $(srcdir)/$(jvpp_root)/$(jvpp_package_dir)/test/*.java $(jvpp_root)/$(jvpp_package_dir)/test/;				\
+	cd $(jvpp_root);				\
+	$(JAVAC) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d $(jvpp_target_dir) $(jvpp_package_dir)/*.java \
+		$(jvpp_package_dir)/dto/*.java \
+		$(jvpp_package_dir)/callback/*.java \
+		$(jvpp_package_dir)/notification/*.java \
+		$(jvpp_package_dir)/future/*.java 	\
+		$(jvpp_package_dir)/callfacade/*.java 	\
+		$(jvpp_package_dir)/test/*.java \
+		|| (echo "snat jvpp compilation failed: $$?"; exit 1);	\
+	$(JAVAH) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d . io.fd.vpp.jvpp.snat.JVppSnatImpl ;
+
+$(jsnat_jarfile): libjvpp_snat.la
+	cp .libs/libjvpp_snat.so.0.0.0 $(jvpp_target);				\
+	cd $(jvpp_target);				\
+	$(JAR) cfv $(JARFLAGS) ../../../$@ libjvpp_snat.so.0.0.0 $(jvpp_package_dir)/* ; cd ..;
+
+defs_snat_papi.py:
+	@echo "  jSnat_sfc API"; \
+        vppapigen --input $(api_file) --python defs_snat_papi.py;
+
+all-local: $(jsnat_jarfile)
