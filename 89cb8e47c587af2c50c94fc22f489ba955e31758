@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_3000d5a9",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-08-09T00:01:58Z",
+      "side": 1,
+      "message": "Do we really want to call this papi, or python-api ?",
+      "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_500349b8",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-08-09T00:01:58Z",
+      "side": 1,
+      "message": "Doesn\u0027t this %pre go with the devel package?",
+      "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_102dd146",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-08-09T00:01:58Z",
+      "side": 1,
+      "message": "Do we want this to build debug given that we normally build *non* debug for vpp?",
+      "revId": "89cb8e47c587af2c50c94fc22f489ba955e31758",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
