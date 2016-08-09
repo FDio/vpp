@@ -53,7 +53,7 @@ static int nheld;
 svm_region_t *
 svm_get_root_rp (void)
 {
-  return root_rp;
+return root_rp;
 }
 
 #define MUTEX_DEBUG
