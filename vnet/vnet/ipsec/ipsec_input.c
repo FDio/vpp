@@ -239,11 +239,11 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 	      ipsec_policy_t *p0;
 	      p0 = ipsec_input_protect_policy_match (spd0,
 						     clib_net_to_host_u32
-						     (ip0->src_address.
-						      as_u32),
+						     (ip0->
+						      src_address.as_u32),
 						     clib_net_to_host_u32
-						     (ip0->dst_address.
-						      as_u32),
+						     (ip0->
+						      dst_address.as_u32),
 						     clib_net_to_host_u32
 						     (esp0->spi));
 

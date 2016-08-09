@@ -64,9 +64,9 @@ format_vnet_interface_output_trace (u8 * s, va_list * va)
       s = format (s, "%U\n%U%U",
 		  format_vnet_sw_interface_name, vnm, si,
 		  format_white_space, indent,
-		  node->format_buffer ? node->
-		  format_buffer : format_hex_bytes, t->data,
-		  sizeof (t->data));
+		  node->
+		  format_buffer ? node->format_buffer : format_hex_bytes,
+		  t->data, sizeof (t->data));
     }
   return s;
 }

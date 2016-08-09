@@ -239,11 +239,10 @@ always_inline uword
 	      adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 
 	      ASSERT (adj_index0 == ip4_fib_lookup_with_table (im, fib_index0,
-							       &ip0->
-							       src_address,
+							       &ip0->src_address,
 							       0
 							       /* use dflt rt */
-							       ));
+		      ));
 	      adj0 = ip_get_adjacency (lm, adj_index0);
 	    }
 
@@ -276,8 +275,7 @@ always_inline uword
 	      adj_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
 
 	      ASSERT (adj_index1 == ip4_fib_lookup_with_table (im, fib_index1,
-							       &ip1->
-							       src_address,
+							       &ip1->src_address,
 							       0));
 	      adj1 = ip_get_adjacency (lm, adj_index1);
 	    }

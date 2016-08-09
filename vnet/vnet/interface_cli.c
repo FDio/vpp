@@ -224,8 +224,7 @@ show_sw_interfaces (vlib_main_t * vm,
       _vec_len (sorted_sis) = 0;
       pool_foreach (si, im->sw_interfaces, (
 					     {
-					     vec_add1 (sorted_sis, si[0]);
-					     }
+					     vec_add1 (sorted_sis, si[0]);}
 		    ));
 
       /* Sort by name. */

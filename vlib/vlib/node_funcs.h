@@ -872,8 +872,7 @@ vlib_process_signal_event_at_time (vlib_main_t * vm,
 
       timing_wheel_insert (&nm->timing_wheel, clib_cpu_time_now () + dt_cpu,
 			   vlib_timing_wheel_data_set_timed_event (te -
-								   nm->
-								   signal_timed_event_data_pool));
+								   nm->signal_timed_event_data_pool));
 
       /* Inline data big enough to hold event? */
       if (te->n_data_bytes < sizeof (te->inline_event_data))

@@ -524,8 +524,8 @@ vlib_put_next_frame (vlib_main_t * vm,
 
       /* Copy trace flag from next_frame and from runtime. */
       nf->flags |=
-	(nf->flags & VLIB_NODE_FLAG_TRACE) | (r->
-					      flags & VLIB_NODE_FLAG_TRACE);
+	(nf->
+	 flags & VLIB_NODE_FLAG_TRACE) | (r->flags & VLIB_NODE_FLAG_TRACE);
 
       v0 = nf->vectors_since_last_overflow;
       v1 = v0 + n_vectors_in_frame;
@@ -864,8 +864,10 @@ vlib_elog_main_loop_event (vlib_main_t * vm,
 				  : evm->node_call_elog_event_types,
 				  node_index),
 		/* track */
-		(vm->cpu_index ? &vlib_worker_threads[vm->cpu_index].
-		 elog_track : &em->default_track),
+		(vm->
+		 cpu_index ? &vlib_worker_threads[vm->
+						  cpu_index].elog_track :
+		 &em->default_track),
 		/* data to log */ n_vectors);
 }
 
@@ -1445,8 +1447,7 @@ vlib_main_loop (vlib_main_t * vm)
 	    for (i = 0; i < l; i++)
 	      {
 		n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
-				      nm->
-				      pending_interrupt_node_runtime_indices
+				      nm->pending_interrupt_node_runtime_indices
 				      [i]);
 		cpu_time_now =
 		  dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,

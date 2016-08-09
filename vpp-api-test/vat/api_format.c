@@ -11848,7 +11848,7 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   ip6_address_t rmt_rloc6, lcl_rloc6;
   rloc_t *rmt_locs = 0, *lcl_locs = 0, rloc, *curr_rloc = 0;
 
-  memset(&rloc, 0, sizeof(rloc));
+  memset (&rloc, 0, sizeof (rloc));
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -11925,7 +11925,7 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
       return -99;
     }
 
-  if (0 == rmt_locs && (u32) ~0 == action)
+  if (0 == rmt_locs && (u32) ~ 0 == action)
     {
       errmsg ("action not set for negative mapping\n");
       return -99;
@@ -11944,11 +11944,11 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
 
   if (0 != rmt_locs && 0 != lcl_locs)
     {
-      mp->loc_num = vec_len(rmt_locs);
+      mp->loc_num = vec_len (rmt_locs);
       clib_memcpy (mp->lcl_locs, lcl_locs,
-                   (sizeof(rloc_t) * vec_len(lcl_locs)));
+		   (sizeof (rloc_t) * vec_len (lcl_locs)));
       clib_memcpy (mp->rmt_locs, rmt_locs,
-                   (sizeof(rloc_t) * vec_len(rmt_locs)));
+		   (sizeof (rloc_t) * vec_len (rmt_locs)));
     }
   vec_free (lcl_locs);
   vec_free (rmt_locs);
@@ -12502,7 +12502,7 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
   vl_api_lisp_gpe_add_del_iface_t *mp;
   f64 timeout = ~0;
   u8 action_set = 0, is_add = 1, is_l2 = 0, dp_table_set = 0, vni_set = 0;
-  u32 dp_table=0, vni=0;
+  u32 dp_table = 0, vni = 0;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -12523,7 +12523,7 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
 	}
       else if (unformat (input, "bd_id %d", &dp_table))
 	{
-          dp_table_set = 1;
+	  dp_table_set = 1;
 	  is_l2 = 1;
 	}
       else if (unformat (input, "vni %d", &vni))

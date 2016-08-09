@@ -49,8 +49,8 @@ typedef struct
 
 svmdbtool_main_t svmdbtool_main;
 
-static inline 
-svmdb_map_args_t * map_arg_setup (char *chroot_path)
+static inline svmdb_map_args_t *
+map_arg_setup (char *chroot_path)
 {
   svmdbtool_main_t *sm = &svmdbtool_main;
   svmdb_map_args_t *ma = &sm->map_args;
@@ -351,8 +351,8 @@ main (int argc, char **argv)
   struct group _grp, *grp;
   char *s, buf[128];
 
-  svmdbtool_main.uid = geteuid();
-  svmdbtool_main.gid = getegid();
+  svmdbtool_main.uid = geteuid ();
+  svmdbtool_main.gid = getegid ();
 
   unformat_init_command_line (&input, argv);
 
@@ -428,45 +428,45 @@ main (int argc, char **argv)
 	  parsed++;
 	}
       else if (unformat (&input, "uid %d", &uid))
-        svmdbtool_main.uid = uid;
+	svmdbtool_main.uid = uid;
       else if (unformat (&input, "gid %d", &gid))
-        svmdbtool_main.gid = gid;
+	svmdbtool_main.gid = gid;
       else if (unformat (&input, "uid %s", &s))
-        {
-          /* lookup the username */
-          pw = NULL;
-          rv = getpwnam_r(s, &_pw, buf, sizeof(buf), &pw);
-          if (rv < 0)
-            {
-              fformat (stderr, "cannot fetch username %s", s);
-              exit (1);
-            }
-          if (pw == NULL)
-            {
-              fformat (stderr, "username %s does not exist", s);
-              exit (1);
-            }
-          vec_free (s);
-          svmdbtool_main.uid = pw->pw_uid;
-        }
+	{
+	  /* lookup the username */
+	  pw = NULL;
+	  rv = getpwnam_r (s, &_pw, buf, sizeof (buf), &pw);
+	  if (rv < 0)
+	    {
+	      fformat (stderr, "cannot fetch username %s", s);
+	      exit (1);
+	    }
+	  if (pw == NULL)
+	    {
+	      fformat (stderr, "username %s does not exist", s);
+	      exit (1);
+	    }
+	  vec_free (s);
+	  svmdbtool_main.uid = pw->pw_uid;
+	}
       else if (unformat (&input, "gid %s", &s))
-        {
-          /* lookup the group name */
-          grp = NULL;
-          rv = getgrnam_r(s, &_grp, buf, sizeof(buf), &grp);
-          if (rv != 0)
-            {
-              fformat (stderr, "cannot fetch group %s", s);
-              exit (1);
-            }
-          if (grp == NULL)
-            {
-              fformat (stderr, "group %s does not exist", s);
-              exit (1);
-            }
-          vec_free (s);
-          svmdbtool_main.gid = grp->gr_gid;
-        }
+	{
+	  /* lookup the group name */
+	  grp = NULL;
+	  rv = getgrnam_r (s, &_grp, buf, sizeof (buf), &grp);
+	  if (rv != 0)
+	    {
+	      fformat (stderr, "cannot fetch group %s", s);
+	      exit (1);
+	    }
+	  if (grp == NULL)
+	    {
+	      fformat (stderr, "group %s does not exist", s);
+	      exit (1);
+	    }
+	  vec_free (s);
+	  svmdbtool_main.gid = grp->gr_gid;
+	}
       else
 	{
 	  break;

@@ -89,9 +89,8 @@ typedef struct
 
 typedef CLIB_PACKED (struct
 		     {
-		     u8 endian; u8 wrapped;
-		     u32 nitems;
-		     }) vl_api_trace_file_header_t;
+		     u8 endian;
+		     u8 wrapped; u32 nitems;}) vl_api_trace_file_header_t;
 
 typedef enum
 {

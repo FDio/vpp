@@ -103,7 +103,7 @@ vlib_sysfs_write (char *file_name, char *fmt, ...)
 {
   u8 *s;
   int fd;
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
 
   fd = open (file_name, O_WRONLY);
   if (fd < 0)

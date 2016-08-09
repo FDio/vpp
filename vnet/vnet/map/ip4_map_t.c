@@ -376,8 +376,8 @@ _ip4_map_t_icmp (map_domain_t * d, vlib_buffer_t * p, u8 * error)
 	}
       else
 	{
-          /* To shut up Coverity */
-          os_panic();
+	  /* To shut up Coverity */
+	  os_panic ();
 	}
 
       //FIXME: Security check with the port found in the inner packet
@@ -521,8 +521,9 @@ ip4_map_t_icmp (vlib_main_t * vm,
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
 					       cpu_index,
-					       vnet_buffer (p0)->map_t.
-					       map_domain_index, 1, len0);
+					       vnet_buffer (p0)->
+					       map_t.map_domain_index, 1,
+					       len0);
 	    }
 	  else
 	    {
@@ -1157,10 +1158,10 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
 					       cpu_index,
-					       vnet_buffer (p0)->map_t.
-					       map_domain_index, 1,
-					       clib_net_to_host_u16 (ip40->
-								     length));
+					       vnet_buffer (p0)->
+					       map_t.map_domain_index, 1,
+					       clib_net_to_host_u16
+					       (ip40->length));
 	    }
 
 	  if (PREDICT_TRUE
@@ -1168,10 +1169,10 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
 					       cpu_index,
-					       vnet_buffer (p1)->map_t.
-					       map_domain_index, 1,
-					       clib_net_to_host_u16 (ip41->
-								     length));
+					       vnet_buffer (p1)->
+					       map_t.map_domain_index, 1,
+					       clib_net_to_host_u16
+					       (ip41->length));
 	    }
 
 	  next0 = (error0 != MAP_ERROR_NONE) ? IP4_MAPT_NEXT_DROP : next0;
@@ -1250,10 +1251,10 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
 					       cpu_index,
-					       vnet_buffer (p0)->map_t.
-					       map_domain_index, 1,
-					       clib_net_to_host_u16 (ip40->
-								     length));
+					       vnet_buffer (p0)->
+					       map_t.map_domain_index, 1,
+					       clib_net_to_host_u16
+					       (ip40->length));
 	    }
 
 	  next0 = (error0 != MAP_ERROR_NONE) ? IP4_MAPT_NEXT_DROP : next0;

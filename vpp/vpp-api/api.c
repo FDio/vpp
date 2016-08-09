@@ -2591,7 +2591,7 @@ vl_api_sw_interface_clear_stats_t_handler (vl_api_sw_interface_clear_stats_t *
   int rv = 0;
 
   if (mp->sw_if_index != ~0)
-    VALIDATE_SW_IF_INDEX(mp);
+    VALIDATE_SW_IF_INDEX (mp);
 
   vec_reset_length (my_vnet_mains);
 
