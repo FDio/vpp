@@ -171,7 +171,7 @@ ip6_hbh_ioam_proof_of_transit_handler (vlib_buffer_t *b,
 }
 
 int
-ip6_hbh_ioam_proof_of_transit_pop_handler (ip6_header_t *ip,
+ip6_hbh_ioam_proof_of_transit_pop_handler (vlib_buffer_t *b, ip6_header_t *ip,
 					   ip6_hop_by_hop_option_t *opt0)
 {
   ioam_pot_option_t * pot0;
@@ -247,12 +247,6 @@ ip6_hop_by_hop_ioam_pot_init (vlib_main_t * vm)
 {
   ip6_hop_by_hop_ioam_pot_main_t * hm = &ip6_hop_by_hop_ioam_pot_main;
   clib_error_t * error;
-
-  if ((error = vlib_call_init_function (vm, ip_main_init)))
-    return(error);
-
-  if ((error = vlib_call_init_function (vm, ip6_lookup_init)))
-    return error;
 
   if ((error = vlib_call_init_function (vm, ip6_hop_by_hop_ioam_init)))
     return(error);
