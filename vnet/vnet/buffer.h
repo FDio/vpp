@@ -119,15 +119,18 @@ typedef struct
       {
 	struct
 	{
+	  /* Pad to preserve opaque_index in l2-classify */
+	  u32 pad;
+
 	  /* Flow hash value for this packet computed from IP src/dst address
 	     protocol and ports. */
 	  u32 flow_hash;
 
-	  /* next protocol */
-	  u32 save_protocol;
-
 	  /* Rewrite length */
 	  u32 save_rewrite_length;
+
+	  /* next protocol */
+	  u32 save_protocol;
 	};
 
 	/* ICMP */
