@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -2459,12 +2459,12 @@ ip6_hop_by_hop (vlib_main_t * vm,
 
     outdual:
       /* Has the classifier flagged this buffer for special treatment? */
-      if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
-	next0 = hm->next_override;
+      if (PREDICT_FALSE((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index & OI_DECAP)))
+        next0 = hm->next_override;
 
       /* Has the classifier flagged this buffer for special treatment? */
-      if ((error1 == 0) && (vnet_buffer(b1)->l2_classify.opaque_index == OI_DECAP))
-	next1 = hm->next_override;
+      if (PREDICT_FALSE((error1 == 0) && (vnet_buffer(b1)->l2_classify.opaque_index & OI_DECAP)))
+        next1 = hm->next_override;
 
       if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)))
 	{
@@ -2542,7 +2542,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
 
     out0:
       /* Has the classifier flagged this buffer for special treatment? */
-      if ((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index == OI_DECAP))
+    if (PREDICT_FALSE((error0 == 0) && (vnet_buffer(b0)->l2_classify.opaque_index & OI_DECAP)))
 	next0 = hm->next_override;
 
       if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) {

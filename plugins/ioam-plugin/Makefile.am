@@ -115,7 +115,20 @@ ioam_trace_test_plugin_la_SOURCES =		\
 vppapitestplugins_LTLIBRARIES += ioam_trace_test_plugin.la
 vppplugins_LTLIBRARIES += ioam_trace_plugin.la
 
+########################################
+# iOAM E2E plugin
+########################################
 
+ioam_e2e_plugin_la_SOURCES =                \
+	ioam/encap/ip6_ioam_e2e.c               \
+	ioam/encap/ip6_ioam_seqno.c             \
+	ioam/encap/ip6_ioam_seqno_analyse.c
+
+noinst_HEADERS +=                    \
+	ioam/encap/ip6_ioam_e2e.h        \
+	ioam/encap/ip6_ioam_seqno.h
+
+vppplugins_LTLIBRARIES += ioam_e2e_plugin.la
 
 # Remove *.la files
 install-data-hook:

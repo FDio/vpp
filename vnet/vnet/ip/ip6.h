@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -521,6 +521,6 @@ int ip6_hbh_unregister_option (u8 option);
 void ip6_hbh_set_next_override (uword next);
 
 /* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
-#define OI_DECAP   100
+#define OI_DECAP   0x80000000
 
 #endif /* included_ip_ip6_h */

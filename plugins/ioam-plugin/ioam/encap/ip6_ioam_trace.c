@@ -153,7 +153,8 @@ ioam_trace_get_sizeof_handler (u32 * result)
   if (PREDICT_FALSE (profile->num_elts * trace_data_size > 254))
     return VNET_API_ERROR_INVALID_VALUE;
 
-  size += profile->num_elts * trace_data_size;
+  size +=
+    sizeof (ioam_trace_option_t) + (profile->num_elts * trace_data_size);
   *result = size;
 
   return 0;
