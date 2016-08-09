@@ -20,42 +20,44 @@
 #include <vnet/snap/snap.h>
 #include <vnet/srp/packet.h>
 
-typedef CLIB_PACKED (struct {
-    u8	version;
-    u8	ttl;	
-    u16	checksum; /* 1's complement of the 1's complement sum */
-    u8  data[0];
-}) cdp_hdr_t;
+typedef CLIB_PACKED (struct
+		     {
+		     u8 version;
+		     u8 ttl;
+		     u16 checksum;	/* 1's complement of the 1's complement sum */
+		     u8 data[0];
+		     }) cdp_hdr_t;
 
-typedef struct {
+typedef struct
+{
   u8 dst_address[6];
   u8 src_address[6];
   u16 len;
 } ethernet_802_3_header_t;
 
-typedef CLIB_PACKED (struct {
-    ethernet_802_3_header_t ethernet;
-    llc_header_t llc;
-    snap_header_t snap;
-    cdp_hdr_t cdp;
-}) ethernet_llc_snap_and_cdp_header_t;
+typedef CLIB_PACKED (struct
+		     {
+		     ethernet_802_3_header_t ethernet;
+		     llc_header_t llc; snap_header_t snap; cdp_hdr_t cdp;
+		     }) ethernet_llc_snap_and_cdp_header_t;
 
-typedef CLIB_PACKED (struct {
-    hdlc_header_t hdlc;
-    cdp_hdr_t cdp;
-}) hdlc_and_cdp_header_t;
+typedef CLIB_PACKED (struct
+		     {
+		     hdlc_header_t hdlc; cdp_hdr_t cdp;
+		     }) hdlc_and_cdp_header_t;
 
-typedef CLIB_PACKED (struct {
-    srp_header_t srp;
-    ethernet_header_t ethernet;
-    cdp_hdr_t cdp;
-}) srp_and_cdp_header_t;
+typedef CLIB_PACKED (struct
+		     {
+		     srp_header_t srp;
+		     ethernet_header_t ethernet; cdp_hdr_t cdp;
+		     }) srp_and_cdp_header_t;
 
-typedef CLIB_PACKED (struct {
-    u16	t;
-    u16	l;
-    u8	v[0];
-}) cdp_tlv_t;
+typedef CLIB_PACKED (struct
+		     {
+		     u16 t;
+		     u16 l;
+		     u8 v[0];
+		     }) cdp_tlv_t;
 
 /*
  * TLV codes. 
@@ -92,9 +94,10 @@ _(energywise)                                                   \
 _(unknown_30)                                                   \
 _(spare_poe)
 
-typedef enum {
+typedef enum
+{
 #define _(t) CDP_TLV_##t,
-    foreach_cdp_tlv_type
+  foreach_cdp_tlv_type
 #undef _
 } cdp_tlv_code_t;
 
@@ -173,3 +176,11 @@ typedef enum {
 #define CDP_DUPLEX_TLV_FULL 0x1
 
 #endif /* __included_cdp_protocol_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
