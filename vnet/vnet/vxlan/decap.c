@@ -19,7 +19,8 @@
 #include <vnet/pg/pg.h>
 #include <vnet/vxlan/vxlan.h>
 
-vlib_node_registration_t vxlan_input_node;
+vlib_node_registration_t vxlan4_input_node;
+vlib_node_registration_t vxlan6_input_node;
 
 typedef struct {
   u32 next_index;
@@ -493,7 +494,8 @@ vxlan_input (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   /* Do we still need this now that tunnel tx stats is kept? */
-  vlib_node_increment_counter (vm, vxlan_input_node.index,
+  vlib_node_increment_counter (vm, is_ip4? 
+			       vxlan4_input_node.index:vxlan6_input_node.index,
                                VXLAN_ERROR_DECAPSULATED, 
                                pkts_decapsulated);
 
