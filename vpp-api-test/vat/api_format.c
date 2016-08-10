@@ -3189,6 +3189,39 @@ static void vl_api_policer_classify_details_t_handler_json
   vat_json_object_add_uint (node, "table_index", ntohl (mp->table_index));
 }
 
+static void vl_api_ipsec_gre_add_del_tunnel_reply_t_handler
+  (vl_api_ipsec_gre_add_del_tunnel_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_ipsec_gre_add_del_tunnel_reply_t_handler_json
+  (vl_api_ipsec_gre_add_del_tunnel_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
 
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
@@ -3511,7 +3544,9 @@ _(PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)                     \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
  ip_source_and_port_range_check_add_del_reply)                          \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
- ip_source_and_port_range_check_interface_add_del_reply)
+ ip_source_and_port_range_check_interface_add_del_reply)                \
+_(IPSEC_GRE_ADD_DEL_TUNNEL_REPLY, ipsec_gre_add_del_tunnel_reply)       \
+_(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)
 
 /* M: construct, but don't yet send a message */
 
@@ -14918,6 +14953,133 @@ api_ip_source_and_port_range_check_interface_add_del (vat_main_t * vam)
 }
 
 static int
+api_ipsec_gre_add_del_tunnel (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_gre_add_del_tunnel_t *mp;
+  f64 timeout;
+  u32 local_sa_id = 0;
+  u32 remote_sa_id = 0;
+  ip4_address_t src_address;
+  ip4_address_t dst_address;
+  u8 is_add = 1;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "local_sa %d", &local_sa_id))
+	;
+      else if (unformat (i, "remote_sa %d", &remote_sa_id))
+	;
+      else if (unformat (i, "src %U", unformat_ip4_address, &src_address))
+	;
+      else if (unformat (i, "dst %U", unformat_ip4_address, &dst_address))
+	;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel);
+
+  mp->local_sa_id = ntohl (local_sa_id);
+  mp->remote_sa_id = ntohl (remote_sa_id);
+  clib_memcpy (mp->src_address, &src_address, sizeof (src_address));
+  clib_memcpy (mp->dst_address, &dst_address, sizeof (dst_address));
+  mp->is_add = is_add;
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static void vl_api_ipsec_gre_tunnel_details_t_handler
+  (vl_api_ipsec_gre_tunnel_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  fformat (vam->ofp, "%11d%15U%15U%14d%14d\n",
+	   ntohl (mp->sw_if_index),
+	   format_ip4_address, &mp->src_address,
+	   format_ip4_address, &mp->dst_address,
+	   ntohl (mp->local_sa_id), ntohl (mp->remote_sa_id));
+}
+
+static void vl_api_ipsec_gre_tunnel_details_t_handler_json
+  (vl_api_ipsec_gre_tunnel_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+  struct in_addr ip4;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  clib_memcpy (&ip4, &mp->src_address, sizeof (ip4));
+  vat_json_object_add_ip4 (node, "src_address", ip4);
+  clib_memcpy (&ip4, &mp->dst_address, sizeof (ip4));
+  vat_json_object_add_ip4 (node, "dst_address", ip4);
+  vat_json_object_add_uint (node, "local_sa_id", ntohl (mp->local_sa_id));
+  vat_json_object_add_uint (node, "remote_sa_id", ntohl (mp->remote_sa_id));
+}
+
+static int
+api_ipsec_gre_tunnel_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_gre_tunnel_dump_t *mp;
+  f64 timeout;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      sw_if_index = ~0;
+    }
+
+  if (!vam->json_output)
+    {
+      fformat (vam->ofp, "%11s%15s%15s%14s%14s\n",
+	       "sw_if_index", "src_address", "dst_address",
+	       "local_sa_id", "remote_sa_id");
+    }
+
+  /* Get list of gre-tunnel interfaces */
+  M (IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump);
+
+  mp->sw_if_index = htonl (sw_if_index);
+
+  S;
+
+  /* Use a control ping for synchronization */
+  {
+    vl_api_control_ping_t *mp;
+    M (CONTROL_PING, control_ping);
+    S;
+  }
+  W;
+}
+
+static int
 q_or_quit (vat_main_t * vam)
 {
   longjmp (vam->jump_buf, 1);
@@ -15493,7 +15655,10 @@ _(ip_source_and_port_range_check_add_del,                               \
   "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                          \
 _(ip_source_and_port_range_check_interface_add_del,                     \
   "<intf> | sw_if_index <nn> [tcp-out-vrf <id>] [tcp-in-vrf <id>]"      \
-  "[udp-in-vrf <id>] [udp-out-vrf <id>]")
+  "[udp-in-vrf <id>] [udp-out-vrf <id>]")                               \
+_(ipsec_gre_add_del_tunnel,                                             \
+  "src <addr> dst <addr> local_sa <sa-id> remote_sa <sa-id> [del]")     \
+_(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

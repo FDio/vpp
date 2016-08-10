@@ -4744,3 +4744,61 @@ define ip_source_and_port_range_check_interface_add_del_reply
   u32 context;
   i32 retval;
 };
+
+/** \brief Add / del ipsec gre tunnel request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param local_sa_id - local SA id
+    @param remote_sa_id - remote SA id
+    @param is_add - 1 if adding the tunnel, 0 if deleting
+    @param src_address - tunnel source address
+    @param dst_address - tunnel destination address
+*/
+define ipsec_gre_add_del_tunnel {
+    u32 client_index;
+    u32 context;
+    u32 local_sa_id;
+    u32 remote_sa_id;
+    u8 is_add;
+    u8 src_address[4];
+    u8 dst_address[4];
+};
+
+/** \brief Reply for add / del ipsec gre tunnel request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index of the new ipsec gre tunnel
+*/
+define ipsec_gre_add_del_tunnel_reply {
+    u32 context;
+    i32 retval;
+    u32 sw_if_index;
+};
+
+/** \brief Dump ipsec gre tunnel table
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param tunnel_index - gre tunnel identifier or -1 in case of all tunnels
+*/
+define ipsec_gre_tunnel_dump {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+};
+
+/** \brief mpls gre tunnel operational state response
+    @param context - returned sender context, to match reply w/ request
+    @param sw_if_index - software index of the ipsec gre tunnel
+    @param local_sa_id - local SA id
+    @param remote_sa_id - remote SA id
+    @param src_address - tunnel source address
+    @param dst_address - tunnel destination address
+*/
+define ipsec_gre_tunnel_details {
+    u32 context;
+    u32 sw_if_index;
+    u32 local_sa_id;
+    u32 remote_sa_id;
+    u8 src_address[4];
+    u8 dst_address[4];
+};
