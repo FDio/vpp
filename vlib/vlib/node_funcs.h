@@ -410,12 +410,21 @@ vlib_current_process (vlib_main_t * vm)
   return vlib_get_current_process (vm)->node_runtime.node_index;
 }
 
-/* Anything less than 1e-6 is considered zero. */
+/** Returns TRUE if a process suspend time is less than 1us
+    @param dt - remaining poll time in seconds
+    @returns 1 if dt < 1e-6, 0 otherwise
+*/
 always_inline uword
 vlib_process_suspend_time_is_zero (f64 dt)
 {
   return dt < 1e-6;
 }
+
+/** Suspend a vlib cooperative multi-tasking thread for a period of time
+    @param vm - vlib_main_t *
+    @param dt - suspend interval in seconds
+    @returns VLIB_PROCESS_RESUME_LONGJMP_RESUME, routinely ignored
+*/
 
 always_inline uword
 vlib_process_suspend (vlib_main_t * vm, f64 dt)
@@ -503,7 +512,15 @@ vlib_process_put_event_data (vlib_main_t * vm, void *event_data)
   vec_add1 (nm->recycled_event_data_vectors, event_data);
 }
 
-/* Return type & add any events to data vector. */
+/** Return the first event type which has occurred and a vector of per-event
+    data of that type, or a timeout indication
+
+    @param vm - vlib_main_t pointer
+    @param data_vector - pointer to a (uword *) vector to receive event data
+    @returns either an event type and a vector of per-event instance data,
+    or ~0 to indicate a timeout.
+*/
+
 always_inline uword
 vlib_process_get_events (vlib_main_t * vm, uword ** data_vector)
 {
@@ -653,6 +670,13 @@ vlib_process_wait_for_event_with_type (vlib_main_t * vm,
 
   return vlib_process_get_events_helper (p, h[0], data_vector);
 }
+
+/** Suspend a cooperative multi-tasking thread
+    Waits for an event, or for the indicated number of seconds to elapse
+    @param vm - vlib_main_t pointer
+    @param dt - timeout, in seconds. 
+    @returns the remaining time interval
+*/
 
 always_inline f64
 vlib_process_wait_for_event_or_clock (vlib_main_t * vm, f64 dt)
