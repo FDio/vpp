@@ -416,6 +416,18 @@ nobase_include_HEADERS +=			\
  vnet/vxlan-gpe/vxlan_gpe_error.def
 
 ########################################
+# Tunnel protocol: ipsec+gre
+########################################
+libvnet_la_SOURCES +=				\
+ vnet/ipsec-gre/ipsec_gre.c			\
+ vnet/ipsec-gre/node.c				\
+ vnet/ipsec-gre/interface.c
+
+nobase_include_HEADERS +=			\
+ vnet/ipsec-gre/ipsec_gre.h		        \
+ vnet/ipsec-gre/error.def
+
+########################################
 # LISP control plane: lisp-cp
 ########################################
 

@@ -248,6 +248,8 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      oh6_0->esp.spi = clib_net_to_host_u32 (sa0->spi);
 	      oh6_0->esp.seq = clib_net_to_host_u32 (sa0->seq);
 	      ip_proto = ih6_0->ip6.protocol;
+
+	      next0 = ESP_ENCRYPT_NEXT_IP6_INPUT;
 	    }
 	  else
 	    {
@@ -268,6 +270,8 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      oh0->esp.spi = clib_net_to_host_u32 (sa0->spi);
 	      oh0->esp.seq = clib_net_to_host_u32 (sa0->seq);
 	      ip_proto = ih0->ip4.protocol;
+
+	      next0 = ESP_ENCRYPT_NEXT_IP4_INPUT;
 	    }
 
 	  if (PREDICT_TRUE
@@ -276,8 +280,6 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      oh0->ip4.src_address.as_u32 = sa0->tunnel_src_addr.ip4.as_u32;
 	      oh0->ip4.dst_address.as_u32 = sa0->tunnel_dst_addr.ip4.as_u32;
 
-	      /* in tunnel mode send it back to FIB */
-	      next0 = ESP_ENCRYPT_NEXT_IP4_INPUT;
 	      vnet_buffer (o_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	    }
 	  else if (is_ipv6 && sa0->is_tunnel && sa0->is_tunnel_ip6)
@@ -291,25 +293,26 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      oh6_0->ip6.dst_address.as_u64[1] =
 		sa0->tunnel_dst_addr.ip6.as_u64[1];
 
-	      /* in tunnel mode send it back to FIB */
-	      next0 = ESP_ENCRYPT_NEXT_IP6_INPUT;
 	      vnet_buffer (o_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	    }
 	  else
 	    {
-	      transport_mode = 1;
-	      ethernet_header_t *ieh0, *oeh0;
-	      ieh0 = (ethernet_header_t *) i_b0->data;
-	      oeh0 = (ethernet_header_t *) o_b0->data;
-	      clib_memcpy (oeh0, ieh0, sizeof (ethernet_header_t));
 	      vlib_buffer_advance (i_b0, ip_hdr_size);
 	      next_hdr_type = ip_proto;
-	      next0 = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
-	      o_b0->flags |= BUFFER_OUTPUT_FEAT_DONE;
-	      vnet_buffer (o_b0)->sw_if_index[VLIB_TX] =
-		vnet_buffer (i_b0)->sw_if_index[VLIB_TX];
-	      vnet_buffer (o_b0)->output_features.bitmap =
-		vnet_buffer (i_b0)->output_features.bitmap;
+	      if (vnet_buffer (i_b0)->sw_if_index[VLIB_TX] != ~0)
+		{
+		  transport_mode = 1;
+		  ethernet_header_t *ieh0, *oeh0;
+		  ieh0 = (ethernet_header_t *) i_b0->data;
+		  oeh0 = (ethernet_header_t *) o_b0->data;
+		  clib_memcpy (oeh0, ieh0, sizeof (ethernet_header_t));
+		  next0 = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+		  o_b0->flags |= BUFFER_OUTPUT_FEAT_DONE;
+		  vnet_buffer (o_b0)->sw_if_index[VLIB_TX] =
+		    vnet_buffer (i_b0)->sw_if_index[VLIB_TX];
+		  vnet_buffer (o_b0)->output_features.bitmap =
+		    vnet_buffer (i_b0)->output_features.bitmap;
+		}
 	    }
 
 	  ASSERT (sa0->crypto_alg < IPSEC_CRYPTO_N_ALG);

@@ -24,6 +24,17 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ikev2.h>
 
+u32
+ipsec_get_sa_index_by_sa_id (u32 sa_id)
+{
+  ipsec_main_t *im = &ipsec_main;
+  uword *p = hash_get (im->sa_index_by_sa_id, sa_id);
+  if (!p)
+    return ~0;
+
+  return p[0];
+}
+
 int
 ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 			 int is_add)
@@ -391,6 +402,7 @@ ipsec_is_sa_used (u32 sa_index)
   ipsec_main_t *im = &ipsec_main;
   ipsec_spd_t *spd;
   ipsec_policy_t *p;
+  ipsec_tunnel_if_t *t;
 
   /* *INDENT-OFF* */
   pool_foreach(spd, im->spds, ({
@@ -401,6 +413,13 @@ ipsec_is_sa_used (u32 sa_index)
             return 1;
         }
     }));
+  }));
+
+  pool_foreach(t, im->tunnel_interfaces, ({
+    if (t->input_sa_index == sa_index)
+      return 1;
+    if (t->output_sa_index == sa_index)
+      return 1;
   }));
   /* *INDENT-ON* */
 

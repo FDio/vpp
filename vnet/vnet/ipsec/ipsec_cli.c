@@ -561,6 +561,8 @@ show_ipsec_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "tunnel interfaces");
   /* *INDENT-OFF* */
   pool_foreach (t, im->tunnel_interfaces, ({
+    if (t->hw_if_index == ~0)
+      continue;
     hi = vnet_get_hw_interface (im->vnet_main, t->hw_if_index);
     vlib_cli_output(vm, "  %s seq", hi->name);
     sa = pool_elt_at_index(im->sad, t->output_sa_index);
