@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_a506e41e",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 409
+      },
+      "writtenOn": "2016-08-10T18:03:01Z",
+      "side": 1,
+      "message": "I noticed this in my testing as well, why does this only work with $(PLATFORM)_debug? Can this be made to work with just $(PLATFORM), since we\u0027d want to package the non-debug version.",
+      "revId": "f00b06c799654a378111669dac9aafc82e662816",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
