@@ -8145,7 +8145,7 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 {
   u8 *chroot_path;
   int uid, gid, rv;
-  char *s, buf[128];
+  char *s, buf[1024];
   struct passwd _pw, *pw;
   struct group _grp, *grp;
   clib_error_t *e;
