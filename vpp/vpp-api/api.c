@@ -8139,11 +8139,12 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 {
   u8 *chroot_path;
   int uid, gid, rv;
-  char *s, buf[128];
+  const int max_buf_size = 4096;
+  char *s, *buf;
   struct passwd _pw, *pw;
   struct group _grp, *grp;
   clib_error_t *e;
-
+  buf = vec_new(char,128);
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "prefix %s", &chroot_path))
@@ -8159,7 +8160,10 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  /* lookup the username */
 	  pw = NULL;
-	  rv = getpwnam_r (s, &_pw, buf, sizeof (buf), &pw);
+	  while (((rv = getpwnam_r (s, &_pw, buf, sizeof (buf), &pw)) == ERANGE) && ( vec_len(buf) <= max_buf_size ))
+        {
+            vec_resize(buf,vec_len(buf)*2);
+        }
 	  if (rv < 0)
 	    {
 	      e = clib_error_return_code (0, rv,
@@ -8167,6 +8171,7 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 					  CLIB_ERROR_FATAL,
 					  "cannot fetch username %s", s);
 	      vec_free (s);
+          vec_free (buf);
 	      return e;
 	    }
 	  if (pw == NULL)
@@ -8174,6 +8179,7 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	      e =
 		clib_error_return_fatal (0, "username %s does not exist", s);
 	      vec_free (s);
+          vec_free (buf);
 	      return e;
 	    }
 	  vec_free (s);
@@ -8183,7 +8189,10 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  /* lookup the group name */
 	  grp = NULL;
-	  rv = getgrnam_r (s, &_grp, buf, sizeof (buf), &grp);
+	  while ( ( (rv = getgrnam_r (s, &_grp, buf, vec_len(buf), &grp)) == ERANGE ) && ( vec_len(buf) <= max_buf_size ) )
+        {
+            vec_resize(buf,vec_len(buf)*2);
+        }
 	  if (rv != 0)
 	    {
 	      e = clib_error_return_code (0, rv,
@@ -8191,15 +8200,18 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 					  CLIB_ERROR_FATAL,
 					  "cannot fetch group %s", s);
 	      vec_free (s);
+          vec_free (buf);
 	      return e;
 	    }
 	  if (grp == NULL)
 	    {
 	      e = clib_error_return_fatal (0, "group %s does not exist", s);
 	      vec_free (s);
+          vec_free (buf);
 	      return e;
 	    }
 	  vec_free (s);
+      vec_free (buf);
 	  vl_set_memory_gid (grp->gr_gid);
 	}
       else
