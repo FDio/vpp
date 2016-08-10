@@ -24,10 +24,21 @@
  * tunnels. It is not present in IOS XR l2tpv3 tunnels.
  * The Linux implementation is almost certainly wrong.
  */
-typedef CLIB_PACKED(struct {
-    u32 session_id;
-    u64 cookie;
-    u32 l2_specific_sublayer;   /* set to 0 (if present) */
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct
+{
+  u32 session_id; 
+  u64 cookie; u32 
+  l2_specific_sublayer;	/* set to 0 (if present) */
 }) l2tpv3_header_t;
+/* *INDENT-ON* */
 
 #endif /* __included_l2tp_packet_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
