@@ -2534,6 +2534,42 @@ static void *vl_api_lisp_eid_table_dump_t_print
   FINISH;
 }
 
+static void *vl_api_ipsec_gre_add_del_tunnel_t_print
+  (vl_api_ipsec_gre_add_del_tunnel_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ipsec_gre_add_del_tunnel ");
+
+  s = format (s, "dst %U ", format_ip4_address,
+	      (ip4_address_t *) & (mp->dst_address));
+
+  s = format (s, "src %U ", format_ip4_address,
+	      (ip4_address_t *) & (mp->src_address));
+
+  s = format (s, "local_sa %d ", ntohl (mp->local_sa_id));
+
+  s = format (s, "remote_sa %d ", ntohl (mp->remote_sa_id));
+
+  if (mp->is_add == 0)
+    s = format (s, "del ");
+
+  FINISH;
+}
+
+static void *vl_api_ipsec_gre_tunnel_dump_t_print
+  (vl_api_ipsec_gre_tunnel_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ipsec_gre_tunnel_dump ");
+
+  if (mp->sw_if_index != ~0)
+    s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_map_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -2677,7 +2713,10 @@ _(LISP_EID_TABLE_DUMP, lisp_eid_table_dump)                             \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
-_(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)
+_(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
+_(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
+_(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
+_(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {

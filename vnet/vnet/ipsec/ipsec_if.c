@@ -195,6 +195,68 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 }
 
 int
+ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
+				ipsec_add_del_ipsec_gre_tunnel_args_t * args)
+{
+  ipsec_tunnel_if_t *t = 0;
+  ipsec_main_t *im = &ipsec_main;
+  uword *p;
+  ipsec_sa_t *sa;
+  u64 key;
+  u32 isa, osa;
+
+  p = hash_get (im->sa_index_by_sa_id, args->local_sa_id);
+  if (!p)
+    return VNET_API_ERROR_INVALID_VALUE;
+  isa = p[0];
+
+  p = hash_get (im->sa_index_by_sa_id, args->remote_sa_id);
+  if (!p)
+    return VNET_API_ERROR_INVALID_VALUE;
+  osa = p[0];
+  sa = pool_elt_at_index (im->sad, p[0]);
+
+  if (sa->is_tunnel)
+    key = (u64) sa->tunnel_dst_addr.ip4.as_u32 << 32 | (u64) sa->spi;
+  else
+    key = (u64) args->remote_ip.as_u32 << 32 | (u64) sa->spi;
+
+  p = hash_get (im->ipsec_if_pool_index_by_key, key);
+
+  if (args->is_add)
+    {
+      /* check if same src/dst pair exists */
+      if (p)
+	return VNET_API_ERROR_INVALID_VALUE;
+
+      pool_get_aligned (im->tunnel_interfaces, t, CLIB_CACHE_LINE_BYTES);
+      memset (t, 0, sizeof (*t));
+
+      t->input_sa_index = isa;
+      t->output_sa_index = osa;
+      t->hw_if_index = ~0;
+      hash_set (im->ipsec_if_pool_index_by_key, key,
+		t - im->tunnel_interfaces);
+
+      /*1st interface, register protocol */
+      if (pool_elts (im->tunnel_interfaces) == 1)
+	ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
+			       ipsec_if_input_node.index);
+    }
+  else
+    {
+      /* check if exists */
+      if (!p)
+	return VNET_API_ERROR_INVALID_VALUE;
+
+      t = pool_elt_at_index (im->tunnel_interfaces, p[0]);
+      hash_unset (im->ipsec_if_pool_index_by_key, key);
+      pool_put (im->tunnel_interfaces, t);
+    }
+  return 0;
+}
+
+int
 ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 			 ipsec_if_set_key_type_t type, u8 alg, u8 * key)
 {
