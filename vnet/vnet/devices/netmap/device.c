@@ -119,14 +119,15 @@ netmap_interface_tx (vlib_main_t * vm,
 
       if (nm_tx_pending(ring))
         {
-         ioctl(nif->fd, NIOCTXSYNC, NULL);
-         clib_cpu_time_wait(time_constant);
-
-         if (nm_tx_pending(ring) && !n_free_slots)
-           {
-             cur_ring++;
-             continue;
-           }
+          if (ioctl(nif->fd, NIOCTXSYNC, NULL) < 0)
+            clib_unix_warning ("NIOCTXSYNC");
+          clib_cpu_time_wait(time_constant);
+          
+          if (nm_tx_pending(ring) && !n_free_slots)
+            {
+              cur_ring++;
+              continue;
+            }
         }
 
       while (n_left && n_free_slots)

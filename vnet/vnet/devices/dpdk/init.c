@@ -119,7 +119,11 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
     }
 
   if (xd->admin_up) {
-    rte_eth_dev_start (xd->device_index);
+      int rv;
+      rv = rte_eth_dev_start (xd->device_index);
+      if (rv < 0)
+        clib_warning ("rte_eth_dev_start %d returned %d",
+                      xd->device_index, rv);
   }
   return 0;
 }
@@ -189,7 +193,12 @@ static u32 dpdk_flag_change (vnet_main_t * vnm,
           rte_eth_dev_set_mtu(xd->device_index, hi->max_packet_bytes);
 
 	  if (xd->admin_up)
-	    rte_eth_dev_start (xd->device_index);
+            {
+              int rv = rte_eth_dev_start (xd->device_index);
+              if (rv < 0)
+                clib_warning ("rte_eth_dev_start %d returned %d",
+                              xd->device_index, rv);
+            }
 	}
     }
   return old;
@@ -391,7 +400,8 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (!xd->pmd) {
 
 
-#define _(s,f) else if (!strcmp(dev_info.driver_name, s)) \
+#define _(s,f) else if (dev_info.driver_name &&                 \
+                        !strcmp(dev_info.driver_name, s))       \
                  xd->pmd = VNET_DPDK_PMD_##f;
         if (0)
           ;
@@ -651,7 +661,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       rv = dpdk_port_setup(dm, xd);
 
-      if (rv < 0)
+      if (rv)
         return rv;
 
       /* count the number of descriptors used for this device */
@@ -1199,6 +1209,12 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  vec_free(p);
 	  vec_free(path);
       }));
+
+      if (mem_by_socket == 0)
+        {
+          error = clib_error_return (0, "mem_by_socket NULL");
+          goto done;
+        }
       _vec_len (mem_by_socket) = c + 1;
 
       /* regenerate socket_mem string */

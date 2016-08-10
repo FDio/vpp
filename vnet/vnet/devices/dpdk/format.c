@@ -400,9 +400,12 @@ u8 * format_dpdk_device (u8 * s, va_list * args)
       struct rte_pci_device * pci;
       struct rte_eth_rss_conf rss_conf;
       int vlan_off;
+      int retval;
 
       rss_conf.rss_key = 0;
-      rte_eth_dev_rss_hash_conf_get(xd->device_index, &rss_conf);
+      retval = rte_eth_dev_rss_hash_conf_get(xd->device_index, &rss_conf);
+      if (retval < 0)
+          clib_warning ("rte_eth_dev_rss_hash_conf_get returned %d", retval);
       pci = di.pci_dev;
 
       if (pci)

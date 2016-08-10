@@ -87,7 +87,7 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
   n = sparse_index_bits - min_log2 (BITS (uword));
   if (n < 0)
     n = 0;
-  n = 1 << n;
+  n = 1ULL << n;
   vec_resize (h->is_member_bitmap, n);
   vec_resize (h->member_counts, n);
 

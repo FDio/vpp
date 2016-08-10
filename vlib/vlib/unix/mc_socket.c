@@ -948,6 +948,7 @@ find_interface_ip4_address (char *if_name, u32 * ip4_address, u32 * mtu)
   if (ioctl (fd, SIOCGIFADDR, &ifr) < 0)
     {
       clib_unix_error ("ioctl(SIOCFIGADDR)");
+      close (fd);
       return -1;
     }
 

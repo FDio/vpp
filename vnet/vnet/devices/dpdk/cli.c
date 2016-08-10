@@ -332,7 +332,7 @@ show_efd (vlib_main_t * vm,
         dpdk_device_t * xd;
         u32 device_id = ~0;
 
-        unformat(input, "device %d", &device_id);
+        (void) unformat(input, "device %d", &device_id);
         vec_foreach (xd, dm->devices) {
             if ((xd->device_index == device_id) || (device_id == ~0)) {
                 show_dpdk_device_stats(vm, xd);

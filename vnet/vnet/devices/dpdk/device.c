@@ -1028,7 +1028,11 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
       else
       {
         xd->admin_up = 0;
-        rte_kni_release(xd->kni);
+        int kni_rv;
+
+        kni_rv = rte_kni_release(xd->kni);
+        if (kni_rv < 0)
+          clib_warning ("rte_kni_release returned %d", kni_rv);
       }
       return 0;
   }

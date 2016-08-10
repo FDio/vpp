@@ -391,8 +391,8 @@ set_indirect (void * v, hash_pair_indirect_t * pi, uword key,
       if (new_len * hash_pair_bytes (h) > (1ULL << log2_bytes))
 	{
 	  pi->pairs = clib_mem_realloc (pi->pairs,
-					1 << (log2_bytes + 1),
-					1 << log2_bytes);
+					1ULL << (log2_bytes + 1),
+					1ULL << log2_bytes);
 	  log2_bytes++;
 	}
 
