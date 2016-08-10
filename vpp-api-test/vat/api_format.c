@@ -3701,11 +3701,6 @@ dump_ip_table (vat_main_t * vam, int is_ipv6)
 
   fformat (vam->ofp, "%-12s\n", "sw_if_index");
 
-  if (0 == vam)
-    {
-      return 0;
-    }
-
   vec_foreach (det, vam->ip_details_by_sw_if_index[is_ipv6])
   {
     i++;
@@ -5808,7 +5803,7 @@ api_sw_interface_set_unnumbered (vat_main_t * vam)
   vl_api_sw_interface_set_unnumbered_t *mp;
   f64 timeout;
   u32 sw_if_index;
-  u32 unnum_sw_index;
+  u32 unnum_sw_index = ~0;
   u8 is_add = 1;
   u8 sw_if_index_set = 0;
 
@@ -7690,8 +7685,11 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
 	  if (l2 == 0)
 	    vec_validate (l2, 13);
 	  mask = l2;
-	  vec_append (mask, l3);
-	  vec_free (l3);
+	  if (vec_len (l3))
+	    {
+	      vec_append (mask, l3);
+	      vec_free (l3);
+	    }
 	}
 
       /* Scan forward looking for the first significant mask octet */
@@ -8036,9 +8034,9 @@ unformat_ip6_match (unformat_input_t * input, va_list * args)
   ip6_header_t *ip;
   int version = 0;
   u32 version_val;
-  u8 traffic_class;
-  u32 traffic_class_val;
-  u8 flow_label;
+  u8 traffic_class = 0;
+  u32 traffic_class_val = 0;
+  u8 flow_label = 0;
   u8 flow_label_val;
   int src = 0, dst = 0;
   ip6_address_t src_val, dst_val;
@@ -8298,8 +8296,11 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
 	  if (l2 == 0)
 	    vec_validate_aligned (l2, 13, sizeof (u32x4));
 	  match = l2;
-	  vec_append_aligned (match, l3, sizeof (u32x4));
-	  vec_free (l3);
+	  if (vec_len (l3))
+	    {
+	      vec_append_aligned (match, l3, sizeof (u32x4));
+	      vec_free (l3);
+	    }
 	}
 
       /* Make sure the vector is big enough even if key is all 0's */
@@ -10395,7 +10396,7 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
   vl_api_ipsec_spd_add_del_entry_t *mp;
   f64 timeout;
   u8 is_add = 1, is_outbound = 0, is_ipv6 = 0, is_ip_any = 1;
-  u32 spd_id, sa_id, protocol = 0, policy = 0;
+  u32 spd_id = 0, sa_id = 0, protocol = 0, policy = 0;
   i32 priority;
   u32 rport_start = 0, rport_stop = (u32) ~ 0;
   u32 lport_start = 0, lport_stop = (u32) ~ 0;
@@ -10557,7 +10558,7 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_ipsec_sad_add_del_entry_t *mp;
   f64 timeout;
-  u32 sad_id, spi;
+  u32 sad_id = 0, spi = 0;
   u8 *ck = 0, *ik = 0;
   u8 is_add = 1;
 
@@ -10654,8 +10655,10 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
   if (mp->integrity_key_length > sizeof (mp->integrity_key))
     mp->integrity_key_length = sizeof (mp->integrity_key);
 
-  clib_memcpy (mp->crypto_key, ck, mp->crypto_key_length);
-  clib_memcpy (mp->integrity_key, ik, mp->integrity_key_length);
+  if (ck)
+    clib_memcpy (mp->crypto_key, ck, mp->crypto_key_length);
+  if (ik)
+    clib_memcpy (mp->integrity_key, ik, mp->integrity_key_length);
 
   if (is_tunnel)
     {
@@ -10722,8 +10725,10 @@ api_ipsec_sa_set_key (vat_main_t * vam)
   if (mp->integrity_key_length > sizeof (mp->integrity_key))
     mp->integrity_key_length = sizeof (mp->integrity_key);
 
-  clib_memcpy (mp->crypto_key, ck, mp->crypto_key_length);
-  clib_memcpy (mp->integrity_key, ik, mp->integrity_key_length);
+  if (ck)
+    clib_memcpy (mp->crypto_key, ck, mp->crypto_key_length);
+  if (ik)
+    clib_memcpy (mp->integrity_key, ik, mp->integrity_key_length);
 
   S;
   W;
@@ -11086,7 +11091,8 @@ api_map_add_domain (vat_main_t * vam)
   ip6_address_t ip6_prefix;
   ip6_address_t ip6_src;
   u32 num_m_args = 0;
-  u32 ip6_prefix_len, ip4_prefix_len, ea_bits_len, psid_offset, psid_length;
+  u32 ip6_prefix_len = 0, ip4_prefix_len = 0, ea_bits_len = 0, psid_offset =
+    0, psid_length = 0;
   u8 is_translation = 0;
   u32 mtu = 0;
   u8 ip6_src_len = 128;
@@ -11201,7 +11207,7 @@ api_map_add_del_rule (vat_main_t * vam)
   f64 timeout;
   u8 is_add = 1;
   ip6_address_t ip6_dst;
-  u32 num_m_args = 0, index, psid;
+  u32 num_m_args = 0, index, psid = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -11418,7 +11424,7 @@ api_cop_whitelist_enable_disable (vat_main_t * vam)
   f64 timeout;
   u32 sw_if_index = ~0;
   u8 ip4 = 0, ip6 = 0, default_cop = 0;
-  u32 fib_id;
+  u32 fib_id = 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -11613,8 +11619,9 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
   vec_free (locator_set_name);
 
   mp->locator_num = vec_len (locators);
-  clib_memcpy (mp->locators, locators,
-	       (sizeof (ls_locator_t) * vec_len (locators)));
+  if (locators)
+    clib_memcpy (mp->locators, locators,
+		 (sizeof (ls_locator_t) * vec_len (locators)));
   vec_free (locators);
 
   /* send it... */
@@ -11848,7 +11855,7 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   ip6_address_t rmt_rloc6, lcl_rloc6;
   rloc_t *rmt_locs = 0, *lcl_locs = 0, rloc, *curr_rloc = 0;
 
-  memset(&rloc, 0, sizeof(rloc));
+  memset (&rloc, 0, sizeof (rloc));
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -11925,7 +11932,7 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
       return -99;
     }
 
-  if (0 == rmt_locs && (u32) ~0 == action)
+  if (0 == rmt_locs && (u32) ~ 0 == action)
     {
       errmsg ("action not set for negative mapping\n");
       return -99;
@@ -11944,11 +11951,11 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
 
   if (0 != rmt_locs && 0 != lcl_locs)
     {
-      mp->loc_num = vec_len(rmt_locs);
+      mp->loc_num = vec_len (rmt_locs);
       clib_memcpy (mp->lcl_locs, lcl_locs,
-                   (sizeof(rloc_t) * vec_len(lcl_locs)));
+		   (sizeof (rloc_t) * vec_len (lcl_locs)));
       clib_memcpy (mp->rmt_locs, rmt_locs,
-                   (sizeof(rloc_t) * vec_len(rmt_locs)));
+		   (sizeof (rloc_t) * vec_len (rmt_locs)));
     }
   vec_free (lcl_locs);
   vec_free (rmt_locs);
@@ -12270,6 +12277,8 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
   ip6_address_t rloc6;
   rloc_t *rlocs = 0, rloc, *curr_rloc = 0;
 
+  memset (&rloc, 0, sizeof (rloc));
+
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -12502,7 +12511,7 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
   vl_api_lisp_gpe_add_del_iface_t *mp;
   f64 timeout = ~0;
   u8 action_set = 0, is_add = 1, is_l2 = 0, dp_table_set = 0, vni_set = 0;
-  u32 dp_table=0, vni=0;
+  u32 dp_table = 0, vni = 0;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -12523,7 +12532,7 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
 	}
       else if (unformat (input, "bd_id %d", &dp_table))
 	{
-          dp_table_set = 1;
+	  dp_table_set = 1;
 	  is_l2 = 1;
 	}
       else if (unformat (input, "vni %d", &vni))
@@ -13756,6 +13765,13 @@ api_policer_add_del (vat_main_t * vam)
   u8 type = 0;
   u8 color_aware = 0;
   sse2_qos_pol_action_params_st conform_action, exceed_action, violate_action;
+
+  conform_action.action_type = SSE2_QOS_ACTION_TRANSMIT;
+  conform_action.dscp = 0;
+  exceed_action.action_type = SSE2_QOS_ACTION_MARK_AND_TRANSMIT;
+  exceed_action.dscp = 0;
+  violate_action.action_type = SSE2_QOS_ACTION_DROP;
+  violate_action.dscp = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
