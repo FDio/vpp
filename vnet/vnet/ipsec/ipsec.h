@@ -16,6 +16,8 @@
 #include <vnet/devices/dpdk/dpdk.h>
 #endif
 
+#define IPSEC_FLAG_IPSEC_GRE_TUNNEL (1 << 0)
+
 #define foreach_ipsec_policy_action \
   _(0, BYPASS,  "bypass")          \
   _(1, DISCARD, "discard")         \
@@ -126,6 +128,15 @@ typedef struct
   u8 remote_integ_key_len;
   u8 remote_integ_key[128];
 } ipsec_add_del_tunnel_args_t;
+
+typedef struct
+{
+  u8 is_add;
+  u32 local_sa_id;
+  u32 remote_sa_id;
+  ip4_address_t local_ip;
+  ip4_address_t remote_ip;
+} ipsec_add_del_ipsec_gre_tunnel_args_t;
 
 typedef enum
 {
@@ -243,6 +254,7 @@ int ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy,
 int ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add);
 int ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update);
 
+u32 ipsec_get_sa_index_by_sa_id (u32 sa_id);
 u8 *format_ipsec_if_output_trace (u8 * s, va_list * args);
 u8 *format_ipsec_policy_action (u8 * s, va_list * args);
 u8 *format_ipsec_crypto_alg (u8 * s, va_list * args);
@@ -254,6 +266,9 @@ uword unformat_ipsec_integ_alg (unformat_input_t * input, va_list * args);
 
 /*u32 ipsec_add_del_tunnel_if (vnet_main_t * vnm, ipsec_add_del_tunnel_args_t * args); */
 int ipsec_add_del_tunnel_if (ipsec_add_del_tunnel_args_t * args);
+int ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
+				    ipsec_add_del_ipsec_gre_tunnel_args_t *
+				    args);
 int ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 			     ipsec_if_set_key_type_t type, u8 alg, u8 * key);
 

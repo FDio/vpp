@@ -212,7 +212,7 @@ typedef struct
     /* interface output features */
     struct
     {
-      u32 ipsec_spd_index;
+      u32 ipsec_flags;
       u32 ipsec_sad_index;
       u32 unused[3];
       u32 bitmap;

@@ -82,6 +82,7 @@
 #include <vnet/policer/policer.h>
 #include <vnet/devices/netmap/netmap.h>
 #include <vnet/flow/flow_report.h>
+#include <vnet/ipsec-gre/ipsec_gre.h>
 
 #undef BIHASH_TYPE
 #undef __included_bihash_template_h__
@@ -382,7 +383,9 @@ _(PG_ENABLE_DISABLE, pg_enable_disable)                                 \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
   ip_source_and_port_range_check_add_del)                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
-  ip_source_and_port_range_check_interface_add_del)
+  ip_source_and_port_range_check_interface_add_del)                     \
+_(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
+_(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -7985,6 +7988,97 @@ static void
 reply:
 
   REPLY_MACRO (VL_API_IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_ipsec_gre_add_del_tunnel_t_handler (vl_api_ipsec_gre_add_del_tunnel_t *
+					   mp)
+{
+  vl_api_ipsec_gre_add_del_tunnel_reply_t *rmp;
+  int rv = 0;
+  vnet_ipsec_gre_add_del_tunnel_args_t _a, *a = &_a;
+  u32 sw_if_index = ~0;
+
+  /* Check src & dst are different */
+  if (memcmp (mp->src_address, mp->dst_address, 4) == 0)
+    {
+      rv = VNET_API_ERROR_SAME_SRC_DST;
+      goto out;
+    }
+
+  memset (a, 0, sizeof (*a));
+
+  /* ip addresses sent in network byte order */
+  clib_memcpy (&(a->src), mp->src_address, 4);
+  clib_memcpy (&(a->dst), mp->dst_address, 4);
+  a->is_add = mp->is_add;
+  a->lsa = ntohl (mp->local_sa_id);
+  a->rsa = ntohl (mp->remote_sa_id);
+
+  rv = vnet_ipsec_gre_add_del_tunnel (a, &sw_if_index);
+
+out:
+    /* *INDENT-OFF* */
+    REPLY_MACRO2(VL_API_GRE_ADD_DEL_TUNNEL_REPLY,
+    ({
+        rmp->sw_if_index = ntohl (sw_if_index);
+    }));
+    /* *INDENT-ON* */
+}
+
+static void send_ipsec_gre_tunnel_details
+  (ipsec_gre_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_ipsec_gre_tunnel_details_t *rmp;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_IPSEC_GRE_TUNNEL_DETAILS);
+  clib_memcpy (rmp->src_address, &(t->tunnel_src), 4);
+  clib_memcpy (rmp->dst_address, &(t->tunnel_dst), 4);
+  rmp->sw_if_index = htonl (t->sw_if_index);
+  rmp->local_sa_id = htonl (t->local_sa_id);
+  rmp->remote_sa_id = htonl (t->remote_sa_id);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void vl_api_ipsec_gre_tunnel_dump_t_handler
+  (vl_api_ipsec_gre_tunnel_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  ipsec_gre_main_t *igm = &ipsec_gre_main;
+  ipsec_gre_tunnel_t *t;
+  u32 sw_if_index;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (~0 == sw_if_index)
+    {
+        /* *INDENT-OFF* */
+        pool_foreach (t, igm->tunnels,
+        ({
+            send_ipsec_gre_tunnel_details(t, q, mp->context);
+        }));
+        /* *INDENT-ON* */
+    }
+  else
+    {
+      if ((sw_if_index >= vec_len (igm->tunnel_index_by_sw_if_index)) ||
+	  (~0 == igm->tunnel_index_by_sw_if_index[sw_if_index]))
+	{
+	  return;
+	}
+      t = &igm->tunnels[igm->tunnel_index_by_sw_if_index[sw_if_index]];
+      send_ipsec_gre_tunnel_details (t, q, mp->context);
+    }
 }
 
 #define BOUNCE_HANDLER(nn)                                              \
