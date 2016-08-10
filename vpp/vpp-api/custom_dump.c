@@ -1380,13 +1380,20 @@ static void *vl_api_vxlan_add_del_tunnel_t_print
 
   s = format (0, "SCRIPT: vxlan_add_del_tunnel ");
 
-  s = format (s, "dst %U ", format_ip46_address,
-	      (ip46_address_t *) & (mp->dst_address),
-	      mp->is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4);
-
-  s = format (s, "src %U ", format_ip46_address,
-	      (ip46_address_t *) & (mp->src_address),
-	      mp->is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4);
+  if (mp->is_ipv6)
+    {
+      s = format (s, "src %U ", format_ip6_address,
+		  (ip6_address_t *) mp->src_address);
+      s = format (s, "dst %U ", format_ip6_address,
+		  (ip6_address_t *) mp->dst_address);
+    }
+  else
+    {
+      s = format (s, "src %U ", format_ip4_address,
+		  (ip4_address_t *) mp->src_address);
+      s = format (s, "dst %U ", format_ip4_address,
+		  (ip4_address_t *) mp->dst_address);
+    }
 
   if (mp->encap_vrf_id)
     s = format (s, "encap-vrf-id %d ", ntohl (mp->encap_vrf_id));
