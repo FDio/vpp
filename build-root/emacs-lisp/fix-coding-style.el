@@ -113,6 +113,8 @@
 
 (defun fix-clib-packed () (interactive)
        (fix-initializer "CLIB_PACKED *("))
+(defun fix-vl-api-packed () (interactive)
+       (fix-initializer "VL_API_PACKED *("))
 
 ;; Driver routine which runs the set of functions
 ;; defined above, as well as the bottom boilerplate function
