@@ -5674,11 +5674,11 @@ send_lisp_eid_table_details (mapping_t * mapit,
     case 1: /* local only */
       if (!mapit->local)
         return;
-
+      break;
     case 2: /* remote only */
       if (mapit->local)
         return;
-
+      break;
     default:
       clib_warning ("Filter error, unknown filter: %d", filter);
       return;
