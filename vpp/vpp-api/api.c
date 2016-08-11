@@ -5160,7 +5160,12 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
   vec_free (locator_name);
   vec_free (a->locators);
 
-  REPLY_MACRO (VL_API_LISP_ADD_DEL_LOCATOR_SET_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_LISP_ADD_DEL_LOCATOR_SET_REPLY,
+  ({
+    rmp->ls_index = clib_host_to_net_u32 (ls_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
