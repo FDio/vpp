@@ -2362,11 +2362,13 @@ define lisp_add_del_locator_set
 /** \brief Reply for locator_set add/del
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
+    @param ls_index - locator set index
 */
 define lisp_add_del_locator_set_reply
 {
   u32 context;
   i32 retval;
+  u32 ls_index;
 };
 
 /** \brief add or delete locator for locator_set
