@@ -1555,6 +1555,40 @@ static void vl_api_l2tpv3_create_tunnel_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+
+static void vl_api_lisp_add_del_locator_set_reply_t_handler
+  (vl_api_lisp_add_del_locator_set_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_lisp_add_del_locator_set_reply_t_handler_json
+  (vl_api_lisp_add_del_locator_set_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "locator_set_index", ntohl (mp->ls_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
 static void vl_api_vxlan_add_del_tunnel_reply_t_handler
   (vl_api_vxlan_add_del_tunnel_reply_t * mp)
 {
@@ -3306,7 +3340,6 @@ _(sw_interface_clear_stats_reply)                       \
 _(trace_profile_add_reply)                              \
 _(trace_profile_apply_reply)                            \
 _(trace_profile_del_reply)                              \
-_(lisp_add_del_locator_set_reply)                       \
 _(lisp_add_del_locator_reply)                           \
 _(lisp_add_del_local_eid_reply)                         \
 _(lisp_add_del_remote_mapping_reply)                    \
