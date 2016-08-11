@@ -1054,6 +1054,11 @@ vlib_node_add_named_next (vlib_main_t * vm, uword node, char *name)
 /* Query node given name. */
 vlib_node_t *vlib_get_node_by_name (vlib_main_t * vm, u8 * name);
 
+/* Get the slot to given node with next node. */
+uword
+vlib_node_get_slot_with_next (vlib_main_t * vm,
+			      uword node_index, uword next_node_index);
+
 /* Rename a node. */
 void vlib_node_rename (vlib_main_t * vm, u32 node_index, char *fmt, ...);
 

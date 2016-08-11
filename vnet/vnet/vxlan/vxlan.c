@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <vlib/vlib.h>
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/ip/format.h>
 
@@ -42,7 +43,7 @@ u8 * format_vxlan_tunnel (u8 * s, va_list * args)
   vxlan_tunnel_t * t = va_arg (*args, vxlan_tunnel_t *);
   vxlan_main_t * ngm = &vxlan_main;
 
-  s = format (s, 
+  s = format (s,
               "[%d] %U (src) %U (dst) vni %d encap_fib_index %d",
               t - ngm->tunnels,
               format_ip46_address, &t->src, IP46_TYPE_ANY,
@@ -192,7 +193,7 @@ static int vxlan6_rewrite (vxlan_tunnel_t * t)
   return (0);
 }
 
-int vnet_vxlan_add_del_tunnel 
+int vnet_vxlan_add_del_tunnel
 (vnet_vxlan_add_del_tunnel_args_t *a, u32 * sw_if_indexp)
 {
   vxlan_main_t * vxm = &vxlan_main;
@@ -212,7 +213,7 @@ int vnet_vxlan_add_del_tunnel
   if (!a->is_ip6) {
     key4.src = a->dst.ip4.as_u32; /* decap src in key is encap dst in config */
     key4.vni = clib_host_to_net_u32 (a->vni << 8);
-  
+
     p = hash_get (vxm->vxlan4_tunnel_by_key, key4.as_u64);
   } else {
     key6.src.as_u64[0] = a->dst.ip6.as_u64[0];
@@ -221,7 +222,7 @@ int vnet_vxlan_add_del_tunnel
 
     p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6);
   }
-  
+
   if (a->is_add)
     {
       /* adding a tunnel: tunnel must not already exist */
@@ -233,17 +234,17 @@ int vnet_vxlan_add_del_tunnel
 
       if (a->decap_next_index >= VXLAN_INPUT_N_NEXT)
         return VNET_API_ERROR_INVALID_DECAP_NEXT;
-      
+
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
       memset (t, 0, sizeof (*t));
-      
+
       /* copy from arg structure */
 #define _(x) t->x = a->x;
       foreach_copy_field;
       if (!a->is_ip6) foreach_copy_ipv4
       else            foreach_copy_ipv6
 #undef _
-      
+
       /* copy the key */
       if (a->is_ip6)
         {
@@ -273,14 +274,14 @@ int vnet_vxlan_add_del_tunnel
         hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
       else
         hash_set_mem (vxm->vxlan6_tunnel_by_key, t->key6, t - vxm->tunnels);
-      
+
       if (vec_len (vxm->free_vxlan_tunnel_hw_if_indices) > 0)
         {
 	  vnet_interface_main_t * im = &vnm->interface_main;
           hw_if_index = vxm->free_vxlan_tunnel_hw_if_indices
             [vec_len (vxm->free_vxlan_tunnel_hw_if_indices)-1];
           _vec_len (vxm->free_vxlan_tunnel_hw_if_indices) -= 1;
-          
+
           hi = vnet_get_hw_interface (vnm, hw_if_index);
           hi->dev_instance = t - vxm->tunnels;
           hi->hw_instance = hi->dev_instance;
@@ -288,15 +289,15 @@ int vnet_vxlan_add_del_tunnel
 	  /* clear old stats of freed tunnel before reuse */
 	  sw_if_index = hi->sw_if_index;
 	  vnet_interface_counter_lock(im);
-	  vlib_zero_combined_counter 
+	  vlib_zero_combined_counter
 	    (&im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX], sw_if_index);
-	  vlib_zero_combined_counter 
+	  vlib_zero_combined_counter
 	    (&im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX], sw_if_index);
-	  vlib_zero_simple_counter 
+	  vlib_zero_simple_counter
 	    (&im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP], sw_if_index);
 	  vnet_interface_counter_unlock(im);
         }
-      else 
+      else
         {
           hw_if_index = vnet_register_interface
             (vnm, vxlan_device_class.index, t - vxm->tunnels,
@@ -304,10 +305,10 @@ int vnet_vxlan_add_del_tunnel
           hi = vnet_get_hw_interface (vnm, hw_if_index);
           hi->output_node_index = vxlan_encap_node.index;
         }
-      
+
       t->hw_if_index = hw_if_index;
       t->sw_if_index = sw_if_index = hi->sw_if_index;
-      
+
       vec_validate_init_empty (vxm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
       vxm->tunnel_index_by_sw_if_index[sw_if_index] = t - vxm->tunnels;
 
@@ -319,16 +320,16 @@ int vnet_vxlan_add_del_tunnel
 	  l2im->configs[sw_if_index].feature_bitmap = L2INPUT_FEAT_DROP;
 	  l2im->configs[sw_if_index].bd_index = 0;
 	}
-      
-      /* 
+
+      /*
        * Directs the l2 output path to work out the interface
        * output next-arc itself. Needed when recycling a tunnel.
        */
-      vec_validate_init_empty(l2om->next_nodes.output_node_index_vec, 
+      vec_validate_init_empty(l2om->next_nodes.output_node_index_vec,
                               sw_if_index, ~0);
-      l2om->next_nodes.output_node_index_vec[t->sw_if_index] 
+      l2om->next_nodes.output_node_index_vec[t->sw_if_index]
         = ~0;
-      vnet_sw_interface_set_flags (vnm, sw_if_index, 
+      vnet_sw_interface_set_flags (vnm, sw_if_index,
                                    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
       if (!a->is_ip6) {
       vec_validate (im4->fib_index_by_sw_if_index, sw_if_index);
@@ -341,7 +342,7 @@ int vnet_vxlan_add_del_tunnel
   else
     {
       /* deleting a tunnel: tunnel must exist */
-      if (!p) 
+      if (!p)
         return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       t = pool_elt_at_index (vxm->tunnels, p[0]);
@@ -354,7 +355,7 @@ int vnet_vxlan_add_del_tunnel
       vxm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 
       /* Directs the l2 path to turf packets sent to this sw_if_index */
-      l2om->next_nodes.output_node_index_vec[t->sw_if_index] 
+      l2om->next_nodes.output_node_index_vec[t->sw_if_index]
         = L2OUTPUT_NEXT_DEL_TUNNEL;
 
       if (!a->is_ip6)
@@ -396,11 +397,26 @@ static u32 fib6_index_from_fib_id (u32 fib_id)
   return p[0];
 }
 
-static uword unformat_decap_next (unformat_input_t * input, va_list * args)
+static uword get_decap_next_for_plugin(char *name, u8 ipv6_set)
+{
+  vlib_node_t * plugin_input_node = 0;
+  uword slot = ~0;
+  vlib_main_t * vm = vlib_get_main();
+
+  plugin_input_node = vlib_get_node_by_name (vm, (u8 *)name);
+  ASSERT(plugin_input_node);
+
+  slot = vlib_node_get_slot_with_next (vm,
+            ipv6_set? vxlan6_input_node.index:vxlan4_input_node.index, plugin_input_node->index);
+
+  return slot;
+}
+
+static uword unformat_decap_next (unformat_input_t * input, u8 ipv6_set, va_list * args)
 {
   u32 * result = va_arg (*args, u32 *);
   u32 tmp;
-  
+
   if (unformat (input, "l2"))
     *result = VXLAN_INPUT_NEXT_L2_INPUT;
   else if (unformat (input, "drop"))
@@ -409,6 +425,8 @@ static uword unformat_decap_next (unformat_input_t * input, va_list * args)
     *result = VXLAN_INPUT_NEXT_IP4_INPUT;
   else if (unformat (input, "ip6"))
     *result = VXLAN_INPUT_NEXT_IP6_INPUT;
+  else if (unformat (input, "nsh"))
+    *result = get_decap_next_for_plugin("nsh_input", ipv6_set);
   else if (unformat (input, "%d", &tmp))
     *result = tmp;
   else
@@ -435,7 +453,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   int rv;
   vnet_vxlan_add_del_tunnel_args_t _a, * a = &_a;
   u32 sw_if_index;
-  
+
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -457,7 +475,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
         dst_set = 1;
         ipv4_set = 1;
       }
-    else if (unformat (line_input, "src %U", 
+    else if (unformat (line_input, "src %U",
                        unformat_ip6_address, &src.ip6))
       {
         src_set = 1;
@@ -478,16 +496,16 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
         if (encap_fib_index == ~0)
           return clib_error_return (0, "nonexistent encap-vrf-id %d", tmp);
       }
-    else if (unformat (line_input, "decap-next %U", unformat_decap_next, 
-                       &decap_next_index))
+    else if (unformat (line_input, "decap-next %U", unformat_decap_next,
+		       ipv6_set, &decap_next_index))
       ;
     else if (unformat (line_input, "vni %d", &vni))
       {
-        if (vni >> 24)  
+        if (vni >> 24)
           return clib_error_return (0, "vni %d out of range", vni);
       }
-    else 
-      return clib_error_return (0, "parse error: '%U'", 
+    else
+      return clib_error_return (0, "parse error: '%U'",
                                 format_unformat_error, line_input);
   }
 
@@ -519,7 +537,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   if (ipv4_set) foreach_copy_ipv4
   else          foreach_copy_ipv6
 #undef _
-  
+
   rv = vnet_vxlan_add_del_tunnel (a, &sw_if_index);
 
   switch(rv)
@@ -538,7 +556,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "tunnel does not exist...");
 
     default:
-      return clib_error_return 
+      return clib_error_return
         (0, "vnet_vxlan_add_del_tunnel returned %d", rv);
     }
 
@@ -547,9 +565,9 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
   .path = "create vxlan tunnel",
-  .short_help = 
-  "create vxlan tunnel src <local-vtep-addr> dst <remote-vtep-addr> vni <nn>" 
-  " [encap-vrf-id <nn>] [decap-next [l2|ip4|ip6] [del]\n",
+  .short_help =
+  "create vxlan tunnel src <local-vtep-addr> dst <remote-vtep-addr> vni <nn>"
+  " [encap-vrf-id <nn>] [decap-next [l2|ip4|ip6|nsh] [del]\n",
   .function = vxlan_add_del_tunnel_command_fn,
 };
 
@@ -560,7 +578,7 @@ show_vxlan_tunnel_command_fn (vlib_main_t * vm,
 {
   vxlan_main_t * vxm = &vxlan_main;
   vxlan_tunnel_t * t;
-  
+
   if (pool_elts (vxm->tunnels) == 0)
     vlib_cli_output (vm, "No vxlan tunnels configured...");
 
@@ -568,7 +586,7 @@ show_vxlan_tunnel_command_fn (vlib_main_t * vm,
   ({
     vlib_cli_output (vm, "%U", format_vxlan_tunnel, t);
   }));
-  
+
   return 0;
 }
 
@@ -581,7 +599,7 @@ VLIB_CLI_COMMAND (show_vxlan_tunnel_command, static) = {
 clib_error_t *vxlan_init (vlib_main_t *vm)
 {
   vxlan_main_t * vxm = &vxlan_main;
-  
+
   vxm->vnet_main = vnet_get_main();
   vxm->vlib_main = vm;
 
@@ -590,7 +608,7 @@ clib_error_t *vxlan_init (vlib_main_t *vm)
         sizeof(vxlan6_tunnel_key_t),
         sizeof(uword));
 
-  udp_register_dst_port (vm, UDP_DST_PORT_vxlan, 
+  udp_register_dst_port (vm, UDP_DST_PORT_vxlan,
                          vxlan4_input_node.index, /* is_ip4 */ 1);
   udp_register_dst_port (vm, UDP_DST_PORT_vxlan6,
                          vxlan6_input_node.index, /* is_ip4 */ 0);
