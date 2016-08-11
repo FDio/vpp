@@ -443,11 +443,13 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
 /* Register new packet processing node. */
 u32
+/* *INDENT-OFF* */
 vlib_register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 {
   register_node (vm, r);
   return r->index;
 }
+/* *INDENT-ON* */
 
 void
 vlib_register_all_static_nodes (vlib_main_t * vm)

@@ -1084,6 +1084,7 @@ void vlib_node_rename (vlib_main_t * vm, u32 node_index, char *fmt, ...);
 /* Register new packet processing node.  Nodes can be registered
    dynamically via this call or statically via the VLIB_REGISTER_NODE
    macro. */
+/* *INDENT-OFF* */
 u32 vlib_register_node (vlib_main_t * vm, vlib_node_registration_t * r);
 
 /* Register all static nodes registered via VLIB_REGISTER_NODE. */
@@ -1116,6 +1117,7 @@ vlib_node_increment_counter (vlib_main_t * vm, u32 node_index,
   u32 node_counter_base_index = n->error_heap_index;
   em->counters[node_counter_base_index + counter_index] += increment;
 }
+/* *INDENT-ON* */
 
 #endif /* included_vlib_node_funcs_h */
 

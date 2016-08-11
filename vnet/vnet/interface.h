@@ -153,6 +153,7 @@ typedef struct _vnet_device_class
 
 } vnet_device_class_t;
 
+/* *INDENT-OFF* */
 #define VNET_DEVICE_CLASS(x,...)                                        \
   __VA_ARGS__ vnet_device_class_t x;                                    \
 static void __vnet_add_device_class_registration_##x (void)             \
@@ -163,6 +164,7 @@ static void __vnet_add_device_class_registration_##x (void)             \
     x.next_class_registration = vnm->device_class_registrations;        \
     vnm->device_class_registrations = &x;                               \
 }                                                                       \
+ /* *INDENT-ON* */
 __VA_ARGS__ vnet_device_class_t x
 
 #define VLIB_DEVICE_TX_FUNCTION_CLONE_TEMPLATE(arch, fn, tgt)		\
@@ -249,6 +251,7 @@ typedef struct _vnet_hw_interface_class
 
 } vnet_hw_interface_class_t;
 
+/* *INDENT-OFF* */
 #define VNET_HW_INTERFACE_CLASS(x,...)                                  \
   __VA_ARGS__ vnet_hw_interface_class_t x;                              \
 static void __vnet_add_hw_interface_class_registration_##x (void)       \
@@ -259,6 +262,7 @@ static void __vnet_add_hw_interface_class_registration_##x (void)       \
     x.next_class_registration = vnm->hw_interface_class_registrations;  \
     vnm->hw_interface_class_registrations = &x;                         \
 }                                                                       \
+ /* *INDENT-ON* */
 __VA_ARGS__ vnet_hw_interface_class_t x
 
 /* Hardware-interface.  This corresponds to a physical wire

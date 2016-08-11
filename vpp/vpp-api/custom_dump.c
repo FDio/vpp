@@ -2271,6 +2271,7 @@ static u8 * format_lisp_eid_vat (u8 * s, va_list * args)
 }
 
 /** Used for transferring locators via VPP API */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   u8 is_ip4; /**< is locator an IPv4 address */
@@ -2278,6 +2279,7 @@ typedef CLIB_PACKED(struct
   u8 weight;   /**< locator weight */
   u8 addr[16]; /**< IPv4/IPv6 address */
 }) rloc_t;
+/* *INDENT-ON* */
 
 static u8 * format_rloc (u8 * s, va_list * args)
 {
@@ -2430,12 +2432,14 @@ static void *vl_api_lisp_gpe_enable_disable_t_print
   FINISH;
 }
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   u32 sw_if_index; /**< locator sw_if_index */
   u8 priority; /**< locator priority */
   u8 weight;   /**< locator weight */
 }) ls_locator_t;
+/* *INDENT-ON* */
 
 static u8 *
 format_locator (u8 * s, va_list * args)

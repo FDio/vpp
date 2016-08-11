@@ -88,6 +88,7 @@ format_vnet_hw_interface (u8 * s, va_list * args)
     {
       int hw_idx;
       s = format (s, "Slave-Idx:");
+      /* *INDENT-OFF* */
       clib_bitmap_foreach (hw_idx, hi->bond_info, s =
 			   format (s, " %d", hw_idx));
     }
@@ -117,6 +118,7 @@ format_vnet_hw_interface (u8 * s, va_list * args)
 		    format_white_space, indent + 2,
 		    dev_class->format_device, hi->dev_instance, verbose);
     }
+  /* *INDENT-ON* */
 
   return s;
 }

@@ -38,14 +38,18 @@ dummy_interface_tx (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (ipsec_device_class, static) =
 {
 .name = "IPSec",.format_device_name = format_ipsec_name,.format_tx_trace =
     format_ipsec_if_output_trace,.tx_function = dummy_interface_tx,};
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (ipsec_hw_class) =
 {
 .name = "IPSec",};
+/* *INDENT-ON* */
 
 
 static int

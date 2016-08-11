@@ -43,12 +43,14 @@
 #include <vlib/vlib.h>
 #include <vlib/pci/pci_config.h>
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (union
 		     {
 		     struct
 		     {
 u16 domain; u8 bus; u8 slot: 5; u8 function:3;};
 		     u32 as_u32;}) vlib_pci_addr_t;
+/* *INDENT-ON* */
 
 typedef struct vlib_pci_device
 {

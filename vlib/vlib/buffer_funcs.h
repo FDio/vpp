@@ -198,12 +198,14 @@ do {                                                             \
   vlib_main_t * _vmain = (vm);                                   \
   vlib_buffer_main_t * _bmain = &_vmain->buffer_main;            \
   hash_pair_t * _vbpair;                                         \
+  /* *INDENT-OFF* */
   hash_foreach_pair(_vbpair, _bmain->buffer_known_hash, ({       \
     if (VLIB_BUFFER_KNOWN_ALLOCATED == _vbpair->value[0]) {      \
       (bi) = _vbpair->key;                                       \
       body;                                                      \
     }                                                            \
   }));                                                           \
+/* *INDENT-ON* */
 } while (0)
 #endif
 

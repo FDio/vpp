@@ -151,6 +151,7 @@ typedef struct
   vlib_cli_command_t *cli_command_registrations;
 } vlib_cli_main_t;
 
+/* *INDENT-OFF* */
 #define VLIB_CLI_COMMAND(x,...)                                         \
     __VA_ARGS__ vlib_cli_command_t x;                                   \
 static void __vlib_cli_command_registration_##x (void)                  \
@@ -162,6 +163,7 @@ static void __vlib_cli_command_registration_##x (void)                  \
     x.next_cli_command = cm->cli_command_registrations;                 \
     cm->cli_command_registrations = &x;                                 \
 }                                                                       \
+ /* *INDENT-ON* */
 __VA_ARGS__ vlib_cli_command_t x
 #define VLIB_CLI_PARSE_RULE(x) \
   vlib_cli_parse_rule_t x

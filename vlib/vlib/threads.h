@@ -318,6 +318,7 @@ typedef struct
 
 vlib_thread_main_t vlib_thread_main;
 
+/* *INDENT-OFF* */
 #define VLIB_REGISTER_THREAD(x,...)                     \
   __VA_ARGS__ vlib_thread_registration_t x;             \
 static void __vlib_add_thread_registration_##x (void)   \
@@ -328,6 +329,7 @@ static void __vlib_add_thread_registration_##x (void)   \
   x.next = tm->next;                                    \
   tm->next = &x;                                        \
 }                                                       \
+ /* *INDENT-ON* */
 __VA_ARGS__ vlib_thread_registration_t x
 
 #endif /* included_vlib_threads_h */

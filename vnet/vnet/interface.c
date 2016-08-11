@@ -756,6 +756,7 @@ vnet_register_interface (vnet_main_t * vnm,
       r.name = tx_node_name;
       r.function = dev_class->tx_function;
 
+      /* *INDENT-OFF* */
       hw->tx_node_index = vlib_register_node (vm, &r);
 
       vlib_node_add_named_next_with_slot (vm, hw->tx_node_index,
@@ -778,6 +779,8 @@ vnet_register_interface (vnet_main_t * vnm,
 	r.n_errors = ARRAY_LEN (e);
 	r.error_strings = e;
       }
+      /* *INDENT-ON* */
+      /* *INDENT-OFF* */
       hw->output_node_index = vlib_register_node (vm, &r);
 
 #define _(sym,str) vlib_node_add_named_next_with_slot (vm, \
@@ -854,6 +857,7 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 
   pool_put (im->hw_interfaces, hw);
 }
+/* *INDENT-ON* */
 
 static void
 serialize_vnet_hw_interface_set_class (serialize_main_t * m, va_list * va)

@@ -450,10 +450,12 @@ check_retry (mc_main_t * mcm, mc_stream_t * s)
 	delete_peer_with_index (mcm, s, i, /* notify_application */ 1);
 
 	/* Delete any references to just deleted peer in retry pool. */
+	/* *INDENT-OFF* */
 	pool_foreach (r, s->retry_pool, ({
 	  r->unacked_by_peer_bitmap =
 	    clib_bitmap_andnoti (r->unacked_by_peer_bitmap, i);
 	}));
+	/* *INDENT-ON* */
       }));
 /* *INDENT-ON* */
       clib_bitmap_free (dead_peer_bitmap);
@@ -2440,6 +2442,7 @@ mc_main_init (mc_main_t * mcm, char *tag)
 
     r.name = (char *) format (0, "mc-mastership-%s", tag);
     r.function = mc_mastership_process;
+    /* *INDENT-OFF* */
     mcm->mastership_process = vlib_register_node (vm, &r);
 
     r.name = (char *) format (0, "mc-join-ager-%s", tag);
@@ -2490,6 +2493,7 @@ format_mc_relay_state (u8 * s, va_list * args)
 
   return format (s, "%s", t);
 }
+/* *INDENT-ON* */
 
 static u8 *
 format_mc_stream_state (u8 * s, va_list * args)

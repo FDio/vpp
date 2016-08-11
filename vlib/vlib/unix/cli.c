@@ -2228,6 +2228,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
       };
 
       r.name = name;
+      /* *INDENT-OFF* */
       vlib_register_node (vm, &r);
       vec_free (name);
 
@@ -2329,6 +2330,7 @@ unix_cli_listen_read_ready (unix_file_t * uf)
 
   return error;
 }
+/* *INDENT-ON* */
 
 /** The system terminal has informed us that the window size
  * has changed.

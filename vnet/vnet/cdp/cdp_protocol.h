@@ -20,6 +20,7 @@
 #include <vnet/snap/snap.h>
 #include <vnet/srp/packet.h>
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 		     {
 		     u8 version;
@@ -27,6 +28,7 @@ typedef CLIB_PACKED (struct
 		     u16 checksum;	/* 1's complement of the 1's complement sum */
 		     u8 data[0];
 		     }) cdp_hdr_t;
+/* *INDENT-ON* */
 
 typedef struct
 {
@@ -35,29 +37,37 @@ typedef struct
   u16 len;
 } ethernet_802_3_header_t;
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 		     {
 		     ethernet_802_3_header_t ethernet;
 		     llc_header_t llc; snap_header_t snap; cdp_hdr_t cdp;
 		     }) ethernet_llc_snap_and_cdp_header_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 		     {
 		     hdlc_header_t hdlc; cdp_hdr_t cdp;
 		     }) hdlc_and_cdp_header_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 		     {
 		     srp_header_t srp;
 		     ethernet_header_t ethernet; cdp_hdr_t cdp;
 		     }) srp_and_cdp_header_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 		     {
 		     u16 t;
 		     u16 l;
 		     u8 v[0];
 		     }) cdp_tlv_t;
+/* *INDENT-ON* */
 
 /*
  * TLV codes. 

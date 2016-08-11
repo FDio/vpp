@@ -139,6 +139,7 @@ do {                                                            \
     vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
 } while(0);
 
+/* *INDENT-OFF* */
 #define REPLY_MACRO2(t, body)                                   \
 do {                                                            \
     unix_shared_memory_queue_t * q;                             \
@@ -154,6 +155,7 @@ do {                                                            \
     do {body;} while (0);                                       \
     vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
 } while(0);
+/* *INDENT-ON* */
 
 #if (1 || CLIB_DEBUG > 0)	/* "trust, but verify" */
 
@@ -8023,6 +8025,7 @@ static void vl_api_##nn##_t_handler (                                   \
     unix_shared_memory_queue_t * q;                                     \
                                                                         \
     /* One registration only... */                                      \
+    /* *INDENT-OFF* */
     pool_foreach(reg, vam->nn##_registrations,                          \
     ({                                                                  \
         q = vl_api_client_index_to_input_queue (reg->client_index);     \
@@ -8041,6 +8044,7 @@ static void vl_api_##nn##_t_handler (                                   \
             return;                                                     \
         }                                                               \
     }));                                                                \
+/* *INDENT-ON* */
     vl_msg_api_free (mp);                                               \
 }
 

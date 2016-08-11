@@ -310,10 +310,12 @@ cli_show_trace_buffer (vlib_main_t * vm,
     trace_apply_filter(this_vlib_main);
 
     traces = 0;
+    /* *INDENT-OFF* */
     pool_foreach (h, tm->trace_buffer_pool,
     ({
       vec_add1 (traces, h[0]);
     }));
+    /* *INDENT-ON* */
 
     if (vec_len (traces) == 0)
       {

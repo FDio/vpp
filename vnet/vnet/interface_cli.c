@@ -100,6 +100,7 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
 
   /* Gather interfaces. */
   if (vec_len (hw_if_indices) == 0)
+    /* *INDENT-OFF* */
     pool_foreach (hi, im->hw_interfaces,
 		  vec_add1 (hw_if_indices, hi - im->hw_interfaces));
 
@@ -137,6 +138,7 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
 	    }
 	}
     }
+  /* *INDENT-ON* */
   else
     {
       for (i = 0; i < vec_len (hw_if_indices); i++)
@@ -222,10 +224,12 @@ show_sw_interfaces (vlib_main_t * vm,
       sorted_sis =
 	vec_new (vnet_sw_interface_t, pool_elts (im->sw_interfaces));
       _vec_len (sorted_sis) = 0;
+      /* *INDENT-OFF* */
       pool_foreach (si, im->sw_interfaces, (
 					     {
 					     vec_add1 (sorted_sis, si[0]);
 					     }
+					     /* *INDENT-ON* */
 		    ));
 
       /* Sort by name. */

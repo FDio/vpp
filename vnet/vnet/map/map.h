@@ -112,12 +112,14 @@ typedef struct
  */
 /* *INDENT-OFF* */
 typedef union {
+  /* *INDENT-OFF* */
   CLIB_PACKED (struct {
     ip4_address_t src;
     ip4_address_t dst;
     u16 fragment_id;
     u8 protocol;
   });
+  /* *INDENT-ON* */
   u64 as_u64[2];
   u32 as_u32[4];
 } map_ip4_reass_key_t;
@@ -157,12 +159,14 @@ typedef enum
  */
 /* *INDENT-OFF* */
 typedef union {
+  /* *INDENT-OFF* */
   CLIB_PACKED (struct {
     ip6_address_t src;
     ip6_address_t dst;
     u32 fragment_id;
     u8 protocol;
   });
+  /* *INDENT-ON* */
   u64 as_u64[5];
   u32 as_u32[10];
 } map_ip6_reass_key_t;

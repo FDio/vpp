@@ -11481,11 +11481,13 @@ api_get_node_graph (vat_main_t * vam)
 
 /* *INDENT-OFF* */
 /** Used for parsing LISP eids */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct{
   u8 addr[16];   /**< eid address */
   u32 len;       /**< prefix length if IP */
   u8 type;      /**< type of eid */
 }) lisp_eid_vat_t;
+/* *INDENT-ON* */
 /* *INDENT-ON* */
 
 static uword
@@ -11543,12 +11545,14 @@ lisp_eid_put_vat (u8 * dst, u8 eid[16], u8 type)
 
 /* *INDENT-OFF* */
 /** Used for transferring locators via VPP API */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   u32 sw_if_index; /**< locator sw_if_index */
   u8 priority; /**< locator priority */
   u8 weight;   /**< locator weight */
 }) ls_locator_t;
+/* *INDENT-ON* */
 /* *INDENT-ON* */
 
 static int
@@ -11831,6 +11835,7 @@ api_lisp_add_del_local_eid (vat_main_t * vam)
 
 /* *INDENT-OFF* */
 /** Used for transferring locators via VPP API */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   u8 is_ip4; /**< is locator an IPv4 address? */
@@ -11838,6 +11843,7 @@ typedef CLIB_PACKED(struct
   u8 weight;   /**< locator weight */
   u8 addr[16]; /**< IPv4/IPv6 address */
 }) rloc_t;
+/* *INDENT-ON* */
 /* *INDENT-ON* */
 
 static int

@@ -115,11 +115,13 @@
       return 0;
     }     
 
+    /* *INDENT-OFF* */
     static VLIB_REGISTER_NODE (example_node) = {
       .function = example_process,
       .type = VLIB_NODE_TYPE_PROCESS,
       .name = "example-process",
     };
+/* *INDENT-ON* */
     </pre>
 
     In this example, the VLIB process node waits for an event to

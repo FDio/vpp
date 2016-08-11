@@ -214,12 +214,14 @@ do_combined_interface_counters (stats_main_t * sm)
 }
 
 /* from .../vnet/vnet/ip/lookup.c. Yuck */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 		     {
 		     ip4_address_t address;
 u32 address_length: 6;
 u32 index:	     26;
 		     }) ip4_route_t;
+/* *INDENT-ON* */
 
 static void
 ip46_fib_stats_delay (stats_main_t * sm, u32 sec, u32 nsec)

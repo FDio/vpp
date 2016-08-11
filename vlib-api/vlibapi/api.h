@@ -87,11 +87,13 @@ typedef struct
   u8 **traces;
 } vl_api_trace_t;
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 		     {
 		     u8 endian; u8 wrapped;
 		     u32 nitems;
 		     }) vl_api_trace_file_header_t;
+/* *INDENT-ON* */
 
 typedef enum
 {
