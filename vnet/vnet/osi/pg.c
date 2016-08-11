@@ -41,7 +41,8 @@
 #include <vnet/pg/pg.h>
 #include <vnet/osi/osi.h>
 
-typedef struct {
+typedef struct
+{
   pg_edit_t protocol;
 } pg_osi_header_t;
 
@@ -54,24 +55,23 @@ pg_osi_header_init (pg_osi_header_t * e)
 uword
 unformat_pg_osi_header (unformat_input_t * input, va_list * args)
 {
-  pg_stream_t * s = va_arg (*args, pg_stream_t *);
-  pg_osi_header_t * h;
+  pg_stream_t *s = va_arg (*args, pg_stream_t *);
+  pg_osi_header_t *h;
   u32 group_index, error;
-  
+
   h = pg_create_edit_group (s, sizeof (h[0]), sizeof (osi_header_t),
 			    &group_index);
   pg_osi_header_init (h);
 
   error = 1;
-  if (! unformat (input, "%U",
-		  unformat_pg_edit,
-		    unformat_osi_protocol, &h->protocol))
+  if (!unformat (input, "%U",
+		 unformat_pg_edit, unformat_osi_protocol, &h->protocol))
     goto done;
 
   {
-    osi_main_t * pm = &osi_main;
-    osi_protocol_info_t * pi = 0;
-    pg_node_t * pg_node = 0;
+    osi_main_t *pm = &osi_main;
+    osi_protocol_info_t *pi = 0;
+    pg_node_t *pg_node = 0;
 
     if (h->protocol.type == PG_EDIT_FIXED)
       {
@@ -85,14 +85,22 @@ unformat_pg_osi_header (unformat_input_t * input, va_list * args)
 	&& unformat_user (input, pg_node->unformat_edit, s))
       ;
 
-    else if (! unformat_user (input, unformat_pg_payload, s))
+    else if (!unformat_user (input, unformat_pg_payload, s))
       goto done;
   }
 
   error = 0;
- done:
+done:
   if (error)
     pg_free_edit_group (s);
   return error == 0;
 }
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
