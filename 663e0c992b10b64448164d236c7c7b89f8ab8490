@@ -1,0 +1,182 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_8be2cf9d",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-11T15:34:41Z",
+      "side": 1,
+      "message": "I guess these should be moved to control.h. Any reason why you added them here?",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 23,
+        "endChar": 38
+      },
+      "revId": "663e0c992b10b64448164d236c7c7b89f8ab8490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_8b2c0fad",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2572,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-11T15:34:41Z",
+      "side": 1,
+      "message": "Maybe we should add an assert here that the lock is owned. Same holds for other places where we touch the pending map request pool.",
+      "revId": "663e0c992b10b64448164d236c7c7b89f8ab8490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_8eb65d3c",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2574,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-11T15:34:41Z",
+      "side": 1,
+      "message": "Fine for now, eventually we can make it a src+dst exact match in a bi-hash",
+      "range": {
+        "startLine": 2574,
+        "startChar": 2,
+        "endLine": 2574,
+        "endChar": 14
+      },
+      "revId": "663e0c992b10b64448164d236c7c7b89f8ab8490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_4e884571",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2627,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-11T15:34:41Z",
+      "side": 1,
+      "message": "This finds an egrees IP for the MR but also does the election of the MR. I think we should avoid elections unless we detected that the MR is unresponsive. So, here we should just use the elected MR (if one exists, otherwise start election) and find the source IP we should use.",
+      "range": {
+        "startLine": 2627,
+        "startChar": 11,
+        "endLine": 2627,
+        "endChar": 36
+      },
+      "revId": "663e0c992b10b64448164d236c7c7b89f8ab8490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_aeb92130",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2664,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-11T15:34:41Z",
+      "side": 1,
+      "message": "Well, this means that if the reply for the old nonce eventually comes,  it\u0027ll be dropped. If RTT to map-server is greater than the inter-map-request-packet rate, possible in practice, we\u0027ll drop all replies. We can either not accept this or have a constrained list (say 3 elements) of outgoing nonces. Probably we should go with 1 for now, but I imagine this will increase a lot the first mapping resolution time, if the map-request is dropped because of ARPs. Probably we should check when a map-resolver is configured if it\u0027s part of one of our local lans and just force the population of the ARP table.",
+      "range": {
+        "startLine": 2664,
+        "startChar": 0,
+        "endLine": 2664,
+        "endChar": 34
+      },
+      "revId": "663e0c992b10b64448164d236c7c7b89f8ab8490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_eb770bd3",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2972,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-11T15:34:41Z",
+      "side": 1,
+      "message": "why void * ?",
+      "range": {
+        "startLine": 2972,
+        "startChar": 0,
+        "endLine": 2972,
+        "endChar": 6
+      },
+      "revId": "663e0c992b10b64448164d236c7c7b89f8ab8490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_2e7d116f",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 3261,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-11T15:34:41Z",
+      "side": 1,
+      "message": "Shouldn\u0027t we also be doing the MR election here?",
+      "range": {
+        "startLine": 3261,
+        "startChar": 8,
+        "endLine": 3261,
+        "endChar": 13
+      },
+      "revId": "663e0c992b10b64448164d236c7c7b89f8ab8490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_0b411f5a",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 3318,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-11T15:34:41Z",
+      "side": 1,
+      "message": "nit: you could lose this and just use pool_put_index lower",
+      "range": {
+        "startLine": 3317,
+        "startChar": 0,
+        "endLine": 3318,
+        "endChar": 45
+      },
+      "revId": "663e0c992b10b64448164d236c7c7b89f8ab8490",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
