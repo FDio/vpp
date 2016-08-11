@@ -65,21 +65,24 @@
   _ (ip4, 0xcc)					\
   _ (ppp, 0xcf)
 
-typedef enum {
+typedef enum
+{
 #define _(f,n) OSI_PROTOCOL_##f = n,
   foreach_osi_protocol
 #undef _
 } osi_protocol_t;
 
-typedef struct {
+typedef struct
+{
   u8 protocol;
 
   u8 payload[0];
 } osi_header_t;
 
-typedef struct {
+typedef struct
+{
   /* Name (a c string). */
-  char * name;
+  char *name;
 
   /* OSI protocol (SAP type). */
   osi_protocol_t protocol;
@@ -95,20 +98,22 @@ typedef struct {
   _ (NONE, "no error")				\
   _ (UNKNOWN_PROTOCOL, "unknown osi protocol")
 
-typedef enum {
+typedef enum
+{
 #define _(f,s) OSI_ERROR_##f,
   foreach_osi_error
 #undef _
-  OSI_N_ERROR,
+    OSI_N_ERROR,
 } osi_error_t;
 
-typedef struct {
-  vlib_main_t * vlib_main;
+typedef struct
+{
+  vlib_main_t *vlib_main;
 
-  osi_protocol_info_t * protocol_infos;
+  osi_protocol_info_t *protocol_infos;
 
   /* Hash tables mapping name/protocol to protocol info index. */
-  uword * protocol_info_by_name, * protocol_info_by_protocol;
+  uword *protocol_info_by_name, *protocol_info_by_protocol;
 
   /* osi-input next index indexed by protocol. */
   u8 input_next_by_protocol[256];
@@ -117,20 +122,17 @@ typedef struct {
 always_inline osi_protocol_info_t *
 osi_get_protocol_info (osi_main_t * m, osi_protocol_t protocol)
 {
-  uword * p = hash_get (m->protocol_info_by_protocol, protocol);
+  uword *p = hash_get (m->protocol_info_by_protocol, protocol);
   return p ? vec_elt_at_index (m->protocol_infos, p[0]) : 0;
 }
 
 extern osi_main_t osi_main;
 
 /* Register given node index to take input for given osi type. */
-void
-osi_register_input_protocol (osi_protocol_t protocol,
-                             u32 node_index);
+void osi_register_input_protocol (osi_protocol_t protocol, u32 node_index);
 
 void osi_set_adjacency (vnet_rewrite_header_t * rw,
-			uword max_data_bytes,
-			osi_protocol_t protocol);
+			uword max_data_bytes, osi_protocol_t protocol);
 
 format_function_t format_osi_protocol;
 format_function_t format_osi_header;
@@ -146,18 +148,24 @@ unformat_function_t unformat_pg_osi_header;
 always_inline void
 osi_setup_node (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  pg_node_t * pn = pg_get_node (node_index);
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  pg_node_t *pn = pg_get_node (node_index);
 
   n->format_buffer = format_osi_header_with_length;
   n->unformat_buffer = unformat_osi_header;
   pn->unformat_edit = unformat_pg_osi_header;
 }
 
-void
-osi_register_input_protocol (osi_protocol_t protocol,
-			     u32 node_index);
+void osi_register_input_protocol (osi_protocol_t protocol, u32 node_index);
 
 format_function_t format_osi_header;
 
 #endif /* included_osi_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
