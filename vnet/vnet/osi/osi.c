@@ -43,11 +43,12 @@
 /* Global main structure. */
 osi_main_t osi_main;
 
-u8 * format_osi_protocol (u8 * s, va_list * args)
+u8 *
+format_osi_protocol (u8 * s, va_list * args)
 {
   osi_protocol_t p = va_arg (*args, u32);
-  osi_main_t * pm = &osi_main;
-  osi_protocol_info_t * pi = osi_get_protocol_info (pm, p);
+  osi_main_t *pm = &osi_main;
+  osi_protocol_info_t *pi = osi_get_protocol_info (pm, p);
 
   if (pi)
     s = format (s, "%s", pi->name);
@@ -57,10 +58,11 @@ u8 * format_osi_protocol (u8 * s, va_list * args)
   return s;
 }
 
-u8 * format_osi_header_with_length (u8 * s, va_list * args)
+u8 *
+format_osi_header_with_length (u8 * s, va_list * args)
 {
-  osi_main_t * pm = &osi_main;
-  osi_header_t * h = va_arg (*args, osi_header_t *);
+  osi_main_t *pm = &osi_main;
+  osi_header_t *h = va_arg (*args, osi_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   osi_protocol_t p = h->protocol;
   uword indent, header_bytes;
@@ -75,8 +77,8 @@ u8 * format_osi_header_with_length (u8 * s, va_list * args)
 
   if (max_header_bytes != 0 && header_bytes > max_header_bytes)
     {
-      osi_protocol_info_t * pi = osi_get_protocol_info (pm, p);
-      vlib_node_t * node = vlib_get_node (pm->vlib_main, pi->node_index);
+      osi_protocol_info_t *pi = osi_get_protocol_info (pm, p);
+      vlib_node_t *node = vlib_get_node (pm->vlib_main, pi->node_index);
       if (node->format_buffer)
 	s = format (s, "\n%U%U",
 		    format_white_space, indent,
@@ -87,9 +89,10 @@ u8 * format_osi_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-u8 * format_osi_header (u8 * s, va_list * args)
+u8 *
+format_osi_header (u8 * s, va_list * args)
 {
-  osi_header_t * h = va_arg (*args, osi_header_t *);
+  osi_header_t *h = va_arg (*args, osi_header_t *);
   return format (s, "%U", format_osi_header_with_length, h, 0);
 }
 
@@ -97,13 +100,12 @@ u8 * format_osi_header (u8 * s, va_list * args)
 uword
 unformat_osi_protocol (unformat_input_t * input, va_list * args)
 {
-  u8 * result = va_arg (*args, u8 *);
-  osi_main_t * pm = &osi_main;
+  u8 *result = va_arg (*args, u8 *);
+  osi_main_t *pm = &osi_main;
   int p, i;
 
   /* Numeric type. */
-  if (unformat (input, "0x%x", &p)
-      || unformat (input, "%d", &p))
+  if (unformat (input, "0x%x", &p) || unformat (input, "%d", &p))
     {
       if (p >= (1 << 8))
 	return 0;
@@ -115,7 +117,7 @@ unformat_osi_protocol (unformat_input_t * input, va_list * args)
   if (unformat_user (input, unformat_vlib_number_by_name,
 		     pm->protocol_info_by_name, &i))
     {
-      osi_protocol_info_t * pi = vec_elt_at_index (pm->protocol_infos, i);
+      osi_protocol_info_t *pi = vec_elt_at_index (pm->protocol_infos, i);
       *result = pi->protocol;
       return 1;
     }
@@ -126,32 +128,31 @@ unformat_osi_protocol (unformat_input_t * input, va_list * args)
 uword
 unformat_osi_header (unformat_input_t * input, va_list * args)
 {
-  u8 ** result = va_arg (*args, u8 **);
-  osi_header_t _h, * h = &_h;
+  u8 **result = va_arg (*args, u8 **);
+  osi_header_t _h, *h = &_h;
   u8 p;
 
-  if (! unformat (input, "%U", unformat_osi_protocol, &p))
+  if (!unformat (input, "%U", unformat_osi_protocol, &p))
     return 0;
 
   h->protocol = p;
 
   /* Add header to result. */
   {
-    void * p;
+    void *p;
     u32 n_bytes = sizeof (h[0]);
 
     vec_add2 (*result, p, n_bytes);
     clib_memcpy (p, h, n_bytes);
   }
-  
+
   return 1;
 }
 
-static void add_protocol (osi_main_t * pm,
-			  osi_protocol_t protocol,
-			  char * protocol_name)
+static void
+add_protocol (osi_main_t * pm, osi_protocol_t protocol, char *protocol_name)
 {
-  osi_protocol_info_t * pi;
+  osi_protocol_info_t *pi;
   u32 i;
 
   vec_add2 (pm->protocol_infos, pi, 1);
@@ -165,13 +166,14 @@ static void add_protocol (osi_main_t * pm,
   hash_set_mem (pm->protocol_info_by_name, pi->name, i);
 }
 
-static clib_error_t * osi_init (vlib_main_t * vm)
+static clib_error_t *
+osi_init (vlib_main_t * vm)
 {
-  clib_error_t * error = 0;
-  osi_main_t * pm = &osi_main;
+  clib_error_t *error = 0;
+  osi_main_t *pm = &osi_main;
 
   /* init order dependency: llc_init -> osi_init */
-  if ((error = vlib_call_init_function(vm, llc_init)))
+  if ((error = vlib_call_init_function (vm, llc_init)))
     return error;
 
   memset (pm, 0, sizeof (pm[0]));
@@ -189,3 +191,11 @@ static clib_error_t * osi_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (osi_init);
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
