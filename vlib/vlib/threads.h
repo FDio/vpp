@@ -331,9 +331,7 @@ static void __vlib_add_thread_registration_##x (void)   \
 }                                                       \
  /* *INDENT-ON* */
 __VA_ARGS__ vlib_thread_registration_t x
-
-#endif /* included_vlib_threads_h */
-
+#endif				/* included_vlib_threads_h */
 /*
  * fd.io coding-style-patch-verification: ON
  *

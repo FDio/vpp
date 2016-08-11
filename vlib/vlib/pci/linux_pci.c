@@ -149,7 +149,8 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
 	{
 	  /* Some interfaces (eg "lo") don't support this ioctl */
 	  if ((errno != ENOTSUP) && (errno != ENODEV))
-	    clib_unix_warning ("ioctl fetch intf %s bus info error", e->d_name);
+	    clib_unix_warning ("ioctl fetch intf %s bus info error",
+			       e->d_name);
 	  continue;
 	}
 

@@ -2335,203 +2335,201 @@ unix_cli_listen_read_ready (unix_file_t * uf)
 /** The system terminal has informed us that the window size
  * has changed.
  */
-static void
-unix_cli_resize_interrupt (int signum)
-{
-  unix_main_t *um = &unix_main;
-  unix_cli_main_t *cm = &unix_cli_main;
-  unix_cli_file_t *cf = pool_elt_at_index (cm->cli_file_pool,
-					   cm->stdin_cli_file_index);
-  unix_file_t *uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
-  struct winsize ws;
-  (void) signum;
+      static void unix_cli_resize_interrupt (int signum)
+      {
+	unix_main_t *um = &unix_main;
+	unix_cli_main_t *cm = &unix_cli_main;
+	unix_cli_file_t *cf = pool_elt_at_index (cm->cli_file_pool,
+						 cm->stdin_cli_file_index);
+	unix_file_t *uf =
+	  pool_elt_at_index (um->file_pool, cf->unix_file_index);
+	struct winsize ws;
+	(void) signum;
 
-  /* Terminal resized, fetch the new size */
-  if (ioctl (UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws) < 0)
-    {
-      /* "Should never happen..." */
-      clib_unix_warning ("TIOCGWINSZ");
-      /* We can't trust ws.XXX... */
-      return;
-    }
-  cf->width = ws.ws_col;
-  cf->height = ws.ws_row;
+	/* Terminal resized, fetch the new size */
+	if (ioctl (UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws) < 0)
+	  {
+	    /* "Should never happen..." */
+	    clib_unix_warning ("TIOCGWINSZ");
+	    /* We can't trust ws.XXX... */
+	    return;
+	  }
+	cf->width = ws.ws_col;
+	cf->height = ws.ws_row;
 
-  /* Reindex the pager buffer */
-  unix_cli_pager_reindex (cf);
+	/* Reindex the pager buffer */
+	unix_cli_pager_reindex (cf);
 
-  /* Redraw the page */
-  unix_cli_pager_redraw (cf, uf);
-}
+	/* Redraw the page */
+	unix_cli_pager_redraw (cf, uf);
+      }
 
 /** Handle configuration directives in the @em unix section. */
-static clib_error_t *
-unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
-{
-  unix_main_t *um = &unix_main;
-  unix_cli_main_t *cm = &unix_cli_main;
-  int flags;
-  clib_error_t *error = 0;
-  unix_cli_file_t *cf;
-  u32 cf_index;
-  struct termios tio;
-  struct sigaction sa;
-  struct winsize ws;
-  u8 *term;
+      static clib_error_t *unix_cli_config (vlib_main_t * vm,
+					    unformat_input_t * input)
+      {
+	unix_main_t *um = &unix_main;
+	unix_cli_main_t *cm = &unix_cli_main;
+	int flags;
+	clib_error_t *error = 0;
+	unix_cli_file_t *cf;
+	u32 cf_index;
+	struct termios tio;
+	struct sigaction sa;
+	struct winsize ws;
+	u8 *term;
 
-  /* We depend on unix flags being set. */
-  if ((error = vlib_call_config_function (vm, unix_config)))
-    return error;
+	/* We depend on unix flags being set. */
+	if ((error = vlib_call_config_function (vm, unix_config)))
+	  return error;
 
-  if (um->flags & UNIX_FLAG_INTERACTIVE)
-    {
-      /* Set stdin to be non-blocking. */
-      if ((flags = fcntl (UNIX_CLI_STDIN_FD, F_GETFL, 0)) < 0)
-	flags = 0;
-      (void) fcntl (UNIX_CLI_STDIN_FD, F_SETFL, flags | O_NONBLOCK);
+	if (um->flags & UNIX_FLAG_INTERACTIVE)
+	  {
+	    /* Set stdin to be non-blocking. */
+	    if ((flags = fcntl (UNIX_CLI_STDIN_FD, F_GETFL, 0)) < 0)
+	      flags = 0;
+	    (void) fcntl (UNIX_CLI_STDIN_FD, F_SETFL, flags | O_NONBLOCK);
 
-      cf_index = unix_cli_file_add (cm, "stdin", UNIX_CLI_STDIN_FD);
-      cf = pool_elt_at_index (cm->cli_file_pool, cf_index);
-      cm->stdin_cli_file_index = cf_index;
+	    cf_index = unix_cli_file_add (cm, "stdin", UNIX_CLI_STDIN_FD);
+	    cf = pool_elt_at_index (cm->cli_file_pool, cf_index);
+	    cm->stdin_cli_file_index = cf_index;
 
-      /* If stdin is a tty and we are using chacracter mode, enable
-       * history on the CLI and set the tty line discipline accordingly. */
-      if (isatty (UNIX_CLI_STDIN_FD) && um->cli_line_mode == 0)
-	{
-	  /* Capture terminal resize events */
-          memset (&sa, 0, sizeof(sa));
-	  sa.sa_handler = unix_cli_resize_interrupt;
-	  if (sigaction (SIGWINCH, &sa, 0) < 0)
-	    clib_panic ("sigaction");
+	    /* If stdin is a tty and we are using chacracter mode, enable
+	     * history on the CLI and set the tty line discipline accordingly. */
+	    if (isatty (UNIX_CLI_STDIN_FD) && um->cli_line_mode == 0)
+	      {
+		/* Capture terminal resize events */
+		memset (&sa, 0, sizeof (sa));
+		sa.sa_handler = unix_cli_resize_interrupt;
+		if (sigaction (SIGWINCH, &sa, 0) < 0)
+		  clib_panic ("sigaction");
 
-	  /* Retrieve the current terminal size */
-	  ioctl (UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws);
-	  cf->width = ws.ws_col;
-	  cf->height = ws.ws_row;
+		/* Retrieve the current terminal size */
+		ioctl (UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws);
+		cf->width = ws.ws_col;
+		cf->height = ws.ws_row;
 
-	  if (cf->width == 0 || cf->height == 0)
-	    /* We have a tty, but no size. Stick to line mode. */
-	    goto notty;
+		if (cf->width == 0 || cf->height == 0)
+		  /* We have a tty, but no size. Stick to line mode. */
+		  goto notty;
 
-	  /* Setup the history */
-	  cf->history_limit = um->cli_history_limit;
-	  cf->has_history = cf->history_limit != 0;
+		/* Setup the history */
+		cf->history_limit = um->cli_history_limit;
+		cf->has_history = cf->history_limit != 0;
 
-	  /* Setup the pager */
-	  cf->no_pager = um->cli_no_pager;
+		/* Setup the pager */
+		cf->no_pager = um->cli_no_pager;
 
-	  /* We're going to be in char by char mode */
-	  cf->line_mode = 0;
+		/* We're going to be in char by char mode */
+		cf->line_mode = 0;
 
-	  /* Save the original tty state so we can restore it later */
-	  tcgetattr (UNIX_CLI_STDIN_FD, &um->tio_stdin);
-	  um->tio_isset = 1;
+		/* Save the original tty state so we can restore it later */
+		tcgetattr (UNIX_CLI_STDIN_FD, &um->tio_stdin);
+		um->tio_isset = 1;
 
-	  /* Tweak the tty settings */
-	  tio = um->tio_stdin;
-	  /* echo off, canonical mode off, ext'd input processing off */
-	  tio.c_lflag &= ~(ECHO | ICANON | IEXTEN);
-	  tio.c_cc[VMIN] = 1;	/* 1 byte at a time */
-	  tio.c_cc[VTIME] = 0;	/* no timer */
-	  tcsetattr (UNIX_CLI_STDIN_FD, TCSAFLUSH, &tio);
+		/* Tweak the tty settings */
+		tio = um->tio_stdin;
+		/* echo off, canonical mode off, ext'd input processing off */
+		tio.c_lflag &= ~(ECHO | ICANON | IEXTEN);
+		tio.c_cc[VMIN] = 1;	/* 1 byte at a time */
+		tio.c_cc[VTIME] = 0;	/* no timer */
+		tcsetattr (UNIX_CLI_STDIN_FD, TCSAFLUSH, &tio);
 
-	  /* See if we can do ANSI/VT100 output */
-	  term = (u8 *) getenv ("TERM");
-	  if (term != NULL)
-	    cf->ansi_capable = unix_cli_terminal_type (term,
-						       strlen ((char *)
-							       term));
-	}
-      else
-	{
-	notty:
-	  /* No tty, so make sure these things are off */
-	  cf->no_pager = 1;
-	  cf->history_limit = 0;
-	  cf->has_history = 0;
-	  cf->line_mode = 1;
-	}
+		/* See if we can do ANSI/VT100 output */
+		term = (u8 *) getenv ("TERM");
+		if (term != NULL)
+		  cf->ansi_capable = unix_cli_terminal_type (term,
+							     strlen ((char *)
+								     term));
+	      }
+	    else
+	      {
+	      notty:
+		/* No tty, so make sure these things are off */
+		cf->no_pager = 1;
+		cf->history_limit = 0;
+		cf->has_history = 0;
+		cf->line_mode = 1;
+	      }
 
-      /* Send banner and initial prompt */
-      unix_cli_file_welcome (cm, cf);
-    }
+	    /* Send banner and initial prompt */
+	    unix_cli_file_welcome (cm, cf);
+	  }
 
-  /* If we have socket config, LISTEN, otherwise, don't */
-  clib_socket_t *s = &um->cli_listen_socket;
-  if (s->config && s->config[0] != 0)
-    {
-      /* CLI listen. */
-      unix_file_t template = { 0 };
+	/* If we have socket config, LISTEN, otherwise, don't */
+	clib_socket_t *s = &um->cli_listen_socket;
+	if (s->config && s->config[0] != 0)
+	  {
+	    /* CLI listen. */
+	    unix_file_t template = { 0 };
 
-      s->flags = SOCKET_IS_SERVER;	/* listen, don't connect */
-      error = clib_socket_init (s);
+	    s->flags = SOCKET_IS_SERVER;	/* listen, don't connect */
+	    error = clib_socket_init (s);
 
-      if (error)
-	return error;
+	    if (error)
+	      return error;
 
-      template.read_function = unix_cli_listen_read_ready;
-      template.file_descriptor = s->fd;
+	    template.read_function = unix_cli_listen_read_ready;
+	    template.file_descriptor = s->fd;
 
-      unix_file_add (um, &template);
-    }
+	    unix_file_add (um, &template);
+	  }
 
-  /* Set CLI prompt. */
-  if (!cm->cli_prompt)
-    cm->cli_prompt = format (0, "VLIB: ");
+	/* Set CLI prompt. */
+	if (!cm->cli_prompt)
+	  cm->cli_prompt = format (0, "VLIB: ");
 
-  return 0;
-}
+	return 0;
+      }
 
-VLIB_CONFIG_FUNCTION (unix_cli_config, "unix-cli");
+      VLIB_CONFIG_FUNCTION (unix_cli_config, "unix-cli");
 
 /** Called when VPP is shutting down, this resets the system
  * terminal state, if previously saved.
  */
-static clib_error_t *
-unix_cli_exit (vlib_main_t * vm)
-{
-  unix_main_t *um = &unix_main;
+      static clib_error_t *unix_cli_exit (vlib_main_t * vm)
+      {
+	unix_main_t *um = &unix_main;
 
-  /* If stdin is a tty and we saved the tty state, reset the tty state */
-  if (isatty (UNIX_CLI_STDIN_FD) && um->tio_isset)
-    tcsetattr (UNIX_CLI_STDIN_FD, TCSAFLUSH, &um->tio_stdin);
+	/* If stdin is a tty and we saved the tty state, reset the tty state */
+	if (isatty (UNIX_CLI_STDIN_FD) && um->tio_isset)
+	  tcsetattr (UNIX_CLI_STDIN_FD, TCSAFLUSH, &um->tio_stdin);
 
-  return 0;
-}
+	return 0;
+      }
 
-VLIB_MAIN_LOOP_EXIT_FUNCTION (unix_cli_exit);
+      VLIB_MAIN_LOOP_EXIT_FUNCTION (unix_cli_exit);
 
 /** Set the CLI prompt.
  * @param The C string to set the prompt to.
  * @note This setting is global; it impacts all current
  *       and future CLI sessions.
  */
-void
-vlib_unix_cli_set_prompt (char *prompt)
-{
-  char *fmt = (prompt[strlen (prompt) - 1] == ' ') ? "%s" : "%s ";
-  unix_cli_main_t *cm = &unix_cli_main;
-  if (cm->cli_prompt)
-    vec_free (cm->cli_prompt);
-  cm->cli_prompt = format (0, fmt, prompt);
-}
+      void vlib_unix_cli_set_prompt (char *prompt)
+      {
+	char *fmt = (prompt[strlen (prompt) - 1] == ' ') ? "%s" : "%s ";
+	unix_cli_main_t *cm = &unix_cli_main;
+	if (cm->cli_prompt)
+	  vec_free (cm->cli_prompt);
+	cm->cli_prompt = format (0, fmt, prompt);
+      }
 
 /** CLI command to quit the terminal session.
  * @note If this is a stdin session then this will
  *       shutdown VPP also.
  */
-static clib_error_t *
-unix_cli_quit (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  unix_cli_main_t *cm = &unix_cli_main;
+      static clib_error_t *unix_cli_quit (vlib_main_t * vm,
+					  unformat_input_t * input,
+					  vlib_cli_command_t * cmd)
+      {
+	unix_cli_main_t *cm = &unix_cli_main;
 
-  vlib_process_signal_event (vm,
-			     vlib_current_process (vm),
-			     UNIX_CLI_PROCESS_EVENT_QUIT,
-			     cm->current_input_file_index);
-  return 0;
-}
+	vlib_process_signal_event (vm,
+				   vlib_current_process (vm),
+				   UNIX_CLI_PROCESS_EVENT_QUIT,
+				   cm->current_input_file_index);
+	return 0;
+      }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (unix_cli_quit_command, static) = {
@@ -2542,62 +2540,65 @@ VLIB_CLI_COMMAND (unix_cli_quit_command, static) = {
 /* *INDENT-ON* */
 
 /** CLI command to execute a VPP command script. */
-static clib_error_t *
-unix_cli_exec (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  char *file_name;
-  int fd;
-  unformat_input_t sub_input;
-  clib_error_t *error;
-
-  file_name = 0;
-  fd = -1;
-  error = 0;
-
-  if (!unformat (input, "%s", &file_name))
-    {
-      error = clib_error_return (0, "expecting file name, got `%U'",
-				 format_unformat_error, input);
-      goto done;
-    }
-
-  fd = open (file_name, O_RDONLY);
-  if (fd < 0)
-    {
-      error = clib_error_return_unix (0, "failed to open `%s'", file_name);
-      goto done;
-    }
-
-  /* Make sure its a regular file. */
-  {
-    struct stat s;
-
-    if (fstat (fd, &s) < 0)
+      static clib_error_t *unix_cli_exec (vlib_main_t * vm,
+					  unformat_input_t * input,
+					  vlib_cli_command_t * cmd)
       {
-	error = clib_error_return_unix (0, "failed to stat `%s'", file_name);
-	goto done;
+	char *file_name;
+	int fd;
+	unformat_input_t sub_input;
+	clib_error_t *error;
+
+	file_name = 0;
+	fd = -1;
+	error = 0;
+
+	if (!unformat (input, "%s", &file_name))
+	  {
+	    error = clib_error_return (0, "expecting file name, got `%U'",
+				       format_unformat_error, input);
+	    goto done;
+	  }
+
+	fd = open (file_name, O_RDONLY);
+	if (fd < 0)
+	  {
+	    error =
+	      clib_error_return_unix (0, "failed to open `%s'", file_name);
+	    goto done;
+	  }
+
+	/* Make sure its a regular file. */
+	{
+	  struct stat s;
+
+	  if (fstat (fd, &s) < 0)
+	    {
+	      error =
+		clib_error_return_unix (0, "failed to stat `%s'", file_name);
+	      goto done;
+	    }
+
+	  if (!(S_ISREG (s.st_mode) || S_ISLNK (s.st_mode)))
+	    {
+	      error =
+		clib_error_return (0, "not a regular file `%s'", file_name);
+	      goto done;
+	    }
+	}
+
+	unformat_init_unix_file (&sub_input, fd);
+
+	vlib_cli_input (vm, &sub_input, 0, 0);
+	unformat_free (&sub_input);
+
+      done:
+	if (fd > 0)
+	  close (fd);
+	vec_free (file_name);
+
+	return error;
       }
-
-    if (!(S_ISREG (s.st_mode) || S_ISLNK (s.st_mode)))
-      {
-	error = clib_error_return (0, "not a regular file `%s'", file_name);
-	goto done;
-      }
-  }
-
-  unformat_init_unix_file (&sub_input, fd);
-
-  vlib_cli_input (vm, &sub_input, 0, 0);
-  unformat_free (&sub_input);
-
-done:
-  if (fd > 0)
-    close (fd);
-  vec_free (file_name);
-
-  return error;
-}
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_exec, static) = {
@@ -2609,71 +2610,72 @@ VLIB_CLI_COMMAND (cli_exec, static) = {
 /* *INDENT-ON* */
 
 /** CLI command to show various unix error statistics. */
-static clib_error_t *
-unix_show_errors (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  unix_main_t *um = &unix_main;
-  clib_error_t *error = 0;
-  int i, n_errors_to_show;
-  unix_error_history_t *unix_errors = 0;
+      static clib_error_t *unix_show_errors (vlib_main_t * vm,
+					     unformat_input_t * input,
+					     vlib_cli_command_t * cmd)
+      {
+	unix_main_t *um = &unix_main;
+	clib_error_t *error = 0;
+	int i, n_errors_to_show;
+	unix_error_history_t *unix_errors = 0;
 
-  n_errors_to_show = 1 << 30;
+	n_errors_to_show = 1 << 30;
 
-  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (!unformat (input, "%d", &n_errors_to_show))
-	{
-	  error =
-	    clib_error_return (0,
-			       "expecting integer number of errors to show, got `%U'",
-			       format_unformat_error, input);
-	  goto done;
-	}
-    }
+	if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+	  {
+	    if (!unformat (input, "%d", &n_errors_to_show))
+	      {
+		error =
+		  clib_error_return (0,
+				     "expecting integer number of errors to show, got `%U'",
+				     format_unformat_error, input);
+		goto done;
+	      }
+	  }
 
-  n_errors_to_show =
-    clib_min (ARRAY_LEN (um->error_history), n_errors_to_show);
+	n_errors_to_show =
+	  clib_min (ARRAY_LEN (um->error_history), n_errors_to_show);
 
-  i =
-    um->error_history_index >
-    0 ? um->error_history_index - 1 : ARRAY_LEN (um->error_history) - 1;
+	i =
+	  um->error_history_index >
+	  0 ? um->error_history_index - 1 : ARRAY_LEN (um->error_history) - 1;
 
-  while (n_errors_to_show > 0)
-    {
-      unix_error_history_t *eh = um->error_history + i;
+	while (n_errors_to_show > 0)
+	  {
+	    unix_error_history_t *eh = um->error_history + i;
 
-      if (!eh->error)
-	break;
+	    if (!eh->error)
+	      break;
 
-      vec_add1 (unix_errors, eh[0]);
-      n_errors_to_show -= 1;
-      if (i == 0)
-	i = ARRAY_LEN (um->error_history) - 1;
-      else
-	i--;
-    }
+	    vec_add1 (unix_errors, eh[0]);
+	    n_errors_to_show -= 1;
+	    if (i == 0)
+	      i = ARRAY_LEN (um->error_history) - 1;
+	    else
+	      i--;
+	  }
 
-  if (vec_len (unix_errors) == 0)
-    vlib_cli_output (vm, "no Unix errors so far");
-  else
-    {
-      vlib_cli_output (vm, "%Ld total errors seen", um->n_total_errors);
-      for (i = vec_len (unix_errors) - 1; i >= 0; i--)
-	{
-	  unix_error_history_t *eh = vec_elt_at_index (unix_errors, i);
-	  vlib_cli_output (vm, "%U: %U",
-			   format_time_interval, "h:m:s:u", eh->time,
-			   format_clib_error, eh->error);
-	}
-      vlib_cli_output (vm, "%U: time now",
-		       format_time_interval, "h:m:s:u", vlib_time_now (vm));
-    }
+	if (vec_len (unix_errors) == 0)
+	  vlib_cli_output (vm, "no Unix errors so far");
+	else
+	  {
+	    vlib_cli_output (vm, "%Ld total errors seen", um->n_total_errors);
+	    for (i = vec_len (unix_errors) - 1; i >= 0; i--)
+	      {
+		unix_error_history_t *eh = vec_elt_at_index (unix_errors, i);
+		vlib_cli_output (vm, "%U: %U",
+				 format_time_interval, "h:m:s:u", eh->time,
+				 format_clib_error, eh->error);
+	      }
+	    vlib_cli_output (vm, "%U: time now",
+			     format_time_interval, "h:m:s:u",
+			     vlib_time_now (vm));
+	  }
 
-done:
-  vec_free (unix_errors);
-  return error;
-}
+      done:
+	vec_free (unix_errors);
+	return error;
+      }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_show_errors, static) = {
@@ -2684,29 +2686,30 @@ VLIB_CLI_COMMAND (cli_unix_show_errors, static) = {
 /* *INDENT-ON* */
 
 /** CLI command to show session command history. */
-static clib_error_t *
-unix_cli_show_history (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  unix_cli_main_t *cm = &unix_cli_main;
-  unix_cli_file_t *cf;
-  int i, j;
+      static clib_error_t *unix_cli_show_history (vlib_main_t * vm,
+						  unformat_input_t * input,
+						  vlib_cli_command_t * cmd)
+      {
+	unix_cli_main_t *cm = &unix_cli_main;
+	unix_cli_file_t *cf;
+	int i, j;
 
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+	cf =
+	  pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
 
-  if (cf->has_history && cf->history_limit)
-    {
-      i = 1 + cf->command_number - vec_len (cf->command_history);
-      for (j = 0; j < vec_len (cf->command_history); j++)
-	vlib_cli_output (vm, "%d  %v\n", i + j, cf->command_history[j]);
-    }
-  else
-    {
-      vlib_cli_output (vm, "History not enabled.\n");
-    }
+	if (cf->has_history && cf->history_limit)
+	  {
+	    i = 1 + cf->command_number - vec_len (cf->command_history);
+	    for (j = 0; j < vec_len (cf->command_history); j++)
+	      vlib_cli_output (vm, "%d  %v\n", i + j, cf->command_history[j]);
+	  }
+	else
+	  {
+	    vlib_cli_output (vm, "History not enabled.\n");
+	  }
 
-  return 0;
-}
+	return 0;
+      }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_show_history, static) = {
@@ -2717,45 +2720,47 @@ VLIB_CLI_COMMAND (cli_unix_cli_show_history, static) = {
 /* *INDENT-ON* */
 
 /** CLI command to show terminal status. */
-static clib_error_t *
-unix_cli_show_terminal (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  unix_main_t *um = &unix_main;
-  unix_cli_main_t *cm = &unix_cli_main;
-  unix_cli_file_t *cf;
-  vlib_node_t *n;
+      static clib_error_t *unix_cli_show_terminal (vlib_main_t * vm,
+						   unformat_input_t * input,
+						   vlib_cli_command_t * cmd)
+      {
+	unix_main_t *um = &unix_main;
+	unix_cli_main_t *cm = &unix_cli_main;
+	unix_cli_file_t *cf;
+	vlib_node_t *n;
 
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
-  n = vlib_get_node (vm, cf->process_node_index);
+	cf =
+	  pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+	n = vlib_get_node (vm, cf->process_node_index);
 
-  vlib_cli_output (vm, "Terminal name:   %v\n", n->name);
-  vlib_cli_output (vm, "Terminal mode:   %s\n", cf->line_mode ?
-		   "line-by-line" : "char-by-char");
-  vlib_cli_output (vm, "Terminal width:  %d\n", cf->width);
-  vlib_cli_output (vm, "Terminal height: %d\n", cf->height);
-  vlib_cli_output (vm, "ANSI capable:    %s\n",
-		   cf->ansi_capable ? "yes" : "no");
-  vlib_cli_output (vm, "History enabled: %s%s\n",
-		   cf->has_history ? "yes" : "no", !cf->has_history
-		   || cf->history_limit ? "" :
-		   " (disabled by history limit)");
-  if (cf->has_history)
-    vlib_cli_output (vm, "History limit:   %d\n", cf->history_limit);
-  vlib_cli_output (vm, "Pager enabled:   %s%s%s\n",
-		   cf->no_pager ? "no" : "yes",
-		   cf->no_pager
-		   || cf->height ? "" : " (disabled by terminal height)",
-		   cf->no_pager
-		   || um->cli_pager_buffer_limit ? "" :
-		   " (disabled by buffer limit)");
-  if (!cf->no_pager)
-    vlib_cli_output (vm, "Pager limit:     %d\n", um->cli_pager_buffer_limit);
-  vlib_cli_output (vm, "CRLF mode:       %s\n",
-		   cf->crlf_mode ? "CR+LF" : "LF");
+	vlib_cli_output (vm, "Terminal name:   %v\n", n->name);
+	vlib_cli_output (vm, "Terminal mode:   %s\n", cf->line_mode ?
+			 "line-by-line" : "char-by-char");
+	vlib_cli_output (vm, "Terminal width:  %d\n", cf->width);
+	vlib_cli_output (vm, "Terminal height: %d\n", cf->height);
+	vlib_cli_output (vm, "ANSI capable:    %s\n",
+			 cf->ansi_capable ? "yes" : "no");
+	vlib_cli_output (vm, "History enabled: %s%s\n",
+			 cf->has_history ? "yes" : "no", !cf->has_history
+			 || cf->history_limit ? "" :
+			 " (disabled by history limit)");
+	if (cf->has_history)
+	  vlib_cli_output (vm, "History limit:   %d\n", cf->history_limit);
+	vlib_cli_output (vm, "Pager enabled:   %s%s%s\n",
+			 cf->no_pager ? "no" : "yes",
+			 cf->no_pager
+			 || cf->height ? "" :
+			 " (disabled by terminal height)", cf->no_pager
+			 || um->cli_pager_buffer_limit ? "" :
+			 " (disabled by buffer limit)");
+	if (!cf->no_pager)
+	  vlib_cli_output (vm, "Pager limit:     %d\n",
+			   um->cli_pager_buffer_limit);
+	vlib_cli_output (vm, "CRLF mode:       %s\n",
+			 cf->crlf_mode ? "CR+LF" : "LF");
 
-  return 0;
-}
+	return 0;
+      }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_show_terminal, static) = {
@@ -2766,40 +2771,44 @@ VLIB_CLI_COMMAND (cli_unix_cli_show_terminal, static) = {
 /* *INDENT-ON* */
 
 /** CLI command to set terminal pager settings. */
-static clib_error_t *
-unix_cli_set_terminal_pager (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
-{
-  unix_main_t *um = &unix_main;
-  unix_cli_main_t *cm = &unix_cli_main;
-  unix_cli_file_t *cf;
-  unformat_input_t _line_input, *line_input = &_line_input;
+      static clib_error_t *unix_cli_set_terminal_pager (vlib_main_t * vm,
+							unformat_input_t *
+							input,
+							vlib_cli_command_t *
+							cmd)
+      {
+	unix_main_t *um = &unix_main;
+	unix_cli_main_t *cm = &unix_cli_main;
+	unix_cli_file_t *cf;
+	unformat_input_t _line_input, *line_input = &_line_input;
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+	if (!unformat_user (input, unformat_line_input, line_input))
+	  return 0;
 
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+	cf =
+	  pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "on"))
-	cf->no_pager = 0;
-      else if (unformat (line_input, "off"))
-	cf->no_pager = 1;
-      else if (unformat (line_input, "limit %u", &um->cli_pager_buffer_limit))
-	vlib_cli_output (vm,
-			 "Pager limit set to %u lines; note, this is global.\n",
-			 um->cli_pager_buffer_limit);
-      else
-	return clib_error_return (0, "unknown parameter: `%U`",
-				  format_unformat_error, line_input);
-    }
+	while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	  {
+	    if (unformat (line_input, "on"))
+	      cf->no_pager = 0;
+	    else if (unformat (line_input, "off"))
+	      cf->no_pager = 1;
+	    else
+	      if (unformat
+		  (line_input, "limit %u", &um->cli_pager_buffer_limit))
+	      vlib_cli_output (vm,
+			       "Pager limit set to %u lines; note, this is global.\n",
+			       um->cli_pager_buffer_limit);
+	    else
+	      return clib_error_return (0, "unknown parameter: `%U`",
+					format_unformat_error, line_input);
+	  }
 
-  unformat_free (line_input);
+	unformat_free (line_input);
 
-  return 0;
-}
+	return 0;
+      }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_pager, static) = {
@@ -2810,47 +2819,50 @@ VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_pager, static) = {
 /* *INDENT-ON* */
 
 /** CLI command to set terminal history settings. */
-static clib_error_t *
-unix_cli_set_terminal_history (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
-{
-  unix_cli_main_t *cm = &unix_cli_main;
-  unix_cli_file_t *cf;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 limit;
+      static clib_error_t *unix_cli_set_terminal_history (vlib_main_t * vm,
+							  unformat_input_t *
+							  input,
+							  vlib_cli_command_t *
+							  cmd)
+      {
+	unix_cli_main_t *cm = &unix_cli_main;
+	unix_cli_file_t *cf;
+	unformat_input_t _line_input, *line_input = &_line_input;
+	u32 limit;
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+	if (!unformat_user (input, unformat_line_input, line_input))
+	  return 0;
 
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+	cf =
+	  pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "on"))
-	cf->has_history = 1;
-      else if (unformat (line_input, "off"))
-	cf->has_history = 0;
-      else if (unformat (line_input, "limit %u", &cf->history_limit))
-	;
-      else
-	return clib_error_return (0, "unknown parameter: `%U`",
-				  format_unformat_error, line_input);
+	while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	  {
+	    if (unformat (line_input, "on"))
+	      cf->has_history = 1;
+	    else if (unformat (line_input, "off"))
+	      cf->has_history = 0;
+	    else if (unformat (line_input, "limit %u", &cf->history_limit))
+	      ;
+	    else
+	      return clib_error_return (0, "unknown parameter: `%U`",
+					format_unformat_error, line_input);
 
-      /* If we reduced history size, or turned it off, purge the history */
-      limit = cf->has_history ? cf->history_limit : 0;
+	    /* If we reduced history size, or turned it off, purge the history */
+	    limit = cf->has_history ? cf->history_limit : 0;
 
-      while (cf->command_history && vec_len (cf->command_history) >= limit)
-	{
-	  vec_free (cf->command_history[0]);
-	  vec_delete (cf->command_history, 1, 0);
-	}
-    }
+	    while (cf->command_history
+		   && vec_len (cf->command_history) >= limit)
+	      {
+		vec_free (cf->command_history[0]);
+		vec_delete (cf->command_history, 1, 0);
+	      }
+	  }
 
-  unformat_free (line_input);
+	unformat_free (line_input);
 
-  return 0;
-}
+	return 0;
+      }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_history, static) = {
@@ -2861,26 +2873,28 @@ VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_history, static) = {
 /* *INDENT-ON* */
 
 /** CLI command to set terminal ANSI settings. */
-static clib_error_t *
-unix_cli_set_terminal_ansi (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
-{
-  unix_cli_main_t *cm = &unix_cli_main;
-  unix_cli_file_t *cf;
+      static clib_error_t *unix_cli_set_terminal_ansi (vlib_main_t * vm,
+						       unformat_input_t *
+						       input,
+						       vlib_cli_command_t *
+						       cmd)
+      {
+	unix_cli_main_t *cm = &unix_cli_main;
+	unix_cli_file_t *cf;
 
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+	cf =
+	  pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
 
-  if (unformat (input, "on"))
-    cf->ansi_capable = 1;
-  else if (unformat (input, "off"))
-    cf->ansi_capable = 0;
-  else
-    return clib_error_return (0, "unknown parameter: `%U`",
-			      format_unformat_error, input);
+	if (unformat (input, "on"))
+	  cf->ansi_capable = 1;
+	else if (unformat (input, "off"))
+	  cf->ansi_capable = 0;
+	else
+	  return clib_error_return (0, "unknown parameter: `%U`",
+				    format_unformat_error, input);
 
-  return 0;
-}
+	return 0;
+      }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_ansi, static) = {
@@ -2890,13 +2904,12 @@ VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_ansi, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-unix_cli_init (vlib_main_t * vm)
-{
-  return 0;
-}
+      static clib_error_t *unix_cli_init (vlib_main_t * vm)
+      {
+	return 0;
+      }
 
-VLIB_INIT_FUNCTION (unix_cli_init);
+      VLIB_INIT_FUNCTION (unix_cli_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

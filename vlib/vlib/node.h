@@ -153,7 +153,6 @@ static void __vlib_add_node_registration_##x (void)                     \
 }                                                                       \
  /* *INDENT-ON* */
 __VA_ARGS__ vlib_node_registration_t x
-
 #if CLIB_DEBUG > 0
 #define VLIB_NODE_FUNCTION_CLONE_TEMPLATE(arch, fn)
 #define VLIB_NODE_FUNCTION_MULTIARCH_CLONE(fn)
@@ -168,10 +167,8 @@ __VA_ARGS__ vlib_node_registration_t x
                    struct vlib_node_runtime_t * node,			\
                    struct vlib_frame_t * frame)				\
   { return fn (vm, node, frame); }
-
 #define VLIB_NODE_FUNCTION_MULTIARCH_CLONE(fn)				\
   foreach_march_variant(VLIB_NODE_FUNCTION_CLONE_TEMPLATE, fn)
-
 #define VLIB_NODE_FUNCTION_MULTIARCH(node, fn)				\
   VLIB_NODE_FUNCTION_MULTIARCH_CLONE(fn)				\
   CLIB_MULTIARCH_SELECT_FN(fn, static inline)				\
@@ -179,8 +176,7 @@ __VA_ARGS__ vlib_node_registration_t x
   __vlib_node_function_multiarch_select_##node (void)			\
   { node.function = fn ## _multiarch_select(); }
 #endif
-
-always_inline vlib_node_registration_t *
+  always_inline vlib_node_registration_t *
 vlib_node_next_registered (vlib_node_registration_t * c)
 {
   c =

@@ -11488,6 +11488,7 @@ typedef CLIB_PACKED(struct{
   u8 type;      /**< type of eid */
 }) lisp_eid_vat_t;
 /* *INDENT-ON* */
+
 /* *INDENT-ON* */
 
 static uword
@@ -11553,6 +11554,7 @@ typedef CLIB_PACKED(struct
   u8 weight;   /**< locator weight */
 }) ls_locator_t;
 /* *INDENT-ON* */
+
 /* *INDENT-ON* */
 
 static int
@@ -11844,6 +11846,7 @@ typedef CLIB_PACKED(struct
   u8 addr[16]; /**< IPv4/IPv6 address */
 }) rloc_t;
 /* *INDENT-ON* */
+
 /* *INDENT-ON* */
 
 static int

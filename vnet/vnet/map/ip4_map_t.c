@@ -376,8 +376,8 @@ _ip4_map_t_icmp (map_domain_t * d, vlib_buffer_t * p, u8 * error)
 	}
       else
 	{
-          /* To shut up Coverity */
-          os_panic();
+	  /* To shut up Coverity */
+	  os_panic ();
 	}
 
       //FIXME: Security check with the port found in the inner packet

@@ -263,9 +263,8 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	{
 	  data = vec_new (u8, 4);
 	  clib_memcpy (data, ip4.as_u8, 4);
-	  r =
-	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*remote */
-				  0);
+	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data,	/*remote */
+				    0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id remote %U 0x%U",
@@ -273,18 +272,16 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 			 unformat_ikev2_id_type, &id_type,
 			 unformat_hex_string, &data))
 	{
-	  r =
-	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*remote */
-				  0);
+	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data,	/*remote */
+				    0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id remote %U %v",
 			 unformat_token, valid_chars, &name,
 			 unformat_ikev2_id_type, &id_type, &data))
 	{
-	  r =
-	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*remote */
-				  0);
+	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data,	/*remote */
+				    0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U traffic-selector local "

@@ -122,24 +122,22 @@
       .name = "example-process",
     };
 /* *INDENT-ON* */
-    </pre>
-
-    In this example, the VLIB process node waits for an event to
-    occur, or for 10 seconds to elapse. The code demuxes on the event
-    type, calling the appropriate handler function.
-
-    Each call to vlib_process_get_events returns a vector of
-    per-event-type data passed to successive vlib_process_signal_event
-    calls; vec_len (event_data) >= 1.  It is an error to process only
-    event_data[0].
-
-    Resetting the event_data vector-length to 0 by calling
-    vec_reset_length (event_data) - instead of calling vec_free (...)
-    - means that the event scheme doesn t burn cycles continuously
-    allocating and freeing the event data vector. This is a common
-    coding pattern, well worth using when appropriate.
-*/
-
+< /pre > In this example, the VLIB process node waits for an
+  event to occur, or for 10
+    seconds to elapse.The code demuxes on the event
+      type,
+      calling the appropriate handler function.Each call to
+      vlib_process_get_events returns a vector of per - event -
+      type data passed to successive vlib_process_signal_event calls;
+vec_len (event_data) >=
+  1. It is an error to process only event_data[0].Resetting the event_data
+  vector - length to 0 by calling
+vec_reset_length (event_data) -
+instead of calling
+vec_free (...) -
+means that the event scheme doesn t burn cycles continuously
+  allocating and freeing the event data vector.This is a common
+  coding pattern, well worth using when appropriate. * /
 /*
  * fd.io coding-style-patch-verification: ON
  *

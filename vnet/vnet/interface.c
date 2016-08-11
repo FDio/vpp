@@ -833,7 +833,7 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
       vnet_delete_sw_interface (vnm, sw_if_index);
     }));
     /* *INDENT-ON* */
-  }
+    }
 
   {
     vnet_hw_interface_nodes_t *dn;
@@ -857,6 +857,7 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 
   pool_put (im->hw_interfaces, hw);
 }
+
 /* *INDENT-ON* */
 
 static void

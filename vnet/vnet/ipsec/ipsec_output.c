@@ -271,10 +271,10 @@ ipsec_output_node_fn (vlib_main_t * vm,
 	  p0 = ipsec_output_ip6_policy_match (spd0,
 					      &ip6_0->src_address,
 					      &ip6_0->dst_address,
-					      clib_net_to_host_u16 (udp0->
-								    src_port),
-					      clib_net_to_host_u16 (udp0->
-								    dst_port),
+					      clib_net_to_host_u16
+					      (udp0->src_port),
+					      clib_net_to_host_u16
+					      (udp0->dst_port),
 					      ip6_0->protocol);
 	}
       else
@@ -291,16 +291,14 @@ ipsec_output_node_fn (vlib_main_t * vm,
 #endif
 
 	  p0 = ipsec_output_policy_match (spd0, ip0->protocol,
-					  clib_net_to_host_u32 (ip0->
-								src_address.
-								as_u32),
-					  clib_net_to_host_u32 (ip0->
-								dst_address.
-								as_u32),
-					  clib_net_to_host_u16 (udp0->
-								src_port),
-					  clib_net_to_host_u16 (udp0->
-								dst_port));
+					  clib_net_to_host_u32
+					  (ip0->src_address.as_u32),
+					  clib_net_to_host_u32
+					  (ip0->dst_address.as_u32),
+					  clib_net_to_host_u16
+					  (udp0->src_port),
+					  clib_net_to_host_u16
+					  (udp0->dst_port));
 	}
 
       if (PREDICT_TRUE (p0 != NULL))

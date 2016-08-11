@@ -198,7 +198,7 @@ do {                                                             \
   vlib_main_t * _vmain = (vm);                                   \
   vlib_buffer_main_t * _bmain = &_vmain->buffer_main;            \
   hash_pair_t * _vbpair;                                         \
-  /* *INDENT-OFF* */
+				/* *INDENT-OFF* */
   hash_foreach_pair(_vbpair, _bmain->buffer_known_hash, ({       \
     if (VLIB_BUFFER_KNOWN_ALLOCATED == _vbpair->value[0]) {      \
       (bi) = _vbpair->key;                                       \
@@ -206,20 +206,22 @@ do {                                                             \
     }                                                            \
   }));                                                           \
 /* *INDENT-ON* */
-} while (0)
+}
+
+while (0)
 #endif
 
 #if DPDK == 0
 
-typedef enum
-{
-  /* Index is unknown. */
-  VLIB_BUFFER_UNKNOWN,
+  typedef enum
+  {
+    /* Index is unknown. */
+    VLIB_BUFFER_UNKNOWN,
 
-  /* Index is known and free/allocated. */
-  VLIB_BUFFER_KNOWN_FREE,
-  VLIB_BUFFER_KNOWN_ALLOCATED,
-} vlib_buffer_known_state_t;
+    /* Index is known and free/allocated. */
+    VLIB_BUFFER_KNOWN_FREE,
+    VLIB_BUFFER_KNOWN_ALLOCATED,
+  } vlib_buffer_known_state_t;
 
 always_inline vlib_buffer_known_state_t
 vlib_buffer_is_known (vlib_main_t * vm, u32 buffer_index)

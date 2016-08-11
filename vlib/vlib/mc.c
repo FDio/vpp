@@ -456,22 +456,22 @@ check_retry (mc_main_t * mcm, mc_stream_t * s)
 	    clib_bitmap_andnoti (r->unacked_by_peer_bitmap, i);
 	}));
 	/* *INDENT-ON* */
-      }));
-/* *INDENT-ON* */
-      clib_bitmap_free (dead_peer_bitmap);
     }
+  ));
+/* *INDENT-ON* */
+  clib_bitmap_free (dead_peer_bitmap);
+}
 }
 
-always_inline mc_main_t *
-mc_node_get_main (vlib_node_runtime_t * node)
+always_inline mc_main_t *mc_node_get_main (vlib_node_runtime_t * node)
 {
   mc_main_t **p = (void *) node->runtime_data;
   return p[0];
 }
 
 static uword
-mc_retry_process (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * f)
+  mc_retry_process (vlib_main_t * vm,
+		    vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   mc_main_t *mcm = mc_node_get_main (node);
   mc_stream_t *s;
@@ -489,7 +489,7 @@ mc_retry_process (vlib_main_t * vm,
 }
 
 static void
-send_join_or_leave_request (mc_main_t * mcm, u32 stream_index, u32 is_join)
+  send_join_or_leave_request (mc_main_t * mcm, u32 stream_index, u32 is_join)
 {
   vlib_main_t *vm = mcm->vlib_main;
   mc_msg_join_or_leave_request_t *mp;
@@ -512,8 +512,8 @@ send_join_or_leave_request (mc_main_t * mcm, u32 stream_index, u32 is_join)
 }
 
 static uword
-mc_join_ager_process (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * f)
+  mc_join_ager_process (vlib_main_t * vm,
+			vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   mc_main_t *mcm = mc_node_get_main (node);
 
@@ -589,21 +589,20 @@ mc_join_ager_process (vlib_main_t * vm,
 }
 
 static void
-serialize_mc_register_stream_name (serialize_main_t * m, va_list * va)
+  serialize_mc_register_stream_name (serialize_main_t * m, va_list * va)
 {
   char *name = va_arg (*va, char *);
   serialize_cstring (m, name);
 }
 
-static void
-elog_stream_name (char *buf, int n_buf_bytes, char *v)
+static void elog_stream_name (char *buf, int n_buf_bytes, char *v)
 {
   clib_memcpy (buf, v, clib_min (n_buf_bytes - 1, vec_len (v)));
   buf[n_buf_bytes - 1] = 0;
 }
 
 static void
-unserialize_mc_register_stream_name (serialize_main_t * m, va_list * va)
+  unserialize_mc_register_stream_name (serialize_main_t * m, va_list * va)
 {
   mc_main_t *mcm = va_arg (*va, mc_main_t *);
   char *name;
@@ -686,17 +685,16 @@ MC_SERIALIZE_MSG (mc_register_stream_name_msg, static) =
 /* *INDENT-ON* */
 
 void
-mc_rx_buffer_unserialize (mc_main_t * mcm,
-			  mc_stream_t * stream,
-			  mc_peer_id_t peer_id, u32 buffer_index)
+  mc_rx_buffer_unserialize (mc_main_t * mcm,
+			    mc_stream_t * stream,
+			    mc_peer_id_t peer_id, u32 buffer_index)
 {
   return mc_unserialize (mcm, stream, buffer_index);
 }
 
-static u8 *
-mc_internal_catchup_snapshot (mc_main_t * mcm,
-			      u8 * data_vector,
-			      u32 last_global_sequence_processed)
+static u8 *mc_internal_catchup_snapshot (mc_main_t * mcm,
+					 u8 * data_vector,
+					 u32 last_global_sequence_processed)
 {
   serialize_main_t m;
 
@@ -708,8 +706,7 @@ mc_internal_catchup_snapshot (mc_main_t * mcm,
   return serialize_close_vector (&m);
 }
 
-static void
-mc_internal_catchup (mc_main_t * mcm, u8 * data, u32 n_data_bytes)
+static void mc_internal_catchup (mc_main_t * mcm, u8 * data, u32 n_data_bytes)
 {
   serialize_main_t s;
 
@@ -720,14 +717,13 @@ mc_internal_catchup (mc_main_t * mcm, u8 * data, u32 n_data_bytes)
 
 /* Overridden from the application layer, not actually used here */
 void mc_stream_join_process_hold (void) __attribute__ ((weak));
-void
-mc_stream_join_process_hold (void)
+void mc_stream_join_process_hold (void)
 {
 }
 
 static u32
-mc_stream_join_helper (mc_main_t * mcm,
-		       mc_stream_config_t * config, u32 is_internal)
+  mc_stream_join_helper (mc_main_t * mcm,
+			 mc_stream_config_t * config, u32 is_internal)
 {
   mc_stream_t *s;
   vlib_main_t *vm = mcm->vlib_main;
@@ -750,12 +746,12 @@ mc_stream_join_helper (mc_main_t * mcm,
 	  || (mcm->stream_vector[MC_STREAM_INDEX_INTERNAL].state
 	      == MC_STREAM_STATE_invalid))
 	{
-	  static mc_stream_config_t c = {
-	    .name = "mc-internal",
-	    .rx_buffer = mc_rx_buffer_unserialize,
-	    .catchup = mc_internal_catchup,
-	    .catchup_snapshot = mc_internal_catchup_snapshot,
-	  };
+	  static mc_stream_config_t c =
+	  {
+	  .name = "mc-internal",.rx_buffer =
+	      mc_rx_buffer_unserialize,.catchup =
+	      mc_internal_catchup,.catchup_snapshot =
+	      mc_internal_catchup_snapshot,};
 
 	  c.save_snapshot = config->save_snapshot;
 
@@ -877,14 +873,12 @@ mc_stream_join_helper (mc_main_t * mcm,
   return s->index;
 }
 
-u32
-mc_stream_join (mc_main_t * mcm, mc_stream_config_t * config)
+u32 mc_stream_join (mc_main_t * mcm, mc_stream_config_t * config)
 {
   return mc_stream_join_helper (mcm, config, /* is_internal */ 0);
 }
 
-void
-mc_stream_leave (mc_main_t * mcm, u32 stream_index)
+void mc_stream_leave (mc_main_t * mcm, u32 stream_index)
 {
   mc_stream_t *s = mc_stream_by_index (mcm, stream_index);
 
@@ -913,9 +907,9 @@ mc_stream_leave (mc_main_t * mcm, u32 stream_index)
 }
 
 void
-mc_msg_join_or_leave_request_handler (mc_main_t * mcm,
-				      mc_msg_join_or_leave_request_t * req,
-				      u32 buffer_index)
+  mc_msg_join_or_leave_request_handler (mc_main_t * mcm,
+					mc_msg_join_or_leave_request_t * req,
+					u32 buffer_index)
 {
   mc_stream_t *s;
   mc_msg_join_reply_t *rep;
@@ -970,8 +964,8 @@ mc_msg_join_or_leave_request_handler (mc_main_t * mcm,
 }
 
 void
-mc_msg_join_reply_handler (mc_main_t * mcm,
-			   mc_msg_join_reply_t * mp, u32 buffer_index)
+  mc_msg_join_reply_handler (mc_main_t * mcm,
+			     mc_msg_join_reply_t * mp, u32 buffer_index)
 {
   mc_stream_t *s;
 
@@ -991,8 +985,7 @@ mc_msg_join_reply_handler (mc_main_t * mcm,
 				      mp->stream_index, mp->catchup_peer_id);
 }
 
-void
-mc_wait_for_stream_ready (mc_main_t * m, char *stream_name)
+void mc_wait_for_stream_ready (mc_main_t * m, char *stream_name)
 {
   mc_stream_t *s;
 
@@ -1014,8 +1007,7 @@ mc_wait_for_stream_ready (mc_main_t * m, char *stream_name)
     (m->vlib_main, &s->procs_waiting_for_join_done);
 }
 
-u32
-mc_stream_send (mc_main_t * mcm, u32 stream_index, u32 buffer_index)
+u32 mc_stream_send (mc_main_t * mcm, u32 stream_index, u32 buffer_index)
 {
   mc_stream_t *s = mc_stream_by_index (mcm, stream_index);
   vlib_main_t *vm = mcm->vlib_main;
@@ -1089,8 +1081,8 @@ mc_stream_send (mc_main_t * mcm, u32 stream_index, u32 buffer_index)
 }
 
 void
-mc_msg_user_request_handler (mc_main_t * mcm, mc_msg_user_request_t * mp,
-			     u32 buffer_index)
+  mc_msg_user_request_handler (mc_main_t * mcm, mc_msg_user_request_t * mp,
+			       u32 buffer_index)
 {
   vlib_main_t *vm = mcm->vlib_main;
   mc_stream_t *s;
@@ -1222,8 +1214,8 @@ mc_msg_user_request_handler (mc_main_t * mcm, mc_msg_user_request_t * mp,
 }
 
 void
-mc_msg_user_ack_handler (mc_main_t * mcm, mc_msg_user_ack_t * mp,
-			 u32 buffer_index)
+  mc_msg_user_ack_handler (mc_main_t * mcm, mc_msg_user_ack_t * mp,
+			   u32 buffer_index)
 {
   vlib_main_t *vm = mcm->vlib_main;
   uword *p;
@@ -1416,8 +1408,8 @@ mc_msg_user_ack_handler (mc_main_t * mcm, mc_msg_user_ack_t * mp,
 #define EVENT_MC_SEND_CATCHUP_DATA 0
 
 static uword
-mc_catchup_process (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * f)
+  mc_catchup_process (vlib_main_t * vm,
+		      vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   mc_main_t *mcm = mc_node_get_main (node);
   uword *event_data = 0;
@@ -1447,8 +1439,7 @@ mc_catchup_process (vlib_main_t * vm,
   return 0;			/* not likely */
 }
 
-static void
-serialize_mc_stream (serialize_main_t * m, va_list * va)
+static void serialize_mc_stream (serialize_main_t * m, va_list * va)
 {
   mc_stream_t *s = va_arg (*va, mc_stream_t *);
   mc_stream_peer_t *p;
@@ -1465,8 +1456,7 @@ serialize_mc_stream (serialize_main_t * m, va_list * va)
   serialize_bitmap (m, s->all_peer_bitmap);
 }
 
-void
-unserialize_mc_stream (serialize_main_t * m, va_list * va)
+void unserialize_mc_stream (serialize_main_t * m, va_list * va)
 {
   mc_stream_t *s = va_arg (*va, mc_stream_t *);
   u32 i, n_peers;
@@ -1493,9 +1483,9 @@ unserialize_mc_stream (serialize_main_t * m, va_list * va)
 }
 
 void
-mc_msg_catchup_request_handler (mc_main_t * mcm,
-				mc_msg_catchup_request_t * req,
-				u32 catchup_opaque)
+  mc_msg_catchup_request_handler (mc_main_t * mcm,
+				  mc_msg_catchup_request_t * req,
+				  u32 catchup_opaque)
 {
   vlib_main_t *vm = mcm->vlib_main;
   mc_stream_t *s;
@@ -1583,8 +1573,8 @@ mc_msg_catchup_request_handler (mc_main_t * mcm,
 #define EVENT_MC_UNSERIALIZE_CATCHUP 1
 
 void
-mc_msg_catchup_reply_handler (mc_main_t * mcm, mc_msg_catchup_reply_t * mp,
-			      u32 catchup_opaque)
+  mc_msg_catchup_reply_handler (mc_main_t * mcm, mc_msg_catchup_reply_t * mp,
+				u32 catchup_opaque)
 {
   vlib_process_signal_event (mcm->vlib_main,
 			     mcm->unserialize_process,
@@ -1592,8 +1582,7 @@ mc_msg_catchup_reply_handler (mc_main_t * mcm, mc_msg_catchup_reply_t * mp,
 			     pointer_to_uword (mp));
 }
 
-static void
-perform_catchup (mc_main_t * mcm, mc_msg_catchup_reply_t * mp)
+static void perform_catchup (mc_main_t * mcm, mc_msg_catchup_reply_t * mp)
 {
   mc_stream_t *s;
   i32 seq_cmp_result;
@@ -1715,8 +1704,7 @@ perform_catchup (mc_main_t * mcm, mc_msg_catchup_reply_t * mp)
   }
 }
 
-static void
-this_node_maybe_master (mc_main_t * mcm)
+static void this_node_maybe_master (mc_main_t * mcm)
 {
   vlib_main_t *vm = mcm->vlib_main;
   mc_msg_master_assert_t *mp;
@@ -1812,8 +1800,7 @@ this_node_maybe_master (mc_main_t * mcm)
     }
 }
 
-static void
-this_node_slave (mc_main_t * mcm)
+static void this_node_slave (mc_main_t * mcm)
 {
   vlib_main_t *vm = mcm->vlib_main;
   uword event_type;
@@ -1855,8 +1842,8 @@ this_node_slave (mc_main_t * mcm)
 }
 
 static uword
-mc_mastership_process (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * f)
+  mc_mastership_process (vlib_main_t * vm,
+			 vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   mc_main_t *mcm = mc_node_get_main (node);
 
@@ -1877,8 +1864,7 @@ mc_mastership_process (vlib_main_t * vm,
   return 0;			/* not likely */
 }
 
-void
-mc_enable_disable_mastership (mc_main_t * mcm, int we_can_be_master)
+void mc_enable_disable_mastership (mc_main_t * mcm, int we_can_be_master)
 {
   if (we_can_be_master != mcm->we_can_be_relay_master)
     {
@@ -1890,8 +1876,8 @@ mc_enable_disable_mastership (mc_main_t * mcm, int we_can_be_master)
 }
 
 void
-mc_msg_master_assert_handler (mc_main_t * mcm, mc_msg_master_assert_t * mp,
-			      u32 buffer_index)
+  mc_msg_master_assert_handler (mc_main_t * mcm, mc_msg_master_assert_t * mp,
+				u32 buffer_index)
 {
   mc_peer_id_t his_peer_id, our_peer_id;
   i32 seq_cmp_result;
@@ -1971,8 +1957,7 @@ mc_msg_master_assert_handler (mc_main_t * mcm, mc_msg_master_assert_t * mp,
     }
 }
 
-static void
-mc_serialize_init (mc_main_t * mcm)
+static void mc_serialize_init (mc_main_t * mcm)
 {
   mc_serialize_msg_t *m;
   vlib_main_t *vm = vlib_get_main ();
@@ -1991,11 +1976,10 @@ mc_serialize_init (mc_main_t * mcm)
     }
 }
 
-clib_error_t *
-mc_serialize_va (mc_main_t * mc,
-		 u32 stream_index,
-		 u32 multiple_messages_per_vlib_buffer,
-		 mc_serialize_msg_t * msg, va_list * va)
+clib_error_t *mc_serialize_va (mc_main_t * mc,
+			       u32 stream_index,
+			       u32 multiple_messages_per_vlib_buffer,
+			       mc_serialize_msg_t * msg, va_list * va)
 {
   mc_stream_t *s;
   clib_error_t *error;
@@ -2074,11 +2058,10 @@ mc_serialize_va (mc_main_t * mc,
   return error;
 }
 
-clib_error_t *
-mc_serialize_internal (mc_main_t * mc,
-		       u32 stream_index,
-		       u32 multiple_messages_per_vlib_buffer,
-		       mc_serialize_msg_t * msg, ...)
+clib_error_t *mc_serialize_internal (mc_main_t * mc,
+				     u32 stream_index,
+				     u32 multiple_messages_per_vlib_buffer,
+				     mc_serialize_msg_t * msg, ...)
 {
   vlib_main_t *vm = mc->vlib_main;
   va_list va;
@@ -2100,8 +2083,8 @@ mc_serialize_internal (mc_main_t * mc,
 }
 
 uword
-mc_unserialize_message (mc_main_t * mcm,
-			mc_stream_t * s, serialize_main_t * m)
+  mc_unserialize_message (mc_main_t * mcm,
+			  mc_stream_t * s, serialize_main_t * m)
 {
   mc_serialize_stream_msg_t *sm;
   u32 gi, si;
@@ -2221,8 +2204,7 @@ done:
   return gi != ~0;
 }
 
-void
-mc_unserialize_internal (mc_main_t * mcm, u32 stream_and_buffer_index)
+void mc_unserialize_internal (mc_main_t * mcm, u32 stream_and_buffer_index)
 {
   vlib_main_t *vm = mcm->vlib_main;
   serialize_main_t *m = &mcm->serialize_mains[VLIB_RX];
@@ -2262,8 +2244,7 @@ mc_unserialize_internal (mc_main_t * mcm, u32 stream_and_buffer_index)
   unserialize_close_vlib_buffer (m);
 }
 
-void
-mc_unserialize (mc_main_t * mcm, mc_stream_t * s, u32 buffer_index)
+void mc_unserialize (mc_main_t * mcm, mc_stream_t * s, u32 buffer_index)
 {
   vlib_main_t *vm = mcm->vlib_main;
   mc_stream_and_buffer_t *sb;
@@ -2276,8 +2257,8 @@ mc_unserialize (mc_main_t * mcm, mc_stream_t * s, u32 buffer_index)
 }
 
 static uword
-mc_unserialize_process (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * f)
+  mc_unserialize_process (vlib_main_t * vm,
+			  vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   mc_main_t *mcm = mc_node_get_main (node);
   uword event_type, *event_data = 0;
@@ -2314,8 +2295,7 @@ mc_unserialize_process (vlib_main_t * vm,
   return 0;			/* not likely */
 }
 
-void
-serialize_mc_main (serialize_main_t * m, va_list * va)
+void serialize_mc_main (serialize_main_t * m, va_list * va)
 {
   mc_main_t *mcm = va_arg (*va, mc_main_t *);
   mc_stream_t *s;
@@ -2338,8 +2318,7 @@ serialize_mc_main (serialize_main_t * m, va_list * va)
   }
 }
 
-void
-unserialize_mc_main (serialize_main_t * m, va_list * va)
+void unserialize_mc_main (serialize_main_t * m, va_list * va)
 {
   mc_main_t *mcm = va_arg (*va, mc_main_t *);
   u32 i, n_streams, n_stream_msgs;
@@ -2415,8 +2394,7 @@ unserialize_mc_main (serialize_main_t * m, va_list * va)
     }
 }
 
-void
-mc_main_init (mc_main_t * mcm, char *tag)
+void mc_main_init (mc_main_t * mcm, char *tag)
 {
   vlib_main_t *vm = vlib_get_main ();
 
@@ -2495,84 +2473,81 @@ format_mc_relay_state (u8 * s, va_list * args)
 }
 /* *INDENT-ON* */
 
-static u8 *
-format_mc_stream_state (u8 * s, va_list * args)
-{
-  mc_stream_state_t state = va_arg (*args, mc_stream_state_t);
-  char *t = 0;
-  switch (state)
+    static u8 *format_mc_stream_state (u8 * s, va_list * args)
     {
+      mc_stream_state_t state = va_arg (*args, mc_stream_state_t);
+      char *t = 0;
+      switch (state)
+	{
 #define _(f) case MC_STREAM_STATE_##f: t = #f; break;
-      foreach_mc_stream_state
+	  foreach_mc_stream_state
 #undef _
-    default:
-      return format (s, "unknown 0x%x", state);
+	default:
+	  return format (s, "unknown 0x%x", state);
+	}
+
+      return format (s, "%s", t);
     }
 
-  return format (s, "%s", t);
-}
-
-static int
-mc_peer_comp (void *a1, void *a2)
-{
-  mc_stream_peer_t *p1 = a1;
-  mc_stream_peer_t *p2 = a2;
-
-  return mc_peer_id_compare (p1->id, p2->id);
-}
-
-u8 *
-format_mc_main (u8 * s, va_list * args)
-{
-  mc_main_t *mcm = va_arg (*args, mc_main_t *);
-  mc_stream_t *t;
-  mc_stream_peer_t *p, *ps;
-  uword indent = format_get_indent (s);
-
-  s = format (s, "MC state %U, %d streams joined, global sequence 0x%x",
-	      format_mc_relay_state, mcm->relay_state,
-	      vec_len (mcm->stream_vector), mcm->relay_global_sequence);
-
-  {
-    mc_mastership_peer_t *mp;
-    f64 now = vlib_time_now (mcm->vlib_main);
-    s = format (s, "\n%UMost recent mastership peers:",
-		format_white_space, indent + 2);
-    vec_foreach (mp, mcm->mastership_peers)
+    static int mc_peer_comp (void *a1, void *a2)
     {
-      s = format (s, "\n%U%-30U%.4e",
-		  format_white_space, indent + 4,
-		  mcm->transport.format_peer_id, mp->peer_id,
-		  now - mp->time_last_master_assert_received);
+      mc_stream_peer_t *p1 = a1;
+      mc_stream_peer_t *p2 = a2;
+
+      return mc_peer_id_compare (p1->id, p2->id);
     }
-  }
 
-  vec_foreach (t, mcm->stream_vector)
-  {
-    s = format (s, "\n%Ustream `%s' index %d",
-		format_white_space, indent + 2, t->config.name, t->index);
+    u8 *format_mc_main (u8 * s, va_list * args)
+    {
+      mc_main_t *mcm = va_arg (*args, mc_main_t *);
+      mc_stream_t *t;
+      mc_stream_peer_t *p, *ps;
+      uword indent = format_get_indent (s);
 
-    s = format (s, "\n%Ustate %U",
-		format_white_space, indent + 4,
-		format_mc_stream_state, t->state);
+      s = format (s, "MC state %U, %d streams joined, global sequence 0x%x",
+		  format_mc_relay_state, mcm->relay_state,
+		  vec_len (mcm->stream_vector), mcm->relay_global_sequence);
 
-    s =
-      format (s,
-	      "\n%Uretries: interval %.0f sec, limit %d, pool elts %d, %Ld sent",
-	      format_white_space, indent + 4, t->config.retry_interval,
-	      t->config.retry_limit, pool_elts (t->retry_pool),
-	      t->stats.n_retries - t->stats_last_clear.n_retries);
+      {
+	mc_mastership_peer_t *mp;
+	f64 now = vlib_time_now (mcm->vlib_main);
+	s = format (s, "\n%UMost recent mastership peers:",
+		    format_white_space, indent + 2);
+	vec_foreach (mp, mcm->mastership_peers)
+	{
+	  s = format (s, "\n%U%-30U%.4e",
+		      format_white_space, indent + 4,
+		      mcm->transport.format_peer_id, mp->peer_id,
+		      now - mp->time_last_master_assert_received);
+	}
+      }
 
-    s = format (s, "\n%U%Ld/%Ld user requests sent/received",
-		format_white_space, indent + 4,
-		t->user_requests_sent, t->user_requests_received);
+      vec_foreach (t, mcm->stream_vector)
+      {
+	s = format (s, "\n%Ustream `%s' index %d",
+		    format_white_space, indent + 2, t->config.name, t->index);
 
-    s = format (s, "\n%U%d peers, local/global sequence 0x%x/0x%x",
-		format_white_space, indent + 4,
-		pool_elts (t->peers),
-		t->our_local_sequence, t->last_global_sequence_processed);
+	s = format (s, "\n%Ustate %U",
+		    format_white_space, indent + 4,
+		    format_mc_stream_state, t->state);
 
-    ps = 0;
+	s =
+	  format (s,
+		  "\n%Uretries: interval %.0f sec, limit %d, pool elts %d, %Ld sent",
+		  format_white_space, indent + 4, t->config.retry_interval,
+		  t->config.retry_limit, pool_elts (t->retry_pool),
+		  t->stats.n_retries - t->stats_last_clear.n_retries);
+
+	s = format (s, "\n%U%Ld/%Ld user requests sent/received",
+		    format_white_space, indent + 4,
+		    t->user_requests_sent, t->user_requests_received);
+
+	s = format (s, "\n%U%d peers, local/global sequence 0x%x/0x%x",
+		    format_white_space, indent + 4,
+		    pool_elts (t->peers),
+		    t->our_local_sequence, t->last_global_sequence_processed);
+
+	ps = 0;
     /* *INDENT-OFF* */
     pool_foreach (p, t->peers,
     ({
@@ -2580,29 +2555,29 @@ format_mc_main (u8 * s, va_list * args)
         vec_add1 (ps, p[0]);
     }));
     /* *INDENT-ON* */
-    vec_sort_with_function (ps, mc_peer_comp);
-    s = format (s, "\n%U%=30s%10s%16s%16s",
-		format_white_space, indent + 6,
-		"Peer", "Last seq", "Retries", "Future");
+	vec_sort_with_function (ps, mc_peer_comp);
+	s = format (s, "\n%U%=30s%10s%16s%16s",
+		    format_white_space, indent + 6,
+		    "Peer", "Last seq", "Retries", "Future");
 
-    vec_foreach (p, ps)
-    {
-      s = format (s, "\n%U%-30U0x%08x%16Ld%16Ld%s",
-		  format_white_space, indent + 6,
-		  mcm->transport.format_peer_id, p->id.as_u64,
-		  p->last_sequence_received,
-		  p->stats.n_msgs_from_past -
-		  p->stats_last_clear.n_msgs_from_past,
-		  p->stats.n_msgs_from_future -
-		  p->stats_last_clear.n_msgs_from_future,
-		  (mcm->transport.our_ack_peer_id.as_u64 ==
-		   p->id.as_u64 ? " (self)" : ""));
+	vec_foreach (p, ps)
+	{
+	  s = format (s, "\n%U%-30U0x%08x%16Ld%16Ld%s",
+		      format_white_space, indent + 6,
+		      mcm->transport.format_peer_id, p->id.as_u64,
+		      p->last_sequence_received,
+		      p->stats.n_msgs_from_past -
+		      p->stats_last_clear.n_msgs_from_past,
+		      p->stats.n_msgs_from_future -
+		      p->stats_last_clear.n_msgs_from_future,
+		      (mcm->transport.our_ack_peer_id.as_u64 ==
+		       p->id.as_u64 ? " (self)" : ""));
+	}
+	vec_free (ps);
+      }
+
+      return s;
     }
-    vec_free (ps);
-  }
-
-  return s;
-}
 
 /*
  * fd.io coding-style-patch-verification: ON

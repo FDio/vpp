@@ -135,11 +135,11 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
                                  format_vnet_hw_interface, vnm, shi, verbose);
               }));
               /* *INDENT-ON* */
-	    }
-	}
     }
-  /* *INDENT-ON* */
-  else
+    }
+    }
+    /* *INDENT-ON* */
+    else
     {
       for (i = 0; i < vec_len (hw_if_indices); i++)
 	{
@@ -230,7 +230,7 @@ show_sw_interfaces (vlib_main_t * vm,
 					     vec_add1 (sorted_sis, si[0]);
 					     }
 					     /* *INDENT-ON* */
-		    ));
+      ));
 
       /* Sort by name. */
       vec_sort_with_function (sorted_sis, sw_interface_name_compare);
@@ -379,9 +379,9 @@ VLIB_CLI_COMMAND (vnet_cli_set_interface_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-clear_interface_counters (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *clear_interface_counters (vlib_main_t * vm,
+					       unformat_input_t * input,
+					       vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
@@ -496,9 +496,9 @@ VLIB_CLI_COMMAND (clear_interface_counters_command, static) = {
  *       on this interface. Only one can be specified per interface.
  */
 
-static clib_error_t *
-parse_vlan_sub_interfaces (unformat_input_t * input,
-			   vnet_sw_interface_t * template)
+static clib_error_t *parse_vlan_sub_interfaces (unformat_input_t * input,
+						vnet_sw_interface_t *
+						template)
 {
   clib_error_t *error = 0;
   u32 inner_vlan, outer_vlan;
@@ -550,9 +550,9 @@ done:
   return error;
 }
 
-static clib_error_t *
-create_sub_interfaces (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *create_sub_interfaces (vlib_main_t * vm,
+					    unformat_input_t * input,
+					    vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -678,9 +678,9 @@ VLIB_CLI_COMMAND (create_sub_interfaces_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-set_state (vlib_main_t * vm,
-	   unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *set_state (vlib_main_t * vm,
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error;
@@ -717,9 +717,9 @@ VLIB_CLI_COMMAND (set_state_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-set_unnumbered (vlib_main_t * vm,
-		unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *set_unnumbered (vlib_main_t * vm,
+				     unformat_input_t * input,
+				     vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 unnumbered_sw_if_index;
@@ -775,9 +775,9 @@ VLIB_CLI_COMMAND (set_unnumbered_command, static) = {
 
 
 
-static clib_error_t *
-set_hw_class (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *set_hw_class (vlib_main_t * vm,
+				   unformat_input_t * input,
+				   vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
@@ -816,18 +816,16 @@ VLIB_CLI_COMMAND (set_hw_class_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-vnet_interface_cli_init (vlib_main_t * vm)
+static clib_error_t *vnet_interface_cli_init (vlib_main_t * vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (vnet_interface_cli_init);
 
-static clib_error_t *
-renumber_interface_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+static clib_error_t *renumber_interface_command_fn (vlib_main_t * vm,
+						    unformat_input_t * input,
+						    vlib_cli_command_t * cmd)
 {
   u32 hw_if_index;
   u32 new_dev_instance;
@@ -866,9 +864,9 @@ VLIB_CLI_COMMAND (renumber_interface_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-promiscuous_cmd (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *promiscuous_cmd (vlib_main_t * vm,
+				      unformat_input_t * input,
+				      vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 hw_if_index;
@@ -902,8 +900,8 @@ VLIB_CLI_COMMAND (set_interface_promiscuous_cmd, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *mtu_cmd (vlib_main_t * vm, unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 hw_if_index, mtu;

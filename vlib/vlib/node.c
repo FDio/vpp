@@ -441,6 +441,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   }
 }
 
+/* *INDENT-OFF* */
 /* Register new packet processing node. */
 u32
 /* *INDENT-OFF* */
@@ -449,6 +450,8 @@ vlib_register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   register_node (vm, r);
   return r->index;
 }
+/* *INDENT-ON* */
+
 /* *INDENT-ON* */
 
 void
@@ -488,11 +491,11 @@ vlib_node_main_init (vlib_main_t * vm)
 
 	sib = vlib_get_node_by_name (vm, (u8 *) n->sibling_of);
 	if (!sib)
-          {
-            error = clib_error_create ("sibling `%s' not found for node `%v'", 
-                                       n->sibling_of, n->name);
-            goto done;
-          }
+	  {
+	    error = clib_error_create ("sibling `%s' not found for node `%v'",
+				       n->sibling_of, n->name);
+	    goto done;
+	  }
 
         /* *INDENT-OFF* */
 	clib_bitmap_foreach (si, sib->sibling_bitmap, ({

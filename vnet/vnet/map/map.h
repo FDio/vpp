@@ -120,9 +120,10 @@ typedef union {
     u8 protocol;
   });
   /* *INDENT-ON* */
-  u64 as_u64[2];
-  u32 as_u32[4];
+u64 as_u64[2];
+u32 as_u32[4];
 } map_ip4_reass_key_t;
+
 /* *INDENT-ON* */
 
 typedef struct
@@ -167,8 +168,8 @@ typedef union {
     u8 protocol;
   });
   /* *INDENT-ON* */
-  u64 as_u64[5];
-  u32 as_u32[10];
+u64 as_u64[5];
+u32 as_u32[10];
 } map_ip6_reass_key_t;
 /* *INDENT-OFF* */
 

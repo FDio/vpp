@@ -611,7 +611,7 @@ socksvr_api_init (vlib_main_t * vm)
   rv = listen (sockfd, 5);
   if (rv < 0)
     {
-      close(sockfd);
+      close (sockfd);
       return clib_error_return_unix (0, "listen");
     }
 

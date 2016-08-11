@@ -356,10 +356,10 @@ test_node_serialize_command_fn (vlib_main_t * vm,
 	  for (k = 0; k < vec_len (node->next_nodes); k++)
 	    {
 	      if (node->next_nodes[k] != ~0)
-                {
-                  next_node = nodes[node->next_nodes[k]];
-                  vlib_cli_output (vm, "  [%d] %s", k, next_node->name);
-                }
+		{
+		  next_node = nodes[node->next_nodes[k]];
+		  vlib_cli_output (vm, "  [%d] %s", k, next_node->name);
+		}
 	    }
 	}
     }

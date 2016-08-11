@@ -665,7 +665,7 @@ typedef CLIB_PACKED (struct
 		     {
 enum pcie_capability_type type:16; u16 version: 4; u16 next_capability:12;})
   /* *INDENT-ON* */
-  pcie_capability_regs_t;
+pcie_capability_regs_t;
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct

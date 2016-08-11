@@ -870,11 +870,11 @@ ip6_map_ip4_reass (vlib_main_t * vm,
 
 	  map_ip4_reass_lock ();
 	  //This node only deals with fragmented ip4
-	  map_ip4_reass_t *r =
-	    map_ip4_reass_get (ip40->src_address.as_u32,
-			       ip40->dst_address.as_u32,
-			       ip40->fragment_id, ip40->protocol,
-			       &fragments_to_drop);
+	  map_ip4_reass_t *r = map_ip4_reass_get (ip40->src_address.as_u32,
+						  ip40->dst_address.as_u32,
+						  ip40->fragment_id,
+						  ip40->protocol,
+						  &fragments_to_drop);
 	  if (PREDICT_FALSE (!r))
 	    {
 	      // Could not create a caching entry
@@ -968,8 +968,8 @@ ip6_map_ip4_reass (vlib_main_t * vm,
 		vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
 						 cpu_index, map_domain_index0,
 						 1,
-						 clib_net_to_host_u16 (ip40->
-								       length));
+						 clib_net_to_host_u16
+						 (ip40->length));
 	      next0 =
 		(error0 ==
 		 MAP_ERROR_NONE) ? next0 : IP6_MAP_IP4_REASS_NEXT_DROP;
@@ -1113,8 +1113,7 @@ ip6_map_icmp_relay (vlib_main_t * vm,
 
 	      /* Check DF flag */
 	      if (!
-		  (inner_ip40->
-		   flags_and_fragment_offset &
+		  (inner_ip40->flags_and_fragment_offset &
 		   clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT)))
 		{
 		  error0 = MAP_ERROR_ICMP_RELAY;

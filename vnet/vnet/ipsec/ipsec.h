@@ -283,9 +283,9 @@ ipsec_alloc_empty_buffers (vlib_main_t * vm, ipsec_main_t * im)
 	}
 
       n_alloc = vlib_buffer_alloc_from_free_list (vm,
-						  im->
-						  empty_buffers[cpu_index] +
-						  l, 2 * VLIB_FRAME_SIZE - l,
+						  im->empty_buffers[cpu_index]
+						  + l,
+						  2 * VLIB_FRAME_SIZE - l,
 						  free_list_index);
 
       _vec_len (im->empty_buffers[cpu_index]) = l + n_alloc;

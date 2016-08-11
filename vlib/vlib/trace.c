@@ -317,44 +317,46 @@ cli_show_trace_buffer (vlib_main_t * vm,
     }));
     /* *INDENT-ON* */
 
-    if (vec_len (traces) == 0)
-      {
-        clib_mem_set_heap (mainheap);
-        s = format (s, "No packets in trace buffer\n");
-        goto done;
-      }
+  if (vec_len (traces) == 0)
+    {
+      clib_mem_set_heap (mainheap);
+      s = format (s, "No packets in trace buffer\n");
+      goto done;
+    }
 
-    /* Sort them by increasing time. */
-    vec_sort_with_function (traces, trace_cmp);
+  /* Sort them by increasing time. */
+  vec_sort_with_function (traces, trace_cmp);
 
-    for (i = 0; i < vec_len (traces); i++)
-      {
-        if (i == max)
-          {
-            vlib_cli_output (vm, "Limiting display to %d packets."
-                                 " To display more specify max.", max);
-            goto done;
-          }
+  for (i = 0; i < vec_len (traces); i++)
+    {
+      if (i == max)
+	{
+	  vlib_cli_output (vm, "Limiting display to %d packets."
+			   " To display more specify max.", max);
+	  goto done;
+	}
 
-        clib_mem_set_heap (mainheap);
+      clib_mem_set_heap (mainheap);
 
-        s = format (s, "Packet %d\n%U\n\n", i + 1,
-                         format_vlib_trace, vm, traces[i]);
+      s = format (s, "Packet %d\n%U\n\n", i + 1,
+		  format_vlib_trace, vm, traces[i]);
 
-        mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
-      }
+      mainheap = clib_mem_set_heap (this_vlib_main->heap_base);
+    }
 
-  done:
-    vec_free (traces);
-    clib_mem_set_heap (mainheap);
+done:
+  vec_free (traces);
+  clib_mem_set_heap (mainheap);
 
-    index++;
-  }));
+  index++;
+}
+
+));
   /* *INDENT-ON* */
 
-  vlib_cli_output (vm, (char *) s);
-  vec_free (s);
-  return 0;
+vlib_cli_output (vm, (char *) s);
+vec_free (s);
+return 0;
 }
 
 /* *INDENT-OFF* */
@@ -365,9 +367,9 @@ VLIB_CLI_COMMAND (show_trace_cli,static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-cli_add_trace_buffer (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *cli_add_trace_buffer (vlib_main_t * vm,
+					   unformat_input_t * input,
+					   vlib_cli_command_t * cmd)
 {
   vlib_trace_main_t *tm;
   vlib_trace_node_t *tn;
@@ -448,9 +450,9 @@ VLIB_CLI_COMMAND (add_trace_cli,static) = {
  * criteria (e.g. input sw_if_index, mac address) but for now just checks if
  * a specified node is in the trace or not in the trace.
  */
-static clib_error_t *
-cli_filter_trace (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *cli_filter_trace (vlib_main_t * vm,
+				       unformat_input_t * input,
+				       vlib_cli_command_t * cmd)
 {
   vlib_trace_main_t *tm = &vm->trace_main;
   u32 filter_node_index;
@@ -510,9 +512,9 @@ VLIB_CLI_COMMAND (filter_trace_cli,static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-cli_clear_trace_buffer (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *cli_clear_trace_buffer (vlib_main_t * vm,
+					     unformat_input_t * input,
+					     vlib_cli_command_t * cmd)
 {
   clear_trace_buffer ();
   return 0;
@@ -527,8 +529,7 @@ VLIB_CLI_COMMAND (clear_trace_cli,static) = {
 /* *INDENT-ON* */
 
 /* Dummy function to get us linked in. */
-void
-vlib_trace_cli_reference (void)
+void vlib_trace_cli_reference (void)
 {
 }
 
