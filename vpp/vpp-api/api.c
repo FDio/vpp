@@ -5662,32 +5662,25 @@ send_lisp_eid_table_details (mapping_t * mapit,
 			     u32 context, u8 filter)
 {
   vl_api_lisp_eid_table_details_t *rmp = NULL;
-  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  locator_set_t *ls = NULL;
   gid_address_t *gid = NULL;
   u8 *mac = 0;
   ip_prefix_t *ip_prefix = NULL;
 
-  ls = pool_elt_at_index (lcm->locator_set_pool, mapit->locator_set_index);
-
   switch (filter)
     {
-    case 0:
+    case 0: /* all mappings */
       break;
-    case 1:
-      if (!ls->local)
-	{
-	  return;
-	}
-      break;
-    case 2:
-      if (ls->local)
-	{
-	  return;
-	}
-      break;
+
+    case 1: /* local only */
+      if (!mapit->local)
+        return;
+
+    case 2: /* remote only */
+      if (mapit->local)
+        return;
+
     default:
-      clib_warning ("Filter error, unknown filter: %d\n", filter);
+      clib_warning ("Filter error, unknown filter: %d", filter);
       return;
     }
 
@@ -5699,7 +5692,7 @@ send_lisp_eid_table_details (mapping_t * mapit,
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_LISP_EID_TABLE_DETAILS);
   rmp->locator_set_index = mapit->locator_set_index;
-  rmp->is_local = ls->local;
+  rmp->is_local = mapit->local;
   rmp->ttl = mapit->ttl;
   rmp->authoritative = mapit->authoritative;
 
@@ -5760,7 +5753,8 @@ vl_api_lisp_eid_table_dump_t_handler (vl_api_lisp_eid_table_dump_t * mp)
 	return;
 
       mapit = pool_elt_at_index (lcm->mapping_pool, mi);
-      send_lisp_eid_table_details (mapit, q, mp->context, mp->filter);
+      send_lisp_eid_table_details (mapit, q, mp->context,
+                                   0 /* ignore filter */);
     }
   else
     {
