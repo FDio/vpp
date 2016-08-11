@@ -111,6 +111,9 @@
 (defun fix-vnet-hw-interface-class () (interactive)
        (fix-initializer "VNET_HW_INTERFACE_CLASS *("))
 
+(defun fix-clib-packed () (interactive)
+       (fix-initializer "CLIB_PACKED *("))
+
 ;; Driver routine which runs the set of functions
 ;; defined above, as well as the bottom boilerplate function
 
@@ -129,6 +132,7 @@
        (fix-reply-macro2)
        (fix-vnet-device-class)
        (fix-vnet-hw-interface-class)
+       (fix-clib-packed)
        (insert-style-boilerplate)
        (if (boundp 'indent-offset-list)
            (makunbound 'indent-offset-list)))
