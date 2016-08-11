@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_8b7e4fad",
+        "filename": "vnet/vnet/buffer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-11T14:19:47Z",
+      "side": 1,
+      "message": "Please add a comment describing some of the obvious metadata collisions, especially:  ip.adj_index[2]. Folks need to be exquisitely careful, or Bad Things will happen.",
+      "revId": "6a7fe0deca76332506160e070b20dc49d6c51c0f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
