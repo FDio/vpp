@@ -37,12 +37,12 @@ static u8 * format_vxlan_rx_trace (u8 * s, va_list * args)
 
   if (t->tunnel_index != ~0)
     {
-      s = format (s, "VXLAN: tunnel %d vni %d next %d error %d", 
+      s = format (s, "VXLAN: tunnel %d vni %d next %d error %d",
                   t->tunnel_index, t->vni, t->next_index, t->error);
     }
   else
     {
-      s = format (s, "VXLAN: no tunnel for vni %d next %d error %d", 
+      s = format (s, "VXLAN: no tunnel for vni %d next %d error %d",
                   t->vni, t->next_index, t->error);
     }
   return s;
@@ -130,9 +130,9 @@ vxlan_input (vlib_main_t * vm,
           vxlan1 = vlib_buffer_get_current (b1);
 
           if (is_ip4) {
-          vlib_buffer_advance 
+          vlib_buffer_advance
             (b0, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
-          vlib_buffer_advance 
+          vlib_buffer_advance
             (b1, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
             ip4_0 = vlib_buffer_get_current (b0);
             ip4_1 = vlib_buffer_get_current (b1);
@@ -149,10 +149,10 @@ vxlan_input (vlib_main_t * vm,
           if (is_ip4) {
             vlib_buffer_advance
               (b0, sizeof(*ip4_0)+sizeof(udp_header_t)+sizeof(*vxlan0));
-          vlib_buffer_advance 
+          vlib_buffer_advance
               (b1, sizeof(*ip4_1)+sizeof(udp_header_t)+sizeof(*vxlan1));
           } else {
-          vlib_buffer_advance 
+          vlib_buffer_advance
               (b0, sizeof(*ip6_0)+sizeof(udp_header_t)+sizeof(*vxlan0));
             vlib_buffer_advance
               (b1, sizeof(*ip6_1)+sizeof(udp_header_t)+sizeof(*vxlan1));
@@ -209,7 +209,8 @@ vxlan_input (vlib_main_t * vm,
 
           t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
 
-          next0 = t0->decap_next_index;
+          next0 = (t0->decap_next_index < node->n_next_nodes) ?
+                       t0->decap_next_index : VXLAN_INPUT_NEXT_DROP;
           sw_if_index0 = t0->sw_if_index;
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -220,20 +221,24 @@ vxlan_input (vlib_main_t * vm,
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
 
+          /* Save node index to metadata[0] to pass to plugin */
+          vnet_buffer(b0)->plugin_metadata[0] = (is_ip4?
+	       vxlan4_input_node.index:vxlan6_input_node.index);
+
           pkts_decapsulated ++;
           stats_n_packets += 1;
           stats_n_bytes += len0;
 
 	  /* Batch stats increment on the same vxlan tunnel so counter
 	     is not incremented per packet */
-	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index)) 
+	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
 	    {
 	      stats_n_packets -= 1;
 	      stats_n_bytes -= len0;
 	      if (stats_n_packets)
-		vlib_increment_combined_counter 
+		vlib_increment_combined_counter
 		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   cpu_index, stats_sw_if_index, 
+		   cpu_index, stats_sw_if_index,
 		   stats_n_packets, stats_n_bytes);
 	      stats_n_packets = 1;
 	      stats_n_bytes = len0;
@@ -243,9 +248,9 @@ vxlan_input (vlib_main_t * vm,
         trace0:
           b0->error = error0 ? node->errors[error0] : 0;
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              vxlan_rx_trace_t *tr 
+              vxlan_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->next_index = next0;
               tr->error = error0;
@@ -299,7 +304,8 @@ vxlan_input (vlib_main_t * vm,
 
           t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
 
-          next1 = t1->decap_next_index;
+          next1 = (t1->decap_next_index < node->n_next_nodes) ?
+                       t1->decap_next_index : VXLAN_INPUT_NEXT_DROP;
           sw_if_index1 = t1->sw_if_index;
           len1 = vlib_buffer_length_in_chain (vm, b1);
 
@@ -309,6 +315,9 @@ vxlan_input (vlib_main_t * vm,
 
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b1)->sw_if_index[VLIB_RX] = sw_if_index1;
+          /* Save node index to metadata[0] to pass to plugin */
+          vnet_buffer(b1)->plugin_metadata[0] = (is_ip4?
+	       vxlan4_input_node.index:vxlan6_input_node.index);
 
           pkts_decapsulated ++;
           stats_n_packets += 1;
@@ -316,14 +325,14 @@ vxlan_input (vlib_main_t * vm,
 
 	  /* Batch stats increment on the same vxlan tunnel so counter
 	     is not incremented per packet */
-	  if (PREDICT_FALSE (sw_if_index1 != stats_sw_if_index)) 
+	  if (PREDICT_FALSE (sw_if_index1 != stats_sw_if_index))
 	    {
 	      stats_n_packets -= 1;
 	      stats_n_bytes -= len1;
 	      if (stats_n_packets)
-		vlib_increment_combined_counter 
+		vlib_increment_combined_counter
 		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   cpu_index, stats_sw_if_index, 
+		   cpu_index, stats_sw_if_index,
 		   stats_n_packets, stats_n_bytes);
 	      stats_n_packets = 1;
 	      stats_n_bytes = len1;
@@ -333,9 +342,9 @@ vxlan_input (vlib_main_t * vm,
         trace1:
           b1->error = error1 ? node->errors[error1] : 0;
 
-          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
             {
-              vxlan_rx_trace_t *tr 
+              vxlan_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b1, sizeof (*tr));
               tr->next_index = next1;
               tr->error = error1;
@@ -377,7 +386,7 @@ vxlan_input (vlib_main_t * vm,
           vxlan0 = vlib_buffer_get_current (b0);
 
           if (is_ip4) {
-          vlib_buffer_advance 
+          vlib_buffer_advance
             (b0, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
             ip4_0 = vlib_buffer_get_current (b0);
           } else {
@@ -391,7 +400,7 @@ vxlan_input (vlib_main_t * vm,
             vlib_buffer_advance
               (b0, sizeof(*ip4_0)+sizeof(udp_header_t)+sizeof(*vxlan0));
           } else {
-          vlib_buffer_advance 
+          vlib_buffer_advance
               (b0, sizeof(*ip6_0)+sizeof(udp_header_t)+sizeof(*vxlan0));
           }
 
@@ -443,7 +452,8 @@ vxlan_input (vlib_main_t * vm,
 
           t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
 
-          next0 = t0->decap_next_index;
+          next0 = (t0->decap_next_index < node->n_next_nodes) ?
+                       t0->decap_next_index : VXLAN_INPUT_NEXT_DROP;
           sw_if_index0 = t0->sw_if_index;
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -453,6 +463,9 @@ vxlan_input (vlib_main_t * vm,
 
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
+          /* Save node index to metadata[0] to pass to plugin */
+          vnet_buffer(b0)->plugin_metadata[0] = (is_ip4?
+	       vxlan4_input_node.index:vxlan6_input_node.index);
 
           pkts_decapsulated ++;
           stats_n_packets += 1;
@@ -460,14 +473,14 @@ vxlan_input (vlib_main_t * vm,
 
 	  /* Batch stats increment on the same vxlan tunnel so counter
 	     is not incremented per packet */
-	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index)) 
+	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
 	    {
 	      stats_n_packets -= 1;
 	      stats_n_bytes -= len0;
 	      if (stats_n_packets)
-		vlib_increment_combined_counter 
+		vlib_increment_combined_counter
 		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   cpu_index, stats_sw_if_index, 
+		   cpu_index, stats_sw_if_index,
 		   stats_n_packets, stats_n_bytes);
 	      stats_n_packets = 1;
 	      stats_n_bytes = len0;
@@ -477,9 +490,9 @@ vxlan_input (vlib_main_t * vm,
         trace00:
           b0->error = error0 ? node->errors[error0] : 0;
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
-              vxlan_rx_trace_t *tr 
+              vxlan_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->next_index = next0;
               tr->error = error0;
@@ -494,15 +507,15 @@ vxlan_input (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   /* Do we still need this now that tunnel tx stats is kept? */
-  vlib_node_increment_counter (vm, is_ip4? 
+  vlib_node_increment_counter (vm, is_ip4?
 			       vxlan4_input_node.index:vxlan6_input_node.index,
-                               VXLAN_ERROR_DECAPSULATED, 
+                               VXLAN_ERROR_DECAPSULATED,
                                pkts_decapsulated);
 
   /* Increment any remaining batch stats */
   if (stats_n_packets)
     {
-      vlib_increment_combined_counter 
+      vlib_increment_combined_counter
 	(im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
 	 cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
       node->runtime_data[0] = stats_sw_if_index;
