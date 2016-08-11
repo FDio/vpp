@@ -38,6 +38,7 @@ static char *lb_error_strings[] = {
 
 typedef enum {
   LB_NEXT_LOOKUP,
+  LB_NEXT_REWRITE,
   LB_NEXT_DROP,
   LB_N_NEXT,
 } lb_next_t;
@@ -47,14 +48,14 @@ typedef struct {
   u32 as_index;
 } lb_trace_t;
 
-u8 *lb_format_adjacency(u8 * s,
-                        struct ip_lookup_main_t * lm,
-                        ip_adjacency_t *adj)
+u8 *lb_format_adjacency(u8 * s, va_list * va)
 {
   lb_main_t *lbm = &lb_main;
+  __attribute((unused)) ip_lookup_main_t *lm = va_arg (*va, ip_lookup_main_t *);
+  ip_adjacency_t *adj = va_arg (*va, ip_adjacency_t *);
   lb_adj_data_t *ad = (lb_adj_data_t *) &adj->opaque;
   __attribute__((unused)) lb_vip_t *vip = pool_elt_at_index (lbm->vips, ad->vip_index);
-  return format(s, "idx:%d", ad->vip_index);
+  return format(s, "vip idx:%d", ad->vip_index);
 }
 
 u8 *
@@ -251,6 +252,9 @@ lb_node_fn (vlib_main_t * vm,
           clib_host_to_net_u16(0x0800):
           clib_host_to_net_u16(0x86DD);
 
+      vnet_buffer(p0)->ip.adj_index[VLIB_TX] = as0->adj_index;
+      next0 = (as0->adj_index != ~0)?LB_NEXT_REWRITE:next0;
+
       if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
       {
         lb_trace_t *tr = vlib_add_trace (vm, node, p0, sizeof (*tr));
@@ -310,6 +314,7 @@ VLIB_REGISTER_NODE (lb6_gre6_node) =
   .next_nodes =
   {
       [LB_NEXT_LOOKUP] = "ip6-lookup",
+      [LB_NEXT_REWRITE] = "ip6-rewrite",
       [LB_NEXT_DROP] = "error-drop"
   },
 };
@@ -334,6 +339,7 @@ VLIB_REGISTER_NODE (lb6_gre4_node) =
   .next_nodes =
   {
       [LB_NEXT_LOOKUP] = "ip4-lookup",
+      [LB_NEXT_REWRITE]= "ip4-rewrite-transit",
       [LB_NEXT_DROP] = "error-drop"
   },
 };
@@ -358,6 +364,7 @@ VLIB_REGISTER_NODE (lb4_gre6_node) =
   .next_nodes =
   {
       [LB_NEXT_LOOKUP] = "ip6-lookup",
+      [LB_NEXT_REWRITE] = "ip6-rewrite",
       [LB_NEXT_DROP] = "error-drop"
   },
 };
@@ -382,6 +389,7 @@ VLIB_REGISTER_NODE (lb4_gre4_node) =
   .next_nodes =
   {
       [LB_NEXT_LOOKUP] = "ip4-lookup",
+      [LB_NEXT_REWRITE]= "ip4-rewrite-transit",
       [LB_NEXT_DROP] = "error-drop"
   },
 };

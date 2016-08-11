@@ -55,6 +55,13 @@ typedef struct {
   ip46_address_t address;
 
   /**
+   * Second ip lookup can be avoided by sending directly the packet
+   * to ip-rewrite with a configured adjacency.
+   * When set to ~0, the packets are sent to ip6-lookup.
+   */
+  u32 adj_index;
+
+  /**
    * ASs are indexed by address and VIP Index.
    * Which means there will be duplicated if the same server
    * address is used for multiple VIPs.
@@ -294,6 +301,12 @@ int lb_vip_find_index(ip46_address_t *prefix, u8 plen, u32 *vip_index);
 
 int lb_vip_add_ass(u32 vip_index, ip46_address_t *addresses, u32 n);
 int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n);
+
+/**
+ * Updates the adjacency index stored in the AS such that the second
+ * IP lookup (after encap) can be bypassed.
+ */
+int lb_as_lookup_bypass(u32 vip_index, ip46_address_t *address, u8 is_disable);
 
 u32 lb_hash_time_now(vlib_main_t * vm);
 

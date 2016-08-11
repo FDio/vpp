@@ -143,10 +143,12 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
   u32 *as_index;
   pool_foreach(as_index, vip->as_indexes, {
       as = &lbm->ass[*as_index];
-      s = format(s, "%U    %U %d buckets   %d flows  %s\n", format_white_space, indent,
+      s = format(s, "%U    %U %d buckets   %d flows  adj:%u %s\n",
+                   format_white_space, indent,
                    format_ip46_address, &as->address, IP46_TYPE_ANY,
                    count[as - lbm->ass],
                    vlib_refcount_get(&lbm->as_refcount, as - lbm->ass),
+                   as->adj_index,
                    (as->flags & LB_AS_FLAGS_USED)?"used":" removed");
   });
 
@@ -447,6 +449,7 @@ next:
   //Update reused ASs
   vec_foreach(ip, to_be_updated) {
     lbm->ass[*ip].flags = LB_AS_FLAGS_USED;
+    lbm->ass[*ip].adj_index = ~0;
   }
   vec_free(to_be_updated);
 
@@ -458,6 +461,7 @@ next:
     as->address = addresses[*ip];
     as->flags = LB_AS_FLAGS_USED;
     as->vip_index = vip_index;
+    as->adj_index = ~0;
     pool_get(vip->as_indexes, as_index);
     *as_index = as - lbm->ass;
   }
@@ -529,6 +533,59 @@ int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n)
   int ret = lb_vip_del_ass_withlock(vip_index, addresses, n);
   lb_put_writer_lock();
   return ret;
+}
+
+int lb_as_lookup_bypass(u32 vip_index, ip46_address_t *address, u8 is_disable)
+{
+  lb_get_writer_lock();
+  lb_main_t *lbm = &lb_main;
+  u32 as_index;
+  lb_as_t *as;
+  lb_vip_t *vip;
+
+  if (!(vip = lb_vip_get_by_index(vip_index)) ||
+      lb_as_find_index_vip(vip, address, &as_index)) {
+    lb_put_writer_lock();
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+  }
+
+  as = &lbm->ass[as_index];
+
+  if (is_disable) {
+    as->adj_index = ~0;
+  } else if (lb_vip_is_gre4(vip)) {
+    uword *p = ip4_get_route (&ip4_main, 0, 0, as->address.ip4.as_u8, 32);
+    if (p == 0) {
+      lb_put_writer_lock();
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+    u32 ai = (u32)p[0];
+    ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
+    ip_adjacency_t *adj4 = ip_get_adjacency (lm4, ai);
+    if (adj4->lookup_next_index != IP_LOOKUP_NEXT_REWRITE) {
+      lb_put_writer_lock();
+      return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE;
+    }
+
+    as->adj_index = ai;
+  } else {
+    u32 ai = ip6_get_route (&ip6_main, 0, 0, &as->address.ip6, 128);
+    if (ai == 0) {
+      lb_put_writer_lock();
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+
+    ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
+    ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai);
+    if (adj6->lookup_next_index != IP_LOOKUP_NEXT_REWRITE) {
+      lb_put_writer_lock();
+      return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE;
+    }
+
+    as->adj_index = ai;
+  }
+  lb_put_writer_lock();
+  return 0;
 }
 
 
@@ -733,6 +790,7 @@ lb_init (vlib_main_t * vm)
   lbm->ass = 0;
   pool_get(lbm->ass, default_as);
   default_as->flags = 0;
+  default_as->adj_index = ~0;
   default_as->vip_index = ~0;
   default_as->address.ip6.as_u64[0] = 0xffffffffffffffffL;
   default_as->address.ip6.as_u64[1] = 0xffffffffffffffffL;
