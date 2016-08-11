@@ -883,8 +883,8 @@ static void dpdk_unmap_all_mem_regions(dpdk_device_t * xd)
 
       long page_sz = get_huge_page_size(vui->region_fd[i]);
 
-      ssize_t map_sz = (mem->regions[i].memory_size +
-        vui->region_offset[i] + page_sz) & ~(page_sz - 1);
+      ssize_t map_sz = RTE_ALIGN_CEIL(mem->regions[i].memory_size +
+        vui->region_offset[i], page_sz);
 
       r = munmap((void *)(vui->region_addr[i] - vui->region_offset[i]), map_sz);
 
@@ -1188,7 +1188,7 @@ static clib_error_t * dpdk_vhost_user_socket_read (unix_file_t * uf)
       fd = fds[0];
       /* align size to 2M page */
       long page_sz = get_huge_page_size(fd);
-      ssize_t map_sz = (msg.log.size + msg.log.offset + page_sz) & ~(page_sz - 1);
+      ssize_t map_sz = RTE_ALIGN_CEIL(msg.log.size + msg.log.offset, page_sz);
 
       void *addr = mmap(0, map_sz, PROT_READ | PROT_WRITE,
                                 MAP_SHARED, fd, 0);
