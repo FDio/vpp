@@ -1,21 +1,41 @@
 #!/usr/bin/emacs --script
 
-;; Insert style boilerplate
+;; Insert style boilerplate if it's not already there
 ;;
 ;; Breaking the string in half keeps emacs
 ;; from trying to interpret the local variable
 ;; settings e.g. when it reads the lisp source code
 
 (defun insert-style-boilerplate () (interactive)
-       (save-excursion (goto-char (point-max))
-                       (insert "
+       (save-excursion 
+         (goto-char (point-min))
+         (if (eq nil (search-forward "coding-style-patch-verification" 
+                                     (point-max) t))
+             (let ((junk 0)) (goto-char (point-max))
+              (insert "
 /*
  * fd.io coding-style-patch-verification: ON
  *
  * Local Var" "iables:
  * eval: (c-set-style \"gnu\")
  * End:
- */")))
+ */")))))
+
+;; (cons xxx <list>) means insert xxx at the head of <list>
+;; Build a sorted list of *INDENT-OFF* lines, by searching
+;; backwards. The initial (setq indent-offset-list nil)
+;; results in (cdr <last-cell>) nil, which makes it a proper list
+
+(defun find-indent-offs () (interactive)
+       (save-excursion
+         (if (boundp 'indent-offset-list)
+             (makunbound 'indent-offset-list))
+         (setq indent-offset-list nil)
+         (goto-char (point-max))
+         (while (search-backward "*INDENT-OFF*" (point-min) t)
+           (move-beginning-of-line nil)
+           (setq indent-offset-list (cons (point) indent-offset-list))
+           (previous-line))))
 
 ;; Insert indent-off ... indent-on brackets around
 ;; a certain xxx_foreach macro, etc. which "indent"
@@ -23,20 +43,31 @@
 ;; are few examples (fortunately).
 
 (defun fix-initializer (what) (interactive)
+       (find-indent-offs)
        (save-excursion 
          (goto-char (point-min))
          (while (search-forward-regexp what (point-max) t)
            (move-beginning-of-line nil)
-           (open-line 1)
-           (c-indent-line-or-region)
-           (insert "/* *INDENT-OFF* */")
-           (search-forward "{")
-           (backward-char)
-           (forward-sexp)
-           (move-end-of-line nil)
-           (newline 1)
-           (c-indent-line-or-region)
-           (insert "/* *INDENT-ON* */"))))
+           (previous-line)
+           (let ((index 0)(pointval 0))
+             (while (and (< pointval (point))(elt indent-offset-list index))
+               (setq pointval (elt indent-offset-list index))
+               (setq index (1+ index)))
+             (if (not (eq pointval (point)))
+                 (let ((junk 0))
+                   (next-line)
+                   (open-line 1)
+                   (c-indent-line-or-region)
+                   (insert "/* *INDENT-OFF* */")
+                   (search-forward "{")
+                   (backward-char)
+                   (forward-sexp)
+                   (move-end-of-line nil)
+                   (newline 1)
+                   (c-indent-line-or-region)
+                   (insert "/* *INDENT-ON* */")
+                   (find-indent-offs))
+               (search-forward "*INDENT-ON*"))))))
 
 (defun fix-pool-foreach () (interactive)
        (fix-initializer "pool_foreach *("))
@@ -98,8 +129,9 @@
        (fix-reply-macro2)
        (fix-vnet-device-class)
        (fix-vnet-hw-interface-class)
-       (insert-style-boilerplate))
-
+       (insert-style-boilerplate)
+       (if (boundp 'indent-offset-list)
+           (makunbound 'indent-offset-list)))
 
 ;; When run as a script, this sexp
 ;; walks the list of files supplied on the command line.
@@ -108,14 +140,16 @@
 ;; or M-x load-file the file, so we won't accidentally
 ;; evaluate (save-buffers-kill-emacs)...
 
-(let ((index 0))
-  (if (elt argv index)
-      (while (elt argv index)
-        (message "Processing %s..." (elt argv index))
-        (find-file (elt argv index))
+(let ((file-index 0))
+  (if (elt argv file-index)
+      (while (elt argv file-index)
+        (find-file (elt argv file-index))
         (fd-io-styleify)
-        (setq index (1+ index))))
-  (if (> index 0)
-      (save-buffers-kill-emacs t)))
+        (message "Done %s..." (elt argv file-index))
+        (setq file-index (1+ file-index))))
+  (if (> file-index 0)
+      (let ((junk 0))
+        (message "Save and quit...")
+        (save-buffers-kill-emacs t))))
   
 
