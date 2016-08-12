@@ -162,6 +162,7 @@ ip4_sd_fib_clear_src_fib (lisp_gpe_main_t * lgm, ip4_fib_t * fib)
       ip4_route_t x;
 
       x.address_length = i;
+      x.index = 0;              /* shut up coverity */
 
       hash_foreach_pair (p, hash,
       ({

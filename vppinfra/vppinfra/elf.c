@@ -582,7 +582,7 @@ format_elf_main (u8 * s, va_list * args)
     s = format (s, "\nSegments: %d at file offset 0x%Lx-0x%Lx:\n",
 		fh->segment_header_count,
 		fh->segment_header_file_offset,
-		(u64) fh->segment_header_file_offset + fh->segment_header_count * fh->segment_header_size);
+		(u64) fh->segment_header_file_offset + (u64) fh->segment_header_count * (u64) fh->segment_header_size);
 		
     s = format (s, "%U\n", format_elf_segment, 0);
     vec_foreach (h, copy)

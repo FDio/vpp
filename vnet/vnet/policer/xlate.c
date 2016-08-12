@@ -1238,11 +1238,11 @@ sse2_pol_convert_hw_to_cfg_params (sse2_qos_pol_hw_params_st  *hw,
         return EINVAL;
     }
 
-    temp_rate = ((hw->avg_rate_man << hw->rate_exp) * 8LL *
+    temp_rate = (((uint64_t) hw->avg_rate_man << hw->rate_exp) * 8LL *
                 SSE2_QOS_POL_TICKS_PER_SEC)/1000;
     cfg->rb.kbps.cir_kbps = (uint32_t)temp_rate;
 
-    temp_rate = ((hw->peak_rate_man << hw->rate_exp) * 8LL *
+    temp_rate = (((uint64_t) hw->peak_rate_man << hw->rate_exp) * 8LL *
                 SSE2_QOS_POL_TICKS_PER_SEC)/1000;
     cfg->rb.kbps.eir_kbps = (uint32_t)temp_rate;
 

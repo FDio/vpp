@@ -7092,36 +7092,32 @@ send_mpls_gre_tunnel_entry (vpe_api_main_t * am,
 			    mpls_gre_tunnel_t * gt, u32 index, u32 context)
 {
   vl_api_mpls_gre_tunnel_details_t *mp;
+  mpls_main_t *mm = &mpls_main;
+  mpls_encap_t *e;
+  int i;
+  u32 nlabels;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  e = pool_elt_at_index (mm->encaps, gt->encap_index);
+  nlabels = vec_len (e->labels);
+
+  mp = vl_msg_api_alloc (sizeof (*mp) + nlabels * sizeof(u32));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MPLS_GRE_TUNNEL_DETAILS);
   mp->context = context;
 
-  if (gt != NULL)
-    {
-      mp->tunnel_index = htonl (index);
-      mp->tunnel_src = gt->tunnel_src.as_u32;
-      mp->tunnel_dst = gt->tunnel_dst.as_u32;
-      mp->intfc_address = gt->intfc_address.as_u32;
-      mp->mask_width = htonl (gt->mask_width);
-      mp->inner_fib_index = htonl (gt->inner_fib_index);
-      mp->outer_fib_index = htonl (gt->outer_fib_index);
-      mp->encap_index = htonl (gt->encap_index);
-      mp->hw_if_index = htonl (gt->hw_if_index);
-      mp->l2_only = htonl (gt->l2_only);
-    }
+  mp->tunnel_index = htonl (index);
+  mp->tunnel_src = gt->tunnel_src.as_u32;
+  mp->tunnel_dst = gt->tunnel_dst.as_u32;
+  mp->intfc_address = gt->intfc_address.as_u32;
+  mp->mask_width = htonl (gt->mask_width);
+  mp->inner_fib_index = htonl (gt->inner_fib_index);
+  mp->outer_fib_index = htonl (gt->outer_fib_index);
+  mp->encap_index = htonl (gt->encap_index);
+  mp->hw_if_index = htonl (gt->hw_if_index);
+  mp->l2_only = htonl (gt->l2_only);
+  mp->nlabels = htonl (nlabels);
 
-  mpls_main_t *mm = &mpls_main;
-  mpls_encap_t *e;
-  int i;
-  u32 len = 0;
-
-  e = pool_elt_at_index (mm->encaps, gt->encap_index);
-  len = vec_len (e->labels);
-  mp->nlabels = htonl (len);
-
-  for (i = 0; i < len; i++)
+  for (i = 0; i < nlabels; i++)
     {
       mp->labels[i] =
 	htonl (vnet_mpls_uc_get_label
@@ -7136,7 +7132,6 @@ vl_api_mpls_gre_tunnel_dump_t_handler (vl_api_mpls_gre_tunnel_dump_t * mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
   unix_shared_memory_queue_t *q;
-  vlib_main_t *vm = &vlib_global_main;
   mpls_main_t *mm = &mpls_main;
   mpls_gre_tunnel_t *gt;
   u32 index = ntohl (mp->tunnel_index);
@@ -7145,30 +7140,24 @@ vl_api_mpls_gre_tunnel_dump_t_handler (vl_api_mpls_gre_tunnel_dump_t * mp)
   if (q == 0)
     return;
 
-  if (pool_elts (mm->gre_tunnels))
+  if (index != ~0)
     {
-      if (mp->tunnel_index >= 0)
-	{
-	  vlib_cli_output (vm, "MPLS-GRE tunnel %u", index);
-	  gt = pool_elt_at_index (mm->gre_tunnels, index);
-	  send_mpls_gre_tunnel_entry (am, q, gt, gt - mm->gre_tunnels,
-				      mp->context);
-	}
-      else
-	{
-	  vlib_cli_output (vm, "MPLS-GRE tunnels");
-          /* *INDENT-OFF* */
-          pool_foreach (gt, mm->gre_tunnels,
-          ({
-            send_mpls_gre_tunnel_entry (am, q, gt, gt - mm->gre_tunnels,
-                                        mp->context);
-          }));
-          /* *INDENT-ON* */
-	}
+      if (!pool_is_free_index (mm->gre_tunnels, index))
+        {
+          gt = pool_elt_at_index (mm->gre_tunnels, index);
+          send_mpls_gre_tunnel_entry (am, q, gt, gt - mm->gre_tunnels,
+                                      mp->context);
+        }
     }
   else
     {
-      vlib_cli_output (vm, "No MPLS-GRE tunnels");
+      /* *INDENT-OFF* */
+      pool_foreach (gt, mm->gre_tunnels,
+      ({
+        send_mpls_gre_tunnel_entry (am, q, gt, gt - mm->gre_tunnels,
+                                    mp->context);
+      }));
+      /* *INDENT-ON* */
     }
 }
 
@@ -7184,36 +7173,32 @@ send_mpls_eth_tunnel_entry (vpe_api_main_t * am,
 			    unix_shared_memory_queue_t * q,
 			    mpls_eth_tunnel_t * et, u32 index, u32 context)
 {
+  mpls_main_t *mm = &mpls_main;
+  mpls_encap_t *e;
+  int i;
+  u32 nlabels;
   vl_api_mpls_eth_tunnel_details_t *mp;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  e = pool_elt_at_index (mm->encaps, et->encap_index);
+  nlabels = vec_len (e->labels);
+
+  mp = vl_msg_api_alloc (sizeof (*mp) + nlabels*sizeof(u32));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MPLS_ETH_TUNNEL_DETAILS);
   mp->context = context;
 
-  if (et != NULL)
-    {
-      mp->tunnel_index = htonl (index);
-      memcpy (mp->tunnel_dst_mac, et->tunnel_dst, 6);
-      mp->intfc_address = et->intfc_address.as_u32;
-      mp->tx_sw_if_index = htonl (et->tx_sw_if_index);
-      mp->inner_fib_index = htonl (et->inner_fib_index);
-      mp->mask_width = htonl (et->mask_width);
-      mp->encap_index = htonl (et->encap_index);
-      mp->hw_if_index = htonl (et->hw_if_index);
-      mp->l2_only = htonl (et->l2_only);
-    }
+  mp->tunnel_index = htonl (index);
+  memcpy (mp->tunnel_dst_mac, et->tunnel_dst, 6);
+  mp->intfc_address = et->intfc_address.as_u32;
+  mp->tx_sw_if_index = htonl (et->tx_sw_if_index);
+  mp->inner_fib_index = htonl (et->inner_fib_index);
+  mp->mask_width = htonl (et->mask_width);
+  mp->encap_index = htonl (et->encap_index);
+  mp->hw_if_index = htonl (et->hw_if_index);
+  mp->l2_only = htonl (et->l2_only);
+  mp->nlabels = htonl (nlabels);
 
-  mpls_main_t *mm = &mpls_main;
-  mpls_encap_t *e;
-  int i;
-  u32 len = 0;
-
-  e = pool_elt_at_index (mm->encaps, et->encap_index);
-  len = vec_len (e->labels);
-  mp->nlabels = htonl (len);
-
-  for (i = 0; i < len; i++)
+  for (i = 0; i < nlabels; i++)
     {
       mp->labels[i] =
 	htonl (vnet_mpls_uc_get_label
@@ -7228,7 +7213,6 @@ vl_api_mpls_eth_tunnel_dump_t_handler (vl_api_mpls_eth_tunnel_dump_t * mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
   unix_shared_memory_queue_t *q;
-  vlib_main_t *vm = &vlib_global_main;
   mpls_main_t *mm = &mpls_main;
   mpls_eth_tunnel_t *et;
   u32 index = ntohl (mp->tunnel_index);
@@ -7237,34 +7221,24 @@ vl_api_mpls_eth_tunnel_dump_t_handler (vl_api_mpls_eth_tunnel_dump_t * mp)
   if (q == 0)
     return;
 
-  clib_warning ("Received mpls_eth_tunnel_dump");
-  clib_warning ("Received tunnel index: %u from client %u", index,
-		mp->client_index);
-
-  if (pool_elts (mm->eth_tunnels))
+  if (index != ~0)
     {
-      if (mp->tunnel_index >= 0)
-	{
-	  vlib_cli_output (vm, "MPLS-Ethernet tunnel %u", index);
-	  et = pool_elt_at_index (mm->eth_tunnels, index);
-	  send_mpls_eth_tunnel_entry (am, q, et, et - mm->eth_tunnels,
-				      mp->context);
-	}
-      else
-	{
-	  clib_warning ("MPLS-Ethernet tunnels");
-          /* *INDENT-OFF* */
-          pool_foreach (et, mm->eth_tunnels,
-          ({
-            send_mpls_eth_tunnel_entry (am, q, et, et - mm->eth_tunnels,
-                                        mp->context);
-          }));
-          /* *INDENT-ON* */
-	}
+      if (!pool_is_free_index(mm->eth_tunnels, index))
+        {
+          et = pool_elt_at_index (mm->eth_tunnels, index);
+          send_mpls_eth_tunnel_entry (am, q, et, et - mm->eth_tunnels,
+                                      mp->context);
+        }
     }
   else
     {
-      clib_warning ("No MPLS-Ethernet tunnels");
+      /* *INDENT-OFF* */
+      pool_foreach (et, mm->eth_tunnels,
+      ({
+        send_mpls_eth_tunnel_entry (am, q, et, et - mm->eth_tunnels,
+                                    mp->context);
+      }));
+      /* *INDENT-ON* */
     }
 }
 
@@ -7280,8 +7254,15 @@ send_mpls_fib_encap_details (vpe_api_main_t * am,
 			     show_mpls_fib_t * s, u32 context)
 {
   vl_api_mpls_fib_encap_details_t *mp;
+  mpls_main_t *mm = &mpls_main;
+  mpls_encap_t *e;
+  int i;
+  u32 nlabels;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  e = pool_elt_at_index (mm->encaps, s->entry_index);
+  nlabels = vec_len (e->labels);
+
+  mp = vl_msg_api_alloc (sizeof (*mp) + nlabels * sizeof(u32));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MPLS_FIB_ENCAP_DETAILS);
   mp->context = context;
@@ -7291,16 +7272,9 @@ send_mpls_fib_encap_details (vpe_api_main_t * am,
   mp->dest = s->dest;
   mp->s_bit = htonl (s->s_bit);
 
-  mpls_main_t *mm = &mpls_main;
-  mpls_encap_t *e;
-  int i;
-  u32 len = 0;
+  mp->nlabels = htonl (nlabels);
 
-  e = pool_elt_at_index (mm->encaps, s->entry_index);
-  len = vec_len (e->labels);
-  mp->nlabels = htonl (len);
-
-  for (i = 0; i < len; i++)
+  for (i = 0; i < nlabels; i++)
     {
       mp->labels[i] =
 	htonl (vnet_mpls_uc_get_label
@@ -8160,7 +8134,7 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  /* lookup the username */
 	  pw = NULL;
-	  while (((rv = getpwnam_r (s, &_pw, buf, sizeof (buf), &pw)) == ERANGE) && ( vec_len(buf) <= max_buf_size ))
+	  while (((rv = getpwnam_r (s, &_pw, buf, vec_len (buf), &pw)) == ERANGE) && ( vec_len(buf) <= max_buf_size ))
         {
             vec_resize(buf,vec_len(buf)*2);
         }

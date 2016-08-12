@@ -980,8 +980,11 @@ uword unformat_classify_mask (unformat_input_t * input, va_list * args)
           if (l2 == 0)
             vec_validate (l2, 13);
           mask = l2;
-          vec_append (mask, l3);
-          vec_free (l3);
+          if (l3)
+            {
+              vec_append (mask, l3);
+              vec_free (l3);
+            }
         }
 
       /* Scan forward looking for the first significant mask octet */
@@ -1715,8 +1718,11 @@ uword unformat_classify_match (unformat_input_t * input, va_list * args)
           if (l2 == 0)
             vec_validate_aligned (l2, 13, sizeof(u32x4));
           match = l2;
-          vec_append_aligned (match, l3, sizeof(u32x4));
-          vec_free (l3);
+          if (l3)
+            {
+              vec_append_aligned (match, l3, sizeof(u32x4));
+              vec_free (l3);
+            }
         }
 
       /* Make sure the vector is big enough even if key is all 0's */

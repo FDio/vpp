@@ -511,10 +511,10 @@ map_add_domain_command_fn (vlib_main_t * vm,
   ip4_address_t ip4_prefix;
   ip6_address_t ip6_prefix;
   ip6_address_t ip6_src;
-  u32 ip6_prefix_len, ip4_prefix_len, map_domain_index, ip6_src_len;
+  u32 ip6_prefix_len = 0, ip4_prefix_len = 0, map_domain_index, ip6_src_len;
   u32 num_m_args = 0;
   /* Optional arguments */
-  u32 ea_bits_len, psid_offset = 0, psid_length = 0;
+  u32 ea_bits_len = 0, psid_offset = 0, psid_length = 0;
   u32 mtu = 0;
   u8 flags = 0;
   ip6_src_len = 128;
@@ -607,7 +607,7 @@ map_add_rule_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ip6_address_t tep;
   u32 num_m_args = 0;
-  u32 psid, map_domain_index;
+  u32 psid = 0, map_domain_index;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))

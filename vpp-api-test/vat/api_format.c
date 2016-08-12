@@ -10397,7 +10397,7 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
   f64 timeout;
   u8 is_add = 1, is_outbound = 0, is_ipv6 = 0, is_ip_any = 1;
   u32 spd_id = 0, sa_id = 0, protocol = 0, policy = 0;
-  i32 priority;
+  i32 priority = 0;
   u32 rport_start = 0, rport_stop = (u32) ~ 0;
   u32 lport_start = 0, lport_stop = (u32) ~ 0;
   ip4_address_t laddr4_start, laddr4_stop, raddr4_start, raddr4_stop;
