@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a0e1d27_59612d38",
+        "filename": "vnet/vnet/ip/tcp_packet.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-12T11:54:39Z",
+      "side": 1,
+      "message": "What\u0027s the purpose of this change?",
+      "revId": "46f8d8aadc781dccbe602d8b22b26747c74c219c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
