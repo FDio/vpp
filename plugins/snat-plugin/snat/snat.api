@@ -23,3 +23,32 @@ define snat_interface_add_del_feature_reply {
   u32 context;
   i32 retval;
 };
+
+define snat_dump {
+    u32 client_index;
+    u32 context;
+    i32 pageno;
+};
+
+define snat_dump_details {
+  u32 context;
+  i32 retval;
+  u8 ip_address[16];
+  u32 sessions;
+};
+
+define snat_dump_reply {
+  u32 context;
+  i32 retval;
+  uword users;
+  u32 addresses;
+  uword sessions;
+  u32 pages;
+  uword pool_elements;
+  u8 in2out_name[64];
+  u64 in2out_active;
+  u32 in2out_free;
+  u8 out2in_name[64];
+  u64 out2in_active;
+  u32 out2in_free;
+};

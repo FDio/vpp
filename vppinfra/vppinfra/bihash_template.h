@@ -123,6 +123,7 @@ int BV (clib_bihash_search) (BVT (clib_bihash) * h,
 void BV (clib_bihash_foreach_key_value_pair) (BVT (clib_bihash) * h,
 					      void *callback, void *arg);
 
+u64 BV (active_elems_bihash) (BVT (clib_bihash) * h);
 format_function_t BV (format_bihash);
 format_function_t BV (format_bihash_kvp);
 
