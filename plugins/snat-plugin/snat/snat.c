@@ -56,15 +56,15 @@ snat_main_t snat_main;
 /* 
  * A handy macro to set up a message reply.
  * Assumes that the following variables are available:
+ * q - uinx shared memory q ptr
  * mp - pointer to request message
  * rmp - pointer to reply message type
  * rv - return value
  */
 
-#define REPLY_MACRO(t)                                          \
+#define REPLY_MACRO(t,q)                                        \
 do {                                                            \
-    unix_shared_memory_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
+    q = vl_api_client_index_to_input_queue (mp->client_index);  \
     if (!q)                                                     \
         return;                                                 \
                                                                 \
@@ -72,8 +72,6 @@ do {                                                            \
     rmp->_vl_msg_id = ntohs((t)+sm->msg_id_base);               \
     rmp->context = mp->context;                                 \
     rmp->retval = ntohl(rv);                                    \
-                                                                \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
 } while(0);
 
 
@@ -189,12 +187,81 @@ static void increment_v4_address (ip4_address_t * a)
   a->as_u32 = clib_host_to_net_u32(v);
 }
 
+static void
+vl_api_snat_control_ping_t_handler (vl_api_snat_control_ping_t * mp)
+{
+    snat_main_t * sm = &snat_main;
+    vl_api_snat_control_ping_reply_t * rmp;
+    unix_shared_memory_queue_t * q;
+    int rv = 0;
+    REPLY_MACRO (VL_API_SNAT_CONTROL_PING_REPLY, q);
+    rmp->vpe_pid = ntohl (getpid());
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+}
+
+#define N_USERS_PER_PAGE 100
+static void 
+vl_api_snat_dump_t_handler (vl_api_snat_dump_t * mp)
+{
+    snat_main_t * sm = &snat_main;
+    vl_api_snat_dump_reply_t * rmp;
+    unix_shared_memory_queue_t * q;
+    snat_user_t * u, *u_start = NULL;
+    int rv = 0;
+    REPLY_MACRO (VL_API_SNAT_DUMP_REPLY, q);
+    bzero(rmp->data, sizeof(rmp->data));
+    u8 *buf;
+    int pages = 0;
+    if (pool_elts (sm->users))
+        pages = (pool_elts (sm->users) / N_USERS_PER_PAGE) + 1;
+
+    buf = format (0, "%lu users, %d outside addresses, "
+                   "%lu active sessions, pages %d\n",
+                   pool_elts (sm->users),
+                   vec_len (sm->addresses),
+                   pool_elts (sm->sessions),
+                   pages);
+
+    buf = format (buf, "%U", format_bihash_8_8, &sm->in2out, 0);
+    buf = format (buf, "%U", format_bihash_8_8, &sm->out2in, 0);
+    buf = format (buf, "%d list pool elements",
+                       pool_elts (sm->list_pool));
+
+    size_t sz = vec_len (buf) < sizeof(rmp->data) ?
+        vec_len (buf) : sizeof(rmp->data) - 1;
+    memcpy(rmp->data, buf, sz);
+    rmp->data[sz] = '\0'; /* Prevent runaway */
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+    vec_free(buf);
+
+    if (mp->pageno < 0) return;
+
+    int i = N_USERS_PER_PAGE;
+    if (vec_len(sm->users))
+       u_start = vec_elt_at_index (sm->users, mp->pageno * i);
+
+    pool_foreach (u, u_start,
+      ({
+        REPLY_MACRO (VL_API_SNAT_DUMP_REPLY, q);
+        buf = format (buf, "%U", format_snat_user, sm, u, 0);
+        sz = vec_len (buf) < sizeof(rmp->data) ?
+            vec_len (buf) : sizeof(rmp->data) - 1;
+        memcpy(rmp->data, buf, sz);
+        rmp->data[sz] = '\0';
+        vl_msg_api_send_shmem (q, (u8 *)&rmp);
+        _vec_len (buf) = 0;
+        if (! --i) break;
+      }));
+    vec_free(buf);
+}
+
 static void 
 vl_api_snat_add_address_range_t_handler
 (vl_api_snat_add_address_range_t * mp)
 {
   snat_main_t * sm = &snat_main;
   vl_api_snat_add_address_range_reply_t * rmp;
+  unix_shared_memory_queue_t * q;
   ip4_address_t this_addr;
   u32 start_host_order, end_host_order;
   int i, count;
@@ -229,8 +296,17 @@ vl_api_snat_add_address_range_t_handler
     }
 
  send_reply:
-  REPLY_MACRO (VL_API_SNAT_ADD_ADDRESS_RANGE_REPLY);
+  REPLY_MACRO (VL_API_SNAT_ADD_ADDRESS_RANGE_REPLY, q);
+  vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
+
+static void *vl_api_snat_control_ping_t_print
+(vl_api_snat_control_ping_t * mp, void *handle)
+{ return 0; }
+
+static void *vl_api_snat_dump_t_print
+(vl_api_snat_dump_t * mp, void *handle)
+{ return 0; }
 
 static void *vl_api_snat_add_address_range_t_print
 (vl_api_snat_add_address_range_t *mp, void * handle)
@@ -252,6 +328,7 @@ vl_api_snat_interface_add_del_feature_t_handler
 {
   snat_main_t * sm = &snat_main;
   vl_api_snat_interface_add_del_feature_reply_t * rmp;
+  unix_shared_memory_queue_t * q;
   u8 is_del = mp->is_add == 0;
   u32 sw_if_index = ntohl(mp->sw_if_index);
   u32 ci;
@@ -279,7 +356,8 @@ vl_api_snat_interface_add_del_feature_t_handler
   
   BAD_SW_IF_INDEX_LABEL;
 
-  REPLY_MACRO(VL_API_SNAT_INTERFACE_ADD_DEL_FEATURE_REPLY);
+  REPLY_MACRO(VL_API_SNAT_INTERFACE_ADD_DEL_FEATURE_REPLY, q);
+  vl_msg_api_send_shmem (q, (u8 *)&rmp);
 }
 
 static void *vl_api_snat_interface_add_del_feature_t_print
@@ -299,7 +377,9 @@ static void *vl_api_snat_interface_add_del_feature_t_print
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
-_(SNAT_INTERFACE_ADD_DEL_FEATURE, snat_interface_add_del_feature)
+_(SNAT_INTERFACE_ADD_DEL_FEATURE, snat_interface_add_del_feature)       \
+_(SNAT_DUMP, snat_dump)                                                 \
+_(SNAT_CONTROL_PING, snat_control_ping)
 
 /* Set up the API message handling tables */
 static clib_error_t *
