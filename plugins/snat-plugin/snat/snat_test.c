@@ -59,7 +59,8 @@ snat_test_main_t snat_test_main;
 
 #define foreach_standard_reply_retval_handler   \
 _(snat_add_address_range_reply)                 \
-_(snat_interface_add_del_feature_reply)
+_(snat_interface_add_del_feature_reply)         \
+_(snat_control_ping_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -84,7 +85,9 @@ foreach_standard_reply_retval_handler;
 #define foreach_vpe_api_reply_msg                               \
 _(SNAT_ADD_ADDRESS_RANGE_REPLY, snat_add_address_range_reply)   \
  _(SNAT_INTERFACE_ADD_DEL_FEATURE_REPLY,                        \
-   snat_interface_add_del_feature_reply)
+   snat_interface_add_del_feature_reply)                        \
+_(SNAT_DUMP_REPLY, snat_dump_reply)                             \
+_(SNAT_CONTROL_PING_REPLY, snat_control_ping_reply)
 
 /* M: construct, but don't yet send a message */
 #define M(T,t)                                                  \
@@ -120,6 +123,43 @@ do {                                            \
     }                                           \
     return -99;                                 \
 } while(0);
+
+static void vl_api_snat_dump_reply_t_handler
+(vl_api_snat_dump_reply_t *mp)
+{
+    vat_main_t * vam = snat_test_main.vat_main;
+    i32 retval = ntohl(mp->retval);
+    if (vam->async_mode) {
+        vam->async_errors += (retval < 0);
+    } else {
+        vam->retval = retval;
+        printf("%s\n", (char *)mp->data);
+    }
+}
+
+static int api_snat_dump (vat_main_t * vam)
+{
+    int pageno;
+    f64 timeout;
+    vl_api_snat_dump_t * mp;
+    snat_test_main_t * sm = &snat_test_main;
+    unformat_input_t * i = vam->input;
+    if (unformat (i, "pageno %d", &pageno) == 0)
+        pageno = -1; /* Default it to no user data */
+    M(SNAT_DUMP, snat_dump);
+    mp->pageno = pageno;
+    S;
+
+    /* Use a control ping for synchronization */
+    {
+        vl_api_snat_control_ping_t *mp;
+        M (SNAT_CONTROL_PING, snat_control_ping);
+        S;
+    }
+    W;
+    /* NOTREACHED */
+    return 0;
+}
 
 static int api_snat_add_address_range (vat_main_t * vam)
 {
@@ -217,7 +257,8 @@ static int api_snat_interface_add_del_feature (vat_main_t * vam)
 #define foreach_vpe_api_msg                             \
 _(snat_add_address_range, "<start-addr> [- <end-addr]") \
 _(snat_interface_add_del_feature,                       \
-  "<intfc> | sw_if_index <id> [in] [out] [del]")
+  "<intfc> | sw_if_index <id> [in] [out] [del]")        \
+_(snat_dump, "[pageno]")                                \
 
 void vat_api_hookup (vat_main_t *vam)
 {
