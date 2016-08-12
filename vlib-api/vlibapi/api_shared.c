@@ -781,7 +781,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   if (!(statb.st_mode & S_IFREG) || (statb.st_size < sizeof (*hp)))
     {
       vlib_cli_output (vm, "File not plausible: %s\n", filename);
-      close(fd);
+      close (fd);
       return;
     }
 
@@ -1084,17 +1084,19 @@ api_trace_command_fn (vlib_main_t * vm,
 	  rv = vl_msg_api_trace_save (am, which, fp);
 	  fclose (fp);
 	  if (rv == -1)
-		vlib_cli_output (vm, "API Trace data not present\n");
+	    vlib_cli_output (vm, "API Trace data not present\n");
 	  else if (rv == -2)
-		vlib_cli_output (vm, "File for writing is closed\n");
+	    vlib_cli_output (vm, "File for writing is closed\n");
 	  else if (rv == -10)
-		vlib_cli_output (vm, "Error while writing header to file\n");
+	    vlib_cli_output (vm, "Error while writing header to file\n");
 	  else if (rv == -11)
-		vlib_cli_output (vm, "Error while writing trace to file\n");
+	    vlib_cli_output (vm, "Error while writing trace to file\n");
 	  else if (rv == -12)
-		vlib_cli_output (vm, "Error while writing end of buffer trace to file\n");
+	    vlib_cli_output (vm,
+			     "Error while writing end of buffer trace to file\n");
 	  else if (rv == -13)
-		vlib_cli_output (vm, "Error while writing start of buffer trace to file\n");
+	    vlib_cli_output (vm,
+			     "Error while writing start of buffer trace to file\n");
 	  else if (rv < 0)
 	    vlib_cli_output (vm, "Unkown error while saving: %d", rv);
 	  else

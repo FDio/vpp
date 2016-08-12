@@ -486,11 +486,11 @@ vlib_node_main_init (vlib_main_t * vm)
 
 	sib = vlib_get_node_by_name (vm, (u8 *) n->sibling_of);
 	if (!sib)
-          {
-            error = clib_error_create ("sibling `%s' not found for node `%v'", 
-                                       n->sibling_of, n->name);
-            goto done;
-          }
+	  {
+	    error = clib_error_create ("sibling `%s' not found for node `%v'",
+				       n->sibling_of, n->name);
+	    goto done;
+	  }
 
         /* *INDENT-OFF* */
 	clib_bitmap_foreach (si, sib->sibling_bitmap, ({

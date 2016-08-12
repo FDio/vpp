@@ -991,70 +991,70 @@ vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
     {
 #if RTE_VERSION >= RTE_VERSION_NUM(16, 7, 0, 0)
       {
-        uword this_pool_end;
-        uword this_pool_start;
-        uword this_pool_size;
-        uword save_vpm_start, save_vpm_end, save_vpm_size;
+	uword this_pool_end;
+	uword this_pool_start;
+	uword this_pool_size;
+	uword save_vpm_start, save_vpm_end, save_vpm_size;
 	struct rte_mempool_memhdr *memhdr;
-        
-        this_pool_start = ~0ULL;
-        this_pool_end = 0LL;
 
-        STAILQ_FOREACH (memhdr, &rmp->mem_list, next) 
-          {
-            if (((uword)(memhdr->addr + memhdr->len)) > this_pool_end)
-              this_pool_end = (uword)(memhdr->addr + memhdr->len);
-            if (((uword)memhdr->addr) < this_pool_start)
-              this_pool_start = (uword)(memhdr->addr);
-          }
-        ASSERT (this_pool_start < ~0ULL && this_pool_end > 0);
-        this_pool_size = this_pool_end - this_pool_start;
+	this_pool_start = ~0ULL;
+	this_pool_end = 0LL;
 
-        if (CLIB_DEBUG > 1)
-          {
-            clib_warning ("%s: pool start %llx pool end %llx pool size %lld",
-                          pool_name, this_pool_start, this_pool_end, 
-                          this_pool_size);
-            clib_warning 
-              ("before: virtual.start %llx virtual.end %llx virtual.size %lld",
-               vpm->virtual.start, vpm->virtual.end, vpm->virtual.size);
-          }
-        
-        save_vpm_start = vpm->virtual.start;
-        save_vpm_end = vpm->virtual.end;
-        save_vpm_size = vpm->virtual.size;
+	STAILQ_FOREACH (memhdr, &rmp->mem_list, next)
+	{
+	  if (((uword) (memhdr->addr + memhdr->len)) > this_pool_end)
+	    this_pool_end = (uword) (memhdr->addr + memhdr->len);
+	  if (((uword) memhdr->addr) < this_pool_start)
+	    this_pool_start = (uword) (memhdr->addr);
+	}
+	ASSERT (this_pool_start < ~0ULL && this_pool_end > 0);
+	this_pool_size = this_pool_end - this_pool_start;
 
-        if ((this_pool_start < vpm->virtual.start) || vpm->virtual.start == 0)
-          vpm->virtual.start = this_pool_start;
-        if (this_pool_end > vpm->virtual.end)
-          vpm->virtual.end = this_pool_end;
+	if (CLIB_DEBUG > 1)
+	  {
+	    clib_warning ("%s: pool start %llx pool end %llx pool size %lld",
+			  pool_name, this_pool_start, this_pool_end,
+			  this_pool_size);
+	    clib_warning
+	      ("before: virtual.start %llx virtual.end %llx virtual.size %lld",
+	       vpm->virtual.start, vpm->virtual.end, vpm->virtual.size);
+	  }
 
-        vpm->virtual.size = vpm->virtual.end - vpm->virtual.start;
-        
-        if (CLIB_DEBUG > 1)
-          {
-            clib_warning 
-              ("after: virtual.start %llx virtual.end %llx virtual.size %lld",
-               vpm->virtual.start, vpm->virtual.end, vpm->virtual.size);
-          }
+	save_vpm_start = vpm->virtual.start;
+	save_vpm_end = vpm->virtual.end;
+	save_vpm_size = vpm->virtual.size;
 
-        /* check if fits into buffer index range */
-        if ((u64) vpm->virtual.size > 
-            ((u64) 1 << (32 + CLIB_LOG2_CACHE_LINE_BYTES)))
-          {
-            clib_warning ("physmem: virtual size out of range!");
-            vpm->virtual.start = save_vpm_start;
-            vpm->virtual.end = save_vpm_end;
-            vpm->virtual.size = save_vpm_size;
-            rmp = 0;
-          }
+	if ((this_pool_start < vpm->virtual.start) || vpm->virtual.start == 0)
+	  vpm->virtual.start = this_pool_start;
+	if (this_pool_end > vpm->virtual.end)
+	  vpm->virtual.end = this_pool_end;
+
+	vpm->virtual.size = vpm->virtual.end - vpm->virtual.start;
+
+	if (CLIB_DEBUG > 1)
+	  {
+	    clib_warning
+	      ("after: virtual.start %llx virtual.end %llx virtual.size %lld",
+	       vpm->virtual.start, vpm->virtual.end, vpm->virtual.size);
+	  }
+
+	/* check if fits into buffer index range */
+	if ((u64) vpm->virtual.size >
+	    ((u64) 1 << (32 + CLIB_LOG2_CACHE_LINE_BYTES)))
+	  {
+	    clib_warning ("physmem: virtual size out of range!");
+	    vpm->virtual.start = save_vpm_start;
+	    vpm->virtual.end = save_vpm_end;
+	    vpm->virtual.size = save_vpm_size;
+	    rmp = 0;
+	  }
       }
       if (rmp)
-        {
-          bm->pktmbuf_pools[socket_id] = rmp;
-          vec_free(pool_name);
-          return 0;
-        }
+	{
+	  bm->pktmbuf_pools[socket_id] = rmp;
+	  vec_free (pool_name);
+	  return 0;
+	}
     }
 #else
       new_start = pointer_to_uword (rmp);
@@ -1085,7 +1085,7 @@ vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
       vpm->virtual.start = new_start;
       vpm->virtual.size = new_size;
       vpm->virtual.end = new_start + new_size;
-      vec_free(pool_name);
+      vec_free (pool_name);
       return 0;
     }
 #endif

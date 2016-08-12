@@ -128,8 +128,9 @@ ip6_get_port (ip6_header_t * ip6, map_dir_e dir, u16 buffer_len)
   if (l4_protocol == IP_PROTOCOL_TCP || l4_protocol == IP_PROTOCOL_UDP)
     {
       return (dir ==
-	      MAP_SENDER) ? ((udp_header_t *) (l4))->
-	src_port : ((udp_header_t *) (l4))->dst_port;
+	      MAP_SENDER) ? ((udp_header_t *) (l4))->src_port : ((udp_header_t
+								  *)
+								 (l4))->dst_port;
     }
   else if (l4_protocol == IP_PROTOCOL_ICMP6)
     {
@@ -230,8 +231,7 @@ map_create_domain (ip4_address_t * ip4_prefix,
   memset (&adj, 0, sizeof (adj));
   adj.explicit_fib_index = ~0;
   adj.lookup_next_index =
-    (d->
-     flags & MAP_DOMAIN_TRANSLATION) ? IP_LOOKUP_NEXT_MAP_T :
+    (d->flags & MAP_DOMAIN_TRANSLATION) ? IP_LOOKUP_NEXT_MAP_T :
     IP_LOOKUP_NEXT_MAP;
   p = (uword *) & adj.rewrite_data[0];
   *p = (uword) (*map_domain_index);
@@ -339,8 +339,7 @@ map_delete_domain (u32 map_domain_index)
   memset (&adj, 0, sizeof (adj));
   adj.explicit_fib_index = ~0;
   adj.lookup_next_index =
-    (d->
-     flags & MAP_DOMAIN_TRANSLATION) ? IP_LOOKUP_NEXT_MAP_T :
+    (d->flags & MAP_DOMAIN_TRANSLATION) ? IP_LOOKUP_NEXT_MAP_T :
     IP_LOOKUP_NEXT_MAP;
 
   /* Delete ip4 adjacency */

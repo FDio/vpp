@@ -49,7 +49,7 @@ ssvm_master_init (ssvm_private_t * ssvm, u32 master_index)
       close (ssvm_fd);
       return SSVM_API_ERROR_SET_SIZE;
     }
-      
+
   if (write (ssvm_fd, &junk, 1) != 1)
     {
       clib_unix_warning ("set ssvm size");

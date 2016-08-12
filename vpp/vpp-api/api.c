@@ -2591,7 +2591,7 @@ vl_api_sw_interface_clear_stats_t_handler (vl_api_sw_interface_clear_stats_t *
   int rv = 0;
 
   if (mp->sw_if_index != ~0)
-    VALIDATE_SW_IF_INDEX(mp);
+    VALIDATE_SW_IF_INDEX (mp);
 
   vec_reset_length (my_vnet_mains);
 
@@ -5668,16 +5668,16 @@ send_lisp_eid_table_details (mapping_t * mapit,
 
   switch (filter)
     {
-    case 0: /* all mappings */
+    case 0:			/* all mappings */
       break;
 
-    case 1: /* local only */
+    case 1:			/* local only */
       if (!mapit->local)
-        return;
+	return;
       break;
-    case 2: /* remote only */
+    case 2:			/* remote only */
       if (mapit->local)
-        return;
+	return;
       break;
     default:
       clib_warning ("Filter error, unknown filter: %d", filter);
@@ -5754,7 +5754,7 @@ vl_api_lisp_eid_table_dump_t_handler (vl_api_lisp_eid_table_dump_t * mp)
 
       mapit = pool_elt_at_index (lcm->mapping_pool, mi);
       send_lisp_eid_table_details (mapit, q, mp->context,
-                                   0 /* ignore filter */);
+				   0 /* ignore filter */ );
     }
   else
     {
@@ -7100,7 +7100,7 @@ send_mpls_gre_tunnel_entry (vpe_api_main_t * am,
   e = pool_elt_at_index (mm->encaps, gt->encap_index);
   nlabels = vec_len (e->labels);
 
-  mp = vl_msg_api_alloc (sizeof (*mp) + nlabels * sizeof(u32));
+  mp = vl_msg_api_alloc (sizeof (*mp) + nlabels * sizeof (u32));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MPLS_GRE_TUNNEL_DETAILS);
   mp->context = context;
@@ -7143,11 +7143,11 @@ vl_api_mpls_gre_tunnel_dump_t_handler (vl_api_mpls_gre_tunnel_dump_t * mp)
   if (index != ~0)
     {
       if (!pool_is_free_index (mm->gre_tunnels, index))
-        {
-          gt = pool_elt_at_index (mm->gre_tunnels, index);
-          send_mpls_gre_tunnel_entry (am, q, gt, gt - mm->gre_tunnels,
-                                      mp->context);
-        }
+	{
+	  gt = pool_elt_at_index (mm->gre_tunnels, index);
+	  send_mpls_gre_tunnel_entry (am, q, gt, gt - mm->gre_tunnels,
+				      mp->context);
+	}
     }
   else
     {
@@ -7182,7 +7182,7 @@ send_mpls_eth_tunnel_entry (vpe_api_main_t * am,
   e = pool_elt_at_index (mm->encaps, et->encap_index);
   nlabels = vec_len (e->labels);
 
-  mp = vl_msg_api_alloc (sizeof (*mp) + nlabels*sizeof(u32));
+  mp = vl_msg_api_alloc (sizeof (*mp) + nlabels * sizeof (u32));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MPLS_ETH_TUNNEL_DETAILS);
   mp->context = context;
@@ -7223,12 +7223,12 @@ vl_api_mpls_eth_tunnel_dump_t_handler (vl_api_mpls_eth_tunnel_dump_t * mp)
 
   if (index != ~0)
     {
-      if (!pool_is_free_index(mm->eth_tunnels, index))
-        {
-          et = pool_elt_at_index (mm->eth_tunnels, index);
-          send_mpls_eth_tunnel_entry (am, q, et, et - mm->eth_tunnels,
-                                      mp->context);
-        }
+      if (!pool_is_free_index (mm->eth_tunnels, index))
+	{
+	  et = pool_elt_at_index (mm->eth_tunnels, index);
+	  send_mpls_eth_tunnel_entry (am, q, et, et - mm->eth_tunnels,
+				      mp->context);
+	}
     }
   else
     {
@@ -7262,7 +7262,7 @@ send_mpls_fib_encap_details (vpe_api_main_t * am,
   e = pool_elt_at_index (mm->encaps, s->entry_index);
   nlabels = vec_len (e->labels);
 
-  mp = vl_msg_api_alloc (sizeof (*mp) + nlabels * sizeof(u32));
+  mp = vl_msg_api_alloc (sizeof (*mp) + nlabels * sizeof (u32));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MPLS_FIB_ENCAP_DETAILS);
   mp->context = context;
@@ -8118,7 +8118,7 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
   struct passwd _pw, *pw;
   struct group _grp, *grp;
   clib_error_t *e;
-  buf = vec_new(char,128);
+  buf = vec_new (char, 128);
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "prefix %s", &chroot_path))
@@ -8134,10 +8134,12 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  /* lookup the username */
 	  pw = NULL;
-	  while (((rv = getpwnam_r (s, &_pw, buf, vec_len (buf), &pw)) == ERANGE) && ( vec_len(buf) <= max_buf_size ))
-        {
-            vec_resize(buf,vec_len(buf)*2);
-        }
+	  while (((rv =
+		   getpwnam_r (s, &_pw, buf, vec_len (buf), &pw)) == ERANGE)
+		 && (vec_len (buf) <= max_buf_size))
+	    {
+	      vec_resize (buf, vec_len (buf) * 2);
+	    }
 	  if (rv < 0)
 	    {
 	      e = clib_error_return_code (0, rv,
@@ -8145,7 +8147,7 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 					  CLIB_ERROR_FATAL,
 					  "cannot fetch username %s", s);
 	      vec_free (s);
-          vec_free (buf);
+	      vec_free (buf);
 	      return e;
 	    }
 	  if (pw == NULL)
@@ -8153,7 +8155,7 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	      e =
 		clib_error_return_fatal (0, "username %s does not exist", s);
 	      vec_free (s);
-          vec_free (buf);
+	      vec_free (buf);
 	      return e;
 	    }
 	  vec_free (s);
@@ -8163,10 +8165,12 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  /* lookup the group name */
 	  grp = NULL;
-	  while ( ( (rv = getgrnam_r (s, &_grp, buf, vec_len(buf), &grp)) == ERANGE ) && ( vec_len(buf) <= max_buf_size ) )
-        {
-            vec_resize(buf,vec_len(buf)*2);
-        }
+	  while (((rv =
+		   getgrnam_r (s, &_grp, buf, vec_len (buf), &grp)) == ERANGE)
+		 && (vec_len (buf) <= max_buf_size))
+	    {
+	      vec_resize (buf, vec_len (buf) * 2);
+	    }
 	  if (rv != 0)
 	    {
 	      e = clib_error_return_code (0, rv,
@@ -8174,18 +8178,18 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 					  CLIB_ERROR_FATAL,
 					  "cannot fetch group %s", s);
 	      vec_free (s);
-          vec_free (buf);
+	      vec_free (buf);
 	      return e;
 	    }
 	  if (grp == NULL)
 	    {
 	      e = clib_error_return_fatal (0, "group %s does not exist", s);
 	      vec_free (s);
-          vec_free (buf);
+	      vec_free (buf);
 	      return e;
 	    }
 	  vec_free (s);
-      vec_free (buf);
+	  vec_free (buf);
 	  vl_set_memory_gid (grp->gr_gid);
 	}
       else

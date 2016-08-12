@@ -96,7 +96,7 @@ typedef enum
 typedef CLIB_PACKED (struct
 		     {
 mc_peer_id_t peer_id; mc_relay_msg_type_t type:32;
-				/* MC_MSG_TYPE_join_or_leave_request */
+		     /* MC_MSG_TYPE_join_or_leave_request */
 		     /* Stream to join or leave. */
 		     u32 stream_index;
 		     /* join = 1, leave = 0 */
@@ -117,7 +117,7 @@ mc_byte_swap_msg_join_or_leave_request (mc_msg_join_or_leave_request_t * r)
 typedef CLIB_PACKED (struct
 		     {
 mc_peer_id_t peer_id; mc_relay_msg_type_t type:32;
-				/* MC_MSG_TYPE_join_reply */
+		     /* MC_MSG_TYPE_join_reply */
 		     u32 stream_index;
 		     /* Peer ID to contact to catchup with this stream. */
 		     mc_peer_id_t catchup_peer_id;}) mc_msg_join_reply_t;
@@ -165,8 +165,7 @@ mc_byte_swap_msg_user_request (mc_msg_user_request_t * r)
 typedef CLIB_PACKED (struct
 		     {
 		     mc_peer_id_t peer_id;
-		     u32 global_sequence;
-		     u32 stream_index;
+		     u32 global_sequence; u32 stream_index;
 		     u32 local_sequence;
 		     i32 seq_cmp_result;}) mc_msg_user_ack_t;
 
