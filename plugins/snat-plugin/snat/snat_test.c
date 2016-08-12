@@ -53,6 +53,7 @@ typedef struct {
     /* API message ID base */
     u16 msg_id_base;
     vat_main_t *vat_main;
+    vl_api_snat_dump_details_t *mp;
 } snat_test_main_t;
 
 snat_test_main_t snat_test_main;
@@ -84,7 +85,9 @@ foreach_standard_reply_retval_handler;
 #define foreach_vpe_api_reply_msg                               \
 _(SNAT_ADD_ADDRESS_RANGE_REPLY, snat_add_address_range_reply)   \
  _(SNAT_INTERFACE_ADD_DEL_FEATURE_REPLY,                        \
-   snat_interface_add_del_feature_reply)
+   snat_interface_add_del_feature_reply)                        \
+_(SNAT_DUMP_REPLY, snat_dump_reply)                             \
+_(SNAT_DUMP_DETAILS, snat_dump_details)
 
 /* M: construct, but don't yet send a message */
 #define M(T,t)                                                  \
@@ -120,6 +123,68 @@ do {                                            \
     }                                           \
     return -99;                                 \
 } while(0);
+
+static void vl_api_snat_dump_details_t_handler
+(vl_api_snat_dump_details_t *mp)
+{
+    vat_main_t * vam = snat_test_main.vat_main;
+    i32 retval = ntohl(mp->retval);
+    vec_add(snat_test_main.mp, mp, 1);
+    vam->retval = retval;
+}
+
+static void vl_api_snat_dump_reply_t_handler
+(vl_api_snat_dump_reply_t *mp)
+{
+    vat_main_t * vam = snat_test_main.vat_main;
+    vl_api_snat_dump_details_t *dmp;
+    i32 retval = ntohl(mp->retval);
+    if (vam->async_mode) {
+        vam->async_errors += (retval < 0);
+    } else {
+        vam->retval = retval;
+
+        printf("%ld users, %d outside addresses, %ld active sessions\n",
+            mp->users, mp->addresses, mp->sessions);
+        printf("%d pages, %ld list pool elements\n",
+            mp->pages, mp->pool_elements);
+        printf("Hash table %s\n", mp->in2out_name ?
+            mp->in2out_name : (u8 *) "(unnamed)");
+        printf("    %ld active elements\n", mp->in2out_active);
+        printf("    %d free elements\n", mp->in2out_free);
+        printf("Hash table %s\n", mp->out2in_name ?
+            mp->out2in_name : (u8 *) "(unnamed)");
+        printf("    %ld active elements\n", mp->out2in_active);
+        printf("    %d free elements\n", mp->out2in_free);
+
+        vec_foreach (dmp, snat_test_main.mp) {
+            u8 *s;
+            s = format (0, "%U: %d translations",
+                format_ip4_address, &dmp->ip_address, dmp->sessions);
+            printf("%s\n", s);
+            vec_free(s);
+        }
+
+        vec_free(snat_test_main.mp);
+        vam->result_ready = 1;
+    }
+}
+
+static int api_snat_dump (vat_main_t * vam)
+{
+    int pageno;
+    f64 timeout;
+    vl_api_snat_dump_t * mp;
+    snat_test_main_t * sm = &snat_test_main;
+    unformat_input_t * i = vam->input;
+    if (unformat (i, "pageno %d", &pageno) == 0)
+        pageno = -1; /* Default it to no user data */
+    M(SNAT_DUMP, snat_dump);
+    mp->pageno = pageno;
+    S; W;
+    /* NOTREACHED */
+    return 0;
+}
 
 static int api_snat_add_address_range (vat_main_t * vam)
 {
@@ -217,7 +282,8 @@ static int api_snat_interface_add_del_feature (vat_main_t * vam)
 #define foreach_vpe_api_msg                             \
 _(snat_add_address_range, "<start-addr> [- <end-addr]") \
 _(snat_interface_add_del_feature,                       \
-  "<intfc> | sw_if_index <id> [in] [out] [del]")
+  "<intfc> | sw_if_index <id> [in] [out] [del]")        \
+_(snat_dump, "[pageno]")
 
 void vat_api_hookup (vat_main_t *vam)
 {

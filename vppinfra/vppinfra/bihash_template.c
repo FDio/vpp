@@ -358,6 +358,34 @@ int BV (clib_bihash_search)
   return -1;
 }
 
+u64 BV (active_elems_bihash) (BVT (clib_bihash) * h)
+{
+  clib_bihash_bucket_t *b;
+  BVT (clib_bihash_value) * v;
+  int i, j, k;
+  u64 active_elements = 0;
+
+  for (i = 0; i < h->nbuckets; i++)
+    {
+      b = &h->buckets[i];
+      if (b->offset == 0)
+	continue;
+
+      v = BV (clib_bihash_get_value) (h, b->offset);
+      for (j = 0; j < (1 << b->log2_pages); j++)
+	{
+	  for (k = 0; k < BIHASH_KVP_PER_PAGE; k++)
+	    {
+	      if (BV (clib_bihash_is_free) (&v->kvp[k]))
+		continue;
+	      active_elements++;
+	    }
+	  v++;
+	}
+    }
+  return active_elements;
+}
+
 u8 *BV (format_bihash) (u8 * s, va_list * args)
 {
   BVT (clib_bihash) * h = va_arg (*args, BVT (clib_bihash) *);
