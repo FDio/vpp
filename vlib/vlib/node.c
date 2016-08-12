@@ -44,7 +44,7 @@
 vlib_node_t *
 vlib_get_node_by_name (vlib_main_t * vm, u8 * name)
 {
-  vlib_node_main_t *nm = &vm->node_main;
+vlib_node_main_t *nm = &vm->node_main;
   uword *p;
   u8 *key = name;
   if (!clib_mem_is_heap_object (key))
