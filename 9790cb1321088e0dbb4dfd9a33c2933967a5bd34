@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_9a16cdf0",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2706,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-15T17:04:50Z",
+      "side": 1,
+      "message": "This should then be a FIFO not a vector. I\u0027ll clean it up in another patch.",
+      "range": {
+        "startLine": 2706,
+        "startChar": 61,
+        "endLine": 2706,
+        "endChar": 67
+      },
+      "revId": "9790cb1321088e0dbb4dfd9a33c2933967a5bd34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
