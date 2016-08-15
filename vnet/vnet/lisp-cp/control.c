@@ -2700,15 +2700,16 @@ _send_encapsulated_map_request (lisp_cp_main_t *lcm,
   if (duplicate_pmr)
     /* if there is a pending request already update it */
     {
-      if (vec_len (duplicate_pmr->nonces) >= PENDING_MREQ_QUEUE_LEN)
+      if (clib_fifo_elts(duplicate_pmr->nonces) >= PENDING_MREQ_QUEUE_LEN)
         {
           /* remove the oldest nonce */
-          u64 * nonce_del = vec_elt_at_index (duplicate_pmr->nonces, 0);
+          u64 CLIB_UNUSED(tmp), * nonce_del;
+          nonce_del = clib_fifo_head(duplicate_pmr->nonces);
           hash_unset (lcm->pending_map_requests_by_nonce, nonce_del[0]);
-          vec_del1 (duplicate_pmr->nonces, 0);
+          clib_fifo_sub1 (duplicate_pmr->nonces, tmp);
         }
 
-      vec_add1 (duplicate_pmr->nonces, nonce);
+      clib_fifo_add1 (duplicate_pmr->nonces, nonce);
       hash_set (lcm->pending_map_requests_by_nonce, nonce,
                 duplicate_pmr - lcm->pending_map_requests_pool);
     }
@@ -2719,7 +2720,7 @@ _send_encapsulated_map_request (lisp_cp_main_t *lcm,
       memset (pmr, 0, sizeof (*pmr));
       gid_address_copy (&pmr->src, seid);
       gid_address_copy (&pmr->dst, deid);
-      vec_add1 (pmr->nonces, nonce);
+      clib_fifo_add1 (pmr->nonces, nonce);
       pmr->is_smr_invoked = is_smr_invoked;
       reset_pending_mr_counters (pmr);
       hash_set (lcm->pending_map_requests_by_nonce, nonce,
@@ -3079,9 +3080,10 @@ process_map_reply (void * arg)
     }
 
   /* remove pending map request entry */
-  vec_foreach (noncep, pmr->nonces)
+  clib_fifo_foreach (noncep, pmr->nonces, ({
     hash_unset(lcm->pending_map_requests_by_nonce, noncep[0]);
-  vec_free(pmr->nonces);
+  }));
+  clib_fifo_free(pmr->nonces);
   pool_put(lcm->pending_map_requests_pool, pmr);
 
 done:
@@ -3366,8 +3368,9 @@ remove_dead_pending_map_requests (lisp_cp_main_t * lcm)
     ({
       if (pmr->to_be_removed)
         {
-          vec_foreach (nonce, pmr->nonces)
+          clib_fifo_foreach (nonce, pmr->nonces, ({
             hash_unset (lcm->pending_map_requests_by_nonce, nonce[0]);
+          }));
 
           vec_add1 (to_be_removed, pmr - lcm->pending_map_requests_pool);
         }

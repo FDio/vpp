@@ -22,7 +22,7 @@
 
 #define NUMBER_OF_RETRIES                   1
 #define PENDING_MREQ_EXPIRATION_TIME        3.0 /* seconds */
-#define PENDING_MREQ_QUEUE_LEN              2
+#define PENDING_MREQ_QUEUE_LEN              5
 
 typedef struct
 {
