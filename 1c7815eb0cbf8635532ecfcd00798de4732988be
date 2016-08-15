@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_77baeae2",
+        "filename": "vpp-api/java/Readme.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-08-15T12:43:17Z",
+      "side": 1,
+      "message": "Minor: This should be updated to reflect the registry changes",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 10,
+        "endChar": 13
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_57636eb1",
+        "filename": "vpp-api/java/jvpp-core/jvpp_core.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-08-15T12:43:17Z",
+      "side": 1,
+      "message": "add a TODO to reuse this common code for plugins",
+      "range": {
+        "startLine": 39,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 14
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_57d80e53",
+        "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/JVpp.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-08-15T12:43:17Z",
+      "side": 1,
+      "message": "headers",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 25
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_77d30a39",
+        "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/JVpp.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-08-15T12:43:17Z",
+      "side": 1,
+      "message": "Some documentation might be useful to the public classes/interfaces",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 45
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_17e29603",
+        "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/JVppRegistryImpl.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-08-15T12:43:17Z",
+      "side": 1,
+      "message": "could be inlined",
+      "range": {
+        "startLine": 50,
+        "startChar": 27,
+        "endLine": 50,
+        "endChar": 35
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_d7e3fe03",
+        "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/JVppRegistryImpl.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-08-15T12:43:17Z",
+      "side": 1,
+      "message": "... the control ping issue outlined in dto/ControlPing.java",
+      "range": {
+        "startLine": 80,
+        "startChar": 0,
+        "endLine": 81,
+        "endChar": 101
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_b719a224",
+        "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/dto/ControlPing.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-08-15T12:43:17Z",
+      "side": 1,
+      "message": "Now control ping is not finished. Its not fully ignored nor fully implemented.\n\nThe low level APIs for plugins now are unable to provide ping since they do not have reference to registry (where ping is implemented) .. so the reference should be added (possibly when low level API is registered into registry) and control ping will be available from low level APIs \n\n\n... control ping request/reply will have to be artificially added to every plugin\u0027s DTOs unless already present\n\n\n... alternative would be to hide control_ping from upper layers",
+      "range": {
+        "startLine": 27,
+        "startChar": 8,
+        "endLine": 27,
+        "endChar": 17
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_573c8e93",
+        "filename": "vpp-api/java/jvpp/gen/jvppgen/jvpp_c_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 543,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-08-15T12:43:17Z",
+      "side": 1,
+      "message": "could contain plugin name in the filename",
+      "range": {
+        "startLine": 543,
+        "startChar": 29,
+        "endLine": 543,
+        "endChar": 32
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_77378ab1",
+        "filename": "vpp-api/java/jvpp/gen/jvppgen/jvpp_impl_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 148
+      },
+      "writtenOn": "2016-08-15T12:43:17Z",
+      "side": 1,
+      "message": "can be removed",
+      "range": {
+        "startLine": 123,
+        "startChar": 0,
+        "endLine": 129,
+        "endChar": 2
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
