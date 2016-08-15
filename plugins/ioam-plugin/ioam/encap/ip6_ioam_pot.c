@@ -87,7 +87,7 @@ static u8 * format_ioam_pot (u8 * s, va_list * args)
     }
 
   s = format (s, "random = 0x%Lx, Cumulative = 0x%Lx, Index = 0x%x", 
-	      random, cumulative, pot0->reserved_profile_id);
+	      random, cumulative, pot0 ? pot0->reserved_profile_id : ~0);
   return s;
 }
 

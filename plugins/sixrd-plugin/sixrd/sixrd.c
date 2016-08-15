@@ -187,7 +187,7 @@ sixrd_add_domain_command_fn (vlib_main_t *vm,
   ip4_address_t ip4_prefix;
   ip6_address_t ip6_prefix;
   ip4_address_t ip4_src;
-  u32 ip6_prefix_len, ip4_prefix_len, sixrd_domain_index;
+  u32 ip6_prefix_len=0, ip4_prefix_len=0, sixrd_domain_index;
   u32 num_m_args = 0;
   /* Optional arguments */
   u32 mtu = 0;

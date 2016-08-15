@@ -300,7 +300,7 @@ ila_ila2sir (vlib_main_t * vm,
 	    {
 	      ila_ila2sir_trace_t *tr =
 		vlib_add_trace (vm, node, p0, sizeof (*tr));
-	      tr->ila_index = ie0 ? (ie0 - ilm->entries) : ~0;
+	      tr->ila_index = ie0 - ilm->entries;
 	      tr->initial_dst = ip60->dst_address;
 	      tr->adj_index = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 	    }
@@ -309,7 +309,7 @@ ila_ila2sir (vlib_main_t * vm,
 	    {
 	      ila_ila2sir_trace_t *tr =
 		vlib_add_trace (vm, node, p1, sizeof (*tr));
-	      tr->ila_index = ie1 ? (ie1 - ilm->entries) : ~0;
+	      tr->ila_index = ie1 - ilm->entries;
 	      tr->initial_dst = ip61->dst_address;
 	      tr->adj_index = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
 	    }

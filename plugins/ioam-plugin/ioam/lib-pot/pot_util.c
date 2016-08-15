@@ -59,7 +59,7 @@ pot_profile *pot_profile_find(u8 id)
 {
     pot_main_t *sm = &pot_main;
 
-    if (id >= 0 && id < MAX_POT_PROFILES)
+    if (id < MAX_POT_PROFILES)
     {
         return (&(sm->profile_list[id]));
     }
@@ -280,7 +280,7 @@ static clib_error_t *set_pot_profile_command_fn(vlib_main_t * vm,
     u64 secret_share;
     u64 secret_key;
     u8 validator = 0;
-    u32 profile_id;
+    u32 profile_id = ~0;
     u32 bits;
     u64 lpc = 0, poly2 = 0;
     pot_profile *profile = NULL;
