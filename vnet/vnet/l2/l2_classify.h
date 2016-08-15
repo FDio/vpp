@@ -33,7 +33,8 @@
 
 #include <vnet/classify/vnet_classify.h>
 
-typedef enum {
+typedef enum
+{
   L2_CLASSIFY_NEXT_DROP,
   L2_CLASSIFY_NEXT_ETHERNET_INPUT,
   L2_CLASSIFY_NEXT_IP4_INPUT,
@@ -42,35 +43,44 @@ typedef enum {
   L2_CLASSIFY_N_NEXT,
 } l2_classify_next_t;
 
-typedef enum {
+typedef enum
+{
   L2_CLASSIFY_TABLE_IP4,
   L2_CLASSIFY_TABLE_IP6,
   L2_CLASSIFY_TABLE_OTHER,
   L2_CLASSIFY_N_TABLES,
 } l2_classify_table_id_t;
 
-typedef struct {
+typedef struct
+{
 
-  // Next nodes for each feature
+  /* Next nodes for each feature */
   u32 feat_next_node_index[32];
 
   /* Per-address-family classifier table vectors */
-  u32 * classify_table_index_by_sw_if_index [L2_CLASSIFY_N_TABLES]; 
+  u32 *classify_table_index_by_sw_if_index[L2_CLASSIFY_N_TABLES];
 
   /* convenience variables */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
-  vnet_classify_main_t * vnet_classify_main;
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
+  vnet_classify_main_t *vnet_classify_main;
 } l2_classify_main_t;
 
 l2_classify_main_t l2_classify_main;
 
 extern vlib_node_registration_t l2_classify_node;
 
-void vnet_l2_classify_enable_disable (u32 sw_if_index,
-                                      int enable_disable);
+void vnet_l2_classify_enable_disable (u32 sw_if_index, int enable_disable);
 
-int vnet_l2_classify_set_tables (u32 sw_if_index, u32 ip4_table_index, 
-                                 u32 ip6_table_index, u32 other_table_index);
+int vnet_l2_classify_set_tables (u32 sw_if_index, u32 ip4_table_index,
+				 u32 ip6_table_index, u32 other_table_index);
 
 #endif /* __included_vnet_l2_classify_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

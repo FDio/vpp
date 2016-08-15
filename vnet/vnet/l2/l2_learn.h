@@ -22,26 +22,35 @@
 #include <vnet/ethernet/ethernet.h>
 
 
-typedef struct {
+typedef struct
+{
 
-  // Hash table
-  BVT(clib_bihash) *mac_table;
+  /* Hash table */
+  BVT (clib_bihash) * mac_table;
 
-  // number of dynamically learned mac entries
+  /* number of dynamically learned mac entries */
   u32 global_learn_count;
 
-  // maximum number of dynamically learned mac entries
+  /* maximum number of dynamically learned mac entries */
   u32 global_learn_limit;
 
-  // Next nodes for each feature
+  /* Next nodes for each feature */
   u32 feat_next_node_index[32];
 
   /* convenience variables */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
 } l2learn_main_t;
 
 
 l2learn_main_t l2learn_main;
 
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

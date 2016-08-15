@@ -5861,8 +5861,8 @@ static void
 vl_api_lisp_map_resolver_dump_t_handler (vl_api_lisp_map_resolver_dump_t * mp)
 {
   unix_shared_memory_queue_t *q = NULL;
-  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
-  map_resolver_t * mr;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  map_resolver_t *mr;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -5870,9 +5870,9 @@ vl_api_lisp_map_resolver_dump_t_handler (vl_api_lisp_map_resolver_dump_t * mp)
       return;
     }
 
-  vec_foreach(mr, lcm->map_resolvers)
+  vec_foreach (mr, lcm->map_resolvers)
   {
-    send_lisp_map_resolver_details(&mr->address, q, mp->context);
+    send_lisp_map_resolver_details (&mr->address, q, mp->context);
   }
 }
 

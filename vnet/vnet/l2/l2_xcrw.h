@@ -25,41 +25,45 @@
 #include <vnet/api_errno.h>
 #include <vnet/ethernet/ethernet.h>
 
-typedef struct {
-  /* 
+typedef struct
+{
+  /*
    * Let: rewrite_header.sw_if_index = tx_fib_index or ~0.
    *      rewrite_header.next_index = L2_XCRW_NEXT_XXX
    */
   vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
 } l2_xcrw_adjacency_t;
 
-typedef struct {
+typedef struct
+{
   /* L2 interface */
   u32 l2_sw_if_index;
 
   /* Tunnel interface */
-  u32 tunnel_sw_if_index;  /* This field remains set in freed pool elts */
+  u32 tunnel_sw_if_index;	/* This field remains set in freed pool elts */
 
 } l2_xcrw_tunnel_t;
 
-typedef struct {
+typedef struct
+{
   u32 cached_next_index;
 
   /* Vector of cross-connect rewrites */
-  l2_xcrw_adjacency_t * adj_by_sw_if_index;
+  l2_xcrw_adjacency_t *adj_by_sw_if_index;
 
   /* Pool of xcrw tunnels */
-  l2_xcrw_tunnel_t * tunnels;
+  l2_xcrw_tunnel_t *tunnels;
 
   /* Tunnel index by tunnel sw_if_index */
-  uword * tunnel_index_by_l2_sw_if_index;
+  uword *tunnel_index_by_l2_sw_if_index;
 
   /* convenience variables */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
 } l2_xcrw_main_t;
 
-typedef enum {
+typedef enum
+{
   L2_XCRW_NEXT_DROP,
   L2_XCRW_N_NEXT,
 } l2_xcrw_next_t;
@@ -68,11 +72,20 @@ typedef enum {
 _(DROP, "Packets dropped")                      \
 _(FWD, "Packets forwarded")
 
-typedef enum {
+typedef enum
+{
 #define _(sym,str) L2_XCRW_ERROR_##sym,
   foreach_l2_xcrw_error
 #undef _
-  L2_XCRW_N_ERROR,
+    L2_XCRW_N_ERROR,
 } l2_xcrw_error_t;
 
 #endif /* __included_l2_xcrw_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

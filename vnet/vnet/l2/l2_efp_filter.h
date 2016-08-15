@@ -19,10 +19,15 @@
 #ifndef included_vnet_l2_efp_filter_h
 #define included_vnet_l2_efp_filter_h
 
-
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
-
 #endif
 
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

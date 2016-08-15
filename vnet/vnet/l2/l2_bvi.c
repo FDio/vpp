@@ -22,14 +22,19 @@
 #include <vnet/l2/l2_bvi.h>
 
 
-// Call the L2 nodes that need the ethertype mapping
+/* Call the L2 nodes that need the ethertype mapping */
 void
 l2bvi_register_input_type (vlib_main_t * vm,
-                           ethernet_type_t type,
-                           u32 node_index)
+			   ethernet_type_t type, u32 node_index)
 {
   l2fwd_register_input_type (vm, type, node_index);
   l2flood_register_input_type (vm, type, node_index);
 }
 
-
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
