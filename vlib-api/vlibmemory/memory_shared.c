@@ -285,7 +285,7 @@ vl_map_shmem (char *region_name, int is_vlib)
   memset (a, 0, sizeof (*a));
 
   a->name = region_name;
-  a->size = am->api_size ? am->api_size: (16 << 20);
+  a->size = am->api_size ? am->api_size : (16 << 20);
   a->flags = SVM_FLAGS_MHEAP;
   a->uid = am->api_uid;
   a->gid = am->api_gid;

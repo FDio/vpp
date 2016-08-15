@@ -42,7 +42,7 @@ u8 *
 format_cpu_uarch (u8 * s, va_list * args)
 {
 #if __x86_64__
-  u32 __attribute__((unused)) eax, ebx, ecx, edx;
+  u32 __attribute__ ((unused)) eax, ebx, ecx, edx;
   u8 model, family;
 
   if (__get_cpuid (1, &eax, &ebx, &ecx, &edx) == 0)
@@ -54,7 +54,7 @@ format_cpu_uarch (u8 * s, va_list * args)
 #define _(f,m,a,c) if ((model == m) && (family == f)) return format(s, "%s (%s)", a, c);
   foreach_x86_cpu_uarch
 #undef _
-  return format (s, "unknown (family 0x%02x model 0x%02x)", family, model);
+    return format (s, "unknown (family 0x%02x model 0x%02x)", family, model);
 
 #else /* ! __x86_64__ */
   return format (s, "unknown");
@@ -65,9 +65,9 @@ u8 *
 format_cpu_model_name (u8 * s, va_list * args)
 {
 #if __x86_64__
-  u32 __attribute__((unused)) eax, ebx, ecx, edx;
-  u8 * name = 0;
-  u32 * name_u32;
+  u32 __attribute__ ((unused)) eax, ebx, ecx, edx;
+  u8 *name = 0;
+  u32 *name_u32;
 
   if (__get_cpuid (1, &eax, &ebx, &ecx, &edx) == 0)
     return format (s, "unknown (missing cpuid)");
@@ -76,7 +76,7 @@ format_cpu_model_name (u8 * s, va_list * args)
   if (eax < 0x80000004)
     return format (s, "unknown (missing ext feature)");
 
-  vec_validate(name, 48);
+  vec_validate (name, 48);
   name_u32 = (u32 *) name;
 
   __get_cpuid (0x80000002, &eax, &ebx, &ecx, &edx);
@@ -98,7 +98,7 @@ format_cpu_model_name (u8 * s, va_list * args)
   name_u32[11] = edx;
 
   s = format (s, "%s", name);
-  vec_free(name);
+  vec_free (name);
   return s;
 
 #else /* ! __x86_64__ */
@@ -113,8 +113,7 @@ format_cpu_flags (u8 * s, va_list * args)
 #define _(flag, func, reg, bit) \
   if (clib_cpu_supports_ ## flag()) \
     s = format (s, #flag " ");
-  foreach_x86_64_flags
-  return s;
+  foreach_x86_64_flags return s;
 #undef _
 #else /* ! __x86_64__ */
   return format (s, "unknown");
@@ -122,3 +121,11 @@ format_cpu_flags (u8 * s, va_list * args)
 }
 
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

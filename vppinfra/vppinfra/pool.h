@@ -49,12 +49,13 @@
 #include <vppinfra/mheap.h>
 
 
-typedef struct {
+typedef struct
+{
   /** Bitmap of indices of free objects. */
-  uword * free_bitmap;
+  uword *free_bitmap;
 
   /** Vector of free indices.  One element for each set bit in bitmap. */
-  u32 * free_indices;
+  u32 *free_indices;
 } pool_header_t;
 
 /** Align pool header so that pointers are naturally aligned. */
@@ -62,16 +63,20 @@ typedef struct {
   vec_aligned_header_bytes (sizeof (pool_header_t), sizeof (void *))
 
 /** Get pool header from user pool pointer */
-always_inline pool_header_t * pool_header (void * v)
-{ return vec_aligned_header (v, sizeof (pool_header_t), sizeof (void *)); }
+always_inline pool_header_t *
+pool_header (void *v)
+{
+  return vec_aligned_header (v, sizeof (pool_header_t), sizeof (void *));
+}
 
 /** Validate a pool */
-always_inline void pool_validate (void * v)
+always_inline void
+pool_validate (void *v)
 {
-  pool_header_t * p = pool_header (v);
+  pool_header_t *p = pool_header (v);
   uword i, n_free_bitmap;
 
-  if (! v)
+  if (!v)
     return;
 
   n_free_bitmap = clib_bitmap_count_set_bits (p->free_bitmap);
@@ -80,9 +85,10 @@ always_inline void pool_validate (void * v)
     ASSERT (clib_bitmap_get (p->free_bitmap, p->free_indices[i]) == 1);
 }
 
-always_inline void pool_header_validate_index (void * v, uword index)
+always_inline void
+pool_header_validate_index (void *v, uword index)
 {
-  pool_header_t * p = pool_header (v);
+  pool_header_t *p = pool_header (v);
 
   if (v)
     vec_validate (p->free_bitmap, index / BITS (uword));
@@ -99,7 +105,8 @@ do {								\
 /** Number of active elements in a pool.
  * @return Number of active elements in a pool
  */
-always_inline uword pool_elts (void * v)
+always_inline uword
+pool_elts (void *v)
 {
   uword ret = vec_len (v);
   if (v)
@@ -121,11 +128,11 @@ always_inline uword pool_elts (void * v)
 
 /** Memory usage of pool header. */
 always_inline uword
-pool_header_bytes (void * v)
+pool_header_bytes (void *v)
 {
-  pool_header_t * p = pool_header (v);
+  pool_header_t *p = pool_header (v);
 
-  if (! v)
+  if (!v)
     return 0;
 
   return vec_bytes (p->free_bitmap) + vec_bytes (p->free_indices);
@@ -139,17 +146,18 @@ pool_header_bytes (void * v)
 
 /** Queries whether pool has at least N_FREE free elements. */
 always_inline uword
-pool_free_elts (void * v)
+pool_free_elts (void *v)
 {
-  pool_header_t * p = pool_header (v);
+  pool_header_t *p = pool_header (v);
   uword n_free = 0;
 
-  if (v) {
-    n_free += vec_len (p->free_indices);
+  if (v)
+    {
+      n_free += vec_len (p->free_indices);
 
-    /* Space left at end of vector? */
-    n_free += vec_capacity (v, sizeof (p[0])) - vec_len (v);
-  }
+      /* Space left at end of vector? */
+      n_free += vec_capacity (v, sizeof (p[0])) - vec_len (v);
+    }
 
   return n_free;
 }
@@ -198,7 +206,7 @@ do {									\
   uword _pool_var (i) = (E) - (P);					\
   (_pool_var (i) < vec_len (P)) ? clib_bitmap_get (_pool_var (p)->free_bitmap, _pool_i) : 1; \
 })
-  
+
 /** Use free bitmap to query whether given index is free */
 #define pool_is_free_index(P,I) pool_is_free((P),(P)+(I))
 
@@ -239,10 +247,11 @@ do {									\
 #define pool_alloc(P,N) pool_alloc_aligned(P,N,0)
 
 /** Low-level free pool operator (do not call directly). */
-always_inline void * _pool_free (void * v)
+always_inline void *
+_pool_free (void *v)
 {
-  pool_header_t * p = pool_header (v);
-  if (! v)
+  pool_header_t *p = pool_header (v);
+  if (!v)
     return v;
   clib_bitmap_free (p->free_bitmap);
   vec_free (p->free_indices);
@@ -260,7 +269,7 @@ always_inline void * _pool_free (void * v)
     @param POOL pool to iterate across
     @param BODY operation to perform
 
-    Optimized version which assumes that BODY is smart enough to 
+    Optimized version which assumes that BODY is smart enough to
     process multiple (LOW,HI) chunks. See also pool_foreach().
  */
 #define pool_foreach_region(LO,HI,POOL,BODY)				\
@@ -355,7 +364,7 @@ do {									\
     @code
         p = pool_base + index;
     @endcode
-    use of @c pool_elt_at_index is strongly suggested. 
+    use of @c pool_elt_at_index is strongly suggested.
  */
 #define pool_elt_at_index(p,i)			\
 ({						\
@@ -386,3 +395,11 @@ do {									\
     }
 
 #endif /* included_pool_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -53,13 +53,13 @@ those keys into a value in 0..n-1 with no collisions.
 The perfect hash function first uses a normal hash function on the key
 to determine (a,b) such that the pair (a,b) is distinct for all
 keys, then it computes a^scramble[tab[b]] to get the final perfect hash.
-tab[] is an array of 1-byte values and scramble[] is a 256-term array of 
-2-byte or 4-byte values.  If there are n keys, the length of tab[] is a 
+tab[] is an array of 1-byte values and scramble[] is a 256-term array of
+2-byte or 4-byte values.  If there are n keys, the length of tab[] is a
 power of two between n/3 and n.
 
-I found the idea of computing distinct (a,b) values in "Practical minimal 
-perfect hash functions for large databases", Fox, Heath, Chen, and Daoud, 
-Communications of the ACM, January 1992.  They found the idea in Chichelli 
+I found the idea of computing distinct (a,b) values in "Practical minimal
+perfect hash functions for large databases", Fox, Heath, Chen, and Daoud,
+Communications of the ACM, January 1992.  They found the idea in Chichelli
 (CACM Jan 1980).  Beyond that, our methods differ.
 
 The key is hashed to a pair (a,b) where a in 0..*alen*-1 and b in
@@ -91,11 +91,12 @@ determined a perfect hash for the whole set of keys.
 #include <vppinfra/phash.h>
 #include <vppinfra/random.h>
 
-static void init_keys_direct_u32 (phash_main_t * pm)
+static void
+init_keys_direct_u32 (phash_main_t * pm)
 {
   int n_keys_left, b_mask, a_shift;
   u32 seed;
-  phash_key_t * k;
+  phash_key_t *k;
 
   seed = pm->hash_seed;
   b_mask = (1 << pm->b_bits) - 1;
@@ -147,11 +148,12 @@ static void init_keys_direct_u32 (phash_main_t * pm)
     }
 }
 
-static void init_keys_direct_u64 (phash_main_t * pm)
+static void
+init_keys_direct_u64 (phash_main_t * pm)
 {
   int n_keys_left, b_mask, a_shift;
   u64 seed;
-  phash_key_t * k;
+  phash_key_t *k;
 
   seed = pm->hash_seed;
   b_mask = (1 << pm->b_bits) - 1;
@@ -203,11 +205,12 @@ static void init_keys_direct_u64 (phash_main_t * pm)
     }
 }
 
-static void init_keys_indirect_u32 (phash_main_t * pm)
+static void
+init_keys_indirect_u32 (phash_main_t * pm)
 {
   int n_keys_left, b_mask, a_shift;
   u32 seed;
-  phash_key_t * k;
+  phash_key_t *k;
 
   seed = pm->hash_seed;
   b_mask = (1 << pm->b_bits) - 1;
@@ -226,8 +229,12 @@ static void init_keys_indirect_u32 (phash_main_t * pm)
 
       x0 = y0 = z0 = seed;
       x1 = y1 = z1 = seed;
-      x0 += xyz[0]; y0 += xyz[1]; z0 += xyz[2];
-      x1 += xyz[3]; y1 += xyz[4]; z1 += xyz[5];
+      x0 += xyz[0];
+      y0 += xyz[1];
+      z0 += xyz[2];
+      x1 += xyz[3];
+      y1 += xyz[4];
+      z1 += xyz[5];
 
       hash_mix32 (x0, y0, z0);
       hash_mix32 (x1, y1, z1);
@@ -251,7 +258,9 @@ static void init_keys_indirect_u32 (phash_main_t * pm)
       pm->key_seed1 (pm->private, k[0].key, &xyz);
 
       x0 = y0 = z0 = seed;
-      x0 += xyz[0]; y0 += xyz[1]; z0 += xyz[2];
+      x0 += xyz[0];
+      y0 += xyz[1];
+      z0 += xyz[2];
 
       hash_mix32 (x0, y0, z0);
 
@@ -265,11 +274,12 @@ static void init_keys_indirect_u32 (phash_main_t * pm)
     }
 }
 
-static void init_keys_indirect_u64 (phash_main_t * pm)
+static void
+init_keys_indirect_u64 (phash_main_t * pm)
 {
   int n_keys_left, b_mask, a_shift;
   u64 seed;
-  phash_key_t * k;
+  phash_key_t *k;
 
   seed = pm->hash_seed;
   b_mask = (1 << pm->b_bits) - 1;
@@ -288,8 +298,12 @@ static void init_keys_indirect_u64 (phash_main_t * pm)
 
       x0 = y0 = z0 = seed;
       x1 = y1 = z1 = seed;
-      x0 += xyz[0]; y0 += xyz[1]; z0 += xyz[2];
-      x1 += xyz[3]; y1 += xyz[4]; z1 += xyz[5];
+      x0 += xyz[0];
+      y0 += xyz[1];
+      z0 += xyz[2];
+      x1 += xyz[3];
+      y1 += xyz[4];
+      z1 += xyz[5];
 
       hash_mix64 (x0, y0, z0);
       hash_mix64 (x1, y1, z1);
@@ -313,7 +327,9 @@ static void init_keys_indirect_u64 (phash_main_t * pm)
       pm->key_seed1 (pm->private, k[0].key, &xyz);
 
       x0 = y0 = z0 = seed;
-      x0 += xyz[0]; y0 += xyz[1]; z0 += xyz[2];
+      x0 += xyz[0];
+      y0 += xyz[1];
+      z0 += xyz[2];
 
       hash_mix64 (x0, y0, z0);
 
@@ -327,15 +343,16 @@ static void init_keys_indirect_u64 (phash_main_t * pm)
     }
 }
 
-/* 
+/*
  * insert keys into table according to key->b
- * check if the initial hash might work 
+ * check if the initial hash might work
  */
-static int init_tabb (phash_main_t * pm)
+static int
+init_tabb (phash_main_t * pm)
 {
   int no_collisions;
-  phash_tabb_t * tb;
-  phash_key_t * k, * l;
+  phash_tabb_t *tb;
+  phash_key_t *k, *l;
 
   if (pm->key_seed1)
     {
@@ -352,49 +369,49 @@ static int init_tabb (phash_main_t * pm)
 	init_keys_direct_u32 (pm);
     }
 
-  if (! pm->tabb)
+  if (!pm->tabb)
     vec_resize (pm->tabb, 1 << pm->b_bits);
   else
-    vec_foreach (tb, pm->tabb)
-      phash_tabb_free (tb);
-    
+    vec_foreach (tb, pm->tabb) phash_tabb_free (tb);
+
   /* Two keys with the same (a,b) guarantees a collision */
   no_collisions = 1;
   vec_foreach (k, pm->keys)
-    {
-      u32 i, * ki;
+  {
+    u32 i, *ki;
 
-      tb = pm->tabb + k->b;
-      ki = tb->keys;
-      for (i = 0; i < vec_len (ki); i++)
-	{
-	  l = pm->keys + ki[i];
-	  if (k->a == l->a)
-	    {
-	      /* Given keys are supposed to be unique. */
-	      if (pm->key_is_equal
-		  && pm->key_is_equal (pm->private, l->key, k->key))
-		clib_error ("duplicate keys");
-	      no_collisions = 0;
-	      goto done;
-	    }
-	}
+    tb = pm->tabb + k->b;
+    ki = tb->keys;
+    for (i = 0; i < vec_len (ki); i++)
+      {
+	l = pm->keys + ki[i];
+	if (k->a == l->a)
+	  {
+	    /* Given keys are supposed to be unique. */
+	    if (pm->key_is_equal
+		&& pm->key_is_equal (pm->private, l->key, k->key))
+	      clib_error ("duplicate keys");
+	    no_collisions = 0;
+	    goto done;
+	  }
+      }
 
-      vec_add1 (tb->keys, k - pm->keys);
-    }
+    vec_add1 (tb->keys, k - pm->keys);
+  }
 
- done:
+done:
   return no_collisions;
 }
 
 /* Try to apply an augmenting list */
-static int apply (phash_main_t * pm, u32 tail, u32 rollback)
+static int
+apply (phash_main_t * pm, u32 tail, u32 rollback)
 {
-  phash_key_t * k;
-  phash_tabb_t * pb;
-  phash_tabq_t * q_child, * q_parent;
+  phash_key_t *k;
+  phash_tabb_t *pb;
+  phash_tabq_t *q_child, *q_parent;
   u32 ki, i, hash, child, parent;
-  u32 stabb;                                         /* scramble[tab[b]] */
+  u32 stabb;			/* scramble[tab[b]] */
   int no_collision;
 
   no_collision = 1;
@@ -436,7 +453,8 @@ static int apply (phash_main_t * pm, u32 tail, u32 rollback)
 	  hash = k->a ^ stabb;
 	  if (rollback)
 	    {
-	      if (parent == 0) continue;                  /* root never had a hash */
+	      if (parent == 0)
+		continue;	/* root never had a hash */
 	    }
 	  else if (pm->tabh[hash] != ~0)
 	    {
@@ -449,7 +467,7 @@ static int apply (phash_main_t * pm, u32 tail, u32 rollback)
 	}
     }
 
- done:
+done:
   return no_collision;
 }
 
@@ -459,32 +477,34 @@ static int apply (phash_main_t * pm, u32 tail, u32 rollback)
 augment(): Add item to the mapping.
 
 Construct a spanning tree of *b*s with *item* as root, where each
-parent can have all its hashes changed (by some new val_b) with 
+parent can have all its hashes changed (by some new val_b) with
 at most one collision, and each child is the b of that collision.
 
 I got this from Tarjan's "Data Structures and Network Algorithms".  The
-path from *item* to a *b* that can be remapped with no collision is 
-an "augmenting path".  Change values of tab[b] along the path so that 
+path from *item* to a *b* that can be remapped with no collision is
+an "augmenting path".  Change values of tab[b] along the path so that
 the unmapped key gets mapped and the unused hash value gets used.
 
-Assuming 1 key per b, if m out of n hash values are still unused, 
-you should expect the transitive closure to cover n/m nodes before 
+Assuming 1 key per b, if m out of n hash values are still unused,
+you should expect the transitive closure to cover n/m nodes before
 an unused node is found.  Sum(i=1..n)(n/i) is about nlogn, so expect
 this approach to take about nlogn time to map all single-key b's.
 -------------------------------------------------------------------------------
 
 high_water: a value higher than any now in tabb[].water_b.
 */
-static int augment (phash_main_t * pm, u32 b_root, u32 high_water)
+static int
+augment (phash_main_t * pm, u32 b_root, u32 high_water)
 {
-  u32 q;                      /* current position walking through the queue */
-  u32 tail;              /* tail of the queue.  0 is the head of the queue. */
-  phash_tabb_t * tb_parent, * tb_child, * tb_hit;
-  phash_key_t * k_parent, * k_child;
-  u32 v, v_limit;	   /* possible value for myb->val_b */
+  u32 q;			/* current position walking through the queue */
+  u32 tail;			/* tail of the queue.  0 is the head of the queue. */
+  phash_tabb_t *tb_parent, *tb_child, *tb_hit;
+  phash_key_t *k_parent, *k_child;
+  u32 v, v_limit;		/* possible value for myb->val_b */
   u32 i, ki, hash;
 
-  v_limit = 1 << ((pm->flags & PHASH_FLAG_USE_SCRAMBLE) ? pm->s_bits : BITS (u8));
+  v_limit =
+    1 << ((pm->flags & PHASH_FLAG_USE_SCRAMBLE) ? pm->s_bits : BITS (u8));
 
   /* Initialize the root of the spanning tree. */
   pm->tabq[0].b_q = b_root;
@@ -494,11 +514,10 @@ static int augment (phash_main_t * pm, u32 b_root, u32 high_water)
   for (q = 0; q < tail; q++)
     {
       if ((pm->flags & PHASH_FLAG_FAST_MODE)
-	  && ! (pm->flags & PHASH_FLAG_MINIMAL)
-	  && q == 1)
-	break;                                  /* don't do transitive closure */
+	  && !(pm->flags & PHASH_FLAG_MINIMAL) && q == 1)
+	break;			/* don't do transitive closure */
 
-      tb_parent = pm->tabb + pm->tabq[q].b_q;                        /* the b for this node */
+      tb_parent = pm->tabb + pm->tabq[q].b_q;	/* the b for this node */
 
       for (v = 0; v < v_limit; v++)
 	{
@@ -511,7 +530,7 @@ static int augment (phash_main_t * pm, u32 b_root, u32 high_water)
 
 	      hash = k_parent->a ^ pm->scramble[v];
 	      if (hash >= pm->hash_max)
-		goto try_next_v; /* hash code out of bounds => we can't use this v */
+		goto try_next_v;	/* hash code out of bounds => we can't use this v */
 
 	      ki = pm->tabh[hash];
 	      if (ki == ~0)
@@ -531,7 +550,7 @@ static int augment (phash_main_t * pm, u32 b_root, u32 high_water)
 		  /* Remember this as child b. */
 		  tb_child = tb_hit;
 		  if (tb_hit->water_b == high_water)
-		    goto try_next_v;     /* already explored */
+		    goto try_next_v;	/* already explored */
 		}
 	    }
 
@@ -541,18 +560,18 @@ static int augment (phash_main_t * pm, u32 b_root, u32 high_water)
 	  if (tb_child)
 	    tb_child->water_b = high_water;
 	  pm->tabq[tail].b_q = tb_child ? tb_child - pm->tabb : ~0;
-	  pm->tabq[tail].newval_q = v;     /* how to make parent (myb) use this hash */
-	  pm->tabq[tail].oldval_q = tb_parent->val_b;            /* need this for rollback */
+	  pm->tabq[tail].newval_q = v;	/* how to make parent (myb) use this hash */
+	  pm->tabq[tail].oldval_q = tb_parent->val_b;	/* need this for rollback */
 	  pm->tabq[tail].parent_q = q;
 	  ++tail;
 
 	  /* Found a v with no collisions? */
-	  if (! tb_child)
-	    {                                  
+	  if (!tb_child)
+	    {
 	      /* Try to apply the augmenting path. */
 	      if (apply (pm, tail, /* rollback */ 0))
-		return 1;        /* success, item was added to the perfect hash */
-	      --tail;                    /* don't know how to handle such a child! */
+		return 1;	/* success, item was added to the perfect hash */
+	      --tail;		/* don't know how to handle such a child! */
 	    }
 
 	try_next_v:
@@ -563,27 +582,29 @@ static int augment (phash_main_t * pm, u32 b_root, u32 high_water)
 }
 
 
-static phash_tabb_t * sort_tabb;
+static phash_tabb_t *sort_tabb;
 
-static int phash_tabb_compare (void *a1, void *a2)
+static int
+phash_tabb_compare (void *a1, void *a2)
 {
-    u32 *b1 = a1;
-    u32 *b2 = a2;
-    phash_tabb_t * tb1, * tb2;
+  u32 *b1 = a1;
+  u32 *b2 = a2;
+  phash_tabb_t *tb1, *tb2;
 
-    tb1 = sort_tabb + b1[0];
-    tb2 = sort_tabb + b2[0];
+  tb1 = sort_tabb + b1[0];
+  tb2 = sort_tabb + b2[0];
 
-    return ((int) vec_len (tb2->keys) - (int) vec_len(tb1->keys));
+  return ((int) vec_len (tb2->keys) - (int) vec_len (tb1->keys));
 }
 
 /* find a mapping that makes this a perfect hash */
-static int perfect (phash_main_t * pm)
+static int
+perfect (phash_main_t * pm)
 {
   u32 i;
 
   /* clear any state from previous attempts */
-  if (vec_bytes(pm->tabh))
+  if (vec_bytes (pm->tabh))
     memset (pm->tabh, ~0, vec_bytes (pm->tabh));
 
   vec_validate (pm->tabb_sort, vec_len (pm->tabb) - 1);
@@ -597,7 +618,7 @@ static int perfect (phash_main_t * pm)
   /* In descending order by number of keys, map all *b*s */
   for (i = 0; i < vec_len (pm->tabb_sort); i++)
     {
-      if (! augment(pm, pm->tabb_sort[i], i + 1))
+      if (!augment (pm, pm->tabb_sort[i], i + 1))
 	return 0;
     }
 
@@ -629,10 +650,10 @@ static int perfect (phash_main_t * pm)
  * We want b_max as small as possible because it is the number of bytes in
  * the huge array we must create for the perfect hash.
  *
- * When nkey <= s_max*(5/8), b_max=s_max/4 works much more often with 
+ * When nkey <= s_max*(5/8), b_max=s_max/4 works much more often with
  * a_max=s_max/8 than with a_max=s_max/4.  Above s_max*(5/8), b_max=s_max/4
  * doesn't seem to care whether a_max=s_max/8 or a_max=s_max/4.  I think it
- * has something to do with 5/8 = 1/8 * 5.  For example examine 80000, 
+ * has something to do with 5/8 = 1/8 * 5.  For example examine 80000,
  * 85000, and 90000 keys with different values of a_max.  This only matters
  * if we're doing a minimal perfect hash.
  *
@@ -640,7 +661,8 @@ static int perfect (phash_main_t * pm)
  * Bigger than that it must produce two integers, which increases the
  * cost of the hash per character hashed.
  */
-static void guess_initial_parameters (phash_main_t * pm)
+static void
+guess_initial_parameters (phash_main_t * pm)
 {
   u32 s_bits, s_max, a_max, b_max, n_keys;
   int is_minimal, is_fast_mode;
@@ -661,78 +683,95 @@ static void guess_initial_parameters (phash_main_t * pm)
 	case 0:
 	  a_max = 1;
 	  b_max = 1;
-	case 1: case 2: case 3: case 4: case 5: case 6: case 7: case 8:
-          /* 
-           * Was: a_max = is_minimal ? s_max / 2 : s_max;
-           * However, we know that is_minimal must be true, so the
-           * if-arm of the ternary expression is always executed.
-           */
-	  a_max = s_max/2;
-	  b_max = s_max/2;
+	case 1:
+	case 2:
+	case 3:
+	case 4:
+	case 5:
+	case 6:
+	case 7:
+	case 8:
+	  /*
+	   * Was: a_max = is_minimal ? s_max / 2 : s_max;
+	   * However, we know that is_minimal must be true, so the
+	   * if-arm of the ternary expression is always executed.
+	   */
+	  a_max = s_max / 2;
+	  b_max = s_max / 2;
 	  break;
-	case 9: case 10: case 11: case 12: case 13:
-	case 14: case 15: case 16: case 17:
+	case 9:
+	case 10:
+	case 11:
+	case 12:
+	case 13:
+	case 14:
+	case 15:
+	case 16:
+	case 17:
 	  if (is_fast_mode)
 	    {
-	      a_max = s_max/2;
-	      b_max = s_max/4;
+	      a_max = s_max / 2;
+	      b_max = s_max / 4;
 	    }
-	  else if (s_max/4 < b_max_use_scramble_threshold)
+	  else if (s_max / 4 < b_max_use_scramble_threshold)
 	    {
-	      if (n_keys <= s_max*0.52)
-		a_max = b_max = s_max/8;
+	      if (n_keys <= s_max * 0.52)
+		a_max = b_max = s_max / 8;
 	      else
-		a_max = b_max = s_max/4;
+		a_max = b_max = s_max / 4;
 	    }
 	  else
 	    {
-	      a_max = ((n_keys <= s_max*(5.0/8.0)) ? s_max/8 : 
-		       (n_keys <= s_max*(3.0/4.0)) ? s_max/4 : s_max/2);
-	      b_max = s_max/4;                /* always give the small size a shot */
+	      a_max = ((n_keys <= s_max * (5.0 / 8.0)) ? s_max / 8 :
+		       (n_keys <=
+			s_max * (3.0 / 4.0)) ? s_max / 4 : s_max / 2);
+	      b_max = s_max / 4;	/* always give the small size a shot */
 	    }
 	  break;
 	case 18:
 	  if (is_fast_mode)
-	    a_max = b_max = s_max/2;
+	    a_max = b_max = s_max / 2;
 	  else
 	    {
-	      a_max = s_max/8;                 /* never require the multiword hash */
-	      b_max = (n_keys <= s_max*(5.0/8.0)) ? s_max/4 : s_max/2;
+	      a_max = s_max / 8;	/* never require the multiword hash */
+	      b_max = (n_keys <= s_max * (5.0 / 8.0)) ? s_max / 4 : s_max / 2;
 	    }
 	  break;
 	case 19:
 	case 20:
-	  a_max = (n_keys <= s_max*(5.0/8.0)) ? s_max/8 : s_max/2;
-	  b_max = (n_keys <= s_max*(5.0/8.0)) ? s_max/4 : s_max/2;
+	  a_max = (n_keys <= s_max * (5.0 / 8.0)) ? s_max / 8 : s_max / 2;
+	  b_max = (n_keys <= s_max * (5.0 / 8.0)) ? s_max / 4 : s_max / 2;
 	  break;
 	default:
 	  /* Just find a hash as quick as possible.
 	     We'll be thrashing virtual memory at this size. */
-	  a_max = b_max = s_max/2;
+	  a_max = b_max = s_max / 2;
 	  break;
 	}
     }
   else
     {
       /* Non-minimal perfect hash. */
-      if (is_fast_mode && n_keys > s_max*0.8)
+      if (is_fast_mode && n_keys > s_max * 0.8)
 	{
 	  s_max *= 2;
 	  s_bits += 1;
 	}
 
-      if (s_max/4 <= (1 << 14))
-	b_max = ((n_keys <= s_max*0.56) ? s_max/32 :
-		 (n_keys <= s_max*0.74) ? s_max/16 : s_max/8);
+      if (s_max / 4 <= (1 << 14))
+	b_max = ((n_keys <= s_max * 0.56) ? s_max / 32 :
+		 (n_keys <= s_max * 0.74) ? s_max / 16 : s_max / 8);
       else
-	b_max = ((n_keys <= s_max*0.6) ? s_max/16 : 
-		 (n_keys <= s_max*0.8) ? s_max/8 : s_max/4);
+	b_max = ((n_keys <= s_max * 0.6) ? s_max / 16 :
+		 (n_keys <= s_max * 0.8) ? s_max / 8 : s_max / 4);
 
-      if (is_fast_mode && b_max < s_max/8)
-	b_max = s_max/8;
+      if (is_fast_mode && b_max < s_max / 8)
+	b_max = s_max / 8;
 
-      if (a_max < 1) a_max = 1;
-      if (b_max < 1) b_max = 1;
+      if (a_max < 1)
+	a_max = 1;
+      if (b_max < 1)
+	b_max = 1;
     }
 
   ASSERT (s_max == (1 << s_bits));
@@ -747,17 +786,18 @@ static void guess_initial_parameters (phash_main_t * pm)
 
 /* compute p(x), where p is a permutation of 0..(1<<nbits)-1 */
 /* permute(0)=0.  This is intended and useful. */
-always_inline u32 scramble_permute (u32 x, u32 nbits)
+always_inline u32
+scramble_permute (u32 x, u32 nbits)
 {
   int i;
-  int mask   = (1 << nbits) - 1;
-  int const2 = 1+nbits/2;
-  int const3 = 1+nbits/3;
-  int const4 = 1+nbits/4;
-  int const5 = 1+nbits/5;
+  int mask = (1 << nbits) - 1;
+  int const2 = 1 + nbits / 2;
+  int const3 = 1 + nbits / 3;
+  int const4 = 1 + nbits / 4;
+  int const5 = 1 + nbits / 5;
   for (i = 0; i < 20; i++)
     {
-      x = (x + (x << const2)) & mask; 
+      x = (x + (x << const2)) & mask;
       x = (x ^ (x >> const3));
       x = (x + (x << const4)) & mask;
       x = (x ^ (x >> const5));
@@ -766,7 +806,8 @@ always_inline u32 scramble_permute (u32 x, u32 nbits)
 }
 
 /* initialize scramble[] with distinct random values in 0..smax-1 */
-static void scramble_init (phash_main_t * pm)
+static void
+scramble_init (phash_main_t * pm)
 {
   u32 i;
 
@@ -780,7 +821,7 @@ static void scramble_init (phash_main_t * pm)
 clib_error_t *
 phash_find_perfect_hash (phash_main_t * pm)
 {
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
   u32 max_a_bits, n_tries_this_a_b, want_minimal;
 
   /* guess initial values for s_max, a_max and b_max */
@@ -788,7 +829,7 @@ phash_find_perfect_hash (phash_main_t * pm)
 
   want_minimal = pm->flags & PHASH_FLAG_MINIMAL;
 
- new_s:
+new_s:
   if (pm->b_bits == 0)
     pm->a_bits = pm->s_bits;
 
@@ -805,7 +846,7 @@ phash_find_perfect_hash (phash_main_t * pm)
   vec_validate_init_empty (pm->tabh, pm->hash_max - 1, ~0);
   vec_free (pm->tabq);
   vec_validate (pm->tabq, 1 << pm->b_bits);
-  
+
   /* Actually find the perfect hash */
   n_tries_this_a_b = 0;
   while (1)
@@ -850,9 +891,9 @@ phash_find_perfect_hash (phash_main_t * pm)
 	}
     }
 
- done:
+done:
   /* Construct mapping table for hash lookups. */
-  if (! error)
+  if (!error)
     {
       u32 b, v;
 
@@ -865,7 +906,7 @@ phash_find_perfect_hash (phash_main_t * pm)
 	  v = pm->tabb[b].val_b;
 
 	  /* Apply scramble now for small enough value of b_bits. */
-	  if (! (pm->flags & PHASH_FLAG_USE_SCRAMBLE))
+	  if (!(pm->flags & PHASH_FLAG_USE_SCRAMBLE))
 	    v = pm->scramble[v];
 
 	  pm->tab[b] = v;
@@ -879,7 +920,8 @@ phash_find_perfect_hash (phash_main_t * pm)
 }
 
 /* Slow hash computation for general keys. */
-uword phash_hash_slow (phash_main_t * pm, uword key)
+uword
+phash_hash_slow (phash_main_t * pm, uword key)
 {
   u32 a, b, v;
 
@@ -893,7 +935,9 @@ uword phash_hash_slow (phash_main_t * pm, uword key)
 	{
 	  u64 xyz[3];
 	  pm->key_seed1 (pm->private, key, &xyz);
-	  x0 += xyz[0]; y0 += xyz[1]; z0 += xyz[2];
+	  x0 += xyz[0];
+	  y0 += xyz[1];
+	  z0 += xyz[2];
 	}
       else
 	x0 += key;
@@ -913,7 +957,9 @@ uword phash_hash_slow (phash_main_t * pm, uword key)
 	{
 	  u32 xyz[3];
 	  pm->key_seed1 (pm->private, key, &xyz);
-	  x0 += xyz[0]; y0 += xyz[1]; z0 += xyz[2];
+	  x0 += xyz[0];
+	  y0 += xyz[1];
+	  z0 += xyz[2];
 	}
       else
 	x0 += key;
@@ -934,30 +980,38 @@ uword phash_hash_slow (phash_main_t * pm, uword key)
 clib_error_t *
 phash_validate (phash_main_t * pm)
 {
-  phash_key_t * k;
-  uword * unique_bitmap = 0;
-  clib_error_t * error = 0;
+  phash_key_t *k;
+  uword *unique_bitmap = 0;
+  clib_error_t *error = 0;
 
   vec_foreach (k, pm->keys)
-    {
-      uword h = phash_hash_slow (pm, k->key);
+  {
+    uword h = phash_hash_slow (pm, k->key);
 
-      if (h >= pm->hash_max)
-	{
-	  error = clib_error_return (0, "hash out of range %wd", h);
-	  goto done;
-	}
+    if (h >= pm->hash_max)
+      {
+	error = clib_error_return (0, "hash out of range %wd", h);
+	goto done;
+      }
 
-      if (clib_bitmap_get (unique_bitmap, h))
-	{
-	  error = clib_error_return (0, "hash non-unique");
-	  goto done;
-	}
+    if (clib_bitmap_get (unique_bitmap, h))
+      {
+	error = clib_error_return (0, "hash non-unique");
+	goto done;
+      }
 
-      unique_bitmap = clib_bitmap_ori (unique_bitmap, h);
-    }
+    unique_bitmap = clib_bitmap_ori (unique_bitmap, h);
+  }
 
- done:
+done:
   clib_bitmap_free (unique_bitmap);
   return error;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

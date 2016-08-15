@@ -46,3 +46,11 @@ typedef __complex__ int i32xy_t;
 #define xy_y_unit_vector (1I)
 
 #endif /* included_clib_xy_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

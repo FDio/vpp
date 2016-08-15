@@ -38,8 +38,8 @@
 #ifndef included_vec_h
 #define included_vec_h
 
-#include <vppinfra/clib.h>          /* word, etc */
-#include <vppinfra/mem.h>           /* clib_mem_free */
+#include <vppinfra/clib.h>	/* word, etc */
+#include <vppinfra/mem.h>	/* clib_mem_free */
 #include <vppinfra/string.h>	/* memcpy, memmove */
 #include <vppinfra/vec_bootstrap.h>
 
@@ -60,7 +60,7 @@
 ~~~~~~~~
 
    The user pointer contains the address of vector element # 0.  Null
-   pointer vectors are valid and mean a zero length vector.  
+   pointer vectors are valid and mean a zero length vector.
 
    You can reset the length of an allocated vector to zero via the
    vec_reset_length(v) macro, or by setting the vector length field to
@@ -81,10 +81,10 @@
    and _h variants supporting non zero length vector headers.
    The _ha variants support both.
 
-   Standard programming error: memorize a pointer to the ith element 
+   Standard programming error: memorize a pointer to the ith element
    of a vector then expand it. Vectors expand by 3/2, so such code
    may appear to work for a period of time. Memorize vector indices
-   which are invariant. 
+   which are invariant.
  */
 
 /** \brief Low-level resize allocation function, usually not called directly
@@ -96,11 +96,10 @@
     @param data_align alignment (may be zero)
     @return v_prime pointer to resized vector, may or may not equal v
 */
-void * vec_resize_allocate_memory (void * v,
-				   word length_increment,
-				   uword data_bytes,
-				   uword header_bytes,
-				   uword data_align);
+void *vec_resize_allocate_memory (void *v,
+				  word length_increment,
+				  uword data_bytes,
+				  uword header_bytes, uword data_align);
 
 /** \brief Low-level vector resize function, usually not called directly
 
@@ -113,13 +112,11 @@ void * vec_resize_allocate_memory (void * v,
 */
 
 always_inline void *
-_vec_resize (void * v,
+_vec_resize (void *v,
 	     word length_increment,
-	     uword data_bytes,
-	     uword header_bytes,
-	     uword data_align)
+	     uword data_bytes, uword header_bytes, uword data_align)
 {
-  vec_header_t * vh = _vec_find (v);
+  vec_header_t *vh = _vec_find (v);
   uword new_data_bytes, aligned_header_bytes;
 
   aligned_header_bytes = vec_header_bytes (header_bytes);
@@ -128,7 +125,7 @@ _vec_resize (void * v,
 
   if (PREDICT_TRUE (v != 0))
     {
-      void * p = v - aligned_header_bytes;
+      void *p = v - aligned_header_bytes;
 
       /* Vector header must start heap object. */
       ASSERT (clib_mem_is_heap_object (p));
@@ -142,28 +139,33 @@ _vec_resize (void * v,
     }
 
   /* Slow path: call helper function. */
-  return vec_resize_allocate_memory (v, length_increment, data_bytes, header_bytes,
-				     clib_max (sizeof (vec_header_t), data_align));
+  return vec_resize_allocate_memory (v, length_increment, data_bytes,
+				     header_bytes,
+				     clib_max (sizeof (vec_header_t),
+					       data_align));
 }
 
-/** \brief Predicate function, says whether the supplied vector is a clib heap 
-    object (general version). 
+/** \brief Predicate function, says whether the supplied vector is a clib heap
+    object (general version).
 
     @param v pointer to a vector
     @param header_bytes vector header size in bytes (may be zero)
     @return 0 or 1
-*/    
-uword clib_mem_is_vec_h (void * v, uword header_bytes);
+*/
+uword clib_mem_is_vec_h (void *v, uword header_bytes);
 
 
-/** \brief Predicate function, says whether the supplied vector is a clib heap 
+/** \brief Predicate function, says whether the supplied vector is a clib heap
     object
 
     @param v pointer to a vector
     @return 0 or 1
-*/    
-always_inline uword clib_mem_is_vec (void * v)
-{ return clib_mem_is_vec_h (v, 0); }
+*/
+always_inline uword
+clib_mem_is_vec (void *v)
+{
+  return clib_mem_is_vec_h (v, 0);
+}
 
 /* Local variable naming macro (prevents collisions with other macro naming). */
 #define _v(var) _vec_##var
@@ -211,7 +213,7 @@ do {										\
 
 #define vec_resize_aligned(V,N,A) vec_resize_ha(V,N,0,A)
 
-/** \brief Allocate space for N more elements 
+/** \brief Allocate space for N more elements
 
     @param V pointer to a vector
     @param N number of elements to add
@@ -227,8 +229,8 @@ do {						\
     _vec_len (V) = _v(l);			\
 } while (0)
 
-/** \brief Allocate space for N more elements 
-    (no header, unspecified alignment) 
+/** \brief Allocate space for N more elements
+    (no header, unspecified alignment)
 
     @param V pointer to a vector
     @param N number of elements to add
@@ -258,7 +260,7 @@ do {						\
   _vec_resize ((T *) 0, _v(n), _v(n) * sizeof (T), (H), (A));	\
 })
 
-/** \brief Create new vector of given type and length 
+/** \brief Create new vector of given type and length
     (unspecified alignment, no header).
 
     @param T type of elements in new vector
@@ -266,8 +268,8 @@ do {						\
     @return V new vector
 */
 #define vec_new(T,N)           vec_new_ha(T,N,0,0)
-/** \brief Create new vector of given type and length 
-    (alignment specified, no header). 
+/** \brief Create new vector of given type and length
+    (alignment specified, no header).
 
     @param T type of elements in new vector
     @param N number of elements to add
@@ -291,7 +293,7 @@ do {						\
     }						\
 } while (0)
 
-/** \brief Free vector's memory (no header). 
+/** \brief Free vector's memory (no header).
     @param V pointer to a vector
     @return V (value-result parameter, V=0)
 */
@@ -343,13 +345,13 @@ do {						\
 /** \brief Copy a vector, memcpy wrapper. Assumes sizeof(SRC[0]) ==
     sizeof(DST[0])
 
-    @param DST destination 
+    @param DST destination
     @param SRC source
 */
 #define vec_copy(DST,SRC) clib_memcpy (DST, SRC, vec_len (DST) * \
 				       sizeof ((DST)[0]))
 
-/** \brief Clone a vector. Make a new vector with the 
+/** \brief Clone a vector. Make a new vector with the
     same size as a given vector but possibly with a different type.
 
     @param NEW_V pointer to new vector
@@ -364,7 +366,7 @@ do {										\
 
 /** \brief Make sure vector is long enough for given index (general version).
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param I vector index which will be valid upon return
     @param H header size in bytes (may be zero)
     @param A alignment (may be zero)
@@ -384,19 +386,19 @@ do {									\
     }									\
 } while (0)
 
-/** \brief Make sure vector is long enough for given index 
+/** \brief Make sure vector is long enough for given index
     (no header, unspecified alignment)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param I vector index which will be valid upon return
     @return V (value-result macro parameter)
 */
 #define vec_validate(V,I)           vec_validate_ha(V,I,0,0)
 
-/** \brief Make sure vector is long enough for given index 
+/** \brief Make sure vector is long enough for given index
     (no header, specified alignment)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param I vector index which will be valid upon return
     @param A alignment (may be zero)
     @return V (value-result macro parameter)
@@ -404,10 +406,10 @@ do {									\
 
 #define vec_validate_aligned(V,I,A) vec_validate_ha(V,I,0,A)
 
-/** \brief Make sure vector is long enough for given index 
+/** \brief Make sure vector is long enough for given index
     and initialize empty space (general version)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param I vector index which will be valid upon return
     @param INIT initial value (can be a complex expression!)
     @param H header size in bytes (may be zero)
@@ -429,10 +431,10 @@ do {								\
     }								\
 } while (0)
 
-/** \brief Make sure vector is long enough for given index 
+/** \brief Make sure vector is long enough for given index
     and initialize empty space (no header, unspecified alignment)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param I vector index which will be valid upon return
     @param INIT initial value (can be a complex expression!)
     @param H header size in bytes (may be zero)
@@ -443,10 +445,10 @@ do {								\
 #define vec_validate_init_empty(V,I,INIT) \
   vec_validate_init_empty_ha(V,I,INIT,0,0)
 
-/** \brief Make sure vector is long enough for given index 
+/** \brief Make sure vector is long enough for given index
     and initialize empty space (no header, alignment alignment)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param I vector index which will be valid upon return
     @param INIT initial value (can be a complex expression!)
     @param H header size in bytes (may be zero)
@@ -456,7 +458,7 @@ do {								\
 #define vec_validate_init_empty_aligned(V,I,A) \
   vec_validate_init_empty_ha(V,I,INIT,0,A)
 
-/** \brief Add 1 element to end of vector (general version). 
+/** \brief Add 1 element to end of vector (general version).
 
     @param V pointer to a vector
     @param E element to add
@@ -471,7 +473,7 @@ do {									\
   (V)[_v(l)] = (E);							\
 } while (0)
 
-/** \brief Add 1 element to end of vector (unspecified alignment). 
+/** \brief Add 1 element to end of vector (unspecified alignment).
 
     @param V pointer to a vector
     @param E element to add
@@ -479,7 +481,7 @@ do {									\
 */
 #define vec_add1(V,E)           vec_add1_ha(V,E,0,0)
 
-/** \brief Add 1 element to end of vector (alignment specified). 
+/** \brief Add 1 element to end of vector (alignment specified).
 
     @param V pointer to a vector
     @param E element to add
@@ -489,8 +491,8 @@ do {									\
 */
 #define vec_add1_aligned(V,E,A) vec_add1_ha(V,E,0,A)
 
-/** \brief Add N elements to end of vector V, 
-    return pointer to new elements in P. (general version) 
+/** \brief Add N elements to end of vector V,
+    return pointer to new elements in P. (general version)
 
     @param V pointer to a vector
     @param P pointer to new vector element(s)
@@ -507,7 +509,7 @@ do {										\
   P = (V) + _v(l);								\
 } while (0)
 
-/** \brief Add N elements to end of vector V, 
+/** \brief Add N elements to end of vector V,
     return pointer to new elements in P. (no header, unspecified alignment)
 
     @param V pointer to a vector
@@ -518,7 +520,7 @@ do {										\
 
 #define vec_add2(V,P,N)           vec_add2_ha(V,P,N,0,0)
 
-/** \brief Add N elements to end of vector V, 
+/** \brief Add N elements to end of vector V,
     return pointer to new elements in P. (no header, alignment specified)
 
     @param V pointer to a vector
@@ -530,7 +532,7 @@ do {										\
 
 #define vec_add2_aligned(V,P,N,A) vec_add2_ha(V,P,N,0,A)
 
-/** \brief Add N elements to end of vector V (general version) 
+/** \brief Add N elements to end of vector V (general version)
 
     @param V pointer to a vector
     @param E pointer to element(s) to add
@@ -566,7 +568,7 @@ do {										\
 */
 #define vec_add_aligned(V,E,N,A) vec_add_ha(V,E,N,0,A)
 
-/** \brief Returns last element of a vector and decrements its length 
+/** \brief Returns last element of a vector and decrements its length
 
     @param V pointer to a vector
     @return E element removed from the end of the vector
@@ -580,10 +582,10 @@ do {										\
   (V)[_v(l)];					\
 })
 
-/** \brief Set E to the last element of a vector, decrement vector length 
+/** \brief Set E to the last element of a vector, decrement vector length
     @param V pointer to a vector
     @param E pointer to the last vector element
-    @return E element removed from the end of the vector 
+    @return E element removed from the end of the vector
     (value-result macro parameter
 */
 
@@ -594,10 +596,10 @@ do {										\
   _v(l) > 0;					\
 })
 
-/** \brief Insert N vector elements starting at element M, 
-    initialize new elements (general version). 
+/** \brief Insert N vector elements starting at element M,
+    initialize new elements (general version).
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param N number of elements to insert
     @param M insertion point
     @param INIT initial value (can be a complex expression!)
@@ -621,10 +623,10 @@ do {							\
   memset  ((V) + _v(m), INIT, _v(n) * sizeof ((V)[0]));	\
 } while (0)
 
-/** \brief Insert N vector elements starting at element M, 
+/** \brief Insert N vector elements starting at element M,
     initialize new elements to zero (general version)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param N number of elements to insert
     @param M insertion point
     @param H header size in bytes (may be zero)
@@ -633,20 +635,20 @@ do {							\
 */
 #define vec_insert_ha(V,N,M,H,A)    vec_insert_init_empty_ha(V,N,M,0,H,A)
 
-/** \brief Insert N vector elements starting at element M, 
+/** \brief Insert N vector elements starting at element M,
     initialize new elements to zero (no header, unspecified alignment)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param N number of elements to insert
     @param M insertion point
     @return V (value-result macro parameter)
 */
 #define vec_insert(V,N,M)           vec_insert_ha(V,N,M,0,0)
 
-/** \brief Insert N vector elements starting at element M, 
+/** \brief Insert N vector elements starting at element M,
     initialize new elements to zero (no header, alignment specified)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param N number of elements to insert
     @param M insertion point
     @param A alignment (may be zero)
@@ -654,10 +656,10 @@ do {							\
 */
 #define vec_insert_aligned(V,N,M,A) vec_insert_ha(V,N,M,0,A)
 
-/** \brief Insert N vector elements starting at element M, 
+/** \brief Insert N vector elements starting at element M,
     initialize new elements (no header, unspecified alignment)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param N number of elements to insert
     @param M insertion point
     @param INIT initial value (can be a complex expression!)
@@ -668,10 +670,10 @@ do {							\
   vec_insert_init_empty_ha(V,N,M,INIT,0,0)
 /* Resize vector by N elements starting from element M, initialize new elements to INIT (alignment specified, no header). */
 
-/** \brief Insert N vector elements starting at element M, 
+/** \brief Insert N vector elements starting at element M,
     initialize new elements (no header, specified alignment)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param N number of elements to insert
     @param M insertion point
     @param INIT initial value (can be a complex expression!)
@@ -681,10 +683,10 @@ do {							\
 #define vec_insert_init_empty_aligned(V,N,M,INIT,A) \
   vec_insert_init_empty_ha(V,N,M,INIT,0,A)
 
-/** \brief Insert N vector elements starting at element M, 
+/** \brief Insert N vector elements starting at element M,
     insert given elements (general version)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param E element(s) to insert
     @param N number of elements to insert
     @param M insertion point
@@ -710,10 +712,10 @@ do {							\
 	       _v(n) * sizeof ((V)[0]));		\
 } while (0)
 
-/** \brief Insert N vector elements starting at element M, 
+/** \brief Insert N vector elements starting at element M,
     insert given elements (no header, unspecified alignment)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param E element(s) to insert
     @param N number of elements to insert
     @param M insertion point
@@ -721,10 +723,10 @@ do {							\
 */
 #define vec_insert_elts(V,E,N,M)           vec_insert_elts_ha(V,E,N,M,0,0)
 
-/** \brief Insert N vector elements starting at element M, 
+/** \brief Insert N vector elements starting at element M,
     insert given elements (no header, specified alignment)
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param E element(s) to insert
     @param N number of elements to insert
     @param M insertion point
@@ -733,7 +735,7 @@ do {							\
 */
 #define vec_insert_elts_aligned(V,E,N,M,A) vec_insert_elts_ha(V,E,N,M,0,A)
 
-/** \brief Delete N elements starting at element M 
+/** \brief Delete N elements starting at element M
 
     @param V pointer to a vector
     @param N number of elements to delete
@@ -773,7 +775,7 @@ do {						\
     @param V1 target vector
     @param V2 vector to append
 */
-    
+
 #define vec_append(v1,v2)						\
 do {									\
   uword _v(l1) = vec_len (v1);						\
@@ -789,7 +791,7 @@ do {									\
     @param V2 vector to append
     @param align required alignment
 */
-    
+
 #define vec_append_aligned(v1,v2,align)					\
 do {									\
   uword _v(l1) = vec_len (v1);						\
@@ -869,8 +871,8 @@ do {						\
   (vec_len (v1) == vec_len (v2) && ! memcmp ((v1), (v2), vec_len (v1) * sizeof ((v1)[0])))
 
 /** \brief Compare two vectors (only applicable to vectors of signed numbers).
-   Used in qsort compare functions. 
-   
+   Used in qsort compare functions.
+
     @param v1 Pointer to a vector
     @param v2 Pointer to a vector
     @return -1, 0, +1
@@ -902,7 +904,7 @@ do {								\
 
 /** \brief Make a vector containing a NULL terminated c-string.
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @param S pointer to string buffer.
     @param L string length (NOT including the terminating NULL; a la strlen())
 */
@@ -918,7 +920,7 @@ do {								\
 
 /** \brief Test whether a vector is a NULL terminated c-string.
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @return BOOLEAN indicating if the vector c-string is null terminated.
 */
 #define vec_c_string_is_terminated(V)                   \
@@ -926,7 +928,7 @@ do {								\
 
 /** \brief (If necessary) NULL terminate a vector containing a c-string.
 
-    @param V (possibly NULL) pointer to a vector. 
+    @param V (possibly NULL) pointer to a vector.
     @return V (value-result macro parameter)
 */
 #define vec_terminate_c_string(V)               \
@@ -941,3 +943,11 @@ do {								\
 
 #endif /* included_vec_h */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

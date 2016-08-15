@@ -41,7 +41,8 @@
 #include <vppinfra/clib.h>
 
 /* Population count from Hacker's Delight. */
-always_inline uword count_set_bits (uword x)
+always_inline uword
+count_set_bits (uword x)
 {
 #if uword_bits == 64
   const uword c1 = 0x5555555555555555;
@@ -69,11 +70,12 @@ always_inline uword count_set_bits (uword x)
   x = x + (x >> (uword) 32);
 #endif
 
-  return x & (2*BITS (uword) - 1);
+  return x & (2 * BITS (uword) - 1);
 }
 
 /* Based on "Hacker's Delight" code from GLS. */
-typedef struct {
+typedef struct
+{
   uword masks[1 + log2_uword_bits];
 } compress_main_t;
 
@@ -110,13 +112,19 @@ compress_bits (compress_main_t * cm, uword x)
   uword q, r;
 
   r = x & cm->masks[0];
-  q = r & cm->masks[1]; r ^= q ^ (q >> 1);
-  q = r & cm->masks[2]; r ^= q ^ (q >> 2);
-  q = r & cm->masks[3]; r ^= q ^ (q >> 4);
-  q = r & cm->masks[4]; r ^= q ^ (q >> 8);
-  q = r & cm->masks[5]; r ^= q ^ (q >> 16);
+  q = r & cm->masks[1];
+  r ^= q ^ (q >> 1);
+  q = r & cm->masks[2];
+  r ^= q ^ (q >> 2);
+  q = r & cm->masks[3];
+  r ^= q ^ (q >> 4);
+  q = r & cm->masks[4];
+  r ^= q ^ (q >> 8);
+  q = r & cm->masks[5];
+  r ^= q ^ (q >> 16);
 #if uword_bits > 32
-  q = r & cm->masks[6]; r ^= q ^ (q >> (uword) 32);
+  q = r & cm->masks[6];
+  r ^= q ^ (q >> (uword) 32);
 #endif
 
   return r;
@@ -124,11 +132,15 @@ compress_bits (compress_main_t * cm, uword x)
 
 always_inline uword
 rotate_left (uword x, uword i)
-{ return (x << i) | (x >> (BITS (i) - i)); }
+{
+  return (x << i) | (x >> (BITS (i) - i));
+}
 
 always_inline uword
 rotate_right (uword x, uword i)
-{ return (x >> i) | (x << (BITS (i) - i)); }
+{
+  return (x >> i) | (x << (BITS (i) - i));
+}
 
 /* Returns snoob from Hacker's Delight.  Next highest number
    with same number of set bits. */
@@ -157,3 +169,11 @@ do {									\
 } while (0)
 
 #endif /* included_clib_bitops_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

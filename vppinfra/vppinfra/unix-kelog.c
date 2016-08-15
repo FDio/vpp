@@ -26,12 +26,12 @@
 #include <time.h>
 
 typedef enum
-  {
-    RUNNING = 0,
-    WAKEUP,
-  } sched_event_type_t;
+{
+  RUNNING = 0,
+  WAKEUP,
+} sched_event_type_t;
 
-typedef struct 
+typedef struct
 {
   u32 cpu;
   u8 *task;
@@ -40,7 +40,8 @@ typedef struct
   sched_event_type_t type;
 } sched_event_t;
 
-void kelog_init (elog_main_t * em, char * kernel_tracer, u32 n_events)
+void
+kelog_init (elog_main_t * em, char *kernel_tracer, u32 n_events)
 {
   int enable_fd, current_tracer_fd, data_fd;
   int len;
@@ -54,7 +55,7 @@ void kelog_init (elog_main_t * em, char * kernel_tracer, u32 n_events)
   ASSERT (kernel_tracer);
 
   /*$$$$ fixme */
-  n_events = 1<<18;
+  n_events = 1 << 18;
 
   /* init first so we won't hurt ourselves if we bail */
   elog_init (em, n_events);
@@ -66,24 +67,24 @@ void kelog_init (elog_main_t * em, char * kernel_tracer, u32 n_events)
       return;
     }
   /* disable kernel tracing */
-  if (write (enable_fd, "0\n", 2) != 2) 
+  if (write (enable_fd, "0\n", 2) != 2)
     {
       clib_unix_warning ("disable tracing");
-      close(enable_fd);
+      close (enable_fd);
       return;
     }
-    
-  /* 
+
+  /*
    * open + clear the data buffer.
    * see .../linux/kernel/trace/trace.c:tracing_open()
    */
   data_fd = open (trace_data, O_RDWR | O_TRUNC);
-  if (data_fd < 0) 
+  if (data_fd < 0)
     {
       clib_warning ("Couldn't open+clear %s", trace_data);
       return;
     }
-  close(data_fd);
+  close (data_fd);
 
   /* configure tracing */
   current_tracer_fd = open (current_tracer, O_RDWR);
@@ -91,23 +92,23 @@ void kelog_init (elog_main_t * em, char * kernel_tracer, u32 n_events)
   if (current_tracer_fd < 0)
     {
       clib_warning ("Couldn't open %s", current_tracer);
-      close(enable_fd);
+      close (enable_fd);
       return;
     }
 
-  len = strlen(kernel_tracer);
+  len = strlen (kernel_tracer);
 
-  if (write (current_tracer_fd, kernel_tracer, len) != len) 
+  if (write (current_tracer_fd, kernel_tracer, len) != len)
     {
       clib_unix_warning ("configure trace");
-      close(current_tracer_fd);
-      close(enable_fd);
+      close (current_tracer_fd);
+      close (enable_fd);
       return;
     }
-  
-  close(current_tracer_fd);
 
-  /* 
+  close (current_tracer_fd);
+
+  /*
    * The kernel event log uses CLOCK_MONOTONIC timestamps,
    * not CLOCK_REALTIME timestamps. These differ by a constant
    * but the constant is not available in user mode.
@@ -116,33 +117,35 @@ void kelog_init (elog_main_t * em, char * kernel_tracer, u32 n_events)
   clib_time_init (&em->cpu_timer);
   em->init_time.cpu = em->cpu_timer.init_cpu_time;
   syscall (SYS_clock_gettime, CLOCK_MONOTONIC, &ts);
-  
+
   /* enable kernel tracing */
-  if (write (enable_fd, "1\n", 2) != 2) 
+  if (write (enable_fd, "1\n", 2) != 2)
     {
       clib_unix_warning ("enable tracing");
-      close(enable_fd);
+      close (enable_fd);
       return;
     }
 
-  close(enable_fd);
+  close (enable_fd);
 }
 
 
-u8 *format_sched_event (u8 * s, va_list * va)
+u8 *
+format_sched_event (u8 * s, va_list * va)
 {
   sched_event_t *e = va_arg (*va, sched_event_t *);
 
   s = format (s, "cpu %d task %10s type %s timestamp %12.6f\n",
-              e->cpu, e->task, e->type ? "WAKEUP " : "RUNNING", e->timestamp);
+	      e->cpu, e->task, e->type ? "WAKEUP " : "RUNNING", e->timestamp);
 
   return s;
 }
 
-sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
+sched_event_t *
+parse_sched_switch_trace (u8 * tdata, u32 * index)
 {
   u8 *cp = tdata + *index;
-  u8 *limit = tdata + vec_len(tdata);
+  u8 *limit = tdata + vec_len (tdata);
   int colons;
   static sched_event_t event;
   sched_event_t *e = &event;
@@ -150,23 +153,23 @@ sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
   u32 secs, usecs;
   int i;
 
- again:
+again:
   /* eat leading w/s */
   while (cp < limit && (*cp == ' ' && *cp == '\t'))
     cp++;
   if (cp == limit)
     return 0;
-      
+
   /* header line */
   if (*cp == '#')
     {
       while (cp < limit && (*cp != '\n'))
-        cp++;
+	cp++;
       if (*cp == '\n')
-        {
-          cp++;
-          goto again;
-        }
+	{
+	  cp++;
+	  goto again;
+	}
       clib_warning ("bugger 0");
       return 0;
     }
@@ -182,7 +185,7 @@ sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
       clib_warning ("bugger 0.1");
       return 0;
     }
-        
+
   cp++;
   while (cp < limit && (*cp == ' ' && *cp == '\t'))
     cp++;
@@ -191,8 +194,8 @@ sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
       clib_warning ("bugger 0.2");
       return 0;
     }
-      
-  secs = atoi(cp);
+
+  secs = atoi (cp);
 
   while (cp < limit && (*cp != '.'))
     cp++;
@@ -202,18 +205,18 @@ sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
       clib_warning ("bugger 0.3");
       return 0;
     }
-      
+
   cp++;
 
   usecs = atoi (cp);
 
-  e->timestamp = ((f64)secs) + ((f64)usecs)*1e-6;
-      
+  e->timestamp = ((f64) secs) + ((f64) usecs) * 1e-6;
+
   /* eat up to third colon */
   for (i = 0; i < 3; i++)
     {
       while (cp < limit && *cp != ':')
-        cp++;
+	cp++;
       cp++;
     }
   --cp;
@@ -240,16 +243,16 @@ sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
     }
 
   cp += 3;
-  if (cp >= limit) 
+  if (cp >= limit)
     {
       clib_warning ("bugger 4");
       return 0;
     }
-            
+
   e->cpu = atoi (cp);
   cp += 4;
-          
-  if (cp >= limit) 
+
+  if (cp >= limit)
     {
       clib_warning ("bugger 4");
       return 0;
@@ -258,11 +261,11 @@ sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
     cp++;
 
   e->pid = atoi (cp);
-          
+
   for (i = 0; i < 2; i++)
     {
       while (cp < limit && *cp != ':')
-        cp++;
+	cp++;
       cp++;
     }
   --cp;
@@ -273,35 +276,36 @@ sched_event_t *parse_sched_switch_trace (u8 *tdata, u32 *index)
     }
 
   cp += 3;
-  if (cp >= limit) 
+  if (cp >= limit)
     {
       clib_warning ("bugger 6");
       return 0;
     }
   while (cp < limit && (*cp != ' ' && *cp != '\n'))
     {
-      vec_add1(task_name, *cp);
+      vec_add1 (task_name, *cp);
       cp++;
     }
-  vec_add1(task_name, 0);
+  vec_add1 (task_name, 0);
   /* _vec_len() = 0 in caller */
   e->task = task_name;
 
   if (cp < limit)
-      cp++;
+    cp++;
 
   *index = cp - tdata;
   return e;
 }
 
-static u32 elog_id_for_pid (elog_main_t *em, u8 *name, u32 pid)
+static u32
+elog_id_for_pid (elog_main_t * em, u8 * name, u32 pid)
 {
-  uword * p, r;
-  mhash_t * h = &em->string_table_hash;
+  uword *p, r;
+  mhash_t *h = &em->string_table_hash;
 
-  if (! em->string_table_hash.hash)
+  if (!em->string_table_hash.hash)
     mhash_init (h, sizeof (uword), sizeof (pid));
-  
+
   p = mhash_get (h, &pid);
   if (p)
     return p[0];
@@ -310,7 +314,8 @@ static u32 elog_id_for_pid (elog_main_t *em, u8 *name, u32 pid)
   return r;
 }
 
-void kelog_collect_sched_switch_trace (elog_main_t *em)
+void
+kelog_collect_sched_switch_trace (elog_main_t * em)
 {
   int enable_fd, data_fd;
   char *trace_enable = "/debug/tracing/tracing_enabled";
@@ -323,7 +328,7 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
   u64 nsec_to_add;
   u32 index;
   f64 clocks_per_sec;
-  
+
   enable_fd = open (trace_enable, O_RDWR);
   if (enable_fd < 0)
     {
@@ -331,13 +336,13 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
       return;
     }
   /* disable kernel tracing */
-  if (write (enable_fd, "0\n", 2) != 2) 
+  if (write (enable_fd, "0\n", 2) != 2)
     {
       clib_unix_warning ("disable tracing");
-      close(enable_fd);
+      close (enable_fd);
       return;
     }
-  close(enable_fd);
+  close (enable_fd);
 
   /* Read the trace data */
   data_fd = open (trace_data, O_RDWR);
@@ -347,7 +352,7 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
       return;
     }
 
-  /* 
+  /*
    * Extract trace into a vector. Note that seq_printf() [kernel]
    * is not guaranteed to produce 4096 bytes at a time.
    */
@@ -356,17 +361,17 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
   pos = 0;
   while (1)
     {
-      bytes = read(data_fd, data+pos, 4096);
-      if (bytes <= 0) 
-          break;
+      bytes = read (data_fd, data + pos, 4096);
+      if (bytes <= 0)
+	break;
 
       total_bytes += bytes;
-      _vec_len(data) = total_bytes;
+      _vec_len (data) = total_bytes;
 
-      pos = vec_len(data);
-      vec_validate(data, vec_len(data)+4095);
+      pos = vec_len (data);
+      vec_validate (data, vec_len (data) + 4095);
     }
-  vec_add1(data, 0);
+  vec_add1 (data, 0);
 
   /* Synthesize events */
   em->is_enabled = 1;
@@ -378,23 +383,33 @@ void kelog_collect_sched_switch_trace (elog_main_t *em)
 
       fake_cpu_clock = evt->timestamp * em->cpu_timer.clocks_per_second;
       {
-        ELOG_TYPE_DECLARE (e) = 
-          {
-            .format = "%d: %s %s",
-            .format_args = "i4T4t4",
-            .n_enum_strings = 2,
-            .enum_strings = { "running", "wakeup", },
-          };
-        struct { u32 cpu, string_table_offset, which; } * ed;
-        
-        ed = elog_event_data_not_inline (em, &__ELOG_TYPE_VAR(e),
-                                         &em->default_track, 
-                                         fake_cpu_clock);
-        ed->cpu = evt->cpu;
-        ed->string_table_offset = elog_id_for_pid (em, evt->task, evt->pid);
-        ed->which = evt->type;
+	ELOG_TYPE_DECLARE (e) =
+	{
+	  .format = "%d: %s %s",.format_args = "i4T4t4",.n_enum_strings =
+	    2,.enum_strings =
+	  {
+	  "running", "wakeup",}
+	,};
+	struct
+	{
+	  u32 cpu, string_table_offset, which;
+	} *ed;
+
+	ed = elog_event_data_not_inline (em, &__ELOG_TYPE_VAR (e),
+					 &em->default_track, fake_cpu_clock);
+	ed->cpu = evt->cpu;
+	ed->string_table_offset = elog_id_for_pid (em, evt->task, evt->pid);
+	ed->which = evt->type;
       }
-      _vec_len(evt->task) = 0;
+      _vec_len (evt->task) = 0;
     }
   em->is_enabled = 0;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

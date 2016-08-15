@@ -41,7 +41,8 @@
 
 /* Overflow search buckets have an extra u32x4 for saving key_hash data.
    This makes it easier to refill main search bucket from overflow vector. */
-typedef struct {
+typedef struct
+{
   /* 4 results for this bucket. */
   u32x4_union_t result;
 
@@ -55,9 +56,7 @@ typedef struct {
 
 always_inline void
 set_overflow_result (vhash_overflow_search_bucket_t * b,
-		     u32 i,
-		     u32 result,
-		     u32 key_hash)
+		     u32 i, u32 result, u32 key_hash)
 {
   b->result.as_u32[i] = result;
   b->key_hash.as_u32[i] = key_hash;
@@ -65,8 +64,7 @@ set_overflow_result (vhash_overflow_search_bucket_t * b,
 
 always_inline void
 free_overflow_bucket (vhash_overflow_buckets_t * ob,
-		      vhash_overflow_search_bucket_t * b,
-		      u32 i)
+		      vhash_overflow_search_bucket_t * b, u32 i)
 {
   u32 o = (u32x4_union_t *) b - ob->search_buckets;
   ASSERT (o < vec_len (ob->search_buckets));
@@ -74,7 +72,8 @@ free_overflow_bucket (vhash_overflow_buckets_t * ob,
 }
 
 always_inline vhash_overflow_search_bucket_t *
-get_overflow_search_bucket (vhash_overflow_buckets_t * obs, u32 i, u32 n_key_u32s)
+get_overflow_search_bucket (vhash_overflow_buckets_t * obs, u32 i,
+			    u32 n_key_u32s)
 {
   return ((vhash_overflow_search_bucket_t *)
 	  vec_elt_at_index (obs->search_buckets, i));
@@ -82,7 +81,9 @@ get_overflow_search_bucket (vhash_overflow_buckets_t * obs, u32 i, u32 n_key_u32
 
 always_inline vhash_overflow_search_bucket_t *
 next_overflow_bucket (vhash_overflow_search_bucket_t * b, u32 n_key_u32s)
-{ return (vhash_overflow_search_bucket_t *) &b->key[n_key_u32s]; }
+{
+  return (vhash_overflow_search_bucket_t *) & b->key[n_key_u32s];
+}
 
 #define foreach_vhash_overflow_bucket(b,ob,n_key_u32s)			\
   for ((b) = (vhash_overflow_search_bucket_t *) ob->search_buckets;	\
@@ -90,63 +91,57 @@ next_overflow_bucket (vhash_overflow_search_bucket_t * b, u32 n_key_u32s)
        b = next_overflow_bucket (b, n_key_u32s))
 
 u32
-vhash_get_overflow (vhash_t * h,
-		    u32 key_hash,
-		    u32 vi,
-		    u32 n_key_u32s)
+vhash_get_overflow (vhash_t * h, u32 key_hash, u32 vi, u32 n_key_u32s)
 {
-  vhash_overflow_buckets_t * ob = vhash_get_overflow_buckets (h, key_hash);
-  vhash_overflow_search_bucket_t * b;
+  vhash_overflow_buckets_t *ob = vhash_get_overflow_buckets (h, key_hash);
+  vhash_overflow_search_bucket_t *b;
   u32 i, result = 0;
 
   foreach_vhash_overflow_bucket (b, ob, n_key_u32s)
-    {
-      u32x4 r = b->result.as_u32x4;
-      
-      for (i = 0; i < n_key_u32s; i++)
-	r &= vhash_bucket_compare (h, &b->key[0], i, vi);
+  {
+    u32x4 r = b->result.as_u32x4;
 
-      result = vhash_merge_results (r);
-      if (result)
-	break;
-    }
+    for (i = 0; i < n_key_u32s; i++)
+      r &= vhash_bucket_compare (h, &b->key[0], i, vi);
+
+    result = vhash_merge_results (r);
+    if (result)
+      break;
+  }
 
   return result;
 }
 
 u32
 vhash_set_overflow (vhash_t * h,
-		    u32 key_hash,
-		    u32 vi,
-		    u32 new_result,
-		    u32 n_key_u32s)
+		    u32 key_hash, u32 vi, u32 new_result, u32 n_key_u32s)
 {
-  vhash_overflow_buckets_t * ob = vhash_get_overflow_buckets (h, key_hash);
-  vhash_overflow_search_bucket_t * b;
+  vhash_overflow_buckets_t *ob = vhash_get_overflow_buckets (h, key_hash);
+  vhash_overflow_search_bucket_t *b;
   u32 i_set, i, old_result;
 
   foreach_vhash_overflow_bucket (b, ob, n_key_u32s)
-    {
-      u32x4 r;
+  {
+    u32x4 r;
 
-      r = b->result.as_u32x4;
-      for (i = 0; i < n_key_u32s; i++)
-	r &= vhash_bucket_compare (h, &b->key[0], i, vi);
+    r = b->result.as_u32x4;
+    for (i = 0; i < n_key_u32s; i++)
+      r &= vhash_bucket_compare (h, &b->key[0], i, vi);
 
-      old_result = vhash_merge_results (r);
-      if (old_result)
-	{
-	  i_set = vhash_non_empty_result_index (r);
-	  set_overflow_result (b, i_set, new_result, key_hash);
-	  return old_result;
-	}
-    }
+    old_result = vhash_merge_results (r);
+    if (old_result)
+      {
+	i_set = vhash_non_empty_result_index (r);
+	set_overflow_result (b, i_set, new_result, key_hash);
+	return old_result;
+      }
+  }
 
   /* Check free list. */
   if (vec_len (ob->free_indices) == 0)
     {
       /* Out of free overflow buckets.  Resize. */
-      u32 j, * p;
+      u32 j, *p;
       i = vec_len (ob->search_buckets);
       vec_resize_aligned (ob->search_buckets,
 			  sizeof (b[0]) / sizeof (u32x4) + n_key_u32s,
@@ -176,41 +171,38 @@ vhash_set_overflow (vhash_t * h,
 }
 
 u32
-vhash_unset_overflow (vhash_t * h,
-		      u32 key_hash,
-		      u32 vi,
-		      u32 n_key_u32s)
+vhash_unset_overflow (vhash_t * h, u32 key_hash, u32 vi, u32 n_key_u32s)
 {
-  vhash_overflow_buckets_t * ob = vhash_get_overflow_buckets (h, key_hash);
-  vhash_overflow_search_bucket_t * b;
+  vhash_overflow_buckets_t *ob = vhash_get_overflow_buckets (h, key_hash);
+  vhash_overflow_search_bucket_t *b;
   u32 i_set, i, old_result;
 
   foreach_vhash_overflow_bucket (b, ob, n_key_u32s)
-    {
-      u32x4 r;
+  {
+    u32x4 r;
 
-      r = b->result.as_u32x4;
-      for (i = 0; i < n_key_u32s; i++)
-	r &= vhash_bucket_compare (h, &b->key[0], i, vi);
+    r = b->result.as_u32x4;
+    for (i = 0; i < n_key_u32s; i++)
+      r &= vhash_bucket_compare (h, &b->key[0], i, vi);
 
-      old_result = vhash_merge_results (r);
-      if (old_result)
-	{
-	  i_set = vhash_non_empty_result_index (r);
+    old_result = vhash_merge_results (r);
+    if (old_result)
+      {
+	i_set = vhash_non_empty_result_index (r);
 
-	  /* Invalidate result and invert key hash so that this will
-	     never match since all keys in this overflow bucket have
-	     matching key hashs. */
-	  set_overflow_result (b, i_set, 0, ~key_hash);
+	/* Invalidate result and invert key hash so that this will
+	   never match since all keys in this overflow bucket have
+	   matching key hashs. */
+	set_overflow_result (b, i_set, 0, ~key_hash);
 
-	  free_overflow_bucket (ob, b, i_set);
+	free_overflow_bucket (ob, b, i_set);
 
-	  ASSERT (ob->n_overflow > 0);
-	  ob->n_overflow--;
-	  h->n_elts--;
-	  return old_result;
-	}
-    }
+	ASSERT (ob->n_overflow > 0);
+	ob->n_overflow--;
+	h->n_elts--;
+	return old_result;
+      }
+  }
 
   /* Could not find key. */
   return 0;
@@ -219,39 +211,39 @@ vhash_unset_overflow (vhash_t * h,
 void
 vhash_unset_refill_from_overflow (vhash_t * h,
 				  vhash_search_bucket_t * sb,
-				  u32 key_hash,
-				  u32 n_key_u32s)
+				  u32 key_hash, u32 n_key_u32s)
 {
-  vhash_overflow_buckets_t * obs = vhash_get_overflow_buckets (h, key_hash);
-  vhash_overflow_search_bucket_t * ob;
+  vhash_overflow_buckets_t *obs = vhash_get_overflow_buckets (h, key_hash);
+  vhash_overflow_search_bucket_t *ob;
   u32 i, j, i_refill, bucket_mask = h->bucket_mask.as_u32[0];
 
   /* Find overflow element with matching key hash. */
   foreach_vhash_overflow_bucket (ob, obs, n_key_u32s)
-    {
-      for (i = 0; i < 4; i++)
-	{
-	  if (! ob->result.as_u32[i])
-	    continue;
-	  if ((ob->key_hash.as_u32[i] & bucket_mask)
-	      != (key_hash & bucket_mask))
-	    continue;
+  {
+    for (i = 0; i < 4; i++)
+      {
+	if (!ob->result.as_u32[i])
+	  continue;
+	if ((ob->key_hash.as_u32[i] & bucket_mask)
+	    != (key_hash & bucket_mask))
+	  continue;
 
-	  i_refill = vhash_empty_result_index (sb->result.as_u32x4);
-	  sb->result.as_u32[i_refill] = ob->result.as_u32[i];
-	  for (j = 0; j < n_key_u32s; j++)
-	    sb->key[j].as_u32[i_refill] = ob->key[j].as_u32[i];
-	  set_overflow_result (ob, i, 0, ~key_hash);
-	  free_overflow_bucket (obs, ob, i);
-	  return;
-	}
-    }
+	i_refill = vhash_empty_result_index (sb->result.as_u32x4);
+	sb->result.as_u32[i_refill] = ob->result.as_u32[i];
+	for (j = 0; j < n_key_u32s; j++)
+	  sb->key[j].as_u32[i_refill] = ob->key[j].as_u32[i];
+	set_overflow_result (ob, i, 0, ~key_hash);
+	free_overflow_bucket (obs, ob, i);
+	return;
+      }
+  }
 }
 
-void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32, u32 * hash_seeds)
+void
+vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32, u32 * hash_seeds)
 {
   uword i, j, m;
-  vhash_search_bucket_t * b;
+  vhash_search_bucket_t *b;
 
   memset (h, 0, sizeof (h[0]));
 
@@ -260,7 +252,7 @@ void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32, u32 * hash_seeds)
 
   h->log2_n_keys = log2_n_keys;
   h->n_key_u32 = n_key_u32;
-  m = pow2_mask (h->log2_n_keys) &~ 3;
+  m = pow2_mask (h->log2_n_keys) & ~3;
   for (i = 0; i < VECTOR_WORD_TYPE_LEN (u32); i++)
     h->bucket_mask.as_u32[i] = m;
 
@@ -277,16 +269,16 @@ void vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32, u32 * hash_seeds)
 }
 
 static_always_inline u32
-vhash_main_key_gather (void * _vm, u32 vi, u32 wi, u32 n_key_u32)
+vhash_main_key_gather (void *_vm, u32 vi, u32 wi, u32 n_key_u32)
 {
-  vhash_main_t * vm = _vm;
+  vhash_main_t *vm = _vm;
   return vec_elt (vm->keys, vi * n_key_u32 + wi);
 }
 
 static_always_inline u32x4
-vhash_main_4key_gather (void * _vm, u32 vi, u32 wi, u32 n_key_u32s)
+vhash_main_4key_gather (void *_vm, u32 vi, u32 wi, u32 n_key_u32s)
 {
-  vhash_main_t * vm = _vm;
+  vhash_main_t *vm = _vm;
   u32x4_union_t x;
 
   ASSERT (n_key_u32s == vm->n_key_u32);
@@ -300,28 +292,28 @@ vhash_main_4key_gather (void * _vm, u32 vi, u32 wi, u32 n_key_u32s)
 }
 
 static_always_inline u32
-vhash_main_set_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
+vhash_main_set_result (void *_vm, u32 vi, u32 old_result, u32 n_key_u32)
 {
-  vhash_main_t * vm = _vm;
-  u32 * p = vec_elt_at_index (vm->results, vi);
+  vhash_main_t *vm = _vm;
+  u32 *p = vec_elt_at_index (vm->results, vi);
   u32 new_result = p[0];
   p[0] = old_result;
   return new_result;
 }
 
 static_always_inline u32
-vhash_main_get_result (void * _vm, u32 vi, u32 old_result, u32 n_key_u32)
+vhash_main_get_result (void *_vm, u32 vi, u32 old_result, u32 n_key_u32)
 {
-  vhash_main_t * vm = _vm;
+  vhash_main_t *vm = _vm;
   vec_elt (vm->results, vi) = old_result;
   return old_result;
 }
 
 static_always_inline u32x4
-vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
+vhash_main_get_4result (void *_vm, u32 vi, u32x4 old_result, u32 n_key_u32)
 {
-  vhash_main_t * vm = _vm;
-  u32x4 * p = (u32x4 *) vec_elt_at_index (vm->results, vi);
+  vhash_main_t *vm = _vm;
+  u32x4 *p = (u32x4 *) vec_elt_at_index (vm->results, vi);
   p[0] = old_result;
   return old_result;
 }
@@ -439,12 +431,12 @@ vhash_main_get_4result (void * _vm, u32 vi, u32x4 old_result, u32 n_key_u32)
 		      vm, N_KEY_U32);					\
    })
 
-_ (1);
-_ (2);
-_ (3);
-_ (4);
-_ (5);
-_ (6);
+_(1);
+_(2);
+_(3);
+_(4);
+_(5);
+_(6);
 
 #undef _
 
@@ -463,13 +455,14 @@ _ (6);
      vhash_mix_stage (vm->vhash, vm->n_vectors_div_4, N_KEY_U32);	\
    })
 
-_ (4);
-_ (5);
-_ (6);
+_(4);
+_(5);
+_(6);
 
 #undef _
 
-typedef enum {
+typedef enum
+{
   GET, SET, UNSET,
 } vhash_main_op_t;
 
@@ -518,9 +511,9 @@ vhash_main_op (vhash_main_t * vm, vhash_main_op_t op)
 	       vhash_main_unset_stage_##N_KEY_U32);		\
 	  break;
 
-	      _ (1);
-	      _ (2);
-	      _ (3);
+	  _(1);
+	  _(2);
+	  _(3);
 
 #undef _
 
@@ -552,9 +545,9 @@ vhash_main_op (vhash_main_t * vm, vhash_main_op_t op)
 	       vhash_main_unset_stage_##N_KEY_U32);		\
 	  break;
 
-	      _ (4);
-	      _ (5);
-	      _ (6);
+	  _(4);
+	  _(5);
+	  _(6);
 
 #undef _
 	}
@@ -594,9 +587,9 @@ vhash_main_op (vhash_main_t * vm, vhash_main_op_t op)
 	       vhash_main_unset_mod_stage_##N_KEY_U32);		\
 	break;
 
-      _ (1);
-      _ (2);
-      _ (3);
+	  _(1);
+	  _(2);
+	  _(3);
 
 #undef _
 
@@ -628,29 +621,40 @@ vhash_main_op (vhash_main_t * vm, vhash_main_op_t op)
 	       vhash_main_unset_mod_stage_##N_KEY_U32);		\
 	  break;
 
-	      _ (4);
-	      _ (5);
-	      _ (6);
+	  _(4);
+	  _(5);
+	  _(6);
 
 #undef _
 	}
     }
 }
 
-void vhash_main_get (vhash_main_t * vm)
-{ vhash_main_op (vm, GET); }
-
-void vhash_main_set (vhash_main_t * vm)
-{ vhash_main_op (vm, SET); }
-
-void vhash_main_unset (vhash_main_t * vm)
-{ vhash_main_op (vm, UNSET); }
-
-u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_keys_this_call)
+void
+vhash_main_get (vhash_main_t * vm)
 {
-  vhash_t * old = vr->old;
-  vhash_main_t * vm = &vr->new;
-  vhash_t * new = vm->vhash;
+  vhash_main_op (vm, GET);
+}
+
+void
+vhash_main_set (vhash_main_t * vm)
+{
+  vhash_main_op (vm, SET);
+}
+
+void
+vhash_main_unset (vhash_main_t * vm)
+{
+  vhash_main_op (vm, UNSET);
+}
+
+u32
+vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index,
+			  u32 n_keys_this_call)
+{
+  vhash_t *old = vr->old;
+  vhash_main_t *vm = &vr->new;
+  vhash_t *new = vm->vhash;
   uword i, j, n_key_u32;
 
   n_key_u32 = old->n_key_u32;
@@ -671,8 +675,9 @@ u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_keys_
     {
       for (i = vector_index; 0 == (i >> (old->log2_n_keys - 2)); i++)
 	{
-	  vhash_search_bucket_t * b = vhash_get_search_bucket_with_index (old, 4 * i, n_key_u32);
-	  u32 r, * k;
+	  vhash_search_bucket_t *b =
+	    vhash_get_search_bucket_with_index (old, 4 * i, n_key_u32);
+	  u32 r, *k;
 
 #define _(I)					\
   if ((r = b->result.as_u32[I]) != 0)		\
@@ -683,10 +688,10 @@ u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_keys_
 	k[j] = b->key[j].as_u32[I];		\
     }
 
-	  _ (0);
-	  _ (1);
-	  _ (2);
-	  _ (3);
+	  _(0);
+	  _(1);
+	  _(2);
+	  _(3);
 
 #undef _
 
@@ -697,19 +702,18 @@ u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_keys_
 	    }
 	}
     }
-  
+
   /* Add overflow buckets. */
   {
-    vhash_overflow_buckets_t * ob;
-    vhash_overflow_search_bucket_t * b;
+    vhash_overflow_buckets_t *ob;
+    vhash_overflow_search_bucket_t *b;
 
     for (ob = old->overflow_buckets;
-	 ob < old->overflow_buckets + ARRAY_LEN (old->overflow_buckets);
-	 ob++)
+	 ob < old->overflow_buckets + ARRAY_LEN (old->overflow_buckets); ob++)
       {
 	foreach_vhash_overflow_bucket (b, ob, old->n_key_u32)
-	  {
-	    u32 r, * k;
+	{
+	  u32 r, *k;
 
 #define _(I)					\
   if ((r = b->result.as_u32[I]) != 0)		\
@@ -720,13 +724,13 @@ u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_keys_
 	k[j] = b->key[j].as_u32[I];		\
     }
 
-	  _ (0);
-	  _ (1);
-	  _ (2);
-	  _ (3);
+	  _(0);
+	  _(1);
+	  _(2);
+	  _(3);
 
 #undef _
-	  }
+	}
       }
   }
 
@@ -736,7 +740,8 @@ u32 vhash_resize_incremental (vhash_resize_t * vr, u32 vector_index, u32 n_keys_
   return ~0;
 }
 
-void vhash_resize (vhash_t * old, u32 log2_n_keys)
+void
+vhash_resize (vhash_t * old, u32 log2_n_keys)
 {
   static vhash_resize_t vr;
   vhash_t new;
@@ -757,3 +762,11 @@ void vhash_resize (vhash_t * old, u32 log2_n_keys)
 }
 
 #endif /* CLIB_HAVE_VEC128 */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

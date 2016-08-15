@@ -47,45 +47,47 @@
 #include <vppinfra/vector.h>
 
 /* Each element in heap is immediately followed by this struct. */
-typedef struct {
+typedef struct
+{
   /* Number of mheap_size_t words of user data in previous object.
      Used to find mheap_elt_t for previous object. */
 #if CLIB_VEC64 > 0
-  u64 prev_n_user_data : 63;
+  u64 prev_n_user_data:63;
 
   /* Used to mark end/start of of doubly-linked list of mheap_elt_t's. */
 #define MHEAP_N_USER_DATA_INVALID (0x7fffffffffffffffULL)
 #define MHEAP_GROUNDED (~0ULL)
 
   /* Set if previous object is free. */
-  u64 prev_is_free : 1;
+  u64 prev_is_free:1;
 
   /* Number of mheap_size_t words of user data that follow this object. */
-  u64 n_user_data : 63;
+  u64 n_user_data:63;
 
   /* Set if this object is on free list (and therefore following free_elt
      is valid). */
-  u64 is_free : 1;
+  u64 is_free:1;
 
 #else
-  u32 prev_n_user_data : 31;
+  u32 prev_n_user_data:31;
 
   /* Used to mark end/start of of doubly-linked list of mheap_elt_t's. */
 #define MHEAP_N_USER_DATA_INVALID (0x7fffffff)
 #define MHEAP_GROUNDED (~0)
 
   /* Set if previous object is free. */
-  u32 prev_is_free : 1;
+  u32 prev_is_free:1;
 
   /* Number of mheap_size_t words of user data that follow this object. */
-  u32 n_user_data : 31;
+  u32 n_user_data:31;
 
   /* Set if this object is on free list (and therefore following free_elt
      is valid). */
-  u32 is_free : 1;
+  u32 is_free:1;
 #endif
-    
-  union {
+
+  union
+  {
 #if CLIB_VEC64 > 0
     /* For allocated objects: user data follows.
        User data is allocated in units of typeof (user_data[0]). */
@@ -95,7 +97,8 @@ typedef struct {
        ~0 means end of doubly-linked list.
        This is stored in user data (guaranteed to be at least 8 bytes)
        but only for *free* objects. */
-    struct {
+    struct
+    {
       u64 next_uoffset, prev_uoffset;
     } free_elt;
 #else
@@ -107,7 +110,8 @@ typedef struct {
        ~0 means end of doubly-linked list.
        This is stored in user data (guaranteed to be at least 8 bytes)
        but only for *free* objects. */
-    struct {
+    struct
+    {
       u32 next_uoffset, prev_uoffset;
     } free_elt;
 #endif
@@ -123,7 +127,8 @@ typedef struct {
 /* Number of byte in user data "words". */
 #define MHEAP_USER_DATA_WORD_BYTES STRUCT_SIZE_OF (mheap_elt_t, user_data[0])
 
-typedef struct {
+typedef struct
+{
   /* Address of callers: outer first, inner last. */
   uword callers[12];
 
@@ -138,25 +143,26 @@ typedef struct {
   u32 n_bytes;
 
   /* Offset of this item */
-  uword offset;    
+  uword offset;
 } mheap_trace_t;
 
-typedef struct {
-  mheap_trace_t * traces;
+typedef struct
+{
+  mheap_trace_t *traces;
 
   /* Indices of free traces. */
-  u32 * trace_free_list;
+  u32 *trace_free_list;
 
   /* Hash table mapping callers to trace index. */
-  uword * trace_by_callers;
+  uword *trace_by_callers;
 
   /* Hash table mapping mheap offset to trace index. */
-  uword * trace_index_by_offset;
+  uword *trace_index_by_offset;
 } mheap_trace_main_t;
 
   /* Small object bin i is for objects with
-       user_size >  sizeof (mheap_elt_t) + sizeof (mheap_elt_t) * (i - 1)
-       user_size <= sizeof (mheap_elt_t) + sizeof (mheap_size_t) * i. */
+     user_size >  sizeof (mheap_elt_t) + sizeof (mheap_elt_t) * (i - 1)
+     user_size <= sizeof (mheap_elt_t) + sizeof (mheap_size_t) * i. */
 #define MHEAP_LOG2_N_SMALL_OBJECT_BINS 8
 #define MHEAP_N_SMALL_OBJECT_BINS (1 << MHEAP_LOG2_N_SMALL_OBJECT_BINS)
 
@@ -164,8 +170,10 @@ typedef struct {
   (MHEAP_N_SMALL_OBJECT_BINS						\
    + (STRUCT_BITS_OF (mheap_elt_t, user_data[0]) - MHEAP_LOG2_N_SMALL_OBJECT_BINS))
 
-typedef struct {
-  struct {
+typedef struct
+{
+  struct
+  {
     u64 n_search_attempts;
     u64 n_objects_searched;
     u64 n_objects_found;
@@ -193,8 +201,10 @@ typedef struct {
 #endif
 
 /* For objects with align == 4 and align_offset == 0 (e.g. vector strings). */
-typedef struct {
-  union {
+typedef struct
+{
+  union
+  {
 #ifdef CLIB_HAVE_VEC128
     u8x16 as_u8x16[BITS (uword) / 16];
 #endif
@@ -209,7 +219,8 @@ typedef struct {
 } mheap_small_object_cache_t;
 
 /* Vec header for heaps. */
-typedef struct {
+typedef struct
+{
   /* User offsets for head of doubly-linked list of free objects of this size. */
 #if CLIB_VEC64 > 0
   u64 first_free_elt_uoffset_by_bin[MHEAP_N_BINS];
@@ -218,7 +229,8 @@ typedef struct {
 #endif
 
   /* Bitmap of non-empty free list bins. */
-  uword non_empty_free_elt_heads[(MHEAP_N_BINS + BITS (uword) - 1) / BITS (uword)];
+  uword non_empty_free_elt_heads[(MHEAP_N_BINS + BITS (uword) - 1) /
+				 BITS (uword)];
 
   mheap_small_object_cache_t small_object_cache;
 
@@ -254,50 +266,75 @@ typedef struct {
   mheap_stats_t stats;
 } mheap_t;
 
-always_inline mheap_t * mheap_header (u8 * v)
-{ return vec_aligned_header (v, sizeof (mheap_t), 16); }
+always_inline mheap_t *
+mheap_header (u8 * v)
+{
+  return vec_aligned_header (v, sizeof (mheap_t), 16);
+}
 
-always_inline u8 * mheap_vector (mheap_t * h)
-{ return vec_aligned_header_end (h, sizeof (mheap_t), 16); }
+always_inline u8 *
+mheap_vector (mheap_t * h)
+{
+  return vec_aligned_header_end (h, sizeof (mheap_t), 16);
+}
 
-always_inline uword mheap_elt_uoffset (void * v, mheap_elt_t * e)
-{ return (uword)e->user_data - (uword)v; }
+always_inline uword
+mheap_elt_uoffset (void *v, mheap_elt_t * e)
+{
+  return (uword) e->user_data - (uword) v;
+}
 
-always_inline mheap_elt_t * mheap_user_pointer_to_elt (void *v)
-{ return v - STRUCT_OFFSET_OF (mheap_elt_t, user_data); }
+always_inline mheap_elt_t *
+mheap_user_pointer_to_elt (void *v)
+{
+  return v - STRUCT_OFFSET_OF (mheap_elt_t, user_data);
+}
 
 /* For debugging we keep track of offsets for valid objects.
    We make sure user is not trying to free object with invalid offset. */
-always_inline uword mheap_offset_is_valid (void * v, uword uo)
-{ return uo >= MHEAP_ELT_OVERHEAD_BYTES && uo <= vec_len (v); }
+always_inline uword
+mheap_offset_is_valid (void *v, uword uo)
+{
+  return uo >= MHEAP_ELT_OVERHEAD_BYTES && uo <= vec_len (v);
+}
 
-always_inline mheap_elt_t * mheap_elt_at_uoffset (void * v, uword uo)
+always_inline mheap_elt_t *
+mheap_elt_at_uoffset (void *v, uword uo)
 {
   ASSERT (mheap_offset_is_valid (v, uo));
   return (mheap_elt_t *) (v + uo - STRUCT_OFFSET_OF (mheap_elt_t, user_data));
 }
 
-always_inline void * mheap_elt_data (void * v, mheap_elt_t * e)
-{ return v + mheap_elt_uoffset (v, e); }
-
-always_inline uword mheap_elt_data_bytes (mheap_elt_t * e)
-{ return e->n_user_data * sizeof (e->user_data[0]); }
-
-always_inline uword mheap_data_bytes (void * v, uword uo)
+always_inline void *
+mheap_elt_data (void *v, mheap_elt_t * e)
 {
-  mheap_elt_t * e = mheap_elt_at_uoffset (v, uo);
+  return v + mheap_elt_uoffset (v, e);
+}
+
+always_inline uword
+mheap_elt_data_bytes (mheap_elt_t * e)
+{
+  return e->n_user_data * sizeof (e->user_data[0]);
+}
+
+always_inline uword
+mheap_data_bytes (void *v, uword uo)
+{
+  mheap_elt_t *e = mheap_elt_at_uoffset (v, uo);
   return mheap_elt_data_bytes (e);
 }
 
 #define mheap_len(v,d) (mheap_data_bytes((v),(void *) (d) - (void *) (v)) / sizeof ((d)[0]))
 
-always_inline mheap_elt_t * mheap_next_elt (mheap_elt_t * e)
+always_inline mheap_elt_t *
+mheap_next_elt (mheap_elt_t * e)
 {
   ASSERT (e->n_user_data < MHEAP_N_USER_DATA_INVALID);
   return (mheap_elt_t *) (e->user_data + e->n_user_data);
 }
 
-always_inline mheap_elt_t * mheap_prev_elt (mheap_elt_t * e)
+always_inline mheap_elt_t *
+mheap_prev_elt (mheap_elt_t * e)
 {
   ASSERT (e->prev_n_user_data < MHEAP_N_USER_DATA_INVALID);
   return ((void *) e
@@ -307,17 +344,31 @@ always_inline mheap_elt_t * mheap_prev_elt (mheap_elt_t * e)
 
 /* Exported operations. */
 
-always_inline uword mheap_elts (void * v)
-{ return v ? mheap_header (v)->n_elts : 0; }
+always_inline uword
+mheap_elts (void *v)
+{
+  return v ? mheap_header (v)->n_elts : 0;
+}
 
-always_inline uword mheap_max_size (void * v)
-{ return v ? mheap_header (v)->max_size : ~0; }
+always_inline uword
+mheap_max_size (void *v)
+{
+  return v ? mheap_header (v)->max_size : ~0;
+}
 
 /* Free previously allocated offset. */
-void mheap_put (void * v, uword offset);
+void mheap_put (void *v, uword offset);
 
 /* Allocate object from mheap. */
-void * mheap_get_aligned (void * v, uword size, uword align, uword align_offset,
-			  uword * offset_return);
+void *mheap_get_aligned (void *v, uword size, uword align, uword align_offset,
+			 uword * offset_return);
 
 #endif /* included_mem_mheap_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

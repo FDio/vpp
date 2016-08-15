@@ -40,7 +40,7 @@
 
 /** \file
     Bitmaps built as vectors of machine words
-*/    
+*/
 
 #include <vppinfra/vec.h>
 #include <vppinfra/random.h>
@@ -131,7 +131,7 @@ _clib_bitmap_remove_trailing_zeros (uword * a)
 }
 
 /** Sets the ith bit of a bitmap to new_value.
-    No sanity checking. Be careful. 
+    No sanity checking. Be careful.
     @param a - pointer to the bitmap
     @param i - the bit position to interrogate
     @param new_value - new value for the bit
@@ -150,7 +150,7 @@ clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
 
   ai = a[i0];
   old_value = (ai & bit) != 0;
-  ai &= ~ bit;
+  ai &= ~bit;
   ai |= ((uword) (new_value != 0)) << i1;
   a[i0] = ai;
   return old_value;
@@ -256,7 +256,8 @@ clib_bitmap_get_multiple (uword * bitmap, uword i, uword n_bits)
   if (i1 + n_bits > BITS (bitmap[0]) && i0 < l)
     {
       n_bits -= BITS (bitmap[0]) - i1;
-      result |= (bitmap[i0] & (((uword) 1 << n_bits) - 1)) << (BITS (bitmap[0]) - i1);
+      result |=
+	(bitmap[i0] & (((uword) 1 << n_bits) - 1)) << (BITS (bitmap[0]) - i1);
     }
 
   return result;
@@ -380,7 +381,8 @@ do {									\
     @param ai - pointer to the bitmap
     @returns lowest numbered set bit, or ~0 if the entire bitmap is zero
 */
-always_inline uword clib_bitmap_first_set (uword * ai)
+always_inline uword
+clib_bitmap_first_set (uword * ai)
 {
   uword i;
   for (i = 0; i < vec_len (ai); i++)
@@ -396,11 +398,12 @@ always_inline uword clib_bitmap_first_set (uword * ai)
     @param ai - pointer to the bitmap
     @returns lowest numbered set bit, or ~0 if the entire bitmap is zero
 */
-always_inline uword clib_bitmap_last_set (uword * ai)
+always_inline uword
+clib_bitmap_last_set (uword * ai)
 {
   uword i;
 
-  for (i = vec_len (ai); i > 0 ; i--)
+  for (i = vec_len (ai); i > 0; i--)
     {
       uword x = ai[i - 1];
       if (x != 0)
@@ -450,8 +453,7 @@ clib_bitmap_count_set_bits (uword * ai)
     @param bi - pointer to the source bitmap
     @returns ai = ai and bi. ai is modified, bi is not modified
 */
-always_inline uword *
-clib_bitmap_and (uword * ai, uword * bi);
+always_inline uword *clib_bitmap_and (uword * ai, uword * bi);
 
 /** Logical operator across two bitmaps
 
@@ -459,8 +461,7 @@ clib_bitmap_and (uword * ai, uword * bi);
     @param bi - pointer to the source bitmap
     @returns ai = ai & ~bi. ai is modified, bi is not modified
 */
-always_inline uword *
-clib_bitmap_andnot (uword * ai, uword * bi);
+always_inline uword *clib_bitmap_andnot (uword * ai, uword * bi);
 
 /** Logical operator across two bitmaps
 
@@ -468,16 +469,14 @@ clib_bitmap_andnot (uword * ai, uword * bi);
     @param bi - pointer to the source bitmap
     @returns ai = ai & ~bi. ai is modified, bi is not modified
 */
-always_inline uword *
-clib_bitmap_or (uword * ai, uword * bi);
+always_inline uword *clib_bitmap_or (uword * ai, uword * bi);
 /** Logical operator across two bitmaps
 
     @param ai - pointer to the destination bitmap
     @param bi - pointer to the source bitmap
     @returns ai = ai or bi. ai is modified, bi is not modified
 */
-always_inline uword *
-clib_bitmap_or (uword * ai, uword * bi);
+always_inline uword *clib_bitmap_or (uword * ai, uword * bi);
 
 /** Logical operator across two bitmaps
 
@@ -485,8 +484,7 @@ clib_bitmap_or (uword * ai, uword * bi);
     @param bi - pointer to the source bitmap
     @returns ai = ai xor bi. ai is modified, bi is not modified
 */
-always_inline uword *
-clib_bitmap_xor (uword * ai, uword * bi);
+always_inline uword *clib_bitmap_xor (uword * ai, uword * bi);
 
 /* ALU function definition macro for functions taking two bitmaps. */
 #define _(name, body, check_zero)				\
@@ -514,20 +512,17 @@ clib_bitmap_##name (uword * ai, uword * bi)			\
 }
 
 /* ALU functions: */
-_ (and, a = a & b, 1)
-_ (andnot, a = a &~ b, 1)
-_ (or,  a = a | b, 0)
-_ (xor, a = a ^ b, 1)
+_(and, a = a & b, 1)
+_(andnot, a = a & ~b, 1) _(or, a = a | b, 0) _(xor, a = a ^ b, 1)
 #undef _
-
 /** Logical operator across two bitmaps which duplicates the first bitmap
 
     @param ai - pointer to the destination bitmap
     @param bi - pointer to the source bitmap
     @returns aiDup = ai and bi. Neither ai nor bi are modified
 */
-always_inline uword *
-clib_bitmap_dup_and (uword * ai, uword * bi);
+     always_inline uword *
+     clib_bitmap_dup_and (uword * ai, uword * bi);
 
 /** Logical operator across two bitmaps which duplicates the first bitmap
 
@@ -535,8 +530,8 @@ clib_bitmap_dup_and (uword * ai, uword * bi);
     @param bi - pointer to the source bitmap
     @returns aiDup = ai & ~bi. Neither ai nor bi are modified
 */
-always_inline uword *
-clib_bitmap_dup_andnot (uword * ai, uword * bi);
+     always_inline uword *
+     clib_bitmap_dup_andnot (uword * ai, uword * bi);
 
 /** Logical operator across two bitmaps which duplicates the first bitmap
 
@@ -544,8 +539,8 @@ clib_bitmap_dup_andnot (uword * ai, uword * bi);
     @param bi - pointer to the source bitmap
     @returns aiDup = ai or bi. Neither ai nor bi are modified
 */
-always_inline uword *
-clib_bitmap_dup_or (uword * ai, uword * bi);
+     always_inline uword *
+     clib_bitmap_dup_or (uword * ai, uword * bi);
 
 /** Logical operator across two bitmaps which duplicates the first bitmap
 
@@ -553,18 +548,18 @@ clib_bitmap_dup_or (uword * ai, uword * bi);
     @param bi - pointer to the source bitmap
     @returns aiDup = ai xor bi. Neither ai nor bi are modified
 */
-always_inline uword *
-clib_bitmap_dup_xor (uword * ai, uword * bi);
+     always_inline uword *
+     clib_bitmap_dup_xor (uword * ai, uword * bi);
 
 #define _(name)						\
   always_inline uword *					\
   clib_bitmap_dup_##name (uword * ai, uword * bi)	\
 { return clib_bitmap_##name (clib_bitmap_dup (ai), bi); }
 
-_ (and);
-_ (andnot);
-_ (or);
-_ (xor);
+_(and);
+_(andnot);
+_(or);
+_(xor);
 
 #undef _
 
@@ -587,21 +582,17 @@ clib_bitmap_##name (uword * ai, uword i)		\
 }
 
 /* ALU functions immediate: */
-_ (andi, a = a & b, 1)
-_ (andnoti, a = a &~ b, 1)
-_ (ori, a = a | b, 0)
-_ (xori, a = a ^ b, 1)
-
+_(andi, a = a & b, 1)
+_(andnoti, a = a & ~b, 1) _(ori, a = a | b, 0) _(xori, a = a ^ b, 1)
 #undef _
-
 /** Return a random bitmap of the requested length
     @param ai - pointer to the destination bitmap
     @param n_bits - number of bits to allocate
     @param [in/out] seed - pointer to the random number seed
     @returns a reasonably random bitmap based. See random.h.
 */
-always_inline uword *
-clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
+     always_inline uword *
+     clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
 {
   vec_reset_length (ai);
 
@@ -632,7 +623,7 @@ clib_bitmap_random (uword * ai, uword n_bits, u32 * seed)
 /** Return the next set bit in a bitmap starting at bit i
     @param ai - pointer to the bitmap
     @param i - first bit position to test
-    @returns first set bit position at or after i, 
+    @returns first set bit position at or after i,
     ~0 if no further set bits are found
 */
 always_inline uword
@@ -641,7 +632,7 @@ clib_bitmap_next_set (uword * ai, uword i)
   uword i0 = i / BITS (ai[0]);
   uword i1 = i % BITS (ai[0]);
   uword t;
-  
+
   if (i0 < vec_len (ai))
     {
       t = (ai[i0] >> i1) << i1;
@@ -670,7 +661,7 @@ clib_bitmap_next_clear (uword * ai, uword i)
   uword i0 = i / BITS (ai[0]);
   uword i1 = i % BITS (ai[0]);
   uword t;
-  
+
   if (i0 < vec_len (ai))
     {
       t = (~ai[i0] >> i1) << i1;
@@ -679,7 +670,7 @@ clib_bitmap_next_clear (uword * ai, uword i)
 
       for (i0++; i0 < vec_len (ai); i0++)
 	{
-          t = ~ai[i0];
+	  t = ~ai[i0];
 	  if (t)
 	    return log2_first_set (t) + i0 * BITS (ai[0]);
 	}
@@ -687,54 +678,54 @@ clib_bitmap_next_clear (uword * ai, uword i)
   return i;
 }
 
-/** unformat a list of bit ranges into a bitmap (eg "0-3,5-7,11" ) 
+/** unformat a list of bit ranges into a bitmap (eg "0-3,5-7,11" )
 
     uword * bitmap;
     rv = unformat ("%U", unformat_bitmap_list, &bitmap);
 
     Standard unformat_function_t arguments
 
-    @param input - pointer an unformat_input_t 
+    @param input - pointer an unformat_input_t
     @param va - varargs list comprising a single uword **
     @returns 1 on success, 0 on failure
 */
 static inline uword
-unformat_bitmap_list(unformat_input_t * input, va_list * va)
+unformat_bitmap_list (unformat_input_t * input, va_list * va)
 {
-  uword ** bitmap_return = va_arg (* va, uword **);
-  uword * bitmap = 0;
+  uword **bitmap_return = va_arg (*va, uword **);
+  uword *bitmap = 0;
 
-  u32 a,b;
+  u32 a, b;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       int i;
       if (unformat (input, "%u-%u,", &a, &b))
-        ;
+	;
       else if (unformat (input, "%u,", &a))
-        b = a;
+	b = a;
       else if (unformat (input, "%u-%u", &a, &b))
-        ;
+	;
       else if (unformat (input, "%u", &a))
-        b = a;
+	b = a;
       else if (bitmap)
-        {
-	  unformat_put_input(input);
+	{
+	  unformat_put_input (input);
 	  break;
 	}
       else
-        goto error;
+	goto error;
 
       if (b < a)
-        goto error;
+	goto error;
 
       for (i = a; i <= b; i++)
-        bitmap = clib_bitmap_set(bitmap, i, 1);
+	bitmap = clib_bitmap_set (bitmap, i, 1);
     }
   *bitmap_return = bitmap;
   return 1;
 error:
-  clib_bitmap_free(bitmap);
+  clib_bitmap_free (bitmap);
   return 0;
 }
 
@@ -750,26 +741,34 @@ error:
     @returns string under construction
 */
 static inline u8 *
-format_bitmap_hex(u8 * s, va_list * args)
+format_bitmap_hex (u8 * s, va_list * args)
 {
-  uword * bitmap = va_arg (*args, uword *);
+  uword *bitmap = va_arg (*args, uword *);
   int i, is_trailing_zero = 1;
 
   if (!bitmap)
-    return format(s, "0");
+    return format (s, "0");
 
   i = vec_bytes (bitmap) * 2;
 
   while (i > 0)
     {
-      u8 x = clib_bitmap_get_multiple(bitmap, --i * 4, 4);
+      u8 x = clib_bitmap_get_multiple (bitmap, --i * 4, 4);
 
       if (x && is_trailing_zero)
-        is_trailing_zero = 0;
+	is_trailing_zero = 0;
 
       if (x || !is_trailing_zero)
-          s = format(s, "%x", x);
+	s = format (s, "%x", x);
     }
   return s;
 }
 #endif /* included_clib_bitmap_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -45,7 +45,7 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <stdarg.h>             /* va_start, etc */
+#include <stdarg.h>		/* va_start, etc */
 
 #ifdef CLIB_UNIX
 #include <unistd.h>
@@ -61,26 +61,30 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/error.h>
 #include <vppinfra/string.h>
-#include <vppinfra/os.h>		/* os_puts */
+#include <vppinfra/os.h>	/* os_puts */
 
-typedef struct {
-    /* Output number in this base. */
-    u8 base;
+typedef struct
+{
+  /* Output number in this base. */
+  u8 base;
 
-    /* Number of show of 64 bit number. */
-    u8 n_bits;
+  /* Number of show of 64 bit number. */
+  u8 n_bits;
 
-    /* Signed or unsigned. */
-    u8 is_signed;
+  /* Signed or unsigned. */
+  u8 is_signed;
 
-    /* Output digits uppercase (not lowercase) %X versus %x. */
-    u8 uppercase_digits;
+  /* Output digits uppercase (not lowercase) %X versus %x. */
+  u8 uppercase_digits;
 } format_integer_options_t;
 
-static u8 * format_integer (u8 * s, u64 number, format_integer_options_t * options);
-static u8 * format_float (u8 * s, f64 x, uword n_digits_to_print, uword output_style);
+static u8 *format_integer (u8 * s, u64 number,
+			   format_integer_options_t * options);
+static u8 *format_float (u8 * s, f64 x, uword n_digits_to_print,
+			 uword output_style);
 
-typedef struct {
+typedef struct
+{
   /* String justification: + => right, - => left, = => center. */
   uword justify;
 
@@ -95,7 +99,8 @@ typedef struct {
   uword pad_char;
 } format_info_t;
 
-static u8 * justify (u8 * s, format_info_t * fi, uword s_len_orig)
+static u8 *
+justify (u8 * s, format_info_t * fi, uword s_len_orig)
 {
   uword i0, l0, l1;
 
@@ -121,11 +126,11 @@ static u8 * justify (u8 * s, format_info_t * fi, uword s_len_orig)
 	  break;
 
 	case '+':
-	  n_left  = n;
+	  n_left = n;
 	  break;
 
 	case '=':
-	  n_right = n_left = n/2;
+	  n_right = n_left = n / 2;
 	  if (n % 2)
 	    n_left++;
 	  break;
@@ -145,12 +150,13 @@ static u8 * justify (u8 * s, format_info_t * fi, uword s_len_orig)
   return s;
 }
 
-static u8 * do_percent (u8 ** _s, u8 * fmt, va_list * va)
+static u8 *
+do_percent (u8 ** _s, u8 * fmt, va_list * va)
 {
-  u8 * s = *_s;
+  u8 *s = *_s;
   uword c;
 
-  u8 * f = fmt;
+  u8 *f = fmt;
 
   format_info_t fi = {
     .justify = '+',
@@ -189,15 +195,19 @@ static u8 * do_percent (u8 ** _s, u8 * fmt, va_list * va)
 	if (c == '0' && i == 0 && is_first_digit)
 	  fi.pad_char = '0';
 	is_first_digit = 0;
-	if (c == '*') {
-	    fi.width[i] = va_arg(*va, int);
+	if (c == '*')
+	  {
+	    fi.width[i] = va_arg (*va, int);
 	    c = *++f;
-	} else {
-	    while (c >= '0' && c <= '9') {
-		fi.width[i] = 10*fi.width[i] + (c - '0');
+	  }
+	else
+	  {
+	    while (c >= '0' && c <= '9')
+	      {
+		fi.width[i] = 10 * fi.width[i] + (c - '0');
 		c = *++f;
-	    }
-	}
+	      }
+	  }
 	if (c != '.')
 	  break;
 	c = *++f;
@@ -240,12 +250,13 @@ static u8 * do_percent (u8 ** _s, u8 * fmt, va_list * va)
 
       switch (c)
 	{
-	default: {
-	  /* Try to give a helpful error message. */
-	  vec_free (s);
-	  s = format (s, "**** CLIB unknown format `%%%c' ****", c);
-	  goto done;
-	}
+	default:
+	  {
+	    /* Try to give a helpful error message. */
+	    vec_free (s);
+	    s = format (s, "**** CLIB unknown format `%%%c' ****", c);
+	    goto done;
+	  }
 
 	case 'c':
 	  vec_add1 (s, va_arg (*va, int));
@@ -306,10 +317,10 @@ static u8 * do_percent (u8 ** _s, u8 * fmt, va_list * va)
 	case 's':
 	case 'S':
 	  {
-	    char * cstring = va_arg (*va, char *);
+	    char *cstring = va_arg (*va, char *);
 	    uword len;
 
-	    if (! cstring)
+	    if (!cstring)
 	      {
 		cstring = "(nil)";
 		len = 5;
@@ -318,13 +329,13 @@ static u8 * do_percent (u8 ** _s, u8 * fmt, va_list * va)
 	      len = clib_min (strlen (cstring), fi.width[1]);
 	    else
 	      len = strlen (cstring);
-	    
+
 	    /* %S => format string as C identifier (replace _ with space). */
 	    if (c == 'S')
 	      {
 		for (i = 0; i < len; i++)
 		  vec_add1 (s, cstring[i] == '_' ? ' ' : cstring[i]);
-	      }		
+	      }
 	    else
 	      vec_add (s, cstring, len);
 	  }
@@ -332,7 +343,7 @@ static u8 * do_percent (u8 ** _s, u8 * fmt, va_list * va)
 
 	case 'v':
 	  {
-	    u8 * v = va_arg (*va, u8 *);
+	    u8 *v = va_arg (*va, u8 *);
 	    uword len;
 
 	    if (fi.width[1] != 0)
@@ -344,21 +355,21 @@ static u8 * do_percent (u8 ** _s, u8 * fmt, va_list * va)
 	  }
 	  break;
 
-	case 'f': case 'g': case 'e':
+	case 'f':
+	case 'g':
+	case 'e':
 	  /* Floating point. */
 	  ASSERT (fi.how_long == 0 || fi.how_long == 'l');
-	  s = format_float (s,
-			    va_arg (*va, double),
-			    fi.width[1], c);
+	  s = format_float (s, va_arg (*va, double), fi.width[1], c);
 	  break;
 
 	case 'U':
 	  /* User defined function. */
 	  {
-	    typedef u8 * (user_func_t) (u8 * s, va_list * args);
-	    user_func_t * u = va_arg (*va, user_func_t *);
+	    typedef u8 *(user_func_t) (u8 * s, va_list * args);
+	    user_func_t *u = va_arg (*va, user_func_t *);
 
-	    s = (* u) (s, va);
+	    s = (*u) (s, va);
 	  }
 	  break;
 	}
@@ -366,14 +377,15 @@ static u8 * do_percent (u8 ** _s, u8 * fmt, va_list * va)
       s = justify (s, &fi, s_initial_len);
     }
 
- done:
+done:
   *_s = s;
   return f;
 }
 
-u8 * va_format (u8 * s, char * fmt, va_list * va)
+u8 *
+va_format (u8 * s, char *fmt, va_list * va)
 {
-  u8 * f = (u8 *) fmt, * g;
+  u8 *f = (u8 *) fmt, *g;
   u8 c;
 
   g = f;
@@ -381,7 +393,7 @@ u8 * va_format (u8 * s, char * fmt, va_list * va)
     {
       c = *f;
 
-      if (! c)
+      if (!c)
 	break;
 
       if (c == '%')
@@ -402,7 +414,8 @@ u8 * va_format (u8 * s, char * fmt, va_list * va)
   return s;
 }
 
-u8 * format (u8 * s, char * fmt, ...)
+u8 *
+format (u8 * s, char *fmt, ...)
 {
   va_list va;
   va_start (va, fmt);
@@ -411,10 +424,11 @@ u8 * format (u8 * s, char * fmt, ...)
   return s;
 }
 
-word va_fformat (FILE * f, char * fmt, va_list * va)
+word
+va_fformat (FILE * f, char *fmt, va_list * va)
 {
   word ret;
-  u8 * s;
+  u8 *s;
 
   s = va_format (0, fmt, va);
 
@@ -434,23 +448,25 @@ word va_fformat (FILE * f, char * fmt, va_list * va)
   return ret;
 }
 
-word fformat (FILE * f, char * fmt, ...)
+word
+fformat (FILE * f, char *fmt, ...)
 {
-    va_list va;
-    word ret;
+  va_list va;
+  word ret;
 
-    va_start(va, fmt);
-    ret = va_fformat(f, fmt, &va);
-    va_end(va);
+  va_start (va, fmt);
+  ret = va_fformat (f, fmt, &va);
+  va_end (va);
 
-    return (ret);
+  return (ret);
 }
 
 #ifdef CLIB_UNIX
-word fdformat (int fd, char * fmt, ...)
+word
+fdformat (int fd, char *fmt, ...)
 {
   word ret;
-  u8 * s;
+  u8 *s;
   va_list va;
 
   va_start (va, fmt);
@@ -464,12 +480,13 @@ word fdformat (int fd, char * fmt, ...)
 #endif
 
 /* Format integral type. */
-static u8 * format_integer (u8 * s, u64 number, format_integer_options_t * options)
+static u8 *
+format_integer (u8 * s, u64 number, format_integer_options_t * options)
 {
   u64 q;
   u32 r;
   u8 digit_buffer[128];
-  u8 * d = digit_buffer + sizeof (digit_buffer);
+  u8 *d = digit_buffer + sizeof (digit_buffer);
   word c, base;
 
   if (options->is_signed && (i64) number < 0)
@@ -488,26 +505,25 @@ static u8 * format_integer (u8 * s, u64 number, format_integer_options_t * optio
       q = number / base;
       r = number % base;
 
-      if (r < 10+26+26)
+      if (r < 10 + 26 + 26)
 	{
 	  if (r < 10)
 	    c = '0' + r;
-	  else if (r < 10+26)
+	  else if (r < 10 + 26)
 	    c = 'a' + (r - 10);
 	  else
 	    c = 'A' + (r - 10 - 26);
 
 	  if (options->uppercase_digits
-	      && base <= 10+26
-	      && c >= 'a' && c <= 'z')
+	      && base <= 10 + 26 && c >= 'a' && c <= 'z')
 	    c += 'A' - 'a';
 
 	  *--d = c;
 	}
-      else                      /* will never happen, warning be gone */
-        {
-          *--d = '?';
-        }
+      else			/* will never happen, warning be gone */
+	{
+	  *--d = '?';
+	}
 
       if (q == 0)
 	break;
@@ -531,9 +547,14 @@ do {								\
 } while (0)
 
 /* Construct IEEE 64 bit number. */
-static f64 f64_up (uword sign, word expon, u64 fraction)
+static f64
+f64_up (uword sign, word expon, u64 fraction)
 {
-  union { u64 u; f64 f; } tmp;
+  union
+  {
+    u64 u;
+    f64 f;
+  } tmp;
 
   tmp.u = (u64) ((sign) != 0) << 63;
 
@@ -550,11 +571,12 @@ static f64 f64_up (uword sign, word expon, u64 fraction)
 }
 
 /* Returns approximate precision of number given its exponent. */
-static f64 f64_precision (int base2_expon)
+static f64
+f64_precision (int base2_expon)
 {
   static int n_bits = 0;
 
-  if (! n_bits)
+  if (!n_bits)
     {
       /* Compute number of significant bits in floating point representation. */
       f64 one = 0;
@@ -572,7 +594,8 @@ static f64 f64_precision (int base2_expon)
 }
 
 /* Return x 10^n */
-static f64 times_power_of_ten (f64 x, int n)
+static f64
+times_power_of_ten (f64 x, int n)
 {
   if (n >= 0)
     {
@@ -594,11 +617,12 @@ static f64 times_power_of_ten (f64 x, int n)
 	}
       return x * t[-n];
     }
-  
+
 }
 
 /* Write x = y * 10^expon with 1 < y < 10. */
-static f64 normalize (f64 x, word * expon_return, f64 * prec_return)
+static f64
+normalize (f64 x, word * expon_return, f64 * prec_return)
 {
   word expon2, expon10;
   CLIB_UNUSED (u64 fraction);
@@ -607,8 +631,10 @@ static f64 normalize (f64 x, word * expon_return, f64 * prec_return)
 
   f64_down (x, sign, expon2, fraction);
 
-  expon10 = .5 + expon2 * .301029995663981195213738894724493  /* Log (2) / Log (10) */;
-  
+  expon10 =
+    .5 +
+    expon2 * .301029995663981195213738894724493 /* Log (2) / Log (10) */ ;
+
   prec = f64_precision (expon2);
   x = times_power_of_ten (x, -expon10);
   prec = times_power_of_ten (prec, -expon10);
@@ -639,7 +665,8 @@ static f64 normalize (f64 x, word * expon_return, f64 * prec_return)
   return x;
 }
 
-static u8 * add_some_zeros (u8 * s, uword n_zeros)
+static u8 *
+add_some_zeros (u8 * s, uword n_zeros)
 {
   while (n_zeros > 0)
     {
@@ -652,9 +679,7 @@ static u8 * add_some_zeros (u8 * s, uword n_zeros)
 /* Format a floating point number with the given number of fractional
    digits (e.g. 1.2345 with 2 fraction digits yields "1.23") and output style. */
 static u8 *
-format_float (u8 * s, f64 x,
-	      uword n_fraction_digits,
-	      uword output_style)
+format_float (u8 * s, f64 x, uword n_fraction_digits, uword output_style)
 {
   f64 prec;
   word sign, expon, n_fraction_done, added_decimal_point;
@@ -676,7 +701,7 @@ format_float (u8 * s, f64 x,
       vec_add1 (s, '0');
       goto done;
     }
-	  
+
   if (x < 0)
     {
       x = -x;
@@ -684,13 +709,13 @@ format_float (u8 * s, f64 x,
     }
 
   /* Check for infinity. */
-  if (x == x/2)
+  if (x == x / 2)
     return format (s, "%cinfinity", sign ? '-' : '+');
 
   x = normalize (x, &expon, &prec);
 
   /* Not enough digits to print anything: so just print 0 */
-  if ((word) -expon > (word) n_fraction_digits
+  if ((word) - expon > (word) n_fraction_digits
       && (output_style == 'f' || (output_style == 'g')))
     goto do_zero;
 
@@ -737,8 +762,7 @@ format_float (u8 * s, f64 x,
 
       /* Round last printed digit. */
       if (decimal_point <= 0
-	  && n_fraction_done + 1 == n_fraction_digits
-	  && digit < 9)
+	  && n_fraction_done + 1 == n_fraction_digits && digit < 9)
 	digit += x >= .5;
 
       vec_add1 (s, '0' + digit);
@@ -747,8 +771,7 @@ format_float (u8 * s, f64 x,
       decimal_point--;
 
       n_fraction_done += decimal_point < 0;
-      if (decimal_point <= 0
-	  && n_fraction_done >= n_fraction_digits)
+      if (decimal_point <= 0 && n_fraction_done >= n_fraction_digits)
 	break;
 
       if (decimal_point == 0 && x != 0)
@@ -760,8 +783,8 @@ format_float (u8 * s, f64 x,
       x *= 10;
       prec *= 10;
     }
-  
- done:
+
+done:
   if (decimal_point > 0)
     {
       s = add_some_zeros (s, decimal_point);
@@ -770,7 +793,7 @@ format_float (u8 * s, f64 x,
 
   if (n_fraction_done < n_fraction_digits)
     {
-      if (! added_decimal_point)
+      if (!added_decimal_point)
 	vec_add1 (s, '.');
       s = add_some_zeros (s, n_fraction_digits - n_fraction_done);
     }
@@ -781,3 +804,11 @@ format_float (u8 * s, f64 x,
   return s;
 }
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

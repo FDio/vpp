@@ -43,11 +43,12 @@
 #include <vppinfra/memcheck.h>
 #include <vppinfra/valgrind.h>
 
-void * clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
+void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 
-void clib_mem_exit (void)
+void
+clib_mem_exit (void)
 {
-  u8 * heap = clib_mem_get_per_cpu_heap ();
+  u8 *heap = clib_mem_get_per_cpu_heap ();
   if (heap)
     mheap_free (heap);
   clib_mem_set_per_cpu_heap (0);
@@ -55,18 +56,19 @@ void clib_mem_exit (void)
 
 /* Initialize CLIB heap based on memory/size given by user.
    Set memory to 0 and CLIB will try to allocate its own heap. */
-void * clib_mem_init (void * memory, uword memory_size)
+void *
+clib_mem_init (void *memory, uword memory_size)
 {
-  u8 * heap;
+  u8 *heap;
 
   if (memory || memory_size)
     heap = mheap_alloc (memory, memory_size);
   else
     {
       /* Allocate lots of address space since this will limit
-	 the amount of memory the program can allocate.
-	 In the kernel we're more conservative since some architectures
-	 (e.g. mips) have pretty small kernel virtual address spaces. */
+         the amount of memory the program can allocate.
+         In the kernel we're more conservative since some architectures
+         (e.g. mips) have pretty small kernel virtual address spaces. */
 #ifdef __KERNEL__
 #define MAX_VM_MEG 64
 #else
@@ -96,34 +98,48 @@ void * clib_mem_init (void * memory, uword memory_size)
 #ifdef CLIB_LINUX_KERNEL
 #include <asm/page.h>
 
-uword clib_mem_get_page_size (void)
-{ return PAGE_SIZE; }
+uword
+clib_mem_get_page_size (void)
+{
+  return PAGE_SIZE;
+}
 #endif
 
 #ifdef CLIB_UNIX
-uword clib_mem_get_page_size (void)
-{ return getpagesize (); }
+uword
+clib_mem_get_page_size (void)
+{
+  return getpagesize ();
+}
 #endif
 
 /* Make a guess for standalone. */
 #ifdef CLIB_STANDALONE
-uword clib_mem_get_page_size (void)
-{ return 4096; }
+uword
+clib_mem_get_page_size (void)
+{
+  return 4096;
+}
 #endif
 
-u8 * format_clib_mem_usage (u8 * s, va_list * va)
+u8 *
+format_clib_mem_usage (u8 * s, va_list * va)
 {
-    int verbose = va_arg (*va, int);
-    return format (s, "%U", format_mheap, clib_mem_get_heap (), verbose);
+  int verbose = va_arg (*va, int);
+  return format (s, "%U", format_mheap, clib_mem_get_heap (), verbose);
 }
 
-void clib_mem_usage (clib_mem_usage_t * u)
-{ mheap_usage (clib_mem_get_heap (), u); }
+void
+clib_mem_usage (clib_mem_usage_t * u)
+{
+  mheap_usage (clib_mem_get_heap (), u);
+}
 
 /* Call serial number for debugger breakpoints. */
 uword clib_mem_validate_serial = 0;
 
-void clib_mem_validate (void)
+void
+clib_mem_validate (void)
 {
   if (MHEAP_HAVE_SMALL_OBJECT_CACHE)
     clib_warning ("clib_mem_validate disabled (small object cache is ON)");
@@ -134,5 +150,16 @@ void clib_mem_validate (void)
     }
 }
 
-void clib_mem_trace (int enable)
-{ mheap_trace (clib_mem_get_heap (), enable); }
+void
+clib_mem_trace (int enable)
+{
+  mheap_trace (clib_mem_get_heap (), enable);
+}
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

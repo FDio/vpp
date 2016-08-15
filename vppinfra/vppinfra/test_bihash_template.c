@@ -21,7 +21,8 @@
 
 #include <vppinfra/bihash_template.c>
 
-typedef struct {
+typedef struct
+{
   u32 seed;
   u32 nbuckets;
   u32 nitems;
@@ -29,56 +30,58 @@ typedef struct {
   int careful_delete_tests;
   int verbose;
   int non_random_keys;
-  uword * key_hash;
-  u64 * keys;
-  BVT(clib_bihash) hash;
+  uword *key_hash;
+  u64 *keys;
+    BVT (clib_bihash) hash;
   clib_time_t clib_time;
 
-  unformat_input_t * input;
-  
+  unformat_input_t *input;
+
 } test_main_t;
 
 test_main_t test_main;
 
-uword vl (void * v)
+uword
+vl (void *v)
 {
-    return vec_len (v);
+  return vec_len (v);
 }
 
-static clib_error_t * test_bihash (test_main_t * tm)
+static clib_error_t *
+test_bihash (test_main_t * tm)
 {
   int i, j;
-  uword * p;
+  uword *p;
   uword total_searches;
   f64 before, delta;
-  BVT(clib_bihash) * h;
-  BVT(clib_bihash_kv) kv;
+  BVT (clib_bihash) * h;
+  BVT (clib_bihash_kv) kv;
 
   h = &tm->hash;
 
-  BV(clib_bihash_init) (h, "test", tm->nbuckets, 3ULL<<30);
-  
-  fformat (stdout, "Pick %lld unique %s keys...\n", 
-           tm->nitems, tm->non_random_keys ? "non-random" : "random");
+  BV (clib_bihash_init) (h, "test", tm->nbuckets, 3ULL << 30);
+
+  fformat (stdout, "Pick %lld unique %s keys...\n",
+	   tm->nitems, tm->non_random_keys ? "non-random" : "random");
 
   for (i = 0; i < tm->nitems; i++)
     {
       u64 rndkey;
 
       if (tm->non_random_keys == 0)
-        {
+	{
 
-        again:
-          rndkey = random_u64 (&tm->seed);
-          
-          p = hash_get (tm->key_hash, rndkey);
-          if (p)
-            goto again;
-        }
+	again:
+	  rndkey = random_u64 (&tm->seed);
+
+	  p = hash_get (tm->key_hash, rndkey);
+	  if (p)
+	    goto again;
+	}
       else
-          rndkey = (u64)(i+1) << 16;
+	rndkey = (u64) (i + 1) << 16;
 
-      hash_set (tm->key_hash, rndkey, i+1);
+      hash_set (tm->key_hash, rndkey, i + 1);
       vec_add1 (tm->keys, rndkey);
     }
 
@@ -86,20 +89,21 @@ static clib_error_t * test_bihash (test_main_t * tm)
   for (i = 0; i < tm->nitems; i++)
     {
       kv.key = tm->keys[i];
-      kv.value = i+1;
+      kv.value = i + 1;
 
-      BV(clib_bihash_add_del) (h, &kv, 1 /* is_add */);
+      BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */ );
 
       if (tm->verbose > 1)
-        {
-          fformat (stdout, "--------------------\n");
-          fformat (stdout, "After adding key %llu value %lld...\n", 
-                   tm->keys[i], (u64)(i+1));
-          fformat (stdout, "%U", BV(format_bihash), h, 2 /* very verbose */);
-        }
+	{
+	  fformat (stdout, "--------------------\n");
+	  fformat (stdout, "After adding key %llu value %lld...\n",
+		   tm->keys[i], (u64) (i + 1));
+	  fformat (stdout, "%U", BV (format_bihash), h,
+		   2 /* very verbose */ );
+	}
     }
 
-  fformat (stdout, "%U", BV(format_bihash), h, 0 /* very verbose */);
+  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */ );
 
   fformat (stdout, "Search for items %d times...\n", tm->search_iter);
 
@@ -110,69 +114,69 @@ static clib_error_t * test_bihash (test_main_t * tm)
       u64 hash1 = clib_xxhash (tm->keys[0]);
 
       for (i = 0; i < tm->nitems; i++)
-        {
-          if (i < (tm->nitems - 3))
-            {
-              clib_bihash_bucket_t * b;
-              BVT(clib_bihash_value) * v;
-              u64 hash2 = clib_xxhash (tm->keys[i+3]);
-              u32 bucket_index = hash2 & (h->nbuckets-1);
-              b = &h->buckets[bucket_index];
-              CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
+	{
+	  if (i < (tm->nitems - 3))
+	    {
+	      clib_bihash_bucket_t *b;
+	      BVT (clib_bihash_value) * v;
+	      u64 hash2 = clib_xxhash (tm->keys[i + 3]);
+	      u32 bucket_index = hash2 & (h->nbuckets - 1);
+	      b = &h->buckets[bucket_index];
+	      CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
 
-              bucket_index = hash1 & (h->nbuckets-1);
-              b = &h->buckets[bucket_index];
-              v = BV(clib_bihash_get_value) (h, b->offset);
-              hash1 >>= h->log2_nbuckets;
-              hash1 = hash1 & ((1<<b->log2_pages)-1);
-              v += hash1;
-              CLIB_PREFETCH (v, CLIB_CACHE_LINE_BYTES, LOAD);
-              
-              hash1 = hash2;
-            }
+	      bucket_index = hash1 & (h->nbuckets - 1);
+	      b = &h->buckets[bucket_index];
+	      v = BV (clib_bihash_get_value) (h, b->offset);
+	      hash1 >>= h->log2_nbuckets;
+	      hash1 = hash1 & ((1 << b->log2_pages) - 1);
+	      v += hash1;
+	      CLIB_PREFETCH (v, CLIB_CACHE_LINE_BYTES, LOAD);
 
-          kv.key = tm->keys[i];
-          if (BV(clib_bihash_search) (h, &kv, &kv) < 0)
-            clib_warning ("search for key %lld failed unexpectedly\n", 
-                          tm->keys[i]);
-          if (kv.value != (u64)(i+1))
-            clib_warning ("search for key %lld returned %lld, not %lld\n",
-                          tm->keys, kv.value, (u64)(i+1));
-        }
+	      hash1 = hash2;
+	    }
+
+	  kv.key = tm->keys[i];
+	  if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
+	    clib_warning ("search for key %lld failed unexpectedly\n",
+			  tm->keys[i]);
+	  if (kv.value != (u64) (i + 1))
+	    clib_warning ("search for key %lld returned %lld, not %lld\n",
+			  tm->keys, kv.value, (u64) (i + 1));
+	}
     }
 
   delta = clib_time_now (&tm->clib_time) - before;
-  total_searches = (uword)tm->search_iter * (uword) tm->nitems;
+  total_searches = (uword) tm->search_iter * (uword) tm->nitems;
 
   if (delta > 0)
     fformat (stdout, "%.f searches per second\n",
-             ((f64)total_searches) / delta);
+	     ((f64) total_searches) / delta);
 
   fformat (stdout, "%lld searches in %.6f seconds\n", total_searches, delta);
 
-  fformat (stdout, "Standard E-hash search for items %d times...\n", 
-           tm->search_iter);
+  fformat (stdout, "Standard E-hash search for items %d times...\n",
+	   tm->search_iter);
 
   before = clib_time_now (&tm->clib_time);
 
   for (j = 0; j < tm->search_iter; j++)
     {
       for (i = 0; i < tm->nitems; i++)
-        {
-          p = hash_get (tm->key_hash, tm->keys[i]);
-          if (p == 0 || p[0] != (uword)(i+1))
-            clib_warning ("ugh, couldn't find %lld\n", tm->keys[i]);
-        }
+	{
+	  p = hash_get (tm->key_hash, tm->keys[i]);
+	  if (p == 0 || p[0] != (uword) (i + 1))
+	    clib_warning ("ugh, couldn't find %lld\n", tm->keys[i]);
+	}
     }
 
   delta = clib_time_now (&tm->clib_time) - before;
-  total_searches = (uword)tm->search_iter * (uword) tm->nitems;
+  total_searches = (uword) tm->search_iter * (uword) tm->nitems;
 
   fformat (stdout, "%lld searches in %.6f seconds\n", total_searches, delta);
 
   if (delta > 0)
     fformat (stdout, "%.f searches per second\n",
-             ((f64)total_searches) / delta);
+	     ((f64) total_searches) / delta);
 
   fformat (stdout, "Delete items...\n");
 
@@ -182,83 +186,83 @@ static clib_error_t * test_bihash (test_main_t * tm)
       int rv;
 
       kv.key = tm->keys[i];
-      kv.value = (u64)(i+1);
-      rv = BV(clib_bihash_add_del) (h, &kv,  0 /* is_add */);
+      kv.value = (u64) (i + 1);
+      rv = BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */ );
 
       if (rv < 0)
-        clib_warning ("delete key %lld not ok but should be",
-                      tm->keys[i]);
+	clib_warning ("delete key %lld not ok but should be", tm->keys[i]);
 
       if (tm->careful_delete_tests)
-        {
-          for (j = 0; j < tm->nitems; j++)
-            {
-              kv.key = tm->keys[j];
-              rv = BV(clib_bihash_search) (h, &kv, &kv);
-              if (j <= i && rv >= 0)
-                {
-                  clib_warning 
-                    ( "i %d j %d search ok but should not be, value %lld",
-                      i, j, kv.value);
-                }
-              if (j > i && rv < 0)
-                {
-                  clib_warning ("i %d j %d search not ok but should be",
-                                i, j);
-                }
-            }
-        }
+	{
+	  for (j = 0; j < tm->nitems; j++)
+	    {
+	      kv.key = tm->keys[j];
+	      rv = BV (clib_bihash_search) (h, &kv, &kv);
+	      if (j <= i && rv >= 0)
+		{
+		  clib_warning
+		    ("i %d j %d search ok but should not be, value %lld",
+		     i, j, kv.value);
+		}
+	      if (j > i && rv < 0)
+		{
+		  clib_warning ("i %d j %d search not ok but should be",
+				i, j);
+		}
+	    }
+	}
     }
 
   fformat (stdout, "After deletions, should be empty...\n");
 
-  fformat (stdout, "%U", BV(format_bihash), h, 0 /* very verbose */);
+  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */ );
   return 0;
 }
 
-clib_error_t * 
+clib_error_t *
 test_bihash_main (test_main_t * tm)
 {
-  unformat_input_t * i = tm->input;
-  clib_error_t * error;
+  unformat_input_t *i = tm->input;
+  clib_error_t *error;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "seed %u", &tm->seed))
-        ;
+	;
 
       else if (unformat (i, "nbuckets %d", &tm->nbuckets))
-        ;
+	;
       else if (unformat (i, "non-random-keys"))
-        tm->non_random_keys = 1;
+	tm->non_random_keys = 1;
       else if (unformat (i, "nitems %d", &tm->nitems))
-        ;
+	;
       else if (unformat (i, "careful %d", &tm->careful_delete_tests))
-        ;
+	;
       else if (unformat (i, "verbose %d", &tm->verbose))
-        ;
+	;
       else if (unformat (i, "search %d", &tm->search_iter))
-        ;
+	;
       else if (unformat (i, "verbose"))
-        tm->verbose = 1;
+	tm->verbose = 1;
       else
-        return clib_error_return (0, "unknown input '%U'", 
-                                  format_unformat_error, i);
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, i);
     }
-    
+
   error = test_bihash (tm);
 
   return error;
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
-  clib_error_t * error;
-  test_main_t * tm = &test_main;
+  clib_error_t *error;
+  test_main_t *tm = &test_main;
 
-  clib_mem_init (0, 3ULL<<30);
+  clib_mem_init (0, 3ULL << 30);
 
   tm->input = &i;
   tm->seed = 0xdeaddabe;
@@ -283,3 +287,11 @@ int main (int argc, char * argv[])
   return 0;
 }
 #endif /* CLIB_UNIX */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

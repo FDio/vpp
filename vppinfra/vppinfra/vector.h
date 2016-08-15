@@ -99,30 +99,30 @@ typedef f64 f64x2 _vector_size (16);
 
 /* Vector word sized types. */
 #ifndef CLIB_VECTOR_WORD_BITS
-# ifdef CLIB_HAVE_VEC128
-#  define CLIB_VECTOR_WORD_BITS 128
-# else
-#  define CLIB_VECTOR_WORD_BITS 64
-# endif
+#ifdef CLIB_HAVE_VEC128
+#define CLIB_VECTOR_WORD_BITS 128
+#else
+#define CLIB_VECTOR_WORD_BITS 64
+#endif
 #endif /* CLIB_VECTOR_WORD_BITS */
 
 /* Vector word sized types. */
 #if CLIB_VECTOR_WORD_BITS == 128
-typedef  i8  i8x _vector_size (16);
+typedef i8 i8x _vector_size (16);
 typedef i16 i16x _vector_size (16);
 typedef i32 i32x _vector_size (16);
 typedef i64 i64x _vector_size (16);
-typedef  u8  u8x _vector_size (16);
+typedef u8 u8x _vector_size (16);
 typedef u16 u16x _vector_size (16);
 typedef u32 u32x _vector_size (16);
 typedef u64 u64x _vector_size (16);
 #endif
 #if CLIB_VECTOR_WORD_BITS == 64
-typedef  i8  i8x _vector_size (8);
+typedef i8 i8x _vector_size (8);
 typedef i16 i16x _vector_size (8);
 typedef i32 i32x _vector_size (8);
 typedef i64 i64x _vector_size (8);
-typedef  u8  u8x _vector_size (8);
+typedef u8 u8x _vector_size (8);
 typedef u16 u16x _vector_size (8);
 typedef u32 u32x _vector_size (8);
 typedef u64 u64x _vector_size (8);
@@ -142,14 +142,14 @@ typedef u64 u64x _vector_size (8);
     t as_##t[VECTOR_WORD_TYPE_LEN (t)];	\
   } t##x##_union_t;
 
-_ (u8);
-_ (u16);
-_ (u32);
-_ (u64);
-_ (i8);
-_ (i16);
-_ (i32);
-_ (i64);
+_(u8);
+_(u16);
+_(u32);
+_(u64);
+_(i8);
+_(i16);
+_(i32);
+_(i64);
 
 #undef _
 
@@ -163,12 +163,12 @@ _ (i64);
     t as_##t[n];				\
   } t##x##n##_union_t;				\
 
-_ (u8, 8);
-_ (u16, 4);
-_ (u32, 2);
-_ (i8, 8);
-_ (i16, 4);
-_ (i32, 2);
+_(u8, 8);
+_(u16, 4);
+_(u32, 2);
+_(i8, 8);
+_(i16, 4);
+_(i32, 2);
 
 #undef _
 
@@ -182,16 +182,16 @@ _ (i32, 2);
     t as_##t[n];				\
   } t##x##n##_union_t;				\
 
-_ (u8, 16);
-_ (u16, 8);
-_ (u32, 4);
-_ (u64, 2);
-_ (i8, 16);
-_ (i16, 8);
-_ (i32, 4);
-_ (i64, 2);
-_ (f32, 4);
-_ (f64, 2);
+_(u8, 16);
+_(u16, 8);
+_(u32, 4);
+_(u64, 2);
+_(i8, 16);
+_(i16, 8);
+_(i32, 4);
+_(i64, 2);
+_(f32, 4);
+_(f64, 2);
 
 #undef _
 
@@ -205,14 +205,14 @@ _ (f64, 2);
     t as_##t[n];				\
   } t##x##n##_union_t;				\
 
-_ (u8, 16);
-_ (u16, 8);
-_ (u32, 4);
-_ (u64, 2);
-_ (i8, 16);
-_ (i16, 8);
-_ (i32, 4);
-_ (i64, 2);
+_(u8, 16);
+_(u16, 8);
+_(u32, 4);
+_(u64, 2);
+_(i8, 16);
+_(i16, 8);
+_(i32, 4);
+_(i64, 2);
 
 #undef _
 
@@ -235,3 +235,11 @@ _ (i64, 2);
 #endif
 
 #endif /* included_clib_vector_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

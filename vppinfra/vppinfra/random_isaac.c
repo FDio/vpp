@@ -68,9 +68,10 @@
   *(r++) = b = ind32(mm,y>>ISAAC_LOG2_SIZE) + x;	\
 }
 
-void isaac (isaac_t * ctx, uword * results)
+void
+isaac (isaac_t * ctx, uword * results)
 {
-  u32 a, b, c, x, y, * m, * mm, * m2, * r, * mend;
+  u32 a, b, c, x, y, *m, *mm, *m2, *r, *mend;
 
   mm = ctx->memory;
   r = results;
@@ -83,19 +84,19 @@ void isaac (isaac_t * ctx, uword * results)
   m = mm;
   while (m < mend)
     {
-      rngstep32 (a<<13, a, b, mm, m, m2, r, x, y);
-      rngstep32 (a>>6 , a, b, mm, m, m2, r, x, y);
-      rngstep32 (a<<2 , a, b, mm, m, m2, r, x, y);
-      rngstep32 (a>>16, a, b, mm, m, m2, r, x, y);
+      rngstep32 (a << 13, a, b, mm, m, m2, r, x, y);
+      rngstep32 (a >> 6, a, b, mm, m, m2, r, x, y);
+      rngstep32 (a << 2, a, b, mm, m, m2, r, x, y);
+      rngstep32 (a >> 16, a, b, mm, m, m2, r, x, y);
     }
 
   m2 = mm;
   while (m2 < mend)
     {
-      rngstep32 (a<<13, a, b, mm, m, m2, r, x, y);
-      rngstep32 (a>>6 , a, b, mm, m, m2, r, x, y);
-      rngstep32 (a<<2 , a, b, mm, m, m2, r, x, y);
-      rngstep32 (a>>16, a, b, mm, m, m2, r, x, y);
+      rngstep32 (a << 13, a, b, mm, m, m2, r, x, y);
+      rngstep32 (a >> 6, a, b, mm, m, m2, r, x, y);
+      rngstep32 (a << 2, a, b, mm, m, m2, r, x, y);
+      rngstep32 (a >> 16, a, b, mm, m, m2, r, x, y);
     }
 
   ctx->a = a;
@@ -104,13 +105,15 @@ void isaac (isaac_t * ctx, uword * results)
 }
 
 /* Perform 2 isaac runs with different contexts simultaneously. */
-void isaac2 (isaac_t * ctx, uword * results)
+void
+isaac2 (isaac_t * ctx, uword * results)
 {
 #define _(n) \
   u32 a##n, b##n, c##n, x##n, y##n, * m##n, * mm##n, * m2##n, * r##n, * mend##n
 
-  _ (0); _ (1);
-  (void)mend1; /* "set but unused variable" error on mend1 with gcc 4.9  */
+  _(0);
+  _(1);
+  (void) mend1;			/* "set but unused variable" error on mend1 with gcc 4.9  */
 #undef _
 
 #define _(n)							\
@@ -125,34 +128,35 @@ do {								\
   m##n = mm##n;							\
 } while (0)
 
-  _ (0); _ (1);
+  _(0);
+  _(1);
 
 #undef _
 
   while (m0 < mend0)
     {
-      rngstep32 (a0<<13, a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep32 (a1<<13, a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep32 (a0>>6 , a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep32 (a1>>6 , a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep32 (a0<<2 , a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep32 (a1<<2 , a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep32 (a0>>16, a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep32 (a1>>16, a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep32 (a0 << 13, a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep32 (a1 << 13, a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep32 (a0 >> 6, a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep32 (a1 >> 6, a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep32 (a0 << 2, a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep32 (a1 << 2, a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep32 (a0 >> 16, a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep32 (a1 >> 16, a1, b1, mm1, m1, m21, r1, x1, y1);
     }
 
   m20 = mm0;
   m21 = mm1;
   while (m20 < mend0)
     {
-      rngstep32 (a0<<13, a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep32 (a1<<13, a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep32 (a0>>6 , a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep32 (a1>>6 , a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep32 (a0<<2 , a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep32 (a1<<2 , a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep32 (a0>>16, a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep32 (a1>>16, a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep32 (a0 << 13, a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep32 (a1 << 13, a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep32 (a0 >> 6, a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep32 (a1 >> 6, a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep32 (a0 << 2, a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep32 (a1 << 2, a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep32 (a0 >> 16, a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep32 (a1 >> 16, a1, b1, mm1, m1, m21, r1, x1, y1);
     }
 
   ctx[0].a = a0;
@@ -175,39 +179,64 @@ do {								\
    h^=a>>9;  c+=h; a+=b;			\
 }
 
-void isaac_init (isaac_t * ctx, uword * seeds)
+void
+isaac_init (isaac_t * ctx, uword * seeds)
 {
-   word i;
-   u32 a, b, c, d, e, f, g, h, * m, * r;
+  word i;
+  u32 a, b, c, d, e, f, g, h, *m, *r;
 
-   ctx->a = ctx->b = ctx->c = 0;
-   m = ctx->memory;
-   r = seeds;
+  ctx->a = ctx->b = ctx->c = 0;
+  m = ctx->memory;
+  r = seeds;
 
-   a = b = c = d = e = f = g = h = 0x9e3779b9;  /* the golden ratio */
+  a = b = c = d = e = f = g = h = 0x9e3779b9;	/* the golden ratio */
 
-   for (i = 0; i < 4; ++i)          /* scramble it */
-     mix32(a,b,c,d,e,f,g,h);
+  for (i = 0; i < 4; ++i)	/* scramble it */
+    mix32 (a, b, c, d, e, f, g, h);
 
-   /* initialize using the contents of r[] as the seed */
-   for (i=0; i<ISAAC_SIZE; i+=8)
-     {
-       a+=r[i  ]; b+=r[i+1]; c+=r[i+2]; d+=r[i+3];
-       e+=r[i+4]; f+=r[i+5]; g+=r[i+6]; h+=r[i+7];
-       mix32(a,b,c,d,e,f,g,h);
-       m[i  ]=a; m[i+1]=b; m[i+2]=c; m[i+3]=d;
-       m[i+4]=e; m[i+5]=f; m[i+6]=g; m[i+7]=h;
-     }
+  /* initialize using the contents of r[] as the seed */
+  for (i = 0; i < ISAAC_SIZE; i += 8)
+    {
+      a += r[i];
+      b += r[i + 1];
+      c += r[i + 2];
+      d += r[i + 3];
+      e += r[i + 4];
+      f += r[i + 5];
+      g += r[i + 6];
+      h += r[i + 7];
+      mix32 (a, b, c, d, e, f, g, h);
+      m[i] = a;
+      m[i + 1] = b;
+      m[i + 2] = c;
+      m[i + 3] = d;
+      m[i + 4] = e;
+      m[i + 5] = f;
+      m[i + 6] = g;
+      m[i + 7] = h;
+    }
 
-   /* do a second pass to make all of the seed affect all of m */
-   for (i=0; i<ISAAC_SIZE; i+=8)
-     {
-       a+=m[i  ]; b+=m[i+1]; c+=m[i+2]; d+=m[i+3];
-       e+=m[i+4]; f+=m[i+5]; g+=m[i+6]; h+=m[i+7];
-       mix32(a,b,c,d,e,f,g,h);
-       m[i  ]=a; m[i+1]=b; m[i+2]=c; m[i+3]=d;
-       m[i+4]=e; m[i+5]=f; m[i+6]=g; m[i+7]=h;
-     }
+  /* do a second pass to make all of the seed affect all of m */
+  for (i = 0; i < ISAAC_SIZE; i += 8)
+    {
+      a += m[i];
+      b += m[i + 1];
+      c += m[i + 2];
+      d += m[i + 3];
+      e += m[i + 4];
+      f += m[i + 5];
+      g += m[i + 6];
+      h += m[i + 7];
+      mix32 (a, b, c, d, e, f, g, h);
+      m[i] = a;
+      m[i + 1] = b;
+      m[i + 2] = c;
+      m[i + 3] = d;
+      m[i + 4] = e;
+      m[i + 5] = f;
+      m[i + 6] = g;
+      m[i + 7] = h;
+    }
 }
 #endif /* uword_bits == 32 */
 
@@ -222,9 +251,10 @@ void isaac_init (isaac_t * ctx, uword * seeds)
   *(r++) = b = ind64(mm,y>>ISAAC_LOG2_SIZE) + x;	\
 }
 
-void isaac (isaac_t * ctx, uword * results)
+void
+isaac (isaac_t * ctx, uword * results)
 {
-  u64 a, b, c, x, y, * m, * mm, * m2, * r, * mend;
+  u64 a, b, c, x, y, *m, *mm, *m2, *r, *mend;
 
   mm = ctx->memory;
   r = results;
@@ -237,19 +267,19 @@ void isaac (isaac_t * ctx, uword * results)
   m = mm;
   while (m < mend)
     {
-      rngstep64 (~(a^(a<<21)), a, b, mm, m, m2, r, x, y);
-      rngstep64 (  a^(a>>5)  , a, b, mm, m, m2, r, x, y);
-      rngstep64 (  a^(a<<12) , a, b, mm, m, m2, r, x, y);
-      rngstep64 (  a^(a>>33) , a, b, mm, m, m2, r, x, y);
+      rngstep64 (~(a ^ (a << 21)), a, b, mm, m, m2, r, x, y);
+      rngstep64 (a ^ (a >> 5), a, b, mm, m, m2, r, x, y);
+      rngstep64 (a ^ (a << 12), a, b, mm, m, m2, r, x, y);
+      rngstep64 (a ^ (a >> 33), a, b, mm, m, m2, r, x, y);
     }
 
   m2 = mm;
   while (m2 < mend)
     {
-      rngstep64 (~(a^(a<<21)), a, b, mm, m, m2, r, x, y);
-      rngstep64 (  a^(a>>5)  , a, b, mm, m, m2, r, x, y);
-      rngstep64 (  a^(a<<12) , a, b, mm, m, m2, r, x, y);
-      rngstep64 (  a^(a>>33) , a, b, mm, m, m2, r, x, y);
+      rngstep64 (~(a ^ (a << 21)), a, b, mm, m, m2, r, x, y);
+      rngstep64 (a ^ (a >> 5), a, b, mm, m, m2, r, x, y);
+      rngstep64 (a ^ (a << 12), a, b, mm, m, m2, r, x, y);
+      rngstep64 (a ^ (a >> 33), a, b, mm, m, m2, r, x, y);
     }
 
   ctx->a = a;
@@ -258,12 +288,14 @@ void isaac (isaac_t * ctx, uword * results)
 }
 
 /* Perform 2 isaac runs with different contexts simultaneously. */
-void isaac2 (isaac_t * ctx, uword * results)
+void
+isaac2 (isaac_t * ctx, uword * results)
 {
 #define _(n) \
   u64 a##n, b##n, c##n, x##n, y##n, * m##n, * mm##n, * m2##n, * r##n, * mend##n
 
-  _ (0); _ (1);
+  _(0);
+  _(1);
 
 #undef _
 
@@ -279,7 +311,8 @@ do {								\
   m##n = mm##n;							\
 } while (0)
 
-  _ (0); _ (1);
+  _(0);
+  _(1);
 
 #undef _
 
@@ -287,28 +320,28 @@ do {								\
 
   while (m0 < mend0)
     {
-      rngstep64 (~(a0^(a0<<21)), a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep64 (~(a1^(a1<<21)), a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep64 (  a0^(a0>>5)  , a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep64 (  a1^(a1>>5)  , a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep64 (  a0^(a0<<12) , a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep64 (  a1^(a1<<12) , a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep64 (  a0^(a0>>33) , a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep64 (  a1^(a1>>33) , a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep64 (~(a0 ^ (a0 << 21)), a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep64 (~(a1 ^ (a1 << 21)), a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep64 (a0 ^ (a0 >> 5), a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep64 (a1 ^ (a1 >> 5), a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep64 (a0 ^ (a0 << 12), a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep64 (a1 ^ (a1 << 12), a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep64 (a0 ^ (a0 >> 33), a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep64 (a1 ^ (a1 >> 33), a1, b1, mm1, m1, m21, r1, x1, y1);
     }
 
   m20 = mm0;
   m21 = mm1;
   while (m20 < mend0)
     {
-      rngstep64 (~(a0^(a0<<21)), a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep64 (~(a1^(a1<<21)), a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep64 (  a0^(a0>>5)  , a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep64 (  a1^(a1>>5)  , a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep64 (  a0^(a0<<12) , a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep64 (  a1^(a1<<12) , a1, b1, mm1, m1, m21, r1, x1, y1);
-      rngstep64 (  a0^(a0>>33) , a0, b0, mm0, m0, m20, r0, x0, y0);
-      rngstep64 (  a1^(a1>>33) , a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep64 (~(a0 ^ (a0 << 21)), a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep64 (~(a1 ^ (a1 << 21)), a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep64 (a0 ^ (a0 >> 5), a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep64 (a1 ^ (a1 >> 5), a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep64 (a0 ^ (a0 << 12), a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep64 (a1 ^ (a1 << 12), a1, b1, mm1, m1, m21, r1, x1, y1);
+      rngstep64 (a0 ^ (a0 >> 33), a0, b0, mm0, m0, m20, r0, x0, y0);
+      rngstep64 (a1 ^ (a1 >> 33), a1, b1, mm1, m1, m21, r1, x1, y1);
     }
 
   ctx[0].a = a0;
@@ -331,38 +364,71 @@ do {								\
    h-=d; e^=g<<14; g+=h;			\
 }
 
-void isaac_init (isaac_t * ctx, uword * seeds)
+void
+isaac_init (isaac_t * ctx, uword * seeds)
 {
   word i;
-  u64 a, b, c, d, e, f, g, h, * m, * r;
+  u64 a, b, c, d, e, f, g, h, *m, *r;
 
   ctx->a = ctx->b = ctx->c = 0;
   m = ctx->memory;
   r = seeds;
 
-  a = b = c = d = e = f = g = h = 0x9e3779b97f4a7c13LL;  /* the golden ratio */
+  a = b = c = d = e = f = g = h = 0x9e3779b97f4a7c13LL;	/* the golden ratio */
 
-  for (i=0; i<4; ++i)                    /* scramble it */
-    mix64(a,b,c,d,e,f,g,h);
+  for (i = 0; i < 4; ++i)	/* scramble it */
+    mix64 (a, b, c, d, e, f, g, h);
 
-  for (i=0; i<ISAAC_SIZE; i+=8)   /* fill in mm[] with messy stuff */
+  for (i = 0; i < ISAAC_SIZE; i += 8)	/* fill in mm[] with messy stuff */
     {
-      a+=r[i  ]; b+=r[i+1]; c+=r[i+2]; d+=r[i+3];
-      e+=r[i+4]; f+=r[i+5]; g+=r[i+6]; h+=r[i+7];
-      mix64(a,b,c,d,e,f,g,h);
-      m[i  ]=a; m[i+1]=b; m[i+2]=c; m[i+3]=d;
-      m[i+4]=e; m[i+5]=f; m[i+6]=g; m[i+7]=h;
+      a += r[i];
+      b += r[i + 1];
+      c += r[i + 2];
+      d += r[i + 3];
+      e += r[i + 4];
+      f += r[i + 5];
+      g += r[i + 6];
+      h += r[i + 7];
+      mix64 (a, b, c, d, e, f, g, h);
+      m[i] = a;
+      m[i + 1] = b;
+      m[i + 2] = c;
+      m[i + 3] = d;
+      m[i + 4] = e;
+      m[i + 5] = f;
+      m[i + 6] = g;
+      m[i + 7] = h;
     }
 
   /* do a second pass to make all of the seed affect all of mm */
-  for (i=0; i<ISAAC_SIZE; i+=8)
+  for (i = 0; i < ISAAC_SIZE; i += 8)
     {
-      a+=m[i  ]; b+=m[i+1]; c+=m[i+2]; d+=m[i+3];
-      e+=m[i+4]; f+=m[i+5]; g+=m[i+6]; h+=m[i+7];
-      mix64(a,b,c,d,e,f,g,h);
-      m[i  ]=a; m[i+1]=b; m[i+2]=c; m[i+3]=d;
-      m[i+4]=e; m[i+5]=f; m[i+6]=g; m[i+7]=h;
+      a += m[i];
+      b += m[i + 1];
+      c += m[i + 2];
+      d += m[i + 3];
+      e += m[i + 4];
+      f += m[i + 5];
+      g += m[i + 6];
+      h += m[i + 7];
+      mix64 (a, b, c, d, e, f, g, h);
+      m[i] = a;
+      m[i + 1] = b;
+      m[i + 2] = c;
+      m[i + 3] = d;
+      m[i + 4] = e;
+      m[i + 5] = f;
+      m[i + 6] = g;
+      m[i + 7] = h;
     }
 }
 #endif /* uword_bits == 64 */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

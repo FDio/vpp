@@ -161,50 +161,54 @@
 
 #define _(f) ELF_##f,
 
-typedef enum {
-  foreach_elf_file_class
-  ELF_N_FILE_CLASS,
+typedef enum
+{
+  foreach_elf_file_class ELF_N_FILE_CLASS,
 } elf_file_class_t;
 
-typedef enum {
-  foreach_elf_data_encoding
-  ELF_N_DATA_ENCODING,
+typedef enum
+{
+  foreach_elf_data_encoding ELF_N_DATA_ENCODING,
 } elf_data_encoding_t;
 
 #undef _
 
 #define _(f,i) ELF_##f = i,
 
-typedef enum {
+typedef enum
+{
   foreach_elf_abi
 } elf_abi_t;
 
-typedef enum {
+typedef enum
+{
   foreach_elf_file_type
 } elf_file_type_t;
 
 #undef _
 
-typedef enum {
+typedef enum
+{
 #define _(f,i) ELF_ARCH_##f = i,
   foreach_elf_architecture
 #undef _
 } elf_architecture_t;
 
-typedef struct {
+typedef struct
+{
   /* 0x7f ELF */
   u8 magic[4];
 
-  elf_file_class_t file_class : 8;
-  elf_data_encoding_t data_encoding : 8;
+  elf_file_class_t file_class:8;
+  elf_data_encoding_t data_encoding:8;
   u8 file_version_ident;
-  elf_abi_t abi : 8;
+  elf_abi_t abi:8;
   u8 abi_version;
 
   u8 pad[7];
 
-  elf_file_type_t file_type : 16;
-  elf_architecture_t architecture : 16;
+  elf_file_type_t file_type:16;
+  elf_architecture_t architecture:16;
 
   u32 file_version;
 } elf_first_header_t;
@@ -300,37 +304,37 @@ typedef struct {
 
 #define _(t,f) t f;
 
-typedef struct {
-  foreach_elf32_file_header
-} elf32_file_header_t;
+typedef struct
+{
+foreach_elf32_file_header} elf32_file_header_t;
 
-typedef struct {
-  foreach_elf64_file_header
-} elf64_file_header_t;
+typedef struct
+{
+foreach_elf64_file_header} elf64_file_header_t;
 
-typedef struct {
-  foreach_elf32_section_header
-} elf32_section_header_t;
+typedef struct
+{
+foreach_elf32_section_header} elf32_section_header_t;
 
-typedef struct {
-  foreach_elf64_section_header
-} elf64_section_header_t;
+typedef struct
+{
+foreach_elf64_section_header} elf64_section_header_t;
 
-typedef struct {
-  foreach_elf32_segment_header
-} elf32_segment_header_t;
+typedef struct
+{
+foreach_elf32_segment_header} elf32_segment_header_t;
 
-typedef struct {
-  foreach_elf64_segment_header
-} elf64_segment_header_t;
+typedef struct
+{
+foreach_elf64_segment_header} elf64_segment_header_t;
 
-typedef struct {
-  foreach_elf32_symbol_header
-} elf32_symbol_t;
+typedef struct
+{
+foreach_elf32_symbol_header} elf32_symbol_t;
 
-typedef struct {
-  foreach_elf64_symbol_header
-} elf64_symbol_t;
+typedef struct
+{
+foreach_elf64_symbol_header} elf64_symbol_t;
 #undef _
 
 /* Special section names.  */
@@ -376,7 +380,7 @@ typedef struct {
   _ (ARCH_SPECIFIC_LO, 0x70000000) /* Start of processor-specific */	\
   _ (ARCH_SPECIFIC_HI, 0x7fffffff) /* End of processor-specific */	\
   _ (APP_SPECIFIC_LO, 0x80000000) /* Start of application-specific */	\
-  _ (APP_SPECIFIC_HI, 0x8fffffff) /* End of application-specific */
+  _ (APP_SPECIFIC_HI, 0x8fffffff)	/* End of application-specific */
 
 /* Section flags. */
 #define foreach_elf_section_flag		\
@@ -395,20 +399,23 @@ typedef struct {
   _ (ARCH_SPECIFIC_LO, 28)			\
   _ (ARCH_SPECIFIC_HI, 31)
 
-typedef enum {
+typedef enum
+{
 #define _(f,i) ELF_SECTION_##f = i,
   foreach_elf_section_type
 #undef _
-  ELF_SECTION_OS_SPECIFIC_HI = 0x6fffffff,
+    ELF_SECTION_OS_SPECIFIC_HI = 0x6fffffff,
 } elf_section_type_t;
 
-typedef enum {
+typedef enum
+{
 #define _(f,i) ELF_SECTION_FLAG_BIT_##f = i,
   foreach_elf_section_flag
 #undef _
 } elf_section_flag_bit_t;
 
-typedef enum {
+typedef enum
+{
 #define _(f,i) ELF_SECTION_FLAG_##f = 1 << ELF_SECTION_FLAG_BIT_##f,
   foreach_elf_section_flag
 #undef _
@@ -447,7 +454,8 @@ typedef enum {
 
 /* The syminfo section if available contains additional
    information about every dynamic symbol.  */
-typedef struct {
+typedef struct
+{
   u16 bound_to;
   u16 flags;
 } elf_symbol_info_t;
@@ -467,19 +475,22 @@ typedef struct {
   _ (LAZY_LOAD)			/* Symbol bound to object to be lazy loaded */
 
 /* Relocation table entry with/without addend. */
-typedef struct {
+typedef struct
+{
   u32 address;
   u32 symbol_and_type;		/* high 24 symbol, low 8 type. */
   i32 addend[0];
 } elf32_relocation_t;
 
-typedef struct {
+typedef struct
+{
   u64 address;
   u64 symbol_and_type;		/* high 32 symbol, low 32 type. */
   i64 addend[0];
 } elf64_relocation_t;
 
-typedef struct {
+typedef struct
+{
   u64 address;
   u64 symbol_and_type;
   u64 addend;
@@ -506,7 +517,7 @@ typedef struct {
   _ (SUNW_STACK, 0x6ffffffb)	/* Sun specific stack */		\
   _ (OS_SPECIFIC_HI, 0x6fffffff) /* End of OS-specific */		\
   _ (ARCH_SPECIFIC_LO, 0x70000000) /* Start of processor-specific */	\
-  _ (ARCH_SPECIFIC_HI, 0x7fffffff) /* End of processor-specific */
+  _ (ARCH_SPECIFIC_HI, 0x7fffffff)	/* End of processor-specific */
 
 /* Segment flags. */
 #define foreach_elf_segment_flag		\
@@ -518,19 +529,22 @@ typedef struct {
   _ (ARCH_SPECIFIC_LO, 28)			\
   _ (ARCH_SPECIFIC_HI, 31)
 
-typedef enum {
+typedef enum
+{
 #define _(f,i) ELF_SEGMENT_##f = i,
   foreach_elf_segment_type
 #undef _
 } elf_segment_type_t;
 
-typedef enum {
+typedef enum
+{
 #define _(f,i) ELF_SEGMENT_FLAG_BIT_##f = i,
   foreach_elf_segment_flag
 #undef _
 } elf_segment_flag_bit_t;
 
-typedef enum {
+typedef enum
+{
 #define _(f,i) ELF_SEGMENT_FLAG_##f = 1 << ELF_SEGMENT_FLAG_BIT_##f,
   foreach_elf_segment_flag
 #undef _
@@ -543,16 +557,16 @@ typedef enum {
 #define foreach_elf64_dynamic_entry_header	\
   _ (u64, type)					\
   _ (u64, data)
-  
+
 #define _(t,f) t f;
 
-typedef struct {
-  foreach_elf32_dynamic_entry_header
-} elf32_dynamic_entry_t;
+typedef struct
+{
+foreach_elf32_dynamic_entry_header} elf32_dynamic_entry_t;
 
-typedef struct {
-  foreach_elf64_dynamic_entry_header
-} elf64_dynamic_entry_t;
+typedef struct
+{
+foreach_elf64_dynamic_entry_header} elf64_dynamic_entry_t;
 
 #undef _
 
@@ -620,17 +634,18 @@ typedef struct {
   _ (VERSION_NEED, 0x6ffffffe)	/* Address of table with needed versions */ \
   _ (VERSION_NEED_COUNT, 0x6fffffff)	/* Number of needed versions */	\
   _ (AUXILIARY, 0x7ffffffd)      /* Shared object to load before self */ \
-  _ (FILTER, 0x7fffffff)      /* Shared object to get values from */
+  _ (FILTER, 0x7fffffff)	/* Shared object to get values from */
 
-typedef enum {
+typedef enum
+{
 #define _(f,n) ELF_DYNAMIC_ENTRY_##f = (n),
   foreach_elf_dynamic_entry_type
 #undef _
 } elf_dynamic_entry_type_t;
 
 /* Values of `d_un.d_val' in the DT_FLAGS entry.  */
-#define ELF_DYNAMIC_FLAGS_ORIGIN	(1 << 0) /* Object may use DF_ORIGIN */
-#define ELF_DYNAMIC_FLAGS_SYMBOLIC	(1 << 1) /* Symbol resolutions starts here */
+#define ELF_DYNAMIC_FLAGS_ORIGIN	(1 << 0)	/* Object may use DF_ORIGIN */
+#define ELF_DYNAMIC_FLAGS_SYMBOLIC	(1 << 1)	/* Symbol resolutions starts here */
 #define ELF_DYNAMIC_FLAGS_TEXT_RELOCATIONS (1 << 2)	/* Object contains text relocations */
 #define ELF_DYNAMIC_FLAGS_BIND_NOW	(1 << 3)	/* No lazy binding for this object */
 #define ELF_DYNAMIC_FLAGS_STATIC_TLS	(1 << 4)	/* Module uses the static TLS model */
@@ -640,9 +655,9 @@ typedef enum {
 #define DF_1_NOW	0x00000001	/* Set RTLD_NOW for this object.  */
 #define DF_1_GLOBAL	0x00000002	/* Set RTLD_GLOBAL for this object.  */
 #define DF_1_GROUP	0x00000004	/* Set RTLD_GROUP for this object.  */
-#define DF_1_NODELETE	0x00000008	/* Set RTLD_NODELETE for this object.*/
-#define DF_1_LOADFLTR	0x00000010	/* Trigger filtee loading at runtime.*/
-#define DF_1_INITFIRST	0x00000020	/* Set RTLD_INITFIRST for this object*/
+#define DF_1_NODELETE	0x00000008	/* Set RTLD_NODELETE for this object. */
+#define DF_1_LOADFLTR	0x00000010	/* Trigger filtee loading at runtime. */
+#define DF_1_INITFIRST	0x00000020	/* Set RTLD_INITFIRST for this object */
 #define DF_1_NOOPEN	0x00000040	/* Set RTLD_NOOPEN for this object.  */
 #define DF_1_ORIGIN	0x00000080	/* $ORIGIN must be handled.  */
 #define DF_1_DIRECT	0x00000100	/* Direct binding enabled.  */
@@ -650,7 +665,7 @@ typedef enum {
 #define DF_1_INTERPOSE	0x00000400	/* Object is used to interpose.  */
 #define DF_1_NODEFLIB	0x00000800	/* Ignore default lib search path.  */
 #define DF_1_NODUMP	0x00001000	/* Object can't be dldump'ed.  */
-#define DF_1_CONFALT	0x00002000	/* Configuration alternative created.*/
+#define DF_1_CONFALT	0x00002000	/* Configuration alternative created. */
 #define DF_1_ENDFILTEE	0x00004000	/* Filtee terminates filters search. */
 #define	DF_1_DISPRELDNE	0x00008000	/* Disp reloc applied at build time. */
 #define	DF_1_DISPRELPND	0x00010000	/* Disp reloc applied at run-time.  */
@@ -676,19 +691,20 @@ typedef struct
   u32 byte_offset_next_version_definition;
 } elf_dynamic_version_definition_t;
 
-typedef struct {
+typedef struct
+{
   u32 name;
-  u32 next_offset; /* byte offset of ver def aux next entry */
+  u32 next_offset;		/* byte offset of ver def aux next entry */
 } elf_dynamic_version_definition_aux_t;
 
 /* Version definition flags. */
-#define ELF_DYNAMIC_VERSION_FILE (1 << 0) /* Version definition of file itself */
-#define ELF_DYNAMIC_VERSION_WEAK (1 << 1) /* Weak version identifier */
+#define ELF_DYNAMIC_VERSION_FILE (1 << 0)	/* Version definition of file itself */
+#define ELF_DYNAMIC_VERSION_WEAK (1 << 1)	/* Weak version identifier */
 
 /* Version symbol index. */
 #define	ELF_DYNAMIC_VERSYM_LOCAL 0	/* Symbol is local.  */
 #define	ELF_DYNAMIC_VERSYM_GLOBAL 1	/* Symbol is global.  */
-#define	ELF_DYNAMIC_VERSYM_RESERVED_LO	0xff00 /* Beginning of reserved entries.  */
+#define	ELF_DYNAMIC_VERSYM_RESERVED_LO	0xff00	/* Beginning of reserved entries.  */
 #define	ELF_DYNAMIC_VERSYM_ELIMINATE	0xff01	/* Symbol is to be eliminated.  */
 
 /* Version dependency section.  */
@@ -797,14 +813,15 @@ typedef struct
   _ (GOTTPOFF, 22) /* 32 bit signed PC relative offset to GOT entry for IE symbol */ \
   _ (TPOFF32, 23)		/* Offset in initial TLS, block) */
 
-typedef struct {
-  elf64_symbol_t * symbols;
+typedef struct
+{
+  elf64_symbol_t *symbols;
 
   u32 section_index;
 
-  u8 * string_table;
+  u8 *string_table;
 
-  uword * symbol_by_name;
+  uword *symbol_by_name;
 } elf_symbol_table_t;
 
 always_inline void
@@ -816,10 +833,13 @@ elf_symbol_table_free (elf_symbol_table_t * s)
 
 always_inline u8 *
 elf_symbol_name (elf_symbol_table_t * t, elf64_symbol_t * sym)
-{ return vec_elt_at_index (t->string_table, sym->name); }
+{
+  return vec_elt_at_index (t->string_table, sym->name);
+}
 
-typedef struct {
-  elf_relocation_with_addend_t * relocations;
+typedef struct
+{
+  elf_relocation_with_addend_t *relocations;
 
   u32 section_index;
 } elf_relocation_table_t;
@@ -830,13 +850,14 @@ elf_relocation_table_free (elf_relocation_table_t * r)
   vec_free (r->relocations);
 }
 
-typedef struct {
+typedef struct
+{
   elf64_section_header_t header;
 
   u32 index;
 
   /* Index of segments containing this section. */
-  uword * segment_index_bitmap;
+  uword *segment_index_bitmap;
 
   /* Aligned size (included padding not included in
      header.file_size). */
@@ -844,52 +865,54 @@ typedef struct {
 
   i64 exec_address_change;
 
-  u8 * contents;
+  u8 *contents;
 } elf_section_t;
 
-typedef struct {
+typedef struct
+{
   elf64_segment_header_t header;
 
   /* Sections contained in this segment. */
-  uword * section_index_bitmap;
+  uword *section_index_bitmap;
 
   u32 index;
 
-  u8 * contents;
+  u8 *contents;
 } elf_segment_t;
 
-typedef struct {
+typedef struct
+{
   u8 need_byte_swap;
 
   u8 parsed_symbols;
 
-  char * file_name;
+  char *file_name;
 
   elf_first_header_t first_header;
 
   elf64_file_header_t file_header;
 
-  elf_segment_t * segments;
+  elf_segment_t *segments;
 
-  elf_section_t * sections;
+  elf_section_t *sections;
 
-  uword * section_by_name;
-  uword * section_by_start_address;
+  uword *section_by_name;
+  uword *section_by_start_address;
 
-  elf_symbol_table_t * symbol_tables;
-  elf_relocation_table_t * relocation_tables;
+  elf_symbol_table_t *symbol_tables;
+  elf_relocation_table_t *relocation_tables;
 
-  char * interpreter;
+  char *interpreter;
 
-  elf64_dynamic_entry_t * dynamic_entries;
-  u8 * dynamic_string_table;
+  elf64_dynamic_entry_t *dynamic_entries;
+  u8 *dynamic_string_table;
   u32 dynamic_string_table_section_index;
   u32 dynamic_symbol_table_section_index;
   u32 dynamic_symbol_table_index;
   u32 dynamic_section_index;
-  u16 * versym;
+  u16 *versym;
   u32 versym_section_index;
-  elf_dynamic_version_need_union_t * verneed;
+  elf_dynamic_version_need_union_t *verneed;
   u32 verneed_section_index;
 } elf_main_t;
 
@@ -923,22 +946,20 @@ elf_main_free (elf_main_t * em)
 }
 
 always_inline void
-elf_get_segment_contents (elf_main_t * em,
-			  void * data,
-			  uword segment_index)
+elf_get_segment_contents (elf_main_t * em, void *data, uword segment_index)
 {
-  elf_segment_t * g = vec_elt_at_index (em->segments, segment_index);
-  if (! g->contents)
-    vec_add (g->contents, data + g->header.file_offset, g->header.memory_size);
+  elf_segment_t *g = vec_elt_at_index (em->segments, segment_index);
+  if (!g->contents)
+    vec_add (g->contents, data + g->header.file_offset,
+	     g->header.memory_size);
 }
 
 always_inline void *
 elf_get_section_contents (elf_main_t * em,
-			  uword section_index,
-			  uword elt_size)
+			  uword section_index, uword elt_size)
 {
-  elf_section_t * s;
-  void * result;
+  elf_section_t *s;
+  void *result;
 
   s = vec_elt_at_index (em->sections, section_index);
 
@@ -960,10 +981,9 @@ elf_get_section_contents (elf_main_t * em,
 always_inline void
 elf_set_section_contents (elf_main_t * em,
 			  uword section_index,
-			  void * new_contents,
-			  uword n_content_bytes)
+			  void *new_contents, uword n_content_bytes)
 {
-  elf_section_t * s;
+  elf_section_t *s;
 
   s = vec_elt_at_index (em->sections, section_index);
   vec_free (s->contents);
@@ -973,25 +993,35 @@ elf_set_section_contents (elf_main_t * em,
 always_inline u8 *
 elf_section_name (elf_main_t * em, elf_section_t * s)
 {
-  elf_section_t * es = vec_elt_at_index (em->sections, em->file_header.section_header_string_table_index);
+  elf_section_t *es = vec_elt_at_index (em->sections,
+					em->
+					file_header.section_header_string_table_index);
   return vec_elt_at_index (es->contents, s->header.name);
 }
 
 always_inline u8
 elf_swap_u8 (elf_main_t * em, u8 x)
-{ return x; }
+{
+  return x;
+}
 
 always_inline u16
 elf_swap_u16 (elf_main_t * em, u16 x)
-{ return em->need_byte_swap ? clib_byte_swap_u16 (x) : x; }
+{
+  return em->need_byte_swap ? clib_byte_swap_u16 (x) : x;
+}
 
 always_inline u32
 elf_swap_u32 (elf_main_t * em, u32 x)
-{ return em->need_byte_swap ? clib_byte_swap_u32 (x) : x; }
+{
+  return em->need_byte_swap ? clib_byte_swap_u32 (x) : x;
+}
 
 always_inline u64
 elf_swap_u64 (elf_main_t * em, u64 x)
-{ return em->need_byte_swap ? clib_byte_swap_u64 (x) : x; }
+{
+  return em->need_byte_swap ? clib_byte_swap_u64 (x) : x;
+}
 
 #define FORMAT_ELF_MAIN_SYMBOLS (1 << 0)
 #define FORMAT_ELF_MAIN_RELOCATIONS (1 << 1)
@@ -1000,24 +1030,33 @@ elf_swap_u64 (elf_main_t * em, u64 x)
 format_function_t format_elf_main;
 format_function_t format_elf_symbol;
 
-clib_error_t * elf_read_file (elf_main_t * em, char * file_name);
-clib_error_t * elf_write_file (elf_main_t * em, char * file_name);
-clib_error_t * elf_delete_named_section (elf_main_t * em, char * section_name);
-clib_error_t * elf_parse (elf_main_t * em, void * data, uword data_bytes);
+clib_error_t *elf_read_file (elf_main_t * em, char *file_name);
+clib_error_t *elf_write_file (elf_main_t * em, char *file_name);
+clib_error_t *elf_delete_named_section (elf_main_t * em, char *section_name);
+clib_error_t *elf_parse (elf_main_t * em, void *data, uword data_bytes);
 void elf_parse_symbols (elf_main_t * em);
 
-clib_error_t *
-elf_get_section_by_name (elf_main_t * em, char * section_name, elf_section_t ** result);
-clib_error_t *
-elf_get_section_by_start_address (elf_main_t * em, uword start_address, elf_section_t ** result);
+clib_error_t *elf_get_section_by_name (elf_main_t * em, char *section_name,
+				       elf_section_t ** result);
+clib_error_t *elf_get_section_by_start_address (elf_main_t * em,
+						uword start_address,
+						elf_section_t ** result);
 
 void
 elf_create_section_with_contents (elf_main_t * em,
-				  char * section_name,
+				  char *section_name,
 				  elf64_section_header_t * header,
-				  void * contents,
-				  uword n_content_bytes);
-uword elf_delete_segment_with_type (elf_main_t * em, elf_segment_type_t segment_type);
+				  void *contents, uword n_content_bytes);
+uword elf_delete_segment_with_type (elf_main_t * em,
+				    elf_segment_type_t segment_type);
 void elf_set_dynamic_entries (elf_main_t * em);
 
 #endif /* included_clib_elf_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

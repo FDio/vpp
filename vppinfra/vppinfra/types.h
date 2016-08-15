@@ -51,7 +51,7 @@ typedef short i16;
 #include <asm/types.h>
 #define CLIB_AVOID_CLASH_WITH_LINUX_TYPES
 
-#else  /* ! CLIB_LINUX_KERNEL */
+#else /* ! CLIB_LINUX_KERNEL */
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -128,8 +128,10 @@ typedef u32 clib_address_t;
    pointers and machine words (but only when compiling with 64 bit
    registers and 32 bit pointers). */
 static inline __attribute__ ((always_inline)) uword
-pointer_to_uword (const void * p)
-{ return (uword) (clib_address_t) p; }
+pointer_to_uword (const void *p)
+{
+  return (uword) (clib_address_t) p;
+}
 
 #define uword_to_pointer(u,type) ((type) (clib_address_t) (u))
 
@@ -162,3 +164,11 @@ typedef f64 fword;
     } *) (addr))->_data)
 
 #endif /* included_clib_types_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

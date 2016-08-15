@@ -22,16 +22,16 @@
    1. Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
 
-   2. The origin of this software must not be misrepresented; you must 
-      not claim that you wrote the original software.  If you use this 
-      software in a product, an acknowledgment in the product 
+   2. The origin of this software must not be misrepresented; you must
+      not claim that you wrote the original software.  If you use this
+      software in a product, an acknowledgment in the product
       documentation would be appreciated but is not required.
 
    3. Altered source versions must be plainly marked as such, and must
       not be misrepresented as being the original software.
 
-   4. The name of the author may not be used to endorse or promote 
-      products derived from this software without specific prior written 
+   4. The name of the author may not be used to endorse or promote
+      products derived from this software without specific prior written
       permission.
 
    THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
@@ -53,7 +53,7 @@
    the terms of the GNU General Public License, version 2.  See the
    COPYING file in the source distribution for details.
 
-   ---------------------------------------------------------------- 
+   ----------------------------------------------------------------
 */
 
 
@@ -71,35 +71,35 @@
 
 #include "valgrind.h"
 
-/* !! ABIWARNING !! ABIWARNING !! ABIWARNING !! ABIWARNING !! 
+/* !! ABIWARNING !! ABIWARNING !! ABIWARNING !! ABIWARNING !!
    This enum comprises an ABI exported by Valgrind to programs
    which use client requests.  DO NOT CHANGE THE ORDER OF THESE
    ENTRIES, NOR DELETE ANY -- add new ones at the end. */
-typedef
-   enum { 
-      VG_USERREQ__MAKE_MEM_NOACCESS = VG_USERREQ_TOOL_BASE('M','C'),
-      VG_USERREQ__MAKE_MEM_UNDEFINED,
-      VG_USERREQ__MAKE_MEM_DEFINED,
-      VG_USERREQ__DISCARD,
-      VG_USERREQ__CHECK_MEM_IS_ADDRESSABLE,
-      VG_USERREQ__CHECK_MEM_IS_DEFINED,
-      VG_USERREQ__DO_LEAK_CHECK,
-      VG_USERREQ__COUNT_LEAKS,
+typedef enum
+{
+  VG_USERREQ__MAKE_MEM_NOACCESS = VG_USERREQ_TOOL_BASE ('M', 'C'),
+  VG_USERREQ__MAKE_MEM_UNDEFINED,
+  VG_USERREQ__MAKE_MEM_DEFINED,
+  VG_USERREQ__DISCARD,
+  VG_USERREQ__CHECK_MEM_IS_ADDRESSABLE,
+  VG_USERREQ__CHECK_MEM_IS_DEFINED,
+  VG_USERREQ__DO_LEAK_CHECK,
+  VG_USERREQ__COUNT_LEAKS,
 
-      VG_USERREQ__GET_VBITS,
-      VG_USERREQ__SET_VBITS,
+  VG_USERREQ__GET_VBITS,
+  VG_USERREQ__SET_VBITS,
 
-      VG_USERREQ__CREATE_BLOCK,
+  VG_USERREQ__CREATE_BLOCK,
 
-      VG_USERREQ__MAKE_MEM_DEFINED_IF_ADDRESSABLE,
+  VG_USERREQ__MAKE_MEM_DEFINED_IF_ADDRESSABLE,
 
-      /* Not next to VG_USERREQ__COUNT_LEAKS because it was added later. */
-      VG_USERREQ__COUNT_LEAK_BLOCKS,
+  /* Not next to VG_USERREQ__COUNT_LEAKS because it was added later. */
+  VG_USERREQ__COUNT_LEAK_BLOCKS,
 
-      /* This is just for memcheck's internal use - don't use it */
-      _VG_USERREQ__MEMCHECK_RECORD_OVERLAP_ERROR 
-         = VG_USERREQ_TOOL_BASE('M','C') + 256
-   } Vg_MemCheckClientRequest;
+  /* This is just for memcheck's internal use - don't use it */
+  _VG_USERREQ__MEMCHECK_RECORD_OVERLAP_ERROR
+    = VG_USERREQ_TOOL_BASE ('M', 'C') + 256
+} Vg_MemCheckClientRequest;
 
 
 
@@ -113,7 +113,7 @@ typedef
                             _qzz_addr, _qzz_len, 0, 0, 0);       \
     _qzz_res;                                                    \
    }))
-      
+
 /* Similarly, mark memory at _qzz_addr as addressable but undefined
    for _qzz_len bytes. */
 #define VALGRIND_MAKE_MEM_UNDEFINED(_qzz_addr,_qzz_len)          \
@@ -307,3 +307,11 @@ typedef
 
 #endif
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

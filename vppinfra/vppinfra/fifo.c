@@ -76,13 +76,14 @@
    fifo_free (f) frees fifo.
 */
 
-void * _clib_fifo_resize (void * v_old, uword n_new_elts, uword elt_bytes)
+void *
+_clib_fifo_resize (void *v_old, uword n_new_elts, uword elt_bytes)
 {
-  void * v_new, * end, * head;
+  void *v_new, *end, *head;
   uword n_old_elts, header_bytes;
   uword n_copy_bytes, n_zero_bytes;
-  clib_fifo_header_t * f_new, * f_old;
-  
+  clib_fifo_header_t *f_new, *f_old;
+
   n_old_elts = clib_fifo_elts (v_old);
   n_new_elts += n_old_elts;
   if (n_new_elts < 32)
@@ -126,3 +127,11 @@ void * _clib_fifo_resize (void * v_old, uword n_new_elts, uword elt_bytes)
 
   return v_new;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

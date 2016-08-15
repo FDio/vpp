@@ -14,7 +14,7 @@
  */
 /*
   Original license for the code used to construct
-  clib_xxhash(...). 
+  clib_xxhash(...).
 
   xxHash - Fast Hash algorithm
   Copyright (C) 2012-2014, Yann Collet.
@@ -23,14 +23,14 @@
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are
   met:
-  
+
   * Redistributions of source code must retain the above copyright
   notice, this list of conditions and the following disclaimer.
   * Redistributions in binary form must reproduce the above
   copyright notice, this list of conditions and the following disclaimer
   in the documentation and/or other materials provided with the
   distribution.
-  
+
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -54,7 +54,8 @@
 #define PRIME64_5  2870177450012600261ULL
 #define XXH_rotl64(x,r) ((x << r) | (x >> (64 - r)))
 
-static inline u64 clib_xxhash (u64 key)
+static inline u64
+clib_xxhash (u64 key)
 {
   u64 k1, h64;
 
@@ -64,7 +65,7 @@ static inline u64 clib_xxhash (u64 key)
   k1 = XXH_rotl64 (k1, 31);
   k1 *= PRIME64_1;
   h64 ^= k1;
-  h64 = XXH_rotl64(h64,27) * PRIME64_1 + PRIME64_4;
+  h64 = XXH_rotl64 (h64, 27) * PRIME64_1 + PRIME64_4;
 
   h64 ^= h64 >> 33;
   h64 *= PRIME64_2;
@@ -75,3 +76,11 @@ static inline u64 clib_xxhash (u64 key)
 }
 
 #endif /* __included_xxhash_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

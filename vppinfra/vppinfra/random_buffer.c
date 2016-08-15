@@ -38,9 +38,10 @@
 #include <vppinfra/random_buffer.h>
 
 /* Fill random buffer. */
-void clib_random_buffer_fill (clib_random_buffer_t * b, uword n_words)
+void
+clib_random_buffer_fill (clib_random_buffer_t * b, uword n_words)
 {
-  uword * w, n = n_words;
+  uword *w, n = n_words;
 
   if (n < 256)
     n = 256;
@@ -48,14 +49,17 @@ void clib_random_buffer_fill (clib_random_buffer_t * b, uword n_words)
   n = round_pow2 (n, 2 << ISAAC_LOG2_SIZE);
 
   vec_add2 (b->buffer, w, n);
-  do {
-    isaac2 (b->ctx, w);
-    w += 2 * ISAAC_SIZE;
-    n -= 2 * ISAAC_SIZE;
-  } while (n > 0);
+  do
+    {
+      isaac2 (b->ctx, w);
+      w += 2 * ISAAC_SIZE;
+      n -= 2 * ISAAC_SIZE;
+    }
+  while (n > 0);
 }
 
-void clib_random_buffer_init (clib_random_buffer_t * b, uword seed)
+void
+clib_random_buffer_init (clib_random_buffer_t * b, uword seed)
 {
   uword i, j;
 
@@ -72,3 +76,11 @@ void clib_random_buffer_init (clib_random_buffer_t * b, uword seed)
       isaac_init (&b->ctx[i], s);
     }
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

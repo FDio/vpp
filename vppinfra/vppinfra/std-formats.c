@@ -39,10 +39,11 @@
 #include <ctype.h>
 
 /* Format vectors. */
-u8 * format_vec32 (u8 * s, va_list * va)
+u8 *
+format_vec32 (u8 * s, va_list * va)
 {
-  u32 * v = va_arg (*va, u32 *);
-  char * fmt = va_arg (*va, char *);
+  u32 *v = va_arg (*va, u32 *);
+  char *fmt = va_arg (*va, char *);
   uword i;
   for (i = 0; i < vec_len (v); i++)
     {
@@ -53,10 +54,11 @@ u8 * format_vec32 (u8 * s, va_list * va)
   return s;
 }
 
-u8 * format_vec_uword (u8 * s, va_list * va)
+u8 *
+format_vec_uword (u8 * s, va_list * va)
 {
-  uword * v = va_arg (*va, uword *);
-  char * fmt = va_arg (*va, char *);
+  uword *v = va_arg (*va, uword *);
+  char *fmt = va_arg (*va, char *);
   uword i;
   for (i = 0; i < vec_len (v); i++)
     {
@@ -68,18 +70,20 @@ u8 * format_vec_uword (u8 * s, va_list * va)
 }
 
 /* Ascii buffer and length. */
-u8 * format_ascii_bytes (u8 * s, va_list * va)
+u8 *
+format_ascii_bytes (u8 * s, va_list * va)
 {
-  u8 * v = va_arg (*va, u8 *);
+  u8 *v = va_arg (*va, u8 *);
   uword n_bytes = va_arg (*va, uword);
   vec_add (s, v, n_bytes);
   return s;
 }
 
 /* Format hex dump. */
-u8 * format_hex_bytes (u8 * s, va_list * va)
+u8 *
+format_hex_bytes (u8 * s, va_list * va)
 {
-  u8 * bytes = va_arg (*va, u8 *);
+  u8 *bytes = va_arg (*va, u8 *);
   int n_bytes = va_arg (*va, int);
   uword i;
 
@@ -92,12 +96,12 @@ u8 * format_hex_bytes (u8 * s, va_list * va)
 
   for (i = 0; i < n_bytes; i++)
     {
-      if (! short_form && (i % 32) == 0)
+      if (!short_form && (i % 32) == 0)
 	s = format (s, "%08x: ", i);
 
       s = format (s, "%02x", bytes[i]);
 
-      if (! short_form && ((i + 1) % 32) == 0 && (i + 1) < n_bytes)
+      if (!short_form && ((i + 1) % 32) == 0 && (i + 1) < n_bytes)
 	s = format (s, "\n%U", format_white_space, indent);
     }
 
@@ -105,7 +109,8 @@ u8 * format_hex_bytes (u8 * s, va_list * va)
 }
 
 /* Add variable number of spaces. */
-u8 * format_white_space (u8 * s, va_list * va)
+u8 *
+format_white_space (u8 * s, va_list * va)
 {
   uword n = va_arg (*va, uword);
   while (n-- > 0)
@@ -113,17 +118,18 @@ u8 * format_white_space (u8 * s, va_list * va)
   return s;
 }
 
-u8 * format_time_interval (u8 * s, va_list * args)
+u8 *
+format_time_interval (u8 * s, va_list * args)
 {
-  u8 * fmt = va_arg (*args, u8 *);
+  u8 *fmt = va_arg (*args, u8 *);
   f64 t = va_arg (*args, f64);
-  u8 * f;
+  u8 *f;
 
   const f64 seconds_per_minute = 60;
   const f64 seconds_per_hour = 60 * seconds_per_minute;
   const f64 seconds_per_day = 24 * seconds_per_hour;
   uword days, hours, minutes, secs, msecs, usecs;
-  
+
   days = t / seconds_per_day;
   t -= days * seconds_per_day;
 
@@ -136,13 +142,13 @@ u8 * format_time_interval (u8 * s, va_list * args)
   secs = t;
   t -= secs;
 
-  msecs = 1e3*t;
-  usecs = 1e6*t;
+  msecs = 1e3 * t;
+  usecs = 1e6 * t;
 
   for (f = fmt; *f; f++)
     {
       uword what, c;
-      char * what_fmt = "%d";
+      char *what_fmt = "%d";
 
       switch (c = *f)
 	{
@@ -183,7 +189,8 @@ u8 * format_time_interval (u8 * s, va_list * args)
 }
 
 /* Unparse memory size e.g. 100, 100k, 100m, 100g. */
-u8 * format_memory_size (u8 * s, va_list * va)
+u8 *
+format_memory_size (u8 * s, va_list * va)
 {
   uword size = va_arg (*va, uword);
   uword l, u, log_u;
@@ -211,20 +218,30 @@ u8 * format_memory_size (u8 * s, va_list * va)
 }
 
 /* Parse memory size e.g. 100, 100k, 100m, 100g. */
-uword unformat_memory_size (unformat_input_t * input, va_list * va)
+uword
+unformat_memory_size (unformat_input_t * input, va_list * va)
 {
   uword amount, shift, c;
-  uword * result = va_arg (*va, uword *);
+  uword *result = va_arg (*va, uword *);
 
-  if (! unformat (input, "%wd%_", &amount))
+  if (!unformat (input, "%wd%_", &amount))
     return 0;
 
   c = unformat_get_input (input);
   switch (c)
     {
-    case 'k': case 'K': shift = 10; break;
-    case 'm': case 'M': shift = 20; break;
-    case 'g': case 'G': shift = 30; break;
+    case 'k':
+    case 'K':
+      shift = 10;
+      break;
+    case 'm':
+    case 'M':
+      shift = 20;
+      break;
+    case 'g':
+    case 'G':
+      shift = 30;
+      break;
     default:
       shift = 0;
       unformat_put_input (input);
@@ -237,9 +254,10 @@ uword unformat_memory_size (unformat_input_t * input, va_list * va)
 
 /* Format c identifier: e.g. a_name -> "a name".
    Words for both vector names and null terminated c strings. */
-u8 * format_c_identifier (u8 * s, va_list * va)
+u8 *
+format_c_identifier (u8 * s, va_list * va)
 {
-  u8 * id = va_arg (*va, u8 *);
+  u8 *id = va_arg (*va, u8 *);
   uword i, l;
 
   l = ~0;
@@ -262,22 +280,22 @@ u8 * format_c_identifier (u8 * s, va_list * va)
 u8 *
 format_hexdump (u8 * s, va_list * args)
 {
-  u8 * data = va_arg (*args, u8 *);
+  u8 *data = va_arg (*args, u8 *);
   uword len = va_arg (*args, uword);
-  int i, index =0;
+  int i, index = 0;
   const int line_len = 16;
-  u8 * line_hex = 0;
-  u8 * line_str = 0;
+  u8 *line_hex = 0;
+  u8 *line_str = 0;
   uword indent = format_get_indent (s);
 
   if (!len)
     return s;
 
-  for(i=0; i < len; i++)
+  for (i = 0; i < len; i++)
     {
-      line_hex = format (line_hex, "%02x ",  data[i]);
+      line_hex = format (line_hex, "%02x ", data[i]);
       line_str = format (line_str, "%c", isprint (data[i]) ? data[i] : '.');
-      if (!( (i + 1) % line_len))
+      if (!((i + 1) % line_len))
 	{
 	  s = format (s, "%U%05x: %v[%v]",
 		      format_white_space, index ? indent : 0,
@@ -285,21 +303,28 @@ format_hexdump (u8 * s, va_list * args)
 	  if (i < len - 1)
 	    s = format (s, "\n");
 	  index = i + 1;
-	  vec_reset_length(line_hex);
-	  vec_reset_length(line_str);
+	  vec_reset_length (line_hex);
+	  vec_reset_length (line_str);
 	}
     }
 
   while (i++ % line_len)
     line_hex = format (line_hex, "   ");
 
-  if (vec_len(line_hex))
+  if (vec_len (line_hex))
     s = format (s, "%U%05x: %v[%v]",
-	        format_white_space, indent,
-	        index, line_hex, line_str);
+		format_white_space, indent, index, line_hex, line_str);
 
-  vec_free(line_hex);
-  vec_free(line_str);
+  vec_free (line_hex);
+  vec_free (line_str);
 
   return s;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

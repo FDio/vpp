@@ -44,16 +44,17 @@ static int verbose;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
-int test_isaac_main (unformat_input_t * input)
+int
+test_isaac_main (unformat_input_t * input)
 {
   uword n_iterations, seed;
   uword i, repeat_count;
-  uword * hash = 0;
+  uword *hash = 0;
   uword print;
   isaac_t ctx;
-  uword results[ISAAC_SIZE] = {0};
+  uword results[ISAAC_SIZE] = { 0 };
   uword n_results;
-  
+
   n_iterations = 1000;
   seed = 0;
   print = 1 << 24;
@@ -66,7 +67,7 @@ int test_isaac_main (unformat_input_t * input)
 	clib_error ("unknown input `%U'", format_unformat_error, input);
     }
 
-  if (! seed)
+  if (!seed)
     seed = random_default_seed ();
 
   results[0] = seed;
@@ -74,7 +75,7 @@ int test_isaac_main (unformat_input_t * input)
   if (n_iterations == 0)
     n_iterations = ~0;
 
-  if_verbose   ("%d iterations, seed %d\n", n_iterations, seed);
+  if_verbose ("%d iterations, seed %d\n", n_iterations, seed);
 
   repeat_count = 0;
   isaac_init (&ctx, results);
@@ -84,7 +85,7 @@ int test_isaac_main (unformat_input_t * input)
     {
       uword r = results[n_results++];
 
-      if (! hash)
+      if (!hash)
 	hash = hash_create (0, /* value bytes */ 0);
 
       if (hash_get (hash, r))
@@ -116,7 +117,8 @@ int test_isaac_main (unformat_input_t * input)
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int ret;
@@ -130,3 +132,11 @@ int main (int argc, char * argv[])
 }
 #endif /* CLIB_UNIX */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

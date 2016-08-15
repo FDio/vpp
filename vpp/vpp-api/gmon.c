@@ -180,8 +180,8 @@ gmon_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, vpe_api_init)))
     return (error);
 
-  if ((error = vlib_call_init_function(vm, vlibmemory_init)))
-    return(error);
+  if ((error = vlib_call_init_function (vm, vlibmemory_init)))
+    return (error);
 
   gm->vlib_main = vm;
 

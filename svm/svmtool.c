@@ -247,7 +247,7 @@ svm_existing_region_map_nolock (void *root_arg, svm_map_region_args_t * a)
   void *oldheap;
   uword *p;
 
-  a->size += MMAP_PAGESIZE + 
+  a->size += MMAP_PAGESIZE +
     (a->pvt_heap_size ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE);
   a->size = rnd_pagesize (a->size);
 

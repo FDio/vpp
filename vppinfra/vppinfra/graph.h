@@ -20,7 +20,8 @@
 #include <vppinfra/pool.h>
 
 /* Generic graphs. */
-typedef struct {
+typedef struct
+{
   /* Next node along this link. */
   u32 node_index;
 
@@ -32,12 +33,13 @@ typedef struct {
 } graph_link_t;
 
 /* Direction on graph: either next or previous. */
-typedef struct {
+typedef struct
+{
   /* Vector of links. */
-  graph_link_t * links;
+  graph_link_t *links;
 
   /* Hash mapping node index to link which visits this node. */
-  uword * link_index_by_node_index;
+  uword *link_index_by_node_index;
 } graph_dir_t;
 
 always_inline void
@@ -50,15 +52,15 @@ graph_dir_free (graph_dir_t * d)
 always_inline graph_link_t *
 graph_dir_get_link_to_node (graph_dir_t * d, u32 node_index)
 {
-  uword * p = hash_get (d->link_index_by_node_index, node_index);
+  uword *p = hash_get (d->link_index_by_node_index, node_index);
   return p ? vec_elt_at_index (d->links, p[0]) : 0;
 }
 
 always_inline uword
 graph_dir_add_link (graph_dir_t * d, u32 node_index, u32 distance)
 {
-  graph_link_t * l;
-  ASSERT (! graph_dir_get_link_to_node (d, node_index));
+  graph_link_t *l;
+  ASSERT (!graph_dir_get_link_to_node (d, node_index));
   vec_add2 (d->links, l, 1);
   l->node_index = node_index;
   l->distance = distance;
@@ -69,7 +71,7 @@ graph_dir_add_link (graph_dir_t * d, u32 node_index, u32 distance)
 always_inline void
 graph_dir_del_link (graph_dir_t * d, u32 node_index)
 {
-  graph_link_t * l = graph_dir_get_link_to_node (d, node_index);
+  graph_link_t *l = graph_dir_get_link_to_node (d, node_index);
   uword li = l - d->links;
   uword n_links = vec_len (d->links);
 
@@ -81,24 +83,27 @@ graph_dir_del_link (graph_dir_t * d, u32 node_index)
   _vec_len (d->links) = n_links;
 }
 
-typedef struct {
+typedef struct
+{
   /* Nodes we are connected to plus distances. */
   graph_dir_t next, prev;
 } graph_node_t;
 
-typedef struct {
+typedef struct
+{
   /* Pool of nodes. */
-  graph_node_t * nodes;
+  graph_node_t *nodes;
 
-  void * opaque;
+  void *opaque;
 
-  format_function_t * format_node;
+  format_function_t *format_node;
 } graph_t;
 
 /* Set link distance, creating link if not found. */
 u32 graph_set_link (graph_t * g, u32 src, u32 dst, u32 distance);
 
-always_inline void graph_set_bidirectional_link (graph_t * g, u32 src, u32 dst, u32 distance)
+always_inline void
+graph_set_bidirectional_link (graph_t * g, u32 src, u32 dst, u32 distance)
 {
   graph_set_link (g, src, dst, distance);
   graph_set_link (g, dst, src, distance);
@@ -112,3 +117,11 @@ format_function_t format_graph;
 format_function_t format_graph_node;
 
 #endif /* included_clib_graph_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

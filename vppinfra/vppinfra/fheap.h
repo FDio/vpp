@@ -20,7 +20,8 @@
 
 #include <vppinfra/vec.h>
 
-typedef struct {
+typedef struct
+{
   /* Node index of parent. */
   u32 parent;
 
@@ -67,13 +68,14 @@ do {									\
       }									\
 } while (0)
 
-typedef struct {
+typedef struct
+{
   u32 min_root;
 
   /* Vector of nodes. */
-  fheap_node_t * nodes;
+  fheap_node_t *nodes;
 
-  u32 * root_list_by_rank;
+  u32 *root_list_by_rank;
 
   u32 enable_validate;
 
@@ -84,8 +86,8 @@ typedef struct {
 always_inline void
 fheap_init (fheap_t * f, u32 n_nodes)
 {
-  fheap_node_t * save_nodes = f->nodes;
-  u32 * save_root_list = f->root_list_by_rank;
+  fheap_node_t *save_nodes = f->nodes;
+  u32 *save_root_list = f->root_list_by_rank;
 
   memset (f, 0, sizeof (f[0]));
 
@@ -107,11 +109,15 @@ fheap_free (fheap_t * f)
 
 always_inline u32
 fheap_find_min (fheap_t * f)
-{ return f->min_root; }
+{
+  return f->min_root;
+}
 
 always_inline u32
 fheap_is_empty (fheap_t * f)
-{ return f->min_root == ~0; }
+{
+  return f->min_root == ~0;
+}
 
 /* Add/delete nodes. */
 void fheap_add (fheap_t * f, u32 ni, u32 key);
@@ -124,3 +130,11 @@ u32 fheap_del_min (fheap_t * f, u32 * min_key);
 void fheap_decrease_key (fheap_t * f, u32 ni, u32 new_key);
 
 #endif /* included_clib_fheap_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

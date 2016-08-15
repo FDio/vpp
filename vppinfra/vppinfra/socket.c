@@ -44,7 +44,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
-#include <string.h>             /* strchr */
+#include <string.h>		/* strchr */
 
 #include <vppinfra/mem.h>
 #include <vppinfra/vec.h>
@@ -52,7 +52,8 @@
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 
-void clib_socket_tx_add_formatted (clib_socket_t * s, char * fmt, ...)
+void
+clib_socket_tx_add_formatted (clib_socket_t * s, char *fmt, ...)
 {
   va_list va;
   va_start (va, fmt);
@@ -61,7 +62,8 @@ void clib_socket_tx_add_formatted (clib_socket_t * s, char * fmt, ...)
 }
 
 /* Return and bind to an unused port. */
-static word find_free_port (word sock)
+static word
+find_free_port (word sock)
 {
   word port;
 
@@ -69,7 +71,7 @@ static word find_free_port (word sock)
     {
       struct sockaddr_in a;
 
-      memset(&a, 0, sizeof (a)); /* Warnings be gone */
+      memset (&a, 0, sizeof (a));	/* Warnings be gone */
 
       a.sin_family = PF_INET;
       a.sin_addr.s_addr = INADDR_ANY;
@@ -78,39 +80,37 @@ static word find_free_port (word sock)
       if (bind (sock, (struct sockaddr *) &a, sizeof (a)) >= 0)
 	break;
     }
-	
+
   return port < 1 << 16 ? port : -1;
 }
 
 /* Convert a config string to a struct sockaddr and length for use
    with bind or connect. */
 static clib_error_t *
-socket_config (char * config,
-	       void * addr,
-	       socklen_t * addr_len,
-	       u32 ip4_default_address)
+socket_config (char *config,
+	       void *addr, socklen_t * addr_len, u32 ip4_default_address)
 {
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
 
-  if (! config)
+  if (!config)
     config = "";
 
   /* Anything that begins with a / is a local PF_LOCAL socket. */
   if (config[0] == '/')
     {
-      struct sockaddr_un * su = addr;
+      struct sockaddr_un *su = addr;
       su->sun_family = PF_LOCAL;
       clib_memcpy (&su->sun_path, config,
-	      clib_min (sizeof (su->sun_path), 1 + strlen (config)));
+		   clib_min (sizeof (su->sun_path), 1 + strlen (config)));
       *addr_len = sizeof (su[0]);
     }
 
   /* Hostname or hostname:port or port. */
   else
     {
-      char * host_name;
+      char *host_name;
       int port = -1;
-      struct sockaddr_in * sa = addr;
+      struct sockaddr_in *sa = addr;
 
       host_name = 0;
       port = -1;
@@ -145,7 +145,7 @@ socket_config (char * config,
 	  struct in_addr host_addr;
 
 	  /* Recognize localhost to avoid host lookup in most common cast. */
-	  if (! strcmp (host_name, "localhost"))
+	  if (!strcmp (host_name, "localhost"))
 	    sa->sin_addr.s_addr = htonl (INADDR_LOOPBACK);
 
 	  else if (inet_aton (host_name, &host_addr))
@@ -153,11 +153,12 @@ socket_config (char * config,
 
 	  else if (host_name && strlen (host_name) > 0)
 	    {
-	      struct hostent * host = gethostbyname (host_name);
-	      if (! host)
+	      struct hostent *host = gethostbyname (host_name);
+	      if (!host)
 		error = clib_error_return (0, "unknown host `%s'", config);
 	      else
-		clib_memcpy (&sa->sin_addr.s_addr, host->h_addr_list[0], host->h_length);
+		clib_memcpy (&sa->sin_addr.s_addr, host->h_addr_list[0],
+			     host->h_length);
 	    }
 
 	  else
@@ -169,14 +170,14 @@ socket_config (char * config,
 	}
     }
 
- done:
+done:
   return error;
 }
 
 static clib_error_t *
 default_socket_write (clib_socket_t * s)
 {
-  clib_error_t	* err = 0;
+  clib_error_t *err = 0;
   word written = 0;
   word fd = 0;
   word tx_len;
@@ -192,7 +193,7 @@ default_socket_write (clib_socket_t * s)
   written = write (fd, s->tx_buffer, tx_len);
 
   /* Ignore certain errors. */
-  if (written < 0 && ! unix_error_is_fatal (errno))
+  if (written < 0 && !unix_error_is_fatal (errno))
     written = 0;
 
   /* A "real" error occurred. */
@@ -214,12 +215,12 @@ default_socket_write (clib_socket_t * s)
 
   /* If a non-fatal error occurred AND
      the buffer is full, then we must free it. */
-  else if (written == 0 && tx_len > 64*1024)
+  else if (written == 0 && tx_len > 64 * 1024)
     {
       vec_free (s->tx_buffer);
     }
 
- done:
+done:
   return err;
 }
 
@@ -227,7 +228,7 @@ static clib_error_t *
 default_socket_read (clib_socket_t * sock, int n_bytes)
 {
   word fd, n_read;
-  u8 * buf;
+  u8 *buf;
 
   /* RX side of socket is down once end of file is reached. */
   if (sock->flags & SOCKET_RX_END_OF_FILE)
@@ -243,54 +244,56 @@ default_socket_read (clib_socket_t * sock, int n_bytes)
       n_read = 0;
 
       /* Ignore certain errors. */
-      if (! unix_error_is_fatal (errno))
+      if (!unix_error_is_fatal (errno))
 	goto non_fatal;
-      
+
       return clib_error_return_unix (0, "read %d bytes", n_bytes);
     }
-      
+
   /* Other side closed the socket. */
   if (n_read == 0)
     sock->flags |= SOCKET_RX_END_OF_FILE;
 
- non_fatal:
+non_fatal:
   _vec_len (sock->rx_buffer) += n_read - n_bytes;
 
   return 0;
 }
 
-static clib_error_t * default_socket_close (clib_socket_t * s)
+static clib_error_t *
+default_socket_close (clib_socket_t * s)
 {
   if (close (s->fd) < 0)
     return clib_error_return_unix (0, "close");
   return 0;
 }
 
-static void socket_init_funcs (clib_socket_t * s)
+static void
+socket_init_funcs (clib_socket_t * s)
 {
-  if (! s->write_func)
+  if (!s->write_func)
     s->write_func = default_socket_write;
-  if (! s->read_func)
+  if (!s->read_func)
     s->read_func = default_socket_read;
-  if (! s->close_func)
+  if (!s->close_func)
     s->close_func = default_socket_close;
 }
 
 clib_error_t *
 clib_socket_init (clib_socket_t * s)
 {
-  union {
+  union
+  {
     struct sockaddr sa;
     struct sockaddr_un su;
   } addr;
   socklen_t addr_len = 0;
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
   word port;
 
   error = socket_config (s->config, &addr.sa, &addr_len,
 			 (s->flags & SOCKET_IS_SERVER
-			  ? INADDR_LOOPBACK
-			  : INADDR_ANY));
+			  ? INADDR_LOOPBACK : INADDR_ANY));
   if (error)
     goto done;
 
@@ -334,8 +337,7 @@ clib_socket_init (clib_socket_t * s)
 	  clib_unix_warning ("setsockopt SO_REUSEADDR fails");
       }
 
-      if (need_bind
-	  && bind (s->fd, &addr.sa, addr_len) < 0)
+      if (need_bind && bind (s->fd, &addr.sa, addr_len) < 0)
 	{
 	  error = clib_error_return_unix (0, "bind");
 	  goto done;
@@ -357,8 +359,8 @@ clib_socket_init (clib_socket_t * s)
 	}
 
       if (connect (s->fd, &addr.sa, addr_len) < 0
-	  && ! ((s->flags & SOCKET_NON_BLOCKING_CONNECT) &&
-		errno == EINPROGRESS))
+	  && !((s->flags & SOCKET_NON_BLOCKING_CONNECT) &&
+	       errno == EINPROGRESS))
 	{
 	  error = clib_error_return_unix (0, "connect");
 	  goto done;
@@ -367,31 +369,32 @@ clib_socket_init (clib_socket_t * s)
 
   return error;
 
- done:
+done:
   if (s->fd > 0)
     close (s->fd);
   return error;
 }
 
-clib_error_t * clib_socket_accept (clib_socket_t * server, clib_socket_t * client)
+clib_error_t *
+clib_socket_accept (clib_socket_t * server, clib_socket_t * client)
 {
-  clib_error_t	* err = 0;
-  socklen_t	len = 0;
-  
+  clib_error_t *err = 0;
+  socklen_t len = 0;
+
   memset (client, 0, sizeof (client[0]));
 
   /* Accept the new socket connection. */
   client->fd = accept (server->fd, 0, 0);
-  if (client->fd < 0) 
+  if (client->fd < 0)
     return clib_error_return_unix (0, "accept");
-  
+
   /* Set the new socket to be non-blocking. */
   if (fcntl (client->fd, F_SETFL, O_NONBLOCK) < 0)
     {
       err = clib_error_return_unix (0, "fcntl O_NONBLOCK");
       goto close_client;
     }
-    
+
   /* Get peer info. */
   len = sizeof (client->peer);
   if (getpeername (client->fd, (struct sockaddr *) &client->peer, &len) < 0)
@@ -405,7 +408,15 @@ clib_error_t * clib_socket_accept (clib_socket_t * server, clib_socket_t * clien
   socket_init_funcs (client);
   return 0;
 
- close_client:
+close_client:
   close (client->fd);
   return err;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

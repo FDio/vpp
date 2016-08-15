@@ -38,7 +38,7 @@
 #include <vppinfra/mhash.h>
 
 always_inline u32
-load_partial_u32 (void * d, uword n)
+load_partial_u32 (void *d, uword n)
 {
   if (n == 4)
     return ((u32 *) d)[0];
@@ -53,9 +53,9 @@ load_partial_u32 (void * d, uword n)
 }
 
 always_inline u32
-mhash_key_sum_inline (void * data, uword n_data_bytes, u32 seed)
+mhash_key_sum_inline (void *data, uword n_data_bytes, u32 seed)
 {
-  u32 * d32 = data;
+  u32 *d32 = data;
   u32 a, b, c, n_left;
 
   a = b = c = seed;
@@ -117,40 +117,38 @@ mhash_key_sum_inline (void * data, uword n_data_bytes, u32 seed)
   }
 
 foreach_mhash_key_size
-
 #undef _
-
 static uword
 mhash_key_sum_c_string (hash_t * h, uword key)
 {
-  mhash_t * hv = uword_to_pointer (h->user, mhash_t *);
-  void * k = mhash_key_to_mem (hv, key);
+  mhash_t *hv = uword_to_pointer (h->user, mhash_t *);
+  void *k = mhash_key_to_mem (hv, key);
   return mhash_key_sum_inline (k, strlen (k), hv->hash_seed);
 }
 
 static uword
 mhash_key_equal_c_string (hash_t * h, uword key1, uword key2)
 {
-  mhash_t * hv = uword_to_pointer (h->user, mhash_t *);
-  void * k1 = mhash_key_to_mem (hv, key1);
-  void * k2 = mhash_key_to_mem (hv, key2);
+  mhash_t *hv = uword_to_pointer (h->user, mhash_t *);
+  void *k1 = mhash_key_to_mem (hv, key1);
+  void *k2 = mhash_key_to_mem (hv, key2);
   return strcmp (k1, k2) == 0;
 }
 
 static uword
 mhash_key_sum_vec_string (hash_t * h, uword key)
 {
-  mhash_t * hv = uword_to_pointer (h->user, mhash_t *);
-  void * k = mhash_key_to_mem (hv, key);
+  mhash_t *hv = uword_to_pointer (h->user, mhash_t *);
+  void *k = mhash_key_to_mem (hv, key);
   return mhash_key_sum_inline (k, vec_len (k), hv->hash_seed);
 }
 
 static uword
 mhash_key_equal_vec_string (hash_t * h, uword key1, uword key2)
 {
-  mhash_t * hv = uword_to_pointer (h->user, mhash_t *);
-  void * k1 = mhash_key_to_mem (hv, key1);
-  void * k2 = mhash_key_to_mem (hv, key2);
+  mhash_t *hv = uword_to_pointer (h->user, mhash_t *);
+  void *k1 = mhash_key_to_mem (hv, key1);
+  void *k2 = mhash_key_to_mem (hv, key2);
   return vec_len (k1) == vec_len (k2) && memcmp (k1, k2, vec_len (k1)) == 0;
 }
 
@@ -161,17 +159,20 @@ mhash_key_equal_vec_string (hash_t * h, uword key1, uword key2)
 always_inline void
 mhash_sanitize_hash_user (mhash_t * mh)
 {
-  uword * hash = mh->hash;
-  hash_t * h = hash_header (hash);
+  uword *hash = mh->hash;
+  hash_t *h = hash_header (hash);
   h->user = pointer_to_uword (mh);
 }
 
-void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
+void
+mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
 {
-  static struct {
-    hash_key_sum_function_t * key_sum;
-    hash_key_equal_function_t * key_equal;
-  } t[] = {
+  static struct
+  {
+    hash_key_sum_function_t *key_sum;
+    hash_key_equal_function_t *key_equal;
+  } t[] =
+  {
 #define _(N_KEY_BYTES)					\
     [N_KEY_BYTES] = {					\
       .key_sum = mhash_key_sum_##N_KEY_BYTES,		\
@@ -179,19 +180,14 @@ void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
     },
 
     foreach_mhash_key_size
-
 #undef _
-
-    [MHASH_C_STRING_KEY] = {
-      .key_sum = mhash_key_sum_c_string,
-      .key_equal = mhash_key_equal_c_string,
-    },
-
-    [MHASH_VEC_STRING_KEY] = {
-      .key_sum = mhash_key_sum_vec_string,
-      .key_equal = mhash_key_equal_vec_string,
-    },
-  };
+      [MHASH_C_STRING_KEY] =
+    {
+    .key_sum = mhash_key_sum_c_string,.key_equal = mhash_key_equal_c_string,},
+      [MHASH_VEC_STRING_KEY] =
+    {
+  .key_sum = mhash_key_sum_vec_string,.key_equal =
+	mhash_key_equal_vec_string,},};
 
   if (mhash_key_vector_is_heap (h))
     heap_free (h->key_vector_or_heap);
@@ -212,27 +208,27 @@ void mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
 #if 0
   if (h->n_key_bytes > 0)
     {
-      vec_validate (h->key_tmp, h->n_key_bytes-1);
-      _vec_len(h->key_tmp) = 0;
+      vec_validate (h->key_tmp, h->n_key_bytes - 1);
+      _vec_len (h->key_tmp) = 0;
     }
 #endif
 
   ASSERT (n_key_bytes < ARRAY_LEN (t));
-  h->hash = hash_create2 (/* elts */ 0,
+  h->hash = hash_create2 ( /* elts */ 0,
 			  /* user */ pointer_to_uword (h),
 			  /* value_bytes */ n_value_bytes,
-			  t[n_key_bytes].key_sum,
-			  t[n_key_bytes].key_equal,
+			  t[n_key_bytes].key_sum, t[n_key_bytes].key_equal,
 			  /* format pair/arg */
 			  0, 0);
 }
 
-static uword mhash_set_tmp_key (mhash_t * h, void * key)
+static uword
+mhash_set_tmp_key (mhash_t * h, void *key)
 {
-  u8 * key_tmp;
-  int my_cpu = os_get_cpu_number();
+  u8 *key_tmp;
+  int my_cpu = os_get_cpu_number ();
 
-  vec_validate(h->key_tmps, my_cpu);
+  vec_validate (h->key_tmps, my_cpu);
   key_tmp = h->key_tmps[my_cpu];
 
   vec_reset_length (key_tmp);
@@ -254,7 +250,8 @@ static uword mhash_set_tmp_key (mhash_t * h, void * key)
   return ~0;
 }
 
-hash_pair_t * mhash_get_pair (mhash_t * h, void * key)
+hash_pair_t *
+mhash_get_pair (mhash_t * h, void *key)
 {
   uword ikey;
   mhash_sanitize_hash_user (h);
@@ -262,28 +259,32 @@ hash_pair_t * mhash_get_pair (mhash_t * h, void * key)
   return hash_get_pair (h->hash, ikey);
 }
 
-typedef struct {
+typedef struct
+{
   u32 heap_handle;
 
   /* Must conincide with vec_header. */
   vec_header_t vec;
 } mhash_string_key_t;
 
-uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_value)
+uword
+mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
 {
-  u8 * k;
-  uword ikey, i, l=0, n_key_bytes, old_n_elts, key_alloc_from_free_list = 0;
+  u8 *k;
+  uword ikey, i, l = 0, n_key_bytes, old_n_elts, key_alloc_from_free_list = 0;
 
   mhash_sanitize_hash_user (h);
 
   if (mhash_key_vector_is_heap (h))
     {
-      mhash_string_key_t * sk;
+      mhash_string_key_t *sk;
       uword is_c_string = h->n_key_bytes == MHASH_C_STRING_KEY;
       uword handle;
 
       n_key_bytes = is_c_string ? (strlen (key) + 1) : vec_len (key);
-      i = heap_alloc (h->key_vector_or_heap, n_key_bytes + sizeof (sk[0]), handle);
+      i =
+	heap_alloc (h->key_vector_or_heap, n_key_bytes + sizeof (sk[0]),
+		    handle);
 
       sk = (void *) (h->key_vector_or_heap + i);
       sk->heap_handle = handle;
@@ -295,7 +296,8 @@ uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_val
     }
   else
     {
-      key_alloc_from_free_list = (l = vec_len (h->key_vector_free_indices)) > 0;
+      key_alloc_from_free_list = (l =
+				  vec_len (h->key_vector_free_indices)) > 0;
       if (key_alloc_from_free_list)
 	{
 	  i = h->key_vector_free_indices[l - 1];
@@ -319,7 +321,7 @@ uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_val
   /* If element already existed remove duplicate key. */
   if (hash_elts (h->hash) == old_n_elts)
     {
-      hash_pair_t * p;
+      hash_pair_t *p;
 
       /* Fetch old key for return value. */
       p = hash_get_pair (h->hash, ikey);
@@ -328,7 +330,7 @@ uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_val
       /* Remove duplicate key. */
       if (mhash_key_vector_is_heap (h))
 	{
-	  mhash_string_key_t * sk;
+	  mhash_string_key_t *sk;
 	  sk = (void *) (h->key_vector_or_heap + i - sizeof (sk[0]));
 	  heap_dealloc (h->key_vector_or_heap, sk->heap_handle);
 	}
@@ -347,16 +349,17 @@ uword mhash_set_mem (mhash_t * h, void * key, uword * new_value, uword * old_val
   return ikey;
 }
 
-uword mhash_unset (mhash_t * h, void * key, uword * old_value)
+uword
+mhash_unset (mhash_t * h, void *key, uword * old_value)
 {
-  hash_pair_t * p;
+  hash_pair_t *p;
   uword i;
 
   mhash_sanitize_hash_user (h);
   i = mhash_set_tmp_key (h, key);
 
   p = hash_get_pair (h->hash, i);
-  if (! p)
+  if (!p)
     return 0;
 
   ASSERT (p->key != ~0);
@@ -364,7 +367,7 @@ uword mhash_unset (mhash_t * h, void * key, uword * old_value)
 
   if (mhash_key_vector_is_heap (h))
     {
-      mhash_string_key_t * sk;
+      mhash_string_key_t *sk;
       sk = (void *) (h->key_vector_or_heap + i) - sizeof (sk[0]);
       heap_dealloc (h->key_vector_or_heap, sk->heap_handle);
     }
@@ -375,11 +378,12 @@ uword mhash_unset (mhash_t * h, void * key, uword * old_value)
   return 1;
 }
 
-u8 * format_mhash_key (u8 * s, va_list * va)
+u8 *
+format_mhash_key (u8 * s, va_list * va)
 {
-  mhash_t * h = va_arg (*va, mhash_t *);
+  mhash_t *h = va_arg (*va, mhash_t *);
   u32 ki = va_arg (*va, u32);
-  void * k = mhash_key_to_mem (h, ki);
+  void *k = mhash_key_to_mem (h, ki);
 
   if (mhash_key_vector_is_heap (h))
     {
@@ -394,3 +398,11 @@ u8 * format_mhash_key (u8 * s, va_list * va)
 
   return s;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

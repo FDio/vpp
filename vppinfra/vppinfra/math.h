@@ -40,14 +40,24 @@
 
 #include <vppinfra/clib.h>
 
-always_inline f64 sqrt (f64 x)
+always_inline f64
+sqrt (f64 x)
 {
   return __builtin_sqrt (x);
 }
 
-always_inline f64 fabs (f64 x)
+always_inline f64
+fabs (f64 x)
 {
   return __builtin_fabs (x);
 }
 
 #endif /* included_math_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

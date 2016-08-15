@@ -39,16 +39,17 @@
 #include <vppinfra/pool.h>
 
 #ifdef __KERNEL__
-# include <linux/unistd.h>
+#include <linux/unistd.h>
 #else
-# include <unistd.h>
+#include <unistd.h>
 #endif
 
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   int i, n, seed;
 
-  int * p = 0, * e, j, * o = 0;
+  int *p = 0, *e, j, *o = 0;
 
   n = atoi (argv[1]);
   seed = getpid ();
@@ -75,3 +76,11 @@ int main (int argc, char * argv[])
   vec_free (o);
   return 0;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

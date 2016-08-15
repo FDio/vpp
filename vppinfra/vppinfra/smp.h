@@ -39,7 +39,7 @@
 #define included_clib_smp_h
 
 #include <vppinfra/cache.h>
-#include <vppinfra/os.h>		/* for os_panic */
+#include <vppinfra/os.h>	/* for os_panic */
 
 #define clib_smp_compare_and_swap(addr,new,old) __sync_val_compare_and_swap(addr,old,new)
 #define clib_smp_swap(addr,new) __sync_lock_test_and_set(addr,new)
@@ -58,12 +58,24 @@
 
 always_inline void
 os_sched_yield (void)
-{ sched_yield (); }
+{
+  sched_yield ();
+}
 #else
 always_inline void
 os_sched_yield (void)
-{ clib_smp_pause (); }
+{
+  clib_smp_pause ();
+}
 #endif
 
 
 #endif /* included_clib_smp_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

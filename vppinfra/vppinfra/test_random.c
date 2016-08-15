@@ -38,19 +38,19 @@
 #include <vppinfra/format.h>
 #include <vppinfra/bitmap.h>
 
-static u32 known_random_sequence[] =
-{
-    0x00000000, 0x3c6ef35f, 0x47502932, 0xd1ccf6e9,
-    0xaaf95334, 0x6252e503, 0x9f2ec686, 0x57fe6c2d,
-    0xa3d95fa8, 0x81fdbee7, 0x94f0af1a, 0xcbf633b1,
+static u32 known_random_sequence[] = {
+  0x00000000, 0x3c6ef35f, 0x47502932, 0xd1ccf6e9,
+  0xaaf95334, 0x6252e503, 0x9f2ec686, 0x57fe6c2d,
+  0xa3d95fa8, 0x81fdbee7, 0x94f0af1a, 0xcbf633b1,
 };
 
 
-int test_random_main (unformat_input_t * input)
+int
+test_random_main (unformat_input_t * input)
 {
   uword n_iterations;
   uword i, repeat_count;
-  uword * bitmap = 0;
+  uword *bitmap = 0;
   uword print;
   u32 seed;
   u32 *seedp = &seed;
@@ -58,15 +58,15 @@ int test_random_main (unformat_input_t * input)
   /* first, check known sequence from Numerical Recipes in C, 2nd ed.
      page 284 */
   seed = known_random_sequence[0];
-  for (i = 0; i < ARRAY_LEN(known_random_sequence)-1; i++) 
+  for (i = 0; i < ARRAY_LEN (known_random_sequence) - 1; i++)
     {
       u32 rv;
       rv = random_u32 (seedp);
-      if (rv != known_random_sequence[i+1])
-        {
-          fformat(stderr, "known sequence check FAILS at index %d", i+1);
-          break;
-        }
+      if (rv != known_random_sequence[i + 1])
+	{
+	  fformat (stderr, "known sequence check FAILS at index %d", i + 1);
+	  break;
+	}
     }
 
   clib_warning ("known sequence check passes");
@@ -83,7 +83,7 @@ int test_random_main (unformat_input_t * input)
 	clib_error ("unknown input `%U'", format_unformat_error, input);
     }
 
-  if (! seed)
+  if (!seed)
     seed = random_default_seed ();
 
   if (n_iterations == 0)
@@ -122,12 +122,13 @@ int test_random_main (unformat_input_t * input)
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int ret;
 
-  clib_mem_init (0, 3ULL<<30);
+  clib_mem_init (0, 3ULL << 30);
 
   unformat_init_command_line (&i, argv);
   ret = test_random_main (&i);
@@ -137,3 +138,11 @@ int main (int argc, char * argv[])
 }
 #endif /* CLIB_UNIX */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

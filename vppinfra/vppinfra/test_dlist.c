@@ -15,21 +15,23 @@
 
 #include <vppinfra/dlist.h>
 
-typedef struct {
-  dlist_elt_t * test_pool;
+typedef struct
+{
+  dlist_elt_t *test_pool;
   u32 head_index;
 } test_main_t;
 
 test_main_t test_main;
 
-int test_dlist_main (unformat_input_t * input)
+int
+test_dlist_main (unformat_input_t * input)
 {
-  test_main_t * tm = &test_main;
-  dlist_elt_t * head, * elt;
+  test_main_t *tm = &test_main;
+  dlist_elt_t *head, *elt;
   u32 elt_index, head_index;
   u32 value;
   int i;
-  
+
   pool_get (tm->test_pool, head);
   head_index = head - tm->test_pool;
   clib_dlist_init (tm->test_pool, head - tm->test_pool);
@@ -53,8 +55,7 @@ int test_dlist_main (unformat_input_t * input)
   while (value != ~0)
     {
       elt = pool_elt_at_index (tm->test_pool, elt_index);
-      fformat(stdout, "elt %d value %d\n", 
-              i++, elt->value);
+      fformat (stdout, "elt %d value %d\n", i++, elt->value);
       elt_index = elt->next;
       value = elt->value;
     }
@@ -66,8 +67,7 @@ int test_dlist_main (unformat_input_t * input)
   while (value != ~0)
     {
       elt = pool_elt_at_index (tm->test_pool, elt_index);
-      fformat(stdout, "elt %d value %d\n", 
-              i++, elt->value);
+      fformat (stdout, "elt %d value %d\n", i++, elt->value);
       elt_index = elt->prev;
       value = elt->value;
     }
@@ -88,8 +88,7 @@ int test_dlist_main (unformat_input_t * input)
   while (value != ~0)
     {
       elt = pool_elt_at_index (tm->test_pool, elt_index);
-      fformat(stdout, "elt %d value %d\n", 
-              i++, elt->value);
+      fformat (stdout, "elt %d value %d\n", i++, elt->value);
       elt_index = elt->next;
       value = elt->value;
     }
@@ -101,8 +100,7 @@ int test_dlist_main (unformat_input_t * input)
   while (value != ~0)
     {
       elt = pool_elt_at_index (tm->test_pool, elt_index);
-      fformat(stdout, "elt %d value %d\n", 
-              i++, elt->value);
+      fformat (stdout, "elt %d value %d\n", i++, elt->value);
       elt_index = elt->prev;
       value = elt->value;
     }
@@ -118,8 +116,7 @@ int test_dlist_main (unformat_input_t * input)
   while (value != ~0)
     {
       elt = pool_elt_at_index (tm->test_pool, elt_index);
-      fformat(stdout, "elt %d value %d\n", 
-              i++, elt->value);
+      fformat (stdout, "elt %d value %d\n", i++, elt->value);
       elt_index = elt->next;
       value = elt->value;
     }
@@ -131,8 +128,7 @@ int test_dlist_main (unformat_input_t * input)
   while (value != ~0)
     {
       elt = pool_elt_at_index (tm->test_pool, elt_index);
-      fformat(stdout, "elt %d value %d\n", 
-              i++, elt->value);
+      fformat (stdout, "elt %d value %d\n", i++, elt->value);
       elt_index = elt->prev;
       value = elt->value;
     }
@@ -143,7 +139,7 @@ int test_dlist_main (unformat_input_t * input)
   elt = pool_elt_at_index (tm->test_pool, 2);
 
   fformat (stdout, "removed index %d value %d\n", elt_index, elt->value);
-  
+
   fformat (stdout, "Dump forward links\n");
   elt_index = head->next;
   i = 1;
@@ -151,8 +147,7 @@ int test_dlist_main (unformat_input_t * input)
   while (value != ~0)
     {
       elt = pool_elt_at_index (tm->test_pool, elt_index);
-      fformat(stdout, "elt %d value %d\n", 
-              i++, elt->value);
+      fformat (stdout, "elt %d value %d\n", i++, elt->value);
       elt_index = elt->next;
       value = elt->value;
     }
@@ -164,8 +159,7 @@ int test_dlist_main (unformat_input_t * input)
   while (value != ~0)
     {
       elt = pool_elt_at_index (tm->test_pool, elt_index);
-      fformat(stdout, "elt %d value %d\n", 
-              i++, elt->value);
+      fformat (stdout, "elt %d value %d\n", i++, elt->value);
       elt_index = elt->prev;
       value = elt->value;
     }
@@ -174,12 +168,13 @@ int test_dlist_main (unformat_input_t * input)
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int ret;
 
-  clib_mem_init (0, 3ULL<<30);
+  clib_mem_init (0, 3ULL << 30);
 
   unformat_init_command_line (&i, argv);
   ret = test_dlist_main (&i);
@@ -188,3 +183,11 @@ int main (int argc, char * argv[])
   return ret;
 }
 #endif /* CLIB_UNIX */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

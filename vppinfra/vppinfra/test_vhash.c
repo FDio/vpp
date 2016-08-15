@@ -50,7 +50,8 @@
 
 #ifdef CLIB_HAVE_VEC128
 
-typedef struct {
+typedef struct
+{
   u32 n_iter;
   u32 seed;
   u32 verbose;
@@ -61,20 +62,21 @@ typedef struct {
   u32 n_vectors_div_4;
   u32 n_vectors_mod_4;
 
-  u32 * keys;
-  u32 * results;
+  u32 *keys;
+  u32 *results;
 
-  u32 * vhash_get_key_indices;
-  u32 * vhash_get_results;
+  u32 *vhash_get_key_indices;
+  u32 *vhash_get_results;
 
-  u32 * vhash_key_indices;
-  u32 * vhash_results;
+  u32 *vhash_key_indices;
+  u32 *vhash_results;
 
   vhash_t vhash;
 
-  uword ** key_hash;
+  uword **key_hash;
 
-  struct {
+  struct
+  {
     u64 n_clocks;
     u64 n_vectors;
     u64 n_calls;
@@ -82,9 +84,9 @@ typedef struct {
 } test_vhash_main_t;
 
 always_inline u32
-test_vhash_key_gather (void * _tm, u32 vi, u32 wi, u32 n_key_u32s)
+test_vhash_key_gather (void *_tm, u32 vi, u32 wi, u32 n_key_u32s)
 {
-  test_vhash_main_t * tm = _tm;
+  test_vhash_main_t *tm = _tm;
   ASSERT (n_key_u32s == tm->n_key_u32);
   ASSERT (wi < n_key_u32s);
   vi = vec_elt (tm->vhash_key_indices, vi);
@@ -92,10 +94,10 @@ test_vhash_key_gather (void * _tm, u32 vi, u32 wi, u32 n_key_u32s)
 }
 
 always_inline u32x4
-test_vhash_4key_gather (void * _tm, u32 vi, u32 wi, u32 n_key_u32s)
+test_vhash_4key_gather (void *_tm, u32 vi, u32 wi, u32 n_key_u32s)
 {
-  test_vhash_main_t * tm = _tm;
-  u32 * p;
+  test_vhash_main_t *tm = _tm;
+  u32 *p;
   u32x4_union_t x;
 
   ASSERT (n_key_u32s == tm->n_key_u32);
@@ -110,47 +112,41 @@ test_vhash_4key_gather (void * _tm, u32 vi, u32 wi, u32 n_key_u32s)
 }
 
 always_inline u32
-test_vhash_get_result (void * _tm,
-		       u32 vector_index,
-		       u32 result_index,
-		       u32 n_key_u32s)
+test_vhash_get_result (void *_tm,
+		       u32 vector_index, u32 result_index, u32 n_key_u32s)
 {
-  test_vhash_main_t * tm = _tm;
-  u32 * p = vec_elt_at_index (tm->vhash_results, vector_index);
+  test_vhash_main_t *tm = _tm;
+  u32 *p = vec_elt_at_index (tm->vhash_results, vector_index);
   p[0] = result_index;
   return result_index;
 }
 
 always_inline u32x4
-test_vhash_get_4result (void * _tm,
-			u32 vector_index,
-			u32x4 results,
-			u32 n_key_u32s)
+test_vhash_get_4result (void *_tm,
+			u32 vector_index, u32x4 results, u32 n_key_u32s)
 {
-  test_vhash_main_t * tm = _tm;
-  u32 * p = vec_elt_at_index (tm->vhash_results, vector_index);
-  *(u32x4 *)p = results;
+  test_vhash_main_t *tm = _tm;
+  u32 *p = vec_elt_at_index (tm->vhash_results, vector_index);
+  *(u32x4 *) p = results;
   return results;
 }
 
 always_inline u32
-test_vhash_set_result (void * _tm,
-		       u32 vector_index,
-		       u32 old_result,
-		       u32 n_key_u32s)
+test_vhash_set_result (void *_tm,
+		       u32 vector_index, u32 old_result, u32 n_key_u32s)
 {
-  test_vhash_main_t * tm = _tm;
-  u32 * p = vec_elt_at_index (tm->vhash_results, vector_index);
+  test_vhash_main_t *tm = _tm;
+  u32 *p = vec_elt_at_index (tm->vhash_results, vector_index);
   u32 new_result = p[0];
   p[0] = old_result;
   return new_result;
 }
 
 always_inline u32
-test_vhash_unset_result (void * _tm, u32 i, u32 old_result, u32 n_key_u32s)
+test_vhash_unset_result (void *_tm, u32 i, u32 old_result, u32 n_key_u32s)
 {
-  test_vhash_main_t * tm = _tm;
-  u32 * p = vec_elt_at_index (tm->vhash_results, i);
+  test_vhash_main_t *tm = _tm;
+  u32 *p = vec_elt_at_index (tm->vhash_results, i);
   p[0] = old_result;
   return 0;
 }
@@ -268,12 +264,12 @@ test_vhash_unset_result (void * _tm, u32 i, u32 old_result, u32 n_key_u32s)
 			tm, N_KEY_U32);					\
    })
 
-_ (1);
-_ (2);
-_ (3);
-_ (4);
-_ (5);
-_ (6);
+_(1);
+_(2);
+_(3);
+_(4);
+_(5);
+_(6);
 
 #undef _
 
@@ -292,22 +288,21 @@ _ (6);
      vhash_mix_stage (&tm->vhash, tm->n_vectors_div_4, N_KEY_U32);	\
    })
 
-_ (4);
-_ (5);
-_ (6);
+_(4);
+_(5);
+_(6);
 
 #undef _
 
-typedef enum {
+typedef enum
+{
   GET, SET, UNSET,
 } test_vhash_op_t;
 
 static void
 test_vhash_op (test_vhash_main_t * tm,
 	       u32 * key_indices,
-	       u32 * results,
-	       uword n_keys,
-	       test_vhash_op_t op)
+	       u32 * results, uword n_keys, test_vhash_op_t op)
 {
   vhash_validate_sizes (&tm->vhash, tm->n_key_u32, n_keys);
 
@@ -349,9 +344,9 @@ test_vhash_op (test_vhash_main_t * tm,
 	       test_vhash_unset_stage_##N_KEY_U32);		\
 	  break;
 
-	      _ (1);
-	      _ (2);
-	      _ (3);
+	  _(1);
+	  _(2);
+	  _(3);
 
 #undef _
 
@@ -383,9 +378,9 @@ test_vhash_op (test_vhash_main_t * tm,
 	       test_vhash_unset_stage_##N_KEY_U32);		\
 	  break;
 
-	      _ (4);
-	      _ (5);
-	      _ (6);
+	  _(4);
+	  _(5);
+	  _(6);
 
 #undef _
 	}
@@ -425,9 +420,9 @@ test_vhash_op (test_vhash_main_t * tm,
 	       test_vhash_unset_mod_stage_##N_KEY_U32);		\
 	break;
 
-      _ (1);
-      _ (2);
-      _ (3);
+	  _(1);
+	  _(2);
+	  _(3);
 
 #undef _
 
@@ -459,20 +454,21 @@ test_vhash_op (test_vhash_main_t * tm,
 	       test_vhash_unset_mod_stage_##N_KEY_U32);		\
 	  break;
 
-	      _ (4);
-	      _ (5);
-	      _ (6);
+	  _(4);
+	  _(5);
+	  _(6);
 
 #undef _
 	}
     }
 }
 
-int test_vhash_main (unformat_input_t * input)
+int
+test_vhash_main (unformat_input_t * input)
 {
-  clib_error_t * error = 0;
-  test_vhash_main_t _tm, * tm = &_tm;
-  vhash_t * vh = &tm->vhash;
+  clib_error_t *error = 0;
+  test_vhash_main_t _tm, *tm = &_tm;
+  vhash_t *vh = &tm->vhash;
   uword i, j;
 
   memset (tm, 0, sizeof (tm[0]));
@@ -509,7 +505,8 @@ int test_vhash_main (unformat_input_t * input)
     tm->seed = random_default_seed ();
 
   clib_warning ("iter %d seed %d n-keys %d log2-size %d key-words %d",
-		tm->n_iter, tm->seed, tm->n_keys, tm->log2_size, tm->n_key_u32);
+		tm->n_iter, tm->seed, tm->n_keys, tm->log2_size,
+		tm->n_key_u32);
 
   {
     u32 seeds[3];
@@ -523,31 +520,36 @@ int test_vhash_main (unformat_input_t * input)
   for (i = j = 0; i < vec_len (tm->keys); i++, j++)
     {
       j = j == tm->n_key_u32 ? 0 : j;
-      do {
-	tm->keys[i] = random_u32 (&tm->seed);
-      } while (hash_get (tm->key_hash[j], tm->keys[i]));
+      do
+	{
+	  tm->keys[i] = random_u32 (&tm->seed);
+	}
+      while (hash_get (tm->key_hash[j], tm->keys[i]));
       hash_set (tm->key_hash[j], tm->keys[i], 0);
     }
 
   vec_resize (tm->results, tm->n_keys);
   for (i = 0; i < vec_len (tm->results); i++)
     {
-      do {
-	tm->results[i] = random_u32 (&tm->seed);
-      } while (tm->results[i] == ~0);
+      do
+	{
+	  tm->results[i] = random_u32 (&tm->seed);
+	}
+      while (tm->results[i] == ~0);
     }
 
-  vec_resize_aligned (tm->vhash_get_results, tm->n_keys, CLIB_CACHE_LINE_BYTES);
+  vec_resize_aligned (tm->vhash_get_results, tm->n_keys,
+		      CLIB_CACHE_LINE_BYTES);
   vec_clone (tm->vhash_get_key_indices, tm->results);
   for (i = 0; i < vec_len (tm->vhash_get_key_indices); i++)
     tm->vhash_get_key_indices[i] = i;
 
   {
-    uword * is_set_bitmap = 0;
-    uword * to_set_bitmap = 0;
-    uword * to_unset_bitmap = 0;
-    u32 * to_set = 0, * to_unset = 0;
-    u32 * to_set_results = 0, * to_unset_results = 0;
+    uword *is_set_bitmap = 0;
+    uword *to_set_bitmap = 0;
+    uword *to_unset_bitmap = 0;
+    u32 *to_set = 0, *to_unset = 0;
+    u32 *to_set_results = 0, *to_unset_results = 0;
     u64 t[2];
 
     for (i = 0; i < tm->n_iter; i++)
@@ -557,28 +559,32 @@ int test_vhash_main (unformat_input_t * input)
 	vec_reset_length (to_set_results);
 	vec_reset_length (to_unset_results);
 
-	do {
-	  to_set_bitmap = clib_bitmap_random (to_set_bitmap,
-					      tm->n_keys, &tm->seed);
-	} while (clib_bitmap_is_zero (to_set_bitmap));
+	do
+	  {
+	    to_set_bitmap = clib_bitmap_random (to_set_bitmap,
+						tm->n_keys, &tm->seed);
+	  }
+	while (clib_bitmap_is_zero (to_set_bitmap));
 	to_unset_bitmap = clib_bitmap_dup_and (to_set_bitmap, is_set_bitmap);
 	to_set_bitmap = clib_bitmap_andnot (to_set_bitmap, to_unset_bitmap);
 
+	/* *INDENT-OFF* */
 	clib_bitmap_foreach (j, to_set_bitmap, ({
 	      vec_add1 (to_set, j);
 	      vec_add1 (to_set_results, tm->results[j]);
 	}));
+	/* *INDENT-ON* */
+	/* *INDENT-OFF* */
 	clib_bitmap_foreach (j, to_unset_bitmap, ({
 	      vec_add1 (to_unset, j);
 	      vec_add1 (to_unset_results, 0xdeadbeef);
 	}));
+	/* *INDENT-ON* */
 
 	if (vec_len (to_set) > 0)
 	  {
 	    t[0] = clib_cpu_time_now ();
-	    test_vhash_op (tm, to_set, to_set_results,
-			   vec_len (to_set),
-			   SET);
+	    test_vhash_op (tm, to_set, to_set_results, vec_len (to_set), SET);
 	    t[1] = clib_cpu_time_now ();
 	    tm->set_stats.n_clocks += t[1] - t[0];
 	    tm->set_stats.n_vectors += vec_len (to_set);
@@ -589,8 +595,7 @@ int test_vhash_main (unformat_input_t * input)
 	t[0] = clib_cpu_time_now ();
 	test_vhash_op (tm, tm->vhash_get_key_indices,
 		       tm->vhash_get_results,
-		       vec_len (tm->vhash_get_key_indices),
-		       GET);
+		       vec_len (tm->vhash_get_key_indices), GET);
 	t[1] = clib_cpu_time_now ();
 	tm->get_stats.n_clocks += t[1] - t[0];
 	tm->get_stats.n_vectors += vec_len (tm->vhash_get_key_indices);
@@ -619,20 +624,19 @@ int test_vhash_main (unformat_input_t * input)
 	  {
 	    t[0] = clib_cpu_time_now ();
 	    test_vhash_op (tm, to_unset, to_unset_results,
-			   vec_len (to_unset),
-			   UNSET);
+			   vec_len (to_unset), UNSET);
 	    t[1] = clib_cpu_time_now ();
 	    tm->unset_stats.n_clocks += t[1] - t[0];
 	    tm->unset_stats.n_vectors += vec_len (to_unset);
 	    tm->unset_stats.n_calls += 1;
-	    is_set_bitmap = clib_bitmap_andnot (is_set_bitmap, to_unset_bitmap);
+	    is_set_bitmap =
+	      clib_bitmap_andnot (is_set_bitmap, to_unset_bitmap);
 	  }
 
 	t[0] = clib_cpu_time_now ();
 	test_vhash_op (tm, tm->vhash_get_key_indices,
 		       tm->vhash_get_results,
-		       vec_len (tm->vhash_get_key_indices),
-		       GET);
+		       vec_len (tm->vhash_get_key_indices), GET);
 	t[1] = clib_cpu_time_now ();
 	tm->get_stats.n_clocks += t[1] - t[0];
 	tm->get_stats.n_vectors += vec_len (tm->vhash_get_key_indices);
@@ -662,8 +666,7 @@ int test_vhash_main (unformat_input_t * input)
 
     test_vhash_op (tm, tm->vhash_get_key_indices,
 		   tm->vhash_get_results,
-		   vec_len (tm->vhash_get_key_indices),
-		   GET);
+		   vec_len (tm->vhash_get_key_indices), GET);
 
     for (j = 0; j < vec_len (tm->vhash_get_results); j++)
       {
@@ -691,22 +694,30 @@ int test_vhash_main (unformat_input_t * input)
     clib_time_init (&ct);
 
     clib_warning ("%.4e clocks/get %.4e gets/call %.4e gets/sec",
-		  (f64) tm->get_stats.n_clocks / (f64) tm->get_stats.n_vectors,
+		  (f64) tm->get_stats.n_clocks /
+		  (f64) tm->get_stats.n_vectors,
 		  (f64) tm->get_stats.n_vectors / (f64) tm->get_stats.n_calls,
-		  (f64) tm->get_stats.n_vectors / (f64) (tm->get_stats.n_clocks * ct.seconds_per_clock));
+		  (f64) tm->get_stats.n_vectors /
+		  (f64) (tm->get_stats.n_clocks * ct.seconds_per_clock));
     if (tm->set_stats.n_calls > 0)
       clib_warning ("%.4e clocks/set %.4e sets/call %.4e sets/sec",
-		    (f64) tm->set_stats.n_clocks / (f64) tm->set_stats.n_vectors,
-		    (f64) tm->set_stats.n_vectors / (f64) tm->set_stats.n_calls,
-		    (f64) tm->set_stats.n_vectors / (f64) (tm->set_stats.n_clocks * ct.seconds_per_clock));
+		    (f64) tm->set_stats.n_clocks /
+		    (f64) tm->set_stats.n_vectors,
+		    (f64) tm->set_stats.n_vectors /
+		    (f64) tm->set_stats.n_calls,
+		    (f64) tm->set_stats.n_vectors /
+		    (f64) (tm->set_stats.n_clocks * ct.seconds_per_clock));
     if (tm->unset_stats.n_calls > 0)
       clib_warning ("%.4e clocks/unset %.4e unsets/call %.4e unsets/sec",
-		    (f64) tm->unset_stats.n_clocks / (f64) tm->unset_stats.n_vectors,
-		    (f64) tm->unset_stats.n_vectors / (f64) tm->unset_stats.n_calls,
-		    (f64) tm->unset_stats.n_vectors / (f64) (tm->unset_stats.n_clocks * ct.seconds_per_clock));
+		    (f64) tm->unset_stats.n_clocks /
+		    (f64) tm->unset_stats.n_vectors,
+		    (f64) tm->unset_stats.n_vectors /
+		    (f64) tm->unset_stats.n_calls,
+		    (f64) tm->unset_stats.n_vectors /
+		    (f64) (tm->unset_stats.n_clocks * ct.seconds_per_clock));
   }
 
- done:
+done:
   if (error)
     clib_error_report (error);
   return 0;
@@ -715,7 +726,8 @@ int test_vhash_main (unformat_input_t * input)
 #endif /* CLIB_HAVE_VEC128 */
 
 #ifndef CLIB_HAVE_VEC128
-int test_vhash_main (unformat_input_t * input)
+int
+test_vhash_main (unformat_input_t * input)
 {
   clib_error ("compiled without vector support");
   return 0;
@@ -723,7 +735,8 @@ int test_vhash_main (unformat_input_t * input)
 #endif
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv [])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int r;
@@ -734,3 +747,11 @@ int main (int argc, char * argv [])
   return r;
 }
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

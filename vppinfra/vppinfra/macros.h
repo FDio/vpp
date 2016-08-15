@@ -1,8 +1,8 @@
 /*
   macros.h - definitions for a simple macro expander
-  
+
   Copyright (c) 2010, 2014 Cisco and/or its affiliates.
-  
+
   * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -28,18 +28,27 @@
 #include <unistd.h>
 #endif
 
-typedef struct {
-    uword * the_builtin_eval_hash;
-    uword * the_value_table_hash;
+typedef struct
+{
+  uword *the_builtin_eval_hash;
+  uword *the_value_table_hash;
 } macro_main_t;
 
 int clib_macro_unset (macro_main_t * mm, char *name);
 int clib_macro_set_value (macro_main_t * mm, char *name, char *value);
-void clib_macro_add_builtin (macro_main_t *mm, char *name, void * eval_fn);
-i8 * clib_macro_get_value (macro_main_t * mm, char *name);
-i8 * clib_macro_eval (macro_main_t *mm, i8 *s, i32 complain);
-i8 *clib_macro_eval_dollar (macro_main_t *mm, i8 *s, i32 complain);
-void clib_macro_init(macro_main_t * mm);
-void clib_macro_free(macro_main_t * mm);
+void clib_macro_add_builtin (macro_main_t * mm, char *name, void *eval_fn);
+i8 *clib_macro_get_value (macro_main_t * mm, char *name);
+i8 *clib_macro_eval (macro_main_t * mm, i8 * s, i32 complain);
+i8 *clib_macro_eval_dollar (macro_main_t * mm, i8 * s, i32 complain);
+void clib_macro_init (macro_main_t * mm);
+void clib_macro_free (macro_main_t * mm);
 
 #endif /* included_macros_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -138,7 +138,7 @@ do {						\
 #define u8x_interleave u8x8_interleave
 #define u16x_interleave u16x4_interleave
 #define u32x_interleave u32x2_interleave
-#define u64x_interleave(a,b) /* do nothing */
+#define u64x_interleave(a,b)	/* do nothing */
 #endif
 
 /* Vector word sized shifts. */
@@ -324,3 +324,11 @@ do {						\
 #undef _
 
 #endif /* included_vector_funcs_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

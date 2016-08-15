@@ -38,9 +38,10 @@
 #ifndef included_phash_h
 #define included_phash_h
 
-#include <vppinfra/hash.h>				/* for Bob's mixing functions */
+#include <vppinfra/hash.h>	/* for Bob's mixing functions */
 
-typedef struct {
+typedef struct
+{
   /* Maybe either pointer to vector or inline word. */
   uword key;
 
@@ -49,9 +50,10 @@ typedef struct {
 } phash_key_t;
 
 /* Table indexed by B. */
-typedef struct {
+typedef struct
+{
   /* Vector of key indices with this same value of B. */
-  u32 * keys;
+  u32 *keys;
 
   /* hash=a^tabb[b].val_b */
   u32 val_b;
@@ -82,11 +84,12 @@ typedef struct
   u32 oldval_q;
 } phash_tabq_t;
 
-typedef struct {
+typedef struct
+{
   u8 a_bits, b_bits, s_bits, a_shift;
   u32 b_mask;
-  u32 * tab;
-  u32 * scramble;
+  u32 *tab;
+  u32 *scramble;
 
   /* Seed value for hash mixer. */
   u64 hash_seed;
@@ -114,35 +117,35 @@ typedef struct {
   u32 hash_max;
 
   /* Vector of keys. */
-  phash_key_t * keys;
+  phash_key_t *keys;
 
   /* Used by callbacks to identify keys. */
-  void * private;
+  void *private;
 
   /* Key comparison callback. */
-  int (* key_is_equal) (void * private, uword key1, uword key2);
+  int (*key_is_equal) (void *private, uword key1, uword key2);
 
   /* Callback to reduce single key -> hash seeds. */
-  void (* key_seed1) (void * private, uword key, void * seed);
+  void (*key_seed1) (void *private, uword key, void *seed);
 
   /* Callback to reduce two key2 -> hash seeds. */
-  void (* key_seed2) (void * private, uword key1, uword key2, void * seed);
+  void (*key_seed2) (void *private, uword key1, uword key2, void *seed);
 
   /* Stuff used to compute perfect hash. */
   u32 random_seed;
 
   /* Stuff indexed by B. */
-  phash_tabb_t * tabb;
+  phash_tabb_t *tabb;
 
   /* Table of B ordered by number of keys in tabb[b]. */
-  u32 * tabb_sort;
+  u32 *tabb_sort;
 
   /* Unique key (or ~0 if none) for a given hash
      H = A ^ scramble[tab[B].val_b]. */
-  u32 * tabh;
+  u32 *tabh;
 
   /* Stuff indexed by q. */
-  phash_tabq_t * tabq;
+  phash_tabq_t *tabq;
 
   /* Stats. */
   u32 n_seed_trials, n_perfect_calls;
@@ -155,7 +158,7 @@ phash_main_free_working_memory (phash_main_t * pm)
   vec_free (pm->tabq);
   vec_free (pm->tabh);
   vec_free (pm->tabb_sort);
-  if (! (pm->flags & PHASH_FLAG_USE_SCRAMBLE))
+  if (!(pm->flags & PHASH_FLAG_USE_SCRAMBLE))
     vec_free (pm->scramble);
 }
 
@@ -172,12 +175,20 @@ phash_main_free (phash_main_t * pm)
 uword phash_hash_slow (phash_main_t * pm, uword key);
 
 /* Main routine to compute perfect hash. */
-clib_error_t * phash_find_perfect_hash (phash_main_t * pm);
+clib_error_t *phash_find_perfect_hash (phash_main_t * pm);
 
 /* Validates that hash is indeed perfect. */
-clib_error_t * phash_validate (phash_main_t * pm);
+clib_error_t *phash_validate (phash_main_t * pm);
 
 /* Unit test. */
 int phash_test_main (unformat_input_t * input);
 
 #endif /* included_phash_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

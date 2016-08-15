@@ -43,12 +43,13 @@ static int verbose;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
-int test_zvec_main (unformat_input_t * input)
+int
+test_zvec_main (unformat_input_t * input)
 {
   uword n_iterations;
   uword i;
   u32 seed;
-  
+
   n_iterations = 1024;
   seed = 0;
 
@@ -59,7 +60,7 @@ int test_zvec_main (unformat_input_t * input)
 	clib_error ("unknown input `%U'", format_unformat_error, input);
     }
 
-  if_verbose   ("%d iterations, seed %d\n", n_iterations, seed);
+  if_verbose ("%d iterations, seed %d\n", n_iterations, seed);
 
   for (i = 0; i < n_iterations; i++)
     {
@@ -91,7 +92,8 @@ int test_zvec_main (unformat_input_t * input)
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int ret;
@@ -105,3 +107,11 @@ int main (int argc, char * argv[])
 }
 #endif /* CLIB_UNIX */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

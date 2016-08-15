@@ -43,21 +43,24 @@
 
 /* Sparsely indexed vectors.  Basic idea taken from Hacker's delight.
    Eliot added ranges. */
-typedef struct {
+typedef struct
+{
   /* Bitmap one for each sparse index. */
-  uword * is_member_bitmap;
+  uword *is_member_bitmap;
 
   /* member_counts[i] = total number of members with j < i. */
-  u16 * member_counts;
+  u16 *member_counts;
 
 #define SPARSE_VEC_IS_RANGE (1 << 0)
 #define SPARSE_VEC_IS_VALID_RANGE (1 << 1)
-  u8 * range_flags;
+  u8 *range_flags;
 } sparse_vec_header_t;
 
 always_inline sparse_vec_header_t *
-sparse_vec_header (void * v)
-{ return vec_header (v, sizeof (sparse_vec_header_t)); }
+sparse_vec_header (void *v)
+{
+  return vec_header (v, sizeof (sparse_vec_header_t));
+}
 
 /* Index 0 is always used to mark indices that are not valid in
    sparse vector.  For example, you look up V[0x1234] and 0x1234 is not
@@ -67,15 +70,15 @@ sparse_vec_header (void * v)
 always_inline void *
 sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
 {
-  void * v;
-  sparse_vec_header_t * h;
+  void *v;
+  sparse_vec_header_t *h;
   word n;
 
   ASSERT (sparse_index_bits <= 16);
 
   v = _vec_resize (0,
 		   /* length increment */ 8,
-		   /* data bytes */ 8*elt_bytes,
+		   /* data bytes */ 8 * elt_bytes,
 		   /* header bytes */ sizeof (h[0]),
 		   /* data align */ 0);
 
@@ -95,12 +98,11 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
 }
 
 always_inline uword
-sparse_vec_index_internal (void * v,
+sparse_vec_index_internal (void *v,
 			   uword sparse_index,
-			   uword maybe_range,
-			   u32 * insert)
+			   uword maybe_range, u32 * insert)
 {
-  sparse_vec_header_t * h;
+  sparse_vec_header_t *h;
   uword i, b, d, w;
   u8 is_member;
 
@@ -128,8 +130,8 @@ sparse_vec_index_internal (void * v,
 
   if (insert)
     {
-      *insert = ! is_member;
-      if (! is_member)
+      *insert = !is_member;
+      if (!is_member)
 	{
 	  uword j;
 	  w |= b;
@@ -147,19 +149,18 @@ sparse_vec_index_internal (void * v,
 }
 
 always_inline uword
-sparse_vec_index (void * v, uword sparse_index)
+sparse_vec_index (void *v, uword sparse_index)
 {
   return sparse_vec_index_internal (v, sparse_index,
 				    /* maybe range */ 0,
 				    /* insert? */ 0);
 }
-				    
+
 always_inline void
-sparse_vec_index2 (void * v,
-		   u32 si0, u32 si1,
-		   u32 * i0_return, u32 * i1_return)
+sparse_vec_index2 (void *v,
+		   u32 si0, u32 si1, u32 * i0_return, u32 * i1_return)
 {
-  sparse_vec_header_t * h;
+  sparse_vec_header_t *h;
   uword b0, b1, w0, w1, v0, v1;
   u32 i0, i1, d0, d1;
   u8 is_member0, is_member1;
@@ -189,7 +190,7 @@ sparse_vec_index2 (void * v,
   d1 = h->member_counts[i1] + (v1 != 0);
 
   /* Validate speculation. */
-  if (PREDICT_FALSE (! is_pow2 (v0) || ! is_pow2 (v1)))
+  if (PREDICT_FALSE (!is_pow2 (v0) || !is_pow2 (v1)))
     {
       d0 += count_set_bits (v0) - (v0 != 0);
       d1 += count_set_bits (v1) - (v1 != 0);
@@ -233,3 +234,11 @@ sparse_vec_index2 (void * v,
 })
 
 #endif /* included_sparse_vec_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

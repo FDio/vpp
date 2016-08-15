@@ -97,7 +97,8 @@
 #error "unknown machine"
 #endif
 
-typedef struct {
+typedef struct
+{
   uword regs[CLIB_ARCH_LONGJMP_REGS];
 } clib_longjmp_t __attribute__ ((aligned (16)));
 
@@ -109,8 +110,15 @@ void clib_longjmp (clib_longjmp_t * save, uword return_value);
 uword clib_setjmp (clib_longjmp_t * save, uword return_value_not_taken);
 
 /* Call function on given stack. */
-uword clib_calljmp (uword (* func) (uword func_arg),
-		    uword func_arg,
-		    void * stack);
+uword clib_calljmp (uword (*func) (uword func_arg),
+		    uword func_arg, void *stack);
 
 #endif /* included_clib_longjmp_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

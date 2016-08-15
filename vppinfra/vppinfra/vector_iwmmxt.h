@@ -38,41 +38,62 @@
 #ifndef included_vector_iwmmxt_h
 #define included_vector_iwmmxt_h
 
-#include <vppinfra/error.h>		/* for ASSERT */
+#include <vppinfra/error.h>	/* for ASSERT */
 
 /* 64 bit interleaves. */
-always_inline u8x8 u8x8_interleave_hi (u8x8 a, u8x8 b)
-{ return __builtin_arm_wunpckihb (a, b); }
-
-always_inline u8x8 u8x8_interleave_lo (u8x8 a, u8x8 b)
-{ return __builtin_arm_wunpckilb (a, b); }
-
-always_inline u16x4 u16x4_interleave_hi (u16x4 a, u16x4 b)
-{ return __builtin_arm_wunpckihh (a, b); }
-
-always_inline u16x4 u16x4_interleave_lo (u16x4 a, u16x4 b)
-{ return __builtin_arm_wunpckilh (a, b); }
-
-always_inline u32x2 u32x2_interleave_hi (u32x2 a, u32x2 b)
-{ return __builtin_arm_wunpckihw (a, b); }
-
-always_inline u32x2 u32x2_interleave_lo (u32x2 a, u32x2 b)
-{ return __builtin_arm_wunpckilw (a, b); }
-
-always_inline u32x2 u32x2_splat (u32 a)
+always_inline u8x8
+u8x8_interleave_hi (u8x8 a, u8x8 b)
 {
-  u32x2 x = {a};
+  return __builtin_arm_wunpckihb (a, b);
+}
+
+always_inline u8x8
+u8x8_interleave_lo (u8x8 a, u8x8 b)
+{
+  return __builtin_arm_wunpckilb (a, b);
+}
+
+always_inline u16x4
+u16x4_interleave_hi (u16x4 a, u16x4 b)
+{
+  return __builtin_arm_wunpckihh (a, b);
+}
+
+always_inline u16x4
+u16x4_interleave_lo (u16x4 a, u16x4 b)
+{
+  return __builtin_arm_wunpckilh (a, b);
+}
+
+always_inline u32x2
+u32x2_interleave_hi (u32x2 a, u32x2 b)
+{
+  return __builtin_arm_wunpckihw (a, b);
+}
+
+always_inline u32x2
+u32x2_interleave_lo (u32x2 a, u32x2 b)
+{
+  return __builtin_arm_wunpckilw (a, b);
+}
+
+always_inline u32x2
+u32x2_splat (u32 a)
+{
+  u32x2 x = { a };
   x = u32x2_interleave_lo (x, x);
   return x;
- }
+}
 
-always_inline u16x4 u16x4_splat (u16 a)
+always_inline u16x4
+u16x4_splat (u16 a)
 {
   u32 t = (u32) a | ((u32) a << 16);
   return u32x2_splat (t);
 }
 
-always_inline u8x8 u8x8_splat (u8 a)
+always_inline u8x8
+u8x8_splat (u8 a)
 {
   u32 t = (u32) a | ((u32) a << 8);
   t |= t << 16;
@@ -98,30 +119,31 @@ always_inline u8x8 u8x8_splat (u8 a)
     return y;					\
   }
 
-_ (u16x4, 1, shift_left, wsllhi)
-_ (u32x2, 1, shift_left, wsllwi)
-_ (u16x4, 1, shift_right, wsrlhi)
-_ (u32x2, 1, shift_right, wsrlwi)
-_ (i16x4, 1, shift_left, wsllhi)
-_ (i32x2, 1, shift_left, wsllwi)
-_ (i16x4, 1, shift_right, wsrahi)
-_ (i32x2, 1, shift_right, wsrawi)
-
+_(u16x4, 1, shift_left, wsllhi)
+_(u32x2, 1, shift_left, wsllwi)
+_(u16x4, 1, shift_right, wsrlhi)
+_(u32x2, 1, shift_right, wsrlwi)
+_(i16x4, 1, shift_left, wsllhi)
+_(i32x2, 1, shift_left, wsllwi)
+_(i16x4, 1, shift_right, wsrahi) _(i32x2, 1, shift_right, wsrawi)
 /* Word shifts. */
-_ (u8x8, 8, word_shift_left, wslldi)
-_ (u16x4, 16, word_shift_left, wslldi)
-_ (u32x2, 32, word_shift_left, wslldi)
-_ (u8x8, 8, word_shift_right, wsrldi)
-_ (u16x4, 16, word_shift_right, wsrldi)
-_ (u32x2, 32, word_shift_right, wsrldi)
-_ (i8x8, 8, word_shift_left, wslldi)
-_ (i16x4, 16, word_shift_left, wslldi)
-_ (i32x2, 32, word_shift_left, wslldi)
-_ (i8x8, 8, word_shift_right, wsrldi)
-_ (i16x4, 16, word_shift_right, wsrldi)
-_ (i32x2, 32, word_shift_right, wsrldi)
-
+  _(u8x8, 8, word_shift_left, wslldi)
+_(u16x4, 16, word_shift_left, wslldi)
+_(u32x2, 32, word_shift_left, wslldi)
+_(u8x8, 8, word_shift_right, wsrldi)
+_(u16x4, 16, word_shift_right, wsrldi)
+_(u32x2, 32, word_shift_right, wsrldi)
+_(i8x8, 8, word_shift_left, wslldi)
+_(i16x4, 16, word_shift_left, wslldi)
+_(i32x2, 32, word_shift_left, wslldi)
+_(i8x8, 8, word_shift_right, wsrldi)
+_(i16x4, 16, word_shift_right, wsrldi) _(i32x2, 32, word_shift_right, wsrldi)
 #undef _
-
-
 #endif /* included_vector_iwmmxt_h */
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

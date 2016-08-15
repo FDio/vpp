@@ -1177,18 +1177,19 @@ vlibmemory_init (vlib_main_t * vm)
 {
   api_main_t *am = &api_main;
   svm_map_region_args_t _a, *a = &_a;
-  
+
   memset (a, 0, sizeof (*a));
   a->root_path = am->root_path;
   a->name = SVM_GLOBAL_REGION_NAME;
-  a->baseva = (am->global_baseva != 0) ? 
+  a->baseva = (am->global_baseva != 0) ?
     am->global_baseva : SVM_GLOBAL_REGION_BASEVA;
   a->size = (am->global_size != 0) ? am->global_size : SVM_GLOBAL_REGION_SIZE;
   a->flags = SVM_FLAGS_NODATA;
   a->uid = am->api_uid;
   a->gid = am->api_gid;
-  a->pvt_heap_size = (am->global_pvt_heap_size != 0) ? am->global_pvt_heap_size 
-    : SVM_PVT_MHEAP_SIZE;
+  a->pvt_heap_size =
+    (am->global_pvt_heap_size !=
+     0) ? am->global_pvt_heap_size : SVM_PVT_MHEAP_SIZE;
 
   svm_region_init_args (a);
   return 0;

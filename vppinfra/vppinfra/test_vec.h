@@ -48,20 +48,21 @@
 extern uword g_verbose;
 extern u32 g_seed;
 
-always_inline u8 * format_u32_binary (u8 * s, va_list * va)
+always_inline u8 *
+format_u32_binary (u8 * s, va_list * va)
 {
-    u32 val = va_arg (*va, u32);
-    word i = 0;
-    
-    for (i = BITS (val) - 1; i >= 0; i--)
-      {
-	if (val & (1 << i))
-	  s = format (s, "1");
-	else
-	  s = format (s, "0");
-      }
-    
-    return s;
+  u32 val = va_arg (*va, u32);
+  word i = 0;
+
+  for (i = BITS (val) - 1; i >= 0; i--)
+    {
+      if (val & (1 << i))
+	s = format (s, "1");
+      else
+	s = format (s, "0");
+    }
+
+  return s;
 }
 
 #define VERBOSE1(fmt, args...)			\
@@ -93,7 +94,8 @@ do {						\
 
 /* XXX - I get undefined symbol trying to call random_u32() <vppinfra/random.h> */
 /* Simple random number generator with period 2^31 - 1. */
-static u32 my_random_u32 (u32 * seed_return)
+static u32
+my_random_u32 (u32 * seed_return)
 {
   /* Unlikely mask value to XOR into seed.
      Otherwise small seed values would give
@@ -118,14 +120,15 @@ static u32 my_random_u32 (u32 * seed_return)
   return result;
 }
 
-static u32 bounded_random_u32 (u32 * seed, uword lo, uword hi)
+static u32
+bounded_random_u32 (u32 * seed, uword lo, uword hi)
 {
   if (lo == hi)
     return lo;
 
   ASSERT (lo < hi);
 
-  return ((my_random_u32 (seed) % (hi - lo + ((hi != ~0) ? (1) : (0)))) + lo); 
+  return ((my_random_u32 (seed) % (hi - lo + ((hi != ~0) ? (1) : (0)))) + lo);
 }
 
 #define fill_with_random_data(ptr, bytes, seed)			\
@@ -184,15 +187,16 @@ uword_to_pointer (log2_align_up (pointer_to_uword (ptr), align), void *)
 
 /* Allocates pointer to memory whose address is:
    addr = <log2_align>-aligned address */
-always_inline void * alloc_aligned (uword size, uword log2_align, void ** ptr_to_free)
+always_inline void *
+alloc_aligned (uword size, uword log2_align, void **ptr_to_free)
 {
-  void * p;
-  
+  void *p;
+
   if (size <= 0)
     return NULL;
-  
+
   p = (void *) clib_mem_alloc (size + (1 << log2_align) - 1);
-  
+
   if (ptr_to_free)
     *ptr_to_free = p;
 
@@ -201,18 +205,20 @@ always_inline void * alloc_aligned (uword size, uword log2_align, void ** ptr_to
 
 /* Allocates pointer to memory whose address is:
    addr = MAX_LOG2_ALIGN-aligned address + <offset> */
-always_inline void * alloc_unaligned (uword size, uword offset, void ** ptr_to_free)
+always_inline void *
+alloc_unaligned (uword size, uword offset, void **ptr_to_free)
 {
-  void * p;
+  void *p;
 
   if (size <= 0)
     return NULL;
 
   ASSERT (offset <= MAX_UNALIGN_OFFSET);
 
-  p = alloc_aligned (size + (1 << MAX_LOG2_ALIGN), MAX_LOG2_ALIGN, ptr_to_free);
+  p =
+    alloc_aligned (size + (1 << MAX_LOG2_ALIGN), MAX_LOG2_ALIGN, ptr_to_free);
 
-  if (! p)
+  if (!p)
     return NULL;
 
   return (void *) ((u8 *) p + (offset % MAX_UNALIGN_OFFSET));
@@ -227,3 +233,11 @@ do {								\
 
 
 #endif /* included_test_vec_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

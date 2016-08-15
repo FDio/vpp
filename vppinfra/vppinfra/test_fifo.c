@@ -38,26 +38,30 @@
 #include <vppinfra/fifo.h>
 #include <vppinfra/random.h>
 
-typedef struct {
+typedef struct
+{
   int a, b, c;
 } A;
 
 always_inline void
 A_set (A * a, int k)
 {
-  a->a = 1*k;
-  a->b = 2*k;
-  a->c = 3*k;
+  a->a = 1 * k;
+  a->b = 2 * k;
+  a->c = 3 * k;
 }
 
 always_inline int
 A_is_valid (A * a, int k)
-{ return a->a == 1*k && a->b == 2*k && a->c == 3*k; }
+{
+  return a->a == 1 * k && a->b == 2 * k && a->c == 3 * k;
+}
 
-int test_fifo_main (unformat_input_t * input)
+int
+test_fifo_main (unformat_input_t * input)
 {
   u32 n_added, n_removed, i, j, n_iter, seed, verbose;
-  A * as = 0, * a;
+  A *as = 0, *a;
 
   n_iter = 1000;
   seed = random_default_seed ();
@@ -73,8 +77,7 @@ int test_fifo_main (unformat_input_t * input)
 	;
       else
 	{
-	  clib_warning ("unknown input `%U'\n",
-			format_unformat_error, input);
+	  clib_warning ("unknown input `%U'\n", format_unformat_error, input);
 	  return 1;
 	}
     }
@@ -102,10 +105,12 @@ int test_fifo_main (unformat_input_t * input)
       ASSERT (clib_fifo_elts (as) == n_added - n_removed);
 
       j = 0;
+      /* *INDENT-OFF* */
       clib_fifo_foreach (a, as, {
 	ASSERT (A_is_valid (a, n_removed + j));
 	j++;
       });
+      /* *INDENT-ON* */
 
       ASSERT (j == clib_fifo_elts (as));
     }
@@ -116,7 +121,8 @@ int test_fifo_main (unformat_input_t * input)
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv [])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int r;
@@ -128,3 +134,11 @@ int main (int argc, char * argv [])
   return r;
 }
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -44,3 +44,11 @@ u8 u32x4_compare_word_mask_table[256] = {
   [0xff] = (1 << 0) | (1 << 1),
 };
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

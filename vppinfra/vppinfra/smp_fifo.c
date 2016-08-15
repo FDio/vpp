@@ -38,9 +38,10 @@
 #include <vppinfra/smp_fifo.h>
 #include <vppinfra/mem.h>
 
-clib_smp_fifo_t * clib_smp_fifo_init (uword max_n_elts, uword n_bytes_per_elt)
+clib_smp_fifo_t *
+clib_smp_fifo_init (uword max_n_elts, uword n_bytes_per_elt)
 {
-  clib_smp_fifo_t * f;
+  clib_smp_fifo_t *f;
   uword n_bytes_per_elt_cache_aligned;
 
   f = clib_mem_alloc_aligned (sizeof (f[0]), CLIB_CACHE_LINE_BYTES);
@@ -51,27 +52,40 @@ clib_smp_fifo_t * clib_smp_fifo_init (uword max_n_elts, uword n_bytes_per_elt)
   f->log2_max_n_elts = max_log2 (max_n_elts);
   f->max_n_elts_less_one = (1 << f->log2_max_n_elts) - 1;
 
-  n_bytes_per_elt_cache_aligned = clib_smp_fifo_round_elt_bytes (n_bytes_per_elt);
-  clib_exec_on_global_heap ({
-      f->data = clib_mem_alloc_aligned (n_bytes_per_elt_cache_aligned << f->log2_max_n_elts,
-					CLIB_CACHE_LINE_BYTES);
-  });
+  n_bytes_per_elt_cache_aligned =
+    clib_smp_fifo_round_elt_bytes (n_bytes_per_elt);
+  clib_exec_on_global_heap (
+			     {
+			     f->data =
+			     clib_mem_alloc_aligned
+			     (n_bytes_per_elt_cache_aligned <<
+			      f->log2_max_n_elts, CLIB_CACHE_LINE_BYTES);}
+  );
 
   /* Zero all data and mark all elements free. */
   {
     uword i;
     for (i = 0; i <= f->max_n_elts_less_one; i++)
       {
-	void * d = clib_smp_fifo_elt_at_index (f, n_bytes_per_elt, i);
-	clib_smp_fifo_data_footer_t * t;
+	void *d = clib_smp_fifo_elt_at_index (f, n_bytes_per_elt, i);
+	clib_smp_fifo_data_footer_t *t;
 
 	memset (d, 0, n_bytes_per_elt_cache_aligned);
 
 	t = clib_smp_fifo_get_data_footer (d, n_bytes_per_elt);
-	clib_smp_fifo_data_footer_set_state (t, CLIB_SMP_FIFO_DATA_STATE_free);
+	clib_smp_fifo_data_footer_set_state (t,
+					     CLIB_SMP_FIFO_DATA_STATE_free);
       }
   }
 
   return f;
 }
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

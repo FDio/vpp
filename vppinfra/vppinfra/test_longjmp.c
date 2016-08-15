@@ -35,7 +35,7 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <vppinfra/clib.h> 
+#include <vppinfra/clib.h>
 #include <vppinfra/longjmp.h>
 #include <vppinfra/format.h>
 
@@ -47,19 +47,22 @@ static int verbose;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
-static never_inline void f2 (clib_longjmp_t * env)
+static never_inline void
+f2 (clib_longjmp_t * env)
 {
   i++;
   clib_longjmp (env, 1);
 }
 
-static never_inline void f1 (clib_longjmp_t * env)
+static never_inline void
+f1 (clib_longjmp_t * env)
 {
   i++;
   f2 (env);
 }
 
-int test_longjmp_main (unformat_input_t * input)
+int
+test_longjmp_main (unformat_input_t * input)
 {
   clib_longjmp_t env;
 
@@ -76,7 +79,8 @@ int test_longjmp_main (unformat_input_t * input)
   return 0;
 }
 
-static uword f3 (uword arg)
+static uword
+f3 (uword arg)
 {
   uword i, j, array[10];
 
@@ -90,9 +94,10 @@ static uword f3 (uword arg)
   return j;
 }
 
-static void test_calljmp (unformat_input_t * input)
+static void
+test_calljmp (unformat_input_t * input)
 {
-  static u8 stack[32*1024] __attribute__((aligned(16)));
+  static u8 stack[32 * 1024] __attribute__ ((aligned (16)));
   uword v;
 
   v = clib_calljmp (f3, 0, stack + sizeof (stack));
@@ -101,7 +106,8 @@ static void test_calljmp (unformat_input_t * input)
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv [])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int res;
@@ -113,3 +119,11 @@ int main (int argc, char * argv [])
   return res;
 }
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

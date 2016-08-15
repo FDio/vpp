@@ -39,7 +39,7 @@
 #define included_zvec_h
 
 #include <vppinfra/clib.h>
-#include <vppinfra/error.h>		/* for ASSERT */
+#include <vppinfra/error.h>	/* for ASSERT */
 #include <vppinfra/format.h>
 
 /* zvec: compressed vectors.
@@ -61,7 +61,8 @@
    histogram of typical values.
 */
 
-typedef struct {
+typedef struct
+{
   /* Smallest coding for given histogram of typical data. */
   u32 coding;
 
@@ -94,7 +95,7 @@ typedef u32 zvec_histogram_count_t;
 			       (zc))
 
 uword
-_zvec_coding_from_histogram (void * _histogram,
+_zvec_coding_from_histogram (void *_histogram,
 			     uword histogram_len,
 			     uword histogram_elt_count_offset,
 			     uword histogram_elt_bytes,
@@ -105,14 +106,14 @@ _zvec_coding_from_histogram (void * _histogram,
   uword * zvec_encode_##TYPE (uword * zvec, uword * zvec_n_bits, uword coding, \
 			   void * data, uword data_stride, uword n_data);
 
-_ (u8,  /* is_signed */ 0);
-_ (u16, /* is_signed */ 0);
-_ (u32, /* is_signed */ 0);
-_ (u64, /* is_signed */ 0);
-_ (i8,  /* is_signed */ 1);
-_ (i16, /* is_signed */ 1);
-_ (i32, /* is_signed */ 1);
-_ (i64, /* is_signed */ 1);
+_(u8, /* is_signed */ 0);
+_(u16, /* is_signed */ 0);
+_(u32, /* is_signed */ 0);
+_(u64, /* is_signed */ 0);
+_(i8, /* is_signed */ 1);
+_(i16, /* is_signed */ 1);
+_(i32, /* is_signed */ 1);
+_(i64, /* is_signed */ 1);
 
 #undef _
 
@@ -124,14 +125,14 @@ _ (i64, /* is_signed */ 1);
 			   uword data_stride,	\
 			   uword n_data)
 
-_ (u8,  /* is_signed */ 0);
-_ (u16, /* is_signed */ 0);
-_ (u32, /* is_signed */ 0);
-_ (u64, /* is_signed */ 0);
-_ (i8,  /* is_signed */ 1);
-_ (i16, /* is_signed */ 1);
-_ (i32, /* is_signed */ 1);
-_ (i64, /* is_signed */ 1);
+_(u8, /* is_signed */ 0);
+_(u16, /* is_signed */ 0);
+_(u32, /* is_signed */ 0);
+_(u64, /* is_signed */ 0);
+_(i8, /* is_signed */ 1);
+_(i16, /* is_signed */ 1);
+_(i32, /* is_signed */ 1);
+_(i64, /* is_signed */ 1);
 
 #undef _
 
@@ -142,7 +143,7 @@ always_inline uword
 zvec_signed_to_unsigned (word s)
 {
   uword a = s < 0;
-  s = 2*s + a;
+  s = 2 * s + a;
   return a ? -s : s;
 }
 
@@ -155,3 +156,11 @@ zvec_unsigned_to_signed (uword u)
 }
 
 #endif /* included_zvec_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

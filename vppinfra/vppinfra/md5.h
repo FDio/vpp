@@ -26,22 +26,32 @@
 
 #include <vppinfra/clib.h>
 
-typedef struct {
-    u64 n_bits;
+typedef struct
+{
+  u64 n_bits;
 
-    u32 state[4];
+  u32 state[4];
 
-    union {
-	u64 b64[8];
-	u32 b32[16];
-	u8  b8[16*4];
-    } input_buffer;
+  union
+  {
+    u64 b64[8];
+    u32 b32[16];
+    u8 b8[16 * 4];
+  } input_buffer;
 
-    /* Resulting message digest filled in by md5_finish. */
+  /* Resulting message digest filled in by md5_finish. */
 } md5_context_t;
 
 void md5_init (md5_context_t * c);
-void md5_add (md5_context_t * c, void * data, int data_bytes);
+void md5_add (md5_context_t * c, void *data, int data_bytes);
 void md5_finish (md5_context_t * c, u8 digest[16]);
 
 #endif /* included_md5_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

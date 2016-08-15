@@ -76,7 +76,7 @@
 
 /* Used to pack structure elements. */
 #define CLIB_PACKED(x)	x __attribute__ ((packed))
-#define CLIB_UNUSED(x)	x __attribute__ ((unused)) 
+#define CLIB_UNUSED(x)	x __attribute__ ((unused))
 
 #define never_inline __attribute__ ((__noinline__))
 
@@ -171,16 +171,18 @@
 #endif /* count_leading_zeros */
 
 #if defined (count_leading_zeros)
-always_inline uword min_log2 (uword x)
+always_inline uword
+min_log2 (uword x)
 {
   uword n;
   count_leading_zeros (n, x);
   return BITS (uword) - n - 1;
 }
 #else
-always_inline uword min_log2 (uword x)
+always_inline uword
+min_log2 (uword x)
 {
-  uword a = x, b = BITS(uword)/2, c = 0, r = 0;
+  uword a = x, b = BITS (uword) / 2, c = 0, r = 0;
 
   /* Reduce x to 4 bit result. */
 #define _					\
@@ -191,29 +193,33 @@ always_inline uword min_log2 (uword x)
   b /= 2;					\
 }
 
-  if (BITS (uword) > 32) _;
-  _; _; _;
+  if (BITS (uword) > 32)
+    _;
+  _;
+  _;
+  _;
 #undef _
 
   /* Do table lookup on 4 bit partial. */
   if (BITS (uword) > 32)
     {
       const u64 table = 0x3333333322221104LL;
-      uword t = (table >> (4*a)) & 0xf;
+      uword t = (table >> (4 * a)) & 0xf;
       r = t < 4 ? r + t : ~0;
     }
   else
     {
       const u32 table = 0x22221104;
-      uword t = (a & 8) ? 3 : ((table >> (4*a)) & 0xf);
+      uword t = (a & 8) ? 3 : ((table >> (4 * a)) & 0xf);
       r = t < 4 ? r + t : ~0;
-  }
+    }
 
   return r;
 }
 #endif
 
-always_inline uword max_log2 (uword x)
+always_inline uword
+max_log2 (uword x)
 {
   uword l = min_log2 (x);
   if (x > ((uword) 1 << l))
@@ -221,7 +227,8 @@ always_inline uword max_log2 (uword x)
   return l;
 }
 
-always_inline u64 min_log2_u64 (u64 x)
+always_inline u64
+min_log2_u64 (u64 x)
 {
   if (BITS (uword) == 64)
     return min_log2 (x);
@@ -230,42 +237,57 @@ always_inline u64 min_log2_u64 (u64 x)
       uword l, y;
       y = x;
       l = 0;
-      if (y == 0) {
-	l += 32;
-	x >>= 32;
-      }
+      if (y == 0)
+	{
+	  l += 32;
+	  x >>= 32;
+	}
       l += min_log2 (x);
       return l;
     }
 }
 
-always_inline uword pow2_mask (uword x)
-{ return ((uword) 1 << x) - (uword) 1; }
+always_inline uword
+pow2_mask (uword x)
+{
+  return ((uword) 1 << x) - (uword) 1;
+}
 
-always_inline uword max_pow2 (uword x)
+always_inline uword
+max_pow2 (uword x)
 {
   word y = (word) 1 << min_log2 (x);
-  if (x > y) y *= 2;
+  if (x > y)
+    y *= 2;
   return y;
 }
 
-always_inline uword is_pow2 (uword x)
-{ return 0 == (x & (x - 1)); }
-
-always_inline uword round_pow2 (uword x, uword pow2)
+always_inline uword
+is_pow2 (uword x)
 {
-  return (x + pow2 - 1) &~ (pow2 - 1);
+  return 0 == (x & (x - 1));
 }
 
-always_inline u64 round_pow2_u64 (u64 x, u64 pow2)
+always_inline uword
+round_pow2 (uword x, uword pow2)
 {
-  return (x + pow2 - 1) &~ (pow2 - 1);
+  return (x + pow2 - 1) & ~(pow2 - 1);
 }
 
-always_inline uword first_set (uword x)
-{ return x & -x; }
+always_inline u64
+round_pow2_u64 (u64 x, u64 pow2)
+{
+  return (x + pow2 - 1) & ~(pow2 - 1);
+}
 
-always_inline uword log2_first_set (uword x)
+always_inline uword
+first_set (uword x)
+{
+  return x & -x;
+}
+
+always_inline uword
+log2_first_set (uword x)
 {
   uword result;
 #ifdef count_trailing_zeros
@@ -276,14 +298,23 @@ always_inline uword log2_first_set (uword x)
   return result;
 }
 
-always_inline f64 flt_round_down (f64 x)
-{ return (int) x; }
+always_inline f64
+flt_round_down (f64 x)
+{
+  return (int) x;
+}
 
-always_inline word flt_round_nearest (f64 x)
-{ return (word) (x + .5); }
+always_inline word
+flt_round_nearest (f64 x)
+{
+  return (word) (x + .5);
+}
 
-always_inline f64 flt_round_to_multiple (f64 x, f64 f)
-{ return f * flt_round_nearest (x / f); }
+always_inline f64
+flt_round_to_multiple (f64 x, f64 f)
+{
+  return f * flt_round_nearest (x / f);
+}
 
 #define clib_max(x,y)				\
 ({						\
@@ -307,16 +338,22 @@ always_inline f64 flt_round_to_multiple (f64 x, f64 f)
 
 /* Standard standalone-only function declarations. */
 #ifndef CLIB_UNIX
-void clib_standalone_init (void * memory, uword memory_bytes);
+void clib_standalone_init (void *memory, uword memory_bytes);
 
-void qsort (void * base, uword n, uword size,
-	    int (*) (const void *, const void *));
+void qsort (void *base, uword n, uword size,
+	    int (*)(const void *, const void *));
 #endif
 
 /* Stack backtrace. */
 uword
-clib_backtrace (uword * callers,
-		uword max_callers,
-		uword n_frames_to_skip);
+clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip);
 
 #endif /* included_clib_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -45,26 +45,29 @@
 #error "unix only"
 #endif
 
-static clib_error_t * elf_set_interpreter (elf_main_t * em, char * interp)
+static clib_error_t *
+elf_set_interpreter (elf_main_t * em, char *interp)
 {
-  elf_segment_t * g;
-  elf_section_t * s;
-  clib_error_t * error;
+  elf_segment_t *g;
+  elf_section_t *s;
+  clib_error_t *error;
 
   vec_foreach (g, em->segments)
-    {
-      if (g->header.type == ELF_SEGMENT_INTERP)
-	break;
-    }
+  {
+    if (g->header.type == ELF_SEGMENT_INTERP)
+      break;
+  }
 
   if (g >= vec_end (em->segments))
     return clib_error_return (0, "interpreter not found");
 
   if (g->header.memory_size < 1 + strlen (interp))
-    return clib_error_return (0, "given interpreter does not fit; must be less than %d bytes (`%s' given)",
+    return clib_error_return (0,
+			      "given interpreter does not fit; must be less than %d bytes (`%s' given)",
 			      g->header.memory_size, interp);
 
-  error = elf_get_section_by_start_address (em, g->header.virtual_address, &s);
+  error =
+    elf_get_section_by_start_address (em, g->header.virtual_address, &s);
   if (error)
     return error;
 
@@ -78,22 +81,22 @@ static clib_error_t * elf_set_interpreter (elf_main_t * em, char * interp)
 static void
 delete_dynamic_rpath_entries_from_section (elf_main_t * em, elf_section_t * s)
 {
-  elf64_dynamic_entry_t * e;
-  elf64_dynamic_entry_t * new_es = 0;
+  elf64_dynamic_entry_t *e;
+  elf64_dynamic_entry_t *new_es = 0;
 
   vec_foreach (e, em->dynamic_entries)
-    {
-      switch (e->type)
-	{
-	case ELF_DYNAMIC_ENTRY_RPATH:
-	case ELF_DYNAMIC_ENTRY_RUN_PATH:
-	  break;
+  {
+    switch (e->type)
+      {
+      case ELF_DYNAMIC_ENTRY_RPATH:
+      case ELF_DYNAMIC_ENTRY_RUN_PATH:
+	break;
 
-	default:
-	  vec_add1 (new_es, e[0]);
-	  break;
-	}
-    }
+      default:
+	vec_add1 (new_es, e[0]);
+	break;
+      }
+  }
 
   /* Pad so as to keep section size constant. */
   {
@@ -107,38 +110,41 @@ delete_dynamic_rpath_entries_from_section (elf_main_t * em, elf_section_t * s)
   elf_set_dynamic_entries (em);
 }
 
-static void elf_delete_dynamic_rpath_entries (elf_main_t * em)
+static void
+elf_delete_dynamic_rpath_entries (elf_main_t * em)
 {
-  elf_section_t * s;
+  elf_section_t *s;
 
   vec_foreach (s, em->sections)
-    {
-      switch (s->header.type)
-	{
-	case ELF_SECTION_DYNAMIC:
-	  delete_dynamic_rpath_entries_from_section (em, s);
-	  break;
+  {
+    switch (s->header.type)
+      {
+      case ELF_SECTION_DYNAMIC:
+	delete_dynamic_rpath_entries_from_section (em, s);
+	break;
 
-	default:
-	  break;
-	}
-    }
+      default:
+	break;
+      }
+  }
 }
 
-typedef struct {
+typedef struct
+{
   elf_main_t elf_main;
-  char * input_file;
-  char * output_file;
-  char * set_interpreter;
+  char *input_file;
+  char *output_file;
+  char *set_interpreter;
   int verbose;
 } elf_test_main_t;
 
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
-  elf_test_main_t _tm, * tm = &_tm;
-  elf_main_t * em = &tm->elf_main;
+  elf_test_main_t _tm, *tm = &_tm;
+  elf_main_t *em = &tm->elf_main;
   unformat_input_t i;
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
 
   memset (tm, 0, sizeof (tm[0]));
 
@@ -168,7 +174,7 @@ int main (int argc, char * argv[])
 
   if (!tm->input_file)
     {
-      clib_warning("No input file! Using test_bihash_template");
+      clib_warning ("No input file! Using test_bihash_template");
       tm->input_file = "test_bihash_template";
     }
 
@@ -178,7 +184,7 @@ int main (int argc, char * argv[])
 
   if (tm->set_interpreter)
     {
-      clib_error_t * error = elf_set_interpreter (em, tm->set_interpreter);
+      clib_error_t *error = elf_set_interpreter (em, tm->set_interpreter);
       if (error)
 	goto done;
       elf_delete_dynamic_rpath_entries (em);
@@ -192,7 +198,7 @@ int main (int argc, char * argv[])
 
   elf_main_free (em);
 
- done:
+done:
   if (error)
     {
       clib_error_report (error);
@@ -201,3 +207,11 @@ int main (int argc, char * argv[])
   else
     return 0;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -36,3 +36,11 @@ extern void timer_block (sigset_t * save);
 extern void timer_unblock (sigset_t * save);
 
 #endif /* included_timer_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

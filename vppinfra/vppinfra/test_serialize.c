@@ -45,15 +45,17 @@
   _ (u16, a16)					\
   _ (u32, a32)
 
-typedef struct {
+typedef struct
+{
 #define _(t,f) t f;
   foreach_my_vector_type
 #undef _
 } my_vector_type_t;
 
-static void serialize_my_vector_type_single (serialize_main_t * m, va_list * va)
+static void
+serialize_my_vector_type_single (serialize_main_t * m, va_list * va)
 {
-  my_vector_type_t * v = va_arg (*va, my_vector_type_t *);
+  my_vector_type_t *v = va_arg (*va, my_vector_type_t *);
   u32 n = va_arg (*va, u32);
   u32 i;
 
@@ -65,9 +67,10 @@ static void serialize_my_vector_type_single (serialize_main_t * m, va_list * va)
 #undef _
 }
 
-static void unserialize_my_vector_type_single (serialize_main_t * m, va_list * va)
+static void
+unserialize_my_vector_type_single (serialize_main_t * m, va_list * va)
 {
-  my_vector_type_t * v = va_arg (*va, my_vector_type_t *);
+  my_vector_type_t *v = va_arg (*va, my_vector_type_t *);
   u32 n = va_arg (*va, u32);
   u32 i;
 
@@ -79,9 +82,10 @@ static void unserialize_my_vector_type_single (serialize_main_t * m, va_list * v
     }
 }
 
-static void serialize_my_vector_type_multiple (serialize_main_t * m, va_list * va)
+static void
+serialize_my_vector_type_multiple (serialize_main_t * m, va_list * va)
 {
-  my_vector_type_t * v = va_arg (*va, my_vector_type_t *);
+  my_vector_type_t *v = va_arg (*va, my_vector_type_t *);
   u32 n = va_arg (*va, u32);
 
 #define _(t,f)					\
@@ -97,9 +101,10 @@ static void serialize_my_vector_type_multiple (serialize_main_t * m, va_list * v
 #undef _
 }
 
-static void unserialize_my_vector_type_multiple (serialize_main_t * m, va_list * va)
+static void
+unserialize_my_vector_type_multiple (serialize_main_t * m, va_list * va)
 {
-  my_vector_type_t * v = va_arg (*va, my_vector_type_t *);
+  my_vector_type_t *v = va_arg (*va, my_vector_type_t *);
   u32 n = va_arg (*va, u32);
 
 #define _(t,f)					\
@@ -115,27 +120,29 @@ static void unserialize_my_vector_type_multiple (serialize_main_t * m, va_list *
 #undef _
 }
 
-typedef struct {
+typedef struct
+{
   u32 n_iter;
   u32 seed;
   u32 verbose;
   u32 multiple;
   u32 max_len;
 
-  my_vector_type_t ** test_vectors;
+  my_vector_type_t **test_vectors;
 
-  char * dump_file;
+  char *dump_file;
 
   serialize_main_t serialize_main;
   serialize_main_t unserialize_main;
 } test_serialize_main_t;
 
-int test_serialize_main (unformat_input_t * input)
+int
+test_serialize_main (unformat_input_t * input)
 {
-  clib_error_t * error = 0;
-  test_serialize_main_t _tm, * tm = &_tm;
-  serialize_main_t * sm = &tm->serialize_main;
-  serialize_main_t * um = &tm->unserialize_main;
+  clib_error_t *error = 0;
+  test_serialize_main_t _tm, *tm = &_tm;
+  serialize_main_t *sm = &tm->serialize_main;
+  serialize_main_t *um = &tm->unserialize_main;
   uword i;
 
   memset (tm, 0, sizeof (tm[0]));
@@ -172,7 +179,8 @@ int test_serialize_main (unformat_input_t * input)
   if (tm->seed == 0)
     tm->seed = random_default_seed ();
 
-  clib_warning ("iter %d seed %d max-len %d", tm->n_iter, tm->seed, tm->max_len);
+  clib_warning ("iter %d seed %d max-len %d", tm->n_iter, tm->seed,
+		tm->max_len);
 
 #ifdef CLIB_UNIX
   if (tm->dump_file)
@@ -185,22 +193,24 @@ int test_serialize_main (unformat_input_t * input)
   for (i = 0; i < tm->n_iter; i++)
     {
       uword l = 1 + (random_u32 (&tm->seed) % tm->max_len);
-      my_vector_type_t * mv;
+      my_vector_type_t *mv;
 
       vec_resize (tm->test_vectors[i], l);
       vec_foreach (mv, tm->test_vectors[i])
-	{
+      {
 #define _(t,f) mv->f = random_u32 (&tm->seed) & pow2_mask (31);
-	  foreach_my_vector_type;
+	foreach_my_vector_type;
 #undef _
-	}
+      }
 
       vec_serialize (sm, tm->test_vectors[i],
-		     tm->multiple ? serialize_my_vector_type_multiple : serialize_my_vector_type_single);
+		     tm->multiple ? serialize_my_vector_type_multiple :
+		     serialize_my_vector_type_single);
     }
 
   if (tm->verbose)
-    clib_warning ("overflow vector max bytes %d", vec_max_len (sm->stream.overflow_buffer));
+    clib_warning ("overflow vector max bytes %d",
+		  vec_max_len (sm->stream.overflow_buffer));
 
   serialize_close (sm);
 
@@ -213,17 +223,18 @@ int test_serialize_main (unformat_input_t * input)
   else
 #endif
     {
-      u8 * v = serialize_close_vector (sm);
+      u8 *v = serialize_close_vector (sm);
       unserialize_open_data (um, v, vec_len (v));
     }
 
   for (i = 0; i < tm->n_iter; i++)
     {
-      my_vector_type_t * mv0;
-      my_vector_type_t * mv1;
+      my_vector_type_t *mv0;
+      my_vector_type_t *mv1;
 
       vec_unserialize (um, &mv0,
-		       tm->multiple ? unserialize_my_vector_type_multiple  : unserialize_my_vector_type_single);
+		       tm->multiple ? unserialize_my_vector_type_multiple :
+		       unserialize_my_vector_type_single);
       mv1 = tm->test_vectors[i];
 
       if (vec_len (mv0) != vec_len (mv1))
@@ -234,14 +245,15 @@ int test_serialize_main (unformat_input_t * input)
       vec_free (mv0);
     }
 
- done:
+done:
   if (error)
     clib_error_report (error);
   return 0;
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv [])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int r;
@@ -252,3 +264,11 @@ int main (int argc, char * argv [])
   return r;
 }
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

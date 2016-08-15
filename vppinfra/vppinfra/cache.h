@@ -40,8 +40,8 @@
 
 #include <vppinfra/error_bootstrap.h>
 
-/* 
- * Allow CFLAGS to override the arch-specific cache line size 
+/*
+ * Allow CFLAGS to override the arch-specific cache line size
  */
 #ifndef CLIB_LOG2_CACHE_LINE_BYTES
 
@@ -94,3 +94,11 @@ do {						\
 
 #endif /* included_clib_cache_h */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

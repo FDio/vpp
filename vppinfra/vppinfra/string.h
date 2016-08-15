@@ -38,7 +38,7 @@
 #ifndef included_clib_string_h
 #define included_clib_string_h
 
-#include <vppinfra/clib.h> /* for CLIB_LINUX_KERNEL */
+#include <vppinfra/clib.h>	/* for CLIB_LINUX_KERNEL */
 
 #ifdef CLIB_LINUX_KERNEL
 #include <linux/string.h>
@@ -53,7 +53,7 @@
 #endif
 
 /* Exchanges source and destination. */
-void clib_memswap (void * _a, void * _b, uword bytes);
+void clib_memswap (void *_a, void *_b, uword bytes);
 
 #if __AVX__
 #include <vppinfra/memcpy_avx.h>
@@ -64,3 +64,11 @@ void clib_memswap (void * _a, void * _b, uword bytes);
 #endif
 
 #endif /* included_clib_string_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -39,10 +39,11 @@
 #define included_fifo_h
 
 #include <vppinfra/cache.h>
-#include <vppinfra/error.h>		/* for ASSERT */
+#include <vppinfra/error.h>	/* for ASSERT */
 #include <vppinfra/vec.h>
 
-typedef struct {
+typedef struct
+{
   /* First index of valid data in fifo. */
   u32 head_index;
 
@@ -51,8 +52,10 @@ typedef struct {
 } clib_fifo_header_t;
 
 always_inline clib_fifo_header_t *
-clib_fifo_header (void * f)
-{ return vec_header (f, sizeof (clib_fifo_header_t)); }
+clib_fifo_header (void *f)
+{
+  return vec_header (f, sizeof (clib_fifo_header_t));
+}
 
 /* Aliases. */
 #define clib_fifo_len(v) vec_len(v)
@@ -60,12 +63,12 @@ clib_fifo_header (void * f)
 #define clib_fifo_end(v) vec_end(v)
 
 always_inline uword
-clib_fifo_elts (void * v)
+clib_fifo_elts (void *v)
 {
   word l, r;
-  clib_fifo_header_t * f = clib_fifo_header (v);
+  clib_fifo_header_t *f = clib_fifo_header (v);
 
-  if (! v)
+  if (!v)
     return 0;
 
   l = _clib_fifo_len (v);
@@ -76,13 +79,15 @@ clib_fifo_elts (void * v)
 }
 
 always_inline uword
-clib_fifo_free_elts (void * v)
-{ return clib_fifo_len (v) - clib_fifo_elts (v); }
+clib_fifo_free_elts (void *v)
+{
+  return clib_fifo_len (v) - clib_fifo_elts (v);
+}
 
 always_inline void
-clib_fifo_reset (void * v)
+clib_fifo_reset (void *v)
 {
-  clib_fifo_header_t * f = clib_fifo_header (v);
+  clib_fifo_header_t *f = clib_fifo_header (v);
   if (v)
     {
       f->head_index = f->tail_index = 0;
@@ -91,13 +96,13 @@ clib_fifo_reset (void * v)
 }
 
 /* External resize function. */
-void * _clib_fifo_resize (void * v, uword n_elts, uword elt_bytes);
+void *_clib_fifo_resize (void *v, uword n_elts, uword elt_bytes);
 
 #define clib_fifo_resize(f,n_elts) \
   f = _clib_fifo_resize ((f), (n_elts), sizeof ((f)[0]))
 
 always_inline void *
-_clib_fifo_validate (void * v, uword n_elts, uword elt_bytes)
+_clib_fifo_validate (void *v, uword n_elts, uword elt_bytes)
 {
   if (clib_fifo_free_elts (v) < n_elts)
     v = _clib_fifo_resize (v, n_elts, elt_bytes);
@@ -106,14 +111,14 @@ _clib_fifo_validate (void * v, uword n_elts, uword elt_bytes)
 
 #define clib_fifo_validate(f,n_elts) \
   f = _clib_fifo_validate ((f), (n_elts), sizeof (f[0]))
-  
+
 /* Advance tail pointer by N_ELTS which can be either positive or negative. */
 always_inline void *
-_clib_fifo_advance_tail (void * v, word n_elts, uword elt_bytes,
+_clib_fifo_advance_tail (void *v, word n_elts, uword elt_bytes,
 			 uword * tail_return)
 {
   word i, l, n_free;
-  clib_fifo_header_t * f;
+  clib_fifo_header_t *f;
 
   n_free = clib_fifo_free_elts (v);
   if (n_free < n_elts)
@@ -161,9 +166,9 @@ _clib_fifo_advance_tail (void * v, word n_elts, uword elt_bytes,
 })
 
 always_inline uword
-clib_fifo_advance_head (void * v, uword n_elts)
+clib_fifo_advance_head (void *v, uword n_elts)
 {
-  clib_fifo_header_t * f;
+  clib_fifo_header_t *f;
   uword l, i, n;
 
   ASSERT (clib_fifo_elts (v) >= n_elts);
@@ -233,16 +238,16 @@ do {						\
 } while (0)
 
 always_inline uword
-clib_fifo_head_index (void * v)
+clib_fifo_head_index (void *v)
 {
-  clib_fifo_header_t * f = clib_fifo_header (v);
+  clib_fifo_header_t *f = clib_fifo_header (v);
   return v ? f->head_index : 0;
 }
 
 always_inline uword
-clib_fifo_tail_index (void * v)
+clib_fifo_tail_index (void *v)
 {
-  clib_fifo_header_t * f = clib_fifo_header (v);
+  clib_fifo_header_t *f = clib_fifo_header (v);
   return v ? f->tail_index : 0;
 }
 
@@ -252,9 +257,9 @@ clib_fifo_tail_index (void * v)
 #define clib_fifo_free(f) vec_free_h((f),sizeof(clib_fifo_header_t))
 
 always_inline uword
-clib_fifo_elt_index (void * v, uword i)
+clib_fifo_elt_index (void *v, uword i)
 {
-  clib_fifo_header_t * f = clib_fifo_header (v);
+  clib_fifo_header_t *f = clib_fifo_header (v);
   uword result = 0;
 
   ASSERT (i < clib_fifo_elts (v));
@@ -289,3 +294,11 @@ do {						\
 } while (0)
 
 #endif /* included_fifo_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

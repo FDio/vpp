@@ -46,13 +46,14 @@ static int verbose;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   word i, j, k, n, check_mask;
   u32 seed;
-  u32 * h = 0;
-  uword * objects = 0;
-  uword * handles = 0;
+  u32 *h = 0;
+  uword *objects = 0;
+  uword *handles = 0;
   uword objects_used;
   uword align, fixed_size;
 
@@ -79,12 +80,13 @@ int main (int argc, char * argv[])
   if (argc > 4)
     align = 1 << atoi (argv[4]);
 
-  if_verbose   ("testing %wd iterations seed %wd\n", n, seed);
+  if_verbose ("testing %wd iterations seed %wd\n", n, seed);
 
-  if (verbose) fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
+  if (verbose)
+    fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
 
   vec_resize (objects, 1000);
-  if (vec_bytes(objects))       /* stupid warning be gone */
+  if (vec_bytes (objects))	/* stupid warning be gone */
     memset (objects, ~0, vec_bytes (objects));
   vec_resize (handles, vec_len (objects));
 
@@ -93,7 +95,7 @@ int main (int argc, char * argv[])
   if (fixed_size)
     {
       uword max_len = 1024 * 1024;
-      void * memory = clib_mem_alloc (max_len * sizeof (h[0]));
+      void *memory = clib_mem_alloc (max_len * sizeof (h[0]));
       h = heap_create_from_memory (memory, max_len, sizeof (h[0]));
     }
 
@@ -114,7 +116,7 @@ int main (int argc, char * argv[])
 	}
       else
 	{
-	  u32 * data;
+	  u32 *data;
 	  uword size;
 
 	  size = 1 + (random_u32 (&seed) % 100);
@@ -142,7 +144,7 @@ int main (int argc, char * argv[])
       if (check_mask & 4)
 	{
 	  /* Duplicate heap at each iteration. */
-	  u32 * h1 = heap_dup (h);
+	  u32 *h1 = heap_dup (h);
 	  heap_free (h);
 	  h = h1;
 	}
@@ -153,23 +155,26 @@ int main (int argc, char * argv[])
 	  for (j = 0; j < vec_len (objects); j++)
 	    if (objects[j] != ~0)
 	      {
-		u32 * data = h + objects[j];
+		u32 *data = h + objects[j];
 		for (k = 0; k < heap_len (h, handles[j]); k++)
-		  ASSERT(data[k] == objects[j] + k);
+		  ASSERT (data[k] == objects[j] + k);
 	      }
 	}
     }
 
-  if (verbose) fformat (stderr, "%U\n", format_heap, h, 1);
+  if (verbose)
+    fformat (stderr, "%U\n", format_heap, h, 1);
 
   {
-    u32 * h1 = heap_dup (h);
-    if (verbose) fformat (stderr, "%U\n", format_heap, h1, 1);
+    u32 *h1 = heap_dup (h);
+    if (verbose)
+      fformat (stderr, "%U\n", format_heap, h1, 1);
     heap_free (h1);
   }
 
   heap_free (h);
-  if (verbose) fformat (stderr, "%U\n", format_heap, h, 1);
+  if (verbose)
+    fformat (stderr, "%U\n", format_heap, h, 1);
   ASSERT (objects_used == 0);
 
   vec_free (objects);
@@ -178,7 +183,16 @@ int main (int argc, char * argv[])
   if (fixed_size)
     vec_free_h (h, sizeof (heap_header_t));
 
-  if (verbose) fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
+  if (verbose)
+    fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
 
   return 0;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

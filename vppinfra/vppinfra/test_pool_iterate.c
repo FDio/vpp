@@ -18,12 +18,13 @@
 #include <vppinfra/pool.h>
 
 #ifdef __KERNEL__
-# include <linux/unistd.h>
+#include <linux/unistd.h>
 #else
-# include <unistd.h>
+#include <unistd.h>
 #endif
 
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   int i;
   uword next;
@@ -32,17 +33,27 @@ int main (int argc, char * argv[])
 
   for (i = 0; i < 70; i++)
     pool_get (tp, junk);
-  
+
   (void) junk;			/* compiler warning */
 
   pool_put_index (tp, 1);
   pool_put_index (tp, 65);
 
   next = ~0;
-  do {
-    next = pool_next_index (tp, next);
-    fformat (stdout, "next index %d\n", next);
-  } while (next != ~0);
+  do
+    {
+      next = pool_next_index (tp, next);
+      fformat (stdout, "next index %d\n", next);
+    }
+  while (next != ~0);
 
   return 0;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

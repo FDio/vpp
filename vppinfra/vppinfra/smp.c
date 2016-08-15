@@ -39,15 +39,18 @@
 #include <vppinfra/mheap.h>
 #include <vppinfra/os.h>
 
-void clib_smp_free (clib_smp_main_t * m)
+void
+clib_smp_free (clib_smp_main_t * m)
 {
-  clib_mem_vm_free (m->vm_base, (uword) ((1 + m->n_cpus) << m->log2_n_per_cpu_vm_bytes));
+  clib_mem_vm_free (m->vm_base,
+		    (uword) ((1 + m->n_cpus) << m->log2_n_per_cpu_vm_bytes));
 }
 
-static uword allocate_per_cpu_mheap (uword cpu)
+static uword
+allocate_per_cpu_mheap (uword cpu)
 {
-  clib_smp_main_t * m = &clib_smp_main;
-  void * heap;
+  clib_smp_main_t *m = &clib_smp_main;
+  void *heap;
   uword vm_size, stack_size, mheap_flags;
 
   ASSERT (os_get_cpu_number () == cpu);
@@ -59,8 +62,7 @@ static uword allocate_per_cpu_mheap (uword cpu)
 
   /* Heap extends up to start of stack. */
   heap = mheap_alloc_with_flags (clib_smp_vm_base_for_cpu (m, cpu),
-				 vm_size - stack_size,
-				 mheap_flags);
+				 vm_size - stack_size, mheap_flags);
   clib_mem_set_heap (heap);
 
   if (cpu == 0)
@@ -79,13 +81,15 @@ static uword allocate_per_cpu_mheap (uword cpu)
   return 0;
 }
 
-void clib_smp_init (void)
+void
+clib_smp_init (void)
 {
-  clib_smp_main_t * m = &clib_smp_main;
+  clib_smp_main_t *m = &clib_smp_main;
   uword cpu;
 
-  m->vm_base = clib_mem_vm_alloc ((uword) (m->n_cpus + 1) << m->log2_n_per_cpu_vm_bytes);
-  if (! m->vm_base)
+  m->vm_base =
+    clib_mem_vm_alloc ((uword) (m->n_cpus + 1) << m->log2_n_per_cpu_vm_bytes);
+  if (!m->vm_base)
     clib_error ("error allocating virtual memory");
 
   for (cpu = 0; cpu < m->n_cpus; cpu++)
@@ -93,9 +97,10 @@ void clib_smp_init (void)
 		  clib_smp_stack_top_for_cpu (m, cpu));
 }
 
-void clib_smp_lock_init (clib_smp_lock_t ** pl)
+void
+clib_smp_lock_init (clib_smp_lock_t ** pl)
 {
-  clib_smp_lock_t * l;
+  clib_smp_lock_t *l;
   uword i, n_bytes, n_fifo_elts;
 
   /* No locking necessary if n_cpus <= 1.
@@ -124,17 +129,18 @@ void clib_smp_lock_init (clib_smp_lock_t ** pl)
   *pl = l;
 }
 
-void clib_smp_lock_free (clib_smp_lock_t ** pl)
+void
+clib_smp_lock_free (clib_smp_lock_t ** pl)
 {
   if (*pl)
     clib_mem_free (*pl);
   *pl = 0;
 }
 
-void clib_smp_lock_slow_path (clib_smp_lock_t * l,
-			      uword my_cpu,
-			      clib_smp_lock_header_t h0,
-			      clib_smp_lock_type_t type)
+void
+clib_smp_lock_slow_path (clib_smp_lock_t * l,
+			 uword my_cpu,
+			 clib_smp_lock_header_t h0, clib_smp_lock_type_t type)
 {
   clib_smp_lock_header_t h1, h2, h3;
   uword is_reader = type == CLIB_SMP_LOCK_TYPE_READER;
@@ -163,7 +169,7 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l,
       /* It is possible that if head and tail are both zero, CPU with lock would have unlocked lock. */
       else if (type == CLIB_SMP_LOCK_TYPE_SPIN)
 	{
-	  while (! h2.writer_has_lock)
+	  while (!h2.writer_has_lock)
 	    {
 	      ASSERT_AND_PANIC (h2.waiting_fifo.n_elts == 0);
 	      h1 = h2;
@@ -185,7 +191,7 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l,
     }
 
   {
-    clib_smp_lock_waiting_fifo_elt_t * w;
+    clib_smp_lock_waiting_fifo_elt_t *w;
 
     w = l->waiting_fifo + my_tail;
 
@@ -193,8 +199,7 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l,
       clib_smp_pause ();
 
     w->wait_type = (is_reader
-		    ? CLIB_SMP_LOCK_WAIT_READER
-		    : CLIB_SMP_LOCK_WAIT_WRITER);
+		    ? CLIB_SMP_LOCK_WAIT_READER : CLIB_SMP_LOCK_WAIT_WRITER);
 
     /* Wait until CPU holding the lock grants us the lock. */
     while (w->wait_type != CLIB_SMP_LOCK_WAIT_DONE)
@@ -204,18 +209,19 @@ void clib_smp_lock_slow_path (clib_smp_lock_t * l,
   }
 }
 
-void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
-				uword my_cpu,
-				clib_smp_lock_header_t h0,
-				clib_smp_lock_type_t type)
+void
+clib_smp_unlock_slow_path (clib_smp_lock_t * l,
+			   uword my_cpu,
+			   clib_smp_lock_header_t h0,
+			   clib_smp_lock_type_t type)
 {
   clib_smp_lock_header_t h1, h2;
-  clib_smp_lock_waiting_fifo_elt_t * head;
+  clib_smp_lock_waiting_fifo_elt_t *head;
   clib_smp_lock_wait_type_t head_wait_type;
   uword is_reader = type == CLIB_SMP_LOCK_TYPE_READER;
   uword n_fifo_elts = l->n_waiting_fifo_elts;
   uword head_index, must_wait_for_readers;
-  
+
   while (1)
     {
       /* Advance waiting fifo giving lock to first waiter. */
@@ -238,7 +244,8 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
 	      ASSERT_AND_PANIC (h1.writer_has_lock);
 	    }
 
-	  while ((head_wait_type = head->wait_type) == CLIB_SMP_LOCK_WAIT_EMPTY)
+	  while ((head_wait_type =
+		  head->wait_type) == CLIB_SMP_LOCK_WAIT_EMPTY)
 	    clib_smp_pause ();
 
 	  /* Don't advance FIFO to writer unless all readers have unlocked. */
@@ -247,7 +254,7 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
 	     && head_wait_type == CLIB_SMP_LOCK_WAIT_WRITER
 	     && h1.n_readers_with_lock != 0);
 
-	  if (! must_wait_for_readers)
+	  if (!must_wait_for_readers)
 	    {
 	      head_index += 1;
 	      h1.waiting_fifo.n_elts -= 1;
@@ -263,11 +270,14 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
 		}
 	    }
 
-	  h1.waiting_fifo.head_index = head_index == n_fifo_elts ? 0 : head_index;
+	  h1.waiting_fifo.head_index =
+	    head_index == n_fifo_elts ? 0 : head_index;
 	  h1.request_cpu = my_cpu;
 
-	  ASSERT_AND_PANIC (h1.waiting_fifo.head_index >= 0 && h1.waiting_fifo.head_index < n_fifo_elts);
-	  ASSERT_AND_PANIC (h1.waiting_fifo.n_elts >= 0 && h1.waiting_fifo.n_elts <= n_fifo_elts);
+	  ASSERT_AND_PANIC (h1.waiting_fifo.head_index >= 0
+			    && h1.waiting_fifo.head_index < n_fifo_elts);
+	  ASSERT_AND_PANIC (h1.waiting_fifo.n_elts >= 0
+			    && h1.waiting_fifo.n_elts <= n_fifo_elts);
 
 	  h2 = clib_smp_lock_set_header (l, h1, h0);
 
@@ -305,3 +315,11 @@ void clib_smp_unlock_slow_path (clib_smp_lock_t * l,
       }
     }
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

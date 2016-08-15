@@ -17,17 +17,20 @@
 
 #include <vppinfra/format.h>
 
-typedef union {
-  struct {
+typedef union
+{
+  struct
+  {
     u8 code;
     u8 type;
   };
   u8 data[2];
 } x86_insn_operand_t;
 
-typedef struct {
+typedef struct
+{
   /* Instruction name. */
-  char * name;
+  char *name;
 
   /* X86 instructions may have up to 3 operands. */
   x86_insn_operand_t operands[3];
@@ -71,21 +74,22 @@ x86_insn_operand_is_valid (x86_insn_t * i, uword o)
  /* rex w bit */				\
  _ (OPERAND_SIZE_64, 0)
 
-typedef enum {
+typedef enum
+{
 #define _(f,o) X86_INSN_FLAG_BIT_##f,
-  foreach_x86_insn_parse_flag
-  foreach_x86_legacy_prefix
+  foreach_x86_insn_parse_flag foreach_x86_legacy_prefix
 #undef _
 } x86_insn_parse_flag_bit_t;
 
-typedef enum {
+typedef enum
+{
 #define _(f,o) X86_INSN_##f = 1 << X86_INSN_FLAG_BIT_##f,
-  foreach_x86_insn_parse_flag
-  foreach_x86_legacy_prefix
+  foreach_x86_insn_parse_flag foreach_x86_legacy_prefix
 #undef _
 } x86_insn_parse_flag_t;
 
-typedef struct {
+typedef struct
+{
   /* Registers in instruction.
      [0] is modrm reg field
      [1] is base reg
@@ -93,9 +97,9 @@ typedef struct {
   u8 regs[3];
 
   /* Scale for index register. */
-  u8 log2_index_scale : 2;
-  u8 log2_effective_operand_bytes : 3;
-  u8 log2_effective_address_bytes : 3;
+  u8 log2_index_scale:2;
+  u8 log2_effective_operand_bytes:3;
+  u8 log2_effective_address_bytes:3;
 
   i32 displacement;
 
@@ -106,8 +110,16 @@ typedef struct {
 
   x86_insn_t insn;
 } x86_insn_parse_t;
-		
-u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start);
+
+u8 *x86_insn_parse (x86_insn_parse_t * p, u8 * code_start);
 format_function_t format_x86_insn_parse;
 
 #endif /* included_asm_x86_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

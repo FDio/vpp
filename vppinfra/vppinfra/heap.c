@@ -35,24 +35,31 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <vppinfra/cache.h>		/* for CLIB_CACHE_LINE_BYTES */
+#include <vppinfra/cache.h>	/* for CLIB_CACHE_LINE_BYTES */
 #include <vppinfra/mem.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/heap.h>
 #include <vppinfra/error.h>
 
-always_inline heap_elt_t * elt_at (heap_header_t * h, uword i)
+always_inline heap_elt_t *
+elt_at (heap_header_t * h, uword i)
 {
   ASSERT (i < vec_len (h->elts));
   return h->elts + i;
 }
 
-always_inline heap_elt_t * last (heap_header_t * h)
-{ return elt_at (h, h->tail); }
+always_inline heap_elt_t *
+last (heap_header_t * h)
+{
+  return elt_at (h, h->tail);
+}
 
-always_inline heap_elt_t * first (heap_header_t * h)
-{ return elt_at (h, h->head); }
+always_inline heap_elt_t *
+first (heap_header_t * h)
+{
+  return elt_at (h, h->head);
+}
 
 /* Objects sizes are binned into N_BINS bins.
    Objects with size <= SMALL_BINS have their own bins.
@@ -62,7 +69,8 @@ always_inline heap_elt_t * first (heap_header_t * h)
    Sizes are in units of elt_bytes bytes. */
 
 /* Convert size to bin. */
-always_inline uword size_to_bin (uword size)
+always_inline uword
+size_to_bin (uword size)
 {
   uword bin;
 
@@ -85,7 +93,8 @@ always_inline uword size_to_bin (uword size)
 }
 
 /* Convert bin to size. */
-always_inline __attribute__((unused)) uword bin_to_size (uword bin)
+always_inline __attribute__ ((unused))
+     uword bin_to_size (uword bin)
 {
   uword size;
 
@@ -97,16 +106,17 @@ always_inline __attribute__((unused)) uword bin_to_size (uword bin)
   return size;
 }
 
-static void elt_delete (heap_header_t * h, heap_elt_t * e)
+static void
+elt_delete (heap_header_t * h, heap_elt_t * e)
 {
-  heap_elt_t * l = vec_end (h->elts) - 1;
+  heap_elt_t *l = vec_end (h->elts) - 1;
 
   ASSERT (e >= h->elts && e <= l);
 
   /* Update doubly linked pointers. */
   {
-    heap_elt_t * p = heap_prev (e);
-    heap_elt_t * n = heap_next (e);
+    heap_elt_t *p = heap_prev (e);
+    heap_elt_t *n = heap_next (e);
 
     if (p == e)
       {
@@ -136,9 +146,10 @@ static void elt_delete (heap_header_t * h, heap_elt_t * e)
   Before: P ... E
   After : P ... NEW ... E
 */
-always_inline void elt_insert_before (heap_header_t * h, heap_elt_t * e, heap_elt_t * new)
+always_inline void
+elt_insert_before (heap_header_t * h, heap_elt_t * e, heap_elt_t * new)
 {
-  heap_elt_t * p = heap_prev (e);
+  heap_elt_t *p = heap_prev (e);
 
   if (p == e)
     {
@@ -160,9 +171,10 @@ always_inline void elt_insert_before (heap_header_t * h, heap_elt_t * e, heap_el
   Before: E ... N
   After : E ... NEW ... N
 */
-always_inline void elt_insert_after (heap_header_t * h, heap_elt_t * e, heap_elt_t * new)
+always_inline void
+elt_insert_after (heap_header_t * h, heap_elt_t * e, heap_elt_t * new)
 {
-  heap_elt_t * n = heap_next (e);
+  heap_elt_t *n = heap_next (e);
 
   if (n == e)
     {
@@ -180,13 +192,14 @@ always_inline void elt_insert_after (heap_header_t * h, heap_elt_t * e, heap_elt
     }
 }
 
-always_inline heap_elt_t * elt_new (heap_header_t * h)
+always_inline heap_elt_t *
+elt_new (heap_header_t * h)
 {
-  heap_elt_t * e;
+  heap_elt_t *e;
   uword l;
   if ((l = vec_len (h->free_elts)) > 0)
     {
-      e = elt_at (h, h->free_elts[l-1]);
+      e = elt_at (h, h->free_elts[l - 1]);
       _vec_len (h->free_elts) -= 1;
     }
   else
@@ -196,16 +209,17 @@ always_inline heap_elt_t * elt_new (heap_header_t * h)
 
 /* Return pointer to object at given offset.
    Used to write free list index of free objects. */
-always_inline u32 * elt_data (void * v, heap_elt_t * e)
+always_inline u32 *
+elt_data (void *v, heap_elt_t * e)
 {
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
   return v + heap_offset (e) * h->elt_bytes;
 }
 
 always_inline void
-set_free_elt (void * v, heap_elt_t * e, uword fi)
+set_free_elt (void *v, heap_elt_t * e, uword fi)
 {
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
 
   e->offset |= HEAP_ELT_FREE_BIT;
   if (h->elt_bytes >= sizeof (u32))
@@ -215,7 +229,7 @@ set_free_elt (void * v, heap_elt_t * e, uword fi)
   else
     {
       /* For elt_bytes < 4 we must store free index in separate
-	 vector. */
+         vector. */
       uword elt_index = e - h->elts;
       vec_validate (h->small_free_elt_free_index, elt_index);
       h->small_free_elt_free_index[elt_index] = fi;
@@ -223,9 +237,9 @@ set_free_elt (void * v, heap_elt_t * e, uword fi)
 }
 
 always_inline uword
-get_free_elt (void * v, heap_elt_t * e, uword * bin_result)
+get_free_elt (void *v, heap_elt_t * e, uword * bin_result)
 {
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
   uword fb, fi;
 
   ASSERT (heap_is_free (e));
@@ -245,9 +259,10 @@ get_free_elt (void * v, heap_elt_t * e, uword * bin_result)
   return fi;
 }
 
-always_inline void remove_free_block (void * v, uword b, uword i)
+always_inline void
+remove_free_block (void *v, uword b, uword i)
 {
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
   uword l;
 
   ASSERT (b < vec_len (h->free_lists));
@@ -264,14 +279,15 @@ always_inline void remove_free_block (void * v, uword b, uword i)
   _vec_len (h->free_lists[b]) = l - 1;
 }
 
-static heap_elt_t * search_free_list (void * v, uword size)
+static heap_elt_t *
+search_free_list (void *v, uword size)
 {
-  heap_header_t * h = heap_header (v);
-  heap_elt_t * f, * u;
+  heap_header_t *h = heap_header (v);
+  heap_elt_t *f, *u;
   uword b, fb, f_size, f_index;
   word s, l;
 
-  if (! v)
+  if (!v)
     return 0;
 
   /* Search free lists for bins >= given size. */
@@ -281,14 +297,16 @@ static heap_elt_t * search_free_list (void * v, uword size)
 	/* Find an object that is large enough.
 	   Search list in reverse so that more recently freed objects will be
 	   allocated again sooner. */
-	do {
-	  l--;
-	  f_index = h->free_lists[b][l];
-	  f = elt_at (h, f_index);
-	  f_size = heap_elt_size (v, f);
-	  if ((s = f_size - size) >= 0)
-	    break;
-	} while (l >= 0);
+	do
+	  {
+	    l--;
+	    f_index = h->free_lists[b][l];
+	    f = elt_at (h, f_index);
+	    f_size = heap_elt_size (v, f);
+	    if ((s = f_size - size) >= 0)
+	      break;
+	  }
+	while (l >= 0);
 
 	/* If we fail to find a large enough object, try the next larger size. */
 	if (l < 0)
@@ -332,13 +350,14 @@ static heap_elt_t * search_free_list (void * v, uword size)
   return 0;
 }
 
-static void combine_free_blocks (void * v, heap_elt_t * e0, heap_elt_t * e1);
+static void combine_free_blocks (void *v, heap_elt_t * e0, heap_elt_t * e1);
 
-static inline void dealloc_elt (void * v, heap_elt_t * e)
+static inline void
+dealloc_elt (void *v, heap_elt_t * e)
 {
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
   uword b, l;
-  heap_elt_t * n, * p;
+  heap_elt_t *n, *p;
 
   b = size_to_bin (heap_elt_size (v, e));
   vec_validate (h->free_lists, b);
@@ -348,27 +367,26 @@ static inline void dealloc_elt (void * v, heap_elt_t * e)
 
   /* See if we can combine the block we just freed with neighboring free blocks. */
   p = heap_prev (e);
-  if (! heap_is_free (p))
+  if (!heap_is_free (p))
     p = e;
 
   n = heap_next (e);
-  if (! heap_is_free (n))
+  if (!heap_is_free (n))
     n = e;
 
   if (p != n)
     combine_free_blocks (v, p, n);
 }
 
-void * _heap_alloc (void * v,
-		    uword size,
-		    uword align,
-		    uword elt_bytes,
-		    uword * offset_return,
-		    uword * handle_return)
+void *
+_heap_alloc (void *v,
+	     uword size,
+	     uword align,
+	     uword elt_bytes, uword * offset_return, uword * handle_return)
 {
   uword offset = 0, align_size;
-  heap_header_t * h;
-  heap_elt_t * e;
+  heap_header_t *h;
+  heap_elt_t *e;
 
   if (size == 0)
     goto error;
@@ -388,7 +406,7 @@ void * _heap_alloc (void * v,
   e = search_free_list (v, align_size);
 
   /* If nothing found on free list, allocate object from end of vector. */
-  if (! e)
+  if (!e)
     {
       uword max_len;
 
@@ -399,12 +417,11 @@ void * _heap_alloc (void * v,
 	goto error;
 
       h = heap_header (v);
-      if (! v || ! (h->flags & HEAP_IS_STATIC))
+      if (!v || !(h->flags & HEAP_IS_STATIC))
 	v = _vec_resize (v,
 			 align_size,
 			 (offset + align_size) * elt_bytes,
-			 sizeof (h[0]),
-			 HEAP_DATA_ALIGN);
+			 sizeof (h[0]), HEAP_DATA_ALIGN);
       else
 	_vec_len (v) += align_size;
 
@@ -418,7 +435,7 @@ void * _heap_alloc (void * v,
   h = heap_header (v);
 
   /* Add new element to doubly linked chain of elements. */
-  if (! e)
+  if (!e)
     {
       e = elt_new (h);
       e->offset = offset;
@@ -431,14 +448,14 @@ void * _heap_alloc (void * v,
       uword new_offset, old_offset;
 
       old_offset = e->offset;
-      new_offset = (old_offset + align - 1) &~ (align - 1);
+      new_offset = (old_offset + align - 1) & ~(align - 1);
       e->offset = new_offset;
       e_index = e - h->elts;
 
       /* Free fragments before and after aligned object. */
       if (new_offset > old_offset)
 	{
-	  heap_elt_t * before_e = elt_new (h);
+	  heap_elt_t *before_e = elt_new (h);
 	  before_e->offset = old_offset;
 	  elt_insert_before (h, h->elts + e_index, before_e);
 	  dealloc_elt (v, before_e);
@@ -446,12 +463,12 @@ void * _heap_alloc (void * v,
 
       if (new_offset + size < old_offset + align_size)
 	{
-	  heap_elt_t * after_e = elt_new (h);
+	  heap_elt_t *after_e = elt_new (h);
 	  after_e->offset = new_offset + size;
 	  elt_insert_after (h, h->elts + e_index, after_e);
 	  dealloc_elt (v, after_e);
 	}
-      
+
       e = h->elts + e_index;
     }
 
@@ -462,23 +479,24 @@ void * _heap_alloc (void * v,
   if (CLIB_DEBUG > 0)
     {
       uword handle = e - h->elts;
-      ASSERT (! clib_bitmap_get (h->used_elt_bitmap, handle));
+      ASSERT (!clib_bitmap_get (h->used_elt_bitmap, handle));
       h->used_elt_bitmap = clib_bitmap_ori (h->used_elt_bitmap, handle);
     }
 
   *offset_return = e->offset;
-  *handle_return  = e - h->elts;
+  *handle_return = e - h->elts;
   return v;
 
- error:
+error:
   *offset_return = *handle_return = ~0;
   return v;
 }
 
-void heap_dealloc (void * v, uword handle)
+void
+heap_dealloc (void *v, uword handle)
 {
-  heap_header_t * h = heap_header (v);
-  heap_elt_t * e;
+  heap_header_t *h = heap_header (v);
+  heap_elt_t *e;
 
   ASSERT (handle < vec_len (h->elts));
 
@@ -493,20 +511,22 @@ void heap_dealloc (void * v, uword handle)
   h->used_count--;
 
   e = h->elts + handle;
-  ASSERT (! heap_is_free (e));
+  ASSERT (!heap_is_free (e));
 
   dealloc_elt (v, e);
 }
 
 /* While freeing objects at INDEX we noticed free blocks i0 <= index and
    i1 >= index.  We combine these two or three blocks into one big free block. */
-static void combine_free_blocks (void * v, heap_elt_t * e0, heap_elt_t * e1)
+static void
+combine_free_blocks (void *v, heap_elt_t * e0, heap_elt_t * e1)
 {
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
   uword total_size, i, b, tb, ti, i_last, g_offset;
-  heap_elt_t * e;
+  heap_elt_t *e;
 
-  struct {
+  struct
+  {
     u32 index;
     u32 bin;
     u32 bin_index;
@@ -573,21 +593,23 @@ static void combine_free_blocks (void * v, heap_elt_t * e0, heap_elt_t * e1)
   set_free_elt (v, elt_at (h, g.index), g.bin_index);
 }
 
-uword heap_len (void * v, word handle)
+uword
+heap_len (void *v, word handle)
 {
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
 
   if (CLIB_DEBUG > 0)
     ASSERT (clib_bitmap_get (h->used_elt_bitmap, handle));
   return heap_elt_size (v, elt_at (h, handle));
 }
 
-void * _heap_free (void * v)
+void *
+_heap_free (void *v)
 {
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
   uword b;
 
-  if (! v)
+  if (!v)
     return v;
 
   clib_bitmap_free (h->used_elt_bitmap);
@@ -597,17 +619,18 @@ void * _heap_free (void * v)
   vec_free (h->elts);
   vec_free (h->free_elts);
   vec_free (h->small_free_elt_free_index);
-  if (! (h->flags & HEAP_IS_STATIC))
+  if (!(h->flags & HEAP_IS_STATIC))
     vec_free_h (v, sizeof (h[0]));
   return v;
 }
 
-uword heap_bytes (void * v)
+uword
+heap_bytes (void *v)
 {
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
   uword bytes, b;
 
-  if (! v)
+  if (!v)
     return 0;
 
   bytes = sizeof (h[0]);
@@ -622,10 +645,11 @@ uword heap_bytes (void * v)
   return bytes;
 }
 
-static u8 * debug_elt (u8 * s, void * v, word i, word n)
+static u8 *
+debug_elt (u8 * s, void *v, word i, word n)
 {
-  heap_elt_t * e, * e0, * e1;
-  heap_header_t * h = heap_header (v);
+  heap_elt_t *e, *e0, *e1;
+  heap_header_t *h = heap_header (v);
   word j;
 
   if (vec_len (h->elts) == 0)
@@ -636,7 +660,7 @@ static u8 * debug_elt (u8 * s, void * v, word i, word n)
   else
     {
       e0 = h->elts + i;
-      for (j = 0; j < n/2; j++)
+      for (j = 0; j < n / 2; j++)
 	e0 = heap_prev (e0);
     }
 
@@ -645,11 +669,11 @@ static u8 * debug_elt (u8 * s, void * v, word i, word n)
   else
     {
       e1 = h->elts + i;
-      for (j = 0; j < n/2; j++)
+      for (j = 0; j < n / 2; j++)
 	e1 = heap_next (e1);
     }
 
-  i = -n/2;
+  i = -n / 2;
   for (e = e0; 1; e = heap_next (e))
     {
       if (heap_is_free (e))
@@ -666,24 +690,26 @@ static u8 * debug_elt (u8 * s, void * v, word i, word n)
   return s;
 }
 
-u8 * format_heap (u8 * s, va_list * va)
+u8 *
+format_heap (u8 * s, va_list * va)
 {
-  void * v = va_arg (*va, void *);
+  void *v = va_arg (*va, void *);
   uword verbose = va_arg (*va, uword);
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
   heap_header_t zero;
 
   memset (&zero, 0, sizeof (zero));
 
-  if (! v)
+  if (!v)
     h = &zero;
 
   {
     f64 elt_bytes = vec_len (v) * h->elt_bytes;
     f64 overhead_bytes = heap_bytes (v);
-    
+
     s = format (s, "heap %p, %6d objects, size %.1fk + overhead %.1fk\n",
-		v, h->used_count, elt_bytes / 1024, (overhead_bytes - elt_bytes) / 1024);
+		v, h->used_count, elt_bytes / 1024,
+		(overhead_bytes - elt_bytes) / 1024);
   }
 
   if (v && verbose)
@@ -692,20 +718,21 @@ u8 * format_heap (u8 * s, va_list * va)
   return s;
 }
 
-void heap_validate (void * v)
+void
+heap_validate (void *v)
 {
-  heap_header_t * h = heap_header (v);
+  heap_header_t *h = heap_header (v);
   uword i, o, s;
-  u8 * free_map;
-  heap_elt_t * e, * n;
+  u8 *free_map;
+  heap_elt_t *e, *n;
 
   uword used_count, total_size;
   uword free_count, free_size;
 
   ASSERT (h->used_count == clib_bitmap_count_set_bits (h->used_elt_bitmap));
 
-  ASSERT (first(h)->prev == 0);
-  ASSERT (last(h)->next == 0);
+  ASSERT (first (h)->prev == 0);
+  ASSERT (last (h)->next == 0);
 
   /* Validate number of elements and size. */
   free_size = free_count = 0;
@@ -732,7 +759,8 @@ void heap_validate (void * v)
 	used_count++;
 	s = heap_elt_size (v, e);
 	total_size += s;
-	ASSERT (is_free == ! clib_bitmap_get (h->used_elt_bitmap, e - h->elts));
+	ASSERT (is_free ==
+		!clib_bitmap_get (h->used_elt_bitmap, e - h->elts));
 	if (is_free)
 	  {
 	    elt_free_count++;
@@ -746,7 +774,7 @@ void heap_validate (void * v)
 	  }
 
 	/* We should never have two free adjacent elements. */
-	ASSERT (! (heap_is_free (e) && heap_is_free (n)));
+	ASSERT (!(heap_is_free (e) && heap_is_free (n)));
       }
 
     ASSERT (free_count == elt_free_count);
@@ -773,7 +801,7 @@ void heap_validate (void * v)
 	  ASSERT (fi < vec_len (h->free_lists[fb]));
 	  ASSERT (h->free_lists[fb][fi] == e - h->elts);
 
-	  ASSERT (! free_map[i]);
+	  ASSERT (!free_map[i]);
 	  free_map[i] = 1;
 	}
 
@@ -790,3 +818,11 @@ void heap_validate (void * v)
 
   vec_free (free_map);
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

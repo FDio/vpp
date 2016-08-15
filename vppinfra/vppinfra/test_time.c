@@ -37,13 +37,14 @@
 
 #include <vppinfra/format.h>
 #include <vppinfra/time.h>
-#include <vppinfra/math.h>		/* for sqrt */
+#include <vppinfra/math.h>	/* for sqrt */
 
 static int verbose;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
-static int test_time_main (unformat_input_t * input)
+static int
+test_time_main (unformat_input_t * input)
 {
   f64 wait, error;
   f64 t, tu[3], ave, rms;
@@ -57,28 +58,30 @@ static int test_time_main (unformat_input_t * input)
   ave = rms = 0;
   tu[0] = unix_time_now ();
   tu[1] = unix_time_now ();
-  for (i = 0; i < n; i++) {
-    j = 0;
-    t = clib_time_now (&c);
-    while (clib_time_now (&c) < t + wait)
-      j++;
-    t = j;
-    ave += t;
-    rms += t*t;
-  }
+  for (i = 0; i < n; i++)
+    {
+      j = 0;
+      t = clib_time_now (&c);
+      while (clib_time_now (&c) < t + wait)
+	j++;
+      t = j;
+      ave += t;
+      rms += t * t;
+    }
   tu[2] = unix_time_now ();
   ave /= n;
-  rms = sqrt (rms/n - ave*ave);
+  rms = sqrt (rms / n - ave * ave);
 
-  error = ((tu[2] - tu[1]) - 2 * (tu[1] - tu[0]) - n*wait) / n;
-  if_verbose   ("tested %d x %.6e sec waits, error %.6e loops %.6e +- %.6e\n",
-		n, wait, error, ave, rms);
+  error = ((tu[2] - tu[1]) - 2 * (tu[1] - tu[0]) - n * wait) / n;
+  if_verbose ("tested %d x %.6e sec waits, error %.6e loops %.6e +- %.6e\n",
+	      n, wait, error, ave, rms);
 
   return 0;
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int ret;
@@ -91,3 +94,11 @@ int main (int argc, char * argv[])
   return ret;
 }
 #endif /* CLIB_UNIX */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

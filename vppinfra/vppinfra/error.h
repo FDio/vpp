@@ -38,7 +38,7 @@
 #ifndef included_error_h
 #define included_error_h
 
-#include <vppinfra/clib.h> /* for CLIB_LINUX_KERNEL */
+#include <vppinfra/clib.h>	/* for CLIB_LINUX_KERNEL */
 #include <vppinfra/error_bootstrap.h>
 
 #ifdef CLIB_UNIX
@@ -53,8 +53,8 @@
 #include <vppinfra/vec.h>
 
 /* Callback functions for error reporting. */
-typedef void clib_error_handler_func_t (void * arg, u8 * msg, int msg_len);
-void clib_error_register_handler (clib_error_handler_func_t func, void * arg);
+typedef void clib_error_handler_func_t (void *arg, u8 * msg, int msg_len);
+void clib_error_register_handler (clib_error_handler_func_t func, void *arg);
 
 #define clib_warning(format,args...) \
   _clib_error (CLIB_ERROR_WARNING, clib_error_function, __LINE__, format, ## args)
@@ -72,12 +72,13 @@ void clib_error_register_handler (clib_error_handler_func_t func, void * arg);
 #define clib_panic(format,args...) \
   _clib_error (CLIB_ERROR_ABORT, (char *) clib_error_function, __LINE__, format, ## args)
 
-typedef struct {
+typedef struct
+{
   /* Error message. */
-  u8 * what;
+  u8 *what;
 
   /* Where error occurred (e.g. __FUNCTION__ __LINE__) */
-  const u8 * where;
+  const u8 *where;
 
   uword flags;
 
@@ -92,16 +93,14 @@ do {						\
     (err)->code = (c);				\
 } while (0)
 
-extern void * clib_error_free_vector (clib_error_t * errors);
+extern void *clib_error_free_vector (clib_error_t * errors);
 
 #define clib_error_free(e) e = clib_error_free_vector(e)
 
-extern clib_error_t *
-_clib_error_return (clib_error_t * errors,
-		    any code,
-		    uword flags,
-		    char * where,
-		    char * fmt, ...);
+extern clib_error_t *_clib_error_return (clib_error_t * errors,
+					 any code,
+					 uword flags,
+					 char *where, char *fmt, ...);
 
 #define clib_error_return_code(e,code,flags,args...) \
   _clib_error_return((e),(code),(flags),(char *)clib_error_function,args)
@@ -121,13 +120,14 @@ _clib_error_return (clib_error_t * errors,
 #define clib_error_return_unix_fatal(e,args...) \
   clib_error_return_code(e,errno,CLIB_ERROR_ERRNO_VALID|CLIB_ERROR_FATAL,args)
 
-extern clib_error_t * _clib_error_report (clib_error_t * errors);
+extern clib_error_t *_clib_error_report (clib_error_t * errors);
 
 #define clib_error_report(e) do { (e) = _clib_error_report (e); } while (0)
 
-u8 * format_clib_error (u8 * s, va_list * va);
+u8 *format_clib_error (u8 * s, va_list * va);
 
-always_inline word unix_error_is_fatal (word error)
+always_inline word
+unix_error_is_fatal (word error)
 {
 #ifdef CLIB_UNIX
   switch (error)
@@ -191,3 +191,11 @@ do {							\
 })
 
 #endif /* included_error_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

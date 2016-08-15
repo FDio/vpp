@@ -42,15 +42,16 @@
 #include <vppinfra/serialize.h>
 #include <vppinfra/unix.h>
 
-int test_elog_main (unformat_input_t * input)
+int
+test_elog_main (unformat_input_t * input)
 {
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
   u32 i, n_iter, seed, max_events;
-  elog_main_t _em, * em = &_em;
+  elog_main_t _em, *em = &_em;
   u32 verbose;
   f64 min_sample_time;
-  char * dump_file, * load_file, * merge_file, ** merge_files;
-  u8 * tag, ** tags;
+  char *dump_file, *load_file, *merge_file, **merge_files;
+  u8 *tag, **tags;
 
   n_iter = 100;
   max_events = 100000;
@@ -72,7 +73,7 @@ int test_elog_main (unformat_input_t * input)
       else if (unformat (input, "load %s", &load_file))
 	;
       else if (unformat (input, "tag %s", &tag))
-        vec_add1 (tags, tag);
+	vec_add1 (tags, tag);
       else if (unformat (input, "merge %s", &merge_file))
 	vec_add1 (merge_files, merge_file);
 
@@ -100,20 +101,21 @@ int test_elog_main (unformat_input_t * input)
   else if (merge_files)
     {
       uword i;
-      elog_main_t * ems;
+      elog_main_t *ems;
 
       vec_clone (ems, merge_files);
 
       elog_init (em, max_events);
       for (i = 0; i < vec_len (ems); i++)
 	{
-	  if ((error = elog_read_file (i == 0 ? em : &ems[i], merge_files[i])))
+	  if ((error =
+	       elog_read_file (i == 0 ? em : &ems[i], merge_files[i])))
 	    goto done;
 	  if (i > 0)
-            {
-              elog_merge (em, tags[0], &ems[i], tags[i]);
-              tags[0] = 0;
-            }
+	    {
+	      elog_merge (em, tags[0], &ems[i], tags[i]);
+	      tags[0] = 0;
+	    }
 	}
     }
 
@@ -146,32 +148,30 @@ int test_elog_main (unformat_input_t * input)
 	  }
 
 	  {
-	    struct { u32 string_index; f32 f; } * d;
-	    ELOG_TYPE_DECLARE (e) = {
-	      .format = "fumble %s %.9f",
-	      .format_args = "t4f4",
-	      .n_enum_strings = 4,
-	      .enum_strings = {
-		"string0",
-		"string1",
-		"string2",
-		"string3",
-	      },
-	    };
+	    struct
+	    {
+	      u32 string_index;
+	      f32 f;
+	    } *d;
+	    ELOG_TYPE_DECLARE (e) =
+	    {
+	      .format = "fumble %s %.9f",.format_args =
+		"t4f4",.n_enum_strings = 4,.enum_strings =
+	      {
+	    "string0", "string1", "string2", "string3",},};
 
 	    d = ELOG_DATA (em, e);
 
 	    d->string_index = sum & 3;
 	    d->f = (sum & 0xff) / 128.;
 	  }
-	  
+
 	  {
-	    ELOG_TYPE_DECLARE (e) = {
-	      .format = "bar %d.%d.%d.%d",
-	      .format_args = "i1i1i1i1",
-	    };
+	    ELOG_TYPE_DECLARE (e) =
+	    {
+	    .format = "bar %d.%d.%d.%d",.format_args = "i1i1i1i1",};
 	    ELOG_TRACK (my_track);
-	    u8 * d = ELOG_TRACK_DATA (em, e, my_track);
+	    u8 *d = ELOG_TRACK_DATA (em, e, my_track);
 	    d[0] = i + 0;
 	    d[1] = i + 1;
 	    d[2] = i + 2;
@@ -179,12 +179,14 @@ int test_elog_main (unformat_input_t * input)
 	  }
 
 	  {
-	    ELOG_TYPE_DECLARE (e) = {
-	      .format = "bar `%s'",
-	      .format_args = "s20",
-	    };
-	    struct { char s[20]; } * d;
-	    u8 * v;
+	    ELOG_TYPE_DECLARE (e) =
+	    {
+	    .format = "bar `%s'",.format_args = "s20",};
+	    struct
+	    {
+	      char s[20];
+	    } *d;
+	    u8 *v;
 
 	    d = ELOG_DATA (em, e);
 	    v = format (0, "foo %d%c", i, 0);
@@ -192,20 +194,24 @@ int test_elog_main (unformat_input_t * input)
 	  }
 
 	  {
-	    ELOG_TYPE_DECLARE (e) = {
-	      .format = "bar `%s'",
-	      .format_args = "T4",
-	    };
-	    struct { u32 offset; } * d;
+	    ELOG_TYPE_DECLARE (e) =
+	    {
+	    .format = "bar `%s'",.format_args = "T4",};
+	    struct
+	    {
+	      u32 offset;
+	    } *d;
 
 	    d = ELOG_DATA (em, e);
 	    d->offset = elog_string (em, "string table %d", i);
 	  }
 	}
 
-      do {
-	t[1] = unix_time_now ();
-      } while (t[1] - t[0] < min_sample_time);
+      do
+	{
+	  t[1] = unix_time_now ();
+	}
+      while (t[1] - t[0] < min_sample_time);
     }
 
 #ifdef CLIB_UNIX
@@ -218,24 +224,24 @@ int test_elog_main (unformat_input_t * input)
 
   if (verbose)
     {
-      elog_event_t * e, * es;
+      elog_event_t *e, *es;
       es = elog_get_events (em);
       vec_foreach (e, es)
-	{
-	  clib_warning ("%18.9f: %12U %U\n", e->time,
-			format_elog_track, em, e,
-			format_elog_event, em, e);
-	}
+      {
+	clib_warning ("%18.9f: %12U %U\n", e->time,
+		      format_elog_track, em, e, format_elog_event, em, e);
+      }
     }
 
- done:
+done:
   if (error)
     clib_error_report (error);
   return 0;
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv [])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int r;
@@ -246,3 +252,11 @@ int main (int argc, char * argv [])
   return r;
 }
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -41,3 +41,11 @@
    Value can be overridden by platform code from e.g.
    machine's clock count register. */
 u32 standalone_random_default_seed = 1;
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

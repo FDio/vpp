@@ -41,22 +41,25 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/random_isaac.h>
 
-typedef struct {
+typedef struct
+{
   /* Two parallel ISAAC contexts for speed. */
   isaac_t ctx[2];
 
   /* Random buffer. */
-  uword * buffer;
+  uword *buffer;
 
   /* Cache up to 1 word worth of bytes for random data
      less than one word at a time. */
   uword n_cached_bytes;
 
-  union {
+  union
+  {
     u8 cached_bytes[sizeof (uword)];
     uword cached_word;
   };
-} clib_random_buffer_t;
+}
+clib_random_buffer_t;
 
 always_inline void
 clib_random_buffer_free (clib_random_buffer_t * b)
@@ -105,3 +108,11 @@ clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
 }
 
 #endif /* included_clib_random_buffer_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

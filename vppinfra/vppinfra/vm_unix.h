@@ -42,9 +42,10 @@
 #include <sys/mman.h>
 
 /* Allocate virtual address space. */
-always_inline void * clib_mem_vm_alloc (uword size)
+always_inline void *
+clib_mem_vm_alloc (uword size)
 {
-  void * mmap_addr;
+  void *mmap_addr;
   uword flags = MAP_PRIVATE;
 
 #ifdef MAP_ANONYMOUS
@@ -58,12 +59,16 @@ always_inline void * clib_mem_vm_alloc (uword size)
   return mmap_addr;
 }
 
-always_inline void clib_mem_vm_free (void * addr, uword size)
-{ munmap (addr, size); }
-
-always_inline void * clib_mem_vm_unmap (void * addr, uword size)
+always_inline void
+clib_mem_vm_free (void *addr, uword size)
 {
-  void * mmap_addr;
+  munmap (addr, size);
+}
+
+always_inline void *
+clib_mem_vm_unmap (void *addr, uword size)
+{
+  void *mmap_addr;
   uword flags = MAP_PRIVATE | MAP_FIXED;
 
   /* To unmap we "map" with no protection.  If we actually called
@@ -77,9 +82,10 @@ always_inline void * clib_mem_vm_unmap (void * addr, uword size)
   return mmap_addr;
 }
 
-always_inline void * clib_mem_vm_map (void * addr, uword size)
+always_inline void *
+clib_mem_vm_map (void *addr, uword size)
 {
-  void * mmap_addr;
+  void *mmap_addr;
   uword flags = MAP_PRIVATE | MAP_FIXED;
 
   mmap_addr = mmap (addr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
@@ -90,3 +96,11 @@ always_inline void * clib_mem_vm_map (void * addr, uword size)
 }
 
 #endif /* included_vm_unix_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

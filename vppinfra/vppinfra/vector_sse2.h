@@ -38,119 +38,189 @@
 #ifndef included_vector_sse2_h
 #define included_vector_sse2_h
 
-#include <vppinfra/error_bootstrap.h>		/* for ASSERT */
+#include <vppinfra/error_bootstrap.h>	/* for ASSERT */
 #include <x86intrin.h>
 
 /* 128 bit interleaves. */
-always_inline u8x16 u8x16_interleave_hi (u8x16 a, u8x16 b)
-{ return (u8x16) _mm_unpackhi_epi8 ((__m128i) a, (__m128i) b); }
+always_inline u8x16
+u8x16_interleave_hi (u8x16 a, u8x16 b)
+{
+  return (u8x16) _mm_unpackhi_epi8 ((__m128i) a, (__m128i) b);
+}
 
-always_inline u8x16 u8x16_interleave_lo (u8x16 a, u8x16 b)
-{ return (u8x16) _mm_unpacklo_epi8 ((__m128i) a, (__m128i) b); }
+always_inline u8x16
+u8x16_interleave_lo (u8x16 a, u8x16 b)
+{
+  return (u8x16) _mm_unpacklo_epi8 ((__m128i) a, (__m128i) b);
+}
 
-always_inline u16x8 u16x8_interleave_hi (u16x8 a, u16x8 b)
-{ return (u16x8) _mm_unpackhi_epi16 ((__m128i) a, (__m128i) b); }
+always_inline u16x8
+u16x8_interleave_hi (u16x8 a, u16x8 b)
+{
+  return (u16x8) _mm_unpackhi_epi16 ((__m128i) a, (__m128i) b);
+}
 
-always_inline u16x8 u16x8_interleave_lo (u16x8 a, u16x8 b)
-{ return (u16x8) _mm_unpacklo_epi16 ((__m128i) a, (__m128i) b); }
+always_inline u16x8
+u16x8_interleave_lo (u16x8 a, u16x8 b)
+{
+  return (u16x8) _mm_unpacklo_epi16 ((__m128i) a, (__m128i) b);
+}
 
-always_inline u32x4 u32x4_interleave_hi (u32x4 a, u32x4 b)
-{ return (u32x4) _mm_unpackhi_epi32 ((__m128i) a, (__m128i) b); }
+always_inline u32x4
+u32x4_interleave_hi (u32x4 a, u32x4 b)
+{
+  return (u32x4) _mm_unpackhi_epi32 ((__m128i) a, (__m128i) b);
+}
 
-always_inline u32x4 u32x4_interleave_lo (u32x4 a, u32x4 b)
-{ return (u32x4) _mm_unpacklo_epi32 ((__m128i) a, (__m128i) b); }
+always_inline u32x4
+u32x4_interleave_lo (u32x4 a, u32x4 b)
+{
+  return (u32x4) _mm_unpacklo_epi32 ((__m128i) a, (__m128i) b);
+}
 
-always_inline u64x2 u64x2_interleave_hi (u64x2 a, u64x2 b)
-{ return (u64x2) _mm_unpackhi_epi64 ((__m128i) a, (__m128i) b); }
+always_inline u64x2
+u64x2_interleave_hi (u64x2 a, u64x2 b)
+{
+  return (u64x2) _mm_unpackhi_epi64 ((__m128i) a, (__m128i) b);
+}
 
-always_inline u64x2 u64x2_interleave_lo (u64x2 a, u64x2 b)
-{ return (u64x2) _mm_unpacklo_epi64 ((__m128i) a, (__m128i) b); }
+always_inline u64x2
+u64x2_interleave_lo (u64x2 a, u64x2 b)
+{
+  return (u64x2) _mm_unpacklo_epi64 ((__m128i) a, (__m128i) b);
+}
 
 /* 64 bit interleaves. */
-always_inline u8x8 u8x8_interleave_hi (u8x8 a, u8x8 b)
-{ return (u8x8) _m_punpckhbw ((__m64) a, (__m64) b); }
+always_inline u8x8
+u8x8_interleave_hi (u8x8 a, u8x8 b)
+{
+  return (u8x8) _m_punpckhbw ((__m64) a, (__m64) b);
+}
 
-always_inline u8x8 u8x8_interleave_lo (u8x8 a, u8x8 b)
-{ return (u8x8) _m_punpcklbw ((__m64) a, (__m64) b); }
+always_inline u8x8
+u8x8_interleave_lo (u8x8 a, u8x8 b)
+{
+  return (u8x8) _m_punpcklbw ((__m64) a, (__m64) b);
+}
 
-always_inline u16x4 u16x4_interleave_hi (u16x4 a, u16x4 b)
-{ return (u16x4) _m_punpckhwd ((__m64) a, (__m64) b); }
+always_inline u16x4
+u16x4_interleave_hi (u16x4 a, u16x4 b)
+{
+  return (u16x4) _m_punpckhwd ((__m64) a, (__m64) b);
+}
 
-always_inline u16x4 u16x4_interleave_lo (u16x4 a, u16x4 b)
-{ return (u16x4) _m_punpcklwd ((__m64) a, (__m64) b); }
+always_inline u16x4
+u16x4_interleave_lo (u16x4 a, u16x4 b)
+{
+  return (u16x4) _m_punpcklwd ((__m64) a, (__m64) b);
+}
 
-always_inline u32x2 u32x2_interleave_hi (u32x2 a, u32x2 b)
-{ return (u32x2) _m_punpckhdq ((__m64) a, (__m64) b); }
+always_inline u32x2
+u32x2_interleave_hi (u32x2 a, u32x2 b)
+{
+  return (u32x2) _m_punpckhdq ((__m64) a, (__m64) b);
+}
 
-always_inline u32x2 u32x2_interleave_lo (u32x2 a, u32x2 b)
-{ return (u32x2) _m_punpckldq ((__m64) a, (__m64) b); }
+always_inline u32x2
+u32x2_interleave_lo (u32x2 a, u32x2 b)
+{
+  return (u32x2) _m_punpckldq ((__m64) a, (__m64) b);
+}
 
 /* 128 bit packs. */
-always_inline u8x16 u16x8_pack (u16x8 lo, u16x8 hi)
-{ return (u8x16) _mm_packus_epi16 ((__m128i) lo, (__m128i) hi); }
+always_inline u8x16
+u16x8_pack (u16x8 lo, u16x8 hi)
+{
+  return (u8x16) _mm_packus_epi16 ((__m128i) lo, (__m128i) hi);
+}
 
-always_inline i8x16 i16x8_pack (i16x8 lo, i16x8 hi)
-{ return (i8x16) _mm_packs_epi16 ((__m128i) lo, (__m128i) hi); }
+always_inline i8x16
+i16x8_pack (i16x8 lo, i16x8 hi)
+{
+  return (i8x16) _mm_packs_epi16 ((__m128i) lo, (__m128i) hi);
+}
 
-always_inline u16x8 u32x4_pack (u32x4 lo, u32x4 hi)
-{ return (u16x8) _mm_packs_epi32 ((__m128i) lo, (__m128i) hi); }
+always_inline u16x8
+u32x4_pack (u32x4 lo, u32x4 hi)
+{
+  return (u16x8) _mm_packs_epi32 ((__m128i) lo, (__m128i) hi);
+}
 
 /* 64 bit packs. */
-always_inline u8x8 u16x4_pack (u16x4 lo, u16x4 hi)
-{ return (u8x8) _m_packuswb ((__m64) lo, (__m64) hi); }
+always_inline u8x8
+u16x4_pack (u16x4 lo, u16x4 hi)
+{
+  return (u8x8) _m_packuswb ((__m64) lo, (__m64) hi);
+}
 
-always_inline i8x8 i16x4_pack (i16x4 lo, i16x4 hi)
-{ return (i8x8) _m_packsswb ((__m64) lo, (__m64) hi); }
+always_inline i8x8
+i16x4_pack (i16x4 lo, i16x4 hi)
+{
+  return (i8x8) _m_packsswb ((__m64) lo, (__m64) hi);
+}
 
-always_inline u16x4 u32x2_pack (u32x2 lo, u32x2 hi)
-{ return (u16x4) _m_packssdw ((__m64) lo, (__m64) hi); }
+always_inline u16x4
+u32x2_pack (u32x2 lo, u32x2 hi)
+{
+  return (u16x4) _m_packssdw ((__m64) lo, (__m64) hi);
+}
 
-always_inline i16x4 i32x2_pack (i32x2 lo, i32x2 hi)
-{ return (i16x4) _m_packssdw ((__m64) lo, (__m64) hi); }
+always_inline i16x4
+i32x2_pack (i32x2 lo, i32x2 hi)
+{
+  return (i16x4) _m_packssdw ((__m64) lo, (__m64) hi);
+}
 
 /* Splats: replicate scalar value into vector. */
-always_inline u64x2 u64x2_splat (u64 a)
+always_inline u64x2
+u64x2_splat (u64 a)
 {
-  u64x2 x = {a};
+  u64x2 x = { a };
   x = u64x2_interleave_lo (x, x);
   return x;
 }
 
-always_inline u32x4 u32x4_splat (u32 a)
+always_inline u32x4
+u32x4_splat (u32 a)
 {
-  u32x4 x = {a};
+  u32x4 x = { a };
   x = u32x4_interleave_lo (x, x);
   x = (u32x4) u64x2_interleave_lo ((u64x2) x, (u64x2) x);
   return x;
 }
 
-always_inline u16x8 u16x8_splat (u16 a)
+always_inline u16x8
+u16x8_splat (u16 a)
 {
   u32 t = (u32) a | ((u32) a << 16);
   return (u16x8) u32x4_splat (t);
 }
 
-always_inline u8x16 u8x16_splat (u8 a)
+always_inline u8x16
+u8x16_splat (u8 a)
 {
   u32 t = (u32) a | ((u32) a << 8);
   t |= t << 16;
   return (u8x16) u16x8_splat (t);
 }
 
-always_inline u32x2 u32x2_splat (u32 a)
+always_inline u32x2
+u32x2_splat (u32 a)
 {
-  u32x2 x = {a};
+  u32x2 x = { a };
   x = u32x2_interleave_lo (x, x);
   return x;
- }
+}
 
-always_inline u16x4 u16x4_splat (u16 a)
+always_inline u16x4
+u16x4_splat (u16 a)
 {
   u32 t = (u32) a | ((u32) a << 16);
   return (u16x4) u32x2_splat (t);
 }
 
-always_inline u8x8 u8x8_splat (u8 a)
+always_inline u8x8
+u8x8_splat (u8 a)
 {
   u32 t = (u32) a | ((u32) a << 8);
   t |= t << 16;
@@ -166,17 +236,29 @@ always_inline u8x8 u8x8_splat (u8 a)
 #define i8x8_splat u8x8_splat
 
 #ifndef __ICC
-always_inline u64x2 u64x2_read_lo (u64x2 x, u64 * a)
-{ return (u64x2) _mm_loadl_pi ((__m128) x, (__m64 *) a); }
+always_inline u64x2
+u64x2_read_lo (u64x2 x, u64 * a)
+{
+  return (u64x2) _mm_loadl_pi ((__m128) x, (__m64 *) a);
+}
 
-always_inline u64x2 u64x2_read_hi (u64x2 x, u64 * a)
-{ return (u64x2) _mm_loadh_pi ((__m128) x, (__m64 *) a); }
+always_inline u64x2
+u64x2_read_hi (u64x2 x, u64 * a)
+{
+  return (u64x2) _mm_loadh_pi ((__m128) x, (__m64 *) a);
+}
 
-always_inline void u64x2_write_lo (u64x2 x, u64 * a)
-{ _mm_storel_pi ((__m64 *) a, (__m128) x); }
+always_inline void
+u64x2_write_lo (u64x2 x, u64 * a)
+{
+  _mm_storel_pi ((__m64 *) a, (__m128) x);
+}
 
-always_inline void u64x2_write_hi (u64x2 x, u64 * a)
-{ _mm_storeh_pi ((__m64 *) a, (__m128) x); }
+always_inline void
+u64x2_write_hi (u64x2 x, u64 * a)
+{
+  _mm_storeh_pi ((__m64 *) a, (__m128) x);
+}
 #endif
 
 /* Unaligned loads/stores. */
@@ -187,17 +269,8 @@ always_inline void u64x2_write_hi (u64x2 x, u64 * a)
   always_inline t t##_load_unaligned (t * a)		\
   { return (t) _mm_loadu_si128 ((__m128i *) a); }
 
-_ (u8x16)
-_ (u16x8)
-_ (u32x4)
-_ (u64x2)
-_ (i8x16)
-_ (i16x8)
-_ (i32x4)
-_ (i64x2)
-
+_(u8x16) _(u16x8) _(u32x4) _(u64x2) _(i8x16) _(i16x8) _(i32x4) _(i64x2)
 #undef _
-
 #define _signed_binop(n,m,f,g)                                         \
   /* Unsigned */                                                       \
   always_inline u##n##x##m                                             \
@@ -208,36 +281,42 @@ _ (i64x2)
   always_inline i##n##x##m                                             \
   i##n##x##m##_##f (i##n##x##m x, i##n##x##m y)                        \
   { return (i##n##x##m) _mm_##g##n ((__m128i) x, (__m128i) y); }
-
 /* Addition/subtraction. */
-_signed_binop (8,  16, add, add_epi)
-_signed_binop (16,  8, add, add_epi)
-_signed_binop (32,  4, add, add_epi)
-_signed_binop (64,  2, add, add_epi)
-_signed_binop (8,  16, sub, sub_epi)
-_signed_binop (16,  8, sub, sub_epi)
-_signed_binop (32,  4, sub, sub_epi)
-_signed_binop (64,  2, sub, sub_epi)
-
+  _signed_binop (8, 16, add, add_epi)
+_signed_binop (16, 8, add, add_epi)
+_signed_binop (32, 4, add, add_epi)
+_signed_binop (64, 2, add, add_epi)
+_signed_binop (8, 16, sub, sub_epi)
+_signed_binop (16, 8, sub, sub_epi)
+_signed_binop (32, 4, sub, sub_epi) _signed_binop (64, 2, sub, sub_epi)
 /* Addition/subtraction with saturation. */
-
-_signed_binop (8, 16, add_saturate, adds_epu)
+  _signed_binop (8, 16, add_saturate, adds_epu)
 _signed_binop (16, 8, add_saturate, adds_epu)
 _signed_binop (8, 16, sub_saturate, subs_epu)
 _signed_binop (16, 8, sub_saturate, subs_epu)
-
 /* Multiplication. */
-always_inline i16x8 i16x8_mul_lo (i16x8 x, i16x8 y)
-{ return (i16x8) _mm_mullo_epi16 ((__m128i) x, (__m128i) y); }
+     always_inline i16x8 i16x8_mul_lo (i16x8 x, i16x8 y)
+{
+  return (i16x8) _mm_mullo_epi16 ((__m128i) x, (__m128i) y);
+}
 
-always_inline u16x8 u16x8_mul_lo (u16x8 x, u16x8 y)
-{ return (u16x8) _mm_mullo_epi16 ((__m128i) x, (__m128i) y); }
+always_inline u16x8
+u16x8_mul_lo (u16x8 x, u16x8 y)
+{
+  return (u16x8) _mm_mullo_epi16 ((__m128i) x, (__m128i) y);
+}
 
-always_inline i16x8 i16x8_mul_hi (i16x8 x, i16x8 y)
-{ return (i16x8) _mm_mulhi_epu16 ((__m128i) x, (__m128i) y); }
+always_inline i16x8
+i16x8_mul_hi (i16x8 x, i16x8 y)
+{
+  return (i16x8) _mm_mulhi_epu16 ((__m128i) x, (__m128i) y);
+}
 
-always_inline u16x8 u16x8_mul_hi (u16x8 x, u16x8 y)
-{ return (u16x8) _mm_mulhi_epu16 ((__m128i) x, (__m128i) y); }
+always_inline u16x8
+u16x8_mul_hi (u16x8 x, u16x8 y)
+{
+  return (u16x8) _mm_mulhi_epu16 ((__m128i) x, (__m128i) y);
+}
 
 /* 128 bit shifts. */
 
@@ -248,44 +327,64 @@ always_inline u16x8 u16x8_mul_hi (u16x8 x, u16x8 y)
   always_inline p##a##x##b p##a##x##b##_shift_##c (p##a##x##b x, p##a##x##b y) \
   { return (p##a##x##b) _mm_##f##_epi##a ((__m128i) x, (__m128i) y); }
 
-  _ (u, 16, 8, left, sll)
-  _ (u, 32, 4, left, sll)
-  _ (u, 64, 2, left, sll)
-  _ (u, 16, 8, right, srl)
-  _ (u, 32, 4, right, srl)
-  _ (u, 64, 2, right, srl)
-  _ (i, 16, 8, left, sll)
-  _ (i, 32, 4, left, sll)
-  _ (i, 64, 2, left, sll)
-  _ (i, 16, 8, right, sra)
-  _ (i, 32, 4, right, sra)
-
+_(u, 16, 8, left, sll)
+_(u, 32, 4, left, sll)
+_(u, 64, 2, left, sll)
+_(u, 16, 8, right, srl)
+_(u, 32, 4, right, srl)
+_(u, 64, 2, right, srl)
+_(i, 16, 8, left, sll)
+_(i, 32, 4, left, sll)
+_(i, 64, 2, left, sll) _(i, 16, 8, right, sra) _(i, 32, 4, right, sra)
 #undef _
-
 /* 64 bit shifts. */
-always_inline u16x4 u16x4_shift_left (u16x4 x, u16x4 i)
-{ return (u16x4) _m_psllw ((__m64) x, (__m64) i); };
+  always_inline u16x4
+u16x4_shift_left (u16x4 x, u16x4 i)
+{
+  return (u16x4) _m_psllw ((__m64) x, (__m64) i);
+};
 
-always_inline u32x2 u32x2_shift_left (u32x2 x, u32x2 i)
-{ return (u32x2) _m_pslld ((__m64) x, (__m64) i); };
+always_inline u32x2
+u32x2_shift_left (u32x2 x, u32x2 i)
+{
+  return (u32x2) _m_pslld ((__m64) x, (__m64) i);
+};
 
-always_inline u16x4 u16x4_shift_right (u16x4 x, u16x4 i)
-{ return (u16x4) _m_psrlw ((__m64) x, (__m64) i); };
+always_inline u16x4
+u16x4_shift_right (u16x4 x, u16x4 i)
+{
+  return (u16x4) _m_psrlw ((__m64) x, (__m64) i);
+};
 
-always_inline u32x2 u32x2_shift_right (u32x2 x, u32x2 i)
-{ return (u32x2) _m_psrld ((__m64) x, (__m64) i); };
+always_inline u32x2
+u32x2_shift_right (u32x2 x, u32x2 i)
+{
+  return (u32x2) _m_psrld ((__m64) x, (__m64) i);
+};
 
-always_inline i16x4 i16x4_shift_left (i16x4 x, i16x4 i)
-{ return (i16x4) _m_psllw ((__m64) x, (__m64) i); };
+always_inline i16x4
+i16x4_shift_left (i16x4 x, i16x4 i)
+{
+  return (i16x4) _m_psllw ((__m64) x, (__m64) i);
+};
 
-always_inline i32x2 i32x2_shift_left (i32x2 x, i32x2 i)
-{ return (i32x2) _m_pslld ((__m64) x, (__m64) i); };
+always_inline i32x2
+i32x2_shift_left (i32x2 x, i32x2 i)
+{
+  return (i32x2) _m_pslld ((__m64) x, (__m64) i);
+};
 
-always_inline i16x4 i16x4_shift_right (i16x4 x, i16x4 i)
-{ return (i16x4) _m_psraw ((__m64) x, (__m64) i); };
+always_inline i16x4
+i16x4_shift_right (i16x4 x, i16x4 i)
+{
+  return (i16x4) _m_psraw ((__m64) x, (__m64) i);
+};
 
-always_inline i32x2 i32x2_shift_right (i32x2 x, i32x2 i)
-{ return (i32x2) _m_psrad ((__m64) x, (__m64) i); };
+always_inline i32x2
+i32x2_shift_right (i32x2 x, i32x2 i)
+{
+  return (i32x2) _m_psrad ((__m64) x, (__m64) i);
+};
 
 #define u8x16_word_shift_left(a,n)  (u8x16) _mm_slli_si128((__m128i) a, n)
 #define u8x16_word_shift_right(a,n) (u8x16) _mm_srli_si128((__m128i) a, n)
@@ -340,12 +439,12 @@ always_inline i32x2 i32x2_shift_right (i32x2 x, i32x2 i)
 	    | t##x##n##_shift_##lr2 (w, j - i));	\
   }
 
-_ (u16, 8, left, right);
-_ (u16, 8, right, left);
-_ (u32, 4, left, right);
-_ (u32, 4, right, left);
-_ (u64, 2, left, right);
-_ (u64, 2, right, left);
+_(u16, 8, left, right);
+_(u16, 8, right, left);
+_(u32, 4, left, right);
+_(u32, 4, right, left);
+_(u64, 2, left, right);
+_(u64, 2, right, left);
 
 #undef _
 
@@ -364,64 +463,91 @@ _ (u64, 2, right, left);
   t##x##n##_word_rotate_##lr1 (t##x##n w0, int i)		\
   { return t##x##n##_word_rotate2_##lr1 (w0, w0, i); }
 
-_ (u8, 16, left, right);
-_ (u8, 16, right, left);
-_ (u16, 8, left, right);
-_ (u16, 8, right, left);
-_ (u32, 4, left, right);
-_ (u32, 4, right, left);
-_ (u64, 2, left, right);
-_ (u64, 2, right, left);
+_(u8, 16, left, right);
+_(u8, 16, right, left);
+_(u16, 8, left, right);
+_(u16, 8, right, left);
+_(u32, 4, left, right);
+_(u32, 4, right, left);
+_(u64, 2, left, right);
+_(u64, 2, right, left);
 
 #undef _
 #endif
 
 /* Compare operations. */
-always_inline u8x16 u8x16_is_equal (u8x16 x, u8x16 y)
-{ return (u8x16) _mm_cmpeq_epi8 ((__m128i) x, (__m128i) y); }
+always_inline u8x16
+u8x16_is_equal (u8x16 x, u8x16 y)
+{
+  return (u8x16) _mm_cmpeq_epi8 ((__m128i) x, (__m128i) y);
+}
 
-always_inline i8x16 i8x16_is_equal (i8x16 x, i8x16 y)
-{ return (i8x16) _mm_cmpeq_epi8 ((__m128i) x, (__m128i) y); }
+always_inline i8x16
+i8x16_is_equal (i8x16 x, i8x16 y)
+{
+  return (i8x16) _mm_cmpeq_epi8 ((__m128i) x, (__m128i) y);
+}
 
-always_inline u16x8 u16x8_is_equal (u16x8 x, u16x8 y)
-{ return (u16x8) _mm_cmpeq_epi16 ((__m128i) x, (__m128i) y); }
+always_inline u16x8
+u16x8_is_equal (u16x8 x, u16x8 y)
+{
+  return (u16x8) _mm_cmpeq_epi16 ((__m128i) x, (__m128i) y);
+}
 
-always_inline i16x8 i16x8_is_equal (i16x8 x, i16x8 y)
-{ return (i16x8) _mm_cmpeq_epi16 ((__m128i) x, (__m128i) y); }
+always_inline i16x8
+i16x8_is_equal (i16x8 x, i16x8 y)
+{
+  return (i16x8) _mm_cmpeq_epi16 ((__m128i) x, (__m128i) y);
+}
 
-always_inline u32x4 u32x4_is_equal (u32x4 x, u32x4 y)
-{ return (u32x4) _mm_cmpeq_epi32 ((__m128i) x, (__m128i) y); }
+always_inline u32x4
+u32x4_is_equal (u32x4 x, u32x4 y)
+{
+  return (u32x4) _mm_cmpeq_epi32 ((__m128i) x, (__m128i) y);
+}
 
-always_inline i32x4 i32x4_is_equal (i32x4 x, i32x4 y)
-{ return (i32x4) _mm_cmpeq_epi32 ((__m128i) x, (__m128i) y); }
+always_inline i32x4
+i32x4_is_equal (i32x4 x, i32x4 y)
+{
+  return (i32x4) _mm_cmpeq_epi32 ((__m128i) x, (__m128i) y);
+}
 
 always_inline u8x16
 i8x16_is_greater (i8x16 x, i8x16 y)
-{ return (u8x16) _mm_cmpgt_epi8 ((__m128i) x, (__m128i) y); }
+{
+  return (u8x16) _mm_cmpgt_epi8 ((__m128i) x, (__m128i) y);
+}
 
 always_inline u16x8
 i16x8_is_greater (i16x8 x, i16x8 y)
-{ return (u16x8) _mm_cmpgt_epi16 ((__m128i) x, (__m128i) y); }
+{
+  return (u16x8) _mm_cmpgt_epi16 ((__m128i) x, (__m128i) y);
+}
 
 always_inline u32x4
 i32x4_is_greater (i32x4 x, i32x4 y)
-{ return (u32x4) _mm_cmpgt_epi32 ((__m128i) x, (__m128i) y); }
-
-always_inline u8x16 u8x16_is_zero (u8x16 x)
 {
-  u8x16 zero = {0};
+  return (u32x4) _mm_cmpgt_epi32 ((__m128i) x, (__m128i) y);
+}
+
+always_inline u8x16
+u8x16_is_zero (u8x16 x)
+{
+  u8x16 zero = { 0 };
   return u8x16_is_equal (x, zero);
 }
 
-always_inline u16x8 u16x8_is_zero (u16x8 x)
+always_inline u16x8
+u16x8_is_zero (u16x8 x)
 {
-  u16x8 zero = {0};
+  u16x8 zero = { 0 };
   return u16x8_is_equal (x, zero);
 }
 
-always_inline u32x4 u32x4_is_zero (u32x4 x)
+always_inline u32x4
+u32x4_is_zero (u32x4 x)
 {
-  u32x4 zero = {0};
+  u32x4 zero = { 0 };
   return u32x4_is_equal (x, zero);
 }
 
@@ -446,8 +572,7 @@ always_inline u32
 u32x4_get0 (u32x4 x)
 {
   u32 result;
-  asm volatile ("movd %[x], %[result]"
-		: /* outputs */ [result] "=r" (result)
+  asm volatile ("movd %[x], %[result]": /* outputs */ [result] "=r" (result)
 		: /* inputs */ [x] "x" (x));
   return result;
 }
@@ -456,55 +581,69 @@ always_inline u32x4
 u32x4_set0 (u32 x)
 {
   u32x4 result;
-  asm volatile ("movd %[x], %[result]"
-		: /* outputs */ [result] "=x" (result)
+  asm volatile ("movd %[x], %[result]": /* outputs */ [result] "=x" (result)
 		: /* inputs */ [x] "r" (x));
   return result;
 }
 
 always_inline i32x4
 i32x4_set0 (i32 x)
-{ return (i32x4) u32x4_set0 ((u32) x); }
+{
+  return (i32x4) u32x4_set0 ((u32) x);
+}
 
 always_inline i32
 i32x4_get0 (i32x4 x)
-{ return (i32) u32x4_get0 ((u32x4) x); }
+{
+  return (i32) u32x4_get0 ((u32x4) x);
+}
 
 /* Converts all ones/zeros compare mask to bitmap. */
-always_inline u32 u8x16_compare_byte_mask (u8x16 x)
-{ return _mm_movemask_epi8 ((__m128i) x); }
+always_inline u32
+u8x16_compare_byte_mask (u8x16 x)
+{
+  return _mm_movemask_epi8 ((__m128i) x);
+}
 
 extern u8 u32x4_compare_word_mask_table[256];
 
-always_inline u32 u32x4_compare_word_mask (u32x4 x)
+always_inline u32
+u32x4_compare_word_mask (u32x4 x)
 {
   u32 m = u8x16_compare_byte_mask ((u8x16) x);
   return (u32x4_compare_word_mask_table[(m >> 0) & 0xff]
 	  | (u32x4_compare_word_mask_table[(m >> 8) & 0xff] << 2));
 }
 
-always_inline u32 u8x16_zero_byte_mask (u8x16 x)
+always_inline u32
+u8x16_zero_byte_mask (u8x16 x)
 {
-  u8x16 zero = {0};
+  u8x16 zero = { 0 };
   return u8x16_compare_byte_mask (u8x16_is_equal (x, zero));
 }
 
-always_inline u32 u16x8_zero_byte_mask (u16x8 x)
+always_inline u32
+u16x8_zero_byte_mask (u16x8 x)
 {
-  u16x8 zero = {0};
+  u16x8 zero = { 0 };
   return u8x16_compare_byte_mask ((u8x16) u16x8_is_equal (x, zero));
 }
 
-always_inline u32 u32x4_zero_byte_mask (u32x4 x)
+always_inline u32
+u32x4_zero_byte_mask (u32x4 x)
 {
-  u32x4 zero = {0};
+  u32x4 zero = { 0 };
   return u8x16_compare_byte_mask ((u8x16) u32x4_is_equal (x, zero));
 }
 
-always_inline u8x16 u8x16_max (u8x16 x, u8x16 y)
-{ return (u8x16) _mm_max_epu8 ((__m128i) x, (__m128i) y); }
+always_inline u8x16
+u8x16_max (u8x16 x, u8x16 y)
+{
+  return (u8x16) _mm_max_epu8 ((__m128i) x, (__m128i) y);
+}
 
-always_inline u32 u8x16_max_scalar (u8x16 x)
+always_inline u32
+u8x16_max_scalar (u8x16 x)
 {
   x = u8x16_max (x, u8x16_word_shift_right (x, 8));
   x = u8x16_max (x, u8x16_word_shift_right (x, 4));
@@ -513,10 +652,14 @@ always_inline u32 u8x16_max_scalar (u8x16 x)
   return _mm_extract_epi16 ((__m128i) x, 0) & 0xff;
 }
 
-always_inline u8x16 u8x16_min (u8x16 x, u8x16 y)
-{ return (u8x16) _mm_min_epu8 ((__m128i) x, (__m128i) y); }
+always_inline u8x16
+u8x16_min (u8x16 x, u8x16 y)
+{
+  return (u8x16) _mm_min_epu8 ((__m128i) x, (__m128i) y);
+}
 
-always_inline u8 u8x16_min_scalar (u8x16 x)
+always_inline u8
+u8x16_min_scalar (u8x16 x)
 {
   x = u8x16_min (x, u8x16_word_shift_right (x, 8));
   x = u8x16_min (x, u8x16_word_shift_right (x, 4));
@@ -525,10 +668,14 @@ always_inline u8 u8x16_min_scalar (u8x16 x)
   return _mm_extract_epi16 ((__m128i) x, 0) & 0xff;
 }
 
-always_inline i16x8 i16x8_max (i16x8 x, i16x8 y)
-{ return (i16x8) _mm_max_epi16 ((__m128i) x, (__m128i) y); }
+always_inline i16x8
+i16x8_max (i16x8 x, i16x8 y)
+{
+  return (i16x8) _mm_max_epi16 ((__m128i) x, (__m128i) y);
+}
 
-always_inline i16 i16x8_max_scalar (i16x8 x)
+always_inline i16
+i16x8_max_scalar (i16x8 x)
 {
   x = i16x8_max (x, i16x8_word_shift_right (x, 4));
   x = i16x8_max (x, i16x8_word_shift_right (x, 2));
@@ -536,10 +683,14 @@ always_inline i16 i16x8_max_scalar (i16x8 x)
   return _mm_extract_epi16 ((__m128i) x, 0);
 }
 
-always_inline i16x8 i16x8_min (i16x8 x, i16x8 y)
-{ return (i16x8) _mm_min_epi16 ((__m128i) x, (__m128i) y); }
+always_inline i16x8
+i16x8_min (i16x8 x, i16x8 y)
+{
+  return (i16x8) _mm_min_epi16 ((__m128i) x, (__m128i) y);
+}
 
-always_inline i16 i16x8_min_scalar (i16x8 x)
+always_inline i16
+i16x8_min_scalar (i16x8 x)
 {
   x = i16x8_min (x, i16x8_word_shift_right (x, 4));
   x = i16x8_min (x, i16x8_word_shift_right (x, 2));
@@ -550,3 +701,11 @@ always_inline i16 i16x8_min_scalar (i16x8 x)
 #undef _signed_binop
 
 #endif /* included_vector_sse2_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

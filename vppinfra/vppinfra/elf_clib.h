@@ -59,61 +59,65 @@
 				CLIB_ELF_SECTION_DATA_ALIGN),		\
 		    void *)
 
-typedef struct {
-  void * lo, * hi;
+typedef struct
+{
+  void *lo, *hi;
 } clib_elf_section_bounds_t;
 
-typedef struct {
+typedef struct
+{
   /* Vector of bounds for this section.  Multiple shared objects may have instances
      of the same sections. */
-  clib_elf_section_bounds_t * bounds;
+  clib_elf_section_bounds_t *bounds;
 
   /* Name of ELF section (e.g. .text). */
-  u8 * name;
+  u8 *name;
 } clib_elf_section_t;
 
-typedef struct {
+typedef struct
+{
   /* Vector of sections. */
-  clib_elf_section_t * sections;
+  clib_elf_section_t *sections;
 
   /* Hash map of name to section index. */
-  uword * section_by_name;
+  uword *section_by_name;
 
   /* Unix path that we were exec()ed with. */
-  char * exec_path;
+  char *exec_path;
 
-  elf_main_t * elf_mains;
+  elf_main_t *elf_mains;
 } clib_elf_main_t;
 
 always_inline void
 clib_elf_main_free (clib_elf_main_t * m)
 {
-  clib_elf_section_t * s;
+  clib_elf_section_t *s;
   vec_foreach (s, m->sections)
-    {
-      vec_free (s->bounds);
-      vec_free (s->name);
-    }
+  {
+    vec_free (s->bounds);
+    vec_free (s->name);
+  }
   vec_free (m->sections);
   hash_free (m->section_by_name);
 
   {
-    elf_main_t * em;
+    elf_main_t *em;
     vec_foreach (em, m->elf_mains)
-      {
-	elf_main_free (em);
-      }
+    {
+      elf_main_free (em);
+    }
     vec_free (m->elf_mains);
   }
 }
 
 /* Call with exec_path equal to argv[0] from C main. */
-void clib_elf_main_init (char * exec_path);
+void clib_elf_main_init (char *exec_path);
 
-clib_elf_section_bounds_t * clib_elf_get_section_bounds (char * name);
+clib_elf_section_bounds_t *clib_elf_get_section_bounds (char *name);
 
-typedef struct {
-  /* The symbol. */ 
+typedef struct
+{
+  /* The symbol. */
   elf64_symbol_t symbol;
 
   /* elf_main_t where symbol came from. */
@@ -124,9 +128,17 @@ typedef struct {
 } clib_elf_symbol_t;
 
 /* Returns 1 if found; otherwise zero. */
-uword clib_elf_symbol_by_name (char * name, clib_elf_symbol_t * result);
+uword clib_elf_symbol_by_name (char *name, clib_elf_symbol_t * result);
 uword clib_elf_symbol_by_address (uword address, clib_elf_symbol_t * result);
 
 format_function_t format_clib_elf_symbol, format_clib_elf_symbol_with_address;
 
 #endif /* included_clib_elf_self_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

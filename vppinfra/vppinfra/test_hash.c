@@ -57,7 +57,8 @@ static int verbose;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
-typedef struct {
+typedef struct
+{
   int n_iterations;
 
   int n_iterations_per_print;
@@ -78,46 +79,51 @@ typedef struct {
   u32 seed;
 } hash_test_t;
 
-static clib_error_t * hash_next_test (word * h)
+static clib_error_t *
+hash_next_test (word * h)
 {
-  hash_next_t hn = {0};
-  hash_pair_t * p0, * p1;
-  clib_error_t * error = 0;
+  hash_next_t hn = { 0 };
+  hash_pair_t *p0, *p1;
+  clib_error_t *error = 0;
 
+  /* *INDENT-OFF* */
   hash_foreach_pair (p0, h, {
     p1 = hash_next (h, &hn);
     error = CLIB_ERROR_ASSERT (p0 == p1);
     if (error)
       break;
   });
+  /* *INDENT-ON* */
 
-  if (! error)
-    error = CLIB_ERROR_ASSERT (! hash_next (h, &hn));
+  if (!error)
+    error = CLIB_ERROR_ASSERT (!hash_next (h, &hn));
 
   return error;
 }
 
-static u8 * test1_format (u8 * s, va_list * args)
+static u8 *
+test1_format (u8 * s, va_list * args)
 {
-  void * CLIB_UNUSED (user_arg) = va_arg (*args, void *);
-  void * v = va_arg (*args, void *);
-  hash_pair_t * p = va_arg (*args, hash_pair_t *);
-  hash_t * h = hash_header (v);
+  void *CLIB_UNUSED (user_arg) = va_arg (*args, void *);
+  void *v = va_arg (*args, void *);
+  hash_pair_t *p = va_arg (*args, hash_pair_t *);
+  hash_t *h = hash_header (v);
 
   return format (s, "0x%8U -> 0x%8U",
 		 format_hex_bytes, &p->key, sizeof (p->key),
 		 format_hex_bytes, &p->value[0], hash_value_bytes (h));
 }
 
-static clib_error_t * test_word_key (hash_test_t * ht)
+static clib_error_t *
+test_word_key (hash_test_t * ht)
 {
-  word * h = 0;
+  word *h = 0;
   word i, j;
 
-  word * keys = 0, * vals = 0;
-  uword * is_inserted = 0;
+  word *keys = 0, *vals = 0;
+  uword *is_inserted = 0;
 
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
 
   vec_resize (keys, ht->n_pairs);
   vec_resize (vals, vec_len (keys));
@@ -129,14 +135,16 @@ static clib_error_t * test_word_key (hash_test_t * ht)
     hash_set_flags (h, HASH_FLAG_NO_AUTO_GROW | HASH_FLAG_NO_AUTO_SHRINK);
 
   {
-    uword * unique = 0;
+    uword *unique = 0;
     u32 k;
 
     for (i = 0; i < vec_len (keys); i++)
       {
-	do {
-	  k = random_u32 (&ht->seed) & 0xfffff;
-	} while (clib_bitmap_get (unique, k));
+	do
+	  {
+	    k = random_u32 (&ht->seed) & 0xfffff;
+	  }
+	while (clib_bitmap_get (unique, k));
 	unique = clib_bitmap_ori (unique, k);
 	keys[i] = k;
 	vals[i] = i;
@@ -158,20 +166,22 @@ static clib_error_t * test_word_key (hash_test_t * ht)
 
       if (ht->n_iterations_per_print > 0
 	  && ((i + 1) % ht->n_iterations_per_print) == 0)
-	if_verbose   ("iteration %d\n  %U", i + 1, format_hash, h, ht->verbose);
+	if_verbose ("iteration %d\n  %U", i + 1, format_hash, h, ht->verbose);
 
       if (ht->n_iterations_per_validate == 0
 	  || (i + 1) % ht->n_iterations_per_validate)
 	continue;
 
       {
-	  hash_pair_t * p;
-	  uword ki;
+	hash_pair_t *p;
+	uword ki;
 
+	  /* *INDENT-OFF* */
 	  hash_foreach_pair (p, h, {
 	      ki = p->value[0];
 	      ASSERT (keys[ki] == p->key);
 	  });
+	  /* *INDENT-ON* */
       }
 
       clib_mem_validate ();
@@ -181,25 +191,28 @@ static clib_error_t * test_word_key (hash_test_t * ht)
 
       for (j = 0; j < vec_len (keys); j++)
 	{
-	  uword * v;
+	  uword *v;
 	  v = hash_get (h, keys[j]);
-	  if ((error = CLIB_ERROR_ASSERT (clib_bitmap_get (is_inserted, j) == (v != 0))))
+	  if ((error =
+	       CLIB_ERROR_ASSERT (clib_bitmap_get (is_inserted, j) ==
+				  (v != 0))))
 	    goto done;
-	  if (v) {
-	    if ((error = CLIB_ERROR_ASSERT (v[0] == vals[j])))
-	      goto done;
-	  }
+	  if (v)
+	    {
+	      if ((error = CLIB_ERROR_ASSERT (v[0] == vals[j])))
+		goto done;
+	    }
 	}
     }
 
   if ((error = hash_next_test (h)))
     goto done;
 
-  if_verbose   ("%U", format_hash, h, ht->verbose);
+  if_verbose ("%U", format_hash, h, ht->verbose);
 
   for (i = 0; i < vec_len (keys); i++)
     {
-      if (! clib_bitmap_get (is_inserted, i))
+      if (!clib_bitmap_get (is_inserted, i))
 	continue;
 
       hash_unset (h, keys[i]);
@@ -216,64 +229,71 @@ static clib_error_t * test_word_key (hash_test_t * ht)
 
       for (j = 0; j < vec_len (keys); j++)
 	{
-	  uword * v;
+	  uword *v;
 	  v = hash_get (h, keys[j]);
-	  if ((error = CLIB_ERROR_ASSERT (clib_bitmap_get (is_inserted, j) == (v != 0))))
+	  if ((error =
+	       CLIB_ERROR_ASSERT (clib_bitmap_get (is_inserted, j) ==
+				  (v != 0))))
 	    goto done;
-	  if (v) {
-	    if ((error = CLIB_ERROR_ASSERT (v[0] == vals[j])))
-	      goto done;
-	  }
+	  if (v)
+	    {
+	      if ((error = CLIB_ERROR_ASSERT (v[0] == vals[j])))
+		goto done;
+	    }
 	}
     }
 
- done:
+done:
   hash_free (h);
   vec_free (keys);
   vec_free (vals);
   clib_bitmap_free (is_inserted);
 
-  if (verbose) fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
+  if (verbose)
+    fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
 
   return error;
 }
 
-static u8 * test2_format (u8 * s, va_list * args)
+static u8 *
+test2_format (u8 * s, va_list * args)
 {
-  void * CLIB_UNUSED (user_arg) = va_arg (*args, void *);
-  void * v = va_arg (*args, void *);
-  hash_pair_t * p = va_arg (*args, hash_pair_t *);
-  hash_t * h = hash_header (v);
+  void *CLIB_UNUSED (user_arg) = va_arg (*args, void *);
+  void *v = va_arg (*args, void *);
+  hash_pair_t *p = va_arg (*args, hash_pair_t *);
+  hash_t *h = hash_header (v);
 
   return format (s, "0x%8U <- %v",
 		 format_hex_bytes, &p->value[0], hash_value_bytes (h),
 		 p->key);
 }
 
-static clib_error_t * test_string_key (hash_test_t * ht)
+static clib_error_t *
+test_string_key (hash_test_t * ht)
 {
   word i, j;
 
-  u8 ** keys = 0;
-  word * vals = 0;
-  uword * is_inserted = 0;
+  u8 **keys = 0;
+  word *vals = 0;
+  uword *is_inserted = 0;
 
-  word * h = 0;
+  word *h = 0;
 
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
 
   vec_resize (keys, ht->n_pairs);
   vec_resize (vals, vec_len (keys));
 
-  h = hash_create_vec (ht->fixed_hash_size, sizeof (keys[0][0]), sizeof (uword));
+  h =
+    hash_create_vec (ht->fixed_hash_size, sizeof (keys[0][0]),
+		     sizeof (uword));
   hash_set_pair_format (h, test2_format, 0);
   if (ht->fixed_hash_size)
     hash_set_flags (h, HASH_FLAG_NO_AUTO_SHRINK | HASH_FLAG_NO_AUTO_GROW);
 
   for (i = 0; i < vec_len (keys); i++)
     {
-      keys[i] = random_string (&ht->seed,
-			       5 + (random_u32 (&ht->seed) & 0xf));
+      keys[i] = random_string (&ht->seed, 5 + (random_u32 (&ht->seed) & 0xf));
       keys[i] = format (keys[i], "%x", i);
       vals[i] = random_u32 (&ht->seed);
     }
@@ -291,7 +311,7 @@ static clib_error_t * test_string_key (hash_test_t * ht)
 
       if (ht->n_iterations_per_print > 0
 	  && ((i + 1) % ht->n_iterations_per_print) == 0)
-	if_verbose   ("iteration %d\n  %U", i + 1, format_hash, h, ht->verbose);
+	if_verbose ("iteration %d\n  %U", i + 1, format_hash, h, ht->verbose);
 
       if (ht->n_iterations_per_validate == 0
 	  || (i + 1) % ht->n_iterations_per_validate)
@@ -304,25 +324,28 @@ static clib_error_t * test_string_key (hash_test_t * ht)
 
       for (j = 0; j < vec_len (keys); j++)
 	{
-	  uword * v;
+	  uword *v;
 	  v = hash_get_mem (h, keys[j]);
-	  if ((error = CLIB_ERROR_ASSERT (clib_bitmap_get (is_inserted, j) == (v != 0))))
+	  if ((error =
+	       CLIB_ERROR_ASSERT (clib_bitmap_get (is_inserted, j) ==
+				  (v != 0))))
 	    goto done;
-	  if (v) {
-	    if ((error = CLIB_ERROR_ASSERT (v[0] == vals[j])))
-	      goto done;
-	  }
+	  if (v)
+	    {
+	      if ((error = CLIB_ERROR_ASSERT (v[0] == vals[j])))
+		goto done;
+	    }
 	}
     }
 
   if ((error = hash_next_test (h)))
     goto done;
 
-  if_verbose   ("%U", format_hash, h, ht->verbose);
+  if_verbose ("%U", format_hash, h, ht->verbose);
 
   for (i = 0; i < vec_len (keys); i++)
     {
-      if (! clib_bitmap_get (is_inserted, i))
+      if (!clib_bitmap_get (is_inserted, i))
 	continue;
 
       hash_unset_mem (h, keys[i]);
@@ -339,18 +362,21 @@ static clib_error_t * test_string_key (hash_test_t * ht)
 
       for (j = 0; j < vec_len (keys); j++)
 	{
-	  uword * v;
+	  uword *v;
 	  v = hash_get_mem (h, keys[j]);
-	  if ((error = CLIB_ERROR_ASSERT (clib_bitmap_get (is_inserted, j) == (v != 0))))
+	  if ((error =
+	       CLIB_ERROR_ASSERT (clib_bitmap_get (is_inserted, j) ==
+				  (v != 0))))
 	    goto done;
-	  if (v) {
-	    if ((error = CLIB_ERROR_ASSERT (v[0] == vals[j])))
-	      goto done;
-	  }
+	  if (v)
+	    {
+	      if ((error = CLIB_ERROR_ASSERT (v[0] == vals[j])))
+		goto done;
+	    }
 	}
     }
 
- done:
+done:
   hash_free (h);
   vec_free (vals);
   clib_bitmap_free (is_inserted);
@@ -358,16 +384,18 @@ static clib_error_t * test_string_key (hash_test_t * ht)
   for (i = 0; i < vec_len (keys); i++)
     vec_free (keys[i]);
   vec_free (keys);
-  
-  if (verbose) fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
+
+  if (verbose)
+    fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
 
   return error;
 }
 
-int test_hash_main (unformat_input_t * input)
+int
+test_hash_main (unformat_input_t * input)
 {
-  hash_test_t _ht = {0}, * ht = &_ht;
-  clib_error_t * error;
+  hash_test_t _ht = { 0 }, *ht = &_ht;
+  clib_error_t *error;
 
   ht->n_iterations = 100;
   ht->n_pairs = 10;
@@ -381,18 +409,18 @@ int test_hash_main (unformat_input_t * input)
 	  && 0 == unformat (input, "size %d", &ht->fixed_hash_size)
 	  && 0 == unformat (input, "seed %d", &ht->seed)
 	  && 0 == unformat (input, "verbose %=", &ht->verbose, 1)
-	  && 0 == unformat (input, "valid %d", &ht->n_iterations_per_validate))
+	  && 0 == unformat (input, "valid %d",
+			    &ht->n_iterations_per_validate))
 	{
 	  clib_warning ("unknown input `%U'", format_unformat_error, input);
 	  return 1;
 	}
     }
 
-  if (! ht->seed)
+  if (!ht->seed)
     ht->seed = random_default_seed ();
 
-  if_verbose   ("testing %d iterations, seed %d",
-		ht->n_iterations, ht->seed);
+  if_verbose ("testing %d iterations, seed %d", ht->n_iterations, ht->seed);
 
   error = test_word_key (ht);
   if (error)
@@ -406,7 +434,8 @@ int test_hash_main (unformat_input_t * input)
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int ret;
@@ -419,3 +448,11 @@ int main (int argc, char * argv[])
   return ret;
 }
 #endif /* CLIB_UNIX */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

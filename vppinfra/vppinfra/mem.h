@@ -40,38 +40,38 @@
 
 #include <stdarg.h>
 
-#include <vppinfra/clib.h>          /* uword, etc */
+#include <vppinfra/clib.h>	/* uword, etc */
 #include <vppinfra/mheap_bootstrap.h>
 #include <vppinfra/os.h>
-#include <vppinfra/string.h>        /* memcpy, memset */
+#include <vppinfra/string.h>	/* memcpy, memset */
 #include <vppinfra/valgrind.h>
 
 #define CLIB_MAX_MHEAPS 256
 
 /* Per CPU heaps. */
-extern void * clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
+extern void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 
-always_inline void * clib_mem_get_per_cpu_heap (void)
+always_inline void *
+clib_mem_get_per_cpu_heap (void)
 {
   int cpu = os_get_cpu_number ();
   return clib_per_cpu_mheaps[cpu];
 }
 
-always_inline void * clib_mem_set_per_cpu_heap (u8 * new_heap)
+always_inline void *
+clib_mem_set_per_cpu_heap (u8 * new_heap)
 {
   int cpu = os_get_cpu_number ();
-  void * old = clib_per_cpu_mheaps[cpu];
+  void *old = clib_per_cpu_mheaps[cpu];
   clib_per_cpu_mheaps[cpu] = new_heap;
   return old;
 }
 
 /* Memory allocator which returns null when it fails. */
 always_inline void *
-clib_mem_alloc_aligned_at_offset (uword size,
-				  uword align,
-				  uword align_offset)
+clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset)
 {
-  void * heap, * p;
+  void *heap, *p;
   uword offset, cpu;
 
   if (align_offset > align)
@@ -84,9 +84,7 @@ clib_mem_alloc_aligned_at_offset (uword size,
 
   cpu = os_get_cpu_number ();
   heap = clib_per_cpu_mheaps[cpu];
-  heap = mheap_get_aligned (heap,
-			    size, align, align_offset,
-			    &offset);
+  heap = mheap_get_aligned (heap, size, align, align_offset, &offset);
   clib_per_cpu_mheaps[cpu] = heap;
 
   if (offset != ~0)
@@ -107,11 +105,16 @@ clib_mem_alloc_aligned_at_offset (uword size,
 /* Memory allocator which returns null when it fails. */
 always_inline void *
 clib_mem_alloc (uword size)
-{ return clib_mem_alloc_aligned_at_offset (size, /* align */ 1, /* align_offset */ 0); }
+{
+  return clib_mem_alloc_aligned_at_offset (size, /* align */ 1,
+					   /* align_offset */ 0);
+}
 
 always_inline void *
 clib_mem_alloc_aligned (uword size, uword align)
-{ return clib_mem_alloc_aligned_at_offset (size, align, /* align_offset */ 0); }
+{
+  return clib_mem_alloc_aligned_at_offset (size, align, /* align_offset */ 0);
+}
 
 /* Memory allocator which panics when it fails.
    Use macro so that clib_panic macro can expand __FUNCTION__ and __LINE__. */
@@ -130,25 +133,27 @@ clib_mem_alloc_aligned (uword size, uword align)
 /* Alias to stack allocator for naming consistency. */
 #define clib_mem_alloc_stack(bytes) __builtin_alloca(bytes)
 
-always_inline uword clib_mem_is_heap_object (void * p)
+always_inline uword
+clib_mem_is_heap_object (void *p)
 {
-  void * heap = clib_mem_get_per_cpu_heap ();
-  uword offset = (uword)p - (uword)heap;
-  mheap_elt_t * e, * n;
+  void *heap = clib_mem_get_per_cpu_heap ();
+  uword offset = (uword) p - (uword) heap;
+  mheap_elt_t *e, *n;
 
   if (offset >= vec_len (heap))
     return 0;
 
   e = mheap_elt_at_uoffset (heap, offset);
   n = mheap_next_elt (e);
-  
+
   /* Check that heap forward and reverse pointers agree. */
   return e->n_user_data == n->prev_n_user_data;
 }
 
-always_inline void clib_mem_free (void * p)
+always_inline void
+clib_mem_free (void *p)
 {
-  u8 * heap = clib_mem_get_per_cpu_heap ();
+  u8 *heap = clib_mem_get_per_cpu_heap ();
 
   /* Make sure object is in the correct heap. */
   ASSERT (clib_mem_is_heap_object (p));
@@ -160,10 +165,11 @@ always_inline void clib_mem_free (void * p)
 #endif
 }
 
-always_inline void * clib_mem_realloc (void * p, uword new_size, uword old_size)
+always_inline void *
+clib_mem_realloc (void *p, uword new_size, uword old_size)
 {
   /* By default use alloc, copy and free to emulate realloc. */
-  void * q = clib_mem_alloc (new_size);
+  void *q = clib_mem_alloc (new_size);
   if (q)
     {
       uword copy_size;
@@ -177,20 +183,27 @@ always_inline void * clib_mem_realloc (void * p, uword new_size, uword old_size)
   return q;
 }
 
-always_inline uword clib_mem_size (void * p)
+always_inline uword
+clib_mem_size (void *p)
 {
   ASSERT (clib_mem_is_heap_object (p));
-  mheap_elt_t * e = mheap_user_pointer_to_elt (p);
+  mheap_elt_t *e = mheap_user_pointer_to_elt (p);
   return mheap_elt_data_bytes (e);
 }
 
-always_inline void * clib_mem_get_heap (void)
-{ return clib_mem_get_per_cpu_heap (); }
+always_inline void *
+clib_mem_get_heap (void)
+{
+  return clib_mem_get_per_cpu_heap ();
+}
 
-always_inline void * clib_mem_set_heap (void * heap)
-{ return clib_mem_set_per_cpu_heap (heap); }
+always_inline void *
+clib_mem_set_heap (void *heap)
+{
+  return clib_mem_set_per_cpu_heap (heap);
+}
 
-void * clib_mem_init (void * heap, uword size);
+void *clib_mem_init (void *heap, uword size);
 
 void clib_mem_exit (void);
 
@@ -200,7 +213,8 @@ void clib_mem_validate (void);
 
 void clib_mem_trace (int enable);
 
-typedef struct {
+typedef struct
+{
   /* Total number of objects allocated. */
   uword object_count;
 
@@ -214,7 +228,7 @@ typedef struct {
 
   /* Amount of free space returned to operating system. */
   uword bytes_free_reclaimed;
-  
+
   /* For malloc which puts small objects in sbrk region and
      large objects in mmap'ed regions. */
   uword bytes_used_sbrk;
@@ -226,7 +240,7 @@ typedef struct {
 
 void clib_mem_usage (clib_mem_usage_t * usage);
 
-u8 * format_clib_mem_usage (u8 * s, va_list * args);
+u8 *format_clib_mem_usage (u8 * s, va_list * args);
 
 /* Include appropriate VM functions depending on whether
    we are compiling for linux kernel, for Unix or standalone. */
@@ -242,6 +256,14 @@ u8 * format_clib_mem_usage (u8 * s, va_list * args);
 #include <vppinfra/vm_standalone.h>
 #endif
 
-#include <vppinfra/error.h>		/* clib_panic */
+#include <vppinfra/error.h>	/* clib_panic */
 
 #endif /* _included_clib_mem_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

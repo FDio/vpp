@@ -42,11 +42,12 @@ static int verbose;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
-int test_socket_main (unformat_input_t * input)
+int
+test_socket_main (unformat_input_t * input)
 {
-  clib_socket_t _s = {0}, * s = &_s;
-  char * config;
-  clib_error_t * error;
+  clib_socket_t _s = { 0 }, *s = &_s;
+  char *config;
+  clib_error_t *error;
 
   s->config = "localhost:22";
   s->flags = SOCKET_IS_CLIENT;
@@ -73,7 +74,10 @@ int test_socket_main (unformat_input_t * input)
 
   if (0)
     {
-      struct { int a, b; } * msg;
+      struct
+      {
+	int a, b;
+      } *msg;
       msg = clib_socket_tx_add (s, sizeof (msg[0]));
       msg->a = 99;
       msg->b = 100;
@@ -94,20 +98,21 @@ int test_socket_main (unformat_input_t * input)
       if (clib_socket_rx_end_of_file (s))
 	break;
 
-      if_verbose   ("%v", s->rx_buffer);
+      if_verbose ("%v", s->rx_buffer);
       _vec_len (s->rx_buffer) = 0;
     }
 
   error = clib_socket_close (s);
 
- done:
+done:
   if (error)
     clib_error_report (error);
   return 0;
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv [])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int r;
@@ -119,3 +124,11 @@ int main (int argc, char * argv [])
   return r;
 }
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

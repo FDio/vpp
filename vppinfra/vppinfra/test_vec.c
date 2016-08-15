@@ -37,13 +37,13 @@
 */
 
 #ifdef CLIB_LINUX_KERNEL
-# include <linux/unistd.h>
+#include <linux/unistd.h>
 #endif
 
 #ifdef CLIB_UNIX
-# include <unistd.h>
-# include <stdlib.h>
-# include <stdio.h>     
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
 #endif
 
 #include <vppinfra/clib.h>
@@ -62,10 +62,11 @@ static int verbose;
 #define MAX_CHANGE 100
 
 
-typedef enum {
+typedef enum
+{
   /* Values have to be sequential and start with 0. */
   OP_IS_VEC_RESIZE = 0,
-  OP_IS_VEC_ADD1,		
+  OP_IS_VEC_ADD1,
   OP_IS_VEC_ADD2,
   OP_IS_VEC_ADD,
   OP_IS_VEC_INSERT,
@@ -74,7 +75,7 @@ typedef enum {
   OP_IS_VEC_DUP,
   OP_IS_VEC_IS_EQUAL,
   OP_IS_VEC_ZERO,
-  OP_IS_VEC_SET,		
+  OP_IS_VEC_SET,
   OP_IS_VEC_VALIDATE,
   OP_IS_VEC_FREE,
   OP_IS_VEC_INIT,
@@ -94,31 +95,31 @@ typedef enum {
 #define LAST_VEC_HDR_OP		OP_IS_VEC_FREE_H
 
 uword g_prob_ratio[] = {
-  [OP_IS_VEC_RESIZE]		= 5,
-  [OP_IS_VEC_ADD1]		= 5,
-  [OP_IS_VEC_ADD2]		= 5,
-  [OP_IS_VEC_ADD]		= 5,
-  [OP_IS_VEC_INSERT]		= 5,
-  [OP_IS_VEC_INSERT_ELTS]	= 5,
-  [OP_IS_VEC_DELETE]		= 30,
-  [OP_IS_VEC_DUP]		= 5,
-  [OP_IS_VEC_IS_EQUAL]		= 5,
-  [OP_IS_VEC_ZERO]		= 2,
-  [OP_IS_VEC_SET]		= 3,
-  [OP_IS_VEC_VALIDATE]		= 5,
-  [OP_IS_VEC_FREE]		= 5,
-  [OP_IS_VEC_INIT]		= 5,
-  [OP_IS_VEC_CLONE]		= 5,
-  [OP_IS_VEC_APPEND]		= 5,
-  [OP_IS_VEC_PREPEND]		= 5,
+  [OP_IS_VEC_RESIZE] = 5,
+  [OP_IS_VEC_ADD1] = 5,
+  [OP_IS_VEC_ADD2] = 5,
+  [OP_IS_VEC_ADD] = 5,
+  [OP_IS_VEC_INSERT] = 5,
+  [OP_IS_VEC_INSERT_ELTS] = 5,
+  [OP_IS_VEC_DELETE] = 30,
+  [OP_IS_VEC_DUP] = 5,
+  [OP_IS_VEC_IS_EQUAL] = 5,
+  [OP_IS_VEC_ZERO] = 2,
+  [OP_IS_VEC_SET] = 3,
+  [OP_IS_VEC_VALIDATE] = 5,
+  [OP_IS_VEC_FREE] = 5,
+  [OP_IS_VEC_INIT] = 5,
+  [OP_IS_VEC_CLONE] = 5,
+  [OP_IS_VEC_APPEND] = 5,
+  [OP_IS_VEC_PREPEND] = 5,
   /* Operations on vectors with custom headers. */
-  [OP_IS_VEC_INIT_H]		= 5,
-  [OP_IS_VEC_RESIZE_H]		= 5,
-  [OP_IS_VEC_FREE_H]		= 5,
+  [OP_IS_VEC_INIT_H] = 5,
+  [OP_IS_VEC_RESIZE_H] = 5,
+  [OP_IS_VEC_FREE_H] = 5,
 };
 
-op_t * g_prob;
-op_t * g_prob_wh;
+op_t *g_prob;
+op_t *g_prob_wh;
 
 uword g_call_stats[OP_MAX];
 
@@ -126,28 +127,30 @@ uword g_call_stats[OP_MAX];
 /* A structure for both vector headers and vector elements might be useful to
    uncover potential alignement issues. */
 
-typedef struct {
+typedef struct
+{
   u8 field1[4];
-  CLIB_PACKED (u32 field2);
+    CLIB_PACKED (u32 field2);
 } hdr_t;
 
-typedef struct {
+typedef struct
+{
   u8 field1[3];
-  CLIB_PACKED (u32 field2);
+    CLIB_PACKED (u32 field2);
 } elt_t;
-
 
 #ifdef CLIB_UNIX
 u32 g_seed = 0xdeadbabe;
 uword g_verbose = 1;
 #endif
 
-op_t * g_op_prob;
+op_t *g_op_prob;
 uword g_set_verbose_at = ~0;
 uword g_dump_period = ~0;
 
 
-static u8 * format_vec_op_type (u8 * s, va_list * args)
+static u8 *
+format_vec_op_type (u8 * s, va_list * args)
 {
   op_t op = va_arg (*args, int);
 
@@ -158,10 +161,25 @@ static u8 * format_vec_op_type (u8 * s, va_list * args)
 	s = format (s, "OP_IS_" #n);		\
 	break;
 
-      _(VEC_RESIZE); _(VEC_ADD1); _(VEC_ADD2); _(VEC_ADD); _(VEC_INSERT);
-      _(VEC_INSERT_ELTS); _(VEC_DELETE); _(VEC_DUP); _(VEC_IS_EQUAL);
-      _(VEC_ZERO); _(VEC_SET); _(VEC_VALIDATE); _(VEC_FREE); _(VEC_INIT);
-      _(VEC_CLONE); _(VEC_APPEND); _(VEC_PREPEND); _(VEC_INIT_H); _(VEC_RESIZE_H);
+      _(VEC_RESIZE);
+      _(VEC_ADD1);
+      _(VEC_ADD2);
+      _(VEC_ADD);
+      _(VEC_INSERT);
+      _(VEC_INSERT_ELTS);
+      _(VEC_DELETE);
+      _(VEC_DUP);
+      _(VEC_IS_EQUAL);
+      _(VEC_ZERO);
+      _(VEC_SET);
+      _(VEC_VALIDATE);
+      _(VEC_FREE);
+      _(VEC_INIT);
+      _(VEC_CLONE);
+      _(VEC_APPEND);
+      _(VEC_PREPEND);
+      _(VEC_INIT_H);
+      _(VEC_RESIZE_H);
       _(VEC_FREE_H);
 
     default:
@@ -174,7 +192,8 @@ static u8 * format_vec_op_type (u8 * s, va_list * args)
   return s;
 }
 
-static void dump_call_stats (uword * stats)
+static void
+dump_call_stats (uword * stats)
 {
   uword i;
 
@@ -229,27 +248,30 @@ create_random_vec_wh (elt_type, len, 0, seed)
   compute_mem_hash (_v(hh), _v(v), _v(n));		\
 })
 
-static elt_t * validate_vec_free (elt_t * vec)
+static elt_t *
+validate_vec_free (elt_t * vec)
 {
   vec_free (vec);
   ASSERT (vec == NULL);
   return vec;
 }
 
-static elt_t * validate_vec_free_h (elt_t * vec, uword hdr_bytes)
+static elt_t *
+validate_vec_free_h (elt_t * vec, uword hdr_bytes)
 {
   vec_free_h (vec, hdr_bytes);
   ASSERT (vec == NULL);
   return vec;
 }
 
-static void validate_vec_hdr (elt_t * vec, uword hdr_bytes)
+static void
+validate_vec_hdr (elt_t * vec, uword hdr_bytes)
 {
-  u8 * hdr;
-  u8 * hdr_end;
-  vec_header_t * vh;
+  u8 *hdr;
+  u8 *hdr_end;
+  vec_header_t *vh;
 
-  if (! vec)
+  if (!vec)
     return;
 
   vh = _vec_find (vec);
@@ -260,16 +282,17 @@ static void validate_vec_hdr (elt_t * vec, uword hdr_bytes)
   ASSERT ((u8 *) vh - (u8 *) hdr >= hdr_bytes);
 }
 
-static void validate_vec_len (elt_t * vec)
+static void
+validate_vec_len (elt_t * vec)
 {
-  u8 * ptr;
-  u8 * end;
+  u8 *ptr;
+  u8 *end;
   uword len;
   uword bytes;
   uword i;
-  elt_t * elt;
+  elt_t *elt;
 
-  if (! vec)
+  if (!vec)
     return;
 
   ptr = (u8 *) vec;
@@ -284,7 +307,7 @@ static void validate_vec_len (elt_t * vec)
 
   /* XXX - TODO: confirm that auto-incrementing in vec_is_member() would not
      have the expected result. */
-  while (vec_is_member (vec, (__typeof__(vec[0]) *) ptr))
+  while (vec_is_member (vec, (__typeof__ (vec[0]) *) ptr))
     {
       ptr++;
       i++;
@@ -295,18 +318,18 @@ static void validate_vec_len (elt_t * vec)
 
   i = 0;
 
-  vec_foreach (elt, vec)
-    i++;
+  vec_foreach (elt, vec) i++;
 
   ASSERT (i == len);
 }
 
-static void validate_vec (elt_t * vec, uword hdr_bytes)
+static void
+validate_vec (elt_t * vec, uword hdr_bytes)
 {
   validate_vec_hdr (vec, hdr_bytes);
   validate_vec_len (vec);
 
-  if (! vec || vec_len (vec) == 0)
+  if (!vec || vec_len (vec) == 0)
     {
       VERBOSE3 ("Vector at %p has zero elements.\n\n", vec);
     }
@@ -316,13 +339,14 @@ static void validate_vec (elt_t * vec, uword hdr_bytes)
 	VERBOSE3 ("Header: %U\n",
 		  format_hex_bytes, vec_header (vec, sizeof (vec[0])),
 		  sizeof (vec[0]));
-      
+
       VERBOSE3 ("%U\n\n",
 		format_hex_bytes, vec, vec_len (vec) * sizeof (vec[0]));
     }
 }
 
-static elt_t * validate_vec_resize (elt_t * vec, uword num_elts)
+static elt_t *
+validate_vec_resize (elt_t * vec, uword num_elts)
 {
   uword len1 = vec_len (vec);
   uword len2;
@@ -337,12 +361,12 @@ static elt_t * validate_vec_resize (elt_t * vec, uword num_elts)
   return vec;
 }
 
-static elt_t * validate_vec_resize_h (elt_t * vec,
-				     uword num_elts, uword hdr_bytes)
+static elt_t *
+validate_vec_resize_h (elt_t * vec, uword num_elts, uword hdr_bytes)
 {
   uword len1, len2;
-  u8 * end1, * end2;
-  u8 * hdr = NULL;
+  u8 *end1, *end2;
+  u8 *hdr = NULL;
   u8 hash, hdr_hash;
 
   len1 = vec_len (vec);
@@ -376,13 +400,13 @@ static elt_t * validate_vec_resize_h (elt_t * vec,
   return vec;
 }
 
-static elt_t * generic_validate_vec_add (elt_t * vec,
-					 uword num_elts, uword is_add2)
+static elt_t *
+generic_validate_vec_add (elt_t * vec, uword num_elts, uword is_add2)
 {
   uword len1 = vec_len (vec);
   uword len2;
   u8 hash = compute_vec_hash (0, vec);
-  elt_t * new;
+  elt_t *new;
 
   if (is_add2)
     {
@@ -391,12 +415,13 @@ static elt_t * generic_validate_vec_add (elt_t * vec,
   else
     {
       new = create_random_vec (elt_t, num_elts, g_seed);
-      
-      VERBOSE3 ("%U\n", format_hex_bytes, new, vec_len (new) * sizeof (new[0]));
-      
+
+      VERBOSE3 ("%U\n", format_hex_bytes, new,
+		vec_len (new) * sizeof (new[0]));
+
       /* Add the hash value of the new elements to that of the old vector. */
       hash = compute_vec_hash (hash, new);
-      
+
       if (num_elts == 1)
 	vec_add1 (vec, new[0]);
       else if (num_elts > 1)
@@ -413,23 +438,26 @@ static elt_t * generic_validate_vec_add (elt_t * vec,
   return vec;
 }
 
-static elt_t * validate_vec_add1 (elt_t * vec)
+static elt_t *
+validate_vec_add1 (elt_t * vec)
 {
   return generic_validate_vec_add (vec, 1, 0);
 }
 
-static elt_t * validate_vec_add2 (elt_t * vec, uword num_elts)
+static elt_t *
+validate_vec_add2 (elt_t * vec, uword num_elts)
 {
   return generic_validate_vec_add (vec, num_elts, 1);
 }
 
-static elt_t * validate_vec_add (elt_t * vec, uword num_elts)
+static elt_t *
+validate_vec_add (elt_t * vec, uword num_elts)
 {
   return generic_validate_vec_add (vec, num_elts, 0);
 }
 
-static elt_t * validate_vec_insert (elt_t * vec,
-				    uword num_elts, uword start_elt)
+static elt_t *
+validate_vec_insert (elt_t * vec, uword num_elts, uword start_elt)
 {
   uword len1 = vec_len (vec);
   uword len2;
@@ -449,12 +477,12 @@ static elt_t * validate_vec_insert (elt_t * vec,
   return vec;
 }
 
-static elt_t * validate_vec_insert_elts (elt_t * vec,
-					 uword num_elts, uword start_elt)
+static elt_t *
+validate_vec_insert_elts (elt_t * vec, uword num_elts, uword start_elt)
 {
   uword len1 = vec_len (vec);
   uword len2;
-  elt_t * new;
+  elt_t *new;
   u8 hash;
 
   /* vec_insert_elts() would not handle it properly. */
@@ -462,13 +490,13 @@ static elt_t * validate_vec_insert_elts (elt_t * vec,
     return vec;
 
   new = create_random_vec (elt_t, num_elts, g_seed);
-  
+
   VERBOSE3 ("%U\n", format_hex_bytes, new, vec_len (new) * sizeof (new[0]));
-  
+
   /* Add the hash value of the new elements to that of the old vector. */
   hash = compute_vec_hash (0, vec);
   hash = compute_vec_hash (hash, new);
-  
+
   vec_insert_elts (vec, new, num_elts, start_elt);
   len2 = vec_len (vec);
 
@@ -480,12 +508,12 @@ static elt_t * validate_vec_insert_elts (elt_t * vec,
   return vec;
 }
 
-static elt_t * validate_vec_delete (elt_t * vec,
-				    uword num_elts, uword start_elt)
+static elt_t *
+validate_vec_delete (elt_t * vec, uword num_elts, uword start_elt)
 {
   uword len1 = vec_len (vec);
   uword len2;
-  u8 * start;
+  u8 *start;
   u8 hash;
   u8 hash_del;
 
@@ -508,9 +536,10 @@ static elt_t * validate_vec_delete (elt_t * vec,
   return vec;
 }
 
-static elt_t * validate_vec_dup (elt_t * vec)
+static elt_t *
+validate_vec_dup (elt_t * vec)
 {
-  elt_t * new;
+  elt_t *new;
   u8 hash;
 
   hash = compute_vec_hash (0, vec);
@@ -522,10 +551,11 @@ static elt_t * validate_vec_dup (elt_t * vec)
   return new;
 }
 
-static elt_t * validate_vec_zero (elt_t * vec)
+static elt_t *
+validate_vec_zero (elt_t * vec)
 {
-  u8 * ptr;
-  u8 * end;
+  u8 *ptr;
+  u8 *end;
 
   vec_zero (vec);
 
@@ -543,9 +573,10 @@ static elt_t * validate_vec_zero (elt_t * vec)
   return vec;
 }
 
-static void validate_vec_is_equal (elt_t * vec)
+static void
+validate_vec_is_equal (elt_t * vec)
 {
-  elt_t * new = NULL;
+  elt_t *new = NULL;
 
   if (vec_len (vec) <= 0)
     return;
@@ -555,13 +586,14 @@ static void validate_vec_is_equal (elt_t * vec)
   vec_free (new);
 }
 
-static elt_t * validate_vec_set (elt_t * vec)
+static elt_t *
+validate_vec_set (elt_t * vec)
 {
   uword i;
   uword len = vec_len (vec);
-  elt_t * new;
+  elt_t *new;
 
-  if (! vec)
+  if (!vec)
     return NULL;
 
   new = create_random_vec (elt_t, 1, g_seed);
@@ -578,12 +610,13 @@ static elt_t * validate_vec_set (elt_t * vec)
   return vec;
 }
 
-static elt_t * validate_vec_validate (elt_t * vec, uword index)
+static elt_t *
+validate_vec_validate (elt_t * vec, uword index)
 {
   uword len = vec_len (vec);
   word num_new = index - len + 1;
-  u8 * ptr;
-  u8 * end;
+  u8 *ptr;
+  u8 *end;
   u8 hash = compute_vec_hash (0, vec);
 
   if (num_new < 0)
@@ -609,16 +642,17 @@ static elt_t * validate_vec_validate (elt_t * vec, uword index)
   return vec;
 }
 
-static elt_t * validate_vec_init (uword num_elts)
+static elt_t *
+validate_vec_init (uword num_elts)
 {
-  u8 * ptr;
-  u8 * end;
+  u8 *ptr;
+  u8 *end;
   uword len;
-  elt_t * new;
+  elt_t *new;
 
   new = vec_new (elt_t, num_elts);
   len = vec_len (new);
-  
+
   ASSERT (len == num_elts);
 
   ptr = (u8 *) new;
@@ -630,18 +664,19 @@ static elt_t * validate_vec_init (uword num_elts)
       ASSERT (ptr[0] == 0);
       ptr++;
     }
-  
+
   validate_vec (new, 0);
   return new;
 }
 
-static elt_t * validate_vec_init_h (uword num_elts, uword hdr_bytes)
+static elt_t *
+validate_vec_init_h (uword num_elts, uword hdr_bytes)
 {
   uword i = 0;
-  u8 * ptr;
-  u8 * end;
+  u8 *ptr;
+  u8 *end;
   uword len;
-  elt_t * new;
+  elt_t *new;
 
   new = vec_new_ha (elt_t, num_elts, hdr_bytes, 0);
   len = vec_len (new);
@@ -675,9 +710,10 @@ static elt_t * validate_vec_init_h (uword num_elts, uword hdr_bytes)
 }
 
 /* XXX - I don't understand the purpose of the vec_clone() call. */
-static elt_t * validate_vec_clone (elt_t * vec)
+static elt_t *
+validate_vec_clone (elt_t * vec)
 {
-  elt_t * new;
+  elt_t *new;
 
   vec_clone (new, vec);
 
@@ -687,19 +723,20 @@ static elt_t * validate_vec_clone (elt_t * vec)
   return new;
 }
 
-static elt_t * validate_vec_append (elt_t * vec)
+static elt_t *
+validate_vec_append (elt_t * vec)
 {
-  elt_t * new;
+  elt_t *new;
   uword num_elts = bounded_random_u32 (&g_seed, 0, MAX_CHANGE);
   uword len;
   u8 hash = 0;
-  
+
   new = create_random_vec (elt_t, num_elts, g_seed);
 
   len = vec_len (vec) + vec_len (new);
   hash = compute_vec_hash (0, vec);
   hash = compute_vec_hash (hash, new);
-  
+
   vec_append (vec, new);
   vec_free (new);
 
@@ -709,19 +746,20 @@ static elt_t * validate_vec_append (elt_t * vec)
   return vec;
 }
 
-static elt_t * validate_vec_prepend (elt_t * vec)
+static elt_t *
+validate_vec_prepend (elt_t * vec)
 {
-  elt_t * new;
+  elt_t *new;
   uword num_elts = bounded_random_u32 (&g_seed, 0, MAX_CHANGE);
   uword len;
   u8 hash = 0;
-  
+
   new = create_random_vec (elt_t, num_elts, g_seed);
 
   len = vec_len (vec) + vec_len (new);
   hash = compute_vec_hash (0, vec);
   hash = compute_vec_hash (hash, new);
-  
+
   vec_prepend (vec, new);
   vec_free (new);
 
@@ -731,15 +769,16 @@ static elt_t * validate_vec_prepend (elt_t * vec)
   return vec;
 }
 
-static void run_validator_wh (uword iter)
+static void
+run_validator_wh (uword iter)
 {
-  elt_t * vec;
+  elt_t *vec;
   uword i;
   uword op;
   uword num_elts;
   uword len;
   uword dump_time;
-  f64 time[3]; /* [0]: start, [1]: last, [2]: current */
+  f64 time[3];			/* [0]: start, [1]: last, [2]: current */
 
   vec = create_random_vec_wh (elt_t, ~0, sizeof (hdr_t), g_seed);
   validate_vec (vec, 0);
@@ -805,17 +844,18 @@ static void run_validator_wh (uword iter)
   vec_free_h (vec, sizeof (hdr_t));
 }
 
-static void run_validator (uword iter)
+static void
+run_validator (uword iter)
 {
-  elt_t * vec;
-  elt_t * new;
+  elt_t *vec;
+  elt_t *new;
   uword i;
   uword op;
   uword num_elts;
   uword index;
   uword len;
   uword dump_time;
-  f64 time[3]; /* [0]: start, [1]: last, [2]: current */
+  f64 time[3];			/* [0]: start, [1]: last, [2]: current */
 
   vec = create_random_vec (elt_t, ~0, g_seed);
   validate_vec (vec, 0);
@@ -864,7 +904,8 @@ static void run_validator (uword iter)
 	  num_elts = bounded_random_u32 (&g_seed, 0, MAX_CHANGE);
 	  index = bounded_random_u32 (&g_seed, 0,
 				      (len > 0) ? (len - 1) : (0));
-	  VERBOSE2 ("vec_insert(), %d new elts, index %d.\n", num_elts, index);
+	  VERBOSE2 ("vec_insert(), %d new elts, index %d.\n", num_elts,
+		    index);
 	  vec = validate_vec_insert (vec, num_elts, index);
 	  break;
 
@@ -932,7 +973,7 @@ static void run_validator (uword iter)
 	  new = validate_vec_clone (vec);
 	  vec_free (new);
 	  break;
-	  
+
 	case OP_IS_VEC_APPEND:
 	  VERBOSE2 ("vec_append()\n");
 	  vec = validate_vec_append (vec);
@@ -942,7 +983,7 @@ static void run_validator (uword iter)
 	  VERBOSE2 ("vec_prepend()\n");
 	  vec = validate_vec_prepend (vec);
 	  break;
-	  
+
 	default:
 	  ASSERT (0);
 	  break;
@@ -970,12 +1011,13 @@ static void run_validator (uword iter)
   vec_free (vec);
 }
 
-static void prob_init (void)
+static void
+prob_init (void)
 {
   uword i, j, ratio, len, index;
 
   /* Create the vector to implement the statistical profile:
-   vec [ op1 op1 op1 op2 op3 op3 op3 op4 op4 .... ] */
+     vec [ op1 op1 op1 op2 op3 op3 op3 op4 op4 .... ] */
   for (i = FIRST_VEC_OP; i <= LAST_VEC_OP; i++)
     {
       ratio = g_prob_ratio[i];
@@ -1012,19 +1054,21 @@ static void prob_init (void)
     }
 
   VERBOSE3 ("prob_vec, len %d\n%U\n", vec_len (g_prob),
-	     format_hex_bytes, g_prob, vec_len (g_prob) * sizeof (g_prob[0]));
+	    format_hex_bytes, g_prob, vec_len (g_prob) * sizeof (g_prob[0]));
   VERBOSE3 ("prob_vec_wh, len %d\n%U\n", vec_len (g_prob_wh),
-	     format_hex_bytes, g_prob_wh,
+	    format_hex_bytes, g_prob_wh,
 	    vec_len (g_prob_wh) * sizeof (g_prob_wh[0]));
 }
 
-static void prob_free (void)
+static void
+prob_free (void)
 {
   vec_free (g_prob);
   vec_free (g_prob_wh);
 }
 
-int test_vec_main (unformat_input_t * input)
+int
+test_vec_main (unformat_input_t * input)
 {
   uword iter = 1000;
   uword help = 0;
@@ -1038,7 +1082,7 @@ int test_vec_main (unformat_input_t * input)
 	  && 0 == unformat (input, "set %d", &g_set_verbose_at)
 	  && 0 == unformat (input, "dump %d", &g_dump_period)
 	  && 0 == unformat (input, "help %=", &help, 1)
-          && 0 == unformat (input, "big %=", &big, 1))
+	  && 0 == unformat (input, "big %=", &big, 1))
 	{
 	  clib_error ("unknown input `%U'", format_unformat_error, input);
 	  goto usage;
@@ -1047,8 +1091,8 @@ int test_vec_main (unformat_input_t * input)
 
   if (big)
     {
-      u8 * bigboy = 0;
-      u64 one_gig = (1<<30);
+      u8 *bigboy = 0;
+      u64 one_gig = (1 << 30);
       u64 size;
       u64 index;
 
@@ -1056,12 +1100,12 @@ int test_vec_main (unformat_input_t * input)
       size = 5ULL * one_gig;
 
       vec_validate (bigboy, size);
-      
+
       for (index = size; index >= 0; index--)
-        bigboy[index] = index & 0xff;
+	bigboy[index] = index & 0xff;
       return 0;
     }
-    
+
 
   if (help)
     goto usage;
@@ -1069,13 +1113,17 @@ int test_vec_main (unformat_input_t * input)
   prob_init ();
   run_validator (iter);
   run_validator_wh (iter);
-  if (verbose) dump_call_stats (g_call_stats);
+  if (verbose)
+    dump_call_stats (g_call_stats);
   prob_free ();
 
-  if (verbose) { memory_snap (); }
+  if (verbose)
+    {
+      memory_snap ();
+    }
   return 0;
 
- usage:
+usage:
   fformat (stdout, "Usage: test_vec iter <N> seed <N> verbose <N> "
 	   "set <N> dump <N>\n");
   if (help)
@@ -1085,12 +1133,13 @@ int test_vec_main (unformat_input_t * input)
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int ret;
 
-  mheap_alloc (0, (uword)10ULL<<30);
+  mheap_alloc (0, (uword) 10ULL << 30);
 
   verbose = (argc > 1);
   unformat_init_command_line (&i, argv);
@@ -1100,3 +1149,11 @@ int main (int argc, char * argv[])
   return ret;
 }
 #endif /* CLIB_UNIX */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -38,7 +38,8 @@
 #include <vppinfra/format.h>
 
 /* Call user's function to fill input buffer. */
-uword _unformat_fill_input (unformat_input_t * i)
+uword
+_unformat_fill_input (unformat_input_t * i)
 {
   uword l, first_mark;
 
@@ -74,8 +75,10 @@ is_white_space (uword c)
 {
   switch (c)
     {
-    case ' ':  case '\t':
-    case '\n': case '\r':
+    case ' ':
+    case '\t':
+    case '\n':
+    case '\r':
       return 1;
 
     default:
@@ -84,9 +87,10 @@ is_white_space (uword c)
 }
 
 /* Format function for dumping input stream. */
-u8 * format_unformat_error (u8 * s, va_list * va)
+u8 *
+format_unformat_error (u8 * s, va_list * va)
 {
-  unformat_input_t * i = va_arg (*va, unformat_input_t *);
+  unformat_input_t *i = va_arg (*va, unformat_input_t *);
   uword l = vec_len (i->buffer);
 
   /* Only show so much of the input buffer (it could be really large). */
@@ -95,7 +99,7 @@ u8 * format_unformat_error (u8 * s, va_list * va)
   if (i->index < l)
     {
       uword n = l - i->index;
-      u8 * p, * p_end;
+      u8 *p, *p_end;
 
       p = i->buffer + i->index;
       p_end = p + (n > n_max ? n_max : n);
@@ -111,10 +115,18 @@ u8 * format_unformat_error (u8 * s, va_list * va)
 	{
 	  switch (*p)
 	    {
-	    case '\r': vec_add (s, "\\r", 2); break;
-	    case '\n': vec_add (s, "\\n", 2); break;
-	    case '\t': vec_add (s, "\\t", 2); break;
-	    default: vec_add1 (s, *p); break;
+	    case '\r':
+	      vec_add (s, "\\r", 2);
+	      break;
+	    case '\n':
+	      vec_add (s, "\\n", 2);
+	      break;
+	    case '\t':
+	      vec_add (s, "\\t", 2);
+	      break;
+	    default:
+	      vec_add1 (s, *p);
+	      break;
 	    }
 	  p++;
 	}
@@ -127,10 +139,10 @@ u8 * format_unformat_error (u8 * s, va_list * va)
 }
 
 /* Print everything: not just error context. */
-u8 * format_unformat_input (u8 * s,
-			    va_list * va)
+u8 *
+format_unformat_input (u8 * s, va_list * va)
 {
-  unformat_input_t * i = va_arg (*va, unformat_input_t *);
+  unformat_input_t *i = va_arg (*va, unformat_input_t *);
   uword l, n;
 
   if (i->index == UNFORMAT_END_OF_INPUT)
@@ -147,8 +159,11 @@ u8 * format_unformat_input (u8 * s,
 }
 
 #if CLIB_DEBUG > 0
-void di (unformat_input_t * i)
-{ fformat (stderr, "%U\n", format_unformat_input, i); }
+void
+di (unformat_input_t * i)
+{
+  fformat (stderr, "%U\n", format_unformat_input, i);
+}
 #endif
 
 /* Parse delimited vector string.  If string starts with { then string
@@ -157,11 +172,10 @@ void di (unformat_input_t * i)
 static uword
 unformat_string (unformat_input_t * input,
 		 uword delimiter_character,
-		 uword format_character,
-		 va_list * va)
+		 uword format_character, va_list * va)
 {
-  u8 ** string_return = va_arg (*va, u8 **);
-  u8 * s = 0;
+  u8 **string_return = va_arg (*va, u8 **);
+  u8 *s = 0;
   word paren = 0;
   word is_paren_delimited = 0;
   word backslash = 0;
@@ -212,7 +226,7 @@ unformat_string (unformat_input_t * input,
 	  case '\t':
 	  case '\n':
 	  case '\r':
-	    if (! is_paren_delimited)
+	    if (!is_paren_delimited)
 	      {
 		unformat_put_input (input);
 		goto done;
@@ -220,7 +234,7 @@ unformat_string (unformat_input_t * input,
 	    break;
 
 	  default:
-	    if (! is_paren_delimited && c == delimiter_character)
+	    if (!is_paren_delimited && c == delimiter_character)
 	      {
 		unformat_put_input (input);
 		goto done;
@@ -231,17 +245,17 @@ unformat_string (unformat_input_t * input,
 	vec_add1 (s, c);
     }
 
- done:
+done:
   if (string_return)
     {
       /* Match the string { END-OF-INPUT as a single brace. */
       if (c == UNFORMAT_END_OF_INPUT && vec_len (s) == 0 && paren == 1)
-        vec_add1 (s, '{');
+	vec_add1 (s, '{');
 
       /* Don't match null string. */
       if (c == UNFORMAT_END_OF_INPUT && vec_len (s) == 0)
 	return 0;
-  
+
       /* Null terminate C string. */
       if (format_character == 's')
 	vec_add1 (s, 0);
@@ -255,11 +269,10 @@ unformat_string (unformat_input_t * input,
 }
 
 uword
-unformat_hex_string (unformat_input_t * input,
-		     va_list * va)
+unformat_hex_string (unformat_input_t * input, va_list * va)
 {
-  u8 ** hexstring_return = va_arg (*va, u8 **);
-  u8 * s;
+  u8 **hexstring_return = va_arg (*va, u8 **);
+  u8 *s;
   uword n, d, c;
 
   n = 0;
@@ -268,11 +281,11 @@ unformat_hex_string (unformat_input_t * input,
   while ((c = unformat_get_input (input)) != UNFORMAT_END_OF_INPUT)
     {
       if (c >= '0' && c <= '9')
-	d = 16*d + c - '0';
+	d = 16 * d + c - '0';
       else if (c >= 'a' && c <= 'f')
-	d = 16*d + 10 + c - 'a';
+	d = 16 * d + 10 + c - 'a';
       else if (c >= 'A' && c <= 'F')
-	d = 16*d + 10 + c - 'A';
+	d = 16 * d + 10 + c - 'A';
       else
 	{
 	  unformat_put_input (input);
@@ -307,19 +320,18 @@ unformat_eof (unformat_input_t * input, va_list * va)
 
 /* Parse a token containing given set of characters. */
 uword
-unformat_token (unformat_input_t * input,
-		va_list * va)
+unformat_token (unformat_input_t * input, va_list * va)
 {
-  u8 * token_chars = va_arg (*va, u8 *);
-  u8 ** string_return = va_arg (*va, u8 **);
-  u8 * s, map[256];
+  u8 *token_chars = va_arg (*va, u8 *);
+  u8 **string_return = va_arg (*va, u8 **);
+  u8 *s, map[256];
   uword i, c;
 
-  if (! token_chars)
+  if (!token_chars)
     token_chars = (u8 *) "a-zA-Z0-9_";
 
   memset (map, 0, sizeof (map));
-  for (s = token_chars; *s; )
+  for (s = token_chars; *s;)
     {
       /* Parse range. */
       if (s[0] < s[2] && s[1] == '-')
@@ -327,7 +339,7 @@ unformat_token (unformat_input_t * input,
 	  for (i = s[0]; i <= s[2]; i++)
 	    map[i] = 1;
 	  s = s + 3;
-	}	
+	}
       else
 	{
 	  map[s[0]] = 1;
@@ -338,12 +350,12 @@ unformat_token (unformat_input_t * input,
   s = 0;
   while ((c = unformat_get_input (input)) != UNFORMAT_END_OF_INPUT)
     {
-      if (! map[c])
+      if (!map[c])
 	{
 	  unformat_put_input (input);
 	  break;
 	}
-	
+
       vec_add1 (s, c);
     }
 
@@ -356,10 +368,11 @@ unformat_token (unformat_input_t * input,
 
 /* Unformat (parse) function which reads a %s string and converts it
    to and unformat_input_t. */
-uword unformat_input (unformat_input_t * i, va_list * args)
+uword
+unformat_input (unformat_input_t * i, va_list * args)
 {
-  unformat_input_t * sub_input = va_arg (*args, unformat_input_t *);
-  u8 * s;
+  unformat_input_t *sub_input = va_arg (*args, unformat_input_t *);
+  u8 *s;
 
   if (unformat (i, "%v", &s))
     {
@@ -371,13 +384,13 @@ uword unformat_input (unformat_input_t * i, va_list * args)
 }
 
 /* Parse a line ending with \n and return it. */
-uword unformat_line (unformat_input_t * i, va_list * va)
+uword
+unformat_line (unformat_input_t * i, va_list * va)
 {
-  u8 * line = 0, ** result = va_arg (*va, u8 **);
+  u8 *line = 0, **result = va_arg (*va, u8 **);
   uword c;
 
-  while ((c = unformat_get_input (i)) != '\n'
-	 && c != UNFORMAT_END_OF_INPUT)
+  while ((c = unformat_get_input (i)) != '\n' && c != UNFORMAT_END_OF_INPUT)
     {
       vec_add1 (line, c);
     }
@@ -387,10 +400,11 @@ uword unformat_line (unformat_input_t * i, va_list * va)
 }
 
 /* Parse a line ending with \n and return it as an unformat_input_t. */
-uword unformat_line_input (unformat_input_t * i, va_list * va)
+uword
+unformat_line_input (unformat_input_t * i, va_list * va)
 {
-  unformat_input_t * result = va_arg (*va, unformat_input_t *);
-  u8 * line;
+  unformat_input_t *result = va_arg (*va, unformat_input_t *);
+  u8 *line;
   unformat_user (i, unformat_line, &line);
   unformat_init_vector (result, line);
   return 1;
@@ -402,10 +416,7 @@ uword unformat_line_input (unformat_input_t * i, va_list * va)
 
 static uword
 unformat_integer (unformat_input_t * input,
-		  va_list * va,
-		  uword base,
-		  uword is_signed,
-		  uword data_bytes)
+		  va_list * va, uword base, uword is_signed, uword data_bytes)
 {
   uword c, digit;
   uword value = 0;
@@ -437,7 +448,7 @@ unformat_integer (unformat_input_t * input,
 	  goto put_input_done;
 
 	case '+':
-	  if (n_input > 0) 
+	  if (n_input > 0)
 	    goto put_input_done;
 	  sign = 0;
 	  goto next_digit;
@@ -474,7 +485,7 @@ unformat_integer (unformat_input_t * input,
 	}
 
       {
-	uword new_value = base*value + digit;
+	uword new_value = base * value + digit;
 
 	/* Check for overflow. */
 	if (new_value < value)
@@ -487,36 +498,45 @@ unformat_integer (unformat_input_t * input,
       n_input++;
     }
 
- done:
+done:
   if (sign)
     value = -value;
 
   if (n_digits > 0)
     {
-      void * v = va_arg (*va, void *);
+      void *v = va_arg (*va, void *);
 
       if (data_bytes == ~0)
-	  data_bytes = sizeof (int);
+	data_bytes = sizeof (int);
 
       switch (data_bytes)
 	{
-	case 1: *(u8  *) v = value; break;
-	case 2: *(u16 *) v = value; break;
-	case 4: *(u32 *) v = value; break;
-	case 8: *(u64 *) v = value; break;
+	case 1:
+	  *(u8 *) v = value;
+	  break;
+	case 2:
+	  *(u16 *) v = value;
+	  break;
+	case 4:
+	  *(u32 *) v = value;
+	  break;
+	case 8:
+	  *(u64 *) v = value;
+	  break;
 	default:
-	    goto error;
+	  goto error;
 	}
 
       return 1;
     }
 
- error:
+error:
   return 0;
 }
 
 /* Return x 10^n */
-static f64 times_power_of_ten (f64 x, int n)
+static f64
+times_power_of_ten (f64 x, int n)
 {
   if (n >= 0)
     {
@@ -538,12 +558,11 @@ static f64 times_power_of_ten (f64 x, int n)
 	}
       return x * t[-n];
     }
-  
+
 }
 
 static uword
-unformat_float (unformat_input_t * input,
-		va_list * va)
+unformat_float (unformat_input_t * input, va_list * va)
 {
   uword c;
   u64 values[3];
@@ -561,7 +580,7 @@ unformat_float (unformat_input_t * input,
 	{
 	case '-':
 	  if (value_index == 2 && n_digits[2] == 0)
-	    /* sign of exponent: it's ok. */;
+	    /* sign of exponent: it's ok. */ ;
 
 	  else if (value_index < 2 && n_digits[0] > 0)
 	    {
@@ -578,7 +597,7 @@ unformat_float (unformat_input_t * input,
 
 	case '+':
 	  if (value_index == 2 && n_digits[2] == 0)
-	    /* sign of exponent: it's ok. */;
+	    /* sign of exponent: it's ok. */ ;
 
 	  else if (value_index < 2 && n_digits[0] > 0)
 	    {
@@ -629,9 +648,9 @@ unformat_float (unformat_input_t * input,
       n_input++;
     }
 
- done:
+done:
   {
-    f64 f_values[2], * value_return;
+    f64 f_values[2], *value_return;
     word expon;
 
     /* Must have either whole or fraction digits. */
@@ -658,11 +677,12 @@ unformat_float (unformat_input_t * input,
     return 1;
   }
 
- error:
+error:
   return 0;
 }
 
-static char * match_input_with_format (unformat_input_t * input, char * f)
+static char *
+match_input_with_format (unformat_input_t * input, char *f)
 {
   uword cf, ci;
 
@@ -683,7 +703,8 @@ static char * match_input_with_format (unformat_input_t * input, char * f)
   return f;
 }
 
-static char * do_percent (unformat_input_t * input, va_list * va, char * f)
+static char *
+do_percent (unformat_input_t * input, va_list * va, char *f)
 {
   uword cf, n, data_bytes = ~0;
 
@@ -712,7 +733,7 @@ static char * do_percent (unformat_input_t * input, va_list * va, char * f)
 	  data_bytes = sizeof (long);
 	}
       break;
-	      
+
     case 'L':
       cf = *f++;
       data_bytes = sizeof (long long);
@@ -762,7 +783,7 @@ static char * do_percent (unformat_input_t * input, va_list * va, char * f)
 
     case 'U':
       {
-	unformat_function_t * f = va_arg (*va, unformat_function_t *);
+	unformat_function_t *f = va_arg (*va, unformat_function_t *);
 	n = f (input, va);
       }
       break;
@@ -770,7 +791,7 @@ static char * do_percent (unformat_input_t * input, va_list * va, char * f)
     case '=':
     case '|':
       {
-	int * var = va_arg (*va, int *);
+	int *var = va_arg (*va, int *);
 	uword val = va_arg (*va, int);
 
 	if (cf == '|')
@@ -784,14 +805,15 @@ static char * do_percent (unformat_input_t * input, va_list * va, char * f)
   return n ? f : 0;
 }
 
-uword unformat_skip_white_space (unformat_input_t * input)
+uword
+unformat_skip_white_space (unformat_input_t * input)
 {
   uword n = 0;
   uword c;
 
   while ((c = unformat_get_input (input)) != UNFORMAT_END_OF_INPUT)
     {
-      if (! is_white_space (c))
+      if (!is_white_space (c))
 	{
 	  unformat_put_input (input);
 	  break;
@@ -802,23 +824,24 @@ uword unformat_skip_white_space (unformat_input_t * input)
 }
 
 uword
-va_unformat (unformat_input_t * input, char * fmt, va_list * va)
+va_unformat (unformat_input_t * input, char *fmt, va_list * va)
 {
-  char * f;
+  char *f;
   uword input_matches_format;
   uword default_skip_input_white_space;
   uword n_input_white_space_skipped;
   uword last_non_white_space_match_percent;
   uword last_non_white_space_match_format;
 
-  vec_add1_aligned (input->buffer_marks, input->index, sizeof (input->buffer_marks[0]));
+  vec_add1_aligned (input->buffer_marks, input->index,
+		    sizeof (input->buffer_marks[0]));
 
   f = fmt;
   default_skip_input_white_space = 1;
   input_matches_format = 0;
   last_non_white_space_match_percent = 0;
   last_non_white_space_match_format = 0;
-  
+
   while (1)
     {
       char cf;
@@ -828,8 +851,8 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
       is_percent = 0;
 
       /* Always skip input white space at start of format string.
-	 Otherwise use default skip value which can be changed by %_ 
-	 (see below). */
+         Otherwise use default skip value which can be changed by %_
+         (see below). */
       skip_input_white_space = f == fmt || default_skip_input_white_space;
 
       /* Spaces in format request skipping input white space. */
@@ -848,23 +871,24 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
 	  switch (*++f)
 	    {
 	    case '_':
-	      default_skip_input_white_space = !default_skip_input_white_space;
+	      default_skip_input_white_space =
+		!default_skip_input_white_space;
 	      f++;
 	      /* For transition from skip to no-skip in middle of format
-		 string, skip input white space.  For example, the following matches:
-		    fmt = "%_%d.%d%_->%_%d.%d%_"
-		    input "1.2 -> 3.4"
-		 Without this the space after -> does not get skipped. */
-	      if (! default_skip_input_white_space
-		  && ! (f == fmt + 2 || *f == 0))
+	         string, skip input white space.  For example, the following matches:
+	         fmt = "%_%d.%d%_->%_%d.%d%_"
+	         input "1.2 -> 3.4"
+	         Without this the space after -> does not get skipped. */
+	      if (!default_skip_input_white_space
+		  && !(f == fmt + 2 || *f == 0))
 		unformat_skip_white_space (input);
 	      continue;
 
-	    /* %% means match % */
+	      /* %% means match % */
 	    case '%':
 	      break;
 
-	    /* % at end of format string. */
+	      /* % at end of format string. */
 	    case 0:
 	      goto parse_fail;
 
@@ -887,8 +911,8 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
 	     The last_non_white_space_match_percent is to make
 	     "foo %d" match input "foo 10,bletch" with %d matching 10. */
 	  if (skip_input_white_space
-	      && ! last_non_white_space_match_percent
-	      && ! last_non_white_space_match_format
+	      && !last_non_white_space_match_percent
+	      && !last_non_white_space_match_format
 	      && n_input_white_space_skipped == 0
 	      && input->index != UNFORMAT_END_OF_INPUT)
 	    goto parse_fail;
@@ -907,14 +931,14 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
 
       else if (is_percent)
 	{
-	  if (! (f = do_percent (input, va, f)))
+	  if (!(f = do_percent (input, va, f)))
 	    goto parse_fail;
 	}
 
       else
 	{
-	  char * g = match_input_with_format (input, f);
-	  if (! g)
+	  char *g = match_input_with_format (input, f);
+	  if (!g)
 	    goto parse_fail;
 	  last_non_white_space_match_format = g > f;
 	  f = g;
@@ -922,15 +946,15 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
     }
 
   input_matches_format = 1;
- parse_fail:
+parse_fail:
 
   /* Rewind buffer marks. */
   {
     uword l = vec_len (input->buffer_marks);
 
     /* If we did not match back up buffer to last mark. */
-    if (! input_matches_format)
-      input->index = input->buffer_marks[l-1];
+    if (!input_matches_format)
+      input->index = input->buffer_marks[l - 1];
 
     _vec_len (input->buffer_marks) = l - 1;
   }
@@ -939,7 +963,7 @@ va_unformat (unformat_input_t * input, char * fmt, va_list * va)
 }
 
 uword
-unformat (unformat_input_t * input, char * fmt, ...)
+unformat (unformat_input_t * input, char *fmt, ...)
 {
   va_list va;
   uword result;
@@ -957,13 +981,14 @@ unformat_user (unformat_input_t * input, unformat_function_t * func, ...)
 
   /* Save place in input buffer in case parse fails. */
   l = vec_len (input->buffer_marks);
-  vec_add1_aligned (input->buffer_marks, input->index, sizeof (input->buffer_marks[0]));
+  vec_add1_aligned (input->buffer_marks, input->index,
+		    sizeof (input->buffer_marks[0]));
 
   va_start (va, func);
   result = func (input, &va);
   va_end (va);
 
-  if (! result)
+  if (!result)
     input->index = input->buffer_marks[l];
 
   _vec_len (input->buffer_marks) = l;
@@ -972,8 +997,8 @@ unformat_user (unformat_input_t * input, unformat_function_t * func, ...)
 }
 
 /* Setup for unformat of Unix style command line. */
-void unformat_init_command_line (unformat_input_t * input,
-				 char * argv[])
+void
+unformat_init_command_line (unformat_input_t * input, char *argv[])
 {
   uword i;
 
@@ -988,17 +1013,16 @@ void unformat_init_command_line (unformat_input_t * input,
     }
 }
 
-void unformat_init_string (unformat_input_t * input,
-			   char * string,
-			   int string_len)
+void
+unformat_init_string (unformat_input_t * input, char *string, int string_len)
 {
   unformat_init (input, 0, 0);
   if (string_len > 0)
     vec_add (input->buffer, string, string_len);
 }
 
-void unformat_init_vector (unformat_input_t * input,
-			   u8 * vector_string)
+void
+unformat_init_vector (unformat_input_t * input, u8 * vector_string)
 {
   unformat_init (input, 0, 0);
   input->buffer = vector_string;
@@ -1006,7 +1030,8 @@ void unformat_init_vector (unformat_input_t * input,
 
 #ifdef CLIB_UNIX
 
-static uword unix_file_fill_buffer (unformat_input_t * input)
+static uword
+unix_file_fill_buffer (unformat_input_t * input)
 {
   int fd = pointer_to_uword (input->fill_buffer_arg);
   uword l, n;
@@ -1023,17 +1048,18 @@ static uword unix_file_fill_buffer (unformat_input_t * input)
     return input->index;
 }
 
-void unformat_init_unix_file (unformat_input_t * input,
-			      int file_descriptor)
+void
+unformat_init_unix_file (unformat_input_t * input, int file_descriptor)
 {
   unformat_init (input, unix_file_fill_buffer,
 		 uword_to_pointer (file_descriptor, void *));
 }
 
 /* Take input from Unix environment variable. */
-uword unformat_init_unix_env (unformat_input_t * input, char * var)
+uword
+unformat_init_unix_env (unformat_input_t * input, char *var)
 {
-  char * val = getenv (var);
+  char *val = getenv (var);
   if (val)
     unformat_init_string (input, val, strlen (val));
   return val != 0;
@@ -1041,3 +1067,11 @@ uword unformat_init_unix_env (unformat_input_t * input, char * var)
 
 #endif /* CLIB_UNIX */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

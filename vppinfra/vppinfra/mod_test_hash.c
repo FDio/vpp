@@ -15,6 +15,13 @@
 #include <vppinfra/linux_kernel_init.h>
 #include <vppinfra/hash.h>
 
-CLIB_LINUX_KERNEL_MODULE ("test_hash",
-			  test_hash_main,
+CLIB_LINUX_KERNEL_MODULE ("test_hash", test_hash_main,
 			  /* kernel-thread flags */ 0 & CLONE_KERNEL);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

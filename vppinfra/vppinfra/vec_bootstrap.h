@@ -38,7 +38,7 @@
 #ifndef included_clib_vec_bootstrap_h
 #define included_clib_vec_bootstrap_h
 
-/** \file 
+/** \file
     Vector bootsrap header file
 */
 
@@ -48,11 +48,12 @@
 /** \brief vector header structure
 
    Bookeeping header preceding vector elements in memory.
-   User header information may preceed standard vec header. 
+   User header information may preceed standard vec header.
    If you change u32 len -> u64 len, single vectors can
    exceed 2**32 elements. Clib heaps are vectors. */
 
-typedef struct {
+typedef struct
+{
 #if CLIB_VEC64 > 0
   u64 len;
 #else
@@ -64,7 +65,7 @@ typedef struct {
 /** \brief Find the vector header
 
     Given the user's pointer to a vector, find the corresponding
-    vector header 
+    vector header
 
     @param v pointer to a vector
     @return pointer to the vector's vector_header_t
@@ -76,27 +77,34 @@ typedef struct {
 
 always_inline uword
 vec_header_bytes (uword header_bytes)
-{ return round_pow2 (header_bytes + sizeof (vec_header_t), sizeof (vec_header_t)); }
+{
+  return round_pow2 (header_bytes + sizeof (vec_header_t),
+		     sizeof (vec_header_t));
+}
 
 /** \brief Find a user vector header
-    
+
     Finds the user header of a vector with unspecified alignment given
     the user pointer to the vector.
 */
 
 always_inline void *
-vec_header (void * v, uword header_bytes)
-{ return v - vec_header_bytes (header_bytes); }
+vec_header (void *v, uword header_bytes)
+{
+  return v - vec_header_bytes (header_bytes);
+}
 
 /** \brief Find the end of user vector header
-    
-    Finds the end of the user header of a vector with unspecified 
+
+    Finds the end of the user header of a vector with unspecified
     alignment given the user pointer to the vector.
 */
 
 always_inline void *
-vec_header_end (void * v, uword header_bytes)
-{ return v + vec_header_bytes (header_bytes); }
+vec_header_end (void *v, uword header_bytes)
+{
+  return v + vec_header_bytes (header_bytes);
+}
 
 always_inline uword
 vec_aligned_header_bytes (uword header_bytes, uword align)
@@ -105,31 +113,35 @@ vec_aligned_header_bytes (uword header_bytes, uword align)
 }
 
 always_inline void *
-vec_aligned_header (void * v, uword header_bytes, uword align)
-{ return v - vec_aligned_header_bytes (header_bytes, align); }
+vec_aligned_header (void *v, uword header_bytes, uword align)
+{
+  return v - vec_aligned_header_bytes (header_bytes, align);
+}
 
 always_inline void *
-vec_aligned_header_end (void * v, uword header_bytes, uword align)
-{ return v + vec_aligned_header_bytes (header_bytes, align); }
+vec_aligned_header_end (void *v, uword header_bytes, uword align)
+{
+  return v + vec_aligned_header_bytes (header_bytes, align);
+}
 
 
 /** \brief Number of elements in vector (lvalue-capable)
 
    _vec_len (v) does not check for null, but can be used as a lvalue
-   (e.g. _vec_len (v) = 99). 
+   (e.g. _vec_len (v) = 99).
 */
 
 #define _vec_len(v)	(_vec_find(v)->len)
 
 /** \brief Number of elements in vector (rvalue-only, NULL tolerant)
-    
+
     vec_len (v) checks for NULL, but cannot be used as an lvalue.
     If in doubt, use vec_len...
 */
 
 #define vec_len(v)	((v) ? _vec_len(v) : 0)
 
-/** \brief Reset vector length to zero  
+/** \brief Reset vector length to zero
     NULL-pointer tolerant
 */
 
@@ -179,3 +191,11 @@ for (var = vec_end (vec) - 1; var >= (vec); var--)
 #define vec_foreach_index(var,v) for ((var) = 0; (var) < vec_len (v); (var)++)
 
 #endif /* included_clib_vec_bootstrap_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

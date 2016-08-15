@@ -25,12 +25,14 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/xxhash.h>
 
-typedef struct {
+typedef struct
+{
   u64 key[3];
   u64 value;
 } clib_bihash_kv_24_8_t;
 
-static inline int clib_bihash_is_free_24_8 (clib_bihash_kv_24_8_t *v)
+static inline int
+clib_bihash_is_free_24_8 (clib_bihash_kv_24_8_t * v)
 {
   /* Free values are memset to 0xff, check a bit... */
   if (v->key[0] == ~0ULL && v->value == ~0ULL)
@@ -40,17 +42,17 @@ static inline int clib_bihash_is_free_24_8 (clib_bihash_kv_24_8_t *v)
 
 #if __SSE4_2__
 static inline u32
-crc_u32(u32 data, u32 value)
+crc_u32 (u32 data, u32 value)
 {
-  __asm__ volatile( "crc32l %[data], %[value];"
-                    : [value] "+r" (value)
-                    : [data] "rm" (data));
+  __asm__ volatile ("crc32l %[data], %[value];":[value] "+r" (value):[data]
+		    "rm" (data));
   return value;
 }
 
-static inline u64 clib_bihash_hash_24_8  (clib_bihash_kv_24_8_t *v)
+static inline u64
+clib_bihash_hash_24_8 (clib_bihash_kv_24_8_t * v)
 {
-  u32 * dp = (u32 *) &v->key[0];
+  u32 *dp = (u32 *) & v->key[0];
   u32 value = 0;
 
   value = crc_u32 (dp[0], value);
@@ -62,28 +64,40 @@ static inline u64 clib_bihash_hash_24_8  (clib_bihash_kv_24_8_t *v)
 
   return value;
 }
-#else 
-static inline u64 clib_bihash_hash_24_8  (clib_bihash_kv_24_8_t *v)
+#else
+static inline u64
+clib_bihash_hash_24_8 (clib_bihash_kv_24_8_t * v)
 {
   u64 tmp = v->key[0] ^ v->key[1] ^ v->key[2];
   return clib_xxhash (tmp);
 }
 #endif
 
-static inline u8 * format_bihash_kvp_24_8 (u8 * s, va_list * args)
+static inline u8 *
+format_bihash_kvp_24_8 (u8 * s, va_list * args)
 {
-  clib_bihash_kv_24_8_t * v = va_arg (*args, clib_bihash_kv_24_8_t *);
+  clib_bihash_kv_24_8_t *v = va_arg (*args, clib_bihash_kv_24_8_t *);
 
-  s = format (s, "key %llu %llu %llu value %llu", 
-              v->key[0], v->key[1], v->key[2], v->value);
+  s = format (s, "key %llu %llu %llu value %llu",
+	      v->key[0], v->key[1], v->key[2], v->value);
   return s;
 }
 
-static inline int clib_bihash_key_compare_24_8 (u64 * a, u64 * b)
+static inline int
+clib_bihash_key_compare_24_8 (u64 * a, u64 * b)
 {
-  return ((a[0]^b[0]) | (a[1]^b[1]) | (a[2]^b[2])) == 0;
+  return ((a[0] ^ b[0]) | (a[1] ^ b[1]) | (a[2] ^ b[2])) == 0;
 }
+
 #undef __included_bihash_template_h__
 #include <vppinfra/bihash_template.h>
 
 #endif /* __included_bihash_24_8_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

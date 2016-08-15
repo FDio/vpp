@@ -62,3 +62,11 @@ uword os_get_ncpus (void);
 #include <vppinfra/smp.h>
 
 #endif /* included_os_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

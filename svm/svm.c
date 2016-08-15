@@ -235,9 +235,9 @@ svm_data_region_create (svm_map_region_args_t * a, svm_region_t * rp)
   u8 junk = 0;
   uword map_size;
 
-  map_size = rp->virtual_size - (MMAP_PAGESIZE + 
-                                 (a->pvt_heap_size ? a->pvt_heap_size : 
-                                  SVM_PVT_MHEAP_SIZE));
+  map_size = rp->virtual_size - (MMAP_PAGESIZE +
+				 (a->pvt_heap_size ? a->pvt_heap_size :
+				  SVM_PVT_MHEAP_SIZE));
 
   if (a->flags & SVM_FLAGS_FILE)
     {
@@ -318,8 +318,8 @@ svm_data_region_map (svm_map_region_args_t * a, svm_region_t * rp)
   uword map_size;
   struct stat statb;
 
-  map_size = rp->virtual_size - 
-    (MMAP_PAGESIZE 
+  map_size = rp->virtual_size -
+    (MMAP_PAGESIZE
      + (a->pvt_heap_size ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE));
 
   if (a->flags & SVM_FLAGS_FILE)
@@ -368,9 +368,9 @@ svm_data_region_map (svm_map_region_args_t * a, svm_region_t * rp)
 	}
 
       ASSERT (map_size <= rp->virtual_size
-	      - (MMAP_PAGESIZE 
-                 + 
-                 (a->pvt_heap_size ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE)));
+	      - (MMAP_PAGESIZE
+		 +
+		 (a->pvt_heap_size ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE)));
 
       if (mmap (rp->data_base, map_size, PROT_READ | PROT_WRITE,
 		MAP_SHARED | MAP_FIXED, fd, 0) == MAP_FAILED)
@@ -534,9 +534,9 @@ svm_map_region (svm_map_region_args_t * a)
 
       rp->region_heap =
 	mheap_alloc_with_flags ((void *) (a->baseva + MMAP_PAGESIZE),
-                                (a->pvt_heap_size != 0) ? 
-                                a->pvt_heap_size : SVM_PVT_MHEAP_SIZE, 
-                                MHEAP_FLAG_DISABLE_VM);
+				(a->pvt_heap_size != 0) ?
+				a->pvt_heap_size : SVM_PVT_MHEAP_SIZE,
+				MHEAP_FLAG_DISABLE_VM);
       oldheap = svm_push_pvt_heap (rp);
 
       rp->region_name = (char *) format (0, "%s%c", a->name, 0);
@@ -550,7 +550,7 @@ svm_map_region (svm_map_region_args_t * a)
       vec_validate (rp->bitmap, words - 1);
 
       overhead_space = MMAP_PAGESIZE /* header */  +
-        ((a->pvt_heap_size != 0)? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE);
+	((a->pvt_heap_size != 0) ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE);
 
       bit = 0;
       data_base = (uword) rp->virtual_base;
@@ -782,7 +782,7 @@ void
 svm_region_init (void)
 {
   svm_map_region_args_t _a, *a = &_a;
-  
+
   memset (a, 0, sizeof (*a));
   a->root_path = 0;
   a->name = SVM_GLOBAL_REGION_NAME;
@@ -799,7 +799,7 @@ void
 svm_region_init_chroot (char *root_path)
 {
   svm_map_region_args_t _a, *a = &_a;
-  
+
   memset (a, 0, sizeof (*a));
   a->root_path = root_path;
   a->name = SVM_GLOBAL_REGION_NAME;
@@ -816,7 +816,7 @@ void
 svm_region_init_chroot_uid_gid (char *root_path, int uid, int gid)
 {
   svm_map_region_args_t _a, *a = &_a;
-  
+
   memset (a, 0, sizeof (*a));
   a->root_path = root_path;
   a->name = SVM_GLOBAL_REGION_NAME;
@@ -849,7 +849,7 @@ svm_region_find_or_create (svm_map_region_args_t * a)
 
   ASSERT (root_rp);
 
-  a->size += MMAP_PAGESIZE + 
+  a->size += MMAP_PAGESIZE +
     ((a->pvt_heap_size != 0) ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE);
   a->size = rnd_pagesize (a->size);
 
@@ -932,7 +932,7 @@ svm_region_find_or_create (svm_map_region_args_t * a)
   a->baseva = root_rp->virtual_base + index * MMAP_PAGESIZE;
 
   rp = svm_map_region (a);
-  
+
   pool_get (mp->subregions, subp);
   name = format (0, "%s%c", a->name, 0);
   subp->subregion_name = name;

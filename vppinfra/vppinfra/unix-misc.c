@@ -45,7 +45,8 @@
 #include <fcntl.h>
 #include <stdio.h>		/* for sprintf */
 
-clib_error_t * unix_file_n_bytes (char * file, uword * result)
+clib_error_t *
+unix_file_n_bytes (char *file, uword * result)
 {
   struct stat s;
 
@@ -60,15 +61,16 @@ clib_error_t * unix_file_n_bytes (char * file, uword * result)
   return /* no error */ 0;
 }
 
-clib_error_t * unix_file_read_contents (char * file, u8 * result, uword n_bytes)
+clib_error_t *
+unix_file_read_contents (char *file, u8 * result, uword n_bytes)
 {
   int fd = -1;
   uword n_done, n_left;
-  clib_error_t * error = 0;
-  u8 * v = result;
+  clib_error_t *error = 0;
+  u8 *v = result;
 
   if ((fd = open (file, 0)) < 0)
-      return clib_error_return_unix (0, "open `%s'", file);
+    return clib_error_return_unix (0, "open `%s'", file);
 
   n_left = n_bytes;
   n_done = 0;
@@ -91,21 +93,24 @@ clib_error_t * unix_file_read_contents (char * file, u8 * result, uword n_bytes)
 
   if (n_left > 0)
     {
-      error = clib_error_return (0, " `%s' expected to read %wd bytes; read only %wd",
-				 file, n_bytes, n_bytes - n_left);
+      error =
+	clib_error_return (0,
+			   " `%s' expected to read %wd bytes; read only %wd",
+			   file, n_bytes, n_bytes - n_left);
       goto done;
     }
 
- done:
+done:
   close (fd);
   return error;
 }
 
-clib_error_t * unix_file_contents (char * file, u8 ** result)
+clib_error_t *
+unix_file_contents (char *file, u8 ** result)
 {
   uword n_bytes;
-  clib_error_t * error = 0;
-  u8 * v;
+  clib_error_t *error = 0;
+  u8 *v;
 
   if ((error = unix_file_n_bytes (file, &n_bytes)))
     return error;
@@ -123,7 +128,8 @@ clib_error_t * unix_file_contents (char * file, u8 ** result)
   return error;
 }
 
-clib_error_t * unix_proc_file_contents (char * file, u8 ** result)
+clib_error_t *
+unix_proc_file_contents (char *file, u8 ** result)
 {
   u8 *rv = 0;
   uword pos;
@@ -135,25 +141,25 @@ clib_error_t * unix_proc_file_contents (char * file, u8 ** result)
   if (fd < 0)
     return clib_error_return_unix (0, "open `%s'", file);
 
-  vec_validate(rv, 4095);
+  vec_validate (rv, 4095);
   pos = 0;
-  while (1) 
+  while (1)
     {
-      bytes = read(fd, rv+pos, 4096);
-      if (bytes < 0) 
-        {
-          close (fd);
-          vec_free (rv);
-          return clib_error_return_unix (0, "read '%s'", file);
-        }
+      bytes = read (fd, rv + pos, 4096);
+      if (bytes < 0)
+	{
+	  close (fd);
+	  vec_free (rv);
+	  return clib_error_return_unix (0, "read '%s'", file);
+	}
 
-      if (bytes == 0) 
-        {
-          _vec_len(rv) = pos;
-          break;
-        }
+      if (bytes == 0)
+	{
+	  _vec_len (rv) = pos;
+	  break;
+	}
       pos += bytes;
-      vec_validate(rv, pos+4095);
+      vec_validate (rv, pos + 4095);
     }
   *result = rv;
   close (fd);
@@ -162,20 +168,28 @@ clib_error_t * unix_proc_file_contents (char * file, u8 ** result)
 
 void os_panic (void) __attribute__ ((weak));
 
-void os_panic (void) { abort (); }
+void
+os_panic (void)
+{
+  abort ();
+}
 
 void os_exit (int) __attribute__ ((weak));
 
-void os_exit (int code)
-{ exit (code); }
+void
+os_exit (int code)
+{
+  exit (code);
+}
 
 void os_puts (u8 * string, uword string_length, uword is_error)
   __attribute__ ((weak));
 
-void os_puts (u8 * string, uword string_length, uword is_error)
+void
+os_puts (u8 * string, uword string_length, uword is_error)
 {
   int cpu = os_get_cpu_number ();
-  int ncpus = os_get_ncpus();
+  int ncpus = os_get_ncpus ();
   char buf[64];
   int fd = is_error ? 2 : 1;
   struct iovec iovs[2];
@@ -183,7 +197,7 @@ void os_puts (u8 * string, uword string_length, uword is_error)
 
   if (ncpus > 1)
     {
-      snprintf (buf, sizeof(buf), "%d: ", cpu);
+      snprintf (buf, sizeof (buf), "%d: ", cpu);
 
       iovs[n_iovs].iov_base = buf;
       iovs[n_iovs].iov_len = strlen (buf);
@@ -199,13 +213,30 @@ void os_puts (u8 * string, uword string_length, uword is_error)
 }
 
 void os_out_of_memory (void) __attribute__ ((weak));
-void os_out_of_memory (void)
-{ os_panic (); }
+void
+os_out_of_memory (void)
+{
+  os_panic ();
+}
 
 uword os_get_cpu_number (void) __attribute__ ((weak));
-uword os_get_cpu_number (void)
-{ return 0; }
+uword
+os_get_cpu_number (void)
+{
+  return 0;
+}
 
 uword os_get_ncpus (void) __attribute__ ((weak));
-uword os_get_ncpus (void)
-{ return 1; }
+uword
+os_get_ncpus (void)
+{
+  return 1;
+}
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -39,7 +39,8 @@
 #include <vppinfra/error.h>
 
 /* Exchanges source and destination. */
-void clib_memswap (void * _a, void * _b, uword bytes)
+void
+clib_memswap (void *_a, void *_b, uword bytes)
 {
   uword pa = pointer_to_uword (_a);
   uword pb = pointer_to_uword (_b);
@@ -64,21 +65,30 @@ void clib_memswap (void * _a, void * _b, uword bytes)
       pa = pointer_to_uword (a);		\
       pb = pointer_to_uword (b);		\
     }
-      
+
   if (BITS (uword) == BITS (u64))
-    _ (u64);
-  _ (u32);
-  _ (u16);
-  _ (u8);
+    _(u64);
+  _(u32);
+  _(u16);
+  _(u8);
 
 #undef _
 
   ASSERT (bytes < 2);
   if (bytes)
     {
-      u8 * a = uword_to_pointer (pa, u8 *);
-      u8 * b = uword_to_pointer (pb, u8 *);
+      u8 *a = uword_to_pointer (pa, u8 *);
+      u8 *b = uword_to_pointer (pb, u8 *);
       u8 a0 = a[0], b0 = b[0];
-      a[0] = b0; b[0] = a0;
+      a[0] = b0;
+      b[0] = a0;
     }
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -66,14 +66,14 @@ _ (aes,      1, ecx, 25)  \
 _ (sha,      7, ebx, 29)
 
 static inline int
-clib_get_cpuid(const u32 lev, u32 * eax, u32 *ebx, u32 * ecx, u32 * edx)
+clib_get_cpuid (const u32 lev, u32 * eax, u32 * ebx, u32 * ecx, u32 * edx)
 {
   if ((u32) __get_cpuid_max (0x80000000 & lev, 0) < lev)
     return 0;
   if (lev == 7)
-    __cpuid_count(lev, 0, *eax, *ebx, *ecx, *edx);
+    __cpuid_count (lev, 0, *eax, *ebx, *ecx, *edx);
   else
-    __cpuid(lev, *eax, *ebx, *ecx, *edx);
+    __cpuid (lev, *eax, *ebx, *ecx, *edx);
   return 1;
 }
 
@@ -87,12 +87,19 @@ clib_cpu_supports_ ## flag()						\
 									\
   return ((reg & (1 << bit)) != 0);					\
 }
-  foreach_x86_64_flags
+foreach_x86_64_flags
 #undef _
 #endif
-
-format_function_t format_cpu_uarch;
+  format_function_t format_cpu_uarch;
 format_function_t format_cpu_model_name;
 format_function_t format_cpu_flags;
 
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

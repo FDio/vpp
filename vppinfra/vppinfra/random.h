@@ -39,7 +39,7 @@
 #define included_random_h
 
 #include <vppinfra/clib.h>
-#include <vppinfra/vec.h>		/* for vec_resize */
+#include <vppinfra/vec.h>	/* for vec_resize */
 #include <vppinfra/format.h>	/* for unformat_input_t */
 
 /** \file
@@ -48,12 +48,12 @@
     This specific random number generator is described in
     "Numerical Recipes in C", 2nd edition, page 284. If you need
     random numbers with really excellent statistics, take a look
-    at Chapter 7...    
-    
+    at Chapter 7...
+
     By definition, a linear congruential random number generator
     is of the form: rand[i+1] = a*rand[i] + c (mod m) for specific
-    values of (a,c,m). 
-    
+    values of (a,c,m).
+
     In this case, choose m = 2**32 and use the low-order 32-bits of
     the 64-bit product a*N[i]. Knuth suggests the use of a=1664525,
     H.W. Lewis has tested C=1013904223 extensively. This routine is
@@ -65,25 +65,33 @@
 */
 
 /** \brief 32-bit random number generator */
-always_inline u32 random_u32 (u32 * seed)
+always_inline u32
+random_u32 (u32 * seed)
 {
   *seed = (1664525 * *seed) + 1013904223;
   return *seed;
 }
+
 /* External test routine. */
 int test_random_main (unformat_input_t * input);
 
 /** \brief Maximum value returned by random_u32() */
-always_inline u32 random_u32_max (void)
-{ return 0xffffffff; }
+always_inline u32
+random_u32_max (void)
+{
+  return 0xffffffff;
+}
 
 #ifdef CLIB_UNIX
 
 #include <unistd.h>		/* for getpid */
 
 /** \brief Default random seed (unix/linux user-mode) */
-always_inline uword random_default_seed (void)
-{ return getpid (); }
+always_inline uword
+random_default_seed (void)
+{
+  return getpid ();
+}
 
 #endif
 
@@ -92,16 +100,22 @@ always_inline uword random_default_seed (void)
 #include <linux/sched.h>	/* for jiffies */
 
 /** \brief Default random seed (Linux kernel) */
-always_inline uword random_default_seed (void)
-{ return jiffies; }
+always_inline uword
+random_default_seed (void)
+{
+  return jiffies;
+}
 
 #endif
 
 #ifdef CLIB_STANDALONE
 extern u32 standalone_random_default_seed;
 
-always_inline u32 random_default_seed (void)
-{ return standalone_random_default_seed; }
+always_inline u32
+random_default_seed (void)
+{
+  return standalone_random_default_seed;
+}
 #endif
 
 /** \brief 64-bit random number generator
@@ -130,8 +144,11 @@ random_uword (u32 * seed)
 }
 
 /** \brief Generate f64 random number in the interval [0,1] */
-always_inline f64 random_f64 (u32 * seed)
-{ return (f64) random_u32 (seed) / (f64) random_u32_max (); }
+always_inline f64
+random_f64 (u32 * seed)
+{
+  return (f64) random_u32 (seed) / (f64) random_u32_max ();
+}
 
 /** \brief Generate random character vector
 
@@ -142,8 +159,8 @@ always_inline f64 random_f64 (u32 * seed)
 always_inline u8 *
 random_string (u32 * seed, uword len)
 {
-  u8 * alphabet = (u8 *) "abcdefghijklmnopqrstuvwxyz";
-  u8 * s = 0;
+  u8 *alphabet = (u8 *) "abcdefghijklmnopqrstuvwxyz";
+  u8 *s = 0;
   word i;
 
   vec_resize (s, len);
@@ -154,3 +171,11 @@ random_string (u32 * seed, uword len)
 }
 
 #endif /* included_random_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -42,7 +42,7 @@
 #ifdef CLIB_UNIX
 #include <unistd.h>
 #include <stdlib.h>
-#include <stdio.h>             /* scanf */
+#include <stdio.h>		/* scanf */
 #endif
 
 #include <vppinfra/mheap.h>
@@ -53,16 +53,17 @@ static int verbose = 0;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
-int test_mheap_main (unformat_input_t * input)
+int
+test_mheap_main (unformat_input_t * input)
 {
   int i, j, k, n_iterations;
-  void * h, * h_mem;
-  uword * objects = 0;
+  void *h, *h_mem;
+  uword *objects = 0;
   u32 objects_used, really_verbose, n_objects, max_object_size;
   u32 check_mask, seed, trace, use_vm;
   u32 print_every = 0;
-  u32 * data;
-  mheap_t * mh;
+  u32 *data;
+  mheap_t *mh;
 
   /* Validation flags. */
   check_mask = 0;
@@ -100,27 +101,26 @@ int test_mheap_main (unformat_input_t * input)
     }
 
   /* Zero seed means use default. */
-  if (! seed)
+  if (!seed)
     seed = random_default_seed ();
 
-  if_verbose   ("testing %d iterations, %d %saligned objects, max. size %d, seed %d",
-		n_iterations,
-		n_objects,
-		(check_mask & CHECK_ALIGN) ? "randomly " : "un",
-		max_object_size,
-		seed);
+  if_verbose
+    ("testing %d iterations, %d %saligned objects, max. size %d, seed %d",
+     n_iterations, n_objects, (check_mask & CHECK_ALIGN) ? "randomly " : "un",
+     max_object_size, seed);
 
   vec_resize (objects, n_objects);
-  if (vec_bytes(objects))       /* stupid warning be gone */
-      memset (objects, ~0, vec_bytes (objects));
+  if (vec_bytes (objects))	/* stupid warning be gone */
+    memset (objects, ~0, vec_bytes (objects));
   objects_used = 0;
 
   /* Allocate initial heap. */
   {
-    uword size = max_pow2 (2 * n_objects * max_object_size * sizeof (data[0]));
+    uword size =
+      max_pow2 (2 * n_objects * max_object_size * sizeof (data[0]));
 
     h_mem = clib_mem_alloc (size);
-    if (! h_mem)
+    if (!h_mem)
       return 0;
 
     h = mheap_alloc (h_mem, size);
@@ -166,7 +166,7 @@ int test_mheap_main (unformat_input_t * input)
 	      align_offset = round_pow2 (random_u32 (&seed) & (align - 1),
 					 sizeof (u32));
 	    }
-	  
+
 	  h = mheap_get_aligned (h, size, align, align_offset, &objects[j]);
 
 	  if (align > 0)
@@ -180,7 +180,7 @@ int test_mheap_main (unformat_input_t * input)
 	    {
 	      uword len;
 
-	      data = (void *) h +  objects[j];
+	      data = (void *) h + objects[j];
 	      len = mheap_len (h, data);
 
 	      ASSERT (size <= mheap_data_bytes (h, objects[j]));
@@ -197,14 +197,15 @@ int test_mheap_main (unformat_input_t * input)
 	  for (j = 0; j < vec_len (objects); j++)
 	    if (objects[j] != ~0)
 	      {
-		u32 * data = h + objects[j];
+		u32 *data = h + objects[j];
 		uword len = data[0];
 		for (k = 1; k < len; k++)
 		  ASSERT (data[k] == objects[j] + k);
 	      }
 	}
       if (print_every != 0 && i > 0 && (i % print_every) == 0)
-	fformat (stderr, "iteration %d: %U\n", i, format_mheap, h, really_verbose);
+	fformat (stderr, "iteration %d: %U\n", i, format_mheap, h,
+		 really_verbose);
     }
 
   if (verbose)
@@ -217,7 +218,8 @@ int test_mheap_main (unformat_input_t * input)
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int ret;
@@ -230,3 +232,11 @@ int main (int argc, char * argv[])
   return ret;
 }
 #endif /* CLIB_UNIX */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -38,7 +38,7 @@
 /* Error reporting. */
 #include <stdarg.h>
 
-#include <vppinfra/clib.h>		/* for HAVE_ERRNO */
+#include <vppinfra/clib.h>	/* for HAVE_ERRNO */
 
 #ifdef CLIB_LINUX_KERNEL
 #include <linux/unistd.h>	/* for write */
@@ -52,7 +52,7 @@
 #endif
 
 #ifdef CLIB_STANDALONE
-#include <vppinfra/standalone_stdio.h> /* for printf */
+#include <vppinfra/standalone_stdio.h>	/* for printf */
 #endif
 
 #include <vppinfra/string.h>
@@ -61,36 +61,41 @@
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
-#include <vppinfra/os.h>		/* for os_panic/os_exit/os_puts */
+#include <vppinfra/os.h>	/* for os_panic/os_exit/os_puts */
 
-typedef struct {
-  clib_error_handler_func_t * func;
-  void * arg;
+typedef struct
+{
+  clib_error_handler_func_t *func;
+  void *arg;
 } clib_error_handler_t;
 
-static clib_error_handler_t * handlers = 0;
+static clib_error_handler_t *handlers = 0;
 
-void clib_error_register_handler (clib_error_handler_func_t func, void * arg)
+void
+clib_error_register_handler (clib_error_handler_func_t func, void *arg)
 {
-  clib_error_handler_t h = { .func = func, .arg = arg, };
+  clib_error_handler_t h = {.func = func,.arg = arg, };
   vec_add1 (handlers, h);
 }
 
-static void debugger (void)
+static void
+debugger (void)
 {
   os_panic ();
 }
 
-static void error_exit (int code)
+static void
+error_exit (int code)
 {
   os_exit (code);
 }
 
-static u8 * dispatch_message (u8 * msg)
+static u8 *
+dispatch_message (u8 * msg)
 {
   word i;
 
-  if (! msg)
+  if (!msg)
     return msg;
 
   for (i = 0; i < vec_len (handlers); i++)
@@ -103,12 +108,11 @@ static u8 * dispatch_message (u8 * msg)
   return msg;
 }
 
-void _clib_error (int how_to_die,
-		  char * function_name,
-		  uword line_number,
-		  char * fmt, ...)
+void
+_clib_error (int how_to_die,
+	     char *function_name, uword line_number, char *fmt, ...)
 {
-  u8 * msg = 0;
+  u8 *msg = 0;
   va_list va;
 
   if (function_name)
@@ -141,13 +145,11 @@ void _clib_error (int how_to_die,
     error_exit (1);
 }
 
-clib_error_t * _clib_error_return (clib_error_t * errors,
-                                   any code,
-                                   uword flags,
-                                   char * where,
-				   char * fmt, ...)
+clib_error_t *
+_clib_error_return (clib_error_t * errors,
+		    any code, uword flags, char *where, char *fmt, ...)
 {
-  clib_error_t * e;
+  clib_error_t *e;
   va_list va;
 
 #ifdef HAVE_ERRNO
@@ -168,7 +170,7 @@ clib_error_t * _clib_error_return (clib_error_t * errors,
       e->what = format (e->what, "%s", strerror (errno_save));
     }
 #endif
-  
+
   e->where = (u8 *) where;
   e->code = code;
   e->flags = flags;
@@ -176,48 +178,50 @@ clib_error_t * _clib_error_return (clib_error_t * errors,
   return errors;
 }
 
-void * clib_error_free_vector (clib_error_t * errors)
+void *
+clib_error_free_vector (clib_error_t * errors)
 {
-  clib_error_t * e;
-  vec_foreach (e, errors)
-    vec_free (e->what);
+  clib_error_t *e;
+  vec_foreach (e, errors) vec_free (e->what);
   vec_free (errors);
   return 0;
 }
 
-u8 * format_clib_error (u8 * s, va_list * va)
+u8 *
+format_clib_error (u8 * s, va_list * va)
 {
-  clib_error_t * errors = va_arg (*va, clib_error_t *);
-  clib_error_t * e;
+  clib_error_t *errors = va_arg (*va, clib_error_t *);
+  clib_error_t *e;
 
   vec_foreach (e, errors)
-    {
-      if (! e->what)
-	continue;
+  {
+    if (!e->what)
+      continue;
 
-      if (e->where)
-	{
-	  u8 * where = 0;
+    if (e->where)
+      {
+	u8 *where = 0;
 
-	  if (e > errors)
-	    where = format (where, "from ");
-	  where = format (where, "%s", e->where);
+	if (e > errors)
+	  where = format (where, "from ");
+	where = format (where, "%s", e->where);
 
-	  s = format (s, "%v: ", where);
-	  vec_free (where);
-	}
+	s = format (s, "%v: ", where);
+	vec_free (where);
+      }
 
-      s = format (s, "%v\n", e->what);
-    }
+    s = format (s, "%v\n", e->what);
+  }
 
   return s;
 }
 
-clib_error_t * _clib_error_report (clib_error_t * errors)
+clib_error_t *
+_clib_error_report (clib_error_t * errors)
 {
   if (errors)
     {
-      u8 * msg = format (0, "%U", format_clib_error, errors);
+      u8 *msg = format (0, "%U", format_clib_error, errors);
 
       msg = dispatch_message (msg);
       vec_free (msg);
@@ -234,19 +238,22 @@ clib_error_t * _clib_error_report (clib_error_t * errors)
 
 #ifdef TEST
 
-static error_t * foo1 (int x)
+static error_t *
+foo1 (int x)
 {
   return error_return (0, "x is odd %d", x);
 }
 
-static error_t * foo2 (int x)
+static error_t *
+foo2 (int x)
 {
   return error_return (0, "x is even %d", x);
 }
 
-static error_t * foo (int x)
+static error_t *
+foo (int x)
 {
-  error_t * e;
+  error_t *e;
   if (x & 1)
     e = foo1 (x);
   else
@@ -255,14 +262,16 @@ static error_t * foo (int x)
     return error_return (e, 0);
 }
 
-static void error_handler (void * arg, char * msg, int msg_len)
+static void
+error_handler (void *arg, char *msg, int msg_len)
 {
   write (2, msg, msg_len);
 }
 
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
-  error_t * e;
+  error_t *e;
 
   register_error_handler (error_handler, 0);
 
@@ -273,3 +282,11 @@ int main (int argc, char * argv[])
 }
 
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

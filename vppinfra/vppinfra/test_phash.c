@@ -43,12 +43,13 @@ static int verbose;
 #define if_verbose(format,args...) \
   if (verbose) { clib_warning(format, ## args); }
 
-int test_phash_main (unformat_input_t * input)
+int
+test_phash_main (unformat_input_t * input)
 {
-  phash_main_t _pm = {0}, * pm = &_pm;
+  phash_main_t _pm = { 0 }, *pm = &_pm;
   int n_keys, random_keys;
   u32 seed;
-  clib_error_t * error;
+  clib_error_t *error;
 
   random_keys = 1;
   n_keys = 1000;
@@ -61,41 +62,44 @@ int test_phash_main (unformat_input_t * input)
 	  && 0 == unformat (input, "seed %d", &pm->random_seed)
 	  && 0 == unformat (input, "64-bit %|", &pm->flags, PHASH_FLAG_MIX64)
 	  && 0 == unformat (input, "32-bit %|", &pm->flags, PHASH_FLAG_MIX32)
-	  && 0 == unformat (input, "fast %|", &pm->flags, PHASH_FLAG_FAST_MODE)
-	  && 0 == unformat (input, "slow %|", &pm->flags, PHASH_FLAG_SLOW_MODE)
-	  && 0 == unformat (input, "minimal %|", &pm->flags, PHASH_FLAG_MINIMAL)
-	  && 0 == unformat (input, "non-minimal %|", &pm->flags, PHASH_FLAG_NON_MINIMAL))
+	  && 0 == unformat (input, "fast %|", &pm->flags,
+			    PHASH_FLAG_FAST_MODE)
+	  && 0 == unformat (input, "slow %|", &pm->flags,
+			    PHASH_FLAG_SLOW_MODE)
+	  && 0 == unformat (input, "minimal %|", &pm->flags,
+			    PHASH_FLAG_MINIMAL)
+	  && 0 == unformat (input, "non-minimal %|", &pm->flags,
+			    PHASH_FLAG_NON_MINIMAL))
 	clib_error ("unknown input `%U'", format_unformat_error, input);
     }
 
-  if (! pm->random_seed)
+  if (!pm->random_seed)
     pm->random_seed = random_default_seed ();
 
-  if_verbose   ("%d %d-bit keys, random seed %d, %s mode, looking for %sminimal hash",
-		n_keys,
-		(pm->flags & PHASH_FLAG_MIX64) ? 64 : 32,
-		pm->random_seed,
-		(pm->flags & PHASH_FLAG_FAST_MODE) ? "fast" : "slow",
-		(pm->flags & PHASH_FLAG_MINIMAL) ? "" : "non-");
+  if_verbose
+    ("%d %d-bit keys, random seed %d, %s mode, looking for %sminimal hash",
+     n_keys, (pm->flags & PHASH_FLAG_MIX64) ? 64 : 32, pm->random_seed,
+     (pm->flags & PHASH_FLAG_FAST_MODE) ? "fast" : "slow",
+     (pm->flags & PHASH_FLAG_MINIMAL) ? "" : "non-");
 
   seed = pm->random_seed;
 
   /* Initialize random keys. */
   {
-    phash_key_t * k;
+    phash_key_t *k;
 
     vec_resize (pm->keys, n_keys);
     vec_foreach (k, pm->keys)
-      {
-	k->key = k - pm->keys;
-	if (random_keys)
-	  {
-	    if (pm->flags & PHASH_FLAG_MIX64)
-	      k->key = random_u64 (&seed);
-	    else
-	      k->key = random_u32 (&seed);
-	  }
-      }
+    {
+      k->key = k - pm->keys;
+      if (random_keys)
+	{
+	  if (pm->flags & PHASH_FLAG_MIX64)
+	    k->key = random_u64 (&seed);
+	  else
+	    k->key = random_u32 (&seed);
+	}
+    }
   }
 
   error = phash_find_perfect_hash (pm);
@@ -106,9 +110,9 @@ int test_phash_main (unformat_input_t * input)
     }
   else
     {
-      if_verbose   ("(%d,%d) (a,b) bits, %d seeds tried, %d tree walks",
-		    pm->a_bits, pm->b_bits,
-		    pm->n_seed_trials, pm->n_perfect_calls);
+      if_verbose ("(%d,%d) (a,b) bits, %d seeds tried, %d tree walks",
+		  pm->a_bits, pm->b_bits,
+		  pm->n_seed_trials, pm->n_perfect_calls);
 
       error = phash_validate (pm);
       if (error)
@@ -122,7 +126,8 @@ int test_phash_main (unformat_input_t * input)
 }
 
 #ifdef CLIB_UNIX
-int main (int argc, char * argv [])
+int
+main (int argc, char *argv[])
 {
   unformat_input_t i;
   int res;
@@ -134,3 +139,11 @@ int main (int argc, char * argv [])
   return res;
 }
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -45,20 +45,22 @@
 #include <vppinfra/timer.h>
 #include <vppinfra/error.h>
 
-typedef struct {
+typedef struct
+{
   f64 time;
-  timer_func_t * func;
+  timer_func_t *func;
   any arg;
 } timer_callback_t;
 
 /* Vector of currently unexpired timers. */
-static timer_callback_t * timers;
+static timer_callback_t *timers;
 
 /* Convert time from 64bit floating format to struct timeval. */
-always_inline void f64_to_tv (f64 t, struct timeval * tv)
+always_inline void
+f64_to_tv (f64 t, struct timeval *tv)
 {
   tv->tv_sec = t;
-  tv->tv_usec = 1e6*(t - tv->tv_sec);
+  tv->tv_usec = 1e6 * (t - tv->tv_sec);
   while (tv->tv_usec >= 1000000)
     {
       tv->tv_usec -= 1000000;
@@ -67,16 +69,20 @@ always_inline void f64_to_tv (f64 t, struct timeval * tv)
 }
 
 /* Sort timers so that timer soonest to expire is at end. */
-static int timer_compare (const void * _a, const void * _b)
+static int
+timer_compare (const void *_a, const void *_b)
 {
-  const timer_callback_t * a = _a;
-  const timer_callback_t * b = _b;
+  const timer_callback_t *a = _a;
+  const timer_callback_t *b = _b;
   f64 dt = b->time - a->time;
   return dt < 0 ? -1 : (dt > 0 ? +1 : 0);
 }
 
-static inline void sort_timers (timer_callback_t * timers)
-{ qsort (timers, vec_len (timers), sizeof (timers[0]), timer_compare); }
+static inline void
+sort_timers (timer_callback_t * timers)
+{
+  qsort (timers, vec_len (timers), sizeof (timers[0]), timer_compare);
+}
 
 #define TIMER_SIGNAL SIGALRM
 
@@ -89,11 +95,12 @@ static f64 time_resolution;
 
 /* Interrupt handler.  Call functions for all expired timers.
    Set time for next timer interrupt. */
-static void timer_interrupt (int signum)
+static void
+timer_interrupt (int signum)
 {
   f64 now = unix_time_now ();
   f64 dt;
-  timer_callback_t * t;
+  timer_callback_t *t;
 
   while (1)
     {
@@ -101,7 +108,7 @@ static void timer_interrupt (int signum)
 	return;
 
       /* Consider last (earliest) timer in reverse sorted
-	 vector of pending timers. */
+         vector of pending timers. */
       t = vec_end (timers) - 1;
 
       ASSERT (now >= 0 && finite (now));
@@ -110,11 +117,11 @@ static void timer_interrupt (int signum)
       dt = t->time - now;
 
       /* If timer is within threshold of going off
-	 call user's callback. */
+         call user's callback. */
       if (dt <= time_resolution && finite (dt))
 	{
 	  _vec_len (timers) -= 1;
-	  (* t->func) (t->arg, -dt);
+	  (*t->func) (t->arg, -dt);
 	}
       else
 	{
@@ -129,7 +136,8 @@ static void timer_interrupt (int signum)
     }
 }
 
-void timer_block (sigset_t * save)
+void
+timer_block (sigset_t * save)
 {
   sigset_t block_timer;
 
@@ -138,20 +146,24 @@ void timer_block (sigset_t * save)
   sigprocmask (SIG_BLOCK, &block_timer, save);
 }
 
-void timer_unblock (sigset_t * save)
-{ sigprocmask (SIG_SETMASK, save, 0); }
+void
+timer_unblock (sigset_t * save)
+{
+  sigprocmask (SIG_SETMASK, save, 0);
+}
 
 /* Arrange for function to be called some time,
    roughly equal to dt seconds, in the future. */
-void timer_call (timer_func_t * func, any arg, f64 dt)
+void
+timer_call (timer_func_t * func, any arg, f64 dt)
 {
-  timer_callback_t * t;
+  timer_callback_t *t;
   sigset_t save;
 
   /* Install signal handler on first call. */
   static word signal_installed = 0;
 
-  if (! signal_installed)
+  if (!signal_installed)
     {
       struct sigaction sa;
 
@@ -181,7 +193,7 @@ void timer_call (timer_func_t * func, any arg, f64 dt)
 
     if (_vec_len (timers) > 1)
       {
-	reset_timer += t->time < (t-1)->time;
+	reset_timer += t->time < (t - 1)->time;
 	sort_timers (timers);
       }
 
@@ -203,33 +215,38 @@ void timer_call (timer_func_t * func, any arg, f64 dt)
 static f64 ave_delay = 0;
 static word ave_delay_count = 0;
 
-always_inline update (f64 delay)
+always_inline
+update (f64 delay)
 {
   ave_delay += delay;
   ave_delay_count += 1;
 }
 
-typedef struct {
+typedef struct
+{
   f64 time_requested, time_called;
 } foo_t;
 
 static f64 foo_base_time = 0;
-static foo_t * foos = 0;
+static foo_t *foos = 0;
 
-void foo (any arg, f64 delay)
+void
+foo (any arg, f64 delay)
 {
   foos[arg].time_called = unix_time_now () - foo_base_time;
   update (delay);
 }
 
-typedef struct {
+typedef struct
+{
   word count;
   word limit;
 } bar_t;
 
-void bar (any arg, f64 delay)
+void
+bar (any arg, f64 delay)
 {
-  bar_t * b = (bar_t *) arg;
+  bar_t *b = (bar_t *) arg;
 
   fformat (stdout, "bar %d delay %g\n", b->count++, delay);
 
@@ -238,11 +255,12 @@ void bar (any arg, f64 delay)
     timer_call (bar, arg, random_f64 ());
 }
 
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
   word i, n = atoi (argv[1]);
   word run_foo = argc > 2;
-  bar_t b = {limit: 10};
+bar_t b = { limit:10 };
 
   if (run_foo)
     {
@@ -262,7 +280,7 @@ int main (int argc, char * argv[])
 	timer_call (foo, i, foos[i].time_requested);
     }
   else
-    timer_call (bar, (any) &b, random_f64 ());
+    timer_call (bar, (any) & b, random_f64 ());
 
   while (vec_len (timers) > 0)
     sched_yield ();
@@ -280,11 +298,12 @@ int main (int argc, char * argv[])
 	  if (dt > max)
 	    max = dt;
 	  ave += dt;
-	  rms += dt*dt;
+	  rms += dt * dt;
 	}
       ave /= n;
-      rms = sqrt (rms / n - ave*ave);
-      fformat (stdout, "error min %g max %g ave %g +- %g\n", min, max, ave, rms);
+      rms = sqrt (rms / n - ave * ave);
+      fformat (stdout, "error min %g max %g ave %g +- %g\n", min, max, ave,
+	       rms);
     }
 
   fformat (stdout, "%d function calls, ave. timer delay %g secs\n",
@@ -293,3 +312,11 @@ int main (int argc, char * argv[])
   return 0;
 }
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

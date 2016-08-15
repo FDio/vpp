@@ -61,7 +61,7 @@
   _(tge) _(tgeu) _(tlt) _(tltu) _(teq) _(o65) _(tne) _(o67)		\
   _(dsll) _(o71) _(dsrl) _(dsra) _(dsll32) _(o75) _(dsrl32) _(dsra32)
 
-/* SPECIAL2 encoding of funct field. */				\
+/* SPECIAL2 encoding of funct field. */
 #define mips_foreach_special2_funct				\
   _(madd) _(maddu) _(mul) _(o03) _(msub) _(msubu) _(o06) _(o07)	\
   _(o10) _(o11) _(o12) _(o13) _(o14) _(o15) _(o16) _(o17)	\
@@ -137,92 +137,116 @@
   _(o70) _(o71) _(o72) _(o73) _(o74) _(o75) _(wac) _(rac)
 
 #define _(f) MIPS_OPCODE_##f,
-typedef enum {
+typedef enum
+{
   mips_foreach_opcode
 } mips_insn_opcode_t;
 #undef _
 
 #define _(f) MIPS_SPECIAL_FUNCT_##f,
-typedef enum {
+typedef enum
+{
   mips_foreach_special_funct
 } mips_insn_special_funct_t;
 #undef _
 
 #define _(f) MIPS_SPECIAL2_FUNCT_##f,
-typedef enum {
+typedef enum
+{
   mips_foreach_special2_funct
 } mips_insn_special2_funct_t;
 #undef _
 
 #define _(f) MIPS_REGIMM_RT_##f,
-typedef enum {
+typedef enum
+{
   mips_foreach_regimm_rt
 } mips_insn_regimm_rt_t;
 #undef _
 
 #define _(f) MIPS_COP0_RS_##f,
-typedef enum {
+typedef enum
+{
   mips_foreach_cop0_rs
 } mips_insn_cop0_rs_t;
 #undef _
 
 #define _(f) MIPS_COP0_FUNCT_##f,
-typedef enum {
+typedef enum
+{
   mips_foreach_cop0_funct
 } mips_insn_cop0_funct_t;
 #undef _
 
 #define _(f) MIPS_COP1_RS_##f,
-typedef enum {
+typedef enum
+{
   mips_foreach_cop1_rs
 } mips_insn_cop1_rs_t;
 #undef _
 
 #define _(f) MIPS_COP1_FUNCT_##f,
-typedef enum {
+typedef enum
+{
   mips_foreach_cop1_funct
 } mips_insn_cop1_funct_t;
 #undef _
 
 #define _(f) MIPS_COP1X_FUNCT_##f,
-typedef enum {
+typedef enum
+{
   mips_foreach_cop1x_funct
 } mips_insn_cop1x_funct_t;
 #undef _
 
 #define _(f) MIPS_MDMX_FUNCT_##f,
-typedef enum {
+typedef enum
+{
   mips_foreach_mdmx_funct
 } mips_insn_mdmx_funct_t;
 #undef _
 
 always_inline mips_insn_opcode_t
 mips_insn_get_op (u32 insn)
-{ return (insn >> 26) & 0x3f; }
+{
+  return (insn >> 26) & 0x3f;
+}
 
 always_inline u32
 mips_insn_get_rs (u32 insn)
-{ return (insn >> 21) & 0x1f; }
+{
+  return (insn >> 21) & 0x1f;
+}
 
 always_inline u32
 mips_insn_get_rt (u32 insn)
-{ return (insn >> 16) & 0x1f; }
+{
+  return (insn >> 16) & 0x1f;
+}
 
 always_inline u32
 mips_insn_get_rd (u32 insn)
-{ return (insn >> 11) & 0x1f; }
+{
+  return (insn >> 11) & 0x1f;
+}
 
 always_inline u32
 mips_insn_get_sa (u32 insn)
-{ return (insn >> 6) & 0x1f; }
+{
+  return (insn >> 6) & 0x1f;
+}
 
 always_inline u32
 mips_insn_get_funct (u32 insn)
-{ return (insn >> 0) & 0x3f; }
+{
+  return (insn >> 0) & 0x3f;
+}
 
 always_inline i32
 mips_insn_get_immediate (u32 insn)
-{ return (((i32) insn) << 16) >> 16; }
+{
+  return (((i32) insn) << 16) >> 16;
+}
 
 always_inline u32
 mips_insn_encode_i_type (int op, int rs, int rt, int immediate)
@@ -310,9 +334,18 @@ mips_insn_load (u32 rd, i32 offset, u32 base, u32 log2_bytes)
   return mips_insn_encode_i_type (op, base, rd, offset);
 }
 
-typedef enum {
-    MIPS_REG_SP = 29,
-    MIPS_REG_RA = 31,
+typedef enum
+{
+  MIPS_REG_SP = 29,
+  MIPS_REG_RA = 31,
 } mips_reg_t;
 
 #endif /* included_asm_mips_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
