@@ -86,25 +86,29 @@
   _ (exp1)					\
   _ (exp2)
 
-typedef enum {
+typedef enum
+{
 #define _(n,f) ETHERNET_ARP_HARDWARE_TYPE_##f = (n),
   foreach_ethernet_arp_hardware_type
 #undef _
 } ethernet_arp_hardware_type_t;
 
-typedef enum {
+typedef enum
+{
 #define _(f) ETHERNET_ARP_OPCODE_##f,
   foreach_ethernet_arp_opcode
 #undef _
-  ETHERNET_ARP_N_OPCODE,
+    ETHERNET_ARP_N_OPCODE,
 } ethernet_arp_opcode_t;
 
-typedef enum {
+typedef enum
+{
   IP4_ARP_NEXT_DROP,
   IP4_ARP_N_NEXT,
 } ip4_arp_next_t;
 
-typedef enum {
+typedef enum
+{
   IP4_ARP_ERROR_DROP,
   IP4_ARP_ERROR_REQUEST_SENT,
   IP4_ARP_ERROR_NON_ARP_ADJ,
@@ -113,18 +117,22 @@ typedef enum {
   IP4_ARP_ERROR_NO_SOURCE_ADDRESS,
 } ip4_arp_error_t;
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 ethernet[6];
   ip4_address_t ip4;
 }) ethernet_arp_ip4_over_ethernet_address_t;
+/* *INDENT-ON* */
 
-typedef struct {
+typedef struct
+{
   u16 l2_type;
   u16 l3_type;
   u8 n_l2_address_bytes;
   u8 n_l3_address_bytes;
   u16 opcode;
-  union {
+  union
+  {
     ethernet_arp_ip4_over_ethernet_address_t ip4_over_ethernet[2];
 
     /* Others... */
@@ -133,3 +141,11 @@ typedef struct {
 } ethernet_arp_header_t;
 
 #endif /* included_ethernet_arp_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

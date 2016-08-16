@@ -43,11 +43,10 @@
 /* Global main structure. */
 ethernet_main_t ethernet_main;
 
-static void add_type (ethernet_main_t * em,
-		      ethernet_type_t type,
-		      char * type_name)
+static void
+add_type (ethernet_main_t * em, ethernet_type_t type, char *type_name)
 {
-  ethernet_type_info_t * ti;
+  ethernet_type_info_t *ti;
   u32 i;
 
   vec_add2 (em->type_infos, ti, 1);
@@ -61,16 +60,17 @@ static void add_type (ethernet_main_t * em,
   hash_set_mem (em->type_info_by_name, ti->name, i);
 }
 
-static clib_error_t * ethernet_init (vlib_main_t * vm)
+static clib_error_t *
+ethernet_init (vlib_main_t * vm)
 {
-  ethernet_main_t * em = &ethernet_main;
-  clib_error_t * error;
+  ethernet_main_t *em = &ethernet_main;
+  clib_error_t *error;
 
   /* 
    * Set up the L2 path now, or we'll wipe out the L2 ARP
    * registration set up by ethernet_arp_init.
    */
-  if ((error = vlib_call_init_function(vm, l2_init)))
+  if ((error = vlib_call_init_function (vm, l2_init)))
     return error;
 
   em->vlib_main = vm;
@@ -92,9 +92,18 @@ static clib_error_t * ethernet_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ethernet_init);
 
-ethernet_main_t * ethernet_get_main (vlib_main_t * vm)
+ethernet_main_t *
+ethernet_get_main (vlib_main_t * vm)
 {
   vlib_call_init_function (vm, ethernet_init);
   return &ethernet_main;
 }
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
