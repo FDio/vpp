@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_28465324",
+        "filename": "vnet/vnet/sr/sr.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-16T14:44:36Z",
+      "side": 1,
+      "message": "This block will provide documentation for the item \"sr_replicate_node\" if DPDK is enabled, and for \"ip6_sr_add_del_tunnel\" if not. I do not think this is what you intend it to do.\n\nInstead, add it as a @note in the @file section at the top of the file.",
+      "range": {
+        "startLine": 241,
+        "startChar": 0,
+        "endLine": 243,
+        "endChar": 3
+      },
+      "revId": "0f24dd5070cf9562ea4d408fc55167d3beae8adb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_08ddd770",
+        "filename": "vnet/vnet/sr/sr_packet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-16T14:44:36Z",
+      "side": 1,
+      "message": "Because there\u0027s no @file, this block provides documentation for the next identifier Doxygen finds. In this case: IPPROTO_IPV6_ROUTE (if it\u0027s not previously defined) or ROUTING_HEADER_TYPE_SR otherwise.",
+      "range": {
+        "startLine": 24,
+        "startChar": 5,
+        "endLine": 24,
+        "endChar": 11
+      },
+      "revId": "0f24dd5070cf9562ea4d408fc55167d3beae8adb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_08c4b790",
+        "filename": "vnet/vnet/sr/sr_packet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-16T14:44:36Z",
+      "side": 1,
+      "message": "Since I assume you intended to add a @file command, this text is the title of the page. When initially viewed there will be no diagram; that\u0027s in the rest of the page blurb, not the title. Meaning this sentence will not make sense in the rendered documentation.\n\nI think you want the page title to be something like \"@brief IPv6 Segment Routing Header.\" and the rest of the text follows in the next paragraph.",
+      "range": {
+        "startLine": 24,
+        "startChar": 56,
+        "endLine": 24,
+        "endChar": 77
+      },
+      "revId": "0f24dd5070cf9562ea4d408fc55167d3beae8adb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_a8ba6308",
+        "filename": "vnet/vnet/sr/sr_packet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-16T14:44:36Z",
+      "side": 1,
+      "message": "Just noting this, not suggesting a fix. Missing trailing \".\". @brief is terminated at the end of the first sentence - which means it\u0027s terminated by a \".\".\n\nIt\u0027s not going to cause heartburn in many cases since there\u0027s no other text; but if there were the text you assume is in the next para would follow on as part of the brief sentence. It\u0027s sloppy.",
+      "revId": "0f24dd5070cf9562ea4d408fc55167d3beae8adb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
