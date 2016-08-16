@@ -1677,6 +1677,7 @@ ikev2_node_fn (vlib_main_t * vm,
 	  udp_header_t *udp0;
 	  ike_header_t *ike0;
 	  ikev2_sa_t *sa0 = 0;
+	  ikev2_sa_t sa;	/* temporary store for SA */
 	  int len = 0;
 	  int r;
 
@@ -1704,7 +1705,6 @@ ikev2_node_fn (vlib_main_t * vm,
 
 	  if (ike0->exchange == IKEV2_EXCHANGE_SA_INIT)
 	    {
-	      ikev2_sa_t sa;	/* temporary store for SA */
 	      sa0 = &sa;
 	      memset (sa0, 0, sizeof (*sa0));
 

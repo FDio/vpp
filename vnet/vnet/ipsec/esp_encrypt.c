@@ -270,7 +270,8 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      ip_proto = ih0->ip4.protocol;
 	    }
 
-	  if (PREDICT_TRUE (sa0->is_tunnel && !sa0->is_tunnel_ip6))
+	  if (PREDICT_TRUE
+	      (!is_ipv6 && sa0->is_tunnel && !sa0->is_tunnel_ip6))
 	    {
 	      oh0->ip4.src_address.as_u32 = sa0->tunnel_src_addr.ip4.as_u32;
 	      oh0->ip4.dst_address.as_u32 = sa0->tunnel_dst_addr.ip4.as_u32;
@@ -279,7 +280,7 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      next0 = ESP_ENCRYPT_NEXT_IP4_INPUT;
 	      vnet_buffer (o_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	    }
-	  else if (sa0->is_tunnel && sa0->is_tunnel_ip6)
+	  else if (is_ipv6 && sa0->is_tunnel && sa0->is_tunnel_ip6)
 	    {
 	      oh6_0->ip6.src_address.as_u64[0] =
 		sa0->tunnel_src_addr.ip6.as_u64[0];
@@ -387,13 +388,13 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 		{
 		  o_b0->flags |= VLIB_BUFFER_IS_TRACED;
 		  o_b0->trace_index = i_b0->trace_index;
+		  esp_encrypt_trace_t *tr =
+		    vlib_add_trace (vm, node, o_b0, sizeof (*tr));
+		  tr->spi = sa0->spi;
+		  tr->seq = sa0->seq - 1;
+		  tr->crypto_alg = sa0->crypto_alg;
+		  tr->integ_alg = sa0->integ_alg;
 		}
-	      esp_encrypt_trace_t *tr =
-		vlib_add_trace (vm, node, o_b0, sizeof (*tr));
-	      tr->spi = sa0->spi;
-	      tr->seq = sa0->seq - 1;
-	      tr->crypto_alg = sa0->crypto_alg;
-	      tr->integ_alg = sa0->integ_alg;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -407,7 +408,8 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 			       from_frame->n_vectors);
 
 free_buffers_and_exit:
-  vlib_buffer_free (vm, recycle, vec_len (recycle));
+  if (recycle)
+    vlib_buffer_free (vm, recycle, vec_len (recycle));
   vec_free (recycle);
   return from_frame->n_vectors;
 }
