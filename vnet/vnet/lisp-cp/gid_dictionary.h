@@ -37,11 +37,11 @@
 
 typedef struct
 {
-  BVT(clib_bihash) ip4_lookup_table;
+  BVT (clib_bihash) ip4_lookup_table;
 
   /* bitmap/vector of mask widths to search */
-  uword * ip4_non_empty_dst_address_length_bitmap;
-  u8 * ip4_prefix_lengths_in_search_order;
+  uword *ip4_non_empty_dst_address_length_bitmap;
+  u8 *ip4_prefix_lengths_in_search_order;
   ip4_address_t ip4_fib_masks[33];
   u32 ip4_prefix_len_refcount[33];
 
@@ -49,11 +49,11 @@ typedef struct
   u32 ip4_lookup_table_nbuckets;
   uword ip4_lookup_table_size;
 
-  BVT(clib_bihash) ip6_lookup_table;
+    BVT (clib_bihash) ip6_lookup_table;
 
   /* bitmap/vector of mask widths to search */
-  uword * ip6_non_empty_dst_address_length_bitmap;
-  u8 * ip6_prefix_lengths_in_search_order;
+  uword *ip6_non_empty_dst_address_length_bitmap;
+  u8 *ip6_prefix_lengths_in_search_order;
   ip6_address_t ip6_fib_masks[129];
   u64 ip6_prefix_len_refcount[129];
 
@@ -61,7 +61,7 @@ typedef struct
   u32 ip6_lookup_table_nbuckets;
   uword ip6_lookup_table_size;
 
-  BVT(clib_bihash) mac_lookup_table;
+    BVT (clib_bihash) mac_lookup_table;
 
   /* mac lookup table config parameters */
   u32 mac_lookup_table_nbuckets;
@@ -70,13 +70,19 @@ typedef struct
 } gid_dictionary_t;
 
 u32
-gid_dictionary_add_del (gid_dictionary_t *db, gid_address_t *key, u32 value,
+gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u32 value,
 			u8 is_add);
 
-u32
-gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t *key);
+u32 gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key);
 
-void
-gid_dictionary_init (gid_dictionary_t * db);
+void gid_dictionary_init (gid_dictionary_t * db);
 
 #endif /* VNET_LISP_GPE_GID_DICTIONARY_H_ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

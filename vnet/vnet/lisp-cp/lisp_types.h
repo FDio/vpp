@@ -25,6 +25,7 @@ typedef enum
   IP6
 } ip_address_type_t;
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct ip_address
 {
   union
@@ -34,6 +35,7 @@ typedef CLIB_PACKED(struct ip_address
   } ip;
   u8 version;
 }) ip_address_t;
+/* *INDENT-ON* */
 
 #define ip_addr_addr(_a) (_a)->ip
 #define ip_addr_v4(_a) (_a)->ip.v4
@@ -41,15 +43,17 @@ typedef CLIB_PACKED(struct ip_address
 #define ip_addr_version(_a) (_a)->version
 
 int ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2);
-void ip_address_copy (ip_address_t * dst , ip_address_t * src);
-void ip_address_copy_addr (void * dst , ip_address_t * src);
-void ip_address_set(ip_address_t * dst, void * src, u8 version);
+void ip_address_copy (ip_address_t * dst, ip_address_t * src);
+void ip_address_copy_addr (void *dst, ip_address_t * src);
+void ip_address_set (ip_address_t * dst, void *src, u8 version);
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct ip_prefix
 {
   ip_address_t addr;
   u8 len;
 }) ip_prefix_t;
+/* *INDENT-ON* */
 
 #define ip_prefix_addr(_a) (_a)->addr
 #define ip_prefix_version(_a) ip_addr_version(&ip_prefix_addr(_a))
@@ -57,7 +61,7 @@ typedef CLIB_PACKED(struct ip_prefix
 #define ip_prefix_v4(_a) ip_addr_v4(&ip_prefix_addr(_a))
 #define ip_prefix_v6(_a) ip_addr_v6(&ip_prefix_addr(_a))
 
-void ip_prefix_normalize(ip_prefix_t * a);
+void ip_prefix_normalize (ip_prefix_t * a);
 
 typedef enum
 {
@@ -95,7 +99,7 @@ typedef struct
     ip_prefix_t ippref;
     u8 mac[6];
   };
-  u8 type; /* fid_addr_type_t */
+  u8 type;			/* fid_addr_type_t */
 } fid_address_t;
 
 typedef fid_address_t dp_address_t;
@@ -158,11 +162,11 @@ typedef struct _gid_address_t
   u8 vni_mask;
 } gid_address_t;
 
-u8 * format_ip_address (u8 * s, va_list * args);
+u8 *format_ip_address (u8 * s, va_list * args);
 uword unformat_ip_address (unformat_input_t * input, va_list * args);
-u8 * format_ip_prefix (u8 * s, va_list * args);
+u8 *format_ip_prefix (u8 * s, va_list * args);
 uword unformat_ip_prefix (unformat_input_t * input, va_list * args);
-u8 * format_mac_address (u8 * s, va_list * args);
+u8 *format_mac_address (u8 * s, va_list * args);
 uword unformat_mac_address (unformat_input_t * input, va_list * args);
 
 u16 ip4_address_size_to_put ();
@@ -171,31 +175,32 @@ u32 ip4_address_put (u8 * b, ip4_address_t * a);
 u32 ip6_address_put (u8 * b, ip6_address_t * a);
 
 u16 ip_address_size_to_write (ip_address_t * a);
-u16 ip_address_iana_afi(ip_address_t *a);
+u16 ip_address_iana_afi (ip_address_t * a);
 u8 ip_address_max_len (u8 ver);
 u32 ip_address_put (u8 * b, ip_address_t * a);
 
 /* LISP AFI codes  */
-typedef enum {
-    LISP_AFI_NO_ADDR,
-    LISP_AFI_IP,
-    LISP_AFI_IP6,
-    LISP_AFI_LCAF = 16387,
-    LISP_AFI_MAC = 16389
+typedef enum
+{
+  LISP_AFI_NO_ADDR,
+  LISP_AFI_IP,
+  LISP_AFI_IP6,
+  LISP_AFI_LCAF = 16387,
+  LISP_AFI_MAC = 16389
 } lisp_afi_e;
 
 u8 *format_gid_address (u8 * s, va_list * args);
 uword unformat_gid_address (unformat_input_t * input, va_list * args);
 int gid_address_cmp (gid_address_t * a1, gid_address_t * a2);
-void gid_address_free (gid_address_t *a);
+void gid_address_free (gid_address_t * a);
 
 u16 gid_address_size_to_put (gid_address_t * a);
 u16 gid_address_put (u8 * b, gid_address_t * gid);
-u8 gid_address_len (gid_address_t *a);
-void * gid_address_cast (gid_address_t * gid, gid_address_type_t type);
-void gid_address_copy(gid_address_t * dst, gid_address_t * src);
-u32 gid_address_parse (u8 * offset, gid_address_t *a);
-void gid_address_ip_set(gid_address_t * dst, void * src, u8 version);
+u8 gid_address_len (gid_address_t * a);
+void *gid_address_cast (gid_address_t * gid, gid_address_type_t type);
+void gid_address_copy (gid_address_t * dst, gid_address_t * src);
+u32 gid_address_parse (u8 * offset, gid_address_t * a);
+void gid_address_ip_set (gid_address_t * dst, void *src, u8 version);
 
 #define gid_address_type(_a) (_a)->type
 #define gid_address_ippref(_a) (_a)->ippref
@@ -221,6 +226,7 @@ void gid_address_ip_set(gid_address_t * dst, void * src, u8 version);
   _(mac)                          \
   _(sd)
 
+/* *INDENT-OFF* */
 #define _(_n)                                 \
 u16    _n ## _size_to_write (void * pref);    \
 u16    _n ## _write (u8 * p, void * pref);    \
@@ -230,11 +236,12 @@ void   _n ## _copy (void * dst , void * src);
 
 foreach_gid_address_type_fcns
 #undef _
+/* *INDENT-ON* */
 
 always_inline u64
-mac_to_u64(u8 *m)
+mac_to_u64 (u8 * m)
 {
-  return (*((u64 *)m) & 0xffffffffffff);
+  return (*((u64 *) m) & 0xffffffffffff);
 }
 
 typedef struct
@@ -242,7 +249,8 @@ typedef struct
   /* mark locator as local as opposed to remote */
   u8 local;
   u8 state;
-  union {
+  union
+  {
     u32 sw_if_index;
     gid_address_t address;
   };
@@ -252,7 +260,7 @@ typedef struct
   u8 mweight;
 } locator_t;
 
-u32 locator_parse (void * ptr, locator_t * loc);
+u32 locator_parse (void *ptr, locator_t * loc);
 void locator_copy (locator_t * dst, locator_t * src);
 u32 locator_cmp (locator_t * l1, locator_t * l2);
 void locator_free (locator_t * l);
@@ -260,10 +268,10 @@ void locator_free (locator_t * l);
 typedef struct
 {
   /* locator-set name */
-  u8 * name;
+  u8 *name;
 
   /* vector of locator indices */
-  u32 * locator_indices;
+  u32 *locator_indices;
   u8 local;
 } locator_set_t;
 
@@ -290,8 +298,16 @@ typedef struct locator_pair
   ip_address_t lcl_loc;
   ip_address_t rmt_loc;
 
-  u8 priority;  /* TODO remove */
+  u8 priority;			/* TODO remove */
   u8 weight;
 } locator_pair_t;
 
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
