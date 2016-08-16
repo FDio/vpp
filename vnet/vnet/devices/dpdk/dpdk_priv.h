@@ -36,7 +36,6 @@
 #define foreach_eal_double_hyphen_predicate_arg \
 _(no-shconf)                                    \
 _(no-hpet)                                      \
-_(no-pci)                                       \
 _(no-huge)                                      \
 _(vmware-tsc-map)                               \
 _(virtio-vhost)

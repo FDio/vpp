@@ -1042,14 +1042,18 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
         ;
       else if (unformat (input, "enable-vhost-user"))
         conf->use_virtio_vhost = 0;
+      else if (unformat (input, "no-pci"))
+	{
+	  no_pci = 1;
+	  tmp = format (0, "--no-pci%c", 0);
+	  vec_add1 (conf->eal_init_args, tmp);
+	}
       else if (unformat (input, "poll-sleep %d", &dm->poll_sleep))
         ;
 
 #define _(a)                                    \
       else if (unformat(input, #a))             \
         {                                       \
-          if (!strncmp(#a, "no-pci", 6))        \
-            no_pci = 1;                         \
           tmp = format (0, "--%s%c", #a, 0);    \
           vec_add1 (conf->eal_init_args, tmp);    \
         }
@@ -1170,8 +1174,11 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
           struct stat sb_numa, sb_nonnuma;
 
           p = format(p, numa_path, c);
-          stat(numa_path, &sb_numa);
-          stat(nonnuma_path, &sb_nonnuma);
+          if (stat(numa_path, &sb_numa) < 0)
+            sb_numa.st_mode = 0;
+
+          if (stat(nonnuma_path, &sb_nonnuma) < 0)
+            sb_nonnuma.st_mode = 0;
 
           if (S_ISDIR(sb_numa.st_mode)) {
             path = (char*)format((u8*)path, "%s%s", p, suffix);
@@ -1609,10 +1616,15 @@ dpdk_process (vlib_main_t * vm,
 	      if (nlink > 0) {
 		  vnet_hw_interface_t * bhi;
 		  ethernet_interface_t * bei;
+		  int rv;
+
 		  /* Get MAC of 1st slave link */
 		  rte_eth_macaddr_get(slink[0], (struct ether_addr *)addr);
 		  /* Set MAC of bounded interface to that of 1st slave link */
-		  rte_eth_bond_mac_address_set(i, (struct ether_addr *)addr);
+		  rv = rte_eth_bond_mac_address_set(i, (struct ether_addr *)addr);
+		  if (rv < 0)
+		    clib_warning("Failed to set MAC address");
+
 		  /* Populate MAC of bonded interface in VPP hw tables */
 		  bhi = vnet_get_hw_interface(
 		      vnm, dm->devices[i].vlib_hw_if_index);
