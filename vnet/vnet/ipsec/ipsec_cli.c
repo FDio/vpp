@@ -171,7 +171,7 @@ ipsec_spd_add_del_command_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 spd_id;
+  u32 spd_id = ~0;
   int is_add = ~0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -191,6 +191,9 @@ ipsec_spd_add_del_command_fn (vlib_main_t * vm,
     }
 
   unformat_free (line_input);
+
+  if (spd_id == ~0)
+    return clib_error_return (0, "please specify SPD ID");
 
   ipsec_add_del_spd (vm, spd_id, is_add);
 

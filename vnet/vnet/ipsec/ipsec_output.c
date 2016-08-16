@@ -103,6 +103,9 @@ ipsec_output_policy_match (ipsec_spd_t * spd, u8 pr, u32 la, u32 ra, u16 lp,
   ipsec_policy_t *p;
   u32 *i;
 
+  if (!spd)
+    return 0;
+
   vec_foreach (i, spd->ipv4_outbound_policies)
   {
     p = pool_elt_at_index (spd->policies, *i);
@@ -158,6 +161,9 @@ ipsec_output_ip6_policy_match (ipsec_spd_t * spd,
 {
   ipsec_policy_t *p;
   u32 *i;
+
+  if (!spd)
+    return 0;
 
   vec_foreach (i, spd->ipv6_outbound_policies)
   {
@@ -365,7 +371,7 @@ ipsec_output_node_fn (vlib_main_t * vm,
       from += 1;
       n_left_from -= 1;
 
-      if (PREDICT_FALSE ((last_next_node_index != next_node_index)))
+      if (PREDICT_FALSE ((last_next_node_index != next_node_index) || f == 0))
 	{
 	  /* if this is not 1st frame */
 	  if (f)

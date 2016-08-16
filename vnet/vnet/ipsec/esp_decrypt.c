@@ -484,11 +484,11 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 		{
 		  o_b0->flags |= VLIB_BUFFER_IS_TRACED;
 		  o_b0->trace_index = i_b0->trace_index;
+		  esp_decrypt_trace_t *tr =
+		    vlib_add_trace (vm, node, o_b0, sizeof (*tr));
+		  tr->crypto_alg = sa0->crypto_alg;
+		  tr->integ_alg = sa0->integ_alg;
 		}
-	      esp_decrypt_trace_t *tr =
-		vlib_add_trace (vm, node, o_b0, sizeof (*tr));
-	      tr->crypto_alg = sa0->crypto_alg;
-	      tr->integ_alg = sa0->integ_alg;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -501,7 +501,8 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 			       from_frame->n_vectors);
 
 free_buffers_and_exit:
-  vlib_buffer_free (vm, recycle, vec_len (recycle));
+  if (recycle)
+    vlib_buffer_free (vm, recycle, vec_len (recycle));
   vec_free (recycle);
   return from_frame->n_vectors;
 }
