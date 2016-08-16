@@ -40,13 +40,15 @@
 #ifndef included_ethernet_packet_h
 #define included_ethernet_packet_h
 
-typedef enum {
+typedef enum
+{
 #define ethernet_type(n,s) ETHERNET_TYPE_##s = n,
 #include <vnet/ethernet/types.def>
 #undef ethernet_type
 } ethernet_type_t;
 
-typedef struct {
+typedef struct
+{
   /* Source/destination address. */
   u8 dst_address[6];
   u8 src_address[6];
@@ -61,18 +63,25 @@ typedef struct {
 /* I/G bit: individual (unicast)/group (broadcast/multicast). */
 always_inline uword
 ethernet_address_cast (u8 * a)
-{ return (a[0] >> 0) & 1; }
+{
+  return (a[0] >> 0) & 1;
+}
 
 always_inline uword
 ethernet_address_is_locally_administered (u8 * a)
-{ return (a[0] >> 1) & 1; }
+{
+  return (a[0] >> 1) & 1;
+}
 
 always_inline void
 ethernet_address_set_locally_administered (u8 * a)
-{ a[0] |= 1 << 1; }
+{
+  a[0] |= 1 << 1;
+}
 
 /* For VLAN ethernet type. */
-typedef struct {
+typedef struct
+{
   /* 3 bit priority, 1 bit CFI and 12 bit vlan id. */
   u16 priority_cfi_and_id;
 
@@ -84,7 +93,8 @@ typedef struct {
 
 
 /* VLAN with ethertype first and vlan id second */
-typedef struct {
+typedef struct
+{
   /* vlan type */
   u16 type;
 
@@ -93,3 +103,11 @@ typedef struct {
 } ethernet_vlan_header_tv_t;
 
 #endif /* included_ethernet_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

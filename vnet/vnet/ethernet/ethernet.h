@@ -46,20 +46,23 @@
 
 always_inline u64
 ethernet_mac_address_u64 (u8 * a)
-{ return (((u64) a[0] << (u64) (5*8))
-	  | ((u64) a[1] << (u64) (4*8))
-	  | ((u64) a[2] << (u64) (3*8))
-	  | ((u64) a[3] << (u64) (2*8))
-	  | ((u64) a[4] << (u64) (1*8))
-	  | ((u64) a[5] << (u64) (0*8))); }
-
-static inline int ethernet_mac_address_is_multicast_u64 (u64 a)
 {
-    return (a & (1ULL<<(5*8))) != 0;
+  return (((u64) a[0] << (u64) (5 * 8))
+	  | ((u64) a[1] << (u64) (4 * 8))
+	  | ((u64) a[2] << (u64) (3 * 8))
+	  | ((u64) a[3] << (u64) (2 * 8))
+	  | ((u64) a[4] << (u64) (1 * 8)) | ((u64) a[5] << (u64) (0 * 8)));
+}
+
+static inline int
+ethernet_mac_address_is_multicast_u64 (u64 a)
+{
+  return (a & (1ULL << (5 * 8))) != 0;
 }
 
 /* Max. sized ethernet/vlan header for parsing. */
-typedef struct {
+typedef struct
+{
   ethernet_header_t ethernet;
 
   /* Allow up to 2 stacked vlan headers. */
@@ -69,13 +72,14 @@ typedef struct {
 struct vnet_hw_interface_t;
 /* Ethernet flag change callback. */
 typedef u32 (ethernet_flag_change_function_t)
-(vnet_main_t * vnm, struct vnet_hw_interface_t * hi, u32 flags);
+  (vnet_main_t * vnm, struct vnet_hw_interface_t * hi, u32 flags);
 
 #define ETHERNET_MIN_PACKET_BYTES  64
 #define ETHERNET_MAX_PACKET_BYTES  9216
 
 /* Ethernet interface instance. */
-typedef struct ethernet_interface {
+typedef struct ethernet_interface
+{
 
   /* Accept all packets (promiscuous mode). */
 #define ETHERNET_INTERFACE_FLAG_ACCEPT_ALL (1 << 0)
@@ -88,7 +92,7 @@ typedef struct ethernet_interface {
   ((flags) & ETHERNET_INTERFACE_FLAG_MTU)
 
   /* Callback, e.g. to turn on/off promiscuous mode */
-  ethernet_flag_change_function_t * flag_change;
+  ethernet_flag_change_function_t *flag_change;
 
   u32 driver_instance;
 
@@ -98,9 +102,10 @@ typedef struct ethernet_interface {
 
 extern vnet_hw_interface_class_t ethernet_hw_interface_class;
 
-typedef struct {
+typedef struct
+{
   /* Name (a c string). */
-  char * name;
+  char *name;
 
   /* Ethernet type in host byte order. */
   ethernet_type_t type;
@@ -112,7 +117,8 @@ typedef struct {
   u32 next_index;
 } ethernet_type_info_t;
 
-typedef enum {
+typedef enum
+{
 #define ethernet_error(n,c,s) ETHERNET_ERROR_##n,
 #include <vnet/ethernet/error.def>
 #undef ethernet_error
@@ -122,9 +128,10 @@ typedef enum {
 
 // Structs used when parsing packet to find sw_if_index
 
-typedef struct {
+typedef struct
+{
   u32 sw_if_index;
-  u32 flags;       
+  u32 flags;
   // config entry is-valid flag
   // exact match flags (valid if packet has 0/1/2/3 tags)
   // L2 vs L3 forwarding mode
@@ -138,44 +145,51 @@ typedef struct {
 } subint_config_t;
 
 always_inline u32
-eth_create_valid_subint_match_flags (u32 num_tags) {
+eth_create_valid_subint_match_flags (u32 num_tags)
+{
   return SUBINT_CONFIG_VALID | (1 << num_tags);
 }
 
 
-typedef struct {
+typedef struct
+{
   subint_config_t untagged_subint;
   subint_config_t default_subint;
-  u16             dot1q_vlans;    // pool id for vlan table
-  u16             dot1ad_vlans;   // pool id for vlan table
+  u16 dot1q_vlans;		// pool id for vlan table
+  u16 dot1ad_vlans;		// pool id for vlan table
 } main_intf_t;
 
-typedef struct {
+typedef struct
+{
   subint_config_t single_tag_subint;
   subint_config_t inner_any_subint;
-  u32             qinqs;          // pool id for qinq table
+  u32 qinqs;			// pool id for qinq table
 } vlan_intf_t;
 
-typedef struct {
+typedef struct
+{
   vlan_intf_t vlans[ETHERNET_N_VLAN];
 } vlan_table_t;
 
-typedef struct {
+typedef struct
+{
   subint_config_t subint;
 } qinq_intf_t;
 
-typedef struct {
+typedef struct
+{
   qinq_intf_t vlans[ETHERNET_N_VLAN];
 } qinq_table_t;
 
 // Structure mapping to a next index based on ethertype.
 // Common ethertypes are stored explicitly, others are
 // stored in a sparse table.
-typedef struct {
+typedef struct
+{
   /* Sparse vector mapping ethernet type in network byte order
      to next index. */
-  u16 * input_next_by_type;
-  u32 * sparse_index_by_input_next_index;
+  u16 *input_next_by_type;
+  u32 *sparse_index_by_input_next_index;
 
   /* cached next indexes for common ethertypes */
   u32 input_next_ip4;
@@ -184,8 +198,9 @@ typedef struct {
 } next_by_ethertype_t;
 
 
-typedef struct {
-  vlib_main_t * vlib_main;
+typedef struct
+{
+  vlib_main_t *vlib_main;
 
   /* next node index for the L3 input node of each ethertype */
   next_by_ethertype_t l3_next;
@@ -198,22 +213,22 @@ typedef struct {
   u32 redirect_l3_next;
 
   /* Pool of ethernet interface instances. */
-  ethernet_interface_t * interfaces;
+  ethernet_interface_t *interfaces;
 
-  ethernet_type_info_t * type_infos;
+  ethernet_type_info_t *type_infos;
 
   /* Hash tables mapping name/type to type info index. */
-  uword * type_info_by_name, * type_info_by_type;
+  uword *type_info_by_name, *type_info_by_type;
 
   // The root of the vlan parsing tables. A vector with one element
   // for each main interface, indexed by hw_if_index.
-  main_intf_t * main_intfs;
+  main_intf_t *main_intfs;
 
   // Pool of vlan tables
-  vlan_table_t * vlan_pool;
+  vlan_table_t *vlan_pool;
 
   // Pool of qinq tables;
-  qinq_table_t * qinq_pool;
+  qinq_table_t *qinq_pool;
 
   /* Set to one to use AB.CD.EF instead of A:B:C:D:E:F as ethernet format. */
   int format_ethernet_address_16bit;
@@ -228,49 +243,43 @@ ethernet_main_t ethernet_main;
 always_inline ethernet_type_info_t *
 ethernet_get_type_info (ethernet_main_t * em, ethernet_type_t type)
 {
-  uword * p = hash_get (em->type_info_by_type, type);
+  uword *p = hash_get (em->type_info_by_type, type);
   return p ? vec_elt_at_index (em->type_infos, p[0]) : 0;
 }
 
-ethernet_interface_t *
-ethernet_get_interface (ethernet_main_t * em, u32 hw_if_index);
+ethernet_interface_t *ethernet_get_interface (ethernet_main_t * em,
+					      u32 hw_if_index);
 
-clib_error_t *
-ethernet_register_interface (vnet_main_t * vnm,
-			     u32 dev_class_index,
-			     u32 dev_instance,
-			     u8 * address,
-			     u32 * hw_if_index_return, 
-                             ethernet_flag_change_function_t flag_change);
+clib_error_t *ethernet_register_interface (vnet_main_t * vnm,
+					   u32 dev_class_index,
+					   u32 dev_instance,
+					   u8 * address,
+					   u32 * hw_if_index_return,
+					   ethernet_flag_change_function_t
+					   flag_change);
 
 void ethernet_delete_interface (vnet_main_t * vnm, u32 hw_if_index);
 
 /* Register given node index to take input for given ethernet type. */
 void
 ethernet_register_input_type (vlib_main_t * vm,
-			      ethernet_type_t type,
-			      u32 node_index);
+			      ethernet_type_t type, u32 node_index);
 
 /* Register given node index to take input for packet from L2 interfaces. */
-void
-ethernet_register_l2_input (vlib_main_t * vm,
-                           u32 node_index);
+void ethernet_register_l2_input (vlib_main_t * vm, u32 node_index);
 
 /* Register given node index to take redirected L3 traffic, and enable L3 redirect */
-void
-ethernet_register_l3_redirect (vlib_main_t * vm,
-                               u32 node_index);
+void ethernet_register_l3_redirect (vlib_main_t * vm, u32 node_index);
 
 /* Formats ethernet address X:X:X:X:X:X */
-u8 * format_ethernet_address (u8 * s, va_list * args);
-u8 * format_ethernet_type (u8 * s, va_list * args);
-u8 * format_ethernet_vlan_tci (u8 * s, va_list * va);
-u8 * format_ethernet_header (u8 * s, va_list * args);
-u8 * format_ethernet_header_with_length (u8 * s, va_list * args);
+u8 *format_ethernet_address (u8 * s, va_list * args);
+u8 *format_ethernet_type (u8 * s, va_list * args);
+u8 *format_ethernet_vlan_tci (u8 * s, va_list * va);
+u8 *format_ethernet_header (u8 * s, va_list * args);
+u8 *format_ethernet_header_with_length (u8 * s, va_list * args);
 
 /* Parse ethernet address in either X:X:X:X:X:X unix or X.X.X cisco format. */
-uword
-unformat_ethernet_address (unformat_input_t * input, va_list * args);
+uword unformat_ethernet_address (unformat_input_t * input, va_list * args);
 
 /* Parse ethernet type as 0xXXXX or type name from ethernet/types.def.
    In either host or network byte order. */
@@ -282,8 +291,7 @@ unformat_ethernet_type_net_byte_order (unformat_input_t * input,
 				       va_list * args);
 
 /* Parse ethernet header. */
-uword
-unformat_ethernet_header (unformat_input_t * input, va_list * args);
+uword unformat_ethernet_header (unformat_input_t * input, va_list * args);
 
 /* Parse ethernet interface name; return hw_if_index. */
 uword unformat_ethernet_interface (unformat_input_t * input, va_list * args);
@@ -293,8 +301,8 @@ uword unformat_pg_ethernet_header (unformat_input_t * input, va_list * args);
 always_inline void
 ethernet_setup_node (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  pg_node_t * pn = pg_get_node (node_index);
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  pg_node_t *pn = pg_get_node (node_index);
 
   n->format_buffer = format_ethernet_header_with_length;
   n->unformat_buffer = unformat_ethernet_header;
@@ -305,8 +313,7 @@ always_inline ethernet_header_t *
 ethernet_buffer_get_header (vlib_buffer_t * b)
 {
   return (void *)
-    (b->data
-     + vnet_buffer (b)->ethernet.start_of_ethernet_header);
+    (b->data + vnet_buffer (b)->ethernet.start_of_ethernet_header);
 }
 
 /** Returns the number of VLAN headers in the current Ethernet frame in the
@@ -353,48 +360,47 @@ ethernet_buffer_get_header (vlib_buffer_t * b)
         sizeof(ethernet_header_t) \
 )
 
-ethernet_main_t * ethernet_get_main (vlib_main_t * vm);
+ethernet_main_t *ethernet_get_main (vlib_main_t * vm);
 u32 ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags);
-void ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index, u32 l2);
-void ethernet_sw_interface_set_l2_mode_noport (vnet_main_t * vnm, u32 sw_if_index, u32 l2);
-void ethernet_set_rx_redirect (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 enable);
+void ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index,
+					u32 l2);
+void ethernet_sw_interface_set_l2_mode_noport (vnet_main_t * vnm,
+					       u32 sw_if_index, u32 l2);
+void ethernet_set_rx_redirect (vnet_main_t * vnm, vnet_hw_interface_t * hi,
+			       u32 enable);
 
 int
 vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
-                                u32 sw_if_index,
-                                u32 fib_index,
-                                void *a_arg,
-                                int is_static);
+				u32 sw_if_index,
+				u32 fib_index, void *a_arg, int is_static);
 
 int
 vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,
-                                  u32 sw_if_index, u32 fib_index,
-                                  void * a_arg);
+				  u32 sw_if_index, u32 fib_index,
+				  void *a_arg);
 
 int vnet_proxy_arp_fib_reset (u32 fib_id);
 
-clib_error_t * next_by_ethertype_init (next_by_ethertype_t * l3_next);
-clib_error_t * next_by_ethertype_register (next_by_ethertype_t * l3_next,
-                                           u32                   ethertype,
-                                           u32                   next_index);
+clib_error_t *next_by_ethertype_init (next_by_ethertype_t * l3_next);
+clib_error_t *next_by_ethertype_register (next_by_ethertype_t * l3_next,
+					  u32 ethertype, u32 next_index);
 
-int vnet_create_loopback_interface (u32 * sw_if_indexp, u8 *mac_address);
+int vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address);
 int vnet_delete_loopback_interface (u32 sw_if_index);
 
 // Perform ethernet subinterface classification table lookups given
 // the ports's sw_if_index and fields extracted from the ethernet header.
 // The resulting tables are used by identify_subint().
 always_inline void
-eth_vlan_table_lookups (ethernet_main_t *em,
-                        vnet_main_t * vnm, 
-                        u32 port_sw_if_index0,
-                        u16 first_ethertype, 
-                        u16 outer_id,
-                        u16 inner_id,
-                        vnet_hw_interface_t ** hi,
-                        main_intf_t **main_intf, 
-                        vlan_intf_t **vlan_intf,
-                        qinq_intf_t **qinq_intf)
+eth_vlan_table_lookups (ethernet_main_t * em,
+			vnet_main_t * vnm,
+			u32 port_sw_if_index0,
+			u16 first_ethertype,
+			u16 outer_id,
+			u16 inner_id,
+			vnet_hw_interface_t ** hi,
+			main_intf_t ** main_intf,
+			vlan_intf_t ** vlan_intf, qinq_intf_t ** qinq_intf)
 {
   vlan_table_t *vlan_table;
   qinq_table_t *qinq_table;
@@ -411,8 +417,7 @@ eth_vlan_table_lookups (ethernet_main_t *em,
   // many tags on the packet. This makes the lookups and comparisons
   // easier (and less branchy).
   vlan_table_id = (first_ethertype == ETHERNET_TYPE_DOT1AD) ?
-                  (*main_intf)->dot1ad_vlans :
-                  (*main_intf)->dot1q_vlans;
+    (*main_intf)->dot1ad_vlans : (*main_intf)->dot1q_vlans;
   vlan_table = vec_elt_at_index (em->vlan_pool, vlan_table_id);
   *vlan_intf = &vlan_table->vlans[outer_id];
 
@@ -427,47 +432,50 @@ eth_vlan_table_lookups (ethernet_main_t *em,
 // Returns 1 if a matching subinterface was found, otherwise returns 0.
 always_inline u32
 eth_identify_subint (vnet_hw_interface_t * hi,
-                     vlib_buffer_t * b0,
-                     u32 match_flags, 
-                     main_intf_t * main_intf, 
-                     vlan_intf_t * vlan_intf, 
-                     qinq_intf_t * qinq_intf, 
-                     u32 * new_sw_if_index, 
-                     u8 * error0, 
-                     u32 * is_l2) 
+		     vlib_buffer_t * b0,
+		     u32 match_flags,
+		     main_intf_t * main_intf,
+		     vlan_intf_t * vlan_intf,
+		     qinq_intf_t * qinq_intf,
+		     u32 * new_sw_if_index, u8 * error0, u32 * is_l2)
 {
-  subint_config_t * subint;
+  subint_config_t *subint;
 
   // Each comparison is checking both the valid flag and the number of tags
   // (incorporating exact-match/non-exact-match).
 
   // check for specific double tag 
   subint = &qinq_intf->subint;
-  if ((subint->flags & match_flags) == match_flags) goto matched;
+  if ((subint->flags & match_flags) == match_flags)
+    goto matched;
 
   // check for specific outer and 'any' inner
   subint = &vlan_intf->inner_any_subint;
-  if ((subint->flags & match_flags) == match_flags) goto matched;
+  if ((subint->flags & match_flags) == match_flags)
+    goto matched;
 
   // check for specific single tag 
   subint = &vlan_intf->single_tag_subint;
-  if ((subint->flags & match_flags) == match_flags) goto matched;
+  if ((subint->flags & match_flags) == match_flags)
+    goto matched;
 
   // check for untagged interface
   subint = &main_intf->untagged_subint;
-  if ((subint->flags & match_flags) == match_flags) goto matched;
+  if ((subint->flags & match_flags) == match_flags)
+    goto matched;
 
   // check for default interface 
   subint = &main_intf->default_subint;
-  if ((subint->flags & match_flags) == match_flags) goto matched;
+  if ((subint->flags & match_flags) == match_flags)
+    goto matched;
 
   // No matching subinterface
   *new_sw_if_index = ~0;
   *error0 = ETHERNET_ERROR_UNKNOWN_VLAN;
   *is_l2 = 0;
   return 0;
-              
- matched:
+
+matched:
   *new_sw_if_index = subint->sw_if_index;
   *is_l2 = subint->flags & SUBINT_CONFIG_L2;
   return 1;
@@ -475,35 +483,43 @@ eth_identify_subint (vnet_hw_interface_t * hi,
 
 // Compare two ethernet macs. Return 1 if they are the same, 0 if different
 always_inline u32
-eth_mac_equal (u8 * mac1, u8 * mac2) {
-  return (*((u32 *)(mac1+0)) == *((u32 *)(mac2+0)) &&
-          *((u32 *)(mac1+2)) == *((u32 *)(mac2+2)));
+eth_mac_equal (u8 * mac1, u8 * mac2)
+{
+  return (*((u32 *) (mac1 + 0)) == *((u32 *) (mac2 + 0)) &&
+	  *((u32 *) (mac1 + 2)) == *((u32 *) (mac2 + 2)));
 }
 
 
-always_inline ethernet_main_t * 
+always_inline ethernet_main_t *
 vnet_get_ethernet_main (void)
 {
   return &ethernet_main;
 }
 
-void vnet_register_ip4_arp_resolution_event (vnet_main_t * vnm, 
-                                             void * address_arg,
-                                             uword node_index,
-                                             uword type_opaque,
-                                             uword data);
+void vnet_register_ip4_arp_resolution_event (vnet_main_t * vnm,
+					     void *address_arg,
+					     uword node_index,
+					     uword type_opaque, uword data);
 
 
-int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm, 
-                                       void * data_callback,
-                                       u32 pid,
-                                       void * address_arg,
-                                       uword node_index,
-                                       uword type_opaque,
-                                       uword data, int is_add);
+int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
+				       void *data_callback,
+				       u32 pid,
+				       void *address_arg,
+				       uword node_index,
+				       uword type_opaque,
+				       uword data, int is_add);
 
-u32 vnet_arp_glean_add(u32 fib_index, void * next_hop_arg);
+u32 vnet_arp_glean_add (u32 fib_index, void *next_hop_arg);
 
 extern vlib_node_registration_t ethernet_input_node;
 
 #endif /* included_ethernet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
