@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_1d3ab736",
+        "filename": "vpp-api/java/Readme.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-08-16T11:23:01Z",
+      "side": 1,
+      "message": "will be fixed in subsequent commit",
+      "parentUuid": "3a1d315d_77baeae2",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 10,
+        "endChar": 13
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_57636eb1",
         "filename": "vpp-api/java/jvpp-core/jvpp_core.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2016-08-15T12:43:17Z",
       "side": 1,
       "message": "add a TODO to reuse this common code for plugins",
+      "range": {
+        "startLine": 39,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 14
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_fdcdbb87",
+        "filename": "vpp-api/java/jvpp-core/jvpp_core.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-08-16T11:23:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_57636eb1",
       "range": {
         "startLine": 39,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_ddcaff6d",
+        "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/JVpp.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-08-16T11:23:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_57d80e53",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 25
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_77d30a39",
         "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/JVpp.java",
         "patchSetId": 1
@@ -82,6 +154,30 @@
       "writtenOn": "2016-08-15T12:43:17Z",
       "side": 1,
       "message": "Some documentation might be useful to the public classes/interfaces",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 45
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_bdc74364",
+        "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/JVpp.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-08-16T11:23:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_77d30a39",
       "range": {
         "startLine": 6,
         "startChar": 0,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_1db077f3",
+        "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/JVppRegistryImpl.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-08-16T11:23:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_17e29603",
+      "range": {
+        "startLine": 50,
+        "startChar": 27,
+        "endLine": 50,
+        "endChar": 35
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_d7e3fe03",
         "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/JVppRegistryImpl.java",
         "patchSetId": 1
@@ -128,6 +248,30 @@
       "writtenOn": "2016-08-15T12:43:17Z",
       "side": 1,
       "message": "... the control ping issue outlined in dto/ControlPing.java",
+      "range": {
+        "startLine": 80,
+        "startChar": 0,
+        "endLine": 81,
+        "endChar": 101
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_bd4863cd",
+        "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/JVppRegistryImpl.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-08-16T11:23:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_d7e3fe03",
       "range": {
         "startLine": 80,
         "startChar": 0,
@@ -163,6 +307,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_9d45a7b5",
+        "filename": "vpp-api/java/jvpp-registry/org/openvpp/jvpp/dto/ControlPing.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-08-16T11:23:01Z",
+      "side": 1,
+      "message": "thanks for spotting this, added control ping to all plugin interfaces",
+      "parentUuid": "3a1d315d_b719a224",
+      "range": {
+        "startLine": 27,
+        "startChar": 8,
+        "endLine": 27,
+        "endChar": 17
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_573c8e93",
         "filename": "vpp-api/java/jvpp/gen/jvppgen/jvpp_c_gen.py",
         "patchSetId": 1
@@ -186,6 +354,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_3d821301",
+        "filename": "vpp-api/java/jvpp/gen/jvppgen/jvpp_c_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 543,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-08-16T11:23:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_573c8e93",
+      "range": {
+        "startLine": 543,
+        "startChar": 29,
+        "endLine": 543,
+        "endChar": 32
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_77378ab1",
         "filename": "vpp-api/java/jvpp/gen/jvppgen/jvpp_impl_gen.py",
         "patchSetId": 1
@@ -197,6 +389,30 @@
       "writtenOn": "2016-08-15T12:43:17Z",
       "side": 1,
       "message": "can be removed",
+      "range": {
+        "startLine": 123,
+        "startChar": 0,
+        "endLine": 129,
+        "endChar": 2
+      },
+      "revId": "1c7815eb0cbf8635532ecfcd00798de4732988be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_3d0c5394",
+        "filename": "vpp-api/java/jvpp/gen/jvppgen/jvpp_impl_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-08-16T11:23:01Z",
+      "side": 1,
+      "message": "control ping call is delegated to the registry",
+      "parentUuid": "3a1d315d_77378ab1",
       "range": {
         "startLine": 123,
         "startChar": 0,
