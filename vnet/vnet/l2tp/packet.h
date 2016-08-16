@@ -18,7 +18,7 @@
 #ifndef __included_l2tp_packet_h__
 #define __included_l2tp_packet_h__
 
-/* 
+/*
  * See RFC4719 for packet format.
  * Note: the l2_specific_sublayer is present in current Linux l2tpv3
  * tunnels. It is not present in IOS XR l2tpv3 tunnels.
@@ -27,8 +27,8 @@
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 {
-  u32 session_id; 
-  u64 cookie; u32 
+  u32 session_id;
+  u64 cookie; u32
   l2_specific_sublayer;	/* set to 0 (if present) */
 }) l2tpv3_header_t;
 /* *INDENT-ON* */

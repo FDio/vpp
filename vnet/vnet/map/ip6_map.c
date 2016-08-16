@@ -1062,7 +1062,7 @@ ip6_map_icmp_relay (vlib_main_t * vm,
 	  /*
 	   * In:
 	   *  IPv6 header           (40)
-	   *  ICMPv6 header          (8) 
+	   *  ICMPv6 header          (8)
 	   *  IPv6 header           (40)
 	   *  Original IPv4 header / packet
 	   * Out:

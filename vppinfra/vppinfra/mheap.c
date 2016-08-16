@@ -1545,7 +1545,7 @@ mheap_get_trace (void *v, uword offset, uword size)
 	      hash_pair_t *p;
 	      mheap_trace_t *q;
             /* *INDENT-OFF* */
-	    hash_foreach_pair (p, tm->trace_by_callers, 
+	    hash_foreach_pair (p, tm->trace_by_callers,
             ({
               q = uword_to_pointer (p->key, mheap_trace_t *);
               ASSERT (q >= old_start && q < old_end);

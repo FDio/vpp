@@ -60,7 +60,7 @@ typedef CLIB_PACKED (struct
 		     }) cdp_tlv_t;
 
 /*
- * TLV codes. 
+ * TLV codes.
  */
 #define foreach_cdp_tlv_type                                    \
 _(unused)                                                       \
@@ -120,11 +120,11 @@ typedef enum
           |        Address length         |    Address (variable) ...
           +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-	  PT: Protocol type 
-	      1 = NLPID format 
+	  PT: Protocol type
+	      1 = NLPID format
               2 = 802.2 format
 
-	  PT Length: 
+	  PT Length:
 	      Length of protocol field, 1 for PT = 1, and either 3 or 8 for
 	      802.2 format depending if SNAP is used for PT = 2.
 
@@ -133,11 +133,11 @@ typedef enum
           field:    <SSAP><DSAP><CTRL><-------OUI------><protocl_TYPE>
                     |     |     |     |     |     |     |     |      |
           bytes:    0     1     2     3     4     5     6     7      8
-        
+
           where the first 3 bytes are 0xAAAA03 for SNAP encoded addresses.
           The OUI is 000000 for ethernet and <protocl_TYPE>
           is the assigned Ethernet type code for the particular protocol.
-          e.g. for DECnet the encoding is AAAA03 000000 6003.   
+          e.g. for DECnet the encoding is AAAA03 000000 6003.
                for IPv6   the encoding is AAAA03 000000 86DD
 */
 

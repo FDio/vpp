@@ -83,7 +83,7 @@ typedef struct
   /* segment list, when inserting an ip6 SR header */
   ip6_address_t *segments;
 
-  /* 
+  /*
    * "Tag" list, aka segments inserted at the end of the list,
    * past last_seg
    */

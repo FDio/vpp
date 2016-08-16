@@ -31,7 +31,7 @@ static vlib_node_registration_t cdp_process_node;
 
 /*
  * packet counter strings
- * Dump these counters via the "show error" CLI command 
+ * Dump these counters via the "show error" CLI command
  */
 static char *cdp_error_strings[] = {
 #define _(sym,string) string,
@@ -51,8 +51,8 @@ typedef enum
 } cdp_next_t;
 
 /*
- * Process a frame of cdp packets 
- * Expect 1 packet / frame 
+ * Process a frame of cdp packets
+ * Expect 1 packet / frame
  */
 static uword
 cdp_node_fn (vlib_main_t * vm,
@@ -100,7 +100,7 @@ cdp_node_fn (vlib_main_t * vm,
 }
 
 /*
- * cdp input graph node declaration 
+ * cdp input graph node declaration
  */
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (cdp_input_node, static) = {
@@ -108,12 +108,12 @@ VLIB_REGISTER_NODE (cdp_input_node, static) = {
   .name = "cdp-input",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
-  
+
   .n_errors = CDP_N_ERROR,
   .error_strings = cdp_error_strings,
-  
+
   .format_trace = cdp_input_format_trace,
-  
+
   .n_next_nodes = CDP_INPUT_N_NEXT,
   .next_nodes = {
     [CDP_INPUT_NEXT_NORMAL] = "error-drop",
@@ -122,7 +122,7 @@ VLIB_REGISTER_NODE (cdp_input_node, static) = {
 /* *INDENT-ON* */
 
 /*
- * cdp periodic function 
+ * cdp periodic function
  */
 static uword
 cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
@@ -184,7 +184,7 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 }
 
 /*
- * cdp periodic node declaration 
+ * cdp periodic node declaration
  */
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (cdp_process_node, static) = {

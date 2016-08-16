@@ -265,7 +265,7 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
       u32 i, j;
       /* *INDENT-OFF* */
       pool_foreach_index(i, spd->policies, ({
-        vp = pool_elt_at_index(spd->policies, i); 
+        vp = pool_elt_at_index(spd->policies, i);
         if (vp->priority != policy->priority)
           continue;
         if (vp->is_outbound != policy->is_outbound)
@@ -352,7 +352,7 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
                     vec_del1 (spd->ipv4_outbound_policies, j);
                     break;
                   }
-                } 
+                }
               }
             else
               {
