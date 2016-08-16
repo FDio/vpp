@@ -81,9 +81,9 @@ static char *mac_swap_error_strings[] = {
 #undef _
 };
 
-/* 
+/*
  * To drop a pkt and increment one of the previous counters:
- * 
+ *
  * set b0->error = error_node->errors[RANDOM_ERROR_SAMPLE];
  * set next0 to a disposition index bound to "error-drop".
  *
@@ -93,7 +93,7 @@ static char *mac_swap_error_strings[] = {
  *  u32 node_counter_base_index = n->error_heap_index;
  *  vlib_error_main_t * em = &vm->error_main;
  *  em->counters[node_counter_base_index + MAC_SWAP_ERROR_SAMPLE] += 1;
- * 
+ *
  */
 
 typedef enum
@@ -348,7 +348,7 @@ VLIB_REGISTER_NODE (mac_swap_node,static) = {
   .vector_size = sizeof (u32),
   .format_trace = format_swap_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  
+
   .n_errors = ARRAY_LEN(mac_swap_error_strings),
   .error_strings = mac_swap_error_strings,
 

@@ -512,7 +512,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 	  if (fp)
 	    rv = (*fp) (mc->data, a->ethernet, sw_if_index, 0);
 
-	  /* 
+	  /*
 	   * Signal the resolver process, as long as the user
 	   * says they want to be notified
 	   */
@@ -1095,9 +1095,9 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		    proxy_src.as_u32 =
 		      arp0->ip4_over_ethernet[1].ip4.data_u32;
 
-		    /* 
+		    /*
 		     * Rewind buffer, direct code above not to
-		     * think too hard about it. 
+		     * think too hard about it.
 		     * $$$ is the answer ever anything other than
 		     * vlib_buffer_reset(..)?
 		     */
@@ -1476,16 +1476,16 @@ vnet_arp_unset_ip4_over_ethernet_internal (vnet_main_t * vnm,
 
   memset (&args, 0, sizeof (args));
 
-  /* 
+  /*
    * Make sure that the route actually exists before we try to delete it,
    * and make sure that it's a rewrite adjacency.
    *
-   * If we point 1-N unnumbered interfaces at a loopback interface and 
-   * shut down the loopback before shutting down 1-N unnumbered 
-   * interfaces, the ARP cache will still have an entry, 
+   * If we point 1-N unnumbered interfaces at a loopback interface and
+   * shut down the loopback before shutting down 1-N unnumbered
+   * interfaces, the ARP cache will still have an entry,
    * but the route will have disappeared.
-   * 
-   * See also ip4_del_interface_routes (...) 
+   *
+   * See also ip4_del_interface_routes (...)
    *            -> ip4_delete_matching_routes (...).
    */
 
@@ -1496,7 +1496,7 @@ vnet_arp_unset_ip4_over_ethernet_internal (vnet_main_t * vnm,
   if (adj_index != lm->miss_adj_index)
     {
       adj = ip_get_adjacency (lm, adj_index);
-      /* 
+      /*
        * Stupid control-plane trick:
        * admin down an interface (removes arp routes from fib),
        * bring the interface back up (does not reinstall them)
@@ -1582,7 +1582,7 @@ vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 }
 
 /*
- * Remove any proxy arp entries asdociated with the 
+ * Remove any proxy arp entries asdociated with the
  * specificed fib.
  */
 int
@@ -1964,7 +1964,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	  macp0 = (u8 *) hash_get (last_bd_config->mac_by_ip4, ip0);
 
 	  if (PREDICT_FALSE (!macp0))
-	    goto next_l2_feature;	// MAC not found 
+	    goto next_l2_feature;	// MAC not found
 
 	  // MAC found, send ARP reply -
 	  // Convert ARP request packet to ARP reply
@@ -1976,7 +1976,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	  clib_memcpy (eth0->src_address, macp0, 6);
 	  n_replies_sent += 1;
 
-	  // For BVI, need to use l2-fwd node to send ARP reply as 
+	  // For BVI, need to use l2-fwd node to send ARP reply as
 	  // l2-output node cannot output packet to BVI properly
 	  cfg0 = vec_elt_at_index (l2im->configs, sw_if_index0);
 	  if (PREDICT_FALSE (cfg0->bvi))
@@ -2052,7 +2052,7 @@ VLIB_REGISTER_NODE (arp_term_l2bd_node, static) = {
 
 clib_error_t *
 arp_term_init (vlib_main_t * vm)
-{				// Initialize the feature next-node indexes 
+{				// Initialize the feature next-node indexes
   feat_bitmap_init_next_nodes (vm,
 			       arp_term_l2bd_node.index,
 			       L2INPUT_N_FEAT,

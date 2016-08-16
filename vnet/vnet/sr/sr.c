@@ -154,7 +154,7 @@ format_ip6_sr_header (u8 * s, va_list * args)
   s = format (s, "\n      flags %U", format_ip6_sr_header_flags,
 	      flags_host_byte_order, 0 /* bswap needed */ );
 
-  /* 
+  /*
    * Header length is in 8-byte units (minus one), so
    * divide by 2 to ascertain the number of ip6 addresses in the
    * segment list
@@ -347,7 +347,7 @@ sr_rewrite (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  /* 
+	  /*
 	   * $$$ parse through header(s) to pick the point
 	   * where we punch in the SR extention header
 	   */
@@ -372,10 +372,10 @@ sr_rewrite (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
 
-	  /* 
+	  /*
 	   * SR-unaware service chaining case: pkt coming back from
 	   * service has the original dst address, and will already
-	   * have an SR header. If so, send it to sr-local 
+	   * have an SR header. If so, send it to sr-local
 	   */
 	  if (PREDICT_FALSE (ip0->protocol == IPPROTO_IPV6_ROUTE))
 	    {
@@ -386,9 +386,9 @@ sr_rewrite (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      /* 
-	       * Copy data before the punch-in point left by the 
-	       * required amount. Assume (for the moment) that only 
+	      /*
+	       * Copy data before the punch-in point left by the
+	       * required amount. Assume (for the moment) that only
 	       * the main packet header needs to be copied.
 	       */
 	      clib_memcpy (((u8 *) ip0) - vec_len (t0->rewrite),
@@ -418,7 +418,7 @@ sr_rewrite (vlib_main_t * vm,
 	      next0 = sr_local_cb ? sr_local_cb (vm, node, b0, ip0, sr0) :
 		next0;
 
-	      /* 
+	      /*
 	       * Ignore "do not rewrite" shtik in this path
 	       */
 	      if (PREDICT_FALSE (next0 & 0x80000000))
@@ -463,7 +463,7 @@ sr_rewrite (vlib_main_t * vm,
 	      next1 = sr_local_cb ? sr_local_cb (vm, node, b1, ip1, sr1) :
 		next1;
 
-	      /* 
+	      /*
 	       * Ignore "do not rewrite" shtik in this path
 	       */
 	      if (PREDICT_FALSE (next1 & 0x80000000))
@@ -526,7 +526,7 @@ sr_rewrite (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  /* 
+	  /*
 	   * $$$ parse through header(s) to pick the point
 	   * where we punch in the SR extention header
 	   */
@@ -553,10 +553,10 @@ sr_rewrite (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (b0);
 
-	  /* 
+	  /*
 	   * SR-unaware service chaining case: pkt coming back from
 	   * service has the original dst address, and will already
-	   * have an SR header. If so, send it to sr-local 
+	   * have an SR header. If so, send it to sr-local
 	   */
 	  if (PREDICT_FALSE (ip0->protocol == IPPROTO_IPV6_ROUTE))
 	    {
@@ -567,9 +567,9 @@ sr_rewrite (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      /* 
-	       * Copy data before the punch-in point left by the 
-	       * required amount. Assume (for the moment) that only 
+	      /*
+	       * Copy data before the punch-in point left by the
+	       * required amount. Assume (for the moment) that only
 	       * the main packet header needs to be copied.
 	       */
 	      clib_memcpy (((u8 *) ip0) - vec_len (t0->rewrite),
@@ -599,7 +599,7 @@ sr_rewrite (vlib_main_t * vm,
 	      next0 = sr_local_cb ? sr_local_cb (vm, node, b0, ip0, sr0) :
 		next0;
 
-	      /* 
+	      /*
 	       * Ignore "do not rewrite" shtik in this path
 	       */
 	      if (PREDICT_FALSE (next0 & 0x80000000))
@@ -903,7 +903,7 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   /* The first specified hop goes right into the dst address */
   clib_memcpy (&t->first_hop, &a->segments[0], sizeof (ip6_address_t));
 
-  /* 
+  /*
    * Create the sr header rewrite string
    * The list of segments needs an extra slot for the ultimate destination
    * which is taken from the packet we add the SRH to.
@@ -986,14 +986,14 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   ap = ip_add_adjacency (lm, &adj, 1 /* one adj */ ,
 			 &adj_index);
 
-  /* 
+  /*
    * Stick the tunnel index into the rewrite header.
-   * 
+   *
    * Unfortunately, inserting an SR header according to the various
    * RFC's requires parsing through the ip6 header, perhaps consing a
    * buffer onto the head of the vlib_buffer_t, etc. We don't use the
    * normal reverse bcopy rewrite code.
-   * 
+   *
    * We don't handle ugly RFC-related cases yet, but I'm sure PL will complain
    * at some point...
    */
@@ -1208,7 +1208,7 @@ sr_add_del_tunnel_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (sr_tunnel_command, static) = {
     .path = "sr tunnel",
-    .short_help = 
+    .short_help =
       "sr tunnel [del] [name <name>] src <addr> dst <addr> [next <addr>] "
       "[clean] [reroute] [key <secret>] [policy <policy_name>]"
       "[rx-fib-id <fib_id>] [tx-fib-id <fib_id>]",
@@ -1281,7 +1281,7 @@ show_sr_tunnel_fn (vlib_main_t * vm,
   if (!p)			/* Either name parm not passed or no tunnel with that name found, show all */
     {
       /* *INDENT-OFF* */
-  pool_foreach (t, sm->tunnels, 
+  pool_foreach (t, sm->tunnels,
   ({
     vec_add1 (tunnels, t);
   }));
@@ -1371,7 +1371,7 @@ ip6_sr_add_del_policy (ip6_sr_add_del_policy_args_t * a)
 		policy - sm->policies);
 
   /* Yes, this could be construed as overkill but the last thing you should do is set
-     the policy_index on the tunnel after everything is set in ip6_sr_main_t. 
+     the policy_index on the tunnel after everything is set in ip6_sr_main_t.
      If this is deemed overly cautious, could set this in the vec_len(tunnel_names) loop.
    */
   for (i = 0; i < vec_len (policy->tunnel_indices); i++)
@@ -1460,7 +1460,7 @@ sr_add_del_policy_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (sr_policy_command, static) = {
     .path = "sr policy",
-    .short_help = 
+    .short_help =
     "sr policy [del] name <policy-name> tunnel <sr-tunnel-name> [tunnel <sr-tunnel-name>]*",
     .function = sr_add_del_policy_command_fn,
 };
@@ -1497,7 +1497,7 @@ show_sr_policy_fn (vlib_main_t * vm,
   if (!p)			/* Either name parm not passed or no policy with that name found, show all */
     {
       /* *INDENT-OFF* */
-  pool_foreach (policy, sm->policies, 
+  pool_foreach (policy, sm->policies,
   ({
     vec_add1 (policies, policy);
   }));
@@ -1568,7 +1568,7 @@ ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
 
   pt = pool_elt_at_index (sm->policies, p[0]);
 
-  /* 
+  /*
      Get the first tunnel associated with policy populate the fib adjacency.
      From there, since this tunnel will have it's policy_index != ~0 it will
      be the trigger in the dual_loop to pull up the policy and make a copy-rewrite
@@ -1587,14 +1587,14 @@ ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
   ap = ip_add_adjacency (lm, &adj, 1 /* one adj */ ,
 			 &adj_index);
 
-  /* 
+  /*
    * Stick the tunnel index into the rewrite header.
-   * 
+   *
    * Unfortunately, inserting an SR header according to the various
    * RFC's requires parsing through the ip6 header, perhaps consing a
    * buffer onto the head of the vlib_buffer_t, etc. We don't use the
    * normal reverse bcopy rewrite code.
-   * 
+   *
    * We don't handle ugly RFC-related cases yet, but I'm sure PL will complain
    * at some point...
    */
@@ -1710,7 +1710,7 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (sr_multicast_map_command, static) = {
     .path = "sr multicast-map",
-    .short_help = 
+    .short_help =
     "sr multicast-map address <multicast-ip6-address> sr-policy <sr-policy-name> [del]",
     .function = sr_add_del_multicast_map_command_fn,
 };
@@ -1733,21 +1733,21 @@ show_sr_multicast_map_fn (vlib_main_t * vm,
   ({
     if (!key)
 	vlib_cli_output (vm, "no multicast maps configured");
-    else 
+    else
       {
 	multicast_address = *((ip6_address_t *)key);
 	pt = pool_elt_at_index (sm->policies, value);
 	if (pt)
 	  {
-	    vlib_cli_output (vm, "address: %U policy: %s", 
+	    vlib_cli_output (vm, "address: %U policy: %s",
 			     format_ip6_address, &multicast_address,
 			     pt->name);
 	  }
 	else
-	  vlib_cli_output (vm, "BUG: policy not found for address: %U with policy index %d", 
+	  vlib_cli_output (vm, "BUG: policy not found for address: %U with policy index %d",
 			     format_ip6_address, &multicast_address,
 			     value);
-			   
+
       }
 
   }));
@@ -1925,7 +1925,7 @@ sr_fix_dst_addr (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      /* 
+	      /*
 	       * We get here from sr_rewrite or sr_local, with
 	       * sr->segments_left pointing at the (copy of the original) dst
 	       * address. Use it, then increment sr0->segments_left.
@@ -1938,9 +1938,9 @@ sr_fix_dst_addr (vlib_main_t * vm,
 		  goto do_trace0;
 		}
 
-	      /* 
-	       * Rewrite the packet with the original dst address 
-	       * We assume that the last segment (in processing order) contains 
+	      /*
+	       * Rewrite the packet with the original dst address
+	       * We assume that the last segment (in processing order) contains
 	       * the original dst address. The list is reversed, so sr0->segments
 	       * contains the original dst address.
 	       */
@@ -2301,8 +2301,8 @@ sr_local (vlib_main_t * vm,
 
 	  next0 = sr_local_cb ? sr_local_cb (vm, node, b0, ip0, sr0) : next0;
 
-	  /* 
-	   * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx 
+	  /*
+	   * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx
 	   */
 	  if (PREDICT_FALSE (next0 & 0x80000000))
 	    {
@@ -2333,7 +2333,7 @@ sr_local (vlib_main_t * vm,
 	    {
 	      u64 *copy_dst0, *copy_src0;
 	      u16 new_l0;
-	      /* 
+	      /*
 	       * Copy the ip6 header right by the (real) length of the
 	       * sr header. Here's another place which assumes that
 	       * the sr header is the only extention header.
@@ -2406,8 +2406,8 @@ sr_local (vlib_main_t * vm,
 
 	  next1 = sr_local_cb ? sr_local_cb (vm, node, b1, ip1, sr1) : next1;
 
-	  /* 
-	   * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx 
+	  /*
+	   * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx
 	   */
 	  if (PREDICT_FALSE (next1 & 0x80000000))
 	    {
@@ -2438,7 +2438,7 @@ sr_local (vlib_main_t * vm,
 	    {
 	      u64 *copy_dst1, *copy_src1;
 	      u16 new_l1;
-	      /* 
+	      /*
 	       * Copy the ip6 header right by the (real) length of the
 	       * sr header. Here's another place which assumes that
 	       * the sr header is the only extention header.
@@ -2532,8 +2532,8 @@ sr_local (vlib_main_t * vm,
 
 	  next0 = sr_local_cb ? sr_local_cb (vm, node, b0, ip0, sr0) : next0;
 
-	  /* 
-	   * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx 
+	  /*
+	   * To suppress rewrite, return ~SR_LOCAL_NEXT_xxx
 	   */
 	  if (PREDICT_FALSE (next0 & 0x80000000))
 	    {
@@ -2564,7 +2564,7 @@ sr_local (vlib_main_t * vm,
 	    {
 	      u64 *copy_dst0, *copy_src0;
 	      u16 new_l0;
-	      /* 
+	      /*
 	       * Copy the ip6 header right by the (real) length of the
 	       * sr header. Here's another place which assumes that
 	       * the sr header is the only extention header.
@@ -2864,7 +2864,7 @@ show_sr_hmac_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sr_hmac, static) = {
     .path = "show sr hmac",
-    .short_help = "show sr hmac", 
+    .short_help = "show sr hmac",
     .function = show_sr_hmac_fn,
 };
 /* *INDENT-ON* */

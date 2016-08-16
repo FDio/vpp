@@ -118,9 +118,9 @@ send_ethernet_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
 
   for (i = 0; i < count; i++)
     {
-      /* 
+      /*
        * see cdp_periodic_init() to understand what's already painted
-       * into the buffer by the packet template mechanism  
+       * into the buffer by the packet template mechanism
        */
       h0 = vlib_packet_template_get_packet
 	(vm, &cm->packet_templates[n->packet_template_index], &bi0);
@@ -185,9 +185,9 @@ send_hdlc_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
 
   for (i = 0; i < count; i++)
     {
-      /* 
+      /*
        * see cdp_periodic_init() to understand what's already painted
-       * into the buffer by the packet template mechanism  
+       * into the buffer by the packet template mechanism
        */
       h0 = vlib_packet_template_get_packet
 	(vm, &cm->packet_templates[n->packet_template_index], &bi0);
@@ -241,9 +241,9 @@ send_srp_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
 
   for (i = 0; i < count; i++)
     {
-      /* 
+      /*
        * see cdp_periodic_init() to understand what's already painted
-       * into the buffer by the packet template mechanism  
+       * into the buffer by the packet template mechanism
        */
       h0 = vlib_packet_template_get_packet
 	(vm, &cm->packet_templates[n->packet_template_index], &bi0);
@@ -349,7 +349,7 @@ cdp_periodic (vlib_main_t * vm)
   static cdp_neighbor_t **n_list = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (n, cm->neighbors, 
+  pool_foreach (n, cm->neighbors,
   ({
     vec_add1 (n_list, n);
   }));

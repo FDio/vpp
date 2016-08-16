@@ -444,7 +444,7 @@ eth_identify_subint (vnet_hw_interface_t * hi,
   // Each comparison is checking both the valid flag and the number of tags
   // (incorporating exact-match/non-exact-match).
 
-  // check for specific double tag 
+  // check for specific double tag
   subint = &qinq_intf->subint;
   if ((subint->flags & match_flags) == match_flags)
     goto matched;
@@ -454,7 +454,7 @@ eth_identify_subint (vnet_hw_interface_t * hi,
   if ((subint->flags & match_flags) == match_flags)
     goto matched;
 
-  // check for specific single tag 
+  // check for specific single tag
   subint = &vlan_intf->single_tag_subint;
   if ((subint->flags & match_flags) == match_flags)
     goto matched;
@@ -464,7 +464,7 @@ eth_identify_subint (vnet_hw_interface_t * hi,
   if ((subint->flags & match_flags) == match_flags)
     goto matched;
 
-  // check for default interface 
+  // check for default interface
   subint = &main_intf->default_subint;
   if ((subint->flags & match_flags) == match_flags)
     goto matched;

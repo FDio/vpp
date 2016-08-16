@@ -273,7 +273,7 @@ determine_next_node (ethernet_main_t * em,
 	SPARSE_VEC_INVALID_INDEX ? ETHERNET_ERROR_UNKNOWN_TYPE : *error0;
 
       // The table is not populated with LLC values, so check that now.
-      // If variant is variant_ethernet then we came from LLC processing. Don't 
+      // If variant is variant_ethernet then we came from LLC processing. Don't
       // go back there; drop instead using by keeping the drop/bad table result.
       if ((type0 < 0x600) && (variant == ETHERNET_INPUT_VARIANT_ETHERNET))
 	{
@@ -561,7 +561,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  // prior to calling this function. Thus only subinterface counters
 	  // are incremented here.
 	  //
-	  // Interface level counters include packets received on the main 
+	  // Interface level counters include packets received on the main
 	  // interface and all subinterfaces. Subinterface level counters
 	  // include only those packets received on that subinterface
 	  // Increment stats if the subint is valid and it is not the main intf
@@ -576,7 +576,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	      stats_n_bytes += len0;
 
 	      // Batch stat increments from the same subinterface so counters
-	      // don't need to be incremented for every packet. 
+	      // don't need to be incremented for every packet.
 	      if (PREDICT_FALSE (new_sw_if_index0 != stats_sw_if_index))
 		{
 		  stats_n_packets -= 1;
@@ -956,7 +956,7 @@ ethernet_sw_interface_add_del (vnet_main_t * vnm,
       // not implemented yet or not ethernet
       if (unsupported)
 	{
-	  // this is the NYI case 
+	  // this is the NYI case
 	  error = clib_error_return (0, "not implemented yet");
 	}
       goto done;
@@ -1089,8 +1089,8 @@ next_by_ethertype_init (next_by_ethertype_t * l3_next)
   l3_next->sparse_index_by_input_next_index[ETHERNET_INPUT_NEXT_PUNT] =
     SPARSE_VEC_INVALID_INDEX;
 
-  /* 
-   * Make sure we don't wipe out an ethernet registration by mistake 
+  /*
+   * Make sure we don't wipe out an ethernet registration by mistake
    * Can happen if init function ordering constraints are missing.
    */
   if (CLIB_DEBUG > 0)
@@ -1218,7 +1218,7 @@ ethernet_register_l2_input (vlib_main_t * vm, u32 node_index)
   em->l2_next =
     vlib_node_add_next (vm, ethernet_input_node.index, node_index);
 
-  /* 
+  /*
    * Even if we never use these arcs, we have to align the next indices...
    */
   i = vlib_node_add_next (vm, ethernet_input_type_node.index, node_index);

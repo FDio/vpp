@@ -674,7 +674,7 @@ vlib_process_wait_for_event_with_type (vlib_main_t * vm,
 /** Suspend a cooperative multi-tasking thread
     Waits for an event, or for the indicated number of seconds to elapse
     @param vm - vlib_main_t pointer
-    @param dt - timeout, in seconds. 
+    @param dt - timeout, in seconds.
     @returns the remaining time interval
 */
 

@@ -30,7 +30,7 @@ crc_u32 (u32 data, u32 value)
 
 /*
  * This code supports the following MAP modes:
- * 
+ *
  * Algorithmic Shared IPv4 address (ea_bits_len > 0):
  *   ea_bits_len + ip4_prefix > 32
  *   psid_length > 0, ip6_prefix < 64, ip4_prefix <= 32
@@ -1851,7 +1851,7 @@ VLIB_CLI_COMMAND(map_ip4_reass_lifetime_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND(map_traffic_class_command, static) = {
   .path = "map params traffic-class",
-  .short_help = 
+  .short_help =
   "traffic-class {0x0-0xff | copy}",
   .function = map_traffic_class_command_fn,
 };
@@ -1860,7 +1860,7 @@ VLIB_CLI_COMMAND(map_traffic_class_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND(map_pre_resolve_command, static) = {
   .path = "map params pre-resolve",
-  .short_help = 
+  .short_help =
   "pre-resolve {ip4-nh <address>} | {ip6-nh <address>}",
   .function = map_pre_resolve_command_fn,
 };
@@ -1869,7 +1869,7 @@ VLIB_CLI_COMMAND(map_pre_resolve_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND(map_security_check_command, static) = {
   .path = "map params security-check",
-  .short_help = 
+  .short_help =
   "security-check on|off",
   .function = map_security_check_command_fn,
 };
@@ -1910,7 +1910,7 @@ VLIB_CLI_COMMAND(map_fragment_df_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND(map_security_check_frag_command, static) = {
   .path = "map params security-check fragments",
-  .short_help = 
+  .short_help =
   "fragments on|off",
   .function = map_security_check_frag_command_fn,
 };
@@ -1919,7 +1919,7 @@ VLIB_CLI_COMMAND(map_security_check_frag_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND(map_add_domain_command, static) = {
   .path = "map add domain",
-  .short_help = 
+  .short_help =
   "map add domain ip4-pfx <ip4-pfx> ip6-pfx <ip6-pfx> ip6-src <ip6-pfx> "
       "ea-bits-len <n> psid-offset <n> psid-len <n> [map-t] [mtu <mtu>]",
   .function = map_add_domain_command_fn,
@@ -1929,7 +1929,7 @@ VLIB_CLI_COMMAND(map_add_domain_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND(map_add_rule_command, static) = {
   .path = "map add rule",
-  .short_help = 
+  .short_help =
   "map add rule index <domain> psid <psid> ip6-dst <ip6-addr>",
   .function = map_add_rule_command_fn,
 };
@@ -1938,7 +1938,7 @@ VLIB_CLI_COMMAND(map_add_rule_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND(map_del_command, static) = {
   .path = "map del domain",
-  .short_help = 
+  .short_help =
   "map del domain index <domain>",
   .function = map_del_domain_command_fn,
 };
