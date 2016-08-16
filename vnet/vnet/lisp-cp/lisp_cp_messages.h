@@ -19,7 +19,7 @@
 #include <vnet/vnet.h>
 
 #define MAX_IP_PKT_LEN 4096
-#define MAX_IP_HDR_LEN 40  /* without options or IPv6 hdr extensions */
+#define MAX_IP_HDR_LEN 40	/* without options or IPv6 hdr extensions */
 #define UDP_HDR_LEN 8
 #define LISP_DATA_HDR_LEN 8
 #define LISP_ECM_HDR_LEN 4
@@ -41,12 +41,13 @@
  */
 
 
-typedef struct _eid_prefix_record_hdr {
-    u8 reserved;
-    u8 eid_prefix_length;
+typedef struct _eid_prefix_record_hdr
+{
+  u8 reserved;
+  u8 eid_prefix_length;
 } __attribute__ ((__packed__)) eid_record_hdr_t;
 
-void eid_rec_hdr_init(eid_record_hdr_t *ptr);
+void eid_rec_hdr_init (eid_record_hdr_t * ptr);
 
 #define EID_REC_CAST(h_) ((eid_record_hdr_t *)(h_))
 #define EID_REC_MLEN(h_) EID_REC_CAST((h_))->eid_prefix_length
@@ -119,7 +120,7 @@ typedef struct
   u8 reserved2[3];
 } ecm_hdr_t;
 
-char *ecm_hdr_to_char(ecm_hdr_t *h);
+char *ecm_hdr_to_char (ecm_hdr_t * h);
 
 #define ECM_TYPE(h_) ((ecm_hdr_t *)(h_))->type
 
@@ -166,40 +167,40 @@ char *ecm_hdr_to_char(ecm_hdr_t *h);
 typedef struct
 {
 #if CLIB_ARCH_IS_LITTLE_ENDIAN
-    u8 solicit_map_request:1;
-    u8 rloc_probe:1;
-    u8 map_data_present:1;
-    u8 authoritative:1;
-    u8 type:4;
+  u8 solicit_map_request:1;
+  u8 rloc_probe:1;
+  u8 map_data_present:1;
+  u8 authoritative:1;
+  u8 type:4;
 #else
-    u8 type:4;
-    u8 authoritative:1;
-    u8 map_data_present:1;
-    u8 rloc_probe:1;
-    u8 solicit_map_request:1;
+  u8 type:4;
+  u8 authoritative:1;
+  u8 map_data_present:1;
+  u8 rloc_probe:1;
+  u8 solicit_map_request:1;
 #endif
 #if CLIB_ARCH_IS_LITTLE_ENDIAN
-    u8 reserved1:6;
-    u8 smr_invoked:1;
-    u8 pitr:1;
+  u8 reserved1:6;
+  u8 smr_invoked:1;
+  u8 pitr:1;
 #else
-    u8 pitr:1;
-    u8 smr_invoked:1;
-    u8 reserved1:6;
+  u8 pitr:1;
+  u8 smr_invoked:1;
+  u8 reserved1:6;
 #endif
 #if CLIB_ARCH_IS_LITTLE_ENDIAN
-    u8 additional_itr_rloc_count:5;
-    u8 reserved2:3;
+  u8 additional_itr_rloc_count:5;
+  u8 reserved2:3;
 #else
-    u8 reserved2:3;
-    u8 additional_itr_rloc_count:5;
+  u8 reserved2:3;
+  u8 additional_itr_rloc_count:5;
 #endif
-    u8 record_count;
-    u64 nonce;
-}__attribute__ ((__packed__)) map_request_hdr_t;
+  u8 record_count;
+  u64 nonce;
+} __attribute__ ((__packed__)) map_request_hdr_t;
 
-void map_request_hdr_init(void *ptr);
-char *map_request_hdr_to_char(map_request_hdr_t *h);
+void map_request_hdr_init (void *ptr);
+char *map_request_hdr_to_char (map_request_hdr_t * h);
 
 #define MREQ_TYPE(h_) (h_)->type
 #define MREQ_HDR_CAST(h_) ((map_request_hdr_t *)(h_))
@@ -250,26 +251,26 @@ char *map_request_hdr_to_char(map_request_hdr_t *h);
 typedef struct
 {
 #if CLIB_ARCH_IS_LITTLE_ENDIAN
-    u8 reserved1:1;
-    u8 security:1;
-    u8 echo_nonce:1;
-    u8 rloc_probe:1;
-    u8 type:4;
+  u8 reserved1:1;
+  u8 security:1;
+  u8 echo_nonce:1;
+  u8 rloc_probe:1;
+  u8 type:4;
 #else
-    u8 type:4;
-    u8 rloc_probe:1;
-    u8 echo_nonce:1;
-    u8 security:1;
-    u8 reserved1:1;
+  u8 type:4;
+  u8 rloc_probe:1;
+  u8 echo_nonce:1;
+  u8 security:1;
+  u8 reserved1:1;
 #endif
-    u8 reserved2;
-    u8 reserved3;
-    u8 record_count;
-    u64 nonce;
+  u8 reserved2;
+  u8 reserved3;
+  u8 record_count;
+  u64 nonce;
 } __attribute__ ((__packed__)) map_reply_hdr_t;
 
- void map_reply_hdr_init(void *ptr);
- char *map_reply_hdr_to_char(map_reply_hdr_t *h);
+void map_reply_hdr_init (void *ptr);
+char *map_reply_hdr_to_char (map_reply_hdr_t * h);
 
 #define MREP_HDR_CAST(h_) ((map_reply_hdr_t *)(h_))
 #define MREP_REC_COUNT(h_) MREP_HDR_CAST(h_)->record_count
@@ -278,9 +279,9 @@ typedef struct
 
 
 always_inline lisp_msg_type_e
-lisp_msg_type (void * b)
+lisp_msg_type (void *b)
 {
-  ecm_hdr_t * hdr = b;
+  ecm_hdr_t *hdr = b;
   if (!hdr)
     {
       return (NOT_LISP_MSG);
@@ -289,15 +290,15 @@ lisp_msg_type (void * b)
 }
 
 always_inline void
-increment_record_count (void * b)
+increment_record_count (void *b)
 {
   switch (lisp_msg_type (b))
     {
     case LISP_MAP_REQUEST:
-      MREQ_REC_COUNT(b) += 1;
+      MREQ_REC_COUNT (b) += 1;
       break;
     case LISP_MAP_REPLY:
-      MREP_REC_COUNT(b) += 1;
+      MREP_REC_COUNT (b) += 1;
       break;
     default:
       return;
@@ -319,22 +320,23 @@ increment_record_count (void * b)
  * Fixed portion of the mapping record locator. Variable length
  * locator address follows.
  */
-typedef struct _locator_hdr {
-    u8 priority;
-    u8 weight;
-    u8 mpriority;
-    u8 mweight;
-    u8 unused1;
+typedef struct _locator_hdr
+{
+  u8 priority;
+  u8 weight;
+  u8 mpriority;
+  u8 mweight;
+  u8 unused1;
 #ifdef CLIB_ARCH_IS_LITTLE_ENDIAN
-    u8 reachable:1;
-    u8 probed:1;
-    u8 local:1;
-    u8 unused2:5;
+  u8 reachable:1;
+  u8 probed:1;
+  u8 local:1;
+  u8 unused2:5;
 #else
-    u8 unused2:5;
-    u8 local:1;
-    u8 probed:1;
-    u8 reachable:1;
+  u8 unused2:5;
+  u8 local:1;
+  u8 probed:1;
+  u8 reachable:1;
 #endif
 } __attribute__ ((__packed__)) locator_hdr_t;
 
@@ -385,22 +387,22 @@ typedef struct _mapping_record_hdr_t
   u8 authoritative:1;
   u8 action:3;
 #else
-  u8 action :3;
-  u8 authoritative :1;
-  u8 reserved1 :4;
+  u8 action:3;
+  u8 authoritative:1;
+  u8 reserved1:4;
 #endif
   u8 reserved2;
 #ifdef CLIB_ARCH_IS_LITTLE_ENDIAN
   u8 version_hi:4;
   u8 reserved3:4;
 #else
-  u8 reserved3 :4;
-  u8 version_hi :4;
+  u8 reserved3:4;
+  u8 version_hi:4;
 #endif
   u8 version_low;
-}__attribute__ ((__packed__)) mapping_record_hdr_t;
+} __attribute__ ((__packed__)) mapping_record_hdr_t;
 
-void mapping_record_init_hdr(mapping_record_hdr_t *h);
+void mapping_record_init_hdr (mapping_record_hdr_t * h);
 
 #define MAP_REC_EID_PLEN(h) ((mapping_record_hdr_t *)(h))->eid_prefix_length
 #define MAP_REC_LOC_COUNT(h) ((mapping_record_hdr_t *)(h))->locator_count
@@ -471,3 +473,11 @@ typedef struct _lcaf_src_dst_hdr_t
 #define LCAF_SD_DST_ML(_h) (_h)->dst_mask_len
 
 #endif /* VNET_LISP_GPE_LISP_CP_MESSAGES_H_ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
