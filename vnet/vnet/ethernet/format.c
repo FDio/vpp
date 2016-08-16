@@ -40,10 +40,11 @@
 #include <vlib/vlib.h>
 #include <vnet/ethernet/ethernet.h>
 
-u8 * format_ethernet_address (u8 * s, va_list * args)
+u8 *
+format_ethernet_address (u8 * s, va_list * args)
 {
-  ethernet_main_t * em = &ethernet_main;
-  u8 * a = va_arg (*args, u8 *);
+  ethernet_main_t *em = &ethernet_main;
+  u8 *a = va_arg (*args, u8 *);
 
   if (em->format_ethernet_address_16bit)
     return format (s, "%02x%02x.%02x%02x.%02x%02x",
@@ -53,11 +54,12 @@ u8 * format_ethernet_address (u8 * s, va_list * args)
 		   a[0], a[1], a[2], a[3], a[4], a[5]);
 }
 
-u8 * format_ethernet_type (u8 * s, va_list * args)
+u8 *
+format_ethernet_type (u8 * s, va_list * args)
 {
   ethernet_type_t type = va_arg (*args, u32);
-  ethernet_main_t * em = &ethernet_main;
-  ethernet_type_info_t * t = ethernet_get_type_info (em, type);
+  ethernet_main_t *em = &ethernet_main;
+  ethernet_type_info_t *t = ethernet_get_type_info (em, type);
 
   if (t)
     s = format (s, "%s", t->name);
@@ -67,32 +69,34 @@ u8 * format_ethernet_type (u8 * s, va_list * args)
   return s;
 }
 
-u8 * format_ethernet_vlan_tci (u8 * s, va_list * va)
+u8 *
+format_ethernet_vlan_tci (u8 * s, va_list * va)
 {
-    u32 vlan_tci = va_arg (*va, u32);
+  u32 vlan_tci = va_arg (*va, u32);
 
-    u32 vid = (vlan_tci & 0xfff);
-    u32 cfi = (vlan_tci >> 12) & 1;
-    u32 pri = (vlan_tci >> 13);
+  u32 vid = (vlan_tci & 0xfff);
+  u32 cfi = (vlan_tci >> 12) & 1;
+  u32 pri = (vlan_tci >> 13);
 
-    s = format (s, "%d", vid);
-    if (pri != 0)
-        s = format (s, " priority %d", pri);
-    if (cfi != 0)
-        s = format (s, " cfi");
+  s = format (s, "%d", vid);
+  if (pri != 0)
+    s = format (s, " priority %d", pri);
+  if (cfi != 0)
+    s = format (s, " cfi");
 
-    return s;
+  return s;
 }
 
-u8 * format_ethernet_header_with_length (u8 * s, va_list * args)
+u8 *
+format_ethernet_header_with_length (u8 * s, va_list * args)
 {
-  ethernet_max_header_t * m = va_arg (*args, ethernet_max_header_t *);
+  ethernet_max_header_t *m = va_arg (*args, ethernet_max_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
-  ethernet_main_t * em = &ethernet_main;
-  ethernet_header_t * e = &m->ethernet;
-  ethernet_vlan_header_t * v;
+  ethernet_main_t *em = &ethernet_main;
+  ethernet_header_t *e = &m->ethernet;
+  ethernet_vlan_header_t *v;
   ethernet_type_t type = clib_net_to_host_u16 (e->type);
-  ethernet_type_t vlan_type[ARRAY_LEN(m->vlan)];
+  ethernet_type_t vlan_type[ARRAY_LEN (m->vlan)];
   u32 n_vlan = 0, i, header_bytes;
   uword indent;
 
@@ -120,19 +124,19 @@ u8 * format_ethernet_header_with_length (u8 * s, va_list * args)
     {
       u32 v = clib_net_to_host_u16 (m->vlan[i].priority_cfi_and_id);
       if (*vlan_type == ETHERNET_TYPE_VLAN)
-          s = format (s, " 802.1q vlan %U", format_ethernet_vlan_tci, v);
+	s = format (s, " 802.1q vlan %U", format_ethernet_vlan_tci, v);
       else
-          s = format (s, " 802.1ad vlan %U", format_ethernet_vlan_tci, v);
+	s = format (s, " 802.1ad vlan %U", format_ethernet_vlan_tci, v);
     }
 
   if (max_header_bytes != 0 && header_bytes < max_header_bytes)
     {
-      ethernet_type_info_t * ti;
-      vlib_node_t * node = 0;
+      ethernet_type_info_t *ti;
+      vlib_node_t *node = 0;
 
       ti = ethernet_get_type_info (em, type);
       if (ti && ti->node_index != ~0)
-          node = vlib_get_node (em->vlib_main, ti->node_index);
+	node = vlib_get_node (em->vlib_main, ti->node_index);
       if (node && node->format_buffer)
 	s = format (s, "\n%U%U",
 		    format_white_space, indent,
@@ -143,9 +147,10 @@ u8 * format_ethernet_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-u8 * format_ethernet_header (u8 * s, va_list * args)
+u8 *
+format_ethernet_header (u8 * s, va_list * args)
 {
-  ethernet_max_header_t * m = va_arg (*args, ethernet_max_header_t *);
+  ethernet_max_header_t *m = va_arg (*args, ethernet_max_header_t *);
   return format (s, "%U", format_ethernet_header_with_length, m, 0);
 }
 
@@ -153,11 +158,11 @@ u8 * format_ethernet_header (u8 * s, va_list * args)
 static uword
 unformat_ethernet_address_unix (unformat_input_t * input, va_list * args)
 {
-  u8 * result = va_arg (*args, u8 *);
+  u8 *result = va_arg (*args, u8 *);
   u32 i, a[6];
 
-  if (! unformat (input, "%_%x:%x:%x:%x:%x:%x%_",
-		  &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]))
+  if (!unformat (input, "%_%x:%x:%x:%x:%x:%x%_",
+		 &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]))
     return 0;
 
   /* Check range. */
@@ -175,10 +180,10 @@ unformat_ethernet_address_unix (unformat_input_t * input, va_list * args)
 static uword
 unformat_ethernet_address_cisco (unformat_input_t * input, va_list * args)
 {
-  u8 * result = va_arg (*args, u8 *);
+  u8 *result = va_arg (*args, u8 *);
   u32 i, a[3];
 
-  if (! unformat (input, "%_%x.%x.%x%_", &a[0], &a[1], &a[2]))
+  if (!unformat (input, "%_%x.%x.%x%_", &a[0], &a[1], &a[2]))
     return 0;
 
   /* Check range. */
@@ -200,7 +205,7 @@ unformat_ethernet_address_cisco (unformat_input_t * input, va_list * args)
 uword
 unformat_ethernet_address (unformat_input_t * input, va_list * args)
 {
-  u8 * result = va_arg (*args, u8 *);
+  u8 *result = va_arg (*args, u8 *);
   return (unformat_user (input, unformat_ethernet_address_unix, result)
 	  || unformat_user (input, unformat_ethernet_address_cisco, result));
 }
@@ -210,13 +215,12 @@ uword
 unformat_ethernet_type_host_byte_order (unformat_input_t * input,
 					va_list * args)
 {
-  u16 * result = va_arg (*args, u16 *);
-  ethernet_main_t * em = &ethernet_main;
+  u16 *result = va_arg (*args, u16 *);
+  ethernet_main_t *em = &ethernet_main;
   int type, i;
 
   /* Numeric type. */
-  if (unformat (input, "0x%x", &type)
-      || unformat (input, "%d", &type))
+  if (unformat (input, "0x%x", &type) || unformat (input, "%d", &type))
     {
       if (type >= (1 << 16))
 	return 0;
@@ -228,7 +232,7 @@ unformat_ethernet_type_host_byte_order (unformat_input_t * input,
   if (unformat_user (input, unformat_vlib_number_by_name,
 		     em->type_info_by_name, &i))
     {
-      ethernet_type_info_t * ti = vec_elt_at_index (em->type_infos, i);
+      ethernet_type_info_t *ti = vec_elt_at_index (em->type_infos, i);
       *result = ti->type;
       return 1;
     }
@@ -240,27 +244,27 @@ uword
 unformat_ethernet_type_net_byte_order (unformat_input_t * input,
 				       va_list * args)
 {
-  u16 * result = va_arg (*args, u16 *);
-  if (! unformat_user (input, unformat_ethernet_type_host_byte_order, result))
+  u16 *result = va_arg (*args, u16 *);
+  if (!unformat_user (input, unformat_ethernet_type_host_byte_order, result))
     return 0;
 
-  *result = clib_host_to_net_u16 ((u16) *result);
+  *result = clib_host_to_net_u16 ((u16) * result);
   return 1;
 }
 
 uword
 unformat_ethernet_header (unformat_input_t * input, va_list * args)
 {
-  u8 ** result = va_arg (*args, u8 **);
-  ethernet_max_header_t _m, * m = &_m;
-  ethernet_header_t * e = &m->ethernet;
+  u8 **result = va_arg (*args, u8 **);
+  ethernet_max_header_t _m, *m = &_m;
+  ethernet_header_t *e = &m->ethernet;
   u16 type;
   u32 n_vlan;
 
-  if (! unformat (input, "%U: %U -> %U",
-		  unformat_ethernet_type_host_byte_order, &type,
-		  unformat_ethernet_address, &e->src_address,
-		  unformat_ethernet_address, &e->dst_address))
+  if (!unformat (input, "%U: %U -> %U",
+		 unformat_ethernet_type_host_byte_order, &type,
+		 unformat_ethernet_address, &e->src_address,
+		 unformat_ethernet_address, &e->dst_address))
     return 0;
 
   n_vlan = 0;
@@ -268,7 +272,7 @@ unformat_ethernet_header (unformat_input_t * input, va_list * args)
     {
       u32 id, priority;
 
-      if (! unformat_user (input, unformat_vlib_number, &id)
+      if (!unformat_user (input, unformat_vlib_number, &id)
 	  || id >= ETHERNET_N_VLAN)
 	return 0;
 
@@ -304,12 +308,20 @@ unformat_ethernet_header (unformat_input_t * input, va_list * args)
 
   /* Add header to result. */
   {
-    void * p;
+    void *p;
     u32 n_bytes = sizeof (e[0]) + n_vlan * sizeof (m->vlan[0]);
 
     vec_add2 (*result, p, n_bytes);
     clib_memcpy (p, m, n_bytes);
   }
-  
+
   return 1;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
