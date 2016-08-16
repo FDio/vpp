@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_ddfe7f38",
+        "filename": "vpp-api/java/jvpp/gen/jvppgen/jvpp_impl_gen.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-08-16T11:59:39Z",
+      "side": 1,
+      "message": "fixed after testing https://gerrit.fd.io/r/#/c/2118/",
+      "range": {
+        "startLine": 129,
+        "startChar": 35,
+        "endLine": 129,
+        "endChar": 55
+      },
+      "revId": "49109214c58f4fdf4d94d33a24fdf511f0c634d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
