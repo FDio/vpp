@@ -325,9 +325,9 @@ cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
       n = pool_elt_at_index (cm->neighbors, p[0]);
     }
 
-  /* 
+  /*
    * typical clib idiom. Don't repeatedly allocate and free
-   * the per-neighbor rx buffer. Reset its apparent length to zero 
+   * the per-neighbor rx buffer. Reset its apparent length to zero
    * and reuse it.
    */
 
@@ -338,20 +338,20 @@ cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   if (n->disabled)
     return CDP_ERROR_DISABLED;
 
-  /* 
+  /*
    * Make sure the per-neighbor rx buffer is big enough to hold
    * the data we're about to copy
    */
   vec_validate (n->last_rx_pkt, vlib_buffer_length_in_chain (vm, b0) - 1);
 
-  /* 
+  /*
    * Coalesce / copy e the buffer chain into the per-neighbor
-   * rx buffer 
+   * rx buffer
    */
   nbytes = vlib_buffer_contents (vm, bi0, n->last_rx_pkt);
   ASSERT (nbytes <= vec_len (n->last_rx_pkt));
 
-  /* 
+  /*
    * Compute Jenkins hash of the new packet, decide if we need to
    * actually parse through the TLV's. CDP packets are all identical,
    * so unless we time out the peer, we don't need to process the packet.
@@ -422,9 +422,9 @@ format_cdp_neighbors (u8 * s, va_list * va)
   pool_foreach (n, cm->neighbors,
   ({
     hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
-    
+
     if (n->disabled == 0)
-      s = format (s, "%=25s %=15s %=25s %=10.1f\n", 
+      s = format (s, "%=25s %=15s %=25s %=10.1f\n",
                   hw->name, n->device_name, n->port_id,
                   n->last_heard);
   }));

@@ -130,7 +130,7 @@ show_l2tp_command_fn (vlib_main_t * vm,
       vlib_cli_output (vm, "L2tp session lookup on %s", keystr);
 
       /* *INDENT-OFF* */
-      pool_foreach (session, lm->sessions, 
+      pool_foreach (session, lm->sessions,
       ({
         vlib_cli_output (vm, "%U", format_l2t_session, session);
       }));
@@ -160,22 +160,22 @@ test_counters_command_fn (vlib_main_t * vm,
   u32 cpu_index = os_get_cpu_number ();
 
   /* *INDENT-OFF* */
-  pool_foreach (session, lm->sessions, 
+  pool_foreach (session, lm->sessions,
   ({
     session_index = session - lm->sessions;
-    counter_index = 
-      session_index_to_counter_index (session_index, 
+    counter_index =
+      session_index_to_counter_index (session_index,
                                       SESSION_COUNTER_USER_TO_NETWORK);
     vlib_increment_combined_counter (&lm->counter_main,
-                                     cpu_index, 
-                                     counter_index, 
+                                     cpu_index,
+                                     counter_index,
                                      1/*pkt*/, 1111 /*bytes*/);
     vlib_increment_combined_counter (&lm->counter_main,
-                                     cpu_index, 
-                                     counter_index+1, 
+                                     cpu_index,
+                                     counter_index+1,
                                      1/*pkt*/, 2222 /*bytes*/);
     nincr++;
-    
+
   }));
   /* *INDENT-ON* */
   vlib_cli_output (vm, "Incremented %d active counters\n", nincr);
@@ -202,11 +202,11 @@ clear_counters_command_fn (vlib_main_t * vm,
   u32 nincr = 0;
 
   /* *INDENT-OFF* */
-  pool_foreach (session, lm->sessions, 
+  pool_foreach (session, lm->sessions,
   ({
     session_index = session - lm->sessions;
-    counter_index = 
-      session_index_to_counter_index (session_index, 
+    counter_index =
+      session_index_to_counter_index (session_index,
                                       SESSION_COUNTER_USER_TO_NETWORK);
     vlib_zero_combined_counter (&lm->counter_main, counter_index);
     vlib_zero_combined_counter (&lm->counter_main, counter_index+1);
@@ -518,10 +518,10 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (create_l2tpv3_tunnel_command, static) = 
+VLIB_CLI_COMMAND (create_l2tpv3_tunnel_command, static) =
 {
   .path = "create l2tpv3 tunnel",
-  .short_help = 
+  .short_help =
   "create l2tpv3 tunnel client <ip6> our <ip6> local-cookie <hex> remote-cookie <hex> local-session <dec> remote-session <dec>",
   .function = create_l2tpv3_tunnel_command_fn,
 };
@@ -601,10 +601,10 @@ set_l2tp_tunnel_cookie_command_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_l2tp_tunnel_cookie_command, static) = 
+VLIB_CLI_COMMAND (set_l2tp_tunnel_cookie_command, static) =
 {
   .path = "set l2tpv3 tunnel cookie",
-  .short_help = 
+  .short_help =
   "set l2tpv3 tunnel cookie <intfc> local <hex> remote <hex>",
   .function = set_l2tp_tunnel_cookie_command_fn,
 };
@@ -679,7 +679,7 @@ set_ip6_l2tpv3 (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_interface_ip6_l2tpv3, static) = 
+VLIB_CLI_COMMAND (set_interface_ip6_l2tpv3, static) =
 {
   .path = "set interface ip6 l2tpv3",
   .function = set_ip6_l2tpv3,

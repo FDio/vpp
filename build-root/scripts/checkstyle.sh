@@ -32,10 +32,14 @@ for i in `git ls-tree -r HEAD --name-only`;do
             if [ ${FIX} == 0 ]; then
                 indent ${i} -o ${i}.out1 > /dev/null 2>&1
                 indent ${i}.out1 -o ${i}.out2 > /dev/null 2>&1
+		# Remove trailing whitespace
+		sed -i -e 's/[[:space:]]*$//' ${i}.out2
                 diff -q ${i} ${i}.out2
             else
                 indent ${i}
                 indent ${i}
+		# Remove trailing whitespace
+		sed -i -e 's/[[:space:]]*$//' ${i}
             fi
             if [ $? != 0 ]; then
                 EXIT_CODE=1

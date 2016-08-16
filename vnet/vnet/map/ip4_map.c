@@ -765,7 +765,7 @@ VLIB_REGISTER_NODE(ip4_map_node) = {
   .vector_size = sizeof(u32),
   .format_trace = format_map_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  
+
   .n_errors = MAP_N_ERROR,
   .error_strings = map_error_strings,
 
@@ -791,7 +791,7 @@ VLIB_REGISTER_NODE(ip4_map_reass_node) = {
   .vector_size = sizeof(u32),
   .format_trace = format_ip4_map_reass_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  
+
   .n_errors = MAP_N_ERROR,
   .error_strings = map_error_strings,
 

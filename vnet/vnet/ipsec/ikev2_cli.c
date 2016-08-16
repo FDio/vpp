@@ -65,26 +65,26 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
       vlib_cli_output(vm, " iip %U ispi %lx rip %U rspi %lx",
                       format_ip4_address, &sa->iaddr, sa->ispi,
                       format_ip4_address, &sa->raddr, sa->rspi);
-  
+
        tr = ikev2_sa_get_td_for_type(sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
        s = format(s, "%U ", format_ikev2_sa_transform, tr);
-  
+
        tr = ikev2_sa_get_td_for_type(sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
        s = format(s, "%U ", format_ikev2_sa_transform, tr);
-  
+
        tr = ikev2_sa_get_td_for_type(sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
        s = format(s, "%U ", format_ikev2_sa_transform, tr);
-  
+
        tr = ikev2_sa_get_td_for_type(sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
        s = format(s, "%U ", format_ikev2_sa_transform, tr);
-  
+
       vlib_cli_output(vm, " %v", s);
       vec_free(s);
-  
+
       vlib_cli_output(vm, "  nonce i:%U\n        r:%U",
                       format_hex_bytes, sa->i_nonce,  vec_len(sa->i_nonce),
                       format_hex_bytes, sa->r_nonce,  vec_len(sa->r_nonce));
-  
+
       vlib_cli_output(vm, "  SK_d    %U",
                       format_hex_bytes, sa->sk_d,  vec_len(sa->sk_d));
       vlib_cli_output(vm, "  SK_a  i:%U\n        r:%U",
@@ -96,32 +96,32 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
       vlib_cli_output(vm, "  SK_p  i:%U\n        r:%U",
                       format_hex_bytes, sa->sk_pi, vec_len(sa->sk_pi),
                       format_hex_bytes, sa->sk_pr, vec_len(sa->sk_pr));
-  
+
       vlib_cli_output(vm, "  identifier (i) %U",
                       format_ikev2_id_type_and_data, &sa->i_id);
       vlib_cli_output(vm, "  identifier (r) %U",
                       format_ikev2_id_type_and_data, &sa->r_id);
-  
+
       vec_foreach(child, sa->childs)
         {
           vlib_cli_output(vm, "  child sa %u:", child - sa->childs);
-  
+
           tr = ikev2_sa_get_td_for_type(child->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
           s = format(s, "%U ", format_ikev2_sa_transform, tr);
-  
+
           tr = ikev2_sa_get_td_for_type(child->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
           s = format(s, "%U ", format_ikev2_sa_transform, tr);
-  
+
           tr = ikev2_sa_get_td_for_type(child->r_proposals, IKEV2_TRANSFORM_TYPE_ESN);
           s = format(s, "%U ", format_ikev2_sa_transform, tr);
-  
+
           vlib_cli_output(vm, "    %v", s);
           vec_free(s);
-  
+
           vlib_cli_output(vm, "    spi(i) %lx spi(r) %lx",
                           child->i_proposals ? child->i_proposals[0].spi : 0,
                           child->r_proposals ? child->r_proposals[0].spi : 0);
-  
+
           vlib_cli_output(vm, "    SK_e  i:%U\n          r:%U",
                           format_hex_bytes, child->sk_ei, vec_len(child->sk_ei),
                           format_hex_bytes, child->sk_er, vec_len(child->sk_er));

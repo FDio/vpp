@@ -61,7 +61,7 @@
     #define EXAMPLE_POLL_PERIOD 10.0
 
     static uword
-    example_process (vlib_main_t * vm, vlib_node_runtime_t * rt, 
+    example_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                      vlib_frame_t * f)
     {
       f64 poll_time_remaining;
@@ -72,8 +72,8 @@
         {
           int i;
 
-           // Sleep until next periodic call due, 
-           // or until we receive event(s) 
+           // Sleep until next periodic call due,
+           // or until we receive event(s)
            //
           poll_time_remaining =
     	    vlib_process_wait_for_event_or_clock (vm, poll_time_remaining);
@@ -94,26 +94,26 @@
     	        handle_event2 (vm, event_data[i]);
     	      break;
 
-              // ... and so forth for each event type 
+              // ... and so forth for each event type
 
             default:
-              // This should never happen... 
-    	      clib_warning ("BUG: unhandled event type %d", 
+              // This should never happen...
+    	      clib_warning ("BUG: unhandled event type %d",
                             event_type);
     	      break;
       	    }
           vec_reset_length (event_data);
 
-          // Timer expired, call periodic function 
+          // Timer expired, call periodic function
           if (vlib_process_suspend_time_is_zero (poll_time_remaining))
     	    {
     	      example_periodic (vm);
     	      poll_time_remaining = EXAMPLE_POLL_PERIOD;
     	    }
         }
-      // NOTREACHED 
+      // NOTREACHED
       return 0;
-    }     
+    }
 
     static VLIB_REGISTER_NODE (example_node) = {
       .function = example_process,

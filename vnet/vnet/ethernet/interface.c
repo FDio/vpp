@@ -298,7 +298,7 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
   vlib_buffer_t *b;
 
   // check tx node index, it is ethernet-input on loopback create
-  // but can be changed to l2-input if loopback is configured as 
+  // but can be changed to l2-input if loopback is configured as
   // BVI of a BD (Bridge Domain).
   loop_node = vec_elt (nm->nodes, node->node_index);
   next_node_index = loop_node->next_nodes[next_index];
@@ -322,7 +322,7 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
       while (1)
 	{
 	  // Set up RX and TX indices as if received from a real driver
-	  // unless loopback is used as a BVI. For BVI case, leave TX index 
+	  // unless loopback is used as a BVI. For BVI case, leave TX index
 	  // and update l2_len in packet as required for l2 forwarding path
 	  vnet_buffer (b)->sw_if_index[VLIB_RX] = sw_if_index;
 	  if (bvi_flag)

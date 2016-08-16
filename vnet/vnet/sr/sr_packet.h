@@ -174,7 +174,7 @@ typedef struct
   /* Protocol for next header. */
   u8 protocol;
   /*
-   * Length of routing header in 8 octet units, 
+   * Length of routing header in 8 octet units,
    * not including the first 8 octets
    */
   u8 length;
@@ -185,7 +185,7 @@ typedef struct
   /* Next segment in the segment list */
   u8 segments_left;
 
-  /* 
+  /*
    * Policy list pointer: offset in the SRH of the policy
    * list - in 16-octet units - not including the first 8 octets.
    */
