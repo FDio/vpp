@@ -657,7 +657,7 @@ static inline u8 * format_dpdk_pkt_types (u8 * s, va_list * va)
 
 static inline u8 * format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
 {
-  u16 *ol_flags = va_arg (*va, u16 *);
+  u64 *ol_flags = va_arg (*va, u64 *);
   uword indent = format_get_indent (s) + 2;
 
   if (!*ol_flags)
