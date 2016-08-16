@@ -296,6 +296,9 @@ static clib_error_t * vhost_user_socket_read (unix_file_t * uf)
   memset(&mh, 0, sizeof(mh));
   memset(control, 0, sizeof(control));
 
+  for (i=0; i < VHOST_MEMORY_MAX_NREGIONS; i++)
+    fds[i] = -1;
+
   /* set the payload */
   iov[0].iov_base = (void *) &msg;
   iov[0].iov_len = VHOST_USER_MSG_HDR_SZ;
@@ -1498,7 +1501,7 @@ static int vhost_user_init_server_sock(const char * sock_filename, int *sockfd)
   }
 
   un.sun_family = AF_UNIX;
-  strcpy((char *) un.sun_path, (char *) sock_filename);
+  strncpy((char *) un.sun_path, (char *) sock_filename, sizeof(un.sun_path) - 1);
 
   /* remove if exists */
   unlink( (char *) sock_filename);
