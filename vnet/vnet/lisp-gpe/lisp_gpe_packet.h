@@ -90,8 +90,9 @@
  *    0x3 : Ethernet
  *    0x4: Network Service Header
  */
- 
-typedef struct {
+
+typedef struct
+{
   u8 flags;
   u8 ver_res;
   u8 res;
@@ -108,9 +109,10 @@ _(I, 0x08)                                      \
 _(P, 0x04)                                      \
 _(O, 0x01)
 
-typedef enum {
+typedef enum
+{
 #define _(n,v) LISP_GPE_FLAGS_##n = v,
-foreach_lisp_gpe_flag_bit
+  foreach_lisp_gpe_flag_bit
 #undef _
 } vnet_lisp_gpe_flag_bit_t;
 
@@ -131,3 +133,11 @@ typedef enum
 } lisp_gpe_next_protocol_e;
 
 #endif /* included_lisp_gpe_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
