@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_7a189184",
+        "filename": "build-root/vagrant/build.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-08-16T00:11:04Z",
+      "side": 1,
+      "message": "#!/usr/bin/env bash \nset -xe\n\nNot sure what pipefail is buying here since there aren\u0027t any pipes that I see ?",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 2,
+        "endChar": 19
+      },
+      "revId": "91ca359093da3ae464715576a7356a9e0f0fde05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
