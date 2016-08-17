@@ -57,7 +57,7 @@ ip_feature_init_cast (vlib_main_t * vm,
   int a_index, b_index;
   int n_features;
   u32 * result = 0;
-  vnet_ip_feature_registration_t * this_reg, * first_reg;
+  vnet_ip_feature_registration_t * this_reg, * first_reg = 0;
   char ** feature_nodes = 0;
   hash_pair_t * hp;
   u8 ** keys_to_delete = 0;
@@ -67,20 +67,28 @@ ip_feature_init_cast (vlib_main_t * vm,
   index_by_name = hash_create_string (0, sizeof (uword));
   reg_by_index = hash_create (0, sizeof (uword));
 
-  if (cast == VNET_UNICAST)
+  if (cast == VNET_IP_RX_UNICAST_FEAT)
     {
       if (is_ip4)
         first_reg = im4->next_uc_feature;
       else
         first_reg = im6->next_uc_feature;
     }
-  else
+  else if (cast == VNET_IP_RX_MULTICAST_FEAT)
     {
       if (is_ip4)
         first_reg = im4->next_mc_feature;
       else
         first_reg = im6->next_mc_feature;
+    } 
+  else if (cast == VNET_IP_TX_FEAT)
+    {
+      if (is_ip4)
+        first_reg = im4->next_tx_feature;
+      else
+        first_reg = im6->next_tx_feature;
     }
+
   
   this_reg = first_reg;
 
@@ -95,8 +103,7 @@ ip_feature_init_cast (vlib_main_t * vm,
       vec_add1 (node_names, node_name);
 
       these_constraints = this_reg->runs_before;
-
-      while (these_constraints [0])
+      while (these_constraints && these_constraints [0])
         {
           this_constraint_c = these_constraints[0];
 
@@ -105,6 +112,19 @@ ip_feature_init_cast (vlib_main_t * vm,
           vec_add1 (constraints, constraint_tuple);
           these_constraints++;
         }
+
+      these_constraints = this_reg->runs_after;
+      while (these_constraints && these_constraints [0])
+        {
+          this_constraint_c = these_constraints[0];
+
+          constraint_tuple = format (0, "%s,%s%c", 
+                                     this_constraint_c, 
+                                     node_name, 0);
+          vec_add1 (constraints, constraint_tuple);
+          these_constraints++;
+        }
+
       this_reg = this_reg->next;
     }
 
@@ -220,10 +240,12 @@ ip_feature_init_cast (vlib_main_t * vm,
 }
 
 #define foreach_af_cast                         \
-_(4, VNET_UNICAST, "ip4 unicast")               \
-_(4, VNET_MULTICAST, "ip4 multicast")           \
-_(6, VNET_UNICAST, "ip6 unicast")               \
-_(6, VNET_MULTICAST, "ip6 multicast")
+_(4, VNET_IP_RX_UNICAST_FEAT, "ip4 unicast")               \
+_(4, VNET_IP_RX_MULTICAST_FEAT, "ip4 multicast")           \
+_(4, VNET_IP_TX_FEAT, "ip4 output")                 \
+_(6, VNET_IP_RX_UNICAST_FEAT, "ip6 unicast")               \
+_(6, VNET_IP_RX_MULTICAST_FEAT, "ip6 multicast")		\
+_(6, VNET_IP_TX_FEAT, "ip6 output")
 
 static clib_error_t *
 show_ip_features_command_fn (vlib_main_t * vm,
@@ -295,14 +317,14 @@ show_ip_interface_features_command_fn (vlib_main_t * vm,
       else
         lm = lm6;
 
-      for (cast = VNET_UNICAST; cast < VNET_N_CAST; cast++)
+      for (cast = VNET_IP_RX_UNICAST_FEAT; cast < VNET_N_IP_FEAT; cast++)
         {
-          cm = lm->rx_config_mains + cast;
+          cm = lm->feature_config_mains + cast;
           vcm = &cm->config_main;
       
           vlib_cli_output (vm, "\nipv%s %scast:", 
                            (af == 0) ? "4" : "6",
-                           cast == VNET_UNICAST ?
+                           cast == VNET_IP_RX_UNICAST_FEAT ?
                            "uni": "multi");
 
           current_config_index = vec_elt (cm->config_index_by_sw_if_index, 

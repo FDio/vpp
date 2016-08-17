@@ -141,31 +141,38 @@ typedef struct ip4_main_t {
   /** Feature path configuration lists */
   vnet_ip_feature_registration_t * next_uc_feature;
   vnet_ip_feature_registration_t * next_mc_feature;
+  vnet_ip_feature_registration_t * next_tx_feature;
 
-  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_check_access;
-  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_source_reachable_via_rx;
-  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_source_reachable_via_any;
-  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_policer_classify;
-  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_ipsec;
-  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_vpath;
-  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_lookup;
-  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_source_and_port_range_check;
 
-  /** Built-in multicast feature path indices */
+  /** Built-in multicast feature path index */
   u32 ip4_multicast_rx_feature_vpath;
-  /** Built-in multicast feature path indices */
+  /** Built-in multicast feature path index */
   u32 ip4_multicast_rx_feature_lookup;
 
+  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  u32 ip4_unicast_tx_feature_source_and_port_range_check;
+
+  /** Built-in tx feature path index */
+  u32 ip4_tx_feature_interface_output;
+
   /** Save results for show command */
-  char ** feature_nodes[VNET_N_CAST];
+  char ** feature_nodes[VNET_N_IP_FEAT];
 
   /** Seed for Jenkins hash used to compute ip4 flow hash. */
   u32 flow_hash_seed;
@@ -208,6 +215,18 @@ static void __vnet_add_feature_registration_mc_##x (void)       \
   im->next_mc_feature = &mc_##x;                                \
 }                                                               \
 __VA_ARGS__ vnet_ip_feature_registration_t mc_##x 
+
+#define VNET_IP4_TX_FEATURE_INIT(x,...)                         \
+  __VA_ARGS__ vnet_ip_feature_registration_t tx_##x;            \
+static void __vnet_add_feature_registration_tx_##x (void)       \
+  __attribute__((__constructor__)) ;                            \
+static void __vnet_add_feature_registration_tx_##x (void)       \
+{                                                               \
+  ip4_main_t * im = &ip4_main;                                  \
+  tx_##x.next = im->next_tx_feature;                            \
+  im->next_tx_feature = &tx_##x;                                \
+}                                                               \
+__VA_ARGS__ vnet_ip_feature_registration_t tx_##x 
 
 
 /** Global ip4 input node.  Errors get attached to ip4 input node. */

@@ -16,7 +16,8 @@
 #include <vnet/ip/ip_source_and_port_range_check.h>
 
 
-vlib_node_registration_t ip4_source_port_and_range_check;
+vlib_node_registration_t ip4_source_port_and_range_check_rx;
+vlib_node_registration_t ip4_source_port_and_range_check_tx;
 
 #define foreach_ip4_source_and_port_range_check_error			\
   _(CHECK_FAIL, "ip4 source and port range check bad packets")	\
@@ -42,7 +43,7 @@ typedef struct
   u32 bypass;
   u32 is_tcp;
   ip4_address_t src_addr;
-  u16 dst_port;
+  u16 port;
   u32 fib_index;
 } ip4_source_and_port_range_check_trace_t;
 
@@ -59,7 +60,7 @@ format_ip4_source_and_port_range_check_trace (u8 * s, va_list * va)
   else
     s = format (s, "fib %d src ip %U %s dst port %d: %s",
 		t->fib_index, format_ip4_address, &t->src_addr,
-		t->is_tcp ? "TCP" : "UDP", (u32) t->dst_port,
+		t->is_tcp ? "TCP" : "UDP", (u32) t->port,
 		(t->pass == 1) ? "PASS" : "FAIL");
   return s;
 }
@@ -127,12 +128,15 @@ check_adj_port_range_x1 (ip_adjacency_t * adj, u16 dst_port, u32 next)
 }
 
 always_inline uword
-  ip4_source_and_port_range_check_inline
-  (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip4_source_and_port_range_check_inline (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame, int is_tx)
 {
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *cm = &lm->rx_config_mains[VNET_UNICAST];
+  ip_config_main_t *rx_cm =
+    &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  ip_config_main_t *tx_cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
   u32 n_left_from, *from, *to_next;
   u32 next_index;
   vlib_node_runtime_t *error_node = node;
@@ -196,12 +200,24 @@ always_inline uword
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
 
-	  c0 = vnet_get_config_data (&cm->config_main,
-				     &b0->current_config_index,
-				     &next0, sizeof (c0[0]));
-	  c1 = vnet_get_config_data (&cm->config_main,
-				     &b1->current_config_index,
-				     &next1, sizeof (c1[0]));
+	  if (is_tx)
+	    {
+	      c0 = vnet_get_config_data (&tx_cm->config_main,
+					 &b0->current_config_index,
+					 &next0, sizeof (c0[0]));
+	      c1 = vnet_get_config_data (&tx_cm->config_main,
+					 &b1->current_config_index,
+					 &next1, sizeof (c1[0]));
+	    }
+	  else
+	    {
+	      c0 = vnet_get_config_data (&rx_cm->config_main,
+					 &b0->current_config_index,
+					 &next0, sizeof (c0[0]));
+	      c1 = vnet_get_config_data (&rx_cm->config_main,
+					 &b1->current_config_index,
+					 &next1, sizeof (c1[0]));
+	    }
 
 	  /* we can't use the default VRF here... */
 	  for (i = 0; i < IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS; i++)
@@ -210,12 +226,28 @@ always_inline uword
 	    }
 
 
-	  if (ip0->protocol == IP_PROTOCOL_UDP)
-	    fib_index0 =
-	      c0->fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT];
-	  if (ip0->protocol == IP_PROTOCOL_TCP)
-	    fib_index0 =
-	      c0->fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT];
+	  if (is_tx)
+	    {
+	      if (ip0->protocol == IP_PROTOCOL_UDP)
+		fib_index0 =
+		  c0->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN];
+	      if (ip0->protocol == IP_PROTOCOL_TCP)
+		fib_index0 =
+		  c0->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN];
+	    }
+	  else
+	    {
+	      if (ip0->protocol == IP_PROTOCOL_UDP)
+		fib_index0 =
+		  c0->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT];
+	      if (ip0->protocol == IP_PROTOCOL_TCP)
+		fib_index0 =
+		  c0->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT];
+	    }
 
 	  if (PREDICT_TRUE (fib_index0 != ~0))
 	    {
@@ -239,19 +271,35 @@ always_inline uword
 	      adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 
 	      ASSERT (adj_index0 == ip4_fib_lookup_with_table (im, fib_index0,
-							       &ip0->
-							       src_address, 0
+							       &ip0->src_address,
+							       0
 							       /* use dflt rt */
 		      ));
 	      adj0 = ip_get_adjacency (lm, adj_index0);
 	    }
 
-	  if (ip1->protocol == IP_PROTOCOL_UDP)
-	    fib_index1 =
-	      c1->fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT];
-	  if (ip1->protocol == IP_PROTOCOL_TCP)
-	    fib_index1 =
-	      c1->fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT];
+	  if (is_tx)
+	    {
+	      if (ip1->protocol == IP_PROTOCOL_UDP)
+		fib_index1 =
+		  c1->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN];
+	      if (ip1->protocol == IP_PROTOCOL_TCP)
+		fib_index1 =
+		  c1->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN];
+	    }
+	  else
+	    {
+	      if (ip1->protocol == IP_PROTOCOL_UDP)
+		fib_index1 =
+		  c1->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT];
+	      if (ip1->protocol == IP_PROTOCOL_TCP)
+		fib_index1 =
+		  c1->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT];
+	    }
 
 	  if (PREDICT_TRUE (fib_index1 != ~0))
 	    {
@@ -275,8 +323,7 @@ always_inline uword
 	      adj_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
 
 	      ASSERT (adj_index1 == ip4_fib_lookup_with_table (im, fib_index1,
-							       &ip1->
-							       src_address,
+							       &ip1->src_address,
 							       0));
 	      adj1 = ip_get_adjacency (lm, adj_index1);
 	    }
@@ -331,7 +378,7 @@ always_inline uword
 	      t->bypass = pass0;
 	      t->fib_index = fib_index0;
 	      t->src_addr.as_u32 = ip0->src_address.as_u32;
-	      t->dst_port = (pass0 == 0) ?
+	      t->port = (pass0 == 0) ?
 		clib_net_to_host_u16 (udp0->dst_port) : 0;
 	      t->is_tcp = ip0->protocol == IP_PROTOCOL_TCP;
 	    }
@@ -345,7 +392,7 @@ always_inline uword
 	      t->bypass = pass1;
 	      t->fib_index = fib_index1;
 	      t->src_addr.as_u32 = ip1->src_address.as_u32;
-	      t->dst_port = (pass1 == 0) ?
+	      t->port = (pass1 == 0) ?
 		clib_net_to_host_u16 (udp1->dst_port) : 0;
 	      t->is_tcp = ip1->protocol == IP_PROTOCOL_TCP;
 	    }
@@ -379,11 +426,23 @@ always_inline uword
 	    vec_elt (im->fib_index_by_sw_if_index,
 		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 
+	  if (is_tx)
+	    vlib_buffer_advance (b0, sizeof (ethernet_header_t));
+
 	  ip0 = vlib_buffer_get_current (b0);
 
-	  c0 = vnet_get_config_data
-	    (&cm->config_main, &b0->current_config_index,
-	     &next0, sizeof (c0[0]));
+	  if (is_tx)
+	    {
+	      c0 = vnet_get_config_data
+		(&tx_cm->config_main, &b0->current_config_index,
+		 &next0, sizeof (c0[0]));
+	    }
+	  else
+	    {
+	      c0 = vnet_get_config_data
+		(&rx_cm->config_main, &b0->current_config_index,
+		 &next0, sizeof (c0[0]));
+	    }
 
 	  /* we can't use the default VRF here... */
 	  for (i = 0; i < IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS; i++)
@@ -392,12 +451,28 @@ always_inline uword
 	    }
 
 
-	  if (ip0->protocol == IP_PROTOCOL_UDP)
-	    fib_index0 =
-	      c0->fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT];
-	  if (ip0->protocol == IP_PROTOCOL_TCP)
-	    fib_index0 =
-	      c0->fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT];
+	  if (is_tx)
+	    {
+	      if (ip0->protocol == IP_PROTOCOL_UDP)
+		fib_index0 =
+		  c0->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN];
+	      if (ip0->protocol == IP_PROTOCOL_TCP)
+		fib_index0 =
+		  c0->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN];
+	    }
+	  else
+	    {
+	      if (ip0->protocol == IP_PROTOCOL_UDP)
+		fib_index0 =
+		  c0->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT];
+	      if (ip0->protocol == IP_PROTOCOL_TCP)
+		fib_index0 =
+		  c0->fib_index
+		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT];
+	    }
 
 	  if (fib_index0 != ~0)
 	    {
@@ -458,10 +533,13 @@ always_inline uword
 	      t->bypass = pass0;
 	      t->fib_index = fib_index0;
 	      t->src_addr.as_u32 = ip0->src_address.as_u32;
-	      t->dst_port = (pass0 == 0) ?
+	      t->port = (pass0 == 0) ?
 		clib_net_to_host_u16 (udp0->dst_port) : 0;
 	      t->is_tcp = ip0->protocol == IP_PROTOCOL_TCP;
 	    }
+
+	  if (is_tx)
+	    vlib_buffer_advance (b0, -sizeof (ethernet_header_t));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -471,24 +549,63 @@ always_inline uword
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, ip4_source_port_and_range_check.index,
-			       IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_OK,
-			       good_packets);
+  if (is_tx)
+    vlib_node_increment_counter (vm, ip4_source_port_and_range_check_tx.index,
+				 IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_OK,
+				 good_packets);
+  else
+    vlib_node_increment_counter (vm, ip4_source_port_and_range_check_rx.index,
+				 IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_OK,
+				 good_packets);
   return frame->n_vectors;
 }
 
 static uword
-ip4_source_and_port_range_check (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * frame)
+ip4_source_and_port_range_check_rx (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
-  return ip4_source_and_port_range_check_inline (vm, node, frame);
+  return ip4_source_and_port_range_check_inline (vm, node, frame,
+						 0 /* !is_tx */ );
 }
 
+static uword
+ip4_source_and_port_range_check_tx (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  return ip4_source_and_port_range_check_inline (vm, node, frame,
+						 1 /* is_tx */ );
+}
+
+/* Note: Calling same function for both RX and TX nodes
+   as always checking dst_port, although
+   if this changes can easily make new function
+*/
+
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_source_port_and_range_check) = {
-  .function = ip4_source_and_port_range_check,
-  .name = "ip4-source-and-port-range-check",
+VLIB_REGISTER_NODE (ip4_source_port_and_range_check_rx) = {
+  .function = ip4_source_and_port_range_check_rx,
+  .name = "ip4-source-and-port-range-check-rx",
+  .vector_size = sizeof (u32),
+
+  .n_errors = ARRAY_LEN(ip4_source_and_port_range_check_error_strings),
+  .error_strings = ip4_source_and_port_range_check_error_strings,
+
+  .n_next_nodes = IP4_SOURCE_AND_PORT_RANGE_CHECK_N_NEXT,
+  .next_nodes = {
+    [IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP] = "error-drop",
+  },
+
+  .format_buffer = format_ip4_header,
+  .format_trace = format_ip4_source_and_port_range_check_trace,
+};
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip4_source_port_and_range_check_tx) = {
+  .function = ip4_source_and_port_range_check_tx,
+  .name = "ip4-source-and-port-range-check-tx",
   .vector_size = sizeof (u32),
 
   .n_errors = ARRAY_LEN(ip4_source_and_port_range_check_error_strings),
@@ -511,7 +628,9 @@ set_ip_source_and_port_range_check (vlib_main_t * vm,
 {
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *rx_cm = &lm->rx_config_mains[VNET_UNICAST];
+  ip_config_main_t *rx_cm =
+    &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  ip_config_main_t *tx_cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
   u32 ci;
   ip_source_and_port_range_check_config_t config;
   u32 feature_index;
@@ -523,17 +642,41 @@ set_ip_source_and_port_range_check (vlib_main_t * vm,
       config.fib_index[i] = fib_index[i];
     }
 
-  feature_index = im->ip4_unicast_rx_feature_source_and_port_range_check;
+  /* For OUT we are in the RX path */
+  if ((fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT] != ~0) ||
+      (fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT] != ~0))
+    {
+      feature_index = im->ip4_unicast_rx_feature_source_and_port_range_check;
 
-  vec_validate (rx_cm->config_index_by_sw_if_index, sw_if_index);
+      vec_validate (rx_cm->config_index_by_sw_if_index, sw_if_index);
 
-  ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
-  ci = (is_add
-	? vnet_config_add_feature
-	: vnet_config_del_feature)
-    (vm, &rx_cm->config_main, ci, feature_index, &config, sizeof (config));
-  rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+      ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
+      ci = (is_add
+	    ? vnet_config_add_feature
+	    : vnet_config_del_feature)
+	(vm, &rx_cm->config_main, ci, feature_index, &config,
+	 sizeof (config));
+      rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+    }
 
+  /* For IN we are in the TX path */
+  if ((fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN] != ~0) ||
+      (fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN] != ~0))
+    {
+      feature_index = im->ip4_unicast_tx_feature_source_and_port_range_check;
+
+      vec_validate (tx_cm->config_index_by_sw_if_index, sw_if_index);
+
+      ci = tx_cm->config_index_by_sw_if_index[sw_if_index];
+      ci = (is_add
+	    ? vnet_config_add_feature
+	    : vnet_config_del_feature)
+	(vm, &tx_cm->config_main, ci, feature_index, &config,
+	 sizeof (config));
+      tx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+
+      vnet_config_update_tx_feature_count (lm, tx_cm, sw_if_index, is_add);
+    }
   return rv;
 }
 
@@ -1006,7 +1149,7 @@ VLIB_CLI_COMMAND (ip_source_and_port_range_check_command, static) = {
   .path = "set ip source-and-port-range-check",
   .function = ip_source_and_port_range_check_command_fn,
   .short_help =
-  "set ip source-and-port-range-check <ip-addr>/<mask> [range <nn>-<nn> tcp-vrf <id>] [vrf <id>] [del]",
+  "set ip source-and-port-range-check <ip-addr>/<mask> [range <nn> - <nn>] [vrf <id>] [del]",
 };
 /* *INDENT-ON* */
 

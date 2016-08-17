@@ -20,8 +20,11 @@ typedef struct _vnet_ip_feature_registration {
   struct _vnet_ip_feature_registration * next;
   char * node_name;
   u32 * feature_index;
-  char * runs_before[];
+  char ** runs_before;
+  char ** runs_after;
 } vnet_ip_feature_registration_t;
+
+#define ORDER_CONSTRAINTS (char*[])
 
 clib_error_t *
 ip_feature_init_cast (vlib_main_t * vm,

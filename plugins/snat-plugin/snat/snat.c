@@ -80,12 +80,12 @@ do {                                                            \
 /* Hook up input features */
 VNET_IP4_UNICAST_FEATURE_INIT (ip4_snat_in2out, static) = {
   .node_name = "snat-in2out",
-  .runs_before = {"snat-out2in", 0},
+  .runs_before = (char *[]){"snat-out2in", 0},
   .feature_index = &snat_main.rx_feature_in2out,
 };
 VNET_IP4_UNICAST_FEATURE_INIT (ip4_snat_out2in, static) = {
   .node_name = "snat-out2in",
-  .runs_before = {"ip4-lookup", 0},
+  .runs_before = (char *[]){"ip4-lookup", 0},
   .feature_index = &snat_main.rx_feature_out2in,
 };
 
@@ -257,7 +257,7 @@ vl_api_snat_interface_add_del_feature_t_handler
   u32 ci;
   ip4_main_t * im = &ip4_main;
   ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * rx_cm = &lm->rx_config_mains[VNET_UNICAST];
+  ip_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   u32 feature_index;
   int rv = 0;
 
@@ -471,7 +471,7 @@ snat_feature_command_fn (vlib_main_t * vm,
   snat_main_t * sm = &snat_main;
   ip4_main_t * im = &ip4_main;
   ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * rx_cm = &lm->rx_config_mains[VNET_UNICAST];
+  ip_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   clib_error_t * error = 0;
   u32 sw_if_index, ci;
   u32 feature_index;

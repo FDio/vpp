@@ -143,11 +143,11 @@ ip6_input (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
 
-	  cast0 = ip6_address_is_multicast (&ip0->dst_address) ? VNET_MULTICAST : VNET_UNICAST;
-	  cast1 = ip6_address_is_multicast (&ip1->dst_address) ? VNET_MULTICAST : VNET_UNICAST;
+	  cast0 = ip6_address_is_multicast (&ip0->dst_address) ? VNET_IP_RX_MULTICAST_FEAT : VNET_IP_RX_UNICAST_FEAT;
+	  cast1 = ip6_address_is_multicast (&ip1->dst_address) ? VNET_IP_RX_MULTICAST_FEAT : VNET_IP_RX_UNICAST_FEAT;
 
-	  cm0 = lm->rx_config_mains + cast0;
-	  cm1 = lm->rx_config_mains + cast1;
+	  cm0 = lm->feature_config_mains + cast0;
+	  cm1 = lm->feature_config_mains + cast1;
 
 	  p0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index, sw_if_index0);
 	  p1->current_config_index = vec_elt (cm1->config_index_by_sw_if_index, sw_if_index1);
@@ -232,8 +232,8 @@ ip6_input (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
-	  cast0 = ip6_address_is_multicast (&ip0->dst_address) ? VNET_MULTICAST : VNET_UNICAST;
-	  cm0 = lm->rx_config_mains + cast0;
+	  cast0 = ip6_address_is_multicast (&ip0->dst_address) ? VNET_IP_RX_MULTICAST_FEAT : VNET_IP_RX_UNICAST_FEAT;
+	  cm0 = lm->feature_config_mains + cast0;
 	  p0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index, sw_if_index0);
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
 

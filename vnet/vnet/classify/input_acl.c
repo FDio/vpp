@@ -49,7 +49,7 @@ vnet_inacl_ip_feature_enable (vlib_main_t * vnm,
           ftype = ip6_main.ip6_unicast_rx_feature_check_access;
         }
 
-      ipcm = &lm->rx_config_mains[VNET_UNICAST];
+      ipcm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
 
       ci = ipcm->config_index_by_sw_if_index[sw_if_index];
       ci = ((feature_enable)
