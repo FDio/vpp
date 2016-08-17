@@ -11,74 +11,96 @@ It is:
 
 == Architecture
 
-FIXME: update the file after plugin support is merged
-Current architecture is documented on the wiki page:
-https://wiki.fd.io/view/VPP/Java_API/Plugin_support
+=== Plugin support
 
-JVpp and JNI
+  /-------------\        /--------------\          /---------------\
+  | JvppPlugin1 +<-------+ JVppRegistry +--------->+ VppConnection |
+  \-------------/  inits \--+-----------/   uses   \---------------/
+                            |
+  /-------------\           |
+  | JvppPlugin2 +<----------+ inits
+  \-------------/           |
+                            |
+  ...                       |
+                            |
+  /----------\              |
+  | JVppCore +<-------------+
+  \----------/
 
+
+VppRegistry opens connection to vpp (VppConnection) and manages jvpp plugins.
+Each plugin needs to be registered in the VppRegistry. Registration involves
+plugin initialization (providing JNI implementation with JVppCallback reference,
+vpp client identifier and vpp shared memory queue address).
+
+API user sends message by calling a method of appropriate plugin interface.
+The call is delegated to JNI implementation provided by the particular plugin.
+When JNI code receives reply, it invokes callback method of JVppCallback
+that corresponds to the received message reply.
+
+=== JVppCore as an example of JVpp plugin architecture
 
  JVpp Java
 
-  /----------\             /--------\          /------------\    /------\
-  | VppConn* |             |  JVpp  |          |  Callbacks |    | DTOs |
-  \----+-----/             \----+---/          \------+-----/    \------/
-       ^                        ^                     ^
-       | implements             | implements          | implements
-  /----+---------\         /----+-------\      /------+-----------\
-  | VppConnImpl* +<--------+  JVppImpl  |      |  GlobalCallback  |
-  \--------------/   uses  \---+--------/      \-------+----------/
-                               |                       ^
-                               | uses                  | calls back
-                               |                       |
--------------------------------|-----------------------|---------------------
-                               |                       |
-                               |       +---------------+
- C JNI                         |       |
-                               v       |              /------------\
-                           /---+-------+--\     +---->+   jvpp.h*  |
-                           |              +-----+     \------------/
-                           |    jvpp.c*   |
-                           |              +-----+     /------------\
-                           \--------------/     +---->+ jvpp_gen.h |
-                                                      \------------/
+  /--------------\             /----------\          /------------\    /------\
+  | JVppRegistry |             | JVppCore |          |  Callbacks |    | DTOs |
+  \----+---------/             \----+-----/          \------+-----/    \------/
+       ^                            ^                       ^
+       | implements                 | implements            | implements
+  /----+--------------\         /---+----------\      /-----+---------\
+  | JVppRegistryImpl* +-------->+ JVppCoreImpl |      |  JVppCallback |
+  \-------+-----------/  inits  \---+----------/      \-------+-------/
+          |                          |                       ^
+          |                          | uses                  | calls back
+          |                          |                       |
+----------|--------------------------|-----------------------|---------------------
+          |                          |                       |
+ C JNI    |                          +-------------------+   |       /-----------------\
+          v                                              |   |   +-->+ jvpp_core_gen.h |
+  /--------+--------\                                    |   |   |   \-----------------/
+  | jpp_registry.c* +---+   /--------+----+----\         |   |   |
+  \-----------------/   |   | << shared lib >> |        /-+--+---+------\
+                        + ->+   jvpp_common*   <--------+  jvpp_core.c* |
+                      uses  \------------------/  uses  \---------------/
 
-* Components marked with an asterisk contain manually crafted Java code, which in addition
+
+* Components marked with an asterisk contain manually crafted code, which in addition
 to generated classes form jvpp. Exception applies to Callbacks and DTOs, since there are
 manually crafted marker interfaces in callback and dto package (dto/JVppRequest, dto/JVppReply,
 dto/JVppDump, dto/JVppReplyDump, callback/JVppCallback)
 
-Note: jvpp.c calls back the GlobalCallback instance with every response. An instance of the
-GlobalCallback is provided to jvpp.c by VppConnImpl while connecting to VPP.
+Note: jvpp_core.c calls back the JVppCallback instance with every response. An instance of the
+JVppCallback is provided to jvpp_core.c by JVppRegistryImpl on JVppCoreImpl initialization.
 
 Part of the JVpp is also Future facade. It is asynchronous API returning Future objects
-on top of low level JVpp.
+on top of low level JVpp. It wraps dump reply messages in one DTO using control_ping message
+(provided by JVppRegistry).
 
 
 Future facade
 
-        /-------------\           /--------------------\
-        | FutureJVpp* |       +-->+ FutureJVppRegistry |
-        \-----+-------/       |   \----------+---------/
-              ^               |              ^
-              | implements    | uses         | uses
-              |               |              |
-     /--------+----------\    |   /----------+---------\
-     | FutureJVppFacade* +----+   | FutureJVppCallback |
-     \---------+---------/        \----------+---------/
+        /----------------\          /---------------\
+        | FutureJVppCore |      +-->+ JVppRegistry* |
+        \-----+----------/      |   \---------------/
+              ^                 |
+              | implements      | uses
+              |                 |
+     /--------+-------------\   |    /------------------------------\
+     | FutureJVppCoreFacade +---+--->+ FutureJVppCoreFacadeCallback |
+     \---------+------------/  uses  \-------+----------------------/
                |                             |
 ---------------|-----------------------------|-------------------------------
                | uses                        | implements
 JVpp Java      |                             |
                |                             |
- /---------\   |                             |
- |   JVpp  +<--+                             |
- \----+----/                                 |
+ /----------\  |                             |
+ | JVppCore +<-+                             |
+ \----+-----/                                |
       ^                                      |
       | implements                           v
- /----+-------\                   /----------+-------\
- |  JVppImpl  |                   |  GlobalCallback  |
- \------------/                   \------------------/
+ /----+---------\                   /--------+---------------\
+ | JVppCoreImpl |                   | JVppCoreGlobalCallback |
+ \--------------/                   \------------------------/
 
 
 
@@ -89,52 +111,60 @@ per call.
 
 Callback facade
 
-        /--------------\            /----------------------\
-        | CallbackJVpp |        +-->+ CallbackJVppRegistry |
-        \-----+--------/        |   \----------+-----------/
-              ^                 |              ^
-              | implements      | uses         | uses
-              |                 |              |
-     /--------+-----------\     |   /----------+-----------\
-     | CallbackJVppFacade +-----+   | CallbackJVppCallback |
-     \---------+----------/         \----------+-----------/
+        /------------------\          /---------------\
+        | CallbackJVppCore |      +-->+ JVppRegistry* |
+        \-----+------------/      |   \---------------/
+              ^                   |
+              | implements        | uses
+              |                   |
+     /--------+---------------\   |    /--------------------------\
+     | CallbackJVppCoreFacade +---+--->+ CallbackJVppCoreCallback |
+     \---------+--------------/  uses  \-----+--------------------/
                |                             |
 ---------------|-----------------------------|-------------------------------
                | uses                        | implements
 JVpp Java      |                             |
                |                             |
- /---------\   |                             |
- |   JVpp  +<--+                             |
- \----+----/                                 |
+ /----------\  |                             |
+ | JVppCore +<-+                             |
+ \----+-----/                                |
       ^                                      |
       | implements                           v
- /----+-------\                   /----------+-------\
- |  JVppImpl  |                   |  GlobalCallback  |
- \------------/                   \------------------/
-
+ /----+---------\                   /----------+-------------\
+ | JVppCoreImpl |                   | JVppCoreGlobalCallback |
+ \--------------/                   \------------------------/
 
 
 == Package structure
 
 * *org.openvpp.jvpp* - top level package for generated JVpp interface+ implementation and hand-crafted
-VppConnection interface + implementation
+VppConnection interface + implementation - packaged as jvpp-registry-version.jar
+
+* *org.openvpp.jvpp.[plugin]* - top level package for generated JVpp interface + implementation
++ plugin's API tests - packaged as jvpp-[plugin]-version.jar
 
 ** *dto* - package for DTOs generated from VPP API structures + base/marker hand-crafted interfaces
-** *callback* - package for low-level JVpp callbacks and a global callback interface implementing each of the low-level JVppcallbacks
+(in case of jvpp-registry)
+** *callback* - package for low-level JVpp callbacks and a global callback interface implementing each of
+the low-level JVppcallbacks
 ** *future* - package for future based facade on top of JVpp and callbacks
 ** *callfacade* - package for callback based facade on top of JVpp and callbacks. Allowing
 users to provide callback per request
 ** *test* - package for JVpp standalone tests. Can also serve as samples for JVpp.
 
-C code is structured into 3 files:
+C code is structured into modules:
 
-* *jvpp.c* - includes jvpp.h and jvpp_gen.h + contains hand crafted code for:
+* *jvpp_common* - shared library that provides jvpp_main_t reference used by jvpp_registry and plugins.
+
+* *jvpp_registry* - native library used by JVppRegistryImpl, responsible for:
 
 ** VPP connection open/close
 ** Rx thread to java thread attach
-** Callback instance store
-* *jvpp.h* - contains hand-crafted macros and structures used by jvpp.c
-* *jvpp_gen.h* - contains JNI compatible handlers for each VPP request and reply
+** control ping message handling
+
+* *jvpp_core* - native library used by jvpp core plugin:
+** *jvpp_core.c* - contains hand crafted code for core plugin initialization
+** *jvpp_core_gen.h* - contains generated JNI compatible handlers for all requests and replies defined in vpe.api
 
 == Code generators
 All of the required code except the base/marker interfaces is generated using
@@ -142,7 +172,7 @@ simple python2 code generators. The generators use __defs_vpp_papi.py__ input
 file produced by __vppapigen__ from vpe.api file.
 
 === JNI compatible C code
-Produces __jvpp_gen.h__ file containing JNI compatible handlers for each VPP
+Produces __jvpp_[plugin]_gen.h__ file containing JNI compatible handlers for each VPP
 request and reply.
 
 [NOTE]
@@ -176,7 +206,7 @@ Source: jvpp_impl_gen.py
 
 === Callbacks
 Produces callback interface for each VPP reply + a global callback interface called
-__JVppGlobalCallback.java__ aggregating all of the callback interfaces. The JNI
+__JVpp[plugin]GlobalCallback.java__ aggregating all of the callback interfaces. The JNI
 compatible C code expects only a single instance of this global callback and calls
 it with every reply.
 
@@ -188,7 +218,7 @@ Source: callback_gen.py
 === Future facade
 Produces an asynchronous facade on top of JVpp and callbacks, which returns a Future that provides
 matching reply once VPP invocation finishes. Sources produced:
-__FutureJVpp.java, FutureJVppFacade.java and FutureJVppCallback.java__
+__FutureJVpp[plugin].java, FutureJVpp[plugin]Facade.java and FutureJVpp[plugin]Callback.java__
 
 [NOTE]
 ====
@@ -198,7 +228,7 @@ Source: jvpp_future_facade_gen.py
 === Callback facade
 Similar to future facade, only this facade takes callback objects as part of the invocation
 and the callback is called with result once VPP invocation finishes. Sources produced:
-__CallbackJVpp.java, CallbackJVppFacade.java and CallbackJVppCallback.java__
+__CallbackJVpp[plugin].java, CallbackJVpp[plugin]Facade.java and CallbackJVpp[plugin]Callback.java__
 
 [NOTE]
 ====
