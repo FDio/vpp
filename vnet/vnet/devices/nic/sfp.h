@@ -24,13 +24,15 @@
   _ (on_motherboard)				\
   _ (sfp)
 
-typedef enum {
+typedef enum
+{
 #define _(f) SFP_ID_##f,
   foreach_sfp_id
 #undef _
 } sfp_id_t;
 
-typedef struct {
+typedef struct
+{
   u8 id;
   u8 extended_id;
   u8 connector_type;
@@ -92,11 +94,12 @@ sfp_eeprom_is_valid (sfp_eeprom_t * e)
   _ (3, 1, 1g_base_lx)				\
   _ (3, 0, 1g_base_sx)
 
-typedef enum {
+typedef enum
+{
 #define _(a,b,f) SFP_COMPATIBILITY_##f,
   foreach_sfp_compatibility
 #undef _
-  SFP_N_COMPATIBILITY,
+    SFP_N_COMPATIBILITY,
 } sfp_compatibility_t;
 
 u32 sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c);
@@ -104,3 +107,11 @@ u32 sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c);
 format_function_t format_sfp_eeprom;
 
 #endif /* included_vnet_optics_sfp_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -40,10 +40,11 @@
  * SUCH DAMAGE.
  */
 
-typedef struct {
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  volatile u32 * lockp;
-  u8 * host_if_name;
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  volatile u32 *lockp;
+  u8 *host_if_name;
   uword if_index;
   u32 hw_if_index;
   u32 sw_if_index;
@@ -53,10 +54,10 @@ typedef struct {
   u8 is_admin_up;
 
   /* netmap */
-  struct nmreq * req;
+  struct nmreq *req;
   u16 mem_region;
   int fd;
-  struct netmap_if * nifp;
+  struct netmap_if *nifp;
   u16 first_tx_ring;
   u16 last_tx_ring;
   u16 first_rx_ring;
@@ -64,27 +65,29 @@ typedef struct {
 
 } netmap_if_t;
 
-typedef struct {
-  char * mem;
+typedef struct
+{
+  char *mem;
   u32 region_size;
   int refcnt;
 } netmap_mem_region_t;
 
-typedef struct {
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  netmap_if_t * interfaces;
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  netmap_if_t *interfaces;
 
   /* bitmap of pending rx interfaces */
-  uword * pending_input_bitmap;
+  uword *pending_input_bitmap;
 
   /* rx buffer cache */
-  u32 ** rx_buffers;
+  u32 **rx_buffers;
 
   /* hash of host interface names */
   mhash_t if_index_by_host_if_name;
 
   /* vector of memory regions */
-  netmap_mem_region_t * mem_regions;
+  netmap_mem_region_t *mem_regions;
 
   /* first cpu index */
   u32 input_cpu_first_index;
@@ -97,9 +100,9 @@ netmap_main_t netmap_main;
 extern vnet_device_class_t netmap_device_class;
 extern vlib_node_registration_t netmap_input_node;
 
-int netmap_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
-                     u8 is_pipe, u8 is_master, u32 *sw_if_index);
-int netmap_delete_if(vlib_main_t * vm, u8 * host_if_name);
+int netmap_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
+		      u8 is_pipe, u8 is_master, u32 * sw_if_index);
+int netmap_delete_if (vlib_main_t * vm, u8 * host_if_name);
 
 
 /* Macros and helper functions from sys/net/netmap_user.h */
@@ -125,9 +128,9 @@ int netmap_delete_if(vlib_main_t * vm, u8 * host_if_name);
 		(ring)->nr_buf_size )
 
 static inline uint32_t
-nm_ring_next(struct netmap_ring *ring, uint32_t i)
+nm_ring_next (struct netmap_ring *ring, uint32_t i)
 {
-        return ( PREDICT_FALSE(i + 1 == ring->num_slots) ? 0 : i + 1);
+  return (PREDICT_FALSE (i + 1 == ring->num_slots) ? 0 : i + 1);
 }
 
 
@@ -136,18 +139,26 @@ nm_ring_next(struct netmap_ring *ring, uint32_t i)
  * When everything is complete ring->head = ring->tail + 1 (modulo ring size)
  */
 static inline int
-nm_tx_pending(struct netmap_ring *ring)
+nm_tx_pending (struct netmap_ring *ring)
 {
-        return nm_ring_next(ring, ring->tail) != ring->head;
+  return nm_ring_next (ring, ring->tail) != ring->head;
 }
 
 static inline uint32_t
-nm_ring_space(struct netmap_ring *ring)
+nm_ring_space (struct netmap_ring *ring)
 {
-        int ret = ring->tail - ring->cur;
-        if (ret < 0)
-                ret += ring->num_slots;
-        return ret;
+  int ret = ring->tail - ring->cur;
+  if (ret < 0)
+    ret += ring->num_slots;
+  return ret;
 }
 #endif
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
