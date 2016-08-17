@@ -44,7 +44,7 @@ vnet_policer_classify_feature_enable (vlib_main_t * vnm,
           ftype = ip6_main.ip6_unicast_rx_feature_policer_classify;
         }
 
-      ipcm = &lm->rx_config_mains[VNET_UNICAST];
+      ipcm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
 
       ci = ipcm->config_index_by_sw_if_index[sw_if_index];
       ci = (feature_enable ? vnet_config_add_feature : vnet_config_del_feature)
