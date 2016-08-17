@@ -1405,8 +1405,8 @@ VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_check_2, static) = {
   &ip4_main.ip4_unicast_rx_feature_source_reachable_via_any,
 };
 
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_and_port_range_check, static) = {
-  .node_name = "ip4-source-and-port-range-check",
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_and_port_range_check_rx, static) = {
+  .node_name = "ip4-source-and-port-range-check-rx",
   .runs_before = {"ip4-policer-classify", 0},
   .feature_index =
   &ip4_main.ip4_unicast_rx_feature_source_and_port_range_check,
@@ -1450,8 +1450,28 @@ VNET_IP4_MULTICAST_FEATURE_INIT (ip4_lookup_mc, static) = {
   .feature_index = &ip4_main.ip4_multicast_rx_feature_lookup,
 };
 
-static char * feature_start_nodes[] = 
+static char * rx_feature_start_nodes[] = 
   { "ip4-input", "ip4-input-no-checksum"};
+
+static char * tx_feature_start_nodes[] = 
+{ "ip4-rewrite-transit"};
+
+/* Source and port-range check ip4 tx feature path definition */
+VNET_IP4_TX_FEATURE_INIT (ip4_source_and_port_range_check_tx, static) = {
+  .node_name = "ip4-source-and-port-range-check-tx",
+  .runs_before = {"interface-output", 0},
+  .feature_index =
+  &ip4_main.ip4_unicast_tx_feature_source_and_port_range_check,
+
+};
+
+/* Built-in ip4 tx feature path definition */
+VNET_IP4_TX_FEATURE_INIT (interface_output, static) = {
+  .node_name = "interface-output",
+  .runs_before = {0}, /* not before any other features */
+  .feature_index = &ip4_main.ip4_tx_feature_interface_output,
+};
+
 
 static clib_error_t *
 ip4_feature_init (vlib_main_t * vm, ip4_main_t * im)
@@ -1459,19 +1479,35 @@ ip4_feature_init (vlib_main_t * vm, ip4_main_t * im)
   ip_lookup_main_t * lm = &im->lookup_main;
   clib_error_t * error;
   vnet_cast_t cast;
+  ip_config_main_t * cm;
+  vnet_config_main_t * vcm;
+  char **feature_start_nodes;
+  int feature_start_len;
 
   for (cast = 0; cast < VNET_N_CAST; cast++)
     {
-      ip_config_main_t * cm = &lm->rx_config_mains[cast];
-      vnet_config_main_t * vcm = &cm->config_main;
+      cm = &lm->feature_config_mains[cast];
+      vcm = &cm->config_main;
 
+      if (cast < VNET_TXCAST)
+        {
+          feature_start_nodes = rx_feature_start_nodes;
+          feature_start_len = ARRAY_LEN(rx_feature_start_nodes);
+        }
+      else
+        {
+          feature_start_nodes = tx_feature_start_nodes;
+          feature_start_len = ARRAY_LEN(tx_feature_start_nodes);
+        }
+      
       if ((error = ip_feature_init_cast (vm, cm, vcm, 
                                          feature_start_nodes,
-                                         ARRAY_LEN(feature_start_nodes),
+                                         feature_start_len,
                                          cast,
                                          1 /* is_ip4 */)))
         return error;
     }
+
   return 0;
 }
 
@@ -1488,7 +1524,7 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 
   for (cast = 0; cast < VNET_N_CAST; cast++)
     {
-      ip_config_main_t * cm = &lm->rx_config_mains[cast];
+      ip_config_main_t * cm = &lm->feature_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
@@ -1496,8 +1532,10 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 
       if (cast == VNET_UNICAST)
         feature_index = im->ip4_unicast_rx_feature_lookup;
-      else
+      else if (cast == VNET_MULTICAST)
         feature_index = im->ip4_multicast_rx_feature_lookup;
+      else
+        feature_index = im->ip4_tx_feature_interface_output;
 
       if (is_add)
 	ci = vnet_config_add_feature (vm, vcm,
@@ -1533,7 +1571,7 @@ VLIB_REGISTER_NODE (ip4_lookup_node) = {
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_node, ip4_lookup)
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_node, ip4_lookup);
 
 static uword
 ip4_indirect (vlib_main_t * vm,
@@ -1555,7 +1593,7 @@ VLIB_REGISTER_NODE (ip4_indirect_node) = {
   .n_next_nodes = 0,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_indirect_node, ip4_indirect)
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_indirect_node, ip4_indirect);
 
 
 /* Global IP4 main. */
@@ -1825,7 +1863,7 @@ VLIB_REGISTER_NODE (ip4_drop_node,static) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_drop_node, ip4_drop)
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_drop_node, ip4_drop);
 
 VLIB_REGISTER_NODE (ip4_punt_node,static) = {
   .function = ip4_punt,
@@ -1840,7 +1878,7 @@ VLIB_REGISTER_NODE (ip4_punt_node,static) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_punt_node, ip4_punt)
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_punt_node, ip4_punt);
 
 VLIB_REGISTER_NODE (ip4_miss_node,static) = {
   .function = ip4_miss,
@@ -1855,7 +1893,7 @@ VLIB_REGISTER_NODE (ip4_miss_node,static) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_miss_node, ip4_miss)
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_miss_node, ip4_miss);
 
 /* Compute TCP/UDP/ICMP4 checksum in software. */
 u16
@@ -2299,7 +2337,7 @@ VLIB_REGISTER_NODE (ip4_local_node,static) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_local_node, ip4_local)
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_local_node, ip4_local);
 
 void ip4_register_protocol (u32 protocol, u32 node_index)
 {
@@ -2644,6 +2682,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
   u32 n_left_from, n_left_to_next, * to_next, next_index;
   vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
   vlib_rx_or_tx_t adj_rx_tx = rewrite_for_locally_received_packets ? VLIB_RX : VLIB_TX;
+  ip_config_main_t * cm = &lm->feature_config_mains[VNET_TXCAST];
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -2661,6 +2700,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  u32 pi0, rw_len0, next0, error0, checksum0, adj_index0;
 	  u32 pi1, rw_len1, next1, error1, checksum1, adj_index1;
           u32 next0_override, next1_override;
+          u32 tx_sw_if_index0, tx_sw_if_index1;
       
           if (rewrite_for_locally_received_packets)
               next0_override = next1_override = 0;
@@ -2826,17 +2866,44 @@ ip4_rewrite_inline (vlib_main_t * vm,
             {
               p0->current_data -= rw_len0;
               p0->current_length += rw_len0;
-              p0->error = error_node->errors[error0];
+              tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
               vnet_buffer (p0)->sw_if_index[VLIB_TX] =
-                  adj0[0].rewrite_header.sw_if_index;
+                  tx_sw_if_index0;
+
+              if (PREDICT_FALSE 
+                  (clib_bitmap_get (lm->tx_sw_if_has_ip_output_features, 
+                                    tx_sw_if_index0)))
+                {
+                  p0->current_config_index = 
+                    vec_elt (cm->config_index_by_sw_if_index, 
+                             tx_sw_if_index0);
+                  vnet_get_config_data (&cm->config_main,
+                                        &p0->current_config_index,
+                                        &next0,
+                                        /* # bytes of config data */ 0);
+                }
             }
           if (PREDICT_TRUE(error1 == IP4_ERROR_NONE))
             {
               p1->current_data -= rw_len1;
               p1->current_length += rw_len1;
-              p1->error = error_node->errors[error1];
+
+              tx_sw_if_index1 = adj1[0].rewrite_header.sw_if_index;
               vnet_buffer (p1)->sw_if_index[VLIB_TX] =
-                  adj1[0].rewrite_header.sw_if_index;
+                  tx_sw_if_index1;
+
+              if (PREDICT_FALSE 
+                  (clib_bitmap_get (lm->tx_sw_if_has_ip_output_features, 
+                                    tx_sw_if_index1)))
+                {
+                  p1->current_config_index = 
+                    vec_elt (cm->config_index_by_sw_if_index, 
+                             tx_sw_if_index1);
+                  vnet_get_config_data (&cm->config_main,
+                                        &p1->current_config_index,
+                                        &next1,
+                                        /* # bytes of config data */ 0);
+                }
             }
 
 	  /* Guess we are only writing on simple Ethernet header. */
@@ -2856,6 +2923,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  ip4_header_t * ip0;
 	  u32 pi0, rw_len0, adj_index0, next0, error0, checksum0;
           u32 next0_override;
+          u32 tx_sw_if_index0;
       
           if (rewrite_for_locally_received_packets)
               next0_override = 0;
@@ -2957,10 +3025,23 @@ ip4_rewrite_inline (vlib_main_t * vm,
             {
               p0->current_data -= rw_len0;
               p0->current_length += rw_len0;
+              tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 
-              vnet_buffer (p0)->sw_if_index[VLIB_TX] =
-                  adj0[0].rewrite_header.sw_if_index;
+              vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;
               next0 = adj0[0].rewrite_header.next_index;
+
+              if (PREDICT_FALSE 
+                  (clib_bitmap_get (lm->tx_sw_if_has_ip_output_features, 
+                                    tx_sw_if_index0)))
+                  {
+                    p0->current_config_index = 
+                      vec_elt (cm->config_index_by_sw_if_index, 
+                               tx_sw_if_index0);
+                    vnet_get_config_data (&cm->config_main,
+                                          &p0->current_config_index,
+                                          &next0,
+                                          /* # bytes of config data */ 0);
+                  }
             }
 
           if (rewrite_for_locally_received_packets)
@@ -3084,7 +3165,7 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_node, ip4_rewrite_transit)
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_node, ip4_rewrite_transit);
 
 VLIB_REGISTER_NODE (ip4_rewrite_local_node) = {
   .function = ip4_rewrite_local,
@@ -3098,7 +3179,7 @@ VLIB_REGISTER_NODE (ip4_rewrite_local_node) = {
   .n_next_nodes = 0,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_local_node, ip4_rewrite_local)
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_local_node, ip4_rewrite_local);
 
 static clib_error_t *
 add_del_interface_table (vlib_main_t * vm,
@@ -3377,7 +3458,7 @@ VLIB_REGISTER_NODE (ip4_lookup_multicast_node,static) = {
   .n_next_nodes = 0,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_multicast_node, ip4_lookup_multicast)
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_multicast_node, ip4_lookup_multicast);
 
 VLIB_REGISTER_NODE (ip4_multicast_node,static) = {
   .function = ip4_drop,
@@ -3602,3 +3683,44 @@ VLIB_CLI_COMMAND (set_ip_classify_command, static) = {
     .function = set_ip_classify_command_fn,
 };
 
+
+#define TEST_CODE 1
+#if TEST_CODE > 0
+
+static clib_error_t *
+set_interface_output_feature_command_fn (vlib_main_t * vm,
+                                         unformat_input_t * input,
+                                         vlib_cli_command_t * cmd)
+{
+  vnet_main_t * vnm = vnet_get_main();
+  u32 sw_if_index = ~0;
+  int is_add = 1;
+  ip4_main_t * im = &ip4_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) 
+    {
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+        ;
+      else if (unformat (input, "del"))
+        is_add = 0;
+      else
+        break;
+    }
+
+  if (sw_if_index == ~0)
+    return clib_error_return (0, "unknown interface `%U'",
+                              format_unformat_error, input);
+
+  lm->tx_sw_if_has_ip_output_features =
+    clib_bitmap_set (lm->tx_sw_if_has_ip_output_features, sw_if_index, is_add);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (set_interface_output_feature, static) = {
+  .path = "set interface output feature",
+  .function = set_interface_output_feature_command_fn,
+  .short_help = "set interface output feature <intfc>",
+};
+#endif /* TEST_CODE */

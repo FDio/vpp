@@ -46,6 +46,7 @@ typedef enum
 {
   VNET_UNICAST,
   VNET_MULTICAST,
+  VNET_TXCAST,
   VNET_N_CAST,
 } vnet_cast_t;
 
