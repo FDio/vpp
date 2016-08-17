@@ -421,7 +421,7 @@ ila_sir2ila (vlib_main_t * vm,
 {
   ip6_main_t *im = &ip6_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *cm = &lm->rx_config_mains[VNET_UNICAST];
+  ip_config_main_t *cm = &lm->feature_config_mains[VNET_UNICAST];
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   ila_main_t *ilm = &ila_main;
 
@@ -769,7 +769,7 @@ ila_interface (u32 sw_if_index, u8 disable)
   ila_main_t *ilm = &ila_main;
   ip6_main_t *im = &ip6_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *cm = &lm->rx_config_mains[VNET_UNICAST];
+  ip_config_main_t *cm = &lm->feature_config_mains[VNET_UNICAST];
   vnet_config_main_t *vcm = &cm->config_main;
   u32 ci, feature_index;
 

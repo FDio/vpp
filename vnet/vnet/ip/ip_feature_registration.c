@@ -74,13 +74,21 @@ ip_feature_init_cast (vlib_main_t * vm,
       else
         first_reg = im6->next_uc_feature;
     }
-  else
+  else if (cast == VNET_MULTICAST)
     {
       if (is_ip4)
         first_reg = im4->next_mc_feature;
       else
         first_reg = im6->next_mc_feature;
+    } 
+  else if (cast == VNET_TXCAST)
+    {
+      if (is_ip4)
+        first_reg = im4->next_tx_feature;
+      else
+        first_reg = im6->next_tx_feature;
     }
+
   
   this_reg = first_reg;
 
@@ -222,8 +230,10 @@ ip_feature_init_cast (vlib_main_t * vm,
 #define foreach_af_cast                         \
 _(4, VNET_UNICAST, "ip4 unicast")               \
 _(4, VNET_MULTICAST, "ip4 multicast")           \
+_(4, VNET_TXCAST, "ip4 output")                 \
 _(6, VNET_UNICAST, "ip6 unicast")               \
-_(6, VNET_MULTICAST, "ip6 multicast")
+_(6, VNET_MULTICAST, "ip6 multicast")		\
+_(6, VNET_TXCAST, "ip6 output")
 
 static clib_error_t *
 show_ip_features_command_fn (vlib_main_t * vm,
@@ -297,7 +307,7 @@ show_ip_interface_features_command_fn (vlib_main_t * vm,
 
       for (cast = VNET_UNICAST; cast < VNET_N_CAST; cast++)
         {
-          cm = lm->rx_config_mains + cast;
+          cm = lm->feature_config_mains + cast;
           vcm = &cm->config_main;
       
           vlib_cli_output (vm, "\nipv%s %scast:", 
