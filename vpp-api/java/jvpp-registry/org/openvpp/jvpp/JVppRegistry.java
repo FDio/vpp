@@ -62,8 +62,15 @@ public interface JVppRegistry extends AutoCloseable {
     /**
      * Sends control ping. Reply handler calls callback registered for give plugin.
      *
+     * Control ping is used for initial RX thread to Java thread attachment
+     * that takes place in the plugin's JNI lib
+     * and to wrap dump message replies in one list.
+     *
+     * VPP plugins don't have to provide special control ping, therefore
+     * it is necessary to providing control ping support in JVppRegistry.
+
      * @param clazz identifies plugin that should receive ping callback
-     * @return unique identifer of message in message queue
+     * @return unique identifier of message in message queue
      */
     int controlPing(final Class<? extends JVpp> clazz) throws VppInvocationException;
 }
