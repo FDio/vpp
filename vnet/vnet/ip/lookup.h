@@ -408,6 +408,12 @@ typedef struct ip_lookup_main_t {
   /** Adjacency by signature hash */
   uword * adj_index_by_signature;
 
+  /** any-tx-feature-enabled interface bitmap */
+  uword * tx_sw_if_has_ip_output_features;
+
+  /** count of enabled features, per sw_if_index, to maintain bitmap */
+  i16 * tx_feature_count_by_sw_if_index;
+
   /** Temporary vectors for looking up next hops in hash. */
   ip_multipath_next_hop_t * next_hop_hash_lookup_key;
   ip_multipath_next_hop_t * next_hop_hash_lookup_key_normalized;
@@ -444,8 +450,8 @@ typedef struct ip_lookup_main_t {
   /** First table index to use for this interface, ~0 => none */
   u32 * classify_table_index_by_sw_if_index;
 
-  /** rx/tx interface/feature configuration. */
-  ip_config_main_t rx_config_mains[VNET_N_CAST], tx_config_main;
+  /** rx unicast, multicast, tx interface/feature configuration. */
+  ip_config_main_t feature_config_mains[VNET_N_IP_FEAT];
 
   /** Number of bytes in a fib result.  Must be at least
      sizeof (uword).  First word is always adjacency index. */

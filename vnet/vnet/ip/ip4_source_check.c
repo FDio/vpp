@@ -82,7 +82,7 @@ ip4_source_check_inline (vlib_main_t * vm,
 {
   ip4_main_t * im = &ip4_main;
   ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * cm = &lm->rx_config_mains[VNET_UNICAST];
+  ip_config_main_t * cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   u32 n_left_from, * from, * to_next;
   u32 next_index;
   vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
@@ -325,7 +325,7 @@ set_ip_source_check (vlib_main_t * vm,
   vnet_main_t * vnm = vnet_get_main();
   ip4_main_t * im = &ip4_main;
   ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * rx_cm = &lm->rx_config_mains[VNET_UNICAST];
+  ip_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   clib_error_t * error = 0;
   u32 sw_if_index, is_del, ci;
   ip4_source_check_config_t config;

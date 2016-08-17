@@ -163,7 +163,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
   u32 pkts_processed = 0;
   snat_main_t * sm = &snat_main;
   ip_lookup_main_t * lm = sm->ip4_lookup_main;
-  ip_config_main_t * cm = &lm->rx_config_mains[VNET_UNICAST];
+  ip_config_main_t * cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   f64 now = vlib_time_now (vm);
 
   from = vlib_frame_vector_args (frame);

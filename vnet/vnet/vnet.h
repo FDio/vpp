@@ -44,9 +44,10 @@
 
 typedef enum
 {
-  VNET_UNICAST,
-  VNET_MULTICAST,
-  VNET_N_CAST,
+  VNET_IP_RX_UNICAST_FEAT,
+  VNET_IP_RX_MULTICAST_FEAT,
+  VNET_IP_TX_FEAT,
+  VNET_N_IP_FEAT,
 } vnet_cast_t;
 
 #include <vnet/unix/pcap.h>

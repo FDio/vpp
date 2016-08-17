@@ -144,11 +144,11 @@ ip4_input_inline (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
 
-	  cast0 = ip4_address_is_multicast (&ip0->dst_address) ? VNET_MULTICAST : VNET_UNICAST;
-	  cast1 = ip4_address_is_multicast (&ip1->dst_address) ? VNET_MULTICAST : VNET_UNICAST;
+	  cast0 = ip4_address_is_multicast (&ip0->dst_address) ? VNET_IP_RX_MULTICAST_FEAT : VNET_IP_RX_UNICAST_FEAT;
+	  cast1 = ip4_address_is_multicast (&ip1->dst_address) ? VNET_IP_RX_MULTICAST_FEAT : VNET_IP_RX_UNICAST_FEAT;
 
-	  cm0 = lm->rx_config_mains + cast0;
-	  cm1 = lm->rx_config_mains + cast1;
+	  cm0 = lm->feature_config_mains + cast0;
+	  cm1 = lm->feature_config_mains + cast1;
 
 	  p0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index, sw_if_index0);
 	  p1->current_config_index = vec_elt (cm1->config_index_by_sw_if_index, sw_if_index1);
@@ -195,8 +195,8 @@ ip4_input_inline (vlib_main_t * vm,
 	  error1 = ip4_get_fragment_offset (ip1) == 1 ? IP4_ERROR_FRAGMENT_OFFSET_ONE : error1;
 
 	  /* TTL < 1? Drop it. */
-	  error0 = (ip0->ttl < 1 && cast0 == VNET_UNICAST) ? IP4_ERROR_TIME_EXPIRED : error0;
-	  error1 = (ip1->ttl < 1 && cast1 == VNET_UNICAST) ? IP4_ERROR_TIME_EXPIRED : error1;
+	  error0 = (ip0->ttl < 1 && cast0 == VNET_IP_RX_UNICAST_FEAT) ? IP4_ERROR_TIME_EXPIRED : error0;
+	  error1 = (ip1->ttl < 1 && cast1 == VNET_IP_RX_UNICAST_FEAT) ? IP4_ERROR_TIME_EXPIRED : error1;
 
 	  /* Verify lengths. */
 	  ip_len0 = clib_net_to_host_u16 (ip0->length);
@@ -262,8 +262,8 @@ ip4_input_inline (vlib_main_t * vm,
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
-	  cast0 = ip4_address_is_multicast (&ip0->dst_address) ? VNET_MULTICAST : VNET_UNICAST;
-	  cm0 = lm->rx_config_mains + cast0;
+	  cast0 = ip4_address_is_multicast (&ip0->dst_address) ? VNET_IP_RX_MULTICAST_FEAT : VNET_IP_RX_UNICAST_FEAT;
+	  cm0 = lm->feature_config_mains + cast0;
 	  p0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index, sw_if_index0);
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
 	  vnet_get_config_data (&cm0->config_main,
@@ -294,7 +294,7 @@ ip4_input_inline (vlib_main_t * vm,
 	  error0 = ip4_get_fragment_offset (ip0) == 1 ? IP4_ERROR_FRAGMENT_OFFSET_ONE : error0;
 
 	  /* TTL < 1? Drop it. */
-          error0 = (ip0->ttl < 1 && cast0 == VNET_UNICAST) ? IP4_ERROR_TIME_EXPIRED : error0;
+          error0 = (ip0->ttl < 1 && cast0 == VNET_IP_RX_UNICAST_FEAT) ? IP4_ERROR_TIME_EXPIRED : error0;
 
 	  /* Verify lengths. */
 	  ip_len0 = clib_net_to_host_u16 (ip0->length);

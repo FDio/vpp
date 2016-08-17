@@ -78,7 +78,7 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 
   /* IPv4 */
   lm = &ip4_main.lookup_main;
-  rx_cm = &lm->rx_config_mains[VNET_UNICAST];
+  rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
 
   ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
 
@@ -89,7 +89,7 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 
   /* IPv6 */
   lm = &ip6_main.lookup_main;
-  rx_cm = &lm->rx_config_mains[VNET_UNICAST];
+  rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
 
   ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
 

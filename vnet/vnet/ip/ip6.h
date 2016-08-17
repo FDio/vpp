@@ -145,6 +145,7 @@ typedef struct ip6_main_t {
   /* feature path configuration lists */
   vnet_ip_feature_registration_t * next_uc_feature;
   vnet_ip_feature_registration_t * next_mc_feature;
+  vnet_ip_feature_registration_t * next_tx_feature;
 
   /* Built-in unicast feature path indices, see ip_feature_init_cast(...)  */
   u32 ip6_unicast_rx_feature_check_access;
@@ -157,9 +158,12 @@ typedef struct ip6_main_t {
   /* Built-in multicast feature path indices */
   u32 ip6_multicast_rx_feature_vpath;
   u32 ip6_multicast_rx_feature_lookup;
+  
+  /* Built-in tx feature path index */
+  u32 ip6_tx_feature_interface_output;
 
   /* Save results for show command */
-  char ** feature_nodes[VNET_N_CAST];
+  char ** feature_nodes[VNET_N_IP_FEAT];
 
   /* Seed for Jenkins hash used to compute ip6 flow hash. */
   u32 flow_hash_seed;
@@ -201,6 +205,19 @@ static void __vnet_add_feature_registration_mc_##x (void)       \
   im->next_mc_feature = &mc_##x;                                \
 }                                                               \
 __VA_ARGS__ vnet_ip_feature_registration_t mc_##x 
+
+#define VNET_IP6_TX_FEATURE_INIT(x,...)                         \
+  __VA_ARGS__ vnet_ip_feature_registration_t tx_##x;            \
+static void __vnet_add_feature_registration_tx_##x (void)       \
+  __attribute__((__constructor__)) ;                            \
+static void __vnet_add_feature_registration_tx_##x (void)       \
+{                                                               \
+  ip6_main_t * im = &ip6_main;                                  \
+  tx_##x.next = im->next_tx_feature;                            \
+  im->next_tx_feature = &tx_##x;                                \
+}                                                               \
+__VA_ARGS__ vnet_ip_feature_registration_t tx_##x 
+
 
 /* Global ip6 input node.  Errors get attached to ip6 input node. */
 extern vlib_node_registration_t ip6_input_node;
