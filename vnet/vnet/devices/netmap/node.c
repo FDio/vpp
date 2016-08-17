@@ -28,36 +28,40 @@
 
 #define foreach_netmap_input_error
 
-typedef enum {
+typedef enum
+{
 #define _(f,s) NETMAP_INPUT_ERROR_##f,
   foreach_netmap_input_error
 #undef _
-  NETMAP_INPUT_N_ERROR,
+    NETMAP_INPUT_N_ERROR,
 } netmap_input_error_t;
 
-static char * netmap_input_error_strings[] = {
+static char *netmap_input_error_strings[] = {
 #define _(n,s) s,
-    foreach_netmap_input_error
+  foreach_netmap_input_error
 #undef _
 };
 
-enum {
+enum
+{
   NETMAP_INPUT_NEXT_DROP,
   NETMAP_INPUT_NEXT_ETHERNET_INPUT,
   NETMAP_INPUT_N_NEXT,
 };
 
-typedef struct {
+typedef struct
+{
   u32 next_index;
   u32 hw_if_index;
   struct netmap_slot slot;
 } netmap_input_trace_t;
 
-static u8 * format_netmap_input_trace (u8 * s, va_list * args)
+static u8 *
+format_netmap_input_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  netmap_input_trace_t * t = va_arg (*args, netmap_input_trace_t *);
+  netmap_input_trace_t *t = va_arg (*args, netmap_input_trace_t *);
   uword indent = format_get_indent (s);
 
   s = format (s, "netmap: hw_if_index %d next-index %d",
@@ -69,14 +73,14 @@ static u8 * format_netmap_input_trace (u8 * s, va_list * args)
 }
 
 always_inline void
-buffer_add_to_chain(vlib_main_t *vm, u32 bi, u32 first_bi, u32 prev_bi)
+buffer_add_to_chain (vlib_main_t * vm, u32 bi, u32 first_bi, u32 prev_bi)
 {
-  vlib_buffer_t * b = vlib_get_buffer (vm, bi);
-  vlib_buffer_t * first_b = vlib_get_buffer (vm, first_bi);
-  vlib_buffer_t * prev_b = vlib_get_buffer (vm, prev_bi);
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  vlib_buffer_t *first_b = vlib_get_buffer (vm, first_bi);
+  vlib_buffer_t *prev_b = vlib_get_buffer (vm, prev_bi);
 
   /* update first buffer */
-  first_b->total_length_not_including_first_buffer +=  b->current_length;
+  first_b->total_length_not_including_first_buffer += b->current_length;
 
   /* update previous buffer */
   prev_b->next_buffer = bi;
@@ -86,9 +90,9 @@ buffer_add_to_chain(vlib_main_t *vm, u32 bi, u32 first_bi, u32 prev_bi)
   b->next_buffer = 0;
 
 #if DPDK > 0
-  struct rte_mbuf * mbuf = rte_mbuf_from_vlib_buffer(b);
-  struct rte_mbuf * first_mbuf = rte_mbuf_from_vlib_buffer(first_b);
-  struct rte_mbuf * prev_mbuf = rte_mbuf_from_vlib_buffer(prev_b);
+  struct rte_mbuf *mbuf = rte_mbuf_from_vlib_buffer (b);
+  struct rte_mbuf *first_mbuf = rte_mbuf_from_vlib_buffer (first_b);
+  struct rte_mbuf *prev_mbuf = rte_mbuf_from_vlib_buffer (prev_b);
   first_mbuf->nb_segs++;
   prev_mbuf->next = mbuf;
   mbuf->data_len = b->current_length;
@@ -98,30 +102,33 @@ buffer_add_to_chain(vlib_main_t *vm, u32 bi, u32 first_bi, u32 prev_bi)
 }
 
 always_inline uword
-netmap_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame, netmap_if_t * nif)
+netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			vlib_frame_t * frame, netmap_if_t * nif)
 {
   u32 next_index = NETMAP_INPUT_NEXT_ETHERNET_INPUT;
   uword n_trace = vlib_get_trace_count (vm, node);
-  netmap_main_t * nm = &netmap_main;
+  netmap_main_t *nm = &netmap_main;
   u32 n_rx_packets = 0;
   u32 n_rx_bytes = 0;
-  u32 * to_next = 0;
+  u32 *to_next = 0;
   u32 n_free_bufs;
-  struct netmap_ring * ring;
+  struct netmap_ring *ring;
   int cur_ring;
-  u32 cpu_index = os_get_cpu_number();
+  u32 cpu_index = os_get_cpu_number ();
   u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm,
-    VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+							  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   if (nif->per_interface_next_index != ~0)
-      next_index = nif->per_interface_next_index;
+    next_index = nif->per_interface_next_index;
 
   n_free_bufs = vec_len (nm->rx_buffers[cpu_index]);
-  if (PREDICT_FALSE(n_free_bufs < VLIB_FRAME_SIZE))
+  if (PREDICT_FALSE (n_free_bufs < VLIB_FRAME_SIZE))
     {
-      vec_validate(nm->rx_buffers[cpu_index], VLIB_FRAME_SIZE + n_free_bufs - 1);
-      n_free_bufs += vlib_buffer_alloc(vm, &nm->rx_buffers[cpu_index][n_free_bufs], VLIB_FRAME_SIZE);
+      vec_validate (nm->rx_buffers[cpu_index],
+		    VLIB_FRAME_SIZE + n_free_bufs - 1);
+      n_free_bufs +=
+	vlib_buffer_alloc (vm, &nm->rx_buffers[cpu_index][n_free_bufs],
+			   VLIB_FRAME_SIZE);
       _vec_len (nm->rx_buffers[cpu_index]) = n_free_bufs;
     }
 
@@ -130,8 +137,8 @@ netmap_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       int r = 0;
       u32 cur_slot_index;
-      ring = NETMAP_RXRING(nif->nifp, cur_ring);
-      r = nm_ring_space(ring);
+      ring = NETMAP_RXRING (nif->nifp, cur_ring);
+      r = nm_ring_space (ring);
 
       if (!r)
 	{
@@ -145,30 +152,33 @@ netmap_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
       cur_slot_index = ring->cur;
       while (r)
 	{
-          u32 n_left_to_next;
-          u32 next0 = next_index;
-          vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+	  u32 n_left_to_next;
+	  u32 next0 = next_index;
+	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
 	  while (r && n_left_to_next)
 	    {
-	      vlib_buffer_t * b0, * first_b0 = 0;
+	      vlib_buffer_t *b0, *first_b0 = 0;
 	      u32 offset = 0;
 	      u32 bi0 = 0, first_bi0 = 0, prev_bi0;
 	      u32 next_slot_index = (cur_slot_index + 1) % ring->num_slots;
 	      u32 next2_slot_index = (cur_slot_index + 2) % ring->num_slots;
-	      struct netmap_slot * slot = &ring->slot[cur_slot_index];
+	      struct netmap_slot *slot = &ring->slot[cur_slot_index];
 	      u32 data_len = slot->len;
 
 	      /* prefetch 2 slots in advance */
-	      CLIB_PREFETCH (&ring->slot[next2_slot_index], CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (&ring->slot[next2_slot_index],
+			     CLIB_CACHE_LINE_BYTES, LOAD);
 	      /* prefetch start of next packet */
-	      CLIB_PREFETCH (NETMAP_BUF(ring, ring->slot[next_slot_index].buf_idx),
+	      CLIB_PREFETCH (NETMAP_BUF
+			     (ring, ring->slot[next_slot_index].buf_idx),
 			     CLIB_CACHE_LINE_BYTES, LOAD);
 
 	      while (data_len && n_free_bufs)
 		{
 		  /* grab free buffer */
-		  u32 last_empty_buffer = vec_len (nm->rx_buffers[cpu_index]) - 1;
+		  u32 last_empty_buffer =
+		    vec_len (nm->rx_buffers[cpu_index]) - 1;
 		  prev_bi0 = bi0;
 		  bi0 = nm->rx_buffers[cpu_index][last_empty_buffer];
 		  b0 = vlib_get_buffer (vm, bi0);
@@ -176,11 +186,13 @@ netmap_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  n_free_bufs--;
 
 		  /* copy data */
-		  u32 bytes_to_copy = data_len > n_buffer_bytes ? n_buffer_bytes : data_len;
+		  u32 bytes_to_copy =
+		    data_len > n_buffer_bytes ? n_buffer_bytes : data_len;
 		  b0->current_data = 0;
 		  clib_memcpy (vlib_buffer_get_current (b0),
-			  (u8 *) NETMAP_BUF(ring, slot->buf_idx) + offset,
-			  bytes_to_copy);
+			       (u8 *) NETMAP_BUF (ring,
+						  slot->buf_idx) + offset,
+			       bytes_to_copy);
 
 		  /* fill buffer header */
 		  b0->current_length = bytes_to_copy;
@@ -188,43 +200,45 @@ netmap_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  if (offset == 0)
 		    {
 #if DPDK > 0
-		      struct rte_mbuf * mb = rte_mbuf_from_vlib_buffer(b0);
+		      struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer (b0);
 		      rte_pktmbuf_data_len (mb) = b0->current_length;
 		      rte_pktmbuf_pkt_len (mb) = b0->current_length;
 #endif
 		      b0->total_length_not_including_first_buffer = 0;
 		      b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
-		      vnet_buffer(b0)->sw_if_index[VLIB_RX] = nif->sw_if_index;
-		      vnet_buffer(b0)->sw_if_index[VLIB_TX] = (u32)~0;
+		      vnet_buffer (b0)->sw_if_index[VLIB_RX] =
+			nif->sw_if_index;
+		      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 		      first_bi0 = bi0;
-		      first_b0 = vlib_get_buffer(vm, first_bi0);
+		      first_b0 = vlib_get_buffer (vm, first_bi0);
 		    }
 		  else
-		    buffer_add_to_chain(vm, bi0, first_bi0, prev_bi0);
+		    buffer_add_to_chain (vm, bi0, first_bi0, prev_bi0);
 
 		  offset += bytes_to_copy;
 		  data_len -= bytes_to_copy;
 		}
 
 	      /* trace */
-	      VLIB_BUFFER_TRACE_TRAJECTORY_INIT(first_b0);
-	      if (PREDICT_FALSE(n_trace > 0))
-	        {
-                  if (PREDICT_TRUE(first_b0 != 0))
-                    {
-                      netmap_input_trace_t *tr;
-                      vlib_trace_buffer (vm, node, next0, first_b0, 
-                                         /* follow_chain */ 0);
-                      vlib_set_trace_count (vm, node, --n_trace);
-                      tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
-                      tr->next_index = next0;
-                      tr->hw_if_index = nif->hw_if_index;
-                      memcpy (&tr->slot, slot, sizeof (struct netmap_slot));
-                    }
-	        }
+	      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b0);
+	      if (PREDICT_FALSE (n_trace > 0))
+		{
+		  if (PREDICT_TRUE (first_b0 != 0))
+		    {
+		      netmap_input_trace_t *tr;
+		      vlib_trace_buffer (vm, node, next0, first_b0,
+					 /* follow_chain */ 0);
+		      vlib_set_trace_count (vm, node, --n_trace);
+		      tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
+		      tr->next_index = next0;
+		      tr->hw_if_index = nif->hw_if_index;
+		      memcpy (&tr->slot, slot, sizeof (struct netmap_slot));
+		    }
+		}
 	      /* enque and take next packet */
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					       n_left_to_next, first_bi0, next0);
+					       n_left_to_next, first_bi0,
+					       next0);
 
 	      /* next packet */
 	      n_rx_packets++;
@@ -236,46 +250,46 @@ netmap_device_input_fn  (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      r--;
 	    }
-          vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 	}
-       ring->head = ring->cur = cur_slot_index;
-       cur_ring++;
+      ring->head = ring->cur = cur_slot_index;
+      cur_ring++;
     }
 
   if (n_rx_packets)
-    ioctl(nif->fd, NIOCRXSYNC, NULL);
+    ioctl (nif->fd, NIOCRXSYNC, NULL);
 
   vlib_increment_combined_counter
-    (vnet_get_main()->interface_main.combined_sw_if_counters
+    (vnet_get_main ()->interface_main.combined_sw_if_counters
      + VNET_INTERFACE_COUNTER_RX,
-     os_get_cpu_number(),
-     nif->hw_if_index,
-     n_rx_packets, n_rx_bytes);
+     os_get_cpu_number (), nif->hw_if_index, n_rx_packets, n_rx_bytes);
 
   return n_rx_packets;
 }
 
 static uword
 netmap_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * frame)
+		 vlib_frame_t * frame)
 {
   int i;
   u32 n_rx_packets = 0;
-  u32 cpu_index = os_get_cpu_number();
-  netmap_main_t * nm = &netmap_main;
-  netmap_if_t * nmi;
+  u32 cpu_index = os_get_cpu_number ();
+  netmap_main_t *nm = &netmap_main;
+  netmap_if_t *nmi;
 
-  for(i = 0; i < vec_len(nm->interfaces); i++ )
+  for (i = 0; i < vec_len (nm->interfaces); i++)
     {
-      nmi = vec_elt_at_index(nm->interfaces, i);
+      nmi = vec_elt_at_index (nm->interfaces, i);
       if (nmi->is_admin_up &&
-         (i % nm->input_cpu_count) == (cpu_index - nm->input_cpu_first_index))
-        n_rx_packets += netmap_device_input_fn(vm, node, frame, nmi);
+	  (i % nm->input_cpu_count) ==
+	  (cpu_index - nm->input_cpu_first_index))
+	n_rx_packets += netmap_device_input_fn (vm, node, frame, nmi);
     }
 
   return n_rx_packets;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (netmap_input_node) = {
   .function = netmap_input_fn,
   .name = "netmap-input",
@@ -294,4 +308,13 @@ VLIB_REGISTER_NODE (netmap_input_node) = {
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (netmap_input_node, netmap_input_fn)
+/* *INDENT-ON* */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

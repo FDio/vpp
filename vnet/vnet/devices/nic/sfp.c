@@ -15,11 +15,12 @@
 
 #include <vnet/devices/nic/sfp.h>
 
-static u8 * format_space_terminated (u8 * s, va_list * args)
+static u8 *
+format_space_terminated (u8 * s, va_list * args)
 {
   u32 l = va_arg (*args, u32);
-  u8 * v = va_arg (*args, u8 *);
-  u8 * p;
+  u8 *v = va_arg (*args, u8 *);
+  u8 *p;
 
   for (p = v + l - 1; p >= v && p[0] == ' '; p--)
     ;
@@ -27,10 +28,11 @@ static u8 * format_space_terminated (u8 * s, va_list * args)
   return s;
 }
 
-static u8 * format_sfp_id (u8 * s, va_list * args)
+static u8 *
+format_sfp_id (u8 * s, va_list * args)
 {
   u32 id = va_arg (*args, u32);
-  char * t = 0;
+  char *t = 0;
   switch (id)
     {
 #define _(f) case SFP_ID_##f: t = #f; break;
@@ -42,10 +44,11 @@ static u8 * format_sfp_id (u8 * s, va_list * args)
   return format (s, "%s", t);
 }
 
-static u8 * format_sfp_compatibility (u8 * s, va_list * args)
+static u8 *
+format_sfp_compatibility (u8 * s, va_list * args)
 {
   u32 c = va_arg (*args, u32);
-  char * t = 0;
+  char *t = 0;
   switch (c)
     {
 #define _(a,b,f) case SFP_COMPATIBILITY_##f: t = #f; break;
@@ -57,9 +60,14 @@ static u8 * format_sfp_compatibility (u8 * s, va_list * args)
   return format (s, "%s", t);
 }
 
-u32 sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c)
+u32
+sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c)
 {
-  static struct { u8 byte, bit; } t[] = {
+  static struct
+  {
+    u8 byte, bit;
+  } t[] =
+  {
 #define _(a,b,f) { .byte = a, .bit = b, },
     foreach_sfp_compatibility
 #undef _
@@ -69,9 +77,10 @@ u32 sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c)
   return (e->compatibility[t[c].byte] & (1 << t[c].bit)) != 0;
 }
 
-u8 * format_sfp_eeprom (u8 * s, va_list * args)
+u8 *
+format_sfp_eeprom (u8 * s, va_list * args)
 {
-  sfp_eeprom_t * e = va_arg (*args, sfp_eeprom_t *);
+  sfp_eeprom_t *e = va_arg (*args, sfp_eeprom_t *);
   uword indent = format_get_indent (s);
   int i;
 
@@ -85,13 +94,24 @@ u8 * format_sfp_eeprom (u8 * s, va_list * args)
 
   s = format (s, "\n%Uvendor: %U, part %U",
 	      format_white_space, indent,
-	      format_space_terminated, sizeof (e->vendor_name), e->vendor_name,
-	      format_space_terminated, sizeof (e->vendor_part_number), e->vendor_part_number);
-  s = format (s, "\n%Urevision: %U, serial: %U, date code: %U",
-	      format_white_space, indent,
-	      format_space_terminated, sizeof (e->vendor_revision), e->vendor_revision,
-	      format_space_terminated, sizeof (e->vendor_serial_number), e->vendor_serial_number,
-	      format_space_terminated, sizeof (e->vendor_date_code), e->vendor_date_code);
+	      format_space_terminated, sizeof (e->vendor_name),
+	      e->vendor_name, format_space_terminated,
+	      sizeof (e->vendor_part_number), e->vendor_part_number);
+  s =
+    format (s, "\n%Urevision: %U, serial: %U, date code: %U",
+	    format_white_space, indent, format_space_terminated,
+	    sizeof (e->vendor_revision), e->vendor_revision,
+	    format_space_terminated, sizeof (e->vendor_serial_number),
+	    e->vendor_serial_number, format_space_terminated,
+	    sizeof (e->vendor_date_code), e->vendor_date_code);
 
   return s;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

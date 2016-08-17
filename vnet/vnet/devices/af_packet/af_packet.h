@@ -17,14 +17,15 @@
  *------------------------------------------------------------------
  */
 
-typedef struct {
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  u8 * host_if_name;
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u8 *host_if_name;
   int fd;
-  struct tpacket_req * rx_req;
-  struct tpacket_req * tx_req;
-  u8 * rx_ring;
-  u8 * tx_ring;
+  struct tpacket_req *rx_req;
+  struct tpacket_req *tx_req;
+  u8 *rx_ring;
+  u8 *tx_ring;
   u32 hw_if_index;
   u32 sw_if_index;
   u32 unix_file_index;
@@ -36,15 +37,16 @@ typedef struct {
   u8 is_admin_up;
 } af_packet_if_t;
 
-typedef struct {
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  af_packet_if_t * interfaces;
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  af_packet_if_t *interfaces;
 
   /* bitmap of pending rx interfaces */
-  uword * pending_input_bitmap;
+  uword *pending_input_bitmap;
 
   /* rx buffer cache */
-  u32 * rx_buffers;
+  u32 *rx_buffers;
 
   /* hash of host interface names */
   mhash_t if_index_by_host_if_name;
@@ -54,5 +56,14 @@ af_packet_main_t af_packet_main;
 extern vnet_device_class_t af_packet_device_class;
 extern vlib_node_registration_t af_packet_input_node;
 
-int af_packet_create_if(vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set, u32 *sw_if_index);
-int af_packet_delete_if(vlib_main_t * vm, u8 * host_if_name);
+int af_packet_create_if (vlib_main_t * vm, u8 * host_if_name,
+			 u8 * hw_addr_set, u32 * sw_if_index);
+int af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

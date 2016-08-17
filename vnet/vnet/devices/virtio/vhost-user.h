@@ -52,50 +52,58 @@
  _ (VHOST_USER_F_PROTOCOL_FEATURES, 30)
 
 
-typedef enum {
+typedef enum
+{
 #define _(f,n) FEAT_##f = (n),
   foreach_virtio_net_feature
 #undef _
 } virtio_net_feature_t;
 
-int vhost_user_create_if(vnet_main_t * vnm, vlib_main_t * vm, 
-    const char * sock_filename, u8 is_server,
-    u32 * sw_if_index, u64 feature_mask,
-    u8 renumber, u32 custom_dev_instance, u8 *hwaddr);
-int vhost_user_modify_if(vnet_main_t * vnm, vlib_main_t * vm,
-    const char * sock_filename, u8 is_server,
-    u32 sw_if_index, u64 feature_mask,
-    u8 renumber, u32 custom_dev_instance);
-int vhost_user_delete_if(vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index);
+int vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
+			  const char *sock_filename, u8 is_server,
+			  u32 * sw_if_index, u64 feature_mask,
+			  u8 renumber, u32 custom_dev_instance, u8 * hwaddr);
+int vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
+			  const char *sock_filename, u8 is_server,
+			  u32 sw_if_index, u64 feature_mask,
+			  u8 renumber, u32 custom_dev_instance);
+int vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
+			  u32 sw_if_index);
 
-typedef struct vhost_user_memory_region {
+typedef struct vhost_user_memory_region
+{
   u64 guest_phys_addr;
   u64 memory_size;
   u64 userspace_addr;
   u64 mmap_offset;
 } vhost_user_memory_region_t;
 
-typedef struct vhost_user_memory {
+typedef struct vhost_user_memory
+{
   u32 nregions;
   u32 padding;
   vhost_user_memory_region_t regions[VHOST_MEMORY_MAX_NREGIONS];
 } vhost_user_memory_t;
 
-typedef struct {
+typedef struct
+{
   unsigned int index, num;
 } vhost_vring_state_t;
 
-typedef struct {
+typedef struct
+{
   unsigned int index, flags;
   u64 desc_user_addr, used_user_addr, avail_user_addr, log_guest_addr;
 } vhost_vring_addr_t;
 
-typedef struct vhost_user_log {
+typedef struct vhost_user_log
+{
   u64 size;
   u64 offset;
 } vhost_user_log_t;
 
-typedef enum vhost_user_req {
+typedef enum vhost_user_req
+{
   VHOST_USER_NONE = 0,
   VHOST_USER_GET_FEATURES = 1,
   VHOST_USER_SET_FEATURES = 2,
@@ -119,29 +127,35 @@ typedef enum vhost_user_req {
 } vhost_user_req_t;
 
 // vring_desc I/O buffer descriptor
-typedef struct {
+/* *INDENT-OFF* */
+typedef struct
+{
   uint64_t addr;  // packet data buffer address
   uint32_t len;   // packet data buffer size
   uint16_t flags; // (see below)
   uint16_t next;  // optional index next descriptor in chain
 } __attribute ((packed)) vring_desc_t;
 
-typedef struct {
+typedef struct
+{
   uint16_t flags;
   uint16_t idx;
   uint16_t ring[VHOST_VRING_MAX_SIZE];
 } __attribute ((packed)) vring_avail_t;
 
-typedef struct {
+typedef struct
+{
   uint16_t flags;
   uint16_t idx;
-  struct /* vring_used_elem */ {
-    uint32_t id; 
-    uint32_t len; 
-  } ring[VHOST_VRING_MAX_SIZE];
+  struct /* vring_used_elem */
+    {
+      uint32_t id;
+      uint32_t len;
+    } ring[VHOST_VRING_MAX_SIZE];
 } __attribute ((packed)) vring_used_t;
 
-typedef struct {
+typedef struct
+{
   u8 flags;
   u8 gso_type;
   u16 hdr_len;
@@ -156,19 +170,22 @@ typedef struct  {
 } __attribute ((packed)) virtio_net_hdr_mrg_rxbuf_t;
 
 typedef struct vhost_user_msg {
-    vhost_user_req_t request;
-    u32 flags;
-    u32 size;
-    union {
-        u64 u64;
-        vhost_vring_state_t state;
-        vhost_vring_addr_t addr;
-        vhost_user_memory_t memory;
-        vhost_user_log_t log;
+  vhost_user_req_t request;
+  u32 flags;
+  u32 size;
+  union
+    {
+      u64 u64;
+      vhost_vring_state_t state;
+      vhost_vring_addr_t addr;
+      vhost_user_memory_t memory;
+      vhost_user_log_t log;
     };
 } __attribute ((packed)) vhost_user_msg_t;
+/* *INDENT-ON* */
 
-typedef struct {
+typedef struct
+{
   u32 qsz;
   u16 last_avail_idx;
   u16 last_used_idx;
@@ -186,9 +203,10 @@ typedef struct {
   f64 int_deadline;
 } vhost_user_vring_t;
 
-typedef struct {
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  volatile u32 * lockp;
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  volatile u32 *lockp;
   u32 is_up;
   u32 admin_up;
   u32 unix_fd;
@@ -199,64 +217,71 @@ typedef struct {
   u8 sock_is_server;
   u32 hw_if_index, sw_if_index;
   u8 active;
-  
+
   u32 nregions;
   u64 features;
   u64 feature_mask;
   u64 protocol_features;
   u32 num_vrings;
   vhost_user_memory_region_t regions[VHOST_MEMORY_MAX_NREGIONS];
-  void * region_mmap_addr[VHOST_MEMORY_MAX_NREGIONS];
+  void *region_mmap_addr[VHOST_MEMORY_MAX_NREGIONS];
   u32 region_mmap_fd[VHOST_MEMORY_MAX_NREGIONS];
   vhost_user_vring_t vrings[2];
   int virtio_net_hdr_sz;
   int is_any_layout;
-  u32 * d_trace_buffers;
+  u32 *d_trace_buffers;
 
-  void * log_base_addr;
+  void *log_base_addr;
   u64 log_size;
 } vhost_user_intf_t;
 
-typedef struct {
-  u32 ** rx_buffers;
+typedef struct
+{
+  u32 **rx_buffers;
   u32 mtu_bytes;
-  vhost_user_intf_t * vhost_user_interfaces;
-  u32 * vhost_user_inactive_interfaces_index;
-  uword * vhost_user_interface_index_by_listener_fd;
-  uword * vhost_user_interface_index_by_sock_fd;
-  uword * vhost_user_interface_index_by_sw_if_index;
-  u32 * show_dev_instance_by_real_dev_instance;
+  vhost_user_intf_t *vhost_user_interfaces;
+  u32 *vhost_user_inactive_interfaces_index;
+  uword *vhost_user_interface_index_by_listener_fd;
+  uword *vhost_user_interface_index_by_sock_fd;
+  uword *vhost_user_interface_index_by_sw_if_index;
+  u32 *show_dev_instance_by_real_dev_instance;
   u32 coalesce_frames;
   f64 coalesce_time;
   int dont_dump_vhost_user_memory;
 } vhost_user_main_t;
 
-typedef struct {
-    u8 if_name[64];
-    u32 sw_if_index;
-    u32 virtio_net_hdr_sz;
-    u64 features;
-    u8 is_server;
-    u8 sock_filename[256];
-    u32 num_regions;
-    int sock_errno;
+typedef struct
+{
+  u8 if_name[64];
+  u32 sw_if_index;
+  u32 virtio_net_hdr_sz;
+  u64 features;
+  u8 is_server;
+  u8 sock_filename[256];
+  u32 num_regions;
+  int sock_errno;
 } vhost_user_intf_details_t;
 
-int vhost_user_dump_ifs(vnet_main_t * vnm, vlib_main_t * vm,
-        vhost_user_intf_details_t **out_vuids);
+int vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
+			 vhost_user_intf_details_t ** out_vuids);
 
 // CLI commands to be used from dpdk
-clib_error_t *
-vhost_user_connect_command_fn (vlib_main_t * vm,
-                 unformat_input_t * input,
-                 vlib_cli_command_t * cmd);
-clib_error_t *
-vhost_user_delete_command_fn (vlib_main_t * vm,
-                 unformat_input_t * input,
-                 vlib_cli_command_t * cmd);
-clib_error_t *
-show_vhost_user_command_fn (vlib_main_t * vm,
-                 unformat_input_t * input,
-                 vlib_cli_command_t * cmd);
+clib_error_t *vhost_user_connect_command_fn (vlib_main_t * vm,
+					     unformat_input_t * input,
+					     vlib_cli_command_t * cmd);
+clib_error_t *vhost_user_delete_command_fn (vlib_main_t * vm,
+					    unformat_input_t * input,
+					    vlib_cli_command_t * cmd);
+clib_error_t *show_vhost_user_command_fn (vlib_main_t * vm,
+					  unformat_input_t * input,
+					  vlib_cli_command_t * cmd);
 
 #endif
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
