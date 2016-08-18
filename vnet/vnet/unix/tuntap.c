@@ -206,6 +206,7 @@ tuntap_rx (vlib_main_t * vm,
 #else
   dpdk_main_t * dm = &dpdk_main;
   u32 free_list_index = dm->vlib_buffer_free_list_index;
+  struct rte_mbuf *first_mb = NULL, *prev_mb = NULL;
 #endif
 
   /* Make sure we have some RX buffers. */
@@ -262,6 +263,15 @@ tuntap_rx (vlib_main_t * vm,
 	b = vlib_get_buffer (vm, tm->rx_buffers[i_rx]);
 #if DPDK == 1
 	mb = rte_mbuf_from_vlib_buffer(b);
+
+        if (first_mb == NULL)
+            first_mb = mb;
+
+        if (prev_mb != NULL)
+          {
+            prev_mb->next = mb;
+            first_mb->nb_segs++;
+          }
 #endif
 	b->flags = 0;
 	b->current_data = 0;
@@ -270,12 +280,13 @@ tuntap_rx (vlib_main_t * vm,
 	n_bytes_left -= buffer_size;
 #if DPDK == 1
         rte_pktmbuf_data_len (mb) = b->current_length;
+        mb->data_off = RTE_PKTMBUF_HEADROOM + b->current_data;
 #endif
 
 	if (n_bytes_left <= 0)
           {
 #if DPDK == 1
-            rte_pktmbuf_pkt_len (mb) = n_bytes_in_packet;
+            rte_pktmbuf_pkt_len (first_mb) = n_bytes_in_packet;
 #endif
             break;
           }
@@ -284,9 +295,7 @@ tuntap_rx (vlib_main_t * vm,
 	b->flags |= VLIB_BUFFER_NEXT_PRESENT;
 	b->next_buffer = tm->rx_buffers[i_rx];
 #if DPDK == 1
-        ASSERT(0);
-        // ((struct rte_pktmbuf *)(b->mb))->next = 
-        // vlib_get_buffer (vm, tm->rx_buffers[i_rx])->mb;
+        prev_mb = mb;
 #endif
       }
 
