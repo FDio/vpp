@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_5be714e5",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 9865,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-18T20:49:28Z",
+      "side": 1,
+      "message": "This code will work most of the time. The ipv6 address ::dead:beef (or is it dead:beef::0?) will print as an ip4 address. Please look at is_ip6 and pass the indicated explicit address family argument to format_ip46_address.\n\nformat_ip46_address should never be used with IP46_TYPE_ANY, in fact we should remove it. It depends on pad byte values which are not a reliable address family indication.",
+      "revId": "312a6c743006a0f000c58e746fe5c060af3d4386",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
