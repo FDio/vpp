@@ -46,6 +46,30 @@
       "revId": "56f4789a088f86ee94eb104f2f4b14441c224822",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_1bce3c84",
+        "filename": "build-root/vagrant/build.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2016-08-18T17:08:17Z",
+      "side": 1,
+      "message": "I don\u0027t think it is specific to CentOS either. That is why this fix is a workaround and not a final fix. However, because of various reasons, the clock slew is greater when doing Centos builds and still greater using newer vagrant revision.\n\nIt makes for a bad OOB experience for folks using Centos Vagrant builds but hosting in Fedora F23 or F24 which requires new Vagrant and new vbox.\n\nI think we should merge it but keep Jira ticket open. I will try to find root cause.",
+      "parentUuid": "3a1d315d_684fab93",
+      "range": {
+        "startLine": 71,
+        "startChar": 0,
+        "endLine": 71,
+        "endChar": 44
+      },
+      "revId": "56f4789a088f86ee94eb104f2f4b14441c224822",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
