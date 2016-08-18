@@ -162,7 +162,7 @@ static int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t)
   /* VXLAN header. Are we having fun yet? */
   h0->vxlan.flags = VXLAN_GPE_FLAGS_I | VXLAN_GPE_FLAGS_P;
   h0->vxlan.ver_res = VXLAN_GPE_VERSION;
-  h0->vxlan.protocol = VXLAN_GPE_PROTOCOL_IP4;
+  h0->vxlan.protocol = t->protocol;
   h0->vxlan.vni_res = clib_host_to_net_u32 (t->vni<<8);
 
   t->rewrite = rw;
@@ -200,7 +200,7 @@ static int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t)
   /* VXLAN header. Are we having fun yet? */
   h0->vxlan.flags = VXLAN_GPE_FLAGS_I | VXLAN_GPE_FLAGS_P;
   h0->vxlan.ver_res = VXLAN_GPE_VERSION;
-  h0->vxlan.protocol = VXLAN_GPE_PROTOCOL_IP4;
+  h0->vxlan.protocol = t->protocol;
   h0->vxlan.vni_res = clib_host_to_net_u32 (t->vni<<8);
 
   t->rewrite = rw;
