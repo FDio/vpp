@@ -1,6 +1,6 @@
 from distutils.core import setup, Extension
 
-module1 = Extension('vpp_api',
+module1 = Extension('vpp_papi',
                     define_macros = [('MAJOR_VERSION', '1'),
                                      ('MINOR_VERSION', '0')],
                     include_dirs = ['pneum'],

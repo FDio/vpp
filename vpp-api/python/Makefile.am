@@ -31,7 +31,14 @@ libpneum_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread -lm
 libpneum_la_LDFLAGS = -module
 libpneum_la_CPPFLAGS =
 
+lib_LTLIBRARIES += libvpp_papi.la
+libvpp_papi_la_SOURCES= setup.py
+
 BUILT_SOURCES += vpp_papi.py
+
+install-exec-local: vpp_papi.py
+	cd $(srcdir); \
+	python setup.py build_ext -b $(abs_builddir)/python -L $(prefix)/lib64 build -b $(abs_builddir)/python install --prefix=$(prefix)
 
 vpp_papi.py: $(prefix)/../vpp/vpp-api/vpe.api pneum/api-gen.py
 	@echo "  PYTHON API";                                            	  \

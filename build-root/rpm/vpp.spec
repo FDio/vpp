@@ -49,6 +49,14 @@ allocator (mheap.c), extendable printf-like interface built on top of vectors
 time-based function calls (timer.c).
 TODO: reference and describe only the .h files
 
+%package python-api
+Summary: VPP api python bindings
+Group: Development/Libraries
+Requires: vpp = %{_version}-%{_release}, python-setuptools
+
+%description python-api
+This package contains the python bindings for the vpp api
+
 %pre
 # Add the vpp group
 groupadd -f -r vpp
@@ -82,6 +90,13 @@ do
 	# make lib symlinks
 	( cd %{buildroot}%{_libdir} && 
           ln -fs $file $(echo $file | sed -e 's/\(\.so\.[0-9]\+\).*/\1/') )
+done
+
+# Python bindings
+mkdir -p -m755 %{buildroot}%{python2_sitelib}/vpp_papi
+for file in $(find %{_vpp_install_dir}/*/lib*/python2.7/site-packages/ -type f -print | grep -v pyc | grep -v pyo)
+do
+	install -p -m 666 $file %{buildroot}%{python2_sitelib}/vpp_papi/
 done
 
 #
@@ -132,6 +147,10 @@ sysctl --system
 %files lib
 %defattr(-,bin,bin)
 %{_libdir}/*
+
+%files python-api
+%defattr(644,root,root)
+%{python2_sitelib}/vpp_papi/*
 
 %files devel
 %defattr(-,bin,bin)
