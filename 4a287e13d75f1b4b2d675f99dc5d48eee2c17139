@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_1e13ca5d",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1473,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-19T11:04:46Z",
+      "side": 1,
+      "message": "This is not really an output feature, it\u0027s just the \"natural\" next node after rewrite. But I\u0027m just being overly pedantic ..",
+      "range": {
+        "startLine": 1468,
+        "startChar": 0,
+        "endLine": 1473,
+        "endChar": 2
+      },
+      "revId": "4a287e13d75f1b4b2d675f99dc5d48eee2c17139",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_3e0e8635",
+        "filename": "vnet/vnet/ip/ip_feature_registration.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-19T11:04:46Z",
+      "side": 1,
+      "message": "Could this eventually become VNET_TXUCAST and VNET_TXMCAST?",
+      "range": {
+        "startLine": 233,
+        "startChar": 0,
+        "endLine": 233,
+        "endChar": 49
+      },
+      "revId": "4a287e13d75f1b4b2d675f99dc5d48eee2c17139",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_5e09422b",
+        "filename": "vnet/vnet/vnet.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-19T11:04:46Z",
+      "side": 1,
+      "message": "Nit: this will be a bit confusing because cast is now more than the name says, it\u0027s direction + cast.",
+      "range": {
+        "startLine": 49,
+        "startChar": 2,
+        "endLine": 49,
+        "endChar": 13
+      },
+      "revId": "4a287e13d75f1b4b2d675f99dc5d48eee2c17139",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
