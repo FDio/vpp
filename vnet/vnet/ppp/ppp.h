@@ -46,16 +46,18 @@
 
 extern vnet_hw_interface_class_t ppp_hw_interface_class;
 
-typedef enum {
+typedef enum
+{
 #define ppp_error(n,s) PPP_ERROR_##n,
 #include <vnet/ppp/error.def>
 #undef ppp_error
   PPP_N_ERROR,
 } ppp_error_t;
 
-typedef struct {
+typedef struct
+{
   /* Name (a c string). */
-  char * name;
+  char *name;
 
   /* PPP protocol type in host byte order. */
   ppp_protocol_t protocol;
@@ -67,19 +69,20 @@ typedef struct {
   u32 next_index;
 } ppp_protocol_info_t;
 
-typedef struct {
-  vlib_main_t * vlib_main;
+typedef struct
+{
+  vlib_main_t *vlib_main;
 
-  ppp_protocol_info_t * protocol_infos;
+  ppp_protocol_info_t *protocol_infos;
 
   /* Hash tables mapping name/protocol to protocol info index. */
-  uword * protocol_info_by_name, * protocol_info_by_protocol;
+  uword *protocol_info_by_name, *protocol_info_by_protocol;
 } ppp_main_t;
 
 always_inline ppp_protocol_info_t *
 ppp_get_protocol_info (ppp_main_t * em, ppp_protocol_t protocol)
 {
-  uword * p = hash_get (em->protocol_info_by_protocol, protocol);
+  uword *p = hash_get (em->protocol_info_by_protocol, protocol);
   return p ? vec_elt_at_index (em->protocol_infos, p[0]) : 0;
 }
 
@@ -88,12 +91,10 @@ extern ppp_main_t ppp_main;
 /* Register given node index to take input for given ppp type. */
 void
 ppp_register_input_type (vlib_main_t * vm,
-			 ppp_protocol_t protocol,
-			 u32 node_index);
+			 ppp_protocol_t protocol, u32 node_index);
 
 void ppp_set_adjacency (vnet_rewrite_header_t * rw,
-			uword max_data_bytes,
-			ppp_protocol_t protocol);
+			uword max_data_bytes, ppp_protocol_t protocol);
 
 format_function_t format_ppp_protocol;
 format_function_t format_ppp_header;
@@ -111,8 +112,8 @@ unformat_function_t unformat_pg_ppp_header;
 always_inline void
 ppp_setup_node (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  pg_node_t * pn = pg_get_node (node_index);
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  pg_node_t *pn = pg_get_node (node_index);
 
   n->format_buffer = format_ppp_header_with_length;
   n->unformat_buffer = unformat_ppp_header;
@@ -121,7 +122,14 @@ ppp_setup_node (vlib_main_t * vm, u32 node_index)
 
 void
 ppp_register_input_protocol (vlib_main_t * vm,
-			     ppp_protocol_t protocol,
-			     u32 node_index);
+			     ppp_protocol_t protocol, u32 node_index);
 
 #endif /* included_ppp_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -43,11 +43,12 @@
 /* Global main structure. */
 ppp_main_t ppp_main;
 
-u8 * format_ppp_protocol (u8 * s, va_list * args)
+u8 *
+format_ppp_protocol (u8 * s, va_list * args)
 {
   ppp_protocol_t p = va_arg (*args, u32);
-  ppp_main_t * pm = &ppp_main;
-  ppp_protocol_info_t * pi = ppp_get_protocol_info (pm, p);
+  ppp_main_t *pm = &ppp_main;
+  ppp_protocol_info_t *pi = ppp_get_protocol_info (pm, p);
 
   if (pi)
     s = format (s, "%s", pi->name);
@@ -57,10 +58,11 @@ u8 * format_ppp_protocol (u8 * s, va_list * args)
   return s;
 }
 
-u8 * format_ppp_header_with_length (u8 * s, va_list * args)
+u8 *
+format_ppp_header_with_length (u8 * s, va_list * args)
 {
-  ppp_main_t * pm = &ppp_main;
-  ppp_header_t * h = va_arg (*args, ppp_header_t *);
+  ppp_main_t *pm = &ppp_main;
+  ppp_header_t *h = va_arg (*args, ppp_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   ppp_protocol_t p = clib_net_to_host_u16 (h->protocol);
   uword indent, header_bytes;
@@ -80,8 +82,8 @@ u8 * format_ppp_header_with_length (u8 * s, va_list * args)
 
   if (max_header_bytes != 0 && header_bytes > max_header_bytes)
     {
-      ppp_protocol_info_t * pi = ppp_get_protocol_info (pm, p);
-      vlib_node_t * node = vlib_get_node (pm->vlib_main, pi->node_index);
+      ppp_protocol_info_t *pi = ppp_get_protocol_info (pm, p);
+      vlib_node_t *node = vlib_get_node (pm->vlib_main, pi->node_index);
       if (node->format_buffer)
 	s = format (s, "\n%U%U",
 		    format_white_space, indent,
@@ -92,9 +94,10 @@ u8 * format_ppp_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-u8 * format_ppp_header (u8 * s, va_list * args)
+u8 *
+format_ppp_header (u8 * s, va_list * args)
 {
-  ppp_header_t * h = va_arg (*args, ppp_header_t *);
+  ppp_header_t *h = va_arg (*args, ppp_header_t *);
   return format (s, "%U", format_ppp_header_with_length, h, 0);
 }
 
@@ -103,13 +106,12 @@ uword
 unformat_ppp_protocol_host_byte_order (unformat_input_t * input,
 				       va_list * args)
 {
-  u16 * result = va_arg (*args, u16 *);
-  ppp_main_t * pm = &ppp_main;
+  u16 *result = va_arg (*args, u16 *);
+  ppp_main_t *pm = &ppp_main;
   int p, i;
 
   /* Numeric type. */
-  if (unformat (input, "0x%x", &p)
-      || unformat (input, "%d", &p))
+  if (unformat (input, "0x%x", &p) || unformat (input, "%d", &p))
     {
       if (p >= (1 << 16))
 	return 0;
@@ -121,7 +123,7 @@ unformat_ppp_protocol_host_byte_order (unformat_input_t * input,
   if (unformat_user (input, unformat_vlib_number_by_name,
 		     pm->protocol_info_by_name, &i))
     {
-      ppp_protocol_info_t * pi = vec_elt_at_index (pm->protocol_infos, i);
+      ppp_protocol_info_t *pi = vec_elt_at_index (pm->protocol_infos, i);
       *result = pi->protocol;
       return 1;
     }
@@ -133,22 +135,21 @@ uword
 unformat_ppp_protocol_net_byte_order (unformat_input_t * input,
 				      va_list * args)
 {
-  u16 * result = va_arg (*args, u16 *);
-  if (! unformat_user (input, unformat_ppp_protocol_host_byte_order, result))
+  u16 *result = va_arg (*args, u16 *);
+  if (!unformat_user (input, unformat_ppp_protocol_host_byte_order, result))
     return 0;
-  *result = clib_host_to_net_u16 ((u16) *result);
+  *result = clib_host_to_net_u16 ((u16) * result);
   return 1;
 }
 
 uword
 unformat_ppp_header (unformat_input_t * input, va_list * args)
 {
-  u8 ** result = va_arg (*args, u8 **);
-  ppp_header_t _h, * h = &_h;
+  u8 **result = va_arg (*args, u8 **);
+  ppp_header_t _h, *h = &_h;
   u16 p;
 
-  if (! unformat (input, "%U",
-		  unformat_ppp_protocol_host_byte_order, &p))
+  if (!unformat (input, "%U", unformat_ppp_protocol_host_byte_order, &p))
     return 0;
 
   h->address = 0xff;
@@ -157,59 +158,60 @@ unformat_ppp_header (unformat_input_t * input, va_list * args)
 
   /* Add header to result. */
   {
-    void * p;
+    void *p;
     u32 n_bytes = sizeof (h[0]);
 
     vec_add2 (*result, p, n_bytes);
     clib_memcpy (p, h, n_bytes);
   }
-  
+
   return 1;
 }
 
-static uword ppp_set_rewrite (vnet_main_t * vnm,
-			      u32 sw_if_index,
-			      u32 l3_type,
-			      void * dst_address,
-			      void * rewrite,
-			      uword max_rewrite_bytes)
+static uword
+ppp_set_rewrite (vnet_main_t * vnm,
+		 u32 sw_if_index,
+		 u32 l3_type,
+		 void *dst_address, void *rewrite, uword max_rewrite_bytes)
 {
-  ppp_header_t * h = rewrite;
+  ppp_header_t *h = rewrite;
   ppp_protocol_t protocol;
 
   if (max_rewrite_bytes < sizeof (h[0]))
     return 0;
 
-  switch (l3_type) {
+  switch (l3_type)
+    {
 #define _(a,b) case VNET_L3_PACKET_TYPE_##a: protocol = PPP_PROTOCOL_##b; break
-    _ (IP4, ip4);
-    _ (IP6, ip6);
-    _ (MPLS_UNICAST, mpls_unicast);
-    _ (MPLS_MULTICAST, mpls_multicast);
+      _(IP4, ip4);
+      _(IP6, ip6);
+      _(MPLS_UNICAST, mpls_unicast);
+      _(MPLS_MULTICAST, mpls_multicast);
 #undef _
-  default:
-    return 0;
-  }
+    default:
+      return 0;
+    }
 
   h->address = 0xff;
   h->control = 0x03;
   h->protocol = clib_host_to_net_u16 (protocol);
-		     
+
   return sizeof (h[0]);
 }
 
+/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (ppp_hw_interface_class) = {
   .name = "PPP",
   .format_header = format_ppp_header_with_length,
   .unformat_header = unformat_ppp_header,
   .set_rewrite = ppp_set_rewrite,
 };
+/* *INDENT-ON* */
 
-static void add_protocol (ppp_main_t * pm,
-			  ppp_protocol_t protocol,
-			  char * protocol_name)
+static void
+add_protocol (ppp_main_t * pm, ppp_protocol_t protocol, char *protocol_name)
 {
-  ppp_protocol_info_t * pi;
+  ppp_protocol_info_t *pi;
   u32 i;
 
   vec_add2 (pm->protocol_infos, pi, 1);
@@ -223,9 +225,10 @@ static void add_protocol (ppp_main_t * pm,
   hash_set_mem (pm->protocol_info_by_name, pi->name, i);
 }
 
-static clib_error_t * ppp_init (vlib_main_t * vm)
+static clib_error_t *
+ppp_init (vlib_main_t * vm)
 {
-  ppp_main_t * pm = &ppp_main;
+  ppp_main_t *pm = &ppp_main;
 
   memset (pm, 0, sizeof (pm[0]));
   pm->vlib_main = vm;
@@ -242,9 +245,18 @@ static clib_error_t * ppp_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ppp_init);
 
-ppp_main_t * ppp_get_main (vlib_main_t * vm)
+ppp_main_t *
+ppp_get_main (vlib_main_t * vm)
 {
   vlib_call_init_function (vm, ppp_init);
   return &ppp_main;
 }
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
