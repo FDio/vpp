@@ -45,13 +45,13 @@
 #include <vnet/devices/dpdk/dpdk.h>
 #endif
 
-static inline void 
+static inline void
 pg_set_mbuf_metadata (pg_main_t * pg, u32 * buffers, u32 n_alloc)
 {
 #if DPDK == 1
-  vlib_main_t * vm = vlib_get_main();
-  vlib_buffer_t * b;
-  struct rte_mbuf * mb;
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_t *b;
+  struct rte_mbuf *mb;
   i16 delta;
   u16 new_data_len;
   u16 new_pkt_len;
@@ -61,24 +61,24 @@ pg_set_mbuf_metadata (pg_main_t * pg, u32 * buffers, u32 n_alloc)
   for (i = 0; i < n_alloc; i++)
     {
       b = vlib_get_buffer (vm, buffers[i]);
-      mb = rte_mbuf_from_vlib_buffer(b);
+      mb = rte_mbuf_from_vlib_buffer (b);
 
       delta = vlib_buffer_length_in_chain (vm, b) - (i16) mb->pkt_len;
-      new_data_len = (u16)((i16) mb->data_len + delta);
-      new_pkt_len = (u16)((i16) mb->pkt_len + delta);
+      new_data_len = (u16) ((i16) mb->data_len + delta);
+      new_pkt_len = (u16) ((i16) mb->pkt_len + delta);
 
       mb->data_len = new_data_len;
       mb->pkt_len = new_pkt_len;
-      mb->data_off = (u16)((RTE_PKTMBUF_HEADROOM) + b->current_data);
+      mb->data_off = (u16) ((RTE_PKTMBUF_HEADROOM) + b->current_data);
     }
-#endif  
+#endif
 }
 
 static int
 validate_buffer_data2 (vlib_buffer_t * b, pg_stream_t * s,
 		       u32 data_offset, u32 n_bytes)
 {
-  u8 * bd, * pd, * pm;
+  u8 *bd, *pd, *pm;
   u32 i;
 
   bd = b->data;
@@ -87,8 +87,7 @@ validate_buffer_data2 (vlib_buffer_t * b, pg_stream_t * s,
 
   if (pd + n_bytes >= vec_end (s->fixed_packet_data))
     n_bytes = (pd < vec_end (s->fixed_packet_data)
-	       ? vec_end (s->fixed_packet_data) - pd
-	       : 0);
+	       ? vec_end (s->fixed_packet_data) - pd : 0);
 
   for (i = 0; i < n_bytes; i++)
     if ((bd[i] & pm[i]) != pd[i])
@@ -107,14 +106,13 @@ validate_buffer_data2 (vlib_buffer_t * b, pg_stream_t * s,
 
 static int
 validate_buffer_data (vlib_buffer_t * b, pg_stream_t * s)
-{ return validate_buffer_data2 (b, s, 0, s->buffer_bytes); }
+{
+  return validate_buffer_data2 (b, s, 0, s->buffer_bytes);
+}
 
 always_inline void
-set_1 (void * a0,
-       u64 v0,
-       u64 v_min, u64 v_max,
-       u32 n_bits,
-       u32 is_net_byte_order)
+set_1 (void *a0,
+       u64 v0, u64 v_min, u64 v_max, u32 n_bits, u32 is_net_byte_order)
 {
   ASSERT (v0 >= v_min && v0 <= v_max);
   if (n_bits == BITS (u8))
@@ -142,12 +140,10 @@ set_1 (void * a0,
 }
 
 always_inline void
-set_2 (void * a0, void * a1,
+set_2 (void *a0, void *a1,
        u64 v0, u64 v1,
        u64 v_min, u64 v_max,
-       u32 n_bits,
-       u32 is_net_byte_order,
-       u32 is_increment)
+       u32 n_bits, u32 is_net_byte_order, u32 is_increment)
 {
   ASSERT (v0 >= v_min && v0 <= v_max);
   ASSERT (v1 >= v_min && v1 <= (v_max + is_increment));
@@ -194,17 +190,14 @@ do_set_fixed (pg_main_t * pg,
 	      u32 * buffers,
 	      u32 n_buffers,
 	      u32 n_bits,
-	      u32 byte_offset,
-	      u32 is_net_byte_order,
-	      u64 v_min, u64 v_max)
-
+	      u32 byte_offset, u32 is_net_byte_order, u64 v_min, u64 v_max)
 {
-  vlib_main_t * vm = pg->vlib_main;
+  vlib_main_t *vm = pg->vlib_main;
 
   while (n_buffers >= 4)
     {
-      vlib_buffer_t * b0, * b1, * b2, * b3;
-      void * a0, * a1;
+      vlib_buffer_t *b0, *b1, *b2, *b3;
+      void *a0, *a1;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       b1 = vlib_get_buffer (vm, buffers[1]);
@@ -218,9 +211,7 @@ do_set_fixed (pg_main_t * pg,
       CLIB_PREFETCH ((void *) b2 + byte_offset, sizeof (v_min), WRITE);
       CLIB_PREFETCH ((void *) b3 + byte_offset, sizeof (v_min), WRITE);
 
-      set_2 (a0, a1, v_min, v_min,
-	     v_min, v_max,
-	     n_bits, is_net_byte_order,
+      set_2 (a0, a1, v_min, v_min, v_min, v_max, n_bits, is_net_byte_order,
 	     /* is_increment */ 0);
 
       ASSERT (validate_buffer_data (b0, s));
@@ -229,8 +220,8 @@ do_set_fixed (pg_main_t * pg,
 
   while (n_buffers > 0)
     {
-      vlib_buffer_t * b0;
-      void * a0;
+      vlib_buffer_t *b0;
+      void *a0;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       buffers += 1;
@@ -238,9 +229,7 @@ do_set_fixed (pg_main_t * pg,
 
       a0 = (void *) b0 + byte_offset;
 
-      set_1 (a0, v_min,
-	     v_min, v_max,
-	     n_bits, is_net_byte_order);
+      set_1 (a0, v_min, v_min, v_max, n_bits, is_net_byte_order);
 
       ASSERT (validate_buffer_data (b0, s));
     }
@@ -254,20 +243,17 @@ do_set_increment (pg_main_t * pg,
 		  u32 n_bits,
 		  u32 byte_offset,
 		  u32 is_net_byte_order,
-		  u32 want_sum,
-		  u64 * sum_result,
-		  u64 v_min, u64 v_max,
-		  u64 v)
+		  u32 want_sum, u64 * sum_result, u64 v_min, u64 v_max, u64 v)
 {
-  vlib_main_t * vm = pg->vlib_main;
+  vlib_main_t *vm = pg->vlib_main;
   u64 sum = 0;
 
   ASSERT (v >= v_min && v <= v_max);
 
   while (n_buffers >= 4)
     {
-      vlib_buffer_t * b0, * b1, * b2, * b3;
-      void * a0, * a1;
+      vlib_buffer_t *b0, *b1, *b2, *b3;
+      void *a0, *a1;
       u64 v_old;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
@@ -286,18 +272,16 @@ do_set_increment (pg_main_t * pg,
       v = v_old + 2;
       v = v > v_max ? v_min : v;
       set_2 (a0, a1,
-	     v_old + 0, v_old + 1,
-	     v_min, v_max,
-	     n_bits, is_net_byte_order,
+	     v_old + 0, v_old + 1, v_min, v_max, n_bits, is_net_byte_order,
 	     /* is_increment */ 1);
 
       if (want_sum)
-	sum += 2*v_old + 1;
+	sum += 2 * v_old + 1;
 
       if (PREDICT_FALSE (v_old + 1 > v_max))
 	{
 	  if (want_sum)
-	    sum -= 2*v_old + 1;
+	    sum -= 2 * v_old + 1;
 
 	  v = v_old;
 	  set_1 (a0, v + 0, v_min, v_max, n_bits, is_net_byte_order);
@@ -318,8 +302,8 @@ do_set_increment (pg_main_t * pg,
 
   while (n_buffers > 0)
     {
-      vlib_buffer_t * b0;
-      void * a0;
+      vlib_buffer_t *b0;
+      void *a0;
       u64 v_old;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
@@ -354,17 +338,14 @@ do_set_random (pg_main_t * pg,
 	       u32 n_bits,
 	       u32 byte_offset,
 	       u32 is_net_byte_order,
-	       u32 want_sum,
-	       u64 * sum_result,
-	       u64 v_min, u64 v_max)
-
+	       u32 want_sum, u64 * sum_result, u64 v_min, u64 v_max)
 {
-  vlib_main_t * vm = pg->vlib_main;
+  vlib_main_t *vm = pg->vlib_main;
   u64 v_diff = v_max - v_min + 1;
   u64 r_mask = max_pow2 (v_diff) - 1;
   u64 v0, v1;
   u64 sum = 0;
-  void * random_data;
+  void *random_data;
 
   random_data = clib_random_buffer_get_data
     (&vm->random_buffer, n_buffers * n_bits / BITS (u8));
@@ -373,9 +354,9 @@ do_set_random (pg_main_t * pg,
 
   while (n_buffers >= 4)
     {
-      vlib_buffer_t * b0, * b1, * b2, * b3;
-      void * a0, * a1;
-      u64 r0=0, r1=0;           /* warnings be gone */
+      vlib_buffer_t *b0, *b1, *b2, *b3;
+      void *a0, *a1;
+      u64 r0 = 0, r1 = 0;	/* warnings be gone */
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       b1 = vlib_get_buffer (vm, buffers[1]);
@@ -401,10 +382,10 @@ do_set_random (pg_main_t * pg,
 	    }					\
 	  break;
 
-	  _ (8);
-	  _ (16);
-	  _ (32);
-	  _ (64);
+	  _(8);
+	  _(16);
+	  _(32);
+	  _(64);
 
 #undef _
 	}
@@ -422,10 +403,7 @@ do_set_random (pg_main_t * pg,
       if (want_sum)
 	sum += v0 + v1;
 
-      set_2 (a0, a1,
-	     v0, v1,
-	     v_min, v_max,
-	     n_bits, is_net_byte_order,
+      set_2 (a0, a1, v0, v1, v_min, v_max, n_bits, is_net_byte_order,
 	     /* is_increment */ 0);
 
       ASSERT (validate_buffer_data (b0, s));
@@ -434,9 +412,9 @@ do_set_random (pg_main_t * pg,
 
   while (n_buffers > 0)
     {
-      vlib_buffer_t * b0;
-      void * a0;
-      u64 r0 = 0;               /* warnings be gone */
+      vlib_buffer_t *b0;
+      void *a0;
+      u64 r0 = 0;		/* warnings be gone */
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       buffers += 1;
@@ -455,10 +433,10 @@ do_set_random (pg_main_t * pg,
 	    }					\
 	  break;
 
-	  _ (8);
-	  _ (16);
-	  _ (32);
-	  _ (64);
+	  _(8);
+	  _(16);
+	  _(32);
+	  _(64);
 
 #undef _
 	}
@@ -486,66 +464,59 @@ do_set_random (pg_main_t * pg,
   clib_mem_unaligned (a##i, t) =				\
     clib_host_to_net_##t ((clib_net_to_host_mem_##t (a##i) &~ mask)	\
 			  | (v##i << shift))
-  
+
 always_inline void
-setbits_1 (void * a0,
+setbits_1 (void *a0,
 	   u64 v0,
 	   u64 v_min, u64 v_max,
-	   u32 max_bits,
-	   u32 n_bits,
-	   u64 mask,
-	   u32 shift)
+	   u32 max_bits, u32 n_bits, u64 mask, u32 shift)
 {
   ASSERT (v0 >= v_min && v0 <= v_max);
   if (max_bits == BITS (u8))
-    ((u8 *) a0)[0] = (((u8 *) a0)[0] &~ mask) | (v0 << shift);
+    ((u8 *) a0)[0] = (((u8 *) a0)[0] & ~mask) | (v0 << shift);
 
   else if (max_bits == BITS (u16))
     {
-      _ (0, u16);
+      _(0, u16);
     }
   else if (max_bits == BITS (u32))
     {
-      _ (0, u32);
+      _(0, u32);
     }
   else if (max_bits == BITS (u64))
     {
-      _ (0, u64);
+      _(0, u64);
     }
 }
 
 always_inline void
-setbits_2 (void * a0, void * a1,
+setbits_2 (void *a0, void *a1,
 	   u64 v0, u64 v1,
 	   u64 v_min, u64 v_max,
-	   u32 max_bits,
-	   u32 n_bits,
-	   u64 mask,
-	   u32 shift,
-	   u32 is_increment)
+	   u32 max_bits, u32 n_bits, u64 mask, u32 shift, u32 is_increment)
 {
   ASSERT (v0 >= v_min && v0 <= v_max);
   ASSERT (v1 >= v_min && v1 <= v_max + is_increment);
   if (max_bits == BITS (u8))
     {
-      ((u8 *) a0)[0] = (((u8 *) a0)[0] &~ mask) | (v0 << shift);
-      ((u8 *) a1)[0] = (((u8 *) a1)[0] &~ mask) | (v1 << shift);
+      ((u8 *) a0)[0] = (((u8 *) a0)[0] & ~mask) | (v0 << shift);
+      ((u8 *) a1)[0] = (((u8 *) a1)[0] & ~mask) | (v1 << shift);
     }
 
   else if (max_bits == BITS (u16))
     {
-      _ (0, u16);
-      _ (1, u16);
+      _(0, u16);
+      _(1, u16);
     }
   else if (max_bits == BITS (u32))
     {
-      _ (0, u32);
-      _ (1, u32);
+      _(0, u32);
+      _(1, u32);
     }
   else if (max_bits == BITS (u64))
     {
-      _ (0, u64);
-      _ (1, u64);
+      _(0, u64);
+      _(1, u64);
     }
 }
 
@@ -558,18 +529,14 @@ do_setbits_fixed (pg_main_t * pg,
 		  u32 n_buffers,
 		  u32 max_bits,
 		  u32 n_bits,
-		  u32 byte_offset,
-		  u64 v_min, u64 v_max,
-		  u64 mask,
-		  u32 shift)
-
+		  u32 byte_offset, u64 v_min, u64 v_max, u64 mask, u32 shift)
 {
-  vlib_main_t * vm = pg->vlib_main;
+  vlib_main_t *vm = pg->vlib_main;
 
   while (n_buffers >= 4)
     {
-      vlib_buffer_t * b0, * b1, * b2, * b3;
-      void * a0, * a1;
+      vlib_buffer_t *b0, *b1, *b2, *b3;
+      void *a0, *a1;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       b1 = vlib_get_buffer (vm, buffers[1]);
@@ -584,9 +551,7 @@ do_setbits_fixed (pg_main_t * pg,
       CLIB_PREFETCH ((void *) b3 + byte_offset, sizeof (v_min), WRITE);
 
       setbits_2 (a0, a1,
-		 v_min, v_min,
-		 v_min, v_max,
-		 max_bits, n_bits, mask, shift,
+		 v_min, v_min, v_min, v_max, max_bits, n_bits, mask, shift,
 		 /* is_increment */ 0);
 
       ASSERT (validate_buffer_data (b0, s));
@@ -595,8 +560,8 @@ do_setbits_fixed (pg_main_t * pg,
 
   while (n_buffers > 0)
     {
-      vlib_buffer_t * b0;
-      void * a0;
+      vlib_buffer_t *b0;
+      void *a0;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       buffers += 1;
@@ -617,19 +582,16 @@ do_setbits_increment (pg_main_t * pg,
 		      u32 max_bits,
 		      u32 n_bits,
 		      u32 byte_offset,
-		      u64 v_min, u64 v_max,
-		      u64 v,
-		      u64 mask,
-		      u32 shift)
+		      u64 v_min, u64 v_max, u64 v, u64 mask, u32 shift)
 {
-  vlib_main_t * vm = pg->vlib_main;
+  vlib_main_t *vm = pg->vlib_main;
 
   ASSERT (v >= v_min && v <= v_max);
 
   while (n_buffers >= 4)
     {
-      vlib_buffer_t * b0, * b1, * b2, * b3;
-      void * a0, * a1;
+      vlib_buffer_t *b0, *b1, *b2, *b3;
+      void *a0, *a1;
       u64 v_old;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
@@ -649,8 +611,7 @@ do_setbits_increment (pg_main_t * pg,
       v = v > v_max ? v_min : v;
       setbits_2 (a0, a1,
 		 v_old + 0, v_old + 1,
-		 v_min, v_max,
-		 max_bits, n_bits, mask, shift,
+		 v_min, v_max, max_bits, n_bits, mask, shift,
 		 /* is_increment */ 1);
 
       if (PREDICT_FALSE (v_old + 1 > v_max))
@@ -669,8 +630,8 @@ do_setbits_increment (pg_main_t * pg,
 
   while (n_buffers > 0)
     {
-      vlib_buffer_t * b0;
-      void * a0;
+      vlib_buffer_t *b0;
+      void *a0;
       u64 v_old;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
@@ -699,16 +660,13 @@ do_setbits_random (pg_main_t * pg,
 		   u32 n_buffers,
 		   u32 max_bits,
 		   u32 n_bits,
-		   u32 byte_offset,
-		   u64 v_min, u64 v_max,
-		   u64 mask,
-		   u32 shift)
+		   u32 byte_offset, u64 v_min, u64 v_max, u64 mask, u32 shift)
 {
-  vlib_main_t * vm = pg->vlib_main;
+  vlib_main_t *vm = pg->vlib_main;
   u64 v_diff = v_max - v_min + 1;
   u64 r_mask = max_pow2 (v_diff) - 1;
   u64 v0, v1;
-  void * random_data;
+  void *random_data;
 
   random_data = clib_random_buffer_get_data
     (&vm->random_buffer, n_buffers * max_bits / BITS (u8));
@@ -716,9 +674,9 @@ do_setbits_random (pg_main_t * pg,
 
   while (n_buffers >= 4)
     {
-      vlib_buffer_t * b0, * b1, * b2, * b3;
-      void * a0, * a1;
-      u64 r0=0, r1=0;           /* warnings be gone */
+      vlib_buffer_t *b0, *b1, *b2, *b3;
+      void *a0, *a1;
+      u64 r0 = 0, r1 = 0;	/* warnings be gone */
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       b1 = vlib_get_buffer (vm, buffers[1]);
@@ -744,10 +702,10 @@ do_setbits_random (pg_main_t * pg,
 	    }					\
 	  break;
 
-	  _ (8);
-	  _ (16);
-	  _ (32);
-	  _ (64);
+	  _(8);
+	  _(16);
+	  _(32);
+	  _(64);
 
 #undef _
 	}
@@ -762,10 +720,7 @@ do_setbits_random (pg_main_t * pg,
       v0 = v0 > v_max ? v0 - v_diff : v0;
       v1 = v1 > v_max ? v1 - v_diff : v1;
 
-      setbits_2 (a0, a1,
-		 v0, v1,
-		 v_min, v_max,
-		 max_bits, n_bits, mask, shift,
+      setbits_2 (a0, a1, v0, v1, v_min, v_max, max_bits, n_bits, mask, shift,
 		 /* is_increment */ 0);
 
       ASSERT (validate_buffer_data (b0, s));
@@ -774,9 +729,9 @@ do_setbits_random (pg_main_t * pg,
 
   while (n_buffers > 0)
     {
-      vlib_buffer_t * b0;
-      void * a0;
-      u64 r0 = 0;               /* warnings be gone */
+      vlib_buffer_t *b0;
+      void *a0;
+      u64 r0 = 0;		/* warnings be gone */
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       buffers += 1;
@@ -795,10 +750,10 @@ do_setbits_random (pg_main_t * pg,
 	    }					\
 	  break;
 
-	  _ (8);
-	  _ (16);
-	  _ (32);
-	  _ (64);
+	  _(8);
+	  _(16);
+	  _(32);
+	  _(64);
 
 #undef _
 	}
@@ -816,14 +771,13 @@ do_setbits_random (pg_main_t * pg,
     }
 }
 
-static u64 do_it (pg_main_t * pg,
-		  pg_stream_t * s,
-		  u32 * buffers,
-		  u32 n_buffers,
-		  u32 lo_bit, u32 hi_bit,
-		  u64 v_min, u64 v_max,
-		  u64 v,
-		  pg_edit_type_t edit_type)
+static u64
+do_it (pg_main_t * pg,
+       pg_stream_t * s,
+       u32 * buffers,
+       u32 n_buffers,
+       u32 lo_bit, u32 hi_bit,
+       u64 v_min, u64 v_max, u64 v, pg_edit_type_t edit_type)
 {
   u32 max_bits, l0, l1, h1, start_bit;
 
@@ -868,10 +822,10 @@ static u64 do_it (pg_main_t * pg,
     {
       switch (max_bits)
 	{
-	  _ (8);
-	  _ (16);
-	  _ (32);
-	  _ (64);
+	  _(8);
+	  _(16);
+	  _(32);
+	  _(64);
 	}
     }
 
@@ -880,7 +834,7 @@ static u64 do_it (pg_main_t * pg,
   {
     u64 mask;
     u32 shift = l1;
-    u32 n_bits = max_bits; 
+    u32 n_bits = max_bits;
 
     max_bits = clib_max (max_pow2 (n_bits), 8);
 
@@ -911,24 +865,22 @@ static u64 do_it (pg_main_t * pg,
 			      mask, shift);				\
 	goto done;
 
-	_ (8);
-	_ (16);
-	_ (32);
-	_ (64);
+	_(8);
+	_(16);
+	_(32);
+	_(64);
 
 #undef _
       }
   }
 
- done:
+done:
   return v;
 }
 
 static void
 pg_generate_set_lengths (pg_main_t * pg,
-			 pg_stream_t * s,
-			 u32 * buffers,
-			 u32 n_buffers)
+			 pg_stream_t * s, u32 * buffers, u32 n_buffers)
 {
   u64 v_min, v_max, length_sum;
   pg_edit_type_t edit_type;
@@ -944,8 +896,7 @@ pg_generate_set_lengths (pg_main_t * pg,
 			  STRUCT_OFFSET_OF (vlib_buffer_t, current_length),
 			  /* is_net_byte_order */ 0,
 			  /* want sum */ 1, &length_sum,
-			  v_min, v_max,
-			  s->last_increment_packet_size);
+			  v_min, v_max, s->last_increment_packet_size);
 
   else if (edit_type == PG_EDIT_RANDOM)
     do_set_random (pg, s, buffers, n_buffers,
@@ -955,7 +906,7 @@ pg_generate_set_lengths (pg_main_t * pg,
 		   /* want sum */ 1, &length_sum,
 		   v_min, v_max);
 
-  else /* edit_type == PG_EDIT_FIXED */
+  else				/* edit_type == PG_EDIT_FIXED */
     {
       do_set_fixed (pg, s, buffers, n_buffers,
 		    8 * STRUCT_SIZE_OF (vlib_buffer_t, current_length),
@@ -966,16 +917,15 @@ pg_generate_set_lengths (pg_main_t * pg,
     }
 
   {
-    vnet_main_t * vnm = vnet_get_main();
-    vnet_interface_main_t * im = &vnm->interface_main;
-    vnet_sw_interface_t * si = vnet_get_sw_interface (vnm, s->sw_if_index[VLIB_RX]);
+    vnet_main_t *vnm = vnet_get_main ();
+    vnet_interface_main_t *im = &vnm->interface_main;
+    vnet_sw_interface_t *si =
+      vnet_get_sw_interface (vnm, s->sw_if_index[VLIB_RX]);
 
     vlib_increment_combined_counter (im->combined_sw_if_counters
 				     + VNET_INTERFACE_COUNTER_RX,
-                                     os_get_cpu_number(),
-				     si->sw_if_index,
-				     n_buffers,
-				     length_sum);
+				     os_get_cpu_number (),
+				     si->sw_if_index, n_buffers, length_sum);
   }
 
   pg_set_mbuf_metadata (pg, buffers, n_buffers);
@@ -984,17 +934,16 @@ pg_generate_set_lengths (pg_main_t * pg,
 static void
 pg_generate_fix_multi_buffer_lengths (pg_main_t * pg,
 				      pg_stream_t * s,
-				      u32 * buffers,
-				      u32 n_buffers)
+				      u32 * buffers, u32 n_buffers)
 {
-  vlib_main_t * vm = pg->vlib_main;
-  pg_buffer_index_t * pbi;
+  vlib_main_t *vm = pg->vlib_main;
+  pg_buffer_index_t *pbi;
   uword n_bytes_left;
-  static u32 * unused_buffers = 0;
+  static u32 *unused_buffers = 0;
 
   while (n_buffers > 0)
     {
-      vlib_buffer_t * b;
+      vlib_buffer_t *b;
       u32 bi;
 
       bi = buffers[0];
@@ -1034,61 +983,56 @@ pg_generate_fix_multi_buffer_lengths (pg_main_t * pg,
 
   if (vec_len (unused_buffers) > 0)
     {
-      vlib_buffer_free_no_next (vm, unused_buffers,
-				vec_len (unused_buffers));
+      vlib_buffer_free_no_next (vm, unused_buffers, vec_len (unused_buffers));
       _vec_len (unused_buffers) = 0;
     }
 }
 
 static void
 pg_generate_edit (pg_main_t * pg,
-		  pg_stream_t * s,
-		  u32 * buffers,
-		  u32 n_buffers)
+		  pg_stream_t * s, u32 * buffers, u32 n_buffers)
 {
-  pg_edit_t * e;
+  pg_edit_t *e;
 
   vec_foreach (e, s->non_fixed_edits)
-    {
-      switch (e->type)
+  {
+    switch (e->type)
+      {
+      case PG_EDIT_RANDOM:
+      case PG_EDIT_INCREMENT:
 	{
-	case PG_EDIT_RANDOM:
-	case PG_EDIT_INCREMENT:
-	  {
-	    u32 lo_bit, hi_bit;
-	    u64 v_min, v_max;
+	  u32 lo_bit, hi_bit;
+	  u64 v_min, v_max;
 
-	    v_min = pg_edit_get_value (e, PG_EDIT_LO);
-	    v_max = pg_edit_get_value (e, PG_EDIT_HI);
+	  v_min = pg_edit_get_value (e, PG_EDIT_LO);
+	  v_max = pg_edit_get_value (e, PG_EDIT_HI);
 
-	    hi_bit = (BITS (u8) * STRUCT_OFFSET_OF (vlib_buffer_t, data)
-		      + BITS (u8)
-		      + e->lsb_bit_offset);
-	    lo_bit = hi_bit - e->n_bits;
+	  hi_bit = (BITS (u8) * STRUCT_OFFSET_OF (vlib_buffer_t, data)
+		    + BITS (u8) + e->lsb_bit_offset);
+	  lo_bit = hi_bit - e->n_bits;
 
-	    e->last_increment_value
-	      = do_it (pg, s, buffers, n_buffers, lo_bit, hi_bit, v_min, v_max,
-		       e->last_increment_value,
-		       e->type);
-	  }
-	  break;
-
-	case PG_EDIT_UNSPECIFIED:
-	  break;
-
-	default:
-	  /* Should not be any fixed edits left. */
-	  ASSERT (0);
-	  break;
+	  e->last_increment_value
+	    = do_it (pg, s, buffers, n_buffers, lo_bit, hi_bit, v_min, v_max,
+		     e->last_increment_value, e->type);
 	}
-    }
+	break;
+
+      case PG_EDIT_UNSPECIFIED:
+	break;
+
+      default:
+	/* Should not be any fixed edits left. */
+	ASSERT (0);
+	break;
+      }
+  }
 
   /* Call any edit functions to e.g. completely IP lengths, checksums, ... */
   {
     int i;
     for (i = vec_len (s->edit_groups) - 1; i >= 0; i--)
       {
-	pg_edit_group_t * g = s->edit_groups + i;
+	pg_edit_group_t *g = s->edit_groups + i;
 	if (g->edit_function)
 	  g->edit_function (pg, s, g, buffers, n_buffers);
       }
@@ -1098,16 +1042,14 @@ pg_generate_edit (pg_main_t * pg,
 static void
 pg_set_next_buffer_pointers (pg_main_t * pg,
 			     pg_stream_t * s,
-			     u32 * buffers,
-			     u32 * next_buffers,
-			     u32 n_buffers)
+			     u32 * buffers, u32 * next_buffers, u32 n_buffers)
 {
-  vlib_main_t * vm = pg->vlib_main;
+  vlib_main_t *vm = pg->vlib_main;
 
   while (n_buffers >= 4)
     {
       u32 ni0, ni1;
-      vlib_buffer_t * b0, * b1;
+      vlib_buffer_t *b0, *b1;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       b1 = vlib_get_buffer (vm, buffers[1]);
@@ -1130,7 +1072,7 @@ pg_set_next_buffer_pointers (pg_main_t * pg,
   while (n_buffers > 0)
     {
       u32 ni0;
-      vlib_buffer_t * b0;
+      vlib_buffer_t *b0;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       ni0 = next_buffers[0];
@@ -1147,11 +1089,9 @@ static_always_inline void
 init_replay_buffers_inline (vlib_main_t * vm,
 			    pg_stream_t * s,
 			    u32 * buffers,
-			    u32 n_buffers,
-			    u32 data_offset,
-			    u32 n_data)
+			    u32 n_buffers, u32 data_offset, u32 n_data)
 {
-  u32 n_left, * b, i, l;
+  u32 n_left, *b, i, l;
 
   n_left = n_buffers;
   b = buffers;
@@ -1161,8 +1101,8 @@ init_replay_buffers_inline (vlib_main_t * vm,
   while (n_left >= 1)
     {
       u32 bi0, n0;
-      vlib_buffer_t * b0;
-      u8 * d0;
+      vlib_buffer_t *b0;
+      u8 *d0;
 
       bi0 = b[0];
       b += 1;
@@ -1172,7 +1112,7 @@ init_replay_buffers_inline (vlib_main_t * vm,
 
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = s->sw_if_index[VLIB_RX];
       /* was s->sw_if_index[VLIB_TX]; */
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32)~0;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
       d0 = vec_elt (s->replay_packet_templates, i);
 
@@ -1191,23 +1131,20 @@ static_always_inline void
 init_buffers_inline (vlib_main_t * vm,
 		     pg_stream_t * s,
 		     u32 * buffers,
-		     u32 n_buffers,
-		     u32 data_offset,
-		     u32 n_data,
-		     u32 set_data)
+		     u32 n_buffers, u32 data_offset, u32 n_data, u32 set_data)
 {
-  u32 n_left, * b;
-  u8 * data, * mask;
+  u32 n_left, *b;
+  u8 *data, *mask;
 
   if (vec_len (s->replay_packet_templates) > 0)
-    return init_replay_buffers_inline (vm, s, buffers, n_buffers, data_offset, n_data);
+    return init_replay_buffers_inline (vm, s, buffers, n_buffers, data_offset,
+				       n_data);
 
   data = s->fixed_packet_data + data_offset;
   mask = s->fixed_packet_data_mask + data_offset;
   if (data + n_data >= vec_end (s->fixed_packet_data))
     n_data = (data < vec_end (s->fixed_packet_data)
-	      ? vec_end (s->fixed_packet_data) - data
-	      : 0);
+	      ? vec_end (s->fixed_packet_data) - data : 0);
   if (n_data > 0)
     {
       ASSERT (data + n_data <= vec_end (s->fixed_packet_data));
@@ -1220,7 +1157,7 @@ init_buffers_inline (vlib_main_t * vm,
   while (n_left >= 4)
     {
       u32 bi0, bi1;
-      vlib_buffer_t * b0, * b1;
+      vlib_buffer_t *b0, *b1;
 
       /* Prefetch next iteration. */
       vlib_prefetch_buffer_with_index (vm, b[2], STORE);
@@ -1238,7 +1175,7 @@ init_buffers_inline (vlib_main_t * vm,
 	vnet_buffer (b1)->sw_if_index[VLIB_RX] = s->sw_if_index[VLIB_RX];
 
       vnet_buffer (b0)->sw_if_index[VLIB_TX] =
-        vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32)~0;
+	vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
       if (set_data)
 	{
@@ -1255,7 +1192,7 @@ init_buffers_inline (vlib_main_t * vm,
   while (n_left >= 1)
     {
       u32 bi0;
-      vlib_buffer_t * b0;
+      vlib_buffer_t *b0;
 
       bi0 = b[0];
       b += 1;
@@ -1264,7 +1201,7 @@ init_buffers_inline (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = s->sw_if_index[VLIB_RX];
       /* s->sw_if_index[VLIB_TX]; */
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32)~0;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
       if (set_data)
 	clib_memcpy (b0->data, data, n_data);
@@ -1273,13 +1210,12 @@ init_buffers_inline (vlib_main_t * vm,
     }
 }
 
-static void pg_buffer_init (vlib_main_t * vm,
-			    vlib_buffer_free_list_t * fl,
-			    u32 * buffers,
-			    u32 n_buffers)
+static void
+pg_buffer_init (vlib_main_t * vm,
+		vlib_buffer_free_list_t * fl, u32 * buffers, u32 n_buffers)
 {
-  pg_main_t * pg = &pg_main;
-  pg_stream_t * s;
+  pg_main_t *pg = &pg_main;
+  pg_stream_t *s;
   uword bi, si;
 
   si = fl->buffer_init_function_opaque & pow2_mask (24);
@@ -1297,58 +1233,55 @@ static u32
 pg_stream_fill_helper (pg_main_t * pg,
 		       pg_stream_t * s,
 		       pg_buffer_index_t * bi,
-		       u32 * buffers,
-		       u32 * next_buffers,
-		       u32 n_alloc)
+		       u32 * buffers, u32 * next_buffers, u32 n_alloc)
 {
-  vlib_main_t * vm = pg->vlib_main;
-  vlib_buffer_free_list_t * f;
+  vlib_main_t *vm = pg->vlib_main;
+  vlib_buffer_free_list_t *f;
   uword is_start_of_packet = bi == s->buffer_indices;
   u32 n_allocated;
 
   f = vlib_buffer_get_free_list (vm, bi->free_list_index);
 
-  /* 
+  /*
    * Historically, the pg maintained its own free lists and
    * device drivers tx paths would return pkts. With the DPDK,
    * that doesn't happen.
    */
-  if (DPDK == 0 && ! (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE))
+  if (DPDK == 0 && !(s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE))
     f->buffer_init_function = pg_buffer_init;
-  f->buffer_init_function_opaque = 
+  f->buffer_init_function_opaque =
     (s - pg->streams) | ((bi - s->buffer_indices) << 24);
 
   if (is_start_of_packet)
-    vnet_buffer (&f->buffer_init_template)->sw_if_index[VLIB_RX] 
+    vnet_buffer (&f->buffer_init_template)->sw_if_index[VLIB_RX]
       = vnet_main.local_interface_sw_if_index;
 
   n_allocated = vlib_buffer_alloc_from_free_list (vm,
-                                                  buffers,
-                                                  n_alloc,
-                                                  bi->free_list_index);
+						  buffers,
+						  n_alloc,
+						  bi->free_list_index);
   if (n_allocated == 0)
     return 0;
 
-  /* 
-   * We can't assume we got all the buffers we asked for... 
+  /*
+   * We can't assume we got all the buffers we asked for...
    * This never worked until recently.
    */
   n_alloc = n_allocated;
 
   /* Reinitialize buffers */
-  if (DPDK == 0 || CLIB_DEBUG > 0 
+  if (DPDK == 0 || CLIB_DEBUG > 0
       || (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE))
     init_buffers_inline
       (vm, s,
        buffers,
-       n_alloc,
-       (bi - s->buffer_indices) * s->buffer_bytes /* data offset */,
+       n_alloc, (bi - s->buffer_indices) * s->buffer_bytes /* data offset */ ,
        s->buffer_bytes,
        /* set_data */
        DPDK == 1 || (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE) != 0);
-  
+
   /* $$$ this doesn't work at the moment */
-  ASSERT(next_buffers == 0);
+  ASSERT (next_buffers == 0);
   if (next_buffers)
     pg_set_next_buffer_pointers (pg, s, buffers, next_buffers, n_alloc);
 
@@ -1356,23 +1289,21 @@ pg_stream_fill_helper (pg_main_t * pg,
     {
       if (vec_len (s->replay_packet_templates) > 0)
 	{
-	  vnet_main_t * vnm = vnet_get_main();
-	  vnet_interface_main_t * im = &vnm->interface_main;
-	  vnet_sw_interface_t * si = 
-            vnet_get_sw_interface (vnm, s->sw_if_index[VLIB_RX]);
+	  vnet_main_t *vnm = vnet_get_main ();
+	  vnet_interface_main_t *im = &vnm->interface_main;
+	  vnet_sw_interface_t *si =
+	    vnet_get_sw_interface (vnm, s->sw_if_index[VLIB_RX]);
 	  u32 l = 0;
 	  u32 i;
 	  for (i = 0; i < n_alloc; i++)
 	    l += vlib_buffer_index_length_in_chain (vm, buffers[i]);
 	  vlib_increment_combined_counter (im->combined_sw_if_counters
 					   + VNET_INTERFACE_COUNTER_RX,
-                                           os_get_cpu_number(),
-					   si->sw_if_index,
-					   n_alloc,
-					   l);
+					   os_get_cpu_number (),
+					   si->sw_if_index, n_alloc, l);
 	  s->current_replay_packet_index += n_alloc;
-	  s->current_replay_packet_index %= 
-            vec_len (s->replay_packet_templates);
+	  s->current_replay_packet_index %=
+	    vec_len (s->replay_packet_templates);
 	}
       else
 	{
@@ -1390,9 +1321,9 @@ pg_stream_fill_helper (pg_main_t * pg,
 static u32
 pg_stream_fill (pg_main_t * pg, pg_stream_t * s, u32 n_buffers)
 {
-  pg_buffer_index_t * bi;
+  pg_buffer_index_t *bi;
   word i, n_in_fifo, n_alloc, n_free, n_added;
-  u32 * tail, * start, * end, * last_tail, * last_start;
+  u32 *tail, *start, *end, *last_tail, *last_start;
 
   bi = s->buffer_indices;
 
@@ -1418,12 +1349,12 @@ pg_stream_fill (pg_main_t * pg, pg_stream_t * s, u32 n_buffers)
     {
       uword l = ~0, e;
       vec_foreach (bi, s->buffer_indices)
-	{
-	  e = clib_fifo_elts (bi->buffer_fifo);
-	  if (bi == s->buffer_indices)
-	    l = e;
-	  ASSERT (l == e);
-	}
+      {
+	e = clib_fifo_elts (bi->buffer_fifo);
+	if (bi == s->buffer_indices)
+	  l = e;
+	ASSERT (l == e);
+      }
     }
 
   last_tail = last_start = 0;
@@ -1442,19 +1373,20 @@ pg_stream_fill (pg_main_t * pg, pg_stream_t * s, u32 n_buffers)
       end = clib_fifo_end (bi->buffer_fifo);
 
       if (tail + n_alloc <= end)
-        {
-          n_added = pg_stream_fill_helper (pg, s, bi, tail, last_tail, n_alloc);
-        }
+	{
+	  n_added =
+	    pg_stream_fill_helper (pg, s, bi, tail, last_tail, n_alloc);
+	}
       else
 	{
 	  u32 n = clib_min (end - tail, n_alloc);
 	  n_added = pg_stream_fill_helper (pg, s, bi, tail, last_tail, n);
 
 	  if (n_added == n && n_alloc > n_added)
-            {
-              n_added += pg_stream_fill_helper 
-                (pg, s, bi, start, last_start, n_alloc - n_added);
-            }
+	    {
+	      n_added += pg_stream_fill_helper
+		(pg, s, bi, start, last_start, n_alloc - n_added);
+	    }
 	}
 
       if (PREDICT_FALSE (n_added < n_alloc))
@@ -1466,10 +1398,11 @@ pg_stream_fill (pg_main_t * pg, pg_stream_t * s, u32 n_buffers)
       /* Verify that pkts in the fifo are properly allocated */
 #if DPDK == 1
       if (CLIB_DEBUG > 0)
-        {
-          u32 *bi0;
-          vlib_main_t * vm = vlib_get_main();
-          clib_fifo_foreach (bi0, bi->buffer_fifo, 
+	{
+	  u32 *bi0;
+	  vlib_main_t *vm = vlib_get_main ();
+	  /* *INDENT-OFF* */
+          clib_fifo_foreach (bi0, bi->buffer_fifo,
           ({
             vlib_buffer_t * b;
             struct rte_mbuf *mb;
@@ -1478,14 +1411,16 @@ pg_stream_fill (pg_main_t * pg, pg_stream_t * s, u32 n_buffers)
             mb = rte_mbuf_from_vlib_buffer(b);
             ASSERT(rte_mbuf_refcnt_read(mb) == 1);
           }));
-        }
+	  /* *INDENT-ON* */
+	}
 #endif
     }
-  
+
   return n_in_fifo + n_added;
 }
 
-typedef struct {
+typedef struct
+{
   u32 stream_index;
 
   u32 packet_length;
@@ -1494,18 +1429,19 @@ typedef struct {
   vlib_buffer_t buffer;
 } pg_input_trace_t;
 
-static u8 * format_pg_input_trace (u8 * s, va_list * va)
+static u8 *
+format_pg_input_trace (u8 * s, va_list * va)
 {
-  vlib_main_t * vm = va_arg (*va, vlib_main_t *);
+  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
-  pg_input_trace_t * t = va_arg (*va, pg_input_trace_t *);
-  pg_main_t * pg = &pg_main;
-  pg_stream_t * stream;
-  vlib_node_t * n;
+  pg_input_trace_t *t = va_arg (*va, pg_input_trace_t *);
+  pg_main_t *pg = &pg_main;
+  pg_stream_t *stream;
+  vlib_node_t *n;
   uword indent = format_get_indent (s);
 
   stream = 0;
-  if (! pool_is_free_index (pg->streams, t->stream_index))
+  if (!pool_is_free_index (pg->streams, t->stream_index))
     stream = pool_elt_at_index (pg->streams, t->stream_index);
 
   if (stream)
@@ -1516,11 +1452,9 @@ static u8 * format_pg_input_trace (u8 * s, va_list * va)
   s = format (s, ", %d bytes", t->packet_length);
 
   s = format (s, "\n%U%U",
-	      format_white_space, indent,
-	      format_vlib_buffer, &t->buffer);
+	      format_white_space, indent, format_vlib_buffer, &t->buffer);
 
-  s = format (s, "\n%U",
-	      format_white_space, indent);
+  s = format (s, "\n%U", format_white_space, indent);
 
   n = 0;
   if (stream)
@@ -1528,10 +1462,9 @@ static u8 * format_pg_input_trace (u8 * s, va_list * va)
 
   if (n && n->format_buffer)
     s = format (s, "%U", n->format_buffer,
-		t->buffer.pre_data,
-		sizeof (t->buffer.pre_data));
+		t->buffer.pre_data, sizeof (t->buffer.pre_data));
   else
-    s = format (s, "%U", 
+    s = format (s, "%U",
 		format_hex_bytes, t->buffer.pre_data,
 		ARRAY_LEN (t->buffer.pre_data));
   return s;
@@ -1540,12 +1473,10 @@ static u8 * format_pg_input_trace (u8 * s, va_list * va)
 static void
 pg_input_trace (pg_main_t * pg,
 		vlib_node_runtime_t * node,
-		pg_stream_t * s,
-		u32 * buffers,
-		u32 n_buffers)
+		pg_stream_t * s, u32 * buffers, u32 n_buffers)
 {
-  vlib_main_t * vm = pg->vlib_main;
-  u32 * b, n_left, stream_index, next_index;
+  vlib_main_t *vm = pg->vlib_main;
+  u32 *b, n_left, stream_index, next_index;
 
   n_left = n_buffers;
   b = buffers;
@@ -1555,8 +1486,8 @@ pg_input_trace (pg_main_t * pg,
   while (n_left >= 2)
     {
       u32 bi0, bi1;
-      vlib_buffer_t * b0, * b1;
-      pg_input_trace_t * t0, * t1;
+      vlib_buffer_t *b0, *b1;
+      pg_input_trace_t *t0, *t1;
 
       bi0 = b[0];
       bi1 = b[1];
@@ -1581,15 +1512,17 @@ pg_input_trace (pg_main_t * pg,
       clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
       clib_memcpy (&t1->buffer, b1, sizeof (b1[0]) - sizeof (b1->pre_data));
 
-      clib_memcpy (t0->buffer.pre_data, b0->data, sizeof (t0->buffer.pre_data));
-      clib_memcpy (t1->buffer.pre_data, b1->data, sizeof (t1->buffer.pre_data));
+      clib_memcpy (t0->buffer.pre_data, b0->data,
+		   sizeof (t0->buffer.pre_data));
+      clib_memcpy (t1->buffer.pre_data, b1->data,
+		   sizeof (t1->buffer.pre_data));
     }
 
   while (n_left >= 1)
     {
       u32 bi0;
-      vlib_buffer_t * b0;
-      pg_input_trace_t * t0;
+      vlib_buffer_t *b0;
+      pg_input_trace_t *t0;
 
       bi0 = b[0];
       b += 1;
@@ -1603,20 +1536,20 @@ pg_input_trace (pg_main_t * pg,
       t0->stream_index = stream_index;
       t0->packet_length = vlib_buffer_length_in_chain (vm, b0);
       clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
-      clib_memcpy (t0->buffer.pre_data, b0->data, sizeof (t0->buffer.pre_data));
+      clib_memcpy (t0->buffer.pre_data, b0->data,
+		   sizeof (t0->buffer.pre_data));
     }
 }
 
 static uword
 pg_generate_packets (vlib_node_runtime_t * node,
 		     pg_main_t * pg,
-		     pg_stream_t * s,
-		     uword n_packets_to_generate)
+		     pg_stream_t * s, uword n_packets_to_generate)
 {
-  vlib_main_t * vm = pg->vlib_main;
-  u32 * to_next, n_this_frame, n_left, n_trace, n_packets_in_fifo;
+  vlib_main_t *vm = pg->vlib_main;
+  u32 *to_next, n_this_frame, n_left, n_trace, n_packets_in_fifo;
   uword n_packets_generated;
-  pg_buffer_index_t * bi, * bi0;
+  pg_buffer_index_t *bi, *bi0;
 
   bi0 = s->buffer_indices;
 
@@ -1626,7 +1559,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
 
   while (n_packets_to_generate > 0)
     {
-      u32 * head, * start, * end;
+      u32 *head, *start, *end;
 
       vlib_get_next_frame (vm, node, s->next_index, to_next, n_left);
 
@@ -1667,16 +1600,13 @@ pg_generate_packets (vlib_node_runtime_t * node,
 }
 
 static uword
-pg_input_stream (vlib_node_runtime_t * node,
-		 pg_main_t * pg,
-		 pg_stream_t * s)
+pg_input_stream (vlib_node_runtime_t * node, pg_main_t * pg, pg_stream_t * s)
 {
-  vlib_main_t * vm = pg->vlib_main;
+  vlib_main_t *vm = pg->vlib_main;
   uword n_packets;
   f64 time_now, dt;
 
-  if (s->n_packets_limit > 0
-      && s->n_packets_generated >= s->n_packets_limit)
+  if (s->n_packets_limit > 0 && s->n_packets_generated >= s->n_packets_limit)
     {
       pg_stream_enable_disable (pg, s, /* want_enabled */ 0);
       return 0;
@@ -1718,21 +1648,22 @@ pg_input_stream (vlib_node_runtime_t * node,
 }
 
 uword
-pg_input (vlib_main_t * vm,
-	  vlib_node_runtime_t * node,
-	  vlib_frame_t * frame)
+pg_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   uword i;
-  pg_main_t * pg = &pg_main;
+  pg_main_t *pg = &pg_main;
   uword n_packets = 0;
 
+  /* *INDENT-OFF* */
   clib_bitmap_foreach (i, pg->enabled_streams, ({
     n_packets += pg_input_stream (node, pg, vec_elt_at_index (pg->streams, i));
   }));
+  /* *INDENT-ON* */
 
   return n_packets;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (pg_input_node) = {
   .function = pg_input,
   .name = "pg-input",
@@ -1743,3 +1674,12 @@ VLIB_REGISTER_NODE (pg_input_node) = {
   /* Input node will be left disabled until a stream is active. */
   .state = VLIB_NODE_STATE_DISABLED,
 };
+/* *INDENT-ON* */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
