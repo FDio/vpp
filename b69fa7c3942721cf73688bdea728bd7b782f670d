@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_7e94fe36",
+        "filename": "vpp/vpp-api/custom_dump.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2122,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-08-19T14:04:51Z",
+      "side": 1,
+      "message": "please use -",
+      "range": {
+        "startLine": 2122,
+        "startChar": 27,
+        "endLine": 2122,
+        "endChar": 28
+      },
+      "revId": "b69fa7c3942721cf73688bdea728bd7b782f670d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
