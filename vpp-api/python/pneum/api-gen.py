@@ -218,7 +218,7 @@ from collections import namedtuple
 #
 # Import C API shared object
 #
-import vpp_api
+import vpp_papi
 
 context = 0
 results = {}
