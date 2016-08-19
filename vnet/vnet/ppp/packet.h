@@ -147,7 +147,8 @@ _ (0xc281, proprietary_authentication_a)	\
 _ (0xc283, proprietary_authentication_b)	\
 _ (0xc481, proprietary_node_id_authentication)
 
-typedef enum {
+typedef enum
+{
 #define _(n,f) PPP_PROTOCOL_##f = n,
   foreach_ppp_protocol
 #undef _
@@ -178,7 +179,8 @@ _ (13, time_remaining)				\
 _ (14, reset_request)				\
 _ (15, reset_reply)
 
-typedef struct {
+typedef struct
+{
   /* Set to 0xff 0x03 */
   u8 address, control;
 
@@ -187,3 +189,11 @@ typedef struct {
 } ppp_header_t;
 
 #endif /* included_vnet_ppp_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
