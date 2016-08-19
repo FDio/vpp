@@ -1130,6 +1130,9 @@ dpdk_vhost_user_socket_read (unix_file_t * uf)
 	  goto close_socket;
 	}
 
+      /* Unmap previously configured memory if necessary */
+      dpdk_unmap_all_mem_regions (xd);
+
       dpdk_vhost_user_set_mem_table (xd->vlib_hw_if_index, &msg.memory, fds);
       break;
 
