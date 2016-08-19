@@ -43,7 +43,8 @@
 #include <vppinfra/format.h>
 #include <vppinfra/vec.h>
 
-typedef enum {
+typedef enum
+{
   /* Invalid type used to poison edits. */
   PG_EDIT_INVALID_TYPE,
 
@@ -60,7 +61,8 @@ typedef enum {
   PG_EDIT_UNSPECIFIED,
 } pg_edit_type_t;
 
-typedef struct {
+typedef struct
+{
   pg_edit_type_t type;
 
   /* Bit offset within packet where value is to be written.
@@ -77,7 +79,7 @@ typedef struct {
   u32 n_bits;
 
   /* Low and high values for this edit.  Network byte order. */
-  u8 * values[2];
+  u8 *values[2];
 #define PG_EDIT_LO 0
 #define PG_EDIT_HI 1
 
@@ -141,7 +143,9 @@ pg_edit_n_alloc_bytes (pg_edit_t * e)
 
 static inline void
 pg_edit_alloc_value (pg_edit_t * e, int i)
-{ vec_validate (e->values[i], e->lsb_bit_offset / BITS (u8)); }
+{
+  vec_validate (e->values[i], e->lsb_bit_offset / BITS (u8));
+}
 
 extern void pg_edit_set_value (pg_edit_t * e, int hi_or_lo, u64 value);
 
@@ -170,7 +174,7 @@ pg_edit_get_value (pg_edit_t * e, int hi_or_lo)
 {
   u64 r = 0;
   int i, n;
-  u8 * v = e->values[hi_or_lo];
+  u8 *v = e->values[hi_or_lo];
 
   n = round_pow2 (e->n_bits, BITS (u8)) / BITS (u8);
 
@@ -196,3 +200,11 @@ uword unformat_pg_number (unformat_input_t * input, va_list * args);
 uword unformat_pg_interface (unformat_input_t * input, va_list * args);
 
 #endif /* included_packet_generator_pg_edit_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

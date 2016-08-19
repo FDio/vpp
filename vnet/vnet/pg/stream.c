@@ -42,24 +42,25 @@
 #include <vnet/ethernet/ethernet.h>
 
 /* Mark stream active or inactive. */
-void pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s, int want_enabled)
+void
+pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s, int want_enabled)
 {
-  vnet_main_t * vnm = vnet_get_main();
-  pg_interface_t * pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
+  vnet_main_t *vnm = vnet_get_main ();
+  pg_interface_t *pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
 
   want_enabled = want_enabled != 0;
 
   if (pg_stream_is_enabled (s) == want_enabled)
     /* No change necessary. */
     return;
-      
+
   if (want_enabled)
     s->n_packets_generated = 0;
 
   /* Toggle enabled flag. */
   s->flags ^= PG_STREAM_FLAGS_IS_ENABLED;
 
-  ASSERT (! pool_is_free (pg->streams, s));
+  ASSERT (!pool_is_free (pg->streams, s));
 
   pg->enabled_streams
     = clib_bitmap_set (pg->enabled_streams, s - pg->streams, want_enabled);
@@ -67,12 +68,12 @@ void pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s, int want_enabled
   if (want_enabled)
     {
       vnet_hw_interface_set_flags (vnm, pi->hw_if_index,
-				    VNET_HW_INTERFACE_FLAG_LINK_UP);
+				   VNET_HW_INTERFACE_FLAG_LINK_UP);
 
       vnet_sw_interface_set_flags (vnm, pi->sw_if_index,
-				    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+				   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
     }
-			       
+
   vlib_node_set_state (pg->vlib_main,
 		       pg_input_node.index,
 		       (clib_bitmap_is_zero (pg->enabled_streams)
@@ -83,11 +84,12 @@ void pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s, int want_enabled
   s->time_last_generate = 0;
 }
 
-static u8 * format_pg_interface_name (u8 * s, va_list * args)
+static u8 *
+format_pg_interface_name (u8 * s, va_list * args)
 {
-  pg_main_t * pg = &pg_main;
+  pg_main_t *pg = &pg_main;
   u32 if_index = va_arg (*args, u32);
-  pg_interface_t * pi;
+  pg_interface_t *pi;
 
   pi = pool_elt_at_index (pg->interfaces, if_index);
   s = format (s, "pg%d", pi->id);
@@ -103,26 +105,27 @@ pg_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
     hw_flags = VNET_HW_INTERFACE_FLAG_LINK_UP;
 
-  vnet_hw_interface_set_flags(vnm, hw_if_index, hw_flags);
+  vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (pg_dev_class) = {
   .name = "pg",
   .tx_function = pg_output,
   .format_device_name = format_pg_interface_name,
   .admin_up_down_function = pg_interface_admin_up_down,
 };
+/* *INDENT-ON* */
 
-static uword pg_set_rewrite (vnet_main_t * vnm,
-			     u32 sw_if_index,
-			     u32 l3_type,
-			     void * dst_address,
-			     void * rewrite,
-			     uword max_rewrite_bytes)
+static uword
+pg_set_rewrite (vnet_main_t * vnm,
+		u32 sw_if_index,
+		u32 l3_type,
+		void *dst_address, void *rewrite, uword max_rewrite_bytes)
 {
-  u16 * h = rewrite;
+  u16 *h = rewrite;
 
   if (max_rewrite_bytes < sizeof (h[0]))
     return 0;
@@ -131,10 +134,12 @@ static uword pg_set_rewrite (vnet_main_t * vnm,
   return sizeof (h[0]);
 }
 
+/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (pg_interface_class,static) = {
   .name = "Packet generator",
   .set_rewrite = pg_set_rewrite,
 };
+/* *INDENT-ON* */
 
 static u32
 pg_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
@@ -143,12 +148,13 @@ pg_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
   return 0;
 }
 
-u32 pg_interface_add_or_get (pg_main_t * pg, uword if_id)
+u32
+pg_interface_add_or_get (pg_main_t * pg, uword if_id)
 {
-  vnet_main_t * vnm = vnet_get_main();
-  vlib_main_t * vm = vlib_get_main();
-  pg_interface_t * pi;
-  vnet_hw_interface_t * hi;
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  pg_interface_t *pi;
+  vnet_hw_interface_t *hi;
   uword *p;
   u32 i;
 
@@ -161,7 +167,7 @@ u32 pg_interface_add_or_get (pg_main_t * pg, uword if_id)
   else
     {
       u8 hw_addr[6];
-      f64 now = vlib_time_now(vm);
+      f64 now = vlib_time_now (vm);
       u32 rnd;
 
       pool_get (pg->interfaces, pi);
@@ -169,7 +175,7 @@ u32 pg_interface_add_or_get (pg_main_t * pg, uword if_id)
 
       rnd = (u32) (now * 1e6);
       rnd = random_u32 (&rnd);
-      clib_memcpy (hw_addr+2, &rnd, sizeof(rnd));
+      clib_memcpy (hw_addr + 2, &rnd, sizeof (rnd));
       hw_addr[0] = 2;
       hw_addr[1] = 0xfe;
 
@@ -185,13 +191,12 @@ u32 pg_interface_add_or_get (pg_main_t * pg, uword if_id)
   return i;
 }
 
-static void do_edit (pg_stream_t * stream,
-		     pg_edit_group_t * g,
-		     pg_edit_t * e,
-		     uword want_commit)
+static void
+do_edit (pg_stream_t * stream,
+	 pg_edit_group_t * g, pg_edit_t * e, uword want_commit)
 {
   u32 i, i0, i1, mask, n_bits_left;
-  u8 * v, * s, * m;
+  u8 *v, *s, *m;
 
   i0 = e->lsb_bit_offset / BITS (u8);
 
@@ -212,11 +217,11 @@ static void do_edit (pg_stream_t * stream,
 	  break;
 	}
 
-      if (want_commit) 
-        {
-          ASSERT(e->type != PG_EDIT_INVALID_TYPE);
-          vec_add1 (g->non_fixed_edits, e[0]);
-        }
+      if (want_commit)
+	{
+	  ASSERT (e->type != PG_EDIT_INVALID_TYPE);
+	  vec_add1 (g->non_fixed_edits, e[0]);
+	}
       return;
     }
 
@@ -239,7 +244,7 @@ static void do_edit (pg_stream_t * stream,
 
       ASSERT (i0 < vec_len (s));
       ASSERT (i < vec_len (v));
-      ASSERT ((v[i] &~ mask) == 0);
+      ASSERT ((v[i] & ~mask) == 0);
 
       s[i0] |= v[i] & mask;
       m[i0] |= mask;
@@ -270,7 +275,7 @@ static void do_edit (pg_stream_t * stream,
 
       ASSERT (i0 < vec_len (s));
       ASSERT (i < vec_len (v));
-      ASSERT ((v[i] &~ mask) == 0);
+      ASSERT ((v[i] & ~mask) == 0);
 
       s[i0] |= v[i] & mask;
       m[i0] |= mask;
@@ -280,73 +285,73 @@ static void do_edit (pg_stream_t * stream,
     pg_edit_free (e);
 }
 
-void pg_edit_group_get_fixed_packet_data (pg_stream_t * s,
-					  u32 group_index,
-					  void * packet_data,
-					  void * packet_data_mask)
+void
+pg_edit_group_get_fixed_packet_data (pg_stream_t * s,
+				     u32 group_index,
+				     void *packet_data,
+				     void *packet_data_mask)
 {
-  pg_edit_group_t * g = pg_stream_get_group (s, group_index);
-  pg_edit_t * e;
+  pg_edit_group_t *g = pg_stream_get_group (s, group_index);
+  pg_edit_t *e;
 
-  vec_foreach (e, g->edits)
-    do_edit (s, g, e, /* want_commit */ 0);
+  vec_foreach (e, g->edits) do_edit (s, g, e, /* want_commit */ 0);
 
-  clib_memcpy (packet_data, g->fixed_packet_data, vec_len (g->fixed_packet_data));
-  clib_memcpy (packet_data_mask, g->fixed_packet_data_mask, vec_len (g->fixed_packet_data_mask));
+  clib_memcpy (packet_data, g->fixed_packet_data,
+	       vec_len (g->fixed_packet_data));
+  clib_memcpy (packet_data_mask, g->fixed_packet_data_mask,
+	       vec_len (g->fixed_packet_data_mask));
 }
 
-static void perform_fixed_edits (pg_stream_t * s)
+static void
+perform_fixed_edits (pg_stream_t * s)
 {
-  pg_edit_group_t * g;
-  pg_edit_t * e;
+  pg_edit_group_t *g;
+  pg_edit_t *e;
   word i;
 
   for (i = vec_len (s->edit_groups) - 1; i >= 0; i--)
     {
       g = vec_elt_at_index (s->edit_groups, i);
-      vec_foreach (e, g->edits)
-	do_edit (s, g, e, /* want_commit */ 1);
+      vec_foreach (e, g->edits) do_edit (s, g, e, /* want_commit */ 1);
 
       /* All edits have either been performed or added to
-	 g->non_fixed_edits.  So, we can delete the vector. */
+         g->non_fixed_edits.  So, we can delete the vector. */
       vec_free (g->edits);
     }
 
   vec_free (s->fixed_packet_data_mask);
   vec_free (s->fixed_packet_data);
   vec_foreach (g, s->edit_groups)
-    {
-      int i;
-      g->start_byte_offset = vec_len (s->fixed_packet_data);
+  {
+    int i;
+    g->start_byte_offset = vec_len (s->fixed_packet_data);
 
-      /* Relocate and copy non-fixed edits from group to stream. */
-      vec_foreach (e, g->non_fixed_edits)
-	e->lsb_bit_offset += g->start_byte_offset * BITS (u8);
+    /* Relocate and copy non-fixed edits from group to stream. */
+    vec_foreach (e, g->non_fixed_edits)
+      e->lsb_bit_offset += g->start_byte_offset * BITS (u8);
 
-      for (i = 0; i < vec_len (g->non_fixed_edits); i++)
-        ASSERT(g->non_fixed_edits[i].type != PG_EDIT_INVALID_TYPE);
-      
-      vec_add (s->non_fixed_edits,
-	       g->non_fixed_edits,
-	       vec_len (g->non_fixed_edits));
-      vec_free (g->non_fixed_edits);
+    for (i = 0; i < vec_len (g->non_fixed_edits); i++)
+      ASSERT (g->non_fixed_edits[i].type != PG_EDIT_INVALID_TYPE);
 
-      vec_add (s->fixed_packet_data,
-	       g->fixed_packet_data,
-	       vec_len (g->fixed_packet_data));
-      vec_add (s->fixed_packet_data_mask,
-	       g->fixed_packet_data_mask,
-	       vec_len (g->fixed_packet_data_mask));
-    }
+    vec_add (s->non_fixed_edits,
+	     g->non_fixed_edits, vec_len (g->non_fixed_edits));
+    vec_free (g->non_fixed_edits);
+
+    vec_add (s->fixed_packet_data,
+	     g->fixed_packet_data, vec_len (g->fixed_packet_data));
+    vec_add (s->fixed_packet_data_mask,
+	     g->fixed_packet_data_mask, vec_len (g->fixed_packet_data_mask));
+  }
 }
 
-void pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
+void
+pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
 {
-  vlib_main_t * vm = pg->vlib_main;
-  pg_stream_t * s;
-  uword * p;
+  vlib_main_t *vm = pg->vlib_main;
+  pg_stream_t *s;
+  uword *p;
 
-  if (! pg->stream_index_by_name)
+  if (!pg->stream_index_by_name)
     pg->stream_index_by_name
       = hash_create_vec (0, sizeof (s->name[0]), sizeof (uword));
 
@@ -361,7 +366,7 @@ void pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   s[0] = s_init[0];
 
   /* Give it a name. */
-  if (! s->name)
+  if (!s->name)
     s->name = format (0, "stream%d", s - pg->streams);
   else
     s->name = vec_dup (s->name);
@@ -384,18 +389,19 @@ void pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
     default:
       /* Get packet size from fixed edits. */
       s->packet_size_edit_type = PG_EDIT_FIXED;
-      if (! s->replay_packet_templates)
-	s->min_packet_bytes = s->max_packet_bytes = vec_len (s->fixed_packet_data);
+      if (!s->replay_packet_templates)
+	s->min_packet_bytes = s->max_packet_bytes =
+	  vec_len (s->fixed_packet_data);
       break;
     }
 
   s->last_increment_packet_size = s->min_packet_bytes;
 
   {
-    pg_buffer_index_t * bi;
+    pg_buffer_index_t *bi;
     int n;
 
-    if (! s->buffer_bytes)
+    if (!s->buffer_bytes)
       s->buffer_bytes = s->max_packet_bytes;
 
     s->buffer_bytes = vlib_buffer_round_size (s->buffer_bytes);
@@ -409,32 +415,35 @@ void pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
       bi->free_list_index = vlib_buffer_create_free_list (vm, s->buffer_bytes,
 							  "pg stream %d buffer #%d",
 							  s - pg->streams,
-							  1 + (bi - s->buffer_indices));
+							  1 + (bi -
+							       s->
+							       buffer_indices));
   }
 
   /* Find an interface to use. */
   s->pg_if_index = pg_interface_add_or_get (pg, s->if_id);
 
   {
-    pg_interface_t * pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
+    pg_interface_t *pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
     vlib_rx_or_tx_t rx_or_tx;
 
     vlib_foreach_rx_tx (rx_or_tx)
-      {
-	if (s->sw_if_index[rx_or_tx] == ~0)
-	  s->sw_if_index[rx_or_tx] = pi->sw_if_index;
-      }
+    {
+      if (s->sw_if_index[rx_or_tx] == ~0)
+	s->sw_if_index[rx_or_tx] = pi->sw_if_index;
+    }
   }
 
   /* Connect the graph. */
   s->next_index = vlib_node_add_next (vm, pg_input_node.index, s->node_index);
 }
 
-void pg_stream_del (pg_main_t * pg, uword index)
+void
+pg_stream_del (pg_main_t * pg, uword index)
 {
-  vlib_main_t * vm = pg->vlib_main;
-  pg_stream_t * s;
-  pg_buffer_index_t * bi;
+  vlib_main_t *vm = pg->vlib_main;
+  pg_stream_t *s;
+  pg_buffer_index_t *bi;
 
   s = pool_elt_at_index (pg->streams, index);
 
@@ -442,12 +451,20 @@ void pg_stream_del (pg_main_t * pg, uword index)
   hash_unset_mem (pg->stream_index_by_name, s->name);
 
   vec_foreach (bi, s->buffer_indices)
-    {
-      vlib_buffer_delete_free_list (vm, bi->free_list_index);
-      clib_fifo_free (bi->buffer_fifo);
-    }
+  {
+    vlib_buffer_delete_free_list (vm, bi->free_list_index);
+    clib_fifo_free (bi->buffer_fifo);
+  }
 
   pg_stream_free (s);
   pool_put (pg->streams, s);
 }
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

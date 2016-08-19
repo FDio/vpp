@@ -44,7 +44,7 @@ static void
 pg_edit_set_value_helper (pg_edit_t * e, u64 value, u8 * result)
 {
   int i, j, n_bits_left;
-  u8 * v, tmp[8];
+  u8 *v, tmp[8];
 
   v = tmp;
 
@@ -81,21 +81,21 @@ pg_edit_set_value (pg_edit_t * e, int hi_or_lo, u64 value)
 }
 
 /* Parse an int either %d or 0x%x into network byte order. */
-uword unformat_pg_number (unformat_input_t * input, va_list * args)
+uword
+unformat_pg_number (unformat_input_t * input, va_list * args)
 {
-  u8 * result = va_arg (*args, u8 *);
-  pg_edit_t * e = va_arg (*args, pg_edit_t *);
+  u8 *result = va_arg (*args, u8 *);
+  pg_edit_t *e = va_arg (*args, pg_edit_t *);
   u64 value;
 
   ASSERT (BITS (value) >= e->n_bits);
 
-  if (! unformat (input, "0x%X", sizeof (value), &value)
-      && ! unformat (input, "%D", sizeof (value), &value))
+  if (!unformat (input, "0x%X", sizeof (value), &value)
+      && !unformat (input, "%D", sizeof (value), &value))
     return 0;
 
   /* Number given does not fit into bit field. */
-  if (e->n_bits < 64
-      && value >= (u64) 1 << (u64) e->n_bits)
+  if (e->n_bits < 64 && value >= (u64) 1 << (u64) e->n_bits)
     return 0;
 
   pg_edit_set_value_helper (e, value, result);
@@ -105,11 +105,11 @@ uword unformat_pg_number (unformat_input_t * input, va_list * args)
 uword
 unformat_pg_edit (unformat_input_t * input, va_list * args)
 {
-  unformat_function_t * f = va_arg (*args, unformat_function_t *);
-  pg_edit_t * e = va_arg (*args, pg_edit_t *);
+  unformat_function_t *f = va_arg (*args, unformat_function_t *);
+  pg_edit_t *e = va_arg (*args, pg_edit_t *);
 
   pg_edit_alloc_value (e, PG_EDIT_LO);
-  if (! unformat_user (input, f, e->values[PG_EDIT_LO], e))
+  if (!unformat_user (input, f, e->values[PG_EDIT_LO], e))
     return 0;
 
   pg_edit_alloc_value (e, PG_EDIT_HI);
@@ -126,13 +126,13 @@ unformat_pg_edit (unformat_input_t * input, va_list * args)
 uword
 unformat_pg_payload (unformat_input_t * input, va_list * args)
 {
-  pg_stream_t * s = va_arg (*args, pg_stream_t *);
-  pg_main_t * pg = &pg_main;
-  vlib_main_t * vm = pg->vlib_main;
-  pg_edit_t * e;
+  pg_stream_t *s = va_arg (*args, pg_stream_t *);
+  pg_main_t *pg = &pg_main;
+  vlib_main_t *vm = pg->vlib_main;
+  pg_edit_t *e;
   u32 i, node_index, len, max_len;
-  u8 * v;
-  
+  u8 *v;
+
   v = 0;
 
   if (unformat (input, "incrementing %d", &len))
@@ -146,8 +146,8 @@ unformat_pg_payload (unformat_input_t * input, va_list * args)
 
   else if (unformat (input, "%U", unformat_vlib_node, vm, &node_index))
     {
-      pg_node_t * pn = pg_get_node (node_index);
-      if (! pn->unformat_edit)
+      pg_node_t *pn = pg_get_node (node_index);
+      if (!pn->unformat_edit)
 	return 0;
       return unformat (input, "%U", pn->unformat_edit, s);
     }
@@ -177,3 +177,11 @@ unformat_pg_payload (unformat_input_t * input, va_list * args)
 
   return 1;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
