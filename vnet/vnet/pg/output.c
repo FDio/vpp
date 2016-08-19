@@ -43,16 +43,14 @@
 #include <vnet/ethernet/ethernet.h>
 
 uword
-pg_output (vlib_main_t * vm,
-	   vlib_node_runtime_t * node,
-	   vlib_frame_t * frame)
+pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  pg_main_t * pg = &pg_main;
-  u32 * buffers = vlib_frame_args (frame);
+  pg_main_t *pg = &pg_main;
+  u32 *buffers = vlib_frame_args (frame);
   uword n_buffers = frame->n_vectors;
   uword n_left = n_buffers;
-  vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
-  pg_interface_t * pif = pool_elt_at_index (pg->interfaces, rd->dev_instance);
+  vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
+  pg_interface_t *pif = pool_elt_at_index (pg->interfaces, rd->dev_instance);
 
   if (pif->pcap_file_name != 0)
     {
@@ -62,7 +60,8 @@ pg_output (vlib_main_t * vm,
 	  u32 bi0 = buffers[0];
 	  buffers++;
 
-	  pcap_add_buffer (&pif->pcap_main, vm, bi0, ETHERNET_MAX_PACKET_BYTES);
+	  pcap_add_buffer (&pif->pcap_main, vm, bi0,
+			   ETHERNET_MAX_PACKET_BYTES);
 	}
       pcap_write (&pif->pcap_main);
     }
@@ -70,3 +69,11 @@ pg_output (vlib_main_t * vm,
   vlib_buffer_free_no_next (vm, vlib_frame_args (frame), n_buffers);
   return n_buffers;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
