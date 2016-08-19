@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_1eb06a8a",
+        "filename": "plugins/ioam-plugin/ioam/export/ioam_export.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-19T19:12:54Z",
+      "side": 1,
+      "message": "Coding style nit: check bracing",
+      "revId": "9062ea99ef9337833b5682a90217cf4108a5de43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_feac8e37",
+        "filename": "plugins/ioam-plugin/ioam/export/ioam_export_thread.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-19T19:12:54Z",
+      "side": 1,
+      "message": "#define EXPORT_TIMEOUT (20.0) or some such?",
+      "revId": "9062ea99ef9337833b5682a90217cf4108a5de43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_9e635a1a",
+        "filename": "plugins/ioam-plugin/ioam/export/node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-19T19:12:54Z",
+      "side": 1,
+      "message": "Not necessary in this case, but it\u0027s a good idea to include a memory barrier (CLIB_MEMORY_BARRIER()) prior to setting locks to 0. Ensures that out-of-order writes are properly protected by the lock...",
+      "revId": "9062ea99ef9337833b5682a90217cf4108a5de43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_3ebb2674",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 2766,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-19T19:12:54Z",
+      "side": 1,
+      "message": "Bracing style nit",
+      "revId": "9062ea99ef9337833b5682a90217cf4108a5de43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
