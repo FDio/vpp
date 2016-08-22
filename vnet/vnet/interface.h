@@ -358,6 +358,9 @@ typedef struct vnet_hw_interface_t
 #define VNET_HW_INTERFACE_BOND_INFO_NONE ((uword *) 0)
 #define VNET_HW_INTERFACE_BOND_INFO_SLAVE ((uword *) ~0)
 
+  /* Error message if interface is in error state */
+  u8 *error_string;
+
 } vnet_hw_interface_t;
 
 extern vnet_device_class_t vnet_local_interface_device_class;

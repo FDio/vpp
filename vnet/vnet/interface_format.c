@@ -98,6 +98,10 @@ format_vnet_hw_interface (u8 * s, va_list * args)
 
   if (verbose)
     {
+      if (hi->error_string)
+	s = format (s, "\n%UERROR: %s",
+		    format_white_space, indent + 2, hi->error_string);
+
       if (hw_class->format_device)
 	s = format (s, "\n%U%U",
 		    format_white_space, indent + 2,

@@ -219,8 +219,9 @@ typedef struct
   i8 cpu_socket;
 
   u16 flags;
-#define DPDK_DEVICE_FLAG_ADMIN_UP (1 << 0)
-#define DPDK_DEVICE_FLAG_PROMISC  (1 << 1)
+#define DPDK_DEVICE_FLAG_ADMIN_UP  (1 << 0)
+#define DPDK_DEVICE_FLAG_PROMISC   (1 << 1)
+#define DPDK_DEVICE_FLAG_INIT_FAIL (1 << 2)
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
