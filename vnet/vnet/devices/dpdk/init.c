@@ -71,7 +71,7 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
 
   ASSERT (os_get_cpu_number () == 0);
 
-  if (xd->admin_up)
+  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     {
       vnet_hw_interface_set_flags (dm->vnet_main, xd->vlib_hw_if_index, 0);
       rte_eth_dev_stop (xd->device_index);
@@ -123,7 +123,7 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
 				  xd->device_index, rv);
     }
 
-  if (xd->admin_up)
+  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     {
       int rv;
       rv = rte_eth_dev_start (xd->device_index);
@@ -143,12 +143,16 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 
   if (ETHERNET_INTERFACE_FLAG_CONFIG_PROMISC (flags))
     {
-      old = xd->promisc;
-      xd->promisc = flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL;
+      old = (xd->flags & DPDK_DEVICE_FLAG_PROMISC) != 0;
 
-      if (xd->admin_up)
+      if (flags & ETHERNET_INTERFACE_FLAG_ACCEPT_ALL)
+	xd->flags |= DPDK_DEVICE_FLAG_PROMISC;
+      else
+	xd->flags &= ~DPDK_DEVICE_FLAG_PROMISC;
+
+      if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
 	{
-	  if (xd->promisc)
+	  if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
 	    rte_eth_promiscuous_enable (xd->device_index);
 	  else
 	    rte_eth_promiscuous_disable (xd->device_index);
@@ -181,7 +185,7 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 
 	  xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
 
-	  if (xd->admin_up)
+	  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
 	    rte_eth_dev_stop (xd->device_index);
 
 	  rv = rte_eth_dev_configure
@@ -194,7 +198,7 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 
 	  rte_eth_dev_set_mtu (xd->device_index, hi->max_packet_bytes);
 
-	  if (xd->admin_up)
+	  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
 	    {
 	      int rv = rte_eth_dev_start (xd->device_index);
 	      if (rv < 0)
@@ -1479,13 +1483,13 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
       } *ed;
       ed = ELOG_DATA (&vm->elog_main, e);
       ed->sw_if_index = xd->vlib_sw_if_index;
-      ed->admin_up = xd->admin_up;
+      ed->admin_up = (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) != 0;
       ed->old_link_state = (u8)
 	vnet_hw_interface_is_link_up (vnm, xd->vlib_hw_if_index);
       ed->new_link_state = (u8) xd->link.link_status;
     }
 
-  if ((xd->admin_up == 1) &&
+  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) &&
       ((xd->link.link_status != 0) ^
        vnet_hw_interface_is_link_up (vnm, xd->vlib_hw_if_index)))
     {
