@@ -403,7 +403,7 @@ dpdk_device_input (dpdk_main_t * dm,
   u8 efd_discard_burst = 0;
   u32 buffer_flags_template;
 
-  if (xd->admin_up == 0)
+  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
     return 0;
 
   n_buffers = dpdk_rx_burst (dm, xd, queue_id);
@@ -426,20 +426,6 @@ dpdk_device_input (dpdk_main_t * dm,
   trace_cnt = n_trace = vlib_get_trace_count (vm, node);
 
   fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-
-  /*
-   * DAW-FIXME: VMXNET3 device stop/start doesn't work,
-   * therefore fake the stop in the dpdk driver by
-   * silently dropping all of the incoming pkts instead of
-   * stopping the driver / hardware.
-   */
-  if (PREDICT_FALSE (xd->admin_up != 1))
-    {
-      for (mb_index = 0; mb_index < n_buffers; mb_index++)
-	rte_pktmbuf_free (xd->rx_vectors[queue_id][mb_index]);
-
-      return 0;
-    }
 
   /* Check for congestion if EFD (Early-Fast-Discard) is enabled
    * in any mode (e.g. dpdk, monitor, or drop_all)
