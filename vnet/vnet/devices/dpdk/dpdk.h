@@ -196,6 +196,7 @@ typedef struct
 
 #define DPDK_DEVICE_FLAG_HAVE_SUBIF     (1 << 5)
 #define DPDK_DEVICE_FLAG_HQOS           (1 << 6)
+#define DPDK_DEVICE_FLAG_INIT_FAIL      (1 << 7)
 
   u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -230,6 +231,9 @@ typedef struct
   struct rte_eth_xstat *last_cleared_xstats;
   f64 time_last_stats_update;
   dpdk_port_type_t port_type;
+
+  /* Error message if interface is in error state */
+  u8 *error_string;
 } dpdk_device_t;
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
@@ -499,6 +503,13 @@ vnet_get_aggregate_rx_packets (void)
   return sum;
 }
 
+static_always_inline u32
+dpdk_get_link_status (dpdk_device_t * xd)
+{
+  return (xd->flags & DPDK_DEVICE_FLAG_INIT_FAIL) == 0
+    && xd->link.link_status;
+}
+
 void dpdk_rx_trace (dpdk_main_t * dm,
 		    vlib_node_runtime_t * node,
 		    dpdk_device_t * xd,
@@ -506,6 +517,23 @@ void dpdk_rx_trace (dpdk_main_t * dm,
 
 #define EFD_OPERATION_LESS_THAN          0
 #define EFD_OPERATION_GREATER_OR_EQUAL   1
+
+void efd_config (u32 enabled,
+		 u32 ip_prec, u32 ip_op,
+		 u32 mpls_exp, u32 mpls_op, u32 vlan_cos, u32 vlan_op);
+
+void post_sw_interface_set_flags (vlib_main_t * vm, u32 sw_if_index,
+				  u32 flags);
+
+u32 dpdk_get_admin_up_down_in_progress (void);
+
+u32 dpdk_num_mbufs (void);
+
+dpdk_pmd_t dpdk_get_pmd_type (vnet_hw_interface_t * hi);
+
+i8 dpdk_get_cpu_socket (vnet_hw_interface_t * hi);
+
+void dpdk_set_error_string (dpdk_device_t * xd, u8 * error_string);
 
 void *dpdk_input_multiarch_select ();
 void *dpdk_input_rss_multiarch_select ();

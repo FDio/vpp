@@ -74,7 +74,8 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     {
       vnet_hw_interface_set_flags (dm->vnet_main, xd->vlib_hw_if_index, 0);
-      rte_eth_dev_stop (xd->device_index);
+      if ((xd->flags & DPDK_DEVICE_FLAG_INIT_FAIL) == 0)
+	rte_eth_dev_stop (xd->device_index);
     }
 
   rv = rte_eth_dev_configure (xd->device_index, xd->rx_q_used,
@@ -150,7 +151,8 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
       else
 	xd->flags &= ~DPDK_DEVICE_FLAG_PROMISC;
 
-      if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
+      if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
+	  && (xd->flags & DPDK_DEVICE_FLAG_INIT_FAIL) == 0)
 	{
 	  if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
 	    rte_eth_promiscuous_enable (xd->device_index);
@@ -185,20 +187,30 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 
 	  xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
 
-	  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
+	  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
+	      && (xd->flags & DPDK_DEVICE_FLAG_INIT_FAIL) == 0)
 	    rte_eth_dev_stop (xd->device_index);
 
 	  rv = rte_eth_dev_configure
 	    (xd->device_index, xd->rx_q_used, xd->tx_q_used, &xd->port_conf);
 
 	  if (rv < 0)
-	    vlib_cli_output (vlib_get_main (),
-			     "rte_eth_dev_configure[%d]: err %d",
-			     xd->device_index, rv);
+	    {
+	      clib_error_t *error = clib_error_return (0,
+						       "rte_eth_dev_configure[%d]: err %d",
+						       xd->device_index,
+						       rv);
+	      xd->flags |= DPDK_DEVICE_FLAG_INIT_FAIL;
+	      dpdk_set_error_string (xd, error->what);
+	      clib_error_report (error);
+	      f64 now = vlib_time_now (dm->vlib_main);
+	      dpdk_update_link_state (xd, now);
+	    }
 
 	  rte_eth_dev_set_mtu (xd->device_index, hi->max_packet_bytes);
 
-	  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
+	  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
+	      && (xd->flags & DPDK_DEVICE_FLAG_INIT_FAIL) == 0)
 	    {
 	      int rv = rte_eth_dev_start (xd->device_index);
 	      if (rv < 0)
@@ -251,6 +263,7 @@ dpdk_lib_init (dpdk_main_t * dm)
   u32 last_pci_addr_port = 0;
   vlib_thread_registration_t *tr, *tr_hqos;
   uword *p, *p_hqos;
+  u8 port_setup_fail = 0;
 
   u32 next_cpu = 0, next_hqos_cpu = 0;
   u8 af_packet_port_id = 0;
@@ -736,11 +749,15 @@ dpdk_lib_init (dpdk_main_t * dm)
 			    CLIB_CACHE_LINE_BYTES);
 
       rv = dpdk_port_setup (dm, xd);
-
       if (rv)
-	return rv;
+	{
+	  xd->flags |= DPDK_DEVICE_FLAG_INIT_FAIL;
+	  port_setup_fail = 1;
+	  dpdk_set_error_string (xd, rv->what);
+	  clib_error_report (rv);
+	}
 
-      if (devconf->hqos_enabled)
+      if (!port_setup_fail && devconf->hqos_enabled)
 	{
 	  rv = dpdk_port_setup_hqos (xd, &devconf->hqos);
 	  if (rv)
@@ -1407,6 +1424,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 
   xd->time_last_link_update = now ? now : xd->time_last_link_update;
   memset (&xd->link, 0, sizeof (xd->link));
+
   rte_eth_link_get_nowait (xd->device_index, &xd->link);
 
   if (LINK_STATE_ELOGS)
@@ -1430,15 +1448,17 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
       ed->admin_up = (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) != 0;
       ed->old_link_state = (u8)
 	vnet_hw_interface_is_link_up (vnm, xd->vlib_hw_if_index);
-      ed->new_link_state = (u8) xd->link.link_status;
+      ed->new_link_state = (u8) dpdk_get_link_status (xd);
     }
 
-  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) &&
-      ((xd->link.link_status != 0) ^
-       vnet_hw_interface_is_link_up (vnm, xd->vlib_hw_if_index)))
+  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP))
     {
-      hw_flags_chg = 1;
-      hw_flags |= (xd->link.link_status ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
+      u8 up = dpdk_get_link_status (xd);
+      if (up ^ vnet_hw_interface_is_link_up (vnm, xd->vlib_hw_if_index))
+	{
+	  hw_flags_chg = 1;
+	  hw_flags |= (up ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
+	}
     }
 
   if (hw_flags_chg || (xd->link.link_duplex != prev_link.link_duplex))

@@ -696,15 +696,19 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
     {
       f64 now = vlib_time_now (dm->vlib_main);
 
-      if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
-	rv = rte_eth_dev_start (xd->device_index);
+      if ((xd->flags & DPDK_DEVICE_FLAG_INIT_FAIL) == 0)
+	{
+	  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
+	    rv = rte_eth_dev_start (xd->device_index);
 
-      if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
-	rte_eth_promiscuous_enable (xd->device_index);
-      else
-	rte_eth_promiscuous_disable (xd->device_index);
+	  if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
+	    rte_eth_promiscuous_enable (xd->device_index);
+	  else
+	    rte_eth_promiscuous_disable (xd->device_index);
 
-      rte_eth_allmulticast_enable (xd->device_index);
+	  rte_eth_allmulticast_enable (xd->device_index);
+	}
+
       xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
       dpdk_update_counters (xd, now);
       dpdk_update_link_state (xd, now);
@@ -713,19 +717,24 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
     {
       xd->flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
 
-      rte_eth_allmulticast_disable (xd->device_index);
       vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index, 0);
-      rte_eth_dev_stop (xd->device_index);
 
-      /* For bonded interface, stop slave links */
-      if (xd->pmd == VNET_DPDK_PMD_BOND)
+      if ((xd->flags & DPDK_DEVICE_FLAG_INIT_FAIL) == 0)
 	{
-	  u8 slink[16];
-	  int nlink = rte_eth_bond_slaves_get (xd->device_index, slink, 16);
-	  while (nlink >= 1)
+	  rte_eth_allmulticast_disable (xd->device_index);
+	  rte_eth_dev_stop (xd->device_index);
+
+	  /* For bonded interface, stop slave links */
+	  if (xd->pmd == VNET_DPDK_PMD_BOND)
 	    {
-	      u8 dpdk_port = slink[--nlink];
-	      rte_eth_dev_stop (dpdk_port);
+	      u8 slink[16];
+	      int nlink =
+		rte_eth_bond_slaves_get (xd->device_index, slink, 16);
+	      while (nlink >= 1)
+		{
+		  u8 dpdk_port = slink[--nlink];
+		  rte_eth_dev_stop (dpdk_port);
+		}
 	    }
 	}
     }
@@ -824,6 +833,17 @@ done:
     xd->flags &= ~DPDK_DEVICE_FLAG_HAVE_SUBIF;
 
   return err;
+}
+
+/*
+ * Set error string for specified dpdk device
+ */
+void
+dpdk_set_error_string (dpdk_device_t * xd, u8 * error_string)
+{
+  if (xd->error_string)
+    vec_free (xd->error_string);
+  xd->error_string = vec_dup (error_string);
 }
 
 /* *INDENT-OFF* */
