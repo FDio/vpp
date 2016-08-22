@@ -334,7 +334,8 @@ dpdk_device_input (dpdk_main_t * dm,
   u8 efd_discard_burst = 0;
   u32 buffer_flags_template;
 
-  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
+  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0 ||
+	  !dpdk_get_link_status(xd))
     return 0;
 
   n_buffers = dpdk_rx_burst (dm, xd, queue_id);
