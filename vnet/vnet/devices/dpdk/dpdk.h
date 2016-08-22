@@ -218,8 +218,9 @@ typedef struct
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
 
-  u8 admin_up;
-  u8 promisc;
+  u16 flags;
+#define DPDK_DEVICE_FLAG_ADMIN_UP (1 << 0)
+#define DPDK_DEVICE_FLAG_PROMISC  (1 << 1)
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
