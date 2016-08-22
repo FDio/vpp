@@ -74,6 +74,11 @@ typedef struct vlib_pci_device
   /* Numa Node */
   int numa_node;
 
+  /* Device data */
+  u16 device_class;
+  u16 vendor_id;
+  u16 device_id;
+
   /* Vital Product Data */
   u8 *product_name;
   u8 *vpd_r;

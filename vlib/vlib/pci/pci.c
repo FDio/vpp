@@ -58,7 +58,6 @@ show_pci_fn (vlib_main_t * vm,
 {
   vlib_pci_main_t *pm = &pci_main;
   vlib_pci_device_t *d;
-  pci_config_header_t *c;
   int show_all = 0;
   u8 *s = 0;
 
@@ -77,9 +76,8 @@ show_pci_fn (vlib_main_t * vm,
 
   /* *INDENT-OFF* */
   pool_foreach (d, pm->pci_devs, ({
-    c = &d->config0.header;
 
-    if (c->device_class != PCI_CLASS_NETWORK_ETHERNET && !show_all)
+    if (d->device_class != PCI_CLASS_NETWORK_ETHERNET && !show_all)
       continue;
 
     vec_reset_length (s);
@@ -89,7 +87,7 @@ show_pci_fn (vlib_main_t * vm,
 
     vlib_cli_output (vm, "%-13U%-7v%04x:%04x   %-15U%-20s%-40v",
 		     format_vlib_pci_addr, &d->bus_address, s,
-		     c->vendor_id, c->device_id,
+		     d->vendor_id, d->device_id,
 		     format_vlib_pci_link_speed, d,
 		     d->driver_name ? (char *) d->driver_name : "",
 		     d->product_name);

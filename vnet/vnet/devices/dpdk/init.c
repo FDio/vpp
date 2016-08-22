@@ -833,18 +833,16 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
   vlib_pci_main_t *pm = &pci_main;
   clib_error_t *error;
   vlib_pci_device_t *d;
-  pci_config_header_t *c;
   u8 *pci_addr = 0;
   int num_whitelisted = vec_len (conf->dev_confs);
 
   /* *INDENT-OFF* */
   pool_foreach (d, pm->pci_devs, ({
     dpdk_device_config_t * devconf = 0;
-    c = &d->config0.header;
     vec_reset_length (pci_addr);
     pci_addr = format (pci_addr, "%U%c", format_vlib_pci_addr, &d->bus_address, 0);
 
-    if (c->device_class != PCI_CLASS_NETWORK_ETHERNET)
+    if (d->device_class != PCI_CLASS_NETWORK_ETHERNET)
       continue;
 
     if (num_whitelisted)
@@ -858,24 +856,24 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       }
 
     /* virtio */
-    if (c->vendor_id == 0x1af4 && c->device_id == 0x1000)
+    if (d->vendor_id == 0x1af4 && d->device_id == 0x1000)
       ;
     /* vmxnet3 */
-    else if (c->vendor_id == 0x15ad && c->device_id == 0x07b0)
+    else if (d->vendor_id == 0x15ad && d->device_id == 0x07b0)
       ;
     /* all Intel devices */
-    else if (c->vendor_id == 0x8086)
+    else if (d->vendor_id == 0x8086)
       ;
     /* Cisco VIC */
-    else if (c->vendor_id == 0x1137 && c->device_id == 0x0043)
+    else if (d->vendor_id == 0x1137 && d->device_id == 0x0043)
       ;
     /* Chelsio T4/T5 */
-    else if (c->vendor_id == 0x1425 && (c->device_id & 0xe000) == 0x4000)
+    else if (d->vendor_id == 0x1425 && (d->device_id & 0xe000) == 0x4000)
       ;
     else
       {
         clib_warning ("Unsupported Ethernet PCI device 0x%04x:0x%04x found "
-		      "at PCI address %s\n", (u16) c->vendor_id, (u16) c->device_id,
+		      "at PCI address %s\n", (u16) d->vendor_id, (u16) d->device_id,
 		      pci_addr);
         continue;
       }
