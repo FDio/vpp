@@ -1,0 +1,16 @@
+diff --git a/drivers/net/enic/enic_ethdev.c b/drivers/net/enic/enic_ethdev.c
+index 47b07c9..dc3241e 100644
+--- a/drivers/net/enic/enic_ethdev.c
++++ b/drivers/net/enic/enic_ethdev.c
+@@ -440,7 +440,10 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
+
+	ENICPMD_FUNC_TRACE();
+	/* Scattered Rx uses two receive queues per rx queue exposed to dpdk */
+-	device_info->max_rx_queues = enic->conf_rq_count / 2;
++	if (enic->conf_rq_count > 1)
++		device_info->max_rx_queues = enic->conf_rq_count / 2;
++	else
++		device_info->max_rx_queues = enic->conf_rq_count;
+	device_info->max_tx_queues = enic->conf_wq_count;
+	device_info->min_rx_bufsize = ENIC_MIN_MTU;
+	device_info->max_rx_pktlen = enic->rte_dev->data->mtu
