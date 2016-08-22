@@ -218,10 +218,12 @@ typedef struct
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
 
-  u8 admin_up;
-  u8 promisc;
+#define DPDK_DEVICE_FLAG_ADMIN_UP (1 << 0)
+#define DPDK_DEVICE_FLAG_PROMISC  (1 << 1)
+#define DPDK_DEVICE_FLAG_ADMIN_UP_VMXNET3_WORKAROUND (1 << 15)
+  u16 flags;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   u8 *interface_name_suffix;
 

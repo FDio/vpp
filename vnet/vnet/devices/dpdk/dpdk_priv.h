@@ -97,7 +97,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
    * silently dropping all of the incoming pkts instead of
    * stopping the driver / hardware.
    */
-  if (xd->admin_up != 0xff)
+  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP_VMXNET3_WORKAROUND) == 0)
     {
       xd->time_last_stats_update = now ? now : xd->time_last_stats_update;
       clib_memcpy (&xd->last_stats, &xd->stats, sizeof (xd->last_stats));
