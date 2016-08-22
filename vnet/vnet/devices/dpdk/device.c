@@ -939,34 +939,15 @@ dpdk_clear_hw_interface_counters (u32 instance)
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, instance);
 
   /*
-   * DAW-FIXME: VMXNET3 device stop/start doesn't work,
-   * therefore fake the stop in the dpdk driver by
-   * silently dropping all of the incoming pkts instead of
-   * stopping the driver / hardware.
+   * Set the "last_cleared_stats" to the current stats, so that
+   * things appear to clear from a display perspective.
    */
-  if (xd->admin_up != 0xff)
-    {
-      /*
-       * Set the "last_cleared_stats" to the current stats, so that
-       * things appear to clear from a display perspective.
-       */
-      dpdk_update_counters (xd, vlib_time_now (dm->vlib_main));
+  dpdk_update_counters (xd, vlib_time_now (dm->vlib_main));
 
-      clib_memcpy (&xd->last_cleared_stats, &xd->stats, sizeof (xd->stats));
-      clib_memcpy (xd->last_cleared_xstats, xd->xstats,
-		   vec_len (xd->last_cleared_xstats) *
-		   sizeof (xd->last_cleared_xstats[0]));
-    }
-  else
-    {
-      /*
-       * Internally rte_eth_xstats_reset() is calling rte_eth_stats_reset(),
-       * so we're only calling xstats_reset() here.
-       */
-      rte_eth_xstats_reset (xd->device_index);
-      memset (&xd->stats, 0, sizeof (xd->stats));
-      memset (&xd->last_stats, 0, sizeof (xd->last_stats));
-    }
+  clib_memcpy (&xd->last_cleared_stats, &xd->stats, sizeof (xd->stats));
+  clib_memcpy (xd->last_cleared_xstats, xd->xstats,
+	       vec_len (xd->last_cleared_xstats) *
+	       sizeof (xd->last_cleared_xstats[0]));
 
 #if DPDK_VHOST_USER
   if (PREDICT_FALSE (xd->dev_type == VNET_DPDK_DEV_VHOST_USER))
@@ -1069,12 +1050,12 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	  else
 	    {
 	      hif->max_packet_bytes = 1500;	/* kni interface default value */
-	      xd->admin_up = 1;
+	      xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
 	    }
 	}
       else
 	{
-	  xd->admin_up = 0;
+	  xd->flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
 	  int kni_rv;
 
 	  kni_rv = rte_kni_release (xd->kni);
@@ -1093,12 +1074,12 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	    vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index,
 					 VNET_HW_INTERFACE_FLAG_LINK_UP |
 					 ETH_LINK_FULL_DUPLEX);
-	  xd->admin_up = 1;
+	  xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
 	}
       else
 	{
 	  vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index, 0);
-	  xd->admin_up = 0;
+	  xd->flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
 	}
 
       return 0;
@@ -1110,49 +1091,26 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
     {
       f64 now = vlib_time_now (dm->vlib_main);
 
-      /*
-       * DAW-FIXME: VMXNET3 device stop/start doesn't work,
-       * therefore fake the stop in the dpdk driver by
-       * silently dropping all of the incoming pkts instead of
-       * stopping the driver / hardware.
-       */
-      if (xd->admin_up == 0)
+      if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
 	rv = rte_eth_dev_start (xd->device_index);
 
-      if (xd->promisc)
+      if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
 	rte_eth_promiscuous_enable (xd->device_index);
       else
 	rte_eth_promiscuous_disable (xd->device_index);
 
       rte_eth_allmulticast_enable (xd->device_index);
-      xd->admin_up = 1;
+      xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
       dpdk_update_counters (xd, now);
       dpdk_update_link_state (xd, now);
     }
   else
     {
-      /*
-       * DAW-FIXME: VMXNET3 device stop/start doesn't work,
-       * therefore fake the stop in the dpdk driver by
-       * silently dropping all of the incoming pkts instead of
-       * stopping the driver / hardware.
-       */
-      if (xd->pmd != VNET_DPDK_PMD_VMXNET3)
-	xd->admin_up = 0;
-      else
-	xd->admin_up = ~0;
+      xd->flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
 
       rte_eth_allmulticast_disable (xd->device_index);
       vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index, 0);
-
-      /*
-       * DAW-FIXME: VMXNET3 device stop/start doesn't work,
-       * therefore fake the stop in the dpdk driver by
-       * silently dropping all of the incoming pkts instead of
-       * stopping the driver / hardware.
-       */
-      if (xd->pmd != VNET_DPDK_PMD_VMXNET3)
-	rte_eth_dev_stop (xd->device_index);
+      rte_eth_dev_stop (xd->device_index);
 
       /* For bonded interface, stop slave links */
       if (xd->pmd == VNET_DPDK_PMD_BOND)
