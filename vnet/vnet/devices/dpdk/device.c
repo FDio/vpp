@@ -1443,6 +1443,17 @@ dpdk_get_cpu_socket (vnet_hw_interface_t * hi)
 }
 
 /*
+ * Set error string for specified dpdk device
+ */
+void
+dpdk_set_error_string (dpdk_device_t * xd, u8 * error_string)
+{
+  if (xd->error_string)
+    vec_free (xd->error_string);
+  xd->error_string = vec_dup (error_string);
+}
+
+/*
  * fd.io coding-style-patch-verification: ON
  *
  * Local Variables:

@@ -243,6 +243,7 @@ typedef struct
 #define DPDK_DEVICE_FLAG_VHOST_USER     (1 << 4)
 #define DPDK_DEVICE_FLAG_HAVE_SUBIF     (1 << 5)
 #define DPDK_DEVICE_FLAG_HQOS           (1 << 6)
+#define DPDK_DEVICE_FLAG_INIT_FAIL      (1 << 7)
 
   u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -297,6 +298,9 @@ typedef struct
 
   dpdk_efd_agent_t efd_agent;
   u8 need_txlock;		/* Used by VNET_DPDK_DEV_VHOST_USER */
+
+  /* Error message if interface is in error state */
+  u8 *error_string;
 } dpdk_device_t;
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
@@ -689,6 +693,8 @@ u32 dpdk_num_mbufs (void);
 dpdk_pmd_t dpdk_get_pmd_type (vnet_hw_interface_t * hi);
 
 i8 dpdk_get_cpu_socket (vnet_hw_interface_t * hi);
+
+void dpdk_set_error_string (dpdk_device_t * xd, u8 * error_string);
 
 void *dpdk_input_multiarch_select ();
 void *dpdk_input_rss_multiarch_select ();
