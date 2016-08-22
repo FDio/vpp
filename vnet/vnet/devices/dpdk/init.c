@@ -81,8 +81,8 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
 			      xd->tx_q_used, &xd->port_conf);
 
   if (rv < 0)
-    return clib_error_return (0, "rte_eth_dev_configure[%d]: err %d",
-			      xd->device_index, rv);
+    return clib_error_return_fatal (0, "rte_eth_dev_configure[%d]: err %d",
+				    xd->device_index, rv);
 
   /* Set up one TX-queue per worker thread */
   for (j = 0; j < xd->tx_q_used; j++)
@@ -99,8 +99,8 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
     }
 
   if (rv < 0)
-    return clib_error_return (0, "rte_eth_tx_queue_setup[%d]: err %d",
-			      xd->device_index, rv);
+    return clib_error_return_fatal (0, "rte_eth_tx_queue_setup[%d]: err %d",
+				    xd->device_index, rv);
 
   for (j = 0; j < xd->rx_q_used; j++)
     {
@@ -119,8 +119,9 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
 				     pktmbuf_pools[xd->cpu_socket_id_by_queue
 						   [j]]);
       if (rv < 0)
-	return clib_error_return (0, "rte_eth_rx_queue_setup[%d]: err %d",
-				  xd->device_index, rv);
+	return clib_error_return_fatal (0,
+					"rte_eth_rx_queue_setup[%d]: err %d",
+					xd->device_index, rv);
     }
 
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
@@ -192,9 +193,13 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 	    (xd->device_index, xd->rx_q_used, xd->tx_q_used, &xd->port_conf);
 
 	  if (rv < 0)
-	    vlib_cli_output (vlib_get_main (),
-			     "rte_eth_dev_configure[%d]: err %d",
-			     xd->device_index, rv);
+	    {
+	      clib_error_t *error = clib_error_return_fatal (0,
+							     "rte_eth_dev_configure[%d]: err %d",
+							     xd->device_index,
+							     rv);
+	      clib_error_report (error);
+	    }
 
 	  rte_eth_dev_set_mtu (xd->device_index, hi->max_packet_bytes);
 

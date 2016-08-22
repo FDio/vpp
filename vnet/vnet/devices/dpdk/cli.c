@@ -729,6 +729,9 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
 
   rv = dpdk_port_setup (dm, xd);
 
+  if (rv->flags & CLIB_ERROR_FATAL)
+    clib_error_report (rv);
+
   return rv;
 }
 
