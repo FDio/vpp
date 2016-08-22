@@ -395,9 +395,14 @@ format_dpdk_device (u8 * s, va_list * args)
   dpdk_update_counters (xd, now);
   dpdk_update_link_state (xd, now);
 
-  s = format (s, "%U\n%Ucarrier %U",
-	      format_dpdk_device_type, xd->device_index,
-	      format_white_space, indent + 2, format_dpdk_link_status, xd);
+  s = format (s, "%U\n", format_dpdk_device_type, xd->device_index);
+
+  if (xd->flags & DPDK_DEVICE_FLAG_INIT_FAIL)
+    s =
+      format (s, "%UERROR: DPDK init fail\n", format_white_space, indent + 2);
+
+  s = format (s, "%Ucarrier %U", format_white_space, indent + 2,
+	      format_dpdk_link_status, xd);
 
   rte_eth_dev_info_get (xd->device_index, &di);
 

@@ -728,6 +728,12 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
     xd->nb_rx_desc = nb_rx_desc;
 
   rv = dpdk_port_setup (dm, xd);
+  if (rv)
+    {
+      xd->flags |= DPDK_DEVICE_FLAG_INIT_FAIL;
+      f64 now = vlib_time_now (dm->vlib_main);
+      dpdk_update_link_state (xd, now);
+    }
 
   return rv;
 }

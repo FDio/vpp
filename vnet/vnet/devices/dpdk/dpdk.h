@@ -213,6 +213,7 @@ typedef struct
 #define DPDK_DEVICE_FLAG_KNI            (1 << 3)
 #define DPDK_DEVICE_FLAG_VHOST_USER     (1 << 4)
 #define DPDK_DEVICE_FLAG_HAVE_SUBIF     (1 << 5)
+#define DPDK_DEVICE_FLAG_INIT_FAIL      (1 << 6)
 
   u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
