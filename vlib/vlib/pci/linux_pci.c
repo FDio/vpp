@@ -99,11 +99,8 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
   DIR *dir = 0;
   struct dirent *e;
   int fd;
-  pci_config_header_t *c;
   u8 *dev_dir_name = format (0, "/sys/bus/pci/devices/%U",
 			     format_vlib_pci_addr, &d->bus_address);
-
-  c = &d->config0.header;
 
   /* if uio sub-directory exists, we are fine, device is
      already bound to UIO driver */
@@ -186,7 +183,7 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
   vec_reset_length (s);
 
   s = format (s, "/sys/bus/pci/drivers/%s/new_id%c", uio_driver_name, 0);
-  vlib_sysfs_write ((char *) s, "0x%04x 0x%04x", c->vendor_id, c->device_id);
+  vlib_sysfs_write ((char *) s, "0x%04x 0x%04x", d->vendor_id, d->device_id);
   vec_reset_length (s);
 
   s = format (s, "/sys/bus/pci/drivers/%s/bind%c", uio_driver_name, 0);
@@ -427,17 +424,14 @@ init_device_from_registered (vlib_main_t * vm,
   vlib_pci_main_t *pm = &pci_main;
   pci_device_registration_t *r;
   pci_device_id_t *i;
-  pci_config_header_t *c;
   clib_error_t *error;
-
-  c = &dev->config0.header;
 
   r = pm->pci_device_registrations;
 
   while (r)
     {
       for (i = r->supported_devices; i->vendor_id != 0; i++)
-	if (i->vendor_id == c->vendor_id && i->device_id == c->device_id)
+	if (i->vendor_id == dev->vendor_id && i->device_id == dev->device_id)
 	  {
 	    error = vlib_pci_bind_to_uio (dev, "uio_pci_generic");
 	    if (error)
@@ -474,6 +468,7 @@ scan_device (void *arg, u8 * dev_dir_name, u8 * ignored)
   clib_error_t *error = 0;
   vlib_pci_device_t *dev;
   linux_pci_device_t pdev = { 0 };
+  u32 tmp;
 
   f = format (0, "%v/config%c", dev_dir_name, 0);
   fd = open ((char *) f, O_RDWR);
@@ -591,6 +586,21 @@ scan_device (void *arg, u8 * dev_dir_name, u8 * ignored)
   vec_reset_length (f);
   f = format (f, "%v/numa_node%c", dev_dir_name, 0);
   vlib_sysfs_read ((char *) f, "%u", &dev->numa_node);
+
+  vec_reset_length (f);
+  f = format (f, "%v/class%c", dev_dir_name, 0);
+  vlib_sysfs_read ((char *) f, "0x%x", &tmp);
+  dev->device_class = tmp >> 8;
+
+  vec_reset_length (f);
+  f = format (f, "%v/vendor%c", dev_dir_name, 0);
+  vlib_sysfs_read ((char *) f, "0x%x", &tmp);
+  dev->vendor_id = tmp;
+
+  vec_reset_length (f);
+  f = format (f, "%v/device%c", dev_dir_name, 0);
+  vlib_sysfs_read ((char *) f, "0x%x", &tmp);
+  dev->device_id = tmp;
 
 done:
   vec_free (f);
