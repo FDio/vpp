@@ -46,12 +46,13 @@ u8 * ipfix_classify_template_rewrite (flow_report_main_t * frm,
   ipfix_field_specifier_t * first_field;
   u8 * rewrite = 0;
   ip4_ipfix_template_packet_t * tp;
-  i32 l3_offset = -2;  /* sizeof (ethernet_header_t) - sizeof (u32x4) */
   u32 field_count = 0;
   u32 field_index = 0;
   flow_report_stream_t * stream;
   u8 ip_version;
   u8 transport_protocol;
+  u8 * virt_mask;
+  u8 * real_mask;
 
   stream = &frm->streams[fr->stream_index];
 
@@ -62,21 +63,19 @@ u8 * ipfix_classify_template_rewrite (flow_report_main_t * frm,
 
   tblp = pool_elt_at_index (vcm->tables, table->classify_table_index);
 
-  /* 
-   * Mumble, assumes that we're not classifying on L2 or first 2 octets
-   * of L3..
-   */
+  virt_mask = (u8 *)(tblp->mask - tblp->skip_n_vectors);
+  real_mask = (u8 *)(tblp->mask);
 
   /* Determine field count */
-  ip_start = ((u8 *)(tblp->mask)) + l3_offset;
-#define _(field,mask,item,length)                                       \
-  if (memcmp(&field, &mask, length) == 0)                               \
-    {                                                                   \
-      field_count++;                                                    \
-                                                                        \
-      fr->fields_to_send = clib_bitmap_set (fr->fields_to_send,         \
-                                            field_index, 1);            \
-    }                                                                   \
+  ip_start = virt_mask + sizeof(ethernet_header_t);
+#define _(field,mask,item,length)                                             \
+  if (((u8 *)&field >= real_mask) && (memcmp(&field, &mask, length) == 0))    \
+    {                                                                         \
+      field_count++;                                                          \
+                                                                              \
+      fr->fields_to_send = clib_bitmap_set (fr->fields_to_send,               \
+                                            field_index, 1);                  \
+    }                                                                         \
   field_index++;
   foreach_ipfix_field;
 #undef _
@@ -114,13 +113,13 @@ u8 * ipfix_classify_template_rewrite (flow_report_main_t * frm,
   h->domain_id = clib_host_to_net_u32 (stream->domain_id);
 
   /* Take another trip through the mask and build the template */
-  ip_start = ((u8 *)(tblp->mask)) + l3_offset;
-#define _(field,mask,item,length)                               \
-  if (memcmp(&field, &mask, length) == 0)                       \
-    {                                                           \
-      f->e_id_length = ipfix_e_id_length (0 /* enterprise */,   \
-                                          item, length);        \
-      f++;                                                      \
+  ip_start = virt_mask + sizeof(ethernet_header_t);
+#define _(field,mask,item,length)                                             \
+  if (((u8 *)&field >= real_mask) && (memcmp(&field, &mask, length) == 0))    \
+    {                                                                         \
+      f->e_id_length = ipfix_e_id_length (0 /* enterprise */,                 \
+                                          item, length);                      \
+      f++;                                                                    \
     }
   foreach_ipfix_field;
 #undef _
@@ -182,6 +181,7 @@ vlib_frame_t * ipfix_classify_send_flows (flow_report_main_t * frm,
   flow_report_stream_t * stream;
   u8 ip_version;
   u8 transport_protocol;
+  u8 * virt_key;
 
   stream = &frm->streams[fr->stream_index];
 
@@ -251,7 +251,8 @@ vlib_frame_t * ipfix_classify_send_flows (flow_report_main_t * frm,
                 }
 
               field_index = 0;
-              ip_start = ((u8 *)v->key) - 2;
+              virt_key = (u8 *)(v->key - t->skip_n_vectors);
+              ip_start = virt_key + sizeof(ethernet_header_t);
 #define _(field,mask,item,length)                                       \
               if (clib_bitmap_get (fr->fields_to_send, field_index))    \
                 {                                                       \
