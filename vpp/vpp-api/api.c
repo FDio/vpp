@@ -5756,9 +5756,8 @@ vl_api_lisp_eid_table_dump_t_handler (vl_api_lisp_eid_table_dump_t * mp)
     {
       memset (eid, 0, sizeof (*eid));
 
-      unformat_lisp_eid_api (eid, mp->eid_type,
-			     clib_net_to_host_u32 (mp->vni), mp->eid,
-			     mp->prefix_length);
+      unformat_lisp_eid_api (eid, clib_net_to_host_u32 (mp->vni),
+			     mp->eid_type, mp->eid, mp->prefix_length);
 
       mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, eid);
       if ((u32) ~ 0 == mi)
