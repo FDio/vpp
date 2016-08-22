@@ -1,0 +1,16 @@
+diff --git a/drivers/net/enic/enic_rxtx.c b/drivers/net/enic/enic_rxtx.c
+index 50f0b28..be8c234 100644
+--- a/drivers/net/enic/enic_rxtx.c
++++ b/drivers/net/enic/enic_rxtx.c
+@@ -98,8 +98,11 @@ enic_cq_rx_desc_ipv4_csum_ok(struct cq_enet_rq_desc *cqrd)
+ static inline uint8_t
+ enic_cq_rx_desc_tcp_udp_csum_ok(struct cq_enet_rq_desc *cqrd)
+ {
++       return 1;
++/*
+	return (cqrd->flags & CQ_ENET_RQ_DESC_FLAGS_TCP_UDP_CSUM_OK) ==
+		CQ_ENET_RQ_DESC_FLAGS_TCP_UDP_CSUM_OK;
++*/
+ }
+
+ static inline uint8_t
