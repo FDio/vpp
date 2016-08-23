@@ -287,6 +287,8 @@ typedef struct
   u8 authoritative;
 
   u8 local;
+  /* valid only for remote mappings */
+  u8 is_static;
 } mapping_t;
 
 uword
