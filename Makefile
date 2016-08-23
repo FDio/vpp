@@ -241,7 +241,8 @@ DOXY_INPUT ?= \
 	vlib-api \
 	vnet \
 	vpp \
-	vpp-api
+	vpp-api \
+	plugins/ioam-plugin
 
 doxygen:
 	@mkdir -p "$(BR)/docs"
