@@ -14,8 +14,8 @@
 # vector packet processor
 vpp_arch = native
 ifeq ($(shell uname -m),x86_64)
-vpp_march = corei7			# Nehalem Instruction set
-vpp_mtune = corei7-avx			# Optimize for Sandy Bridge
+vpp_march = core-avx2			# Nehalem Instruction set
+vpp_mtune = core-avx2			# Optimize for Sandy Bridge
 else ifeq ($(shell uname -m),aarch64)
 ifeq ($(TARGET_PLATFORM),thunderx)
 vpp_march = armv8-a+crc
