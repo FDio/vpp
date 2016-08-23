@@ -879,6 +879,19 @@ nobase_include_HEADERS +=			\
   vnet/feature/feature.h
 
 ########################################
+# MEMIF interface
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/devices/memif/memif.c			\
+  vnet/devices/memif/device.c			\
+  vnet/devices/memif/node.c			\
+  vnet/devices/memif/cli.c
+
+nobase_include_HEADERS +=			\
+  vnet/devices/memif/memif.h
+
+########################################
 # Unix kernel related
 ########################################
 
