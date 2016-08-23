@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_2f5e5246",
+        "filename": "vnet/vnet/flow/flow_report.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-23T13:16:56Z",
+      "side": 1,
+      "message": "Benoit couldn\u0027t say / didn\u0027t feel like figuring out which collector(s) actually refuse to process packets with udp-\u003echecksum \u003d 0.  \n\nDave Ward suggested that we add a configuration knob to enable/disable full-blown UDP checksum generation. Let\u0027s go with that suggestion.",
+      "parentUuid": "3a1d315d_1e774ad6",
+      "revId": "b69fa7c3942721cf73688bdea728bd7b782f670d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_fe736ee5",
         "filename": "vnet/vnet/flow/flow_report.c",
         "patchSetId": 5
