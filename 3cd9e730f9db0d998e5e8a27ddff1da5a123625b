@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_4feceec7",
+        "filename": "vnet/vnet/lisp-cp/control.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-23T11:41:56Z",
+      "side": 1,
+      "message": "Hm, I used to assume static mappings are those with ttl\u003d~0 and authoritative \u003d 0. Still, having this explicit may be better and less confusing.",
+      "range": {
+        "startLine": 192,
+        "startChar": 5,
+        "endLine": 192,
+        "endChar": 14
+      },
+      "revId": "3cd9e730f9db0d998e5e8a27ddff1da5a123625b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
