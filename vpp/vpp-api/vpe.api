@@ -3872,33 +3872,26 @@ define sw_interface_clear_stats_reply
 
 /** \brief IOAM Trace : Set TRACE profile
     @param id - profile id
-    @param trace_type - Trace type
-    @param trace_num_elt - Number of nodes in trace path
     @param trace_ppc - Trace PPC (none/encap/decap)
-    @param trace_tsp - Trace timestamp precision (0-sec,1-ms,2-us,3-ns)
-    @param trace_app_data - Trace application data, can be any 4 bytes
     @param pow_enable - Proof of Work enabled or not flag
-    @param node_id - Id of this node
+    @param trace_enable - iOAM Trace enabled or not flag
 */
-define trace_profile_add
+define ioam_trace_profile_add
 {
   u32 client_index;
   u32 context;
   u16 id;
-  u8 trace_type;
-  u8 trace_num_elt;
   u8 trace_ppc;
-  u8 trace_tsp;
-  u32 trace_app_data;
   u8 pow_enable;
+  u8 trace_enable;
   u32 node_id;
 };
 
-/** \brief Trace profile add / del response
+/** \brief iOAM Trace profile add / del response
     @param context - sender context, to match reply w/ request
     @param retval - return value for request
 */
-define trace_profile_add_reply
+define ioam_trace_profile_add_reply
 {
   u32 context;
   i32 retval;
@@ -3912,7 +3905,7 @@ define trace_profile_add_reply
     @param trace_op - Trace operation (add/mod/del)
     @param enable - apply/remove the trace profile for the flow
 */
-define trace_profile_apply
+define ioam_trace_profile_apply
 {
   u32 client_index;
   u32 context;
@@ -3928,7 +3921,7 @@ define trace_profile_apply
     @param context - sender context, to match reply w/ request   
     @param retval - return value for request
 */
-define trace_profile_apply_reply
+define ioam_trace_profile_apply_reply
 {
   u32 context;
   i32 retval;
@@ -3939,7 +3932,7 @@ define trace_profile_apply_reply
     @param context - sender context, to match reply w/ request
     @param index - MAP Domain index
 */
-define trace_profile_del
+define ioam_trace_profile_del
 {
   u32 client_index;
   u32 context;
@@ -3950,7 +3943,7 @@ define trace_profile_del
     @param context - sender context, to match reply w/ request
     @param retval - return value for request
 */
-define trace_profile_del_reply
+define ioam_trace_profile_del_reply
 {
   u32 context;
   i32 retval;

@@ -3303,9 +3303,9 @@ _(want_stats_reply)					\
 _(cop_interface_enable_disable_reply)			\
 _(cop_whitelist_enable_disable_reply)                   \
 _(sw_interface_clear_stats_reply)                       \
-_(trace_profile_add_reply)                              \
-_(trace_profile_apply_reply)                            \
-_(trace_profile_del_reply)                              \
+_(ioam_trace_profile_add_reply)                              \
+_(ioam_trace_profile_apply_reply)                            \
+_(ioam_trace_profile_del_reply)                              \
 _(lisp_add_del_locator_set_reply)                       \
 _(lisp_add_del_locator_reply)                           \
 _(lisp_add_del_local_eid_reply)                         \
@@ -3492,9 +3492,9 @@ _(COP_INTERFACE_ENABLE_DISABLE_REPLY, cop_interface_enable_disable_reply) \
 _(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply) \
 _(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
 _(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)      \
-_(TRACE_PROFILE_ADD_REPLY, trace_profile_add_reply)                   \
-_(TRACE_PROFILE_APPLY_REPLY, trace_profile_apply_reply)               \
-_(TRACE_PROFILE_DEL_REPLY, trace_profile_del_reply)                     \
+_(IOAM_TRACE_PROFILE_ADD_REPLY, ioam_trace_profile_add_reply)                   \
+_(IOAM_TRACE_PROFILE_APPLY_REPLY, ioam_trace_profile_apply_reply)               \
+_(IOAM_TRACE_PROFILE_DEL_REPLY, ioam_trace_profile_del_reply)                     \
 _(LISP_ADD_DEL_LOCATOR_SET_REPLY, lisp_add_del_locator_set_reply)       \
 _(LISP_ADD_DEL_LOCATOR_REPLY, lisp_add_del_locator_reply)               \
 _(LISP_ADD_DEL_LOCAL_EID_REPLY, lisp_add_del_local_eid_reply)           \
@@ -7017,24 +7017,20 @@ api_l2_patch_add_del (vat_main_t * vam)
 }
 
 static int
-api_trace_profile_add (vat_main_t * vam)
+api_ioam_trace_profile_add (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
-  vl_api_trace_profile_add_t *mp;
+  vl_api_ioam_trace_profile_add_t *mp;
   f64 timeout;
   u32 id = 0;
-  u32 trace_option_elts = 0;
-  u32 trace_type = 0, node_id = 0, app_data = 0, trace_tsp = 2;
+  int has_trace_option = 0;
   int has_pow_option = 0;
   int has_ppc_option = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "id %d trace-type 0x%x trace-elts %d "
-		    "trace-tsp %d node-id 0x%x app-data 0x%x",
-		    &id, &trace_type, &trace_option_elts, &trace_tsp,
-		    &node_id, &app_data))
-	;
+      if (unformat (input, "trace"))
+    has_trace_option = 1;
       else if (unformat (input, "pow"))
 	has_pow_option = 1;
       else if (unformat (input, "ppc encap"))
@@ -7046,15 +7042,11 @@ api_trace_profile_add (vat_main_t * vam)
       else
 	break;
     }
-  M (TRACE_PROFILE_ADD, trace_profile_add);
+  M (IOAM_TRACE_PROFILE_ADD, ioam_trace_profile_add);
   mp->id = htons (id);
-  mp->trace_type = trace_type;
-  mp->trace_num_elt = trace_option_elts;
   mp->trace_ppc = has_ppc_option;
-  mp->trace_app_data = htonl (app_data);
   mp->pow_enable = has_pow_option;
-  mp->trace_tsp = trace_tsp;
-  mp->node_id = htonl (node_id);
+  mp->trace_enable = has_trace_option;
 
   S;
   W;
@@ -7064,10 +7056,10 @@ api_trace_profile_add (vat_main_t * vam)
 }
 
 static int
-api_trace_profile_apply (vat_main_t * vam)
+api_ioam_trace_profile_apply (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
-  vl_api_trace_profile_apply_t *mp;
+  vl_api_ioam_trace_profile_apply_t *mp;
   f64 timeout;
   ip6_address_t addr;
   u32 mask_width = ~0;
@@ -7105,7 +7097,7 @@ api_trace_profile_apply (vat_main_t * vam)
       errmsg ("<address>/<mask-width> required");
       return -99;
     }
-  M (TRACE_PROFILE_APPLY, trace_profile_apply);
+  M (IOAM_TRACE_PROFILE_APPLY, ioam_trace_profile_apply);
   clib_memcpy (mp->dest_ipv6, &addr, sizeof (mp->dest_ipv6));
   mp->id = htons (id);
   mp->prefix_length = htonl (mask_width);
@@ -7129,12 +7121,12 @@ api_trace_profile_apply (vat_main_t * vam)
 }
 
 static int
-api_trace_profile_del (vat_main_t * vam)
+api_ioam_trace_profile_del (vat_main_t * vam)
 {
-  vl_api_trace_profile_del_t *mp;
+  vl_api_ioam_trace_profile_del_t *mp;
   f64 timeout;
 
-  M (TRACE_PROFILE_DEL, trace_profile_del);
+  M (IOAM_TRACE_PROFILE_DEL, ioam_trace_profile_del);
   S;
   W;
   return 0;
@@ -15583,12 +15575,12 @@ _(cop_whitelist_enable_disable, "<intfc> | sw_if_index <nn>\n"		\
   "fib-id <nn> [ip4][ip6][default]")					\
 _(get_node_graph, " ")                                                  \
 _(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")                \
-_(trace_profile_add, "id <nn> trace-type <0x1f|0x3|0x9|0x11|0x19> "     \
+_(ioam_trace_profile_add, "id <nn> trace-type <0x1f|0x3|0x9|0x11|0x19> "     \
   "trace-elts <nn> trace-tsp <0|1|2|3> node-id <node id in hex> "       \
   "app-data <app_data in hex> [pow] [ppc <encap|decap>]")               \
-_(trace_profile_apply, "id <nn> <ip6-address>/<width>"                  \
+_(ioam_trace_profile_apply, "id <nn> <ip6-address>/<width>"                  \
   " vrf_id <nn>  add | pop | none")                                     \
-_(trace_profile_del, "")                                                \
+_(ioam_trace_profile_del, "")                                                \
 _(lisp_add_del_locator_set, "locator-set <locator_name> [iface <intf> |"\
                             " sw_if_index <sw_if_index> p <priority> "  \
                             "w <weight>] [del]")                        \

@@ -326,9 +326,9 @@ _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable)		\
 _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)		\
 _(GET_NODE_GRAPH, get_node_graph)                                       \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
-_(TRACE_PROFILE_ADD, trace_profile_add)                                 \
-_(TRACE_PROFILE_APPLY, trace_profile_apply)                             \
-_(TRACE_PROFILE_DEL, trace_profile_del)                                 \
+_(IOAM_TRACE_PROFILE_ADD, ioam_trace_profile_add)                                 \
+_(IOAM_TRACE_PROFILE_APPLY, ioam_trace_profile_apply)                             \
+_(IOAM_TRACE_PROFILE_DEL, ioam_trace_profile_del)                                 \
 _(LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set)                   \
 _(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
 _(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
@@ -6738,19 +6738,17 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
   /* *INDENT-ON* */
 }
 
-static void vl_api_trace_profile_add_t_handler
-  (vl_api_trace_profile_add_t * mp)
+static void vl_api_ioam_trace_profile_add_t_handler
+  (vl_api_ioam_trace_profile_add_t * mp)
 {
   int rv = 0;
-  vl_api_trace_profile_add_reply_t *rmp;
+  vl_api_ioam_trace_profile_add_reply_t *rmp;
   clib_error_t *error;
 
   /* Ignoring the profile id as currently a single profile
    * is supported */
-  error = ip6_ioam_trace_profile_set (mp->trace_num_elt, mp->trace_type,
-				      ntohl (mp->node_id),
-				      ntohl (mp->trace_app_data),
-				      mp->pow_enable, mp->trace_tsp,
+  error = ip6_ioam_trace_profile_set (mp->trace_enable,
+				      mp->pow_enable, 
 				      mp->trace_ppc);
   if (error)
     {
@@ -6758,14 +6756,14 @@ static void vl_api_trace_profile_add_t_handler
       rv = clib_error_get_code (error);
     }
 
-  REPLY_MACRO (VL_API_TRACE_PROFILE_ADD_REPLY);
+  REPLY_MACRO (VL_API_IOAM_TRACE_PROFILE_ADD_REPLY);
 }
 
-static void vl_api_trace_profile_apply_t_handler
-  (vl_api_trace_profile_apply_t * mp)
+static void vl_api_ioam_trace_profile_apply_t_handler
+  (vl_api_ioam_trace_profile_apply_t * mp)
 {
   int rv = 0;
-  vl_api_trace_profile_apply_reply_t *rmp;
+  vl_api_ioam_trace_profile_apply_reply_t *rmp;
 
   if (mp->enable != 0)
     {
@@ -6780,14 +6778,14 @@ static void vl_api_trace_profile_apply_t_handler
     {
       //ip6_ioam_clear_destination(&ip6, mp->prefix_length, mp->vrf_id);
     }
-  REPLY_MACRO (VL_API_TRACE_PROFILE_APPLY_REPLY);
+  REPLY_MACRO (VL_API_IOAM_TRACE_PROFILE_APPLY_REPLY);
 }
 
-static void vl_api_trace_profile_del_t_handler
-  (vl_api_trace_profile_del_t * mp)
+static void vl_api_ioam_trace_profile_del_t_handler
+  (vl_api_ioam_trace_profile_del_t * mp)
 {
   int rv = 0;
-  vl_api_trace_profile_del_reply_t *rmp;
+  vl_api_ioam_trace_profile_del_reply_t *rmp;
   clib_error_t *error;
 
   error = clear_ioam_rewrite_fn ();
@@ -6797,7 +6795,7 @@ static void vl_api_trace_profile_del_t_handler
       rv = clib_error_get_code (error);
     }
 
-  REPLY_MACRO (VL_API_TRACE_PROFILE_DEL_REPLY);
+  REPLY_MACRO (VL_API_IOAM_TRACE_PROFILE_DEL_REPLY);
 }
 
 static void

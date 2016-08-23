@@ -25,11 +25,6 @@
 
 #include <vnet/ip/ip6_hop_by_hop.h>
 
-/* Timestamp precision multipliers for seconds, milliseconds, microseconds
- * and nanoseconds respectively.
- */
-static f64 trace_tsp_mul[4] = {1, 1e3, 1e6, 1e9};
-
 char *ppc_state[] = {"None", "Encap", "Decap"};
 
 ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
@@ -46,157 +41,45 @@ typedef enum {
   IP6_HBYH_IOAM_INPUT_N_NEXT,
 } ip6_hbyh_ioam_input_next_t;
 
-typedef union {
-    u64 as_u64;
-    u32 as_u32[2];
-} time_u64_t;
-
-static inline u8
-fetch_trace_data_size(u8 trace_type)
+int
+ip6_hbh_get_sizeof_register_option (u8 option,
+                    int get_sizeof_hdr_options(u32 *rewrite_size))
 {
-  u8 trace_data_size = 0;
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
 
-  if (trace_type == TRACE_TYPE_IF_TS_APP)   
-      trace_data_size = sizeof(ioam_trace_if_ts_app_t);
-  else if(trace_type == TRACE_TYPE_IF)      
-      trace_data_size = sizeof(ioam_trace_if_t);
-  else if(trace_type == TRACE_TYPE_TS)      
-      trace_data_size = sizeof(ioam_trace_ts_t);
-  else if(trace_type == TRACE_TYPE_APP)     
-      trace_data_size = sizeof(ioam_trace_app_t);
-  else if(trace_type == TRACE_TYPE_TS_APP)  
-      trace_data_size = sizeof(ioam_trace_ts_app_t);
+  ASSERT (option < ARRAY_LEN (hm->get_sizeof_options));
 
-  return trace_data_size;
-}
+  /* Already registered */
+  if (hm->get_sizeof_options[option])
+    return (-1);
 
-static u8 * format_ioam_data_list_element (u8 * s, va_list * args)
-{ 
-  u32 *elt = va_arg (*args, u32 *);
-  u8  *trace_type_p = va_arg (*args, u8 *);
-  u8  trace_type = *trace_type_p;
+  hm->get_sizeof_options[option] = get_sizeof_hdr_options;
 
-
-  if (trace_type & BIT_TTL_NODEID)
-    {
-      u32 ttl_node_id_host_byte_order = clib_net_to_host_u32 (*elt);
-      s = format (s, "ttl 0x%x node id 0x%x ",
-              ttl_node_id_host_byte_order>>24,
-              ttl_node_id_host_byte_order & 0x00FFFFFF);
-
-      elt++;
-    }
- 
-  if (trace_type & BIT_ING_INTERFACE && trace_type & BIT_ING_INTERFACE)
-    {
-        u32 ingress_host_byte_order = clib_net_to_host_u32(*elt);
-        s = format (s, "ingress 0x%x egress 0x%x ", 
-                   ingress_host_byte_order >> 16, 
-                   ingress_host_byte_order &0xFFFF);
-        elt++;
-    }
- 
-  if (trace_type & BIT_TIMESTAMP)
-    {
-        u32 ts_in_host_byte_order = clib_net_to_host_u32 (*elt);
-        s = format (s, "ts 0x%x \n", ts_in_host_byte_order);
-        elt++;
-    }
- 
-  if (trace_type & BIT_APPDATA)
-    {
-        u32 appdata_in_host_byte_order = clib_net_to_host_u32 (*elt);
-        s = format (s, "app 0x%x ", appdata_in_host_byte_order);
-        elt++;
-    }
- 
-  return s;
-}
-
-u8 *
-ip6_hbh_ioam_trace_data_list_trace_handler (u8 *s, ip6_hop_by_hop_option_t *opt)
-{
-  ioam_trace_option_t *trace;
-  u8 trace_data_size_in_words = 0;
-  u32 *elt;
-  int elt_index = 0;
-
-  trace = (ioam_trace_option_t *)opt;
-#if 0
-  s = format (s, "  Trace Type 0x%x , %d elts left ts msb(s) 0x%x\n", trace->ioam_trace_type, trace->data_list_elts_left,
-	      t->timestamp_msbs);
-#endif
-  s = format (s, "  Trace Type 0x%x , %d elts left\n", trace->ioam_trace_type, trace->data_list_elts_left);
-  trace_data_size_in_words = fetch_trace_data_size(trace->ioam_trace_type)/4;
-  elt = &trace->elts[0];
-  while ((u8 *) elt < ((u8 *)(&trace->elts[0]) + trace->hdr.length - 2
-			/* -2 accounts for ioam_trace_type,elts_left */)) {
-    s = format (s, "    [%d] %U\n",elt_index,
-		format_ioam_data_list_element,
-		elt, &trace->ioam_trace_type);
-    elt_index++;
-    elt += trace_data_size_in_words;
-  }
-  return (s);
+  return (0);
 }
 
 int
-ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt)
+ip6_hbh_get_sizeof_unregister_option (u8 option)
 {
-  ip6_main_t * im = &ip6_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
   ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
-  u8 elt_index = 0;
-  ioam_trace_option_t *trace = (ioam_trace_option_t *)opt;
-  u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
-  ip_adjacency_t *adj = ip_get_adjacency (lm, adj_index);
-  time_u64_t time_u64;
-  u32 *elt;
-  int rv = 0;
 
-  time_u64.as_u64 = 0;
+  ASSERT (option < ARRAY_LEN (hm->get_sizeof_options));
 
-  if (PREDICT_TRUE (trace->data_list_elts_left)) {
-    trace->data_list_elts_left--;
-    /* fetch_trace_data_size returns in bytes. Convert it to 4-bytes
-     * to skip to this node's location.
-     */
-    elt_index = trace->data_list_elts_left * fetch_trace_data_size(trace->ioam_trace_type) / 4;
-    elt = &trace->elts[elt_index];
-    if (trace->ioam_trace_type & BIT_TTL_NODEID) {
-      *elt = clib_host_to_net_u32 ((ip->hop_limit<<24) | hm->node_id);
-      elt++;
-    }
+  /* Not registered */
+  if (!hm->get_sizeof_options[option])
+    return (-1);
 
-    if (trace->ioam_trace_type & BIT_ING_INTERFACE) {
-      *elt = (vnet_buffer(b)->sw_if_index[VLIB_RX]&0xFFFF) << 16 | (adj->rewrite_header.sw_if_index & 0xFFFF);
-      *elt = clib_host_to_net_u32(*elt);
-      elt++;
-    }
-                 
-    if (trace->ioam_trace_type & BIT_TIMESTAMP) {
-      /* Send least significant 32 bits */
-      f64 time_f64 = (f64)(((f64)hm->unix_time_0) + (vlib_time_now(hm->vlib_main) - hm->vlib_time_0));
-
-      time_u64.as_u64 = time_f64 * trace_tsp_mul[hm->trace_tsp];
-      *elt = clib_host_to_net_u32(time_u64.as_u32[0]);
-      elt++;
-    }
-
-    if (trace->ioam_trace_type & BIT_APPDATA) {
-      /* $$$ set elt0->app_data */
-      *elt = clib_host_to_net_u32(hm->app_data);
-      elt++;
-    }
-  }
-  return (rv);
+  hm->get_sizeof_options[option] = NULL;
+  return (0);
 }
+
+
 
 /* The main h-b-h tracer will be invoked, no need to do much here */
 int
 ip6_hbh_add_register_option (u8 option,
 			     u8 size,
-			     int rewrite_options(u8 *rewrite_string, u8 rewrite_size))
+			     int rewrite_options(u8 *rewrite_string, u8 *rewrite_size))
 {
   ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
 
@@ -825,55 +708,38 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
   hm->unix_time_0 = (u32) time (0); /* Store starting time */
   hm->vlib_time_0 = vlib_time_now (vm);
   hm->ioam_flag = IOAM_HBYH_MOD;
-  hm->trace_tsp = TSP_MICROSECONDS; /* Micro seconds */
   memset(hm->add_options, 0, sizeof(hm->add_options));
   memset(hm->pop_options, 0, sizeof(hm->pop_options));
   memset(hm->options_size, 0, sizeof(hm->options_size));
-
-  /*
-   * Register the handlers
-   * XXX: This should be done dynamically based on OAM feature being enabled or not.
-   */
-  if (ip6_hbh_register_option(HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST, ip6_hbh_ioam_trace_data_list_handler,
-			      ip6_hbh_ioam_trace_data_list_trace_handler) < 0)
-    return (clib_error_create("registration of HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST failed"));
 
   return (0);
 }
 
 VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_init);
 
-int ip6_ioam_set_rewrite (u8 **rwp, u32 trace_type, u32 trace_option_elts, 
+int ip6_ioam_set_rewrite (u8 **rwp, int has_trace_option,
                           int has_pot_option, int has_ppc_option)
 {
-  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;  
+  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
   u8 *rewrite = 0;
   u32 size, rnd_size;
   ip6_hop_by_hop_header_t *hbh;
-  ioam_trace_option_t * trace_option;
   u8 *current;
-  u8 trace_data_size = 0;  
+  u8 trace_data_size = 0;
+  u8 pot_data_size = 0;
 
   vec_free (*rwp);
 
-  if (trace_option_elts == 0 && has_pot_option == 0)
+  if (has_trace_option == 0 && has_pot_option == 0)
     return -1;
 
   /* Work out how much space we need */
   size = sizeof (ip6_hop_by_hop_header_t);
 
-  if (trace_option_elts)
+  if (has_trace_option && hm->get_sizeof_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] != 0)
     {
-      size += sizeof (ip6_hop_by_hop_option_t);
-
-      trace_data_size = fetch_trace_data_size(trace_type);
-      if (trace_data_size == 0)
-          return VNET_API_ERROR_INVALID_VALUE;
-
-      if (trace_option_elts * trace_data_size > 254)
-          return VNET_API_ERROR_INVALID_VALUE;
-  
-      size += trace_option_elts * trace_data_size;
+      if (0 != hm->get_sizeof_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST](&size))
+      return -1;
     }
   if (has_pot_option && hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] != 0)
     {
@@ -891,25 +757,20 @@ int ip6_ioam_set_rewrite (u8 **rwp, u32 trace_type, u32 trace_option_elts,
   /* Length of header in 8 octet units, not incl first 8 octets */
   hbh->length = (rnd_size>>3) - 1;
   current = (u8 *)(hbh+1);
-  
-  if (trace_option_elts)
+
+  if (has_trace_option && hm->add_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] != 0)
     {
-      trace_option = (ioam_trace_option_t *)current;
-      trace_option->hdr.type = HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST
-        | HBH_OPTION_TYPE_DATA_CHANGE_ENROUTE;
-      trace_option->hdr.length = 
-               2 /*ioam_trace_type,data_list_elts_left */ + 
-              trace_option_elts * trace_data_size;
-      trace_option->ioam_trace_type = trace_type & TRACE_TYPE_MASK;
-      trace_option->data_list_elts_left = trace_option_elts;
-      current += sizeof (ioam_trace_option_t) + 
-        trace_option_elts * trace_data_size;
+      if (0 != hm->add_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST](current,
+                    &trace_data_size))
+      return -1;
+       current += trace_data_size;
     }
   if (has_pot_option && hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] != 0)
     {
+      pot_data_size = hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT];
       if (0 == hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT](current,
-					hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT]))
-	  current += sizeof (hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT]);
+                    &pot_data_size))
+      current += sizeof (hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT]);
     }
   
   *rwp = rewrite;
@@ -923,13 +784,9 @@ clear_ioam_rewrite_fn(void)
 
   vec_free(hm->rewrite);
   hm->rewrite = 0;
-  hm->node_id = 0;
-  hm->app_data = 0;
-  hm->trace_type = 0;
-  hm->trace_option_elts = 0;
+  hm->has_trace_option = 0;
   hm->has_pot_option = 0;
   hm->has_ppc_option = 0;
-  hm->trace_tsp = TSP_MICROSECONDS; 
 
   return 0;
 }
@@ -948,25 +805,20 @@ VLIB_CLI_COMMAND (ip6_clear_ioam_trace_cmd, static) = {
 };
 
 clib_error_t *
-ip6_ioam_trace_profile_set(u32 trace_option_elts, u32 trace_type, u32 node_id,
-                           u32 app_data, int has_pot_option, u32 trace_tsp, 
+ip6_ioam_trace_profile_set(int has_trace_option, int has_pot_option, 
                            int has_ppc_option)
 {
   int rv;
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
-  rv = ip6_ioam_set_rewrite (&hm->rewrite, trace_type, trace_option_elts,
+  rv = ip6_ioam_set_rewrite (&hm->rewrite, has_trace_option,
                              has_pot_option, has_ppc_option);
 
   switch (rv)
     {
     case 0:
-      hm->node_id = node_id;
-      hm->app_data = app_data;
-      hm->trace_type = trace_type;
-      hm->trace_option_elts = trace_option_elts;
+      hm->has_trace_option = has_trace_option;
       hm->has_pot_option = has_pot_option;
       hm->has_ppc_option = has_ppc_option;
-      hm->trace_tsp = trace_tsp;
       break;
 
     default:
@@ -982,20 +834,15 @@ ip6_set_ioam_rewrite_command_fn (vlib_main_t * vm,
                                  unformat_input_t * input,
                                  vlib_cli_command_t * cmd)
 {
-  u32 trace_option_elts = 0;
-  u32 trace_type = 0, node_id = 0; 
-  u32 app_data = 0, trace_tsp = TSP_MICROSECONDS;
+  int has_trace_option = 0;
   int has_pot_option = 0;
   int has_ppc_option = 0;
   clib_error_t * rv = 0;
   
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "trace-type 0x%x trace-elts %d "
-                           "trace-tsp %d node-id 0x%x app-data 0x%x", 
-                      &trace_type, &trace_option_elts, &trace_tsp,
-                      &node_id, &app_data))
-            ;
+      if (unformat (input, "trace"))
+        has_trace_option = 1;
       else if (unformat (input, "pot"))
         has_pot_option = 1;
       else if (unformat (input, "ppc encap"))
@@ -1009,8 +856,8 @@ ip6_set_ioam_rewrite_command_fn (vlib_main_t * vm,
     }
   
     
-    rv = ip6_ioam_trace_profile_set(trace_option_elts, trace_type, node_id,
-                           app_data, has_pot_option, trace_tsp, has_ppc_option);
+    rv = ip6_ioam_trace_profile_set(has_trace_option,
+                           has_pot_option, has_ppc_option);
 
     return rv;
 }
@@ -1018,7 +865,7 @@ ip6_set_ioam_rewrite_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (ip6_set_ioam_rewrite_cmd, static) = {
   .path = "set ioam rewrite",
-  .short_help = "set ioam rewrite trace-type <0x1f|0x3|0x9|0x11|0x19> trace-elts <nn> trace-tsp <0|1|2|3> node-id <node id in hex> app-data <app_data in hex> [pot] [ppc <encap|decap>]",
+  .short_help = "set ioam [trace] [pot] [ppc <encap|decap>]",
   .function = ip6_set_ioam_rewrite_command_fn,
 };
   
@@ -1045,26 +892,12 @@ ip6_show_ioam_summary_cmd_fn (vlib_main_t * vm,
   s = format(s, "              REWRITE FLOW CONFIGS - Not configured\n");
   }
 
-  if (hm->trace_option_elts)
-  {
-  s = format(s, " HOP BY HOP OPTIONS - TRACE CONFIG - \n");
-  s = format(s, "                        Trace Type : 0x%x (%d)\n", 
-          hm->trace_type, hm->trace_type);
-  s = format(s, "         Trace timestamp precision : %d (%s)\n", hm->trace_tsp,
-       (hm->trace_tsp == TSP_SECONDS) ? "Seconds" : 
-      ((hm->trace_tsp == TSP_MILLISECONDS) ? "Milliseconds" : 
-     (((hm->trace_tsp == TSP_MICROSECONDS) ? "Microseconds" : "Nanoseconds"))));
-  s = format(s, "                Num of trace nodes : %d\n", 
-          hm->trace_option_elts);
-  s = format(s, "                           Node-id : 0x%x (%d)\n", 
-          hm->node_id, hm->node_id);
-  s = format(s, "                          App Data : 0x%x (%d)\n", 
-          hm->app_data, hm->app_data);
-  }
-  else
-  {
-  s = format(s, " HOP BY HOP OPTIONS - TRACE CONFIG - Not configured\n");
-  }
+
+  s = format(s, "                        TRACE OPTION - %d (%s)\n",
+          hm->has_trace_option, (hm->has_trace_option?"Enabled":"Disabled"));
+  if (hm->has_trace_option)
+    s = format(s, "Try 'show ioam trace and show ioam-trace profile' for more information\n");
+
 
   s = format(s, "                        POT OPTION - %d (%s)\n", 
           hm->has_pot_option, (hm->has_pot_option?"Enabled":"Disabled"));
