@@ -5503,7 +5503,7 @@ static void
   /* NOTE: for now this works as a static remote mapping, i.e.,
    * not authoritative and ttl infinite. */
   rv = vnet_lisp_add_del_mapping (eid, rlocs, mp->action, 0, ~0,
-				  mp->is_add, 0);
+				  mp->is_add, 1 /* is_static */ , 0);
 
   if (mp->del_all)
     vnet_lisp_clear_all_remote_adjacencies ();
