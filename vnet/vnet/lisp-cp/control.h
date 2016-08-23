@@ -189,6 +189,7 @@ typedef struct
   u8 authoritative;
 
   u8 local;
+  u8 is_static;
 } vnet_lisp_add_del_mapping_args_t;
 
 int
@@ -200,7 +201,7 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
 
 int
 vnet_lisp_add_del_mapping (gid_address_t * deid, locator_t * dlocs, u8 action,
-			   u8 authoritative, u32 ttl, u8 is_add,
+			   u8 authoritative, u32 ttl, u8 is_add, u8 is_static,
 			   u32 * res_map_index);
 
 typedef struct

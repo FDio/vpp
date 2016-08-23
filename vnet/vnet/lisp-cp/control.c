@@ -445,6 +445,7 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
       m->ttl = a->ttl;
       m->action = a->action;
       m->local = a->local;
+      m->is_static = a->is_static;
 
       map_index = m - lcm->mapping_pool;
       gid_dictionary_add_del (&lcm->mapping_index_by_gid, &a->eid, map_index,
@@ -767,11 +768,13 @@ compare_locators (lisp_cp_main_t * lcm, u32 * old_ls_indexes,
  * @param is_add add mapping if non-zero, delete otherwise
  * @param res_map_index the map-index that was created/updated/removed. It is
  *                      set to ~0 if no action is taken.
+ * @param is_static used for distinguishing between statically learned
+                    remote mappings and mappings obtained from MR
  * @return return code
  */
 int
 vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
-			   u8 authoritative, u32 ttl, u8 is_add,
+			   u8 authoritative, u32 ttl, u8 is_add, u8 is_static,
 			   u32 * res_map_index)
 {
   vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
@@ -803,6 +806,15 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
        * updated and be done */
       if (old_map && gid_address_cmp (&old_map->eid, eid) == 0)
 	{
+	  if (!is_static && (old_map->is_static || old_map->local))
+	    {
+	      /* do not overwrite local or static remote mappings */
+	      clib_warning ("mapping %U rejected due to collision with local "
+			    "or static remote mapping!", format_gid_address,
+			    &eid);
+	      return 0;
+	    }
+
 	  locator_set_t *old_ls;
 
 	  /* update mapping attributes */
@@ -836,6 +848,7 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
 	  m_args->is_add = 1;
 	  m_args->action = action;
 	  m_args->locator_set_index = ls_index;
+	  m_args->is_static = is_static;
 	  vnet_lisp_map_cache_add_del (m_args, &dst_map_index);
 
 	  if (res_map_index)
@@ -1084,7 +1097,8 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
 
   /* add as static remote mapping, i.e., not authoritative and infinite
    * ttl */
-  rv = vnet_lisp_add_del_mapping (&eid, rlocs, action, 0, ~0, is_add, 0);
+  rv = vnet_lisp_add_del_mapping (&eid, rlocs, action, 0, ~0, is_add,
+				  1 /* is_static */ , 0);
 
   if (rv)
     clib_warning ("failed to %s remote mapping!", is_add ? "add" : "delete");
@@ -3141,7 +3155,7 @@ process_map_reply (void *arg)
 
       /* insert/update mappings cache */
       vnet_lisp_add_del_mapping (&deid, locators, action, authoritative, ttl,
-				 1, &dst_map_index);
+				 1, 0 /* is_static */ , &dst_map_index);
 
       /* try to program forwarding only if mapping saved or updated */
       if ((u32) ~ 0 != dst_map_index)
