@@ -11224,7 +11224,7 @@ api_map_add_domain (vat_main_t * vam)
 	}
     }
 
-  if (num_m_args != 6)
+  if (num_m_args < 3)
     {
       errmsg ("mandatory argument(s) missing\n");
       return -99;
