@@ -166,12 +166,8 @@ map_create_domain (ip4_address_t * ip4_prefix,
   ip_adjacency_t adj;
   ip4_add_del_route_args_t args4;
   ip6_add_del_route_args_t args6;
-  u8 suffix_len;
+  u8 suffix_len, suffix_shift;
   uword *p;
-
-  /* EA bits must be within the first 64 bits */
-  if (ea_bits_len > 0 && (ip6_prefix_len + ea_bits_len) > 64)
-    return -1;
 
   /* Sanity check on the src prefix length */
   if (flags & MAP_DOMAIN_TRANSLATION)
@@ -187,9 +183,32 @@ map_create_domain (ip4_address_t * ip4_prefix,
       if (ip6_src_len != 128)
 	{
 	  clib_warning
-	    ("MAP-E requires a BR address, not a prefix (ip6_src_len should be 128).");
+	    ("MAP-E requires a BR address, not a prefix (ip6_src_len should "
+	     "be 128).");
 	  return -1;
 	}
+    }
+
+  /* How many, and which bits to grab from the IPv4 DA */
+  if (ip4_prefix_len + ea_bits_len < 32)
+    {
+      flags |= MAP_DOMAIN_PREFIX;
+      suffix_len = suffix_shift = 32 - ip4_prefix_len - ea_bits_len;
+    }
+  else
+    {
+      suffix_shift = 0;
+      suffix_len = 32 - ip4_prefix_len;
+    }
+
+  /* EA bits must be within the first 64 bits */
+  if (ea_bits_len > 0 && ((ip6_prefix_len + ea_bits_len) > 64 ||
+			  ip6_prefix_len + suffix_len + psid_length > 64))
+    {
+      clib_warning
+	("Embedded Address bits must be within the first 64 bits of "
+	 "the IPv6 prefix");
+      return -1;
     }
 
   /* Get domain index */
@@ -209,18 +228,7 @@ map_create_domain (ip4_address_t * ip4_prefix,
   d->psid_length = psid_length;
   d->mtu = mtu;
   d->flags = flags;
-
-  /* How many, and which bits to grab from the IPv4 DA */
-  if (ip4_prefix_len + ea_bits_len < 32)
-    {
-      d->flags |= MAP_DOMAIN_PREFIX;
-      suffix_len = d->suffix_shift = 32 - ip4_prefix_len - ea_bits_len;
-    }
-  else
-    {
-      d->suffix_shift = 0;
-      suffix_len = 32 - ip4_prefix_len;
-    }
+  d->suffix_shift = suffix_shift;
   d->suffix_mask = (1 << suffix_len) - 1;
 
   d->psid_shift = 16 - psid_length - psid_offset;
@@ -274,7 +282,10 @@ map_create_domain (ip4_address_t * ip4_prefix,
       p = (uword *) & adj6->rewrite_data[0];
       p[0] = ~0;
 
-      /* Add refcount, so we don't accidentially delete the route underneath someone */
+      /*
+       *  Add refcount, so we don't accidentially delete the route
+       *  underneath someone
+       */
       p[1]++;
     }
   else
