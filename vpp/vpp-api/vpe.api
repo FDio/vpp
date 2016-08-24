@@ -2881,6 +2881,28 @@ define lisp_eid_table_map_dump
   u32 context;
 };
 
+/** \brief Dumps all VNIs used in mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+  */
+define lisp_eid_table_vni_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief reply to lisp_eid_table_vni_dump
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param vni - virtual network instance
+ */
+define lisp_eid_table_vni_details
+{
+  u32 client_index;
+  u32 context;
+  u32 vni;
+};
+
 define lisp_gpe_tunnel_details
 {
   u32 context;

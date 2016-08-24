@@ -2572,6 +2572,7 @@ static void *vl_api_ipsec_gre_tunnel_dump_t_print
 
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_map_dump)                                              \
+_(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
 _(lisp_gpe_tunnel_dump)
 
@@ -2711,6 +2712,7 @@ _(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver)                 \
 _(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
 _(LISP_EID_TABLE_DUMP, lisp_eid_table_dump)                             \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
+_(LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump)                     \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
