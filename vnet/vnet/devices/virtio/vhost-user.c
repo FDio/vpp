@@ -293,7 +293,7 @@ vhost_user_log_dirty_pages (vhost_user_intf_t * vui, u64 addr, u64 len)
 
 #define vhost_user_log_dirty_ring(vui, vq, member) \
   if (PREDICT_FALSE(vq->log_used)) { \
-    vhost_user_log_dirty_pages(vui, vq->log_guest_addr + offsetof(vring_used_t, member), \
+    vhost_user_log_dirty_pages(vui, vq->log_guest_addr + STRUCT_OFFSET_OF(vring_used_t, member), \
                              sizeof(vq->used->member)); \
   }
 
@@ -1210,19 +1210,25 @@ vhost_user_input (vlib_main_t * vm,
 		  vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   vhost_user_main_t *vum = &vhost_user_main;
+#if DPDK > 0
   dpdk_main_t *dm = &dpdk_main;
+  u32 cpu_index = os_get_cpu_number ();
+#endif
   vhost_user_intf_t *vui;
   uword n_rx_packets = 0;
-  u32 cpu_index = os_get_cpu_number ();
   int i;
 
   for (i = 0; i < vec_len (vum->vhost_user_interfaces); i++)
     {
       vui = vec_elt_at_index (vum->vhost_user_interfaces, i);
-      if (vui->is_up &&
-	  (i % dm->input_cpu_count) ==
-	  (cpu_index - dm->input_cpu_first_index))
-	n_rx_packets += vhost_user_if_input (vm, vum, vui, node);
+      if (vui->is_up)
+	{
+#if DPDK > 0
+	  if ((i % dm->input_cpu_count) ==
+	      (cpu_index - dm->input_cpu_first_index))
+#endif
+	    n_rx_packets += vhost_user_if_input (vm, vum, vui, node);
+	}
     }
   return n_rx_packets;
 }
@@ -1813,9 +1819,11 @@ static void
 vhost_user_vui_register (vlib_main_t * vm, vhost_user_intf_t * vui)
 {
   vhost_user_main_t *vum = &vhost_user_main;
+#if DPDK > 0
   dpdk_main_t *dm = &dpdk_main;
   int cpu_index;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+#endif
 
   hash_set (vum->vhost_user_interface_index_by_listener_fd, vui->unix_fd,
 	    vui - vum->vhost_user_interfaces);
@@ -1823,15 +1831,19 @@ vhost_user_vui_register (vlib_main_t * vm, vhost_user_intf_t * vui)
 	    vui - vum->vhost_user_interfaces);
 
   /* start polling */
+#if DPDK > 0
   cpu_index = dm->input_cpu_first_index +
     (vui - vum->vhost_user_interfaces) % dm->input_cpu_count;
 
   if (tm->n_vlib_mains == 1)
+#endif
     vlib_node_set_state (vm, vhost_user_input_node.index,
 			 VLIB_NODE_STATE_POLLING);
+#if DPDK > 0
   else
     vlib_node_set_state (vlib_mains[cpu_index], vhost_user_input_node.index,
 			 VLIB_NODE_STATE_POLLING);
+#endif
 
   /* tell process to start polling for sockets */
   vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);
@@ -2220,6 +2232,32 @@ done:
   vec_free (hw_if_indices);
   return error;
 }
+
+/*
+ * CLI functions
+ */
+
+#if DPDK == 0
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
+    .path = "create vhost-user",
+    .short_help = "create vhost-user socket <socket-filename> [server] [feature-mask <hex>] [renumber <dev_instance>]",
+    .function = vhost_user_connect_command_fn,
+};
+
+VLIB_CLI_COMMAND (vhost_user_delete_command, static) = {
+    .path = "delete vhost-user",
+    .short_help = "delete vhost-user sw_if_index <nn>",
+    .function = vhost_user_delete_command_fn,
+};
+
+VLIB_CLI_COMMAND (show_vhost_user_command, static) = {
+    .path = "show vhost-user",
+    .short_help = "show vhost-user interface",
+    .function = show_vhost_user_command_fn,
+};
+/* *INDENT-ON* */
+#endif
 
 static clib_error_t *
 vhost_user_config (vlib_main_t * vm, unformat_input_t * input)
