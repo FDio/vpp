@@ -626,13 +626,11 @@ endif
 # virtio
 ########################################
 
-if WITH_DPDK
 libvnet_la_SOURCES +=       \
   vnet/devices/virtio/vhost-user.c
 
 nobase_include_HEADERS +=     \
   vnet/devices/virtio/vhost-user.h
-endif WITH_DPDK
 
 ########################################
 # ssvm ethernet
