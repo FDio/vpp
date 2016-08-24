@@ -11163,7 +11163,7 @@ api_map_add_domain (vat_main_t * vam)
     0, psid_length = 0;
   u8 is_translation = 0;
   u32 mtu = 0;
-  u8 ip6_src_len = 128;
+  u32 ip6_src_len = 128;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
