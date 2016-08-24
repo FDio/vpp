@@ -2005,12 +2005,42 @@ lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
 				    vlib_cli_command_t * cmd)
 {
   hash_pair_t *p;
+  unformat_input_t _line_input, *line_input = &_line_input;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  uword *vni_table = 0;
+  u8 is_l2 = 0;
 
-  vlib_cli_output (vm, "%=10s%=10s", "VNI", "VRF");
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "l2"))
+	{
+	  vni_table = lcm->bd_id_by_vni;
+	  is_l2 = 1;
+	}
+      else if (unformat (line_input, "l3"))
+	{
+	  vni_table = lcm->table_id_by_vni;
+	  is_l2 = 0;
+	}
+      else
+	return clib_error_return (0, "parse error: '%U'",
+				  format_unformat_error, line_input);
+    }
+
+  if (!vni_table)
+    {
+      vlib_cli_output (vm, "Error: expected l2|l3 param!\n");
+      return 0;
+    }
+
+  vlib_cli_output (vm, "%=10s%=10s", "VNI", is_l2 ? "BD" : "VRF");
 
   /* *INDENT-OFF* */
-  hash_foreach_pair (p, lcm->table_id_by_vni,
+  hash_foreach_pair (p, vni_table,
   ({
     vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
   }));
@@ -2022,7 +2052,7 @@ lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_eid_table_map_command) = {
     .path = "show lisp eid-table map",
-    .short_help = "show lisp eid-table vni to vrf mappings",
+    .short_help = "show lisp eid-table l2|l3",
     .function = lisp_show_eid_table_map_command_fn,
 };
 /* *INDENT-ON* */
