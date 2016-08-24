@@ -41,7 +41,8 @@
 #include <vnet/pg/pg.h>
 #include <vnet/llc/llc.h>
 
-typedef struct {
+typedef struct
+{
   pg_edit_t dst_sap;
   pg_edit_t src_sap;
   pg_edit_t control;
@@ -58,10 +59,10 @@ pg_llc_header_init (pg_llc_header_t * e)
 uword
 unformat_pg_llc_header (unformat_input_t * input, va_list * args)
 {
-  pg_stream_t * s = va_arg (*args, pg_stream_t *);
-  pg_llc_header_t * h;
+  pg_stream_t *s = va_arg (*args, pg_stream_t *);
+  pg_llc_header_t *h;
   u32 group_index, error;
-  
+
   h = pg_create_edit_group (s, sizeof (h[0]), sizeof (llc_header_t),
 			    &group_index);
   pg_llc_header_init (h);
@@ -69,15 +70,15 @@ unformat_pg_llc_header (unformat_input_t * input, va_list * args)
   pg_edit_set_fixed (&h->control, 0x03);
 
   error = 1;
-  if (! unformat (input, "%U -> %U",
-		  unformat_pg_edit,
-		    unformat_llc_protocol, &h->src_sap, &h->dst_sap))
+  if (!unformat (input, "%U -> %U",
+		 unformat_pg_edit,
+		 unformat_llc_protocol, &h->src_sap, &h->dst_sap))
     goto done;
 
   {
-    llc_main_t * pm = &llc_main;
-    llc_protocol_info_t * pi = 0;
-    pg_node_t * pg_node = 0;
+    llc_main_t *pm = &llc_main;
+    llc_protocol_info_t *pi = 0;
+    pg_node_t *pg_node = 0;
 
     if (h->dst_sap.type == PG_EDIT_FIXED)
       {
@@ -91,14 +92,22 @@ unformat_pg_llc_header (unformat_input_t * input, va_list * args)
 	&& unformat_user (input, pg_node->unformat_edit, s))
       ;
 
-    else if (! unformat_user (input, unformat_pg_payload, s))
+    else if (!unformat_user (input, unformat_pg_payload, s))
       goto done;
   }
 
   error = 0;
- done:
+done:
   if (error)
     pg_free_edit_group (s);
   return error == 0;
 }
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

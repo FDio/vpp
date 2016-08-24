@@ -45,22 +45,25 @@
   _ (PUNT, "error-punt")			\
   _ (DROP, "error-drop")
 
-typedef enum {
+typedef enum
+{
 #define _(s,n) LLC_INPUT_NEXT_##s,
   foreach_llc_input_next
 #undef _
-  LLC_INPUT_N_NEXT,
+    LLC_INPUT_N_NEXT,
 } llc_input_next_t;
 
-typedef struct {
+typedef struct
+{
   u8 packet_data[32];
 } llc_input_trace_t;
 
-static u8 * format_llc_input_trace (u8 * s, va_list * va)
+static u8 *
+format_llc_input_trace (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
-  llc_input_trace_t * t = va_arg (*va, llc_input_trace_t *);
+  llc_input_trace_t *t = va_arg (*va, llc_input_trace_t *);
 
   s = format (s, "%U", format_llc_header, t->packet_data);
 
@@ -69,11 +72,10 @@ static u8 * format_llc_input_trace (u8 * s, va_list * va)
 
 static uword
 llc_input (vlib_main_t * vm,
-	   vlib_node_runtime_t * node,
-	   vlib_frame_t * from_frame)
+	   vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
-  llc_main_t * lm = &llc_main;
-  u32 n_left_from, next_index, * from, * to_next;
+  llc_main_t *lm = &llc_main;
+  u32 n_left_from, next_index, *from, *to_next;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -91,19 +93,18 @@ llc_input (vlib_main_t * vm,
     {
       u32 n_left_to_next;
 
-      vlib_get_next_frame (vm, node, next_index,
-			   to_next, n_left_to_next);
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
 	  u32 bi0, bi1;
-	  vlib_buffer_t * b0, * b1;
-	  llc_header_t * h0, * h1;
+	  vlib_buffer_t *b0, *b1;
+	  llc_header_t *h0, *h1;
 	  u8 next0, next1, len0, len1, enqueue_code;
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t * b2, * b3;
+	    vlib_buffer_t *b2, *b3;
 
 	    b2 = vlib_get_buffer (vm, from[2]);
 	    b3 = vlib_get_buffer (vm, from[3]);
@@ -142,10 +143,16 @@ llc_input (vlib_main_t * vm,
 	  next0 = lm->input_next_by_protocol[h0->dst_sap];
 	  next1 = lm->input_next_by_protocol[h1->dst_sap];
 
-	  b0->error = node->errors[next0 == LLC_INPUT_NEXT_DROP ? LLC_ERROR_UNKNOWN_PROTOCOL : LLC_ERROR_NONE];
-	  b1->error = node->errors[next1 == LLC_INPUT_NEXT_DROP ? LLC_ERROR_UNKNOWN_PROTOCOL : LLC_ERROR_NONE];
+	  b0->error =
+	    node->errors[next0 ==
+			 LLC_INPUT_NEXT_DROP ? LLC_ERROR_UNKNOWN_PROTOCOL :
+			 LLC_ERROR_NONE];
+	  b1->error =
+	    node->errors[next1 ==
+			 LLC_INPUT_NEXT_DROP ? LLC_ERROR_UNKNOWN_PROTOCOL :
+			 LLC_ERROR_NONE];
 
-	  enqueue_code = (next0 != next_index) + 2*(next1 != next_index);
+	  enqueue_code = (next0 != next_index) + 2 * (next1 != next_index);
 
 	  if (PREDICT_FALSE (enqueue_code != 0))
 	    {
@@ -177,17 +184,18 @@ llc_input (vlib_main_t * vm,
 		      vlib_put_next_frame (vm, node, next_index,
 					   n_left_to_next);
 		      next_index = next1;
-		      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+		      vlib_get_next_frame (vm, node, next_index, to_next,
+					   n_left_to_next);
 		    }
 		}
 	    }
 	}
-    
+
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
-	  vlib_buffer_t * b0;
-	  llc_header_t * h0;
+	  vlib_buffer_t *b0;
+	  llc_header_t *h0;
 	  u8 next0, len0;
 
 	  bi0 = from[0];
@@ -209,7 +217,10 @@ llc_input (vlib_main_t * vm,
 
 	  next0 = lm->input_next_by_protocol[h0->dst_sap];
 
-	  b0->error = node->errors[next0 == LLC_INPUT_NEXT_DROP ? LLC_ERROR_UNKNOWN_PROTOCOL : LLC_ERROR_NONE];
+	  b0->error =
+	    node->errors[next0 ==
+			 LLC_INPUT_NEXT_DROP ? LLC_ERROR_UNKNOWN_PROTOCOL :
+			 LLC_ERROR_NONE];
 
 	  /* Sent packet to wrong next? */
 	  if (PREDICT_FALSE (next0 != next_index))
@@ -234,12 +245,13 @@ llc_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char * llc_error_strings[] = {
+static char *llc_error_strings[] = {
 #define _(f,s) s,
   foreach_llc_error
 #undef _
 };
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (llc_input_node) = {
   .function = llc_input,
   .name = "llc-input",
@@ -260,13 +272,15 @@ VLIB_REGISTER_NODE (llc_input_node) = {
   .format_trace = format_llc_input_trace,
   .unformat_buffer = unformat_llc_header,
 };
+/* *INDENT-ON* */
 
-static clib_error_t * llc_input_init (vlib_main_t * vm)
+static clib_error_t *
+llc_input_init (vlib_main_t * vm)
 {
-  llc_main_t * lm = &llc_main;
+  llc_main_t *lm = &llc_main;
 
   {
-    clib_error_t * error = vlib_call_init_function (vm, llc_init);
+    clib_error_t *error = vlib_call_init_function (vm, llc_init);
     if (error)
       clib_error_report (error);
   }
@@ -286,14 +300,13 @@ VLIB_INIT_FUNCTION (llc_input_init);
 
 void
 llc_register_input_protocol (vlib_main_t * vm,
-			     llc_protocol_t protocol,
-			     u32 node_index)
+			     llc_protocol_t protocol, u32 node_index)
 {
-  llc_main_t * lm = &llc_main;
-  llc_protocol_info_t * pi;
+  llc_main_t *lm = &llc_main;
+  llc_protocol_info_t *pi;
 
   {
-    clib_error_t * error = vlib_call_init_function (vm, llc_input_init);
+    clib_error_t *error = vlib_call_init_function (vm, llc_input_init);
     if (error)
       clib_error_report (error);
     /* Otherwise, osi_input_init will wipe out e.g. the snap init */
@@ -304,9 +317,15 @@ llc_register_input_protocol (vlib_main_t * vm,
 
   pi = llc_get_protocol_info (lm, protocol);
   pi->node_index = node_index;
-  pi->next_index = vlib_node_add_next (vm, 
-				       llc_input_node.index,
-				       node_index);
+  pi->next_index = vlib_node_add_next (vm, llc_input_node.index, node_index);
 
   lm->input_next_by_protocol[protocol] = pi->next_index;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

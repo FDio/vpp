@@ -43,11 +43,12 @@
 /* Global main structure. */
 llc_main_t llc_main;
 
-u8 * format_llc_protocol (u8 * s, va_list * args)
+u8 *
+format_llc_protocol (u8 * s, va_list * args)
 {
   llc_protocol_t p = va_arg (*args, u32);
-  llc_main_t * pm = &llc_main;
-  llc_protocol_info_t * pi = llc_get_protocol_info (pm, p);
+  llc_main_t *pm = &llc_main;
+  llc_protocol_info_t *pi = llc_get_protocol_info (pm, p);
 
   if (pi)
     s = format (s, "%s", pi->name);
@@ -57,10 +58,11 @@ u8 * format_llc_protocol (u8 * s, va_list * args)
   return s;
 }
 
-u8 * format_llc_header_with_length (u8 * s, va_list * args)
+u8 *
+format_llc_header_with_length (u8 * s, va_list * args)
 {
-  llc_main_t * pm = &llc_main;
-  llc_header_t * h = va_arg (*args, llc_header_t *);
+  llc_main_t *pm = &llc_main;
+  llc_header_t *h = va_arg (*args, llc_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   llc_protocol_t p = h->dst_sap;
   uword indent, header_bytes;
@@ -80,8 +82,8 @@ u8 * format_llc_header_with_length (u8 * s, va_list * args)
 
   if (max_header_bytes != 0 && header_bytes > max_header_bytes)
     {
-      llc_protocol_info_t * pi = llc_get_protocol_info (pm, p);
-      vlib_node_t * node = vlib_get_node (pm->vlib_main, pi->node_index);
+      llc_protocol_info_t *pi = llc_get_protocol_info (pm, p);
+      vlib_node_t *node = vlib_get_node (pm->vlib_main, pi->node_index);
       if (node->format_buffer)
 	s = format (s, "\n%U%U",
 		    format_white_space, indent,
@@ -92,9 +94,10 @@ u8 * format_llc_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-u8 * format_llc_header (u8 * s, va_list * args)
+u8 *
+format_llc_header (u8 * s, va_list * args)
 {
-  llc_header_t * h = va_arg (*args, llc_header_t *);
+  llc_header_t *h = va_arg (*args, llc_header_t *);
   return format (s, "%U", format_llc_header_with_length, h, 0);
 }
 
@@ -102,13 +105,12 @@ u8 * format_llc_header (u8 * s, va_list * args)
 uword
 unformat_llc_protocol (unformat_input_t * input, va_list * args)
 {
-  u8 * result = va_arg (*args, u8 *);
-  llc_main_t * pm = &llc_main;
+  u8 *result = va_arg (*args, u8 *);
+  llc_main_t *pm = &llc_main;
   int p, i;
 
   /* Numeric type. */
-  if (unformat (input, "0x%x", &p)
-      || unformat (input, "%d", &p))
+  if (unformat (input, "0x%x", &p) || unformat (input, "%d", &p))
     {
       if (p >= (1 << 8))
 	return 0;
@@ -120,7 +122,7 @@ unformat_llc_protocol (unformat_input_t * input, va_list * args)
   if (unformat_user (input, unformat_vlib_number_by_name,
 		     pm->protocol_info_by_name, &i))
     {
-      llc_protocol_info_t * pi = vec_elt_at_index (pm->protocol_infos, i);
+      llc_protocol_info_t *pi = vec_elt_at_index (pm->protocol_infos, i);
       *result = pi->protocol;
       return 1;
     }
@@ -131,11 +133,11 @@ unformat_llc_protocol (unformat_input_t * input, va_list * args)
 uword
 unformat_llc_header (unformat_input_t * input, va_list * args)
 {
-  u8 ** result = va_arg (*args, u8 **);
-  llc_header_t _h, * h = &_h;
+  u8 **result = va_arg (*args, u8 **);
+  llc_header_t _h, *h = &_h;
   u8 p;
 
-  if (! unformat (input, "%U", unformat_llc_protocol, &p))
+  if (!unformat (input, "%U", unformat_llc_protocol, &p))
     return 0;
 
   h->src_sap = h->dst_sap = p;
@@ -143,55 +145,56 @@ unformat_llc_header (unformat_input_t * input, va_list * args)
 
   /* Add header to result. */
   {
-    void * p;
+    void *p;
     u32 n_bytes = sizeof (h[0]);
 
     vec_add2 (*result, p, n_bytes);
     clib_memcpy (p, h, n_bytes);
   }
-  
+
   return 1;
 }
 
-static uword llc_set_rewrite (vnet_main_t * vnm,
-			      u32 sw_if_index,
-			      u32 l3_type,
-			      void * dst_address,
-			      void * rewrite,
-			      uword max_rewrite_bytes)
+static uword
+llc_set_rewrite (vnet_main_t * vnm,
+		 u32 sw_if_index,
+		 u32 l3_type,
+		 void *dst_address, void *rewrite, uword max_rewrite_bytes)
 {
-  llc_header_t * h = rewrite;
+  llc_header_t *h = rewrite;
   llc_protocol_t protocol;
 
   if (max_rewrite_bytes < sizeof (h[0]))
     return 0;
 
-  switch (l3_type) {
+  switch (l3_type)
+    {
 #define _(a,b) case VNET_L3_PACKET_TYPE_##a: protocol = LLC_PROTOCOL_##b; break
-    _ (IP4, ip4);
+      _(IP4, ip4);
 #undef _
-  default:
-    return 0;
-  }
+    default:
+      return 0;
+    }
 
   h->src_sap = h->dst_sap = protocol;
   h->control = 0x3;
-		     
+
   return sizeof (h[0]);
 }
 
+/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (llc_hw_interface_class) = {
   .name = "LLC",
   .format_header = format_llc_header_with_length,
   .unformat_header = unformat_llc_header,
   .set_rewrite = llc_set_rewrite,
 };
+/* *INDENT-ON* */
 
-static void add_protocol (llc_main_t * pm,
-			  llc_protocol_t protocol,
-			  char * protocol_name)
+static void
+add_protocol (llc_main_t * pm, llc_protocol_t protocol, char *protocol_name)
 {
-  llc_protocol_info_t * pi;
+  llc_protocol_info_t *pi;
   u32 i;
 
   vec_add2 (pm->protocol_infos, pi, 1);
@@ -205,10 +208,11 @@ static void add_protocol (llc_main_t * pm,
   hash_set_mem (pm->protocol_info_by_name, pi->name, i);
 }
 
-static clib_error_t * llc_init (vlib_main_t * vm)
+static clib_error_t *
+llc_init (vlib_main_t * vm)
 {
-  clib_error_t * error;
-  llc_main_t * pm = &llc_main;
+  clib_error_t *error;
+  llc_main_t *pm = &llc_main;
 
   memset (pm, 0, sizeof (pm[0]));
   pm->vlib_main = vm;
@@ -228,3 +232,11 @@ static clib_error_t * llc_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (llc_init);
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

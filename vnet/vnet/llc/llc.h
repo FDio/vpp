@@ -68,13 +68,15 @@
   _ (netbios, 0xf0)				\
   _ (global_dsap, 0xff)
 
-typedef enum {
+typedef enum
+{
 #define _(f,n) LLC_PROTOCOL_##f = n,
   foreach_llc_protocol
 #undef _
 } llc_protocol_t;
 
-typedef struct {
+typedef struct
+{
 #define LLC_DST_SAP_IS_GROUP (1 << 0)
 #define LLC_SRC_SAP_IS_RESPONSE (1 << 0)
   u8 dst_sap, src_sap;
@@ -101,9 +103,10 @@ llc_header_length (llc_header_t * h)
   return ((h->control & 3) != 3 ? 4 : 3);
 }
 
-typedef struct {
+typedef struct
+{
   /* Name (a c string). */
-  char * name;
+  char *name;
 
   /* LLC protocol (SAP type). */
   llc_protocol_t protocol;
@@ -120,20 +123,22 @@ typedef struct {
   _ (UNKNOWN_PROTOCOL, "unknown llc ssap/dsap")	\
   _ (UNKNOWN_CONTROL, "control != 0x3")
 
-typedef enum {
+typedef enum
+{
 #define _(f,s) LLC_ERROR_##f,
   foreach_llc_error
 #undef _
-  LLC_N_ERROR,
+    LLC_N_ERROR,
 } llc_error_t;
 
-typedef struct {
-  vlib_main_t * vlib_main;
+typedef struct
+{
+  vlib_main_t *vlib_main;
 
-  llc_protocol_info_t * protocol_infos;
+  llc_protocol_info_t *protocol_infos;
 
   /* Hash tables mapping name/protocol to protocol info index. */
-  uword * protocol_info_by_name, * protocol_info_by_protocol;
+  uword *protocol_info_by_name, *protocol_info_by_protocol;
 
   /* llc-input next index indexed by protocol. */
   u8 input_next_by_protocol[256];
@@ -142,7 +147,7 @@ typedef struct {
 always_inline llc_protocol_info_t *
 llc_get_protocol_info (llc_main_t * m, llc_protocol_t protocol)
 {
-  uword * p = hash_get (m->protocol_info_by_protocol, protocol);
+  uword *p = hash_get (m->protocol_info_by_protocol, protocol);
   return p ? vec_elt_at_index (m->protocol_infos, p[0]) : 0;
 }
 
@@ -151,12 +156,10 @@ extern llc_main_t llc_main;
 /* Register given node index to take input for given llc type. */
 void
 llc_register_input_protocol (vlib_main_t * vm,
-			     llc_protocol_t protocol,
-			     u32 node_index);
+			     llc_protocol_t protocol, u32 node_index);
 
 void llc_set_adjacency (vnet_rewrite_header_t * rw,
-			uword max_data_bytes,
-			llc_protocol_t protocol);
+			uword max_data_bytes, llc_protocol_t protocol);
 
 format_function_t format_llc_protocol;
 format_function_t format_llc_header;
@@ -172,8 +175,8 @@ unformat_function_t unformat_pg_llc_header;
 always_inline void
 llc_setup_node (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  pg_node_t * pn = pg_get_node (node_index);
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  pg_node_t *pn = pg_get_node (node_index);
 
   n->format_buffer = format_llc_header_with_length;
   n->unformat_buffer = unformat_llc_header;
@@ -181,3 +184,11 @@ llc_setup_node (vlib_main_t * vm, u32 node_index)
 }
 
 #endif /* included_llc_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
