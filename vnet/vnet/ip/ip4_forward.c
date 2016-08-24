@@ -2825,6 +2825,8 @@ ip4_rewrite_inline (vlib_main_t * vm,
           /* Worth pipelining. No guarantee that adj0,1 are hot... */
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  rw_len1 = adj1[0].rewrite_header.data_bytes;
+          vnet_buffer(p0)->ip.save_rewrite_length = rw_len0;
+          vnet_buffer(p1)->ip.save_rewrite_length = rw_len1;
 
           /* Check MTU of outgoing interface. */
           error0 = (vlib_buffer_length_in_chain (vm, p0) > adj0[0].rewrite_header.max_l3_packet_bytes
@@ -3006,6 +3008,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
           
           /* Update packet buffer attributes/set output interface. */
           rw_len0 = adj0[0].rewrite_header.data_bytes;
+          vnet_buffer(p0)->ip.save_rewrite_length = rw_len0;
           
           if (PREDICT_FALSE (rw_len0 > sizeof(ethernet_header_t)))
               vlib_increment_combined_counter 

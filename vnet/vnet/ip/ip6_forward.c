@@ -2490,6 +2490,8 @@ ip6_rewrite_inline (vlib_main_t * vm,
 
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  rw_len1 = adj1[0].rewrite_header.data_bytes;
+          vnet_buffer(p0)->ip.save_rewrite_length = rw_len0;
+          vnet_buffer(p1)->ip.save_rewrite_length = rw_len1;
 
 	  vlib_increment_combined_counter (&lm->adjacency_counters,
                                            cpu_index, 
@@ -2631,6 +2633,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
       
 	  /* Update packet buffer attributes/set output interface. */
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
+          vnet_buffer(p0)->ip.save_rewrite_length = rw_len0;
 
 	  vlib_increment_combined_counter (&lm->adjacency_counters,
                                            cpu_index, 
