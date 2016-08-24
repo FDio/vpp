@@ -92,9 +92,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
 #endif /* IPSEC */
-#if DPDK > 0
 #include <vnet/devices/virtio/vhost-user.h>
-#endif
 
 #include <stats/stats.h>
 #include <oam/oam.h>
@@ -4027,16 +4025,20 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
 {
   int rv = 0;
   vl_api_create_vhost_user_if_reply_t *rmp;
-#if DPDK > 0
   u32 sw_if_index = (u32) ~ 0;
 
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
-  rv = vhost_user_create_if (vnm, vm, (char *) mp->sock_filename,
-			     mp->is_server, &sw_if_index, (u64) ~ 0,
-			     mp->renumber, ntohl (mp->custom_dev_instance),
-			     (mp->use_custom_mac) ? mp->mac_address : NULL);
+#if DPDK > 0 && DPDK_VHOST_USER
+  rv = dpdk_vhost_user_create_if (
+#else
+  rv = vhost_user_create_if (
+#endif
+			      vnm, vm, (char *) mp->sock_filename,
+			      mp->is_server, &sw_if_index, (u64) ~ 0,
+			      mp->renumber, ntohl (mp->custom_dev_instance),
+			      (mp->use_custom_mac) ? mp->mac_address : NULL);
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_REPLY,
@@ -4044,10 +4046,6 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
   /* *INDENT-ON* */
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-  REPLY_MACRO (VL_API_CREATE_VHOST_USER_IF_REPLY);
-#endif
 }
 
 static void
@@ -4055,19 +4053,19 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
 {
   int rv = 0;
   vl_api_modify_vhost_user_if_reply_t *rmp;
-#if DPDK > 0 && DPDK_VHOST_USER
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
-  rv = dpdk_vhost_user_modify_if (vnm, vm, (char *) mp->sock_filename,
-				  mp->is_server, sw_if_index, (u64) ~ 0,
-				  mp->renumber,
-				  ntohl (mp->custom_dev_instance));
+#if DPDK > 0 && DPDK_VHOST_USER
+  rv = dpdk_vhost_user_modify_if (
 #else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
+  rv = vhost_user_modify_if (
 #endif
+			      vnm, vm, (char *) mp->sock_filename,
+			      mp->is_server, sw_if_index, (u64) ~ 0,
+			      mp->renumber, ntohl (mp->custom_dev_instance));
   REPLY_MACRO (VL_API_MODIFY_VHOST_USER_IF_REPLY);
 }
 
@@ -4076,14 +4074,17 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
 {
   int rv = 0;
   vl_api_delete_vhost_user_if_reply_t *rmp;
-#if DPDK > 0 && DPDK_VHOST_USER
   vpe_api_main_t *vam = &vpe_api_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
+#if DPDK > 0 && DPDK_VHOST_USER
   rv = dpdk_vhost_user_delete_if (vnm, vm, sw_if_index);
+#else
+  rv = vhost_user_delete_if (vnm, vm, sw_if_index);
+#endif
 
   REPLY_MACRO (VL_API_DELETE_VHOST_USER_IF_REPLY);
   if (!rv)
@@ -4095,10 +4096,6 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
 
       send_sw_interface_flags_deleted (vam, q, sw_if_index);
     }
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-  REPLY_MACRO (VL_API_DELETE_VHOST_USER_IF_REPLY);
-#endif
 }
 
 static void
@@ -4108,7 +4105,6 @@ static void
   clib_warning ("BUG");
 }
 
-#if DPDK > 0 && DPDK_VHOST_USER
 static void
 send_sw_interface_vhost_user_details (vpe_api_main_t * am,
 				      unix_shared_memory_queue_t * q,
@@ -4135,13 +4131,11 @@ send_sw_interface_vhost_user_details (vpe_api_main_t * am,
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
-#endif
 
 static void
   vl_api_sw_interface_vhost_user_dump_t_handler
   (vl_api_sw_interface_vhost_user_dump_t * mp)
 {
-#if DPDK > 0 && DPDK_VHOST_USER
   int rv = 0;
   vpe_api_main_t *am = &vpe_api_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -4154,7 +4148,11 @@ static void
   if (q == 0)
     return;
 
+#if DPDK > 0 && DPDK_VHOST_USER
   rv = dpdk_vhost_user_dump_ifs (vnm, vm, &ifaces);
+#else
+  rv = vhost_user_dump_ifs (vnm, vm, &ifaces);
+#endif
   if (rv)
     return;
 
@@ -4163,7 +4161,6 @@ static void
     send_sw_interface_vhost_user_details (am, q, vuid, mp->context);
   }
   vec_free (ifaces);
-#endif
 }
 
 static void
