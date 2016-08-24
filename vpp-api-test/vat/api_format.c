@@ -2405,7 +2405,7 @@ static void
 
   u8 *line = format (0, "%=10d%=10d",
 		     clib_net_to_host_u32 (mp->vni),
-		     clib_net_to_host_u32 (mp->vrf));
+		     clib_net_to_host_u32 (mp->dp_table));
   fformat (vam->ofp, "%v\n", line);
   vec_free (line);
 }
@@ -2424,7 +2424,8 @@ static void
     }
   node = vat_json_array_add (&vam->json_tree);
   vat_json_init_object (node);
-  vat_json_object_add_uint (node, "vrf", clib_net_to_host_u32 (mp->vrf));
+  vat_json_object_add_uint (node, "dp_table",
+			    clib_net_to_host_u32 (mp->dp_table));
   vat_json_object_add_uint (node, "vni", clib_net_to_host_u32 (mp->vni));
 }
 
@@ -13117,15 +13118,45 @@ api_lisp_locator_set_dump (vat_main_t * vam)
 static int
 api_lisp_eid_table_map_dump (vat_main_t * vam)
 {
+  u8 is_l2 = 0;
+  u8 mode_set = 0;
+  unformat_input_t *input = vam->input;
   vl_api_lisp_eid_table_map_dump_t *mp;
   f64 timeout = ~0;
 
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "l2"))
+	{
+	  is_l2 = 1;
+	  mode_set = 1;
+	}
+      else if (unformat (input, "l3"))
+	{
+	  is_l2 = 0;
+	  mode_set = 1;
+	}
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, input);
+	  return -99;
+	}
+    }
+
+  if (!mode_set)
+    {
+      errmsg ("expected one of 'l2' or 'l3' parameter!\n");
+      return -99;
+    }
+
   if (!vam->json_output)
     {
-      fformat (vam->ofp, "%=10s%=10s\n", "VNI", "VRF");
+      fformat (vam->ofp, "%=10s%=10s\n", "VNI", is_l2 ? "BD" : "VRF");
     }
 
   M (LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump);
+  mp->is_l2 = is_l2;
 
   /* send it... */
   S;
@@ -15707,8 +15738,8 @@ _(lisp_locator_set_dump, "[locator-set-index <ls-index> | "             \
                          "locator-set <loc-set-name>] [local | remote]")\
 _(lisp_eid_table_dump, "[eid <ipv4|ipv6>/<prefix> | <mac>] [vni] "      \
                        "[local] | [remote]")                            \
-_(lisp_eid_table_map_dump, "")                                          \
 _(lisp_eid_table_vni_dump, "")                                          \
+_(lisp_eid_table_map_dump, "l2|l3")                                     \
 _(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \
 _(show_lisp_status, "")                                                 \

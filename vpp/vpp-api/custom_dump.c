@@ -2534,6 +2534,21 @@ static void *vl_api_lisp_eid_table_dump_t_print
   FINISH;
 }
 
+static void *vl_api_lisp_eid_table_map_dump_t_print
+  (vl_api_lisp_eid_table_map_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: lisp_eid_table_map_dump ");
+
+  if (mp->is_l2)
+    s = format (s, "l2");
+  else
+    s = format (s, "l3");
+
+  FINISH;
+}
+
 static void *vl_api_ipsec_gre_add_del_tunnel_t_print
   (vl_api_ipsec_gre_add_del_tunnel_t * mp, void *handle)
 {
@@ -2571,7 +2586,6 @@ static void *vl_api_ipsec_gre_tunnel_dump_t_print
 }
 
 #define foreach_custom_print_no_arg_function                            \
-_(lisp_eid_table_map_dump)                                              \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
 _(lisp_gpe_tunnel_dump)

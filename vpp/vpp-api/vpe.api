@@ -2860,25 +2860,27 @@ define lisp_eid_table_dump
   u8 filter;
 };
 
-/** \brief Shows relationship between vni and vrf
-    @param vrf - VRF index
+/** \brief Shows relationship between vni and vrf/bd
+    @param dp_table - VRF index or bridge domain index
     @param vni - vitual network instance
   */
 define lisp_eid_table_map_details
 {
   u32 context;
   u32 vni;
-  u32 vrf;
+  u32 dp_table;
 };
 
 /** \brief Request for lisp_eid_table_map_details
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param is_l2 - if set dump vni/bd mappings else vni/vrf
  */
 define lisp_eid_table_map_dump
 {
   u32 client_index;
   u32 context;
+  u8 is_l2;
 };
 
 /** \brief Dumps all VNIs used in mappings
