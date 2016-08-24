@@ -125,19 +125,10 @@ typedef struct
 
 	  /* next protocol */
 	  u32 save_protocol;
+
+	  /* Rewrite length */
+	  u32 save_rewrite_length;
 	};
-
-	/* Alternate used for local TCP packets. */
-	struct
-	{
-	  u32 listener_index;
-
-	  u32 established_connection_index;
-
-	  u32 mini_connection_index;
-
-	  u32 transmit_stamp;
-	} tcp;
 
 	/* ICMP */
 	struct
