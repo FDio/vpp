@@ -1790,6 +1790,7 @@ dpdk_vhost_user_process_if (vlib_main_t * vm, dpdk_device_t * xd, void *ctx)
     }
   return 0;
 }
+#endif
 
 /*
  * CLI functions
@@ -1800,6 +1801,7 @@ dpdk_vhost_user_connect_command_fn (vlib_main_t * vm,
 				    unformat_input_t * input,
 				    vlib_cli_command_t * cmd)
 {
+#if DPDK_VHOST_USER
   dpdk_main_t *dm = &dpdk_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *sock_filename = NULL;
@@ -1813,7 +1815,9 @@ dpdk_vhost_user_connect_command_fn (vlib_main_t * vm,
 
   if (dm->conf->use_virtio_vhost)
     {
+#endif
       return vhost_user_connect_command_fn (vm, input, cmd);
+#if DPDK_VHOST_USER
     }
 
   /* Get a line of input. */
@@ -1854,6 +1858,7 @@ dpdk_vhost_user_connect_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (),
 		   sw_if_index);
   return 0;
+#endif
 }
 
 /* *INDENT-OFF* */
@@ -1902,7 +1907,11 @@ dpdk_vhost_user_delete_command_fn (vlib_main_t * vm,
 
   vnet_main_t *vnm = vnet_get_main ();
 
+#if DPDK_VHOST_USER
   dpdk_vhost_user_delete_if (vnm, vm, sw_if_index);
+#else
+  vhost_user_delete_if (vnm, vm, sw_if_index);
+#endif
 
   return 0;
 }
@@ -1925,6 +1934,7 @@ show_dpdk_vhost_user_command_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
+#if DPDK_VHOST_USER
   clib_error_t *error = 0;
   dpdk_main_t *dm = &dpdk_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -1952,7 +1962,9 @@ show_dpdk_vhost_user_command_fn (vlib_main_t * vm,
 
   if (dm->conf->use_virtio_vhost)
     {
+#endif
       return show_vhost_user_command_fn (vm, input, cmd);
+#if DPDK_VHOST_USER
     }
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -2089,6 +2101,7 @@ show_dpdk_vhost_user_command_fn (vlib_main_t * vm,
 done:
   vec_free (hw_if_indices);
   return error;
+#endif
 }
 
 /* *INDENT-OFF* */
@@ -2098,7 +2111,6 @@ VLIB_CLI_COMMAND (show_vhost_user_command, static) = {
     .function = show_dpdk_vhost_user_command_fn,
 };
 /* *INDENT-ON* */
-#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
