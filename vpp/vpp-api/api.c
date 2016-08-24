@@ -345,6 +345,7 @@ _(LISP_EID_TABLE_DUMP, lisp_eid_table_dump)                             \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
+_(LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump)                     \
 _(SHOW_LISP_STATUS, show_lisp_status)                                   \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
   lisp_add_del_map_request_itr_rlocs)                                   \
@@ -5919,6 +5920,54 @@ vl_api_lisp_eid_table_map_dump_t_handler (vl_api_lisp_eid_table_map_dump_t *
     send_eid_table_map_pair (p, q, mp->context);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+send_eid_table_vni (u32 vni, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_lisp_eid_table_vni_details_t *rmp = 0;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_LISP_EID_TABLE_VNI_DETAILS);
+  rmp->context = context;
+  rmp->vni = clib_host_to_net_u32 (vni);
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_lisp_eid_table_vni_dump_t_handler (vl_api_lisp_eid_table_vni_dump_t *
+					  mp)
+{
+  hash_pair_t *p;
+  u32 *vnis = 0;
+  unix_shared_memory_queue_t *q = 0;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (p, lcm->table_id_by_vni,
+  ({
+    hash_set (vnis, p->key, 0);
+  }));
+
+  hash_foreach_pair (p, lcm->bd_id_by_vni,
+  ({
+    hash_set (vnis, p->key, 0);
+  }));
+
+  hash_foreach_pair (p, vnis,
+  ({
+    send_eid_table_vni (p->key, q, mp->context);
+  }));
+  /* *INDENT-ON* */
+
+  hash_free (vnis);
 }
 
 static void
