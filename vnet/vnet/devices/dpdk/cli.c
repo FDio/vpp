@@ -21,7 +21,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/dpdk/dpdk.h>
 #include <vnet/classify/vnet_classify.h>
-#include <vnet/mpls-gre/packet.h>
+#include <vnet/mpls/packet.h>
 
 #include "dpdk_priv.h"
 

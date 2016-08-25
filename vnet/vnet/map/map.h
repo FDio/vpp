@@ -17,6 +17,9 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vlib/vlib.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/adj/adj.h>
 
 #define MAP_SKIP_IP6_LOOKUP 1
 
@@ -104,6 +107,9 @@ typedef struct
   /* not used by forwarding */
   u8 ip4_prefix_len;
 } map_domain_t;
+
+_Static_assert ((sizeof (map_domain_t) <= CLIB_CACHE_LINE_BYTES),
+		"MAP domain fits in one cacheline");
 
 #define MAP_REASS_INDEX_NONE ((u16)0xffff)
 
@@ -387,10 +393,8 @@ ip4_map_get_domain (u32 adj_index, u32 *map_domain_index)
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
   ip_adjacency_t *adj = ip_get_adjacency(lm, adj_index);
   ASSERT(adj);
-  uword *p = (uword *)adj->rewrite_data;
-  ASSERT(p);
-  *map_domain_index = p[0];
-  return pool_elt_at_index(mm->domains, p[0]);
+  *map_domain_index = adj->sub_type.map.domain_index;
+  return pool_elt_at_index(mm->domains, *map_domain_index);
 }
 
 /*
@@ -403,7 +407,6 @@ ip6_map_get_domain (u32 adj_index, ip4_address_t *addr,
                     u32 *map_domain_index, u8 *error)
 {
   map_main_t *mm = &map_main;
-  ip4_main_t *im4 = &ip4_main;
   ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
 
   /*
@@ -414,19 +417,18 @@ ip6_map_get_domain (u32 adj_index, ip4_address_t *addr,
   ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
   ip_adjacency_t *adj = ip_get_adjacency(lm6, adj_index);
   ASSERT(adj);
-  uword *p = (uword *)adj->rewrite_data;
-  ASSERT(p);
-  *map_domain_index = p[0];
-  if (p[0] != ~0)
-    return pool_elt_at_index(mm->domains, p[0]);
+  *map_domain_index = adj->sub_type.map.domain_index;
+  if (*map_domain_index != ~0)
+    return pool_elt_at_index(mm->domains, *map_domain_index);
 #endif
 
-  u32 ai = ip4_fib_lookup_with_table(im4, 0, addr, 0);
+  // FIXME - use mtrie?
+      // FIXME NOT an ADJ
+  u32 ai = ip4_fib_table_lookup_lb(0, addr);
   ip_adjacency_t *adj4 = ip_get_adjacency (lm4, ai);
   if (PREDICT_TRUE(adj4->lookup_next_index == IP_LOOKUP_NEXT_MAP ||
 		   adj4->lookup_next_index == IP_LOOKUP_NEXT_MAP_T)) {
-    uword *p = (uword *)adj4->rewrite_data;
-    *map_domain_index = p[0];
+    *map_domain_index = adj4->sub_type.map.domain_index;
     return pool_elt_at_index(mm->domains, *map_domain_index);
   }
   *error = MAP_ERROR_NO_DOMAIN;
