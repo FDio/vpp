@@ -18,6 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/dhcp/proxy.h>
+#include <vnet/fib/ip4_fib.h>
 
 static char * dhcp_proxy_error_strings[] = {
 #define dhcp_proxy_error(n,s) s,
@@ -225,7 +226,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
               
               fib_index = im->fib_index_by_sw_if_index 
                 [vnet_buffer(b0)->sw_if_index[VLIB_RX]];
-	      fib = vec_elt_at_index (im->fibs, fib_index);
+	      fib = ip4_fib_get (fib_index);
 	      fib_id = fib->table_id;
 
               end = b0->data + b0->current_data + b0->current_length;
@@ -699,9 +700,7 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
                              int insert_option_82, int is_del)
 {
   dhcp_proxy_main_t * dpm = &dhcp_proxy_main;
-  ip4_main_t * im = &ip4_main;
   dhcp_server_t * server = 0;
-  ip4_fib_t *rx_fib, *server_fib;
   u32 server_index = 0;
   u32 rx_fib_index = 0;
 
@@ -711,18 +710,11 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
   if (src_address->as_u32 == 0)
     return VNET_API_ERROR_INVALID_SRC_ADDRESS;
 
-  rx_fib = find_ip4_fib_by_table_index_or_id 
-    (&ip4_main, rx_fib_id, IP4_ROUTE_FLAG_TABLE_ID);
-    
-  if (rx_fib == 0)
-    return VNET_API_ERROR_NO_SUCH_INNER_FIB;
-  
-  server_fib = find_ip4_fib_by_table_index_or_id 
-    (&ip4_main, server_fib_id, IP4_ROUTE_FLAG_TABLE_ID);
-    
-  if (server_fib == 0)
-    return VNET_API_ERROR_NO_SUCH_FIB;
-  
+  rx_fib_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
+                                                   rx_fib_id);
+  server_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
+                                                   server_fib_id);
+
   if (rx_fib_id == 0)
     {
       server = pool_elt_at_index (dpm->dhcp_servers, 0);
@@ -734,8 +726,6 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
         }
       goto initialize_it;
     }
-
-  rx_fib_index = rx_fib - im->fibs;
 
   if (is_del)
     {
@@ -768,7 +758,7 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
  initialize_it:
 
   server->dhcp_server.as_u32 = addr->as_u32;
-  server->server_fib_index = server_fib - im->fibs;
+  server->server_fib_index = server_index;
   server->dhcp_src_address.as_u32 = src_address->as_u32;
   server->insert_option_82 = insert_option_82;
   server->valid = 1;
@@ -883,14 +873,12 @@ u8 * format_dhcp_proxy_server (u8 * s, va_list * args)
       return s;
     }
 
-  server_fib = find_ip4_fib_by_table_index_or_id 
-    (&ip4_main, server->server_fib_index, IP4_ROUTE_FLAG_FIB_INDEX);
+  server_fib = ip4_fib_get(server->server_fib_index);
 
   if (server_fib)
     server_fib_id = server_fib->table_id;
 
-  rx_fib = find_ip4_fib_by_table_index_or_id 
-    (&ip4_main, rx_fib_index, IP4_ROUTE_FLAG_FIB_INDEX);
+  rx_fib = ip4_fib_get(rx_fib_index);
 
   if (rx_fib)
     rx_fib_id = rx_fib->table_id;
