@@ -892,6 +892,26 @@ do {						\
   (_v(cmp) < 0 ? -1 : (_v(cmp) > 0 ? +1 : 0));		\
 })
 
+/** \brief Search a vector for the index of the entry that matches.
+
+    @param v1 Pointer to a vector
+    @param v2 Entry to match
+    @return index of match or ~0
+*/
+#define vec_search(v,E)					\
+({							\
+  word _v(i) = 0;					\
+  while (_v(i) < vec_len(v))				\
+  {							\
+    if (v[_v(i)] == E)				        \
+      break;						\
+    _v(i)++;						\
+  }							\
+  if (_v(i) == vec_len(v))				\
+    _v(i) = ~0;					        \
+  _v(i);						\
+})
+
 /** \brief Sort a vector using the supplied element comparison function
 
     @param vec vector to sort

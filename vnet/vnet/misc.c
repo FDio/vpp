@@ -38,6 +38,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/ip/ip.h>
 
 vnet_main_t vnet_main;
 
@@ -79,6 +80,9 @@ vnet_main_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, vnet_interface_init)))
     return error;
 
+  if ((error = vlib_call_init_function (vm, fib_module_init)))
+    return error;
+
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
 
@@ -86,6 +90,9 @@ vnet_main_init (vlib_main_t * vm)
     return error;
 
   if ((error = vlib_call_init_function (vm, ip6_lookup_init)))
+    return error;
+
+  if ((error = vlib_call_init_function (vm, mpls_init)))
     return error;
 
   vnm->vlib_main = vm;
@@ -97,6 +104,11 @@ vnet_main_init (vlib_main_t * vm)
 
   vnm->local_interface_hw_if_index = hw_if_index;
   vnm->local_interface_sw_if_index = hw->sw_if_index;
+
+  /* the local interface is used as an input interface when decapping from
+   * an IPSEC tunnel. so it needs to be IP enabled */
+  ip4_sw_interface_enable_disable (hw->sw_if_index, 1);
+  ip6_sw_interface_enable_disable (hw->sw_if_index, 1);
 
   return 0;
 }

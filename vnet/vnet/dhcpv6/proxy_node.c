@@ -18,6 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/dhcpv6/proxy.h>
+#include <vnet/fib/ip6_fib.h>
 
 static char * dhcpv6_proxy_error_strings[] = {
 #define dhcpv6_proxy_error(n,s) s,
@@ -323,7 +324,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 
           fib_index = im->fib_index_by_sw_if_index 
               [vnet_buffer(b0)->sw_if_index[VLIB_RX]];
-          fib = vec_elt_at_index (im->fibs, fib_index);
+          fib = ip6_fib_get (fib_index);
           fib_id = fib->table_id;
 
           p_vss = hash_get (dpm->vss_index_by_vrf_id,
@@ -573,7 +574,7 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
 
       svr_fib_index = im->fib_index_by_sw_if_index
           [vnet_buffer(b0)->sw_if_index[VLIB_RX]];
-      svr_fib = vec_elt_at_index (im->fibs, svr_fib_index);
+      svr_fib = ip6_fib_get (svr_fib_index);
       svr_fib_id = svr_fib->table_id;
 
       if (svr_fib_id != dpm->server_fib_index ||
@@ -831,8 +832,7 @@ u8 * format_dhcpv6_proxy_server (u8 * s, va_list * args)
       return s;
     }
 
-  f = find_ip6_fib_by_table_index_or_id (&ip6_main, dm->server_fib_index,
-                                         IP6_ROUTE_FLAG_FIB_INDEX);
+  f = ip6_fib_get (dm->server_fib_index);
   if (f)
     fib_id = f->table_id;
 

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 #include <vnet/cop/cop.h>
+#include <vnet/fib/ip6_fib.h>
+#include <vnet/dpo/load_balance.h>
 
 typedef struct {
   u32 next_index;
@@ -58,8 +60,7 @@ ip6_cop_whitelist_node_fn (vlib_main_t * vm,
   cop_feature_type_t next_index;
   cop_main_t *cm = &cop_main;
   ip6_main_t * im6 = &ip6_main;
-  ip_lookup_main_t * lm6 = &im6->lookup_main;
-  vlib_combined_counter_main_t * vcm = &im6->lookup_main.adjacency_counters;
+  vlib_combined_counter_main_t * vcm = &load_balance_main.lbm_via_counters;
   u32 cpu_index = vm->cpu_index;
 
   from = vlib_frame_vector_args (frame);
@@ -82,9 +83,10 @@ ip6_cop_whitelist_node_fn (vlib_main_t * vm,
           ip6_header_t * ip0, * ip1;
           cop_config_main_t * ccm0, * ccm1;
           cop_config_data_t * c0, * c1;
-          u32 adj_index0, adj_index1;
-          ip_adjacency_t * adj0, * adj1;
-          
+          u32 lb_index0, lb_index1;
+          const load_balance_t * lb0, *lb1;
+          const dpo_id_t *dpo0, *dpo1;
+         
 	  /* Prefetch next iteration. */
 	  {
 	    vlib_buffer_t * p2, * p3;
@@ -120,10 +122,12 @@ ip6_cop_whitelist_node_fn (vlib_main_t * vm,
                &next0,
                sizeof (c0[0]));
 
-          adj_index0 = ip6_fib_lookup_with_table (im6, c0->fib_index, 
-                                                  &ip0->src_address);
-	  adj0 = ip_get_adjacency (lm6, adj_index0);
-          if (PREDICT_FALSE(adj0->lookup_next_index != IP_LOOKUP_NEXT_LOCAL))
+          lb_index0 = ip6_fib_table_fwding_lookup (im6, c0->fib_index, 
+						    &ip0->src_address);
+	  lb0 = load_balance_get (lb_index0);
+          dpo0 = load_balance_get_bucket_i(lb0, 0);
+
+          if (PREDICT_FALSE(dpo0->dpoi_type != DPO_RECEIVE))
             {
               b0->error = node->errors[IP6_COP_WHITELIST_ERROR_DROPPED];
               next0 = RX_COP_DROP;
@@ -142,28 +146,23 @@ ip6_cop_whitelist_node_fn (vlib_main_t * vm,
                &next1,
                sizeof (c1[0]));
 
-          adj_index1 = ip6_fib_lookup_with_table (im6, c1->fib_index, 
-                                                  &ip1->src_address);
+          lb_index1 = ip6_fib_table_fwding_lookup (im6, c1->fib_index, 
+						    &ip1->src_address);
 
-	  adj1 = ip_get_adjacency (lm6, adj_index1);
+	  lb1 = load_balance_get (lb_index1);
+          dpo1 = load_balance_get_bucket_i(lb1, 0);
 
           vlib_increment_combined_counter 
-              (vcm, cpu_index, adj_index0, 1,
+              (vcm, cpu_index, lb_index0, 1,
                vlib_buffer_length_in_chain (vm, b0) 
                + sizeof(ethernet_header_t));
 
           vlib_increment_combined_counter 
-              (vcm, cpu_index, adj_index1, 1,
+              (vcm, cpu_index, lb_index1, 1,
                vlib_buffer_length_in_chain (vm, b1)
                + sizeof(ethernet_header_t));
 
-          if (PREDICT_FALSE(adj0->lookup_next_index != IP_LOOKUP_NEXT_LOCAL))
-            {
-              b0->error = node->errors[IP6_COP_WHITELIST_ERROR_DROPPED];
-              next0 = RX_COP_DROP;
-            }
-
-          if (PREDICT_FALSE(adj1->lookup_next_index != IP_LOOKUP_NEXT_LOCAL))
+          if (PREDICT_FALSE(dpo1->dpoi_type != DPO_RECEIVE))
             {
               b1->error = node->errors[IP6_COP_WHITELIST_ERROR_DROPPED];
               next1 = RX_COP_DROP;
@@ -202,8 +201,9 @@ ip6_cop_whitelist_node_fn (vlib_main_t * vm,
           ip6_header_t * ip0;
           cop_config_main_t *ccm0;
           cop_config_data_t *c0;
-          u32 adj_index0;
-          ip_adjacency_t * adj0;
+          u32 lb_index0;
+          const load_balance_t * lb0;
+          const dpo_id_t *dpo0;
 
           /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -226,17 +226,18 @@ ip6_cop_whitelist_node_fn (vlib_main_t * vm,
                &next0,
                sizeof (c0[0]));
 
-          adj_index0 = ip6_fib_lookup_with_table (im6, c0->fib_index, 
-                                                  &ip0->src_address);
+          lb_index0 = ip6_fib_table_fwding_lookup (im6, c0->fib_index, 
+						    &ip0->src_address);
 
-	  adj0 = ip_get_adjacency (lm6, adj_index0);
+	  lb0 = load_balance_get (lb_index0);
+          dpo0 = load_balance_get_bucket_i(lb0, 0);
 
           vlib_increment_combined_counter 
-              (vcm, cpu_index, adj_index0, 1,
+              (vcm, cpu_index, lb_index0, 1,
                vlib_buffer_length_in_chain (vm, b0) 
                + sizeof(ethernet_header_t));
 
-          if (PREDICT_FALSE(adj0->lookup_next_index != IP_LOOKUP_NEXT_LOCAL))
+          if (PREDICT_FALSE(dpo0->dpoi_type != DPO_RECEIVE))
             {
               b0->error = node->errors[IP6_COP_WHITELIST_ERROR_DROPPED];
               next0 = RX_COP_DROP;
