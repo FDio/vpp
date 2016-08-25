@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_8999df70",
+        "filename": "vnet/vnet/flow/flow_report.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-25T16:24:26Z",
+      "side": 1,
+      "message": "Don\u0027t you need to set the checksum to 0 if frm-\u003eudp_checksum is false?",
+      "revId": "f3891b832fa0c5caea984f9851dbe5ae031ea153",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
