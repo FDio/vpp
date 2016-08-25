@@ -3962,87 +3962,50 @@ define sw_interface_clear_stats_reply
   i32 retval;
 };
 
-/** \brief IOAM Trace : Set TRACE profile
+/** \brief IOAM enable : Enable in-band OAM
     @param id - profile id
-    @param trace_type - Trace type
-    @param trace_num_elt - Number of nodes in trace path
     @param trace_ppc - Trace PPC (none/encap/decap)
-    @param trace_tsp - Trace timestamp precision (0-sec,1-ms,2-us,3-ns)
-    @param trace_app_data - Trace application data, can be any 4 bytes
     @param pow_enable - Proof of Work enabled or not flag
-    @param node_id - Id of this node
+    @param trace_enable - iOAM Trace enabled or not flag
 */
-define trace_profile_add
+define ioam_enable
 {
   u32 client_index;
   u32 context;
   u16 id;
-  u8 trace_type;
-  u8 trace_num_elt;
   u8 trace_ppc;
-  u8 trace_tsp;
-  u32 trace_app_data;
   u8 pow_enable;
+  u8 trace_enable;
   u32 node_id;
 };
 
-/** \brief Trace profile add / del response
+/** \brief iOAM Trace profile add / del response
     @param context - sender context, to match reply w/ request
     @param retval - return value for request
 */
-define trace_profile_add_reply
+define ioam_enable_reply
 {
   u32 context;
   i32 retval;
 };
 
-/** \brief IOAM Trace enable trace profile for a flow
-    @param id - id of the trace profile to be applied
-    @param dest_ipv6 - Destination IPv6 address
-    @param prefix_length - prefix mask
-    @param vrf_id - VRF ID
-    @param trace_op - Trace operation (add/mod/del)
-    @param enable - apply/remove the trace profile for the flow
-*/
-define trace_profile_apply
-{
-  u32 client_index;
-  u32 context;
-  u16 id;
-  u8 dest_ipv6[16];
-  u32 prefix_length;
-  u32 vrf_id;
-  u8 trace_op;
-  u8 enable;
-};
-
-/** \brief Trace profile apply response
-    @param context - sender context, to match reply w/ request   
-    @param retval - return value for request
-*/
-define trace_profile_apply_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief Delete Trace Profile 
+/** \brief iOAM disable
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param index - MAP Domain index
 */
-define trace_profile_del
+define ioam_disable
 {
   u32 client_index;
   u32 context;
   u16 id;
 };
 
-/** \brief Trace profile add / del response
+/** \brief iOAM disable response
     @param context - sender context, to match reply w/ request
     @param retval - return value for request
 */
-define trace_profile_del_reply
+define ioam_disable_reply
 {
   u32 context;
   i32 retval;
