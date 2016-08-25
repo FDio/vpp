@@ -47,7 +47,8 @@
   _ (0x000000, ethernet)			\
   _ (0x00000c, cisco)
 
-typedef enum {
+typedef enum
+{
 #define _(n,f) IEEE_OUI_##f = n,
   foreach_ieee_oui
 #undef _
@@ -66,13 +67,16 @@ typedef enum {
   _ (0x2004, dtp)				\
   _ (0x200a, stp_uplink_fast)
 
-typedef enum {
+typedef enum
+{
 #define _(n,f) SNAP_cisco_##f = n,
   foreach_snap_cisco_protocol
 #undef _
 } snap_cisco_protocol_t;
 
-typedef union {
+typedef union
+{
+  /* *INDENT-OFF* */
   CLIB_PACKED (struct {
     /* OUI: organization unique identifier. */
     u8 oui[3];
@@ -80,18 +84,21 @@ typedef union {
     /* Per-OUI protocol. */
     u16 protocol;
   });
+  /* *INDENT-ON* */
 
   u8 as_u8[5];
 } snap_header_t;
 
-typedef struct {
+typedef struct
+{
   u32 oui;
   u32 protocol;
 } snap_oui_and_protocol_t;
 
-typedef struct {
+typedef struct
+{
   /* Name vector string. */
-  u8 * name;
+  u8 *name;
 
   snap_oui_and_protocol_t oui_and_protocol;
 
@@ -109,32 +116,34 @@ snap_header_set_protocol (snap_header_t * h, snap_oui_and_protocol_t * p)
   u32 oui = p->oui;
   h->protocol = clib_host_to_net_u16 (protocol);
   h->oui[0] = (oui >> 16) & 0xff;
-  h->oui[1] = (oui >>  8) & 0xff;
-  h->oui[2] = (oui >>  0) & 0xff;
+  h->oui[1] = (oui >> 8) & 0xff;
+  h->oui[2] = (oui >> 0) & 0xff;
 }
 
 #define foreach_snap_error			\
   _ (NONE, "no error")				\
   _ (UNKNOWN_PROTOCOL, "unknown oui/snap protocol")
 
-typedef enum {
+typedef enum
+{
 #define _(f,s) SNAP_ERROR_##f,
   foreach_snap_error
 #undef _
-  SNAP_N_ERROR,
+    SNAP_N_ERROR,
 } snap_error_t;
 
-typedef struct {
-  vlib_main_t * vlib_main;
+typedef struct
+{
+  vlib_main_t *vlib_main;
 
   /* Vector of known SNAP oui/protocol pairs. */
-  snap_protocol_info_t * protocols;
+  snap_protocol_info_t *protocols;
 
   /* Hash table mapping oui/protocol to protocol index. */
   mhash_t protocol_hash;
 
   /* Hash table mapping protocol by name. */
-  uword * protocol_info_by_name;
+  uword *protocol_info_by_name;
 } snap_main_t;
 
 always_inline u32
@@ -147,7 +156,7 @@ always_inline snap_protocol_info_t *
 snap_get_protocol_info (snap_main_t * sm, snap_header_t * h)
 {
   snap_oui_and_protocol_t key;
-  uword * p;
+  uword *p;
 
   key.oui = snap_header_get_oui (h);
   key.protocol = h->protocol;
@@ -161,15 +170,11 @@ snap_main_t snap_main;
 /* Register given node index to take input for given snap type. */
 void
 snap_register_input_protocol (vlib_main_t * vm,
-			      char * name,
-			      u32 ieee_oui,
-			      u16 protocol,
-			      u32 node_index);
+			      char *name,
+			      u32 ieee_oui, u16 protocol, u32 node_index);
 
 void snap_set_adjacency (vnet_rewrite_header_t * rw,
-			 uword max_data_bytes,
-			 u32 ieee_oui,
-			 u16 protocol);
+			 uword max_data_bytes, u32 ieee_oui, u16 protocol);
 
 format_function_t format_snap_protocol;
 format_function_t format_snap_header;
@@ -185,8 +190,8 @@ unformat_function_t unformat_pg_snap_header;
 always_inline void
 snap_setup_node (vlib_main_t * vm, u32 node_index)
 {
-  vlib_node_t * n = vlib_get_node (vm, node_index);
-  pg_node_t * pn = pg_get_node (node_index);
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  pg_node_t *pn = pg_get_node (node_index);
 
   n->format_buffer = format_snap_header_with_length;
   n->unformat_buffer = unformat_snap_header;
@@ -194,3 +199,11 @@ snap_setup_node (vlib_main_t * vm, u32 node_index)
 }
 
 #endif /* included_snap_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
