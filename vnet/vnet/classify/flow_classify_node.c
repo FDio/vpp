@@ -228,35 +228,17 @@ flow_classify_inline (vlib_main_t * vm,
               hash0 = vnet_buffer(b0)->l2_classify.hash;
               t0 = pool_elt_at_index (vcm->tables, table_index0);
               e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
-
               if (e0)
                 {
                   hits++;
                 }
               else
                 {
-                  while (1)
-                    {
-                      if (PREDICT_TRUE(t0->next_table_index != ~0))
-                        {
-                          t0 = pool_elt_at_index (vcm->tables,
-                                                  t0->next_table_index);
-                        }
-                      else
-                        {
-                          misses++;
-                          break;
-                        }
-
-                      hash0 = vnet_classify_hash_packet (t0, (u8 *) h0);
-                      e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
-                      if (e0)
-                        {
-                          hits++;
-                          chain_hits++;
-                          break;
-                        }
-                    }
+                  misses++;
+                  vnet_classify_add_del_session (vcm, table_index0,
+                                                 h0, ~0, 0, 0, 0, 0, 1);
+                  /* increment counter */
+                  vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
                 }
             }
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
