@@ -235,7 +235,7 @@ dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   u32 sw_if_index;
   a->is_add = 0;
   a->locator_pairs = fe->locator_pairs;
-  a->vni = gid_address_vni (&a->rmt_eid);
+  a->vni = gid_address_vni (&fe->deid);
   gid_address_copy (&a->rmt_eid, &fe->deid);
 
   vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
