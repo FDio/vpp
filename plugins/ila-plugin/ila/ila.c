@@ -16,6 +16,8 @@
 #include <ila/ila.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ip/lookup.h>
+#include <vnet/dpo/dpo.h>
+#include <vnet/fib/fib_table.h>
 
 static ila_main_t ila_main;
 
@@ -55,6 +57,11 @@ static ila_entry_t ila_sir2ila_default_entry = {
   .type = ILA_TYPE_IID,
   .dir = ILA_DIR_ILA2SIR, //Will pass the packet with no
 };
+
+/**
+ * @brief Dynamically registered DPO Type for ILA
+ */
+static dpo_type_t ila_dpo_type;
 
 u8 *
 format_half_ip6_address (u8 * s, va_list * va)
@@ -239,8 +246,6 @@ static uword
 ila_ila2sir (vlib_main_t * vm,
 	     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   ila_main_t *ilm = &ila_main;
 
@@ -256,10 +261,8 @@ ila_ila2sir (vlib_main_t * vm,
 	{
 	  u32 pi0, pi1;
 	  vlib_buffer_t *p0, *p1;
-	  ip_adjacency_t *adj0, *adj1;
 	  ila_entry_t *ie0, *ie1;
 	  ip6_header_t *ip60, *ip61;
-	  ila_adj_data_t *ad0, *ad1;
 	  ip6_address_t *sir_address0, *sir_address1;
 
 	  {
@@ -287,14 +290,10 @@ ila_ila2sir (vlib_main_t * vm,
 	  ip61 = vlib_buffer_get_current (p1);
 	  sir_address0 = &ip60->dst_address;
 	  sir_address1 = &ip61->dst_address;
-	  adj0 =
-	    ip_get_adjacency (lm, vnet_buffer (p0)->ip.adj_index[VLIB_TX]);
-	  adj1 =
-	    ip_get_adjacency (lm, vnet_buffer (p1)->ip.adj_index[VLIB_TX]);
-	  ad0 = (ila_adj_data_t *) & adj0->opaque;
-	  ad1 = (ila_adj_data_t *) & adj1->opaque;
-	  ie0 = pool_elt_at_index (ilm->entries, ad0->entry_index);
-	  ie1 = pool_elt_at_index (ilm->entries, ad1->entry_index);
+	  ie0 = pool_elt_at_index (ilm->entries,
+				   vnet_buffer (p0)->ip.adj_index[VLIB_TX]);
+	  ie1 = pool_elt_at_index (ilm->entries,
+				   vnet_buffer (p1)->ip.adj_index[VLIB_TX]);
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -335,8 +334,6 @@ ila_ila2sir (vlib_main_t * vm,
 	{
 	  u32 pi0;
 	  vlib_buffer_t *p0;
-	  ip_adjacency_t *adj0;
-	  ila_adj_data_t *ad0;
 	  ila_entry_t *ie0;
 	  ip6_header_t *ip60;
 	  ip6_address_t *sir_address0;
@@ -350,10 +347,8 @@ ila_ila2sir (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip60 = vlib_buffer_get_current (p0);
 	  sir_address0 = &ip60->dst_address;
-	  adj0 =
-	    ip_get_adjacency (lm, vnet_buffer (p0)->ip.adj_index[VLIB_TX]);
-	  ad0 = (ila_adj_data_t *) & adj0->opaque;
-	  ie0 = pool_elt_at_index (ilm->entries, ad0->entry_index);
+	  ie0 = pool_elt_at_index (ilm->entries,
+				   vnet_buffer (p0)->ip.adj_index[VLIB_TX]);
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -601,7 +596,6 @@ int
 ila_add_del_entry (ila_add_del_entry_args_t * args)
 {
   ila_main_t *ilm = &ila_main;
-  ip6_main_t *im6 = &ip6_main;
   BVT (clib_bihash_kv) kv, value;
 
   //Sanity check
@@ -700,29 +694,26 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 
       if (e->ila_adj_index != ~0)
 	{
-	  //This is a local entry - let's create a local adjacency
-	  ip_adjacency_t adj;
-	  ip6_add_del_route_args_t route_args;
-	  ila_adj_data_t *ad;
+	  /*
+	   * Create a route that results in the ILA entry
+	   */
+	  dpo_id_t dpo = DPO_NULL;
+	  fib_prefix_t pfx = {
+	      .fp_addr = {
+		  .ip6 = e->ila_address,
+	      },
+	      .fp_len = 128,
+	      .fp_proto = FIB_PROTOCOL_IP6,
+	  };
 
-	  //Adjacency
-	  memset (&adj, 0, sizeof (adj));
-	  adj.explicit_fib_index = ~0;
-	  adj.lookup_next_index = ilm->ip6_lookup_next_index;
-	  ad = (ila_adj_data_t *) & adj.opaque;
-	  ad->entry_index = e - ilm->entries;
+	  dpo_set(&dpo, ila_dpo_type, DPO_PROTO_IP6, e - ilm->entries);
 
-	  //Route
-	  memset (&route_args, 0, sizeof (route_args));
-	  route_args.table_index_or_table_id = 0;
-	  route_args.flags = IP6_ROUTE_FLAG_ADD;
-	  route_args.dst_address = e->ila_address;
-	  route_args.dst_address_length = 128;
-	  route_args.adj_index = ~0;
-	  route_args.add_adj = &adj;
-	  route_args.n_add_adj = 1;
-
-	  ip6_add_del_route (im6, &route_args);
+	  fib_table_entry_special_dpo_add(0,
+					  &pfx,
+					  FIB_SOURCE_PLUGIN_HI,
+					  FIB_ENTRY_FLAG_EXCLUSIVE,
+					  &dpo);
+	  dpo_reset(&dpo);
 	}
     }
   else
@@ -742,18 +733,15 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 
       if (e->ila_adj_index != ~0)
 	{
-	  //Delete that route - Associated adjacency will be deleted too
-	  ip6_add_del_route_args_t route_args;
-	  memset (&route_args, 0, sizeof (route_args));
-	  route_args.table_index_or_table_id = 0;
-	  route_args.flags = IP6_ROUTE_FLAG_DEL;
-	  route_args.dst_address = e->ila_address;
-	  route_args.dst_address_length = 128;
-	  route_args.adj_index = ~0;
-	  route_args.add_adj = NULL;
-	  route_args.n_add_adj = 0;
+	  fib_prefix_t pfx = {
+	      .fp_addr = {
+		  .ip6 = e->ila_address,
+	      },
+	      .fp_len = 128,
+	      .fp_proto = FIB_PROTOCOL_IP6,
+	  };
 
-	  ip6_add_del_route (im6, &route_args);
+	  fib_table_entry_special_remove(0, &pfx, FIB_SOURCE_PLUGIN_HI);
 	}
 
       BV (clib_bihash_add_del) (&ilm->id_to_entry_table, &kv,
@@ -796,23 +784,56 @@ vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
   return error;
 }
 
-u8 *ila_format_adjacency(u8 * s, va_list * va)
+u8 *format_ila_dpo (u8 * s, va_list * va)
 {
+  index_t index = va_arg (*va, index_t);
+  CLIB_UNUSED(u32 indent) = va_arg (*va, u32);
   ila_main_t *ilm = &ila_main;
-  __attribute((unused)) ip_lookup_main_t *lm = va_arg (*va, ip_lookup_main_t *);
-  ip_adjacency_t *adj = va_arg (*va, ip_adjacency_t *);
-  ila_adj_data_t * ad = (ila_adj_data_t *) & adj->opaque;
-  ila_entry_t *ie = pool_elt_at_index (ilm->entries, ad->entry_index);
-  return format(s, "idx:%d sir:%U", ad->entry_index, format_ip6_address, &ie->sir_address);
+  ila_entry_t *ie = pool_elt_at_index (ilm->entries, index);
+  return format(s, "idx:%d sir:%U",
+		index,
+		format_ip6_address, &ie->sir_address);
 }
+
+/**
+ * @brief no-op lock function.
+ * The lifetime of the ILA entry is managed by the control plane
+ */
+static void
+ila_dpo_lock (dpo_id_t *dpo)
+{
+}
+
+/**
+ * @brief no-op unlock function.
+ * The lifetime of the ILA entry is managed by the control plane
+ */
+static void
+ila_dpo_unlock (dpo_id_t *dpo)
+{
+}
+
+const static dpo_vft_t ila_vft = {
+    .dv_lock = ila_dpo_lock,
+    .dv_unlock = ila_dpo_unlock,
+    .dv_format = format_ila_dpo,
+};
+const static char* const ila_ip6_nodes[] =
+{
+    "ila-to-sir",
+    NULL,
+};
+const static char* const * const ila_nodes[DPO_PROTO_NUM] =
+{
+    [DPO_PROTO_IP6]  = ila_ip6_nodes,
+};
+
 
 clib_error_t *
 ila_init (vlib_main_t * vm)
 {
   ila_main_t *ilm = &ila_main;
   ilm->entries = NULL;
-
-  ASSERT (sizeof (ila_adj_data_t) < IP_ADJACENCY_OPAQUE_SZ);
 
   ilm->lookup_table_nbuckets = ILA_TABLE_DEFAULT_HASH_NUM_BUCKETS;
   ilm->lookup_table_nbuckets = 1 << max_log2 (ilm->lookup_table_nbuckets);
@@ -822,14 +843,10 @@ ila_init (vlib_main_t * vm)
 			 "ila id to entry index table",
 			 ilm->lookup_table_nbuckets, ilm->lookup_table_size);
 
+  ila_dpo_type = dpo_register_new_type(&ila_vft, ila_nodes);
+
   return NULL;
 }
-
-VNET_IP6_REGISTER_ADJACENCY(ila2sir) = {
-  .node_name = "ila-to-sir",
-  .fn = ila_format_adjacency,
-  .next_index = &ila_main.ip6_lookup_next_index
-};
 
 VLIB_INIT_FUNCTION (ila_init);
 
@@ -841,7 +858,7 @@ ila_entry_command_fn (vlib_main_t * vm,
   ila_add_del_entry_args_t args = { 0 };
   ip6_address_t next_hop;
   u8 next_hop_set = 0;
-  ip6_main_t *im6 = &ip6_main;
+//  ip6_main_t *im6 = &ip6_main;
   int ret;
 
   args.type = ILA_TYPE_IID;
@@ -878,7 +895,7 @@ ila_entry_command_fn (vlib_main_t * vm,
       else
 	if (unformat
 	    (line_input, "next-hop %U", unformat_ip6_address, &next_hop))
-	next_hop_set = 1;
+	    ;
       else if (unformat
 	      (line_input, "direction %U", unformat_ila_direction, &args.dir))
 	    ;
@@ -894,22 +911,22 @@ ila_entry_command_fn (vlib_main_t * vm,
   if (next_hop_set)
     {
       if (args.local_adj_index != ~0)
-	return clib_error_return (0,
-				  "Specified both next hop and adjacency index");
+  	return clib_error_return (0,
+  				  "Specified both next hop and adjacency index");
 
-      u32 ai = ip6_get_route (im6, 0, 0, &next_hop, 128);
-      if (ai == 0)
-	return clib_error_return (0, "No route to next-hop %U",
-				  format_ip6_address, &next_hop);
+  /*     u32 ai = ip6_get_route (im6, 0, 0, &next_hop, 128); */
+  /*     if (ai == 0) */
+  /* 	return clib_error_return (0, "No route to next-hop %U", */
+  /* 				  format_ip6_address, &next_hop); */
 
-      ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
-      ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai);
-      if (adj6->lookup_next_index != IP_LOOKUP_NEXT_REWRITE)
-	{
-	  return clib_error_return (0,
-				    "Next-Hop route has to be a rewrite route");
-	}
-      args.local_adj_index = ai;
+  /*     ip_lookup_main_t *lm6 = &ip6_main.lookup_main; */
+  /*     ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai); */
+  /*     if (adj6->lookup_next_index != IP_LOOKUP_NEXT_REWRITE) */
+  /* 	{ */
+  /* 	  return clib_error_return (0, */
+  /* 				    "Next-Hop route has to be a rewrite route"); */
+  /* 	} */
+  /*     args.local_adj_index = ai; */
     }
 
   if ((ret = ila_add_del_entry (&args)))

@@ -68,10 +68,6 @@ typedef struct {
 } ila_entry_t;
 
 typedef struct {
-  u32 entry_index;
-} ila_adj_data_t;
-
-typedef struct {
   ila_entry_t *entries;		//Pool of ILA entries
 
   u64 lookup_table_nbuckets;

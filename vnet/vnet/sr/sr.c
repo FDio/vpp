@@ -22,11 +22,18 @@
  */
 #include <vnet/vnet.h>
 #include <vnet/sr/sr.h>
+#include <vnet/fib/ip6_fib.h>
+#include <vnet/dpo/dpo.h>
 
 #include <openssl/hmac.h>
 
 ip6_sr_main_t sr_main;
 static vlib_node_registration_t sr_local_node;
+
+/**
+ * @brief Dynamically added SR DPO type
+ */
+static dpo_type_t sr_dpo_type;
 
 /**
  * @brief Use passed HMAC key in ip6_sr_header_t in OpenSSL HMAC routines
@@ -319,16 +326,12 @@ format_sr_rewrite_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   sr_rewrite_trace_t *t = va_arg (*args, sr_rewrite_trace_t *);
-  ip6_main_t *im = &ip6_main;
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_tunnel_t *tun = pool_elt_at_index (sm->tunnels, t->tunnel_index);
   ip6_fib_t *rx_fib, *tx_fib;
 
-  rx_fib = find_ip6_fib_by_table_index_or_id (im, tun->rx_fib_index,
-					      IP6_ROUTE_FLAG_FIB_INDEX);
-
-  tx_fib = find_ip6_fib_by_table_index_or_id (im, tun->tx_fib_index,
-					      IP6_ROUTE_FLAG_FIB_INDEX);
+  rx_fib = ip6_fib_get (tun->rx_fib_index);
+  tx_fib = ip6_fib_get (tun->tx_fib_index);
 
   s = format
     (s, "SR-REWRITE: next %s ip6 src %U dst %U len %u\n"
@@ -733,38 +736,18 @@ VLIB_NODE_FUNCTION_MULTIARCH (sr_rewrite_node, sr_rewrite)
 					      u32 dst_address_length,
 					      u32 rx_table_id)
 {
-  ip6_add_del_route_args_t a;
-  ip6_address_t dst_address;
-  ip6_fib_t *fib;
-  ip6_main_t *im6 = &ip6_main;
-  BVT (clib_bihash_kv) kv, value;
+  fib_prefix_t pfx = {
+    .fp_len = dst_address_length,
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_addr = {
+		.ip6 = *dst_address_arg,
+		}
+  };
 
-  fib = find_ip6_fib_by_table_index_or_id (im6, rx_table_id,
-					   IP6_ROUTE_FLAG_TABLE_ID);
-  memset (&a, 0, sizeof (a));
-  a.flags |= IP4_ROUTE_FLAG_DEL;
-  a.dst_address_length = dst_address_length;
+  fib_table_entry_delete (fib_table_id_find_fib_index (FIB_PROTOCOL_IP6,
+						       rx_table_id),
+			  &pfx, FIB_SOURCE_SR);
 
-  dst_address = *dst_address_arg;
-
-  ip6_address_mask (&dst_address, &im6->fib_masks[dst_address_length]);
-
-  kv.key[0] = dst_address.as_u64[0];
-  kv.key[1] = dst_address.as_u64[1];
-  kv.key[2] = ((u64) ((fib - im6->fibs)) << 32) | dst_address_length;
-
-  if (BV (clib_bihash_search) (&im6->ip6_lookup_table, &kv, &value) < 0)
-    {
-      clib_warning ("%U/%d not in FIB",
-		    format_ip6_address, &a.dst_address, a.dst_address_length);
-      return -10;
-    }
-
-  a.adj_index = value.value;
-  a.dst_address = dst_address;
-
-  ip6_add_del_route (im6, &a);
-  ip6_maybe_remap_adjacencies (im6, rx_table_id, IP6_ROUTE_FLAG_TABLE_ID);
   return 0;
 }
 
@@ -837,23 +820,20 @@ int
 ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
 {
   ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
   ip6_sr_tunnel_key_t key;
   ip6_sr_tunnel_t *t;
   uword *p, *n;
   ip6_sr_header_t *h = 0;
   u32 header_length;
   ip6_address_t *addrp, *this_address;
-  ip_adjacency_t adj, *ap, *add_adj = 0;
-  u32 adj_index;
   ip6_sr_main_t *sm = &sr_main;
   u8 *key_copy;
   u32 rx_fib_index, tx_fib_index;
-  ip6_add_del_route_args_t aa;
   u32 hmac_key_index_u32;
   u8 hmac_key_index = 0;
   ip6_sr_policy_t *pt;
   int i;
+  dpo_id_t dpo = DPO_NULL;
 
   /* Make sure that the rx FIB exists */
   p = hash_get (im->fib_index_by_table_id, a->rx_table_id);
@@ -1057,15 +1037,6 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   clib_memcpy (key_copy, &key, sizeof (ip6_sr_tunnel_key_t));
   hash_set_mem (sm->tunnel_index_by_key, key_copy, t - sm->tunnels);
 
-  memset (&adj, 0, sizeof (adj));
-
-  /* Create an adjacency and add to v6 fib */
-  adj.lookup_next_index = sm->ip6_lookup_sr_next_index;
-  adj.explicit_fib_index = ~0;
-
-  ap = ip_add_adjacency (lm, &adj, 1 /* one adj */ ,
-			 &adj_index);
-
   /*
    * Stick the tunnel index into the rewrite header.
    *
@@ -1077,22 +1048,20 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
    * We don't handle ugly RFC-related cases yet, but I'm sure PL will complain
    * at some point...
    */
-  ap->rewrite_header.sw_if_index = t - sm->tunnels;
+  dpo_set (&dpo, sr_dpo_type, DPO_PROTO_IP6, t - sm->tunnels);
 
-  vec_add1 (add_adj, ap[0]);
-
-  clib_memcpy (aa.dst_address.as_u8, a->dst_address,
-	       sizeof (aa.dst_address.as_u8));
-  aa.dst_address_length = a->dst_mask_width;
-
-  aa.flags = (a->is_del ? IP6_ROUTE_FLAG_DEL : IP6_ROUTE_FLAG_ADD);
-  aa.flags |= IP6_ROUTE_FLAG_FIB_INDEX;
-  aa.table_index_or_table_id = rx_fib_index;
-  aa.add_adj = add_adj;
-  aa.adj_index = adj_index;
-  aa.n_add_adj = 1;
-  ip6_add_del_route (im, &aa);
-  vec_free (add_adj);
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_len = a->dst_mask_width,
+    .fp_addr = {
+		.ip6 = *a->dst_address,
+		}
+  };
+  fib_table_entry_special_dpo_add (rx_fib_index,
+				   &pfx,
+				   FIB_SOURCE_SR,
+				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
+  dpo_reset (&dpo);
 
   if (a->policy_name)
     {
@@ -1124,6 +1093,48 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
 
   return 0;
 }
+
+/**
+ * @brief no-op lock function.
+ * The lifetime of the SR entry is managed by the control plane
+ */
+static void
+sr_dpo_lock (dpo_id_t * dpo)
+{
+}
+
+/**
+ * @brief no-op unlock function.
+ * The lifetime of the SR entry is managed by the control plane
+ */
+static void
+sr_dpo_unlock (dpo_id_t * dpo)
+{
+}
+
+u8 *
+format_sr_dpo (u8 * s, va_list * args)
+{
+  index_t index = va_arg (*args, index_t);
+  CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
+
+  return (format (s, "SR: tunnel:[%d]", index));
+}
+
+const static dpo_vft_t sr_vft = {
+  .dv_lock = sr_dpo_lock,
+  .dv_unlock = sr_dpo_unlock,
+  .dv_format = format_sr_dpo,
+};
+
+const static char *const sr_ip6_nodes[] = {
+  "sr-rewrite",
+  NULL,
+};
+
+const static char *const *const sr_nodes[DPO_PROTO_NUM] = {
+  [DPO_PROTO_IP6] = sr_ip6_nodes,
+};
 
 /**
  * @brief CLI parser for Add or Delete a Segment Routing tunnel.
@@ -1315,16 +1326,12 @@ VLIB_CLI_COMMAND (sr_tunnel_command, static) = {
 void
 ip6_sr_tunnel_display (vlib_main_t * vm, ip6_sr_tunnel_t * t)
 {
-  ip6_main_t *im = &ip6_main;
   ip6_sr_main_t *sm = &sr_main;
   ip6_fib_t *rx_fib, *tx_fib;
   ip6_sr_policy_t *pt;
 
-  rx_fib = find_ip6_fib_by_table_index_or_id (im, t->rx_fib_index,
-					      IP6_ROUTE_FLAG_FIB_INDEX);
-
-  tx_fib = find_ip6_fib_by_table_index_or_id (im, t->tx_fib_index,
-					      IP6_ROUTE_FLAG_FIB_INDEX);
+  rx_fib = ip6_fib_get (t->rx_fib_index);
+  tx_fib = ip6_fib_get (t->tx_fib_index);
 
   if (t->name)
     vlib_cli_output (vm, "sr tunnel name: %s", (char *) t->name);
@@ -1678,13 +1685,8 @@ int
 ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
 {
   uword *p;
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
   ip6_sr_tunnel_t *t;
-  ip_adjacency_t adj, *ap, *add_adj = 0;
-  u32 adj_index;
   ip6_sr_main_t *sm = &sr_main;
-  ip6_add_del_route_args_t aa;
   ip6_sr_policy_t *pt;
 
   if (a->is_del)
@@ -1714,16 +1716,6 @@ ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
 
   t = pool_elt_at_index (sm->tunnels, pt->tunnel_indices[0]);
 
-  /* Construct a FIB entry for multicast using the rx/tx fib from the first tunnel */
-  memset (&adj, 0, sizeof (adj));
-
-  /* Create an adjacency and add to v6 fib */
-  adj.lookup_next_index = sm->ip6_lookup_sr_replicate_index;
-  adj.explicit_fib_index = ~0;
-
-  ap = ip_add_adjacency (lm, &adj, 1 /* one adj */ ,
-			 &adj_index);
-
   /*
    * Stick the tunnel index into the rewrite header.
    *
@@ -1735,22 +1727,23 @@ ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
    * We don't handle ugly RFC-related cases yet, but I'm sure PL will complain
    * at some point...
    */
-  ap->rewrite_header.sw_if_index = t - sm->tunnels;
+  dpo_id_t dpo = DPO_NULL;
 
-  vec_add1 (add_adj, ap[0]);
+  dpo_set (&dpo, sr_dpo_type, DPO_PROTO_IP6, t - sm->tunnels);
 
-  memcpy (aa.dst_address.as_u8, a->multicast_address,
-	  sizeof (aa.dst_address.as_u8));
-  aa.dst_address_length = 128;
-
-  aa.flags = (a->is_del ? IP6_ROUTE_FLAG_DEL : IP6_ROUTE_FLAG_ADD);
-  aa.flags |= IP6_ROUTE_FLAG_FIB_INDEX;
-  aa.table_index_or_table_id = t->rx_fib_index;
-  aa.add_adj = add_adj;
-  aa.adj_index = adj_index;
-  aa.n_add_adj = 1;
-  ip6_add_del_route (im, &aa);
-  vec_free (add_adj);
+  /* Construct a FIB entry for multicast using the rx/tx fib from the first tunnel */
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_len = 128,
+    .fp_addr = {
+		.ip6 = *a->multicast_address,
+		}
+  };
+  fib_table_entry_special_dpo_add (t->rx_fib_index,
+				   &pfx,
+				   FIB_SOURCE_SR,
+				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
+  dpo_reset (&dpo);
 
   u8 *mcast_copy = 0;
   mcast_copy = vec_new (ip6_address_t, 1);
@@ -2224,10 +2217,6 @@ VLIB_NODE_FUNCTION_MULTIARCH (sr_fix_dst_addr_node, sr_fix_dst_addr)
   ip6_rewrite_node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite");
   ASSERT (ip6_rewrite_node);
 
-  /* Add a disposition to ip6_lookup for the sr rewrite node */
-  sm->ip6_lookup_sr_next_index =
-    vlib_node_add_next (vm, ip6_lookup_node->index, sr_rewrite_node.index);
-
 #if DPDK > 0			/* Cannot run replicate without DPDK */
   /* Add a disposition to sr_replicate for the sr multicast replicate node */
   sm->ip6_lookup_sr_replicate_index =
@@ -2243,6 +2232,8 @@ VLIB_NODE_FUNCTION_MULTIARCH (sr_fix_dst_addr_node, sr_fix_dst_addr)
 
   sm->md = (void *) EVP_get_digestbyname ("sha1");
   sm->hmac_ctx = clib_mem_alloc (sizeof (HMAC_CTX));
+
+  sr_dpo_type = dpo_register_new_type (&sr_vft, sr_nodes);
 
   return error;
 }
@@ -2884,41 +2875,48 @@ static clib_error_t *
 set_ip6_sr_rewrite_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  ip6_address_t a;
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_len = 128,
+  };
   u32 fib_index = 0;
   u32 fib_id = 0;
   u32 adj_index;
-  uword *p;
   ip_adjacency_t *adj;
   vnet_hw_interface_t *hi;
   u32 sw_if_index;
   ip6_sr_main_t *sm = &sr_main;
   vnet_main_t *vnm = vnet_get_main ();
+  fib_node_index_t fei;
 
-  if (!unformat (input, "%U", unformat_ip6_address, &a))
+  if (!unformat (input, "%U", unformat_ip6_address, &pfx.fp_addr.ip6))
     return clib_error_return (0, "ip6 address missing in '%U'",
 			      format_unformat_error, input);
 
   if (unformat (input, "rx-table-id %d", &fib_id))
     {
-      p = hash_get (im->fib_index_by_table_id, fib_id);
-      if (p == 0)
-	return clib_error_return (0, "fib-id %d not found");
-      fib_index = p[0];
+      fib_index = fib_table_id_find_fib_index (FIB_PROTOCOL_IP6, fib_id);
+      if (fib_index == ~0)
+	return clib_error_return (0, "fib-id %d not found", fib_id);
     }
 
-  adj_index = ip6_fib_lookup_with_table (im, fib_index, &a);
+  fei = fib_table_lookup_exact_match (fib_index, &pfx);
 
-  if (adj_index == lm->miss_adj_index)
-    return clib_error_return (0, "no match for %U", format_ip6_address, &a);
+  if (FIB_NODE_INDEX_INVALID == fei)
+    return clib_error_return (0, "no match for %U",
+			      format_ip6_address, &pfx.fp_addr.ip6);
 
-  adj = ip_get_adjacency (lm, adj_index);
+  adj_index = fib_entry_get_adj_for_source (fei, FIB_SOURCE_SR);
+
+  if (ADJ_INDEX_INVALID == adj_index)
+    return clib_error_return (0, "%U not SR sourced",
+			      format_ip6_address, &pfx.fp_addr.ip6);
+
+  adj = adj_get (adj_index);
 
   if (adj->lookup_next_index != IP_LOOKUP_NEXT_REWRITE)
     return clib_error_return (0, "%U unresolved (not a rewrite adj)",
-			      format_ip6_address, &a);
+			      format_ip6_address, &pfx.fp_addr.ip6);
 
   adj->rewrite_header.next_index = sm->ip6_rewrite_sr_next_index;
 
