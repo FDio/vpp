@@ -193,7 +193,8 @@ map_create_domain (ip4_address_t * ip4_prefix,
   if (ip4_prefix_len + ea_bits_len < 32)
     {
       flags |= MAP_DOMAIN_PREFIX;
-      suffix_len = suffix_shift = 32 - ip4_prefix_len - ea_bits_len;
+      suffix_shift = 32 - ip4_prefix_len - ea_bits_len;
+      suffix_len = ea_bits_len;
     }
   else
     {

@@ -21,6 +21,11 @@ nobase_include_HEADERS =
 noinst_PROGRAMS =
 TESTS =
 
+dpdk_libs =
+if WITH_DPDK
+dpdk_libs += -l:libdpdk.a
+endif
+
 ########################################
 # Generic stuff
 ########################################
@@ -358,6 +363,20 @@ libvnet_la_SOURCES +=                           \
 nobase_include_HEADERS +=                       \
  vnet/map/map.h
 
+if ENABLE_TESTS
+TESTS += test_map
+test_map_SOURCES =                             \
+ vnet/map/test.c
+test_map_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+
+test_map_LDADD = libvnet.la -lvppinfra -lvlib	\
+  -lpthread -lvlibmemory -lvlibapi -lvlib_unix	\
+  -ldl -lsvm -lrt
+
+test_map_LDFLAGS = -static
+endif
+
+
 ########################################
 # Tunnel protocol: gre
 ########################################
@@ -448,7 +467,7 @@ nobase_include_HEADERS +=			\
 
 
 if ENABLE_TESTS
-LDS = -lvppinfra -l:libvlib.a -l:libdpdk.a -l:libvlibmemory.a \
+LDS = -lvppinfra -l:libvlib.a $(dpdk_libs) -l:libvlibmemory.a \
 	-l:libvlibapi.a -l:libsvm.a -lpthread -ldl -lrt -lm -l:libvlib_unix.a
 
 TESTS += test_cp_serdes test_lisp_types
@@ -698,12 +717,6 @@ nobase_include_HEADERS +=                      \
 
 lib_LTLIBRARIES = libvnet.la libvnetplugin.la
 
-dpdk_libs = 
-
-if WITH_DPDK
-dpdk_libs += -l:libdpdk.a
-endif
-
 pcap2pg_SOURCES = 				\
   vnet/unix/pcap2pg.c				\
   vnet/unix/pcap.h
@@ -712,5 +725,3 @@ pcap2pg_LDFLAGS = -static
 pcap2pg_LDADD = libvnet.la -l:libvppinfra.a -lpthread -lm -ldl
 
 noinst_PROGRAMS += pcap2pg
-
-
