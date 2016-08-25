@@ -679,7 +679,7 @@ vxlan6_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 /**
  * @brief VXLAN GPE error strings
  */
-static char * vxlan_gpe_error_strings[] = {
+static const char * vxlan_gpe_error_strings[] = {
 #define vxlan_gpe_error(n,s) s,
 #include <vnet/vxlan-gpe/vxlan_gpe_error.def>
 #undef vxlan_gpe_error

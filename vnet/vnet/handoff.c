@@ -390,7 +390,7 @@ typedef enum
     HANDOFF_DISPATCH_N_ERROR,
 } handoff_dispatch_error_t;
 
-static char *handoff_dispatch_error_strings[] = {
+static const char *handoff_dispatch_error_strings[] = {
 #define _(sym,string) string,
   foreach_handoff_dispatch_error
 #undef _

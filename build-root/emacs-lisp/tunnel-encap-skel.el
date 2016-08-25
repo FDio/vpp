@@ -21,7 +21,7 @@ nil
 #define foreach_" encap_stack "_encap_error    \\
 _(ENCAPSULATED, \"good packets encapsulated\")
 
-static char * " encap_stack "_encap_error_strings[] = {
+static const char *  " encap_stack "_encap_error_strings[] = {
 #define _(sym,string) string,
   foreach_" encap_stack "_encap_error
 #undef _

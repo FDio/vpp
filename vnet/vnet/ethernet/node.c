@@ -1083,7 +1083,7 @@ done:
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ethernet_sw_interface_add_del);
 
-static char *ethernet_error_strings[] = {
+static const char *ethernet_error_strings[] = {
 #define ethernet_error(n,c,s) s,
 #include "error.def"
 #undef ethernet_error

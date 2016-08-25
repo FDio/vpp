@@ -64,9 +64,9 @@ u8 *format (u8 * s, const char *format, ...);
 
 #endif
 
-word va_fformat (FILE * f, char *fmt, va_list * va);
-word fformat (FILE * f, char *fmt, ...);
-word fdformat (int fd, char *fmt, ...);
+word va_fformat (FILE * f, const char *fmt, va_list * va);
+word fformat (FILE * f, const char *fmt, ...);
+word fdformat (int fd, const char *fmt, ...);
 
 always_inline uword
 format_get_indent (u8 * s)
@@ -234,7 +234,7 @@ typedef uword (unformat_function_t) (unformat_input_t * input,
 /* External functions. */
 
 /* General unformatting function with programmable input stream. */
-uword unformat (unformat_input_t * i, char *fmt, ...);
+uword unformat (unformat_input_t * i, const char *fmt, ...);
 
 /* Call user defined parse function.
    unformat_user (i, f, ...) is equivalent to unformat (i, "%U", f, ...) */
@@ -242,7 +242,7 @@ uword unformat_user (unformat_input_t * input, unformat_function_t * func,
 		     ...);
 
 /* Alternate version which allows for extensions. */
-uword va_unformat (unformat_input_t * i, char *fmt, va_list * args);
+uword va_unformat (unformat_input_t * i, const char *fmt, va_list * args);
 
 /* Setup for unformat of Unix style command line. */
 void unformat_init_command_line (unformat_input_t * input, char *argv[]);

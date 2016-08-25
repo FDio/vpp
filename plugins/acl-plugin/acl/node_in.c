@@ -57,7 +57,7 @@ typedef enum
     ACL_IN_N_ERROR,
 } acl_in_error_t;
 
-static char *acl_in_error_strings[] = {
+static const char *acl_in_error_strings[] = {
 #define _(sym,string) string,
   foreach_acl_in_error
 #undef _

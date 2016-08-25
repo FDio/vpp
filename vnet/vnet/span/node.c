@@ -51,7 +51,7 @@ typedef enum
     SPAN_N_ERROR,
 } span_error_t;
 
-static char *span_error_strings[] = {
+static const char *span_error_strings[] = {
 #define _(sym,string) string,
   foreach_span_error
 #undef _

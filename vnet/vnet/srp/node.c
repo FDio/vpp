@@ -263,7 +263,7 @@ srp_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char * srp_error_strings[] = {
+static const char * srp_error_strings[] = {
 #define _(f,s) s,
   foreach_srp_error
 #undef _

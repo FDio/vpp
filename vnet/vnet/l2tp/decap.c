@@ -30,7 +30,7 @@ _(COOKIE_MISMATCH, "l2tpv3 local cookie mismatches")            \
 _(NO_SESSION, "l2tpv3 session not found")                       \
 _(ADMIN_DOWN, "l2tpv3 tunnel is down")
 
-static char *l2t_decap_error_strings[] = {
+static const char *l2t_decap_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2t_decap_error
 #undef _

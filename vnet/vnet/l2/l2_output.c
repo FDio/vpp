@@ -66,7 +66,7 @@ format_l2output_trace (u8 * s, va_list * args)
 }
 
 
-static char *l2output_error_strings[] = {
+static const char *l2output_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2output_error
 #undef _
@@ -460,7 +460,7 @@ VLIB_REGISTER_NODE (l2output_node,static) = {
 #define foreach_l2output_bad_intf_error	\
 _(DROP,     "L2 output to interface not in L2 mode or deleted")
 
-static char *l2output_bad_intf_error_strings[] = {
+static const char *l2output_bad_intf_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2output_bad_intf_error
 #undef _

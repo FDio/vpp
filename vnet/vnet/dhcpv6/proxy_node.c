@@ -20,7 +20,7 @@
 #include <vnet/dhcpv6/proxy.h>
 #include <vnet/fib/ip6_fib.h>
 
-static char * dhcpv6_proxy_error_strings[] = {
+static const char * dhcpv6_proxy_error_strings[] = {
 #define dhcpv6_proxy_error(n,s) s,
 #include "proxy_error.def"
 #undef dhcpv6_proxy_error

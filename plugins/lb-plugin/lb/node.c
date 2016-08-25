@@ -29,7 +29,7 @@ typedef enum {
     LB_N_ERROR,
 } lb_error_t;
 
-static char *lb_error_strings[] = {
+static const char * lb_error_strings[] = {
 #define _(sym,string) string,
     foreach_lb_error
 #undef _

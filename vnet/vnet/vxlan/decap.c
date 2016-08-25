@@ -667,7 +667,7 @@ vxlan6_input (vlib_main_t * vm,
 	return vxlan_input(vm, node, from_frame, /* is_ip4 */ 0);
 }
 
-static char * vxlan_error_strings[] = {
+static const char * vxlan_error_strings[] = {
 #define vxlan_error(n,s) s,
 #include <vnet/vxlan/vxlan_error.def>
 #undef vxlan_error

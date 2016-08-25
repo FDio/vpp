@@ -96,7 +96,7 @@ static void vl_api_control_ping_reply_t_handler
 }
 
 void
-vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
+vlib_cli_output (struct vlib_main_t *vm, const char *fmt, ...)
 {
   clib_warning ("BUG: vlib_cli_output callled...");
 }

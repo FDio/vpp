@@ -156,7 +156,7 @@ clib_mem_alloc_aligned_or_null (uword size, uword align)
 #define clib_mem_alloc_stack(bytes) __builtin_alloca(bytes)
 
 always_inline uword
-clib_mem_is_heap_object (void *p)
+clib_mem_is_heap_object (const void *p)
 {
   void *heap = clib_mem_get_per_cpu_heap ();
   uword offset = (uword) p - (uword) heap;

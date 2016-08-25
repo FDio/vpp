@@ -59,7 +59,7 @@ _(SWAPPED, "Mac swap packets processed")
     L2SESS_N_ERROR,
 } l2sess_error_t;
 
-static char *l2sess_error_strings[] = {
+static const char *l2sess_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2sess_error
 #undef _

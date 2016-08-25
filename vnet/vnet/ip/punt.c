@@ -96,7 +96,7 @@ udp46_punt_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char *punt_error_strings[] = {
+static const char *punt_error_strings[] = {
 #define punt_error(n,s) s,
 #include "punt_error.def"
 #undef punt_error

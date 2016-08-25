@@ -391,7 +391,7 @@ drop:
   return from_frame->n_vectors;
 }
 
-static char * ipsec_gre_error_strings[] = {
+static const char * ipsec_gre_error_strings[] = {
 #define ipsec_gre_error(n,s) s,
 #include "error.def"
 #undef ipsec_gre_error

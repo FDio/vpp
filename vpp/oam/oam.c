@@ -420,7 +420,7 @@ typedef enum
     OAM_N_ERROR,
 } oam_error_t;
 
-static char *oam_error_strings[] = {
+static const char *oam_error_strings[] = {
 #define _(sym,string) string,
   foreach_oam_error
 #undef _

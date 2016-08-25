@@ -45,7 +45,7 @@ typedef enum {
   IP6_COP_WHITELIST_N_ERROR,
 } ip6_cop_whitelist_error_t;
 
-static char * ip6_cop_whitelist_error_strings[] = {
+static const char * ip6_cop_whitelist_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip6_cop_whitelist_error
 #undef _

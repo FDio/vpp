@@ -77,7 +77,7 @@ typedef enum {
   CNAT_DB_V2_N_ERROR,
 } cnat_db_v2_error_t;
 
-static char * cnat_db_v2_error_strings[] __attribute__((unused)) = {
+static const char *  cnat_db_v2_error_strings[] __attribute__((unused)) = {
 #define _(sym,string) string,
   foreach_cnat_db_v2_error
 #undef _

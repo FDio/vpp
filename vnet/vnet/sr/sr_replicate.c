@@ -115,7 +115,7 @@ typedef enum
 /**
  * @brief Error strings for SR replicate
  */
-static char *sr_replicate_error_strings[] = {
+static const char *sr_replicate_error_strings[] = {
 #define _(sym,string) string,
   foreach_sr_replicate_error
 #undef _

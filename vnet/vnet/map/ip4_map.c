@@ -752,7 +752,7 @@ ip4_map_reass (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static char *map_error_strings[] = {
+static const char *map_error_strings[] = {
 #define _(sym,string) string,
   foreach_map_error
 #undef _

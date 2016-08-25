@@ -1068,11 +1068,12 @@ vlib_node_add_next (vlib_main_t * vm, uword node, uword next_node)
 /* Add next node to given node in given slot. */
 uword
 vlib_node_add_named_next_with_slot (vlib_main_t * vm,
-				    uword node, char *next_name, uword slot);
+				    uword node, const char *next_name,
+				    uword slot);
 
 /* As above but adds to end of node's next vector. */
 always_inline uword
-vlib_node_add_named_next (vlib_main_t * vm, uword node, char *name)
+vlib_node_add_named_next (vlib_main_t * vm, uword node, const char *name)
 {
   return vlib_node_add_named_next_with_slot (vm, node, name, ~0);
 }

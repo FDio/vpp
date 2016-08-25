@@ -442,7 +442,7 @@ lisp_gpe_ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   return lisp_gpe_input_inline (vm, node, from_frame, 0);
 }
 
-static char *lisp_gpe_ip4_input_error_strings[] = {
+static const char *lisp_gpe_ip4_input_error_strings[] = {
 #define lisp_gpe_error(n,s) s,
 #include <vnet/lisp-gpe/lisp_gpe_error.def>
 #undef lisp_gpe_error

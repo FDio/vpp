@@ -410,7 +410,7 @@ drop:
   return from_frame->n_vectors;
 }
 
-static char * gre_error_strings[] = {
+static const char * gre_error_strings[] = {
 #define gre_error(n,s) s,
 #include "error.def"
 #undef gre_error

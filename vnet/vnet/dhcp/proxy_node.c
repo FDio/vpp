@@ -20,7 +20,7 @@
 #include <vnet/dhcp/proxy.h>
 #include <vnet/fib/ip4_fib.h>
 
-static char * dhcp_proxy_error_strings[] = {
+static const char * dhcp_proxy_error_strings[] = {
 #define dhcp_proxy_error(n,s) s,
 #include "proxy_error.def"
 #undef dhcp_proxy_error

@@ -38,7 +38,7 @@ typedef enum
     NETMAP_INPUT_N_ERROR,
 } netmap_input_error_t;
 
-static char *netmap_input_error_strings[] = {
+static const char *netmap_input_error_strings[] = {
 #define _(n,s) s,
   foreach_netmap_input_error
 #undef _

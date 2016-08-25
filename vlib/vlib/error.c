@@ -122,7 +122,7 @@ misc_drop_buffers (vlib_main_t * vm,
 				  /* error */ 0);
 }
 
-static char *misc_drop_buffers_error_strings[] = {
+static const char *misc_drop_buffers_error_strings[] = {
   [0] = "misc. errors",
 };
 
@@ -143,7 +143,8 @@ VLIB_REGISTER_NODE (misc_drop_buffers_node,static) = {
 /* Reserves given number of error codes for given node. */
 void
 vlib_register_errors (vlib_main_t * vm,
-		      u32 node_index, u32 n_errors, char *error_strings[])
+		      u32 node_index, u32 n_errors,
+		      const char *error_strings[])
 {
   vlib_error_main_t *em = &vm->error_main;
   vlib_node_t *n = vlib_get_node (vm, node_index);

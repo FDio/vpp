@@ -3107,7 +3107,7 @@ VLIB_CLI_COMMAND (lisp_show_map_request_command) = {
 _(DROP, "drop")                                \
 _(MAP_REQUESTS_SENT, "map-request sent")
 
-static char *lisp_cp_lookup_error_strings[] = {
+static const char *lisp_cp_lookup_error_strings[] = {
 #define _(sym,string) string,
   foreach_lisp_cp_lookup_error
 #undef _
@@ -4068,7 +4068,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_l2_node) = {
 _(DROP, "drop")                                         \
 _(MAP_REPLIES_RECEIVED, "map-replies received")
 
-static char *lisp_cp_input_error_strings[] = {
+static const char *lisp_cp_input_error_strings[] = {
 #define _(sym,string) string,
   foreach_lisp_cp_input_error
 #undef _

@@ -102,7 +102,7 @@ typedef enum {
   VCGN_CLASSIFY_N_ERROR,
 } vcgn_classify_error_t;
 
-static char * vcgn_classify_error_strings[] = {
+static const char *  vcgn_classify_error_strings[] = {
 #define _(sym,string) string,
   foreach_vcgn_classify_error
 #undef _

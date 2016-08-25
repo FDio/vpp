@@ -54,7 +54,7 @@ typedef enum {
   MCAST_PREP_N_ERROR,
 } mcast_prep_error_t;
 
-static char * mcast_prep_error_strings[] = {
+static const char * mcast_prep_error_strings[] = {
 #define _(sym,string) string,
   foreach_mcast_prep_error
 #undef _
@@ -276,7 +276,7 @@ typedef enum {
   MCAST_RECYCLE_N_ERROR,
 } mcast_recycle_error_t;
 
-static char * mcast_recycle_error_strings[] = {
+static const char * mcast_recycle_error_strings[] = {
 #define _(sym,string) string,
   foreach_mcast_recycle_error
 #undef _

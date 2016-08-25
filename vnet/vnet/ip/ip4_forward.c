@@ -2112,7 +2112,7 @@ ip4_glean (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return (ip4_arp_inline (vm, node, frame, 1));
 }
 
-static char *ip4_arp_error_strings[] = {
+static const char *ip4_arp_error_strings[] = {
   [IP4_ARP_ERROR_DROP] = "address overflow drops",
   [IP4_ARP_ERROR_REQUEST_SENT] = "ARP requests sent",
   [IP4_ARP_ERROR_NON_ARP_ADJ] = "ARPs to non-ARP adjacencies",

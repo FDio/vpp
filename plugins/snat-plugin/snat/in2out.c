@@ -101,7 +101,7 @@ typedef enum {
   SNAT_IN2OUT_N_ERROR,
 } snat_in2out_error_t;
 
-static char * snat_in2out_error_strings[] = {
+static const char *  snat_in2out_error_strings[] = {
 #define _(sym,string) string,
   foreach_snat_in2out_error
 #undef _

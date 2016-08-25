@@ -97,7 +97,7 @@ typedef enum
     L2_EFP_FILTER_N_ERROR,
 } l2_efp_filter_error_t;
 
-static char *l2_efp_filter_error_strings[] = {
+static const char *l2_efp_filter_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2_efp_filter_error
 #undef _

@@ -233,7 +233,7 @@ osi_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char *osi_error_strings[] = {
+static const char *osi_error_strings[] = {
 #define _(f,s) s,
   foreach_osi_error
 #undef _

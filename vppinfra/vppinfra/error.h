@@ -100,7 +100,8 @@ extern void *clib_error_free_vector (clib_error_t * errors);
 extern clib_error_t *_clib_error_return (clib_error_t * errors,
 					 any code,
 					 uword flags,
-					 char *where, char *fmt, ...);
+					 const char *where, const char *fmt,
+					 ...);
 
 #define clib_error_return_code(e,code,flags,args...) \
   _clib_error_return((e),(code),(flags),(char *)clib_error_function,args)

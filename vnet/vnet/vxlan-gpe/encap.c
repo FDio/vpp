@@ -31,7 +31,7 @@ _(ENCAPSULATED, "good packets encapsulated")
 /**
  * @brief VXLAN GPE encap error strings
  */
-static char * vxlan_gpe_encap_error_strings[] = {
+static const char * vxlan_gpe_encap_error_strings[] = {
 #define _(sym,string) string,
   foreach_vxlan_gpe_encap_error
 #undef _

@@ -70,9 +70,9 @@ typedef struct
 
 typedef struct
 {
-  char *name;
-  char *short_help;
-  char *long_help;
+  const char *name;
+  const char *short_help;
+  const char *long_help;
 
   /* Number of bytes in parsed data.  Zero for vector. */
   uword data_size;
@@ -92,11 +92,11 @@ typedef struct vlib_cli_command_t
 {
   /* Command path (e.g. "show something").
      Spaces delimit elements of path. */
-  char *path;
+  const char *path;
 
   /* Short/long help strings. */
-  char *short_help;
-  char *long_help;
+  const char *short_help;
+  const char *long_help;
 
   /* Callback function. */
   vlib_cli_command_function_t *function;
@@ -166,7 +166,7 @@ __VA_ARGS__ vlib_cli_command_t x
 #define VLIB_CLI_PARSE_RULE(x) \
   vlib_cli_parse_rule_t x
 /* Output to current CLI connection. */
-void vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...);
+void vlib_cli_output (struct vlib_main_t *vm, const char *fmt, ...);
 
 /* Process CLI input. */
 void vlib_cli_input (struct vlib_main_t *vm,

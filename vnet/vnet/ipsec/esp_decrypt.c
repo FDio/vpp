@@ -54,7 +54,7 @@ typedef enum
     ESP_DECRYPT_N_ERROR,
 } esp_decrypt_error_t;
 
-static char *esp_decrypt_error_strings[] = {
+static const char *esp_decrypt_error_strings[] = {
 #define _(sym,string) string,
   foreach_esp_decrypt_error
 #undef _

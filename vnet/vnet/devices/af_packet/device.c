@@ -40,7 +40,7 @@ typedef enum
     AF_PACKET_TX_N_ERROR,
 } af_packet_tx_func_error_t;
 
-static char *af_packet_tx_func_error_strings[] = {
+static const char *af_packet_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_af_packet_tx_func_error
 #undef _

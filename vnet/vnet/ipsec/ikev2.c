@@ -67,7 +67,7 @@ typedef enum
     IKEV2_N_ERROR,
 } ikev2_error_t;
 
-static char *ikev2_error_strings[] = {
+static const char *ikev2_error_strings[] = {
 #define _(sym,string) string,
   foreach_ikev2_error
 #undef _
