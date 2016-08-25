@@ -818,7 +818,7 @@ vnet_register_interface (vnet_main_t * vnm,
       r.format_trace = format_vnet_interface_output_trace;
 
       {
-	static char *e[] = {
+	static const char *e[] = {
 	  "interface is down",
 	  "interface is deleted",
 	};

@@ -36,7 +36,7 @@ typedef enum {
   CNAT_IPV4_ICMP_E_INSIDE_INPUT_N_ERROR,
 } cnat_ipv4_icmp_e_inside_input_t;
 
-static char * cnat_ipv4_icmp_e_inside_input_error_strings[] = {
+static const char *  cnat_ipv4_icmp_e_inside_input_error_strings[] = {
 #define _(sym,string) string,
   foreach_cnat_ipv4_icmp_e_inside_input_error
 #undef _

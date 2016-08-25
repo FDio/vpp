@@ -34,7 +34,7 @@ connect_to_vpe (char *name)
 }
 
 void
-vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
+vlib_cli_output (struct vlib_main_t *vm, const char *fmt, ...)
 {
   clib_warning ("BUG");
 }

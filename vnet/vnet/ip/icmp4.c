@@ -42,7 +42,7 @@
 #include <vnet/pg/pg.h>
 
 
-static char *icmp_error_strings[] = {
+static const char *icmp_error_strings[] = {
 #define _(f,s) s,
   foreach_icmp4_error
 #undef _

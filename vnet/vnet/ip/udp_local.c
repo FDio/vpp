@@ -396,7 +396,7 @@ udp46_input_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char *udp_error_strings[] = {
+static const char *udp_error_strings[] = {
 #define udp_error(n,s) s,
 #include "udp_error.def"
 #undef udp_error

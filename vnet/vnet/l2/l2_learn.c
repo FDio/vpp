@@ -89,7 +89,7 @@ typedef enum
     L2LEARN_N_ERROR,
 } l2learn_error_t;
 
-static char *l2learn_error_strings[] = {
+static const char *l2learn_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2learn_error
 #undef _

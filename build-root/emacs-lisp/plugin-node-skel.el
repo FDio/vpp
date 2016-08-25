@@ -86,7 +86,7 @@ typedef enum {
   " PLUGIN-NAME "_N_ERROR,
 } " plugin-name "_error_t;
 
-static char * " plugin-name "_error_strings[] = {
+static const char *  " plugin-name "_error_strings[] = {
 #define _(sym,string) string,
   foreach_" plugin-name "_error
 #undef _

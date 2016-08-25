@@ -211,7 +211,7 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
 /* Add named next node to given node in given slot. */
 uword
 vlib_node_add_named_next_with_slot (vlib_main_t * vm,
-				    uword node, char *name, uword slot)
+				    uword node, const char *name, uword slot)
 {
   vlib_node_main_t *nm;
   vlib_node_t *n, *n_next;
@@ -284,7 +284,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   vec_add1 (nm->nodes, n);
 
   /* Name is always a vector so it can be formatted with %v. */
-  if (clib_mem_is_heap_object (vec_header (r->name, 0)))
+  if (clib_mem_is_heap_object (vec_header_const (r->name, 0)))
     n->name = vec_dup ((u8 *) r->name);
   else
     n->name = format (0, "%s", r->name);
@@ -472,7 +472,7 @@ vlib_register_all_static_nodes (vlib_main_t * vm)
 {
   vlib_node_registration_t *r;
 
-  static char *null_node_error_strings[] = {
+  static const char *null_node_error_strings[] = {
     "blackholed packets",
   };
 
@@ -555,7 +555,7 @@ vlib_node_main_init (vlib_main_t * vm)
 
       for (i = 0; i < vec_len (n->next_node_names); i++)
 	{
-	  char *a = n->next_node_names[i];
+	  const char *a = n->next_node_names[i];
 
 	  if (!a)
 	    continue;

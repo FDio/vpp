@@ -87,7 +87,7 @@ typedef enum
     L2_INACL_N_ERROR,
 } l2_inacl_error_t;
 
-static char *l2_inacl_error_strings[] = {
+static const char *l2_inacl_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2_inacl_error
 #undef _

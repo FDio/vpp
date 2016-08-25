@@ -81,7 +81,7 @@ typedef struct _vlib_node_registration
   vlib_node_function_t *function;
 
   /* Node name. */
-  char *name;
+  const char *name;
 
   /* Name of sibling (if applicable). */
   char *sibling_of;
@@ -93,7 +93,7 @@ typedef struct _vlib_node_registration
   vlib_node_type_t type;
 
   /* Error strings indexed by error code for this node. */
-  char **error_strings;
+  const char **error_strings;
 
   /* Buffer format/unformat for this node. */
   format_function_t *format_buffer;
@@ -136,7 +136,7 @@ typedef struct _vlib_node_registration
   struct _vlib_node_registration *next_registration;
 
   /* Names of next nodes which this node feeds into. */
-  char *next_nodes[];
+  const char *next_nodes[];
 
 } vlib_node_registration_t;
 
@@ -278,17 +278,17 @@ typedef struct vlib_node_t
   u32 error_heap_index;
 
   /* Error strings indexed by error code for this node. */
-  char **error_strings;
+  const char **error_strings;
 
   /* Vector of next node names.
      Only used before next_nodes array is initialized. */
-  char **next_node_names;
+  const char **next_node_names;
 
   /* Next node indices for this node. */
   u32 *next_nodes;
 
   /* Name of node that we are sibling of. */
-  char *sibling_of;
+  const char *sibling_of;
 
   /* Bitmap of all of this node's siblings. */
   uword *sibling_bitmap;

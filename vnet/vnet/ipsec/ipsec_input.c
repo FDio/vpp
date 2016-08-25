@@ -55,7 +55,7 @@ typedef enum
     IPSEC_INPUT_N_ERROR,
 } ipsec_input_error_t;
 
-static char *ipsec_input_error_strings[] = {
+static const char *ipsec_input_error_strings[] = {
 #define _(sym,string) string,
   foreach_ipsec_input_error
 #undef _

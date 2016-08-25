@@ -106,7 +106,7 @@ ip4_sixrd (vlib_main_t *vm,
   return frame->n_vectors;
 }
 
-static char *sixrd_error_strings[] = {
+static const char * sixrd_error_strings[] = {
 #define _(sym,string) string,
   foreach_sixrd_error
 #undef _

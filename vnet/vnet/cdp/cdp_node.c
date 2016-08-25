@@ -33,7 +33,7 @@ static vlib_node_registration_t cdp_process_node;
  * packet counter strings
  * Dump these counters via the "show error" CLI command
  */
-static char *cdp_error_strings[] = {
+static const char *cdp_error_strings[] = {
 #define _(sym,string) string,
   foreach_cdp_error
 #undef _

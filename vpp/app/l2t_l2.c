@@ -34,7 +34,7 @@ l2t_main_t l2t_main;
 #define foreach_l2t_l2_error                       \
 _(NETWORK_TO_USER, "L2 network to user (ip6) pkts")
 
-static char *l2t_l2_error_strings[] = {
+static const char *l2t_l2_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2t_l2_error
 #undef _

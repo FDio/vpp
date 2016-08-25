@@ -31,7 +31,7 @@
 #define foreach_ipsec_if_output_error    \
 _(TX, "good packets transmitted")
 
-static char *ipsec_if_output_error_strings[] = {
+static const char *ipsec_if_output_error_strings[] = {
 #define _(sym,string) string,
   foreach_ipsec_if_output_error
 #undef _

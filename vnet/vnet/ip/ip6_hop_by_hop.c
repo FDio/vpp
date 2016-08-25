@@ -254,7 +254,7 @@ typedef enum
     IP6_ADD_HOP_BY_HOP_N_ERROR,
 } ip6_add_hop_by_hop_error_t;
 
-static char *ip6_add_hop_by_hop_error_strings[] = {
+static const char *ip6_add_hop_by_hop_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip6_add_hop_by_hop_error
 #undef _
@@ -551,7 +551,7 @@ typedef enum
     IP6_POP_HOP_BY_HOP_N_ERROR,
 } ip6_pop_hop_by_hop_error_t;
 
-static char *ip6_pop_hop_by_hop_error_strings[] = {
+static const char *ip6_pop_hop_by_hop_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip6_pop_hop_by_hop_error
 #undef _

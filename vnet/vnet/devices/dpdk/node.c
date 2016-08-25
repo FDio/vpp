@@ -28,7 +28,7 @@
 
 #include "dpdk_priv.h"
 
-static char *dpdk_error_strings[] = {
+static const char *dpdk_error_strings[] = {
 #define _(n,s) s,
   foreach_dpdk_error
 #undef _

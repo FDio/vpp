@@ -53,7 +53,7 @@ typedef enum {
   FLOW_CLASSIFY_N_ERROR,
 } flow_classify_error_t;
 
-static char * flow_classify_error_strings[] = {
+static const char * flow_classify_error_strings[] = {
 #define _(sym,string) string,
   foreach_flow_classify_error
 #undef _

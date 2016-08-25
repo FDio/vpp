@@ -557,7 +557,7 @@ void vlib_packet_template_init (vlib_main_t * vm,
 				void *packet_data,
 				uword n_packet_data_bytes,
 				uword min_n_buffers_each_physmem_alloc,
-				char *fmt, ...);
+				const char *fmt, ...);
 
 void *vlib_packet_template_get_packet (vlib_main_t * vm,
 				       vlib_packet_template_t * t,

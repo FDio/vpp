@@ -292,7 +292,7 @@ mpls_output_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char * mpls_error_strings[] = {
+static const char * mpls_error_strings[] = {
 #define mpls_error(n,s) s,
 #include "error.def"
 #undef mpls_error

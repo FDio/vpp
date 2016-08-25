@@ -51,7 +51,7 @@ typedef enum
     FEAT_BITMAP_DROP_N_ERROR,
 } feat_bitmap_drop_error_t;
 
-static char *feat_bitmap_drop_error_strings[] = {
+static const char *feat_bitmap_drop_error_strings[] = {
 #define _(sym,string) string,
   foreach_feat_bitmap_drop_error
 #undef _

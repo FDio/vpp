@@ -1174,7 +1174,7 @@ ip6_map_icmp_relay (vlib_main_t * vm,
 
 }
 
-static char *map_error_strings[] = {
+static const char *map_error_strings[] = {
 #define _(sym,string) string,
   foreach_map_error
 #undef _

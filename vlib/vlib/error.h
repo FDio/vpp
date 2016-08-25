@@ -88,7 +88,7 @@ typedef struct
 /* Per node error registration. */
 void vlib_register_errors (struct vlib_main_t *vm,
 			   u32 node_index,
-			   u32 n_errors, char *error_strings[]);
+			   u32 n_errors, const char *error_strings[]);
 
 #endif /* included_vlib_error_h */
 

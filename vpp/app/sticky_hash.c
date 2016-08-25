@@ -92,7 +92,7 @@ typedef enum
     STICKY_HASH_MISS_N_ERROR,
 } sticky_hash_miss_error_t;
 
-static char *sticky_hash_miss_error_strings[] = {
+static const char *sticky_hash_miss_error_strings[] = {
 #define _(sym,string) string,
   foreach_sticky_hash_miss_error
 #undef _

@@ -91,7 +91,7 @@ test_main_t test_main;
  * Satisfy external references when -lvlib is not available.
  */
 void
-vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
+vlib_cli_output (struct vlib_main_t *vm, const char *fmt, ...)
 {
   clib_warning ("vlib_cli_output callled...");
 }

@@ -44,7 +44,7 @@ typedef enum {
   COP_INPUT_N_ERROR,
 } cop_input_error_t;
 
-static char * cop_input_error_strings[] = {
+static const char * cop_input_error_strings[] = {
 #define _(sym,string) string,
   foreach_cop_input_error
 #undef _

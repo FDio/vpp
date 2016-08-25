@@ -406,7 +406,7 @@ ip4_input_no_checksum (vlib_main_t * vm,
   return ip4_input_inline (vm, node, frame, /* verify_checksum */ 0);
 }
 
-static char *ip4_error_strings[] = {
+static const char *ip4_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip4_error
 #undef _

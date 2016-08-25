@@ -525,7 +525,7 @@ ip6_frag (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return frame->n_vectors;
 }
 
-static char *ip4_frag_error_strings[] = {
+static const char *ip4_frag_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip_frag_error
 #undef _

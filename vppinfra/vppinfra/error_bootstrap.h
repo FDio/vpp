@@ -64,7 +64,7 @@ enum
    all (for non-fatal warnings). */
 extern void _clib_error (int code,
 			 char *function_name,
-			 uword line_number, char *format, ...);
+			 uword line_number, const char *format, ...);
 
 #define ASSERT(truth)					\
 do {							\

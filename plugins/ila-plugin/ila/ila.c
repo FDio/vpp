@@ -34,7 +34,7 @@ typedef enum {
     ILA_N_ERROR,
 } ila_error_t;
 
-static char *ila_error_strings[] = {
+static const char * ila_error_strings[] = {
 #define _(sym,string) string,
   foreach_ila_error
 #undef _

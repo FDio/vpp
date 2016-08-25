@@ -1839,7 +1839,7 @@ ip6_glean (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return (ip6_discover_neighbor_inline (vm, node, frame, 1));
 }
 
-static char *ip6_discover_neighbor_error_strings[] = {
+static const char *ip6_discover_neighbor_error_strings[] = {
   [IP6_DISCOVER_NEIGHBOR_ERROR_DROP] = "address overflow drops",
   [IP6_DISCOVER_NEIGHBOR_ERROR_REQUEST_SENT] = "neighbor solicitations sent",
   [IP6_DISCOVER_NEIGHBOR_ERROR_NO_SOURCE_ADDRESS]
@@ -2360,7 +2360,7 @@ typedef struct
 
 vlib_node_registration_t ip6_hop_by_hop_node;
 
-static char *ip6_hop_by_hop_error_strings[] = {
+static const char *ip6_hop_by_hop_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip6_hop_by_hop_error
 #undef _

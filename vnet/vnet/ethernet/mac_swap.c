@@ -75,7 +75,7 @@ typedef enum
     MAC_SWAP_N_ERROR,
 } mac_swap_error_t;
 
-static char *mac_swap_error_strings[] = {
+static const char *mac_swap_error_strings[] = {
 #define _(sym,string) string,
   foreach_mac_swap_error
 #undef _

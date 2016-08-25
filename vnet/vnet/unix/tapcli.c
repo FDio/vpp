@@ -431,7 +431,7 @@ tapcli_rx (vlib_main_t * vm,
 }
 
 /** TAPCLI error strings */
-static char * tapcli_rx_error_strings[] = {
+static const char * tapcli_rx_error_strings[] = {
 #define _(sym,string) string,
   foreach_tapcli_error
 #undef _

@@ -99,7 +99,7 @@ typedef enum
     L2FWD_N_ERROR,
 } l2fwd_error_t;
 
-static char *l2fwd_error_strings[] = {
+static const char *l2fwd_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2fwd_error
 #undef _

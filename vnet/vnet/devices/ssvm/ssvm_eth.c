@@ -208,7 +208,7 @@ ssvm_eth_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ssvm_eth_init);
 
-static char *ssvm_eth_tx_func_error_strings[] = {
+static const char *ssvm_eth_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_ssvm_eth_tx_func_error
 #undef _

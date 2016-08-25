@@ -53,7 +53,7 @@ typedef enum {
   LI_HIT_N_ERROR,
 } li_hit_error_t;
 
-static char * li_hit_error_strings[] = {
+static const char * li_hit_error_strings[] = {
 #define _(sym,string) string,
   foreach_li_hit_error
 #undef _

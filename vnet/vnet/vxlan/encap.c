@@ -23,7 +23,7 @@
 #define foreach_vxlan_encap_error    \
 _(ENCAPSULATED, "good packets encapsulated")
 
-static char * vxlan_encap_error_strings[] = {
+static const char * vxlan_encap_error_strings[] = {
 #define _(sym,string) string,
   foreach_vxlan_encap_error
 #undef _

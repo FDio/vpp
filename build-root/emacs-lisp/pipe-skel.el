@@ -20,7 +20,7 @@ nil
 #define foreach_" node-name "_error \\
 _(ERROR1, \"sample counter/ error string\")
 
-static char * " node-name "_error_strings[] = {
+static const char *  " node-name "_error_strings[] = {
 #define _(sym,string) string,
   foreach_" node-name "_error
 #undef _

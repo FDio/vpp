@@ -65,7 +65,7 @@ typedef enum
     L2_PATCH_N_ERROR,
 } l2_patch_error_t;
 
-static char *l2_patch_error_strings[] = {
+static const char *l2_patch_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2_patch_error
 #undef _
