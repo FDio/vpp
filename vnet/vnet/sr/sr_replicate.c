@@ -32,6 +32,7 @@
 #include <vnet/devices/dpdk/dpdk.h>
 #include <vnet/dpdk_replication.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/ip6_fib.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
@@ -76,16 +77,12 @@ format_sr_replicate_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   sr_replicate_trace_t *t = va_arg (*args, sr_replicate_trace_t *);
-  ip6_main_t *im = &ip6_main;
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_tunnel_t *tun = pool_elt_at_index (sm->tunnels, t->tunnel_index);
   ip6_fib_t *rx_fib, *tx_fib;
 
-  rx_fib = find_ip6_fib_by_table_index_or_id (im, tun->rx_fib_index,
-					      IP6_ROUTE_FLAG_FIB_INDEX);
-
-  tx_fib = find_ip6_fib_by_table_index_or_id (im, tun->tx_fib_index,
-					      IP6_ROUTE_FLAG_FIB_INDEX);
+  rx_fib = ip6_fib_get (tun->rx_fib_index);
+  tx_fib = ip6_fib_get (tun->tx_fib_index);
 
   s = format
     (s, "SR-REPLICATE: next %s ip6 src %U dst %U len %u\n"

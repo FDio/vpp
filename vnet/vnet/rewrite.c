@@ -70,27 +70,25 @@ format_vnet_rewrite (u8 * s, va_list * args)
   vlib_main_t *vm = va_arg (*args, vlib_main_t *);
   vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
   u32 max_data_bytes = va_arg (*args, u32);
+  CLIB_UNUSED (uword indent) = va_arg (*args, u32);
   vnet_main_t *vnm = vnet_get_main ();
   vlib_node_t *next;
-  uword indent;
 
   next = vlib_get_next_node (vm, rw->node_index, rw->next_index);
-
-  indent = format_get_indent (s);
 
   if (rw->sw_if_index != ~0)
     {
       vnet_sw_interface_t *si;
       si = vnet_get_sw_interface (vnm, rw->sw_if_index);
-      s = format (s, "%U", format_vnet_sw_interface_name, vnm, si);
+      s = format (s, "%U: ", format_vnet_sw_interface_name, vnm, si);
     }
   else
-    s = format (s, "%v", next->name);
+    s = format (s, "%v: ", next->name);
 
   /* Format rewrite string. */
   if (rw->data_bytes > 0)
-    s = format (s, "\n%U%U",
-		format_white_space, indent,
+
+    s = format (s, "%U",
 		next->format_buffer ? next->format_buffer : format_hex_bytes,
 		rw->data + max_data_bytes - rw->data_bytes, rw->data_bytes);
 

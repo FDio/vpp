@@ -1106,9 +1106,7 @@ uword unformat_l2_output_next_index (unformat_input_t * input, va_list * args)
 }
 
 #define foreach_ip_next                         \
-_(miss, MISS)                                   \
 _(drop, DROP)                                   \
-_(local, LOCAL)                                 \
 _(rewrite, REWRITE)
 
 uword unformat_ip_next_index (unformat_input_t * input, va_list * args)
@@ -2121,7 +2119,7 @@ test_classify_command_fn (vlib_main_t * vm,
                                        memory_size,
                                        0 /* skip */,
                                        3 /* vectors to match */);
-          t->miss_next_index = IP_LOOKUP_NEXT_LOCAL;
+          t->miss_next_index = IP_LOOKUP_NEXT_DROP;
           vlib_cli_output (vm, "Create table %d", t - cm->tables);
         }
       
