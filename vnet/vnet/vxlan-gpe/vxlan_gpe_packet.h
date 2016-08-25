@@ -12,10 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ *  @file
+ *  @brief VXLAN GPE packet header structure
+ *
+*/
 #ifndef included_vxlan_gpe_packet_h
 #define included_vxlan_gpe_packet_h
 
-/*
+/**
  *   From draft-quinn-vxlan-gpe-03.txt
  *
  *    0                   1                   2                   3
@@ -52,25 +57,45 @@
  *      0x4 : Network Service Header [NSH]
  */
 
-#define foreach_vxlan_gpe_protocol   \
+/**
+ * @brief VXLAN GPE support inner protocol definition.
+ * 1 - IP4
+ * 2 - IP6
+ * 3 - ETHERNET
+ * 4 - NSH
+ */
+#define foreach_vxlan_gpe_protocol \
 _ (0x01, IP4)                         \
 _ (0x02, IP6)                         \
 _ (0x03, ETHERNET)		     \
-_ (0x04, NSH)						
+_ (0x04, NSH)
 
 
+/**
+ * @brief Struct for VXLAN GPE support inner protocol definition.
+ * 1 - IP4
+ * 2 - IP6
+ * 3 - ETHERNET
+ * 4 - NSH
+ */
 typedef enum {
 #define _(n,f) VXLAN_GPE_PROTOCOL_##f = n,
   foreach_vxlan_gpe_protocol
 #undef _
 } vxlan_gpe_protocol_t;
 
+/**
+ * @brief VXLAN GPE Header definition
+ */
 typedef struct {
   u8 flags;
+  /** Version and Reserved */
   u8 ver_res;
+  /** Reserved */
   u8 res;
-  /* see vxlan_gpe_protocol_t */
+  /** see vxlan_gpe_protocol_t */
   u8 protocol;
+  /** VNI and Reserved */
   u32 vni_res;
 } vxlan_gpe_header_t;
 

@@ -12,6 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ *  @file
+ *  @brief VXLAN GPE definitions
+ *
+*/
 #ifndef included_vnet_vxlan_gpe_h
 #define included_vnet_vxlan_gpe_h
 
@@ -26,80 +31,102 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/udp.h>
 
-
+/**
+ * @brief VXLAN GPE header struct
+ *
+ */
 typedef CLIB_PACKED (struct {
-  ip4_header_t ip4;             /* 20 bytes */
-  udp_header_t udp;             /* 8 bytes */
-  vxlan_gpe_header_t vxlan;     /* 8 bytes */
+  /** 20 bytes */
+  ip4_header_t ip4;
+  /** 8 bytes */
+  udp_header_t udp;
+  /** 8 bytes */
+  vxlan_gpe_header_t vxlan;
 }) ip4_vxlan_gpe_header_t;
 
 typedef CLIB_PACKED (struct {
-  ip6_header_t ip6;             /* 40 bytes */
-  udp_header_t udp;             /* 8 bytes */
-  vxlan_gpe_header_t vxlan;     /* 8 bytes */
+  /** 40 bytes */
+  ip6_header_t ip6;
+  /** 8 bytes */
+  udp_header_t udp;
+  /** 8 bytes */
+  vxlan_gpe_header_t vxlan;
 }) ip6_vxlan_gpe_header_t;
 
+/**
+ * @brief Key struct for IPv4 VXLAN GPE tunnel.
+ * Key fields: local remote, vni
+ * all fields in NET byte order
+ * VNI shifted 8 bits
+ */
 typedef CLIB_PACKED(struct {
-  /*
-   * Key fields: local remote, vni
-   * all fields in NET byte order
-   */
   union {
     struct {
       u32 local;
       u32 remote;
-      u32 vni;                      /* shifted 8 bits */
+
+      u32 vni;
       u32 pad;
     };
     u64 as_u64[2];
   };
 }) vxlan4_gpe_tunnel_key_t;
 
+/**
+ * @brief Key struct for IPv6 VXLAN GPE tunnel.
+ * Key fields: local remote, vni
+ * all fields in NET byte order
+ * VNI shifted 8 bits
+ */
 typedef CLIB_PACKED(struct {
-  /*
-   * Key fields: local remote, vni
-   * all fields in NET byte order
-   */
   ip6_address_t local;
   ip6_address_t remote;
-  u32 vni;                      /* shifted 8 bits */
+  u32 vni;
 }) vxlan6_gpe_tunnel_key_t;
 
+/**
+ * @brief Struct for VXLAN GPE tunnel
+ */
 typedef struct {
-  /* Rewrite string. $$$$ embed vnet_rewrite header */
+  /** Rewrite string. $$$$ embed vnet_rewrite header */
   u8 * rewrite;
 
-  /* encapsulated protocol */
+  /** encapsulated protocol */
   u8 protocol;
 
-  /* tunnel src and dst addresses */
+  /** tunnel local address */
   ip46_address_t local;
+  /** tunnel remote address */
   ip46_address_t remote;
 
-  /* FIB indices */
-  u32 encap_fib_index;          /* tunnel partner lookup here */
-  u32 decap_fib_index;          /* inner IP lookup here */
+  /** FIB indices - tunnel partner lookup here */
+  u32 encap_fib_index;
+  /** FIB indices - inner IP packet lookup here */
+  u32 decap_fib_index;
 
-  /* vxlan VNI in HOST byte order, shifted left 8 bits */
+  /** VXLAN GPE VNI in HOST byte order, shifted left 8 bits */
   u32 vni;
 
-  /* vnet intfc hw/sw_if_index */
+  /** vnet intfc hw_if_index */
   u32 hw_if_index;
+  /** vnet intfc sw_if_index */
   u32 sw_if_index;
 
-  /* flags */
+  /** flags */
   u32 flags;
 } vxlan_gpe_tunnel_t;
 
-/* Flags for vxlan_gpe_tunnel_t.flags */
+/** Flags for vxlan_gpe_tunnel_t */
 #define VXLAN_GPE_TUNNEL_IS_IPV4	1
 
+/** next nodes for VXLAN GPE input */
 #define foreach_vxlan_gpe_input_next        \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")                       \
 _(ETHERNET_INPUT, "ethernet-input")
 
+/** struct for next nodes for VXLAN GPE input */
 typedef enum {
 #define _(s,n) VXLAN_GPE_INPUT_NEXT_##s,
   foreach_vxlan_gpe_input_next
@@ -107,6 +134,7 @@ typedef enum {
   VXLAN_GPE_INPUT_N_NEXT,
 } vxlan_gpe_input_next_t;
 
+/** struct for VXLAN GPE errors */
 typedef enum {
 #define vxlan_gpe_error(n,s) VXLAN_GPE_ERROR_##n,
 #include <vnet/vxlan-gpe/vxlan_gpe_error.def>
@@ -114,22 +142,25 @@ typedef enum {
   VXLAN_GPE_N_ERROR,
 } vxlan_gpe_input_error_t;
 
+/** Struct for VXLAN GPE node state */
 typedef struct {
-  /* vector of encap tunnel instances */
+  /** vector of encap tunnel instances */
   vxlan_gpe_tunnel_t *tunnels;
 
-  /* lookup tunnel by key */
+  /** lookup IPv4 VXLAN GPE tunnel by key */
   uword * vxlan4_gpe_tunnel_by_key;
+  /** lookup IPv6 VXLAN GPE tunnel by key */
   uword * vxlan6_gpe_tunnel_by_key;
 
-  /* Free vlib hw_if_indices */
+  /** Free vlib hw_if_indices */
   u32 * free_vxlan_gpe_tunnel_hw_if_indices;
 
-  /* Mapping from sw_if_index to tunnel index */
+  /** Mapping from sw_if_index to tunnel index */
   u32 * tunnel_index_by_sw_if_index;
 
-  /* convenience */
+  /** State convenience vlib_main_t */
   vlib_main_t * vlib_main;
+  /** State convenience vnet_main_t */
   vnet_main_t * vnet_main;
 } vxlan_gpe_main_t;
 
@@ -141,6 +172,7 @@ extern vlib_node_registration_t vxlan6_gpe_input_node;
 
 u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args);
 
+/** Struct for VXLAN GPE add/del args */
 typedef struct {
   u8 is_add;
   u8 is_ip6;
