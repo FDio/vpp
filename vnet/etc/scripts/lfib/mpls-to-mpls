@@ -1,0 +1,26 @@
+packet-generator new {
+  name x
+  limit 1
+  node mpls-input
+  size 68-68
+  no-recycle
+  data {
+   hex 0x0001e1ff4500004000000000400177ba010000020200000208007a6e000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324252627
+  }
+}
+
+loop create
+loop create
+set int state loop0 up
+set int state loop1 up
+
+set int ip address loop0 1.0.0.1/24
+set int ip address loop1 2.0.0.1/24
+
+set ip arp static loop1 2.0.0.2 dead.beef.babe
+set int mpls loop1 enable
+
+ip route add 2.2.2.2/32 via 2.0.0.2 loop1 out-label 33
+mpls local-label add 30 2.2.2.2/32 
+
+trace add pg-input 100

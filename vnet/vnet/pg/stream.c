@@ -40,6 +40,8 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ip/ip.h>
+#include <vnet/mpls/mpls.h>
 
 /* Mark stream active or inactive. */
 void
@@ -186,6 +188,10 @@ pg_interface_add_or_get (pg_main_t * pg, uword if_id)
       pi->sw_if_index = hi->sw_if_index;
 
       hash_set (pg->if_index_by_if_id, if_id, i);
+
+      ip4_sw_interface_enable_disable (pi->hw_if_index, 1);
+      ip6_sw_interface_enable_disable (pi->hw_if_index, 1);
+      mpls_sw_interface_enable_disable (&mpls_main, pi->hw_if_index, 1);
     }
 
   return i;

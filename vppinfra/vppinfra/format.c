@@ -383,7 +383,7 @@ done:
 }
 
 u8 *
-va_format (u8 * s, char *fmt, va_list * va)
+va_format (u8 * s, const char *fmt, va_list * va)
 {
   u8 *f = (u8 *) fmt, *g;
   u8 c;
@@ -415,7 +415,7 @@ va_format (u8 * s, char *fmt, va_list * va)
 }
 
 u8 *
-format (u8 * s, char *fmt, ...)
+format (u8 * s, const char *fmt, ...)
 {
   va_list va;
   va_start (va, fmt);
