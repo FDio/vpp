@@ -70,6 +70,8 @@ typedef CLIB_PACKED (union {
 #define ip46_address_mask_ip4(ip46)	((ip46)->pad[0] = (ip46)->pad[1] = (ip46)->pad[2] = 0)
 #define ip46_address_set_ip4(ip46, ip)	(ip46_address_mask_ip4(ip46), (ip46)->ip4 = (ip)[0])
 #define ip46_address_reset(ip46)	((ip46)->as_u64[0] = (ip46)->as_u64[1] = 0)
+#define ip46_address_cmp(ip46_1, ip46_2) (memcmp(ip46_1, ip46_2, sizeof(*ip46_1)))
+#define ip46_address_is_zero(ip46)	(((ip46)->as_u64[0] == 0) && ((ip46)->as_u64[1] == 0))
 
 always_inline void
 ip6_addr_fib_init (ip6_address_fib_t * addr_fib, ip6_address_t * address,
@@ -301,6 +303,22 @@ typedef struct {
 always_inline void *
 ip6_next_header (ip6_header_t * i)
 { return (void *) (i + 1); }
+
+always_inline void
+ip6_copy_header (ip6_header_t * dst,
+                 const ip6_header_t *src)
+{
+    dst->ip_version_traffic_class_and_flow_label =
+        src->ip_version_traffic_class_and_flow_label;
+    dst->payload_length = src->payload_length;
+    dst->protocol = src->protocol;
+    dst->hop_limit = src->hop_limit;
+
+    dst->src_address.as_uword[0] = src->src_address.as_uword[0];
+    dst->src_address.as_uword[1] = src->src_address.as_uword[1];
+    dst->dst_address.as_uword[0] = src->dst_address.as_uword[0];
+    dst->dst_address.as_uword[1] = src->dst_address.as_uword[1];
+}
 
 always_inline void
 ip6_tcp_reply_x1 (ip6_header_t * ip0, tcp_header_t * tcp0)

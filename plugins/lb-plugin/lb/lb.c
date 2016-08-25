@@ -537,54 +537,54 @@ int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n)
 
 int lb_as_lookup_bypass(u32 vip_index, ip46_address_t *address, u8 is_disable)
 {
-  lb_get_writer_lock();
-  lb_main_t *lbm = &lb_main;
-  u32 as_index;
-  lb_as_t *as;
-  lb_vip_t *vip;
+  /* lb_get_writer_lock(); */
+  /* lb_main_t *lbm = &lb_main; */
+  /* u32 as_index; */
+  /* lb_as_t *as; */
+  /* lb_vip_t *vip; */
 
-  if (!(vip = lb_vip_get_by_index(vip_index)) ||
-      lb_as_find_index_vip(vip, address, &as_index)) {
-    lb_put_writer_lock();
-    return VNET_API_ERROR_NO_SUCH_ENTRY;
-  }
+  /* if (!(vip = lb_vip_get_by_index(vip_index)) || */
+  /*     lb_as_find_index_vip(vip, address, &as_index)) { */
+  /*   lb_put_writer_lock(); */
+  /*   return VNET_API_ERROR_NO_SUCH_ENTRY; */
+  /* } */
 
-  as = &lbm->ass[as_index];
+  /* as = &lbm->ass[as_index]; */
 
-  if (is_disable) {
-    as->adj_index = ~0;
-  } else if (lb_vip_is_gre4(vip)) {
-    uword *p = ip4_get_route (&ip4_main, 0, 0, as->address.ip4.as_u8, 32);
-    if (p == 0) {
-      lb_put_writer_lock();
-      return VNET_API_ERROR_NO_SUCH_ENTRY;
-    }
-    u32 ai = (u32)p[0];
-    ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
-    ip_adjacency_t *adj4 = ip_get_adjacency (lm4, ai);
-    if (adj4->lookup_next_index != IP_LOOKUP_NEXT_REWRITE) {
-      lb_put_writer_lock();
-      return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE;
-    }
+  /* if (is_disable) { */
+  /*   as->adj_index = ~0; */
+  /* } else if (lb_vip_is_gre4(vip)) { */
+  /*   uword *p = ip4_get_route (&ip4_main, 0, 0, as->address.ip4.as_u8, 32); */
+  /*   if (p == 0) { */
+  /*     lb_put_writer_lock(); */
+  /*     return VNET_API_ERROR_NO_SUCH_ENTRY; */
+  /*   } */
+  /*   u32 ai = (u32)p[0]; */
+  /*   ip_lookup_main_t *lm4 = &ip4_main.lookup_main; */
+  /*   ip_adjacency_t *adj4 = ip_get_adjacency (lm4, ai); */
+  /*   if (adj4->lookup_next_index != IP_LOOKUP_NEXT_REWRITE) { */
+  /*     lb_put_writer_lock(); */
+  /*     return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE; */
+  /*   } */
 
-    as->adj_index = ai;
-  } else {
-    u32 ai = ip6_get_route (&ip6_main, 0, 0, &as->address.ip6, 128);
-    if (ai == 0) {
-      lb_put_writer_lock();
-      return VNET_API_ERROR_NO_SUCH_ENTRY;
-    }
+  /*   as->adj_index = ai; */
+  /* } else { */
+  /*   u32 ai = ip6_get_route (&ip6_main, 0, 0, &as->address.ip6, 128); */
+  /*   if (ai == 0) { */
+  /*     lb_put_writer_lock(); */
+  /*     return VNET_API_ERROR_NO_SUCH_ENTRY; */
+  /*   } */
 
-    ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
-    ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai);
-    if (adj6->lookup_next_index != IP_LOOKUP_NEXT_REWRITE) {
-      lb_put_writer_lock();
-      return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE;
-    }
+  /*   ip_lookup_main_t *lm6 = &ip6_main.lookup_main; */
+  /*   ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai); */
+  /*   if (adj6->lookup_next_index != IP_LOOKUP_NEXT_REWRITE) { */
+  /*     lb_put_writer_lock(); */
+  /*     return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE; */
+  /*   } */
 
-    as->adj_index = ai;
-  }
-  lb_put_writer_lock();
+  /*   as->adj_index = ai; */
+  /* } */
+  /* lb_put_writer_lock(); */
   return 0;
 }
 
@@ -594,41 +594,41 @@ int lb_as_lookup_bypass(u32 vip_index, ip46_address_t *address, u8 is_disable)
  */
 static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip)
 {
-  ip_adjacency_t adj;
-  //Adjacency
-  memset (&adj, 0, sizeof (adj));
-  adj.explicit_fib_index = ~0;
-  lb_adj_data_t *ad = (lb_adj_data_t *) &adj.opaque;
-  ad->vip_index = vip - lbm->vips;
+  /* ip_adjacency_t adj; */
+  /* //Adjacency */
+  /* memset (&adj, 0, sizeof (adj)); */
+  /* adj.explicit_fib_index = ~0; */
+  /* lb_adj_data_t *ad = (lb_adj_data_t *) &adj.opaque; */
+  /* ad->vip_index = vip - lbm->vips; */
 
-  ASSERT (lbm->writer_lock[0]); //This must be called with the lock owned
-  u32 lookup_next_index = lbm->ip_lookup_next_index[vip->type];
+  /* ASSERT (lbm->writer_lock[0]); //This must be called with the lock owned */
+  /* u32 lookup_next_index = lbm->ip_lookup_next_index[vip->type]; */
 
-  if (lb_vip_is_ip4(vip)) {
-    adj.lookup_next_index = lookup_next_index;
-    ip4_add_del_route_args_t route_args = {};
-    ip4_main_t *im4 = &ip4_main;
-    route_args.table_index_or_table_id = 0;
-    route_args.flags = IP4_ROUTE_FLAG_ADD;
-    route_args.dst_address = vip->prefix.ip4;
-    route_args.dst_address_length = vip->plen - 96;
-    route_args.adj_index = ~0;
-    route_args.add_adj = &adj;
-    route_args.n_add_adj = 1;
-    ip4_add_del_route (im4, &route_args);
-  } else {
-    adj.lookup_next_index = lookup_next_index;
-    ip6_add_del_route_args_t route_args = {};
-    ip6_main_t *im6 = &ip6_main;
-    route_args.table_index_or_table_id = 0;
-    route_args.flags = IP6_ROUTE_FLAG_ADD;
-    route_args.dst_address = vip->prefix.ip6;
-    route_args.dst_address_length = vip->plen;
-    route_args.adj_index = ~0;
-    route_args.add_adj = &adj;
-    route_args.n_add_adj = 1;
-    ip6_add_del_route (im6, &route_args);
-  }
+  /* if (lb_vip_is_ip4(vip)) { */
+  /*   adj.lookup_next_index = lookup_next_index; */
+  /*   ip4_add_del_route_args_t route_args = {}; */
+  /*   ip4_main_t *im4 = &ip4_main; */
+  /*   route_args.table_index_or_table_id = 0; */
+  /*   route_args.flags = IP4_ROUTE_FLAG_ADD; */
+  /*   route_args.dst_address = vip->prefix.ip4; */
+  /*   route_args.dst_address_length = vip->plen - 96; */
+  /*   route_args.adj_index = ~0; */
+  /*   route_args.add_adj = &adj; */
+  /*   route_args.n_add_adj = 1; */
+  /*   ip4_add_del_route (im4, &route_args); */
+  /* } else { */
+  /*   adj.lookup_next_index = lookup_next_index; */
+  /*   ip6_add_del_route_args_t route_args = {}; */
+  /*   ip6_main_t *im6 = &ip6_main; */
+  /*   route_args.table_index_or_table_id = 0; */
+  /*   route_args.flags = IP6_ROUTE_FLAG_ADD; */
+  /*   route_args.dst_address = vip->prefix.ip6; */
+  /*   route_args.dst_address_length = vip->plen; */
+  /*   route_args.adj_index = ~0; */
+  /*   route_args.add_adj = &adj; */
+  /*   route_args.n_add_adj = 1; */
+  /*   ip6_add_del_route (im6, &route_args); */
+  /* } */
 }
 
 /**
@@ -636,30 +636,30 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip)
  */
 static void lb_vip_del_adjacency(lb_main_t *lbm, lb_vip_t *vip)
 {
-  ASSERT (lbm->writer_lock[0]); //This must be called with the lock owned
-  if (lb_vip_is_ip4(vip)) {
-    ip4_main_t *im4 = &ip4_main;
-    ip4_add_del_route_args_t route_args = {};
-    route_args.table_index_or_table_id = 0;
-    route_args.flags = IP4_ROUTE_FLAG_DEL;
-    route_args.dst_address = vip->prefix.ip4;
-    route_args.dst_address_length = vip->plen - 96;
-    route_args.adj_index = ~0;
-    route_args.add_adj = NULL;
-    route_args.n_add_adj = 0;
-    ip4_add_del_route (im4, &route_args);
-  } else {
-    ip6_main_t *im6 = &ip6_main;
-    ip6_add_del_route_args_t route_args = {};
-    route_args.table_index_or_table_id = 0;
-    route_args.flags = IP6_ROUTE_FLAG_DEL;
-    route_args.dst_address = vip->prefix.ip6;
-    route_args.dst_address_length = vip->plen;
-    route_args.adj_index = ~0;
-    route_args.add_adj = NULL;
-    route_args.n_add_adj = 0;
-    ip6_add_del_route (im6, &route_args);
-  }
+  /* ASSERT (lbm->writer_lock[0]); //This must be called with the lock owned */
+  /* if (lb_vip_is_ip4(vip)) { */
+  /*   ip4_main_t *im4 = &ip4_main; */
+  /*   ip4_add_del_route_args_t route_args = {}; */
+  /*   route_args.table_index_or_table_id = 0; */
+  /*   route_args.flags = IP4_ROUTE_FLAG_DEL; */
+  /*   route_args.dst_address = vip->prefix.ip4; */
+  /*   route_args.dst_address_length = vip->plen - 96; */
+  /*   route_args.adj_index = ~0; */
+  /*   route_args.add_adj = NULL; */
+  /*   route_args.n_add_adj = 0; */
+  /*   ip4_add_del_route (im4, &route_args); */
+  /* } else { */
+  /*   ip6_main_t *im6 = &ip6_main; */
+  /*   ip6_add_del_route_args_t route_args = {}; */
+  /*   route_args.table_index_or_table_id = 0; */
+  /*   route_args.flags = IP6_ROUTE_FLAG_DEL; */
+  /*   route_args.dst_address = vip->prefix.ip6; */
+  /*   route_args.dst_address_length = vip->plen; */
+  /*   route_args.adj_index = ~0; */
+  /*   route_args.add_adj = NULL; */
+  /*   route_args.n_add_adj = 0; */
+  /*   ip6_add_del_route (im6, &route_args); */
+  /* } */
 }
 
 int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u32 new_length, u32 *vip_index)

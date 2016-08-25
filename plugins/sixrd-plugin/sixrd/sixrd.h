@@ -17,6 +17,7 @@
 #include <vppinfra/error.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/ip6_fib.h>
 
 int sixrd_create_domain(ip6_address_t *ip6_prefix, u8 ip6_prefix_len,
 			ip4_address_t *ip4_prefix, u8 ip4_prefix_len,
@@ -105,10 +106,8 @@ ip6_sixrd_get_domain (u32 adj_index, u32 *sixrd_domain_index)
   ip_lookup_main_t *lm = &ip6_main.lookup_main;
   ip_adjacency_t *adj = ip_get_adjacency(lm, adj_index);
   ASSERT(adj);
-  uword *p = (uword *)adj->rewrite_data;
-  ASSERT(p);
-  *sixrd_domain_index = p[0];
-  return pool_elt_at_index(mm->domains, p[0]);
+  *sixrd_domain_index = adj->sub_type.map.domain_index;
+  return pool_elt_at_index(mm->domains, *sixrd_domain_index);
 }
 
 /*
@@ -126,17 +125,14 @@ ip4_sixrd_get_domain (u32 adj_index, ip6_address_t *addr,
   ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
   ip_adjacency_t *adj = ip_get_adjacency(lm4, adj_index);
   ASSERT(adj);
-  uword *p = (uword *)adj->rewrite_data;
-  ASSERT(p);
-  *sixrd_domain_index = p[0];
-  if (p[0] != ~0)
-    return pool_elt_at_index(mm->domains, p[0]);
+  *sixrd_domain_index = adj->sub_type.map.domain_index;
+  if (*sixrd_domain_index != ~0)
+    return pool_elt_at_index(mm->domains, *sixrd_domain_index);
 
-  u32 ai = ip6_fib_lookup_with_table(im6, 0, addr);
+  u32 ai = ip6_fib_table_fwding_lookup(im6, 0, addr);
   ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai);
   if (PREDICT_TRUE(adj6->lookup_next_index == mm->ip6_lookup_next_index)) {
-    uword *p = (uword *)adj6->rewrite_data;
-    *sixrd_domain_index = p[0];
+    *sixrd_domain_index = adj->sub_type.map.domain_index;
     return pool_elt_at_index(mm->domains, *sixrd_domain_index);
   }
   *error = SIXRD_ERROR_NO_DOMAIN;
