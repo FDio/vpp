@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_2679d82f",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 2871,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-08-25T12:49:19Z",
+      "side": 1,
+      "message": "We typically call this \"dp_table\", as in, data plane table",
+      "range": {
+        "startLine": 2871,
+        "startChar": 6,
+        "endLine": 2871,
+        "endChar": 15
+      },
+      "revId": "5c79d8c88517bf9da2ebb46a5b948904b15ce0e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
