@@ -39,7 +39,8 @@ clib_error_t *ip_feature_init_cast (vlib_main_t * vm,
 				    vnet_config_main_t * vcm,
 				    char **feature_start_nodes,
 				    int num_feature_start_nodes,
-				    vnet_cast_t cast, int is_ip4);
+				    vnet_cast_t cast,
+				    vnet_l3_packet_type_t proto);
 
 #endif /* included_ip_feature_registration_h */
 

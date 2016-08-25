@@ -71,26 +71,10 @@ typedef struct {
   u32 index;
 
   /* flow hash configuration */
-  u32 flow_hash_config;
+  flow_hash_config_t flow_hash_config;
 } ip6_fib_t;
 
 struct ip6_main_t;
-
-typedef void (ip6_add_del_route_function_t)
-  (struct ip6_main_t * im,
-   uword opaque,
-   ip6_fib_t * fib,
-   u32 flags,
-   ip6_address_t * address,
-   u32 address_length,
-   void * old_result,
-   void * new_result);
-
-typedef struct {
-  ip6_add_del_route_function_t * function;
-  uword required_flags;
-  uword function_opaque;
-} ip6_add_del_route_callback_t;
 
 typedef void (ip6_add_del_interface_address_function_t)
   (struct ip6_main_t * im,
@@ -106,30 +90,62 @@ typedef struct {
   uword function_opaque;
 } ip6_add_del_interface_address_callback_t;
 
-typedef struct ip6_main_t {
-  BVT(clib_bihash) ip6_lookup_table;
+/**
+ * Enumeration of the FIB table instance types
+ */
+typedef enum ip6_fib_table_instance_type_t_ {
+    /**
+     * This table stores the routes that are used to forward traffic.
+     * The key is the prefix, the result the adjacnecy to forward on.
+     */
+    IP6_FIB_TABLE_FWDING,
+    /**
+     * The table that stores ALL routes learned by the DP.
+     * Some of these routes may not be ready to install in forwarding 
+     * at a given time. 
+     * The key in this table is the prefix, the result is the fib_entry_t
+     */
+    IP6_FIB_TABLE_NON_FWDING,
+} ip6_fib_table_instance_type_t;
 
-  ip_lookup_main_t lookup_main;
+#define IP6_FIB_NUM_TABLES (IP6_FIB_TABLE_NON_FWDING+1)
+
+/**
+ * A represenation of a single IP6 table
+ */
+typedef struct ip6_fib_table_instance_t_ {
+  /* The hash table */
+  BVT(clib_bihash) ip6_hash;
 
   /* bitmap / refcounts / vector of mask widths to search */
   uword * non_empty_dst_address_length_bitmap;
   u8 * prefix_lengths_in_search_order;
   i32 dst_address_length_refcounts[129];
-  
-  /* Vector of FIBs. */
-  ip6_fib_t * fibs;
+} ip6_fib_table_instance_t;
 
+typedef struct ip6_main_t {
+  /**
+   * The two FIB tables; fwding and non-fwding
+   */
+  ip6_fib_table_instance_t ip6_table[IP6_FIB_NUM_TABLES];
+
+  ip_lookup_main_t lookup_main;
+  
+  /* Pool of FIBs. */
+  struct fib_table_t_ * fibs;
+
+  /* Network byte orders subnet mask for each prefix length */
   ip6_address_t fib_masks[129];
 
   /* Table index indexed by software interface. */
   u32 * fib_index_by_sw_if_index;
 
+  /* IP6 enabled count by software interface */
+  u8 * ip_enabled_by_sw_if_index;
+
   /* Hash table mapping table id to fib index.
      ID space is not necessarily dense; index space is dense. */
   uword * fib_index_by_table_id;
-
-  /* Vector of functions to call when routes are added/deleted. */
-  ip6_add_del_route_callback_t * add_del_route_callbacks;
 
   /* Hash table mapping interface rewrite adjacency index by sw if index. */
   uword * interface_route_adj_index_by_sw_if_index;
@@ -156,8 +172,10 @@ typedef struct ip6_main_t {
   u32 ip6_unicast_rx_feature_l2tp_decap;
   u32 ip6_unicast_rx_feature_vpath;
   u32 ip6_unicast_rx_feature_lookup;
+  u32 ip6_unicast_rx_feature_drop;
 
   /* Built-in multicast feature path indices */
+  u32 ip6_multicast_rx_feature_drop;
   u32 ip6_multicast_rx_feature_vpath;
   u32 ip6_multicast_rx_feature_lookup;
   
@@ -226,6 +244,8 @@ extern vlib_node_registration_t ip6_input_node;
 extern vlib_node_registration_t ip6_rewrite_node;
 extern vlib_node_registration_t ip6_rewrite_local_node;
 extern vlib_node_registration_t ip6_discover_neighbor_node;
+extern vlib_node_registration_t ip6_glean_node;
+extern vlib_node_registration_t ip6_midchain_node;
 
 extern vlib_node_registration_t ip6_icmp_neighbor_discovery_event_node;
 
@@ -242,40 +262,10 @@ typedef union {
   } up_down_event;
 } ip6_icmp_neighbor_discovery_event_data_t;
 
-u32 ip6_fib_lookup (ip6_main_t * im, u32 sw_if_index, ip6_address_t * dst);
-u32 ip6_fib_lookup_with_table (ip6_main_t * im, u32 fib_index, 
-                               ip6_address_t * dst);
-
-/**
- * \brief Get or create an IPv6 fib.
- *
- * Get or create an IPv6 fib with the provided fib ID or index.
- * The fib ID is a possibly-sparse user-defined value while
- * the fib index defines the position of the fib in the fib vector.
- *
- * \param im
- *      ip6_main pointer.
- * \param table_index_or_id
- *      The table index if \c IP6_ROUTE_FLAG_FIB_INDEX bit is set in \p flags.
- *      Otherwise, when set to \c ~0, an arbitrary and unused fib ID is picked
- *      and can be retrieved with \c ret->table_id.
- *      Otherwise, it is the fib ID to be used to retrieve or create the desired fib.
- * \param flags
- *      Indicates whether \p table_index_or_id is the fib index or ID.
- *      When the bit \c IP6_ROUTE_FLAG_FIB_INDEX is set, \p table_index_or_id
- *      is considered as the fib index, and the fib ID otherwise.
- * \return A pointer to the retrieved or created fib.
- *
- * \remark When getting a fib with the fib index, the fib MUST already exist.
- */
-ip6_fib_t * find_ip6_fib_by_table_index_or_id (ip6_main_t * im, 
-                                               u32 table_index_or_id, 
-                                               u32 flags);
-
 always_inline uword
-ip6_destination_matches_route (ip6_main_t * im,
-			       ip6_address_t * key,
-			       ip6_address_t * dest,
+ip6_destination_matches_route (const ip6_main_t * im,
+			       const ip6_address_t * key,
+			       const ip6_address_t * dest,
 			       uword dest_length)
 {
   int i;
@@ -313,25 +303,26 @@ ip6_unaligned_destination_matches_route (ip6_main_t * im,
 }
 
 always_inline int
-ip6_src_address_for_packet (ip6_main_t * im, vlib_buffer_t * p, ip6_address_t * src, u32 sw_if_index)
+ip6_src_address_for_packet (ip_lookup_main_t * lm,
+			    u32 sw_if_index,
+			    ip6_address_t * src)
 {
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_interface_address_t * ia = ip_interface_address_for_packet (lm, p, sw_if_index);
-  if (ia == NULL)
-    return -1;
-  ip6_address_t * a = ip_interface_address_get_address (lm, ia);
-  *src = a[0];
-  return 0;
-}
-
-always_inline u32
-ip6_src_lookup_for_packet (ip6_main_t * im, vlib_buffer_t * b, ip6_header_t * i)
-{
-  if (vnet_buffer (b)->ip.adj_index[VLIB_RX] == ~0)
-    vnet_buffer (b)->ip.adj_index[VLIB_RX]
-      = ip6_fib_lookup (im, vnet_buffer (b)->sw_if_index[VLIB_RX],
-			&i->src_address);
-  return vnet_buffer (b)->ip.adj_index[VLIB_RX];
+    u32 if_add_index = 
+	lm->if_address_pool_index_by_sw_if_index[sw_if_index];
+    if (PREDICT_TRUE(if_add_index != ~0)) {
+	ip_interface_address_t *if_add = 
+	    pool_elt_at_index(lm->if_address_pool, if_add_index);
+	ip6_address_t *if_ip = 
+	    ip_interface_address_get_address(lm, if_add);
+	*src = *if_ip;
+	return (0);
+    }
+    else
+    {
+	src->as_u64[0] = 0;
+	src->as_u64[1] = 0;
+    }
+    return (!0);
 }
 
 /* Find interface address which matches destination. */
@@ -362,94 +353,11 @@ clib_error_t *
 ip6_add_del_interface_address (vlib_main_t * vm, u32 sw_if_index,
 			       ip6_address_t * address, u32 address_length,
 			       u32 is_del);
+void
+ip6_sw_interface_enable_disable (u32 sw_if_index,
+				 u32 is_enable);
 
 int ip6_address_compare (ip6_address_t * a1, ip6_address_t * a2);
-
-/* Add/del a route to the FIB. */
-
-#define IP6_ROUTE_FLAG_ADD (0 << 0)
-#define IP6_ROUTE_FLAG_DEL (1 << 0)
-#define IP6_ROUTE_FLAG_TABLE_ID  (0 << 1)
-#define IP6_ROUTE_FLAG_FIB_INDEX (1 << 1)
-#define IP6_ROUTE_FLAG_KEEP_OLD_ADJACENCY (1 << 2)
-#define IP6_ROUTE_FLAG_NO_REDISTRIBUTE (1 << 3)
-#define IP6_ROUTE_FLAG_NOT_LAST_IN_GROUP (1 << 4)
-/* Dynamic route created via neighbor discovery. */
-#define IP6_ROUTE_FLAG_NEIGHBOR (1 << 5)
-
-typedef struct {
-  /* IP6_ROUTE_FLAG_* */
-  u32 flags;
-
-  /* Either index of fib or table_id to hash and get fib.
-     IP6_ROUTE_FLAG_FIB_INDEX specifies index; otherwise table_id is assumed. */
-  u32 table_index_or_table_id;
-
-  /* Destination address (prefix) and length. */
-  ip6_address_t dst_address;
-  u32 dst_address_length;
-
-  /* Adjacency to use for this destination. */
-  u32 adj_index;
-
-  /* If specified adjacencies to add and then
-     use for this destination.  add_adj/n_add_adj
-     are override adj_index if specified. */
-  ip_adjacency_t * add_adj;
-  u32 n_add_adj;
-} ip6_add_del_route_args_t;
-
-void ip6_add_del_route (ip6_main_t * im, ip6_add_del_route_args_t * args);
-
-void ip6_add_del_route_next_hop (ip6_main_t * im,
-				 u32 flags,
-				 ip6_address_t * dst_address,
-				 u32 dst_address_length,
-				 ip6_address_t * next_hop,
-				 u32 next_hop_sw_if_index,
-				 u32 next_hop_weight, u32 adj_index,
-                                 u32 explicit_fib_index);
-
-u32
-ip6_route_get_next_hop_adj (ip6_main_t * im,
-			    u32 fib_index,
-			    ip6_address_t *next_hop,
-			    u32 next_hop_sw_if_index,
-			    u32 explicit_fib_index);
-
-u32
-ip6_get_route (ip6_main_t * im,
-	       u32 fib_index_or_table_id,
-	       u32 flags,
-	       ip6_address_t * address,
-	       u32 address_length);
-
-void
-ip6_foreach_matching_route (ip6_main_t * im,
-			    u32 table_index_or_table_id,
-			    u32 flags,
-			    ip6_address_t * address,
-			    u32 address_length,
-			    ip6_address_t ** results,
-			    u8 ** result_length);
-
-void ip6_delete_matching_routes (ip6_main_t * im,
-				 u32 table_index_or_table_id,
-				 u32 flags,
-				 ip6_address_t * address,
-				 u32 address_length);
-
-void ip6_maybe_remap_adjacencies (ip6_main_t * im,
-				  u32 table_index_or_table_id,
-				  u32 flags);
-
-void ip6_adjacency_set_interface_route (vnet_main_t * vnm,
-					ip_adjacency_t * adj,
-					u32 sw_if_index,
-					u32 if_address_index);
-
-u32
-vnet_ip6_neighbor_glean_add(u32 fib_index, void * next_hop_arg);
 
 clib_error_t *
 ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index);
@@ -481,8 +389,6 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
                                   ip6_address_t * a,
                                   u8 * link_layer_address,
                                   uword n_bytes_link_layer_address);
-void
-vnet_ip6_fib_init (ip6_main_t * im, u32 fib_index);
 
 void 
 ip6_link_local_address_from_ethernet_mac_address (ip6_address_t *ip,
@@ -492,7 +398,8 @@ void
 ip6_ethernet_mac_address_from_link_local_address (u8 *mac, 
                                                   ip6_address_t *ip);
 
-int vnet_set_ip6_flow_hash (u32 table_id, u32 flow_hash_config);
+int vnet_set_ip6_flow_hash (u32 table_id,
+			    flow_hash_config_t flow_hash_config);
 
 int
 ip6_neighbor_ra_config(vlib_main_t * vm, u32 sw_if_index, 
@@ -560,7 +467,8 @@ extern vlib_node_registration_t ip6_lookup_node;
 /* Compute flow hash.  We'll use it to select which Sponge to use for this
    flow.  And other things. */
 always_inline u32
-ip6_compute_flow_hash (ip6_header_t * ip, u32 flow_hash_config)
+ip6_compute_flow_hash (const ip6_header_t * ip,
+		       flow_hash_config_t flow_hash_config)
 {
     tcp_header_t * tcp = (void *) (ip + 1);
     u64 a, b, c;
