@@ -38,6 +38,8 @@
  */
 
 #include <vnet/ip/ip.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/dpo/load_balance.h>
 
 typedef struct {
   u8 packet_data[64];
@@ -110,9 +112,12 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  ip4_fib_mtrie_t * mtrie0, * mtrie1;
 	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
 	  ip4_source_check_config_t * c0, * c1;
-	  ip_adjacency_t * adj0, * adj1;
-	  u32 pi0, next0, pass0, adj_index0;
-	  u32 pi1, next1, pass1, adj_index1;
+	  const load_balance_t * lb0, * lb1;
+	  u32 pi0, next0, pass0, lb_index0;
+	  u32 pi1, next1, pass1, lb_index1;
+          const ip_adjacency_t *adj0, *adj1;
+          const dpo_id_t *dpo0, *dpo1;
+          u32 ii0, ii1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -150,8 +155,8 @@ ip4_source_check_inline (vlib_main_t * vm,
 				     &next1,
 				     sizeof (c1[0]));
 
-	  mtrie0 = &vec_elt_at_index (im->fibs, c0->fib_index)->mtrie;
-	  mtrie1 = &vec_elt_at_index (im->fibs, c1->fib_index)->mtrie;
+	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
+	  mtrie1 = &ip4_fib_get (c1->fib_index)->mtrie;
 
 	  leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
 
@@ -167,29 +172,70 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
 	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 3);
 
-	  adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-	  adj_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+	  lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+	  lb_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
 
-	  ASSERT (adj_index0 == ip4_fib_lookup_with_table (im, c0->fib_index,
-							   &ip0->src_address,
-							   c0->no_default_route));
-	  ASSERT (adj_index1 == ip4_fib_lookup_with_table (im, c1->fib_index,
-							   &ip1->src_address,
-							   c1->no_default_route));
-
-	  adj0 = ip_get_adjacency (lm, adj_index0);
-	  adj1 = ip_get_adjacency (lm, adj_index1);
+	  lb0 = load_balance_get(lb_index0);
+	  lb1 = load_balance_get(lb_index1);
 
 	  /* Pass multicast. */
 	  pass0 = ip4_address_is_multicast (&ip0->src_address) || ip0->src_address.as_u32 == clib_host_to_net_u32(0xFFFFFFFF);
 	  pass1 = ip4_address_is_multicast (&ip1->src_address) || ip1->src_address.as_u32 == clib_host_to_net_u32(0xFFFFFFFF);
 
-	  pass0 |= (adj0->lookup_next_index == IP_LOOKUP_NEXT_REWRITE
-		    && (source_check_type == IP4_SOURCE_CHECK_REACHABLE_VIA_ANY
-			|| vnet_buffer (p0)->sw_if_index[VLIB_RX] == adj0->rewrite_header.sw_if_index));
-	  pass1 |= (adj1->lookup_next_index == IP_LOOKUP_NEXT_REWRITE
-		    && (source_check_type == IP4_SOURCE_CHECK_REACHABLE_VIA_ANY
-			|| vnet_buffer (p1)->sw_if_index[VLIB_RX] == adj1->rewrite_header.sw_if_index));
+          if (PREDICT_TRUE(1 == lb0->lb_n_buckets))
+          {
+              dpo0 = load_balance_get_bucket_i(lb0, 0);
+              if (PREDICT_TRUE(dpo0->dpoi_type == DPO_ADJACENCY))
+              {
+                  pass0 |= (source_check_type ==
+                            IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
+                  adj0 = adj_get(dpo0->dpoi_index);
+                  pass0 |= (vnet_buffer (p0)->sw_if_index[VLIB_RX] ==
+                            adj0->rewrite_header.sw_if_index);
+              }
+          }
+          else
+          {
+              for (ii0 = 0; ii0 < lb0->lb_n_buckets && !pass0; ii0++)
+              {
+                  dpo0 = load_balance_get_bucket_i(lb0, ii0);
+                  if (PREDICT_TRUE(dpo0->dpoi_type == DPO_ADJACENCY))
+                  {
+                      pass0 |= (source_check_type ==
+                                IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
+                      adj0 = adj_get(dpo0->dpoi_index);
+                      pass0 |= (vnet_buffer (p0)->sw_if_index[VLIB_RX] ==
+                                adj0->rewrite_header.sw_if_index);
+                  }
+              }
+          }
+          if (PREDICT_TRUE(1 == lb1->lb_n_buckets))
+          {
+              dpo1 = load_balance_get_bucket_i(lb1, 0);
+              if (PREDICT_TRUE(dpo1->dpoi_type == DPO_ADJACENCY))
+              {
+                  pass1 |= (source_check_type ==
+                            IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
+                  adj1 = adj_get(dpo1->dpoi_index);
+                  pass1 |= (vnet_buffer (p1)->sw_if_index[VLIB_RX] ==
+                            adj1->rewrite_header.sw_if_index);
+              }
+          }
+          else
+          {
+              for (ii1 = 0; ii1 < lb1->lb_n_buckets && !pass1; ii1++)
+              {
+                  dpo1 = load_balance_get_bucket_i(lb1, ii1);
+                 if (PREDICT_TRUE(dpo1->dpoi_type == DPO_ADJACENCY))
+                  {
+                      pass1 |= (source_check_type ==
+                                IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
+                      adj1 = adj_get(dpo1->dpoi_index);
+                      pass1 |= (vnet_buffer (p1)->sw_if_index[VLIB_RX] ==
+                                adj1->rewrite_header.sw_if_index);
+                  }
+              }
+          }
 
 	  next0 = (pass0 ? next0 : IP4_SOURCE_CHECK_NEXT_DROP);
 	  next1 = (pass1 ? next1 : IP4_SOURCE_CHECK_NEXT_DROP);
@@ -210,7 +256,10 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  ip4_fib_mtrie_leaf_t leaf0;
 	  ip4_source_check_config_t * c0;
 	  ip_adjacency_t * adj0;
-	  u32 pi0, next0, pass0, adj_index0;
+	  u32 pi0, next0, pass0, lb_index0;
+ 	  const load_balance_t * lb0;
+          const dpo_id_t *dpo0;
+          u32 ii0;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -227,7 +276,7 @@ ip4_source_check_inline (vlib_main_t * vm,
 				     &next0,
 				     sizeof (c0[0]));
 
-	  mtrie0 = &vec_elt_at_index (im->fibs, c0->fib_index)->mtrie;
+	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 
 	  leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
 
@@ -239,19 +288,40 @@ ip4_source_check_inline (vlib_main_t * vm,
 
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
 
-	  adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+	  lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 
-	  ASSERT (adj_index0 == ip4_fib_lookup_with_table (im, c0->fib_index,
-							   &ip0->src_address,
-							   c0->no_default_route));
-	  adj0 = ip_get_adjacency (lm, adj_index0);
+	  lb0 = load_balance_get(lb_index0);
 
 	  /* Pass multicast. */
 	  pass0 = ip4_address_is_multicast (&ip0->src_address) || ip0->src_address.as_u32 == clib_host_to_net_u32(0xFFFFFFFF);
 
-	  pass0 |= (adj0->lookup_next_index == IP_LOOKUP_NEXT_REWRITE
-		    && (source_check_type == IP4_SOURCE_CHECK_REACHABLE_VIA_ANY
-			|| vnet_buffer (p0)->sw_if_index[VLIB_RX] == adj0->rewrite_header.sw_if_index));
+          if (PREDICT_TRUE(1 == lb0->lb_n_buckets))
+          {
+              dpo0 = load_balance_get_bucket_i(lb0, 0);
+              if (PREDICT_TRUE(dpo0->dpoi_type == DPO_ADJACENCY))
+              {
+                  pass0 |= (source_check_type ==
+                            IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
+                  adj0 = adj_get(dpo0->dpoi_index);
+                  pass0 |= (vnet_buffer (p0)->sw_if_index[VLIB_RX] ==
+                            adj0->rewrite_header.sw_if_index);
+              }
+          }
+          else
+          {
+              for (ii0 = 0; ii0 < lb0->lb_n_buckets && !pass0; ii0++)
+              {
+                  dpo0 = load_balance_get_bucket_i(lb0, ii0);
+                  if (PREDICT_TRUE(dpo0->dpoi_type == DPO_ADJACENCY))
+                  {
+                      pass0 |= (source_check_type ==
+                                IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
+                      adj0 = adj_get(dpo0->dpoi_index);
+                      pass0 |= (vnet_buffer (p0)->sw_if_index[VLIB_RX] ==
+                                adj0->rewrite_header.sw_if_index);
+                  }
+              }
+          }
 
 	  next0 = (pass0 ? next0 : IP4_SOURCE_CHECK_NEXT_DROP);
 	  p0->error = error_node->errors[IP4_ERROR_UNICAST_SOURCE_CHECK_FAILS];

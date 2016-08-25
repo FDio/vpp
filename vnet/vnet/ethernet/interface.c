@@ -42,6 +42,20 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/srp/srp.h>
+#include <vnet/lisp-gpe/lisp_gpe.h>
+#include <vnet/devices/af_packet/af_packet.h>
+
+int
+vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index)
+{
+  // FIXME - use flags on the HW itf
+  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  return (!(hw->hw_class_index == ethernet_hw_interface_class.index ||
+	    hw->hw_class_index == af_packet_device_class.index ||
+	    hw->hw_class_index == lisp_gpe_hw_class.index ||
+	    hw->hw_class_index == srp_hw_interface_class.index));
+}
 
 /**
  * @file

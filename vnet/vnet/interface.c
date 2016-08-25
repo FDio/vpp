@@ -449,8 +449,16 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 	  mc_serialize (vm->mc_main, &vnet_sw_interface_set_flags_msg, &s);
 	}
 
-      error = call_elf_section_interface_callbacks
-	(vnm, sw_if_index, flags, vnm->sw_interface_admin_up_down_functions);
+      /* set the flags now before invoking the registered clients
+       * so that the state they query is consistent with the state here notified */
+      old_flags = si->flags;
+      si->flags &= ~mask;
+      si->flags |= flags;
+      if ((flags | old_flags) & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+	error = call_elf_section_interface_callbacks
+	  (vnm, sw_if_index, flags,
+	   vnm->sw_interface_admin_up_down_functions);
+      si->flags = old_flags;
 
       if (error)
 	goto done;

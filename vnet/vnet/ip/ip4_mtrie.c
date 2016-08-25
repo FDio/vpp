@@ -38,6 +38,7 @@
  */
 
 #include <vnet/ip/ip.h>
+#include <vnet/fib/fib_entry.h>
 
 static void
 ply_init (ip4_fib_mtrie_ply_t * p, ip4_fib_mtrie_leaf_t init, uword prefix_len)
@@ -401,86 +402,33 @@ ip4_fib_mtrie_add_del_route (ip4_fib_t * fib,
 	  unset_leaf (m, &a, root_ply, 0);
 
 	  /* Find next less specific route and insert into mtrie. */
-	  for (i = ARRAY_LEN (fib->adj_index_by_dst_address) - 1; i >= 1; i--)
+	  for (i = dst_address_length - 1; i >= 1; i--)
 	    {
 	      uword * p;
+              index_t lbi;
 	      ip4_address_t key;
 
-	      if (! fib->adj_index_by_dst_address[i])
+	      if (! fib->fib_entry_by_dst_address[i])
 		continue;
 	      
 	      key.as_u32 = dst_address.as_u32 & im->fib_masks[i];
-	      p = hash_get (fib->adj_index_by_dst_address[i], key.as_u32);
+	      p = hash_get (fib->fib_entry_by_dst_address[i], key.as_u32);
 	      if (p)
 		{
+		  lbi = fib_entry_contribute_ip_forwarding(p[0])->dpoi_index;
+		  if (INDEX_INVALID == lbi)
+ 		    continue;
+
 		  a.dst_address = key;
+		  a.adj_index = lbi;
 		  a.dst_address_length = i;
-		  a.adj_index = p[0];
+
 		  set_leaf (m, &a, /* ply_index */ 0, /* dst_address_byte_index */ 0);
 		  break;
 		}
 	    }
 	}
     }
-}
-
-always_inline uword
-maybe_remap_leaf (ip_lookup_main_t * lm, ip4_fib_mtrie_leaf_t * p)
-{
-  ip4_fib_mtrie_leaf_t l = p[0];
-  uword was_remapped_to_empty_leaf = 0;
-  if (ip4_fib_mtrie_leaf_is_terminal (l))
-    {
-      u32 adj_index = ip4_fib_mtrie_leaf_get_adj_index (l);
-      u32 m = vec_elt (lm->adjacency_remap_table, adj_index);
-      if (m)
-	{
-	  was_remapped_to_empty_leaf = m == ~0;
-
-          /*
-           * The intent of the original form - which dates to 2013 or
-           * earlier - is not obvious. Here's the original:
-           * 
-           * if (was_remapped_to_empty_leaf)
-           *   p[0] = (was_remapped_to_empty_leaf
-           *           ? IP4_FIB_MTRIE_LEAF_EMPTY
-           *           : ip4_fib_mtrie_leaf_set_adj_index (m - 1));
-           *
-           * Notice the outer "if (was_remapped_to_empty_leaf)"
-           * means that p[0] is always set to IP4_FIB_MTRIE_LEAF_EMPTY,
-           * and is otherwise left intact.
-           * 
-           * It seems unlikely that the adjacency mapping scheme
-           * works in detail. Coverity correctly complains that the 
-           * else-case of the original ternary expression is dead code.
-           */
-	  if (was_remapped_to_empty_leaf)
-            p[0] = IP4_FIB_MTRIE_LEAF_EMPTY;
-	}
-    }
-  return was_remapped_to_empty_leaf;
-}
-
-static void maybe_remap_ply (ip_lookup_main_t * lm, ip4_fib_mtrie_ply_t * ply)
-{
-  u32 n_remapped_to_empty = 0;
-  u32 i;
-  for (i = 0; i < ARRAY_LEN (ply->leaves); i++)
-    n_remapped_to_empty += maybe_remap_leaf (lm, &ply->leaves[i]);
-  if (n_remapped_to_empty > 0)
-    {
-      ASSERT (n_remapped_to_empty <= ply->n_non_empty_leafs);
-      ply->n_non_empty_leafs -= n_remapped_to_empty;
-      if (ply->n_non_empty_leafs == 0)
-	os_panic ();
-    }
-}
-
-void ip4_mtrie_maybe_remap_adjacencies (ip_lookup_main_t * lm, ip4_fib_mtrie_t * m)
-{
-  ip4_fib_mtrie_ply_t * ply;
-  pool_foreach (ply, m->ply_pool, maybe_remap_ply (lm, ply));
-  maybe_remap_leaf (lm, &m->default_leaf);
 }
 
 /* Returns number of bytes of memory used by mtrie. */

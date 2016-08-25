@@ -149,7 +149,8 @@ typedef struct
 lisp_cp_main_t lisp_control_main;
 
 extern vlib_node_registration_t lisp_cp_input_node;
-extern vlib_node_registration_t lisp_cp_lookup_node;
+extern vlib_node_registration_t lisp_cp_lookup_ip4_node;
+extern vlib_node_registration_t lisp_cp_lookup_ip6_node;
 
 clib_error_t *lisp_cp_init ();
 

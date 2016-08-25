@@ -19,9 +19,6 @@
 
 typedef struct
 {
-  u32 ranges_per_adjacency;
-  u32 special_adjacency_format_function_index;
-
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -59,6 +56,69 @@ typedef struct
   u16x8vec_t low;
   u16x8vec_t hi;
 } protocol_port_range_t;
+
+/**
+ * @brief The number of supported ranges per-data path object.
+ * If more ranges are required, bump this number.
+ */
+#define N_PORT_RANGES_PER_DPO  64
+#define N_RANGES_PER_BLOCK (sizeof(u16x8vec_t)/2)
+#define N_BLOCKS_PER_DPO (N_PORT_RANGES_PER_DPO/N_RANGES_PER_BLOCK)
+
+/**
+ * @brief
+ *  The object that is in the data-path to perform the check.
+ *
+ * Some trade-offs here; memory vs performance.
+ *
+ * performance:
+ *  the principle factor is d-cache line misses/hits.
+ *  so we want the data layout to minimise the d-cache misses. This
+ *  means not following dependent reads. i.e. not doing
+ *
+ *   struct B {
+ *     u16 n_ranges;
+ *     range_t *ragnes; // vector of ranges.
+ *   }
+ *
+ *   so to read ranges[0] we would first d-cache miss on the address
+ *   of the object of type B, for which we would need to wait before we
+ *   can get the address of B->ranges.
+ *   So this layout is better:
+ *
+ *  struct B {
+ *    u16 n_ranges;
+ *    range_t ragnes[N];
+ *  }
+ *
+ * memory:
+ *  the latter layout above is more memory hungry. And N needs to be:
+ *   1 - sized for the maximum required
+ *   2 - fixed, so that objects of type B can be pool allocated and so
+ *       'get'-able using an index.
+ *       An option over fixed might be to allocate contiguous chunk from
+ *       the pool (like we used to do for multi-path adjs).
+ */
+typedef struct protocol_port_range_dpo_t_
+{
+  /**
+   * The number of blocks from the 'block' array below
+   * that have rnages configured. We keep this count so that in the data-path
+   * we can limit the loop to be only over the blocks we need
+   */
+  u16 n_used_blocks;
+
+  /**
+   * The total number of free ranges from all blocks.
+   * Used to prevent overrun of the ranges available.
+   */
+  u16 n_free_ranges;
+
+  /**
+   * the fixed size array of ranges
+   */
+  protocol_port_range_t blocks[N_BLOCKS_PER_DPO];
+} protocol_port_range_dpo_t;
 
 int ip4_source_and_port_range_check_add_del (ip4_address_t * address,
 					     u32 length,

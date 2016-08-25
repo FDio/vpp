@@ -14,6 +14,9 @@
  */
 
 #include <vnet/ip/ping.h>
+#include <vnet/fib/ip6_fib.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/fib_entry.h>
 
 u8 *
 format_icmp4_input_trace (u8 * s, va_list * va)
@@ -278,7 +281,14 @@ send_ip6_ping (vlib_main_t * vm, ip6_main_t * im, ip6_address_t * pa6,
   vnet_buffer (p0)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (p0)->sw_if_index[VLIB_TX] = ~0;  /* use interface VRF */
   fib_index0 = 0;
-  adj_index0 = ip6_fib_lookup_with_table (im, fib_index0, pa6);
+  adj_index0 = fib_entry_get_adj(ip6_fib_table_lookup(fib_index0, pa6, 128));
+
+  if (ADJ_INDEX_INVALID == adj_index0)
+    {
+      vlib_buffer_free (vm, &bi0, 1);
+      return SEND_PING_NO_INTERFACE;
+    }
+
   sw_if_index0 =
     adj_index_to_sw_if_index (vm, lm, ip6_lookup_next_nodes, adj_index0,
                               sw_if_index, verbose);
@@ -362,7 +372,15 @@ send_ip4_ping (vlib_main_t * vm,
   vnet_buffer (p0)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (p0)->sw_if_index[VLIB_TX] = ~0;  /* use interface VRF */
   fib_index0 = 0;
-  adj_index0 = ip4_fib_lookup_with_table (im, fib_index0, pa4, 0);
+  adj_index0 = fib_entry_get_adj(ip4_fib_table_lookup(
+				     ip4_fib_get(fib_index0), pa4, 32));
+
+  if (ADJ_INDEX_INVALID == adj_index0)
+    {
+      vlib_buffer_free (vm, &bi0, 1);
+      return SEND_PING_NO_INTERFACE;
+    }
+
   sw_if_index0 =
     adj_index_to_sw_if_index (vm, lm, ip4_lookup_next_nodes, adj_index0,
                               sw_if_index, verbose);

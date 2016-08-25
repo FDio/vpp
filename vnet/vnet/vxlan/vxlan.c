@@ -348,11 +348,13 @@ int vnet_vxlan_add_del_tunnel
       vnet_sw_interface_set_flags (vnm, sw_if_index, 
                                    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
       if (!a->is_ip6) {
-      vec_validate (im4->fib_index_by_sw_if_index, sw_if_index);
-      im4->fib_index_by_sw_if_index[sw_if_index] = t->encap_fib_index;
+        vec_validate (im4->fib_index_by_sw_if_index, sw_if_index);
+        im4->fib_index_by_sw_if_index[sw_if_index] = t->encap_fib_index;
+        ip4_sw_interface_enable_disable(sw_if_index, 1);
       } else {
         vec_validate (im6->fib_index_by_sw_if_index, sw_if_index);
         im6->fib_index_by_sw_if_index[sw_if_index] = t->encap_fib_index;
+        ip6_sw_interface_enable_disable(sw_if_index, 1);
       }
     }
   else
@@ -375,13 +377,16 @@ int vnet_vxlan_add_del_tunnel
         = L2OUTPUT_NEXT_DEL_TUNNEL;
 
       if (!a->is_ip6)
-        hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
+        {
+          hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
+          ip4_sw_interface_enable_disable(sw_if_index, 1);
+	}
       else
         {
 	  hash_unset_mem (vxm->vxlan6_tunnel_by_key, t->key6);
 	  clib_mem_free (t->key6);
+          ip6_sw_interface_enable_disable(sw_if_index, 1);
 	}
-
       vec_free (t->rewrite);
       pool_put (vxm->tunnels, t);
     }

@@ -105,6 +105,7 @@ clib_error_t *vnet_create_sw_interface (vnet_main_t * vnm,
 
 void vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index);
 void vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index);
+int vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index);
 
 always_inline uword
 vnet_sw_interface_get_flags (vnet_main_t * vnm, u32 sw_if_index)

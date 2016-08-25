@@ -147,6 +147,8 @@ uword
 unformat_ip_address (unformat_input_t * input, va_list * args)
 {
   ip_address_t *a = va_arg (*args, ip_address_t *);
+
+  memset (a, 0, sizeof (*a));
   if (unformat (input, "%U", unformat_ip4_address, &ip_addr_v4 (a)))
     ip_addr_version (a) = IP4;
   else if (unformat_user (input, unformat_ip6_address, &ip_addr_v6 (a)))
@@ -331,8 +333,32 @@ unformat_negative_mapping_action (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+u8 *
+format_negative_mapping_action (u8 * s, va_list * args)
+{
+  lisp_action_e action = va_arg (*args, lisp_action_e);
+
+  switch (action)
+    {
+    case LISP_NO_ACTION:
+      s = format (s, "no-action");
+      break;
+    case LISP_FORWARD_NATIVE:
+      s = format (s, "natively-forward");
+      break;
+    case LISP_SEND_MAP_REQUEST:
+      s = format (s, "send-map-request");
+      break;
+    case LISP_DROP:
+    default:
+      s = format (s, "drop");
+      break;
+    }
+  return (s);
+}
+
 u16
-ip_address_size (ip_address_t * a)
+ip_address_size (const ip_address_t * a)
 {
   switch (ip_addr_version (a))
     {
@@ -653,7 +679,7 @@ gid_address_free (gid_address_t * a)
 }
 
 int
-ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2)
+ip_address_cmp (const ip_address_t * ip1, const ip_address_t * ip2)
 {
   int res = 0;
   if (ip_addr_version (ip1) != ip_addr_version (ip2))
@@ -670,19 +696,19 @@ ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2)
 }
 
 void
-ip_address_copy (ip_address_t * dst, ip_address_t * src)
+ip_address_copy (ip_address_t * dst, const ip_address_t * src)
 {
   clib_memcpy (dst, src, sizeof (ip_address_t));
 }
 
 void
-ip_address_copy_addr (void *dst, ip_address_t * src)
+ip_address_copy_addr (void *dst, const ip_address_t * src)
 {
   clib_memcpy (dst, src, ip_address_size (src));
 }
 
 void
-ip_address_set (ip_address_t * dst, void *src, u8 version)
+ip_address_set (ip_address_t * dst, const void *src, u8 version)
 {
   clib_memcpy (dst, src, ip_version_to_size (version));
   ip_addr_version (dst) = version;

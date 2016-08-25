@@ -45,7 +45,6 @@
  * - Callbacks on route add.
  * - Callbacks on interface address change.
  */
-
 #ifndef included_ip_lookup_h
 #define included_ip_lookup_h
 
@@ -53,12 +52,11 @@
 #include <vlib/buffer.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/fib/fib_node.h>
+#include <vnet/dpo/dpo.h>
 
 /** @brief Common (IP4/IP6) next index stored in adjacency. */
 typedef enum {
-  /** Packet does not match any route in table. */
-  IP_LOOKUP_NEXT_MISS,
-
   /** Adjacency to drop this packet. */
   IP_LOOKUP_NEXT_DROP,
   /** Adjacency to punt this packet. */
@@ -67,27 +65,26 @@ typedef enum {
   /** This packet is for one of our own IP addresses. */
   IP_LOOKUP_NEXT_LOCAL,
 
-  /** This packet matches an "interface route" and packets
+  /** This packet matches an "incomplete adjacency" and packets
      need to be passed to ARP to find rewrite string for
      this destination. */
   IP_LOOKUP_NEXT_ARP,
+
+  /** This packet matches an "interface route" and packets
+     need to be passed to ARP to find rewrite string for
+     this destination. */
+  IP_LOOKUP_NEXT_GLEAN,
 
   /** This packet is to be rewritten and forwarded to the next
      processing node.  This is typically the output interface but
      might be another node for further output processing. */
   IP_LOOKUP_NEXT_REWRITE,
 
-  /** This packet needs to be classified */
-  IP_LOOKUP_NEXT_CLASSIFY,
+  /** This packets follow a load-balance */
+  IP_LOOKUP_NEXT_LOAD_BALANCE,
 
-  /** This packet needs to go to MAP - RFC7596, RFC7597 */
-  IP_LOOKUP_NEXT_MAP,
-
-  /** This packet needs to go to MAP with Translation - RFC7599 */
-  IP_LOOKUP_NEXT_MAP_T,
-
-  /** This packets needs to go to indirect next hop */
-  IP_LOOKUP_NEXT_INDIRECT,
+  /** This packets follow a mid-chain adjacency */
+  IP_LOOKUP_NEXT_MIDCHAIN,
 
   /** This packets needs to go to ICMP error */
   IP_LOOKUP_NEXT_ICMP_ERROR,
@@ -100,7 +97,7 @@ typedef enum {
 } ip4_lookup_next_t;
 
 typedef enum {
-  /** Hop-by-hop header handling */
+  /* Hop-by-hop header handling */
   IP6_LOOKUP_NEXT_HOP_BY_HOP = IP_LOOKUP_N_NEXT,
   IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP,
   IP6_LOOKUP_NEXT_POP_HOP_BY_HOP,
@@ -108,30 +105,26 @@ typedef enum {
 } ip6_lookup_next_t;
 
 #define IP4_LOOKUP_NEXT_NODES {					\
-    [IP_LOOKUP_NEXT_MISS] = "ip4-miss",				\
     [IP_LOOKUP_NEXT_DROP] = "ip4-drop",				\
     [IP_LOOKUP_NEXT_PUNT] = "ip4-punt",				\
     [IP_LOOKUP_NEXT_LOCAL] = "ip4-local",			\
     [IP_LOOKUP_NEXT_ARP] = "ip4-arp",				\
+    [IP_LOOKUP_NEXT_GLEAN] = "ip4-glean",			\
     [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite-transit",		\
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip4-classify",			\
-    [IP_LOOKUP_NEXT_MAP] = "ip4-map",				\
-    [IP_LOOKUP_NEXT_MAP_T] = "ip4-map-t",			\
-    [IP_LOOKUP_NEXT_INDIRECT] = "ip4-indirect",			\
+    [IP_LOOKUP_NEXT_MIDCHAIN] = "ip4-midchain",		        \
+    [IP_LOOKUP_NEXT_LOAD_BALANCE] = "ip4-load-balance",		\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip4-icmp-error",		\
 }
 
 #define IP6_LOOKUP_NEXT_NODES {					\
-    [IP_LOOKUP_NEXT_MISS] = "ip6-miss",				\
     [IP_LOOKUP_NEXT_DROP] = "ip6-drop",				\
     [IP_LOOKUP_NEXT_PUNT] = "ip6-punt",				\
     [IP_LOOKUP_NEXT_LOCAL] = "ip6-local",			\
     [IP_LOOKUP_NEXT_ARP] = "ip6-discover-neighbor",		\
+    [IP_LOOKUP_NEXT_GLEAN] = "ip6-glean",			\
     [IP_LOOKUP_NEXT_REWRITE] = "ip6-rewrite",			\
-    [IP_LOOKUP_NEXT_CLASSIFY] = "ip6-classify",			\
-    [IP_LOOKUP_NEXT_MAP] = "ip6-map",				\
-    [IP_LOOKUP_NEXT_MAP_T] = "ip6-map-t",			\
-    [IP_LOOKUP_NEXT_INDIRECT] = "ip6-indirect",			\
+    [IP_LOOKUP_NEXT_MIDCHAIN] = "ip6-midchain",			\
+    [IP_LOOKUP_NEXT_LOAD_BALANCE] = "ip6-load-balance",		\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip6-icmp-error",		\
     [IP6_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",		\
     [IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop",	\
@@ -157,19 +150,19 @@ _(dport, IP_FLOW_HASH_DST_PORT)                 \
 _(proto, IP_FLOW_HASH_PROTO)	                \
 _(reverse, IP_FLOW_HASH_REVERSE_SRC_DST)
 
+/**
+ * A flow hash configuration is a mask of the flow hash options
+ */
+typedef u32 flow_hash_config_t;
+
 #define IP_ADJACENCY_OPAQUE_SZ 16
 /** @brief IP unicast adjacency.
     @note cache aligned.
 */
 typedef struct {
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  /** Handle for this adjacency in adjacency heap. */
+  /* Handle for this adjacency in adjacency heap. */
   u32 heap_handle;
-
-  STRUCT_MARK(signature_start);
-
-  /** Interface address index for this local/arp adjacency. */
-  u32 if_address_index;
 
   /** Number of adjecencies in block.  Greater than 1 means multipath;
      otherwise equal to 1. */
@@ -181,27 +174,63 @@ typedef struct {
     u16 lookup_next_index_as_int;
   };
 
+  /** Interface address index for this local/arp adjacency. */
+  u32 if_address_index;
+
   /** Force re-lookup in a different FIB. ~0 => normal behavior */
-  i16 explicit_fib_index;
   u16 mcast_group_index;  
 
   /** Highest possible perf subgraph arc interposition, e.g. for ip6 ioam */
   u16 saved_lookup_next_index;
 
+  /*
+   * link/ether-type
+   */
+  u8 ia_link;
+  u8 ia_nh_proto;
+
   union {
-    /** IP_LOOKUP_NEXT_ARP only */
-    struct {
-      ip46_address_t next_hop;
-    } arp;
-    /** IP_LOOKUP_NEXT_CLASSIFY only */
-    struct {
-      u16 table_index;
-    } classify;
-    /** IP_LOOKUP_NEXT_INDIRECT only */
-    struct {
-        ip46_address_t next_hop;
-    } indirect;
-    u8 opaque[IP_ADJACENCY_OPAQUE_SZ];
+    union {
+	/**
+	 * IP_LOOKUP_NEXT_ARP/IP_LOOKUP_NEXT_REWRITE
+	 *
+	 * neighbour adjacency sub-type;
+	 */
+	struct {
+	    ip46_address_t next_hop;
+	} nbr;
+	/**
+	 * IP_LOOKUP_NEXT_MIDCHAIN
+	 *
+	 * A nbr adj that is also recursive. Think tunnels.
+	 * A nbr adj can transition to be of type MDICHAIN
+	 * so be sure to leave the two structs with the next_hop
+	 * fields aligned.
+	 */
+	struct {
+	    /**
+	     * The recursive next-hop
+	     */
+	    ip46_address_t next_hop;
+            /**
+             * The node index of the tunnel's post rewrite/TX function.
+             */
+            u32 tx_function_node;
+	    /**
+	     * The next DPO to use
+	     */
+	    dpo_id_t next_dpo;
+	} midchain;
+	/**
+	 * IP_LOOKUP_NEXT_GLEAN
+	 *
+	 * Glean the address to ARP for from the packet's destination
+	 */
+	struct {
+	    ip46_address_t receive_addr;
+	} glean;
+    } sub_type;
+    u16 opaque[IP_ADJACENCY_OPAQUE_SZ];
   };
 
   /** @brief Special format function for this adjacency.
@@ -210,61 +239,30 @@ typedef struct {
    * the first cache line reads "full" on the free space gas gauge.
    */
   u32 special_adjacency_format_function_index;  /* 0 is invalid */
-  STRUCT_MARK(signature_end);
-
-  /** Number of FIB entries sharing this adjacency */
-  u32 share_count;
-  /** Use this adjacency instead */
-  u32 next_adj_with_signature;
 
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
 
-  /** Rewrite in second/third cache lines */
+  /* Rewrite in second/third cache lines */
   vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
+
+    /*
+     * member not accessed in the data plane are relgated to the
+     * remaining cachelines
+     */
+    fib_node_t ia_node;
 } ip_adjacency_t;
 
-static inline uword
-vnet_ip_adjacency_signature (ip_adjacency_t * adj)
-{
-  uword signature = 0xfeedfaceULL;
+_Static_assert((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline0) == 0),
+	       "IP adjacency cachline 0 is not offset");
+_Static_assert((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline1) ==
+		CLIB_CACHE_LINE_BYTES),
+	       "IP adjacency cachline 1 is more than one cachline size offset");
 
-  /* Skip heap handle, sum everything up to but not including share_count */
-  signature = hash_memory
-      (STRUCT_MARK_PTR(adj, signature_start),
-       STRUCT_OFFSET_OF(ip_adjacency_t, signature_end)
-       - STRUCT_OFFSET_OF(ip_adjacency_t, signature_start),
-       signature);
-
-  /* and the rewrite */
-  signature = hash_memory (&adj->rewrite_header, VLIB_BUFFER_PRE_DATA_SIZE,
-                             signature);
-  return signature;
-}
-
-static inline int
-vnet_ip_adjacency_share_compare (ip_adjacency_t * a1, ip_adjacency_t *a2)
-{
-  if (memcmp (STRUCT_MARK_PTR(a1, signature_start),
-              STRUCT_MARK_PTR(a2, signature_start),
-              STRUCT_OFFSET_OF(ip_adjacency_t, signature_end)
-              - STRUCT_OFFSET_OF(ip_adjacency_t, signature_start)))
-    return 0;
-  if (memcmp (&a1->rewrite_header, &a2->rewrite_header,
-              VLIB_BUFFER_PRE_DATA_SIZE))
-    return 0;
-  return 1;
-}
+/* An all zeros address */
+extern const ip46_address_t zero_addr;
 
 /* Index into adjacency table. */
 typedef u32 ip_adjacency_index_t;
-
-typedef struct {
-  /* Directly connected next-hop adjacency index. */
-  u32 next_hop_adj_index;
-
-  /* Path weight for this adjacency. */
-  u32 weight;
-} ip_multipath_next_hop_t;
 
 typedef struct {
   /* Adjacency index of first index in block. */
@@ -276,11 +274,7 @@ typedef struct {
   /* Number of prefixes that point to this adjacency. */
   u32 reference_count;
 
-  /* Normalized next hops are used as hash keys: they are sorted by weight
-     and weights are chosen so they add up to 1 << log2_n_adj_in_block (with
-     zero-weighted next hops being deleted).
-     Unnormalized next hops are saved so that control plane has a record of exactly
-     what the RIB told it. */
+  /* Normalized next hops are saved for stats/display purposes */
   struct {
     /* Number of hops in the multipath. */
     u32 count;
@@ -290,7 +284,7 @@ typedef struct {
 
     /* Heap handle used to for example free block when we're done with it. */
     u32 heap_handle;
-  } normalized_next_hops, unnormalized_next_hops;
+  } normalized_next_hops;
 } ip_multipath_adjacency_t;
 
 /* IP multicast adjacency. */
@@ -397,49 +391,17 @@ typedef struct ip_adj_register_struct {
 } ip_adj_register_t;
 
 typedef struct ip_lookup_main_t {
-  /** Adjacency heap. */
+  /* Adjacency heap. */
   ip_adjacency_t * adjacency_heap;
 
-  /** Adjacency packet/byte counters indexed by adjacency index. */
-  vlib_combined_counter_main_t adjacency_counters;
-
-  /** Heap of (next hop, weight) blocks.  Sorted by next hop. */
-  ip_multipath_next_hop_t * next_hop_heap;
-
-  /** Indexed by heap_handle from ip_adjacency_t. */
-  ip_multipath_adjacency_t * multipath_adjacencies;
-
-  /** Adjacency by signature hash */
-  uword * adj_index_by_signature;
+  /** load-balance  packet/byte counters indexed by LB index. */
+  vlib_combined_counter_main_t load_balance_counters;
 
   /** any-tx-feature-enabled interface bitmap */
   uword * tx_sw_if_has_ip_output_features;
 
   /** count of enabled features, per sw_if_index, to maintain bitmap */
   i16 * tx_feature_count_by_sw_if_index;
-
-  /** Temporary vectors for looking up next hops in hash. */
-  ip_multipath_next_hop_t * next_hop_hash_lookup_key;
-  ip_multipath_next_hop_t * next_hop_hash_lookup_key_normalized;
-
-  /** Hash table mapping normalized next hops and weights
-     to multipath adjacency index. */
-  uword * multipath_adjacency_by_next_hops;
-
-  u32 * adjacency_remap_table;
-  u32 n_adjacency_remaps;
-
-  /** If average error per adjacency is less than this threshold adjacency block
-     size is accepted. */
-  f64 multipath_next_hop_error_tolerance;
-
-  /** Adjacency index for routing table misses, local punts, and drops. */
-  u32 miss_adj_index, drop_adj_index, local_adj_index;
-
-  /** Miss adjacency is always first in adjacency table. */
-#define IP_LOOKUP_MISS_ADJ_INDEX 0
-
-  ip_add_del_adjacency_callback_t * add_del_adjacency_callbacks;
 
   /** Pool of addresses that are assigned to interfaces. */
   ip_interface_address_t * if_address_pool;
@@ -501,92 +463,12 @@ do {								\
   CLIB_PREFETCH (_adj, sizeof (_adj[0]), type);			\
 } while (0)
 
-/* Adds a next node to ip4 or ip6 lookup node which can be then used in adjacencies.
- * @param vlib_main pointer
- * @param lm ip4_main.lookup_main or ip6_main.lookup_main
- * @param reg registration structure
- * @param next_node_index Returned index to be used in adjacencies.
- * @return 0 on success. -1 on failure.
- */
-int ip_register_adjacency(vlib_main_t *vm, u8 is_ip4,
-                          ip_adj_register_t *reg);
-
-/*
- * Construction helpers to add IP adjacency at init.
- */
-#define VNET_IP_REGISTER_ADJACENCY(ip,x,...)                     \
-  __VA_ARGS__ ip_adj_register_t ip##adj_##x;                     \
-static void __vnet_##ip##_register_adjacency_##x (void)          \
-  __attribute__((__constructor__)) ;                             \
-static void __vnet_##ip##_register_adjacency_##x (void)          \
-{                                                                \
-  ip_lookup_main_t *lm = &ip##_main.lookup_main;                 \
-  ip##adj_##x.next = lm->registered_adjacencies;                 \
-  lm->registered_adjacencies = &ip##adj_##x;                     \
-}                                                                \
-__VA_ARGS__ ip_adj_register_t ip##adj_##x
-
-#define VNET_IP4_REGISTER_ADJACENCY(x,...)                       \
-    VNET_IP_REGISTER_ADJACENCY(ip4, x, __VA_ARGS__)
-
-#define VNET_IP6_REGISTER_ADJACENCY(x,...)                       \
-    VNET_IP_REGISTER_ADJACENCY(ip6, x, __VA_ARGS__)
-
-static inline void
-ip_register_add_del_adjacency_callback(ip_lookup_main_t * lm,
-				       ip_add_del_adjacency_callback_t cb)
-{
-  vec_add1(lm->add_del_adjacency_callbacks, cb);
-}
-
-always_inline void
-ip_call_add_del_adjacency_callbacks (ip_lookup_main_t * lm, u32 adj_index, u32 is_del)
-{
-  ip_adjacency_t * adj;
-  uword i;
-  adj = ip_get_adjacency (lm, adj_index);
-  for (i = 0; i < vec_len (lm->add_del_adjacency_callbacks); i++)
-    lm->add_del_adjacency_callbacks[i] (lm, adj_index, adj, is_del);
-}
-
 /* Create new block of given number of contiguous adjacencies. */
 ip_adjacency_t *
 ip_add_adjacency (ip_lookup_main_t * lm,
 		  ip_adjacency_t * adj,
 		  u32 n_adj,
 		  u32 * adj_index_result);
-
-void ip_del_adjacency (ip_lookup_main_t * lm, u32 adj_index);
-void
-ip_update_adjacency (ip_lookup_main_t * lm,
-		     u32 adj_index,
-		     ip_adjacency_t * copy_adj);
-
-static inline int
-ip_adjacency_is_multipath(ip_lookup_main_t * lm, u32 adj_index)
-{
-  if (!vec_len(lm->multipath_adjacencies))
-    return 0;
-
-  if (vec_len(lm->multipath_adjacencies) < adj_index - 1)
-    return 0;
-
-
-  return (lm->multipath_adjacencies[adj_index].adj_index == adj_index &&
-	  lm->multipath_adjacencies[adj_index].n_adj_in_block > 0);
-}
-
-void
-ip_multipath_adjacency_free (ip_lookup_main_t * lm,
-			     ip_multipath_adjacency_t * a);
-
-u32
-ip_multipath_adjacency_add_del_next_hop (ip_lookup_main_t * lm,
-					 u32 is_del,
-					 u32 old_mp_adj_index,
-					 u32 next_hop_adj_index,
-					 u32 next_hop_weight,
-					 u32 * new_mp_adj_index);
 
 clib_error_t *
 ip_interface_address_add_del (ip_lookup_main_t * lm,
@@ -596,6 +478,9 @@ ip_interface_address_add_del (ip_lookup_main_t * lm,
 			      u32 is_del,
 			      u32 * result_index);
 
+u8 *
+format_ip_flow_hash_config (u8 * s, va_list * args);
+
 always_inline ip_interface_address_t *
 ip_get_interface_address (ip_lookup_main_t * lm, void * addr_fib)
 {
@@ -603,27 +488,13 @@ ip_get_interface_address (ip_lookup_main_t * lm, void * addr_fib)
   return p ? pool_elt_at_index (lm->if_address_pool, p[0]) : 0;
 }
 
+u32
+fib_table_id_find_fib_index (fib_protocol_t proto,
+			     u32 table_id);
+
 always_inline void *
 ip_interface_address_get_address (ip_lookup_main_t * lm, ip_interface_address_t * a)
 { return mhash_key_to_mem (&lm->address_to_if_address_index, a->address_key); }
-
-always_inline ip_interface_address_t *
-ip_interface_address_for_packet (ip_lookup_main_t * lm, vlib_buffer_t * b, u32 sw_if_index)
-{
-  ip_adjacency_t * adj;
-  u32 if_address_index;
-
-  adj = ip_get_adjacency (lm, vnet_buffer (b)->ip.adj_index[VLIB_TX]);
-
-  ASSERT (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP
-	  || adj->lookup_next_index == IP_LOOKUP_NEXT_LOCAL);
-  if_address_index = adj->if_address_index;
-  if_address_index = (if_address_index == ~0 ?
-		      vec_elt (lm->if_address_pool_index_by_sw_if_index, sw_if_index)
-		      : if_address_index);
-
-  return (if_address_index != ~0)?pool_elt_at_index (lm->if_address_pool, if_address_index):NULL;
-}
 
 #define foreach_ip_interface_address(lm,a,sw_if_index,loop,body)        \
 do {                                                                    \
@@ -653,7 +524,5 @@ do {                                                                    \
 } while (0)
 
 void ip_lookup_init (ip_lookup_main_t * lm, u32 ip_lookup_node_index);
-u32 vnet_register_special_adjacency_format_function 
-(ip_lookup_main_t * lm, format_function_t * fp);
 
 #endif /* included_ip_lookup_h */

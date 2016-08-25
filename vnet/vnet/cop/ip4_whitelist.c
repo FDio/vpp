@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 #include <vnet/cop/cop.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/dpo/load_balance.h>
 
 typedef struct {
   u32 next_index;
@@ -57,9 +59,7 @@ ip4_cop_whitelist_node_fn (vlib_main_t * vm,
   u32 n_left_from, * from, * to_next;
   cop_feature_type_t next_index;
   cop_main_t *cm = &cop_main;
-  ip4_main_t * im4 = &ip4_main;
-  ip_lookup_main_t * lm4 = &im4->lookup_main;
-  vlib_combined_counter_main_t * vcm = &im4->lookup_main.adjacency_counters;
+  vlib_combined_counter_main_t * vcm = &load_balance_main.lbm_via_counters;
   u32 cpu_index = vm->cpu_index;
 
   from = vlib_frame_vector_args (frame);
@@ -74,7 +74,7 @@ ip4_cop_whitelist_node_fn (vlib_main_t * vm,
 			   to_next, n_left_to_next);
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
-	{
+      	{
           u32 bi0, bi1;
           vlib_buffer_t * b0, * b1;
           u32 next0, next1;
@@ -82,147 +82,142 @@ ip4_cop_whitelist_node_fn (vlib_main_t * vm,
           ip4_header_t * ip0, * ip1;
           cop_config_main_t * ccm0, * ccm1;
           cop_config_data_t * c0, * c1;
-	  ip4_fib_mtrie_t * mtrie0, * mtrie1;
-	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
-          u32 adj_index0, adj_index1;
-          ip_adjacency_t * adj0, * adj1;
-          
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t * p2, * p3;
-            
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-            
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
+      	  ip4_fib_mtrie_t * mtrie0, * mtrie1;
+      	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
+          u32 lb_index0, lb_index1;
+          const load_balance_t * lb0, *lb1;
+          const dpo_id_t *dpo0, *dpo1;
 
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  }
+      	  /* Prefetch next iteration. */
+      	  {
+      	    vlib_buffer_t * p2, * p3;
+            
+      	    p2 = vlib_get_buffer (vm, from[2]);
+      	    p3 = vlib_get_buffer (vm, from[3]);
+            
+      	    vlib_prefetch_buffer_header (p2, LOAD);
+      	    vlib_prefetch_buffer_header (p3, LOAD);
+
+      	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
+      	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+      	  }
 
           /* speculatively enqueue b0 and b1 to the current next frame */
-	  to_next[0] = bi0 = from[0];
-	  to_next[1] = bi1 = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
+      	  to_next[0] = bi0 = from[0];
+      	  to_next[1] = bi1 = from[1];
+      	  from += 2;
+      	  to_next += 2;
+      	  n_left_from -= 2;
+      	  n_left_to_next -= 2;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+      	  b0 = vlib_get_buffer (vm, bi0);
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
 
-	  ip0 = vlib_buffer_get_current (b0);
+      	  ip0 = vlib_buffer_get_current (b0);
 
-	  ccm0 = cm->cop_config_mains + VNET_COP_IP4;
+      	  ccm0 = cm->cop_config_mains + VNET_COP_IP4;
 
-	  c0 = vnet_get_config_data 
+      	  c0 = vnet_get_config_data
               (&ccm0->config_main,
                &vnet_buffer (b0)->cop.current_config_index,
                &next0,
                sizeof (c0[0]));
 
-	  mtrie0 = &vec_elt_at_index (im4->fibs, c0->fib_index)->mtrie;
+	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 
-	  leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
+      	  leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, 
+      	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
                                              &ip0->src_address, 0);
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, 
+      	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
                                              &ip0->src_address, 1);
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, 
+      	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
                                              &ip0->src_address, 2);
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, 
+      	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
                                              &ip0->src_address, 3);
 
-	  adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+      	  lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 
-	  ASSERT (adj_index0 
-                  == ip4_fib_lookup_with_table (im4, c0->fib_index,
-                                                &ip0->src_address,
-                                                1 /* no_default_route */));
-	  adj0 = ip_get_adjacency (lm4, adj_index0);
-          if (PREDICT_FALSE(adj0->lookup_next_index != IP_LOOKUP_NEXT_LOCAL))
+	  ASSERT (lb_index0
+                  == ip4_fib_table_lookup_lb (ip4_fib_get(c0->fib_index),
+	  				       &ip0->src_address));
+	  lb0 = load_balance_get (lb_index0);
+          dpo0 = load_balance_get_bucket_i(lb0, 0);
+
+          if (PREDICT_FALSE(dpo0->dpoi_type != DPO_RECEIVE))
             {
               b0->error = node->errors[IP4_COP_WHITELIST_ERROR_DROPPED];
               next0 = RX_COP_DROP;
             }
 
-	  b1 = vlib_get_buffer (vm, bi1);
+      	  b1 = vlib_get_buffer (vm, bi1);
           sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
 
-	  ip1 = vlib_buffer_get_current (b1);
+      	  ip1 = vlib_buffer_get_current (b1);
 
-	  ccm1 = cm->cop_config_mains + VNET_COP_IP4;
+      	  ccm1 = cm->cop_config_mains + VNET_COP_IP4;
 
-	  c1 = vnet_get_config_data 
+      	  c1 = vnet_get_config_data
               (&ccm1->config_main,
                &vnet_buffer (b1)->cop.current_config_index,
                &next1,
                sizeof (c1[0]));
+	  mtrie1 = &ip4_fib_get (c1->fib_index)->mtrie;
 
-	  mtrie1 = &vec_elt_at_index (im4->fibs, c1->fib_index)->mtrie;
+      	  leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
 
-	  leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
-
-	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, 
+      	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
                                              &ip1->src_address, 0);
 
-	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, 
+      	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
                                              &ip1->src_address, 1);
 
-	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, 
+      	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
                                              &ip1->src_address, 2);
 
-	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, 
+      	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
                                              &ip1->src_address, 3);
 
-	  adj_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+      	  lb_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+	  ASSERT (lb_index1
+                  == ip4_fib_table_lookup_lb (ip4_fib_get(c1->fib_index),
+	  				       &ip1->src_address));
+	  lb1 = load_balance_get (lb_index1);
+          dpo1 = load_balance_get_bucket_i(lb1, 0);
 
-	  ASSERT (adj_index1 
-                  == ip4_fib_lookup_with_table (im4, c1->fib_index,
-                                                &ip1->src_address,
-                                                1 /* no_default_route */));
-	  adj1 = ip_get_adjacency (lm4, adj_index1);
-
-          vlib_increment_combined_counter 
-              (vcm, cpu_index, adj_index0, 1,
-               vlib_buffer_length_in_chain (vm, b0) 
+          vlib_increment_combined_counter
+              (vcm, cpu_index, lb_index0, 1,
+               vlib_buffer_length_in_chain (vm, b0)
                + sizeof(ethernet_header_t));
 
-          vlib_increment_combined_counter 
-              (vcm, cpu_index, adj_index1, 1,
+          vlib_increment_combined_counter
+              (vcm, cpu_index, lb_index1, 1,
                vlib_buffer_length_in_chain (vm, b1)
                + sizeof(ethernet_header_t));
 
-          if (PREDICT_FALSE(adj0->lookup_next_index != IP_LOOKUP_NEXT_LOCAL))
-            {
-              b0->error = node->errors[IP4_COP_WHITELIST_ERROR_DROPPED];
-              next0 = RX_COP_DROP;
-            }
 
-          if (PREDICT_FALSE(adj1->lookup_next_index != IP_LOOKUP_NEXT_LOCAL))
+          if (PREDICT_FALSE(dpo1->dpoi_type != DPO_RECEIVE))
             {
               b1->error = node->errors[IP4_COP_WHITELIST_ERROR_DROPPED];
               next1 = RX_COP_DROP;
             }
 
-          if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
-                            && (b0->flags & VLIB_BUFFER_IS_TRACED))) 
+          if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
+                            && (b0->flags & VLIB_BUFFER_IS_TRACED)))
             {
-              ip4_cop_whitelist_trace_t *t = 
+              ip4_cop_whitelist_trace_t *t =
                  vlib_add_trace (vm, node, b0, sizeof (*t));
               t->sw_if_index = sw_if_index0;
               t->next_index = next0;
             }
 
-          if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
-                            && (b1->flags & VLIB_BUFFER_IS_TRACED))) 
+          if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
+                            && (b1->flags & VLIB_BUFFER_IS_TRACED)))
             {
-              ip4_cop_whitelist_trace_t *t = 
+              ip4_cop_whitelist_trace_t *t =
                  vlib_add_trace (vm, node, b1, sizeof (*t));
               t->sw_if_index = sw_if_index1;
               t->next_index = next1;
@@ -245,8 +240,9 @@ ip4_cop_whitelist_node_fn (vlib_main_t * vm,
           cop_config_data_t *c0;
 	  ip4_fib_mtrie_t * mtrie0;
 	  ip4_fib_mtrie_leaf_t leaf0;
-          u32 adj_index0;
-          ip_adjacency_t * adj0;
+          u32 lb_index0;
+          const load_balance_t * lb0;
+          const dpo_id_t *dpo0;
 
           /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -269,7 +265,7 @@ ip4_cop_whitelist_node_fn (vlib_main_t * vm,
                &next0,
                sizeof (c0[0]));
 
-	  mtrie0 = &vec_elt_at_index (im4->fibs, c0->fib_index)->mtrie;
+	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 
 	  leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
 
@@ -285,20 +281,21 @@ ip4_cop_whitelist_node_fn (vlib_main_t * vm,
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, 
                                              &ip0->src_address, 3);
 
-	  adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+	  lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 
-	  ASSERT (adj_index0 
-                  == ip4_fib_lookup_with_table (im4, c0->fib_index,
-                                                &ip0->src_address,
-                                                1 /* no_default_route */));
-	  adj0 = ip_get_adjacency (lm4, adj_index0);
+	  ASSERT (lb_index0 
+                  == ip4_fib_table_lookup_lb (ip4_fib_get(c0->fib_index),
+					      &ip0->src_address));
+
+	  lb0 = load_balance_get (lb_index0);
+          dpo0 = load_balance_get_bucket_i(lb0, 0);
 
           vlib_increment_combined_counter 
-              (vcm, cpu_index, adj_index0, 1,
+              (vcm, cpu_index, lb_index0, 1,
                vlib_buffer_length_in_chain (vm, b0) 
                + sizeof(ethernet_header_t));
 
-          if (PREDICT_FALSE(adj0->lookup_next_index != IP_LOOKUP_NEXT_LOCAL))
+          if (PREDICT_FALSE(dpo0->dpoi_type != DPO_RECEIVE))
             {
               b0->error = node->errors[IP4_COP_WHITELIST_ERROR_DROPPED];
               next0 = RX_COP_DROP;

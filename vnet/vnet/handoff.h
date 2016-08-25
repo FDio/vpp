@@ -20,7 +20,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
-#include <vnet/mpls-gre/packet.h>
+#include <vnet/mpls/packet.h>
 
 typedef enum
 {

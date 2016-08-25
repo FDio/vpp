@@ -398,13 +398,11 @@ void ethernet_set_rx_redirect (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 
 int
 vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
-				u32 sw_if_index,
-				u32 fib_index, void *a_arg, int is_static);
+				u32 sw_if_index, void *a_arg, int is_static);
 
 int
 vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,
-				  u32 sw_if_index, u32 fib_index,
-				  void *a_arg);
+				  u32 sw_if_index, void *a_arg);
 
 int vnet_proxy_arp_fib_reset (u32 fib_id);
 
@@ -537,8 +535,6 @@ int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
 				       uword node_index,
 				       uword type_opaque,
 				       uword data, int is_add);
-
-u32 vnet_arp_glean_add (u32 fib_index, void *next_hop_arg);
 
 extern vlib_node_registration_t ethernet_input_node;
 

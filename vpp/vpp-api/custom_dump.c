@@ -20,7 +20,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/unix/tuntap.h>
-#include <vnet/mpls-gre/mpls.h>
+#include <vnet/mpls/mpls.h>
 #include <vnet/dhcp/proxy.h>
 #include <vnet/dhcpv6/proxy.h>
 #include <vnet/l2tp/l2tp.h>
@@ -1412,6 +1412,9 @@ static void *vl_api_vxlan_add_del_tunnel_t_print
   s = format (s, "decap-next %d ", ntohl (mp->decap_next_index));
 
   s = format (s, "vni %d ", ntohl (mp->vni));
+
+  if (mp->is_add == 0)
+    s = format (s, "del ");
 
   if (mp->is_add == 0)
     s = format (s, "del ");

@@ -15,6 +15,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/mpls/mpls.h>
 
 /** \file
 
@@ -131,7 +132,7 @@ ip_feature_init_cast (vlib_main_t * vm,
 		      vnet_config_main_t * vcm,
 		      char **feature_start_nodes,
 		      int num_feature_start_nodes,
-		      vnet_cast_t cast, int is_ip4)
+		      vnet_cast_t cast, vnet_l3_packet_type_t proto)
 {
   uword *index_by_name;
   uword *reg_by_index;
@@ -155,32 +156,42 @@ ip_feature_init_cast (vlib_main_t * vm,
   u8 **keys_to_delete = 0;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
+  mpls_main_t *mm = &mpls_main;
 
   index_by_name = hash_create_string (0, sizeof (uword));
   reg_by_index = hash_create (0, sizeof (uword));
 
   if (cast == VNET_IP_RX_UNICAST_FEAT)
     {
-      if (is_ip4)
+      if (proto == VNET_L3_PACKET_TYPE_IP4)
 	first_reg = im4->next_uc_feature;
-      else
+      else if (proto == VNET_L3_PACKET_TYPE_IP6)
 	first_reg = im6->next_uc_feature;
+      else if (proto == VNET_L3_PACKET_TYPE_MPLS_UNICAST)
+	first_reg = mm->next_feature;
+      else
+	return clib_error_return (0,
+				  "protocol %d cast %d unsupport for features",
+				  proto, cast);
     }
   else if (cast == VNET_IP_RX_MULTICAST_FEAT)
     {
-      if (is_ip4)
+      if (proto == VNET_L3_PACKET_TYPE_IP4)
 	first_reg = im4->next_mc_feature;
-      else
+      else if (proto == VNET_L3_PACKET_TYPE_IP6)
 	first_reg = im6->next_mc_feature;
+      else
+	return clib_error_return (0,
+				  "protocol %d cast %d unsupport for features",
+				  proto, cast);
     }
   else if (cast == VNET_IP_TX_FEAT)
     {
-      if (is_ip4)
+      if (proto == VNET_L3_PACKET_TYPE_IP4)
 	first_reg = im4->next_tx_feature;
       else
 	first_reg = im6->next_tx_feature;
     }
-
 
   this_reg = first_reg;
 
@@ -281,8 +292,7 @@ again:
   /* see if we got a partial order... */
   if (vec_len (result) != n_features)
     return clib_error_return
-      (0, "ip%s_feature_init_cast (cast=%d), no partial order!",
-       is_ip4 ? "4" : "6", cast);
+      (0, "%d feature_init_cast (cast=%d), no partial order!", proto, cast);
 
   /*
    * We win.
@@ -308,10 +318,12 @@ again:
 		    feature_nodes, vec_len (feature_nodes));
 
   /* Save a copy for show command */
-  if (is_ip4)
+  if (proto == VNET_L3_PACKET_TYPE_IP4)
     im4->feature_nodes[cast] = feature_nodes;
-  else
+  else if (proto == VNET_L3_PACKET_TYPE_IP6)
     im6->feature_nodes[cast] = feature_nodes;
+  else if (proto == VNET_L3_PACKET_TYPE_MPLS_UNICAST)
+    mm->feature_nodes = feature_nodes;
 
   /* Finally, clean up all the shit we allocated */
   /* *INDENT-OFF* */

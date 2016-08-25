@@ -18,6 +18,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/fib_node.h>
 
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_template.h>
@@ -59,17 +60,32 @@ typedef enum {
 } ila_direction_t;
 
 typedef struct {
+  /**
+   * Fib Node base class
+   */
+  fib_node_t ila_fib_node;
   ila_type_t type;
   ip6_address_t sir_address;
   ip6_address_t ila_address;
-  u32 ila_adj_index;
+  ip6_address_t next_hop;
   ila_csum_mode_t csum_mode;
   ila_direction_t dir;
-} ila_entry_t;
 
-typedef struct {
-  u32 entry_index;
-} ila_adj_data_t;
+  /**
+   * The FIB entry index for the next-hop
+   */
+  fib_node_index_t next_hop_fib_entry_index;
+
+  /**
+   * The child index on the FIB entry
+   */
+  u32 next_hop_child_index;
+
+  /**
+   * The next DPO in the grpah to follow
+   */
+  dpo_id_t ila_dpo;
+} ila_entry_t;
 
 typedef struct {
   ila_entry_t *entries;		//Pool of ILA entries
@@ -87,6 +103,7 @@ typedef struct {
 typedef struct {
   ila_type_t type;
   ip6_address_t sir_address;
+  ip6_address_t next_hop_address;
   u64 locator;
   u32 vnid;
   u32 local_adj_index;
