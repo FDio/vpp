@@ -14,14 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+/**
+ * @file
+ * @brief Functions to convert PCAP file format to VPP PG (Packet Generator)
+ *
+ */
 #include <vnet/unix/pcap.h>
 #include <vnet/ethernet/packet.h>
 #include <stdio.h>
 
 pcap_main_t pcap_main;
 
-static char * pg_fmt = 
+/**
+ * @brief char * to seed a PG file
+ */
+static char * pg_fmt =
   "packet-generator new {\n"
   "    name s%d\n"
   "    limit 1\n"
@@ -29,16 +36,32 @@ static char * pg_fmt =
   "    node ethernet-input\n";
 
 
+/**
+ * @brief Packet Generator Stream boilerplate
+ *
+ * @param *ofp - FILE
+ * @param i - int
+ * @param *pkt - u8
+ */
 void stream_boilerplate (FILE *ofp, int i, u8 * pkt)
 {
   fformat(ofp, pg_fmt, i, vec_len(pkt), vec_len(pkt));
 }
 
+/**
+ * @brief Conversion of PCAP file to PG file format
+ *
+ * @param *pm - pcap_main_t
+ * @param *ofp - FILE
+ *
+ * @return rc - int
+ *
+ */
 int pcap2pg (pcap_main_t * pm, FILE *ofp)
 {
   int i, j;
   u8 *pkt;
-   
+
   for (i = 0; i < vec_len (pm->packets_read); i++)
     {
       int offset;
@@ -51,13 +74,13 @@ int pcap2pg (pcap_main_t * pm, FILE *ofp)
       stream_boilerplate (ofp, i, pkt);
 
       fformat (ofp, "    data {\n");
-      
+
       ethertype = clib_net_to_host_u16 (h->type);
 
-      /* 
+      /**
        * In vnet terms, packet generator interfaces are not ethernets.
        * They don't have vlan tables.
-       * This dance transforms captured 802.1q VLAN packets into 
+       * This transforms captured 802.1q VLAN packets into
        * regular Ethernet packets.
        */
       if (ethertype == 0x8100 /* 802.1q vlan */)
@@ -69,7 +92,7 @@ int pcap2pg (pcap_main_t * pm, FILE *ofp)
       else
         offset = 14;
 
-      fformat (ofp, 
+      fformat (ofp,
                "          0x%04x: %02x%02x.%02x%02x.%02x%02x"
                " -> %02x%02x.%02x%02x.%02x%02x\n",
                ethertype,
@@ -97,6 +120,10 @@ int pcap2pg (pcap_main_t * pm, FILE *ofp)
   return 0;
 }
 
+/**
+ * @brief pcap2pg.
+ * usage: pcap2pg -i <input-file> [-o <output-file>]
+ */
 int main (int argc, char **argv)
 {
   unformat_input_t input;

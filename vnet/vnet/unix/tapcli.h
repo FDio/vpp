@@ -14,11 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ * @file
+ * @brief TAPCLI definitions
+ */
 
 #ifndef __included_tapcli_h__
 #define __included_tapcli_h__
 
-#define foreach_tapcli_error                            \
+/** TAP CLI errors */
+#define foreach_tapcli_error				\
   /* Must be first. */                                  \
  _(NONE, "no error")                                    \
  _(READ, "read error")                                  \
@@ -32,6 +37,7 @@ typedef enum {
    TAPCLI_N_ERROR,
  } tapcli_error_t;
 
+/** TAP CLI interface details struct */
 typedef struct {
   u32 sw_if_index;
   u8 dev_name[64];
