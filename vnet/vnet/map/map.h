@@ -358,7 +358,7 @@ map_get_sfx (map_domain_t *d, u32 addr, u16 port)
 
   /* IPv4 prefix */
   if (d->flags & MAP_DOMAIN_PREFIX)
-    return (u64) (addr & ~d->suffix_mask) << 16;
+    return (u64) (addr & (0xFFFFFFFF << d->suffix_shift)) << 16;
 
   /* Shared or full IPv4 address */
   return ((u64) addr << 16) | psid;
