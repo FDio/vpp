@@ -87,6 +87,35 @@ ioam_export_test_plugin_la_SOURCES =  \
 vppapitestplugins_LTLIBRARIES += ioam_export_test_plugin.la
 vppplugins_LTLIBRARIES += ioam_export_plugin.la
 
+########################################
+# iOAM Trace
+########################################
+ioam_trace_plugin_la_SOURCES =			\
+	ioam/lib-trace/trace_util.c			\
+	ioam/encap/ip6_ioam_trace.c		\
+	ioam/lib-trace/trace_util.h			\
+	ioam/lib-trace/trace_api.c
+
+BUILT_SOURCES +=					\
+	ioam/lib-trace/trace.api.h ioam/lib-trace/trace.py
+
+pyapi_DATA += ioam/lib-trace/trace.py
+
+noinst_HEADERS +=                       \
+  ioam/export/ioam_export_all_api_h.h   \
+  ioam/lib-trace/trace_all_api_h.h			\
+  ioam/lib-trace/trace_msg_enum.h			\
+  ioam/lib-trace/trace.api.h			\
+  ioam/lib-trace/trace_util.h
+
+ioam_trace_test_plugin_la_SOURCES =		\
+	ioam/lib-trace/trace_test.c			\
+	ioam/lib-trace/trace_plugin.api.h
+
+vppapitestplugins_LTLIBRARIES += ioam_trace_test_plugin.la
+vppplugins_LTLIBRARIES += ioam_trace_plugin.la
+
+
 
 # Remove *.la files
 install-data-hook:

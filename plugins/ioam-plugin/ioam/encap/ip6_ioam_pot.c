@@ -199,10 +199,10 @@ ip6_hbh_ioam_proof_of_transit_pop_handler (ip6_header_t *ip,
   return (rv);
 }
 
-int ip6_hop_by_hop_ioam_pot_rewrite_handler (u8 *rewrite_string, u8 rewrite_size)
+int ip6_hop_by_hop_ioam_pot_rewrite_handler (u8 *rewrite_string, u8 *rewrite_size)
 {
   ioam_pot_option_t * pot_option;
-  if (rewrite_string && rewrite_size == sizeof(ioam_pot_option_t))
+  if (rewrite_string && *rewrite_size == sizeof(ioam_pot_option_t))
     {
       pot_option = (ioam_pot_option_t *)rewrite_string;
       pot_option->hdr.type = HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT

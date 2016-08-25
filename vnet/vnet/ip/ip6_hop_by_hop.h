@@ -38,12 +38,7 @@ typedef struct {
 
 
   /* Trace option */
-  u8 trace_type;
-  u8 trace_option_elts;
-
-  /* Configured node-id */
-  u32 node_id;
-  u32 app_data;
+  u8 has_trace_option;
 
   /* Pot option */
   u8 has_pot_option;
@@ -57,13 +52,12 @@ typedef struct {
 #define TSP_MILLISECONDS         1
 #define TSP_MICROSECONDS         2
 #define TSP_NANOSECONDS          3
-  /* Time stamp precision. This is enumerated to above four options */
-  u32 trace_tsp;
   
   /* Array of function pointers to ADD and POP HBH option handling routines */
   u8 options_size[256];
-  int (*add_options[256])(u8 *rewrite_string, u8 rewrite_size);
+  int (*add_options[256])(u8 *rewrite_string, u8 *rewrite_size);
   int (*pop_options[256])(ip6_header_t *ip, ip6_hop_by_hop_option_t *opt);
+  int (*get_sizeof_options[256])(u32 *rewrite_size);
   
   /* convenience */
   vlib_main_t * vlib_main;
@@ -74,8 +68,7 @@ extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
 
 extern u8 * format_path_map(u8 * s, va_list * args);
 extern clib_error_t *
-ip6_ioam_trace_profile_set(u32 trace_option_elts, u32 trace_type, u32 node_id,
-                           u32 app_data, int has_pot_option, u32 trace_tsp,
+ip6_ioam_enable(int has_trace_option, int has_pot_option,
                            int has_e2e_option);
 extern int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width,
                   u32 vrf_id, int is_add, int is_pop, int is_none);
@@ -110,12 +103,18 @@ static inline u8 is_zero_ip6_address (ip6_address_t *a)
 
 int ip6_hbh_add_register_option (u8 option,
 				 u8 size,
-				 int rewrite_options(u8 *rewrite_string, u8 size));
+				 int rewrite_options(u8 *rewrite_string, u8 *size));
 int ip6_hbh_add_unregister_option (u8 option);
 
 int ip6_hbh_pop_register_option (u8 option,
 				 int options(ip6_header_t *ip, ip6_hop_by_hop_option_t *opt));
 int ip6_hbh_pop_unregister_option (u8 option);
 
+int
+ip6_hbh_get_sizeof_register_option (u8 option,
+                            int get_sizeof_hdr_options(u32 *rewrite_size));
 
+int
+ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
+		      int has_pot_option, int has_ppc_option);
 #endif /* __included_ip6_hop_by_hop_ioam_h__ */
