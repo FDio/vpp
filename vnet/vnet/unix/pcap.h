@@ -36,13 +36,25 @@
  *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
+/**
+ * @file
+ * @brief PCAP utility definitions
+ */
 #ifndef included_vnet_pcap_h
 #define included_vnet_pcap_h
 
 #include <vlib/vlib.h>
 
-#define foreach_vnet_pcap_packet_type		\
+/**
+ * @brief Packet types supported by PCAP
+ *
+ * null 0
+ * ethernet 1
+ * ppp 9
+ * ip 12
+ * hdlc 104
+ */
+#define foreach_vnet_pcap_packet_type           \
   _ (null, 0)					\
   _ (ethernet, 1)				\
   _ (ppp, 9)					\
@@ -56,27 +68,27 @@ typedef enum {
 } pcap_packet_type_t;
 
 #define foreach_pcap_file_header			\
-  /* 0xa1b2c3d4 host byte order.			\
+  /** 0xa1b2c3d4 host byte order.			\
      0xd4c3b2a1 => need to byte swap everything. */	\
   _ (u32, magic)					\
 							\
-  /* Currently major 2 minor 4. */			\
+  /** Currently major 2 minor 4. */			\
   _ (u16, major_version)				\
   _ (u16, minor_version)				\
 							\
-  /* 0 for GMT. */					\
+  /** 0 for GMT. */					\
   _ (u32, time_zone)					\
 							\
-  /* Accuracy of timestamps.  Typically set to 0. */	\
+  /** Accuracy of timestamps.  Typically set to 0. */	\
   _ (u32, sigfigs)					\
 							\
-  /* Size of largest packet in file. */			\
+  /** Size of largest packet in file. */                \
   _ (u32, max_packet_size_in_bytes)			\
 							\
-  /* One of vnet_pcap_packet_type_t. */			\
+  /** One of vnet_pcap_packet_type_t. */                \
   _ (u32, packet_type)
 
-/* File header. */
+/** File header struct */
 typedef struct {
 #define _(t, f) t f;
   foreach_pcap_file_header
@@ -84,58 +96,79 @@ typedef struct {
 } pcap_file_header_t;
 
 #define foreach_pcap_packet_header					\
-  /* Time stamp in seconds and microseconds. */				\
+  /** Time stamp in seconds  */                                         \
   _ (u32, time_in_sec)							\
+  /** Time stamp in microseconds. */                                    \
   _ (u32, time_in_usec)							\
 									\
-  /* Number of bytes stored in file and size of actual packet. */	\
+  /** Number of bytes stored in file. */                                \
   _ (u32, n_packet_bytes_stored_in_file)				\
+  /** Number of bytes in actual packet. */                              \
   _ (u32, n_bytes_in_packet)
 
-/* Packet header. */
+/** Packet header. */
 typedef struct {
 #define _(t, f) t f;
   foreach_pcap_packet_header
 #undef _
 
-  /* Packet data follows. */
+  /** Packet data follows. */
   u8 data[0];
 } pcap_packet_header_t;
 
+/**
+ * @brief PCAP main state data structure
+ */
 typedef struct {
-  /* File name of pcap output. */
+  /** File name of pcap output. */
   char * file_name;
 
-  /* Number of packets to capture. */
+  /** Number of packets to capture. */
   u32 n_packets_to_capture;
 
+  /** Packet type */
   pcap_packet_type_t packet_type;
 
-  /* Number of packets currently captured. */
+  /** Number of packets currently captured. */
   u32 n_packets_captured;
 
+  /** flags */
   u32 flags;
 #define PCAP_MAIN_INIT_DONE (1 << 0)
 
-  /* File descriptor for reading/writing. */
+  /** File descriptor for reading/writing. */
   int file_descriptor;
 
+  /** Bytes written */
   u32 n_pcap_data_written;
 
-  /* Vector of pcap data. */
+  /** Vector of pcap data. */
   u8 * pcap_data;
 
-  /* Packets read from file. */
+  /** Packets read from file. */
   u8 ** packets_read;
 
+  /** Min/Max Packet bytes */
   u32 min_packet_bytes, max_packet_bytes;
 } pcap_main_t;
 
-/* Write out data to output file. */
+/** Write out data to output file. */
 clib_error_t * pcap_write (pcap_main_t * pm);
 
+/** Read data from file. */
 clib_error_t * pcap_read (pcap_main_t * pm);
 
+/**
+ * @brief Add packet
+ *
+ * @param *pm - pcap_main_t
+ * @param time_now - f64
+ * @param n_bytes_in_trace - u32
+ * @param n_bytes_in_packet - u32
+ *
+ * @return Packet Data
+ *
+ */
 static inline void *
 pcap_add_packet (pcap_main_t * pm,
 		 f64 time_now,
@@ -155,6 +188,15 @@ pcap_add_packet (pcap_main_t * pm,
   return h->data;
 }
 
+/**
+ * @brief Add buffer (vlib_buffer_t) to the trace
+ *
+ * @param *pm - pcap_main_t
+ * @param *vm - vlib_main_t
+ * @param buffer_index - u32
+ * @param n_bytes_in_trace - u32
+ *
+ */
 static inline void
 pcap_add_buffer (pcap_main_t * pm,
 		 vlib_main_t * vm, u32 buffer_index,
@@ -179,7 +221,7 @@ pcap_add_buffer (pcap_main_t * pm,
       b = vlib_get_buffer (vm, b->next_buffer);
     }
 
-  /* Flush output vector. */
+  /** Flush output vector. */
   if (vec_len (pm->pcap_data) >= 64*1024
       || pm->n_packets_captured >= pm->n_packets_to_capture)
     pcap_write (pm);
