@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_8063f3b0",
+        "filename": "plugins/ioam-plugin/Makefile.am",
+        "patchSetId": 5
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:57:32Z",
+      "side": 1,
+      "message": "vppplugins_LTLIBRARIES +\u003d ioam_e2e_plugin_la_SOURCES",
+      "revId": "204321aa2c19dbba5154eb710295fa75ba44ce5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_405ddbe8",
+        "filename": "plugins/ioam-plugin/ioam/encap/ip6_ioam_seqno.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:57:32Z",
+      "side": 1,
+      "message": "can this be made optional for pop handling. If decap analyze is not enabled we dont have to enter this at all.",
+      "range": {
+        "startLine": 100,
+        "startChar": 0,
+        "endLine": 100,
+        "endChar": 24
+      },
+      "revId": "204321aa2c19dbba5154eb710295fa75ba44ce5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_6058d7fa",
+        "filename": "plugins/ioam-plugin/ioam/encap/ip6_ioam_seqno.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:57:32Z",
+      "side": 1,
+      "message": "based on the cost of analyzing it here in the packet forwarding path, perhaps this can be made optional",
+      "range": {
+        "startLine": 117,
+        "startChar": 6,
+        "endLine": 117,
+        "endChar": 24
+      },
+      "revId": "204321aa2c19dbba5154eb710295fa75ba44ce5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_2072df7c",
+        "filename": "vnet/vnet/buffer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:57:32Z",
+      "side": 1,
+      "message": "a comment to explain the need for this pad to avoid overwriting l2 classify opaque index",
+      "range": {
+        "startLine": 122,
+        "startChar": 14,
+        "endLine": 122,
+        "endChar": 17
+      },
+      "revId": "204321aa2c19dbba5154eb710295fa75ba44ce5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_006fe393",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 3062,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:57:32Z",
+      "side": 1,
+      "message": "bit wise \u0026 here or use IOAM_DEAP_ENABLED here and above 2 places",
+      "range": {
+        "startLine": 3062,
+        "startChar": 68,
+        "endLine": 3062,
+        "endChar": 70
+      },
+      "revId": "204321aa2c19dbba5154eb710295fa75ba44ce5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
