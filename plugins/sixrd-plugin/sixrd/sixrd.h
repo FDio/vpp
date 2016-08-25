@@ -17,6 +17,9 @@
 #include <vppinfra/error.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/ip6_fib.h>
+
+#include "sixrd_dpo.h"
 
 int sixrd_create_domain(ip6_address_t *ip6_prefix, u8 ip6_prefix_len,
 			ip4_address_t *ip4_prefix, u8 ip4_prefix_len,
@@ -44,9 +47,6 @@ typedef struct {
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
-
-  u32 ip4_lookup_next_index;
-  u32 ip6_lookup_next_index;
 } sixrd_main_t;
 
 #define foreach_sixrd_error				\
@@ -99,16 +99,16 @@ sixrd_get_addr (sixrd_domain_t *d, u64 dal)
  * Get the SIXRD domain from an IPv6 lookup adjacency.
  */
 static_always_inline sixrd_domain_t *
-ip6_sixrd_get_domain (u32 adj_index, u32 *sixrd_domain_index)
+ip6_sixrd_get_domain (u32 sdi, u32 *sixrd_domain_index)
 {
   sixrd_main_t *mm = &sixrd_main;
-  ip_lookup_main_t *lm = &ip6_main.lookup_main;
-  ip_adjacency_t *adj = ip_get_adjacency(lm, adj_index);
-  ASSERT(adj);
-  uword *p = (uword *)adj->rewrite_data;
-  ASSERT(p);
-  *sixrd_domain_index = p[0];
-  return pool_elt_at_index(mm->domains, p[0]);
+  sixrd_dpo_t *sd;
+
+  sd = sixrd_dpo_get(sdi);
+
+  ASSERT(sd);
+  *sixrd_domain_index = sd->sd_domain;
+  return pool_elt_at_index(mm->domains, *sixrd_domain_index);
 }
 
 /*
@@ -117,28 +117,25 @@ ip6_sixrd_get_domain (u32 adj_index, u32 *sixrd_domain_index)
  * The IPv6 address is used otherwise.
  */
 static_always_inline sixrd_domain_t *
-ip4_sixrd_get_domain (u32 adj_index, ip6_address_t *addr,
+ip4_sixrd_get_domain (u32 sdi, ip6_address_t *addr,
 		      u32 *sixrd_domain_index, u8 *error)
 {
   sixrd_main_t *mm = &sixrd_main;
-  ip6_main_t *im6 = &ip6_main;
-  ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
-  ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
-  ip_adjacency_t *adj = ip_get_adjacency(lm4, adj_index);
-  ASSERT(adj);
-  uword *p = (uword *)adj->rewrite_data;
-  ASSERT(p);
-  *sixrd_domain_index = p[0];
-  if (p[0] != ~0)
-    return pool_elt_at_index(mm->domains, p[0]);
+  sixrd_dpo_t *sd;
 
-  u32 ai = ip6_fib_lookup_with_table(im6, 0, addr);
-  ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai);
-  if (PREDICT_TRUE(adj6->lookup_next_index == mm->ip6_lookup_next_index)) {
-    uword *p = (uword *)adj6->rewrite_data;
-    *sixrd_domain_index = p[0];
+  sd = sixrd_dpo_get(sdi);
+  *sixrd_domain_index = sd->sd_domain;
+  if (*sixrd_domain_index != ~0)
     return pool_elt_at_index(mm->domains, *sixrd_domain_index);
-  }
+
+  u32 lbi = ip6_fib_table_fwding_lookup(&ip6_main, 0, addr);
+  const dpo_id_t *dpo = load_balance_get_bucket(lbi, 0);
+  if (PREDICT_TRUE(dpo->dpoi_type == sixrd_dpo_type))
+    {
+      sd = sixrd_dpo_get(dpo->dpoi_index);
+      *sixrd_domain_index = sd->sd_domain;
+      return pool_elt_at_index(mm->domains, *sixrd_domain_index);
+    }
   *error = SIXRD_ERROR_NO_DOMAIN;
   return NULL;
 }

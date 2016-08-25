@@ -32,7 +32,7 @@ typedef struct
 } clib_bihash_kv_24_8_t;
 
 static inline int
-clib_bihash_is_free_24_8 (clib_bihash_kv_24_8_t * v)
+clib_bihash_is_free_24_8 (const clib_bihash_kv_24_8_t * v)
 {
   /* Free values are memset to 0xff, check a bit... */
   if (v->key[0] == ~0ULL && v->value == ~0ULL)
@@ -50,9 +50,9 @@ crc_u32 (u32 data, u32 value)
 }
 
 static inline u64
-clib_bihash_hash_24_8 (clib_bihash_kv_24_8_t * v)
+clib_bihash_hash_24_8 (const clib_bihash_kv_24_8_t * v)
 {
-  u32 *dp = (u32 *) & v->key[0];
+  const u32 *dp = (const u32 *) &v->key[0];
   u32 value = 0;
 
   value = crc_u32 (dp[0], value);
@@ -66,7 +66,7 @@ clib_bihash_hash_24_8 (clib_bihash_kv_24_8_t * v)
 }
 #else
 static inline u64
-clib_bihash_hash_24_8 (clib_bihash_kv_24_8_t * v)
+clib_bihash_hash_24_8 (const clib_bihash_kv_24_8_t * v)
 {
   u64 tmp = v->key[0] ^ v->key[1] ^ v->key[2];
   return clib_xxhash (tmp);
@@ -84,7 +84,7 @@ format_bihash_kvp_24_8 (u8 * s, va_list * args)
 }
 
 static inline int
-clib_bihash_key_compare_24_8 (u64 * a, u64 * b)
+clib_bihash_key_compare_24_8 (const u64 * a, const u64 * b)
 {
   return ((a[0] ^ b[0]) | (a[1] ^ b[1]) | (a[2] ^ b[2])) == 0;
 }

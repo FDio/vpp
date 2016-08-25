@@ -15,6 +15,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
 #include <vnet/classify/vnet_classify.h>
+#include <vnet/dpo/classify_dpo.h>
 
 typedef struct {
   u32 next_index;
@@ -63,7 +64,6 @@ ip_classify_inline (vlib_main_t * vm,
   u32 n_left_from, * from, * to_next;
   ip_lookup_next_t next_index;
   vnet_classify_main_t * vcm = &vnet_classify_main;
-  ip_lookup_main_t * lm;
   f64 now = vlib_time_now (vm);
   u32 hits = 0;
   u32 misses = 0;
@@ -71,10 +71,8 @@ ip_classify_inline (vlib_main_t * vm,
   u32 n_next;
 
   if (is_ip4) {
-    lm = &ip4_main.lookup_main;
     n_next = IP4_LOOKUP_N_NEXT;
   } else {
-    lm = &ip6_main.lookup_main;
     n_next = IP6_LOOKUP_N_NEXT;
   }
 
@@ -88,8 +86,8 @@ ip_classify_inline (vlib_main_t * vm,
       vlib_buffer_t * b0, * b1;
       u32 bi0, bi1;
       u8 * h0, * h1;
-      u32 adj_index0, adj_index1;
-      ip_adjacency_t * adj0, * adj1;
+      u32 cd_index0, cd_index1;
+      classify_dpo_t *cd0, * cd1;
       u32 table_index0, table_index1;
       vnet_classify_table_t * t0, * t1;
 
@@ -116,13 +114,13 @@ ip_classify_inline (vlib_main_t * vm,
       h1 = (void *)vlib_buffer_get_current(b1) -
                 ethernet_buffer_header_size(b1);
         
-      adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-      adj0 = ip_get_adjacency (lm, adj_index0);
-      table_index0 = adj0->classify.table_index;
+      cd_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+      cd0 = classify_dpo_get(cd_index0);
+      table_index0 = cd0->cd_table_index;
 
-      adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
-      adj1 = ip_get_adjacency (lm, adj_index1);
-      table_index1 = adj1->classify.table_index;
+      cd_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
+      cd1 = classify_dpo_get(cd_index1);
+      table_index1 = cd1->cd_table_index;
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
 
@@ -151,8 +149,8 @@ ip_classify_inline (vlib_main_t * vm,
       vlib_buffer_t * b0;
       u32 bi0;
       u8 * h0;
-      u32 adj_index0;
-      ip_adjacency_t * adj0;
+      u32 cd_index0;
+      classify_dpo_t *cd0;
       u32 table_index0;
       vnet_classify_table_t * t0;
 
@@ -161,9 +159,9 @@ ip_classify_inline (vlib_main_t * vm,
       h0 = (void *)vlib_buffer_get_current(b0) -
                 ethernet_buffer_header_size(b0);
         
-      adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-      adj0 = ip_get_adjacency (lm, adj_index0);
-      table_index0 = adj0->classify.table_index;
+      cd_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+      cd0 = classify_dpo_get(cd_index0);
+      table_index0 = cd0->cd_table_index;
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
       vnet_buffer(b0)->l2_classify.hash = 
@@ -192,7 +190,7 @@ ip_classify_inline (vlib_main_t * vm,
 	{
           u32 bi0;
 	  vlib_buffer_t * b0;
-          u32 next0 = IP_LOOKUP_NEXT_MISS;
+          u32 next0 = IP_LOOKUP_NEXT_DROP;
           u32 table_index0;
           vnet_classify_table_t * t0;
           vnet_classify_entry_t * e0;

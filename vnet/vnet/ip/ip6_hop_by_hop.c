@@ -24,6 +24,7 @@
 #include <vppinfra/elog.h>
 
 #include <vnet/ip/ip6_hop_by_hop.h>
+#include <vnet/fib/ip6_fib.h>
 
 char *ppc_state[] = { "None", "Encap", "Decap" };
 
@@ -935,48 +936,22 @@ ip6_ioam_set_destination (ip6_address_t * addr, u32 mask_width, u32 vrf_id,
   ip_lookup_main_t *lm = &im->lookup_main;
   ip_adjacency_t *adj;
   u32 fib_index;
-  u32 len, adj_index;
-  int i, rv;
-  uword *p;
-  BVT (clib_bihash_kv) kv, value;
+  u32 adj_index;
 
   if ((is_add + is_pop + is_none) != 1)
     return VNET_API_ERROR_INVALID_VALUE_2;
 
   /* Go find the adjacency we're supposed to tickle */
-  p = hash_get (im->fib_index_by_table_id, vrf_id);
+  fib_index = ip6_fib_index_from_table_id (vrf_id);
 
-  if (p == 0)
+  if (~0 == fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  fib_index = p[0];
+  adj_index = ip6_fib_table_fwding_lookup (im, fib_index, addr);
 
-  len = vec_len (im->prefix_lengths_in_search_order);
-
-  for (i = 0; i < len; i++)
-    {
-      int dst_address_length = im->prefix_lengths_in_search_order[i];
-      ip6_address_t *mask = &im->fib_masks[dst_address_length];
-
-      if (dst_address_length != mask_width)
-	continue;
-
-      kv.key[0] = addr->as_u64[0] & mask->as_u64[0];
-      kv.key[1] = addr->as_u64[1] & mask->as_u64[1];
-      kv.key[2] = ((u64) ((fib_index)) << 32) | dst_address_length;
-
-      rv =
-	BV (clib_bihash_search_inline_2) (&im->ip6_lookup_table, &kv, &value);
-      if (rv == 0)
-	goto found;
-
-    }
-  return VNET_API_ERROR_NO_SUCH_ENTRY;
-
-found:
+  ASSERT (!"Not an ADJ");
 
   /* Got it, modify as directed... */
-  adj_index = value.value;
   adj = ip_get_adjacency (lm, adj_index);
 
   /* Restore original lookup-next action */
@@ -1015,7 +990,7 @@ ip6_set_ioam_destination_command_fn (vlib_main_t * vm,
   int is_pop = 0;
   int is_none = 0;
   u32 vrf_id = 0;
-  int rv;
+  // int rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1038,19 +1013,23 @@ ip6_set_ioam_destination_command_fn (vlib_main_t * vm,
   if (mask_width == ~0)
     return clib_error_return (0, "<address>/<mask-width> required");
 
-  rv = ip6_ioam_set_destination (&addr, mask_width, vrf_id,
-				 is_add, is_pop, is_none);
+  /* rv = ip6_ioam_set_destination (&addr, mask_width, vrf_id, */
+  /*                             is_add, is_pop, is_none); */
 
-  switch (rv)
-    {
-    case 0:
-      break;
-    default:
-      return clib_error_return (0, "ip6_ioam_set_destination returned %d",
-				rv);
-    }
+  /* switch (rv) */
+  /*   { */
+  /*   case 0: */
+  /*     break; */
+  /*   default: */
+  /*     return clib_error_return (0, "ip6_ioam_set_destination returned %d", */
+  /*                            rv); */
+  /*   } */
 
-  return 0;
+  /* return 0; */
+
+  return clib_error_return (0,
+			    "ip6_ioam_set_destination Currnetly Disabled due to FIB2.0",
+			    1);
 }
 
 /* *INDENT-OFF* */

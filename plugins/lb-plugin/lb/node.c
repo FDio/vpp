@@ -48,15 +48,15 @@ typedef struct {
   u32 as_index;
 } lb_trace_t;
 
-u8 *lb_format_adjacency(u8 * s, va_list * va)
-{
-  lb_main_t *lbm = &lb_main;
-  __attribute((unused)) ip_lookup_main_t *lm = va_arg (*va, ip_lookup_main_t *);
-  ip_adjacency_t *adj = va_arg (*va, ip_adjacency_t *);
-  lb_adj_data_t *ad = (lb_adj_data_t *) &adj->opaque;
-  __attribute__((unused)) lb_vip_t *vip = pool_elt_at_index (lbm->vips, ad->vip_index);
-  return format(s, "vip idx:%d", ad->vip_index);
-}
+/* u8 *lb_format_adjacency(u8 * s, va_list * va) */
+/* { */
+/*   lb_main_t *lbm = &lb_main; */
+/*   __attribute((unused)) ip_lookup_main_t *lm = va_arg (*va, ip_lookup_main_t *); */
+/*   ip_adjacency_t *adj = va_arg (*va, ip_adjacency_t *); */
+/*   lb_adj_data_t *ad = (lb_adj_data_t *) &adj->opaque; */
+/*   __attribute__((unused)) lb_vip_t *vip = pool_elt_at_index (lbm->vips, ad->vip_index); */
+/*   return format(s, "vip idx:%d", ad->vip_index); */
+/* } */
 
 u8 *
 format_lb_trace (u8 * s, va_list * args)
@@ -319,11 +319,11 @@ VLIB_REGISTER_NODE (lb6_gre6_node) =
   },
 };
 
-VNET_IP6_REGISTER_ADJACENCY(lb6_gre6) = {
-  .node_name = "lb6-gre6",
-  .fn = lb_format_adjacency,
-  .next_index = &lb_main.ip_lookup_next_index[LB_VIP_TYPE_IP6_GRE6]
-};
+/* VNET_IP6_REGISTER_ADJACENCY(lb6_gre6) = { */
+/*   .node_name = "lb6-gre6", */
+/*   .fn = lb_format_adjacency, */
+/*   .next_index = &lb_main.ip_lookup_next_index[LB_VIP_TYPE_IP6_GRE6] */
+/* }; */
 
 VLIB_REGISTER_NODE (lb6_gre4_node) =
 {
@@ -344,11 +344,11 @@ VLIB_REGISTER_NODE (lb6_gre4_node) =
   },
 };
 
-VNET_IP6_REGISTER_ADJACENCY(lb6_gre4) = {
-  .node_name = "lb6-gre4",
-  .fn = lb_format_adjacency,
-  .next_index = &lb_main.ip_lookup_next_index[LB_VIP_TYPE_IP6_GRE4]
-};
+/* VNET_IP6_REGISTER_ADJACENCY(lb6_gre4) = { */
+/*   .node_name = "lb6-gre4", */
+/*   .fn = lb_format_adjacency, */
+/*   .next_index = &lb_main.ip_lookup_next_index[LB_VIP_TYPE_IP6_GRE4] */
+/* }; */
 
 VLIB_REGISTER_NODE (lb4_gre6_node) =
 {
@@ -369,11 +369,11 @@ VLIB_REGISTER_NODE (lb4_gre6_node) =
   },
 };
 
-VNET_IP4_REGISTER_ADJACENCY(lb4_gre6) = {
-  .node_name = "lb4-gre6",
-  .fn = lb_format_adjacency,
-  .next_index = &lb_main.ip_lookup_next_index[LB_VIP_TYPE_IP4_GRE6]
-};
+/* VNET_IP4_REGISTER_ADJACENCY(lb4_gre6) = { */
+/*   .node_name = "lb4-gre6", */
+/*   .fn = lb_format_adjacency, */
+/*   .next_index = &lb_main.ip_lookup_next_index[LB_VIP_TYPE_IP4_GRE6] */
+/* }; */
 
 VLIB_REGISTER_NODE (lb4_gre4_node) =
 {
@@ -394,8 +394,8 @@ VLIB_REGISTER_NODE (lb4_gre4_node) =
   },
 };
 
-VNET_IP4_REGISTER_ADJACENCY(lb4_gre4) = {
-  .node_name = "lb4-gre4",
-  .fn = lb_format_adjacency,
-  .next_index = &lb_main.ip_lookup_next_index[LB_VIP_TYPE_IP4_GRE4]
-};
+/* VNET_IP4_REGISTER_ADJACENCY(lb4_gre4) = { */
+/*   .node_name = "lb4-gre4", */
+/*   .fn = lb_format_adjacency, */
+/*   .next_index = &lb_main.ip_lookup_next_index[LB_VIP_TYPE_IP4_GRE4] */
+/* }; */

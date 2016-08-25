@@ -16,6 +16,10 @@
 #include "sixrd.h"
 #include <vnet/plugin/plugin.h>
 
+#include <vnet/fib/fib_table.h>
+#include <vnet/fib/ip6_fib.h>
+#include <vnet/adj/adj.h>
+
 /*
  * This code supports the following sixrd modes:
  * 
@@ -29,21 +33,17 @@
 
 int
 sixrd_create_domain (ip6_address_t *ip6_prefix,
-                   u8 ip6_prefix_len,
-                   ip4_address_t *ip4_prefix,
-                   u8 ip4_prefix_len,
-                   ip4_address_t *ip4_src,
-                   u32 *sixrd_domain_index,
+		     u8 ip6_prefix_len,
+		     ip4_address_t *ip4_prefix,
+		     u8 ip4_prefix_len,
+		     ip4_address_t *ip4_src,
+		     u32 *sixrd_domain_index,
 		     u16 mtu)
 {
+  dpo_id_t dpo_v6 = DPO_NULL, dpo_v4 = DPO_NULL;
   sixrd_main_t *mm = &sixrd_main;
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
+  fib_node_index_t fei;
   sixrd_domain_t *d;
-  ip_adjacency_t adj;
-  ip4_add_del_route_args_t args4;
-  ip6_add_del_route_args_t args6;
-  u32 *p;
 
   /* Get domain index */
   pool_get_aligned(mm->domains, d, CLIB_CACHE_LINE_BYTES);
@@ -61,55 +61,79 @@ sixrd_create_domain (ip6_address_t *ip6_prefix,
   if (ip4_prefix_len < 32)
     d->shift = 64 - ip6_prefix_len + (32 - ip4_prefix_len);
     
-  /* Init IP adjacency */
-  memset(&adj, 0, sizeof(adj));
-  adj.explicit_fib_index = ~0;
-  p = (u32 *)&adj.rewrite_data[0];
-  *p = (u32) (*sixrd_domain_index);
+  /* Create IPv6 route/adjacency */
+  fib_prefix_t pfx6 = {
+      .fp_proto = FIB_PROTOCOL_IP6,
+      .fp_len = d->ip6_prefix_len,
+      .fp_addr = {
+	  .ip6 = d->ip6_prefix,
+      },
+  };
+  sixrd_dpo_create(FIB_PROTOCOL_IP6,
+		   *sixrd_domain_index,
+		   &dpo_v6);
+  fib_table_entry_special_dpo_add(0, &pfx6,
+				  FIB_SOURCE_SIXRD,
+				  FIB_ENTRY_FLAG_EXCLUSIVE,
+				  &dpo_v6);
+  dpo_reset (&dpo_v6);
 
-  /* Create ip6 adjacency */
-  memset(&args6, 0, sizeof(args6));
-  args6.table_index_or_table_id = 0;
-  args6.flags = IP6_ROUTE_FLAG_ADD;
-  args6.dst_address.as_u64[0] = ip6_prefix->as_u64[0];
-  args6.dst_address.as_u64[1] = ip6_prefix->as_u64[1];
-  args6.dst_address_length = ip6_prefix_len;
-  args6.adj_index = ~0;
-  args6.add_adj = &adj;
-  args6.n_add_adj = 1;
-  adj.lookup_next_index = mm->ip6_lookup_next_index;
-  ip6_add_del_route(im6, &args6);
+  /*
+   * Multiple SIXRD domains may share same source IPv4 TEP
+   * In this case the route will exist and be SixRD sourced.
+   * Find the adj (if any) already contributed and modify it
+   */
+  fib_prefix_t pfx4 = {
+      .fp_proto = FIB_PROTOCOL_IP6,
+      .fp_len = 32,
+      .fp_addr = {
+	  .ip4 = d->ip4_src,
+      },
+  };
+  fei = fib_table_lookup_exact_match(0, &pfx4);
 
-  /* Multiple SIXRD domains may share same source IPv4 TEP */
-  uword *q = ip4_get_route(im4, 0, 0, (u8 *)ip4_src, 32);
-  if (q) {
-    u32 ai = q[0];
-    ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
-    ip_adjacency_t *adj4 = ip_get_adjacency(lm4, ai);
-    if (adj4->lookup_next_index != mm->ip4_lookup_next_index) {
-      clib_warning("BR source address already assigned: %U", format_ip4_address, ip4_src);
-      pool_put(mm->domains, d);
-      return -1;
-    }
-    /* Shared source */
-    p = (u32 *)&adj4->rewrite_data[0];
-    p[0] = ~0;
+  if (FIB_NODE_INDEX_INVALID != fei)
+  {
+      dpo_id_t dpo = DPO_NULL;
 
-    /* Add refcount, so we don't accidentially delete the route underneath someone */
-    p[1]++;
-  } else {
-    /* Create ip4 adjacency. */
-    memset(&args4, 0, sizeof(args4));
-    args4.table_index_or_table_id = 0;
-    args4.flags = IP4_ROUTE_FLAG_ADD;
-    args4.dst_address.as_u32 = ip4_src->as_u32;
-    args4.dst_address_length = 32;
-    args4.adj_index = ~0;
-    args4.add_adj = &adj;
-    args4.n_add_adj = 1;
-    adj.lookup_next_index = mm->ip4_lookup_next_index;
-    ip4_add_del_route(im4, &args4);
+      if (fib_entry_get_dpo_for_source (fei, FIB_SOURCE_SIXRD, &dpo))
+      {
+	  /*
+	   * modify the existing adj to indicate it's shared
+	   * skip to route add.
+	   * It is locked to pair with the unlock below.
+	   */
+	  const dpo_id_t *sd_dpo;
+	  sixrd_dpo_t *sd;
+
+	  ASSERT(DPO_LOAD_BALANCE == dpo.dpoi_type);
+
+	  sd_dpo = load_balance_get_bucket(dpo.dpoi_index, 0);
+	  sd = sixrd_dpo_get (sd_dpo->dpoi_index);
+
+	  sd->sd_domain = ~0;
+	  dpo_copy (&dpo_v4, sd_dpo);
+	  dpo_reset (&dpo);
+
+	  goto route_add;
+      }
   }
+  /* first time addition of the route */
+  sixrd_dpo_create(FIB_PROTOCOL_IP4,
+		   *sixrd_domain_index,
+		   &dpo_v4);
+
+route_add:
+  /*
+   * Create ip4 route. This is a reference counted add. If the prefix
+   * already exists and is SixRD sourced, it is now SixRD source n+1 times
+   * and will need to be removed n+1 times.
+   */
+  fib_table_entry_special_dpo_add(0, &pfx4,
+				  FIB_SOURCE_SIXRD,
+				  FIB_ENTRY_FLAG_EXCLUSIVE,
+				  &dpo_v4);
+  dpo_reset (&dpo_v4);
 
   return 0;
 }
@@ -121,57 +145,33 @@ int
 sixrd_delete_domain (u32 sixrd_domain_index)
 {
   sixrd_main_t *mm = &sixrd_main;
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
   sixrd_domain_t *d;
-  ip_adjacency_t adj;
-  ip4_add_del_route_args_t args4;
-  ip6_add_del_route_args_t args6;
 
   if (pool_is_free_index(mm->domains, sixrd_domain_index)) {
-    clib_warning("SIXRD domain delete: domain does not exist: %d", sixrd_domain_index);
+    clib_warning("SIXRD domain delete: domain does not exist: %d",
+		 sixrd_domain_index);
     return -1;
   }
 
   d = pool_elt_at_index(mm->domains, sixrd_domain_index);
 
-  memset(&adj, 0, sizeof(adj));
-  adj.explicit_fib_index = ~0;
+  fib_prefix_t pfx = {
+      .fp_proto = FIB_PROTOCOL_IP4,
+      .fp_len = 32,
+      .fp_addr = {
+	  .ip4 = d->ip4_src,
+      },
+  };
+  fib_table_entry_special_remove(0, &pfx, FIB_SOURCE_SIXRD);
 
-  /* Delete ip6 adjacency */
-  memset(&args6, 0, sizeof (args6));
-  args6.table_index_or_table_id = 0;
-  args6.flags = IP6_ROUTE_FLAG_DEL;
-  args6.dst_address.as_u64[0] = d->ip6_prefix.as_u64[0];
-  args6.dst_address.as_u64[1] = d->ip6_prefix.as_u64[1];
-  args6.dst_address_length = d->ip6_prefix_len;
-  args6.adj_index = 0;
-  args6.add_adj = &adj;
-  args6.n_add_adj = 0;
-  ip6_add_del_route(im6, &args6);
-
-  /* Delete ip4 adjacency */
-  uword *q = ip4_get_route(im4, 0, 0, (u8 *)&d->ip4_src, 32);
-  if (q) {
-    u32 ai = q[0];
-    ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
-    ip_adjacency_t *adj4 = ip_get_adjacency(lm4, ai);
-
-    u32 *p = (u32 *)&adj4->rewrite_data[0];
-    /* Delete route when no other domains use this source */
-    if (p[1] == 0) {
-      memset(&args4, 0, sizeof(args4));
-      args4.table_index_or_table_id = 0;
-      args4.flags = IP4_ROUTE_FLAG_DEL;
-      args4.dst_address.as_u32 = d->ip4_prefix.as_u32;
-      args4.dst_address_length = d->ip4_prefix_len;
-      args4.adj_index = 0;
-      args4.add_adj = &adj;
-      args4.n_add_adj = 0;
-      ip4_add_del_route(im4, &args4);
-    }
-    p[1]--;
-  }
+  fib_prefix_t pfx6 = {
+      .fp_proto = FIB_PROTOCOL_IP6,
+      .fp_len = d->ip6_prefix_len,
+      .fp_addr = {
+	  .ip6 = d->ip6_prefix,
+      },
+  };
+  fib_table_entry_special_remove(0, &pfx6, FIB_SOURCE_SIXRD);
 
   pool_put(mm->domains, d);
 
@@ -361,19 +361,9 @@ vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
 
 static clib_error_t * sixrd_init (vlib_main_t * vm)
 {
-  clib_error_t * error = 0;
-  sixrd_main_t *mm = &sixrd_main;
+  sixrd_dpo_module_init ();
 
-  vlib_node_t * ip6_lookup_node = vlib_get_node_by_name(vm, (u8 *)"ip6-lookup");
-  vlib_node_t * ip4_lookup_node = vlib_get_node_by_name(vm, (u8 *)"ip4-lookup");
-  vlib_node_t * ip6_sixrd_node = vlib_get_node_by_name(vm, (u8 *)"ip6-sixrd");
-  vlib_node_t * ip4_sixrd_node = vlib_get_node_by_name(vm, (u8 *)"ip4-sixrd");
-  ASSERT(ip6_lookup_node && ip4_lookup_node && ip6_sixrd_node && ip4_sixrd_node);
-
-  mm->ip6_lookup_next_index = vlib_node_add_next(vm, ip6_lookup_node->index, ip6_sixrd_node->index);
-  mm->ip4_lookup_next_index = vlib_node_add_next(vm, ip4_lookup_node->index, ip4_sixrd_node->index);
-
-  return error;
+  return (NULL);
 }
 
 VLIB_INIT_FUNCTION (sixrd_init);

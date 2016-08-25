@@ -26,6 +26,10 @@
 #include <vnet/ip/udp.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
+#include <vnet/adj/adj.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/ip6_fib.h>
 
 #define foreach_lisp_gpe_tx_next        \
   _(DROP, "error-drop")                 \
@@ -54,147 +58,6 @@ format_lisp_gpe_tx_trace (u8 * s, va_list * args)
 
   s = format (s, "LISP-GPE-TX: tunnel %d", t->tunnel_index);
   return s;
-}
-
-always_inline void
-get_one_tunnel_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0,
-		       lisp_gpe_tunnel_t ** t0, u8 is_v4)
-{
-  u32 adj_index0, tunnel_index0;
-  ip_adjacency_t *adj0;
-
-  /* Get adjacency and from it the tunnel_index */
-  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-
-  if (is_v4)
-    adj0 = ip_get_adjacency (lgm->lm4, adj_index0);
-  else
-    adj0 = ip_get_adjacency (lgm->lm6, adj_index0);
-
-  tunnel_index0 = adj0->if_address_index;
-  t0[0] = pool_elt_at_index (lgm->tunnels, tunnel_index0);
-
-  ASSERT (t0[0] != 0);
-}
-
-always_inline void
-encap_one_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0,
-		  lisp_gpe_tunnel_t * t0, u32 * next0)
-{
-  ASSERT (sizeof (ip4_udp_lisp_gpe_header_t) == 36);
-  ASSERT (sizeof (ip6_udp_lisp_gpe_header_t) == 56);
-
-  lisp_gpe_sub_tunnel_t *st0;
-  u32 *sti0;
-
-  sti0 = vec_elt_at_index (t0->sub_tunnels_lbv,
-			   vnet_buffer (b0)->ip.flow_hash %
-			   t0->sub_tunnels_lbv_count);
-  st0 = vec_elt_at_index (t0->sub_tunnels, sti0[0]);
-  if (st0->is_ip4)
-    {
-      ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 36, 1);
-      next0[0] = LISP_GPE_TX_NEXT_IP4_LOOKUP;
-    }
-  else
-    {
-      ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 56, 0);
-      next0[0] = LISP_GPE_TX_NEXT_IP6_LOOKUP;
-    }
-
-  /* Reset to look up tunnel partner in the configured FIB */
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
-}
-
-always_inline void
-get_two_tunnels_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0,
-			vlib_buffer_t * b1, lisp_gpe_tunnel_t ** t0,
-			lisp_gpe_tunnel_t ** t1, u8 is_v4)
-{
-  u32 adj_index0, adj_index1, tunnel_index0, tunnel_index1;
-  ip_adjacency_t *adj0, *adj1;
-
-  /* Get adjacency and from it the tunnel_index */
-  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-  adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
-
-  if (is_v4)
-    {
-      adj0 = ip_get_adjacency (lgm->lm4, adj_index0);
-      adj1 = ip_get_adjacency (lgm->lm4, adj_index1);
-    }
-  else
-    {
-      adj0 = ip_get_adjacency (lgm->lm6, adj_index0);
-      adj1 = ip_get_adjacency (lgm->lm6, adj_index1);
-    }
-
-  tunnel_index0 = adj0->if_address_index;
-  tunnel_index1 = adj1->if_address_index;
-
-  t0[0] = pool_elt_at_index (lgm->tunnels, tunnel_index0);
-  t1[0] = pool_elt_at_index (lgm->tunnels, tunnel_index1);
-
-  ASSERT (t0[0] != 0);
-  ASSERT (t1[0] != 0);
-}
-
-always_inline void
-encap_two_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0,
-		  vlib_buffer_t * b1, lisp_gpe_tunnel_t * t0,
-		  lisp_gpe_tunnel_t * t1, u32 * next0, u32 * next1)
-{
-  ASSERT (sizeof (ip4_udp_lisp_gpe_header_t) == 36);
-  ASSERT (sizeof (ip6_udp_lisp_gpe_header_t) == 56);
-
-  lisp_gpe_sub_tunnel_t *st0, *st1;
-  u32 *sti0, *sti1;
-  sti0 = vec_elt_at_index (t0->sub_tunnels_lbv,
-			   vnet_buffer (b0)->ip.flow_hash %
-			   t0->sub_tunnels_lbv_count);
-  sti1 =
-    vec_elt_at_index (t1->sub_tunnels_lbv,
-		      vnet_buffer (b1)->ip.flow_hash %
-		      t1->sub_tunnels_lbv_count);
-  st0 = vec_elt_at_index (t0->sub_tunnels, sti0[0]);
-  st1 = vec_elt_at_index (t1->sub_tunnels, sti1[0]);
-
-  if (PREDICT_TRUE (st0->is_ip4 == st1->is_ip4))
-    {
-      if (st0->is_ip4)
-	{
-	  ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 36, 1);
-	  ip_udp_encap_one (lgm->vlib_main, b1, st1->rewrite, 36, 1);
-	  next0[0] = next1[0] = LISP_GPE_TX_NEXT_IP4_LOOKUP;
-	}
-      else
-	{
-	  ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 56, 0);
-	  ip_udp_encap_one (lgm->vlib_main, b1, st1->rewrite, 56, 0);
-	  next0[0] = next1[0] = LISP_GPE_TX_NEXT_IP6_LOOKUP;
-	}
-    }
-  else
-    {
-      if (st0->is_ip4)
-	{
-	  ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 36, 1);
-	  ip_udp_encap_one (lgm->vlib_main, b1, st1->rewrite, 56, 1);
-	  next0[0] = LISP_GPE_TX_NEXT_IP4_LOOKUP;
-	  next1[0] = LISP_GPE_TX_NEXT_IP6_LOOKUP;
-	}
-      else
-	{
-	  ip_udp_encap_one (lgm->vlib_main, b0, st0->rewrite, 56, 1);
-	  ip_udp_encap_one (lgm->vlib_main, b1, st1->rewrite, 36, 1);
-	  next0[0] = LISP_GPE_TX_NEXT_IP6_LOOKUP;
-	  next1[0] = LISP_GPE_TX_NEXT_IP4_LOOKUP;
-	}
-    }
-
-  /* Reset to look up tunnel partner in the configured FIB */
-  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
-  vnet_buffer (b1)->sw_if_index[VLIB_TX] = t1->encap_fib_index;
 }
 
 #define is_v4_packet(_h) ((*(u8*) _h) & 0xF0) == 0x40
@@ -233,81 +96,12 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
-	{
-	  u32 bi0, bi1;
-	  vlib_buffer_t *b0, *b1;
-	  u32 next0, next1;
-	  lisp_gpe_tunnel_t *t0 = 0, *t1 = 0;
-	  u8 is_v4_eid0, is_v4_eid1;
-
-	  next0 = next1 = LISP_GPE_TX_NEXT_IP4_LOOKUP;
-
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t *p2, *p3;
-
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
-	  }
-
-	  bi0 = from[0];
-	  bi1 = from[1];
-	  to_next[0] = bi0;
-	  to_next[1] = bi1;
-	  from += 2;
-	  to_next += 2;
-	  n_left_to_next -= 2;
-	  n_left_from -= 2;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-
-	  is_v4_eid0 = is_v4_packet (vlib_buffer_get_current (b0));
-	  is_v4_eid1 = is_v4_packet (vlib_buffer_get_current (b1));
-
-	  if (PREDICT_TRUE (is_v4_eid0 == is_v4_eid1))
-	    {
-	      get_two_tunnels_inline (lgm, b0, b1, &t0, &t1,
-				      is_v4_eid0 ? 1 : 0);
-	    }
-	  else
-	    {
-	      get_one_tunnel_inline (lgm, b0, &t0, is_v4_eid0 ? 1 : 0);
-	      get_one_tunnel_inline (lgm, b1, &t1, is_v4_eid1 ? 1 : 0);
-	    }
-
-	  encap_two_inline (lgm, b0, b1, t0, t1, &next0, &next1);
-
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      lisp_gpe_tx_trace_t *tr = vlib_add_trace (vm, node, b0,
-							sizeof (*tr));
-	      tr->tunnel_index = t0 - lgm->tunnels;
-	    }
-	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      lisp_gpe_tx_trace_t *tr = vlib_add_trace (vm, node, b1,
-							sizeof (*tr));
-	      tr->tunnel_index = t1 - lgm->tunnels;
-	    }
-
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, bi1, next0,
-					   next1);
-	}
-
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
+	  u32 bi0, adj_index0, next0;
+	  const ip_adjacency_t *adj0;
+	  const dpo_id_t *dpo0;
 	  vlib_buffer_t *b0;
-	  u32 bi0, next0 = LISP_GPE_TX_NEXT_IP4_LOOKUP;
-	  lisp_gpe_tunnel_t *t0 = 0;
 	  u8 is_v4_0;
 
 	  bi0 = from[0];
@@ -319,16 +113,23 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
+	  /* Fixup the checksum and len fields in the LISP tunnel encap
+	   * that was applied at the midchain node */
 	  is_v4_0 = is_v4_packet (vlib_buffer_get_current (b0));
-	  get_one_tunnel_inline (lgm, b0, &t0, is_v4_0 ? 1 : 0);
+	  ip_udp_fixup_one (lgm->vlib_main, b0, is_v4_0);
 
-	  encap_one_inline (lgm, b0, t0, &next0);
+	  /* Follow the DPO on which the midchain is stacked */
+	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	  adj0 = adj_get (adj_index0);
+	  dpo0 = &adj0->sub_type.midchain.next_dpo;
+	  next0 = dpo0->dpoi_next_node;
+	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      lisp_gpe_tx_trace_t *tr = vlib_add_trace (vm, node, b0,
 							sizeof (*tr));
-	      tr->tunnel_index = t0 - lgm->tunnels;
+	      tr->tunnel_index = adj_index0;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -348,7 +149,7 @@ format_lisp_gpe_name (u8 * s, va_list * args)
 }
 
 /* *INDENT-OFF* */
-VNET_DEVICE_CLASS (lisp_gpe_device_class,static) = {
+VNET_DEVICE_CLASS (lisp_gpe_device_class) = {
   .name = "LISP_GPE",
   .format_device_name = format_lisp_gpe_name,
   .format_tx_trace = format_lisp_gpe_tx_trace,
@@ -394,133 +195,51 @@ VNET_HW_INTERFACE_CLASS (lisp_gpe_hw_class) = {
 };
 /* *INDENT-ON* */
 
-int
-add_del_ip_prefix_route (ip_prefix_t * dst_prefix, u32 table_id,
-			 ip_adjacency_t * add_adj, u8 is_add, u32 * adj_index)
+static void
+add_del_lisp_gpe_default_route (u32 table_id, fib_protocol_t proto, u8 is_add)
 {
-  uword *p;
+  fib_prefix_t prefix = {
+    .fp_proto = proto,
+  };
+  u32 fib_index;
 
-  if (ip_prefix_version (dst_prefix) == IP4)
+  if (is_add)
     {
-      ip4_main_t *im4 = &ip4_main;
-      ip4_add_del_route_args_t a;
-      ip4_address_t addr = ip_prefix_v4 (dst_prefix);
+      /*
+       * Add a deafult route that results in a control plane punt DPO
+       */
+      dpo_id_t cp_punt = DPO_NULL;
 
-      memset (&a, 0, sizeof (a));
-      a.flags = IP4_ROUTE_FLAG_TABLE_ID;
-      a.table_index_or_table_id = table_id;
-      a.adj_index = ~0;
-      a.dst_address_length = ip_prefix_len (dst_prefix);
-      a.dst_address = addr;
-      a.flags |= is_add ? IP4_ROUTE_FLAG_ADD : IP4_ROUTE_FLAG_DEL;
-      a.add_adj = add_adj;
-      a.n_add_adj = is_add ? 1 : 0;
+      dpo_set (&cp_punt, DPO_LISP_CP, fib_proto_to_dpo (proto), proto);
 
-      ip4_add_del_route (im4, &a);
-
-      if (is_add)
-	{
-	  p = ip4_get_route (im4, table_id, 0, addr.as_u8,
-			     ip_prefix_len (dst_prefix));
-	  if (p == 0)
-	    {
-	      clib_warning ("Failed to insert route for eid %U!",
-			    format_ip4_address_and_length, addr.as_u8,
-			    ip_prefix_len (dst_prefix));
-	      return -1;
-	    }
-	  adj_index[0] = p[0];
-	}
+      fib_index =
+	fib_table_find_or_create_and_lock (prefix.fp_proto, table_id);
+      fib_table_entry_special_dpo_add (fib_index, &prefix, FIB_SOURCE_LISP,
+				       FIB_ENTRY_FLAG_EXCLUSIVE, &cp_punt);
+      dpo_unlock (&cp_punt);
     }
   else
     {
-      ip6_main_t *im6 = &ip6_main;
-      ip6_add_del_route_args_t a;
-      ip6_address_t addr = ip_prefix_v6 (dst_prefix);
-
-      memset (&a, 0, sizeof (a));
-      a.flags = IP6_ROUTE_FLAG_TABLE_ID;
-      a.table_index_or_table_id = table_id;
-      a.adj_index = ~0;
-      a.dst_address_length = ip_prefix_len (dst_prefix);
-      a.dst_address = addr;
-      a.flags |= is_add ? IP6_ROUTE_FLAG_ADD : IP6_ROUTE_FLAG_DEL;
-      a.add_adj = add_adj;
-      a.n_add_adj = is_add ? 1 : 0;
-
-      ip6_add_del_route (im6, &a);
-
-      if (is_add)
-	{
-	  adj_index[0] = ip6_get_route (im6, table_id, 0, &addr,
-					ip_prefix_len (dst_prefix));
-	  if (adj_index[0] == 0)
-	    {
-	      clib_warning ("Failed to insert route for eid %U!",
-			    format_ip6_address_and_length, addr.as_u8,
-			    ip_prefix_len (dst_prefix));
-	      return -1;
-	    }
-	}
+      fib_index = fib_table_find (prefix.fp_proto, table_id);
+      fib_table_entry_special_remove (fib_index, &prefix, FIB_SOURCE_LISP);
+      fib_table_unlock (fib_index, prefix.fp_proto);
     }
-  return 0;
 }
 
-static void
-add_del_lisp_gpe_default_route (u32 table_id, u8 is_v4, u8 is_add)
+void
+lisp_gpe_iface_set_table (u32 sw_if_index, u32 table_id)
 {
-  lisp_gpe_main_t *lgm = &lisp_gpe_main;
-  ip_adjacency_t adj;
-  ip_prefix_t prefix;
-  u32 adj_index = 0;
+  fib_node_index_t fib_index;
 
-  /* setup adjacency */
-  memset (&adj, 0, sizeof (adj));
+  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id);
+  vec_validate (ip4_main.fib_index_by_sw_if_index, sw_if_index);
+  ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+  ip4_sw_interface_enable_disable (sw_if_index, 1);
 
-  adj.n_adj = 1;
-  adj.explicit_fib_index = ~0;
-  adj.lookup_next_index = is_v4 ? lgm->ip4_lookup_next_lgpe_ip4_lookup :
-    lgm->ip6_lookup_next_lgpe_ip6_lookup;
-  /* default route has tunnel_index ~0 */
-  adj.rewrite_header.sw_if_index = ~0;
-
-  /* set prefix to 0/0 */
-  memset (&prefix, 0, sizeof (prefix));
-  ip_prefix_version (&prefix) = is_v4 ? IP4 : IP6;
-
-  /* add/delete route for prefix */
-  add_del_ip_prefix_route (&prefix, table_id, &adj, is_add, &adj_index);
-}
-
-static void
-lisp_gpe_iface_set_table (u32 sw_if_index, u32 table_id, u8 is_ip4)
-{
-  if (is_ip4)
-    {
-      ip4_main_t *im4 = &ip4_main;
-      ip4_fib_t *fib;
-      fib = find_ip4_fib_by_table_index_or_id (im4, table_id,
-					       IP4_ROUTE_FLAG_TABLE_ID);
-
-      /* fib's created if it doesn't exist */
-      ASSERT (fib != 0);
-
-      vec_validate (im4->fib_index_by_sw_if_index, sw_if_index);
-      im4->fib_index_by_sw_if_index[sw_if_index] = fib->index;
-    }
-  else
-    {
-      ip6_main_t *im6 = &ip6_main;
-      ip6_fib_t *fib;
-      fib = find_ip6_fib_by_table_index_or_id (im6, table_id,
-					       IP6_ROUTE_FLAG_TABLE_ID);
-
-      /* fib's created if it doesn't exist */
-      ASSERT (fib != 0);
-
-      vec_validate (im6->fib_index_by_sw_if_index, sw_if_index);
-      im6->fib_index_by_sw_if_index[sw_if_index] = fib->index;
-    }
+  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, table_id);
+  vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
+  ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+  ip6_sw_interface_enable_disable (sw_if_index, 1);
 }
 
 #define foreach_l2_lisp_gpe_tx_next     \
@@ -605,71 +324,71 @@ l2_flow_hash (vlib_buffer_t * b0)
   return (u32) c;
 }
 
-always_inline void
-l2_process_one (lisp_gpe_main_t * lgm, vlib_buffer_t * b0, u32 ti0,
-		u32 * next0)
-{
-  lisp_gpe_tunnel_t *t0;
+/* always_inline void */
+/* l2_process_one (lisp_gpe_main_t * lgm, vlib_buffer_t * b0, u32 ti0, */
+/* 		u32 * next0) */
+/* { */
+/*   lisp_gpe_tunnel_t *t0; */
 
-  t0 = pool_elt_at_index (lgm->tunnels, ti0);
-  ASSERT (0 != t0);
+/*   t0 = pool_elt_at_index (lgm->tunnels, ti0); */
+/*   ASSERT (0 != t0); */
 
-  if (PREDICT_TRUE (LISP_NO_ACTION == t0->action))
-    {
-      /* compute 'flow' hash */
-      if (PREDICT_TRUE (t0->sub_tunnels_lbv_count > 1))
-	vnet_buffer (b0)->ip.flow_hash = l2_flow_hash (b0);
-      encap_one_inline (lgm, b0, t0, next0);
-    }
-  else
-    {
-      l2_process_tunnel_action (b0, t0->action, next0);
-    }
-}
+/*   if (PREDICT_TRUE (LISP_NO_ACTION == t0->action)) */
+/*     { */
+/*       /\* compute 'flow' hash *\/ */
+/*       if (PREDICT_TRUE (t0->sub_tunnels_lbv_count > 1)) */
+/* 	vnet_buffer (b0)->ip.flow_hash = l2_flow_hash (b0); */
+/*       encap_one_inline (lgm, b0, t0, next0); */
+/*     } */
+/*   else */
+/*     { */
+/*       l2_process_tunnel_action (b0, t0->action, next0); */
+/*     } */
+/* } */
 
-always_inline void
-l2_process_two (lisp_gpe_main_t * lgm, vlib_buffer_t * b0, vlib_buffer_t * b1,
-		u32 ti0, u32 ti1, u32 * next0, u32 * next1)
-{
-  lisp_gpe_tunnel_t *t0, *t1;
+/* always_inline void */
+/* l2_process_two (lisp_gpe_main_t * lgm, vlib_buffer_t * b0, vlib_buffer_t * b1, */
+/* 		u32 ti0, u32 ti1, u32 * next0, u32 * next1) */
+/* { */
+/*   lisp_gpe_tunnel_t *t0, *t1; */
 
-  t0 = pool_elt_at_index (lgm->tunnels, ti0);
-  t1 = pool_elt_at_index (lgm->tunnels, ti1);
+/*   t0 = pool_elt_at_index (lgm->tunnels, ti0); */
+/*   t1 = pool_elt_at_index (lgm->tunnels, ti1); */
 
-  ASSERT (0 != t0 && 0 != t1);
+/*   ASSERT (0 != t0 && 0 != t1); */
 
-  if (PREDICT_TRUE (LISP_NO_ACTION == t0->action
-		    && LISP_NO_ACTION == t1->action))
-    {
-      if (PREDICT_TRUE (t0->sub_tunnels_lbv_count > 1))
-	vnet_buffer (b0)->ip.flow_hash = l2_flow_hash (b0);
-      if (PREDICT_TRUE (t1->sub_tunnels_lbv_count > 1))
-	vnet_buffer (b1)->ip.flow_hash = l2_flow_hash (b1);
-      encap_two_inline (lgm, b0, b1, t0, t1, next0, next1);
-    }
-  else
-    {
-      if (LISP_NO_ACTION == t0->action)
-	{
-	  if (PREDICT_TRUE (t0->sub_tunnels_lbv_count > 1))
-	    vnet_buffer (b0)->ip.flow_hash = l2_flow_hash (b0);
-	  encap_one_inline (lgm, b0, t0, next0);
-	  l2_process_tunnel_action (b1, t1->action, next1);
-	}
-      else if (LISP_NO_ACTION == t1->action)
-	{
-	  if (PREDICT_TRUE (t1->sub_tunnels_lbv_count > 1))
-	    vnet_buffer (b1)->ip.flow_hash = l2_flow_hash (b1);
-	  encap_one_inline (lgm, b1, t1, next1);
-	  l2_process_tunnel_action (b0, t0->action, next0);
-	}
-      else
-	{
-	  l2_process_tunnel_action (b0, t0->action, next0);
-	  l2_process_tunnel_action (b1, t1->action, next1);
-	}
-    }
-}
+/*   if (PREDICT_TRUE (LISP_NO_ACTION == t0->action */
+/* 		    && LISP_NO_ACTION == t1->action)) */
+/*     { */
+/*       if (PREDICT_TRUE (t0->sub_tunnels_lbv_count > 1)) */
+/* 	vnet_buffer (b0)->ip.flow_hash = l2_flow_hash (b0); */
+/*       if (PREDICT_TRUE (t1->sub_tunnels_lbv_count > 1)) */
+/* 	vnet_buffer (b1)->ip.flow_hash = l2_flow_hash (b1); */
+/*       encap_two_inline (lgm, b0, b1, t0, t1, next0, next1); */
+/*     } */
+/*   else */
+/*     { */
+/*       if (LISP_NO_ACTION == t0->action) */
+/* 	{ */
+/* 	  if (PREDICT_TRUE (t0->sub_tunnels_lbv_count > 1)) */
+/* 	    vnet_buffer (b0)->ip.flow_hash = l2_flow_hash (b0); */
+/* 	  encap_one_inline (lgm, b0, t0, next0); */
+/* 	  l2_process_tunnel_action (b1, t1->action, next1); */
+/* 	} */
+/*       else if (LISP_NO_ACTION == t1->action) */
+/* 	{ */
+/* 	  if (PREDICT_TRUE (t1->sub_tunnels_lbv_count > 1)) */
+/* 	    vnet_buffer (b1)->ip.flow_hash = l2_flow_hash (b1); */
+/* 	  encap_one_inline (lgm, b1, t1, next1); */
+/* 	  l2_process_tunnel_action (b0, t0->action, next0); */
+/* 	} */
+/*       else */
+/* 	{ */
+/* 	  l2_process_tunnel_action (b0, t0->action, next0); */
+/* 	  l2_process_tunnel_action (b1, t1->action, next1); */
+/* 	} */
+/*     } */
+/* } */
 
 /**
  * @brief LISP-GPE interface TX (encap) function for L2 overlays.
@@ -710,9 +429,9 @@ l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
-	  u32 next0, next1, ti0, ti1;
+	  u32 next0, next1;
 	  lisp_gpe_tunnel_t *t0 = 0, *t1 = 0;
-	  ethernet_header_t *e0, *e1;
+	  //      ethernet_header_t *e0, *e1;
 
 	  next0 = next1 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP;
 
@@ -742,49 +461,49 @@ l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  e0 = vlib_buffer_get_current (b0);
-	  e1 = vlib_buffer_get_current (b1);
+	  /* e0 = vlib_buffer_get_current (b0); */
+	  /* e1 = vlib_buffer_get_current (b1); */
 
 	  /* lookup dst + src mac */
-	  ti0 = lisp_l2_fib_lookup (lgm, vnet_buffer (b0)->l2.bd_index,
-				    e0->src_address, e0->dst_address);
-	  ti1 = lisp_l2_fib_lookup (lgm, vnet_buffer (b1)->l2.bd_index,
-				    e1->src_address, e1->dst_address);
+	  /* ti0 = lisp_l2_fib_lookup (lgm, vnet_buffer (b0)->l2.bd_index, */
+	  /*                        e0->src_address, e0->dst_address); */
+	  /* ti1 = lisp_l2_fib_lookup (lgm, vnet_buffer (b1)->l2.bd_index, */
+	  /*                        e1->src_address, e1->dst_address); */
 
-	  if (PREDICT_TRUE ((u32) ~ 0 != ti0) && (u32) ~ 0 != ti1)
-	    {
-	      /* process both tunnels */
-	      l2_process_two (lgm, b0, b1, ti0, ti1, &next0, &next1);
-	    }
-	  else
-	    {
-	      if ((u32) ~ 0 != ti0)
-		{
-		  /* process tunnel for b0 */
-		  l2_process_one (lgm, b0, ti0, &next0);
+	  /* if (PREDICT_TRUE ((u32) ~ 0 != ti0) && (u32) ~ 0 != ti1) */
+	  /*   { */
+	  /*     /\* process both tunnels *\/ */
+	  /*     l2_process_two (lgm, b0, b1, ti0, ti1, &next0, &next1); */
+	  /*   } */
+	  /* else */
+	  /*   { */
+	  /*     if ((u32) ~ 0 != ti0) */
+	  /*       { */
+	  /*         /\* process tunnel for b0 *\/ */
+	  /*         l2_process_one (lgm, b0, ti0, &next0); */
 
-		  /* no tunnel found for b1, send to control plane */
-		  next1 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP;
-		  vnet_buffer (b1)->lisp.overlay_afi = LISP_AFI_MAC;
-		}
-	      else if ((u32) ~ 0 != ti1)
-		{
-		  /* process tunnel for b1 */
-		  l2_process_one (lgm, b1, ti1, &next1);
+	  /*         /\* no tunnel found for b1, send to control plane *\/ */
+	  /*         next1 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP; */
+	  /*         vnet_buffer (b1)->lisp.overlay_afi = LISP_AFI_MAC; */
+	  /*       } */
+	  /*     else if ((u32) ~ 0 != ti1) */
+	  /*       { */
+	  /*         /\* process tunnel for b1 *\/ */
+	  /*         l2_process_one (lgm, b1, ti1, &next1); */
 
-		  /* no tunnel found b0, send to control plane */
-		  next0 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP;
-		  vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_MAC;
-		}
-	      else
-		{
-		  /* no tunnels found */
-		  next0 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP;
-		  vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_MAC;
-		  next1 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP;
-		  vnet_buffer (b1)->lisp.overlay_afi = LISP_AFI_MAC;
-		}
-	    }
+	  /*         /\* no tunnel found b0, send to control plane *\/ */
+	  /*         next0 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP; */
+	  /*         vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_MAC; */
+	  /*       } */
+	  /*     else */
+	  /*       { */
+	  /*         /\* no tunnels found *\/ */
+	  /*         next0 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP; */
+	  /*         vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_MAC; */
+	  /*         next1 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP; */
+	  /*         vnet_buffer (b1)->lisp.overlay_afi = LISP_AFI_MAC; */
+	  /*       } */
+	  /*   } */
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -824,16 +543,16 @@ l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ti0 = lisp_l2_fib_lookup (lgm, vnet_buffer (b0)->l2.bd_index,
 				    e0->src_address, e0->dst_address);
 
-	  if (PREDICT_TRUE ((u32) ~ 0 != ti0))
-	    {
-	      l2_process_one (lgm, b0, ti0, &next0);
-	    }
-	  else
-	    {
-	      /* no tunnel found send to control plane */
-	      next0 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP;
-	      vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_MAC;
-	    }
+	  /* if (PREDICT_TRUE ((u32) ~ 0 != ti0)) */
+	  /*   { */
+	  /*     l2_process_one (lgm, b0, ti0, &next0); */
+	  /*   } */
+	  /* else */
+	  /*   { */
+	  /*     /\* no tunnel found send to control plane *\/ */
+	  /*     next0 = L2_LISP_GPE_TX_NEXT_LISP_CP_LOOKUP; */
+	  /*     vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_MAC; */
+	  /*   } */
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -973,7 +692,6 @@ lisp_gpe_add_del_l3_iface (lisp_gpe_main_t * lgm,
   vnet_main_t *vnm = lgm->vnet_main;
   tunnel_lookup_t *l3_ifaces = &lgm->l3_ifaces;
   vnet_hw_interface_t *hi;
-  u32 lookup_next_index4, lookup_next_index6;
   uword *hip, *si;
 
   hip = hash_get (l3_ifaces->hw_if_index_by_dp_table, a->table_id);
@@ -997,30 +715,10 @@ lisp_gpe_add_del_l3_iface (lisp_gpe_main_t * lgm,
       hi = create_lisp_gpe_iface (lgm, a->vni, a->table_id,
 				  &lisp_gpe_device_class, l3_ifaces);
 
-      /* set ingress arc from lgpe_ipX_lookup */
-      lookup_next_index4 = vlib_node_add_next (lgm->vlib_main,
-					       lgpe_ip4_lookup_node.index,
-					       hi->output_node_index);
-      lookup_next_index6 = vlib_node_add_next (lgm->vlib_main,
-					       lgpe_ip6_lookup_node.index,
-					       hi->output_node_index);
-      hash_set (lgm->lgpe_ip4_lookup_next_index_by_table_id, a->table_id,
-		lookup_next_index4);
-      hash_set (lgm->lgpe_ip6_lookup_next_index_by_table_id, a->table_id,
-		lookup_next_index6);
-
-      /* insert default routes that point to lgpe-ipx-lookup */
-      add_del_lisp_gpe_default_route (a->table_id, /* is_v4 */ 1, 1);
-      add_del_lisp_gpe_default_route (a->table_id, /* is_v4 */ 0, 1);
-
-      /* set egress arcs */
-#define _(sym,str) vlib_node_add_named_next_with_slot (vnm->vlib_main, \
-                    hi->tx_node_index, str, LISP_GPE_TX_NEXT_##sym);
-      foreach_lisp_gpe_tx_next
-#undef _
-	/* set interface in appropriate v4 and v6 FIBs */
-	lisp_gpe_iface_set_table (hi->sw_if_index, a->table_id, 1);
-      lisp_gpe_iface_set_table (hi->sw_if_index, a->table_id, 0);
+      /* insert default routes that point to lisp-cp lookup */
+      lisp_gpe_iface_set_table (hi->sw_if_index, a->table_id);
+      add_del_lisp_gpe_default_route (a->table_id, FIB_PROTOCOL_IP4, 1);
+      add_del_lisp_gpe_default_route (a->table_id, FIB_PROTOCOL_IP6, 1);
 
       /* enable interface */
       vnet_sw_interface_set_flags (vnm, hi->sw_if_index,
@@ -1037,11 +735,15 @@ lisp_gpe_add_del_l3_iface (lisp_gpe_main_t * lgm,
 	  return -1;
 	}
 
+      hi = vnet_get_hw_interface (vnm, hip[0]);
+
       remove_lisp_gpe_iface (lgm, hip[0], a->table_id, &lgm->l3_ifaces);
 
       /* unset default routes */
-      add_del_lisp_gpe_default_route (a->table_id, /* is_v4 */ 1, 0);
-      add_del_lisp_gpe_default_route (a->table_id, /* is_v4 */ 0, 0);
+      ip4_sw_interface_enable_disable (hi->sw_if_index, 0);
+      ip6_sw_interface_enable_disable (hi->sw_if_index, 0);
+      add_del_lisp_gpe_default_route (a->table_id, FIB_PROTOCOL_IP4, 0);
+      add_del_lisp_gpe_default_route (a->table_id, FIB_PROTOCOL_IP6, 0);
     }
 
   return 0;

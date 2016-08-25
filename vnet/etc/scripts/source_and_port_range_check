@@ -1,0 +1,63 @@
+
+create loop int
+
+set int state loop0 up
+set int ip addr loop0 10.10.10.10/32
+
+packet-generator new {
+  name deny-from-default-route
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    UDP: 1.2.3.4 -> 5.6.7.8
+    UDP: 3000 -> 3001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+packet-generator new {
+  name allow
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    UDP: 1.1.1.1 -> 5.6.7.8
+    UDP: 3000 -> 3001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+packet-generator new {
+  name deny-from-port-range
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    UDP: 1.1.1.1 -> 5.6.7.8
+    UDP: 6000 -> 6001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+set ip source-and-port-range-check 1.1.1.0/24 range 2000 - 3000 vrf 99
+
+set interface ip source-and-port-range-check pg0 udp-out-vrf 99
+
+ show ip source-and-port-range-check vrf 99 1.1.1.1
+
+set ip source-and-port-range-check 1.1.1.0/24 range 4000 - 5000 vrf 99
+
+set ip source-and-port-range-check 1.1.2.0/24 range 4000 - 5000 vrf 99
+
+show ip source-and-port-range-check vrf 99 1.1.1.1
+show ip source-and-port-range-check vrf 99 1.1.2.1
+
+set ip source-and-port-range-check 1.1.2.0/24 range 4000 - 5000 vrf 99 del
+
+show ip source-and-port-range-check vrf 99 1.1.2.1
+
+tr add pg-input 100

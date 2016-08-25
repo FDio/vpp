@@ -25,18 +25,6 @@
 ipsec_gre_main_t ipsec_gre_main;
 
 /**
- * @brief IPv4 and GRE header.
- *
-*/
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-{
-  ip4_header_t ip4;
-  gre_header_t gre;
-}) ip4_and_gre_header_t;
-/* *INDENT-OFF* */
-
-/**
  * @brief IPv4 and GRE header union.
  *
 */

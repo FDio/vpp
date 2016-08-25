@@ -161,6 +161,10 @@ u32 vnet_config_del_feature (vlib_main_t * vm,
 			     void *feature_config,
 			     u32 n_feature_config_bytes);
 
+u8 *vnet_config_format_features (vlib_main_t * vm,
+				 vnet_config_main_t * cm,
+				 u32 config_index, u8 * s);
+
 #endif /* included_vnet_config_h */
 
 /*

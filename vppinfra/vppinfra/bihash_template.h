@@ -88,7 +88,7 @@ typedef struct
 } BVT (clib_bihash);
 
 
-static inline void *BV (clib_bihash_get_value) (BVT (clib_bihash) * h,
+static inline void *BV (clib_bihash_get_value) (const BVT (clib_bihash) * h,
 						uword offset)
 {
   u8 *hp = h->mheap;
@@ -97,7 +97,7 @@ static inline void *BV (clib_bihash_get_value) (BVT (clib_bihash) * h,
   return (void *) vp;
 }
 
-static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
+static inline uword BV (clib_bihash_get_offset) (const BVT (clib_bihash) * h,
 						 void *v)
 {
   u8 *hp, *vp;
@@ -116,7 +116,7 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h);
 
 int BV (clib_bihash_add_del) (BVT (clib_bihash) * h,
 			      BVT (clib_bihash_kv) * add_v, int is_add);
-int BV (clib_bihash_search) (BVT (clib_bihash) * h,
+int BV (clib_bihash_search) (const BVT (clib_bihash) * h,
 			     BVT (clib_bihash_kv) * search_v,
 			     BVT (clib_bihash_kv) * return_v);
 
@@ -128,7 +128,7 @@ format_function_t BV (format_bihash_kvp);
 
 
 static inline int BV (clib_bihash_search_inline)
-  (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * kvp)
+  (const BVT (clib_bihash) * h, BVT (clib_bihash_kv) * kvp)
 {
   u64 hash;
   u32 bucket_index;
@@ -163,7 +163,7 @@ static inline int BV (clib_bihash_search_inline)
 }
 
 static inline int BV (clib_bihash_search_inline_2)
-  (BVT (clib_bihash) * h,
+  (const BVT (clib_bihash) * h,
    BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
 {
   u64 hash;

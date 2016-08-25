@@ -17,13 +17,9 @@
 
 #include <vnet/vnet.h>
 #include <vnet/gre/gre.h>
+#include <vnet/adj/adj.h>
 
 gre_main_t gre_main;
-
-typedef CLIB_PACKED (struct {
-  ip4_header_t ip4;
-  gre_header_t gre;
-}) ip4_and_gre_header_t;
 
 typedef struct {
   union {
@@ -233,179 +229,39 @@ gre_interface_tx (vlib_main_t * vm,
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
       /* 
-       * As long as we have enough pkts left to process two pkts
-       * and prefetch two pkts...
+       * FIXME DUAL LOOP
        */
-      while (n_left_from >= 4 && n_left_to_next >= 2)
-	{
-          vlib_buffer_t * b0, * b1;
-          ip4_header_t * ip0, * ip1;
-          ip4_and_gre_union_t * h0, * h1;
-	  u32 bi0, next0, bi1, next1;
-	  __attribute__((unused)) u8 error0, error1;
-          u16 gre_protocol0, gre_protocol1;
-      
-	  /* Prefetch the next iteration */
-	  {
-	    vlib_buffer_t * p2, * p3;
-
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-            /* 
-             * Prefetch packet data. We expect to overwrite
-             * the inbound L2 header with an ip header and a
-             * gre header. Might want to prefetch the last line
-             * of rewrite space as well; need profile data
-             */
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  }
-
-          /* Pick up the next two buffer indices */
-	  bi0 = from[0];
-	  bi1 = from[1];
-
-          /* Speculatively enqueue them where we sent the last buffer */
-	  to_next[0] = bi0;
-	  to_next[1] = bi1;
-	  from += 2;
-	  to_next += 2;
-	  n_left_to_next -= 2;
-	  n_left_from -= 2;
-      
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-
-          vnet_buffer (b0)->sw_if_index[VLIB_TX] = t->outer_fib_index;
-          vnet_buffer (b1)->sw_if_index[VLIB_TX] = t->outer_fib_index;
-
-          if (PREDICT_FALSE(t->teb))
-          {
-            gre_protocol0 = clib_net_to_host_u16(GRE_PROTOCOL_teb);
-            gre_protocol1 = clib_net_to_host_u16(GRE_PROTOCOL_teb);
-          }
-          else
-          {
-            ip0 = vlib_buffer_get_current (b0);
-            gre_protocol0 = clib_net_to_host_u16 (0x800);
-            gre_protocol0 =
-                ((ip0->ip_version_and_header_length & 0xF0) == 0x60) ?
-                0x86DD : gre_protocol0;
-
-            ip1 = vlib_buffer_get_current (b1);
-            gre_protocol1 = clib_net_to_host_u16 (0x800);
-            gre_protocol1 =
-                ((ip1->ip_version_and_header_length & 0xF0) == 0x60) ?
-                0x86DD : gre_protocol1;
-          }
-
-          vlib_buffer_advance (b0, -sizeof(*h0));
-          vlib_buffer_advance (b1, -sizeof(*h1));
-
-          h0 = vlib_buffer_get_current (b0);
-          h1 = vlib_buffer_get_current (b1);
-          h0->as_u64[0] = 0;
-          h0->as_u64[1] = 0;
-          h0->as_u64[2] = 0;
-
-          h1->as_u64[0] = 0;
-          h1->as_u64[1] = 0;
-          h1->as_u64[2] = 0;
-
-          ip0 = &h0->ip4_and_gre.ip4;
-          h0->ip4_and_gre.gre.protocol = gre_protocol0;
-          ip0->ip_version_and_header_length = 0x45;
-          ip0->ttl = 254;
-          ip0->protocol = IP_PROTOCOL_GRE;
-
-          ip1 = &h1->ip4_and_gre.ip4;
-          h1->ip4_and_gre.gre.protocol = gre_protocol1;
-          ip1->ip_version_and_header_length = 0x45;
-          ip1->ttl = 254;
-          ip1->protocol = IP_PROTOCOL_GRE;
-
-          ip0->length = 
-            clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-          ip1->length = 
-            clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
-          ip0->src_address.as_u32 = t->tunnel_src.as_u32;
-          ip1->src_address.as_u32 = t->tunnel_src.as_u32;
-          ip0->dst_address.as_u32 = t->tunnel_dst.as_u32;
-          ip1->dst_address.as_u32 = t->tunnel_dst.as_u32;
-          ip0->checksum = ip4_header_checksum (ip0);
-          ip1->checksum = ip4_header_checksum (ip1);
-
-          /* ip4_lookup will route to the tunnel partner */
-          next0 = GRE_OUTPUT_NEXT_LOOKUP;
-          next1 = GRE_OUTPUT_NEXT_LOOKUP;
-          error0 = GRE_ERROR_NONE;
-          error1 = GRE_ERROR_NONE;
-
-          /* 
-           * Enqueue 2 pkts. This macro deals with next0 != next1,
-           * acquiring enqueue rights to the indicated next
-           * node input frame, etc.
-           */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
-	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  vlib_buffer_t * b0;
+          u32 bi0, adj_index0, next0;
+	  const ip_adjacency_t * adj0;
+          const dpo_id_t *dpo0;
           ip4_header_t * ip0;
-          ip4_and_gre_union_t * h0;
-	  u32 bi0, next0;
-	  __attribute__((unused)) u8 error0;
-          u16 gre_protocol0;
-      
-	  bi0 = to_next[0] = from[0];
-	  from += 1;
-	  n_left_from -= 1;
-	  to_next += 1;
-	  n_left_to_next -= 1;
-      
-	  b0 = vlib_get_buffer (vm, bi0);
+          vlib_buffer_t * b0;
 
-          vnet_buffer (b0)->sw_if_index[VLIB_TX] = t->outer_fib_index;
+          bi0 = from[0];
+          to_next[0] = bi0;
+          from += 1;
+          to_next += 1;
+          n_left_from -= 1;
+          n_left_to_next -= 1;
+
+          b0 = vlib_get_buffer(vm, bi0);
           ip0 = vlib_buffer_get_current (b0);
-          if (PREDICT_FALSE(t->teb))
-          {
-            gre_protocol0 = clib_net_to_host_u16(GRE_PROTOCOL_teb);
-          }
-          else
-          {
-            gre_protocol0 = clib_net_to_host_u16 (0x800);
-            gre_protocol0 =
-                ((ip0->ip_version_and_header_length & 0xF0) == 0x60) ?
-                0x86DD : gre_protocol0;
-          }
 
-          vlib_buffer_advance (b0, -sizeof(*h0));
-
-          h0 = vlib_buffer_get_current (b0);
-          h0->as_u64[0] = 0;
-          h0->as_u64[1] = 0;
-          h0->as_u64[2] = 0;
-
-          ip0 = &h0->ip4_and_gre.ip4;
-          h0->ip4_and_gre.gre.protocol = gre_protocol0;
-          ip0->ip_version_and_header_length = 0x45;
-          ip0->ttl = 254;
-          ip0->protocol = IP_PROTOCOL_GRE;
+          /* Fixup the checksum and len fields in the LISP tunnel encap
+           * that was applied at the midchain node */
           ip0->length = 
             clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-          ip0->src_address.as_u32 = t->tunnel_src.as_u32;
-          ip0->dst_address.as_u32 = t->tunnel_dst.as_u32;
           ip0->checksum = ip4_header_checksum (ip0);
 
-          next0 = GRE_OUTPUT_NEXT_LOOKUP;
-          error0 = GRE_ERROR_NONE;
+          /* Follow the DPO on which the midchain is stacked */
+          adj_index0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+	  adj0 = adj_get(adj_index0);
+          dpo0 = &adj0->sub_type.midchain.next_dpo;
+          next0 = dpo0->dpoi_next_node;
+          vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
             {
