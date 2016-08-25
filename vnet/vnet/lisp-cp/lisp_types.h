@@ -63,6 +63,11 @@ typedef CLIB_PACKED(struct ip_prefix
 
 void ip_prefix_normalize (ip_prefix_t * a);
 
+extern void ip_address_to_fib_prefix (const ip_address_t * addr,
+				      fib_prefix_t * prefix);
+extern void ip_prefix_to_fib_prefix (const ip_prefix_t * ipp,
+				     fib_prefix_t * fibp);
+
 typedef enum
 {
   /* NOTE: ip addresses are left out on purpose. Use max masked ip-prefixes

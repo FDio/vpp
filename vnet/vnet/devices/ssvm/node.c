@@ -330,7 +330,7 @@ VLIB_REGISTER_NODE (ssvm_eth_input_node) = {
         [SSVM_ETH_INPUT_NEXT_ETHERNET_INPUT] = "ethernet-input",
         [SSVM_ETH_INPUT_NEXT_IP4_INPUT] = "ip4-input",
         [SSVM_ETH_INPUT_NEXT_IP6_INPUT] = "ip6-input",
-        [SSVM_ETH_INPUT_NEXT_MPLS_INPUT] = "mpls-gre-input",
+        [SSVM_ETH_INPUT_NEXT_MPLS_INPUT] = "mpls-input",
   },
 };
 
