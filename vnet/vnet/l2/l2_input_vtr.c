@@ -73,7 +73,7 @@ typedef enum
     L2_INVTR_N_ERROR,
 } l2_invtr_error_t;
 
-static char *l2_invtr_error_strings[] = {
+static const char *l2_invtr_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2_invtr_error
 #undef _

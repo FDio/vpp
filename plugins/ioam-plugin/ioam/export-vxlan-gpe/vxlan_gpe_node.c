@@ -53,7 +53,7 @@ typedef enum
     EXPORT_N_ERROR,
 } export_error_t;
 
-static char *export_error_strings[] = {
+static const char *export_error_strings[] = {
 #define _(sym,string) string,
   foreach_export_error
 #undef _

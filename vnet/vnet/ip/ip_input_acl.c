@@ -53,7 +53,7 @@ typedef enum
     IP_INACL_N_ERROR,
 } ip_inacl_error_t;
 
-static char *ip_inacl_error_strings[] = {
+static const char *ip_inacl_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip_inacl_error
 #undef _

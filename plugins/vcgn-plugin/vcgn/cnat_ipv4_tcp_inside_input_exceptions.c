@@ -47,7 +47,7 @@ typedef enum {
 } cnat_ipv4_tcp_inside_input_exc_error_t;
 
 
-static char * cnat_ipv4_tcp_inside_input_exc_error_strings[] = {
+static const char *  cnat_ipv4_tcp_inside_input_exc_error_strings[] = {
 #define _(sym,string) string,
   foreach_cnat_ipv4_tcp_inside_input_exc_error
 #undef _

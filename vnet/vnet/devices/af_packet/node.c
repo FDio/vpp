@@ -38,7 +38,7 @@ typedef enum
     AF_PACKET_INPUT_N_ERROR,
 } af_packet_input_error_t;
 
-static char *af_packet_input_error_strings[] = {
+static const char *af_packet_input_error_strings[] = {
 #define _(n,s) s,
   foreach_af_packet_input_error
 #undef _

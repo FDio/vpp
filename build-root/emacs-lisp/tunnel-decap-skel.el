@@ -268,7 +268,7 @@ static uword
   return from_frame->n_vectors;
 }
 
-static char * " encap_stack "_error_strings[] = {
+static const char *  " encap_stack "_error_strings[] = {
 #define " encap_stack "_error(n,s) s,
 #include <vnet/" encap-stack "/" encap_stack "_error.def>
 #undef " encap_stack "_error

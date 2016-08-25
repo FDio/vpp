@@ -38,7 +38,7 @@ typedef enum
     NETMAP_TX_N_ERROR,
 } netmap_tx_func_error_t;
 
-static char *netmap_tx_func_error_strings[] = {
+static const char *netmap_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_netmap_tx_func_error
 #undef _

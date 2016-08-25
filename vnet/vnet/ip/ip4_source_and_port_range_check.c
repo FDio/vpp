@@ -52,7 +52,7 @@ typedef enum
     IP4_SOURCE_AND_PORT_RANGE_CHECK_N_ERROR,
 } ip4_source_and_port_range_check_error_t;
 
-static char *ip4_source_and_port_range_check_error_strings[] = {
+static const char *ip4_source_and_port_range_check_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip4_source_and_port_range_check_error
 #undef _

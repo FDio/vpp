@@ -61,7 +61,7 @@ typedef enum
     VNET_POLICER_N_ERROR,
 } vnet_policer_error_t;
 
-static char *vnet_policer_error_strings[] = {
+static const char *vnet_policer_error_strings[] = {
 #define _(sym,string) string,
   foreach_vnet_policer_error
 #undef _
@@ -549,7 +549,7 @@ typedef enum
     POLICER_CLASSIFY_N_ERROR,
 } policer_classify_error_t;
 
-static char *policer_classify_error_strings[] = {
+static const char *policer_classify_error_strings[] = {
 #define _(sym,string) string,
   foreach_policer_classify_error
 #undef _

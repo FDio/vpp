@@ -50,7 +50,7 @@ typedef enum {
   IP_CLASSIFY_N_ERROR,
 } ip_classify_error_t;
 
-static char * ip_classify_error_strings[] = {
+static const char * ip_classify_error_strings[] = {
 #define _(sym,string) string,
   foreach_ip_classify_error
 #undef _

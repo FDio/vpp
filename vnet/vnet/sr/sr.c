@@ -299,7 +299,7 @@ typedef struct
 /**
  * @brief Error strings for SR rewrite
  */
-static char *sr_rewrite_error_strings[] = {
+static const char *sr_rewrite_error_strings[] = {
 #define sr_error(n,s) s,
 #include "sr_error.def"
 #undef sr_error
@@ -2008,7 +2008,7 @@ typedef enum
 /**
  * @brief Error strings for SR Fix Destination rewrite
  */
-static char *sr_fix_dst_error_strings[] = {
+static const char *sr_fix_dst_error_strings[] = {
 #define sr_fix_dst_error(n,s) s,
 #include "sr_fix_dst_error.def"
 #undef sr_fix_dst_error
@@ -2351,7 +2351,7 @@ typedef struct
 /**
  * @brief Definition of SR local error-strings
  */
-static char *sr_local_error_strings[] = {
+static const char *sr_local_error_strings[] = {
 #define sr_error(n,s) s,
 #include "sr_error.def"
 #undef sr_error

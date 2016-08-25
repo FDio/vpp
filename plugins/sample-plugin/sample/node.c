@@ -61,7 +61,7 @@ typedef enum {
   SAMPLE_N_ERROR,
 } sample_error_t;
 
-static char * sample_error_strings[] = {
+static const char *  sample_error_strings[] = {
 #define _(sym,string) string,
   foreach_sample_error
 #undef _

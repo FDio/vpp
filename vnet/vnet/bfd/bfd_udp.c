@@ -298,7 +298,7 @@ typedef enum {
 foreach_bfd_udp_error (F);
 #undef F
 
-static char *bfd_udp_error_strings[] = {
+static const char *bfd_udp_error_strings[] = {
 #define F(sym, string) BFD_UDP_ERR_##sym##_STR,
   foreach_bfd_udp_error (F)
 #undef F

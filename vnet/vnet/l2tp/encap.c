@@ -28,7 +28,7 @@ _(NETWORK_TO_USER, "L2TP L2 network to user (ip6) pkts")	\
 _(LOOKUP_FAIL_TO_L3, "L2TP L2 session lookup failed pkts")      \
 _(ADMIN_DOWN, "L2TP tunnel is down")
 
-static char *l2t_encap_error_strings[] = {
+static const char *l2t_encap_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2t_encap_error
 #undef _

@@ -2211,7 +2211,7 @@ ixge_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
   return n_rx_packets;
 }
 
-static char *ixge_error_strings[] = {
+static const char *ixge_error_strings[] = {
 #define _(n,s) s,
   foreach_ixge_error
 #undef _

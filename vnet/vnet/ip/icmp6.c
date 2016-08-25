@@ -122,7 +122,7 @@ format_icmp6_input_trace (u8 * s, va_list * va)
   return s;
 }
 
-static char *icmp_error_strings[] = {
+static const char *icmp_error_strings[] = {
 #define _(f,s) s,
   foreach_icmp6_error
 #undef _

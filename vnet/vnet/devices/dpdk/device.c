@@ -38,7 +38,7 @@ typedef enum
     DPDK_TX_FUNC_N_ERROR,
 } dpdk_tx_func_error_t;
 
-static char *dpdk_tx_func_error_strings[] = {
+static const char *dpdk_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_dpdk_tx_func_error
 #undef _

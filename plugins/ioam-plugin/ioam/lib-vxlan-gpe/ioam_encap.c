@@ -26,7 +26,7 @@
 #define foreach_vxlan_gpe_encap_ioam_v4_error    \
 _(ENCAPSULATED, "good packets encapsulated")
 
-static char *vxlan_gpe_encap_ioam_v4_error_strings[] = {
+static const char *vxlan_gpe_encap_ioam_v4_error_strings[] = {
 #define _(sym,string) string,
   foreach_vxlan_gpe_encap_ioam_v4_error
 #undef _

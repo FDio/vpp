@@ -33,7 +33,7 @@ foreach_lldp_error (F);
  * packet counter strings
  * Dump these counters via the "show error" CLI command
  */
-static char *lldp_error_strings[] = {
+static const char *lldp_error_strings[] = {
 #define F(sym, string) LLDP_ERR_##sym##_STR,
   foreach_lldp_error (F)
 #undef F

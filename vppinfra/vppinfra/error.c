@@ -110,7 +110,7 @@ dispatch_message (u8 * msg)
 
 void
 _clib_error (int how_to_die,
-	     char *function_name, uword line_number, char *fmt, ...)
+	     char *function_name, uword line_number, const char *fmt, ...)
 {
   u8 *msg = 0;
   va_list va;
@@ -147,7 +147,8 @@ _clib_error (int how_to_die,
 
 clib_error_t *
 _clib_error_return (clib_error_t * errors,
-		    any code, uword flags, char *where, char *fmt, ...)
+		    any code, uword flags, const char *where, const char *fmt,
+		    ...)
 {
   clib_error_t *e;
   va_list va;

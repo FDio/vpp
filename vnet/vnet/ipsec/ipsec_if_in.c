@@ -32,7 +32,7 @@
 #define foreach_ipsec_if_input_error    \
 _(RX, "good packets received")
 
-static char *ipsec_if_input_error_strings[] = {
+static const char *ipsec_if_input_error_strings[] = {
 #define _(sym,string) string,
   foreach_ipsec_if_input_error
 #undef _

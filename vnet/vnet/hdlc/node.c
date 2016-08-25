@@ -256,7 +256,7 @@ hdlc_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char * hdlc_error_strings[] = {
+static const char * hdlc_error_strings[] = {
 #define hdlc_error(n,s) s,
 #include "error.def"
 #undef hdlc_error

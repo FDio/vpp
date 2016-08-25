@@ -69,7 +69,7 @@ typedef enum
     FLOWPERPKT_N_ERROR,
 } flowperpkt_error_t;
 
-static char *flowperpkt_error_strings[] = {
+static const char *flowperpkt_error_strings[] = {
 #define _(sym,string) string,
   foreach_flowperpkt_error
 #undef _

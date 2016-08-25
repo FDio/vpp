@@ -141,7 +141,7 @@ typedef struct _vnet_device_class
   vlib_node_function_t *tx_function;
 
   /* Error strings indexed by error code for this node. */
-  char **tx_function_error_strings;
+  const char **tx_function_error_strings;
 
   /* Number of error codes used by this node. */
   u32 tx_function_n_errors;

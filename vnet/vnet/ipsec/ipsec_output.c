@@ -59,7 +59,7 @@ typedef enum
     IPSEC_DECAP_N_ERROR,
 } ipsec_output_error_t;
 
-static char *ipsec_output_error_strings[] = {
+static const char *ipsec_output_error_strings[] = {
 #define _(sym,string) string,
   foreach_ipsec_output_error
 #undef _

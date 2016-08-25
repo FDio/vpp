@@ -48,7 +48,7 @@ typedef enum
     SSVM_ETH_INPUT_N_ERROR,
 } ssvm_eth_input_error_t;
 
-static char *ssvm_eth_input_error_strings[] = {
+static const char *ssvm_eth_input_error_strings[] = {
 #define _(sym,string) string,
   foreach_ssvm_eth_input_error
 #undef _

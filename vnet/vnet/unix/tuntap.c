@@ -369,7 +369,7 @@ tuntap_rx (vlib_main_t * vm,
 /**
  * @brief TUNTAP_RX error strings
  */
-static char * tuntap_rx_error_strings[] = {
+static const char * tuntap_rx_error_strings[] = {
   "unknown packet type",
 };
 

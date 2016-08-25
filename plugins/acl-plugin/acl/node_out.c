@@ -57,7 +57,7 @@ typedef enum
     ACL_OUT_N_ERROR,
 } acl_out_error_t;
 
-static char *acl_out_error_strings[] = {
+static const char *acl_out_error_strings[] = {
 #define _(sym,string) string,
   foreach_acl_out_error
 #undef _

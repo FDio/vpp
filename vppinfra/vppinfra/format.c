@@ -150,13 +150,13 @@ justify (u8 * s, format_info_t * fi, uword s_len_orig)
   return s;
 }
 
-static u8 *
-do_percent (u8 ** _s, u8 * fmt, va_list * va)
+static const u8 *
+do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 {
   u8 *s = *_s;
   uword c;
 
-  u8 *f = fmt;
+  const u8 *f = fmt;
 
   format_info_t fi = {
     .justify = '+',
@@ -385,7 +385,7 @@ done:
 u8 *
 va_format (u8 * s, const char *fmt, va_list * va)
 {
-  u8 *f = (u8 *) fmt, *g;
+  const u8 *f = (const u8 *) fmt, *g;
   u8 c;
 
   g = f;
@@ -425,7 +425,7 @@ format (u8 * s, const char *fmt, ...)
 }
 
 word
-va_fformat (FILE * f, char *fmt, va_list * va)
+va_fformat (FILE * f, const char *fmt, va_list * va)
 {
   word ret;
   u8 *s;
@@ -449,7 +449,7 @@ va_fformat (FILE * f, char *fmt, va_list * va)
 }
 
 word
-fformat (FILE * f, char *fmt, ...)
+fformat (FILE * f, const char *fmt, ...)
 {
   va_list va;
   word ret;
@@ -463,7 +463,7 @@ fformat (FILE * f, char *fmt, ...)
 
 #ifdef CLIB_UNIX
 word
-fdformat (int fd, char *fmt, ...)
+fdformat (int fd, const char *fmt, ...)
 {
   word ret;
   u8 *s;

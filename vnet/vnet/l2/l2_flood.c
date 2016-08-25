@@ -103,7 +103,7 @@ typedef enum
     L2FLOOD_N_ERROR,
 } l2flood_error_t;
 
-static char *l2flood_error_strings[] = {
+static const char *l2flood_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2flood_error
 #undef _

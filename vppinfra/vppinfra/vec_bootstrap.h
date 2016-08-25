@@ -94,6 +94,18 @@ vec_header (void *v, uword header_bytes)
   return v - vec_header_bytes (header_bytes);
 }
 
+/** \brief Find a user vector header (const)
+
+    Finds the user header of a vector with unspecified alignment given
+    the user pointer to the vector.
+*/
+
+always_inline const void *
+vec_header_const (const void *v, uword header_bytes)
+{
+  return v - vec_header_bytes (header_bytes);
+}
+
 /** \brief Find the end of user vector header
 
     Finds the end of the user header of a vector with unspecified

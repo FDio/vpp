@@ -86,7 +86,7 @@ typedef enum
     L2_INPUT_CLASSIFY_N_ERROR,
 } l2_input_classify_error_t;
 
-static char *l2_input_classify_error_strings[] = {
+static const char *l2_input_classify_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2_input_classify_error
 #undef _

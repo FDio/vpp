@@ -263,7 +263,7 @@ ppp_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char *ppp_error_strings[] = {
+static const char *ppp_error_strings[] = {
 #define ppp_error(n,s) s,
 #include "error.def"
 #undef ppp_error

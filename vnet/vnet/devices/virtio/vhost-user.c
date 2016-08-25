@@ -124,7 +124,7 @@ typedef enum
     VHOST_USER_TX_FUNC_N_ERROR,
 } vhost_user_tx_func_error_t;
 
-static char *vhost_user_tx_func_error_strings[] = {
+static const char *vhost_user_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_vhost_user_tx_func_error
 #undef _
@@ -146,7 +146,7 @@ typedef enum
     VHOST_USER_INPUT_FUNC_N_ERROR,
 } vhost_user_input_func_error_t;
 
-static char *vhost_user_input_func_error_strings[] = {
+static const char *vhost_user_input_func_error_strings[] = {
 #define _(n,s) s,
   foreach_vhost_user_input_func_error
 #undef _

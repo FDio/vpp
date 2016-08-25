@@ -61,7 +61,7 @@ l2_xcrw_main_t l2_xcrw_main;
 
 static vlib_node_registration_t l2_xcrw_node;
 
-static char *l2_xcrw_error_strings[] = {
+static const char *l2_xcrw_error_strings[] = {
 #define _(sym,string) string,
   foreach_l2_xcrw_error
 #undef _

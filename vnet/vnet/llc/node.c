@@ -245,7 +245,7 @@ llc_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char *llc_error_strings[] = {
+static const char *llc_error_strings[] = {
 #define _(f,s) s,
   foreach_llc_error
 #undef _

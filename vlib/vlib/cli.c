@@ -573,7 +573,7 @@ vlib_cli_input (vlib_main_t * vm,
 
 /* Output to current CLI connection. */
 void
-vlib_cli_output (vlib_main_t * vm, char *fmt, ...)
+vlib_cli_output (vlib_main_t * vm, const char *fmt, ...)
 {
   vlib_process_t *cp = vlib_get_current_process (vm);
   va_list va;
@@ -791,9 +791,9 @@ VLIB_CLI_COMMAND (ping_command, static) = {
 #endif /* ifdef TEST_CODE */
 
 static uword
-vlib_cli_normalize_path (char *input, char **result)
+vlib_cli_normalize_path (const char *input, char **result)
 {
-  char *i = input;
+  const char *i = input;
   char *s = 0;
   uword l = 0;
   uword index_of_last_space = ~0;
@@ -833,7 +833,7 @@ vlib_cli_normalize_path (char *input, char **result)
 }
 
 always_inline uword
-parent_path_len (char *path)
+parent_path_len (const char *path)
 {
   word i;
   for (i = vec_len (path) - 1; i >= 0; i--)
