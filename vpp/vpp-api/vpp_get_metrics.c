@@ -243,3 +243,11 @@ main (int argc, char **argv)
  * eval: (c-set-style "gnu")
  * End:
  */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -15,6 +15,9 @@
 #include <stats/stats.h>
 #include <signal.h>
 #include <vlib/threads.h>
+#include <vnet/fib/fib_entry.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/dpo/load_balance.h>
 
 #define STATS_DEBUG 0
 
@@ -250,7 +253,7 @@ do_ip4_fibs (stats_main_t * sm)
   unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
   static ip4_route_t *routes;
   ip4_route_t *r;
-  ip4_fib_t *fib;
+  fib_table_t *fib;
   ip_lookup_main_t *lm = &im4->lookup_main;
   static uword *results;
   vl_api_vnet_ip4_fib_counters_t *mp = 0;
@@ -260,8 +263,9 @@ do_ip4_fibs (stats_main_t * sm)
   int i;
 
 again:
-  vec_foreach (fib, im4->fibs)
-  {
+  /* *INDENT-OFF* */
+  pool_foreach (fib, im4->fibs,
+  ({
     /* We may have bailed out due to control-plane activity */
     while ((fib - im4->fibs) < start_at_fib_index)
       continue;
@@ -274,14 +278,14 @@ again:
 	   items_this_message * sizeof (vl_api_ip4_fib_counter_t));
 	mp->_vl_msg_id = ntohs (VL_API_VNET_IP4_FIB_COUNTERS);
 	mp->count = 0;
-	mp->vrf_id = ntohl (fib->table_id);
+	mp->vrf_id = ntohl (fib->ft_table_id);
 	ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
       }
     else
       {
 	/* happens if the last FIB was empty... */
 	ASSERT (mp->count == 0);
-	mp->vrf_id = ntohl (fib->table_id);
+	mp->vrf_id = ntohl (fib->ft_table_id);
       }
 
     dslock (sm, 0 /* release hint */ , 1 /* tag */ );
@@ -289,15 +293,14 @@ again:
     vec_reset_length (routes);
     vec_reset_length (results);
 
-    for (i = 0; i < ARRAY_LEN (fib->adj_index_by_dst_address); i++)
+    for (i = 0; i < ARRAY_LEN (fib->v4.fib_entry_by_dst_address); i++)
       {
-	uword *hash = fib->adj_index_by_dst_address[i];
+	uword *hash = fib->v4.fib_entry_by_dst_address[i];
 	hash_pair_t *p;
 	ip4_route_t x;
 
 	x.address_length = i;
 
-        /* *INDENT-OFF* */
         hash_foreach_pair (p, hash,
         ({
           x.address.data_u32 = p->key;
@@ -321,114 +324,71 @@ again:
               goto again;
             }
         }));
-        /* *INDENT-ON* */
       }
 
     vec_foreach (r, routes)
-    {
-      vlib_counter_t c, sum;
-      uword i, j, n_left, n_nhs, adj_index, *result = 0;
-      ip_adjacency_t *adj;
-      ip_multipath_next_hop_t *nhs, tmp_nhs[1];
+      {
+        vlib_counter_t c;
 
-      adj_index = r->index;
-      if (lm->fib_result_n_words > 1)
-	{
-	  result = vec_elt_at_index (results, adj_index);
-	  adj_index = result[0];
-	}
+        vlib_get_combined_counter (&load_balance_main.lbm_to_counters,
+                                   r->index, &c);
+        /*
+         * If it has actually
+         * seen at least one packet, send it.
+         */
+        if (c.packets > 0)
+          {
 
-      adj = ip_get_adjacency (lm, adj_index);
-      if (adj->n_adj == 1)
-	{
-	  nhs = &tmp_nhs[0];
-	  nhs[0].next_hop_adj_index = ~0;	/* not used */
-	  nhs[0].weight = 1;
-	  n_nhs = 1;
-	}
-      else
-	{
-	  ip_multipath_adjacency_t *madj;
-	  madj = vec_elt_at_index (lm->multipath_adjacencies,
-				   adj->heap_handle);
-	  nhs = heap_elt_at_index
-	    (lm->next_hop_heap, madj->normalized_next_hops.heap_offset);
-	  n_nhs = madj->normalized_next_hops.count;
-	}
+            /* already in net byte order */
+            ctrp->address = r->address.as_u32;
+            ctrp->address_length = r->address_length;
+            ctrp->packets = clib_host_to_net_u64 (c.packets);
+            ctrp->bytes = clib_host_to_net_u64 (c.bytes);
+            mp->count++;
+            ctrp++;
 
-      n_left = nhs[0].weight;
-      vlib_counter_zero (&sum);
-      for (i = j = 0; i < adj->n_adj; i++)
-	{
-	  n_left -= 1;
-	  vlib_get_combined_counter (&lm->adjacency_counters,
-				     adj_index + i, &c);
-	  vlib_counter_add (&sum, &c);
-	  /*
-	   * If we're done with this adj and it has actually
-	   * seen at least one packet, send it.
-	   */
-	  if (n_left == 0 && sum.packets > 0)
-	    {
+            if (mp->count == items_this_message)
+              {
+                mp->count = htonl (items_this_message);
+                /*
+                 * If the main thread's input queue is stuffed,
+                 * drop the data structure lock (which the main thread
+                 * may want), and take a pause.
+                 */
+                unix_shared_memory_queue_lock (q);
+                if (unix_shared_memory_queue_is_full (q))
+                  {
+                    dsunlock (sm);
+                    vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
+                    unix_shared_memory_queue_unlock (q);
+                    mp = 0;
+                    ip46_fib_stats_delay (sm, 0 /* sec */ ,
+                                          STATS_RELEASE_DELAY_NS);
+                    goto again;
+                  }
+                vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
+                unix_shared_memory_queue_unlock (q);
 
-	      /* already in net byte order */
-	      ctrp->address = r->address.as_u32;
-	      ctrp->address_length = r->address_length;
-	      ctrp->packets = clib_host_to_net_u64 (sum.packets);
-	      ctrp->bytes = clib_host_to_net_u64 (sum.bytes);
-	      mp->count++;
-	      ctrp++;
-
-	      if (mp->count == items_this_message)
-		{
-		  mp->count = htonl (items_this_message);
-		  /*
-		   * If the main thread's input queue is stuffed,
-		   * drop the data structure lock (which the main thread
-		   * may want), and take a pause.
-		   */
-		  unix_shared_memory_queue_lock (q);
-		  if (unix_shared_memory_queue_is_full (q))
-		    {
-		      dsunlock (sm);
-		      vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		      unix_shared_memory_queue_unlock (q);
-		      mp = 0;
-		      ip46_fib_stats_delay (sm, 0 /* sec */ ,
-					    STATS_RELEASE_DELAY_NS);
-		      goto again;
-		    }
-		  vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		  unix_shared_memory_queue_unlock (q);
-
-		  items_this_message = IP4_FIB_COUNTER_BATCH_SIZE;
-		  mp = vl_msg_api_alloc_as_if_client
-		    (sizeof (*mp) +
-		     items_this_message * sizeof (vl_api_ip4_fib_counter_t));
-		  mp->_vl_msg_id = ntohs (VL_API_VNET_IP4_FIB_COUNTERS);
-		  mp->count = 0;
-		  mp->vrf_id = ntohl (fib->table_id);
-		  ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
-		}
-
-	      j++;
-	      if (j < n_nhs)
-		{
-		  n_left = nhs[j].weight;
-		  vlib_counter_zero (&sum);
-		}
-	    }
-	}			/* for each (mp or single) adj */
-      if (sm->data_structure_lock->release_hint)
-	{
-	  start_at_fib_index = fib - im4->fibs;
-	  dsunlock (sm);
-	  ip46_fib_stats_delay (sm, 0 /* sec */ , STATS_RELEASE_DELAY_NS);
-	  mp->count = 0;
-	  ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
-	  goto again;
-	}
-    }				/* vec_foreach (routes) */
+                items_this_message = IP4_FIB_COUNTER_BATCH_SIZE;
+                mp = vl_msg_api_alloc_as_if_client
+                  (sizeof (*mp) +
+                   items_this_message * sizeof (vl_api_ip4_fib_counter_t));
+                mp->_vl_msg_id = ntohs (VL_API_VNET_IP4_FIB_COUNTERS);
+                mp->count = 0;
+                mp->vrf_id = ntohl (fib->ft_table_id);
+                ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
+              }
+          }			/* for each (mp or single) adj */
+        if (sm->data_structure_lock->release_hint)
+          {
+            start_at_fib_index = fib - im4->fibs;
+            dsunlock (sm);
+            ip46_fib_stats_delay (sm, 0 /* sec */ , STATS_RELEASE_DELAY_NS);
+            mp->count = 0;
+            ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
+            goto again;
+          }
+      }				/* vec_foreach (routes) */
 
     dsunlock (sm);
 
@@ -439,7 +399,9 @@ again:
 	vl_msg_api_send_shmem (q, (u8 *) & mp);
 	mp = 0;
       }
-  }				/* vec_foreach (fib) */
+  }));
+  /* *INDENT-ON* */
+
   /* If e.g. the last FIB had no reportable routes, free the buffer */
   if (mp)
     vl_msg_api_free (mp);
@@ -489,19 +451,19 @@ do_ip6_fibs (stats_main_t * sm)
   unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
   static ip6_route_t *routes;
   ip6_route_t *r;
-  ip6_fib_t *fib;
-  ip_lookup_main_t *lm = &im6->lookup_main;
+  fib_table_t *fib;
   static uword *results;
   vl_api_vnet_ip6_fib_counters_t *mp = 0;
   u32 items_this_message;
   vl_api_ip6_fib_counter_t *ctrp = 0;
   u32 start_at_fib_index = 0;
-  BVT (clib_bihash) * h = &im6->ip6_lookup_table;
+  BVT (clib_bihash) * h = &im6->ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash;
   add_routes_in_fib_arg_t _a, *a = &_a;
 
 again:
-  vec_foreach (fib, im6->fibs)
-  {
+  /* *INDENT-OFF* */
+  pool_foreach (fib, im6->fibs,
+  ({
     /* We may have bailed out due to control-plane activity */
     while ((fib - im6->fibs) < start_at_fib_index)
       continue;
@@ -514,7 +476,7 @@ again:
 	   items_this_message * sizeof (vl_api_ip6_fib_counter_t));
 	mp->_vl_msg_id = ntohs (VL_API_VNET_IP6_FIB_COUNTERS);
 	mp->count = 0;
-	mp->vrf_id = ntohl (fib->table_id);
+	mp->vrf_id = ntohl (fib->ft_table_id);
 	ctrp = (vl_api_ip6_fib_counter_t *) mp->c;
       }
 
@@ -544,105 +506,67 @@ again:
 
     vec_foreach (r, routes)
     {
-      vlib_counter_t c, sum;
-      uword i, j, n_left, n_nhs, adj_index, *result = 0;
-      ip_adjacency_t *adj;
-      ip_multipath_next_hop_t *nhs, tmp_nhs[1];
+        vlib_counter_t c;
 
-      adj_index = r->index;
-      if (lm->fib_result_n_words > 1)
-	{
-	  result = vec_elt_at_index (results, adj_index);
-	  adj_index = result[0];
-	}
+        vlib_get_combined_counter (&load_balance_main.lbm_to_counters,
+                                   r->index, &c);
+        /*
+         * If it has actually
+         * seen at least one packet, send it.
+         */
+        if (c.packets > 0)
+          {
+            /* already in net byte order */
+            ctrp->address[0] = r->address.as_u64[0];
+            ctrp->address[1] = r->address.as_u64[1];
+            ctrp->address_length = (u8) r->address_length;
+            ctrp->packets = clib_host_to_net_u64 (c.packets);
+            ctrp->bytes = clib_host_to_net_u64 (c.bytes);
+            mp->count++;
+            ctrp++;
 
-      adj = ip_get_adjacency (lm, adj_index);
-      if (adj->n_adj == 1)
-	{
-	  nhs = &tmp_nhs[0];
-	  nhs[0].next_hop_adj_index = ~0;	/* not used */
-	  nhs[0].weight = 1;
-	  n_nhs = 1;
-	}
-      else
-	{
-	  ip_multipath_adjacency_t *madj;
-	  madj = vec_elt_at_index (lm->multipath_adjacencies,
-				   adj->heap_handle);
-	  nhs = heap_elt_at_index
-	    (lm->next_hop_heap, madj->normalized_next_hops.heap_offset);
-	  n_nhs = madj->normalized_next_hops.count;
-	}
+            if (mp->count == items_this_message)
+              {
+                mp->count = htonl (items_this_message);
+                /*
+                 * If the main thread's input queue is stuffed,
+                 * drop the data structure lock (which the main thread
+                 * may want), and take a pause.
+                 */
+                unix_shared_memory_queue_lock (q);
+                if (unix_shared_memory_queue_is_full (q))
+                  {
+                    dsunlock (sm);
+                    vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
+                    unix_shared_memory_queue_unlock (q);
+                    mp = 0;
+                    ip46_fib_stats_delay (sm, 0 /* sec */ ,
+                                          STATS_RELEASE_DELAY_NS);
+                    goto again;
+                  }
+                vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
+                unix_shared_memory_queue_unlock (q);
 
-      n_left = nhs[0].weight;
-      vlib_counter_zero (&sum);
-      for (i = j = 0; i < adj->n_adj; i++)
-	{
-	  n_left -= 1;
-	  vlib_get_combined_counter (&lm->adjacency_counters,
-				     adj_index + i, &c);
-	  vlib_counter_add (&sum, &c);
-	  if (n_left == 0 && sum.packets > 0)
-	    {
+                items_this_message = IP6_FIB_COUNTER_BATCH_SIZE;
+                mp = vl_msg_api_alloc_as_if_client
+                  (sizeof (*mp) +
+                   items_this_message * sizeof (vl_api_ip6_fib_counter_t));
+                mp->_vl_msg_id = ntohs (VL_API_VNET_IP6_FIB_COUNTERS);
+                mp->count = 0;
+                mp->vrf_id = ntohl (fib->ft_table_id);
+                ctrp = (vl_api_ip6_fib_counter_t *) mp->c;
+              }
+          }
 
-	      /* already in net byte order */
-	      ctrp->address[0] = r->address.as_u64[0];
-	      ctrp->address[1] = r->address.as_u64[1];
-	      ctrp->address_length = (u8) r->address_length;
-	      ctrp->packets = clib_host_to_net_u64 (sum.packets);
-	      ctrp->bytes = clib_host_to_net_u64 (sum.bytes);
-	      mp->count++;
-	      ctrp++;
-
-	      if (mp->count == items_this_message)
-		{
-		  mp->count = htonl (items_this_message);
-		  /*
-		   * If the main thread's input queue is stuffed,
-		   * drop the data structure lock (which the main thread
-		   * may want), and take a pause.
-		   */
-		  unix_shared_memory_queue_lock (q);
-		  if (unix_shared_memory_queue_is_full (q))
-		    {
-		      dsunlock (sm);
-		      vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		      unix_shared_memory_queue_unlock (q);
-		      mp = 0;
-		      ip46_fib_stats_delay (sm, 0 /* sec */ ,
-					    STATS_RELEASE_DELAY_NS);
-		      goto again;
-		    }
-		  vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		  unix_shared_memory_queue_unlock (q);
-
-		  items_this_message = IP6_FIB_COUNTER_BATCH_SIZE;
-		  mp = vl_msg_api_alloc_as_if_client
-		    (sizeof (*mp) +
-		     items_this_message * sizeof (vl_api_ip6_fib_counter_t));
-		  mp->_vl_msg_id = ntohs (VL_API_VNET_IP6_FIB_COUNTERS);
-		  mp->count = 0;
-		  mp->vrf_id = ntohl (fib->table_id);
-		  ctrp = (vl_api_ip6_fib_counter_t *) mp->c;
-		}
-
-	      j++;
-	      if (j < n_nhs)
-		{
-		  n_left = nhs[j].weight;
-		  vlib_counter_zero (&sum);
-		}
-	    }
-	}			/* for each (mp or single) adj */
-      if (sm->data_structure_lock->release_hint)
-	{
-	  start_at_fib_index = fib - im6->fibs;
-	  dsunlock (sm);
-	  ip46_fib_stats_delay (sm, 0 /* sec */ , STATS_RELEASE_DELAY_NS);
-	  mp->count = 0;
-	  ctrp = (vl_api_ip6_fib_counter_t *) mp->c;
-	  goto again;
-	}
+        if (sm->data_structure_lock->release_hint)
+          {
+            start_at_fib_index = fib - im6->fibs;
+            dsunlock (sm);
+            ip46_fib_stats_delay (sm, 0 /* sec */ , STATS_RELEASE_DELAY_NS);
+            mp->count = 0;
+            ctrp = (vl_api_ip6_fib_counter_t *) mp->c;
+            goto again;
+          }
     }				/* vec_foreach (routes) */
 
     dsunlock (sm);
@@ -654,7 +578,9 @@ again:
 	vl_msg_api_send_shmem (q, (u8 *) & mp);
 	mp = 0;
       }
-  }				/* vec_foreach (fib) */
+  }));
+  /* *INDENT-ON* */
+
   /* If e.g. the last FIB had no reportable routes, free the buffer */
   if (mp)
     vl_msg_api_free (mp);

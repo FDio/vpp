@@ -18,6 +18,7 @@
  *
 */
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <vnet/fib/fib.h>
 #include <vnet/ip/format.h>
 
 vxlan_gpe_main_t vxlan_gpe_main;
@@ -419,56 +420,6 @@ int vnet_vxlan_gpe_add_del_tunnel
   return 0;
 }
 
-/**
- * @brief Find the IPv4 FIB index from the FIB ID
- *
- * @param fib_id
- *
- * @return fib_index
- *
- */
-static u32 fib4_index_from_fib_id (u32 fib_id)
-{
-  ip4_main_t * im = &ip4_main;
-  uword * p;
-
-  p = hash_get (im->fib_index_by_table_id, fib_id);
-  if (!p)
-    return ~0;
-
-  return p[0];
-}
-
-/**
- * @brief Find the IPv4 FIB index from the FIB ID
- *
- * @param fib_id
- *
- * @return fib_index
- *
- */
-static u32 fib6_index_from_fib_id (u32 fib_id)
-{
-  ip6_main_t * im = &ip6_main;
-  uword * p;
-
-  p = hash_get (im->fib_index_by_table_id, fib_id);
-  if (!p)
-    return ~0;
-
-  return p[0];
-}
-
-/**
- * @brief CLI function for Add/Del of IPv4/IPv6 VXLAN GPE tunnel
- *
- * @param *vm
- * @param *input
- * @param *cmd
- *
- * @return error
- *
- */
 static clib_error_t *
 vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
                                    unformat_input_t * input,
@@ -525,20 +476,19 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
     else if (unformat (line_input, "encap-vrf-id %d", &tmp))
       {
         if (ipv6_set)
-          encap_fib_index = fib6_index_from_fib_id (tmp);
+          encap_fib_index = ip6_fib_index_from_table_id (tmp);
         else
-          encap_fib_index = fib4_index_from_fib_id (tmp);
+          encap_fib_index =  ip4_fib_index_from_table_id (tmp);
 
         if (encap_fib_index == ~0)
           return clib_error_return (0, "nonexistent encap fib id %d", tmp);
       }
     else if (unformat (line_input, "decap-vrf-id %d", &tmp))
       {
-
         if (ipv6_set)
-          decap_fib_index = fib6_index_from_fib_id (tmp);
+          decap_fib_index = ip6_fib_index_from_table_id (tmp);
         else
-          decap_fib_index = fib4_index_from_fib_id (tmp);
+          decap_fib_index = ip4_fib_index_from_table_id (tmp);
 
         if (decap_fib_index == ~0)
           return clib_error_return (0, "nonexistent decap fib id %d", tmp);
