@@ -321,7 +321,7 @@ unlock:
 }
 
 int BV (clib_bihash_search)
-  (BVT (clib_bihash) * h,
+  (const BVT (clib_bihash) * h,
    BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
 {
   u64 hash;

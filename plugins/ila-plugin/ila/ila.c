@@ -601,7 +601,7 @@ int
 ila_add_del_entry (ila_add_del_entry_args_t * args)
 {
   ila_main_t *ilm = &ila_main;
-  ip6_main_t *im6 = &ip6_main;
+//  ip6_main_t *im6 = &ip6_main;
   BVT (clib_bihash_kv) kv, value;
 
   //Sanity check
@@ -700,29 +700,29 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 
       if (e->ila_adj_index != ~0)
 	{
-	  //This is a local entry - let's create a local adjacency
-	  ip_adjacency_t adj;
-	  ip6_add_del_route_args_t route_args;
-	  ila_adj_data_t *ad;
+	  /* //This is a local entry - let's create a local adjacency */
+	  /* ip_adjacency_t adj; */
+	  /* ip6_add_del_route_args_t route_args; */
+	  /* ila_adj_data_t *ad; */
 
-	  //Adjacency
-	  memset (&adj, 0, sizeof (adj));
-	  adj.explicit_fib_index = ~0;
-	  adj.lookup_next_index = ilm->ip6_lookup_next_index;
-	  ad = (ila_adj_data_t *) & adj.opaque;
-	  ad->entry_index = e - ilm->entries;
+	  /* //Adjacency */
+	  /* memset (&adj, 0, sizeof (adj)); */
+	  /* adj.explicit_fib_index = ~0; */
+	  /* adj.lookup_next_index = ilm->ip6_lookup_next_index; */
+	  /* ad = (ila_adj_data_t *) & adj.opaque; */
+	  /* ad->entry_index = e - ilm->entries; */
 
-	  //Route
-	  memset (&route_args, 0, sizeof (route_args));
-	  route_args.table_index_or_table_id = 0;
-	  route_args.flags = IP6_ROUTE_FLAG_ADD;
-	  route_args.dst_address = e->ila_address;
-	  route_args.dst_address_length = 128;
-	  route_args.adj_index = ~0;
-	  route_args.add_adj = &adj;
-	  route_args.n_add_adj = 1;
+	  /* //Route */
+	  /* memset (&route_args, 0, sizeof (route_args)); */
+	  /* route_args.table_index_or_table_id = 0; */
+	  /* route_args.flags = IP6_ROUTE_FLAG_ADD; */
+	  /* route_args.dst_address = e->ila_address; */
+	  /* route_args.dst_address_length = 128; */
+	  /* route_args.adj_index = ~0; */
+	  /* route_args.add_adj = &adj; */
+	  /* route_args.n_add_adj = 1; */
 
-	  ip6_add_del_route (im6, &route_args);
+	  /* ip6_add_del_route (im6, &route_args); */
 	}
     }
   else
@@ -743,17 +743,17 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
       if (e->ila_adj_index != ~0)
 	{
 	  //Delete that route - Associated adjacency will be deleted too
-	  ip6_add_del_route_args_t route_args;
-	  memset (&route_args, 0, sizeof (route_args));
-	  route_args.table_index_or_table_id = 0;
-	  route_args.flags = IP6_ROUTE_FLAG_DEL;
-	  route_args.dst_address = e->ila_address;
-	  route_args.dst_address_length = 128;
-	  route_args.adj_index = ~0;
-	  route_args.add_adj = NULL;
-	  route_args.n_add_adj = 0;
+	  /* ip6_add_del_route_args_t route_args; */
+	  /* memset (&route_args, 0, sizeof (route_args)); */
+	  /* route_args.table_index_or_table_id = 0; */
+	  /* route_args.flags = IP6_ROUTE_FLAG_DEL; */
+	  /* route_args.dst_address = e->ila_address; */
+	  /* route_args.dst_address_length = 128; */
+	  /* route_args.adj_index = ~0; */
+	  /* route_args.add_adj = NULL; */
+	  /* route_args.n_add_adj = 0; */
 
-	  ip6_add_del_route (im6, &route_args);
+	  /* ip6_add_del_route (im6, &route_args); */
 	}
 
       BV (clib_bihash_add_del) (&ilm->id_to_entry_table, &kv,
@@ -840,8 +840,8 @@ ila_entry_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ila_add_del_entry_args_t args = { 0 };
   ip6_address_t next_hop;
-  u8 next_hop_set = 0;
-  ip6_main_t *im6 = &ip6_main;
+//  u8 next_hop_set = 0;
+//  ip6_main_t *im6 = &ip6_main;
   int ret;
 
   args.type = ILA_TYPE_IID;
@@ -878,7 +878,7 @@ ila_entry_command_fn (vlib_main_t * vm,
       else
 	if (unformat
 	    (line_input, "next-hop %U", unformat_ip6_address, &next_hop))
-	next_hop_set = 1;
+	    ;
       else if (unformat
 	      (line_input, "direction %U", unformat_ila_direction, &args.dir))
 	    ;
@@ -891,26 +891,26 @@ ila_entry_command_fn (vlib_main_t * vm,
 
   unformat_free (line_input);
 
-  if (next_hop_set)
-    {
-      if (args.local_adj_index != ~0)
-	return clib_error_return (0,
-				  "Specified both next hop and adjacency index");
+//  if (next_hop_set)
+  /*   { */
+  /*     if (args.local_adj_index != ~0) */
+  /* 	return clib_error_return (0, */
+  /* 				  "Specified both next hop and adjacency index"); */
 
-      u32 ai = ip6_get_route (im6, 0, 0, &next_hop, 128);
-      if (ai == 0)
-	return clib_error_return (0, "No route to next-hop %U",
-				  format_ip6_address, &next_hop);
+  /*     u32 ai = ip6_get_route (im6, 0, 0, &next_hop, 128); */
+  /*     if (ai == 0) */
+  /* 	return clib_error_return (0, "No route to next-hop %U", */
+  /* 				  format_ip6_address, &next_hop); */
 
-      ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
-      ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai);
-      if (adj6->lookup_next_index != IP_LOOKUP_NEXT_REWRITE)
-	{
-	  return clib_error_return (0,
-				    "Next-Hop route has to be a rewrite route");
-	}
-      args.local_adj_index = ai;
-    }
+  /*     ip_lookup_main_t *lm6 = &ip6_main.lookup_main; */
+  /*     ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai); */
+  /*     if (adj6->lookup_next_index != IP_LOOKUP_NEXT_REWRITE) */
+  /* 	{ */
+  /* 	  return clib_error_return (0, */
+  /* 				    "Next-Hop route has to be a rewrite route"); */
+  /* 	} */
+  /*     args.local_adj_index = ai; */
+  /*   } */
 
   if ((ret = ila_add_del_entry (&args)))
     return clib_error_return (0, "ila_add_del_entry returned error %d", ret);
