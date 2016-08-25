@@ -12,33 +12,73 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ * @file
+ * @brief Host utility functions
+ */
 #include <vppinfra/format.h>
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
 
-/* Functions to call from gdb */
 
+
+/**
+ * @brief GDB callable function: vl - Return vector length of vector
+ *
+ * @param *p - void - address of vector
+ *
+ * @return length - u32
+ *
+ */
 u32 vl(void *p)
 {
   return vec_len (p);
 }
 
+/**
+ * @brief GDB callable function: pe - call pool_elts - number of elements in a pool
+ *
+ * @param *v - void - address of pool
+ *
+ * @return number - uword
+ *
+ */
 uword pe (void *v)
 {
   return (pool_elts(v));
 }
 
+/**
+ * @brief GDB callable function: pifi - call pool_is_free_index - is passed index free?
+ *
+ * @param *p - void - address of pool
+ * @param *index - u32
+ *
+ * @return 0|1 - int
+ *
+ */
 int pifi (void *p, u32 index)
 {
   return pool_is_free_index (p, index);
 }
 
+/**
+ * @brief GDB callable function: debug_hex_bytes - return formatted hex string
+ *
+ * @param *s - u8
+ * @param n - u32 - number of bytes to format
+ *
+ */
 void debug_hex_bytes (u8 *s, u32 n)
 {
   fformat (stderr, "%U\n", format_hex_bytes, s, n);
 }
 
+/**
+ * @brief GDB callable function: vlib_dump_frame_ownership
+ *
+ */
 void vlib_dump_frame_ownership (void)
 {
   vlib_main_t * vm = vlib_get_main();
@@ -47,7 +87,7 @@ void vlib_dump_frame_ownership (void)
   vlib_next_frame_t * nf;
   u32 first_nf_index;
   u32 index;
-    
+
   vec_foreach(this_node_runtime, nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
     {
       first_nf_index = this_node_runtime->next_frame_index;
@@ -74,11 +114,18 @@ void vlib_dump_frame_ownership (void)
     }
 }
 
+/**
+ * @brief GDB callable function: vlib_runtime_index_to_node_name
+ *
+ * Takes node index and will return the node name.
+ *
+ * @param index - u32
+ */
 void vlib_runtime_index_to_node_name (u32 index)
 {
   vlib_main_t * vm = vlib_get_main();
   vlib_node_main_t * nm = &vm->node_main;
-    
+
   if (index > vec_len (nm->nodes))
     {
       fformat(stderr, "%d out of range, max %d\n", vec_len(nm->nodes));
@@ -89,6 +136,13 @@ void vlib_runtime_index_to_node_name (u32 index)
 }
 
 
+/**
+ * @brief GDB callable function: show_gdb_command_fn - show gdb
+ *
+ * Shows list of functions for VPP available in GDB
+ *
+ * @return error - clib_error_t
+ */
 static clib_error_t *
 show_gdb_command_fn (vlib_main_t * vm,
                      unformat_input_t * input,

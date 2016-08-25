@@ -40,24 +40,33 @@
 #include <vnet/unix/pcap.h>
 #include <sys/fcntl.h>
 
-/* Usage
-
-#include <vnet/unix/pcap.h>
-
-static pcap_main_t pcap = {
-  .file_name = "/tmp/ip4",
-  .n_packets_to_capture = 2,
-  .packet_type = PCAP_PACKET_TYPE_ip,
-};
-
-To add a buffer:
-
-  pcap_add_buffer (&pcap, vm, pi0, 128);
-
-file will be written after n_packets_to_capture or call to pcap_write (&pcap).
-
+/**
+ * @file
+ * @brief PCAP function.
+ *  Usage
+ *
+ * #include <vnet/unix/pcap.h>
+ *
+ * static pcap_main_t pcap = {
+ *  .file_name = "/tmp/ip4",
+ *  .n_packets_to_capture = 2,
+ *  .packet_type = PCAP_PACKET_TYPE_ip,
+ * };
+ *
+ * To add a buffer:
+ *
+ *  pcap_add_buffer (&pcap, vm, pi0, 128);
+ *
+ * File will be written after n_packets_to_capture or call to pcap_write (&pcap).
+ *
 */
 
+/**
+ * @brief Close PCAP file
+ *
+ * @return rc - clib_error_t
+ *
+ */
 clib_error_t *
 pcap_close (pcap_main_t * pm)
 {
@@ -67,6 +76,12 @@ pcap_close (pcap_main_t * pm)
   return 0;
 }
 
+/**
+ * @brief Write PCAP file
+ *
+ * @return rc - clib_error_t
+ *
+ */
 clib_error_t *
 pcap_write (pcap_main_t * pm)
 {
@@ -143,6 +158,12 @@ pcap_write (pcap_main_t * pm)
   return error;
 }
 
+/**
+ * @brief Read PCAP file
+ *
+ * @return rc - clib_error_t
+ *
+ */
 clib_error_t * pcap_read (pcap_main_t * pm)
 {
   clib_error_t * error = 0;
@@ -197,7 +218,7 @@ clib_error_t * pcap_read (pcap_main_t * pm)
 	  error = clib_error_return (0, "short read `%s'", pm->file_name);
 	  goto done;
 	}
-	
+
       if (vec_len (pm->packets_read) == 0)
 	pm->min_packet_bytes = pm->max_packet_bytes = ph.n_bytes_in_packet;
       else
@@ -205,7 +226,7 @@ clib_error_t * pcap_read (pcap_main_t * pm)
 	  pm->min_packet_bytes = clib_min (pm->min_packet_bytes, ph.n_bytes_in_packet);
 	  pm->max_packet_bytes = clib_max (pm->max_packet_bytes, ph.n_bytes_in_packet);
 	}
-	
+
       vec_add1 (pm->packets_read, data);
     }
 
@@ -213,5 +234,5 @@ clib_error_t * pcap_read (pcap_main_t * pm)
   if (fd >= 0)
     close (fd);
   return error;
-  
+
 }

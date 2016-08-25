@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * tuntap.h - kernel stack (reverse) punt/inject path
  *
@@ -16,10 +16,9 @@
  * limitations under the License.
  *------------------------------------------------------------------
  */
-
-/*
- * Call from some VLIB_INIT_FUNCTION to set the Linux kernel
- * inject node name.
+/**
+ * @file
+ * @brief Call from VLIB_INIT_FUNCTION to set the Linux kernel inject node name.
  */
 void register_tuntap_inject_node_name (char *name);
 

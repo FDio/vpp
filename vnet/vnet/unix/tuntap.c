@@ -16,12 +16,25 @@
  * limitations under the License.
  *------------------------------------------------------------------
  */
+/**
+ * @file
+ * @brief  TunTap Kernel stack (reverse) punt/inject path.
+ *
+ * This driver runs in one of two distinct modes:
+ * - "punt/inject" mode, where we send pkts not otherwise processed
+ * by the forwarding to the Linux kernel stack, and
+ *
+ * - "normal interface" mode, where we treat the Linux kernel stack
+ * as a peer.
+ *
+ * By default, we select punt/inject mode.
+ */
 
 #include <fcntl.h>		/* for open */
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <sys/uio.h>		/* for iovec */
 #include <netinet/in.h>
 
@@ -49,58 +62,52 @@ static void tuntap_nopunt_frame (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame);
 
-/* 
- * This driver runs in one of two distinct modes:
- * "punt/inject" mode, where we send pkts not otherwise processed
- * by the forwarding to the Linux kernel stack, and
- * "normal interface" mode, where we treat the Linux kernel stack
- * as a peer.
- *
- * By default, we select punt/inject mode.
- */
-
 typedef struct {
   u32 sw_if_index;
   u8 is_v6;
   u8 addr[16];
 } subif_address_t;
 
+/**
+ * @brief TUNTAP node main state
+ */
 typedef struct {
-  /* Vector of iovecs for readv/writev calls. */
+  /** Vector of iovecs for readv/writev calls. */
   struct iovec * iovecs;
 
-  /* Vector of VLIB rx buffers to use.  We allocate them in blocks
+  /** Vector of VLIB rx buffers to use.  We allocate them in blocks
      of VLIB_FRAME_SIZE (256). */
   u32 * rx_buffers;
 
-  /* File descriptors for /dev/net/tun and provisioning socket. */
+  /** File descriptors for /dev/net/tun and provisioning socket. */
   int dev_net_tun_fd, dev_tap_fd;
 
-  /* Create a "tap" [ethernet] encaps device */
+  /** Create a "tap" [ethernet] encaps device */
   int is_ether;
 
-  /* 1 if a "normal" routed intfc, 0 if a punt/inject interface */
+  /** 1 if a "normal" routed intfc, 0 if a punt/inject interface */
 
   int have_normal_interface;
 
-  /* tap device destination MAC address. Required, or Linux drops pkts */
+  /** tap device destination MAC address. Required, or Linux drops pkts */
   u8 ether_dst_mac[6];
 
-  /* Interface MTU in bytes and # of default sized buffers. */
+  /** Interface MTU in bytes and # of default sized buffers. */
   u32 mtu_bytes, mtu_buffers;
 
-  /* Linux interface name for tun device. */
+  /** Linux interface name for tun device. */
   char * tun_name;
 
-  /* Pool of subinterface addresses */
+  /** Pool of subinterface addresses */
   subif_address_t *subifs;
 
-  /* Hash for subif addresses */
+  /** Hash for subif addresses */
   mhash_t subif_mhash;
 
+  /** Unix file index */
   u32 unix_file_index;
 
-  /* For the "normal" interface, if configured */
+  /** For the "normal" interface, if configured */
   u32 hw_if_index, sw_if_index;
 
 } tuntap_main_t;
@@ -108,15 +115,23 @@ typedef struct {
 static tuntap_main_t tuntap_main = {
   .tun_name = "vnet",
 
-  /* Suitable defaults for an Ethernet-like tun/tap device */
+  /** Suitable defaults for an Ethernet-like tun/tap device */
   .mtu_bytes = 4096 + 256,
 };
 
-/*
- * tuntap_tx
- * Output node, writes the buffers comprising the incoming frame 
+/**
+ * @brief tuntap_tx
+ * @node tuntap-tx
+ *
+ * Output node, writes the buffers comprising the incoming frame
  * to the tun/tap device, aka hands them to the Linux kernel stack.
- * 
+ *
+ * @param *vm - vlib_main_t
+ * @param *node - vlib_node_runtime_t
+ * @param *frame - vlib_frame_t
+ *
+ * @return rc - uword
+ *
  */
 static uword
 tuntap_tx (vlib_main_t * vm,
@@ -146,7 +161,7 @@ tuntap_tx (vlib_main_t * vm,
       if (tm->iovecs)
 	_vec_len (tm->iovecs) = 0;
 
-      /* VLIB buffer chain -> Unix iovec(s). */
+      /** VLIB buffer chain -> Unix iovec(s). */
       vec_add2 (tm->iovecs, iov, 1);
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
@@ -167,13 +182,13 @@ tuntap_tx (vlib_main_t * vm,
       if (writev (tm->dev_net_tun_fd, tm->iovecs, vec_len (tm->iovecs)) < l)
 	clib_unix_warning ("writev");
     }
-    
-  /* The normal interface path flattens the buffer chain */
+
+  /** The normal interface path flattens the buffer chain */
   if (tm->have_normal_interface)
     vlib_buffer_free_no_next (vm, buffers, n_packets);
   else
     vlib_buffer_free (vm, buffers, n_packets);
-    
+
   return n_packets;
 }
 
@@ -185,13 +200,24 @@ VLIB_REGISTER_NODE (tuntap_tx_node,static) = {
 };
 
 enum {
-  TUNTAP_RX_NEXT_IP4_INPUT, 
-  TUNTAP_RX_NEXT_IP6_INPUT, 
+  TUNTAP_RX_NEXT_IP4_INPUT,
+  TUNTAP_RX_NEXT_IP6_INPUT,
   TUNTAP_RX_NEXT_ETHERNET_INPUT,
   TUNTAP_RX_NEXT_DROP,
   TUNTAP_RX_N_NEXT,
 };
 
+/**
+ * @brief TUNTAP receive node
+ * @node tuntap-rx
+ *
+ * @param *vm - vlib_main_t
+ * @param *node - vlib_node_runtime_t
+ * @param *frame - vlib_frame_t
+ *
+ * @return rc - uword
+ *
+ */
 static uword
 tuntap_rx (vlib_main_t * vm,
 	   vlib_node_runtime_t * node,
@@ -209,7 +235,7 @@ tuntap_rx (vlib_main_t * vm,
   struct rte_mbuf *first_mb = NULL, *prev_mb = NULL;
 #endif
 
-  /* Make sure we have some RX buffers. */
+  /** Make sure we have some RX buffers. */
   {
     uword n_left = vec_len (tm->rx_buffers);
     uword n_alloc;
@@ -226,14 +252,14 @@ tuntap_rx (vlib_main_t * vm,
       }
   }
 
-  /* Allocate RX buffers from end of rx_buffers.
+  /** Allocate RX buffers from end of rx_buffers.
      Turn them into iovecs to pass to readv. */
   {
     uword i_rx = vec_len (tm->rx_buffers) - 1;
     vlib_buffer_t * b;
     word i, n_bytes_left, n_bytes_in_packet;
 
-    /* We should have enough buffers left for an MTU sized packet. */
+    /** We should have enough buffers left for an MTU sized packet. */
     ASSERT (vec_len (tm->rx_buffers) >= tm->mtu_buffers);
 
     vec_validate (tm->iovecs, tm->mtu_buffers - 1);
@@ -299,14 +325,14 @@ tuntap_rx (vlib_main_t * vm,
 #endif
       }
 
-    /* Interface counters for tuntap interface. */
-    vlib_increment_combined_counter 
+    /** Interface counters for tuntap interface. */
+    vlib_increment_combined_counter
         (vnet_main.interface_main.combined_sw_if_counters
          + VNET_INTERFACE_COUNTER_RX,
          os_get_cpu_number(),
          tm->sw_if_index,
          1, n_bytes_in_packet);
-    
+
     _vec_len (tm->rx_buffers) = i_rx;
   }
 
@@ -370,6 +396,9 @@ tuntap_rx (vlib_main_t * vm,
   return 1;
 }
 
+/**
+ * @brief TUNTAP_RX error strings
+ */
 static char * tuntap_rx_error_strings[] = {
   "unknown packet type",
 };
@@ -392,7 +421,13 @@ VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
   },
 };
 
-/* Gets called when file descriptor is ready from epoll. */
+/**
+ * @brief Gets called when file descriptor is ready from epoll.
+ *
+ * @param *uf - unix_file_t
+ *
+ * @return error - clib_error_t
+ */
 static clib_error_t * tuntap_read_ready (unix_file_t * uf)
 {
   vlib_main_t * vm = vlib_get_main();
@@ -400,11 +435,14 @@ static clib_error_t * tuntap_read_ready (unix_file_t * uf)
   return 0;
 }
 
-/*
- * tuntap_exit
- * Clean up the tun/tap device
+/**
+ * @brief Clean up the tun/tap device
+ *
+ * @param *vm - vlib_main_t
+ *
+ * @return error - clib_error_t
+ *
  */
-
 static clib_error_t *
 tuntap_exit (vlib_main_t * vm)
 {
@@ -446,6 +484,15 @@ tuntap_exit (vlib_main_t * vm)
 
 VLIB_MAIN_LOOP_EXIT_FUNCTION (tuntap_exit);
 
+/**
+ * @brief CLI function for tun/tap config
+ *
+ * @param *vm - vlib_main_t
+ * @param *input - unformat_input_t
+ *
+ * @return error - clib_error_t
+ *
+ */
 static clib_error_t *
 tuntap_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -654,6 +701,16 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (tuntap_config, "tuntap");
 
+/**
+ * @brief Add or Del IP4 address to tun/tap interface
+ *
+ * @param *im - ip4_main_t
+ * @param opaque - uword
+ * @param sw_if_index - u32
+ * @param *address - ip4_address_t
+ * @param is_delete - u32
+ *
+ */
 void
 tuntap_ip4_add_del_interface_address (ip4_main_t * im,
 				      uword opaque,
@@ -668,15 +725,15 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
   subif_address_t subif_addr, * ap;
   uword * p;
 
-  /* Tuntap disabled, or using a "normal" interface. */
+  /** Tuntap disabled, or using a "normal" interface. */
   if (tm->have_normal_interface ||  tm->dev_tap_fd < 0)
     return;
 
-  /* See if we already know about this subif */
+  /** See if we already know about this subif */
   memset (&subif_addr, 0, sizeof (subif_addr));
   subif_addr.sw_if_index = sw_if_index;
   clib_memcpy (&subif_addr.addr, address, sizeof (*address));
-  
+
   p = mhash_get (&tm->subif_mhash, &subif_addr);
 
   if (p)
@@ -728,21 +785,31 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
     clib_unix_warning ("ioctl SIOCSIFFLAGS");
 }
 
-/*
- * $$$$ gross workaround for a known #include bug 
+/**
+ * @brief workaround for a known #include bug
  * #include <linux/ipv6.h> causes multiple definitions if
  * netinet/in.h is also included.
  */
 struct in6_ifreq {
 	struct in6_addr	ifr6_addr;
         u32		ifr6_prefixlen;
-	int		ifr6_ifindex; 
+        int		ifr6_ifindex;
 };
 
-/* 
+/**
+ * @brief Add or Del tun/tap interface address
+ *
  * Both the v6 interface address API and the way ifconfig
  * displays subinterfaces differ from their v4 couterparts.
  * The code given here seems to work but YMMV.
+ *
+ * @param *im - ip6_main_t
+ * @param opaque - uword
+ * @param sw_if_index - u32
+ * @param *address - ip6_address_t
+ * @param address_length - u32
+ * @param if_address_index - u32
+ * @param is_delete - u32
  */
 void
 tuntap_ip6_add_del_interface_address (ip6_main_t * im,
@@ -768,7 +835,7 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
   subif_addr.sw_if_index = sw_if_index;
   subif_addr.is_v6 = 1;
   clib_memcpy (&subif_addr.addr, address, sizeof (*address));
-  
+
   p = mhash_get (&tm->subif_mhash, &subif_addr);
 
   if (p)
@@ -829,6 +896,14 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
     }
 }
 
+/**
+ * @brief TX the tun/tap frame
+ *
+ * @param *vm - vlib_main_t
+ * @param *node - vlib_node_runtime_t
+ * @param *frame - vlib_frame_t
+ *
+ */
 static void
 tuntap_punt_frame (vlib_main_t * vm,
                    vlib_node_runtime_t * node,
@@ -838,6 +913,14 @@ tuntap_punt_frame (vlib_main_t * vm,
   vlib_frame_free (vm, node, frame);
 }
 
+/**
+ * @brief Free the tun/tap frame
+ *
+ * @param *vm - vlib_main_t
+ * @param *node - vlib_node_runtime_t
+ * @param *frame - vlib_frame_t
+ *
+ */
 static void
 tuntap_nopunt_frame (vlib_main_t * vm,
                    vlib_node_runtime_t * node,
@@ -853,6 +936,15 @@ VNET_HW_INTERFACE_CLASS (tuntap_interface_class,static) = {
   .name = "tuntap",
 };
 
+/**
+ * @brief Format tun/tap interface name
+ *
+ * @param *s - u8 - formatter string
+ * @param *args - va_list
+ *
+ * @return *s - u8 - formatted string
+ *
+ */
 static u8 * format_tuntap_interface_name (u8 * s, va_list * args)
 {
   u32 i = va_arg (*args, u32);
@@ -861,6 +953,16 @@ static u8 * format_tuntap_interface_name (u8 * s, va_list * args)
   return s;
 }
 
+/**
+ * @brief TX packet out tun/tap
+ *
+ * @param *vm - vlib_main_t
+ * @param *node - vlib_node_runtime_t
+ * @param *frame - vlib_frame_t
+ *
+ * @return n_buffers - uword - Packets transmitted
+ *
+ */
 static uword
 tuntap_intfc_tx (vlib_main_t * vm,
 		 vlib_node_runtime_t * node,
@@ -884,6 +986,14 @@ VNET_DEVICE_CLASS (tuntap_dev_class,static) = {
   .format_device_name = format_tuntap_interface_name,
 };
 
+/**
+ * @brief tun/tap node init
+ *
+ * @param *vm - vlib_main_t
+ *
+ * @return error - clib_error_t
+ *
+ */
 static clib_error_t *
 tuntap_init (vlib_main_t * vm)
 {
