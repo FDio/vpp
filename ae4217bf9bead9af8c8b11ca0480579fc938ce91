@@ -25,6 +25,29 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_00e4830b",
+        "filename": "plugins/ioam-plugin/ioam/encap/ip6_ioam_trace.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T06:41:34Z",
+      "side": 1,
+      "message": "What do you think about:\n1. Moving all the registrations to when the option is actually configured, and not part of the plugin init. This way we add \u0026 process it only when we know type, number of nodes etc \n2. Similarly Unregister the option when there node id etc is unconfigured.\n3. We need to fix rewrite string when trace configuration changes as the size may change. So something to be done\n4. get_sizeof_register option will not be needed once we do this, add_registration can handle providing the size.\n5. modification of cli also should result in unregister, register and recreate rewrite string",
+      "range": {
+        "startLine": 338,
+        "startChar": 2,
+        "endLine": 350,
+        "endChar": 0
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_a0d02f54",
         "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
         "patchSetId": 1
