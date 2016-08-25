@@ -51,7 +51,7 @@
    1 => empty (adjacency index of zero is special miss adjacency). */
 typedef u32 ip4_fib_mtrie_leaf_t;
 
-#define IP4_FIB_MTRIE_LEAF_EMPTY (1 + 2*IP_LOOKUP_MISS_ADJ_INDEX)
+#define IP4_FIB_MTRIE_LEAF_EMPTY (1 + 2*0)
 #define IP4_FIB_MTRIE_LEAF_ROOT  (0 + 2*0)
 
 always_inline u32 ip4_fib_mtrie_leaf_is_empty (ip4_fib_mtrie_leaf_t n)
@@ -115,6 +115,9 @@ typedef struct {
 	 - 1 * sizeof (i32)];
 } ip4_fib_mtrie_ply_t;
 
+_Static_assert(0  == sizeof(ip4_fib_mtrie_ply_t) % CLIB_CACHE_LINE_BYTES,
+	       "IP4 Mtrie ply cache line");
+
 typedef struct {
   /* Pool of plies.  Index zero is root ply. */
   ip4_fib_mtrie_ply_t * ply_pool;
@@ -136,15 +139,13 @@ void ip4_fib_mtrie_add_del_route (struct ip4_fib_t * f,
 /* Returns adjacency index. */
 u32 ip4_mtrie_lookup_address (ip4_fib_mtrie_t * m, ip4_address_t dst);
 
-void ip4_mtrie_maybe_remap_adjacencies (ip_lookup_main_t * lm, ip4_fib_mtrie_t * m);
-
 format_function_t format_ip4_fib_mtrie;
 
 /* Lookup step.  Processes 1 byte of 4 byte ip4 address. */
 always_inline ip4_fib_mtrie_leaf_t
 ip4_fib_mtrie_lookup_step (ip4_fib_mtrie_t * m,
 			   ip4_fib_mtrie_leaf_t current_leaf,
-			   ip4_address_t * dst_address,
+			   const ip4_address_t * dst_address,
 			   u32 dst_address_byte_index)
 {
   ip4_fib_mtrie_leaf_t next_leaf;

@@ -142,7 +142,7 @@ thrash (vlib_main_t * vm,
     }
 
   /* Find or create FIB table 11 */
-  fib = find_ip4_fib_by_table_index_or_id (im, table_id, IP4_ROUTE_FLAG_TABLE_ID);
+  fib = ip4_fib_find_or_create_fib_by_table_id (table_id);
 
   for (i = tm->test_interfaces_created; i < ninterfaces; i++)
     {
@@ -164,6 +164,7 @@ thrash (vlib_main_t * vm,
       hw = vnet_get_hw_interface (vnm, hw_if_index);
       vec_validate (im->fib_index_by_sw_if_index, hw->sw_if_index);
       im->fib_index_by_sw_if_index[hw->sw_if_index] = fib->index;
+      ip4_sw_interface_enable_disable(sw_if_index, 1);
     }
 
   tm->test_interfaces_created = ninterfaces;

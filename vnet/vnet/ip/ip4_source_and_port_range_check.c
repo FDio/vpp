@@ -132,432 +132,433 @@ ip4_source_and_port_range_check_inline (vlib_main_t * vm,
 					vlib_node_runtime_t * node,
 					vlib_frame_t * frame, int is_tx)
 {
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *rx_cm =
-    &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  ip_config_main_t *tx_cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
-  u32 n_left_from, *from, *to_next;
-  u32 next_index;
-  vlib_node_runtime_t *error_node = node;
-  u32 good_packets = 0;
-  int i;
-
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
-
-  while (n_left_from > 0)
-    {
-      u32 n_left_to_next;
-
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-
-      while (n_left_from >= 4 && n_left_to_next >= 2)
-	{
-	  vlib_buffer_t *b0, *b1;
-	  ip4_header_t *ip0, *ip1;
-	  ip4_fib_mtrie_t *mtrie0, *mtrie1;
-	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
-	  ip_source_and_port_range_check_config_t *c0, *c1;
-	  ip_adjacency_t *adj0 = 0, *adj1 = 0;
-	  u32 bi0, next0, adj_index0, pass0, save_next0, fib_index0;
-	  u32 bi1, next1, adj_index1, pass1, save_next1, fib_index1;
-	  udp_header_t *udp0, *udp1;
-
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t *p2, *p3;
-
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
-
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD);
-	    CLIB_PREFETCH (p3->data, sizeof (ip1[0]), LOAD);
-	  }
-
-	  bi0 = to_next[0] = from[0];
-	  bi1 = to_next[1] = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-
-	  fib_index0 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
-	  fib_index1 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b1)->sw_if_index[VLIB_RX]);
-
-	  ip0 = vlib_buffer_get_current (b0);
-	  ip1 = vlib_buffer_get_current (b1);
-
-	  if (is_tx)
-	    {
-	      c0 = vnet_get_config_data (&tx_cm->config_main,
-					 &b0->current_config_index,
-					 &next0, sizeof (c0[0]));
-	      c1 = vnet_get_config_data (&tx_cm->config_main,
-					 &b1->current_config_index,
-					 &next1, sizeof (c1[0]));
-	    }
-	  else
-	    {
-	      c0 = vnet_get_config_data (&rx_cm->config_main,
-					 &b0->current_config_index,
-					 &next0, sizeof (c0[0]));
-	      c1 = vnet_get_config_data (&rx_cm->config_main,
-					 &b1->current_config_index,
-					 &next1, sizeof (c1[0]));
-	    }
-
-	  /* we can't use the default VRF here... */
-	  for (i = 0; i < IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS; i++)
-	    {
-	      ASSERT (c0->fib_index[i] && c1->fib_index[i]);
-	    }
-
-
-	  if (is_tx)
-	    {
-	      if (ip0->protocol == IP_PROTOCOL_UDP)
-		fib_index0 =
-		  c0->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN];
-	      if (ip0->protocol == IP_PROTOCOL_TCP)
-		fib_index0 =
-		  c0->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN];
-	    }
-	  else
-	    {
-	      if (ip0->protocol == IP_PROTOCOL_UDP)
-		fib_index0 =
-		  c0->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT];
-	      if (ip0->protocol == IP_PROTOCOL_TCP)
-		fib_index0 =
-		  c0->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT];
-	    }
-
-	  if (PREDICT_TRUE (fib_index0 != ~0))
-	    {
-
-	      mtrie0 = &vec_elt_at_index (im->fibs, fib_index0)->mtrie;
-
-	      leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
-
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-						 &ip0->src_address, 0);
-
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-						 &ip0->src_address, 1);
-
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-						 &ip0->src_address, 2);
-
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-						 &ip0->src_address, 3);
-
-	      adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-
-	      ASSERT (adj_index0 == ip4_fib_lookup_with_table (im, fib_index0,
-							       &ip0->src_address,
-							       0
-							       /* use dflt rt */
-		      ));
-	      adj0 = ip_get_adjacency (lm, adj_index0);
-	    }
-
-	  if (is_tx)
-	    {
-	      if (ip1->protocol == IP_PROTOCOL_UDP)
-		fib_index1 =
-		  c1->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN];
-	      if (ip1->protocol == IP_PROTOCOL_TCP)
-		fib_index1 =
-		  c1->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN];
-	    }
-	  else
-	    {
-	      if (ip1->protocol == IP_PROTOCOL_UDP)
-		fib_index1 =
-		  c1->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT];
-	      if (ip1->protocol == IP_PROTOCOL_TCP)
-		fib_index1 =
-		  c1->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT];
-	    }
-
-	  if (PREDICT_TRUE (fib_index1 != ~0))
-	    {
-
-	      mtrie1 = &vec_elt_at_index (im->fibs, fib_index1)->mtrie;
-
-	      leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
-
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
-						 &ip1->src_address, 0);
-
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
-						 &ip1->src_address, 1);
-
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
-						 &ip1->src_address, 2);
-
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
-						 &ip1->src_address, 3);
-
-	      adj_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
-
-	      ASSERT (adj_index1 == ip4_fib_lookup_with_table (im, fib_index1,
-							       &ip1->src_address,
-							       0));
-	      adj1 = ip_get_adjacency (lm, adj_index1);
-	    }
-
-	  pass0 = 0;
-	  pass0 |= adj0 == 0;
-	  pass0 |= ip4_address_is_multicast (&ip0->src_address);
-	  pass0 |=
-	    ip0->src_address.as_u32 == clib_host_to_net_u32 (0xFFFFFFFF);
-	  pass0 |= (ip0->protocol != IP_PROTOCOL_UDP)
-	    && (ip0->protocol != IP_PROTOCOL_TCP);
-
-	  pass1 = 0;
-	  pass1 |= adj1 == 0;
-	  pass1 |= ip4_address_is_multicast (&ip1->src_address);
-	  pass1 |=
-	    ip1->src_address.as_u32 == clib_host_to_net_u32 (0xFFFFFFFF);
-	  pass1 |= (ip1->protocol != IP_PROTOCOL_UDP)
-	    && (ip1->protocol != IP_PROTOCOL_TCP);
-
-	  save_next0 = next0;
-	  udp0 = ip4_next_header (ip0);
-	  save_next1 = next1;
-	  udp1 = ip4_next_header (ip1);
-
-	  if (PREDICT_TRUE (pass0 == 0))
-	    {
-	      good_packets++;
-	      next0 = check_adj_port_range_x1
-		(adj0, clib_net_to_host_u16 (udp0->dst_port), next0);
-	      good_packets -= (save_next0 != next0);
-	      b0->error = error_node->errors
-		[IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_FAIL];
-	    }
-
-	  if (PREDICT_TRUE (pass1 == 0))
-	    {
-	      good_packets++;
-	      next1 = check_adj_port_range_x1
-		(adj1, clib_net_to_host_u16 (udp1->dst_port), next1);
-	      good_packets -= (save_next1 != next1);
-	      b1->error = error_node->errors
-		[IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_FAIL];
-	    }
-
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      ip4_source_and_port_range_check_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->pass = next0 == save_next0;
-	      t->bypass = pass0;
-	      t->fib_index = fib_index0;
-	      t->src_addr.as_u32 = ip0->src_address.as_u32;
-	      t->port = (pass0 == 0) ?
-		clib_net_to_host_u16 (udp0->dst_port) : 0;
-	      t->is_tcp = ip0->protocol == IP_PROTOCOL_TCP;
-	    }
-
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b1->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      ip4_source_and_port_range_check_trace_t *t =
-		vlib_add_trace (vm, node, b1, sizeof (*t));
-	      t->pass = next1 == save_next1;
-	      t->bypass = pass1;
-	      t->fib_index = fib_index1;
-	      t->src_addr.as_u32 = ip1->src_address.as_u32;
-	      t->port = (pass1 == 0) ?
-		clib_net_to_host_u16 (udp1->dst_port) : 0;
-	      t->is_tcp = ip1->protocol == IP_PROTOCOL_TCP;
-	    }
-
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
-	}
-
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  vlib_buffer_t *b0;
-	  ip4_header_t *ip0;
-	  ip4_fib_mtrie_t *mtrie0;
-	  ip4_fib_mtrie_leaf_t leaf0;
-	  ip_source_and_port_range_check_config_t *c0;
-	  ip_adjacency_t *adj0 = 0;
-	  u32 bi0, next0, adj_index0, pass0, save_next0, fib_index0;
-	  udp_header_t *udp0;
-
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-
-	  fib_index0 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
-
-	  if (is_tx)
-	    vlib_buffer_advance (b0, sizeof (ethernet_header_t));
-
-	  ip0 = vlib_buffer_get_current (b0);
-
-	  if (is_tx)
-	    {
-	      c0 = vnet_get_config_data
-		(&tx_cm->config_main, &b0->current_config_index,
-		 &next0, sizeof (c0[0]));
-	    }
-	  else
-	    {
-	      c0 = vnet_get_config_data
-		(&rx_cm->config_main, &b0->current_config_index,
-		 &next0, sizeof (c0[0]));
-	    }
-
-	  /* we can't use the default VRF here... */
-	  for (i = 0; i < IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS; i++)
-	    {
-	      ASSERT (c0->fib_index[i]);
-	    }
-
-
-	  if (is_tx)
-	    {
-	      if (ip0->protocol == IP_PROTOCOL_UDP)
-		fib_index0 =
-		  c0->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN];
-	      if (ip0->protocol == IP_PROTOCOL_TCP)
-		fib_index0 =
-		  c0->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN];
-	    }
-	  else
-	    {
-	      if (ip0->protocol == IP_PROTOCOL_UDP)
-		fib_index0 =
-		  c0->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT];
-	      if (ip0->protocol == IP_PROTOCOL_TCP)
-		fib_index0 =
-		  c0->fib_index
-		  [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT];
-	    }
-
-	  if (fib_index0 != ~0)
-	    {
-
-	      mtrie0 = &vec_elt_at_index (im->fibs, fib_index0)->mtrie;
-
-	      leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
-
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-						 &ip0->src_address, 0);
-
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-						 &ip0->src_address, 1);
-
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-						 &ip0->src_address, 2);
-
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-						 &ip0->src_address, 3);
-
-	      adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-
-	      ASSERT (adj_index0 == ip4_fib_lookup_with_table
-		      (im, fib_index0,
-		       &ip0->src_address, 0 /* use default route */ ));
-	      adj0 = ip_get_adjacency (lm, adj_index0);
-	    }
-	  /*
-	   * $$$ which (src,dst) categories should we always pass?
-	   */
-	  pass0 = 0;
-	  pass0 |= adj0 == 0;
-	  pass0 |= ip4_address_is_multicast (&ip0->src_address);
-	  pass0 |=
-	    ip0->src_address.as_u32 == clib_host_to_net_u32 (0xFFFFFFFF);
-	  pass0 |= (ip0->protocol != IP_PROTOCOL_UDP)
-	    && (ip0->protocol != IP_PROTOCOL_TCP);
-
-	  save_next0 = next0;
-	  udp0 = ip4_next_header (ip0);
-
-	  if (PREDICT_TRUE (pass0 == 0))
-	    {
-	      good_packets++;
-	      next0 = check_adj_port_range_x1
-		(adj0, clib_net_to_host_u16 (udp0->dst_port), next0);
-	      good_packets -= (save_next0 != next0);
-	      b0->error = error_node->errors
-		[IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_FAIL];
-	    }
-
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      ip4_source_and_port_range_check_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->pass = next0 == save_next0;
-	      t->bypass = pass0;
-	      t->fib_index = fib_index0;
-	      t->src_addr.as_u32 = ip0->src_address.as_u32;
-	      t->port = (pass0 == 0) ?
-		clib_net_to_host_u16 (udp0->dst_port) : 0;
-	      t->is_tcp = ip0->protocol == IP_PROTOCOL_TCP;
-	    }
-
-	  if (is_tx)
-	    vlib_buffer_advance (b0, -sizeof (ethernet_header_t));
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-
-  if (is_tx)
-    vlib_node_increment_counter (vm, ip4_source_port_and_range_check_tx.index,
-				 IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_OK,
-				 good_packets);
-  else
-    vlib_node_increment_counter (vm, ip4_source_port_and_range_check_rx.index,
-				 IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_OK,
-				 good_packets);
-  return frame->n_vectors;
+  /* ip4_main_t *im = &ip4_main; */
+  /* ip_lookup_main_t *lm = &im->lookup_main; */
+  /* ip_config_main_t *rx_cm = */
+  /*   &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT]; */
+  /* ip_config_main_t *tx_cm = &lm->feature_config_mains[VNET_IP_TX_FEAT]; */
+  /* u32 n_left_from, *from, *to_next; */
+  /* u32 next_index; */
+  /* vlib_node_runtime_t *error_node = node; */
+  /* u32 good_packets = 0; */
+  /* int i; */
+
+  /* from = vlib_frame_vector_args (frame); */
+  /* n_left_from = frame->n_vectors; */
+  /* next_index = node->cached_next_index; */
+
+  /* while (n_left_from > 0) */
+  /*   { */
+  /*     u32 n_left_to_next; */
+
+  /*     vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next); */
+
+
+  /*     while (n_left_from >= 4 && n_left_to_next >= 2) */
+  /*       { */
+  /*         vlib_buffer_t *b0, *b1; */
+  /*         ip4_header_t *ip0, *ip1; */
+  /*         ip4_fib_mtrie_t *mtrie0, *mtrie1; */
+  /*         ip4_fib_mtrie_leaf_t leaf0, leaf1; */
+  /*         ip_source_and_port_range_check_config_t *c0, *c1; */
+  /*         ip_adjacency_t *adj0 = 0, *adj1 = 0; */
+  /*         u32 bi0, next0, adj_index0, pass0, save_next0, fib_index0; */
+  /*         u32 bi1, next1, adj_index1, pass1, save_next1, fib_index1; */
+  /*         udp_header_t *udp0, *udp1; */
+
+  /*         /\* Prefetch next iteration. *\/ */
+  /*         { */
+  /*           vlib_buffer_t *p2, *p3; */
+
+  /*           p2 = vlib_get_buffer (vm, from[2]); */
+  /*           p3 = vlib_get_buffer (vm, from[3]); */
+
+  /*           vlib_prefetch_buffer_header (p2, LOAD); */
+  /*           vlib_prefetch_buffer_header (p3, LOAD); */
+
+  /*           CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD); */
+  /*           CLIB_PREFETCH (p3->data, sizeof (ip1[0]), LOAD); */
+  /*         } */
+
+  /*         bi0 = to_next[0] = from[0]; */
+  /*         bi1 = to_next[1] = from[1]; */
+  /*         from += 2; */
+  /*         to_next += 2; */
+  /*         n_left_from -= 2; */
+  /*         n_left_to_next -= 2; */
+
+  /*         b0 = vlib_get_buffer (vm, bi0); */
+  /*         b1 = vlib_get_buffer (vm, bi1); */
+
+  /*         fib_index0 = */
+  /*           vec_elt (im->fib_index_by_sw_if_index, */
+  /*                 vnet_buffer (b0)->sw_if_index[VLIB_RX]); */
+  /*         fib_index1 = */
+  /*           vec_elt (im->fib_index_by_sw_if_index, */
+  /*                 vnet_buffer (b1)->sw_if_index[VLIB_RX]); */
+
+  /*         ip0 = vlib_buffer_get_current (b0); */
+  /*         ip1 = vlib_buffer_get_current (b1); */
+
+  /*         if (is_tx) */
+  /*           { */
+  /*             c0 = vnet_get_config_data (&tx_cm->config_main, */
+  /*                                     &b0->current_config_index, */
+  /*                                     &next0, sizeof (c0[0])); */
+  /*             c1 = vnet_get_config_data (&tx_cm->config_main, */
+  /*                                     &b1->current_config_index, */
+  /*                                     &next1, sizeof (c1[0])); */
+  /*           } */
+  /*         else */
+  /*           { */
+  /*             c0 = vnet_get_config_data (&rx_cm->config_main, */
+  /*                                     &b0->current_config_index, */
+  /*                                     &next0, sizeof (c0[0])); */
+  /*             c1 = vnet_get_config_data (&rx_cm->config_main, */
+  /*                                     &b1->current_config_index, */
+  /*                                     &next1, sizeof (c1[0])); */
+  /*           } */
+
+  /*         /\* we can't use the default VRF here... *\/ */
+  /*         for (i = 0; i < IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS; i++) */
+  /*           { */
+  /*             ASSERT (c0->fib_index[i] && c1->fib_index[i]); */
+  /*           } */
+
+
+  /*         if (is_tx) */
+  /*           { */
+  /*             if (ip0->protocol == IP_PROTOCOL_UDP) */
+  /*            fib_index0 = */
+  /*              c0->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN]; */
+  /*             if (ip0->protocol == IP_PROTOCOL_TCP) */
+  /*            fib_index0 = */
+  /*              c0->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN]; */
+  /*           } */
+  /*         else */
+  /*           { */
+  /*             if (ip0->protocol == IP_PROTOCOL_UDP) */
+  /*            fib_index0 = */
+  /*              c0->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT]; */
+  /*             if (ip0->protocol == IP_PROTOCOL_TCP) */
+  /*            fib_index0 = */
+  /*              c0->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT]; */
+  /*           } */
+
+  /*         if (PREDICT_TRUE (fib_index0 != ~0)) */
+  /*           { */
+
+  /*             mtrie0 = &vec_elt_at_index (im->fibs, fib_index0)->mtrie; */
+
+  /*             leaf0 = IP4_FIB_MTRIE_LEAF_ROOT; */
+
+  /*             leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, */
+  /*                                             &ip0->src_address, 0); */
+
+  /*             leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, */
+  /*                                             &ip0->src_address, 1); */
+
+  /*             leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, */
+  /*                                             &ip0->src_address, 2); */
+
+  /*             leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, */
+  /*                                             &ip0->src_address, 3); */
+
+  /*             adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0); */
+
+  /*             ASSERT (adj_index0 == ip4_fib_lookup_with_table (im, fib_index0, */
+  /*                                                           &ip0->src_address, */
+  /*                                                           0 */
+  /*                                                           /\* use dflt rt *\/ */
+  /*                  )); */
+  /*             adj0 = ip_get_adjacency (lm, adj_index0); */
+  /*           } */
+
+  /*         if (is_tx) */
+  /*           { */
+  /*             if (ip1->protocol == IP_PROTOCOL_UDP) */
+  /*            fib_index1 = */
+  /*              c1->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN]; */
+  /*             if (ip1->protocol == IP_PROTOCOL_TCP) */
+  /*            fib_index1 = */
+  /*              c1->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN]; */
+  /*           } */
+  /*         else */
+  /*           { */
+  /*             if (ip1->protocol == IP_PROTOCOL_UDP) */
+  /*            fib_index1 = */
+  /*              c1->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT]; */
+  /*             if (ip1->protocol == IP_PROTOCOL_TCP) */
+  /*            fib_index1 = */
+  /*              c1->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT]; */
+  /*           } */
+
+  /*         if (PREDICT_TRUE (fib_index1 != ~0)) */
+  /*           { */
+
+  /*             mtrie1 = &vec_elt_at_index (im->fibs, fib_index1)->mtrie; */
+
+  /*             leaf1 = IP4_FIB_MTRIE_LEAF_ROOT; */
+
+  /*             leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, */
+  /*                                             &ip1->src_address, 0); */
+
+  /*             leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, */
+  /*                                             &ip1->src_address, 1); */
+
+  /*             leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, */
+  /*                                             &ip1->src_address, 2); */
+
+  /*             leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, */
+  /*                                             &ip1->src_address, 3); */
+
+  /*             adj_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1); */
+
+  /*             ASSERT (adj_index1 == ip4_fib_lookup_with_table (im, fib_index1, */
+  /*                                                           &ip1->src_address, */
+  /*                                                           0)); */
+  /*             adj1 = ip_get_adjacency (lm, adj_index1); */
+  /*           } */
+
+  /*         pass0 = 0; */
+  /*         pass0 |= adj0 == 0; */
+  /*         pass0 |= ip4_address_is_multicast (&ip0->src_address); */
+  /*         pass0 |= */
+  /*           ip0->src_address.as_u32 == clib_host_to_net_u32 (0xFFFFFFFF); */
+  /*         pass0 |= (ip0->protocol != IP_PROTOCOL_UDP) */
+  /*           && (ip0->protocol != IP_PROTOCOL_TCP); */
+
+  /*         pass1 = 0; */
+  /*         pass1 |= adj1 == 0; */
+  /*         pass1 |= ip4_address_is_multicast (&ip1->src_address); */
+  /*         pass1 |= */
+  /*           ip1->src_address.as_u32 == clib_host_to_net_u32 (0xFFFFFFFF); */
+  /*         pass1 |= (ip1->protocol != IP_PROTOCOL_UDP) */
+  /*           && (ip1->protocol != IP_PROTOCOL_TCP); */
+
+  /*         save_next0 = next0; */
+  /*         udp0 = ip4_next_header (ip0); */
+  /*         save_next1 = next1; */
+  /*         udp1 = ip4_next_header (ip1); */
+
+  /*         if (PREDICT_TRUE (pass0 == 0)) */
+  /*           { */
+  /*             good_packets++; */
+  /*             next0 = check_adj_port_range_x1 */
+  /*            (adj0, clib_net_to_host_u16 (udp0->dst_port), next0); */
+  /*             good_packets -= (save_next0 != next0); */
+  /*             b0->error = error_node->errors */
+  /*            [IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_FAIL]; */
+  /*           } */
+
+  /*         if (PREDICT_TRUE (pass1 == 0)) */
+  /*           { */
+  /*             good_packets++; */
+  /*             next1 = check_adj_port_range_x1 */
+  /*            (adj1, clib_net_to_host_u16 (udp1->dst_port), next1); */
+  /*             good_packets -= (save_next1 != next1); */
+  /*             b1->error = error_node->errors */
+  /*            [IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_FAIL]; */
+  /*           } */
+
+  /*         if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) */
+  /*                         && (b0->flags & VLIB_BUFFER_IS_TRACED))) */
+  /*           { */
+  /*             ip4_source_and_port_range_check_trace_t *t = */
+  /*            vlib_add_trace (vm, node, b0, sizeof (*t)); */
+  /*             t->pass = next0 == save_next0; */
+  /*             t->bypass = pass0; */
+  /*             t->fib_index = fib_index0; */
+  /*             t->src_addr.as_u32 = ip0->src_address.as_u32; */
+  /*             t->port = (pass0 == 0) ? */
+  /*            clib_net_to_host_u16 (udp0->dst_port) : 0; */
+  /*             t->is_tcp = ip0->protocol == IP_PROTOCOL_TCP; */
+  /*           } */
+
+  /*         if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) */
+  /*                         && (b1->flags & VLIB_BUFFER_IS_TRACED))) */
+  /*           { */
+  /*             ip4_source_and_port_range_check_trace_t *t = */
+  /*            vlib_add_trace (vm, node, b1, sizeof (*t)); */
+  /*             t->pass = next1 == save_next1; */
+  /*             t->bypass = pass1; */
+  /*             t->fib_index = fib_index1; */
+  /*             t->src_addr.as_u32 = ip1->src_address.as_u32; */
+  /*             t->port = (pass1 == 0) ? */
+  /*            clib_net_to_host_u16 (udp1->dst_port) : 0; */
+  /*             t->is_tcp = ip1->protocol == IP_PROTOCOL_TCP; */
+  /*           } */
+
+  /*         vlib_validate_buffer_enqueue_x2 (vm, node, next_index, */
+  /*                                       to_next, n_left_to_next, */
+  /*                                       bi0, bi1, next0, next1); */
+  /*       } */
+
+  /*     while (n_left_from > 0 && n_left_to_next > 0) */
+  /*       { */
+  /*         vlib_buffer_t *b0; */
+  /*         ip4_header_t *ip0; */
+  /*         ip4_fib_mtrie_t *mtrie0; */
+  /*         ip4_fib_mtrie_leaf_t leaf0; */
+  /*         ip_source_and_port_range_check_config_t *c0; */
+  /*         ip_adjacency_t *adj0 = 0; */
+  /*         u32 bi0, next0, adj_index0, pass0, save_next0, fib_index0; */
+  /*         udp_header_t *udp0; */
+
+  /*         bi0 = from[0]; */
+  /*         to_next[0] = bi0; */
+  /*         from += 1; */
+  /*         to_next += 1; */
+  /*         n_left_from -= 1; */
+  /*         n_left_to_next -= 1; */
+
+  /*         b0 = vlib_get_buffer (vm, bi0); */
+
+  /*         fib_index0 = */
+  /*           vec_elt (im->fib_index_by_sw_if_index, */
+  /*                 vnet_buffer (b0)->sw_if_index[VLIB_RX]); */
+
+  /*         if (is_tx) */
+  /*           vlib_buffer_advance (b0, sizeof (ethernet_header_t)); */
+
+  /*         ip0 = vlib_buffer_get_current (b0); */
+
+  /*         if (is_tx) */
+  /*           { */
+  /*             c0 = vnet_get_config_data */
+  /*            (&tx_cm->config_main, &b0->current_config_index, */
+  /*             &next0, sizeof (c0[0])); */
+  /*           } */
+  /*         else */
+  /*           { */
+  /*             c0 = vnet_get_config_data */
+  /*            (&rx_cm->config_main, &b0->current_config_index, */
+  /*             &next0, sizeof (c0[0])); */
+  /*           } */
+
+  /*         /\* we can't use the default VRF here... *\/ */
+  /*         for (i = 0; i < IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS; i++) */
+  /*           { */
+  /*             ASSERT (c0->fib_index[i]); */
+  /*           } */
+
+
+  /*         if (is_tx) */
+  /*           { */
+  /*             if (ip0->protocol == IP_PROTOCOL_UDP) */
+  /*            fib_index0 = */
+  /*              c0->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN]; */
+  /*             if (ip0->protocol == IP_PROTOCOL_TCP) */
+  /*            fib_index0 = */
+  /*              c0->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN]; */
+  /*           } */
+  /*         else */
+  /*           { */
+  /*             if (ip0->protocol == IP_PROTOCOL_UDP) */
+  /*            fib_index0 = */
+  /*              c0->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT]; */
+  /*             if (ip0->protocol == IP_PROTOCOL_TCP) */
+  /*            fib_index0 = */
+  /*              c0->fib_index */
+  /*              [IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT]; */
+  /*           } */
+
+  /*         if (fib_index0 != ~0) */
+  /*           { */
+
+  /*             mtrie0 = &vec_elt_at_index (im->fibs, fib_index0)->mtrie; */
+
+  /*             leaf0 = IP4_FIB_MTRIE_LEAF_ROOT; */
+
+  /*             leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, */
+  /*                                             &ip0->src_address, 0); */
+
+  /*             leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, */
+  /*                                             &ip0->src_address, 1); */
+
+  /*             leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, */
+  /*                                             &ip0->src_address, 2); */
+
+  /*             leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, */
+  /*                                             &ip0->src_address, 3); */
+
+  /*             adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0); */
+
+  /*             ASSERT (adj_index0 == ip4_fib_lookup_with_table */
+  /*                  (im, fib_index0, */
+  /*                   &ip0->src_address, 0 /\* use default route *\/ )); */
+  /*             adj0 = ip_get_adjacency (lm, adj_index0); */
+  /*           } */
+  /*         /\* */
+  /*          * $$$ which (src,dst) categories should we always pass? */
+  /*          *\/ */
+  /*         pass0 = 0; */
+  /*         pass0 |= adj0 == 0; */
+  /*         pass0 |= ip4_address_is_multicast (&ip0->src_address); */
+  /*         pass0 |= */
+  /*           ip0->src_address.as_u32 == clib_host_to_net_u32 (0xFFFFFFFF); */
+  /*         pass0 |= (ip0->protocol != IP_PROTOCOL_UDP) */
+  /*           && (ip0->protocol != IP_PROTOCOL_TCP); */
+
+  /*         save_next0 = next0; */
+  /*         udp0 = ip4_next_header (ip0); */
+
+  /*         if (PREDICT_TRUE (pass0 == 0)) */
+  /*           { */
+  /*             good_packets++; */
+  /*             next0 = check_adj_port_range_x1 */
+  /*            (adj0, clib_net_to_host_u16 (udp0->dst_port), next0); */
+  /*             good_packets -= (save_next0 != next0); */
+  /*             b0->error = error_node->errors */
+  /*            [IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_FAIL]; */
+  /*           } */
+
+  /*         if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) */
+  /*                         && (b0->flags & VLIB_BUFFER_IS_TRACED))) */
+  /*           { */
+  /*             ip4_source_and_port_range_check_trace_t *t = */
+  /*            vlib_add_trace (vm, node, b0, sizeof (*t)); */
+  /*             t->pass = next0 == save_next0; */
+  /*             t->bypass = pass0; */
+  /*             t->fib_index = fib_index0; */
+  /*             t->src_addr.as_u32 = ip0->src_address.as_u32; */
+  /*             t->port = (pass0 == 0) ? */
+  /*            clib_net_to_host_u16 (udp0->dst_port) : 0; */
+  /*             t->is_tcp = ip0->protocol == IP_PROTOCOL_TCP; */
+  /*           } */
+
+  /*         if (is_tx) */
+  /*           vlib_buffer_advance (b0, -sizeof (ethernet_header_t)); */
+
+  /*         vlib_validate_buffer_enqueue_x1 (vm, node, next_index, */
+  /*                                       to_next, n_left_to_next, */
+  /*                                       bi0, next0); */
+  /*       } */
+
+  /*     vlib_put_next_frame (vm, node, next_index, n_left_to_next); */
+  /*   } */
+
+  /* if (is_tx) */
+  /*   vlib_node_increment_counter (vm, ip4_source_port_and_range_check_tx.index, */
+  /*                             IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_OK, */
+  /*                             good_packets); */
+  /* else */
+  /*   vlib_node_increment_counter (vm, ip4_source_port_and_range_check_rx.index, */
+  /*                             IP4_SOURCE_AND_PORT_RANGE_CHECK_ERROR_CHECK_OK, */
+  /*                             good_packets); */
+  /* return frame->n_vectors; */
+  return 0;
 }
 
 static uword
@@ -785,60 +786,60 @@ VLIB_CLI_COMMAND (set_interface_ip_source_and_port_range_check_command,
 };
 /* *INDENT-ON* */
 
-static u8 *
-format_source_and_port_rc_adjacency (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vnet_main_t * vnm) = va_arg (*args, vnet_main_t *);
-  ip_lookup_main_t *lm = va_arg (*args, ip_lookup_main_t *);
-  u32 adj_index = va_arg (*args, u32);
-  ip_adjacency_t *adj = ip_get_adjacency (lm, adj_index);
-  source_range_check_main_t *srm = &source_range_check_main;
-  u8 *rwh = (u8 *) (&adj->rewrite_header);
-  protocol_port_range_t *range;
-  int i, j;
-  int printed = 0;
+/* static u8 * */
+/* format_source_and_port_rc_adjacency (u8 * s, va_list * args) */
+/* { */
+/*   CLIB_UNUSED (vnet_main_t * vnm) = va_arg (*args, vnet_main_t *); */
+/*   ip_lookup_main_t *lm = va_arg (*args, ip_lookup_main_t *); */
+/*   u32 adj_index = va_arg (*args, u32); */
+/*   ip_adjacency_t *adj = ip_get_adjacency (lm, adj_index); */
+/*   source_range_check_main_t *srm = &source_range_check_main; */
+/*   u8 *rwh = (u8 *) (&adj->rewrite_header); */
+/*   protocol_port_range_t *range; */
+/*   int i, j; */
+/*   int printed = 0; */
 
-  range = (protocol_port_range_t *) rwh;
+/*   range = (protocol_port_range_t *) rwh; */
 
-  s = format (s, "allow ");
+/*   s = format (s, "allow "); */
 
-  for (i = 0; i < srm->ranges_per_adjacency; i++)
-    {
-      for (j = 0; j < 8; j++)
-	{
-	  if (range->low.as_u16[j])
-	    {
-	      if (printed)
-		s = format (s, ", ");
-	      if (range->hi.as_u16[j] > (range->low.as_u16[j] + 1))
-		s = format (s, "%d-%d", (u32) range->low.as_u16[j],
-			    (u32) range->hi.as_u16[j] - 1);
-	      else
-		s = format (s, "%d", range->low.as_u16[j]);
-	      printed = 1;
-	    }
-	}
-      range++;
-    }
-  return s;
-}
+/*   for (i = 0; i < srm->ranges_per_adjacency; i++) */
+/*     { */
+/*       for (j = 0; j < 8; j++) */
+/* 	{ */
+/* 	  if (range->low.as_u16[j]) */
+/* 	    { */
+/* 	      if (printed) */
+/* 		s = format (s, ", "); */
+/* 	      if (range->hi.as_u16[j] > (range->low.as_u16[j] + 1)) */
+/* 		s = format (s, "%d-%d", (u32) range->low.as_u16[j], */
+/* 			    (u32) range->hi.as_u16[j] - 1); */
+/* 	      else */
+/* 		s = format (s, "%d", range->low.as_u16[j]); */
+/* 	      printed = 1; */
+/* 	    } */
+/* 	} */
+/*       range++; */
+/*     } */
+/*   return s; */
+/* } */
 
 clib_error_t *
 ip4_source_and_port_range_check_init (vlib_main_t * vm)
 {
-  source_range_check_main_t *srm = &source_range_check_main;
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
+  /* source_range_check_main_t *srm = &source_range_check_main; */
+  /* ip4_main_t *im = &ip4_main; */
+  /* ip_lookup_main_t *lm = &im->lookup_main; */
 
-  srm->vlib_main = vm;
-  srm->vnet_main = vnet_get_main ();
+  /* srm->vlib_main = vm; */
+  /* srm->vnet_main = vnet_get_main (); */
 
-  srm->ranges_per_adjacency =
-    VLIB_BUFFER_PRE_DATA_SIZE / (2 * sizeof (u16x8));
-  srm->special_adjacency_format_function_index =
-    vnet_register_special_adjacency_format_function (lm,
-						     format_source_and_port_rc_adjacency);
-  ASSERT (srm->special_adjacency_format_function_index);
+  /* srm->ranges_per_adjacency = */
+  /*   VLIB_BUFFER_PRE_DATA_SIZE / (2 * sizeof (u16x8)); */
+  /* srm->special_adjacency_format_function_index = */
+  /*   vnet_register_special_adjacency_format_function (lm, */
+  /*                                                 format_source_and_port_rc_adjacency); */
+  /* ASSERT (srm->special_adjacency_format_function_index); */
 
   return 0;
 }
@@ -851,76 +852,76 @@ add_port_range_adjacency (ip4_address_t * address,
 			  u32 adj_index,
 			  u16 * low_ports, u16 * high_ports, u32 fib_index)
 {
-  ip_adjacency_t *adj;
-  int i, j, k;
-  source_range_check_main_t *srm = &source_range_check_main;
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  protocol_port_range_t *range;
-  u8 *rwh;
+  /* ip_adjacency_t *adj; */
+  /* int i, j, k; */
+  /* source_range_check_main_t *srm = &source_range_check_main; */
+  /* ip4_main_t *im = &ip4_main; */
+  /* ip_lookup_main_t *lm = &im->lookup_main; */
+  /* protocol_port_range_t *range; */
+  /* u8 *rwh; */
 
-  adj = ip_get_adjacency (lm, adj_index);
-  /* $$$$ fixme: add ports if address + mask match */
-  if (adj->lookup_next_index == IP_LOOKUP_NEXT_ICMP_ERROR)
-    return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE;
+  /* adj = ip_get_adjacency (lm, adj_index); */
+  /* /\* $$$$ fixme: add ports if address + mask match *\/ */
+  /* if (adj->lookup_next_index == IP_LOOKUP_NEXT_ICMP_ERROR) */
+  /*   return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE; */
 
-  ip_adjacency_t template_adj;
-  ip4_add_del_route_args_t a;
+  /* ip_adjacency_t template_adj; */
+  /* ip4_add_del_route_args_t a; */
 
-  memset (&template_adj, 0, sizeof (template_adj));
+  /* memset (&template_adj, 0, sizeof (template_adj)); */
 
-  template_adj.lookup_next_index = IP_LOOKUP_NEXT_ICMP_ERROR;
-  template_adj.if_address_index = ~0;
-  template_adj.special_adjacency_format_function_index =
-    srm->special_adjacency_format_function_index;
+  /* template_adj.lookup_next_index = IP_LOOKUP_NEXT_ICMP_ERROR; */
+  /* template_adj.if_address_index = ~0; */
+  /* template_adj.special_adjacency_format_function_index = */
+  /*   srm->special_adjacency_format_function_index; */
 
-  rwh = (u8 *) (&template_adj.rewrite_header);
+  /* rwh = (u8 *) (&template_adj.rewrite_header); */
 
-  range = (protocol_port_range_t *) rwh;
+  /* range = (protocol_port_range_t *) rwh; */
 
-  if (vec_len (low_ports) > 8 * srm->ranges_per_adjacency)
-    return VNET_API_ERROR_EXCEEDED_NUMBER_OF_RANGES_CAPACITY;
+  /* if (vec_len (low_ports) > 8 * srm->ranges_per_adjacency) */
+  /*   return VNET_API_ERROR_EXCEEDED_NUMBER_OF_RANGES_CAPACITY; */
 
-  j = k = 0;
+  /* j = k = 0; */
 
-  for (i = 0; i < vec_len (low_ports); i++)
-    {
-      for (; j < srm->ranges_per_adjacency; j++)
-	{
-	  for (; k < 8; k++)
-	    {
-	      if (range->low.as_u16[k] == 0)
-		{
-		  range->low.as_u16[k] = low_ports[i];
-		  range->hi.as_u16[k] = high_ports[i];
-		  k++;
-		  if (k == 7)
-		    {
-		      k = 0;
-		      j++;
-		    }
-		  goto doublebreak2;
-		}
-	    }
-	  k = 0;
-	  range++;
-	}
-      j = 0;
-      /* Too many ports specified... */
-      return VNET_API_ERROR_EXCEEDED_NUMBER_OF_PORTS_CAPACITY;
+  /* for (i = 0; i < vec_len (low_ports); i++) */
+  /*   { */
+  /*     for (; j < srm->ranges_per_adjacency; j++) */
+  /*       { */
+  /*         for (; k < 8; k++) */
+  /*           { */
+  /*             if (range->low.as_u16[k] == 0) */
+  /*            { */
+  /*              range->low.as_u16[k] = low_ports[i]; */
+  /*              range->hi.as_u16[k] = high_ports[i]; */
+  /*              k++; */
+  /*              if (k == 7) */
+  /*                { */
+  /*                  k = 0; */
+  /*                  j++; */
+  /*                } */
+  /*              goto doublebreak2; */
+  /*            } */
+  /*           } */
+  /*         k = 0; */
+  /*         range++; */
+  /*       } */
+  /*     j = 0; */
+  /*     /\* Too many ports specified... *\/ */
+  /*     return VNET_API_ERROR_EXCEEDED_NUMBER_OF_PORTS_CAPACITY; */
 
-    doublebreak2:;
-    }
+  /*   doublebreak2:; */
+  /*   } */
 
-  memset (&a, 0, sizeof (a));
-  a.flags = IP4_ROUTE_FLAG_FIB_INDEX;
-  a.table_index_or_table_id = fib_index;
-  a.dst_address = address[0];
-  a.dst_address_length = length;
-  a.add_adj = &template_adj;
-  a.n_add_adj = 1;
+  /* memset (&a, 0, sizeof (a)); */
+  /* a.flags = IP4_ROUTE_FLAG_FIB_INDEX; */
+  /* a.table_index_or_table_id = fib_index; */
+  /* a.dst_address = address[0]; */
+  /* a.dst_address_length = length; */
+  /* a.add_adj = &template_adj; */
+  /* a.n_add_adj = 1; */
 
-  ip4_add_del_route (im, &a);
+  /* ip4_add_del_route (im, &a); */
   return 0;
 }
 
@@ -930,65 +931,65 @@ remove_port_range_adjacency (ip4_address_t * address,
 			     u32 adj_index,
 			     u16 * low_ports, u16 * high_ports, u32 fib_index)
 {
-  ip_adjacency_t *adj;
-  int i, j, k;
-  source_range_check_main_t *srm = &source_range_check_main;
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  protocol_port_range_t *range;
-  u8 *rwh;
+/*   ip_adjacency_t *adj; */
+/*   int i, j, k; */
+/*   source_range_check_main_t *srm = &source_range_check_main; */
+/*   ip4_main_t *im = &ip4_main; */
+/*   ip_lookup_main_t *lm = &im->lookup_main; */
+/*   protocol_port_range_t *range; */
+/*   u8 *rwh; */
 
-  adj = ip_get_adjacency (lm, adj_index);
-  if (adj->lookup_next_index != IP_LOOKUP_NEXT_ICMP_ERROR)	/* _ICMP_ERROR is a dummy placeholder */
-    return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE;
+/*   adj = ip_get_adjacency (lm, adj_index); */
+/*   if (adj->lookup_next_index != IP_LOOKUP_NEXT_ICMP_ERROR)	/\* _ICMP_ERROR is a dummy placeholder *\/ */
+/*     return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE; */
 
-  rwh = (u8 *) (&adj->rewrite_header);
+/*   rwh = (u8 *) (&adj->rewrite_header); */
 
-  for (i = 0; i < vec_len (low_ports); i++)
-    {
-      range = (protocol_port_range_t *) rwh;
-      for (j = 0; j < srm->ranges_per_adjacency; j++)
-	{
-	  for (k = 0; k < 8; k++)
-	    {
-	      if (low_ports[i] == range->low.as_u16[k] &&
-		  high_ports[i] == range->hi.as_u16[k])
-		{
-		  range->low.as_u16[k] = range->hi.as_u16[k] = 0;
-		  goto doublebreak;
-		}
-	    }
-	  range++;
-	}
-    doublebreak:;
-    }
+/*   for (i = 0; i < vec_len (low_ports); i++) */
+/*     { */
+/*       range = (protocol_port_range_t *) rwh; */
+/*       for (j = 0; j < srm->ranges_per_adjacency; j++) */
+/* 	{ */
+/* 	  for (k = 0; k < 8; k++) */
+/* 	    { */
+/* 	      if (low_ports[i] == range->low.as_u16[k] && */
+/* 		  high_ports[i] == range->hi.as_u16[k]) */
+/* 		{ */
+/* 		  range->low.as_u16[k] = range->hi.as_u16[k] = 0; */
+/* 		  goto doublebreak; */
+/* 		} */
+/* 	    } */
+/* 	  range++; */
+/* 	} */
+/*     doublebreak:; */
+/*     } */
 
-  range = (protocol_port_range_t *) rwh;
-  /* Have we deleted all ranges yet? */
-  for (i = 0; i < srm->ranges_per_adjacency; i++)
-    {
-      for (j = 0; j < 8; j++)
-	{
-	  if (range->low.as_u16[i] != 0)
-	    goto still_occupied;
-	}
-      range++;
-    }
-  /* Yes, lose the adjacency... */
-  {
-    ip4_add_del_route_args_t a;
+/*   range = (protocol_port_range_t *) rwh; */
+/*   /\* Have we deleted all ranges yet? *\/ */
+/*   for (i = 0; i < srm->ranges_per_adjacency; i++) */
+/*     { */
+/*       for (j = 0; j < 8; j++) */
+/* 	{ */
+/* 	  if (range->low.as_u16[i] != 0) */
+/* 	    goto still_occupied; */
+/* 	} */
+/*       range++; */
+/*     } */
+/*   /\* Yes, lose the adjacency... *\/ */
+/*   { */
+/*     ip4_add_del_route_args_t a; */
 
-    memset (&a, 0, sizeof (a));
-    a.flags = IP4_ROUTE_FLAG_FIB_INDEX | IP4_ROUTE_FLAG_DEL;
-    a.table_index_or_table_id = fib_index;
-    a.dst_address = address[0];
-    a.dst_address_length = length;
-    a.adj_index = adj_index;
-    ip4_add_del_route (im, &a);
-  }
+/*     memset (&a, 0, sizeof (a)); */
+/*     a.flags = IP4_ROUTE_FLAG_FIB_INDEX | IP4_ROUTE_FLAG_DEL; */
+/*     a.table_index_or_table_id = fib_index; */
+/*     a.dst_address = address[0]; */
+/*     a.dst_address_length = length; */
+/*     a.adj_index = adj_index; */
+/*     ip4_add_del_route (im, &a); */
+/*   } */
 
-still_occupied:
-  ;
+/* still_occupied: */
+/*   ; */
   return 0;
 }
 
@@ -1011,35 +1012,35 @@ ip4_source_and_port_range_check_add_del (ip4_address_t * address,
 					 u16 * high_ports, int is_add)
 {
 
-  ip4_main_t *im = &ip4_main;
-  //  ip_lookup_main_t * lm = &im->lookup_main;
-  uword *p;
-  u32 fib_index;
-  u32 adj_index;
+  /* ip4_main_t *im = &ip4_main; */
+  /* //  ip_lookup_main_t * lm = &im->lookup_main; */
+  /* uword *p; */
+  /* u32 fib_index; */
+  /* u32 adj_index; */
 
-  p = hash_get (im->fib_index_by_table_id, vrf_id);
-  if (!p)
-    {
-      ip4_fib_t *f;
-      f = find_ip4_fib_by_table_index_or_id (im, vrf_id, 0 /* flags */ );
-      fib_index = f->index;
-    }
-  else
-    fib_index = p[0];
+  /* p = hash_get (im->fib_index_by_table_id, vrf_id); */
+  /* if (!p) */
+  /*   { */
+  /*     ip4_fib_t *f; */
+  /*     f = find_ip4_fib_by_table_index_or_id (im, vrf_id, 0 /\* flags *\/ ); */
+  /*     fib_index = f->index; */
+  /*   } */
+  /* else */
+  /*   fib_index = p[0]; */
 
-  adj_index = ip4_fib_lookup_with_table
-    (im, fib_index, address, 0 /* disable_default_route */ );
+  /* adj_index = ip4_fib_lookup_with_table */
+  /*   (im, fib_index, address, 0 /\* disable_default_route *\/ ); */
 
-  if (is_add == 0)
-    {
-      remove_port_range_adjacency (address, length, adj_index, low_ports,
-				   high_ports, fib_index);
-    }
-  else
-    {
-      add_port_range_adjacency (address, length, adj_index, low_ports,
-				high_ports, fib_index);
-    }
+  /* if (is_add == 0) */
+  /*   { */
+  /*     remove_port_range_adjacency (address, length, adj_index, low_ports, */
+  /*                               high_ports, fib_index); */
+  /*   } */
+  /* else */
+  /*   { */
+  /*     add_port_range_adjacency (address, length, adj_index, low_ports, */
+  /*                            high_ports, fib_index); */
+  /*   } */
 
   return 0;
 }
@@ -1159,88 +1160,88 @@ show_source_and_port_range_check_fn (vlib_main_t * vm,
 				     unformat_input_t * input,
 				     vlib_cli_command_t * cmd)
 {
-  source_range_check_main_t *srm = &source_range_check_main;
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  protocol_port_range_t *range;
-  u32 fib_index;
-  ip4_address_t addr;
-  u8 addr_set = 0;
-  u32 vrf_id = ~0;
-  int rv, i, j;
-  u32 adj_index;
-  ip_adjacency_t *adj;
-  u32 port = 0;
-  u8 *rwh;
-  uword *p;
+  /* source_range_check_main_t *srm = &source_range_check_main; */
+  /* ip4_main_t *im = &ip4_main; */
+  /* ip_lookup_main_t *lm = &im->lookup_main; */
+  /* protocol_port_range_t *range; */
+  /* u32 fib_index; */
+  /* ip4_address_t addr; */
+  /* u8 addr_set = 0; */
+  /* u32 vrf_id = ~0; */
+  /* int rv, i, j; */
+  /* u32 adj_index; */
+  /* ip_adjacency_t *adj; */
+  /* u32 port = 0; */
+  /* u8 *rwh; */
+  /* uword *p; */
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", unformat_ip4_address, &addr))
-	addr_set = 1;
-      else if (unformat (input, "vrf %d", &vrf_id))
-	;
-      else if (unformat (input, "port %d", &port))
-	;
-      else
-	break;
-    }
+  /* while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) */
+  /*   { */
+  /*     if (unformat (input, "%U", unformat_ip4_address, &addr)) */
+  /*       addr_set = 1; */
+  /*     else if (unformat (input, "vrf %d", &vrf_id)) */
+  /*       ; */
+  /*     else if (unformat (input, "port %d", &port)) */
+  /*       ; */
+  /*     else */
+  /*       break; */
+  /*   } */
 
-  if (addr_set == 0)
-    return clib_error_return (0, "<address> not specified");
+  /* if (addr_set == 0) */
+  /*   return clib_error_return (0, "<address> not specified"); */
 
-  if (vrf_id == ~0)
-    return clib_error_return (0, "VRF ID required, not specified");
+  /* if (vrf_id == ~0) */
+  /*   return clib_error_return (0, "VRF ID required, not specified"); */
 
-  p = hash_get (im->fib_index_by_table_id, vrf_id);
-  if (p == 0)
-    return clib_error_return (0, "VRF %d not found", vrf_id);
-  fib_index = p[0];
+  /* p = hash_get (im->fib_index_by_table_id, vrf_id); */
+  /* if (p == 0) */
+  /*   return clib_error_return (0, "VRF %d not found", vrf_id); */
+  /* fib_index = p[0]; */
 
-  adj_index = ip4_fib_lookup_with_table
-    (im, fib_index, &addr, 0 /* disable_default_route */ );
+  /* adj_index = ip4_fib_lookup_with_table */
+  /*   (im, fib_index, &addr, 0 /\* disable_default_route *\/ ); */
 
-  adj = ip_get_adjacency (lm, adj_index);
+  /* adj = ip_get_adjacency (lm, adj_index); */
 
-  if (adj->lookup_next_index != IP_LOOKUP_NEXT_ICMP_ERROR)
-    {
-      vlib_cli_output (vm, "%U: src address drop", format_ip4_address, &addr);
-      return 0;
-    }
+  /* if (adj->lookup_next_index != IP_LOOKUP_NEXT_ICMP_ERROR) */
+  /*   { */
+  /*     vlib_cli_output (vm, "%U: src address drop", format_ip4_address, &addr); */
+  /*     return 0; */
+  /*   } */
 
-  if (port)
-    {
-      rv = check_adj_port_range_x1 (adj, (u16) port, 1234);
-      if (rv == 1234)
-	vlib_cli_output (vm, "%U port %d PASS", format_ip4_address,
-			 &addr, port);
-      else
-	vlib_cli_output (vm, "%U port %d FAIL", format_ip4_address,
-			 &addr, port);
-      return 0;
-    }
-  else
-    {
-      u8 *s;
-      rwh = (u8 *) (&adj->rewrite_header);
+  /* if (port) */
+  /*   { */
+  /*     rv = check_adj_port_range_x1 (adj, (u16) port, 1234); */
+  /*     if (rv == 1234) */
+  /*       vlib_cli_output (vm, "%U port %d PASS", format_ip4_address, */
+  /*                     &addr, port); */
+  /*     else */
+  /*       vlib_cli_output (vm, "%U port %d FAIL", format_ip4_address, */
+  /*                     &addr, port); */
+  /*     return 0; */
+  /*   } */
+  /* else */
+  /*   { */
+  /*     u8 *s; */
+  /*     rwh = (u8 *) (&adj->rewrite_header); */
 
-      s = format (0, "%U: ", format_ip4_address, &addr);
+  /*     s = format (0, "%U: ", format_ip4_address, &addr); */
 
-      range = (protocol_port_range_t *) rwh;
+  /*     range = (protocol_port_range_t *) rwh; */
 
-      for (i = 0; i < srm->ranges_per_adjacency; i++)
-	{
-	  for (j = 0; j < 8; j++)
-	    {
-	      if (range->low.as_u16[j])
-		s = format (s, "%d - %d ", (u32) range->low.as_u16[j],
-			    (u32) range->hi.as_u16[j]);
-	    }
-	  range++;
-	}
-      vlib_cli_output (vm, "%s", s);
-      vec_free (s);
-    }
+  /*     for (i = 0; i < srm->ranges_per_adjacency; i++) */
+  /*       { */
+  /*         for (j = 0; j < 8; j++) */
+  /*           { */
+  /*             if (range->low.as_u16[j]) */
+  /*            s = format (s, "%d - %d ", (u32) range->low.as_u16[j], */
+  /*                        (u32) range->hi.as_u16[j]); */
+  /*           } */
+  /*         range++; */
+  /*       } */
+  /*     vlib_cli_output (vm, "%s", s); */
+  /*     vec_free (s); */
+  /*   } */
 
   return 0;
 }

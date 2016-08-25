@@ -15,6 +15,10 @@
  * limitations under the License.
  */
 
+#include <vnet/fib/fib_table.h>
+#include <vnet/fib/ip6_fib.h>
+#include <vnet/adj/adj.h>
+
 #include "map.h"
 
 #ifndef __SSE4_2__
@@ -160,14 +164,10 @@ map_create_domain (ip4_address_t * ip4_prefix,
 		   u8 psid_length, u32 * map_domain_index, u16 mtu, u8 flags)
 {
   map_main_t *mm = &map_main;
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
+  fib_node_index_t fei;
+  adj_index_t ai4, ai6;
   map_domain_t *d;
-  ip_adjacency_t adj;
-  ip4_add_del_route_args_t args4;
-  ip6_add_del_route_args_t args6;
   u8 suffix_len, suffix_shift;
-  uword *p;
 
   /* Sanity check on the src prefix length */
   if (flags & MAP_DOMAIN_TRANSLATION)
@@ -237,72 +237,72 @@ map_create_domain (ip4_address_t * ip4_prefix,
   d->ea_shift = 64 - ip6_prefix_len - suffix_len - d->psid_length;
 
   /* Init IP adjacency */
-  memset (&adj, 0, sizeof (adj));
-  adj.explicit_fib_index = ~0;
-  adj.lookup_next_index =
-    (d->flags & MAP_DOMAIN_TRANSLATION) ? IP_LOOKUP_NEXT_MAP_T :
-    IP_LOOKUP_NEXT_MAP;
-  p = (uword *) & adj.rewrite_data[0];
-  *p = (uword) (*map_domain_index);
+  ai4 = adj_map_add_or_lock (FIB_PROTOCOL_IP4,
+			     (d->flags & MAP_DOMAIN_TRANSLATION ?
+			      IP_LOOKUP_NEXT_MAP_T :
+			      IP_LOOKUP_NEXT_MAP), *map_domain_index);
 
-  if (ip4_get_route (im4, 0, 0, (u8 *) ip4_prefix, ip4_prefix_len))
+  /* Create ip4 route */
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_len = d->ip4_prefix_len,
+    .fp_addr = {
+		.ip4 = d->ip4_prefix,
+		}
+    ,
+  };
+  fib_table_entry_special_add (0, &pfx,
+			       FIB_SOURCE_MAP, FIB_ENTRY_FLAG_EXCLUSIVE, ai4);
+  adj_unlock (ai4);
+
+  /*
+   * Multiple MAP domains may share same source IPv6 TEP.
+   * In this case the route will exist and be MAP sourced.
+   * Find the adj (if any) already contributed and modify it
+   */
+  fib_prefix_t pfx6 = {
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_len = d->ip6_prefix_len,
+    .fp_addr = {
+		.ip6 = d->ip6_prefix,
+		}
+    ,
+  };
+  fei = fib_table_lookup_exact_match (0, &pfx6);
+
+  if (FIB_NODE_INDEX_INVALID == fei)
     {
-      clib_warning ("IPv4 route already defined: %U/%d", format_ip4_address,
-		    ip4_prefix, ip4_prefix_len);
-      pool_put (mm->domains, d);
-      return -1;
-    }
+      ai6 = fib_entry_get_adj_for_source (fei, FIB_SOURCE_MAP);
 
-  /* Create ip4 adjacency */
-  memset (&args4, 0, sizeof (args4));
-  args4.table_index_or_table_id = 0;
-  args4.flags = IP4_ROUTE_FLAG_ADD;
-  args4.dst_address.as_u32 = ip4_prefix->as_u32;
-  args4.dst_address_length = ip4_prefix_len;
-
-  args4.adj_index = ~0;
-  args4.add_adj = &adj;
-  args4.n_add_adj = 1;
-  ip4_add_del_route (im4, &args4);
-
-  /* Multiple MAP domains may share same source IPv6 TEP */
-  u32 ai = ip6_get_route (im6, 0, 0, ip6_src, ip6_src_len);
-  if (ai > 0)
-    {
-      ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
-      ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai);
-      if (adj6->lookup_next_index != IP_LOOKUP_NEXT_MAP &&
-	  adj6->lookup_next_index != IP_LOOKUP_NEXT_MAP_T)
+      if (ADJ_INDEX_INVALID != ai6)
 	{
-	  clib_warning ("BR source address already assigned: %U",
-			format_ip6_address, ip6_src);
-	  pool_put (mm->domains, d);
-	  return -1;
-	}
-      /* Shared source */
-      p = (uword *) & adj6->rewrite_data[0];
-      p[0] = ~0;
+	  /*
+	   * modify the existing adj to indicate it's shared
+	   * skip to route add.
+	   * It is locked to pair with the unlock below.
+	   */
+	  adj_map_update (ai6, ~0);
+	  adj_lock (ai6);
 
-      /*
-       *  Add refcount, so we don't accidentially delete the route
-       *  underneath someone
-       */
-      p[1]++;
+	  goto route_add;
+	}
     }
-  else
-    {
-      /* Create ip6 adjacency. */
-      memset (&args6, 0, sizeof (args6));
-      args6.table_index_or_table_id = 0;
-      args6.flags = IP6_ROUTE_FLAG_ADD;
-      args6.dst_address.as_u64[0] = ip6_src->as_u64[0];
-      args6.dst_address.as_u64[1] = ip6_src->as_u64[1];
-      args6.dst_address_length = ip6_src_len;
-      args6.adj_index = ~0;
-      args6.add_adj = &adj;
-      args6.n_add_adj = 1;
-      ip6_add_del_route (im6, &args6);
-    }
+
+  /* first time addition of the route */
+  ai6 = adj_map_add_or_lock (FIB_PROTOCOL_IP6,
+			     (d->flags & MAP_DOMAIN_TRANSLATION ?
+			      IP_LOOKUP_NEXT_MAP_T :
+			      IP_LOOKUP_NEXT_MAP), *map_domain_index);
+
+route_add:
+  /*
+   * Create ip6 route. This is a reference counted add. If the prefix
+   * already exists and is MAP sourced, it is now MAP source n+1 times
+   * and will need to be removed n+1 times.
+   */
+  fib_table_entry_special_add (0, &pfx6,
+			       FIB_SOURCE_MAP, FIB_ENTRY_FLAG_EXCLUSIVE, ai6);
+  adj_unlock (ai6);
 
   /* Validate packet/byte counters */
   map_domain_counter_lock (mm);
@@ -332,12 +332,7 @@ int
 map_delete_domain (u32 map_domain_index)
 {
   map_main_t *mm = &map_main;
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
   map_domain_t *d;
-  ip_adjacency_t adj;
-  ip4_add_del_route_args_t args4;
-  ip6_add_del_route_args_t args6;
 
   if (pool_is_free_index (mm->domains, map_domain_index))
     {
@@ -348,47 +343,26 @@ map_delete_domain (u32 map_domain_index)
 
   d = pool_elt_at_index (mm->domains, map_domain_index);
 
-  memset (&adj, 0, sizeof (adj));
-  adj.explicit_fib_index = ~0;
-  adj.lookup_next_index =
-    (d->flags & MAP_DOMAIN_TRANSLATION) ? IP_LOOKUP_NEXT_MAP_T :
-    IP_LOOKUP_NEXT_MAP;
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_len = d->ip4_prefix_len,
+    .fp_addr = {
+		.ip4 = d->ip4_prefix,
+		}
+    ,
+  };
+  fib_table_entry_special_remove (0, &pfx, FIB_SOURCE_MAP);
 
-  /* Delete ip4 adjacency */
-  memset (&args4, 0, sizeof (args4));
-  args4.table_index_or_table_id = 0;
-  args4.flags = IP4_ROUTE_FLAG_DEL;
-  args4.dst_address.as_u32 = d->ip4_prefix.as_u32;
-  args4.dst_address_length = d->ip4_prefix_len;
-  args4.adj_index = 0;
-  args4.add_adj = &adj;
-  args4.n_add_adj = 0;
-  ip4_add_del_route (im4, &args4);
+  fib_prefix_t pfx6 = {
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_len = d->ip6_prefix_len,
+    .fp_addr = {
+		.ip6 = d->ip6_prefix,
+		}
+    ,
+  };
+  fib_table_entry_special_remove (0, &pfx6, FIB_SOURCE_MAP);
 
-  /* Delete ip6 adjacency */
-  u32 ai = ip6_get_route (im6, 0, 0, &d->ip6_src, d->ip6_src_len);
-  if (ai > 0)
-    {
-      ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
-      ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai);
-
-      uword *p = (uword *) & adj6->rewrite_data[0];
-      /* Delete route when no other domains use this source */
-      if (p[1] == 0)
-	{
-	  memset (&args6, 0, sizeof (args6));
-	  args6.table_index_or_table_id = 0;
-	  args6.flags = IP6_ROUTE_FLAG_DEL;
-	  args6.dst_address.as_u64[0] = d->ip6_src.as_u64[0];
-	  args6.dst_address.as_u64[1] = d->ip6_src.as_u64[1];
-	  args6.dst_address_length = d->ip6_src_len;
-	  args6.adj_index = 0;
-	  args6.add_adj = &adj;
-	  args6.n_add_adj = 0;
-	  ip6_add_del_route (im6, &args6);
-	}
-      p[1]--;
-    }
   /* Deleting rules */
   if (d->rules)
     clib_mem_free (d->rules);
@@ -448,17 +422,18 @@ static void
 map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6)
 {
   map_main_t *mm = &map_main;
-  ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
 
   if (ip6->as_u64[0] != 0 || ip6->as_u64[1] != 0)
     {
-      mm->adj6_index = ip6_fib_lookup_with_table (im6, 0, ip6);
+      // FIXME NOT an ADJ
+      mm->adj6_index = ip6_fib_table_fwding_lookup (im6, 0, ip6);
       clib_warning ("FIB lookup results in: %u", mm->adj6_index);
     }
   if (ip4->as_u32 != 0)
     {
-      mm->adj4_index = ip4_fib_lookup_with_table (im4, 0, ip4, 0);
+      // FIXME NOT an ADJ
+      mm->adj4_index = ip4_fib_table_lookup_lb (0, ip4);
       clib_warning ("FIB lookup results in: %u", mm->adj4_index);
     }
 }

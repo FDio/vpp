@@ -1,0 +1,223 @@
+/*
+ * node.c: mpls-o-gre decap processing
+ *
+ * Copyright (c) 2012-2014 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <vlib/vlib.h>
+#include <vnet/pg/pg.h>
+#include <vnet/mpls/mpls.h>
+
+typedef struct {
+  u32 next_index;
+  u32 label_host_byte_order;
+} mpls_input_trace_t;
+
+static u8 *
+format_mpls_input_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  mpls_input_trace_t * t = va_arg (*args, mpls_input_trace_t *);
+  char * next_name;
+
+  next_name = "BUG!";
+
+#define _(a,b) if (t->next_index == MPLS_INPUT_NEXT_##a) next_name = b;
+  foreach_mpls_input_next;
+#undef _
+  
+  s = format (s, "MPLS: next %s[%d]  label %d ttl %d", 
+              next_name, t->next_index,
+	      vnet_mpls_uc_get_label(t->label_host_byte_order),
+	      vnet_mpls_uc_get_ttl(t->label_host_byte_order));
+
+  return s;
+}
+
+vlib_node_registration_t mpls_input_node;
+
+typedef struct {
+  u32 last_label;
+  u32 last_inner_fib_index;
+  u32 last_outer_fib_index;
+  mpls_main_t * mpls_main;
+} mpls_input_runtime_t;
+
+static inline uword
+mpls_input_inline (vlib_main_t * vm,
+                   vlib_node_runtime_t * node,
+                   vlib_frame_t * from_frame)
+{
+  u32 n_left_from, next_index, * from, * to_next;
+  mpls_input_runtime_t * rt;
+  mpls_main_t * mm;
+  u32 cpu_index = os_get_cpu_number();
+  vlib_simple_counter_main_t * cm;
+  vnet_main_t * vnm = vnet_get_main();
+
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+  rt = vlib_node_get_runtime_data (vm, mpls_input_node.index);
+  mm = rt->mpls_main;
+  /* 
+   * Force an initial lookup every time, in case the control-plane
+   * changed the label->FIB mapping.
+   */
+  rt->last_label = ~0;
+
+  next_index = node->cached_next_index;
+
+  cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
+                         VNET_INTERFACE_COUNTER_MPLS);
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index,
+			   to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  u32 bi0;
+	  vlib_buffer_t * b0;
+	  mpls_unicast_header_t * h0;
+          u32 label0;
+	  u32 next0;
+	  ip_config_main_t * cm0;
+          u32 sw_if_index0;
+
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+          h0 = vlib_buffer_get_current (b0);
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+
+	  cm0 = &mm->rx_config_mains;
+	  b0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index,
+					      sw_if_index0);
+
+	  label0 = clib_net_to_host_u32 (h0->label_exp_s_ttl);
+	  /* TTL expired? */
+	  if (PREDICT_FALSE(vnet_mpls_uc_get_ttl (label0) == 0))
+           {
+              next0 = MPLS_INPUT_NEXT_DROP;
+              b0->error = node->errors[MPLS_ERROR_TTL_EXPIRED];
+            }
+	  else
+            {
+              vnet_get_config_data (&cm0->config_main,
+				    &b0->current_config_index,
+				    &next0,
+				    /* # bytes of config data */ 0);
+              vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
+            }
+
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+            {
+              mpls_input_trace_t *tr = vlib_add_trace (vm, node, 
+						       b0, sizeof (*tr));
+              tr->next_index = next0;
+              tr->label_host_byte_order = label0;
+            }
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  vlib_node_increment_counter (vm, mpls_input_node.index,
+                               MPLS_ERROR_PKTS_DECAP, from_frame->n_vectors);
+  return from_frame->n_vectors;
+}
+
+static uword
+mpls_input (vlib_main_t * vm,
+            vlib_node_runtime_t * node,
+            vlib_frame_t * from_frame)
+{
+  return mpls_input_inline (vm, node, from_frame);
+}
+
+static char * mpls_error_strings[] = {
+#define mpls_error(n,s) s,
+#include "error.def"
+#undef mpls_error
+};
+
+VLIB_REGISTER_NODE (mpls_input_node) = {
+  .function = mpls_input,
+  .name = "mpls-input",
+  /* Takes a vector of packets. */
+  .vector_size = sizeof (u32),
+
+  .runtime_data_bytes = sizeof(mpls_input_runtime_t),
+
+  .n_errors = MPLS_N_ERROR,
+  .error_strings = mpls_error_strings,
+
+  .n_next_nodes = MPLS_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [MPLS_INPUT_NEXT_##s] = n,
+    foreach_mpls_input_next
+#undef _
+  },
+
+  .format_buffer = format_mpls_unicast_header_net_byte_order,
+  .format_trace = format_mpls_input_trace,
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (mpls_input_node, mpls_input)
+
+static void
+mpls_setup_nodes (vlib_main_t * vm)
+{
+  mpls_input_runtime_t * rt;
+  pg_node_t * pn;
+
+  pn = pg_get_node (mpls_input_node.index);
+  pn->unformat_edit = unformat_pg_mpls_header;
+
+  rt = vlib_node_get_runtime_data (vm, mpls_input_node.index);
+  rt->last_label = (u32) ~0;
+  rt->last_inner_fib_index = 0;
+  rt->last_outer_fib_index = 0;
+  rt->mpls_main = &mpls_main;
+
+  ethernet_register_input_type (vm, ETHERNET_TYPE_MPLS_UNICAST,
+                                mpls_input_node.index);
+}
+
+static clib_error_t * mpls_input_init (vlib_main_t * vm)
+{
+  clib_error_t * error; 
+
+  error = vlib_call_init_function (vm, mpls_init);
+  if (error)
+    clib_error_report (error);
+
+  mpls_setup_nodes (vm);
+
+  return (mpls_feature_init(vm));
+}
+
+VLIB_INIT_FUNCTION (mpls_input_init);

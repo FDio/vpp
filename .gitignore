@@ -59,12 +59,12 @@ test-driver
 # cscope and ctags
 /cscope.*
 /tags
+ID
+TAGS
 # ggtags
 GPATH
 GRTAGS
 GTAGS
-TAGS
-
 # Generated documentation
 /build-root/docs
 /build-root/.doxygen-bootstrap.ok
