@@ -25,6 +25,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ip/format.h>
+#include <vnet/adj/adj_types.h>
 
 extern vnet_hw_interface_class_t gre_hw_interface_class;
 
@@ -50,12 +51,44 @@ typedef struct {
 } gre_protocol_info_t;
 
 typedef struct {
+  /**
+   * Linkage into the FIB object graph
+   */
+  fib_node_t node;
+
+  /**
+   * The tunnel's source/local address
+   */
   ip4_address_t tunnel_src;
+  /**
+   * The tunnel's destination/remote address
+   */
   ip4_address_t tunnel_dst;
+  /**
+   * The FIB in which the src.dst address are present
+   */
   u32 outer_fib_index;
   u32 hw_if_index;
   u32 sw_if_index;
   u8 teb;
+
+  /**
+   * The FIB entry sourced by the tunnel for its destination prefix
+   */
+  fib_node_index_t fib_entry_index;
+
+  /**
+   * The tunnel is a child of the FIB entry for its desintion. This is
+   * so it receives updates when the forwarding information for that entry
+   * changes.
+   * The tunnels sibling index on the FIB entry's dependency list.
+   */
+  u32 sibling_index;
+
+  /**
+   * The index of the midchain adjacency created for this tunnel
+   */
+  adj_index_t adj_index[FIB_LINK_NUM];
 } gre_tunnel_t;
 
 typedef struct {
@@ -79,6 +112,15 @@ typedef struct {
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
 } gre_main_t;
+
+/**
+ * @brief IPv4 and GRE header.
+ *
+*/
+typedef CLIB_PACKED (struct {
+  ip4_header_t ip4;
+  gre_header_t gre;
+}) ip4_and_gre_header_t;
 
 always_inline gre_protocol_info_t *
 gre_get_protocol_info (gre_main_t * em, gre_protocol_t protocol)

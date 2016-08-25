@@ -35,7 +35,7 @@
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/classify/input_acl.h>
 #include <vnet/classify/policer_classify.h>
-#include <vnet/mpls-gre/mpls.h>
+#include <vnet/mpls/mpls.h>
 #if DPDK > 0
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
@@ -5346,6 +5346,7 @@ api_ip_add_del_route (vat_main_t * vam)
   u32 random_seed = 0xdeaddabe;
   u32 classify_table_index = ~0;
   u8 is_classify = 0;
+  u8 resolve_host, resolve_attached;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5401,6 +5402,10 @@ api_ip_add_del_route (vat_main_t * vam)
 	is_add = 1;
       else if (unformat (i, "not-last"))
 	not_last = 1;
+      else if (unformat (i, "resolve-via-host"))
+	resolve_host = 1;
+      else if (unformat (i, "resolve-via-attached"))
+	resolve_attached = 1;
       else if (unformat (i, "multipath"))
 	is_multipath = 1;
       else if (unformat (i, "vrf %d", &vrf_id))
@@ -5497,6 +5502,8 @@ api_ip_add_del_route (vat_main_t * vam)
       mp->is_local = is_local;
       mp->is_classify = is_classify;
       mp->is_multipath = is_multipath;
+      mp->is_resolve_host = resolve_host;
+      mp->is_resolve_attached = resolve_attached;
       mp->not_last = not_last;
       mp->next_hop_weight = next_hop_weight;
       mp->dst_address_length = dst_address_length;
@@ -7860,7 +7867,6 @@ out:
 }
 
 #define foreach_ip_next                         \
-_(miss, MISS)                                   \
 _(drop, DROP)                                   \
 _(local, LOCAL)                                 \
 _(rewrite, REWRITE)
@@ -12571,7 +12577,7 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
 	{
 	  is_add = 1;
 	}
-      else if (unformat (input, "eid %U", unformat_lisp_eid_vat, eid))
+      else if (unformat (input, "deid %U", unformat_lisp_eid_vat, eid))
 	{
 	  eid_set = 1;
 	}

@@ -18,11 +18,13 @@ AM_LDFLAGS = -module -shared -avoid-version
 
 libsixrd_plugin_la_SOURCES =			\
 	sixrd/sixrd.c				\
+	sixrd/sixrd_dpo.c			\
 	sixrd/ip4_sixrd.c			\
 	sixrd/ip6_sixrd.c
 
 noinst_HEADERS =				\
-	sixrd/sixrd.h
+	sixrd/sixrd.h                           \
+	sixrd/sixrd_dpo.h
 
 BUILT_SOURCES =
 

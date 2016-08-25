@@ -48,6 +48,12 @@ unformat_function_t unformat_ip_protocol;
 format_function_t format_tcp_udp_port;
 unformat_function_t unformat_tcp_udp_port;
 
+typedef enum format_ip_adjacency_flags_t_
+{
+    FORMAT_IP_ADJACENCY_NONE,
+    FORMAT_IP_ADJACENCY_DETAIL = (1 << 0),
+} format_ip_adjacency_flags_t;
+
 format_function_t format_ip_adjacency;
 format_function_t format_ip_adjacency_packet_data;
 

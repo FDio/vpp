@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @DPDK@ @IPSEC@ @IPV6SR@
+AM_CFLAGS = -Wall -Werror @DPDK@ @IPSEC@ @IPV6SR@
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -264,7 +264,6 @@ nobase_include_HEADERS +=			\
 # Layer 3 protocol: IP v4/v6
 ########################################
 libvnet_la_SOURCES +=				\
- vnet/ip/adj_alloc.c				\
  vnet/ip/format.c				\
  vnet/ip/icmp4.c				\
  vnet/ip/icmp6.c				\
@@ -296,7 +295,6 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip_frag.c
 
 nobase_include_HEADERS +=			\
- vnet/ip/adj_alloc.h				\
  vnet/ip/format.h				\
  vnet/ip/icmp46_packet.h			\
  vnet/ip/icmp4.h				\
@@ -369,13 +367,15 @@ nobase_include_HEADERS +=			\
 ########################################
 libvnet_la_SOURCES +=                           \
  vnet/map/map.c                                 \
+ vnet/map/map_dpo.c                             \
  vnet/map/ip4_map.c                             \
  vnet/map/ip6_map.c                             \
  vnet/map/ip4_map_t.c                           \
  vnet/map/ip6_map_t.c
 
 nobase_include_HEADERS +=                       \
- vnet/map/map.h
+ vnet/map/map.h                                 \
+ vnet/map/map_dpo.h
 
 if ENABLE_TESTS
 TESTS += test_map
@@ -422,16 +422,20 @@ nobase_include_HEADERS +=			\
 # Tunnel protocol: gre+mpls
 ########################################
 libvnet_la_SOURCES +=				\
- vnet/mpls-gre/mpls.c				\
- vnet/mpls-gre/node.c				\
- vnet/mpls-gre/interface.c			\
- vnet/mpls-gre/policy_encap.c			\
- vnet/mpls-gre/pg.c
+ vnet/mpls/mpls.c				\
+ vnet/mpls/mpls_lookup.c			\
+ vnet/mpls/mpls_output.c			\
+ vnet/mpls/mpls_features.c			\
+ vnet/mpls/node.c				\
+ vnet/mpls/interface.c			        \
+ vnet/mpls/policy_encap.c			\
+ vnet/mpls/pg.c
  
 nobase_include_HEADERS +=			\
- vnet/mpls-gre/mpls.h				\
- vnet/mpls-gre/packet.h				\
- vnet/mpls-gre/error.def
+ vnet/mpls/mpls.h				\
+ vnet/mpls/mpls_types.h			        \
+ vnet/mpls/packet.h				\
+ vnet/mpls/error.def
 
 
 ########################################
@@ -466,6 +470,7 @@ nobase_include_HEADERS +=			\
 
 libvnet_la_SOURCES +=				\
  vnet/lisp-cp/lisp_types.c			\
+ vnet/lisp-cp/lisp_cp_dpo.c			\
  vnet/lisp-cp/control.c				\
  vnet/lisp-cp/gid_dictionary.c			\
  vnet/lisp-cp/lisp_msg_serdes.c			\
@@ -513,6 +518,9 @@ endif
 
 libvnet_la_SOURCES +=				\
  vnet/lisp-gpe/lisp_gpe.c			\
+ vnet/lisp-gpe/lisp_gpe_sub_interface.c         \
+ vnet/lisp-gpe/lisp_gpe_adjacency.c             \
+ vnet/lisp-gpe/lisp_gpe_tunnel.c                \
  vnet/lisp-gpe/interface.c			\
  vnet/lisp-gpe/ip_forward.c			\
  vnet/lisp-gpe/decap.c				
@@ -718,6 +726,90 @@ nobase_include_HEADERS +=			\
   vnet/unix/pcap.h				\
   vnet/unix/tuntap.h				\
   vnet/unix/tapcli.h
+
+########################################
+# FIB
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/fib/fib.c                                \
+  vnet/fib/fib_test.c                           \
+  vnet/fib/ip4_fib.c                            \
+  vnet/fib/ip6_fib.c                            \
+  vnet/fib/mpls_fib.c                           \
+  vnet/fib/fib_table.c                          \
+  vnet/fib/fib_walk.c                           \
+  vnet/fib/fib_types.c                          \
+  vnet/fib/fib_node.c                           \
+  vnet/fib/fib_node_list.c                      \
+  vnet/fib/fib_entry.c                          \
+  vnet/fib/fib_entry_src.c                      \
+  vnet/fib/fib_entry_src_rr.c                   \
+  vnet/fib/fib_entry_src_interface.c            \
+  vnet/fib/fib_entry_src_default_route.c        \
+  vnet/fib/fib_entry_src_special.c              \
+  vnet/fib/fib_entry_src_api.c                  \
+  vnet/fib/fib_entry_src_adj.c                  \
+  vnet/fib/fib_entry_src_mpls.c                 \
+  vnet/fib/fib_entry_src_lisp.c                 \
+  vnet/fib/fib_entry_cover.c                    \
+  vnet/fib/fib_path_list.c                      \
+  vnet/fib/fib_path.c				\
+  vnet/fib/fib_path_ext.c			\
+  vnet/fib/fib_attached_export.c
+
+nobase_include_HEADERS +=			\
+  vnet/fib/fib.h				\
+  vnet/fib/ip4_fib.h				\
+  vnet/fib/ip6_fib.h				\
+  vnet/fib/fib_types.h				\
+  vnet/fib/fib_table.h				\
+  vnet/fib/fib_node.h				\
+  vnet/fib/fib_node_list.h			\
+  vnet/fib/fib_entry.h				
+
+########################################
+# ADJ
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/adj/adj_alloc.c				\
+  vnet/adj/adj_nbr.c				\
+  vnet/adj/adj_rewrite.c			\
+  vnet/adj/adj_glean.c   			\
+  vnet/adj/adj_midchain.c   			\
+  vnet/adj/adj.c                            
+
+nobase_include_HEADERS +=			\
+  vnet/adj/adj.h				\
+  vnet/adj/adj_types.h				\
+  vnet/adj/adj_rewrite.h			\
+  vnet/adj/adj_glean.h  			\
+  vnet/adj/adj_nbr.h				
+
+########################################
+# Data-Plane Objects
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/dpo/dpo.c                                \
+  vnet/dpo/drop_dpo.c                           \
+  vnet/dpo/punt_dpo.c                           \
+  vnet/dpo/receive_dpo.c                        \
+  vnet/dpo/load_balance.c			\
+  vnet/dpo/load_balance_map.c			\
+  vnet/dpo/lookup_dpo.c   			\
+  vnet/dpo/classify_dpo.c   			\
+  vnet/dpo/mpls_label_dpo.c
+
+nobase_include_HEADERS +=			\
+  vnet/dpo/load_balance.h                       \
+  vnet/dpo/drop_dpo.h                           \
+  vnet/dpo/lookup_dpo.h                         \
+  vnet/dpo/punt_dpo.h                           \
+  vnet/dpo/classify_dpo.h                       \
+  vnet/dpo/receive_dpo.h                        \
+  vnet/dpo/dpo.h
 
 ########################################
 # Plugin client library

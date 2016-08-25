@@ -39,668 +39,16 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-/** for ethernet_header_t */
-#include <vnet/ethernet/ethernet.h>
-/** for ethernet_arp_header_t */
-#include <vnet/ethernet/arp_packet.h>	
+#include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
+#include <vnet/ethernet/arp_packet.h>	/* for ethernet_arp_header_t */
 #include <vnet/ppp/ppp.h>
-/** for srp_hw_interface_class */
-#include <vnet/srp/srp.h>
-/** for API error numbers */
-#include <vnet/api_errno.h>     
-
-/** @file
-    vnet ip4 forwarding
-*/
-
-/* This is really, really simple but stupid fib. */
-u32
-ip4_fib_lookup_with_table (ip4_main_t * im, u32 fib_index,
-			   ip4_address_t * dst,
-			   u32 disable_default_route)
-{
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip4_fib_t * fib = vec_elt_at_index (im->fibs, fib_index);
-  uword * p, * hash, key;
-  i32 i, i_min, dst_address, ai;
-
-  i_min = disable_default_route ? 1 : 0;
-  dst_address = clib_mem_unaligned (&dst->data_u32, u32);
-  for (i = ARRAY_LEN (fib->adj_index_by_dst_address) - 1; i >= i_min; i--)
-    {
-      hash = fib->adj_index_by_dst_address[i];
-      if (! hash)
-	continue;
-
-      key = dst_address & im->fib_masks[i];
-      if ((p = hash_get (hash, key)) != 0)
-	{
-	  ai = p[0];
-	  goto done;
-	}
-    }
-
-  /* Nothing matches in table. */
-  ai = lm->miss_adj_index;
-
- done:
-  return ai;
-}
-
-/** @brief Create FIB from table ID and init all hashing.
-    @param im - @ref ip4_main_t
-    @param table_id - table ID
-    @return fib - @ref ip4_fib_t
-*/
-static ip4_fib_t *
-create_fib_with_table_id (ip4_main_t * im, u32 table_id)
-{
-  ip4_fib_t * fib;
-  hash_set (im->fib_index_by_table_id, table_id, vec_len (im->fibs));
-  vec_add2 (im->fibs, fib, 1);
-  fib->table_id = table_id;
-  fib->index = fib - im->fibs;
-  /* IP_FLOW_HASH_DEFAULT is net value of 5 tuple flags without "reverse" bit */
-  fib->flow_hash_config = IP_FLOW_HASH_DEFAULT;
-  fib->fwd_classify_table_index = ~0;
-  fib->rev_classify_table_index = ~0;
-  ip4_mtrie_init (&fib->mtrie);
-  return fib;
-}
-
-/** @brief Find existing or Create new FIB based on index
-    @param im @ref ip4_main_t
-    @param table_index_or_id - overloaded parameter referring
-           to the table or a table's index in the FIB vector
-    @param flags - used to check if table_index_or_id was a table or
-           an index (detected by @ref IP4_ROUTE_FLAG_FIB_INDEX)
-    @return either the existing or a new ip4_fib_t entry
-*/
-ip4_fib_t *
-find_ip4_fib_by_table_index_or_id (ip4_main_t * im,
-                                   u32 table_index_or_id, u32 flags)
-{
-  uword * p, fib_index;
-
-  fib_index = table_index_or_id;
-  /* If this isn't a FIB_INDEX ... */
-  if (! (flags & IP4_ROUTE_FLAG_FIB_INDEX))
-    {
-      /* If passed ~0 then request the next table available */
-      if (table_index_or_id == ~0) {
-        table_index_or_id = 0;
-        while ((p = hash_get (im->fib_index_by_table_id, table_index_or_id))) {
-          table_index_or_id++;
-        }
-	/* Create the next table and return the ip4_fib_t associated with it */
-	return create_fib_with_table_id (im, table_index_or_id);
-      }
-      /* A specific table_id was requested.. */
-      p = hash_get (im->fib_index_by_table_id, table_index_or_id);
-      /* ... and if it doesn't exist create it else grab its index */
-      if (! p)
-	return create_fib_with_table_id (im, table_index_or_id);
-      fib_index = p[0];
-    }
-  /* Return the ip4_fib_t associated with this index */
-  return vec_elt_at_index (im->fibs, fib_index);
-}
-
-static void
-ip4_fib_init_adj_index_by_dst_address (ip_lookup_main_t * lm,
-				       ip4_fib_t * fib,
-				       u32 address_length)
-{
-  hash_t * h;
-  uword max_index;
-
-  ASSERT (lm->fib_result_n_bytes >= sizeof (uword));
-  lm->fib_result_n_words = round_pow2 (lm->fib_result_n_bytes, sizeof (uword)) / sizeof (uword);
-
-  fib->adj_index_by_dst_address[address_length] =
-    hash_create (32 /* elts */, lm->fib_result_n_words * sizeof (uword));
-
-  hash_set_flags (fib->adj_index_by_dst_address[address_length],
-                  HASH_FLAG_NO_AUTO_SHRINK);
-
-  h = hash_header (fib->adj_index_by_dst_address[address_length]);
-  max_index = (hash_value_bytes (h) / sizeof (fib->new_hash_values[0])) - 1;
-
-  /* Initialize new/old hash value vectors. */
-  vec_validate_init_empty (fib->new_hash_values, max_index, ~0);
-  vec_validate_init_empty (fib->old_hash_values, max_index, ~0);
-}
-
-static void
-ip4_fib_set_adj_index (ip4_main_t * im,
-		       ip4_fib_t * fib,
-		       u32 flags,
-		       u32 dst_address_u32,
-		       u32 dst_address_length,
-		       u32 adj_index)
-{
-  ip_lookup_main_t * lm = &im->lookup_main;
-  uword * hash;
-
-  if (vec_bytes(fib->old_hash_values))
-    memset (fib->old_hash_values, ~0, vec_bytes (fib->old_hash_values));
-  if (vec_bytes(fib->new_hash_values))
-    memset (fib->new_hash_values, ~0, vec_bytes (fib->new_hash_values));
-  fib->new_hash_values[0] = adj_index;
-
-  /* Make sure adj index is valid. */
-  if (CLIB_DEBUG > 0)
-    (void) ip_get_adjacency (lm, adj_index);
-
-  hash = fib->adj_index_by_dst_address[dst_address_length];
-
-  hash = _hash_set3 (hash, dst_address_u32,
-		     fib->new_hash_values,
-		     fib->old_hash_values);
-
-  fib->adj_index_by_dst_address[dst_address_length] = hash;
-
-  if (vec_len (im->add_del_route_callbacks) > 0)
-    {
-      ip4_add_del_route_callback_t * cb;
-      ip4_address_t d;
-      uword * p;
-
-      d.data_u32 = dst_address_u32;
-      vec_foreach (cb, im->add_del_route_callbacks)
-	if ((flags & cb->required_flags) == cb->required_flags)
-	  cb->function (im, cb->function_opaque,
-			fib, flags,
-			&d, dst_address_length,
-			fib->old_hash_values,
-			fib->new_hash_values);
-
-      p = hash_get (hash, dst_address_u32);
-      /* hash_get should never return NULL here */
-      if (p)
-          clib_memcpy (p, fib->new_hash_values, 
-                       vec_bytes (fib->new_hash_values));
-      else
-          ASSERT(0);
-    }
-}
-
-void ip4_add_del_route (ip4_main_t * im, ip4_add_del_route_args_t * a)
-{
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip4_fib_t * fib;
-  u32 dst_address, dst_address_length, adj_index, old_adj_index;
-  uword * hash, is_del;
-  ip4_add_del_route_callback_t * cb;
-
-  /* Either create new adjacency or use given one depending on arguments. */
-  if (a->n_add_adj > 0)
-    {
-      ip_add_adjacency (lm, a->add_adj, a->n_add_adj, &adj_index);
-      ip_call_add_del_adjacency_callbacks (lm, adj_index, /* is_del */ 0);
-    }
-  else
-    adj_index = a->adj_index;
-
-  dst_address = a->dst_address.data_u32;
-  dst_address_length = a->dst_address_length;
-  fib = find_ip4_fib_by_table_index_or_id (im, a->table_index_or_table_id, a->flags);
-
-  ASSERT (dst_address_length < ARRAY_LEN (im->fib_masks));
-  dst_address &= im->fib_masks[dst_address_length];
-
-  if (! fib->adj_index_by_dst_address[dst_address_length])
-    ip4_fib_init_adj_index_by_dst_address (lm, fib, dst_address_length);
-
-  hash = fib->adj_index_by_dst_address[dst_address_length];
-
-  is_del = (a->flags & IP4_ROUTE_FLAG_DEL) != 0;
-
-  if (is_del)
-    {
-      fib->old_hash_values[0] = ~0;
-      hash = _hash_unset (hash, dst_address, fib->old_hash_values);
-      fib->adj_index_by_dst_address[dst_address_length] = hash;
-
-      if (vec_len (im->add_del_route_callbacks) > 0
-	  && fib->old_hash_values[0] != ~0) /* make sure destination was found in hash */
-	{
-	  fib->new_hash_values[0] = ~0;
-	  vec_foreach (cb, im->add_del_route_callbacks)
-	    if ((a->flags & cb->required_flags) == cb->required_flags)
-	      cb->function (im, cb->function_opaque,
-			    fib, a->flags,
-			    &a->dst_address, dst_address_length,
-			    fib->old_hash_values,
-			    fib->new_hash_values);
-	}
-    }
-  else
-    ip4_fib_set_adj_index (im, fib, a->flags, dst_address, dst_address_length,
-			   adj_index);
-
-  old_adj_index = fib->old_hash_values[0];
-
-  /* Avoid spurious reference count increments */
-  if (old_adj_index == adj_index
-      && adj_index != ~0
-      && !(a->flags & IP4_ROUTE_FLAG_KEEP_OLD_ADJACENCY))
-    {
-      ip_adjacency_t * adj = ip_get_adjacency (lm, adj_index);
-      if (adj->share_count > 0)
-        adj->share_count --;
-    }
-
-  ip4_fib_mtrie_add_del_route (fib, a->dst_address, dst_address_length,
-			       is_del ? old_adj_index : adj_index,
-			       is_del);
-
-  /* Delete old adjacency index if present and changed. */
-  if (! (a->flags & IP4_ROUTE_FLAG_KEEP_OLD_ADJACENCY)
-      && old_adj_index != ~0
-      && old_adj_index != adj_index)
-    ip_del_adjacency (lm, old_adj_index);
-}
-
-
-u32
-ip4_route_get_next_hop_adj (ip4_main_t * im,
-			    u32 fib_index,
-			    ip4_address_t *next_hop,
-			    u32 next_hop_sw_if_index,
-			    u32 explicit_fib_index)
-{
-  ip_lookup_main_t * lm = &im->lookup_main;
-  vnet_main_t * vnm = vnet_get_main();
-  uword * nh_hash, * nh_result;
-  int is_interface_next_hop;
-  u32 nh_adj_index;
-  ip4_fib_t * fib;
-
-  fib = vec_elt_at_index (im->fibs, fib_index);
-
-  is_interface_next_hop = next_hop->data_u32 == 0;
-  if (is_interface_next_hop)
-    {
-      nh_result = hash_get (im->interface_route_adj_index_by_sw_if_index, next_hop_sw_if_index);
-      if (nh_result)
-	  nh_adj_index = *nh_result;
-      else
-        {
-	   ip_adjacency_t * adj;
-	   adj = ip_add_adjacency (lm, /* template */ 0, /* block size */ 1,
-				   &nh_adj_index);
-	   ip4_adjacency_set_interface_route (vnm, adj, next_hop_sw_if_index, /* if_address_index */ ~0);
-	   ip_call_add_del_adjacency_callbacks (lm, nh_adj_index, /* is_del */ 0);
-	   hash_set (im->interface_route_adj_index_by_sw_if_index, next_hop_sw_if_index, nh_adj_index);
-	}
-    }
-  else if (next_hop_sw_if_index == ~0)
-    {
-      /* next-hop is recursive. we always need a indirect adj
-       * for recursive paths. Any LPM we perform now will give
-       * us a valid adj, but without tracking the next-hop we
-       * have no way to keep it valid.
-       */
-      ip_adjacency_t add_adj;
-      memset (&add_adj, 0, sizeof(add_adj));
-      add_adj.n_adj = 1;
-      add_adj.lookup_next_index = IP_LOOKUP_NEXT_INDIRECT;
-      add_adj.indirect.next_hop.ip4.as_u32 = next_hop->as_u32;
-      add_adj.explicit_fib_index = explicit_fib_index;
-      ip_add_adjacency (lm, &add_adj, 1, &nh_adj_index);
-    }
-  else
-    {
-      nh_hash = fib->adj_index_by_dst_address[32];
-      nh_result = hash_get (nh_hash, next_hop->data_u32);
-
-      /* Next hop must be known. */
-      if (! nh_result)
-        {
-	  ip_adjacency_t * adj;
-
-	  /* no /32 exists, get the longest prefix match */
-	  nh_adj_index = ip4_fib_lookup_with_table (im, fib_index,
-						    next_hop, 0);
-	  adj = ip_get_adjacency (lm, nh_adj_index);
-	  /* if ARP interface adjacency is present, we need to
-	     install ARP adjaceny for specific next hop */
-	  if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP &&
-	      adj->arp.next_hop.ip4.as_u32 == 0)
-	    {
-	      nh_adj_index = vnet_arp_glean_add(fib_index, next_hop);
-	    }
-	}
-      else
-        {
-	  nh_adj_index = *nh_result;
-	}
-    }
-
-  return (nh_adj_index);
-}
-
-void
-ip4_add_del_route_next_hop (ip4_main_t * im,
-			    u32 flags,
-			    ip4_address_t * dst_address,
-			    u32 dst_address_length,
-			    ip4_address_t * next_hop,
-			    u32 next_hop_sw_if_index,
-			    u32 next_hop_weight, u32 adj_index, 
-                            u32 explicit_fib_index)
-{
-  vnet_main_t * vnm = vnet_get_main();
-  ip_lookup_main_t * lm = &im->lookup_main;
-  u32 fib_index;
-  ip4_fib_t * fib;
-  u32 dst_address_u32, old_mp_adj_index, new_mp_adj_index;
-  u32 dst_adj_index, nh_adj_index;
-  uword * dst_hash, * dst_result;
-  ip_adjacency_t * dst_adj;
-  ip_multipath_adjacency_t * old_mp, * new_mp;
-  int is_del = (flags & IP4_ROUTE_FLAG_DEL) != 0;
-  clib_error_t * error = 0;
-
-  if (explicit_fib_index == (u32)~0)
-      fib_index = vec_elt (im->fib_index_by_sw_if_index, next_hop_sw_if_index);
-  else
-      fib_index = explicit_fib_index;
-
-  fib = vec_elt_at_index (im->fibs, fib_index);
-
-  /* Lookup next hop to be added or deleted. */
-  if (adj_index == (u32)~0)
-    {
-	nh_adj_index = ip4_route_get_next_hop_adj(im, fib_index,
-						  next_hop,
-						  next_hop_sw_if_index,
-						  explicit_fib_index);
-    }
-  else
-    {
-      nh_adj_index = adj_index;
-    }
-  ASSERT (dst_address_length < ARRAY_LEN (im->fib_masks));
-  dst_address_u32 = dst_address->data_u32 & im->fib_masks[dst_address_length];
-
-  dst_hash = fib->adj_index_by_dst_address[dst_address_length];
-  dst_result = hash_get (dst_hash, dst_address_u32);
-  if (dst_result)
-    {
-      dst_adj_index = dst_result[0];
-      dst_adj = ip_get_adjacency (lm, dst_adj_index);
-    }
-  else
-    {
-      /* For deletes destination must be known. */
-      if (is_del)
-	{
-          vnm->api_errno = VNET_API_ERROR_UNKNOWN_DESTINATION;
-	  error = clib_error_return (0, "unknown destination %U/%d",
-				     format_ip4_address, dst_address,
-				     dst_address_length);
-	  goto done;
-	}
-
-      dst_adj_index = ~0;
-      dst_adj = 0;
-    }
-
-  /* Ignore adds of X/32 with next hop of X. */
-  if (! is_del
-      && dst_address_length == 32
-      && dst_address->data_u32 == next_hop->data_u32 
-      && adj_index != (u32)~0)
-    {
-      vnm->api_errno = VNET_API_ERROR_PREFIX_MATCHES_NEXT_HOP;
-      error = clib_error_return (0, "prefix matches next hop %U/%d",
-                                 format_ip4_address, dst_address,
-                                 dst_address_length);
-      goto done;
-    }
-
-  /* Destination is not known and default weight is set so add route
-     to existing non-multipath adjacency */
-  if (dst_adj_index == ~0 && next_hop_weight == 1 && next_hop_sw_if_index == ~0)
-    {
-      /* create / delete additional mapping of existing adjacency */
-      ip4_add_del_route_args_t a;
-
-      a.table_index_or_table_id = fib_index;
-      a.flags = ((is_del ? IP4_ROUTE_FLAG_DEL : IP4_ROUTE_FLAG_ADD)
-		 | IP4_ROUTE_FLAG_FIB_INDEX
-		 | IP4_ROUTE_FLAG_KEEP_OLD_ADJACENCY
-		 | (flags & (IP4_ROUTE_FLAG_NO_REDISTRIBUTE
-			     | IP4_ROUTE_FLAG_NOT_LAST_IN_GROUP)));
-      a.dst_address = dst_address[0];
-      a.dst_address_length = dst_address_length;
-      a.adj_index = nh_adj_index;
-      a.add_adj = 0;
-      a.n_add_adj = 0;
-
-      ip4_add_del_route (im, &a);
-      goto done;
-    }
-
-  old_mp_adj_index = dst_adj ? dst_adj->heap_handle : ~0;
-
-  if (! ip_multipath_adjacency_add_del_next_hop
-      (lm, is_del,
-       old_mp_adj_index,
-       nh_adj_index,
-       next_hop_weight,
-       &new_mp_adj_index))
-    {
-      vnm->api_errno = VNET_API_ERROR_NEXT_HOP_NOT_FOUND_MP;
-      error = clib_error_return (0, "requested deleting next-hop %U not found in multi-path",
-				 format_ip4_address, next_hop);
-      goto done;
-    }
-  
-  old_mp = new_mp = 0;
-  if (old_mp_adj_index != ~0)
-    old_mp = vec_elt_at_index (lm->multipath_adjacencies, old_mp_adj_index);
-  if (new_mp_adj_index != ~0)
-    new_mp = vec_elt_at_index (lm->multipath_adjacencies, new_mp_adj_index);
-
-  if (old_mp != new_mp)
-    {
-      ip4_add_del_route_args_t a;
-      ip_adjacency_t * adj;
-
-      a.table_index_or_table_id = fib_index;
-      a.flags = ((is_del && ! new_mp ? IP4_ROUTE_FLAG_DEL : IP4_ROUTE_FLAG_ADD)
-		 | IP4_ROUTE_FLAG_FIB_INDEX
-		 | IP4_ROUTE_FLAG_KEEP_OLD_ADJACENCY
-		 | (flags & (IP4_ROUTE_FLAG_NO_REDISTRIBUTE | IP4_ROUTE_FLAG_NOT_LAST_IN_GROUP)));
-      a.dst_address = dst_address[0];
-      a.dst_address_length = dst_address_length;
-      a.adj_index = new_mp ? new_mp->adj_index : dst_adj_index;
-      a.add_adj = 0;
-      a.n_add_adj = 0;
-
-      ip4_add_del_route (im, &a);
-
-      adj = ip_get_adjacency (lm, new_mp ? new_mp->adj_index : dst_adj_index);
-      if (adj->n_adj == 1)
-        adj->share_count += is_del ? -1 : 1;
-    }
-
- done:
-  if (error)
-    clib_error_report (error);
-}
-
-void *
-ip4_get_route (ip4_main_t * im,
-	       u32 table_index_or_table_id,
-	       u32 flags,
-	       u8 * address,
-	       u32 address_length)
-{
-  ip4_fib_t * fib = find_ip4_fib_by_table_index_or_id (im, table_index_or_table_id, flags);
-  u32 dst_address = * (u32 *) address;
-  uword * hash, * p;
-
-  ASSERT (address_length < ARRAY_LEN (im->fib_masks));
-  dst_address &= im->fib_masks[address_length];
-
-  hash = fib->adj_index_by_dst_address[address_length];
-  p = hash_get (hash, dst_address);
-  return (void *) p;
-}
-
-void
-ip4_foreach_matching_route (ip4_main_t * im,
-			    u32 table_index_or_table_id,
-			    u32 flags,
-			    ip4_address_t * address,
-			    u32 address_length,
-			    ip4_address_t ** results,
-			    u8 ** result_lengths)
-{
-  ip4_fib_t * fib = find_ip4_fib_by_table_index_or_id (im, table_index_or_table_id, flags);
-  u32 dst_address = address->data_u32;
-  u32 this_length = address_length;
-  
-  if (*results)
-    _vec_len (*results) = 0;
-  if (*result_lengths)
-    _vec_len (*result_lengths) = 0;
-
-  while (this_length <= 32 && vec_len (results) == 0)
-    {
-      uword k, v;
-      hash_foreach (k, v, fib->adj_index_by_dst_address[this_length], ({
-	if (0 == ((k ^ dst_address) & im->fib_masks[address_length]))
-	  {
-	    ip4_address_t a;
-	    a.data_u32 = k;
-	    vec_add1 (*results, a);
-	    vec_add1 (*result_lengths, this_length);
-	  }
-      }));
-
-      this_length++;
-    }
-}
-
-void ip4_maybe_remap_adjacencies (ip4_main_t * im,
-				  u32 table_index_or_table_id,
-				  u32 flags)
-{
-  ip4_fib_t * fib = find_ip4_fib_by_table_index_or_id (im, table_index_or_table_id, flags);
-  ip_lookup_main_t * lm = &im->lookup_main;
-  u32 i, l;
-  ip4_address_t a;
-  ip4_add_del_route_callback_t * cb;
-  static ip4_address_t * to_delete;
-
-  if (lm->n_adjacency_remaps == 0)
-    return;
-
-  for (l = 0; l <= 32; l++)
-    {
-      hash_pair_t * p;
-      uword * hash = fib->adj_index_by_dst_address[l];
-
-      if (hash_elts (hash) == 0)
-	continue;
-
-      if (to_delete)
-	_vec_len (to_delete) = 0;
-
-      hash_foreach_pair (p, hash, ({
-	u32 adj_index = p->value[0];
-	u32 m = vec_elt (lm->adjacency_remap_table, adj_index);
-
-	if (m)
-	  {
-	    /* Record destination address from hash key. */
-	    a.data_u32 = p->key;
-
-	    /* New adjacency points to nothing: so delete prefix. */
-	    if (m == ~0)
-	      vec_add1 (to_delete, a);
-	    else
-	      {
-		/* Remap to new adjacency. */
-		clib_memcpy (fib->old_hash_values, p->value, vec_bytes (fib->old_hash_values));
-
-		/* Set new adjacency value. */
-		fib->new_hash_values[0] = p->value[0] = m - 1;
-
-		vec_foreach (cb, im->add_del_route_callbacks)
-		  if ((flags & cb->required_flags) == cb->required_flags)
-		    cb->function (im, cb->function_opaque,
-				  fib, flags | IP4_ROUTE_FLAG_ADD,
-				  &a, l,
-				  fib->old_hash_values,
-				  fib->new_hash_values);
-	      }
-	  }
-      }));
-
-      fib->new_hash_values[0] = ~0;
-      for (i = 0; i < vec_len (to_delete); i++)
-	{
-	  hash = _hash_unset (hash, to_delete[i].data_u32, fib->old_hash_values);
-	  vec_foreach (cb, im->add_del_route_callbacks)
-	    if ((flags & cb->required_flags) == cb->required_flags)
-	      cb->function (im, cb->function_opaque,
-			    fib, flags | IP4_ROUTE_FLAG_DEL,
-			    &a, l,
-			    fib->old_hash_values,
-			    fib->new_hash_values);
-	}
-    }
-
-  /* Also remap adjacencies in mtrie. */
-  ip4_mtrie_maybe_remap_adjacencies (lm, &fib->mtrie);
-
-  /* Reset mapping table. */
-  vec_zero (lm->adjacency_remap_table);
-
-  /* All remaps have been performed. */
-  lm->n_adjacency_remaps = 0;
-}
-
-void ip4_delete_matching_routes (ip4_main_t * im,
-				 u32 table_index_or_table_id,
-				 u32 flags,
-				 ip4_address_t * address,
-				 u32 address_length)
-{
-  static ip4_address_t * matching_addresses;
-  static u8 * matching_address_lengths;
-  u32 l, i;
-  ip4_add_del_route_args_t a;
-
-  a.flags = IP4_ROUTE_FLAG_DEL | IP4_ROUTE_FLAG_NO_REDISTRIBUTE | flags;
-  a.table_index_or_table_id = table_index_or_table_id;
-  a.adj_index = ~0;
-  a.add_adj = 0;
-  a.n_add_adj = 0;
-
-  for (l = address_length + 1; l <= 32; l++)
-    {
-      ip4_foreach_matching_route (im, table_index_or_table_id, flags,
-				  address,
-				  l,
-				  &matching_addresses,
-				  &matching_address_lengths);
-      for (i = 0; i < vec_len (matching_addresses); i++)
-	{
-	  a.dst_address = matching_addresses[i];
-	  a.dst_address_length = matching_address_lengths[i];
-	  ip4_add_del_route (im, &a);
-	}
-    }
-
-  ip4_maybe_remap_adjacencies (im, table_index_or_table_id, flags);
-}
+#include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
+#include <vnet/api_errno.h>     /* for API error numbers */
+#include <vnet/fib/fib_table.h> /* for FIB table and entry creation */
+#include <vnet/fib/fib_entry.h> /* for FIB table and entry creation */
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/dpo/load_balance.h>
+#include <vnet/dpo/classify_dpo.h>
 
 void
 ip4_forward_next_trace (vlib_main_t * vm,
@@ -712,12 +60,10 @@ always_inline uword
 ip4_lookup_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
 		   vlib_frame_t * frame,
-		   int lookup_for_responses_to_locally_received_packets,
-		   int is_indirect)
+		   int lookup_for_responses_to_locally_received_packets)
 {
   ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  vlib_combined_counter_main_t * cm = &im->lookup_main.adjacency_counters;
+  vlib_combined_counter_main_t * cm = &load_balance_main.lbm_to_counters;
   u32 n_left_from, n_left_to_next, * from, * to_next;
   ip_lookup_next_t next;
   u32 cpu_index = os_get_cpu_number();
@@ -732,217 +78,194 @@ ip4_lookup_inline (vlib_main_t * vm,
 			   to_next, n_left_to_next);
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
-	{
-	  vlib_buffer_t * p0, * p1;
-	  ip4_header_t * ip0, * ip1;
-	  __attribute__((unused)) tcp_header_t * tcp0, * tcp1;
-	  ip_lookup_next_t next0, next1;
-	  ip_adjacency_t * adj0, * adj1;
-	  ip4_fib_mtrie_t * mtrie0, * mtrie1;
-	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
-	  ip4_address_t * dst_addr0, *dst_addr1;
-	  __attribute__((unused)) u32 pi0, fib_index0, adj_index0, is_tcp_udp0;
-	  __attribute__((unused)) u32 pi1, fib_index1, adj_index1, is_tcp_udp1;
-          u32 flow_hash_config0, flow_hash_config1;
+      	{
+      	  vlib_buffer_t * p0, * p1;
+      	  ip4_header_t * ip0, * ip1;
+      	  __attribute__((unused)) tcp_header_t * tcp0, * tcp1;
+      	  ip_lookup_next_t next0, next1;
+      	  const load_balance_t * lb0, * lb1;
+      	  ip4_fib_mtrie_t * mtrie0, * mtrie1;
+      	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
+      	  ip4_address_t * dst_addr0, *dst_addr1;
+      	  __attribute__((unused)) u32 pi0, fib_index0, lb_index0, is_tcp_udp0;
+      	  __attribute__((unused)) u32 pi1, fib_index1, lb_index1, is_tcp_udp1;
+          flow_hash_config_t flow_hash_config0, flow_hash_config1;
           u32 hash_c0, hash_c1;
-	  u32 wrong_next;
+      	  u32 wrong_next;
+	  const dpo_id_t *dpo0, *dpo1;
 
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t * p2, * p3;
+      	  /* Prefetch next iteration. */
+      	  {
+      	    vlib_buffer_t * p2, * p3;
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
+      	    p2 = vlib_get_buffer (vm, from[2]);
+      	    p3 = vlib_get_buffer (vm, from[3]);
 
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
+      	    vlib_prefetch_buffer_header (p2, LOAD);
+      	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD);
-	    CLIB_PREFETCH (p3->data, sizeof (ip0[0]), LOAD);
-	  }
+      	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD);
+      	    CLIB_PREFETCH (p3->data, sizeof (ip0[0]), LOAD);
+      	  }
 
-	  pi0 = to_next[0] = from[0];
-	  pi1 = to_next[1] = from[1];
+      	  pi0 = to_next[0] = from[0];
+      	  pi1 = to_next[1] = from[1];
 
-	  p0 = vlib_get_buffer (vm, pi0);
-	  p1 = vlib_get_buffer (vm, pi1);
+      	  p0 = vlib_get_buffer (vm, pi0);
+      	  p1 = vlib_get_buffer (vm, pi1);
 
-	  ip0 = vlib_buffer_get_current (p0);
-	  ip1 = vlib_buffer_get_current (p1);
+      	  ip0 = vlib_buffer_get_current (p0);
+      	  ip1 = vlib_buffer_get_current (p1);
 
-	  if (is_indirect)
-	    {
-	      ip_adjacency_t * iadj0, * iadj1;
-	      iadj0 = ip_get_adjacency (lm, vnet_buffer(p0)->ip.adj_index[VLIB_TX]);
-	      iadj1 = ip_get_adjacency (lm, vnet_buffer(p1)->ip.adj_index[VLIB_TX]);
-	      dst_addr0 = &iadj0->indirect.next_hop.ip4;
-	      dst_addr1 = &iadj1->indirect.next_hop.ip4;
-	    }
-	  else
-	    {
-	      dst_addr0 = &ip0->dst_address;
-	      dst_addr1 = &ip1->dst_address;
-	    }
+      	  dst_addr0 = &ip0->dst_address;
+      	  dst_addr1 = &ip1->dst_address;
 
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p1)->sw_if_index[VLIB_RX]);
+      	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+      	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p1)->sw_if_index[VLIB_RX]);
           fib_index0 = (vnet_buffer(p0)->sw_if_index[VLIB_TX] == (u32)~0) ?
             fib_index0 : vnet_buffer(p0)->sw_if_index[VLIB_TX];
           fib_index1 = (vnet_buffer(p1)->sw_if_index[VLIB_TX] == (u32)~0) ?
             fib_index1 : vnet_buffer(p1)->sw_if_index[VLIB_TX];
 
 
-	  if (! lookup_for_responses_to_locally_received_packets)
-	    {
-	      mtrie0 = &vec_elt_at_index (im->fibs, fib_index0)->mtrie;
-	      mtrie1 = &vec_elt_at_index (im->fibs, fib_index1)->mtrie;
+      	  if (! lookup_for_responses_to_locally_received_packets)
+      	    {
+	      mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
+	      mtrie1 = &ip4_fib_get (fib_index1)->mtrie;
 
-	      leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
+      	      leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
 
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 0);
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 0);
-	    }
+      	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 0);
+      	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 0);
+      	    }
 
-	  tcp0 = (void *) (ip0 + 1);
-	  tcp1 = (void *) (ip1 + 1);
+      	  tcp0 = (void *) (ip0 + 1);
+      	  tcp1 = (void *) (ip1 + 1);
 
-	  is_tcp_udp0 = (ip0->protocol == IP_PROTOCOL_TCP
-			 || ip0->protocol == IP_PROTOCOL_UDP);
-	  is_tcp_udp1 = (ip1->protocol == IP_PROTOCOL_TCP
-			 || ip1->protocol == IP_PROTOCOL_UDP);
+      	  is_tcp_udp0 = (ip0->protocol == IP_PROTOCOL_TCP
+      			 || ip0->protocol == IP_PROTOCOL_UDP);
+      	  is_tcp_udp1 = (ip1->protocol == IP_PROTOCOL_TCP
+      			 || ip1->protocol == IP_PROTOCOL_UDP);
 
-	  if (! lookup_for_responses_to_locally_received_packets)
-	    {
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 1);
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 1);
-	    }
+      	  if (! lookup_for_responses_to_locally_received_packets)
+      	    {
+      	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 1);
+      	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 1);
+      	    }
 
-	  if (! lookup_for_responses_to_locally_received_packets)
-	    {
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 2);
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 2);
-	    }
+      	  if (! lookup_for_responses_to_locally_received_packets)
+      	    {
+      	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 2);
+      	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 2);
+      	    }
 
-	  if (! lookup_for_responses_to_locally_received_packets)
-	    {
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 3);
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 3);
-	    }
+      	  if (! lookup_for_responses_to_locally_received_packets)
+      	    {
+      	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 3);
+      	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 3);
+      	    }
 
-	  if (lookup_for_responses_to_locally_received_packets)
-	    {
-	      adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_RX];
-	      adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_RX];
-	    }
-	  else
-	    {
-	      /* Handle default route. */
-	      leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
-	      leaf1 = (leaf1 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie1->default_leaf : leaf1);
+      	  if (lookup_for_responses_to_locally_received_packets)
+      	    {
+      	      lb_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_RX];
+      	      lb_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_RX];
+      	    }
+      	  else
+      	    {
+      	      /* Handle default route. */
+      	      leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
+      	      leaf1 = (leaf1 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie1->default_leaf : leaf1);
 
-	      adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-	      adj_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
-	    }
+      	      lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+      	      lb_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+      	    }
 
-	  ASSERT (adj_index0 == ip4_fib_lookup_with_table (im, fib_index0,
-							   dst_addr0,
-							   /* no_default_route */ 0));
-	  ASSERT (adj_index1 == ip4_fib_lookup_with_table (im, fib_index1,
-							   dst_addr1,
-							   /* no_default_route */ 0));
-	  adj0 = ip_get_adjacency (lm, adj_index0);
-	  adj1 = ip_get_adjacency (lm, adj_index1);
+	  lb0 = load_balance_get (lb_index0);
+	  lb1 = load_balance_get (lb_index1);
 
-	  next0 = adj0->lookup_next_index;
-	  next1 = adj1->lookup_next_index;
-
-	  /* Use flow hash to compute multipath adjacency. */
+      	  /* Use flow hash to compute multipath adjacency. */
           hash_c0 = vnet_buffer (p0)->ip.flow_hash = 0;
           hash_c1 = vnet_buffer (p1)->ip.flow_hash = 0;
-          if (PREDICT_FALSE (adj0->n_adj > 1))
+          if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
             {
-              flow_hash_config0 = 
-                vec_elt_at_index (im->fibs, fib_index0)->flow_hash_config;
-              hash_c0 = vnet_buffer (p0)->ip.flow_hash = 
+              flow_hash_config0 = lb0->lb_hash_config;
+              hash_c0 = vnet_buffer (p0)->ip.flow_hash =
                 ip4_compute_flow_hash (ip0, flow_hash_config0);
             }
-          if (PREDICT_FALSE(adj1->n_adj > 1))
+          if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
             {
-              flow_hash_config1 = 
-                vec_elt_at_index (im->fibs, fib_index1)->flow_hash_config;
-              hash_c1 = vnet_buffer (p1)->ip.flow_hash = 
+	      flow_hash_config1 = lb1->lb_hash_config;
+              hash_c1 = vnet_buffer (p1)->ip.flow_hash =
                 ip4_compute_flow_hash (ip1, flow_hash_config1);
             }
 
-	  ASSERT (adj0->n_adj > 0);
-	  ASSERT (adj1->n_adj > 0);
-	  ASSERT (is_pow2 (adj0->n_adj));
-	  ASSERT (is_pow2 (adj1->n_adj));
-	  adj_index0 += (hash_c0 & (adj0->n_adj - 1));
-	  adj_index1 += (hash_c1 & (adj1->n_adj - 1));
+	  ASSERT (lb0->lb_n_buckets > 0);
+	  ASSERT (is_pow2 (lb0->lb_n_buckets));
+ 	  ASSERT (lb1->lb_n_buckets > 0);
+	  ASSERT (is_pow2 (lb1->lb_n_buckets));
 
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = adj_index0;
-	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = adj_index1;
+	  dpo0 = load_balance_get_bucket_i(lb0,
+                                           (hash_c0 &
+                                            (lb0->lb_n_buckets_minus_1)));
+	  dpo1 = load_balance_get_bucket_i(lb1,
+                                           (hash_c1 &
+                                            (lb0->lb_n_buckets_minus_1)));
 
-	  if (is_indirect)
-	    {
-	      /* ARP for next-hop not packet's destination address */
-	      if (adj0->lookup_next_index == IP_LOOKUP_NEXT_ARP)
-	        ip0->dst_address.as_u32 = dst_addr0->as_u32;
-              if (adj1->lookup_next_index == IP_LOOKUP_NEXT_ARP)
-                ip1->dst_address.as_u32 = dst_addr1->as_u32;
-	    }
+	  next0 = dpo0->dpoi_next_node;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	  next1 = dpo1->dpoi_next_node;
+	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
-          vlib_increment_combined_counter 
-              (cm, cpu_index, adj_index0, 1,
-               vlib_buffer_length_in_chain (vm, p0) 
+          vlib_increment_combined_counter
+              (cm, cpu_index, lb_index0, 1,
+               vlib_buffer_length_in_chain (vm, p0)
                + sizeof(ethernet_header_t));
-          vlib_increment_combined_counter 
-              (cm, cpu_index, adj_index1, 1,
+          vlib_increment_combined_counter
+              (cm, cpu_index, lb_index1, 1,
                vlib_buffer_length_in_chain (vm, p1)
                + sizeof(ethernet_header_t));
 
-	  from += 2;
-	  to_next += 2;
-	  n_left_to_next -= 2;
-	  n_left_from -= 2;
+      	  from += 2;
+      	  to_next += 2;
+      	  n_left_to_next -= 2;
+      	  n_left_from -= 2;
 
-	  wrong_next = (next0 != next) + 2*(next1 != next);
-	  if (PREDICT_FALSE (wrong_next != 0))
-	    {
-	      switch (wrong_next)
-		{
-		case 1:
-		  /* A B A */
-		  to_next[-2] = pi1;
-		  to_next -= 1;
-		  n_left_to_next += 1;
-		  vlib_set_next_frame_buffer (vm, node, next0, pi0);
-		  break;
+      	  wrong_next = (next0 != next) + 2*(next1 != next);
+      	  if (PREDICT_FALSE (wrong_next != 0))
+      	    {
+      	      switch (wrong_next)
+      		{
+      		case 1:
+      		  /* A B A */
+      		  to_next[-2] = pi1;
+      		  to_next -= 1;
+      		  n_left_to_next += 1;
+      		  vlib_set_next_frame_buffer (vm, node, next0, pi0);
+      		  break;
 
-		case 2:
-		  /* A A B */
-		  to_next -= 1;
-		  n_left_to_next += 1;
-		  vlib_set_next_frame_buffer (vm, node, next1, pi1);
-		  break;
+      		case 2:
+      		  /* A A B */
+      		  to_next -= 1;
+      		  n_left_to_next += 1;
+      		  vlib_set_next_frame_buffer (vm, node, next1, pi1);
+      		  break;
 
-		case 3:
-		  /* A B C */
-		  to_next -= 2;
-		  n_left_to_next += 2;
-		  vlib_set_next_frame_buffer (vm, node, next0, pi0);
-		  vlib_set_next_frame_buffer (vm, node, next1, pi1);
-		  if (next0 == next1)
-		    {
-		      /* A B B */
-		      vlib_put_next_frame (vm, node, next, n_left_to_next);
-		      next = next1;
-		      vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
-		    }
-		}
-	    }
-	}
+      		case 3:
+      		  /* A B C */
+      		  to_next -= 2;
+      		  n_left_to_next += 2;
+      		  vlib_set_next_frame_buffer (vm, node, next0, pi0);
+      		  vlib_set_next_frame_buffer (vm, node, next1, pi1);
+      		  if (next0 == next1)
+      		    {
+      		      /* A B B */
+      		      vlib_put_next_frame (vm, node, next, n_left_to_next);
+      		      next = next1;
+      		      vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
+      		    }
+      		}
+      	    }
+      	}
     
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
@@ -950,12 +273,14 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  ip4_header_t * ip0;
 	  __attribute__((unused)) tcp_header_t * tcp0;
 	  ip_lookup_next_t next0;
-	  ip_adjacency_t * adj0;
+	  const load_balance_t *lb0;
 	  ip4_fib_mtrie_t * mtrie0;
 	  ip4_fib_mtrie_leaf_t leaf0;
 	  ip4_address_t * dst_addr0;
-	  __attribute__((unused)) u32 pi0, fib_index0, adj_index0, is_tcp_udp0;
-          u32 flow_hash_config0, hash_c0;
+	  __attribute__((unused)) u32 pi0, fib_index0, is_tcp_udp0, lbi0;
+          flow_hash_config_t flow_hash_config0;
+	  const dpo_id_t *dpo0;
+	  u32 hash_c0;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -964,16 +289,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  if (is_indirect)
-	    {
-	      ip_adjacency_t * iadj0;
-	      iadj0 = ip_get_adjacency (lm, vnet_buffer(p0)->ip.adj_index[VLIB_TX]);
-	      dst_addr0 = &iadj0->indirect.next_hop.ip4;
-	    }
-	  else
-	    {
-	      dst_addr0 = &ip0->dst_address;
-	    }
+	  dst_addr0 = &ip0->dst_address;
 
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p0)->sw_if_index[VLIB_RX]);
           fib_index0 = (vnet_buffer(p0)->sw_if_index[VLIB_TX] == (u32)~0) ?
@@ -981,7 +297,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 
 	  if (! lookup_for_responses_to_locally_received_packets)
 	    {
-	      mtrie0 = &vec_elt_at_index (im->fibs, fib_index0)->mtrie;
+	      mtrie0 = &ip4_fib_get( fib_index0)->mtrie;
 
 	      leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
 
@@ -1003,50 +319,39 @@ ip4_lookup_inline (vlib_main_t * vm,
 	    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 3);
 
 	  if (lookup_for_responses_to_locally_received_packets)
-	    adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_RX];
+	    lbi0 = vnet_buffer (p0)->ip.adj_index[VLIB_RX];
 	  else
 	    {
 	      /* Handle default route. */
 	      leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
-	      adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+	      lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 	    }
 
-	  ASSERT (adj_index0 == ip4_fib_lookup_with_table (im, fib_index0,
-							   dst_addr0,
-							   /* no_default_route */ 0));
-
-	  adj0 = ip_get_adjacency (lm, adj_index0);
-
-	  next0 = adj0->lookup_next_index;
+	  lb0 = load_balance_get (lbi0);
 
 	  /* Use flow hash to compute multipath adjacency. */
           hash_c0 = vnet_buffer (p0)->ip.flow_hash = 0;
-          if (PREDICT_FALSE(adj0->n_adj > 1))
+          if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
             {
-              flow_hash_config0 = 
-                vec_elt_at_index (im->fibs, fib_index0)->flow_hash_config;
+	      flow_hash_config0 = lb0->lb_hash_config;
 
               hash_c0 = vnet_buffer (p0)->ip.flow_hash = 
                 ip4_compute_flow_hash (ip0, flow_hash_config0);
             }
 
-	  ASSERT (adj0->n_adj > 0);
-	  ASSERT (is_pow2 (adj0->n_adj));
-	  adj_index0 += (hash_c0 & (adj0->n_adj - 1));
+	  ASSERT (lb0->lb_n_buckets > 0);
+	  ASSERT (is_pow2 (lb0->lb_n_buckets));
 
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = adj_index0;
+	  dpo0 = load_balance_get_bucket_i(lb0,
+                                           (hash_c0 &
+                                            (lb0->lb_n_buckets_minus_1)));
 
-          if (is_indirect)
-            {
-              /* ARP for next-hop not packet's destination address */
-              if (adj0->lookup_next_index == IP_LOOKUP_NEXT_ARP)
-                ip0->dst_address.as_u32 = dst_addr0->as_u32;
-            }
+	  next0 = dpo0->dpoi_next_node;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
-          vlib_increment_combined_counter 
-              (cm, cpu_index, adj_index0, 1,
-               vlib_buffer_length_in_chain (vm, p0)
-               + sizeof(ethernet_header_t));
+	  vlib_increment_combined_counter 
+              (cm, cpu_index, lbi0, 1,
+               vlib_buffer_length_in_chain (vm, p0));
 
 	  from += 1;
 	  to_next += 1;
@@ -1113,55 +418,135 @@ ip4_lookup (vlib_main_t * vm,
 	    vlib_frame_t * frame)
 {
   return ip4_lookup_inline (vm, node, frame,
-			    /* lookup_for_responses_to_locally_received_packets */ 0,
-			    /* is_indirect */ 0);
+			    /* lookup_for_responses_to_locally_received_packets */ 0);
 
 }
 
-void ip4_adjacency_set_interface_route (vnet_main_t * vnm,
-					ip_adjacency_t * adj,
-					u32 sw_if_index,
-					u32 if_address_index)
+static u8 * format_ip4_lookup_trace (u8 * s, va_list * args);
+
+VLIB_REGISTER_NODE (ip4_lookup_node) = {
+  .function = ip4_lookup,
+  .name = "ip4-lookup",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_lookup_trace,
+  .n_next_nodes = IP_LOOKUP_N_NEXT,
+  .next_nodes = IP4_LOOKUP_NEXT_NODES,
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_node, ip4_lookup)
+
+always_inline uword
+ip4_load_balance (vlib_main_t * vm,
+		  vlib_node_runtime_t * node,
+		  vlib_frame_t * frame)
 {
-  vnet_hw_interface_t * hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  ip_lookup_next_t n;
-  vnet_l3_packet_type_t packet_type;
-  u32 node_index;
+  vlib_combined_counter_main_t * cm = &load_balance_main.lbm_via_counters;
+  u32 n_left_from, n_left_to_next, * from, * to_next;
+  ip_lookup_next_t next;
+  u32 cpu_index = os_get_cpu_number();
 
-  if (hw->hw_class_index == ethernet_hw_interface_class.index
-      || hw->hw_class_index == srp_hw_interface_class.index)
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next = node->cached_next_index;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+      ip4_forward_next_trace(vm, node, frame, VLIB_TX);
+
+  while (n_left_from > 0)
     {
-      /* 
-       * We have a bit of a problem in this case. ip4-arp uses
-       * the rewrite_header.next_index to hand pkts to the
-       * indicated inteface output node. We can end up in
-       * ip4_rewrite_local, too, which also pays attention to 
-       * rewrite_header.next index. Net result: a hack in
-       * ip4_rewrite_local...
-       */
-      n = IP_LOOKUP_NEXT_ARP;
-      node_index = ip4_arp_node.index;
-      adj->if_address_index = if_address_index;
-      adj->arp.next_hop.ip4.as_u32 = 0;
-      ip46_address_reset(&adj->arp.next_hop);
-      packet_type = VNET_L3_PACKET_TYPE_ARP;
-    }
-  else
-    {
-      n = IP_LOOKUP_NEXT_REWRITE;
-      node_index = ip4_rewrite_node.index;
-      packet_type = VNET_L3_PACKET_TYPE_IP4;
+      vlib_get_next_frame (vm, node, next,
+			   to_next, n_left_to_next);
+
+    
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  ip_lookup_next_t next0;
+	  const load_balance_t *lb0;
+	  vlib_buffer_t * p0;
+	  u32 pi0, lbi0, hc0;
+	  const ip4_header_t *ip0;
+	  const dpo_id_t *dpo0;
+
+	  pi0 = from[0];
+	  to_next[0] = pi0;
+
+	  p0 = vlib_get_buffer (vm, pi0);
+
+	  ip0 = vlib_buffer_get_current (p0);
+	  lbi0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+
+	  lb0 = load_balance_get(lbi0);
+	  hc0 = lb0->lb_hash_config;
+	  vnet_buffer(p0)->ip.flow_hash = ip4_compute_flow_hash(ip0, hc0);
+
+	  dpo0 = load_balance_get_bucket_i(lb0, 
+					   vnet_buffer(p0)->ip.flow_hash &
+					   (lb0->lb_n_buckets_minus_1));
+
+	  next0 = dpo0->dpoi_next_node;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+
+	  vlib_increment_combined_counter 
+              (cm, cpu_index, lbi0, 1,
+               vlib_buffer_length_in_chain (vm, p0));
+
+	  from += 1;
+	  to_next += 1;
+	  n_left_to_next -= 1;
+	  n_left_from -= 1;
+
+	  if (PREDICT_FALSE (next0 != next))
+	    {
+	      n_left_to_next += 1;
+	      vlib_put_next_frame (vm, node, next, n_left_to_next);
+	      next = next0;
+	      vlib_get_next_frame (vm, node, next,
+				   to_next, n_left_to_next);
+	      to_next[0] = pi0;
+	      to_next += 1;
+	      n_left_to_next -= 1;
+	    }
+	}
+
+      vlib_put_next_frame (vm, node, next, n_left_to_next);
     }
 
-  adj->lookup_next_index = n;
-  vnet_rewrite_for_sw_interface
-    (vnm,
-     packet_type,
-     sw_if_index,
-     node_index,
-     VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST,
-     &adj->rewrite_header,
-     sizeof (adj->rewrite_data));
+  return frame->n_vectors;
+}
+
+static u8 * format_ip4_forward_next_trace (u8 * s, va_list * args);
+
+VLIB_REGISTER_NODE (ip4_load_balance_node) = {
+  .function = ip4_load_balance,
+  .name = "ip4-load-balance",
+  .vector_size = sizeof (u32),
+  .sibling_of = "ip4-lookup",
+
+  .format_trace = format_ip4_forward_next_trace,
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_load_balance_node, ip4_load_balance)
+
+/* get first interface address */
+ip4_address_t *
+ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
+                             ip_interface_address_t ** result_ia)
+{
+  ip_lookup_main_t * lm = &im->lookup_main;
+  ip_interface_address_t * ia = 0;
+  ip4_address_t * result = 0;
+
+  foreach_ip_interface_address (lm, ia, sw_if_index, 
+                                1 /* honor unnumbered */,
+  ({
+    ip4_address_t * a = ip_interface_address_get_address (lm, ia);
+    result = a;
+    break;
+  }));
+  if (result_ia)
+    *result_ia = result ? ia : 0;
+  return result;
 }
 
 static void
@@ -1169,115 +554,160 @@ ip4_add_interface_routes (u32 sw_if_index,
 			  ip4_main_t * im, u32 fib_index,
 			  ip_interface_address_t * a)
 {
-  vnet_main_t * vnm = vnet_get_main();
   ip_lookup_main_t * lm = &im->lookup_main;
-  ip_adjacency_t * adj;
   ip4_address_t * address = ip_interface_address_get_address (lm, a);
-  ip4_add_del_route_args_t x;
-  vnet_hw_interface_t * hw_if = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  u32 classify_table_index;
-
-  /* Add e.g. 1.0.0.0/8 as interface route (arp for Ethernet). */
-  x.table_index_or_table_id = fib_index;
-  x.flags = (IP4_ROUTE_FLAG_ADD
-	     | IP4_ROUTE_FLAG_FIB_INDEX
-	     | IP4_ROUTE_FLAG_NO_REDISTRIBUTE);
-  x.dst_address = address[0];
-  x.dst_address_length = a->address_length;
-  x.n_add_adj = 0;
-  x.add_adj = 0;
+  fib_prefix_t pfx = {
+      .fp_len = a->address_length,
+      .fp_proto = FIB_PROTOCOL_IP4,
+      .fp_addr.ip4 = *address,
+  };
 
   a->neighbor_probe_adj_index = ~0;
-  if (a->address_length < 32)
-    {
-      adj = ip_add_adjacency (lm, /* template */ 0, /* block size */ 1,
-			      &x.adj_index);
-      ip4_adjacency_set_interface_route (vnm, adj, sw_if_index, a - lm->if_address_pool);
-      ip_call_add_del_adjacency_callbacks (lm, x.adj_index, /* is_del */ 0);
-      ip4_add_del_route (im, &x);
-      a->neighbor_probe_adj_index = x.adj_index;
-    }
-  
-  /* Add e.g. 1.1.1.1/32 as local to this host. */
-  adj = ip_add_adjacency (lm, /* template */ 0, /* block size */ 1,
-			  &x.adj_index);
-  
-  classify_table_index = ~0;
-  if (sw_if_index < vec_len (lm->classify_table_index_by_sw_if_index))
-    classify_table_index = lm->classify_table_index_by_sw_if_index [sw_if_index];
-  if (classify_table_index != (u32) ~0)
-    {
-      adj->lookup_next_index = IP_LOOKUP_NEXT_CLASSIFY;
-      adj->classify.table_index = classify_table_index;
-    }
-  else
-    adj->lookup_next_index = IP_LOOKUP_NEXT_LOCAL;
-  
-  adj->if_address_index = a - lm->if_address_pool;
-  adj->rewrite_header.sw_if_index = sw_if_index;
-  adj->rewrite_header.max_l3_packet_bytes = hw_if->max_l3_packet_bytes[VLIB_RX];
-  /* 
-   * Local adjs are never to be rewritten. Spoofed pkts w/ src = dst = local
-   * fail an RPF-ish check, but still go thru the rewrite code...
-   */
-  adj->rewrite_header.data_bytes = 0;
 
-  ip_call_add_del_adjacency_callbacks (lm, x.adj_index, /* is_del */ 0);
-  x.dst_address_length = 32;
-  ip4_add_del_route (im, &x);
+  if (pfx.fp_len < 32)
+  {
+      fib_node_index_t fei;
+
+      fei = fib_table_entry_update_one_path(fib_index,
+					    &pfx,
+					    FIB_SOURCE_INTERFACE,
+					    (FIB_ENTRY_FLAG_CONNECTED |
+					     FIB_ENTRY_FLAG_ATTACHED),
+					    FIB_PROTOCOL_IP4,
+					    NULL, /* No next-hop address */
+					    sw_if_index,
+					    ~0, // invalid FIB index
+					    1,
+					    MPLS_LABEL_INVALID,
+					    FIB_ROUTE_PATH_FLAG_NONE);
+      a->neighbor_probe_adj_index = fib_entry_get_adj(fei);
+  }
+
+  pfx.fp_len = 32;
+
+  if (sw_if_index < vec_len (lm->classify_table_index_by_sw_if_index))
+  {
+      u32 classify_table_index =
+	  lm->classify_table_index_by_sw_if_index [sw_if_index];
+      if (classify_table_index != (u32) ~0)
+      {
+          dpo_id_t dpo = DPO_NULL;
+
+          dpo_set(&dpo,
+                  DPO_CLASSIFY,
+                  DPO_PROTO_IP4,
+                  classify_dpo_create(FIB_PROTOCOL_IP4,
+                                      classify_table_index));
+
+	  fib_table_entry_special_dpo_add(fib_index,
+                                          &pfx,
+                                          FIB_SOURCE_CLASSIFY,
+                                          FIB_ENTRY_FLAG_NONE,
+                                          &dpo);
+          dpo_reset(&dpo);
+      }
+  }
+
+  fib_table_entry_update_one_path(fib_index,
+				  &pfx,
+				  FIB_SOURCE_INTERFACE,
+				  (FIB_ENTRY_FLAG_CONNECTED |
+				   FIB_ENTRY_FLAG_LOCAL),
+				  FIB_PROTOCOL_IP4,
+				  &pfx.fp_addr,
+				  sw_if_index,
+				  ~0, // invalid FIB index
+				  1,
+				  MPLS_LABEL_INVALID,
+				  FIB_ROUTE_PATH_FLAG_NONE);
 }
 
 static void
-ip4_del_interface_routes (ip4_main_t * im, u32 fib_index, ip4_address_t * address, u32 address_length)
+ip4_del_interface_routes (ip4_main_t * im,
+			  u32 fib_index,
+			  ip4_address_t * address,
+			  u32 address_length)
 {
-  ip4_add_del_route_args_t x;
+    fib_prefix_t pfx = {
+	.fp_len = address_length,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr.ip4 = *address,
+    };
 
-  /* Add e.g. 1.0.0.0/8 as interface route (arp for Ethernet). */
-  x.table_index_or_table_id = fib_index;
-  x.flags = (IP4_ROUTE_FLAG_DEL
-	     | IP4_ROUTE_FLAG_FIB_INDEX
-	     | IP4_ROUTE_FLAG_NO_REDISTRIBUTE);
-  x.dst_address = address[0];
-  x.dst_address_length = address_length;
-  x.adj_index = ~0;
-  x.n_add_adj = 0;
-  x.add_adj = 0;
+    if (pfx.fp_len < 32)
+    {
+	fib_table_entry_delete(fib_index,
+			       &pfx,
+			       FIB_SOURCE_INTERFACE);
+    }
 
-  if (address_length < 32)
-    ip4_add_del_route (im, &x);
-
-  x.dst_address_length = 32;
-  ip4_add_del_route (im, &x);
-
-  ip4_delete_matching_routes (im,
-			      fib_index,
-			      IP4_ROUTE_FLAG_FIB_INDEX,
-			      address,
-			      address_length);
+    pfx.fp_len = 32;
+    fib_table_entry_delete(fib_index,
+			   &pfx,
+			   FIB_SOURCE_INTERFACE);
 }
 
-typedef struct {
-    u32 sw_if_index;
-    ip4_address_t address;
-    u32 length;
-} ip4_interface_address_t;
+void
+ip4_sw_interface_enable_disable (u32 sw_if_index,
+				 u32 is_enable)
+{
+  vlib_main_t * vm = vlib_get_main();
+  ip4_main_t * im = &ip4_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
+  u32 ci, cast;
+  u32 lookup_feature_index;
 
-static clib_error_t *
-ip4_add_del_interface_address_internal (vlib_main_t * vm,
-					u32 sw_if_index,
-					ip4_address_t * new_address,
-					u32 new_length,
-					u32 redistribute,
-					u32 insert_routes,
-					u32 is_del);
+  vec_validate_init_empty (im->ip_enabled_by_sw_if_index, sw_if_index, 0);
+
+  /*
+   * enable/disable only on the 1<->0 transition
+   */
+  if (is_enable)
+    {
+      if (1 != ++im->ip_enabled_by_sw_if_index[sw_if_index])
+        return;
+    }
+  else
+    {
+      ASSERT(im->ip_enabled_by_sw_if_index[sw_if_index] > 0);
+      if (0 != --im->ip_enabled_by_sw_if_index[sw_if_index])
+        return;
+    }
+
+  for (cast = 0; cast <= VNET_IP_RX_MULTICAST_FEAT; cast++)
+    {
+      ip_config_main_t * cm = &lm->feature_config_mains[cast];
+      vnet_config_main_t * vcm = &cm->config_main;
+
+      vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
+      ci = cm->config_index_by_sw_if_index[sw_if_index];
+
+      if (cast == VNET_IP_RX_UNICAST_FEAT)
+	lookup_feature_index = im->ip4_unicast_rx_feature_lookup;
+      else
+	lookup_feature_index = im->ip4_multicast_rx_feature_lookup;
+
+      if (is_enable)
+	ci = vnet_config_add_feature (vm, vcm,
+				      ci,
+				      lookup_feature_index,
+				      /* config data */ 0,
+				      /* # bytes of config data */ 0);
+      else
+	ci = vnet_config_del_feature (vm, vcm,
+				      ci,
+				      lookup_feature_index,
+				      /* config data */ 0,
+				      /* # bytes of config data */ 0);
+      cm->config_index_by_sw_if_index[sw_if_index] = ci;
+    }
+}
 
 static clib_error_t *
 ip4_add_del_interface_address_internal (vlib_main_t * vm,
 					u32 sw_if_index,
 					ip4_address_t * address,
 					u32 address_length,
-					u32 redistribute,
-					u32 insert_routes,
 					u32 is_del)
 {
   vnet_main_t * vnm = vnet_get_main();
@@ -1292,9 +722,15 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
 		     vec_elt (im->fib_index_by_sw_if_index, sw_if_index));
   vec_add1 (addr_fib, ip4_af);
 
-  /* When adding an address check that it does not conflict with an existing address. */
+  /* FIXME-LATER
+   * there is no support for adj-fib handling in the presence of overlapping
+   * subnets on interfaces. Easy fix - disallow overlapping subnets, like
+   * most routers do.
+   */
   if (! is_del)
     {
+      /* When adding an address check that it does not conflict
+	 with an existing address. */
       ip_interface_address_t * ia;
       foreach_ip_interface_address (&im->lookup_main, ia, sw_if_index, 
                                     0 /* honor unnumbered */,
@@ -1307,7 +743,7 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
 				    format_ip4_address_and_length, address, address_length,
 				    format_ip4_address_and_length, x, ia->address_length,
 				    format_vnet_sw_if_index_name, vnm, sw_if_index);
-      }));
+       }));
     }
 
   elts_before = pool_elts (lm->if_address_pool);
@@ -1322,18 +758,16 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
   if (error)
     goto done;
   
-  if (vnet_sw_interface_is_admin_up (vnm, sw_if_index) && insert_routes)
-    {
-      if (is_del)
-	ip4_del_interface_routes (im, ip4_af.fib_index, address,
-				  address_length);
-      
-      else
-          ip4_add_interface_routes (sw_if_index,
-                                    im, ip4_af.fib_index,
-                                    pool_elt_at_index 
-                                    (lm->if_address_pool, if_address_index));
-    }
+  ip4_sw_interface_enable_disable(sw_if_index, !is_del);
+
+  if (is_del)
+      ip4_del_interface_routes (im, ip4_af.fib_index, address,
+				address_length);
+  else
+      ip4_add_interface_routes (sw_if_index,
+				im, ip4_af.fib_index,
+				pool_elt_at_index 
+				(lm->if_address_pool, if_address_index));
 
   /* If pool did not grow/shrink: add duplicate address. */
   if (elts_before != pool_elts (lm->if_address_pool))
@@ -1358,47 +792,8 @@ ip4_add_del_interface_address (vlib_main_t * vm, u32 sw_if_index,
 {
   return ip4_add_del_interface_address_internal
     (vm, sw_if_index, address, address_length,
-     /* redistribute */ 1,
-     /* insert_routes */ 1,
      is_del);
 }
-
-static clib_error_t *
-ip4_sw_interface_admin_up_down (vnet_main_t * vnm,
-				u32 sw_if_index,
-				u32 flags)
-{
-  ip4_main_t * im = &ip4_main;
-  ip_interface_address_t * ia;
-  ip4_address_t * a;
-  u32 is_admin_up, fib_index;
-  
-  /* Fill in lookup tables with default table (0). */
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-  
-  vec_validate_init_empty (im->lookup_main.if_address_pool_index_by_sw_if_index, sw_if_index, ~0);
-  
-  is_admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
-  
-  fib_index = vec_elt (im->fib_index_by_sw_if_index, sw_if_index);
-
-  foreach_ip_interface_address (&im->lookup_main, ia, sw_if_index, 
-                                0 /* honor unnumbered */,
-  ({
-    a = ip_interface_address_get_address (&im->lookup_main, ia);
-    if (is_admin_up)
-      ip4_add_interface_routes (sw_if_index,
-				im, fib_index,
-				ia);
-    else
-      ip4_del_interface_routes (im, fib_index,
-				a, ia->address_length);
-  }));
-
-  return 0;
-}
- 
-VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip4_sw_interface_admin_up_down);
 
 /* Built-in ip4 unicast rx feature path definition */
 VNET_IP4_UNICAST_FEATURE_INIT (ip4_inacl, static) = {
@@ -1449,9 +844,16 @@ VNET_IP4_UNICAST_FEATURE_INIT (ip4_vpath, static) = {
 
 VNET_IP4_UNICAST_FEATURE_INIT (ip4_lookup, static) = {
   .node_name = "ip4-lookup",
-  .runs_before = 0, /* not before any other features */
+  .runs_before = ORDER_CONSTRAINTS {"ip4-drop", 0},
   .feature_index = &ip4_main.ip4_unicast_rx_feature_lookup,
 };
+
+VNET_IP4_UNICAST_FEATURE_INIT (ip4_drop, static) = {
+  .node_name = "ip4-drop",
+  .runs_before = 0, /* not before any other features */
+  .feature_index = &ip4_main.ip4_unicast_rx_feature_drop,
+};
+
 
 /* Built-in ip4 multicast rx feature path definition */
 VNET_IP4_MULTICAST_FEATURE_INIT (ip4_vpath_mc, static) = {
@@ -1462,8 +864,14 @@ VNET_IP4_MULTICAST_FEATURE_INIT (ip4_vpath_mc, static) = {
 
 VNET_IP4_MULTICAST_FEATURE_INIT (ip4_lookup_mc, static) = {
   .node_name = "ip4-lookup-multicast",
-  .runs_before = 0, /* not before any other features */
+  .runs_before = ORDER_CONSTRAINTS {"ip4-drop", 0},
   .feature_index = &ip4_main.ip4_multicast_rx_feature_lookup,
+};
+
+VNET_IP4_MULTICAST_FEATURE_INIT (ip4_mc_drop, static) = {
+  .node_name = "ip4-drop",
+  .runs_before = 0, /* last feature */
+  .feature_index = &ip4_main.ip4_multicast_rx_feature_drop,
 };
 
 static char * rx_feature_start_nodes[] = 
@@ -1487,7 +895,6 @@ VNET_IP4_TX_FEATURE_INIT (interface_output, static) = {
   .runs_before = 0, /* not before any other features */
   .feature_index = &ip4_main.ip4_tx_feature_interface_output,
 };
-
 
 static clib_error_t *
 ip4_feature_init (vlib_main_t * vm, ip4_main_t * im)
@@ -1520,7 +927,7 @@ ip4_feature_init (vlib_main_t * vm, ip4_main_t * im)
                                          feature_start_nodes,
                                          feature_start_len,
                                          cast,
-                                         1 /* is_ip4 */)))
+                                         VNET_L3_PACKET_TYPE_IP4)))
         return error;
     }
 
@@ -1538,6 +945,9 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
   u32 ci, cast;
   u32 feature_index;
 
+  /* Fill in lookup tables with default table (0). */
+  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
+
   for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
     {
       ip_config_main_t * cm = &lm->feature_config_mains[cast];
@@ -1547,9 +957,9 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
       ci = cm->config_index_by_sw_if_index[sw_if_index];
 
       if (cast == VNET_IP_RX_UNICAST_FEAT)
-        feature_index = im->ip4_unicast_rx_feature_lookup;
+        feature_index = im->ip4_unicast_rx_feature_drop;
       else if (cast == VNET_IP_RX_MULTICAST_FEAT)
-        feature_index = im->ip4_multicast_rx_feature_lookup;
+        feature_index = im->ip4_multicast_rx_feature_drop;
       else
         feature_index = im->ip4_tx_feature_interface_output;
 
@@ -1560,14 +970,16 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 				      /* config data */ 0,
 				      /* # bytes of config data */ 0);
       else
-	ci = vnet_config_del_feature (vm, vcm,
-				      ci,
-                                      feature_index,
-				      /* config data */ 0,
-				      /* # bytes of config data */ 0);
-
+        {
+          ci = vnet_config_del_feature (vm, vcm, ci,
+                                        feature_index,
+                                        /* config data */ 0,
+                                        /* # bytes of config data */ 0);
+          if (vec_len(im->ip_enabled_by_sw_if_index) > sw_if_index)
+              im->ip_enabled_by_sw_if_index[sw_if_index] = 0;
+        }
       cm->config_index_by_sw_if_index[sw_if_index] = ci;
-      /* 
+      /*
        * note: do not update the tx feature count here.
        */
     }
@@ -1576,44 +988,6 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip4_sw_interface_add_del);
-
-static u8 * format_ip4_lookup_trace (u8 * s, va_list * args);
-
-VLIB_REGISTER_NODE (ip4_lookup_node) = {
-  .function = ip4_lookup,
-  .name = "ip4-lookup",
-  .vector_size = sizeof (u32),
-
-  .format_trace = format_ip4_lookup_trace,
-
-  .n_next_nodes = IP4_LOOKUP_N_NEXT,
-  .next_nodes = IP4_LOOKUP_NEXT_NODES,
-};
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_node, ip4_lookup);
-
-static uword
-ip4_indirect (vlib_main_t * vm,
-               vlib_node_runtime_t * node,
-               vlib_frame_t * frame)
-{
-  return ip4_lookup_inline (vm, node, frame,
-			    /* lookup_for_responses_to_locally_received_packets */ 0,
-			    /* is_indirect */ 1);
-}
-
-VLIB_REGISTER_NODE (ip4_indirect_node) = {
-  .function = ip4_indirect,
-  .name = "ip4-indirect",
-  .vector_size = sizeof (u32),
-  .sibling_of = "ip4-lookup",
-  .format_trace = format_ip4_lookup_trace,
-
-  .n_next_nodes = 0,
-};
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_indirect_node, ip4_indirect);
-
 
 /* Global IP4 main. */
 ip4_main_t ip4_main;
@@ -1636,10 +1010,10 @@ ip4_lookup_init (vlib_main_t * vm)
       im->fib_masks[i] = clib_host_to_net_u32 (m);
     }
 
-  /* Create FIB with index 0 and table id of 0. */
-  find_ip4_fib_by_table_index_or_id (im, /* table id */ 0, IP4_ROUTE_FLAG_TABLE_ID);
-
   ip_lookup_init (&im->lookup_main, /* is_ip6 */ 0);
+
+  /* Create FIB with index 0 and table id of 0. */
+  fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4, 0);
 
   {
     pg_node_t * pn;
@@ -1708,12 +1082,12 @@ static u8 * format_ip4_lookup_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_forward_next_trace_t * t = va_arg (*args, ip4_forward_next_trace_t *);
   vnet_main_t * vnm = vnet_get_main();
-  ip4_main_t * im = &ip4_main;
   uword indent = format_get_indent (s);
 
   s = format (s, "fib %d adj-idx %d : %U flow hash: 0x%08x",
               t->fib_index, t->adj_index, format_ip_adjacency,
-              vnm, &im->lookup_main, t->adj_index, t->flow_hash);
+              vnm, t->adj_index, FORMAT_IP_ADJACENCY_NONE, 
+	      t->flow_hash);
   s = format (s, "\n%U%U",
               format_white_space, indent,
               format_ip4_header, t->packet_data);
@@ -1726,16 +1100,16 @@ static u8 * format_ip4_rewrite_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_forward_next_trace_t * t = va_arg (*args, ip4_forward_next_trace_t *);
   vnet_main_t * vnm = vnet_get_main();
-  ip4_main_t * im = &ip4_main;
   uword indent = format_get_indent (s);
 
   s = format (s, "tx_sw_if_index %d adj-idx %d : %U flow hash: 0x%08x",
               t->fib_index, t->adj_index, format_ip_adjacency,
-              vnm, &im->lookup_main, t->adj_index, t->flow_hash);
+              vnm, t->adj_index, FORMAT_IP_ADJACENCY_NONE,
+	      t->flow_hash);
   s = format (s, "\n%U%U",
               format_white_space, indent,
               format_ip_adjacency_packet_data,
-              vnm, &im->lookup_main, t->adj_index,
+              vnm, t->adj_index,
               t->packet_data, sizeof (t->packet_data));
   return s;
 }
@@ -1863,12 +1237,6 @@ ip4_punt (vlib_main_t * vm,
 	  vlib_frame_t * frame)
 { return ip4_drop_or_punt (vm, node, frame, IP4_ERROR_ADJACENCY_PUNT); }
 
-static uword
-ip4_miss (vlib_main_t * vm,
-	  vlib_node_runtime_t * node,
-	  vlib_frame_t * frame)
-{ return ip4_drop_or_punt (vm, node, frame, IP4_ERROR_DST_LOOKUP_MISS); }
-
 VLIB_REGISTER_NODE (ip4_drop_node,static) = {
   .function = ip4_drop,
   .name = "ip4-drop",
@@ -1882,7 +1250,7 @@ VLIB_REGISTER_NODE (ip4_drop_node,static) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_drop_node, ip4_drop);
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_drop_node, ip4_drop)
 
 VLIB_REGISTER_NODE (ip4_punt_node,static) = {
   .function = ip4_punt,
@@ -1897,22 +1265,7 @@ VLIB_REGISTER_NODE (ip4_punt_node,static) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_punt_node, ip4_punt);
-
-VLIB_REGISTER_NODE (ip4_miss_node,static) = {
-  .function = ip4_miss,
-  .name = "ip4-miss",
-  .vector_size = sizeof (u32),
-
-  .format_trace = format_ip4_forward_next_trace,
-
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [0] = "error-drop",
-  },
-};
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_miss_node, ip4_miss);
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_punt_node, ip4_punt)
 
 /* Compute TCP/UDP/ICMP4 checksum in software. */
 u16
@@ -2009,26 +1362,27 @@ ip4_local (vlib_main_t * vm,
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
-	{
-	  vlib_buffer_t * p0, * p1;
-	  ip4_header_t * ip0, * ip1;
-	  udp_header_t * udp0, * udp1;
-	  ip4_fib_mtrie_t * mtrie0, * mtrie1;
-	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
-	  ip_adjacency_t * adj0, * adj1;
-	  u32 pi0, ip_len0, udp_len0, flags0, next0, fib_index0, adj_index0;
-	  u32 pi1, ip_len1, udp_len1, flags1, next1, fib_index1, adj_index1;
-	  i32 len_diff0, len_diff1;
-	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
-	  u8 error1, is_udp1, is_tcp_udp1, good_tcp_udp1, proto1;
-	  u8 enqueue_code;
+      	{
+      	  vlib_buffer_t * p0, * p1;
+      	  ip4_header_t * ip0, * ip1;
+      	  udp_header_t * udp0, * udp1;
+      	  ip4_fib_mtrie_t * mtrie0, * mtrie1;
+      	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
+ 	  const dpo_id_t *dpo0, *dpo1;
+      	  const load_balance_t *lb0, *lb1;
+      	  u32 pi0, ip_len0, udp_len0, flags0, next0, fib_index0, lbi0;
+      	  u32 pi1, ip_len1, udp_len1, flags1, next1, fib_index1, lbi1;
+      	  i32 len_diff0, len_diff1;
+      	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
+      	  u8 error1, is_udp1, is_tcp_udp1, good_tcp_udp1, proto1;
+      	  u8 enqueue_code;
       
-	  pi0 = to_next[0] = from[0];
-	  pi1 = to_next[1] = from[1];
-	  from += 2;
-	  n_left_from -= 2;
-	  to_next += 2;
-	  n_left_to_next -= 2;
+      	  pi0 = to_next[0] = from[0];
+      	  pi1 = to_next[1] = from[1];
+      	  from += 2;
+      	  n_left_from -= 2;
+      	  to_next += 2;
+      	  n_left_to_next -= 2;
       
 	  p0 = vlib_get_buffer (vm, pi0);
 	  p1 = vlib_get_buffer (vm, pi1);
@@ -2041,8 +1395,8 @@ ip4_local (vlib_main_t * vm,
 	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, 
                                 vnet_buffer(p1)->sw_if_index[VLIB_RX]);
 
-	  mtrie0 = &vec_elt_at_index (im->fibs, fib_index0)->mtrie;
-	  mtrie1 = &vec_elt_at_index (im->fibs, fib_index1)->mtrie;
+	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
+	  mtrie1 = &ip4_fib_get (fib_index1)->mtrie;
 
 	  leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
 
@@ -2130,41 +1484,42 @@ ip4_local (vlib_main_t * vm,
 
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
 	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 3);
+	  leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
+	  leaf1 = (leaf1 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie1->default_leaf : leaf1);
 
-	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] = adj_index0;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+          vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbi0;
 
-	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = adj_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
-          vnet_buffer (p1)->ip.adj_index[VLIB_TX] = adj_index1;
+	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = lbi1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+          vnet_buffer (p1)->ip.adj_index[VLIB_TX] = lbi1;
 
-	  ASSERT (adj_index0 == ip4_fib_lookup_with_table (im, fib_index0,
-							   &ip0->src_address,
-							   /* no_default_route */ 1));
-	  ASSERT (adj_index1 == ip4_fib_lookup_with_table (im, fib_index1,
-							   &ip1->src_address,
-							   /* no_default_route */ 1));
-
-	  adj0 = ip_get_adjacency (lm, adj_index0);
-	  adj1 = ip_get_adjacency (lm, adj_index1);
+	  lb0 = load_balance_get(lbi0);
+	  lb1 = load_balance_get(lbi1);
+	  dpo0 = load_balance_get_bucket_i(lb0, 0);
+	  dpo1 = load_balance_get_bucket_i(lb1, 0);
 
 	  /* 
            * Must have a route to source otherwise we drop the packet.
            * ip4 broadcasts are accepted, e.g. to make dhcp client work
            */
 	  error0 = (error0 == IP4_ERROR_UNKNOWN_PROTOCOL
-		    && adj0->lookup_next_index != IP_LOOKUP_NEXT_REWRITE
-		    && adj0->lookup_next_index != IP_LOOKUP_NEXT_ARP
-		    && adj0->lookup_next_index != IP_LOOKUP_NEXT_LOCAL
+		    && dpo0->dpoi_type != DPO_ADJACENCY
+		    && dpo0->dpoi_type != DPO_ADJACENCY_INCOMPLETE
 		    && ip0->dst_address.as_u32 != 0xFFFFFFFF
 		    ? IP4_ERROR_SRC_LOOKUP_MISS
 		    : error0);
+          error0 = (dpo0->dpoi_type == DPO_RECEIVE ?
+                    IP4_ERROR_SPOOFED_LOCAL_PACKETS : 
+                    error0);
 	  error1 = (error1 == IP4_ERROR_UNKNOWN_PROTOCOL
-		    && adj1->lookup_next_index != IP_LOOKUP_NEXT_REWRITE
-		    && adj1->lookup_next_index != IP_LOOKUP_NEXT_ARP
-		    && adj1->lookup_next_index != IP_LOOKUP_NEXT_LOCAL
-		    && ip0->dst_address.as_u32 != 0xFFFFFFFF
+		    && dpo1->dpoi_type != DPO_ADJACENCY
+		    && dpo1->dpoi_type != DPO_ADJACENCY_INCOMPLETE
+		    && ip1->dst_address.as_u32 != 0xFFFFFFFF
 		    ? IP4_ERROR_SRC_LOOKUP_MISS
 		    : error1);
+          error1 = (dpo0->dpoi_type == DPO_RECEIVE ?
+                    IP4_ERROR_SPOOFED_LOCAL_PACKETS : 
+                    error1);
 
 	  next0 = lm->local_next_by_ip_protocol[proto0];
 	  next1 = lm->local_next_by_ip_protocol[proto1];
@@ -2220,11 +1575,12 @@ ip4_local (vlib_main_t * vm,
 	  udp_header_t * udp0;
 	  ip4_fib_mtrie_t * mtrie0;
 	  ip4_fib_mtrie_leaf_t leaf0;
-	  ip_adjacency_t * adj0;
-	  u32 pi0, next0, ip_len0, udp_len0, flags0, fib_index0, adj_index0;
+	  u32 pi0, next0, ip_len0, udp_len0, flags0, fib_index0, lbi0;
 	  i32 len_diff0;
 	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
-      
+      	  load_balance_t *lb0;
+	  const dpo_id_t *dpo0;
+
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
 	  n_left_from -= 1;
@@ -2238,7 +1594,7 @@ ip4_local (vlib_main_t * vm,
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, 
                                 vnet_buffer(p0)->sw_if_index[VLIB_RX]);
 
-	  mtrie0 = &vec_elt_at_index (im->fibs, fib_index0)->mtrie;
+	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 
 	  leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
 
@@ -2296,24 +1652,30 @@ ip4_local (vlib_main_t * vm,
 		    : error0);
 
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
+	  leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
 
-	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] = adj_index0;
+	  lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+          vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbi0;
 
-	  ASSERT (adj_index0 == ip4_fib_lookup_with_table (im, fib_index0,
-							   &ip0->src_address,
-							   /* no_default_route */ 1));
+	  lb0 = load_balance_get(lbi0);
+	  dpo0 = load_balance_get_bucket_i(lb0, 0);
 
-	  adj0 = ip_get_adjacency (lm, adj_index0);
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+	      vnet_buffer (p0)->ip.adj_index[VLIB_RX] =
+	          dpo0->dpoi_index;
 
 	  /* Must have a route to source otherwise we drop the packet. */
 	  error0 = (error0 == IP4_ERROR_UNKNOWN_PROTOCOL
-		    && adj0->lookup_next_index != IP_LOOKUP_NEXT_REWRITE
-		    && adj0->lookup_next_index != IP_LOOKUP_NEXT_ARP
-		    && adj0->lookup_next_index != IP_LOOKUP_NEXT_LOCAL
+		    && dpo0->dpoi_type != DPO_ADJACENCY
+		    && dpo0->dpoi_type != DPO_ADJACENCY_INCOMPLETE
+		    && dpo0->dpoi_type != DPO_RECEIVE
 		    && ip0->dst_address.as_u32 != 0xFFFFFFFF
 		    ? IP4_ERROR_SRC_LOOKUP_MISS
 		    : error0);
+          /* Packet originated from a local address => spoofing */
+          error0 = (dpo0->dpoi_type == DPO_RECEIVE ?
+                    IP4_ERROR_SPOOFED_LOCAL_PACKETS : 
+                    error0);
 
 	  next0 = lm->local_next_by_ip_protocol[proto0];
 
@@ -2356,7 +1718,7 @@ VLIB_REGISTER_NODE (ip4_local_node,static) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_local_node, ip4_local);
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_local_node, ip4_local)
 
 void ip4_register_protocol (u32 protocol, u32 node_index)
 {
@@ -2394,10 +1756,11 @@ VLIB_CLI_COMMAND (show_ip_local, static) = {
   .short_help = "Show ip local protocol table",
 };
 
-static uword
-ip4_arp (vlib_main_t * vm,
-	 vlib_node_runtime_t * node,
-	 vlib_frame_t * frame)
+always_inline uword
+ip4_arp_inline (vlib_main_t * vm,
+		vlib_node_runtime_t * node,
+		vlib_frame_t * frame,
+		int is_glean)
 {
   vnet_main_t * vnm = vnet_get_main();
   ip4_main_t * im = &ip4_main;
@@ -2441,12 +1804,11 @@ ip4_arp (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next_drop > 0)
 	{
+	  u32 pi0, adj_index0, a0, b0, c0, m0, sw_if_index0, drop0;
+	  ip_adjacency_t * adj0;
 	  vlib_buffer_t * p0;
 	  ip4_header_t * ip0;
-	  ethernet_header_t * eh0;
-	  u32 pi0, adj_index0, a0, b0, c0, m0, sw_if_index0, drop0;
 	  uword bm0;
-	  ip_adjacency_t * adj0;
 
 	  pi0 = from[0];
 
@@ -2456,35 +1818,10 @@ ip4_arp (vlib_main_t * vm,
 	  adj0 = ip_get_adjacency (lm, adj_index0);
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  /* If packet destination is not local, send ARP to next hop */
-	  if (adj0->arp.next_hop.ip4.as_u32)
-	    ip0->dst_address.data_u32 = adj0->arp.next_hop.ip4.as_u32;
-
-	  /* 
-	   * if ip4_rewrite_local applied the IP_LOOKUP_NEXT_ARP
-	   * rewrite to this packet, we need to skip it here.
-	   * Note, to distinguish from src IP addr *.8.6.*, we
-	   * check for a bcast eth dest instead of IPv4 version.
-           */
-	  eh0 = (ethernet_header_t*)ip0;
-	  if ((ip0->ip_version_and_header_length & 0xF0) != 0x40)
-            {
-              u32 vlan_num = 0;
-              u16 * etype = &eh0->type;
-              while ((*etype == clib_host_to_net_u16 (0x8100)) //dot1q 
-                  || (*etype == clib_host_to_net_u16 (0x88a8)))//dot1ad 
-                {
-                  vlan_num += 1;
-                  etype += 2; //vlan tag also 16 bits, same as etype
-                }
-              if (*etype == clib_host_to_net_u16 (0x0806))     //arp
-                {
-                  vlib_buffer_advance (
-                      p0, sizeof(ethernet_header_t) + (4*vlan_num));
-                  ip0 = vlib_buffer_get_current (p0);
-                }
-            }
-
+	  /*
+	   * this is the Glean case, so we are ARPing for the
+	   * packet's destination 
+	   */
 	  a0 = hash_seeds[0];
 	  b0 = hash_seeds[1];
 	  c0 = hash_seeds[2];
@@ -2492,7 +1829,14 @@ ip4_arp (vlib_main_t * vm,
 	  sw_if_index0 = adj0->rewrite_header.sw_if_index;
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
 
-	  a0 ^= ip0->dst_address.data_u32;
+          if (is_glean)
+          {
+              a0 ^= ip0->dst_address.data_u32;
+          }
+          else
+          {
+              a0 ^= adj0->sub_type.nbr.next_hop.ip4.data_u32;
+          }
 	  b0 ^= sw_if_index0;
 
 	  hash_v3_finalize32 (a0, b0, c0);
@@ -2522,10 +1866,11 @@ ip4_arp (vlib_main_t * vm,
            * Can happen if the control-plane is programming tables
            * with traffic flowing; at least that's today's lame excuse.
            */
-          if (adj0->lookup_next_index != IP_LOOKUP_NEXT_ARP) 
-            {
-              p0->error = node->errors[IP4_ARP_ERROR_NON_ARP_ADJ];
-            }
+	  if ((is_glean && adj0->lookup_next_index != IP_LOOKUP_NEXT_GLEAN) ||
+	      (!is_glean && adj0->lookup_next_index != IP_LOOKUP_NEXT_ARP))
+	  {
+	    p0->error = node->errors[IP4_ARP_ERROR_NON_ARP_ADJ];
+	  }
           else
 	  /* Send ARP request. */
 	  {
@@ -2545,15 +1890,32 @@ ip4_arp (vlib_main_t * vm,
 	    clib_memcpy (h0->ip4_over_ethernet[0].ethernet, hw_if0->hw_address,
 		    sizeof (h0->ip4_over_ethernet[0].ethernet));
 
-	    if (ip4_src_address_for_packet (im, p0, &h0->ip4_over_ethernet[0].ip4, sw_if_index0)) {
-		//No source address available
-		p0->error = node->errors[IP4_ARP_ERROR_NO_SOURCE_ADDRESS];
-		vlib_buffer_free(vm, &bi0, 1);
-		continue;
-	    }
+	    if (is_glean)
+	    {
+		/* The interface's source address is stashed in the Glean Adj */
+		h0->ip4_over_ethernet[0].ip4 = adj0->sub_type.glean.receive_addr.ip4;
 
-	    /* Copy in destination address we are requesting. */
-	    h0->ip4_over_ethernet[1].ip4.data_u32 = ip0->dst_address.data_u32;
+		/* Copy in destination address we are requesting. This is the
+		* glean case, so it's the packet's destination.*/
+		h0->ip4_over_ethernet[1].ip4.data_u32 = ip0->dst_address.data_u32;
+	    }
+	    else
+	    {
+		/* Src IP address in ARP header. */
+		if (ip4_src_address_for_packet(lm, sw_if_index0,
+					       &h0->ip4_over_ethernet[0].ip4))
+		{
+		    /* No source address available */
+		    p0->error = node->errors[IP4_ARP_ERROR_NO_SOURCE_ADDRESS];
+		    vlib_buffer_free(vm, &bi0, 1);
+		    continue;
+		}
+
+		/* Copy in destination address we are requesting from the
+		   incomplete adj */
+		h0->ip4_over_ethernet[1].ip4.data_u32 =
+		    adj0->sub_type.nbr.next_hop.ip4.as_u32;
+	    }
 
 	    vlib_buffer_copy_trace_flag (vm, p0, bi0);
 	    b0 = vlib_get_buffer (vm, bi0);
@@ -2571,6 +1933,22 @@ ip4_arp (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static uword
+ip4_arp (vlib_main_t * vm,
+	 vlib_node_runtime_t * node,
+	 vlib_frame_t * frame)
+{
+    return (ip4_arp_inline(vm, node, frame, 0));
+}
+
+static uword
+ip4_glean (vlib_main_t * vm,
+	   vlib_node_runtime_t * node,
+	   vlib_frame_t * frame)
+{
+    return (ip4_arp_inline(vm, node, frame, 1));
+}
+
 static char * ip4_arp_error_strings[] = {
   [IP4_ARP_ERROR_DROP] = "address overflow drops",
   [IP4_ARP_ERROR_REQUEST_SENT] = "ARP requests sent",
@@ -2583,6 +1961,22 @@ static char * ip4_arp_error_strings[] = {
 VLIB_REGISTER_NODE (ip4_arp_node) = {
   .function = ip4_arp,
   .name = "ip4-arp",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_forward_next_trace,
+
+  .n_errors = ARRAY_LEN (ip4_arp_error_strings),
+  .error_strings = ip4_arp_error_strings,
+
+  .n_next_nodes = IP4_ARP_N_NEXT,
+  .next_nodes = {
+    [IP4_ARP_NEXT_DROP] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (ip4_glean_node) = {
+  .function = ip4_glean,
+  .name = "ip4-glean",
   .vector_size = sizeof (u32),
 
   .format_trace = format_ip4_forward_next_trace,
@@ -2720,7 +2114,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  u32 pi1, rw_len1, next1, error1, checksum1, adj_index1;
           u32 next0_override, next1_override;
           u32 tx_sw_if_index0, tx_sw_if_index1;
-      
+
           if (rewrite_for_locally_received_packets)
               next0_override = next1_override = 0;
 
@@ -2818,21 +2212,9 @@ ip4_rewrite_inline (vlib_main_t * vm,
       
           if (rewrite_for_locally_received_packets)
             {
-              /*
-               * If someone sends e.g. an icmp4 w/ src = dst = interface addr,
-               * we end up here with a local adjacency in hand
-               * The local adj rewrite data is 0xfefe on purpose.
-               * Bad engineer, no donut for you.
-               */
-              if (PREDICT_FALSE(adj0->lookup_next_index 
-                                == IP_LOOKUP_NEXT_LOCAL))
-                error0 = IP4_ERROR_SPOOFED_LOCAL_PACKETS;
               if (PREDICT_FALSE(adj0->lookup_next_index
                                 == IP_LOOKUP_NEXT_ARP))
                 next0_override = IP4_REWRITE_NEXT_ARP;
-              if (PREDICT_FALSE(adj1->lookup_next_index 
-                                == IP_LOOKUP_NEXT_LOCAL))
-                error1 = IP4_ERROR_SPOOFED_LOCAL_PACKETS;
               if (PREDICT_FALSE(adj1->lookup_next_index
                                 == IP_LOOKUP_NEXT_ARP))
                 next1_override = IP4_REWRITE_NEXT_ARP;
@@ -2869,14 +2251,14 @@ ip4_rewrite_inline (vlib_main_t * vm,
            */
           if (PREDICT_FALSE (rw_len0 > sizeof(ethernet_header_t)))
               vlib_increment_combined_counter 
-                  (&lm->adjacency_counters,
+                  (&adjacency_counters,
                    cpu_index, adj_index0, 
                    /* packet increment */ 0,
                    /* byte increment */ rw_len0-sizeof(ethernet_header_t));
 
           if (PREDICT_FALSE (rw_len1 > sizeof(ethernet_header_t)))
               vlib_increment_combined_counter 
-                  (&lm->adjacency_counters,
+                  (&adjacency_counters,
                    cpu_index, adj_index1, 
                    /* packet increment */ 0,
                    /* byte increment */ rw_len1-sizeof(ethernet_header_t));
@@ -2945,7 +2327,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  u32 pi0, rw_len0, adj_index0, next0, error0, checksum0;
           u32 next0_override;
           u32 tx_sw_if_index0;
-      
+
           if (rewrite_for_locally_received_packets)
               next0_override = 0;
 
@@ -3000,15 +2382,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
           if (rewrite_for_locally_received_packets)
             {
-              /*
-               * If someone sends e.g. an icmp4 w/ src = dst = interface addr,
-               * we end up here with a local adjacency in hand
-               * The local adj rewrite data is 0xfefe on purpose.
-               * Bad engineer, no donut for you.
-               */
-              if (PREDICT_FALSE(adj0->lookup_next_index 
-                                == IP_LOOKUP_NEXT_LOCAL))
-                error0 = IP4_ERROR_SPOOFED_LOCAL_PACKETS;
               /* 
                * We have to override the next_index in ARP adjacencies,
                * because they're set up for ip4-arp, not this node...
@@ -3028,7 +2401,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
           
           if (PREDICT_FALSE (rw_len0 > sizeof(ethernet_header_t)))
               vlib_increment_combined_counter 
-                  (&lm->adjacency_counters,
+                  (&adjacency_counters,
                    cpu_index, adj_index0, 
                    /* packet increment */ 0,
                    /* byte increment */ rw_len0-sizeof(ethernet_header_t));
@@ -3172,6 +2545,15 @@ ip4_rewrite_local (vlib_main_t * vm,
 			     /* rewrite_for_locally_received_packets */ 1);
 }
 
+static uword
+ip4_midchain (vlib_main_t * vm,
+	      vlib_node_runtime_t * node,
+	      vlib_frame_t * frame)
+{
+  return ip4_rewrite_inline (vm, node, frame,
+			     /* rewrite_for_locally_received_packets */ 0);
+}
+
 VLIB_REGISTER_NODE (ip4_rewrite_node) = {
   .function = ip4_rewrite_transit,
   .name = "ip4-rewrite-transit",
@@ -3187,7 +2569,23 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_node, ip4_rewrite_transit);
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_node, ip4_rewrite_transit)
+
+VLIB_REGISTER_NODE (ip4_midchain_node) = {
+  .function = ip4_midchain,
+  .name = "ip4-midchain",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_forward_next_trace,
+
+  .n_next_nodes = 2,
+  .next_nodes = {
+    [IP4_REWRITE_NEXT_DROP] = "error-drop",
+    [IP4_REWRITE_NEXT_ARP] = "ip4-arp",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_midchain_node, ip4_midchain)
 
 VLIB_REGISTER_NODE (ip4_rewrite_local_node) = {
   .function = ip4_rewrite_local,
@@ -3201,7 +2599,7 @@ VLIB_REGISTER_NODE (ip4_rewrite_local_node) = {
   .n_next_nodes = 0,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_local_node, ip4_rewrite_local);
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_local_node, ip4_rewrite_local)
 
 static clib_error_t *
 add_del_interface_table (vlib_main_t * vm,
@@ -3232,13 +2630,18 @@ add_del_interface_table (vlib_main_t * vm,
 
   {
     ip4_main_t * im = &ip4_main;
-    ip4_fib_t * fib = find_ip4_fib_by_table_index_or_id (im, table_id, IP4_ROUTE_FLAG_TABLE_ID);
+    u32 fib_index;
 
-    if (fib) 
-      {
-        vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-        im->fib_index_by_sw_if_index[sw_if_index] = fib->index;
-    }
+    fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+                                                   table_id);
+
+    //
+    // FIXME-LATER
+    //  changing an interface's table has consequences for any connecteds
+    //  and adj-fibs already installed.
+    //
+    vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
+    im->fib_index_by_sw_if_index[sw_if_index] = fib_index;
   }
 
  done:
@@ -3272,8 +2675,7 @@ ip4_lookup_multicast (vlib_main_t * vm,
 		      vlib_frame_t * frame)
 {
   ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  vlib_combined_counter_main_t * cm = &im->lookup_main.adjacency_counters;
+  vlib_combined_counter_main_t * cm = &load_balance_main.lbm_to_counters;
   u32 n_left_from, n_left_to_next, * from, * to_next;
   ip_lookup_next_t next;
   u32 cpu_index = os_get_cpu_number();
@@ -3290,12 +2692,12 @@ ip4_lookup_multicast (vlib_main_t * vm,
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
 	  vlib_buffer_t * p0, * p1;
-	  u32 pi0, pi1, adj_index0, adj_index1, wrong_next;
+	  u32 pi0, pi1, lb_index0, lb_index1, wrong_next;
 	  ip_lookup_next_t next0, next1;
 	  ip4_header_t * ip0, * ip1;
-	  ip_adjacency_t * adj0, * adj1;
           u32 fib_index0, fib_index1;
-          u32 flow_hash_config0, flow_hash_config1;
+	  const dpo_id_t *dpo0, *dpo1;
+      	  const load_balance_t * lb0, * lb1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -3327,46 +2729,44 @@ ip4_lookup_multicast (vlib_main_t * vm,
           fib_index1 = (vnet_buffer(p1)->sw_if_index[VLIB_TX] == (u32)~0) ?
             fib_index1 : vnet_buffer(p1)->sw_if_index[VLIB_TX];
 
-	  adj_index0 = ip4_fib_lookup_buffer (im, fib_index0, 
-                                              &ip0->dst_address, p0);
-	  adj_index1 = ip4_fib_lookup_buffer (im, fib_index1, 
-                                              &ip1->dst_address, p1);
+	  lb_index0 = ip4_fib_table_lookup_lb (ip4_fib_get(fib_index0),
+                                               &ip0->dst_address);
+	  lb_index1 = ip4_fib_table_lookup_lb (ip4_fib_get(fib_index1),
+                                               &ip1->dst_address);
 
-	  adj0 = ip_get_adjacency (lm, adj_index0);
-	  adj1 = ip_get_adjacency (lm, adj_index1);
+	  lb0 = load_balance_get (lb_index0);
+	  lb1 = load_balance_get (lb_index1);
 
-	  next0 = adj0->lookup_next_index;
-	  next1 = adj1->lookup_next_index;
-
-          flow_hash_config0 = 
-              vec_elt_at_index (im->fibs, fib_index0)->flow_hash_config;
-
-          flow_hash_config1 = 
-              vec_elt_at_index (im->fibs, fib_index1)->flow_hash_config;
+	  ASSERT (lb0->lb_n_buckets > 0);
+	  ASSERT (is_pow2 (lb0->lb_n_buckets));
+ 	  ASSERT (lb1->lb_n_buckets > 0);
+	  ASSERT (is_pow2 (lb1->lb_n_buckets));
 
 	  vnet_buffer (p0)->ip.flow_hash = ip4_compute_flow_hash 
-              (ip0, flow_hash_config0);
+              (ip0, lb0->lb_hash_config);
                                                                   
 	  vnet_buffer (p1)->ip.flow_hash = ip4_compute_flow_hash 
-              (ip1, flow_hash_config1);
+              (ip1, lb1->lb_hash_config);
 
-	  ASSERT (adj0->n_adj > 0);
-	  ASSERT (adj1->n_adj > 0);
-	  ASSERT (is_pow2 (adj0->n_adj));
-	  ASSERT (is_pow2 (adj1->n_adj));
-	  adj_index0 += (vnet_buffer (p0)->ip.flow_hash & (adj0->n_adj - 1));
-	  adj_index1 += (vnet_buffer (p1)->ip.flow_hash & (adj1->n_adj - 1));
+	  dpo0 = load_balance_get_bucket_i(lb0,
+                                           (vnet_buffer (p0)->ip.flow_hash &
+                                            (lb0->lb_n_buckets_minus_1)));
+	  dpo1 = load_balance_get_bucket_i(lb1,
+                                           (vnet_buffer (p1)->ip.flow_hash &
+                                            (lb0->lb_n_buckets_minus_1)));
 
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = adj_index0;
-	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = adj_index1;
+	  next0 = dpo0->dpoi_next_node;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	  next1 = dpo1->dpoi_next_node;
+	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
           if (1) /* $$$$$$ HACK FIXME */
 	  vlib_increment_combined_counter 
-              (cm, cpu_index, adj_index0, 1,
+              (cm, cpu_index, lb_index0, 1,
                vlib_buffer_length_in_chain (vm, p0));
           if (1) /* $$$$$$ HACK FIXME */
 	  vlib_increment_combined_counter 
-              (cm, cpu_index, adj_index1, 1,
+              (cm, cpu_index, lb_index1, 1,
                vlib_buffer_length_in_chain (vm, p1));
 
 	  from += 2;
@@ -3415,11 +2815,11 @@ ip4_lookup_multicast (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0;
 	  ip4_header_t * ip0;
-	  u32 pi0, adj_index0;
+	  u32 pi0, lb_index0;
 	  ip_lookup_next_t next0;
-	  ip_adjacency_t * adj0;
           u32 fib_index0;
-          u32 flow_hash_config0;
+	  const dpo_id_t *dpo0;
+      	  const load_balance_t * lb0;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -3433,28 +2833,27 @@ ip4_lookup_multicast (vlib_main_t * vm,
           fib_index0 = (vnet_buffer(p0)->sw_if_index[VLIB_TX] == (u32)~0) ?
               fib_index0 : vnet_buffer(p0)->sw_if_index[VLIB_TX];
           
-	  adj_index0 = ip4_fib_lookup_buffer (im, fib_index0, 
-                                              &ip0->dst_address, p0);
+	  lb_index0 = ip4_fib_table_lookup_lb (ip4_fib_get(fib_index0),
+                                               &ip0->dst_address);
 
-	  adj0 = ip_get_adjacency (lm, adj_index0);
+	  lb0 = load_balance_get (lb_index0);
 
-	  next0 = adj0->lookup_next_index;
+	  ASSERT (lb0->lb_n_buckets > 0);
+	  ASSERT (is_pow2 (lb0->lb_n_buckets));
 
-          flow_hash_config0 = 
-              vec_elt_at_index (im->fibs, fib_index0)->flow_hash_config;
+	  vnet_buffer (p0)->ip.flow_hash = ip4_compute_flow_hash 
+              (ip0, lb0->lb_hash_config);
 
-	  vnet_buffer (p0)->ip.flow_hash = 
-            ip4_compute_flow_hash (ip0, flow_hash_config0);
+	  dpo0 = load_balance_get_bucket_i(lb0,
+                                           (vnet_buffer (p0)->ip.flow_hash &
+                                            (lb0->lb_n_buckets_minus_1)));
 
-	  ASSERT (adj0->n_adj > 0);
-	  ASSERT (is_pow2 (adj0->n_adj));
-	  adj_index0 += (vnet_buffer (p0)->ip.flow_hash & (adj0->n_adj - 1));
-
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = adj_index0;
+	  next0 = dpo0->dpoi_next_node;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
           if (1) /* $$$$$$ HACK FIXME */
               vlib_increment_combined_counter 
-                  (cm, cpu_index, adj_index0, 1,
+                  (cm, cpu_index, lb_index0, 1,
                    vlib_buffer_length_in_chain (vm, p0));
 
 	  from += 1;
@@ -3494,7 +2893,7 @@ VLIB_REGISTER_NODE (ip4_lookup_multicast_node,static) = {
   .n_next_nodes = 0,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_multicast_node, ip4_lookup_multicast);
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_multicast_node, ip4_lookup_multicast)
 
 VLIB_REGISTER_NODE (ip4_multicast_node,static) = {
   .function = ip4_drop,
@@ -3511,12 +2910,11 @@ VLIB_REGISTER_NODE (ip4_multicast_node,static) = {
 
 int ip4_lookup_validate (ip4_address_t *a, u32 fib_index0)
 {
-  ip4_main_t * im = &ip4_main;
   ip4_fib_mtrie_t * mtrie0;
   ip4_fib_mtrie_leaf_t leaf0;
-  u32 adj_index0;
+  u32 lbi0;
     
-  mtrie0 = &vec_elt_at_index (im->fibs, fib_index0)->mtrie;
+  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 
   leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
   leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, a, 0);
@@ -3527,11 +2925,9 @@ int ip4_lookup_validate (ip4_address_t *a, u32 fib_index0)
   /* Handle default route. */
   leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
   
-  adj_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+  lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
   
-  return adj_index0 == ip4_fib_lookup_with_table (im, fib_index0,
-                                                  a, 
-                                                  /* no_default_route */ 0);
+  return lbi0 == ip4_fib_table_lookup_lb (ip4_fib_get(fib_index0), a);
 }
  
 static clib_error_t *
@@ -3595,7 +2991,7 @@ int vnet_set_ip4_flow_hash (u32 table_id, u32 flow_hash_config)
   if (p == 0)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  fib = vec_elt_at_index (im4->fibs, p[0]);
+  fib = ip4_fib_get (p[0]);
 
   fib->flow_hash_config = flow_hash_config;
   return 0;
@@ -3719,44 +3115,3 @@ VLIB_CLI_COMMAND (set_ip_classify_command, static) = {
     .function = set_ip_classify_command_fn,
 };
 
-
-#define TEST_CODE 1
-#if TEST_CODE > 0
-
-static clib_error_t *
-set_interface_output_feature_command_fn (vlib_main_t * vm,
-                                         unformat_input_t * input,
-                                         vlib_cli_command_t * cmd)
-{
-  vnet_main_t * vnm = vnet_get_main();
-  u32 sw_if_index = ~0;
-  int is_add = 1;
-  ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) 
-    {
-      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
-        ;
-      else if (unformat (input, "del"))
-        is_add = 0;
-      else
-        break;
-    }
-
-  if (sw_if_index == ~0)
-    return clib_error_return (0, "unknown interface `%U'",
-                              format_unformat_error, input);
-
-  lm->tx_sw_if_has_ip_output_features =
-    clib_bitmap_set (lm->tx_sw_if_has_ip_output_features, sw_if_index, is_add);
-
-  return 0;
-}
-
-VLIB_CLI_COMMAND (set_interface_output_feature, static) = {
-  .path = "set interface output feature",
-  .function = set_interface_output_feature_command_fn,
-  .short_help = "set interface output feature <intfc>",
-};
-#endif /* TEST_CODE */

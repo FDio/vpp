@@ -199,9 +199,6 @@ typedef struct
   /** multicast address to policy mapping */
   uword *policy_index_by_multicast_address;
 
-  /** ip6-lookup next index for imposition FIB entries */
-  u32 ip6_lookup_sr_next_index;
-
   /** hmac key id by shared secret */
   uword *hmac_key_by_shared_secret;
 

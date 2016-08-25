@@ -515,11 +515,11 @@ VLIB_REGISTER_NODE (handoff_dispatch_node) = {
   .n_next_nodes = HANDOFF_DISPATCH_N_NEXT,
 
   .next_nodes = {
-    [HANDOFF_DISPATCH_NEXT_DROP] = "error-drop",
-    [HANDOFF_DISPATCH_NEXT_ETHERNET_INPUT] = "ethernet-input",
-    [HANDOFF_DISPATCH_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
-    [HANDOFF_DISPATCH_NEXT_IP6_INPUT] = "ip6-input",
-    [HANDOFF_DISPATCH_NEXT_MPLS_INPUT] = "mpls-gre-input",
+        [HANDOFF_DISPATCH_NEXT_DROP] = "error-drop",
+        [HANDOFF_DISPATCH_NEXT_ETHERNET_INPUT] = "ethernet-input",
+        [HANDOFF_DISPATCH_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
+        [HANDOFF_DISPATCH_NEXT_IP6_INPUT] = "ip6-input",
+        [HANDOFF_DISPATCH_NEXT_MPLS_INPUT] = "mpls-input",
   },
 };
 /* *INDENT-ON* */

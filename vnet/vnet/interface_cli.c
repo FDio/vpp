@@ -45,6 +45,8 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vppinfra/bitmap.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/ip6_fib.h>
 
 static int
 compare_interface_names (void *a1, void *a2)
@@ -290,8 +292,8 @@ show_sw_interfaces (vlib_main_t * vm,
 	  fib_index6 = vec_elt (im6->fib_index_by_sw_if_index,
 				si->sw_if_index);
 
-	fib4 = vec_elt_at_index (im4->fibs, fib_index4);
-	fib6 = vec_elt_at_index (im6->fibs, fib_index6);
+	fib4 = ip4_fib_get (fib_index4);
+	fib6 = ip6_fib_get (fib_index6);
 
 	if (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
 	  vlib_cli_output

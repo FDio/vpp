@@ -42,10 +42,10 @@ typedef CLIB_PACKED(struct ip_address
 #define ip_addr_v6(_a) (_a)->ip.v6
 #define ip_addr_version(_a) (_a)->version
 
-int ip_address_cmp (ip_address_t * ip1, ip_address_t * ip2);
-void ip_address_copy (ip_address_t * dst, ip_address_t * src);
-void ip_address_copy_addr (void *dst, ip_address_t * src);
-void ip_address_set (ip_address_t * dst, void *src, u8 version);
+int ip_address_cmp (const ip_address_t * ip1, const ip_address_t * ip2);
+void ip_address_copy (ip_address_t * dst, const ip_address_t * src);
+void ip_address_copy_addr (void *dst, const ip_address_t * src);
+void ip_address_set (ip_address_t * dst, const void *src, u8 version);
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct ip_prefix
@@ -62,6 +62,11 @@ typedef CLIB_PACKED(struct ip_prefix
 #define ip_prefix_v6(_a) ip_addr_v6(&ip_prefix_addr(_a))
 
 void ip_prefix_normalize (ip_prefix_t * a);
+
+extern void ip_address_to_fib_prefix (const ip_address_t * addr,
+				      fib_prefix_t * prefix);
+extern void ip_prefix_to_fib_prefix (const ip_prefix_t * ipp,
+				     fib_prefix_t * fibp);
 
 typedef enum
 {
@@ -107,6 +112,7 @@ typedef fid_address_t dp_address_t;
 #define fid_addr_ippref(_a) (_a)->ippref
 #define fid_addr_mac(_a) (_a)->mac
 #define fid_addr_type(_a) (_a)->type
+u8 *format_fid_address (u8 * s, va_list * args);
 
 typedef struct
 {
@@ -293,6 +299,7 @@ typedef struct
 
 uword
 unformat_negative_mapping_action (unformat_input_t * input, va_list * args);
+u8 *format_negative_mapping_action (u8 *, va_list * args);
 
 typedef struct locator_pair
 {

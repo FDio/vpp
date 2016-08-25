@@ -18,6 +18,8 @@
 #include <vnet/lisp-cp/packets.h>
 #include <vnet/lisp-cp/lisp_msg_serdes.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
+#include <vnet/fib/fib_entry.h>
+#include <vnet/fib/fib_table.h>
 
 typedef struct
 {
@@ -74,37 +76,36 @@ ip_interface_get_first_ip_address (lisp_cp_main_t * lcm, u32 sw_if_index,
   return 1;
 }
 
-static u32
-ip_fib_lookup_with_table (lisp_cp_main_t * lcm, u32 fib_index,
-			  ip_address_t * dst)
+/**
+ * convert from a LISP address to a FIB prefix
+ */
+void
+ip_address_to_fib_prefix (const ip_address_t * addr, fib_prefix_t * prefix)
 {
-  if (ip_addr_version (dst) == IP4)
-    return ip4_fib_lookup_with_table (lcm->im4, fib_index, &ip_addr_v4 (dst),
-				      0);
+  if (addr->version == IP4)
+    {
+      prefix->fp_len = 32;
+      prefix->fp_proto = FIB_PROTOCOL_IP4;
+      memset (&prefix->fp_addr.pad, 0, sizeof (prefix->fp_addr.pad));
+      memcpy (&prefix->fp_addr.ip4, &addr->ip, sizeof (prefix->fp_addr.ip4));
+    }
   else
-    return ip6_fib_lookup_with_table (lcm->im6, fib_index, &ip_addr_v6 (dst));
+    {
+      prefix->fp_len = 128;
+      prefix->fp_proto = FIB_PROTOCOL_IP6;
+      memcpy (&prefix->fp_addr.ip6, &addr->ip, sizeof (prefix->fp_addr.ip6));
+    }
 }
 
-u32
-ip_fib_get_egress_iface_for_dst_with_lm (lisp_cp_main_t * lcm,
-					 ip_address_t * dst,
-					 ip_lookup_main_t * lm)
+/**
+ * convert from a LISP to a FIB prefix
+ */
+void
+ip_prefix_to_fib_prefix (const ip_prefix_t * ip_prefix,
+			 fib_prefix_t * fib_prefix)
 {
-  u32 adj_index;
-  ip_adjacency_t *adj;
-
-  adj_index = ip_fib_lookup_with_table (lcm, 0, dst);
-  adj = ip_get_adjacency (lm, adj_index);
-
-  if (adj == 0)
-    return ~0;
-
-  /* we only want outgoing routes */
-  if (adj->lookup_next_index != IP_LOOKUP_NEXT_ARP
-      && adj->lookup_next_index != IP_LOOKUP_NEXT_REWRITE)
-    return ~0;
-
-  return adj->rewrite_header.sw_if_index;
+  ip_address_to_fib_prefix (&ip_prefix->addr, fib_prefix);
+  fib_prefix->fp_len = ip_prefix->len;
 }
 
 /**
@@ -114,12 +115,14 @@ ip_fib_get_egress_iface_for_dst_with_lm (lisp_cp_main_t * lcm,
 u32
 ip_fib_get_egress_iface_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst)
 {
-  ip_lookup_main_t *lm;
+  fib_node_index_t fei;
+  fib_prefix_t prefix;
 
-  lm = ip_addr_version (dst) == IP4 ?
-    &lcm->im4->lookup_main : &lcm->im6->lookup_main;
+  ip_address_to_fib_prefix (dst, &prefix);
 
-  return ip_fib_get_egress_iface_for_dst_with_lm (lcm, dst, lm);
+  fei = fib_table_lookup (0, &prefix);
+
+  return (fib_entry_get_resolving_interface (fei));
 }
 
 /**
@@ -140,7 +143,7 @@ ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
   ipver = ip_addr_version (dst);
 
   lm = (ipver == IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
-  si = ip_fib_get_egress_iface_for_dst_with_lm (lcm, dst, lm);
+  si = ip_fib_get_egress_iface_for_dst (lcm, dst);
 
   if ((u32) ~ 0 == si)
     return 0;
@@ -2871,28 +2874,14 @@ lisp_get_vni_from_buffer_ip (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 			     u8 version)
 {
   uword *vnip;
-  u32 vni = ~0, table_id = ~0, fib_index;
+  u32 vni = ~0, table_id = ~0;
 
-  if (version == IP4)
-    {
-      ip4_fib_t *fib;
-      ip4_main_t *im4 = &ip4_main;
-      fib_index = vec_elt (im4->fib_index_by_sw_if_index,
-			   vnet_buffer (b)->sw_if_index[VLIB_RX]);
-      fib = find_ip4_fib_by_table_index_or_id (im4, fib_index,
-					       IP4_ROUTE_FLAG_FIB_INDEX);
-      table_id = fib->table_id;
-    }
-  else
-    {
-      ip6_fib_t *fib;
-      ip6_main_t *im6 = &ip6_main;
-      fib_index = vec_elt (im6->fib_index_by_sw_if_index,
-			   vnet_buffer (b)->sw_if_index[VLIB_RX]);
-      fib = find_ip6_fib_by_table_index_or_id (im6, fib_index,
-					       IP6_ROUTE_FLAG_FIB_INDEX);
-      table_id = fib->table_id;
-    }
+  table_id =
+    fib_table_get_table_id_for_sw_if_index (vnet_buffer (b)->sw_if_index
+					    [VLIB_RX],
+					    (version ==
+					     IP4 ? FIB_PROTOCOL_IP4 :
+					     FIB_PROTOCOL_IP6));
 
   vnip = hash_get (lcm->vni_by_table_id, table_id);
   if (vnip)
@@ -2979,8 +2968,9 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 }
 
 static uword
-lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
-		vlib_frame_t * from_frame)
+lisp_cp_lookup_inline (vlib_main_t * vm,
+		       vlib_node_runtime_t * node,
+		       vlib_frame_t * from_frame, int overlay)
 {
   u32 *from, *to_next_drop, di, si;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -3010,6 +3000,7 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, pi0);
 	  b0->error = node->errors[LISP_CP_LOOKUP_ERROR_DROP];
+	  vnet_buffer (b0)->lisp.overlay_afi = overlay;
 
 	  /* src/dst eid pair */
 	  get_src_and_dst_eids_from_buffer (lcm, b0, &src, &dst);
@@ -3070,10 +3061,45 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
+static uword
+lisp_cp_lookup_ip4 (vlib_main_t * vm,
+		    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+{
+  return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_IP));
+}
+
+static uword
+lisp_cp_lookup_ip6 (vlib_main_t * vm,
+		    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+{
+  return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_IP6));
+}
+
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (lisp_cp_lookup_node) = {
-  .function = lisp_cp_lookup,
-  .name = "lisp-cp-lookup",
+VLIB_REGISTER_NODE (lisp_cp_lookup_ip4_node) = {
+  .function = lisp_cp_lookup_ip4,
+  .name = "lisp-cp-lookup-ip4",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lisp_cp_lookup_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = LISP_CP_LOOKUP_N_ERROR,
+  .error_strings = lisp_cp_lookup_error_strings,
+
+  .n_next_nodes = LISP_CP_LOOKUP_N_NEXT,
+
+  .next_nodes = {
+      [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
+      [LISP_CP_LOOKUP_NEXT_IP4_LOOKUP] = "ip4-lookup",
+      [LISP_CP_LOOKUP_NEXT_IP6_LOOKUP] = "ip6-lookup",
+  },
+};
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (lisp_cp_lookup_ip6_node) = {
+  .function = lisp_cp_lookup_ip6,
+  .name = "lisp-cp-lookup-ip6",
   .vector_size = sizeof (u32),
   .format_trace = format_lisp_cp_lookup_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
