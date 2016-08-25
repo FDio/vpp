@@ -1,0 +1,326 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_c0e32b32",
+        "filename": "plugins/ioam-plugin/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "Please move this to the ioam trace section you have created below",
+      "range": {
+        "startLine": 46,
+        "startChar": 2,
+        "endLine": 49,
+        "endChar": 29
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_a0d02f54",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "is this used?",
+      "range": {
+        "startLine": 45,
+        "startChar": 3,
+        "endLine": 45,
+        "endChar": 15
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_80d53345",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "is this used?",
+      "range": {
+        "startLine": 52,
+        "startChar": 4,
+        "endLine": 52,
+        "endChar": 14
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_60ca17a3",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "given that we are planning to support only one trace profile is it worth maintain the stats? For add and pop we already maintain for many packets we inserted/removed the ioam header, that is probably sufficient?",
+      "range": {
+        "startLine": 53,
+        "startChar": 8,
+        "endLine": 53,
+        "endChar": 37
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_40cf1bb1",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "not used, residue from pot",
+      "range": {
+        "startLine": 94,
+        "startChar": 0,
+        "endLine": 97,
+        "endChar": 64
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_20c41f91",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "is this needed?",
+      "range": {
+        "startLine": 101,
+        "startChar": 1,
+        "endLine": 101,
+        "endChar": 51
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_00c12380",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "we can perhaps remove this.. given we support and have only one profile and are already keeping stats of how many packets trace was added/removed",
+      "range": {
+        "startLine": 104,
+        "startChar": 0,
+        "endLine": 116,
+        "endChar": 1
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_c051ebd9",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 739,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "cant we use hm-\u003eoptions_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST]?",
+      "range": {
+        "startLine": 739,
+        "startChar": 30,
+        "endLine": 739,
+        "endChar": 48
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_0048032c",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 741,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "Please consider splitting and returning the sizeof trace option alone.\nand then do something like below:\nsize +\u003d sizeof (ip6_hop_by_hop_option_t);\nsize +\u003d hm-\u003eoptions_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT];\n    \nThis way we can reuse the option library b/n ip6, vxlan encap.",
+      "range": {
+        "startLine": 741,
+        "startChar": 19,
+        "endLine": 741,
+        "endChar": 37
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_e054e7cb",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 764,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "cant we use hm-\u003eoptions_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST]?",
+      "range": {
+        "startLine": 764,
+        "startChar": 21,
+        "endLine": 764,
+        "endChar": 36
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_e0bd0704",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 808,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "this is to enable iOAM trace, pot, ppc options. How about it is renamed to ip6_ioam_enable?",
+      "range": {
+        "startLine": 808,
+        "startChar": 0,
+        "endLine": 808,
+        "endChar": 26
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_6041f70a",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 3879,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "now that this is a common api to enable ioam - trace, pot, ppc, should it be renamed to - ioam_enable?",
+      "range": {
+        "startLine": 3879,
+        "startChar": 7,
+        "endLine": 3879,
+        "endChar": 29
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_4046fb24",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 3908,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "we can remove this as we apply the profile on a classifer an no longer on a destination prefix",
+      "range": {
+        "startLine": 3908,
+        "startChar": 7,
+        "endLine": 3908,
+        "endChar": 31
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_204bff2c",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 3935,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-08-25T04:41:13Z",
+      "side": 1,
+      "message": "ioam disable?",
+      "range": {
+        "startLine": 3935,
+        "startChar": 7,
+        "endLine": 3935,
+        "endChar": 29
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
