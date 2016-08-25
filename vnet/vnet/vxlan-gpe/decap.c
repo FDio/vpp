@@ -14,6 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ *  @file
+ *  @brief Functions for decapsulating VXLAN GPE tunnels
+ *
+*/
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
@@ -21,12 +26,25 @@
 
 vlib_node_registration_t vxlan_gpe_input_node;
 
+/**
+ * @brief Struct for VXLAN GPE decap packet tracing
+ *
+ */
 typedef struct {
   u32 next_index;
   u32 tunnel_index;
   u32 error;
 } vxlan_gpe_rx_trace_t;
 
+/**
+ * @brief Tracing function for VXLAN GPE packet decapsulation
+ *
+ * @param *s
+ * @param *args
+ *
+ * @return *s
+ *
+ */
 static u8 * format_vxlan_gpe_rx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -46,7 +64,15 @@ static u8 * format_vxlan_gpe_rx_trace (u8 * s, va_list * args)
   return s;
 }
 
-
+/**
+ * @brief Tracing function for VXLAN GPE packet decapsulation including length
+ *
+ * @param *s
+ * @param *args
+ *
+ * @return *s
+ *
+ */
 static u8 * format_vxlan_gpe_with_length (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -56,6 +82,25 @@ static u8 * format_vxlan_gpe_with_length (u8 * s, va_list * args)
   return s;
 }
 
+/**
+ * @brief Common processing for IPv4 and IPv6 VXLAN GPE decap dispatch functions
+ *
+ * It is worth noting that other than trivial UDP forwarding (transit), VXLAN GPE
+ * tunnels are "terminate local". This means that there is no "TX" interface for this
+ * decap case, so that field in the buffer_metadata can be "used for something else".
+ * The something else in this case is, for the IPv4/IPv6 inner-packet type case, the
+ * FIB index used to look up the inner-packet's adjacency.
+ *
+ *      vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
+ *
+ * @param *vm
+ * @param *node
+ * @param *from_frame
+ * @param ip_ip4
+ *
+ * @return from_frame->n_vectors
+ *
+ */
 always_inline uword
 vxlan_gpe_input (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
@@ -250,7 +295,7 @@ vxlan_gpe_input (vlib_main_t * vm,
       /* Required to make the l2 tag push / pop code work on l2 subifs */
       vnet_update_l2_len (b0);
 
-      /*
+      /**
        * ip[46] lookup in the configured FIB
        */
       vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
@@ -545,6 +590,17 @@ vxlan_gpe_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
+/**
+ * @brief Graph processing dispatch function for IPv4 VXLAN GPE
+ *
+ * @node vxlan4-gpe-input
+ * @param *vm
+ * @param *node
+ * @param *from_frame
+ *
+ * @return from_frame->n_vectors
+ *
+ */
 static uword
 vxlan4_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * from_frame)
@@ -552,6 +608,17 @@ vxlan4_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   return vxlan_gpe_input (vm, node, from_frame, /* is_ip4 */1);
 }
 
+/**
+ * @brief Graph processing dispatch function for IPv6 VXLAN GPE
+ *
+ * @node vxlan6-gpe-input
+ * @param *vm
+ * @param *node
+ * @param *from_frame
+ *
+ * @return from_frame->n_vectors - uword
+ *
+ */
 static uword
 vxlan6_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * from_frame)
@@ -559,6 +626,9 @@ vxlan6_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   return vxlan_gpe_input (vm, node, from_frame, /* is_ip4 */0);
 }
 
+/**
+ * @brief VXLAN GPE error strings
+ */
 static char * vxlan_gpe_error_strings[] = {
 #define vxlan_gpe_error(n,s) s,
 #include <vnet/vxlan-gpe/vxlan_gpe_error.def>
@@ -587,7 +657,7 @@ VLIB_REGISTER_NODE (vxlan4_gpe_input_node) = {
   // $$$$ .unformat_buffer = unformat_vxlan_gpe_header,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan4_gpe_input_node, vxlan4_gpe_input)
+VLIB_NODE_FUNCTION_MULTIARCH (vxlan4_gpe_input_node, vxlan4_gpe_input);
 
 VLIB_REGISTER_NODE (vxlan6_gpe_input_node) = {
   .function = vxlan6_gpe_input,
@@ -610,4 +680,4 @@ VLIB_REGISTER_NODE (vxlan6_gpe_input_node) = {
   // $$$$ .unformat_buffer = unformat_vxlan_gpe_header,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_gpe_input_node, vxlan6_gpe_input)
+VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_gpe_input_node, vxlan6_gpe_input);

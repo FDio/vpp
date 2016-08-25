@@ -12,6 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ *  @file
+ *  @brief Functions for encapsulating VXLAN GPE tunnels
+ *
+*/
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 #include <vnet/vnet.h>
@@ -19,16 +24,22 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 
-/* Statistics (not really errors) */
+/** Statistics (not really errors) */
 #define foreach_vxlan_gpe_encap_error    \
 _(ENCAPSULATED, "good packets encapsulated")
 
+/**
+ * @brief VXLAN GPE encap error strings
+ */
 static char * vxlan_gpe_encap_error_strings[] = {
 #define _(sym,string) string,
   foreach_vxlan_gpe_encap_error
 #undef _
 };
 
+/**
+ * @brief Struct for VXLAN GPE errors/counters
+ */
 typedef enum {
 #define _(sym,str) VXLAN_GPE_ENCAP_ERROR_##sym,
     foreach_vxlan_gpe_encap_error
@@ -36,6 +47,9 @@ typedef enum {
     VXLAN_GPE_ENCAP_N_ERROR,
 } vxlan_gpe_encap_error_t;
 
+/**
+ * @brief Struct for defining VXLAN GPE next nodes
+ */
 typedef enum {
   VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
   VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP,
@@ -43,22 +57,43 @@ typedef enum {
   VXLAN_GPE_ENCAP_N_NEXT
 } vxlan_gpe_encap_next_t;
 
+/**
+ * @brief Struct for tracing VXLAN GPE encapsulated packets
+ */
 typedef struct {
   u32 tunnel_index;
 } vxlan_gpe_encap_trace_t;
 
-
+/**
+ * @brief Trace of packets encapsulated in VXLAN GPE
+ *
+ * @param *s
+ * @param *args
+ *
+ * @return *s
+ *
+ */
 u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  vxlan_gpe_encap_trace_t * t 
+  vxlan_gpe_encap_trace_t * t
       = va_arg (*args, vxlan_gpe_encap_trace_t *);
 
   s = format (s, "VXLAN-GPE-ENCAP: tunnel %d", t->tunnel_index);
   return s;
 }
 
+/**
+ * @brief Instantiates UDP + VXLAN-GPE header then set next node to IP4|6 lookup
+ *
+ * @param *ngm
+ * @param *b0
+ * @param *t0 contains rewrite header
+ * @param *next0 relative index of next dispatch function (next node)
+ * @param is_v4 Is this IPv4? (or IPv6)
+ *
+ */
 always_inline void
 vxlan_gpe_encap_one_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
                             vxlan_gpe_tunnel_t * t0, u32 * next0, u8 is_v4)
@@ -79,6 +114,19 @@ vxlan_gpe_encap_one_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
     }
 }
 
+/**
+ * @brief Instantiates UDP + VXLAN-GPE header then set next node to IP4|6 lookup for two packets
+ *
+ * @param *ngm
+ * @param *b0 Packet0
+ * @param *b1 Packet1
+ * @param *t0 contains rewrite header for Packet0
+ * @param *t1 contains rewrite header for Packet1
+ * @param *next0 relative index of next dispatch function (next node) for Packet0
+ * @param *next1 relative index of next dispatch function (next node) for Packet1
+ * @param is_v4 Is this IPv4? (or IPv6)
+ *
+ */
 always_inline void
 vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0, vlib_buffer_t * b1,
                             vxlan_gpe_tunnel_t * t0, vxlan_gpe_tunnel_t * t1, u32 * next0,
@@ -101,6 +149,24 @@ vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0, vlib_buf
     }
 }
 
+/**
+ * @brief Common processing for IPv4 and IPv6 VXLAN GPE encap dispatch functions
+ *
+ * It is worth noting that other than trivial UDP forwarding (transit), VXLAN GPE
+ * tunnels are "establish local". This means that we don't have a TX interface as yet
+ * as we need to look up where the outer-header dest is. By setting the TX index in the
+ * buffer metadata to the encap FIB, we can do a lookup to get the adjacency and real TX.
+ *
+ *      vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
+ *
+ * @node vxlan-gpe-input
+ * @param *vm
+ * @param *node
+ * @param *from_frame
+ *
+ * @return from_frame->n_vectors
+ *
+ */
 static uword
 vxlan_gpe_encap (vlib_main_t * vm,
                vlib_node_runtime_t * node,

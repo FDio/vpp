@@ -12,11 +12,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ *  @file
+ *  @brief Common utility functions for IPv4 and IPv6 VXLAN GPE tunnels
+ *
+*/
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/ip/format.h>
 
 vxlan_gpe_main_t vxlan_gpe_main;
 
+/**
+ * @brief Tracing function for VXLAN GPE tunnel packets
+ *
+ * @param *s formatting string
+ * @param *args
+ *
+ * @return *s formatted string
+ *
+ */
 u8 * format_vxlan_gpe_tunnel (u8 * s, va_list * args)
 {
   vxlan_gpe_tunnel_t * t = va_arg (*args, vxlan_gpe_tunnel_t *);
@@ -54,12 +68,20 @@ u8 * format_vxlan_gpe_tunnel (u8 * s, va_list * args)
   return s;
 }
 
+/**
+ * @brief Naming for VXLAN GPE tunnel
+ *
+ * @param *s formatting string
+ * @param *args
+ *
+ * @return *s formatted string
+ *
+ */
 static u8 * format_vxlan_gpe_name (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
   return format (s, "vxlan_gpe_tunnel%d", dev_instance);
 }
-
 
 static uword dummy_interface_tx (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
@@ -68,6 +90,17 @@ static uword dummy_interface_tx (vlib_main_t * vm,
   clib_warning ("you shouldn't be here, leaking buffers...");
   return frame->n_vectors;
 }
+
+/**
+ * @brief CLI function for VXLAN GPE admin up/down
+ *
+ * @param *vnm
+ * @param hw_if_index
+ * @param flag
+ *
+ * @return *rc
+ *
+ */
 static clib_error_t *
 vxlan_gpe_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
@@ -98,6 +131,15 @@ static uword dummy_set_rewrite (vnet_main_t * vnm,
 }
 
 
+/**
+ * @brief Formatting function for tracing VXLAN GPE with length
+ *
+ * @param *s
+ * @param *args
+ *
+ * @return *s
+ *
+ */
 static u8 * format_vxlan_gpe_header_with_length (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
@@ -131,6 +173,14 @@ _(decap_fib_index)
 }
 
 
+/**
+ * @brief Calculate IPv4 VXLAN GPE rewrite header
+ *
+ * @param *t
+ *
+ * @return rc
+ *
+ */
 static int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t)
 {
   u8 *rw = 0;
@@ -169,6 +219,14 @@ static int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t)
   return (0);
 }
 
+/**
+ * @brief Calculate IPv6 VXLAN GPE rewrite header
+ *
+ * @param *t
+ *
+ * @return rc
+ *
+ */
 static int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t)
 {
   u8 *rw = 0;
@@ -207,6 +265,15 @@ static int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t)
   return (0);
 }
 
+/**
+ * @brief Add or Del a VXLAN GPE tunnel
+ *
+ * @param *a
+ * @param *sw_if_index
+ *
+ * @return rc
+ *
+ */
 int vnet_vxlan_gpe_add_del_tunnel
 (vnet_vxlan_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp)
 {
@@ -352,6 +419,14 @@ int vnet_vxlan_gpe_add_del_tunnel
   return 0;
 }
 
+/**
+ * @brief Find the IPv4 FIB index from the FIB ID
+ *
+ * @param fib_id
+ *
+ * @return fib_index
+ *
+ */
 static u32 fib4_index_from_fib_id (u32 fib_id)
 {
   ip4_main_t * im = &ip4_main;
@@ -364,6 +439,14 @@ static u32 fib4_index_from_fib_id (u32 fib_id)
   return p[0];
 }
 
+/**
+ * @brief Find the IPv4 FIB index from the FIB ID
+ *
+ * @param fib_id
+ *
+ * @return fib_index
+ *
+ */
 static u32 fib6_index_from_fib_id (u32 fib_id)
 {
   ip6_main_t * im = &ip6_main;
@@ -376,6 +459,16 @@ static u32 fib6_index_from_fib_id (u32 fib_id)
   return p[0];
 }
 
+/**
+ * @brief CLI function for Add/Del of IPv4/IPv6 VXLAN GPE tunnel
+ *
+ * @param *vm
+ * @param *input
+ * @param *cmd
+ *
+ * @return error
+ *
+ */
 static clib_error_t *
 vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
                                    unformat_input_t * input,
@@ -528,6 +621,16 @@ VLIB_CLI_COMMAND (create_vxlan_gpe_tunnel_command, static) = {
   .function = vxlan_gpe_add_del_tunnel_command_fn,
 };
 
+/**
+ * @brief CLI function for showing VXLAN GPE tunnels
+ *
+ * @param *vm
+ * @param *input
+ * @param *cmd
+ *
+ * @return error
+ *
+ */
 static clib_error_t *
 show_vxlan_gpe_tunnel_command_fn (vlib_main_t * vm,
                                 unformat_input_t * input,
@@ -552,6 +655,14 @@ VLIB_CLI_COMMAND (show_vxlan_gpe_tunnel_command, static) = {
     .function = show_vxlan_gpe_tunnel_command_fn,
 };
 
+/**
+ * @brief Feature init function for VXLAN GPE
+ *
+ * @param *vm
+ *
+ * @return error
+ *
+ */
 clib_error_t *vxlan_gpe_init (vlib_main_t *vm)
 {
   vxlan_gpe_main_t *gm = &vxlan_gpe_main;
