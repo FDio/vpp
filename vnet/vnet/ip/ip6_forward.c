@@ -2520,6 +2520,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
               tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
               vnet_buffer (p0)->sw_if_index[VLIB_TX] =
                   tx_sw_if_index0;
+              next0 = adj0[0].rewrite_header.next_index;
 
               if (PREDICT_FALSE 
                   (clib_bitmap_get (lm->tx_sw_if_has_ip_output_features, 
@@ -2542,6 +2543,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
               tx_sw_if_index1 = adj1[0].rewrite_header.sw_if_index;
               vnet_buffer (p1)->sw_if_index[VLIB_TX] =
                   tx_sw_if_index1;
+              next1 = adj1[0].rewrite_header.next_index;
 
               if (PREDICT_FALSE 
                   (clib_bitmap_get (lm->tx_sw_if_has_ip_output_features, 
