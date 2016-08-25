@@ -14,18 +14,11 @@
  */
 #include <vlib/vlib.h>
 #include <vnet/dhcp/proxy.h>
+#include <vnet/fib/fib_table.h>
 
 dhcp_client_main_t dhcp_client_main;
 static u8 * format_dhcp_client_state (u8 * s, va_list * va);
 static vlib_node_registration_t dhcp_client_process_node;
-
-void __attribute__((weak))
-api_config_default_ip_route (u8 is_ipv6, u8 is_add, u32 vrf_id,
-                             u32 sw_if_index, u8 *next_hop_addr)
-{
-  /* dummy function */
-  return;
-}
 
 static void 
 dhcp_client_acquire_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
@@ -214,14 +207,34 @@ int dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 
           /*
            * Configure default IP route:
-           *  - vrf_id is 0 by default.
            */
           if (c->router_address.as_u32)
-             api_config_default_ip_route (0 /* is_ipv6 */,
-                                           1 /* is_add */,
-                                           0 /* vrf_id */,
-                                           c->sw_if_index,
-                                           (u8 *)&c->router_address);
+	    {
+	      fib_prefix_t all_0s =
+	      {
+		  .fp_len = 0,
+		  .fp_addr.ip4.as_u32 = 0x0,
+		  .fp_proto = FIB_PROTOCOL_IP4,
+	      };
+	      ip46_address_t nh =
+	      {
+		  .ip4 = c->router_address,
+	      };
+
+	      fib_table_entry_path_add (fib_table_get_index_for_sw_if_index(
+					   FIB_PROTOCOL_IP4,
+					   c->sw_if_index),
+					&all_0s,
+					FIB_SOURCE_DHCP,
+					FIB_ENTRY_FLAG_NONE,
+					FIB_PROTOCOL_IP4,
+					&nh,
+					c->sw_if_index,
+					~0,
+					1,
+					MPLS_LABEL_INVALID,
+					FIB_ROUTE_PATH_FLAG_NONE);
+	    }
 
           /*
            * Call the user's event callback to report DHCP information
@@ -496,11 +509,29 @@ dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
   if (now > c->lease_expires)
     {
       if (c->router_address.as_u32)
-        api_config_default_ip_route (0 /* is_ipv6 */,
-                                     0 /* is_add */,
-                                     0 /* vrf_id */,
-                                     c->sw_if_index,
-                                     (u8 *)&c->router_address);
+        {
+	  fib_prefix_t all_0s =
+	  {
+	      .fp_len = 0,
+	      .fp_addr.ip4.as_u32 = 0x0,
+	      .fp_proto = FIB_PROTOCOL_IP4,
+	  };
+	  ip46_address_t nh = {
+	      .ip4 = c->router_address,
+	  };
+
+	  fib_table_entry_path_remove(fib_table_get_index_for_sw_if_index(
+					  FIB_PROTOCOL_IP4,
+					  c->sw_if_index),
+				      &all_0s,
+				      FIB_SOURCE_DHCP,
+				      FIB_PROTOCOL_IP4,
+				      &nh,
+				      c->sw_if_index,
+				      ~0,
+				      1,
+				      FIB_ROUTE_PATH_FLAG_NONE);
+	}
 
       dhcp_client_release_address (dcm, c);
       c->state = DHCP_DISCOVER;
@@ -689,7 +720,7 @@ show_dhcp_client_command_fn (vlib_main_t * vm,
       p = hash_get (dcm->client_by_sw_if_index, sw_if_index);
       if (p == 0)
         return clib_error_return (0, "dhcp client not configured");
-      c = pool_elt_at_index (dcm->clients, sw_if_index);
+      c = pool_elt_at_index (dcm->clients, p[0]);
       vlib_cli_output (vm, "%U", format_dhcp_client, dcm, c, verbose);
       return 0;
     }
@@ -715,6 +746,18 @@ int dhcp_client_add_del (dhcp_client_add_del_args_t * a)
   vlib_main_t * vm = dcm->vlib_main;
   dhcp_client_t * c;
   uword * p;
+  fib_prefix_t all_1s =
+  {
+      .fp_len = 32,
+      .fp_addr.ip4.as_u32 = 0xffffffff,
+      .fp_proto = FIB_PROTOCOL_IP4,
+  };
+  fib_prefix_t all_0s =
+  {
+      .fp_len = 0,
+      .fp_addr.ip4.as_u32 = 0x0,
+      .fp_proto = FIB_PROTOCOL_IP4,
+  };
 
   p = hash_get (dcm->client_by_sw_if_index, a->sw_if_index);
 
@@ -738,6 +781,22 @@ int dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       } while (c->transaction_id == 0);
       set_l2_rewrite (dcm, c);
       hash_set (dcm->client_by_sw_if_index, a->sw_if_index, c - dcm->clients);
+
+      /* this add is ref counted by FIB so we can add for each itf */
+      fib_table_entry_special_add(fib_table_get_index_for_sw_if_index(
+				      FIB_PROTOCOL_IP4,
+				      c->sw_if_index),
+				  &all_1s,
+				  FIB_SOURCE_DHCP,
+				  FIB_ENTRY_FLAG_LOCAL,
+				  ADJ_INDEX_INVALID);
+
+     /*
+       * enable the interface to RX IPv4 packets
+       * this is also ref counted
+       */
+      ip4_sw_interface_enable_disable (c->sw_if_index, 1);
+
       vlib_process_signal_event (vm, dhcp_client_process_node.index, 
                                  EVENT_DHCP_CLIENT_WAKEUP, c - dcm->clients);
     }
@@ -745,12 +804,32 @@ int dhcp_client_add_del (dhcp_client_add_del_args_t * a)
     {
       c = pool_elt_at_index (dcm->clients, p[0]);
 
+      fib_table_entry_special_remove(fib_table_get_index_for_sw_if_index(
+					 FIB_PROTOCOL_IP4,
+					 c->sw_if_index),
+				     &all_1s,
+				     FIB_SOURCE_DHCP);
+
       if (c->router_address.as_u32)
-        api_config_default_ip_route (0 /* is_ipv6 */,
-                                     0 /* is_add */,
-                                     0 /* vrf_id */,
-                                     c->sw_if_index,
-                                     (u8 *)&c->router_address);
+      {
+	  ip46_address_t nh = {
+	      .ip4 = c->router_address,
+	  };
+
+	  fib_table_entry_path_remove(fib_table_get_index_for_sw_if_index(
+					  FIB_PROTOCOL_IP4,
+					  c->sw_if_index),
+				      &all_0s,
+				      FIB_SOURCE_DHCP,
+				      FIB_PROTOCOL_IP4,
+				      &nh,
+				      c->sw_if_index,
+				      ~0,
+				      1,
+				      FIB_ROUTE_PATH_FLAG_NONE);
+      }
+      ip4_sw_interface_enable_disable (c->sw_if_index, 0);
+
       vec_free (c->option_55_data);
       vec_free (c->hostname);
       vec_free (c->client_identifier);

@@ -17,6 +17,11 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vlib/vlib.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/fib/ip4_fib.h>
+#include <vnet/adj/adj.h>
+#include <vnet/map/map_dpo.h>
+#include <vnet/dpo/load_balance.h>
 
 #define MAP_SKIP_IP6_LOOKUP 1
 
@@ -104,6 +109,9 @@ typedef struct
   /* not used by forwarding */
   u8 ip4_prefix_len;
 } map_domain_t;
+
+_Static_assert ((sizeof (map_domain_t) <= CLIB_CACHE_LINE_BYTES),
+		"MAP domain fits in one cacheline");
 
 #define MAP_REASS_INDEX_NONE ((u16)0xffff)
 
@@ -381,16 +389,17 @@ map_get_ip4 (ip6_address_t *addr)
  * Get the MAP domain from an IPv4 lookup adjacency.
  */
 static_always_inline map_domain_t *
-ip4_map_get_domain (u32 adj_index, u32 *map_domain_index)
+ip4_map_get_domain (u32 mdi,
+		    u32 *map_domain_index)
 {
   map_main_t *mm = &map_main;
-  ip_lookup_main_t *lm = &ip4_main.lookup_main;
-  ip_adjacency_t *adj = ip_get_adjacency(lm, adj_index);
-  ASSERT(adj);
-  uword *p = (uword *)adj->rewrite_data;
-  ASSERT(p);
-  *map_domain_index = p[0];
-  return pool_elt_at_index(mm->domains, p[0]);
+  map_dpo_t *md;
+
+  md = map_dpo_get(mdi);
+
+  ASSERT(md);
+  *map_domain_index = md->md_domain;
+  return pool_elt_at_index(mm->domains, *map_domain_index);
 }
 
 /*
@@ -399,36 +408,34 @@ ip4_map_get_domain (u32 adj_index, u32 *map_domain_index)
  * The IPv4 address is used otherwise.
  */
 static_always_inline map_domain_t *
-ip6_map_get_domain (u32 adj_index, ip4_address_t *addr,
+ip6_map_get_domain (u32 mdi, ip4_address_t *addr,
                     u32 *map_domain_index, u8 *error)
 {
   map_main_t *mm = &map_main;
-  ip4_main_t *im4 = &ip4_main;
-  ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
+  map_dpo_t *md;
 
   /*
    * Disable direct MAP domain lookup on decap, until the security check is updated to verify IPv4 SA.
    * (That's done implicitly when MAP domain is looked up in the IPv4 FIB)
    */
 #ifdef MAP_NONSHARED_DOMAIN_ENABLED
-  ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
-  ip_adjacency_t *adj = ip_get_adjacency(lm6, adj_index);
-  ASSERT(adj);
-  uword *p = (uword *)adj->rewrite_data;
-  ASSERT(p);
-  *map_domain_index = p[0];
-  if (p[0] != ~0)
-    return pool_elt_at_index(mm->domains, p[0]);
+  md = map_dpo_get(mdi);
+
+  ASSERT(md);
+  *map_domain_index = md->md_domain;
+  if (*map_domain_index != ~0)
+    return pool_elt_at_index(mm->domains, *map_domain_index);
 #endif
 
-  u32 ai = ip4_fib_lookup_with_table(im4, 0, addr, 0);
-  ip_adjacency_t *adj4 = ip_get_adjacency (lm4, ai);
-  if (PREDICT_TRUE(adj4->lookup_next_index == IP_LOOKUP_NEXT_MAP ||
-		   adj4->lookup_next_index == IP_LOOKUP_NEXT_MAP_T)) {
-    uword *p = (uword *)adj4->rewrite_data;
-    *map_domain_index = p[0];
-    return pool_elt_at_index(mm->domains, *map_domain_index);
-  }
+  u32 lbi = ip4_fib_forwarding_lookup(0, addr);
+  const dpo_id_t *dpo = load_balance_get_bucket(lbi, 0);
+  if (PREDICT_TRUE(dpo->dpoi_type == map_dpo_type ||
+		   dpo->dpoi_type == map_t_dpo_type))
+    {
+      md = map_dpo_get(dpo->dpoi_index);
+     *map_domain_index = md->md_domain;
+      return pool_elt_at_index(mm->domains, *map_domain_index);
+    }
   *error = MAP_ERROR_NO_DOMAIN;
   return NULL;
 }

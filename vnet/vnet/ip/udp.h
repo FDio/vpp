@@ -115,13 +115,12 @@ void udp_register_dst_port (vlib_main_t * vm,
                             u32 node_index, u8 is_ip4);
 
 always_inline void
-ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
+ip_udp_fixup_one (vlib_main_t * vm,
+                  vlib_buffer_t * b0,
                   u8 is_ip4)
 {
   u16 new_l0;
   udp_header_t * udp0;
-
-  vlib_buffer_advance (b0, - ec_len);
 
   if (is_ip4)
     {
@@ -130,9 +129,6 @@ ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
       u16 old_l0 = 0;
 
       ip0 = vlib_buffer_get_current(b0);
-
-      /* Apply the encap string. */
-      clib_memcpy(ip0, ec0, ec_len);
 
       /* fix the <bleep>ing outer-IP checksum */
       sum0 = ip0->checksum;
@@ -157,9 +153,6 @@ ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
 
       ip0 = vlib_buffer_get_current(b0);
 
-      /* Apply the encap string. */
-      clib_memcpy(ip0, ec0, ec_len);
-
       new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
                                      - sizeof (*ip0));
       ip0->payload_length = new_l0;
@@ -173,6 +166,33 @@ ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
 
       if (udp0->checksum == 0)
           udp0->checksum = 0xffff;
+    }
+}
+always_inline void
+ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
+                  u8 is_ip4)
+{
+  vlib_buffer_advance (b0, - ec_len);
+
+  if (is_ip4)
+    {
+      ip4_header_t * ip0;
+
+      ip0 = vlib_buffer_get_current(b0);
+
+      /* Apply the encap string. */
+      clib_memcpy(ip0, ec0, ec_len);
+      ip_udp_fixup_one(vm, b0, 1);
+    }
+  else
+    {
+      ip6_header_t * ip0;
+
+      ip0 = vlib_buffer_get_current(b0);
+
+      /* Apply the encap string. */
+      clib_memcpy(ip0, ec0, ec_len);
+      ip_udp_fixup_one(vm, b0, 0);
     }
 }
 

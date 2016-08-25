@@ -26,6 +26,7 @@
 #include <vnet/ip/udp.h>
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/lisp-gpe/lisp_gpe_packet.h>
+#include <vnet/adj/adj_types.h>
 
 /* encap headers */
 /* *INDENT-OFF* */
@@ -52,6 +53,7 @@ typedef struct
     {
       dp_address_t rmt;
       dp_address_t lcl;
+
       u32 vni;
     };
     u8 as_u8[40];
@@ -60,12 +62,21 @@ typedef struct
 
 typedef struct lisp_gpe_sub_tunnel
 {
+  /* linkage into the FIB graph */
+  fib_node_t fib_node;
+
   /* Rewrite string. $$$$ embed vnet_rewrite header */
   u8 *rewrite;
   u32 parent_index;
   u32 locator_pair_index;
   u8 weight;
   u8 is_ip4;
+  /** the FIB entry through which this tunnel resolves */
+  fib_node_index_t fib_entry_index;
+  /** Index into the parent FIB entry's child list */
+  u32 sibling;
+  /** the midchain adjacency created for this tunnels */
+  adj_index_t midchain[FIB_LINK_NUM];
 } lisp_gpe_sub_tunnel_t;
 
 typedef struct nomalized_sub_tunnel
@@ -76,21 +87,14 @@ typedef struct nomalized_sub_tunnel
 
 typedef struct
 {
+  /* Rewrite string. $$$$ embed vnet_rewrite header */
+  u8 *rewrite;
+
   /* tunnel src and dst addresses */
   locator_pair_t *locator_pairs;
 
   /* locator-pairs with best priority become sub-tunnels */
-  lisp_gpe_sub_tunnel_t *sub_tunnels;
-
-  /* sub-tunnels load balancing vector: contains list of sub-tunnel
-   * indexes replicated according to weight */
-  u32 *sub_tunnels_lbv;
-
-  /* number of entries in load balancing vector */
-  u32 sub_tunnels_lbv_count;
-
-  /* normalized sub tunnel weights */
-  normalized_sub_tunnel_weights_t *norm_sub_tunnel_weights;
+  u32 *sub_tunnels;
 
   /* decap next index */
   u32 decap_next_index;
@@ -102,9 +106,15 @@ typedef struct
   u32 encap_fib_index;		/* tunnel partner lookup here */
   u32 decap_fib_index;		/* inner IP lookup here */
 
+  /** index of the source address lookup FIB */
+  u32 src_fib_index;
+
   /* vnet intfc hw/sw_if_index */
   u32 hw_if_index;
   u32 sw_if_index;
+
+  /** L2 path-list */
+  fib_node_index_t l2_path_list;
 
   /* action for 'negative' tunnels */
   u8 action;
@@ -139,26 +149,6 @@ typedef enum
   LISP_GPE_N_ERROR,
 } lisp_gpe_error_t;
 
-/* As a first step, reuse v4 fib. The goal of the typedef is to shield
- * consumers from future updates that may result in the lisp ip4 fib diverging
- * from ip4 fib */
-typedef ip4_fib_t ip4_src_fib_t;
-
-typedef struct ip6_src_fib
-{
-  BVT (clib_bihash) ip6_lookup_table;
-
-  /* bitmap/vector of mask widths to search */
-  uword *non_empty_dst_address_length_bitmap;
-  u8 *prefix_lengths_in_search_order;
-  ip6_address_t fib_masks[129];
-  i32 dst_address_length_refcounts[129];
-
-  /* ip6 lookup table config parameters */
-  u32 lookup_table_nbuckets;
-  uword lookup_table_size;
-} ip6_src_fib_t;
-
 typedef struct tunnel_lookup
 {
   /* Lookup lisp-gpe interfaces by dp table (eg. vrf/bridge index) */
@@ -184,20 +174,7 @@ typedef struct lisp_gpe_main
 
   /* L3 data structures
    * ================== */
-
-  /* Pool of src fibs that are paired with dst fibs */
-  ip4_src_fib_t *ip4_src_fibs;
-  ip6_src_fib_t *ip6_src_fibs;
-
   tunnel_lookup_t l3_ifaces;
-
-  /* Lookup lgpe_ipX_lookup_next by vrf */
-  uword *lgpe_ip4_lookup_next_index_by_table_id;
-  uword *lgpe_ip6_lookup_next_index_by_table_id;
-
-  /* next node indexes that point ip4/6 lookup to lisp gpe ip lookup */
-  u32 ip4_lookup_next_lgpe_ip4_lookup;
-  u32 ip6_lookup_next_lgpe_ip6_lookup;
 
   /* L2 data structures
    * ================== */
@@ -206,6 +183,10 @@ typedef struct lisp_gpe_main
     BVT (clib_bihash) l2_fib;
 
   tunnel_lookup_t l2_ifaces;
+
+  /** Load-balance for a miss in the table */
+  index_t l2_lb_miss;
+  index_t l2_lb_cp_lkup;
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -224,10 +205,10 @@ vnet_lisp_gpe_get_main ()
   return &lisp_gpe_main;
 }
 
-extern vlib_node_registration_t lgpe_ip4_lookup_node;
-extern vlib_node_registration_t lgpe_ip6_lookup_node;
+
 extern vlib_node_registration_t lisp_gpe_ip4_input_node;
 extern vlib_node_registration_t lisp_gpe_ip6_input_node;
+extern vnet_hw_interface_class_t lisp_gpe_hw_class;
 
 u8 *format_lisp_gpe_header_with_length (u8 * s, va_list * args);
 
@@ -262,13 +243,20 @@ typedef struct
 clib_error_t
   * vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a);
 
+typedef enum
+{
+  NO_ACTION,
+  FORWARD_NATIVE,
+  SEND_MAP_REQUEST,
+  DROP
+} negative_fwd_actions_e;
 typedef struct
 {
   u8 is_add;
 
   /* type of mapping */
   u8 is_negative;
-  u8 action;
+  negative_fwd_actions_e action;
 
   /* local and remote eids */
   gid_address_t lcl_eid;
@@ -301,13 +289,25 @@ int
 vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
 				 u32 * hw_if_indexp);
 
-int
-ip_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
-			 ip_prefix_t * src_prefix, u32 table_id,
-			 ip_adjacency_t * add_adj, u8 is_add);
-u32
-ip_sd_fib_get_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
-		     ip_prefix_t * src_prefix, u32 table_id);
+extern void
+ip_src_fib_add_route (u32 src_fib_index,
+		      ip_prefix_t * src_prefix, lisp_gpe_tunnel_t * t);
+extern void
+ip_src_dst_fib_del_route (u32 src_fib_index,
+			  ip_prefix_t * src_prefix,
+			  u32 dst_table_id, ip_prefix_t * dst_prefix);
+extern void
+ip_src_fib_add_route_w_dpo (u32 src_fib_index,
+			    ip_prefix_t * src_prefix,
+			    const dpo_id_t * src_dpo);
+extern void
+ip_dst_fib_add_route (u32 dst_table_id,
+		      ip_prefix_t * dst_prefix,
+		      ip_prefix_t * src_prefix,
+		      fib_node_index_t * src_fib_index);
+
+extern fib_route_path_t *lisp_gpe_mk_paths_for_sub_tunnels (lisp_gpe_tunnel_t
+							    * t);
 
 #define foreach_lgpe_ip4_lookup_next    \
   _(DROP, "error-drop")                 \
