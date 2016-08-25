@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_099f0f61",
+        "filename": "plugins/ioam-plugin/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_c0e32b32",
+      "range": {
+        "startLine": 46,
+        "startChar": 2,
+        "endLine": 49,
+        "endChar": 29
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_00e4830b",
         "filename": "plugins/ioam-plugin/ioam/encap/ip6_ioam_trace.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2016-08-25T06:41:34Z",
       "side": 1,
       "message": "What do you think about:\n1. Moving all the registrations to when the option is actually configured, and not part of the plugin init. This way we add \u0026 process it only when we know type, number of nodes etc \n2. Similarly Unregister the option when there node id etc is unconfigured.\n3. We need to fix rewrite string when trace configuration changes as the size may change. So something to be done\n4. get_sizeof_register option will not be needed once we do this, add_registration can handle providing the size.\n5. modification of cli also should result in unregister, register and recreate rewrite string",
+      "range": {
+        "startLine": 338,
+        "startChar": 2,
+        "endLine": 350,
+        "endChar": 0
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_a9a6dbbf",
+        "filename": "plugins/ioam-plugin/ioam/encap/ip6_ioam_trace.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Could we defer this cleanup to another commit please",
+      "parentUuid": "3a1d315d_00e4830b",
       "range": {
         "startLine": 338,
         "startChar": 2,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_662b5031",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_a0d02f54",
+      "range": {
+        "startLine": 45,
+        "startChar": 3,
+        "endLine": 45,
+        "endChar": 15
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_80d53345",
         "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
         "patchSetId": 1
@@ -82,6 +154,30 @@
       "writtenOn": "2016-08-25T04:41:13Z",
       "side": 1,
       "message": "is this used?",
+      "range": {
+        "startLine": 52,
+        "startChar": 4,
+        "endLine": 52,
+        "endChar": 14
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_46205449",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_80d53345",
       "range": {
         "startLine": 52,
         "startChar": 4,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_86354c48",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_60ca17a3",
+      "range": {
+        "startLine": 53,
+        "startChar": 8,
+        "endLine": 53,
+        "endChar": 37
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_40cf1bb1",
         "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
         "patchSetId": 1
@@ -128,6 +248,30 @@
       "writtenOn": "2016-08-25T04:41:13Z",
       "side": 1,
       "message": "not used, residue from pot",
+      "range": {
+        "startLine": 94,
+        "startChar": 0,
+        "endLine": 97,
+        "endChar": 64
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_66b910e9",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_40cf1bb1",
       "range": {
         "startLine": 94,
         "startChar": 0,
@@ -163,6 +307,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_86b42cf3",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_20c41f91",
+      "range": {
+        "startLine": 101,
+        "startChar": 1,
+        "endLine": 101,
+        "endChar": 51
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_00c12380",
         "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
         "patchSetId": 1
@@ -174,6 +342,30 @@
       "writtenOn": "2016-08-25T04:41:13Z",
       "side": 1,
       "message": "we can perhaps remove this.. given we support and have only one profile and are already keeping stats of how many packets trace was added/removed",
+      "range": {
+        "startLine": 104,
+        "startChar": 0,
+        "endLine": 116,
+        "endChar": 1
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_a6a608c0",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_00c12380",
       "range": {
         "startLine": 104,
         "startChar": 0,
@@ -209,6 +401,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_4995073f",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 739,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "We can use it if we defer the registration of the lib-trace function pointers. We could address this in a subsequent commit",
+      "parentUuid": "3a1d315d_c051ebd9",
+      "range": {
+        "startLine": 739,
+        "startChar": 30,
+        "endLine": 739,
+        "endChar": 48
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_0048032c",
         "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
         "patchSetId": 1
@@ -220,6 +436,30 @@
       "writtenOn": "2016-08-25T04:41:13Z",
       "side": 1,
       "message": "Please consider splitting and returning the sizeof trace option alone.\nand then do something like below:\nsize +\u003d sizeof (ip6_hop_by_hop_option_t);\nsize +\u003d hm-\u003eoptions_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT];\n    \nThis way we can reuse the option library b/n ip6, vxlan encap.",
+      "range": {
+        "startLine": 741,
+        "startChar": 19,
+        "endLine": 741,
+        "endChar": 37
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_e99bb370",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 741,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Yes, deferring this to a subsequent commit",
+      "parentUuid": "3a1d315d_0048032c",
       "range": {
         "startLine": 741,
         "startChar": 19,
@@ -255,6 +495,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_c988f724",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 764,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Deferred for now",
+      "parentUuid": "3a1d315d_e054e7cb",
+      "range": {
+        "startLine": 764,
+        "startChar": 21,
+        "endLine": 764,
+        "endChar": 36
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_e0bd0704",
         "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
         "patchSetId": 1
@@ -266,6 +530,30 @@
       "writtenOn": "2016-08-25T04:41:13Z",
       "side": 1,
       "message": "this is to enable iOAM trace, pot, ppc options. How about it is renamed to ip6_ioam_enable?",
+      "range": {
+        "startLine": 808,
+        "startChar": 0,
+        "endLine": 808,
+        "endChar": 26
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_e64ac0ab",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 808,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_e0bd0704",
       "range": {
         "startLine": 808,
         "startChar": 0,
@@ -301,6 +589,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_86fe6c6a",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 3879,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_6041f70a",
+      "range": {
+        "startLine": 3879,
+        "startChar": 7,
+        "endLine": 3879,
+        "endChar": 29
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_4046fb24",
         "filename": "vpp/vpp-api/vpe.api",
         "patchSetId": 1
@@ -324,6 +636,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_6688f0e7",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 3908,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_4046fb24",
+      "range": {
+        "startLine": 3908,
+        "startChar": 7,
+        "endLine": 3908,
+        "endChar": 31
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_204bff2c",
         "filename": "vpp/vpp-api/vpe.api",
         "patchSetId": 1
@@ -335,6 +671,30 @@
       "writtenOn": "2016-08-25T04:41:13Z",
       "side": 1,
       "message": "ioam disable?",
+      "range": {
+        "startLine": 3935,
+        "startChar": 7,
+        "endLine": 3935,
+        "endChar": 29
+      },
+      "revId": "ae4217bf9bead9af8c8b11ca0480579fc938ce91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_66035074",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 3935,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-08-25T15:34:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_204bff2c",
       "range": {
         "startLine": 3935,
         "startChar": 7,
