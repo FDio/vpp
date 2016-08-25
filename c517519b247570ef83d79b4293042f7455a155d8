@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_e91cd3c3",
+        "filename": "vnet/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-25T19:25:53Z",
+      "side": 1,
+      "message": "It\u0027s worth making the point that the function sets vnet_buffer(b)-\u003esw_if_index[VLIB_TX] \u003d t-\u003edecap_fib_index.",
+      "revId": "c517519b247570ef83d79b4293042f7455a155d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_c97917fe",
+        "filename": "vnet/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-25T19:25:53Z",
+      "side": 1,
+      "message": "Same point about buffer metadata here",
+      "revId": "c517519b247570ef83d79b4293042f7455a155d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_a97edbe2",
+        "filename": "vnet/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 652,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-25T19:25:53Z",
+      "side": 1,
+      "message": "Bless you! We should go on a search and destroy mission to make sure that all of the ..._MULTIARCH (...) macro instances are followed by a semicolon...",
+      "revId": "c517519b247570ef83d79b4293042f7455a155d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_6988c3e7",
+        "filename": "vnet/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-25T19:25:53Z",
+      "side": 1,
+      "message": "Worth documenting this:\nvnet_buffer(b0)-\u003esw_if_index[VLIB_TX] \u003d t0-\u003eencap_fib_index",
+      "revId": "c517519b247570ef83d79b4293042f7455a155d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
