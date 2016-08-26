@@ -354,6 +354,46 @@ done:
   return error;
 }
 
+uword unformat_vnet_sw_interface_id (unformat_input_t * input, va_list * args)
+{
+  vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
+  u32 * result = va_arg (*args, u32 *);
+  u32 * subif_id = va_arg (*args, u32 *);
+  vnet_hw_interface_t * hi;
+  u32 hw_if_index, id, id_specified;
+  u8 * if_name = 0;
+  uword * p, error = 0;
+
+  id = ~0;
+  if (unformat (input, "%_%v.%d%_", &if_name, &id)
+      && ((p = hash_get (vnm->interface_main.hw_interface_by_name, if_name))))
+    {
+      hw_if_index = p[0];
+      id_specified = 1;
+    }
+  else if (unformat (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+    id_specified = 0;
+  else
+    goto done;
+
+  *subif_id = id;
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  if (! id_specified)
+    {
+      *result = hi->sw_if_index;
+    }
+  else
+    {
+      if (! (p = hash_get (hi->sub_interface_sw_if_index_by_id, id)))
+     return 0;
+      *result = p[0];
+    }
+  error = 1;
+ done:
+  vec_free (if_name);
+  return error;
+}
+
 uword
 unformat_vnet_sw_interface_flags (unformat_input_t * input, va_list * args)
 {

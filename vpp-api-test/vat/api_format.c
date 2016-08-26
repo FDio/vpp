@@ -3388,7 +3388,8 @@ _(ipfix_enable_reply)                                   \
 _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
 _(ip_source_and_port_range_check_add_del_reply)         \
-_(ip_source_and_port_range_check_interface_add_del_reply)
+_(ip_source_and_port_range_check_interface_add_del_reply)\
+_(delete_subif_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3607,7 +3608,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
  ip_source_and_port_range_check_interface_add_del_reply)                \
 _(IPSEC_GRE_ADD_DEL_TUNNEL_REPLY, ipsec_gre_add_del_tunnel_reply)       \
-_(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)
+_(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)                   \
+_(DELETE_SUBIF_REPLY, delete_subif_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -15199,6 +15201,43 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
   W;
 }
 
+static int api_delete_subif (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    vl_api_delete_subif_t *mp;
+    f64 timeout;
+    u32 sw_if_index = ~0;
+    u32 sub_if_id = ~0;
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+        if (unformat (i, "sub_sw_if_index %d", &sw_if_index))
+          ;
+        else if (unformat (i, "sub_if_id %d", &sub_if_id))
+          ;
+        else
+          break;
+    }
+
+    if (sw_if_index == ~0)
+    {
+        errmsg ("missing sub_sw_if_index\n");
+        return -99;
+    }
+    if (sub_if_id == ~0)
+    {
+        errmsg ("missing sub-interface id\n");
+        return -99;
+    }
+
+    /* Construct the API message */
+    M(DELETE_SUBIF, delete_subif);
+    mp->sub_sw_if_index = ntohl (sw_if_index);
+    mp->sub_if_id = ntohl(sub_if_id);
+
+    S; W;
+}
+
 static int
 q_or_quit (vat_main_t * vam)
 {
@@ -15779,7 +15818,8 @@ _(ip_source_and_port_range_check_interface_add_del,                     \
   "[udp-in-vrf <id>] [udp-out-vrf <id>]")                               \
 _(ipsec_gre_add_del_tunnel,                                             \
   "src <addr> dst <addr> local_sa <sa-id> remote_sa <sa-id> [del]")     \
-_(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")
+_(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")                          \
+_(delete_subif,"sub_sw_if_index <nn> sub_if_id <nn>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
