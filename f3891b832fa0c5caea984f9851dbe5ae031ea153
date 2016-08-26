@@ -16,6 +16,24 @@
       "revId": "f3891b832fa0c5caea984f9851dbe5ae031ea153",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_4cf995c7",
+        "filename": "vnet/vnet/flow/flow_report.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 175
+      },
+      "writtenOn": "2016-08-26T06:50:20Z",
+      "side": 1,
+      "message": "No, the buffer content is copied from rewrite vector which is initialized to zeros by ipfix_classify_template_rewrite callback.",
+      "parentUuid": "3a1d315d_8999df70",
+      "revId": "f3891b832fa0c5caea984f9851dbe5ae031ea153",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
