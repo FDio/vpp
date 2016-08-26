@@ -25,6 +25,7 @@
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/l2/l2_input_vtr.h>
 #include <vnet/l2/l2_output.h>
+#include <vnet/vxlan/vxlan.h>
 
 #include <vppinfra/error.h>
 #include <vlib/cli.h>
@@ -50,6 +51,65 @@ l2_vtr_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l2_vtr_init);
 
+u32
+l2pbb_configure (vlib_main_t * vlib_main,
+		 vnet_main_t * vnet_main, u32 sw_if_index, u32 vtr_op, u8 add)
+{
+  u32 error = 0;
+  u32 enable = 0;
+
+  vnet_hw_interface_t *hi;
+  hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
+
+  if (!hi || (hi->hw_class_index != ethernet_hw_interface_class.index))
+    {
+      error = VNET_API_ERROR_INVALID_INTERFACE;	// non-ethernet interface
+      goto done;
+    }
+
+  // Config for this interface should be already initialized
+  ptr_config_t *in_config;
+  ptr_config_t *out_config;
+  in_config =
+    &(vec_elt_at_index (l2output_main.configs, sw_if_index)->input_pbb_vtr);
+  out_config =
+    &(vec_elt_at_index (l2output_main.configs, sw_if_index)->output_pbb_vtr);
+
+  in_config->pop_size = 0;
+  in_config->push_size = 0;
+  out_config->pop_size = 0;
+  out_config->push_size = 0;
+  if (!add)
+    {
+      goto done;
+    }
+  // Get the configured tags for the interface
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnet_main, sw_if_index);
+  if (vtr_op == L2_VTR_POP_2)
+    {
+      clib_memcpy (in_config->macs_tags.b_dst_address, si->sub.pbb.b_dmac,
+       sizeof (in_config->macs_tags.b_dst_address));
+      clib_memcpy (in_config->macs_tags.b_src_address, si->sub.pbb.b_smac,
+       sizeof (in_config->macs_tags.b_src_address));
+      in_config->macs_tags.b_type = clib_net_to_host_u16 (si->sub.pbb.b_type);
+      in_config->macs_tags.priority_dei_id =
+  clib_net_to_host_u16 (si->sub.pbb.b_tag.raw_flags);
+      in_config->macs_tags.i_type = clib_net_to_host_u16 (si->sub.pbb.i_type);
+      in_config->macs_tags.priority_dei_uca_res_sid =
+  clib_net_to_host_u32 (si->sub.pbb.i_tag.raw_flags);
+      in_config->pop_size = sizeof (ethernet_pbb_header_packed_t);
+      in_config->push_size = 0;
+
+      out_config->raw_data = in_config->raw_data;
+      out_config->pop_size = in_config->push_size;
+      out_config->push_size = in_config->pop_size;
+      enable = 1;
+    }
+done:
+  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_VTR, enable);
+  /* output vtr enable is checked explicitly in l2_output */
+  return error;
+}
 
 /**
  * Configure vtag tag rewrite on the given interface.

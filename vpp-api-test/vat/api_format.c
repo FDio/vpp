@@ -769,20 +769,31 @@ static void vl_api_sw_interface_details_t_handler
       sub->sw_if_index = ntohl (mp->sw_if_index);
       sub->sub_id = ntohl (mp->sub_id);
 
-      sub->sub_dot1ad = mp->sub_dot1ad;
-      sub->sub_number_of_tags = mp->sub_number_of_tags;
-      sub->sub_outer_vlan_id = ntohs (mp->sub_outer_vlan_id);
-      sub->sub_inner_vlan_id = ntohs (mp->sub_inner_vlan_id);
-      sub->sub_exact_match = mp->sub_exact_match;
-      sub->sub_default = mp->sub_default;
-      sub->sub_outer_vlan_id_any = mp->sub_outer_vlan_id_any;
-      sub->sub_inner_vlan_id_any = mp->sub_inner_vlan_id_any;
+      if (!mp->sub_dot1ah)
+	{
+	  sub->sub_dot1ad = mp->sub_dot1ad;
+	  sub->sub_number_of_tags = mp->sub_number_of_tags;
+	  sub->sub_outer_vlan_id = ntohs (mp->sub_outer_vlan_id);
+	  sub->sub_inner_vlan_id = ntohs (mp->sub_inner_vlan_id);
+	  sub->sub_exact_match = mp->sub_exact_match;
+	  sub->sub_default = mp->sub_default;
+	  sub->sub_outer_vlan_id_any = mp->sub_outer_vlan_id_any;
+	  sub->sub_inner_vlan_id_any = mp->sub_inner_vlan_id_any;
 
-      /* vlan tag rewrite */
-      sub->vtr_op = ntohl (mp->vtr_op);
-      sub->vtr_push_dot1q = ntohl (mp->vtr_push_dot1q);
-      sub->vtr_tag1 = ntohl (mp->vtr_tag1);
-      sub->vtr_tag2 = ntohl (mp->vtr_tag2);
+	  /* vlan tag rewrite */
+	  sub->vtr_op = ntohl (mp->vtr_op);
+	  sub->vtr_push_dot1q = ntohl (mp->vtr_push_dot1q);
+	  sub->vtr_tag1 = ntohl (mp->vtr_tag1);
+	  sub->vtr_tag2 = ntohl (mp->vtr_tag2);
+	}
+      else
+	{
+	  sub->sub_dot1ah = mp->sub_dot1ah;
+	  clib_memcpy (sub->sub_pbb_dmac, mp->sub_pbb_dmac, 6);
+	  clib_memcpy (sub->sub_pbb_smac, mp->sub_pbb_smac, 6);
+	  sub->sub_pbb_vlanid = ntohs (mp->sub_pbb_vlanid) & 0xFFF;
+	  sub->sub_pbb_sid = ntohl (mp->sub_pbb_sid) & 0xFFFFFF;
+	}
     }
 }
 
@@ -815,24 +826,42 @@ static void vl_api_sw_interface_details_t_handler_json
   vat_json_object_add_uint (node, "link_speed", mp->link_speed);
   vat_json_object_add_uint (node, "mtu", ntohs (mp->link_mtu));
   vat_json_object_add_uint (node, "sub_id", ntohl (mp->sub_id));
-  vat_json_object_add_uint (node, "sub_dot1ad", mp->sub_dot1ad);
-  vat_json_object_add_uint (node, "sub_number_of_tags",
-			    mp->sub_number_of_tags);
-  vat_json_object_add_uint (node, "sub_outer_vlan_id",
-			    ntohs (mp->sub_outer_vlan_id));
-  vat_json_object_add_uint (node, "sub_inner_vlan_id",
-			    ntohs (mp->sub_inner_vlan_id));
-  vat_json_object_add_uint (node, "sub_exact_match", mp->sub_exact_match);
-  vat_json_object_add_uint (node, "sub_default", mp->sub_default);
-  vat_json_object_add_uint (node, "sub_outer_vlan_id_any",
-			    mp->sub_outer_vlan_id_any);
-  vat_json_object_add_uint (node, "sub_inner_vlan_id_any",
-			    mp->sub_inner_vlan_id_any);
-  vat_json_object_add_uint (node, "vtr_op", ntohl (mp->vtr_op));
-  vat_json_object_add_uint (node, "vtr_push_dot1q",
-			    ntohl (mp->vtr_push_dot1q));
-  vat_json_object_add_uint (node, "vtr_tag1", ntohl (mp->vtr_tag1));
-  vat_json_object_add_uint (node, "vtr_tag2", ntohl (mp->vtr_tag2));
+  if (!mp->sub_dot1ah)
+    {
+      vat_json_object_add_uint (node, "sub_dot1ad", mp->sub_dot1ad);
+      vat_json_object_add_uint (node, "sub_number_of_tags",
+				mp->sub_number_of_tags);
+      vat_json_object_add_uint (node, "sub_outer_vlan_id",
+				ntohs (mp->sub_outer_vlan_id));
+      vat_json_object_add_uint (node, "sub_inner_vlan_id",
+				ntohs (mp->sub_inner_vlan_id));
+      vat_json_object_add_uint (node, "sub_exact_match", mp->sub_exact_match);
+      vat_json_object_add_uint (node, "sub_default", mp->sub_default);
+      vat_json_object_add_uint (node, "sub_outer_vlan_id_any",
+				mp->sub_outer_vlan_id_any);
+      vat_json_object_add_uint (node, "sub_inner_vlan_id_any",
+				mp->sub_inner_vlan_id_any);
+      vat_json_object_add_uint (node, "vtr_op", ntohl (mp->vtr_op));
+      vat_json_object_add_uint (node, "vtr_push_dot1q",
+				ntohl (mp->vtr_push_dot1q));
+      vat_json_object_add_uint (node, "vtr_tag1", ntohl (mp->vtr_tag1));
+      vat_json_object_add_uint (node, "vtr_tag2", ntohl (mp->vtr_tag2));
+    }
+  else
+    {
+      u8 *s;
+
+      vat_json_object_add_uint (node, "sub_dot1ah", mp->sub_dot1ah);
+
+      s = format (0, "%U%c", format_ethernet_address, mp->sub_pbb_dmac, 0);
+      vat_json_object_add_string_copy (node, "sub_pbb_dmac", s);
+      s = format (0, "%U%c", format_ethernet_address, mp->sub_pbb_smac, 0);
+      vat_json_object_add_string_copy (node, "sub_pbb_smac", s);
+      vat_json_object_add_uint (node, "sub_pbb_vlan_id",
+				ntohs (mp->sub_pbb_vlanid));
+      vat_json_object_add_uint (node, "sub_pbb_sid", ntohl (mp->sub_pbb_sid));
+      vec_free (s);
+    }
 }
 
 static void vl_api_sw_interface_set_flags_t_handler
@@ -6201,6 +6230,7 @@ _(no_tags)                                      \
 _(one_tag)                                      \
 _(two_tags)                                     \
 _(dot1ad)                                       \
+_(dot1ah)                                       \
 _(exact_match)                                  \
 _(default_sub)                                  \
 _(outer_vlan_id_any)                            \
@@ -6227,6 +6257,13 @@ api_create_subif (vat_main_t * vam)
   u32 tmp;
   u16 outer_vlan_id = 0;
   u16 inner_vlan_id = 0;
+  u32 dot1ah = 0;
+  u8 dmac[6];
+  u8 smac[6];
+  u8 dmac_set = 0, smac_set = 0;
+  u32 vlanid = 0;
+  u32 sid = ~0;
+  u8 push_pop = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -6240,6 +6277,16 @@ api_create_subif (vat_main_t * vam)
 	outer_vlan_id = tmp;
       else if (unformat (i, "inner_vlan_id %d", &tmp))
 	inner_vlan_id = tmp;
+      else if (unformat (i, "dmac %U", unformat_ethernet_address, dmac))
+	dmac_set++;
+      else if (unformat (i, "smac %U", unformat_ethernet_address, smac))
+	smac_set++;
+      else if (unformat (i, "vlanid %d", &vlanid))
+	;
+      else if (unformat (i, "sid %d", &sid))
+	;
+      else if (unformat (i, "pop"))
+	push_pop = 1;
 
 #define _(a) else if (unformat (i, #a)) a = 1 ;
       foreach_create_subif_bit
@@ -6262,6 +6309,20 @@ api_create_subif (vat_main_t * vam)
       errmsg ("missing sub_id\n");
       return -99;
     }
+  if (dot1ah)
+    {
+      if (dmac_set == 0 || smac_set == 0)
+	{
+	  errmsg ("missing MAC addresses\n");
+	  return -99;
+	}
+      if (sid == ~0)
+	{
+	  errmsg ("missing service identifier\n");
+	  return -99;
+	}
+    }
+
   M (CREATE_SUBIF, create_subif);
 
   mp->sw_if_index = ntohl (sw_if_index);
@@ -6273,6 +6334,14 @@ api_create_subif (vat_main_t * vam)
 
   mp->outer_vlan_id = ntohs (outer_vlan_id);
   mp->inner_vlan_id = ntohs (inner_vlan_id);
+  if (dot1ah)
+    {
+      clib_memcpy (mp->dmac, dmac, 6);
+      clib_memcpy (mp->smac, smac, 6);
+      mp->vlanid = ntohs (vlanid);
+      mp->sid = ntohl (sid);
+      mp->oper = (push_pop) ? L2_VTR_POP_2 : 0;
+    }
 
   S;
   W;
@@ -15203,8 +15272,9 @@ _(reset_vrf, "vrf <id> [ipv6]")                                         \
 _(create_vlan_subif, "<intfc> | sw_if_index <id> vlan <n>")             \
 _(create_subif, "<intfc> | sw_if_index <id> sub_id <n>\n"               \
   "[outer_vlan_id <n>][inner_vlan_id <n>]\n"                            \
-  "[no_tags][one_tag][two_tags][dot1ad][exact_match][default_sub]\n"    \
-  "[outer_vlan_id_any][inner_vlan_id_any]")                             \
+  "[[no_tags][one_tag][two_tags][dot1ad][exact_match][default_sub] | dot1ah]\n" \
+  "[[outer_vlan_id_any][inner_vlan_id_any] | \n"                        \
+  "[dmac <mac> smac <mac> sid <id> [vlanid <id>] [pop]]")                 \
 _(oam_add_del, "src <ip4-address> dst <ip4-address> [vrf <n>] [del]")   \
 _(reset_fib, "vrf <n> [ipv6]")                                          \
 _(dhcp_proxy_config,                                                    \
