@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_2c22d9b9",
+        "filename": "vnet/vnet/ethernet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 531,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-08-26T12:36:08Z",
+      "side": 1,
+      "message": "I think this is not needed....",
+      "range": {
+        "startLine": 530,
+        "startChar": 1,
+        "endLine": 531,
+        "endChar": 10
+      },
+      "revId": "d8607f5c6e5fff71e3ddfe161a4ccea84994df40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_0c2f1da3",
+        "filename": "vnet/vnet/ethernet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 540,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-08-26T12:36:08Z",
+      "side": 1,
+      "message": "not GNU indent",
+      "range": {
+        "startLine": 540,
+        "startChar": 7,
+        "endLine": 540,
+        "endChar": 8
+      },
+      "revId": "d8607f5c6e5fff71e3ddfe161a4ccea84994df40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_4c2515c1",
+        "filename": "vnet/vnet/ethernet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 576,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-08-26T12:36:08Z",
+      "side": 1,
+      "message": "s/delete_subinterface_interface/delete_sub_interface/",
+      "range": {
+        "startLine": 576,
+        "startChar": 0,
+        "endLine": 576,
+        "endChar": 29
+      },
+      "revId": "d8607f5c6e5fff71e3ddfe161a4ccea84994df40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_6c40d156",
+        "filename": "vnet/vnet/ethernet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-08-26T12:36:08Z",
+      "side": 1,
+      "message": "Not needed",
+      "range": {
+        "startLine": 586,
+        "startChar": 26,
+        "endLine": 586,
+        "endChar": 31
+      },
+      "revId": "d8607f5c6e5fff71e3ddfe161a4ccea84994df40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_ec2bc192",
+        "filename": "vnet/vnet/ethernet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-08-26T12:36:08Z",
+      "side": 1,
+      "message": "not needed",
+      "range": {
+        "startLine": 622,
+        "startChar": 38,
+        "endLine": 622,
+        "endChar": 43
+      },
+      "revId": "d8607f5c6e5fff71e3ddfe161a4ccea84994df40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
