@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_9a87db61",
+        "filename": "vnet/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-26T21:11:33Z",
+      "side": 1,
+      "message": "Where did this style come from? You\u0027ve used it a lot recently. The type is redundant, it\u0027s rendered by doxygen already and the hyphen-as-a-separator breaks the semantics of the text; eg, when rendered in the XML index.",
+      "range": {
+        "startLine": 70,
+        "startChar": 3,
+        "endLine": 70,
+        "endChar": 33
+      },
+      "revId": "188693a1a1ceef4b7134aaf00519188b8d781f0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
