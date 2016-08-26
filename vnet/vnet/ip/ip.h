@@ -223,4 +223,7 @@ vnet_config_update_tx_feature_count (ip_lookup_main_t * lm,
                                      u32 sw_if_index, 
                                      int is_add);
 
+void
+change_mac_in_fib (vlib_main_t * vm, u8* old_mac_address, u8* new_mac_address);
+
 #endif /* included_ip_main_h */

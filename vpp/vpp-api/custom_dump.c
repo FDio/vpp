@@ -2278,6 +2278,18 @@ static void *vl_api_ip_source_and_port_range_check_interface_add_del_t_print
   FINISH;
 }
 
+static void *vl_api_sw_interface_set_mac_address_t_print
+  (vl_api_sw_interface_set_mac_address_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_set_mac_address ");
+  s = format (0, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "mac %U ", format_ethernet_address, mp->mac_address);
+
+  FINISH;
+}
+
 static void *vl_api_lisp_enable_disable_t_print
   (vl_api_lisp_enable_disable_t * mp, void *handle)
 {
@@ -2822,7 +2834,8 @@ _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
-_(DELETE_SUBIF, delete_subif)
+_(DELETE_SUBIF, delete_subif)                                           \
+_(SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {

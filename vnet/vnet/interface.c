@@ -39,6 +39,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
+#include <vnet/ip/ip.h>
 
 #define VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE (1 << 0)
 #define VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE (1 << 1)
@@ -57,6 +58,13 @@ static clib_error_t *vnet_hw_interface_set_class_helper (vnet_main_t * vnm,
 							 u32 hw_if_index,
 							 u32 hw_class_index,
 							 u32 redistribute);
+
+static clib_error_t *vnet_hw_interface_change_mac_address_helper (vnet_main_t
+								  * vnm,
+								  u32
+								  hw_if_index,
+								  u64
+								  mac_address);
 
 typedef struct
 {
@@ -1220,6 +1228,45 @@ vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index, char *new_name)
   vec_free (old_name);
 
   return error;
+}
+
+static clib_error_t *
+vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
+					     u32 hw_if_index, u64 mac_address)
+{
+  clib_error_t *error = 0;
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (vnm, hi->dev_class_index);
+
+  if (hi->hw_address)
+    {
+      change_mac_in_fib (vnm->vlib_main, hi->hw_address,
+			 (u8 *) & mac_address);
+
+      clib_memcpy (hi->hw_address, (u8 *) & mac_address,
+		   sizeof (hi->hw_address));
+
+      if (dev_class->mac_addr_change_function)
+	error =
+	  dev_class->mac_addr_change_function (vnm, hw_if_index, mac_address);
+    }
+  else
+    {
+      error =
+	clib_error_return (0,
+			   "mac address change is not supported for interface index %u",
+			   hw_if_index);
+    }
+  return error;
+}
+
+clib_error_t *
+vnet_hw_interface_change_mac_address (vnet_main_t * vnm, u32 hw_if_index,
+				      u64 mac_address)
+{
+  return vnet_hw_interface_change_mac_address_helper
+    (vnm, hw_if_index, mac_address);
 }
 
 /*

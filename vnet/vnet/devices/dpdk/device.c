@@ -1211,6 +1211,14 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
   return 0;
 }
 
+static clib_error_t *
+dpdk_mac_address_change (vnet_main_t * vnm, u32 hw_if_index, u64 mac_address)
+{
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  return dpdk_set_mac_address (hi, (char *) &mac_address);
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name = "dpdk",
@@ -1226,6 +1234,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .rx_redirect_to_node = dpdk_set_interface_next_node,
   .no_flatten_output_chains = 1,
   .name_renumber = dpdk_device_renumber,
+  .mac_addr_change_function = dpdk_mac_address_change,
 };
 
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (dpdk_device_class, dpdk_interface_tx)

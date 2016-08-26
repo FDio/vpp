@@ -2345,3 +2345,135 @@ VLIB_CLI_COMMAND (ip6_show_fib_command, static) = {
   .short_help = "show ip6 fib [summary] [clear]",
   .function = ip6_show_fib,
 };
+
+void
+change_mac_in_adjacency_header (ip_lookup_main_t * lm, u32 adj_index,
+       u8 * old_mac_address, u8 * new_mac_address)
+{
+  uword i, j, n_left;
+  ip_adjacency_t *adj;
+  ip_multipath_next_hop_t *nhs, tmp_nhs[1];
+
+  adj = ip_get_adjacency (lm, adj_index);
+  if (adj->n_adj == 1)
+    {
+      nhs = &tmp_nhs[0];
+      nhs[0].next_hop_adj_index = ~0;
+      nhs[0].weight = 1;
+    }
+  else
+    {
+      ip_multipath_adjacency_t *madj;
+      madj = vec_elt_at_index (lm->multipath_adjacencies, adj->heap_handle);
+      nhs = heap_elt_at_index (lm->next_hop_heap,
+        madj->normalized_next_hops.heap_offset);
+    }
+
+  n_left = nhs[0].weight;
+  for (i = j = 0; i < adj->n_adj; i++)
+    {
+      n_left -= 1;
+      if (n_left == 0)
+        {
+          if (adj->rewrite_header.data_bytes > 0)
+            {
+              ethernet_header_t *eh = &((ethernet_max_header_t *) (adj->rewrite_header.data +
+                sizeof (adj->rewrite_data) -
+                adj->rewrite_header.data_bytes))->ethernet;
+
+              /* Check if old mac address is in ethernet header */
+              if (!memcmp (eh->dst_address, old_mac_address, 6))
+               clib_memcpy (eh->dst_address, new_mac_address, sizeof (eh->dst_address));
+              if (!memcmp (eh->src_address, old_mac_address, 6))
+               clib_memcpy (eh->src_address, new_mac_address, sizeof (eh->src_address));
+            }
+        }
+    }
+}
+
+void
+change_mac_in_ip6_fib (vlib_main_t * vm, u8 * old_mac_address,
+          u8 * new_mac_address)
+{
+  ip6_main_t *im6 = &ip6_main;
+  ip6_route_t *routes=0, *r;
+  ip6_fib_t *fib;
+  ip_lookup_main_t *lm = &im6->lookup_main;
+  BVT (clib_bihash) * h = &im6->ip6_lookup_table;
+  add_routes_in_fib_arg_t _a, *a = &_a;
+
+  vec_foreach (fib, im6->fibs)
+  {
+    if (routes)
+      _vec_len (routes) = 0;
+
+    a->fib_index = fib - im6->fibs;
+    a->routep = &routes;
+
+    BV (clib_bihash_foreach_key_value_pair) (h, add_routes_in_fib, a);
+
+    vec_foreach (r, routes)
+    {
+      change_mac_in_adjacency_header (lm, r->index, old_mac_address,
+             new_mac_address);
+    }
+  }
+  vec_free (routes);
+}
+
+void
+change_mac_in_ip4_fib (vlib_main_t * vm, u8 * old_mac_address,
+          u8 * new_mac_address)
+{
+  ip4_main_t *im4 = &ip4_main;
+  ip4_route_t *routes, *r;
+  ip4_fib_t *fib;
+  ip_lookup_main_t *lm = &im4->lookup_main;
+  uword *results, i;
+
+  routes = 0;
+  results = 0;
+  vec_foreach (fib, im4->fibs)
+  {
+    if (routes)
+      _vec_len (routes) = 0;
+    if (results)
+      _vec_len (results) = 0;
+
+    for (i = 0; i < ARRAY_LEN (fib->adj_index_by_dst_address); i++)
+      {
+        uword *hash = fib->adj_index_by_dst_address[i];
+        hash_pair_t *p;
+        ip4_route_t x;
+
+        x.address_length = i;
+        hash_foreach_pair (p, hash, (
+          {
+             x.address.data_u32 = p->key;
+             if (lm->fib_result_n_words > 1)
+             {
+             x.index = vec_len (results);
+             vec_add (results, p->value,
+                lm->fib_result_n_words);}
+             else
+             x.index = p->value[0];
+             vec_add1 (routes, x);
+          }));
+      }
+    vec_foreach (r, routes)
+      {
+        change_mac_in_adjacency_header (lm, r->index, old_mac_address,
+          new_mac_address);
+      }
+  }
+  vec_free (routes);
+  vec_free (results);
+}
+
+void
+change_mac_in_fib (vlib_main_t * vm, u8 * old_mac_address,
+      u8 * new_mac_address)
+{
+  change_mac_in_ip4_fib (vm, old_mac_address, new_mac_address);
+  change_mac_in_ip6_fib (vm, old_mac_address, new_mac_address);
+}
