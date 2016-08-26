@@ -944,6 +944,40 @@ VLIB_CLI_COMMAND (set_interface_mtu_cmd, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+set_interface_mac_address (vlib_main_t * vm, unformat_input_t * input,
+			   vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = 0;
+  u32 sw_if_index = ~0;
+  u64 mac = 0;
+
+  if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+    {
+      error = clib_error_return (0, "unknown interface `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+  if (!unformat_user (input, unformat_ethernet_address, &mac))
+    {
+      error = clib_error_return (0, "expected mac address `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+  error = vnet_hw_interface_change_mac_address (vnm, sw_if_index, mac);
+done:
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_interface_mac_address_cmd, static) = {
+  .path = "set interface mac address",
+  .short_help = "set interface mac address <intfc> <mac-address>",
+  .function = set_interface_mac_address,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

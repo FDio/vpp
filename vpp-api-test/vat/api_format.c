@@ -3385,7 +3385,8 @@ _(ipfix_enable_reply)                                   \
 _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
 _(ip_source_and_port_range_check_add_del_reply)         \
-_(ip_source_and_port_range_check_interface_add_del_reply)
+_(ip_source_and_port_range_check_interface_add_del_reply)\
+_(sw_interface_set_mac_address_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3604,7 +3605,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
  ip_source_and_port_range_check_interface_add_del_reply)                \
 _(IPSEC_GRE_ADD_DEL_TUNNEL_REPLY, ipsec_gre_add_del_tunnel_reply)       \
-_(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)
+_(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)                   \
+_(SW_INTERFACE_SET_MAC_ADDRESS_REPLY, sw_interface_set_mac_address_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -15203,6 +15205,52 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
   W;
 }
 
+int
+api_sw_interface_set_mac_address (vat_main_t * vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_sw_interface_set_mac_address_t *mp;
+  f64 timeout;
+  u32 sw_if_index = ~0;
+  u8 mac_address[6];
+  int mac_set = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (input, "sw_if_index %d", &sw_if_index))
+	;
+      else
+	if (unformat
+	    (input, "mac %U", unformat_ethernet_address, mac_address))
+	mac_set = 1;
+      else
+	break;
+    }
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface index\n");
+      return -99;
+    }
+  if (mac_set != 1)
+    {
+      errmsg ("missing mac address\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address);
+  mp->context = 0;
+  mp->sw_if_index = ntohl (sw_if_index);
+  clib_memcpy (mp->mac_address, mac_address, 6);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
 static int
 q_or_quit (vat_main_t * vam)
 {
@@ -15783,7 +15831,8 @@ _(ip_source_and_port_range_check_interface_add_del,                     \
   "[udp-in-vrf <id>] [udp-out-vrf <id>]")                               \
 _(ipsec_gre_add_del_tunnel,                                             \
   "src <addr> dst <addr> local_sa <sa-id> remote_sa <sa-id> [del]")     \
-_(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")
+_(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")                          \
+_(sw_interface_set_mac_address, "sw_if_index <nn> mac <mac-addr>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

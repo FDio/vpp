@@ -384,7 +384,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
-_(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)
+_(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
+_(SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -8153,6 +8154,22 @@ static void vl_api_ipsec_gre_tunnel_dump_t_handler
       t = &igm->tunnels[igm->tunnel_index_by_sw_if_index[sw_if_index]];
       send_ipsec_gre_tunnel_details (t, q, mp->context);
     }
+}
+
+static void
+  vl_api_sw_interface_set_mac_address_t_handler
+  (vl_api_sw_interface_set_mac_address_t * mp)
+{
+  vl_api_sw_interface_set_mac_address_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  int rv = 0;
+
+  vnm->api_errno = 0;
+  vnet_hw_interface_change_mac_address (vnm, ntohl (mp->sw_if_index),
+					*((u64 *) mp->mac_address));
+  rv = vnm->api_errno;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_MAC_ADDRESS_REPLY);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

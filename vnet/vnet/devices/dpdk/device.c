@@ -1211,6 +1211,22 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
   return 0;
 }
 
+static clib_error_t *
+dpdk_mac_addr_change (vnet_main_t * vnm, u32 hw_if_index, u64 mac_address)
+{
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (hi->hw_address)
+    clib_memcpy (hi->hw_address, (u8 *) & mac_address,
+		 sizeof (hi->hw_address));
+  else
+    return clib_error_return (0,
+			      "mac address change is not supported for index %u",
+			      hw_if_index);
+
+  return /* no error */ 0;
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name = "dpdk",
@@ -1226,6 +1242,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .rx_redirect_to_node = dpdk_set_interface_next_node,
   .no_flatten_output_chains = 1,
   .name_renumber = dpdk_device_renumber,
+  .mac_addr_change_function = dpdk_mac_addr_change,
 };
 
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (dpdk_device_class, dpdk_interface_tx)

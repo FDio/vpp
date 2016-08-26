@@ -4831,3 +4831,27 @@ define ipsec_gre_tunnel_details {
     u8 src_address[4];
     u8 dst_address[4];
 };
+
+/** \brief Set interface mac address request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index
+    @param mac_address - new mac address of the interface
+*/
+define sw_interface_set_mac_address
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 mac_address[6];
+};
+
+/** \brief Set interface mac address response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define sw_interface_set_mac_address_reply
+{
+  u32 context;
+  i32 retval;
+};
