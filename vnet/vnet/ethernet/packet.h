@@ -102,6 +102,45 @@ typedef struct
   u16 priority_cfi_and_id;
 } ethernet_vlan_header_tv_t;
 
+/* PBB header with B-TAG - backbone VLAN indicator and I-TAG - service encapsulation */
+typedef struct
+{
+  /* Backbone source/destination address. */
+  u8 b_dst_address[6];
+  u8 b_src_address[6];
+
+  /* B-tag */
+  u16 b_type;
+  /* 3 bit priority, 1 bit DEI and 12 bit vlan id */
+  u16 priority_dei_id;
+
+  /* I-tag */
+  u16 i_type;
+  /* 3 bit priority, 1 bit DEI, 1 bit UCA, 3 bit RES and 24 bit I_SID (service identifier) */
+  u32 priority_dei_uca_res_sid;
+
+#define ETHERNET_N_PBB (1 << 24)
+} ethernet_pbb_header_t;
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct
+{
+  /* Backbone source/destination address. */
+  u8 b_dst_address[6];
+  u8 b_src_address[6];
+
+  /* B-tag */
+  u16 b_type;
+  /* 3 bit priority, 1 bit DEI and 12 bit vlan id */
+  u16 priority_dei_id;
+
+  /* I-tag */
+  u16 i_type;
+  /* 3 bit priority, 1 bit DEI, 1 bit UCA, 3 bit RES and 24 bit I_SID (service identifier) */
+  u32 priority_dei_uca_res_sid;
+}) ethernet_pbb_header_packed_t;
+/* *INDENT-ON* */
+
 #endif /* included_ethernet_packet_h */
 
 /*
