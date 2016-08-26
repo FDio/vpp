@@ -280,6 +280,20 @@ l2output_node_fn (vlib_main_t * vm,
 		}
 	    }
 
+	  // perform the PBB rewrite
+	  u32 failed = l2_pbb_process (b0, &(config0->output_pbb_vtr));
+	  if (PREDICT_FALSE (failed))
+	    {
+	      next0 = L2OUTPUT_NEXT_DROP;
+	      b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+	    }
+	  failed = l2_pbb_process (b0, &(config1->output_pbb_vtr));
+	  if (PREDICT_FALSE (failed))
+	    {
+	      next1 = L2OUTPUT_NEXT_DROP;
+	      b1->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+	    }
+
 	  /*
 	   * Perform the split horizon check
 	   * The check can only fail for non-zero shg's
@@ -389,6 +403,14 @@ l2output_node_fn (vlib_main_t * vm,
 		      b0->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
 		    }
 		}
+	    }
+
+	  // perform the PBB rewrite
+	  u32 failed = l2_pbb_process (b0, &(config0->output_pbb_vtr));
+	  if (PREDICT_FALSE (failed))
+	    {
+	      next0 = L2OUTPUT_NEXT_DROP;
+	      b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
 	    }
 
 	  /* Perform the split horizon check */

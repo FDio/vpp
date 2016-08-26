@@ -67,6 +67,11 @@ define want_interface_events_reply
     @param vtr_push_dot1q
     @param vtr_tag1
     @param vtr_tag2
+    @param sub_dot1ah
+    @param sub_pbb_dmac
+    @param sub_pbb_smac
+    @param sub_pbb_vlan_id
+    @param sub_pbb_isid
 */
 define sw_interface_details
 {
@@ -117,6 +122,13 @@ define sw_interface_details
   u32 vtr_push_dot1q;		// ethertype of first pushed tag is dot1q/dot1ad
   u32 vtr_tag1;			// first pushed tag
   u32 vtr_tag2;			// second pushed tag
+
+  /* pbb parameters of subif */
+  u8 sub_dot1ah;      		// 1=pbb subif defined, 0=otherwise 
+  u8 sub_pbb_dmac[6];
+  u8 sub_pbb_smac[6];
+  u16 sub_pbb_vlanid;
+  u32 sub_pbb_sid;
 };
 
 /** \brief Set flags on the interface
@@ -2158,6 +2170,14 @@ define delete_vhost_user_if_reply
   i32 retval;
 };
 
+/*
+   @param dot1ah - 0 = dot1ah is disabled, 1 = dot1ah is enabled
+   @param dmac - backbone destination address
+   @param smac - backbone source address
+   @param vlanid - backbone vlan id
+   @param sid - identifier of the backbone service instance
+   @param oper - dot1ah tag rewrite operation identifier (only POP2 or PUSH2 are allowed)
+*/
 define create_subif
 {
   u32 client_index;
@@ -2176,6 +2196,13 @@ define create_subif
   u8 inner_vlan_id_any;
   u16 outer_vlan_id;
   u16 inner_vlan_id;
+  
+  u8 dot1ah;
+  u8 dmac[6];
+  u8 smac[6];
+  u16 vlanid;
+  u32 sid;
+  u8 oper;
 };
 
 define create_subif_reply

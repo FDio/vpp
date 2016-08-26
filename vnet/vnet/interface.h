@@ -400,6 +400,36 @@ typedef struct
       } flags;
     };
   } eth;
+
+  struct
+  {
+    u8 b_dmac[6];
+    u8 b_smac[6];
+    u16 b_type;
+    union
+    {
+      u16 raw_flags;
+      struct
+      {
+	u16 vlanid:12;
+	u16 dei:1;
+	u16 pcp:3;
+      } flags;
+    } b_tag;
+    u16 i_type;
+    union
+    {
+      u32 raw_flags;
+      struct
+      {
+	u32 sid:24;
+	u32 res:3;
+	u32 uca:1;
+	u32 dei:1;
+	u32 pcp:3;
+      } flags;
+    } i_tag;
+  } pbb;
 } vnet_sub_interface_t;
 
 /* Software-interface.  This corresponds to a Ethernet VLAN, ATM vc, a

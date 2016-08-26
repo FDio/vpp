@@ -351,12 +351,12 @@ l2input_node_fn (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
+	  /* RX interface handles */
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
-	      /* RX interface handles */
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
-
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
 		{
 		  ethernet_header_t *h0 = vlib_buffer_get_current (b0);
@@ -378,6 +378,26 @@ l2input_node_fn (vlib_main_t * vm,
 	    }
 
 	  em->counters[node_counter_base_index + L2INPUT_ERROR_L2INPUT] += 2;
+
+	  l2_output_config_t *config0;
+	  l2_output_config_t *config1;
+	  /* Get config for the output interface */
+	  config0 = vec_elt_at_index (l2output_main.configs, sw_if_index0);
+	  config1 = vec_elt_at_index (l2output_main.configs, sw_if_index1);
+
+	  // perform the PBB rewrite
+	  u32 failed = l2_pbb_process (b0, &(config0->input_pbb_vtr));
+	  if (PREDICT_FALSE (failed))
+	    {
+	      next0 = L2OUTPUT_NEXT_DROP;
+	      b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+	    }
+	  failed = l2_pbb_process (b1, &(config1->input_pbb_vtr));
+	  if (PREDICT_FALSE (failed))
+	    {
+	      next1 = L2OUTPUT_NEXT_DROP;
+	      b1->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+	    }
 
 	  classify_and_dispatch (vm, node, cpu_index, msm, b0, &next0);
 
@@ -407,18 +427,31 @@ l2input_node_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      ethernet_header_t *h0 = vlib_buffer_get_current (b0);
 	      l2input_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      t->sw_if_index = sw_if_index0;
 	      clib_memcpy (t->src, h0->src_address, 6);
 	      clib_memcpy (t->dst, h0->dst_address, 6);
 	    }
 
 	  em->counters[node_counter_base_index + L2INPUT_ERROR_L2INPUT] += 1;
+
+	  l2_output_config_t *config0;
+	  /* Get config for the output interface */
+	  config0 = vec_elt_at_index (l2output_main.configs, sw_if_index0);
+
+	  // perform the PBB rewrite
+	  u32 failed = l2_pbb_process (b0, &(config0->input_pbb_vtr));
+	  if (PREDICT_FALSE (failed))
+	    {
+	      next0 = L2OUTPUT_NEXT_DROP;
+	      b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+	    }
 
 	  classify_and_dispatch (vm, node, cpu_index, msm, b0, &next0);
 
