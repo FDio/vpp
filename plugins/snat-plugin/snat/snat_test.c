@@ -59,7 +59,8 @@ snat_test_main_t snat_test_main;
 
 #define foreach_standard_reply_retval_handler   \
 _(snat_add_address_range_reply)                 \
-_(snat_interface_add_del_feature_reply)
+_(snat_interface_add_del_feature_reply)         \
+_(snat_add_static_mapping_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -83,8 +84,9 @@ foreach_standard_reply_retval_handler;
  */
 #define foreach_vpe_api_reply_msg                               \
 _(SNAT_ADD_ADDRESS_RANGE_REPLY, snat_add_address_range_reply)   \
- _(SNAT_INTERFACE_ADD_DEL_FEATURE_REPLY,                        \
-   snat_interface_add_del_feature_reply)
+_(SNAT_INTERFACE_ADD_DEL_FEATURE_REPLY,                         \
+  snat_interface_add_del_feature_reply)                         \
+_(SNAT_ADD_STATIC_MAPPING_REPLY, snat_add_static_mapping_reply)
 
 /* M: construct, but don't yet send a message */
 #define M(T,t)                                                  \
@@ -137,6 +139,11 @@ static int api_snat_add_address_range (vat_main_t * vam)
     ;
   else if (unformat (i, "%U", unformat_ip4_address, &start_addr))
     end_addr = start_addr;
+  else
+    {
+      clib_warning("unknown input '%U'", format_unformat_error, i);
+      return -99;
+    }
 
   start_host_order = clib_host_to_net_u32 (start_addr.as_u32);
   end_host_order = clib_host_to_net_u32 (end_addr.as_u32);
@@ -192,6 +199,11 @@ static int api_snat_interface_add_del_feature (vat_main_t * vam)
         is_inside = 1;
       else if (unformat (i, "del"))
         is_add = 0;
+      else
+        {
+          clib_warning("unknown input '%U'", format_unformat_error, i);
+          return -99;
+        }
     }
 
   if (sw_if_index_set == 0)
@@ -210,14 +222,66 @@ static int api_snat_interface_add_del_feature (vat_main_t * vam)
   return 0;
 }
 
+static int api_snat_add_static_mapping(vat_main_t * vam)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  unformat_input_t * i = vam->input;
+  f64 timeout;
+  vl_api_snat_add_static_mapping_t * mp;
+  u8 args_set_n = 0;
+  u8 is_add = 1;
+  ip4_address_t local_addr, external_addr;
+  u32 local_port = 0, external_port = 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "local_addr %U", unformat_ip4_address, &local_addr))
+        args_set_n++;
+      else if (unformat (i, "external_addr %U", unformat_ip4_address,
+                         &external_addr))
+        args_set_n++;
+      else if (unformat (i, "local_port %u", &local_port))
+        args_set_n++;
+      else if (unformat (i, "external_port %u", &external_port))
+        args_set_n++;
+      else if (unformat (i, "del"))
+        is_add = 0;
+      else
+        {
+          clib_warning("unknown input '%U'", format_unformat_error, i);
+          return -99;
+        }
+    }
+
+  if (args_set_n != 4)
+    {
+      errmsg ("local_addr and remote_addr required\n");
+      return -99;
+    }
+
+  M(SNAT_ADD_STATIC_MAPPING, snat_add_static_mapping);
+  mp->is_add = is_add;
+  mp->is_ip4 = 1;
+  mp->local_port = ntohs ((u16) local_port);
+  mp->external_port = ntohs ((u16) external_port);
+  memcpy (mp->local_ip_address, &local_addr, 4);
+  memcpy (mp->external_ip_address, &external_addr, 4);
+
+  S; W;
+  /* NOTREACHED */
+  return 0;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
  */
-#define foreach_vpe_api_msg                             \
-_(snat_add_address_range, "<start-addr> [- <end-addr]") \
-_(snat_interface_add_del_feature,                       \
-  "<intfc> | sw_if_index <id> [in] [out] [del]")
+#define foreach_vpe_api_msg                                      \
+_(snat_add_address_range, "<start-addr> [- <end-addr]")          \
+_(snat_interface_add_del_feature,                                \
+  "<intfc> | sw_if_index <id> [in] [out] [del]")                 \
+_(snat_add_static_mapping, "local_addr <ip> external_addr <ip> " \
+  "[local_port <n>] [external_port <n>] [del]")
 
 void vat_api_hookup (vat_main_t *vam)
 {
