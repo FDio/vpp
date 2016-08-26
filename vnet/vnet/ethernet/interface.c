@@ -507,6 +507,35 @@ vnet_delete_loopback_interface (u32 sw_if_index)
   return 0;
 }
 
+int
+vnet_delete_sub_interface (u32 sw_if_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  int rv = 0;
+
+  if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+
+  if (si->type == VNET_SW_INTERFACE_TYPE_SUB)
+    {
+      vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+      u64 sup_and_sub_key =
+	((u64) (si->sup_sw_if_index) << 32) | (u64) si->sub.id;
+
+      hash_unset_mem (im->sw_if_index_by_sup_and_sub, &sup_and_sub_key);
+      vnet_delete_sw_interface (vnm, sw_if_index);
+    }
+  else
+    {
+      rv = VNET_API_ERROR_INVALID_SUB_SW_IF_INDEX;
+    }
+  return rv;
+}
+
 static clib_error_t *
 delete_simulated_ethernet_interfaces (vlib_main_t * vm,
 				      unformat_input_t * input,
@@ -536,6 +565,34 @@ delete_simulated_ethernet_interfaces (vlib_main_t * vm,
   return 0;
 }
 
+static clib_error_t *
+delete_sub_interface (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  int rv = 0;
+  u32 sw_if_index = ~0;
+  vnet_main_t *vnm = vnet_get_main ();
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else
+	break;
+    }
+  if (sw_if_index == ~0)
+    return clib_error_return (0, "interface doesn't exist");
+
+  if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
+    rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+  else
+    rv = vnet_delete_sub_interface (sw_if_index);
+  if (rv)
+    return clib_error_return (0, "delete_subinterface_interface failed");
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (delete_simulated_ethernet_interface_command, static) = {
   .path = "loopback delete-interface",
@@ -549,6 +606,14 @@ VLIB_CLI_COMMAND (delete_loopback_interface_command, static) = {
   .path = "delete loopback interface",
   .short_help = "delete loopback interface intfc <interface>",
   .function = delete_simulated_ethernet_interfaces,
+};
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (delete_sub_interface_command, static) = {
+  .path = "delete sub-interface",
+  .short_help = "delete sub-interface <interface>",
+  .function = delete_sub_interface,
 };
 /* *INDENT-ON* */
 

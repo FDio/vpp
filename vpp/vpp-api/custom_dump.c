@@ -728,6 +728,16 @@ static void *vl_api_create_subif_t_print
   foreach_create_subif_bit;
 #undef _
 
+  FINISH;
+}
+
+static void *vl_api_delete_subif_t_print
+  (vl_api_delete_subif_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: delete_subif ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
   FINISH;
 }
@@ -2732,7 +2742,8 @@ _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
-_(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)
+_(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
+_(DELETE_SUBIF, delete_subif)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
