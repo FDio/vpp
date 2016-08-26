@@ -51,6 +51,7 @@ vlib_node_registration_t snat_out2in_node;
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
 _(OUT2IN_PACKETS, "Good out2in packets processed")      \
 _(BAD_ICMP_TYPE, "icmp type not echo-reply")            \
+_(BAD_INSIDE_FIB, "inside VRF ID not found")            \
 _(NO_TRANSLATION, "No translation")
   
 typedef enum {
@@ -142,15 +143,99 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
                          identifier);
   icmp0->checksum = ip_csum_fold (sum0);
 
-  /* Accounting, per-user LRU list maintenance */
+  /* Accounting */
   s0->last_heard = now;
   s0->total_pkts++;
   s0->total_bytes += vlib_buffer_length_in_chain (sm->vlib_main, b0);
-  clib_dlist_remove (sm->list_pool, s0->per_user_index);
-  clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
-                      s0->per_user_index);
+  /* Per-user LRU list maintenance for dynamic translation */
+  if (s0->outside_address_index != ~0)
+    {
+      clib_dlist_remove (sm->list_pool, s0->per_user_index);
+      clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
+                          s0->per_user_index);
+    }
 
   return next0;
+}
+
+static inline snat_session_t *
+create_session_for_static_mapping (snat_main_t *sm,
+                                  vlib_buffer_t *b0,
+                                  snat_session_key_t local,
+                                  snat_session_key_t external,
+                                  vlib_node_runtime_t * node)
+{
+  snat_user_t *u;
+  snat_user_key_t user_key;
+  snat_session_t *s;
+  clib_bihash_kv_8_8_t kv0, value0;
+  dlist_elt_t * per_user_list_head_elt;
+  u32 inside_fib_index;
+  uword * p;
+
+  p = hash_get (sm->ip4_main->fib_index_by_table_id, sm->inside_vrf_id);
+  if (! p)
+    {
+      b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_INSIDE_FIB];
+      return 0;
+    }
+  inside_fib_index = p[0];
+
+  user_key.addr = local.addr;
+  user_key.fib_index = inside_fib_index;
+  kv0.key = user_key.as_u64;
+
+  /* Ever heard of the "user" = src ip4 address before? */
+  if (clib_bihash_search_8_8 (&sm->user_hash, &kv0, &value0))
+    {
+      /* no, make a new one */
+      pool_get (sm->users, u);
+      memset (u, 0, sizeof (*u));
+      u->addr = local.addr;
+
+      pool_get (sm->list_pool, per_user_list_head_elt);
+
+      u->sessions_per_user_list_head_index = per_user_list_head_elt -
+        sm->list_pool;
+
+      clib_dlist_init (sm->list_pool, u->sessions_per_user_list_head_index);
+
+      kv0.value = u - sm->users;
+
+      /* add user */
+      clib_bihash_add_del_8_8 (&sm->user_hash, &kv0, 1 /* is_add */);
+    }
+  else
+    {
+      u = pool_elt_at_index (sm->users, value0.value);
+    }
+
+  pool_get (sm->sessions, s);
+  memset (s, 0, sizeof (*s));
+
+  s->outside_address_index = ~0;
+  s->per_user_index = ~0;
+  s->per_user_list_head_index = ~0;
+  u->nstaticsessions++;
+
+  s->in2out = local;
+  s->out2in = external;
+  s->in2out.protocol = external.protocol;
+  s->in2out.fib_index = inside_fib_index;
+
+  /* Add to translation hashes */
+  kv0.key = s->in2out.as_u64;
+  kv0.value = s - sm->sessions;
+  if (clib_bihash_add_del_8_8 (&sm->in2out, &kv0, 1 /* is_add */))
+      clib_warning ("in2out key add failed");
+
+  kv0.key = s->out2in.as_u64;
+  kv0.value = s - sm->sessions;
+
+  if (clib_bihash_add_del_8_8 (&sm->out2in, &kv0, 1 /* is_add */))
+      clib_warning ("out2in key add failed");
+
+  return s;
 }
 
 static uword
@@ -193,7 +278,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
           udp_header_t * udp0, * udp1;
           tcp_header_t * tcp0, * tcp1;
           icmp46_header_t * icmp0, * icmp1;
-          snat_session_key_t key0, key1;
+          snat_session_key_t key0, key1, sm0, sm1;
           u32 rx_fib_index0, rx_fib_index1;
           u32 proto0, proto1;
           snat_session_t * s0 = 0, * s1 = 0;
@@ -264,7 +349,15 @@ snat_out2in_node_fn (vlib_main_t * vm,
           kv0.key = key0.as_u64;
 
           if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
-            goto trace0;
+            {
+              /* Try static mappings */
+              if (snat_static_mapping_match(sm, key0, &sm0, 1))
+                goto trace0;
+
+              s0 = create_session_for_static_mapping(sm, b0, sm0, key0, node);
+              if (!s0)
+                goto trace0;
+            }
           else
             s0 = pool_elt_at_index (sm->sessions, value0.value);
 
@@ -302,13 +395,17 @@ snat_out2in_node_fn (vlib_main_t * vm,
               udp0->checksum = 0;
             }
 
-          /* Accounting, per-user LRU list maintenance */
+          /* Accounting */
           s0->last_heard = now;
           s0->total_pkts++;
           s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
-          clib_dlist_remove (sm->list_pool, s0->per_user_index);
-          clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
-                              s0->per_user_index);
+          /* Per-user LRU list maintenance for dynamic translation */
+          if (s0->outside_address_index != ~0)
+            {
+              clib_dlist_remove (sm->list_pool, s0->per_user_index);
+              clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
+                                  s0->per_user_index);
+            }
         trace0:
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
@@ -366,7 +463,15 @@ snat_out2in_node_fn (vlib_main_t * vm,
           kv1.key = key1.as_u64;
 
           if (clib_bihash_search_8_8 (&sm->out2in, &kv1, &value1))
-            goto trace1;
+            {
+              /* Try static mappings */
+              if (snat_static_mapping_match(sm, key1, &sm1, 1))
+                goto trace1;
+
+              s1 = create_session_for_static_mapping(sm, b1, sm1, key1, node);
+              if (!s1)
+                goto trace1;
+            }
           else
             s1 = pool_elt_at_index (sm->sessions, value1.value);
 
@@ -404,13 +509,17 @@ snat_out2in_node_fn (vlib_main_t * vm,
               udp1->checksum = 0;
             }
 
-          /* Accounting, per-user LRU list maintenance */
+          /* Accounting */
           s1->last_heard = now;
           s1->total_pkts++;
           s1->total_bytes += vlib_buffer_length_in_chain (vm, b1);
-          clib_dlist_remove (sm->list_pool, s1->per_user_index);
-          clib_dlist_addtail (sm->list_pool, s1->per_user_list_head_index,
-                              s1->per_user_index);
+          /* Per-user LRU list maintenance for dynamic translation */
+          if (s1->outside_address_index != ~0)
+            {
+              clib_dlist_remove (sm->list_pool, s1->per_user_index);
+              clib_dlist_addtail (sm->list_pool, s1->per_user_list_head_index,
+                                  s1->per_user_index);
+            }
         trace1:
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
@@ -447,7 +556,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
           udp_header_t * udp0;
           tcp_header_t * tcp0;
           icmp46_header_t * icmp0;
-          snat_session_key_t key0;
+          snat_session_key_t key0, sm0;
           u32 rx_fib_index0;
           u32 proto0;
           snat_session_t * s0 = 0;
@@ -503,7 +612,15 @@ snat_out2in_node_fn (vlib_main_t * vm,
           kv0.key = key0.as_u64;
 
           if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
-            goto trace00;
+            {
+              /* Try static mappings */
+              if (snat_static_mapping_match(sm, key0, &sm0, 1))
+                goto trace00;
+
+              s0 = create_session_for_static_mapping(sm, b0, sm0, key0, node);
+              if (!s0)
+                goto trace00;
+            }
           else
             s0 = pool_elt_at_index (sm->sessions, value0.value);
 
@@ -541,13 +658,17 @@ snat_out2in_node_fn (vlib_main_t * vm,
               udp0->checksum = 0;
             }
 
-          /* Accounting, per-user LRU list maintenance */
+          /* Accounting */
           s0->last_heard = now;
           s0->total_pkts++;
           s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
-          clib_dlist_remove (sm->list_pool, s0->per_user_index);
-          clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
-                              s0->per_user_index);
+          /* Per-user LRU list maintenance for dynamic translation */
+          if (s0->outside_address_index != ~0)
+            {
+              clib_dlist_remove (sm->list_pool, s0->per_user_index);
+              clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
+                                  s0->per_user_index);
+            }
         trace00:
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
