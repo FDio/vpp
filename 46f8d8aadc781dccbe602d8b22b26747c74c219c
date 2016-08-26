@@ -16,6 +16,24 @@
       "revId": "46f8d8aadc781dccbe602d8b22b26747c74c219c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_14425c10",
+        "filename": "vnet/vnet/ip/tcp_packet.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 175
+      },
+      "writtenOn": "2016-08-26T06:49:54Z",
+      "side": 1,
+      "message": "I wanted to process all TCP fields generically using _ macro but ports.src and ports.dst aren\u0027t valid names for local variables.",
+      "parentUuid": "9a0e1d27_59612d38",
+      "revId": "46f8d8aadc781dccbe602d8b22b26747c74c219c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
