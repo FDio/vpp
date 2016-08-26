@@ -50,6 +50,83 @@ l2_vtr_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l2_vtr_init);
 
+u32
+l2pbb_configure (vlib_main_t * vlib_main,
+		 vnet_main_t * vnet_main, u32 sw_if_index, u32 vtr_op,
+		 u8 * b_dmac, u8 * b_smac,
+		 u16 b_vlanid, u32 i_sid, u16 vlan_outer_tag)
+{
+  u32 error = 0;
+  u32 enable = 0;
+
+  l2_output_config_t *config = 0;
+  vnet_hw_interface_t *hi;
+  hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
+
+  if (!hi)
+    {
+      error = VNET_API_ERROR_INVALID_INTERFACE;
+      goto done;
+    }
+
+  // Config for this interface should be already initialized
+  ptr_config_t *in_config;
+  ptr_config_t *out_config;
+  config = vec_elt_at_index (l2output_main.configs, sw_if_index);
+  in_config = &(config->input_pbb_vtr);
+  out_config = &(config->output_pbb_vtr);
+
+  in_config->pop_bytes = 0;
+  in_config->push_bytes = 0;
+  out_config->pop_bytes = 0;
+  out_config->push_bytes = 0;
+  enable = (vtr_op != L2_VTR_DISABLED);
+
+  if (!enable)
+    goto done;
+
+  if (vtr_op == L2_VTR_POP_2)
+    {
+      in_config->pop_bytes = sizeof (ethernet_pbb_header_packed_t);
+    }
+  else if (vtr_op == L2_VTR_PUSH_2)
+    {
+      clib_memcpy (in_config->macs_tags.b_dst_address, b_dmac,
+		   sizeof (in_config->macs_tags.b_dst_address));
+      clib_memcpy (in_config->macs_tags.b_src_address, b_smac,
+		   sizeof (in_config->macs_tags.b_src_address));
+      in_config->macs_tags.b_type =
+	clib_net_to_host_u16 (ETHERNET_TYPE_DOT1AD);
+      in_config->macs_tags.priority_dei_id =
+	clib_net_to_host_u16 (b_vlanid & 0xFFF);
+      in_config->macs_tags.i_type =
+	clib_net_to_host_u16 (ETHERNET_TYPE_DOT1AH);
+      in_config->macs_tags.priority_dei_uca_res_sid =
+	clib_net_to_host_u32 (i_sid & 0xFFFFF);
+      in_config->push_bytes = sizeof (ethernet_pbb_header_packed_t);
+    }
+  else if (vtr_op == L2_VTR_TRANSLATE_2_2)
+    {
+      /* TODO after PoC */
+    }
+
+  /*
+   *  Construct the output tag-rewrite config
+   *
+   *  The push/pop values are always reversed
+   */
+  out_config->raw_data = in_config->raw_data;
+  out_config->pop_bytes = in_config->push_bytes;
+  out_config->push_bytes = in_config->pop_bytes;
+
+done:
+  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_VTR, enable);
+  if (config)
+    config->out_vtr_flag = (u8) enable;
+
+  /* output vtr enable is checked explicitly in l2_output */
+  return error;
+}
 
 /**
  * Configure vtag tag rewrite on the given interface.
@@ -64,6 +141,7 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
   vnet_sw_interface_t *si;
   u32 hw_no_tags;
   u32 error = 0;
+  l2_output_config_t *config;
   vtr_config_t *in_config;
   vtr_config_t *out_config;
   u32 enable;
@@ -80,10 +158,9 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
 
   /* Init the config for this interface */
   vec_validate (l2output_main.configs, sw_if_index);
-  in_config =
-    &(vec_elt_at_index (l2output_main.configs, sw_if_index)->input_vtr);
-  out_config =
-    &(vec_elt_at_index (l2output_main.configs, sw_if_index)->output_vtr);
+  config = vec_elt_at_index (l2output_main.configs, sw_if_index);
+  in_config = &(config->input_vtr);
+  out_config = &(config->output_vtr);
   in_config->raw_tags = 0;
   out_config->raw_tags = 0;
 
@@ -257,6 +334,7 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
 
   /* set the interface enable flags */
   enable = (vtr_op != L2_VTR_DISABLED);
+  config->out_vtr_flag = (u8) enable;
   l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_VTR, enable);
   /* output vtr enable is checked explicitly in l2_output */
 
@@ -603,6 +681,85 @@ VLIB_CLI_COMMAND (int_l2_vtr_cli, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+ * Set subinterface pbb vtr enable/disable.
+ * The CLI format is:
+ *    set interface l2 pbb-tag-rewrite <interface> [disable | pop | push | translate_pbb_stag <outer_tag> dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]]
+ */
+static clib_error_t *
+int_l2_pbb_vtr (vlib_main_t * vm,
+		unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = 0;
+  u32 sw_if_index, tmp;
+  u32 vtr_op = L2_VTR_DISABLED;
+  u32 outer_tag = 0;
+  u8 dmac[6];
+  u8 smac[6];
+  u8 dmac_set = 0, smac_set = 0;
+  u16 b_vlanid = 0;
+  u32 s_id = ~0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat_user
+	  (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (input, "disable"))
+	vtr_op = L2_VTR_DISABLED;
+      else if (vtr_op == L2_VTR_DISABLED && unformat (input, "pop"))
+	vtr_op = L2_VTR_POP_2;
+      else if (vtr_op == L2_VTR_DISABLED && unformat (input, "push"))
+	vtr_op = L2_VTR_PUSH_2;
+      else if (vtr_op == L2_VTR_DISABLED
+	       && unformat (input, "translate_pbb_stag %d", &outer_tag))
+	vtr_op = L2_VTR_TRANSLATE_2_1;
+      else if (unformat (input, "dmac %U", unformat_ethernet_address, dmac))
+	dmac_set = 1;
+      else if (unformat (input, "smac %U", unformat_ethernet_address, smac))
+	smac_set = 1;
+      else if (unformat (input, "b_vlanid %d", &tmp))
+	b_vlanid = tmp;
+      else if (unformat (input, "s_id %d", &s_id))
+	;
+      else
+	{
+	  error = clib_error_return (0,
+				     "expecting [disable | pop | push | translate_pbb_stag <outer_tag>\n"
+				     "dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]]");
+	  goto done;
+	}
+    }
+
+  if ((vtr_op == L2_VTR_PUSH_2 || vtr_op == L2_VTR_TRANSLATE_2_1)
+      && (!dmac_set || !smac_set || s_id == ~0))
+    {
+      error = clib_error_return (0,
+				 "expecting dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]");
+      goto done;
+    }
+
+  if (l2pbb_configure
+      (vm, vnm, sw_if_index, vtr_op, dmac, smac, b_vlanid, s_id, outer_tag))
+    {
+      error =
+	clib_error_return (0,
+			   "pbb tag rewrite is not compatible with interface");
+      goto done;
+    }
+
+done:
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (int_l2_pbb_vtr_cli, static) = {
+  .path = "set interface l2 pbb-tag-rewrite",
+  .short_help = "set interface l2 pbb-tag-rewrite <interface> [disable | pop | push | translate_pbb_stag <outer_tag> dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]]",
+  .function = int_l2_pbb_vtr,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

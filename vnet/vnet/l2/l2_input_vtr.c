@@ -178,24 +178,59 @@ l2_invtr_node_fn (vlib_main_t * vm,
 	  next1 = feat_bitmap_get_next_node_index (msm->feat_next_node_index,
 						   feature_bitmap1);
 
-	  /* perform the tag rewrite on two packets */
-	  if (l2_vtr_process
-	      (b0,
-	       &(vec_elt_at_index
-		 (l2output_main.configs, sw_if_index0)->input_vtr)))
+	  l2_output_config_t *config0;
+	  l2_output_config_t *config1;
+	  config0 = vec_elt_at_index (l2output_main.configs, sw_if_index0);
+	  config1 = vec_elt_at_index (l2output_main.configs, sw_if_index1);
+
+	  if (PREDICT_FALSE (config0->out_vtr_flag))
 	    {
-	      /* Drop packet */
-	      next0 = L2_INVTR_NEXT_DROP;
-	      b0->error = node->errors[L2_INVTR_ERROR_DROP];
+	      if (config0->output_vtr.push_and_pop_bytes)
+		{
+		  /* perform the tag rewrite on two packets */
+		  if (l2_vtr_process
+		      (b0,
+		       &(vec_elt_at_index
+			 (l2output_main.configs, sw_if_index0)->input_vtr)))
+		    {
+		      /* Drop packet */
+		      next0 = L2_INVTR_NEXT_DROP;
+		      b0->error = node->errors[L2_INVTR_ERROR_DROP];
+		    }
+		}
+	      else if (config0->output_pbb_vtr.push_and_pop_bytes)
+		{
+		  if (l2_pbb_process (b0, &(config0->input_pbb_vtr)))
+		    {
+		      /* Drop packet */
+		      next0 = L2_INVTR_NEXT_DROP;
+		      b0->error = node->errors[L2_INVTR_ERROR_DROP];
+		    }
+		}
 	    }
-	  if (l2_vtr_process
-	      (b1,
-	       &(vec_elt_at_index
-		 (l2output_main.configs, sw_if_index1)->input_vtr)))
+	  if (PREDICT_FALSE (config1->out_vtr_flag))
 	    {
-	      /* Drop packet */
-	      next1 = L2_INVTR_NEXT_DROP;
-	      b1->error = node->errors[L2_INVTR_ERROR_DROP];
+	      if (config1->output_vtr.push_and_pop_bytes)
+		{
+		  if (l2_vtr_process
+		      (b1,
+		       &(vec_elt_at_index
+			 (l2output_main.configs, sw_if_index1)->input_vtr)))
+		    {
+		      /* Drop packet */
+		      next1 = L2_INVTR_NEXT_DROP;
+		      b1->error = node->errors[L2_INVTR_ERROR_DROP];
+		    }
+		}
+	      else if (config1->output_pbb_vtr.push_and_pop_bytes)
+		{
+		  if (l2_pbb_process (b1, &(config1->input_pbb_vtr)))
+		    {
+		      /* Drop packet */
+		      next1 = L2_INVTR_NEXT_DROP;
+		      b1->error = node->errors[L2_INVTR_ERROR_DROP];
+		    }
+		}
 	    }
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
@@ -262,15 +297,33 @@ l2_invtr_node_fn (vlib_main_t * vm,
 	  next0 = feat_bitmap_get_next_node_index (msm->feat_next_node_index,
 						   feature_bitmap0);
 
-	  /* perform the tag rewrite on one packet */
-	  if (l2_vtr_process
-	      (b0,
-	       &(vec_elt_at_index
-		 (l2output_main.configs, sw_if_index0)->input_vtr)))
+	  l2_output_config_t *config0;
+	  config0 = vec_elt_at_index (l2output_main.configs, sw_if_index0);
+
+	  if (PREDICT_FALSE (config0->out_vtr_flag))
 	    {
-	      /* Drop packet */
-	      next0 = L2_INVTR_NEXT_DROP;
-	      b0->error = node->errors[L2_INVTR_ERROR_DROP];
+	      if (config0->output_vtr.push_and_pop_bytes)
+		{
+		  /* perform the tag rewrite on one packet */
+		  if (l2_vtr_process
+		      (b0,
+		       &(vec_elt_at_index
+			 (l2output_main.configs, sw_if_index0)->input_vtr)))
+		    {
+		      /* Drop packet */
+		      next0 = L2_INVTR_NEXT_DROP;
+		      b0->error = node->errors[L2_INVTR_ERROR_DROP];
+		    }
+		}
+	      else if (config0->output_pbb_vtr.push_and_pop_bytes)
+		{
+		  if (l2_pbb_process (b0, &(config0->input_pbb_vtr)))
+		    {
+		      /* Drop packet */
+		      next0 = L2_INVTR_NEXT_DROP;
+		      b0->error = node->errors[L2_INVTR_ERROR_DROP];
+		    }
+		}
 	    }
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)

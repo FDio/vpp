@@ -232,51 +232,77 @@ l2output_node_fn (vlib_main_t * vm,
 			      &msm->next_nodes,
 			      b1, sw_if_index1, feature_bitmap1, &next1);
 
-	  /*
-	   * Perform output vlan tag rewrite and the pre-vtr EFP filter check.
-	   * The EFP Filter only needs to be run if there is an output VTR
-	   * configured. The flag for the post-vtr EFP Filter node is used
-	   * to trigger the pre-vtr check as well.
-	   */
-
-	  if (PREDICT_FALSE (config0->output_vtr.push_and_pop_bytes))
+	  if (PREDICT_FALSE (config0->out_vtr_flag))
 	    {
 	      /* Perform pre-vtr EFP filter check if configured */
-	      u32 failed1 = (feature_bitmap0 & L2OUTPUT_FEAT_EFP_FILTER) &&
-		(l2_efp_filter_process (b0, &(config0->input_vtr)));
-	      u32 failed2 = l2_vtr_process (b0, &(config0->output_vtr));
-
-	      if (PREDICT_FALSE (failed1 | failed2))
+	      if (config0->output_vtr.push_and_pop_bytes)
 		{
-		  next0 = L2OUTPUT_NEXT_DROP;
-		  if (failed2)
+		  /*
+		   * Perform output vlan tag rewrite and the pre-vtr EFP filter check.
+		   * The EFP Filter only needs to be run if there is an output VTR
+		   * configured. The flag for the post-vtr EFP Filter node is used
+		   * to trigger the pre-vtr check as well.
+		   */
+		  u32 failed1 = (feature_bitmap0 & L2OUTPUT_FEAT_EFP_FILTER)
+		    && (l2_efp_filter_process (b0, &(config0->input_vtr)));
+		  u32 failed2 = l2_vtr_process (b0, &(config0->output_vtr));
+
+		  if (PREDICT_FALSE (failed1 | failed2))
 		    {
-		      b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+		      next0 = L2OUTPUT_NEXT_DROP;
+		      if (failed2)
+			{
+			  b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+			}
+		      if (failed1)
+			{
+			  b0->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
+			}
 		    }
-		  if (failed1)
+		}
+	      // perform the PBB rewrite
+	      else if (config0->output_pbb_vtr.push_and_pop_bytes)
+		{
+		  u32 failed =
+		    l2_pbb_process (b0, &(config0->output_pbb_vtr));
+		  if (PREDICT_FALSE (failed))
 		    {
-		      b0->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
+		      next0 = L2OUTPUT_NEXT_DROP;
+		      b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
 		    }
 		}
 	    }
-
-	  if (PREDICT_FALSE (config1->output_vtr.push_and_pop_bytes))
+	  if (PREDICT_FALSE (config1->out_vtr_flag))
 	    {
 	      /* Perform pre-vtr EFP filter check if configured */
-	      u32 failed1 = (feature_bitmap1 & L2OUTPUT_FEAT_EFP_FILTER) &&
-		(l2_efp_filter_process (b1, &(config1->input_vtr)));
-	      u32 failed2 = l2_vtr_process (b1, &(config1->output_vtr));
-
-	      if (PREDICT_FALSE (failed1 | failed2))
+	      if (config1->output_vtr.push_and_pop_bytes)
 		{
-		  next1 = L2OUTPUT_NEXT_DROP;
-		  if (failed2)
+		  u32 failed1 = (feature_bitmap1 & L2OUTPUT_FEAT_EFP_FILTER)
+		    && (l2_efp_filter_process (b1, &(config1->input_vtr)));
+		  u32 failed2 = l2_vtr_process (b1, &(config1->output_vtr));
+
+		  if (PREDICT_FALSE (failed1 | failed2))
 		    {
-		      b1->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+		      next1 = L2OUTPUT_NEXT_DROP;
+		      if (failed2)
+			{
+			  b1->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+			}
+		      if (failed1)
+			{
+			  b1->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
+			}
 		    }
-		  if (failed1)
+		}
+	      // perform the PBB rewrite
+	      else if (config1->output_pbb_vtr.push_and_pop_bytes)
+		{
+		  u32 failed =
+		    l2_pbb_process (b0, &(config1->output_pbb_vtr));
+		  if (PREDICT_FALSE (failed))
 		    {
-		      b1->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
+		      next1 = L2OUTPUT_NEXT_DROP;
+		      b1->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
 		    }
 		}
 	    }
@@ -342,8 +368,8 @@ l2output_node_fn (vlib_main_t * vm,
 	      clib_memcpy (t->dst, h0->dst_address, 6);
 	    }
 
-	  em->counters[node_counter_base_index + L2OUTPUT_ERROR_L2OUTPUT] +=
-	    1;
+	  em->counters[node_counter_base_index +
+		       L2OUTPUT_ERROR_L2OUTPUT] += 1;
 
 	  /* Get config for the output interface */
 	  config0 = vec_elt_at_index (msm->configs, sw_if_index0);
@@ -364,34 +390,47 @@ l2output_node_fn (vlib_main_t * vm,
 			      &msm->next_nodes,
 			      b0, sw_if_index0, feature_bitmap0, &next0);
 
-	  /*
-	   * Perform output vlan tag rewrite and the pre-vtr EFP filter check.
-	   * The EFP Filter only needs to be run if there is an output VTR
-	   * configured. The flag for the post-vtr EFP Filter node is used
-	   * to trigger the pre-vtr check as well.
-	   */
-
-	  if (config0->output_vtr.push_and_pop_bytes)
+	  if (PREDICT_FALSE (config0->out_vtr_flag))
 	    {
-	      /* Perform pre-vtr EFP filter check if configured */
-	      u32 failed1 = (feature_bitmap0 & L2OUTPUT_FEAT_EFP_FILTER) &&
-		(l2_efp_filter_process (b0, &(config0->input_vtr)));
-	      u32 failed2 = l2_vtr_process (b0, &(config0->output_vtr));
+	      /*
+	       * Perform output vlan tag rewrite and the pre-vtr EFP filter check.
+	       * The EFP Filter only needs to be run if there is an output VTR
+	       * configured. The flag for the post-vtr EFP Filter node is used
+	       * to trigger the pre-vtr check as well.
+	       */
 
-	      if (PREDICT_FALSE (failed1 | failed2))
+	      if (config0->output_vtr.push_and_pop_bytes)
 		{
-		  next0 = L2OUTPUT_NEXT_DROP;
-		  if (failed2)
+		  /* Perform pre-vtr EFP filter check if configured */
+		  u32 failed1 = (feature_bitmap0 & L2OUTPUT_FEAT_EFP_FILTER)
+		    && (l2_efp_filter_process (b0, &(config0->input_vtr)));
+		  u32 failed2 = l2_vtr_process (b0, &(config0->output_vtr));
+
+		  if (PREDICT_FALSE (failed1 | failed2))
 		    {
-		      b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+		      next0 = L2OUTPUT_NEXT_DROP;
+		      if (failed2)
+			{
+			  b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+			}
+		      if (failed1)
+			{
+			  b0->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
+			}
 		    }
-		  if (failed1)
+		}
+	      // perform the PBB rewrite
+	      else if (config0->output_pbb_vtr.push_and_pop_bytes)
+		{
+		  u32 failed =
+		    l2_pbb_process (b0, &(config0->output_pbb_vtr));
+		  if (PREDICT_FALSE (failed))
 		    {
-		      b0->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
+		      next0 = L2OUTPUT_NEXT_DROP;
+		      b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
 		    }
 		}
 	    }
-
 	  /* Perform the split horizon check */
 	  if (PREDICT_FALSE
 	      (split_horizon_violation
