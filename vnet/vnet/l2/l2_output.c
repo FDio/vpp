@@ -281,6 +281,32 @@ l2output_node_fn (vlib_main_t * vm,
 		}
 	    }
 
+	  // perform the PBB rewrite
+	  if (PREDICT_FALSE
+	      (config0->output_pbb_vtr.push_size +
+	       config0->output_pbb_vtr.pop_size))
+	    {
+	      {
+		u32 failed = l2_pbb_process (b0, &(config0->output_pbb_vtr));
+		if (PREDICT_FALSE (failed))
+		  {
+		    next0 = L2OUTPUT_NEXT_DROP;
+		    b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+		  }
+	      }
+	    }
+	  if (PREDICT_FALSE
+	      (config1->output_pbb_vtr.push_size +
+	       config1->output_pbb_vtr.pop_size))
+	    {
+	      u32 failed = l2_pbb_process (b0, &(config1->output_pbb_vtr));
+	      if (PREDICT_FALSE (failed))
+		{
+		  next1 = L2OUTPUT_NEXT_DROP;
+		  b1->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
+		}
+	    }
+
 	  /*
 	   * Perform the split horizon check
 	   * The check can only fail for non-zero shg's
@@ -342,8 +368,8 @@ l2output_node_fn (vlib_main_t * vm,
 	      clib_memcpy (t->dst, h0->dst_address, 6);
 	    }
 
-	  em->counters[node_counter_base_index + L2OUTPUT_ERROR_L2OUTPUT] +=
-	    1;
+	  em->counters[node_counter_base_index +
+		       L2OUTPUT_ERROR_L2OUTPUT] += 1;
 
 	  /* Get config for the output interface */
 	  config0 = vec_elt_at_index (msm->configs, sw_if_index0);
@@ -374,8 +400,8 @@ l2output_node_fn (vlib_main_t * vm,
 	  if (config0->output_vtr.push_and_pop_bytes)
 	    {
 	      /* Perform pre-vtr EFP filter check if configured */
-	      u32 failed1 = (feature_bitmap0 & L2OUTPUT_FEAT_EFP_FILTER) &&
-		(l2_efp_filter_process (b0, &(config0->input_vtr)));
+	      u32 failed1 = (feature_bitmap0 & L2OUTPUT_FEAT_EFP_FILTER)
+		&& (l2_efp_filter_process (b0, &(config0->input_vtr)));
 	      u32 failed2 = l2_vtr_process (b0, &(config0->output_vtr));
 
 	      if (PREDICT_FALSE (failed1 | failed2))
@@ -389,6 +415,19 @@ l2output_node_fn (vlib_main_t * vm,
 		    {
 		      b0->error = node->errors[L2OUTPUT_ERROR_EFP_DROP];
 		    }
+		}
+	    }
+
+	  // perform the PBB rewrite
+	  if (PREDICT_FALSE
+	      (config0->output_pbb_vtr.push_size +
+	       config0->output_pbb_vtr.pop_size))
+	    {
+	      u32 failed = l2_pbb_process (b0, &(config0->output_pbb_vtr));
+	      if (PREDICT_FALSE (failed))
+		{
+		  next0 = L2OUTPUT_NEXT_DROP;
+		  b0->error = node->errors[L2OUTPUT_ERROR_VTR_DROP];
 		}
 	    }
 

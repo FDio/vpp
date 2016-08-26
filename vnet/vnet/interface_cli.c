@@ -45,6 +45,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vppinfra/bitmap.h>
+#include <vnet/l2/l2_vtr.h>
 
 static int
 compare_interface_names (void *a1, void *a2)
@@ -563,6 +564,8 @@ create_sub_interfaces (vlib_main_t * vm,
   vnet_hw_interface_t *hi;
   u32 id, id_min, id_max;
   vnet_sw_interface_t template;
+  u8 dot1ah = 0;
+  u8 push_pop = ~0;		// 0 push, 1 pop
 
   hw_if_index = ~0;
   if (!unformat_user (input, unformat_vnet_hw_interface, vnm, &hw_if_index))
@@ -574,6 +577,8 @@ create_sub_interfaces (vlib_main_t * vm,
 
   memset (&template, 0, sizeof (template));
   template.sub.eth.raw_flags = 0;
+  template.sub.pbb.b_tag.raw_flags = 0;
+  template.sub.pbb.i_tag.raw_flags = 0;
 
   if (unformat (input, "%d default", &id_min))
     {
@@ -602,6 +607,58 @@ create_sub_interfaces (vlib_main_t * vm,
       error = parse_vlan_sub_interfaces (input, &template);
       if (error)
 	goto done;
+    }
+  else if (unformat (input, "%d dot1ah", &id_min))
+    {
+      // parse dot1ah config
+      dot1ah = 1;
+      id_max = id_min;
+
+      u8 dmac[6];
+      u8 smac[6];
+      u16 vlanid = 0;
+      u32 sid;
+
+      if (!unformat
+	  (input, "remote-bmac %U", unformat_ethernet_address, dmac))
+	{
+	  error = clib_error_return (0, "expected remote-bmac address");
+	  goto done;
+	}
+      if (!unformat (input, "local-bmac %U", unformat_ethernet_address, smac))
+	{
+	  error = clib_error_return (0, "expected local-bmac address");
+	  goto done;
+	}
+      if (!unformat (input, "sid %d", &sid))
+	{
+	  error = clib_error_return (0, "expected `sid` identifier");
+	  goto done;
+	}
+      if (unformat (input, "push"))
+	{
+	  push_pop = 0;
+	}
+      else if (unformat (input, "pop"))
+	{
+	  push_pop = 1;
+	}
+      else
+	{
+	  error =
+	    clib_error_return (0,
+			       "expected `push` or `pop` operation identifier");
+	  goto done;
+	}
+      template.sub.pbb.b_type = ETHERNET_TYPE_DOT1AD;
+      template.sub.pbb.i_type = ETHERNET_TYPE_DOT1AH;
+      clib_memcpy (template.sub.pbb.b_dmac, dmac, 6);
+      clib_memcpy (template.sub.pbb.b_smac, smac, 6);
+      template.sub.pbb.i_tag.flags.sid = sid & 0x00FFFFF;
+      if (unformat (input, "vlanid %d", &vlanid))
+	{
+	  template.sub.pbb.b_tag.flags.vlanid = vlanid & 0x0FFF;
+	}
     }
   else if (unformat (input, "%d-%d", &id_min, &id_max))
     {
@@ -663,6 +720,14 @@ create_sub_interfaces (vlib_main_t * vm,
       if (error)
 	goto done;
 
+      if (dot1ah)
+	{
+	  vnet_main_t *vnm = vnet_get_main ();
+	  vlib_main_t *vm = vlib_get_main ();
+	  l2pbb_configure (vm, vnm, sw_if_index,
+			   (push_pop) ? L2_VTR_POP_2 : L2_VTR_PUSH_2, 1);
+	}
+
       hash_set (hi->sub_interface_sw_if_index_by_id, id, sw_if_index);
       hash_set_mem (im->sw_if_index_by_sup_and_sub, kp, sw_if_index);
       vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
@@ -676,7 +741,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_sub_interfaces_command, static) = {
   .path = "create sub-interface",
-  .short_help = "create sub-interfaces <nn>[-<nn>] [dot1q|dot1ad|default|untagged]",
+  .short_help = "create sub-interfaces <nn>[-<nn>] [dot1q|dot1ad|default|untagged|dot1ah [local-bmac <mac> remote-bmac <mac> sid <id> [vlanid <id>] push|pop]]",
   .function = create_sub_interfaces,
 };
 /* *INDENT-ON* */

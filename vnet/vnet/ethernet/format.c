@@ -88,9 +88,35 @@ format_ethernet_vlan_tci (u8 * s, va_list * va)
 }
 
 u8 *
+format_ethernet_pbb (u8 * s, va_list * va)
+{
+  u32 b_tag = va_arg (*va, u32);
+  u32 i_tag = va_arg (*va, u32);
+  u32 vid = (b_tag & 0xfff);
+  u32 bdei = (b_tag >> 12) & 1;
+  u32 bpcp = (b_tag >> 13);
+  u32 sid = (i_tag & 0xffffff);
+  u8 ires = (i_tag >> 24) & 3;
+  u8 iuca = (i_tag >> 27) & 1;
+  u8 idei = (i_tag >> 28) & 1;
+  u8 ipcp = (i_tag >> 29);
+
+  s =
+    format (s, "B_tag %04X (vid %d, dei %d, pcp %d), ", b_tag, vid, bdei,
+	    bpcp);
+  s =
+    format (s, "I_tag %08X (sid %d, res %d, dei %d, pcp %d)", i_tag, sid,
+	    ires, iuca, idei, ipcp);
+
+  return s;
+}
+
+u8 *
 format_ethernet_header_with_length (u8 * s, va_list * args)
 {
-  ethernet_max_header_t *m = va_arg (*args, ethernet_max_header_t *);
+  ethernet_pbb_header_packed_t *ph =
+    va_arg (*args, ethernet_pbb_header_packed_t *);
+  ethernet_max_header_t *m = (ethernet_max_header_t *) ph;
   u32 max_header_bytes = va_arg (*args, u32);
   ethernet_main_t *em = &ethernet_main;
   ethernet_header_t *e = &m->ethernet;
@@ -100,12 +126,15 @@ format_ethernet_header_with_length (u8 * s, va_list * args)
   u32 n_vlan = 0, i, header_bytes;
   uword indent;
 
-  while ((type == ETHERNET_TYPE_VLAN || type == ETHERNET_TYPE_DOT1AD)
-	 && n_vlan < ARRAY_LEN (m->vlan))
+  while ((type == ETHERNET_TYPE_VLAN || type == ETHERNET_TYPE_DOT1AD
+	  || type == ETHERNET_TYPE_DOT1AH) && n_vlan < ARRAY_LEN (m->vlan))
     {
       vlan_type[n_vlan] = type;
-      v = m->vlan + n_vlan;
-      type = clib_net_to_host_u16 (v->type);
+      if (type != ETHERNET_TYPE_DOT1AH)
+	{
+	  v = m->vlan + n_vlan;
+	  type = clib_net_to_host_u16 (v->type);
+	}
       n_vlan++;
     }
 
@@ -120,28 +149,38 @@ format_ethernet_header_with_length (u8 * s, va_list * args)
 	      format_ethernet_address, e->src_address,
 	      format_ethernet_address, e->dst_address);
 
-  for (i = 0; i < n_vlan; i++)
+  if (type != ETHERNET_TYPE_DOT1AH)
     {
-      u32 v = clib_net_to_host_u16 (m->vlan[i].priority_cfi_and_id);
-      if (*vlan_type == ETHERNET_TYPE_VLAN)
-	s = format (s, " 802.1q vlan %U", format_ethernet_vlan_tci, v);
-      else
-	s = format (s, " 802.1ad vlan %U", format_ethernet_vlan_tci, v);
+      for (i = 0; i < n_vlan; i++)
+	{
+	  u32 v = clib_net_to_host_u16 (m->vlan[i].priority_cfi_and_id);
+	  if (*vlan_type == ETHERNET_TYPE_VLAN)
+	    s = format (s, " 802.1q vlan %U", format_ethernet_vlan_tci, v);
+	  else
+	    s = format (s, " 802.1ad vlan %U", format_ethernet_vlan_tci, v);
+	}
+
+      if (max_header_bytes != 0 && header_bytes < max_header_bytes)
+	{
+	  ethernet_type_info_t *ti;
+	  vlib_node_t *node = 0;
+
+	  ti = ethernet_get_type_info (em, type);
+	  if (ti && ti->node_index != ~0)
+	    node = vlib_get_node (em->vlib_main, ti->node_index);
+	  if (node && node->format_buffer)
+	    s = format (s, "\n%U%U",
+			format_white_space, indent,
+			node->format_buffer, (void *) m + header_bytes,
+			max_header_bytes - header_bytes);
+	}
     }
-
-  if (max_header_bytes != 0 && header_bytes < max_header_bytes)
+  else
     {
-      ethernet_type_info_t *ti;
-      vlib_node_t *node = 0;
-
-      ti = ethernet_get_type_info (em, type);
-      if (ti && ti->node_index != ~0)
-	node = vlib_get_node (em->vlib_main, ti->node_index);
-      if (node && node->format_buffer)
-	s = format (s, "\n%U%U",
-		    format_white_space, indent,
-		    node->format_buffer, (void *) m + header_bytes,
-		    max_header_bytes - header_bytes);
+      s = format (s, "\n%UPBB header : %U", format_white_space, indent,
+		  format_ethernet_pbb,
+		  clib_net_to_host_u16 (ph->priority_dei_id),
+		  clib_net_to_host_u32 (ph->priority_dei_uca_res_sid));
     }
 
   return s;
