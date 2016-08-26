@@ -4831,3 +4831,23 @@ define ipsec_gre_tunnel_details {
     u8 src_address[4];
     u8 dst_address[4];
 };
+
+/** \brief Delete sub interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface that was created by create_subif
+*/
+define delete_subif {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief Delete sub interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define delete_subif_reply {
+  u32 context;
+  i32 retval;
+};

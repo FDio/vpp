@@ -387,6 +387,7 @@ clib_error_t *next_by_ethertype_register (next_by_ethertype_t * l3_next,
 
 int vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address);
 int vnet_delete_loopback_interface (u32 sw_if_index);
+int vnet_delete_sub_interface (u32 sw_if_index);
 
 // Perform ethernet subinterface classification table lookups given
 // the ports's sw_if_index and fields extracted from the ethernet header.
