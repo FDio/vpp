@@ -55,6 +55,19 @@ typedef struct {
   };
 } snat_user_key_t;
 
+typedef struct {
+  union
+  {
+    struct
+    {
+      ip4_address_t addr;
+      u16 port;
+      u16 pad;
+    };
+    u64 as_u64;
+  };
+} snat_static_mapping_key_t;
+
 
 typedef enum {
   SNAT_PROTOCOL_UDP = 0,
@@ -62,6 +75,8 @@ typedef enum {
   SNAT_PROTOCOL_ICMP,
 } snat_protocol_t;
 
+
+#define SNAT_SESSION_FLAG_STATIC_MAPPING 1
 
 typedef CLIB_PACKED(struct {
   snat_session_key_t out2in;    /* 0-15 */
@@ -87,12 +102,12 @@ typedef CLIB_PACKED(struct {
 
 }) snat_session_t;
 
-#define SNAT_SESSION_STATIC (1<<0)
 
 typedef struct {
   ip4_address_t addr;
   u32 sessions_per_user_list_head_index;
   u32 nsessions;
+  u32 nstaticsessions;
 } snat_user_t;
 
 typedef struct {
@@ -102,6 +117,13 @@ typedef struct {
 } snat_address_t;
 
 typedef struct {
+  ip4_address_t local_addr;
+  ip4_address_t external_addr;
+  u16 local_port;
+  u16 external_port;
+} snat_static_mapping_t;
+
+typedef struct {
   /* Main lookup tables */
   clib_bihash_8_8_t out2in;
   clib_bihash_8_8_t in2out;
@@ -109,11 +131,20 @@ typedef struct {
   /* Find-a-user => src address lookup */
   clib_bihash_8_8_t user_hash;
 
+  /* Find a static mapping by local */
+  clib_bihash_8_8_t static_mapping_by_local;
+
+  /* Find a static mapping by external */
+  clib_bihash_8_8_t static_mapping_by_external;
+
   /* User pool */
   snat_user_t * users;
 
   /* Session pool */
   snat_session_t * sessions;
+
+  /* Static mapping pool */
+  snat_static_mapping_t * static_mappings;
 
   /* Vector of outside addresses */
   snat_address_t * addresses;
@@ -136,6 +167,7 @@ typedef struct {
   u32 max_translations_per_user;
   u32 outside_vrf_id;
   u32 outside_fib_index;
+  u32 inside_vrf_id;
 
   /* API message ID base */
   u16 msg_id_base;
@@ -160,6 +192,12 @@ void snat_free_outside_address_and_port (snat_main_t * sm,
 int snat_alloc_outside_address_and_port (snat_main_t * sm, 
                                          snat_session_key_t * k,
                                          u32 * address_indexp);
+
+int snat_static_mapping_match (snat_main_t * sm,
+                               snat_session_key_t match,
+                               snat_session_key_t * mapping,
+                               u8 by_external);
+
 format_function_t format_snat_user;
 
 typedef struct {
