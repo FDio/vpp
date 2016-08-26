@@ -2318,7 +2318,7 @@ static void *vl_api_lisp_add_del_remote_mapping_t_print
 	      mp->eid_type, mp->eid, mp->eid_len, mp->seid, mp->seid_len,
 	      mp->is_src_dst);
 
-  rloc_num = mp->rloc_num;
+  rloc_num = clib_net_to_host_u32 (mp->rloc_num);
 
   if (0 == rloc_num)
     s = format (s, "action %d", mp->action);
@@ -2470,7 +2470,7 @@ static void *vl_api_lisp_add_del_locator_set_t_print
 
   s = format (s, "locator-set %s ", mp->locator_set_name);
 
-  loc_num = mp->locator_num;
+  loc_num = clib_net_to_host_u32 (mp->locator_num);
   locs = (ls_locator_t *) mp->locators;
 
   for (i = 0; i < loc_num; i++)
