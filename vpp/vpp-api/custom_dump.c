@@ -2748,6 +2748,29 @@ static void *vl_api_ipsec_gre_tunnel_dump_t_print
   FINISH;
 }
 
+static void *vl_api_l2_interface_pbb_tag_rewrite_t_print
+  (vl_api_l2_interface_pbb_tag_rewrite_t * mp, void *handle)
+{
+  u8 *s;
+  u32 vtr_op = ntohl (mp->vtr_op);
+
+  s = format (0, "SCRIPT: l2_interface_pbb_tag_rewrite ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "vtr_op %d ", vtr_op);
+  if (vtr_op != L2_VTR_DISABLED && vtr_op != L2_VTR_POP_2)
+    {
+      if (vtr_op == L2_VTR_TRANSLATE_2_2)
+	s = format (s, "%d ", ntohs (mp->outer_tag));
+      s = format (s, "dmac %U ", format_ethernet_address, &mp->b_dmac);
+      s = format (s, "smac %U ", format_ethernet_address, &mp->b_smac);
+      s = format (s, "sid %d ", ntohl (mp->i_sid));
+      s = format (s, "vlanid %d ", ntohs (mp->b_vlanid));
+    }
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -2908,7 +2931,8 @@ _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
-_(DELETE_SUBIF, delete_subif)
+_(DELETE_SUBIF, delete_subif)                                           \
+_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {

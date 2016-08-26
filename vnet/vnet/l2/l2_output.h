@@ -37,6 +37,8 @@ typedef struct
    */
   vtr_config_t input_vtr;
   vtr_config_t output_vtr;
+  ptr_config_t input_pbb_vtr;
+  ptr_config_t output_pbb_vtr;
 
   /* some of these flags may get integrated into the feature bitmap */
   u8 fwd_enable;
@@ -44,6 +46,9 @@ typedef struct
 
   /* split horizon group */
   u8 shg;
+
+  /* flag for output vtr operation */
+  u8 out_vtr_flag;
 
 } l2_output_config_t;
 

@@ -5119,3 +5119,38 @@ define sw_interface_set_dpdk_hqos_tctbl_reply {
     u32 context;
     i32 retval;
 };
+
+/** \brief L2 interface pbb tag rewrite configure request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface the operation is applied to
+    @param vtr_op - Choose from l2_vtr_op_t enum values
+    @param inner_tag - needed for translate_qinq vtr op only
+    @param outer_tag - needed for translate_qinq vtr op only 
+    @param b_dmac - B-tag remote mac address, needed for any push or translate_qinq vtr op
+    @param b_smac - B-tag local mac address, needed for any push or translate qinq vtr op
+    @param b_vlanid - B-tag vlanid, needed for any push or translate qinq vtr op
+    @param i_sid - I-tag service id, needed for any push or translate qinq vtr op
+*/
+define l2_interface_pbb_tag_rewrite
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 vtr_op;
+  u16 outer_tag;
+  u8  b_dmac[6];
+  u8  b_smac[6];
+  u16 b_vlanid;
+  u32 i_sid;
+};
+
+/** \brief L2 interface pbb tag rewrite response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define l2_interface_pbb_tag_rewrite_reply
+{
+  u32 context;
+  i32 retval;
+};
