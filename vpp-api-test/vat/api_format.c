@@ -49,6 +49,7 @@
 #include <vnet/policer/xlate.h>
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police.h>
+#include <vnet/span/span.h>
 
 #include "vat/json_format.h"
 
@@ -2446,7 +2447,6 @@ static void
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
-
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
       ASSERT (VAT_JSON_NONE == vam->json_tree.type);
@@ -3388,7 +3388,9 @@ _(ipfix_enable_reply)                                   \
 _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
 _(ip_source_and_port_range_check_add_del_reply)         \
-_(ip_source_and_port_range_check_interface_add_del_reply)
+_(ip_source_and_port_range_check_interface_add_del_reply)\
+_(span_create_reply)                                    \
+_(span_delete_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3607,7 +3609,10 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
  ip_source_and_port_range_check_interface_add_del_reply)                \
 _(IPSEC_GRE_ADD_DEL_TUNNEL_REPLY, ipsec_gre_add_del_tunnel_reply)       \
-_(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)
+_(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)                   \
+_(SPAN_CREATE_REPLY, span_create_reply)                                 \
+_(SPAN_DELETE_REPLY, span_delete_reply)                                 \
+_(SPAN_DETAILS, span_details)
 
 /* M: construct, but don't yet send a message */
 
@@ -15200,6 +15205,108 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
 }
 
 static int
+api_span_create (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_span_create_t *mp;
+  f64 timeout;
+  u32 src_sw_if_index;
+  u32 dst_sw_if_index;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "src %u", &src_sw_if_index))
+	;
+      else if (unformat (i, "dst %u", &dst_sw_if_index))
+	;
+      else
+	break;
+    }
+
+  M (SPAN_CREATE, netmap_create);
+
+  mp->sw_if_index_from = htonl (src_sw_if_index);
+  mp->sw_if_index_to = htonl (dst_sw_if_index);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
+api_span_delete (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_span_delete_t *mp;
+  f64 timeout;
+  u32 src_sw_if_index;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "src %u", &src_sw_if_index))
+	;
+      else
+	break;
+    }
+
+  M (SPAN_DELETE, netmap_delete);
+
+  mp->sw_if_index_from = htonl (src_sw_if_index);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static void
+vl_api_span_details_t_handler (vl_api_span_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  fformat (vam->ofp, "%u => %u\n",
+	   ntohl (mp->sw_if_index_from), ntohl (mp->sw_if_index_to));
+}
+
+static void
+vl_api_span_details_t_handler_json (vl_api_span_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "src-if-index",
+			    ntohl (mp->sw_if_index_from));
+  vat_json_object_add_uint (node, "dst-if-index", ntohl (mp->sw_if_index_to));
+}
+
+static int
+api_span_dump (vat_main_t * vam)
+{
+  vl_api_span_dump_t *mp;
+  f64 timeout;
+
+  M (SPAN_DUMP, span_dump);
+  S;
+
+  /* Use a control ping for synchronization */
+  {
+    vl_api_control_ping_t *mp;
+    M (CONTROL_PING, control_ping);
+    S;
+  }
+  W;
+}
+
+static int
 q_or_quit (vat_main_t * vam)
 {
   longjmp (vam->jump_buf, 1);
@@ -15779,7 +15886,10 @@ _(ip_source_and_port_range_check_interface_add_del,                     \
   "[udp-in-vrf <id>] [udp-out-vrf <id>]")                               \
 _(ipsec_gre_add_del_tunnel,                                             \
   "src <addr> dst <addr> local_sa <sa-id> remote_sa <sa-id> [del]")     \
-_(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")
+_(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")                          \
+_(span_create, "src <src interface name> dst <dst interface name>")     \
+_(span_delete, "src <src interface name>")                              \
+_(span_dump, "")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

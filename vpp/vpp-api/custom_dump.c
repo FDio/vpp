@@ -2585,6 +2585,39 @@ static void *vl_api_ipsec_gre_tunnel_dump_t_print
   FINISH;
 }
 
+static void *vl_api_span_create_t_print
+  (vl_api_span_create_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: span_create ");
+  s = format (s, "sw_if_index_from %u ", ntohl (mp->sw_if_index_from));
+  s = format (s, "sw_if_index_to %u ", ntohl (mp->sw_if_index_to));
+
+  FINISH;
+}
+
+static void *vl_api_span_delete_t_print
+  (vl_api_span_delete_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: span_delete ");
+  s = format (s, "sw_if_index_from %u ", ntohl (mp->sw_if_index_from));
+
+  FINISH;
+}
+
+static void *
+vl_api_span_dump_t_print (vl_api_span_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: span_dump ");
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -2732,7 +2765,10 @@ _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
-_(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)
+_(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
+_(SPAN_CREATE, span_create)                                             \
+_(SPAN_DELETE, span_delete)                                             \
+_(SPAN_DUMP, span_dump)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
