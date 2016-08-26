@@ -213,6 +213,7 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 	  main_intf_t *main_intf0, *main_intf1;
 	  vlan_intf_t *vlan_intf0, *vlan_intf1;
 	  qinq_intf_t *qinq_intf0, *qinq_intf1;
+	  pbb_intf_t *pbb_intf0, *pbb_intf1;
 	  u32 is_l20, is_l21;
 	  __attribute__ ((unused)) u32 matched0, matched1;
 	  u8 error0, error1;
@@ -311,19 +312,25 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 				  msm->vnet_main,
 				  port_sw_if_index0,
 				  first_ethertype0,
+				  0,
 				  outer_id0,
 				  inner_id0,
+				  0,
 				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+				  &main_intf0, &vlan_intf0, &qinq_intf0,
+				  &pbb_intf0);
 
 	  eth_vlan_table_lookups (&ethernet_main,
 				  msm->vnet_main,
 				  port_sw_if_index1,
 				  first_ethertype1,
+				  0,
 				  outer_id1,
 				  inner_id1,
+				  0,
 				  &hi1,
-				  &main_intf1, &vlan_intf1, &qinq_intf1);
+				  &main_intf1, &vlan_intf1, &qinq_intf1,
+				  &pbb_intf1);
 
 	  matched0 = eth_identify_subint (hi0,
 					  b0,
@@ -331,6 +338,7 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 					  main_intf0,
 					  vlan_intf0,
 					  qinq_intf0,
+					  pbb_intf0,
 					  &subint_sw_if_index0,
 					  &error0, &is_l20);
 
@@ -340,6 +348,7 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 					  main_intf1,
 					  vlan_intf1,
 					  qinq_intf1,
+					  pbb_intf1,
 					  &subint_sw_if_index1,
 					  &error1, &is_l21);
 
@@ -403,6 +412,7 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 	  main_intf_t *main_intf0;
 	  vlan_intf_t *vlan_intf0;
 	  qinq_intf_t *qinq_intf0;
+	  pbb_intf_t *pbb_intf0;
 	  u32 is_l20;
 	  __attribute__ ((unused)) u32 matched0;
 	  u8 error0;
@@ -449,10 +459,13 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 				  msm->vnet_main,
 				  port_sw_if_index0,
 				  first_ethertype0,
+				  0,
 				  outer_id0,
 				  inner_id0,
+				  0,
 				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+				  &main_intf0, &vlan_intf0, &qinq_intf0,
+				  &pbb_intf0);
 
 	  matched0 = eth_identify_subint (hi0,
 					  b0,
@@ -460,6 +473,7 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 					  main_intf0,
 					  vlan_intf0,
 					  qinq_intf0,
+					  pbb_intf0,
 					  &subint_sw_if_index0,
 					  &error0, &is_l20);
 
