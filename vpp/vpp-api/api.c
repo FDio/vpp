@@ -5126,7 +5126,7 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
   vnet_lisp_add_del_locator_set_args_t _a, *a = &_a;
   locator_t locator;
   ls_locator_t *ls_loc;
-  u32 ls_index = ~0;
+  u32 ls_index = ~0, locator_num;
   u8 *locator_name = NULL;
   int i;
 
@@ -5137,9 +5137,10 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
   a->name = locator_name;
   a->is_add = mp->is_add;
   a->local = 1;
+  locator_num = clib_net_to_host_u32 (mp->locator_num);
 
   memset (&locator, 0, sizeof (locator));
-  for (i = 0; i < mp->locator_num; i++)
+  for (i = 0; i < locator_num; i++)
     {
       ls_loc = &((ls_locator_t *) mp->locators)[i];
       VALIDATE_SW_IF_INDEX (ls_loc);
@@ -5487,7 +5488,7 @@ static void
   if (rv)
     goto send_reply;
 
-  rlocs = unformat_lisp_locs (mp->rlocs, mp->rloc_num);
+  rlocs = unformat_lisp_locs (mp->rlocs, clib_net_to_host_u32 (mp->rloc_num));
   if (0 == rlocs)
     goto send_reply;
 

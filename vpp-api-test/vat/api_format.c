@@ -11714,7 +11714,7 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
 	       vec_len (locator_set_name));
   vec_free (locator_set_name);
 
-  mp->locator_num = vec_len (locators);
+  mp->locator_num = clib_host_to_net_u32 (vec_len (locators));
   if (locators)
     clib_memcpy (mp->locators, locators,
 		 (sizeof (ls_locator_t) * vec_len (locators)));
@@ -12458,7 +12458,7 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
   mp->eid_type = eid->type;
   lisp_eid_put_vat (mp->eid, eid->addr, eid->type);
 
-  mp->rloc_num = vec_len (rlocs);
+  mp->rloc_num = clib_host_to_net_u32 (vec_len (rlocs));
   clib_memcpy (mp->rlocs, rlocs, (sizeof (rloc_t) * vec_len (rlocs)));
   vec_free (rlocs);
 
