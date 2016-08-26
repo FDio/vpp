@@ -42,7 +42,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vppinfra/sparse_vec.h>
 #include <vnet/l2/l2_bvi.h>
-
+#include <vnet/l2/l2_vtr.h>
 
 #define foreach_ethernet_input_next		\
   _ (PUNT, "error-punt")			\
@@ -90,9 +90,13 @@ parse_header (ethernet_input_variant_t variant,
 	      vlib_buffer_t * b0,
 	      u16 * type,
 	      u16 * orig_type,
-	      u16 * outer_id, u16 * inner_id, u32 * match_flags)
+	      u16 * outer_id, u16 * inner_id, u32 * pbb_sid,
+	      u32 * match_flags)
 {
   u8 vlan_count;
+  ethernet_pbb_header_packed_t *ph0;
+  ph0 = (void *) (b0->data + b0->current_data);
+  int pbb_hsize = 0;
 
   if (variant == ETHERNET_INPUT_VARIANT_ETHERNET
       || variant == ETHERNET_INPUT_VARIANT_NOT_L2)
@@ -104,6 +108,8 @@ parse_header (ethernet_input_variant_t variant,
       vnet_buffer (b0)->ethernet.start_of_ethernet_header = b0->current_data;
 
       vlib_buffer_advance (b0, sizeof (e0[0]));
+
+      pbb_hsize -= sizeof (e0[0]);
 
       *type = clib_net_to_host_u16 (e0->type);
     }
@@ -125,6 +131,8 @@ parse_header (ethernet_input_variant_t variant,
   // default the tags to 0 (used if there is no corresponding tag)
   *outer_id = 0;
   *inner_id = 0;
+  // default pbb_sid to 0
+  *pbb_sid = 0;
 
   *match_flags = SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_0_TAG;
   vlan_count = 0;
@@ -174,6 +182,21 @@ parse_header (ethernet_input_variant_t variant,
 	      vlan_count = 3;	// "unknown" number, aka, 3-or-more
 	    }
 	}
+      if (*type == ETHERNET_TYPE_DOT1AH)
+	{
+	  vlan_count = 0;
+	  *outer_id = 0;
+	  *inner_id = 0;
+	  *pbb_sid =
+	    clib_net_to_host_u32 (ph0->priority_dei_uca_res_sid) & 0xffffff;
+
+	  *match_flags = SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_2_TAG;
+
+	  pbb_hsize += (sizeof (ph0[0]) - sizeof (h0[0]));
+	  vlib_buffer_advance (b0, -pbb_hsize);
+
+	  return;
+	}
     }
   ethernet_buffer_set_vlan_count (b0, vlan_count);
 }
@@ -188,12 +211,13 @@ identify_subint (vnet_hw_interface_t * hi,
 		 main_intf_t * main_intf,
 		 vlan_intf_t * vlan_intf,
 		 qinq_intf_t * qinq_intf,
+		 pbb_intf_t * pbb_intf,
 		 u32 * new_sw_if_index, u8 * error0, u32 * is_l2)
 {
   u32 matched;
 
   matched = eth_identify_subint (hi, b0, match_flags,
-				 main_intf, vlan_intf, qinq_intf,
+				 main_intf, vlan_intf, qinq_intf, pbb_intf,
 				 new_sw_if_index, error0, is_l2);
 
   if (matched)
@@ -335,6 +359,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  vlan_intf_t *vlan_intf0, *vlan_intf1;
 	  qinq_intf_t *qinq_intf0, *qinq_intf1;
 	  u32 is_l20, is_l21;
+	  u32 pbb_sid0, pbb_sid1;
+	  pbb_intf_t *pbb_intf0, *pbb_intf1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -367,12 +393,14 @@ ethernet_input_inline (vlib_main_t * vm,
 	  parse_header (variant,
 			b0,
 			&type0,
-			&orig_type0, &outer_id0, &inner_id0, &match_flags0);
+			&orig_type0, &outer_id0, &inner_id0, &pbb_sid0,
+			&match_flags0);
 
 	  parse_header (variant,
 			b1,
 			&type1,
-			&orig_type1, &outer_id1, &inner_id1, &match_flags1);
+			&orig_type1, &outer_id1, &inner_id1, &pbb_sid1,
+			&match_flags1);
 
 	  old_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  old_sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
@@ -381,33 +409,41 @@ ethernet_input_inline (vlib_main_t * vm,
 				  vnm,
 				  old_sw_if_index0,
 				  orig_type0,
+				  type0,
 				  outer_id0,
 				  inner_id0,
+				  pbb_sid0,
 				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+				  &main_intf0, &vlan_intf0, &qinq_intf0,
+				  &pbb_intf0);
 
 	  eth_vlan_table_lookups (em,
 				  vnm,
 				  old_sw_if_index1,
 				  orig_type1,
+				  type1,
 				  outer_id1,
 				  inner_id1,
+				  pbb_sid1,
 				  &hi1,
-				  &main_intf1, &vlan_intf1, &qinq_intf1);
+				  &main_intf1, &vlan_intf1, &qinq_intf1,
+				  &pbb_intf1);
 
 	  identify_subint (hi0,
 			   b0,
 			   match_flags0,
 			   main_intf0,
 			   vlan_intf0,
-			   qinq_intf0, &new_sw_if_index0, &error0, &is_l20);
+			   qinq_intf0,
+			   pbb_intf0, &new_sw_if_index0, &error0, &is_l20);
 
 	  identify_subint (hi1,
 			   b1,
 			   match_flags1,
 			   main_intf1,
 			   vlan_intf1,
-			   qinq_intf1, &new_sw_if_index1, &error1, &is_l21);
+			   qinq_intf1,
+			   pbb_intf1, &new_sw_if_index1, &error1, &is_l21);
 
 	  // Save RX sw_if_index for later nodes
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
@@ -506,6 +542,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  vlan_intf_t *vlan_intf0;
 	  qinq_intf_t *qinq_intf0;
 	  u32 is_l20;
+	  u32 pbb_sid0;
+	  pbb_intf_t *pbb_intf0;
 
 	  // Prefetch next iteration
 	  if (n_left_from > 1)
@@ -531,7 +569,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  parse_header (variant,
 			b0,
 			&type0,
-			&orig_type0, &outer_id0, &inner_id0, &match_flags0);
+			&orig_type0, &outer_id0, &inner_id0, &pbb_sid0,
+			&match_flags0);
 
 	  old_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
@@ -539,17 +578,21 @@ ethernet_input_inline (vlib_main_t * vm,
 				  vnm,
 				  old_sw_if_index0,
 				  orig_type0,
+				  type0,
 				  outer_id0,
 				  inner_id0,
+				  pbb_sid0,
 				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+				  &main_intf0, &vlan_intf0, &qinq_intf0,
+				  &pbb_intf0);
 
 	  identify_subint (hi0,
 			   b0,
 			   match_flags0,
 			   main_intf0,
 			   vlan_intf0,
-			   qinq_intf0, &new_sw_if_index0, &error0, &is_l20);
+			   qinq_intf0,
+			   pbb_intf0, &new_sw_if_index0, &error0, &is_l20);
 
 	  // Save RX sw_if_index for later nodes
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
@@ -670,6 +713,7 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
   main_intf_t *main_intf;
   vlan_table_t *vlan_table;
   qinq_table_t *qinq_table;
+  pbb_table_t *pbb_table;
   subint_config_t *subint = 0;
 
   hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
@@ -687,7 +731,23 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
   // Locate the subint for the given ethernet config
   si = vnet_get_sw_interface (vnm, sw_if_index);
 
-  if (si->sub.eth.flags.default_sub)
+  if (si->sub.pbb.i_tag.raw_flags != 0)
+    {
+      if (main_intf->dot1ah == 0)
+	{
+	  // Allocate a vlan table from the pool
+	  pool_get (em->pbb_pool, pbb_table);
+	  main_intf->dot1ah = pbb_table - em->pbb_pool;
+	}
+      else
+	{
+	  // Get ptr to existing pbb table
+	  pbb_table = vec_elt_at_index (em->pbb_pool, main_intf->dot1ah);
+	}
+      subint = &pbb_table->pbb[si->sub.pbb.i_tag.flags.sid].subint;
+      *flags = SUBINT_CONFIG_MATCH_2_TAG;
+    }
+  else if (si->sub.eth.flags.default_sub)
     {
       subint = &main_intf->default_subint;
       *flags = SUBINT_CONFIG_MATCH_0_TAG |
@@ -1156,6 +1216,7 @@ ethernet_input_init (vlib_main_t * vm)
   ethernet_main_t *em = &ethernet_main;
   __attribute__ ((unused)) vlan_table_t *invalid_vlan_table;
   __attribute__ ((unused)) qinq_table_t *invalid_qinq_table;
+  __attribute__ ((unused)) pbb_table_t *invalid_pbb_table;
 
   ethernet_setup_node (vm, ethernet_input_node.index);
   ethernet_setup_node (vm, ethernet_input_type_node.index);
@@ -1167,11 +1228,14 @@ ethernet_input_init (vlib_main_t * vm)
   vec_validate (em->main_intfs, 10);	// 10 main interfaces
   pool_alloc (em->vlan_pool, 10);
   pool_alloc (em->qinq_pool, 1);
+  pool_alloc (em->pbb_pool, 1);
 
   // The first vlan pool will always be reserved for an invalid table
   pool_get (em->vlan_pool, invalid_vlan_table);	// first id = 0
   // The first qinq pool will always be reserved for an invalid table
   pool_get (em->qinq_pool, invalid_qinq_table);	// first id = 0
+  // The first pbb pool will always be reserved for an invalid table
+  pool_get (em->pbb_pool, invalid_pbb_table);	// first id = 0
 
   return 0;
 }

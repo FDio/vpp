@@ -2060,6 +2060,11 @@ vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
       rv = VNET_API_ERROR_BOND_SLAVE_NOT_ALLOWED;
       goto out;
     }
+  if (mp->dot1ah && mp->oper != L2_VTR_POP_2 && mp->oper != L2_VTR_PUSH_2)
+    {
+      rv = VNET_API_ERROR_INVALID_SUB_SW_IF_OPERATION;
+      goto out;
+    }
 
   sw_if_index = si->sw_if_index;
   sub_id = ntohl (mp->sub_id);
@@ -2093,6 +2098,15 @@ vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
   template.sub.eth.flags.inner_vlan_id_any = mp->inner_vlan_id_any;
   template.sub.eth.outer_vlan_id = ntohs (mp->outer_vlan_id);
   template.sub.eth.inner_vlan_id = ntohs (mp->inner_vlan_id);
+  if (mp->dot1ah)
+    {
+      clib_memcpy (template.sub.pbb.b_dmac, mp->dmac, 6);
+      clib_memcpy (template.sub.pbb.b_smac, mp->smac, 6);
+      template.sub.pbb.b_type = ETHERNET_TYPE_DOT1AD;
+      template.sub.pbb.b_tag.flags.vlanid = ntohs (mp->vlanid) & 0x0FFF;
+      template.sub.pbb.i_type = ETHERNET_TYPE_DOT1AH;
+      template.sub.pbb.i_tag.flags.sid = ntohl (mp->sid) & 0x00FFFFF;
+    }
 
   error = vnet_create_sw_interface (vnm, &template, &sw_if_index);
   if (error)
@@ -2100,6 +2114,13 @@ vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
       clib_error_report (error);
       rv = VNET_API_ERROR_SUBIF_CREATE_FAILED;
       goto out;
+    }
+
+  if (mp->dot1ah)
+    {
+      vnet_main_t *vnm = vnet_get_main ();
+      vlib_main_t *vm = vlib_get_main ();
+      rv = l2pbb_configure (vm, vnm, sw_if_index, mp->oper, 1);
     }
 
   hash_set (hi->sub_interface_sw_if_index_by_id, sub_id, sw_if_index);
@@ -2717,6 +2738,14 @@ send_sw_interface_details (vpe_api_main_t * am,
 	  mp->vtr_push_dot1q = ntohl (vtr_push_dot1q);
 	  mp->vtr_tag1 = ntohl (vtr_tag1);
 	  mp->vtr_tag2 = ntohl (vtr_tag2);
+	}
+      if (sub->pbb.i_tag.raw_flags != 0)
+	{
+	  mp->sub_dot1ah = 1;
+	  clib_memcpy (mp->sub_pbb_dmac, sub->pbb.b_dmac, 6);
+	  clib_memcpy (mp->sub_pbb_smac, sub->pbb.b_smac, 6);
+	  mp->sub_pbb_vlanid = ntohs (sub->pbb.b_tag.flags.vlanid);
+	  mp->sub_pbb_sid = ntohl (sub->pbb.i_tag.flags.sid);
 	}
     }
 

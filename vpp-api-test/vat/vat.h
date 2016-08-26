@@ -42,6 +42,8 @@ typedef struct
 
   /* 0 = dot1q, 1=dot1ad */
   u8 sub_dot1ad;
+  /* 1 = dot1ah, 0 = dot1q or dot1ad */
+  u8 sub_dot1ah;
 
   /* Number of tags 0-2 */
   u8 sub_number_of_tags;
@@ -57,6 +59,12 @@ typedef struct
   u32 vtr_push_dot1q;
   u32 vtr_tag1;
   u32 vtr_tag2;
+
+  /* pbb tag rewrite */
+  u8 sub_pbb_dmac[6];
+  u8 sub_pbb_smac[6];
+  u16 sub_pbb_vlanid;
+  u32 sub_pbb_sid;
 } sw_interface_subif_t;
 
 typedef struct

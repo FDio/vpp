@@ -702,6 +702,7 @@ _(no_tags)                                      \
 _(one_tag)                                      \
 _(two_tags)                                     \
 _(dot1ad)                                       \
+_(dot1ah)                                       \
 _(exact_match)                                  \
 _(default_sub)                                  \
 _(outer_vlan_id_any)                            \
@@ -711,6 +712,9 @@ static void *vl_api_create_subif_t_print
   (vl_api_create_subif_t * mp, void *handle)
 {
   u8 *s;
+  u8 null_mac[6];
+
+  memset (null_mac, 0, sizeof (null_mac));
 
   s = format (0, "SCRIPT: create_subif ");
 
@@ -723,6 +727,22 @@ static void *vl_api_create_subif_t_print
 
   if (mp->inner_vlan_id)
     s = format (s, "inner_vlan_id %d ", ntohs (mp->inner_vlan_id));
+
+  if (memcmp (mp->dmac, null_mac, 6))
+    s = format (s, "mac %U ", format_ethernet_address, &mp->dmac);
+  if (memcmp (mp->smac, null_mac, 6))
+    s = format (s, "mac %U ", format_ethernet_address, &mp->smac);
+  if (mp->vlanid)
+    s = format (s, "vlanid %d ", ntohs (mp->vlanid));
+  if (mp->sid)
+    s = format (s, "sid %d ", ntohl (mp->sid));
+  if (mp->oper != 0)
+    {
+      if (mp->oper == L2_VTR_POP_2)
+	s = format (s, "pop");
+      else if (mp->oper == L2_VTR_PUSH_2)
+	s = format (s, "push");
+    }
 
 #define _(a) if (mp->a) s = format (s, "%s ", #a);
   foreach_create_subif_bit;
