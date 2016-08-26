@@ -1,3 +1,32 @@
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * @file snat.api
+ * @brief VPP control-plane API messages.
+ *
+ * This file defines VPP control-plane API messages which are generally
+ * called through a shared memory interface.
+ */
+
+/** \brief Add S-NAT address range
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @first_ip_address - first IP address
+    @last_ip_address - last IP address
+*/
 define snat_add_address_range {
   u32 client_index;
   u32 context;
@@ -6,11 +35,23 @@ define snat_add_address_range {
   u8 last_ip_address[16];
 };
 
+/** \brief Add S-NAT address range reply
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+*/
 define snat_add_address_range_reply {
   u32 context;
   i32 retval;
 };
 
+/** \brief Enable/disable S-NAT feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - software index of the interface
+*/
 define snat_interface_add_del_feature {
   u32 client_index;
   u32 context;
@@ -19,7 +60,139 @@ define snat_interface_add_del_feature {
   u32 sw_if_index;
 };
 
+/** \brief Enable/disable S-NAT feature on the interface reply
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+*/
 define snat_interface_add_del_feature_reply {
   u32 context;
   i32 retval;
+};
+
+/** \brief Add/delete S-NAT static mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param is_ip4 - 1 if address type is IPv4
+    @param addr_only - 1 if address only mapping
+    @param local_ip_address - local IP address
+    @param external_ip_address - external IP address
+    @param local_port - local port number
+    @param external_port - external port number
+    @param vfr_id - VRF ID
+*/
+define snat_add_static_mapping {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_ip4;
+  u8 addr_only;
+  u8 local_ip_address[16];
+  u8 external_ip_address[16];
+  u16 local_port;
+  u16 external_port;
+  u32 vrf_id;
+};
+
+/** \brief Add/delete S-NAT static mapping reply
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+*/
+define snat_add_static_mapping_reply {
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Dump S-NAT static mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_static_mapping_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief S-NAT static mapping details response
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param addr_only - 1 if address only mapping
+    @param local_ip_address - local IP address
+    @param external_ip_address - external IP address
+    @param local_port - local port number
+    @param external_port - external port number
+    @param vfr_id - VRF ID
+*/
+define snat_static_mapping_details {
+  u32 context;
+  u8 is_ip4;
+  u8 addr_only;
+  u8 local_ip_address[16];
+  u8 external_ip_address[16];
+  u16 local_port;
+  u16 external_port;
+  u32 vrf_id;
+};
+
+/** \brief Control ping from client to api server request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_control_ping
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Control ping from the client to the server response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param vpe_pid - the pid of the vpe, returned by the server
+*/
+define snat_control_ping_reply
+{
+  u32 context;
+  i32 retval;
+  u32 client_index;
+  u32 vpe_pid;
+};
+
+/** \brief Show S-NAT plugin startup config
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_show_config
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Show S-NAT plugin startup config reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param static_mapping_only - if 1 dynamic translations disabled
+    @param static_mapping_connection_tracking - if 1 create session data
+    @param translation_buckets - number of translation hash buckets
+    @param translation_memory_size - translation hash memory size
+    @param user_buckets - number of user hash buckets
+    @param user_memory_size - user hash memory size
+    @param max_translations_per_user - maximum number of translations per user
+    @param outside_vrf_id - outside VRF id
+    @param inside_vrf_id - default inside VRF id
+*/
+define snat_show_config_reply
+{
+  u32 context;
+  i32 retval;
+  u8 static_mapping_only;
+  u8 static_mapping_connection_tracking;
+  u32 translation_buckets;
+  u32 translation_memory_size;
+  u32 user_buckets;
+  u32 user_memory_size;
+  u32 max_translations_per_user;
+  u32 outside_vrf_id;
+  u32 inside_vrf_id;
 };
