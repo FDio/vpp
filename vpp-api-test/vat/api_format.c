@@ -3481,7 +3481,8 @@ _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
 _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
-_(delete_subif_reply)
+_(delete_subif_reply)                                   \
+_(l2_interface_pbb_tag_rewrite_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3714,7 +3715,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
  ip_source_and_port_range_check_interface_add_del_reply)                \
 _(IPSEC_GRE_ADD_DEL_TUNNEL_REPLY, ipsec_gre_add_del_tunnel_reply)       \
 _(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)                   \
-_(DELETE_SUBIF_REPLY, delete_subif_reply)
+_(DELETE_SUBIF_REPLY, delete_subif_reply)                               \
+_(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -15216,6 +15218,93 @@ api_delete_subif (vat_main_t * vam)
   W;
 }
 
+#define foreach_pbb_vtr_op      \
+_("disable",  L2_VTR_DISABLED)  \
+_("pop",  L2_VTR_POP_2)         \
+_("push",  L2_VTR_PUSH_2)
+
+static int
+api_l2_interface_pbb_tag_rewrite (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_l2_interface_pbb_tag_rewrite_t *mp;
+  f64 timeout;
+  u32 sw_if_index = ~0, vtr_op = ~0;
+  u16 outer_tag = ~0;
+  u8 dmac[6], smac[6];
+  u8 dmac_set = 0, smac_set = 0;
+  u16 vlanid = 0;
+  u32 sid = ~0;
+  u32 tmp;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "vtr_op %d", &vtr_op))
+	;
+#define _(n,v) else if (unformat(i, n)) {vtr_op = v;}
+      foreach_pbb_vtr_op
+#undef _
+	else if (unformat (i, "translate_pbb_stag"))
+	{
+	  if (unformat (i, "%d", &tmp))
+	    {
+	      vtr_op = L2_VTR_TRANSLATE_2_1;
+	      outer_tag = tmp;
+	    }
+	  else
+	    {
+	      errmsg
+		("translate_pbb_stag operation requires outer tag definition\n");
+	      return -99;
+	    }
+	}
+      else if (unformat (i, "dmac %U", unformat_ethernet_address, dmac))
+	dmac_set++;
+      else if (unformat (i, "smac %U", unformat_ethernet_address, smac))
+	smac_set++;
+      else if (unformat (i, "sid %d", &sid))
+	;
+      else if (unformat (i, "vlanid %d", &tmp))
+	vlanid = tmp;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if ((sw_if_index == ~0) || (vtr_op == ~0))
+    {
+      errmsg ("missing sw_if_index or vtr operation\n");
+      return -99;
+    }
+  if (((vtr_op == L2_VTR_PUSH_2) || (vtr_op == L2_VTR_TRANSLATE_2_2))
+      && ((dmac_set == 0) || (smac_set == 0) || (sid == ~0)))
+    {
+      errmsg
+	("push and translate_qinq operations require dmac, smac, sid and optionally vlanid\n");
+      return -99;
+    }
+
+  M (L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->vtr_op = ntohl (vtr_op);
+  mp->outer_tag = ntohs (outer_tag);
+  clib_memcpy (mp->b_dmac, dmac, sizeof (dmac));
+  clib_memcpy (mp->b_smac, smac, sizeof (smac));
+  mp->b_vlanid = ntohs (vlanid);
+  mp->i_sid = ntohl (sid);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
 static int
 q_or_quit (vat_main_t * vam)
 {
@@ -15808,7 +15897,11 @@ _(ip_source_and_port_range_check_interface_add_del,                     \
 _(ipsec_gre_add_del_tunnel,                                             \
   "src <addr> dst <addr> local_sa <sa-id> remote_sa <sa-id> [del]")     \
 _(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")                          \
-_(delete_subif,"sub_sw_if_index <nn> sub_if_id <nn>")
+_(delete_subif,"sub_sw_if_index <nn> sub_if_id <nn>")                   \
+_(l2_interface_pbb_tag_rewrite,                                         \
+  "<intfc> | sw_if_index <nn> \n"                                       \
+  "[disable | push | pop | translate_pbb_stag <outer_tag>] \n" \
+  "dmac <mac> smac <mac> sid <nn> [vlanid <nn>]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
