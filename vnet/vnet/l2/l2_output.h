@@ -37,6 +37,8 @@ typedef struct
    */
   vtr_config_t input_vtr;
   vtr_config_t output_vtr;
+  ptr_config_t input_pbb_vtr;
+  ptr_config_t output_pbb_vtr;
 
   /* some of these flags may get integrated into the feature bitmap */
   u8 fwd_enable;
