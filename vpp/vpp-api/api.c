@@ -422,7 +422,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
-_(DELETE_SUBIF, delete_subif)
+_(DELETE_SUBIF, delete_subif)                                           \
+_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -8465,6 +8466,42 @@ vl_api_delete_subif_t_handler (vl_api_delete_subif_t * mp)
   rv = vnet_delete_sub_interface (ntohl (mp->sw_if_index));
 
   REPLY_MACRO (VL_API_DELETE_SUBIF_REPLY);
+}
+
+static void
+  vl_api_l2_interface_pbb_tag_rewrite_t_handler
+  (vl_api_l2_interface_pbb_tag_rewrite_t * mp)
+{
+  vl_api_l2_interface_pbb_tag_rewrite_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  u32 vtr_op;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  vtr_op = ntohl (mp->vtr_op);
+
+  switch (vtr_op)
+    {
+    case L2_VTR_DISABLED:
+    case L2_VTR_PUSH_2:
+    case L2_VTR_POP_2:
+    case L2_VTR_TRANSLATE_2_1:
+      break;
+
+    default:
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  rv = l2pbb_configure (vm, vnm, ntohl (mp->sw_if_index), vtr_op,
+			mp->b_dmac, mp->b_smac, ntohs (mp->b_vlanid),
+			ntohl (mp->i_sid), ntohs (mp->outer_tag));
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_L2_INTERFACE_PBB_TAG_REWRITE_REPLY);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

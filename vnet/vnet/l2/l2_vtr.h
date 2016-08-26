@@ -171,6 +171,73 @@ l2_efp_filter_process (vlib_buffer_t * b0, vtr_config_t * in_config)
   return (packet_tags & tag_mask) != in_config->raw_tags;
 }
 
+typedef struct
+{
+  union
+  {
+    ethernet_pbb_header_t macs_tags;
+    struct
+    {
+      u64 data1;
+      u64 data2;
+      u16 data3;
+      u32 data4;
+    } raw_data;
+  };
+  union
+  {
+    struct
+    {
+      u8 push_bytes;		/* number of bytes to push pbb tags */
+      u8 pop_bytes;		/* number of bytes to pop pbb tags */
+    };
+    u16 push_and_pop_bytes;	/* if 0 then the feature is disabled */
+  };
+} ptr_config_t;
+
+always_inline u32
+l2_pbb_process (vlib_buffer_t * b0, ptr_config_t * config)
+{
+  u8 *eth = vlib_buffer_get_current (b0);
+
+  if (config->pop_bytes > 0)
+    {
+      ethernet_pbb_header_packed_t *ph = (ethernet_pbb_header_packed_t *) eth;
+
+      // drop packet without PBB header or with wrong I-tag or B-tag
+      if (clib_net_to_host_u16 (ph->priority_dei_id) !=
+	  clib_net_to_host_u16 (config->macs_tags.priority_dei_id)
+	  || clib_net_to_host_u32 (ph->priority_dei_uca_res_sid) !=
+	  clib_net_to_host_u32 (config->macs_tags.priority_dei_uca_res_sid))
+	return 1;
+
+      eth += config->pop_bytes;
+    }
+
+  if (config->push_bytes > 0)
+    {
+      eth -= config->push_bytes;
+      // copy the B-DA (6B), B-SA (6B), B-TAG (4B), I-TAG (6B)
+      *((u64 *) eth) = config->raw_data.data1;
+      *((u64 *) (eth + 8)) = config->raw_data.data2;
+      *((u16 *) (eth + 16)) = config->raw_data.data3;
+      *((u32 *) (eth + 18)) = config->raw_data.data4;
+    }
+
+  /* Update l2_len */
+  vnet_buffer (b0)->l2.l2_len +=
+    (word) config->push_bytes - (word) config->pop_bytes;
+  /* Update packet len */
+  vlib_buffer_advance (b0,
+		       (word) config->pop_bytes - (word) config->push_bytes);
+
+  return 0;
+}
+
+u32 l2pbb_configure (vlib_main_t * vlib_main,
+		     vnet_main_t * vnet_main, u32 sw_if_index, u32 vtr_op,
+		     u8 * b_dmac, u8 * b_smac,
+		     u16 b_vlanid, u32 i_sid, u16 vlan_outer_tag);
 
 /**
  * Configure vtag tag rewrite on the given interface.
