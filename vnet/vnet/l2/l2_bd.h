@@ -70,7 +70,7 @@ typedef struct
   /* Vector of members in the replication group */
   l2_flood_member_t *members;
 
-  /* hash ip4/ip6 -> mac for arp termination */
+  /* hash ip4/ip6 -> mac for arp/nd termination */
   uword *mac_by_ip4;
   uword *mac_by_ip6;
 

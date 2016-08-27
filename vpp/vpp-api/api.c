@@ -51,6 +51,7 @@
 #include <vnet/l2/l2_bd.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6.h>
 #include <vnet/unix/tuntap.h>
 #include <vnet/unix/tapcli.h>
 #include <vnet/mpls-gre/mpls.h>
@@ -301,6 +302,7 @@ _(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)                   \
 _(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
+_(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
 _(IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)                                 \
 _(IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)             \
@@ -425,11 +427,14 @@ typedef struct
     /* notifications happen really early in the game */
   u8 link_state_process_up;
 
-  /* ip4 pending route adds */
+  /* ip4 and ip6 pending route adds */
   pending_route_t *pending_routes;
 
   /* ip4 arp event registration pool */
   vl_api_ip4_arp_event_t *arp_events;
+
+  /* ip6 nd event registration pool */
+  vl_api_ip6_nd_event_t *nd_events;
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -447,6 +452,7 @@ static void send_sw_interface_flags_deleted (vpe_api_main_t * am,
 					     u32 sw_if_index);
 
 static int arp_change_delete_callback (u32 pool_index, u8 * notused);
+static int nd_change_delete_callback (u32 pool_index, u8 * notused);
 
 
 /* Clean up all registrations belonging to the indicated client */
@@ -629,17 +635,25 @@ reply:                                                                  \
     REPLY_MACRO (VL_API_WANT_##UCA##_REPLY);                            \
 }
 
+/* *INDENT-OFF* */
 pub_sub_handler (interface_events, INTERFACE_EVENTS)
 pub_sub_handler (oam_events, OAM_EVENTS)
+/* *INDENT-ON* */
+
 #define RESOLUTION_EVENT 1
 #define RESOLUTION_PENDING_EVENT 2
 #define IP4_ARP_EVENT 3
-     static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp);
-     static int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp);
-     static int mpls_ethernet_add_del_tunnel_2_t_handler
-       (vl_api_mpls_ethernet_add_del_tunnel_2_t * mp);
+#define IP6_ND_EVENT 4
 
-     void handle_ip4_arp_event (u32 pool_index)
+static int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp);
+
+static int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp);
+
+static int mpls_ethernet_add_del_tunnel_2_t_handler
+  (vl_api_mpls_ethernet_add_del_tunnel_2_t * mp);
+
+void
+handle_ip4_arp_event (u32 pool_index)
 {
   vpe_api_main_t *vam = &vpe_api_main;
   vnet_main_t *vnm = vam->vnet_main;
@@ -682,6 +696,55 @@ pub_sub_handler (oam_events, OAM_EVENTS)
 	{
 	  clib_warning ("arp event for %U to pid %d: queue stuffed!",
 			format_ip4_address, &event->address, event->pid);
+	  last_time = vlib_time_now (vm);
+	}
+    }
+}
+
+void
+handle_ip6_nd_event (u32 pool_index)
+{
+  vpe_api_main_t *vam = &vpe_api_main;
+  vnet_main_t *vnm = vam->vnet_main;
+  vlib_main_t *vm = vam->vlib_main;
+  vl_api_ip6_nd_event_t *event;
+  vl_api_ip6_nd_event_t *mp;
+  unix_shared_memory_queue_t *q;
+
+  /* Client can cancel, die, etc. */
+  if (pool_is_free_index (vam->nd_events, pool_index))
+    return;
+
+  event = pool_elt_at_index (vam->nd_events, pool_index);
+
+  q = vl_api_client_index_to_input_queue (event->client_index);
+  if (!q)
+    {
+      (void) vnet_add_del_ip6_nd_change_event
+	(vnm, nd_change_delete_callback,
+	 event->pid, &event->address,
+	 vpe_resolver_process_node.index, IP6_ND_EVENT,
+	 ~0 /* pool index, notused */ , 0 /* is_add */ );
+      return;
+    }
+
+  if (q->cursize < q->maxsize)
+    {
+      mp = vl_msg_api_alloc (sizeof (*mp));
+      clib_memcpy (mp, event, sizeof (*mp));
+      vl_msg_api_send_shmem (q, (u8 *) & mp);
+    }
+  else
+    {
+      static f64 last_time;
+      /*
+       * Throttle syslog msgs.
+       * It's pretty tempting to just revoke the registration...
+       */
+      if (vlib_time_now (vm) > last_time + 10.0)
+	{
+	  clib_warning ("ip6 nd event for %U to pid %d: queue stuffed!",
+			format_ip6_address, &event->address, event->pid);
 	  last_time = vlib_time_now (vm);
 	}
     }
@@ -772,6 +835,11 @@ resolver_process (vlib_main_t * vm,
 	case IP4_ARP_EVENT:
 	  for (i = 0; i < vec_len (event_data); i++)
 	    handle_ip4_arp_event (event_data[i]);
+	  break;
+
+	case IP6_ND_EVENT:
+	  for (i = 0; i < vec_len (event_data); i++)
+	    handle_ip6_nd_event (event_data[i]);
 	  break;
 
 	case ~0:		/* timeout, retry pending resolutions */
@@ -6130,26 +6198,65 @@ arp_change_data_callback (u32 pool_index, u8 * new_mac,
     return 1;
 
   event = pool_elt_at_index (am->arp_events, pool_index);
+  /* *INDENT-OFF* */
   if (memcmp (&event->new_mac, new_mac, sizeof (event->new_mac)))
     {
       clib_memcpy (event->new_mac, new_mac, sizeof (event->new_mac));
     }
   else
     {				/* same mac */
-      if ((sw_if_index == event->sw_if_index) && ((address == 0) ||
-						  /* for BD case, also check IP address with 10 sec timeout */
-						  ((address == event->address)
-						   &&
-						   ((now -
-						     arp_event_last_time) <
-						    10.0))))
+      if (sw_if_index == event->sw_if_index &&
+	  (!event->mac_ip ||
+	   /* for BD case, also check IP address with 10 sec timeout */
+	   (address == event->address &&
+	    (now - arp_event_last_time) < 10.0)))
 	return 1;
     }
+  /* *INDENT-ON* */
 
   arp_event_last_time = now;
   event->sw_if_index = sw_if_index;
-  if (address)
+  if (event->mac_ip)
     event->address = address;
+  return 0;
+}
+
+static int
+nd_change_data_callback (u32 pool_index, u8 * new_mac,
+			 u32 sw_if_index, ip6_address_t * address)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  vlib_main_t *vm = am->vlib_main;
+  vl_api_ip6_nd_event_t *event;
+  static f64 nd_event_last_time;
+  f64 now = vlib_time_now (vm);
+
+  if (pool_is_free_index (am->nd_events, pool_index))
+    return 1;
+
+  event = pool_elt_at_index (am->nd_events, pool_index);
+
+  /* *INDENT-OFF* */
+  if (memcmp (&event->new_mac, new_mac, sizeof (event->new_mac)))
+    {
+      clib_memcpy (event->new_mac, new_mac, sizeof (event->new_mac));
+    }
+  else
+    {				/* same mac */
+      if (sw_if_index == event->sw_if_index &&
+	  (!event->mac_ip ||
+	   /* for BD case, also check IP address with 10 sec timeout */
+	   (ip6_address_is_equal (address,
+				  (ip6_address_t *) event->address) &&
+	    (now - nd_event_last_time) < 10.0)))
+	return 1;
+    }
+  /* *INDENT-ON* */
+
+  nd_event_last_time = now;
+  event->sw_if_index = sw_if_index;
+  if (event->mac_ip)
+    clib_memcpy (event->address, address, sizeof (event->address));
   return 0;
 }
 
@@ -6162,6 +6269,18 @@ arp_change_delete_callback (u32 pool_index, u8 * notused)
     return 1;
 
   pool_put_index (am->arp_events, pool_index);
+  return 0;
+}
+
+static int
+nd_change_delete_callback (u32 pool_index, u8 * notused)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+
+  if (pool_is_free_index (am->nd_events, pool_index))
+    return 1;
+
+  pool_put_index (am->nd_events, pool_index);
   return 0;
 }
 
@@ -6184,6 +6303,8 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
       event->context = mp->context;
       event->address = mp->address;
       event->pid = mp->pid;
+      if (mp->address == 0)
+	event->mac_ip = 1;
 
       rv = vnet_add_del_ip4_arp_change_event
 	(vnm, arp_change_data_callback,
@@ -6200,6 +6321,45 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
 	 IP4_ARP_EVENT, ~0 /* pool index */ , 0 /* is_add */ );
     }
   REPLY_MACRO (VL_API_WANT_IP4_ARP_EVENTS_REPLY);
+}
+
+static void
+vl_api_want_ip6_nd_events_t_handler (vl_api_want_ip6_nd_events_t * mp)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  vl_api_want_ip6_nd_events_reply_t *rmp;
+  vl_api_ip6_nd_event_t *event;
+  int rv;
+
+  if (mp->enable_disable)
+    {
+      pool_get (am->nd_events, event);
+      memset (event, 0, sizeof (*event));
+
+      event->_vl_msg_id = ntohs (VL_API_IP6_ND_EVENT);
+      event->client_index = mp->client_index;
+      event->context = mp->context;
+      clib_memcpy (event->address, mp->address, 16);
+      event->pid = mp->pid;
+      if (ip6_address_is_zero ((ip6_address_t *) mp->address))
+	event->mac_ip = 1;
+
+      rv = vnet_add_del_ip6_nd_change_event
+	(vnm, nd_change_data_callback,
+	 mp->pid, mp->address /* addr, in net byte order */ ,
+	 vpe_resolver_process_node.index,
+	 IP6_ND_EVENT, event - am->nd_events, 1 /* is_add */ );
+    }
+  else
+    {
+      rv = vnet_add_del_ip6_nd_change_event
+	(vnm, nd_change_delete_callback,
+	 mp->pid, mp->address /* addr, in net byte order */ ,
+	 vpe_resolver_process_node.index,
+	 IP6_ND_EVENT, ~0 /* pool index */ , 0 /* is_add */ );
+    }
+  REPLY_MACRO (VL_API_WANT_IP6_ND_EVENTS_REPLY);
 }
 
 static void vl_api_input_acl_set_interface_t_handler
@@ -8434,28 +8594,50 @@ format_arp_event (u8 * s, va_list * args)
 {
   vl_api_ip4_arp_event_t *event = va_arg (*args, vl_api_ip4_arp_event_t *);
 
-  s = format (s, "pid %d: %U", event->pid,
-	      format_ip4_address, &event->address);
+  s = format (s, "pid %d: ", event->pid);
+  if (event->mac_ip)
+    s = format (s, "bd mac/ip4 binding events");
+  else
+    s = format (s, "resolution for %U", format_ip4_address, &event->address);
+  return s;
+}
+
+static u8 *
+format_nd_event (u8 * s, va_list * args)
+{
+  vl_api_ip6_nd_event_t *event = va_arg (*args, vl_api_ip6_nd_event_t *);
+
+  s = format (s, "pid %d: ", event->pid);
+  if (event->mac_ip)
+    s = format (s, "bd mac/ip6 binding events");
+  else
+    s = format (s, "resolution for %U", format_ip6_address, event->address);
   return s;
 }
 
 static clib_error_t *
-show_ip4_arp_events_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+show_ip_arp_nd_events_fn (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vpe_api_main_t *am = &vpe_api_main;
-  vl_api_ip4_arp_event_t *event;
+  vl_api_ip4_arp_event_t *arp_event;
+  vl_api_ip6_nd_event_t *nd_event;
 
-  if (pool_elts (am->arp_events) == 0)
+  if ((pool_elts (am->arp_events) == 0) && (pool_elts (am->nd_events) == 0))
     {
-      vlib_cli_output (vm, "No active arp event registrations");
+      vlib_cli_output (vm, "No active arp or nd event registrations");
       return 0;
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (event, am->arp_events,
+  pool_foreach (arp_event, am->arp_events,
   ({
-    vlib_cli_output (vm, "%U", format_arp_event, event);
+    vlib_cli_output (vm, "%U", format_arp_event, arp_event);
+  }));
+
+  pool_foreach (nd_event, am->nd_events,
+  ({
+    vlib_cli_output (vm, "%U", format_nd_event, nd_event);
   }));
   /* *INDENT-ON* */
 
@@ -8463,10 +8645,10 @@ show_ip4_arp_events_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_ip4_arp_events, static) = {
-  .path = "show arp event registrations",
-  .function = show_ip4_arp_events_fn,
-  .short_help = "Show arp event registrations",
+VLIB_CLI_COMMAND (show_ip_arp_nd_events, static) = {
+  .path = "show arp-nd-event registrations",
+  .function = show_ip_arp_nd_events_fn,
+  .short_help = "Show ip4 arp and ip6 nd event registrations",
 };
 /* *INDENT-ON* */
 

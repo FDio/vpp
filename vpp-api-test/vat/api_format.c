@@ -1134,6 +1134,21 @@ vl_api_ip4_arp_event_t_handler_json (vl_api_ip4_arp_event_t * mp)
   /* JSON output not supported */
 }
 
+static void
+vl_api_ip6_nd_event_t_handler (vl_api_ip6_nd_event_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  errmsg ("ip6 nd event: address %U new mac %U sw_if_index %d\n",
+	  format_ip6_address, mp->address,
+	  format_ethernet_address, mp->new_mac, mp->sw_if_index);
+}
+
+static void
+vl_api_ip6_nd_event_t_handler_json (vl_api_ip6_nd_event_t * mp)
+{
+  /* JSON output not supported */
+}
+
 /*
  * Special-case: build the bridge domain table, maintain
  * the next bd id vbl.
@@ -3341,6 +3356,7 @@ _(l2_interface_vlan_tag_rewrite_reply)                  \
 _(modify_vhost_user_if_reply)                           \
 _(delete_vhost_user_if_reply)                           \
 _(want_ip4_arp_events_reply)                            \
+_(want_ip6_nd_events_reply)                             \
 _(input_acl_set_interface_reply)                        \
 _(ipsec_spd_add_del_reply)                              \
 _(ipsec_interface_add_del_spd_reply)                    \
@@ -3519,6 +3535,8 @@ _(VXLAN_GPE_TUNNEL_DETAILS, vxlan_gpe_tunnel_details)                   \
 _(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
 _(WANT_IP4_ARP_EVENTS_REPLY, want_ip4_arp_events_reply)			\
 _(IP4_ARP_EVENT, ip4_arp_event)                                         \
+_(WANT_IP6_ND_EVENTS_REPLY, want_ip6_nd_events_reply)			\
+_(IP6_ND_EVENT, ip6_nd_event)						\
 _(INPUT_ACL_SET_INTERFACE_REPLY, input_acl_set_interface_reply)         \
 _(IP_ADDRESS_DETAILS, ip_address_details)                               \
 _(IP_DETAILS, ip_details)                                               \
@@ -10213,6 +10231,41 @@ api_want_ip4_arp_events (vat_main_t * vam)
 }
 
 static int
+api_want_ip6_nd_events (vat_main_t * vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_want_ip6_nd_events_t *mp;
+  f64 timeout;
+  ip6_address_t address;
+  int address_set = 0;
+  u32 enable_disable = 1;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "address %U", unformat_ip6_address, &address))
+	address_set = 1;
+      else if (unformat (line_input, "del"))
+	enable_disable = 0;
+      else
+	break;
+    }
+
+  if (address_set == 0)
+    {
+      errmsg ("missing addresses\n");
+      return -99;
+    }
+
+  M (WANT_IP6_ND_EVENTS, want_ip6_nd_events);
+  mp->enable_disable = enable_disable;
+  mp->pid = getpid ();
+  clib_memcpy (mp->address, &address, sizeof (ip6_address_t));
+
+  S;
+  W;
+}
+
+static int
 api_input_acl_set_interface (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -15704,6 +15757,7 @@ _(input_acl_set_interface,                                              \
   "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>]\n"      \
   "  [l2-table <nn>] [del]")                                            \
 _(want_ip4_arp_events, "address <ip4-address> [del]")                   \
+_(want_ip6_nd_events, "address <ip6-address> [del]")                    \
 _(ip_address_dump, "(ipv4 | ipv6) (<intfc> | sw_if_index <id>)")        \
 _(ip_dump, "ipv4 | ipv6")                                               \
 _(ipsec_spd_add_del, "spd_id <n> [del]")                                \

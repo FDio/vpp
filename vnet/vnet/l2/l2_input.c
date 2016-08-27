@@ -197,10 +197,14 @@ classify_and_dispatch (vlib_main_t * vm,
     {
       u32 *dsthi = (u32 *) & h0->dst_address[0];
       u32 *dstlo = (u32 *) & h0->dst_address[2];
+      protocol = ((ip6_header_t *) l3h0)->protocol;
 
       /* Disable bridge forwarding (flooding will execute instead if not xconnect) */
       feat_mask &= ~(L2INPUT_FEAT_FWD | L2INPUT_FEAT_UU_FLOOD);
-      if (ethertype != ETHERNET_TYPE_ARP)	/* Disable ARP-term for non-ARP packet */
+
+      /* Disable ARP-term for non-ARP and non-ICMP6 packet */
+      if (ethertype != ETHERNET_TYPE_ARP &&
+	  (ethertype != ETHERNET_TYPE_IP6 || protocol != IP_PROTOCOL_ICMP6))
 	feat_mask &= ~(L2INPUT_FEAT_ARP_TERM);
 
       /* dest mac is multicast or broadcast */

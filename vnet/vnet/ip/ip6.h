@@ -41,6 +41,8 @@
 #define included_ip_ip6_h
 
 #include <vlib/mc.h>
+#include <vlib/buffer.h>
+#include <vnet/ethernet/packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/lookup.h>
@@ -532,6 +534,24 @@ void vnet_register_ip6_neighbor_resolution_event(vnet_main_t * vnm,
                                                  uword node_index,
                                                  uword type_opaque,
                                                  uword data);
+
+int vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm, 
+				      void * data_callback,
+				      u32 pid,
+				      void * address_arg,
+				      uword node_index,
+				      uword type_opaque,
+				      uword data, 
+				      int is_add);
+
+int vnet_ip6_nd_term (vlib_main_t * vm,
+		      vlib_node_runtime_t * node,
+		      vlib_buffer_t * p0,
+		      ethernet_header_t * eth,
+		      ip6_header_t * ip,
+		      u32 sw_if_index,
+		      u16 bd_index,
+		      u8 shg);
 
 int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index, 
                                  u32 table_index);

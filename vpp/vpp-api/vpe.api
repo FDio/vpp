@@ -3071,6 +3071,7 @@ define want_ip4_arp_events_reply
     @param pid - client pid registered to receive notification
     @param sw_if_index - interface which received ARP packet
     @param new_mac - the new mac address 
+    @param mac_ip - 0: resolution event, 1: mac/ip binding in bd
 */
 define ip4_arp_event
 {
@@ -3080,8 +3081,55 @@ define ip4_arp_event
   u32 pid;
   u32 sw_if_index;
   u8 new_mac[6];
+  u8 mac_ip;
 };
 
+/** \brief Register for ip6 nd resolution events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+    @param address - the exact ip6 address of interest
+*/
+define want_ip6_nd_events
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
+  u32 pid;
+  u8 address[16];
+};
+
+/** \brief Reply for ip6 nd resolution events registration
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define want_ip6_nd_events_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Tell client about an ip6 nd resolution or mac/ip event
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pid - client pid registered to receive notification
+    @param sw_if_index - interface which received ARP packet
+    @param address - the exact ip6 address of interest
+    @param new_mac - the new mac address 
+    @param mac_ip - 0: resolution event, 1: mac/ip binding in bd
+*/
+define ip6_nd_event
+{
+  u32 client_index;
+  u32 context;
+  u32 pid;
+  u32 sw_if_index;
+  u8 address[16];
+  u8 new_mac[6];
+  u8 mac_ip;
+};
+    
 /** \brief L2 bridge domain add or delete request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
