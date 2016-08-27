@@ -2361,21 +2361,29 @@ static void
 }
 
 static void
-vl_api_lisp_eid_table_details_t_handler (vl_api_lisp_eid_table_details_t * mp)
+add_lisp_eid_table_entry (vat_main_t * vam,
+			  vl_api_lisp_eid_table_details_t * mp)
 {
-  vat_main_t *vam = &vat_main;
   eid_table_t eid_table;
 
   memset (&eid_table, 0, sizeof (eid_table));
   eid_table.is_local = mp->is_local;
-  eid_table.locator_set_index = mp->locator_set_index;
+  eid_table.locator_set_index = clib_net_to_host_u32 (mp->locator_set_index);
   eid_table.eid_type = mp->eid_type;
-  eid_table.vni = mp->vni;
+  eid_table.vni = clib_net_to_host_u32 (mp->vni);
   eid_table.eid_prefix_len = mp->eid_prefix_len;
-  eid_table.ttl = mp->ttl;
+  eid_table.ttl = clib_net_to_host_u32 (mp->ttl);
+  eid_table.action = mp->action;
   eid_table.authoritative = mp->authoritative;
   clib_memcpy (eid_table.eid, mp->eid, sizeof (eid_table.eid));
   vec_add1 (vam->eid_tables, eid_table);
+}
+
+static void
+vl_api_lisp_eid_table_details_t_handler (vl_api_lisp_eid_table_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  add_lisp_eid_table_entry (vam, mp);
 }
 
 static void
@@ -2383,18 +2391,7 @@ vl_api_lisp_eid_table_details_t_handler_json (vl_api_lisp_eid_table_details_t
 					      * mp)
 {
   vat_main_t *vam = &vat_main;
-  eid_table_t eid_table;
-
-  memset (&eid_table, 0, sizeof (eid_table));
-  eid_table.is_local = mp->is_local;
-  eid_table.locator_set_index = mp->locator_set_index;
-  eid_table.eid_type = mp->eid_type;
-  eid_table.vni = mp->vni;
-  eid_table.eid_prefix_len = mp->eid_prefix_len;
-  eid_table.ttl = mp->ttl;
-  eid_table.authoritative = mp->authoritative;
-  clib_memcpy (eid_table.eid, mp->eid, sizeof (eid_table.eid));
-  vec_add1 (vam->eid_tables, eid_table);
+  add_lisp_eid_table_entry (vam, mp);
 }
 
 static void
@@ -13247,13 +13244,11 @@ format_eid_for_eid_table (vat_main_t * vam, u8 * str, eid_table_t * eid_table,
     case 1:
       format_eid = (eid_table->eid_type ? format_ip6_address :
 		    format_ip4_address);
-      str = format (0, "[%d] %U/%d",
-		    clib_net_to_host_u32 (eid_table->vni),
+      str = format (0, "[%d] %U/%d", eid_table->vni,
 		    format_eid, eid_table->eid, eid_table->eid_prefix_len);
       break;
     case 2:
-      str = format (0, "[%d] %U",
-		    clib_net_to_host_u32 (eid_table->vni),
+      str = format (0, "[%d] %U", eid_table->vni,
 		    format_ethernet_address, eid_table->eid);
       break;
     default:
@@ -13307,6 +13302,11 @@ format_locator_for_eid_table (vat_main_t * vam, u8 * str,
 
   ASSERT (vam != NULL);
   ASSERT (eid_table != NULL);
+
+  if (~0 == eid_table->locator_set_index)
+    {
+      return format (0, "action: %d\n", eid_table->action);
+    }
 
   vec_foreach (loc, vam->locator_msg)
   {
@@ -13366,13 +13366,17 @@ print_lisp_eid_table_dump (vat_main_t * vam)
 
   vec_foreach (eid_table, vam->eid_tables)
   {
-    ret = lisp_locator_dump_send_msg (vam, eid_table->locator_set_index, 0);
-    if (ret)
+    if (~0 != eid_table->locator_set_index)
       {
-	vec_free (vam->locator_msg);
-	clean_locator_set_message (vam);
-	vec_free (vam->eid_tables);
-	return ret;
+	ret = lisp_locator_dump_send_msg (vam, eid_table->locator_set_index,
+					  0);
+	if (ret)
+	  {
+	    vec_free (vam->locator_msg);
+	    clean_locator_set_message (vam);
+	    vec_free (vam->eid_tables);
+	    return ret;
+	  }
       }
 
     tmp_str2 = format_eid_for_eid_table (vam, tmp_str2, eid_table, &ret);

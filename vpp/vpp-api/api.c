@@ -5480,6 +5480,7 @@ static void
   vl_api_lisp_add_del_remote_mapping_reply_t *rmp;
   int rv = 0;
   gid_address_t _eid, *eid = &_eid;
+  u32 rloc_num = clib_net_to_host_u32 (mp->rloc_num);
 
   memset (eid, 0, sizeof (eid[0]));
 
@@ -5488,9 +5489,7 @@ static void
   if (rv)
     goto send_reply;
 
-  rlocs = unformat_lisp_locs (mp->rlocs, clib_net_to_host_u32 (mp->rloc_num));
-  if (0 == rlocs)
-    goto send_reply;
+  rlocs = unformat_lisp_locs (mp->rlocs, rloc_num);
 
   if (!mp->is_add)
     {
@@ -5672,6 +5671,8 @@ send_lisp_eid_table_details (mapping_t * mapit,
 			     unix_shared_memory_queue_t * q,
 			     u32 context, u8 filter)
 {
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  locator_set_t *ls = 0;
   vl_api_lisp_eid_table_details_t *rmp = NULL;
   gid_address_t *gid = NULL;
   u8 *mac = 0;
@@ -5702,9 +5703,16 @@ send_lisp_eid_table_details (mapping_t * mapit,
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_LISP_EID_TABLE_DETAILS);
-  rmp->locator_set_index = mapit->locator_set_index;
+
+  ls = pool_elt_at_index (lcm->locator_set_pool, mapit->locator_set_index);
+  if (vec_len (ls->locator_indices) == 0)
+    rmp->locator_set_index = ~0;
+  else
+    rmp->locator_set_index = clib_host_to_net_u32 (mapit->locator_set_index);
+
   rmp->is_local = mapit->local;
-  rmp->ttl = mapit->ttl;
+  rmp->ttl = clib_host_to_net_u32 (mapit->ttl);
+  rmp->action = mapit->action;
   rmp->authoritative = mapit->authoritative;
 
   switch (gid_address_type (gid))
