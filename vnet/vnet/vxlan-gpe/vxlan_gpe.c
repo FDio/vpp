@@ -25,10 +25,10 @@ vxlan_gpe_main_t vxlan_gpe_main;
 /**
  * @brief Tracing function for VXLAN GPE tunnel packets
  *
- * @param *s - u8 - formatting string
- * @param *args - va_list
+ * @param *s
+ * @param *args
  *
- * @return *s - u8 - formmatted string
+ * @return *s
  *
  */
 u8 * format_vxlan_gpe_tunnel (u8 * s, va_list * args)
@@ -71,10 +71,10 @@ u8 * format_vxlan_gpe_tunnel (u8 * s, va_list * args)
 /**
  * @brief Naming for VXLAN GPE tunnel
  *
- * @param *s - u8 - formatting string
- * @param *args - va_list
+ * @param *s
+ * @param *args
  *
- * @return *s - u8 - formatted string
+ * @return *s
  *
  */
 static u8 * format_vxlan_gpe_name (u8 * s, va_list * args)
@@ -94,11 +94,11 @@ static uword dummy_interface_tx (vlib_main_t * vm,
 /**
  * @brief CLI function for VXLAN GPE admin up/down
  *
- * @param *vnm - vnet_main_t
- * @param hw_if_index - u32
- * @param flags - u32
+ * @param *vnm
+ * @param hw_if_index
+ * @param flags
  *
- * @return *rc - clib_error_t
+ * @return *rc
  *
  */
 static clib_error_t *
@@ -134,10 +134,10 @@ static uword dummy_set_rewrite (vnet_main_t * vnm,
 /**
  * @brief Formatting function for tracing VXLAN GPE with length
  *
- * @param *s - u8 - formatting string
- * @param *args - va_list
+ * @param *s
+ * @param *args
  *
- * @return *s - formatted string
+ * @return *s
  *
  */
 static u8 * format_vxlan_gpe_header_with_length (u8 * s, va_list * args)
@@ -176,9 +176,9 @@ _(decap_fib_index)
 /**
  * @brief Calculate IPv4 VXLAN GPE rewrite header
  *
- * @param *t - vxlan_gpe_tunnel_t
+ * @param *t
  *
- * @return rc - int
+ * @return rc
  *
  */
 static int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t)
@@ -222,9 +222,9 @@ static int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t)
 /**
  * @brief Calculate IPv6 VXLAN GPE rewrite header
  *
- * @param *t - vxlan_gpe_tunnel_t
+ * @param *t
  *
- * @return rc - int
+ * @return rc
  *
  */
 static int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t)
@@ -268,10 +268,10 @@ static int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t)
 /**
  * @brief Add or Del a VXLAN GPE tunnel
  *
- * @param *a - vnet_vxlan_gpe_add_del_tunnel_args_t
- * @param *sw_if_index - u32
+ * @param *a
+ * @param *sw_if_index
  *
- * @return rc - int
+ * @return rc
  *
  */
 int vnet_vxlan_gpe_add_del_tunnel
@@ -422,9 +422,9 @@ int vnet_vxlan_gpe_add_del_tunnel
 /**
  * @brief Find the IPv4 FIB index from the FIB ID
  *
- * @param fib_id - u32
+ * @param fib_id
  *
- * @return fib_index - u32
+ * @return fib_index
  *
  */
 static u32 fib4_index_from_fib_id (u32 fib_id)
@@ -442,9 +442,9 @@ static u32 fib4_index_from_fib_id (u32 fib_id)
 /**
  * @brief Find the IPv4 FIB index from the FIB ID
  *
- * @param fib_id - u32
+ * @param fib_id
  *
- * @return fib_index - u32
+ * @return fib_index
  *
  */
 static u32 fib6_index_from_fib_id (u32 fib_id)
@@ -462,11 +462,11 @@ static u32 fib6_index_from_fib_id (u32 fib_id)
 /**
  * @brief CLI function for Add/Del of IPv4/IPv6 VXLAN GPE tunnel
  *
- * @param *vm - vlib_main_t
- * @param *input - unformat_input_t
- * @param *cmd - vlib_cli_command_t
+ * @param *vm
+ * @param *input
+ * @param *cmd
  *
- * @return error - clib_error_t
+ * @return error
  *
  */
 static clib_error_t *
@@ -624,11 +624,11 @@ VLIB_CLI_COMMAND (create_vxlan_gpe_tunnel_command, static) = {
 /**
  * @brief CLI function for showing VXLAN GPE tunnels
  *
- * @param *vm - vlib_main_t
- * @param *input - unformat_input_t
- * @param *cmd - vlib_cli_command_t
+ * @param *vm
+ * @param *input
+ * @param *cmd
  *
- * @return error - clib_error_t
+ * @return error
  *
  */
 static clib_error_t *
@@ -658,9 +658,9 @@ VLIB_CLI_COMMAND (show_vxlan_gpe_tunnel_command, static) = {
 /**
  * @brief Feature init function for VXLAN GPE
  *
- * @param *vm - vlib_main_t
+ * @param *vm
  *
- * @return error - clib_error_t
+ * @return error
  *
  */
 clib_error_t *vxlan_gpe_init (vlib_main_t *vm)
