@@ -67,10 +67,10 @@ typedef struct {
 /**
  * @brief Trace of packets encapsulated in VXLAN GPE
  *
- * @param *s - u8 - formatted string
- * @param *args - va_list
+ * @param *s
+ * @param *args
  *
- * @return *s - u8 - formatted string
+ * @return *s
  *
  */
 u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
@@ -87,11 +87,11 @@ u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
 /**
  * @brief Instantiates UDP + VXLAN-GPE header then set next node to IP4|6 lookup
  *
- * @param *ngm - vxlan_gpe_maint_t
- * @param *b0 - vlib_buffer_t
- * @param *t0 - vxlan_gpe_tunnel_t - contains rewrite header
- * @param *next0 - u32 - relative index of next dispatch function (next node)
- * @param is_v4 - u8 - Is this IPv4? (or IPv6)
+ * @param *ngm
+ * @param *b0
+ * @param *t0 contains rewrite header
+ * @param *next0 relative index of next dispatch function (next node)
+ * @param is_v4 Is this IPv4? (or IPv6)
  *
  */
 always_inline void
@@ -117,14 +117,14 @@ vxlan_gpe_encap_one_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
 /**
  * @brief Instantiates UDP + VXLAN-GPE header then set next node to IP4|6 lookup for two packets
  *
- * @param *ngm - vxlan_gpe_maint_t
- * @param *b0 - vlib_buffer_t - Packet0
- * @param *b1 - vlib_buffer_t - Packet1
- * @param *t0 - vxlan_gpe_tunnel_t - contains rewrite header for Packet0
- * @param *t1 - vxlan_gpe_tunnel_t - contains rewrite header for Packet1
- * @param *next0 - u32 - relative index of next dispatch function (next node) for Packet0
- * @param *next1 - u32 - relative index of next dispatch function (next node) for Packet1
- * @param is_v4 - u8 - Is this IPv4? (or IPv6)
+ * @param *ngm
+ * @param *b0 Packet0
+ * @param *b1 Packet1
+ * @param *t0 contains rewrite header for Packet0
+ * @param *t1 contains rewrite header for Packet1
+ * @param *next0 relative index of next dispatch function (next node) for Packet0
+ * @param *next1 relative index of next dispatch function (next node) for Packet1
+ * @param is_v4 Is this IPv4? (or IPv6)
  *
  */
 always_inline void
@@ -160,11 +160,11 @@ vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0, vlib_buf
  *      vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
  *
  * @node vxlan-gpe-input
- * @param *vm - vlib_main_t
- * @param *node - vlib_node_runtime_t
- * @param *from_frame - vlib_frame_t
+ * @param *vm
+ * @param *node
+ * @param *from_frame
  *
- * @return from_frame->n_vectors - uword
+ * @return from_frame->n_vectors
  *
  */
 static uword

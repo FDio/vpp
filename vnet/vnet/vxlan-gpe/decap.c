@@ -39,10 +39,10 @@ typedef struct {
 /**
  * @brief Tracing function for VXLAN GPE packet decapsulation
  *
- * @param *s - u8 - format string
- * @param *args - va_list - arguments to display
+ * @param *s
+ * @param *args
  *
- * @return *s u8 - formatted trace output
+ * @return *s
  *
  */
 static u8 * format_vxlan_gpe_rx_trace (u8 * s, va_list * args)
@@ -67,10 +67,10 @@ static u8 * format_vxlan_gpe_rx_trace (u8 * s, va_list * args)
 /**
  * @brief Tracing function for VXLAN GPE packet decapsulation including length
  *
- * @param *s - u8 - format string
- * @param *args - va_list - arguments to display
+ * @param *s
+ * @param *args
  *
- * @return *s u8 - formatted trace output
+ * @return *s
  *
  */
 static u8 * format_vxlan_gpe_with_length (u8 * s, va_list * args)
@@ -93,12 +93,12 @@ static u8 * format_vxlan_gpe_with_length (u8 * s, va_list * args)
  *
  *      vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
  *
- * @param *vm - vlib_main_t
- * @param *node - vlib_node_runtime_t
- * @param *from_frame - vlib_frame_t
- * @param ip_ip4 - u8
+ * @param *vm
+ * @param *node
+ * @param *from_frame
+ * @param ip_ip4
  *
- * @return from_frame->n_vectors - uword
+ * @return from_frame->n_vectors
  *
  */
 always_inline uword
@@ -594,11 +594,11 @@ vxlan_gpe_input (vlib_main_t * vm,
  * @brief Graph processing dispatch function for IPv4 VXLAN GPE
  *
  * @node vxlan4-gpe-input
- * @param *vm - vlib_main_t
- * @param *node - vlib_node_runtime_t
- * @param *from_frame - vlib_frame_t
+ * @param *vm
+ * @param *node
+ * @param *from_frame
  *
- * @return from_frame->n_vectors - uword
+ * @return from_frame->n_vectors
  *
  */
 static uword
@@ -612,11 +612,11 @@ vxlan4_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
  * @brief Graph processing dispatch function for IPv6 VXLAN GPE
  *
  * @node vxlan6-gpe-input
- * @param *vm - vlib_main_t
- * @param *node - vlib_node_runtime_t
- * @param *from_frame - vlib_frame_t
+ * @param *vm
+ * @param *node
+ * @param *from_frame
  *
- * @return from_frame->n_vectors - uword
+ * @return from_frame->n_vectors
  *
  */
 static uword
