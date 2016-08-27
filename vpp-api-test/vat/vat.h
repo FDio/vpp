@@ -117,6 +117,7 @@ typedef struct
   u32 vni;
   u8 eid[16];
   u8 eid_prefix_len;
+  u8 action;
   u32 ttl;
   u8 authoritative;
 } eid_table_t;
