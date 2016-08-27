@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_da2b1393",
+        "filename": "vnet/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-27T23:15:01Z",
+      "side": 1,
+      "message": "Looks like you lost the documentation with your sed :)",
+      "range": {
+        "startLine": 70,
+        "startChar": 0,
+        "endLine": 70,
+        "endChar": 12
+      },
+      "revId": "0b2543f09b5300a89472872a420fcdf574e4e3ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
