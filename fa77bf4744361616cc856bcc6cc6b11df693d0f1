@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_5a14a3f4",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 486,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-08-27T04:22:57Z",
+      "side": 1,
+      "message": "This check seems a waste since qinq_intf will be 0 only of pbb_intf is not 0 and thus should never get here. Do you agree?",
+      "range": {
+        "startLine": 486,
+        "startChar": 6,
+        "endLine": 486,
+        "endChar": 15
+      },
+      "revId": "fa77bf4744361616cc856bcc6cc6b11df693d0f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_3af9e7c8",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 494,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-08-27T04:22:57Z",
+      "side": 1,
+      "message": "This check seems a waste since vlan_intf will be 0 only of pbb_intf is not 0 and thus should never get here. Do you agree?",
+      "range": {
+        "startLine": 494,
+        "startChar": 6,
+        "endLine": 494,
+        "endChar": 15
+      },
+      "revId": "fa77bf4744361616cc856bcc6cc6b11df693d0f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_1af62bd8",
+        "filename": "vnet/vnet/l2/l2_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-08-27T04:22:57Z",
+      "side": 1,
+      "message": "This block of code add extra overhead for the L2 forwarding input fastpath, even if PBB is not setup for the interface. This kind of interface specific \"feature\" should be separated into a L2 feature node like how VTR is implemented and so not incur any overhead if PBB is not configured.",
+      "range": {
+        "startLine": 382,
+        "startChar": 0,
+        "endLine": 382,
+        "endChar": 3
+      },
+      "revId": "fa77bf4744361616cc856bcc6cc6b11df693d0f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_fa024fb3",
+        "filename": "vnet/vnet/l2/l2_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-08-27T04:22:57Z",
+      "side": 1,
+      "message": "This block of code add extra overhead for the L2 forwarding output fastpath, even if PBB is not setup for the interface. This kind of interface specific \"feature\" should be separated into a L2 feature node like how VTR is implemented and so not incur any overhead if PBB is not configured.",
+      "range": {
+        "startLine": 283,
+        "startChar": 0,
+        "endLine": 283,
+        "endChar": 3
+      },
+      "revId": "fa77bf4744361616cc856bcc6cc6b11df693d0f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
