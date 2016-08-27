@@ -16,6 +16,7 @@
  */
 
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/arp_packet.h>
 #include <vnet/l2/l2_input.h>
@@ -262,6 +263,23 @@ format_ethernet_arp_input_trace (u8 * s, va_list * va)
 
   s = format (s, "%U",
 	      format_ethernet_arp_header,
+	      t->packet_data, sizeof (t->packet_data));
+
+  return s;
+}
+
+static u8 *
+format_arp_term_input_trace (u8 * s, va_list * va)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
+  ethernet_arp_input_trace_t *t = va_arg (*va, ethernet_arp_input_trace_t *);
+
+  /* arp-term trace data saved is either arp or ip6/icmp6 packet:
+     - for arp, the 1st 16-bit field is hw type of value of 0x0001.
+     - for ip6, the first nibble has value of 6. */
+  s = format (s, "%U", t->packet_data[0] == 0 ?
+	      format_ethernet_arp_header : format_ip6_header,
 	      t->packet_data, sizeof (t->packet_data));
 
   return s;
@@ -1825,8 +1843,8 @@ VLIB_CLI_COMMAND (set_int_proxy_enable_command, static) = {
 
 
 /*
- * ARP Termination in a L2 Bridge Domain based on an
- * IP4 to MAC hash table mac_by_ip4 for each BD.
+ * ARP/ND Termination in a L2 Bridge Domain based on IP4/IP6 to MAC
+ * hash tables mac_by_ip4 and mac_by_ip6 for each BD.
  */
 typedef enum
 {
@@ -1863,6 +1881,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	  vlib_buffer_t *p0;
 	  ethernet_header_t *eth0;
 	  ethernet_arp_header_t *arp0;
+	  ip6_header_t *iph0;
 	  u8 *l3h0;
 	  u32 pi0, error0, next0, sw_if_index0;
 	  u16 ethertype0;
@@ -1883,6 +1902,13 @@ arp_term_l2bd (vlib_main_t * vm,
 	  ethertype0 = clib_net_to_host_u16 (*(u16 *) (l3h0 - 2));
 	  arp0 = (ethernet_arp_header_t *) l3h0;
 
+	  if (PREDICT_FALSE ((ethertype0 != ETHERNET_TYPE_ARP) ||
+			     (arp0->opcode !=
+			      clib_host_to_net_u16
+			      (ETHERNET_ARP_OPCODE_request))))
+	    goto check_ip6_nd;
+
+	  /* Must be ARP request packet here */
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			     (p0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
@@ -1890,12 +1916,6 @@ arp_term_l2bd (vlib_main_t * vm,
 				       sizeof (ethernet_arp_input_trace_t));
 	      clib_memcpy (t0, l3h0, sizeof (ethernet_arp_input_trace_t));
 	    }
-
-	  if (PREDICT_FALSE ((ethertype0 != ETHERNET_TYPE_ARP) ||
-			     (arp0->opcode !=
-			      clib_host_to_net_u16
-			      (ETHERNET_ARP_OPCODE_request))))
-	    goto next_l2_feature;
 
 	  error0 = ETHERNET_ARP_ERROR_replies_sent;
 	  error0 =
@@ -1912,8 +1932,8 @@ arp_term_l2bd (vlib_main_t * vm,
 	  if (error0)
 	    goto drop;
 
-	  // Trash ARP packets whose ARP-level source addresses do not
-	  // match their L2-frame-level source addresses */
+	  /* Trash ARP packets whose ARP-level source addresses do not
+	     match their L2-frame-level source addresses  */
 	  if (PREDICT_FALSE
 	      (memcmp
 	       (eth0->src_address, arp0->ip4_over_ethernet[0].ethernet,
@@ -1923,7 +1943,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	      goto drop;
 	    }
 
-	  // Check if anyone want ARP request events for L2 BDs
+	  /* Check if anyone want ARP request events for L2 BDs */
 	  {
 	    pending_resolution_t *mc;
 	    ethernet_arp_main_t *am = &ethernet_arp_main;
@@ -1937,13 +1957,13 @@ arp_term_l2bd (vlib_main_t * vm,
 		    int rv = 1;
 		    mc = pool_elt_at_index (am->mac_changes, next_index);
 		    fp = mc->data_callback;
-		    // Call the callback, return 1 to suppress dup events */
+		    /* Call the callback, return 1 to suppress dup events */
 		    if (fp)
 		      rv = (*fp) (mc->data,
 				  arp0->ip4_over_ethernet[0].ethernet,
 				  sw_if_index0,
 				  arp0->ip4_over_ethernet[0].ip4.as_u32);
-		    // Signal the resolver process
+		    /* Signal the resolver process */
 		    if (rv == 0)
 		      vlib_process_signal_event (vm, mc->node_index,
 						 mc->type_opaque, mc->data);
@@ -1952,7 +1972,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	      }
 	  }
 
-	  // lookup BD mac_by_ip4 hash table for MAC entry
+	  /* lookup BD mac_by_ip4 hash table for MAC entry */
 	  ip0 = arp0->ip4_over_ethernet[1].ip4.as_u32;
 	  bd_index0 = vnet_buffer (p0)->l2.bd_index;
 	  if (PREDICT_FALSE ((bd_index0 != last_bd_index)
@@ -1964,10 +1984,10 @@ arp_term_l2bd (vlib_main_t * vm,
 	  macp0 = (u8 *) hash_get (last_bd_config->mac_by_ip4, ip0);
 
 	  if (PREDICT_FALSE (!macp0))
-	    goto next_l2_feature;	// MAC not found
+	    goto next_l2_feature;	/* MAC not found */
 
-	  // MAC found, send ARP reply -
-	  // Convert ARP request packet to ARP reply
+	  /* MAC found, send ARP reply -
+	     Convert ARP request packet to ARP reply */
 	  arp0->opcode = clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
 	  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
 	  arp0->ip4_over_ethernet[0].ip4.as_u32 = ip0;
@@ -1976,8 +1996,9 @@ arp_term_l2bd (vlib_main_t * vm,
 	  clib_memcpy (eth0->src_address, macp0, 6);
 	  n_replies_sent += 1;
 
-	  // For BVI, need to use l2-fwd node to send ARP reply as
-	  // l2-output node cannot output packet to BVI properly
+	output_response:
+	  /* For BVI, need to use l2-fwd node to send ARP reply as
+	     l2-output node cannot output packet to BVI properly */
 	  cfg0 = vec_elt_at_index (l2im->configs, sw_if_index0);
 	  if (PREDICT_FALSE (cfg0->bvi))
 	    {
@@ -1986,18 +2007,36 @@ arp_term_l2bd (vlib_main_t * vm,
 	      goto next_l2_feature;
 	    }
 
-	  // Send ARP reply back out input interface through l2-output
+	  /* Send ARP/ND reply back out input interface through l2-output */
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
 	  next0 = ARP_TERM_NEXT_L2_OUTPUT;
-	  // Note that output to VXLAN tunnel will fail due to SHG which
-	  // is probably desireable since ARP termination is not intended
-	  // for ARP requests from other hosts. If output to VXLAN tunnel is
-	  // required, however, can just clear the SHG in packet as follows:
-	  //   vnet_buffer(p0)->l2.shg = 0;
-
+	  /* Note that output to VXLAN tunnel will fail due to SHG which
+	     is probably desireable since ARP termination is not intended
+	     for ARP requests from other hosts. If output to VXLAN tunnel is
+	     required, however, can just clear the SHG in packet as follows:
+	     vnet_buffer(p0)->l2.shg = 0;         */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
 	  continue;
+
+	check_ip6_nd:
+	  /* IP6 ND event notification or solicitation handling to generate
+	     local response instead of flooding */
+	  iph0 = (ip6_header_t *) l3h0;
+	  if (PREDICT_FALSE (ethertype0 == ETHERNET_TYPE_IP6 &&
+			     iph0->protocol == IP_PROTOCOL_ICMP6 &&
+			     !ip6_address_is_link_local_unicast
+			     (&iph0->src_address)
+			     &&
+			     !ip6_address_is_unspecified
+			     (&iph0->src_address)))
+	    {
+	      sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
+	      if (vnet_ip6_nd_term (vm, node, p0, eth0, iph0, sw_if_index0,
+				    vnet_buffer (p0)->l2.bd_index,
+				    vnet_buffer (p0)->l2.shg))
+		goto output_response;
+	    }
 
 	next_l2_feature:
 	  {
@@ -2046,7 +2085,7 @@ VLIB_REGISTER_NODE (arp_term_l2bd_node, static) = {
     [ARP_TERM_NEXT_DROP] = "error-drop",
   },
   .format_buffer = format_ethernet_arp_header,
-  .format_trace = format_ethernet_arp_input_trace,
+  .format_trace = format_arp_term_input_trace,
 };
 /* *INDENT-ON* */
 

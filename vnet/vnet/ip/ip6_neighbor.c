@@ -169,6 +169,9 @@ typedef struct {
   uword node_index;
   uword type_opaque;
   uword data;
+  /* Used for nd event notification only */
+  void * data_callback;
+  u32 pid;
 } pending_resolution_t;
 
 
@@ -179,6 +182,10 @@ typedef struct {
   /* lite beer "glean" adjacency handling */
   mhash_t pending_resolutions_by_address;
   pending_resolution_t * pending_resolutions;
+
+  /* Mac address change notification */
+  mhash_t mac_changes_by_address;
+  pending_resolution_t * mac_changes;
 
   u32 * neighbor_input_next_index_by_hw_if_index;
 
@@ -197,6 +204,7 @@ typedef struct {
 } ip6_neighbor_main_t;
 
 static ip6_neighbor_main_t ip6_neighbor_main;
+static ip6_address_t ip6a_zero;    /* ip6 address 0 */
 
 static u8 * format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
 {
@@ -341,7 +349,7 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
   u32 next_index;
   u32 adj_index;
   ip_adjacency_t *existing_adj;
-  pending_resolution_t * pr;
+  pending_resolution_t * pr, * mc;
 
 #if DPDK > 0
   if (os_get_cpu_number())
@@ -442,24 +450,51 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 
   /* Customer(s) waiting for this address to be resolved? */
   p = mhash_get (&nm->pending_resolutions_by_address, a);
-  if (p == 0)
-      goto out;
-  
-  next_index = p[0];
-  
-  while (next_index != (u32)~0)
+  if (p)
     {
-      pr = pool_elt_at_index (nm->pending_resolutions, next_index);
-      vlib_process_signal_event (vm, pr->node_index,
-                                 pr->type_opaque, 
-                                 pr->data);
-      next_index = pr->next_index;
-      pool_put (nm->pending_resolutions, pr);
+      next_index = p[0];
+  
+      while (next_index != (u32)~0)
+        {
+	  pr = pool_elt_at_index (nm->pending_resolutions, next_index);
+	  vlib_process_signal_event (vm, pr->node_index,
+				     pr->type_opaque, 
+				     pr->data);
+	  next_index = pr->next_index;
+	  pool_put (nm->pending_resolutions, pr);
+        }
+
+      mhash_unset (&nm->pending_resolutions_by_address, a, 0);
     }
 
-  mhash_unset (&nm->pending_resolutions_by_address, a, 0);
-  
-out:
+  /* Customer(s) requesting ND event for this address? */
+  p = mhash_get (&nm->mac_changes_by_address, a);
+  if (p)
+    {
+      next_index = p[0];
+
+      while (next_index != (u32)~0)
+        {
+	  int (*fp)(u32, u8 *, u32, ip6_address_t *);
+          int rv = 1;
+          mc = pool_elt_at_index (nm->mac_changes, next_index);
+          fp = mc->data_callback;
+
+          /* Call the user's data callback, return 1 to suppress dup events */
+          if (fp)
+	    rv = (*fp)(mc->data, link_layer_address, sw_if_index, &ip6a_zero);
+          /* 
+           * Signal the resolver process, as long as the user
+           * says they want to be notified
+           */
+          if (rv == 0)
+            vlib_process_signal_event (vm, mc->node_index,
+                                       mc->type_opaque, 
+                                       mc->data);
+          next_index = mc->next_index;
+        }
+    }
+
   vlib_worker_thread_barrier_release(vm);
   return 0;
 }
@@ -3327,6 +3362,10 @@ static clib_error_t * ip6_neighbor_init (vlib_main_t * vm)
 	      /* value size */ sizeof (uword),
 	      /* key size */ sizeof (ip6_address_t));
 
+  mhash_init (&nm->mac_changes_by_address,
+	      /* value size */ sizeof (uword),
+	      /* key size */ sizeof (ip6_address_t));
+
   /* default, configurable */
   nm->limit_neighbor_cache_size = 50000;
 
@@ -3374,3 +3413,185 @@ void vnet_register_ip6_neighbor_resolution_event (vnet_main_t * vnm,
              pr - nm->pending_resolutions, 0 /* old value */);
 }
 
+int vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm, 
+				      void * data_callback,
+				      u32 pid,
+				      void * address_arg,
+				      uword node_index,
+				      uword type_opaque,
+				      uword data, 
+				      int is_add)
+{
+  ip6_neighbor_main_t * nm = &ip6_neighbor_main;
+  ip6_address_t * address = address_arg;
+  uword * p;
+  pending_resolution_t * mc;
+  void (*fp)(u32, u8 *) = data_callback;
+  
+  if (is_add)
+    {
+      pool_get (nm->mac_changes, mc);
+
+      mc->next_index = ~0;
+      mc->node_index = node_index;
+      mc->type_opaque = type_opaque;
+      mc->data = data;
+      mc->data_callback = data_callback;
+      mc->pid = pid;
+      
+      p = mhash_get (&nm->mac_changes_by_address, address);
+      if (p)
+        {
+          /* Insert new resolution at the head of the list */
+          mc->next_index = p[0];
+          mhash_unset (&nm->mac_changes_by_address, address, 0);
+        }
+      
+      mhash_set (&nm->mac_changes_by_address, address, 
+		 mc - nm->mac_changes, 0);
+      return 0;
+    }
+  else
+    {
+      u32 index;
+      pending_resolution_t * mc_last = 0;
+
+      p = mhash_get (&nm->mac_changes_by_address, address);
+      if (p == 0)
+        return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+      index = p[0];
+
+      while (index != (u32)~0)
+        {
+          mc = pool_elt_at_index (nm->mac_changes, index);
+          if (mc->node_index == node_index &&
+              mc->type_opaque == type_opaque &&
+              mc->pid == pid)
+            {
+              /* Clients may need to clean up pool entries, too */
+              if (fp)
+                (*fp)(mc->data, 0 /* no new mac addrs */);
+              if (index == p[0])
+                {
+		  mhash_unset (&nm->mac_changes_by_address, address, 0);
+                  if (mc->next_index != ~0)
+                    mhash_set (&nm->mac_changes_by_address, address,
+			       mc->next_index, 0);
+                  pool_put (nm->mac_changes, mc);
+                  return 0;
+                }
+              else
+                {
+                  ASSERT(mc_last);
+                  mc_last->next_index = mc->next_index;
+                  pool_put (nm->mac_changes, mc);
+                  return 0;
+                }
+            }
+          mc_last = mc;
+          index = mc->next_index;
+        }
+      
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+}
+
+int vnet_ip6_nd_term (vlib_main_t * vm,
+		      vlib_node_runtime_t * node,
+		      vlib_buffer_t * p0,
+		      ethernet_header_t * eth,
+		      ip6_header_t * ip,
+		      u32 sw_if_index,
+		      u16 bd_index,
+		      u8 shg)
+{
+  ip6_neighbor_main_t * nm = &ip6_neighbor_main;
+  icmp6_neighbor_solicitation_or_advertisement_header_t * ndh;
+  pending_resolution_t * mc;
+  uword *p;
+
+  ndh = ip6_next_header (ip);
+  if (ndh->icmp.type != ICMP6_neighbor_solicitation &&
+      ndh->icmp.type != ICMP6_neighbor_advertisement)
+      return 0;
+
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+		     (p0->flags & VLIB_BUFFER_IS_TRACED)))
+    {
+      u8 *t0 = vlib_add_trace (vm, node, p0,
+			       sizeof (icmp6_input_trace_t));
+      clib_memcpy (t0, ip, sizeof (icmp6_input_trace_t));
+    }
+
+  /* Check if anyone want ND events for L2 BDs */
+  p = mhash_get (&nm->mac_changes_by_address, &ip6a_zero);
+  if (p && shg == 0)
+    { /* Only SHG 0 interface which is more likely local */
+      u32 next_index = p[0];
+      while (next_index != (u32)~0)
+        {
+	  int (*fp)(u32, u8 *, u32, ip6_address_t *);
+	  int rv = 1;
+	  mc = pool_elt_at_index (nm->mac_changes, next_index);
+	  fp = mc->data_callback;
+	  /* Call the callback, return 1 to suppress dup events */
+	  if (fp) rv = (*fp)(mc->data, 
+			     eth->src_address,
+			     sw_if_index, 
+			     &ip->src_address);
+	  /* Signal the resolver process */
+	  if (rv == 0)
+	     vlib_process_signal_event (vm, mc->node_index,
+					mc->type_opaque, 
+					mc->data);
+	  next_index = mc->next_index;
+        }
+    }
+
+  /* Check if MAC entry exsist for solicited target IP */
+  if (ndh->icmp.type == ICMP6_neighbor_solicitation)
+    {
+      icmp6_neighbor_discovery_ethernet_link_layer_address_option_t * opt;
+      l2_bridge_domain_t *bd_config;
+      u8 * macp;
+
+      opt = (void *) (ndh + 1);
+      if ((opt->header.type != 
+	   ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address) ||
+	  (opt->header.n_data_u64s != 1))
+	  return 0; /* source link layer address option not present */
+	  
+      bd_config = vec_elt_at_index (l2input_main.bd_configs, bd_index);
+      macp = (u8 *) hash_get_mem (bd_config->mac_by_ip6, &ndh->target_address);
+      if (macp)
+        { /* found ip-mac entry, generate eighbor advertisement response */
+	  int bogus_length;
+	  vlib_node_runtime_t * error_node = 
+	      vlib_node_get_runtime (vm, ip6_icmp_input_node.index);
+	  ip->dst_address = ip->src_address;
+	  ip->src_address = ndh->target_address;
+	  ip->hop_limit = 255;
+	  opt->header.type =
+	      ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address;
+	  clib_memcpy (opt->ethernet_address, macp, 6);
+	  ndh->icmp.type = ICMP6_neighbor_advertisement;
+	  ndh->advertisement_flags = clib_host_to_net_u32
+	      (ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED |
+	       ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
+	  ndh->icmp.checksum = 0;
+	  ndh->icmp.checksum = ip6_tcp_udp_icmp_compute_checksum(vm, p0, ip,
+								 &bogus_length);
+	  clib_memcpy(eth->dst_address, eth->src_address, 6);
+	  clib_memcpy(eth->src_address, macp, 6);
+	  vlib_error_count (vm, error_node->node_index, 
+			    ICMP6_ERROR_NEIGHBOR_ADVERTISEMENTS_TX, 1);
+ 	  return 1;
+        }
+    }
+
+  return 0;
+
+}
+
+		      
