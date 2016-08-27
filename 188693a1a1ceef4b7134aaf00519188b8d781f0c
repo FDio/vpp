@@ -22,6 +22,30 @@
       "revId": "188693a1a1ceef4b7134aaf00519188b8d781f0c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_da4af3ab",
+        "filename": "vnet/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-08-27T22:38:48Z",
+      "side": 1,
+      "message": "Will fix and address in other places for other patches....",
+      "parentUuid": "3a1d315d_9a87db61",
+      "range": {
+        "startLine": 70,
+        "startChar": 3,
+        "endLine": 70,
+        "endChar": 33
+      },
+      "revId": "188693a1a1ceef4b7134aaf00519188b8d781f0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
