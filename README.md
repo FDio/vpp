@@ -15,7 +15,6 @@ For more information on VPP and its features please visit the
 [FD.io website](http://fd.io/) and
 [What is VPP?](https://wiki.fd.io/view/VPP/What_is_VPP%3F) pages.
 
-
 ## Directory layout.
 
 Directory name         | Description
