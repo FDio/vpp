@@ -86,6 +86,9 @@ l2_classify_node_fn (vlib_main_t * vm,
   u32 misses = 0;
   u32 chain_hits = 0;
   f64 now;
+  u32 n_next_nodes;
+
+  n_next_nodes = node->n_next_nodes;
 
   now = vlib_time_now (vm);
 
@@ -291,7 +294,7 @@ l2_classify_node_fn (vlib_main_t * vm,
 		  vnet_buffer (b0)->l2_classify.opaque_index
 		    = e0->opaque_index;
 		  vlib_buffer_advance (b0, e0->advance);
-		  next0 = (e0->next_index < L2_CLASSIFY_N_NEXT) ?
+		  next0 = (e0->next_index < n_next_nodes) ?
 		    e0->next_index : next0;
 		  hits++;
 		}
@@ -304,7 +307,7 @@ l2_classify_node_fn (vlib_main_t * vm,
 						t0->next_table_index);
 		      else
 			{
-			  next0 = (t0->miss_next_index < L2_CLASSIFY_N_NEXT) ?
+			  next0 = (t0->miss_next_index < n_next_nodes) ?
 			    t0->miss_next_index : next0;
 			  misses++;
 			  break;
@@ -318,7 +321,7 @@ l2_classify_node_fn (vlib_main_t * vm,
 			  vnet_buffer (b0)->l2_classify.opaque_index
 			    = e0->opaque_index;
 			  vlib_buffer_advance (b0, e0->advance);
-			  next0 = (e0->next_index < L2_CLASSIFY_N_NEXT) ?
+			  next0 = (e0->next_index < n_next_nodes) ?
 			    e0->next_index : next0;
 			  hits++;
 			  chain_hits++;
@@ -393,11 +396,11 @@ VLIB_REGISTER_NODE (l2_classify_node) = {
 
   /* edit / add dispositions here */
   .next_nodes = {
-       [L2_CLASSIFY_NEXT_DROP]  = "error-drop",
-       [L2_CLASSIFY_NEXT_ETHERNET_INPUT] = "ethernet-input-not-l2",
-       [L2_CLASSIFY_NEXT_IP4_INPUT] = "ip4-input",
-       [L2_CLASSIFY_NEXT_IP6_INPUT] = "ip6-input",
-       [L2_CLASSIFY_NEXT_LI] = "li-hit",
+    [L2_CLASSIFY_NEXT_DROP]  = "error-drop",
+    [L2_CLASSIFY_NEXT_ETHERNET_INPUT] = "ethernet-input-not-l2",
+    [L2_CLASSIFY_NEXT_IP4_INPUT] = "ip4-input",
+    [L2_CLASSIFY_NEXT_IP6_INPUT] = "ip6-input",
+    [L2_CLASSIFY_NEXT_LI] = "li-hit",
   },
 };
 /* *INDENT-ON* */
