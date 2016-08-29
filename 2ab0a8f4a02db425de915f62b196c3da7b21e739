@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_55811449",
+        "filename": "vnet/vnet/ethernet/arp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-08-29T07:16:51Z",
+      "side": 1,
+      "message": "nibble",
+      "range": {
+        "startLine": 280,
+        "startChar": 26,
+        "endLine": 280,
+        "endChar": 31
+      },
+      "revId": "2ab0a8f4a02db425de915f62b196c3da7b21e739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_35969895",
+        "filename": "vnet/vnet/ethernet/arp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2032,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-08-29T07:16:51Z",
+      "side": 1,
+      "message": "Why these checks here?\nIs this to avoid forwarding of packets with unspecified / link-local source?\nIf you want to make all the checks you would do if you L3 forwarded it there are more...",
+      "range": {
+        "startLine": 2028,
+        "startChar": 8,
+        "endLine": 2032,
+        "endChar": 30
+      },
+      "revId": "2ab0a8f4a02db425de915f62b196c3da7b21e739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_15939ca4",
+        "filename": "vnet/vnet/ip/ip6_neighbor.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3568,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-08-29T07:16:51Z",
+      "side": 1,
+      "message": "advertisement",
+      "range": {
+        "startLine": 3568,
+        "startChar": 50,
+        "endLine": 3568,
+        "endChar": 62
+      },
+      "revId": "2ab0a8f4a02db425de915f62b196c3da7b21e739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
