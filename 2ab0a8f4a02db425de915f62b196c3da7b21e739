@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_d5e3e431",
+        "filename": "vnet/vnet/ethernet/arp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2032,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-08-29T08:49:27Z",
+      "side": 1,
+      "message": "This feature is within L2 forwarding where ICMP6 packet for neighbor solicitation or advertisement is utilized to send IP6/MAC binding notification to a client process and also, if possible, generate a local response to neighbor solicitation request without having to flood the packet. Thus, we are not interested in link local or unspecified source packets. Note that, except for the case of local response is sent back for a neighbor solicitation, the original packet will still be L2 forwarded/flooded.",
+      "parentUuid": "3a1d315d_35969895",
+      "range": {
+        "startLine": 2028,
+        "startChar": 8,
+        "endLine": 2032,
+        "endChar": 30
+      },
+      "revId": "2ab0a8f4a02db425de915f62b196c3da7b21e739",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_15939ca4",
         "filename": "vnet/vnet/ip/ip6_neighbor.c",
         "patchSetId": 3
