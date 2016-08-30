@@ -621,7 +621,8 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
       config->output_sw_if_index = xc_sw_if_index;
 
       /* Make sure last-chance drop is configured */
-      config->feature_bitmap |= L2INPUT_FEAT_DROP | L2INPUT_FEAT_CLASSIFY;
+      config->feature_bitmap |=
+	L2INPUT_FEAT_DROP | L2INPUT_FEAT_INPUT_CLASSIFY;
 
       /* Make sure bridging features are disabled */
       config->feature_bitmap &=
@@ -1030,7 +1031,7 @@ VLIB_CLI_COMMAND (show_l2_mode, static) = {
 #define foreach_l2_init_function                \
 _(feat_bitmap_drop_init)                        \
 _(l2fib_init)                                   \
-_(l2_classify_init)                             \
+_(l2_input_classify_init)                             \
 _(l2bd_init)                                    \
 _(l2fwd_init)                                   \
 _(l2_inacl_init)                                \

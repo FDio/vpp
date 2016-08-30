@@ -7855,7 +7855,7 @@ unformat_l2_next_index (unformat_input_t * input, va_list * args)
   u32 tmp;
 
 #define _(n,N) \
-  if (unformat (input, #n)) { next_index = L2_CLASSIFY_NEXT_##N; goto out;}
+  if (unformat (input, #n)) { next_index = L2_INPUT_CLASSIFY_NEXT_##N; goto out;}
   foreach_l2_next;
 #undef _
 
@@ -8570,6 +8570,7 @@ api_classify_set_interface_l2_tables (vat_main_t * vam)
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
   u32 other_table_index = ~0;
+  u32 is_input = 1;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -8582,6 +8583,8 @@ api_classify_set_interface_l2_tables (vat_main_t * vam)
       else if (unformat (i, "ip6-table %d", &ip6_table_index))
 	;
       else if (unformat (i, "other-table %d", &other_table_index))
+	;
+      else if (unformat (i, "is-input %d", &is_input))
 	;
       else
 	{
@@ -8603,7 +8606,7 @@ api_classify_set_interface_l2_tables (vat_main_t * vam)
   mp->ip4_table_index = ntohl (ip4_table_index);
   mp->ip6_table_index = ntohl (ip6_table_index);
   mp->other_table_index = ntohl (other_table_index);
-
+  mp->is_input = (u8) is_input;
 
   S;
   W;

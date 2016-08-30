@@ -49,7 +49,7 @@ typedef struct
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   vnet_classify_main_t *vnet_classify_main;
-  l2_classify_main_t *l2_classify_main;
+  l2_input_classify_main_t *l2_input_classify_main;
 }
 sticky_hash_main_t;
 
@@ -197,11 +197,11 @@ sticky_hash_miss_node_fn (vlib_main_t * vm,
 
 	  fe0 =
 	    vnet_classify_find_or_add_entry_3 (ft0, mp->fdata, &was_found0);
-	  fe0->next_index = L2_CLASSIFY_NEXT_IP4_INPUT;
+	  fe0->next_index = L2_INPUT_CLASSIFY_NEXT_IP4_INPUT;
 	  fe0->advance = sizeof (ethernet_header_t);
 
 	  re0 = vnet_classify_find_or_add_entry_3 (rt0, mp->rdata, 0);
-	  re0->next_index = L2_CLASSIFY_NEXT_IP4_INPUT;	/* $$$ FIXME */
+	  re0->next_index = L2_INPUT_CLASSIFY_NEXT_IP4_INPUT;	/* $$$ FIXME */
 	  re0->advance = sizeof (ethernet_header_t);
 
 	  /* Note: we could get a whole vector of misses for the same sess */
@@ -271,7 +271,7 @@ sticky_hash_miss_init (vlib_main_t * vm)
   mp->vlib_main = vm;
   mp->vnet_main = vnet_get_main ();
   mp->vnet_classify_main = &vnet_classify_main;
-  mp->l2_classify_main = &l2_classify_main;
+  mp->l2_input_classify_main = &l2_input_classify_main;
 
   return 0;
 }
@@ -287,7 +287,7 @@ static int ip4_sticky_hash_enable_disable
   u32 fib_index;
   ip4_fib_t *fib;
   vnet_classify_main_t *cm = mp->vnet_classify_main;
-  l2_classify_main_t *l2cm = mp->l2_classify_main;
+  l2_input_classify_main_t *l2cm = mp->l2_input_classify_main;
   vnet_classify_table_3_t *ft, *rt;
 
   fib_index = vec_elt (im->fib_index_by_sw_if_index, fwd_sw_if_index);
@@ -302,7 +302,7 @@ static int ip4_sticky_hash_enable_disable
       fib->fwd_classify_table_index
 	= ft - (vnet_classify_table_3_t *) cm->tables;
       mp->fwd_miss_next_index =
-	vlib_node_add_next (mp->vlib_main, l2_classify_node.index,
+	vlib_node_add_next (mp->vlib_main, l2_input_classify_node.index,
 			    sticky_hash_miss_node.index);
       ft->miss_next_index = mp->fwd_miss_next_index;
 
@@ -315,51 +315,51 @@ static int ip4_sticky_hash_enable_disable
     }
 
   vec_validate
-    (l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_IP4],
+    (l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP4],
      fwd_sw_if_index);
 
   vec_validate
-    (l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_IP6],
+    (l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP6],
      fwd_sw_if_index);
 
   vec_validate
-    (l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_OTHER],
+    (l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_OTHER],
      fwd_sw_if_index);
 
-  l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_IP4]
+  l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP4]
     [fwd_sw_if_index] = fib->fwd_classify_table_index;
 
-  l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_IP6]
+  l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP6]
     [fwd_sw_if_index] = ~0;
 
-  l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_OTHER]
+  l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_OTHER]
     [fwd_sw_if_index] = ~0;
 
 
   vec_validate
-    (l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_IP4],
+    (l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP4],
      rev_sw_if_index);
 
   vec_validate
-    (l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_IP6],
+    (l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP6],
      rev_sw_if_index);
 
   vec_validate
-    (l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_OTHER],
+    (l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_OTHER],
      rev_sw_if_index);
 
 
-  l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_IP4]
+  l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP4]
     [rev_sw_if_index] = fib->rev_classify_table_index;
 
-  l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_IP6]
+  l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP6]
     [rev_sw_if_index] = ~0;
 
-  l2cm->classify_table_index_by_sw_if_index[L2_CLASSIFY_TABLE_OTHER]
+  l2cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_OTHER]
     [rev_sw_if_index] = ~0;
 
-  vnet_l2_classify_enable_disable (fwd_sw_if_index, enable_disable);
-  vnet_l2_classify_enable_disable (rev_sw_if_index, enable_disable);
+  vnet_l2_input_classify_enable_disable (fwd_sw_if_index, enable_disable);
+  vnet_l2_input_classify_enable_disable (rev_sw_if_index, enable_disable);
   return 0;
 }
 

@@ -1274,6 +1274,7 @@ static void *vl_api_classify_set_interface_l2_tables_t_print
   s = format (s, "ip4-table %d ", ntohl (mp->ip4_table_index));
   s = format (s, "ip6-table %d ", ntohl (mp->ip6_table_index));
   s = format (s, "other-table %d ", ntohl (mp->other_table_index));
+  s = format (s, "is-input %d ", mp->is_input);
 
   FINISH;
 }

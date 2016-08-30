@@ -98,6 +98,7 @@ l2output_main_t l2output_main;
  _(IPIW,              "feature-bitmap-drop")        \
  _(STP_BLOCKED,       "feature-bitmap-drop")        \
  _(LINESTATUS_DOWN,   "feature-bitmap-drop")        \
+ _(OUTPUT_CLASSIFY,   "l2-output-classify")	    \
  _(XCRW,	      "l2-xcrw")
 
 /* Feature bitmap positions */

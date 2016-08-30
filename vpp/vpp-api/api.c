@@ -3996,8 +3996,14 @@ static void vl_api_classify_set_interface_l2_tables_t_handler
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = vnet_l2_classify_set_tables (sw_if_index, ip4_table_index,
-				    ip6_table_index, other_table_index);
+  if (mp->is_input)
+    rv = vnet_l2_input_classify_set_tables (sw_if_index, ip4_table_index,
+					    ip6_table_index,
+					    other_table_index);
+  else
+    rv = vnet_l2_output_classify_set_tables (sw_if_index, ip4_table_index,
+					     ip6_table_index,
+					     other_table_index);
 
   if (rv == 0)
     {
@@ -4007,7 +4013,10 @@ static void vl_api_classify_set_interface_l2_tables_t_handler
       else
 	enable = 0;
 
-      vnet_l2_classify_enable_disable (sw_if_index, enable);
+      if (mp->is_input)
+	vnet_l2_input_classify_enable_disable (sw_if_index, enable);
+      else
+	vnet_l2_output_classify_enable_disable (sw_if_index, enable);
     }
 
   BAD_SW_IF_INDEX_LABEL;
