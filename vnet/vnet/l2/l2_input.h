@@ -91,7 +91,7 @@ l2input_bd_config_from_index (l2input_main_t * l2im, u32 bd_index)
 /* Mappings from feature ID to graph node name */
 #define foreach_l2input_feat                    \
  _(DROP,          "feature-bitmap-drop")        \
- _(CLASSIFY,      "l2-classify")		\
+ _(INPUT_CLASSIFY, "l2-input-classify")		\
  _(XCONNECT,      "l2-output")                  \
  _(IPIW,          "feature-bitmap-drop")        \
  _(FLOOD,         "l2-flood")                   \

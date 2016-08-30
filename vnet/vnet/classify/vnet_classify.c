@@ -16,7 +16,7 @@
 #include <vnet/classify/input_acl.h>
 #include <vnet/ip/ip.h>
 #include <vnet/api_errno.h>     /* for API error numbers */
-#include <vnet/l2/l2_classify.h> /* for L2_CLASSIFY_NEXT_xxx */
+#include <vnet/l2/l2_classify.h> /* for L2_INPUT_CLASSIFY_NEXT_xxx */
 
 vnet_classify_main_t vnet_classify_main;
 
@@ -1049,7 +1049,7 @@ uword unformat_l2_next_index (unformat_input_t * input, va_list * args)
     }
 
 #define _(n,N) \
-  if (unformat (input, #n)) { next_index = L2_CLASSIFY_NEXT_##N; goto out;}
+  if (unformat (input, #n)) { next_index = L2_INPUT_CLASSIFY_NEXT_##N; goto out;}
   foreach_l2_next;
 #undef _
   
@@ -1940,7 +1940,7 @@ unformat_l2_next_node (unformat_input_t * input, va_list * args)
                 cm->vlib_main, &node_index))
     {
       next_index = vlib_node_add_next 
-        (cm->vlib_main, l2_classify_node.index, node_index);
+        (cm->vlib_main, l2_input_classify_node.index, node_index);
 
       *next_indexp = next_index;
       return 1;
