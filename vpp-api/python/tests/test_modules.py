@@ -14,4 +14,7 @@ print('R:', r)
 r = snat.snat_interface_add_del_feature(1, 1, 1)
 print('R:', r)
 
+list_name = 'foobar'
+r = pot.pot_profile_add(0, 1, 123, 123, 0, 12, 0, 23, len(list_name), list_name)
+print('R:', r)
 vpp_papi.disconnect()
