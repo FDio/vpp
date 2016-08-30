@@ -22,6 +22,29 @@
       "revId": "2fa00f405235c3ef5ed3356404f63f0c25e03b4e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_b5c74812",
+        "filename": "plugins/ioam-plugin/ioam/dir.dox",
+        "patchSetId": 4
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-30T00:51:50Z",
+      "side": 1,
+      "message": "This should be just \"@dir\" - the remainder is superfluous.",
+      "range": {
+        "startLine": 16,
+        "startChar": 1,
+        "endLine": 16,
+        "endChar": 30
+      },
+      "revId": "2fa00f405235c3ef5ed3356404f63f0c25e03b4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
