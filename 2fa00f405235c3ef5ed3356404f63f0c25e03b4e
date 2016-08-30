@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_15515c62",
+        "filename": "Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-08-30T00:48:49Z",
+      "side": 1,
+      "message": "This should just be \"plugins\". But if you prefer I can do that in a later patch.",
+      "range": {
+        "startLine": 245,
+        "startChar": 1,
+        "endLine": 245,
+        "endChar": 20
+      },
+      "revId": "2fa00f405235c3ef5ed3356404f63f0c25e03b4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
