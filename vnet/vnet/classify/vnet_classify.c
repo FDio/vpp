@@ -16,7 +16,7 @@
 #include <vnet/classify/input_acl.h>
 #include <vnet/ip/ip.h>
 #include <vnet/api_errno.h>     /* for API error numbers */
-#include <vnet/l2/l2_classify.h> /* for L2_CLASSIFY_NEXT_xxx */
+#include <vnet/l2/l2_classify.h> /* for L2_INPUT_CLASSIFY_NEXT_xxx */
 
 vnet_classify_main_t vnet_classify_main;
 
@@ -1023,14 +1023,14 @@ uword unformat_classify_mask (unformat_input_t * input, va_list * args)
   return 0;
 }
 
-#define foreach_l2_next                         \
+#define foreach_l2_input_next                   \
 _(drop, DROP)                                   \
 _(ethernet, ETHERNET_INPUT)                     \
 _(ip4, IP4_INPUT)                               \
 _(ip6, IP6_INPUT)				\
 _(li, LI)
 
-uword unformat_l2_next_index (unformat_input_t * input, va_list * args)
+uword unformat_l2_input_next_index (unformat_input_t * input, va_list * args)
 {
   vnet_classify_main_t * cm = &vnet_classify_main;
   u32 * miss_next_indexp = va_arg (*args, u32 *);
@@ -1049,8 +1049,47 @@ uword unformat_l2_next_index (unformat_input_t * input, va_list * args)
     }
 
 #define _(n,N) \
-  if (unformat (input, #n)) { next_index = L2_CLASSIFY_NEXT_##N; goto out;}
-  foreach_l2_next;
+  if (unformat (input, #n)) { next_index = L2_INPUT_CLASSIFY_NEXT_##N; goto out;}
+  foreach_l2_input_next;
+#undef _
+  
+  if (unformat (input, "%d", &tmp))
+    { 
+      next_index = tmp; 
+      goto out; 
+    }
+  
+  return 0;
+
+ out:
+  *miss_next_indexp = next_index;
+  return 1;
+}
+
+#define foreach_l2_output_next                   \
+_(drop, DROP)
+
+uword unformat_l2_output_next_index (unformat_input_t * input, va_list * args)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+  u32 * miss_next_indexp = va_arg (*args, u32 *);
+  u32 next_index = 0;
+  u32 tmp;
+  int i;
+  
+  /* First try registered unformat fns, allowing override... */
+  for (i = 0; i < vec_len (cm->unformat_l2_next_index_fns); i++)
+    {
+      if (unformat (input, "%U", cm->unformat_l2_next_index_fns[i], &tmp))
+        {
+          next_index = tmp;
+          goto out;
+        }
+    }
+
+#define _(n,N) \
+  if (unformat (input, #n)) { next_index = L2_OUTPUT_CLASSIFY_NEXT_##N; goto out;}
+  foreach_l2_output_next;
 #undef _
   
   if (unformat (input, "%d", &tmp))
@@ -1225,7 +1264,10 @@ classify_table_command_fn (vlib_main_t * vm,
     else if (unformat (input, "miss-next %U", unformat_ip_next_index,
                        &miss_next_index))
       ;
-    else if (unformat (input, "l2-miss-next %U", unformat_l2_next_index,
+    else if (unformat (input, "l2-input-miss-next %U", unformat_l2_input_next_index,
+                       &miss_next_index))
+        ;
+    else if (unformat (input, "l2-output-miss-next %U", unformat_l2_output_next_index,
                        &miss_next_index))
       ;
     else if (unformat (input, "acl-miss-next %U", unformat_acl_next_index,
@@ -1802,7 +1844,10 @@ classify_session_command_fn (vlib_main_t * vm,
       else if (unformat (input, "hit-next %U", unformat_ip_next_index,
                          &hit_next_index))
         ;
-      else if (unformat (input, "l2-hit-next %U", unformat_l2_next_index,
+      else if (unformat (input, "l2-input-hit-next %U", unformat_l2_input_next_index,
+                         &hit_next_index))
+        ;
+      else if (unformat (input, "l2-output-hit-next %U", unformat_l2_output_next_index,
                          &hit_next_index))
         ;
       else if (unformat (input, "acl-hit-next %U", unformat_acl_next_index,
@@ -1929,18 +1974,18 @@ unformat_acl_next_node (unformat_input_t * input, va_list * args)
 }
 
 static uword 
-unformat_l2_next_node (unformat_input_t * input, va_list * args)
+unformat_l2_input_next_node (unformat_input_t * input, va_list * args)
 {
   vnet_classify_main_t * cm = &vnet_classify_main;
   u32 * next_indexp = va_arg (*args, u32 *);
   u32 node_index;
   u32 next_index;
 
-  if (unformat (input, "node %U", unformat_vlib_node,
+  if (unformat (input, "input-node %U", unformat_vlib_node,
                 cm->vlib_main, &node_index))
     {
       next_index = vlib_node_add_next 
-        (cm->vlib_main, l2_classify_node.index, node_index);
+        (cm->vlib_main, l2_input_classify_node.index, node_index);
 
       *next_indexp = next_index;
       return 1;
@@ -1948,6 +1993,25 @@ unformat_l2_next_node (unformat_input_t * input, va_list * args)
   return 0;
 }
 
+static uword 
+unformat_l2_output_next_node (unformat_input_t * input, va_list * args)
+{
+  vnet_classify_main_t * cm = &vnet_classify_main;
+  u32 * next_indexp = va_arg (*args, u32 *);
+  u32 node_index;
+  u32 next_index;
+
+  if (unformat (input, "output-node %U", unformat_vlib_node,
+                cm->vlib_main, &node_index))
+    {
+      next_index = vlib_node_add_next 
+        (cm->vlib_main, l2_output_classify_node.index, node_index);
+
+      *next_indexp = next_index;
+      return 1;
+    }
+  return 0;
+}
 
 static clib_error_t * 
 vnet_classify_init (vlib_main_t * vm)
@@ -1964,7 +2028,13 @@ vnet_classify_init (vlib_main_t * vm)
     (unformat_ip_next_node);
 
   vnet_classify_register_unformat_l2_next_index_fn
-    (unformat_l2_next_node);
+    (unformat_l2_input_next_node);
+
+  vnet_classify_register_unformat_l2_next_index_fn
+    (unformat_l2_input_next_node);
+
+  vnet_classify_register_unformat_l2_next_index_fn
+    (unformat_l2_output_next_node);
 
   vnet_classify_register_unformat_acl_next_index_fn
     (unformat_acl_next_node);

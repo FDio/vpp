@@ -111,7 +111,8 @@ libvnet_la_SOURCES +=				\
  vnet/l2/feat_bitmap.c				\
  vnet/l2/l2_bd.c				\
  vnet/l2/l2_bvi.c				\
- vnet/l2/l2_classify.c				\
+ vnet/l2/l2_input_classify.c			\
+ vnet/l2/l2_output_classify.c			\
  vnet/l2/l2_efp_filter.c			\
  vnet/l2/l2_fib.c				\
  vnet/l2/l2_flood.c				\
