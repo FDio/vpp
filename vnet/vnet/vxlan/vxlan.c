@@ -360,7 +360,10 @@ int vnet_vxlan_add_del_tunnel
       if (!a->is_ip6)
         hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
       else
-        hash_unset_mem (vxm->vxlan6_tunnel_by_key, t->key6);
+        {
+	  hash_unset_mem (vxm->vxlan6_tunnel_by_key, t->key6);
+	  clib_mem_free (t->key6);
+	}
 
       vec_free (t->rewrite);
       pool_put (vxm->tunnels, t);
