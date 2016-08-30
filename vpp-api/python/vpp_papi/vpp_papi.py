@@ -17,7 +17,7 @@
 #
 from __future__ import print_function
 
-import signal, logging, os, sys
+import signal, os, sys
 from struct import *
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
@@ -30,25 +30,26 @@ import memclnt
 from vpe import *
 vpe = sys.modules['vpe']
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 def msg_handler(msg):
     if not msg:
-        logging.warning('vpp_api.read failed')
+        eprint('vpp_api.read failed')
         return
 
     id = unpack('>H', msg[0:2])
-    logging.debug('Received message', id[0])
     if id[0] == memclnt.VL_API_RX_THREAD_EXIT:
-        logging.info("We got told to leave")
         return;
 
     #
     # Decode message and returns a tuple.
     #
-    logging.debug('api_func', api_func_table[id[0]])
-    r = api_func_table[id[0]](msg)
-    if not r:
-        logging.warning('Message decode failed', id[0])
-        return
+    try:
+        r = api_func_table[id[0]](msg)
+    except:
+        eprint('Message decode failed', id[0], api_func_table[id[0]])
+        raise
 
     if 'context' in r._asdict():
         if r.context > 0:
@@ -71,7 +72,7 @@ def msg_handler(msg):
         waiting_for_reply_clear()
         return
     if not is_results_context(context):
-        logging.warning('Not expecting results for this context', context)
+        eprint('Not expecting results for this context', context)
         return
     if is_results_more(context):
         results_append(context, r)
@@ -85,7 +86,6 @@ def connect(name):
     signal.alarm(3) # 3 second
     rv = vpp_api.connect(name, msg_handler)
     signal.alarm(0)
-    logging.info("Connect:", rv)
 
     #
     # Assign message id space for plugins
@@ -96,7 +96,6 @@ def connect(name):
 
 def disconnect():
     rv = vpp_api.disconnect()
-    logging.info("Disconnected")
     return rv
 
 # CLI convenience wrapper
@@ -128,10 +127,9 @@ def plugin_map_plugins():
         version = plugins[p]['version']
         name = p + '_' + format(version, '08x')
         r = memclnt.get_first_msg_id(name.encode('ascii'))
-
-        ## TODO: Add error handling
+        ## TODO: Add error handling / raise exception
         if r.retval != 0:
-            print('Failed getting first msg id for:', p)
+            eprint('Failed getting first msg id for:', p)
             continue
 
         # Set base
@@ -141,8 +139,12 @@ def plugin_map_plugins():
         plugins[p]['base'] = base
         func_table = plugins[p]['func_table']
         i = r.first_msg_id
+        # Insert doesn't extend the table
+        if i + len(func_table) > len(api_func_table):
+            fill = [None] * (i + len(func_table) - len(api_func_table))
+            api_func_table.extend(fill)
         for entry in func_table:
-            api_func_table.insert(i, entry)
+            api_func_table[i] = entry
             i += 1
         plugin_name_to_id(p, plugins[p]['name_to_id_table'], base)
 
@@ -158,4 +160,3 @@ api_func_table.append(None)
 api_func_table[1:] = plugins['memclnt']['func_table'] + plugins['vpe']['func_table']
 plugin_name_to_id('memclnt', plugins['memclnt']['name_to_id_table'], 1)
 plugin_name_to_id('vpe', plugins['vpe']['name_to_id_table'], plugins['vpe']['base'])
-#logging.basicConfig(level=logging.DEBUG)

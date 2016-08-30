@@ -68,7 +68,7 @@ def get_pack(f):
     bytecount = 0
     pack = ''
     elements = 1
-    if len(f) is 3 or len(f) is 4:  # TODO: add support for variable length arrays (VPP-162)
+    if len(f) is 3 or len(f) is 4:
         size = type_size[f[0]]
         bytecount += size * int(f[2])
         # Check if we have a zero length array
@@ -146,14 +146,26 @@ def encode_print(name, id, t):
     if multipart == True:
         print(u"    results_more_set(context)")
 
-    ### TODO deal with zeroarray!!!
-    #if zeroarray == True:
-    #    print(u"    vpp_api.write(pack('" + pack + "', " + id + ", 0, context, " + ', '.join(args[3:-1]) + ") + " + args[-1] + ")")
-    #else:
-    print(u"    vpp_api.write(pack('" + pack + "', base + " + id + ", 0, context, " + ', '.join(args[3:]) + "))")
+    pack = '>'
+    start = 0
+    end = 0
+    offset = 0
+    t = list(t)
+    i = 0
+
+    while t:
+        t, i, pack, offset, array = get_normal_pack(t, i, pack, offset)
+        if array:
+            print(u"    vpp_api.write(pack('" + pack + "', base + " +
+                  id + ", 0, context, " + ', '.join(args[3:-1]) + ") + "
+                  + args[-1] + ")")
+        else:
+            print(u"    vpp_api.write(pack('" + pack + "', base + " + id +
+                  ", 0, context, " + ', '.join(args[3:]) + "))")
 
     if multipart == True:
-        print(u"    vpp_api.write(pack('>HII', VL_API_CONTROL_PING, 0, context))")
+        print(
+            u"    vpp_api.write(pack('>HII', VL_API_CONTROL_PING, 0, context))")
 
     print('''
     if not async:
