@@ -72,3 +72,5 @@ TAGS
 
 # Python bytecode
 *.pyc
+
+/vpp-api/python/build
