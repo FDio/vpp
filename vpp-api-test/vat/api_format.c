@@ -7837,7 +7837,7 @@ unformat_l2_next_index (unformat_input_t * input, va_list * args)
   u32 tmp;
 
 #define _(n,N) \
-  if (unformat (input, #n)) { next_index = L2_CLASSIFY_NEXT_##N; goto out;}
+  if (unformat (input, #n)) { next_index = L2_INPUT_CLASSIFY_NEXT_##N; goto out;}
   foreach_l2_next;
 #undef _
 
