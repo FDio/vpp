@@ -12331,11 +12331,17 @@ api_lisp_eid_table_add_del_map (vat_main_t * vam)
       return -99;
     }
 
+  if (vrf_set && bd_index_set)
+    {
+      errmsg ("error: both vrf and bd entered!");
+      return -99;
+    }
+
   M (LISP_EID_TABLE_ADD_DEL_MAP, lisp_eid_table_add_del_map);
 
   mp->is_add = is_add;
   mp->vni = htonl (vni);
-  mp->dp_table = htonl (vrf);
+  mp->dp_table = vrf_set ? htonl (vrf) : htonl (bd_index);
   mp->is_l2 = bd_index_set;
 
   /* send */
