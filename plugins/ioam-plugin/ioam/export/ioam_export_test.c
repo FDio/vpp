@@ -194,7 +194,7 @@ vat_plugin_register (vat_main_t * vam)
 
   sm->vat_main = vam;
 
-  name = format (0, "export_%08x%c", api_version, 0);
+  name = format (0, "ioam_export_%08x%c", api_version, 0);
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~ 0)
