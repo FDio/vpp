@@ -893,6 +893,34 @@ vl_api_cli_reply_t_handler_json (vl_api_cli_reply_t * mp)
   vam->result_ready = 1;
 }
 
+static void
+vl_api_cli_inband_reply_t_handler (vl_api_cli_inband_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  vam->retval = retval;
+  vam->cmd_reply = mp->reply;
+  vam->result_ready = 1;
+}
+
+static void
+vl_api_cli_inband_reply_t_handler_json (vl_api_cli_inband_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_string_copy (&node, "reply", mp->reply);
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
 static void vl_api_classify_add_del_table_reply_t_handler
   (vl_api_classify_add_del_table_reply_t * mp)
 {
@@ -3448,6 +3476,7 @@ _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
 _(CONTROL_PING_REPLY, control_ping_reply)                               \
 _(NOPRINT_CONTROL_PING_REPLY, noprint_control_ping_reply)               \
 _(CLI_REPLY, cli_reply)                                                 \
+_(CLI_INBAND_REPLY, cli_inband_reply)                                   \
 _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY,                                   \
   sw_interface_add_del_address_reply)                                   \
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
@@ -4085,6 +4114,45 @@ exec (vat_main_t * vam)
 	}
     }
   return -99;
+}
+
+/*
+ * Future replacement of exec() that passes CLI buffers directly in
+ * the API messages instead of an additional shared memory area.
+ */
+static int
+exec_inband (vat_main_t * vam)
+{
+  vl_api_cli_inband_t *mp;
+  f64 timeout;
+  unformat_input_t *i = vam->input;
+
+  if (vec_len (i->buffer) == 0)
+    return -1;
+
+  if (vam->exec_mode == 0 && unformat (i, "mode"))
+    {
+      vam->exec_mode = 1;
+      return 0;
+    }
+  if (vam->exec_mode == 1 && (unformat (i, "exit") || unformat (i, "quit")))
+    {
+      vam->exec_mode = 0;
+      return 0;
+    }
+
+  /*
+   * In order for the CLI command to work, it
+   * must be a vector ending in \n, not a C-string ending
+   * in \n\0.
+   */
+  u32 len = vec_len (vam->input->buffer);
+  M2 (CLI_INBAND, cli_inband, len);
+  clib_memcpy (mp->cmd, vam->input->buffer, len);
+  mp->length = htonl (len);
+
+  S;
+  W2 (fformat (vam->ofp, "%s", vam->cmd_reply));
 }
 
 static int
@@ -15893,6 +15961,7 @@ _(dump_macro_table, "usage: dump_macro_table ")                 \
 _(dump_node_table, "usage: dump_node_table")			\
 _(echo, "usage: echo <message>")				\
 _(exec, "usage: exec <vpe-debug-CLI-command>")                  \
+_(exec_inband, "usage: exec_inband <vpe-debug-CLI-command>")    \
 _(help, "usage: help")                                          \
 _(q, "usage: quit")                                             \
 _(quit, "usage: quit")                                          \

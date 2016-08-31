@@ -1621,6 +1621,16 @@ static void *vl_api_cli_request_t_print
   FINISH;
 }
 
+static void *vl_api_cli_inband_t_print
+  (vl_api_cli_inband_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: cli_inband ");
+
+  FINISH;
+}
+
 static void *vl_api_memclnt_create_t_print
   (vl_api_memclnt_create_t * mp, void *handle)
 {
@@ -2695,6 +2705,7 @@ _(SW_INTERFACE_DUMP, sw_interface_dump)					\
 _(CONTROL_PING, control_ping)						\
 _(WANT_INTERFACE_EVENTS, want_interface_events)				\
 _(CLI_REQUEST, cli_request)						\
+_(CLI_INBAND, cli_inband)						\
 _(MEMCLNT_CREATE, memclnt_create)					\
 _(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)           \
 _(SHOW_VERSION, show_version)                                           \
