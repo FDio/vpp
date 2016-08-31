@@ -16,14 +16,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ "x${CMD_ARGS}" != "x" ]; then
-    echo exec ${CMD_ARGS} | vpp_api_test $PREFIX_ARGS | sed 's/vat# //g'
+    echo exec ${CMD_ARGS} | vpp_api_test $PREFIX_ARGS 2> >(grep -v "^load_one_plugin:")| sed 's/vat# //g'
 else
     echo -n "vpp# "
     while read CMD; do
         if [ "x$CMD" == "xexit" ]; then
             exit
         elif [ "x$CMD" != "x" ]; then
-            echo exec $CMD | vpp_api_test $PREFIX_ARGS| sed 's/vat# //g'
+            echo exec $CMD | vpp_api_test $PREFIX_ARGS 2> >(grep -v "^load_one_plugin:")| sed 's/vat# //g'
         fi
         echo -n "vpp# "
     done
