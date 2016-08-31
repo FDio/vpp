@@ -99,6 +99,12 @@ def disconnect():
     logging.info("Disconnected")
     return rv
 
+# CLI convenience wrapper
+def cli_exec(cmd):
+    cmd += '\n'
+    r = cli_inband(len(cmd), cmd)
+    return r.reply[0].decode().rstrip('\x00')
+
 def register_event_callback(callback):
     event_callback_set(callback)
 
