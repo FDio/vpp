@@ -181,7 +181,7 @@ def getMacroInitializerBNF():
     expr = (literal | var) # TODO
 
 
-    member = pp.Combine(dot + varName + pp.Optional("[" + arrayIndex + "]"))
+    member = pp.Combine(dot + varName + pp.Optional("[" + arrayIndex + "]"), adjacent=False)
     value = (expr | cs)
 
     entry = pp.Group(pp.Optional(member + equals, default="") + value)

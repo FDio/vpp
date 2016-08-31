@@ -242,7 +242,7 @@ cscope: cscope.files
 export DOXY_DIR ?= $(WS_ROOT)/doxygen
 
 define make-doxy
-	@WS_ROOT="$(WS_ROOT)" BR="$(BR)" make -C $(DOXY_DIR) $@
+	@OS_ID="$(OS_ID)" WS_ROOT="$(WS_ROOT)" BR="$(BR)" make -C $(DOXY_DIR) $@
 endef
 
 .PHONY: bootstrap-doxygen doxygen wipe-doxygen

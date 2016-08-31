@@ -19,6 +19,7 @@
 # These should be passed in by the root Makefile
 WS_ROOT ?= $(CURDIR)/..
 BR ?= $(WS_ROOT)/build-root
+OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 
 # Package dependencies
 DOC_DEB_DEPENDS = doxygen graphviz python-pyparsing
