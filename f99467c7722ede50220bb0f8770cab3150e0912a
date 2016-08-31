@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_23c89f73",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 8251,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-08-31T22:40:26Z",
+      "side": 1,
+      "message": "You might want to manually register the inband message handler and/or adjust the trace config, so the API trace will contain the CLI command. Useful in case someone uses it to shut down an interface and then wonders why traffic isn\u0027t passing...",
+      "revId": "f99467c7722ede50220bb0f8770cab3150e0912a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
