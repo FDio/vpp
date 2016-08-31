@@ -267,6 +267,7 @@ _(CREATE_LOOPBACK, create_loopback)					\
 _(CONTROL_PING, control_ping)                                           \
 _(NOPRINT_CONTROL_PING, noprint_control_ping)                           \
 _(CLI_REQUEST, cli_request)                                             \
+_(CLI_INBAND_REQUEST, cli_inband_request)                               \
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)			\
 _(L2_PATCH_ADD_DEL, l2_patch_add_del)					\
 _(CLASSIFY_ADD_DEL_TABLE, classify_add_del_table)			\
@@ -3619,6 +3620,45 @@ vl_api_cli_request_t_handler (vl_api_cli_request_t * mp)
   pthread_mutex_unlock (&am->vlib_rp->mutex);
 
   rp->reply_in_shmem = (uword) shmem_vec;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rp);
+}
+
+static void
+inband_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
+{
+  u8 **mem_vecp = (u8 **) arg;
+  u8 *mem_vec = *mem_vecp;
+  u32 offset = vec_len (mem_vec);
+
+  vec_validate (mem_vec, offset + buffer_bytes - 1);
+  clib_memcpy (mem_vec + offset, buffer, buffer_bytes);
+  *mem_vecp = mem_vec;
+}
+
+static void
+vl_api_cli_inband_request_t_handler (vl_api_cli_inband_request_t * mp)
+{
+  vl_api_cli_inband_reply_t *rp;
+  unix_shared_memory_queue_t *q;
+  vlib_main_t *vm = vlib_get_main ();
+  unformat_input_t input;
+  u8 *out_vec = 0;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
+
+  unformat_init_string (&input, (char *) mp->cmd, ntohl (mp->length));
+  vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
+
+  u32 len = vec_len (out_vec);
+  rp = vl_msg_api_alloc (sizeof (*rp) + len);
+  rp->_vl_msg_id = ntohs (VL_API_CLI_INBAND_REPLY);
+  rp->context = mp->context;
+  rp->length = htonl (len);
+  clib_memcpy (rp->reply, out_vec, len);
+  vec_free (out_vec);
 
   vl_msg_api_send_shmem (q, (u8 *) & rp);
 }
