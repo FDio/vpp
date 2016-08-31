@@ -1183,6 +1183,13 @@ define cli_request
   u32 context;
   u64 cmd_in_shmem;
 };
+define cli_inband
+{
+  u32 client_index;
+  u32 context;
+  u32 length;
+  u8 cmd[length];
+};
 
 /** \brief vpe parser cli string response
     @param context - sender context, to match reply w/ request
@@ -1194,6 +1201,13 @@ define cli_reply
   u32 context;
   i32 retval;
   u64 reply_in_shmem;
+};
+define cli_inband_reply
+{
+  u32 context;
+  i32 retval;
+  u32 length;
+  u8 reply[length];
 };
 
 /** \brief Set max allowed ARP or ip6 neighbor entries request

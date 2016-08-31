@@ -166,6 +166,7 @@ typedef struct
   volatile i32 retval;
   volatile u32 sw_if_index;
   volatile u8 *shmem_result;
+  volatile u8 *cmd_reply;
 
   /* our client index */
   u32 my_client_index;
