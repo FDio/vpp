@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_90aa17d3",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1214,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-08-31T10:12:19Z",
+      "side": 1,
+      "message": "Here we miss a call to rte_eth_dev_default_mac_addr_set()",
+      "revId": "3aa0720a258f80c34c79468e7dd35ce2a2f0d4b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_70965b96",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1221,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-08-31T10:12:19Z",
+      "side": 1,
+      "message": "Have you checked if other data structures (i.e. adjacencies rewrite data) should be also updated?\n\nMaybe we can do this for all interfaces, and drivers can register only if they need additional work to be done (like dpdk which requires rte_eth_dev_default_mac_addr_set() to be called)",
+      "range": {
+        "startLine": 1219,
+        "startChar": 0,
+        "endLine": 1221,
+        "endChar": 28
+      },
+      "revId": "3aa0720a258f80c34c79468e7dd35ce2a2f0d4b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
