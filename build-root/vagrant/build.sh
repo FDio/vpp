@@ -47,8 +47,8 @@ make UNATTENDED=yes install-dep
 
 # Really really clean things up so we can be sure
 # that the build works even when switching distros
-make wipe
-(cd build-root/;make distclean)
+$SUDOCMD make wipe
+(cd build-root/;$SUDOCMD make distclean)
 rm -f build-root/.bootstrap.ok
 
 if [ $DISTRIB_ID == "CentOS" ]; then
