@@ -83,6 +83,7 @@ do
 	( cd %{buildroot}%{_libdir} && 
           ln -fs $file $(echo $file | sed -e 's/\(\.so\.[0-9]\+\).*/\1/') )
 done
+
 #
 # devel
 #
@@ -97,6 +98,13 @@ do
 		install -p -m 644 $dir/$file %{buildroot}%{_includedir}/$file
 	done
 done
+
+mkdir -p -m755 %{buildroot}%{python2_sitelib}/jvppgen
+install -p -m755 ../../vpp-api/java/jvpp/gen/jvpp_gen.py %{buildroot}/usr/bin
+for i in $(ls ../../vpp-api/java/jvpp/gen/jvppgen/*.py); do
+   install -p -m666 ${i} %{buildroot}%{python2_sitelib}/jvppgen
+done;
+
 # sample plugin
 mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/sample
 for file in $(cd %{_vpp_install_dir}/../../sample-plugin && find -type f -print)
@@ -128,5 +136,8 @@ sysctl --system
 %files devel
 %defattr(-,bin,bin)
 /usr/bin/vppapigen
+/usr/bin/jvpp_gen.py
 %{_includedir}/*
+%{python2_sitelib}/jvppgen/*
 /usr/share/doc/vpp/examples/sample-plugin
+
