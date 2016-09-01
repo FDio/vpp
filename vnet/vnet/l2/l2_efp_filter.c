@@ -97,7 +97,7 @@ typedef enum
 
 /**
  *  Extract fields from the packet that will be used in interface
- *  classification
+ *  classification.
  */
 static_always_inline void
 extract_keys (vnet_main_t * vnet_main,
@@ -524,7 +524,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_efp_filter_node, l2_efp_filter_node_fn)
 VLIB_INIT_FUNCTION (l2_efp_filter_init);
 
 
-/** Enable/disable the EFP Filter check on the subinterface */
+/** Enable/disable the EFP Filter check on the subinterface. */
 void
 l2_efp_filter_configure (vnet_main_t * vnet_main, u32 sw_if_index, u32 enable)
 {
@@ -534,7 +534,7 @@ l2_efp_filter_configure (vnet_main_t * vnet_main, u32 sw_if_index, u32 enable)
 
 
 /**
- * set subinterface egress efp filter enable/disable
+ * Set subinterface egress efp filter enable/disable.
  * The CLI format is:
  *    set interface l2 efp-filter <interface> [disable]]
  */

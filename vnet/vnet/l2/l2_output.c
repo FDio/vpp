@@ -73,9 +73,10 @@ static char *l2output_error_strings[] = {
 };
 
 /**
- * Return 0 if split horizon check passes, otherwise return non-zero
+ * Check for split horizon violations.
+ * Return 0 if split horizon check passes, otherwise return non-zero.
  * Packets should not be transmitted out an interface with the same
- * split-horizon group as the input interface, except if the shg is 0
+ * split-horizon group as the input interface, except if the @c shg is 0
  * in which case the check always passes.
  */
 static_always_inline u32
@@ -592,7 +593,7 @@ output_node_mapping_send_rpc (u32 node_index, u32 sw_if_index)
 #endif
 
 
-/** Create a mapping in the next node mapping table for the given sw_if_index */
+/** Create a mapping in the next node mapping table for the given sw_if_index. */
 u32
 l2output_create_output_node_mapping (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 node_index,	/* index of current node */
 				     u32 * output_node_index_vec,
@@ -660,7 +661,7 @@ l2output_intf_config (u32 sw_if_index)
   return vec_elt_at_index (mp->configs, sw_if_index);
 }
 
-/** Enable (or disable) the feature in the bitmap for the given interface */
+/** Enable (or disable) the feature in the bitmap for the given interface. */
 void
 l2output_intf_bitmap_enable (u32 sw_if_index, u32 feature_bitmap, u32 enable)
 {

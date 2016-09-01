@@ -21,13 +21,14 @@
 
 /**
  * @file
- * @brief L2 input classifier
+ * @brief L2 input classifier.
  *
- * See also .../vnet/vnet/classify/vnet_classify.[ch]
+ * @sa @ref vnet/vnet/classify/vnet_classify.c
+ * @sa @ref vnet/vnet/classify/vnet_classify.h
  */
 
 /**
- * @brief l2_input_classifier packet trace record
+ * @brief l2_input_classifier packet trace record.
  */
 typedef struct
 {
@@ -42,7 +43,7 @@ typedef struct
 } l2_input_classify_trace_t;
 
 /**
- * @brief vlib node runtime
+ * @brief vlib node runtime.
  */
 typedef struct
 {
@@ -52,7 +53,7 @@ typedef struct
   l2_input_classify_main_t *l2cm;
 } l2_input_classify_runtime_t;
 
-/** packet trace format function */
+/** Packet trace format function. */
 static u8 *
 format_l2_input_classify_trace (u8 * s, va_list * args)
 {
@@ -66,7 +67,7 @@ format_l2_input_classify_trace (u8 * s, va_list * args)
   return s;
 }
 
-/** l2 input classifier main data structure */
+/** l2 input classifier main data structure. */
 l2_input_classify_main_t l2_input_classify_main;
 
 vlib_node_registration_t l2_input_classify_node;
@@ -106,19 +107,19 @@ static char *l2_input_classify_error_strings[] = {
  * @em Uses:
  * - <code>(l2_input_classify_runtime_t *)
  *         rt->classify_table_index_by_sw_if_index</code>
- *	   Head of the per-interface, perprotocol classifier table chain
- * 	   for a specific interface. ~0 => send pkts to the next
- * 	   feature in the L2 feature chain.
+ *	- Head of the per-interface, per-protocol classifier table chain
+ * 	  for a specific interface.
+ *      - @c ~0 => send pkts to the next feature in the L2 feature chain.
  * - <code>vnet_buffer(b)->sw_if_index[VLIB_RX]</code>
  * 	- Indicates the @c sw_if_index value of the interface that the
- * 	packet was received on.
- * - <code>vnet_buffer (b0)->l2.feature_bitmap</code>
+ * 	  packet was received on.
+ * - <code>vnet_buffer(b0)->l2.feature_bitmap</code>
  * 	- Used to steer packets across l2 features enabled on the interface
  * - <code>(vnet_classify_entry_t) e0->next_index</code>
  *	- Used to steer traffic when the classifier hits on a session
  * - <code>(vnet_classify_entry_t) e0->advance</code>
  *	- Signed quantity applied via <code>vlib_buffer_advance</code>
- * 	when the classifier hits on a session
+ * 	  when the classifier hits on a session
  * - <code>(vnet_classify_table_t) t0->miss_next_index</code>
  *	- Used to steer traffic when the classifier misses
  *
@@ -477,7 +478,7 @@ VLIB_REGISTER_NODE (l2_input_classify_node) = {
 VLIB_NODE_FUNCTION_MULTIARCH (l2_input_classify_node,
 			      l2_input_classify_node_fn);
 
-/** l2 input classsifier feature initialization */
+/** l2 input classsifier feature initialization. */
 clib_error_t *
 l2_input_classify_init (vlib_main_t * vm)
 {
@@ -505,7 +506,7 @@ l2_input_classify_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (l2_input_classify_init);
 
 
-/** enable/disable l2 input classification on a specific interface */
+/** Enable/disable l2 input classification on a specific interface. */
 void
 vnet_l2_input_classify_enable_disable (u32 sw_if_index, int enable_disable)
 {
@@ -513,7 +514,7 @@ vnet_l2_input_classify_enable_disable (u32 sw_if_index, int enable_disable)
 			      (u32) enable_disable);
 }
 
-/** @brief Set l2 per-protocol, per-interface input classification tables
+/** @brief Set l2 per-protocol, per-interface input classification tables.
  *
  *  @param sw_if_index  interface handle
  *  @param ip4_table_index  ip4 classification table index, or ~0

@@ -30,7 +30,7 @@
 #include <vlib/cli.h>
 
 
-/** Just a placeholder. Also ensures file is not eliminated by linker. */
+/** Just a placeholder; ensures file is not eliminated by linker. */
 clib_error_t *
 l2_vtr_init (vlib_main_t * vm)
 {
@@ -254,7 +254,7 @@ done:
 }
 
 /**
- *  Get vtag tag rewrite on the given interface.
+ * Get vtag tag rewrite on the given interface.
  * Return 1 if there is an error, 0 if ok
  */
 u32
@@ -411,7 +411,7 @@ done:
 }
 
 /**
- * set subinterface vtr enable/disable
+ * Set subinterface vtr enable/disable.
  * The CLI format is:
  *    set interface l2 tag-rewrite <interface> [disable | pop 1 | pop 2 | push {dot1q|dot1ad} <tag> [<tag>]]
  *

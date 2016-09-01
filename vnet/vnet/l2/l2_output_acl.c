@@ -306,8 +306,8 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_outacl_node, l2_outacl_node_fn)
 VLIB_INIT_FUNCTION (l2_outacl_init);
 
 #if 0
-/** @todo maybe someone will add output ACL's in the future
- * set subinterface outacl enable/disable
+/** @todo maybe someone will add output ACL's in the future.
+ * Set subinterface outacl enable/disable.
  * The CLI format is:
  *    set interface acl output <interface> [disable]
  */

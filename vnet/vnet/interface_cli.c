@@ -37,6 +37,11 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/**
+ * @file
+ * Interface CLI.
+ */
+
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vppinfra/bitmap.h>
@@ -432,7 +437,9 @@ VLIB_CLI_COMMAND (clear_interface_counters_command, static) = {
 };
 /* *INDENT-ON* */
 
-/** \detail
+/**
+ * Parse subinterface names.
+ *
  * The following subinterface syntax is supported. The first two are for
  * backwards compatability:
  *

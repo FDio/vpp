@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 /**
- * @file node.c
+ * @file
  * @brief L2-GRE over IPSec packet processing.
  *
- * Removes GRE header from the packet and send it to the l2-input node.
+ * Removes GRE header from the packet and sends it to the l2-input node.
 */
 
 #include <vlib/vlib.h>
@@ -68,7 +68,7 @@ u8 * format_ipsec_gre_rx_trace (u8 * s, va_list * args)
  *
  * @par Graph mechanics: buffer metadata, next index usage
  *
- * <em>Uses:<em>
+ * <em>Uses:</em>
  * - <code>ip->src_address</code> and <code>ip->dst_address</code>
  *     - Match tunnel by source and destination addresses in GRE IP header.
  *

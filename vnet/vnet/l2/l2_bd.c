@@ -35,7 +35,7 @@
 bd_main_t bd_main;
 
 /**
-  Init bridge domain if not done already
+  Init bridge domain if not done already.
   For feature bitmap, set all bits except ARP termination
 */
 void
@@ -175,7 +175,7 @@ VLIB_INIT_FUNCTION (l2bd_init);
 
 
 /**
-    Set the learn/forward/flood flags for the bridge domain
+    Set the learn/forward/flood flags for the bridge domain.
     Return 0 if ok, non-zero if for an error.
 */
 u32
@@ -224,7 +224,7 @@ bd_set_flags (vlib_main_t * vm, u32 bd_index, u32 flags, u32 enable)
 }
 
 /**
-   set bridge-domain learn enable/disable
+   Set bridge-domain learn enable/disable.
    The CLI format is:
    set bridge-domain learn <bd_id> [disable]
 */
@@ -279,7 +279,7 @@ VLIB_CLI_COMMAND (bd_learn_cli, static) = {
 /* *INDENT-ON* */
 
 /**
-    set bridge-domain forward enable/disable
+    Set bridge-domain forward enable/disable.
     The CLI format is:
     set bridge-domain forward <bd_index> [disable]
 */
@@ -333,7 +333,7 @@ VLIB_CLI_COMMAND (bd_fwd_cli, static) = {
 /* *INDENT-ON* */
 
 /**
-    set bridge-domain flood enable/disable
+    Set bridge-domain flood enable/disable.
     The CLI format is:
     set bridge-domain flood <bd_index> [disable]
 */
@@ -388,7 +388,7 @@ VLIB_CLI_COMMAND (bd_flood_cli, static) = {
 /* *INDENT-ON* */
 
 /**
-    set bridge-domain unkown-unicast flood enable/disable
+    Set bridge-domain unkown-unicast flood enable/disable.
     The CLI format is:
     set bridge-domain uu-flood <bd_index> [disable]
 */
@@ -443,7 +443,7 @@ VLIB_CLI_COMMAND (bd_uu_flood_cli, static) = {
 /* *INDENT-ON* */
 
 /**
-    set bridge-domain arp term enable/disable
+    Set bridge-domain arp term enable/disable.
     The CLI format is:
     set bridge-domain arp term <bridge-domain-id> [disable]
 */
@@ -496,11 +496,15 @@ VLIB_CLI_COMMAND (bd_arp_term_cli, static) = {
 
 
 /**
+ * Add/delete IP address to MAC address mapping.
+ *
  * The clib hash implementation stores uword entries in the hash table.
  * The hash table mac_by_ip4 is keyed via IP4 address and store the
  * 6-byte MAC address directly in the hash table entry uword.
- * This only works for 64-bit processor with 8-byte uword; which means
- * this code *WILL NOT WORK* for a 32-bit prcessor with 4-byte uword.
+ *
+ * @warning This only works for 64-bit processor with 8-byte uword;
+ * which means this code *WILL NOT WORK* for a 32-bit prcessor with
+ * 4-byte uword.
  */
 u32
 bd_add_del_ip_mac (u32 bd_index,
@@ -573,7 +577,7 @@ bd_add_del_ip_mac (u32 bd_index,
 }
 
 /**
-    set bridge-domain arp entry add/delete
+    Set bridge-domain arp entry add/delete.
     The CLI format is:
     set bridge-domain arp entry <bd-id> <ip-addr> <mac-addr> [del]
 */
@@ -689,7 +693,7 @@ format_vtr (u8 * s, va_list * args)
 }
 
 /**
-   show bridge-domain state
+   Show bridge-domain state.
    The CLI format is:
    show bridge-domain [<bd_index>]
 */

@@ -40,6 +40,9 @@ DOXY_INPUT ?= \
 	vpp-api \
 	plugins
 
+DOXY_INCLUDE_PATH = $(shell set -e; cd $(WS_ROOT); for item in $(DOXY_INPUT); do find $$item -type d; done)
+DOXY_INCLUDE_PATH += $(shell set -e; cpp -v </dev/null 2>&1 | grep -A 1000 '\#include' | awk '/^ /{print $$1}')
+
 # Target directory for doxygen output
 DOXY_OUTPUT ?= $(BR)/docs
 
@@ -114,6 +117,7 @@ doxygen: $(SIPHON_DOCS)
 	    ROOT="$(WS_ROOT)" \
 	    BUILD_ROOT="$(BR)" \
 	    INPUT="$(addprefix $(WS_ROOT)/,$(DOXY_INPUT)) $(EXTRA_DOXY_INPUT)" \
+	    INCLUDE_PATH="$(DOXY_INCLUDE_PATH)" \
 	    HTML=YES \
 	    VERSION="`git describe --tags --dirty`" \
 	    doxygen $(DOXY_DIR)/doxygen.cfg

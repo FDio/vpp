@@ -104,7 +104,7 @@ typedef enum
   L2FWD_N_NEXT,
 } l2fwd_next_t;
 
-/** Forward one packet based on the mac table lookup result */
+/** Forward one packet based on the mac table lookup result. */
 
 static_always_inline void
 l2fwd_process (vlib_main_t * vm,
@@ -400,7 +400,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2fwd_node, l2fwd_node_fn)
 VLIB_INIT_FUNCTION (l2fwd_init);
 
 
-/** Add the L3 input node for this ethertype to the next nodes structure */
+/** Add the L3 input node for this ethertype to the next nodes structure. */
 void
 l2fwd_register_input_type (vlib_main_t * vm,
 			   ethernet_type_t type, u32 node_index)
@@ -415,7 +415,7 @@ l2fwd_register_input_type (vlib_main_t * vm,
 
 
 /**
- * set subinterface forward enable/disable
+ * Set subinterface forward enable/disable.
  * The CLI format is:
  *   set interface l2 forward <interface> [disable]
  */

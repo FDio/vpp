@@ -37,11 +37,15 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/** @file Definitions for all things IP (v4|v6) unicast and multicast lookup related.
-    - Adjacency definitions and registration
-    - callbacks on route add
-    - callbacks on interface address change
+/**
+ * @file
+ * Definitions for all things IP (v4|v6) unicast and multicast lookup related.
+ *
+ * - Adjacency definitions and registration.
+ * - Callbacks on route add.
+ * - Callbacks on interface address change.
  */
+
 #ifndef included_ip_lookup_h
 #define included_ip_lookup_h
 

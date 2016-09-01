@@ -490,7 +490,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2input_node, l2input_node_fn)
 VLIB_INIT_FUNCTION (l2input_init);
 
 
-/** Get a pointer to the config for the given interface */
+/** Get a pointer to the config for the given interface. */
 l2_input_config_t *
 l2input_intf_config (u32 sw_if_index)
 {
@@ -500,7 +500,7 @@ l2input_intf_config (u32 sw_if_index)
   return vec_elt_at_index (mp->configs, sw_if_index);
 }
 
-/** Enable (or disable) the feature in the bitmap for the given interface */
+/** Enable (or disable) the feature in the bitmap for the given interface. */
 u32
 l2input_intf_bitmap_enable (u32 sw_if_index, u32 feature_bitmap, u32 enable)
 {
@@ -536,10 +536,10 @@ l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value)
 
 /**
  * Set the subinterface to run in l2 or l3 mode.
- * for L3 mode, just the sw_if_index is specified
- * for bridged mode, the bd id and bvi flag are also specified
- * for xconnect mode, the peer sw_if_index is also specified
- * Return 0 if ok, or non-0 if there was an error
+ * For L3 mode, just the sw_if_index is specified.
+ * For bridged mode, the bd id and bvi flag are also specified.
+ * For xconnect mode, the peer sw_if_index is also specified.
+ * Return 0 if ok, or non-0 if there was an error.
  */
 
 u32
@@ -771,7 +771,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
 }
 
 /**
- * set subinterface in bridging mode with a bridge-domain ID
+ * Set subinterface in bridging mode with a bridge-domain ID.
  * The CLI format is:
  *   set interface l2 bridge <interface> <bd> [bvi] [split-horizon-group]
  */
@@ -847,7 +847,7 @@ VLIB_CLI_COMMAND (int_l2_bridge_cli, static) = {
 /* *INDENT-ON* */
 
 /**
- * set subinterface in xconnect mode with another interface
+ * Set subinterface in xconnect mode with another interface.
  * The CLI format is:
  *   set interface l2 xconnect <interface> <peer interface>
  */
@@ -897,7 +897,7 @@ VLIB_CLI_COMMAND (int_l2_xc_cli, static) = {
 /* *INDENT-ON* */
 
 /**
- * set subinterface in L3 mode
+ * Set subinterface in L3 mode.
  * The CLI format is:
  *   set interface l3 <interface>
  */
@@ -936,6 +936,7 @@ VLIB_CLI_COMMAND (int_l3_cli, static) = {
 /* *INDENT-ON* */
 
 /**
+ * Show interface mode.
  * The CLI format is:
  *    show mode [<if-name1> <if-name2> ...]
  */

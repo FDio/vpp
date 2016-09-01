@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-/** @if DOCUMENTATION_IS_IN_BIHASH_DOC_H */
+/** @cond DOCUMENTATION_IS_IN_BIHASH_DOC_H */
 
 void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size)
@@ -444,7 +444,7 @@ void BV (clib_bihash_foreach_key_value_pair)
     }
 }
 
-/** @endif */
+/** @endcond */
 
 /*
  * fd.io coding-style-patch-verification: ON

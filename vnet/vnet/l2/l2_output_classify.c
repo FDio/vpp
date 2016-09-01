@@ -12,18 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*
- * l2_classify.c
- */
 
 #include <vnet/l2/l2_classify.h>
 #include <vnet/api_errno.h>
 
 /**
  * @file
- * @brief L2 input classifier
+ * @brief L2 input classifier.
  *
- * See also .../vnet/vnet/classify/vnet_classify.[ch]
+ * @sa @ref vnet/vnet/classify/vnet_classify.c
+ * @sa @ref vnet/vnet/classify/vnet_classify.h
  */
 
 typedef struct
@@ -46,7 +44,7 @@ typedef struct
   l2_output_classify_main_t *l2cm;
 } l2_output_classify_runtime_t;
 
-/** packet trace format function */
+/** Packet trace format function. */
 static u8 *
 format_l2_output_classify_trace (u8 * s, va_list * args)
 {
@@ -61,7 +59,7 @@ format_l2_output_classify_trace (u8 * s, va_list * args)
   return s;
 }
 
-/** l2 output classifier main data structure */
+/** l2 output classifier main data structure. */
 l2_output_classify_main_t l2_output_classify_main;
 
 vlib_node_registration_t l2_output_classify_node;
@@ -477,7 +475,7 @@ VLIB_REGISTER_NODE (l2_output_classify_node) = {
 VLIB_NODE_FUNCTION_MULTIARCH (l2_output_classify_node,
 			      l2_output_classify_node_fn);
 
-/** l2 output classsifier feature initialization */
+/** l2 output classsifier feature initialization. */
 clib_error_t *
 l2_output_classify_init (vlib_main_t * vm)
 {
@@ -507,7 +505,7 @@ l2_output_classify_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l2_output_classify_init);
 
-/** enable/disable l2 input classification on a specific interface */
+/** Enable/disable l2 input classification on a specific interface. */
 void
 vnet_l2_output_classify_enable_disable (u32 sw_if_index, int enable_disable)
 {
@@ -516,15 +514,15 @@ vnet_l2_output_classify_enable_disable (u32 sw_if_index, int enable_disable)
 			       (u32) enable_disable);
 }
 
-/** @brief Set l2 per-protocol, per-interface output classification tables
+/** @brief Set l2 per-protocol, per-interface output classification tables.
  *
- *  @param sw_if_index  interface handle
- *  @param ip4_table_index  ip4 classification table index, or ~0
- *  @param ip6_table_index  ip6 classification table index, or ~0
+ *  @param sw_if_index        interface handle
+ *  @param ip4_table_index    ip4 classification table index, or ~0
+ *  @param ip6_table_index    ip6 classification table index, or ~0
  *  @param other_table_index  non-ip4, non-ip6 classification table index,
  *         or ~0
  *  @returns 0 on success, VNET_API_ERROR_NO_SUCH_TABLE, TABLE2, TABLE3
- *  if the indicated (non-~0) table does not exist.
+ *           if the indicated (non-~0) table does not exist.
  */
 
 int
