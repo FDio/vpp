@@ -63,7 +63,11 @@ SIPHON_DOCS = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .md,$(SIPHONS)))
 
 $(BR)/.doxygen-bootstrap.ok:
 ifeq ($(OS_ID),ubuntu)
-	@sudo -E apt-get $(CONFIRM) $(FORCE) install $(DOC_DEB_DEPENDS)
+	@set -e; inst=; \
+		for i in $(DOC_DEB_DEPENDS); do \
+			dpkg-query --show $$i >/dev/null 2>&1 || inst="$$inst $$i"; \
+		done; \
+		[ "$$inst" ] && sudo apt-get $(CONFIRM) $(FORCE) install $$inst
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum install $(CONFIRM) $(DOC_RPM_DEPENDS)
 else
