@@ -179,7 +179,7 @@ udp46_input_inline (vlib_main_t * vm,
           next0 = (error0 == 0) ? vec_elt(rt->next_by_dst_port, i0) : next0;
           next1 = (error1 == 0) ? vec_elt(rt->next_by_dst_port, i1) : next1;
 
-          if (PREDICT_FALSE(next0 == SPARSE_VEC_INVALID_INDEX))
+          if (PREDICT_FALSE(i0 == SPARSE_VEC_INVALID_INDEX))
             {
               // move the pointer back so icmp-error can find the
               // ip packet header
@@ -206,7 +206,7 @@ udp46_input_inline (vlib_main_t * vm,
               vlib_buffer_advance (b0, sizeof (*h0));
             }
 
-          if (PREDICT_FALSE(next1 == SPARSE_VEC_INVALID_INDEX))
+          if (PREDICT_FALSE(i1 == SPARSE_VEC_INVALID_INDEX))
             {
               // move the pointer back so icmp-error can find the
               // ip packet header
@@ -303,7 +303,7 @@ udp46_input_inline (vlib_main_t * vm,
               i0 = sparse_vec_index (rt->next_by_dst_port, h0->dst_port);
               next0 = vec_elt(rt->next_by_dst_port, i0);
 
-              if (PREDICT_FALSE(next0 == SPARSE_VEC_INVALID_INDEX))
+              if (PREDICT_FALSE(i0 == SPARSE_VEC_INVALID_INDEX))
                 {
                   // move the pointer back so icmp-error can find the
                   // ip packet header
