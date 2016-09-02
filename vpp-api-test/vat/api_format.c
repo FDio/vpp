@@ -1151,7 +1151,8 @@ static void
 vl_api_ip4_arp_event_t_handler (vl_api_ip4_arp_event_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  errmsg ("arp event: address %U new mac %U sw_if_index %d\n",
+  errmsg ("arp %s event: address %U new mac %U sw_if_index %d\n",
+	  mp->mac_ip ? "mac/ip binding" : "address resolution",
 	  format_ip4_address, &mp->address,
 	  format_ethernet_address, mp->new_mac, mp->sw_if_index);
 }
@@ -1166,7 +1167,8 @@ static void
 vl_api_ip6_nd_event_t_handler (vl_api_ip6_nd_event_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  errmsg ("ip6 nd event: address %U new mac %U sw_if_index %d\n",
+  errmsg ("ip6 nd %s event: address %U new mac %U sw_if_index %d\n",
+	  mp->mac_ip ? "mac/ip binding" : "address resolution",
 	  format_ip6_address, mp->address,
 	  format_ethernet_address, mp->new_mac, mp->sw_if_index);
 }
