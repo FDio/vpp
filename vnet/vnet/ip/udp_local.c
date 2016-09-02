@@ -59,8 +59,6 @@ typedef struct {
   /* Sparse vector mapping udp dst_port in network byte order
      to next index. */
   u16 * next_by_dst_port;
-
-  u32 * sparse_index_by_next_index;
 } udp_input_runtime_t;
 
 vlib_node_registration_t udp4_input_node;
@@ -75,14 +73,13 @@ udp46_input_inline (vlib_main_t * vm,
   udp_input_runtime_t * rt = is_ip4 ?
     (void *) vlib_node_get_runtime_data (vm, udp4_input_node.index)
     : (void *) vlib_node_get_runtime_data (vm, udp6_input_node.index);
-  __attribute__((unused)) u32 n_left_from, next_index, i_next, * from, * to_next;
+  __attribute__((unused)) u32 n_left_from, next_index, * from, * to_next;
   word n_no_listener = 0;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
   next_index = node->cached_next_index;
-  i_next = vec_elt (rt->sparse_index_by_next_index, next_index);
 
   while (n_left_from > 0)
     {
@@ -466,7 +463,6 @@ udp_register_dst_port (vlib_main_t * vm,
   udp_dst_port_info_t * pi;
   udp_input_runtime_t * rt;
   u16 * n;
-  u32 i;
 
   {
     clib_error_t * error = vlib_call_init_function (vm, udp_local_init);
@@ -494,12 +490,6 @@ udp_register_dst_port (vlib_main_t * vm,
   n = sparse_vec_validate (rt->next_by_dst_port, 
                            clib_host_to_net_u16 (dst_port));
   n[0] = pi->next_index;
-
-  /* Rebuild next index -> sparse index inverse mapping when sparse vector
-     is updated. */
-  vec_validate (rt->sparse_index_by_next_index, pi->next_index);
-  for (i = 1; i < vec_len (rt->next_by_dst_port); i++)
-    rt->sparse_index_by_next_index[rt->next_by_dst_port[i]] = i;
 }
 
 /* Parse a UDP header. */
@@ -570,13 +560,6 @@ clib_error_t * udp_local_init (vlib_main_t * vm)
     (/* elt bytes */ sizeof (rt->next_by_dst_port[0]),
      /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
 
-  vec_validate (rt->sparse_index_by_next_index, UDP_INPUT_NEXT_DROP);
-  vec_validate (rt->sparse_index_by_next_index, UDP_INPUT_NEXT_PUNT);
-  rt->sparse_index_by_next_index[UDP_INPUT_NEXT_DROP]
-    = SPARSE_VEC_INVALID_INDEX;
-  rt->sparse_index_by_next_index[UDP_INPUT_NEXT_PUNT]
-    = SPARSE_VEC_INVALID_INDEX;
-
 #define _(n,s) add_dst_port (um, UDP_DST_PORT_##s, #s, 1 /* is_ip4 */);
   foreach_udp4_dst_port
 #undef _
@@ -586,13 +569,6 @@ clib_error_t * udp_local_init (vlib_main_t * vm)
   rt->next_by_dst_port = sparse_vec_new
     (/* elt bytes */ sizeof (rt->next_by_dst_port[0]),
      /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
-
-  vec_validate (rt->sparse_index_by_next_index, UDP_INPUT_NEXT_DROP);
-  vec_validate (rt->sparse_index_by_next_index, UDP_INPUT_NEXT_PUNT);
-  rt->sparse_index_by_next_index[UDP_INPUT_NEXT_DROP]
-    = SPARSE_VEC_INVALID_INDEX;
-  rt->sparse_index_by_next_index[UDP_INPUT_NEXT_PUNT]
-    = SPARSE_VEC_INVALID_INDEX;
 
 #define _(n,s) add_dst_port (um, UDP_DST_PORT_##s, #s, 0 /* is_ip4 */);
   foreach_udp6_dst_port
