@@ -2537,8 +2537,24 @@ static void *vl_api_lisp_locator_set_dump_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: lisp_locator_set_dump ");
+  if (mp->filter == 1)
+    s = format (s, "local");
+  else if (mp->filter == 2)
+    s = format (s, "remote");
 
-  /* not possible to reconstruct original VAT command */
+  FINISH;
+}
+
+static void *vl_api_lisp_locator_dump_t_print
+  (vl_api_lisp_locator_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: lisp_locator_dump ");
+  if (mp->is_index_set)
+    s = format (s, "ls_index %d", clib_net_to_host_u32 (mp->ls_index));
+  else
+    s = format (s, "ls_name %s", mp->ls_name);
 
   FINISH;
 }
@@ -2767,7 +2783,7 @@ _(LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump)                     \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
-_(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
+_(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
 _(DELETE_SUBIF, delete_subif)

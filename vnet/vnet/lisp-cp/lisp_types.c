@@ -1253,6 +1253,11 @@ gid_address_parse (u8 * offset, gid_address_t * a)
 void
 gid_address_ip_set (gid_address_t * dst, void *src, u8 version)
 {
+  if (IP4 == version)
+    gid_address_ippref_len (dst) = 32;
+  else
+    gid_address_ippref_len (dst) = 128;
+
   ip_address_set (&gid_address_ip (dst), src, version);
 }
 
