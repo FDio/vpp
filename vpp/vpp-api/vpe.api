@@ -1148,30 +1148,6 @@ define control_ping_reply
   u32 vpe_pid;
 };
 
-/** \brief Control ping from client to api server request, no print json output
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
-define noprint_control_ping
-{
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief Control ping from the client to the server response
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param vpe_pid - the pid of the vpe, returned by the server
-*/
-define noprint_control_ping_reply
-{
-  u32 context;
-  i32 retval;
-  u32 client_index;
-  u32 vpe_pid;
-};
-
 /** \brief Process a vpe parser cli string request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -2753,18 +2729,16 @@ define lisp_eid_table_add_del_map_reply
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param locator_set_index - index of locator_set
-    @param filter - filter type;
-      Support value:
-        0: all locator
-        1: local locator
-        2: remote locator
+    @param ls_name - locator set name
+    @param is_index_set - flag indicating whether ls_name or ls_index is set
  */
 define lisp_locator_dump
 {
   u32 client_index;
   u32 context;
-  u32 locator_set_index;
-  u8 filter;
+  u32 ls_index;
+  u8 ls_name[64];
+  u8 is_index_set;
 };
 
 /** \brief LISP locator_set status
@@ -2786,27 +2760,25 @@ define lisp_locator_details
 };
 
 /** \brief LISP locator_set status
-    @param locator_set_name - name of the locator_set
-    @param local - if is set, then locator_set is local
-    @param locator_count - number of locator this stats block includes
-    @param locator - locator data
+    @param context - sender context, to match reply w/ request
+    @param ls_index - locator set index
+    @param ls_name - name of the locator set
  */
 define lisp_locator_set_details
 {
   u32 context;
-  u8 local;
-  u32 locator_set_index;
-  u8 locator_set_name[64];
+  u32 ls_index;
+  u8 ls_name[64];
 };
 
 /** \brief Request for locator_set summary status
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param filter - filter type;
-      Support value:
-        0: all locator_set
-        1: local locator_set
-        2: remote locator_set
+    @param filter - filter type
+      Supported values:
+        0: all locator sets
+        1: local locator sets
+        2: remote locator sets
  */
 define lisp_locator_set_dump
 {
@@ -2826,8 +2798,11 @@ define lisp_locator_set_dump
       0 : ipv4
       1 : ipv6
       2 : mac
+    @param is_src_dst - EID is type of source/destination
     @param eid - EID can be ip4, ip6 or mac
-    @param prefix_len - prefix len
+    @param eid_prefix_len - prefix length
+    @param seid - source EID can be ip4, ip6 or mac
+    @param seid_prefix_len - source prefix length
     @param vni - virtual network instance
     @param ttl - time to live
     @param authoritative - authoritative
@@ -2840,9 +2815,12 @@ define lisp_eid_table_details
   u8 action;
   u8 is_local;
   u8 eid_type;
+  u8 is_src_dst;
   u32 vni;
   u8 eid[16];
   u8 eid_prefix_len;
+  u8 seid[16];
+  u8 seid_prefix_len;
   u32 ttl;
   u8 authoritative;
 };

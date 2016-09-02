@@ -2337,24 +2337,6 @@ format_lisp_flat_eid (u8 * s, va_list * args)
   return 0;
 }
 
-static u8 *
-format_lisp_eid_vat (u8 * s, va_list * args)
-{
-  u32 type = va_arg (*args, u32);
-  u8 *eid = va_arg (*args, u8 *);
-  u32 eid_len = va_arg (*args, u32);
-  u8 *seid = va_arg (*args, u8 *);
-  u32 seid_len = va_arg (*args, u32);
-  u32 is_src_dst = va_arg (*args, u32);
-
-  if (is_src_dst)
-    s = format (s, "%U|", format_lisp_flat_eid, type, seid, seid_len);
-
-  s = format (s, "%U", format_lisp_flat_eid, type, eid, eid_len);
-
-  return s;
-}
-
 /** Used for transferring locators via VPP API */
 typedef CLIB_PACKED (struct
 		     {
@@ -2397,9 +2379,14 @@ static void *vl_api_lisp_add_del_remote_mapping_t_print
   s = format (s, "%s ", mp->is_add ? "add" : "del");
   s = format (s, "vni %d ", clib_net_to_host_u32 (mp->vni));
 
-  s = format (s, "deid %U ", format_lisp_eid_vat,
-	      mp->eid_type, mp->eid, mp->eid_len, mp->seid, mp->seid_len,
-	      mp->is_src_dst);
+  s = format (s, "eid %U ", format_lisp_flat_eid,
+	      mp->eid_type, mp->eid, mp->eid_len);
+
+  if (mp->is_src_dst)
+    {
+      s = format (s, "seid %U ", format_lisp_flat_eid,
+		  mp->eid_type, mp->seid, mp->seid_len);
+    }
 
   rloc_num = clib_net_to_host_u32 (mp->rloc_num);
 
@@ -2585,8 +2572,24 @@ static void *vl_api_lisp_locator_set_dump_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: lisp_locator_set_dump ");
+  if (mp->filter == 1)
+    s = format (s, "local");
+  else if (mp->filter == 2)
+    s = format (s, "remote");
 
-  /* not possible to reconstruct original VAT command */
+  FINISH;
+}
+
+static void *vl_api_lisp_locator_dump_t_print
+  (vl_api_lisp_locator_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: lisp_locator_dump ");
+  if (mp->is_index_set)
+    s = format (s, "ls_index %d", clib_net_to_host_u32 (mp->ls_index));
+  else
+    s = format (s, "ls_name %s", mp->ls_name);
 
   FINISH;
 }
@@ -2819,7 +2822,7 @@ _(LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump)                     \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
-_(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
+_(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
 _(DELETE_SUBIF, delete_subif)
