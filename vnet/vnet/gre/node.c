@@ -57,8 +57,6 @@ typedef struct {
   /* Sparse vector mapping gre protocol in network byte order
      to next index. */
   u16 * next_by_protocol;
-
-  u32 * sparse_index_by_next_index;
 } gre_input_runtime_t;
 
 static uword
@@ -68,7 +66,7 @@ gre_input (vlib_main_t * vm,
 {
   gre_main_t * gm = &gre_main;
   gre_input_runtime_t * rt = (void *) node->runtime_data;
-  __attribute__((unused)) u32 n_left_from, next_index, i_next, * from, * to_next;
+  __attribute__((unused)) u32 n_left_from, next_index, * from, * to_next;
   u64 cached_tunnel_key = (u64) ~0;
   u32 cached_tunnel_sw_if_index = 0, tunnel_sw_if_index;
   u32 cached_tunnel_fib_index = 0, tunnel_fib_index;
@@ -79,7 +77,6 @@ gre_input (vlib_main_t * vm,
   n_left_from = from_frame->n_vectors;
 
   next_index = node->cached_next_index;
-  i_next = vec_elt (rt->sparse_index_by_next_index, next_index);
 
   while (n_left_from > 0)
     {
@@ -445,7 +442,6 @@ gre_register_input_protocol (vlib_main_t * vm,
   gre_protocol_info_t * pi;
   gre_input_runtime_t * rt;
   u16 * n;
-  u32 i;
 
   {
     clib_error_t * error = vlib_call_init_function (vm, gre_input_init);
@@ -464,12 +460,6 @@ gre_register_input_protocol (vlib_main_t * vm,
   n = sparse_vec_validate (rt->next_by_protocol, 
                            clib_host_to_net_u16 (protocol));
   n[0] = pi->next_index;
-
-  /* Rebuild next index -> sparse index inverse mapping when sparse vector
-     is updated. */
-  vec_validate (rt->sparse_index_by_next_index, pi->next_index);
-  for (i = 1; i < vec_len (rt->next_by_protocol); i++)
-    rt->sparse_index_by_next_index[rt->next_by_protocol[i]] = i;
 }
 
 static void
@@ -502,13 +492,6 @@ static clib_error_t * gre_input_init (vlib_main_t * vm)
   rt->next_by_protocol = sparse_vec_new
     (/* elt bytes */ sizeof (rt->next_by_protocol[0]),
      /* bits in index */ BITS (((gre_header_t *) 0)->protocol));
-
-  vec_validate (rt->sparse_index_by_next_index, GRE_INPUT_NEXT_DROP);
-  vec_validate (rt->sparse_index_by_next_index, GRE_INPUT_NEXT_PUNT);
-  rt->sparse_index_by_next_index[GRE_INPUT_NEXT_DROP]
-    = SPARSE_VEC_INVALID_INDEX;
-  rt->sparse_index_by_next_index[GRE_INPUT_NEXT_PUNT]
-    = SPARSE_VEC_INVALID_INDEX;
 
   /* These could be moved to the supported protocol input node defn's */
   ip4_input = vlib_get_node_by_name (vm, (u8 *)"ip4-input");
