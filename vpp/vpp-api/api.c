@@ -283,7 +283,6 @@ _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS, 				\
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)		\
 _(CREATE_LOOPBACK, create_loopback)					\
 _(CONTROL_PING, control_ping)                                           \
-_(NOPRINT_CONTROL_PING, noprint_control_ping)                           \
 _(CLI_REQUEST, cli_request)                                             \
 _(CLI_INBAND, cli_inband)						\
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)			\
@@ -3636,20 +3635,6 @@ vl_api_control_ping_t_handler (vl_api_control_ping_t * mp)
   /* *INDENT-ON* */
 }
 
-static void vl_api_noprint_control_ping_t_handler
-  (vl_api_noprint_control_ping_t * mp)
-{
-  vl_api_noprint_control_ping_reply_t *rmp;
-  int rv = 0;
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_NOPRINT_CONTROL_PING_REPLY,
-  ({
-    rmp->vpe_pid = ntohl (getpid());
-  }));
-  /* *INDENT-ON* */
-}
-
 static void
 shmem_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 {
@@ -5711,12 +5696,13 @@ send_lisp_locator_details (lisp_cp_main_t * lcm,
 static void
 vl_api_lisp_locator_dump_t_handler (vl_api_lisp_locator_dump_t * mp)
 {
+  u8 *ls_name = 0;
   unix_shared_memory_queue_t *q = 0;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *lsit = 0;
   locator_t *loc = 0;
   u32 ls_index = ~0, *locit = 0;
-  u8 filter;
+  uword *p = 0;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -5724,22 +5710,29 @@ vl_api_lisp_locator_dump_t_handler (vl_api_lisp_locator_dump_t * mp)
       return;
     }
 
-  ls_index = htonl (mp->locator_set_index);
+  if (mp->is_index_set)
+    ls_index = htonl (mp->ls_index);
+  else
+    {
+      ls_name = format (0, "%s", mp->ls_name);
+      p = hash_get_mem (lcm->locator_set_index_by_name, ls_name);
+      if (!p)
+	goto out;
+      ls_index = p[0];
+    }
+
+  if (pool_is_free_index (lcm->locator_set_pool, ls_index))
+    return;
 
   lsit = pool_elt_at_index (lcm->locator_set_pool, ls_index);
-
-  filter = mp->filter;
-  if (filter && !((1 == filter && lsit->local) ||
-		  (2 == filter && !lsit->local)))
-    {
-      return;
-    }
 
   vec_foreach (locit, lsit->locator_indices)
   {
     loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
     send_lisp_locator_details (lcm, loc, q, mp->context);
   };
+out:
+  vec_free (ls_name);
 }
 
 static void
@@ -5756,19 +5749,17 @@ send_lisp_locator_set_details (lisp_cp_main_t * lcm,
   rmp->_vl_msg_id = ntohs (VL_API_LISP_LOCATOR_SET_DETAILS);
   rmp->context = context;
 
-  rmp->local = lsit->local;
-  rmp->locator_set_index = htonl (ls_index);
+  rmp->ls_index = htonl (ls_index);
   if (lsit->local)
     {
       ASSERT (lsit->name != NULL);
-      strncpy ((char *) rmp->locator_set_name,
-	       (char *) lsit->name, ARRAY_LEN (rmp->locator_set_name) - 1);
+      strncpy ((char *) rmp->ls_name, (char *) lsit->name,
+	       vec_len (lsit->name));
     }
   else
     {
-      str = format (0, "remote-%d", ls_index);
-      strncpy ((char *) rmp->locator_set_name, (char *) str,
-	       ARRAY_LEN (rmp->locator_set_name) - 1);
+      str = format (0, "<remote-%d>", ls_index);
+      strncpy ((char *) rmp->ls_name, (char *) str, vec_len (str));
       vec_free (str);
     }
 
@@ -5781,7 +5772,6 @@ vl_api_lisp_locator_set_dump_t_handler (vl_api_lisp_locator_set_dump_t * mp)
   unix_shared_memory_queue_t *q = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *lsit = NULL;
-  u32 index;
   u8 filter;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
@@ -5791,18 +5781,68 @@ vl_api_lisp_locator_set_dump_t_handler (vl_api_lisp_locator_set_dump_t * mp)
     }
 
   filter = mp->filter;
-  index = 0;
   /* *INDENT-OFF* */
   pool_foreach (lsit, lcm->locator_set_pool,
   ({
     if (filter && !((1 == filter && lsit->local) ||
-                    (2 == filter && !lsit->local))) {
-      index++;
-      continue;
-    }
-    send_lisp_locator_set_details(lcm, lsit, q, mp->context, index++);
+                    (2 == filter && !lsit->local)))
+      {
+        continue;
+      }
+    send_lisp_locator_set_details (lcm, lsit, q, mp->context,
+                                   lsit - lcm->locator_set_pool);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+lisp_fid_put_api (u8 * dst, fid_address_t * src, u8 * prefix_length)
+{
+  ASSERT (prefix_length);
+  ip_prefix_t *ippref = &fid_addr_ippref (src);
+
+  switch (fid_addr_type (src))
+    {
+    case FID_ADDR_IP_PREF:
+      if (ip_prefix_version (ippref) == IP4)
+	clib_memcpy (dst, &ip_prefix_v4 (ippref), 4);
+      else
+	clib_memcpy (dst, &ip_prefix_v6 (ippref), 16);
+      prefix_length[0] = ip_prefix_len (ippref);
+      break;
+
+    case FID_ADDR_MAC:
+      prefix_length[0] = 0;
+      clib_memcpy (dst, fid_addr_mac (src), 6);
+      break;
+
+    default:
+      clib_warning ("Unknown FID type %d!", fid_addr_type (src));
+      break;
+    }
+}
+
+static u8
+fid_type_to_api_type (fid_address_t * fid)
+{
+  ip_prefix_t *ippref;
+
+  switch (fid_addr_type (fid))
+    {
+    case FID_ADDR_IP_PREF:
+      ippref = &fid_addr_ippref (fid);
+      if (ip_prefix_version (ippref) == IP4)
+	return 0;
+      else if (ip_prefix_version (ippref) == IP6)
+	return 1;
+      else
+	return ~0;
+
+    case FID_ADDR_MAC:
+      return 2;
+    }
+
+  return ~0;
 }
 
 static void
@@ -5810,6 +5850,7 @@ send_lisp_eid_table_details (mapping_t * mapit,
 			     unix_shared_memory_queue_t * q,
 			     u32 context, u8 filter)
 {
+  fid_address_t *fid;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *ls = 0;
   vl_api_lisp_eid_table_details_t *rmp = NULL;
@@ -5856,6 +5897,15 @@ send_lisp_eid_table_details (mapping_t * mapit,
 
   switch (gid_address_type (gid))
     {
+    case GID_ADDR_SRC_DST:
+      rmp->is_src_dst = 1;
+      fid = &gid_address_sd_src (gid);
+      rmp->eid_type = fid_type_to_api_type (fid);
+      lisp_fid_put_api (rmp->seid, &gid_address_sd_src (gid),
+			&rmp->seid_prefix_len);
+      lisp_fid_put_api (rmp->eid, &gid_address_sd_dst (gid),
+			&rmp->eid_prefix_len);
+      break;
     case GID_ADDR_IP_PREFIX:
       rmp->eid_prefix_len = ip_prefix_len (ip_prefix);
       if (ip_prefix_version (ip_prefix) == IP4)

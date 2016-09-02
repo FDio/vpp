@@ -1049,6 +1049,12 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "rloc %U", unformat_ip_address,
 			 &gid_address_ip (&rloc.address)))
 	{
+	  /* since rloc is stored in ip prefix we need to set prefix length */
+	  ip_prefix_t *pref = &gid_address_ippref (&rloc.address);
+
+	  u8 version = gid_address_ip_version (&rloc.address);
+	  ip_prefix_len (pref) = ip_address_max_len (version);
+
 	  vec_add1 (rlocs, rloc);
 	  curr_rloc = &rlocs[vec_len (rlocs) - 1];
 	}
@@ -1710,7 +1716,7 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
 	vec_validate (lcm->locator_to_locator_sets, loc_index);
 	ls_indexes = vec_elt_at_index (lcm->locator_to_locator_sets,
 				       loc_index);
-	vec_add1 (ls_indexes[0], ls_index);
+	vec_add1 (ls_indexes[0], p[0]);
       }
     }
   else
@@ -2213,7 +2219,7 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
   u32 *locit;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 
-  vlib_cli_output (vm, "%=20s%=16s%=16s%=16s", "Locator-set", "Locator",
+  vlib_cli_output (vm, "%s%=16s%=16s%=16s", "Locator-set", "Locator",
 		   "Priority", "Weight");
 
   /* *INDENT-OFF* */
@@ -2223,11 +2229,11 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
     int next_line = 0;
     if (lsit->local)
       {
-        msg = format (msg, "%=16v", lsit->name);
+        msg = format (msg, "%v", lsit->name);
       }
     else
       {
-        msg = format (msg, "%=16s", "remote");
+        msg = format (msg, "<%s-%d>", "remote", lsit - lcm->locator_set_pool);
       }
     vec_foreach (locit, lsit->locator_indices)
       {
