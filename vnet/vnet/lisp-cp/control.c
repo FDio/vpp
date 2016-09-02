@@ -1710,7 +1710,7 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
 	vec_validate (lcm->locator_to_locator_sets, loc_index);
 	ls_indexes = vec_elt_at_index (lcm->locator_to_locator_sets,
 				       loc_index);
-	vec_add1 (ls_indexes[0], ls_index);
+	vec_add1 (ls_indexes[0], p[0]);
       }
     }
   else
