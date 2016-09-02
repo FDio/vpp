@@ -145,8 +145,8 @@ gre_input (vlib_main_t * vm,
           next0 = vec_elt(rt->next_by_protocol, i0);
           next1 = vec_elt(rt->next_by_protocol, i1);
 
-	  b0->error = node->errors[next0 == SPARSE_VEC_INVALID_INDEX ? GRE_ERROR_UNKNOWN_PROTOCOL : GRE_ERROR_NONE];
-	  b1->error = node->errors[next1 == SPARSE_VEC_INVALID_INDEX ? GRE_ERROR_UNKNOWN_PROTOCOL : GRE_ERROR_NONE];
+	  b0->error = node->errors[i0 == SPARSE_VEC_INVALID_INDEX ? GRE_ERROR_UNKNOWN_PROTOCOL : GRE_ERROR_NONE];
+	  b1->error = node->errors[i1 == SPARSE_VEC_INVALID_INDEX ? GRE_ERROR_UNKNOWN_PROTOCOL : GRE_ERROR_NONE];
           
           version0 = clib_net_to_host_u16 (h0->flags_and_version);
           verr0 =  version0 & GRE_VERSION_MASK;
@@ -317,7 +317,7 @@ drop1:
           next0 = vec_elt(rt->next_by_protocol, i0);
 
 	  b0->error = 
-              node->errors[next0 == SPARSE_VEC_INVALID_INDEX 
+              node->errors[i0 == SPARSE_VEC_INVALID_INDEX 
                            ? GRE_ERROR_UNKNOWN_PROTOCOL : GRE_ERROR_NONE];
 	  
           version0 = clib_net_to_host_u16 (h0->flags_and_version);
