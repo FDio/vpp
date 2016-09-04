@@ -141,6 +141,9 @@ tuntap_tx (vlib_main_t * vm,
   u32 * buffers = vlib_frame_args (frame);
   uword n_packets = frame->n_vectors;
   tuntap_main_t * tm = &tuntap_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  u32 n_bytes = 0;
   int i;
 
   for (i = 0; i < n_packets; i++)
@@ -181,7 +184,16 @@ tuntap_tx (vlib_main_t * vm,
 
       if (writev (tm->dev_net_tun_fd, tm->iovecs, vec_len (tm->iovecs)) < l)
 	clib_unix_warning ("writev");
+
+      n_bytes += l;
     }
+
+  /* Update tuntap interface output stats. */
+  vlib_increment_combined_counter (im->combined_sw_if_counters
+				   + VNET_INTERFACE_COUNTER_TX,
+				   vm->cpu_index,
+				   tm->sw_if_index, n_packets, n_bytes);
+
 
   /** The normal interface path flattens the buffer chain */
   if (tm->have_normal_interface)
