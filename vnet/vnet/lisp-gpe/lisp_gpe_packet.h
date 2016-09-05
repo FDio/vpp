@@ -12,6 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ *  @file
+ *  @brief LISP-GPE packet header structure
+ *
+ */
 
 #ifndef included_lisp_gpe_packet_h
 #define included_lisp_gpe_packet_h
@@ -91,6 +96,7 @@
  *    0x4: Network Service Header
  */
 
+/** LISP-GPE header */
 typedef struct
 {
   u8 flags;
