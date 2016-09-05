@@ -2122,6 +2122,39 @@ static void *vl_api_ipfix_dump_t_print
   FINISH;
 }
 
+static void *vl_api_span_create_t_print
+  (vl_api_span_create_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: span_create ");
+  s = format (s, "sw_if_index_from %u ", ntohl (mp->sw_if_index_from));
+  s = format (s, "sw_if_index_to %u ", ntohl (mp->sw_if_index_to));
+
+  FINISH;
+}
+
+static void *vl_api_span_delete_t_print
+  (vl_api_span_delete_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: span_delete ");
+  s = format (s, "sw_if_index_from %u ", ntohl (mp->sw_if_index_from));
+
+  FINISH;
+}
+
+static void *
+vl_api_span_dump_t_print (vl_api_span_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: span_dump ");
+
+  FINISH;
+}
+
 static void *vl_api_get_next_index_t_print
   (vl_api_get_next_index_t * mp, void *handle)
 {
@@ -2735,6 +2768,9 @@ _(CLASSIFY_TABLE_INFO,classify_table_info)                              \
 _(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
 _(IPFIX_ENABLE,ipfix_enable)                                            \
 _(IPFIX_DUMP,ipfix_dump)                                                \
+_(SPAN_CREATE, span_create)                                             \
+_(SPAN_DELETE, span_delete)                                             \
+_(SPAN_DUMP, span_dump)                                                 \
 _(GET_NEXT_INDEX, get_next_index)                                       \
 _(PG_CREATE_INTERFACE,pg_create_interface)                              \
 _(PG_CAPTURE, pg_capture)                                               \
