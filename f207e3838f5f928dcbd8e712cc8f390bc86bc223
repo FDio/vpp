@@ -16,6 +16,24 @@
       "revId": "f207e3838f5f928dcbd8e712cc8f390bc86bc223",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_775f6d73",
+        "filename": "plugins/snat-plugin/snat/in2out.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2016-09-05T13:02:11Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_35ce9884",
+      "revId": "f207e3838f5f928dcbd8e712cc8f390bc86bc223",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
