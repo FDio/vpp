@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_176cb99b",
+        "filename": "plugins/ioam-plugin/Makefile.am",
+        "patchSetId": 5
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-09-05T10:15:31Z",
+      "side": 1,
+      "message": "Can you please also add Python plugin generation?\nAdd trace.py to pyapi_DATA\nAnd test that make plugins generates a trace.py python module like what\u0027s generated for pot.py",
+      "revId": "5e11a2849d027b9a76d508a2511adaaf6a40953c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
