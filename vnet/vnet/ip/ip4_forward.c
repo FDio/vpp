@@ -884,6 +884,15 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = adj_index0;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = adj_index1;
 
+	  if (is_indirect)
+	    {
+	      /* ARP for next-hop not packet's destination address */
+	      if (adj0->lookup_next_index == IP_LOOKUP_NEXT_ARP)
+	        ip0->dst_address.as_u32 = dst_addr0->as_u32;
+              if (adj1->lookup_next_index == IP_LOOKUP_NEXT_ARP)
+                ip1->dst_address.as_u32 = dst_addr1->as_u32;
+	    }
+
           vlib_increment_combined_counter 
               (cm, cpu_index, adj_index0, 1,
                vlib_buffer_length_in_chain (vm, p0) 
@@ -1026,6 +1035,13 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  adj_index0 += (hash_c0 & (adj0->n_adj - 1));
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = adj_index0;
+
+          if (is_indirect)
+            {
+              /* ARP for next-hop not packet's destination address */
+              if (adj0->lookup_next_index == IP_LOOKUP_NEXT_ARP)
+                ip0->dst_address.as_u32 = dst_addr0->as_u32;
+            }
 
           vlib_increment_combined_counter 
               (cm, cpu_index, adj_index0, 1,
