@@ -60,6 +60,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_72253baa",
+        "filename": "plugins/ioam-plugin/ioam/encap/ip6_ioam_seqno.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-09-05T18:14:16Z",
+      "side": 1,
+      "message": "This wil be called only if config says explicitly to analyse seqno on decap node.",
+      "parentUuid": "3a1d315d_405ddbe8",
+      "range": {
+        "startLine": 100,
+        "startChar": 0,
+        "endLine": 100,
+        "endChar": 24
+      },
+      "revId": "204321aa2c19dbba5154eb710295fa75ba44ce5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_6058d7fa",
         "filename": "plugins/ioam-plugin/ioam/encap/ip6_ioam_seqno.c",
         "patchSetId": 5
@@ -71,6 +95,30 @@
       "writtenOn": "2016-08-25T04:57:32Z",
       "side": 1,
       "message": "based on the cost of analyzing it here in the packet forwarding path, perhaps this can be made optional",
+      "range": {
+        "startLine": 117,
+        "startChar": 6,
+        "endLine": 117,
+        "endChar": 24
+      },
+      "revId": "204321aa2c19dbba5154eb710295fa75ba44ce5c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_523a3fce",
+        "filename": "plugins/ioam-plugin/ioam/encap/ip6_ioam_seqno.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-09-05T18:14:16Z",
+      "side": 1,
+      "message": "This will be called only if config says explicitly to analyse seqno on decap node.",
+      "parentUuid": "3a1d315d_6058d7fa",
       "range": {
         "startLine": 117,
         "startChar": 6,
