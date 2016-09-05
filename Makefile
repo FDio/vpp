@@ -126,6 +126,9 @@ else
 	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/gcc
 	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/g++
 endif
+
+	@ln -sf $(BR)/scripts/checkstyle.sh .git/hooks/pre-commit
+
 	@make -C $(BR) V=$(V) is_build_tool=yes vppapigen-install
 	@touch $@
 
