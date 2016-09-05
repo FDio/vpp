@@ -47,6 +47,7 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/policer/xlate.h>
+#include <vnet/span/span.h>
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police.h>
 
@@ -3428,6 +3429,8 @@ _(policer_classify_set_interface_reply)                 \
 _(netmap_create_reply)                                  \
 _(netmap_delete_reply)                                  \
 _(ipfix_enable_reply)                                   \
+_(span_create_reply)                                    \
+_(span_delete_reply)                                    \
 _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
 _(ip_source_and_port_range_check_add_del_reply)         \
@@ -3645,6 +3648,9 @@ _(CLASSIFY_TABLE_INFO_REPLY, classify_table_info_reply)                 \
 _(CLASSIFY_SESSION_DETAILS, classify_session_details)                   \
 _(IPFIX_ENABLE_REPLY, ipfix_enable_reply)                               \
 _(IPFIX_DETAILS, ipfix_details)                                         \
+_(SPAN_CREATE_REPLY, span_create_reply)                                 \
+_(SPAN_DELETE_REPLY, span_delete_reply)                                 \
+_(SPAN_DETAILS, span_details)                                           \
 _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
 _(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
 _(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
@@ -14870,6 +14876,108 @@ api_ipfix_dump (vat_main_t * vam)
   return 0;
 }
 
+static int
+api_span_create (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_span_create_t *mp;
+  f64 timeout;
+  u32 src_sw_if_index;
+  u32 dst_sw_if_index;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "src %u", &src_sw_if_index))
+	;
+      else if (unformat (i, "dst %u", &dst_sw_if_index))
+	;
+      else
+	break;
+    }
+
+  M (SPAN_CREATE, netmap_create);
+
+  mp->sw_if_index_from = htonl (src_sw_if_index);
+  mp->sw_if_index_to = htonl (dst_sw_if_index);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
+api_span_delete (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_span_delete_t *mp;
+  f64 timeout;
+  u32 src_sw_if_index;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "src %u", &src_sw_if_index))
+	;
+      else
+	break;
+    }
+
+  M (SPAN_DELETE, netmap_delete);
+
+  mp->sw_if_index_from = htonl (src_sw_if_index);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static void
+vl_api_span_details_t_handler (vl_api_span_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  fformat (vam->ofp, "%u => %u\n",
+	   ntohl (mp->sw_if_index_from), ntohl (mp->sw_if_index_to));
+}
+
+static void
+vl_api_span_details_t_handler_json (vl_api_span_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "src-if-index",
+			    ntohl (mp->sw_if_index_from));
+  vat_json_object_add_uint (node, "dst-if-index", ntohl (mp->sw_if_index_to));
+}
+
+static int
+api_span_dump (vat_main_t * vam)
+{
+  vl_api_span_dump_t *mp;
+  f64 timeout;
+
+  M (SPAN_DUMP, span_dump);
+  S;
+
+  /* Use a control ping for synchronization */
+  {
+    vl_api_control_ping_t *mp;
+    M (CONTROL_PING, control_ping);
+    S;
+  }
+  W;
+}
+
 int
 api_pg_create_interface (vat_main_t * vam)
 {
@@ -15937,6 +16045,9 @@ _(ipfix_enable, "collector_address <ip4> [collector_port <nn>] "        \
                 "src_address <ip4> [fib_id <nn>] [path_mtu <nn>] "      \
                 "[template_interval <nn>]")                             \
 _(ipfix_dump, "")                                                       \
+_(span_create, "src <src interface name> dst <dst interface name>")     \
+_(span_delete, "src <src interface name>")                              \
+_(span_dump, "")                                                        \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(pg_create_interface, "if_id <nn>")                                    \
 _(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \
