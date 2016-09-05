@@ -12,12 +12,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ * @file
+ * @brief Common utility functions for IPv4, IPv6 and L2 LISP-GPE tunnels.
+ *
+ */
 
 #include <vnet/lisp-gpe/lisp_gpe.h>
 #include <vppinfra/math.h>
 
+/** LISP-GPE global state */
 lisp_gpe_main_t lisp_gpe_main;
 
+/**
+ * @brief Compute IP-UDP-GPE sub-tunnel encap/rewrite header.
+ *
+ * @param[in]   t       Parent of the sub-tunnel.
+ * @param[in]   st      Sub-tunnel.
+ * @param[in]   lp      Local and remote locators used in the encap header.
+ *
+ * @return 0 on success.
+ */
 static int
 lisp_gpe_rewrite (lisp_gpe_tunnel_t * t, lisp_gpe_sub_tunnel_t * st,
 		  locator_pair_t * lp)
@@ -103,9 +118,16 @@ weight_cmp (normalized_sub_tunnel_weights_t * a,
 	  ? a->sub_tunnel_index - b->sub_tunnel_index : (cmp > 0 ? -1 : 1));
 }
 
-/** Computes sub tunnel load balancing vector.
+/**
+ * @brief Computes sub-tunnel load balancing vector.
+ *
  * Algorithm is identical to that used for building unequal-cost multipath
- * adjacencies */
+ * adjacencies. Saves normalized sub-tunnel weights and builds load-balancing
+ * vector consisting of list of sub-tunnel indexes replicated according to
+ * weight.
+ *
+ * @param[in]   t       Tunnel for which load balancing vector is computed.
+ */
 static void
 compute_sub_tunnels_balancing_vector (lisp_gpe_tunnel_t * t)
 {
@@ -191,6 +213,8 @@ build_lbv:
   t->norm_sub_tunnel_weights = nsts;
 }
 
+/** Create sub-tunnels and load-balancing vector for all locator pairs
+ * associated to a tunnel.*/
 static void
 create_sub_tunnels (lisp_gpe_main_t * lgm, lisp_gpe_tunnel_t * t)
 {
@@ -222,6 +246,18 @@ _(decap_next_index)                             \
 _(vni)                                          \
 _(action)
 
+/**
+ * @brief Create/delete IP encapsulated tunnel.
+ *
+ * Builds GPE tunnel for L2 or L3 packets and populates tunnel pool
+ * @ref lisp_gpe_tunnel_by_key in @ref lisp_gpe_main_t.
+ *
+ * @param[in]   a               Tunnel parameters.
+ * @param[in]   is_l2           Flag indicating if encapsulated content is l2.
+ * @param[out]  tun_index_res   Tunnel index.
+ *
+ * @return 0 on success.
+ */
 static int
 add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t * a, u8 is_l2,
 		   u32 * tun_index_res)
@@ -315,6 +351,27 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t * a, u8 is_l2,
   return 0;
 }
 
+/**
+ * @brief Build IP adjacency for LISP Source/Dest FIB.
+ *
+ * Because LISP forwarding does not follow typical IP forwarding path, the
+ * adjacency's fields are overloaded (i.e., hijacked) to carry LISP specific
+ * data concerning the lisp-gpe interface the packets hitting the adjacency
+ * should be sent to and the tunnel that should be used.
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[out]  adj             Adjacency to be populated.
+ * @param[in]   table_id        VRF for adjacency.
+ * @param[in]   vni             Virtual Network identifier (tenant id).
+ * @param[in]   tun_index       Tunnel index.
+ * @param[in]   n_sub_tun       Number of sub-tunnels.
+ * @param[in]   is_negative     Flag to indicate if the adjacency is for a
+ *                              negative mapping.
+ * @param[in]   action          Action to be taken for negative mapping.
+ * @param[in]   ip_ver          IP version for the adjacency.
+ *
+ * @return 0 on success.
+ */
 static int
 build_ip_adjacency (lisp_gpe_main_t * lgm, ip_adjacency_t * adj, u32 table_id,
 		    u32 vni, u32 tun_index, u32 n_sub_tun, u8 is_negative,
@@ -385,6 +442,18 @@ build_ip_adjacency (lisp_gpe_main_t * lgm, ip_adjacency_t * adj, u32 table_id,
   return 0;
 }
 
+/**
+ * @brief Add/Delete LISP IP forwarding entry.
+ *
+ * Coordinates the creation/removal of forwarding entries for IP LISP overlay:
+ * creates lisp-gpe tunnel, builds tunnel customized forwarding entry and
+ * injects new route in Source/Dest FIB.
+ *
+ * @param[in]   lgm     Reference to @ref lisp_gpe_main_t.
+ * @param[in]   a       Parameters for building the forwarding entry.
+ *
+ * @return 0 on success.
+ */
 static int
 add_del_ip_fwd_entry (lisp_gpe_main_t * lgm,
 		      vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
@@ -454,6 +523,19 @@ make_mac_fib_key (BVT (clib_bihash_kv) * kv, u16 bd_index, u8 src_mac[6],
   kv->key[2] = 0;
 }
 
+/**
+ * @brief Lookup L2 SD FIB entry
+ *
+ * Does a vni + dest + source lookup in the L2 LISP FIB. If the lookup fails
+ * it tries a second time with source set to 0 (i.e., a simple dest lookup).
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[in]   bd_index        Bridge domain index.
+ * @param[in]   src_mac         Source mac address.
+ * @param[in]   dst_mac         Destination mac address.
+ *
+ * @return index of mapping matching the lookup key.
+ */
 u32
 lisp_l2_fib_lookup (lisp_gpe_main_t * lgm, u16 bd_index, u8 src_mac[6],
 		    u8 dst_mac[6])
@@ -476,6 +558,21 @@ lisp_l2_fib_lookup (lisp_gpe_main_t * lgm, u16 bd_index, u8 src_mac[6],
   return ~0;
 }
 
+/**
+ * @brief Add/del L2 SD FIB entry
+ *
+ * Inserts value in L2 FIB keyed by vni + dest + source. If entry is
+ * overwritten the associated value is returned.
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[in]   bd_index        Bridge domain index.
+ * @param[in]   src_mac         Source mac address.
+ * @param[in]   dst_mac         Destination mac address.
+ * @param[in]   val             Value to add.
+ * @param[in]   is_add          Add/del flag.
+ *
+ * @return ~0 or value of overwritten entry.
+ */
 u32
 lisp_l2_fib_add_del_entry (lisp_gpe_main_t * lgm, u16 bd_index, u8 src_mac[6],
 			   u8 dst_mac[6], u32 val, u8 is_add)
@@ -506,6 +603,17 @@ l2_fib_init (lisp_gpe_main_t * lgm)
 			 L2_FIB_DEFAULT_HASH_MEMORY_SIZE);
 }
 
+/**
+ * @brief Add/Delete LISP L2 forwarding entry.
+ *
+ * Coordinates the creation/removal of forwarding entries for L2 LISP overlay:
+ * creates lisp-gpe tunnel and injects new entry in Source/Dest L2 FIB.
+ *
+ * @param[in]   lgm     Reference to @ref lisp_gpe_main_t.
+ * @param[in]   a       Parameters for building the forwarding entry.
+ *
+ * @return 0 on success.
+ */
 static int
 add_del_l2_fwd_entry (lisp_gpe_main_t * lgm,
 		      vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
@@ -534,7 +642,16 @@ add_del_l2_fwd_entry (lisp_gpe_main_t * lgm,
   return 0;
 }
 
-
+/**
+ * @brief Forwarding entry create/remove dispatcher.
+ *
+ * Calls l2 or l3 forwarding entry add/del function based on input data.
+ *
+ * @param[in]   a       Forwarding entry parameters.
+ * @param[out]  hw_if_indexp    NOT USED
+ *
+ * @return 0 on success.
+ */
 int
 vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
 				 u32 * hw_if_indexp)
@@ -561,6 +678,7 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
     }
 }
 
+/** CLI command to add/del forwarding entry. */
 static clib_error_t *
 lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 				       unformat_input_t * input,
@@ -691,11 +809,13 @@ done:
 VLIB_CLI_COMMAND (lisp_gpe_add_del_fwd_entry_command, static) = {
   .path = "lisp gpe tunnel",
   .short_help = "lisp gpe tunnel add/del vni <vni> vrf <vrf> [leid <leid>]"
-      "reid <reid> [lloc <sloc> rloc <rloc>] [negative action <action>]",
+      "reid <reid> [loc-pair <lloc> <rloc> p <priority> w <weight>] "
+      "[negative action <action>]",
   .function = lisp_gpe_add_del_fwd_entry_command_fn,
 };
 /* *INDENT-ON* */
 
+/** Format LISP-GPE next indexes. */
 static u8 *
 format_decap_next (u8 * s, va_list * args)
 {
@@ -715,6 +835,7 @@ format_decap_next (u8 * s, va_list * args)
   return s;
 }
 
+/** Format LISP-GPE tunnel. */
 u8 *
 format_lisp_gpe_tunnel (u8 * s, va_list * args)
 {
@@ -756,6 +877,7 @@ format_lisp_gpe_tunnel (u8 * s, va_list * args)
   return s;
 }
 
+/** CLI command to show LISP-GPE tunnels. */
 static clib_error_t *
 show_lisp_gpe_tunnel_command_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
@@ -785,6 +907,7 @@ VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) =
 };
 /* *INDENT-ON* */
 
+/** Check if LISP-GPE is enabled. */
 u8
 vnet_lisp_gpe_enable_disable_status (void)
 {
@@ -793,6 +916,7 @@ vnet_lisp_gpe_enable_disable_status (void)
   return lgm->is_en;
 }
 
+/** Enable/disable LISP-GPE. */
 clib_error_t *
 vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
 {
@@ -902,6 +1026,7 @@ vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
   return 0;
 }
 
+/** CLI command to enable/disable LISP-GPE. */
 static clib_error_t *
 lisp_gpe_enable_disable_command_fn (vlib_main_t * vm,
 				    unformat_input_t * input,
@@ -939,6 +1064,7 @@ VLIB_CLI_COMMAND (enable_disable_lisp_gpe_command, static) = {
 };
 /* *INDENT-ON* */
 
+/** CLI command to show LISP-GPE interfaces. */
 static clib_error_t *
 lisp_show_iface_command_fn (vlib_main_t * vm,
 			    unformat_input_t * input,
@@ -975,6 +1101,7 @@ VLIB_CLI_COMMAND (lisp_show_iface_command) = {
 };
 /* *INDENT-ON* */
 
+/** Format LISP-GPE status. */
 u8 *
 format_vnet_lisp_gpe_status (u8 * s, va_list * args)
 {
@@ -982,6 +1109,7 @@ format_vnet_lisp_gpe_status (u8 * s, va_list * args)
   return format (s, "%s", lgm->is_en ? "enabled" : "disabled");
 }
 
+/** LISP-GPE init function. */
 clib_error_t *
 lisp_gpe_init (vlib_main_t * vm)
 {

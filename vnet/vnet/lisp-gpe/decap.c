@@ -12,7 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+/**
+ * @file
+ * @brief L2 LISP-GPE decap code.
+ *
+ */
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
@@ -118,6 +122,21 @@ incr_decap_stats (vnet_main_t * vnm, u32 cpu_index, u32 length,
     }
 }
 
+/**
+ * @brief LISP-GPE decap dispatcher.
+ * @node lisp_gpe_input_inline
+ *
+ * LISP-GPE decap dispatcher.
+ *
+ * Decaps IP-UDP-LISP-GPE header and based on the next protocol and in the
+ * GPE header and the vni decides the next node to forward the packet to.
+ *
+ * @param[in]   vm      vlib_main_t corresponding to current thread.
+ * @param[in]   node    vlib_node_runtime_t data for this node.
+ * @param[in]   frame   vlib_frame_t whose contents should be dispatched.
+ *
+ * @return number of vectors in frame.
+ */
 static uword
 lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * from_frame, u8 is_v4)

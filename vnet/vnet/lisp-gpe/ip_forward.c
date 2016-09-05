@@ -12,10 +12,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+/**
+ *  @file
+ *  @brief LISP-GPE overlay IP forwarding logic and lookup data structures.
+ *
+ *  Provides an implementation of a Source/Dest (SD) IP FIB that leverages the
+ *  existing destination only FIB. Lookups are done in two stages, first the
+ *  destination FIB looks up a packet's destination address and then if a
+ *  an SD entry is hit, the destination adjacency will point to the second
+ *  stage, the source FIB, where the packet's source is looked up. Note that a
+ *  miss in the source FIB does not result in an overall SD lookup retry with
+ *  a less specific entry from the destination FIB.
+ */
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
-/* avoids calling route callbacks for src fib */
+/** Sets adj index for destination address in IP4 FIB. Similar to the function
+ * in ip4_forward but this one avoids calling route callbacks */
 static void
 ip4_sd_fib_set_adj_index (lisp_gpe_main_t * lgm, ip4_fib_t * fib, u32 flags,
 			  u32 dst_address_u32, u32 dst_address_length,
@@ -42,7 +54,8 @@ ip4_sd_fib_set_adj_index (lisp_gpe_main_t * lgm, ip4_fib_t * fib, u32 flags,
   fib->adj_index_by_dst_address[dst_address_length] = hash;
 }
 
-/* copied from ip4_forward since it's static */
+/** Initialize the adjacency index by destination address vector for IP4 FIB.
+ * Copied from ip4_forward since it's static */
 static void
 ip4_fib_init_adj_index_by_dst_address (ip_lookup_main_t * lm,
 				       ip4_fib_t * fib, u32 address_length)
@@ -68,6 +81,7 @@ ip4_fib_init_adj_index_by_dst_address (ip_lookup_main_t * lm,
   vec_validate_init_empty (fib->old_hash_values, max_index, ~0);
 }
 
+/** Add/del src route to IP4 SD FIB. */
 static void
 ip4_sd_fib_add_del_src_route (lisp_gpe_main_t * lgm,
 			      ip4_add_del_route_args_t * a)
@@ -125,6 +139,7 @@ ip4_sd_fib_add_del_src_route (lisp_gpe_main_t * lgm,
     ip_del_adjacency (lm, old_adj_index);
 }
 
+/** Get src route from IP4 SD FIB. */
 static void *
 ip4_sd_get_src_route (lisp_gpe_main_t * lgm, u32 src_fib_index,
 		      ip4_address_t * src, u32 address_length)
@@ -145,6 +160,7 @@ typedef CLIB_PACKED (struct ip4_route {
 }) ip4_route_t;
 /* *INDENT-ON* */
 
+/** Remove all routes from src IP4 FIB */
 void
 ip4_sd_fib_clear_src_fib (lisp_gpe_main_t * lgm, ip4_fib_t * fib)
 {
@@ -186,6 +202,7 @@ ip4_sd_fib_clear_src_fib (lisp_gpe_main_t * lgm, ip4_fib_t * fib)
   }
 }
 
+/** Test if IP4 FIB is empty */
 static u8
 ip4_fib_is_empty (ip4_fib_t * fib)
 {
@@ -206,6 +223,25 @@ ip4_fib_is_empty (ip4_fib_t * fib)
   return fib_is_empty;
 }
 
+/**
+ * @brief Add/del route to IP4 SD FIB.
+ *
+ * Adds/remove routes to both destination and source FIBs. Entries added
+ * to destination FIB are associated to adjacencies that point to the source
+ * FIB and store the index of the particular source FIB associated to the
+ * destination. Source FIBs are locally managed (see @ref lgm->ip4_src_fibs
+ * and @ref lgm->ip6_src_fibs), but the adjacencies are allocated out of the
+ * global adjacency pool.
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[out]  dst_prefix      Destination IP4 prefix.
+ * @param[in]   src_prefix      Source IP4 prefix.
+ * @param[in]   table_id        Table id.
+ * @param[in]   add_adj         Pointer to the adjacency to be added.
+ * @param[in]   is_add          Add/del flag.
+ *
+ * @return 0 on success.
+ */
 static int
 ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 			  ip_prefix_t * src_prefix, u32 table_id,
@@ -351,6 +387,21 @@ ip4_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
   return 0;
 }
 
+/**
+ * @brief Retrieve IP4 SD FIB entry.
+ *
+ * Looks up SD IP4 route by first looking up the destination in VPP's main FIB
+ * and subsequently the source in the src FIB. The index of the source FIB is
+ * stored in the dst adjacency's rewrite_header.sw_if_index. If source is 0
+ * do search with 0/0 src.
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[out]  dst_prefix      Destination IP4 prefix.
+ * @param[in]   src_prefix      Source IP4 prefix.
+ * @param[in]   table_id        Table id.
+ *
+ * @return pointer to the adjacency if route found.
+ */
 static void *
 ip4_sd_fib_get_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 		      ip_prefix_t * src_prefix, u32 table_id)
@@ -378,6 +429,7 @@ ip4_sd_fib_get_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 			       src_address_length);
 }
 
+/** Get src route from IP6 SD FIB. */
 static u32
 ip6_sd_get_src_route (lisp_gpe_main_t * lgm, u32 src_fib_index,
 		      ip6_address_t * src, u32 address_length)
@@ -418,7 +470,8 @@ compute_prefix_lengths_in_search_order (ip6_src_fib_t * fib)
   /* *INDENT-ON* */
 }
 
-/* Rewrite of ip6_add_del_route() because it uses im6 to find the fib */
+/** Add/del src route to IP6 SD FIB. Rewrite of ip6_add_del_route() because
+ * it uses im6 to find the FIB .*/
 static void
 ip6_sd_fib_add_del_src_route (lisp_gpe_main_t * lgm,
 			      ip6_add_del_route_args_t * a)
@@ -542,6 +595,25 @@ ip6_src_fib_init (ip6_src_fib_t * fib)
 
 }
 
+/**
+ * @brief Add/del route to IP6 SD FIB.
+ *
+ * Adds/remove routes to both destination and source FIBs. Entries added
+ * to destination FIB are associated to adjacencies that point to the source
+ * FIB and store the index of the particular source FIB associated to the
+ * destination. Source FIBs are locally managed (see @ref lgm->ip4_src_fibs
+ * and @ref lgm->ip6_src_fibs), but the adjacencies are allocated out of the
+ * global adjacency pool.
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[out]  dst_prefix      Destination IP6 prefix.
+ * @param[in]   src_prefix      Source IP6 prefix.
+ * @param[in]   table_id        Table id.
+ * @param[in]   add_adj         Pointer to the adjacency to be added.
+ * @param[in]   is_add          Add/del flag.
+ *
+ * @return 0 on success.
+ */
 static int
 ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 			  ip_prefix_t * src_prefix, u32 table_id,
@@ -688,6 +760,21 @@ ip6_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
   return 0;
 }
 
+/**
+ * @brief Retrieve IP6 SD FIB entry.
+ *
+ * Looks up SD IP6 route by first looking up the destination in VPP's main FIB
+ * and subsequently the source in the src FIB. The index of the source FIB is
+ * stored in the dst adjacency's @ref rewrite_header.sw_if_index. If source is
+ * 0 do search with ::/0 src.
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[out]  dst_prefix      Destination IP6 prefix.
+ * @param[in]   src_prefix      Source IP6 prefix.
+ * @param[in]   table_id        Table id.
+ *
+ * @return adjacency index if route found.
+ */
 static u32
 ip6_sd_fib_get_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 		      ip_prefix_t * src_prefix, u32 table_id)
@@ -715,6 +802,25 @@ ip6_sd_fib_get_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 			       src_address_length);
 }
 
+/**
+ * @brief Add/del route to IP4 or IP6 SD FIB.
+ *
+ * Adds/remove routes to both destination and source FIBs. Entries added
+ * to destination FIB are associated to adjacencies that point to the source
+ * FIB and store the index of the particular source FIB associated to the
+ * destination. Source FIBs are locally managed (see @ref lgm->ip4_src_fibs
+ * and @ref lgm->ip6_src_fibs), but the adjacencies are allocated out of the
+ * global adjacency pool.
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[out]  dst_prefix      Destination IP prefix.
+ * @param[in]   src_prefix      Source IP prefix.
+ * @param[in]   table_id        Table id.
+ * @param[in]   add_adj         Pointer to the adjacency to be added.
+ * @param[in]   is_add          Add/del flag.
+ *
+ * @return 0 on success.
+ */
 int
 ip_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 			 ip_prefix_t * src_prefix, u32 table_id,
@@ -729,6 +835,21 @@ ip_sd_fib_add_del_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 								is_add);
 }
 
+/**
+ * @brief Retrieve IP4 or IP6 SD FIB entry.
+ *
+ * Looks up SD IP route by first looking up the destination in VPP's main FIB
+ * and subsequently the source in the src FIB. The index of the source FIB is
+ * stored in the dst adjacency's @ref rewrite_header.sw_if_index. If source is
+ * 0 do search with ::/0 src.
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[out]  dst_prefix      Destination IP prefix.
+ * @param[in]   src_prefix      Source IP prefix.
+ * @param[in]   table_id        Table id.
+ *
+ * @return adjacency index if route found.
+ */
 u32
 ip_sd_fib_get_route (lisp_gpe_main_t * lgm, ip_prefix_t * dst_prefix,
 		     ip_prefix_t * src_prefix, u32 table_id)
@@ -815,6 +936,27 @@ ip4_src_fib_lookup_two (lisp_gpe_main_t * lgm, u32 src_fib_index0,
     }
 }
 
+/**
+ * @brief IPv4 src lookup node.
+ * @node lgpe-ip4-lookup
+ *
+ * The LISP IPv4 source lookup dispatch node.
+ *
+ * This is the IPv4 source lookup dispatch node. It first looks up the
+ * adjacency hit in the main (destination) FIB and then uses its
+ * <code>rewrite_header.sw_if_index</code>to find the source FIB wherein
+ * the source IP is subsequently looked up. Data in the resulting adjacency
+ * is used to decide the next node (the lisp_gpe interface) and if a flow
+ * hash must be computed, when traffic can be load balanced over multiple
+ * tunnels.
+ *
+ *
+ * @param[in]   vm      vlib_main_t corresponding to current thread.
+ * @param[in]   node    vlib_node_runtime_t data for this node.
+ * @param[in]   frame   vlib_frame_t whose contents should be dispatched.
+ *
+ * @return number of vectors in frame.
+ */
 always_inline uword
 lgpe_ip4_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
 		 vlib_frame_t * from_frame)
@@ -1107,6 +1249,26 @@ ip6_src_fib_lookup_two (lisp_gpe_main_t * lgm, u32 src_fib_index0,
     }
 }
 
+/**
+ * @brief IPv6 src lookup node.
+ * @node lgpe-ip6-lookup
+ *
+ * The LISP IPv6 source lookup dispatch node.
+ *
+ * This is the IPv6 source lookup dispatch node. It first looks up the
+ * adjacency hit in the main (destination) FIB and then uses its
+ * <code>rewrite_header.sw_if_index</code>to find the source FIB wherein
+ * the source IP is subsequently looked up. Data in the resulting adjacency
+ * is used to decide the next node (the lisp_gpe interface) and if a flow
+ * hash must be computed, when traffic can be load balanced over multiple
+ * tunnels.
+ *
+ * @param[in]   vm      vlib_main_t corresponding to current thread.
+ * @param[in]   node    vlib_node_runtime_t data for this node.
+ * @param[in]   frame   vlib_frame_t whose contents should be dispatched.
+ *
+ * @return number of vectors in frame.
+ */
 always_inline uword
 lgpe_ip6_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
 		 vlib_frame_t * from_frame)

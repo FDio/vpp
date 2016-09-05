@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Common utility functions for LISP-GPE interfaces.
+ *
+ */
+
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 #include <vnet/vnet.h>
@@ -193,6 +199,22 @@ encap_two_inline (lisp_gpe_main_t * lgm, vlib_buffer_t * b0,
 
 #define is_v4_packet(_h) ((*(u8*) _h) & 0xF0) == 0x40
 
+/**
+ * @brief LISP-GPE interface TX (encap) function.
+ * @node lisp_gpe_interface_tx
+ *
+ * The LISP-GPE interface TX (encap) function.
+ *
+ * Looks up the associated tunnel based on the adjacency hit in the SD FIB
+ * and if the tunnel is multihomed it uses the flow hash to determine
+ * sub-tunnel, and rewrite string, to be used to encapsulate the packet.
+ *
+ * @param[in]   vm      vlib_main_t corresponding to the current thread.
+ * @param[in]   node    vlib_node_runtime_t data for this node.
+ * @param[in]   frame   vlib_frame_t whose contents should be dispatched.
+ *
+ * @return number of vectors in frame.
+ */
 static uword
 lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * from_frame)
@@ -649,6 +671,23 @@ l2_process_two (lisp_gpe_main_t * lgm, vlib_buffer_t * b0, vlib_buffer_t * b1,
     }
 }
 
+/**
+ * @brief LISP-GPE interface TX (encap) function for L2 overlays.
+ * @node l2_lisp_gpe_interface_tx
+ *
+ * The L2 LISP-GPE interface TX (encap) function.
+ *
+ * Uses bridge domain index, source and destination ethernet addresses to
+ * lookup tunnel. If the tunnel is multihomed a flow has is used to determine
+ * the sub-tunnel and therefore the rewrite string to be used to encapsulate
+ * the packets.
+ *
+ * @param[in]   vm        vlib_main_t corresponding to the current thread.
+ * @param[in]   node      vlib_node_runtime_t data for this node.
+ * @param[in]   frame     vlib_frame_t whose contents should be dispatched.
+ *
+ * @return number of vectors in frame.
+ */
 static uword
 l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * from_frame)
@@ -914,6 +953,19 @@ remove_lisp_gpe_iface (lisp_gpe_main_t * lgm, u32 hi_index, u32 dp_table,
   hash_unset (tuns->vni_by_sw_if_index, hi->sw_if_index);
 }
 
+/**
+ * @brief Add/del LISP-GPE L3 interface.
+ *
+ * Creates LISP-GPE interface, sets ingress arcs from lisp_gpeX_lookup,
+ * installs default routes that attract all traffic with no more specific
+ * routes to lgpe-ipx-lookup, set egress arcs to ipx-lookup, sets
+ * the interface in the right vrf and enables it.
+ *
+ * @param[in]   lgm     Reference to @ref lisp_gpe_main_t.
+ * @param[in]   a       Parameters to create interface.
+ *
+ * @return number of vectors in frame.
+ */
 static int
 lisp_gpe_add_del_l3_iface (lisp_gpe_main_t * lgm,
 			   vnet_lisp_gpe_add_del_iface_args_t * a)
@@ -995,6 +1047,17 @@ lisp_gpe_add_del_l3_iface (lisp_gpe_main_t * lgm,
   return 0;
 }
 
+/**
+ * @brief Add/del LISP-GPE L2 interface.
+ *
+ * Creates LISP-GPE interface, sets it in L2 mode in the appropriate
+ * bridge domain, sets egress arcs and enables it.
+ *
+ * @param[in]   lgm     Reference to @ref lisp_gpe_main_t.
+ * @param[in]   a       Parameters to create interface.
+ *
+ * @return number of vectors in frame.
+ */
 static int
 lisp_gpe_add_del_l2_iface (lisp_gpe_main_t * lgm,
 			   vnet_lisp_gpe_add_del_iface_args_t * a)
@@ -1056,6 +1119,7 @@ lisp_gpe_add_del_l2_iface (lisp_gpe_main_t * lgm,
   return 0;
 }
 
+/** Add/del L2 or L3 LISP-GPE interface. */
 int
 vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
 			     u32 * hw_if_indexp)
