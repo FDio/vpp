@@ -449,10 +449,39 @@ vlib_register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   return r->index;
 }
 
+static uword
+null_node_fn (vlib_main_t * vm,
+	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  u16 n_vectors = frame->n_vectors;
+
+  vlib_node_increment_counter (vm, node->node_index, 0, n_vectors);
+  vlib_buffer_free (vm, vlib_frame_args (frame), n_vectors);
+  vlib_frame_free (vm, node, frame);
+
+  return n_vectors;
+}
+
 void
 vlib_register_all_static_nodes (vlib_main_t * vm)
 {
   vlib_node_registration_t *r;
+
+  static char *null_node_error_strings[] = {
+    "blackholed packets",
+  };
+
+  static vlib_node_registration_t null_node_reg = {
+    .function = null_node_fn,
+    .vector_size = sizeof (u32),
+    .name = "null-node",
+    .n_errors = 1,
+    .error_strings = null_node_error_strings,
+  };
+
+  /* make sure that node index 0 is not used by
+     real node */
+  register_node (vm, &null_node_reg);
 
   r = vm->node_main.node_registrations;
   while (r)
