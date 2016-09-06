@@ -202,6 +202,8 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 					   ESP_ENCRYPT_ERROR_SEQ_CYCLED, 1);
 	      //TODO: rekey SA
 	      o_bi0 = i_bi0;
+	      to_next[0] = o_bi0;
+	      to_next += 1;
 	      goto trace;
 	    }
 
