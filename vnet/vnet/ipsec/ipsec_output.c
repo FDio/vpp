@@ -224,28 +224,45 @@ ipsec_output_node_fn (vlib_main_t * vm,
       ip4_header_t *ip0;
       ip6_header_t *ip6_0 = 0;
       udp_header_t *udp0;
-      u8 is_ipv6 = 0;
+      u8 is_ipv6 = 0, is_ipv4 = 0;
+      u32 iph_offset = 0;
+      u32 adj_index0;
+      ip_adjacency_t *adj0 = 0;
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+      adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
 
-
-      ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
-			      sizeof (ethernet_header_t));
-
-      /* just forward non ipv4 packets */
-      if (PREDICT_FALSE ((ip0->ip_version_and_header_length & 0xF0) != 0x40))
+      /* Assume ipv4 */
+      if (PREDICT_TRUE
+	  (vec_len (ip4_main.lookup_main.adjacency_heap) < adj_index0))
 	{
-	  /* ipv6 packets */
+	  adj0 = ip_get_adjacency (&ip4_main.lookup_main, adj_index0);
+	  iph_offset = adj0->rewrite_header.data_bytes;
+	  ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0)
+				  + iph_offset);
+	  is_ipv4 = ((ip0->ip_version_and_header_length & 0xF0) == 0x40);
+	}
+
+      /* Test ipv4 assumption. If true, just forward packets */
+      if (PREDICT_FALSE (!is_ipv4))
+	{
+	  /* Packet is not ipv4, try ipv6 */
 	  if (PREDICT_TRUE
-	      ((ip0->ip_version_and_header_length & 0xF0) == 0x60))
+	      (vec_len (ip6_main.lookup_main.adjacency_heap) < adj_index0))
 	    {
-	      is_ipv6 = 1;
-	      ip6_0 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
-					sizeof (ethernet_header_t));
+	      adj0 = ip_get_adjacency (&ip6_main.lookup_main, adj_index0);
+	      iph_offset = adj0->rewrite_header.data_bytes;
+	      ip6_0 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0)
+					+ iph_offset);
+	      is_ipv6 =
+		((ip6_0->ip_version_traffic_class_and_flow_label & 0xF0) ==
+		 0x60);
 	    }
-	  else
+
+	  /* If not ipv6, we're done, go to next output feature */
+	  if (PREDICT_FALSE (!is_ipv6))
 	    {
 	      next_node_index = get_next_output_feature_node_index (vnm, b0);
 	      goto dispatch0;
@@ -315,7 +332,7 @@ ipsec_output_node_fn (vlib_main_t * vm,
 	      next_node_index = im->esp_encrypt_node_index;
 	      vnet_buffer (b0)->output_features.ipsec_sad_index =
 		p0->sa_index;
-	      vlib_buffer_advance (b0, sizeof (ethernet_header_t));
+	      vlib_buffer_advance (b0, iph_offset);
 	      p0->counter.packets++;
 	      if (is_ipv6)
 		{
