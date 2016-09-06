@@ -108,7 +108,7 @@ void clib_bihash_free (clib_bihash * h);
 /** Add or delete a (key,value) pair from a bi-hash table
 
     @param h - the bi-hash table to search
-    @param add_kv - the (key,value) pair to add
+    @param add_v - the (key,value) pair to add
     @param is_add - add=1, delete=0
     @returns 0 on success, < 0 on error
     @note This function will replace an existing (key,value) pair if the

@@ -161,7 +161,7 @@ set_policer_classify_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (set_input_acl_command, static) = {
+VLIB_CLI_COMMAND (set_policer_classify_command, static) = {
     .path = "set policer classify",
     .short_help =
     "set policer classify interface <int> [ip4-table <index>]\n"

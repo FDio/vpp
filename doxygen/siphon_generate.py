@@ -80,6 +80,21 @@ def count_braces(str, count=0, found=False):
 # Collated output for each siphon
 output = {}
 
+# Build a list of known siphons
+known_siphons = []
+for item in siphon_patterns:
+	siphon = item[1]
+	if siphon not in known_siphons:
+		known_siphons.append(siphon)
+
+# Setup information for siphons we know about
+for siphon in known_siphons:
+	output[siphon] = {
+            "file": "%s/%s.siphon" % (args.output, siphon),
+            "global": {},
+            "items": [],
+        }
+
 # Pre-process file names in case they indicate a file with
 # a list of files
 files = []
@@ -233,12 +248,6 @@ for filename in files:
             if close_siphon is not None:
                 # Write the siphoned contents to the right place
                 siphon_name = close_siphon[0]
-                if siphon_name not in output:
-                    output[siphon_name] = {
-                        "global": {},
-                        "items": [],
-                        "file": "%s/%s.siphon" % (args.output, close_siphon[0])
-                    }
 
                 # Copy directives for the file
                 details = {}

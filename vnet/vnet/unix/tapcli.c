@@ -802,10 +802,10 @@ static tapcli_interface_t *tapcli_get_new_tapif()
 /**
  * @brief Connect a TAP interface
  *
- * @param *vm - vlib_main_t
- * @param *intfc_name - u8
- * @param *hwaddr_arg - u8
- * @param *sw_if_index - u32
+ * @param vm - vlib_main_t
+ * @param intfc_name - u8
+ * @param hwaddr_arg - u8
+ * @param sw_if_indexp - u32
  *
  * @return rc - int
  *

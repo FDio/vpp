@@ -37,6 +37,13 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/**
+ * @cond (!DPDK)
+ * @file
+ *
+ * Allocate/free network buffers.
+ */
+
 #include <vlib/vlib.h>
 
 uword
@@ -1527,6 +1534,7 @@ VLIB_CLI_COMMAND (show_buffers_command, static) = {
 };
 /* *INDENT-ON* */
 
+/** @endcond */
 /*
  * fd.io coding-style-patch-verification: ON
  *

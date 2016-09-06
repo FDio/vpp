@@ -39,7 +39,7 @@
     feature subgraph arc, which needs to run before @c ip4-lookup.  In
     either base code or a plugin,
     <CODE><PRE>
-    #include <vnet/ip/ip_feature_registration.h>
+    \#include <vnet/ip/ip_feature_registration.h>
     </PRE></CODE>
 
     and add the new feature as shown:
@@ -57,7 +57,7 @@
     @c my-ip4-unicast-feature on an interface:
 
     <CODE><PRE>
-    ip4_main_t *im = &ip4_main;
+    ip4_main_t *im = \&ip4_main;
     ip_lookup_main_t *lm = &im->lookup_main;
     ip_config_main_t *rx_cm =
         &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
