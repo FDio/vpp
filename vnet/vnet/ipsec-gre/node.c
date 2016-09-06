@@ -62,9 +62,9 @@ u8 * format_ipsec_gre_rx_trace (u8 * s, va_list * args)
  *
  * This node remove GRE header.
  *
- * @param vm vlib_main_t corresponding to the current thread.
- * @param node vlib_node_runtime_t data for this node.
- * @param frame vlib_frame_t whose contents should be dispatched.
+ * @param vm         vlib_main_t corresponding to the current thread.
+ * @param node       vlib_node_runtime_t data for this node.
+ * @param from_frame vlib_frame_t whose contents should be dispatched.
  *
  * @par Graph mechanics: buffer metadata, next index usage
  *

@@ -3297,7 +3297,7 @@ add_del_ip6_interface_table (vlib_main_t * vm,
   return error;
 }
 
-VLIB_CLI_COMMAND (set_interface_ip_table_command, static) = {
+VLIB_CLI_COMMAND (set_interface_ip6_table_command, static) = {
   .path = "set interface ip6 table",
   .function = add_del_ip6_interface_table,
   .short_help = "set interface ip6 table <intfc> <table-id>"
@@ -3442,7 +3442,7 @@ show_ip6_local_command_fn (vlib_main_t * vm,
 
 
 
-VLIB_CLI_COMMAND (show_ip_local, static) = {
+VLIB_CLI_COMMAND (show_ip6_local, static) = {
   .path = "show ip6 local",
   .function = show_ip6_local_command_fn,
   .short_help = "Show ip6 local protocol table",

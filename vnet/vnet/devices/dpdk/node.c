@@ -660,9 +660,9 @@ poll_rate_limit (dpdk_main_t * dm)
     b->current_length </code> and dispatch directly to
     ip4-input-no-checksum, or ip6-input. Trace the packet if required.
 
-    @param vm vlib_main_t corresponding to the current thread
+    @param vm   vlib_main_t corresponding to the current thread
     @param node vlib_node_runtime_t
-    @param frame vlib_frame_t input-node, not used.
+    @param f    vlib_frame_t input-node, not used.
 
     @par Graph mechanics: buffer metadata, next index usage
 

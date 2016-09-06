@@ -54,7 +54,7 @@ clib_bihash_hash_8_8 (clib_bihash_kv_8_8_t * v)
 
 /** Format a clib_bihash_kv_8_8_t instance
     @param s - u8 * vector under construction
-    @param v (vararg) - the (key,value) pair to format
+    @param args (vararg) - the (key,value) pair to format
     @return s - the u8 * vector under construction
 */
 static inline u8 *

@@ -40,8 +40,27 @@ DOXY_INPUT ?= \
 	vpp-api \
 	plugins
 
+# Files to exclude, from pre-Doxygen steps, eg because they're
+# selectively compiled.
+# Examples would be to exclude non-DPDK related sources when
+# there's a DPDK equivalent that conflicts.
+# This is specifically for the pre-Doxygen steps; Doxygen uses
+# @cond for this instead.
+DOXY_PRE_EXCLUDE ?= \
+	vlib/vlib/buffer.c
+
+# Generate a regexp for filenames to exclude
+DOXY_PRE_EXCLUDE_REGEXP = ($(subst .,\.,$(shell echo '$(strip $(DOXY_PRE_EXCLUDE))' | sed -e 's/ /|/g')))
+
+# Discover all the directories we might, possibly, maybe, have include files in
 DOXY_INCLUDE_PATH = $(shell set -e; cd $(WS_ROOT); for item in $(DOXY_INPUT); do find $$item -type d; done)
-DOXY_INCLUDE_PATH += $(shell set -e; cpp -v </dev/null 2>&1 | grep -A 1000 '\#include' | awk '/^ /{print $$1}')
+
+# Discover if we have CPP available
+CPP ?= $(shell which cpp)
+ifneq ($(strip $(CPP)),)
+# Add whatever directories CPP normally includes
+DOXY_INCLUDE_PATH += $(shell set -e; $(CPP) -v </dev/null 2>&1 | grep -A 1000 '\#include' | awk '/^ /{print $$1}')
+endif
 
 # Target directory for doxygen output
 DOXY_OUTPUT ?= $(BR)/docs
@@ -67,7 +86,7 @@ ifeq ($(OS_ID),ubuntu)
 		for i in $(DOC_DEB_DEPENDS); do \
 			dpkg-query --show $$i >/dev/null 2>&1 || inst="$$inst $$i"; \
 		done; \
-		[ "$$inst" ] && sudo apt-get $(CONFIRM) $(FORCE) install $$inst
+		if [ "$$inst" ]; then sudo apt-get $(CONFIRM) $(FORCE) install $$inst; fi
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum install $(CONFIRM) $(DOC_RPM_DEPENDS)
 else
@@ -82,8 +101,10 @@ bootstrap-doxygen: $(BR)/.doxygen-bootstrap.ok
 $(BR)/.doxygen-siphon.dep: Makefile
 	set -e; rm -f "$@"; for input in $(DOXY_INPUT); do \
 		find "$(WS_ROOT)/$$input" -type f \
-			\( -name '*.[ch]' -or -name '*.dox' \) \
-			-print | sed -e "s/^/\$$(SIPHON_FILES): /" >> $@; \
+			\( -name '*.[ch]' -or -name '*.dox' \) -print \
+			| grep -v -E '^$(WS_ROOT)/$(DOXY_PRE_EXCLUDE_REGEXP)$$' \
+			| sed -e "s/^/\$$(SIPHON_FILES): /" \
+			>> $@; \
 	done
 
 # Include the source -> siphon dependencies
@@ -93,11 +114,13 @@ $(BR)/.doxygen-siphon.dep: Makefile
 $(SIPHON_FILES): $(DOXY_DIR)/siphon_generate.py $(BR)/.doxygen-bootstrap.ok
 	@rm -rf "$(SIPHON_INPUT)" "$(SIPHON_OUTPUT)"
 	@mkdir -p "$(SIPHON_INPUT)" "$(SIPHON_OUTPUT)"
-	set -e; for input in $(DOXY_INPUT); do \
+	@touch $(SIPHON_INPUT)/files
+	for input in $(DOXY_INPUT); do \
 		cd "$(WS_ROOT)"; \
 		find "$$input" -type f \
-			\( -name '*.[ch]' -or -name '*.dox' \) \
-			-print >> $(SIPHON_INPUT)/files; \
+			\( -name '*.[ch]' -or -name '*.dox' \) -print \
+			| grep -v -E '^$(DOXY_PRE_EXCLUDE_REGEXP)$$' \
+			>> $(SIPHON_INPUT)/files; \
 	done
 	set -e; cd "$(WS_ROOT)"; $(DOXY_DIR)/siphon_generate.py \
 		--output="$(SIPHON_INPUT)" \
