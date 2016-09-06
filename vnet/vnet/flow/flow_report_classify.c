@@ -391,7 +391,7 @@ ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
   ipfix_classify_table_t * table;
   int rv;
   int is_add = -1;
-  u32 classify_table_index;
+  u32 classify_table_index = ~0;
   u8 ip_version = 0;
   u8 transport_protocol = 255;
 
@@ -458,6 +458,14 @@ ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
 
   rv = vnet_flow_report_add_del (frm, &args);
 
+  if (is_add) {
+    if (rv != 0)
+      ipfix_classify_delete_table(table - fcm->tables);
+  } else {
+    if (rv == 0)
+      ipfix_classify_delete_table(table - fcm->tables);
+  }
+
   switch (rv)
     {
     case 0:
@@ -473,14 +481,6 @@ ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
     default:
       return clib_error_return (0, "vnet_flow_report_add_del returned %d", rv);
     }
-
-  if (is_add) {
-    if (rv != 0)
-      ipfix_classify_delete_table(table - fcm->tables);
-  } else {
-    if (rv == 0)
-      ipfix_classify_delete_table(table - fcm->tables);
-  }
 
   return 0;
 }
