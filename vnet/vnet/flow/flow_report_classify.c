@@ -391,7 +391,7 @@ ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
   ipfix_classify_table_t * table;
   int rv;
   int is_add = -1;
-  u32 classify_table_index;
+  u32 classify_table_index = ~0;
   u8 ip_version = 0;
   u8 transport_protocol = 255;
 
@@ -458,29 +458,19 @@ ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
 
   rv = vnet_flow_report_add_del (frm, &args);
 
-  switch (rv)
+  if (rv != 0)
     {
-    case 0:
-      break;
-    case VNET_API_ERROR_NO_SUCH_ENTRY:
-      return clib_error_return (0, "Flow report not found");
-    case VNET_API_ERROR_VALUE_EXIST:
-      return clib_error_return (0, "Flow report already exists");
-    case VNET_API_ERROR_INVALID_VALUE:
-      return clib_error_return (0, "Expecting either still unused values "
-                                   "for both domain_id and src_port "
-                                   "or already used values for both fields");
-    default:
-      return clib_error_return (0, "vnet_flow_report_add_del returned %d", rv);
+      if (is_add)
+	/* Delete table created before call to vnet_flow_report_add_del
+	 * so the whole operation is atomic (in database sense) */
+	ipfix_classify_delete_table (table - fcm->tables);
+      return flow_report_add_del_error_to_clib_error (rv);
     }
 
-  if (is_add) {
-    if (rv != 0)
-      ipfix_classify_delete_table(table - fcm->tables);
-  } else {
-    if (rv == 0)
-      ipfix_classify_delete_table(table - fcm->tables);
-  }
+  if (!is_add)
+    /* After vnet_flow_report_add_del succeeded deleting flow report
+     * delete corresponding table */
+    ipfix_classify_delete_table (table - fcm->tables);
 
   return 0;
 }

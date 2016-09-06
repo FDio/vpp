@@ -300,6 +300,26 @@ int vnet_flow_report_add_del (flow_report_main_t *frm,
   return 0;
 }
 
+clib_error_t * flow_report_add_del_error_to_clib_error (int error)
+{
+    switch (error)
+      {
+      case 0:
+	return 0;
+      case VNET_API_ERROR_NO_SUCH_ENTRY:
+        return clib_error_return (0, "Flow report not found");
+      case VNET_API_ERROR_VALUE_EXIST:
+        return clib_error_return (0, "Flow report already exists");
+      case VNET_API_ERROR_INVALID_VALUE:
+        return clib_error_return (0, "Expecting either still unused values "
+                                     "for both domain_id and src_port "
+                                     "or already used values for both fields");
+      default:
+        return clib_error_return (0, "vnet_flow_report_add_del returned %d",
+                                  error);
+      }
+}
+
 void vnet_flow_reports_reset (flow_report_main_t * frm)
 {
   flow_report_t *fr;
