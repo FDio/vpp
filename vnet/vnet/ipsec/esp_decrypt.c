@@ -305,6 +305,8 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 		  vlib_node_increment_counter (vm, esp_decrypt_node.index,
 					       ESP_DECRYPT_ERROR_REPLAY, 1);
 		  o_bi0 = i_bi0;
+		  to_next[0] = o_bi0;
+		  to_next += 1;
 		  goto trace;
 		}
 	    }
@@ -329,6 +331,8 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 					       ESP_DECRYPT_ERROR_INTEG_ERROR,
 					       1);
 		  o_bi0 = i_bi0;
+		  to_next[0] = o_bi0;
+		  to_next += 1;
 		  goto trace;
 		}
 	    }
@@ -344,6 +348,8 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 	  /* grab free buffer */
 	  uword last_empty_buffer = vec_len (empty_buffers) - 1;
 	  o_bi0 = empty_buffers[last_empty_buffer];
+	  to_next[0] = o_bi0;
+	  to_next += 1;
 	  o_b0 = vlib_get_buffer (vm, o_bi0);
 	  vlib_prefetch_buffer_with_index (vm,
 					   empty_buffers[last_empty_buffer -
@@ -480,9 +486,6 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 		  ((vnet_buffer (i_b0)->output_features.ipsec_flags) &
 		   IPSEC_FLAG_IPSEC_GRE_TUNNEL))
 		next0 = ESP_DECRYPT_NEXT_IPSEC_GRE_INPUT;
-
-	      to_next[0] = o_bi0;
-	      to_next += 1;
 
 	      vnet_buffer (o_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	    }
