@@ -8733,7 +8733,7 @@ api_ipfix_classify_table_add_del (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_ipfix_classify_table_add_del_t *mp;
   int is_add = -1;
-  u32 classify_table_index;
+  u32 classify_table_index = ~0;
   u8 ip_version = 0;
   u8 transport_protocol = 255;
   f64 timeout;

@@ -132,6 +132,8 @@ typedef struct {
 int vnet_flow_report_add_del (flow_report_main_t *frm, 
                               vnet_flow_report_add_del_args_t *a);
 
+clib_error_t * flow_report_add_del_error_to_clib_error (int error);
+
 void vnet_flow_reports_reset (flow_report_main_t * frm);
 
 void vnet_stream_reset (flow_report_main_t * frm, u32 stream_index);
