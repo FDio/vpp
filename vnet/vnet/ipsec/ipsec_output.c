@@ -225,14 +225,18 @@ ipsec_output_node_fn (vlib_main_t * vm,
       ip6_header_t *ip6_0 = 0;
       udp_header_t *udp0;
       u8 is_ipv6 = 0;
+      u32 adj_index0 = 0;
+      ip_lookup_main_t *lm = &ip4_main.lookup_main;
+      ip_adjacency_t *adj0;
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
-
+      adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+      adj0 = ip_get_adjacency (lm, adj_index0);
       ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
-			      sizeof (ethernet_header_t));
+			      adj0->rewrite_header.data_bytes);
 
       /* just forward non ipv4 packets */
       if (PREDICT_FALSE ((ip0->ip_version_and_header_length & 0xF0) != 0x40))
