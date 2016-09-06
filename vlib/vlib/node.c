@@ -449,10 +449,26 @@ vlib_register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   return r->index;
 }
 
+static uword
+null_node_fn (vlib_main_t * vm,
+	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return 0;
+}
+
 void
 vlib_register_all_static_nodes (vlib_main_t * vm)
 {
   vlib_node_registration_t *r;
+  static vlib_node_registration_t null_node_reg = {
+    .function = null_node_fn,
+    .vector_size = sizeof (u32),
+    .name = "null-node",
+  };
+
+  /* make sure that node index 0 is not used by
+     real node */
+  register_node (vm, &null_node_reg);
 
   r = vm->node_main.node_registrations;
   while (r)
