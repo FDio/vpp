@@ -1337,6 +1337,8 @@ vlib_worker_thread_internal (vlib_main_t * vm)
   vlib_node_main_t *nm = &vm->node_main;
   u64 cpu_time_now = clib_cpu_time_now ();
 
+  vec_alloc (nm->pending_interrupt_node_runtime_indices, 32);
+
   while (1)
     {
       vlib_worker_thread_barrier_check ();
@@ -1349,6 +1351,28 @@ vlib_worker_thread_internal (vlib_main_t * vm)
 	cpu_time_now = dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
 				      VLIB_NODE_STATE_POLLING, /* frame */ 0,
 				      cpu_time_now);
+      }
+
+      /* Next handle interrupts. */
+      {
+	uword l = _vec_len (nm->pending_interrupt_node_runtime_indices);
+	uword i;
+	if (l > 0)
+	  {
+	    _vec_len (nm->pending_interrupt_node_runtime_indices) = 0;
+	    for (i = 0; i < l; i++)
+	      {
+		n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
+				      nm->
+				      pending_interrupt_node_runtime_indices
+				      [i]);
+		cpu_time_now =
+		  dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
+				 VLIB_NODE_STATE_INTERRUPT,
+				 /* frame */ 0,
+				 cpu_time_now);
+	      }
+	  }
       }
 
       if (_vec_len (nm->pending_frames))
