@@ -7894,6 +7894,8 @@ vl_api_classify_session_dump_t_handler (vl_api_classify_session_dump_t * mp)
   vnet_classify_table_t *t;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
 
   /* *INDENT-OFF* */
   pool_foreach (t, cm->tables,
@@ -8094,6 +8096,8 @@ static void
   vl_api_ipfix_classify_stream_details_t *rmp;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
@@ -8174,19 +8178,20 @@ static void
   args.src_port = fcm->src_port;
 
   rv = vnet_flow_report_add_del (frm, &args);
-  if (rv != 0)
-    goto out;
 
-  if (is_add)
+  if (rv != 0)
     {
-      if (rv != 0)
+      if (is_add)
+	/* Delete table created before call to vnet_flow_report_add_del
+	 * so the whole operation is atomic */
 	ipfix_classify_delete_table (table - fcm->tables);
+      goto out;
     }
-  else
-    {
-      if (rv == 0)
-	ipfix_classify_delete_table (table - fcm->tables);
-    }
+
+  if (!is_add)
+    /* After vnet_flow_report_add_del succeeded deleting flow report
+     * delete corresponding table */
+    ipfix_classify_delete_table (table - fcm->tables);
 
 out:
   REPLY_MACRO (VL_API_SET_IPFIX_CLASSIFY_STREAM_REPLY);
@@ -8222,6 +8227,8 @@ static void
   u32 i;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
 
   for (i = 0; i < vec_len (fcm->tables); i++)
     if (ipfix_classify_table_index_valid (i))
