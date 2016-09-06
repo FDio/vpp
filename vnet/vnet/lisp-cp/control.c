@@ -3048,12 +3048,8 @@ lisp_cp_lookup (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      memset (tr, 0, sizeof (*tr));
 	      gid_address_copy (&tr->dst_eid, &dst);
-	      if (vec_len (lcm->map_resolvers) > 0)
-		{
-		  clib_memcpy (&tr->map_resolver_ip,
-			       vec_elt_at_index (lcm->map_resolvers, 0),
-			       sizeof (ip_address_t));
-		}
+	      ip_address_copy (&tr->map_resolver_ip,
+			       &lcm->active_map_resolver);
 	    }
 	  gid_address_free (&dst);
 	  gid_address_free (&src);
@@ -3372,6 +3368,7 @@ lisp_cp_init (vlib_main_t * vm)
   lcm->vnet_main = vnet_get_main ();
   lcm->mreq_itr_rlocs = ~0;
   lcm->lisp_pitr = 0;
+  memset (&lcm->active_map_resolver, 0, sizeof (lcm->active_map_resolver));
 
   lcm->pending_map_request_lock =
     clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
