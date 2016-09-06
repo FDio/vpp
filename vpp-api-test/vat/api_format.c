@@ -4360,6 +4360,13 @@ api_sw_interface_dump (vat_main_t * vam)
   strncpy ((char *) mp->name_filter, "gre", sizeof (mp->name_filter) - 1);
   S;
 
+  /* and LISP-GPE interfaces */
+  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  mp->name_filter_valid = 1;
+  strncpy ((char *) mp->name_filter, "lisp_gpe",
+	   sizeof (mp->name_filter) - 1);
+  S;
+
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
