@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_5b937bfa",
+        "filename": "vlib/vlib/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-09-06T21:07:07Z",
+      "side": 1,
+      "message": "Fine idea. Unfortunately, with Pr \u003d { 1.0 }, someone will eventually manage to send buffers to this node,  \n\nI\u0027d add clib_warning (\"Please don\u0027t send buffers here!\") or similar, actually free the buffers, and maybe even add an error counter.",
+      "revId": "fbf96a50fecfc01c4ede30513e1c661357d08f8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
