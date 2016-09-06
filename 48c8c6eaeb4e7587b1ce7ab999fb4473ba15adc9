@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_bb2baf2f",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1473,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-06T19:15:50Z",
+      "side": 1,
+      "message": "Don\u0027t even try to call this function if we are in INIT_FAIL state.",
+      "range": {
+        "startLine": 1473,
+        "startChar": 2,
+        "endLine": 1473,
+        "endChar": 25
+      },
+      "revId": "48c8c6eaeb4e7587b1ce7ab999fb4473ba15adc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
