@@ -1688,6 +1688,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		    clib_memcpy (bhi->hw_address, addr, 6);
 		    clib_memcpy (bei->address, addr, 6);
 		    /* Init l3 packet size allowed on bonded interface */
+		    bhi->max_packet_bytes = ETHERNET_MAX_PACKET_BYTES;
 		    bhi->max_l3_packet_bytes[VLIB_RX] =
 		      bhi->max_l3_packet_bytes[VLIB_TX] =
 		      ETHERNET_MAX_PACKET_BYTES - sizeof (ethernet_header_t);
@@ -1713,6 +1714,17 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 			  vnet_get_sw_interface (vnm, sdev->vlib_sw_if_index);
 			shi->bond_info = VNET_HW_INTERFACE_BOND_INFO_SLAVE;
 			ssi->flags |= VNET_SW_INTERFACE_FLAG_BOND_SLAVE;
+
+			/* Set l3 packet size allowed as the lowest of slave */
+			if (bhi->max_l3_packet_bytes[VLIB_RX] >
+			    shi->max_l3_packet_bytes[VLIB_RX])
+			  bhi->max_l3_packet_bytes[VLIB_RX] =
+			    bhi->max_l3_packet_bytes[VLIB_TX] =
+			    shi->max_l3_packet_bytes[VLIB_RX];
+
+			/* Set max packet size allowed as the lowest of slave */
+			if (bhi->max_packet_bytes > shi->max_packet_bytes)
+			  bhi->max_packet_bytes = shi->max_packet_bytes;
 		      }
 		  }
 	      }
