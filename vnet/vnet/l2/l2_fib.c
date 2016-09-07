@@ -97,7 +97,7 @@ l2fib_table_dump (u32 bd_index, l2fib_entry_key_t ** l2fe_key,
     }
 }
 
-/** Display the contents of the l2fib */
+/** Display the contents of the l2fib. */
 static clib_error_t *
 show_l2fib (vlib_main_t * vm,
 	    unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -228,8 +228,8 @@ l2fib_clear_table (uint keep_static)
   l2learn_main.global_learn_count = 0;
 }
 
-/** Clear all entries in L2FIB
- * TODO: Later we may want a way to remove only the non-static entries
+/** Clear all entries in L2FIB.
+ * @TODO: Later we may want a way to remove only the non-static entries
  */
 static clib_error_t *
 clear_l2fib (vlib_main_t * vm,
@@ -286,7 +286,7 @@ l2fib_add_entry (u64 mac,
 }
 
 /**
- * Add an entry to the L2FIB
+ * Add an entry to the L2FIB.
  * The CLI format is:
  *    l2fib add <mac> <bd> <intf> [static] [bvi]
  *    l2fib add <mac> <bd> filter
@@ -517,7 +517,7 @@ l2fib_del_entry (u64 mac, u32 bd_index)
 }
 
 /**
- * Delete an entry from the L2FIB
+ * Delete an entry from the L2FIB.
  * The CLI format is:
  *    l2fib del <mac> <bd-id>
  */

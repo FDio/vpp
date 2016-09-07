@@ -81,7 +81,7 @@ clib_bitmap_is_equal (uword * a, uword * b)
 }
 
 /** Duplicate a bitmap
-    @param ai - pointer to a bitmap
+    @param v - pointer to a bitmap
     @returns a duplicate of the bitmap
 */
 #define clib_bitmap_dup(v) vec_dup(v)
@@ -158,9 +158,9 @@ clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
 
 /** Sets the ith bit of a bitmap to new_value
     Removes trailing zeros from the bitmap
-    @param a - pointer to the bitmap
+    @param ai - pointer to the bitmap
     @param i - the bit position to interrogate
-    @param new_value - new value for the bit
+    @param value - new value for the bit
     @returns the old value of the bit
 */
 always_inline uword *
@@ -588,7 +588,7 @@ _(andnoti, a = a & ~b, 1) _(ori, a = a | b, 0) _(xori, a = a ^ b, 1)
 /** Return a random bitmap of the requested length
     @param ai - pointer to the destination bitmap
     @param n_bits - number of bits to allocate
-    @param [in/out] seed - pointer to the random number seed
+    @param [in,out] seed - pointer to the random number seed
     @returns a reasonably random bitmap based. See random.h.
 */
      always_inline uword *

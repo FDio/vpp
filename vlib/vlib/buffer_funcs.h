@@ -75,7 +75,7 @@ vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
 /** \brief Translate buffer pointer into buffer index
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
-    @param b - (void *) buffer pointer
+    @param p - (void *) buffer pointer
     @return - (u32) buffer index
 */
 always_inline u32
@@ -135,7 +135,7 @@ vlib_buffer_index_length_in_chain (vlib_main_t * vm, u32 bi)
 /** \brief Copy buffer contents to memory
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
-    @param bi - (u32) buffer index
+    @param buffer_index - (u32) buffer index
     @param contents - (u8 *) memory, <strong>must be large enough</strong>
     @return - (uword) length of buffer chain
 */

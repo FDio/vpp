@@ -14,7 +14,8 @@
  */
 #include <vnet/l2/l2_xcrw.h>
 
-/*
+/**
+ * @file
  * General L2 / L3 cross-connect, used to set up
  * "L2 interface <--> your-favorite-tunnel-encap" tunnels.
  *

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 /**
- * @file interface.c
+ * @file
  * @brief L2-GRE over IPSec tunnel interface.
  *
  * Creates ipsec-gre tunnel interface.

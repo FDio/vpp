@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 /**
- * @file ipsec_gre.h
+ * @file
  * @brief L2-GRE over IPSec packet processing.
 */
 

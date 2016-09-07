@@ -168,7 +168,7 @@ typedef struct
 } vlib_counter_t;
 
 /** Add two combined counters, results in the first counter
-    @param [in/out] a - (vlib_counter_t *) dst counter
+    @param [in,out] a - (vlib_counter_t *) dst counter
     @param b - (vlib_counter_t *) src counter
 */
 
@@ -180,7 +180,7 @@ vlib_counter_add (vlib_counter_t * a, vlib_counter_t * b)
 }
 
 /** Subtract combined counters, results in the first counter
-    @param [in/out] a - (vlib_counter_t *) dst counter
+    @param [in,out] a - (vlib_counter_t *) dst counter
     @param b - (vlib_counter_t *) src counter
 */
 always_inline void

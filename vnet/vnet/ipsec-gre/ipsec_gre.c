@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 /**
- * @file ipsec_gre.c
+ * @file
  * @brief L2-GRE over IPSec packet processing.
  *
  * Add GRE header to thr packet and send it to the esp-encrypt node.

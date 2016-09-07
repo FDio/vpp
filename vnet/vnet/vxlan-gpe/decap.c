@@ -96,7 +96,7 @@ static u8 * format_vxlan_gpe_with_length (u8 * s, va_list * args)
  * @param *vm
  * @param *node
  * @param *from_frame
- * @param ip_ip4
+ * @param is_ip4
  *
  * @return from_frame->n_vectors
  *

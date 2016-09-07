@@ -37,6 +37,13 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/**
+ * @cond DPDK
+ * @file
+ *
+ * Allocate/free network buffers with DPDK.
+ */
+
 #include <rte_config.h>
 
 #include <rte_common.h>
@@ -1398,6 +1405,7 @@ buffer_state_validation_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (buffer_state_validation_init);
 #endif
 
+/** @endcond */
 /*
  * fd.io coding-style-patch-verification: ON
  *

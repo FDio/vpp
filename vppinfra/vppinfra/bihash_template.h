@@ -14,7 +14,7 @@
  * limitations under the License.
 */
 
-/** @if DOCUMENTATION_IS_IN_BIHASH_DOC_H */
+/** @cond DOCUMENTATION_IS_IN_BIHASH_DOC_H */
 
 /*
  * Note: to instantiate the template multiple times in a single file,
@@ -203,7 +203,7 @@ static inline int BV (clib_bihash_search_inline_2)
 
 #endif /* __included_bihash_template_h__ */
 
-/** @endif */
+/** @endcond */
 
 /*
  * fd.io coding-style-patch-verification: ON
