@@ -1102,6 +1102,7 @@ format_function_t format_vlib_node_graph;
 format_function_t format_vlib_node_name;
 format_function_t format_vlib_next_node_name;
 format_function_t format_vlib_node_and_next;
+format_function_t format_vlib_arp_age;
 format_function_t format_vlib_cpu_time;
 format_function_t format_vlib_time;
 /* Parse node name -> node index. */
