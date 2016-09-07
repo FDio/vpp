@@ -157,6 +157,9 @@ typedef struct
    * The index of the adj-fib entry created
    */
   fib_node_index_t fib_entry_index;
+
+  /* Keep track of adj counter to check if entry is in use */
+  vlib_counter_t cached_adjacency_counter;
 } ethernet_arp_ip4_entry_t;
 
 ethernet_arp_ip4_entry_t *ip4_neighbor_entries (u32 sw_if_index);
