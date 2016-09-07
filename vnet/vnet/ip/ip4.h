@@ -443,6 +443,9 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index);
 clib_error_t *
 ip4_set_arp_limit (u32 arp_limit);
 
+clib_error_t *
+ip4_set_arp_timeout (u64 arp_timeout);
+
 uword
 ip4_udp_register_listener (vlib_main_t * vm,
 			   u16 dst_port,
