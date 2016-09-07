@@ -2907,6 +2907,18 @@ static void *vl_api_feature_enable_disable_t_print
   FINISH;
 }
 
+static void *vl_api_set_get_arp_entries_timeout_t_print
+  (vl_api_set_get_arp_entries_timeout_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: set_get_arp_entries_timeout ");
+
+  s = format (s, "arp_timeout %llu ", ntohl (mp->arp_timeout));
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -3068,6 +3080,7 @@ _(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
 _(LISP_ADJACENCIES_GET, lisp_adjacencies_get)                           \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
+_(SET_GET_ARP_ENTRIES_TIMEOUT, set_get_arp_entries_timeout)             \
 _(DELETE_SUBIF, delete_subif)                                           \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
 _(PUNT, punt)                                                           \

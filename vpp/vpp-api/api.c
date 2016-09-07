@@ -458,6 +458,7 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
+_(SET_GET_ARP_ENTRIES_TIMEOUT, set_get_arp_entries_timeout)             \
 _(DELETE_SUBIF, delete_subif)                                           \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
 _(PUNT, punt)                                                           \
@@ -9222,6 +9223,40 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_FEATURE_ENABLE_DISABLE_REPLY);
+}
+
+static void
+  vl_api_set_get_arp_entries_timeout_t_handler
+  (vl_api_set_get_arp_entries_timeout_t * mp)
+{
+  int rv;
+  vl_api_set_get_arp_entries_timeout_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error;
+  u64 arp_timeout = (u64) ~ 0;
+
+  vnm->api_errno = 0;
+
+  if (~0 == ntohl (mp->arp_timeout))
+    error = ip4_get_arp_timeout (&arp_timeout);
+  else
+    error = ip4_set_arp_timeout (ntohl (mp->arp_timeout), &arp_timeout);
+
+  if (error)
+    {
+      clib_error_report (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
+  else
+    {
+      rv = vnm->api_errno;
+    }
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_SET_GET_ARP_ENTRIES_TIMEOUT_REPLY,
+  ({
+    rmp->arp_timeout = ntohl(arp_timeout);
+  }));
+  /* *INDENT-ON* */
 }
 
 #define BOUNCE_HANDLER(nn)                                              \
