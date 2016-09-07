@@ -2698,6 +2698,18 @@ static void *vl_api_ipsec_gre_tunnel_dump_t_print
   FINISH;
 }
 
+static void *vl_api_set_get_arp_entries_timeout_t_print
+  (vl_api_set_get_arp_entries_timeout_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: set_get_arp_entries_timeout ");
+
+  s = format (s, "arp_timeout %llu ", ntohl (mp->arp_timeout));
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -2855,6 +2867,7 @@ _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
+_(SET_GET_ARP_ENTRIES_TIMEOUT, set_get_arp_entries_timeout)             \
 _(DELETE_SUBIF, delete_subif)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
