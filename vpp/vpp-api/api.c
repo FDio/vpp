@@ -403,7 +403,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
-_(DELETE_SUBIF, delete_subif)
+_(DELETE_SUBIF, delete_subif)                                           \
+_(SET_ARP_ENTRIES_TIMEOUT, set_arp_entries_timeout)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -8364,6 +8365,31 @@ vl_api_delete_subif_t_handler (vl_api_delete_subif_t * mp)
   rv = vnet_delete_sub_interface (ntohl (mp->sw_if_index));
 
   REPLY_MACRO (VL_API_DELETE_SUBIF_REPLY);
+}
+
+static void
+vl_api_set_arp_entries_timeout_t_handler (vl_api_set_arp_entries_timeout_t * mp)
+{
+  int rv;
+  vl_api_set_arp_entries_timeout_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error;
+
+  vnm->api_errno = 0;
+
+  error = ip4_set_arp_timeout (ntohl (mp->arp_timeout));
+
+  if (error)
+    {
+      clib_error_report (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
+  else
+    {
+      rv = vnm->api_errno;
+    }
+
+  REPLY_MACRO (VL_API_SET_ARP_ENTRIES_TIMEOUT_REPLY);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

@@ -166,6 +166,19 @@ format_vlib_time (u8 * s, va_list * va)
 }
 
 u8 *
+format_vlib_arp_age (u8 * s, va_list * va)
+{
+  vlib_main_t * vm = va_arg (*va, vlib_main_t *);
+  u64 cpu_time = va_arg (*va, u64);
+  f64 dt;
+
+  dt =
+    (clib_cpu_time_now () -
+     cpu_time) * vm->clib_time.seconds_per_clock;
+  return format (s, "%U", format_vlib_time, vm, dt);
+}
+
+u8 *
 format_vlib_cpu_time (u8 * s, va_list * va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
