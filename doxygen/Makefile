@@ -28,38 +28,63 @@ DOC_RPM_DEPENDS = doxygen graphviz pyparsing
 # Doxygen configuration and our utility scripts
 DOXY_DIR ?= $(WS_ROOT)/doxygen
 
-# Input directories and files
-DOXY_INPUT ?= \
-	README.md \
+# Primary source directories
+DOXY_SRC_DIRECTORIES = \
 	vppinfra \
 	svm \
 	vlib \
 	vlib-api \
 	vnet \
 	vpp \
-	vpp-api \
+	vpp-api
+
+# Input directories and files
+DOXY_INPUT ?= \
+	README.md \
+	$(DOXY_SRC_DIRECTORIES) \
 	plugins
 
 # Files to exclude, from pre-Doxygen steps, eg because they're
 # selectively compiled.
 # Examples would be to exclude non-DPDK related sources when
 # there's a DPDK equivalent that conflicts.
-# This is specifically for the pre-Doxygen steps; Doxygen uses
-# @cond for this instead.
-DOXY_PRE_EXCLUDE ?= \
-	vlib/vlib/buffer.c
+# These must be left-anchored paths for the regexp below to work.
+DOXY_EXCLUDE ?= \
+	vlib/vlib/buffer.c \
+	vlib/example \
+	plugins/sample-plugin
 
 # Generate a regexp for filenames to exclude
-DOXY_PRE_EXCLUDE_REGEXP = ($(subst .,\.,$(shell echo '$(strip $(DOXY_PRE_EXCLUDE))' | sed -e 's/ /|/g')))
+DOXY_EXCLUDE_REGEXP = ($(subst .,\.,$(shell echo '$(strip $(DOXY_EXCLUDE))' | sed -e 's/ /|/g')))
 
-# Discover all the directories we might, possibly, maybe, have include files in
-DOXY_INCLUDE_PATH = $(shell set -e; cd $(WS_ROOT); for item in $(DOXY_INPUT); do find $$item -type d; done)
+# Include all the normal source directories in the include file path
+DOXY_INCLUDE_PATH = $(DOXY_SRC_DIRECTORIES)
+
+# Also include any plugin directories that exist
+DOXY_INCLUDE_PATH += \
+	$(shell find $(WS_ROOT)/plugins -maxdepth 1 -type d | sed -e 's@^$(WS_ROOT)/*@@')
+
+# Find API header directories and include them in the header path.
+# This is only useful if VPP and plugins are already built; nothing
+# here depends on those targets. We don't build documentation for these
+# header files, they're just added to the INCLUDE search path for Doxygen.
+_vpp_br = $(shell find "$(BR)" -maxdepth 1 -type d \
+	'(' -name build-vpp_debug-native -o -name build-vpp-native ')' -print \
+	| sed -e 's@^$(WS_ROOT)/*@@' -e 1q)
+ifneq ($(strip $(_vpp_br)),)
+DOXY_INCLUDE_PATH += \
+	$(_vpp_br)/vlib-api \
+	$(_vpp_br)/vpp
+# Also include any plugin directories that exist
+DOXY_INCLUDE_PATH += \
+	$(shell find $(WS_ROOT)/$(_vpp_br)/plugins -maxdepth 1 -type d | sed -e 's@^$(WS_ROOT)/*@@')
+endif
 
 # Discover if we have CPP available
-CPP ?= $(shell which cpp)
-ifneq ($(strip $(CPP)),)
-# Add whatever directories CPP normally includes
-DOXY_INCLUDE_PATH += $(shell set -e; $(CPP) -v </dev/null 2>&1 | grep -A 1000 '\#include' | awk '/^ /{print $$1}')
+_cpp = $(shell which cpp)
+ifneq ($(strip $(_cpp)),)
+# Add whatever directories CPP normally includes to the header path
+DOXY_INCLUDE_PATH += $(shell set -e; $(_cpp) -v </dev/null 2>&1 | awk 'f&&/^ /{print $$1} /^\#include/{f=1}')
 endif
 
 # Target directory for doxygen output
@@ -81,6 +106,7 @@ SIPHON_FILES = $(addprefix $(SIPHON_INPUT)/,$(addsuffix .siphon,$(SIPHONS)))
 SIPHON_DOCS = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .md,$(SIPHONS)))
 
 $(BR)/.doxygen-bootstrap.ok:
+	@echo "Checking whether dependencies for Doxygen are installed..."
 ifeq ($(OS_ID),ubuntu)
 	@set -e; inst=; \
 		for i in $(DOC_DEB_DEPENDS); do \
@@ -99,10 +125,11 @@ bootstrap-doxygen: $(BR)/.doxygen-bootstrap.ok
 
 .DELETE_ON_ERROR: $(BR)/.doxygen-siphon.dep
 $(BR)/.doxygen-siphon.dep: Makefile
-	set -e; rm -f "$@"; for input in $(DOXY_INPUT); do \
+	@echo "Building siphon dependencies..."
+	@set -e; rm -f "$@"; for input in $(DOXY_INPUT); do \
 		find "$(WS_ROOT)/$$input" -type f \
 			\( -name '*.[ch]' -or -name '*.dox' \) -print \
-			| grep -v -E '^$(WS_ROOT)/$(DOXY_PRE_EXCLUDE_REGEXP)$$' \
+			| grep -v -E '^$(WS_ROOT)/$(DOXY_EXCLUDE_REGEXP)' \
 			| sed -e "s/^/\$$(SIPHON_FILES): /" \
 			>> $@; \
 	done
@@ -115,21 +142,24 @@ $(SIPHON_FILES): $(DOXY_DIR)/siphon_generate.py $(BR)/.doxygen-bootstrap.ok
 	@rm -rf "$(SIPHON_INPUT)" "$(SIPHON_OUTPUT)"
 	@mkdir -p "$(SIPHON_INPUT)" "$(SIPHON_OUTPUT)"
 	@touch $(SIPHON_INPUT)/files
-	for input in $(DOXY_INPUT); do \
+	@echo "Collating source file list for siphoning..."
+	@for input in $(DOXY_INPUT); do \
 		cd "$(WS_ROOT)"; \
 		find "$$input" -type f \
 			\( -name '*.[ch]' -or -name '*.dox' \) -print \
-			| grep -v -E '^$(DOXY_PRE_EXCLUDE_REGEXP)$$' \
+			| grep -v -E '^$(DOXY_EXCLUDE_REGEXP)' \
 			>> $(SIPHON_INPUT)/files; \
 	done
-	set -e; cd "$(WS_ROOT)"; $(DOXY_DIR)/siphon_generate.py \
+	@echo "Generating siphons..."
+	@set -e; cd "$(WS_ROOT)"; $(DOXY_DIR)/siphon_generate.py \
 		--output="$(SIPHON_INPUT)" \
 		"@$(SIPHON_INPUT)/files"
 
 
 .DELETE_ON_ERROR: $(SIPHON_DOCS)
 $(SIPHON_OUTPUT)/%.md: $(SIPHON_INPUT)/%.siphon $(DOXY_DIR)/siphon_process.py
-	set -e; cd "$(WS_ROOT)"; \
+	@echo "Processing siphon from $(notdir $<)..."
+	@set -e; cd "$(WS_ROOT)"; \
 		$(DOXY_DIR)/siphon_process.py --type=$(basename $(notdir $<)) \
 			--output="$(SIPHON_OUTPUT)" $< > $@
 
@@ -140,11 +170,13 @@ doxygen-siphon: $(SIPHON_DOCS)
 # Generate the doxygen docs
 doxygen: $(SIPHON_DOCS)
 	@mkdir -p "$(DOXY_OUTPUT)"
+	@echo "Running Doxygen..."
 	set -e; cd "$(WS_ROOT)"; \
 	    ROOT="$(WS_ROOT)" \
 	    BUILD_ROOT="$(BR)" \
 	    INPUT="$(addprefix $(WS_ROOT)/,$(DOXY_INPUT)) $(EXTRA_DOXY_INPUT)" \
 	    INCLUDE_PATH="$(DOXY_INCLUDE_PATH)" \
+	    EXCLUDE="$(DOXY_EXCLUDE)" \
 	    HTML=YES \
 	    VERSION="`git describe --tags --dirty`" \
 	    doxygen $(DOXY_DIR)/doxygen.cfg
