@@ -9,8 +9,22 @@ UNCHECKSTYLED_FILES=""
 # If the user provides --fix, then actually fix things
 # Note: this is meant for use outside of the CI Jobs, by users cleaning things up
 
-if [ $# -gt 0 ] && [ ${1} == '--fix' ]; then
-    FIX="1"
+while true; do
+	case ${1} in
+		--fix)
+			FIX="1"
+			;;
+		--full)
+			FULL="1"
+			;;
+	esac
+	shift || break
+done
+
+if [ "${FULL}" == "1" ]; then
+	FILELIST=$(git ls-tree -r HEAD --name-only)
+else
+	FILELIST=$(git diff HEAD~1.. --name-only; git ls-files -m)
 fi
 
 # Check to make sure we have indent.  Exit if we don't with an error message, but
@@ -24,7 +38,7 @@ indent --version
 
 cd ${VPP_DIR}
 git status
-for i in `git ls-tree -r HEAD --name-only`;do
+for i in ${FILELIST}; do
     if [ -f ${i} ] && [ ${i} != "build-root/scripts/checkstyle.sh" ] && [ ${i} != "build-root/emacs-lisp/fix-coding-style.el" ]; then
         grep -q "fd.io coding-style-patch-verification: ON" ${i}
         if [ $? == 0 ]; then

@@ -80,6 +80,8 @@ help:
 	@echo " ctags               - (re)generate ctags database"
 	@echo " gtags               - (re)generate gtags database"
 	@echo " cscope              - (re)generate cscope database"
+	@echo " checkstyle          - check coding style"
+	@echo " fixstyle            - fix coding style"
 	@echo " doxygen             - (re)generate documentation"
 	@echo " bootstrap-doxygen   - setup Doxygen dependencies"
 	@echo " wipe-doxygen        - wipe all generated documentation"
@@ -233,6 +235,11 @@ gtags: ctags
 cscope: cscope.files
 	@cscope -b -q -v
 
+checkstyle:
+	@build-root/scripts/checkstyle.sh
+
+fixstyle:
+	@build-root/scripts/checkstyle.sh --fix
 
 #
 # Build the documentation
