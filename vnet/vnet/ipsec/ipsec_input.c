@@ -56,7 +56,7 @@ static char *ipsec_input_error_strings[] = {
 
 typedef struct
 {
-  u32 tunnel_index;
+  u32 sa_id;
   u32 spi;
   u32 seq;
 } ipsec_input_trace_t;
@@ -69,15 +69,19 @@ format_ipsec_input_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ipsec_input_trace_t *t = va_arg (*args, ipsec_input_trace_t *);
 
-  if (t->tunnel_index != ~0)
+  if (t->spi == 0 && t->seq == 0)
     {
-      s =
-	format (s, "esp: tunnel %u spi %u seq %u", t->tunnel_index, t->spi,
-		t->seq);
+      s = format (s, "esp: no esp packet");
+      return s;
+    }
+
+  if (t->sa_id != 0)
+    {
+      s = format (s, "esp: sa_id %u spi %u seq %u", t->sa_id, t->spi, t->seq);
     }
   else
     {
-      s = format (s, "esp: no tunnel spi %u seq %u", t->spi, t->seq);
+      s = format (s, "esp: no sa spi %u seq %u", t->spi, t->seq);
     }
   return s;
 }
@@ -207,8 +211,8 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 	  ip4_header_t *ip0;
 	  esp_header_t *esp0;
 	  ip4_ipsec_config_t *c0;
-	  u32 tunnel_index0 = ~0;
 	  ipsec_spd_t *spd0;
+	  ipsec_policy_t *p0 = 0;
 
 	  bi0 = to_next[0] = from[0];
 	  from += 1;
@@ -236,14 +240,14 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 		 clib_net_to_host_u32 (esp0->spi),
 		 clib_net_to_host_u16 (ip0->length), spd0->id);
 #endif
-	      ipsec_policy_t *p0;
+
 	      p0 = ipsec_input_protect_policy_match (spd0,
 						     clib_net_to_host_u32
-						     (ip0->
-						      src_address.as_u32),
+						     (ip0->src_address.
+						      as_u32),
 						     clib_net_to_host_u32
-						     (ip0->
-						      dst_address.as_u32),
+						     (ip0->dst_address.
+						      as_u32),
 						     clib_net_to_host_u32
 						     (esp0->spi));
 
@@ -267,9 +271,13 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 	    {
 	      ipsec_input_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      tr->tunnel_index = tunnel_index0;
-	      tr->spi = clib_host_to_net_u32 (esp0->spi);
-	      tr->seq = clib_host_to_net_u32 (esp0->seq);
+	      if (ip0->protocol == IP_PROTOCOL_IPSEC_ESP)
+		{
+		  if (p0)
+		    tr->sa_id = p0->sa_id;
+		  tr->spi = clib_host_to_net_u32 (esp0->spi);
+		  tr->seq = clib_host_to_net_u32 (esp0->seq);
+		}
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -338,8 +346,8 @@ VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
 	  ip6_header_t *ip0;
 	  esp_header_t *esp0;
 	  ip4_ipsec_config_t *c0;
-	  u32 tunnel_index0 = ~0;
 	  ipsec_spd_t *spd0;
+	  ipsec_policy_t *p0 = 0;
 	  u32 header_size = sizeof (ip0[0]);
 
 	  bi0 = to_next[0] = from[0];
@@ -368,7 +376,6 @@ VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
 		 clib_net_to_host_u16 (ip0->payload_length) + header_size,
 		 spd0->id);
 #endif
-	      ipsec_policy_t *p0;
 	      p0 = ipsec_input_ip6_protect_policy_match (spd0,
 							 &ip0->src_address,
 							 &ip0->dst_address,
@@ -395,9 +402,13 @@ VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
 	    {
 	      ipsec_input_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      tr->tunnel_index = tunnel_index0;
-	      tr->spi = clib_host_to_net_u32 (esp0->spi);
-	      tr->seq = clib_host_to_net_u32 (esp0->seq);
+	      if (ip0->protocol == IP_PROTOCOL_IPSEC_ESP)
+		{
+		  if (p0)
+		    tr->sa_id = p0->sa_id;
+		  tr->spi = clib_host_to_net_u32 (esp0->spi);
+		  tr->seq = clib_host_to_net_u32 (esp0->seq);
+		}
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
