@@ -43,21 +43,24 @@
 /**
  * @file
  * @brief PCAP function.
- *  Usage
  *
- * #include <vnet/unix/pcap.h>
+ * Usage:
+ *
+ * <code><pre>
+ * \#include <vnet/unix/pcap.h>
  *
  * static pcap_main_t pcap = {
  *  .file_name = "/tmp/ip4",
  *  .n_packets_to_capture = 2,
  *  .packet_type = PCAP_PACKET_TYPE_ip,
  * };
+ * </pre></code>
  *
  * To add a buffer:
  *
- *  pcap_add_buffer (&pcap, vm, pi0, 128);
+ *  <code><pre>pcap_add_buffer (&pcap, vm, pi0, 128);</pre></code>
  *
- * File will be written after n_packets_to_capture or call to pcap_write (&pcap).
+ * File will be written after @c n_packets_to_capture or call to pcap_write (&amp;pcap).
  *
 */
 

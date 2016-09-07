@@ -29,8 +29,9 @@
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 
-/*
- * Ethernet bridge learning
+/**
+ * @file
+ * Ethernet bridge learning.
  *
  * Populate the mac table with entries mapping the packet's source mac + bridge
  * domain ID to the input sw_if_index.
@@ -102,7 +103,7 @@ typedef enum
 } l2learn_next_t;
 
 
-/** Perform learning on one packet based on the mac table lookup result */
+/** Perform learning on one packet based on the mac table lookup result. */
 
 static_always_inline void
 l2learn_process (vlib_node_runtime_t * node,
@@ -462,7 +463,7 @@ VLIB_INIT_FUNCTION (l2learn_init);
 
 
 /**
- * set subinterface learn enable/disable
+ * Set subinterface learn enable/disable.
  * The CLI format is:
  *    set interface l2 learn <interface> [disable]
  */

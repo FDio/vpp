@@ -490,7 +490,7 @@ VLIB_INIT_FUNCTION (l2flood_init);
 
 
 
-/** Add the L3 input node for this ethertype to the next nodes structure */
+/** Add the L3 input node for this ethertype to the next nodes structure. */
 void
 l2flood_register_input_type (vlib_main_t * vm,
 			     ethernet_type_t type, u32 node_index)
@@ -505,7 +505,7 @@ l2flood_register_input_type (vlib_main_t * vm,
 
 
 /**
- * set subinterface flood enable/disable
+ * Set subinterface flood enable/disable.
  * The CLI format is:
  * set interface l2 flood <interface> [disable]
  */

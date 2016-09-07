@@ -786,9 +786,9 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
 }
 
 /**
- * @brief workaround for a known #include bug
- * #include <linux/ipv6.h> causes multiple definitions if
- * netinet/in.h is also included.
+ * @brief workaround for a known include file bug.
+ * including @c <linux/ipv6.h> causes multiple definitions if
+ * @c <netinet/in.h is also included.
  */
 struct in6_ifreq {
 	struct in6_addr	ifr6_addr;
@@ -797,7 +797,7 @@ struct in6_ifreq {
 };
 
 /**
- * @brief Add or Del tun/tap interface address
+ * @brief Add or Del tun/tap interface address.
  *
  * Both the v6 interface address API and the way ifconfig
  * displays subinterfaces differ from their v4 couterparts.

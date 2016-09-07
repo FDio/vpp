@@ -57,8 +57,8 @@
 
     Here's an example:
 
-    <pre>
-    #define EXAMPLE_POLL_PERIOD 10.0
+    <code><pre>
+    \#define EXAMPLE_POLL_PERIOD 10.0
 
     static uword
     example_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
@@ -120,7 +120,7 @@
       .type = VLIB_NODE_TYPE_PROCESS,
       .name = "example-process",
     };
-    </pre>
+    </pre></code>
 
     In this example, the VLIB process node waits for an event to
     occur, or for 10 seconds to elapse. The code demuxes on the event
