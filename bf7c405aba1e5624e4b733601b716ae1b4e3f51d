@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_5e6c899c",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-07T12:32:36Z",
+      "side": 1,
+      "message": "Is it possible for DOT1AH be the first ethertype without a B-VLAN tag? Wondering if B-VLAN tag should also be considered as part of the sub-interface lookup?",
+      "range": {
+        "startLine": 437,
+        "startChar": 26,
+        "endLine": 437,
+        "endChar": 46
+      },
+      "revId": "bf7c405aba1e5624e4b733601b716ae1b4e3f51d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_de5899fc",
+        "filename": "vnet/vnet/ethernet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-07T12:32:36Z",
+      "side": 1,
+      "message": "should be \"else if\"",
+      "range": {
+        "startLine": 185,
+        "startChar": 6,
+        "endLine": 185,
+        "endChar": 8
+      },
+      "revId": "bf7c405aba1e5624e4b733601b716ae1b4e3f51d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_be5dddeb",
+        "filename": "vnet/vnet/ethernet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-07T12:32:36Z",
+      "side": 1,
+      "message": "By not saving outer VLAN ID, PBB packets with different outer B-VLAN tag and the same pbb_sid will be considered as the same sub-interface. Is this acceptable? Also, is it possible for PBB header to not have a B-VLAN tag? Are we not considering this case?",
+      "range": {
+        "startLine": 188,
+        "startChar": 4,
+        "endLine": 188,
+        "endChar": 12
+      },
+      "revId": "bf7c405aba1e5624e4b733601b716ae1b4e3f51d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_5e0369b8",
+        "filename": "vnet/vnet/interface_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 658,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-07T12:32:36Z",
+      "side": 1,
+      "message": "If vlanid is not specified, what would be the vlan id value used for encap operation on output? Or, is the encap value specified separately?",
+      "range": {
+        "startLine": 658,
+        "startChar": 20,
+        "endLine": 658,
+        "endChar": 25
+      },
+      "revId": "bf7c405aba1e5624e4b733601b716ae1b4e3f51d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
