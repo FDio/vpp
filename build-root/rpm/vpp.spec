@@ -82,6 +82,8 @@ do
 	# make lib symlinks
 	( cd %{buildroot}%{_libdir} && 
           ln -fs $file $(echo $file | sed -e 's/\(\.so\.[0-9]\+\).*/\1/') )
+	( cd %{buildroot}%{_libdir} && 
+          ln -fs $file $(echo $file | sed -e 's/\(\.so\)\.[0-9]\+.*/\1/') )
 done
 
 #
