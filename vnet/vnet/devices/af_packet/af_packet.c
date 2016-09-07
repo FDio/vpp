@@ -339,10 +339,14 @@ static clib_error_t *
 af_packet_init (vlib_main_t * vm)
 {
   af_packet_main_t *apm = &af_packet_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   memset (apm, 0, sizeof (af_packet_main_t));
 
   mhash_init_vec_string (&apm->if_index_by_host_if_name, sizeof (uword));
+
+  vec_validate_aligned (apm->rx_buffers, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
 
   return 0;
 }
