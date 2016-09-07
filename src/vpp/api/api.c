@@ -151,6 +151,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
   ip_source_and_port_range_check_add_del)                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
+_(SET_ARP_ENTRIES_TIMEOUT, set_arp_entries_timeout)                     \
+_(GET_ARP_ENTRIES_TIMEOUT, get_arp_entries_timeout)                     \
 _(DELETE_SUBIF, delete_subif)                                           \
 _(PUNT, punt)                                                           \
 _(FEATURE_ENABLE_DISABLE, feature_enable_disable)
@@ -2327,6 +2329,42 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_FEATURE_ENABLE_DISABLE_REPLY);
+}
+
+static void
+  vl_api_set_arp_entries_timeout_t_handler
+  (vl_api_set_arp_entries_timeout_t * mp)
+{
+  int rv;
+  vl_api_set_arp_entries_timeout_reply_t *rmp;
+  u64 arp_timeout = (u64) ~ 0;
+
+  rv = ip4_set_arp_timeout (ntohl (mp->arp_timeout), &arp_timeout);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_SET_ARP_ENTRIES_TIMEOUT_REPLY,
+  ({
+    rmp->arp_timeout = ntohl(arp_timeout);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+  vl_api_get_arp_entries_timeout_t_handler
+  (vl_api_get_arp_entries_timeout_t * mp)
+{
+  int rv;
+  vl_api_get_arp_entries_timeout_reply_t *rmp;
+  u64 arp_timeout = (u64) ~ 0;
+
+  rv = ip4_get_arp_timeout (&arp_timeout);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_GET_ARP_ENTRIES_TIMEOUT_REPLY,
+  ({
+    rmp->arp_timeout = ntohl(arp_timeout);
+  }));
+  /* *INDENT-ON* */
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

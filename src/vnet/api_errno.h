@@ -92,7 +92,8 @@ _(INVALID_SUB_SW_IF_INDEX, -98, "Invalid sub-interface sw_if_index")    \
 _(TABLE_TOO_BIG, -99, "Table too big")                                  \
 _(CANNOT_ENABLE_DISABLE_FEATURE, -100, "Cannot enable/disable feature") \
 _(BFD_EEXIST, -101, "Duplicate BFD session") \
-_(BFD_NOENT, -102, "No such BFD session")
+_(BFD_NOENT, -102, "No such BFD session") \
+_(ARP_TIMEOUT_INVALID, -103, "Either 0 or greater than 20 allowed")
 
 typedef enum
 {
