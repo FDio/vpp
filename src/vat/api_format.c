@@ -3558,7 +3558,67 @@ static void vl_api_flow_classify_details_t_handler_json
   vat_json_object_add_uint (node, "table_index", ntohl (mp->table_index));
 }
 
+static void vl_api_set_arp_entries_timeout_reply_t_handler
+  (vl_api_set_arp_entries_timeout_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (retval == 0)
+    {
+      fformat (vam->ofp, "arp_timeout : %llu seconds\n",
+	       ntohl (mp->arp_timeout));
+    }
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
 
+static void vl_api_set_arp_entries_timeout_reply_t_handler_json
+  (vl_api_set_arp_entries_timeout_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "arp_timeout", ntohl (mp->arp_timeout));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void vl_api_get_arp_entries_timeout_reply_t_handler
+  (vl_api_get_arp_entries_timeout_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (retval == 0)
+    {
+      fformat (vam->ofp, "arp_timeout : %llu  seconds\n",
+	       ntohl (mp->arp_timeout));
+    }
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void vl_api_get_arp_entries_timeout_reply_t_handler_json
+  (vl_api_get_arp_entries_timeout_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "arp_timeout", ntohl (mp->arp_timeout));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
 
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
@@ -3963,6 +4023,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
  ip_source_and_port_range_check_interface_add_del_reply)                \
 _(IPSEC_GRE_ADD_DEL_TUNNEL_REPLY, ipsec_gre_add_del_tunnel_reply)       \
 _(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)                   \
+_(SET_ARP_ENTRIES_TIMEOUT_REPLY, set_arp_entries_timeout_reply)         \
+_(GET_ARP_ENTRIES_TIMEOUT_REPLY, get_arp_entries_timeout_reply)         \
 _(DELETE_SUBIF_REPLY, delete_subif_reply)                               \
 _(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
 _(PUNT_REPLY, punt_reply)                                               \
@@ -17105,6 +17167,56 @@ api_sw_interface_set_mtu (vat_main_t * vam)
   W;
 }
 
+static int
+api_set_arp_entries_timeout (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_set_arp_entries_timeout_t *mp;
+  f64 timeout;
+  u64 arp_timeout = (u64) ~ 0;
+  u8 arp_timeout_set = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "arp_timeout %llu", &arp_timeout))
+	arp_timeout_set = 1;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (arp_timeout_set == 0)
+    {
+      errmsg ("missing timeout value");
+      return -99;
+    }
+
+  M (SET_ARP_ENTRIES_TIMEOUT, set_arp_entries_timeout);
+
+  mp->arp_timeout = ntohl (arp_timeout);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
+api_get_arp_entries_timeout (vat_main_t * vam)
+{
+  vl_api_get_arp_entries_timeout_t *mp;
+  f64 timeout;
+
+  M (GET_ARP_ENTRIES_TIMEOUT, get_arp_entries_timeout);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
 
 static int
 q_or_quit (vat_main_t * vam)
@@ -17767,6 +17879,8 @@ _(ip_source_and_port_range_check_interface_add_del,                     \
 _(ipsec_gre_add_del_tunnel,                                             \
   "src <addr> dst <addr> local_sa <sa-id> remote_sa <sa-id> [del]")     \
 _(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")                          \
+_(set_arp_entries_timeout, "arp_timeout <nn>")                          \
+_(get_arp_entries_timeout, "")                                          \
 _(delete_subif,"<intfc> | sw_if_index <nn>")                            \
 _(l2_interface_pbb_tag_rewrite,                                         \
   "<intfc> | sw_if_index <nn> \n"                                       \

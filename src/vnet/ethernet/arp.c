@@ -36,6 +36,14 @@
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 
+vlib_node_registration_t ip4_arp_entry_age_scanner_process_node;
+
+enum
+{
+  IP4_ARP_ENTRY_AGE_PROCESS_EVENT_START = 1,
+  IP4_ARP_ENTRY_AGE_PROCESS_EVENT_STOP = 2,
+} ip4_arp_entry_age_process_event_t;
+
 /**
  * @brief Per-interface ARP configuration and state
  */
@@ -90,6 +98,14 @@ typedef struct
 
   /* Proxy arp vector */
   ethernet_proxy_arp_t *proxy_arps;
+
+  /* Duration after which unused ARP entry gets removed  */
+  u64 arp_timeout;
+  /**
+   * Time between successive ARP polling to prevent expiration (in seconds)
+   * chosen to check the entry is in use for at least thrice in last minute
+   */
+#define ARP_EXPIRATION_POLL_PERIOD 20
 } ethernet_arp_main_t;
 
 static ethernet_arp_main_t ethernet_arp_main;
@@ -233,6 +249,20 @@ format_ethernet_arp_header (u8 * s, va_list * va)
   return s;
 }
 
+static u8 *
+format_ethernet_arp_age (u8 * s, va_list * va)
+{
+  vnet_main_t *vm = va_arg (*va, vnet_main_t *);
+  u64 cpu_time = va_arg (*va, u64);
+  f64 dt;
+
+  dt =
+    (clib_cpu_time_now () -
+     cpu_time) * vm->vlib_main->clib_time.seconds_per_clock;
+
+  return format (s, "%U", format_vlib_time, vm, dt);
+}
+
 u8 *
 format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
 {
@@ -242,7 +272,7 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
   u8 *flags = 0;
 
   if (!e)
-    return format (s, "%=12s%=16s%=6s%=20s%=24s", "Time", "IP4",
+    return format (s, "%=12s%=16s%=6s%=20s%=24s", "Age", "IP4",
 		   "Flags", "Ethernet", "Interface");
 
   si = vnet_get_sw_interface (vnm, e->sw_if_index);
@@ -254,7 +284,7 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
     flags = format (flags, "D");
 
   s = format (s, "%=12U%=16U%=6s%=20U%=24U",
-	      format_vlib_cpu_time, vnm->vlib_main, e->cpu_time_last_updated,
+	      format_ethernet_arp_age, vnm, e->cpu_time_last_updated,
 	      format_ip4_address, &e->ip4_address,
 	      flags ? (char *) flags : "",
 	      format_ethernet_address, e->ethernet_address,
@@ -424,6 +454,19 @@ arp_mk_incomplete_walk (adj_index_t ai, void *ctx)
   return (ADJ_WALK_RC_CONTINUE);
 }
 
+static adj_walk_rc_t
+arp_mk_adj_counter_walk (adj_index_t ai, void *ctx)
+{
+  ethernet_arp_ip4_entry_t *e = ctx;
+  vlib_counter_t adjacency_counters_now;
+  vlib_get_combined_counter (&adjacency_counters, ai,
+			     &adjacency_counters_now);
+  e->cached_adjacency_counter.bytes += adjacency_counters_now.bytes;
+  e->cached_adjacency_counter.packets += adjacency_counters_now.packets;
+
+  return (ADJ_WALK_RC_CONTINUE);
+}
+
 void
 arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 {
@@ -466,6 +509,20 @@ arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
        */
       arp_nbr_probe (adj);
     }
+}
+
+
+static f64
+ethernet_get_arp_age (ethernet_arp_ip4_entry_t * e)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  f64 age = 0;
+
+  age =
+    (clib_cpu_time_now () -
+     e->cpu_time_last_updated) * vnm->vlib_main->clib_time.seconds_per_clock;
+
+  return age;
 }
 
 int
@@ -562,6 +619,8 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
     e->flags |= ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC;
 
   adj_nbr_walk_nh4 (sw_if_index, &e->ip4_address, arp_mk_complete_walk, e);
+
+  adj_nbr_walk_nh4 (sw_if_index, &e->ip4_address, arp_mk_adj_counter_walk, e);
 
   /* Customer(s) waiting for this address to be resolved? */
   p = hash_get (am->pending_resolutions_by_address, a->ip4.as_u32);
@@ -1360,6 +1419,80 @@ VLIB_CLI_COMMAND (show_ip4_arp_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+set_ip4_arp_cache_timeout (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  u64 timeout = (u64) ~ 0;
+  u64 arp_timeout = (u64) ~ 0;
+  int rv;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "timeout %llu", &timeout))
+	break;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  /* If timeout is zero, then ARP entries will not be deleted. */
+
+  if ((rv = ip4_set_arp_timeout (timeout, &arp_timeout)))
+    return clib_error_return (0,
+			      "Timeout value must be either greater than 20 sec or 0");
+  vlib_cli_output (vm, "ARP cache timeout set to : %llu", arp_timeout);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+/*?
+ * Set the timeout value for entries in ARP cache. Default is
+ * 14400 sec. If 0, entries will not timeout. Timeout should
+ * be either 0 or greater than 20 sec.
+ *
+ * @note If an ARP entry is not used for a specific amount of time
+ * called the ARP timeout the entry is removed from the caching table.
+ *
+ * @cliexpar
+ * To set timeout for ARP entries, use:
+ * @cliexcmd{set arp cache timeout 120}
+ ?*/
+VLIB_CLI_COMMAND (set_ip4_arp_timeout_command, static) =
+{
+  .path = "set arp cache",
+  .function = set_ip4_arp_cache_timeout,
+  .short_help = "set arp cache timeout <value>",
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_ip4_arp_cache_timeout (vlib_main_t * vm,
+			    unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  vlib_cli_output (vm, "ARP cache timeout is: %llu", am->arp_timeout);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+/*?
+ * Display the ARP cache timeout value.
+ *
+ * @cliexpar
+ * Example of how to display the ARP cache timeout:
+ * @cliexstart{show arp cache timeout}
+ * ARP cache timeout is: 120
+ * @cliexend
+ ?*/
+VLIB_CLI_COMMAND (show_ip4_arp_timeout_command, static) =
+{
+  .path = "show arp cache timeout",
+  .function = show_ip4_arp_cache_timeout,
+  .short_help = "Show the ARP cache timeout",
+};
+/* *INDENT-ON* */
+
 typedef struct
 {
   pg_edit_t l2_type, l3_type;
@@ -1431,6 +1564,45 @@ ip4_set_arp_limit (u32 arp_limit)
   ethernet_arp_main_t *am = &ethernet_arp_main;
 
   am->limit_arp_cache_size = arp_limit;
+  return 0;
+}
+
+/**
+ * @brief To get the ARP timeout value
+ */
+int
+ip4_get_arp_timeout (u64 * arp_timeout)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+
+  *arp_timeout = am->arp_timeout;
+  return 0;
+}
+
+/**
+ * @brief To assign a new ARP timeout value
+ */
+int
+ip4_set_arp_timeout (u64 timeout, u64 * arp_timeout)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  int enable = 0;
+
+  if (timeout > 20 || timeout == 0)
+    {
+      am->arp_timeout = timeout;
+      *arp_timeout = am->arp_timeout;
+    }
+  else
+    return VNET_API_ERROR_ARP_TIMEOUT_INVALID;
+
+  if (am->arp_timeout != 0)
+    enable = 1;
+
+  vlib_process_signal_event (vm, ip4_arp_entry_age_scanner_process_node.index,
+			     enable ? IP4_ARP_ENTRY_AGE_PROCESS_EVENT_START :
+			     IP4_ARP_ENTRY_AGE_PROCESS_EVENT_STOP, 0);
   return 0;
 }
 
@@ -1584,6 +1756,8 @@ ethernet_arp_init (vlib_main_t * vm)
 
   am->pending_resolutions_by_address = hash_create (0, sizeof (uword));
   am->mac_changes_by_address = hash_create (0, sizeof (uword));
+
+  am->arp_timeout = 14400;
 
   /* don't trace ARP error packets */
   {
@@ -1757,6 +1931,120 @@ ethernet_arp_sw_interface_up_down (vnet_main_t * vnm,
 }
 
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ethernet_arp_sw_interface_up_down);
+
+/** @brief IPv4 ARP cache timeout node
+    @node ip4-arp-cache-timeout-event-process
+
+    Process to delete the timeout ARP entries and periodically
+    checking adjacency counters some time before expiration
+*/
+static uword
+ip4_arp_entry_age_scanner_process (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
+{
+  uword event_type, *event_data = 0;
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  ethernet_arp_ip4_over_ethernet_address_t delme;
+  ethernet_arp_ip4_entry_t *e;
+  u32 i, *to_check;
+  bool enabled = 1;
+  f64 start_time, last_run_duration = 0, t, age;
+
+  while (1)
+    {
+      if (enabled)
+	vlib_process_wait_for_event_or_clock (vm,
+					      ARP_EXPIRATION_POLL_PERIOD -
+					      last_run_duration);
+      else
+	vlib_process_wait_for_event (vm);
+
+      event_type = vlib_process_get_events (vm, &event_data);
+      vec_reset_length (event_data);
+
+      switch (event_type)
+	{
+	case ~0:
+	  break;
+	case IP4_ARP_ENTRY_AGE_PROCESS_EVENT_START:
+	  enabled = 1;
+	  break;
+	case IP4_ARP_ENTRY_AGE_PROCESS_EVENT_STOP:
+	  enabled = 0;
+	  continue;
+	default:
+	  ASSERT (0);
+	}
+      last_run_duration = start_time = vlib_time_now (vm);
+
+      /* Traverse the arp table */
+      /* *INDENT-OFF* */
+      pool_foreach (e, am->ip4_entry_pool,
+      ({
+         vec_add1 (to_check , e - am->ip4_entry_pool);
+      }));
+      /* *INDENT-ON* */
+
+      for (i = 0; i < vec_len (to_check); i++)
+	{
+	  /* Allow no more than 10us without a pause */
+	  t = vlib_time_now (vm);
+
+	  if (t > start_time + 10e-6)
+	    {
+	      vlib_process_suspend (vm, 100e-6);	/* suspend for 100 us */
+	      start_time = vlib_time_now (vm);
+	    }
+	  e = pool_elt_at_index (am->ip4_entry_pool, to_check[i]);
+	  if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC)
+	    {
+	      vlib_counter_t prev_cached_adjacency_counters =
+		e->cached_adjacency_counter;
+
+	      e->cached_adjacency_counter.bytes = 0;
+	      e->cached_adjacency_counter.packets = 0;
+	      /* Walk the adjacencies to get the adjacency_counters per ARP entry */
+	      adj_nbr_walk_nh4 (e->sw_if_index,
+				&e->ip4_address, arp_mk_adj_counter_walk, e);
+
+	      age = ethernet_get_arp_age (e);
+
+	      /* A minute or less is left for the entry to reach the timeout. */
+	      if (am->arp_timeout - age < 60)
+		{
+		  /* Compare the previous and current counters */
+		  if (e->cached_adjacency_counter.bytes >
+		      prev_cached_adjacency_counters.bytes)
+		    {
+		      e->cpu_time_last_updated = clib_cpu_time_now ();
+		      age = ethernet_get_arp_age (e);
+		    }
+		}
+	      if (age > am->arp_timeout)
+		{
+		  clib_memcpy (&delme.ethernet, e->ethernet_address, 6);
+		  delme.ip4.as_u32 = e->ip4_address.as_u32;
+
+		  vnet_arp_flush_ip4_over_ethernet (vnm, e->sw_if_index,
+						    &delme);
+		}
+	    }
+	}
+      vec_free (to_check);
+      last_run_duration = vlib_time_now (vm) - last_run_duration;
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip4_arp_entry_age_scanner_process_node) = {
+  .function = ip4_arp_entry_age_scanner_process,
+  .name = "ip4-arp-entry-age-scanner-process",
+  .type = VLIB_NODE_TYPE_PROCESS,
+};
+/* *INDENT-ON* */
 
 static void
 increment_ip4_and_mac_address (ethernet_arp_ip4_over_ethernet_address_t * a)
