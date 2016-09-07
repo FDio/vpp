@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_ec260f68",
+        "filename": "vnet/vnet/flow/flow_report_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 463,
+      "author": {
+        "id": 175
+      },
+      "writtenOn": "2016-09-07T15:45:01Z",
+      "side": 1,
+      "message": "These two cases look similar but they have different purposes.\n\nI can add some comments or change the code a little bit so it is more obvious.\n\nTables created/deleted with ipfix_classify_add_table/ipfix_classify_delete_table are local to this module. \nBefore calling vnet_flow_report_add_del with is_add\u003d\u003dtrue we need to create this local table so we can pass its index in opaque parameter to the function.\nWhen vnet_flow_report_add_del with is_add\u003d\u003dtrue fails we need to delete the local table so the whole operation is atomic.\n\nThe other arm (is_add \u003d\u003d false) is simply deletion of local table after vnet_flow_report_add_del with is_add\u003d\u003dfalse succeeds.",
+      "parentUuid": "3a1d315d_6c6c3f9d",
+      "revId": "eead6e60ccf5c1c51792ea699864331806bea7a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_8c6f9b92",
         "filename": "vnet/vnet/flow/flow_report_classify.c",
         "patchSetId": 1
