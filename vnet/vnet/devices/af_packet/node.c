@@ -144,18 +144,20 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm,
 							  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
   u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
+  int cpu_index = node->cpu_index;
 
   if (apif->per_interface_next_index != ~0)
     next_index = apif->per_interface_next_index;
 
-  n_free_bufs = vec_len (apm->rx_buffers);
+  n_free_bufs = vec_len (apm->rx_buffers[cpu_index]);
   if (PREDICT_FALSE (n_free_bufs < VLIB_FRAME_SIZE))
     {
-      vec_validate (apm->rx_buffers, VLIB_FRAME_SIZE + n_free_bufs - 1);
+      vec_validate (apm->rx_buffers[cpu_index],
+		    VLIB_FRAME_SIZE + n_free_bufs - 1);
       n_free_bufs +=
-	vlib_buffer_alloc (vm, &apm->rx_buffers[n_free_bufs],
+	vlib_buffer_alloc (vm, &apm->rx_buffers[cpu_index][n_free_bufs],
 			   VLIB_FRAME_SIZE);
-      _vec_len (apm->rx_buffers) = n_free_bufs;
+      _vec_len (apm->rx_buffers[cpu_index]) = n_free_bufs;
     }
 
   rx_frame = apif->next_rx_frame;
@@ -177,11 +179,12 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  while (data_len)
 	    {
 	      /* grab free buffer */
-	      u32 last_empty_buffer = vec_len (apm->rx_buffers) - 1;
+	      u32 last_empty_buffer =
+		vec_len (apm->rx_buffers[cpu_index]) - 1;
 	      prev_bi0 = bi0;
-	      bi0 = apm->rx_buffers[last_empty_buffer];
+	      bi0 = apm->rx_buffers[cpu_index][last_empty_buffer];
 	      b0 = vlib_get_buffer (vm, bi0);
-	      _vec_len (apm->rx_buffers) = last_empty_buffer;
+	      _vec_len (apm->rx_buffers[cpu_index]) = last_empty_buffer;
 	      n_free_bufs--;
 
 	      /* copy data */
