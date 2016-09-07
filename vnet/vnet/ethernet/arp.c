@@ -21,8 +21,10 @@
 #include <vnet/ethernet/arp_packet.h>
 #include <vnet/l2/l2_input.h>
 #include <vppinfra/mhash.h>
+#include <vppinfra/timer.h>
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+static void find_timedout_arp_entries (any arg, f64 delay);
 
 typedef struct
 {
@@ -86,6 +88,8 @@ typedef struct
 
   /* Proxy arp vector */
   ethernet_proxy_arp_t *proxy_arps;
+
+  f64 arp_timeout;
 } ethernet_arp_main_t;
 
 static ethernet_arp_main_t ethernet_arp_main;
@@ -224,7 +228,7 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
   u8 *flags = 0;
 
   if (!e)
-    return format (s, "%=12s%=6s%=16s%=6s%=20s%=24s", "Time", "FIB", "IP4",
+    return format (s, "%=12s%=6s%=16s%=6s%=20s%=24s", "Age", "FIB", "IP4",
 		   "Flags", "Ethernet", "Interface");
 
   fib = find_ip4_fib_by_table_index_or_id (&ip4_main, e->key.fib_index,
@@ -238,7 +242,7 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
     flags = format (flags, "S");
 
   s = format (s, "%=12U%=6u%=16U%=6s%=20U%=24U",
-	      format_vlib_cpu_time, vnm->vlib_main, e->cpu_time_last_updated,
+	      format_vlib_arp_age, vnm->vlib_main, e->cpu_time_last_updated,
 	      fib->table_id,
 	      format_ip4_address, &e->key.ip4_address,
 	      flags ? (char *) flags : "",
@@ -540,6 +544,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 	  next_index = mc->next_index;
 	}
     }
+  timer_call (find_timedout_arp_entries, 0, am->arp_timeout);
 
   return 0;
 }
@@ -1249,6 +1254,49 @@ VLIB_CLI_COMMAND (show_ip4_arp_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+set_ip4_arp_timeout (vlib_main_t * vm,
+                     unformat_input_t * input,
+                     vlib_cli_command_t * cmd)
+{
+  u64 timeout;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (input, "%lu", &timeout))
+      ;
+    else
+      return clib_error_return (0, "unknown input `%U'",
+                                format_unformat_error, input);
+  }
+
+  /* If timeout is zero, then ARP entries will not be deleted.*/
+  ip4_set_arp_timeout (timeout);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (set_ip4_arp_timeout_command, static) = {
+  .path = "set ip arp timeout",
+  .function = set_ip4_arp_timeout,
+  .short_help = "Set the ARP cache timeout",
+};
+
+static clib_error_t *
+show_ip4_arp_timeout (vlib_main_t * vm,
+                      unformat_input_t * input,
+                      vlib_cli_command_t * cmd)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  vlib_cli_output (vm, "ARP cache timeout is: %lf", am->arp_timeout);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_ip4_arp_timeout_command, static) = {
+  .path = "show ip arp timeout",
+  .function = show_ip4_arp_timeout,
+  .short_help = "Show the ARP cache timeout",
+};
+
 typedef struct
 {
   pg_edit_t l2_type, l3_type;
@@ -1320,6 +1368,15 @@ ip4_set_arp_limit (u32 arp_limit)
   ethernet_arp_main_t *am = &ethernet_arp_main;
 
   am->limit_arp_cache_size = arp_limit;
+  return 0;
+}
+
+clib_error_t *
+ip4_set_arp_timeout (u64 arp_timeout)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+
+  am->arp_timeout = (f64) arp_timeout;
   return 0;
 }
 
@@ -1432,6 +1489,8 @@ ethernet_arp_init (vlib_main_t * vm)
   am->pending_resolutions_by_address = hash_create (0, sizeof (uword));
   am->mac_changes_by_address = hash_create (0, sizeof (uword));
 
+  am->arp_timeout = 14400.0;
+
   /* don't trace ARP error packets */
   {
     vlib_node_runtime_t *rt =
@@ -1537,6 +1596,46 @@ vnet_arp_unset_ip4_over_ethernet_internal (vnet_main_t * vnm,
   mhash_unset (&am->ip4_entry_by_key, &e->key, 0);
   pool_put (am->ip4_entry_pool, e);
   return 0;
+}
+
+static void
+find_timedout_arp_entries (any arg, f64 delay)
+{
+  ethernet_arp_main_t * am = &ethernet_arp_main;
+  vnet_main_t * vnm = vnet_get_main ();
+  ethernet_arp_ip4_over_ethernet_address_t a;
+  ethernet_arp_ip4_entry_t * es, * e;
+  f64 age;
+
+  (void) arg;
+  (void) delay;
+
+  es = 0;
+  /* Traverse the arp table and findout timedout entries */
+  /* *INDENT-OFF* */
+  pool_foreach (e, am->ip4_entry_pool,
+  ({
+    vec_add1 (es, e[0]);
+  }));
+  /* *INDENT-ON* */
+
+  if (es)
+    {
+      vec_foreach (e, es)
+      {
+        age =
+           (clib_cpu_time_now () -
+            e->cpu_time_last_updated) *
+            vnm->vlib_main->clib_time.seconds_per_clock;
+        clib_memcpy (&a.ethernet,  e->ethernet_address,
+                     sizeof (e->ethernet_address));
+        a.ip4 = e->key.ip4_address;
+        if (age >= am->arp_timeout && am->arp_timeout != 0)
+          vnet_arp_unset_ip4_over_ethernet_internal
+            (vnm, e->key.sw_if_index, e->key.fib_index, &a);
+      }
+      vec_free (es);
+    }
 }
 
 static void
@@ -1685,6 +1784,7 @@ vnet_arp_glean_add (u32 fib_index, void *next_hop_arg)
   args.add_adj = &add_adj;
   args.n_add_adj = 1;
   ip4_add_del_route (im, &args);
+  timer_call (find_timedout_arp_entries, 0, am->arp_timeout);
   return ip4_fib_lookup_with_table (im, fib_index, next_hop, 0);
 }
 

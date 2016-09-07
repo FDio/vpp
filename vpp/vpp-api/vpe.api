@@ -4969,3 +4969,25 @@ define delete_subif_reply {
   u32 context;
   i32 retval;
 };
+
+/** \brief Set ARP entries timeout request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param arp_timeout - new timeout value, default is 14400
+*/
+define set_arp_entries_timeout
+{
+  u32 client_index;
+  u32 context;
+  u64 arp_timeout;
+};
+
+/** \brief Set ARP entries timeout response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for request
+*/
+define set_arp_entries_timeout_reply
+{
+  u32 context;
+  i32 retval;
+};
