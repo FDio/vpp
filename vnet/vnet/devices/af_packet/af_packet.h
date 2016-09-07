@@ -46,7 +46,7 @@ typedef struct
   uword *pending_input_bitmap;
 
   /* rx buffer cache */
-  u32 *rx_buffers;
+  u32 **rx_buffers;
 
   /* hash of host interface names */
   mhash_t if_index_by_host_if_name;
