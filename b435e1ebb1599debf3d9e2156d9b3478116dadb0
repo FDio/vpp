@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_ac20174a",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1055,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-09-08T13:07:06Z",
+      "side": 1,
+      "message": "Use ip_address_max_len",
+      "range": {
+        "startLine": 1055,
+        "startChar": 3,
+        "endLine": 1055,
+        "endChar": 53
+      },
+      "revId": "b435e1ebb1599debf3d9e2156d9b3478116dadb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_ac95b741",
+        "filename": "vnet/vnet/lisp-cp/lisp_types.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1259,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-09-08T13:07:06Z",
+      "side": 1,
+      "message": "Use ip_address_max_len",
+      "range": {
+        "startLine": 1256,
+        "startChar": 0,
+        "endLine": 1259,
+        "endChar": 39
+      },
+      "revId": "b435e1ebb1599debf3d9e2156d9b3478116dadb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
