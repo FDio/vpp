@@ -343,8 +343,7 @@ vnet_hw_interface_set_flags_helper (vnet_main_t * vnm, u32 hw_if_index,
 	goto done;
 
       error = call_elf_section_interface_callbacks
-	(vnm, hw_if_index, is_create,
-	 vnm->hw_interface_link_up_down_functions);
+	(vnm, hw_if_index, flags, vnm->hw_interface_link_up_down_functions);
 
       if (error)
 	goto done;
