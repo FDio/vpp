@@ -173,8 +173,13 @@ show_trace_profile_command_fn (vlib_main_t * vm,
   trace_profile *p = NULL;
   u8 *s = 0;
   p = trace_profile_find ();
-  if (p->valid == 0)
-    return 0;
+  if (!(p && p->valid))
+    {
+      s = format (s, "\nTrace configuration not valid\n");
+      vlib_cli_output (vm, "%v", s);
+      vec_free (s);
+      return 0;
+    }
   s = format (s, " HOP BY HOP OPTIONS - TRACE CONFIG - \n");
   s = format (s, "                        Trace Type : 0x%x (%d)\n",
 	      p->trace_type, p->trace_type);
@@ -196,10 +201,6 @@ show_trace_profile_command_fn (vlib_main_t * vm,
   s =
     format (s, "                          App Data : 0x%x (%d)\n",
 	    p->app_data, p->app_data);
-  if (!(p && p->valid))
-    {
-      s = format (s, "\nTrace configuration not valid\n");
-    }
   vlib_cli_output (vm, "%v", s);
   vec_free (s);
   return 0;
