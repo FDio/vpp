@@ -159,7 +159,7 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *node, *next;
-  uword *p;
+  uword *p, old_node_index;
 
   node = vec_elt (nm->nodes, node_index);
   next = vec_elt (nm->nodes, next_node_index);
@@ -180,6 +180,9 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
 
   vec_validate_init_empty (node->next_nodes, slot, ~0);
   vec_validate (node->n_vectors_by_next_node, slot);
+
+  old_node_index = node->next_nodes[slot];
+  hash_unset (node->next_slot_by_node, old_node_index);
 
   node->next_nodes[slot] = next_node_index;
   hash_set (node->next_slot_by_node, next_node_index, slot);

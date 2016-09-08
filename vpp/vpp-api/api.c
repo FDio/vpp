@@ -106,6 +106,7 @@
 #include <vnet/l2/l2_fib.h>
 #include <vnet/l2/l2_bd.h>
 #include <vpp-api/vpe_msg_enum.h>
+#include <vnet/span/span.h>
 
 #define f64_endian(a)
 #define f64_print(a,b)
@@ -398,6 +399,9 @@ _(SET_IPFIX_CLASSIFY_STREAM, set_ipfix_classify_stream)                 \
 _(IPFIX_CLASSIFY_STREAM_DUMP, ipfix_classify_stream_dump)               \
 _(IPFIX_CLASSIFY_TABLE_ADD_DEL, ipfix_classify_table_add_del)           \
 _(IPFIX_CLASSIFY_TABLE_DUMP, ipfix_classify_table_dump)                 \
+_(SPAN_CREATE, span_create)                                             \
+_(SPAN_DELETE, span_delete)                                             \
+_(SPAN_DUMP, span_dump)                                                 \
 _(GET_NEXT_INDEX, get_next_index)                                       \
 _(PG_CREATE_INTERFACE, pg_create_interface)                             \
 _(PG_CAPTURE, pg_capture)                                               \
@@ -8226,6 +8230,76 @@ static void
   for (i = 0; i < vec_len (fcm->tables); i++)
     if (ipfix_classify_table_index_valid (i))
       send_ipfix_classify_table_details (i, q, mp->context);
+}
+
+static void
+vl_api_span_create_t_handler (vl_api_span_create_t * mp)
+{
+  vl_api_span_create_reply_t *rmp;
+  int rv;
+
+#if DPDK > 0			/* Cannot call SPAN without DPDK */
+  vlib_main_t *vm = vlib_get_main ();
+
+  rv = (0 == set_span_add_delete_entry (vm, ntohl (mp->sw_if_index_from),
+					ntohl (mp->sw_if_index_to), 0));
+#else
+  clib_warning ("SPAN without DPDK not implemented");
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif /* DPDK */
+
+  REPLY_MACRO (VL_API_SPAN_CREATE_REPLY);
+}
+
+static void
+vl_api_span_delete_t_handler (vl_api_span_delete_t * mp)
+{
+  vl_api_span_delete_reply_t *rmp;
+  int rv;
+
+#if DPDK > 0			/* Cannot call SPAN without DPDK */
+  vlib_main_t *vm = vlib_get_main ();
+
+  rv =
+    (0 ==
+     set_span_add_delete_entry (vm, ntohl (mp->sw_if_index_from), ~0, 1));
+#else
+  clib_warning ("SPAN without DPDK not implemented");
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif /* DPDK */
+
+  REPLY_MACRO (VL_API_SPAN_DELETE_REPLY);
+}
+
+static void
+vl_api_span_dump_t_handler (vl_api_span_dump_t * mp)
+{
+#if DPDK > 0			/* Cannot call SPAN without DPDK */
+  unix_shared_memory_queue_t *q;
+  vl_api_span_details_t *rmp;
+  span_main_t *sm = &span_main;
+  u32 sw_if_index_from;
+  u32 sw_if_index_to;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+
+  /* *INDENT-OFF* */
+  hash_foreach (sw_if_index_from, sw_if_index_to, sm->dst_sw_if_index_by_src,
+  ({
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    rmp->_vl_msg_id       = ntohs(VL_API_SPAN_DETAILS);
+    rmp->context          = mp->context;
+
+	rmp->sw_if_index_from = htonl(sw_if_index_from);
+    rmp->sw_if_index_to   = htonl(sw_if_index_to);
+
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+  }));
+  /* *INDENT-ON* */
+#else
+  clib_warning ("SPAN without DPDK not implemented");
+#endif /* DPDK */
 }
 
 static void
