@@ -84,7 +84,8 @@ static char *vhost_user_tx_func_error_strings[] = {
   _(NO_ERROR, "no error")  \
   _(NO_BUFFER, "no available buffer")  \
   _(MMAP_FAIL, "mmap failure")  \
-  _(UNDERSIZED_FRAME, "undersized ethernet frame received (< 14 bytes)")
+  _(UNDERSIZED_FRAME, "undersized ethernet frame received (< 14 bytes)") \
+  _(FULL_RX_QUEUE, "full rx queue (possible driver tx drop)")
 
 typedef enum
 {
@@ -957,14 +958,18 @@ vhost_user_if_input (vlib_main_t * vm,
   if (PREDICT_FALSE (txvq->avail->flags & 0xFFFE))
     return 0;
 
+  n_left = (u16) (txvq->avail->idx - txvq->last_avail_idx);
+
   /* nothing to do */
-  if (txvq->avail->idx == txvq->last_avail_idx)
+  if (PREDICT_FALSE (n_left == 0))
     return 0;
 
-  if (PREDICT_TRUE (txvq->avail->idx > txvq->last_avail_idx))
-    n_left = txvq->avail->idx - txvq->last_avail_idx;
-  else				/* wrapped */
-    n_left = (u16) - 1 - txvq->last_avail_idx + txvq->avail->idx;
+  if (PREDICT_FALSE (n_left == txvq->qsz))
+    {
+      //Informational error logging when VPP is not receiving packets fast enough
+      vlib_error_count (vm, node->node_index,
+			VHOST_USER_INPUT_FUNC_ERROR_FULL_RX_QUEUE, 1);
+    }
 
   if (PREDICT_FALSE (!vui->admin_up))
     {
@@ -976,9 +981,6 @@ vhost_user_if_input (vlib_main_t * vm,
       vhost_user_send_call (vm, txvq);
       return 0;
     }
-
-  if (PREDICT_FALSE (n_left > txvq->qsz))
-    return 0;
 
   qsz_mask = txvq->qsz - 1;
   cpu_index = os_get_cpu_number ();
@@ -997,7 +999,7 @@ vhost_user_if_input (vlib_main_t * vm,
    */
   if (PREDICT_FALSE (!vum->rx_buffers[cpu_index]))
     {
-      vec_alloc (vum->rx_buffers[cpu_index], VLIB_FRAME_SIZE);
+      vec_alloc (vum->rx_buffers[cpu_index], 2 * VLIB_FRAME_SIZE);
 
       if (PREDICT_FALSE (!vum->rx_buffers[cpu_index]))
 	flush = n_left;		//Drop all input
@@ -1005,14 +1007,12 @@ vhost_user_if_input (vlib_main_t * vm,
 
   if (PREDICT_FALSE (_vec_len (vum->rx_buffers[cpu_index]) < n_left))
     {
+      u32 curr_len = _vec_len (vum->rx_buffers[cpu_index]);
       _vec_len (vum->rx_buffers[cpu_index]) +=
 	vlib_buffer_alloc_from_free_list (vm,
 					  vum->rx_buffers[cpu_index] +
-					  _vec_len (vum->rx_buffers
-						    [cpu_index]),
-					  VLIB_FRAME_SIZE -
-					  _vec_len (vum->rx_buffers
-						    [cpu_index]),
+					  curr_len,
+					  2 * VLIB_FRAME_SIZE - curr_len,
 					  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
       if (PREDICT_FALSE (n_left > _vec_len (vum->rx_buffers[cpu_index])))
@@ -1274,6 +1274,8 @@ vhost_user_intfc_tx (vlib_main_t * vm,
   u16 qsz_mask;
   u8 error = VHOST_USER_TX_FUNC_ERROR_NONE;
 
+  n_left = n_packets = frame->n_vectors;
+
   if (PREDICT_FALSE (!vui->is_up))
     goto done2;
 
@@ -1304,7 +1306,6 @@ vhost_user_intfc_tx (vlib_main_t * vm,
       goto done2;
     }
 
-  n_left = n_packets = frame->n_vectors;
   used_index = rxvq->used->idx;
   qsz_mask = rxvq->qsz - 1;	/* qsz is always power of 2 */
 
