@@ -97,12 +97,12 @@ static char *l2_output_classify_error_strings[] = {
  * @par Graph mechanics: buffer metadata, next index usage
  *
  * @em Uses:
- * - <code>(l2_input_classify_runtime_t *)
+ * - <code>(l2_output_classify_runtime_t *)
  *         rt->classify_table_index_by_sw_if_index</code>
  *	   Head of the per-interface, perprotocol classifier table chain
  * 	   for a specific interface. ~0 => send pkts to the next
  * 	   feature in the L2 feature chain.
- * - <code>vnet_buffer(b)->sw_if_index[VLIB_RX]</code>
+ * - <code>vnet_buffer(b)->sw_if_index[VLIB_TX]</code>
  * 	- Indicates the @c sw_if_index value of the interface that the
  * 	packet was received on.
  * - <code>vnet_buffer (b0)->l2.feature_bitmap</code>
@@ -197,10 +197,10 @@ l2_output_classify_node_fn (vlib_main_t * vm,
       b1 = vlib_get_buffer (vm, bi1);
       h1 = vlib_buffer_get_current (b1);
 
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
       vnet_buffer (b0)->l2_classify.table_index = ~0;
 
-      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
       vnet_buffer (b1)->l2_classify.table_index = ~0;
 
       /* Select classifier table based on ethertype */
@@ -264,7 +264,7 @@ l2_output_classify_node_fn (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
       h0 = vlib_buffer_get_current (b0);
 
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
       vnet_buffer (b0)->l2_classify.table_index = ~0;
 
       /* Select classifier table based on ethertype */
@@ -425,7 +425,7 @@ l2_output_classify_node_fn (vlib_main_t * vm,
 	    {
 	      l2_output_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	      t->table_index = table_index0;
 	      t->next_index = next0;
 	      t->session_offset = e0 ? vnet_classify_get_offset (t0, e0) : 0;
