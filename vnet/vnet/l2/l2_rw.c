@@ -17,6 +17,15 @@
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_rw.h>
 
+/**
+ * @file
+ * @brief Layer 2 Rewrite.
+ *
+ * Layer 2-Rewrite node uses classify tables to match packets. Then, using
+ * the provisioned mask and value, modfies the packet header.
+ */
+
+
 l2_rw_main_t l2_rw_main;
 
 vlib_node_registration_t l2_rw_node;
@@ -437,6 +446,14 @@ l2_rw_entry_cli_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Layer 2-Rewrite node uses classify tables to match packets. Then, using
+ * the provisioned mask and value, modfies the packet header.
+ *
+ * @cliexpar
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_entry_cli, static) = {
   .path = "l2 rewrite entry",
@@ -501,6 +518,14 @@ l2_rw_interface_cli_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Layer 2-Rewrite node uses classify tables to match packets. Then, using
+ * the provisioned mask and value, modfies the packet header.
+ *
+ * @cliexpar
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_interface_cli, static) = {
   .path = "set interface l2 rewrite",
@@ -528,6 +553,14 @@ l2_rw_show_interfaces_cli_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Layer 2-Rewrite node uses classify tables to match packets. Then, using
+ * the provisioned mask and value, modfies the packet header.
+ *
+ * @cliexpar
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_show_interfaces_cli, static) = {
   .path = "show l2 rewrite interfaces",
@@ -554,6 +587,14 @@ l2_rw_show_entries_cli_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Layer 2-Rewrite node uses classify tables to match packets. Then, using
+ * the provisioned mask and value, modfies the packet header.
+ *
+ * @cliexpar
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_show_entries_cli, static) = {
   .path = "show l2 rewrite entries",
@@ -596,6 +637,14 @@ l2_rw_set_cli_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Layer 2-Rewrite node uses classify tables to match packets. Then, using
+ * the provisioned mask and value, modfies the packet header.
+ *
+ * @cliexpar
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_set_cli, static) = {
   .path = "set bridge-domain rewrite",

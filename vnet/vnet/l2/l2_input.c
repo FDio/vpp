@@ -34,6 +34,17 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/cache.h>
 
+/**
+ * @file
+ * @brief Interface Input Mode (Layer 2 Cross-Connect or Bridge / Layer 3).
+ *
+ * This file contains the CLI Commands that modify the input mode of an
+ * interface. For interfaces in a Layer 2 cross-connect, all packets
+ * received on one interface will be transmitted to the other. For
+ * interfaces in a bridge-domain, packets will be forwarded to other
+ * interfaces in the same bridge-domain based on destination mac address.
+ * For interfaces in Layer 3 mode, the packets will be routed.
+ */
 
 /* Feature graph node names */
 static char *l2input_feat_names[] = {
@@ -838,21 +849,36 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 /*?
+ * Use this command put an interface into Layer 2 bridge domain. If a
+ * bridge-domain with the provided bridge-domain-id does not exist, it
+ * will be created. Interfaces in a bridge-domain forward packets to
+ * other interfaces in the same bridge-domain based on destination mac
+ * address. To remove an interface from a the Layer 2 bridge domain,
+ * put the interface in a different mode, for example Layer 3 mode.
+ *
+ * Optionally, an interface can be added to a Layer 2 bridge-domain as
+ * a Bridged Virtual Interface (bvi). Only one interface in a Layer 2
+ * bridge-domain can be a bvi.
+ *
+ * Optionally, a split-horizon group can also be specified. This defaults
+ * to 0 if not specified.
  *
  * @cliexpar
- * @cliexstart{set interface l2 bridge}
- * Interfaces in a bridge-domain forward packets to other interfaces in the same bridge-domain based on destination mac address.
- * To add an interface to bridge-domain 5 use:
- *  vpp# set interface l2 bridge GigabitEthernet2/0/0 5
- * A split-horizon group can also be specified. This defaults to 0 if not specified.
- *  vpp# set interface l2 bridge GigabitEthernet2/0/0 5 1
- * @cliexend
- ?*/
+ * Example of how to configure a Layer 2 bridge-domain with three
+ * interfaces (where 200 is the bridge-domain-id):
+ * @cliexcmd{set interface l2 bridge GigabitEthernet0/8/0.200 200}
+ * This interface is added a BVI interface:
+ * @cliexcmd{set interface l2 bridge GigabitEthernet0/9/0.200 200 bvi}
+ * This interface also has a split-horizon group of 1 specified:
+ * @cliexcmd{set interface l2 bridge GigabitEthernet0/a/0.200 200 1}
+ * Example of how to remove an interface from a Layer2 bridge-domain:
+ * @cliexcmd{set interface l3 GigabitEthernet0/a/0.200}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_bridge_cli, static) = {
   .path = "set interface l2 bridge",
-  .short_help = "set interface to L2 bridging mode in <bridge-domain ID> [bvi] [shg]",
+  .short_help = "set interface l2 bridge <interface> <bridge-domain-id> [bvi] [shg]",
   .function = int_l2_bridge,
 };
 /* *INDENT-ON* */
@@ -899,16 +925,22 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 /*?
- * L2 Cross-connect two interfaces
+ * Use this command put an interface into Layer 2 cross-connect mode.
+ * Both interfaces must be in this mode for bi-directioal traffic. All
+ * packets received on one interface will be transmitted to the other.
+ * To remove the Layer 2 cross-connect, put the interface in a different
+ * mode, for example Layer 3 mode.
+ *
  * @cliexpar
- * @cliexstart{set interface l2 xconnect}
- * To cross-connect two interfaces, put both into L2 cross-connect mode. All packets received on one interface will be transmitted to the other.
- *  vpp# set interface l2 xconnect GigabitEthernet2/0/0 GigabitEthernet2/0/1
- *  vpp# set interface l2 xconnect GigabitEthernet2/0/1 GigabitEthernet2/0/0
- * @cliexend
- ?*/
+ * Example of how to configure a Layer2 cross-connect between two interfaces:
+ * @cliexcmd{set interface l2 xconnect GigabitEthernet0/8/0.300 GigabitEthernet0/9/0.300}
+ * @cliexcmd{set interface l2 xconnect GigabitEthernet0/9/0.300 GigabitEthernet0/8/0.300}
+ * Example of how to remove a Layer2 cross-connect:
+ * @cliexcmd{set interface l3 GigabitEthernet0/8/0.300}
+ * @cliexcmd{set interface l3 GigabitEthernet0/9/0.300}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_xc_cli, static) = {
   .path = "set interface l2 xconnect",
   .short_help = "set interface l2 xconnect <interface> <peer interface>",
@@ -947,19 +979,20 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 /*?
+ * Modify the packet processing mode of the interface to Layer 3, which
+ * implies packets will be routed. This is the default mode of an interface.
+ * Use this command to remove an interface from a Layer 2 cross-connect or a
+ * Layer 2 bridge.
  *
  * @cliexpar
- * @cliexstart{cmd}
- * Interfaces can be set in either L3 (routed) mode or L2 (xconnect or bridged) mode.
- * Interfaces are in L3 mode by default. To return an interface to L3 mode, use:
- *  vpp# set interface l3 GigabitEthernet2/0/0
- * @cliexend
- ?*/
+ * Example of how to set the mode of an interface to Layer 3:
+ * @cliexcmd{set interface l3 GigabitEthernet0/8/0.200}
+?*/
+/* *INDENT-OFF* */
      VLIB_CLI_COMMAND (int_l3_cli, static) = {
   .path = "set interface l3",
-  .short_help = "set interface to L3 mode",
+  .short_help = "set interface l3 <interface>",
   .function = int_l3,
 };
 /* *INDENT-ON* */
@@ -1050,6 +1083,32 @@ done:
   return error;
 }
 
+/*?
+ * Show the packet processing mode (Layer2 xcross-onnect, Layer 2 bridge,
+ * Layer 3 routed) of all interfaces and sub-interfaces, or limit the
+ * output to just the provided list of interfaces and sub-interfaces.
+ * The output shows the mode, the interface, and if the interface is
+ * a member of a bridge, the bridge-domain-id and the split horizen group (shg).
+ *
+ * @cliexpar
+ * Example of displaying the mode of all interfaces:
+ * @cliexstart{show mode}
+ * l3 local0
+ * l3 GigabitEthernet0/8/0
+ * l3 GigabitEthernet0/9/0
+ * l3 GigabitEthernet0/a/0
+ * l2 bridge GigabitEthernet0/8/0.200 bd_id 200 shg 0
+ * l2 bridge GigabitEthernet0/9/0.200 bd_id 200 shg 0
+ * l2 bridge GigabitEthernet0/a/0.200 bd_id 200 shg 0
+ * l2 xconnect GigabitEthernet0/8/0.300 GigabitEthernet0/9/0.300
+ * l2 xconnect GigabitEthernet0/9/0.300 GigabitEthernet0/8/0.300
+ * @cliexend
+ * Example of displaying the mode of a seleted list of interfaces:
+ * @cliexstart{show mode GigabitEthernet0/8/0 GigabitEthernet0/8/0.200}
+ * l3 GigabitEthernet0/8/0
+ * l2 bridge GigabitEthernet0/8/0.200 bd_id 200 shg 0
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_l2_mode, static) = {
   .path = "show mode",

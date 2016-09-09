@@ -377,11 +377,19 @@ test_patch_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Create or delete a Layer 2 patch.
+ *
+ * @cliexpar
+ * @cliexstart{test l2patch rx <intfc> tx <intfc> [del]}
+ * @cliexend
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_patch_command, static) = {
     .path = "test l2patch",
-    .short_help =
-    "rx <intfc> tx <intfc> [del]",
+    .short_help = "test l2patch rx <intfc> tx <intfc> [del]",
     .function = test_patch_command_fn,
 };
 /* *INDENT-ON* */
@@ -421,6 +429,15 @@ show_l2patch (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Show Layer 2 patch entries.
+ *
+ * @cliexpar
+ * @cliexstart{show l2patch}
+ * @cliexend
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_l2patch_cli, static) = {
   .path = "show l2patch",

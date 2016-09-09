@@ -32,6 +32,14 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/vec.h>
 
+/**
+ * @file
+ * @brief Ethernet Bridge Domain.
+ *
+ * Code in this file manages Layer 2 bridge domains.
+ *
+ */
+
 bd_main_t bd_main;
 
 /**
@@ -270,6 +278,17 @@ done:
   return error;
 }
 
+/*?
+ * Layer 2 learning can be enabled and disabled on each
+ * interface and on each bridge-domain. Use this command to
+ * manage bridge-domains. It is enabled by default.
+ *
+ * @cliexpar
+ * Example of how to enable learning (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain learn 200}
+ * Example of how to disable learning (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain learn 200 disable}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_learn_cli, static) = {
   .path = "set bridge-domain learn",
@@ -324,6 +343,18 @@ done:
   return error;
 }
 
+
+/*?
+ * Layer 2 unicast forwarding can be enabled and disabled on each
+ * interface and on each bridge-domain. Use this command to
+ * manage bridge-domains. It is enabled by default.
+ *
+ * @cliexpar
+ * Example of how to enable forwarding (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain forward 200}
+ * Example of how to disable forwarding (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain forward 200 disable}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_fwd_cli, static) = {
   .path = "set bridge-domain forward",
@@ -379,6 +410,17 @@ done:
   return error;
 }
 
+/*?
+ * Layer 2 flooding can be enabled and disabled on each
+ * interface and on each bridge-domain. Use this command to
+ * manage bridge-domains. It is enabled by default.
+ *
+ * @cliexpar
+ * Example of how to enable flooding (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain flood 200}
+ * Example of how to disable flooding (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain flood 200 disable}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_flood_cli, static) = {
   .path = "set bridge-domain flood",
@@ -434,6 +476,17 @@ done:
   return error;
 }
 
+/*?
+ * Layer 2 unknown-unicast flooding can be enabled and disabled on each
+ * bridge-domain. It is enabled by default.
+ *
+ * @cliexpar
+ * Example of how to enable unknown-unicast flooding (where 200 is the
+ * bridge-domain-id):
+ * @cliexcmd{set bridge-domain uu-flood 200}
+ * Example of how to disable unknown-unicast flooding (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain uu-flood 200 disable}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_uu_flood_cli, static) = {
   .path = "set bridge-domain uu-flood",
@@ -486,6 +539,16 @@ done:
   return error;
 }
 
+/*?
+ * Modify whether or not an existing bridge-domain should terminate and respond
+ * to ARP Requests. ARP Termination is disabled by default.
+ *
+ * @cliexpar
+ * Example of how to enable ARP termination (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain arp term 200}
+ * Example of how to disable ARP termination (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain arp term 200 disable}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_arp_term_cli, static) = {
   .path = "set bridge-domain arp term",
@@ -579,7 +642,7 @@ bd_add_del_ip_mac (u32 bd_index,
 /**
     Set bridge-domain arp entry add/delete.
     The CLI format is:
-    set bridge-domain arp entry <bd-id> <ip-addr> <mac-addr> [del]
+    set bridge-domain arp entry <bridge-domain-id> <ip-addr> <mac-addr> [del]
 */
 static clib_error_t *
 bd_arp_entry (vlib_main_t * vm,
@@ -649,10 +712,19 @@ done:
   return error;
 }
 
+/*?
+ * Add an ARP entry to an existing bridge-domain.
+ *
+ * @cliexpar
+ * Example of how to add an ARP entry (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain arp entry 200 192.168.72.45 52:54:00:3b:83:1a}
+ * Example of how to delete an ARP entry (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain arp entry 200 192.168.72.45 52:54:00:3b:83:1a del}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_arp_entry_cli, static) = {
   .path = "set bridge-domain arp entry",
-  .short_help = "set bridge-domain arp entry <bd-id> <ip-addr> <mac-addr> [del]",
+  .short_help = "set bridge-domain arp entry <bridge-domain-id> <ip-addr> <mac-addr> [del]",
   .function = bd_arp_entry,
 };
 /* *INDENT-ON* */
@@ -844,6 +916,31 @@ done:
   return error;
 }
 
+/*?
+ * Show a summary of all the bridge-domain instances or detailed view of a
+ * single bridge-domain. Bridge-domains are created by adding an interface
+ * to a bridge using the '<em>set interface l2 bridge</em>' command.
+ *
+ * @cliexpar
+ * @parblock
+ * Example of displaying all bridge-domains:
+ * @cliexstart{show bridge-domain}
+ *  ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term     BVI-Intf
+ *  0      0        off        off        off        off        off        local0
+ * 200     1        on         on         on         on         off          N/A
+ * @cliexend
+ *
+ * Example of displaying details of a single bridge-domains:
+ * @cliexstart{show bridge-domain 200 detail}
+ *  ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term     BVI-Intf
+ * 200     1        on         on         on         on         off          N/A
+ *
+ *          Interface           Index  SHG  BVI        VLAN-Tag-Rewrite
+ *  GigabitEthernet0/8/0.200      3     0    -               none
+ *  GigabitEthernet0/9/0.200      4     0    -               none
+ * @cliexend
+ * @endparblock
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_show_cli, static) = {
   .path = "show bridge-domain",

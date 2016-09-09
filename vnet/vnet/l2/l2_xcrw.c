@@ -475,11 +475,23 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Add or delete a Layer 2 to Layer 3 rewrite cross-connect. This is
+ * used to hook Layer 2 interface(s) up to the Layer 3 stack in
+ * arbitrary ways. For example, cross-connect an L2 interface or
+ * (future) bridge to an mpls-o-gre tunnel. Set up the L2 rewrite
+ * string as shown in mpls_gre_rewrite, and use \"mpls-post-rewrite\"
+ * to fix the GRE IP header checksum and length fields.
+ *
+ * @cliexpar
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_l2_xcrw_command, static) = {
   .path = "set interface l2 xcrw",
   .short_help =
-  "set int l2 xcrw <interface> next <node-name>\n"
+  "set interface l2 xcrw <interface> next <node-name>\n"
   "    [del] [tx-fib-id <id>] [ipv6] rw <hex-bytes>",
   .function = set_l2_xcrw_command_fn,
 };
@@ -555,10 +567,17 @@ show_l2xcrw_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Display a Layer 2 to Layer 3 rewrite cross-connect. This is used to
+ * hook Layer 2 interface(s) up to the Layer 3 stack in arbitrary ways.
+ *
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_l2xcrw_command, static) = {
   .path = "show l2xcrw",
-  .short_help = "Display L2/L3 rewrite cross-connects",
+  .short_help = "show l2xcrw",
   .function = show_l2xcrw_command_fn,
 };
 /* *INDENT-ON* */
