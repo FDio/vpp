@@ -105,7 +105,10 @@ SIPHONS ?= clicmd
 SIPHON_FILES = $(addprefix $(SIPHON_INPUT)/,$(addsuffix .siphon,$(SIPHONS)))
 SIPHON_DOCS = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .md,$(SIPHONS)))
 
-$(BR)/.doxygen-bootstrap.ok:
+/usr/lib/graphviz/config6a:
+	sudo dot -c
+
+$(BR)/.doxygen-bootstrap.ok: /usr/lib/graphviz/config6a
 	@echo "Checking whether dependencies for Doxygen are installed..."
 ifeq ($(OS_ID),ubuntu)
 	@set -e; inst=; \
