@@ -29,6 +29,17 @@
 #include <vppinfra/error.h>
 #include <vlib/cli.h>
 
+/**
+ * @file
+ * @brief Ethernet VLAN Tag Rewrite.
+ *
+ * VLAN tag rewrite provides the ability to change the VLAN tags on a packet.
+ * Existing tags can be popped, new tags can be pushed, and existing tags can
+ * be swapped with new tags. The rewrite feature is attached to a subinterface
+ * as input and output operations. The input operation is explicitly configured.
+ * The output operation is the symmetric opposite and is automatically derived
+ * from the input operation.
+ */
 
 /** Just a placeholder; ensures file is not eliminated by linker. */
 clib_error_t *
@@ -532,6 +543,58 @@ done:
   return error;
 }
 
+/*?
+ * VLAN tag rewrite provides the ability to change the VLAN tags on a packet.
+ * Existing tags can be popped, new tags can be pushed, and existing tags can
+ * be swapped with new tags. The rewrite feature is attached to a subinterface
+ * as input and output operations. The input operation is explicitly configured.
+ * The output operation is the symmetric opposite and is automatically derived
+ * from the input operation.
+ *
+ * <b>POP:</b> For pop operations, the subinterface encapsulation (the vlan
+ * tags specified when it was created) must have at least the number of popped
+ * tags. e.g. the \"pop 2\" operation would be rejected on a single-vlan interface.
+ * The output tag-rewrite operation for pops is to push the specified number of
+ * vlan tags onto the packet. The pushed tag values are the ones in the
+ * subinterface encapsulation.
+ *
+ * <b>PUSH:</b> For push operations, the ethertype is also specified. The
+ * output tag-rewrite operation for pushes is to pop the same number of tags
+ * off the packet. If the packet doesn't have enough tags it is dropped.
+ *
+ *
+ * @cliexpar
+ * @parblock
+ * By default a subinterface has no tag-rewrite. To return a subinterface to
+ * this state use:
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 disable}
+ *
+ * To pop vlan tags off packets received from a subinterface, use:
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 pop 1}
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 pop 2}
+ *
+ * To push one or two vlan tags onto packets received from an interface, use:
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 push dot1q 100}
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 push dot1ad 100 150}
+ *
+ * Tags can also be translated, which is basically a combination of a pop and push.
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate 1-1 dot1ad 100}
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate 2-2 dot1ad 100 150}
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate 1-2 dot1q 100}
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate 2-1 dot1q 100 150}
+ *
+ * To display the VLAN Tag settings, show the associate bridge-domain:
+ * @cliexstart{show bridge-domain 200 detail}
+ *  ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term     BVI-Intf
+ * 200     1        on         on         on         on         off          N/A
+ *
+ *          Interface           Index  SHG  BVI        VLAN-Tag-Rewrite
+ *  GigabitEthernet0/8/0.200      5     0    -       trans-1-1 dot1ad 100
+ *  GigabitEthernet0/9/0.200      4     0    -               none
+ *  GigabitEthernet0/a/0.200      6     0    -               none
+ * @cliexend
+ * @endparblock
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_vtr_cli, static) = {
   .path = "set interface l2 tag-rewrite",

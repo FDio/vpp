@@ -30,6 +30,16 @@
 
 #include <vppinfra/bihash_template.c>
 
+/**
+ * @file
+ * @brief Ethernet MAC Address FIB Table Management.
+ *
+ * The MAC Address forwarding table for bridge-domains is called the l2fib.
+ * Entries are added automatically as part of mac learning, but MAC Addresses
+ * entries can also be added manually.
+ *
+ */
+
 typedef struct
 {
 
@@ -198,6 +208,27 @@ show_l2fib (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * This command dispays the MAC Address entries of the L2 FIB table.
+ * Output can be filtered to just get the number of MAC Addresses or display
+ * each MAC Address for all bridge domains or just a single bridge domain.
+ *
+ * @cliexpar
+ * Example of how to display the number of MAC Address entries in the L2
+ * FIB table:
+ * @cliexstart{show l2fib}
+ * 3 l2fib entries
+ * @cliexend
+ * Example of how to display all the MAC Address entries in the L2
+ * FIB table:
+ * @cliexstart{show l2fib verbose}
+ *     Mac Address     BD Idx           Interface           Index  static  filter  bvi  refresh  timestamp
+ *  52:54:00:53:18:33    1      GigabitEthernet0/8/0.200      3       0       0     0      0         0
+ *  52:54:00:53:18:55    1      GigabitEthernet0/8/0.200      3       1       0     0      0         0
+ *  52:54:00:53:18:77    1                 N/A                -1      1       1     0      0         0
+ * 3 l2fib entries
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_l2fib_cli, static) = {
   .path = "show l2fib",
@@ -239,10 +270,21 @@ clear_l2fib (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * This command clears all the MAC Address entries from the L2 FIB table.
+ *
+ * @cliexpar
+ * Example of how to clear the L2 FIB Table:
+ * @cliexcmd{clear l2fib}
+ * Example to show the L2 FIB Table has been cleared:
+ * @cliexstart{show l2fib verbose}
+ * no l2fib entries
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_l2fib_cli, static) = {
   .path = "clear l2fib",
-  .short_help = "Clear l2fib mac forwarding entries",
+  .short_help = "clear l2fib",
   .function = clear_l2fib,
 };
 /* *INDENT-ON* */
@@ -364,10 +406,37 @@ done:
   return error;
 }
 
+/*?
+ * This command adds a MAC Address entry to the L2 FIB table
+ * of an existing bridge-domain. The MAC Address can be static
+ * or dynamic. This command also allows a filter to be added,
+ * such that packets with given MAC Addresses (source mac or
+ * destination mac match) are dropped.
+ *
+ * @cliexpar
+ * Example of how to add a dynamic MAC Address entry to the L2 FIB table
+ * of a bridge-domain (where 200 is the bridge-domain-id):
+ * @cliexcmd{l2fib add 52:54:00:53:18:33 200 GigabitEthernet0/8/0.200}
+ * Example of how to add a static MAC Address entry to the L2 FIB table
+ * of a bridge-domain (where 200 is the bridge-domain-id):
+ * @cliexcmd{l2fib add 52:54:00:53:18:55 200 GigabitEthernet0/8/0.200 static}
+ * Example of how to add a filter such that a packet with the given MAC
+ * Address will be dropped in a given bridge-domain (where 200 is the
+ * bridge-domain-id):
+ * @cliexcmd{l2fib add 52:54:00:53:18:77 200 filter}
+ * Example of show command of the provisioned MAC Addresses and filters:
+ * @cliexstart{show l2fib verbose}
+ *     Mac Address     BD Idx           Interface           Index  static  filter  bvi  refresh  timestamp
+ *  52:54:00:53:18:33    1      GigabitEthernet0/8/0.200      3       0       0     0      0         0
+ *  52:54:00:53:18:55    1      GigabitEthernet0/8/0.200      3       1       0     0      0         0
+ *  52:54:00:53:18:77    1                 N/A                -1      1       1     0      0         0
+ * 3 l2fib entries
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_add_cli, static) = {
   .path = "l2fib add",
-  .short_help = "Add l2fib mac forwarding entry  <mac> <bd-id> filter | <intf> [static | bvi]",
+  .short_help = "l2fib add <mac> <bridge-domain-id> filter | <intf> [static | bvi]",
   .function = l2fib_add,
 };
 /* *INDENT-ON* */
@@ -473,10 +542,47 @@ l2fib_test_command_fn (vlib_main_t * vm,
   return error;
 }
 
+/*?
+ * The set of '<em>test l2fib</em>' commands allow the L2 FIB table of the default
+ * bridge domain (bridge-domain-id of 0) to be modified.
+ *
+ * @cliexpar
+ * @parblock
+ * Example of how to add a set of 4 sequential MAC Address entries to L2
+ * FIB table of the default bridge-domain:
+ * @cliexcmd{test l2fib add mac 52:54:00:53:00:00 count 4}
+ *
+ * Show the set of 4 sequential MAC Address entries that were added:
+ * @cliexstart{show l2fib verbose}
+ *     Mac Address     BD Idx           Interface           Index  static  filter  bvi  refresh  timestamp
+ * 52:54:00:53:00:00    0       GigabitEthernet0/8/0.300     8       0       0     0      0         0
+ * 52:54:00:53:00:01    0       GigabitEthernet0/8/0.300     8       0       0     0      0         0
+ * 52:54:00:53:00:03    0       GigabitEthernet0/8/0.300     8       0       0     0      0         0
+ * 52:54:00:53:00:02    0       GigabitEthernet0/8/0.300     8       0       0     0      0         0
+ * 4 l2fib entries
+ * @cliexend
+ *
+ * Example of how to check that the set of 4 sequential MAC Address
+ * entries were added to L2 FIB table of the default
+ * bridge-domain. Used a count of 5 to produce an error:
+ *
+ * @cliexcmd{test l2fib check mac 52:54:00:53:00:00 count 5}
+ * The output of the check command is in the log files. Log file
+ * location may vary based on your OS and Version:
+ *
+ * <b><em># tail -f /var/log/messages | grep l2fib_test_command_fn</em></b>
+ *
+ * Sep  7 17:15:24 localhost vnet[4952]: l2fib_test_command_fn:446: key 52:54:00:53:00:04 AWOL
+ *
+ * Example of how to delete a set of 4 sequential MAC Address entries
+ * from L2 FIB table of the default bridge-domain:
+ * @cliexcmd{test l2fib del mac 52:54:00:53:00:00 count 4}
+ * @endparblock
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_test_command, static) = {
   .path = "test l2fib",
-  .short_help = "test l2fib [del] mac <base-addr> count <nn>",
+  .short_help = "test l2fib [add|del|check] mac <base-addr> count <nn>",
   .function = l2fib_test_command_fn,
 };
 /* *INDENT-ON* */
@@ -565,10 +671,18 @@ done:
   return error;
 }
 
+/*?
+ * This command deletes an existing MAC Address entry from the L2 FIB
+ * table of an existing bridge-domain.
+ *
+ * @cliexpar
+ * Example of how to delete a MAC Address entry from the L2 FIB table of a bridge-domain (where 200 is the bridge-domain-id):
+ * @cliexcmd{l2fib del 52:54:00:53:18:33 200}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_del_cli, static) = {
   .path = "l2fib del",
-  .short_help = "Delete l2fib mac forwarding entry  <mac> <bd-id>",
+  .short_help = "l2fib del <mac> <bridge-domain-id>",
   .function = l2fib_del,
 };
 /* *INDENT-ON* */

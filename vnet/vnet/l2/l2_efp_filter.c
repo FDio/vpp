@@ -26,6 +26,21 @@
 #include <vppinfra/error.h>
 #include <vppinfra/cache.h>
 
+/**
+ * @file
+ * @brief EFP-filter - Ethernet Flow Point Filter.
+ *
+ * It is possible to transmit a packet out a subinterface with VLAN tags
+ * that are not compatible with that subinterface. In other words, if that
+ * packet arrived on the output port, it would not be classified as coming
+ * from the output subinterface. This can happen in various ways: through
+ * misconfiguration, by putting subinterfaces with different VLAN encaps in
+ * the same bridge-domain, etc. The EFP Filter Check detects such packets
+ * and drops them. It consists of two checks, one that verifies the packet
+ * prior to output VLAN tag rewrite and one that verifies the packet after
+ * VLAN tag rewrite.
+ *
+ */
 typedef struct
 {
 
@@ -568,6 +583,19 @@ done:
 }
 
 
+/*?
+ * EFP filtering is a basic switch feature which prevents an interface from
+ * transmitting a packet that doesn't match the interface's ingress match
+ * criteria. The check has two parts, one performed before egress vlan tag
+ * rewrite and one after. This command enables or disables the EFP filtering
+ * for a given sub-interface.
+ *
+ * @cliexpar
+ * Example of how to enable a Layer 2 efp-filter on a sub-interface:
+ * @cliexcmd{set interface l2 efp-filter GigabitEthernet0/8/0.200}
+ * Example of how to disable a Layer 2 efp-filter on a sub-interface:
+ * @cliexcmd{set interface l2 efp-filter GigabitEthernet0/8/0.200 disable}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_efp_filter_cli, static) = {
   .path = "set interface l2 efp-filter",

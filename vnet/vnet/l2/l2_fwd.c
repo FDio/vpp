@@ -31,6 +31,15 @@
 #include <vppinfra/sparse_vec.h>
 
 
+/**
+ * @file
+ * @brief Ethernet Forwarding.
+ *
+ * Code in this file handles forwarding Layer 2 packets. This file calls
+ * the FIB lookup, packet learning and the packet flooding as necessary.
+ * Packet is then sent to the next graph node.
+ */
+
 typedef struct
 {
 
@@ -454,6 +463,17 @@ done:
   return error;
 }
 
+/*?
+ * Layer 2 unicast forwarding can be enabled and disabled on each
+ * interface and on each bridge-domain. Use this command to
+ * manage interfaces. It is enabled by default.
+ *
+ * @cliexpar
+ * Example of how to enable fowarding:
+ * @cliexcmd{set interface l2 forward GigabitEthernet0/8/0}
+ * Example of how to disable fowarding:
+ * @cliexcmd{set interface l2 forward GigabitEthernet0/8/0 disable}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_fwd_cli, static) = {
   .path = "set interface l2 forward",

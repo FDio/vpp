@@ -30,7 +30,10 @@
 #include <vppinfra/hash.h>
 
 
-/*
+/**
+ * @file
+ * @brief Ethernet Flooding.
+ *
  * Flooding uses the packet replication infrastructure to send a copy of the
  * packet to each member interface. Logically the replication infrastructure
  * expects two graph nodes: a prep node that initiates replication and sends the
@@ -538,6 +541,17 @@ done:
   return error;
 }
 
+/*?
+ * Layer 2 flooding can be enabled and disabled on each
+ * interface and on each bridge-domain. Use this command to
+ * manage interfaces. It is enabled by default.
+ *
+ * @cliexpar
+ * Example of how to enable flooding:
+ * @cliexcmd{set interface l2 flood GigabitEthernet0/8/0}
+ * Example of how to disable flooding:
+ * @cliexcmd{set interface l2 flood GigabitEthernet0/8/0 disable}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_flood_cli, static) = {
   .path = "set interface l2 flood",

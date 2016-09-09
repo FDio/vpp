@@ -31,7 +31,7 @@
 
 /**
  * @file
- * Ethernet bridge learning.
+ * @brief Ethernet Bridge Learning.
  *
  * Populate the mac table with entries mapping the packet's source mac + bridge
  * domain ID to the input sw_if_index.
@@ -496,6 +496,17 @@ done:
   return error;
 }
 
+/*?
+ * Layer 2 learning can be enabled and disabled on each
+ * interface and on each bridge-domain. Use this command to
+ * manage interfaces. It is enabled by default.
+ *
+ * @cliexpar
+ * Example of how to enable learning:
+ * @cliexcmd{set interface l2 learn GigabitEthernet0/8/0}
+ * Example of how to disable learning:
+ * @cliexcmd{set interface l2 learn GigabitEthernet0/8/0 disable}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_learn_cli, static) = {
   .path = "set interface l2 learn",

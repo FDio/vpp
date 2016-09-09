@@ -631,18 +631,16 @@ int_l2_input_classify_command_fn (vlib_main_t * vm,
  * Configure l2 input classification.
  *
  * @cliexpar
- * @cliexstart {set interface l2 input classify intfc <interface-name>
- *	       [ip4-table <index>]
- *	       [ip6-table <index>]
- *	       [other-table <index>]}
+ * @cliexstart{set interface l2 input classify intfc <interface-name> [ip4-table <index>] [ip6-table <index>] [other-table <index>]}
  * @cliexend
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
  ?*/
-
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_input_classify_cli, static) = {
   .path = "set interface l2 input classify",
   .short_help =
-  "set interface l2 input classify intfc <int> [ip4-table <n>]\n"
+  "set interface l2 input classify intfc <interface-name> [ip4-table <n>]\n"
   "  [ip6-table <n>] [other-table <n>]",
   .function = int_l2_input_classify_command_fn,
 };

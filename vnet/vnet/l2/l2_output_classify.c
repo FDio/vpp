@@ -18,7 +18,7 @@
 
 /**
  * @file
- * @brief L2 input classifier.
+ * @brief Layer 2 Output Classifier.
  *
  * @sa @ref vnet/vnet/classify/vnet_classify.c
  * @sa @ref vnet/vnet/classify/vnet_classify.h
@@ -630,21 +630,19 @@ int_l2_output_classify_command_fn (vlib_main_t * vm,
 }
 
 /*?
- * Configure l2 input classification.
+ * Configure Layer 2 output classification.
  *
  * @cliexpar
- * @cliexstart {set interface l2 output classify intfc <interface-name>
- *	       [ip4-table <index>]
- *	       [ip6-table <index>]
- *	       [other-table <index>]}
+ * @cliexstart{set interface l2 output classify intfc <interface-name> [ip4-table <index>] [ip6-table <index>] [other-table <index>]}
  * @cliexend
- ?*/
-
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_output_classify_cli, static) = {
   .path = "set interface l2 output classify",
   .short_help =
-  "set interface l2 output classify intfc <int> [ip4-table <n>]\n"
+  "set interface l2 output classify intfc <<interface-name>> [ip4-table <n>]\n"
   "  [ip6-table <n>] [other-table <n>]",
   .function = int_l2_output_classify_command_fn,
 };
