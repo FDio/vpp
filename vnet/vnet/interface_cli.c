@@ -162,6 +162,34 @@ done:
 }
 
 /* *INDENT-OFF* */
+/*?
+ * Displays various information about the state of the current terminal
+ * session.
+ *
+ * @cliexpar
+ * @cliexstart{show hardware}
+ * Name                Link  Hardware
+ * GigabitEthernet2/0/0               up   GigabitEthernet2/0/0
+ * Ethernet address 00:50:56:b7:7c:83
+ * Intel 82545em_copper
+ *   link up, media 1000T full-duplex, master,
+ *   0 unprocessed, 384 total buffers on rx queue 0 ring
+ *   237 buffers in driver rx cache
+ *   rx total packets                                    1816
+ *   rx total bytes                                    181084
+ *   rx good packets                                     1816
+ *   rx good bytes                                     181084
+ *   rx 65 127 byte packets                              1586
+ *   rx 256 511 byte packets                              230
+ *   tx total packets                                     346
+ *   tx total bytes                                     90224
+ *   tx good packets                                      346
+ *   tx good bytes                                      88840
+ *   tx 64 byte packets                                     1
+ *   tx 65 127 byte packets                               115
+ *   tx 256 511 byte packets                              230
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (show_hw_interfaces_command, static) = {
   .path = "show hardware-interfaces",
   .short_help = "show hardware-interfaces [brief|verbose|detail] [bond] [<if-name1> <if-name2> ...]",
@@ -674,8 +702,52 @@ done:
 }
 
 /* *INDENT-OFF* */
+/*?
+ * Create vlan subinterfaces
+ *
+ * @cliexpar
+ * @cliexstart{create sub-interfaces}
+ *
+ * To create a vlan subinterface 11 to process packets on 802.1q VLAN id 11, use:
+ *
+ *  vpp# create sub GigabitEthernet2/0/0 11
+ *
+ * This shorthand is equivalent to:
+ *  vpp# create sub GigabitEthernet2/0/0 11 dot1q 11 exact-match
+ *
+ * You can specify a subinterface number that is different from the vlan id:
+ *  vpp# create sub GigabitEthernet2/0/0 11 dot1q 100
+ *
+ * You can create qinq and q-in-any interfaces:
+ *  vpp# create sub GigabitEthernet2/0/0 11 dot1q 100 inner-dot1q 200
+ *  vpp# create sub GigabitEthernet2/0/0 12 dot1q 100 inner-dot1q any
+ *
+ * You can also create dot1ad interfaces:
+ *  vpp# create sub GigabitEthernet2/0/0 11 dot1ad 11
+ *  vpp# create sub GigabitEthernet2/0/0 12 dot1q 100 inner-dot1q 200
+ *
+ * Subinterfaces can be configured as either exact-match or non-exact match.
+ * Non-exact match is the CLI default. If exact-match is specified,
+ * packets must have the same number of vlan tags as the configuration.
+ * For non-exact-match, packets must at least that number of tags.
+ * L3 (routed) interfaces must be configured as exact-match.
+ * L2 interfaces are typically configured as non-exact-match.
+ *
+ * For example, a packet with outer vlan 100 and inner 200 would match this interface:
+ *  vpp# create sub GigabitEthernet2/0/0 5 dot1q 100
+ *
+ * but would not match this interface:
+ *  vpp# create sub GigabitEthernet2/0/0 5 dot1q 100 exact-match
+ *
+ * There are two special subinterfaces that can be configured. Subinterface untagged has no vlan tags:
+ *  vpp# create sub GigabitEthernet2/0/0 5 untagged
+ *
+ * The subinterface default matches any packet that does not match any other subinterface:
+ *  vpp# create sub GigabitEthernet2/0/0 7 default
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (create_sub_interfaces_command, static) = {
-  .path = "create sub-interface",
+  .path = "create sub-interfaces",
   .short_help = "create sub-interfaces <nn>[-<nn>] [dot1q|dot1ad|default|untagged]",
   .function = create_sub_interfaces,
 };
@@ -712,7 +784,17 @@ done:
   return error;
 }
 
+
 /* *INDENT-OFF* */
+/*?
+ * Interface admin up/down
+ *
+ * @cliexpar
+ * @cliexstart{set interface state}
+ *  vpp# set interface state GigabitEthernet2/0/0 up
+ *  vpp# set interface state GigabitEthernet2/0/0 down
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (set_state_command, static) = {
   .path = "set interface state",
   .short_help = "Set interface state",
