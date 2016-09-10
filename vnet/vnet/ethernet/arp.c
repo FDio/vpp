@@ -1785,7 +1785,29 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+
 /* *INDENT-OFF* */
+/*?
+ * Add or delete ip4 ARP cache entries
+ *
+ * @cliexpar
+ * @cliexstart{set ip arp}
+ * Add or delete ip4 ARP cache entries as follows:
+ *  vpp# set ip arp GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
+ *  vpp# set ip arp delete GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
+ * Add or delete ip4 ARP cache entries to a specific fib table:
+ *  vpp# set ip arp fib-id 1 GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
+ *  vpp# set ip arp fib-id 1 delete GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
+ * Add or delete ip4 static ARP cache entries as follows:
+ *  vpp# set ip arp static GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
+ *  vpp# set ip arp static delete GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
+ * For testing / debugging purposes, the 'set ip arps command can add or delete multiple entries. Supply the 'count N' parameter:
+ *  vpp# set ip arp count 10 GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
+ * @NOTE: 'set ip arp' options
+ * (e.g. delete, static, 'fib-id <id>', 'count <number>', 'interface ip4_addr mac_addr')
+ * can be added in any order and combination.
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (ip_arp_add_del_command, static) = {
   .path = "set ip arp",
   .short_help =
@@ -1832,7 +1854,23 @@ set_int_proxy_arp_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+
 /* *INDENT-OFF* */
+/*?
+ * Enable proxy-arp on an interface.
+ *
+ * @cliexpar
+ * @cliexstart{set interface proxy-arp}
+ * To enable proxy arp on a range of addresses, use:
+ *  vpp# set ip arp proxy 6.0.0.1 - 6.0.0.11
+ * You must specifically enable proxy arp on individual interfaces:
+ *  vpp# set interface proxy-arp <intfc> [enable|disable]
+ * The vpp stack will answer ARP requests for the indicated address range.
+ * Use with caution. Proxy ARP as a technology is infamous for blackholing traffic.
+ * Multiple proxy-arp ranges may be provisioned.
+ * The underlying implementation has not been performance-tuned; avoid creating an unnecessarily large set of ranges.
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (set_int_proxy_enable_command, static) = {
   .path = "set interface proxy-arp",
   .short_help =

@@ -839,6 +839,17 @@ done:
 }
 
 /* *INDENT-OFF* */
+/*?
+ *
+ * @cliexpar
+ * @cliexstart{set interface l2 bridge}
+ * Interfaces in a bridge-domain forward packets to other interfaces in the same bridge-domain based on destination mac address.
+ * To add an interface to bridge-domain 5 use:
+ *  vpp# set interface l2 bridge GigabitEthernet2/0/0 5
+ * A split-horizon group can also be specified. This defaults to 0 if not specified.
+ *  vpp# set interface l2 bridge GigabitEthernet2/0/0 5 1
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (int_l2_bridge_cli, static) = {
   .path = "set interface l2 bridge",
   .short_help = "set interface to L2 bridging mode in <bridge-domain ID> [bvi] [shg]",
@@ -889,9 +900,18 @@ done:
 }
 
 /* *INDENT-OFF* */
+/*?
+ * L2 Cross-connect two interfaces
+ * @cliexpar
+ * @cliexstart{set interface l2 xconnect}
+ * To cross-connect two interfaces, put both into L2 cross-connect mode. All packets received on one interface will be transmitted to the other.
+ *  vpp# set interface l2 xconnect GigabitEthernet2/0/0 GigabitEthernet2/0/1
+ *  vpp# set interface l2 xconnect GigabitEthernet2/0/1 GigabitEthernet2/0/0
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (int_l2_xc_cli, static) = {
   .path = "set interface l2 xconnect",
-  .short_help = "set interface to L2 cross-connect mode with <peer interface>",
+  .short_help = "set interface l2 xconnect <interface> <peer interface>",
   .function = int_l2_xc,
 };
 /* *INDENT-ON* */
@@ -928,7 +948,16 @@ done:
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (int_l3_cli, static) = {
+/*?
+ *
+ * @cliexpar
+ * @cliexstart{cmd}
+ * Interfaces can be set in either L3 (routed) mode or L2 (xconnect or bridged) mode.
+ * Interfaces are in L3 mode by default. To return an interface to L3 mode, use:
+ *  vpp# set interface l3 GigabitEthernet2/0/0
+ * @cliexend
+ ?*/
+     VLIB_CLI_COMMAND (int_l3_cli, static) = {
   .path = "set interface l3",
   .short_help = "set interface to L3 mode",
   .function = int_l3,
