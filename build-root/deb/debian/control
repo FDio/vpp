@@ -7,7 +7,7 @@ Standards-Version: 3.9.4
 
 Package: vpp
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: vpp-lib (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: Vector Packet Processing--executables
  This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
  vpp - the vector packet engine
@@ -49,7 +49,7 @@ Description: Vector Packet Processing--runtime libraries
 
 Package: vpp-plugins
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: vpp (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: Vector Packet Processing--runtime plugins
  This package contains VPP plugins
  .
