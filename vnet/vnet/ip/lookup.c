@@ -1674,6 +1674,33 @@ VLIB_CLI_COMMAND (vlib_cli_show_ip6_command, static) = {
   .short_help = "Internet protocol version 6 (IP6) show commands",
 };
 
+/*?
+ * To add or delete routes, use ip route add / del
+ * @cliexpar
+ * @cliexstart{ip route}
+ * To add or delete straightforward static routes, use ip route add / del:
+ *  vpp# ip route add 6.0.1.2/32 via 6.0.0.1 GigabitEthernet2/0/0
+ *  vpp# ip route del 6.0.1.2/32 via 6.0.0.1 GigabitEthernet2/0/0
+ *
+ * Multiple routes
+ *
+ * Mainly for route add/del performance testing, one can add or delete
+ * multiple routes by adding 'count N' to the previous item:
+ *  vpp# ip route add count 10 7.0.0.0/24 via 6.0.0.1 GigabitEthernet2/0/0
+ *
+ * Multipath
+ *
+ * Add multiple routes for the same destination to create equal-cost multipath:
+ *  vpp# ip route add 7.0.0.1/32 via 6.0.0.1 GigabitEthernet2/0/0
+ *  vpp# ip route add 7.0.0.1/32 via 6.0.0.2 GigabitEthernet2/0/0
+ *
+ * For unequal-cost multipath, specify the desired weights:
+ *  vpp# ip route add 7.0.0.1/32 via 6.0.0.1 GigabitEthernet2/0/0 weight 1
+ *  vpp# ip route add 7.0.0.1/32 via 6.0.0.2 GigabitEthernet2/0/0 weight 3
+ *
+ * This combination of weights results in 3/4 of the traffic following the second path, 1/4 following the first path.
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (ip_route_command, static) = {
   .path = "ip route",
   .short_help = "Add/delete IP routes",
@@ -2114,6 +2141,30 @@ ip4_show_fib (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * c
   return 0;
 }
 
+/*?
+ * Show FIB/route entries
+ *
+ * @cliexpar
+ * @cliexstart{show ip fib}
+ * Display the IPv4 FIB.
+ * This command will run for a long time when the FIBs comprise millions of entries.
+ *   vpp# sh ip fib
+ *   Table 0
+ *   Destination         Packets          Bytes         Adjacency
+ *   6.0.0.0/8                          0               0 weight 1, index 3
+ *                                                       arp fake-eth0 6.0.0.1/8
+ *   6.0.0.1/32                         0               0 weight 1, index 4
+ *                                                        local 6.0.0.1/8
+ *
+ *  And so forth. Use 'show ip fib summary' for a summary:
+ *
+ *   vpp# sh ip fib summary
+ *   Table 0
+ *   Prefix length         Count
+ *         8               1
+ *        32               4
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
   .path = "show ip fib",
   .short_help = "show ip fib [mtrie] [summary] [table <n>] [<ip4-addr>] [clear] [include-empty]",
@@ -2340,6 +2391,16 @@ ip6_show_fib (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * c
   return 0;
 }
 
+/*?
+ * Show FIB6/route entries
+ *
+ * @cliexpar
+ * @cliexstart{show ip fib}
+ * Display the IPv6 FIB.
+ * This command will run for a long time when the FIBs comprise millions of entries.
+ * See 'show ip fib'
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (ip6_show_fib_command, static) = {
   .path = "show ip6 fib",
   .short_help = "show ip6 fib [summary] [clear]",

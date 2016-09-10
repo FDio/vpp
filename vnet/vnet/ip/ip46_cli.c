@@ -161,7 +161,22 @@ add_del_ip_address (vlib_main_t * vm,
  done:
   return error;
 }
+/*?
+ * To set an interface ip address, use "set interface ip address":
+ *
+ * @cliexpar
+ * @cliexstart{set interface ip address}
 
+ *  vpp# set interface ip address GigabitEthernet2/0/0 db01::1/64
+ * Note that the debug CLI does not enforce classful mask-width / addressing constraints.
+ * Interfaces may have multiple ip4 and ip6 addresses.
+ * There is no concept of primary vs. secondary interface addresses; they're just addresses.
+ * To delete a specific interface ip address, use "set interface ip address del":
+ *  vpp# set interface ip address del GigabitEthernet2/0/0 6.0.0.2/24
+ * To delete all interfaces addresses (ip4+ip6), use "set interface ip address del <intfc> all"
+ *  vpp# set interface ip address del GigabitEthernet2/0/0 all
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (set_interface_ip_address_command, static) = {
   .path = "set interface ip address",
   .function = add_del_ip_address,
