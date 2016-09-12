@@ -25,42 +25,41 @@ nobase_include_HEADERS = pneum/pneum.h
 #
 # Python / C extension
 #
-lib_LTLIBRARIES += vpp_api.la
-vpp_api_la_SOURCES = pneum/pneum.c vpp_papi/pneum_wrap.c
-vpp_api_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread -lm -lrt
-vpp_api_la_LDFLAGS = -module $(shell python-config --ldflags)
-vpp_api_la_CPPFLAGS = $(shell python-config --includes)
-
-# Kept around for setuptools based install.
 lib_LTLIBRARIES += libpneum.la
-libpneum_la_SOURCES = pneum/pneum.c setup.py
-libpneum_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread -lm -lrt
+libpneum_la_SOURCES = pneum/pneum.c
+libpneum_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread \
+                     -lm -lrt
 libpneum_la_LDFLAGS = -module
 libpneum_la_CPPFLAGS =
 
 #
 # Core VPP API
 #
-BUILT_SOURCES +=					\
-	$(prefix)/../vpp/vpp-api/vpe.py			\
-	$(prefix)/../vlib-api/vlibmemory/memclnt.py
-
-%.py: %.api
+$(srcdir)/vpp_papi/vpe.py: $(prefix)/../vpp/vpp-api/vpe.api
 	$(info Creating Python binding for $@)
 	$(CC) $(CPPFLAGS) -E -P -C -x c $<	\
 	| vppapigen --input - --python -	\
-	| pyvppapigen.py --input - > $@
+	| pyvppapigen.py --input - > $(srcdir)/vpp_papi/$(notdir $@)
 
-#
+$(srcdir)/vpp_papi/memclnt.py: $(prefix)/../vlib-api/vlibmemory/memclnt.api
+	$(info Creating Python binding for $@)
+	$(CC) $(CPPFLAGS) -E -P -C -x c $<	\
+	| vppapigen --input - --python -	\
+	| pyvppapigen.py --input - > $(srcdir)/vpp_papi/$(notdir $@)
+
 # TODO: Support both Python 2 and 3.
-install-exec-local:
-	cd $(srcdir); \
-	mkdir -p $(prefix)/lib/python2.7/site-packages; \
-	PYTHONUSERBASE=$(prefix) python setup.py install --user
+install-exec-local: $(srcdir)/vpp_papi/vpe.py $(srcdir)/vpp_papi/memclnt.py
+	cd $(srcdir);							\
+	mkdir -p $(prefix)/lib/python2.7/site-packages; 		\
+	PYTHONUSERBASE=$(prefix)					\
+	python setup.py build_ext -L $(prefix)/lib64 install --user
 
 #
 # Test client
 #
 noinst_PROGRAMS += test_pneum
 test_pneum_SOURCES = pneum/pneum.c pneum/test_pneum.c
-test_pneum_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread -lm -lrt
+test_pneum_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread \
+                   -lm -lrt
+
+
