@@ -1,0 +1,12 @@
+Metadata-Version: 1.0
+Name: vpp-papi
+Version: 1.1
+Summary: VPP Python binding
+Home-page: UNKNOWN
+Author: Ole Troan
+Author-email: ot@cisco.com
+License: UNKNOWN
+Description: 
+        VPP Python language binding.
+        
+Platform: UNKNOWN

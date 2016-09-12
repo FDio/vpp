@@ -1,0 +1,10 @@
+README.rst
+setup.cfg
+setup.py
+vpp_papi/__init__.py
+vpp_papi/vpp_api_base.py
+vpp_papi/vpp_papi.py
+vpp_papi.egg-info/PKG-INFO
+vpp_papi.egg-info/SOURCES.txt
+vpp_papi.egg-info/dependency_links.txt
+vpp_papi.egg-info/top_level.txt
