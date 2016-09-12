@@ -27,3 +27,4 @@ This looks like a C file but it is not part of the build; it is purely
 for documentation.
 */
 /*? %%clicmd:group_label CLI section description%% ?*/
+/*? %%syscfg:group_label Startup config section description%% ?*/

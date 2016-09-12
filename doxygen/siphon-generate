@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+# Copyright (c) 2016 Comcast Cable Communications Management, LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Looks for preprocessor macros with struct initializers and siphons them
+# off into another file for later parsing; ostensibly to generate
+# documentation from struct initializer data.
+
+import os, sys, argparse, logging
+import siphon
+
+DEFAULT_LOGFILE = None
+DEFAULT_LOGLEVEL = "info"
+DEFAULT_OUTPUT = "build-root/docs/siphons"
+DEFAULT_PREFIX = os.getcwd()
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--log-file", default=DEFAULT_LOGFILE,
+        help="Log file [%s]" % DEFAULT_LOGFILE)
+ap.add_argument("--log-level", default=DEFAULT_LOGLEVEL,
+        choices=["debug", "info", "warning", "error", "critical"],
+        help="Logging level [%s]" % DEFAULT_LOGLEVEL)
+
+ap.add_argument("--output", '-o', metavar="directory", default=DEFAULT_OUTPUT,
+        help="Output directory for .siphon files [%s]" % DEFAULT_OUTPUT)
+ap.add_argument("--input-prefix", metavar="path", default=DEFAULT_PREFIX,
+        help="Prefix to strip from input pathnames [%s]" % DEFAULT_PREFIX)
+ap.add_argument("input", nargs='+', metavar="input_file",
+        help="Input C source files")
+args = ap.parse_args()
+
+logging.basicConfig(filename=args.log_file,
+        level=getattr(logging, args.log_level.upper(), None))
+log = logging.getLogger("siphon_generate")
+
+
+generate = siphon.generate.Generate(output_directory=args.output,
+    input_prefix=args.input_prefix)
+
+# Pre-process file names in case they indicate a file with
+# a list of files
+files = []
+for filename in args.input:
+    if filename.startswith('@'):
+        with open(filename[1:], 'r') as fp:
+            lines = fp.readlines()
+            for line in lines:
+                file = line.strip()
+                if file not in files:
+                    files.append(file)
+            lines = None
+    else:
+        if filename not in files:
+            files.append(filename)
+
+# Iterate all the input files we've been given
+for filename in files:
+    generate.parse(filename)
+
+# Write the extracted data
+generate.deliver()
+
+# All done
