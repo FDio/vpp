@@ -1853,126 +1853,236 @@ map_ip6_reass_conf_buffers (u32 buffers)
 }
 
 /* *INDENT-OFF* */
+
+/*?
+ * Configure MAP reassembly behaviour
+ *
+ * @cliexpar
+ * @cliexstart{map params reassembly}
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_ip4_reass_lifetime_command, static) = {
   .path = "map params reassembly",
-  .short_help = "[ip4 | ip6] [lifetime <lifetime-ms>] [pool-size <pool-size>] [buffers <buffers>] [ht-ratio <ht-ratio>]",
+  .short_help = "map params reassembly [ip4 | ip6] [lifetime <lifetime-ms>] "
+                "[pool-size <pool-size>] [buffers <buffers>] "
+                "[ht-ratio <ht-ratio>]",
   .function = map_params_reass_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Set or copy the IP TOS/Traffic Class field
+ *
+ * @cliexpar
+ * @cliexstart{map params traffic-class}
+ *
+ * This command is used to set the traffic-class field in translated
+ * or encapsulated packets. If copy is specifed (the default) then the
+ * traffic-class/TOS field is copied from the original packet to the
+ * translated / encapsulating header.
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_traffic_class_command, static) = {
   .path = "map params traffic-class",
-  .short_help =
-  "traffic-class {0x0-0xff | copy}",
+  .short_help = "map params traffic-class {0x0-0xff | copy}",
   .function = map_traffic_class_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Bypass IP4/IP6 lookup
+ *
+ * @cliexpar
+ * @cliexstart{map params pre-resolve}
+ *
+ * Bypass a second FIB lookup of the translated or encapsulated
+ * packet, and forward the packet directly to the specified
+ * next-hop. This optimization trades forwarding flexibility for
+ * performance.
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_pre_resolve_command, static) = {
   .path = "map params pre-resolve",
-  .short_help =
-  "pre-resolve {ip4-nh <address>} | {ip6-nh <address>}",
+  .short_help = " map params pre-resolve {ip4-nh <address>} "
+                "| {ip6-nh <address>}",
   .function = map_pre_resolve_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Enable or disable the MAP-E inbound security check
+ *
+ * @cliexpar
+ * @cliexstart{map params security-check}
+ *
+ * By default, a decapsulated packet's IPv4 source address will be
+ * verified against the outer header's IPv6 source address. Disabling
+ * this feature will allow IPv4 source address spoofing.
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_security_check_command, static) = {
   .path = "map params security-check",
-  .short_help =
-  "security-check on|off",
+  .short_help = "map params security-check on|off",
   .function = map_security_check_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Specifiy the IPv4 source address used for relayed ICMP error messages
+ *
+ * @cliexpar
+ * @cliexstart{map params icmp source-address}
+ *
+ * This command specifies which IPv4 source address (must be local to
+ * the system), that is used for relayed received IPv6 ICMP error
+ * messages.
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_icmp_relay_source_address_command, static) = {
   .path = "map params icmp source-address",
-   .short_help = "source-address <ip4-address>",
+  .short_help = "map params icmp source-address <ip4-address>",
   .function = map_icmp_relay_source_address_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Send IPv6 ICMP unreachables
+ *
+ * @cliexpar
+ * @cliexstart{map params icmp6 unreachables}
+ *
+ * Send IPv6 ICMP unreachable messages back if security check fails or
+ * no MAP domain exists.
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_icmp_unreachables_command, static) = {
   .path = "map params icmp6 unreachables",
-  .short_help = "unreachables {on|off}",
+  .short_help = "map params icmp6 unreachables {on|off}",
   .function = map_icmp_unreachables_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Configure MAP fragmentation behaviour
+ *
+ * @cliexpar
+ * @cliexstart{map params fragment}
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_fragment_command, static) = {
   .path = "map params fragment",
-  .short_help = "[inner|outer] [ignore-df [on|off]]",
+  .short_help = "map params fragment inner|outer",
   .function = map_fragment_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Ignore the IPv4 Don't fragment bit
+ *
+ * @cliexpar
+ * @cliexstart{map params fragment ignore-df}
+ *
+ * Allows fragmentation of the IPv4 packet even if the DF bit is
+ * set. The choice between inner or outer fragmentation of tunnel
+ * packets is complicated. The benefit of inner fragmentation is that
+ * the ultimate endpoint must reassemble, instead of the tunnel
+ * endpoint.
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_fragment_df_command, static) = {
   .path = "map params fragment ignore-df",
-  .short_help = "on|off",
+  .short_help = "map params fragment ignore-df on|off",
   .function = map_fragment_df_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Specifiy if the inbound security check should be done on fragments
+ *
+ * @cliexpar
+ * @cliexstart{map params security-check fragments}
+ *
+ * Typically the inbound on-decapsulation security check is only done
+ * on the first packet. The packet that contains the L4
+ * information. While a security check on every fragment is possible,
+ * it has a cost. State must be created on the first fragment.
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_security_check_frag_command, static) = {
   .path = "map params security-check fragments",
-  .short_help =
-  "fragments on|off",
+  .short_help = "map params security-check fragments on|off",
   .function = map_security_check_frag_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Add MAP domain
+ *
+ * @cliexpar
+ * @cliexstart{map add domain}
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_add_domain_command, static) = {
   .path = "map add domain",
-  .short_help =
-  "map add domain ip4-pfx <ip4-pfx> ip6-pfx <ip6-pfx> ip6-src <ip6-pfx> "
-      "ea-bits-len <n> psid-offset <n> psid-len <n> [map-t] [mtu <mtu>]",
+  .short_help = "map add domain ip4-pfx <ip4-pfx> ip6-pfx <ip6-pfx> "
+      "ip6-src <ip6-pfx> ea-bits-len <n> psid-offset <n> psid-len <n> "
+      "[map-t] [mtu <mtu>]",
   .function = map_add_domain_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Add MAP rule to a domain
+ *
+ * @cliexpar
+ * @cliexstart{map add rule}
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_add_rule_command, static) = {
   .path = "map add rule",
-  .short_help =
-  "map add rule index <domain> psid <psid> ip6-dst <ip6-addr>",
+  .short_help = "map add rule index <domain> psid <psid> ip6-dst <ip6-addr>",
   .function = map_add_rule_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Delete MAP domain
+ *
+ * @cliexpar
+ * @cliexstart{map del domain}
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(map_del_command, static) = {
   .path = "map del domain",
-  .short_help =
-  "map del domain index <domain>",
+  .short_help = "map del domain index <domain>",
   .function = map_del_domain_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Show MAP domains
+ *
+ * @cliexpar
+ * @cliexstart{show map domain}
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(show_map_domain_command, static) = {
   .path = "show map domain",
+  .short_help = "show map domain index <n> [counters]",
   .function = show_map_domain_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Show MAP statistics
+ *
+ * @cliexpar
+ * @cliexstart{show map stats}
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(show_map_stats_command, static) = {
   .path = "show map stats",
+  .short_help = "show map stats",
   .function = show_map_stats_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+/*?
+ * Show MAP fragmentation information
+ *
+ * @cliexpar
+ * @cliexstart{show map fragments}
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND(show_map_fragments_command, static) = {
   .path = "show map fragments",
+  .short_help = "show map fragments",
   .function = show_map_fragments_command_fn,
 };
 /* *INDENT-ON* */
