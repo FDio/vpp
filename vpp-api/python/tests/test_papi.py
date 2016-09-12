@@ -1,13 +1,10 @@
-#!/usr/bin/env python
-
 from __future__ import print_function
-import unittest, sys, time, threading, struct, logging
-import test_base
+import unittest, sys, time, threading, struct, logging, os
 import vpp_papi
 from ipaddress import *
-
+scriptdir = os.path.dirname(os.path.realpath(__file__))
 papi_event = threading.Event()
-print(vpp_papi.VL_API_SW_INTERFACE_SET_FLAGS)
+print(vpp_papi.vpe.VL_API_SW_INTERFACE_SET_FLAGS)
 def papi_event_handler(result):
     if result.vl_msg_id == vpp_papi.vpe.VL_API_SW_INTERFACE_SET_FLAGS:
         return
@@ -27,7 +24,7 @@ class TestPAPI(unittest.TestCase):
     def setUpClass(cls):
         #
         # Start main VPP process
-        cls.vpp_bin = glob.glob(test_base.scriptdir+'/../../../build-root/install-vpp*-native/vpp/bin/vpp')[0]
+        cls.vpp_bin = glob.glob(scriptdir+'/../../../build-root/install-vpp*-native/vpp/bin/vpp')[0]
         print("VPP BIN:", cls.vpp_bin)
         cls.vpp = subprocess.Popen([cls.vpp_bin, "unix", "nodaemon"], stderr=subprocess.PIPE)
         print('Started VPP')
@@ -89,7 +86,7 @@ class TestPAPI(unittest.TestCase):
         self.assertEqual(t.retval, 0)
 
         ifindex = t.sw_if_index
-        addr = str(IPv6Address('1::1').packed)
+        addr = str(IPv6Address(u'1::1').packed)
         t = vpp_papi.sw_interface_add_del_address(ifindex, 1, 1, 0, 16, addr)
         print(t)
         self.assertEqual(t.retval, 0)
