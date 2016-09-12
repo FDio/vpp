@@ -102,12 +102,20 @@ typedef struct {
 } snat_address_t;
 
 typedef struct {
+  ip4_address_t addr;
+  u32 busy_ports;
+  uword * busy_port_bitmap;
+  ip4_address_t caddr;
+} sdnat_address_t;
+
+typedef struct {
   /* Main lookup tables */
   clib_bihash_8_8_t out2in;
   clib_bihash_8_8_t in2out;
 
   /* Find-a-user => src address lookup */
   clib_bihash_8_8_t user_hash;
+  clib_bihash_8_8_t snat_user_hash;
 
   /* User pool */
   snat_user_t * users;
@@ -117,6 +125,7 @@ typedef struct {
 
   /* Vector of outside addresses */
   snat_address_t * addresses;
+  sdnat_address_t * addressed;
 
   /* Pool of doubly-linked list elements */
   dlist_elt_t * list_pool;

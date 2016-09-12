@@ -1301,12 +1301,15 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
       ({
 	ip4_address_t * x = ip_interface_address_get_address (&im->lookup_main, ia);
 
+  if (address_length == 32)
+    continue;
+
 	if (ip4_destination_matches_route (im, address, x, ia->address_length)
 	    || ip4_destination_matches_route (im, x, address, address_length))
 	  return clib_error_create ("failed to add %U which conflicts with %U for interface %U",
 				    format_ip4_address_and_length, address, address_length,
 				    format_ip4_address_and_length, x, ia->address_length,
-				    format_vnet_sw_if_index_name, vnm, sw_if_index);
+				    format_vnet_sw_if_index_name, vnm, sw_if_index); 
       }));
     }
 

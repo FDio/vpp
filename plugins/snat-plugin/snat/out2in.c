@@ -51,6 +51,9 @@ vlib_node_registration_t snat_out2in_node;
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
 _(OUT2IN_PACKETS, "Good out2in packets processed")      \
 _(BAD_ICMP_TYPE, "icmp type not echo-reply")            \
+_(OUT_OF_PORTS, "Out of ports")                         \
+_(BAD_PROTOCOL, "Bad protocol")                         \
+_(BAD_OUTSIDE_FIB, "Outside VRF ID not found")          \
 _(NO_TRANSLATION, "No translation")
   
 typedef enum {
@@ -70,6 +73,384 @@ typedef enum {
   SNAT_OUT2IN_NEXT_DROP,
   SNAT_OUT2IN_N_NEXT,
 } snat_out2in_next_t;
+
+
+static inline uword
+parse_dsnat_or_snat2(snat_main_t *sm, ip4_header_t * ip0)
+{
+  int sdi = 0;
+  sdnat_address_t *a;
+   
+  for (sdi = 0; sdi < vec_len (sm->addressed); sdi++)
+    {
+      a = sm->addressed + sdi;
+      if (a->addr.data_u32 ==  ip0->dst_address.data_u32)
+        return 0;
+    }
+  /* not found */
+  return 1;
+ 
+}
+
+static inline ip4_address_t
+get_dsnat_cli_ip(snat_main_t *sm, ip4_header_t * ip0)
+{
+  int sdi = 0;
+  sdnat_address_t *a;
+   
+  for (sdi = 0; sdi < vec_len (sm->addressed); sdi++)
+    {
+      a = sm->addressed + sdi;
+      if (a->addr.data_u32 ==  ip0->dst_address.data_u32)
+        return a->caddr;
+    }
+  /* not found */
+  ip4_address_t tmp;
+  memset(&tmp, 0, sizeof(ip4_address_t));
+  return tmp;
+ 
+}
+
+void snat_free_outside_address_and_port_ds (snat_main_t * sm, 
+                                         snat_session_key_t * k, 
+                                         u32 address_index)
+{
+  sdnat_address_t *a;
+  u16 port_host_byte_order = clib_net_to_host_u16 (k->port);
+  
+  ASSERT (address_index < vec_len (sm->addressed));
+
+  a = sm->addressed + address_index;
+
+  ASSERT (clib_bitmap_get (a->busy_port_bitmap, port_host_byte_order) == 1);
+
+  a->busy_port_bitmap = clib_bitmap_set (a->busy_port_bitmap, 
+                                         port_host_byte_order, 0);
+  a->busy_ports--;
+}  
+
+
+int snat_alloc_outside_address_and_port_ds (snat_main_t * sm, 
+                                         snat_session_key_t * k,
+                                         u32 * address_indexp,
+                                         ip4_header_t * ip0,
+                                         u16 portnum)
+{
+  int i;
+  sdnat_address_t *a;
+
+  for (i = 0; i < vec_len (sm->addressed); i++)
+    {
+      if (sm->addressed[i].busy_ports < (65535-1024))
+        {
+          a = sm->addressed + i;
+
+          if (a->addr.data_u32 != ip0->dst_address.data_u32)
+            continue;
+          k->addr = a->addr;
+          k->port = portnum;
+          *address_indexp = i;
+          return 0;
+        }
+    }
+  return 1;
+}
+
+
+
+static u32 slow_path_ds (snat_main_t *sm, vlib_buffer_t *b0,
+                      ip4_header_t * ip0,
+                      u32 rx_fib_index0,
+                      snat_session_key_t * key0,
+                      snat_session_t ** sessionp,
+                      vlib_node_runtime_t * node,
+                      u32 next0)
+{
+  snat_user_t *u;
+  snat_user_key_t user_key;
+  snat_session_t *s;
+  clib_bihash_kv_8_8_t kv0, value0;
+  u32 oldest_per_user_translation_list_index;
+  dlist_elt_t * oldest_per_user_translation_list_elt;
+  dlist_elt_t * per_user_translation_list_elt;
+  dlist_elt_t * per_user_list_head_elt;
+  u32 session_index;
+  snat_session_key_t key1;
+  u32 address_index;
+  u32 outside_fib_index;
+  uword * p;
+  u16 port;
+  udp_header_t * udp0;
+
+  p = hash_get (sm->ip4_main->fib_index_by_table_id, sm->outside_vrf_id);
+  if (! p)
+    {
+      b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_OUTSIDE_FIB];
+      return SNAT_OUT2IN_NEXT_DROP;
+    }
+  outside_fib_index = p[0];
+  user_key.addr = get_dsnat_cli_ip(sm, ip0);
+  if (user_key.addr.data_u32 == 0)
+    return SNAT_OUT2IN_NEXT_DROP;
+
+  //user_key.fib_index = rx_fib_index0;
+  user_key.fib_index = outside_fib_index;
+  kv0.key = user_key.as_u64;
+
+  key0->fib_index = outside_fib_index;
+  key0->addr = user_key.addr;
+  
+  
+  if (ip0->protocol == IP_PROTOCOL_ICMP) 
+    port = key0->port;
+  else if (ip0->protocol == IP_PROTOCOL_UDP 
+            || ip0->protocol == IP_PROTOCOL_TCP) 
+    {
+      udp0 = ip4_next_header (ip0);
+      port =  udp0->dst_port;
+    }
+  else
+    {
+      b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_PROTOCOL];
+      return SNAT_OUT2IN_NEXT_DROP;
+    }
+  /* Ever heard of the "user" = src ip4 address before? */
+  if (clib_bihash_search_8_8 (&sm->snat_user_hash, &kv0, &value0))
+    {
+      /* no, make a new one */
+      pool_get (sm->users, u);
+      memset (u, 0, sizeof (*u));
+      u->addr = user_key.addr;
+
+      pool_get (sm->list_pool, per_user_list_head_elt);
+
+      u->sessions_per_user_list_head_index = per_user_list_head_elt -
+        sm->list_pool;
+
+      clib_dlist_init (sm->list_pool, u->sessions_per_user_list_head_index);
+      
+      kv0.value = u - sm->users;
+      
+      /* add user */
+      clib_bihash_add_del_8_8 (&sm->snat_user_hash, &kv0, 1 /* is_add */);
+    }
+  else
+    {
+      u = pool_elt_at_index (sm->users, value0.value);
+    }
+
+  /* Over quota? Recycle the least recently used translation */
+  if (u->nsessions >= sm->max_translations_per_user)
+    {
+      /* Remove the oldest translation */
+      oldest_per_user_translation_list_index = 
+        clib_dlist_remove_head 
+        (sm->list_pool, u->sessions_per_user_list_head_index);
+
+      ASSERT (oldest_per_user_translation_list_index != ~0);
+
+      /* add it back to the end of the LRU list */
+      clib_dlist_addtail (sm->list_pool, u->sessions_per_user_list_head_index,
+                          oldest_per_user_translation_list_index);
+
+      /* Get the list element */
+      oldest_per_user_translation_list_elt = 
+        pool_elt_at_index (sm->list_pool, 
+                           oldest_per_user_translation_list_index);
+      
+      /* Get the session index from the list element */
+      session_index = oldest_per_user_translation_list_elt->value;
+
+      /* Get the session */
+      s = pool_elt_at_index (sm->sessions, session_index);
+
+      /* Remove in2out, out2in keys */
+      kv0.key = s->in2out.as_u64;
+      if (clib_bihash_add_del_8_8 (&sm->in2out, &kv0, 0 /* is_add */))
+          clib_warning ("in2out key delete failed");
+      kv0.key = s->out2in.as_u64;
+      if (clib_bihash_add_del_8_8 (&sm->out2in, &kv0, 0 /* is_add */))
+          clib_warning ("out2in key delete failed");
+/*
+      snat_free_outside_address_and_port_ds 
+        (sm, &s->out2in, s->outside_address_index);
+*/
+      s->outside_address_index = ~0;
+
+      if (snat_alloc_outside_address_and_port_ds (sm, &key1, &address_index, ip0, port))
+        {
+          ASSERT(0);
+
+          b0->error = node->errors[SNAT_OUT2IN_ERROR_OUT_OF_PORTS];
+          return SNAT_OUT2IN_NEXT_DROP;
+        }
+      s->outside_address_index = address_index;
+    }
+  else
+    {
+      if (snat_alloc_outside_address_and_port_ds (sm, &key1, &address_index, ip0, port))
+        {
+          ASSERT(0);
+
+          b0->error = node->errors[SNAT_OUT2IN_ERROR_OUT_OF_PORTS];
+          return SNAT_OUT2IN_NEXT_DROP;
+        }
+
+      /* Create a new session */
+      pool_get (sm->sessions, s);
+      memset (s, 0, sizeof (*s));
+      
+      s->outside_address_index = address_index;
+
+      /* Create list elts */
+      pool_get (sm->list_pool, per_user_translation_list_elt);
+      clib_dlist_init (sm->list_pool, per_user_translation_list_elt -
+                       sm->list_pool);
+      
+      per_user_translation_list_elt->value = s - sm->sessions;
+      s->per_user_index = per_user_translation_list_elt - sm->list_pool;
+      s->per_user_list_head_index = u->sessions_per_user_list_head_index;
+      
+      clib_dlist_addtail (sm->list_pool, s->per_user_list_head_index,
+                          per_user_translation_list_elt - sm->list_pool);
+      u->nsessions++;
+    }
+ 
+
+ 
+  s->in2out = *key0;
+  s->out2in = key1;
+  s->out2in.protocol = key0->protocol;
+  s->out2in.fib_index = rx_fib_index0;
+  *sessionp = s;
+
+  /* Add to translation hashes */
+  kv0.key = s->in2out.as_u64;
+  kv0.value = s - sm->sessions;
+  if (clib_bihash_add_del_8_8 (&sm->in2out, &kv0, 1 /* is_add */))
+      clib_warning ("in2out key add failed");
+  
+  kv0.key = s->out2in.as_u64;
+  kv0.value = s - sm->sessions;
+  
+  if (clib_bihash_add_del_8_8 (&sm->out2in, &kv0, 1 /* is_add */))
+      clib_warning ("out2in key add failed");
+
+  return next0;
+}
+
+static inline u32 l4_out2in_slow_path (snat_main_t *sm,
+                                         vlib_buffer_t * b0,
+                                         ip4_header_t * ip0,
+                                         udp_header_t * udp0,
+                                         u32 sw_if_index0,
+                                         u32 rx_fib_index0,
+                                         vlib_node_runtime_t * node,
+                                         u32 next0, f64 now, u16 proto0)
+{
+  snat_session_key_t key0;
+  clib_bihash_kv_8_8_t kv0, value0;
+  snat_session_t * s0;
+  ip_csum_t sum0;
+  snat_runtime_t * rt = (snat_runtime_t *)node->runtime_data;
+  u32 new_addr0, old_addr0;
+  u16 new_port0, old_port0;
+  tcp_header_t * tcp0;
+
+
+  tcp0 = (tcp_header_t *) udp0;
+
+  key0.addr = ip0->dst_address;
+  key0.port = udp0->dst_port;
+  key0.protocol = proto0;
+  key0.fib_index = rx_fib_index0;
+
+  kv0.key = key0.as_u64;
+  
+  if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+    {
+      ip4_address_t * first_int_addr;
+
+      if (PREDICT_FALSE(rt->cached_sw_if_index != sw_if_index0))
+        {
+          first_int_addr = 
+            ip4_interface_first_address (sm->ip4_main, sw_if_index0,
+                                         0 /* just want the address */);
+          rt->cached_sw_if_index = sw_if_index0;
+          rt->cached_ip4_address = first_int_addr->as_u32;
+        }
+     
+ 
+      /* Don't NAT packet aimed at the intfc address */
+      if (PREDICT_FALSE(ip0->dst_address.as_u32 ==
+                        rt->cached_ip4_address))
+        return next0;
+      
+      if (parse_dsnat_or_snat2(sm, ip0) == 0)
+        {
+          snat_session_key_t key00;
+  
+          key00.port = udp0->dst_port;
+          key00.protocol = proto0;
+
+          next0 = slow_path_ds (sm, b0, ip0, rx_fib_index0, &key00,
+                         &s0, node, next0); 
+        }
+      else 
+      {
+        b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
+        return SNAT_OUT2IN_NEXT_DROP;
+      }
+    }
+  else
+    s0 = pool_elt_at_index (sm->sessions, value0.value);
+
+
+
+  old_addr0 = ip0->dst_address.as_u32;
+  ip0->dst_address = s0->in2out.addr;
+  new_addr0 = ip0->dst_address.as_u32;
+  vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->out2in.fib_index;
+
+  sum0 = ip0->checksum;
+  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
+                  ip4_header_t,
+                  dst_address /* changed member */);
+  ip0->checksum = ip_csum_fold (sum0);
+
+  if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
+  {
+          old_port0 = tcp0->ports.dst;
+          tcp0->ports.dst = s0->in2out.port;
+          new_port0 = tcp0->ports.dst;
+
+          sum0 = tcp0->checksum;
+          sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
+                          ip4_header_t,
+                          dst_address /* changed member */);
+
+          sum0 = ip_csum_update (sum0, old_port0, new_port0,
+                          ip4_header_t /* cheat */,
+                          length /* changed member */);
+          tcp0->checksum = ip_csum_fold(sum0);
+  }
+  else
+  {
+          old_port0 = udp0->dst_port;
+          udp0->dst_port = s0->in2out.port;
+          udp0->checksum = 0;
+  }
+
+  /* Accounting, per-user LRU list maintenance */
+  s0->last_heard = now;
+  s0->total_pkts++;
+  s0->total_bytes += vlib_buffer_length_in_chain (sm->vlib_main, b0);
+  clib_dlist_remove (sm->list_pool, s0->per_user_index);
+  clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
+                  s0->per_user_index);
+  return next0;
+}
+
 
 static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
                                          vlib_buffer_t * b0,
@@ -110,14 +491,28 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
           rt->cached_sw_if_index = sw_if_index0;
           rt->cached_ip4_address = first_int_addr->as_u32;
         }
-      
+     
+ 
       /* Don't NAT packet aimed at the intfc address */
       if (PREDICT_FALSE(ip0->dst_address.as_u32 ==
                         rt->cached_ip4_address))
         return next0;
+      
+      if (parse_dsnat_or_snat2(sm, ip0) == 0)
+        {
+          snat_session_key_t key00;
+  
+          key00.port = echo0->identifier;
+          key00.protocol = SNAT_PROTOCOL_ICMP;
 
-      b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
-      return SNAT_OUT2IN_NEXT_DROP;
+          next0 = slow_path_ds (sm, b0, ip0, rx_fib_index0, &key00,
+                         &s0, node, next0); 
+        }
+      else 
+      {
+        b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
+        return SNAT_OUT2IN_NEXT_DROP;
+      }
     }
   else
     s0 = pool_elt_at_index (sm->sessions, value0.value);
@@ -155,8 +550,8 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
 
 static uword
 snat_out2in_node_fn (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame)
+      vlib_node_runtime_t * node,
+      vlib_frame_t * frame)
 {
   u32 n_left_from, * from, * to_next;
   snat_out2in_next_t next_index;
@@ -175,65 +570,56 @@ snat_out2in_node_fn (vlib_main_t * vm,
       u32 n_left_to_next;
 
       vlib_get_next_frame (vm, node, next_index,
-			   to_next, n_left_to_next);
+         to_next, n_left_to_next);
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
-	{
+  {
           u32 bi0, bi1;
-	  vlib_buffer_t * b0, * b1;
+    vlib_buffer_t * b0, * b1;
           u32 next0 = SNAT_OUT2IN_NEXT_DROP;
           u32 next1 = SNAT_OUT2IN_NEXT_DROP;
           u32 sw_if_index0, sw_if_index1;
           ip4_header_t * ip0, *ip1;
-          ip_csum_t sum0, sum1;
-          u32 new_addr0, old_addr0;
-          u16 new_port0, old_port0;
-          u32 new_addr1, old_addr1;
-          u16 new_port1, old_port1;
           udp_header_t * udp0, * udp1;
-          tcp_header_t * tcp0, * tcp1;
           icmp46_header_t * icmp0, * icmp1;
-          snat_session_key_t key0, key1;
           u32 rx_fib_index0, rx_fib_index1;
           u32 proto0, proto1;
           snat_session_t * s0 = 0, * s1 = 0;
-          clib_bihash_kv_8_8_t kv0, kv1, value0, value1;
           
-	  /* Prefetch next iteration. */
-	  {
-	    vlib_buffer_t * p2, * p3;
+    /* Prefetch next iteration. */
+    {
+      vlib_buffer_t * p2, * p3;
             
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
+      p2 = vlib_get_buffer (vm, from[2]);
+      p3 = vlib_get_buffer (vm, from[3]);
             
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
+      vlib_prefetch_buffer_header (p2, LOAD);
+      vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
-	  }
+      CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
+      CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+    }
 
-          /* speculatively enqueue b0 and b1 to the current next frame */
-	  to_next[0] = bi0 = from[0];
-	  to_next[1] = bi1 = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
+    /* speculatively enqueue b0 and b1 to the current next frame */
+    to_next[0] = bi0 = from[0];
+    to_next[1] = bi1 = from[1];
+    from += 2;
+    to_next += 2;
+    n_left_from -= 2;
+    n_left_to_next -= 2;
 
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
+    b0 = vlib_get_buffer (vm, bi0);
+    b1 = vlib_get_buffer (vm, bi1);
             
           ip0 = vlib_buffer_get_current (b0);
           udp0 = ip4_next_header (ip0);
-          tcp0 = (tcp_header_t *) udp0;
           icmp0 = (icmp46_header_t *) udp0;
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
+    rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
                                    sw_if_index0);
 
-	  vnet_get_config_data (&cm->config_main,
+    vnet_get_config_data (&cm->config_main,
                                 &b0->current_config_index,
                                 &next0,
                                 0 /* sizeof config data */);
@@ -256,59 +642,11 @@ snat_out2in_node_fn (vlib_main_t * vm,
               goto trace0;
             }
 
-          key0.addr = ip0->dst_address;
-          key0.port = udp0->dst_port;
-          key0.protocol = proto0;
-          key0.fib_index = rx_fib_index0;
-          
-          kv0.key = key0.as_u64;
+          next0 = l4_out2in_slow_path 
+                  (sm, b0, ip0, udp0, sw_if_index0, rx_fib_index0, node, 
+                   next0, now, proto0);
+          goto trace0;
 
-          if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
-            goto trace0;
-          else
-            s0 = pool_elt_at_index (sm->sessions, value0.value);
-
-          old_addr0 = ip0->dst_address.as_u32;
-          ip0->dst_address = s0->in2out.addr;
-          new_addr0 = ip0->dst_address.as_u32;
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->out2in.fib_index;
-
-          sum0 = ip0->checksum;
-          sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-                                 ip4_header_t,
-                                 dst_address /* changed member */);
-          ip0->checksum = ip_csum_fold (sum0);
-
-          if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
-            {
-              old_port0 = tcp0->ports.dst;
-              tcp0->ports.dst = s0->in2out.port;
-              new_port0 = tcp0->ports.dst;
-
-              sum0 = tcp0->checksum;
-              sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-                                     ip4_header_t,
-                                     dst_address /* changed member */);
-
-              sum0 = ip_csum_update (sum0, old_port0, new_port0,
-                                     ip4_header_t /* cheat */,
-                                     length /* changed member */);
-              tcp0->checksum = ip_csum_fold(sum0);
-            }
-          else
-            {
-              old_port0 = udp0->dst_port;
-              udp0->dst_port = s0->in2out.port;
-              udp0->checksum = 0;
-            }
-
-          /* Accounting, per-user LRU list maintenance */
-          s0->last_heard = now;
-          s0->total_pkts++;
-          s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
-          clib_dlist_remove (sm->list_pool, s0->per_user_index);
-          clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
-                              s0->per_user_index);
         trace0:
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
@@ -328,14 +666,13 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           ip1 = vlib_buffer_get_current (b1);
           udp1 = ip4_next_header (ip1);
-          tcp1 = (tcp_header_t *) udp1;
           icmp1 = (icmp46_header_t *) udp1;
 
           sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
-	  rx_fib_index1 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
+    rx_fib_index1 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
                                    sw_if_index1);
 
-	  vnet_get_config_data (&cm->config_main,
+    vnet_get_config_data (&cm->config_main,
                                 &b1->current_config_index,
                                 &next1,
                                 0 /* sizeof config data */);
@@ -357,60 +694,11 @@ snat_out2in_node_fn (vlib_main_t * vm,
                  next1, now);
               goto trace1;
             }
+          next1 = l4_out2in_slow_path 
+                  (sm, b1, ip1, udp1, sw_if_index1, rx_fib_index1, node, 
+                   next1, now, proto1);
+          goto trace1;
 
-          key1.addr = ip1->dst_address;
-          key1.port = udp1->dst_port;
-          key1.protocol = proto1;
-          key1.fib_index = rx_fib_index1;
-          
-          kv1.key = key1.as_u64;
-
-          if (clib_bihash_search_8_8 (&sm->out2in, &kv1, &value1))
-            goto trace1;
-          else
-            s1 = pool_elt_at_index (sm->sessions, value1.value);
-
-          old_addr1 = ip1->dst_address.as_u32;
-          ip1->dst_address = s1->in2out.addr;
-          new_addr1 = ip1->dst_address.as_u32;
-          vnet_buffer(b1)->sw_if_index[VLIB_TX] = s1->out2in.fib_index;
-
-          sum1 = ip1->checksum;
-          sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
-                                 ip4_header_t,
-                                 dst_address /* changed member */);
-          ip1->checksum = ip_csum_fold (sum1);
-
-          if (PREDICT_TRUE(proto1 == SNAT_PROTOCOL_TCP))
-            {
-              old_port1 = tcp1->ports.dst;
-              tcp1->ports.dst = s1->in2out.port;
-              new_port1 = tcp1->ports.dst;
-
-              sum1 = tcp1->checksum;
-              sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
-                                     ip4_header_t,
-                                     dst_address /* changed member */);
-
-              sum1 = ip_csum_update (sum1, old_port1, new_port1,
-                                     ip4_header_t /* cheat */,
-                                     length /* changed member */);
-              tcp1->checksum = ip_csum_fold(sum1);
-            }
-          else
-            {
-              old_port1 = udp1->dst_port;
-              udp1->dst_port = s1->in2out.port;
-              udp1->checksum = 0;
-            }
-
-          /* Accounting, per-user LRU list maintenance */
-          s1->last_heard = now;
-          s1->total_pkts++;
-          s1->total_bytes += vlib_buffer_length_in_chain (vm, b1);
-          clib_dlist_remove (sm->list_pool, s1->per_user_index);
-          clib_dlist_addtail (sm->list_pool, s1->per_user_list_head_index,
-                              s1->per_user_index);
         trace1:
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
@@ -435,44 +723,37 @@ snat_out2in_node_fn (vlib_main_t * vm,
         }
 
       while (n_left_from > 0 && n_left_to_next > 0)
-	{
+  {
           u32 bi0;
-	  vlib_buffer_t * b0;
+    vlib_buffer_t * b0;
           u32 next0 = SNAT_OUT2IN_NEXT_DROP;
           u32 sw_if_index0;
           ip4_header_t * ip0;
-          ip_csum_t sum0;
-          u32 new_addr0, old_addr0;
-          u16 new_port0, old_port0;
           udp_header_t * udp0;
-          tcp_header_t * tcp0;
           icmp46_header_t * icmp0;
-          snat_session_key_t key0;
           u32 rx_fib_index0;
           u32 proto0;
           snat_session_t * s0 = 0;
-          clib_bihash_kv_8_8_t kv0, value0;
           
           /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
+    bi0 = from[0];
+    to_next[0] = bi0;
+    from += 1;
+    to_next += 1;
+    n_left_from -= 1;
+    n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+    b0 = vlib_get_buffer (vm, bi0);
 
           ip0 = vlib_buffer_get_current (b0);
           udp0 = ip4_next_header (ip0);
-          tcp0 = (tcp_header_t *) udp0;
           icmp0 = (icmp46_header_t *) udp0;
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
+    rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
                                    sw_if_index0);
 
-	  vnet_get_config_data (&cm->config_main,
+    vnet_get_config_data (&cm->config_main,
                                 &b0->current_config_index,
                                 &next0,
                                 0 /* sizeof config data */);
@@ -495,59 +776,11 @@ snat_out2in_node_fn (vlib_main_t * vm,
               goto trace00;
             }
 
-          key0.addr = ip0->dst_address;
-          key0.port = udp0->dst_port;
-          key0.protocol = proto0;
-          key0.fib_index = rx_fib_index0;
-          
-          kv0.key = key0.as_u64;
+          next0 = l4_out2in_slow_path 
+                  (sm, b0, ip0, udp0, sw_if_index0, rx_fib_index0, node, 
+                   next0, now, proto0);
+          goto trace00;
 
-          if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
-            goto trace00;
-          else
-            s0 = pool_elt_at_index (sm->sessions, value0.value);
-
-          old_addr0 = ip0->dst_address.as_u32;
-          ip0->dst_address = s0->in2out.addr;
-          new_addr0 = ip0->dst_address.as_u32;
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->out2in.fib_index;
-
-          sum0 = ip0->checksum;
-          sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-                                 ip4_header_t,
-                                 dst_address /* changed member */);
-          ip0->checksum = ip_csum_fold (sum0);
-
-          if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
-            {
-              old_port0 = tcp0->ports.dst;
-              tcp0->ports.dst = s0->in2out.port;
-              new_port0 = tcp0->ports.dst;
-
-              sum0 = tcp0->checksum;
-              sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-                                     ip4_header_t,
-                                     dst_address /* changed member */);
-
-              sum0 = ip_csum_update (sum0, old_port0, new_port0,
-                                     ip4_header_t /* cheat */,
-                                     length /* changed member */);
-              tcp0->checksum = ip_csum_fold(sum0);
-            }
-          else
-            {
-              old_port0 = udp0->dst_port;
-              udp0->dst_port = s0->in2out.port;
-              udp0->checksum = 0;
-            }
-
-          /* Accounting, per-user LRU list maintenance */
-          s0->last_heard = now;
-          s0->total_pkts++;
-          s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
-          clib_dlist_remove (sm->list_pool, s0->per_user_index);
-          clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
-                              s0->per_user_index);
         trace00:
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
@@ -565,10 +798,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
           pkts_processed += next0 != SNAT_OUT2IN_NEXT_DROP;
 
           /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	}
+    vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+             to_next, n_left_to_next,
+             bi0, next0);
+  }
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }

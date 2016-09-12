@@ -462,6 +462,46 @@ VLIB_CLI_COMMAND (add_address_command, static) = {
   .function = add_address_command_fn,
 };
 
+void sdnat_add_sd_address (snat_main_t *sm, ip4_address_t *caddr, 
+ip4_address_t *addr)
+{
+  sdnat_address_t * ap;
+
+  vec_add2 (sm->addressed, ap, 1);
+	ap->caddr = *caddr;
+  ap->addr = *addr;
+
+}
+
+static clib_error_t *
+add_address_sd_command_fn (vlib_main_t * vm,
+                        unformat_input_t * input,
+                        vlib_cli_command_t * cmd)
+{
+  snat_main_t * sm = &snat_main;
+ 	ip4_address_t cli_addr, sd_addr;
+
+  if (unformat (input, "%U - %U", 
+                unformat_ip4_address, &cli_addr,
+                unformat_ip4_address, &sd_addr))
+    ;
+  else 
+    return clib_error_return (0, "lose input argv" );
+
+
+  sdnat_add_sd_address (sm, &cli_addr, &sd_addr);
+
+  return 0;
+}
+
+
+VLIB_CLI_COMMAND (add_address_sd_command, static) = {
+  .path = "sdnat add address",
+  .short_help = "sdnat add addresses <cli ip4 address> - <sdnat ip4 address>",
+  .function = add_address_sd_command_fn,
+};
+
+
 static clib_error_t *
 snat_feature_command_fn (vlib_main_t * vm,
                           unformat_input_t * input,
@@ -596,6 +636,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
                         translation_memory_size);
 
   clib_bihash_init_8_8 (&sm->user_hash, "users", user_buckets,
+                        user_memory_size);
+  
+  clib_bihash_init_8_8 (&sm->snat_user_hash, "snat_users", user_buckets,
                         user_memory_size);
   return 0;
 }
