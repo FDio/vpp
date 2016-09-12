@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_78263218",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-12T09:36:49Z",
+      "side": 1,
+      "message": "Please introduce VNET_DPDK_DEV_HQOS instead of this additional check",
+      "range": {
+        "startLine": 335,
+        "startChar": 6,
+        "endLine": 336,
+        "endChar": 30
+      },
+      "revId": "23ee00932e888aa82925911938a4a65cbe00e529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_58237605",
+        "filename": "vnet/vnet/devices/dpdk/dpdk.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 460,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-12T09:36:49Z",
+      "side": 1,
+      "message": "hqos",
+      "range": {
+        "startLine": 460,
+        "startChar": 39,
+        "endLine": 460,
+        "endChar": 43
+      },
+      "revId": "23ee00932e888aa82925911938a4a65cbe00e529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_3820baf6",
+        "filename": "vnet/vnet/devices/dpdk/dpdk.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 477,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-12T09:36:49Z",
+      "side": 1,
+      "message": "HQOS",
+      "range": {
+        "startLine": 477,
+        "startChar": 10,
+        "endLine": 477,
+        "endChar": 14
+      },
+      "revId": "23ee00932e888aa82925911938a4a65cbe00e529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_181dfebd",
+        "filename": "vnet/vnet/devices/dpdk/dpdk.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 478,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-12T09:36:49Z",
+      "side": 1,
+      "message": "hqos",
+      "range": {
+        "startLine": 478,
+        "startChar": 15,
+        "endLine": 478,
+        "endChar": 19
+      },
+      "revId": "23ee00932e888aa82925911938a4a65cbe00e529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_f87922fd",
+        "filename": "vnet/vnet/devices/dpdk/dpdk.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 514,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-12T09:36:49Z",
+      "side": 1,
+      "message": "hqos",
+      "range": {
+        "startLine": 514,
+        "startChar": 6,
+        "endLine": 514,
+        "endChar": 9
+      },
+      "revId": "23ee00932e888aa82925911938a4a65cbe00e529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_d87e66e4",
+        "filename": "vnet/vnet/devices/dpdk/dpdk.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 515,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-12T09:36:49Z",
+      "side": 1,
+      "message": "hqos",
+      "range": {
+        "startLine": 515,
+        "startChar": 6,
+        "endLine": 515,
+        "endChar": 10
+      },
+      "revId": "23ee00932e888aa82925911938a4a65cbe00e529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_b883aacb",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-12T09:36:49Z",
+      "side": 1,
+      "message": "hqos",
+      "range": {
+        "startLine": 254,
+        "startChar": 38,
+        "endLine": 254,
+        "endChar": 42
+      },
+      "revId": "23ee00932e888aa82925911938a4a65cbe00e529",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
