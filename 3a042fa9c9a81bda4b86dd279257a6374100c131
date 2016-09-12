@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_93b0cf8c",
+        "filename": "vnet/vnet/l2/dir.dox",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-12T19:23:23Z",
+      "side": 1,
+      "message": "this word seems redundant (the section of documentation is all CLI) - but just \"Layer 2\" seems inadequate. hmm. I guess it\u0027ll have to do.",
+      "range": {
+        "startLine": 24,
+        "startChar": 33,
+        "endLine": 24,
+        "endChar": 36
+      },
+      "revId": "3a042fa9c9a81bda4b86dd279257a6374100c131",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
