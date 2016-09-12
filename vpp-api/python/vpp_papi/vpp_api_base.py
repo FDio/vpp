@@ -58,7 +58,7 @@ def results_event_clear(context):
     results[context]['e'].clear()
 
 def results_event_wait(context, timeout):
-    results[context]['e'].wait(timeout)
+    return (results[context]['e'].wait(timeout))
 
 def results_set(context, r):
     results[context]['r'] = r
