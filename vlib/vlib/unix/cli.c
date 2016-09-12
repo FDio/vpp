@@ -42,7 +42,8 @@
  * Provides a command line interface so humans can interact with VPP.
  * This is predominantly a debugging and testing mechanism.
  */
-/*? %%clicmd:group_label Debug CLI %% ?*/
+/*? %%clicmd:group_label Command line session %% ?*/
+/*? %%syscfg:group_label Command line session %% ?*/
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -2504,6 +2505,9 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+/*?
+ * This module has no configurable parameters.
+?*/
 VLIB_CONFIG_FUNCTION (unix_cli_config, "unix-cli");
 
 /** Called when VPP is shutting down, this restores the system

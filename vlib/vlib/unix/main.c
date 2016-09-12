@@ -407,6 +407,59 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 }
 
 /* unix { ... } configuration. */
+/*?
+ *
+ * @cfgcmd{interactive}
+ * Attach CLI to stdin/out and provide a debugging command line interface.
+ * Implies @c nodaemon.
+ *
+ * @cfgcmd{nodaemon}
+ * Do not fork or background the VPP process. Typically used when invoking
+ * VPP applications from a process monitor.
+ *
+ * @cfgcmd{exec, &lt;filename&gt;}
+ * @par <code>startup-config &lt;filename&gt;</code>
+ * Read startup operational configuration from @c filename.
+ * The contents of the file will be performed as though entered at the CLI.
+ * The two keywords are aliases for the same function; if both are specified,
+ * only the last will have an effect.
+ *
+ * @cfgcmd{log, &lt;filename&gt;}
+ * Logs the startup configuration and all subsequent CLI commands in
+ * @c filename.
+ * Very useful in situations where folks don't remember or can't be bothered
+ * to include CLI commands in bug reports.
+ *
+ * @cfgcmd{full-coredump}
+ * Ask the Linux kernel to dump all memory-mapped address regions, instead
+ * of just text+data+bss.
+ *
+ * @cfgcmd{cli-listen, &lt;address:port&gt;}
+ * Bind the CLI to listen at the address and port given. @clocalhost
+ * on TCP port @c 5002, given as <tt>cli-listen localhost:5002</tt>,
+ * is typical.
+ *
+ * @cfgcmd{cli-line-mode}
+ * Disable character-by-character I/O on stdin. Useful when combined with,
+ * for example, <tt>emacs M-x gud-gdb</tt>.
+ *
+ * @cfgcmd{cli-prompt, &lt;string&gt;}
+ * Configure the CLI prompt to be @c string.
+ *
+ * @cfgcmd{cli-history-limit, &lt;nn&gt;}
+ * Limit commmand history to @c nn  lines. A value of @c 0
+ * disables command history. Default value: @c 50
+ *
+ * @cfgcmd{cli-no-banner}
+ * Disable the login banner on stdin and Telnet connections.
+ *
+ * @cfgcmd{cli-no-pager}
+ * Disable the output pager.
+ *
+ * @cfgcmd{cli-pager-buffer-limit, &lt;nn&gt;}
+ * Limit pager buffer to @c nn lines of output.
+ * A value of @c 0 disables the pager. Default value: @c 100000
+?*/
 VLIB_CONFIG_FUNCTION (unix_config, "unix");
 
 static clib_error_t *
