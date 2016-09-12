@@ -27,8 +27,9 @@ from vpp_api_base import *
 
 # Import API definitions. The core VPE API is imported into main namespace
 import memclnt
+import vpe
 from vpe import *
-vpe = sys.modules['vpe']
+#vpe = sys.modules['vpe']
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -90,19 +91,15 @@ def connect(name):
     #
     # Assign message id space for plugins
     #
-    plugin_map_plugins()
-
+    try:
+        plugin_map_plugins()
+    except:
+        return -1
     return rv
 
 def disconnect():
     rv = vpp_api.disconnect()
     return rv
-
-# CLI convenience wrapper
-def cli_exec(cmd):
-    cmd += '\n'
-    r = cli_inband(len(cmd), cmd)
-    return r.reply[0].decode().rstrip('\x00')
 
 def register_event_callback(callback):
     event_callback_set(callback)
@@ -112,6 +109,7 @@ def plugin_name_to_id(plugin, name_to_id_table, base):
         m = globals()[plugin]
     except KeyError:
         m = sys.modules[plugin]
+
     for name in name_to_id_table:
         setattr(m, name, name_to_id_table[name] + base)
 
@@ -126,11 +124,10 @@ def plugin_map_plugins():
         #
         version = plugins[p]['version']
         name = p + '_' + format(version, '08x')
-        r = memclnt.get_first_msg_id(name.encode('ascii'))
-        ## TODO: Add error handling / raise exception
+        r = memclnt.get_first_msg_id(name)
         if r.retval != 0:
-            eprint('Failed getting first msg id for:', p)
-            continue
+            eprint('Failed getting first msg id for:', p, r, name)
+            raise
 
         # Set base
         base = r.first_msg_id
