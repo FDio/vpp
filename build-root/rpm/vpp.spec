@@ -49,6 +49,13 @@ allocator (mheap.c), extendable printf-like interface built on top of vectors
 time-based function calls (timer.c).
 TODO: reference and describe only the .h files
 
+%package plugins
+Summary: Vector Packet Processing--runtime plugins
+Group: System Environment/Libraries
+Requires: vpp = %{_version}-%{_release}
+%description plugins
+This package contains VPP plugins
+
 %pre
 # Add the vpp group
 groupadd -f -r vpp
@@ -115,6 +122,24 @@ do
 	   %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/$file
 done
 
+
+#
+# vpp-plugins
+# 
+mkdir -p -m755 %{buildroot}%{_libdir}/vpp_plugins
+mkdir -p -m755 %{buildroot}%{_libdir}/vpp_api_test_plugins
+for file in $(cd %{_vpp_install_dir}/plugins/lib64/vpp_plugins && find -type f -print)
+do
+        install -p -m 644 %{_vpp_install_dir}/plugins/lib64/vpp_plugins/$file \
+           %{buildroot}%{_libdir}/vpp_plugins/$file
+done
+
+for file in $(cd %{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins && find -type f -print)
+do
+        install -p -m 644 %{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins/$file \
+           %{buildroot}%{_libdir}/vpp_api_test_plugins/$file
+done
+
 %post
 sysctl --system
 %systemd_post vpp.service
@@ -133,6 +158,8 @@ sysctl --system
 
 %files lib
 %defattr(-,bin,bin)
+%exclude %{_libdir}/vpp_plugins
+%exclude %{_libdir}/vpp_api_test_plugins
 %{_libdir}/*
 
 %files devel
@@ -143,3 +170,7 @@ sysctl --system
 %{python2_sitelib}/jvppgen/*
 /usr/share/doc/vpp/examples/sample-plugin
 
+%files plugins
+%defattr(-,bin,bin)
+%{_libdir}/vpp_plugins/*
+%{_libdir}/vpp_api_test_plugins/*
