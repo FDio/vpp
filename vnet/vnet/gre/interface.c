@@ -112,6 +112,7 @@ int vnet_gre_add_del_tunnel
     /* Standard default gre MTU. */
     hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
 
+    t->teb = a->teb;
     clib_memcpy (&t->tunnel_src, &a->src, sizeof (t->tunnel_src));
     clib_memcpy (&t->tunnel_dst, &a->dst, sizeof (t->tunnel_dst));
 
@@ -156,6 +157,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   vnet_gre_add_del_tunnel_args_t _a, * a = &_a;
   ip4_address_t src, dst;
   u32 outer_fib_id = 0;
+  u8 teb = 0;
   int rv;
   u32 num_m_args = 0;
   u8 is_add = 1;
@@ -174,6 +176,8 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       num_m_args++;
     else if (unformat (line_input, "outer-fib-id %d", &outer_fib_id))
       ;
+    else if (unformat (line_input, "teb"))
+      teb = 1;
     else
       return clib_error_return (0, "unknown input `%U'",
                                 format_unformat_error, input);
@@ -189,6 +193,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   memset (a, 0, sizeof (*a));
   a->is_add = is_add;
   a->outer_fib_id = outer_fib_id;
+  a->teb = teb;
   clib_memcpy(&a->src, &src, sizeof(src));
   clib_memcpy(&a->dst, &dst, sizeof(dst));
 
@@ -214,7 +219,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (create_gre_tunnel_command, static) = {
   .path = "create gre tunnel",
   .short_help = "create gre tunnel src <addr> dst <addr> "
-                "[outer-fib-id <fib>] [del]",
+                "[outer-fib-id <fib>] [teb] [del]",
   .function = create_gre_tunnel_command_fn,
 };
 

@@ -23,6 +23,7 @@
 #define foreach_gre_input_next			\
 _(PUNT, "error-punt")                           \
 _(DROP, "error-drop")                           \
+_(L2_INPUT, "l2-input")                       \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")			
 
@@ -160,8 +161,10 @@ gre_input (vlib_main_t * vm,
               : b1->error;
           next1 = verr1 ? GRE_INPUT_NEXT_DROP : next1;
 
+
           /* RPF check for ip4/ip6 input */
-          if (PREDICT_FALSE(next0 == GRE_INPUT_NEXT_IP4_INPUT 
+          if (PREDICT_FALSE(next0 == GRE_INPUT_NEXT_L2_INPUT
+                            || next0 == GRE_INPUT_NEXT_IP4_INPUT
                             || next0 == GRE_INPUT_NEXT_IP6_INPUT))
             {
               u64 key = ((u64)(vnet_buffer(b0)->gre.dst) << 32) |
@@ -206,11 +209,17 @@ gre_input (vlib_main_t * vm,
                                                1 /* packets */,
                                                len /* bytes */);
 
+
+              /* Required to make the l2 tag push / pop code work on l2 subifs */
+              if (PREDICT_TRUE(next0 == GRE_INPUT_NEXT_L2_INPUT))
+                vnet_update_l2_len (b0);
               vnet_buffer(b0)->sw_if_index[VLIB_TX] = tunnel_fib_index;
+              vnet_buffer(b0)->sw_if_index[VLIB_RX] = tunnel_sw_if_index;
             }
 
 drop0:
-          if (PREDICT_FALSE(next1 == GRE_INPUT_NEXT_IP4_INPUT 
+          if (PREDICT_FALSE(next1 == GRE_INPUT_NEXT_L2_INPUT
+                            || next1 == GRE_INPUT_NEXT_IP4_INPUT
                             || next1 == GRE_INPUT_NEXT_IP6_INPUT))
             {
               u64 key = ((u64)(vnet_buffer(b1)->gre.dst) << 32) |
@@ -255,7 +264,11 @@ drop0:
                                                1 /* packets */,
                                                len /* bytes */);
 
+              /* Required to make the l2 tag push / pop code work on l2 subifs */
+              if (PREDICT_TRUE(next0 == GRE_INPUT_NEXT_L2_INPUT))
+                vnet_update_l2_len (b0);
               vnet_buffer(b1)->sw_if_index[VLIB_TX] = tunnel_fib_index;
+              vnet_buffer(b1)->sw_if_index[VLIB_RX] = tunnel_sw_if_index;
             }
 drop1:
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
@@ -326,10 +339,12 @@ drop1:
               : b0->error;
           next0 = verr0 ? GRE_INPUT_NEXT_DROP : next0;
 
+
           /* For IP payload we need to find source interface
              so we can increase counters and help forward node to
              pick right FIB */
-          if (PREDICT_FALSE(next0 == GRE_INPUT_NEXT_IP4_INPUT 
+          if (PREDICT_FALSE(next0 == GRE_INPUT_NEXT_L2_INPUT
+                            || next0 == GRE_INPUT_NEXT_IP4_INPUT
                             || next0 == GRE_INPUT_NEXT_IP6_INPUT))
             {
               u64 key = ((u64)(vnet_buffer(b0)->gre.dst) << 32) |
@@ -374,7 +389,12 @@ drop1:
                                                1 /* packets */,
                                                len /* bytes */);
 
+              /* Required to make the l2 tag push / pop code work on l2 subifs */
+              if (PREDICT_TRUE(next0 == GRE_INPUT_NEXT_L2_INPUT))
+                vnet_update_l2_len (b0);
+
               vnet_buffer(b0)->sw_if_index[VLIB_TX] = tunnel_fib_index;
+              vnet_buffer(b0)->sw_if_index[VLIB_RX] = tunnel_sw_if_index;
             }
 
 drop:
@@ -476,7 +496,7 @@ gre_setup_node (vlib_main_t * vm, u32 node_index)
 static clib_error_t * gre_input_init (vlib_main_t * vm)
 {
   gre_input_runtime_t * rt;
-  vlib_node_t *ip4_input, *ip6_input, *mpls_unicast_input;
+  vlib_node_t *l2_input, *ip4_input, *ip6_input, *mpls_unicast_input;
 
   {
     clib_error_t * error; 
@@ -494,12 +514,17 @@ static clib_error_t * gre_input_init (vlib_main_t * vm)
      /* bits in index */ BITS (((gre_header_t *) 0)->protocol));
 
   /* These could be moved to the supported protocol input node defn's */
+  l2_input = vlib_get_node_by_name (vm, (u8 *)"l2-input");
+  ASSERT(l2_input);
   ip4_input = vlib_get_node_by_name (vm, (u8 *)"ip4-input");
   ASSERT(ip4_input);
   ip6_input = vlib_get_node_by_name (vm, (u8 *)"ip6-input");
   ASSERT(ip6_input);
   mpls_unicast_input = vlib_get_node_by_name (vm, (u8 *)"mpls-gre-input");
   ASSERT(mpls_unicast_input);
+
+  gre_register_input_protocol (vm, GRE_PROTOCOL_teb,
+                               l2_input->index);
 
   gre_register_input_protocol (vm, GRE_PROTOCOL_ip4, 
                                ip4_input->index);
