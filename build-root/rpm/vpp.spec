@@ -6,6 +6,17 @@
 %define _version         %(../scripts/version rpm-version)
 %define _release         %(../scripts/version rpm-release)
 
+# Failsafe backport of Python2-macros for RHEL <= 6
+%{!?python_sitelib: %global python_sitelib      %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+%{!?python_sitearch:    %global python_sitearch     %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
+%{!?python_version: %global python_version      %(%{__python} -c "import sys; sys.stdout.write(sys.version[:3])")}
+%{!?__python2:      %global __python2       %{__python}}
+%{!?python2_sitelib:    %global python2_sitelib     %{python_sitelib}}
+%{!?python2_sitearch:   %global python2_sitearch    %{python_sitearch}}
+%{!?python2_version:    %global python2_version     %{python_version}}
+
+%{!?python2_minor_version: %define python2_minor_version %(%{__python} -c "import sys ; print sys.version[2:3]")}
+
 Name: vpp
 Summary: Vector Packet Processing
 License: MIT
@@ -56,6 +67,14 @@ Requires: vpp = %{_version}-%{_release}
 %description plugins
 This package contains VPP plugins
 
+%package python-api
+Summary: VPP api python bindings
+Group: Development/Libraries
+Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, devel = %{_version}-%{_release}
+
+%description python-api
+This package contains the python bindings for the vpp api
+
 %pre
 # Add the vpp group
 groupadd -f -r vpp
@@ -68,6 +87,7 @@ mkdir -p -m755 %{buildroot}%{_bindir}
 mkdir -p -m755 %{buildroot}%{_unitdir}
 install -p -m 755 %{_vpp_install_dir}/*/bin/* %{buildroot}%{_bindir}
 install -p -m 755 %{_vpp_build_dir}/vppapigen/vppapigen %{buildroot}%{_bindir}
+install -p -m 755 ../../vppapigen/pyvppapigen.py %{buildroot}%{_bindir}
 #
 # configs
 #
@@ -91,6 +111,13 @@ do
           ln -fs $file $(echo $file | sed -e 's/\(\.so\.[0-9]\+\).*/\1/') )
 	( cd %{buildroot}%{_libdir} && 
           ln -fs $file $(echo $file | sed -e 's/\(\.so\)\.[0-9]\+.*/\1/') )
+done
+
+# Python bindings
+mkdir -p -m755 %{buildroot}%{python2_sitelib}/vpp_papi
+for file in $(find %{_vpp_install_dir}/*/lib/python2.7/site-packages/ -type f -print | grep -v pyc | grep -v pyo)
+do
+	install -p -m 666 $file %{buildroot}%{python2_sitelib}/vpp_papi/
 done
 
 #
@@ -162,10 +189,15 @@ sysctl --system
 %exclude %{_libdir}/vpp_api_test_plugins
 %{_libdir}/*
 
+%files python-api
+%defattr(644,root,root)
+%{python2_sitelib}/vpp_papi/*
+
 %files devel
 %defattr(-,bin,bin)
 /usr/bin/vppapigen
 /usr/bin/jvpp_gen.py
+/usr/bin/pyvppapigen.py
 %{_includedir}/*
 %{python2_sitelib}/jvppgen/*
 /usr/share/doc/vpp/examples/sample-plugin
