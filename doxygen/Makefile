@@ -16,6 +16,10 @@
 # Build the documentation
 #
 
+# Default target
+.PHONY: all
+all: doxygen
+
 # These should be passed in by the root Makefile
 WS_ROOT ?= $(CURDIR)/..
 BR ?= $(WS_ROOT)/build-root
@@ -100,12 +104,12 @@ SIPHON_OUTPUT ?= $(DOXY_OUTPUT)/siphon_docs
 EXTRA_DOXY_INPUT += $(SIPHON_OUTPUT)
 
 # All the siphon types we know about
-SIPHONS ?= clicmd
+SIPHONS ?= clicmd syscfg
 
 SIPHON_FILES = $(addprefix $(SIPHON_INPUT)/,$(addsuffix .siphon,$(SIPHONS)))
 SIPHON_DOCS = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .md,$(SIPHONS)))
 
-$(BR)/.doxygen-bootstrap.ok:
+$(BR)/.doxygen-bootstrap.ok: Makefile
 	@echo "Checking whether dependencies for Doxygen are installed..."
 ifeq ($(OS_ID),ubuntu)
 	@set -e; inst=; \
@@ -141,8 +145,12 @@ $(BR)/.doxygen-siphon.dep: Makefile
 # Include the source -> siphon dependencies
 -include $(BR)/.doxygen-siphon.dep
 
+# Generate .siphon files that contain fragments of source file that
+# relate to the siphons we support.
 .NOTPARALLEL: $(SIPHON_FILES)
-$(SIPHON_FILES): $(DOXY_DIR)/siphon_generate.py $(BR)/.doxygen-bootstrap.ok
+$(SIPHON_FILES): $(BR)/.doxygen-bootstrap.ok \
+		$(DOXY_DIR)/siphon-generate \
+		$(wildcard $(DOXY_DIR)/siphon/*.py)
 	@rm -rf "$(SIPHON_INPUT)" "$(SIPHON_OUTPUT)"
 	@mkdir -p "$(SIPHON_INPUT)" "$(SIPHON_OUTPUT)"
 	@touch $(SIPHON_INPUT)/files
@@ -155,23 +163,32 @@ $(SIPHON_FILES): $(DOXY_DIR)/siphon_generate.py $(BR)/.doxygen-bootstrap.ok
 			>> $(SIPHON_INPUT)/files; \
 	done
 	@echo "Generating siphons..."
-	@set -e; cd "$(WS_ROOT)"; $(DOXY_DIR)/siphon_generate.py \
+	@set -e; \
+	cd "$(WS_ROOT)"; \
+	$(DOXY_DIR)/siphon-generate \
 		--output="$(SIPHON_INPUT)" \
 		"@$(SIPHON_INPUT)/files"
 
-
+# Process the .siphon source fragments and render them into doxygen flavored
+# markdown documentation
 .DELETE_ON_ERROR: $(SIPHON_DOCS)
-$(SIPHON_OUTPUT)/%.md: $(SIPHON_INPUT)/%.siphon $(DOXY_DIR)/siphon_process.py
+$(SIPHON_OUTPUT)/%.md: $(SIPHON_INPUT)/%.siphon \
+		$(DOXY_DIR)/siphon-process \
+		$(wildcard $(DOXY_DIR)/siphon/*.py)
 	@echo "Processing siphon from $(notdir $<)..."
-	@set -e; cd "$(WS_ROOT)"; \
-		$(DOXY_DIR)/siphon_process.py --type=$(basename $(notdir $<)) \
-			--output="$(SIPHON_OUTPUT)" $< > $@
+	@set -e; \
+	cd "$(WS_ROOT)"; \
+	$(DOXY_DIR)/siphon-process \
+		--type=$(basename $(notdir $<)) \
+		--output="$@" \
+		"$<"
 
 # This target can be used just to generate the siphoned docs
 .PHONY: doxygen-siphon
 doxygen-siphon: $(SIPHON_DOCS)
 
 # Generate the doxygen docs
+.PHONY: doxygen
 doxygen: $(SIPHON_DOCS)
 	@mkdir -p "$(DOXY_OUTPUT)"
 	@echo "Running Doxygen..."
@@ -185,6 +202,9 @@ doxygen: $(SIPHON_DOCS)
 	    VERSION="`git describe --tags --dirty`" \
 	    doxygen $(DOXY_DIR)/doxygen.cfg
 
+.PHONY: wipe-doxygen
 wipe-doxygen:
 	rm -rf "$(BR)/docs" "$(BR)/.doxygen-siphon.d"
 
+.PHONY: clean
+clean: wipe-doxygen

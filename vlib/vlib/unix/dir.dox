@@ -23,5 +23,6 @@
 VLIB application library Unix interface layer.
 
 */
-/*? %%clicmd:group_label VLIB Unix stuff%% ?*/
+/*? %%clicmd:group_label Unix Interface %% ?*/
+/*? %%syscfg:group_label Unix Interface %% ?*/
 
