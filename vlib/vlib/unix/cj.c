@@ -17,6 +17,16 @@
  *------------------------------------------------------------------
  */
 
+/**
+ * @file
+ * Circular joournal diagnostic mechanism.
+ *
+ * The @c cj thread-safe circular log buffer scheme is occasionally useful
+ * when chasing bugs. Calls to it should not be checked in.
+ */
+/*? %%clicmd:group_label Circular Journal %% ?*/
+/*? %%syscfg:group_label Circular Journal %% ?*/
+
 #include <stdio.h>
 #include <vlib/vlib.h>
 
@@ -94,6 +104,18 @@ cj_config (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+/*?
+ * Configure the circular journal diagnostic mechanism. This is only useful
+ * if you, the deveoper, have written code to make use of the circular
+ * journal.
+ *
+ * @cfgcmd{records, &lt;number&gt;}
+ * Configure the number of records to allocate for the circular journal.
+ *
+ * @cfgcmd{on}
+ * Enable the collection of records in the circular journal at the
+ * earliest opportunity.
+?*/
 VLIB_CONFIG_FUNCTION (cj_config, "cj");
 
 void
@@ -220,10 +242,21 @@ cj_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Enable, disable the collection of diagnostic data into a
+ * circular journal or dump the circular journal diagnostic data.
+ * This is only useful if you, the deveoper, have written code to make
+ * use of the circular journal.
+ *
+ * When dumping the data it is formatted and sent to @c stderr of the
+ * VPP process; when running VPP in <code>unix interactive</code> mode
+ * this is typically the same place as the Debug CLI.
+?*/
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cj_command,static) = {
   .path = "cj",
-  .short_help = "cj",
+  .short_help = "cj <enable | disable | dump>",
   .function = cj_command_fn,
 };
 /* *INDENT-ON* */
