@@ -7,7 +7,7 @@ import vpp_papi
 from ipaddress import *
 
 papi_event = threading.Event()
-print(vpp_papi.VL_API_SW_INTERFACE_SET_FLAGS)
+print(vpp_papi.vpe.VL_API_SW_INTERFACE_SET_FLAGS)
 def papi_event_handler(result):
     if result.vl_msg_id == vpp_papi.vpe.VL_API_SW_INTERFACE_SET_FLAGS:
         return
@@ -89,7 +89,7 @@ class TestPAPI(unittest.TestCase):
         self.assertEqual(t.retval, 0)
 
         ifindex = t.sw_if_index
-        addr = str(IPv6Address('1::1').packed)
+        addr = str(IPv6Address(u'1::1').packed)
         t = vpp_papi.sw_interface_add_del_address(ifindex, 1, 1, 0, 16, addr)
         print(t)
         self.assertEqual(t.retval, 0)

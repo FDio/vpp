@@ -25,15 +25,15 @@ nobase_include_HEADERS = pneum/pneum.h
 #
 # Python / C extension
 #
-lib_LTLIBRARIES += vpp_api.la
-vpp_api_la_SOURCES = pneum/pneum.c vpp_papi/pneum_wrap.c
-vpp_api_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread -lm -lrt
-vpp_api_la_LDFLAGS = -module $(shell python-config --ldflags)
-vpp_api_la_CPPFLAGS = $(shell python-config --includes)
+#lib_LTLIBRARIES += vpp_api.la
+#vpp_api_la_SOURCES = pneum/pneum.c vpp_papi/pneum_wrap.c
+#vpp_api_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread -lm -lrt
+#vpp_api_la_LDFLAGS = -module $(shell python-config --ldflags)
+#vpp_api_la_CPPFLAGS = $(shell python-config --includes)
 
 # Kept around for setuptools based install.
 lib_LTLIBRARIES += libpneum.la
-libpneum_la_SOURCES = pneum/pneum.c setup.py
+libpneum_la_SOURCES = pneum/pneum.c
 libpneum_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread -lm -lrt
 libpneum_la_LDFLAGS = -module
 libpneum_la_CPPFLAGS =
