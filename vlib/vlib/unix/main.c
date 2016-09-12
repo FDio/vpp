@@ -465,10 +465,14 @@ vlib_unix_main (int argc, char *argv[])
     }
   unformat_free (&input);
 
-  /* allocate N x 1mb stacks, aligned e.g. to a 16mb boundary */
+  /*
+   * allocate n x VLIB_THREAD_STACK_SIZE stacks, aligned to a
+   * VLIB_THREAD_STACK_SIZE boundary
+   * See also: os_get_cpu_number() in vlib/vlib/threads.c
+   */
   thread_stacks = clib_mem_alloc_aligned
     ((uword) tm->n_thread_stacks * VLIB_THREAD_STACK_SIZE,
-     (VLIB_MAX_CPUS << VLIB_LOG2_THREAD_STACK_SIZE));
+     VLIB_THREAD_STACK_SIZE);
 
   vec_validate (vlib_thread_stacks, tm->n_thread_stacks - 1);
   for (i = 0; i < vec_len (vlib_thread_stacks); i++)
