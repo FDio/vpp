@@ -1,7 +1,5 @@
-#!/usr/bin/env python
 from __future__ import print_function
 import unittest
-import test_base
 import vpp_papi
 import pot, snat
 print('Plugins:')

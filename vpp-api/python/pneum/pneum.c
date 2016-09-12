@@ -150,8 +150,6 @@ pneum_disconnect (void)
   api_main_t *am = &api_main;
   pneum_main_t *pm = &pneum_main;
 
-  fformat (stdout,"disconnecting from vpe \n");
-
   if (pm->rx_thread_jmpbuf_valid) {
     vl_api_rx_thread_exit_t *ep;
     uword junk;
