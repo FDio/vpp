@@ -9474,6 +9474,7 @@ api_gre_add_del_tunnel (vat_main_t * vam)
   f64 timeout;
   ip4_address_t src4, dst4;
   u8 is_add = 1;
+  u8 teb = 0;
   u8 src_set = 0;
   u8 dst_set = 0;
   u32 outer_fib_id = 0;
@@ -9488,6 +9489,8 @@ api_gre_add_del_tunnel (vat_main_t * vam)
 	dst_set = 1;
       else if (unformat (line_input, "outer-fib-id %d", &outer_fib_id))
 	;
+      else if (unformat (line_input, "teb"))
+	teb = 1;
       else
 	{
 	  errmsg ("parse error '%U'\n", format_unformat_error, line_input);
@@ -9513,6 +9516,7 @@ api_gre_add_del_tunnel (vat_main_t * vam)
   clib_memcpy (&mp->dst_address, &dst4, sizeof (dst4));
   mp->outer_fib_id = ntohl (outer_fib_id);
   mp->is_add = is_add;
+  mp->teb = teb;
 
   S;
   W;
@@ -9525,10 +9529,11 @@ static void vl_api_gre_tunnel_details_t_handler
 {
   vat_main_t *vam = &vat_main;
 
-  fformat (vam->ofp, "%11d%15U%15U%14d\n",
+  fformat (vam->ofp, "%11d%15U%15U%6d%14d\n",
 	   ntohl (mp->sw_if_index),
 	   format_ip4_address, &mp->src_address,
-	   format_ip4_address, &mp->dst_address, ntohl (mp->outer_fib_id));
+	   format_ip4_address, &mp->dst_address,
+	   mp->teb, ntohl (mp->outer_fib_id));
 }
 
 static void vl_api_gre_tunnel_details_t_handler_json
@@ -9551,6 +9556,7 @@ static void vl_api_gre_tunnel_details_t_handler_json
   vat_json_object_add_ip4 (node, "src_address", ip4);
   clib_memcpy (&ip4, &mp->dst_address, sizeof (ip4));
   vat_json_object_add_ip4 (node, "dst_address", ip4);
+  vat_json_object_add_uint (node, "teb", mp->teb);
   vat_json_object_add_uint (node, "outer_fib_id", ntohl (mp->outer_fib_id));
 }
 
@@ -9579,8 +9585,9 @@ api_gre_tunnel_dump (vat_main_t * vam)
 
   if (!vam->json_output)
     {
-      fformat (vam->ofp, "%11s%15s%15s%14s\n",
-	       "sw_if_index", "src_address", "dst_address", "outer_fib_id");
+      fformat (vam->ofp, "%11s%15s%15s%6s%14s\n",
+	       "sw_if_index", "src_address", "dst_address", "teb",
+	       "outer_fib_id");
     }
 
   /* Get list of gre-tunnel interfaces */
@@ -15948,7 +15955,7 @@ _(vxlan_add_del_tunnel,                                                 \
   " [decap-next l2|ip4|ip6] [del]")                                     \
 _(vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
 _(gre_add_del_tunnel,                                                   \
-  "src <ip4-addr> dst <ip4-addr> [outer-fib-id <nn>] [del]\n")          \
+  "src <ip4-addr> dst <ip4-addr> [outer-fib-id <nn>] [teb] [del]\n")    \
 _(gre_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                      \
 _(l2_fib_clear_table, "")                                               \
 _(l2_interface_efp_filter, "sw_if_index <nn> enable | disable")         \

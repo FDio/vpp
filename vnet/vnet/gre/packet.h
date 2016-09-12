@@ -21,6 +21,7 @@
 #define foreach_gre_protocol			\
 _ (0x0800, ip4)                                 \
 _ (0x86DD, ip6)                                 \
+_ (0x6558, teb)                                 \
 _ (0x0806, arp)					\
 _ (0x8847, mpls_unicast)			\
 _ (0x894F, nsh)
