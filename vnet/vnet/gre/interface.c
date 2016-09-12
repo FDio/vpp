@@ -47,6 +47,8 @@ int vnet_gre_add_del_tunnel
   u32 outer_fib_index;
   uword * p;
   u64 key;
+  u8 address[6];
+  clib_error_t *error;
 
   key = (u64)a->src.as_u32 << 32 | (u64)a->dst.as_u32;
   p = hash_get (gm->tunnel_by_key, key);
@@ -87,12 +89,34 @@ int vnet_gre_add_del_tunnel
           (&im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP], sw_if_index);
         vnet_interface_counter_unlock(im);
     } else {
+      if (a->teb)
+      {
+        /* Default MAC address (d00b:eed0:0000 + sw_if_index) */
+        memset (address, 0, sizeof (address));
+        address[0] = 0xd0;
+        address[1] = 0x0b;
+        address[2] = 0xee;
+        address[3] = 0xd0;
+        address[4] = t - gm->tunnels;
+
+        error = ethernet_register_interface
+          (vnm,
+           gre_device_class.index, t - gm->tunnels, address, &hw_if_index,
+           0);
+
+        if (error)
+        {
+          clib_error_report (error);
+          return VNET_API_ERROR_INVALID_REGISTRATION;
+        }
+      } else {
         hw_if_index = vnet_register_interface
           (vnm, gre_device_class.index, t - gm->tunnels,
            gre_hw_interface_class.index,
            t - gm->tunnels);
-        hi = vnet_get_hw_interface (vnm, hw_if_index);
-        sw_if_index = hi->sw_if_index;
+      }
+      hi = vnet_get_hw_interface (vnm, hw_if_index);
+      sw_if_index = hi->sw_if_index;
     }
 
     t->hw_if_index = hw_if_index;
@@ -112,6 +136,7 @@ int vnet_gre_add_del_tunnel
     /* Standard default gre MTU. */
     hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
 
+    t->teb = a->teb;
     clib_memcpy (&t->tunnel_src, &a->src, sizeof (t->tunnel_src));
     clib_memcpy (&t->tunnel_dst, &a->dst, sizeof (t->tunnel_dst));
 
@@ -156,6 +181,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   vnet_gre_add_del_tunnel_args_t _a, * a = &_a;
   ip4_address_t src, dst;
   u32 outer_fib_id = 0;
+  u8 teb = 0;
   int rv;
   u32 num_m_args = 0;
   u8 is_add = 1;
@@ -174,6 +200,8 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       num_m_args++;
     else if (unformat (line_input, "outer-fib-id %d", &outer_fib_id))
       ;
+    else if (unformat (line_input, "teb"))
+      teb = 1;
     else
       return clib_error_return (0, "unknown input `%U'",
                                 format_unformat_error, input);
@@ -189,6 +217,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   memset (a, 0, sizeof (*a));
   a->is_add = is_add;
   a->outer_fib_id = outer_fib_id;
+  a->teb = teb;
   clib_memcpy(&a->src, &src, sizeof(src));
   clib_memcpy(&a->dst, &dst, sizeof(dst));
 
@@ -214,7 +243,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (create_gre_tunnel_command, static) = {
   .path = "create gre tunnel",
   .short_help = "create gre tunnel src <addr> dst <addr> "
-                "[outer-fib-id <fib>] [del]",
+                "[outer-fib-id <fib>] [teb] [del]",
   .function = create_gre_tunnel_command_fn,
 };
 

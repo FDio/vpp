@@ -1446,6 +1446,9 @@ static void *vl_api_gre_add_del_tunnel_t_print
 	      (ip46_address_t *) & (mp->src_address),
 	      mp->is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4);
 
+  if (mp->teb)
+    s = format (s, "teb ");
+
   if (mp->outer_fib_id)
     s = format (s, "outer-fib-id %d ", ntohl (mp->outer_fib_id));
 
