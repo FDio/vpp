@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_d3abe787",
+        "filename": "vnet/vnet/lisp-gpe/dir.dox",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-12T14:04:40Z",
+      "side": 1,
+      "message": "Missing \".\" here - without it the @brief runs on into the next para until it finds one. I think the blank line avoids this, but \".\" is just better. :)",
+      "revId": "0c7ab96246f11d3630c633970bfae51e8c4a92fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_b3b06bf5",
+        "filename": "vnet/vnet/lisp-gpe/ip_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 940,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-12T14:04:40Z",
+      "side": 1,
+      "message": "We have special syntax for documenting nodes: https://wiki.fd.io/view/VPP/Documentation#.40node:_Indexing_graph_node_identifiers\n\nAnd a template: https://wiki.fd.io/view/VPP/Documentation#Documenting_a_graph_node_function\n\nThough I think we should update the template with your parameter descriptions. Can you come up with words for the runtime_t one, too?",
+      "range": {
+        "startLine": 940,
+        "startChar": 0,
+        "endLine": 940,
+        "endChar": 31
+      },
+      "revId": "0c7ab96246f11d3630c633970bfae51e8c4a92fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_93956f42",
+        "filename": "vnet/vnet/lisp-gpe/lisp_gpe.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-12T14:04:40Z",
+      "side": 1,
+      "message": "This only documents the single member right after it. Break it up and document each member explicitly, here and everywhere else :)",
+      "range": {
+        "startLine": 112,
+        "startChar": 1,
+        "endLine": 112,
+        "endChar": 34
+      },
+      "revId": "0c7ab96246f11d3630c633970bfae51e8c4a92fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
