@@ -634,6 +634,9 @@ l2output_create_output_node_mapping (vlib_main_t * vlib_main, vnet_main_t * vnet
   node = vec_elt_at_index (output_node_index_vec, sw_if_index);
   *node = next;
 
+  /* reset mapping bit, includes memory barrier */
+  __sync_fetch_and_and (&hw0->flags, ~VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED);
+
   return next;
 }
 
