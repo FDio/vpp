@@ -1878,6 +1878,21 @@ ip6_local (vlib_main_t * vm,
 
 	  udp0 = ip6_next_header (ip0);
 	  udp1 = ip6_next_header (ip1);
+	  /* Skip HBH local processing */
+          if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr = (ip6_hop_by_hop_ext_t  *)(ip0 + 1);
+	      next0 = lm->local_next_by_ip_protocol[ext_hdr->next_hdr];
+	      type0 = lm->builtin_protocol_by_ip_protocol[ext_hdr->next_hdr];
+	      udp0 = (void *)((u8 *)ip0 + 8 * (1 + ext_hdr->n_data_u64s)); //$$FIXME
+	    }
+          if (PREDICT_FALSE (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr = (ip6_hop_by_hop_ext_t  *)(ip1 + 1);
+	      next1 = lm->local_next_by_ip_protocol[ext_hdr->next_hdr];
+	      type1 = lm->builtin_protocol_by_ip_protocol[ext_hdr->next_hdr];
+	      udp1 = (void *)((u8 *)ip1 + 8 * (1 + ext_hdr->n_data_u64s)); //$$FIXME
+	    }
 
 	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
 	  good_l4_checksum0 |= type0 == IP_BUILTIN_PROTOCOL_UDP && udp0->checksum == 0;
@@ -1965,13 +1980,13 @@ ip6_local (vlib_main_t * vm,
 	  u32 pi0, ip_len0, udp_len0, flags0, next0;
 	  i32 len_diff0;
 	  u8 error0, type0, good_l4_checksum0;
-      
+
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
 	  n_left_from -= 1;
 	  to_next += 1;
 	  n_left_to_next -= 1;
-      
+
 	  p0 = vlib_get_buffer (vm, pi0);
 
 	  ip0 = vlib_buffer_get_current (p0);
@@ -1984,6 +1999,14 @@ ip6_local (vlib_main_t * vm,
 	  good_l4_checksum0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
 
 	  udp0 = ip6_next_header (ip0);
+	  /* Skip HBH local processing */
+          if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr = (ip6_hop_by_hop_ext_t  *)(ip0 + 1);
+	      next0 = lm->local_next_by_ip_protocol[ext_hdr->next_hdr];
+	      type0 = lm->builtin_protocol_by_ip_protocol[ext_hdr->next_hdr];
+	      udp0 = (void *)((u8 *)ip0 + 8 * (1 + ext_hdr->n_data_u64s)); //$$FIXME
+	    }
 
 	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
 	  good_l4_checksum0 |= type0 == IP_BUILTIN_PROTOCOL_UDP && udp0->checksum == 0;
