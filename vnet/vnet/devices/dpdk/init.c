@@ -1131,6 +1131,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	else if (unformat (input, "default"))
 	;
 
+      else if (unformat (input, " "))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
