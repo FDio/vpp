@@ -175,6 +175,8 @@ sr_replicate_node_fn (vlib_main_t * vm,
 	  ip6_header_t *ip0 = 0, *hdr_ip0 = 0;
 	  int num_replicas = 0;
 	  int i;
+	  u32 len_bytes = sizeof (ip6_header_t);
+	  u8 next_hdr, ip_next_hdr = IPPROTO_IPV6_ROUTE;
 
 	  bi0 = from[0];
 
@@ -187,6 +189,24 @@ sr_replicate_node_fn (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (b0);
 	  /* Skip forward to the punch-in point */
 	  vlib_buffer_advance (b0, sizeof (*ip0));
+	  next_hdr = ip0->protocol;
+
+	  /* HBH must immediately follow ipv6 header */
+	  if (PREDICT_FALSE
+	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr =
+		(ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+	      u32 ext_hdr_len = 0;
+	      ext_hdr_len = ip6_ext_header_len ((ip6_ext_header_t *) ext_hdr);
+	      len_bytes += ext_hdr_len;
+	      next_hdr = ext_hdr->next_hdr;
+	      ext_hdr->next_hdr = IPPROTO_IPV6_ROUTE;
+	      ip_next_hdr = IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS;
+	      /* Skip forward to the punch-in point */
+	      vlib_buffer_advance (b0, ext_hdr_len);
+
+	    }
 
 	  orig_mb0 = rte_mbuf_from_vlib_buffer (b0);
 
@@ -198,8 +218,7 @@ sr_replicate_node_fn (vlib_main_t * vm,
 
 	  orig_mb0->data_len = new_data_len0;
 	  orig_mb0->pkt_len = new_pkt_len0;
-	  orig_mb0->data_off =
-	    (u16) (RTE_PKTMBUF_HEADROOM + b0->current_data);
+	  orig_mb0->data_off += (u16) (b0->current_data);
 
 	  /*
 	     Before entering loop determine if we can allocate:
@@ -222,14 +241,49 @@ sr_replicate_node_fn (vlib_main_t * vm,
 
 	  for (i = 0; i < num_replicas; i++)
 	    {
+	      uint8_t nb_seg;
+	      struct rte_mbuf *clone0i;
+	      vlib_buffer_t *clone0_c, *clone_b0;
+
+	      t0 = vec_elt_at_index (sm->tunnels, pol0->tunnel_indices[i]);
 	      hdr_mb0 = rte_pktmbuf_alloc (bm->pktmbuf_pools[socket_id]);
 
 	      if (i < (num_replicas - 1))
-		/* Not the last tunnel to process */
-		clone0 = rte_pktmbuf_clone
-		  (orig_mb0, bm->pktmbuf_pools[socket_id]);
+		{
+		  /* Not the last tunnel to process */
+		  clone0 = rte_pktmbuf_clone
+		    (orig_mb0, bm->pktmbuf_pools[socket_id]);
+		  nb_seg = 0;
+		  clone0i = clone0;
+		  clone0_c = NULL;
+		  while ((clone0->nb_segs >= 1) && (nb_seg < clone0->nb_segs))
+		    {
+
+		      clone_b0 = vlib_buffer_from_rte_mbuf (clone0i);
+		      vlib_buffer_init_for_free_list (clone_b0, fl);
+
+		      ASSERT ((clone_b0->flags & VLIB_BUFFER_NEXT_PRESENT) ==
+			      0);
+		      ASSERT (clone_b0->current_data == 0);
+
+		      clone_b0->current_data =
+			(clone0i->buf_addr + clone0i->data_off) -
+			(void *) clone_b0->data;
+
+		      clone_b0->current_length = clone0i->data_len;
+		      if (PREDICT_FALSE (clone0_c != NULL))
+			{
+			  clone0_c->flags |= VLIB_BUFFER_NEXT_PRESENT;
+			  clone0_c->next_buffer =
+			    vlib_get_buffer_index (vm, clone_b0);
+			}
+		      clone0_c = clone_b0;
+		      clone0i = clone0i->next;
+		      nb_seg++;
+		    }
+		}
 	      else
-		/* Last tunnel to process, use original MB */
+		/* First tunnel to process, use original MB */
 		clone0 = orig_mb0;
 
 
@@ -260,14 +314,14 @@ sr_replicate_node_fn (vlib_main_t * vm,
 	  for (i = 0; i < num_replicas; i++)
 	    {
 	      vlib_buffer_t *hdr_b0;
+	      u16 new_l0 = 0;
 
 	      t0 = vec_elt_at_index (sm->tunnels, pol0->tunnel_indices[i]);
-
 	      /* Our replicas */
 	      hdr_mb0 = hdr_vec[i];
 	      clone0 = rte_mbuf_vec[i];
 
-	      hdr_mb0->data_len = sizeof (*ip0) + vec_len (t0->rewrite);
+	      hdr_mb0->data_len = len_bytes + vec_len (t0->rewrite);
 	      hdr_mb0->pkt_len = hdr_mb0->data_len +
 		vlib_buffer_length_in_chain (vm, orig_b0);
 
@@ -275,24 +329,33 @@ sr_replicate_node_fn (vlib_main_t * vm,
 
 	      vlib_buffer_init_for_free_list (hdr_b0, fl);
 
-	      memcpy (hdr_b0->data, ip0, sizeof (*ip0));
-	      memcpy (hdr_b0->data + sizeof (*ip0), t0->rewrite,
+	      memcpy (hdr_b0->data, ip0, len_bytes);
+	      memcpy (hdr_b0->data + len_bytes, t0->rewrite,
 		      vec_len (t0->rewrite));
 
 	      hdr_b0->current_data = 0;
-	      hdr_b0->current_length = sizeof (*ip0) + vec_len (t0->rewrite);
+	      hdr_b0->current_length = len_bytes + vec_len (t0->rewrite);
 	      hdr_b0->flags = orig_b0->flags | VLIB_BUFFER_NEXT_PRESENT;
-
+	      hdr_b0->trace_index = orig_b0->trace_index;
+	      vnet_buffer (hdr_b0)->l2_classify.opaque_index = 0;
 
 	      hdr_b0->total_length_not_including_first_buffer =
 		hdr_mb0->pkt_len - hdr_b0->current_length;
+	      vnet_buffer (hdr_b0)->sw_if_index[VLIB_TX] = t0->tx_fib_index;
 
 	      hdr_ip0 = (ip6_header_t *) hdr_b0->data;
-	      hdr_ip0->payload_length =
-		clib_host_to_net_u16 (hdr_mb0->data_len);
-	      hdr_sr0 = (ip6_sr_header_t *) (hdr_ip0 + 1);
-	      hdr_sr0->protocol = hdr_ip0->protocol;
-	      hdr_ip0->protocol = 43;
+	      new_l0 = clib_net_to_host_u16 (ip0->payload_length) +
+		vec_len (t0->rewrite);
+	      hdr_ip0->payload_length = clib_host_to_net_u16 (new_l0);
+	      hdr_sr0 = (ip6_sr_header_t *) ((u8 *) hdr_ip0 + len_bytes);
+	      /* $$$ tune */
+	      clib_memcpy (hdr_sr0, t0->rewrite, vec_len (t0->rewrite));
+	      hdr_sr0->protocol = next_hdr;
+	      hdr_ip0->protocol = ip_next_hdr;
+
+	      /* Copy dst address into the DA slot in the segment list */
+	      clib_memcpy (hdr_sr0->segments, ip0->dst_address.as_u64,
+			   sizeof (ip6_address_t));
 
 	      /* Rewrite the ip6 dst address */
 	      hdr_ip0->dst_address.as_u64[0] = t0->first_hop.as_u64[0];
@@ -318,7 +381,7 @@ sr_replicate_node_fn (vlib_main_t * vm,
 	      hdr_mb0->tx_offload = clone0->tx_offload;
 	      hdr_mb0->hash = clone0->hash;
 
-	      hdr_mb0->ol_flags = clone0->ol_flags;
+	      hdr_mb0->ol_flags = clone0->ol_flags & ~(IND_ATTACHED_MBUF);
 
 	      __rte_mbuf_sanity_check (hdr_mb0, 1);
 
