@@ -12,6 +12,11 @@ AC_ARG_WITH(dpdk,
             [with_dpdk=1],
             [with_dpdk=0])
 
+AC_ARG_WITH(dpdk_ipsec,
+            AC_HELP_STRING([--with-dpdk-ipsec],[Use the Intel dpdk ipsec]),
+            [with_dpdk_ipsec=1],
+            [with_dpdk_ipsec=0])
+
 AC_ARG_WITH(ipsec,
             AC_HELP_STRING([--without-ipsec],[Disable ipsec]),
             [with_ipsec=0],
@@ -26,6 +31,9 @@ AC_ARG_ENABLE(tests,
               AC_HELP_STRING([--enable-tests], [Build unit tests]),
               [enable_tests=1],
               [enable_tests=0])
+
+AM_CONDITIONAL(WITH_DPDK_IPSEC, test "$with_dpdk_ipsec" = "1")
+AC_SUBST(DPDK_IPSEC,[-DDPDK_IPSEC=${with_dpdk_ipsec}])
 
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AC_SUBST(DPDK,[-DDPDK=${with_dpdk}])

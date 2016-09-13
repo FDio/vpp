@@ -36,7 +36,8 @@ typedef enum
   _(0, NONE,  "none")               \
   _(1, AES_CBC_128, "aes-cbc-128")  \
   _(2, AES_CBC_192, "aes-cbc-192")  \
-  _(3, AES_CBC_256, "aes-cbc-256")
+  _(3, AES_CBC_256, "aes-cbc-256")  \
+  _(4, AES_GCM_128, "aes-gcm-128")
 
 typedef enum
 {
@@ -53,7 +54,8 @@ typedef enum
   _(3, SHA_256_96, "sha-256-96")   /* draft-ietf-ipsec-ciph-sha-256-00 */ \
   _(4, SHA_256_128, "sha-256-128") /* RFC4868 */                          \
   _(5, SHA_384_192, "sha-384-192") /* RFC4868 */                          \
-  _(6, SHA_512_256, "sha-512-256")	/* RFC4868 */
+  _(6, SHA_512_256, "sha-512-256")	/* RFC4868 */			  \
+  _(7, AES_GCM_128, "aes-gcm-128")
 
 typedef enum
 {
@@ -69,34 +71,36 @@ typedef enum
   IPSEC_PROTOCOL_ESP = 1
 } ipsec_protocol_t;
 
-typedef struct
-{
-  u32 id;
-  u32 spi;
-  ipsec_protocol_t protocol;
+typedef struct {
+    u32 id;
+    u32 spi;
+    ipsec_protocol_t protocol;
 
-  ipsec_crypto_alg_t crypto_alg;
-  u8 crypto_key_len;
-  u8 crypto_key[128];
+    ipsec_crypto_alg_t crypto_alg;
+    u8 crypto_key_len;
+    u8 crypto_key[128];
 
-  ipsec_integ_alg_t integ_alg;
-  u8 integ_key_len;
-  u8 integ_key[128];
+    ipsec_integ_alg_t integ_alg;
+    u8 integ_key_len;
+    u8 integ_key[128];
 
-  u8 use_esn;
-  u8 use_anti_replay;
+    u8 use_esn;
+    u8 use_anti_replay;
 
-  u8 is_tunnel;
-  u8 is_tunnel_ip6;
-  ip46_address_t tunnel_src_addr;
-  ip46_address_t tunnel_dst_addr;
+    u8 is_tunnel;
+    u8 is_tunnel_ip6;
+    ip46_address_t tunnel_src_addr;
+    ip46_address_t tunnel_dst_addr;
 
-  /* runtime */
-  u32 seq;
-  u32 seq_hi;
-  u32 last_seq;
-  u32 last_seq_hi;
-  u64 replay_window;
+    /* runtime */
+    u32 seq;
+    u32 seq_hi;
+    u32 last_seq;
+    u32 last_seq_hi;
+    u64 replay_window;
+
+		/* DPDK */
+		void * cs; /* crypto session */
 } ipsec_sa_t;
 
 typedef struct

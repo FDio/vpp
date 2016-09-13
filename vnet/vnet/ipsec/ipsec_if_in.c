@@ -154,8 +154,12 @@ VLIB_REGISTER_NODE (ipsec_if_input_node) = {
   .n_next_nodes = IPSEC_IF_INPUT_N_NEXT,
 
   .next_nodes = {
-        [IPSEC_IF_INPUT_NEXT_ESP_DECRYPT] = "esp-decrypt",
-        [IPSEC_IF_INPUT_NEXT_DROP] = "error-drop",
+#if DPDK==1 && DPDK_IPSEC==1
+        [IPSEC_IF_INPUT_NEXT_ESP_DECRYPT] = "dpdk-esp-decrypt",
+#else
+	[IPSEC_IF_INPUT_NEXT_ESP_DECRYPT] = "esp-decrypt",
+#endif
+	[IPSEC_IF_INPUT_NEXT_DROP] = "error-drop",
   },
 };
 /* *INDENT-ON* */

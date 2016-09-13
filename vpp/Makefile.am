@@ -110,6 +110,7 @@ else
 vpp_LDFLAGS += -l:libdpdk.a
 endif
 vpp_LDFLAGS += -Wl,--no-whole-archive
+vpp_LDADD += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
 endif
 
 vpp_LDADD += -lvppinfra -lm -lpthread -ldl

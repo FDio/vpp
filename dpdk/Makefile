@@ -21,6 +21,7 @@ DPDK_DOWNLOAD_DIR     ?= $(HOME)/Downloads
 DPDK_MARCH            ?= native
 DPDK_TUNE             ?= generic
 DPDK_DEBUG            ?= n
+DPDK_IPSEC            ?= y
 
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
@@ -103,6 +104,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_MACHINE,$(DPDK_MACHINE))
 	@# modify options
 	$(call set,RTE_MAX_LCORE,256)
+	$(call set,RTE_MEMPOOL_CACHE_MAX_SIZE,2048)
 	$(call set,RTE_PKTMBUF_HEADROOM,$(DPDK_PKTMBUF_HEADROOM))
 	$(call set,RTE_LIBEAL_USE_HPET,y)
 	$(call set,RTE_BUILD_COMBINE_LIBS,y)
@@ -118,6 +120,9 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_VMXNET3_DEBUG_INIT,$(DPDK_DEBUG))
 	$(call set,RTE_LIBRTE_PMD_BOND,y)
 	$(call set,RTE_LIBRTE_IP_FRAG,y)
+	$(call set,RTE_LIBRTE_PMD_AESNI_MB,y)
+	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,y)
+	$(call set,RTE_LIBRTE_PMD_QAT,y)
 	@# not needed
 	$(call set,RTE_LIBRTE_TIMER,n)
 	$(call set,RTE_LIBRTE_CFGFILE,n)
