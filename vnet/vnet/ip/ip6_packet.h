@@ -412,6 +412,32 @@ typedef CLIB_PACKED (struct {
   u8 next_hdr;
   /* Length of this header plus option data in 8 byte units. */
   u8 n_data_u64s;
+}) ip6_ext_header_t;
+
+always_inline u8 ip6_ext_hdr(u8 nexthdr)
+{
+  /*
+   * find out if nexthdr is an extension header or a protocol
+   */
+  return   (nexthdr == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS) ||
+    (nexthdr == IP_PROTOCOL_IP6_NONXT) ||
+    (nexthdr == IP_PROTOCOL_IPV6_FRAGMENTATION)  ||
+    (nexthdr == IP_PROTOCOL_IPSEC_AH)      ||
+    (nexthdr == IP_PROTOCOL_IPV6_ROUTE)      ||
+    (nexthdr == IP_PROTOCOL_IP6_DESTINATION_OPTIONS);
+}
+
+#define ip6_ext_header_len(p)  (((p)->n_data_u64s+1) << 3)
+#define ip6_ext_authhdr_len(p) (((p)->n_data_u64s+2) << 2)
+
+always_inline void *
+ip6_ext_next_header (ip6_ext_header_t *ext_hdr )
+{ return (void *)((u8 *) ext_hdr + ip6_ext_header_len(ext_hdr)); }
+
+typedef CLIB_PACKED (struct {
+  u8 next_hdr;
+  /* Length of this header plus option data in 8 byte units. */
+  u8 n_data_u64s;
   u8 data[0];
 }) ip6_hop_by_hop_ext_t;
 
