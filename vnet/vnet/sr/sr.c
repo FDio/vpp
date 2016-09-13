@@ -360,8 +360,6 @@ sr_rewrite (vlib_main_t * vm,
 	    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
   ip6_sr_main_t *sm = &sr_main;
   u32 (*sr_local_cb) (vlib_main_t *, vlib_node_runtime_t *,
 		      vlib_buffer_t *, ip6_header_t *, ip6_sr_header_t *);
@@ -384,7 +382,6 @@ sr_rewrite (vlib_main_t * vm,
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
 	  ip6_header_t *ip0, *ip1;
-	  ip_adjacency_t *adj0, *adj1;
 	  ip6_sr_header_t *sr0, *sr1;
 	  ip6_sr_tunnel_t *t0, *t1;
 	  u32 next0 = SR_REWRITE_NEXT_IP6_LOOKUP;
@@ -419,15 +416,12 @@ sr_rewrite (vlib_main_t * vm,
 	   * $$$ parse through header(s) to pick the point
 	   * where we punch in the SR extention header
 	   */
-
-	  adj0 =
-	    ip_get_adjacency (lm, vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
-	  adj1 =
-	    ip_get_adjacency (lm, vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
 	  t0 =
-	    pool_elt_at_index (sm->tunnels, adj0->rewrite_header.sw_if_index);
+	    pool_elt_at_index (sm->tunnels,
+			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 	  t1 =
-	    pool_elt_at_index (sm->tunnels, adj1->rewrite_header.sw_if_index);
+	    pool_elt_at_index (sm->tunnels,
+			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
 
 	  ASSERT (VLIB_BUFFER_PRE_DATA_SIZE
 		  >= ((word) vec_len (t0->rewrite)) + b0->current_data);
@@ -439,6 +433,16 @@ sr_rewrite (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
+#if DPDK > 0			/* Cannot call replication node yet without DPDK */
+	  /* add a replication node */
+	  if (PREDICT_FALSE (t0->policy_index != ~0))
+	    {
+	      vnet_buffer (b0)->ip.save_protocol = t0->policy_index;
+	      next0 = SR_REWRITE_NEXT_SR_REPLICATE;
+	      sr0 = (ip6_sr_header_t *) (t0->rewrite);
+	      goto processnext;
+	    }
+#endif /* DPDK */
 
 	  /*
 	   * SR-unaware service chaining case: pkt coming back from
@@ -454,22 +458,41 @@ sr_rewrite (vlib_main_t * vm,
 	    }
 	  else
 	    {
+	      u32 len_bytes = sizeof (ip6_header_t);
+	      u8 next_hdr = ip0->protocol;
+
+	      /* HBH must immediately follow ipv6 header */
+	      if (PREDICT_FALSE
+		  (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+		{
+		  ip6_hop_by_hop_ext_t *ext_hdr =
+		    (ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+		  len_bytes +=
+		    ip6_ext_header_len ((ip6_ext_header_t *) ext_hdr);
+		  /* Ignoring the sr_local for now, if RH follows HBH here */
+		  next_hdr = ext_hdr->next_hdr;
+		  ext_hdr->next_hdr = IPPROTO_IPV6_ROUTE;
+		}
+	      else
+		{
+		  ip0->protocol = IPPROTO_IPV6_ROUTE;	/* routing extension header */
+		}
 	      /*
 	       * Copy data before the punch-in point left by the
 	       * required amount. Assume (for the moment) that only
 	       * the main packet header needs to be copied.
 	       */
 	      clib_memcpy (((u8 *) ip0) - vec_len (t0->rewrite),
-			   ip0, sizeof (ip6_header_t));
+			   ip0, len_bytes);
 	      vlib_buffer_advance (b0, -(word) vec_len (t0->rewrite));
 	      ip0 = vlib_buffer_get_current (b0);
-	      sr0 = (ip6_sr_header_t *) (ip0 + 1);
+	      sr0 = (ip6_sr_header_t *) ((u8 *) ip0 + len_bytes);
 	      /* $$$ tune */
 	      clib_memcpy (sr0, t0->rewrite, vec_len (t0->rewrite));
 
 	      /* Fix the next header chain */
-	      sr0->protocol = ip0->protocol;
-	      ip0->protocol = IPPROTO_IPV6_ROUTE;	/* routing extension header */
+	      sr0->protocol = next_hdr;
+
 	      new_l0 = clib_net_to_host_u16 (ip0->payload_length) +
 		vec_len (t0->rewrite);
 	      ip0->payload_length = clib_host_to_net_u16 (new_l0);
@@ -496,7 +519,17 @@ sr_rewrite (vlib_main_t * vm,
 		    b0->error = node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
 		}
 	    }
-
+#if DPDK > 0			/* Cannot call replication node yet without DPDK */
+	processnext:
+	  /* add a replication node */
+	  if (PREDICT_FALSE (t1->policy_index != ~0))
+	    {
+	      vnet_buffer (b1)->ip.save_protocol = t1->policy_index;
+	      next1 = SR_REWRITE_NEXT_SR_REPLICATE;
+	      sr1 = (ip6_sr_header_t *) (t1->rewrite);
+	      goto trace00;
+	    }
+#endif /* DPDK */
 	  if (PREDICT_FALSE (ip1->protocol == IPPROTO_IPV6_ROUTE))
 	    {
 	      vlib_buffer_advance (b1, sizeof (ip1));
@@ -506,15 +539,38 @@ sr_rewrite (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      clib_memcpy (((u8 *) ip0) - vec_len (t0->rewrite),
-			   ip0, sizeof (ip6_header_t));
+	      u32 len_bytes = sizeof (ip6_header_t);
+	      u8 next_hdr = ip1->protocol;
+
+	      /* HBH must immediately follow ipv6 header */
+	      if (PREDICT_FALSE
+		  (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+		{
+		  ip6_hop_by_hop_ext_t *ext_hdr =
+		    (ip6_hop_by_hop_ext_t *) ip6_next_header (ip1);
+		  len_bytes +=
+		    ip6_ext_header_len ((ip6_ext_header_t *) ext_hdr);
+		  /* Ignoring the sr_local for now, if RH follows HBH here */
+		  next_hdr = ext_hdr->next_hdr;
+		  ext_hdr->next_hdr = IPPROTO_IPV6_ROUTE;
+		}
+	      else
+		{
+		  ip1->protocol = IPPROTO_IPV6_ROUTE;
+		}
+	      /*
+	       * Copy data before the punch-in point left by the
+	       * required amount. Assume (for the moment) that only
+	       * the main packet header needs to be copied.
+	       */
+	      clib_memcpy (((u8 *) ip1) - vec_len (t1->rewrite),
+			   ip1, len_bytes);
 	      vlib_buffer_advance (b1, -(word) vec_len (t1->rewrite));
 	      ip1 = vlib_buffer_get_current (b1);
-	      sr1 = (ip6_sr_header_t *) (ip1 + 1);
+	      sr1 = (ip6_sr_header_t *) ((u8 *) ip1 + len_bytes);
 	      clib_memcpy (sr1, t1->rewrite, vec_len (t1->rewrite));
 
-	      sr1->protocol = ip1->protocol;
-	      ip1->protocol = IPPROTO_IPV6_ROUTE;
+	      sr1->protocol = next_hdr;
 	      new_l1 = clib_net_to_host_u16 (ip1->payload_length) +
 		vec_len (t1->rewrite);
 	      ip1->payload_length = clib_host_to_net_u16 (new_l1);
@@ -541,6 +597,9 @@ sr_rewrite (vlib_main_t * vm,
 		    b1->error = node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
 		}
 	    }
+#if DPDK > 0			/* Cannot run replicate without DPDK and only replicate uses this label */
+	trace00:
+#endif /* DPDK */
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -553,7 +612,8 @@ sr_rewrite (vlib_main_t * vm,
 			   sizeof (tr->dst.as_u8));
 	      tr->length = new_l0;
 	      tr->next_index = next0;
-	      clib_memcpy (tr->sr, sr0, sizeof (tr->sr));
+	      if (sr0)
+		clib_memcpy (tr->sr, sr0, sizeof (tr->sr));
 	    }
 	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -566,9 +626,9 @@ sr_rewrite (vlib_main_t * vm,
 			   sizeof (tr->dst.as_u8));
 	      tr->length = new_l1;
 	      tr->next_index = next1;
-	      clib_memcpy (tr->sr, sr1, sizeof (tr->sr));
+	      if (sr1)
+		clib_memcpy (tr->sr, sr1, sizeof (tr->sr));
 	    }
-
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, bi1, next0, next1);
@@ -579,7 +639,6 @@ sr_rewrite (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  ip6_header_t *ip0 = 0;
-	  ip_adjacency_t *adj0;
 	  ip6_sr_header_t *sr0 = 0;
 	  ip6_sr_tunnel_t *t0;
 	  u32 next0 = SR_REWRITE_NEXT_IP6_LOOKUP;
@@ -594,22 +653,21 @@ sr_rewrite (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
+
 	  /*
 	   * $$$ parse through header(s) to pick the point
 	   * where we punch in the SR extention header
 	   */
-
-	  adj0 =
-	    ip_get_adjacency (lm, vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 	  t0 =
-	    pool_elt_at_index (sm->tunnels, adj0->rewrite_header.sw_if_index);
-
+	    pool_elt_at_index (sm->tunnels,
+			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 #if DPDK > 0			/* Cannot call replication node yet without DPDK */
 	  /* add a replication node */
 	  if (PREDICT_FALSE (t0->policy_index != ~0))
 	    {
 	      vnet_buffer (b0)->ip.save_protocol = t0->policy_index;
 	      next0 = SR_REWRITE_NEXT_SR_REPLICATE;
+	      sr0 = (ip6_sr_header_t *) (t0->rewrite);
 	      goto trace0;
 	    }
 #endif /* DPDK */
@@ -635,22 +693,40 @@ sr_rewrite (vlib_main_t * vm,
 	    }
 	  else
 	    {
+	      u32 len_bytes = sizeof (ip6_header_t);
+	      u8 next_hdr = ip0->protocol;
+
+	      /* HBH must immediately follow ipv6 header */
+	      if (PREDICT_FALSE
+		  (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+		{
+		  ip6_hop_by_hop_ext_t *ext_hdr =
+		    (ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+		  len_bytes +=
+		    ip6_ext_header_len ((ip6_ext_header_t *) ext_hdr);
+		  next_hdr = ext_hdr->next_hdr;
+		  ext_hdr->next_hdr = IPPROTO_IPV6_ROUTE;
+		  /* Ignoring the sr_local for now, if RH follows HBH here */
+		}
+	      else
+		{
+		  ip0->protocol = IPPROTO_IPV6_ROUTE;	/* routing extension header */
+		}
 	      /*
 	       * Copy data before the punch-in point left by the
 	       * required amount. Assume (for the moment) that only
 	       * the main packet header needs to be copied.
 	       */
 	      clib_memcpy (((u8 *) ip0) - vec_len (t0->rewrite),
-			   ip0, sizeof (ip6_header_t));
+			   ip0, len_bytes);
 	      vlib_buffer_advance (b0, -(word) vec_len (t0->rewrite));
 	      ip0 = vlib_buffer_get_current (b0);
-	      sr0 = (ip6_sr_header_t *) (ip0 + 1);
+	      sr0 = (ip6_sr_header_t *) ((u8 *) ip0 + len_bytes);
 	      /* $$$ tune */
 	      clib_memcpy (sr0, t0->rewrite, vec_len (t0->rewrite));
 
 	      /* Fix the next header chain */
-	      sr0->protocol = ip0->protocol;
-	      ip0->protocol = IPPROTO_IPV6_ROUTE;	/* routing extension header */
+	      sr0->protocol = next_hdr;
 	      new_l0 = clib_net_to_host_u16 (ip0->payload_length) +
 		vec_len (t0->rewrite);
 	      ip0->payload_length = clib_host_to_net_u16 (new_l0);
@@ -677,10 +753,10 @@ sr_rewrite (vlib_main_t * vm,
 		    b0->error = node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
 		}
 	    }
-
 #if DPDK > 0			/* Cannot run replicate without DPDK and only replicate uses this label */
 	trace0:
 #endif /* DPDK */
+
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      sr_rewrite_trace_t *tr = vlib_add_trace (vm, node,
@@ -695,14 +771,13 @@ sr_rewrite (vlib_main_t * vm,
 		}
 	      tr->length = new_l0;
 	      tr->next_index = next0;
-	      clib_memcpy (tr->sr, sr0, sizeof (tr->sr));
+	      if (sr0)
+		clib_memcpy (tr->sr, sr0, sizeof (tr->sr));
 	    }
-
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, next0);
 	}
-
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   return from_frame->n_vectors;
@@ -2462,6 +2537,7 @@ sr_local (vlib_main_t * vm,
 	  ip6_address_t *new_dst0, *new_dst1;
 	  u32 next0 = SR_LOCAL_NEXT_IP6_LOOKUP;
 	  u32 next1 = SR_LOCAL_NEXT_IP6_LOOKUP;
+
 	  /* Prefetch next iteration. */
 	  {
 	    vlib_buffer_t *p2, *p3;
@@ -2489,6 +2565,15 @@ sr_local (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0 = vlib_buffer_get_current (b0);
 	  sr0 = (ip6_sr_header_t *) (ip0 + 1);
+	  if (PREDICT_FALSE
+	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr =
+		(ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+	      sr0 =
+		(ip6_sr_header_t *) ip6_ext_next_header ((ip6_ext_header_t *)
+							 ext_hdr);
+	    }
 
 	  if (PREDICT_FALSE (sr0->type != ROUTING_HEADER_TYPE_SR))
 	    {
@@ -2550,13 +2635,26 @@ sr_local (vlib_main_t * vm,
 	    {
 	      u64 *copy_dst0, *copy_src0;
 	      u16 new_l0;
+	      u32 copy_len_u64s0 = 0;
+	      int i;
+
 	      /*
 	       * Copy the ip6 header right by the (real) length of the
-	       * sr header. Here's another place which assumes that
-	       * the sr header is the only extention header.
+	       * sr header.
 	       */
-
-	      ip0->protocol = sr0->protocol;
+	      if (PREDICT_FALSE
+		  (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+		{
+		  ip6_hop_by_hop_ext_t *ext_hdr =
+		    (ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+		  copy_len_u64s0 =
+		    (((ip6_ext_header_t *) ext_hdr)->n_data_u64s) + 1;
+		  ext_hdr->next_hdr = sr0->protocol;
+		}
+	      else
+		{
+		  ip0->protocol = sr0->protocol;
+		}
 	      vlib_buffer_advance (b0, (sr0->length + 1) * 8);
 
 	      new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
@@ -2566,11 +2664,16 @@ sr_local (vlib_main_t * vm,
 	      copy_src0 = (u64 *) ip0;
 	      copy_dst0 = copy_src0 + (sr0->length + 1);
 
-	      copy_dst0[4] = copy_src0[4];
-	      copy_dst0[3] = copy_src0[3];
-	      copy_dst0[2] = copy_src0[2];
-	      copy_dst0[1] = copy_src0[1];
-	      copy_dst0[0] = copy_src0[0];
+	      copy_dst0[4 + copy_len_u64s0] = copy_src0[4 + copy_len_u64s0];
+	      copy_dst0[3 + copy_len_u64s0] = copy_src0[3 + copy_len_u64s0];
+	      copy_dst0[2 + copy_len_u64s0] = copy_src0[2 + copy_len_u64s0];
+	      copy_dst0[1 + copy_len_u64s0] = copy_src0[1 + copy_len_u64s0];
+	      copy_dst0[0 + copy_len_u64s0] = copy_src0[0 + copy_len_u64s0];
+
+	      for (i = copy_len_u64s0 - 1; i >= 0; i--)
+		{
+		  copy_dst0[i] = copy_src0[i];
+		}
 
 	      sr0 = 0;
 	    }
@@ -2594,6 +2697,16 @@ sr_local (vlib_main_t * vm,
 	  b1 = vlib_get_buffer (vm, bi1);
 	  ip1 = vlib_buffer_get_current (b1);
 	  sr1 = (ip6_sr_header_t *) (ip1 + 1);
+	  if (PREDICT_FALSE
+	      (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+
+	      ip6_hop_by_hop_ext_t *ext_hdr =
+		(ip6_hop_by_hop_ext_t *) ip6_next_header (ip1);
+	      sr1 =
+		(ip6_sr_header_t *) ip6_ext_next_header ((ip6_ext_header_t *)
+							 ext_hdr);
+	    }
 
 	  if (PREDICT_FALSE (sr1->type != ROUTING_HEADER_TYPE_SR))
 	    {
@@ -2655,13 +2768,26 @@ sr_local (vlib_main_t * vm,
 	    {
 	      u64 *copy_dst1, *copy_src1;
 	      u16 new_l1;
+	      u32 copy_len_u64s1 = 0;
+	      int i;
+
 	      /*
 	       * Copy the ip6 header right by the (real) length of the
-	       * sr header. Here's another place which assumes that
-	       * the sr header is the only extention header.
+	       * sr header.
 	       */
-
-	      ip1->protocol = sr1->protocol;
+	      if (PREDICT_FALSE
+		  (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+		{
+		  ip6_hop_by_hop_ext_t *ext_hdr =
+		    (ip6_hop_by_hop_ext_t *) ip6_next_header (ip1);
+		  copy_len_u64s1 =
+		    (((ip6_ext_header_t *) ext_hdr)->n_data_u64s) + 1;
+		  ext_hdr->next_hdr = sr1->protocol;
+		}
+	      else
+		{
+		  ip1->protocol = sr1->protocol;
+		}
 	      vlib_buffer_advance (b1, (sr1->length + 1) * 8);
 
 	      new_l1 = clib_net_to_host_u16 (ip1->payload_length) -
@@ -2671,11 +2797,16 @@ sr_local (vlib_main_t * vm,
 	      copy_src1 = (u64 *) ip1;
 	      copy_dst1 = copy_src1 + (sr1->length + 1);
 
-	      copy_dst1[4] = copy_src1[4];
-	      copy_dst1[3] = copy_src1[3];
-	      copy_dst1[2] = copy_src1[2];
-	      copy_dst1[1] = copy_src1[1];
-	      copy_dst1[0] = copy_src1[0];
+	      copy_dst1[4 + copy_len_u64s1] = copy_src1[4 + copy_len_u64s1];
+	      copy_dst1[3 + copy_len_u64s1] = copy_src1[3 + copy_len_u64s1];
+	      copy_dst1[2 + copy_len_u64s1] = copy_src1[2 + copy_len_u64s1];
+	      copy_dst1[1 + copy_len_u64s1] = copy_src1[1 + copy_len_u64s1];
+	      copy_dst1[0 + copy_len_u64s1] = copy_src1[0 + copy_len_u64s1];
+
+	      for (i = copy_len_u64s1 - 1; i >= 0; i--)
+		{
+		  copy_dst1[i] = copy_src1[i];
+		}
 
 	      sr1 = 0;
 	    }
@@ -2721,6 +2852,15 @@ sr_local (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (b0);
 	  sr0 = (ip6_sr_header_t *) (ip0 + 1);
 
+	  if (PREDICT_FALSE
+	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr =
+		(ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+	      sr0 =
+		(ip6_sr_header_t *) ip6_ext_next_header ((ip6_ext_header_t *)
+							 ext_hdr);
+	    }
 	  if (PREDICT_FALSE (sr0->type != ROUTING_HEADER_TYPE_SR))
 	    {
 	      next0 = SR_LOCAL_NEXT_ERROR;
@@ -2781,13 +2921,27 @@ sr_local (vlib_main_t * vm,
 	    {
 	      u64 *copy_dst0, *copy_src0;
 	      u16 new_l0;
+	      u32 copy_len_u64s0 = 0;
+	      int i;
+
 	      /*
 	       * Copy the ip6 header right by the (real) length of the
-	       * sr header. Here's another place which assumes that
-	       * the sr header is the only extention header.
+	       * sr header.
 	       */
+	      if (PREDICT_FALSE
+		  (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+		{
+		  ip6_hop_by_hop_ext_t *ext_hdr =
+		    (ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+		  copy_len_u64s0 =
+		    (((ip6_ext_header_t *) ext_hdr)->n_data_u64s) + 1;
+		  ext_hdr->next_hdr = sr0->protocol;
+		}
+	      else
+		{
+		  ip0->protocol = sr0->protocol;
+		}
 
-	      ip0->protocol = sr0->protocol;
 	      vlib_buffer_advance (b0, (sr0->length + 1) * 8);
 
 	      new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
@@ -2796,12 +2950,16 @@ sr_local (vlib_main_t * vm,
 
 	      copy_src0 = (u64 *) ip0;
 	      copy_dst0 = copy_src0 + (sr0->length + 1);
+	      copy_dst0[4 + copy_len_u64s0] = copy_src0[4 + copy_len_u64s0];
+	      copy_dst0[3 + copy_len_u64s0] = copy_src0[3 + copy_len_u64s0];
+	      copy_dst0[2 + copy_len_u64s0] = copy_src0[2 + copy_len_u64s0];
+	      copy_dst0[1 + copy_len_u64s0] = copy_src0[1 + copy_len_u64s0];
+	      copy_dst0[0 + copy_len_u64s0] = copy_src0[0 + copy_len_u64s0];
 
-	      copy_dst0[4] = copy_src0[4];
-	      copy_dst0[3] = copy_src0[3];
-	      copy_dst0[2] = copy_src0[2];
-	      copy_dst0[1] = copy_src0[1];
-	      copy_dst0[0] = copy_src0[0];
+	      for (i = copy_len_u64s0 - 1; i >= 0; i--)
+		{
+		  copy_dst0[i] = copy_src0[i];
+		}
 
 	      sr0 = 0;
 	    }

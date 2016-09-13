@@ -1230,6 +1230,77 @@ u32 ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
   return p0->flags;
 }
 
+/* ip6_locate_header
+ *
+ * This function is to search for the header specified by the find_hdr number.
+ *   1. If the find_hdr < 0 then it finds and returns the protocol number and
+ *   offset stored in *offset of the transport or ESP header in the chain if
+ *   found.
+ *   2. If a header with find_hdr > 0 protocol number is found then the
+ *      offset is stored in *offset and protocol number of the header is
+ *      returned.
+ *   3. If find_hdr header is not found or packet is malformed or
+ *      it is a non-first fragment -1 is returned.
+ */
+always_inline int ip6_locate_header (vlib_buffer_t *p0,
+				ip6_header_t *ip0,
+				int find_hdr,
+				u32 *offset)
+{
+  u8 next_proto = ip0->protocol;
+  u8 *next_header;
+  u8 done = 0;
+  u32 cur_offset;
+  u8  *temp_nxthdr = 0;
+  u32 exthdr_len = 0;
+
+  next_header = ip6_next_header(ip0);
+  cur_offset = sizeof(ip6_header_t);
+  while(1)
+    {
+      done = (next_proto == find_hdr);
+      if (PREDICT_FALSE(next_header >= (u8 *)vlib_buffer_get_current(p0) + p0->current_length))
+	{
+	  //A malicious packet could set an extension header with a too big size
+	  return(-1);
+	}
+      if (done)
+	break;
+      if ((!ip6_ext_hdr(next_proto)) || next_proto == IP_PROTOCOL_IP6_NONXT)
+	{
+	  if (find_hdr < 0)
+	    break;
+	  return -1;
+        }
+      if (next_proto == IP_PROTOCOL_IPV6_FRAGMENTATION)
+	{
+	  ip6_frag_hdr_t *frag_hdr = (ip6_frag_hdr_t *)next_header;
+	  u16 frag_off = ip6_frag_hdr_offset(frag_hdr);
+          /* Non first fragment return -1 */
+	  if (frag_off)
+	    return(-1);
+	  exthdr_len = sizeof(ip6_frag_hdr_t);
+          temp_nxthdr = next_header + exthdr_len;
+	}
+      else if (next_proto == IP_PROTOCOL_IPSEC_AH)
+	{
+	  exthdr_len = ip6_ext_authhdr_len(((ip6_ext_header_t *)next_header));
+	  temp_nxthdr = next_header + exthdr_len;
+	}
+      else
+	{
+	  exthdr_len = ip6_ext_header_len(((ip6_ext_header_t *)next_header));
+	  temp_nxthdr = next_header + exthdr_len;
+	}
+	next_proto = ((ip6_ext_header_t *)next_header)->next_hdr;
+	next_header = temp_nxthdr;
+	cur_offset += exthdr_len;
+    }
+
+  *offset = cur_offset;
+  return(next_proto);
+}
+
 static uword
 ip6_local (vlib_main_t * vm,
 	   vlib_node_runtime_t * node,
@@ -1263,6 +1334,7 @@ ip6_local (vlib_main_t * vm,
 	  i32 len_diff0, len_diff1;
 	  u8 error0, type0, good_l4_checksum0;
 	  u8 error1, type1, good_l4_checksum1;
+	  u32 udp_offset0, udp_offset1;
 
 	  pi0 = to_next[0] = from[0];
 	  pi1 = to_next[1] = from[1];
@@ -1288,25 +1360,47 @@ ip6_local (vlib_main_t * vm,
 
 	  good_l4_checksum0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
 	  good_l4_checksum1 = (flags1 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	  len_diff0 = 0;
+	  len_diff1 = 0;
 
-	  udp0 = ip6_next_header (ip0);
-	  udp1 = ip6_next_header (ip1);
-
-	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
-	  good_l4_checksum0 |= type0 == IP_BUILTIN_PROTOCOL_UDP && udp0->checksum == 0;
-	  good_l4_checksum1 |= type1 == IP_BUILTIN_PROTOCOL_UDP && udp1->checksum == 0;
+	  /* Skip HBH local processing */
+          if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr = (ip6_hop_by_hop_ext_t  *)ip6_next_header(ip0);
+	      next0 = lm->local_next_by_ip_protocol[ext_hdr->next_hdr];
+	      type0 = lm->builtin_protocol_by_ip_protocol[ext_hdr->next_hdr];
+	    }
+          if (PREDICT_FALSE (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr = (ip6_hop_by_hop_ext_t  *)ip6_next_header(ip1);
+	      next1 = lm->local_next_by_ip_protocol[ext_hdr->next_hdr];
+	      type1 = lm->builtin_protocol_by_ip_protocol[ext_hdr->next_hdr];
+	    }
+	  if (PREDICT_TRUE(IP_PROTOCOL_UDP == ip6_locate_header(p0, ip0,
+							   IP_PROTOCOL_UDP, &udp_offset0)))
+	    {
+	      udp0 = (udp_header_t *)((u8 *)ip0 + udp_offset0);
+	      /* Don't verify UDP checksum for packets with explicit zero checksum. */
+	      good_l4_checksum0 |= type0 == IP_BUILTIN_PROTOCOL_UDP && udp0->checksum == 0;
+	      /* Verify UDP length. */
+	      ip_len0 = clib_net_to_host_u16 (ip0->payload_length);
+	      udp_len0 = clib_net_to_host_u16 (udp0->length);
+	      len_diff0 = ip_len0 - udp_len0;
+	    }
+	  if (PREDICT_TRUE(IP_PROTOCOL_UDP == ip6_locate_header(p1, ip1,
+							   IP_PROTOCOL_UDP, &udp_offset1)))
+	    {
+	      udp1 = (udp_header_t *)((u8 *)ip1 + udp_offset1);
+	      /* Don't verify UDP checksum for packets with explicit zero checksum. */
+	      good_l4_checksum1 |= type1 == IP_BUILTIN_PROTOCOL_UDP && udp1->checksum == 0;
+	      /* Verify UDP length. */
+	      ip_len1 = clib_net_to_host_u16 (ip1->payload_length);
+	      udp_len1 = clib_net_to_host_u16 (udp1->length);
+	      len_diff1 = ip_len1 - udp_len1;
+	    }
 
 	  good_l4_checksum0 |= type0 == IP_BUILTIN_PROTOCOL_UNKNOWN;
 	  good_l4_checksum1 |= type1 == IP_BUILTIN_PROTOCOL_UNKNOWN;
-
-	  /* Verify UDP length. */
-	  ip_len0 = clib_net_to_host_u16 (ip0->payload_length);
-	  ip_len1 = clib_net_to_host_u16 (ip1->payload_length);
-	  udp_len0 = clib_net_to_host_u16 (udp0->length);
-	  udp_len1 = clib_net_to_host_u16 (udp1->length);
-
-	  len_diff0 = ip_len0 - udp_len0;
-	  len_diff1 = ip_len1 - udp_len1;
 
 	  len_diff0 = type0 == IP_BUILTIN_PROTOCOL_UDP ? len_diff0 : 0;
 	  len_diff1 = type1 == IP_BUILTIN_PROTOCOL_UDP ? len_diff1 : 0;
@@ -1382,6 +1476,7 @@ ip6_local (vlib_main_t * vm,
 	  u32 pi0, ip_len0, udp_len0, flags0, next0;
 	  i32 len_diff0;
 	  u8 error0, type0, good_l4_checksum0;
+          u32 udp_offset0;
 
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
@@ -1399,20 +1494,28 @@ ip6_local (vlib_main_t * vm,
 	  flags0 = p0->flags;
 
 	  good_l4_checksum0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	  len_diff0 = 0;
 
-	  udp0 = ip6_next_header (ip0);
-
-	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
-	  good_l4_checksum0 |= type0 == IP_BUILTIN_PROTOCOL_UDP && udp0->checksum == 0;
+	  /* Skip HBH local processing */
+          if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr = (ip6_hop_by_hop_ext_t  *)ip6_next_header(ip0);
+	      next0 = lm->local_next_by_ip_protocol[ext_hdr->next_hdr];
+	      type0 = lm->builtin_protocol_by_ip_protocol[ext_hdr->next_hdr];
+	    }
+	  if (PREDICT_TRUE(IP_PROTOCOL_UDP == ip6_locate_header(p0, ip0,
+							   IP_PROTOCOL_UDP, &udp_offset0)))
+	    {
+	      udp0 = (udp_header_t *)((u8 *)ip0 + udp_offset0);
+	      /* Don't verify UDP checksum for packets with explicit zero checksum. */
+	      good_l4_checksum0 |= type0 == IP_BUILTIN_PROTOCOL_UDP && udp0->checksum == 0;
+	      /* Verify UDP length. */
+	      ip_len0 = clib_net_to_host_u16 (ip0->payload_length);
+	      udp_len0 = clib_net_to_host_u16 (udp0->length);
+	      len_diff0 = ip_len0 - udp_len0;
+	    }
 
 	  good_l4_checksum0 |= type0 == IP_BUILTIN_PROTOCOL_UNKNOWN;
-
-	  /* Verify UDP length. */
-	  ip_len0 = clib_net_to_host_u16 (ip0->payload_length);
-	  udp_len0 = clib_net_to_host_u16 (udp0->length);
-
-	  len_diff0 = ip_len0 - udp_len0;
-
 	  len_diff0 = type0 == IP_BUILTIN_PROTOCOL_UDP ? len_diff0 : 0;
 
 	  if (PREDICT_FALSE (type0 != IP_BUILTIN_PROTOCOL_UNKNOWN
