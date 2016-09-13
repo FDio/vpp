@@ -680,6 +680,15 @@ dpdk_pmd_constructor_init ()
 #ifdef RTE_LIBRTE_DPAA2_PMD
     _(pmd_dpaa2_drv)
 #endif
+
+#ifdef RTE_LIBRTE_PMD_AESNI_MB
+  _(cryptodev_aesni_mb_pmd_drv)
+#endif
+
+#ifdef RTE_LIBRTE_PMD_QAT
+  _(pmd_qat_drv)
+#endif
+
 #undef _
 /*
  * At the moment, the ThunderX NIC driver doesn't have

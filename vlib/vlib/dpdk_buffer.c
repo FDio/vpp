@@ -987,12 +987,15 @@ vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 
   u8 *pool_name = format (0, "mbuf_pool_socket%u%c", socket_id, 0);
 
-  rmp = rte_pktmbuf_pool_create ((char *) pool_name,	/* pool name */
-				 num_mbufs,	/* number of mbufs */
-				 512,	/* cache size */
-				 VLIB_BUFFER_HDR_SIZE,	/* priv size */
-				 VLIB_BUFFER_PRE_DATA_SIZE + VLIB_BUFFER_DATA_SIZE,	/* dataroom size */
-				 socket_id);	/* cpu socket */
+  rmp = rte_pktmbuf_pool_create((char *) pool_name,         /* pool name */
+				 num_mbufs,                 /* number of mbufs */
+				 2048,                       /* cache size */
+				 VLIB_BUFFER_HDR_SIZE,      /* priv size */
+				 VLIB_BUFFER_PRE_DATA_SIZE
+				 + VLIB_BUFFER_DATA_SIZE,   /* dataroom size */
+				 socket_id);                /* cpu socket */
+
+  vec_free(pool_name);
 
   if (rmp)
     {
