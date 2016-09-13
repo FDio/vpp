@@ -454,22 +454,41 @@ sr_rewrite (vlib_main_t * vm,
 	    }
 	  else
 	    {
+	      u32 len_bytes = sizeof (ip6_header_t);
+	      u8 next_hdr = ip0->protocol;
+
+	      /* HBH must immediately follow ipv6 header */
+	      if (PREDICT_FALSE
+		  (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+		{
+		  ip6_hop_by_hop_ext_t *ext_hdr =
+		    (ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+		  len_bytes +=
+		    ip6_ext_header_len ((ip6_ext_header_t *) ext_hdr);
+		  /* Ignoring the sr_local for now, if RH follows HBH here */
+		  next_hdr = ext_hdr->next_hdr;
+		  ext_hdr->next_hdr = IPPROTO_IPV6_ROUTE;
+		}
+	      else
+		{
+		  ip0->protocol = IPPROTO_IPV6_ROUTE;	/* routing extension header */
+		}
 	      /*
 	       * Copy data before the punch-in point left by the
 	       * required amount. Assume (for the moment) that only
 	       * the main packet header needs to be copied.
 	       */
 	      clib_memcpy (((u8 *) ip0) - vec_len (t0->rewrite),
-			   ip0, sizeof (ip6_header_t));
+			   ip0, len_bytes);
 	      vlib_buffer_advance (b0, -(word) vec_len (t0->rewrite));
 	      ip0 = vlib_buffer_get_current (b0);
-	      sr0 = (ip6_sr_header_t *) (ip0 + 1);
+	      sr0 = (ip6_sr_header_t *) ((u8 *) ip0 + len_bytes);
 	      /* $$$ tune */
 	      clib_memcpy (sr0, t0->rewrite, vec_len (t0->rewrite));
 
 	      /* Fix the next header chain */
-	      sr0->protocol = ip0->protocol;
-	      ip0->protocol = IPPROTO_IPV6_ROUTE;	/* routing extension header */
+	      sr0->protocol = next_hdr;
+
 	      new_l0 = clib_net_to_host_u16 (ip0->payload_length) +
 		vec_len (t0->rewrite);
 	      ip0->payload_length = clib_host_to_net_u16 (new_l0);
@@ -506,15 +525,38 @@ sr_rewrite (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      clib_memcpy (((u8 *) ip0) - vec_len (t0->rewrite),
-			   ip0, sizeof (ip6_header_t));
+	      u32 len_bytes = sizeof (ip6_header_t);
+	      u8 next_hdr = ip1->protocol;
+
+	      /* HBH must immediately follow ipv6 header */
+	      if (PREDICT_FALSE
+		  (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+		{
+		  ip6_hop_by_hop_ext_t *ext_hdr =
+		    (ip6_hop_by_hop_ext_t *) ip6_next_header (ip1);
+		  len_bytes +=
+		    ip6_ext_header_len ((ip6_ext_header_t *) ext_hdr);
+		  /* Ignoring the sr_local for now, if RH follows HBH here */
+		  next_hdr = ext_hdr->next_hdr;
+		  ext_hdr->next_hdr = IPPROTO_IPV6_ROUTE;
+		}
+	      else
+		{
+		  ip1->protocol = IPPROTO_IPV6_ROUTE;
+		}
+	      /*
+	       * Copy data before the punch-in point left by the
+	       * required amount. Assume (for the moment) that only
+	       * the main packet header needs to be copied.
+	       */
+	      clib_memcpy (((u8 *) ip1) - vec_len (t1->rewrite),
+			   ip1, len_bytes);
 	      vlib_buffer_advance (b1, -(word) vec_len (t1->rewrite));
 	      ip1 = vlib_buffer_get_current (b1);
-	      sr1 = (ip6_sr_header_t *) (ip1 + 1);
+	      sr1 = (ip6_sr_header_t *) ((u8 *) ip1 + len_bytes);
 	      clib_memcpy (sr1, t1->rewrite, vec_len (t1->rewrite));
 
-	      sr1->protocol = ip1->protocol;
-	      ip1->protocol = IPPROTO_IPV6_ROUTE;
+	      sr1->protocol = next_hdr;
 	      new_l1 = clib_net_to_host_u16 (ip1->payload_length) +
 		vec_len (t1->rewrite);
 	      ip1->payload_length = clib_host_to_net_u16 (new_l1);
@@ -635,22 +677,40 @@ sr_rewrite (vlib_main_t * vm,
 	    }
 	  else
 	    {
+	      u32 len_bytes = sizeof (ip6_header_t);
+	      u8 next_hdr = ip0->protocol;
+
+	      /* HBH must immediately follow ipv6 header */
+	      if (PREDICT_FALSE
+		  (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+		{
+		  ip6_hop_by_hop_ext_t *ext_hdr =
+		    (ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+		  len_bytes +=
+		    ip6_ext_header_len ((ip6_ext_header_t *) ext_hdr);
+		  next_hdr = ext_hdr->next_hdr;
+		  ext_hdr->next_hdr = IPPROTO_IPV6_ROUTE;
+		  /* Ignoring the sr_local for now, if RH follows HBH here */
+		}
+	      else
+		{
+		  ip0->protocol = IPPROTO_IPV6_ROUTE;	/* routing extension header */
+		}
 	      /*
 	       * Copy data before the punch-in point left by the
 	       * required amount. Assume (for the moment) that only
 	       * the main packet header needs to be copied.
 	       */
 	      clib_memcpy (((u8 *) ip0) - vec_len (t0->rewrite),
-			   ip0, sizeof (ip6_header_t));
+			   ip0, len_bytes);
 	      vlib_buffer_advance (b0, -(word) vec_len (t0->rewrite));
 	      ip0 = vlib_buffer_get_current (b0);
-	      sr0 = (ip6_sr_header_t *) (ip0 + 1);
+	      sr0 = (ip6_sr_header_t *) ((u8 *) ip0 + len_bytes);
 	      /* $$$ tune */
 	      clib_memcpy (sr0, t0->rewrite, vec_len (t0->rewrite));
 
 	      /* Fix the next header chain */
-	      sr0->protocol = ip0->protocol;
-	      ip0->protocol = IPPROTO_IPV6_ROUTE;	/* routing extension header */
+	      sr0->protocol = next_hdr;
 	      new_l0 = clib_net_to_host_u16 (ip0->payload_length) +
 		vec_len (t0->rewrite);
 	      ip0->payload_length = clib_host_to_net_u16 (new_l0);
@@ -2486,6 +2546,15 @@ sr_local (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0 = vlib_buffer_get_current (b0);
 	  sr0 = (ip6_sr_header_t *) (ip0 + 1);
+	  if (PREDICT_FALSE
+	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr =
+		(ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+	      sr0 =
+		(ip6_sr_header_t *) ip6_ext_next_header ((ip6_ext_header_t *)
+							 ext_hdr);
+	    }
 
 	  if (PREDICT_FALSE (sr0->type != ROUTING_HEADER_TYPE_SR))
 	    {
@@ -2591,6 +2660,16 @@ sr_local (vlib_main_t * vm,
 	  b1 = vlib_get_buffer (vm, bi1);
 	  ip1 = vlib_buffer_get_current (b1);
 	  sr1 = (ip6_sr_header_t *) (ip1 + 1);
+	  if (PREDICT_FALSE
+	      (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+
+	      ip6_hop_by_hop_ext_t *ext_hdr =
+		(ip6_hop_by_hop_ext_t *) ip6_next_header (ip1);
+	      sr1 =
+		(ip6_sr_header_t *) ip6_ext_next_header ((ip6_ext_header_t *)
+							 ext_hdr);
+	    }
 
 	  if (PREDICT_FALSE (sr1->type != ROUTING_HEADER_TYPE_SR))
 	    {
@@ -2718,6 +2797,15 @@ sr_local (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (b0);
 	  sr0 = (ip6_sr_header_t *) (ip0 + 1);
 
+	  if (PREDICT_FALSE
+	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      ip6_hop_by_hop_ext_t *ext_hdr =
+		(ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
+	      sr0 =
+		(ip6_sr_header_t *) ip6_ext_next_header ((ip6_ext_header_t *)
+							 ext_hdr);
+	    }
 	  if (PREDICT_FALSE (sr0->type != ROUTING_HEADER_TYPE_SR))
 	    {
 	      next0 = SR_LOCAL_NEXT_ERROR;
