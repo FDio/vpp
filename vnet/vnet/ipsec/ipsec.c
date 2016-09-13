@@ -452,6 +452,9 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
 	  return VNET_API_ERROR_SYSCALL_ERROR_1;	/* sa used in policy */
 	}
       hash_unset (im->sa_index_by_sa_id, sa->id);
+#if DPDK==1 && DPDK_IPSEC==1
+      add_del_sa_sess(sa_index, 1);
+#endif
       pool_put (im->sad, sa);
     }
   else				/* create new SA */
@@ -460,6 +463,10 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
       clib_memcpy (sa, new_sa, sizeof (*sa));
       sa_index = sa - im->sad;
       hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
+#if DPDK==1 && DPDK_IPSEC==1
+      if (add_del_sa_sess(sa_index, 0) < 0)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
+#endif
     }
   return 0;
 }
@@ -495,6 +502,13 @@ ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update)
       sa->integ_key_len = sa_update->integ_key_len;
     }
 
+#if DPDK==1 && DPDK_IPSEC==1
+  if (sa->crypto_key_len + sa->integ_key_len > 0)
+    {
+      if (add_del_sa_sess(sa_index, 0) < 0)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
+    }
+#endif
   return 0;
 }
 
@@ -541,14 +555,18 @@ ipsec_init (vlib_main_t * vm)
   ASSERT (node);
   im->error_drop_node_index = node->index;
 
+#if DPDK==1
+  node = vlib_get_node_by_name (vm, (u8 *) "dpdk-esp-encrypt");
+#else
   node = vlib_get_node_by_name (vm, (u8 *) "esp-encrypt");
-  ASSERT (node);
+#endif
+
+  ASSERT(node);
   im->esp_encrypt_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "ip4-lookup");
   ASSERT (node);
   im->ip4_lookup_node_index = node->index;
-
 
   if ((error = vlib_call_init_function (vm, ipsec_cli_init)))
     return error;

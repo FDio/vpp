@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @DPDK@ @IPSEC@ @IPV6SR@
+AM_CFLAGS = -Wall @DPDK@ @DPDK_IPSEC@ @IPSEC@ @IPV6SR@
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -330,7 +330,16 @@ libvnet_la_SOURCES +=       			\
  vnet/ipsec/ikev2_cli.c				\
  vnet/ipsec/ikev2_payload.c			\
  vnet/ipsec/ikev2_format.c
-endif 
+if WITH_DPDK
+if WITH_DPDK_IPSEC
+libvnet_la_SOURCES +=       			\
+ vnet/ipsec/dpdk_esp_encrypt.c			\
+ vnet/ipsec/dpdk_esp_decrypt.c			\
+ vnet/ipsec/dpdk_crypto_node.c			\
+ vnet/ipsec/dpdk_ipsec.c
+endif
+endif
+endif
 
 libvnet_la_SOURCES +=       			\
  vnet/ipsec/ipsec_output.c

@@ -21,11 +21,17 @@
 
 #include <vnet/ipsec/ipsec.h>
 
+//#if DPDK==1 && DPDK_IPSEC==1
+#define IPSEC_NODE_FUNC "dpdk-esp-encrypt"
+//#else
+//#define IPSEC_NODE_FUNC "esp-encrypt"
+//#endif
+
 #if IPSEC > 0
 
 #define foreach_ipsec_output_next                \
 _(DROP, "error-drop")                            \
-_(ESP_ENCRYPT, "esp-encrypt")
+_(ESP_ENCRYPT, IPSEC_NODE_FUNC)
 
 #define _(v, s) IPSEC_OUTPUT_NEXT_##v,
 typedef enum

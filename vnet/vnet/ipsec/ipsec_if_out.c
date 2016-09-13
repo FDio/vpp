@@ -141,7 +141,11 @@ VLIB_REGISTER_NODE (ipsec_if_output_node) = {
   .n_next_nodes = IPSEC_IF_OUTPUT_N_NEXT,
 
   .next_nodes = {
+#if DPDK==1 && DPDK_IPSEC==1
+        [IPSEC_IF_OUTPUT_NEXT_ESP_ENCRYPT] = "dpdk-esp-encrypt",
+#else
         [IPSEC_IF_OUTPUT_NEXT_ESP_ENCRYPT] = "esp-encrypt",
+#endif
         [IPSEC_IF_OUTPUT_NEXT_DROP] = "error-drop",
   },
 };
