@@ -176,9 +176,6 @@ ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
 	  b1 = vlib_get_buffer (vm, bi1);
 
 	  /* $$$$$ Dual loop: process 2 x packets here $$$$$ */
-	  ASSERT (b0->current_data == 0);
-	  ASSERT (b1->current_data == 0);
-
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
 
