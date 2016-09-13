@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_24e2d39f",
+        "filename": "doxygen/siphon/generate.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2016-09-13T20:02:12Z",
+      "side": 1,
+      "message": "Trailing white space. One other further down.",
+      "range": {
+        "startLine": 36,
+        "startChar": 47,
+        "endLine": 36,
+        "endChar": 48
+      },
+      "revId": "a576ca9323e1140ba59abb97855d98844ce31e13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
