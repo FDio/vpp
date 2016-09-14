@@ -1,5 +1,4 @@
-
-## VPP Inband OAM (iOAM)
+## VPP Inband OAM (iOAM)    {#ioam_plugin_doc}
 
 In-band OAM (iOAM) is an implementation study to record operational
 information in the packet while the packet traverses a path between
