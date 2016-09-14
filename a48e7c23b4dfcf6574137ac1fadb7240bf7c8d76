@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_adaa4717",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-09-14T19:19:27Z",
+      "side": 1,
+      "message": "Please add \"started with N issues, fixed M issues, 0 unresolved\" [data from coverity website]",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
