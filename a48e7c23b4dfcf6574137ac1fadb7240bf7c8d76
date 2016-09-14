@@ -2,6 +2,131 @@
   "comments": [
     {
       "key": {
+        "uuid": "3a1d315d_2d3cf7e1",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-09-14T19:57:32Z",
+      "side": 1,
+      "message": "I\u0027m pretty sure SIXRD and VCGN were already there in 16.06.",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_0d413b5a",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-09-14T19:57:32Z",
+      "side": 1,
+      "message": "Python bindings I believe were already there in 16.06.",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_ed25dfc2",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-09-14T19:57:32Z",
+      "side": 1,
+      "message": "You might also mention dynamic graph reordering.",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_cd2223b9",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-09-14T19:57:32Z",
+      "side": 1,
+      "message": "Two nits:\n1)  Usually distributions are thought of as downstream of a project they are packaging.\n2)  The packages aren\u0027t actually appropriate to submit to those distros yet, for among other reasons because we are not building source debs/rpms currently.",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_ad2fe7a0",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-09-14T19:57:32Z",
+      "side": 1,
+      "message": "Wouldn\u0027t this be a HC release note item?",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_8d2c2bad",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-09-14T19:57:32Z",
+      "side": 1,
+      "message": "What are you hoping to accomplish with this link... it takes you to an awfully broad place currently... depending on what we are trying to accomplish, we could get something more specific.",
+      "range": {
+        "startLine": 40,
+        "startChar": 44,
+        "endLine": 40,
+        "endChar": 45
+      },
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_6d19cf87",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2016-09-14T19:57:32Z",
+      "side": 1,
+      "message": "I would suggest a link here to docs.fd.io/vpp/16.09",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_adaa4717",
         "filename": "RELEASE.md",
         "patchSetId": 7
