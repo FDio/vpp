@@ -87,6 +87,7 @@ vlib_dpdk_clone_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   if (rte_mempool_get_bulk (rmp, (void **) rte_mbufs, 1) < 0)
     return 0;
 
+  rte_pktmbuf_refcnt_update (rte_mbufs[0], 1);
   rv = vlib_buffer_from_rte_mbuf (rte_mbufs[0]);
   vlib_buffer_init_for_free_list (rv, fl);
 
