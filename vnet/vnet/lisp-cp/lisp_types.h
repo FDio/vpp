@@ -120,6 +120,8 @@ typedef struct
 #define sd_dst_ippref(_a) fid_addr_ippref(&sd_dst(_a))
 #define sd_src_mac(_a) fid_addr_mac(&sd_src(_a))
 #define sd_dst_mac(_a) fid_addr_mac(&sd_dst(_a))
+#define sd_src_type(_a) fid_addr_type(&sd_src(_a))
+#define sd_dst_type(_a) fid_addr_type(&sd_dst(_a))
 
 typedef struct
 {
@@ -218,6 +220,8 @@ void gid_address_ip_set (gid_address_t * dst, void *src, u8 version);
 #define gid_address_sd(_a) (_a)->sd
 #define gid_address_sd_src(_a) sd_src(&gid_address_sd(_a))
 #define gid_address_sd_dst(_a) sd_dst(&gid_address_sd(_a))
+#define gid_address_sd_src_type(_a) sd_src_type(&gid_address_sd(_a))
+#define gid_address_sd_dst_type(_a) sd_dst_type(&gid_address_sd(_a))
 
 /* 'sub'address functions */
 #define foreach_gid_address_type_fcns  \

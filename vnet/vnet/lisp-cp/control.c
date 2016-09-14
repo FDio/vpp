@@ -27,6 +27,13 @@ typedef struct
   u8 smr_invoked;
 } map_request_args_t;
 
+u8
+vnet_lisp_get_map_request_mode (void)
+{
+  lisp_cp_main_t * lcm = vnet_lisp_cp_get_main ();
+  return lcm->map_request_mode;
+}
+
 static int
 queue_map_request (gid_address_t * seid, gid_address_t * deid,
 		   u8 smr_invoked, u8 is_resend);
@@ -1250,6 +1257,104 @@ VLIB_CLI_COMMAND (lisp_add_del_adjacency_command) = {
      "deid <dest-eid> seid <src-eid> [action <no-action|natively-forward|"
      "send-map-request|drop>] rloc <dst-locator> [rloc <dst-locator> ... ]",
     .function = lisp_add_del_adjacency_command_fn,
+};
+/* *INDENT-ON* */
+
+int
+vnet_lisp_set_map_request_mode (u8 mode)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
+  if (mode >= _MR_MODE_MAX)
+    {
+      clib_warning ("Invalid LISP map request mode %d!", mode);
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  lcm->map_request_mode = mode;
+  return 0;
+}
+
+static clib_error_t *
+lisp_map_request_mode_command_fn (vlib_main_t * vm,
+		                  unformat_input_t * input,
+			          vlib_cli_command_t * cmd)
+{
+  unformat_input_t _i, * i = &_i;
+  map_request_mode_t mr_mode = _MR_MODE_MAX;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, i))
+    return 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "dst-only"))
+	mr_mode = MR_MODE_DST_ONLY;
+      else if (unformat (i, "src-dst"))
+	mr_mode = MR_MODE_SRC_DST;
+      else
+        {
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  goto done;
+        }
+    }
+
+  if (_MR_MODE_MAX == mr_mode)
+    {
+      clib_warning ("No LISP map request mode entered!");
+      return 0;
+    }
+
+  vnet_lisp_set_map_request_mode (mr_mode);
+done:
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_map_request_mode_command) = {
+    .path = "lisp map-request mode",
+    .short_help = "lisp map-request mode dst-only|src-dst",
+    .function = lisp_map_request_mode_command_fn,
+};
+/* *INDENT-ON* */
+
+static u8 *
+format_lisp_map_request_mode (u8 * s, va_list * args)
+{
+  u32 mode = va_arg (*args, u32);
+
+  switch (mode)
+    {
+    case 0:
+      return format (0, "dst-only");
+    case 1:
+      return format (0, "src-dst");
+    }
+  return 0;
+}
+
+static clib_error_t *
+lisp_show_map_request_mode_command_fn (vlib_main_t * vm,
+	                            unformat_input_t * input,
+		                  vlib_cli_command_t * cmd)
+{
+  vlib_cli_output (vm, "map-request mode: %U", format_lisp_map_request_mode,
+                   vnet_lisp_get_map_request_mode ());
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_show_map_request_mode_command) = {
+    .path = "show lisp map-request mode",
+    .short_help = "show lisp map-request mode",
+    .function = lisp_show_map_request_mode_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -2628,6 +2733,37 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
   return rlocs;
 }
 
+static void
+build_src_dst (gid_address_t * sd, gid_address_t * src, gid_address_t * dst)
+{
+  memset (sd, 0, sizeof (*sd));
+  gid_address_type (sd) = GID_ADDR_SRC_DST;
+  gid_address_vni (sd) = gid_address_vni (dst);
+  gid_address_vni_mask (sd) = gid_address_vni_mask (dst);
+
+  switch (gid_address_type (dst))
+    {
+    case GID_ADDR_IP_PREFIX:
+      gid_address_sd_src_type (sd) = FID_ADDR_IP_PREF;
+      gid_address_sd_dst_type (sd) = FID_ADDR_IP_PREF;
+      ip_prefix_copy (&gid_address_sd_src_ippref(sd),
+                      &gid_address_ippref(src));
+      ip_prefix_copy (&gid_address_sd_dst_ippref(sd),
+                      &gid_address_ippref(dst));
+      break;
+    case GID_ADDR_MAC:
+      gid_address_sd_src_type (sd) = FID_ADDR_MAC;
+      gid_address_sd_dst_type (sd) = FID_ADDR_MAC;
+      mac_copy (gid_address_sd_src_mac (sd), gid_address_mac (src));
+      mac_copy (gid_address_sd_dst_mac (sd), gid_address_mac (dst));
+      break;
+    default:
+      clib_warning ("Unsupported gid type %d while conversion!",
+                    gid_address_type (dst));
+      break;
+    }
+}
+
 static vlib_buffer_t *
 build_encapsulated_map_request (lisp_cp_main_t * lcm,
 				gid_address_t * seid, gid_address_t * deid,
@@ -2654,8 +2790,18 @@ build_encapsulated_map_request (lisp_cp_main_t * lcm,
   /* get rlocs */
   rlocs = build_itr_rloc_list (lcm, loc_set);
 
-  /* put lisp msg */
-  lisp_msg_put_mreq (lcm, b, seid, deid, rlocs, is_smr_invoked, nonce_res);
+  if (MR_MODE_SRC_DST == lcm->map_request_mode)
+    {
+      gid_address_t sd;
+      memset (&sd, 0, sizeof (sd));
+      build_src_dst (&sd, seid, deid);
+      lisp_msg_put_mreq (lcm, b, seid, &sd, rlocs, is_smr_invoked, nonce_res);
+    }
+  else
+    {
+      /* put lisp msg */
+      lisp_msg_put_mreq (lcm, b, seid, deid, rlocs, is_smr_invoked, nonce_res);
+    }
 
   /* push ecm: udp-ip-lisp */
   lisp_msg_push_ecm (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, seid, deid);
@@ -3382,6 +3528,7 @@ lisp_cp_init (vlib_main_t * vm)
   lcm->pending_map_request_lock[0] = 0;
   gid_dictionary_init (&lcm->mapping_index_by_gid);
   lcm->do_map_resolver_election = 1;
+  lcm->map_request_mode = MR_MODE_DST_ONLY;
 
   /* default vrf mapped to vni 0 */
   hash_set (lcm->table_id_by_vni, 0, 0);
