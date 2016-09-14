@@ -63,6 +63,13 @@ typedef struct
   miss_packet_type_t type;
 } miss_packet_t;
 
+typedef enum
+{
+  MR_MODE_DST_ONLY = 0,
+  MR_MODE_SRC_DST,
+  _MR_MODE_MAX
+} map_request_mode_t;
+
 typedef struct
 {
   /* LISP feature status */
@@ -137,6 +144,9 @@ typedef struct
 
   /* LISP PITR mode */
   u8 lisp_pitr;
+
+  /* map request mode */
+  u8 map_request_mode;
 
   /* commodity */
   ip4_main_t *im4;
@@ -240,6 +250,8 @@ vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a);
 int vnet_lisp_clear_all_remote_adjacencies (void);
 
 int vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_l2, u8 is_add);
+int vnet_lisp_set_map_request_mode (u8 mode);
+u8 vnet_lisp_get_map_request_mode (void);
 
 static inline void
 lisp_pending_map_request_lock (lisp_cp_main_t * lcm)

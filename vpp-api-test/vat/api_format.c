@@ -2711,6 +2711,62 @@ static void
   vam->result_ready = 1;
 }
 
+static u8 *
+format_lisp_map_request_mode (u8 * s, va_list * args)
+{
+  u32 mode = va_arg (*args, u32);
+
+  switch (mode)
+    {
+    case 0:
+      return format (0, "dst-only");
+    case 1:
+      return format (0, "src-dst");
+    }
+  return 0;
+}
+
+static void
+  vl_api_show_lisp_map_request_mode_reply_t_handler
+  (vl_api_show_lisp_map_request_mode_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (0 <= retval)
+    {
+      u32 mode = mp->mode;
+      fformat (vam->ofp, "map_request_mode: %U\n",
+	       format_lisp_map_request_mode, mode);
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_show_lisp_map_request_mode_reply_t_handler_json
+  (vl_api_show_lisp_map_request_mode_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+  u8 *s = 0;
+  u32 mode;
+
+  mode = mp->mode;
+  s = format (0, "%U", format_lisp_map_request_mode, mode);
+  vec_add1 (s, 0);
+
+  vat_json_init_object (&node);
+  vat_json_object_add_string_copy (&node, "map_request_mode", s);
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vec_free (s);
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
 static void
 vl_api_show_lisp_pitr_reply_t_handler (vl_api_show_lisp_pitr_reply_t * mp)
 {
@@ -3407,6 +3463,7 @@ _(lisp_gpe_enable_disable_reply)                        \
 _(lisp_gpe_add_del_iface_reply)                         \
 _(lisp_enable_disable_reply)                            \
 _(lisp_pitr_set_locator_set_reply)                      \
+_(lisp_map_request_mode_reply)                          \
 _(lisp_add_del_map_request_itr_rlocs_reply)             \
 _(lisp_eid_table_add_del_map_reply)                     \
 _(vxlan_gpe_add_del_tunnel_reply)                       \
@@ -3599,6 +3656,7 @@ _(LISP_ADD_DEL_MAP_RESOLVER_REPLY, lisp_add_del_map_resolver_reply)     \
 _(LISP_GPE_ENABLE_DISABLE_REPLY, lisp_gpe_enable_disable_reply)         \
 _(LISP_ENABLE_DISABLE_REPLY, lisp_enable_disable_reply)                 \
 _(LISP_PITR_SET_LOCATOR_SET_REPLY, lisp_pitr_set_locator_set_reply)     \
+_(LISP_MAP_REQUEST_MODE_REPLY, lisp_map_request_mode_reply)             \
 _(LISP_EID_TABLE_ADD_DEL_MAP_REPLY, lisp_eid_table_add_del_map_reply)   \
 _(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
 _(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
@@ -3614,6 +3672,7 @@ _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY,                             \
 _(LISP_GET_MAP_REQUEST_ITR_RLOCS_REPLY,                                 \
   lisp_get_map_request_itr_rlocs_reply)                                 \
 _(SHOW_LISP_PITR_REPLY, show_lisp_pitr_reply)                           \
+_(SHOW_LISP_MAP_REQUEST_MODE_REPLY, show_lisp_map_request_mode_reply)   \
 _(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
 _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
 _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
@@ -12380,6 +12439,59 @@ api_lisp_enable_disable (vat_main_t * vam)
   return 0;
 }
 
+static int
+api_show_lisp_map_request_mode (vat_main_t * vam)
+{
+  f64 timeout = ~0;
+  vl_api_show_lisp_map_request_mode_t *mp;
+
+  M (SHOW_LISP_MAP_REQUEST_MODE, show_lisp_map_request_mode);
+
+  /* send */
+  S;
+
+  /* wait for reply */
+  W;
+
+  return 0;
+}
+
+static int
+api_lisp_map_request_mode (vat_main_t * vam)
+{
+  f64 timeout = ~0;
+  unformat_input_t *input = vam->input;
+  vl_api_lisp_map_request_mode_t *mp;
+  u8 mode = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "dst-only"))
+	mode = 0;
+      else if (unformat (input, "src-dst"))
+	mode = 1;
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, input);
+	  return -99;
+	}
+    }
+
+  M (LISP_MAP_REQUEST_MODE, lisp_map_request_mode);
+
+  mp->mode = mode;
+
+  /* send */
+  S;
+
+  /* wait for reply */
+  W;
+
+  /* notreached */
+  return 0;
+}
+
 /**
  * Enable/disable LISP proxy ITR.
  *
@@ -15398,6 +15510,7 @@ _(lisp_add_del_adjacency, "add|del vni <vni> deid <dest-eid> seid "     \
                           "<src-eid> rloc <locator> p <prio> w <weight>"\
                           "[rloc <loc> ... ] action <action>")          \
 _(lisp_pitr_set_locator_set, "locator-set <loc-set-name> | del")        \
+_(lisp_map_request_mode, "src-dst|dst-only")                            \
 _(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
 _(lisp_eid_table_add_del_map, "[del] vni <vni> vrf <vrf>")              \
 _(lisp_locator_set_dump, "[local | remote]")                            \
@@ -15411,6 +15524,7 @@ _(lisp_map_resolver_dump, "")                                           \
 _(show_lisp_status, "")                                                 \
 _(lisp_get_map_request_itr_rlocs, "")                                   \
 _(show_lisp_pitr, "")                                                   \
+_(show_lisp_map_request_mode, "")                                       \
 _(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
 _(af_packet_delete, "name <host interface name>")                       \
 _(policer_add_del, "name <policer name> <params> [del]")                \

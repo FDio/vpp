@@ -15,25 +15,41 @@
 
 #include <vnet/lisp-cp/gid_dictionary.h>
 
+static void
+make_mac_sd_key (BVT (clib_bihash_kv) * kv, u32 vni, u8 src_mac[6],
+		 u8 dst_mac[6])
+{
+  kv->key[0] = (u64) vni;
+  kv->key[1] = mac_to_u64 (dst_mac);
+  kv->key[2] = src_mac ? mac_to_u64 (src_mac) : (u64) 0;
+}
+
 static u32
-mac_lookup (gid_dictionary_t * db, u32 vni, u8 * key)
+mac_sd_lookup (gid_mac_table_t * db, u32 vni, u8 * dst, u8 * src)
 {
   int rv;
   BVT (clib_bihash_kv) kv, value;
 
-  kv.key[0] = mac_to_u64 (key);
-  kv.key[1] = (u64) vni;
-  kv.key[2] = 0;
-
+  make_mac_sd_key (&kv, vni, src, dst);
   rv = BV (clib_bihash_search_inline_2) (&db->mac_lookup_table, &kv, &value);
-  if (rv == 0)
+
+  /* no match, try with src 0, catch all for dst */
+  if (rv != 0)
+    {
+      kv.key[2] = 0;
+      rv = BV (clib_bihash_search_inline_2) (&db->mac_lookup_table, &kv,
+					     &value);
+      if (rv == 0)
+	return value.value;
+    }
+  else
     return value.value;
 
   return GID_LOOKUP_MISS;
 }
 
 static u32
-ip4_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * key)
+ip4_lookup (gid_ip4_table_t * db, u32 vni, ip_prefix_t * key)
 {
   int i, len;
   int rv;
@@ -65,7 +81,7 @@ ip4_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * key)
 }
 
 static u32
-ip6_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * key)
+ip6_lookup (gid_ip6_table_t * db, u32 vni, ip_prefix_t * key)
 {
   int i, len;
   int rv;
@@ -96,35 +112,88 @@ ip6_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * key)
 }
 
 static u32
-ip_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * key)
+ip_sd_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst,
+	      ip_prefix_t * src)
 {
-  /* XXX for now this only works with ip-prefixes, no lcafs */
-  switch (ip_prefix_version (key))
+  u32 sfi;
+  gid_ip4_table_t *sfib4;
+  gid_ip6_table_t *sfib6;
+
+  switch (ip_prefix_version (dst))
     {
     case IP4:
-      return ip4_lookup (db, vni, key);
+      sfi = ip4_lookup (&db->dst_ip4_table, vni, dst);
+      if (GID_LOOKUP_MISS != sfi)
+	sfib4 = pool_elt_at_index (db->src_ip4_table_pool, sfi);
+      else
+	return GID_LOOKUP_MISS;
+
+      if (!src)
+	{
+	  ip_prefix_t sp;
+	  memset (&sp, 0, sizeof (sp));
+	  return ip4_lookup (sfib4, 0, &sp);
+	}
+      else
+	return ip4_lookup (sfib4, 0, src);
+
       break;
     case IP6:
-      return ip6_lookup (db, vni, key);
+      sfi = ip6_lookup (&db->dst_ip6_table, vni, dst);
+      if (GID_LOOKUP_MISS != sfi)
+	sfib6 = pool_elt_at_index (db->src_ip6_table_pool, sfi);
+      else
+	return GID_LOOKUP_MISS;
+
+      if (!src)
+	{
+	  ip_prefix_t sp;
+	  memset (&sp, 0, sizeof (sp));
+	  ip_prefix_version (&sp) = IP6;
+	  return ip6_lookup (sfib6, 0, &sp);
+	}
+      else
+	return ip6_lookup (sfib6, 0, src);
+
       break;
     default:
       clib_warning ("address type %d not supported!",
-		    ip_prefix_version (key));
+		    ip_prefix_version (dst));
       break;
     }
-  return ~0;
+  return GID_LOOKUP_MISS;
 }
 
 u32
 gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key)
 {
-  /* XXX for now this only works with ip-prefixes, no lcafs */
   switch (gid_address_type (key))
     {
     case GID_ADDR_IP_PREFIX:
-      return ip_lookup (db, gid_address_vni (key), &gid_address_ippref (key));
+      return ip_sd_lookup (db, gid_address_vni (key),
+			   &gid_address_ippref (key), 0);
     case GID_ADDR_MAC:
-      return mac_lookup (db, gid_address_vni (key), gid_address_mac (key));
+      return mac_sd_lookup (&db->sd_mac_table, gid_address_vni (key),
+			    gid_address_mac (key), 0);
+    case GID_ADDR_SRC_DST:
+      switch (gid_address_sd_dst_type (key))
+	{
+	case FID_ADDR_IP_PREF:
+	  return ip_sd_lookup (db, gid_address_vni (key),
+			       &gid_address_sd_dst_ippref (key),
+			       &gid_address_sd_src_ippref (key));
+	  break;
+	case FID_ADDR_MAC:
+	  return mac_sd_lookup (&db->sd_mac_table, gid_address_vni (key),
+				gid_address_sd_dst_mac (key),
+				gid_address_sd_src_mac (key));
+	  break;
+	default:
+	  clib_warning ("Source/Dest address type %d not supported!",
+			gid_address_sd_dst_type (key));
+	  break;
+	}
+      break;
     default:
       clib_warning ("address type %d not supported!", gid_address_type (key));
       break;
@@ -132,8 +201,28 @@ gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key)
   return GID_LOOKUP_MISS;
 }
 
+u32
+gid_dictionary_sd_lookup (gid_dictionary_t * db, gid_address_t * dst,
+			  gid_address_t * src)
+{
+  switch (gid_address_type (dst))
+    {
+    case GID_ADDR_IP_PREFIX:
+      return ip_sd_lookup (db, gid_address_vni (dst),
+			   &gid_address_ippref (dst),
+			   &gid_address_ippref (src));
+    case GID_ADDR_MAC:
+      return mac_sd_lookup (&db->sd_mac_table, gid_address_vni (dst),
+			    gid_address_mac (dst), gid_address_mac (src));
+    default:
+      clib_warning ("address type %d not supported!", gid_address_type (dst));
+      break;
+    }
+  return GID_LOOKUP_MISS;
+}
+
 static void
-ip4_compute_prefix_lengths_in_search_order (gid_dictionary_t * db)
+ip4_compute_prefix_lengths_in_search_order (gid_ip4_table_t * db)
 {
   int i;
   vec_reset_length (db->ip4_prefix_lengths_in_search_order);
@@ -150,7 +239,7 @@ ip4_compute_prefix_lengths_in_search_order (gid_dictionary_t * db)
 }
 
 static u32
-add_del_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * pref, u32 val,
+add_del_ip4_key (gid_ip4_table_t * db, u32 vni, ip_prefix_t * pref, u32 val,
 		 u8 is_add)
 {
   BVT (clib_bihash_kv) kv, value;
@@ -202,7 +291,105 @@ add_del_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * pref, u32 val,
 }
 
 static void
-ip6_compute_prefix_lengths_in_search_order (gid_dictionary_t * db)
+ip4_lookup_init (gid_ip4_table_t * db)
+{
+  uword i;
+
+  memset (db->ip4_prefix_len_refcount, 0,
+	  sizeof (db->ip4_prefix_len_refcount));
+
+  for (i = 0; i < ARRAY_LEN (db->ip4_fib_masks); i++)
+    {
+      u32 m;
+
+      if (i < 32)
+	m = pow2_mask (i) << (32 - i);
+      else
+	m = ~0;
+      db->ip4_fib_masks[i].as_u32 = clib_host_to_net_u32 (m);
+    }
+  if (db->ip4_lookup_table_nbuckets == 0)
+    db->ip4_lookup_table_nbuckets = IP4_LOOKUP_DEFAULT_HASH_NUM_BUCKETS;
+
+  db->ip4_lookup_table_nbuckets =
+    1 << max_log2 (db->ip4_lookup_table_nbuckets);
+
+  if (db->ip4_lookup_table_size == 0)
+    db->ip4_lookup_table_size = IP4_LOOKUP_DEFAULT_HASH_MEMORY_SIZE;
+
+  BV (clib_bihash_init) (&db->ip4_lookup_table, "ip4 lookup table",
+			 db->ip4_lookup_table_nbuckets,
+			 db->ip4_lookup_table_size);
+}
+
+static u32
+add_del_sd_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
+		    ip_prefix_t * src_pref, u32 val, u8 is_add)
+{
+  u32 sfi, old_val = ~0;
+  gid_ip4_table_t *sfib;
+
+  sfi = ip4_lookup (&db->dst_ip4_table, vni, dst_pref);
+
+  if (is_add)
+    {
+      if (GID_LOOKUP_MISS == sfi)
+	{
+	  pool_get (db->src_ip4_table_pool, sfib);
+	  ip4_lookup_init (sfib);
+	  add_del_ip4_key (&db->dst_ip4_table, vni, dst_pref,
+			   sfib - db->src_ip4_table_pool, is_add);
+	  if (src_pref)
+	    add_del_ip4_key (sfib, 0 /* vni */ , src_pref, val, is_add);
+	  else
+	    {
+	      ip_prefix_t sp;
+	      memset (&sp, 0, sizeof (sp));
+	      add_del_ip4_key (sfib, 0 /* vni */ , &sp, val, is_add);
+	    }
+	}
+      else
+	{
+	  ASSERT (!pool_is_free_index (db->src_ip4_table_pool, sfi));
+	  sfib = pool_elt_at_index (db->src_ip4_table_pool, sfi);
+	  if (src_pref)
+	    {
+	      old_val = ip4_lookup (sfib, 0, src_pref);
+	      add_del_ip4_key (sfib, 0 /* vni */ , src_pref, val, is_add);
+	    }
+	  else
+	    {
+	      ip_prefix_t sp;
+	      memset (&sp, 0, sizeof (sp));
+	      old_val =
+		add_del_ip4_key (sfib, 0 /* vni */ , &sp, val, is_add);
+	    }
+	}
+    }
+  else
+    {
+      if (GID_LOOKUP_MISS != sfi)
+	{
+	  add_del_ip4_key (&db->dst_ip4_table, vni, dst_pref, 0, is_add);
+	  sfib = pool_elt_at_index (db->src_ip4_table_pool, sfi);
+	  if (src_pref)
+	    old_val = add_del_ip4_key (sfib, 0, src_pref, 0, is_add);
+	  else
+	    {
+	      ip_prefix_t sp;
+	      memset (&sp, 0, sizeof (sp));
+	      old_val = add_del_ip4_key (sfib, 0, &sp, 0, is_add);
+	    }
+	}
+      else
+	clib_warning ("cannot delete dst mapping %U!", format_ip_prefix,
+		      dst_pref);
+    }
+  return old_val;
+}
+
+static void
+ip6_compute_prefix_lengths_in_search_order (gid_ip6_table_t * db)
 {
   int i;
   vec_reset_length (db->ip6_prefix_lengths_in_search_order);
@@ -218,7 +405,7 @@ ip6_compute_prefix_lengths_in_search_order (gid_dictionary_t * db)
 }
 
 static u32
-add_del_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * pref, u32 val,
+add_del_ip6_key (gid_ip6_table_t * db, u32 vni, ip_prefix_t * pref, u32 val,
 		 u8 is_add)
 {
   BVT (clib_bihash_kv) kv, value;
@@ -270,14 +457,13 @@ add_del_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * pref, u32 val,
 }
 
 static u32
-add_del_mac (gid_dictionary_t * db, u32 vni, u8 * mac, u32 val, u8 is_add)
+add_del_mac (gid_mac_table_t * db, u32 vni, u8 * dst_mac, u8 * src_mac,
+	     u32 val, u8 is_add)
 {
   BVT (clib_bihash_kv) kv, value;
   u32 old_val = ~0;
 
-  kv.key[0] = ((u64 *) mac)[0];
-  kv.key[1] = (u64) vni;
-  kv.key[2] = 0;
+  make_mac_sd_key (&kv, vni, src_mac, dst_mac);
 
   if (BV (clib_bihash_search) (&db->mac_lookup_table, &kv, &value) == 0)
     old_val = value.value;
@@ -292,80 +478,8 @@ add_del_mac (gid_dictionary_t * db, u32 vni, u8 * mac, u32 val, u8 is_add)
   return old_val;
 }
 
-static u32
-add_del_ip (gid_dictionary_t * db, u32 vni, ip_prefix_t * key, u32 value,
-	    u8 is_add)
-{
-  switch (ip_prefix_version (key))
-    {
-    case IP4:
-      return add_del_ip4_key (db, vni, key, value, is_add);
-      break;
-    case IP6:
-      return add_del_ip6_key (db, vni, key, value, is_add);
-      break;
-    default:
-      clib_warning ("address type %d not supported!",
-		    ip_prefix_version (key));
-      break;
-    }
-  return ~0;
-}
-
-u32
-gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u32 value,
-			u8 is_add)
-{
-  /* XXX for now this only works with ip-prefixes, no lcafs */
-  switch (gid_address_type (key))
-    {
-    case GID_ADDR_IP_PREFIX:
-      return add_del_ip (db, gid_address_vni (key), &gid_address_ippref (key),
-			 value, is_add);
-    case GID_ADDR_MAC:
-      return add_del_mac (db, gid_address_vni (key), gid_address_mac (key),
-			  value, is_add);
-    default:
-      clib_warning ("address type %d not supported!", gid_address_type (key));
-      break;
-    }
-  return ~0;
-}
-
 static void
-ip4_lookup_init (gid_dictionary_t * db)
-{
-  uword i;
-
-  memset (db->ip4_prefix_len_refcount, 0,
-	  sizeof (db->ip4_prefix_len_refcount));
-
-  for (i = 0; i < ARRAY_LEN (db->ip4_fib_masks); i++)
-    {
-      u32 m;
-
-      if (i < 32)
-	m = pow2_mask (i) << (32 - i);
-      else
-	m = ~0;
-      db->ip4_fib_masks[i].as_u32 = clib_host_to_net_u32 (m);
-    }
-  if (db->ip4_lookup_table_nbuckets == 0)
-    db->ip4_lookup_table_nbuckets = IP4_LOOKUP_DEFAULT_HASH_NUM_BUCKETS;
-
-  db->ip4_lookup_table_nbuckets =
-    1 << max_log2 (db->ip4_lookup_table_nbuckets);
-
-  if (db->ip4_lookup_table_size == 0)
-    db->ip4_lookup_table_size = IP4_LOOKUP_DEFAULT_HASH_MEMORY_SIZE;
-
-  BV (clib_bihash_init) (&db->ip4_lookup_table, "ip4 lookup table",
-			 db->ip4_lookup_table_nbuckets,
-			 db->ip4_lookup_table_size);
-}
-
-static void
-ip6_lookup_init (gid_dictionary_t * db)
+ip6_lookup_init (gid_ip6_table_t * db)
 {
   uword i;
 
@@ -401,8 +515,138 @@ ip6_lookup_init (gid_dictionary_t * db)
 			 db->ip6_lookup_table_size);
 }
 
+static u32
+add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
+		    ip_prefix_t * src_pref, u32 val, u8 is_add)
+{
+  u32 sfi, old_val = ~0;
+  gid_ip6_table_t *sfib;
+
+  sfi = ip6_lookup (&db->dst_ip6_table, vni, dst_pref);
+
+  if (is_add)
+    {
+      if (GID_LOOKUP_MISS == sfi)
+	{
+	  pool_get (db->src_ip6_table_pool, sfib);
+	  ip6_lookup_init (sfib);
+	  add_del_ip6_key (&db->dst_ip6_table, vni, dst_pref,
+			   sfib - db->src_ip6_table_pool, is_add);
+	  if (src_pref)
+	    add_del_ip6_key (sfib, 0 /* vni */ , src_pref, val, is_add);
+	  else
+	    {
+	      ip_prefix_t sp;
+	      memset (&sp, 0, sizeof (sp));
+	      add_del_ip6_key (sfib, 0 /* vni */ , &sp, val, is_add);
+	    }
+	}
+      else
+	{
+	  ASSERT (!pool_is_free_index (db->src_ip6_table_pool, sfi));
+	  sfib = pool_elt_at_index (db->src_ip6_table_pool, sfi);
+	  if (src_pref)
+	    {
+	      old_val = ip6_lookup (sfib, 0, src_pref);
+	      add_del_ip6_key (sfib, 0 /* vni */ , src_pref, val, is_add);
+	    }
+	  else
+	    {
+	      ip_prefix_t sp;
+	      memset (&sp, 0, sizeof (sp));
+	      old_val =
+		add_del_ip6_key (sfib, 0 /* vni */ , &sp, val, is_add);
+	    }
+	}
+    }
+  else
+    {
+      if (GID_LOOKUP_MISS != sfi)
+	{
+	  add_del_ip6_key (&db->dst_ip6_table, vni, dst_pref, 0, is_add);
+	  sfib = pool_elt_at_index (db->src_ip6_table_pool, sfi);
+	  if (src_pref)
+	    old_val = add_del_ip6_key (sfib, 0, src_pref, 0, is_add);
+	  else
+	    {
+	      ip_prefix_t sp;
+	      memset (&sp, 0, sizeof (sp));
+	      old_val = add_del_ip6_key (sfib, 0, &sp, 0, is_add);
+	    }
+	}
+      else
+	clib_warning ("cannot delete dst mapping %U!", format_ip_prefix,
+		      dst_pref);
+    }
+  return old_val;
+}
+
+static u32
+add_del_ip (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_key,
+	    ip_prefix_t * src_key, u32 value, u8 is_add)
+{
+  switch (ip_prefix_version (dst_key))
+    {
+    case IP4:
+      return add_del_sd_ip4_key (db, vni, dst_key, src_key, value, is_add);
+      break;
+    case IP6:
+      return add_del_sd_ip6_key (db, vni, dst_key, src_key, value, is_add);
+      break;
+    default:
+      clib_warning ("address type %d not supported!",
+		    ip_prefix_version (dst_key));
+      break;
+    }
+  return ~0;
+}
+
+static u32
+add_del_sd (gid_dictionary_t * db, u32 vni, source_dest_t * key, u32 value,
+	    u8 is_add)
+{
+  switch (sd_dst_type (key))
+    {
+    case FID_ADDR_IP_PREF:
+      add_del_ip (db, vni, &sd_dst_ippref (key), &sd_src_ippref (key),
+		  value, is_add);
+
+    case FID_ADDR_MAC:
+      return add_del_mac (&db->sd_mac_table, vni, sd_dst_mac (key),
+			  sd_src_mac (key), value, is_add);
+
+    default:
+      clib_warning ("SD address type %d not supprted!", sd_dst_type (key));
+      break;
+    }
+
+  return ~0;
+}
+
+u32
+gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u32 value,
+			u8 is_add)
+{
+  switch (gid_address_type (key))
+    {
+    case GID_ADDR_IP_PREFIX:
+      return add_del_ip (db, gid_address_vni (key), &gid_address_ippref (key),
+			 0, value, is_add);
+    case GID_ADDR_MAC:
+      return add_del_mac (&db->sd_mac_table, gid_address_vni (key),
+			  gid_address_mac (key), 0, value, is_add);
+    case GID_ADDR_SRC_DST:
+      return add_del_sd (db, gid_address_vni (key), &gid_address_sd (key),
+			 value, is_add);
+    default:
+      clib_warning ("address type %d not supported!", gid_address_type (key));
+      break;
+    }
+  return ~0;
+}
+
 static void
-mac_lookup_init (gid_dictionary_t * db)
+mac_lookup_init (gid_mac_table_t * db)
 {
   if (db->mac_lookup_table_nbuckets == 0)
     db->mac_lookup_table_nbuckets = MAC_LOOKUP_DEFAULT_HASH_NUM_BUCKETS;
@@ -421,9 +665,9 @@ mac_lookup_init (gid_dictionary_t * db)
 void
 gid_dictionary_init (gid_dictionary_t * db)
 {
-  ip4_lookup_init (db);
-  ip6_lookup_init (db);
-  mac_lookup_init (db);
+  ip4_lookup_init (&db->dst_ip4_table);
+  ip6_lookup_init (&db->dst_ip6_table);
+  mac_lookup_init (&db->sd_mac_table);
 }
 
 /*
