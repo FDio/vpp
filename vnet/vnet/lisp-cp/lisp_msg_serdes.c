@@ -233,7 +233,8 @@ lisp_msg_parse_mapping_record (vlib_buffer_t * b, gid_address_t * eid,
     return len;
 
   vlib_buffer_pull (b, len);
-  gid_address_ippref_len (eid) = MAP_REC_EID_PLEN (h);
+  if (GID_ADDR_IP_PREFIX == gid_address_type (eid))
+    gid_address_ippref_len (eid) = MAP_REC_EID_PLEN (h);
 
   for (i = 0; i < MAP_REC_LOC_COUNT (h); i++)
     {

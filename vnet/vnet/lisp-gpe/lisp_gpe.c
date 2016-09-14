@@ -273,9 +273,15 @@ add_del_ip_tunnel (vnet_lisp_gpe_add_del_fwd_entry_args_t * a, u8 is_l2,
 
   /* fill in the key's remote eid */
   if (!is_l2)
-    ip_prefix_copy (&key.rmt.ippref, &gid_address_ippref (&a->rmt_eid));
+    {
+      ip_prefix_copy (&key.rmt.ippref, &gid_address_ippref (&a->rmt_eid));
+      ip_prefix_copy (&key.lcl.ippref, &gid_address_ippref (&a->lcl_eid));
+    }
   else
-    mac_copy (&key.rmt.mac, &gid_address_mac (&a->rmt_eid));
+    {
+      mac_copy (&key.rmt.mac, &gid_address_mac (&a->rmt_eid));
+      mac_copy (&key.lcl.mac, &gid_address_mac (&a->lcl_eid));
+    }
 
   key.vni = clib_host_to_net_u32 (a->vni);
 

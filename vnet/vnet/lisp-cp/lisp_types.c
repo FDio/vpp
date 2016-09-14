@@ -1277,6 +1277,12 @@ vni_cmp (void *a1, void *a2)
 }
 
 static int
+mac_cmp (void *a1, void *a2)
+{
+  return memcmp (a1, a2, 6);
+}
+
+static int
 fid_addr_cmp (fid_address_t * a1, fid_address_t * a2)
 {
   if (fid_addr_type (a1) != fid_addr_type (a2))
@@ -1288,7 +1294,7 @@ fid_addr_cmp (fid_address_t * a1, fid_address_t * a2)
       return ip_prefix_cmp (&fid_addr_ippref (a1), &fid_addr_ippref (a2));
 
     case FID_ADDR_MAC:
-      return memcmp (&fid_addr_mac (a1), &fid_addr_mac (a2), 6);
+      return mac_cmp (fid_addr_mac (a1), fid_addr_mac (a2));
 
     default:
       return -1;
@@ -1349,8 +1355,7 @@ gid_address_cmp (gid_address_t * a1, gid_address_t * a2)
 	cmp = (*lcaf_cmp_fcts[lcaf_type (lcaf1)]) (lcaf1, lcaf2);
       break;
     case GID_ADDR_MAC:
-      cmp = memcmp (gid_address_mac (a1), gid_address_mac (a2),
-		    sizeof (gid_address_mac (a1)));
+      cmp = mac_cmp (gid_address_mac (a1), gid_address_mac (a2));
       break;
 
     case GID_ADDR_SRC_DST:
