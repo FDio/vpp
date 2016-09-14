@@ -1,4 +1,4 @@
-# VPP L2-GRE over IPsec implementation
+# VPP L2-GRE over IPsec implementation    {#ipsec_gre_doc}
 
 This is a memo intended to contain documentation of the VPP L2-GRE over IPsec implementation.
 Everything that is not directly obvious should come here.
