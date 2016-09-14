@@ -48,8 +48,11 @@ typedef struct
   /* ip4 lookup table config parameters */
   u32 ip4_lookup_table_nbuckets;
   uword ip4_lookup_table_size;
+} gid_ip4_table_t;
 
-    BVT (clib_bihash) ip6_lookup_table;
+typedef struct
+{
+  BVT (clib_bihash) ip6_lookup_table;
 
   /* bitmap/vector of mask widths to search */
   uword *ip6_non_empty_dst_address_length_bitmap;
@@ -60,12 +63,33 @@ typedef struct
   /* ip6 lookup table config parameters */
   u32 ip6_lookup_table_nbuckets;
   uword ip6_lookup_table_size;
+} gid_ip6_table_t;
 
-    BVT (clib_bihash) mac_lookup_table;
+typedef struct gid_mac_table
+{
+  BVT (clib_bihash) mac_lookup_table;
 
   /* mac lookup table config parameters */
   u32 mac_lookup_table_nbuckets;
   uword mac_lookup_table_size;
+} gid_mac_table_t;
+
+typedef struct
+{
+  /** destination IP LPM ip4 lookup table */
+  gid_ip4_table_t dst_ip4_table;
+
+  /** pool of source IP LPM ip4 lookup tables */
+  gid_ip4_table_t *src_ip4_table_pool;
+
+  /** destination IP LPM ip6 lookup table */
+  gid_ip6_table_t dst_ip6_table;
+
+  /** pool of source IP LPM ip6 lookup tables */
+  gid_ip6_table_t *src_ip6_table_pool;
+
+  /** flat source/dest mac lookup table */
+  gid_mac_table_t sd_mac_table;
 
 } gid_dictionary_t;
 
@@ -74,6 +98,8 @@ gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u32 value,
 			u8 is_add);
 
 u32 gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key);
+u32 gid_dictionary_sd_lookup (gid_dictionary_t * db, gid_address_t * dst,
+			      gid_address_t * src);
 
 void gid_dictionary_init (gid_dictionary_t * db);
 

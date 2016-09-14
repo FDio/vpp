@@ -364,6 +364,7 @@ _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
 _(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping)             \
 _(LISP_ADD_DEL_ADJACENCY, lisp_add_del_adjacency)                       \
 _(LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set)                 \
+_(LISP_MAP_REQUEST_MODE, lisp_map_request_mode)                         \
 _(LISP_EID_TABLE_ADD_DEL_MAP, lisp_eid_table_add_del_map)               \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
@@ -377,6 +378,7 @@ _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
   lisp_add_del_map_request_itr_rlocs)                                   \
 _(LISP_GET_MAP_REQUEST_ITR_RLOCS, lisp_get_map_request_itr_rlocs)       \
 _(SHOW_LISP_PITR, show_lisp_pitr)                                       \
+_(SHOW_LISP_MAP_REQUEST_MODE, show_lisp_map_request_mode)               \
 _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
 _(AF_PACKET_CREATE, af_packet_create)                                   \
 _(AF_PACKET_DELETE, af_packet_delete)                                   \
@@ -5237,6 +5239,32 @@ vl_api_lisp_gpe_add_del_iface_t_handler (vl_api_lisp_gpe_add_del_iface_t * mp)
   rv = vnet_lisp_gpe_add_del_iface (a, 0);
 
   REPLY_MACRO (VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
+}
+
+static void
+  vl_api_show_lisp_map_request_mode_t_handler
+  (vl_api_show_lisp_map_request_mode_t * mp)
+{
+  int rv = 0;
+  vl_api_show_lisp_map_request_mode_reply_t *rmp;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_SHOW_LISP_MAP_REQUEST_MODE_REPLY,
+  ({
+    rmp->mode = vnet_lisp_get_map_request_mode ();
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_lisp_map_request_mode_t_handler (vl_api_lisp_map_request_mode_t * mp)
+{
+  vl_api_lisp_map_request_mode_reply_t *rmp;
+  int rv = 0;
+
+  rv = vnet_lisp_set_map_request_mode (mp->mode);
+
+  REPLY_MACRO (VL_API_LISP_MAP_REQUEST_MODE_REPLY);
 }
 
 static void
