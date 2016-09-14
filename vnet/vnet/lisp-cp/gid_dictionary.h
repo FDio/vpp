@@ -35,7 +35,7 @@
 #define MAC_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define MAC_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
 
-typedef struct
+typedef struct gid_ip4_table
 {
   BVT (clib_bihash) ip4_lookup_table;
 
@@ -49,7 +49,7 @@ typedef struct
   u32 ip4_lookup_table_nbuckets;
   uword ip4_lookup_table_size;
 
-    BVT (clib_bihash) ip6_lookup_table;
+  BVT (clib_bihash) ip6_lookup_table;
 
   /* bitmap/vector of mask widths to search */
   uword *ip6_non_empty_dst_address_length_bitmap;
@@ -60,12 +60,27 @@ typedef struct
   /* ip6 lookup table config parameters */
   u32 ip6_lookup_table_nbuckets;
   uword ip6_lookup_table_size;
+} gid_ip_table_t;
 
-    BVT (clib_bihash) mac_lookup_table;
+typedef struct gid_mac_table
+{
+  BVT (clib_bihash) mac_lookup_table;
 
   /* mac lookup table config parameters */
   u32 mac_lookup_table_nbuckets;
   uword mac_lookup_table_size;
+} gid_mac_table_t;
+
+typedef struct
+{
+  /** destination IP LPM lookup table */
+  gid_ip_table_t dst_ip_table;
+
+  /** pool of source IP LPM lookup tables */
+  gid_ip_table_t * src_ip_table_pool;
+
+  /** flat source/dest mac lookup table */
+  gid_mac_table_t sd_mac_table;
 
 } gid_dictionary_t;
 
