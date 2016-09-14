@@ -885,7 +885,8 @@ ip4_src_fib_lookup_one (lisp_gpe_main_t * lgm, u32 src_fib_index0,
       /* Handle default route. */
       leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY) ?
 	mtrie0->default_leaf : leaf0;
-      src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+      src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0) == 0 ?
+	~0 : ip4_fib_mtrie_leaf_get_adj_index (leaf0);
     }
   else
     src_adj_index0[0] = ~0;
@@ -926,8 +927,10 @@ ip4_src_fib_lookup_two (lisp_gpe_main_t * lgm, u32 src_fib_index0,
 	mtrie0->default_leaf : leaf0;
       leaf1 = (leaf1 == IP4_FIB_MTRIE_LEAF_EMPTY) ?
 	mtrie1->default_leaf : leaf1;
-      src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-      src_adj_index1[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+      src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0) == 0 ?
+	~0 : ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+      src_adj_index1[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf1) == 0 ?
+	~0 : ip4_fib_mtrie_leaf_get_adj_index (leaf1);
     }
   else
     {
