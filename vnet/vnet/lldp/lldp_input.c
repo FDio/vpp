@@ -56,7 +56,6 @@ lldp_main_t lldp_main;
 static int
 lldp_packet_scan (lldp_main_t * lm, lldp_intf_t * n, const lldp_tlv_t * pkt)
 {
-  lldp_error_t e = LLDP_ERROR_NONE;
   const lldp_tlv_t *tlv = pkt;
 
 /* first check if the header fits in before extracting data from it */
@@ -131,10 +130,6 @@ lldp_packet_scan (lldp_main_t * lm, lldp_intf_t * n, const lldp_tlv_t * pkt)
 #undef F
 	default:
 	  return LLDP_ERROR_BAD_TLV;
-	}
-      if (e)
-	{
-	  return e;
 	}
       tlv = (lldp_tlv_t *) ((u8 *) tlv + STRUCT_SIZE_OF (lldp_tlv_t, head) +
 			    lldp_tlv_get_length (tlv));
