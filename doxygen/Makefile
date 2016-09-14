@@ -32,6 +32,7 @@ DOXY_DIR ?= $(WS_ROOT)/doxygen
 DOXY_INPUT ?= \
 	README.md \
 	doxygen/user_doc.md \
+	RELEASE.md \
 	vppinfra \
 	svm \
 	vlib \
