@@ -15,6 +15,23 @@
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/ip/format.h>
 
+/**
+ * @file
+ * @brief VXLAN.
+ *
+ * VXLAN provides the features needed to allow L2 bridge domains (BDs)
+ * to span multiple servers. This is done by building an L2 overlay on
+ * top of an L3 network underlay using VXLAN tunnels.
+ *
+ * This makes it possible for servers to be co-located in the same data
+ * center or be separated geographically as long as they are reachable
+ * through the underlay L3 network.
+ *
+ * You can refer to this kind of L2 overlay bridge domain as a VXLAN
+ * (Virtual eXtensible VLAN) segment.
+ */
+
+
 vxlan_main_t vxlan_main;
 
 static u8 * format_decap_next (u8 * s, va_list * args)
@@ -548,13 +565,35 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Add or delete a VXLAN Tunnel.
+ *
+ * VXLAN provides the features needed to allow L2 bridge domains (BDs)
+ * to span multiple servers. This is done by building an L2 overlay on
+ * top of an L3 network underlay using VXLAN tunnels.
+ *
+ * This makes it possible for servers to be co-located in the same data
+ * center or be separated geographically as long as they are reachable
+ * through the underlay L3 network.
+ *
+ * You can refer to this kind of L2 overlay bridge domain as a VXLAN
+ * (Virtual eXtensible VLAN) segment.
+ *
+ * @cliexpar
+ * Example of how to create a VXLAN Tunnel:
+ * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 encap-vrf-id 7 decap-next l2}
+ * Example of how to delete a VXLAN Tunnel:
+ * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 del}
+ ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
   .path = "create vxlan tunnel",
   .short_help = 
   "create vxlan tunnel src <local-vtep-addr> dst <remote-vtep-addr> vni <nn>" 
-  " [encap-vrf-id <nn>] [decap-next [l2|ip4|ip6] [del]\n",
+  " [encap-vrf-id <nn>] [decap-next [l2|ip4|ip6]] [del]",
   .function = vxlan_add_del_tunnel_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 show_vxlan_tunnel_command_fn (vlib_main_t * vm,
@@ -575,10 +614,22 @@ show_vxlan_tunnel_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Display all the VXLAN Tunnel entries.
+ *
+ * @cliexpar
+ * Example of how to display the VXLAN Tunnel entries:
+ * @cliexstart{show vxlan tunnel}
+ * [0] 10.0.3.1 (src) 10.0.3.3 (dst) vni 13 encap_fib_index 1 decap_next l2
+ * @cliexend
+ ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vxlan_tunnel_command, static) = {
     .path = "show vxlan tunnel",
+    .short_help = "show vxlan tunnel",
     .function = show_vxlan_tunnel_command_fn,
 };
+/* *INDENT-ON* */
 
 
 clib_error_t *vxlan_init (vlib_main_t *vm)
