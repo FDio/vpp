@@ -126,18 +126,18 @@ done
 #
 # vpp-plugins
 # 
-mkdir -p -m755 %{buildroot}%{_libdir}/vpp_plugins
-mkdir -p -m755 %{buildroot}%{_libdir}/vpp_api_test_plugins
+mkdir -p -m755 %{buildroot}/usr/lib/vpp_plugins
+mkdir -p -m755 %{buildroot}/usr/lib/vpp_api_test_plugins
 for file in $(cd %{_vpp_install_dir}/plugins/lib64/vpp_plugins && find -type f -print)
 do
         install -p -m 644 %{_vpp_install_dir}/plugins/lib64/vpp_plugins/$file \
-           %{buildroot}%{_libdir}/vpp_plugins/$file
+           %{buildroot}/usr/lib/vpp_plugins/$file
 done
 
 for file in $(cd %{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins && find -type f -print)
 do
         install -p -m 644 %{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins/$file \
-           %{buildroot}%{_libdir}/vpp_api_test_plugins/$file
+           %{buildroot}/usr/lib/vpp_api_test_plugins/$file
 done
 
 %post
