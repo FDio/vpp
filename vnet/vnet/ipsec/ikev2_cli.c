@@ -435,7 +435,7 @@ set_ikev2_local_key_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%v", &data))
+      if (unformat (line_input, "%s", &data))
 	{
 	  r = ikev2_set_local_key (vm, data);
 	  goto done;

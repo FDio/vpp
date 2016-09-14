@@ -2055,6 +2055,7 @@ ikev2_set_profile_auth (vlib_main_t * vm, u8 * name, u8 auth_method,
 
   if (auth_method == IKEV2_AUTH_METHOD_RSA_SIG)
     {
+      vec_add1 (p->auth.data, 0);
       if (p->auth.key)
 	EVP_PKEY_free (p->auth.key);
       p->auth.key = ikev2_load_cert_file (auth_data);
