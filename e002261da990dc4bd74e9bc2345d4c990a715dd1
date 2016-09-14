@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_2dcbd7a6",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1884,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-09-14T16:48:31Z",
+      "side": 1,
+      "message": "any reason not to use ip6_next_header ?",
+      "range": {
+        "startLine": 1884,
+        "startChar": 39,
+        "endLine": 1884,
+        "endChar": 73
+      },
+      "revId": "e002261da990dc4bd74e9bc2345d4c990a715dd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_4dd61351",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1887,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-09-14T16:48:31Z",
+      "side": 1,
+      "message": "So is this a FIXME ? :) should be fixed then..\nI would probably make it something like:\n\n udp0 \u003d hbh_next_header(ext_hdr);\n\nwhere the hbh_next_header would be the inlined function with the (8*ext_hdr-\u003en_data_u64s) being added to the argument..\nThat might make it more readable, and also getting next header off HBH header might be a frequent enough operation in the future for others to want that function too..",
+      "range": {
+        "startLine": 1887,
+        "startChar": 7,
+        "endLine": 1887,
+        "endChar": 67
+      },
+      "revId": "e002261da990dc4bd74e9bc2345d4c990a715dd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_cdc10382",
+        "filename": "vnet/vnet/sr/sr.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-09-14T16:48:31Z",
+      "side": 1,
+      "message": "Isn\u0027t it the other way round - i.e. the n_data_u64s is a  rightshifted one ? Maybe len_bytes or something similar could be clearer..",
+      "range": {
+        "startLine": 454,
+        "startChar": 11,
+        "endLine": 454,
+        "endChar": 25
+      },
+      "revId": "e002261da990dc4bd74e9bc2345d4c990a715dd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_adbec7fd",
+        "filename": "vnet/vnet/sr/sr.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 481,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-09-14T16:48:31Z",
+      "side": 1,
+      "message": "Wonder if it is useful to have something like this\n\n#define OFFSET_U8(start, n) (((u8 *)(start)) + (n))\n\nDoes not save many bytes but would make the number of parens less, so would be more readable... But this is just a thought for your consideration.. I don\u0027t have a strong opinion on this.",
+      "range": {
+        "startLine": 481,
+        "startChar": 33,
+        "endLine": 481,
+        "endChar": 62
+      },
+      "revId": "e002261da990dc4bd74e9bc2345d4c990a715dd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
