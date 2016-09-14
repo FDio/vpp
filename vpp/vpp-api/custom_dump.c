@@ -2600,6 +2600,27 @@ static void *vl_api_lisp_locator_dump_t_print
   FINISH;
 }
 
+static void *vl_api_lisp_map_request_mode_t_print
+  (vl_api_lisp_map_request_mode_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: lisp_map_request_mode ");
+
+  switch (mp->mode)
+    {
+    case 0:
+      s = format (s, "dst-only");
+      break;
+    case 1:
+      s = format (s, "src-dst");
+    default:
+      break;
+    }
+
+  FINISH;
+}
+
 static void *vl_api_lisp_eid_table_dump_t_print
   (vl_api_lisp_eid_table_dump_t * mp, void *handle)
 {
@@ -2680,6 +2701,7 @@ static void *vl_api_ipsec_gre_tunnel_dump_t_print
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
+_(show_lisp_map_request_mode)                                           \
 _(lisp_gpe_tunnel_dump)
 
 #define _(f)                                                            \
@@ -2812,6 +2834,8 @@ _(LISP_ENABLE_DISABLE, lisp_enable_disable)                             \
 _(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
 _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
 _(LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set)                 \
+_(LISP_MAP_REQUEST_MODE, lisp_map_request_mode)                         \
+_(SHOW_LISP_MAP_REQUEST_MODE, show_lisp_map_request_mode)               \
 _(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping)             \
 _(LISP_ADD_DEL_ADJACENCY, lisp_add_del_adjacency)                       \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
