@@ -27,7 +27,7 @@ Directory name         | Description
      g2                | Event log visualization tool
      gmod              | perf related?
      perftool          | Performance tool
-     plugins           | VPP bundled plugins directory
+@ref plugins           | VPP bundled plugins directory
 @ref svm               | Shared virtual memory allocation library
      test              | Unit tests
 @ref vlib              | VPP application library source
@@ -89,6 +89,9 @@ for this can be found [on the Setting up Vagrant wiki page]
 
 
 ## More information.
+
+Several modules provide documentation, see @subpage user_doc for more
+information.
 
 Visit the [VPP wiki](https://wiki.fd.io/view/VPP) for details on more
 advanced building strategies and development notes.

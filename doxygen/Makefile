@@ -40,9 +40,13 @@ DOXY_SRC_DIRECTORIES = \
 
 # Input directories and files
 DOXY_INPUT ?= \
-	README.md \
+	$(wildcard $(WS_ROOT)/*.md) \
+	$(wildcard $(DOXY_DIR)/*.md) \
 	$(DOXY_SRC_DIRECTORIES) \
 	plugins
+
+# Strip leading workspace path from input names
+DOXY_INPUT := $(subst $(WS_ROOT)/,,$(DOXY_INPUT))
 
 # Files to exclude, from pre-Doxygen steps, eg because they're
 # selectively compiled.
