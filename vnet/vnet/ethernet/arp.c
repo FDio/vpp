@@ -22,6 +22,15 @@
 #include <vnet/l2/l2_input.h>
 #include <vppinfra/mhash.h>
 
+/**
+ * @file
+ * @brief IPv4 ARP.
+ *
+ * This file contains code to manage the IPv4 ARP tables (IP Address
+ * to MAC Address lookup).
+ */
+
+
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 
 typedef struct
@@ -1241,11 +1250,25 @@ show_ip4_arp (vlib_main_t * vm,
   return error;
 }
 
+/*?
+ * Display all the IPv4 ARP entries.
+ *
+ * @cliexpar
+ * Example of how to display the IPv4 ARP table:
+ * @cliexstart{show ip arp}
+ *    Time      FIB        IP4       Flags      Ethernet              Interface
+ *    346.3028   0       6.1.1.3            de:ad:be:ef:ba:be   GigabitEthernet2/0/0
+ *   3077.4271   0       6.1.1.4       S    de:ad:be:ef:ff:ff   GigabitEthernet2/0/0
+ *   2998.6409   1       6.2.2.3            de:ad:be:ef:00:01   GigabitEthernet2/0/0
+ * Proxy arps enabled for:
+ * Fib_index 0   6.0.0.1 - 6.0.0.11
+ * @cliexend
+ ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip4_arp_command, static) = {
   .path = "show ip arp",
   .function = show_ip4_arp,
-  .short_help = "Show ARP table",
+  .short_help = "show ip arp",
 };
 /* *INDENT-ON* */
 
@@ -1786,28 +1809,35 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 /*?
- * Add or delete ip4 ARP cache entries
+ * Add or delete IPv4 ARP cache entries.
+ *
+ * @note 'set ip arp' options (e.g. delete, static, 'fib-id <id>',
+ * 'count <number>', 'interface ip4_addr mac_addr') can be added in
+ * any order and combination.
  *
  * @cliexpar
- * @cliexstart{set ip arp}
- * Add or delete ip4 ARP cache entries as follows:
- *  vpp# set ip arp GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
- *  vpp# set ip arp delete GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
- * Add or delete ip4 ARP cache entries to a specific fib table:
- *  vpp# set ip arp fib-id 1 GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
- *  vpp# set ip arp fib-id 1 delete GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
- * Add or delete ip4 static ARP cache entries as follows:
- *  vpp# set ip arp static GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
- *  vpp# set ip arp static delete GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
- * For testing / debugging purposes, the 'set ip arps command can add or delete multiple entries. Supply the 'count N' parameter:
- *  vpp# set ip arp count 10 GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe
- * @NOTE: 'set ip arp' options
- * (e.g. delete, static, 'fib-id <id>', 'count <number>', 'interface ip4_addr mac_addr')
- * can be added in any order and combination.
- * @cliexend
+ * @parblock
+ * Add or delete IPv4 ARP cache entries as follows. MAC Address can be in
+ * either aa:bb:cc:dd:ee:ff format or aabb.ccdd.eeff format.
+ * @cliexcmd{set ip arp GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
+ * @cliexcmd{set ip arp delete GigabitEthernet2/0/0 6.0.0.3 de:ad:be:ef:ba:be}
+ *
+ * To add or delete an IPv4 ARP cache entry to or from a specific fib
+ * table:
+ * @cliexcmd{set ip arp fib-id 1 GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
+ * @cliexcmd{set ip arp fib-id 1 delete GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
+ *
+ * Add or delete IPv4 static ARP cache entries as follows:
+ * @cliexcmd{set ip arp static GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
+ * @cliexcmd{set ip arp static delete GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
+ *
+ * For testing / debugging purposes, the 'set ip arp' command can add or
+ * delete multiple entries. Supply the 'count N' parameter:
+ * @cliexcmd{set ip arp count 10 GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
+ * @endparblock
  ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_arp_add_del_command, static) = {
   .path = "set ip arp",
   .short_help =
@@ -1855,22 +1885,26 @@ set_int_proxy_arp_command_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 /*?
- * Enable proxy-arp on an interface.
+ * Enable proxy-arp on an interface. The vpp stack will answer ARP
+ * requests for the indicated address range. Multiple proxy-arp
+ * ranges may be provisioned.
+ *
+ * @note Proxy ARP as a technology is infamous for blackholing traffic.
+ * Also, the underlying implementation has not been performance-tuned.
+ * Avoid creating an unnecessarily large set of ranges.
  *
  * @cliexpar
- * @cliexstart{set interface proxy-arp}
  * To enable proxy arp on a range of addresses, use:
- *  vpp# set ip arp proxy 6.0.0.1 - 6.0.0.11
- * You must specifically enable proxy arp on individual interfaces:
- *  vpp# set interface proxy-arp <intfc> [enable|disable]
- * The vpp stack will answer ARP requests for the indicated address range.
- * Use with caution. Proxy ARP as a technology is infamous for blackholing traffic.
- * Multiple proxy-arp ranges may be provisioned.
- * The underlying implementation has not been performance-tuned; avoid creating an unnecessarily large set of ranges.
- * @cliexend
+ * @cliexcmd{set ip arp proxy 6.0.0.1 - 6.0.0.11}
+ * Append 'del' to delete a range of proxy ARP addresses:
+ * @cliexcmd{set ip arp proxy 6.0.0.1 - 6.0.0.11 del}
+ * You must then specifically enable proxy arp on individual interfaces:
+ * @cliexcmd{set interface proxy-arp GigabitEthernet0/8/0 enable}
+ * To disable proxy arp on an individual interface:
+ * @cliexcmd{set interface proxy-arp GigabitEthernet0/8/0 disable}
  ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_int_proxy_enable_command, static) = {
   .path = "set interface proxy-arp",
   .short_help =
