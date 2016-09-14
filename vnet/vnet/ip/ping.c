@@ -493,7 +493,15 @@ run_ping_ip46_address (vlib_main_t * vm, ip4_address_t * pa4,
   u32 n_requests = 0;
   ping_run_t *pr = 0;
   u32 ping_run_index = 0;
-  u16 icmp_id = rand ();
+  u16 icmp_id;
+
+  static u32 rand_seed = 0;
+
+  if (PREDICT_FALSE(!rand_seed))
+      rand_seed = random_default_seed();
+
+  icmp_id = random_u32(&rand_seed) & 0xffff;
+
   while (hash_get (pm->ping_run_by_icmp_id, icmp_id))
     {
       vlib_cli_output (vm, "ICMP ID collision at %d, incrementing", icmp_id);
