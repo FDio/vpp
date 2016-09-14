@@ -65,6 +65,23 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_cdad8333",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-09-14T19:19:27Z",
+      "side": 1,
+      "message": "Maybe include summary stats from Coverity website: number of original issues, fixed issues, ending w/ 0 unresolved",
+      "revId": "d49eb9eb68e26a6542e50f0918bbf4c6ae3a63da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_4dd97356",
         "filename": "RELEASE.md",
         "patchSetId": 1
