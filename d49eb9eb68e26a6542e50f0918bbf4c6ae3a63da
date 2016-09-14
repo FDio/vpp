@@ -1,0 +1,84 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_4d3293a8",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-14T17:22:02Z",
+      "side": 1,
+      "message": "deprecated",
+      "range": {
+        "startLine": 7,
+        "startChar": 18,
+        "endLine": 7,
+        "endChar": 29
+      },
+      "revId": "d49eb9eb68e26a6542e50f0918bbf4c6ae3a63da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_2dde3740",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-14T17:22:02Z",
+      "side": 1,
+      "message": "Mention introduction of routine static analysis and that we collectively got the issue count to zero?",
+      "revId": "d49eb9eb68e26a6542e50f0918bbf4c6ae3a63da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_ad1a4715",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-14T17:22:02Z",
+      "side": 1,
+      "message": "Relevant to the release?",
+      "range": {
+        "startLine": 76,
+        "startChar": 0,
+        "endLine": 76,
+        "endChar": 35
+      },
+      "revId": "d49eb9eb68e26a6542e50f0918bbf4c6ae3a63da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_4dd97356",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-14T17:22:02Z",
+      "side": 1,
+      "message": "There\u0027s several issues not mentioned here. What were your criteria for being selective? (eg, my fixes to ttl handling aren\u0027t here and I think that was early in 16.09)",
+      "revId": "d49eb9eb68e26a6542e50f0918bbf4c6ae3a63da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
