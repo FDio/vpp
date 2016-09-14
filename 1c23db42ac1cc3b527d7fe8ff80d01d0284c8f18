@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_3021ea9f",
+        "filename": "RELEASE.md",
+        "patchSetId": 8
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-09-14T20:55:10Z",
+      "side": 1,
+      "message": "Changes in patch set 3 got lost somehow. Here\u0027s again the list for LISP:\n  - L2 LISP overlays\n  - Multitenancy\n  - Multihoming\n  - RTR mode\n  - Map-resolver failover algorithm",
+      "range": {
+        "startLine": 30,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 20
+      },
+      "revId": "1c23db42ac1cc3b527d7fe8ff80d01d0284c8f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
