@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_d0107650",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-09-14T20:54:46Z",
+      "side": 1,
+      "message": "They weren\u0027t in plugins.",
+      "parentUuid": "3a1d315d_2d3cf7e1",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_0d413b5a",
         "filename": "RELEASE.md",
         "patchSetId": 7
@@ -30,6 +48,24 @@
       "writtenOn": "2016-09-14T19:57:32Z",
       "side": 1,
       "message": "Python bindings I believe were already there in 16.06.",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_b01dfa68",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-09-14T20:54:46Z",
+      "side": 1,
+      "message": "Refactoring for plugins.",
+      "parentUuid": "3a1d315d_0d413b5a",
       "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -64,6 +100,24 @@
       "writtenOn": "2016-09-14T19:57:32Z",
       "side": 1,
       "message": "Two nits:\n1)  Usually distributions are thought of as downstream of a project they are packaging.\n2)  The packages aren\u0027t actually appropriate to submit to those distros yet, for among other reasons because we are not building source debs/rpms currently.",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_901afe6c",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-09-14T20:54:46Z",
+      "side": 1,
+      "message": "Will remove this whole bullet point",
+      "parentUuid": "3a1d315d_cd2223b9",
       "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -121,6 +175,24 @@
       "writtenOn": "2016-09-14T19:57:32Z",
       "side": 1,
       "message": "I would suggest a link here to docs.fd.io/vpp/16.09",
+      "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_702762b7",
+        "filename": "RELEASE.md",
+        "patchSetId": 7
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-09-14T20:54:46Z",
+      "side": 1,
+      "message": "ack",
+      "parentUuid": "3a1d315d_6d19cf87",
       "revId": "a48e7c23b4dfcf6574137ac1fadb7240bf7c8d76",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
