@@ -43,6 +43,13 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_input.h>
 
+/**
+ * @file
+ * @brief Loopback Interfaces.
+ *
+ * This file contains code to manage loopback interfaces.
+ */
+
 static uword
 ethernet_set_rewrite (vnet_main_t * vnm,
 		      u32 sw_if_index,
@@ -466,14 +473,36 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Create a loopback interface. Optionally, a MAC Address can be
+ * provided. If not provided, de:ad:00:00:00:<loopId> will be used.
+ *
+ * @cliexpar
+ * The following two command syntaxes are equivalent:
+ * @cliexcmd{loopback create-interface [mac <mac-addr>]}
+ * @cliexcmd{create loopback interface [mac <mac-addr>]}
+ * Example of how to create a loopback interface:
+ * @cliexcmd{loopback create-interface}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
   .path = "loopback create-interface",
-  .short_help = "Create Loopback ethernet interface [mac <mac-addr>]",
+  .short_help = "loopback create-interface [mac <mac-addr>]",
   .function = create_simulated_ethernet_interfaces,
 };
 /* *INDENT-ON* */
 
+/*?
+ * Create a loopback interface. Optionally, a MAC Address can be
+ * provided. If not provided, de:ad:00:00:00:<loopId> will be used.
+ *
+ * @cliexpar
+ * The following two command syntaxes are equivalent:
+ * @cliexcmd{loopback create-interface [mac <mac-addr>]}
+ * @cliexcmd{create loopback interface [mac <mac-addr>]}
+ * Example of how to create a loopback interface:
+ * @cliexcmd{create loopback interface}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_loopback_interface_command, static) = {
   .path = "create loopback interface",
@@ -593,14 +622,34 @@ delete_sub_interface (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Delete a loopback interface.
+ *
+ * @cliexpar
+ * The following two command syntaxes are equivalent:
+ * @cliexcmd{loopback delete-interface intfc <interface>}
+ * @cliexcmd{delete loopback interface intfc <interface>}
+ * Example of how to delete a loopback interface:
+ * @cliexcmd{loopback delete-interface intfc loop0}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (delete_simulated_ethernet_interface_command, static) = {
   .path = "loopback delete-interface",
-  .short_help = "Delete Loopback ethernet interface intfc <interface>",
+  .short_help = "loopback delete-interface intfc <interface>",
   .function = delete_simulated_ethernet_interfaces,
 };
 /* *INDENT-ON* */
 
+/*?
+ * Delete a loopback interface.
+ *
+ * @cliexpar
+ * The following two command syntaxes are equivalent:
+ * @cliexcmd{loopback delete-interface intfc <interface>}
+ * @cliexcmd{delete loopback interface intfc <interface>}
+ * Example of how to delete a loopback interface:
+ * @cliexcmd{delete loopback interface intfc loop0}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (delete_loopback_interface_command, static) = {
   .path = "delete loopback interface",
@@ -609,6 +658,13 @@ VLIB_CLI_COMMAND (delete_loopback_interface_command, static) = {
 };
 /* *INDENT-ON* */
 
+/*?
+ * Delete a sub-interface.
+ *
+ * @cliexpar
+ * Example of how to delete a sub-interface:
+ * @cliexcmd{delete sub-interface GigabitEthernet0/8/0.200}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (delete_sub_interface_command, static) = {
   .path = "delete sub-interface",
