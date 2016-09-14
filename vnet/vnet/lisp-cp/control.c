@@ -29,6 +29,13 @@ typedef struct
   u8 smr_invoked;
 } map_request_args_t;
 
+u8
+vnet_lisp_get_map_request_mode (void)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  return lcm->map_request_mode;
+}
+
 static int
 queue_map_request (gid_address_t * seid, gid_address_t * deid,
 		   u8 smr_invoked, u8 is_resend);
@@ -347,6 +354,30 @@ get_locator_pairs (lisp_cp_main_t * lcm, mapping_t * lcl_map,
 }
 
 static void
+gid_address_sd_to_flat (gid_address_t * dst, gid_address_t * src,
+			fid_address_t * fid)
+{
+  ASSERT (GID_ADDR_SRC_DST == gid_address_type (src));
+
+  dst[0] = src[0];
+
+  switch (fid_addr_type (fid))
+    {
+    case FID_ADDR_IP_PREF:
+      gid_address_type (dst) = GID_ADDR_IP_PREFIX;
+      gid_address_ippref (dst) = fid_addr_ippref (fid);
+      break;
+    case FID_ADDR_MAC:
+      gid_address_type (dst) = GID_ADDR_MAC;
+      mac_copy (gid_address_mac (dst), fid_addr_mac (fid));
+      break;
+    default:
+      clib_warning ("Unsupported fid type %d!", fid_addr_type (fid));
+      break;
+    }
+}
+
+static void
 dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
 {
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
@@ -369,11 +400,20 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   /* insert data plane forwarding entry */
   a->is_add = 1;
 
-  gid_address_copy (&a->rmt_eid, &dst_map->eid);
+  if (GID_ADDR_SRC_DST == gid_address_type (&dst_map->eid))
+    {
+      gid_address_sd_to_flat (&a->rmt_eid, &dst_map->eid,
+			      &gid_address_sd_dst (&dst_map->eid));
+      gid_address_sd_to_flat (&a->lcl_eid, &dst_map->eid,
+			      &gid_address_sd_src (&dst_map->eid));
+    }
+  else
+    gid_address_copy (&a->rmt_eid, &dst_map->eid);
+
   a->vni = gid_address_vni (&a->rmt_eid);
 
   /* get vrf or bd_index associated to vni */
-  type = gid_address_type (&dst_map->eid);
+  type = gid_address_type (&a->rmt_eid);
   if (GID_ADDR_IP_PREFIX == type)
     {
       dpid = hash_get (lcm->table_id_by_vni, a->vni);
@@ -1253,6 +1293,104 @@ VLIB_CLI_COMMAND (lisp_add_del_adjacency_command) = {
      "deid <dest-eid> seid <src-eid> [action <no-action|natively-forward|"
      "send-map-request|drop>] rloc <dst-locator> [rloc <dst-locator> ... ]",
     .function = lisp_add_del_adjacency_command_fn,
+};
+/* *INDENT-ON* */
+
+int
+vnet_lisp_set_map_request_mode (u8 mode)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
+  if (mode >= _MR_MODE_MAX)
+    {
+      clib_warning ("Invalid LISP map request mode %d!", mode);
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  lcm->map_request_mode = mode;
+  return 0;
+}
+
+static clib_error_t *
+lisp_map_request_mode_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  unformat_input_t _i, *i = &_i;
+  map_request_mode_t mr_mode = _MR_MODE_MAX;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, i))
+    return 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "dst-only"))
+	mr_mode = MR_MODE_DST_ONLY;
+      else if (unformat (i, "src-dst"))
+	mr_mode = MR_MODE_SRC_DST;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  goto done;
+	}
+    }
+
+  if (_MR_MODE_MAX == mr_mode)
+    {
+      clib_warning ("No LISP map request mode entered!");
+      return 0;
+    }
+
+  vnet_lisp_set_map_request_mode (mr_mode);
+done:
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_map_request_mode_command) = {
+    .path = "lisp map-request mode",
+    .short_help = "lisp map-request mode dst-only|src-dst",
+    .function = lisp_map_request_mode_command_fn,
+};
+/* *INDENT-ON* */
+
+static u8 *
+format_lisp_map_request_mode (u8 * s, va_list * args)
+{
+  u32 mode = va_arg (*args, u32);
+
+  switch (mode)
+    {
+    case 0:
+      return format (0, "dst-only");
+    case 1:
+      return format (0, "src-dst");
+    }
+  return 0;
+}
+
+static clib_error_t *
+lisp_show_map_request_mode_command_fn (vlib_main_t * vm,
+				       unformat_input_t * input,
+				       vlib_cli_command_t * cmd)
+{
+  vlib_cli_output (vm, "map-request mode: %U", format_lisp_map_request_mode,
+		   vnet_lisp_get_map_request_mode ());
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_show_map_request_mode_command) = {
+    .path = "show lisp map-request mode",
+    .short_help = "show lisp map-request mode",
+    .function = lisp_show_map_request_mode_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -2657,8 +2795,19 @@ build_encapsulated_map_request (lisp_cp_main_t * lcm,
   /* get rlocs */
   rlocs = build_itr_rloc_list (lcm, loc_set);
 
-  /* put lisp msg */
-  lisp_msg_put_mreq (lcm, b, seid, deid, rlocs, is_smr_invoked, nonce_res);
+  if (MR_MODE_SRC_DST == lcm->map_request_mode)
+    {
+      gid_address_t sd;
+      memset (&sd, 0, sizeof (sd));
+      build_src_dst (&sd, seid, deid);
+      lisp_msg_put_mreq (lcm, b, seid, &sd, rlocs, is_smr_invoked, nonce_res);
+    }
+  else
+    {
+      /* put lisp msg */
+      lisp_msg_put_mreq (lcm, b, seid, deid, rlocs, is_smr_invoked,
+			 nonce_res);
+    }
 
   /* push ecm: udp-ip-lisp */
   lisp_msg_push_ecm (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, seid, deid);
@@ -3007,7 +3156,8 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 
 	  /* if we have remote mapping for destination already in map-chache
 	     add forwarding tunnel directly. If not send a map-request */
-	  di = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &dst);
+	  di = gid_dictionary_sd_lookup (&lcm->mapping_index_by_gid, &dst,
+					 &src);
 	  if (~0 != di)
 	    {
 	      mapping_t *m = vec_elt_at_index (lcm->mapping_pool, di);
@@ -3408,6 +3558,7 @@ lisp_cp_init (vlib_main_t * vm)
   lcm->pending_map_request_lock[0] = 0;
   gid_dictionary_init (&lcm->mapping_index_by_gid);
   lcm->do_map_resolver_election = 1;
+  lcm->map_request_mode = MR_MODE_DST_ONLY;
 
   /* default vrf mapped to vni 0 */
   hash_set (lcm->table_id_by_vni, 0, 0);

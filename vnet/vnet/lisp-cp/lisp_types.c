@@ -213,7 +213,7 @@ format_fid_address (u8 * s, va_list * args)
       return format (s, "%U", format_ip_prefix, &fid_addr_ippref (a));
 
     case FID_ADDR_MAC:
-      return format (s, "%U", format_ip_prefix, &fid_addr_mac (a));
+      return format (s, "%U", format_mac_address, &fid_addr_mac (a));
 
     default:
       clib_warning ("Can't format fid address type %d!", fid_addr_type (a));
@@ -1303,6 +1303,12 @@ vni_cmp (void *a1, void *a2)
 }
 
 static int
+mac_cmp (void *a1, void *a2)
+{
+  return memcmp (a1, a2, 6);
+}
+
+static int
 fid_addr_cmp (fid_address_t * a1, fid_address_t * a2)
 {
   if (fid_addr_type (a1) != fid_addr_type (a2))
@@ -1314,7 +1320,7 @@ fid_addr_cmp (fid_address_t * a1, fid_address_t * a2)
       return ip_prefix_cmp (&fid_addr_ippref (a1), &fid_addr_ippref (a2));
 
     case FID_ADDR_MAC:
-      return memcmp (&fid_addr_mac (a1), &fid_addr_mac (a2), 6);
+      return mac_cmp (fid_addr_mac (a1), fid_addr_mac (a2));
 
     default:
       return -1;
@@ -1375,8 +1381,7 @@ gid_address_cmp (gid_address_t * a1, gid_address_t * a2)
 	cmp = (*lcaf_cmp_fcts[lcaf_type (lcaf1)]) (lcaf1, lcaf2);
       break;
     case GID_ADDR_MAC:
-      cmp = memcmp (gid_address_mac (a1), gid_address_mac (a2),
-		    sizeof (gid_address_mac (a1)));
+      cmp = mac_cmp (gid_address_mac (a1), gid_address_mac (a2));
       break;
 
     case GID_ADDR_SRC_DST:
@@ -1446,6 +1451,37 @@ locator_free (locator_t * l)
 {
   if (!l->local)
     gid_address_free (&l->address);
+}
+
+void
+build_src_dst (gid_address_t * sd, gid_address_t * src, gid_address_t * dst)
+{
+  memset (sd, 0, sizeof (*sd));
+  gid_address_type (sd) = GID_ADDR_SRC_DST;
+  gid_address_vni (sd) = gid_address_vni (dst);
+  gid_address_vni_mask (sd) = gid_address_vni_mask (dst);
+
+  switch (gid_address_type (dst))
+    {
+    case GID_ADDR_IP_PREFIX:
+      gid_address_sd_src_type (sd) = FID_ADDR_IP_PREF;
+      gid_address_sd_dst_type (sd) = FID_ADDR_IP_PREF;
+      ip_prefix_copy (&gid_address_sd_src_ippref (sd),
+		      &gid_address_ippref (src));
+      ip_prefix_copy (&gid_address_sd_dst_ippref (sd),
+		      &gid_address_ippref (dst));
+      break;
+    case GID_ADDR_MAC:
+      gid_address_sd_src_type (sd) = FID_ADDR_MAC;
+      gid_address_sd_dst_type (sd) = FID_ADDR_MAC;
+      mac_copy (gid_address_sd_src_mac (sd), gid_address_mac (src));
+      mac_copy (gid_address_sd_dst_mac (sd), gid_address_mac (dst));
+      break;
+    default:
+      clib_warning ("Unsupported gid type %d while conversion!",
+		    gid_address_type (dst));
+      break;
+    }
 }
 
 /*
