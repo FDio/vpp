@@ -25,7 +25,6 @@ Directory name         | Description
      doxygen           | Documentation generator configuration
      dpdk              | DPDK patches and build infrastructure
      g2                | Event log visualization tool
-     gmod              | perf related?
      perftool          | Performance tool
      plugins           | VPP bundled plugins directory
 @ref svm               | Shared virtual memory allocation library
