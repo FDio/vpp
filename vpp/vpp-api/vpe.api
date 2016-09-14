@@ -2621,6 +2621,53 @@ define lisp_pitr_set_locator_set_reply
   i32 retval;
 };
 
+/** \brief set LISP map-request mode. Based on configuration VPP will send
+      src/dest or just normal destination map requests.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mode - new map-request mode. Supported values are:
+      0 - destination only
+      1 - source/destaination
+*/
+define lisp_map_request_mode
+{
+  u32 client_index;
+  u32 context;
+  u8 mode;
+};
+
+/** \brief Reply for lisp_map_request_mode
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define lisp_map_request_mode_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Request for LISP map-request mode
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_lisp_map_request_mode
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for show_lisp_map_request_mode
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param mode - map-request mode
+*/
+define show_lisp_map_request_mode_reply
+{
+  u32 context;
+  i32 retval;
+  u8 mode;
+};
+
 /** \brief add or delete remote static mapping
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
