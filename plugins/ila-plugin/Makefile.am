@@ -16,14 +16,27 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 AM_CFLAGS = -Wall
 AM_LDFLAGS = -module -shared -avoid-version
 
+vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
 vpppluginsdir = ${libdir}/vpp_plugins
 
+vppapitestplugins_LTLIBRARIES = ila_test_plugin.la
 vppplugins_LTLIBRARIES = ila_plugin.la
 
-ila_plugin_la_SOURCES = ila/ila.c
+ila_plugin_la_SOURCES = ila/ila.c ila/ila_api.c
 
-noinst_HEADERS = ila/ila.h
+SUFFIXES = .api.h .api
+
+%.api.h: %.api
+	mkdir -p `dirname $@` ; \
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
+	| vppapigen --input - --output $@ --show-name $@
+
+noinst_HEADERS = ila/ila.h ila/ila.api.h
+
+ila_test_plugin_la_SOURCES = \
+  ila/ila_api_test.c
 
 # Remove *.la files
 install-data-hook:
 	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
+	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
