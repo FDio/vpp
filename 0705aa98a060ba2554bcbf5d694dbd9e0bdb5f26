@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_50d90656",
+        "filename": "vnet/vnet/gre/gre.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T03:27:17Z",
+      "side": 1,
+      "message": "Can you add PREDICT_FALSE(..) here to minimize impact on existing IP payload path",
+      "range": {
+        "startLine": 286,
+        "startChar": 13,
+        "endLine": 286,
+        "endChar": 14
+      },
+      "revId": "0705aa98a060ba2554bcbf5d694dbd9e0bdb5f26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_30de8a40",
+        "filename": "vnet/vnet/gre/gre.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T03:27:17Z",
+      "side": 1,
+      "message": "Please add PREDIC_FALSE(...)",
+      "range": {
+        "startLine": 377,
+        "startChar": 15,
+        "endLine": 377,
+        "endChar": 17
+      },
+      "revId": "0705aa98a060ba2554bcbf5d694dbd9e0bdb5f26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_10e38e08",
+        "filename": "vnet/vnet/gre/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T03:27:17Z",
+      "side": 1,
+      "message": "Can you put \"\u003d\u003d GRE_INPUT_NEXT_ETHRENET_INPUT\" as the last checked condition to optimize for IP payload case.",
+      "range": {
+        "startLine": 166,
+        "startChar": 14,
+        "endLine": 166,
+        "endChar": 27
+      },
+      "revId": "0705aa98a060ba2554bcbf5d694dbd9e0bdb5f26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_f0e7f210",
+        "filename": "vnet/vnet/gre/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T03:27:17Z",
+      "side": 1,
+      "message": "Same as above, move ETHERNET_INPUT to the last checked condition.",
+      "range": {
+        "startLine": 217,
+        "startChar": 14,
+        "endLine": 217,
+        "endChar": 27
+      },
+      "revId": "0705aa98a060ba2554bcbf5d694dbd9e0bdb5f26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_d0e4f60e",
+        "filename": "vnet/vnet/gre/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T03:27:17Z",
+      "side": 1,
+      "message": "Same as above, move ETHERNET_INPUT to the last checked condition.",
+      "range": {
+        "startLine": 339,
+        "startChar": 14,
+        "endLine": 339,
+        "endChar": 27
+      },
+      "revId": "0705aa98a060ba2554bcbf5d694dbd9e0bdb5f26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_b0f17acf",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 15958,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T03:27:17Z",
+      "side": 1,
+      "message": "Add new [teb] option",
+      "range": {
+        "startLine": 15958,
+        "startChar": 52,
+        "endLine": 15958,
+        "endChar": 53
+      },
+      "revId": "0705aa98a060ba2554bcbf5d694dbd9e0bdb5f26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
