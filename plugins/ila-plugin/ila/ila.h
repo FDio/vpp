@@ -29,7 +29,10 @@
   _(VNID6, 3, "vnid-ip6")		\
   _(VNIDM, 4, "vnid-multicast")
 
-typedef enum {
+#define ila_type_list "iid,luid,vnid-ip4,vnid-ip6,vnid-multicast"
+
+typedef enum
+{
 #define _(i,n,s) ILA_TYPE_##i = n,
   ila_foreach_type
 #undef _
@@ -40,7 +43,10 @@ _(NO_ACTION, 0, "no-action") \
 _(NEUTRAL_MAP, 1, "neutral-map") \
 _(ADJUST_TRANSPORT, 2, "adjust-transport")
 
-typedef enum {
+#define ila_csum_list "no-action,neutral-map,adjust-transport"
+
+typedef enum
+{
 #define _(i,n,s) ILA_CSUM_MODE_##i = n,
   ila_csum_foreach_type
 #undef _
@@ -52,13 +58,17 @@ _(BIDIR, 0, "bidir") \
 _(SIR2ILA, 1, "sir2ila") \
 _(ILA2SIR, 2, "ila2sir")
 
-typedef enum {
+#define ila_direction_list "bidir,sir2ila,ila2sir"
+
+typedef enum
+{
 #define _(i,n,s) ILA_DIR_##i = n,
   ila_foreach_direction
 #undef _
 } ila_direction_t;
 
-typedef struct {
+typedef struct
+{
   ila_type_t type;
   ip6_address_t sir_address;
   ip6_address_t ila_address;
@@ -67,11 +77,13 @@ typedef struct {
   ila_direction_t dir;
 } ila_entry_t;
 
-typedef struct {
+typedef struct
+{
   u32 entry_index;
 } ila_adj_data_t;
 
-typedef struct {
+typedef struct
+{
   ila_entry_t *entries;		//Pool of ILA entries
 
   u64 lookup_table_nbuckets;
@@ -84,7 +96,8 @@ typedef struct {
 } ila_main_t;
 
 
-typedef struct {
+typedef struct
+{
   ila_type_t type;
   ip6_address_t sir_address;
   u64 locator;
@@ -97,5 +110,10 @@ typedef struct {
 
 int ila_add_del_entry (ila_add_del_entry_args_t * args);
 int ila_interface (u32 sw_if_index, u8 disable);
+
+u8 *format_half_ip6_address (u8 * s, va_list * va);
+u8 *format_ila_direction (u8 * s, va_list * args);
+u8 *format_ila_csum_mode (u8 * s, va_list * va);
+u8 *format_ila_type (u8 * s, va_list * args);
 
 #endif //ILA_H

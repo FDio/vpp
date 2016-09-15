@@ -25,7 +25,8 @@ static ila_main_t ila_main;
 #define foreach_ila_error \
  _(NONE, "valid ILA packets")
 
-typedef enum {
+typedef enum
+{
 #define _(sym,str) ILA_ERROR_##sym,
   foreach_ila_error
 #undef _
@@ -38,13 +39,15 @@ static char *ila_error_strings[] = {
 #undef _
 };
 
-typedef enum {
+typedef enum
+{
   ILA_ILA2SIR_NEXT_IP6_REWRITE,
   ILA_ILA2SIR_NEXT_DROP,
   ILA_ILA2SIR_N_NEXT,
 } ila_ila2sir_next_t;
 
-typedef struct {
+typedef struct
+{
   u32 ila_index;
   ip6_address_t initial_dst;
   u32 adj_index;
@@ -53,7 +56,7 @@ typedef struct {
 static ila_entry_t ila_sir2ila_default_entry = {
   .csum_mode = ILA_CSUM_MODE_NO_ACTION,
   .type = ILA_TYPE_IID,
-  .dir = ILA_DIR_ILA2SIR, //Will pass the packet with no
+  .dir = ILA_DIR_ILA2SIR,	//Will pass the packet with no
 };
 
 u8 *
@@ -78,8 +81,8 @@ format_ila_direction (u8 * s, va_list * args)
     return format (s, "invalid_ila_direction");
 }
 
-static u8 *
-format_csum_mode (u8 * s, va_list * va)
+u8 *
+format_ila_csum_mode (u8 * s, va_list * va)
 {
   ila_csum_mode_t csum_mode = va_arg (*va, ila_csum_mode_t);
   char *txt;
@@ -119,8 +122,9 @@ format_ila_entry (u8 * s, va_list * va)
 
   if (!e)
     {
-      return format (s, "%-15s%=40s%=40s%+16s%+18s%+11s", "Type", "SIR Address",
-		     "ILA Address", "Adjacency Index", "Checksum Mode", "Direction");
+      return format (s, "%-15s%=40s%=40s%+16s%+18s%+11s", "Type",
+		     "SIR Address", "ILA Address", "Adjacency Index",
+		     "Checksum Mode", "Direction");
 
     }
   else if (vnm)
@@ -131,7 +135,7 @@ format_ila_entry (u8 * s, va_list * va)
 			 format_ila_type, e->type,
 			 format_ip6_address, &e->sir_address,
 			 format_ip6_address, &e->ila_address,
-			 "n/a", format_csum_mode, e->csum_mode,
+			 "n/a", format_ila_csum_mode, e->csum_mode,
 			 format_ila_direction, e->dir);
 	}
       else
@@ -140,7 +144,7 @@ format_ila_entry (u8 * s, va_list * va)
 			 format_ila_type, e->type,
 			 format_ip6_address, &e->sir_address,
 			 format_ip6_address, &e->ila_address,
-			 e->ila_adj_index, format_csum_mode, e->csum_mode,
+			 e->ila_adj_index, format_ila_csum_mode, e->csum_mode,
 			 format_ila_direction, e->dir);
 	}
     }
@@ -314,8 +318,10 @@ ila_ila2sir (vlib_main_t * vm,
 	      tr->adj_index = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
 	    }
 
-	  sir_address0 = (ie0->dir != ILA_DIR_SIR2ILA) ? &ie0->sir_address : sir_address0;
-	  sir_address1 = (ie1->dir != ILA_DIR_SIR2ILA) ? &ie1->sir_address : sir_address1;
+	  sir_address0 =
+	    (ie0->dir != ILA_DIR_SIR2ILA) ? &ie0->sir_address : sir_address0;
+	  sir_address1 =
+	    (ie1->dir != ILA_DIR_SIR2ILA) ? &ie1->sir_address : sir_address1;
 	  ip60->dst_address.as_u64[0] = sir_address0->as_u64[0];
 	  ip60->dst_address.as_u64[1] = sir_address0->as_u64[1];
 	  ip61->dst_address.as_u64[0] = sir_address1->as_u64[0];
@@ -364,7 +370,8 @@ ila_ila2sir (vlib_main_t * vm,
 	      tr->adj_index = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 	    }
 
-	  sir_address0 = (ie0->dir != ILA_DIR_SIR2ILA) ? &ie0->sir_address : sir_address0;
+	  sir_address0 =
+	    (ie0->dir != ILA_DIR_SIR2ILA) ? &ie0->sir_address : sir_address0;
 	  ip60->dst_address.as_u64[0] = sir_address0->as_u64[0];
 	  ip60->dst_address.as_u64[1] = sir_address0->as_u64[1];
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = ie0->ila_adj_index;
@@ -478,24 +485,31 @@ ila_sir2ila (vlib_main_t * vm,
 	  kv1.key[1] = ip61->dst_address.as_u64[1];
 	  kv1.key[2] = 0;
 
-	  if (PREDICT_TRUE((BV (clib_bihash_search)
-	      (&ilm->id_to_entry_table, &kv0, &value0)) == 0)) {
+	  if (PREDICT_TRUE ((BV (clib_bihash_search)
+			     (&ilm->id_to_entry_table, &kv0, &value0)) == 0))
+	    {
 	      ie0 = &ilm->entries[value0.value];
-	      ila_address0 = (ie0->dir != ILA_DIR_ILA2SIR) ? &ie0->ila_address : ila_address0;
-	  }
+	      ila_address0 =
+		(ie0->dir !=
+		 ILA_DIR_ILA2SIR) ? &ie0->ila_address : ila_address0;
+	    }
 
 	  if ((BV (clib_bihash_search)
-	       (&ilm->id_to_entry_table, &kv1, &value1)) == 0) {
-	    ie1 = &ilm->entries[value1.value];
-	    ila_address1 = (ie1->dir != ILA_DIR_ILA2SIR) ? &ie1->ila_address : ila_address1;
-	  }
+	       (&ilm->id_to_entry_table, &kv1, &value1)) == 0)
+	    {
+	      ie1 = &ilm->entries[value1.value];
+	      ila_address1 =
+		(ie1->dir !=
+		 ILA_DIR_ILA2SIR) ? &ie1->ila_address : ila_address1;
+	    }
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ila_sir2ila_trace_t *tr =
 		vlib_add_trace (vm, node, p0, sizeof (*tr));
 	      tr->ila_index =
-		(ie0 != &ila_sir2ila_default_entry) ? (ie0 - ilm->entries) : ~0;
+		(ie0 !=
+		 &ila_sir2ila_default_entry) ? (ie0 - ilm->entries) : ~0;
 	      tr->initial_dst = ip60->dst_address;
 	    }
 
@@ -504,7 +518,8 @@ ila_sir2ila (vlib_main_t * vm,
 	      ila_sir2ila_trace_t *tr =
 		vlib_add_trace (vm, node, p1, sizeof (*tr));
 	      tr->ila_index =
-		(ie1 != &ila_sir2ila_default_entry) ? (ie1 - ilm->entries) : ~0;
+		(ie1 !=
+		 &ila_sir2ila_default_entry) ? (ie1 - ilm->entries) : ~0;
 	      tr->initial_dst = ip61->dst_address;
 	    }
 
@@ -549,18 +564,22 @@ ila_sir2ila (vlib_main_t * vm,
 	  kv0.key[1] = ip60->dst_address.as_u64[1];
 	  kv0.key[2] = 0;
 
-	  if (PREDICT_TRUE((BV (clib_bihash_search)
-	       (&ilm->id_to_entry_table, &kv0, &value0)) == 0)) {
-	    ie0 = &ilm->entries[value0.value];
-	    ila_address0 = (ie0->dir != ILA_DIR_ILA2SIR) ? &ie0->ila_address : ila_address0;
-	  }
+	  if (PREDICT_TRUE ((BV (clib_bihash_search)
+			     (&ilm->id_to_entry_table, &kv0, &value0)) == 0))
+	    {
+	      ie0 = &ilm->entries[value0.value];
+	      ila_address0 =
+		(ie0->dir !=
+		 ILA_DIR_ILA2SIR) ? &ie0->ila_address : ila_address0;
+	    }
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ila_sir2ila_trace_t *tr =
 		vlib_add_trace (vm, node, p0, sizeof (*tr));
 	      tr->ila_index =
-		(ie0 != &ila_sir2ila_default_entry) ? (ie0 - ilm->entries) : ~0;
+		(ie0 !=
+		 &ila_sir2ila_default_entry) ? (ie0 - ilm->entries) : ~0;
 	      tr->initial_dst = ip60->dst_address;
 	    }
 
@@ -637,6 +656,17 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 
   if (!args->is_del)
     {
+      kv.key[0] = args->sir_address.as_u64[0];
+      kv.key[1] = args->sir_address.as_u64[1];
+      kv.key[2] = 0;
+
+      if ((BV (clib_bihash_search) (&ilm->id_to_entry_table, &kv, &value) >=
+	   0))
+	{
+	  clib_warning ("Entry already exists");
+	  return -1;
+	}
+
       ila_entry_t *e;
       pool_get (ilm->entries, e);
       e->type = args->type;
@@ -690,9 +720,6 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 	}
 
       //Create entry with the sir address
-      kv.key[0] = e->sir_address.as_u64[0];
-      kv.key[1] = e->sir_address.as_u64[1];
-      kv.key[2] = 0;
       kv.value = e - ilm->entries;
       BV (clib_bihash_add_del) (&ilm->id_to_entry_table, &kv,
 				1 /* is_add */ );
@@ -795,14 +822,17 @@ vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
   return error;
 }
 
-u8 *ila_format_adjacency(u8 * s, va_list * va)
+u8 *
+ila_format_adjacency (u8 * s, va_list * va)
 {
   ila_main_t *ilm = &ila_main;
-  __attribute((unused)) ip_lookup_main_t *lm = va_arg (*va, ip_lookup_main_t *);
+  __attribute ((unused)) ip_lookup_main_t *lm =
+    va_arg (*va, ip_lookup_main_t *);
   ip_adjacency_t *adj = va_arg (*va, ip_adjacency_t *);
-  ila_adj_data_t * ad = (ila_adj_data_t *) & adj->opaque;
+  ila_adj_data_t *ad = (ila_adj_data_t *) & adj->opaque;
   ila_entry_t *ie = pool_elt_at_index (ilm->entries, ad->entry_index);
-  return format(s, "idx:%d sir:%U", ad->entry_index, format_ip6_address, &ie->sir_address);
+  return format (s, "idx:%d sir:%U", ad->entry_index, format_ip6_address,
+		 &ie->sir_address);
 }
 
 clib_error_t *
@@ -824,11 +854,10 @@ ila_init (vlib_main_t * vm)
   return NULL;
 }
 
-VNET_IP6_REGISTER_ADJACENCY(ila2sir) = {
-  .node_name = "ila-to-sir",
-  .fn = ila_format_adjacency,
-  .next_index = &ila_main.ip6_lookup_next_index
-};
+VNET_IP6_REGISTER_ADJACENCY (ila2sir) =
+{
+.node_name = "ila-to-sir",.fn = ila_format_adjacency,.next_index =
+    &ila_main.ip6_lookup_next_index};
 
 VLIB_INIT_FUNCTION (ila_init);
 
@@ -879,8 +908,9 @@ ila_entry_command_fn (vlib_main_t * vm,
 	    (line_input, "next-hop %U", unformat_ip6_address, &next_hop))
 	next_hop_set = 1;
       else if (unformat
-	      (line_input, "direction %U", unformat_ila_direction, &args.dir))
-	    ;
+	       (line_input, "direction %U", unformat_ila_direction,
+		&args.dir))
+	;
       else if (unformat (line_input, "del"))
 	args.is_del = 1;
       else
@@ -919,12 +949,12 @@ ila_entry_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (ila_entry_command, static) =
 {
-  .path = "ila entry",
-  .short_help = "ila entry [type <type>] [sir-address <address>] [locator <locator>] [vnid <hex-vnid>]"
-    " [adj-index <adj-index>] [next-hop <next-hop>] [direction (bidir|sir2ila|ila2sir)]"
-    " [csum-mode (no-action|neutral-map|transport-adjust)] [del]",
-  .function = ila_entry_command_fn,
-};
+.path = "ila entry",.short_help = "ila entry [type (" ila_type_list ")]"
+    " [sir-address <address>] [locator <locator>] [vnid <hex-vnid>]"
+    " [adj-index <adj-index>] [next-hop <next-hop>]"
+    " [direction (" ila_direction_list ")]"
+    " [csum-mode (" ila_csum_list ")] [del]",.function =
+    ila_entry_command_fn,};
 
 static clib_error_t *
 ila_interface_command_fn (vlib_main_t * vm,
@@ -953,10 +983,9 @@ ila_interface_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (ila_interface_command, static) =
 {
-  .path = "ila interface",
-  .short_help = "ila interface <interface-name> [disable]",
-  .function = ila_interface_command_fn,
-};
+.path = "ila interface",.short_help =
+    "ila interface <interface-name> [disable]",.function =
+    ila_interface_command_fn,};
 
 static clib_error_t *
 ila_show_entries_command_fn (vlib_main_t * vm,
@@ -968,17 +997,16 @@ ila_show_entries_command_fn (vlib_main_t * vm,
   ila_entry_t *e;
 
   vlib_cli_output (vm, "  %U\n", format_ila_entry, vnm, NULL);
-  pool_foreach (e, ilm->entries,
-    ({
-      vlib_cli_output (vm, "  %U\n", format_ila_entry, vnm, e);
-    }));
+  pool_foreach (e, ilm->entries, (
+				   {
+				   vlib_cli_output (vm, "  %U\n",
+						    format_ila_entry, vnm, e);
+				   }));
 
   return NULL;
 }
 
 VLIB_CLI_COMMAND (ila_show_entries_command, static) =
 {
-  .path = "show ila entries",
-  .short_help = "show ila entries",
-  .function = ila_show_entries_command_fn,
-};
+.path = "show ila entries",.short_help = "show ila entries",.function =
+    ila_show_entries_command_fn,};
