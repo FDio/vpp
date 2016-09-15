@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_4d373300",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T01:48:09Z",
+      "side": 1,
+      "message": "For dot1ah case, the outer_id should be validated before proceeding. See my comment on ethernet/node.c (or this check can be done there?).",
+      "range": {
+        "startLine": 437,
+        "startChar": 6,
+        "endLine": 437,
+        "endChar": 22
+      },
+      "revId": "2d46cd5538ec6ef5dbb2684bba38246a1dbc0183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_2d451770",
+        "filename": "vnet/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T01:48:09Z",
+      "side": 1,
+      "message": "should be \"else if\" as commented before.",
+      "range": {
+        "startLine": 185,
+        "startChar": 6,
+        "endLine": 185,
+        "endChar": 8
+      },
+      "revId": "2d46cd5538ec6ef5dbb2684bba38246a1dbc0183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_cd5b4353",
+        "filename": "vnet/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T01:48:09Z",
+      "side": 1,
+      "message": "I think outer_id should be kept and validated as part of sub-interface lookup. Otherwise, packet PBB header with different B-VLAN buut the same SID will be considered as correct for the PBB sub-interface.",
+      "range": {
+        "startLine": 188,
+        "startChar": 4,
+        "endLine": 188,
+        "endChar": 12
+      },
+      "revId": "2d46cd5538ec6ef5dbb2684bba38246a1dbc0183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_1074ae97",
+        "filename": "vnet/vnet/interface_cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 675,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T01:48:09Z",
+      "side": 1,
+      "message": "I would prfer vlanid value for outer .ad tag to be mandatory which can be 0 so the sub-interface lookup can validate it against the outer_id of packet.",
+      "range": {
+        "startLine": 675,
+        "startChar": 6,
+        "endLine": 675,
+        "endChar": 8
+      },
+      "revId": "2d46cd5538ec6ef5dbb2684bba38246a1dbc0183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_50a106f7",
+        "filename": "vnet/vnet/interface_cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 744,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T01:48:09Z",
+      "side": 1,
+      "message": "You may want to store the expected outer .1ah vlan id here. I suppose we can just store one if you expect it to be always be of the same value. Then if what is specified does not match the one value stored, to reject it....",
+      "range": {
+        "startLine": 744,
+        "startChar": 3,
+        "endLine": 744,
+        "endChar": 18
+      },
+      "revId": "2d46cd5538ec6ef5dbb2684bba38246a1dbc0183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_d0f636d7",
+        "filename": "vnet/vnet/l2/l2_efp_filter.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T01:48:09Z",
+      "side": 1,
+      "message": "I suppose you do not expect efp filter to be applied on PBB sub-interface output? Same with the other two instances? If so, some checks are needed in l2_efp_filter_configure() call from CLI/API to make sure it is not applied to PBB sub-interface.",
+      "range": {
+        "startLine": 315,
+        "startChar": 6,
+        "endLine": 315,
+        "endChar": 7
+      },
+      "revId": "2d46cd5538ec6ef5dbb2684bba38246a1dbc0183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_d06f5691",
+        "filename": "vnet/vnet/l2/l2_vtr.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-15T01:48:09Z",
+      "side": 1,
+      "message": "Why would you need vxlan header file?",
+      "range": {
+        "startLine": 28,
+        "startChar": 21,
+        "endLine": 28,
+        "endChar": 26
+      },
+      "revId": "2d46cd5538ec6ef5dbb2684bba38246a1dbc0183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
