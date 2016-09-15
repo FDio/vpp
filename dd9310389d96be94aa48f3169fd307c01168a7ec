@@ -22,6 +22,30 @@
       "revId": "dd9310389d96be94aa48f3169fd307c01168a7ec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_50c0e64f",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-09-15T04:11:51Z",
+      "side": 0,
+      "message": "It was a residue from dummy dual loop code that was copied. But the assert does not hold here as the buffer is at offset 14 beyond l2 ether header pointing at v6 start.",
+      "parentUuid": "3a1d315d_edc4bf93",
+      "range": {
+        "startLine": 179,
+        "startChar": 3,
+        "endLine": 179,
+        "endChar": 9
+      },
+      "revId": "dd9310389d96be94aa48f3169fd307c01168a7ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
