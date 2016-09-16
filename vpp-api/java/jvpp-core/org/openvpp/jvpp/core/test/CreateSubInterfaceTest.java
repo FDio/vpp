@@ -54,8 +54,8 @@ public class CreateSubInterfaceTest {
     private static void requireSingleIface(final SwInterfaceDetailsReplyDump response, final String ifaceName) {
         if (response.swInterfaceDetails.size() != 1) {
             throw new IllegalStateException(
-                String.format("Expected one interface matching filter %s but was %d", ifaceName,
-                    response.swInterfaceDetails.size()));
+                    String.format("Expected one interface matching filter %s but was %d", ifaceName,
+                            response.swInterfaceDetails.size()));
         }
     }
 
@@ -77,7 +77,7 @@ public class CreateSubInterfaceTest {
     }
 
     private static void print(CreateSubifReply reply) {
-        System.out.printf("CreateSubifReply: context=%d, swIfIndex=%d\n", reply.context, reply.swIfIndex);
+        System.out.printf("CreateSubifReply: %s\n", reply);
     }
 
     private static void testCreateSubInterface() throws Exception {
@@ -92,7 +92,7 @@ public class CreateSubInterfaceTest {
         final String ifaceName = "GigabitEthernet0/8/0";
 
         final SwInterfaceDetailsReplyDump swInterfaceDetails =
-            jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(ifaceName)).toCompletableFuture().get();
+                jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(ifaceName)).toCompletableFuture().get();
 
         requireNonNull(swInterfaceDetails, "swInterfaceDump returned null");
         requireNonNull(swInterfaceDetails.swInterfaceDetails, "swInterfaceDetails is null");
@@ -102,12 +102,12 @@ public class CreateSubInterfaceTest {
         final int subId = 1;
 
         final CreateSubifReply createSubifReply =
-            jvppFacade.createSubif(createSubifRequest(swIfIndex, subId)).toCompletableFuture().get();
+                jvppFacade.createSubif(createSubifRequest(swIfIndex, subId)).toCompletableFuture().get();
         print(createSubifReply);
 
         final String subIfaceName = "GigabitEthernet0/8/0." + subId;
         final SwInterfaceDetailsReplyDump subIface =
-            jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(subIfaceName)).toCompletableFuture().get();
+                jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(subIfaceName)).toCompletableFuture().get();
         requireNonNull(swInterfaceDetails, "swInterfaceDump returned null");
         requireNonNull(subIface.swInterfaceDetails, "swInterfaceDump returned null");
         requireSingleIface(swInterfaceDetails, ifaceName);

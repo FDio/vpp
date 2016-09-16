@@ -16,7 +16,6 @@
 
 package org.openvpp.jvpp.core.test;
 
-import java.util.Arrays;
 import javax.xml.bind.DatatypeConverter;
 import org.openvpp.jvpp.JVpp;
 import org.openvpp.jvpp.JVppRegistry;
@@ -26,7 +25,6 @@ import org.openvpp.jvpp.core.dto.ClassifyAddDelSession;
 import org.openvpp.jvpp.core.dto.ClassifyAddDelSessionReply;
 import org.openvpp.jvpp.core.dto.ClassifyAddDelTable;
 import org.openvpp.jvpp.core.dto.ClassifyAddDelTableReply;
-import org.openvpp.jvpp.core.dto.ClassifySessionDetails;
 import org.openvpp.jvpp.core.dto.ClassifySessionDetailsReplyDump;
 import org.openvpp.jvpp.core.dto.ClassifySessionDump;
 import org.openvpp.jvpp.core.dto.ClassifyTableByInterface;
@@ -65,8 +63,8 @@ public class L2AclTest {
         request.skipNVectors = 0;
         request.matchNVectors = 1;
         request.mask =
-            new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
-                (byte) 0xff, (byte) 0xff, 0x00, 0x00, 0x00, 0x00};
+                new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
+                        (byte) 0xff, (byte) 0xff, 0x00, 0x00, 0x00, 0x00};
         return request;
     }
 
@@ -85,8 +83,8 @@ public class L2AclTest {
         request.advance = 0; // default
         // match 01:02:03:04:05:06 mac address
         request.match =
-            new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0x01, (byte) 0x02, (byte) 0x03, (byte) 0x04,
-                (byte) 0x05, (byte) 0x06, 0x00, 0x00, 0x00, 0x00};
+                new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0x01, (byte) 0x02, (byte) 0x03, (byte) 0x04,
+                        (byte) 0x05, (byte) 0x06, 0x00, 0x00, 0x00, 0x00};
         return request;
     }
 
@@ -113,61 +111,38 @@ public class L2AclTest {
     }
 
     private static void print(ClassifyAddDelTableReply reply) {
-        System.out.printf("ClassifyAddDelTableReply: context=%d, "
-                + "newTableIndex=%d, skipNVectors=%d, matchNVectors=%d\n",
-            reply.context, reply.newTableIndex, reply.skipNVectors, reply.matchNVectors);
+        System.out.printf("ClassifyAddDelTableReply: %s\n", reply);
     }
 
     private static void print(ClassifyTableIdsReply reply) {
-        System.out.printf("ClassifyTableIdsReply: context=%d, count=%d, ids.length=%d\n",
-            reply.context, reply.count, reply.ids.length);
-        Arrays.stream(reply.ids).forEach(System.out::println);
+        System.out.printf("ClassifyTableIdsReply: %s\n", reply);
     }
 
     private static void print(final ClassifyTableInfoReply reply) {
-        final StringBuilder builder = new StringBuilder("ClassifyTableInfoReply:\n");
-        builder.append("context: ").append(reply.context).append('\n');
-        builder.append("tableId: ").append(reply.tableId).append('\n');
-        builder.append("nbuckets: ").append(reply.nbuckets).append('\n');
-        builder.append("matchNVectors: ").append(reply.matchNVectors).append('\n');
-        builder.append("skipNVectors: ").append(reply.skipNVectors).append('\n');
-        builder.append("activeSessions: ").append(reply.activeSessions).append('\n');
-        builder.append("nextTableIndex: ").append(reply.nextTableIndex).append('\n');
-        builder.append("missNextIndex: ").append(reply.missNextIndex).append('\n');
-        builder.append("maskLength: ").append(reply.maskLength).append('\n');
-        builder.append("mask: ").append(DatatypeConverter.printHexBinary(reply.mask)).append('\n');
-        System.out.println(builder.toString());
+        System.out.println(reply);
+        if (reply != null) {
+            System.out.println("Mask hex: " + DatatypeConverter.printHexBinary(reply.mask));
+        }
     }
 
     private static void print(ClassifyAddDelSessionReply reply) {
-        System.out.printf("ClassifyAddDelSessionReply: context=%d\n",
-            reply.context);
+        System.out.printf("ClassifyAddDelSessionReply: context=%s\n", reply);
     }
 
     private static void print(final ClassifySessionDetailsReplyDump reply) {
-        if (reply.classifySessionDetails == null) {
-            System.out.println("ClassifySessionDetailsReplyDump: classifySessionDetails == NULL");
-        }
-        for (final ClassifySessionDetails details : reply.classifySessionDetails) {
-            final StringBuilder builder = new StringBuilder("ClassifySessionDetails:\n");
-            builder.append("context: ").append(details.context).append('\n');
-            builder.append("tableId: ").append(details.tableId).append('\n');
-            builder.append("hitNextIndex: ").append(details.hitNextIndex).append('\n');
-            builder.append("advance: ").append(details.advance).append('\n');
-            builder.append("opaqueIndex: ").append(details.opaqueIndex).append('\n');
-            builder.append("matchLength: ").append(details.matchLength).append('\n');
-            builder.append("match: ").append(DatatypeConverter.printHexBinary(details.match)).append('\n');
-            System.out.println(builder.toString());
-        }
+        System.out.println(reply);
+        reply.classifySessionDetails.forEach(detail -> {
+            System.out.println(detail);
+            System.out.println("Match hex: " + DatatypeConverter.printHexBinary(detail.match));
+        });
     }
 
     private static void print(final InputAclSetInterfaceReply reply) {
-        System.out.printf("InputAclSetInterfaceReply: context=%d\n", reply.context);
+        System.out.printf("InputAclSetInterfaceReply: context=%s\n", reply);
     }
 
     private static void print(final ClassifyTableByInterfaceReply reply) {
-        System.out.printf("ClassifyAddDelTableReply: context=%d, swIfIndex=%d, l2TableId=%d, ip4TableId=%d,"
-            + "ip6TableId=%d\n", reply.context, reply.swIfIndex, reply.l2TableId, reply.ip4TableId, reply.ip6TableId);
+        System.out.printf("ClassifyAddDelTableReply: %s\n", reply);
     }
 
     private static void testL2Acl() throws Exception {
@@ -180,34 +155,34 @@ public class L2AclTest {
         Thread.sleep(1000);
 
         final ClassifyAddDelTableReply classifyAddDelTableReply =
-            jvppFacade.classifyAddDelTable(createClassifyTable()).toCompletableFuture().get();
+                jvppFacade.classifyAddDelTable(createClassifyTable()).toCompletableFuture().get();
         print(classifyAddDelTableReply);
 
         final ClassifyTableIdsReply classifyTableIdsReply =
-            jvppFacade.classifyTableIds(new ClassifyTableIds()).toCompletableFuture().get();
+                jvppFacade.classifyTableIds(new ClassifyTableIds()).toCompletableFuture().get();
         print(classifyTableIdsReply);
 
         final ClassifyTableInfoReply classifyTableInfoReply =
-            jvppFacade.classifyTableInfo(createClassifyTableInfoRequest(classifyAddDelTableReply.newTableIndex))
-                .toCompletableFuture().get();
+                jvppFacade.classifyTableInfo(createClassifyTableInfoRequest(classifyAddDelTableReply.newTableIndex))
+                        .toCompletableFuture().get();
         print(classifyTableInfoReply);
 
         final ClassifyAddDelSessionReply classifyAddDelSessionReply =
-            jvppFacade.classifyAddDelSession(createClassifySession(classifyAddDelTableReply.newTableIndex))
-                .toCompletableFuture().get();
+                jvppFacade.classifyAddDelSession(createClassifySession(classifyAddDelTableReply.newTableIndex))
+                        .toCompletableFuture().get();
         print(classifyAddDelSessionReply);
 
         final ClassifySessionDetailsReplyDump classifySessionDetailsReplyDump =
-            jvppFacade.classifySessionDump(createClassifySessionDumpRequest(classifyAddDelTableReply.newTableIndex))
-                .toCompletableFuture().get();
+                jvppFacade.classifySessionDump(createClassifySessionDumpRequest(classifyAddDelTableReply.newTableIndex))
+                        .toCompletableFuture().get();
         print(classifySessionDetailsReplyDump);
 
         final InputAclSetInterfaceReply inputAclSetInterfaceReply =
-            jvppFacade.inputAclSetInterface(aclSetInterface()).toCompletableFuture().get();
+                jvppFacade.inputAclSetInterface(aclSetInterface()).toCompletableFuture().get();
         print(inputAclSetInterfaceReply);
 
         final ClassifyTableByInterfaceReply classifyTableByInterfaceReply =
-            jvppFacade.classifyTableByInterface(createClassifyTableByInterfaceRequest()).toCompletableFuture().get();
+                jvppFacade.classifyTableByInterface(createClassifyTableByInterfaceRequest()).toCompletableFuture().get();
         print(classifyTableByInterfaceReply);
 
         System.out.println("Disconnecting...");

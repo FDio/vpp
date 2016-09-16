@@ -37,30 +37,29 @@ public class CallbackApiTest {
 
         @Override
         public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
-            System.out.printf("Received GetNodeIndexReply: context=%d, nodeIndex=%d\n",
-                msg.context, msg.nodeIndex);
+            System.out.printf("Received GetNodeIndexReply: %s\n", msg);
         }
 
         @Override
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("Received ShowVersionReply: context=%d, program=%s, version=%s, "
-                    + "buildDate=%s, buildDirectory=%s\n",
-                msg.context, new String(msg.program), new String(msg.version),
-                new String(msg.buildDate), new String(msg.buildDirectory));
+                            + "buildDate=%s, buildDirectory=%s\n",
+                    msg.context, new String(msg.program), new String(msg.version),
+                    new String(msg.buildDate), new String(msg.buildDirectory));
         }
 
         @Override
         public void onSwInterfaceDetails(final SwInterfaceDetails msg) {
             System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
-                    + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d\n",
-                new String(msg.interfaceName), msg.l2AddressLength, msg.adminUpDown,
-                msg.linkUpDown, msg.linkSpeed, (int) msg.linkMtu);
+                            + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d\n",
+                    new String(msg.interfaceName), msg.l2AddressLength, msg.adminUpDown,
+                    msg.linkUpDown, msg.linkSpeed, (int) msg.linkMtu);
         }
 
         @Override
         public void onError(VppCallbackException ex) {
             System.out.printf("Received onError exception: call=%s, context=%d, retval=%d\n", ex.getMethodName(),
-                ex.getCtxId(), ex.getErrorCode());
+                    ex.getCtxId(), ex.getErrorCode());
         }
     }
 

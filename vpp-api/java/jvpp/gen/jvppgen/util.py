@@ -45,6 +45,7 @@ def is_reply(name):
 def is_details(name):
     return name.lower().endswith(reply_suffixes[1]) or name.lower().endswith(reply_suffixes[2])
 
+
 def is_retval_field(name):
     return name == 'retval'
 
@@ -184,6 +185,7 @@ def remove_suffix(camel_case_name_with_suffix, suffix):
 def is_control_ping(camel_case_name_with_suffix):
     return camel_case_name_with_suffix.lower().startswith("controlping");
 
+
 def api_message_to_javadoc(api_message):
     """ Converts vpe.api message description to javadoc """
     str = pprint.pformat(api_message, indent=4, width=120, depth=None)
@@ -196,3 +198,7 @@ notification_dto_suffix = "Notification"
 def add_notification_suffix(camel_case_dto_name):
     camel_case_dto_name += notification_dto_suffix
     return camel_case_dto_name
+
+
+def is_array(java_type_as_string):
+    return java_type_as_string.endswith("[]")
