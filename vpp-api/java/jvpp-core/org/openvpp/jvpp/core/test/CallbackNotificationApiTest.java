@@ -36,11 +36,11 @@ import org.openvpp.jvpp.core.dto.WantInterfaceEventsReply;
 public class CallbackNotificationApiTest {
 
     private static class TestCallback implements SwInterfaceSetFlagsNotificationCallback,
-        WantInterfaceEventsCallback, SwInterfaceSetFlagsCallback {
+            WantInterfaceEventsCallback, SwInterfaceSetFlagsCallback {
 
         @Override
         public void onSwInterfaceSetFlagsNotification(
-            final SwInterfaceSetFlagsNotification msg) {
+                final SwInterfaceSetFlagsNotification msg) {
             printNotification(msg);
         }
 
@@ -57,7 +57,7 @@ public class CallbackNotificationApiTest {
         @Override
         public void onError(VppCallbackException ex) {
             System.out.printf("Received onError exception in getNodeIndexCallback: call=%s, reply=%d, context=%d\n",
-                ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
+                    ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
 
         }
     }

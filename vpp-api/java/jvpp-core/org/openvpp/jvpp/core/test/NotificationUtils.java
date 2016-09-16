@@ -26,8 +26,7 @@ final class NotificationUtils {
     private NotificationUtils() {}
 
     static PrintStream printNotification(final SwInterfaceSetFlagsNotification msg) {
-        return System.out.printf("Received interface notification: ifc: %d, admin: %d, link: %d, deleted: %d\n",
-            msg.swIfIndex, msg.adminUpDown, msg.linkUpDown, msg.deleted);
+        return System.out.printf("Received interface notification: ifc: %s\n", msg);
     }
 
     static SwInterfaceSetFlags getChangeInterfaceState() {

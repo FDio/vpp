@@ -16,6 +16,8 @@
 
 package org.openvpp.jvpp.dto;
 
+import java.util.Objects;
+
 /**
  * Represents reply DTO for control_ping message.
  */
@@ -25,6 +27,32 @@ public final class ControlPingReply implements JVppReply<ControlPing> {
     public int clientIndex;
     public int vpePid;
 
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final ControlPingReply that = (ControlPingReply) o;
+        return context == that.context &&
+                clientIndex == that.clientIndex &&
+                vpePid == that.vpePid;
+    }
 
+    @Override
+    public int hashCode() {
+        return Objects.hash(context, clientIndex, vpePid);
+    }
+
+    @Override
+    public String toString() {
+        return "ControlPingReply{" +
+                "context=" + context +
+                ", clientIndex=" + clientIndex +
+                ", vpePid=" + vpePid +
+                '}';
+    }
 }
 

@@ -37,23 +37,23 @@ public class CallbackJVppFacadeNotificationTest {
         System.out.println("Successfully connected to VPP");
 
         final AutoCloseable notificationListenerReg =
-            jvppCallbackFacade.getNotificationRegistry().registerSwInterfaceSetFlagsNotificationCallback(
-                NotificationUtils::printNotification
-            );
+                jvppCallbackFacade.getNotificationRegistry().registerSwInterfaceSetFlagsNotificationCallback(
+                        NotificationUtils::printNotification
+                );
 
         jvppCallbackFacade.wantInterfaceEvents(NotificationUtils.getEnableInterfaceNotificationsReq(),
-            new WantInterfaceEventsCallback() {
-                @Override
-                public void onWantInterfaceEventsReply(final WantInterfaceEventsReply reply) {
-                    System.out.println("Interface events started");
-                }
+                new WantInterfaceEventsCallback() {
+                    @Override
+                    public void onWantInterfaceEventsReply(final WantInterfaceEventsReply reply) {
+                        System.out.println("Interface events started");
+                    }
 
-                @Override
-                public void onError(final VppCallbackException ex) {
-                    System.out.printf("Received onError exception: call=%s, context=%d, retval=%d\n",
-                        ex.getMethodName(), ex.getCtxId(), ex.getErrorCode());
-                }
-            });
+                    @Override
+                    public void onError(final VppCallbackException ex) {
+                        System.out.printf("Received onError exception: call=%s, context=%d, retval=%d\n",
+                                ex.getMethodName(), ex.getCtxId(), ex.getErrorCode());
+                    }
+                });
 
         System.out.println("Changing interface configuration");
         NotificationUtils.getChangeInterfaceState().send(jvpp);
@@ -61,18 +61,18 @@ public class CallbackJVppFacadeNotificationTest {
         Thread.sleep(1000);
 
         jvppCallbackFacade.wantInterfaceEvents(NotificationUtils.getDisableInterfaceNotificationsReq(),
-            new WantInterfaceEventsCallback() {
-                @Override
-                public void onWantInterfaceEventsReply(final WantInterfaceEventsReply reply) {
-                    System.out.println("Interface events stopped");
-                }
+                new WantInterfaceEventsCallback() {
+                    @Override
+                    public void onWantInterfaceEventsReply(final WantInterfaceEventsReply reply) {
+                        System.out.println("Interface events stopped");
+                    }
 
-                @Override
-                public void onError(final VppCallbackException ex) {
-                    System.out.printf("Received onError exception: call=%s, context=%d, retval=%d\n",
-                        ex.getMethodName(), ex.getCtxId(), ex.getErrorCode());
-                }
-            });
+                    @Override
+                    public void onError(final VppCallbackException ex) {
+                        System.out.printf("Received onError exception: call=%s, context=%d, retval=%d\n",
+                                ex.getMethodName(), ex.getCtxId(), ex.getErrorCode());
+                    }
+                });
 
         notificationListenerReg.close();
 

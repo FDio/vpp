@@ -35,14 +35,13 @@ public class ControlPingTest {
         registry.register(jvpp, new ControlPingCallback() {
             @Override
             public void onControlPingReply(final ControlPingReply reply) {
-                System.out.printf("Received ControlPingReply: context=%d, clientIndex=%d vpePid=%d\n",
-                    reply.context, reply.clientIndex, reply.vpePid);
+                System.out.printf("Received ControlPingReply: %s\n", reply);
             }
 
             @Override
             public void onError(VppCallbackException ex) {
                 System.out.printf("Received onError exception: call=%s, reply=%d, context=%d ", ex.getMethodName(),
-                    ex.getErrorCode(), ex.getCtxId());
+                        ex.getErrorCode(), ex.getCtxId());
             }
 
         });
