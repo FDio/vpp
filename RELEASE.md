@@ -16,9 +16,7 @@ Release Notes
   - IPv6 ILA.
   - iOAM.
   - Load Balancer.
-  - SIXRD.
   - SNAT.
-  - VCGN.
 
 - High-performance (line-rate) “neutron like” L4 port-filtering.
 
