@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_5eb7d7d8",
+        "filename": "vnet/vnet/span/node_output.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 445,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-17T21:27:25Z",
+      "side": 1,
+      "message": "What is the reason for disabling this feature in non-dpdk environment?",
+      "range": {
+        "startLine": 426,
+        "startChar": 0,
+        "endLine": 445,
+        "endChar": 17
+      },
+      "revId": "4cb291919fbe2eebad1719f142d52266f0bfc001",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
