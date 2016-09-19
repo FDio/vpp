@@ -59,8 +59,7 @@ close_netmap_if (netmap_main_t * nm, netmap_if_t * nif)
       unix_file_del (&unix_main, unix_main.file_pool + nif->unix_file_index);
       nif->unix_file_index = ~0;
     }
-
-  if (nif->fd > -1)
+  else if (nif->fd > -1)
     close (nif->fd);
 
   if (nif->mem_region)

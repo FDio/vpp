@@ -308,6 +308,9 @@ af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name)
       unix_file_del (&unix_main, unix_main.file_pool + apif->unix_file_index);
       apif->unix_file_index = ~0;
     }
+  else
+    close (apif->fd);
+
   ring_sz = apif->rx_req->tp_block_size * apif->rx_req->tp_block_nr +
     apif->tx_req->tp_block_size * apif->tx_req->tp_block_nr;
   if (munmap (apif->rx_ring, ring_sz))
@@ -315,7 +318,6 @@ af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name)
 		  host_if_name);
   apif->rx_ring = NULL;
   apif->tx_ring = NULL;
-  close (apif->fd);
   apif->fd = -1;
 
   vec_free (apif->rx_req);

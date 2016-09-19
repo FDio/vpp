@@ -1025,10 +1025,11 @@ static int tapcli_tap_disconnect (tapcli_interface_t *ti)
     unix_file_del (&unix_main, unix_main.file_pool + ti->unix_file_index);
     ti->unix_file_index = ~0;
   }
+  else
+    close(ti->unix_fd);
 
   hash_unset (tm->tapcli_interface_index_by_unix_fd, ti->unix_fd);
   hash_unset (tm->tapcli_interface_index_by_sw_if_index, ti->sw_if_index);
-  close(ti->unix_fd);
   close(ti->provision_fd);
   ti->unix_fd = -1;
   ti->provision_fd = -1;
