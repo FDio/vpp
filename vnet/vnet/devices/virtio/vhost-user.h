@@ -55,7 +55,8 @@
  _ (VIRTIO_F_INDIRECT_DESC, 28)         \
  _ (VHOST_F_LOG_ALL, 26)                \
  _ (VIRTIO_NET_F_GUEST_ANNOUNCE, 21)    \
- _ (VHOST_USER_F_PROTOCOL_FEATURES, 30)
+ _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
+ _ (VIRTIO_F_VERSION_1, 32)
 
 
 typedef enum
