@@ -214,6 +214,7 @@ typedef struct
 #define DPDK_DEVICE_FLAG_VHOST_USER     (1 << 4)
 #define DPDK_DEVICE_FLAG_HAVE_SUBIF     (1 << 5)
 
+  u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   u8 *interface_name_suffix;
@@ -225,7 +226,6 @@ typedef struct
   u16 tx_q_used;
   u16 rx_q_used;
   u16 nb_rx_desc;
-  u16 nb_tx_desc;
   u16 *cpu_socket_id_by_queue;
   struct rte_eth_conf port_conf;
   struct rte_eth_txconf tx_conf;
@@ -264,9 +264,6 @@ typedef struct
   dpdk_efd_agent_t efd_agent;
   u8 need_txlock;		/* Used by VNET_DPDK_DEV_VHOST_USER */
 } dpdk_device_t;
-
-
-#define DPDK_TX_RING_SIZE (4 * 1024)
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
 #define DPDK_MIN_STATS_POLL_INTERVAL  (0.001)	/* 1msec */
