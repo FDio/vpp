@@ -118,14 +118,9 @@ def api_table_print(name, i):
     print('api_name_to_id["' + msg_id_in + '"] =', i)
     print('')
 
+
 def encode_print(name, id, t):
-    total = 0
     args = get_args(t)
-    pack = '>'
-    for i, f in enumerate(t):
-        p, elements, size = get_pack(f)
-        pack += p
-        total += size
 
     if name.find('_dump') > 0:
         multipart = True
@@ -146,22 +141,22 @@ def encode_print(name, id, t):
     if multipart == True:
         print(u"    results_more_set(context)")
 
-    pack = '>'
-    start = 0
-    end = 0
-    offset = 0
     t = list(t)
-    i = 0
 
-    while t:
-        t, i, pack, offset, array = get_normal_pack(t, i, pack, offset)
-        if array:
-            print(u"    vpp_api.write(pack('" + pack + "', base + " +
-                  id + ", 0, context, " + ', '.join(args[3:-1]) + ") + "
-                  + args[-1] + ")")
-        else:
-            print(u"    vpp_api.write(pack('" + pack + "', base + " + id +
-                  ", 0, context, " + ', '.join(args[3:]) + "))")
+    # only the last field can be a variable-length-array
+    # it can either be 0, or a string
+    # first, deal with all the other fields
+    pack = '>' + ''.join([get_pack(f)[0] for f in t[:-1]])
+
+    # now see if the last field is a vla
+    if len(t[-1]) >= 3 and t[-1][2] == '0':
+        print(u"    vpp_api.write(pack('" + pack + "', base + " +
+              id + ", 0, context, " + ', '.join(args[3:-1]) + ") + "
+              + args[-1] + ")")
+    else:
+        pack += get_pack(t[-1])[0]
+        print(u"    vpp_api.write(pack('" + pack + "', base + " + id +
+              ", 0, context, " + ', '.join(args[3:]) + "))")
 
     if multipart == True:
         print(
