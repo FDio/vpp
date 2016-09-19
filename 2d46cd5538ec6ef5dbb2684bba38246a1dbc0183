@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "3a1d315d_b9e4c50d",
+        "filename": "vnet/vnet/ethernet/ethernet.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-19T13:30:44Z",
+      "side": 1,
+      "message": "This table should be made as a hash table with sid as key instead of an array of sid index. For normal VLAN, the range is 4K so an array is acceptable. For sid, the range is 16M and this will take up too much memory.",
+      "range": {
+        "startLine": 192,
+        "startChar": 17,
+        "endLine": 192,
+        "endChar": 31
+      },
+      "revId": "2d46cd5538ec6ef5dbb2684bba38246a1dbc0183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_4d373300",
         "filename": "vnet/vnet/ethernet/ethernet.h",
         "patchSetId": 5
