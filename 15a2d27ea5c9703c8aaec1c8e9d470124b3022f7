@@ -1,0 +1,101 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_d94b012a",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-19T13:35:43Z",
+      "side": 1,
+      "message": "I don\u0027t think this belongs here :)",
+      "revId": "15a2d27ea5c9703c8aaec1c8e9d470124b3022f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_196f39c7",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-19T13:35:43Z",
+      "side": 1,
+      "message": "don\u0027t introduce new space...",
+      "range": {
+        "startLine": 199,
+        "startChar": 0,
+        "endLine": 200,
+        "endChar": 0
+      },
+      "revId": "15a2d27ea5c9703c8aaec1c8e9d470124b3022f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_7952adde",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-19T13:35:43Z",
+      "side": 1,
+      "message": "CLIB_CACHE_LINE_ALIGN_MARK(cacheline0) should be 1st line in the struct.\nHere, you can put CLIB_CACHE_LINE_ALIGN_MARK(cacheline1) if you want to keep data below  in the 2nd cacheline",
+      "range": {
+        "startLine": 212,
+        "startChar": 2,
+        "endLine": 212,
+        "endChar": 28
+      },
+      "revId": "15a2d27ea5c9703c8aaec1c8e9d470124b3022f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_595ff1e5",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-19T13:35:43Z",
+      "side": 1,
+      "message": "not needed, you are already using CLIB_CACHE_LINE_ALIGN_MARK macro....",
+      "revId": "15a2d27ea5c9703c8aaec1c8e9d470124b3022f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_d972e17b",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-19T13:35:43Z",
+      "side": 1,
+      "message": "make it cacheline sized by specifying CLIB_CACHE_LINE_ALIGN_MARK(cacheline0) here. That should avoid false sharing.",
+      "revId": "15a2d27ea5c9703c8aaec1c8e9d470124b3022f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
