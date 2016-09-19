@@ -281,7 +281,7 @@ static_always_inline
 
   n_packets = ring->tx_head - ring->tx_tail;
 
-  tx_head = ring->tx_head % DPDK_TX_RING_SIZE;
+  tx_head = ring->tx_head % xd->nb_tx_desc;
 
   /*
    * Ensure rte_eth_tx_burst is not called with 0 packets, which can lead to
@@ -296,7 +296,7 @@ static_always_inline
    * a bit because it decreases the probability of having to issue two tx_burst
    * calls due to a ring wrap.
    */
-  ASSERT (n_packets < DPDK_TX_RING_SIZE);
+  ASSERT (n_packets < xd->nb_tx_desc);
 
   /*
    * If there is no flowcontrol callback, there is only temporary buffering
@@ -317,7 +317,7 @@ static_always_inline
   do
     {
       /* start the burst at the tail */
-      tx_tail = ring->tx_tail % DPDK_TX_RING_SIZE;
+      tx_tail = ring->tx_tail % xd->nb_tx_desc;
 
       /*
        * This device only supports one TX queue,
@@ -354,15 +354,14 @@ static_always_inline
 	      rv = rte_eth_tx_burst (xd->device_index,
 				     (uint16_t) queue_id,
 				     &tx_vector[tx_tail],
-				     (uint16_t) (DPDK_TX_RING_SIZE -
-						 tx_tail));
+				     (uint16_t) (xd->nb_tx_desc - tx_tail));
 
 	      /*
 	       * If we transmitted everything we wanted, then allow 1 retry
 	       * so we can try to transmit the rest. If we didn't transmit
 	       * everything, stop now.
 	       */
-	      n_retry = (rv == DPDK_TX_RING_SIZE - tx_tail) ? 1 : 0;
+	      n_retry = (rv == xd->nb_tx_desc - tx_tail) ? 1 : 0;
 	    }
 	}
 #if DPDK_VHOST_USER
@@ -438,7 +437,7 @@ static_always_inline
 	      int i;
 	      u32 bytes = 0;
 	      struct rte_mbuf **pkts = &tx_vector[tx_tail];
-	      for (i = 0; i < (DPDK_TX_RING_SIZE - tx_tail); i++)
+	      for (i = 0; i < (xd->nb_tx_desc - tx_tail); i++)
 		{
 		  struct rte_mbuf *buff = pkts[i];
 		  bytes += rte_pktmbuf_data_len (buff);
@@ -447,7 +446,7 @@ static_always_inline
 		rte_vhost_enqueue_burst (&xd->vu_vhost_dev,
 					 offset + VIRTIO_RXQ,
 					 &tx_vector[tx_tail],
-					 (uint16_t) (DPDK_TX_RING_SIZE -
+					 (uint16_t) (xd->nb_tx_desc -
 						     tx_tail));
 
 	      if (PREDICT_TRUE (rv > 0))
@@ -476,7 +475,7 @@ static_always_inline
 		    rte_pktmbuf_free (tx_vector[tx_tail + c]);
 		}
 
-	      n_retry = (rv == DPDK_TX_RING_SIZE - tx_tail) ? 1 : 0;
+	      n_retry = (rv == xd->nb_tx_desc - tx_tail) ? 1 : 0;
 	    }
 
 	  if (xd->need_txlock)
@@ -504,15 +503,14 @@ static_always_inline
 	       */
 	      rv = rte_kni_tx_burst (xd->kni,
 				     &tx_vector[tx_tail],
-				     (uint16_t) (DPDK_TX_RING_SIZE -
-						 tx_tail));
+				     (uint16_t) (xd->nb_tx_desc - tx_tail));
 
 	      /*
 	       * If we transmitted everything we wanted, then allow 1 retry
 	       * so we can try to transmit the rest. If we didn't transmit
 	       * everything, stop now.
 	       */
-	      n_retry = (rv == DPDK_TX_RING_SIZE - tx_tail) ? 1 : 0;
+	      n_retry = (rv == xd->nb_tx_desc - tx_tail) ? 1 : 0;
 	    }
 	}
 #endif
@@ -632,7 +630,7 @@ dpdk_interface_tx (vlib_main_t * vm,
 
   ASSERT (n_packets <= VLIB_FRAME_SIZE);
 
-  if (PREDICT_FALSE (n_on_ring + n_packets > DPDK_TX_RING_SIZE))
+  if (PREDICT_FALSE (n_on_ring + n_packets > xd->nb_tx_desc))
     {
       /*
        * Overflowing the ring should never happen.
@@ -668,7 +666,7 @@ dpdk_interface_tx (vlib_main_t * vm,
 
   from = vlib_frame_vector_args (f);
   n_left = n_packets;
-  i = ring->tx_head % DPDK_TX_RING_SIZE;
+  i = ring->tx_head % xd->nb_tx_desc;
 
   while (n_left >= 4)
     {
@@ -770,9 +768,9 @@ dpdk_interface_tx (vlib_main_t * vm,
 
       if (PREDICT_TRUE (any_clone == 0))
 	{
-	  tx_vector[i % DPDK_TX_RING_SIZE] = mb0;
+	  tx_vector[i % xd->nb_tx_desc] = mb0;
 	  i++;
-	  tx_vector[i % DPDK_TX_RING_SIZE] = mb1;
+	  tx_vector[i % xd->nb_tx_desc] = mb1;
 	  i++;
 	}
       else
@@ -780,12 +778,12 @@ dpdk_interface_tx (vlib_main_t * vm,
 	  /* cloning was done, need to check for failure */
 	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_REPL_FAIL) == 0))
 	    {
-	      tx_vector[i % DPDK_TX_RING_SIZE] = mb0;
+	      tx_vector[i % xd->nb_tx_desc] = mb0;
 	      i++;
 	    }
 	  if (PREDICT_TRUE ((b1->flags & VLIB_BUFFER_REPL_FAIL) == 0))
 	    {
-	      tx_vector[i % DPDK_TX_RING_SIZE] = mb1;
+	      tx_vector[i % xd->nb_tx_desc] = mb1;
 	      i++;
 	    }
 	}
@@ -839,7 +837,7 @@ dpdk_interface_tx (vlib_main_t * vm,
 
       if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_REPL_FAIL) == 0))
 	{
-	  tx_vector[i % DPDK_TX_RING_SIZE] = mb0;
+	  tx_vector[i % xd->nb_tx_desc] = mb0;
 	  i++;
 	}
       n_left--;

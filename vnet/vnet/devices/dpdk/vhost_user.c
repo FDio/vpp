@@ -266,7 +266,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 * hwaddr)
       // reset tx vectors
       for (j = 0; j < tm->n_vlib_mains; j++)
 	{
-	  vec_validate_ha (xd->tx_vectors[j], DPDK_TX_RING_SIZE,
+	  vec_validate_ha (xd->tx_vectors[j], xd->nb_tx_desc,
 			   sizeof (tx_ring_hdr_t), CLIB_CACHE_LINE_BYTES);
 	  vec_reset_length (xd->tx_vectors[j]);
 	}
@@ -338,7 +338,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 * hwaddr)
 
       for (j = 0; j < tm->n_vlib_mains; j++)
 	{
-	  vec_validate_ha (xd->tx_vectors[j], DPDK_TX_RING_SIZE,
+	  vec_validate_ha (xd->tx_vectors[j], xd->nb_tx_desc,
 			   sizeof (tx_ring_hdr_t), CLIB_CACHE_LINE_BYTES);
 	  vec_reset_length (xd->tx_vectors[j]);
 	}
