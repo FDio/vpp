@@ -126,13 +126,7 @@ jvpp_facade_details_callback_method_template = Template("""
         }
 
         if(completableFuture != null) {
-            $plugin_package.$dto_package.$callback_dto_reply_dump replyDump = completableFuture.getReplyDump();
-            if(replyDump == null) {
-                replyDump = new $plugin_package.$dto_package.$callback_dto_reply_dump();
-                completableFuture.setReplyDump(replyDump);
-            }
-
-            replyDump.$callback_dto_field.add(reply);
+            completableFuture.getReplyDump().$callback_dto_field.add(reply);
         }
     }
 """)
@@ -179,13 +173,13 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
                                                                       reply_name=camel_case_reply_name + dto_gen.dump_dto_suffix,
                                                                       request_name=util.remove_reply_suffix(camel_case_reply_name) +
                                                                                    util.underscore_to_camelcase_upper(util.dump_suffix)))
-                methods_impl.append(future_jvpp_method_impl_template.substitute(plugin_package=plugin_package,
-                                                                                dto_package=dto_package,
-                                                                                method_name=camel_case_request_method_name +
-                                                                                            util.underscore_to_camelcase_upper(util.dump_suffix),
-                                                                                reply_name=camel_case_reply_name + dto_gen.dump_dto_suffix,
-                                                                                request_name=util.remove_reply_suffix(camel_case_reply_name) +
-                                                                                             util.underscore_to_camelcase_upper(util.dump_suffix)))
+                methods_impl.append(future_jvpp_dump_method_impl_template.substitute(plugin_package=plugin_package,
+                                                                                     dto_package=dto_package,
+                                                                                     method_name=camel_case_request_method_name +
+                                                                                                 util.underscore_to_camelcase_upper(util.dump_suffix),
+                                                                                     reply_name=camel_case_reply_name + dto_gen.dump_dto_suffix,
+                                                                                     request_name=util.remove_reply_suffix(camel_case_reply_name) +
+                                                                                                  util.underscore_to_camelcase_upper(util.dump_suffix)))
             else:
                 request_name = util.underscore_to_camelcase_upper(util.unconventional_naming_rep_req[func['name']]) \
                     if func['name'] in util.unconventional_naming_rep_req else util.remove_reply_suffix(camel_case_name_with_suffix)
@@ -312,6 +306,14 @@ future_jvpp_method_impl_template = Template('''
         return send(request);
     }
 ''')
+
+future_jvpp_dump_method_impl_template = Template('''
+    @Override
+    public java.util.concurrent.CompletionStage<$plugin_package.$dto_package.$reply_name> $method_name($plugin_package.$dto_package.$request_name request) {
+        return send(request, new $plugin_package.$dto_package.$reply_name());
+    }
+''')
+
 
 # Returns request name or special one from unconventional_naming_rep_req map
 def get_standard_dump_reply_name(camel_case_dto_name, func_name):
