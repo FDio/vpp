@@ -283,17 +283,25 @@ gre_interface_tx (vlib_main_t * vm,
           vnet_buffer (b0)->sw_if_index[VLIB_TX] = t->outer_fib_index;
           vnet_buffer (b1)->sw_if_index[VLIB_TX] = t->outer_fib_index;
 
-          ip0 = vlib_buffer_get_current (b0);
-          gre_protocol0 = clib_net_to_host_u16 (0x800);
-          gre_protocol0 = 
-              ((ip0->ip_version_and_header_length & 0xF0) == 0x60) ? 
-              0x86DD : gre_protocol0;
+          if (PREDICT_FALSE(t->teb))
+          {
+            gre_protocol0 = clib_net_to_host_u16(GRE_PROTOCOL_teb);
+            gre_protocol1 = clib_net_to_host_u16(GRE_PROTOCOL_teb);
+          }
+          else
+          {
+            ip0 = vlib_buffer_get_current (b0);
+            gre_protocol0 = clib_net_to_host_u16 (0x800);
+            gre_protocol0 =
+                ((ip0->ip_version_and_header_length & 0xF0) == 0x60) ?
+                0x86DD : gre_protocol0;
 
-          ip1 = vlib_buffer_get_current (b1);
-          gre_protocol1 = clib_net_to_host_u16 (0x800);
-          gre_protocol1 = 
-              ((ip1->ip_version_and_header_length & 0xF0) == 0x60) ? 
-              0x86DD : gre_protocol1;
+            ip1 = vlib_buffer_get_current (b1);
+            gre_protocol1 = clib_net_to_host_u16 (0x800);
+            gre_protocol1 =
+                ((ip1->ip_version_and_header_length & 0xF0) == 0x60) ?
+                0x86DD : gre_protocol1;
+          }
 
           vlib_buffer_advance (b0, -sizeof(*h0));
           vlib_buffer_advance (b1, -sizeof(*h1));
@@ -366,10 +374,17 @@ gre_interface_tx (vlib_main_t * vm,
 
           vnet_buffer (b0)->sw_if_index[VLIB_TX] = t->outer_fib_index;
           ip0 = vlib_buffer_get_current (b0);
-          gre_protocol0 = clib_net_to_host_u16 (0x800);
-          gre_protocol0 = 
-              ((ip0->ip_version_and_header_length & 0xF0) == 0x60) ? 
-              0x86DD : gre_protocol0;
+          if (PREDICT_FALSE(t->teb))
+          {
+            gre_protocol0 = clib_net_to_host_u16(GRE_PROTOCOL_teb);
+          }
+          else
+          {
+            gre_protocol0 = clib_net_to_host_u16 (0x800);
+            gre_protocol0 =
+                ((ip0->ip_version_and_header_length & 0xF0) == 0x60) ?
+                0x86DD : gre_protocol0;
+          }
 
           vlib_buffer_advance (b0, -sizeof(*h0));
 

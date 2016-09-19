@@ -55,6 +55,7 @@ typedef struct {
   u32 outer_fib_index;
   u32 hw_if_index;
   u32 sw_if_index;
+  u8 teb;
 } gre_tunnel_t;
 
 typedef struct {
@@ -127,6 +128,7 @@ typedef struct {
 
   ip4_address_t src, dst;
   u32 outer_fib_id;
+  u8 teb;
 } vnet_gre_add_del_tunnel_args_t;
 
 int vnet_gre_add_del_tunnel
