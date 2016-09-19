@@ -60,6 +60,33 @@ ethernet_mac_address_is_multicast_u64 (u64 a)
   return (a & (1ULL << (5 * 8))) != 0;
 }
 
+static_always_inline int
+ethernet_frame_is_tagged (u16 type)
+{
+#if __SSE4_2__
+  const __m128i ethertype_mask = _mm_set_epi16 (ETHERNET_TYPE_VLAN,
+						ETHERNET_TYPE_DOT1AD,
+						ETHERNET_TYPE_VLAN_9100,
+						ETHERNET_TYPE_VLAN_9200,
+						/* duplicate last one to
+						   fill register */
+						ETHERNET_TYPE_VLAN_9200,
+						ETHERNET_TYPE_VLAN_9200,
+						ETHERNET_TYPE_VLAN_9200,
+						ETHERNET_TYPE_VLAN_9200);
+
+  __m128i r = _mm_set1_epi16 (type);
+  r = _mm_cmpeq_epi16 (ethertype_mask, r);
+  return !_mm_test_all_zeros (r, r);
+#else
+  if ((type == ETHERNET_TYPE_VLAN) ||
+      (type == ETHERNET_TYPE_DOT1AD) ||
+      (type == ETHERNET_TYPE_VLAN_9100) || (type == ETHERNET_TYPE_VLAN_9200))
+    return 1;
+#endif
+  return 0;
+}
+
 /* Max. sized ethernet/vlan header for parsing. */
 typedef struct
 {
