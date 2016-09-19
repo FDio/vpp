@@ -203,9 +203,6 @@ typedef struct
   /* vector of traced contexts, per device */
   u32 *d_trace_buffers;
 
-  /* number of sub-interfaces */
-  u16 vlan_subifs;
-
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
 
@@ -215,10 +212,14 @@ typedef struct
 #define DPDK_DEVICE_FLAG_PMD            (1 << 2)
 #define DPDK_DEVICE_FLAG_KNI            (1 << 3)
 #define DPDK_DEVICE_FLAG_VHOST_USER     (1 << 4)
+#define DPDK_DEVICE_FLAG_HAVE_SUBIF     (1 << 5)
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   u8 *interface_name_suffix;
+
+  /* number of sub-interfaces */
+  u16 num_subifs;
 
   /* PMD related */
   u16 tx_q_used;
