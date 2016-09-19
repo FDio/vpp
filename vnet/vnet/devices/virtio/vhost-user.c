@@ -252,10 +252,11 @@ vhost_user_if_disconnect (vhost_user_intf_t * vui)
       unix_file_del (&unix_main, unix_main.file_pool + vui->unix_file_index);
       vui->unix_file_index = ~0;
     }
+  else
+    close (vui->unix_fd);
 
   hash_unset (vum->vhost_user_interface_index_by_sock_fd, vui->unix_fd);
   hash_unset (vum->vhost_user_interface_index_by_listener_fd, vui->unix_fd);
-  close (vui->unix_fd);
   vui->unix_fd = -1;
   vui->is_up = 0;
   for (q = 0; q < vui->num_vrings; q++)
