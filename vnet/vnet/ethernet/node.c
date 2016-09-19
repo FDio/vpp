@@ -130,10 +130,7 @@ parse_header (ethernet_input_variant_t variant,
   vlan_count = 0;
 
   // check for vlan encaps
-  if ((*type == ETHERNET_TYPE_VLAN) ||
-      (*type == ETHERNET_TYPE_DOT1AD) ||
-      (*type == ETHERNET_TYPE_VLAN_9100) ||
-      (*type == ETHERNET_TYPE_VLAN_9200))
+  if (ethernet_frame_is_tagged (*type))
     {
       ethernet_vlan_header_t *h0;
       u16 tag;

@@ -244,10 +244,7 @@ vnet_update_l2_len (vlib_buffer_t * b)
    */
   vnet_buffer (b)->l2.l2_len = sizeof (ethernet_header_t);
   ethertype = clib_net_to_host_u16 (eth->type);
-  if ((ethertype == ETHERNET_TYPE_VLAN) ||
-      (ethertype == ETHERNET_TYPE_DOT1AD) ||
-      (ethertype == ETHERNET_TYPE_VLAN_9100) ||
-      (ethertype == ETHERNET_TYPE_VLAN_9200))
+  if (ethernet_frame_is_tagged (ethertype))
     {
       ethernet_vlan_header_t *vlan;
       vnet_buffer (b)->l2.l2_len += sizeof (*vlan);
