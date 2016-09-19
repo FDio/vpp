@@ -166,14 +166,14 @@ format_dpdk_device_name (u8 * s, va_list * args)
     devname_format = "%s%x/%x/%x";
 
 #ifdef RTE_LIBRTE_KNI
-  if (dm->devices[i].dev_type == VNET_DPDK_DEV_KNI)
+  if (dm->devices[i].flags & DPDK_DEVICE_FLAG_KNI)
     {
       return format (s, "kni%d", dm->devices[i].kni_port_id);
     }
   else
 #endif
 #if DPDK_VHOST_USER
-  if (dm->devices[i].dev_type == VNET_DPDK_DEV_VHOST_USER)
+  if (dm->devices[i].flags & DPDK_DEVICE_FLAG_VHOST_USER)
     {
       return format (s, "VirtualEthernet0/0/%d", dm->devices[i].vu_if_id);
     }
@@ -226,11 +226,11 @@ format_dpdk_device_type (u8 * s, va_list * args)
   char *dev_type;
   u32 i = va_arg (*args, u32);
 
-  if (dm->devices[i].dev_type == VNET_DPDK_DEV_KNI)
+  if (dm->devices[i].flags & DPDK_DEVICE_FLAG_KNI)
     {
       return format (s, "Kernel NIC Interface");
     }
-  else if (dm->devices[i].dev_type == VNET_DPDK_DEV_VHOST_USER)
+  else if (dm->devices[i].flags & DPDK_DEVICE_FLAG_VHOST_USER)
     {
       return format (s, "vhost-user interface");
     }
@@ -401,7 +401,7 @@ format_dpdk_device (u8 * s, va_list * args)
 
   rte_eth_dev_info_get (xd->device_index, &di);
 
-  if (verbose > 1 && xd->dev_type == VNET_DPDK_DEV_ETH)
+  if (verbose > 1 && xd->flags & DPDK_DEVICE_FLAG_PMD)
     {
       struct rte_pci_device *pci;
       struct rte_eth_rss_conf rss_conf;
@@ -455,7 +455,7 @@ format_dpdk_device (u8 * s, va_list * args)
 		  format_dpdk_rss_hf_name, di.flow_type_rss_offloads);
     }
 
-  if (verbose && xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
+  if (verbose && xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
     {
       s = format (s, "%Uqueue size (max):  rx %d (%d) tx %d (%d)\n",
 		  format_white_space, indent + 2,
@@ -527,7 +527,7 @@ format_dpdk_device (u8 * s, va_list * args)
 #endif
 
 #if DPDK_VHOST_USER
-  if (verbose && xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
+  if (verbose && xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
     {
       int i;
       for (i = 0; i < xd->rx_q_used * VIRTIO_QNUM; i++)
