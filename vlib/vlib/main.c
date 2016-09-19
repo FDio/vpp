@@ -1569,9 +1569,9 @@ dummy_queue_signal_callback (vlib_main_t * vm)
 
 /* Main function. */
 int
-vlib_main (vlib_main_t * vm, unformat_input_t * input)
+vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 {
-  clib_error_t *error;
+  clib_error_t *volatile error;
 
   vm->queue_signal_callback = dummy_queue_signal_callback;
 
