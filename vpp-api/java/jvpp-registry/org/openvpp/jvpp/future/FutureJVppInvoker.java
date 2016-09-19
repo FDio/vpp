@@ -18,6 +18,7 @@ package org.openvpp.jvpp.future;
 
 
 import org.openvpp.jvpp.dto.JVppReply;
+import org.openvpp.jvpp.dto.JVppReplyDump;
 import org.openvpp.jvpp.dto.JVppRequest;
 
 import java.util.concurrent.CompletionStage;
@@ -36,4 +37,13 @@ public interface FutureJVppInvoker extends NotificationRegistryProvider, AutoClo
      */
     <REQ extends JVppRequest, REPLY extends JVppReply<REQ>> CompletionStage<REPLY> send(REQ req);
 
+
+    /**
+     * Invoke asynchronous dump operation on VPP
+     *
+     * @return CompletionStage with aggregated future result of an async VPP dump call
+     * @throws org.openvpp.jvpp.VppInvocationException when send request failed with details
+     */
+    <REQ extends JVppRequest, REPLY extends JVppReply<REQ>, DUMP extends JVppReplyDump<REQ, REPLY>> CompletionStage<DUMP> send(
+            REQ req, DUMP emptyReplyDump);
 }

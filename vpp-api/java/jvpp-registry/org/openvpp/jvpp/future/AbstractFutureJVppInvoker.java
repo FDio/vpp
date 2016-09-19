@@ -30,8 +30,8 @@ import org.openvpp.jvpp.dto.JVppReplyDump;
 import org.openvpp.jvpp.dto.JVppRequest;
 
 /**
-* Future facade on top of JVpp
-*/
+ * Future facade on top of JVpp
+ */
 public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
 
     private final JVpp jvpp;
@@ -43,7 +43,7 @@ public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
     private final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requests;
 
     protected AbstractFutureJVppInvoker(final JVpp jvpp, final JVppRegistry registry,
-                                     final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requestMap) {
+                                        final Map<Integer, CompletableFuture<? extends JVppReply<?>>> requestMap) {
         this.jvpp =  Objects.requireNonNull(jvpp, "jvpp should not be null");
         this.registry =  Objects.requireNonNull(registry, "registry should not be null");
         // Request map represents the shared state between this facade and it's callback
@@ -66,15 +66,10 @@ public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
                 final int contextId = jvpp.send(req);
 
                 if(req instanceof JVppDump) {
-                    replyCompletableFuture = (CompletableFuture<REPLY>) new CompletableDumpFuture<>(contextId);
-                } else {
-                    replyCompletableFuture = new CompletableFuture<>();
+                    throw new IllegalArgumentException("Send with empty reply dump has to be used in case of dump calls");
                 }
-
+                replyCompletableFuture = new CompletableFuture<>();
                 requests.put(contextId, replyCompletableFuture);
-                if(req instanceof JVppDump) {
-                    requests.put(registry.controlPing(jvpp.getClass()), replyCompletableFuture);
-                }
 
                 // TODO in case of timeouts/missing replies, requests from the map are not removed
                 // consider adding cancel method, that would remove requests from the map and cancel
@@ -89,15 +84,43 @@ public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
         }
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public <REQ extends JVppRequest, REPLY extends JVppReply<REQ>, DUMP extends JVppReplyDump<REQ, REPLY>> CompletionStage<DUMP> send(
+            REQ req, DUMP emptyReplyDump) {
+        synchronized(requests) {
+            try {
+                final CompletableDumpFuture<DUMP> replyCompletableFuture;
+                final int contextId = jvpp.send(req);
+
+                if(!(req instanceof JVppDump)) {
+                    throw new IllegalArgumentException("Send without empty reply dump has to be used in case of regular calls");
+                }
+                replyCompletableFuture = new CompletableDumpFuture<>(contextId, emptyReplyDump);
+
+                requests.put(contextId, replyCompletableFuture);
+                requests.put(registry.controlPing(jvpp.getClass()), replyCompletableFuture);
+
+                // TODO in case of timeouts/missing replies, requests from the map are not removed
+                // consider adding cancel method, that would remove requests from the map and cancel
+                // associated replyCompletableFuture
+
+                return replyCompletableFuture;
+            } catch (VppInvocationException ex) {
+                final CompletableFuture<DUMP> replyCompletableFuture = new CompletableFuture<>();
+                replyCompletableFuture.completeExceptionally(ex);
+                return replyCompletableFuture;
+            }
+        }
+    }
+
     public static final class CompletableDumpFuture<T extends JVppReplyDump<?, ?>> extends CompletableFuture<T> {
-        // The reason why this is not final is the instantiation of ReplyDump DTOs
-        // Their instantiation must be generated, so currently the DTOs are created in callback and set when first dump reponses
-        // is handled in the callback.
-        private T replyDump;
+        private final T replyDump;
         private final long contextId;
 
-        public CompletableDumpFuture(final long contextId) {
+        public CompletableDumpFuture(final long contextId, final T emptyDump) {
             this.contextId = contextId;
+            this.replyDump = emptyDump;
         }
 
         public long getContextId() {
@@ -106,10 +129,6 @@ public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
 
         public T getReplyDump() {
             return replyDump;
-        }
-
-        public void setReplyDump(final T replyDump) {
-            this.replyDump = replyDump;
         }
     }
 
