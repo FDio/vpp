@@ -323,7 +323,7 @@ static_always_inline
        * This device only supports one TX queue,
        * and we're running multi-threaded...
        */
-      if (PREDICT_FALSE (xd->dev_type != VNET_DPDK_DEV_VHOST_USER &&
+      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_VHOST_USER) == 0 &&
 			 xd->lockp != 0))
 	{
 	  queue_id = queue_id % xd->tx_q_used;
@@ -332,7 +332,7 @@ static_always_inline
 	    queue_id = (queue_id + 1) % xd->tx_q_used;
 	}
 
-      if (PREDICT_TRUE (xd->dev_type == VNET_DPDK_DEV_ETH))
+      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
 	  if (PREDICT_TRUE (tx_head > tx_tail))
 	    {
@@ -366,7 +366,7 @@ static_always_inline
 	    }
 	}
 #if DPDK_VHOST_USER
-      else if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
+      else if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
 	{
 	  u32 offset = 0;
 	  if (xd->need_txlock)
@@ -484,7 +484,7 @@ static_always_inline
 	}
 #endif
 #if RTE_LIBRTE_KNI
-      else if (xd->dev_type == VNET_DPDK_DEV_KNI)
+      else if (xd->flags & DPDK_DEVICE_FLAG_KNI)
 	{
 	  if (PREDICT_TRUE (tx_head > tx_tail))
 	    {
@@ -522,7 +522,7 @@ static_always_inline
 	  rv = 0;
 	}
 
-      if (PREDICT_FALSE (xd->dev_type != VNET_DPDK_DEV_VHOST_USER &&
+      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_VHOST_USER) == 0 &&
 			 xd->lockp != 0))
 	*xd->lockp[queue_id] = 0;
 
@@ -919,7 +919,7 @@ dpdk_device_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
 
-  if (!xd || xd->dev_type != VNET_DPDK_DEV_VHOST_USER)
+  if (!xd || (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER) == 0)
     {
       clib_warning
 	("cannot renumber non-vhost-user interface (sw_if_index: %d)",
@@ -950,7 +950,7 @@ dpdk_clear_hw_interface_counters (u32 instance)
 	       sizeof (xd->last_cleared_xstats[0]));
 
 #if DPDK_VHOST_USER
-  if (PREDICT_FALSE (xd->dev_type == VNET_DPDK_DEV_VHOST_USER))
+  if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER))
     {
       int i;
       for (i = 0; i < xd->rx_q_used * VIRTIO_QNUM; i++)
@@ -1025,7 +1025,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   int rv = 0;
 
 #ifdef RTE_LIBRTE_KNI
-  if (xd->dev_type == VNET_DPDK_DEV_KNI)
+  if (xd->flags & DPDK_DEVICE_FLAG_KNI)
     {
       if (is_up)
 	{
@@ -1066,7 +1066,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
     }
 #endif
 #if DPDK_VHOST_USER
-  if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
+  if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
     {
       if (is_up)
 	{
@@ -1172,7 +1172,7 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
   else if (xd->vlan_subifs)
     xd->vlan_subifs--;
 
-  if (xd->dev_type != VNET_DPDK_DEV_ETH)
+  if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
     return 0;
 
   /* currently we program VLANS only for IXGBE VF and I40E VF */

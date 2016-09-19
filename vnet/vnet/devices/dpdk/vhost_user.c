@@ -137,7 +137,7 @@ dpdk_vhost_user_device_from_hw_if_index (u32 hw_if_index)
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
 
-  if (xd->dev_type != VNET_DPDK_DEV_VHOST_USER)
+  if ((xd->flags DPDK_DEVICE_FLAG_VHOST_USER) == 0)
     return 0;
 
   return xd;
@@ -221,7 +221,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 * hwaddr)
       if (vec_len (dm->devices) > vui_idx)
 	{
 	  xd = vec_elt_at_index (dm->devices, vui_idx);
-	  if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
+	  if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
 	    {
 	      DBG_SOCK
 		("reusing inactive vhost-user interface sw_if_index %d",
@@ -283,7 +283,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 * hwaddr)
     {
       // vui was not retrieved from inactive ifaces - create new
       vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
-      xd->dev_type = VNET_DPDK_DEV_VHOST_USER;
+      xd->flags |= DPDK_DEVICE_FLAG_VHOST_USER;
       xd->rx_q_used = num_qpairs;
       xd->tx_q_used = num_qpairs;
       xd->vu_vhost_dev.virt_qp_nb = num_qpairs;
@@ -1661,7 +1661,7 @@ dpdk_vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
 
   vec_foreach (xd, dm->devices)
   {
-    if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER && xd->vu_intf->active)
+    if ((xd->flags & DPDK_DEVICE_FLAG_VHOST_USER) && xd->vu_intf->active)
       vec_add1 (hw_if_indices, xd->vlib_hw_if_index);
   }
 
@@ -1988,7 +1988,7 @@ show_dpdk_vhost_user_command_fn (vlib_main_t * vm,
     {
       vec_foreach (xd, dm->devices)
       {
-	if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER && xd->vu_intf->active)
+	if ((xd->flags DPDK_DEVICE_FLAG_VHOST_USER) && xd->vu_intf->active)
 	  vec_add1 (hw_if_indices, xd->vlib_hw_if_index);
       }
     }

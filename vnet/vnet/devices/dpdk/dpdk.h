@@ -75,14 +75,6 @@ extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t handoff_dispatch_node;
 
-typedef enum
-{
-  VNET_DPDK_DEV_ETH = 1,	/* Standard DPDK PMD driver */
-  VNET_DPDK_DEV_KNI,		/* Kernel NIC Interface */
-  VNET_DPDK_DEV_VHOST_USER,
-  VNET_DPDK_DEV_UNKNOWN,	/* must be last */
-} dpdk_device_type_t;
-
 #define foreach_dpdk_pmd          \
   _ ("rte_nicvf_pmd", THUNDERX)	  \
   _ ("rte_em_pmd", E1000EM)       \
@@ -214,13 +206,15 @@ typedef struct
   /* number of sub-interfaces */
   u16 vlan_subifs;
 
-  dpdk_device_type_t dev_type:8;
   dpdk_pmd_t pmd:8;
   i8 cpu_socket;
 
   u16 flags;
-#define DPDK_DEVICE_FLAG_ADMIN_UP (1 << 0)
-#define DPDK_DEVICE_FLAG_PROMISC  (1 << 1)
+#define DPDK_DEVICE_FLAG_ADMIN_UP       (1 << 0)
+#define DPDK_DEVICE_FLAG_PROMISC        (1 << 1)
+#define DPDK_DEVICE_FLAG_PMD            (1 << 2)
+#define DPDK_DEVICE_FLAG_KNI            (1 << 3)
+#define DPDK_DEVICE_FLAG_VHOST_USER     (1 << 4)
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
