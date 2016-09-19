@@ -390,7 +390,8 @@ vhost_user_socket_read (unix_file_t * uf)
 	(1 << FEAT_VIRTIO_F_INDIRECT_DESC) |
 	(1 << FEAT_VHOST_F_LOG_ALL) |
 	(1 << FEAT_VIRTIO_NET_F_GUEST_ANNOUNCE) |
-	(1 << FEAT_VHOST_USER_F_PROTOCOL_FEATURES);
+	(1 << FEAT_VHOST_USER_F_PROTOCOL_FEATURES) |
+	(1UL << FEAT_VIRTIO_F_VERSION_1);
       msg.u64 &= vui->feature_mask;
 
       msg.size = sizeof (msg.u64);
