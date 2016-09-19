@@ -1165,27 +1165,29 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
   dpdk_device_t *xd = vec_elt_at_index (xm->devices, hw->dev_instance);
   vnet_sw_interface_t *t = (vnet_sw_interface_t *) st;
   int r, vlan_offload;
-  u32 prev_subifs = xd->vlan_subifs;
+  u32 prev_subifs = xd->num_subifs;
+  clib_error_t *err = 0;
 
   if (is_add)
-    xd->vlan_subifs++;
-  else if (xd->vlan_subifs)
-    xd->vlan_subifs--;
+    xd->num_subifs++;
+  else if (xd->num_subifs)
+    xd->num_subifs--;
 
   if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
-    return 0;
+    goto done;
 
   /* currently we program VLANS only for IXGBE VF and I40E VF */
   if ((xd->pmd != VNET_DPDK_PMD_IXGBEVF) && (xd->pmd != VNET_DPDK_PMD_I40EVF))
-    return 0;
+    goto done;
 
   if (t->sub.eth.flags.no_tags == 1)
-    return 0;
+    goto done;
 
   if ((t->sub.eth.flags.one_tag != 1) || (t->sub.eth.flags.exact_match != 1))
     {
-      xd->vlan_subifs = prev_subifs;
-      return clib_error_return (0, "unsupported VLAN setup");
+      xd->num_subifs = prev_subifs;
+      err = clib_error_return (0, "unsupported VLAN setup");
+      goto done;
     }
 
   vlan_offload = rte_eth_dev_get_vlan_offload (xd->device_index);
@@ -1193,9 +1195,10 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
 
   if ((r = rte_eth_dev_set_vlan_offload (xd->device_index, vlan_offload)))
     {
-      xd->vlan_subifs = prev_subifs;
-      return clib_error_return (0, "rte_eth_dev_set_vlan_offload[%d]: err %d",
-				xd->device_index, r);
+      xd->num_subifs = prev_subifs;
+      err = clib_error_return (0, "rte_eth_dev_set_vlan_offload[%d]: err %d",
+			       xd->device_index, r);
+      goto done;
     }
 
 
@@ -1203,12 +1206,19 @@ dpdk_subif_add_del_function (vnet_main_t * vnm,
        rte_eth_dev_vlan_filter (xd->device_index, t->sub.eth.outer_vlan_id,
 				is_add)))
     {
-      xd->vlan_subifs = prev_subifs;
-      return clib_error_return (0, "rte_eth_dev_vlan_filter[%d]: err %d",
-				xd->device_index, r);
+      xd->num_subifs = prev_subifs;
+      err = clib_error_return (0, "rte_eth_dev_vlan_filter[%d]: err %d",
+			       xd->device_index, r);
+      goto done;
     }
 
-  return 0;
+done:
+  if (xd->num_subifs)
+    xd->flags |= DPDK_DEVICE_FLAG_HAVE_SUBIF;
+  else
+    xd->flags &= ~DPDK_DEVICE_FLAG_HAVE_SUBIF;
+
+  return err;
 }
 
 /* *INDENT-OFF* */
