@@ -88,7 +88,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
   u64 rxerrors, last_rxerrors;
 
   /* only update counters for PMD interfaces */
-  if (xd->dev_type != VNET_DPDK_DEV_ETH)
+  if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
     return;
 
   xd->time_last_stats_update = now ? now : xd->time_last_stats_update;

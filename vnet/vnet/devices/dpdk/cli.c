@@ -713,7 +713,7 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
-  if (xd->dev_type != VNET_DPDK_DEV_ETH)
+  if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
     return clib_error_return (0, "number of descriptors can be set only for "
 			      "physical devices");
 

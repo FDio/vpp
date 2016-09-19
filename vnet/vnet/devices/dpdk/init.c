@@ -405,7 +405,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	xd->rx_q_used = 1;
 
-      xd->dev_type = VNET_DPDK_DEV_ETH;
+      xd->flags |= DPDK_DEVICE_FLAG_PMD;
 
       /* workaround for drivers not setting driver_name */
       if ((!dev_info.driver_name) && (dev_info.pci_dev))
@@ -755,7 +755,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  /* Create vnet interface */
 	  vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
-	  xd->dev_type = VNET_DPDK_DEV_KNI;
+	  xd->flags |= DPDK_DEVICE_FLAG_KNI;
 
 	  xd->device_index = xd - dm->devices;
 	  ASSERT (nports + i == xd->device_index);
@@ -1458,7 +1458,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
   u8 hw_flags_chg = 0;
 
   /* only update link state for PMD interfaces */
-  if (xd->dev_type != VNET_DPDK_DEV_ETH)
+  if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
     return;
 
   xd->time_last_link_update = now ? now : xd->time_last_link_update;
@@ -1757,7 +1757,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  dpdk_update_link_state (xd, now);
 
 #if DPDK_VHOST_USER
-	if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
+	if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
 	  if (dpdk_vhost_user_process_if (vm, xd, vu_state) != 0)
 	    continue;
 #endif

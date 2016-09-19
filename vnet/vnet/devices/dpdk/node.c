@@ -287,7 +287,7 @@ dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
   n_left = VLIB_FRAME_SIZE;
   n_buffers = 0;
 
-  if (PREDICT_TRUE (xd->dev_type == VNET_DPDK_DEV_ETH))
+  if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
     {
       while (n_left)
 	{
@@ -303,7 +303,7 @@ dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 	}
     }
 #if DPDK_VHOST_USER
-  else if (xd->dev_type == VNET_DPDK_DEV_VHOST_USER)
+  else if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
     {
       vlib_main_t *vm = vlib_get_main ();
       vlib_buffer_main_t *bm = vm->buffer_main;
@@ -367,7 +367,7 @@ dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
     }
 #endif
 #ifdef RTE_LIBRTE_KNI
-  else if (xd->dev_type == VNET_DPDK_DEV_KNI)
+  else if (xd->flags & DPDK_DEVICE_FLAG_KNI)
     {
       n_buffers =
 	rte_kni_rx_burst (xd->kni, xd->rx_vectors[queue_id], VLIB_FRAME_SIZE);
