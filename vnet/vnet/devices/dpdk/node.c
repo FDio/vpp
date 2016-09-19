@@ -121,7 +121,8 @@ dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t * xd,
 	      HANDOFF_DISPATCH_NEXT_ETHERNET_INPUT;
 	}
       else
-	if (PREDICT_FALSE (xd->vlan_subifs || (mb_flags & PKT_RX_VLAN_PKT)))
+	if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_HAVE_SUBIF) ||
+			   (mb_flags & PKT_RX_VLAN_PKT)))
 	n0 = DPDK_RX_NEXT_ETHERNET_INPUT;
       else
 	{
