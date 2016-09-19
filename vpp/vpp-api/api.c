@@ -4989,6 +4989,7 @@ static void vl_api_gre_add_del_tunnel_t_handler
   memset (a, 0, sizeof (*a));
 
   a->is_add = mp->is_add;
+  a->teb = mp->teb;
 
   /* ip addresses sent in network byte order */
   clib_memcpy (&(a->src), mp->src_address, 4);
@@ -5018,6 +5019,7 @@ static void send_gre_tunnel_details
   clib_memcpy (rmp->src_address, &(t->tunnel_src), 4);
   clib_memcpy (rmp->dst_address, &(t->tunnel_dst), 4);
   rmp->outer_fib_id = htonl (im->fibs[t->outer_fib_index].table_id);
+  rmp->teb = t->teb;
   rmp->sw_if_index = htonl (t->sw_if_index);
   rmp->context = context;
 
