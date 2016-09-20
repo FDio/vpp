@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_9f0329b8",
+        "filename": "vpp-api/java/jvpp/gen/jvppgen/dto_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-09-20T05:38:58Z",
+      "side": 1,
+      "message": "some separator between fields would improve toString message readability",
+      "range": {
+        "startLine": 126,
+        "startChar": 58,
+        "endLine": 127,
+        "endChar": 125
+      },
+      "revId": "50c3d58c2ae8d4e139ae96c32195f7c0effb2eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
