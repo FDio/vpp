@@ -18,6 +18,69 @@
  */
 #include <vnet/lldp/lldp_node.h>
 #include <vnet/lldp/lldp_protocol.h>
+#include <vlibmemory/api.h>
+
+typedef struct
+{
+  u32 hw_if_index;
+  u8 chassis_id_len;
+  u8 chassis_id_subtype;
+  u8 portid_len;
+  u8 portid_subtype;
+  u16 ttl;
+  u8 data[0];			/* this contains both chassis id (chassis_id_len bytes) and port
+				   id (portid_len bytes) */
+} lldp_intf_update_t;
+
+static void
+lldp_rpc_update_peer_cb (const lldp_intf_update_t * a)
+{
+  ASSERT (os_get_cpu_number () == 0);
+
+  lldp_intf_t *n = lldp_get_intf (&lldp_main, a->hw_if_index);
+  if (!n)
+    {
+      /* LLDP turned off for this interface, ignore the update */
+      return;
+    }
+  const u8 *chassis_id = a->data;
+  const u8 *portid = a->data + a->chassis_id_len;
+
+  if (n->chassis_id)
+    {
+      _vec_len (n->chassis_id) = 0;
+    }
+  vec_add (n->chassis_id, chassis_id, a->chassis_id_len);
+  n->chassis_id_subtype = a->chassis_id_subtype;
+  if (n->port_id)
+    {
+      _vec_len (n->port_id) = 0;
+    }
+  vec_add (n->port_id, portid, a->portid_len);
+  n->port_id_subtype = a->portid_subtype;
+  n->ttl = a->ttl;
+  n->last_heard = vlib_time_now (lldp_main.vlib_main);
+}
+
+static void
+lldp_rpc_update_peer (u32 hw_if_index, const u8 * chid, u8 chid_len,
+		      u8 chid_subtype, const u8 * portid,
+		      u8 portid_len, u8 portid_subtype, u16 ttl)
+{
+  const size_t data_size =
+    sizeof (lldp_intf_update_t) + chid_len + portid_len;
+  u8 data[data_size];
+  lldp_intf_update_t *u = (lldp_intf_update_t *) data;
+  u->hw_if_index = hw_if_index;
+  u->chassis_id_len = chid_len;
+  u->chassis_id_subtype = chid_subtype;
+  u->ttl = ttl;
+  u->portid_len = portid_len;
+  u->portid_subtype = portid_subtype;
+  clib_memcpy (u->data, chid, chid_len);
+  clib_memcpy (u->data + chid_len, portid, portid_len);
+  vl_api_rpc_call_main_thread (lldp_rpc_update_peer_cb, data, data_size);
+}
 
 lldp_tlv_code_t
 lldp_tlv_get_code (const lldp_tlv_t * tlv)
@@ -54,14 +117,13 @@ lldp_tlv_set_length (lldp_tlv_t * tlv, u16 length)
 lldp_main_t lldp_main;
 
 static int
-lldp_packet_scan (lldp_main_t * lm, lldp_intf_t * n, const lldp_tlv_t * pkt)
+lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
 {
   const lldp_tlv_t *tlv = pkt;
 
-/* first check if the header fits in before extracting data from it */
 #define TLV_VIOLATES_PKT_BOUNDARY(pkt, tlv)                               \
-    (((((u8 *)tlv) + sizeof(lldp_tlv_t)) > ((u8 *)pkt + vec_len(pkt))) || \
-     ((((u8 *)tlv) + lldp_tlv_get_length(tlv)) > ((u8 *)pkt + vec_len(pkt))))
+  (((((u8 *)tlv) + sizeof (lldp_tlv_t)) > ((u8 *)pkt + vec_len (pkt))) || \
+   ((((u8 *)tlv) + lldp_tlv_get_length (tlv)) > ((u8 *)pkt + vec_len (pkt))))
 
   /* first tlv is always chassis id, followed by port id and ttl tlvs */
   if (TLV_VIOLATES_PKT_BOUNDARY (pkt, tlv) ||
@@ -122,10 +184,10 @@ lldp_packet_scan (lldp_main_t * lm, lldp_intf_t * n, const lldp_tlv_t * pkt)
     {
       switch (lldp_tlv_get_code (tlv))
 	{
-#define F(num, type, str)         \
-    case LLDP_TLV_NAME(type):     \
-        /* ignore optional TLV */ \
-        break;
+#define F(num, type, str)     \
+  case LLDP_TLV_NAME (type):  \
+    /* ignore optional TLV */ \
+    break;
 	  foreach_lldp_optional_tlv_type (F);
 #undef F
 	default:
@@ -141,20 +203,8 @@ lldp_packet_scan (lldp_main_t * lm, lldp_intf_t * n, const lldp_tlv_t * pkt)
     {
       return LLDP_ERROR_BAD_TLV;
     }
-  /* LLDP PDU validated, now store data */
-  if (n->chassis_id)
-    {
-      _vec_len (n->chassis_id) = 0;
-    }
-  vec_add (n->chassis_id, chid, chid_len);
-  n->chassis_id_subtype = chid_subtype;
-  if (n->port_id)
-    {
-      _vec_len (n->port_id) = 0;
-    }
-  vec_add (n->port_id, portid, portid_len);
-  n->port_id_subtype = portid_subtype;
-  n->ttl = ttl;
+  lldp_rpc_update_peer (hw_if_index, chid, chid_len, chid_subtype, portid,
+			portid_len, portid_subtype, ttl);
   return LLDP_ERROR_NONE;
 }
 
@@ -202,7 +252,11 @@ lldp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   lldp_error_t e;
 
   /* find our interface */
-  lldp_intf_t *n = lldp_get_intf (lm, vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+  vnet_sw_interface_t *sw_interface = vnet_get_sw_interface (lm->vnet_main,
+							     vnet_buffer
+							     (b0)->sw_if_index
+							     [VLIB_RX]);
+  lldp_intf_t *n = lldp_get_intf (lm, sw_interface->hw_if_index);
 
   if (!n)
     {
@@ -211,12 +265,8 @@ lldp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
     }
 
   /* Actually scan the packet */
-  e = lldp_packet_scan (lm, n, vlib_buffer_get_current (b0));
-
-  if (LLDP_ERROR_NONE == e)
-    {
-      n->last_heard = vlib_time_now (vm);
-    }
+  e = lldp_packet_scan (sw_interface->hw_if_index,
+			vlib_buffer_get_current (b0));
 
   return e;
 }
