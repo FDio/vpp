@@ -49,7 +49,12 @@ DOXY_INPUT ?= \
 # This is specifically for the pre-Doxygen steps; Doxygen uses
 # @cond for this instead.
 DOXY_PRE_EXCLUDE ?= \
-	vlib/vlib/buffer.c
+	vlib/vlib/buffer.c \
+	vppinfra/vppinfra/bihash_doc.h \
+	vppinfra/vppinfra/bihash_template.h \
+	vppinfra/vppinfra/mod_test_hash.c \
+	vppinfra/vppinfra/vm_linux_kernel.h \
+	vlib/example/[^/]*
 
 # Generate a regexp for filenames to exclude
 DOXY_PRE_EXCLUDE_REGEXP = ($(subst .,\.,$(shell echo '$(strip $(DOXY_PRE_EXCLUDE))' | sed -e 's/ /|/g')))
@@ -128,8 +133,12 @@ $(SIPHON_FILES): $(DOXY_DIR)/siphon_generate.py $(BR)/.doxygen-bootstrap.ok
 			| grep -v -E '^$(DOXY_PRE_EXCLUDE_REGEXP)$$' \
 			>> $(SIPHON_INPUT)/files; \
 	done
-	set -e; cd "$(WS_ROOT)"; $(DOXY_DIR)/siphon_generate.py \
+	set -e; \
+	cd "$(WS_ROOT)"; \
+	$(DOXY_DIR)/siphon_generate.py \
 		--output="$(SIPHON_INPUT)" \
+		--usecpp \
+		--cppargs="-I. $(addprefix -I,$(DOXY_INCLUDE_PATH))" \
 		"@$(SIPHON_INPUT)/files"
 
 
