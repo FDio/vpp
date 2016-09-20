@@ -1088,12 +1088,13 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		    /*
 		     * Rewind buffer, direct code above not to
 		     * think too hard about it.
-		     * $$$ is the answer ever anything other than
-		     * vlib_buffer_reset(..)?
 		     */
 		    if_addr0 = &proxy_src;
 		    is_unnum0 = 0;
-		    vlib_buffer_reset (p0);
+		    i32 ethernet_start =
+		      vnet_buffer (p0)->ethernet.start_of_ethernet_header;
+		    i32 rewind = p0->current_data - ethernet_start;
+		    vlib_buffer_advance (p0, -rewind);
 		    n_proxy_arp_replies_sent++;
 		    goto send_reply;
 		  }
