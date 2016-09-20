@@ -79,7 +79,7 @@ lldp_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       error0 = lldp_input (vm, b0, bi0);
       b0->error = node->errors[error0];
 
-      /* If this pkt is traced, snapshoot the data */
+      /* If this pkt is traced, snapshot the data */
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  int len;
@@ -241,6 +241,16 @@ VLIB_REGISTER_NODE(lldp_process_node, static) = {
 void
 lldp_schedule_intf (lldp_main_t * lm, lldp_intf_t * n)
 {
+  const int idx = n - lm->intfs;
+  u32 v;
+  vec_foreach_index (v, lm->intfs_timeouts)
+  {
+    if (lm->intfs_timeouts[v] == idx)
+      {
+	/* already scheduled */
+	return;
+      }
+  }
   n->last_sent = 0;		/* ensure that a packet is sent out immediately */
   /* put the interface at the current position in the timeouts - it
    * will timeout immediately */
