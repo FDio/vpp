@@ -5716,6 +5716,8 @@ vl_api_lisp_locator_dump_t_handler (vl_api_lisp_locator_dump_t * mp)
     ls_index = htonl (mp->ls_index);
   else
     {
+      /* make sure we get a proper C-string */
+      mp->ls_name[sizeof (mp->ls_name) - 1] = 0;
       ls_name = format (0, "%s", mp->ls_name);
       p = hash_get_mem (lcm->locator_set_index_by_name, ls_name);
       if (!p)
