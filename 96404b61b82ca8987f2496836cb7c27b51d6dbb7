@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_ff145df6",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1855,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-09-20T06:11:31Z",
+      "side": 1,
+      "message": "target is unsigned. So target \u003c 0 will always evaluate to FALSE.",
+      "range": {
+        "startLine": 1855,
+        "startChar": 3,
+        "endLine": 1855,
+        "endChar": 5
+      },
+      "revId": "96404b61b82ca8987f2496836cb7c27b51d6dbb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
