@@ -12977,7 +12977,7 @@ api_lisp_locator_dump (vat_main_t * vam)
   else
     {
       vec_add1 (ls_name, 0);
-      strcpy ((char *) mp->ls_name, (char *) ls_name);
+      strncpy ((char *) mp->ls_name, (char *) ls_name, sizeof (mp->ls_name));
     }
 
   /* send it... */
