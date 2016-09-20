@@ -153,6 +153,45 @@ static inline void *
 map_guest_mem (vhost_user_intf_t * vui, uword addr)
 {
   int i;
+#if __SSE4_2__
+  __m128i rl, rh, al, ah, r;
+  al = _mm_set1_epi64x (addr + 1);
+  ah = _mm_set1_epi64x (addr);
+
+  rl = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_lo[0]);
+  rl = _mm_cmpgt_epi64 (al, rl);
+  rh = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_hi[0]);
+  rh = _mm_cmpgt_epi64 (rh, ah);
+  r = _mm_and_si128 (rl, rh);
+
+  rl = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_lo[2]);
+  rl = _mm_cmpgt_epi64 (al, rl);
+  rh = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_hi[2]);
+  rh = _mm_cmpgt_epi64 (rh, ah);
+  r = _mm_blend_epi16 (r, _mm_and_si128 (rl, rh), 0x22);
+
+  rl = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_lo[4]);
+  rl = _mm_cmpgt_epi64 (al, rl);
+  rh = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_hi[4]);
+  rh = _mm_cmpgt_epi64 (rh, ah);
+  r = _mm_blend_epi16 (r, _mm_and_si128 (rl, rh), 0x44);
+
+  rl = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_lo[6]);
+  rl = _mm_cmpgt_epi64 (al, rl);
+  rh = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_hi[6]);
+  rh = _mm_cmpgt_epi64 (rh, ah);
+  r = _mm_blend_epi16 (r, _mm_and_si128 (rl, rh), 0x88);
+
+  r = _mm_shuffle_epi8 (r, _mm_set_epi64x (0, 0x0e060c040a020800));
+  i = __builtin_ctzll (_mm_movemask_epi8 (r));
+
+  if (i < vui->nregions)
+    {
+      return (void *) (vui->region_mmap_addr[i] + addr -
+		       vui->regions[i].guest_phys_addr);
+    }
+
+#else
   for (i = 0; i < vui->nregions; i++)
     {
       if ((vui->regions[i].guest_phys_addr <= addr) &&
@@ -163,6 +202,7 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr)
 			   vui->regions[i].guest_phys_addr);
 	}
     }
+#endif
   DBG_VQ ("failed to map guest mem addr %llx", addr);
   return 0;
 }
@@ -463,6 +503,9 @@ vhost_user_socket_read (unix_file_t * uf)
 
 	  vui->region_mmap_addr[i] = mmap (0, map_sz, PROT_READ | PROT_WRITE,
 					   MAP_SHARED, fds[i], 0);
+	  vui->region_guest_addr_lo[i] = vui->regions[i].guest_phys_addr;
+	  vui->region_guest_addr_hi[i] = vui->regions[i].guest_phys_addr +
+	    vui->regions[i].memory_size;
 
 	  DBG_SOCK
 	    ("map memory region %d addr 0 len 0x%lx fd %d mapped 0x%lx "
