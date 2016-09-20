@@ -804,6 +804,8 @@ vhost_user_init (vlib_main_t * vm)
   clib_error_t *error;
   vhost_user_main_t *vum = &vhost_user_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vlib_thread_registration_t *tr;
+  uword *p;
 
   error = vlib_call_init_function (vm, ip4_init);
   if (error)
@@ -820,6 +822,18 @@ vhost_user_init (vlib_main_t * vm)
 
   vec_validate_aligned (vum->rx_buffers, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
+
+  /* find out which cpus will be used for input */
+  vum->input_cpu_first_index = 0;
+  vum->input_cpu_count = 1;
+  p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+  tr = p ? (vlib_thread_registration_t *) p[0] : 0;
+
+  if (tr && tr->count > 0)
+    {
+      vum->input_cpu_first_index = tr->first_index;
+      vum->input_cpu_count = tr->count;
+    }
 
   return 0;
 }
@@ -1256,10 +1270,7 @@ vhost_user_input (vlib_main_t * vm,
 		  vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   vhost_user_main_t *vum = &vhost_user_main;
-#if DPDK > 0
-  dpdk_main_t *dm = &dpdk_main;
   u32 cpu_index = os_get_cpu_number ();
-#endif
   vhost_user_intf_t *vui;
   uword n_rx_packets = 0;
   int i;
@@ -1269,10 +1280,8 @@ vhost_user_input (vlib_main_t * vm,
       vui = vec_elt_at_index (vum->vhost_user_interfaces, i);
       if (vui->is_up)
 	{
-#if DPDK > 0
-	  if ((i % dm->input_cpu_count) ==
-	      (cpu_index - dm->input_cpu_first_index))
-#endif
+	  if ((i % vum->input_cpu_count) ==
+	      (cpu_index - vum->input_cpu_first_index))
 	    n_rx_packets += vhost_user_if_input (vm, vum, vui, node);
 	}
     }
@@ -1907,11 +1916,8 @@ static void
 vhost_user_vui_register (vlib_main_t * vm, vhost_user_intf_t * vui)
 {
   vhost_user_main_t *vum = &vhost_user_main;
-#if DPDK > 0
-  dpdk_main_t *dm = &dpdk_main;
   int cpu_index;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-#endif
 
   hash_set (vum->vhost_user_interface_index_by_listener_fd, vui->unix_fd,
 	    vui - vum->vhost_user_interfaces);
@@ -1919,19 +1925,15 @@ vhost_user_vui_register (vlib_main_t * vm, vhost_user_intf_t * vui)
 	    vui - vum->vhost_user_interfaces);
 
   /* start polling */
-#if DPDK > 0
-  cpu_index = dm->input_cpu_first_index +
-    (vui - vum->vhost_user_interfaces) % dm->input_cpu_count;
+  cpu_index = vum->input_cpu_first_index +
+    (vui - vum->vhost_user_interfaces) % vum->input_cpu_count;
 
   if (tm->n_vlib_mains == 1)
-#endif
     vlib_node_set_state (vm, vhost_user_input_node.index,
 			 VLIB_NODE_STATE_POLLING);
-#if DPDK > 0
   else
     vlib_node_set_state (vlib_mains[cpu_index], vhost_user_input_node.index,
 			 VLIB_NODE_STATE_POLLING);
-#endif
 
   /* tell process to start polling for sockets */
   vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);

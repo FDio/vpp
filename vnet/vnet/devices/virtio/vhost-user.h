@@ -255,6 +255,12 @@ typedef struct
   u32 coalesce_frames;
   f64 coalesce_time;
   int dont_dump_vhost_user_memory;
+
+  /* first cpu index */
+  u32 input_cpu_first_index;
+
+  /* total cpu count */
+  u32 input_cpu_count;
 } vhost_user_main_t;
 
 typedef struct
