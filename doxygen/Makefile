@@ -189,6 +189,26 @@ doxygen: $(SIPHON_DOCS)
 	    VERSION="`git describe --tags --dirty`" \
 	    doxygen $(DOXY_DIR)/doxygen.cfg
 
+$(BR)/docs/html/plugin.xml: doxygen
+
+# Generate an Eclipse plugin
+ECLIPSE_PLUGIN_VERSION = $(shell git describe --tags | sed -e 's/^v//' -e 's/-rc[0-9]-/./' -e 's/-g[0-9a-f]*$$//')
+ECLIPSE_PLUGIN_FILE = io.fd.docs.vpp_$(ECLIPSE_PLUGIN_VERSION).jar
+#ECLIPSE_FEATURE_FILE = io.fd.docs_$(ECLIPSE_PLUGIN_VERSION).jar
+ECLIPSE_FEATURE_FILE = io.fd.docs.jar
+ECLIPSE_DIR = $(BR)/docs/eclipse
+ECLIPSE_PLUGIN = $(ECLIPSE_DIR)/plugins/$(ECLIPSE_PLUGIN_FILE)
+ECLIPSE_FEATURE = $(ECLIPSE_DIR)/features/$(ECLIPSE_FEATURE_FILE)
+
+doxygen-eclipse: $(BR)/docs/html/plugin.xml
+	mkdir -p $(ECLIPSE_DIR)/plugins $(ECLIPSE_DIR)/features
+	sed -e 's/version="[^"]*"/version="$(ECLIPSE_PLUGIN_VERSION)"/' -i $<
+	jar cMf $(ECLIPSE_PLUGIN) -C $(BR)/docs/html .
+	sed -e "s/VERSION/$(ECLIPSE_PLUGIN_VERSION)/g" $(DOXY_DIR)/eclipse/feature.xml > $(BR)/docs/feature.xml
+	jar cMf $(ECLIPSE_FEATURE) -C $(BR)/docs feature.xml
+	#rm -f $(BR)/docs/feature.xml
+	sed -e "s/VERSION/$(ECLIPSE_PLUGIN_VERSION)/g" $(DOXY_DIR)/eclipse/site.xml > $(ECLIPSE_DIR)/site.xml
+
 wipe-doxygen:
 	rm -rf "$(BR)/docs" "$(BR)/.doxygen-siphon.d"
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <description url="http://door.cable.comcast.com/~cluke200/vppeclipse/">
+      FD.io VPP documentation for Eclipse.
+   </description>
+   <feature url="features/io.fd.docs.jar" id="io.fd.docs" version="1.0.0">
+      <category name="FD.io"/>
+   </feature>
+   <category-def name="FD.io" label="FD.io">
+      <description>
+         FD.io
+      </description>
+   </category-def>
+</site>
