@@ -19,9 +19,9 @@
 #define VHOST_MEMORY_MAX_NREGIONS       8
 #define VHOST_USER_MSG_HDR_SZ           12
 #define VHOST_VRING_MAX_SIZE            32768
-#define VHOST_NET_VRING_IDX_RX          0
-#define VHOST_NET_VRING_IDX_TX          1
-#define VHOST_NET_VRING_NUM             2
+#define VHOST_VRING_MAX_N               16	//8TX + 8RX
+#define VHOST_VRING_IDX_RX(qid)         (2*qid)
+#define VHOST_VRING_IDX_TX(qid)         (2*qid + 1)
 
 #define VIRTQ_DESC_F_NEXT               1
 #define VIRTQ_DESC_F_INDIRECT           4
@@ -45,12 +45,16 @@
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
 
+#define VRING_USED_F_NO_NOTIFY  1
+
 #define foreach_virtio_net_feature      \
  _ (VIRTIO_NET_F_MRG_RXBUF, 15)         \
+ _ (VIRTIO_NET_F_CTRL_VQ, 17)           \
+ _ (VIRTIO_NET_F_GUEST_ANNOUNCE, 21)    \
+ _ (VIRTIO_NET_F_MQ, 22)                \
+ _ (VHOST_F_LOG_ALL, 26)                \
  _ (VIRTIO_F_ANY_LAYOUT, 27)            \
  _ (VIRTIO_F_INDIRECT_DESC, 28)         \
- _ (VHOST_F_LOG_ALL, 26)                \
- _ (VIRTIO_NET_F_GUEST_ANNOUNCE, 21)    \
  _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
  _ (VIRTIO_F_VERSION_1, 32)
 
@@ -73,37 +77,38 @@ int vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 int vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  u32 sw_if_index);
 
+/* *INDENT-OFF* */
 typedef struct vhost_user_memory_region
 {
   u64 guest_phys_addr;
   u64 memory_size;
   u64 userspace_addr;
   u64 mmap_offset;
-} vhost_user_memory_region_t;
+} __attribute ((packed)) vhost_user_memory_region_t;
 
 typedef struct vhost_user_memory
 {
   u32 nregions;
   u32 padding;
   vhost_user_memory_region_t regions[VHOST_MEMORY_MAX_NREGIONS];
-} vhost_user_memory_t;
+} __attribute ((packed)) vhost_user_memory_t;
 
 typedef struct
 {
-  unsigned int index, num;
-} vhost_vring_state_t;
+  u32 index, num;
+} __attribute ((packed)) vhost_vring_state_t;
 
 typedef struct
 {
-  unsigned int index, flags;
+  u32 index, flags;
   u64 desc_user_addr, used_user_addr, avail_user_addr, log_guest_addr;
-} vhost_vring_addr_t;
+} __attribute ((packed)) vhost_vring_addr_t;
 
 typedef struct vhost_user_log
 {
   u64 size;
   u64 offset;
-} vhost_user_log_t;
+} __attribute ((packed)) vhost_user_log_t;
 
 typedef enum vhost_user_req
 {
@@ -130,7 +135,6 @@ typedef enum vhost_user_req
 } vhost_user_req_t;
 
 // vring_desc I/O buffer descriptor
-/* *INDENT-OFF* */
 typedef struct
 {
   uint64_t addr;  // packet data buffer address
@@ -142,7 +146,7 @@ typedef struct
 typedef struct
 {
   uint16_t flags;
-  uint16_t idx;
+  volatile uint16_t idx;
   uint16_t ring[VHOST_VRING_MAX_SIZE];
 } __attribute ((packed)) vring_avail_t;
 
@@ -189,27 +193,31 @@ typedef struct vhost_user_msg {
 
 typedef struct
 {
-  u32 qsz;
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u16 qsz;
   u16 last_avail_idx;
   u16 last_used_idx;
+  u16 n_since_last_int;
   vring_desc_t *desc;
   vring_avail_t *avail;
   vring_used_t *used;
-  u64 log_guest_addr;
+  f64 int_deadline;
+  u8 started;
+  u8 enabled;
+  u8 log_used;
+  //Put non-runtime in a different cache line
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   int callfd;
   int kickfd;
   int errfd;
-  u32 enabled;
-  u32 log_used;
   u32 callfd_idx;
-  u32 n_since_last_int;
-  f64 int_deadline;
+  u32 kickfd_idx;
+  u64 log_guest_addr;
 } vhost_user_vring_t;
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  volatile u32 *lockp;
   u32 is_up;
   u32 admin_up;
   u32 unix_fd;
@@ -221,24 +229,48 @@ typedef struct
   u32 hw_if_index, sw_if_index;
   u8 active;
 
-  u32 nregions;
+  //Feature negotiation
   u64 features;
   u64 feature_mask;
   u64 protocol_features;
-  u32 num_vrings;
+
+  //Memory region information
+  u32 nregions;
   vhost_user_memory_region_t regions[VHOST_MEMORY_MAX_NREGIONS];
   void *region_mmap_addr[VHOST_MEMORY_MAX_NREGIONS];
   u64 region_guest_addr_lo[VHOST_MEMORY_MAX_NREGIONS];
   u64 region_guest_addr_hi[VHOST_MEMORY_MAX_NREGIONS];
   u32 region_mmap_fd[VHOST_MEMORY_MAX_NREGIONS];
-  vhost_user_vring_t vrings[2];
+
+  //Virtual rings
+  vhost_user_vring_t vrings[VHOST_VRING_MAX_N];
+  volatile u32 *vring_locks[VHOST_VRING_MAX_N];
+
   int virtio_net_hdr_sz;
   int is_any_layout;
-  u32 *d_trace_buffers;
 
   void *log_base_addr;
   u64 log_size;
+
+  /* Whether to use spinlock or per_cpu_tx_qid assignment */
+  u8 use_tx_spinlock;
+  u16 *per_cpu_tx_qid;
+
+  /* Vector of workers for this interface */
+  u32 *workers;
 } vhost_user_intf_t;
+
+typedef struct
+{
+  u16 vhost_iface_index;
+  u16 qid;
+} vhost_iface_and_queue_t;
+
+typedef struct
+{
+  u32 *trace_buffers;
+  vhost_iface_and_queue_t *rx_queues;
+} vhost_cpu_t;
 
 typedef struct
 {
@@ -259,6 +291,9 @@ typedef struct
 
   /* total cpu count */
   u32 input_cpu_count;
+
+  /** Per-CPU data for vhost-user */
+  vhost_cpu_t *cpus;
 } vhost_user_main_t;
 
 typedef struct
