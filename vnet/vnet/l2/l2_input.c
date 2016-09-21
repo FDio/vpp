@@ -623,7 +623,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
       vec_validate_init_empty (l2om->next_nodes.output_node_index_vec,
 			       sw_if_index, ~0);
       l2om->next_nodes.output_node_index_vec[sw_if_index] = ~0;
-
+      hi->flags &= ~VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED;
     }
   else if (mode == MODE_L2_CLASSIFY)
     {
