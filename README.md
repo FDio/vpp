@@ -1,7 +1,7 @@
 Vector Packet Processing
 ========================
 
-## Introduction.
+## Introduction
 
 The VPP platform is an extensible framework that provides out-of-the-box
 production quality switch/router functionality. It is the open source version
@@ -16,7 +16,13 @@ For more information on VPP and its features please visit the
 [What is VPP?](https://wiki.fd.io/view/VPP/What_is_VPP%3F) pages.
 
 
-## Directory layout.
+## Changes
+
+Details of the changes leading up to this version of VPP can be found under
+@ref release_notes.
+
+
+## Directory layout
 
 Directory name         | Description
 ---------------------- | -------------------------------------------
@@ -25,7 +31,6 @@ Directory name         | Description
      doxygen           | Documentation generator configuration
      dpdk              | DPDK patches and build infrastructure
      g2                | Event log visualization tool
-     gmod              | perf related?
      perftool          | Performance tool
 @ref plugins           | VPP bundled plugins directory
 @ref svm               | Shared virtual memory allocation library
@@ -43,7 +48,7 @@ Directory name         | Description
 ignore any @@ref labels in the above table.)
 
 
-## Getting started.
+## Getting started
 
 In general anyone interested in building, developing or running VPP should
 consult the [VPP wiki](https://wiki.fd.io/view/VPP) for more complete
@@ -57,7 +62,7 @@ coverage of the topic.
 For the impatient, some salient information is distilled below.
 
 
-### Quick-start: On an existing Linux host.
+### Quick-start: On an existing Linux host
 
 To install system dependencies, build VPP and then install it, simply run the
 build script. This should be performed a non-privileged user with `sudo`
@@ -73,7 +78,7 @@ interest. To see the available targets run:
     make
 
 
-### Quick-start: Vagrant.
+### Quick-start: Vagrant
 
 The directory `build-root/vagrant` contains a `VagrantFile` and supporting
 scripts to bootstrap a working VPP inside a Vagrant-managed Virtual Machine.
@@ -88,7 +93,7 @@ for this can be found [on the Setting up Vagrant wiki page]
 (https://wiki.fd.io/view/DEV/Setting_Up_Vagrant).
 
 
-## More information.
+## More information
 
 Several modules provide documentation, see @subpage user_doc for more
 information.
