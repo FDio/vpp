@@ -1,30 +1,96 @@
-#!/bin/bash
-PREFIX_ARGS=""
-CMD_ARGS=""
-while [[ $# -gt 0 ]]; do
-    arg=$1
-    shift
-    case ${arg} in
-	--prefix|-p)
-	    PREFIX_ARGS="chroot prefix ${1}"
-	    shift
-	;;
-	*)
-	    CMD_ARGS="$CMD_ARGS ${arg}"
-        ;;
-    esac
-done
+#!/usr/bin/python
+'''
+Copyright 2016 Intel Corporation
 
-if [ "x${CMD_ARGS}" != "x" ]; then
-    echo exec ${CMD_ARGS} | vpp_api_test $PREFIX_ARGS 2> >(grep -v "^load_one_plugin:")| sed 's/vat# //g'
-else
-    echo -n "vpp# "
-    while read CMD; do
-        if [ "x$CMD" == "xexit" ]; then
-            exit
-        elif [ "x$CMD" != "x" ]; then
-            echo exec $CMD | vpp_api_test $PREFIX_ARGS 2> >(grep -v "^load_one_plugin:")| sed 's/vat# //g'
-        fi
-        echo -n "vpp# "
-    done
-fi
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+'''
+
+from cmd import Cmd
+import os
+import subprocess
+import re
+import sys
+try:
+        import readline
+except ImportError:
+        readline = None
+
+persishist = os.path.expanduser('~/.vpphistory')
+persishist_size = 1000
+if not persishist:
+        os.mknod(persishist, stat.S_IFREG)
+
+class Vppctl(Cmd):
+
+        def historyWrite(self):
+                if readline:
+                        readline.set_history_length(persishist_size)
+                        readline.write_history_file(persishist)
+
+        def runVat(self, line):
+                input_prefix = "exec "
+                input_command = input_prefix + line
+                line_remove = '^load_one_plugin:'
+                s = '\n'
+
+                vpp_process = subprocess.Popen(['sudo', 'vpp_api_test'],
+                        stderr=subprocess.PIPE,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE)
+                stdout_value = vpp_process.communicate(input_command)[0]
+
+                buffer_stdout = stdout_value.splitlines()
+
+                buffer_stdout[:]  = [b for b in buffer_stdout
+                        if line_remove not in b]
+
+                for i, num in enumerate(buffer_stdout):
+                        buffer_stdout[i] = num.replace('vat# ','')
+
+                stdout_value = s.join(buffer_stdout)
+                print stdout_value
+
+        def do_help(self, line):
+                self.runVat("help")
+
+        def default(self, line):
+                self.runVat(line)
+
+        def do_exit(self, line):
+                self.historyWrite()
+
+                raise SystemExit
+
+        def emptyline(self):
+                pass
+
+        def preloop(self):
+                if readline and os.path.exists(persishist):
+                        readline.read_history_file(persishist)
+
+        def postcmd(self, stop, line):
+                self.historyWrite()
+
+if __name__ == '__main__':
+        command_args = sys.argv
+
+        if not len(command_args) > 1:
+                prompt = Vppctl()
+                prompt.prompt = 'vpp# '
+                prompt.cmdloop("Starting Vppctl...")
+        else:
+                del command_args[0]
+                stdout_value = " ".join(command_args)
+                VatAddress = Vppctl()
+                VatAddress.runVat(stdout_value)
+
