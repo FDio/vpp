@@ -163,6 +163,23 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_008455d2",
+        "filename": "vnet/vnet/l2/l2_output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-21T17:40:41Z",
+      "side": 1,
+      "message": "This check require an additional \"+\" operation and then check the result against 0. Is it possible to somehow combine this check with the existing output_vtr, kind of like a flags that says \"there is some output vtr operation required\". Then within that flag condition, make additional check whether it is the \"normal\" vtr or pbb vtr. This way, the typical l2 output path performance without output vtr will not be impacted.",
+      "revId": "2d46cd5538ec6ef5dbb2684bba38246a1dbc0183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_d06f5691",
         "filename": "vnet/vnet/l2/l2_vtr.c",
         "patchSetId": 5
