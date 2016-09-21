@@ -1,6 +1,7 @@
 Vector Packet Processing
 ========================
 
+
 ## Introduction
 
 The VPP platform is an extensible framework that provides out-of-the-box
@@ -100,3 +101,4 @@ information.
 
 Visit the [VPP wiki](https://wiki.fd.io/view/VPP) for details on more
 advanced building strategies and development notes.
+
