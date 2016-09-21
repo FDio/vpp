@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_a0092133",
+        "filename": "vlib/vlib/node_format.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-21T19:23:54Z",
+      "side": 1,
+      "message": "since the only place this is used is in arp.c, it can safely live there (and even be static)",
+      "range": {
+        "startLine": 169,
+        "startChar": 0,
+        "endLine": 169,
+        "endChar": 42
+      },
+      "revId": "df99d23ef92a41829d84503ff510ed1628b8cf5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_602c29ac",
+        "filename": "vnet/vnet/ethernet/arp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1280,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-21T19:23:54Z",
+      "side": 1,
+      "message": "You need to put /* *INDENT-OFF* */ before and /* *INDENT-ON* */ after the block to prevent the checkstyle script from mangling the formatting. It\u0027s a bit stupid like that.",
+      "range": {
+        "startLine": 1277,
+        "startChar": 0,
+        "endLine": 1280,
+        "endChar": 34
+      },
+      "revId": "df99d23ef92a41829d84503ff510ed1628b8cf5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_1b05e610",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 4956,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-09-21T19:23:54Z",
+      "side": 1,
+      "message": "A suggestion, so that API users can determine the current timeout value:\n- Add a field \"arp_timeout\" to set_arp_entries_timeout_reply and always return what the current timeout is.\n- When calling set_arp_entries_timeout, if arp_timeout has the value ~0 then do not set the value; only return the current value.\n- Perhaps change the name to set_get_arp_entries_timeout.\n\nThoughts? Good idea/bad idea? Otherwise consider adding an explicit call to be able to read the value.",
+      "range": {
+        "startLine": 4956,
+        "startChar": 0,
+        "endLine": 4956,
+        "endChar": 60
+      },
+      "revId": "df99d23ef92a41829d84503ff510ed1628b8cf5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
