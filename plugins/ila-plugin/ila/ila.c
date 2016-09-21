@@ -947,14 +947,23 @@ ila_entry_command_fn (vlib_main_t * vm,
   return NULL;
 }
 
+/* *INDENT-OFF* */
+/* Note VPP-417; this initializer has been modified temporarily to
+ * avoid macro expansion that the siphon CLI documentation parser
+ * doesn't understand.
+ * Removed macros: ila_type_list, ila_csum_list and ila_direction_list.
+ */
 VLIB_CLI_COMMAND (ila_entry_command, static) =
 {
-.path = "ila entry",.short_help = "ila entry [type (" ila_type_list ")]"
-    " [sir-address <address>] [locator <locator>] [vnid <hex-vnid>]"
-    " [adj-index <adj-index>] [next-hop <next-hop>]"
-    " [direction (" ila_direction_list ")]"
-    " [csum-mode (" ila_csum_list ")] [del]",.function =
-    ila_entry_command_fn,};
+    .path = "ila entry",
+    .short_help = "ila entry [type (" "iid,luid,vnid-ip4,vnid-ip6,vnid-multicast" ")]"
+    	" [sir-address <address>] [locator <locator>] [vnid <hex-vnid>]"
+    	" [adj-index <adj-index>] [next-hop <next-hop>]"
+    	" [direction (" "bidir,sir2ila,ila2sir" ")]"
+    	" [csum-mode (" "no-action,neutral-map,adjust-transport" ")] [del]",
+    .function = ila_entry_command_fn,
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 ila_interface_command_fn (vlib_main_t * vm,
