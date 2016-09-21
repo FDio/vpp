@@ -299,13 +299,15 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      vlib_buffer_advance (i_b0, ip_hdr_size);
 	      next_hdr_type = ip_proto;
 	      if (vnet_buffer (i_b0)->sw_if_index[VLIB_TX] != ~0)
 		{
 		  transport_mode = 1;
 		  ethernet_header_t *ieh0, *oeh0;
-		  ieh0 = (ethernet_header_t *) i_b0->data;
+		  ieh0 =
+		    (ethernet_header_t *) ((u8 *)
+					   vlib_buffer_get_current (i_b0) -
+					   sizeof (ethernet_header_t));
 		  oeh0 = (ethernet_header_t *) o_b0->data;
 		  clib_memcpy (oeh0, ieh0, sizeof (ethernet_header_t));
 		  next0 = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
@@ -315,6 +317,7 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 		  vnet_buffer (o_b0)->output_features.bitmap =
 		    vnet_buffer (i_b0)->output_features.bitmap;
 		}
+	      vlib_buffer_advance (i_b0, ip_hdr_size);
 	    }
 
 	  ASSERT (sa0->crypto_alg < IPSEC_CRYPTO_N_ALG);
