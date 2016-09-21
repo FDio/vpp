@@ -152,7 +152,7 @@ doxygen: $(SIPHON_DOCS)
 	    INPUT="$(addprefix $(WS_ROOT)/,$(DOXY_INPUT)) $(EXTRA_DOXY_INPUT)" \
 	    INCLUDE_PATH="$(DOXY_INCLUDE_PATH)" \
 	    HTML=YES \
-	    VERSION="`git describe --tags --dirty`" \
+	    VERSION="v`./build-root/scripts/version rpm-version`" \
 	    doxygen $(DOXY_DIR)/doxygen.cfg
 
 wipe-doxygen:
