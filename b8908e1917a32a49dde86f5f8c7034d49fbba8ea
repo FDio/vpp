@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_c0cadd4e",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2016-09-21T17:15:35Z",
+      "side": 1,
+      "message": "really necessary to have a separate function map_guest_mem_slow? it is never called out side of map_guest_mem.",
+      "revId": "b8908e1917a32a49dde86f5f8c7034d49fbba8ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
