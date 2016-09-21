@@ -148,22 +148,35 @@ vhost_user_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
   return 0;
 }
 
-static inline void *
-map_guest_mem (vhost_user_intf_t * vui, uword addr)
+static void *
+map_guest_mem_slow (vhost_user_intf_t * vui, uword addr, u32 * i)
 {
-  int i;
-  for (i = 0; i < vui->nregions; i++)
+  for (*i = 0; *i < vui->nregions; (*i)++)
     {
-      if ((vui->regions[i].guest_phys_addr <= addr) &&
-	  ((vui->regions[i].guest_phys_addr + vui->regions[i].memory_size) >
+      if ((vui->regions[*i].guest_phys_addr <= addr) &&
+	  ((vui->regions[*i].guest_phys_addr + vui->regions[*i].memory_size) >
 	   addr))
 	{
-	  return (void *) (vui->region_mmap_addr[i] + addr -
-			   vui->regions[i].guest_phys_addr);
+	  return (void *) (vui->region_mmap_addr[*i] + addr -
+			   vui->regions[*i].guest_phys_addr);
 	}
     }
   DBG_VQ ("failed to map guest mem addr %llx", addr);
-  return 0;
+  *i = 0;
+  return NULL;
+}
+
+static_always_inline void *
+map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
+{
+  if (PREDICT_TRUE ((vui->regions[*hint].guest_phys_addr <= addr) &&
+		    ((vui->regions[*hint].guest_phys_addr +
+		      vui->regions[*hint].memory_size) > addr)))
+    {
+      return (void *) (vui->region_mmap_addr[*hint] + addr -
+		       vui->regions[*hint].guest_phys_addr);
+    }
+  return map_guest_mem_slow (vui, addr, hint);
 }
 
 static void *
@@ -319,8 +332,7 @@ vhost_user_thread_placement (u32 sw_if_index, u32 worker_thread_index, u8 del)
   vnet_hw_interface_t *hw;
 
   if (worker_thread_index < vum->input_cpu_first_index ||
-      worker_thread_index >=
-      vum->input_cpu_first_index + vum->input_cpu_count)
+      worker_thread_index >= vum->input_cpu_first_index + vum->input_cpu_count)
     return -1;
 
   if (!(hw = vnet_get_sup_hw_interface (vnet_get_main (), sw_if_index)))
@@ -1118,8 +1130,7 @@ vhost_user_init (vlib_main_t * vm)
   {
 
     uword *p = hash_get_mem (tm->thread_registrations_by_name, "workers");
-    vlib_thread_registration_t *tr =
-      p ? (vlib_thread_registration_t *) p[0] : 0;
+    vlib_thread_registration_t *tr = p ? (vlib_thread_registration_t *) p[0] : 0;
     if (tr && tr->count != 0)
       {
 	vum->input_cpu_first_index = tr->first_index;
@@ -1259,6 +1270,9 @@ vhost_user_if_input (vlib_main_t * vm,
   u32 cpu_index, rx_len, drops, flush;
   vhost_cpu_t *vhc;
   f64 now = vlib_time_now (vm);
+  u32 map_guest_hint_desc = 0;
+  u32 map_guest_hint_indirect = 0;
+  u32 *map_guest_hint_p = &map_guest_hint_desc;
 
   /* do we have pending interrupts ? */
   if ((txvq->n_since_last_int) && (txvq->int_deadline < now))
@@ -1372,7 +1386,8 @@ vhost_user_if_input (vlib_main_t * vm,
 	      u32 next_desc =
 		txvq->avail->ring[(txvq->last_avail_idx + 1) & qsz_mask];
 	      void *buffer_addr =
-		map_guest_mem (vui, txvq->desc[next_desc].addr);
+		map_guest_mem (vui, txvq->desc[next_desc].addr,
+			       &map_guest_hint_desc);
 	      if (PREDICT_TRUE (buffer_addr != 0))
 		CLIB_PREFETCH (buffer_addr, 64, STORE);
 
@@ -1403,11 +1418,14 @@ vhost_user_if_input (vlib_main_t * vm,
 
 	  vring_desc_t *desc_table = txvq->desc;
 	  u32 desc_index = desc_current;
+	  map_guest_hint_p = &map_guest_hint_desc;
 
 	  if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT)
 	    {
-	      desc_table = map_guest_mem (vui, txvq->desc[desc_current].addr);
+	      desc_table = map_guest_mem (vui, txvq->desc[desc_current].addr,
+					  &map_guest_hint_desc);
 	      desc_index = 0;
+	      map_guest_hint_p = &map_guest_hint_indirect;
 	      if (PREDICT_FALSE (desc_table == 0))
 		{
 		  error = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
@@ -1418,7 +1436,8 @@ vhost_user_if_input (vlib_main_t * vm,
 	  while (1)
 	    {
 	      void *buffer_addr =
-		map_guest_mem (vui, desc_table[desc_index].addr);
+		map_guest_mem (vui, desc_table[desc_index].addr,
+			       map_guest_hint_p);
 	      if (PREDICT_FALSE (buffer_addr == 0))
 		{
 		  error = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
@@ -1631,6 +1650,9 @@ vhost_user_intfc_tx (vlib_main_t * vm,
   u8 error = VHOST_USER_TX_FUNC_ERROR_NONE;
   u32 cpu_index = os_get_cpu_number ();
   n_left = n_packets = frame->n_vectors;
+  u32 map_guest_hint_desc = 0;
+  u32 map_guest_hint_indirect = 0;
+  u32 *map_guest_hint_p = &map_guest_hint_desc;
 
   if (PREDICT_FALSE (!vui->is_up || !vui->admin_up))
     {
@@ -1670,6 +1692,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 	}
 
       desc_table = rxvq->desc;
+      map_guest_hint_p = &map_guest_hint_desc;
       desc_head = desc_index =
 	rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
       if (rxvq->desc[desc_head].flags & VIRTQ_DESC_F_INDIRECT)
@@ -1682,18 +1705,22 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 	    }
 	  if (PREDICT_FALSE
 	      (!(desc_table =
-		 map_guest_mem (vui, rxvq->desc[desc_index].addr))))
+		 map_guest_mem (vui, rxvq->desc[desc_index].addr,
+				&map_guest_hint_desc))))
 	    {
 	      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 	      goto done;
 	    }
 	  desc_index = 0;
+	  map_guest_hint_p = &map_guest_hint_indirect;
 	}
 
       desc_len = vui->virtio_net_hdr_sz;
 
       if (PREDICT_FALSE
-	  (!(buffer_addr = map_guest_mem (vui, desc_table[desc_index].addr))))
+	  (!(buffer_addr =
+	     map_guest_mem (vui, desc_table[desc_index].addr,
+			    map_guest_hint_p))))
 	{
 	  error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 	  goto done;
@@ -1741,7 +1768,8 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 		  desc_index = desc_table[desc_index].next;
 		  if (PREDICT_FALSE
 		      (!(buffer_addr =
-			 map_guest_mem (vui, desc_table[desc_index].addr))))
+			 map_guest_mem (vui, desc_table[desc_index].addr,
+					map_guest_hint_p))))
 		    {
 		      rxvq->last_used_idx -= hdr->num_buffers - 1;
 		      rxvq->last_avail_idx -= hdr->num_buffers - 1;
@@ -1775,6 +1803,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 		    }
 
 		  desc_table = rxvq->desc;
+		  map_guest_hint_p = &map_guest_hint_desc;
 		  desc_head = desc_index =
 		    rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
 		  if (PREDICT_FALSE
@@ -1791,17 +1820,20 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 		      if (PREDICT_FALSE
 			  (!(desc_table =
 			     map_guest_mem (vui,
-					    rxvq->desc[desc_index].addr))))
+					    rxvq->desc[desc_index].addr,
+					    &map_guest_hint_desc))))
 			{
 			  error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 			  goto done;
 			}
 		      desc_index = 0;
+		      map_guest_hint_p = &map_guest_hint_indirect;
 		    }
 
 		  if (PREDICT_FALSE
 		      (!(buffer_addr =
-			 map_guest_mem (vui, desc_table[desc_index].addr))))
+			 map_guest_mem (vui, desc_table[desc_index].addr,
+					map_guest_hint_p))))
 		    {
 		      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 		      goto done;
@@ -2670,7 +2702,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 				   pointer_to_uword (map_guest_mem
 						     (vui,
 						      vui->vrings[q].desc[j].
-						      addr)));
+						      addr, 0)));
 		}
 	    }
 	}
