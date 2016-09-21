@@ -148,11 +148,17 @@ vhost_user_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
   return 0;
 }
 
-
-static inline void *
-map_guest_mem (vhost_user_intf_t * vui, uword addr)
+static_always_inline void *
+map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
 {
-  int i;
+  int i = *hint;
+  if (PREDICT_TRUE ((vui->regions[i].guest_phys_addr <= addr) &&
+		    ((vui->regions[i].guest_phys_addr +
+		      vui->regions[i].memory_size) > addr)))
+    {
+      return (void *) (vui->region_mmap_addr[i] + addr -
+		       vui->regions[i].guest_phys_addr);
+    }
 #if __SSE4_2__
   __m128i rl, rh, al, ah, r;
   al = _mm_set1_epi64x (addr + 1);
@@ -187,6 +193,7 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr)
 
   if (i < vui->nregions)
     {
+      *hint = i;
       return (void *) (vui->region_mmap_addr[i] + addr -
 		       vui->regions[i].guest_phys_addr);
     }
@@ -198,12 +205,14 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr)
 	  ((vui->regions[i].guest_phys_addr + vui->regions[i].memory_size) >
 	   addr))
 	{
+	  *hint = i;
 	  return (void *) (vui->region_mmap_addr[i] + addr -
 			   vui->regions[i].guest_phys_addr);
 	}
     }
 #endif
   DBG_VQ ("failed to map guest mem addr %llx", addr);
+  *hint = 0;
   return 0;
 }
 
@@ -1017,6 +1026,9 @@ vhost_user_if_input (vlib_main_t * vm,
   u16 qsz_mask;
   u32 cpu_index, rx_len, drops, flush;
   f64 now = vlib_time_now (vm);
+  u32 map_guest_hint_desc = 0;
+  u32 map_guest_hint_indirect = 0;
+  u32 *map_guest_hint_p = &map_guest_hint_desc;
 
   vec_reset_length (vui->d_trace_buffers);
 
@@ -1136,7 +1148,8 @@ vhost_user_if_input (vlib_main_t * vm,
 	      u32 next_desc =
 		txvq->avail->ring[(txvq->last_avail_idx + 1) & qsz_mask];
 	      void *buffer_addr =
-		map_guest_mem (vui, txvq->desc[next_desc].addr);
+		map_guest_mem (vui, txvq->desc[next_desc].addr,
+			       &map_guest_hint_desc);
 	      if (PREDICT_TRUE (buffer_addr != 0))
 		CLIB_PREFETCH (buffer_addr, 64, STORE);
 
@@ -1167,11 +1180,14 @@ vhost_user_if_input (vlib_main_t * vm,
 
 	  vring_desc_t *desc_table = txvq->desc;
 	  u32 desc_index = desc_current;
+	  map_guest_hint_p = &map_guest_hint_desc;
 
 	  if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT)
 	    {
-	      desc_table = map_guest_mem (vui, txvq->desc[desc_current].addr);
+	      desc_table = map_guest_mem (vui, txvq->desc[desc_current].addr,
+					  &map_guest_hint_desc);
 	      desc_index = 0;
+	      map_guest_hint_p = &map_guest_hint_indirect;
 	      if (PREDICT_FALSE (desc_table == 0))
 		{
 		  error = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
@@ -1182,7 +1198,8 @@ vhost_user_if_input (vlib_main_t * vm,
 	  while (1)
 	    {
 	      void *buffer_addr =
-		map_guest_mem (vui, desc_table[desc_index].addr);
+		map_guest_mem (vui, desc_table[desc_index].addr,
+			       map_guest_hint_p);
 	      if (PREDICT_FALSE (buffer_addr == 0))
 		{
 		  error = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
@@ -1387,6 +1404,9 @@ vhost_user_intfc_tx (vlib_main_t * vm,
   u8 error = VHOST_USER_TX_FUNC_ERROR_NONE;
 
   n_left = n_packets = frame->n_vectors;
+  u32 map_guest_hint_desc = 0;
+  u32 map_guest_hint_indirect = 0;
+  u32 *map_guest_hint_p = &map_guest_hint_desc;
 
   if (PREDICT_FALSE (!vui->is_up))
     goto done2;
@@ -1438,6 +1458,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 	}
 
       desc_table = rxvq->desc;
+      map_guest_hint_p = &map_guest_hint_desc;
       desc_head = desc_index =
 	rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
       if (rxvq->desc[desc_head].flags & VIRTQ_DESC_F_INDIRECT)
@@ -1450,18 +1471,22 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 	    }
 	  if (PREDICT_FALSE
 	      (!(desc_table =
-		 map_guest_mem (vui, rxvq->desc[desc_index].addr))))
+		 map_guest_mem (vui, rxvq->desc[desc_index].addr,
+				&map_guest_hint_desc))))
 	    {
 	      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 	      goto done;
 	    }
 	  desc_index = 0;
+	  map_guest_hint_p = &map_guest_hint_indirect;
 	}
 
       desc_len = vui->virtio_net_hdr_sz;
 
       if (PREDICT_FALSE
-	  (!(buffer_addr = map_guest_mem (vui, desc_table[desc_index].addr))))
+	  (!(buffer_addr =
+	     map_guest_mem (vui, desc_table[desc_index].addr,
+			    map_guest_hint_p))))
 	{
 	  error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 	  goto done;
@@ -1509,7 +1534,8 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 		  desc_index = desc_table[desc_index].next;
 		  if (PREDICT_FALSE
 		      (!(buffer_addr =
-			 map_guest_mem (vui, desc_table[desc_index].addr))))
+			 map_guest_mem (vui, desc_table[desc_index].addr,
+					map_guest_hint_p))))
 		    {
 		      rxvq->last_used_idx -= hdr->num_buffers - 1;
 		      rxvq->last_avail_idx -= hdr->num_buffers - 1;
@@ -1543,6 +1569,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 		    }
 
 		  desc_table = rxvq->desc;
+		  map_guest_hint_p = &map_guest_hint_desc;
 		  desc_head = desc_index =
 		    rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
 		  if (PREDICT_FALSE
@@ -1559,17 +1586,20 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 		      if (PREDICT_FALSE
 			  (!(desc_table =
 			     map_guest_mem (vui,
-					    rxvq->desc[desc_index].addr))))
+					    rxvq->desc[desc_index].addr,
+					    &map_guest_hint_desc))))
 			{
 			  error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 			  goto done;
 			}
 		      desc_index = 0;
+		      map_guest_hint_p = &map_guest_hint_indirect;
 		    }
 
 		  if (PREDICT_FALSE
 		      (!(buffer_addr =
-			 map_guest_mem (vui, desc_table[desc_index].addr))))
+			 map_guest_mem (vui, desc_table[desc_index].addr,
+					map_guest_hint_p))))
 		    {
 		      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 		      goto done;
@@ -2363,6 +2393,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 			       "  ===== ================== ===== ====== ===== ==================\n");
 	      for (j = 0; j < vui->vrings[q].qsz; j++)
 		{
+		  u32 mem_hint = 0;
 		  vlib_cli_output (vm,
 				   "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
 				   j, vui->vrings[q].desc[j].addr,
@@ -2372,7 +2403,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 				   pointer_to_uword (map_guest_mem
 						     (vui,
 						      vui->vrings[q].desc[j].
-						      addr)));
+						      addr, &mem_hint)));
 		}
 	    }
 	}
