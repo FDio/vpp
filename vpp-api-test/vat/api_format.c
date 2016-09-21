@@ -12969,7 +12969,7 @@ api_lisp_locator_dump (vat_main_t * vam)
       return -99;
     }
 
-  if (vec_len (ls_name) > 63)
+  if (vec_len (ls_name) > 62)
     {
       errmsg ("error: locator set name too long!");
       return -99;
@@ -12989,7 +12989,8 @@ api_lisp_locator_dump (vat_main_t * vam)
   else
     {
       vec_add1 (ls_name, 0);
-      strncpy ((char *) mp->ls_name, (char *) ls_name, sizeof (mp->ls_name));
+      strncpy ((char *) mp->ls_name, (char *) ls_name,
+	       sizeof (mp->ls_name) - 1);
     }
 
   /* send it... */
