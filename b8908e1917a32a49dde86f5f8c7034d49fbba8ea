@@ -16,6 +16,29 @@
       "revId": "b8908e1917a32a49dde86f5f8c7034d49fbba8ea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_568d737a",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2016-09-22T11:36:34Z",
+      "side": 1,
+      "message": "It might be faster to cache successful hits in a peusdo page-table. To maintain a map of translations at page level between \u0027guest physical memory\u0027 and the vpp virtual address space. Any subsequent conversions would then be just four memory reads and a xor of the lsb. \n\n_May be_ more hassle that its worth.",
+      "range": {
+        "startLine": 160,
+        "startChar": 20,
+        "endLine": 160,
+        "endChar": 23
+      },
+      "revId": "b8908e1917a32a49dde86f5f8c7034d49fbba8ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
