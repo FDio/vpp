@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_7ce9717f",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-22T22:36:20Z",
+      "side": 1,
+      "message": "shouldn\u0027t this be -1 ?",
+      "range": {
+        "startLine": 264,
+        "startChar": 34,
+        "endLine": 264,
+        "endChar": 35
+      },
+      "revId": "a22359ad505eb69b162937acf2462c523c74afd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_5cec758f",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 565,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-22T22:36:20Z",
+      "side": 1,
+      "message": "-1 ?",
+      "range": {
+        "startLine": 565,
+        "startChar": 31,
+        "endLine": 565,
+        "endChar": 32
+      },
+      "revId": "a22359ad505eb69b162937acf2462c523c74afd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_3c03f943",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 591,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-22T22:36:20Z",
+      "side": 1,
+      "message": "-1?",
+      "range": {
+        "startLine": 591,
+        "startChar": 31,
+        "endLine": 591,
+        "endChar": 32
+      },
+      "revId": "a22359ad505eb69b162937acf2462c523c74afd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
