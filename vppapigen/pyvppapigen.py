@@ -150,11 +150,20 @@ def encode_print(name, id, t):
     # first, deal with all the other fields
     pack = '>' + ''.join([get_pack(f)[0] for f in t[:-1]])
 
-    # now see if the last field is a vla
-    if len(t[-1]) >= 3 and t[-1][2] == '0':
+    # named variable-length-array
+    if len(t[-1]) == 4 and t[-1][2] == '0' and t[-1][3] == t[-2][1]:
+        print(u"    vpp_api.write(pack('" + pack + "', base + "
+              + id + ", 0, context, " + ', '.join(args[3:-2] + ["len(" + args[-1] + ")"])
+              + ") + " + args[-1] + ")")
+
+    # unnamed variable-length-array
+    elif len(t[-1]) >= 3 and t[-1][2] == '0':
         print(u"    vpp_api.write(pack('" + pack + "', base + " +
               id + ", 0, context, " + ', '.join(args[3:-1]) + ") + "
               + args[-1] + ")")
+
+
+    # not a variable-length-array
     else:
         pack += get_pack(t[-1])[0]
         print(u"    vpp_api.write(pack('" + pack + "', base + " + id +
