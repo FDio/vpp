@@ -96,7 +96,7 @@ typedef struct
 #define LLDP_MIN_TX_INTERVAL (1)
 #define LLDP_MAX_TX_INTERVAL (3600)
 
-lldp_main_t lldp_main;
+extern lldp_main_t lldp_main;
 
 /* Packet counters */
 #define foreach_lldp_error(F)                     \
