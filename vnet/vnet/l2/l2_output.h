@@ -123,7 +123,8 @@ _(L2OUTPUT,     "L2 output packets")			\
 _(EFP_DROP,     "L2 EFP filter pre-rewrite drops")	\
 _(VTR_DROP,     "L2 output tag rewrite drops")		\
 _(SHG_DROP,     "L2 split horizon drops")		\
-_(DROP,         "L2 output drops")
+_(DROP,         "L2 output drops")			\
+_(MAPPING_DROP, "L2 Output interface mapping in progress")
 
 typedef enum
 {
@@ -244,6 +245,15 @@ l2_output_dispatch (vlib_main_t * vlib_main,
 					     node_index,
 					     sw_if_index,
 					     &next_nodes->output_node_index_vec);
+
+	  if (*next0 == L2OUTPUT_NEXT_DROP)
+	    {
+	      vnet_hw_interface_t *hw0;
+	      hw0 = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
+
+	      if (hw0->flags & VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED)
+		b0->error = node->errors[L2OUTPUT_ERROR_MAPPING_DROP];
+	    }
 
 	  /* Update the one-entry cache */
 	  *cached_sw_if_index = sw_if_index;
