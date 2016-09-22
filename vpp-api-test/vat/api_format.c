@@ -12577,7 +12577,7 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
 	{
 	  is_add = 1;
 	}
-      else if (unformat (input, "deid %U", unformat_lisp_eid_vat, eid))
+      else if (unformat (input, "eid %U", unformat_lisp_eid_vat, eid))
 	{
 	  eid_set = 1;
 	}
