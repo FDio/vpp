@@ -2876,12 +2876,12 @@ lisp_get_vni_from_buffer_ip (lisp_cp_main_t * lcm, vlib_buffer_t * b,
   uword *vnip;
   u32 vni = ~0, table_id = ~0;
 
-  table_id =
-    fib_table_get_table_id_for_sw_if_index (vnet_buffer (b)->sw_if_index
-					    [VLIB_RX],
-					    (version ==
-					     IP4 ? FIB_PROTOCOL_IP4 :
-					     FIB_PROTOCOL_IP6));
+  table_id = fib_table_get_table_id_for_sw_if_index ((version ==
+						      IP4 ? FIB_PROTOCOL_IP4 :
+						      FIB_PROTOCOL_IP6),
+						     vnet_buffer
+						     (b)->sw_if_index
+						     [VLIB_RX]);
 
   vnip = hash_get (lcm->vni_by_table_id, table_id);
   if (vnip)
