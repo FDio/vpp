@@ -86,6 +86,9 @@ l2input_bd_config_from_index (l2input_main_t * l2im, u32 bd_index)
   return bd_is_valid (bd_config) ? bd_config : NULL;
 }
 
+/* L2 input indication packet is from BVI, using -2 */
+#define L2INPUT_BVI ((u32) (~0-1))
+
 /* L2 input features */
 
 /* Mappings from feature ID to graph node name */

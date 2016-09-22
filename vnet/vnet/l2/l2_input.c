@@ -247,16 +247,14 @@ classify_and_dispatch (vlib_main_t * vm,
     }
   else
     {
-
       /*
-       * Check for from-BVI processing, TX is non-~0 if from BVI loopback
-       * Set SHG for BVI packets to 0 so it is not dropped for VXLAN tunnels
+       * Check for from-BVI processing - set SHG of unicast packets from BVI
+       * to 0 so it is not dropped for VXLAN tunnels or other ports with the
+       * same SHG as that of the BVI.
        */
-      if (PREDICT_FALSE (vnet_buffer (b0)->sw_if_index[VLIB_TX] != ~0))
-	{
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
-	  vnet_buffer (b0)->l2.shg = 0;
-	}
+      if (PREDICT_FALSE (vnet_buffer (b0)->sw_if_index[VLIB_TX] == L2INPUT_BVI
+			 && !mcast_dmac))
+	vnet_buffer (b0)->l2.shg = 0;
 
       /* Do bridge-domain processing */
       bd_index0 = config->bd_index;

@@ -347,7 +347,10 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 	  // and update l2_len in packet as required for l2 forwarding path
 	  vnet_buffer (b)->sw_if_index[VLIB_RX] = sw_if_index;
 	  if (bvi_flag)
-	    vnet_update_l2_len (b);
+	    {
+	      vnet_update_l2_len (b);
+	      vnet_buffer (b)->sw_if_index[VLIB_TX] = L2INPUT_BVI;
+	    }
 	  else
 	    vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
