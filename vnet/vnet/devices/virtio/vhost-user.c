@@ -301,6 +301,18 @@ vhost_user_if_disconnect (vhost_user_intf_t * vui)
   vui->is_up = 0;
   for (q = 0; q < vui->num_vrings; q++)
     {
+      if (vui->vrings[q].callfd > -1)
+	{
+	  unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+					       vui->vrings[q].callfd_idx);
+	  unix_file_del (&unix_main, uf);
+	}
+
+      if (vui->vrings[q].kickfd > -1)
+	close (vui->vrings[q].kickfd);
+
+      vui->vrings[q].callfd = -1;
+      vui->vrings[q].kickfd = -1;
       vui->vrings[q].desc = NULL;
       vui->vrings[q].avail = NULL;
       vui->vrings[q].used = NULL;
@@ -593,7 +605,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	    goto close_socket;
 
 	  /* if there is old fd, delete it */
-	  if (vui->vrings[q].callfd)
+	  if (vui->vrings[q].callfd > -1)
 	    {
 	      unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
 						   vui->vrings[q].callfd_idx);
@@ -618,6 +630,9 @@ vhost_user_socket_read (unix_file_t * uf)
 	{
 	  if (number_of_fds != 1)
 	    goto close_socket;
+
+	  if (vui->vrings[q].kickfd > -1)
+	    close (vui->vrings[q].kickfd);
 
 	  vui->vrings[q].kickfd = fds[0];
 	}
@@ -1283,7 +1298,7 @@ vhost_user_if_input (vlib_main_t * vm,
     }
 
   /* interrupt (call) handling */
-  if ((txvq->callfd > 0) && !(txvq->avail->flags & 1))
+  if ((txvq->callfd > -1) && !(txvq->avail->flags & 1))
     {
       txvq->n_since_last_int += n_rx_packets;
 
@@ -1615,7 +1630,7 @@ done:
   vhost_user_log_dirty_ring (vui, rxvq, idx);
 
   /* interrupt (call) handling */
-  if ((rxvq->callfd > 0) && !(rxvq->avail->flags & 1))
+  if ((rxvq->callfd > -1) && !(rxvq->avail->flags & 1))
     {
       rxvq->n_since_last_int += n_packets - n_left;
 
@@ -1939,6 +1954,8 @@ vhost_user_vui_init (vnet_main_t * vnm,
   for (q = 0; q < 2; q++)
     {
       vui->vrings[q].enabled = 0;
+      vui->vrings[q].callfd = -1;
+      vui->vrings[q].kickfd = -1;
     }
 
   vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
