@@ -660,6 +660,15 @@ dpdk_vhost_user_get_vring_base (u32 hw_if_index, u8 idx, u32 * num)
  */
   DBG_SOCK ("Stopping vring Q %u of device %d", idx, hw_if_index);
   dpdk_vu_intf_t *vui = xd->vu_intf;
+
+  /* if there is old fd, delete it */
+  if (vui->vrings[idx].callfd > 0)
+    {
+      unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+					   vui->vrings[idx].callfd_idx);
+      unix_file_del (&unix_main, uf);
+    }
+
   vui->vrings[idx].enabled = 0;	/* Reset local copy */
   vui->vrings[idx].callfd = -1;	/* Reset FD */
   vq->enabled = 0;
@@ -997,6 +1006,19 @@ dpdk_vhost_user_if_disconnect (dpdk_device_t * xd)
   for (q = 0; q < vui->num_vrings; q++)
     {
       vq = xd->vu_vhost_dev.virtqueue[q];
+      if (vui->vrings[q].callfd > 0)
+	{
+	  unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+					       vui->vrings[q].callfd_idx);
+	  unix_file_del (&unix_main, uf);
+	}
+
+      if (vui->vrings[q].kickfd > 0)
+	{
+	  close (vui->vrings[q].kickfd);
+	  vui->vrings[q].kickfd = -1;
+	}
+
       vui->vrings[q].enabled = 0;	/* Reset local copy */
       vui->vrings[q].callfd = -1;	/* Reset FD */
       vq->enabled = 0;
@@ -1199,6 +1221,9 @@ dpdk_vhost_user_socket_read (unix_file_t * uf)
 	{
 	  if (number_of_fds != 1)
 	    goto close_socket;
+
+	  if (vui->vrings[q].kickfd > 0)
+	    close (vui->vrings[q].kickfd);
 
 	  vui->vrings[q].kickfd = fds[0];
 	}

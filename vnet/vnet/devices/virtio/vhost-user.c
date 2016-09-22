@@ -261,6 +261,18 @@ vhost_user_if_disconnect (vhost_user_intf_t * vui)
   vui->is_up = 0;
   for (q = 0; q < vui->num_vrings; q++)
     {
+      if (vui->vrings[q].callfd > 0)
+	{
+	  unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+					       vui->vrings[q].callfd_idx);
+	  unix_file_del (&unix_main, uf);
+	}
+
+      if (vui->vrings[q].kickfd > 0)
+	close (vui->vrings[q].kickfd);
+
+      vui->vrings[q].callfd = -1;
+      vui->vrings[q].kickfd = -1;
       vui->vrings[q].desc = NULL;
       vui->vrings[q].avail = NULL;
       vui->vrings[q].used = NULL;
@@ -550,7 +562,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	    goto close_socket;
 
 	  /* if there is old fd, delete it */
-	  if (vui->vrings[q].callfd)
+	  if (vui->vrings[q].callfd > 0)
 	    {
 	      unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
 						   vui->vrings[q].callfd_idx);
@@ -575,6 +587,9 @@ vhost_user_socket_read (unix_file_t * uf)
 	{
 	  if (number_of_fds != 1)
 	    goto close_socket;
+
+	  if (vui->vrings[q].kickfd > 0)
+	    close (vui->vrings[q].kickfd);
 
 	  vui->vrings[q].kickfd = fds[0];
 	}
