@@ -2029,9 +2029,6 @@ vnet_classify_init (vlib_main_t * vm)
     (unformat_l2_input_next_node);
 
   vnet_classify_register_unformat_l2_next_index_fn
-    (unformat_l2_input_next_node);
-
-  vnet_classify_register_unformat_l2_next_index_fn
     (unformat_l2_output_next_node);
 
   vnet_classify_register_unformat_acl_next_index_fn
