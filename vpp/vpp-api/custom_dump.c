@@ -2698,6 +2698,17 @@ static void *vl_api_lisp_eid_table_dump_t_print
   FINISH;
 }
 
+static void *vl_api_lisp_adjacencies_get_t_print
+  (vl_api_lisp_adjacencies_get_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: lisp_adjacencies_get ");
+  s = format (s, "vni %d", clib_net_to_host_u32 (mp->vni));
+
+  FINISH;
+}
+
 static void *vl_api_lisp_eid_table_map_dump_t_print
   (vl_api_lisp_eid_table_map_dump_t * mp, void *handle)
 {
@@ -2989,6 +3000,7 @@ _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
+_(LISP_ADJACENCIES_GET, lisp_adjacencies_get)                           \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
 _(DELETE_SUBIF, delete_subif)                                           \

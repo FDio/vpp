@@ -39,8 +39,15 @@ typedef struct
 {
   gid_address_t leid;
   gid_address_t reid;
+  u8 is_src_dst;
   locator_pair_t *locator_pairs;
 } fwd_entry_t;
+
+typedef struct
+{
+  gid_address_t leid;
+  gid_address_t reid;
+} lisp_adjacency_t;
 
 typedef enum
 {
@@ -251,6 +258,7 @@ int vnet_lisp_clear_all_remote_adjacencies (void);
 int vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_l2, u8 is_add);
 int vnet_lisp_set_map_request_mode (u8 mode);
 u8 vnet_lisp_get_map_request_mode (void);
+lisp_adjacency_t *vnet_lisp_adjacencies_get_by_vni (u32 vni);
 
 static inline void
 lisp_pending_map_request_lock (lisp_cp_main_t * lcm)

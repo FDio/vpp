@@ -2603,6 +2603,78 @@ static void
 }
 
 static void
+  vl_api_lisp_adjacencies_get_reply_t_handler
+  (vl_api_lisp_adjacencies_get_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  u32 i, n;
+  int retval = clib_net_to_host_u32 (mp->retval);
+  vl_api_lisp_adjacency_t *a;
+
+  if (retval)
+    goto end;
+
+  n = clib_net_to_host_u32 (mp->count);
+
+  for (i = 0; i < n; i++)
+    {
+      a = &mp->adjacencies[i];
+      fformat (vam->ofp, "%U %40U\n",
+	       format_lisp_flat_eid, a->eid_type, a->leid, a->leid_prefix_len,
+	       format_lisp_flat_eid, a->eid_type, a->reid,
+	       a->reid_prefix_len);
+    }
+
+end:
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_lisp_adjacencies_get_reply_t_handler_json
+  (vl_api_lisp_adjacencies_get_reply_t * mp)
+{
+  u8 *s = 0;
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *e = 0, root;
+  u32 i, n;
+  int retval = clib_net_to_host_u32 (mp->retval);
+  vl_api_lisp_adjacency_t *a;
+
+  if (retval)
+    goto end;
+
+  n = clib_net_to_host_u32 (mp->count);
+  vat_json_init_array (&root);
+
+  for (i = 0; i < n; i++)
+    {
+      e = vat_json_array_add (&root);
+      a = &mp->adjacencies[i];
+
+      vat_json_init_object (e);
+      s = format (0, "%U", format_lisp_flat_eid, a->eid_type, a->leid,
+		  a->leid_prefix_len);
+      vec_add1 (s, 0);
+      vat_json_object_add_string_copy (e, "leid", s);
+      vec_free (s);
+
+      s = format (0, "%U", format_lisp_flat_eid, a->eid_type, a->reid,
+		  a->reid_prefix_len);
+      vec_add1 (s, 0);
+      vat_json_object_add_string_copy (e, "reid", s);
+      vec_free (s);
+    }
+
+  vat_json_print (vam->ofp, &root);
+  vat_json_free (&root);
+
+end:
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
 vl_api_lisp_map_resolver_details_t_handler (vl_api_lisp_map_resolver_details_t
 					    * mp)
 {
@@ -3421,6 +3493,8 @@ static void vl_api_flow_classify_details_t_handler_json
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_print vl_noop_handler
+#define vl_api_lisp_adjacencies_get_reply_t_endian vl_noop_handler
+#define vl_api_lisp_adjacencies_get_reply_t_print vl_noop_handler
 
 /*
  * Generate boilerplate reply handlers, which
@@ -3725,6 +3799,7 @@ _(LISP_EID_TABLE_MAP_DETAILS, lisp_eid_table_map_details)               \
 _(LISP_EID_TABLE_VNI_DETAILS, lisp_eid_table_vni_details)               \
 _(LISP_GPE_TUNNEL_DETAILS, lisp_gpe_tunnel_details)                     \
 _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
+_(LISP_ADJACENCIES_GET_REPLY, lisp_adjacencies_get_reply)               \
 _(SHOW_LISP_STATUS_REPLY, show_lisp_status_reply)                       \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY,                             \
   lisp_add_del_map_request_itr_rlocs_reply)                             \
@@ -13886,6 +13961,52 @@ api_lisp_gpe_tunnel_dump (vat_main_t * vam)
 }
 
 static int
+api_lisp_adjacencies_get (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_lisp_adjacencies_get_t *mp;
+  f64 timeout = ~0;
+  u8 vni_set = 0;
+  u32 vni = ~0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "vni %d", &vni))
+	{
+	  vni_set = 1;
+	}
+      else
+	{
+	  errmsg ("parse error '%U'\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (!vni_set)
+    {
+      errmsg ("vni not set!\n");
+      return -99;
+    }
+
+  if (!vam->json_output)
+    {
+      fformat (vam->ofp, "%s %40s\n", "leid", "reid");
+    }
+
+  M (LISP_ADJACENCIES_GET, lisp_adjacencies_get);
+  mp->vni = clib_host_to_net_u32 (vni);
+
+  /* send it... */
+  S;
+
+  /* Wait for a reply... */
+  W;
+
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
 api_lisp_map_resolver_dump (vat_main_t * vam)
 {
   vl_api_lisp_map_resolver_dump_t *mp;
@@ -16237,6 +16358,7 @@ _(lisp_eid_table_vni_dump, "")                                          \
 _(lisp_eid_table_map_dump, "l2|l3")                                     \
 _(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \
+_(lisp_adjacencies_get, "vni <vni>")                                    \
 _(show_lisp_status, "")                                                 \
 _(lisp_get_map_request_itr_rlocs, "")                                   \
 _(show_lisp_pitr, "")                                                   \

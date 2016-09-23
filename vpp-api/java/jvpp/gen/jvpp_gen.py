@@ -63,7 +63,8 @@ cfg = importlib.import_module(inputfile, package=None)
 
 # FIXME: functions unsupported due to problems with vpe.api
 def is_supported(f_name):
-    return f_name not in {'vnet_ip4_fib_counters', 'vnet_ip6_fib_counters'}
+    return f_name not in {'vnet_ip4_fib_counters', 'vnet_ip6_fib_counters',
+            'lisp_adjacencies_get_reply', 'lisp_adjacencies_get'}
 
 
 def is_request_field(field_name):

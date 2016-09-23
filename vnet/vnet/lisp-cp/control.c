@@ -368,7 +368,7 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   u32 sw_if_index;
   uword *feip = 0, *dpid;
   fwd_entry_t *fe;
-  u8 type;
+  u8 type, is_src_dst = 0;
 
   memset (a, 0, sizeof (*a));
 
@@ -392,6 +392,7 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
 			      &gid_address_sd_dst (&dst_map->eid));
       gid_address_sd_to_flat (&a->lcl_eid, &dst_map->eid,
 			      &gid_address_sd_src (&dst_map->eid));
+      is_src_dst = 1;
     }
   else
     gid_address_copy (&a->rmt_eid, &dst_map->eid);
@@ -440,9 +441,93 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   pool_get (lcm->fwd_entry_pool, fe);
   fe->locator_pairs = a->locator_pairs;
   gid_address_copy (&fe->reid, &a->rmt_eid);
+  gid_address_copy (&fe->leid, &src_map->eid);
+  fe->is_src_dst = is_src_dst;
   hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
 	    fe - lcm->fwd_entry_pool);
 }
+
+/**
+ * Returns vector of adjacencies.
+ *
+ * The caller must free the vector returned by this function.
+ *
+ * @param vni virtual network identifier
+ * @return vector of adjacencies
+ */
+lisp_adjacency_t *
+vnet_lisp_adjacencies_get_by_vni (u32 vni)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  fwd_entry_t *fwd;
+  lisp_adjacency_t *adjs = 0, adj;
+
+  /* *INDENT-OFF* */
+  pool_foreach(fwd, lcm->fwd_entry_pool,
+  ({
+    if (gid_address_vni (&fwd->reid) != vni)
+      continue;
+
+    gid_address_copy (&adj.reid, &fwd->reid);
+    gid_address_copy (&adj.leid, &fwd->leid);
+    vec_add1 (adjs, adj);
+  }));
+  /* *INDENT-ON* */
+
+  return adjs;
+}
+
+static clib_error_t *
+lisp_show_adjacencies_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  lisp_adjacency_t *adjs, *adj;
+  vlib_cli_output (vm, "%s %40s\n", "leid", "reid");
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 vni = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "vni %d", &vni))
+	;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'",
+			   format_unformat_error, line_input);
+	  return 0;
+	}
+    }
+
+  if (~0 == vni)
+    {
+      vlib_cli_output (vm, "error: no vni specified!");
+      return 0;
+    }
+
+  adjs = vnet_lisp_adjacencies_get_by_vni (vni);
+
+  vec_foreach (adj, adjs)
+  {
+    vlib_cli_output (vm, "%U %40U\n", format_gid_address, &adj->leid,
+		     format_gid_address, &adj->reid);
+  }
+  vec_free (adjs);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_show_adjacencies_command) = {
+    .path = "show lisp adjacencies",
+    .short_help = "show lisp adjacencies",
+    .function = lisp_show_adjacencies_command_fn,
+};
+/* *INDENT-ON* */
 
 /**
  * Add/remove mapping to/from map-cache. Overwriting not allowed.
@@ -977,7 +1062,8 @@ lisp_add_del_adjacency (lisp_cp_main_t * lcm, gid_address_t * local_eid,
       return VNET_API_ERROR_LISP_DISABLED;
     }
 
-  remote_mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, remote_eid);
+  remote_mi = gid_dictionary_sd_lookup (&lcm->mapping_index_by_gid,
+					remote_eid, local_eid);
   if (GID_LOOKUP_MISS == remote_mi)
     {
       clib_warning ("Remote eid %U not found. Cannot add adjacency!",
