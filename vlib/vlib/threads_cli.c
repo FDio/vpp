@@ -19,20 +19,23 @@
 #include <vlib/threads.h>
 #include <linux/sched.h>
 
-u8 *
-format_sched_policy (u8 * s, va_list * args)
+static u8 *
+format_sched_policy_and_priority (u8 * s, va_list * args)
 {
-  u32 i = va_arg (*args, u32);
+  long i = va_arg (*args, long);
+  struct sched_param sched_param;
   u8 *t = 0;
 
-  switch (i)
+  switch (sched_getscheduler (i))
     {
 #define _(v,f,str) case SCHED_POLICY_##f: t = (u8 *) str; break;
       foreach_sched_policy
 #undef _
     }
-  s = format (s, "%-6s ", t);
-  return s;
+  if (sched_getparam (i, &sched_param) == 0)
+    return format (s, "%s (%d)", t, sched_param.sched_priority);
+  else
+    return format (s, "%s (n/a)", t);
 }
 
 static clib_error_t *
@@ -42,8 +45,8 @@ show_threads_fn (vlib_main_t * vm,
   vlib_worker_thread_t *w;
   int i;
 
-  vlib_cli_output (vm, "%-7s%-20s%-12s%-8s%-7s%-9s%-7s%-7s%-7s%-10s",
-		   "ID", "Name", "Type", "LWP", "Policy", "Priority",
+  vlib_cli_output (vm, "%-7s%-20s%-12s%-8s%-25s%-7s%-7s%-7s%-10s",
+		   "ID", "Name", "Type", "LWP", "Sched Policy (Priority)",
 		   "lcore", "Core", "Socket", "State");
 
 #if !defined(__powerpc64__)
@@ -57,13 +60,7 @@ show_threads_fn (vlib_main_t * vm,
 		     w->name ? w->name : (u8 *) "",
 		     w->registration ? w->registration->name : "", w->lwp);
 
-      line =
-	format (line, "%U", format_sched_policy, sched_getscheduler (w->lwp));
-
-      struct sched_param sched_param;
-      line = format (line, "%8d ",
-		     (!sched_getparam (w->lwp, &sched_param)) ?
-		     sched_param.sched_priority : -1);
+      line = format (line, "%-25U", format_sched_policy_and_priority, w->lwp);
 
 #if DPDK==1
       int lcore = w->dpdk_lcore_id;
