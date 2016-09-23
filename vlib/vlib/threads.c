@@ -216,6 +216,17 @@ vlib_thread_init (vlib_main_t * vm)
   w->lwp = syscall (SYS_gettid);
   tm->n_vlib_mains = 1;
 
+  if (tm->sched_policy != ~0)
+  {
+    struct sched_param sched_param;
+    if (!sched_getparam(w->lwp, &sched_param))
+    {
+      if (tm->sched_priority != ~0)
+        sched_param.sched_priority = tm->sched_priority;
+      sched_setscheduler(w->lwp, tm->sched_policy, &sched_param);
+    }
+  }
+
   /* assign threads to cores and set n_vlib_mains */
   tr = tm->next;
 
@@ -998,6 +1009,9 @@ vlib_worker_thread_node_runtime_update (void)
 static clib_error_t *
 cpu_config (vlib_main_t * vm, unformat_input_t * input)
 {
+  /* strings for scheduling policy values */
+  const char *sched_policies[] = {"other", "batch", "idle", "fifo", "rr"};
+
   vlib_thread_registration_t *tr;
   uword *p;
   vlib_thread_main_t *tm = &vlib_thread_main;
@@ -1005,9 +1019,13 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   u64 coremask;
   uword *bitmap;
   u32 count;
+  u8 *policy_name;
 
   tm->thread_registrations_by_name = hash_create_string (0, sizeof (uword));
+
   tm->n_thread_stacks = 1;	/* account for main thread */
+  tm->sched_policy = ~0;
+  tm->sched_priority = ~0;
 
   tr = tm->next;
 
@@ -1061,22 +1079,52 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	  tr->coremask = bitmap;
 	  tr->count = clib_bitmap_count_set_bits (tr->coremask);
 	}
+      else if (unformat (input, "scheduler-policy %s", &policy_name))
+  {
+        if (memcmp(policy_name, sched_policies[0], sizeof(*sched_policies[0]))==0)
+          tm->sched_policy = SCHED_OTHER;
+        else if (memcmp(policy_name, sched_policies[1], sizeof(*sched_policies[1]))==0)
+          tm->sched_policy = SCHED_BATCH;
+        else if (memcmp(policy_name, sched_policies[2], sizeof(*sched_policies[2]))==0)
+          tm->sched_policy = SCHED_IDLE;
+        else if (memcmp(policy_name, sched_policies[3], sizeof(*sched_policies[3]))==0)
+          tm->sched_policy = SCHED_FIFO;
+        else if (memcmp(policy_name, sched_policies[4], sizeof(*sched_policies[4]))==0)
+          tm->sched_policy = SCHED_RR;
+        vec_free(policy_name);
+  }
+      else if (unformat (input, "scheduler-prio %u", &tm->sched_priority))
+  ;
       else if (unformat (input, "%s %u", &name, &count))
-	{
-	  p = hash_get_mem (tm->thread_registrations_by_name, name);
-	  if (p == 0)
-	    return clib_error_return (0, "no such thread type '%s'", name);
+  {
+    p = hash_get_mem (tm->thread_registrations_by_name, name);
+    if (p == 0)
+      return clib_error_return (0, "no such thread type 3 '%s'", name);
 
-	  tr = (vlib_thread_registration_t *) p[0];
-	  if (tr->fixed_count)
-	    return clib_error_return
-	      (0, "number of %s threads not configurable", tr->name);
-	  tr->count = count;
-	}
+    tr = (vlib_thread_registration_t *) p[0];
+    if (tr->fixed_count)
+      return clib_error_return
+        (0, "number of %s threads not configurable", tr->name);
+    tr->count = count;
+  }
       else
 	break;
     }
 
+  if (tm->sched_policy != ~0)
+  {
+    if (tm->sched_priority != ~0 && (tm->sched_policy == SCHED_FIFO || tm->sched_policy == SCHED_RR))
+    {
+      u32 prio_max = sched_get_priority_max(tm->sched_policy);
+      u32 prio_min = sched_get_priority_min(tm->sched_policy);
+      if (tm->sched_priority>prio_max)
+        tm->sched_priority = prio_max;
+      if (tm->sched_priority<prio_min)
+        tm->sched_priority = prio_min;
+    }
+    else
+      tm->sched_priority = 0;
+  }
   tr = tm->next;
 
   if (!tm->thread_prefix)

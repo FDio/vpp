@@ -17,6 +17,7 @@
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
+#include <linux/sched.h>
 
 static clib_error_t *
 show_threads_fn (vlib_main_t * vm,
@@ -24,9 +25,11 @@ show_threads_fn (vlib_main_t * vm,
 {
   vlib_worker_thread_t *w;
   int i;
+  /* strings for scheduling policy values */
+  const char *sched_policies[] = {"other", "batch", "idle", "fifo", "rr"};
 
-  vlib_cli_output (vm, "%-7s%-20s%-12s%-8s%-7s%-7s%-7s%-10s",
-		   "ID", "Name", "Type", "LWP",
+  vlib_cli_output (vm, "%-7s%-20s%-12s%-8s%-7s%-9s%-7s%-7s%-7s%-10s",
+		   "ID", "Name", "Type", "LWP", "Policy", "Priority",
 		   "lcore", "Core", "Socket", "State");
 
 #if !defined(__powerpc64__)
@@ -39,6 +42,29 @@ show_threads_fn (vlib_main_t * vm,
 		     i,
 		     w->name ? w->name : (u8 *) "",
 		     w->registration ? w->registration->name : "", w->lwp);
+
+      struct sched_param sched_param;
+      switch (sched_getscheduler(w->lwp))
+      {
+      case SCHED_OTHER:
+        line = format (line, "%-6s ", sched_policies[0]);
+        break;
+      case SCHED_BATCH:
+        line = format (line, "%-6s ", sched_policies[1]);
+        break;
+      case SCHED_IDLE:
+        line = format (line, "%-6s ", sched_policies[2]);
+        break;
+      case SCHED_FIFO:
+        line = format (line, "%-6s ", sched_policies[3]);
+        break;
+      case SCHED_RR:
+        line = format (line, "%-6s ", sched_policies[4]);
+        break;
+      default:
+        line = format (line, "       ");
+      }
+      line = format (line, "%8d ", (!sched_getparam(w->lwp, &sched_param))?sched_param.sched_priority:-1);
 
 #if DPDK==1
       int lcore = w->dpdk_lcore_id;

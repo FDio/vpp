@@ -314,6 +314,12 @@ typedef struct
   /* worker thread initialization barrier */
   volatile u32 worker_thread_release;
 
+  /* scheduling policy */
+  u32 sched_policy;
+
+  /* scheduling policy priority */
+  u32 sched_priority;
+
 } vlib_thread_main_t;
 
 vlib_thread_main_t vlib_thread_main;
