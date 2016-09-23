@@ -2,6 +2,161 @@
   "comments": [
     {
       "key": {
+        "uuid": "3a1d315d_c5d1c858",
+        "filename": "build-data/platforms/vpp.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T18:26:50Z",
+      "side": 1,
+      "message": "dpdk-crypto",
+      "range": {
+        "startLine": 36,
+        "startChar": 45,
+        "endLine": 36,
+        "endChar": 55
+      },
+      "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_0a45966f",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T18:26:50Z",
+      "side": 1,
+      "message": "Verify that it improves perf, maybe address tihs in sepa",
+      "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_a5d48c47",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T18:26:50Z",
+      "side": 1,
+      "message": "as discussed, this needs to be verified if it is really needed",
+      "range": {
+        "startLine": 107,
+        "startChar": 0,
+        "endLine": 107,
+        "endChar": 44
+      },
+      "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_85cbd0a4",
+        "filename": "vlib/vlib/dpdk_buffer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 992,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T18:26:50Z",
+      "side": 1,
+      "message": "This will be an issue if linked against packaged dpdk.",
+      "range": {
+        "startLine": 992,
+        "startChar": 5,
+        "endLine": 992,
+        "endChar": 12
+      },
+      "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_65ce74b6",
+        "filename": "vnet/Makefile.am",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T18:26:50Z",
+      "side": 1,
+      "message": "CRYPTO might be better word",
+      "range": {
+        "startLine": 16,
+        "startChar": 31,
+        "endLine": 16,
+        "endChar": 36
+      },
+      "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_45c5b88c",
+        "filename": "vnet/Makefile.am",
+        "patchSetId": 3
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T18:26:50Z",
+      "side": 1,
+      "message": "CRYPTO or CRYPTODEV",
+      "range": {
+        "startLine": 334,
+        "startChar": 13,
+        "endLine": 334,
+        "endChar": 18
+      },
+      "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_25c07c7b",
+        "filename": "vnet/configure.ac",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T18:26:50Z",
+      "side": 1,
+      "message": "cryptodev or crypto",
+      "range": {
+        "startLine": 16,
+        "startChar": 40,
+        "endLine": 16,
+        "endChar": 45
+      },
+      "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_5fefd187",
         "filename": "vnet/vnet/ipsec/dpdk_esp_decrypt.c",
         "patchSetId": 3
@@ -48,6 +203,29 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_6a552a1c",
+        "filename": "vnet/vnet/ipsec/dpdk_esp_encrypt.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T18:26:50Z",
+      "side": 1,
+      "message": "such stuff should go to vnet/vnet/ipsec.h",
+      "range": {
+        "startLine": 86,
+        "startChar": 0,
+        "endLine": 86,
+        "endChar": 15
+      },
+      "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_7ff96d4c",
         "filename": "vnet/vnet/ipsec/dpdk_esp_encrypt.c",
         "patchSetId": 3
@@ -64,6 +242,52 @@
         "startChar": 0,
         "endLine": 106,
         "endChar": 1
+      },
+      "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_8a588657",
+        "filename": "vnet/vnet/ipsec/ipsec.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 455,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T18:26:50Z",
+      "side": 1,
+      "message": "DPDK_CRYPTO or DPDK_CRYPTODEV?",
+      "range": {
+        "startLine": 455,
+        "startChar": 15,
+        "endLine": 455,
+        "endChar": 25
+      },
+      "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_aa5b4253",
+        "filename": "vnet/vnet/ipsec/ipsec.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T18:26:50Z",
+      "side": 1,
+      "message": "DPDK_CRYPTO",
+      "range": {
+        "startLine": 558,
+        "startChar": 4,
+        "endLine": 558,
+        "endChar": 8
       },
       "revId": "d56d31cb18d8c7516d572163fb1ba40135680c7c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
