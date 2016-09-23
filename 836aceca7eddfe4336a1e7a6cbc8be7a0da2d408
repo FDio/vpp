@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_82d2a6d0",
+        "filename": "vlib/vlib/threads.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1111,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-23T13:24:02Z",
+      "side": 1,
+      "message": "Can you create foreach_sced_policy macro similar to format_ipsec_crypto_alg(...)?",
+      "range": {
+        "startLine": 1082,
+        "startChar": 0,
+        "endLine": 1111,
+        "endChar": 2
+      },
+      "revId": "836aceca7eddfe4336a1e7a6cbc8be7a0da2d408",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
