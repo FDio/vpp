@@ -170,16 +170,31 @@ do {                                                            \
 #define REPLY_MACRO3(t, n, body)				\
 do {                                                            \
     unix_shared_memory_queue_t * q;                             \
+    u8 is_error = 0;                                            \
     rv = vl_msg_api_pd_handler (mp, rv);                        \
     q = vl_api_client_index_to_input_queue (mp->client_index);  \
     if (!q)                                                     \
         return;                                                 \
                                                                 \
     rmp = vl_msg_api_alloc (sizeof (*rmp) + n);                 \
+    if (!rmp)                                                   \
+      {                                                         \
+        /* if there isn't enough memory, try to allocate */     \
+        /* some at least for returning an error */              \
+        rmp = vl_msg_api_alloc (sizeof (*rmp));                 \
+        if (!rmp)                                               \
+          return;                                               \
+                                                                \
+        memset (rmp, 0, sizeof (*rmp));                         \
+        rv = VNET_API_ERROR_TABLE_TOO_BIG;                      \
+        is_error = 1;                                           \
+      }                                                         \
+                                                                \
     rmp->_vl_msg_id = ntohs((t));                               \
     rmp->context = mp->context;                                 \
     rmp->retval = ntohl(rv);                                    \
-    do {body;} while (0);                                       \
+    if (!is_error)                                              \
+      do {body;} while (0);                                     \
     vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
 } while(0);
 
@@ -380,6 +395,7 @@ _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
 _(LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump)                     \
+_(LISP_ADJACENCIES_GET, lisp_adjacencies_get)                           \
 _(SHOW_LISP_STATUS, show_lisp_status)                                   \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
   lisp_add_del_map_request_itr_rlocs)                                   \
@@ -6011,6 +6027,72 @@ send_eid_table_vni (u32 vni, unix_shared_memory_queue_t * q, u32 context)
   rmp->context = context;
   rmp->vni = clib_host_to_net_u32 (vni);
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+lisp_adjacency_copy (vl_api_lisp_adjacency_t * dst, lisp_adjacency_t * adjs)
+{
+  lisp_adjacency_t *adj;
+  vl_api_lisp_adjacency_t a;
+  u32 i, n = vec_len (adjs);
+
+  for (i = 0; i < n; i++)
+    {
+      adj = vec_elt_at_index (adjs, i);
+      memset (&a, 0, sizeof (a));
+
+      switch (gid_address_type (&adj->reid))
+	{
+	case GID_ADDR_IP_PREFIX:
+	  a.reid_prefix_len = gid_address_ippref_len (&adj->reid);
+	  a.leid_prefix_len = gid_address_ippref_len (&adj->leid);
+	  if (gid_address_ip_version (&adj->reid) == IP4)
+	    {
+	      a.eid_type = 0;	/* ipv4 type */
+	      clib_memcpy (a.reid, &gid_address_ip (&adj->reid), 4);
+	      clib_memcpy (a.leid, &gid_address_ip (&adj->leid), 4);
+	    }
+	  else
+	    {
+	      a.eid_type = 1;	/* ipv6 type */
+	      clib_memcpy (a.reid, &gid_address_ip (&adj->reid), 16);
+	      clib_memcpy (a.leid, &gid_address_ip (&adj->leid), 16);
+	    }
+	  break;
+	case GID_ADDR_MAC:
+	  a.eid_type = 2;	/* l2 mac type */
+	  mac_copy (a.reid, gid_address_mac (&adj->reid));
+	  mac_copy (a.leid, gid_address_mac (&adj->leid));
+	  break;
+	default:
+	  ASSERT (0);
+	}
+      dst[i] = a;
+    }
+}
+
+static void
+vl_api_lisp_adjacencies_get_t_handler (vl_api_lisp_adjacencies_get_t * mp)
+{
+  vl_api_lisp_adjacencies_get_reply_t *rmp = 0;
+  lisp_adjacency_t *adjs = 0;
+  int rv = 0;
+  vl_api_lisp_adjacency_t a;
+  u32 size = ~0;
+  u32 vni = clib_net_to_host_u32 (mp->vni);
+
+  adjs = vnet_lisp_adjacencies_get_by_vni (vni);
+  size = vec_len (adjs) * sizeof (a);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO3 (VL_API_LISP_ADJACENCIES_GET_REPLY, size,
+  {
+    rmp->count = clib_host_to_net_u32 (vec_len (adjs));
+    lisp_adjacency_copy (rmp->adjacencies, adjs);
+  });
+  /* *INDENT-ON* */
+
+  vec_free (adjs);
 }
 
 static void
