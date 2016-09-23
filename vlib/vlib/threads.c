@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #define _GNU_SOURCE
-#include <sched.h>
 
 #include <signal.h>
 #include <math.h>
@@ -215,6 +214,17 @@ vlib_thread_init (vlib_main_t * vm)
   w->dpdk_lcore_id = -1;
   w->lwp = syscall (SYS_gettid);
   tm->n_vlib_mains = 1;
+
+  if (tm->sched_policy != ~0)
+    {
+      struct sched_param sched_param;
+      if (!sched_getparam (w->lwp, &sched_param))
+	{
+	  if (tm->sched_priority != ~0)
+	    sched_param.sched_priority = tm->sched_priority;
+	  sched_setscheduler (w->lwp, tm->sched_policy, &sched_param);
+	}
+    }
 
   /* assign threads to cores and set n_vlib_mains */
   tr = tm->next;
@@ -995,6 +1005,20 @@ vlib_worker_thread_node_runtime_update (void)
     }
 }
 
+u32
+unformat_sched_policy (unformat_input_t * input, va_list * args)
+{
+  u32 *r = va_arg (*args, u32 *);
+
+  if (0);
+#define _(v,f,s) else if (unformat (input, s)) *r = SCHED_POLICY_##f;
+  foreach_sched_policy
+#undef _
+    else
+    return 0;
+  return 1;
+}
+
 static clib_error_t *
 cpu_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -1007,7 +1031,10 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   u32 count;
 
   tm->thread_registrations_by_name = hash_create_string (0, sizeof (uword));
+
   tm->n_thread_stacks = 1;	/* account for main thread */
+  tm->sched_policy = ~0;
+  tm->sched_priority = ~0;
 
   tr = tm->next;
 
@@ -1061,11 +1088,18 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	  tr->coremask = bitmap;
 	  tr->count = clib_bitmap_count_set_bits (tr->coremask);
 	}
+      else
+	if (unformat
+	    (input, "scheduler-policy %U", unformat_sched_policy,
+	     &tm->sched_policy))
+	;
+      else if (unformat (input, "scheduler-prio %u", &tm->sched_priority))
+	;
       else if (unformat (input, "%s %u", &name, &count))
 	{
 	  p = hash_get_mem (tm->thread_registrations_by_name, name);
 	  if (p == 0)
-	    return clib_error_return (0, "no such thread type '%s'", name);
+	    return clib_error_return (0, "no such thread type 3 '%s'", name);
 
 	  tr = (vlib_thread_registration_t *) p[0];
 	  if (tr->fixed_count)
@@ -1077,6 +1111,21 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	break;
     }
 
+  if (tm->sched_policy != ~0)
+    {
+      if (tm->sched_priority != ~0
+	  && (tm->sched_policy == SCHED_FIFO || tm->sched_policy == SCHED_RR))
+	{
+	  u32 prio_max = sched_get_priority_max (tm->sched_policy);
+	  u32 prio_min = sched_get_priority_min (tm->sched_policy);
+	  if (tm->sched_priority > prio_max)
+	    tm->sched_priority = prio_max;
+	  if (tm->sched_priority < prio_min)
+	    tm->sched_priority = prio_min;
+	}
+      else
+	tm->sched_priority = 0;
+    }
   tr = tm->next;
 
   if (!tm->thread_prefix)
