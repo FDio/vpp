@@ -174,6 +174,18 @@ do {                                                            \
         return;                                                 \
                                                                 \
     rmp = vl_msg_api_alloc (sizeof (*rmp) + n);                 \
+    if (!rmp)                                                   \
+      {                                                         \
+        /* if there isn't enough memory, try to allocate */     \
+        /* some at least for returning an error */              \
+        rmp = vl_msg_api_alloc (sizeof (*rmp));                 \
+        if (!rmp)                                               \
+          return;                                               \
+                                                                \
+        memset (rmp, 0, sizeof (*rmp));                         \
+        rv = VNET_API_ERROR_TABLE_TOO_BIG;                      \
+      }                                                         \
+                                                                \
     rmp->_vl_msg_id = ntohs((t));                               \
     rmp->context = mp->context;                                 \
     rmp->retval = ntohl(rv);                                    \
@@ -378,6 +390,7 @@ _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
 _(LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump)                     \
+_(LISP_GET_ADJACENCIES, lisp_get_adjacencies)                           \
 _(SHOW_LISP_STATUS, show_lisp_status)                                   \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
   lisp_add_del_map_request_itr_rlocs)                                   \
@@ -6006,6 +6019,72 @@ send_eid_table_vni (u32 vni, unix_shared_memory_queue_t * q, u32 context)
   rmp->context = context;
   rmp->vni = clib_host_to_net_u32 (vni);
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+lisp_adjacency_copy (vl_api_lisp_adjacency_t *dst, adjacency_t *adjs)
+{
+  adjacency_t *adj;
+  vl_api_lisp_adjacency_t a;
+  u32 i, n = vec_len (adjs);
+
+  for (i = 0; i < n; i++)
+    {
+      adj = vec_elt_at_index (adjs, i);
+      memset (&a, 0, sizeof (a));
+
+      switch (gid_address_type (&adj->reid))
+        {
+        case GID_ADDR_IP_PREFIX:
+          a.reid_prefix_len = gid_address_ippref_len (&adj->reid);
+          a.leid_prefix_len = gid_address_ippref_len (&adj->leid);
+          if (gid_address_ip_version (&adj->reid) == IP4)
+            {
+              a.eid_type = 0;	/* ipv4 type */
+              clib_memcpy (a.reid, &gid_address_ip (&adj->reid), 4);
+              clib_memcpy (a.leid, &gid_address_ip (&adj->leid), 4);
+            }
+          else
+            {
+              a.eid_type = 1;	/* ipv6 type */
+              clib_memcpy (a.reid, &gid_address_ip (&adj->reid), 16);
+              clib_memcpy (a.leid, &gid_address_ip (&adj->leid), 16);
+            }
+          break;
+        case GID_ADDR_MAC:
+          a.eid_type = 2;	/* l2 mac type */
+          mac_copy (a.reid, gid_address_mac (&adj->reid));
+          mac_copy (a.leid, gid_address_mac (&adj->leid));
+          break;
+        default:
+          ASSERT (0);
+        }
+      dst[i] = a;
+    }
+}
+
+static void
+vl_api_lisp_get_adjacencies_t_handler (vl_api_lisp_get_adjacencies_t * mp)
+{
+  vl_api_lisp_get_adjacencies_reply_t *rmp = 0;
+  adjacency_t *adjs = 0;
+  int rv = 0;
+  vl_api_lisp_adjacency_t a;
+  u32 size = ~0;
+  u32 vni = clib_net_to_host_u32 (mp->vni);
+
+  adjs = vnet_lisp_get_adjacencies_by_vni (vni);
+  size = vec_len (adjs) * sizeof (a);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO3 (VL_API_LISP_GET_ADJACENCIES_REPLY, size,
+  {
+    rmp->count = clib_host_to_net_u32 (vec_len (adjs));
+    lisp_adjacency_copy (rmp->adjacencies, adjs);
+  });
+  /* *INDENT-ON* */
+
+  vec_free (adjs);
 }
 
 static void
