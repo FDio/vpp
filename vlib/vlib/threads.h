@@ -16,6 +16,7 @@
 #define included_vlib_threads_h
 
 #include <vlib/main.h>
+#include <linux/sched.h>
 
 vlib_main_t **vlib_mains;
 
@@ -257,6 +258,21 @@ typedef struct vlib_efd_t
   u8 pad;
 } vlib_efd_t;
 
+#define foreach_sched_policy \
+  _(SCHED_OTHER, OTHER, "other") \
+  _(SCHED_BATCH, BATCH, "batch") \
+  _(SCHED_IDLE, IDLE, "idle")   \
+  _(SCHED_FIFO, FIFO, "fifo")   \
+  _(SCHED_RR, RR, "rr")
+
+typedef enum
+{
+#define _(v,f,s) SCHED_POLICY_##f = v,
+  foreach_sched_policy
+#undef _
+    SCHED_POLICY_N,
+} sched_policy_t;
+
 typedef struct
 {
   /* Link list of registrations, built by constructors */
@@ -313,6 +329,12 @@ typedef struct
 
   /* worker thread initialization barrier */
   volatile u32 worker_thread_release;
+
+  /* scheduling policy */
+  u32 sched_policy;
+
+  /* scheduling policy priority */
+  u32 sched_priority;
 
 } vlib_thread_main_t;
 
