@@ -414,9 +414,39 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   pool_get (lcm->fwd_entry_pool, fe);
   fe->locator_pairs = a->locator_pairs;
   gid_address_copy (&fe->deid, &a->rmt_eid);
+  gid_address_copy (&fe->seid, &src_map->eid);
   hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
 	    fe - lcm->fwd_entry_pool);
 }
+
+static clib_error_t *
+lisp_show_adjacencies_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  fwd_entry_t *fwd;
+
+  vlib_cli_output (vm, "%s %40s\n", "seid", "deid");
+
+  /* *INDENT-OFF* */
+  pool_foreach(fwd, lcm->fwd_entry_pool,
+  ({
+    vlib_cli_output (vm, "%U %40U\n", format_gid_address, &fwd->seid,
+                     format_gid_address, &fwd->deid);
+  }));
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_show_adjacencies_command) = {
+    .path = "show lisp adjacencies",
+    .short_help = "show lisp adjacencies",
+    .function = lisp_show_adjacencies_command_fn,
+};
+/* *INDENT-ON* */
 
 /**
  * Add/remove mapping to/from map-cache. Overwriting not allowed.

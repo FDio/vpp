@@ -2884,6 +2884,40 @@ define lisp_eid_table_dump
   u8 filter;
 };
 
+/** \brief LISP adjacency
+    @param dp_table - VRF index or bridge domain index
+    @param eid_type -
+      0 : ipv4
+      1 : ipv6
+      2 : mac
+    @param deid - destination EID
+    @param seid - source EID
+    @param deid_prefix_len - destination EID IP prefix length
+    @param seid_prefix_len - source EID IP prefix length
+  */
+define lisp_adjacency_details
+{
+  u32 context;
+  i32 retval;
+  u8 eid_type;
+  u8 deid[16];
+  u8 seid[16];
+  u8 deid_prefix_len;
+  u8 seid_prefix_len;
+};
+
+/** \brief Request for LISP adjacencies
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param vni - filter adjacencies by VNI
+ */
+define lisp_adjacency_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 vni;
+};
+
 /** \brief Shows relationship between vni and vrf/bd
     @param dp_table - VRF index or bridge domain index
     @param vni - vitual network instance

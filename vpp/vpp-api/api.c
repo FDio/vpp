@@ -372,6 +372,7 @@ _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
 _(LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump)                     \
+_(LISP_ADJACENCY_DUMP, lisp_adjacency_dump)                             \
 _(SHOW_LISP_STATUS, show_lisp_status)                                   \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
   lisp_add_del_map_request_itr_rlocs)                                   \
@@ -5823,6 +5824,54 @@ send_eid_table_vni (u32 vni, unix_shared_memory_queue_t * q, u32 context)
   rmp->context = context;
   rmp->vni = clib_host_to_net_u32 (vni);
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_lisp_adjacency_dump_t_handler (vl_api_lisp_adjacency_dump_t * mp)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  vl_api_lisp_adjacency_details_t *rmp = 0;
+  fwd_entry_t *fwd;
+  int rv = 0;
+  u32 vni = clib_net_to_host_u32 (mp->vni);
+
+  /* *INDENT-OFF* */
+  pool_foreach(fwd, lcm->fwd_entry_pool,
+  ({
+    if (vni != gid_address_vni (&fwd->deid))
+      continue;
+
+    REPLY_MACRO2 (VL_API_LISP_ADJACENCY_DETAILS,
+    {
+      switch (gid_address_type (&fwd->deid))
+        {
+        case GID_ADDR_IP_PREFIX:
+          rmp->deid_prefix_len = gid_address_ippref_len (&fwd->deid);
+          rmp->seid_prefix_len = gid_address_ippref_len (&fwd->seid);
+          if (gid_address_ip_version (&fwd->deid) == IP4)
+            {
+              rmp->eid_type = 0;	/* ipv4 type */
+              clib_memcpy (rmp->deid, &gid_address_ip (&fwd->deid), 4);
+              clib_memcpy (rmp->seid, &gid_address_ip (&fwd->seid), 4);
+            }
+          else
+            {
+              rmp->eid_type = 1;	/* ipv6 type */
+              clib_memcpy (rmp->deid, &gid_address_ip (&fwd->deid), 16);
+              clib_memcpy (rmp->seid, &gid_address_ip (&fwd->seid), 16);
+            }
+          break;
+        case GID_ADDR_MAC:
+          rmp->eid_type = 2;	/* l2 mac type */
+          mac_copy (rmp->deid, gid_address_mac (&fwd->deid));
+          mac_copy (rmp->seid, gid_address_mac (&fwd->seid));
+          break;
+        default:
+          ASSERT (0);
+        }
+    });
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
