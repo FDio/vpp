@@ -24,8 +24,11 @@ GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 #
 # OS Detection
 #
+# We allow Darwin (MacOS) for docs generation; VPP build will still fail.
+ifneq ($(shell uname),Darwin)
 OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+endif
 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd

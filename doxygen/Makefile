@@ -23,11 +23,20 @@ all: doxygen
 # These should be passed in by the root Makefile
 WS_ROOT ?= $(CURDIR)/..
 BR ?= $(WS_ROOT)/build-root
+
+# We support MacOS for docs generation
+ifeq ($(shell uname),Darwin)
+OS_ID = darwin
+endif
+
+# Work out the OS if we haven't already
 OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 
 # Package dependencies
 DOC_DEB_DEPENDS = doxygen graphviz python-pyparsing python-jinja2
 DOC_RPM_DEPENDS = doxygen graphviz pyparsing python-jinja2
+DOC_MAC_BIN_DEPENDS = doxygen dot git
+DOC_MAC_PY_DEPENDS = pyparsing jinja2
 
 # Doxygen configuration and our utility scripts
 DOXY_DIR ?= $(WS_ROOT)/doxygen
@@ -130,8 +139,23 @@ ifeq ($(OS_ID),ubuntu)
 	fi
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo yum install $(CONFIRM) $(DOC_RPM_DEPENDS)
+else ifeq ($(OS_ID),darwin)
+	@set -e; \
+	for bin in $(DOC_MAC_BIN_DEPENDS); do \
+		which -s $${bin} || (\
+			echo "Program '$${bin}' not found, please install it."; \
+			false; \
+		); \
+	done
+	@set -e; \
+	for py in $(DOC_MAC_PY_DEPENDS); do \
+		python -c "import $${py}" >/dev/null 2>&1 || (\
+			echo "Python package '$${py}' not found, please install it."; \
+			false; \
+		); \
+	done
 else
-	$(error "This option currently works only on Ubuntu or Centos systems")
+	$(error "Building documentation currently works only on Ubuntu, CentOS or MacOS systems.")
 endif
 	@touch $@
 
