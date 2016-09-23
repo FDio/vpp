@@ -36,6 +36,7 @@ format_struct = {'u8': 'B',
                  'f64' : 'd',
                  'vl_api_ip4_fib_counter_t' : 'IBQQ',
                  'vl_api_ip6_fib_counter_t' : 'QQBQQ',
+                 'vl_api_lisp_adjacency_t' : 'B' * 35
                  };
 #
 # NB: If new types are introduced in vpe.api, these must be updated.
@@ -48,6 +49,7 @@ type_size = {'u8':   1,
              'f64' : 8,
              'vl_api_ip4_fib_counter_t' : 21,
              'vl_api_ip6_fib_counter_t' : 33,
+             'vl_api_lisp_adjacency_t' : 35
 };
 
 def eprint(*args, **kwargs):
