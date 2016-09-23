@@ -1093,7 +1093,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	    (input, "scheduler-policy %U", unformat_sched_policy,
 	     &tm->sched_policy))
 	;
-      else if (unformat (input, "scheduler-prio %u", &tm->sched_priority))
+      else if (unformat (input, "scheduler-priority %u", &tm->sched_priority))
 	;
       else if (unformat (input, "%s %u", &name, &count))
 	{
@@ -1111,10 +1111,9 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	break;
     }
 
-  if (tm->sched_policy != ~0)
+  if (tm->sched_priority != ~0)
     {
-      if (tm->sched_priority != ~0
-	  && (tm->sched_policy == SCHED_FIFO || tm->sched_policy == SCHED_RR))
+      if (tm->sched_policy == SCHED_FIFO || tm->sched_policy == SCHED_RR)
 	{
 	  u32 prio_max = sched_get_priority_max (tm->sched_policy);
 	  u32 prio_min = sched_get_priority_min (tm->sched_policy);
@@ -1124,7 +1123,12 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	    tm->sched_priority = prio_min;
 	}
       else
-	tm->sched_priority = 0;
+	{
+	  return clib_error_return
+	    (0,
+	     "scheduling priority (%d) is not allowed for `normal` scheduling policy",
+	     tm->sched_priority);
+	}
     }
   tr = tm->next;
 
