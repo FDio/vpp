@@ -815,27 +815,17 @@ set_unnumbered (vlib_main_t * vm,
   int is_set = 0;
   int is_del = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-
-      if (unformat (input, "%U use %U",
-		    unformat_vnet_sw_interface, vnm, &unnumbered_sw_if_index,
-		    unformat_vnet_sw_interface, vnm,
-		    &inherit_from_sw_if_index))
-	is_set = 1;
-      else if (unformat (input, "del %U",
-			 unformat_vnet_sw_interface,
-			 vnm, &unnumbered_sw_if_index))
-	is_del = 1;
-      else
-	{
-	  if (is_set || is_del)
-	    break;
-	  else
-	    return clib_error_return
-	      (0, "parse error '%U'", format_unformat_error, input);
-	}
-    }
+  if (unformat (input, "%U use %U",
+		unformat_vnet_sw_interface, vnm, &unnumbered_sw_if_index,
+		unformat_vnet_sw_interface, vnm, &inherit_from_sw_if_index))
+    is_set = 1;
+  else if (unformat (input, "del %U",
+		     unformat_vnet_sw_interface, vnm,
+		     &unnumbered_sw_if_index))
+    is_del = 1;
+  else
+    return clib_error_return (0, "parse error '%U'",
+			      format_unformat_error, input);
 
   si = vnet_get_sw_interface (vnm, unnumbered_sw_if_index);
   if (is_del)
@@ -843,7 +833,7 @@ set_unnumbered (vlib_main_t * vm,
       si->flags &= ~(VNET_SW_INTERFACE_FLAG_UNNUMBERED);
       si->unnumbered_sw_if_index = (u32) ~ 0;
     }
-  else
+  else if (is_set)
     {
       si->flags |= VNET_SW_INTERFACE_FLAG_UNNUMBERED;
       si->unnumbered_sw_if_index = inherit_from_sw_if_index;
@@ -855,7 +845,7 @@ set_unnumbered (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_unnumbered_command, static) = {
   .path = "set interface unnumbered",
-  .short_help = "set interface unnumbered [<intfc> use <intfc>][del <intfc>]",
+  .short_help = "set interface unnumbered [<intfc> use <intfc> | del <intfc>]",
   .function = set_unnumbered,
 };
 /* *INDENT-ON* */
