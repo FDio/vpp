@@ -510,8 +510,11 @@ ip4_icmp_error (vlib_main_t * vm,
       out_ip0->ttl = 0xff;
       out_ip0->protocol = IP_PROTOCOL_ICMP;
       out_ip0->dst_address = ip0->src_address;
-      if_add_index0 = 
-	lm->if_address_pool_index_by_sw_if_index[sw_if_index0];
+      if_add_index0 = ~0;
+      if (PREDICT_TRUE (vec_len (lm->if_address_pool_index_by_sw_if_index)
+                        > sw_if_index0))
+          if_add_index0 = 
+              lm->if_address_pool_index_by_sw_if_index[sw_if_index0];
       if (PREDICT_TRUE(if_add_index0 != ~0)) {
 	ip_interface_address_t *if_add = 
 	  pool_elt_at_index(lm->if_address_pool, if_add_index0);

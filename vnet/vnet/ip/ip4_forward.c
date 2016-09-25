@@ -1506,6 +1506,7 @@ ip4_local (vlib_main_t * vm,
 		    && dpo0->dpoi_type != DPO_ADJACENCY
 		    && dpo0->dpoi_type != DPO_ADJACENCY_INCOMPLETE
 		    && dpo0->dpoi_type != DPO_RECEIVE
+		    && dpo0->dpoi_type != DPO_DROP
 		    && dpo0->dpoi_type != DPO_ADJACENCY_GLEAN
 		    && ip0->dst_address.as_u32 != 0xFFFFFFFF
 		    ? IP4_ERROR_SRC_LOOKUP_MISS
@@ -1516,8 +1517,9 @@ ip4_local (vlib_main_t * vm,
 	  error1 = (error1 == IP4_ERROR_UNKNOWN_PROTOCOL
 		    && dpo1->dpoi_type != DPO_ADJACENCY
 		    && dpo1->dpoi_type != DPO_ADJACENCY_INCOMPLETE
-		    && dpo0->dpoi_type != DPO_RECEIVE
-		    && dpo0->dpoi_type != DPO_ADJACENCY_GLEAN
+		    && dpo1->dpoi_type != DPO_RECEIVE
+		    && dpo1->dpoi_type != DPO_DROP
+		    && dpo1->dpoi_type != DPO_ADJACENCY_GLEAN
 		    && ip1->dst_address.as_u32 != 0xFFFFFFFF
 		    ? IP4_ERROR_SRC_LOOKUP_MISS
 		    : error1);
@@ -1673,6 +1675,7 @@ ip4_local (vlib_main_t * vm,
 		    && dpo0->dpoi_type != DPO_ADJACENCY
 		    && dpo0->dpoi_type != DPO_ADJACENCY_INCOMPLETE
 		    && dpo0->dpoi_type != DPO_RECEIVE
+		    && dpo0->dpoi_type != DPO_DROP
 		    && dpo0->dpoi_type != DPO_ADJACENCY_GLEAN
 		    && ip0->dst_address.as_u32 != 0xFFFFFFFF
 		    ? IP4_ERROR_SRC_LOOKUP_MISS
