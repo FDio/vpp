@@ -25,14 +25,14 @@
 {{ sb }}
 {% endif %}
 {% endif %}
-{% if "item" in meta or "function" in item %}
+{% if "name" in meta or "function" in item %}
 {# Gives some developer-useful linking #}
 
 ### Declaration and implementation
-{% if "item" in meta %}
+{% if "name" in meta %}
 
 {{ "Declaration: @ref %s (@ref %s line %d)" %
-   (meta['item'], meta["file"], item["meta"]["line_start"]) }}
+   (meta['name'], meta["file"], item["meta"]["line_start"]) }}
 {% endif %}
 {% if "function" in item %}
 

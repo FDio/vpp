@@ -31,7 +31,7 @@
 ### Long help
 
 {{ v['long_help'] }}
-{%- endif %}
+{% endif %}
 {% if 'siphon_block' in item['meta'] %}
 {% set sb = item["meta"]["siphon_block"] %}
 {% if sb %}
@@ -42,14 +42,14 @@
 {{ sb }}
 {% endif %}
 {% endif %}
-{% if "item" in meta or "function" in v %}
+{% if 'name' in meta or 'function' in v %}
 {# Gives some developer-useful linking #}
 
 ### Declaration and implementation
-{% if "item" in meta %}
+{% if "name" in meta %}
 
 {{ "Declaration: @ref %s (@ref %s line %d)" %
-   (meta['item'], meta["file"], item["meta"]["line_start"]) }}
+   (meta['name'], meta["file"], item["meta"]["line_start"]) }}
 {% endif %}
 {% if "function" in v %}
 

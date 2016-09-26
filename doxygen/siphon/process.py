@@ -257,6 +257,7 @@ class Siphon(object):
                     "directory": o['meta']['directory'],
                     "file": o['meta']['file'],
                     "macro": o['macro'],
+                    "name": o['name'],
                     "key": key,
                     "label": self.item_label(group, key),
                 }
