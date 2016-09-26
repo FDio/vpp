@@ -84,6 +84,7 @@ libjvpp_core_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
 libjvpp_core_la_LDFLAGS = -module
 libjvpp_core_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 EXTRA_libjvpp_core_la_DEPENDENCIES=libjvpp_common.la
+EXTRA_libjvpp_core_la_DEPENDENCIES=libjvpp_registry.la
 
 jarfile_jvpp_core = jvpp-core-$(PACKAGE_VERSION).jar
 packagedir_jvpp_core = org/openvpp/jvpp/core
