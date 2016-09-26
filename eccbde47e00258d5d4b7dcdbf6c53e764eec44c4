@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_4b038942",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-26T11:43:20Z",
+      "side": 1,
+      "message": "display error message here. For example:\n\nerror \"rte_eth_rx_queue_setup fail on queue 64, retval -5\"",
+      "range": {
+        "startLine": 402,
+        "startChar": 27,
+        "endLine": 402,
+        "endChar": 41
+      },
+      "revId": "eccbde47e00258d5d4b7dcdbf6c53e764eec44c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_6bec0590",
+        "filename": "vnet/vnet/devices/dpdk/format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-26T11:43:20Z",
+      "side": 1,
+      "message": "lowercase, no semicolon  \"error \" instead of \"ERROR:\"",
+      "range": {
+        "startLine": 402,
+        "startChar": 19,
+        "endLine": 402,
+        "endChar": 26
+      },
+      "revId": "eccbde47e00258d5d4b7dcdbf6c53e764eec44c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_ebf7f557",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 694,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-26T11:43:20Z",
+      "side": 1,
+      "message": "This skips interface registration. This is not expected behavior, interface needs to show up in the interface list, but it should be in init_fail if rv!\u003d0.",
+      "range": {
+        "startLine": 694,
+        "startChar": 3,
+        "endLine": 694,
+        "endChar": 11
+      },
+      "revId": "eccbde47e00258d5d4b7dcdbf6c53e764eec44c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
