@@ -1275,6 +1275,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .rx_redirect_to_node = dpdk_set_interface_next_node,
   .no_flatten_output_chains = 1,
   .name_renumber = dpdk_device_renumber,
+  .mac_addr_change_function = dpdk_set_mac_address,
 };
 
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (dpdk_device_class, dpdk_interface_tx)

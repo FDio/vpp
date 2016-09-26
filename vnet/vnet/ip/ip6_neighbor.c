@@ -3472,3 +3472,23 @@ int vnet_ip6_nd_term (vlib_main_t * vm,
   return 0;
 
 }
+
+void
+ethernet_ndp_change_mac (vlib_main_t * vm, u32 sw_if_index)
+{
+  ip6_neighbor_main_t * nm = &ip6_neighbor_main;
+  ip6_neighbor_t * n;
+
+  /* *INDENT-OFF* */
+  pool_foreach (n, nm->neighbor_pool, ({
+    if (n->key.sw_if_index == sw_if_index)
+    {
+      if (ADJ_INDEX_INVALID != n->adj_index)
+        {
+          adj_nbr_update_rewrite(n->adj_index,
+               n->link_layer_address);
+        }
+    }
+  }));
+  /* *INDENT-ON* */
+}
