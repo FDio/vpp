@@ -2343,6 +2343,43 @@ arp_term_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (arp_term_init);
 
+void
+change_arp_mac (u32 sw_if_index, ethernet_arp_ip4_entry_t * e)
+{
+  if (e->sw_if_index == sw_if_index)
+    {
+
+      if (ADJ_INDEX_INVALID != e->adj_index[FIB_LINK_IP4])
+	{
+	  // the update rewrite function takes the dst mac (which is not changing)
+	  // the new source mac will be retrieved from the interface
+	  // when the full rewrite is constructed.
+	  adj_nbr_update_rewrite (e->adj_index[FIB_LINK_IP4],
+				  e->ethernet_address);
+	}
+      if (ADJ_INDEX_INVALID != e->adj_index[FIB_LINK_MPLS])
+	{
+	  adj_nbr_update_rewrite (e->adj_index[FIB_LINK_MPLS],
+				  e->ethernet_address);
+	}
+
+    }
+}
+
+void
+ethernet_arp_change_mac (vnet_main_t * vnm, u32 sw_if_index)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  ethernet_arp_ip4_entry_t *e;
+
+  /* *INDENT-OFF* */
+  pool_foreach (e, am->ip4_entry_pool,
+    ({
+      change_arp_mac (sw_if_index, e);
+    }));
+  /* *INDENT-ON* */
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

@@ -57,6 +57,8 @@ u32 ip6_fib_table_fwding_lookup(ip6_main_t * im,
 				u32 fib_index, 
 				const ip6_address_t * dst);
 
+void ethernet_ndp_change_mac (vlib_main_t * vm, u32 sw_if_index);
+
 /**
  * @biref return the DPO that the LB stacks on.
  */
