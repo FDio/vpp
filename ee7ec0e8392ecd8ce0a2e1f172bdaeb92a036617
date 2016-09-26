@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_f1180277",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-09-26T21:35:03Z",
+      "side": 1,
+      "message": "The vpe-api allows filtering the dump to only include those with a specified VNI.  Why is this missing from the CLI command?",
+      "range": {
+        "startLine": 423,
+        "startChar": 0,
+        "endLine": 425,
+        "endChar": 31
+      },
+      "revId": "ee7ec0e8392ecd8ce0a2e1f172bdaeb92a036617",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_111ede63",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 441,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-09-26T21:35:03Z",
+      "side": 1,
+      "message": "The CLI command and the API command should both call the same routine in order to acquire a vector of lisp adjacencies.",
+      "range": {
+        "startLine": 422,
+        "startChar": 0,
+        "endLine": 441,
+        "endChar": 1
+      },
+      "revId": "ee7ec0e8392ecd8ce0a2e1f172bdaeb92a036617",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_d12746b5",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 13370,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-09-26T21:35:03Z",
+      "side": 1,
+      "message": "What is the maximum LISP adjacency table size?  \n\nA control ping should only be used for tables/lists of a relatively small size.  Otherwise you will induce head-of-line blocking on the control channel.  You will also block the forwarding plane while the request is being processed.  This will produce undesirable behavior if it takes too long...",
+      "range": {
+        "startLine": 13364,
+        "startChar": 0,
+        "endLine": 13370,
+        "endChar": 27
+      },
+      "revId": "ee7ec0e8392ecd8ce0a2e1f172bdaeb92a036617",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
