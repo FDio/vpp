@@ -598,6 +598,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   memset (a, 0, sizeof (a[0]));
 
   a->is_add = is_add;
+  a->is_negative = is_negative;
   a->vni = vni;
   a->table_id = vrf;
   gid_address_copy (&a->lcl_eid, leid);
