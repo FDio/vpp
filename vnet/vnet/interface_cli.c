@@ -636,7 +636,6 @@ create_sub_interfaces (vlib_main_t * vm,
   else if (unformat (input, "%d-%d", &id_min, &id_max))
     {
       template.sub.eth.flags.one_tag = 1;
-      template.sub.eth.outer_vlan_id = id_min;
       template.sub.eth.flags.exact_match = 1;
       if (id_min > id_max)
 	goto id_error;
@@ -689,6 +688,9 @@ create_sub_interfaces (vlib_main_t * vm,
       template.type = VNET_SW_INTERFACE_TYPE_SUB;
       template.sup_sw_if_index = hi->sw_if_index;
       template.sub.id = id;
+      if (id_min < id_max)
+	template.sub.eth.outer_vlan_id = id;
+
       error = vnet_create_sw_interface (vnm, &template, &sw_if_index);
       if (error)
 	goto done;
