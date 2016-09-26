@@ -83,7 +83,7 @@ libjvpp_core_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
 	              -lpthread -lm -lrt -ljvpp_common
 libjvpp_core_la_LDFLAGS = -module
 libjvpp_core_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
-EXTRA_libjvpp_core_la_DEPENDENCIES=libjvpp_common.la
+EXTRA_libjvpp_core_la_DEPENDENCIES=libjvpp_registry.la
 
 jarfile_jvpp_core = jvpp-core-$(PACKAGE_VERSION).jar
 packagedir_jvpp_core = org/openvpp/jvpp/core
@@ -96,7 +96,7 @@ defs_vpp_papi.py:
 	@echo "jVpp API";				\
 	vppapigen --input $(api_file) --python jvpp-core/defs_vpp_papi.py;
 
-jvpp-core/org_openvpp_jvpp_core_JVppCoreImpl.h: defs_vpp_papi.py
+jvpp-core/org_openvpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/org_openvpp_jvpp_VppJNIConnection.h defs_vpp_papi.py 
 	cp -rf @srcdir@/jvpp-core/* -t jvpp-core/; \
 	mkdir -p jvpp-core/target; \
 	cd jvpp-core; \
