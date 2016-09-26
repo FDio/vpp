@@ -13,9 +13,9 @@
 # limitations under the License.
 
 try:
-    from setuptools import setup, command, Extension
+    from setuptools import setup, Extension
 except ImportError:
-    from distutils.core import setup
+    from distutils.core import setup, Extension
 
 setup (name = 'vpp_papi',
        version = '1.2',
