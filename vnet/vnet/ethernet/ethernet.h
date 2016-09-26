@@ -536,6 +536,10 @@ int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
 				       uword type_opaque,
 				       uword data, int is_add);
 
+void
+ethernet_arp_change_mac (vnet_main_t * vnm, u32 sw_if_index,
+			 u8 * old_mac_address, u8 * new_mac_address);
+
 extern vlib_node_registration_t ethernet_input_node;
 
 #endif /* included_ethernet_h */

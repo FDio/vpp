@@ -1229,6 +1229,60 @@ vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index, char *new_name)
   return error;
 }
 
+static clib_error_t *
+vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
+					     u32 hw_if_index, u64 mac_address)
+{
+  clib_error_t *error = 0;
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (hi->hw_address)
+    {
+
+      vnet_device_class_t *dev_class =
+	vnet_get_device_class (vnm, hi->dev_class_index);
+      if (dev_class->mac_addr_change_function)
+	error =
+	  dev_class->mac_addr_change_function (vnm, hw_if_index,
+					       &mac_address);
+      if (!error)
+	{
+	  ethernet_main_t *em = &ethernet_main;
+	  ethernet_interface_t *ei =
+	    pool_elt_at_index (em->interfaces, hi->hw_instance);
+
+	  clib_memcpy (hi->hw_address, (u8 *) & mac_address,
+		       sizeof (hi->hw_address));
+	  clib_memcpy (ei->address, (u8 *) & mac_address,
+		       sizeof (ei->address));
+	  ethernet_arp_change_mac (vnm, hw_if_index, hi->hw_address,
+				   (u8 *) & mac_address);
+	}
+      else
+	{
+	  error =
+	    clib_error_return (0,
+			       "MAC Address Change is not supported on this interface");
+	}
+    }
+  else
+    {
+      error =
+	clib_error_return (0,
+			   "mac address change is not supported for interface index %u",
+			   hw_if_index);
+    }
+  return error;
+}
+
+clib_error_t *
+vnet_hw_interface_change_mac_address (vnet_main_t * vnm, u32 hw_if_index,
+				      u64 mac_address)
+{
+  return vnet_hw_interface_change_mac_address_helper
+    (vnm, hw_if_index, mac_address);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

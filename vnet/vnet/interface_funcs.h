@@ -173,6 +173,11 @@ void vnet_hw_interface_init_for_class (vnet_main_t * vnm, u32 hw_if_index,
 clib_error_t *vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index,
 				     char *new_name);
 
+/* Change interface mac address*/
+clib_error_t *vnet_hw_interface_change_mac_address (vnet_main_t * vnm,
+						    u32 hw_if_index,
+						    u64 mac_address);
+
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
 format_function_t format_vnet_sw_interface;
