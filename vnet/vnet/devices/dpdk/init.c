@@ -1199,57 +1199,22 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       /* *INDENT-OFF* */
       clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
         {
-	  u32 pages_avail, page_size, mem;
-	  u8 *s = 0;
-          u8 *p = 0;
-	  char * numa_path = "/sys/devices/system/node/node%u/";
-          char * nonnuma_path = "/sys/kernel/mm/";
-          char * suffix = "hugepages/hugepages-%ukB/free_hugepages%c";
-          char * path = NULL;
-          struct stat sb_numa, sb_nonnuma;
-
-          p = format(p, numa_path, c);
-          if (stat(numa_path, &sb_numa) < 0)
-            sb_numa.st_mode = 0;
-
-          if (stat(nonnuma_path, &sb_nonnuma) < 0)
-            sb_nonnuma.st_mode = 0;
-
-          if (S_ISDIR(sb_numa.st_mode)) {
-            path = (char*)format((u8*)path, "%s%s", p, suffix);
-          } else if (S_ISDIR(sb_nonnuma.st_mode)) {
-            path = (char*)format((u8*)path, "%s%s", nonnuma_path, suffix);
-          } else {
-            use_1g = 0;
-            use_2m = 0;
-            vec_free(p);
-            break;
-          }
+	  int pages_avail, page_size, mem;
 
 	  vec_validate(mem_by_socket, c);
 	  mem = mem_by_socket[c];
 
 	  page_size = 1024;
-	  pages_avail = 0;
-	  s = format (s, path, page_size * 1024, 0);
-	  vlib_sysfs_read ((char *) s, "%u", &pages_avail);
-	  vec_reset_length (s);
+	  pages_avail = vlib_sysfs_get_free_hugepages(c, page_size * 1024);
 
-	  if (page_size * pages_avail < mem)
+	  if (pages_avail < 0 || page_size * pages_avail < mem)
 	    use_1g = 0;
 
 	  page_size = 2;
-	  pages_avail = 0;
-	  s = format (s, path, page_size * 1024, 0);
-	  vlib_sysfs_read ((char *) s, "%u", &pages_avail);
-	  vec_reset_length (s);
+	  pages_avail = vlib_sysfs_get_free_hugepages(c, page_size * 1024);
 
-	  if (page_size * pages_avail < mem)
+	  if (pages_avail < 0 || page_size * pages_avail < mem)
 	    use_2m = 0;
-
-	  vec_free(s);
-	  vec_free(p);
-	  vec_free(path);
       }));
       /* *INDENT-ON* */
 
