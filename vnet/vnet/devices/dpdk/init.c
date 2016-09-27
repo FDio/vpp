@@ -1218,6 +1218,24 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       }));
       /* *INDENT-ON* */
 
+      /* If there is no free hugepages in the system, let's try to allocate
+       * them */
+      if (use_2m == 0 && use_1g == 0)
+	{
+	  use_2m = 1;
+	  /* *INDENT-OFF* */
+	  clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
+	    {
+	      int free, min_free;
+	      min_free = mem_by_socket[c] / 2;
+
+	      free = vlib_sysfs_set_min_free_hugepages (c, 2048,  min_free);
+
+	      if (free < min_free)
+	        use_2m = 0;
+	    }));
+	}
+
       if (mem_by_socket == 0)
 	{
 	  error = clib_error_return (0, "mem_by_socket NULL");

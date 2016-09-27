@@ -189,12 +189,11 @@ vlib_sysfs_link_to_name (char *link)
   return s;
 }
 
-int
-vlib_sysfs_get_free_hugepages (unsigned int numa_node, int page_size)
+static u8 *
+sysfs_hugepage_dir (unsigned int numa_node, int page_size)
 {
   struct stat sb;
   u8 *p = 0;
-  int r = -1;
 
   p = format (p, "/sys/devices/system/node/node%u%c", numa_node, 0);
 
@@ -214,12 +213,79 @@ vlib_sysfs_get_free_hugepages (unsigned int numa_node, int page_size)
     goto done;
 
   _vec_len (p) -= 1;
-  p = format (p, "/hugepages/hugepages-%ukB/free_hugepages%c", page_size, 0);
-  vlib_sysfs_read ((char *) p, "%d", &r);
-
+  p = format (p, "/hugepages/hugepages-%ukB/", page_size);
+  return p;
 done:
   vec_free (p);
+  return 0;
+}
+
+int
+vlib_sysfs_get_free_hugepages (unsigned int numa_node, int page_size)
+{
+  u8 *p = 0;
+  int r = -1;
+
+  if ((p = sysfs_hugepage_dir (numa_node, page_size)) == 0)
+    return -1;
+
+  p = format (p, "free_hugepages%c", 0);
+  vlib_sysfs_read ((char *) p, "%d", &r);
+  vec_free (p);
+
+  clib_warning("numa_node %d page_size %d free %d", numa_node, page_size, r);
   return r;
+}
+
+int
+vlib_sysfs_get_nr_hugepages (unsigned int numa_node, int page_size)
+{
+  u8 *p = 0;
+  int r = -1;
+
+  if ((p = sysfs_hugepage_dir (numa_node, page_size)) == 0)
+    return -1;
+
+  p = format (p, "nr_hugepages%c", 0);
+  vlib_sysfs_read ((char *) p, "%d", &r);
+  vec_free (p);
+
+  clib_warning("numa_node %d page_size %d free %d", numa_node, page_size, r);
+  return r;
+}
+
+int
+vlib_sysfs_set_nr_hugepages (unsigned int numa_node, int page_size, int nr_pages)
+{
+  u8 *p = 0;
+  int r = -1;
+
+  if ((p = sysfs_hugepage_dir (numa_node, page_size)) == 0)
+    return -1;
+
+  p = format (p, "/nr_hugepages%c", 0);
+  vlib_sysfs_write ((char *) p, "%d", nr_pages);
+  vlib_sysfs_read ((char *) p, "%d", &r);
+  vec_free (p);
+
+  clib_warning("numa_node %d page_size %d free %d", numa_node, page_size, r);
+  return r;
+}
+
+int
+vlib_sysfs_set_min_free_hugepages (unsigned int numa_node, int page_size, int nr_pages)
+{
+  int nr, free;
+
+  free = vlib_sysfs_get_free_hugepages (numa_node, page_size);
+
+  if (free >= nr_pages)
+    return free;
+
+  nr = vlib_sysfs_get_nr_hugepages (numa_node, page_size);
+  vlib_sysfs_set_nr_hugepages (numa_node, page_size,  nr + nr_pages - free);
+
+  return vlib_sysfs_get_free_hugepages (numa_node, page_size);
 }
 
 /*
