@@ -68,6 +68,30 @@
       "revId": "ee7ec0e8392ecd8ce0a2e1f172bdaeb92a036617",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_313b1a3a",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 13370,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2016-09-27T09:15:20Z",
+      "side": 1,
+      "message": "The table can be large but do we have any option to avoid blocking forwardning plane or reduce block time?",
+      "parentUuid": "3a1d315d_d12746b5",
+      "range": {
+        "startLine": 13364,
+        "startChar": 0,
+        "endLine": 13370,
+        "endChar": 27
+      },
+      "revId": "ee7ec0e8392ecd8ce0a2e1f172bdaeb92a036617",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
