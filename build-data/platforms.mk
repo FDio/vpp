@@ -52,7 +52,7 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	   >> deb/debian/vpp.install ;					\
 									\
 	: and sysctl config ; 						\
-	echo ../../vpp/conf/80-vpp.conf /etc/sysctl.d 			\
+	echo ../../vpp/conf/80-vpp.conf /usr/lib/sysctl.d		\
 	   >> deb/debian/vpp.install ;					\
 									\
 	: dev package needs a couple of additions ;			\

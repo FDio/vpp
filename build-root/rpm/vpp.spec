@@ -92,7 +92,7 @@ install -p -m 755 ../../vppapigen/pyvppapigen.py %{buildroot}%{_bindir}
 # configs
 #
 mkdir -p -m755 %{buildroot}/etc/vpp
-mkdir -p -m755 %{buildroot}/etc/sysctl.d
+mkdir -p -m755 %{buildroot}/usr/lib/sysctl.d
 install -p -m 644 vpp.service %{buildroot}%{_unitdir}
 install -p -m 644 ../../vpp/conf/startup.uiopcigeneric.conf %{buildroot}/etc/vpp/startup.conf
 install -p -m 644 ../../vpp/conf/80-vpp.conf %{buildroot}/etc/sysctl.d
@@ -180,7 +180,7 @@ sysctl --system
 /usr/bin/vpp*
 /usr/bin/svm*
 /usr/bin/elftool
-%config /etc/sysctl.d/80-vpp.conf
+%config /usr/lib/sysctl.d/80-vpp.conf
 %config /etc/vpp/startup.conf
 
 %files lib
