@@ -22,6 +22,52 @@
       "revId": "d8ebae6cf23f8f456f8812486ffb8328864cb002",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_4647fb1d",
+        "filename": "vnet/vnet/span/span.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 304
+      },
+      "writtenOn": "2016-09-27T21:05:12Z",
+      "side": 1,
+      "message": "2016? Same rule should be applied to all the other files as well.",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "d8ebae6cf23f8f456f8812486ffb8328864cb002",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_26c99f78",
+        "filename": "vnet/vnet/span/span.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 304
+      },
+      "writtenOn": "2016-09-27T21:05:12Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this routine check if actual interface of src and dst are operational?",
+      "range": {
+        "startLine": 58,
+        "startChar": 0,
+        "endLine": 58,
+        "endChar": 25
+      },
+      "revId": "d8ebae6cf23f8f456f8812486ffb8328864cb002",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
