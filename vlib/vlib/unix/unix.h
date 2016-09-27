@@ -213,6 +213,8 @@ clib_error_t *vlib_sysfs_read (char *file_name, char *fmt, ...);
 
 u8 *vlib_sysfs_link_to_name (char *link);
 
+int vlib_sysfs_get_free_hugepages (unsigned int numa_node, int page_size);
+
 clib_error_t *foreach_directory_file (char *dir_name,
 				      clib_error_t * (*f) (void *arg,
 							   u8 * path_name,

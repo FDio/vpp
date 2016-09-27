@@ -189,6 +189,39 @@ vlib_sysfs_link_to_name (char *link)
   return s;
 }
 
+int
+vlib_sysfs_get_free_hugepages (unsigned int numa_node, int page_size)
+{
+  struct stat sb;
+  u8 *p = 0;
+  int r = -1;
+
+  p = format (p, "/sys/devices/system/node/node%u%c", numa_node, 0);
+
+  if (stat ((char *) p, &sb) == 0)
+    {
+      if (S_ISDIR (sb.st_mode) == 0)
+	goto done;
+    }
+  else if (numa_node == 0)
+    {
+      vec_reset_length (p);
+      p = format (p, "/sys/kernel/mm%c", 0);
+      if (stat ((char *) p, &sb) < 0 || S_ISDIR (sb.st_mode) == 0)
+	goto done;
+    }
+  else
+    goto done;
+
+  _vec_len (p) -= 1;
+  p = format (p, "/hugepages/hugepages-%ukB/free_hugepages%c", page_size, 0);
+  vlib_sysfs_read ((char *) p, "%d", &r);
+
+done:
+  vec_free (p);
+  return r;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
