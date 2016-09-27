@@ -11870,6 +11870,7 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
   u8 locator_set_name_set = 0;
   ls_locator_t locator, *locators = 0;
   u32 sw_if_index, priority, weight;
+  u32 data_len = 0;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -11918,18 +11919,19 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
     }
   vec_add1 (locator_set_name, 0);
 
+  data_len = sizeof (ls_locator_t) * vec_len (locators);
+
   /* Construct the API message */
-  M (LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set);
+  M2 (LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set, data_len);
 
   mp->is_add = is_add;
   clib_memcpy (mp->locator_set_name, locator_set_name,
 	       vec_len (locator_set_name));
   vec_free (locator_set_name);
 
-  mp->locator_num = clib_host_to_net_u32 (vec_len (locators));
+  mp->locators_len = clib_host_to_net_u32 (data_len);
   if (locators)
-    clib_memcpy (mp->locators, locators,
-		 (sizeof (ls_locator_t) * vec_len (locators)));
+    clib_memcpy (mp->locators, locators, data_len);
   vec_free (locators);
 
   /* send it... */
@@ -12667,7 +12669,7 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
   lisp_eid_vat_t _eid, *eid = &_eid;
   lisp_eid_vat_t _seid, *seid = &_seid;
   u8 is_add = 1, del_all = 0, eid_set = 0, seid_set = 0;
-  u32 action = ~0, p, w;
+  u32 action = ~0, p, w, data_len;
   ip4_address_t rloc4;
   ip6_address_t rloc6;
   rloc_t *rlocs = 0, rloc, *curr_rloc = 0;
@@ -12749,7 +12751,9 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
       return -99;
     }
 
-  M (LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping);
+  data_len = vec_len (rlocs) * sizeof (rloc_t);
+
+  M2 (LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping, data_len);
   mp->is_add = is_add;
   mp->vni = htonl (vni);
   mp->action = (u8) action;
@@ -12761,8 +12765,8 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
   lisp_eid_put_vat (mp->eid, eid->addr, eid->type);
   lisp_eid_put_vat (mp->seid, seid->addr, seid->type);
 
-  mp->rloc_num = clib_host_to_net_u32 (vec_len (rlocs));
-  clib_memcpy (mp->rlocs, rlocs, (sizeof (rloc_t) * vec_len (rlocs)));
+  mp->rlocs_len = clib_host_to_net_u32 (data_len);
+  clib_memcpy (mp->rlocs, rlocs, data_len);
   vec_free (rlocs);
 
   /* send it... */

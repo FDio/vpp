@@ -4931,7 +4931,7 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
   vnet_lisp_add_del_locator_set_args_t _a, *a = &_a;
   locator_t locator;
   ls_locator_t *ls_loc;
-  u32 ls_index = ~0, locator_num;
+  u32 ls_index = ~0, locator_num, data_len;
   u8 *locator_name = NULL;
   int i;
 
@@ -4942,7 +4942,14 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
   a->name = locator_name;
   a->is_add = mp->is_add;
   a->local = 1;
-  locator_num = clib_net_to_host_u32 (mp->locator_num);
+  data_len = clib_net_to_host_u32 (mp->locators_len);
+  if (data_len % sizeof (ls_locator_t))
+    {
+      rv = VNET_API_ERROR_BINARY_DATA_INCONSISTENCY;
+      goto send_reply;
+    }
+
+  locator_num = data_len / sizeof (ls_locator_t);
 
   memset (&locator, 0, sizeof (locator));
   for (i = 0; i < locator_num; i++)
@@ -4964,6 +4971,7 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
   vec_free (locator_name);
   vec_free (a->locators);
 
+send_reply:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_LISP_ADD_DEL_LOCATOR_SET_REPLY,
   ({
@@ -5311,7 +5319,16 @@ static void
   vl_api_lisp_add_del_remote_mapping_reply_t *rmp;
   int rv = 0;
   gid_address_t _eid, *eid = &_eid;
-  u32 rloc_num = clib_net_to_host_u32 (mp->rloc_num);
+  u32 rloc_num = 0, data_len = 0;
+
+  data_len = clib_net_to_host_u32 (mp->rlocs_len);
+  if (data_len % sizeof (rloc_t))
+    {
+      rv = VNET_API_ERROR_BINARY_DATA_INCONSISTENCY;
+      goto send_reply;
+    }
+
+  rloc_num = data_len / sizeof (rloc_t);
 
   memset (eid, 0, sizeof (eid[0]));
 
