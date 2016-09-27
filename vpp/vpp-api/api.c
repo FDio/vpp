@@ -4942,6 +4942,7 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
   a->name = locator_name;
   a->is_add = mp->is_add;
   a->local = 1;
+
   locator_num = clib_net_to_host_u32 (mp->locator_num);
 
   memset (&locator, 0, sizeof (locator));
