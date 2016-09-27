@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_c3353df8",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1455,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-09-27T18:45:35Z",
+      "side": 1,
+      "message": "Please arrange to return VNET_API_ERROR_UNIMPLEMENTED if e.g. DPDK \u003d\u003d 0. As things stand, vpp won\u0027t respond at all in that case.",
+      "revId": "430605f07727971233c57a0a7ef8b2e7e5571ad4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
