@@ -2366,7 +2366,14 @@ define vxlan_gpe_tunnel_details
     @param is_add - add address if non-zero, else delete
     @param locator_set_name - locator name
     @param locator_num - number of locators
-    @param locators - Lisp locator data
+    @param locators - LISP locator records
+        Structure of one locator record is as follows:
+
+        define locator_t {
+          u32 sw_if_index;
+          u8 priority;
+          u8 weight;
+        }
 */
 define lisp_add_del_locator_set
 {
@@ -2375,7 +2382,7 @@ define lisp_add_del_locator_set
   u8 is_add;
   u8 locator_set_name[64];
   u32 locator_num;
-  u8 locators[locator_num];
+  u8 locators[0];
 };
 
 /** \brief Reply for locator_set add/del
@@ -2683,7 +2690,15 @@ define show_lisp_map_request_mode_reply
     @param deid - dst EID
     @param seid - src EID, valid only if is_src_dst is enabled
     @param rloc_num - number of remote locators
-    @param rlocs - remote locator data
+    @param rlocs - remote locator records
+        Structure of remote locator:
+
+        define rloc_t {
+          u8 is_ip4;
+          u8 priority;
+          u8 weight;
+          u8 addr[16];
+        }
 */
 define lisp_add_del_remote_mapping
 {
@@ -2700,7 +2715,7 @@ define lisp_add_del_remote_mapping
   u8 seid[16];
   u8 seid_len;
   u32 rloc_num;
-  u8 rlocs[rloc_num];
+  u8 rlocs[0];
 };
 
 /** \brief Reply for lisp_add_del_remote_mapping
