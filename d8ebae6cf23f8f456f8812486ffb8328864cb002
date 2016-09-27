@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_065103d8",
+        "filename": "vlib/vlib/node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-27T20:33:53Z",
+      "side": 1,
+      "message": "Why is this needed?",
+      "range": {
+        "startLine": 185,
+        "startChar": 2,
+        "endLine": 185,
+        "endChar": 55
+      },
+      "revId": "d8ebae6cf23f8f456f8812486ffb8328864cb002",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
