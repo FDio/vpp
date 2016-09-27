@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_86a3d34e",
+        "filename": "vpp/conf/80-vpp.conf",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-09-27T23:08:57Z",
+      "side": 1,
+      "message": "I would recommend that these lines be removed.",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 3,
+        "endChar": 0
+      },
+      "revId": "77f3baa184b68f7294951cdf6d502cef929f0036",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
