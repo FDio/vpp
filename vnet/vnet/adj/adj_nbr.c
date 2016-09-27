@@ -721,7 +721,7 @@ format_adj_nbr_incomplete (u8* s, va_list *ap)
 
     s = format (s, "arp-%U", format_fib_link, adj->ia_link);
     s = format (s, ": via %U",
-                format_ip46_address, &adj->sub_type.nbr.next_hop);
+                format_ip46_address, &adj->sub_type.nbr.next_hop, IP46_TYPE_ANY);
     s = format (s, " %U",
                 format_vnet_sw_interface_name,
                 vnm,
@@ -741,7 +741,7 @@ format_adj_nbr (u8* s, va_list *ap)
 
     s = format (s, "%U", format_fib_link, adj->ia_link);
     s = format (s, " via %U ",
-		format_ip46_address, &adj->sub_type.nbr.next_hop);
+		format_ip46_address, &adj->sub_type.nbr.next_hop, IP46_TYPE_ANY);
     s = format (s, "%U",
 		format_vnet_rewrite,
 		vnm->vlib_main, &adj->rewrite_header, sizeof (adj->rewrite_data), 0);
