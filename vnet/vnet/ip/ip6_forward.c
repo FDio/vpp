@@ -848,7 +848,7 @@ static u8 * format_ip6_forward_next_trace (u8 * s, va_list * args)
 
   s = format(s, "%U%U",
              format_white_space, indent,
-             format_ip6_header, t->packet_data);
+             format_ip6_header, t->packet_data, sizeof (t->packet_data));
   return s;
 }
 
@@ -859,11 +859,11 @@ static u8 * format_ip6_lookup_trace (u8 * s, va_list * args)
   ip6_forward_next_trace_t * t = va_arg (*args, ip6_forward_next_trace_t *);
   uword indent = format_get_indent (s);
 
-  s = format (s, "fib %d dpo-idx %d : flow hash: 0x%08x",
+  s = format (s, "fib %d dpo-idx %d flow hash: 0x%08x",
               t->fib_index, t->adj_index, t->flow_hash);
   s = format(s, "\n%U%U",
              format_white_space, indent,
-             format_ip6_header, t->packet_data);
+             format_ip6_header, t->packet_data, sizeof (t->packet_data));
   return s;
 }
 
