@@ -191,9 +191,6 @@ ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
 	  b1 = vlib_get_buffer (vm, bi1);
 
 	  /* $$$$$ Dual loop: process 2 x packets here $$$$$ */
-	  ASSERT (b0->current_data == 0);
-	  ASSERT (b1->current_data == 0);
-
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
 
@@ -533,9 +530,6 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 	  b1 = vlib_get_buffer (vm, bi1);
 
 	  /* $$$$$ Dual loop: process 2 x packets here $$$$$ */
-	  ASSERT (b0->current_data == 0);
-	  ASSERT (b1->current_data == 0);
-
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
 	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
@@ -989,134 +983,6 @@ VLIB_CLI_COMMAND (ip6_show_ioam_run_cmd, static) = {
   .function = ip6_show_ioam_summary_cmd_fn,
 };
 /* *INDENT-ON* */
-
-int
-ip6_ioam_set_destination (ip6_address_t * addr, u32 mask_width, u32 vrf_id,
-			  int is_add, int is_pop, int is_none)
-{
-  ip6_main_t *im = &ip6_main;
-  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  ip_adjacency_t *adj;
-  u32 fib_index;
-  u32 adj_index;
-
-  if ((is_add + is_pop + is_none) != 1)
-    return VNET_API_ERROR_INVALID_VALUE_2;
-
-  /* Go find the adjacency we're supposed to tickle */
-  fib_index = ip6_fib_index_from_table_id (vrf_id);
-
-  if (~0 == fib_index)
-    return VNET_API_ERROR_NO_SUCH_FIB;
-
-  adj_index = ip6_fib_table_fwding_lookup (im, fib_index, addr);
-
-  ASSERT (!"Not an ADJ");
-
-  /* Got it, modify as directed... */
-  adj = ip_get_adjacency (lm, adj_index);
-
-  /* Restore original lookup-next action */
-  if (adj->saved_lookup_next_index)
-    {
-      adj->lookup_next_index = adj->saved_lookup_next_index;
-      adj->saved_lookup_next_index = 0;
-    }
-
-  /* Save current action */
-  if (is_add || is_pop)
-    adj->saved_lookup_next_index = adj->lookup_next_index;
-
-  if (is_add)
-    adj->lookup_next_index =
-      (ip_lookup_next_t) IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP;
-
-  if (is_pop)
-    adj->lookup_next_index =
-      (ip_lookup_next_t) IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
-
-  hm->adj = *addr;
-  hm->ioam_flag = (is_add ? IOAM_HBYH_ADD :
-		   (is_pop ? IOAM_HBYH_POP : IOAM_HBYH_MOD));
-  return 0;
-}
-
-static clib_error_t *
-ip6_set_ioam_destination_command_fn (vlib_main_t * vm,
-				     unformat_input_t * input,
-				     vlib_cli_command_t * cmd)
-{
-  ip6_address_t addr;
-  u32 mask_width = ~0;
-  int is_add = 0;
-  int is_pop = 0;
-  int is_none = 0;
-  u32 vrf_id = 0;
-  // int rv;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U/%d", unformat_ip6_address, &addr, &mask_width))
-	;
-      else if (unformat (input, "vrf-id %d", &vrf_id))
-	;
-      else if (unformat (input, "add"))
-	is_add = 1;
-      else if (unformat (input, "pop"))
-	is_pop = 1;
-      else if (unformat (input, "none"))
-	is_none = 1;
-      else
-	break;
-    }
-
-  if ((is_add + is_pop + is_none) != 1)
-    return clib_error_return (0, "One of (add, pop, none) required");
-  if (mask_width == ~0)
-    return clib_error_return (0, "<address>/<mask-width> required");
-
-  /* rv = ip6_ioam_set_destination (&addr, mask_width, vrf_id, */
-  /*                             is_add, is_pop, is_none); */
-
-  /* switch (rv) */
-  /*   { */
-  /*   case 0: */
-  /*     break; */
-  /*   default: */
-  /*     return clib_error_return (0, "ip6_ioam_set_destination returned %d", */
-  /*                            rv); */
-  /*   } */
-
-  /* return 0; */
-
-  return clib_error_return (0,
-			    "ip6_ioam_set_destination Currnetly Disabled due to FIB2.0",
-			    1);
-}
-
-/*?
- * This command sets the In-band OAM (iOAM) destination IPv6 address
- * subnet. An action is required (add, pop or none).  Optionally, an IPv6
- * FIB table (aka VRF Table) can be provided. If not provided, table 0
- * used.
- *
- * Use '<em>show ioam summary</em>' to verify the configured settings.
- *
- * @todo This content needs to be validated and potentially more detail added.
- *
- * @cliexpar
- * Example of how to set the iOAM destination:
- * @cliexcmd{set ioam destination ff02::1/128 pop vrf-id 8}
-?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ip6_set_ioam_destination_cmd, static) = {
-  .path = "set ioam destination",
-  .short_help = "set ioam destination <ip6-address>/<width> {add|pop|none} [vrf-id <table-id>]",
-  .function = ip6_set_ioam_destination_command_fn,
-};
-/* *INDENT-ON* */
-
 
 void
 vnet_register_ioam_end_of_path_callback (void *cb)

@@ -164,15 +164,16 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  next1 = dpo1->dpoi_next_node;
 
 	  /* Only process the HBH Option Header if explicitly configured to do so */
-          next0 = ((ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS) &&
-		   im->hbh_enabled) ?
-	    (ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP :
-	    next0;
-          next1 = ((ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS) &&
-		   im->hbh_enabled) ?
-	    (ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP :
-	    next1;
-
+	  if (PREDICT_FALSE(ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      next0 = (dpo_is_adj(dpo0) && im->hbh_enabled) ?
+		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
+	    }
+	  if (PREDICT_FALSE(ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      next1 = (dpo_is_adj(dpo1) && im->hbh_enabled) ?
+		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next1;
+	    }
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
@@ -271,12 +272,13 @@ ip6_lookup_inline (vlib_main_t * vm,
                                            (vnet_buffer (p0)->ip.flow_hash &
                                             lb0->lb_n_buckets_minus_1));
 	  next0 = dpo0->dpoi_next_node;
-	  /* Only process the HBH Option Header if explicitly configured to do so */
-          next0 = ((ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS) &&
-		   im->hbh_enabled) ?
-	    (ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP :
-	    next0;
 
+	  /* Only process the HBH Option Header if explicitly configured to do so */
+	  if (PREDICT_FALSE(ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      next0 = (dpo_is_adj(dpo0) && im->hbh_enabled) ?
+		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
+	    }
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
 	  vlib_increment_combined_counter
@@ -785,6 +787,7 @@ ip6_load_balance (vlib_main_t * vm,
   u32 n_left_from, n_left_to_next, * from, * to_next;
   ip_lookup_next_t next;
   u32 cpu_index = os_get_cpu_number();
+  ip6_main_t * im = &ip6_main;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -823,8 +826,13 @@ ip6_load_balance (vlib_main_t * vm,
 	  dpo0 = load_balance_get_bucket_i(lb0,
 					   vnet_buffer(p0)->ip.flow_hash &
 					   (lb0->lb_n_buckets - 1));
-
 	  next0 = dpo0->dpoi_next_node;
+ 	  /* Only process the HBH Option Header if explicitly configured to do so */
+	  if (PREDICT_FALSE(ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      next0 = (dpo_is_adj(dpo0) && im->hbh_enabled) ?
+		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
+	    }
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
 	  vlib_increment_combined_counter
@@ -2410,6 +2418,8 @@ ip6_hop_by_hop (vlib_main_t * vm,
 
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
+
+      /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
       u32 adj_index0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
       ip_adjacency_t *adj0 = ip_get_adjacency(lm, adj_index0);
       u32 adj_index1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
@@ -2505,9 +2515,12 @@ ip6_hop_by_hop (vlib_main_t * vm,
       n_left_to_next -= 1;
 
       b0 = vlib_get_buffer (vm, bi0);
+      /*
+       * Default use the next_index from the adjacency.
+       * A HBH option rarely redirects to a different node 
+       */
       u32 adj_index0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
       ip_adjacency_t *adj0 = ip_get_adjacency(lm, adj_index0);
-      /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
       next0 = adj0->lookup_next_index;
 
       ip0 = vlib_buffer_get_current (b0);

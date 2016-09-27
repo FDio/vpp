@@ -145,8 +145,7 @@ set_trace_profile_command_fn (vlib_main_t * vm,
       else if (unformat (input, "node-id 0x%x", &node_id));
       else if (unformat (input, "app-data 0x%x", &app_data));
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	break;
     }
   profile = trace_profile_find ();
   if (profile)
@@ -158,11 +157,14 @@ set_trace_profile_command_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_trace_profile_command) =
+VLIB_CLI_COMMAND (set_trace_profile_command, static) =
 {
-.path = "set ioam-trace profile",.short_help = "set ioam-trace \
-                  trace-type <0x1f|0x3|0x9|0x11|0x19> trace-elts <nn> trace-tsp <0|1|2|3> node-id <node id in hex> app-data <app_data in hex>",.function = set_trace_profile_command_fn,};
-
+.path = "set ioam-trace profile",
+.short_help = "set ioam-trace \
+             trace-type <0x1f|0x3|0x9|0x11|0x19> trace-elts <nn> trace-tsp <0|1|2|3> \
+             node-id <node id in hex> app-data <app_data in hex>",
+.function = set_trace_profile_command_fn,
+};
 /* *INDENT-ON* */
 
 static clib_error_t *
@@ -207,10 +209,12 @@ show_trace_profile_command_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_trace_profile_command) =
+VLIB_CLI_COMMAND (show_trace_profile_command, static) =
 {
-.path = "show ioam-trace profile",.short_help =
-    "show ioam-trace profile",.function = show_trace_profile_command_fn,};
+.path = "show ioam-trace profile",
+.short_help = "show ioam-trace profile",
+.function = show_trace_profile_command_fn,
+};
 /* *INDENT-ON* */
 
 /*

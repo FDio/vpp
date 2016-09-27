@@ -310,8 +310,7 @@ static clib_error_t *set_pot_profile_command_fn(vlib_main_t * vm,
                 bits = MAX_BITS;
         }
         else
-            return clib_error_return(0, "unknown input `%U'",
-                format_unformat_error, input);
+	  break;
     }
     if (profile_list_name == 0)
     {
