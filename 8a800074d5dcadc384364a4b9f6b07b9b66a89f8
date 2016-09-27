@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "9a0e1d27_293e4fb9",
+        "filename": "vnet/vnet/devices/dpdk/vhost_user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 929,
+      "author": {
+        "id": 304
+      },
+      "writtenOn": "2016-09-27T21:06:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a0e1d27_c94d9374",
+      "range": {
+        "startLine": 929,
+        "startChar": 41,
+        "endLine": 929,
+        "endChar": 43
+      },
+      "revId": "8a800074d5dcadc384364a4b9f6b07b9b66a89f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a0e1d27_e93057ea",
         "filename": "vnet/vnet/devices/dpdk/vhost_user.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2016-07-14T20:11:29Z",
       "side": 1,
       "message": "not needed, pre 2.2.0 dpdk is not supported anymore",
+      "range": {
+        "startLine": 931,
+        "startChar": 0,
+        "endLine": 931,
+        "endChar": 46
+      },
+      "revId": "8a800074d5dcadc384364a4b9f6b07b9b66a89f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0e1d27_094b8b5a",
+        "filename": "vnet/vnet/devices/dpdk/vhost_user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 931,
+      "author": {
+        "id": 304
+      },
+      "writtenOn": "2016-09-27T21:06:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a0e1d27_e93057ea",
       "range": {
         "startLine": 931,
         "startChar": 0,
