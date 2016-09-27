@@ -100,11 +100,20 @@ jvpp-core/org_openvpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/org_openvpp_jvpp_V
 	cp -rf @srcdir@/jvpp-core/* -t jvpp-core/; \
 	mkdir -p jvpp-core/target; \
 	cd jvpp-core; \
+	echo;echo DAWDBG jvpp-core directory;echo;ls -l;echo; \
 	mkdir dto future callfacade callback notification; \
+	echo;echo DAWDBG Generating jvpp-core java files;echo; \
 	@srcdir@/jvpp/gen/jvpp_gen.py -i defs_vpp_papi.py --plugin_name core; \
+	echo;echo DAWDBG Generated jvpp-core java files;echo;ls -l;ls -l */*;echo; \
+	echo;echo DAWDBG Copying generated java files into $(packagedir_jvpp_core); \
 	cp -rf dto future callfacade callback notification *.java -t $(packagedir_jvpp_core); \
+	echo;echo DAWDBG Copied jvpp-core java files in $(packagedir_jvpp_core); \
+	echo;ls -l $(packagedir_jvpp_core);ls -l  $(packagedir_jvpp_core)/*/*;echo; \
+	echo DAWDBG Removing generated java files; \
 	rm -rf dto future callfacade callback notification *.java; \
+	echo;echo DAWDBG jvpp-core directory;echo;ls -l;echo; \
 	cd ..; \
+	echo DAWDBG Compiling jvpp-core java files; \
 	$(JAVAC) -classpath jvpp-registry/target -d jvpp-core/target jvpp-core/$(packagedir_jvpp_core)/*.java \
 		jvpp-core/$(packagedir_jvpp_core)/dto/*.java \
 		jvpp-core/$(packagedir_jvpp_core)/callback/*.java \
@@ -114,7 +123,7 @@ jvpp-core/org_openvpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/org_openvpp_jvpp_V
 		jvpp-core/$(packagedir_jvpp_core)/test/*.java \
 		|| (echo "jvpp-core compilation failed: $$?"; exit 1); \
 	$(JAVAH) -classpath jvpp-registry/target:jvpp-core/target -d jvpp-core org.openvpp.jvpp.core.JVppCoreImpl ;
-	
+
 $(jarfile_jvpp_core): libjvpp_core.la
 	cp .libs/libjvpp_core.so.0.0.0 jvpp-core/target;	\
 	$(JAR) cf $(JARFLAGS) $@ -C jvpp-core/target .;
