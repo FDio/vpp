@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_77b05f43",
+        "filename": "vnet/vnet/classify/ip_classify.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-09-28T18:20:47Z",
+      "side": 1,
+      "message": "If you are going to apply format changes, please add the checkstyle information etc as per wiki (Coding style guidelines)",
+      "range": {
+        "startLine": 32,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 0
+      },
+      "revId": "d42e327f20cf437ed3697007e5afe8dc1bc79764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_57ab23d6",
+        "filename": "vnet/vnet/classify/ip_classify.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-09-28T18:20:47Z",
+      "side": 1,
+      "message": "We should probably discuss this part.",
+      "range": {
+        "startLine": 277,
+        "startChar": 23,
+        "endLine": 279,
+        "endChar": 64
+      },
+      "revId": "d42e327f20cf437ed3697007e5afe8dc1bc79764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_97a9bbe1",
+        "filename": "vnet/vnet/classify/vnet_classify.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1942,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-09-28T18:20:47Z",
+      "side": 1,
+      "message": "I don\u0027t understand why this is commented out.",
+      "range": {
+        "startLine": 1941,
+        "startChar": 0,
+        "endLine": 1942,
+        "endChar": 63
+      },
+      "revId": "d42e327f20cf437ed3697007e5afe8dc1bc79764",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
