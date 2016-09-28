@@ -29,7 +29,7 @@ static u8 * format_ip_classify_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip_classify_trace_t * t = va_arg (*args, ip_classify_trace_t *);
-  
+
   s = format (s, "IP_CLASSIFY: next_index %d, table %d, entry %d",
               t->next_index, t->table_index, t->entry_index);
   return s;
@@ -94,16 +94,16 @@ ip_classify_inline (vlib_main_t * vm,
       /* prefetch next iteration */
         {
           vlib_buffer_t * p1, * p2;
-          
+
           p1 = vlib_get_buffer (vm, from[1]);
           p2 = vlib_get_buffer (vm, from[2]);
-          
+
           vlib_prefetch_buffer_header (p1, STORE);
           CLIB_PREFETCH (p1->data, CLIB_CACHE_LINE_BYTES, STORE);
           vlib_prefetch_buffer_header (p2, STORE);
           CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
         }
-        
+
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
       h0 = (void *)vlib_buffer_get_current(b0) -
@@ -113,7 +113,7 @@ ip_classify_inline (vlib_main_t * vm,
       b1 = vlib_get_buffer (vm, bi1);
       h1 = (void *)vlib_buffer_get_current(b1) -
                 ethernet_buffer_header_size(b1);
-        
+
       cd_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
       cd0 = classify_dpo_get(cd_index0);
       table_index0 = cd0->cd_table_index;
@@ -125,13 +125,13 @@ ip_classify_inline (vlib_main_t * vm,
       t0 = pool_elt_at_index (vcm->tables, table_index0);
 
       t1 = pool_elt_at_index (vcm->tables, table_index1);
-            
-      vnet_buffer(b0)->l2_classify.hash = 
+
+      vnet_buffer(b0)->l2_classify.hash =
         vnet_classify_hash_packet (t0, (u8 *) h0);
 
       vnet_classify_prefetch_bucket (t0, vnet_buffer(b0)->l2_classify.hash);
 
-      vnet_buffer(b1)->l2_classify.hash = 
+      vnet_buffer(b1)->l2_classify.hash =
         vnet_classify_hash_packet (t1, (u8 *) h1);
 
       vnet_classify_prefetch_bucket (t1, vnet_buffer(b1)->l2_classify.hash);
@@ -158,13 +158,13 @@ ip_classify_inline (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
       h0 = (void *)vlib_buffer_get_current(b0) -
                 ethernet_buffer_header_size(b0);
-        
+
       cd_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
       cd0 = classify_dpo_get(cd_index0);
       table_index0 = cd0->cd_table_index;
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
-      vnet_buffer(b0)->l2_classify.hash = 
+      vnet_buffer(b0)->l2_classify.hash =
         vnet_classify_hash_packet (t0, (u8 *) h0);
 
       vnet_buffer(b0)->l2_classify.table_index = table_index0;
@@ -173,7 +173,7 @@ ip_classify_inline (vlib_main_t * vm,
       from++;
       n_left_from--;
     }
-        
+
   next_index = node->cached_next_index;
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -206,12 +206,12 @@ ip_classify_inline (vlib_main_t * vm,
               u64 phash1;
 
               table_index1 = vnet_buffer(p1)->l2_classify.table_index;
-              
+
               if (PREDICT_TRUE (table_index1 != ~0))
                 {
                   tp1 = pool_elt_at_index (vcm->tables, table_index1);
                   phash1 = vnet_buffer(p1)->l2_classify.hash;
-                  vnet_classify_prefetch_entry (tp1, phash1); 
+                  vnet_classify_prefetch_entry (tp1, phash1);
                 }
             }
 
@@ -244,6 +244,13 @@ ip_classify_inline (vlib_main_t * vm,
                   vlib_buffer_advance (b0, e0->advance);
                   next0 = (e0->next_index < node->n_next_nodes)?
                            e0->next_index:next0;
+                  if (is_ip4) {
+                    vnet_buffer(b0)->l2_classify.node_index
+                      = ip4_classify_node.index;
+                  } else {
+                    vnet_buffer(b0)->l2_classify.node_index
+                      = ip6_classify_node.index;
+                  }
                   hits++;
                 }
               else
@@ -271,6 +278,13 @@ ip_classify_inline (vlib_main_t * vm,
                           vlib_buffer_advance (b0, e0->advance);
                           next0 = (e0->next_index < node->n_next_nodes)?
                                    e0->next_index:next0;
+                          if (is_ip4) {
+                            vnet_buffer(b0)->l2_classify.node_index
+                              = ip4_classify_node.index;
+                          } else {
+                            vnet_buffer(b0)->l2_classify.node_index
+                              = ip6_classify_node.index;
+                          }
                           hits++;
                           chain_hits++;
                           break;
@@ -279,10 +293,10 @@ ip_classify_inline (vlib_main_t * vm,
                 }
             }
 
-          if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
-                            && (b0->flags & VLIB_BUFFER_IS_TRACED))) 
+          if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
+                            && (b0->flags & VLIB_BUFFER_IS_TRACED)))
             {
-              ip_classify_trace_t *t = 
+              ip_classify_trace_t *t =
                 vlib_add_trace (vm, node, b0, sizeof (*t));
               t->next_index = next0;
               t->table_index = t0 ? t0 - vcm->tables : ~0;
@@ -298,14 +312,14 @@ ip_classify_inline (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, node->node_index, 
-                               IP_CLASSIFY_ERROR_MISS, 
+  vlib_node_increment_counter (vm, node->node_index,
+                               IP_CLASSIFY_ERROR_MISS,
                                misses);
-  vlib_node_increment_counter (vm, node->node_index, 
-                               IP_CLASSIFY_ERROR_HIT, 
+  vlib_node_increment_counter (vm, node->node_index,
+                               IP_CLASSIFY_ERROR_HIT,
                                hits);
-  vlib_node_increment_counter (vm, node->node_index, 
-                               IP_CLASSIFY_ERROR_CHAIN_HIT, 
+  vlib_node_increment_counter (vm, node->node_index,
+                               IP_CLASSIFY_ERROR_CHAIN_HIT,
                                chain_hits);
   return frame->n_vectors;
 }
