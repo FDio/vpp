@@ -1059,7 +1059,7 @@ VLIB_INIT_FUNCTION (ip4_lookup_init);
 
 typedef struct {
   /* Adjacency taken. */
-  u32 adj_index;
+  u32 dpo_index;
   u32 flow_hash;
   u32 fib_index;
 
@@ -1087,7 +1087,7 @@ static u8 * format_ip4_lookup_trace (u8 * s, va_list * args)
   uword indent = format_get_indent (s);
 
   s = format (s, "fib %d dpo-idx %d flow hash: 0x%08x",
-              t->fib_index, t->adj_index, t->flow_hash);
+              t->fib_index, t->dpo_index, t->flow_hash);
   s = format (s, "\n%U%U",
               format_white_space, indent,
               format_ip4_header, t->packet_data, sizeof (t->packet_data));
@@ -1102,14 +1102,14 @@ static u8 * format_ip4_rewrite_trace (u8 * s, va_list * args)
   vnet_main_t * vnm = vnet_get_main();
   uword indent = format_get_indent (s);
 
-  s = format (s, "tx_sw_if_index %d adj-idx %d : %U flow hash: 0x%08x",
-              t->fib_index, t->adj_index, format_ip_adjacency,
-              vnm, t->adj_index, FORMAT_IP_ADJACENCY_NONE,
+  s = format (s, "tx_sw_if_index %d dpo-idx %d : %U flow hash: 0x%08x",
+              t->fib_index, t->dpo_index, format_ip_adjacency,
+              vnm, t->dpo_index, FORMAT_IP_ADJACENCY_NONE,
 	      t->flow_hash);
   s = format (s, "\n%U%U",
               format_white_space, indent,
               format_ip_adjacency_packet_data,
-              vnm, t->adj_index,
+              vnm, t->dpo_index,
               t->packet_data, sizeof (t->packet_data));
   return s;
 }
@@ -1146,7 +1146,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
+	  t0->dpo_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
 	  t0->fib_index = (vnet_buffer(b0)->sw_if_index[VLIB_TX] != (u32)~0) ?
 	      vnet_buffer(b0)->sw_if_index[VLIB_TX] :
@@ -1160,7 +1160,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
-	  t1->adj_index = vnet_buffer (b1)->ip.adj_index[which_adj_index];
+	  t1->dpo_index = vnet_buffer (b1)->ip.adj_index[which_adj_index];
 	  t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
 	  t1->fib_index = (vnet_buffer(b1)->sw_if_index[VLIB_TX] != (u32)~0) ?
 	      vnet_buffer(b1)->sw_if_index[VLIB_TX] :
@@ -1187,7 +1187,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
+	  t0->dpo_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
 	  t0->fib_index = (vnet_buffer(b0)->sw_if_index[VLIB_TX] != (u32)~0) ?
 	      vnet_buffer(b0)->sw_if_index[VLIB_TX] :
