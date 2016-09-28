@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_376307de",
+        "filename": "plugins/snat-plugin/snat/jvpp_snat.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-09-28T17:39:19Z",
+      "side": 1,
+      "message": "Checkstyle ... not sure this needs docs? Or do you do that in HC ?",
+      "range": {
+        "startLine": 102,
+        "startChar": 0,
+        "endLine": 118,
+        "endChar": 1
+      },
+      "revId": "5acdf6be9ce7fd5b223f4af5ece8177839eabd89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_576443e4",
+        "filename": "plugins/snat-plugin/snat/jvpp_snat.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-09-28T17:39:19Z",
+      "side": 1,
+      "message": "Checkstyle, docs.",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 44,
+        "endChar": 37
+      },
+      "revId": "5acdf6be9ce7fd5b223f4af5ece8177839eabd89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
