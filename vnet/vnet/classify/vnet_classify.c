@@ -1938,8 +1938,8 @@ unformat_ip_next_node (unformat_input_t * input, va_list * args)
     {
       rv = next_index = vlib_node_add_next 
         (cm->vlib_main, ip4_classify_node.index, node_index);
-      next_index = vlib_node_add_next 
-        (cm->vlib_main, ip6_classify_node.index, node_index);
+     // next_index = vlib_node_add_next 
+       // (cm->vlib_main, ip6_classify_node.index, node_index);
       ASSERT(rv == next_index);
 
       *next_indexp = next_index;
