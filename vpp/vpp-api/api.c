@@ -5465,7 +5465,7 @@ static void
   if (!mp->is_add)
     {
       vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
-      gid_address_copy (&a->deid, eid);
+      gid_address_copy (&a->reid, eid);
       a->is_add = 0;
       rv = vnet_lisp_add_del_adjacency (a);
       if (rv)
@@ -5497,10 +5497,10 @@ vl_api_lisp_add_del_adjacency_t_handler (vl_api_lisp_add_del_adjacency_t * mp)
   int rv = 0;
   memset (a, 0, sizeof (a[0]));
 
-  rv = unformat_lisp_eid_api (&a->seid, clib_net_to_host_u32 (mp->vni),
-			      mp->eid_type, mp->seid, mp->seid_len);
-  rv |= unformat_lisp_eid_api (&a->deid, clib_net_to_host_u32 (mp->vni),
-			       mp->eid_type, mp->deid, mp->deid_len);
+  rv = unformat_lisp_eid_api (&a->leid, clib_net_to_host_u32 (mp->vni),
+			      mp->eid_type, mp->leid, mp->leid_len);
+  rv |= unformat_lisp_eid_api (&a->reid, clib_net_to_host_u32 (mp->vni),
+			       mp->eid_type, mp->reid, mp->reid_len);
 
   if (rv)
     goto send_reply;

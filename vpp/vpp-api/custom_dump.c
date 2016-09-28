@@ -2467,9 +2467,9 @@ static void *vl_api_lisp_add_del_adjacency_t_print
 
   s = format (s, "%s ", mp->is_add ? "add" : "del");
   s = format (s, "vni %d ", clib_net_to_host_u32 (mp->vni));
-  s = format (s, "deid %U seid %U ",
-	      format_lisp_flat_eid, mp->eid_type, mp->deid, mp->deid_len,
-	      format_lisp_flat_eid, mp->eid_type, mp->seid, mp->seid_len);
+  s = format (s, "reid %U leid %U ",
+	      format_lisp_flat_eid, mp->eid_type, mp->reid, mp->reid_len,
+	      format_lisp_flat_eid, mp->eid_type, mp->leid, mp->leid_len);
 
   FINISH;
 }

@@ -13021,15 +13021,15 @@ api_lisp_add_del_adjacency (vat_main_t * vam)
   vl_api_lisp_add_del_adjacency_t *mp;
   f64 timeout = ~0;
   u32 vni = 0;
-  ip4_address_t seid4, deid4;
-  ip6_address_t seid6, deid6;
-  u8 deid_mac[6] = { 0 };
-  u8 seid_mac[6] = { 0 };
-  u8 deid_type, seid_type;
-  u32 seid_len = 0, deid_len = 0, len;
+  ip4_address_t leid4, reid4;
+  ip6_address_t leid6, reid6;
+  u8 reid_mac[6] = { 0 };
+  u8 leid_mac[6] = { 0 };
+  u8 reid_type, leid_type;
+  u32 leid_len = 0, reid_len = 0, len;
   u8 is_add = 1;
 
-  seid_type = deid_type = (u8) ~ 0;
+  leid_type = reid_type = (u8) ~ 0;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -13042,39 +13042,39 @@ api_lisp_add_del_adjacency (vat_main_t * vam)
 	{
 	  is_add = 1;
 	}
-      else if (unformat (input, "deid %U/%d", unformat_ip4_address,
-			 &deid4, &len))
+      else if (unformat (input, "reid %U/%d", unformat_ip4_address,
+			 &reid4, &len))
 	{
-	  deid_type = 0;	/* ipv4 */
-	  deid_len = len;
+	  reid_type = 0;	/* ipv4 */
+	  reid_len = len;
 	}
-      else if (unformat (input, "deid %U/%d", unformat_ip6_address,
-			 &deid6, &len))
+      else if (unformat (input, "reid %U/%d", unformat_ip6_address,
+			 &reid6, &len))
 	{
-	  deid_type = 1;	/* ipv6 */
-	  deid_len = len;
+	  reid_type = 1;	/* ipv6 */
+	  reid_len = len;
 	}
-      else if (unformat (input, "deid %U", unformat_ethernet_address,
-			 deid_mac))
+      else if (unformat (input, "reid %U", unformat_ethernet_address,
+			 reid_mac))
 	{
-	  deid_type = 2;	/* mac */
+	  reid_type = 2;	/* mac */
 	}
-      else if (unformat (input, "seid %U/%d", unformat_ip4_address,
-			 &seid4, &len))
+      else if (unformat (input, "leid %U/%d", unformat_ip4_address,
+			 &leid4, &len))
 	{
-	  seid_type = 0;	/* ipv4 */
-	  seid_len = len;
+	  leid_type = 0;	/* ipv4 */
+	  leid_len = len;
 	}
-      else if (unformat (input, "seid %U/%d", unformat_ip6_address,
-			 &seid6, &len))
+      else if (unformat (input, "leid %U/%d", unformat_ip6_address,
+			 &leid6, &len))
 	{
-	  seid_type = 1;	/* ipv6 */
-	  seid_len = len;
+	  leid_type = 1;	/* ipv6 */
+	  leid_len = len;
 	}
-      else if (unformat (input, "seid %U", unformat_ethernet_address,
-			 seid_mac))
+      else if (unformat (input, "leid %U", unformat_ethernet_address,
+			 leid_mac))
 	{
-	  seid_type = 2;	/* mac */
+	  leid_type = 2;	/* mac */
 	}
       else if (unformat (input, "vni %d", &vni))
 	{
@@ -13087,38 +13087,38 @@ api_lisp_add_del_adjacency (vat_main_t * vam)
 	}
     }
 
-  if ((u8) ~ 0 == deid_type)
+  if ((u8) ~ 0 == reid_type)
     {
       errmsg ("missing params!");
       return -99;
     }
 
-  if (seid_type != deid_type)
+  if (leid_type != reid_type)
     {
-      errmsg ("source and destination EIDs are of different types!");
+      errmsg ("remote and local EIDs are of different types!");
       return -99;
     }
 
   M (LISP_ADD_DEL_ADJACENCY, lisp_add_del_adjacency);
   mp->is_add = is_add;
   mp->vni = htonl (vni);
-  mp->seid_len = seid_len;
-  mp->deid_len = deid_len;
-  mp->eid_type = deid_type;
+  mp->leid_len = leid_len;
+  mp->reid_len = reid_len;
+  mp->eid_type = reid_type;
 
   switch (mp->eid_type)
     {
     case 0:
-      clib_memcpy (mp->seid, &seid4, sizeof (seid4));
-      clib_memcpy (mp->deid, &deid4, sizeof (deid4));
+      clib_memcpy (mp->leid, &leid4, sizeof (leid4));
+      clib_memcpy (mp->reid, &reid4, sizeof (reid4));
       break;
     case 1:
-      clib_memcpy (mp->seid, &seid6, sizeof (seid6));
-      clib_memcpy (mp->deid, &deid6, sizeof (deid6));
+      clib_memcpy (mp->leid, &leid6, sizeof (leid6));
+      clib_memcpy (mp->reid, &reid6, sizeof (reid6));
       break;
     case 2:
-      clib_memcpy (mp->seid, seid_mac, 6);
-      clib_memcpy (mp->deid, deid_mac, 6);
+      clib_memcpy (mp->leid, leid_mac, 6);
+      clib_memcpy (mp->reid, reid_mac, 6);
       break;
     default:
       errmsg ("unknown EID type %d!", mp->eid_type);
@@ -15746,9 +15746,8 @@ _(lisp_add_del_remote_mapping, "add|del vni <vni> eid <dest-eid> "      \
                                "rloc <locator> p <prio> "               \
                                "w <weight> [rloc <loc> ... ] "          \
                                "action <action> [del-all]")             \
-_(lisp_add_del_adjacency, "add|del vni <vni> deid <dest-eid> seid "     \
-                          "<src-eid> rloc <locator> p <prio> w <weight>"\
-                          "[rloc <loc> ... ] action <action>")          \
+_(lisp_add_del_adjacency, "add|del vni <vni> reid <remote-eid> leid "   \
+                          "<local-eid>")                                \
 _(lisp_pitr_set_locator_set, "locator-set <loc-set-name> | del")        \
 _(lisp_map_request_mode, "src-dst|dst-only")                            \
 _(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
