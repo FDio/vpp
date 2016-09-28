@@ -25,7 +25,7 @@ class_reference_template = Template("""jclass ${ref_name}Class;
 """)
 
 find_class_invocation_template = Template("""
-    ${ref_name}Class = (jclass)(*env)->NewGlobalRef(env, (*env)->FindClass(env, "org/openvpp/jvpp/${plugin_name}/dto/${class_name}"));
+    ${ref_name}Class = (jclass)(*env)->NewGlobalRef(env, (*env)->FindClass(env, "io/fd/vpp/jvpp/${plugin_name}/dto/${class_name}"));
     if ((*env)->ExceptionCheck(env)) {
         (*env)->ExceptionDescribe(env);
         return JNI_ERR;
@@ -86,7 +86,7 @@ def generate_class_cache(func_list, plugin_name):
 
     # add exception class to class cache
     ref_name = 'callbackException'
-    class_name = 'org/openvpp/jvpp/VppCallbackException'
+    class_name = 'io/fd/vpp/jvpp/VppCallbackException'
     class_references.append(class_reference_template.substitute(
             ref_name=ref_name))
     find_class_invocations.append(find_class_template.substitute(
@@ -102,7 +102,7 @@ def generate_class_cache(func_list, plugin_name):
 # TODO: cache method and field identifiers to achieve better performance
 # https://jira.fd.io/browse/HONEYCOMB-42
 request_class_template = Template("""
-    jclass requestClass = (*env)->FindClass(env, "org/openvpp/jvpp/${plugin_name}/dto/${java_name_upper}");""")
+    jclass requestClass = (*env)->FindClass(env, "io/fd/vpp/jvpp/${plugin_name}/dto/${java_name_upper}");""")
 
 request_field_identifier_template = Template("""
     jfieldID ${java_name}FieldId = (*env)->GetFieldID(env, requestClass, "${java_name}", "${jni_signature}");
@@ -200,7 +200,7 @@ jni_impl_template = Template("""
  * Generated based on $inputfile preparsed data:
 $api_data
  */
-JNIEXPORT jint JNICALL Java_org_openvpp_jvpp_${plugin_name}_JVpp${java_plugin_name}Impl_${java_name}0
+JNIEXPORT jint JNICALL Java_io_fd_vpp_jvpp_${plugin_name}_JVpp${java_plugin_name}Impl_${java_name}0
 (JNIEnv * env, jclass clazz$args) {
     ${plugin_name}_main_t *plugin_main = &${plugin_name}_main;
     vl_api_${c_name}_t * mp;
@@ -405,7 +405,7 @@ static void vl_api_${handler_name}_t_handler (vl_api_${handler_name}_t * mp)
     $err_handler
 
     jmethodID constructor = (*env)->GetMethodID(env, ${class_ref_name}Class, "<init>", "()V");
-    jmethodID callbackMethod = (*env)->GetMethodID(env, plugin_main->callbackClass, "on${dto_name}", "(Lorg/openvpp/jvpp/${plugin_name}/dto/${dto_name};)V");
+    jmethodID callbackMethod = (*env)->GetMethodID(env, plugin_main->callbackClass, "on${dto_name}", "(Lio/fd/vpp/jvpp/${plugin_name}/dto/${dto_name};)V");
 
     jobject dto = (*env)->NewObject(env, ${class_ref_name}Class, constructor);
     $dto_setters

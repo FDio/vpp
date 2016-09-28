@@ -50,12 +50,12 @@ libjvpp_registry_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/lin
 EXTRA_libjvpp_registry_la_DEPENDENCIES=libjvpp_common.la
 
 jarfile_jvpp_registry = jvpp-registry-$(PACKAGE_VERSION).jar
-packagedir_jvpp_registry = org/openvpp/jvpp
+packagedir_jvpp_registry = io/fd/vpp/jvpp
 
-BUILT_SOURCES += jvpp-registry/org_openvpp_jvpp_VppJNIConnection.h
+BUILT_SOURCES += jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h
 
 
-jvpp-registry/org_openvpp_jvpp_VppJNIConnection.h:
+jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h:
 	@echo " jvpp-registry.jar generation ";				\
 	mkdir -p jvpp-registry/target;				\
 	cp -rf @srcdir@/jvpp-registry/* -t jvpp-registry/;
@@ -66,8 +66,8 @@ jvpp-registry/org_openvpp_jvpp_VppJNIConnection.h:
 		jvpp-registry/$(packagedir_jvpp_registry)/future/*.java 	\
 		jvpp-registry/$(packagedir_jvpp_registry)/test/*.java 	\
 		|| (echo "jvpp-registry compilation failed: $$?"; exit 1);	\
-	$(JAVAH) -classpath jvpp-registry/target -d jvpp-registry org.openvpp.jvpp.VppJNIConnection ;
-	$(JAVAH) -classpath jvpp-registry/target -d jvpp-registry org.openvpp.jvpp.JVppRegistryImpl ;
+	$(JAVAH) -classpath jvpp-registry/target -d jvpp-registry io.fd.vpp.jvpp.VppJNIConnection ;
+	$(JAVAH) -classpath jvpp-registry/target -d jvpp-registry io.fd.vpp.jvpp.JVppRegistryImpl ;
 
 $(jarfile_jvpp_registry): libjvpp_registry.la
 	cp .libs/libjvpp_registry.so.0.0.0 jvpp-registry/target;	\
@@ -86,17 +86,17 @@ libjvpp_core_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 EXTRA_libjvpp_core_la_DEPENDENCIES=libjvpp_registry.la
 
 jarfile_jvpp_core = jvpp-core-$(PACKAGE_VERSION).jar
-packagedir_jvpp_core = org/openvpp/jvpp/core
+packagedir_jvpp_core = io/fd/vpp/jvpp/core
 api_file = $(prefix)/../vpp/vpp-api/vpe.api
 
-BUILT_SOURCES += jvpp-core/org_openvpp_jvpp_core_JVppCoreImpl.h
+BUILT_SOURCES += jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h
 
 
 defs_vpp_papi.py:
 	@echo "jVpp API";				\
 	vppapigen --input $(api_file) --python jvpp-core/defs_vpp_papi.py;
 
-jvpp-core/org_openvpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/org_openvpp_jvpp_VppJNIConnection.h defs_vpp_papi.py 
+jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h defs_vpp_papi.py
 	cp -rf @srcdir@/jvpp-core/* -t jvpp-core/; \
 	mkdir -p jvpp-core/target; \
 	cd jvpp-core; \
@@ -113,7 +113,7 @@ jvpp-core/org_openvpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/org_openvpp_jvpp_V
 		jvpp-core/$(packagedir_jvpp_core)/callfacade/*.java 	\
 		jvpp-core/$(packagedir_jvpp_core)/test/*.java \
 		|| (echo "jvpp-core compilation failed: $$?"; exit 1); \
-	$(JAVAH) -classpath jvpp-registry/target:jvpp-core/target -d jvpp-core org.openvpp.jvpp.core.JVppCoreImpl ;
+	$(JAVAH) -classpath jvpp-registry/target:jvpp-core/target -d jvpp-core io.fd.vpp.jvpp.core.JVppCoreImpl ;
 	
 $(jarfile_jvpp_core): libjvpp_core.la
 	cp .libs/libjvpp_core.so.0.0.0 jvpp-core/target;	\
