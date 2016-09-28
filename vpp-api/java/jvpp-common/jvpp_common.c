@@ -46,7 +46,7 @@ void call_on_error(const char* callName, int contextId, int retval,
         return;
     }
     jmethodID callbackExcMethod = (*env)->GetMethodID(env, callbackClass,
-            "onError", "(Lorg/openvpp/jvpp/VppCallbackException;)V");
+            "onError", "(Lio/fd/vpp/jvpp/VppCallbackException;)V");
     if (!callbackExcMethod) {
         DEBUG_LOG("CallOnError : callbackExcMethod is null!\n");
         return;
