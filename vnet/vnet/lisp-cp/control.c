@@ -1178,14 +1178,12 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
   u8 is_add = 1;
-  locator_t rloc, *rlocs = 0;
   ip_prefix_t *deid_ippref, *seid_ippref;
   gid_address_t seid, deid;
   u8 *dmac = gid_address_mac (&deid);
   u8 *smac = gid_address_mac (&seid);
   u8 deid_set = 0, seid_set = 0;
-  u8 *s = 0;
-  u32 vni, action = ~0;
+  u32 vni;
   int rv;
 
   /* Get a line of input. */
@@ -1194,7 +1192,6 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   memset (&deid, 0, sizeof (deid));
   memset (&seid, 0, sizeof (seid));
-  memset (&rloc, 0, sizeof (rloc));
 
   seid_ippref = &gid_address_ippref (&seid);
   deid_ippref = &gid_address_ippref (&deid);
@@ -1239,39 +1236,15 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
     }
 
-  if (!deid_set)
+  if (!deid_set || !seid_set)
     {
-      clib_warning ("missing deid!");
-      goto done;
-    }
-
-  if (GID_ADDR_IP_PREFIX == gid_address_type (&deid))
-    {
-      /* if seid not set, make sure the ip version is the same as that
-       * of the deid. This ensures the seid to be configured will be
-       * either 0/0 or ::/0 */
-      if (!seid_set)
-	ip_prefix_version (seid_ippref) = ip_prefix_version (deid_ippref);
-
-      if (is_add &&
-	  (ip_prefix_version (deid_ippref)
-	   != ip_prefix_version (seid_ippref)))
-	{
-	  clib_warning ("source and destination EIDs are not"
-			" in the same IP family!");
-	  goto done;
-	}
-    }
-
-  if (is_add && (~0 == action) && 0 == vec_len (rlocs))
-    {
-      clib_warning ("no action set for negative map-reply!");
+      clib_warning ("missing deid or seid!");
       goto done;
     }
 
   memset (a, 0, sizeof (a[0]));
-  gid_address_copy (&a->seid, &deid);
-  gid_address_copy (&a->deid, &seid);
+  gid_address_copy (&a->seid, &seid);
+  gid_address_copy (&a->deid, &deid);
 
   a->is_add = is_add;
   rv = vnet_lisp_add_del_adjacency (a);
@@ -1281,17 +1254,14 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 done:
   unformat_free (line_input);
-  if (s)
-    vec_free (s);
   return error;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_add_del_adjacency_command) = {
     .path = "lisp adjacency",
-    .short_help = "lisp adjacency add|del vni <vni>"
-     "deid <dest-eid> seid <src-eid> [action <no-action|natively-forward|"
-     "send-map-request|drop>] rloc <dst-locator> [rloc <dst-locator> ... ]",
+    .short_help = "lisp adjacency add|del vni <vni> deid <dest-eid> "
+      "seid <src-eid>",
     .function = lisp_add_del_adjacency_command_fn,
 };
 /* *INDENT-ON* */

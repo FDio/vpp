@@ -15511,8 +15511,7 @@ _(lisp_add_del_remote_mapping, "add|del vni <vni> eid <dest-eid> "      \
                                "w <weight> [rloc <loc> ... ] "          \
                                "action <action> [del-all]")             \
 _(lisp_add_del_adjacency, "add|del vni <vni> deid <dest-eid> seid "     \
-                          "<src-eid> rloc <locator> p <prio> w <weight>"\
-                          "[rloc <loc> ... ] action <action>")          \
+                          "<src-eid>")                                  \
 _(lisp_pitr_set_locator_set, "locator-set <loc-set-name> | del")        \
 _(lisp_map_request_mode, "src-dst|dst-only")                            \
 _(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
