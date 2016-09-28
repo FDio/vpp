@@ -22,6 +22,30 @@
       "revId": "e4cc0accb22708a37379c942e1faf66426f700a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_a6b7ef85",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-09-28T05:18:37Z",
+      "side": 1,
+      "message": "When the packet is processed by ip6_hop_by_hop node to find the next node to queue the frame to it does this:\n\nip_adjacency_t *adj0 \u003d ip_get_adjacency(lm, vnet_buffer(b0)-\u003eip.adj_index[VLIB_TX]);\nnext0 \u003d adj0-\u003elookup_next_index;\n\nIf the dpo index in ip.adj_index[VLIB_TX] is not from the ip adjacency_heap pool it will fail. \n\nShould I add dpo_is_adj check in ip6_load_balance too before next is set to ip6_hop_by_hop?",
+      "parentUuid": "3a1d315d_a6b12fe3",
+      "range": {
+        "startLine": 162,
+        "startChar": 35,
+        "endLine": 162,
+        "endChar": 48
+      },
+      "revId": "e4cc0accb22708a37379c942e1faf66426f700a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
