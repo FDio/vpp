@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_bc35bef8",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1239,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-09-28T14:59:29Z",
+      "side": 1,
+      "message": "We still need a check that the eids have the same address family.",
+      "range": {
+        "startLine": 1239,
+        "startChar": 2,
+        "endLine": 1239,
+        "endChar": 4
+      },
+      "revId": "1e469c3f526bad99ca61cadeb40f840d74775667",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
