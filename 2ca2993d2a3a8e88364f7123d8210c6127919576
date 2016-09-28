@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_d9de4c11",
+        "filename": "vnet/vnet/devices/dpdk/init.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1235,
+      "author": {
+        "id": 74
+      },
+      "writtenOn": "2016-09-28T08:50:18Z",
+      "side": 1,
+      "message": "Please fail, or at least print warning that allocation was unsuccessful",
+      "revId": "2ca2993d2a3a8e88364f7123d8210c6127919576",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
