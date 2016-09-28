@@ -29,9 +29,9 @@ public interface JVpp${plugin_name} extends $base_package.JVpp {
     /**
      * Generic dispatch method for sending requests to VPP
      *
-     * @throws org.openvpp.jvpp.VppInvocationException if send request had failed
+     * @throws io.fd.vpp.jvpp.VppInvocationException if send request had failed
      */
-    int send($base_package.$dto_package.JVppRequest request) throws org.openvpp.jvpp.VppInvocationException;
+    int send($base_package.$dto_package.JVppRequest request) throws io.fd.vpp.jvpp.VppInvocationException;
 
 $methods
 }
@@ -120,12 +120,12 @@ public final class JVpp${plugin_name}Impl implements $plugin_package.JVpp${plugi
     }
 
     @Override
-    public int send($base_package.$dto_package.JVppRequest request) throws org.openvpp.jvpp.VppInvocationException {
+    public int send($base_package.$dto_package.JVppRequest request) throws io.fd.vpp.jvpp.VppInvocationException {
         return request.send(this);
     }
 
     @Override
-    public final int controlPing(final org.openvpp.jvpp.dto.ControlPing controlPing) throws org.openvpp.jvpp.VppInvocationException {
+    public final int controlPing(final io.fd.vpp.jvpp.dto.ControlPing controlPing) throws io.fd.vpp.jvpp.VppInvocationException {
         return registry.controlPing(JVpp${plugin_name}Impl.class);
     }
 
@@ -133,27 +133,27 @@ $methods
 }
 """)
 
-method_template = Template("""    int $name($plugin_package.$dto_package.$request request) throws org.openvpp.jvpp.VppInvocationException;""")
+method_template = Template("""    int $name($plugin_package.$dto_package.$request request) throws io.fd.vpp.jvpp.VppInvocationException;""")
 method_native_template = Template(
     """    private static native int ${name}0($plugin_package.$dto_package.$request request);""")
-method_impl_template = Template("""    public final int $name($plugin_package.$dto_package.$request request) throws org.openvpp.jvpp.VppInvocationException {
+method_impl_template = Template("""    public final int $name($plugin_package.$dto_package.$request request) throws io.fd.vpp.jvpp.VppInvocationException {
         java.util.Objects.requireNonNull(request,"Null request object");
         connection.checkActive();
         int result=${name}0(request);
         if(result<0){
-            throw new org.openvpp.jvpp.VppInvocationException("${name}",result);
+            throw new io.fd.vpp.jvpp.VppInvocationException("${name}",result);
         }
         return result;
     }
 """)
 
-no_arg_method_template = Template("""    int $name() throws org.openvpp.jvpp.VppInvocationException;""")
-no_arg_method_native_template = Template("""    private static native int ${name}0() throws org.openvpp.jvpp.VppInvocationException;""")
-no_arg_method_impl_template = Template("""    public final int $name() throws org.openvpp.jvpp.VppInvocationException {
+no_arg_method_template = Template("""    int $name() throws io.fd.vpp.jvpp.VppInvocationException;""")
+no_arg_method_native_template = Template("""    private static native int ${name}0() throws io.fd.vpp.jvpp.VppInvocationException;""")
+no_arg_method_impl_template = Template("""    public final int $name() throws io.fd.vpp.jvpp.VppInvocationException {
         connection.checkActive();
         int result=${name}0();
         if(result<0){
-            throw new org.openvpp.jvpp.VppInvocationException("${name}",result);
+            throw new io.fd.vpp.jvpp.VppInvocationException("${name}",result);
         }
         return result;
     }

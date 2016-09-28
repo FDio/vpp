@@ -55,10 +55,10 @@ typedef struct {
 
 core_main_t core_main __attribute__((aligned (64)));
 
-#include "org_openvpp_jvpp_core_JVppCoreImpl.h"
+#include "io_fd_vpp_jvpp_core_JVppCoreImpl.h"
 #include "jvpp_core_gen.h"
 
-JNIEXPORT void JNICALL Java_org_openvpp_jvpp_core_JVppCoreImpl_init0
+JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_core_JVppCoreImpl_init0
 (JNIEnv * env, jclass clazz, jobject callback, jlong queue_address, jint my_client_index) {
     core_main_t * plugin_main = &core_main;
     plugin_main->my_client_index = my_client_index;
@@ -78,7 +78,7 @@ JNIEXPORT void JNICALL Java_org_openvpp_jvpp_core_JVppCoreImpl_init0
     #undef _
 }
 
-JNIEXPORT void JNICALL Java_org_openvpp_jvpp_core_JVppCoreImpl_close0
+JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_core_JVppCoreImpl_close0
 (JNIEnv *env, jclass clazz) {
     core_main_t * plugin_main = &core_main;
 
