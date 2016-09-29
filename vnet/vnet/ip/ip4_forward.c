@@ -1484,16 +1484,21 @@ ip4_local (vlib_main_t * vm,
 	  leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
 	  leaf1 = (leaf1 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie1->default_leaf : leaf1);
 
-	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbi0;
-
-	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = lbi1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
-          vnet_buffer (p1)->ip.adj_index[VLIB_TX] = lbi1;
+	  lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
+	  lbi1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
 
 	  lb0 = load_balance_get(lbi0);
 	  lb1 = load_balance_get(lbi1);
 	  dpo0 = load_balance_get_bucket_i(lb0, 0);
 	  dpo1 = load_balance_get_bucket_i(lb1, 0);
+
+	    vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+	          vnet_buffer (p0)->ip.adj_index[VLIB_RX] =
+	              dpo0->dpoi_index;
+
+	      vnet_buffer (p1)->ip.adj_index[VLIB_TX] =
+	          vnet_buffer (p1)->ip.adj_index[VLIB_RX] =
+	              dpo1->dpoi_index;
 
 	  /* 
            * Must have a route to source otherwise we drop the packet.
@@ -1658,7 +1663,6 @@ ip4_local (vlib_main_t * vm,
 	  leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
 
 	  lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbi0;
 
 	  lb0 = load_balance_get(lbi0);
 	  dpo0 = load_balance_get_bucket_i(lb0, 0);
