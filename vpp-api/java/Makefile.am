@@ -100,12 +100,13 @@ jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJN
 	cp -rf @srcdir@/jvpp-core/* -t jvpp-core/; \
 	mkdir -p jvpp-core/target; \
 	cd jvpp-core; \
-	mkdir dto future callfacade callback notification; \
+	mkdir types dto future callfacade callback notification; \
 	@srcdir@/jvpp/gen/jvpp_gen.py -i defs_vpp_papi.py --plugin_name core; \
 	cp -rf dto future callfacade callback notification *.java -t $(packagedir_jvpp_core); \
 	rm -rf dto future callfacade callback notification *.java; \
 	cd ..; \
 	$(JAVAC) -classpath jvpp-registry/target -d jvpp-core/target jvpp-core/$(packagedir_jvpp_core)/*.java \
+		jvpp-core/$(packagedir_jvpp_core)/types/*.java \
 		jvpp-core/$(packagedir_jvpp_core)/dto/*.java \
 		jvpp-core/$(packagedir_jvpp_core)/callback/*.java \
 		jvpp-core/$(packagedir_jvpp_core)/notification/*.java \
