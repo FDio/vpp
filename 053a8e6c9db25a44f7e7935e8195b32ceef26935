@@ -22,6 +22,30 @@
       "revId": "053a8e6c9db25a44f7e7935e8195b32ceef26935",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_5747a31d",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-09-29T00:16:15Z",
+      "side": 1,
+      "message": "Sure, will add it to all the iOAM CLIs in a documentation update.",
+      "parentUuid": "3a1d315d_d79f33b3",
+      "range": {
+        "startLine": 159,
+        "startChar": 0,
+        "endLine": 167,
+        "endChar": 2
+      },
+      "revId": "053a8e6c9db25a44f7e7935e8195b32ceef26935",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }

@@ -22,6 +22,30 @@
       "revId": "0dafaa78dffa7cbd82559a94b0c9a8f8144f6f72",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_774cdf42",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-09-29T00:16:15Z",
+      "side": 0,
+      "message": "This assert was a residue from dummy dual loop. It fails always as the buffer is at ip6 start when this node receives the frames. So the check is incorrect and not needed here.",
+      "parentUuid": "3a1d315d_f79c6fc2",
+      "range": {
+        "startLine": 180,
+        "startChar": 0,
+        "endLine": 181,
+        "endChar": 34
+      },
+      "revId": "0dafaa78dffa7cbd82559a94b0c9a8f8144f6f72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
