@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_17c00b29",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1228,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-09-29T09:52:34Z",
+      "side": 1,
+      "message": "We don\u0027t need 2 set_mac_address functions, please remove dpdk_set_mac_address and call API directly...",
+      "range": {
+        "startLine": 1228,
+        "startChar": 9,
+        "endLine": 1228,
+        "endChar": 29
+      },
+      "revId": "73764458227f8cc16fbbd6c24227bb969c57e923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
