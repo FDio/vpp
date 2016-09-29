@@ -87,7 +87,7 @@ $(jvpp_root)/io_fd_vpp_jvpp_snat_JVppSnatImpl.h: defs_snat_papi.py
 	mkdir -p $(jvpp_target); \
 	mkdir -p $(jvpp_root)/$(jvpp_package_dir); 		\
 	cd $(jvpp_root)/$(jvpp_package_dir);			\
-	mkdir -p dto future callfacade callback notification test; 	\
+	mkdir -p types dto future callfacade callback notification test; 	\
 	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/defs_snat_papi.py --plugin_name snat --control_ping_class SnatControlPing;		\
 	cd -;							\
 	mv -f $(jvpp_root)/$(jvpp_package_dir)/jvpp_snat_gen.h $(jvpp_root)/jvpp_snat_gen.h;							\

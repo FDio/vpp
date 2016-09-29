@@ -19,6 +19,7 @@ import importlib
 import sys
 import os
 
+from jvppgen import types_gen
 from jvppgen import callback_gen
 from jvppgen import notification_gen
 from jvppgen import dto_gen
@@ -63,8 +64,7 @@ cfg = importlib.import_module(inputfile, package=None)
 
 # FIXME: functions unsupported due to problems with vpe.api
 def is_supported(f_name):
-    return f_name not in {'vnet_ip4_fib_counters', 'vnet_ip6_fib_counters',
-            'lisp_adjacencies_get_reply', 'lisp_adjacencies_get'}
+    return f_name not in {'vnet_ip4_fib_counters', 'vnet_ip6_fib_counters'}
 
 
 def is_request_field(field_name):
@@ -106,11 +106,11 @@ def get_types(t, filter):
     return types_list, c_types_list, lengths_list
 
 
-def get_definitions():
+def get_definitions(defs):
     # Pass 1
     func_list = []
     func_name = {}
-    for a in cfg.messages:
+    for a in defs:
         if not is_supported(a[0]):
             continue
 
@@ -136,10 +136,9 @@ def get_definitions():
     return func_list, func_name
 
 
-func_list, func_name = get_definitions()
-
 base_package = 'io.fd.vpp.jvpp'
 plugin_package = base_package + '.' + plugin_name
+types_package = 'types'
 dto_package = 'dto'
 callback_package = 'callback'
 notification_package = 'notification'
@@ -148,6 +147,11 @@ future_package = 'future'
 callback_facade_package = 'callfacade'
 control_ping_class_fqn = "%s.%s.%s" % (plugin_package, dto_package, control_ping_class)
 
+types_list, types_name = get_definitions(cfg.types)
+
+types_gen.generate_types(types_list, plugin_package, types_package, inputfile)
+
+func_list, func_name = get_definitions(cfg.messages)
 dto_gen.generate_dtos(func_list, base_package, plugin_package, plugin_name.title(), dto_package, args.inputfile)
 jvpp_impl_gen.generate_jvpp(func_list, base_package, plugin_package, plugin_name, control_ping_class_fqn, dto_package, args.inputfile)
 callback_gen.generate_callbacks(func_list, base_package, plugin_package, plugin_name.title(), callback_package, dto_package, args.inputfile)

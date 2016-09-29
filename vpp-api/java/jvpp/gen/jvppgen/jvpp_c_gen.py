@@ -17,6 +17,9 @@
 import os, util
 from string import Template
 
+import jni_gen
+
+
 def is_manually_generated(f_name, plugin_name):
     return f_name in {'control_ping_reply'}
 
@@ -124,7 +127,7 @@ i32_struct_setter_template = Template("""
 u64_struct_setter_template = Template("""
     mp->${c_name} = clib_host_to_net_u64(${java_name});""")
 
-fixed_array_length_enforcement_template = Template("""
+array_length_enforcement_template = Template("""
         size_t max_size = ${field_length};
         if (cnt > max_size) cnt = max_size;""")
 
@@ -272,7 +275,7 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
 
                 # enforce max length if array has fixed length or uses variable length syntax
                 if str(t[2][0]) != "0":
-                    field_length_check = fixed_array_length_enforcement_template.substitute(field_length=field_length)
+                    field_length_check = array_length_enforcement_template.substitute(field_length=field_length)
 
                 java_field_name = util.underscore_to_camelcase(c_name)
 
@@ -297,91 +300,6 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
                 args=arguments))
 
     return "\n".join(jni_impl)
-
-
-dto_field_id_template = Template("""
-    jfieldID ${java_name}FieldId = (*env)->GetFieldID(env, ${class_ref_name}Class, "${java_name}", "${jni_signature}");""")
-
-default_dto_field_setter_template = Template("""
-    (*env)->Set${jni_setter}(env, dto, ${java_name}FieldId, mp->${c_name});
-""")
-
-variable_length_array_value_template = Template("""mp->${length_var_name}""")
-variable_length_array_template = Template("""clib_net_to_host_${length_field_type}(${value})""")
-
-u16_dto_field_setter_template = Template("""
-    (*env)->Set${jni_setter}(env, dto, ${java_name}FieldId, clib_net_to_host_u16(mp->${c_name}));
-""")
-
-u32_dto_field_setter_template = Template("""
-    (*env)->Set${jni_setter}(env, dto, ${java_name}FieldId, clib_net_to_host_u32(mp->${c_name}));
-""")
-
-u64_dto_field_setter_template = Template("""
-    (*env)->Set${jni_setter}(env, dto, ${java_name}FieldId, clib_net_to_host_u64(mp->${c_name}));
-""")
-
-u8_array_dto_field_setter_template = Template("""
-    jbyteArray ${java_name} = (*env)->NewByteArray(env, ${field_length});
-    (*env)->SetByteArrayRegion(env, ${java_name}, 0, ${field_length}, (const jbyte*)mp->${c_name});
-    (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
-""")
-
-u16_array_dto_field_setter_template = Template("""
-    {
-        jshortArray ${java_name} = (*env)->NewShortArray(env, ${field_length});
-        jshort * ${java_name}ArrayElements = (*env)->GetShortArrayElements(env, ${java_name}, NULL);
-        unsigned int _i;
-        for (_i = 0; _i < ${field_length}; _i++) {
-            ${java_name}ArrayElements[_i] = clib_net_to_host_u16(mp->${c_name}[_i]);
-        }
-
-        (*env)->ReleaseShortArrayElements(env,  ${java_name}, ${java_name}ArrayElements, 0);
-        (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
-    }
-""")
-
-u32_array_dto_field_setter_template = Template("""
-    {
-        jintArray ${java_name} = (*env)->NewIntArray(env, ${field_length});
-        jint * ${java_name}ArrayElements = (*env)->GetIntArrayElements(env, ${java_name}, NULL);
-        unsigned int _i;
-        for (_i = 0; _i < ${field_length}; _i++) {
-            ${java_name}ArrayElements[_i] = clib_net_to_host_u32(mp->${c_name}[_i]);
-        }
-
-        (*env)->ReleaseIntArrayElements(env,  ${java_name}, ${java_name}ArrayElements, 0);
-        (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
-    }
-""")
-
-# For each u64 array we get its elements. Then we convert values to host byte order.
-# All changes to  jlong* buffer are written to jlongArray (isCopy is set to NULL)
-u64_array_dto_field_setter_template = Template("""
-    {
-        jlongArray ${java_name} = (*env)->NewLongArray(env, ${field_length});
-        jlong * ${java_name}ArrayElements = (*env)->GetLongArrayElements(env, ${java_name}, NULL);
-        unsigned int _i;
-        for (_i = 0; _i < ${field_length}; _i++) {
-            ${java_name}ArrayElements[_i] = clib_net_to_host_u64(mp->${c_name}[_i]);
-        }
-
-        (*env)->ReleaseLongArrayElements(env,  ${java_name}, ${java_name}ArrayElements, 0);
-        (*env)->SetObjectField(env, dto, ${java_name}FieldId, ${java_name});
-    }
-""")
-
-dto_field_setter_templates = {'u8': default_dto_field_setter_template,
-                      'u16': u16_dto_field_setter_template,
-                      'u32': u32_dto_field_setter_template,
-                      'i32': u32_dto_field_setter_template,
-                      'u64': u64_dto_field_setter_template,
-                      'f64': default_dto_field_setter_template, #fixme
-                      'u8[]': u8_array_dto_field_setter_template,
-                      'u16[]': u16_array_dto_field_setter_template,
-                      'u32[]': u32_array_dto_field_setter_template,
-                      'u64[]': u64_array_dto_field_setter_template
-                      }
 
 # code fragment for checking result of the operation before sending request reply
 callback_err_handler_template = Template("""
@@ -442,21 +360,14 @@ def generate_msg_handlers(func_list, plugin_name, inputfile):
             c_type = t[0]
             jni_type = t[1]
             c_name = t[2]
+            java_name = util.underscore_to_camelcase(c_name)
             field_length = t[3][0]
-
-            if jni_type.endswith('Array') and field_length == '0':
-                raise Exception('Variable array \'%s\' defined in message \'%s\' '
-                                'should have defined length (e.g. \'%s[%s_length]\''
-                                % (c_name, handler_name, c_name, c_name))
-
-            # check if we are processing variable length array
-            if t[3][1]:
-                length_var_name = t[3][0]
-                length_field_type = f['c_types'][f['args'].index(length_var_name)]
-                field_length = variable_length_array_value_template.substitute(length_var_name=length_var_name)
-                if length_field_type != 'u8':  # we need net to host conversion:
-                    field_length = variable_length_array_template.substitute(
-                        length_field_type=length_field_type, value=field_length)
+            is_variable_len_array = t[3][1]
+            length_field_type = None
+            if is_variable_len_array:
+                length_field_type = f['c_types'][f['args'].index(field_length)]
+            dto_setters += jni_gen.jni_reply_handler(handler_name, ref_name, c_type, jni_type, c_name, java_name, java_name,
+                                                     field_length, is_variable_len_array, length_field_type)
 
             # for retval don't generate setters and generate retval check
             if util.is_retval_field(c_name):
@@ -464,24 +375,6 @@ def generate_msg_handlers(func_list, plugin_name, inputfile):
                     handler_name=handler_name
                 )
                 continue
-
-            java_field_name = util.underscore_to_camelcase(c_name)
-            jni_signature = util.jni_2_signature_mapping[jni_type]
-            jni_setter = util.jni_field_accessors[jni_type]
-
-            dto_setters += dto_field_id_template.substitute(
-                    java_name=java_field_name,
-                    class_ref_name=ref_name,
-                    jni_signature=jni_signature)
-
-            dto_setter_template = dto_field_setter_templates[c_type]
-
-            dto_setters += dto_setter_template.substitute(
-                    java_name=java_field_name,
-                    jni_signature=jni_signature,
-                    c_name=c_name,
-                    jni_setter=jni_setter,
-                    field_length=field_length)
 
         handlers.append(msg_handler_template.substitute(
             inputfile=inputfile,
