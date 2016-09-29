@@ -65,77 +65,93 @@ def get_reply_suffix(name):
             else:
                 return reply_suffix
 
-# http://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/types.html
-jni_2_java_type_mapping = {'jbyte': 'byte',
-                           'jbyteArray': 'byte[]',
-                           'jchar': 'char',
-                           'jcharArray': 'char[]',
-                           'jshort': 'short',
-                           'jshortArray': 'short[]',
-                           'jint': 'int',
-                           'jintArray': 'int[]',
-                           'jlong': 'long',
-                           'jlongArray': 'long[]',
-                           'jdouble': 'double',
-                           'jdoubleArray': 'double[]',
-                           'jfloat': 'float',
-                           'jfloatArray': 'float[]',
-                           'void': 'void',
-                           'jstring': 'java.lang.String',
-                           'jobject': 'java.lang.Object',
-                           'jobjectArray': 'java.lang.Object[]'
-                           }
-
-# https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/types.html#type_signatures
-jni_2_signature_mapping = {'jbyte': 'B',
-                           'jbyteArray': '[B',
-                           'jchar': 'C',
-                           'jcharArray': '[C',
-                           'jshort': 'S',
-                           'jshortArray': '[S',
-                           'jint': 'I',
-                           'jintArray': '[I',
-                           'jlong': 'J',
-                           'jlongArray': '[J',
-                           'jdouble': 'D',
-                           'jdoubleArray': '[D',
-                           'jfloat': 'F',
-                           'jfloatArray': '[F'
-                           }
-
-# https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#Get_type_Field_routines
-jni_field_accessors = {
-    'jbyte': 'ByteField',
-    'jbyteArray': 'ObjectField',
-    'jchar': 'CharField',
-    'jcharArray': 'ObjectField',
-    'jshort': 'ShortField',
-    'jshortArray': 'ObjectField',
-    'jint': 'IntField',
-    'jintArray': 'ObjectField',
-    'jlong': 'LongField',
-    'jlongArray': 'ObjectField',
-    'jdouble': 'DoubleField',
-    'jdoubleArray': 'ObjectField',
-    'jfloat': 'FloatField',
-    'jfloatArray': 'ObjectField'
-}
-
 # Mapping according to:
 # http://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/types.html
 #
 # Unsigned types are converted to signed java types that have the same size.
 # It is the API user responsibility to interpret them correctly.
+jni_2_java_type_mapping = {'u8': 'byte',
+                           'u8[]': 'byte[]',
+                           'i8': 'byte',
+                           'i8[]': 'byte[]',
+                           'u16': 'short',
+                           'u16[]': 'short[]',
+                           'i16': 'short',
+                           'i16[]': 'short[]',
+                           'u32': 'int',
+                           'u32[]': 'int[]',
+                           'i32': 'int',
+                           'i32[]': 'int[]',
+                           'u64': 'long',
+                           'u64[]': 'long[]',
+                           'i64': 'long',
+                           'i64[]': 'long[]',
+                           'f64': 'double',
+                           'f64[]': 'double[]'
+                           }
+
 vpp_2_jni_type_mapping = {'u8': 'jbyte',
+                          'u8[]': 'jbyteArray',
                           'i8': 'jbyte',
+                          'u8[]': 'jbyteArray',
                           'u16': 'jshort',
+                          'u16[]': 'jshortArray',
                           'i16': 'jshort',
+                          'i16[]': 'jshortArray',
                           'u32': 'jint',
+                          'u32[]': 'jintArray',
                           'i32': 'jint',
+                          'i32[]': 'jintArray',
                           'u64': 'jlong',
+                          'u64[]': 'longArray',
                           'i64': 'jlong',
-                          'f64': 'jdouble'
+                          'u64[]': 'longArray',
+                          'f64': 'jdouble',
+                          'f64[]': 'jdoubleArray'
                           }
+
+# https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/types.html#type_signatures
+jni_2_signature_mapping = {'u8': 'B',
+                           'u8[]': '[B',
+                           'i8': 'B',
+                           'i8[]': '[B',
+                           'u16': 'S',
+                           'u16[]': '[S',
+                           'i16': 'S',
+                           'i16[]': '[S',
+                           'u32': 'I',
+                           'u32[]': '[I',
+                           'i32': 'I',
+                           'i32[]': '[I',
+                           'u64': 'J',
+                           'u64[]': '[J',
+                           'i64': 'J',
+                           'i64[]': '[J',
+                           'f64': 'D',
+                           'f64[]': '[D'
+                           }
+
+# https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#Get_type_Field_routines
+jni_field_accessors =  {'u8': 'ByteField',
+                        'u8[]': 'ObjectField',
+                        'i8': 'ByteField',
+                        'i8[]': 'ObjectField',
+                        'u16': 'ShortField',
+                        'u16[]': 'ObjectField',
+                        'i16': 'ShortField',
+                        'i16[]': 'ObjectField',
+                        'u32': 'IntField',
+                        'u32[]': 'ObjectField',
+                        'i32': 'IntField',
+                        'i32[]': 'ObjectField',
+                        'u64': 'LongField',
+                        'u64[]': 'ObjectField',
+                        'i64': 'LongField',
+                        'i64[]': 'ObjectField',
+                        'f64': 'DoubleField',
+                        'f64[]': 'ObjectField'
+                        }
+
 
 # vpe.api calls that do not follow naming conventions and have to be handled exceptionally when finding reply -> request mapping
 # FIXME in vpe.api

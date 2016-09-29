@@ -71,8 +71,8 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_core_JVppCoreImpl_init0
         vl_msg_api_set_handlers(VL_API_##N, #n,     \
                 vl_api_##n##_t_handler,             \
                 vl_noop_handler,                    \
-                vl_api_##n##_t_endian,              \
-                vl_api_##n##_t_print,               \
+                vl_noop_handler,              \
+                vl_noop_handler,               \
                 sizeof(vl_api_##n##_t), 1);
         foreach_api_reply_handler;
     #undef _

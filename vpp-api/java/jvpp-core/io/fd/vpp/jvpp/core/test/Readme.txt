@@ -14,3 +14,4 @@ CreateSubInterfaceTest - Tests sub-interface creation
 FutureApiNotificationTest - Tests interface notifications using Future based JVpp facade
 FutureApiTest - Execution of more complex calls using Future based JVpp facade
 L2AclTest - Tests L2 ACL creation
+LispAdjacencyTest - Tests lisp adjacency creation and read (custom vpe.api type support showcase)

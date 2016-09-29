@@ -280,7 +280,7 @@ def generate_dump_reply_dto(request_dto_name, base_package, plugin_package, dto_
     cls_name = camel_case_dto_name + dump_dto_suffix
     # using artificial type for fields, just to bypass the is_array check in base methods generators
     # the type is not really used
-    artificial_type = 'jstring'
+    artificial_type = 'u8'
 
     # In case of already existing artificial reply dump DTO, just update it
     # Used for sub-dump dtos
