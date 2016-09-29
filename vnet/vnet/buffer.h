@@ -143,7 +143,11 @@ typedef struct
 	  u8 code;
 	  u32 data;
 	} icmp;
+
+	/* IP header - saved by ip*_local nodes */
+	void *header;
       };
+
     } ip;
 
     /*

@@ -350,6 +350,22 @@ nobase_include_HEADERS +=			\
  vnet/ip/udp_packet.h
 
 ########################################
+# Bidirectional Forwarding Detection
+########################################
+
+nobase_include_HEADERS +=                       \
+ vnet/bfd/bfd_protocol.h			\
+ vnet/bfd/bfd_main.h                            \
+ vnet/bfd/bfd_api.h                            \
+ vnet/bfd/bfd_udp.h
+
+libvnet_la_SOURCES +=				\
+ vnet/bfd/bfd_api.h                            \
+ vnet/bfd/bfd_udp.c                             \
+ vnet/bfd/bfd_main.c                            \
+ vnet/bfd/bfd_protocol.c
+
+########################################
 # Layer 3 protocol: IPSec
 ########################################
 if WITH_IPSEC
