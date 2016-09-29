@@ -1,10 +1,10 @@
 import os
 import time
-from scapy.utils import wrpcap, rdpcap
+from scapy.utils import wrpcap, rdpcap, PcapReader
 from vpp_interface import VppInterface
 
 from scapy.layers.l2 import Ether, ARP
-from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA, \
+from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
     ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr
 from util import ppp
 
@@ -93,6 +93,7 @@ class VppPGInterface(VppInterface):
             pass
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
+        self._pcap_reader = None
 
     def add_stream(self, pkts):
         """
@@ -131,6 +132,41 @@ class VppPGInterface(VppInterface):
                                    " packets arrived" % self.out_path)
             return []
         return output
+
+    def wait_for_packet(self, timeout):
+        """
+        Wait for next packet captured with a timeout
+
+        :param timeout: How long to wait for the packet
+
+        :returns: Captured packet if no packet arrived within timeout
+        :raises Exception: if no packet arrives within timeout
+        """
+        limit = time.time() + timeout
+        if self._pcap_reader is None:
+            self.test.logger.debug("Waiting for the capture file to appear")
+            while time.time() < limit:
+                if os.path.isfile(self.out_path):
+                    break
+                time.sleep(0)  # yield
+            if os.path.isfile(self.out_path):
+                self.test.logger.debug("Capture file appeared after %fs" %
+                                       (time.time() - (limit - timeout)))
+                self._pcap_reader = PcapReader(self.out_path)
+            else:
+                self.test.logger.debug("Timeout - capture file still nowhere")
+                raise Exception("Packet didn't arrive within timeout")
+
+        self.test.logger.debug("Waiting for packet")
+        while time.time() < limit:
+            p = self._pcap_reader.recv()
+            if p is not None:
+                self.test.logger.debug("Packet received after %fs",
+                                       (time.time() - (limit - timeout)))
+                return p
+            time.sleep(0)  # yield
+        self.test.logger.debug("Timeout - no packets received")
+        raise Exception("Packet didn't arrive within timeout")
 
     def create_arp_req(self):
         """Create ARP request applicable for this interface"""

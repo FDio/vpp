@@ -1472,9 +1472,12 @@ ip4_local (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
-                                vnet_buffer(p0)->sw_if_index[VLIB_RX]);
-	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index,
+          vnet_buffer (p0)->ip.header = ip0;
+          vnet_buffer (p1)->ip.header = ip1;
+
+          fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
+                                vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+          fib_index1 = vec_elt (im->fib_index_by_sw_if_index,
                                 vnet_buffer(p1)->sw_if_index[VLIB_RX]);
 
 	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
@@ -1678,6 +1681,8 @@ ip4_local (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 
 	  ip0 = vlib_buffer_get_current (p0);
+
+          vnet_buffer (p0)->ip.header = ip0;
 
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
                                 vnet_buffer(p0)->sw_if_index[VLIB_RX]);
@@ -3294,4 +3299,3 @@ VLIB_CLI_COMMAND (set_ip_classify_command, static) = {
     .function = set_ip_classify_command_fn,
 };
 /* *INDENT-ON* */
-

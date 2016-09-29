@@ -117,6 +117,8 @@
 #include <vpp-api/vpe_msg_enum.h>
 #include <vnet/span/span.h>
 
+#include <vnet/bfd/bfd_main.h>
+#include <vnet/bfd/bfd_api.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_api.h>
@@ -302,7 +304,12 @@ _(PUNT, punt)                                                           \
 _(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
 _(FLOW_CLASSIFY_DUMP, flow_classify_dump)                               \
 _(IPSEC_SPD_DUMP, ipsec_spd_dump)                                       \
-_(FEATURE_ENABLE_DISABLE, feature_enable_disable)
+_(FEATURE_ENABLE_DISABLE, feature_enable_disable)                       \
+_(BFD_UDP_ADD, bfd_udp_add)                                             \
+_(BFD_UDP_DEL, bfd_udp_del)                                             \
+_(BFD_UDP_SESSION_DUMP, bfd_udp_session_dump)                           \
+_(BFD_SESSION_SET_FLAGS, bfd_session_set_flags)                         \
+_(WANT_BFD_EVENTS, want_bfd_events)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -343,6 +350,7 @@ vl_api_memclnt_delete_callback (u32 client_index)
 }
 
 pub_sub_handler (oam_events, OAM_EVENTS);
+pub_sub_handler (bfd_events, BFD_EVENTS);
 
 #define RESOLUTION_EVENT 1
 #define RESOLUTION_PENDING_EVENT 2
@@ -6766,6 +6774,163 @@ static void
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_L2_INTERFACE_PBB_TAG_REWRITE_REPLY);
+
+}
+
+static void
+vl_api_bfd_udp_add_t_handler (vl_api_bfd_udp_add_t * mp)
+{
+  vl_api_bfd_udp_add_reply_t *rmp;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  ip46_address_t local_addr;
+  memset (&local_addr, 0, sizeof (local_addr));
+  ip46_address_t peer_addr;
+  memset (&peer_addr, 0, sizeof (peer_addr));
+  if (mp->is_ipv6)
+    {
+      clib_memcpy (&local_addr.ip6, mp->local_addr, sizeof (local_addr.ip6));
+      clib_memcpy (&peer_addr.ip6, mp->peer_addr, sizeof (peer_addr.ip6));
+    }
+  else
+    {
+      clib_memcpy (&local_addr.ip4, mp->local_addr, sizeof (local_addr.ip4));
+      clib_memcpy (&peer_addr.ip4, mp->peer_addr, sizeof (peer_addr.ip4));
+    }
+
+  rv = bfd_udp_add_session (clib_net_to_host_u32 (mp->sw_if_index),
+			    clib_net_to_host_u32 (mp->desired_min_tx),
+			    clib_net_to_host_u32 (mp->required_min_rx),
+			    mp->detect_mult, &local_addr, &peer_addr);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_BFD_UDP_ADD_REPLY);
+}
+
+static void
+vl_api_bfd_udp_del_t_handler (vl_api_bfd_udp_del_t * mp)
+{
+  vl_api_bfd_udp_del_reply_t *rmp;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  ip46_address_t local_addr;
+  memset (&local_addr, 0, sizeof (local_addr));
+  ip46_address_t peer_addr;
+  memset (&peer_addr, 0, sizeof (peer_addr));
+  if (mp->is_ipv6)
+    {
+      clib_memcpy (&local_addr.ip6, mp->local_addr, sizeof (local_addr.ip6));
+      clib_memcpy (&peer_addr.ip6, mp->peer_addr, sizeof (peer_addr.ip6));
+    }
+  else
+    {
+      clib_memcpy (&local_addr.ip4, mp->local_addr, sizeof (local_addr.ip4));
+      clib_memcpy (&peer_addr.ip4, mp->peer_addr, sizeof (peer_addr.ip4));
+    }
+
+  rv =
+    bfd_udp_del_session (clib_net_to_host_u32 (mp->sw_if_index), &local_addr,
+			 &peer_addr);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_BFD_UDP_DEL_REPLY);
+}
+
+void
+send_bfd_udp_session_details (unix_shared_memory_queue_t * q, u32 context,
+			      bfd_session_t * bs)
+{
+  if (bs->transport != BFD_TRANSPORT_UDP4 &&
+      bs->transport != BFD_TRANSPORT_UDP6)
+    {
+      return;
+    }
+
+  vl_api_bfd_udp_session_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_BFD_UDP_SESSION_DETAILS);
+  mp->context = context;
+  mp->bs_index = clib_host_to_net_u32 (bs->bs_idx);
+  mp->state = bs->local_state;
+  bfd_udp_session_t *bus = &bs->udp;
+  bfd_udp_key_t *key = &bus->key;
+  mp->sw_if_index = clib_host_to_net_u32 (key->sw_if_index);
+  mp->is_ipv6 = !(ip46_address_is_ip4 (&key->local_addr));
+  if (mp->is_ipv6)
+    {
+      clib_memcpy (mp->local_addr, &key->local_addr,
+		   sizeof (key->local_addr));
+      clib_memcpy (mp->peer_addr, &key->peer_addr, sizeof (key->peer_addr));
+    }
+  else
+    {
+      clib_memcpy (mp->local_addr, &key->local_addr.ip4.data,
+		   sizeof (&key->local_addr.ip4.data));
+      clib_memcpy (mp->peer_addr, &key->peer_addr.ip4.data,
+		   sizeof (&key->peer_addr.ip4.data));
+    }
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+void
+bfd_event (bfd_main_t * bm, bfd_session_t * bs)
+{
+  vpe_api_main_t *vam = &vpe_api_main;
+  vpe_client_registration_t *reg;
+  unix_shared_memory_queue_t *q;
+  /* *INDENT-OFF* */
+  pool_foreach (reg, vam->bfd_events_registrations, ({
+                  q = vl_api_client_index_to_input_queue (reg->client_index);
+                  if (q)
+                    {
+                      switch (bs->transport)
+                        {
+                        case BFD_TRANSPORT_UDP4:
+                        /* fallthrough */
+                        case BFD_TRANSPORT_UDP6:
+                          send_bfd_udp_session_details (q, 0, bs);
+                        }
+                    }
+                }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_bfd_udp_session_dump_t_handler (vl_api_bfd_udp_session_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+
+  if (q == 0)
+    return;
+
+  bfd_session_t *bs = NULL;
+  /* *INDENT-OFF* */
+  pool_foreach (bs, bfd_main.sessions, ({
+                  if (bs->transport == BFD_TRANSPORT_UDP4 ||
+                      bs->transport == BFD_TRANSPORT_UDP6)
+                    send_bfd_udp_session_details (q, mp->context, bs);
+                }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_bfd_session_set_flags_t_handler (vl_api_bfd_session_set_flags_t * mp)
+{
+  vl_api_bfd_session_set_flags_reply_t *rmp;
+  int rv;
+
+  rv =
+    bfd_session_set_flags (clib_net_to_host_u32 (mp->bs_index),
+			   mp->admin_up_down);
+
+  REPLY_MACRO (VL_API_BFD_SESSION_SET_FLAGS_REPLY);
 }
 
 static void
@@ -7090,6 +7255,7 @@ vpe_api_init (vlib_main_t * vm)
   am->to_netconf_client_registration_hash = hash_create (0, sizeof (uword));
   am->from_netconf_client_registration_hash = hash_create (0, sizeof (uword));
   am->oam_events_registration_hash = hash_create (0, sizeof (uword));
+  am->bfd_events_registration_hash = hash_create (0, sizeof (uword));
 
   vl_api_init (vm);
   vl_set_memory_region_name ("/vpe-api");
