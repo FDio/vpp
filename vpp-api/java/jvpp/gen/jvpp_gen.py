@@ -19,6 +19,7 @@ import importlib
 import sys
 import os
 
+from jvppgen import types_gen
 from jvppgen import callback_gen
 from jvppgen import notification_gen
 from jvppgen import dto_gen
@@ -105,11 +106,11 @@ def get_types(t, filter):
     return types_list, c_types_list, lengths_list
 
 
-def get_definitions():
+def get_definitions(defs):
     # Pass 1
     func_list = []
     func_name = {}
-    for a in cfg.vppapidef:
+    for a in defs:
         if not is_supported(a[0]):
             continue
 
@@ -135,10 +136,18 @@ def get_definitions():
     return func_list, func_name
 
 
-func_list, func_name = get_definitions()
+types_list, types_name = get_definitions(cfg.types)
+
+print "TYPES START\n"
+print types_list
+print types_name
+print "TYPES END\n"
+
+func_list, func_name = get_definitions(cfg.vppapidef)
 
 base_package = 'io.fd.vpp.jvpp'
 plugin_package = base_package + '.' + plugin_name
+types_package = 'types'
 dto_package = 'dto'
 callback_package = 'callback'
 notification_package = 'notification'
@@ -146,6 +155,8 @@ future_package = 'future'
 # TODO find better package name
 callback_facade_package = 'callfacade'
 control_ping_class_fqn = "%s.%s.%s" % (plugin_package, dto_package, control_ping_class)
+
+types_gen.generate_type_fields(types_list, base_package, plugin_package, plugin_name, types_package, inputfile)
 
 dto_gen.generate_dtos(func_list, base_package, plugin_package, plugin_name.title(), dto_package, args.inputfile)
 jvpp_impl_gen.generate_jvpp(func_list, base_package, plugin_package, plugin_name, control_ping_class_fqn, dto_package, args.inputfile)
