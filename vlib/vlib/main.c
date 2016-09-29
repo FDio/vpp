@@ -1146,6 +1146,7 @@ dispatch_pending_node (vlib_main_t * vm,
       nf = vec_elt_at_index (nm->next_frames, p->next_frame_index);
       nf->frame_index = restore_frame_index;
       nf->flags |= VLIB_FRAME_IS_ALLOCATED;
+      f->n_vectors = 0;
     }
 
   if (f->flags & VLIB_FRAME_FREE_AFTER_DISPATCH)
