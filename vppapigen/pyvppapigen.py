@@ -267,7 +267,7 @@ api_func_table = []
 api_name_to_id = {}
     ''')
 
-    for i, a in enumerate(vppapidef):
+    for i, a in enumerate(messages):
         name = a[0]
         encode_print(name, str(i), a[1:])
         decode_print(name, a[1:])

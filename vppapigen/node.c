@@ -1324,26 +1324,48 @@ void add_msg_ids(YYSTYPE a1)
     }
 }
 
-void generate_python (YYSTYPE a1, FILE *fp)
+void generate_python_msg_definitions(YYSTYPE a1, FILE *fp)
 {
-  node_t *np = (node_t *)a1;
-  node_vft_t *vftp;
-  fprintf (fp, "vppapidef = [\n");
-  /* Walk the top-level node-list */
-  while (np) {
-    if (np->type == NODE_DEFINE && !(np->flags & NODE_FLAG_TYPEONLY)) {
-      /* Yeah, this is pedantic */
-      vftp = the_vft[np->type];
-      vftp->generate(np, PYTHON_PASS, fp);
+    node_t *np = (node_t *)a1;
+    node_vft_t *vftp;
+    fprintf (fp, "messages = [\n");
+    /* Walk the top-level node-list */
+    while (np) {
+      if (np->type == NODE_DEFINE && !(np->flags & NODE_FLAG_TYPEONLY)) {
+        /* Yeah, this is pedantic */
+        vftp = the_vft[np->type];
+        vftp->generate(np, PYTHON_PASS, fp);
+      }
+      np = np->peer;
     }
-    np = np->peer;
-  }
-  fprintf (fp, "\n]\n");
+    fprintf (fp, "\n]\n");
+}
 
-  /*
-   * API CRC signature
-   */
-  fprintf (fp, "vl_api_version = 0x%08x\n\n", (unsigned int)input_crc);
+void generate_python_typeonly_definitions(YYSTYPE a1, FILE *fp)
+{
+    node_t *np = (node_t *)a1;
+    node_vft_t *vftp;
+    fprintf (fp, "types = [\n");
+    /* Walk the top-level node-list */
+    while (np) {
+      if (np->type == NODE_DEFINE && (np->flags & NODE_FLAG_TYPEONLY)) {
+        vftp = the_vft[np->type];
+        vftp->generate(np, PYTHON_PASS, fp);
+      }
+      np = np->peer;
+    }
+    fprintf (fp, "\n]\n");
+}
+
+void generate_python(YYSTYPE a1, FILE *fp)
+{
+    generate_python_typeonly_definitions(a1, fp);
+    generate_python_msg_definitions(a1, fp);
+
+    /*
+     * API CRC signature
+     */
+    fprintf (fp, "vl_api_version = 0x%08x\n\n", (unsigned int)input_crc);
 }
 
 void generate(YYSTYPE a1)

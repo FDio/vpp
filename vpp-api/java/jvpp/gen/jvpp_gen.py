@@ -109,7 +109,7 @@ def get_definitions():
     # Pass 1
     func_list = []
     func_name = {}
-    for a in cfg.vppapidef:
+    for a in cfg.messages:
         if not is_supported(a[0]):
             continue
 

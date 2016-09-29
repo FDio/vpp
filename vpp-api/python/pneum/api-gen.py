@@ -119,7 +119,7 @@ def get_definitions():
     func_list = []
     func_name = {}
     i = 1
-    for a in cfg.vppapidef:
+    for a in cfg.messages:
         pack, packlen, tup, zeroarray = get_pack(a[1:])
         func_name[a[0]] = dict([('name', a[0]), ('pack', pack), ('packlen', packlen), ('tup', tup), ('args', get_args(a[1:])),
                                 ('zeroarray', zeroarray)])
