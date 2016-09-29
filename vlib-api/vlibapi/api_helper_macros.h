@@ -197,7 +197,8 @@ _(to_netconf_server)                            \
 _(from_netconf_server)                          \
 _(to_netconf_client)                            \
 _(from_netconf_client)                          \
-_(oam_events)
+_(oam_events)                                   \
+_(bfd_events)
 
 /* WARNING: replicated in vpp/stats.h */
 typedef struct

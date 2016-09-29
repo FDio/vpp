@@ -223,7 +223,7 @@ mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
 }
 
 static uword
-mhash_set_tmp_key (mhash_t * h, void *key)
+mhash_set_tmp_key (mhash_t * h, const void *key)
 {
   u8 *key_tmp;
   int my_cpu = os_get_cpu_number ();
@@ -251,7 +251,7 @@ mhash_set_tmp_key (mhash_t * h, void *key)
 }
 
 hash_pair_t *
-mhash_get_pair (mhash_t * h, void *key)
+mhash_get_pair (mhash_t * h, const void *key)
 {
   uword ikey;
   mhash_sanitize_hash_user (h);

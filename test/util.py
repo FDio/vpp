@@ -1,5 +1,6 @@
 import socket
 import sys
+from abc import abstractmethod, ABCMeta
 from cStringIO import StringIO
 
 
@@ -12,6 +13,27 @@ def ppp(headline, packet):
     packet.show()
     sys.stdout = old_stdout
     return o.getvalue()
+
+
+class NumericConstant(object):
+    __metaclass__ = ABCMeta
+
+    desc_dict = {}
+
+    @abstractmethod
+    def __init__(self, value):
+        self._value = value
+
+    def __int__(self):
+        return self._value
+
+    def __long__(self):
+        return self._value
+
+    def __str__(self):
+        if self._value in self.desc_dict:
+            return self.desc_dict[self._value]
+        return ""
 
 
 class Host(object):

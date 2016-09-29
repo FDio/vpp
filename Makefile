@@ -214,6 +214,8 @@ build-vpp-api: $(BR)/.bootstrap.ok
 
 VPP_PYTHON_PREFIX=$(BR)/python
 
+
+	#$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install ,)
 define test
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-api-install plugins-install vpp-install,)
 	make -C test \

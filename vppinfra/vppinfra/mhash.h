@@ -101,13 +101,13 @@ mhash_key_to_mem (mhash_t * h, uword key)
   return vec_elt_at_index (h->key_vector_or_heap, key);
 }
 
-hash_pair_t *mhash_get_pair (mhash_t * h, void *key);
+hash_pair_t *mhash_get_pair (mhash_t * h, const void *key);
 uword mhash_set_mem (mhash_t * h, void *key, uword * new_value,
 		     uword * old_value);
 uword mhash_unset (mhash_t * h, void *key, uword * old_value);
 
 always_inline uword *
-mhash_get (mhash_t * h, void *key)
+mhash_get (mhash_t * h, const void *key)
 {
   hash_pair_t *p = mhash_get_pair (h, key);
   return p ? &p->value[0] : 0;
