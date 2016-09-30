@@ -92,6 +92,8 @@ ipsec_gre_input (vlib_main_t * vm,
   u32 n_left_from, next_index, * from, * to_next;
   u64 cached_tunnel_key = (u64) ~0;
   u32 cached_tunnel_sw_if_index = 0, tunnel_sw_if_index;
+  u32 tun_src0, tun_dst0;
+  u32 tun_src1, tun_dst1;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -146,10 +148,10 @@ ipsec_gre_input (vlib_main_t * vm,
           ip1 = vlib_buffer_get_current (b1);
 
           /* Save src + dst ip4 address */
-          vnet_buffer(b0)->gre.src = ip0->src_address.as_u32;
-          vnet_buffer(b0)->gre.dst = ip0->dst_address.as_u32;
-          vnet_buffer(b1)->gre.src = ip1->src_address.as_u32;
-          vnet_buffer(b1)->gre.dst = ip1->dst_address.as_u32;
+          tun_src0 = ip0->src_address.as_u32;
+          tun_dst0 = ip0->dst_address.as_u32;
+          tun_src1 = ip1->src_address.as_u32;
+          tun_dst1 = ip1->dst_address.as_u32;
 
           vlib_buffer_advance (b0, sizeof (*ip0));
           vlib_buffer_advance (b1, sizeof (*ip1));
@@ -197,8 +199,7 @@ ipsec_gre_input (vlib_main_t * vm,
           /* For L2 payload set input sw_if_index to GRE tunnel for learning */
           if (PREDICT_TRUE(next0 == IPSEC_GRE_INPUT_NEXT_L2_INPUT))
             {
-              u64 key = ((u64)(vnet_buffer(b0)->gre.dst) << 32) |
-                         (u64)(vnet_buffer(b0)->gre.src);
+              u64 key = ((u64)(tun_dst0) << 32) | (u64)(tun_src0);
 
               if (cached_tunnel_key != key)
                 {
@@ -230,8 +231,7 @@ drop0:
           /* For L2 payload set input sw_if_index to GRE tunnel for learning */
           if (PREDICT_TRUE(next1 == IPSEC_GRE_INPUT_NEXT_L2_INPUT))
             {
-              u64 key = ((u64)(vnet_buffer(b1)->gre.dst) << 32) |
-                         (u64)(vnet_buffer(b1)->gre.src);
+              u64 key = ((u64)(tun_dst1) << 32) | (u64)(tun_src1);
 
               if (cached_tunnel_key != key)
                 {
@@ -297,6 +297,7 @@ drop1:
           u16 version0, protocol0;
           int verr0;
 	  u32 next0;
+	  u32 tun_src0, tun_dst0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -308,8 +309,8 @@ drop1:
 	  b0 = vlib_get_buffer (vm, bi0);
           ip0 = vlib_buffer_get_current (b0);
 
-          vnet_buffer(b0)->gre.src = ip0->src_address.as_u32;
-          vnet_buffer(b0)->gre.dst = ip0->dst_address.as_u32;
+          tun_src0 = ip0->src_address.as_u32;
+          tun_dst0 = ip0->dst_address.as_u32;
 
           vlib_buffer_advance (b0, sizeof (*ip0));
 
@@ -337,8 +338,7 @@ drop1:
           /* For L2 payload set input sw_if_index to GRE tunnel for learning */
           if (PREDICT_FALSE(next0 == IPSEC_GRE_INPUT_NEXT_L2_INPUT))
             {
-              u64 key = ((u64)(vnet_buffer(b0)->gre.dst) << 32) |
-                         (u64)(vnet_buffer(b0)->gre.src);
+              u64 key = ((u64)(tun_dst0) << 32) | (u64)(tun_src0);
 
               if (cached_tunnel_key != key)
                 {
