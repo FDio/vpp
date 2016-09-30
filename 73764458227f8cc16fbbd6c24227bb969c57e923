@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_ed75c298",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1228,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-09-30T07:01:48Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_17c00b29",
+      "range": {
+        "startLine": 1228,
+        "startChar": 9,
+        "endLine": 1228,
+        "endChar": 29
+      },
+      "revId": "73764458227f8cc16fbbd6c24227bb969c57e923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_d2086193",
         "filename": "vnet/vnet/interface_cli.c",
         "patchSetId": 6
@@ -36,6 +60,30 @@
       "writtenOn": "2016-09-29T15:44:53Z",
       "side": 1,
       "message": "I would like to see better CLI help doc here. See https://wiki.fd.io/view/VPP/Documentation#Documenting_a_Debug_CLI_command",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 17
+      },
+      "revId": "73764458227f8cc16fbbd6c24227bb969c57e923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_ad6fcac4",
+        "filename": "vnet/vnet/interface_cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-09-30T07:01:48Z",
+      "side": 1,
+      "message": "Added doc.",
+      "parentUuid": "3a1d315d_d2086193",
       "range": {
         "startLine": 1057,
         "startChar": 0,
