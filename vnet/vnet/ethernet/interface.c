@@ -363,6 +363,7 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 	  else
 	    break;
 	}
+      from += n_copy;
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
