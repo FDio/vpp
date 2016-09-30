@@ -394,7 +394,10 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   if (feip)
     dp_del_fwd_entry (lcm, src_map_index, dst_map_index);
 
-  src_map = pool_elt_at_index (lcm->mapping_pool, src_map_index);
+  if (lcm->lisp_pitr)
+    src_map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+  else
+    src_map = pool_elt_at_index (lcm->mapping_pool, src_map_index);
   dst_map = pool_elt_at_index (lcm->mapping_pool, dst_map_index);
 
   /* insert data plane forwarding entry */
