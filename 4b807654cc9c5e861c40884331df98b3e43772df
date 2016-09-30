@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_e8b7f0d6",
+        "filename": "vnet/vnet/gre/gre.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2016-09-30T15:51:37Z",
+      "side": 1,
+      "message": "I\u0027ve observed a crash here during encap of a v6 packet.",
+      "range": {
+        "startLine": 287,
+        "startChar": 22,
+        "endLine": 287,
+        "endChar": 24
+      },
+      "revId": "4b807654cc9c5e861c40884331df98b3e43772df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_08a90c7b",
+        "filename": "vnet/vnet/gre/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 443,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2016-09-30T15:51:37Z",
+      "side": 1,
+      "message": "I\u0027m unsure about this block ~(400-460). The FIB changes came in recently and haven\u0027t managed to understand them entirely yet.",
+      "range": {
+        "startLine": 443,
+        "startChar": 15,
+        "endLine": 443,
+        "endChar": 27
+      },
+      "revId": "4b807654cc9c5e861c40884331df98b3e43772df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_c8baf4bf",
+        "filename": "vnet/vnet/gre/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2016-09-30T15:51:37Z",
+      "side": 1,
+      "message": "I\u0027m using these local variables instead of the GRE opaque.",
+      "range": {
+        "startLine": 115,
+        "startChar": 26,
+        "endLine": 115,
+        "endChar": 27
+      },
+      "revId": "4b807654cc9c5e861c40884331df98b3e43772df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
