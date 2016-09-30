@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_684080a5",
+        "filename": "vnet/vnet/ethernet/packet.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-30T21:38:47Z",
+      "side": 1,
+      "message": "Why do we need this typedef as well as a packed version typedef for PBB header? Are both typedefs used in the code?",
+      "range": {
+        "startLine": 123,
+        "startChar": 2,
+        "endLine": 123,
+        "endChar": 23
+      },
+      "revId": "4bf09612921c074e28a31124c5e9b6f4862373f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_a85b3886",
+        "filename": "vnet/vnet/l2/l2_output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-30T21:38:47Z",
+      "side": 1,
+      "message": "I made this comment before, we should combine the PBB and \"normal\" VTR condition into one flag in config so that one flag check can be done here to know there is either PBB or \"normal\" VTR. If this check is true, then we will have more logic to distinguish which type of VTR it is in the if-true path. Thus, l2-output path efficiency won\u0027t change for the case when no VTR operations of any kind is configured. The current logic will always make 2 checks for no VTR case, one for \"normal\" VTR and another for PBB VTR where the check is more expensive than just a flag check since a \"+\" operation is also needed.\n\nSame optimization should be done for both config0/1 in double loop and config0 in single loop.",
+      "range": {
+        "startLine": 263,
+        "startChar": 7,
+        "endLine": 263,
+        "endChar": 20
+      },
+      "revId": "4bf09612921c074e28a31124c5e9b6f4862373f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_885e3c75",
+        "filename": "vnet/vnet/l2/l2_vtr.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 714,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-09-30T21:38:47Z",
+      "side": 1,
+      "message": "Is the operation required really translate_2_2 or translate_qinq? I thought the inner packet may already have a C-VLAN tag (or not?) and we are always translating PBB header to a 802.1ad making the packet a qinq one with existing C-VLAN. So the operation is really translate_2_1 but anyway, these are just names which should be made more understandable. May be a better name would be translate_pbb_svlan or translate_pbb_stag? If my understanding is incorrect and the inner packet has no VLAN tag so we are really doing inner C-tag as well, then this would be fine (may be should name this as translate_pbb_qinq). Otherwise, it is a 2_1 translate and all the relevant API should be changed as well.",
+      "range": {
+        "startLine": 714,
+        "startChar": 10,
+        "endLine": 714,
+        "endChar": 30
+      },
+      "revId": "4bf09612921c074e28a31124c5e9b6f4862373f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
