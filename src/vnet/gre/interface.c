@@ -20,6 +20,7 @@
 #include <vnet/gre/gre.h>
 #include <vnet/ip/format.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/mpls/mpls.h>
@@ -27,12 +28,16 @@
 static const char *gre_tunnel_type_names[] = GRE_TUNNEL_TYPE_NAMES;
 
 static inline u64
-gre_mk_key (const ip4_address_t *src,
-            const ip4_address_t *dst,
-            u32 out_fib_index)
+gre_mk_key (const ip46_address_t *src,
+            const ip46_address_t *dst,
+            u32 out_fib_index,
+            u8 is_ipv6)
 {
   // FIXME. the fib index should be part of the key
-  return ((u64)src->as_u32 << 32 | (u64)dst->as_u32);
+  if (!is_ipv6)
+    return ((u64)src->ip4.as_u32 << 32 | (u64)dst->ip4.as_u32);
+  else
+    return ((u64)src->ip6.as_u32[0] << 32 | (u64)dst->ip6.as_u32[0]);
 }
 
 static u8 *
@@ -49,27 +54,37 @@ format_gre_tunnel (u8 * s, va_list * args)
   gre_tunnel_t * t = va_arg (*args, gre_tunnel_t *);
   gre_main_t * gm = &gre_main;
 
-  s = format (s,
-              "[%d] %U (src) %U (dst) payload %U outer_fib_index %d",
-              t - gm->tunnels,
-              format_ip4_address, &t->tunnel_src,
-              format_ip4_address, &t->tunnel_dst,
-              format_gre_tunnel_type, t->type,
-              t->outer_fib_index);
+  if (!t->is_ipv6)
+      s = format (s,
+                  "[%d] %U (src) %U (dst) payload %U outer_fib_index %d",
+                  t - gm->tunnels,
+                  format_ip4_address, &t->tunnel_src.ip4,
+                  format_ip4_address, &t->tunnel_dst.ip4,
+                  format_gre_tunnel_type, t->type,
+                  t->outer_fib_index);
+  else
+      s = format (s,
+                  "[%d] %U (src) %U (dst) payload %U outer_fib_index %d",
+                  t - gm->tunnels,
+                  format_ip6_address, &t->tunnel_src.ip6,
+                  format_ip6_address, &t->tunnel_dst.ip6,
+                  format_gre_tunnel_type, t->type,
+                  t->outer_fib_index);
 
   return s;
 }
 
 static gre_tunnel_t *
-gre_tunnel_db_find (const ip4_address_t *src,
-                    const ip4_address_t *dst,
-                    u32 out_fib_index)
+gre_tunnel_db_find (const ip46_address_t *src,
+                    const ip46_address_t *dst,
+                    u32 out_fib_index,
+                    u8 is_ipv6)
 {
   gre_main_t * gm = &gre_main;
   uword * p;
   u64 key;
 
-  key = gre_mk_key(src, dst, out_fib_index);
+  key = gre_mk_key(src, dst, out_fib_index, is_ipv6);
 
   p = hash_get (gm->tunnel_by_key, key);
 
@@ -85,7 +100,8 @@ gre_tunnel_db_add (const gre_tunnel_t *t)
   gre_main_t * gm = &gre_main;
   u64 key;
 
-  key = gre_mk_key(&t->tunnel_src, &t->tunnel_dst, t->outer_fib_index);
+  key = gre_mk_key(&t->tunnel_src, &t->tunnel_dst,
+                   t->outer_fib_index, t->is_ipv6);
   hash_set (gm->tunnel_by_key, key, t - gm->tunnels);
 }
 
@@ -95,7 +111,8 @@ gre_tunnel_db_remove (const gre_tunnel_t *t)
   gre_main_t * gm = &gre_main;
   u64 key;
 
-  key = gre_mk_key(&t->tunnel_src, &t->tunnel_dst, t->outer_fib_index);
+  key = gre_mk_key(&t->tunnel_src, &t->tunnel_dst, t->outer_fib_index,
+                   t->is_ipv6);
   hash_unset (gm->tunnel_by_key, key);
 }
 
@@ -230,26 +247,31 @@ const static fib_node_vft_t gre_vft = {
     .fnv_back_walk = gre_tunnel_back_walk,
 };
 
-static int 
+static int
 vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
                      u32 * sw_if_indexp)
 {
   gre_main_t * gm = &gre_main;
   vnet_main_t * vnm = gm->vnet_main;
-  ip4_main_t * im = &ip4_main;
+  ip4_main_t * im4 = &ip4_main;
+  ip6_main_t * im6 = &ip6_main;
   gre_tunnel_t * t;
   vnet_hw_interface_t * hi;
   u32 hw_if_index, sw_if_index;
   u32 outer_fib_index;
   u8 address[6];
   clib_error_t *error;
+  u8 is_ipv6 = a->is_ipv6;
 
-  outer_fib_index = ip4_fib_index_from_table_id(a->outer_fib_id);
+  if (!is_ipv6)
+    outer_fib_index = ip4_fib_index_from_table_id(a->outer_fib_id);
+  else
+    outer_fib_index = ip6_fib_index_from_table_id(a->outer_fib_id);
 
   if (~0 == outer_fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  t = gre_tunnel_db_find(&a->src, &a->dst, a->outer_fib_id);
+  t = gre_tunnel_db_find(&a->src, &a->dst, a->outer_fib_id, a->is_ipv6);
 
   if (NULL != t)
     return VNET_API_ERROR_INVALID_VALUE;
@@ -332,13 +354,22 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
   t->outer_fib_index = outer_fib_index;
   t->sw_if_index = sw_if_index;
   t->l2_adj_index = ADJ_INDEX_INVALID;
+  t->is_ipv6 = is_ipv6;
 
   vec_validate_init_empty (gm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
   gm->tunnel_index_by_sw_if_index[sw_if_index] = t - gm->tunnels;
 
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
+  if (!is_ipv6)
+    {
+      vec_validate (im4->fib_index_by_sw_if_index, sw_if_index);
+      hi->min_packet_bytes = 64 + sizeof (gre_header_t) + sizeof (ip4_header_t);
+    }
+  else
+    {
+      vec_validate (im6->fib_index_by_sw_if_index, sw_if_index);
+      hi->min_packet_bytes = 64 + sizeof (gre_header_t) + sizeof (ip6_header_t);
+    }
 
-  hi->min_packet_bytes = 64 + sizeof (gre_header_t) + sizeof (ip4_header_t);
   hi->per_packet_overhead_bytes =
       /* preamble */ 8 + /* inter frame gap */ 12;
 
@@ -356,13 +387,11 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
    * when the forwarding for the entry updates, and the tunnel can
    * re-stack accordingly
    */
-  const fib_prefix_t tun_dst_pfx = {
-      .fp_len = 32,
-      .fp_proto = FIB_PROTOCOL_IP4,
-      .fp_addr = {
-          .ip4 = t->tunnel_dst,
-      }
-  };
+    const fib_prefix_t tun_dst_pfx = {
+        .fp_len = !is_ipv6 ? 32 : 128,
+        .fp_proto = !is_ipv6 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6,
+        .fp_addr = t->tunnel_dst
+    };
 
   t->fib_entry_index =
       fib_table_entry_special_add(outer_fib_index,
@@ -380,7 +409,8 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
 
   if (GRE_TUNNEL_TYPE_TEB == t->type)
   {
-      t->l2_adj_index = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+      t->l2_adj_index = adj_nbr_add_or_lock(
+                        !is_ipv6 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6,
 					    VNET_LINK_ETHERNET,
 					    &zero_addr,
 					    sw_if_index);
@@ -393,7 +423,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
   return 0;
 }
 
-static int 
+static int
 vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t *a,
                         u32 * sw_if_indexp)
 {
@@ -402,7 +432,7 @@ vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t *a,
   gre_tunnel_t * t;
   u32 sw_if_index;
 
-  t = gre_tunnel_db_find(&a->src, &a->dst, a->outer_fib_id);
+  t = gre_tunnel_db_find(&a->src, &a->dst, a->outer_fib_id, a->is_ipv6);
 
   if (NULL == t)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
@@ -484,7 +514,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   vnet_gre_add_del_tunnel_args_t _a, * a = &_a;
-  ip4_address_t src, dst;
+  ip46_address_t src, dst;
   u32 outer_fib_id = 0;
   u8 teb = 0;
   int rv;
@@ -492,6 +522,8 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   u8 is_add = 1;
   u32 sw_if_index;
   clib_error_t *error = NULL;
+  u8 ipv4_set = 0;
+  u8 ipv6_set = 0;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -500,11 +532,19 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
     if (unformat (line_input, "del"))
       is_add = 0;
-    else if (unformat (line_input, "src %U", unformat_ip4_address, &src))
+    else if (unformat (line_input, "src %U", unformat_ip4_address, &src.ip4)) {
       num_m_args++;
-    else if (unformat (line_input, "dst %U", unformat_ip4_address, &dst))
+      ipv4_set = 1;
+    } else if (unformat (line_input, "dst %U", unformat_ip4_address, &dst.ip4)) {
       num_m_args++;
-    else if (unformat (line_input, "outer-fib-id %d", &outer_fib_id))
+      ipv4_set = 1;
+    } else if (unformat (line_input, "src %U", unformat_ip6_address, &src.ip6)) {
+      num_m_args++;
+      ipv6_set = 1;
+    } else if (unformat (line_input, "dst %U", unformat_ip6_address, &dst.ip6)) {
+      num_m_args++;
+      ipv6_set = 1;
+    } else if (unformat (line_input, "outer-fib-id %d", &outer_fib_id))
       ;
     else if (unformat (line_input, "teb"))
       teb = 1;
@@ -528,11 +568,23 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     }
 
+  if (ipv4_set && ipv6_set)
+      return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
+
   memset (a, 0, sizeof (*a));
   a->outer_fib_id = outer_fib_id;
   a->teb = teb;
-  clib_memcpy(&a->src, &src, sizeof(src));
-  clib_memcpy(&a->dst, &dst, sizeof(dst));
+  a->is_ipv6 = ipv6_set;
+  if (!ipv6_set)
+    {
+      clib_memcpy(&a->src.ip4, &src.ip4, sizeof(src.ip4));
+      clib_memcpy(&a->dst.ip4, &dst.ip4, sizeof(dst.ip4));
+    }
+  else
+    {
+      clib_memcpy(&a->src.ip6, &src.ip6, sizeof(src.ip6));
+      clib_memcpy(&a->dst.ip6, &dst.ip6, sizeof(dst.ip6));
+    }
 
   if (is_add)
     rv = vnet_gre_tunnel_add(a, &sw_if_index);

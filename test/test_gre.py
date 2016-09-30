@@ -382,54 +382,6 @@ class TestGRE(VppTestCase):
             remark="GRE packets forwarded despite no SRC address match")
 
         #
-        # Configure IPv6 on the PG interface so we can route IPv6
-        # packets
-        #
-        self.pg0.config_ip6()
-        self.pg0.resolve_ndp()
-
-        #
-        # Send IPv6 tunnel encapslated packets
-        #  - dropped since IPv6 is not enabled on the tunnel
-        #
-        self.vapi.cli("clear trace")
-        tx = self.create_tunnel_stream_6o4(self.pg0,
-                                           "1.1.1.2",
-                                           self.pg0.local_ip4,
-                                           self.pg0.local_ip6,
-                                           self.pg0.remote_ip6)
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        self.pg0.assert_nothing_captured(remark="IPv6 GRE packets forwarded "
-                                         "despite IPv6 not enabled on tunnel")
-
-        #
-        # Enable IPv6 on the tunnel
-        #
-        gre_if.config_ip6()
-
-        #
-        # Send IPv6 tunnel encapslated packets
-        #  - forwarded since IPv6 is enabled on the tunnel
-        #
-        self.vapi.cli("clear trace")
-        tx = self.create_tunnel_stream_6o4(self.pg0,
-                                           "1.1.1.2",
-                                           self.pg0.local_ip4,
-                                           self.pg0.local_ip6,
-                                           self.pg0.remote_ip6)
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg0.get_capture(len(tx))
-        self.verify_decapped_6o4(self.pg0, rx, tx)
-
-        #
         # test case cleanup
         #
         route_tun_dst.remove_vpp_config()

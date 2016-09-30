@@ -21,8 +21,6 @@
 #include <vnet/vnet.h>
 #include <vnet/gre/packet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/ip/ip4.h>
-#include <vnet/ip/ip4_packet.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ip/format.h>
 #include <vnet/adj/adj_types.h>
@@ -87,11 +85,11 @@ typedef struct {
   /**
    * The tunnel's source/local address
    */
-  ip4_address_t tunnel_src;
+  ip46_address_t tunnel_src;
   /**
    * The tunnel's destination/remote address
    */
-  ip4_address_t tunnel_dst;
+  ip46_address_t tunnel_dst;
   /**
    * The FIB in which the src.dst address are present
    */
@@ -117,6 +115,8 @@ typedef struct {
    * on a L2 tunnel this is the VLIB arc from the L2-tx to the l2-midchain
    */
   u32 l2_tx_arc;
+
+  u8 is_ipv6;
 
   /**
    * an L2 tunnel always rquires an L2 midchain. cache here for DP.
@@ -172,6 +172,14 @@ typedef CLIB_PACKED (struct {
   gre_header_t gre;
 }) ip4_and_gre_header_t;
 
+/**
+ * @brief IPv6 and GRE header.
+ */
+typedef CLIB_PACKED (struct {
+  ip6_header_t ip6;
+  gre_header_t gre;
+}) ip6_and_gre_header_t;
+
 always_inline gre_protocol_info_t *
 gre_get_protocol_info (gre_main_t * em, gre_protocol_t protocol)
 {
@@ -200,7 +208,8 @@ format_function_t format_gre_protocol;
 format_function_t format_gre_header;
 format_function_t format_gre_header_with_length;
 
-extern vlib_node_registration_t gre_input_node;
+extern vlib_node_registration_t gre4_input_node;
+extern vlib_node_registration_t gre6_input_node;
 extern vnet_device_class_t gre_device_class;
 extern vnet_device_class_t gre_device_teb_class;
 
@@ -224,7 +233,8 @@ gre_register_input_protocol (vlib_main_t * vm,
 typedef struct {
   u8 is_add;
 
-  ip4_address_t src, dst;
+  ip46_address_t src, dst;
+  u8 is_ipv6;
   u32 outer_fib_id;
   u8 teb;
 } vnet_gre_add_del_tunnel_args_t;
