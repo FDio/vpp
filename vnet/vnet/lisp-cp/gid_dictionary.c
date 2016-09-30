@@ -49,6 +49,27 @@ mac_sd_lookup (gid_mac_table_t * db, u32 vni, u8 * dst, u8 * src)
 }
 
 static u32
+ip4_lookup_exact_match (gid_ip4_table_t * db, u32 vni, ip_prefix_t * key)
+{
+  int rv;
+  BVT (clib_bihash_kv) kv, value;
+
+  ip4_address_t *mask;
+
+  mask = &db->ip4_fib_masks[ip_prefix_len (key)];
+
+  kv.key[0] = ((u64) vni << 32) | (ip_prefix_v4 (key).as_u32 & mask->as_u32);
+  kv.key[1] = 0;
+  kv.key[2] = 0;
+
+  rv = BV (clib_bihash_search_inline_2) (&db->ip4_lookup_table, &kv, &value);
+  if (rv == 0)
+    return value.value;
+
+  return GID_LOOKUP_MISS;
+}
+
+static u32
 ip4_lookup (gid_ip4_table_t * db, u32 vni, ip_prefix_t * key)
 {
   int i, len;
@@ -76,6 +97,26 @@ ip4_lookup (gid_ip4_table_t * db, u32 vni, ip_prefix_t * key)
       if (rv == 0)
 	return value.value;
     }
+
+  return GID_LOOKUP_MISS;
+}
+
+static u32
+ip6_lookup_exact_match (gid_ip6_table_t * db, u32 vni, ip_prefix_t * key)
+{
+  int rv;
+  BVT (clib_bihash_kv) kv, value;
+
+  ip6_address_t *mask;
+  mask = &db->ip6_fib_masks[ip_prefix_len (key)];
+
+  kv.key[0] = ip_prefix_v6 (key).as_u64[0] & mask->as_u64[0];
+  kv.key[1] = ip_prefix_v6 (key).as_u64[1] & mask->as_u64[1];
+  kv.key[2] = (u64) vni;
+
+  rv = BV (clib_bihash_search_inline_2) (&db->ip6_lookup_table, &kv, &value);
+  if (rv == 0)
+    return value.value;
 
   return GID_LOOKUP_MISS;
 }
@@ -132,7 +173,7 @@ ip_sd_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst,
 	{
 	  ip_prefix_t sp;
 	  memset (&sp, 0, sizeof (sp));
-	  return ip4_lookup (sfib4, 0, &sp);
+	  return ip4_lookup_exact_match (sfib4, 0, &sp);
 	}
       else
 	return ip4_lookup (sfib4, 0, src);
@@ -150,7 +191,7 @@ ip_sd_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst,
 	  ip_prefix_t sp;
 	  memset (&sp, 0, sizeof (sp));
 	  ip_prefix_version (&sp) = IP6;
-	  return ip6_lookup (sfib6, 0, &sp);
+	  return ip6_lookup_exact_match (sfib6, 0, &sp);
 	}
       else
 	return ip6_lookup (sfib6, 0, src);
@@ -329,7 +370,7 @@ add_del_sd_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
   u32 sfi, old_val = ~0;
   gid_ip4_table_t *sfib;
 
-  sfi = ip4_lookup (&db->dst_ip4_table, vni, dst_pref);
+  sfi = ip4_lookup_exact_match (&db->dst_ip4_table, vni, dst_pref);
 
   if (is_add)
     {
@@ -354,7 +395,7 @@ add_del_sd_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	  sfib = pool_elt_at_index (db->src_ip4_table_pool, sfi);
 	  if (src_pref)
 	    {
-	      old_val = ip4_lookup (sfib, 0, src_pref);
+	      old_val = ip4_lookup_exact_match (sfib, 0, src_pref);
 	      add_del_ip4_key (sfib, 0 /* vni */ , src_pref, val, is_add);
 	    }
 	  else
@@ -522,7 +563,7 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
   u32 sfi, old_val = ~0;
   gid_ip6_table_t *sfib;
 
-  sfi = ip6_lookup (&db->dst_ip6_table, vni, dst_pref);
+  sfi = ip6_lookup_exact_match (&db->dst_ip6_table, vni, dst_pref);
 
   if (is_add)
     {
@@ -538,6 +579,7 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	    {
 	      ip_prefix_t sp;
 	      memset (&sp, 0, sizeof (sp));
+	      ip_prefix_version (&sp) = IP6;
 	      add_del_ip6_key (sfib, 0 /* vni */ , &sp, val, is_add);
 	    }
 	}
@@ -547,13 +589,14 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	  sfib = pool_elt_at_index (db->src_ip6_table_pool, sfi);
 	  if (src_pref)
 	    {
-	      old_val = ip6_lookup (sfib, 0, src_pref);
+	      old_val = ip6_lookup_exact_match (sfib, 0, src_pref);
 	      add_del_ip6_key (sfib, 0 /* vni */ , src_pref, val, is_add);
 	    }
 	  else
 	    {
 	      ip_prefix_t sp;
 	      memset (&sp, 0, sizeof (sp));
+	      ip_prefix_version (&sp) = IP6;
 	      old_val =
 		add_del_ip6_key (sfib, 0 /* vni */ , &sp, val, is_add);
 	    }
@@ -571,6 +614,7 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	    {
 	      ip_prefix_t sp;
 	      memset (&sp, 0, sizeof (sp));
+	      ip_prefix_version (&sp) = IP6;
 	      old_val = add_del_ip6_key (sfib, 0, &sp, 0, is_add);
 	    }
 	}
