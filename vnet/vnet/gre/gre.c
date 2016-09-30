@@ -28,6 +28,13 @@ typedef struct {
   };
 } ip4_and_gre_union_t;
 
+typedef struct {
+  union {
+    ip6_and_gre_header_t ip6_and_gre;
+    u64 as_u64[3];
+  };
+} ip6_and_gre_union_t;
+
 
 /* Packet trace structure */
 typedef struct {
@@ -37,9 +44,10 @@ typedef struct {
   /* pkt length */
   u32 length;
 
-  /* tunnel ip4 addresses */
-  ip4_address_t src;
-  ip4_address_t dst;
+  /* tunnel ip4/ip6 addresses */
+  ip46_address_t src;
+  ip46_address_t dst;
+  char is_ip6;
 } gre_tx_trace_t;
 
 u8 * format_gre_tx_trace (u8 * s, va_list * args)
@@ -48,10 +56,17 @@ u8 * format_gre_tx_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gre_tx_trace_t * t = va_arg (*args, gre_tx_trace_t *);
 
-  s = format (s, "GRE: tunnel %d len %d src %U dst %U",
-	      t->tunnel_id, clib_net_to_host_u16 (t->length),
-	      format_ip4_address, &t->src.as_u8,
-	      format_ip4_address, &t->dst.as_u8);
+  if (!t->is_ip6)
+    s = format (s, "GRE: tunnel %d len %d src %U dst %U",
+                t->tunnel_id, clib_net_to_host_u16 (t->length),
+                format_ip4_address, &t->src.ip4.as_u8,
+                format_ip4_address, &t->dst.ip4.as_u8);
+  else
+    s = format (s, "GRE: tunnel %d len %d src %U dst %U",
+                t->tunnel_id, clib_net_to_host_u16 (t->length),
+                format_ip6_address, &t->src.ip6,
+                format_ip6_address, &t->dst.ip6);
+
   return s;
 }
 
@@ -213,6 +228,7 @@ gre_interface_tx (vlib_main_t * vm,
   u32 * from, * to_next, n_left_from, n_left_to_next;
   vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
   gre_tunnel_t *t = pool_elt_at_index (gm->tunnels, rd->dev_instance);
+  u8 is_ip4 = !t->is_ipv6;
 
   /* Vector of buffer / pkt indices we're supposed to process */
   from = vlib_frame_vector_args (frame);
@@ -237,7 +253,8 @@ gre_interface_tx (vlib_main_t * vm,
 	  u32 bi0, adj_index0, next0;
 	  const ip_adjacency_t * adj0;
 	  const dpo_id_t *dpo0;
-	  ip4_header_t * ip0;
+	  ip4_header_t * ip4_0;
+	  ip6_header_t * ip6_0;
 	  vlib_buffer_t * b0;
 
 	  bi0 = from[0];
@@ -248,13 +265,21 @@ gre_interface_tx (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer(vm, bi0);
-	  ip0 = vlib_buffer_get_current (b0);
+	  ip4_0 = vlib_buffer_get_current (b0);
+	  ip6_0 = (void *)ip4_0;
 
 	  /* Fixup the checksum and len fields in the GRE tunnel encap
 	   * that was applied at the midchain node */
-	  ip0->length =
-	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-	  ip0->checksum = ip4_header_checksum (ip0);
+	  if (is_ip4)
+	    {
+	      ip4_0->length =
+	        clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+	      ip4_0->checksum = ip4_header_checksum (ip4_0);
+	    }
+	  else
+	      ip6_0->payload_length =
+	          clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+	          - sizeof(*ip6_0));
 
 	  /* Follow the DPO on which the midchain is stacked */
 	  adj_index0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
@@ -268,9 +293,22 @@ gre_interface_tx (vlib_main_t * vm,
 	      gre_tx_trace_t *tr = vlib_add_trace (vm, node,
 						   b0, sizeof (*tr));
 	      tr->tunnel_id = t - gm->tunnels;
-	      tr->length = ip0->length;
-	      tr->src.as_u32 = ip0->src_address.as_u32;
-	      tr->dst.as_u32 = ip0->dst_address.as_u32;
+	      if (is_ip4)
+	        {
+	          tr->is_ip6 = 0;
+	          tr->length = ip4_0->length;
+	          tr->src.ip4.as_u32 = ip4_0->src_address.as_u32;
+	          tr->dst.ip4.as_u32 = ip4_0->dst_address.as_u32;
+	        }
+	      else
+	        {
+	          tr->is_ip6 = 1;
+	          tr->length = ip6_0->payload_length;
+	          tr->src.ip6.as_u64[0] = ip6_0->src_address.as_u64[0];
+	          tr->src.ip6.as_u64[1] = ip6_0->src_address.as_u64[1];
+	          tr->dst.ip6.as_u64[0] = ip6_0->dst_address.as_u64[0];
+	          tr->dst.ip6.as_u64[1] = ip6_0->dst_address.as_u64[1];
+	        }
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -281,7 +319,8 @@ gre_interface_tx (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, gre_input_node.index,
+  vlib_node_increment_counter (vm, is_ip4 ? gre4_input_node.index :
+                               gre6_input_node.index,
 			       GRE_ERROR_PKTS_ENCAP, frame->n_vectors);
 
   return frame->n_vectors;
@@ -297,6 +336,7 @@ gre_l2_interface_tx (vlib_main_t * vm,
   u32 * from, * to_next, n_left_from, n_left_to_next;
   vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
   const gre_tunnel_t *gt = pool_elt_at_index (gm->tunnels, rd->dev_instance);
+  u8 is_ip4 = !gt->is_ipv6;
 
   /* Vector of buffer / pkt indices we're supposed to process */
   from = vlib_frame_vector_args (frame);
@@ -337,9 +377,22 @@ gre_l2_interface_tx (vlib_main_t * vm,
 	      gre_tx_trace_t *tr = vlib_add_trace (vm, node,
 						   b0, sizeof (*tr));
 	      tr->tunnel_id = gt - gm->tunnels;
-	      tr->length = vlib_buffer_length_in_chain (vm, b0);
-	      tr->src.as_u32 = gt->tunnel_src.as_u32;
-	      tr->dst.as_u32 = gt->tunnel_src.as_u32;
+	      if (is_ip4)
+	        {
+	          tr->is_ip6 = 0;
+	          tr->length = vlib_buffer_length_in_chain (vm, b0);
+	          tr->src.ip4.as_u32 = gt->tunnel_src.ip4.as_u32;
+	          tr->dst.ip4.as_u32 = gt->tunnel_src.ip4.as_u32;
+	        }
+	      else
+	        {
+	          tr->is_ip6 = 1;
+	          tr->length = vlib_buffer_length_in_chain (vm, b0);
+	          tr->src.ip6.as_u64[0] = gt->tunnel_src.ip6.as_u64[0];
+	          tr->src.ip6.as_u64[1] = gt->tunnel_src.ip6.as_u64[1];
+	          tr->dst.ip6.as_u64[0] = gt->tunnel_dst.ip6.as_u64[0];
+	          tr->dst.ip6.as_u64[1] = gt->tunnel_dst.ip6.as_u64[1];
+	        }
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -350,7 +403,8 @@ gre_l2_interface_tx (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, gre_input_node.index,
+  vlib_node_increment_counter (vm, is_ip4 ? gre4_input_node.index :
+                               gre6_input_node.index,
 			       GRE_ERROR_PKTS_ENCAP, frame->n_vectors);
 
   return frame->n_vectors;
@@ -478,6 +532,9 @@ static clib_error_t * gre_init (vlib_main_t * vm)
     return error;
 
   if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
+    return error;
+
+  if ((error = vlib_call_init_function (vm, ip6_lookup_init)))
     return error;
 
   /* Set up the ip packet generator */

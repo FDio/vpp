@@ -588,11 +588,11 @@ static void *vl_api_mpls_gre_add_del_tunnel_t_print
 
   s = format (0, "SCRIPT: mpls_gre_add_del_tunnel ");
 
-  s = format (s, "src %U ", format_ip4_address, mp->src_address);
+  s = format (s, "src %U ", format_ip46_address, mp->src_address);
 
-  s = format (s, "dst %U ", format_ip4_address, mp->dst_address);
+  s = format (s, "dst %U ", format_ip46_address, mp->dst_address);
 
-  s = format (s, "adj %U/%d ", format_ip4_address,
+  s = format (s, "adj %U/%d ", format_ip46_address,
 	      (ip4_address_t *) mp->intfc_address, mp->intfc_address_length);
 
   s = format (s, "inner-vrf_id %d ", ntohl (mp->inner_vrf_id));
