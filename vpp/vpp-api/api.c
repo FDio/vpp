@@ -4787,10 +4787,15 @@ static void vl_api_gre_add_del_tunnel_t_handler
   vnet_gre_add_del_tunnel_args_t _a, *a = &_a;
   u32 outer_fib_id;
   uword *p;
-  ip4_main_t *im = &ip4_main;
+  ip4_main_t *im4 = &ip4_main;
+  ip6_main_t *im6 = &ip6_main;
   u32 sw_if_index = ~0;
 
-  p = hash_get (im->fib_index_by_table_id, ntohl (mp->outer_fib_id));
+  if (!mp->is_ipv6)
+    p = hash_get (im4->fib_index_by_table_id, ntohl (mp->outer_fib_id));
+  else
+    p = hash_get (im6->fib_index_by_table_id, ntohl (mp->outer_fib_id));
+
   if (!p)
     {
       rv = VNET_API_ERROR_NO_SUCH_FIB;
@@ -4809,10 +4814,19 @@ static void vl_api_gre_add_del_tunnel_t_handler
 
   a->is_add = mp->is_add;
   a->teb = mp->teb;
+  a->is_ipv6 = mp->is_ipv6;
 
   /* ip addresses sent in network byte order */
-  clib_memcpy (&(a->src), mp->src_address, 4);
-  clib_memcpy (&(a->dst), mp->dst_address, 4);
+  if (!mp->is_ipv6)
+    {
+      clib_memcpy (&(a->src.ip4), mp->src_address, 4);
+      clib_memcpy (&(a->dst.ip4), mp->dst_address, 4);
+    }
+  else
+    {
+      clib_memcpy (&(a->src.ip6), mp->src_address, 16);
+      clib_memcpy (&(a->dst.ip6), mp->dst_address, 16);
+    }
 
   a->outer_fib_id = outer_fib_id;
   rv = vnet_gre_add_del_tunnel (a, &sw_if_index);
@@ -4830,17 +4844,29 @@ static void send_gre_tunnel_details
   (gre_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
 {
   vl_api_gre_tunnel_details_t *rmp;
-  ip4_main_t *im = &ip4_main;
+  ip4_main_t *im4 = &ip4_main;
+  ip6_main_t *im6 = &ip6_main;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_GRE_TUNNEL_DETAILS);
-  clib_memcpy (rmp->src_address, &(t->tunnel_src), 4);
-  clib_memcpy (rmp->dst_address, &(t->tunnel_dst), 4);
-  rmp->outer_fib_id = htonl (im->fibs[t->outer_fib_index].ft_table_id);
+
+  if (!t->is_ipv6)
+    {
+      clib_memcpy (rmp->src_address, &(t->tunnel_src.ip4), 4);
+      clib_memcpy (rmp->dst_address, &(t->tunnel_dst.ip4), 4);
+      rmp->outer_fib_id = htonl (im4->fibs[t->outer_fib_index].ft_table_id);
+    }
+  else
+    {
+      clib_memcpy (rmp->src_address, &(t->tunnel_src.ip6), 16);
+      clib_memcpy (rmp->dst_address, &(t->tunnel_dst.ip6), 16);
+      rmp->outer_fib_id = htonl (im6->fibs[t->outer_fib_index].ft_table_id);
+    }
   rmp->teb = t->teb;
   rmp->sw_if_index = htonl (t->sw_if_index);
   rmp->context = context;
+  rmp->is_ipv6 = t->is_ipv6;
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }

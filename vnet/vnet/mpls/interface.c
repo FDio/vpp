@@ -228,7 +228,7 @@ mpls_gre_interface_tx (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, gre_input_node.index,
+  vlib_node_increment_counter (vm, gre4_input_node.index,
                                GRE_ERROR_PKTS_ENCAP, frame->n_vectors);
 
   return frame->n_vectors;

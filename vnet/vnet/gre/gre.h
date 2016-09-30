@@ -59,11 +59,11 @@ typedef struct {
   /**
    * The tunnel's source/local address
    */
-  ip4_address_t tunnel_src;
+  ip46_address_t tunnel_src;
   /**
    * The tunnel's destination/remote address
    */
-  ip4_address_t tunnel_dst;
+  ip46_address_t tunnel_dst;
   /**
    * The FIB in which the src.dst address are present
    */
@@ -89,6 +89,7 @@ typedef struct {
    * The index of the midchain adjacency created for this tunnel
    */
   adj_index_t adj_index[FIB_LINK_NUM];
+  char is_ipv6;
 } gre_tunnel_t;
 
 typedef struct {
@@ -122,6 +123,16 @@ typedef CLIB_PACKED (struct {
   gre_header_t gre;
 }) ip4_and_gre_header_t;
 
+/**
+ * @brief IPv6 and GRE header.
+ *
+*/
+typedef CLIB_PACKED (struct {
+  ip6_header_t ip6;
+  gre_header_t gre;
+}) ip6_and_gre_header_t;
+
+
 always_inline gre_protocol_info_t *
 gre_get_protocol_info (gre_main_t * em, gre_protocol_t protocol)
 {
@@ -145,7 +156,8 @@ format_function_t format_gre_protocol;
 format_function_t format_gre_header;
 format_function_t format_gre_header_with_length;
 
-extern vlib_node_registration_t gre_input_node;
+extern vlib_node_registration_t gre4_input_node;
+extern vlib_node_registration_t gre6_input_node;
 extern vnet_device_class_t gre_device_class;
 
 /* Parse gre protocol as 0xXXXX or protocol name.
@@ -168,7 +180,8 @@ gre_register_input_protocol (vlib_main_t * vm,
 typedef struct {
   u8 is_add;
 
-  ip4_address_t src, dst;
+  ip46_address_t src, dst;
+  char is_ipv6;
   u32 outer_fib_id;
   u8 teb;
 } vnet_gre_add_del_tunnel_args_t;
