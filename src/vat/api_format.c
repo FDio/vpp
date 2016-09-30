@@ -11018,21 +11018,45 @@ api_gre_add_del_tunnel (vat_main_t * vam)
   unformat_input_t *line_input = vam->input;
   vl_api_gre_add_del_tunnel_t *mp;
   ip4_address_t src4, dst4;
+  ip6_address_t src6, dst6;
   u8 is_add = 1;
+  u8 ipv4_set = 0;
+  u8 ipv6_set = 0;
   u8 teb = 0;
   u8 src_set = 0;
   u8 dst_set = 0;
   u32 outer_fib_id = 0;
   int ret;
 
+  memset (&src4, 0, sizeof src4);
+  memset (&dst4, 0, sizeof dst4);
+  memset (&src6, 0, sizeof src6);
+  memset (&dst6, 0, sizeof dst6);
+
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "del"))
 	is_add = 0;
       else if (unformat (line_input, "src %U", unformat_ip4_address, &src4))
-	src_set = 1;
+	{
+	  src_set = 1;
+	  ipv4_set = 1;
+	}
       else if (unformat (line_input, "dst %U", unformat_ip4_address, &dst4))
-	dst_set = 1;
+	{
+	  dst_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "src %U", unformat_ip6_address, &src6))
+	{
+	  src_set = 1;
+	  ipv6_set = 1;
+	}
+      else if (unformat (line_input, "dst %U", unformat_ip6_address, &dst6))
+	{
+	  dst_set = 1;
+	  ipv6_set = 1;
+	}
       else if (unformat (line_input, "outer-fib-id %d", &outer_fib_id))
 	;
       else if (unformat (line_input, "teb"))
@@ -11054,15 +11078,29 @@ api_gre_add_del_tunnel (vat_main_t * vam)
       errmsg ("tunnel dst address not specified");
       return -99;
     }
+  if (ipv4_set && ipv6_set)
+    {
+      errmsg ("both IPv4 and IPv6 addresses specified");
+      return -99;
+    }
 
 
   M (GRE_ADD_DEL_TUNNEL, mp);
 
-  clib_memcpy (&mp->src_address, &src4, sizeof (src4));
-  clib_memcpy (&mp->dst_address, &dst4, sizeof (dst4));
+  if (ipv4_set)
+    {
+      clib_memcpy (&mp->src_address, &src4, 4);
+      clib_memcpy (&mp->dst_address, &dst4, 4);
+    }
+  else
+    {
+      clib_memcpy (&mp->src_address, &src6, 16);
+      clib_memcpy (&mp->dst_address, &dst6, 16);
+    }
   mp->outer_fib_id = ntohl (outer_fib_id);
   mp->is_add = is_add;
   mp->teb = teb;
+  mp->is_ipv6 = ipv6_set;
 
   S (mp);
   W (ret);
@@ -11073,11 +11111,13 @@ static void vl_api_gre_tunnel_details_t_handler
   (vl_api_gre_tunnel_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
+  ip46_address_t src = to_ip46 (mp->is_ipv6, mp->src_address);
+  ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->dst_address);
 
-  print (vam->ofp, "%11d%15U%15U%6d%14d",
+  print (vam->ofp, "%11d%24U%24U%6d%14d",
 	 ntohl (mp->sw_if_index),
-	 format_ip4_address, &mp->src_address,
-	 format_ip4_address, &mp->dst_address,
+	 format_ip46_address, &src, IP46_TYPE_ANY,
+	 format_ip46_address, &dst, IP46_TYPE_ANY,
 	 mp->teb, ntohl (mp->outer_fib_id));
 }
 
@@ -11087,6 +11127,7 @@ static void vl_api_gre_tunnel_details_t_handler_json
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
   struct in_addr ip4;
+  struct in6_addr ip6;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -11097,12 +11138,23 @@ static void vl_api_gre_tunnel_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-  clib_memcpy (&ip4, &mp->src_address, sizeof (ip4));
-  vat_json_object_add_ip4 (node, "src_address", ip4);
-  clib_memcpy (&ip4, &mp->dst_address, sizeof (ip4));
-  vat_json_object_add_ip4 (node, "dst_address", ip4);
+  if (!mp->is_ipv6)
+    {
+      clib_memcpy (&ip4, &mp->src_address, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "src_address", ip4);
+      clib_memcpy (&ip4, &mp->dst_address, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "dst_address", ip4);
+    }
+  else
+    {
+      clib_memcpy (&ip6, &mp->src_address, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "src_address", ip6);
+      clib_memcpy (&ip6, &mp->dst_address, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "dst_address", ip6);
+    }
   vat_json_object_add_uint (node, "teb", mp->teb);
   vat_json_object_add_uint (node, "outer_fib_id", ntohl (mp->outer_fib_id));
+  vat_json_object_add_uint (node, "is_ipv6", mp->is_ipv6);
 }
 
 static int
@@ -11131,7 +11183,7 @@ api_gre_tunnel_dump (vat_main_t * vam)
 
   if (!vam->json_output)
     {
-      print (vam->ofp, "%11s%15s%15s%6s%14s",
+      print (vam->ofp, "%11s%24s%24s%6s%14s",
 	     "sw_if_index", "src_address", "dst_address", "teb",
 	     "outer_fib_id");
     }
@@ -18612,7 +18664,7 @@ _(vxlan_add_del_tunnel,                                                 \
   "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")           \
 _(vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
 _(gre_add_del_tunnel,                                                   \
-  "src <ip4-addr> dst <ip4-addr> [outer-fib-id <nn>] [teb] [del]\n")    \
+  "src <ip-addr> dst <ip-addr> [outer-fib-id <nn>] [teb] [del]\n")    \
 _(gre_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                      \
 _(l2_fib_clear_table, "")                                               \
 _(l2_interface_efp_filter, "sw_if_index <nn> enable | disable")         \
