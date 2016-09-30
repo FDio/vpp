@@ -28,6 +28,13 @@ typedef struct {
   };
 } ip4_and_gre_union_t;
 
+typedef struct {
+  union {
+    ip6_and_gre_header_t ip6_and_gre;
+    u64 as_u64[3];
+  };
+} ip6_and_gre_union_t;
+
 
 /* Packet trace structure */
 typedef struct {
@@ -37,9 +44,9 @@ typedef struct {
   /* pkt length */
   u32 length;
 
-  /* tunnel ip4 addresses */
-  ip4_address_t src;
-  ip4_address_t dst;
+  /* tunnel ip addresses */
+  ip46_address_t src;
+  ip46_address_t dst;
 } gre_tx_trace_t;
 
 u8 * format_gre_tx_trace (u8 * s, va_list * args)
@@ -50,8 +57,8 @@ u8 * format_gre_tx_trace (u8 * s, va_list * args)
 
   s = format (s, "GRE: tunnel %d len %d src %U dst %U",
 	      t->tunnel_id, clib_net_to_host_u16 (t->length),
-	      format_ip4_address, &t->src.as_u8,
-	      format_ip4_address, &t->dst.as_u8);
+	      format_ip46_address, &t->src, IP46_TYPE_ANY,
+	      format_ip46_address, &t->dst, IP46_TYPE_ANY);
   return s;
 }
 
@@ -192,10 +199,12 @@ gre_build_rewrite (vnet_main_t * vnm,
 		   const void *dst_address)
 {
   gre_main_t * gm = &gre_main;
-  ip4_and_gre_header_t * h;
+  ip4_and_gre_header_t * h4;
+  ip6_and_gre_header_t * h6;
   u8* rewrite = NULL;
   gre_tunnel_t *t;
   u32 ti;
+  u8 is_ipv6;
 
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
 
@@ -205,23 +214,45 @@ gre_build_rewrite (vnet_main_t * vnm,
 
   t = pool_elt_at_index(gm->tunnels, ti);
 
-  vec_validate(rewrite, sizeof(*h)-1);
-  h = (ip4_and_gre_header_t*)rewrite;
-  h->gre.protocol = clib_host_to_net_u16(gre_proto_from_vnet_link(link_type));
+  is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
 
-  h->ip4.ip_version_and_header_length = 0x45;
-  h->ip4.ttl = 254;
-  h->ip4.protocol = IP_PROTOCOL_GRE;
-  /* fixup ip4 header length and checksum after-the-fact */
-  h->ip4.src_address.as_u32 = t->tunnel_src.as_u32;
-  h->ip4.dst_address.as_u32 = t->tunnel_dst.as_u32;
-  h->ip4.checksum = ip4_header_checksum (&h->ip4);
+  if (!is_ipv6)
+    {
+      vec_validate(rewrite, sizeof(*h4)-1);
+      h4 = (ip4_and_gre_header_t*)rewrite;
+      h4->gre.protocol = clib_host_to_net_u16(gre_proto_from_vnet_link(link_type));
+
+      h4->ip4.ip_version_and_header_length = 0x45;
+      h4->ip4.ttl = 254;
+      h4->ip4.protocol = IP_PROTOCOL_GRE;
+      /* fixup ip4 header length and checksum after-the-fact */
+      h4->ip4.src_address.as_u32 = t->tunnel_src.ip4.as_u32;
+      h4->ip4.dst_address.as_u32 = t->tunnel_dst.fp_addr.ip4.as_u32;
+      h4->ip4.checksum = ip4_header_checksum (&h4->ip4);
+    }
+  else
+    {
+      vec_validate(rewrite, sizeof(*h6)-1);
+      h6 = (ip6_and_gre_header_t*)rewrite;
+      h6->gre.protocol = clib_host_to_net_u16(gre_proto_from_vnet_link(link_type));
+
+      h6->ip6.ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(6 << 28);
+      h6->ip6.hop_limit = 255;
+      h6->ip6.protocol = IP_PROTOCOL_GRE;
+      /* fixup ip6 header length and checksum after-the-fact */
+      h6->ip6.src_address.as_u64[0] = t->tunnel_src.ip6.as_u64[0];
+      h6->ip6.src_address.as_u64[1] = t->tunnel_src.ip6.as_u64[1];
+      h6->ip6.dst_address.as_u64[0] = t->tunnel_dst.fp_addr.ip6.as_u64[0];
+      h6->ip6.dst_address.as_u64[1] = t->tunnel_dst.fp_addr.ip6.as_u64[1];
+    }
 
   return (rewrite);
 }
 
+#define is_v4_packet(_h) ((*(u8*) _h) & 0xF0) == 0x40
+
 void
-gre_fixup (vlib_main_t *vm,
+gre4_fixup (vlib_main_t *vm,
 	   ip_adjacency_t *adj,
 	   vlib_buffer_t *b0)
 {
@@ -236,11 +267,36 @@ gre_fixup (vlib_main_t *vm,
 }
 
 void
+gre6_fixup (vlib_main_t *vm,
+	   ip_adjacency_t *adj,
+	   vlib_buffer_t *b0)
+{
+    ip6_header_t * ip0;
+
+    ip0 = vlib_buffer_get_current (b0);
+
+    /* Fixup the payload length field in the GRE tunnel encap that was applied
+     * at the midchain node */
+    ip0->payload_length =
+        clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0))
+        - sizeof(*ip0);
+}
+
+void
 gre_update_adj (vnet_main_t * vnm,
 		u32 sw_if_index,
 		adj_index_t ai)
 {
-    adj_nbr_midchain_update_rewrite (ai, gre_fixup, 
+    gre_main_t * gm = &gre_main;
+    gre_tunnel_t *t;
+    u32 ti;
+    u8 is_ipv6;
+
+    ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
+    t = pool_elt_at_index(gm->tunnels, ti);
+    is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
+
+    adj_nbr_midchain_update_rewrite (ai, !is_ipv6 ? gre4_fixup : gre6_fixup,
                                      (VNET_LINK_ETHERNET == adj_get_link_type (ai) ?
                                       ADJ_FLAG_MIDCHAIN_NO_COUNT :
                                       ADJ_FLAG_NONE),
@@ -264,6 +320,7 @@ gre_interface_tx_inline (vlib_main_t * vm,
   u32 * from, * to_next, n_left_from, n_left_to_next;
   vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
   const gre_tunnel_t *gt = pool_elt_at_index (gm->tunnels, rd->dev_instance);
+  u8 is_ipv6 = gt->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
 
   /* Vector of buffer / pkt indices we're supposed to process */
   from = vlib_frame_vector_args (frame);
@@ -303,10 +360,10 @@ gre_interface_tx_inline (vlib_main_t * vm,
 	    {
 	      gre_tx_trace_t *tr = vlib_add_trace (vm, node,
 						   b0, sizeof (*tr));
-	      tr->tunnel_id = gt - gm->tunnels;
-	      tr->length = vlib_buffer_length_in_chain (vm, b0);
-	      tr->src.as_u32 = gt->tunnel_src.as_u32;
-	      tr->dst.as_u32 = gt->tunnel_src.as_u32;
+          tr->tunnel_id = gt - gm->tunnels;
+          tr->src = gt->tunnel_src;
+          tr->dst = gt->tunnel_src;
+          tr->length = vlib_buffer_length_in_chain (vm, b0);
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -317,7 +374,8 @@ gre_interface_tx_inline (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, gre_input_node.index,
+  vlib_node_increment_counter (vm, !is_ipv6 ? gre4_input_node.index :
+                   gre6_input_node.index,
 			       GRE_ERROR_PKTS_ENCAP, frame->n_vectors);
 
   return frame->n_vectors;
@@ -434,6 +492,9 @@ static clib_error_t * gre_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ip4_lookup_init)))
     return error;
 
+  if ((error = vlib_call_init_function (vm, ip6_lookup_init)))
+    return error;
+
   /* Set up the ip packet generator */
   pi = ip_get_protocol_info (im, IP_PROTOCOL_GRE);
   pi->format_header = format_gre_header;
@@ -441,7 +502,8 @@ static clib_error_t * gre_init (vlib_main_t * vm)
 
   gm->protocol_info_by_name = hash_create_string (0, sizeof (uword));
   gm->protocol_info_by_protocol = hash_create (0, sizeof (uword));
-  gm->tunnel_by_key = hash_create (0, sizeof (uword));
+  gm->tunnel_by_key4 = hash_create (0, sizeof (uword));
+  gm->tunnel_by_key6 = hash_create_mem (0, sizeof(u64[4]), sizeof (uword));
 
 #define _(n,s) add_protocol (gm, GRE_PROTOCOL_##s, #s);
   foreach_gre_protocol

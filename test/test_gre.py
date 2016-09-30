@@ -5,7 +5,7 @@ from logging import *
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
-from vpp_gre_interface import VppGreInterface
+from vpp_gre_interface import VppGreInterface, VppGre6Interface
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi_provider import L2_VTR_OP
 
@@ -28,14 +28,19 @@ class TestGRE(VppTestCase):
     def setUp(self):
         super(TestGRE, self).setUp()
 
-        # create 2 pg interfaces - set one in a non-default table.
-        self.create_pg_interfaces(range(2))
-
+        # create 3 pg interfaces - set one in a non-default table.
+        self.create_pg_interfaces(range(3))
         self.pg1.set_table_ip4(1)
+
         for i in self.pg_interfaces:
             i.admin_up()
-            i.config_ip4()
-            i.resolve_arp()
+
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+        self.pg1.config_ip4()
+        self.pg1.resolve_arp()
+        self.pg2.config_ip6()
+        self.pg2.resolve_ndp()
 
     def tearDown(self):
         super(TestGRE, self).tearDown()
@@ -51,6 +56,19 @@ class TestGRE(VppTestCase):
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=src_ip, dst=dst_ip) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw(payload))
+            info.data = p.copy()
+            pkts.append(p)
+        return pkts
+
+    def create_stream_ip6(self, src_if, src_ip, dst_ip):
+        pkts = []
+        for i in range(0, 257):
+            info = self.create_packet_info(src_if, src_if)
+            payload = self.info_to_payload(info)
+            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+                 IPv6(src=src_ip, dst=dst_ip) /
                  UDP(sport=1234, dport=1234) /
                  Raw(payload))
             info.data = p.copy()
@@ -83,6 +101,23 @@ class TestGRE(VppTestCase):
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=tunnel_src, dst=tunnel_dst) /
+                 GRE() /
+                 IPv6(src=src_ip, dst=dst_ip) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw(payload))
+            info.data = p.copy()
+            pkts.append(p)
+        return pkts
+
+    def create_tunnel_stream_6o6(self, src_if,
+                                 tunnel_src, tunnel_dst,
+                                 src_ip, dst_ip):
+        pkts = []
+        for i in range(0, 257):
+            info = self.create_packet_info(src_if, src_if)
+            payload = self.info_to_payload(info)
+            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+                 IPv6(src=tunnel_src, dst=tunnel_dst) /
                  GRE() /
                  IPv6(src=src_ip, dst=dst_ip) /
                  UDP(sport=1234, dport=1234) /
@@ -151,6 +186,33 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
                 # IP processing post pop has decremented the TTL
                 self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
+
+            except:
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
+                raise
+
+    def verify_tunneled_6o6(self, src_if, capture, sent,
+                            tunnel_src, tunnel_dst):
+
+        self.assertEqual(len(capture), len(sent))
+
+        for i in range(len(capture)):
+            try:
+                tx = sent[i]
+                rx = capture[i]
+
+                tx_ip = tx[IPv6]
+                rx_ip = rx[IPv6]
+
+                self.assertEqual(rx_ip.src, tunnel_src)
+                self.assertEqual(rx_ip.dst, tunnel_dst)
+
+                rx_gre = GRE(str(rx_ip[IPv6].payload))
+                rx_ip = rx_gre[IPv6]
+
+                self.assertEqual(rx_ip.src, tx_ip.src)
+                self.assertEqual(rx_ip.dst, tx_ip.dst)
 
             except:
                 self.logger.error(ppp("Rx:", rx))
@@ -275,7 +337,7 @@ class TestGRE(VppTestCase):
                 raise
 
     def test_gre(self):
-        """ GRE tunnel Tests """
+        """ GRE IPv4 tunnel Tests """
 
         #
         # Create an L3 GRE tunnel.
@@ -437,6 +499,79 @@ class TestGRE(VppTestCase):
         gre_if.remove_vpp_config()
 
         self.pg0.unconfig_ip6()
+
+    def test_gre6(self):
+        """ GRE IPv6 tunnel Tests """
+
+        #
+        # Create an L3 GRE tunnel.
+        #  - set it admin up
+        #  - assign an IP Address
+        #  - Add a route via the tunnel
+        #
+        gre_if = VppGre6Interface(self,
+                                  self.pg2.local_ip6,
+                                  "1002::1")
+        gre_if.add_vpp_config()
+        gre_if.admin_up()
+        gre_if.config_ip6()
+
+        route_via_tun = VppIpRoute(self, "4004::1", 128,
+                                   [VppRoutePath("0::0",
+                                                 gre_if.sw_if_index,
+                                                 is_ip6=1)],
+                                   is_ip6=1)
+
+        route_via_tun.add_vpp_config()
+
+        #
+        # Send a packet stream that is routed into the tunnel
+        #  - they are all dropped since the tunnel's desintation IP
+        #    is unresolved - or resolves via the default route - which
+        #    which is a drop.
+        #
+        tx = self.create_stream_ip6(self.pg2, "5005::1", "4004::1")
+        self.pg2.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg2.assert_nothing_captured(
+            remark="GRE packets forwarded without DIP resolved")
+
+        #
+        # Add a route that resolves the tunnel's destination
+        #
+        route_tun_dst = VppIpRoute(self, "1002::1", 128,
+                                   [VppRoutePath(self.pg2.remote_ip6,
+                                                 self.pg2.sw_if_index,
+                                                 is_ip6=1)],
+                                   is_ip6=1)
+        route_tun_dst.add_vpp_config()
+
+        #
+        # Send a packet stream that is routed into the tunnel
+        #  - packets are GRE encapped
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip6(self.pg2, "5005::1", "4004::1")
+        self.pg2.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(len(tx))
+        self.verify_tunneled_6o6(self.pg2, rx, tx,
+                                 self.pg2.local_ip6, "1002::1")
+
+        #
+        # test case cleanup
+        #
+        route_tun_dst.remove_vpp_config()
+        route_via_tun.remove_vpp_config()
+        gre_if.remove_vpp_config()
+
+        self.pg2.unconfig_ip6()
 
     def test_gre_vrf(self):
         """ GRE tunnel VRF Tests """
