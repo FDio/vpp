@@ -2090,9 +2090,9 @@ classify_session_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (classify_session_command, static) = {
     .path = "classify session",
-    .short_help = 
-    "classify session [hit-next|l2-hit-next|acl-hit-next <next_index>|"
-    "policer-hit-next <policer_name>]"
+    .short_help =
+    "classify session [hit-next|l2-hit-next|"
+    "acl-hit-next <next_index>|policer-hit-next <policer_name>]"
     "\n table-index <nn> match [hex] [l2] [l3 ip4] [opaque-index <index>]",
     .function = classify_session_command_fn,
 };
@@ -2112,27 +2112,31 @@ unformat_opaque_sw_if_index (unformat_input_t * input, va_list * args)
   return 0;
 }
 
-static uword 
+static uword
 unformat_ip_next_node (unformat_input_t * input, va_list * args)
 {
   vnet_classify_main_t * cm = &vnet_classify_main;
   u32 * next_indexp = va_arg (*args, u32 *);
   u32 node_index;
-  u32 next_index, rv;
+  u32 next_index = ~0;
 
-  if (unformat (input, "node %U", unformat_vlib_node,
+  if (unformat (input, "ip6-node %U", unformat_vlib_node,
                 cm->vlib_main, &node_index))
     {
-      rv = next_index = vlib_node_add_next 
-        (cm->vlib_main, ip4_classify_node.index, node_index);
-      next_index = vlib_node_add_next 
-        (cm->vlib_main, ip6_classify_node.index, node_index);
-      ASSERT(rv == next_index);
-
-      *next_indexp = next_index;
-      return 1;
+      next_index = vlib_node_add_next (cm->vlib_main,
+				       ip6_classify_node.index, node_index);
     }
-  return 0;
+  else if (unformat (input, "ip4-node %U", unformat_vlib_node,
+		     cm->vlib_main, &node_index))
+    {
+      next_index = vlib_node_add_next (cm->vlib_main,
+				       ip4_classify_node.index, node_index);
+    }
+  else
+    return 0;
+
+  *next_indexp = next_index;
+  return 1;
 }
 
 static uword 
@@ -2141,21 +2145,25 @@ unformat_acl_next_node (unformat_input_t * input, va_list * args)
   vnet_classify_main_t * cm = &vnet_classify_main;
   u32 * next_indexp = va_arg (*args, u32 *);
   u32 node_index;
-  u32 next_index, rv;
+  u32 next_index;
 
-  if (unformat (input, "node %U", unformat_vlib_node,
+  if (unformat (input, "ip6-node %U", unformat_vlib_node,
                 cm->vlib_main, &node_index))
     {
-      rv = next_index = vlib_node_add_next 
-        (cm->vlib_main, ip4_inacl_node.index, node_index);
-      next_index = vlib_node_add_next 
-        (cm->vlib_main, ip6_inacl_node.index, node_index);
-      ASSERT(rv == next_index);
-
-      *next_indexp = next_index;
-      return 1;
+      next_index = vlib_node_add_next (cm->vlib_main,
+				       ip6_inacl_node.index, node_index);
     }
-  return 0;
+  else if (unformat (input, "ip4-node %U", unformat_vlib_node,
+		     cm->vlib_main, &node_index))
+    {
+      next_index = vlib_node_add_next (cm->vlib_main,
+				       ip4_inacl_node.index, node_index);
+    }
+  else
+    return 0;
+
+  *next_indexp = next_index;
+  return 1;
 }
 
 static uword 
