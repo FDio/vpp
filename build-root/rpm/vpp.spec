@@ -119,6 +119,10 @@ for file in $(find %{_vpp_install_dir}/*/lib/python2.7/site-packages/ -type f -p
 do
 	install -p -m 666 $file %{buildroot}%{python2_sitelib}/vpp_papi/
 done
+for file in $(find %{_vpp_install_dir}/plugins/vpp_papi_plugins/ -type f -print | grep -v pyc | grep -v pyo)
+do
+	install -p -m 666 $file %{buildroot}%{python2_sitelib}/vpp_papi/
+done
 
 #
 # devel
