@@ -52,16 +52,14 @@ Group: Development/Libraries
 Requires: vpp-lib
 
 %description devel
-This package contains the header files and static libraries for
-vppinfra.  Install this package if you want to write or compile a
-program that needs vpp.
-Do we need to list those header files or just leave it blank ? 
-dynamic vectors (vec.c), dynamic bitmaps (bitmap.h), allocation heap of
-objects (heap.c), allocation pool(pool.h), dynamic hash tables (hash.c), memory
-allocator (mheap.c), extendable printf-like interface built on top of vectors
-(format.c), formats for data structures (std-formats.c), and support for clock
-time-based function calls (timer.c).
-TODO: reference and describe only the .h files
+This package contains the header files for vpp. Install this package
+Install this package if you want to write a
+program for compilation and linking with vpp lib.
+vlib - header files
+vlibmemory - header files
+vnet - devices, classify, dhcp, ethernet flow, gre, ip, etc. header files
+vpp-api - header files
+vppinfra - vpp infra header files
 
 %package plugins
 Summary: Vector Packet Processing--runtime plugins
