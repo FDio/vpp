@@ -3058,6 +3058,7 @@ int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
   ip4_main_t * ipm = &ip4_main;
   ip_lookup_main_t * lm = &ipm->lookup_main;
   vnet_classify_main_t * cm = &vnet_classify_main;
+  ip4_address_t *if_addr;
 
   if (pool_is_free_index (im->sw_interfaces, sw_if_index))
     return VNET_API_ERROR_NO_MATCHING_INTERFACE;
@@ -3067,6 +3068,46 @@ int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 
   vec_validate (lm->classify_table_index_by_sw_if_index, sw_if_index);
   lm->classify_table_index_by_sw_if_index [sw_if_index] = table_index;
+
+  if_addr = ip4_interface_first_address (ipm, sw_if_index, NULL);
+
+  if (NULL != if_addr)
+  {
+      fib_prefix_t pfx = {
+	  .fp_len = 32,
+	  .fp_proto = FIB_PROTOCOL_IP4,
+	  .fp_addr.ip4 = *if_addr,
+      };
+      u32 fib_index;
+
+      fib_index = fib_table_get_index_for_sw_if_index(FIB_PROTOCOL_IP4,
+						      sw_if_index);
+
+
+      if (table_index != (u32) ~0)
+      {
+          dpo_id_t dpo = DPO_NULL;
+
+          dpo_set(&dpo,
+                  DPO_CLASSIFY,
+                  DPO_PROTO_IP4,
+                  classify_dpo_create(FIB_PROTOCOL_IP4,
+                                      table_index));
+
+	  fib_table_entry_special_dpo_add(fib_index,
+					  &pfx,
+					  FIB_SOURCE_CLASSIFY,
+					  FIB_ENTRY_FLAG_NONE,
+					  &dpo);
+          dpo_reset(&dpo);
+      }
+      else
+      {
+	  fib_table_entry_special_remove(fib_index,
+					 &pfx,
+					 FIB_SOURCE_CLASSIFY);
+      }
+  }
 
   return 0;
 }

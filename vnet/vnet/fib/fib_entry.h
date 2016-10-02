@@ -480,6 +480,9 @@ extern u32 fib_entry_child_add(fib_node_index_t fib_entry_index,
 extern void fib_entry_child_remove(fib_node_index_t fib_entry_index,
 				   u32 sibling_index);
 extern u32 fib_entry_get_resolving_interface(fib_node_index_t fib_entry_index);
+extern u32 fib_entry_get_resolving_interface_for_source(
+    fib_node_index_t fib_entry_index,
+    fib_source_t source);
 
 extern void fib_entry_get_prefix(fib_node_index_t fib_entry_index,
 				 fib_prefix_t *pfx);
@@ -491,6 +494,9 @@ extern const void* fib_entry_get_source_data(fib_node_index_t fib_entry_index,
                                              fib_source_t source);
 
 extern fib_entry_flag_t fib_entry_get_flags(fib_node_index_t fib_entry_index);
+extern fib_entry_flag_t fib_entry_get_flags_for_source(
+    fib_node_index_t fib_entry_index,
+    fib_source_t source);
 extern fib_source_t fib_entry_get_best_source(fib_node_index_t fib_entry_index);
 extern int fib_entry_is_sourced(fib_node_index_t fib_entry_index,
                                 fib_source_t source);

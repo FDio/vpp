@@ -1038,8 +1038,8 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 
     ASSERT(NULL != fib_entry_src_vft[source].fesv_path_swap);
 
-    pl_flags = fib_entry_src_flags_2_path_list_flags(
-	           fib_entry_get_flags_i(fib_entry));
+    pl_flags = fib_entry_src_flags_2_path_list_flags(flags);
+
     vec_foreach(rpath, rpaths)
     {
 	fib_entry_flags_update(fib_entry, rpath, &pl_flags, esrc);
@@ -1203,6 +1203,46 @@ fib_entry_get_dpo_for_source (fib_node_index_t fib_entry_index,
 	}
     }
     return (0);
+}
+
+u32
+fib_entry_get_resolving_interface_for_source (fib_node_index_t entry_index,
+					      fib_source_t source)
+{
+    fib_entry_t *fib_entry;
+    fib_entry_src_t *esrc;
+
+    fib_entry = fib_entry_get(entry_index);
+
+    esrc = fib_entry_src_find(fib_entry, source, NULL);
+
+    if (NULL != esrc)
+    {
+	if (FIB_NODE_INDEX_INVALID != esrc->fes_pl)
+	{
+	    return (fib_path_list_get_resolving_interface(esrc->fes_pl));
+	}
+    }
+    return (~0);
+}
+
+fib_entry_flag_t
+fib_entry_get_flags_for_source (fib_node_index_t entry_index,
+				fib_source_t source)
+{
+    fib_entry_t *fib_entry;
+    fib_entry_src_t *esrc;
+
+    fib_entry = fib_entry_get(entry_index);
+
+    esrc = fib_entry_src_find(fib_entry, source, NULL);
+
+    if (NULL != esrc)
+    {
+	return (esrc->fes_entry_flags);
+    }
+
+    return (FIB_ENTRY_FLAG_NONE);
 }
 
 fib_entry_flag_t

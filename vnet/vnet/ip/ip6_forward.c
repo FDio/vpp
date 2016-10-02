@@ -457,6 +457,28 @@ ip6_sw_interface_enable_disable (u32 sw_if_index,
     }
 }
 
+/* get first interface address */
+ip6_address_t *
+ip6_interface_first_address (ip6_main_t * im,
+			     u32 sw_if_index,
+                             ip_interface_address_t ** result_ia)
+{
+  ip_lookup_main_t * lm = &im->lookup_main;
+  ip_interface_address_t * ia = 0;
+  ip6_address_t * result = 0;
+
+  foreach_ip_interface_address (lm, ia, sw_if_index,
+                                1 /* honor unnumbered */,
+  ({
+    ip6_address_t * a = ip_interface_address_get_address (lm, ia);
+    result = a;
+    break;
+  }));
+  if (result_ia)
+    *result_ia = result ? ia : 0;
+  return result;
+}
+
 clib_error_t *
 ip6_add_del_interface_address (vlib_main_t * vm,
 			       u32 sw_if_index,
@@ -2866,6 +2888,7 @@ int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
   ip6_main_t * ipm = &ip6_main;
   ip_lookup_main_t * lm = &ipm->lookup_main;
   vnet_classify_main_t * cm = &vnet_classify_main;
+  ip6_address_t *if_addr;
 
   if (pool_is_free_index (im->sw_interfaces, sw_if_index))
     return VNET_API_ERROR_NO_MATCHING_INTERFACE;
@@ -2875,6 +2898,46 @@ int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 
   vec_validate (lm->classify_table_index_by_sw_if_index, sw_if_index);
   lm->classify_table_index_by_sw_if_index [sw_if_index] = table_index;
+
+  if_addr = ip6_interface_first_address (ipm, sw_if_index, NULL);
+
+  if (NULL != if_addr)
+  {
+      fib_prefix_t pfx = {
+	  .fp_len = 128,
+	  .fp_proto = FIB_PROTOCOL_IP6,
+	  .fp_addr.ip6 = *if_addr,
+      };
+      u32 fib_index;
+
+      fib_index = fib_table_get_index_for_sw_if_index(FIB_PROTOCOL_IP4,
+						      sw_if_index);
+
+
+      if (table_index != (u32) ~0)
+      {
+          dpo_id_t dpo = DPO_NULL;
+
+          dpo_set(&dpo,
+                  DPO_CLASSIFY,
+                  DPO_PROTO_IP4,
+                  classify_dpo_create(FIB_PROTOCOL_IP4,
+                                      table_index));
+
+	  fib_table_entry_special_dpo_add(fib_index,
+					  &pfx,
+					  FIB_SOURCE_CLASSIFY,
+					  FIB_ENTRY_FLAG_NONE,
+					  &dpo);
+          dpo_reset(&dpo);
+      }
+      else
+      {
+	  fib_table_entry_special_remove(fib_index,
+					 &pfx,
+					 FIB_SOURCE_CLASSIFY);
+      }
+  }
 
   return 0;
 }

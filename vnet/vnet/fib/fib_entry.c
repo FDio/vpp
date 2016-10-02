@@ -1299,7 +1299,7 @@ fib_entry_recursive_loop_detect (fib_node_index_t entry_index,
 u32
 fib_entry_get_resolving_interface (fib_node_index_t entry_index)
 {
-   fib_entry_t *fib_entry;
+    fib_entry_t *fib_entry;
 
     fib_entry = fib_entry_get(entry_index);
 

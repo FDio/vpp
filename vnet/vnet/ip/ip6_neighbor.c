@@ -812,7 +812,8 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 							 128);
 
 		  if (FIB_NODE_INDEX_INVALID == fei || 
-		      !(FIB_ENTRY_FLAG_LOCAL & fib_entry_get_flags(fei)))
+		      !(FIB_ENTRY_FLAG_LOCAL &
+			fib_entry_get_flags_for_source(fei, FIB_SOURCE_INTERFACE)))
 		    {
 		      error0 = ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_UNKNOWN;
 		    }
