@@ -58,4 +58,7 @@ typedef int (*fib_node_list_walk_cb_t)(fib_node_ptr_t *owner,
 extern void fib_node_list_walk(fib_node_list_t head,
                                fib_node_list_walk_cb_t fn,
                                void *args);
+
+extern void fib_node_list_memory_show(void);
+
 #endif

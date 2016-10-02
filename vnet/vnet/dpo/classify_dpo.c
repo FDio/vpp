@@ -90,10 +90,20 @@ classify_dpo_unlock (dpo_id_t *dpo)
     }
 }
 
+static void
+classify_dpo_mem_show (void)
+{
+    fib_show_memory_usage("Classify",
+			  pool_elts(classify_dpo_pool),
+			  pool_len(classify_dpo_pool),
+			  sizeof(classify_dpo_t));
+}
+
 const static dpo_vft_t cd_vft = {
     .dv_lock = classify_dpo_lock,
     .dv_unlock = classify_dpo_unlock,
     .dv_format = format_classify_dpo,
+    .dv_mem_show = classify_dpo_mem_show,
 };
 
 const static char* const classify_ip4_nodes[] =

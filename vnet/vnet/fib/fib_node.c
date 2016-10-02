@@ -205,3 +205,43 @@ fib_node_unlock (fib_node_t *node)
 	node->fn_vft->fnv_last_lock(node);
     }
 }
+
+void
+fib_show_memory_usage (const char *name,
+		       u32 in_use_elts,
+		       u32 allocd_elts,
+		       size_t size_elt)
+{
+    vlib_cli_output (vlib_get_main(), "%=30s %=5d %=8d/%=9d   %d/%d ",
+		     name, size_elt,
+		     in_use_elts, allocd_elts,
+		     in_use_elts*size_elt, allocd_elts*size_elt);
+}
+
+static clib_error_t *
+fib_memory_show (vlib_main_t * vm,
+		 unformat_input_t * input,
+		 vlib_cli_command_t * cmd)
+{
+    fib_node_vft_t *vft;
+
+    vlib_cli_output (vm, "FIB memory");
+    vlib_cli_output (vm, "%=30s %=5s %=8s/%=9s   totals",
+		     "Name","Size", "in-use", "allocated");
+
+    vec_foreach(vft, fn_vfts)
+    {
+	if (NULL != vft->fnv_mem_show)
+	    vft->fnv_mem_show();
+    }
+
+    fib_node_list_memory_show();
+
+    return (NULL);
+}
+
+VLIB_CLI_COMMAND (show_fib_memory, static) = {
+    .path = "show fib memory",
+    .function = fib_memory_show,
+    .short_help = "show fib memory",
+};

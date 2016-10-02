@@ -262,6 +262,11 @@ _Static_assert (sizeof(fib_entry_src_flag_t) <= 2,
  */
 typedef struct fib_entry_src_t_ {
     /**
+     * A vector of path extensions
+     */
+    struct fib_path_ext_t_ *fes_path_exts;
+
+    /**
      * The path-list created by the source
      */
     fib_node_index_t fes_pl;
@@ -273,10 +278,6 @@ typedef struct fib_entry_src_t_ {
      * Flags on the source
      */
     fib_entry_src_flag_t fes_flags;
-    /**
-     * Flags the source contributes to the entry
-     */
-    fib_entry_flag_t fes_entry_flags;
 
     /**
      * 1 bytes ref count. This is not the number of users of the Entry
@@ -286,9 +287,9 @@ typedef struct fib_entry_src_t_ {
     u8 fes_ref_count;
 
     /**
-     * A vector of path extensions
+     * Flags the source contributes to the entry
      */
-    struct fib_path_ext_t_ *fes_path_exts;
+    fib_entry_flag_t fes_entry_flags;
     
     /**
      * Source specific info
@@ -502,7 +503,6 @@ extern int fib_entry_is_sourced(fib_node_index_t fib_entry_index,
                                 fib_source_t source);
 
 extern fib_node_index_t fib_entry_get_path_list(fib_node_index_t fib_entry_index);
-extern u32 fib_entry_get_fib_table_id(fib_node_index_t fib_entry_index);
 
 extern void fib_entry_module_init(void);
 

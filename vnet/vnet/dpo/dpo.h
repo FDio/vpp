@@ -301,6 +301,11 @@ typedef void (*dpo_lock_fn_t)(dpo_id_t *dpo);
 typedef void (*dpo_unlock_fn_t)(dpo_id_t *dpo);
 
 /**
+ * @brief An memory usage show command
+ */
+typedef void (*dpo_mem_show_t)(void);
+
+/**
  * @brief A virtual function table regisitered for a DPO type
  */
 typedef struct dpo_vft_t_
@@ -317,6 +322,10 @@ typedef struct dpo_vft_t_
      * A format function
      */
     format_function_t *dv_format;
+    /**
+     * A show memory usage function
+     */
+    dpo_mem_show_t dv_mem_show;
 } dpo_vft_t;
 
 
@@ -337,9 +346,9 @@ typedef struct dpo_vft_t_
  * @param nodes
  *  The string description of the per-protocol VLIB graph nodes.
  */
-void dpo_register(dpo_type_t type,
-		  const dpo_vft_t *vft,
-                  const char * const * const * nodes);
+extern void dpo_register(dpo_type_t type,
+			 const dpo_vft_t *vft,
+			 const char * const * const * nodes);
 
 /**
  * @brief Create and register a new DPO type.
@@ -355,7 +364,7 @@ void dpo_register(dpo_type_t type,
  *
  * @return The new dpo_type_t
  */
-dpo_type_t dpo_register_new_type(const dpo_vft_t *vft,
-                                 const char * const * const * nodes);
+extern dpo_type_t dpo_register_new_type(const dpo_vft_t *vft,
+					const char * const * const * nodes);
 
 #endif

@@ -435,6 +435,34 @@ fib_entry_back_walk_notify (fib_node_t *node,
     return (FIB_NODE_BACK_WALK_CONTINUE);
 }
 
+static void
+fib_entry_show_memory (void)
+{
+    u32 n_srcs = 0, n_exts = 0;
+    fib_entry_src_t *esrc;
+    fib_entry_t *entry;
+
+    fib_show_memory_usage("Entry",
+			  pool_elts(fib_entry_pool),
+			  pool_len(fib_entry_pool),
+			  sizeof(fib_entry_t));
+
+    pool_foreach(entry, fib_entry_pool,
+    ({
+	n_srcs += vec_len(entry->fe_srcs);
+	vec_foreach(esrc, entry->fe_srcs)
+	{
+	    n_exts += vec_len(esrc->fes_path_exts);
+	}
+    }));
+
+    fib_show_memory_usage("Entry Source",
+			  n_srcs, n_srcs, sizeof(fib_entry_src_t));
+    fib_show_memory_usage("Entry Path-Extensions",
+			  n_exts, n_exts,
+			  sizeof(fib_path_ext_t));
+}
+
 /*
  * The FIB path-list's graph node virtual function table
  */
@@ -442,6 +470,7 @@ static const fib_node_vft_t fib_entry_vft = {
     .fnv_get = fib_entry_get_node,
     .fnv_last_lock = fib_entry_last_lock_gone,
     .fnv_back_walk = fib_entry_back_walk_notify,
+    .fnv_mem_show = fib_entry_show_memory,
 };
 
 /*
@@ -514,14 +543,6 @@ fib_entry_get_path_list (fib_node_index_t fib_entry_index)
     fib_entry = fib_entry_get(fib_entry_index);
 
     return (fib_entry->fe_parent);
-}
-
-u32
-fib_entry_get_fib_table_id(fib_node_index_t fib_entry_index)
-{
-    
-
-    return (0);
 }
 
 u32

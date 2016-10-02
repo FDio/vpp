@@ -848,6 +848,15 @@ FIXME comment
     return (FIB_NODE_BACK_WALK_CONTINUE);
 }
 
+static void
+fib_path_memory_show (void)
+{
+    fib_show_memory_usage("Path",
+			  pool_elts(fib_path_pool),
+			  pool_len(fib_path_pool),
+			  sizeof(fib_path_t));
+}
+
 /*
  * The FIB path's graph node virtual function table
  */
@@ -855,6 +864,7 @@ static const fib_node_vft_t fib_path_vft = {
     .fnv_get = fib_path_get_node,
     .fnv_last_lock = fib_path_last_lock_gone,
     .fnv_back_walk = fib_path_back_walk_notify,
+    .fnv_mem_show = fib_path_memory_show,
 };
 
 static fib_path_cfg_flags_t

@@ -19,7 +19,6 @@
 #include <vnet/dpo/drop_dpo.h>
 #include <vppinfra/math.h>              /* for fabs */
 #include <vnet/adj/adj.h>
-#include <vnet/adj/adj_alloc.h>
 #include <vnet/adj/adj_internal.h>
 
 /*
@@ -671,10 +670,20 @@ load_balance_unlock (dpo_id_t *dpo)
     }
 }
 
+static void
+load_balance_mem_show (void)
+{
+    fib_show_memory_usage("load-balance",
+			  pool_elts(load_balance_pool),
+			  pool_len(load_balance_pool),
+			  sizeof(load_balance_t));
+}
+
 const static dpo_vft_t lb_vft = {
     .dv_lock = load_balance_lock,
     .dv_unlock = load_balance_unlock,
     .dv_format = format_load_balance_dpo,
+    .dv_mem_show = load_balance_mem_show,
 };
 
 /**

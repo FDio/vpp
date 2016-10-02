@@ -26,12 +26,6 @@
 typedef struct fib_node_list_elt_t_
 {
     /**
-     * An opaque indentifier set by the FIB node owning this element
-     * that will allow the owner to identify which element it is.
-     */
-    int fnle_owner_id;
-
-    /**
      * The index of the list this element is in
      */
     fib_node_list_t fnle_list;
@@ -108,7 +102,6 @@ fib_node_list_elt_create (fib_node_list_head_t *head,
     pool_get(fib_node_list_elt_pool, elt);
 
     elt->fnle_list = fib_node_list_head_get_index(head);
-    elt->fnle_owner_id = id;
     elt->fnle_owner.fnp_type  = type;
     elt->fnle_owner.fnp_index = index;
 
@@ -126,8 +119,7 @@ fib_node_list_head_init (fib_node_list_head_t *head)
 }
 
 /**
- * @brief Create a new node list. The expectation is that these are few in number
- * so straight from the memory subsystem
+ * @brief Create a new node list.
  */
 fib_node_list_t
 fib_node_list_create (void)
@@ -382,4 +374,17 @@ fib_node_list_walk (fib_node_list_t list,
 
         fn(&elt->fnle_owner, args);
     }
+}
+
+void
+fib_node_list_memory_show (void)
+{
+    fib_show_memory_usage("Node-list elements",
+			  pool_elts(fib_node_list_elt_pool),
+			  pool_len(fib_node_list_elt_pool),
+			  sizeof(fib_node_list_elt_t));
+    fib_show_memory_usage("Node-list heads",
+			  pool_elts(fib_node_list_head_pool),
+			  pool_len(fib_node_list_head_pool),
+			  sizeof(fib_node_list_head_t));
 }

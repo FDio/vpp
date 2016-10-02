@@ -31,11 +31,11 @@
  * Debug macro
  */
 #ifdef ADJ_DEBUG
-#define ADJ_DBG(_adj, _fmt, _args...)			\
-{							\
-    clib_warning("adj:[%d:%p]:" _fmt,			\
-		 _adj->heap_handle, _adj,		\
-		 ##_args);				\
+#define ADJ_DBG(_adj, _fmt, _args...)		\
+{						\
+    clib_warning("adj:[%d:%p]:" _fmt,		\
+		 _adj - adj_pool, _adj,		\
+		 ##_args);			\
 }
 #else
 #define ADJ_DBG(_e, _fmt, _args...)
@@ -88,6 +88,16 @@ adj_fib_proto_2_nd (fib_protocol_t fp)
 	return (VNET_L3_PACKET_TYPE_MPLS_UNICAST);
     }
     return (0);
+}
+
+/**
+ * @brief
+ * Get a pointer to an adjacency object from its index
+ */
+static inline adj_index_t
+adj_get_index (ip_adjacency_t *adj)
+{
+    return (adj - adj_pool);
 }
 
 extern ip_adjacency_t * adj_alloc(fib_protocol_t proto);

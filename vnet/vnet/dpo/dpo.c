@@ -422,3 +422,29 @@ dpo_module_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION(dpo_module_init);
+
+static clib_error_t *
+dpo_memory_show (vlib_main_t * vm,
+		 unformat_input_t * input,
+		 vlib_cli_command_t * cmd)
+{
+    dpo_vft_t *vft;
+
+    vlib_cli_output (vm, "DPO memory");
+    vlib_cli_output (vm, "%=30s %=5s %=8s/%=9s   totals",
+		     "Name","Size", "in-use", "allocated");
+
+    vec_foreach(vft, dpo_vfts)
+    {
+	if (NULL != vft->dv_mem_show)
+	    vft->dv_mem_show();
+    }
+
+    return (NULL);
+}
+
+VLIB_CLI_COMMAND (show_fib_memory, static) = {
+    .path = "show dpo memory",
+    .function = dpo_memory_show,
+    .short_help = "show dpo memory",
+};
