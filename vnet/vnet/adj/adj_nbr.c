@@ -275,7 +275,7 @@ adj_nbr_alloc (fib_protocol_t nh_proto,
 
     adj_nbr_insert(nh_proto, link_type, nh_addr,
 		   sw_if_index,
-		   adj->heap_handle);
+		   adj_get_index(adj));
 
     /*
      * since we just added the ADJ we have no rewrite string for it,
@@ -362,9 +362,9 @@ adj_nbr_add_or_lock (fib_protocol_t nh_proto,
 	adj = adj_get(adj_index);
     }
 
-    adj_lock(adj->heap_handle);
+    adj_lock(adj_get_index(adj));
 
-    return (adj->heap_handle);
+    return (adj_get_index(adj));
 }
 
 adj_index_t
@@ -389,10 +389,10 @@ adj_nbr_add_or_lock_w_rewrite (fib_protocol_t nh_proto,
         adj = adj_get(adj_index);
     }
 
-    adj_lock(adj->heap_handle);
-    adj_nbr_update_rewrite(adj->heap_handle, rewrite);
+    adj_lock(adj_get_index(adj));
+    adj_nbr_update_rewrite(adj_get_index(adj), rewrite);
 
-    return (adj->heap_handle);
+    return (adj_get_index(adj));
 }
 
 /**
@@ -760,10 +760,20 @@ adj_dpo_unlock (dpo_id_t *dpo)
     adj_unlock(dpo->dpoi_index);
 }
 
+static void
+adj_mem_show (void)
+{
+    fib_show_memory_usage("Adjacency",
+			  pool_elts(adj_pool),
+			  pool_len(adj_pool),
+			  sizeof(ip_adjacency_t));
+}
+
 const static dpo_vft_t adj_nbr_dpo_vft = {
     .dv_lock = adj_dpo_lock,
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_nbr,
+    .dv_mem_show = adj_mem_show,
 };
 const static dpo_vft_t adj_nbr_incompl_dpo_vft = {
     .dv_lock = adj_dpo_lock,

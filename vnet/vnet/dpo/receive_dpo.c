@@ -117,10 +117,20 @@ format_receive_dpo (u8 *s, va_list *ap)
     }
 }
 
+static void
+receive_dpo_mem_show (void)
+{
+    fib_show_memory_usage("Receive",
+			  pool_elts(receive_dpo_pool),
+			  pool_len(receive_dpo_pool),
+			  sizeof(receive_dpo_t));
+}
+
 const static dpo_vft_t receive_vft = {
     .dv_lock = receive_dpo_lock,
     .dv_unlock = receive_dpo_unlock,
     .dv_format = format_receive_dpo,
+    .dv_mem_show = receive_dpo_mem_show,
 };
 
 /**

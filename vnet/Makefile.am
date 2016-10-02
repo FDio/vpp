@@ -777,7 +777,6 @@ nobase_include_HEADERS +=			\
 ########################################
 
 libvnet_la_SOURCES +=				\
-  vnet/adj/adj_alloc.c				\
   vnet/adj/adj_nbr.c				\
   vnet/adj/adj_rewrite.c			\
   vnet/adj/adj_glean.c   			\

@@ -173,8 +173,6 @@ typedef void (*adj_midchain_fixup_t)(vlib_main_t * vm,
 */
 typedef struct ip_adjacency_t_ {
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
-  /* Handle for this adjacency in adjacency heap. */
-  u32 heap_handle;
 
   /** Number of adjecencies in block.  Greater than 1 means multipath;
      otherwise equal to 1. */
@@ -398,8 +396,6 @@ ip_get_adjacency (ip_lookup_main_t * lm,
   ip_adjacency_t * adj;
 
   adj = vec_elt_at_index (lm->adjacency_heap, adj_index);
-
-  ASSERT (adj->heap_handle != ~0);
 
   return adj;
 }

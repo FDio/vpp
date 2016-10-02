@@ -77,9 +77,9 @@ extern void adj_child_remove(adj_index_t adj_index,
 
 /**
  * @brief
- * The global adjacnecy heap. Exposed for fast/inline data-plane access
+ * The global adjacnecy pool. Exposed for fast/inline data-plane access
  */
-extern ip_adjacency_t *adj_heap;
+extern ip_adjacency_t *adj_pool;
 
 /**
  * @brief 
@@ -94,7 +94,7 @@ extern vlib_combined_counter_main_t adjacency_counters;
 static inline ip_adjacency_t *
 adj_get (adj_index_t adj_index)
 {
-    return (vec_elt_at_index(adj_heap, adj_index));
+    return (vec_elt_at_index(adj_pool, adj_index));
 }
 
 #endif
