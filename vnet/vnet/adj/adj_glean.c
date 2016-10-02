@@ -14,7 +14,6 @@
  */
 
 #include <vnet/adj/adj.h>
-#include <vnet/adj/adj_alloc.h>
 #include <vnet/adj/adj_internal.h>
 #include <vnet/fib/fib_walk.h>
 
@@ -62,7 +61,7 @@ adj_glean_add_or_lock (fib_protocol_t proto,
 
 	adj->lookup_next_index = IP_LOOKUP_NEXT_GLEAN;
 	adj->ia_nh_proto = proto;
-	adj_gleans[proto][sw_if_index] = adj->heap_handle;
+	adj_gleans[proto][sw_if_index] = adj_get_index(adj);
 
 	if (NULL != nh_addr)
 	{
@@ -84,9 +83,9 @@ adj_glean_add_or_lock (fib_protocol_t proto,
 	adj = adj_get(adj_gleans[proto][sw_if_index]);
     }
 
-    adj_lock(adj->heap_handle);
+    adj_lock(adj_get_index(adj));
 
-    return (adj->heap_handle);
+    return (adj_get_index(adj));
 }
 
 void
@@ -124,7 +123,7 @@ adj_glean_interface_state_change (vnet_main_t * vnm,
 			    FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN),
 	};
 
-	fib_walk_sync(FIB_NODE_TYPE_ADJ, adj->heap_handle, &bw_ctx);
+	fib_walk_sync(FIB_NODE_TYPE_ADJ, adj_get_index(adj), &bw_ctx);
     }
 
     return (NULL);
@@ -173,7 +172,7 @@ adj_glean_interface_delete (vnet_main_t * vnm,
 	    .fnbw_reason =  FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE,
 	};
 
-	fib_walk_sync(FIB_NODE_TYPE_ADJ, adj->heap_handle, &bw_ctx);
+	fib_walk_sync(FIB_NODE_TYPE_ADJ, adj_get_index(adj), &bw_ctx);
     }
 
     return (NULL);

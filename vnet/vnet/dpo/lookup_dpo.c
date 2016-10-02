@@ -734,10 +734,25 @@ VLIB_REGISTER_NODE (lookup_mpls_dst_itf_node) = {
 };
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_mpls_dst_itf_node, lookup_mpls_dst_itf)
 
+static void
+lookup_dpo_mem_show (void)
+{
+    fib_show_memory_usage("Lookup",
+			  pool_elts(lookup_dpo_pool),
+			  pool_len(lookup_dpo_pool),
+			  sizeof(lookup_dpo_t));
+}
+
 const static dpo_vft_t lkd_vft = {
     .dv_lock = lookup_dpo_lock,
     .dv_unlock = lookup_dpo_unlock,
     .dv_format = format_lookup_dpo,
+};
+const static dpo_vft_t lkd_vft_w_mem_show = {
+    .dv_lock = lookup_dpo_lock,
+    .dv_unlock = lookup_dpo_unlock,
+    .dv_format = format_lookup_dpo,
+    .dv_mem_show = lookup_dpo_mem_show,
 };
 
 const static char* const lookup_src_ip4_nodes[] =
@@ -805,7 +820,7 @@ const static char* const * const lookup_dst_from_interface_nodes[DPO_PROTO_NUM] 
 void
 lookup_dpo_module_init (void)
 {
-    dpo_register(DPO_LOOKUP, &lkd_vft, NULL);
+    dpo_register(DPO_LOOKUP, &lkd_vft_w_mem_show, NULL);
 
     /*
      * There are various sorts of lookup; src or dst addr v4 /v6 etc.

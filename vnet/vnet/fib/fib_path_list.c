@@ -452,12 +452,25 @@ fib_path_list_back_walk_notify (fib_node_t *node,
 }
 
 /*
+ * Display the path-list memory usage
+ */
+static void
+fib_path_list_memory_show (void)
+{
+    fib_show_memory_usage("Path-list",
+			  pool_elts(fib_path_list_pool),
+			  pool_len(fib_path_list_pool),
+			  sizeof(fib_path_list_t));
+}
+
+/*
  * The FIB path-list's graph node virtual function table
  */
 static const fib_node_vft_t fib_path_list_vft = {
     .fnv_get = fib_path_list_get_node,
     .fnv_last_lock = fib_path_list_last_lock_gone,
     .fnv_back_walk = fib_path_list_back_walk_notify,
+    .fnv_mem_show = fib_path_list_memory_show,
 };
 
 static fib_path_list_t *

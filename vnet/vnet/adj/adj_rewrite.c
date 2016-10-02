@@ -14,7 +14,6 @@
  */
 
 #include <vnet/adj/adj.h>
-#include <vnet/adj/adj_alloc.h>
 #include <vnet/adj/adj_internal.h>
 
 /**
@@ -46,7 +45,7 @@ adj_rewrite_add_and_lock (fib_protocol_t nh_proto,
 				  &adj->rewrite_header,
 				  sizeof (adj->rewrite_data));
 
-    adj_lock(adj->heap_handle);
+    adj_lock(adj_get_index(adj));
 
-    return (adj->heap_handle);
+    return (adj_get_index(adj));
 }

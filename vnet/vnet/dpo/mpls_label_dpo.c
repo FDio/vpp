@@ -227,10 +227,20 @@ VLIB_REGISTER_NODE (mpls_label_imposition_node) = {
 };
 VLIB_NODE_FUNCTION_MULTIARCH (mpls_label_imposition_node, mpls_label_imposition)
 
+static void
+mpls_label_dpo_mem_show (void)
+{
+    fib_show_memory_usage("MPLS label",
+			  pool_elts(mpls_label_dpo_pool),
+			  pool_len(mpls_label_dpo_pool),
+			  sizeof(mpls_label_dpo_t));
+}
+
 const static dpo_vft_t mld_vft = {
     .dv_lock = mpls_label_dpo_lock,
     .dv_unlock = mpls_label_dpo_unlock,
     .dv_format = format_mpls_label_dpo,
+    .dv_mem_show = mpls_label_dpo_mem_show,
 };
 
 const static char* const mpls_label_imp_ip4_nodes[] =

@@ -38,7 +38,7 @@
  */
 
 #include <vnet/ip/ip.h>
-#include <vnet/adj/adj_alloc.h>
+#include <vnet/adj/adj.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
@@ -162,7 +162,7 @@ void ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
   ASSERT(STRUCT_OFFSET_OF(ip_adjacency_t, cacheline1) == CLIB_CACHE_LINE_BYTES);
 
   /* Preallocate three "special" adjacencies */
-  lm->adjacency_heap = adj_heap;
+  lm->adjacency_heap = adj_pool;
 
   if (! lm->fib_result_n_bytes)
     lm->fib_result_n_bytes = sizeof (uword);
@@ -345,6 +345,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
   is_del = 0;
   table_id = 0;
   count = 1;
+  memset(&pfx, 0, sizeof(pfx));
 
   /* Get a line of input. */
   if (! unformat_user (main_input, unformat_line_input, line_input))
@@ -353,7 +354,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       memset(&rpath, 0, sizeof(rpath));
-      memset(&pfx, 0, sizeof(pfx));
 
       if (unformat (line_input, "table %d", &table_id))
 	;
@@ -510,6 +510,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
       {
 	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  rpath.frp_proto = pfx.fp_proto;
+	  rpath.frp_sw_if_index = ~0;
 	  vec_add1(rpaths, rpath);
       }
       else if (vec_len (prefixs) > 0 &&

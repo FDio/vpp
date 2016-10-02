@@ -14,7 +14,6 @@
  */
 
 #include <vnet/adj/adj.h>
-#include <vnet/adj/adj_alloc.h>
 #include <vnet/adj/adj_internal.h>
 #include <vnet/adj/adj_glean.h>
 #include <vnet/adj/adj_midchain.h>
@@ -30,16 +29,17 @@ static ip_adjacency_t *special_v4_miss_adj_with_index_zero;
 /* Adjacency packet/byte counters indexed by adjacency index. */
 vlib_combined_counter_main_t adjacency_counters;
 
+/*
+ * the single adj pool
+ */
+ip_adjacency_t *adj_pool;
+
 always_inline void
 adj_poison (ip_adjacency_t * adj)
 {
     if (CLIB_DEBUG > 0)
     {
-	u32 save_handle = adj->heap_handle;;
-
 	memset (adj, 0xfe, sizeof (adj[0]));
-
-	adj->heap_handle = save_handle;
     }
 }
 
@@ -48,14 +48,14 @@ adj_alloc (fib_protocol_t proto)
 {
     ip_adjacency_t *adj;
 
-    adj = aa_alloc();
+    pool_get(adj_pool, adj);
 
     adj_poison(adj);
 
     /* Make sure certain fields are always initialized. */
     /* Validate adjacency counters. */
     vlib_validate_combined_counter(&adjacency_counters,
-                                   adj->heap_handle);
+                                   adj_get_index(adj));
 
     adj->rewrite_header.sw_if_index = ~0;
     adj->mcast_group_index = ~0;
@@ -65,6 +65,9 @@ adj_alloc (fib_protocol_t proto)
     fib_node_init(&adj->ia_node,
                   FIB_NODE_TYPE_ADJ);
     adj->ia_nh_proto = proto;
+
+    ip4_main.lookup_main.adjacency_heap = adj_pool;
+    ip6_main.lookup_main.adjacency_heap = adj_pool;
 
     return (adj);
 }
@@ -166,7 +169,7 @@ adj_last_lock_gone (ip_adjacency_t *adj)
     }
 
     fib_node_deinit(&adj->ia_node);
-    aa_free(adj);
+    pool_put(adj_pool, adj);
 }
 
 void
@@ -181,7 +184,6 @@ adj_lock (adj_index_t adj_index)
 
     adj = adj_get(adj_index);
     ASSERT(adj);
-    ASSERT(adj->heap_handle!=0);
 
     ADJ_DBG(adj, "lock");
     fib_node_lock(&adj->ia_node);
@@ -199,11 +201,9 @@ adj_unlock (adj_index_t adj_index)
 
     adj = adj_get(adj_index);
     ASSERT(adj);
-    ASSERT(adj->heap_handle!=0);
 
     ADJ_DBG(adj, "unlock");
     ASSERT(adj);
-    ASSERT(adj->heap_handle!=0);
 
     fib_node_unlock(&adj->ia_node);
 }
@@ -291,7 +291,6 @@ adj_module_init (vlib_main_t * vm)
     /*
      * 4 special adjs for v4 and v6 resp.
      */
-    aa_bootstrap(8);
     special_v4_miss_adj_with_index_zero = adj_alloc(FIB_PROTOCOL_IP4);
 
     return (NULL);
@@ -311,33 +310,14 @@ ip_add_adjacency (ip_lookup_main_t * lm,
 		  u32 * adj_index_return)
 {
   ip_adjacency_t * adj;
-  u32 ai, i, handle;
 
   ASSERT(1==n_adj);
 
-  adj = aa_alloc ();
-  handle = ai = adj->heap_handle;
+  adj = adj_alloc(FIB_PROTOCOL_IP4);
 
-  /* Validate adjacency counters. */
-  vlib_validate_combined_counter (&adjacency_counters, ai + n_adj - 1);
+  if (copy_adj)
+      *adj = *copy_adj;
 
-  for (i = 0; i < n_adj; i++)
-    {
-      /* Make sure certain fields are always initialized. */
-      adj[i].rewrite_header.sw_if_index = ~0;
-      adj[i].mcast_group_index = ~0;
-      adj[i].saved_lookup_next_index = 0;
-
-      if (copy_adj)
-	adj[i] = copy_adj[i];
-
-      adj[i].heap_handle = handle;
-      adj[i].n_adj = n_adj;
-
-      /* Zero possibly stale counters for re-used adjacencies. */
-      vlib_zero_combined_counter (&adjacency_counters, ai + i);
-    }
-
-  *adj_index_return = ai;
+  *adj_index_return = adj_get_index(adj);
   return adj;
 }

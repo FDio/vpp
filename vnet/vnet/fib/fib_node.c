@@ -205,3 +205,62 @@ fib_node_unlock (fib_node_t *node)
 	node->fn_vft->fnv_last_lock(node);
     }
 }
+
+void
+fib_show_memory_usage (const char *name,
+		       u32 in_use_elts,
+		       u32 allocd_elts,
+		       size_t size_elt)
+{
+    vlib_cli_output (vlib_get_main(), "%=30s %=5d %=8d/%=9d   %d/%d ",
+		     name, size_elt,
+		     in_use_elts, allocd_elts,
+		     in_use_elts*size_elt, allocd_elts*size_elt);
+}
+
+static clib_error_t *
+fib_memory_show (vlib_main_t * vm,
+		 unformat_input_t * input,
+		 vlib_cli_command_t * cmd)
+{
+    fib_node_vft_t *vft;
+
+    vlib_cli_output (vm, "FIB memory");
+    vlib_cli_output (vm, "%=30s %=5s %=8s/%=9s   totals",
+		     "Name","Size", "in-use", "allocated");
+
+    vec_foreach(vft, fn_vfts)
+    {
+	if (NULL != vft->fnv_mem_show)
+	    vft->fnv_mem_show();
+    }
+
+    fib_node_list_memory_show();
+
+    return (NULL);
+}
+
+/* *INDENT-OFF* */
+/*?
+ * The '<em>sh fib memory </em>' command displays the memory usage for each
+ * FIB object type.
+ *
+ * @cliexpar
+ * @cliexstart{show fib memory}
+ * FIB memory
+ *             Name               Size  in-use /allocated   totals
+ *             Entry              120     11   /    11      1320/1320
+ *         Entry Source            32     11   /    11      352/352
+ *     Entry Path-Extensions       44      0   /    0       0/0
+ *           Path-list             40     11   /    11      440/440
+ *             Path                88     11   /    11      968/968
+ *      Node-list elements         20     11   /    11      220/220
+ *        Node-list heads          8      13   /    13      104/104
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (show_fib_memory, static) = {
+    .path = "show fib memory",
+    .function = fib_memory_show,
+    .short_help = "show fib memory",
+};
+/* *INDENT-ON* */

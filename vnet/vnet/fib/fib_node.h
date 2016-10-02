@@ -220,6 +220,12 @@ typedef struct fib_node_t_* (*fib_node_get_t)(fib_node_index_t index);
 typedef void (*fib_node_last_lock_gone_t)(struct fib_node_t_ *node);
 
 /**
+ * Function definition to display the amount of memory used by a type.
+ * Implementations should call fib_show_memory_usage()
+ */
+typedef void (*fib_node_memory_show_t)(void);
+
+/**
  * A FIB graph nodes virtual function table
  */
 typedef struct fib_node_vft_t_ {
@@ -227,6 +233,7 @@ typedef struct fib_node_vft_t_ {
     fib_node_last_lock_gone_t fnv_last_lock;
     fib_node_back_walk_t fnv_back_walk;
     format_function_t *fnv_format;
+    fib_node_memory_show_t fnv_mem_show;
 } fib_node_vft_t;
 
 /**
@@ -283,6 +290,22 @@ extern void fib_node_register_type (fib_node_type_t ft,
  * @return new FIB node type
  */
 extern fib_node_type_t fib_node_register_new_type (const fib_node_vft_t *vft);
+
+/**
+ * @brief Show the memory usage for a type
+ *
+ * This should be invoked by the type in response to the infra calling
+ * its registered memory show function
+ *
+ * @param name the name of the type
+ * @param in_use_elts The number of elements in use
+ * @param allocd_elts The number of allocated pool elemenets
+ * @param size_elt The size of one element
+ */
+extern void fib_show_memory_usage(const char *name,
+				  u32 in_use_elts,
+				  u32 allocd_elts,
+				  size_t size_elt);
 
 extern void fib_node_init(fib_node_t *node,
 			  fib_node_type_t ft);
