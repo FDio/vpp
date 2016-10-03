@@ -46,6 +46,7 @@
 #include <vnet/api_errno.h>     /* for API error numbers */
 #include <vnet/fib/fib_table.h> /* for FIB table and entry creation */
 #include <vnet/fib/fib_entry.h> /* for FIB table and entry creation */
+#include <vnet/fib/fib_urpf_list.h> /* for FIB uRPF check */
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/classify_dpo.h>
@@ -1501,31 +1502,31 @@ ip4_local (vlib_main_t * vm,
 	  /* 
            * Must have a route to source otherwise we drop the packet.
            * ip4 broadcasts are accepted, e.g. to make dhcp client work
+	   *
+	   * The checks are:
+	   *  - the source is a recieve => it's from us => bogus, do this
+	   *    first since it sets a different error code.
+	   *  - uRPF check for any route to source - accept if passes.
+	   *  - allow packets destined to the broadcast address from unknown sources
            */
-	  error0 = (error0 == IP4_ERROR_UNKNOWN_PROTOCOL
-		    && dpo0->dpoi_type != DPO_ADJACENCY
-		    && dpo0->dpoi_type != DPO_ADJACENCY_INCOMPLETE
-		    && dpo0->dpoi_type != DPO_RECEIVE
-		    && dpo0->dpoi_type != DPO_DROP
-		    && dpo0->dpoi_type != DPO_ADJACENCY_GLEAN
-		    && ip0->dst_address.as_u32 != 0xFFFFFFFF
-		    ? IP4_ERROR_SRC_LOOKUP_MISS
-		    : error0);
-          error0 = (dpo0->dpoi_type == DPO_RECEIVE ?
+          error0 = ((error0 == IP4_ERROR_UNKNOWN_PROTOCOL &&
+		     dpo0->dpoi_type == DPO_RECEIVE) ?
                     IP4_ERROR_SPOOFED_LOCAL_PACKETS : 
                     error0);
-	  error1 = (error1 == IP4_ERROR_UNKNOWN_PROTOCOL
-		    && dpo1->dpoi_type != DPO_ADJACENCY
-		    && dpo1->dpoi_type != DPO_ADJACENCY_INCOMPLETE
-		    && dpo1->dpoi_type != DPO_RECEIVE
-		    && dpo1->dpoi_type != DPO_DROP
-		    && dpo1->dpoi_type != DPO_ADJACENCY_GLEAN
-		    && ip1->dst_address.as_u32 != 0xFFFFFFFF
+	  error0 = ((error0 == IP4_ERROR_UNKNOWN_PROTOCOL &&
+		     !fib_urpf_check_size(lb0->lb_urpf) &&
+		     ip0->dst_address.as_u32 != 0xFFFFFFFF)
 		    ? IP4_ERROR_SRC_LOOKUP_MISS
-		    : error1);
-          error1 = (dpo0->dpoi_type == DPO_RECEIVE ?
+		    : error0);
+          error1 = ((error1 == IP4_ERROR_UNKNOWN_PROTOCOL &&
+		     dpo1->dpoi_type == DPO_RECEIVE) ?
                     IP4_ERROR_SPOOFED_LOCAL_PACKETS : 
                     error1);
+	  error1 = ((error1 == IP4_ERROR_UNKNOWN_PROTOCOL &&
+		     !fib_urpf_check_size(lb1->lb_urpf) &&
+		     ip1->dst_address.as_u32 != 0xFFFFFFFF)
+		    ? IP4_ERROR_SRC_LOOKUP_MISS
+		    : error1);
 
 	  next0 = lm->local_next_by_ip_protocol[proto0];
 	  next1 = lm->local_next_by_ip_protocol[proto1];
@@ -1670,20 +1671,15 @@ ip4_local (vlib_main_t * vm,
 	      vnet_buffer (p0)->ip.adj_index[VLIB_RX] =
 	          dpo0->dpoi_index;
 
-	  /* Must have a route to source otherwise we drop the packet. */
-	  error0 = (error0 == IP4_ERROR_UNKNOWN_PROTOCOL
-		    && dpo0->dpoi_type != DPO_ADJACENCY
-		    && dpo0->dpoi_type != DPO_ADJACENCY_INCOMPLETE
-		    && dpo0->dpoi_type != DPO_RECEIVE
-		    && dpo0->dpoi_type != DPO_DROP
-		    && dpo0->dpoi_type != DPO_ADJACENCY_GLEAN
-		    && ip0->dst_address.as_u32 != 0xFFFFFFFF
-		    ? IP4_ERROR_SRC_LOOKUP_MISS
-		    : error0);
-          /* Packet originated from a local address => spoofing */
-          error0 = (dpo0->dpoi_type == DPO_RECEIVE ?
+          error0 = ((error0 == IP4_ERROR_UNKNOWN_PROTOCOL &&
+		     dpo0->dpoi_type == DPO_RECEIVE) ?
                     IP4_ERROR_SPOOFED_LOCAL_PACKETS : 
                     error0);
+	  error0 = ((error0 == IP4_ERROR_UNKNOWN_PROTOCOL &&
+		     !fib_urpf_check_size(lb0->lb_urpf) &&
+		     ip0->dst_address.as_u32 != 0xFFFFFFFF)
+		    ? IP4_ERROR_SRC_LOOKUP_MISS
+		    : error0);
 
 	  next0 = lm->local_next_by_ip_protocol[proto0];
 

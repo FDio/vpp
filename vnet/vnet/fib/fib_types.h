@@ -118,10 +118,6 @@ fib_link_t fib_proto_to_link (fib_protocol_t proto);
  */
 typedef enum fib_forward_chain_type_t_ {
     /**
-     * Contribute an object that is to be used to forward Ethernet packets
-     */
-    FIB_FORW_CHAIN_TYPE_ETHERNET,
-    /**
      * Contribute an object that is to be used to forward IP4 packets
      */
     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
@@ -141,17 +137,24 @@ typedef enum fib_forward_chain_type_t_ {
      * option is converted into one of the other three internally.
      */
     FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+    /**
+     * Contribute an object that is to be used to forward Ethernet packets.
+     * This is last in the list since it is not valid for many FIB objects,
+     * and thus their array of per-chain-type DPOs can be sized smaller.
+     */
+    FIB_FORW_CHAIN_TYPE_ETHERNET,
 }  __attribute__ ((packed)) fib_forward_chain_type_t;
 
 #define FIB_FORW_CHAINS {					\
-    [FIB_FORW_CHAIN_TYPE_ETHERNET]      = "ehternet",     	\
+    [FIB_FORW_CHAIN_TYPE_ETHERNET]      = "ethernet",     	\
     [FIB_FORW_CHAIN_TYPE_UNICAST_IP4]   = "unicast-ip4",	\
     [FIB_FORW_CHAIN_TYPE_UNICAST_IP6]   = "unicast-ip6",	\
     [FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS]  = "mpls-neos",	        \
     [FIB_FORW_CHAIN_TYPE_MPLS_EOS]      = "mpls-eos",	        \
 }
 
-#define FIB_FORW_CHAIN_NUM (FIB_FORW_CHAIN_TYPE_MPLS_EOS+1)
+#define FIB_FORW_CHAIN_NUM (FIB_FORW_CHAIN_TYPE_MPLS_ETHERNET+1)
+#define FIB_FORW_CHAIN_MPLS_NUM (FIB_FORW_CHAIN_TYPE_MPLS_EOS+1)
 
 #define FOR_EACH_FIB_FORW_CHAIN(_item)			  \
     for (_item = FIB_FORW_CHAIN_TYPE_ETHERNET;   	  \

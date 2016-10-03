@@ -141,6 +141,8 @@ extern load_balance_path_t * fib_path_append_nh_for_multipath_hash(
 extern void fib_path_contribute_forwarding(fib_node_index_t path_index,
 					   fib_forward_chain_type_t type,
 					   dpo_id_t *dpo);
+extern void fib_path_contribute_urpf(fib_node_index_t path_index,
+				     index_t urpf);
 extern adj_index_t fib_path_get_adj(fib_node_index_t path_index);
 extern int fib_path_recursive_loop_detect(fib_node_index_t path_index,
 					  fib_node_index_t **entry_indicies);

@@ -763,6 +763,7 @@ libvnet_la_SOURCES +=				\
   vnet/fib/fib_path_list.c                      \
   vnet/fib/fib_path.c				\
   vnet/fib/fib_path_ext.c			\
+  vnet/fib/fib_urpf_list.c			\
   vnet/fib/fib_attached_export.c
 
 nobase_include_HEADERS +=			\
