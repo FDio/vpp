@@ -58,6 +58,7 @@ endif
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
 .PHONY: ctags cscope plugins plugins-release build-vpp-api
+.PHONY: test test-debug retest retest-debug
 
 help:
 	@echo "Make Targets:"
@@ -75,6 +76,10 @@ help:
 	@echo " run-release         - run release binary"
 	@echo " debug               - run debug binary with debugger"
 	@echo " debug-release       - run release binary with debugger"
+	@echo " test                - build and run functional tests"
+	@echo " test-debug          - build and run functional tests (debug build)"
+	@echo " retest              - run functional tests"
+	@echo " retest-debug        - run functional tests (debug build)"
 	@echo " build-vat           - build vpp-api-test tool"
 	@echo " build-vpp-api       - build vpp-api"
 	@echo " run-vat             - run vpp-api-test tool"
@@ -98,6 +103,7 @@ help:
 	@echo "                       startup.conf file is present"
 	@echo " GDB=<path>          - gdb binary to use for debugging"
 	@echo " PLATFORM=<name>     - target platform. default is vpp"
+	@echo " TEST=<name>         - only run specific test"
 	@echo ""
 	@echo "Current Argumernt Values:"
 	@echo " V            = $(V)"
@@ -181,6 +187,33 @@ plugins-release: $(BR)/.bootstrap.ok
 
 build-vpp-api: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-api-install)
+
+define test
+	@sudo make -C test \
+	  VPP_TEST_BIN=$(BR)/install-$(1)-native/vpp/bin/vpp \
+	  VPP_TEST_API_TEST_BIN=$(BR)/install-$(1)-native/vpp-api-test/bin/vpp_api_test \
+	  V=$(V) TEST=$(TEST)
+endef
+
+test:
+ifeq ($(OS_ID),ubuntu)
+	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
+endif
+	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite vpp-install vpp-api-test-install
+	$(call test,vpp_lite)
+
+test-debug:
+ifeq ($(OS_ID),ubuntu)
+	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
+endif
+	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite_debug vpp-install vpp-api-test-install
+	$(call test,vpp_lite_debug)
+
+retest:
+	$(call test,vpp_lite)
+
+retest-debug:
+	$(call test,vpp_lite_debug)
 
 STARTUP_DIR ?= $(PWD)
 ifeq ("$(wildcard $(STARTUP_CONF))","")
