@@ -526,6 +526,15 @@ load_balance_map_module_init (void)
     lb_maps_by_path_index = hash_create(0, sizeof(fib_node_list_t));
 }
 
+void
+load_balance_map_show_mem (void)
+{
+    fib_show_memory_usage("Load-Balance Map",
+			  pool_elts(load_balance_map_pool),
+			  pool_len(load_balance_map_pool),
+			  sizeof(load_balance_map_t));
+}
+
 static clib_error_t *
 load_balance_map_show (vlib_main_t * vm,
                        unformat_input_t * input,

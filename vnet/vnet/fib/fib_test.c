@@ -29,6 +29,7 @@
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_walk.h>
 #include <vnet/fib/fib_node_list.h>
+#include <vnet/fib/fib_urpf_list.h>
 
 #define FIB_TEST_I(_cond, _comment, _args...)			\
 ({								\
@@ -139,14 +140,15 @@ fib_test_mk_intf (u32 ninterfaces)
     }
 }
 
-#define FIB_TEST_REC_FORW(_rec_prefix, _via_prefix)                     \
+#define FIB_TEST_REC_FORW(_rec_prefix, _via_prefix, _bucket)		\
 {                                                                       \
     const dpo_id_t *_rec_dpo = fib_entry_contribute_ip_forwarding(      \
         fib_table_lookup_exact_match(fib_index, (_rec_prefix)));        \
     const dpo_id_t *_via_dpo = fib_entry_contribute_ip_forwarding(      \
         fib_table_lookup(fib_index, (_via_prefix)));                    \
     FIB_TEST(!dpo_cmp(_via_dpo,                                         \
-                      load_balance_get_bucket(_rec_dpo->dpoi_index, 0)), \
+                      load_balance_get_bucket(_rec_dpo->dpoi_index,	\
+					      _bucket)),		\
              "%U is recursive via %U",                                  \
              format_fib_prefix, (_rec_prefix),                          \
              format_fib_prefix, _via_prefix);                           \
@@ -165,6 +167,57 @@ fib_test_mk_intf (u32 ninterfaces)
              format_fib_prefix, (_prefix),                              \
              _bucket,                                                   \
              format_dpo_id, _dpo1, 0);                                  \
+}
+
+#define FIB_TEST_RPF(_cond, _comment, _args...)			\
+{								\
+    if (!FIB_TEST_I(_cond, _comment, ##_args)) {		\
+	return (0);						\
+    }								\
+}
+
+static int
+fib_test_urpf_is_equal (fib_node_index_t fei,
+		       fib_forward_chain_type_t fct,
+		       u32 num, ...)
+{
+    dpo_id_t dpo = DPO_NULL;
+    fib_urpf_list_t *urpf;
+    index_t ui;
+    va_list ap;
+    int ii;
+
+    va_start(ap, num);
+
+    fib_entry_contribute_forwarding(fei, fct, &dpo);
+    ui = load_balance_get_urpf(dpo.dpoi_index);
+
+    urpf = fib_urpf_list_get(ui);
+
+    FIB_TEST_RPF(num == vec_len(urpf->furpf_itfs),
+		 "RPF:%U len %d == %d",
+		 format_fib_urpf_list, ui,
+		 num, vec_len(urpf->furpf_itfs));
+    FIB_TEST_RPF(num == fib_urpf_check_size(ui),
+		 "RPF:%U check-size %d == %d",
+		 format_fib_urpf_list, ui,
+		 num, vec_len(urpf->furpf_itfs));
+
+    for (ii = 0; ii < num; ii++)
+    {
+	adj_index_t ai = va_arg(ap, adj_index_t);
+
+	FIB_TEST_RPF(ai == urpf->furpf_itfs[ii],
+		     "RPF:%d item:%d - %d == %d",
+		     ui, ii, ai, urpf->furpf_itfs[ii]);
+	FIB_TEST_RPF(fib_urpf_check(ui, ai),
+		     "RPF:%d %d found",
+		     ui, ai);
+    }
+
+    dpo_reset(&dpo);
+
+    return (1);
 }
 
 static void
@@ -329,6 +382,8 @@ fib_test_v4 (void)
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "local interface route present");
 
     dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 0),
+	     "RPF list for local length 0");
     dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
     FIB_TEST((DPO_RECEIVE == dpo->dpoi_type),
 	     "local interface adj is local");
@@ -466,6 +521,10 @@ fib_test_v4 (void)
     u8 eth_addr[] = {
 	0xde, 0xde, 0xde, 0xba, 0xba, 0xba,
     };
+    ip46_address_t nh_12_12_12_12 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0c0c0c0c),
+    };
+    adj_index_t ai_12_12_12_12;
 
     /*
      * Add a route via an incomplete ADJ. then complete the ADJ
@@ -513,6 +572,24 @@ fib_test_v4 (void)
     dpo1 = load_balance_get_bucket(dpo->dpoi_index, 0);
     FIB_TEST(DPO_ADJACENCY == dpo1->dpoi_type,
              "11.11.11.11/32 via complete adj");
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1,
+				    tm->hw[0]->sw_if_index),
+	     "RPF list for adj-fib contains adj");
+
+    ai_12_12_12_12 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+					 FIB_LINK_IP4,
+					 &nh_12_12_12_12,
+					 tm->hw[1]->sw_if_index);
+    FIB_TEST((FIB_NODE_INDEX_INVALID != ai_12_12_12_12), "adj created");
+    adj = adj_get(ai_12_12_12_12);
+    FIB_TEST((IP_LOOKUP_NEXT_ARP == adj->lookup_next_index),
+	     "adj is incomplete");
+    FIB_TEST((0 == ip46_address_cmp(&nh_12_12_12_12,
+				    &adj->sub_type.nbr.next_hop)),
+	      "adj nbr next-hop ok");
+    adj_nbr_update_rewrite(ai_12_12_12_12, eth_addr);
+    FIB_TEST((IP_LOOKUP_NEXT_REWRITE == adj->lookup_next_index),
+	     "adj is complete");
 
     /*
      * add the adj fib
@@ -591,7 +668,7 @@ fib_test_v4 (void)
 	     fib_entry_pool_size());
 
     /*
-     * Add a 2 routes via the first ADJ. ensure path-list sharing
+     * Add 2 routes via the first ADJ. ensure path-list sharing
      */
     fib_prefix_t pfx_1_1_1_1_s_32 = {
 	.fp_len = 32,
@@ -675,6 +752,9 @@ fib_test_v4 (void)
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_2_0_s_24);
     dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				    1, tm->hw[0]->sw_if_index),
+	     "RPF list for 1.1.2.0/24 contains both adjs");
 
     dpo1 = load_balance_get_bucket(dpo->dpoi_index, 0);
     FIB_TEST(DPO_ADJACENCY == dpo1->dpoi_type, "type is %d", dpo1->dpoi_type);
@@ -709,6 +789,11 @@ fib_test_v4 (void)
 				1,
 				FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_2_0_s_24);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				   1, tm->hw[0]->sw_if_index),
+	     "RPF list for 1.1.2.0/24 contains one adj");
+
     ai = fib_entry_get_adj(fei);
     FIB_TEST((ai_01 == ai), "1.1.2.0/24 resolves via 10.10.10.1");
 
@@ -740,19 +825,22 @@ fib_test_v4 (void)
 	.ip4.as_u32 = clib_host_to_net_u32(0x01010101),
     };
 
-    fib_table_entry_path_add(fib_index,
-			     &bgp_100_pfx,
-			     FIB_SOURCE_API,
-			     FIB_ENTRY_FLAG_NONE,
-			     FIB_PROTOCOL_IP4,
-			     &nh_1_1_1_1,
-			     ~0, // no index provided.
-			     fib_index, // nexthop in same fib as route
-			     1,
-			     MPLS_LABEL_INVALID,
-			     FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_entry_path_add(fib_index,
+				   &bgp_100_pfx,
+				   FIB_SOURCE_API,
+				   FIB_ENTRY_FLAG_NONE,
+				   FIB_PROTOCOL_IP4,
+				   &nh_1_1_1_1,
+				   ~0, // no index provided.
+				   fib_index, // nexthop in same fib as route
+				   1,
+				   MPLS_LABEL_INVALID,
+				   FIB_ROUTE_PATH_FLAG_NONE);
 
-    FIB_TEST_REC_FORW(&bgp_100_pfx, &pfx_1_1_1_1_s_32);
+    FIB_TEST_REC_FORW(&bgp_100_pfx, &pfx_1_1_1_1_s_32, 0);
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1,
+				    tm->hw[0]->sw_if_index),
+	     "RPF list for adj-fib contains adj");
 
     /*
      * +1 entry and +1 shared-path-list
@@ -785,7 +873,10 @@ fib_test_v4 (void)
 			     MPLS_LABEL_INVALID,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
-    FIB_TEST_REC_FORW(&bgp_101_pfx, &pfx_1_1_1_1_s_32);
+    FIB_TEST_REC_FORW(&bgp_101_pfx, &pfx_1_1_1_1_s_32, 0);
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1,
+				    tm->hw[0]->sw_if_index),
+	     "RPF list for adj-fib contains adj");
 
     /*
      * +1 entry, but the recursive path-list is shared.
@@ -889,7 +980,7 @@ fib_test_v4 (void)
 			     MPLS_LABEL_INVALID,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
-    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32);
+    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32, 0);
 
     /*
      * the adj should be recursive via drop, since the route resolves via
@@ -898,6 +989,8 @@ fib_test_v4 (void)
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_2_s_32);
     dpo1 = fib_entry_contribute_ip_forwarding(fei);
     FIB_TEST(load_balance_is_drop(dpo1), "1.1.1.2/32 is drop");
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 0),
+	     "RPF list for 1.1.1.2/32 contains 0 adjs");
 
     /*
      * +2 entry and +1 shared-path-list
@@ -911,6 +1004,8 @@ fib_test_v4 (void)
 
     /*
      * Unequal Cost load-balance. 3:1 ratio. fits in a 4 bucket LB
+     * The paths are sort by NH first. in this case the the path with greater
+     * weight is first in the set. This ordering is to test the RPF sort|uniq logic
      */
     fib_prefix_t pfx_1_2_3_4_s_32 = {
 	.fp_len = 32,
@@ -924,7 +1019,7 @@ fib_test_v4 (void)
 			     FIB_SOURCE_API,
 			     FIB_ENTRY_FLAG_NONE,
 			     FIB_PROTOCOL_IP4,
-                             &nh_10_10_10_2,
+                             &nh_10_10_10_1,
                              tm->hw[0]->sw_if_index,
                              ~0,
                              1,
@@ -935,8 +1030,8 @@ fib_test_v4 (void)
                                    FIB_SOURCE_API,
                                    FIB_ENTRY_FLAG_NONE,
 				   FIB_PROTOCOL_IP4,
-                                   &nh_10_10_10_1,
-                                   tm->hw[0]->sw_if_index,
+                                   &nh_12_12_12_12,
+                                   tm->hw[1]->sw_if_index,
                                    ~0,
                                    3,
                                    MPLS_LABEL_INVALID,
@@ -949,14 +1044,16 @@ fib_test_v4 (void)
              "1.2.3.4/32 LB has %d bucket",
              lb->lb_n_buckets);
 
-    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_4_s_32, 0, ai_01);
-    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_4_s_32, 1, ai_01);
-    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_4_s_32, 2, ai_01);
-    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_4_s_32, 3, ai_02);
+    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_4_s_32, 0, ai_12_12_12_12);
+    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_4_s_32, 1, ai_12_12_12_12);
+    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_4_s_32, 2, ai_12_12_12_12);
+    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_4_s_32, 3, ai_01);
 
-    fib_table_entry_delete(fib_index,
-                           &pfx_1_2_3_4_s_32,
-                           FIB_SOURCE_API);
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 2,
+				    tm->hw[0]->sw_if_index,
+				    tm->hw[1]->sw_if_index),
+	     "RPF list for 1.2.3.4/32 contains both adjs");
+
 
     /*
      * Unequal Cost load-balance. 4:1 ratio.
@@ -974,8 +1071,8 @@ fib_test_v4 (void)
 			     FIB_SOURCE_API,
 			     FIB_ENTRY_FLAG_NONE,
 			     FIB_PROTOCOL_IP4,
-                             &nh_10_10_10_2,
-                             tm->hw[0]->sw_if_index,
+                             &nh_12_12_12_12,
+                             tm->hw[1]->sw_if_index,
                              ~0,
                              1,
                              MPLS_LABEL_INVALID,
@@ -1012,12 +1109,84 @@ fib_test_v4 (void)
     FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_5_s_32, 10, ai_01);
     FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_5_s_32, 11, ai_01);
     FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_5_s_32, 12, ai_01);
-    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_5_s_32, 13, ai_02);
-    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_5_s_32, 14, ai_02);
-    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_5_s_32, 15, ai_02);
+    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_5_s_32, 13, ai_12_12_12_12);
+    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_5_s_32, 14, ai_12_12_12_12);
+    FIB_TEST_LB_BUCKET_VIA_ADJ(&pfx_1_2_3_5_s_32, 15, ai_12_12_12_12);
+
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 2,
+				    tm->hw[0]->sw_if_index,
+				    tm->hw[1]->sw_if_index),
+	     "RPF list for 1.2.3.4/32 contains both adjs");
+
+    /*
+     * A recursive via the two unequal cost entries
+     */
+    fib_prefix_t bgp_44_s_32 = {
+	.fp_len = 32,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr = {
+	    /* 200.200.200.201/32 */
+	    .ip4.as_u32 = clib_host_to_net_u32(0x44444444),
+	},
+    };
+    fei = fib_table_entry_path_add(fib_index,
+                                   &bgp_44_s_32,
+                                   FIB_SOURCE_API,
+                                   FIB_ENTRY_FLAG_NONE,
+				   FIB_PROTOCOL_IP4,
+				   &pfx_1_2_3_4_s_32.fp_addr,
+                                   ~0,
+                                   fib_index,
+                                   1,
+                                   MPLS_LABEL_INVALID,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_entry_path_add(fib_index,
+                                   &bgp_44_s_32,
+                                   FIB_SOURCE_API,
+                                   FIB_ENTRY_FLAG_NONE,
+				   FIB_PROTOCOL_IP4,
+				   &pfx_1_2_3_5_s_32.fp_addr,
+                                   ~0,
+                                   fib_index,
+                                   1,
+                                   MPLS_LABEL_INVALID,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+
+    FIB_TEST_REC_FORW(&bgp_44_s_32, &pfx_1_2_3_4_s_32, 0);
+    FIB_TEST_REC_FORW(&bgp_44_s_32, &pfx_1_2_3_5_s_32, 1);
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 2,
+				    tm->hw[0]->sw_if_index,
+				    tm->hw[1]->sw_if_index),
+	     "RPF list for 1.2.3.4/32 contains both adjs");
+
+    /*
+     * test the uRPF check functions
+     */
+    dpo_id_t dpo_44 = DPO_NULL;
+    index_t urpfi;
+
+    fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, &dpo_44);
+    urpfi = load_balance_get_urpf(dpo_44.dpoi_index);
+
+    FIB_TEST(fib_urpf_check(urpfi, tm->hw[0]->sw_if_index),
+	     "uRPF check for 68.68.68.68/32 on %d OK",
+	     tm->hw[0]->sw_if_index);
+    FIB_TEST(fib_urpf_check(urpfi, tm->hw[1]->sw_if_index),
+	     "uRPF check for 68.68.68.68/32 on %d OK",
+	     tm->hw[1]->sw_if_index);
+    FIB_TEST(!fib_urpf_check(urpfi, 99),
+	     "uRPF check for 68.68.68.68/32 on 99 not-OK",
+	     99);
+    dpo_reset(&dpo_44);
 
     fib_table_entry_delete(fib_index,
+                           &bgp_44_s_32,
+                           FIB_SOURCE_API);
+    fib_table_entry_delete(fib_index,
                            &pfx_1_2_3_5_s_32,
+                           FIB_SOURCE_API);
+    fib_table_entry_delete(fib_index,
+                           &pfx_1_2_3_4_s_32,
                            FIB_SOURCE_API);
 
     /*
@@ -1053,11 +1222,13 @@ fib_test_v4 (void)
 			     MPLS_LABEL_INVALID,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
-    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32);
+    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32, 0);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_200_s_32);
     FIB_TEST((FIB_ENTRY_FLAG_NONE == fib_entry_get_flags(fei)),
 	     "Flags set on RR via non-attached");
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 0),
+	     "RPF list for BGP route empty");
 
     /*
      * +2 entry (BGP & RR) and +1 shared-path-list
@@ -1119,8 +1290,12 @@ fib_test_v4 (void)
     /*
      * the recursive adj for 200.200.200.200 should be updated.
      */
-    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32);
-    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32);
+    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32, 0);
+    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32, 0);
+    fei = fib_table_lookup(fib_index, &bgp_200_pfx);
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1,
+				    tm->hw[0]->sw_if_index),
+	     "RPF list for BGP route has itf index 0");
 
     /*
      * insert a more specific route than 1.1.1.0/24 that also covers the
@@ -1166,8 +1341,8 @@ fib_test_v4 (void)
      * the recursive adj for 200.200.200.200 should be updated.
      * 200.200.200.201 remains unchanged.
      */
-    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32);
-    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32);
+    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32, 0);
+    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32, 0);
 
     /*
      * remove this /28. 200.200.200.200/32 should revert back to via 1.1.1.0/24
@@ -1187,8 +1362,8 @@ fib_test_v4 (void)
     FIB_TEST((fib_table_lookup(fib_index, &pfx_1_1_1_0_s_28) == 
 	      fib_table_lookup(fib_index, &pfx_1_1_1_0_s_24)),
 	     "1.1.1.0/28 lookup via /24");
-    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32);
-    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32);
+    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32, 0);
+    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32, 0);
 
     /*
      * -1 entry. -1 shared path-list
@@ -1223,8 +1398,8 @@ fib_test_v4 (void)
     FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
 	     "1.1.1.200/32 route is DROP");
 
-    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32);
-    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32);
+    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32, 0);
+    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32, 0);
 
     /*
      * -1 entry
@@ -1254,8 +1429,8 @@ fib_test_v4 (void)
     ai = fib_entry_get_adj(fei);
     FIB_TEST((ai = ai_01), "1.1.1.2/32 resolves via 10.10.10.1");
 
-    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32);
-    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32);
+    FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32, 0);
+    FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32, 0);
 
     /*
      * no change. 1.1.1.2/32 was already there RR sourced.
@@ -2530,6 +2705,28 @@ fib_test_v4 (void)
 	     "2001::/64 ADJ-adj is NH proto v4");
     fib_table_entry_delete(0, &pfx_2001_s_64, FIB_SOURCE_API);
 
+    /*
+     * add a uRPF exempt prefix:
+     *  test:
+     *   - it's forwarding is drop
+     *   - it's uRPF list is not empty
+     *   - the uRPF list for the default route (it's cover) is empty
+     */
+    fei = fib_table_entry_special_add(fib_index,
+				      &pfx_4_1_1_1_s_32,
+				      FIB_SOURCE_URPF_EXEMPT,
+				      FIB_ENTRY_FLAG_DROP,
+				      ADJ_INDEX_INVALID);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(load_balance_is_drop(dpo),
+	     "uRPF exempt 4.1.1.1/32 DROP");
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1, 0),
+	     "uRPF list for exempt prefix has itf index 0");
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_0_0_0_0_s_0);
+    FIB_TEST(fib_test_urpf_is_equal(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 0),
+	     "uRPF list for 0.0.0.0/0 empty");
+
+    fib_table_entry_delete(fib_index, &pfx_4_1_1_1_s_32, FIB_SOURCE_URPF_EXEMPT);
 
     /*
      * CLEANUP
@@ -2559,11 +2756,12 @@ fib_test_v4 (void)
     	     fib_entry_pool_size());
 
     /*
-     * unlock the 2 adjacencies for which this test provided a rewrite.
+     * unlock the adjacencies for which this test provided a rewrite.
      * These are the last locks on these adjs. they should thus go away.
      */
     adj_unlock(ai_02);
     adj_unlock(ai_01);
+    adj_unlock(ai_12_12_12_12);
 
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
 	     adj_nbr_db_size());
@@ -2623,6 +2821,8 @@ fib_test_v4 (void)
     	     fib_path_list_pool_size());
     FIB_TEST((NBR-5 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
+    FIB_TEST((NBR-5 == pool_elts(fib_urpf_list_pool)), "uRPF pool size is %d",
+    	     pool_elts(fib_urpf_list_pool));
 
     return;
 }
@@ -5013,6 +5213,28 @@ fib_test_label (void)
 				     &l1600_eos_o_1_1_1_1),
 	     "2.2.2.2.2/32 LB 1 buckets via: "
 	     "label 1600 over 1.1.1.1");
+
+    dpo_id_t dpo_44 = DPO_NULL;
+    index_t urpfi;
+
+    fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, &dpo_44);
+    urpfi = load_balance_get_urpf(dpo_44.dpoi_index);
+
+    FIB_TEST(fib_urpf_check(urpfi, tm->hw[0]->sw_if_index),
+	     "uRPF check for 2.2.2.2/32 on %d OK",
+	     tm->hw[0]->sw_if_index);
+    FIB_TEST(fib_urpf_check(urpfi, tm->hw[1]->sw_if_index),
+	     "uRPF check for 2.2.2.2/32 on %d OK",
+	     tm->hw[1]->sw_if_index);
+    FIB_TEST(!fib_urpf_check(urpfi, 99),
+	     "uRPF check for 2.2.2.2/32 on 99 not-OK",
+	     99);
+
+    fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS, &dpo_44);
+    FIB_TEST(urpfi == load_balance_get_urpf(dpo_44.dpoi_index),
+	     "Shared uRPF on IP and non-EOS chain");
+
+    dpo_reset(&dpo_44);
 
     /*
      * we are holding a lock on the non-eos LB of the via-entry.

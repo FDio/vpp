@@ -598,12 +598,20 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  {
 	      for (j = 0; j < vec_len (rpaths); j++)
 	      {
+		  u32 fi;
 		  /*
 		   * the CLI parsing stored table Ids, swap to FIB indicies
 		   */
-		  rpaths[i].frp_fib_index =
-		      fib_table_id_find_fib_index(prefixs[i].fp_proto,
-						  rpaths[i].frp_fib_index);
+		  fi = fib_table_id_find_fib_index(prefixs[i].fp_proto,
+						   rpaths[i].frp_fib_index);
+
+		  if (~0 == fi)
+		  {
+		      error = clib_error_return(0 , "Via table %d does not exist",
+						rpaths[i].frp_fib_index);
+		      goto done;
+		  }
+		  rpaths[i].frp_fib_index = fi;
 
 		  fib_prefix_t rpfx = {
 		      .fp_len = prefixs[i].fp_len,

@@ -365,6 +365,11 @@ gre_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   u32 ti;
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (NULL == gm->tunnel_index_by_sw_if_index ||
+      hi->sw_if_index >= vec_len(gm->tunnel_index_by_sw_if_index))
+      return (NULL);
+
   ti = gm->tunnel_index_by_sw_if_index[hi->sw_if_index];
 
   if (~0 == ti)

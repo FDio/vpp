@@ -367,35 +367,41 @@ static clib_error_t *
 cli_add_trace_buffer (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   vlib_trace_main_t *tm;
   vlib_trace_node_t *tn;
   u32 node_index, add;
   u8 verbose = 0;
 
-  while (unformat_check_input (input) != (uword) UNFORMAT_END_OF_INPUT)
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U %d", unformat_vlib_node, vm, &node_index, &add))
+      if (unformat (line_input, "%U %d",
+		    unformat_vlib_node, vm, &node_index, &add))
 	;
-      else if (unformat (input, "verbose"))
+      else if (unformat (line_input, "verbose"))
 	verbose = 1;
       else
 	return clib_error_create ("expected NODE COUNT, got `%U'",
-				  format_unformat_error, input);
+				  format_unformat_error, line_input);
     }
 
+  /* *INDENT-OFF* */
   foreach_vlib_main ((
-		       {
-		       void *oldheap;
-		       tm = &this_vlib_main->trace_main;
-		       tm->trace_active_hint = 1;
-		       tm->verbose = verbose;
-		       oldheap =
-		       clib_mem_set_heap (this_vlib_main->heap_base);
-		       vec_validate (tm->nodes, node_index);
-		       tn = tm->nodes + node_index;
-		       tn->limit += add; clib_mem_set_heap (oldheap);
-		       }));
+    {
+      void *oldheap;
+      tm = &this_vlib_main->trace_main;
+      tm->trace_active_hint = 1;
+      tm->verbose = verbose;
+      oldheap =
+	clib_mem_set_heap (this_vlib_main->heap_base);
+      vec_validate (tm->nodes, node_index);
+      tn = tm->nodes + node_index;
+      tn->limit += add; clib_mem_set_heap (oldheap);
+    }));
+  /* *INDENT-ON* */
 
   return 0;
 }
