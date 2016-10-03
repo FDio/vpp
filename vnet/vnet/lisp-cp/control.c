@@ -2544,7 +2544,7 @@ lisp_add_del_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "del"))
 	is_add = 0;
-      else if (unformat (line_input, "add %s", &locator_set_name))
+      else if (unformat (line_input, "add %_%v%_", &locator_set_name))
 	is_add = 1;
       else
 	{
