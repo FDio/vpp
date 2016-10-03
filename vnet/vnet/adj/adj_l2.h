@@ -13,33 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef __LISP_CP_DPO_H__
-#define __LISP_CP_DPO_H__
+#ifndef __ADJ_L2_H__
+#define __ADJ_L2_H__
 
-#include <vnet/vnet.h>
-#include <vnet/dpo/dpo.h>
+#include <vnet/adj/adj.h>
 
-/**
- * A representation of punt to the LISP control plane.
- */
-typedef struct lisp_cp_dpo_t
-{
-  /**
-   * The transport payload type.
-   */
-  dpo_proto_t lcd_proto;
-} lisp_cp_dpo_t;
-
-extern const dpo_id_t *lisp_cp_dpo_get (dpo_proto_t proto);
-
-extern void lisp_cp_dpo_module_init (void);
+extern vlib_node_registration_t adj_l2_midchain_node;
+extern vlib_node_registration_t adj_l2_rewrite_node;
 
 #endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

@@ -117,9 +117,7 @@ typedef struct ip4_main_t {
   vlib_packet_template_t ip4_arp_request_packet_template;
 
   /** Feature path configuration lists */
-  vnet_ip_feature_registration_t * next_uc_feature;
-  vnet_ip_feature_registration_t * next_mc_feature;
-  vnet_ip_feature_registration_t * next_tx_feature;
+  vnet_ip_feature_registration_t * next_feature[VNET_N_IP_FEAT];
 
   /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
   u32 ip4_unicast_rx_feature_check_access;
@@ -181,8 +179,8 @@ static void __vnet_add_feature_registration_uc_##x (void)       \
 static void __vnet_add_feature_registration_uc_##x (void)       \
 {                                                               \
   ip4_main_t * im = &ip4_main;                                  \
-  uc_##x.next = im->next_uc_feature;                            \
-  im->next_uc_feature = &uc_##x;                                \
+  uc_##x.next = im->next_feature[VNET_IP_RX_UNICAST_FEAT];      \
+  im->next_feature[VNET_IP_RX_UNICAST_FEAT] = &uc_##x;          \
 }                                                               \
 __VA_ARGS__ vnet_ip_feature_registration_t uc_##x 
 
@@ -193,8 +191,8 @@ static void __vnet_add_feature_registration_mc_##x (void)       \
 static void __vnet_add_feature_registration_mc_##x (void)       \
 {                                                               \
   ip4_main_t * im = &ip4_main;                                  \
-  mc_##x.next = im->next_mc_feature;                            \
-  im->next_mc_feature = &mc_##x;                                \
+  mc_##x.next = im->next_feature[VNET_IP_RX_MULTICAST_FEAT];    \
+  im->next_feature[VNET_IP_RX_MULTICAST_FEAT] = &mc_##x;        \
 }                                                               \
 __VA_ARGS__ vnet_ip_feature_registration_t mc_##x 
 
@@ -205,8 +203,8 @@ static void __vnet_add_feature_registration_tx_##x (void)       \
 static void __vnet_add_feature_registration_tx_##x (void)       \
 {                                                               \
   ip4_main_t * im = &ip4_main;                                  \
-  tx_##x.next = im->next_tx_feature;                            \
-  im->next_tx_feature = &tx_##x;                                \
+  tx_##x.next = im->next_feature[VNET_IP_TX_FEAT];              \
+  im->next_feature[VNET_IP_TX_FEAT] = &tx_##x;                  \
 }                                                               \
 __VA_ARGS__ vnet_ip_feature_registration_t tx_##x 
 

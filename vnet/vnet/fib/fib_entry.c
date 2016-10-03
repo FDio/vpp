@@ -90,7 +90,8 @@ fib_entry_chain_type_fixup (const fib_entry_t *entry,
 	     * then use the payload-protocol field, that we stashed there
 	     * for just this purpose
 	     */
-	    return (fib_proto_to_forw_chain_type(entry->fe_prefix.fp_payload_proto));
+	    return (fib_forw_chain_type_from_dpo_proto(
+			entry->fe_prefix.fp_payload_proto));
 	}
 	/*
 	 * else give them what this entry would be by default. i.e. if it's a v6
@@ -120,7 +121,8 @@ fib_entry_get_default_chain_type (const fib_entry_t *fib_entry)
 	     * then use the payload-protocol field, that we stashed there
 	     * for just this purpose
 	     */
-	    return (fib_proto_to_forw_chain_type(fib_entry->fe_prefix.fp_payload_proto));
+	    return (fib_forw_chain_type_from_dpo_proto(
+			fib_entry->fe_prefix.fp_payload_proto));
 	else
 	    return (FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS);
     }

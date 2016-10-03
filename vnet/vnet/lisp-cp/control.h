@@ -136,7 +136,6 @@ typedef struct
   uword *vni_by_bd_id;
 
   /* track l2 and l3 interfaces that have been created for vni */
-  uword *dp_intf_by_vni;
   uword *l2_dp_intf_by_vni;
 
   /* Proxy ETR map index */

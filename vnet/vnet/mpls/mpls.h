@@ -127,11 +127,12 @@ typedef struct {
   uword *fib_index_by_table_id;
 
   /* rx/tx interface/feature configuration. */
-  ip_config_main_t rx_config_mains, tx_config_main;
+  ip_config_main_t feature_config_mains[VNET_N_IP_FEAT];
 
   /* Built-in unicast feature path indices, see ip_feature_init_cast(...)  */
   u32 mpls_rx_feature_lookup;
   u32 mpls_rx_feature_not_enabled;
+  u32 mpls_tx_feature_interface_output;
 
   /* pool of gre tunnel instances */
   mpls_gre_tunnel_t *gre_tunnels;
@@ -154,10 +155,10 @@ typedef struct {
   u32 ip6_classify_mpls_policy_encap_next_index;
 
   /* feature path configuration lists */
-  vnet_ip_feature_registration_t * next_feature;
+  vnet_ip_feature_registration_t * next_feature[VNET_N_IP_FEAT];
 
   /* Save feature results for show command */
-  char **feature_nodes;
+  char **feature_nodes[VNET_N_IP_FEAT];
 
   /* IP4 enabled count by software interface */
   u8 * mpls_enabled_by_sw_if_index;
@@ -179,10 +180,22 @@ static void __vnet_add_feature_registration_uc_##x (void)       \
 static void __vnet_add_feature_registration_uc_##x (void)       \
 {                                                               \
   mpls_main_t * mm = &mpls_main;                                \
-  uc_##x.next = mm->next_feature;                               \
-  mm->next_feature = &uc_##x;                                   \
+  uc_##x.next = mm->next_feature[VNET_IP_RX_UNICAST_FEAT];      \
+  mm->next_feature[VNET_IP_RX_UNICAST_FEAT] = &uc_##x;          \
 }                                                               \
 __VA_ARGS__ vnet_ip_feature_registration_t uc_##x
+
+#define VNET_MPLS_TX_FEATURE_INIT(x,...)                        \
+  __VA_ARGS__ vnet_ip_feature_registration_t tx_##x;            \
+static void __vnet_add_feature_registration_tx_##x (void)       \
+  __attribute__((__constructor__)) ;                            \
+static void __vnet_add_feature_registration_tx_##x (void)       \
+{                                                               \
+  mpls_main_t * mm = &mpls_main;                                \
+  tx_##x.next = mm->next_feature[VNET_IP_TX_FEAT];              \
+  mm->next_feature[VNET_IP_TX_FEAT] = &tx_##x;                  \
+}                                                               \
+__VA_ARGS__ vnet_ip_feature_registration_t tx_##x 
 
 extern clib_error_t * mpls_feature_init(vlib_main_t * vm);
 

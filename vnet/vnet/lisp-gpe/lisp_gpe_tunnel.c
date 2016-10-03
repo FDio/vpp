@@ -26,7 +26,7 @@
 /**
  * @brief Pool of all LISP tunnels
  */
-static lisp_gpe_tunnel_2_t *lisp_gpe_tunnel_pool;
+static lisp_gpe_tunnel_t *lisp_gpe_tunnel_pool;
 
 /**
  * @brief a DB of all tunnels
@@ -43,7 +43,7 @@ static uword *lisp_gpe_tunnel_db;
  * @return 0 on success.
  */
 u8 *
-lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_2_t * lgt,
+lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
 			       const lisp_gpe_adjacency_t * ladj,
 			       lisp_gpe_next_protocol_e payload_proto)
 {
@@ -119,7 +119,7 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_2_t * lgt,
   return (rw);
 }
 
-static lisp_gpe_tunnel_2_t *
+static lisp_gpe_tunnel_t *
 lisp_gpe_tunnel_db_find (const lisp_gpe_tunnel_key_t * key)
 {
   uword *p;
@@ -133,7 +133,7 @@ lisp_gpe_tunnel_db_find (const lisp_gpe_tunnel_key_t * key)
   return (NULL);
 }
 
-lisp_gpe_tunnel_2_t *
+lisp_gpe_tunnel_t *
 lisp_gpe_tunnel_get_i (index_t lgti)
 {
   return (pool_elt_at_index (lisp_gpe_tunnel_pool, lgti));
@@ -148,7 +148,7 @@ lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t * pair,
     .rmt = pair->rmt_loc,
     .fib_index = rloc_fib_index,
   };
-  lisp_gpe_tunnel_2_t *lgt;
+  lisp_gpe_tunnel_t *lgt;
   fib_prefix_t pfx;
 
   lgt = lisp_gpe_tunnel_db_find (&key);
@@ -189,7 +189,7 @@ lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t * pair,
 void
 lisp_gpe_tunnel_unlock (index_t lgti)
 {
-  lisp_gpe_tunnel_2_t *lgt;
+  lisp_gpe_tunnel_t *lgt;
 
   lgt = lisp_gpe_tunnel_get_i (lgti);
   lgt->locks--;
@@ -202,7 +202,7 @@ lisp_gpe_tunnel_unlock (index_t lgti)
     }
 }
 
-const lisp_gpe_tunnel_2_t *
+const lisp_gpe_tunnel_t *
 lisp_gpe_tunnel_get (index_t lgti)
 {
   return (lisp_gpe_tunnel_get_i (lgti));
@@ -212,7 +212,7 @@ lisp_gpe_tunnel_get (index_t lgti)
 u8 *
 format_lisp_gpe_tunnel (u8 * s, va_list * args)
 {
-  lisp_gpe_tunnel_2_t *lgt = va_arg (*args, lisp_gpe_tunnel_2_t *);
+  lisp_gpe_tunnel_t *lgt = va_arg (*args, lisp_gpe_tunnel_t *);
 
   s = format (s, "tunnel %d\n", lgt - lisp_gpe_tunnel_pool);
   s = format (s, " fib-index: %d, locks:%d \n",
@@ -236,7 +236,7 @@ show_lisp_gpe_tunnel_command_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
-  lisp_gpe_tunnel_2_t *lgt;
+  lisp_gpe_tunnel_t *lgt;
   index_t index;
 
   if (pool_elts (lisp_gpe_tunnel_pool) == 0)
@@ -272,7 +272,7 @@ static clib_error_t *
 lisp_gpe_tunnel_module_init (vlib_main_t * vm)
 {
   lisp_gpe_tunnel_db = hash_create_mem (0,
-					sizeof (lisp_gpe_fwd_entry_key_t),
+					sizeof (lisp_gpe_tunnel_key_t),
 					sizeof (uword));
 
   return (NULL);

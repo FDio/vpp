@@ -65,6 +65,7 @@ typedef enum dpo_proto_t_
     DPO_PROTO_IP4 = 0,
 #endif
     DPO_PROTO_IP6,
+    DPO_PROTO_ETHERNET,
     DPO_PROTO_MPLS,
 } __attribute__((packed)) dpo_proto_t;
 
@@ -74,8 +75,14 @@ typedef enum dpo_proto_t_
 #define DPO_PROTOS {		\
     [DPO_PROTO_IP4]  = "ip4",	\
     [DPO_PROTO_IP6]  = "ip6",	\
+    [DPO_PROTO_ETHERNET]  = "ethernet", \
     [DPO_PROTO_MPLS] = "mpls",	\
 }
+
+#define FOR_EACH_DPO_PROTO(_proto)    \
+    for (_proto = DPO_PROTO_IP4;      \
+	 _proto <= DPO_PROTO_MPLS;    \
+	 _proto++)
 
 /**
  * @brief Common types of data-path objects

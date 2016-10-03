@@ -19,6 +19,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/ip/ip.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/adj/adj_l2.h>
 
 
 /**
@@ -50,6 +51,8 @@ adj_get_rewrite_node (fib_link_t linkt)
 	return (&ip6_rewrite_node);
     case FIB_LINK_MPLS:
 	return (&mpls_output_node);
+    case FIB_LINK_ETHERNET:
+	return (&adj_l2_rewrite_node);
     }
     ASSERT(0);
     return (NULL);
@@ -66,6 +69,8 @@ adj_fib_link_2_vnet (fib_link_t linkt)
 	return (VNET_L3_PACKET_TYPE_IP6);
     case FIB_LINK_MPLS:
 	return (VNET_L3_PACKET_TYPE_MPLS_UNICAST);
+    case FIB_LINK_ETHERNET:
+	break;
     }
     return (0);
 }

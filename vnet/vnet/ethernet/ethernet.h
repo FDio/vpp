@@ -43,6 +43,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ethernet/packet.h>
 #include <vnet/pg/pg.h>
+#include <vnet/ip/ip_feature_registration.h>
 
 always_inline u64
 ethernet_mac_address_u64 (u8 * a)
@@ -224,7 +225,6 @@ typedef struct
   u32 input_next_mpls;
 } next_by_ethertype_t;
 
-
 typedef struct
 {
   vlib_main_t *vlib_main;
@@ -263,9 +263,33 @@ typedef struct
   /* debug: make sure we don't wipe out an ethernet registration by mistake */
   u8 next_by_ethertype_register_called;
 
+  /** per-interface features */
+  ip_config_main_t feature_config_mains[VNET_N_IP_FEAT];
+
+  /** Feature path configuration lists */
+  vnet_ip_feature_registration_t *next_feature[VNET_N_IP_FEAT];
+
+  /** Save results for show command */
+  char **feature_nodes[VNET_N_IP_FEAT];
+
+  /** feature node indicies */
+  u32 ethernet_tx_feature_drop;
 } ethernet_main_t;
 
 ethernet_main_t ethernet_main;
+
+#define VNET_ETHERNET_TX_FEATURE_INIT(x,...)                    \
+  __VA_ARGS__ vnet_ip_feature_registration_t tx_##x;            \
+static void __vnet_add_feature_registration_tx_##x (void)       \
+  __attribute__((__constructor__)) ;                            \
+static void __vnet_add_feature_registration_tx_##x (void)       \
+{                                                               \
+  ethernet_main_t * im = &ethernet_main;                        \
+  tx_##x.next = im->next_feature[VNET_IP_TX_FEAT];              \
+  im->next_feature[VNET_IP_TX_FEAT] = &tx_##x;                  \
+}                                                               \
+__VA_ARGS__ vnet_ip_feature_registration_t tx_##x
+
 
 always_inline ethernet_type_info_t *
 ethernet_get_type_info (ethernet_main_t * em, ethernet_type_t type)

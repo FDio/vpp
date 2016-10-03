@@ -641,7 +641,10 @@ static char * rx_feature_start_nodes[] =
   {"ip6-input"};
 
 static char * tx_feature_start_nodes[] = 
-  {"ip6-rewrite"};
+{
+  "ip6-rewrite",
+  "ip6-midchain",
+};
 
 /* Built-in ip4 tx feature path definition */
 VNET_IP6_TX_FEATURE_INIT (interface_output, static) = {
@@ -680,8 +683,8 @@ ip6_feature_init (vlib_main_t * vm, ip6_main_t * im)
       if ((error = ip_feature_init_cast (vm, cm, vcm, 
                                          feature_start_nodes,
                                          feature_start_len,
-                                         cast,
-                                         VNET_L3_PACKET_TYPE_IP6)))
+					 im->next_feature[cast],
+					 &im->feature_nodes[cast])))
         return error;
     }
   return 0;
@@ -1797,7 +1800,8 @@ always_inline uword
 ip6_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * frame,
-		    int rewrite_for_locally_received_packets)
+		    int rewrite_for_locally_received_packets,
+		    int is_midchain)
 {
   ip_lookup_main_t * lm = &ip6_main.lookup_main;
   u32 * from = vlib_frame_vector_args (frame);
@@ -1980,6 +1984,12 @@ ip6_rewrite_inline (vlib_main_t * vm,
 				    ip0, ip1,
 				    sizeof (ethernet_header_t));
       
+	  if (is_midchain)
+	  {
+	      adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
+	      adj1->sub_type.midchain.fixup_func(vm, adj1, p1);
+	  }
+
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   pi0, pi1, next0, next1);
@@ -2079,6 +2089,11 @@ ip6_rewrite_inline (vlib_main_t * vm,
                   }
             }
 
+	  if (is_midchain)
+	  {
+	      adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
+	  }
+
 	  p0->error = error_node->errors[error0];
 
 	  from += 1;
@@ -2107,7 +2122,8 @@ ip6_rewrite_transit (vlib_main_t * vm,
 		     vlib_frame_t * frame)
 {
   return ip6_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 0);
+			     /* rewrite_for_locally_received_packets */ 0,
+			     /* midchain */ 0);
 }
 
 static uword
@@ -2116,7 +2132,8 @@ ip6_rewrite_local (vlib_main_t * vm,
 		   vlib_frame_t * frame)
 {
   return ip6_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 1);
+			     /* rewrite_for_locally_received_packets */ 1,
+			     /* midchain */ 0);
 }
 
 static uword
@@ -2125,7 +2142,8 @@ ip6_midchain (vlib_main_t * vm,
 	      vlib_frame_t * frame)
 {
   return ip6_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 0);
+			     /* rewrite_for_locally_received_packets */ 0,
+			     /* midchain */ 1);
 }
 
 VLIB_REGISTER_NODE (ip6_midchain_node) = {
@@ -2134,6 +2152,8 @@ VLIB_REGISTER_NODE (ip6_midchain_node) = {
   .vector_size = sizeof (u32),
 
   .format_trace = format_ip6_forward_next_trace,
+
+  .sibling_of = "ip6-rewrite",
 
   .next_nodes = {
     [IP6_REWRITE_NEXT_DROP] = "error-drop",

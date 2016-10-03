@@ -90,11 +90,11 @@ typedef enum
   LCAF_TYPES
 } lcaf_type_t;
 
-typedef enum
+typedef enum fid_addr_type_t_
 {
   FID_ADDR_IP_PREF,
   FID_ADDR_MAC
-} fid_addr_type_t;
+} __attribute__ ((packed)) fid_addr_type_t;
 
 /* flat address type */
 typedef struct
@@ -104,7 +104,7 @@ typedef struct
     ip_prefix_t ippref;
     u8 mac[6];
   };
-  u8 type;			/* fid_addr_type_t */
+  fid_addr_type_t type;
 } fid_address_t;
 
 typedef fid_address_t dp_address_t;

@@ -214,6 +214,24 @@ fib_proto_to_dpo (fib_protocol_t fib_proto)
     return (0);
 }
 
+dpo_proto_t
+fib_link_to_dpo_proto (fib_link_t linkt)
+{
+    switch (linkt)
+    {
+    case FIB_LINK_IP6:
+        return (DPO_PROTO_IP6);
+    case FIB_LINK_IP4:
+        return (DPO_PROTO_IP4);
+    case FIB_LINK_MPLS:
+        return (DPO_PROTO_MPLS);
+    case FIB_LINK_ETHERNET:
+        return (DPO_PROTO_ETHERNET);
+    }
+    ASSERT(0);
+    return (0);
+}
+
 fib_protocol_t
 dpo_proto_to_fib (dpo_proto_t dpo_proto)
 {
@@ -225,6 +243,8 @@ dpo_proto_to_fib (dpo_proto_t dpo_proto)
         return (FIB_PROTOCOL_IP4);
     case DPO_PROTO_MPLS:
         return (FIB_PROTOCOL_MPLS);
+    default:
+	break;
     }
     ASSERT(0);
     return (0);
@@ -247,16 +267,18 @@ fib_proto_to_link (fib_protocol_t proto)
 }
 
 fib_forward_chain_type_t
-fib_proto_to_forw_chain_type (fib_protocol_t proto)
+fib_forw_chain_type_from_dpo_proto (dpo_proto_t proto)
 {
     switch (proto)
     {
-    case FIB_PROTOCOL_IP4:
+    case DPO_PROTO_IP4:
 	return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
-    case FIB_PROTOCOL_IP6:
+    case DPO_PROTO_IP6:
 	return (FIB_FORW_CHAIN_TYPE_UNICAST_IP6);
-    case FIB_PROTOCOL_MPLS:
+    case DPO_PROTO_MPLS:
 	return (FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS);
+    case DPO_PROTO_ETHERNET:
+	return (FIB_FORW_CHAIN_TYPE_ETHERNET);
     }
     ASSERT(0);
     return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
@@ -271,6 +293,8 @@ fib_forw_chain_type_to_link_type (fib_forward_chain_type_t fct)
 	return (FIB_LINK_IP4);
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
 	return (FIB_LINK_IP6);
+    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+	return (FIB_LINK_ETHERNET);
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	/*
 	 * insufficient information to to convert
@@ -292,6 +316,8 @@ fib_forw_chain_type_to_dpo_proto (fib_forward_chain_type_t fct)
 	return (DPO_PROTO_IP4);
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
 	return (DPO_PROTO_IP6);
+    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+	return (DPO_PROTO_ETHERNET);
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	/*
 	 * insufficient information to to convert

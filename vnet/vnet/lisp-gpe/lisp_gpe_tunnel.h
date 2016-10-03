@@ -45,7 +45,7 @@ typedef struct lisp_gpe_tunnel_key_t_
  * A tunnel represents an associatation between a local and remote RLOC.
  * As such it represents a unique LISP rewrite.
  */
-typedef struct lisp_gpe_tunnel_2_t_
+typedef struct lisp_gpe_tunnel_t_
 {
   /**
    * RLOC pair and rloc fib_index. This is the tunnel's key.
@@ -61,7 +61,7 @@ typedef struct lisp_gpe_tunnel_2_t_
    * the FIB entry through which the remote rloc is reachable
    s */
   fib_node_index_t fib_entry_index;
-} lisp_gpe_tunnel_2_t;
+} lisp_gpe_tunnel_t;
 
 extern index_t lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t *
 							pair,
@@ -69,9 +69,9 @@ extern index_t lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t *
 
 extern void lisp_gpe_tunnel_unlock (index_t lgti);
 
-extern const lisp_gpe_tunnel_2_t *lisp_gpe_tunnel_get (index_t lgti);
+extern const lisp_gpe_tunnel_t *lisp_gpe_tunnel_get (index_t lgti);
 
-extern u8 *lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_2_t * lgt,
+extern u8 *lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
 					  const struct lisp_gpe_adjacency_t_
 					  *ladj,
 					  lisp_gpe_next_protocol_e

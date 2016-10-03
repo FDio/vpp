@@ -639,6 +639,7 @@ setup_tx_node (vlib_main_t * vm,
 
   n->function = dev_class->tx_function;
   n->format_trace = dev_class->format_tx_trace;
+
   vlib_register_errors (vm, node_index,
 			dev_class->tx_function_n_errors,
 			dev_class->tx_function_error_strings);

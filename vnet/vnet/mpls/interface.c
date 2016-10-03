@@ -536,189 +536,20 @@ static const int dpo_next_2_mpls_post_rewrite[DPO_LAST] = {
     [DPO_LOAD_BALANCE] = IP_LOOKUP_NEXT_LOAD_BALANCE,
 };
 
-static uword
-mpls_post_rewrite (vlib_main_t * vm,
-                   vlib_node_runtime_t * node,
-                   vlib_frame_t * from_frame)
+static void
+mpls_gre_fixup (vlib_main_t *vm,
+		ip_adjacency_t *adj,
+		vlib_buffer_t * b0)
 {
-  ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  u32 n_left_from, next_index, * from, * to_next;
-  u16 old_l0 = 0; //, old_l1 = 0;
+    ip4_header_t * ip0;
 
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
+    ip0 = vlib_buffer_get_current (b0);
 
-  next_index = node->cached_next_index;
-
-  while (n_left_from > 0)
-    {
-      u32 n_left_to_next;
-
-      vlib_get_next_frame (vm, node, next_index,
-			   to_next, n_left_to_next);
-
-      /* while (n_left_from >= 4 && n_left_to_next >= 2) */
-      /* 	{ */
-      /* 	  u32 bi0, bi1; */
-      /* 	  vlib_buffer_t * b0, * b1; */
-      /*     ip4_header_t * ip0, * ip1; */
-      /* 	  u32 next0; */
-      /* 	  u32 next1; */
-      /*     u16 new_l0, new_l1, adj_index0, adj_index1; */
-      /*     ip_csum_t sum0, sum1; */
-      /* 	  ip_adjacency_t *adj0, *adj1; */
-
-      /* 	  /\* Prefetch next iteration. *\/ */
-      /* 	  { */
-      /* 	    vlib_buffer_t * p2, * p3; */
-
-      /* 	    p2 = vlib_get_buffer (vm, from[2]); */
-      /* 	    p3 = vlib_get_buffer (vm, from[3]); */
-
-      /* 	    vlib_prefetch_buffer_header (p2, LOAD); */
-      /* 	    vlib_prefetch_buffer_header (p3, LOAD); */
-
-      /* 	    CLIB_PREFETCH (p2->data, 2*CLIB_CACHE_LINE_BYTES, LOAD); */
-      /* 	    CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD); */
-      /* 	  } */
-
-      /* 	  bi0 = from[0]; */
-      /* 	  bi1 = from[1]; */
-      /* 	  to_next[0] = bi0; */
-      /* 	  to_next[1] = bi1; */
-      /* 	  from += 2; */
-      /* 	  to_next += 2; */
-      /* 	  n_left_to_next -= 2; */
-      /* 	  n_left_from -= 2; */
-
-
-      /* 	  b0 = vlib_get_buffer (vm, bi0); */
-      /* 	  b1 = vlib_get_buffer (vm, bi1); */
-      /*     ip0 = vlib_buffer_get_current (b0); */
-      /*     ip1 = vlib_buffer_get_current (b1); */
-          
-      /*     /\* Note: the tunnel rewrite sets up sw_if_index[VLIB_TX] *\/ */
-
-      /*     /\* set the GRE (outer) ip packet length, fix the bloody checksum *\/ */
-      /*     sum0 = ip0->checksum; */
-      /*     sum1 = ip1->checksum; */
-
-      /*     /\* old_l0, old_l1 always 0, see the rewrite setup *\/ */
-      /*     new_l0 =  */
-      /*       clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)); */
-      /*     new_l1 =  */
-      /*       clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)); */
-          
-      /*     sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t, */
-      /*                            length /\* changed member *\/); */
-      /*     sum1 = ip_csum_update (sum1, old_l1, new_l1, ip4_header_t, */
-      /*                            length /\* changed member *\/); */
-      /*     ip0->checksum = ip_csum_fold (sum0); */
-      /*     ip1->checksum = ip_csum_fold (sum1); */
-      /*     ip0->length = new_l0; */
-      /*     ip1->length = new_l1; */
-
-      /* 	  /\* replace the TX adj in the packet with the next in the chain *\/ */
-      /* 	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX]; */
-      /* 	  adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX]; */
-
-      /* 	  adj0 = ip_get_adjacency (lm, adj_index0); */
-      /* 	  adj1 = ip_get_adjacency (lm, adj_index1); */
-
-      /* 	  ASSERT(adj0->sub_type.midchain.adj_index != ADJ_INDEX_INVALID); */
-      /* 	  ASSERT(adj1->sub_type.midchain.adj_index != ADJ_INDEX_INVALID); */
-
-      /* 	  adj_index0 = adj0->sub_type.midchain.adj_index; */
-      /* 	  adj_index1 = adj1->sub_type.midchain.adj_index; */
-
-      /* 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = adj_index0; */
-      /* 	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = adj_index1; */
-
-      /* 	  /\* get the next adj in the chain to determine the next graph node *\/ */
-      /* 	  adj0 = ip_get_adjacency (lm, adj_index0); */
-      /* 	  adj1 = ip_get_adjacency (lm, adj_index1); */
-
-      /* 	  next0 = adj0->lookup_next_index; */
-      /* 	  next1 = adj1->lookup_next_index; */
-
-      /* 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, */
-      /* 					   to_next, n_left_to_next, */
-      /* 					   bi0, bi1, next0, next1); */
-      /* 	} */
-
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  ip_adjacency_t * adj0;
-	  u32 bi0;
-	  vlib_buffer_t * b0;
-          ip4_header_t * ip0;
-	  u32 next0;
-          u16 new_l0, adj_index0;
-          ip_csum_t sum0;
-
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-          ip0 = vlib_buffer_get_current (b0);
-          
-          /* Note: the tunnel rewrite sets up sw_if_index[VLIB_TX] */
-
-          /* set the GRE (outer) ip packet length, fix the bloody checksum */
-          sum0 = ip0->checksum;
-          /* old_l0 always 0, see the rewrite setup */
-          new_l0 = 
-            clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-          
-          sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-                                 length /* changed member */);
-          ip0->checksum = ip_csum_fold (sum0);
-          ip0->length = new_l0;
-
-	  /* replace the TX adj in the packet with the next in the chain */
-	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-
-          ASSERT(adj_index0);
-
-	  adj0 = ip_get_adjacency (lm, adj_index0);
-	  ASSERT(adj0->sub_type.midchain.next_dpo.dpoi_index != ADJ_INDEX_INVALID);
-	  adj_index0 = adj0->sub_type.midchain.next_dpo.dpoi_index;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = adj_index0;
-
-	  /* get the next adj in the chain to determine the next graph node */
-	  ASSERT(0);
-	  next0 = 0; //adj0->sub_type.midchain.next_dpo.dpoi_next;
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-  vlib_node_increment_counter (vm, mpls_input_node.index,
-                               MPLS_ERROR_PKTS_ENCAP, from_frame->n_vectors);
-  return from_frame->n_vectors;
+    /* Fixup the checksum and len fields in the GRE tunnel encap
+     * that was applied at the midchain node */
+    ip0->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+    ip0->checksum = ip4_header_checksum (ip0);
 }
-
-VLIB_REGISTER_NODE (mpls_post_rewrite_node) = {
-  .function = mpls_post_rewrite,
-  .name = "mpls-post-rewrite",
-  /* Takes a vector of packets. */
-  .vector_size = sizeof (u32),
-
-  .runtime_data_bytes = 0,
-
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP4_LOOKUP_NEXT_NODES,
-};
-
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_post_rewrite_node, mpls_post_rewrite)
 
 static u8 * mpls_gre_rewrite (mpls_main_t *mm, mpls_gre_tunnel_t * t)
 {
@@ -780,7 +611,7 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
 {
   mpls_interface_state_change_callback_t *callback;
   vlib_main_t * vm = vlib_get_main();
-  ip_config_main_t * cm = &mm->rx_config_mains;
+  ip_config_main_t * cm = &mm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   vnet_config_main_t * vcm = &cm->config_main;
   u32 lookup_feature_index;
   fib_node_index_t lfib_index;
@@ -1101,7 +932,8 @@ int mpls_gre_tunnel_add (ip4_address_t *src,
 					    hi->sw_if_index);
 
 	adj_nbr_midchain_update_rewrite(tp->adj_index,
-					mpls_post_rewrite_node.index,
+					mpls_gre_fixup,
+					ADJ_MIDCHAIN_FLAG_NONE,
 					rewrite_data);
 	mpls_gre_tunnel_stack(tp);
 

@@ -112,7 +112,7 @@ lisp_gpe_adj_get_fib_chain_type (const lisp_gpe_adjacency_t * ladj)
 static void
 lisp_gpe_adj_stack (lisp_gpe_adjacency_t * ladj)
 {
-  const lisp_gpe_tunnel_2_t *lgt;
+  const lisp_gpe_tunnel_t *lgt;
   dpo_id_t tmp = DPO_NULL;
   fib_link_t linkt;
 
@@ -121,8 +121,10 @@ lisp_gpe_adj_stack (lisp_gpe_adjacency_t * ladj)
 				   lisp_gpe_adj_get_fib_chain_type (ladj),
 				   &tmp);
 
-  FOR_EACH_FIB_IP_LINK (linkt)
+  FOR_EACH_FIB_LINK (linkt)
   {
+    if (FIB_LINK_MPLS == linkt)
+      continue;
     adj_nbr_midchain_stack (ladj->adjs[linkt], &tmp);
   }
   dpo_reset (&tmp);
@@ -134,20 +136,32 @@ lisp_gpe_adj_proto_from_fib_link_type (fib_link_t linkt)
   switch (linkt)
     {
     case FIB_LINK_IP4:
-      return (LISP_GPE_INPUT_NEXT_IP4_INPUT);
+      return (LISP_GPE_NEXT_PROTO_IP4);
     case FIB_LINK_IP6:
-      return (LISP_GPE_INPUT_NEXT_IP6_INPUT);
+      return (LISP_GPE_NEXT_PROTO_IP6);
+    case FIB_LINK_ETHERNET:
+      return (LISP_GPE_NEXT_PROTO_ETHERNET);
     default:
       ASSERT (0);
     }
-  return (LISP_GPE_INPUT_NEXT_DROP);
+  return (LISP_GPE_NEXT_PROTO_IP4);
+}
+
+#define is_v4_packet(_h) ((*(u8*) _h) & 0xF0) == 0x40
+
+static void
+lisp_gpe_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b)
+{
+  /* Fixup the checksum and len fields in the LISP tunnel encap
+   * that was applied at the midchain node */
+  ip_udp_fixup_one (vm, b, is_v4_packet (vlib_buffer_get_current (b)));
 }
 
 index_t
 lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
 					    u32 overlay_table_id, u32 vni)
 {
-  const lisp_gpe_tunnel_2_t *lgt;
+  const lisp_gpe_tunnel_t *lgt;
   lisp_gpe_adjacency_t *ladj;
   index_t lai, l3si;
 
@@ -210,8 +224,11 @@ lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
       /*
        * construct and stack the FIB midchain adjacencies
        */
-      FOR_EACH_FIB_IP_LINK (linkt)
+      FOR_EACH_FIB_LINK (linkt)
       {
+	if (FIB_LINK_MPLS == linkt)
+	  continue;
+
 	ladj->adjs[linkt] = adj_nbr_add_or_lock (nh.fp_proto,
 						 linkt,
 						 &nh.fp_addr,
@@ -223,10 +240,10 @@ lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
 					 (linkt));
 
 	adj_nbr_midchain_update_rewrite (ladj->adjs[linkt],
-					 vnet_get_sup_hw_interface
-					 (vnet_get_main (),
-					  ladj->sw_if_index)->tx_node_index,
-					 rewrite);
+					 lisp_gpe_fixup,
+					 (FIB_LINK_ETHERNET == linkt ?
+					  ADJ_MIDCHAIN_FLAG_NO_COUNT :
+					  ADJ_MIDCHAIN_FLAG_NONE), rewrite);
 
 	vec_free (rewrite);
       }
@@ -358,8 +375,9 @@ format_lisp_gpe_adjacency (u8 * s, va_list * args)
       s = format (s, " %U\n",
 		  format_lisp_gpe_tunnel,
 		  lisp_gpe_tunnel_get (ladj->tunnel_index));
-      s = format (s, " FIB adjacencies: IPV4:%d IPv6:%d\n",
-		  ladj->adjs[FIB_LINK_IP4], ladj->adjs[FIB_LINK_IP6]);
+      s = format (s, " FIB adjacencies: IPV4:%d IPv6:%d L2:%d\n",
+		  ladj->adjs[FIB_LINK_IP4],
+		  ladj->adjs[FIB_LINK_IP6], ladj->adjs[FIB_LINK_ETHERNET]);
     }
   else
     {

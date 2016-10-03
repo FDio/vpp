@@ -1,4 +1,4 @@
-/*
+ /*
  * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,6 +58,17 @@ typedef enum fib_protocol_t_ {
  */
 #define FIB_PROTOCOL_NONE (FIB_PROTOCOL_MAX+1)
 
+#define FOR_EACH_FIB_PROTOCOL(_item)    \
+    for (_item = FIB_PROTOCOL_IP4;      \
+	 _item <= FIB_PROTOCOL_MPLS;    \
+	 _item++)
+
+#define FOR_EACH_FIB_IP_PROTOCOL(_item)    \
+    for (_item = FIB_PROTOCOL_IP4;         \
+	 _item <= FIB_PROTOCOL_IP6;        \
+	 _item++)
+
+
 /**
  * Link Type. This maps directly into the ethertype.
  */
@@ -68,6 +79,7 @@ typedef enum fib_link_t_ {
     FIB_LINK_IP4 = 0,
 #endif
     FIB_LINK_IP6,
+    FIB_LINK_ETHERNET,
     FIB_LINK_MPLS,
 }  __attribute__ ((packed)) fib_link_t;
 
@@ -77,15 +89,16 @@ typedef enum fib_link_t_ {
  */
 #define FIB_LINK_NUM (FIB_LINK_MPLS+1)
 
-#define FIB_LINKS {		\
-    [FIB_LINK_IP4] = "ipv4",	\
-    [FIB_LINK_IP6] = "ipv6",   \
-    [FIB_LINK_MPLS] = "mpls",   \
+#define FIB_LINKS {		      \
+    [FIB_LINK_ETHERNET] = "ethernet", \
+    [FIB_LINK_IP4] = "ipv4",	      \
+    [FIB_LINK_IP6] = "ipv6",          \
+    [FIB_LINK_MPLS] = "mpls",         \
 }
 
-#define FOR_EACH_FIB_LINK(_item)  \
-    for (_item = FIB_LINK_IP4;	  \
-	 _item <= FIB_LINK_MPLS;  \
+#define FOR_EACH_FIB_LINK(_item)    \
+    for (_item = FIB_LINK_IP4;      \
+	 _item <= FIB_LINK_MPLS;    \
 	 _item++)
 
 #define FOR_EACH_FIB_IP_LINK(_item)  \
@@ -104,6 +117,10 @@ fib_link_t fib_proto_to_link (fib_protocol_t proto);
  * sceanrios
  */
 typedef enum fib_forward_chain_type_t_ {
+    /**
+     * Contribute an object that is to be used to forward Ethernet packets
+     */
+    FIB_FORW_CHAIN_TYPE_ETHERNET,
     /**
      * Contribute an object that is to be used to forward IP4 packets
      */
@@ -127,6 +144,7 @@ typedef enum fib_forward_chain_type_t_ {
 }  __attribute__ ((packed)) fib_forward_chain_type_t;
 
 #define FIB_FORW_CHAINS {					\
+    [FIB_FORW_CHAIN_TYPE_ETHERNET]      = "ehternet",     	\
     [FIB_FORW_CHAIN_TYPE_UNICAST_IP4]   = "unicast-ip4",	\
     [FIB_FORW_CHAIN_TYPE_UNICAST_IP6]   = "unicast-ip6",	\
     [FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS]  = "mpls-neos",	        \
@@ -136,7 +154,7 @@ typedef enum fib_forward_chain_type_t_ {
 #define FIB_FORW_CHAIN_NUM (FIB_FORW_CHAIN_TYPE_MPLS_EOS+1)
 
 #define FOR_EACH_FIB_FORW_CHAIN(_item)			  \
-    for (_item = FIB_FORW_CHAIN_TYPE_UNICAST_IP4;	  \
+    for (_item = FIB_FORW_CHAIN_TYPE_ETHERNET;   	  \
 	 _item <= FIB_FORW_CHAIN_TYPE_MPLS_EOS;		  \
 	 _item++)
 
@@ -148,7 +166,7 @@ extern fib_link_t fib_forw_chain_type_to_link_type(fib_forward_chain_type_t fct)
 /**
  * @brief Convert from a payload-protocol to a chain type.
  */
-extern fib_forward_chain_type_t fib_proto_to_forw_chain_type(fib_protocol_t proto);
+extern fib_forward_chain_type_t fib_forw_chain_type_from_dpo_proto(dpo_proto_t proto);
 
 /**
  * @brief Convert from a chain type to the DPO proto it will install
@@ -222,6 +240,7 @@ extern u8 * format_fib_prefix(u8 * s, va_list * args);
 extern u8 * format_fib_forw_chain_type(u8 * s, va_list * args);
 
 extern dpo_proto_t fib_proto_to_dpo(fib_protocol_t fib_proto);
+extern dpo_proto_t fib_link_to_dpo_proto(fib_link_t linkt);
 extern fib_protocol_t dpo_proto_to_fib(dpo_proto_t dpo_proto);
 
 /**

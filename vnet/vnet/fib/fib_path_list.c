@@ -353,13 +353,26 @@ fib_path_list_last_lock_gone (fib_node_t *node)
  */
 static void
 fib_path_list_mk_lb (fib_path_list_t *path_list,
-		     fib_forward_chain_type_t type,
+		     fib_forward_chain_type_t fct,
 		     dpo_id_t *dpo)
 {
     load_balance_path_t *hash_key;
     fib_node_index_t *path_index;
 
     hash_key  = NULL;
+
+    if (!dpo_id_is_valid(dpo))
+    {
+        /*
+         * first time create
+         */
+        dpo_set(dpo,
+                DPO_LOAD_BALANCE,
+                fib_forw_chain_type_to_dpo_proto(fct),
+                load_balance_create(0,
+				    fib_forw_chain_type_to_dpo_proto(fct),
+				    0 /* FIXME FLOW HASH */));
+    }
 
     /*
      * We gather the DPOs from resolved paths.
@@ -368,7 +381,7 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
     {
 	hash_key = fib_path_append_nh_for_multipath_hash(
 	               *path_index,
-		       type,
+		       fct,
 		       hash_key);
     }
 

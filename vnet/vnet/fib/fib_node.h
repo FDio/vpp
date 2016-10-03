@@ -35,7 +35,7 @@ typedef enum fib_node_type_t_ {
     FIB_NODE_TYPE_PATH,
     FIB_NODE_TYPE_ADJ,
     FIB_NODE_TYPE_MPLS_ENTRY,
-    FIB_NODE_TYPE_LISP_GPE_TUNNEL,
+    FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY,
     FIB_NODE_TYPE_LISP_ADJ,
     FIB_NODE_TYPE_MPLS_GRE_TUNNEL,
     FIB_NODE_TYPE_GRE_TUNNEL,
@@ -55,7 +55,7 @@ typedef enum fib_node_type_t_ {
     [FIB_NODE_TYPE_PATH]      = "path",           \
     [FIB_NODE_TYPE_MPLS_ENTRY] = "mpls-entry",    \
     [FIB_NODE_TYPE_ADJ] = "adj",                  \
-    [FIB_NODE_TYPE_LISP_GPE_TUNNEL] = "lisp-gpe-tunnel", \
+    [FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY] = "lisp-gpe-fwd-entry", \
     [FIB_NODE_TYPE_LISP_ADJ] = "lisp-adj", \
     [FIB_NODE_TYPE_MPLS_GRE_TUNNEL] = "mpls-gre-tunnel", \
     [FIB_NODE_TYPE_GRE_TUNNEL] = "gre-tunnel", \

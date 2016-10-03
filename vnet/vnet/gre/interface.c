@@ -107,12 +107,12 @@ gre_tunnel_from_fib_node (fib_node_t *node)
                              STRUCT_OFFSET_OF(gre_tunnel_t, node)));
 }
 
-/*
+/**
  * gre_tunnel_stack
  *
  * 'stack' (resolve the recursion for) the tunnel's midchain adjacency
  */
-static void
+void
 gre_tunnel_stack (gre_tunnel_t *gt)
 {
     fib_link_t linkt;
@@ -126,9 +126,18 @@ gre_tunnel_stack (gre_tunnel_t *gt)
     {
         if (ADJ_INDEX_INVALID != gt->adj_index[linkt])
         {
-            adj_nbr_midchain_stack(
-                gt->adj_index[linkt],
-                fib_entry_contribute_ip_forwarding(gt->fib_entry_index));
+	    if (vnet_hw_interface_get_flags(vnet_get_main(),
+					    gt->hw_if_index) &
+		VNET_HW_INTERFACE_FLAG_LINK_UP)
+	    {
+		adj_nbr_midchain_stack(
+		    gt->adj_index[linkt],
+		    fib_entry_contribute_ip_forwarding(gt->fib_entry_index));
+	    }
+	    else
+	    {
+		adj_nbr_midchain_unstack(gt->adj_index[linkt]);
+	    }
         }
     }
 }
@@ -194,6 +203,8 @@ gre_proto_from_fib_link (fib_link_t link)
         return (GRE_PROTOCOL_ip6);
     case FIB_LINK_MPLS:
         return (GRE_PROTOCOL_mpls_unicast);
+    case FIB_LINK_ETHERNET:
+        return (GRE_PROTOCOL_teb);
     }
     ASSERT(0);
     return (GRE_PROTOCOL_ip4);
@@ -210,14 +221,7 @@ gre_rewrite (gre_tunnel_t * t,
 
   h0 = (ip4_and_gre_header_t *) rewrite_data;
 
-  if (t->teb)
-  {
-      h0->gre.protocol = clib_net_to_host_u16(GRE_PROTOCOL_teb);
-  }
-  else
-  {
-      h0->gre.protocol = clib_host_to_net_u16(gre_proto_from_fib_link(link));
-  }
+  h0->gre.protocol = clib_host_to_net_u16(gre_proto_from_fib_link(link));
 
   h0->ip4.ip_version_and_header_length = 0x45;
   h0->ip4.ttl = 254;
@@ -228,6 +232,21 @@ gre_rewrite (gre_tunnel_t * t,
   h0->ip4.checksum = ip4_header_checksum (&h0->ip4);
 
   return (rewrite_data);
+}
+
+static void
+gre_fixup (vlib_main_t *vm,
+	   ip_adjacency_t *adj,
+	   vlib_buffer_t *b0)
+{
+    ip4_header_t * ip0;
+
+    ip0 = vlib_buffer_get_current (b0);
+
+    /* Fixup the checksum and len fields in the GRE tunnel encap
+     * that was applied at the midchain node */
+    ip0->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+    ip0->checksum = ip4_header_checksum (ip0);
 }
 
 static int 
@@ -259,6 +278,10 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
   pool_get_aligned (gm->tunnels, t, CLIB_CACHE_LINE_BYTES);
   memset (t, 0, sizeof (*t));
   fib_node_init(&t->node, FIB_NODE_TYPE_GRE_TUNNEL);
+  FOR_EACH_FIB_LINK(linkt)
+  {
+      t->adj_index[linkt] = ADJ_INDEX_INVALID;
+  }
 
   if (vec_len (gm->free_gre_tunnel_hw_if_indices) > 0) {
       vnet_interface_main_t * im = &vnm->interface_main;
@@ -281,6 +304,12 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
       vlib_zero_simple_counter
           (&im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP], sw_if_index);
         vnet_interface_counter_unlock(im);
+      if (a->teb)
+      {
+	t->l2_tx_arc = vlib_node_add_named_next(vlib_get_main(),
+						hi->tx_node_index,
+						"adj-l2-midchain");
+      }
     } else {
       if (a->teb)
       {
@@ -294,7 +323,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
 
         error = ethernet_register_interface
           (vnm,
-           gre_device_class.index, t - gm->tunnels, address, &hw_if_index,
+           gre_l2_device_class.index, t - gm->tunnels, address, &hw_if_index,
            0);
 
         if (error)
@@ -302,6 +331,11 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
           clib_error_report (error);
           return VNET_API_ERROR_INVALID_REGISTRATION;
         }
+	hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+	t->l2_tx_arc = vlib_node_add_named_next(vlib_get_main(),
+						hi->tx_node_index,
+						"adj-l2-midchain");
       } else {
 	hw_if_index = vnet_register_interface
 	    (vnm, gre_device_class.index, t - gm->tunnels,
@@ -315,6 +349,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
   t->hw_if_index = hw_if_index;
   t->outer_fib_index = outer_fib_index;
   t->sw_if_index = sw_if_index;
+  t->teb = a->teb;
 
   vec_validate_init_empty (gm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
   gm->tunnel_index_by_sw_if_index[sw_if_index] = t - gm->tunnels;
@@ -365,22 +400,40 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
    * We could be smarter here and trigger this on an interface proto enable,
    * like we do for MPLS.
    */
-  for (linkt = FIB_LINK_IP4; linkt <= FIB_LINK_IP6; linkt++)
+  if (t->teb)
   {
-      t->adj_index[linkt] = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-                                                linkt,
-                                                &zero_addr,
-                                                sw_if_index);
+      t->adj_index[FIB_LINK_ETHERNET] = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+							    FIB_LINK_ETHERNET,
+							    &zero_addr,
+							    sw_if_index);
 
-      rewrite = gre_rewrite(t, linkt);
-      adj_nbr_midchain_update_rewrite(t->adj_index[linkt],
-                                      hi->tx_node_index,
-                                      rewrite);
+      rewrite = gre_rewrite(t, FIB_LINK_ETHERNET);
+      adj_nbr_midchain_update_rewrite(t->adj_index[FIB_LINK_ETHERNET],
+				      gre_fixup,
+				      ADJ_MIDCHAIN_FLAG_NO_COUNT,
+				      rewrite);
       vec_free(rewrite);
   }
+  else
+  {
+      FOR_EACH_FIB_IP_LINK (linkt)
+      {
+	  t->adj_index[linkt] = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+						    linkt,
+						    &zero_addr,
+						    sw_if_index);
+
+	  rewrite = gre_rewrite(t, linkt);
+	  adj_nbr_midchain_update_rewrite(t->adj_index[linkt],
+					  gre_fixup,
+					  ADJ_MIDCHAIN_FLAG_NONE,
+					  rewrite);
+	  vec_free(rewrite);
+      }
+  }
+
   t->adj_index[FIB_LINK_MPLS] = ADJ_INDEX_INVALID;
 
-  t->teb = a->teb;
   clib_memcpy (&t->tunnel_src, &a->src, sizeof (t->tunnel_src));
   clib_memcpy (&t->tunnel_dst, &a->dst, sizeof (t->tunnel_dst));
   gre_tunnel_stack(t);
@@ -449,7 +502,6 @@ gre_sw_interface_mpls_state_change (u32 sw_if_index,
                                     u32 is_enable)
 {
   gre_main_t *gm = &gre_main;
-  vnet_hw_interface_t * hi;
   gre_tunnel_t *t;
   u8 *rewrite;
 
@@ -462,7 +514,6 @@ gre_sw_interface_mpls_state_change (u32 sw_if_index,
 
   if (is_enable)
     {
-      hi = vnet_get_hw_interface (vnet_get_main(), t->hw_if_index);
       t->adj_index[FIB_LINK_MPLS] =
           adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
                               FIB_LINK_MPLS,
@@ -471,7 +522,8 @@ gre_sw_interface_mpls_state_change (u32 sw_if_index,
 
       rewrite = gre_rewrite(t, FIB_LINK_MPLS);
       adj_nbr_midchain_update_rewrite(t->adj_index[FIB_LINK_MPLS],
-                                      hi->tx_node_index,
+				      gre_fixup,
+				      ADJ_MIDCHAIN_FLAG_NONE,
                                       rewrite);
       vec_free(rewrite);
     }
