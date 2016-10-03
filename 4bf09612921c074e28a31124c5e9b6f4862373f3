@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_1142543e",
+        "filename": "vnet/vnet/ethernet/packet.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-10-03T14:54:06Z",
+      "side": 1,
+      "message": "Both of them are used in the code. As PBB was done like VLAN I used both of them.",
+      "parentUuid": "3a1d315d_684080a5",
+      "range": {
+        "startLine": 123,
+        "startChar": 2,
+        "endLine": 123,
+        "endChar": 23
+      },
+      "revId": "4bf09612921c074e28a31124c5e9b6f4862373f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_a85b3886",
         "filename": "vnet/vnet/l2/l2_output.c",
         "patchSetId": 7
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_f13c78c1",
+        "filename": "vnet/vnet/l2/l2_output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-10-03T14:54:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a1d315d_a85b3886",
+      "range": {
+        "startLine": 263,
+        "startChar": 7,
+        "endLine": 263,
+        "endChar": 20
+      },
+      "revId": "4bf09612921c074e28a31124c5e9b6f4862373f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_885e3c75",
         "filename": "vnet/vnet/l2/l2_vtr.c",
         "patchSetId": 7
@@ -59,6 +107,30 @@
       "writtenOn": "2016-09-30T21:38:47Z",
       "side": 1,
       "message": "Is the operation required really translate_2_2 or translate_qinq? I thought the inner packet may already have a C-VLAN tag (or not?) and we are always translating PBB header to a 802.1ad making the packet a qinq one with existing C-VLAN. So the operation is really translate_2_1 but anyway, these are just names which should be made more understandable. May be a better name would be translate_pbb_svlan or translate_pbb_stag? If my understanding is incorrect and the inner packet has no VLAN tag so we are really doing inner C-tag as well, then this would be fine (may be should name this as translate_pbb_qinq). Otherwise, it is a 2_1 translate and all the relevant API should be changed as well.",
+      "range": {
+        "startLine": 714,
+        "startChar": 10,
+        "endLine": 714,
+        "endChar": 30
+      },
+      "revId": "4bf09612921c074e28a31124c5e9b6f4862373f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_b146004e",
+        "filename": "vnet/vnet/l2/l2_vtr.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 714,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-10-03T14:54:06Z",
+      "side": 1,
+      "message": "Done - I used \"translate_pbb_stag\" and L2_VTR_TRANSLATE_2_1",
+      "parentUuid": "3a1d315d_885e3c75",
       "range": {
         "startLine": 714,
         "startChar": 10,
