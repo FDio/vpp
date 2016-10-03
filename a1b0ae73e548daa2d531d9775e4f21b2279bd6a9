@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_4eacada0",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2405,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-03T16:19:26Z",
+      "side": 1,
+      "message": "S",
+      "range": {
+        "startLine": 2405,
+        "startChar": 17,
+        "endLine": 2405,
+        "endChar": 19
+      },
+      "revId": "a1b0ae73e548daa2d531d9775e4f21b2279bd6a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
