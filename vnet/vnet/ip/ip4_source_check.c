@@ -39,10 +39,12 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/fib_urpf_list.h>
 #include <vnet/dpo/load_balance.h>
 
 typedef struct {
   u8 packet_data[64];
+    index_t urpf;
 } ip4_source_check_trace_t;
 
 static u8 * format_ip4_source_check_trace (u8 * s, va_list * va)
@@ -69,11 +71,7 @@ typedef enum {
 } ip4_source_check_type_t;
 
 typedef union {
-  struct {
-    u32 no_default_route : 1;
-    u32 fib_index : 31;
-  };
-  u32 as_u32[1];
+  u32 fib_index;
 } ip4_source_check_config_t;
 
 always_inline uword
@@ -115,9 +113,6 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  const load_balance_t * lb0, * lb1;
 	  u32 pi0, next0, pass0, lb_index0;
 	  u32 pi1, next1, pass1, lb_index1;
-          const ip_adjacency_t *adj0, *adj1;
-          const dpo_id_t *dpo0, *dpo1;
-          u32 ii0, ii1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -182,61 +177,18 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  pass0 = ip4_address_is_multicast (&ip0->src_address) || ip0->src_address.as_u32 == clib_host_to_net_u32(0xFFFFFFFF);
 	  pass1 = ip4_address_is_multicast (&ip1->src_address) || ip1->src_address.as_u32 == clib_host_to_net_u32(0xFFFFFFFF);
 
-          if (PREDICT_TRUE(1 == lb0->lb_n_buckets))
-          {
-              dpo0 = load_balance_get_bucket_i(lb0, 0);
-              if (PREDICT_TRUE(dpo0->dpoi_type == DPO_ADJACENCY))
-              {
-                  pass0 |= (source_check_type ==
-                            IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
-                  adj0 = adj_get(dpo0->dpoi_index);
-                  pass0 |= (vnet_buffer (p0)->sw_if_index[VLIB_RX] ==
-                            adj0->rewrite_header.sw_if_index);
-              }
-          }
-          else
-          {
-              for (ii0 = 0; ii0 < lb0->lb_n_buckets && !pass0; ii0++)
-              {
-                  dpo0 = load_balance_get_bucket_i(lb0, ii0);
-                  if (PREDICT_TRUE(dpo0->dpoi_type == DPO_ADJACENCY))
-                  {
-                      pass0 |= (source_check_type ==
-                                IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
-                      adj0 = adj_get(dpo0->dpoi_index);
-                      pass0 |= (vnet_buffer (p0)->sw_if_index[VLIB_RX] ==
-                                adj0->rewrite_header.sw_if_index);
-                  }
-              }
-          }
-          if (PREDICT_TRUE(1 == lb1->lb_n_buckets))
-          {
-              dpo1 = load_balance_get_bucket_i(lb1, 0);
-              if (PREDICT_TRUE(dpo1->dpoi_type == DPO_ADJACENCY))
-              {
-                  pass1 |= (source_check_type ==
-                            IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
-                  adj1 = adj_get(dpo1->dpoi_index);
-                  pass1 |= (vnet_buffer (p1)->sw_if_index[VLIB_RX] ==
-                            adj1->rewrite_header.sw_if_index);
-              }
-          }
-          else
-          {
-              for (ii1 = 0; ii1 < lb1->lb_n_buckets && !pass1; ii1++)
-              {
-                  dpo1 = load_balance_get_bucket_i(lb1, ii1);
-                 if (PREDICT_TRUE(dpo1->dpoi_type == DPO_ADJACENCY))
-                  {
-                      pass1 |= (source_check_type ==
-                                IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
-                      adj1 = adj_get(dpo1->dpoi_index);
-                      pass1 |= (vnet_buffer (p1)->sw_if_index[VLIB_RX] ==
-                                adj1->rewrite_header.sw_if_index);
-                  }
-              }
-          }
-
+	  if (IP4_SOURCE_CHECK_REACHABLE_VIA_RX == source_check_type)
+	  {
+	      pass0 |= fib_urpf_check(lb0->lb_urpf,
+				      vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	      pass1 |= fib_urpf_check(lb1->lb_urpf,
+				      vnet_buffer (p1)->sw_if_index[VLIB_RX]);
+	  }
+	  else
+	  {
+	      pass0 |= fib_urpf_check_size(lb0->lb_urpf);
+	      pass1 |= fib_urpf_check_size(lb1->lb_urpf);
+	  }
 	  next0 = (pass0 ? next0 : IP4_SOURCE_CHECK_NEXT_DROP);
 	  next1 = (pass1 ? next1 : IP4_SOURCE_CHECK_NEXT_DROP);
 
@@ -255,11 +207,8 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  ip4_fib_mtrie_t * mtrie0;
 	  ip4_fib_mtrie_leaf_t leaf0;
 	  ip4_source_check_config_t * c0;
-	  ip_adjacency_t * adj0;
 	  u32 pi0, next0, pass0, lb_index0;
  	  const load_balance_t * lb0;
-          const dpo_id_t *dpo0;
-          u32 ii0;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -295,33 +244,15 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  /* Pass multicast. */
 	  pass0 = ip4_address_is_multicast (&ip0->src_address) || ip0->src_address.as_u32 == clib_host_to_net_u32(0xFFFFFFFF);
 
-          if (PREDICT_TRUE(1 == lb0->lb_n_buckets))
-          {
-              dpo0 = load_balance_get_bucket_i(lb0, 0);
-              if (PREDICT_TRUE(dpo0->dpoi_type == DPO_ADJACENCY))
-              {
-                  pass0 |= (source_check_type ==
-                            IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
-                  adj0 = adj_get(dpo0->dpoi_index);
-                  pass0 |= (vnet_buffer (p0)->sw_if_index[VLIB_RX] ==
-                            adj0->rewrite_header.sw_if_index);
-              }
-          }
-          else
-          {
-              for (ii0 = 0; ii0 < lb0->lb_n_buckets && !pass0; ii0++)
-              {
-                  dpo0 = load_balance_get_bucket_i(lb0, ii0);
-                  if (PREDICT_TRUE(dpo0->dpoi_type == DPO_ADJACENCY))
-                  {
-                      pass0 |= (source_check_type ==
-                                IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
-                      adj0 = adj_get(dpo0->dpoi_index);
-                      pass0 |= (vnet_buffer (p0)->sw_if_index[VLIB_RX] ==
-                                adj0->rewrite_header.sw_if_index);
-                  }
-              }
-          }
+	  if (IP4_SOURCE_CHECK_REACHABLE_VIA_RX == source_check_type)
+	  {
+	      pass0 |= fib_urpf_check(lb0->lb_urpf,
+				      vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	  }
+	  else
+	  {
+	      pass0 |= fib_urpf_check_size(lb0->lb_urpf);
+	  }
 
 	  next0 = (pass0 ? next0 : IP4_SOURCE_CHECK_NEXT_DROP);
 	  p0->error = error_node->errors[IP4_ERROR_UNICAST_SOURCE_CHECK_FAILS];
@@ -392,6 +323,7 @@ set_ip_source_check (vlib_main_t * vm,
 		     unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, * line_input = &_line_input;
   vnet_main_t * vnm = vnet_get_main();
   ip4_main_t * im = &ip4_main;
   ip_lookup_main_t * lm = &im->lookup_main;
@@ -402,21 +334,37 @@ set_ip_source_check (vlib_main_t * vm,
   u32 feature_index;
 
   sw_if_index = ~0;
+  is_del = 0;
+  feature_index = im->ip4_unicast_rx_feature_source_reachable_via_rx;
 
-  if (! unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat_user (line_input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+	  ;
+      else if (unformat (line_input, "del"))
+        is_del = 1;
+      else if (unformat (line_input, "strict"))
+	feature_index = im->ip4_unicast_rx_feature_source_reachable_via_rx;
+      else if (unformat (line_input, "loose"))
+        feature_index = im->ip4_unicast_rx_feature_source_reachable_via_any;
+      else
+        {
+	  error = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+
+  if (~0 == sw_if_index)
     {
       error = clib_error_return (0, "unknown interface `%U'",
-				 format_unformat_error, input);
+				 format_unformat_error, line_input);
       goto done;
     }
 
-  is_del = 0;
-  config.no_default_route = 0;
   config.fib_index = im->fib_index_by_sw_if_index[sw_if_index];
-  feature_index = im->ip4_unicast_rx_feature_source_reachable_via_rx;
-  if (unformat (input, "del"))
-    is_del = 1;
-
   ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
   ci = (is_del
 	? vnet_config_del_feature
@@ -432,11 +380,121 @@ set_ip_source_check (vlib_main_t * vm,
   return error;
 }
 
+/* *INDENT-OFF* */
+/*?
+ * Add the unicast RPF check feature to an input interface
+ *
+ * @cliexpar
+ * @cliexstart{set interface ip source-check}
+ * Two flavours are supported;
+ *  loose: accept ingress packet if there is a route to reach the source
+ *  strict: accept ingress packet if it arrived on an interface which
+ *          the route to the source uses. i.e. an interface that the source
+ *          is reachable via.
+ * the deafult is strict.
+ *
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (set_interface_ip_source_check_command, static) = {
   .path = "set interface ip source-check",
   .function = set_ip_source_check,
   .short_help = "Set IP4/IP6 interface unicast source check",
 };
+/* *INDENT-ON* */
+
+static clib_error_t *
+ip_source_check_accept (vlib_main_t * vm,
+			unformat_input_t * input,
+			vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, * line_input = &_line_input;
+  fib_prefix_t pfx = {
+      .fp_proto = FIB_PROTOCOL_IP4,
+  };
+  clib_error_t * error = NULL;
+  u32 table_id, is_add, fib_index;
+
+  is_add = 1;
+  table_id = ~0;
+
+  /* Get a line of input. */
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "table %d", &table_id))
+	;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "add"))
+	is_add = 1;
+      else if (unformat (line_input, "%U/%d",
+			 unformat_ip4_address,
+			 &pfx.fp_addr.ip4,
+			 &pfx.fp_len))
+	  pfx.fp_proto = FIB_PROTOCOL_IP4;
+      else
+      {
+	  error = unformat_parse_error (line_input);
+	  goto done;
+      }
+    }
+
+  if (~0 != table_id)
+    {
+      fib_index = fib_table_id_find_fib_index(pfx.fp_proto, table_id);
+      if (~0 == fib_index)
+        {
+	  error = clib_error_return (0,
+				     "Nonexistent table id %d",
+				     table_id);
+	  goto done;
+	}
+    }
+  else
+    {
+      fib_index = 0;
+    }
+
+  if (is_add)
+    {
+      fib_table_entry_special_add(fib_index,
+				  &pfx,
+				  FIB_SOURCE_URPF_EXEMPT,
+				  FIB_ENTRY_FLAG_DROP,
+				  ADJ_INDEX_INVALID);
+    }
+  else
+  {
+      fib_table_entry_special_remove(fib_index,
+				     &pfx,
+				     FIB_SOURCE_URPF_EXEMPT);
+  }
+
+done:
+  return (error);
+}
+
+/* *INDENT-OFF* */
+/*?
+ * Add an exemption for a prefix to pass the uRPF loose check. Testing purposes only.
+ *
+ * @cliexpar
+ * @cliexstart{ip rpf-accept}
+ *
+ * Add an exception for a prefix to pass the loose RPF tests. This is usefull
+ * for testing purposes.
+ * VPP always performs a loose uRPF check for for-us traffic.
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (ip_source_check_accept_command, static) = {
+  .path = "ip urpf-accept",
+  .function = ip_source_check_accept,
+  .short_help = "Add a loose uRPF check exemption",
+};
+/* *INDENT-ON* */
+
 
 /* Dummy init function to get us linked in. */
 clib_error_t * ip4_source_check_init (vlib_main_t * vm)

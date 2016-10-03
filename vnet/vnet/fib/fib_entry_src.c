@@ -18,9 +18,10 @@
 #include <vnet/dpo/mpls_label_dpo.h>
 #include <vnet/dpo/drop_dpo.h>
 
-#include "fib_entry_src.h"
-#include "fib_table.h"
-#include "fib_path_ext.h"
+#include <vnet/fib/fib_entry_src.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_path_ext.h>
+#include <vnet/fib/fib_urpf_list.h>
 
 /*
  * per-source type vft
@@ -368,6 +369,33 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
     load_balance_multipath_update(dpo_lb,
                                   ctx.next_hops,
                                   fib_entry_calc_lb_flags(&ctx));
+
+    /*
+     * if this entry is sourced by the uRPF-exempt source then we
+     * append the always present local0 interface (index 0) to the
+     * uRPF list so it is not empty. that way packets pass the loose check.
+     */
+    index_t ui = fib_path_list_get_urpf(esrc->fes_pl);
+
+    if (fib_entry_is_sourced(fib_entry_get_index(fib_entry),
+			     FIB_SOURCE_URPF_EXEMPT) &&
+	(0 == fib_urpf_check_size(ui)))
+    {
+	/*
+	 * The uRPF list we get from the path-list is shared by all
+	 * other users of the list, but the uRPF exemption applies
+	 * only to this prefix. So we need our own list.
+	 */
+	ui = fib_urpf_list_alloc_and_lock();
+	fib_urpf_list_append(ui, 0);
+	fib_urpf_list_bake(ui);
+	load_balance_set_urpf(dpo_lb->dpoi_index, ui);
+	fib_urpf_list_unlock(ui);
+    }
+    else
+    {
+	load_balance_set_urpf(dpo_lb->dpoi_index, ui);
+    }
 }
 
 void
@@ -425,17 +453,13 @@ fib_entry_src_action_uninstall (fib_entry_t *fib_entry)
 
     fct = fib_entry_get_default_chain_type(fib_entry);
     /*
-     * uninstall the forwarding chain for the given source from the
-     * forwarding tables
+     * uninstall the forwarding chain from the forwarding tables
      */
     FIB_ENTRY_DBG(fib_entry, "uninstall: %d",
 		  fib_entry->fe_adj_index);
 
     if (dpo_id_is_valid(&fib_entry->fe_lb[fct]))
     {
-	/* fib_forward_chain_type_t fct; */
-	/* fib_path_ext_t *path_ext; */
-
 	fib_table_fwding_dpo_remove(
 	    fib_entry->fe_fib_index,
 	    &fib_entry->fe_prefix,

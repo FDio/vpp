@@ -1,0 +1,86 @@
+
+create loop int
+
+set int state loop0 up
+set int ip addr loop0 10.10.10.10/24
+
+packet-generator new {
+  name transit-deny
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    UDP: 1.2.3.4 -> 2.2.2.2
+    UDP: 3000 -> 3001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+packet-generator new {
+  name transit-allow
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    UDP: 1.1.1.1 -> 2.2.2.2
+    UDP: 3000 -> 3001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+packet-generator new {
+  name transit-allow-from-excemption
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    UDP: 11.11.12.13 -> 2.2.2.2
+    UDP: 6000 -> 6001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+packet-generator new {
+  name for-us-allow-from-excemption
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    UDP: 11.11.12.13 -> 10.10.10.10
+    UDP: 6000 -> 6001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+packet-generator new {
+  name for-us-allow
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    UDP: 1.1.1.1 -> 10.10.10.10
+    UDP: 3000 -> 3001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+tr add pg-input 100
+
+set int ip addr pg0 10.10.11.10/24
+
+set interface ip source-check pg0 strict
+
+ip route add 1.1.1.1/32 via 10.10.11.11 pg0
+ip route add 2.2.2.2/32 via 10.10.10.11 loop0
+
+ip urpf-accept 11.11.0.0/16
+
+#set interface ip source-check pg0 strict del
+#set interface ip source-check pg0 loose
+
+#ip urpf-accept del 11.11.0.0/16

@@ -244,4 +244,5 @@ void
 fib_entry_src_rr_register (void)
 {
     fib_entry_src_register(FIB_SOURCE_RR, &rr_src_vft);    
+    fib_entry_src_register(FIB_SOURCE_URPF_EXEMPT, &rr_src_vft);    
 }

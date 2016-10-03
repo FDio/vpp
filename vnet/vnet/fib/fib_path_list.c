@@ -23,6 +23,7 @@
 #include <vnet/fib/fib_internal.h>
 #include <vnet/fib/fib_node_list.h>
 #include <vnet/fib/fib_walk.h>
+#include <vnet/fib/fib_urpf_list.h>
 
 /**
  * FIB path-list
@@ -47,10 +48,15 @@ typedef struct fib_path_list_t_ {
     fib_protocol_t fpl_nh_proto;
 
     /**
-     * Vector of paths indecies for all configured paths.
+     * Vector of paths indicies for all configured paths.
      * For shareable path-lists this list MUST not change.
      */
     fib_node_index_t *fpl_paths;
+
+    /**
+     * the RPF list calculated for this path list
+     */
+    fib_node_index_t fpl_urpf;
 } fib_path_list_t;
 
 /*
@@ -138,6 +144,8 @@ format_fib_path_list (u8 * s, va_list * args)
 	    }
 	}
     }
+    s = format (s, " %U\n", format_fib_urpf_list, path_list->fpl_urpf);
+
     vec_foreach (path_index, path_list->fpl_paths)
     {
 	s = fib_path_format(*path_index, s);
@@ -321,9 +329,10 @@ fib_path_list_destroy (fib_path_list_t *path_list)
     vec_foreach (path_index, path_list->fpl_paths)
     {
 	fib_path_destroy(*path_index);
-    }    
+    }
 
     vec_free(path_list->fpl_paths);
+    fib_urpf_list_unlock(path_list->fpl_urpf);
 
     fib_node_deinit(&path_list->fpl_node);
     pool_put(fib_path_list_pool, path_list);
@@ -396,6 +405,60 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
     vec_free(hash_key);
 }
 
+/**
+ * @brief [re]build the path list's uRPF list
+ */
+static void
+fib_path_list_mk_urpf (fib_path_list_t *path_list)
+{
+    fib_node_index_t *path_index;
+
+    /*
+     * ditch the old one. by iterating through all paths we are going
+     * to re-find all the adjs that were in the old one anyway. If we
+     * keep the old one, then the |sort|uniq requires more work.
+     * All users of the RPF list have their own lock, so we can release
+     * immediately.
+     */
+    fib_urpf_list_unlock(path_list->fpl_urpf);
+    path_list->fpl_urpf = fib_urpf_list_alloc_and_lock();
+
+    vec_foreach (path_index, path_list->fpl_paths)
+    {
+	fib_path_contribute_urpf(*path_index, path_list->fpl_urpf);
+    }
+
+    fib_urpf_list_bake(path_list->fpl_urpf);
+}
+
+/**
+ * @brief Contribute (add) this path list's uRPF list. This allows the child
+ * to construct an aggregate list.
+ */
+void
+fib_path_list_contribute_urpf (fib_node_index_t path_list_index,
+			       index_t urpf)
+{
+    fib_path_list_t *path_list;
+
+    path_list = fib_path_list_get(path_list_index);
+
+    fib_urpf_list_combine(urpf, path_list->fpl_urpf);
+}
+
+/**
+ * @brief Return the the child the RPF list pre-built for this path list
+ */
+index_t
+fib_path_list_get_urpf (fib_node_index_t path_list_index)
+{
+    fib_path_list_t *path_list;
+
+    path_list = fib_path_list_get(path_list_index);
+
+    return (path_list->fpl_urpf);
+}
+
 /*
  * fib_path_list_back_walk
  *
@@ -409,6 +472,8 @@ fib_path_list_back_walk (fib_node_index_t path_list_index,
     fib_path_list_t *path_list;
 
     path_list = fib_path_list_get(path_list_index);
+
+    fib_path_list_mk_urpf(path_list);
 
     /*
      * propagate the backwalk further
@@ -461,6 +526,7 @@ fib_path_list_memory_show (void)
 			  pool_elts(fib_path_list_pool),
 			  pool_len(fib_path_list_pool),
 			  sizeof(fib_path_list_t));
+    fib_urpf_list_show_mem();
 }
 
 /*
@@ -483,6 +549,7 @@ fib_path_list_alloc (fib_node_index_t *path_list_index)
 
     fib_node_init(&path_list->fpl_node,
 		  FIB_NODE_TYPE_PATH_LIST);
+    path_list->fpl_urpf = INDEX_INVALID;
 
     if (NULL != path_list_index)
     {
@@ -519,6 +586,7 @@ fib_path_list_resolve (fib_path_list_t *path_list)
     path_list = fib_path_list_get(path_list_index);
 
     FIB_PATH_LIST_DBG(path_list, "resovled");
+    fib_path_list_mk_urpf(path_list);
 
     return (path_list);
 }

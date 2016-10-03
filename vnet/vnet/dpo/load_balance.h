@@ -112,6 +112,11 @@ typedef struct load_balance_t_ {
     index_t lb_map;
 
     /**
+     * This is the index of the uRPF list for this LB
+     */
+    index_t lb_urpf;
+
+    /**
      * the hash config to use when selecting a bucket. this is a u16
      */
     flow_hash_config_t lb_hash_config;
@@ -160,6 +165,9 @@ extern void load_balance_multipath_update(
 extern void load_balance_set_bucket(index_t lbi,
 				    u32 bucket,
 				    const dpo_id_t *next);
+extern void load_balance_set_urpf(index_t lbi,
+				  index_t urpf);
+extern index_t load_balance_get_urpf(index_t lbi);
 
 extern u8* format_load_balance(u8 * s, va_list * args);
 

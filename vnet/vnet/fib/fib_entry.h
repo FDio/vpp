@@ -99,9 +99,14 @@ typedef enum fib_source_t_ {
     FIB_SOURCE_AE,
     /**
      * Recursive resolution source.
-     * Used to install an entry that is thre resolution traget of another.
+     * Used to install an entry that is the resolution traget of another.
      */
     FIB_SOURCE_RR,
+    /**
+     * uRPF bypass/exemption.
+     * Used to install an entry that is exempt from the loose uRPF check
+     */
+    FIB_SOURCE_URPF_EXEMPT,
     /**
      * The default route source.
      * The default route is always added to the FIB table (like the
@@ -138,6 +143,7 @@ _Static_assert (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_RR] = "recursive-resolution",	        \
     [FIB_SOURCE_AE] = "attached_export",	        \
     [FIB_SOURCE_MPLS] = "mpls",           	        \
+    [FIB_SOURCE_URPF_EXEMPT] = "urpf-exempt",	        \
     [FIB_SOURCE_DEFAULT_ROUTE] = "default-route",	\
 }
 
@@ -376,7 +382,7 @@ typedef struct fib_entry_t_ {
      *     paint the header straight on without the need to check the packet
      *     type to derive the EOS bit value.
      */
-    dpo_id_t fe_lb[FIB_FORW_CHAIN_NUM];
+    dpo_id_t fe_lb[FIB_FORW_CHAIN_MPLS_NUM];
     /**
      * Vector of source infos.
      * Most entries will only have 1 source. So we optimise for memory usage,
@@ -449,6 +455,8 @@ extern fib_entry_src_flag_t fib_entry_path_remove(fib_node_index_t fib_entry_ind
 extern fib_entry_src_flag_t fib_entry_delete(fib_node_index_t fib_entry_index,
 					     fib_source_t source);
 
+extern void fib_entry_contribute_urpf(fib_node_index_t path_index,
+				      index_t urpf);
 extern void fib_entry_contribute_forwarding(
     fib_node_index_t fib_entry_index,
     fib_forward_chain_type_t type,
