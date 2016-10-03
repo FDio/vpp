@@ -1493,8 +1493,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 	}
       buffer_len = desc_table[desc_index].len;
 
-      CLIB_PREFETCH (buffer_addr,
-		     clib_min (buffer_len, 2 * CLIB_CACHE_LINE_BYTES), STORE);
+      CLIB_PREFETCH (buffer_addr, CLIB_CACHE_LINE_BYTES, STORE);
 
       virtio_net_hdr_mrg_rxbuf_t *hdr =
 	(virtio_net_hdr_mrg_rxbuf_t *) buffer_addr;
@@ -1605,9 +1604,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 		      goto done;
 		    }
 		  buffer_len = desc_table[desc_index].len;
-		  CLIB_PREFETCH (buffer_addr,
-				 clib_min (buffer_len,
-					   2 * CLIB_CACHE_LINE_BYTES), STORE);
+		  CLIB_PREFETCH (buffer_addr, CLIB_CACHE_LINE_BYTES, STORE);
 		}
 	      else
 		{
