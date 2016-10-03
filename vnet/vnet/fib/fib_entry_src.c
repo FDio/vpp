@@ -298,6 +298,7 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
 	    }
             break;
         case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
+        case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	    ASSERT(0);
 	    break;
         }

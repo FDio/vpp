@@ -1564,7 +1564,8 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
     {
 	dpo_copy(dpo, &path->fp_dpo);
     }
-    else {
+    else
+    {
 	switch (path->fp_type)
 	{
 	case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
@@ -1574,6 +1575,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
 	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
+	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	    {
 		adj_index_t ai;
 
@@ -1606,6 +1608,9 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 		fib_path_recursive_adj_update(path, fct, dpo);
 		break;
+	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+		ASSERT(0);
+		break;
 	    }
 	    break;
 	case FIB_PATH_TYPE_DEAG:
@@ -1623,6 +1628,9 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 		dpo_copy(dpo, &path->fp_dpo);
 		break;		
+	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+		ASSERT(0);
+		break;
             }
             break;
 	case FIB_PATH_TYPE_EXCLUSIVE:
@@ -1656,7 +1664,7 @@ fib_path_append_nh_for_multipath_hash (fib_node_index_t path_index,
 
 	mnh->path_weight = path->fp_weight;
 	mnh->path_index = path_index;
-	dpo_copy(&mnh->path_dpo, &path->fp_dpo);
+	fib_path_contribute_forwarding(path_index, fct, &mnh->path_dpo);
     }
 
     return (hash_key);

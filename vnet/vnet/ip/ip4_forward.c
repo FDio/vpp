@@ -878,7 +878,10 @@ static char * rx_feature_start_nodes[] =
   { "ip4-input", "ip4-input-no-checksum"};
 
 static char * tx_feature_start_nodes[] = 
-{ "ip4-rewrite-transit"};
+{
+  "ip4-rewrite-transit",
+  "ip4-midchain",
+};
 
 /* Source and port-range check ip4 tx feature path definition */
 VNET_IP4_TX_FEATURE_INIT (ip4_source_and_port_range_check_tx, static) = {
@@ -926,8 +929,8 @@ ip4_feature_init (vlib_main_t * vm, ip4_main_t * im)
       if ((error = ip_feature_init_cast (vm, cm, vcm, 
                                          feature_start_nodes,
                                          feature_start_len,
-                                         cast,
-                                         VNET_L3_PACKET_TYPE_IP4)))
+					 im->next_feature[cast],
+					 &im->feature_nodes[cast])))
         return error;
     }
 
@@ -2093,7 +2096,8 @@ always_inline uword
 ip4_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * frame,
-		    int rewrite_for_locally_received_packets)
+		    int rewrite_for_locally_received_packets,
+		    int is_midchain)
 {
   ip_lookup_main_t * lm = &ip4_main.lookup_main;
   u32 * from = vlib_frame_vector_args (frame);
@@ -2318,6 +2322,12 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  vnet_rewrite_two_headers (adj0[0], adj1[0],
 				    ip0, ip1,
 				    sizeof (ethernet_header_t));
+
+	  if (is_midchain)
+	  {
+	      adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
+	      adj1->sub_type.midchain.fixup_func(vm, adj1, p1);
+	  }
       
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -2430,6 +2440,11 @@ ip4_rewrite_inline (vlib_main_t * vm,
               vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;
               next0 = adj0[0].rewrite_header.next_index;
 
+	      if (is_midchain)
+	        {
+		  adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
+		}
+
               if (PREDICT_FALSE 
                   (clib_bitmap_get (lm->tx_sw_if_has_ip_output_features, 
                                     tx_sw_if_index0)))
@@ -2505,7 +2520,7 @@ ip4_rewrite_transit (vlib_main_t * vm,
 		     vlib_frame_t * frame)
 {
   return ip4_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 0);
+			     /* rewrite_for_locally_received_packets */ 0, 0);
 }
 
 /** @brief IPv4 local rewrite node.
@@ -2547,7 +2562,7 @@ ip4_rewrite_local (vlib_main_t * vm,
 		   vlib_frame_t * frame)
 {
   return ip4_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 1);
+			     /* rewrite_for_locally_received_packets */ 1, 0);
 }
 
 static uword
@@ -2556,7 +2571,7 @@ ip4_midchain (vlib_main_t * vm,
 	      vlib_frame_t * frame)
 {
   return ip4_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 0);
+			     /* rewrite_for_locally_received_packets */ 0, 1);
 }
 
 VLIB_REGISTER_NODE (ip4_rewrite_node) = {
@@ -2583,11 +2598,7 @@ VLIB_REGISTER_NODE (ip4_midchain_node) = {
 
   .format_trace = format_ip4_forward_next_trace,
 
-  .n_next_nodes = 2,
-  .next_nodes = {
-    [IP4_REWRITE_NEXT_DROP] = "error-drop",
-    [IP4_REWRITE_NEXT_ARP] = "ip4-arp",
-  },
+  .sibling_of = "ip4-rewrite-transit",
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_midchain_node, ip4_midchain)

@@ -54,6 +54,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/fib/fib_node.h>
 #include <vnet/dpo/dpo.h>
+#include <vnet/ip/ip_feature_registration.h>
 
 /** @brief Common (IP4/IP6) next index stored in adjacency. */
 typedef enum {
@@ -155,11 +156,22 @@ _(reverse, IP_FLOW_HASH_REVERSE_SRC_DST)
  */
 typedef u32 flow_hash_config_t;
 
-#define IP_ADJACENCY_OPAQUE_SZ 16
+/**
+ * Forward delcartion
+ */
+struct ip_adjacency_t_;
+
+/**
+ * @brief A function type for post-rewrite fixups on midchain adjacency
+ */
+typedef void (*adj_midchain_fixup_t)(vlib_main_t * vm,
+				     struct ip_adjacency_t_ *adj,
+				     vlib_buffer_t * b0);
+
 /** @brief IP unicast adjacency.
     @note cache aligned.
 */
-typedef struct {
+typedef struct ip_adjacency_t_ {
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
   /* Handle for this adjacency in adjacency heap. */
   u32 heap_handle;
@@ -220,6 +232,11 @@ typedef struct {
 	     * The next DPO to use
 	     */
 	    dpo_id_t next_dpo;
+
+	    /**
+	     * A function to perform the post-rewrite fixup
+	     */
+	    adj_midchain_fixup_t fixup_func;
 	} midchain;
 	/**
 	 * IP_LOOKUP_NEXT_GLEAN
@@ -230,26 +247,18 @@ typedef struct {
 	    ip46_address_t receive_addr;
 	} glean;
     } sub_type;
-    u16 opaque[IP_ADJACENCY_OPAQUE_SZ];
   };
-
-  /** @brief Special format function for this adjacency.
-   * Specifically good for cases which use the entire rewrite
-   * for their own purposes. Can easily reduce to a u16 or a u8 if/when
-   * the first cache line reads "full" on the free space gas gauge.
-   */
-  u32 special_adjacency_format_function_index;  /* 0 is invalid */
 
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
 
   /* Rewrite in second/third cache lines */
   vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
 
-    /*
-     * member not accessed in the data plane are relgated to the
-     * remaining cachelines
-     */
-    fib_node_t ia_node;
+  /*
+   * member not accessed in the data plane are relgated to the
+   * remaining cachelines
+   */
+  fib_node_t ia_node;
 } ip_adjacency_t;
 
 _Static_assert((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline0) == 0),
@@ -260,32 +269,6 @@ _Static_assert((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline1) ==
 
 /* An all zeros address */
 extern const ip46_address_t zero_addr;
-
-/* Index into adjacency table. */
-typedef u32 ip_adjacency_index_t;
-
-typedef struct {
-  /* Adjacency index of first index in block. */
-  u32 adj_index;
-  
-  /* Power of 2 size of adjacency block. */
-  u32 n_adj_in_block;
-
-  /* Number of prefixes that point to this adjacency. */
-  u32 reference_count;
-
-  /* Normalized next hops are saved for stats/display purposes */
-  struct {
-    /* Number of hops in the multipath. */
-    u32 count;
-
-    /* Offset into next hop heap for this block. */
-    u32 heap_offset;
-
-    /* Heap handle used to for example free block when we're done with it. */
-    u32 heap_handle;
-  } normalized_next_hops;
-} ip_multipath_adjacency_t;
 
 /* IP multicast adjacency. */
 typedef struct {
@@ -357,39 +340,6 @@ typedef void (* ip_add_del_adjacency_callback_t) (struct ip_lookup_main_t * lm,
 						  ip_adjacency_t * adj,
 						  u32 is_del);
 
-typedef struct {
-  vnet_config_main_t config_main;
-
-  u32 * config_index_by_sw_if_index;
-} ip_config_main_t;
-
-/**
- * This structure is used to dynamically register a custom adjacency
- * for ip lookup.
- * Typically used with
- *  VNET_IP4_REGISTER_ADJACENCY or
- *  VNET_IP6_REGISTER_ADJACENCY macros.
- */
-typedef struct ip_adj_register_struct {
-  /** Name of the node for this registered adjacency. */
-  char *node_name;
-
-  /** Formatting function for the adjacency.
-   * Variadic arguments given to the function are:
-   * - struct ip_lookup_main_t *
-   * - ip_adjacency_t *adj
-   */
-  format_function_t *fn;
-
-  /**
-   * When the adjacency is registered, the ip-lookup next index will
-   * be written where this pointer points.
-   */
-  u32 *next_index;
-
-  struct ip_adj_register_struct *next;
-} ip_adj_register_t;
-
 typedef struct ip_lookup_main_t {
   /* Adjacency heap. */
   ip_adjacency_t * adjacency_heap;
@@ -439,9 +389,6 @@ typedef struct ip_lookup_main_t {
 
   /** IP_BUILTIN_PROTOCOL_{TCP,UDP,ICMP,OTHER} by protocol in IP header. */
   u8 builtin_protocol_by_ip_protocol[256];
-
-  /** Registered adjacencies */
-  ip_adj_register_t *registered_adjacencies;
 } ip_lookup_main_t;
 
 always_inline ip_adjacency_t *

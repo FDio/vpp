@@ -17,6 +17,7 @@
  * @brief LISP sub-interfaces.
  *
  */
+#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
 #include <vnet/lisp-gpe/lisp_gpe_sub_interface.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/interface.h>
@@ -93,16 +94,12 @@ lisp_gpe_sub_interface_set_table (u32 sw_if_index, u32 table_id)
 
   vec_validate (ip4_main.fib_index_by_sw_if_index, sw_if_index);
   ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
-  // FIXME. enable When we get an adj
-  ip4_sw_interface_enable_disable (sw_if_index, 1);
 
   fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, table_id);
   ASSERT (FIB_NODE_INDEX_INVALID != fib_index);
 
   vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
   ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
-  // FIXME. enable When we get an adj
-  ip6_sw_interface_enable_disable (sw_if_index, 1);
 }
 
 static void
@@ -120,41 +117,29 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
 						u32 overlay_table_id, u32 vni)
 {
   lisp_gpe_sub_interface_t *l3s;
-  lisp_gpe_main_t *lgm = &lisp_gpe_main;
   index_t l3si;
 
-  l3si = lisp_gpe_sub_interface_db_find (lrloc, vni);
+  l3si = lisp_gpe_sub_interface_db_find (lrloc, clib_host_to_net_u32 (vni));
 
   if (INDEX_INVALID == l3si)
     {
-      vnet_hw_interface_t *hi;
-      clib_error_t *error;
-      u32 sub_sw_if_index;
-      uword *p;
+      u32 main_sw_if_index, sub_sw_if_index;
 
       /*
        * find the main interface from the VNI
        */
-      p = hash_get (lgm->l3_ifaces.sw_if_index_by_vni, vni);
-
-      if (NULL == p)
-	return (INDEX_INVALID);
-
-      hi = vnet_get_hw_interface (vnet_get_main (), p[0]);
-
-      if (NULL == hi)
-	return (INDEX_INVALID);
+      main_sw_if_index =
+	lisp_gpe_tenant_l3_iface_add_or_lock (vni, overlay_table_id);
 
       vnet_sw_interface_t sub_itf_template = {
 	.type = VNET_SW_INTERFACE_TYPE_SUB,
-	.sup_sw_if_index = hi->sw_if_index,
+	.sup_sw_if_index = main_sw_if_index,
 	.sub.id = lisp_gpe_sub_interface_id++,
       };
 
-      error = vnet_create_sw_interface (vnet_get_main (),
-					&sub_itf_template, &sub_sw_if_index);
-
-      if (NULL != error)
+      if (NULL != vnet_create_sw_interface (vnet_get_main (),
+					    &sub_itf_template,
+					    &sub_sw_if_index))
 	return (INDEX_INVALID);
 
       pool_get (lisp_gpe_sub_interface_pool, l3s);
@@ -164,13 +149,16 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
 
       l3s->key->local_rloc = *lrloc;
       l3s->key->vni = clib_host_to_net_u32 (vni);
-      l3s->main_sw_if_index = hi->sw_if_index;
+      l3s->main_sw_if_index = main_sw_if_index;
       l3s->sw_if_index = sub_sw_if_index;
       l3s->eid_table_id = overlay_table_id;
 
       l3si = (l3s - lisp_gpe_sub_interface_pool);
 
-      lisp_gpe_sub_interface_set_table (l3s->sw_if_index, l3s->eid_table_id);
+      // FIXME. enable When we get an adj
+      ip6_sw_interface_enable_disable (l3s->sw_if_index, 1);
+      ip4_sw_interface_enable_disable (l3s->sw_if_index, 1);
+
       vnet_sw_interface_set_flags (vnet_get_main (),
 				   l3s->sw_if_index,
 				   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
@@ -180,8 +168,10 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
   else
     {
       l3s = lisp_gpe_sub_interface_get_i (l3si);
+      l3s->eid_table_id = overlay_table_id;
     }
 
+  lisp_gpe_sub_interface_set_table (l3s->sw_if_index, l3s->eid_table_id);
   l3s->locks++;
 
   return (l3si);
@@ -201,6 +191,7 @@ lisp_gpe_sub_interface_unlock (index_t l3si)
       lisp_gpe_sub_interface_unset_table (l3s->sw_if_index,
 					  l3s->eid_table_id);
 
+      lisp_gpe_tenant_l3_iface_unlock (clib_net_to_host_u32 (l3s->key->vni));
       vnet_sw_interface_set_flags (vnet_get_main (), l3s->sw_if_index, 0);
       vnet_delete_sub_interface (l3s->sw_if_index);
 

@@ -157,7 +157,6 @@ typedef struct _vnet_device_class
 
   /* Function to set mac address. */
   vnet_interface_set_mac_address_function_t *mac_addr_change_function;
-
 } vnet_device_class_t;
 
 #define VNET_DEVICE_CLASS(x,...)                                        \

@@ -109,6 +109,8 @@
     vnet_get_config_data.
 */
 
+static const char *vnet_cast_names[] = VNET_CAST_NAMES;
+
 static int
 comma_split (u8 * s, u8 ** a, u8 ** b)
 {
@@ -132,7 +134,8 @@ ip_feature_init_cast (vlib_main_t * vm,
 		      vnet_config_main_t * vcm,
 		      char **feature_start_nodes,
 		      int num_feature_start_nodes,
-		      vnet_cast_t cast, vnet_l3_packet_type_t proto)
+		      vnet_ip_feature_registration_t * first_reg,
+		      char ***in_feature_nodes)
 {
   uword *index_by_name;
   uword *reg_by_index;
@@ -150,48 +153,13 @@ ip_feature_init_cast (vlib_main_t * vm,
   int a_index, b_index;
   int n_features;
   u32 *result = 0;
-  vnet_ip_feature_registration_t *this_reg, *first_reg = 0;
+  vnet_ip_feature_registration_t *this_reg = 0;
   char **feature_nodes = 0;
   hash_pair_t *hp;
   u8 **keys_to_delete = 0;
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
-  mpls_main_t *mm = &mpls_main;
 
   index_by_name = hash_create_string (0, sizeof (uword));
   reg_by_index = hash_create (0, sizeof (uword));
-
-  if (cast == VNET_IP_RX_UNICAST_FEAT)
-    {
-      if (proto == VNET_L3_PACKET_TYPE_IP4)
-	first_reg = im4->next_uc_feature;
-      else if (proto == VNET_L3_PACKET_TYPE_IP6)
-	first_reg = im6->next_uc_feature;
-      else if (proto == VNET_L3_PACKET_TYPE_MPLS_UNICAST)
-	first_reg = mm->next_feature;
-      else
-	return clib_error_return (0,
-				  "protocol %d cast %d unsupport for features",
-				  proto, cast);
-    }
-  else if (cast == VNET_IP_RX_MULTICAST_FEAT)
-    {
-      if (proto == VNET_L3_PACKET_TYPE_IP4)
-	first_reg = im4->next_mc_feature;
-      else if (proto == VNET_L3_PACKET_TYPE_IP6)
-	first_reg = im6->next_mc_feature;
-      else
-	return clib_error_return (0,
-				  "protocol %d cast %d unsupport for features",
-				  proto, cast);
-    }
-  else if (cast == VNET_IP_TX_FEAT)
-    {
-      if (proto == VNET_L3_PACKET_TYPE_IP4)
-	first_reg = im4->next_tx_feature;
-      else
-	first_reg = im6->next_tx_feature;
-    }
 
   this_reg = first_reg;
 
@@ -291,8 +259,7 @@ again:
 
   /* see if we got a partial order... */
   if (vec_len (result) != n_features)
-    return clib_error_return
-      (0, "%d feature_init_cast (cast=%d), no partial order!", proto, cast);
+    return clib_error_return (0, "%d feature_init_cast no partial order!");
 
   /*
    * We win.
@@ -318,12 +285,7 @@ again:
 		    feature_nodes, vec_len (feature_nodes));
 
   /* Save a copy for show command */
-  if (proto == VNET_L3_PACKET_TYPE_IP4)
-    im4->feature_nodes[cast] = feature_nodes;
-  else if (proto == VNET_L3_PACKET_TYPE_IP6)
-    im6->feature_nodes[cast] = feature_nodes;
-  else if (proto == VNET_L3_PACKET_TYPE_MPLS_UNICAST)
-    mm->feature_nodes = feature_nodes;
+  *in_feature_nodes = feature_nodes;
 
   /* Finally, clean up all the shit we allocated */
   /* *INDENT-OFF* */
@@ -391,6 +353,56 @@ VLIB_CLI_COMMAND (show_ip_features_command, static) = {
 /** Display the set of IP features configured on a specific interface
  */
 
+void
+ip_interface_features_show (vlib_main_t * vm,
+			    const char *pname,
+			    ip_config_main_t * cm, u32 sw_if_index)
+{
+  u32 node_index, current_config_index;
+  vnet_cast_t cast;
+  vnet_config_main_t *vcm;
+  vnet_config_t *cfg;
+  u32 cfg_index;
+  vnet_config_feature_t *feat;
+  vlib_node_t *n;
+  int i;
+
+  vlib_cli_output (vm, "%s feature paths configured on %U...",
+		   pname, format_vnet_sw_if_index_name,
+		   vnet_get_main (), sw_if_index);
+
+  for (cast = VNET_IP_RX_UNICAST_FEAT; cast < VNET_N_IP_FEAT; cast++)
+    {
+      vcm = &(cm[cast].config_main);
+
+      vlib_cli_output (vm, "\n%s %s:", pname, vnet_cast_names[cast]);
+
+      if (NULL == cm[cast].config_index_by_sw_if_index ||
+	  vec_len (cm[cast].config_index_by_sw_if_index) < sw_if_index)
+	{
+	  vlib_cli_output (vm, "none configured");
+	  continue;
+	}
+
+      current_config_index = vec_elt (cm[cast].config_index_by_sw_if_index,
+				      sw_if_index);
+
+      ASSERT (current_config_index
+	      < vec_len (vcm->config_pool_index_by_user_index));
+
+      cfg_index = vcm->config_pool_index_by_user_index[current_config_index];
+      cfg = pool_elt_at_index (vcm->config_pool, cfg_index);
+
+      for (i = 0; i < vec_len (cfg->features); i++)
+	{
+	  feat = cfg->features + i;
+	  node_index = feat->node_index;
+	  n = vlib_get_node (vm, node_index);
+	  vlib_cli_output (vm, "  %v", n->name);
+	}
+    }
+}
+
 static clib_error_t *
 show_ip_interface_features_command_fn (vlib_main_t * vm,
 				       unformat_input_t * input,
@@ -403,24 +415,13 @@ show_ip_interface_features_command_fn (vlib_main_t * vm,
   ip_lookup_main_t *lm6 = &im6->lookup_main;
 
   ip_lookup_main_t *lm;
-  ip_config_main_t *cm;
-  vnet_config_main_t *vcm;
-  vnet_config_t *cfg;
-  u32 cfg_index;
-  vnet_config_feature_t *feat;
-  vlib_node_t *n;
-  u32 sw_if_index;
-  u32 node_index;
-  u32 current_config_index;
-  int i, af;
-  u32 cast;
+  u32 sw_if_index, af;
 
   if (!unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
     return clib_error_return (0, "Interface not specified...");
 
   vlib_cli_output (vm, "IP feature paths configured on %U...",
 		   format_vnet_sw_if_index_name, vnm, sw_if_index);
-
 
   for (af = 0; af < 2; af++)
     {
@@ -429,33 +430,8 @@ show_ip_interface_features_command_fn (vlib_main_t * vm,
       else
 	lm = lm6;
 
-      for (cast = VNET_IP_RX_UNICAST_FEAT; cast < VNET_N_IP_FEAT; cast++)
-	{
-	  cm = lm->feature_config_mains + cast;
-	  vcm = &cm->config_main;
-
-	  vlib_cli_output (vm, "\nipv%s %scast:",
-			   (af == 0) ? "4" : "6",
-			   cast == VNET_IP_RX_UNICAST_FEAT ? "uni" : "multi");
-
-	  current_config_index = vec_elt (cm->config_index_by_sw_if_index,
-					  sw_if_index);
-
-	  ASSERT (current_config_index
-		  < vec_len (vcm->config_pool_index_by_user_index));
-
-	  cfg_index =
-	    vcm->config_pool_index_by_user_index[current_config_index];
-	  cfg = pool_elt_at_index (vcm->config_pool, cfg_index);
-
-	  for (i = 0; i < vec_len (cfg->features); i++)
-	    {
-	      feat = cfg->features + i;
-	      node_index = feat->node_index;
-	      n = vlib_get_node (vm, node_index);
-	      vlib_cli_output (vm, "  %v", n->name);
-	    }
-	}
+      ip_interface_features_show (vm, (af == 0) ? "ip4" : "ip6",
+				  lm->feature_config_mains, sw_if_index);
     }
 
   return 0;

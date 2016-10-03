@@ -18,6 +18,8 @@
 #include <vnet/lisp-cp/packets.h>
 #include <vnet/lisp-cp/lisp_msg_serdes.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
+#include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
+#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 
@@ -167,8 +169,7 @@ ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
 static int
 dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_l2, u8 is_add)
 {
-  uword *dp_table, *intf;
-  vnet_lisp_gpe_add_del_iface_args_t _ai, *ai = &_ai;
+  uword *dp_table;
 
   if (!is_l2)
     {
@@ -190,38 +191,20 @@ dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_l2, u8 is_add)
 	}
     }
 
-  intf = hash_get (is_l2 ? lcm->l2_dp_intf_by_vni : lcm->dp_intf_by_vni, vni);
-
   /* enable/disable data-plane interface */
   if (is_add)
     {
-      /* create interface */
-      if (!intf)
-	{
-	  ai->is_add = 1;
-	  ai->vni = vni;
-	  ai->is_l2 = is_l2;
-	  ai->dp_table = dp_table[0];
-
-	  vnet_lisp_gpe_add_del_iface (ai, 0);
-
-	  /* keep track of vnis for which interfaces have been created */
-	  hash_set (lcm->dp_intf_by_vni, vni, 1);
-	}
+      if (is_l2)
+	lisp_gpe_tenant_l2_iface_add_or_lock (vni, dp_table[0]);
+      else
+	lisp_gpe_tenant_l3_iface_add_or_lock (vni, dp_table[0]);
     }
   else
     {
-      if (intf == 0)
-	{
-	  clib_warning ("interface for vni %d doesn't exist!", vni);
-	  return VNET_API_ERROR_INVALID_VALUE;
-	}
-
-      ai->is_add = 0;
-      ai->vni = vni;
-      ai->dp_table = dp_table[0];
-      vnet_lisp_gpe_add_del_iface (ai, 0);
-      hash_unset (lcm->dp_intf_by_vni, vni);
+      if (is_l2)
+	lisp_gpe_tenant_l2_iface_unlock (vni);
+      else
+	lisp_gpe_tenant_l3_iface_unlock (vni);
     }
 
   return 0;
@@ -2041,7 +2024,6 @@ vnet_lisp_enable_disable (u8 is_enable)
   else
     {
       /* clear interface table */
-      hash_free (lcm->dp_intf_by_vni);
       hash_free (lcm->fwd_entry_by_mapping_index);
       pool_free (lcm->fwd_entry_pool);
     }
@@ -2647,8 +2629,6 @@ typedef enum
 typedef enum
 {
   LISP_CP_LOOKUP_NEXT_DROP,
-  LISP_CP_LOOKUP_NEXT_IP4_LOOKUP,
-  LISP_CP_LOOKUP_NEXT_IP6_LOOKUP,
   LISP_CP_LOOKUP_N_NEXT,
 } lisp_cp_lookup_next_t;
 
@@ -3207,6 +3187,13 @@ lisp_cp_lookup_ip6 (vlib_main_t * vm,
   return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_IP6));
 }
 
+static uword
+lisp_cp_lookup_l2 (vlib_main_t * vm,
+		   vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+{
+  return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_MAC));
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_cp_lookup_ip4_node) = {
   .function = lisp_cp_lookup_ip4,
@@ -3222,8 +3209,6 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_ip4_node) = {
 
   .next_nodes = {
       [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
-      [LISP_CP_LOOKUP_NEXT_IP4_LOOKUP] = "ip4-lookup",
-      [LISP_CP_LOOKUP_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
 /* *INDENT-ON* */
@@ -3243,8 +3228,25 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_ip6_node) = {
 
   .next_nodes = {
       [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
-      [LISP_CP_LOOKUP_NEXT_IP4_LOOKUP] = "ip4-lookup",
-      [LISP_CP_LOOKUP_NEXT_IP6_LOOKUP] = "ip6-lookup",
+  },
+};
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (lisp_cp_lookup_l2_node) = {
+  .function = lisp_cp_lookup_l2,
+  .name = "lisp-cp-lookup-l2",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lisp_cp_lookup_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = LISP_CP_LOOKUP_N_ERROR,
+  .error_strings = lisp_cp_lookup_error_strings,
+
+  .n_next_nodes = LISP_CP_LOOKUP_N_NEXT,
+
+  .next_nodes = {
+      [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
   },
 };
 /* *INDENT-ON* */

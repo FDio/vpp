@@ -74,6 +74,8 @@
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
+#include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
+#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
 #include <vnet/lisp-cp/control.h>
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
@@ -5370,13 +5372,29 @@ vl_api_lisp_gpe_add_del_iface_t_handler (vl_api_lisp_gpe_add_del_iface_t * mp)
 {
   vl_api_lisp_gpe_add_del_iface_reply_t *rmp;
   int rv = 0;
-  vnet_lisp_gpe_add_del_iface_args_t _a, *a = &_a;
 
-  a->is_add = mp->is_add;
-  a->dp_table = mp->dp_table;
-  a->vni = mp->vni;
-  a->is_l2 = mp->is_l2;
-  rv = vnet_lisp_gpe_add_del_iface (a, 0);
+  if (mp->is_l2)
+    {
+      if (mp->is_add)
+	{
+	  if (~0 ==
+	      lisp_gpe_tenant_l2_iface_add_or_lock (mp->vni, mp->dp_table))
+	    rv = 1;
+	}
+      else
+	lisp_gpe_tenant_l2_iface_unlock (mp->vni);
+    }
+  else
+    {
+      if (mp->is_add)
+	{
+	  if (~0 ==
+	      lisp_gpe_tenant_l3_iface_add_or_lock (mp->vni, mp->dp_table))
+	    rv = 1;
+	}
+      else
+	lisp_gpe_tenant_l3_iface_unlock (mp->vni);
+    }
 
   REPLY_MACRO (VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
 }
@@ -5825,8 +5843,8 @@ vl_api_lisp_eid_table_dump_t_handler (vl_api_lisp_eid_table_dump_t * mp)
 }
 
 static void
-send_lisp_gpe_tunnel_details (lisp_gpe_tunnel_t * tunnel,
-			      unix_shared_memory_queue_t * q, u32 context)
+send_lisp_gpe_fwd_entry_details (lisp_gpe_fwd_entry_t * lfe,
+				 unix_shared_memory_queue_t * q, u32 context)
 {
   vl_api_lisp_gpe_tunnel_details_t *rmp;
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
@@ -5835,21 +5853,17 @@ send_lisp_gpe_tunnel_details (lisp_gpe_tunnel_t * tunnel,
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_LISP_GPE_TUNNEL_DETAILS);
 
-  rmp->tunnels = tunnel - lgm->tunnels;
+  rmp->tunnels = lfe - lgm->lisp_fwd_entry_pool;
 
-  rmp->is_ipv6 = ip_addr_version (&tunnel->src) == IP6 ? 1 : 0;
-  ip_address_copy_addr (rmp->source_ip, &tunnel->src);
-  ip_address_copy_addr (rmp->destination_ip, &tunnel->dst);
+  rmp->is_ipv6 = ip_prefix_version (&(lfe->key->rmt.ippref)) == IP6 ? 1 : 0;
+  ip_address_copy_addr (rmp->source_ip,
+			&ip_prefix_addr (&(lfe->key->rmt.ippref)));
+  ip_address_copy_addr (rmp->destination_ip,
+			&ip_prefix_addr (&(lfe->key->rmt.ippref)));
 
-  rmp->encap_fib_id = htonl (tunnel->encap_fib_index);
-  rmp->decap_fib_id = htonl (tunnel->decap_fib_index);
-  rmp->dcap_next = htonl (tunnel->decap_next_index);
-  rmp->lisp_ver = tunnel->ver_res;
-  rmp->next_protocol = tunnel->next_protocol;
-  rmp->flags = tunnel->flags;
-  rmp->ver_res = tunnel->ver_res;
-  rmp->res = tunnel->res;
-  rmp->iid = htonl (tunnel->vni);
+  rmp->encap_fib_id = htonl (0);
+  rmp->decap_fib_id = htonl (lfe->eid_fib_index);
+  rmp->iid = htonl (lfe->key->vni);
   rmp->context = context;
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
@@ -5860,9 +5874,9 @@ vl_api_lisp_gpe_tunnel_dump_t_handler (vl_api_lisp_gpe_tunnel_dump_t * mp)
 {
   unix_shared_memory_queue_t *q = NULL;
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
-  lisp_gpe_tunnel_t *tunnel = NULL;
+  lisp_gpe_fwd_entry_t *lfe = NULL;
 
-  if (pool_elts (lgm->tunnels) == 0)
+  if (pool_elts (lgm->lisp_fwd_entry_pool) == 0)
     {
       return;
     }
@@ -5874,9 +5888,9 @@ vl_api_lisp_gpe_tunnel_dump_t_handler (vl_api_lisp_gpe_tunnel_dump_t * mp)
     }
 
   /* *INDENT-OFF* */
-  pool_foreach(tunnel, lgm->tunnels,
+  pool_foreach(lfe, lgm->lisp_fwd_entry_pool,
   ({
-    send_lisp_gpe_tunnel_details(tunnel, q, mp->context);
+    send_lisp_gpe_fwd_entry_details(lfe, q, mp->context);
   }));
   /* *INDENT-ON* */
 }

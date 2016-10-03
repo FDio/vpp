@@ -89,6 +89,11 @@ typedef struct {
    * The index of the midchain adjacency created for this tunnel
    */
   adj_index_t adj_index[FIB_LINK_NUM];
+
+  /**
+   * on a L2 tunnel this is the VLIB arc from the L2-tx to the l2-midchain
+   */
+  u32 l2_tx_arc;
 } gre_tunnel_t;
 
 typedef struct {
@@ -137,9 +142,7 @@ gre_register_input_type (vlib_main_t * vm,
 			 gre_protocol_t protocol,
 			 u32 node_index);
 
-void gre_set_adjacency (vnet_rewrite_header_t * rw,
-			uword max_data_bytes,
-			gre_protocol_t protocol);
+extern void gre_tunnel_stack (gre_tunnel_t *gt);
 
 format_function_t format_gre_protocol;
 format_function_t format_gre_header;
@@ -147,6 +150,7 @@ format_function_t format_gre_header_with_length;
 
 extern vlib_node_registration_t gre_input_node;
 extern vnet_device_class_t gre_device_class;
+extern vnet_device_class_t gre_l2_device_class;
 
 /* Parse gre protocol as 0xXXXX or protocol name.
    In either host or network byte order. */

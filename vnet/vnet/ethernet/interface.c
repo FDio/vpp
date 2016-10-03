@@ -46,6 +46,13 @@
 #include <vnet/lisp-gpe/lisp_gpe.h>
 #include <vnet/devices/af_packet/af_packet.h>
 
+/**
+ * @file
+ * @brief Loopback Interfaces.
+ *
+ * This file contains code to manage loopback interfaces.
+ */
+
 int
 vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index)
 {
@@ -56,13 +63,6 @@ vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index)
 	    hw->hw_class_index == lisp_gpe_hw_class.index ||
 	    hw->hw_class_index == srp_hw_interface_class.index));
 }
-
-/**
- * @file
- * @brief Loopback Interfaces.
- *
- * This file contains code to manage loopback interfaces.
- */
 
 static uword
 ethernet_set_rewrite (vnet_main_t * vnm,
@@ -690,6 +690,33 @@ VLIB_CLI_COMMAND (delete_sub_interface_command, static) = {
   .function = delete_sub_interface,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+show_ethernet_interface_features_command_fn (vlib_main_t * vm,
+					     unformat_input_t * input,
+					     vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  ethernet_main_t *em = &ethernet_main;
+  u32 sw_if_index;
+
+  if (!unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+    return clib_error_return (0, "Interface not specified...");
+
+  vlib_cli_output (vm, "Ethernet feature paths configured on %U...",
+		   format_vnet_sw_if_index_name, vnm, sw_if_index);
+
+  ip_interface_features_show (vm, "Ethernet",
+			      em->feature_config_mains, sw_if_index);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_ethernet_interface_features_command, static) =
+{
+.path = "show ethernet interface features",.short_help =
+    "show ethernet interface features <intfc>",.function =
+    show_ethernet_interface_features_command_fn,};
 
 /*
  * fd.io coding-style-patch-verification: ON

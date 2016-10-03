@@ -50,152 +50,6 @@ typedef CLIB_PACKED (struct {
 }) ip6_udp_lisp_gpe_header_t;
 /* *INDENT-ON* */
 
-/** LISP-GPE tunnel structure */
-typedef struct
-{
-  /** tunnel src and dst addresses */
-  locator_pair_t *locator_pairs;
-
-  /** locator-pairs with best priority become sub-tunnels */
-  u32 *sub_tunnels;
-
-  /** decap next index */
-  u32 decap_next_index;
-
-  /* TODO remove */
-  ip_address_t src, dst;
-
-  /** FIB indices */
-  u32 encap_fib_index;		/* tunnel partner lookup here */
-  u32 decap_fib_index;		/* inner IP lookup here */
-
-  /** index of the source address lookup FIB */
-  u32 src_fib_index;
-
-  /** vnet intfc hw/sw_if_index */
-  u32 hw_if_index;
-  u32 sw_if_index;
-
-  /** L2 path-list */
-  fib_node_index_t l2_path_list;
-
-  /** action for 'negative' tunnels */
-  u8 action;
-
-  /** LISP header fields in HOST byte order */
-  u8 flags;
-  u8 ver_res;
-  u8 res;
-  u8 next_protocol;
-  u32 vni;
-} lisp_gpe_tunnel_t;
-
-/**
- * @brief A path on which to forward lisp traffic
- */
-typedef struct lisp_fwd_path_t_
-{
-  /**
-   * The adjacency constructed for the locator pair
-   */
-  index_t lisp_adj;
-
-  /**
-   * Priority. Only the paths with the best priority will be installed in FIB
-   */
-  u8 priority;
-
-  /**
-   * [UE]CMP weigt for the path
-   */
-  u8 weight;
-
-} lisp_fwd_path_t;
-
-/**
- * @brief A Forwarding entry can be 'normal' or 'negative'
- * Negative implies we deliberately want to add a FIB entry for an EID
- * that results in 'spcial' behaviour determined by an 'action'.
- * @normal' means send it down some tunnels.
- */
-typedef enum lisp_fwd_entry_type_t_
-{
-  LISP_FWD_ENTRY_TYPE_NORMAL,
-  LISP_FWD_ENTRY_TYPE_NEGATIVE,
-} lisp_fwd_entry_type_t;
-
-typedef enum
-{
-  NO_ACTION,
-  FORWARD_NATIVE,
-  SEND_MAP_REQUEST,
-  DROP
-} negative_fwd_actions_e;
-
-/**
- * LISP-GPE fwd entry key
- */
-typedef struct lisp_gpe_fwd_entry_key_t_
-{
-  dp_address_t rmt;
-  dp_address_t lcl;
-  u32 vni;
-} lisp_gpe_fwd_entry_key_t;
-
-/**
- * @brief A LISP Forwarding Entry
- *
- * A forwarding entry is from a locai EID to a remote EID over a set of rloc pairs
- */
-typedef struct lisp_fwd_entry_t_
-{
-  /**
-   * The Entry's key: {lEID,r-EID,vni}
-   */
-  lisp_gpe_fwd_entry_key_t *key;
-
-  /**
-   * The VRF (in the case of L3) or Bridge-Domain (for L2) index
-   */
-  union
-  {
-    u32 eid_table_id;
-    u32 eid_bd_index;
-  };
-
-  /**
-   * The forwarding entry type
-   */
-  lisp_fwd_entry_type_t type;
-
-  union
-  {
-    /**
-     * @brief When the type is 'normal'
-     *        The RLOC pair that form the route's paths. i.e. where to send
-     *        packets for this route.
-     */
-    lisp_fwd_path_t *paths;
-
-    /**
-     * @brief When the type is negative. The action to take.
-     */
-    negative_fwd_actions_e action;
-  };
-
-  /**
-   * The FIB index for the overlay, i.e. the FIB in which the EIDs
-   * are present
-   */
-  u32 eid_fib_index;
-
-  /**
-   * The SRC-FIB index for created for anding source-route entries
-   */
-  u32 src_fib_index;
-} lisp_fwd_entry_t;
-
-
 #define foreach_lisp_gpe_ip_input_next          \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
@@ -234,8 +88,16 @@ typedef struct tunnel_lookup
 /** LISP-GPE global state*/
 typedef struct lisp_gpe_main
 {
-  /** pool of encap tunnel instances */
-  lisp_gpe_tunnel_t *tunnels;
+  /**
+   * @brief DB of all forwarding entries. The Key is:{l-EID,r-EID,vni}
+   * where the EID encodes L2 or L3
+   */
+  uword *lisp_gpe_fwd_entries;
+
+  /**
+   * @brief A Pool of all LISP forwarding entries
+   */
+  struct lisp_gpe_fwd_entry_t_ *lisp_fwd_entry_pool;
 
   /** Free vlib hw_if_indices */
   u32 *free_tunnel_hw_if_indices;
@@ -255,8 +117,7 @@ typedef struct lisp_gpe_main
   tunnel_lookup_t l2_ifaces;
 
   /** Load-balance for a miss in the table */
-  index_t l2_lb_miss;
-  index_t l2_lb_cp_lkup;
+  dpo_id_t l2_lb_cp_lkup;
 
   /** convenience */
   vlib_main_t *vlib_main;
@@ -283,34 +144,19 @@ extern vnet_hw_interface_class_t lisp_gpe_hw_class;
 
 u8 *format_lisp_gpe_header_with_length (u8 * s, va_list * args);
 
-/** Arguments to add an L2/L3 LISP-GPE interface*/
-typedef struct
-{
-  u8 is_add;
-  union
-  {
-    /** vrf */
-    u32 table_id;
-
-    /** bridge domain */
-    u16 bd_id;
-
-    /** generic access */
-    u32 dp_table;
-  };
-  u8 is_l2;
-
-  /** virtual network identifier in host byte order */
-  u32 vni;
-} vnet_lisp_gpe_add_del_iface_args_t;
-
 /** Read LISP-GPE status */
 u8 vnet_lisp_gpe_enable_disable_status (void);
 
+u32
+lisp_gpe_l3_iface_find_or_create (lisp_gpe_main_t * lgm,
+				  u32 overlay_table_id, u32 vni);
+
 /** Add/del LISP-GPE interface. */
-int
-vnet_lisp_gpe_add_del_iface (vnet_lisp_gpe_add_del_iface_args_t * a,
-			     u32 * hw_if_indexp);
+extern void lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
+extern u32 lisp_gpe_add_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
+extern void lisp_gpe_del_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
+extern u32 lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
+
 
 typedef struct
 {
@@ -319,6 +165,14 @@ typedef struct
 
 clib_error_t
   * vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a);
+
+typedef enum
+{
+  NO_ACTION,
+  FORWARD_NATIVE,
+  SEND_MAP_REQUEST,
+  DROP
+} negative_fwd_actions_e;
 
 /** */
 typedef struct
@@ -366,28 +220,6 @@ typedef struct
   };
 } vnet_lisp_gpe_add_del_fwd_entry_args_t;
 
-int
-vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
-				 u32 * hw_if_indexp);
-
-extern void
-ip_src_fib_add_route (u32 src_fib_index,
-		      const ip_prefix_t * src_prefix,
-		      const lisp_fwd_path_t * paths);
-extern void
-ip_src_dst_fib_del_route (u32 src_fib_index,
-			  const ip_prefix_t * src_prefix,
-			  u32 dst_table_id, const ip_prefix_t * dst_prefix);
-extern void
-ip_src_fib_add_route_w_dpo (u32 src_fib_index,
-			    const ip_prefix_t * src_prefix,
-			    const dpo_id_t * src_dpo);
-extern u32
-ip_dst_fib_add_route (u32 dst_table_id, const ip_prefix_t * dst_prefix);
-
-extern fib_route_path_t *lisp_gpe_mk_paths_for_sub_tunnels (lisp_gpe_tunnel_t
-							    * t);
-
 #define foreach_lgpe_ip4_lookup_next    \
   _(DROP, "error-drop")                 \
   _(LISP_CP_LOOKUP, "lisp-cp-lookup")
@@ -413,13 +245,6 @@ typedef enum lgpe_ip6_lookup_next
 } lgpe_ip6_lookup_next_t;
 
 u8 *format_vnet_lisp_gpe_status (u8 * s, va_list * args);
-
-#define L2_FIB_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define L2_FIB_DEFAULT_HASH_MEMORY_SIZE (32<<20)
-
-u32
-lisp_l2_fib_lookup (lisp_gpe_main_t * lgm, u16 bd_index, u8 src_mac[8],
-		    u8 dst_mac[8]);
 
 #endif /* included_vnet_lisp_gpe_h */
 

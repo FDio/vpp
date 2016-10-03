@@ -110,7 +110,7 @@ mpls_input_inline (vlib_main_t * vm,
           h0 = vlib_buffer_get_current (b0);
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  cm0 = &mm->rx_config_mains;
+	  cm0 = &mm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
 	  b0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index,
 					      sw_if_index0);
 

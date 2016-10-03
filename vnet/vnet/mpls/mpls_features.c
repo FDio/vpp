@@ -112,22 +112,49 @@ VNET_MPLS_FEATURE_INIT (mpls_not_enabled, static) = {
   .feature_index = &mpls_main.mpls_rx_feature_not_enabled,
 };
 
-static char * feature_start_nodes[] =
+/* Built-in ip4 tx feature path definition */
+VNET_MPLS_TX_FEATURE_INIT (interface_output, static) = {
+  .node_name = "interface-output",
+  .runs_before = 0, /* not before any other features */
+  .feature_index = &mpls_main.mpls_tx_feature_interface_output,
+};
+
+
+static char * rx_feature_start_nodes[] =
 {
     "mpls-input",
+};
+static char * tx_feature_start_nodes[] = 
+{
+    "mpls-output",
+    "mpls-midchain",
 };
 
 clib_error_t *
 mpls_feature_init (vlib_main_t * vm)
 {
-  ip_config_main_t * cm = &mpls_main.rx_config_mains;
+  ip_config_main_t * cm = &mpls_main.feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   vnet_config_main_t * vcm = &cm->config_main;
+  clib_error_t *error;
 
-  return (ip_feature_init_cast (vm, cm, vcm,
-                                feature_start_nodes,
-                                ARRAY_LEN(feature_start_nodes),
-                                VNET_IP_RX_UNICAST_FEAT,
-                                VNET_L3_PACKET_TYPE_MPLS_UNICAST));
+  if ((error = ip_feature_init_cast (vm, cm, vcm,
+				     rx_feature_start_nodes,
+				     ARRAY_LEN(rx_feature_start_nodes),
+				     mpls_main.next_feature[VNET_IP_RX_UNICAST_FEAT],
+				     &mpls_main.feature_nodes[VNET_IP_RX_UNICAST_FEAT])))
+      return error;
+
+  cm  = &mpls_main.feature_config_mains[VNET_IP_TX_FEAT];
+  vcm = &cm->config_main;
+
+  if ((error = ip_feature_init_cast (vm, cm, vcm,
+				     tx_feature_start_nodes,
+				     ARRAY_LEN(tx_feature_start_nodes),
+				     mpls_main.next_feature[VNET_IP_TX_FEAT],
+				     &mpls_main.feature_nodes[VNET_IP_TX_FEAT])))
+      return error;
+
+  return error;
 }
 
 static clib_error_t *
@@ -137,38 +164,52 @@ mpls_sw_interface_add_del (vnet_main_t * vnm,
 {
   vlib_main_t * vm = vnm->vlib_main;
   mpls_main_t * mm = &mpls_main;
-  ip_config_main_t * cm = &mm->rx_config_mains;
-  vnet_config_main_t * vcm = &cm->config_main;
-  u32 drop_feature_index;
-  u32 ci;
+  u32 feature_index;
+  u32 ci, cast;
 
-  vec_validate_init_empty (mm->mpls_enabled_by_sw_if_index, sw_if_index, 0);
-  vec_validate_init_empty (mm->fib_index_by_sw_if_index, sw_if_index, 0);
-  vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
-  ci = cm->config_index_by_sw_if_index[sw_if_index];
+  for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
+  {
+      ip_config_main_t * cm = &mm->feature_config_mains[cast];
+      vnet_config_main_t * vcm = &cm->config_main;
 
-  drop_feature_index = mm->mpls_rx_feature_not_enabled;
+      if (VNET_IP_RX_MULTICAST_FEAT == cast)
+	  continue;
 
-  if (is_add)
-    ci = vnet_config_add_feature (vm, vcm, ci,
-                                  drop_feature_index,
-                                  /* config data */ 0,
-                                  /* # bytes of config data */ 0);
-  else
-   {
-     ci = vnet_config_del_feature (vm, vcm, ci,
-                                   drop_feature_index,
-                                   /* config data */ 0,
-                                   /* # bytes of config data */ 0);
-     mm->mpls_enabled_by_sw_if_index[sw_if_index] = 0;;
-   }
+      vec_validate_init_empty (mm->mpls_enabled_by_sw_if_index, sw_if_index, 0);
+      vec_validate_init_empty (mm->fib_index_by_sw_if_index, sw_if_index, 0);
+      vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
+      ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-  cm->config_index_by_sw_if_index[sw_if_index] = ci;
+       if (cast == VNET_IP_RX_UNICAST_FEAT)
+	   feature_index = mm->mpls_rx_feature_not_enabled;
+       else
+	   feature_index = mm->mpls_tx_feature_interface_output;
+
+
+      if (is_add)
+	  ci = vnet_config_add_feature (vm, vcm, ci,
+					feature_index,
+					/* config data */ 0,
+					/* # bytes of config data */ 0);
+      else
+      {
+	  ci = vnet_config_del_feature (vm, vcm, ci,
+					feature_index,
+					/* config data */ 0,
+					/* # bytes of config data */ 0);
+	  mm->mpls_enabled_by_sw_if_index[sw_if_index] = 0;;
+      }
+      cm->config_index_by_sw_if_index[sw_if_index] = ci;
+  }
 
   return /* no error */ 0;
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (mpls_sw_interface_add_del);
+
+#define foreach_af_cast                         \
+_(VNET_IP_RX_UNICAST_FEAT, "mpls input")        \
+_(VNET_IP_TX_FEAT, "mpls output")               \
 
 static clib_error_t *
 show_mpls_features_command_fn (vlib_main_t * vm,
@@ -181,11 +222,15 @@ show_mpls_features_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "Available MPLS feature nodes");
 
-  do {
-    features = mm->feature_nodes;
-    for (i = 0; i < vec_len(features); i++)
-      vlib_cli_output (vm, "  %s\n", features[i]);
+#define _(c,s)                                          \
+  do {                                                  \
+    features = mm->feature_nodes[c];                    \
+    vlib_cli_output (vm, "%s:", s);                     \
+    for (i = 0; i < vec_len(features); i++)             \
+      vlib_cli_output (vm, "  %s\n", features[i]);      \
   } while(0);
+  foreach_af_cast;
+#undef _
 
   return 0;
 }
@@ -202,18 +247,7 @@ show_mpls_interface_features_command_fn (vlib_main_t * vm,
                                          vlib_cli_command_t * cmd)
 {
   vnet_main_t * vnm = vnet_get_main();
-  mpls_main_t * mm = &mpls_main;
-
-  ip_config_main_t * cm;
-  vnet_config_main_t * vcm;
-  vnet_config_t * cfg;
-  u32 cfg_index;
-  vnet_config_feature_t * feat;
-  vlib_node_t * n;
   u32 sw_if_index;
-  u32 node_index;
-  u32 current_config_index;
-  int i;
 
   if (! unformat (input, "%U", unformat_vnet_sw_interface,
                   vnm, &sw_if_index))
@@ -222,26 +256,9 @@ show_mpls_interface_features_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "MPLS feature paths configured on %U...",
                    format_vnet_sw_if_index_name, vnm, sw_if_index);
 
-  cm = &mm->rx_config_mains;
-  vcm = &cm->config_main;
-
-  current_config_index = vec_elt (cm->config_index_by_sw_if_index,
-                                  sw_if_index);
-
-  ASSERT(current_config_index
-         < vec_len (vcm->config_pool_index_by_user_index));
-
-  cfg_index =
-      vcm->config_pool_index_by_user_index[current_config_index];
-  cfg = pool_elt_at_index (vcm->config_pool, cfg_index);
-
-  for (i = 0; i < vec_len(cfg->features); i++)
-  {
-      feat = cfg->features + i;
-      node_index = feat->node_index;
-      n = vlib_get_node (vm, node_index);
-      vlib_cli_output (vm, "  %v", n->name);
-  }
+  ip_interface_features_show (vm, "MPLS", 
+			      mpls_main.feature_config_mains,
+			      sw_if_index);
 
   return 0;
 }

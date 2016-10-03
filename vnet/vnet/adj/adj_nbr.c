@@ -793,11 +793,17 @@ const static char* const nbr_mpls_nodes[] =
     "mpls-output",
     NULL,
 };
+const static char* const nbr_ethernet_nodes[] =
+{
+    "adj-l2-rewrite",
+    NULL,
+};
 const static char* const * const nbr_nodes[DPO_PROTO_NUM] =
 {
     [DPO_PROTO_IP4]  = nbr_ip4_nodes,
     [DPO_PROTO_IP6]  = nbr_ip6_nodes,
     [DPO_PROTO_MPLS] = nbr_mpls_nodes,
+    [DPO_PROTO_ETHERNET] = nbr_ethernet_nodes,
 };
 
 const static char* const nbr_incomplete_ip4_nodes[] =

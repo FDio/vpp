@@ -521,12 +521,15 @@ libvnet_la_SOURCES +=				\
  vnet/lisp-gpe/lisp_gpe_sub_interface.c         \
  vnet/lisp-gpe/lisp_gpe_adjacency.c             \
  vnet/lisp-gpe/lisp_gpe_tunnel.c                \
+ vnet/lisp-gpe/lisp_gpe_fwd_entry.c		\
+ vnet/lisp-gpe/lisp_gpe_tenant.c		\
  vnet/lisp-gpe/interface.c			\
- vnet/lisp-gpe/ip_forward.c			\
  vnet/lisp-gpe/decap.c				
 
 nobase_include_HEADERS +=			\
  vnet/lisp-gpe/lisp_gpe.h			\
+ vnet/lisp-gpe/lisp_gpe_fwd_entry.h		\
+ vnet/lisp-gpe/lisp_gpe_tenant.h		\
  vnet/lisp-gpe/lisp_gpe_packet.h		\
  vnet/lisp-gpe/lisp_gpe_error.def		
 
@@ -779,6 +782,7 @@ libvnet_la_SOURCES +=				\
   vnet/adj/adj_rewrite.c			\
   vnet/adj/adj_glean.c   			\
   vnet/adj/adj_midchain.c   			\
+  vnet/adj/adj_l2.c      			\
   vnet/adj/adj.c                            
 
 nobase_include_HEADERS +=			\
