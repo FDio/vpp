@@ -99,9 +99,14 @@ typedef enum fib_source_t_ {
     FIB_SOURCE_AE,
     /**
      * Recursive resolution source.
-     * Used to install an entry that is thre resolution traget of another.
+     * Used to install an entry that is the resolution traget of another.
      */
     FIB_SOURCE_RR,
+    /**
+     * uRPF bypass/excemption.
+     * Used to install an entry that is excempt from the loose uRPF check
+     */
+    FIB_SOURCE_URPF_EXCEMPT,
     /**
      * The default route source.
      * The default route is always added to the FIB table (like the
@@ -138,6 +143,7 @@ _Static_assert (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_RR] = "recursive-resolution",	        \
     [FIB_SOURCE_AE] = "attached_export",	        \
     [FIB_SOURCE_MPLS] = "mpls",           	        \
+    [FIB_SOURCE_URPF_EXCEMPT] = "urpf-excempt",	        \
     [FIB_SOURCE_DEFAULT_ROUTE] = "default-route",	\
 }
 
@@ -449,6 +455,8 @@ extern fib_entry_src_flag_t fib_entry_path_remove(fib_node_index_t fib_entry_ind
 extern fib_entry_src_flag_t fib_entry_delete(fib_node_index_t fib_entry_index,
 					     fib_source_t source);
 
+extern void fib_entry_contribute_urpf(fib_node_index_t path_index,
+				      index_t urpf);
 extern void fib_entry_contribute_forwarding(
     fib_node_index_t fib_entry_index,
     fib_forward_chain_type_t type,

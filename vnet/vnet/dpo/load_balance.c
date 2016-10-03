@@ -20,6 +20,7 @@
 #include <vppinfra/math.h>              /* for fabs */
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_internal.h>
+#include <vnet/fib/fib_urpf_list.h>
 
 /*
  * distribution error tolerance for load-balancing
@@ -87,6 +88,7 @@ load_balance_alloc_i (void)
     memset(lb, 0, sizeof(*lb));
 
     lb->lb_map = INDEX_INVALID;
+    lb->lb_urpf = INDEX_INVALID;
     vlib_validate_combined_counter(&(load_balance_main.lbm_to_counters),
                                    load_balance_get_index(lb));
     vlib_validate_combined_counter(&(load_balance_main.lbm_via_counters),
@@ -234,6 +236,35 @@ load_balance_is_drop (const dpo_id_t *dpo)
         return (dpo_is_drop(load_balance_get_bucket_i(lb, 0)));
     }
     return (0);
+}
+
+void
+load_balance_set_urpf (index_t lbi,
+		       index_t urpf)
+{
+    load_balance_t *lb;
+    index_t old;
+
+    lb = load_balance_get(lbi);
+
+    /*
+     * packets in flight we see this change. but it's atomic, so :P
+     */
+    old = lb->lb_urpf;
+    lb->lb_urpf = urpf;
+
+    fib_urpf_list_unlock(old);
+    fib_urpf_list_lock(urpf);
+}
+
+index_t
+load_balance_get_urpf (index_t lbi)
+{
+    load_balance_t *lb;
+
+    lb = load_balance_get(lbi);
+
+    return (lb->lb_urpf);
 }
 
 const dpo_id_t *
@@ -652,6 +683,9 @@ load_balance_destroy (load_balance_t *lb)
         vec_free(lb->lb_buckets);
     }
 
+    fib_urpf_list_unlock(lb->lb_urpf);
+    load_balance_map_unlock(lb->lb_map);
+
     pool_put(load_balance_pool, lb);
 }
 
@@ -677,6 +711,7 @@ load_balance_mem_show (void)
 			  pool_elts(load_balance_pool),
 			  pool_len(load_balance_pool),
 			  sizeof(load_balance_t));
+    load_balance_map_show_mem();
 }
 
 const static dpo_vft_t lb_vft = {

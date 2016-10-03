@@ -24,12 +24,13 @@
 
 #include <vnet/adj/adj.h>
 
-#include "fib_path.h"
-#include "fib_node.h"
-#include "fib_table.h"
-#include "fib_entry.h"
-#include "fib_path_list.h"
-#include "fib_internal.h"
+#include <vnet/fib/fib_path.h>
+#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_entry.h>
+#include <vnet/fib/fib_path_list.h>
+#include <vnet/fib/fib_internal.h>
+#include <vnet/fib/fib_urpf_list.h>
 
 /**
  * Enurmeration of path types
@@ -1549,6 +1550,62 @@ fib_path_get_weight (fib_node_index_t path_index)
     ASSERT(path);
 
     return (path->fp_weight);
+}
+
+/**
+ * @brief Contribute the path's adjacency to the list passed.
+ * By calling this function over all paths, recursively, a child
+ * can construct its full set of forwarding adjacencies, and hence its
+ * uRPF list.
+ */
+void
+fib_path_contribute_urpf (fib_node_index_t path_index,
+			  index_t urpf)
+{
+    fib_path_t *path;
+
+    if (!fib_path_is_resolved(path_index))
+	return;
+
+    path = fib_path_get(path_index);
+
+    switch (path->fp_type)
+    {
+    case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
+	fib_urpf_list_append(urpf, path->attached_next_hop.fp_interface);
+	break;
+
+    case FIB_PATH_TYPE_ATTACHED:
+	fib_urpf_list_append(urpf, path->attached.fp_interface);
+	break;
+
+    case FIB_PATH_TYPE_RECURSIVE:
+	fib_entry_contribute_urpf(path->fp_via_fib, urpf);
+	break;
+
+    case FIB_PATH_TYPE_EXCLUSIVE:
+    case FIB_PATH_TYPE_SPECIAL:
+	/*
+	 * these path types may link to an adj, if that's what
+	 * the clinet gave
+	 */
+	if (dpo_is_adj(&path->fp_dpo))
+	{
+	    ip_adjacency_t *adj;
+
+	    adj = adj_get(path->fp_dpo.dpoi_index);
+
+	    fib_urpf_list_append(urpf, adj->rewrite_header.sw_if_index);
+	}
+	break;
+
+    case FIB_PATH_TYPE_DEAG:
+    case FIB_PATH_TYPE_RECEIVE:
+	/*
+	 * these path types don't link to an adj
+	 */
+	break;
+    }
 }
 
 void
