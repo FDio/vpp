@@ -473,6 +473,21 @@ static const fib_node_vft_t fib_entry_vft = {
     .fnv_mem_show = fib_entry_show_memory,
 };
 
+/**
+ * @brief Contribute the set of Adjacencies that this entry forwards with
+ * to build the uRPF list of its children
+ */
+void
+fib_entry_contribute_urpf (fib_node_index_t entry_index,
+			   index_t urpf)
+{
+    fib_entry_t *fib_entry;
+
+    fib_entry = fib_entry_get(entry_index);
+
+    return (fib_path_list_contribute_urpf(fib_entry->fe_parent, urpf));
+}
+
 /*
  * fib_entry_contribute_forwarding
  *

@@ -18,9 +18,10 @@
 #include <vnet/dpo/mpls_label_dpo.h>
 #include <vnet/dpo/drop_dpo.h>
 
-#include "fib_entry_src.h"
-#include "fib_table.h"
-#include "fib_path_ext.h"
+#include <vnet/fib/fib_entry_src.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_path_ext.h>
+#include <vnet/fib/fib_urpf_list.h>
 
 /*
  * per-source type vft
@@ -368,6 +369,24 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
     load_balance_multipath_update(dpo_lb,
                                   ctx.next_hops,
                                   fib_entry_calc_lb_flags(&ctx));
+
+    /*
+     * if this entry is sourced by the uRPF-exempt source then we
+     * append the always present local0 interface (index 0) to the
+     * uRPF list so it is not empty. that way packets pass the loose check.
+     */
+    index_t ui = fib_path_list_get_urpf(esrc->fes_pl);
+
+    if (fib_entry_is_sourced(fib_entry_get_index(fib_entry),
+			     FIB_SOURCE_URPF_EXEMPT))
+    {
+	if (0 == fib_urpf_check_size(ui))
+	{
+	    fib_urpf_list_append(ui, 0);
+	}
+    }
+
+    load_balance_set_urpf(dpo_lb->dpoi_index, ui);
 }
 
 void
