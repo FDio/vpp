@@ -207,6 +207,84 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr)
 
 }
 
+static int is_snat_address_used_in_static_mapping (snat_main_t *sm,
+                                                   ip4_address_t addr)
+{
+  snat_static_mapping_t *m;
+  pool_foreach (m, sm->static_mappings,
+  ({
+      if (m->external_addr.as_u32 == addr.as_u32)
+        return 1;
+  }));
+
+  return 0;
+}
+
+int snat_del_address (snat_main_t *sm, ip4_address_t addr)
+{
+  clib_warning("%U", format_ip4_address, &addr);
+  snat_address_t *a = 0;
+  snat_session_t *ses;
+  u32 *ses_to_be_removed = 0, *ses_index;
+  clib_bihash_kv_8_8_t kv, value;
+  snat_user_key_t user_key;
+  snat_user_t *u;
+
+  int i;
+
+  /* Find SNAT address */
+  for (i=0; i < vec_len (sm->addresses); i++)
+    {
+      if (sm->addresses[i].addr.as_u32 == addr.as_u32)
+        {
+          a = sm->addresses + i;
+          break;
+        }
+    }
+  if (!a)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  /* Check if address is used in some static mapping */
+  if (is_snat_address_used_in_static_mapping(sm, addr))
+    {
+      clib_warning ("address used in static mapping");
+      return VNET_API_ERROR_UNSPECIFIED;
+    }
+
+  /* Delete sessions using address */
+  if (a->busy_ports)
+    {
+      pool_foreach (ses, sm->sessions, ({
+        if (ses->out2in.addr.as_u32 == addr.as_u32)
+          {
+            vec_add1 (ses_to_be_removed, ses - sm->sessions);
+            kv.key = ses->in2out.as_u64;
+            clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0);
+            kv.key = ses->out2in.as_u64;
+            clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0);
+            clib_dlist_remove (sm->list_pool, ses->per_user_index);
+            user_key.addr = ses->in2out.addr;
+            user_key.fib_index = ses->in2out.fib_index;
+            kv.key = user_key.as_u64;
+            if (!clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+              {
+                u = pool_elt_at_index (sm->users, value.value);
+                u->nsessions--;
+              }
+          }
+      }));
+
+      vec_foreach (ses_index, ses_to_be_removed)
+        pool_put_index (sm->sessions, ses_index[0]);
+
+      vec_free (ses_to_be_removed);
+    }
+
+  vec_del1 (sm->addresses, i);
+
+  return 0;
+}
+
 static void increment_v4_address (ip4_address_t * a)
 {
   u32 v;
@@ -490,7 +568,14 @@ vl_api_snat_add_address_range_t_handler
 
   for (i = 0; i < count; i++)
     {
-      snat_add_address (sm, &this_addr);
+      if (mp->is_add)
+        snat_add_address (sm, &this_addr);
+      else
+        rv = snat_del_address (sm, this_addr);
+
+      if (rv)
+        goto send_reply;
+
       increment_v4_address (&this_addr);
     }
 
@@ -509,6 +594,49 @@ static void *vl_api_snat_add_address_range_t_print
     {
       s = format (s, " - %U ", format_ip4_address, mp->last_ip_address);
     }
+  FINISH;
+}
+
+static void
+send_snat_address_details
+(snat_address_t * a, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_snat_address_details_t *rmp;
+  snat_main_t * sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_ADDRESS_DETAILS+sm->msg_id_base);
+  rmp->is_ip4 = 1;
+  clib_memcpy (rmp->ip_address, &(a->addr), 4);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_snat_address_dump_t_handler
+(vl_api_snat_address_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t * sm = &snat_main;
+  snat_address_t * a;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  vec_foreach (a, sm->addresses)
+    send_snat_address_details (a, q, mp->context);
+}
+
+static void *vl_api_snat_address_dump_t_print
+(vl_api_snat_address_dump_t *mp, void * handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_address_dump ");
+
   FINISH;
 }
 
@@ -735,7 +863,8 @@ _(SNAT_INTERFACE_ADD_DEL_FEATURE, snat_interface_add_del_feature)       \
 _(SNAT_ADD_STATIC_MAPPING, snat_add_static_mapping)                     \
 _(SNAT_CONTROL_PING, snat_control_ping)                                 \
 _(SNAT_STATIC_MAPPING_DUMP, snat_static_mapping_dump)                   \
-_(SNAT_SHOW_CONFIG, snat_show_config)
+_(SNAT_SHOW_CONFIG, snat_show_config)                                   \
+_(SNAT_ADDRESS_DUMP, snat_address_dump)
 
 /* Set up the API message handling tables */
 static clib_error_t *
@@ -921,20 +1050,27 @@ add_address_command_fn (vlib_main_t * vm,
   ip4_address_t start_addr, end_addr, this_addr;
   u32 start_host_order, end_host_order;
   int i, count;
+  int is_add = 1;
+  int rv = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (unformat (line_input, "%U - %U",
-                unformat_ip4_address, &start_addr,
-                unformat_ip4_address, &end_addr))
-    ;
-  else if (unformat (line_input, "%U", unformat_ip4_address, &start_addr))
-    end_addr = start_addr;
-  else
-    return clib_error_return (0, "unknown input '%U'", format_unformat_error,
-      input);
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U - %U",
+                    unformat_ip4_address, &start_addr,
+                    unformat_ip4_address, &end_addr))
+        ;
+      else if (unformat (line_input, "%U", unformat_ip4_address, &start_addr))
+        end_addr = start_addr;
+      else if (unformat (line_input, "del"))
+        is_add = 0;
+      else
+        return clib_error_return (0, "unknown input '%U'",
+          format_unformat_error, input);
+     }
   unformat_free (line_input);
 
   if (sm->static_mapping_only)
@@ -958,7 +1094,23 @@ add_address_command_fn (vlib_main_t * vm,
 
   for (i = 0; i < count; i++)
     {
-      snat_add_address (sm, &this_addr);
+      if (is_add)
+        snat_add_address (sm, &this_addr);
+      else
+        rv = snat_del_address (sm, this_addr);
+
+      switch (rv)
+        {
+        case VNET_API_ERROR_NO_SUCH_ENTRY:
+          return clib_error_return (0, "S-NAT address not exist.");
+          break;
+        case VNET_API_ERROR_UNSPECIFIED:
+          return clib_error_return (0, "S-NAT address used in static mapping.");
+          break;
+        default:
+          break;
+        }
+
       increment_v4_address (&this_addr);
     }
 
@@ -967,7 +1119,7 @@ add_address_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (add_address_command, static) = {
   .path = "snat add address",
-  .short_help = "snat add addresses <ip4-range-start> [- <ip4-range-end>]",
+  .short_help = "snat add addresses <ip4-range-start> [- <ip4-range-end>] [del]",
   .function = add_address_command_fn,
 };
 
