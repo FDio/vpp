@@ -617,16 +617,19 @@ del_l2_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
 {
   lisp_fwd_path_t *path;
 
-  vec_foreach (path, lfe->paths)
-  {
-    lisp_gpe_adjacency_unlock (path->lisp_adj);
-  }
+  if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
+    {
+      vec_foreach (path, lfe->paths)
+      {
+	lisp_gpe_adjacency_unlock (path->lisp_adj);
+      }
+      fib_path_list_child_remove (lfe->l2.path_list_index,
+				  lfe->l2.child_index);
+    }
 
   lisp_l2_fib_add_del_entry (lfe->l2.eid_bd_index,
 			     fid_addr_mac (&lfe->key->lcl),
 			     fid_addr_mac (&lfe->key->rmt), NULL, 0);
-
-  fib_path_list_child_remove (lfe->l2.path_list_index, lfe->l2.child_index);
 
   hash_unset_mem (lgm->lisp_gpe_fwd_entries, lfe->key);
   clib_mem_free (lfe->key);
@@ -652,7 +655,7 @@ del_l2_fwd_entry (lisp_gpe_main_t * lgm,
 
   lfe = find_fwd_entry (lgm, a, &key);
 
-  if (NULL != lfe)
+  if (NULL == lfe)
     return VNET_API_ERROR_INVALID_VALUE;
 
   del_l2_fwd_entry_i (lgm, lfe);
