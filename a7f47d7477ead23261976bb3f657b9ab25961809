@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_7164e848",
+        "filename": "vnet/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1956,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-04T02:18:40Z",
+      "side": 1,
+      "message": "act-hit-next also assumes v4 \u0026 v6 nodes to be congruent. Perhaps a similar fix here?",
+      "range": {
+        "startLine": 1956,
+        "startChar": 0,
+        "endLine": 1956,
+        "endChar": 22
+      },
+      "revId": "a7f47d7477ead23261976bb3f657b9ab25961809",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
