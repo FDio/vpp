@@ -22,6 +22,30 @@
       "revId": "41b4089a8ca8acef90afe31c72ab8addc64bcf49",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1d315d_b1e04097",
+        "filename": "vnet/vnet/l2/l2_output.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-10-04T07:12:41Z",
+      "side": 1,
+      "message": "OK, I will use one flag for both vtr operations. As for \u0026\u0026 - my mistake, i redo all code so many times ... AS it PBB development has been stopped I just redo changes without testing (I did basic test before optimization). I will retest after optimization again.",
+      "parentUuid": "3a1d315d_11dc94e3",
+      "range": {
+        "startLine": 243,
+        "startChar": 8,
+        "endLine": 243,
+        "endChar": 10
+      },
+      "revId": "41b4089a8ca8acef90afe31c72ab8addc64bcf49",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
