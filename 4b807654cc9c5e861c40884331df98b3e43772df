@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "3a1d315d_1797e491",
+        "filename": "vnet/vnet/gre/gre.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2016-10-04T13:54:41Z",
+      "side": 1,
+      "message": "It was. But I rebased this morning and this code has changed. The crash has disappeared also. Much more stable. Will submit the rebased code by end of day.",
+      "parentUuid": "3a1d315d_284f28bf",
+      "range": {
+        "startLine": 287,
+        "startChar": 22,
+        "endLine": 287,
+        "endChar": 24
+      },
+      "revId": "4b807654cc9c5e861c40884331df98b3e43772df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a1d315d_08a90c7b",
         "filename": "vnet/vnet/gre/interface.c",
         "patchSetId": 1
