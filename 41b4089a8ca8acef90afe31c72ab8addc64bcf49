@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1d315d_11dc94e3",
+        "filename": "vnet/vnet/l2/l2_output.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-10-04T05:56:57Z",
+      "side": 1,
+      "message": "Thanks for optimizing the pbb vtr check and remove the \"+\" operator. This really should be || and not \u0026\u0026 here, right? With this error, I wonder how would existing output_vtr operation work properly? Is output VTR operation checked by CSIT? If so, why did it pass? \nAnyway, I still don\u0027t like the fact that we now need an extra || operation here when there is no VTR configured. Can we add an extra flag called \"out_vtr_flag\" in l2_output_config_t which would be 0 if no VTR operation and would be 1 if either output_vtr.push_and_pop_bytes is setup or output_pbb_vtr.push_and_pop_bytes is configured. Then this if above just need to check config0-\u003eoutput_btr_flag without needing any other operations.",
+      "range": {
+        "startLine": 243,
+        "startChar": 8,
+        "endLine": 243,
+        "endChar": 10
+      },
+      "revId": "41b4089a8ca8acef90afe31c72ab8addc64bcf49",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
