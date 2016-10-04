@@ -20,12 +20,13 @@
  * called through a shared memory interface.
  */
 
-/** \brief Add S-NAT address range
+/** \brief Add/del S-NAT address range
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_ip4 - 1 if address type is IPv4
     @first_ip_address - first IP address
     @last_ip_address - last IP address
+    @is_add - 1 if add, 0 if delete
 */
 define snat_add_address_range {
   u32 client_index;
@@ -33,6 +34,7 @@ define snat_add_address_range {
   u8 is_ip4;
   u8 first_ip_address[16];
   u8 last_ip_address[16];
+  u8 is_add;
 };
 
 /** \brief Add S-NAT address range reply
@@ -43,6 +45,26 @@ define snat_add_address_range {
 define snat_add_address_range_reply {
   u32 context;
   i32 retval;
+};
+
+/** \brief Dump S-NAT addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_address_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief S-NAT address details response
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param ip_address - IP address
+*/
+define snat_address_details {
+  u32 context;
+  u8 is_ip4;
+  u8 ip_address[16];
 };
 
 /** \brief Enable/disable S-NAT feature on the interface
