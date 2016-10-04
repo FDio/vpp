@@ -1366,16 +1366,53 @@ vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
   vl_api_rpc_call_t *mp;
   api_main_t *am = &api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
+  unix_shared_memory_queue_t *q;
 
+  /* Main thread: call the function directly */
+  if (os_get_cpu_number () == 0)
+    {
+      vlib_main_t *vm = vlib_get_main ();
+      void (*call_fp) (void *);
+
+      vlib_worker_thread_barrier_sync (vm);
+
+      call_fp = fp;
+      call_fp (data);
+
+      vlib_worker_thread_barrier_release (vm);
+      return;
+    }
+
+  /* Any other thread, actually do an RPC call... */
   mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) + data_length);
+
   memset (mp, 0, sizeof (*mp));
   clib_memcpy (mp->data, data, data_length);
   mp->_vl_msg_id = ntohs (VL_API_RPC_CALL);
   mp->function = pointer_to_uword (fp);
   mp->need_barrier_sync = 1;
 
-  /* Use the "normal" control-plane mechanism for the main thread */
-  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
+  /*
+   * Use the "normal" control-plane mechanism for the main thread.
+   * Well, almost. if the main input queue is full, we cannot
+   * block. Otherwise, we can expect a barrier sync timeout.
+   */
+  q = shmem_hdr->vl_input_queue;
+
+  while (pthread_mutex_trylock (&q->mutex))
+    vlib_worker_thread_barrier_check ();
+
+  while (PREDICT_FALSE (unix_shared_memory_queue_is_full (q)))
+    {
+      pthread_mutex_unlock (&q->mutex);
+      vlib_worker_thread_barrier_check ();
+      while (pthread_mutex_trylock (&q->mutex))
+	vlib_worker_thread_barrier_check ();
+    }
+
+  vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
+
+  pthread_mutex_unlock (&q->mutex);
 }
 
 #define foreach_rpc_api_msg                     \
