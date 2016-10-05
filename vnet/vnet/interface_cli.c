@@ -834,11 +834,15 @@ set_unnumbered (vlib_main_t * vm,
     {
       si->flags &= ~(VNET_SW_INTERFACE_FLAG_UNNUMBERED);
       si->unnumbered_sw_if_index = (u32) ~ 0;
+      ip4_sw_interface_enable_disable (unnumbered_sw_if_index, 0);
+      ip6_sw_interface_enable_disable (unnumbered_sw_if_index, 0);
     }
   else if (is_set)
     {
       si->flags |= VNET_SW_INTERFACE_FLAG_UNNUMBERED;
       si->unnumbered_sw_if_index = inherit_from_sw_if_index;
+      ip4_sw_interface_enable_disable (unnumbered_sw_if_index, 1);
+      ip6_sw_interface_enable_disable (unnumbered_sw_if_index, 1);
     }
 
   return 0;
