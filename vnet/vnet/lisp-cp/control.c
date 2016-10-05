@@ -3562,14 +3562,17 @@ send_map_request_thread_fn (void *arg)
   map_request_args_t *a = arg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 
-  lisp_pending_map_request_lock (lcm);
-
   if (a->is_resend)
+    /* if resending, we already have the lock */
     resend_encapsulated_map_request (lcm, &a->seid, &a->deid, a->smr_invoked);
   else
-    send_encapsulated_map_request (lcm, &a->seid, &a->deid, a->smr_invoked);
+    {
+      /* get lock before sending map-request */
+      lisp_pending_map_request_lock (lcm);
+      send_encapsulated_map_request (lcm, &a->seid, &a->deid, a->smr_invoked);
+      lisp_pending_map_request_unlock (lcm);
+    }
 
-  lisp_pending_map_request_unlock (lcm);
 
   return 0;
 }
