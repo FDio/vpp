@@ -121,6 +121,7 @@ SIPHONS ?= clicmd syscfg
 
 SIPHON_FILES = $(addprefix $(SIPHON_INPUT)/,$(addsuffix .siphon,$(SIPHONS)))
 SIPHON_DOCS = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .md,$(SIPHONS)))
+SIPHON_EXTRA = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .itemlist,$(filter clicmd,$(SIPHONS))))
 
 $(BR)/.doxygen-bootstrap.ok: Makefile
 	@echo "Checking whether dependencies for Doxygen are installed..."
@@ -206,18 +207,35 @@ $(SIPHON_FILES): $(BR)/.doxygen-bootstrap.ok \
 $(SIPHON_OUTPUT)/%.md: $(SIPHON_INPUT)/%.siphon \
 		$(DOXY_DIR)/siphon-process \
 		$(wildcard $(DOXY_DIR)/siphon/*.py) \
-		$(wildcard $(DOXY_DIR)/siphon_templates/*/*.md)
+		$(wildcard $(DOXY_DIR)/siphon_templates/markdown/*/*.md)
 	@echo "Processing siphon from $(notdir $<)..."
 	@set -e; \
 	cd "$(WS_ROOT)"; \
 	$(DOXY_DIR)/siphon-process \
 		--type=$(basename $(notdir $<)) \
+		--format=markdown \
 		--output="$@" \
 		"$<"
 
-# This target can be used just to generate the siphoned docs
+# Process the .siphon source fragments and render them into a list of cli
+# commands.
+.DELETE_ON_ERROR: $(SIPHON_EXTRA)
+$(SIPHON_OUTPUT)/%.itemlist: $(SIPHON_INPUT)/%.siphon \
+		$(DOXY_DIR)/siphon-process \
+		$(wildcard $(DOXY_DIR)/siphon/*.py) \
+		$(wildcard $(DOXY_DIR)/siphon_templates/itemlist/*/*.md)
+	@echo "Processing siphon from $(notdir $<)..."
+	@set -e; \
+	cd "$(WS_ROOT)"; \
+	$(DOXY_DIR)/siphon-process \
+		--type=$(basename $(notdir $<)) \
+		--format=itemlist \
+		--output="$@" \
+		"$<"
+
+# This target can be used just to generate the siphoned things
 .PHONY: doxygen-siphon
-doxygen-siphon: $(SIPHON_DOCS)
+doxygen-siphon: $(SIPHON_DOCS) $(SIPHON_EXTRA)
 
 # Generate the doxygen docs
 .PHONY: doxygen
