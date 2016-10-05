@@ -241,7 +241,7 @@ class VppTestCase(unittest.TestCase):
     #  @param pkts List variable to store packets to be added to the stream.
     @classmethod
     def pg_add_stream(cls, i, pkts):
-        os.system("sudo rm -f /tmp/pg%u_in.pcap" % i)
+        os.system("rm -f /tmp/pg%u_in.pcap" % i)
         wrpcap("/tmp/pg%u_in.pcap" % i, pkts)
         # no equivalent API command
         cls.cli(0, "packet-generator new pcap /tmp/pg%u_in.pcap source pg%u"
@@ -258,7 +258,7 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def pg_enable_capture(cls, args):
         for i in args:
-            os.system("sudo rm -f /tmp/pg%u_out.pcap" % i)
+            os.system("rm -f /tmp/pg%u_out.pcap" % i)
             cls.cli(0, "packet-generator capture pg%u pcap /tmp/pg%u_out.pcap"
                     % (i, i))
 
