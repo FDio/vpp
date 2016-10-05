@@ -3398,15 +3398,15 @@ static void vl_api_sw_interface_set_unnumbered_t_handler
     {
       si->flags |= VNET_SW_INTERFACE_FLAG_UNNUMBERED;
       si->unnumbered_sw_if_index = sw_if_index;
-      ip4_sw_interface_enable_disable (sw_if_index, 1);
-      ip6_sw_interface_enable_disable (sw_if_index, 1);
+      ip4_sw_interface_enable_disable (unnumbered_sw_if_index, 1);
+      ip6_sw_interface_enable_disable (unnumbered_sw_if_index, 1);
     }
   else
     {
       si->flags &= ~(VNET_SW_INTERFACE_FLAG_UNNUMBERED);
       si->unnumbered_sw_if_index = (u32) ~ 0;
-      ip4_sw_interface_enable_disable (sw_if_index, 0);
-      ip6_sw_interface_enable_disable (sw_if_index, 0);
+      ip4_sw_interface_enable_disable (unnumbered_sw_if_index, 0);
+      ip6_sw_interface_enable_disable (unnumbered_sw_if_index, 0);
     }
 
 done:
