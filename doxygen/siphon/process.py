@@ -20,6 +20,9 @@ import logging, os,sys, cgi, json, jinja2, HTMLParser
 """Mapping of known processors to their classes"""
 siphons = {}
 
+"""Mapping of known output formats to their classes"""
+formats = {}
+
 
 """Generate rendered output for siphoned data."""
 class Siphon(object):
@@ -51,28 +54,36 @@ class Siphon(object):
     """Template environment, if we're using templates"""
     _tplenv = None
 
-    def __init__(self, template_directory=None):
+    def __init__(self, template_directory, format):
         super(Siphon, self).__init__()
         self.log = logging.getLogger("siphon.process.%s" % self.name)
 
-        if template_directory is not None:
-          self.template_directory = template_directory
-          searchpath = [
-              template_directory + "/" + self.name,
-              template_directory + "/" + "default",
-          ]
-          loader = jinja2.FileSystemLoader(searchpath=searchpath)
-          self._tplenv = jinja2.Environment(
-              loader=loader,
-              trim_blocks=True,
-              keep_trailing_newline=True)
+        # Get our output format details
+        fmt_klass = formats[format]
+        fmt = fmt_klass()
+        self._format = fmt
 
-          # Convenience, get a reference to the internal escape and
-          # unescape methods in cgi and HTMLParser. These then become
-          # available to templates to use, if needed.
-          self._h = HTMLParser.HTMLParser()
-          self.escape = cgi.escape
-          self.unescape = self._h.unescape
+        # Sort out the template search path
+        def _tpldir(name):
+            return os.sep.join((template_directory, fmt.name, name))
+
+        self.template_directory = template_directory
+        searchpath = [
+            _tpldir(self.name),
+            _tpldir("default"),
+        ]
+        loader = jinja2.FileSystemLoader(searchpath=searchpath)
+        self._tplenv = jinja2.Environment(
+            loader=loader,
+            trim_blocks=True,
+            keep_trailing_newline=True)
+
+        # Convenience, get a reference to the internal escape and
+        # unescape methods in cgi and HTMLParser. These then become
+        # available to templates to use, if needed.
+        self._h = HTMLParser.HTMLParser()
+        self.escape = cgi.escape
+        self.unescape = self._h.unescape
 
 
     # Output renderers
@@ -157,7 +168,7 @@ class Siphon(object):
 
     """Template processor"""
     def template(self, name, **kwargs):
-      tpl = self._tplenv.get_template(name + ".md")
+      tpl = self._tplenv.get_template(name + self._format.extension)
       return tpl.render(
             this=self,
             **kwargs)
@@ -270,3 +281,31 @@ class Siphon(object):
 
         # Deliver the accumulated body output
         out.write(contents)
+
+
+"""Output format class"""
+class Format(object):
+
+    """Name of this output format"""
+    name = None
+
+    """Expected file extension of templates that build this format"""
+    extension = None
+
+
+"""Markdown output format"""
+class FormatMarkdown(Format):
+    name = "markdown"
+    extension = ".md"
+
+# Register 'markdown'
+formats["markdown"] = FormatMarkdown
+
+
+"""Itemlist output format"""
+class FormatItemlist(Format):
+    name = "itemlist"
+    extension = ".itemlist"
+
+# Register 'itemlist'
+formats["itemlist"] = FormatItemlist

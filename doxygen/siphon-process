@@ -23,6 +23,7 @@ import siphon
 DEFAULT_LOGFILE = None
 DEFAULT_LOGLEVEL = "info"
 DEFAULT_SIPHON ="clicmd"
+DEFAULT_FORMAT = "markdown"
 DEFAULT_OUTPUT = None
 DEFAULT_TEMPLATES = os.path.dirname(__file__) + "/siphon_templates"
 
@@ -36,6 +37,9 @@ ap.add_argument("--log-level", default=DEFAULT_LOGLEVEL,
 ap.add_argument("--type", '-t', metavar="siphon_type", default=DEFAULT_SIPHON,
         choices=siphon.process.siphons.keys(),
         help="Siphon type to process [%s]" % DEFAULT_SIPHON)
+ap.add_argument("--format", '-f', default=DEFAULT_FORMAT,
+        choices=siphon.process.formats.keys(),
+        help="Output format to generate [%s]" % DEFAULT_FORMAT)
 ap.add_argument("--output", '-o', metavar="file", default=DEFAULT_OUTPUT,
         help="Output file (uses stdout if not defined) [%s]" % DEFAULT_OUTPUT)
 ap.add_argument("--templates", metavar="directory", default=DEFAULT_TEMPLATES,
@@ -56,7 +60,7 @@ else:
 
 # Get our processor
 klass = siphon.process.siphons[args.type]
-processor = klass(template_directory=args.templates)
+processor = klass(template_directory=args.templates, format=args.format)
 
 # Load the input files
 processor.load_json(args.input)
