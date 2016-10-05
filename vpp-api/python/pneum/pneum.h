@@ -15,7 +15,7 @@
 #ifndef included_pneum_h
 #define included_pneum_h
 
-int pneum_connect(char *name);
+int pneum_connect(char * name, char * chroot_prefix);
 int pneum_disconnect(void);
 int pneum_read(char **data, int *l);
 int pneum_write(char *data, int len);
