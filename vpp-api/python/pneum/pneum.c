@@ -116,10 +116,13 @@ pneum_rx_thread_fn (void *arg)
 }
 
 int
-pneum_connect (char *name)
+pneum_connect (char * name, char * chroot_prefix)
 {
   int rv = 0;
   pneum_main_t *pm = &pneum_main;
+
+  if (chroot_prefix != NULL)
+    vl_set_memory_root_path (chroot_prefix);
 
   if ((rv = vl_client_api_map("/vpe-api"))) {
     clib_warning ("vl_client_api map rv %d", rv);
