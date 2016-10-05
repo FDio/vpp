@@ -3406,8 +3406,9 @@ int vnet_ip6_nd_term (vlib_main_t * vm,
 
   /* Check if anyone want ND events for L2 BDs */
   p = mhash_get (&nm->mac_changes_by_address, &ip6a_zero);
-  if (p && shg == 0)
-    { /* Only SHG 0 interface which is more likely local */
+  if (p && shg == 0 && /* Only SHG 0 interface which is more likely local */ 
+      !ip6_address_is_link_local_unicast (&ip->src_address))
+    { 
       u32 next_index = p[0];
       while (next_index != (u32)~0)
         {
