@@ -86,12 +86,16 @@ def handler(signum, frame):
     print('Signal handler called with signal', signum)
     raise IOError("Couldn't connect to VPP!")
 
-def connect(name):
+def connect(name, chroot_prefix = None):
     # Set the signal handler
     signal.signal(signal.SIGALRM, handler)
 
     signal.alarm(3) # 3 second
-    rv = vpp_api.connect(name, msg_handler)
+    if not chroot_prefix:
+        rv = vpp_api.connect(name, msg_handler)
+    else:
+        rv = vpp_api.connect(name, msg_handler, chroot_prefix)
+
     signal.alarm(0)
 
     #

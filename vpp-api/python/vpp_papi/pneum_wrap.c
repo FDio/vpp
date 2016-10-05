@@ -44,11 +44,11 @@ wrap_pneum_callback (char *data, int len)
 static PyObject *
 wrap_connect (PyObject *self, PyObject *args)
 {
-  char *name;
+  char * name, * chroot_prefix = NULL;
   int rv;
-  PyObject *temp;
+  PyObject * temp;
 
-  if (!PyArg_ParseTuple(args, "sO:set_callback", &name, &temp))
+  if (!PyArg_ParseTuple(args, "sO|s:wrap_connect", &name, &temp, &chroot_prefix))
     return (NULL);
 
   if (!PyCallable_Check(temp)) {
@@ -61,7 +61,7 @@ wrap_connect (PyObject *self, PyObject *args)
   pneum_callback = temp;       /* Remember new callback */
 
   Py_BEGIN_ALLOW_THREADS
-  rv = pneum_connect(name);
+  rv = pneum_connect(name, chroot_prefix);
   Py_END_ALLOW_THREADS
   return PyLong_FromLong(rv);
 }
