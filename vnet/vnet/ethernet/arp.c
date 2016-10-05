@@ -2269,9 +2269,6 @@ arp_term_l2bd (vlib_main_t * vm,
 	  iph0 = (ip6_header_t *) l3h0;
 	  if (PREDICT_FALSE (ethertype0 == ETHERNET_TYPE_IP6 &&
 			     iph0->protocol == IP_PROTOCOL_ICMP6 &&
-			     !ip6_address_is_link_local_unicast
-			     (&iph0->src_address)
-			     &&
 			     !ip6_address_is_unspecified
 			     (&iph0->src_address)))
 	    {
