@@ -189,7 +189,7 @@ build-vpp-api: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-api-install)
 
 define test
-	@sudo make -C test \
+	@make -C test \
 	  VPP_TEST_BIN=$(BR)/install-$(1)-native/vpp/bin/vpp \
 	  VPP_TEST_API_TEST_BIN=$(BR)/install-$(1)-native/vpp-api-test/bin/vpp_api_test \
 	  V=$(V) TEST=$(TEST)
