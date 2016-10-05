@@ -121,6 +121,7 @@ SIPHONS ?= clicmd syscfg
 
 SIPHON_FILES = $(addprefix $(SIPHON_INPUT)/,$(addsuffix .siphon,$(SIPHONS)))
 SIPHON_DOCS = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .md,$(SIPHONS)))
+SIPHON_ITEMLIST = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .itemlist,$(filter clicmd,$(SIPHONS))))
 
 $(BR)/.doxygen-bootstrap.ok: Makefile
 	@echo "Checking whether dependencies for Doxygen are installed..."
@@ -200,24 +201,37 @@ $(SIPHON_FILES): $(BR)/.doxygen-bootstrap.ok \
 		--output="$(SIPHON_INPUT)" \
 		"@$(SIPHON_INPUT)/files"
 
-# Process the .siphon source fragments and render them into doxygen flavored
-# markdown documentation
-.DELETE_ON_ERROR: $(SIPHON_DOCS)
-$(SIPHON_OUTPUT)/%.md: $(SIPHON_INPUT)/%.siphon \
+# Evaluate this to build a siphon doc output target for each desired
+# output type:
+# $(eval $(call siphon-process,file_extension,output_type_name))
+define siphon-process
+$(SIPHON_OUTPUT)/%.$(1): $(SIPHON_INPUT)/%.siphon \
 		$(DOXY_DIR)/siphon-process \
 		$(wildcard $(DOXY_DIR)/siphon/*.py) \
-		$(wildcard $(DOXY_DIR)/siphon_templates/*/*.md)
-	@echo "Processing siphon from $(notdir $<)..."
+		$(wildcard $(DOXY_DIR)/siphon_templates/$(2)/*/*.$(1))
+	@echo "Processing siphon for $(2) from $$(notdir $$<)..."
 	@set -e; \
 	cd "$(WS_ROOT)"; \
 	$(DOXY_DIR)/siphon-process \
-		--type=$(basename $(notdir $<)) \
-		--output="$@" \
-		"$<"
+		--type=$$(basename $$(notdir $$<)) \
+		--format=$(2) \
+		--output="$$@" \
+		"$$<"
+endef
 
-# This target can be used just to generate the siphoned docs
+# Process the .siphon source fragments and render them into doxygen flavored
+# markdown documentation
+.DELETE_ON_ERROR: $(SIPHON_DOCS)
+$(eval $(call siphon-process,md,markdown))
+
+# Process the .siphon source fragments and render them into a list of cli
+# commands.
+.DELETE_ON_ERROR: $(SIPHON_ITEMLIST)
+$(eval $(call siphon-process,itemlist,itemlist))
+
+# This target can be used just to generate the siphoned things
 .PHONY: doxygen-siphon
-doxygen-siphon: $(SIPHON_DOCS)
+doxygen-siphon: $(SIPHON_DOCS) $(SIPHON_ITEMLIST)
 
 # Generate the doxygen docs
 .PHONY: doxygen
