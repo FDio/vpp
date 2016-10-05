@@ -35,11 +35,18 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/dpo/dpo.h>
+#include <vnet/fib/fib_table.h>
 
 #include <lb/lbhash.h>
 
 #define LB_DEFAULT_PER_CPU_STICKY_BUCKETS 1 << 10
 #define LB_DEFAULT_FLOW_TIMEOUT 40
+
+typedef enum {
+  LB_NEXT_DROP,
+  LB_N_NEXT,
+} lb_next_t;
 
 /**
  * Each VIP is configured with a set of
@@ -47,19 +54,17 @@
  */
 typedef struct {
   /**
+   * Registration to FIB event.
+   */
+  fib_node_t fib_node;
+
+  /**
    * Destination address used to tunnel traffic towards
    * that application server.
    * The address is also used as ID and pseudo-random
    * seed for the load-balancing process.
    */
   ip46_address_t address;
-
-  /**
-   * Second ip lookup can be avoided by sending directly the packet
-   * to ip-rewrite with a configured adjacency.
-   * When set to ~0, the packets are sent to ip6-lookup.
-   */
-  u32 adj_index;
 
   /**
    * ASs are indexed by address and VIP Index.
@@ -86,6 +91,22 @@ typedef struct {
    * may happen.
    */
   u32 last_used;
+
+  /**
+   * The FIB entry index for the next-hop
+   */
+  fib_node_index_t next_hop_fib_entry_index;
+
+  /**
+   * The child index on the FIB entry
+   */
+  u32 next_hop_child_index;
+
+  /**
+   * The next DPO in the graph to follow.
+   */
+  dpo_id_t dpo;
+
 } lb_as_t;
 
 format_function_t format_lb_as;
@@ -180,15 +201,13 @@ typedef struct {
    * in the adjacency index.
    */
   u8 flags;
+#define LB_VIP_FLAGS_USED 0x1
 
   /**
    * Pool of AS indexes used for this VIP.
    * This also includes ASs that have been removed (but are still referenced).
    */
   u32 *as_indexes;
-
-#define LB_VIP_FLAGS_USED 0x1
-
 } lb_vip_t;
 
 #define lb_vip_is_ip4(vip) ((vip)->type == LB_VIP_TYPE_IP4_GRE6 || (vip)->type == LB_VIP_TYPE_IP4_GRE4)
@@ -261,22 +280,23 @@ typedef struct {
   vlib_simple_counter_main_t vip_counters[LB_N_VIP_COUNTERS];
 
   /**
+   * DPO used to send packet from IP4/6 lookup to LB node.
+   */
+  dpo_type_t dpo_gre4_type;
+  dpo_type_t dpo_gre6_type;
+
+  /**
+   * Node type for registering to fib changes.
+   */
+  fib_node_type_t fib_node_type;
+
+  /**
    * API dynamically registered base ID.
    */
   u16 msg_id_base;
 
   volatile u32 *writer_lock;
 } lb_main_t;
-
-/**
- * struct stored in adj->opaque data.
- */
-typedef struct {
-  /**
-   * Index of the VIP associated with that IP adjacency.
-   */
-  u32 vip_index;
-} lb_adj_data_t;
 
 extern lb_main_t lb_main;
 extern vlib_node_registration_t lb6_node;
@@ -301,12 +321,6 @@ int lb_vip_find_index(ip46_address_t *prefix, u8 plen, u32 *vip_index);
 
 int lb_vip_add_ass(u32 vip_index, ip46_address_t *addresses, u32 n);
 int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n);
-
-/**
- * Updates the adjacency index stored in the AS such that the second
- * IP lookup (after encap) can be bypassed.
- */
-int lb_as_lookup_bypass(u32 vip_index, ip46_address_t *address, u8 is_disable);
 
 u32 lb_hash_time_now(vlib_main_t * vm);
 

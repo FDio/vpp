@@ -17,47 +17,6 @@
 #include <lb/util.h>
 
 static clib_error_t *
-lb_bypass_command_fn (vlib_main_t * vm,
-              unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip46_address_t vip_prefix, as_addr;
-  u8 vip_plen;
-  u32 vip_index;
-  u8 disable = 0;
-  int ret;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  if (!unformat(line_input, "%U", unformat_ip46_prefix, &vip_prefix, &vip_plen, IP46_TYPE_ANY))
-    return clib_error_return (0, "invalid vip prefix: '%U'",
-                              format_unformat_error, line_input);
-
-  if ((ret = lb_vip_find_index(&vip_prefix, vip_plen, &vip_index)))
-    return clib_error_return (0, "lb_vip_find_index error %d", ret);
-
-  if (!unformat(line_input, "%U", unformat_ip46_address, &as_addr, IP46_TYPE_ANY))
-    return clib_error_return (0, "invalid as address: '%U'",
-                                  format_unformat_error, line_input);
-
-  if (unformat(line_input, "disable"))
-    disable = 1;
-
-  if ((ret = lb_as_lookup_bypass(vip_index, &as_addr, disable)))
-    return clib_error_return (0, "lb_as_lookup_bypass error %d", ret);
-
-  return 0;
-}
-
-VLIB_CLI_COMMAND (lb_bypass_command, static) =
-{
-  .path = "lb bypass",
-  .short_help = "lb bypass <prefix> <address> [disable]",
-  .function = lb_bypass_command_fn,
-};
-
-static clib_error_t *
 lb_vip_command_fn (vlib_main_t * vm,
               unformat_input_t * input, vlib_cli_command_t * cmd)
 {

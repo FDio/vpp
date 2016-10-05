@@ -28,6 +28,25 @@ lb_main_t lb_main;
 #define lb_get_writer_lock() do {} while(__sync_lock_test_and_set (lb_main.writer_lock, 1))
 #define lb_put_writer_lock() lb_main.writer_lock[0] = 0
 
+static void lb_as_stack (lb_as_t *as);
+
+
+const static char * const lb_dpo_gre4_ip4[] = { "lb4-gre4" , NULL };
+const static char * const lb_dpo_gre4_ip6[] = { "lb6-gre4" , NULL };
+const static char* const * const lb_dpo_gre4_nodes[DPO_PROTO_NUM] =
+    {
+	[DPO_PROTO_IP4]  = lb_dpo_gre4_ip4,
+	[DPO_PROTO_IP6]  = lb_dpo_gre4_ip6,
+    };
+
+const static char * const lb_dpo_gre6_ip4[] = { "lb4-gre6" , NULL };
+const static char * const lb_dpo_gre6_ip6[] = { "lb6-gre6" , NULL };
+const static char* const * const lb_dpo_gre6_nodes[DPO_PROTO_NUM] =
+    {
+	[DPO_PROTO_IP4]  = lb_dpo_gre6_ip4,
+	[DPO_PROTO_IP6]  = lb_dpo_gre6_ip6,
+    };
+
 u32 lb_hash_time_now(vlib_main_t * vm)
 {
   return (u32) (vlib_time_now(vm) + 10000);
@@ -143,12 +162,12 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
   u32 *as_index;
   pool_foreach(as_index, vip->as_indexes, {
       as = &lbm->ass[*as_index];
-      s = format(s, "%U    %U %d buckets   %d flows  adj:%u %s\n",
+      s = format(s, "%U    %U %d buckets   %d flows  dpo:%u %s\n",
                    format_white_space, indent,
                    format_ip46_address, &as->address, IP46_TYPE_ANY,
                    count[as - lbm->ass],
                    vlib_refcount_get(&lbm->as_refcount, as - lbm->ass),
-                   as->adj_index,
+                   as->dpo.dpoi_index,
                    (as->flags & LB_AS_FLAGS_USED)?"used":" removed");
   });
 
@@ -163,7 +182,6 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
   */
   return s;
 }
-
 
 typedef struct {
   u32 as_index;
@@ -195,11 +213,18 @@ static void lb_vip_garbage_collection(lb_vip_t *vip)
   pool_foreach(as_index, vip->as_indexes, {
       as = &lbm->ass[*as_index];
       if (!(as->flags & LB_AS_FLAGS_USED) && //Not used
-          clib_u32_loop_gt(now, as->last_used + LB_CONCURRENCY_TIMEOUT) && //Not recently used
-          (vlib_refcount_get(&lbm->as_refcount, as - lbm->ass) == 0)) { //Not referenced
-        pool_put(vip->as_indexes, as_index);
-        pool_put(lbm->ass, as);
-      }
+	  clib_u32_loop_gt(now, as->last_used + LB_CONCURRENCY_TIMEOUT) && //Not recently used
+	  (vlib_refcount_get(&lbm->as_refcount, as - lbm->ass) == 0))
+	{ //Not referenced
+	  fib_entry_child_remove(as->next_hop_fib_entry_index,
+				 as->next_hop_child_index);
+	  fib_table_entry_delete_index(as->next_hop_fib_entry_index,
+				       FIB_SOURCE_RR);
+	  as->next_hop_fib_entry_index = FIB_NODE_INDEX_INVALID;
+
+	  pool_put(vip->as_indexes, as_index);
+	  pool_put(lbm->ass, as);
+	}
   });
 }
 
@@ -449,7 +474,6 @@ next:
   //Update reused ASs
   vec_foreach(ip, to_be_updated) {
     lbm->ass[*ip].flags = LB_AS_FLAGS_USED;
-    lbm->ass[*ip].adj_index = ~0;
   }
   vec_free(to_be_updated);
 
@@ -461,9 +485,36 @@ next:
     as->address = addresses[*ip];
     as->flags = LB_AS_FLAGS_USED;
     as->vip_index = vip_index;
-    as->adj_index = ~0;
     pool_get(vip->as_indexes, as_index);
     *as_index = as - lbm->ass;
+
+    /*
+     * become a child of the FIB entry
+     * so we are informed when its forwarding changes
+     */
+    fib_prefix_t nh = {};
+    if (lb_vip_is_gre4(vip)) {
+	nh.fp_addr.ip4 = as->address.ip4;
+	nh.fp_len = 32;
+	nh.fp_proto = FIB_PROTOCOL_IP4;
+    } else {
+	nh.fp_addr.ip6 = as->address.ip6;
+	nh.fp_len = 128;
+	nh.fp_proto = FIB_PROTOCOL_IP6;
+    }
+
+    as->next_hop_fib_entry_index =
+	fib_table_entry_special_add(0,
+				    &nh,
+				    FIB_SOURCE_RR,
+				    FIB_ENTRY_FLAG_NONE,
+				    ADJ_INDEX_INVALID);
+    as->next_hop_child_index =
+	fib_entry_child_add(as->next_hop_fib_entry_index,
+			    lbm->fib_node_type,
+			    as - lbm->ass);
+
+    lb_as_stack(as);
   }
   vec_free(to_be_added);
 
@@ -535,100 +586,33 @@ int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n)
   return ret;
 }
 
-int lb_as_lookup_bypass(u32 vip_index, ip46_address_t *address, u8 is_disable)
-{
-  /* lb_get_writer_lock(); */
-  /* lb_main_t *lbm = &lb_main; */
-  /* u32 as_index; */
-  /* lb_as_t *as; */
-  /* lb_vip_t *vip; */
-
-  /* if (!(vip = lb_vip_get_by_index(vip_index)) || */
-  /*     lb_as_find_index_vip(vip, address, &as_index)) { */
-  /*   lb_put_writer_lock(); */
-  /*   return VNET_API_ERROR_NO_SUCH_ENTRY; */
-  /* } */
-
-  /* as = &lbm->ass[as_index]; */
-
-  /* if (is_disable) { */
-  /*   as->adj_index = ~0; */
-  /* } else if (lb_vip_is_gre4(vip)) { */
-  /*   uword *p = ip4_get_route (&ip4_main, 0, 0, as->address.ip4.as_u8, 32); */
-  /*   if (p == 0) { */
-  /*     lb_put_writer_lock(); */
-  /*     return VNET_API_ERROR_NO_SUCH_ENTRY; */
-  /*   } */
-  /*   u32 ai = (u32)p[0]; */
-  /*   ip_lookup_main_t *lm4 = &ip4_main.lookup_main; */
-  /*   ip_adjacency_t *adj4 = ip_get_adjacency (lm4, ai); */
-  /*   if (adj4->lookup_next_index != IP_LOOKUP_NEXT_REWRITE) { */
-  /*     lb_put_writer_lock(); */
-  /*     return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE; */
-  /*   } */
-
-  /*   as->adj_index = ai; */
-  /* } else { */
-  /*   u32 ai = ip6_get_route (&ip6_main, 0, 0, &as->address.ip6, 128); */
-  /*   if (ai == 0) { */
-  /*     lb_put_writer_lock(); */
-  /*     return VNET_API_ERROR_NO_SUCH_ENTRY; */
-  /*   } */
-
-  /*   ip_lookup_main_t *lm6 = &ip6_main.lookup_main; */
-  /*   ip_adjacency_t *adj6 = ip_get_adjacency (lm6, ai); */
-  /*   if (adj6->lookup_next_index != IP_LOOKUP_NEXT_REWRITE) { */
-  /*     lb_put_writer_lock(); */
-  /*     return VNET_API_ERROR_INCORRECT_ADJACENCY_TYPE; */
-  /*   } */
-
-  /*   as->adj_index = ai; */
-  /* } */
-  /* lb_put_writer_lock(); */
-  return 0;
-}
-
-
 /**
  * Add the VIP adjacency to the ip4 or ip6 fib
  */
 static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip)
 {
-  /* ip_adjacency_t adj; */
-  /* //Adjacency */
-  /* memset (&adj, 0, sizeof (adj)); */
-  /* adj.explicit_fib_index = ~0; */
-  /* lb_adj_data_t *ad = (lb_adj_data_t *) &adj.opaque; */
-  /* ad->vip_index = vip - lbm->vips; */
-
-  /* ASSERT (lbm->writer_lock[0]); //This must be called with the lock owned */
-  /* u32 lookup_next_index = lbm->ip_lookup_next_index[vip->type]; */
-
-  /* if (lb_vip_is_ip4(vip)) { */
-  /*   adj.lookup_next_index = lookup_next_index; */
-  /*   ip4_add_del_route_args_t route_args = {}; */
-  /*   ip4_main_t *im4 = &ip4_main; */
-  /*   route_args.table_index_or_table_id = 0; */
-  /*   route_args.flags = IP4_ROUTE_FLAG_ADD; */
-  /*   route_args.dst_address = vip->prefix.ip4; */
-  /*   route_args.dst_address_length = vip->plen - 96; */
-  /*   route_args.adj_index = ~0; */
-  /*   route_args.add_adj = &adj; */
-  /*   route_args.n_add_adj = 1; */
-  /*   ip4_add_del_route (im4, &route_args); */
-  /* } else { */
-  /*   adj.lookup_next_index = lookup_next_index; */
-  /*   ip6_add_del_route_args_t route_args = {}; */
-  /*   ip6_main_t *im6 = &ip6_main; */
-  /*   route_args.table_index_or_table_id = 0; */
-  /*   route_args.flags = IP6_ROUTE_FLAG_ADD; */
-  /*   route_args.dst_address = vip->prefix.ip6; */
-  /*   route_args.dst_address_length = vip->plen; */
-  /*   route_args.adj_index = ~0; */
-  /*   route_args.add_adj = &adj; */
-  /*   route_args.n_add_adj = 1; */
-  /*   ip6_add_del_route (im6, &route_args); */
-  /* } */
+  dpo_proto_t proto = 0;
+  dpo_id_t dpo = DPO_NULL;
+  fib_prefix_t pfx = {};
+  if (lb_vip_is_ip4(vip)) {
+      pfx.fp_addr.ip4 = vip->prefix.ip4;
+      pfx.fp_len = vip->plen - 96;
+      pfx.fp_proto = FIB_PROTOCOL_IP4;
+      proto = DPO_PROTO_IP4;
+  } else {
+      pfx.fp_addr.ip6 = vip->prefix.ip6;
+      pfx.fp_len = vip->plen;
+      pfx.fp_proto = FIB_PROTOCOL_IP6;
+      proto = DPO_PROTO_IP6;
+  }
+  dpo_set(&dpo, lb_vip_is_gre4(vip)?lbm->dpo_gre4_type:lbm->dpo_gre6_type,
+      proto, vip - lbm->vips);
+  fib_table_entry_special_dpo_add(0,
+				  &pfx,
+				  FIB_SOURCE_PLUGIN_HI,
+				  FIB_ENTRY_FLAG_EXCLUSIVE,
+				  &dpo);
+  dpo_reset(&dpo);
 }
 
 /**
@@ -636,30 +620,17 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip)
  */
 static void lb_vip_del_adjacency(lb_main_t *lbm, lb_vip_t *vip)
 {
-  /* ASSERT (lbm->writer_lock[0]); //This must be called with the lock owned */
-  /* if (lb_vip_is_ip4(vip)) { */
-  /*   ip4_main_t *im4 = &ip4_main; */
-  /*   ip4_add_del_route_args_t route_args = {}; */
-  /*   route_args.table_index_or_table_id = 0; */
-  /*   route_args.flags = IP4_ROUTE_FLAG_DEL; */
-  /*   route_args.dst_address = vip->prefix.ip4; */
-  /*   route_args.dst_address_length = vip->plen - 96; */
-  /*   route_args.adj_index = ~0; */
-  /*   route_args.add_adj = NULL; */
-  /*   route_args.n_add_adj = 0; */
-  /*   ip4_add_del_route (im4, &route_args); */
-  /* } else { */
-  /*   ip6_main_t *im6 = &ip6_main; */
-  /*   ip6_add_del_route_args_t route_args = {}; */
-  /*   route_args.table_index_or_table_id = 0; */
-  /*   route_args.flags = IP6_ROUTE_FLAG_DEL; */
-  /*   route_args.dst_address = vip->prefix.ip6; */
-  /*   route_args.dst_address_length = vip->plen; */
-  /*   route_args.adj_index = ~0; */
-  /*   route_args.add_adj = NULL; */
-  /*   route_args.n_add_adj = 0; */
-  /*   ip6_add_del_route (im6, &route_args); */
-  /* } */
+  fib_prefix_t pfx = {};
+  if (lb_vip_is_ip4(vip)) {
+      pfx.fp_addr.ip4 = vip->prefix.ip4;
+      pfx.fp_len = vip->plen - 96;
+      pfx.fp_proto = FIB_PROTOCOL_IP4;
+  } else {
+      pfx.fp_addr.ip6 = vip->prefix.ip6;
+      pfx.fp_len = vip->plen;
+      pfx.fp_proto = FIB_PROTOCOL_IP6;
+  }
+  fib_table_entry_special_remove(0, &pfx, FIB_SOURCE_PLUGIN_HI);
 }
 
 int lb_vip_add(ip46_address_t *prefix, u8 plen, lb_vip_type_t type, u32 new_length, u32 *vip_index)
@@ -766,12 +737,76 @@ vlib_plugin_register (vlib_main_t * vm,
   return error;
 }
 
+
+u8 *format_lb_dpo (u8 * s, va_list * va)
+{
+  index_t index = va_arg (*va, index_t);
+  CLIB_UNUSED(u32 indent) = va_arg (*va, u32);
+  lb_main_t *lbm = &lb_main;
+  lb_vip_t *vip = pool_elt_at_index (lbm->vips, index);
+  return format (s, "%U", format_lb_vip, vip);
+}
+
+static void lb_dpo_lock (dpo_id_t *dpo) {}
+static void lb_dpo_unlock (dpo_id_t *dpo) {}
+
+static fib_node_t *
+lb_fib_node_get_node (fib_node_index_t index)
+{
+  lb_main_t *lbm = &lb_main;
+  lb_as_t *as = pool_elt_at_index (lbm->ass, index);
+  return (&as->fib_node);
+}
+
+static void
+lb_fib_node_last_lock_gone (fib_node_t *node)
+{
+}
+
+static lb_as_t *
+lb_as_from_fib_node (fib_node_t *node)
+{
+  return ((lb_as_t*)(((char*)node) -
+      STRUCT_OFFSET_OF(lb_as_t, fib_node)));
+}
+
+static void
+lb_as_stack (lb_as_t *as)
+{
+  lb_main_t *lbm = &lb_main;
+  lb_vip_t *vip = &lbm->vips[as->vip_index];
+  dpo_stack(lb_vip_is_gre4(vip)?lbm->dpo_gre4_type:lbm->dpo_gre6_type,
+	    lb_vip_is_ip4(vip)?DPO_PROTO_IP4:DPO_PROTO_IP6,
+	    &as->dpo,
+	    fib_entry_contribute_ip_forwarding(
+		as->next_hop_fib_entry_index));
+}
+
+static fib_node_back_walk_rc_t
+lb_fib_node_back_walk_notify (fib_node_t *node,
+			       fib_node_back_walk_ctx_t *ctx)
+{
+    lb_as_stack(lb_as_from_fib_node(node));
+    return (FIB_NODE_BACK_WALK_CONTINUE);
+}
+
 clib_error_t *
 lb_init (vlib_main_t * vm)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   lb_main_t *lbm = &lb_main;
   lb_as_t *default_as;
+  fib_node_vft_t lb_fib_node_vft = {
+      .fnv_get = lb_fib_node_get_node,
+      .fnv_last_lock = lb_fib_node_last_lock_gone,
+      .fnv_back_walk = lb_fib_node_back_walk_notify,
+  };
+  dpo_vft_t lb_vft = {
+      .dv_lock = lb_dpo_lock,
+      .dv_unlock = lb_dpo_unlock,
+      .dv_format = format_lb_dpo,
+  };
+
   lbm->vips = 0;
   lbm->per_cpu = 0;
   vec_validate(lbm->per_cpu, tm->n_vlib_mains - 1);
@@ -782,6 +817,9 @@ lb_init (vlib_main_t * vm)
   lbm->ip4_src_address.as_u32 = 0xffffffff;
   lbm->ip6_src_address.as_u64[0] = 0xffffffffffffffffL;
   lbm->ip6_src_address.as_u64[1] = 0xffffffffffffffffL;
+  lbm->dpo_gre4_type = dpo_register_new_type(&lb_vft, lb_dpo_gre4_nodes);
+  lbm->dpo_gre6_type = dpo_register_new_type(&lb_vft, lb_dpo_gre6_nodes);
+  lbm->fib_node_type = fib_node_register_new_type(&lb_fib_node_vft);
 
   //Init AS reference counters
   vlib_refcount_init(&lbm->as_refcount);
@@ -790,7 +828,7 @@ lb_init (vlib_main_t * vm)
   lbm->ass = 0;
   pool_get(lbm->ass, default_as);
   default_as->flags = 0;
-  default_as->adj_index = ~0;
+  default_as->dpo.dpoi_next_node = LB_NEXT_DROP;
   default_as->vip_index = ~0;
   default_as->address.ip6.as_u64[0] = 0xffffffffffffffffL;
   default_as->address.ip6.as_u64[1] = 0xffffffffffffffffL;
