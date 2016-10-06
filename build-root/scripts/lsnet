@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo "PCI Address  MAC address       Device Name    Driver     State    Speed      Port Type"
+echo "============ ================= ============== ========== ======== ========== ===================="
+
+for f in /sys/class/net/*; do
+	dev=$(basename ${f})
+	if [ -e $f/device ] ; then
+		dev=$(basename ${f})
+		pci_addr=$(basename $(readlink $f/device))
+		mac=$(cat $f/address)
+		driver=$(basename $(readlink $f/device/driver))
+		oper=$(cat $f/operstate)
+		speed=$(sudo ethtool $dev | grep Speed | cut -d" " -f2)
+		port=$(ethtool $dev 2> /dev/null | sed -ne 's/.*Port: \(.*\)/\1/p')
+		printf "%-12s %-14s %-14s %-10s %-8s %-10s %-20s\n" $pci_addr $mac $dev $driver $oper $speed "$port"
+		# ethtool $dev | grep Port:
+	fi
+done
+

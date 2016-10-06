@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Bind all unused PCI devices bound to uio drivers
+# back to default kernel driver
+
+if [ $USER != "root" ] ; then
+	echo "Restarting script with sudo..."
+	sudo $0 ${*}
+	exit
+fi
+
+for f in /sys/bus/pci/drivers/{igb_uio,uio_pci_generic,vfio-pci}/*; do
+	[ -e ${f}/config ] || continue
+	fuser -s ${f}/config  && continue
+	echo 1 > ${f}/remove
+	removed=y
+done
+
+[ -n ${removed} ] && echo 1 > /sys/bus/pci/rescan

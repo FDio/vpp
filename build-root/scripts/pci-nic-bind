@@ -1,0 +1,94 @@
+#!/bin/bash
+
+uio_drivers="igb_uio uio_pci_generic vfio-pci"
+tmpfile=$(mktemp)
+
+
+function bind_drv() {
+	addr=$1
+	modalias=$(cat $selection/modalias)
+	native_drv=$(modprobe -R $modalias)
+	array=()
+
+	for drv in $native_drv $uio_drivers; do
+		if [ -e /sys/bus/pci/drivers/$drv ]; then
+			echo driver $drv
+			drv_desc=$(modinfo $drv | grep description: | sed -e 's/.*:[[:space:]]\+//' )
+			array+=("${drv}")
+			array+=("${drv_desc}")
+		fi
+	done
+	dialog --backtitle "PCI NIC Bind Utility" \
+		--clear \
+		--menu "Select kernel driver" 18 100 12 \
+		"${array[@]}" 2> $tmpfile
+        retval=$?
+	selection=$(cat $tmpfile)
+	rm $tmpfile
+	if [ $retval -ne 0 ]; then
+		return
+	fi
+	vd=$(cat /sys/bus/pci/devices/${addr}/vendor /sys/bus/pci/devices/${addr}/device)
+	echo $addr | tee /sys/bus/pci/devices/${addr}/driver/unbind > /dev/null 2> /dev/null
+	echo $vd | tee /sys/bus/pci/drivers/${selection}/new_id > /dev/null 2> /dev/null
+	echo $addr | tee /sys/bus/pci/drivers/${selection}/bind > /dev/null 2> /dev/null
+}
+
+function find_pci_slot() {
+	addr=$1
+	 [ ! "$(ls -A /sys/bus/pci/slots )" ] && echo "No PCI slot data" && return
+	for slot in $(find /sys/bus/pci/slots/* -maxdepth 0 -exec basename {} \;); do
+		slot_addr=$(cat /sys/bus/pci/slots/$slot/address)
+		if [[ "${addr}" == *"${slot_addr}"* ]]; then
+			echo "PCI slot: ${slot}"
+			return
+		fi
+	done
+	echo "Unknown PCI slot"
+}
+
+! type -ap dialog > /dev/null && echo "Please install dialog (apt-get install dialog)" && exit
+if [ $USER != "root" ] ; then
+echo "Restarting script with sudo..."
+	sudo $0 ${*}
+	exit
+fi
+
+cd /sys/bus/pci/devices
+
+while true; do
+	array=()
+	for addr in *; do
+		class=$(cat ${addr}/class)
+		if [ "$class" = "0x020000" ]; then
+			name=$(lspci -s $addr | sed -e 's/.*: //')
+			if [ -e "/sys/bus/pci/devices/$addr/driver" ]; then
+				drv=$(basename $(readlink -f /sys/bus/pci/devices/$addr/driver))
+			else
+				drv=" "
+			fi
+			slot=$(find_pci_slot ${addr})
+			array+=("${addr}")
+			array+=("${drv}|${name}")
+			array+=("${slot}")
+		fi
+	done
+
+	dialog --backtitle "PCI NIC Bind Utility" \
+		--item-help \
+		--clear \
+		--column-separator '|' \
+		--menu "Select NIC" 18 100 12 \
+		"${array[@]}" 2> $tmpfile
+
+	retval=$?
+	selection=$(cat $tmpfile)
+	rm $tmpfile
+	if [ $retval -ne 0 ]; then
+		exit
+	fi
+	bind_drv $selection
+done
+
+
+
