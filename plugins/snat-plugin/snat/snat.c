@@ -321,9 +321,18 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   uword * p;
   int i;
 
+  /* If outside FIB index is not resolved yet */
+  if (sm->outside_fib_index == ~0)
+    {
+      p = hash_get (sm->ip4_main->fib_index_by_table_id, sm->outside_vrf_id);
+      if (!p)
+        return VNET_API_ERROR_NO_SUCH_FIB;
+      sm->outside_fib_index = p[0];
+    }
+
   m_key.addr = e_addr;
   m_key.port = addr_only ? 0 : e_port;
-  m_key.pad = 0;
+  m_key.fib_index = sm->outside_fib_index;
   kv.key = m_key.as_u64;
   if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
     m = 0;
@@ -358,15 +367,6 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
             fib_index = sm->inside_fib_index;
 
           vrf_id = sm->inside_vrf_id;
-        }
-
-      /* If outside FIB index is not resolved yet */
-      if (sm->outside_fib_index == ~0)
-        {
-          p = hash_get (sm->ip4_main->fib_index_by_table_id, sm->outside_vrf_id);
-          if (!p)
-            return VNET_API_ERROR_NO_SUCH_FIB;
-          sm->outside_fib_index = p[0];
         }
 
       /* Find external address in allocated addresses and reserve port for
@@ -409,13 +409,14 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
 
       m_key.addr = m->local_addr;
       m_key.port = m->local_port;
-      m_key.pad = 0;
+      m_key.fib_index = m->fib_index;
       kv.key = m_key.as_u64;
       kv.value = m - sm->static_mappings;
       clib_bihash_add_del_8_8(&sm->static_mapping_by_local, &kv, 1);
 
       m_key.addr = m->external_addr;
       m_key.port = m->external_port;
+      m_key.fib_index = sm->outside_fib_index;
       kv.key = m_key.as_u64;
       kv.value = m - sm->static_mappings;
       clib_bihash_add_del_8_8(&sm->static_mapping_by_external, &kv, 1);
@@ -444,12 +445,13 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
 
       m_key.addr = m->local_addr;
       m_key.port = m->local_port;
-      m_key.pad = 0;
+      m_key.fib_index = m->fib_index;
       kv.key = m_key.as_u64;
       clib_bihash_add_del_8_8(&sm->static_mapping_by_local, &kv, 0);
 
       m_key.addr = m->external_addr;
       m_key.port = m->external_port;
+      m_key.fib_index = sm->outside_fib_index;
       kv.key = m_key.as_u64;
       clib_bihash_add_del_8_8(&sm->static_mapping_by_external, &kv, 0);
 
@@ -967,7 +969,7 @@ int snat_static_mapping_match (snat_main_t * sm,
 
   m_key.addr = match.addr;
   m_key.port = clib_net_to_host_u16 (match.port);
-  m_key.pad = 0;
+  m_key.fib_index = match.fib_index;
 
   kv.key = m_key.as_u64;
 
