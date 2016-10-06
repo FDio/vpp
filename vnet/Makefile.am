@@ -290,6 +290,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/udp_format.c				\
  vnet/ip/udp_init.c				\
  vnet/ip/udp_local.c				\
+ vnet/ip/punt.c					\
  vnet/ip/udp_pg.c                               \
  vnet/ip/ip_input_acl.c                         \
  vnet/ip/ip_frag.c
@@ -319,7 +320,9 @@ nobase_include_HEADERS +=			\
  vnet/ip/tcp_packet.h				\
  vnet/ip/udp.h					\
  vnet/ip/udp_error.def				\
- vnet/ip/udp_packet.h
+ vnet/ip/udp_packet.h				\
+ vnet/ip/punt_error.def				\
+ vnet/ip/punt.h
 
 ########################################
 # Layer 3 protocol: IPSec
