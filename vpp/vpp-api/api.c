@@ -2,7 +2,7 @@
  *------------------------------------------------------------------
  * api.c - message handler registration
  *
- * Copyright (c) 2010 Cisco and/or its affiliates.
+ * Copyright (c) 2010-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -87,6 +87,7 @@
 #include <vnet/flow/flow_report.h>
 #include <vnet/ipsec-gre/ipsec_gre.h>
 #include <vnet/flow/flow_report_classify.h>
+#include <vnet/ip/punt.h>
 
 #undef BIHASH_TYPE
 #undef __included_bihash_template_h__
@@ -423,7 +424,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
 _(DELETE_SUBIF, delete_subif)                                           \
-_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)
+_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
+_(PUNT, punt)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -8503,6 +8505,25 @@ static void
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_L2_INTERFACE_PBB_TAG_REWRITE_REPLY);
+}
+
+static void
+vl_api_punt_t_handler (vl_api_punt_t * mp)
+{
+  vl_api_punt_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
+  int rv = 0;
+  clib_error_t *error;
+
+  error = vnet_punt_add_del (vm, mp->ipv, mp->l4_protocol,
+			     ntohs (mp->l4_port), mp->is_add);
+  if (error)
+    {
+      rv = -1;
+      clib_error_report (error);
+    }
+
+  REPLY_MACRO (VL_API_PUNT_REPLY);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

@@ -2,7 +2,7 @@
  *------------------------------------------------------------------
  * api_format.c
  *
- * Copyright (c) 2014 Cisco and/or its affiliates.
+ * Copyright (c) 2014-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -3482,7 +3482,8 @@ _(pg_enable_disable_reply)                              \
 _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
-_(l2_interface_pbb_tag_rewrite_reply)
+_(l2_interface_pbb_tag_rewrite_reply)                   \
+_(punt_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3716,7 +3717,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
 _(IPSEC_GRE_ADD_DEL_TUNNEL_REPLY, ipsec_gre_add_del_tunnel_reply)       \
 _(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)                   \
 _(DELETE_SUBIF_REPLY, delete_subif_reply)                               \
-_(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply)
+_(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
+_(PUNT_REPLY, punt_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -15106,6 +15108,47 @@ api_ipsec_gre_add_del_tunnel (vat_main_t * vam)
   return 0;
 }
 
+static int
+api_punt (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_punt_t *mp;
+  f64 timeout;
+  u32 ipv = ~0;
+  u32 protocol = ~0;
+  u32 port = ~0;
+  int is_add = 1;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "ip %d", &ipv))
+	;
+      else if (unformat (i, "protocol %d", &protocol))
+	;
+      else if (unformat (i, "port %d", &port))
+	;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (PUNT, punt);
+
+  mp->is_add = (u8) is_add;
+  mp->ipv = (u8) ipv;
+  mp->l4_protocol = (u8) protocol;
+  mp->l4_port = htons ((u16) port);
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
 static void vl_api_ipsec_gre_tunnel_details_t_handler
   (vl_api_ipsec_gre_tunnel_details_t * mp)
 {
@@ -15900,8 +15943,9 @@ _(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")                          \
 _(delete_subif,"sub_sw_if_index <nn> sub_if_id <nn>")                   \
 _(l2_interface_pbb_tag_rewrite,                                         \
   "<intfc> | sw_if_index <nn> \n"                                       \
-  "[disable | push | pop | translate_pbb_stag <outer_tag>] \n" \
-  "dmac <mac> smac <mac> sid <nn> [vlanid <nn>]")
+  "[disable | push | pop | translate_pbb_stag <outer_tag>] \n"          \
+  "dmac <mac> smac <mac> sid <nn> [vlanid <nn>]")                       \
+_(punt, "protocol <l4-protocol> [ip <ver>] [port <l4-port>] [del]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
