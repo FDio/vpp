@@ -1,5 +1,6 @@
 %define _vpp_install_dir ../%{_install_dir}
 %define _vpp_build_dir   ../build-tool-native
+%define _dpdk_build_dir   ../build-vpp-native/dpdk/dpdk-*
 %define _unitdir         /lib/systemd/system
 %define _topdir          %(pwd)
 %define _builddir        %{_topdir}
@@ -88,6 +89,7 @@ mkdir -p -m755 %{buildroot}%{_unitdir}
 install -p -m 755 %{_vpp_install_dir}/*/bin/* %{buildroot}%{_bindir}
 install -p -m 755 %{_vpp_build_dir}/vppapigen/vppapigen %{buildroot}%{_bindir}
 install -p -m 755 ../../vppapigen/pyvppapigen.py %{buildroot}%{_bindir}
+install -p -m 755 %{_dpdk_build_dir}/tools/dpdk-devbind.py %{buildroot}%{_bindir}
 #
 # configs
 #
@@ -180,6 +182,7 @@ sysctl --system
 /usr/bin/vpp*
 /usr/bin/svm*
 /usr/bin/elftool
+/usr/bin/dpdk-devbind.py
 %config /usr/lib/sysctl.d/80-vpp.conf
 %config /etc/vpp/startup.conf
 

@@ -8,6 +8,8 @@ ExecStartPre=-/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api
 ExecStartPre=-/sbin/modprobe igb_uio
 ExecStart=/usr/bin/vpp -c /etc/vpp/startup.conf
 ExecStopPost=/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api 
+ExecStopPost=/usr/bin/awk '{system("/usr/bin/dpdk-devbind.py -b " $2 " " $1)}' /run/vpp/dpdk_bind
+ExecStopPost=/usr/bin/rm -f /run/vpp/dpdk_bind
 Restart=always
 
 [Install]
