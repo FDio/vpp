@@ -895,14 +895,22 @@ dpdk_lib_init (dpdk_main_t * dm)
 }
 
 static void
-dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
+dpdk_bind_devices_to_uio (dpdk_config_main_t * conf, u8 * bind_file)
 {
   vlib_pci_main_t *pm = &pci_main;
   clib_error_t *error;
   vlib_pci_device_t *d;
-  u8 *pci_addr = 0;
+  u8 *pci_addr = 0, *s = 0;
   int num_whitelisted = vec_len (conf->dev_confs);
+  int fd = -1;
 
+  if (vec_len(bind_file))
+    {
+      fd = open ((const char *) bind_file, O_CREAT | O_TRUNC | O_WRONLY, 0664);
+      if (fd < 0)
+        clib_error_return_unix (0, "failed to create dpdk bind file `%s'", bind_file);
+    }
+  
   /* *INDENT-OFF* */
   pool_foreach (d, pm->pci_devs, ({
     dpdk_device_config_t * devconf = 0;
@@ -958,10 +966,33 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 	  }
 	devconf->is_blacklisted = 1;
 	clib_error_report (error);
+        continue;
       }
+
+    if (fd >= 0)
+      {
+	int s_len, n;
+
+	vec_reset_length (s);
+	s = format (s, "%U %s\n", format_vlib_pci_addr, &d->bus_address, d->driver_name);
+        s_len = vec_len(s);
+        n = write (fd, s, s_len);
+        if (n != s_len)
+	  {
+	    if (n < 0)
+	      clib_error_return_unix (0, "write dpdk pci bind info `%s'", s);
+            else
+	      clib_error_return (0, "short write dpdk pci bind info `%s'", s);
+	  }
+        }
   }));
   /* *INDENT-ON* */
+
+  if (fd >= 0)
+    close (fd);
+
   vec_free (pci_addr);
+  vec_free (s);
 }
 
 static clib_error_t *
@@ -1083,6 +1114,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 huge_dir = 0;
   u8 file_prefix = 0;
   u8 *socket_mem = 0;
+  u8 *pci_bind_file = 0;
 
   conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
 
@@ -1214,6 +1246,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	;
 
       else if (unformat_skip_white_space (input))
+	;
+      else if (unformat (input, "track-binded %s", &pci_bind_file))
 	;
       else
 	{
@@ -1402,7 +1436,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   if (no_pci == 0 && geteuid () == 0)
-    dpdk_bind_devices_to_uio (conf);
+    dpdk_bind_devices_to_uio (conf, pci_bind_file);
 
 #define _(x) \
     if (devconf->x == 0 && conf->default_devconf.x > 0) \
