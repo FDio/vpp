@@ -55,6 +55,10 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	echo ../../vpp/conf/80-vpp.conf /usr/lib/sysctl.d		\
 	   >> deb/debian/vpp.install ;					\
 									\
+	: and dpdk bind tool ; 						\
+	echo ../build-vpp-native/dpdk/dpdk-16.07/tools/dpdk-devbind.py /usr/bin		\
+	   >> deb/debian/vpp.install ;					\
+									\
 	: dev package needs a couple of additions ;			\
 	echo ../build-tool-native/vppapigen/vppapigen /usr/bin		\
 	   >> deb/debian/vpp-dev.install ;				\
