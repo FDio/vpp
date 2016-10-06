@@ -62,7 +62,7 @@ typedef struct {
     {
       ip4_address_t addr;
       u16 port;
-      u16 pad;
+      u16 fib_index;
     };
     u64 as_u64;
   };
