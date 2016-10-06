@@ -1,6 +1,6 @@
 /* Hey Emacs use -*- mode: C -*- */
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -5154,3 +5154,31 @@ define l2_interface_pbb_tag_rewrite_reply
   u32 context;
   i32 retval;
 };
+
+/** \brief Punt traffic to the host
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add punt if non-zero, else delete
+    @param ipv - L3 protocol 4 - IPv4, 6 - IPv6, ~0 - All
+    @param l4_protocol - L4 protocol to be punted, only UDP (0x11) is supported
+    @param l4_port - TCP/UDP port to be punted
+*/
+define punt {
+    u32 client_index;
+    u32 context;
+    u8 is_add;
+    u8 ipv;
+    u8 l4_protocol;
+    u16 l4_port;
+};
+
+/** \brief Reply to the punt request
+    @param context - sender context which was passed in the request
+    @param retval - return code of punt request
+*/
+define punt_reply
+{
+    u32 context;
+    i32 retval;
+};
+

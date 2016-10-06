@@ -2,7 +2,7 @@
  *------------------------------------------------------------------
  * custom_dump.c - pretty-print API messages for replay
  *
- * Copyright (c) 2014 Cisco and/or its affiliates.
+ * Copyright (c) 2014-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -2771,6 +2771,28 @@ static void *vl_api_l2_interface_pbb_tag_rewrite_t_print
   FINISH;
 }
 
+static void *
+vl_api_punt_t_print (vl_api_punt_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: punt ");
+
+  if (mp->ipv != (u8) ~ 0)
+    s = format (s, "ip %d ", mp->ipv);
+
+  s = format (s, "protocol %d ", mp->l4_protocol);
+
+  if (mp->l4_port != (u16) ~ 0)
+    s = format (s, "port %d ", ntohs (mp->l4_port));
+
+  if (!mp->is_add)
+    s = format (s, "del ");
+
+  FINISH;
+}
+
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -2932,7 +2954,8 @@ _(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
 _(DELETE_SUBIF, delete_subif)                                           \
-_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)
+_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
+_(PUNT, punt)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
