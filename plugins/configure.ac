@@ -53,14 +53,16 @@ AM_CONDITIONAL(ENABLE_$1_PLUGIN, test "$enable_the_plugin" = "1")
 # SUBDIRS += new-plugin
 # endif
 
-PLUGIN_ENABLED(sixrd)
-PLUGIN_ENABLED(ioam)
-PLUGIN_ENABLED(snat)
-PLUGIN_ENABLED(ila)
-PLUGIN_ENABLED(lb)
+PLUGIN_DISABLED(sixrd)
+PLUGIN_DISABLED(ioam)
+PLUGIN_DISABLED(snat)
+PLUGIN_DISABLED(ila)
+PLUGIN_DISABLED(lb)
 
 # Disabled plugins, require --enable-XXX-plugin
 PLUGIN_DISABLED(vcgn)
 PLUGIN_DISABLED(sample)
+
+PLUGIN_ENABLED(flowperpkt)
 
 AC_OUTPUT([Makefile])
