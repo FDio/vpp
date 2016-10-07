@@ -48,8 +48,16 @@ format_lb_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   lb_trace_t *t = va_arg (*args, lb_trace_t *);
-  s = format(s, "lb vip[%d]: %U\n", t->vip_index, format_lb_vip, &lbm->vips[t->vip_index]);
-  s = format(s, "lb as[%d]: %U\n", t->as_index, format_lb_as, &lbm->ass[t->as_index]);
+  if (pool_is_free_index(lbm->vips, t->vip_index)) {
+      s = format(s, "lb vip[%d]: This VIP was freed since capture\n");
+  } else {
+      s = format(s, "lb vip[%d]: %U\n", t->vip_index, format_lb_vip, &lbm->vips[t->vip_index]);
+  }
+  if (pool_is_free_index(lbm->ass, t->as_index)) {
+      s = format(s, "lb as[%d]: This AS was freed since capture\n");
+  } else {
+      s = format(s, "lb as[%d]: %U\n", t->as_index, format_lb_as, &lbm->ass[t->as_index]);
+  }
   return s;
 }
 
