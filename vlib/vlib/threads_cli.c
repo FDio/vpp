@@ -17,6 +17,7 @@
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
+#include <vlib/unix/unix.h>
 #include <linux/sched.h>
 
 static u8 *
@@ -62,10 +63,10 @@ show_threads_fn (vlib_main_t * vm,
 
       line = format (line, "%-25U", format_sched_policy_and_priority, w->lwp);
 
-#if DPDK==1
-      int lcore = w->dpdk_lcore_id;
+      int lcore = w->lcore_id;
       if (lcore > -1)
 	{
+#if DPDK==1
 	  line = format (line, "%-7u%-7u%-7u",
 			 lcore,
 			 lcore_config[lcore].core_id,
@@ -85,8 +86,28 @@ show_threads_fn (vlib_main_t * vm,
 	    default:
 	      line = format (line, "unknown");
 	    }
-	}
+#else
+	  int socket_id = -1;
+	  int core_id = -1;
+	  u8 *p = 0;
+	  p =
+	    format (p, "/sys/devices/system/cpu/cpu%u/topology/core_id",
+		    lcore);
+	  vlib_sysfs_read ((char *) p, "%d", &core_id);
+
+	  vec_reset_length (p);
+	  p =
+	    format (p,
+		    "/sys/devices/system/cpu/cpu%u/topology/physical_package_id",
+		    lcore);
+	  vlib_sysfs_read ((char *) p, "%d", &socket_id);
+	  vec_free (p);
+
+	  line =
+	    format (line, "%-7u%-7u%-7u%-10s", lcore, core_id, socket_id, "");
 #endif
+	}
+
       vlib_cli_output (vm, "%v", line);
       vec_free (line);
     }

@@ -211,7 +211,11 @@ vlib_thread_init (vlib_main_t * vm)
   w = vlib_worker_threads;
   w->thread_mheap = clib_mem_get_heap ();
   w->thread_stack = vlib_thread_stacks[0];
-  w->dpdk_lcore_id = -1;
+#if DPDK==1
+  w->lcore_id = -1;
+#else
+  w->lcore_id = tm->main_lcore;
+#endif
   w->lwp = syscall (SYS_gettid);
   tm->n_vlib_mains = 1;
 
@@ -510,13 +514,13 @@ vlib_worker_thread_bootstrap_fn (void *arg)
   vlib_worker_thread_t *w = arg;
 
   w->lwp = syscall (SYS_gettid);
-  w->dpdk_lcore_id = -1;
+  w->lcore_id = -1;
 #if DPDK==1
   if (w->registration && !w->registration->use_pthreads && rte_socket_id)	/* do we really have dpdk linked */
     {
       unsigned lcore = rte_lcore_id ();
       lcore = lcore < RTE_MAX_LCORE ? lcore : -1;
-      w->dpdk_lcore_id = lcore;
+      w->lcore_id = lcore;
     }
 #endif
 
@@ -549,9 +553,14 @@ vlib_launch_thread (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)
 
       ret = pthread_create (&worker, NULL /* attr */ , fp_arg, (void *) w);
       if (ret == 0)
-	return pthread_setaffinity_np (worker, sizeof (cpu_set_t), &cpuset);
-      else
-	return ret;
+	{
+	  ret = pthread_setaffinity_np (worker, sizeof (cpu_set_t), &cpuset);
+#if !defined(DPDK) || DPDK==0
+	  if (!ret)
+	    w->lcore_id = lcore_id;
+#endif
+	}
+      return ret;
     }
 }
 
@@ -585,11 +594,11 @@ start_workers (vlib_main_t * vm)
     }
 
 #if DPDK==1
-  w->dpdk_lcore_id = -1;
+  w->lcore_id = -1;
   if (rte_socket_id)		/* do we really have dpdk linked */
     {
       unsigned lcore = rte_lcore_id ();
-      w->dpdk_lcore_id = lcore < RTE_MAX_LCORE ? lcore : -1;;
+      w->lcore_id = lcore < RTE_MAX_LCORE ? lcore : -1;;
     }
 #endif
 
