@@ -8144,12 +8144,13 @@ vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
   int rv = 0;
 
   pg_main_t *pg = &pg_main;
-  u32 sw_if_index = pg_interface_add_or_get (pg, ntohl (mp->interface_id));
+  u32 pg_if_id = pg_interface_add_or_get (pg, ntohl (mp->interface_id));
+  pg_interface_t *pi = pool_elt_at_index (pg->interfaces, pg_if_id);
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_PG_CREATE_INTERFACE_REPLY,
   ({
-    rmp->sw_if_index = ntohl(sw_if_index);
+    rmp->sw_if_index = ntohl(pi->sw_if_index);
   }));
   /* *INDENT-ON* */
 }
