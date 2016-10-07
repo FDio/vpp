@@ -757,7 +757,7 @@ show_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
       if (vec_len (dm->devices_by_cpu[cpu]))
 	vlib_cli_output (vm, "Thread %u (%s at lcore %u):", cpu,
 			 vlib_worker_threads[cpu].name,
-			 vlib_worker_threads[cpu].dpdk_lcore_id);
+			 vlib_worker_threads[cpu].lcore_id);
 
       /* *INDENT-OFF* */
       vec_foreach(dq, dm->devices_by_cpu[cpu])
@@ -857,7 +857,7 @@ set_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
               dq->queue_id = queue;
               dq->device = xd->device_index;
               xd->cpu_socket_id_by_queue[queue] =
-                rte_lcore_to_socket_id(vlib_worker_threads[cpu].dpdk_lcore_id);
+                rte_lcore_to_socket_id(vlib_worker_threads[cpu].lcore_id);
 
               vec_sort_with_function(dm->devices_by_cpu[i],
                                      dpdk_device_queue_sort);
@@ -907,7 +907,7 @@ show_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
       if (vec_len (dm->devices_by_hqos_cpu[cpu]))
 	vlib_cli_output (vm, "Thread %u (%s at lcore %u):", cpu,
 			 vlib_worker_threads[cpu].name,
-			 vlib_worker_threads[cpu].dpdk_lcore_id);
+			 vlib_worker_threads[cpu].lcore_id);
 
       vec_foreach (dq, dm->devices_by_hqos_cpu[cpu])
       {

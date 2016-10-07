@@ -393,7 +393,7 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 * hwaddr)
     {
       int cpu = dm->input_cpu_first_index + (next_cpu % dm->input_cpu_count);
 
-      unsigned lcore = vlib_worker_threads[cpu].dpdk_lcore_id;
+      unsigned lcore = vlib_worker_threads[cpu].lcore_id;
       vec_validate (xd->cpu_socket_id_by_queue, q);
       xd->cpu_socket_id_by_queue[q] = rte_lcore_to_socket_id (lcore);
 
