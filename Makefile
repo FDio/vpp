@@ -192,6 +192,7 @@ define test
 	@make -C test \
 	  VPP_TEST_BIN=$(BR)/install-$(1)-native/vpp/bin/vpp \
 	  VPP_TEST_API_TEST_BIN=$(BR)/install-$(1)-native/vpp-api-test/bin/vpp_api_test \
+	  VPP_TEST_PLUGIN_PATH=$(BR)/install-$(1)-native/plugins/lib64/vpp_plugins \
 	  V=$(V) TEST=$(TEST)
 endef
 
@@ -199,14 +200,14 @@ test:
 ifeq ($(OS_ID),ubuntu)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
 endif
-	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite vpp-install vpp-api-test-install
+	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite plugins-install vpp-install vpp-api-test-install
 	$(call test,vpp_lite)
 
 test-debug:
 ifeq ($(OS_ID),ubuntu)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
 endif
-	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite_debug vpp-install vpp-api-test-install
+	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite_debug plugins-install vpp-install vpp-api-test-install
 	$(call test,vpp_lite_debug)
 
 retest:

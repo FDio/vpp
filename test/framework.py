@@ -58,10 +58,14 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def setUpConstants(cls):
         cls.vpp_bin = os.getenv('VPP_TEST_BIN', "vpp")
+        cls.plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
         cls.vpp_api_test_bin = os.getenv("VPP_TEST_API_TEST_BIN",
                                          "vpp-api-test")
         cls.vpp_cmdline = [cls.vpp_bin, "unix", "nodaemon", "api-segment", "{",
                            "prefix", "unittest", "}"]
+        if cls.plugin_path is not None:
+            cls.vpp_cmdline.extend(["plugin_path", cls.plugin_path])
+
         cls.vpp_api_test_cmdline = [cls.vpp_api_test_bin, "chroot", "prefix",
                                     "unittest"]
         try:
