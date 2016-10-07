@@ -368,6 +368,8 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
     load_balance_multipath_update(dpo_lb,
                                   ctx.next_hops,
                                   fib_entry_calc_lb_flags(&ctx));
+
+    vec_free(ctx.next_hops);
 }
 
 void
