@@ -105,7 +105,8 @@ typedef struct
   u64 barrier_sync_count;
 
   long lwp;
-  int dpdk_lcore_id;
+  int lcore_id;
+  pthread_t thread_id;
 } vlib_worker_thread_t;
 
 vlib_worker_thread_t *vlib_worker_threads;
