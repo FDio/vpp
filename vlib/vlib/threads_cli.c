@@ -12,12 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE
 
 #include <vppinfra/format.h>
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
-#include <linux/sched.h>
+#include <vlib/unix/unix.h>
 
 static u8 *
 format_sched_policy_and_priority (u8 * s, va_list * args)
@@ -62,15 +63,52 @@ show_threads_fn (vlib_main_t * vm,
 
       line = format (line, "%-25U", format_sched_policy_and_priority, w->lwp);
 
-#if DPDK==1
-      int lcore = w->dpdk_lcore_id;
+      int lcore = -1;
+      cpu_set_t cpuset;
+      CPU_ZERO (&cpuset);
+      int ret = -1;
+
+      ret =
+	pthread_getaffinity_np (w->thread_id, sizeof (cpu_set_t), &cpuset);
+      if (!ret)
+	{
+	  int c;
+	  for (c = 0; c < CPU_SETSIZE; c++)
+	    if (CPU_ISSET (c, &cpuset))
+	      {
+		if (lcore > -1)
+		  {
+		    lcore = -2;
+		    break;
+		  }
+		lcore = c;
+	      }
+	}
+      else
+	{
+	  lcore = w->lcore_id;
+	}
+
       if (lcore > -1)
 	{
-	  line = format (line, "%-7u%-7u%-7u",
-			 lcore,
-			 lcore_config[lcore].core_id,
-			 lcore_config[lcore].socket_id);
+	  const char *sys_cpu_path = "/sys/devices/system/cpu/cpu";
+	  int socket_id = -1;
+	  int core_id = -1;
+	  u8 *p = 0;
 
+	  p = format (p, "%s%u/topology/core_id%c", sys_cpu_path, lcore, 0);
+	  vlib_sysfs_read ((char *) p, "%d", &core_id);
+
+	  vec_reset_length (p);
+	  p =
+	    format (p,
+		    "%s%u/topology/physical_package_id%c",
+		    sys_cpu_path, lcore, 0);
+	  vlib_sysfs_read ((char *) p, "%d", &socket_id);
+	  vec_free (p);
+
+	  line = format (line, "%-7u%-7u%-7u%", lcore, core_id, socket_id);
+#if DPDK==1
 	  switch (lcore_config[lcore].state)
 	    {
 	    case WAIT:
@@ -85,8 +123,15 @@ show_threads_fn (vlib_main_t * vm,
 	    default:
 	      line = format (line, "unknown");
 	    }
-	}
 #endif
+	}
+      else
+	{
+	  line =
+	    format (line, "%-7s%-7s%-7s%", (lcore == -2) ? "M" : "n/a", "n/a",
+		    "n/a");
+	}
+
       vlib_cli_output (vm, "%v", line);
       vec_free (line);
     }
