@@ -65,6 +65,7 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0, "missing host interface name");
 
   r = af_packet_create_if (vm, host_if_name, hw_addr_ptr, &sw_if_index);
+  vec_free (host_if_name);
 
   if (r == VNET_API_ERROR_SYSCALL_ERROR_1)
     return clib_error_return (0, "%s (errno %d)", strerror (errno), errno);
@@ -113,6 +114,7 @@ af_packet_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0, "missing host interface name");
 
   af_packet_delete_if (vm, host_if_name);
+  vec_free (host_if_name);
 
   return 0;
 }

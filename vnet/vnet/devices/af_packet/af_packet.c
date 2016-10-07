@@ -187,6 +187,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   vnet_main_t *vnm = vnet_get_main ();
   uword *p;
   uword if_index;
+  u8 *host_if_name_dup = vec_dup (host_if_name);
 
   p = mhash_get (&apm->if_index_by_host_if_name, host_if_name);
   if (p)
@@ -220,7 +221,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   apif->tx_ring = ring + rx_req->tp_block_size * rx_req->tp_block_nr;
   apif->rx_req = rx_req;
   apif->tx_req = tx_req;
-  apif->host_if_name = host_if_name;
+  apif->host_if_name = host_if_name_dup;
   apif->per_interface_next_index = ~0;
   apif->next_tx_frame = 0;
   apif->next_rx_frame = 0;
@@ -268,13 +269,14 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
-  mhash_set_mem (&apm->if_index_by_host_if_name, host_if_name, &if_index, 0);
+  mhash_set_mem (&apm->if_index_by_host_if_name, host_if_name_dup, &if_index,
+		 0);
   if (sw_if_index)
     *sw_if_index = apif->sw_if_index;
   return 0;
 
 error:
-  vec_free (host_if_name);
+  vec_free (host_if_name_dup);
   vec_free (rx_req);
   vec_free (tx_req);
   return ret;
