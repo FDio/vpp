@@ -652,7 +652,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  /* *INDENT-OFF* */
 	  clib_bitmap_foreach (i, devconf->workers, ({
 	    int cpu = dm->input_cpu_first_index + i;
-	    unsigned lcore = vlib_worker_threads[cpu].dpdk_lcore_id;
+	    unsigned lcore = vlib_worker_threads[cpu].lcore_id;
 	    vec_validate(xd->cpu_socket_id_by_queue, q);
 	    xd->cpu_socket_id_by_queue[q] = rte_lcore_to_socket_id(lcore);
 	    vec_add2(dm->devices_by_cpu[cpu], dq, 1);
@@ -665,7 +665,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	for (q = 0; q < xd->rx_q_used; q++)
 	  {
 	    int cpu = dm->input_cpu_first_index + next_cpu;
-	    unsigned lcore = vlib_worker_threads[cpu].dpdk_lcore_id;
+	    unsigned lcore = vlib_worker_threads[cpu].lcore_id;
 
 	    /*
 	     * numa node for worker thread handling this queue

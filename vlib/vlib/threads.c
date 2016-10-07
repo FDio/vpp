@@ -211,8 +211,9 @@ vlib_thread_init (vlib_main_t * vm)
   w = vlib_worker_threads;
   w->thread_mheap = clib_mem_get_heap ();
   w->thread_stack = vlib_thread_stacks[0];
-  w->dpdk_lcore_id = -1;
+  w->lcore_id = tm->main_lcore;
   w->lwp = syscall (SYS_gettid);
+  w->thread_id = pthread_self ();
   tm->n_vlib_mains = 1;
 
   if (tm->sched_policy != ~0)
@@ -510,15 +511,7 @@ vlib_worker_thread_bootstrap_fn (void *arg)
   vlib_worker_thread_t *w = arg;
 
   w->lwp = syscall (SYS_gettid);
-  w->dpdk_lcore_id = -1;
-#if DPDK==1
-  if (w->registration && !w->registration->use_pthreads && rte_socket_id)	/* do we really have dpdk linked */
-    {
-      unsigned lcore = rte_lcore_id ();
-      lcore = lcore < RTE_MAX_LCORE ? lcore : -1;
-      w->dpdk_lcore_id = lcore;
-    }
-#endif
+  w->thread_id = pthread_self ();
 
   rv = (void *) clib_calljmp
     ((uword (*)(uword)) w->thread_function,
@@ -532,6 +525,7 @@ vlib_launch_thread (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)
 {
   void *(*fp_arg) (void *) = fp;
 
+  w->lcore_id = lcore_id;
 #if DPDK==1
   if (!w->registration->use_pthreads)
     if (rte_eal_remote_launch)	/* do we have dpdk linked */
@@ -583,15 +577,6 @@ start_workers (vlib_main_t * vm)
       w->name = format (0, "%v_main%c", tm->thread_prefix, '\0');
       vlib_set_thread_name ((char *) w->name);
     }
-
-#if DPDK==1
-  w->dpdk_lcore_id = -1;
-  if (rte_socket_id)		/* do we really have dpdk linked */
-    {
-      unsigned lcore = rte_lcore_id ();
-      w->dpdk_lcore_id = lcore < RTE_MAX_LCORE ? lcore : -1;;
-    }
-#endif
 
   /*
    * Truth of the matter: we always use at least two
