@@ -211,7 +211,7 @@ format_fib_entry (u8 * s, va_list * args)
         if (level >= FIB_ENTRY_FORMAT_DETAIL2)
         {
 
-            FOR_EACH_FIB_FORW_CHAIN(fct)
+            FOR_EACH_FIB_FORW_MPLS_CHAIN(fct)
             {
                 s = format(s, "  %U-chain\n  %U",
                            format_fib_forw_chain_type, fct,
@@ -320,7 +320,7 @@ fib_entry_last_lock_gone (fib_node_t *node)
 
     fib_entry = fib_entry_from_fib_node(node);
 
-    FOR_EACH_FIB_FORW_CHAIN(fct)
+    FOR_EACH_FIB_FORW_MPLS_CHAIN(fct)
     {
 	dpo_reset(&fib_entry->fe_lb[fct]);
     }
@@ -605,7 +605,7 @@ fib_entry_alloc (u32 fib_index,
     fib_entry->fe_export = FIB_NODE_INDEX_INVALID;
     fib_entry->fe_import = FIB_NODE_INDEX_INVALID;
     fib_entry->fe_covered = FIB_NODE_INDEX_INVALID;
-    FOR_EACH_FIB_FORW_CHAIN(fct)
+    FOR_EACH_FIB_FORW_MPLS_CHAIN(fct)
     {
 	dpo_reset(&fib_entry->fe_lb[fct]);
     }
@@ -1309,7 +1309,7 @@ fib_entry_recursive_loop_detect (fib_node_index_t entry_index,
 	     * re-evaluate all the entry's forwarding
 	     * NOTE: this is an inplace modify
 	     */
-	    FOR_EACH_FIB_FORW_CHAIN(fct)
+	    FOR_EACH_FIB_FORW_MPLS_CHAIN(fct)
 	    {
 		if (dpo_id_is_valid(&fib_entry->fe_lb[fct]))
 		{

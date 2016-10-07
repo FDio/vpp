@@ -157,7 +157,12 @@ typedef enum fib_forward_chain_type_t_ {
 #define FIB_FORW_CHAIN_MPLS_NUM (FIB_FORW_CHAIN_TYPE_MPLS_EOS+1)
 
 #define FOR_EACH_FIB_FORW_CHAIN(_item)			  \
-    for (_item = FIB_FORW_CHAIN_TYPE_ETHERNET;   	  \
+    for (_item = FIB_FORW_CHAIN_TYPE_UNICAST_IP4;   	  \
+	 _item <= FIB_FORW_CHAIN_TYPE_ETHERNET;		  \
+	 _item++)
+
+#define FOR_EACH_FIB_FORW_MPLS_CHAIN(_item)		  \
+    for (_item = FIB_FORW_CHAIN_TYPE_UNICAST_IP4;   	  \
 	 _item <= FIB_FORW_CHAIN_TYPE_MPLS_EOS;		  \
 	 _item++)
 

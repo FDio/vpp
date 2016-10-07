@@ -1188,7 +1188,7 @@ show_fib_path_list_command (vlib_main_t * vm,
 }
 
 VLIB_CLI_COMMAND (show_fib_path_list, static) = {
-  .path = "show fib path list",
+  .path = "show fib path-lists",
   .function = show_fib_path_list_command,
-  .short_help = "show fib path list",
+  .short_help = "show fib path-lists",
 };

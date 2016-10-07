@@ -427,6 +427,17 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
     n->key = k;
     n->adj_index = ADJ_INDEX_INVALID;
   }
+  else
+  {
+    /*
+     * prevent a DoS attack from the data-plane that
+     * spams us with no-op updates to the MAC address
+     */
+    if (0 == memcmp(n->link_layer_address,
+		    link_layer_address,
+		    n_bytes_link_layer_address))
+      return -1;
+  }
 
   /* Update time stamp and ethernet address. */
   clib_memcpy (n->link_layer_address,

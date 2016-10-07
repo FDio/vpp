@@ -67,30 +67,6 @@ fib_entry_src_mpls_add (fib_entry_src_t *src,
 }
 
 static void
-fib_entry_src_mpls_fwd_update (fib_entry_src_t *src,
-			       const fib_entry_t *fib_entry,
-			       fib_source_t best_source)
-{
-    dpo_id_t dpo = DPO_NULL;
-    mpls_eos_bit_t eos;
-
-    FOR_EACH_MPLS_EOS_BIT(eos)
-    {
-	fib_entry_contribute_forwarding(fib_entry_get_index(fib_entry),
-					(eos ?
-					 FIB_FORW_CHAIN_TYPE_MPLS_EOS :
-					 FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS),
-					&dpo);
-
-	fib_table_entry_special_dpo_update(src->mpls.fesm_lfes[eos],
-					   FIB_SOURCE_SPECIAL,
-					   FIB_ENTRY_FLAG_EXCLUSIVE,
-					   &dpo);
-    }
-    dpo_reset(&dpo);
-}
-
-static void
 fib_entry_src_mpls_set_data (fib_entry_src_t *src,
                              const fib_entry_t *entry,
                              const void *data)
@@ -187,9 +163,15 @@ const static fib_entry_src_vft_t mpls_src_vft = {
     .fesv_add = fib_entry_src_mpls_add,
     .fesv_remove = fib_entry_src_mpls_remove,
     .fesv_format = fib_entry_src_mpls_format,
-    .fesv_fwd_update = fib_entry_src_mpls_fwd_update,
     .fesv_set_data = fib_entry_src_mpls_set_data,
     .fesv_get_data = fib_entry_src_mpls_get_data,
+    /*
+     * .fesv_fwd_update = fib_entry_src_mpls_fwd_update,
+     *  When the forwarding for the IP entry is updated, any MPLS chains
+     * it has created are also updated. Since the MPLS entry will have already
+     * installed that chain/load-balance there is no need to update the netry
+     * FIXME: later: propagate any walk to the children of the MPLS entry. for SR
+     */
 };
 
 void
