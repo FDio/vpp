@@ -214,6 +214,9 @@ vlib_thread_init (vlib_main_t * vm)
   w->dpdk_lcore_id = -1;
   w->lwp = syscall (SYS_gettid);
   tm->n_vlib_mains = 1;
+#if DPDK==0
+  w->lcore_id = tm->main_lcore;
+#endif
 
   if (tm->sched_policy != ~0)
     {
@@ -549,9 +552,14 @@ vlib_launch_thread (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)
 
       ret = pthread_create (&worker, NULL /* attr */ , fp_arg, (void *) w);
       if (ret == 0)
-	return pthread_setaffinity_np (worker, sizeof (cpu_set_t), &cpuset);
-      else
-	return ret;
+	{
+	  ret = pthread_setaffinity_np (worker, sizeof (cpu_set_t), &cpuset);
+#if !defined(DPDK) || DPDK==0
+	  if (!ret)
+	    w->lcore_id = lcore_id;
+#endif
+	}
+      return ret;
     }
 }
 

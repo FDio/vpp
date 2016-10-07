@@ -106,6 +106,9 @@ typedef struct
 
   long lwp;
   int dpdk_lcore_id;
+#if !defined(DPDK) || DPDK==0
+  int lcore_id;
+#endif
 } vlib_worker_thread_t;
 
 vlib_worker_thread_t *vlib_worker_threads;
