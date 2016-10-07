@@ -200,52 +200,49 @@ typedef struct ip_adjacency_t_ {
   u8 ia_nh_proto;
 
   union {
-    union {
-	/**
-	 * IP_LOOKUP_NEXT_ARP/IP_LOOKUP_NEXT_REWRITE
-	 *
-	 * neighbour adjacency sub-type;
-	 */
-	struct {
-	    ip46_address_t next_hop;
-	} nbr;
-	/**
-	 * IP_LOOKUP_NEXT_MIDCHAIN
-	 *
-	 * A nbr adj that is also recursive. Think tunnels.
-	 * A nbr adj can transition to be of type MDICHAIN
-	 * so be sure to leave the two structs with the next_hop
-	 * fields aligned.
-	 */
-	struct {
-	    /**
-	     * The recursive next-hop
-	     */
-	    ip46_address_t next_hop;
-            /**
-             * The node index of the tunnel's post rewrite/TX function.
-             */
-            u32 tx_function_node;
-	    /**
-	     * The next DPO to use
-	     */
-	    dpo_id_t next_dpo;
-
-	    /**
-	     * A function to perform the post-rewrite fixup
-	     */
-	    adj_midchain_fixup_t fixup_func;
-	} midchain;
-	/**
-	 * IP_LOOKUP_NEXT_GLEAN
-	 *
-	 * Glean the address to ARP for from the packet's destination
-	 */
-	struct {
-	    ip46_address_t receive_addr;
-	} glean;
-    } sub_type;
-  };
+    /**
+     * IP_LOOKUP_NEXT_ARP/IP_LOOKUP_NEXT_REWRITE
+     *
+     * neighbour adjacency sub-type;
+     */
+      struct {
+	  ip46_address_t next_hop;
+      } nbr;
+      /**
+       * IP_LOOKUP_NEXT_MIDCHAIN
+       *
+       * A nbr adj that is also recursive. Think tunnels.
+       * A nbr adj can transition to be of type MDICHAIN
+       * so be sure to leave the two structs with the next_hop
+       * fields aligned.
+       */
+      struct {
+	  /**
+	   * The recursive next-hop
+	   */
+	  ip46_address_t next_hop;
+	  /**
+	   * The node index of the tunnel's post rewrite/TX function.
+	   */
+	  u32 tx_function_node;
+	  /**
+	   * The next DPO to use
+	   */
+	  dpo_id_t next_dpo;
+	  /**
+	   * A function to perform the post-rewrite fixup
+	   */
+	  adj_midchain_fixup_t fixup_func;
+      } midchain;
+      /**
+       * IP_LOOKUP_NEXT_GLEAN
+       *
+       * Glean the address to ARP for from the packet's destination
+       */
+      struct {
+	  ip46_address_t receive_addr;
+      } glean;
+  } sub_type;
 
   CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
 
@@ -332,11 +329,6 @@ typedef enum {
 } ip_local_next_t;
 
 struct ip_lookup_main_t;
-
-typedef void (* ip_add_del_adjacency_callback_t) (struct ip_lookup_main_t * lm,
-						  u32 adj_index,
-						  ip_adjacency_t * adj,
-						  u32 is_del);
 
 typedef struct ip_lookup_main_t {
   /* Adjacency heap. */

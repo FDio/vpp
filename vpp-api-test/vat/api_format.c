@@ -5642,7 +5642,7 @@ api_ip_add_del_route (vat_main_t * vam)
   u32 random_seed = 0xdeaddabe;
   u32 classify_table_index = ~0;
   u8 is_classify = 0;
-  u8 resolve_host, resolve_attached;
+  u8 resolve_host = 0, resolve_attached = 0;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)

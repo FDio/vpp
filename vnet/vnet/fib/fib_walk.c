@@ -78,6 +78,11 @@ typedef struct fib_walk_t_
     u32 fw_n_visits;
 
     /**
+     * Time the walk started
+     */
+    f64 fw_start_time;
+
+    /**
      * The reasons this walk is occuring.
      * This is a vector ordered in time. The reasons and the front were started
      * first, and so should be acted first when a node is visisted.
@@ -112,8 +117,8 @@ typedef enum fib_walk_queue_stats_t_
 
 #define FOR_EACH_FIB_WALK_QUEUE_STATS(_wqs)   \
     for ((_wqs) = FIB_WALK_SCHEDULED;         \
-         (_wqs) < FIB_WALK_QUEUE_STATS_NUM;   \
-         (_wqs)++)
+	 (_wqs) < FIB_WALK_QUEUE_STATS_NUM;   \
+	 (_wqs)++)
 
 /**
  * The names of the walk stats
@@ -153,6 +158,28 @@ static fib_walk_queues_t fib_walk_queues;
  * The names of the walk priorities
  */
 static const char * const fib_walk_priority_names[] = FIB_WALK_PRIORITIES;
+
+/**
+ * @brief Histogram stats on the lenths of each walk in elemenets visisted.
+ * Store upto 1<<23 elements in increments of 1<<10
+ */
+#define HISTOGRAM_VISITS_PER_WALK_MAX (1<<23)
+#define HISTOGRAM_VISITS_PER_WALK_INCR (1<<10)
+#define HISTOGRAM_VISITS_PER_WALK_N_BUCKETS \
+    (HISTOGRAM_VISITS_PER_WALK_MAX/HISTOGRAM_VISITS_PER_WALK_INCR)
+static u64 fib_walk_hist_vists_per_walk[HISTOGRAM_VISITS_PER_WALK_N_BUCKETS];
+
+/**
+ * @brief History of state for the last 128 walks
+ */
+#define HISTORY_N_WALKS 128
+static u32 history_last_walk_pos;
+typedef struct fib_walk_history_t_ {
+    u32 fwh_n_visits;
+    f64 fwh_duration;
+    fib_node_ptr_t fwh_parent;
+} fib_walk_history_t;
+static fib_walk_history_t fib_walk_history[HISTORY_N_WALKS];
 
 u8*
 format_fib_walk_priority (u8 *s, va_list ap)
@@ -207,13 +234,37 @@ fib_walk_queue_get_front (fib_walk_priority_t prio)
 static void
 fib_walk_destroy (fib_walk_t *fwalk)
 {
+    u32 bucket;
+
     if (FIB_NODE_INDEX_INVALID != fwalk->fw_prio_sibling)
     {
-        fib_node_list_elt_remove(fwalk->fw_prio_sibling);
+	fib_node_list_elt_remove(fwalk->fw_prio_sibling);
     }
     fib_node_child_remove(fwalk->fw_parent.fnp_type,
-                          fwalk->fw_parent.fnp_index,
-                          fwalk->fw_dep_sibling);
+			  fwalk->fw_parent.fnp_index,
+			  fwalk->fw_dep_sibling);
+
+    /*
+     * add the stats to the continuous histogram collection.
+     */
+    bucket = (fwalk->fw_n_visits / HISTOGRAM_VISITS_PER_WALK_INCR);
+    bucket = (bucket > HISTOGRAM_VISITS_PER_WALK_MAX ?
+	      HISTOGRAM_VISITS_PER_WALK_MAX - 1 :
+	      bucket);
+    fib_walk_hist_vists_per_walk[bucket]++;
+
+    /*
+     * save stats to the recent history
+     */
+
+    fib_walk_history[history_last_walk_pos].fwh_n_visits =
+	fwalk->fw_n_visits;
+    fib_walk_history[history_last_walk_pos].fwh_duration =
+	vlib_time_now(vlib_get_main()) - fwalk->fw_start_time;
+    fib_walk_history[history_last_walk_pos].fwh_parent =
+	fwalk->fw_parent;
+
+    history_last_walk_pos = (history_last_walk_pos + 1) % HISTORY_N_WALKS;
 
     fib_node_deinit(&fwalk->fw_node);
     pool_put(fib_walk_pool, fwalk);
@@ -252,7 +303,7 @@ fib_walk_advance (fib_node_index_t fwi)
 
     /*
      * this walk function is re-entrant - walks acan spawn walks.
-     * fib_walk_t objects come from a pool, so they can realloc. we need 
+     * fib_walk_t objects come from a pool, so they can realloc. we need
      * to retch from said pool at the appropriate times.
      */
     fwalk = fib_walk_get(fwi);
@@ -261,42 +312,79 @@ fib_walk_advance (fib_node_index_t fwi)
 
     if (more_elts)
     {
-        vec_foreach(ctx, fwalk->fw_ctx)
-        {
-            wrc = fib_node_back_walk_one(&sibling, ctx);
+	vec_foreach(ctx, fwalk->fw_ctx)
+	{
+	    wrc = fib_node_back_walk_one(&sibling, ctx);
 
-            fwalk = fib_walk_get(fwi);
-            fwalk->fw_n_visits++;
+	    fwalk = fib_walk_get(fwi);
+	    fwalk->fw_n_visits++;
 
-            if (FIB_NODE_BACK_WALK_MERGE == wrc)
-            {
-                /*
-                 * this walk has merged with the one further along the node's
-                 * dependecy list.
-                 */
-                return (FIB_WALK_ADVANCE_MERGE);
-            }
-        }
-        /*
-         * move foward to the next node to visit
-         */
-        more_elts = fib_node_list_advance(fwalk->fw_dep_sibling);
+	    if (FIB_NODE_BACK_WALK_MERGE == wrc)
+	    {
+		/*
+		 * this walk has merged with the one further along the node's
+		 * dependecy list.
+		 */
+		return (FIB_WALK_ADVANCE_MERGE);
+	    }
+	}
+	/*
+	 * move foward to the next node to visit
+	 */
+	more_elts = fib_node_list_advance(fwalk->fw_dep_sibling);
     }
 
     if (more_elts)
     {
-        return (FIB_WALK_ADVANCE_MORE);
+	return (FIB_WALK_ADVANCE_MORE);
     }
 
     return (FIB_WALK_ADVANCE_DONE);
 }
 
 /**
- * First guesses as to good values
+ * @breif Enurmerate the times of sleep between walks
  */
-#define SHORT_SLEEP 1e-8
-#define LONG_SLEEP  1e-3
-#define QUOTA       1e-4
+typedef enum fib_walk_sleep_type_t_
+{
+    FIB_WALK_SHORT_SLEEP,
+    FIB_WALK_LONG_SLEEP,
+} fib_walk_sleep_type_t;
+
+#define FIB_WALK_N_SLEEP (FIB_WALK_LONG_SLEEP+1)
+
+/**
+ * @brief Durations for the sleep types
+ */
+static f64 fib_walk_sleep_duration[] = {
+    [FIB_WALK_LONG_SLEEP] = 1e-3,
+    [FIB_WALK_SHORT_SLEEP] = 1e-8,
+};
+
+/**
+ * @brief The time quota for a walk. When more than this amount of time is
+ * spent, the walk process will yield.
+ */
+static f64 quota = 1e-4;
+
+/**
+ * Histogram on the amount of work done (in msecs) in each walk
+ */
+#define N_TIME_BUCKETS 128
+#define TIME_INCREMENTS (N_TIME_BUCKETS/2)
+static u64 fib_walk_work_time_taken[N_TIME_BUCKETS];
+
+/**
+ * Histogram on the number of nodes visted in each quota
+ */
+#define N_ELTS_BUCKETS 128
+static u32 fib_walk_work_nodes_visisted_incr = 2;
+static u64 fib_walk_work_nodes_visited[N_ELTS_BUCKETS];
+
+/**
+ * Histogram of the sleep lengths
+ */
+static u64 fib_walk_sleep_lengths[2];
 
 /**
  * @brief Service the queues
@@ -304,64 +392,89 @@ fib_walk_advance (fib_node_index_t fwi)
  */
 f64
 fib_walk_process_queues (vlib_main_t * vm,
-                         const f64 quota)
+			 const f64 quota)
 {
+    f64 start_time, consumed_time;
+    fib_walk_sleep_type_t sleep;
     fib_walk_priority_t prio;
     fib_walk_advance_rc_t rc;
     fib_node_index_t fwi;
     fib_walk_t *fwalk;
+    u32 n_elts;
+    i32 bucket;
 
-    f64 sleep_time, start_time; // , vector_rate;
-
+    consumed_time = 0;
     start_time = vlib_time_now(vm);
+    n_elts = 0;
 
     FOR_EACH_FIB_WALK_PRIORITY(prio)
     {
-        while (0 != fib_walk_queue_get_size(prio))
-        {
-            fwi = fib_walk_queue_get_front(prio);
+	while (0 != fib_walk_queue_get_size(prio))
+	{
+	    fwi = fib_walk_queue_get_front(prio);
 
-            /*
-             * set this walk as executing
-             */
-            fwalk = fib_walk_get(fwi);
-            fwalk->fw_flags |= FIB_WALK_FLAG_EXECUTING;
+	    /*
+	     * set this walk as executing
+	     */
+	    fwalk = fib_walk_get(fwi);
+	    fwalk->fw_flags |= FIB_WALK_FLAG_EXECUTING;
 
-            do
-            {
-                rc = fib_walk_advance(fwi);
-            } while (((vlib_time_now(vm) - start_time) < quota) &&
-                     (FIB_WALK_ADVANCE_MORE == rc));
+	    do
+	    {
+		rc = fib_walk_advance(fwi);
+		n_elts++;
+		consumed_time = (vlib_time_now(vm) - start_time);
+	    } while ((consumed_time < quota) &&
+		     (FIB_WALK_ADVANCE_MORE == rc));
 
-            /*
-             * if this walk has no more work then pop it from the queue
-             * and move on to the next.
-             */
-            if (FIB_WALK_ADVANCE_MORE != rc)
-            {
-                fwalk = fib_walk_get(fwi);
-                fib_walk_destroy(fwalk);
-                fib_walk_queues.fwqs_queues[prio].fwq_stats[FIB_WALK_COMPLETED]++;
-            }
-            else
-            {
-                /*
-                 * passed our work quota. sleep time.
-                 */
-                fwalk = fib_walk_get(fwi);
-                fwalk->fw_flags &= ~FIB_WALK_FLAG_EXECUTING;
-                sleep_time = SHORT_SLEEP;
-                goto that_will_do_for_now;
-            }
-        }
+	    /*
+	     * if this walk has no more work then pop it from the queue
+	     * and move on to the next.
+	     */
+	    if (FIB_WALK_ADVANCE_MORE != rc)
+	    {
+		fwalk = fib_walk_get(fwi);
+		fib_walk_destroy(fwalk);
+		fib_walk_queues.fwqs_queues[prio].fwq_stats[FIB_WALK_COMPLETED]++;
+	    }
+	    else
+	    {
+		/*
+		 * passed our work quota. sleep time.
+		 */
+		fwalk = fib_walk_get(fwi);
+		fwalk->fw_flags &= ~FIB_WALK_FLAG_EXECUTING;
+		sleep = FIB_WALK_SHORT_SLEEP;
+		goto that_will_do_for_now;
+	    }
+	}
     }
     /*
      * got to the end of all the work
      */
-    sleep_time = LONG_SLEEP;
+    sleep = FIB_WALK_LONG_SLEEP;
 
 that_will_do_for_now:
-    return (sleep_time);
+
+    /*
+     * collect the stats:
+     *  - for the number of nodes visisted we store 128 increments
+     *  - for the time consumed we store quota/TIME_INCREMENTS increments.
+     */
+    bucket = ((n_elts/fib_walk_work_nodes_visisted_incr) > N_ELTS_BUCKETS ?
+	      N_ELTS_BUCKETS-1 :
+	      n_elts/fib_walk_work_nodes_visisted_incr);
+    ++fib_walk_work_nodes_visited[bucket];
+
+    bucket = (consumed_time - quota) / (quota / TIME_INCREMENTS);
+    bucket += N_TIME_BUCKETS/2;
+    bucket = (bucket < 0 ? 0 : bucket);
+    bucket = (bucket > N_TIME_BUCKETS-1 ? N_TIME_BUCKETS-1 : bucket);
+    ++fib_walk_work_time_taken[bucket];
+
+    ++fib_walk_sleep_lengths[sleep];
+
+    return (fib_walk_sleep_duration[sleep]);
 }
 
 /**
@@ -369,25 +482,25 @@ that_will_do_for_now:
  */
 static uword
 fib_walk_process (vlib_main_t * vm,
-                  vlib_node_runtime_t * node,
-                  vlib_frame_t * f)
+		  vlib_node_runtime_t * node,
+		  vlib_frame_t * f)
 {
     f64 sleep_time;
 
-    sleep_time = SHORT_SLEEP;
+    sleep_time = fib_walk_sleep_duration[FIB_WALK_SHORT_SLEEP];
 
     while (1)
     {
-        vlib_process_wait_for_event_or_clock(vm, sleep_time);
+	vlib_process_wait_for_event_or_clock(vm, sleep_time);
 
-        /*
-         * there may be lots of event queued between the processes,
-         * but the walks we want to schedule are in the priority queues,
-         * so we ignore the process events.
-         */
-        vlib_process_get_events(vm, NULL);
+	/*
+	 * there may be lots of event queued between the processes,
+	 * but the walks we want to schedule are in the priority queues,
+	 * so we ignore the process events.
+	 */
+	vlib_process_get_events(vm, NULL);
 
-        sleep_time = fib_walk_process_queues(vm, QUOTA);
+	sleep_time = fib_walk_process_queues(vm, quota);
     }
 
     /*
@@ -407,12 +520,12 @@ VLIB_REGISTER_NODE (fib_walk_process_node,static) = {
 
 /**
  * @brief Allocate a new walk object
- */ 
+ */
 static fib_walk_t *
 fib_walk_alloc (fib_node_type_t parent_type,
-                fib_node_index_t parent_index,
-                fib_walk_flags_t flags,
-                fib_node_back_walk_ctx_t *ctx)
+		fib_node_index_t parent_index,
+		fib_walk_flags_t flags,
+		fib_node_back_walk_ctx_t *ctx)
 {
     fib_walk_t *fwalk;
 
@@ -426,6 +539,8 @@ fib_walk_alloc (fib_node_type_t parent_type,
     fwalk->fw_parent.fnp_index = parent_index;
     fwalk->fw_parent.fnp_type = parent_type;
     fwalk->fw_ctx = NULL;
+    fwalk->fw_start_time = vlib_time_now(vlib_get_main());
+    fwalk->fw_n_visits = 0;
 
     /*
      * make a copy of the backwalk context so the depth count remains
@@ -445,14 +560,14 @@ fib_walk_alloc (fib_node_type_t parent_type,
  */
 static index_t
 fib_walk_prio_queue_enquue (fib_walk_priority_t prio,
-                            fib_walk_t *fwalk)
+			    fib_walk_t *fwalk)
 {
     index_t sibling;
 
     sibling = fib_node_list_push_front(fib_walk_queues.fwqs_queues[prio].fwq_queue,
-                                       0,
-                                       FIB_NODE_TYPE_WALK,
-                                       fib_walk_get_index(fwalk));
+				       0,
+				       FIB_NODE_TYPE_WALK,
+				       fib_walk_get_index(fwalk));
     fib_walk_queues.fwqs_queues[prio].fwq_stats[FIB_WALK_SCHEDULED]++;
 
     /*
@@ -461,40 +576,40 @@ fib_walk_prio_queue_enquue (fib_walk_priority_t prio,
      * the process will drain the queues
      */
     vlib_process_signal_event(vlib_get_main(),
-                              fib_walk_process_node.index,
-                              FIB_WALK_EVENT,
-                              FIB_WALK_EVENT);
+			      fib_walk_process_node.index,
+			      FIB_WALK_EVENT,
+			      FIB_WALK_EVENT);
 
     return (sibling);
 }
 
 void
 fib_walk_async (fib_node_type_t parent_type,
-                fib_node_index_t parent_index,
-                fib_walk_priority_t prio,
-                fib_node_back_walk_ctx_t *ctx)
+		fib_node_index_t parent_index,
+		fib_walk_priority_t prio,
+		fib_node_back_walk_ctx_t *ctx)
 {
     fib_walk_t *fwalk;
 
     if (FIB_NODE_GRAPH_MAX_DEPTH < ++ctx->fnbw_depth)
     {
-        /*
-         * The walk has reached the maximum depth. there is a loop in the graph.
-         * bail.
-         */
-        return;
+	/*
+	 * The walk has reached the maximum depth. there is a loop in the graph.
+	 * bail.
+	 */
+	return;
     }
 
     fwalk = fib_walk_alloc(parent_type,
-                           parent_index,
-                           FIB_WALK_FLAG_ASYNC,
-                           ctx);
+			   parent_index,
+			   FIB_WALK_FLAG_ASYNC,
+			   ctx);
 
     fwalk->fw_dep_sibling = fib_node_child_add(parent_type,
-                                               parent_index,
-                                               FIB_NODE_TYPE_WALK,
-                                               fib_walk_get_index(fwalk));
-    
+					       parent_index,
+					       FIB_NODE_TYPE_WALK,
+					       fib_walk_get_index(fwalk));
+
     fwalk->fw_prio_sibling = fib_walk_prio_queue_enquue(prio, fwalk);
 }
 
@@ -507,8 +622,8 @@ fib_walk_async (fib_node_type_t parent_type,
  */
 void
 fib_walk_sync (fib_node_type_t parent_type,
-               fib_node_index_t parent_index,
-               fib_node_back_walk_ctx_t *ctx)
+	       fib_node_index_t parent_index,
+	       fib_node_back_walk_ctx_t *ctx)
 {
     fib_walk_advance_rc_t rc;
     fib_node_index_t fwi;
@@ -516,92 +631,92 @@ fib_walk_sync (fib_node_type_t parent_type,
 
     if (FIB_NODE_GRAPH_MAX_DEPTH < ++ctx->fnbw_depth)
     {
-        /*
-         * The walk has reached the maximum depth. there is a loop in the graph.
-         * bail.
-         */
-        return;
+	/*
+	 * The walk has reached the maximum depth. there is a loop in the graph.
+	 * bail.
+	 */
+	return;
     }
 
     fwalk = fib_walk_alloc(parent_type,
-                           parent_index,
-                           FIB_WALK_FLAG_SYNC,
-                           ctx);
+			   parent_index,
+			   FIB_WALK_FLAG_SYNC,
+			   ctx);
 
     fwalk->fw_dep_sibling = fib_node_child_add(parent_type,
-                                               parent_index,
-                                               FIB_NODE_TYPE_WALK,
-                                               fib_walk_get_index(fwalk));
+					       parent_index,
+					       FIB_NODE_TYPE_WALK,
+					       fib_walk_get_index(fwalk));
     fwi = fib_walk_get_index(fwalk);
 
     while (1)
     {
-        /*
-         * set this walk as executing
-         */
-        fwalk->fw_flags |= FIB_WALK_FLAG_EXECUTING;
+	/*
+	 * set this walk as executing
+	 */
+	fwalk->fw_flags |= FIB_WALK_FLAG_EXECUTING;
 
-        do
-        {
-            rc = fib_walk_advance(fwi);
-        } while (FIB_WALK_ADVANCE_MORE == rc);
+	do
+	{
+	    rc = fib_walk_advance(fwi);
+	} while (FIB_WALK_ADVANCE_MORE == rc);
 
 
-        /*
-         * this walk function is re-entrant - walks can spawn walks.
-         * fib_walk_t objects come from a pool, so they can realloc. we need 
-         * to re-fetch from said pool at the appropriate times.
-         */
-        fwalk = fib_walk_get(fwi);
+	/*
+	 * this walk function is re-entrant - walks can spawn walks.
+	 * fib_walk_t objects come from a pool, so they can realloc. we need
+	 * to re-fetch from said pool at the appropriate times.
+	 */
+	fwalk = fib_walk_get(fwi);
 
-        if (FIB_WALK_ADVANCE_MERGE == rc)
-        {
-            /*
-             * this sync walk merged with an walk in front.
-             * by reqeusting a sync walk the client wanted all children walked,
-             * so we ditch the walk object in hand and continue with the one
-             * we merged into
-             */
-            fib_node_ptr_t merged_walk;
+	if (FIB_WALK_ADVANCE_MERGE == rc)
+	{
+	    /*
+	     * this sync walk merged with an walk in front.
+	     * by reqeusting a sync walk the client wanted all children walked,
+	     * so we ditch the walk object in hand and continue with the one
+	     * we merged into
+	     */
+	    fib_node_ptr_t merged_walk;
 
-            fib_node_list_elt_get_next(fwalk->fw_dep_sibling, &merged_walk);
+	    fib_node_list_elt_get_next(fwalk->fw_dep_sibling, &merged_walk);
 
-            ASSERT(FIB_NODE_INDEX_INVALID != merged_walk.fnp_index);
-            ASSERT(FIB_NODE_TYPE_WALK == merged_walk.fnp_type);
+	    ASSERT(FIB_NODE_INDEX_INVALID != merged_walk.fnp_index);
+	    ASSERT(FIB_NODE_TYPE_WALK == merged_walk.fnp_type);
 
-            fib_walk_destroy(fwalk);
+	    fib_walk_destroy(fwalk);
 
-            fwi = merged_walk.fnp_index;
-            fwalk = fib_walk_get(fwi);            
+	    fwi = merged_walk.fnp_index;
+	    fwalk = fib_walk_get(fwi);
 
-            if (FIB_WALK_FLAG_EXECUTING & fwalk->fw_flags)
-            {
-                /*
-                 * we are executing a sync walk, and we have met with another
-                 * walk that is also executing. since only one walk executs at once
-                 * (there is no multi-threading) this implies we have met ourselves
-                 * and hence the is a loop in the graph.
-                 * This function is re-entrant, so the walk object we met is being
-                 * acted on in a stack frame below this one. We must therefore not
-                 * continue with it now, but let the stack unwind and along the
-                 * appropriate frame to read the depth count and bail.
-                 */
-                fwalk = NULL;
-                break;
-            }
-        }
-        else
-        {
-            /*
-             * the walk reached the end of the depdency list.
-             */
-            break;
-        }
+	    if (FIB_WALK_FLAG_EXECUTING & fwalk->fw_flags)
+	    {
+		/*
+		 * we are executing a sync walk, and we have met with another
+		 * walk that is also executing. since only one walk executs at once
+		 * (there is no multi-threading) this implies we have met ourselves
+		 * and hence the is a loop in the graph.
+		 * This function is re-entrant, so the walk object we met is being
+		 * acted on in a stack frame below this one. We must therefore not
+		 * continue with it now, but let the stack unwind and along the
+		 * appropriate frame to read the depth count and bail.
+		 */
+		fwalk = NULL;
+		break;
+	    }
+	}
+	else
+	{
+	    /*
+	     * the walk reached the end of the depdency list.
+	     */
+	    break;
+	}
     }
 
     if (NULL != fwalk)
     {
-        fib_walk_destroy(fwalk);
+	fib_walk_destroy(fwalk);
     }
 }
 
@@ -629,7 +744,7 @@ static fib_walk_t*
 fib_walk_get_from_node (fib_node_t *node)
 {
     return ((fib_walk_t*)(((char*)node) -
-                          STRUCT_OFFSET_OF(fib_walk_t, fw_node)));
+			  STRUCT_OFFSET_OF(fib_walk_t, fw_node)));
 }
 
 /**
@@ -652,21 +767,21 @@ fib_walk_back_walk_notify (fib_node_t *node,
      */
     vec_foreach(old, fwalk->fw_ctx)
     {
-        /*
-         * we can merge walks if the reason for the walk is the same.
-         */
-        if (old->fnbw_reason == ctx->fnbw_reason)
-        {
-            /*
-             * copy the largest of the depth values. in the presence of a loop,
-             * the same walk will merge with itself. if we take the smaller depth
-             * then it will never end.
-             */
-            old->fnbw_depth = ((old->fnbw_depth >= ctx->fnbw_depth) ?
-                                old->fnbw_depth : 
-                                ctx->fnbw_depth);
-            goto out;
-        }
+	/*
+	 * we can merge walks if the reason for the walk is the same.
+	 */
+	if (old->fnbw_reason == ctx->fnbw_reason)
+	{
+	    /*
+	     * copy the largest of the depth values. in the presence of a loop,
+	     * the same walk will merge with itself. if we take the smaller depth
+	     * then it will never end.
+	     */
+	    old->fnbw_depth = ((old->fnbw_depth >= ctx->fnbw_depth) ?
+				old->fnbw_depth :
+				ctx->fnbw_depth);
+	    goto out;
+	}
     }
 
     /*
@@ -696,7 +811,7 @@ fib_walk_module_init (void)
 
     FOR_EACH_FIB_WALK_PRIORITY(prio)
     {
-        fib_walk_queues.fwqs_queues[prio].fwq_queue = fib_node_list_create();
+	fib_walk_queues.fwqs_queues[prio].fwq_queue = fib_node_list_create();
     }
 
     fib_node_register_type(FIB_NODE_TYPE_WALK, &fib_walk_vft);
@@ -711,60 +826,125 @@ format_fib_walk (u8* s, va_list ap)
     fwalk = fib_walk_get(fwi);
 
     return (format(s, "  parent:{%s:%d} visits:%d flags:%d",
-                   fib_node_type_get_name(fwalk->fw_parent.fnp_type),
-                   fwalk->fw_parent.fnp_index,
-                   fwalk->fw_n_visits,
-                   fwalk->fw_flags));
+		   fib_node_type_get_name(fwalk->fw_parent.fnp_type),
+		   fwalk->fw_parent.fnp_index,
+		   fwalk->fw_n_visits,
+		   fwalk->fw_flags));
 }
 
 static clib_error_t *
 fib_walk_show (vlib_main_t * vm,
-               unformat_input_t * input,
-               vlib_cli_command_t * cmd)
+	       unformat_input_t * input,
+	       vlib_cli_command_t * cmd)
 {
     fib_walk_queue_stats_t wqs;
     fib_walk_priority_t prio;
     fib_node_ptr_t sibling;
     fib_node_index_t fwi;
     fib_walk_t *fwalk;
-    int more_elts;
+    int more_elts, ii;
+    u8 *s = NULL;
 
+#define USEC 1000000
+    vlib_cli_output(vm, "FIB Walk Quota = %.2fusec:", quota * USEC);
     vlib_cli_output(vm, "FIB Walk queues:");
 
     FOR_EACH_FIB_WALK_PRIORITY(prio)
     {
-        vlib_cli_output(vm, " %U priority queue:",
-                        format_fib_walk_priority, prio);
-        vlib_cli_output(vm, "  Stats: ");
+	vlib_cli_output(vm, " %U priority queue:",
+			format_fib_walk_priority, prio);
+	vlib_cli_output(vm, "  Stats: ");
 
-        FOR_EACH_FIB_WALK_QUEUE_STATS(wqs)
-        {
-            vlib_cli_output(vm, "    %U:%d",
-                            format_fib_walk_queue_stats, wqs,
-                            fib_walk_queues.fwqs_queues[prio].fwq_stats[wqs]);
-        }
-        vlib_cli_output(vm, "  Occupancy:%d",
-                        fib_node_list_get_size(
-                            fib_walk_queues.fwqs_queues[prio].fwq_queue));
+	FOR_EACH_FIB_WALK_QUEUE_STATS(wqs)
+	{
+	    vlib_cli_output(vm, "    %U:%d",
+			    format_fib_walk_queue_stats, wqs,
+			    fib_walk_queues.fwqs_queues[prio].fwq_stats[wqs]);
+	}
+	vlib_cli_output(vm, "  Occupancy:%d",
+			fib_node_list_get_size(
+			    fib_walk_queues.fwqs_queues[prio].fwq_queue));
 
-        more_elts = fib_node_list_get_front(
-                        fib_walk_queues.fwqs_queues[prio].fwq_queue,
-                        &sibling);
+	more_elts = fib_node_list_get_front(
+			fib_walk_queues.fwqs_queues[prio].fwq_queue,
+			&sibling);
 
-        while (more_elts)
-        {
-            ASSERT(FIB_NODE_INDEX_INVALID != sibling.fnp_index);
-            ASSERT(FIB_NODE_TYPE_WALK == sibling.fnp_type);
+	while (more_elts)
+	{
+	    ASSERT(FIB_NODE_INDEX_INVALID != sibling.fnp_index);
+	    ASSERT(FIB_NODE_TYPE_WALK == sibling.fnp_type);
 
-            fwi = sibling.fnp_index;
-            fwalk = fib_walk_get(fwi);            
+	    fwi = sibling.fnp_index;
+	    fwalk = fib_walk_get(fwi);
 
-            vlib_cli_output(vm, "  %U", format_fib_walk, fwi);
+	    vlib_cli_output(vm, "  %U", format_fib_walk, fwi);
 
-            more_elts = fib_node_list_elt_get_next(fwalk->fw_prio_sibling,
-                                                   &sibling);
-        }
+	    more_elts = fib_node_list_elt_get_next(fwalk->fw_prio_sibling,
+						   &sibling);
+	}
     }
+
+    vlib_cli_output(vm, "Histogram Statistics:");
+    vlib_cli_output(vm, " Number of Elements visit per-quota:");
+    for (ii = 0; ii < N_ELTS_BUCKETS; ii++)
+    {
+	if (0 != fib_walk_work_nodes_visited[ii])
+	    s = format(s, "%d:%d ",
+		       (ii * fib_walk_work_nodes_visisted_incr),
+		       fib_walk_work_nodes_visited[ii]);
+    }
+    vlib_cli_output(vm, "  %v", s);
+    vec_free(s);
+
+    vlib_cli_output(vm, " Time consumed per-quota (Quota=%f usec):", quota*USEC);
+    s = format(s, "0:%d ", fib_walk_work_time_taken[0]);
+    for (ii = 1; ii < N_TIME_BUCKETS; ii++)
+    {
+	if (0 != fib_walk_work_time_taken[ii])
+	    s = format(s, "%d:%d ", (u32)((((ii - N_TIME_BUCKETS/2) *
+					   (quota / TIME_INCREMENTS)) + quota) *
+					 USEC),
+		       fib_walk_work_time_taken[ii]);
+    }
+    vlib_cli_output(vm, "  %v", s);
+    vec_free(s);
+
+    vlib_cli_output(vm, " Sleep Types:");
+    vlib_cli_output(vm, "  Short  Long:");
+    vlib_cli_output(vm, "  %d %d:",
+		    fib_walk_sleep_lengths[FIB_WALK_SHORT_SLEEP],
+		    fib_walk_sleep_lengths[FIB_WALK_LONG_SLEEP]);
+
+    vlib_cli_output(vm, " Number of Elements visited per-walk:");
+    for (ii = 0; ii < HISTOGRAM_VISITS_PER_WALK_N_BUCKETS; ii++)
+    {
+	if (0 != fib_walk_hist_vists_per_walk[ii])
+	    s = format(s, "%d:%d ",
+		       ii*HISTOGRAM_VISITS_PER_WALK_INCR,
+		       fib_walk_hist_vists_per_walk[ii]);
+    }
+    vlib_cli_output(vm, "  %v", s);
+    vec_free(s);
+
+
+    vlib_cli_output(vm, "Brief History (last %d walks):", HISTORY_N_WALKS);
+    ii = history_last_walk_pos;
+    do
+    {
+	if (0 != fib_walk_history[ii].fwh_n_visits)
+	{
+	    vlib_cli_output(
+		vm, " %s:%d visits:%d duration:%.2f ",
+		fib_node_type_get_name(fib_walk_history[ii].fwh_parent.fnp_type),
+		fib_walk_history[ii].fwh_parent.fnp_index,
+		fib_walk_history[ii].fwh_n_visits,
+		fib_walk_history[ii].fwh_duration);
+	}
+
+	ii = (ii + 1) % HISTORY_N_WALKS;
+    } while (ii != history_last_walk_pos);
+
+
     return (NULL);
 }
 
@@ -772,4 +952,76 @@ VLIB_CLI_COMMAND (fib_walk_show_command, static) = {
     .path = "show fib walk",
     .short_help = "show fib walk",
     .function = fib_walk_show,
+};
+
+static clib_error_t *
+fib_walk_set_quota (vlib_main_t * vm,
+		    unformat_input_t * input,
+		    vlib_cli_command_t * cmd)
+{
+    clib_error_t * error = NULL;
+    f64 new_quota;
+
+    if (unformat (input, "%f", &new_quota))
+    {
+	quota = new_quota;
+    }
+    else
+    {
+	error = clib_error_return(0 , "Pass a float value");
+    }
+
+    return (error);
+}
+
+VLIB_CLI_COMMAND (fib_walk_set_quota_command, static) = {
+    .path = "set fib walk quota",
+    .short_help = "set fib walk quota",
+    .function = fib_walk_set_quota,
+};
+
+static clib_error_t *
+fib_walk_set_histogram_elements_size (vlib_main_t * vm,
+				      unformat_input_t * input,
+				      vlib_cli_command_t * cmd)
+{
+    clib_error_t * error = NULL;
+    u32 new;
+
+    if (unformat (input, "%d", &new))
+    {
+	fib_walk_work_nodes_visisted_incr = new;
+    }
+    else
+    {
+	error = clib_error_return(0 , "Pass an int value");
+    }
+
+    return (error);
+}
+
+VLIB_CLI_COMMAND (fib_walk_set_histogram_elements_size_command, static) = {
+    .path = "set fib walk histogram elements size",
+    .short_help = "set fib walk histogram elements size",
+    .function = fib_walk_set_histogram_elements_size,
+};
+
+static clib_error_t *
+fib_walk_clear (vlib_main_t * vm,
+		unformat_input_t * input,
+		vlib_cli_command_t * cmd)
+{
+    memset(fib_walk_hist_vists_per_walk, 0, sizeof(fib_walk_hist_vists_per_walk));
+    memset(fib_walk_history, 0, sizeof(fib_walk_history));
+    memset(fib_walk_work_time_taken, 0, sizeof(fib_walk_work_time_taken));
+    memset(fib_walk_work_nodes_visited, 0, sizeof(fib_walk_work_nodes_visited));
+    memset(fib_walk_sleep_lengths, 0, sizeof(fib_walk_sleep_lengths));
+
+    return (NULL);
+}
+
+VLIB_CLI_COMMAND (fib_walk_clear_command, static) = {
+    .path = "clear fib walk",
+    .short_help = "clear fib walk",
+    .function = fib_walk_clear,
 };

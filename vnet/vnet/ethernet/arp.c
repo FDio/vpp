@@ -459,6 +459,16 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 	e->adj_index[link] = ADJ_INDEX_INVALID;
       }
     }
+  else
+    {
+      /*
+       * prevent a DoS attack from the data-plane that
+       * spams us with no-op updates to the MAC address
+       */
+      if (0 == memcmp (e->ethernet_address,
+		       a->ethernet, sizeof (e->ethernet_address)))
+	return -1;
+    }
 
   /* Update time stamp and ethernet address. */
   clib_memcpy (e->ethernet_address, a->ethernet,

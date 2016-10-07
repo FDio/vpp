@@ -1801,13 +1801,36 @@ show_fib_path_command (vlib_main_t * vm,
 			unformat_input_t * input,
 			vlib_cli_command_t * cmd)
 {
+    fib_node_index_t pi;
     fib_path_t *path;
 
-    vlib_cli_output (vm, "FIB Path Lists");
-    pool_foreach(path, fib_path_pool,
-    ({
-	vlib_cli_output (vm, "%U", format_fib_path, path);
-    }));
+    if (unformat (input, "%d", &pi))
+    {
+	/*
+	 * show one in detail
+	 */
+	if (!pool_is_free_index(fib_path_pool, pi))
+	{
+	    path = fib_path_get(pi);
+	    u8 *s = fib_path_format(pi, NULL);
+	    s = format(s, "children:");
+	    s = fib_node_children_format(path->fp_node.fn_children, s);
+	    vlib_cli_output (vm, "%s", s);
+	    vec_free(s);
+	}
+	else
+	{
+	    vlib_cli_output (vm, "path %d invalid", pi);
+	}
+    }
+    else
+    {
+	vlib_cli_output (vm, "FIB Paths");
+	pool_foreach(path, fib_path_pool,
+	({
+	    vlib_cli_output (vm, "%U", format_fib_path, path);
+	}));
+    }
 
     return (NULL);
 }

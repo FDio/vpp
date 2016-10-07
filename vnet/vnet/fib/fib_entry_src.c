@@ -369,6 +369,7 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
     load_balance_multipath_update(dpo_lb,
                                   ctx.next_hops,
                                   fib_entry_calc_lb_flags(&ctx));
+    vec_free(ctx.next_hops);
 
     /*
      * if this entry is sourced by the uRPF-exempt source then we
@@ -408,21 +409,33 @@ fib_entry_src_action_install (fib_entry_t *fib_entry,
      */
     fib_forward_chain_type_t fct;
     fib_entry_src_t *esrc;
+    int insert;
 
     fct = fib_entry_get_default_chain_type(fib_entry);
     esrc = fib_entry_src_find(fib_entry, source, NULL);
 
+    /*
+     * Every entry has its own load-balance object. All changes to the entry's
+     * forwarding result in an inplace modify of the load-balance. This means
+     * the load-balance object only needs to be added to the forwarding
+     * DB once, when it is created.
+     */
+    insert = !dpo_id_is_valid(&fib_entry->fe_lb[fct]);
+
     fib_entry_src_mk_lb(fib_entry, esrc, fct, &fib_entry->fe_lb[fct]);
 
-    FIB_ENTRY_DBG(fib_entry, "install: %d",
-		  fib_entry->fe_lb[fct]);
+    ASSERT(dpo_id_is_valid(&fib_entry->fe_lb[fct]));
+    FIB_ENTRY_DBG(fib_entry, "install: %d", fib_entry->fe_lb[fct]);
 
     /*
      * insert the adj into the data-plane forwarding trie
      */
-    fib_table_fwding_dpo_update(fib_entry->fe_fib_index,
-				&fib_entry->fe_prefix,
-				&fib_entry->fe_lb[fct]);
+    if (insert)
+    {
+       fib_table_fwding_dpo_update(fib_entry->fe_fib_index,
+                                   &fib_entry->fe_prefix,
+                                   &fib_entry->fe_lb[fct]);
+    }
 
     if (FIB_FORW_CHAIN_TYPE_UNICAST_IP4 == fct ||
 	FIB_FORW_CHAIN_TYPE_UNICAST_IP6 == fct)

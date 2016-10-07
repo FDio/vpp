@@ -650,6 +650,7 @@ load_balance_multipath_update (const dpo_id_t *dpo,
     {
         dpo_reset(&nh->path_dpo);
     }
+    vec_free(nhs);
 
     load_balance_map_unlock(old_lbmi);
 }
