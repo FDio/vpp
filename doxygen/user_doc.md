@@ -10,3 +10,4 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage lldp_doc
 - @subpage ioam_plugin_doc
 - @subpage lb_plugin_doc
+- @subpage flowperpkt_plugin_doc
