@@ -118,7 +118,9 @@ u8 *format_lb_vip (u8 * s, va_list * args)
 u8 *format_lb_as (u8 * s, va_list * args)
 {
   lb_as_t *as = va_arg (*args, lb_as_t *);
-  return format(s, "%U %s", format_ip46_address, &as->address, (as->flags & LB_AS_FLAGS_USED)?"used":"removed");
+  return format(s, "%U %s", format_ip46_address,
+		&as->address, IP46_TYPE_ANY,
+		(as->flags & LB_AS_FLAGS_USED)?"used":"removed");
 }
 
 u8 *format_lb_vip_detailed (u8 * s, va_list * args)
