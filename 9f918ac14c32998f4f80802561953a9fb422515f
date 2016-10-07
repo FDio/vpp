@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_35ab5a8b",
+        "filename": "vnet/vnet/ip/punt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-10-07T00:13:32Z",
+      "side": 1,
+      "message": "should be [port-num2 ...] as extra numbers are optional.",
+      "range": {
+        "startLine": 290,
+        "startChar": 44,
+        "endLine": 290,
+        "endChar": 45
+      },
+      "revId": "9f918ac14c32998f4f80802561953a9fb422515f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_7588c222",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 5165,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-10-07T00:13:32Z",
+      "side": 1,
+      "message": "May be should make this punt_add_del and also add an u8 flag is_add in the message. Then when we allow deletion in the future, this API can remain unchanged. For now, if is_add is 0, we will return an error.",
+      "range": {
+        "startLine": 5165,
+        "startChar": 7,
+        "endLine": 5165,
+        "endChar": 11
+      },
+      "revId": "9f918ac14c32998f4f80802561953a9fb422515f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
