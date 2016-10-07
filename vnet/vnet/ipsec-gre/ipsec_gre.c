@@ -206,6 +206,11 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
 	  ip0->checksum = ip4_header_checksum (ip0);
 	  ip1->checksum = ip4_header_checksum (ip1);
 
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
+	    vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	  vnet_buffer (b1)->sw_if_index[VLIB_RX] =
+	    vnet_buffer (b1)->sw_if_index[VLIB_TX];
+
 	  vnet_buffer (b0)->output_features.ipsec_sad_index = t->local_sa;
 	  vnet_buffer (b1)->output_features.ipsec_sad_index = t->local_sa;
 
@@ -281,6 +286,8 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
 	  ip0->dst_address.as_u32 = t->tunnel_dst.as_u32;
 	  ip0->checksum = ip4_header_checksum (ip0);
 
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
+	    vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	  vnet_buffer (b0)->output_features.ipsec_sad_index = t->local_sa;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 

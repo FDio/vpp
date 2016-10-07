@@ -163,6 +163,8 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
       t->local_sa = ipsec_get_sa_index_by_sa_id (a->lsa);
       t->remote_sa = ipsec_get_sa_index_by_sa_id (a->rsa);
 
+      ip4_sw_interface_enable_disable (sw_if_index, 1);
+
       vec_validate_init_empty (igm->tunnel_index_by_sw_if_index,
 			       sw_if_index, ~0);
       igm->tunnel_index_by_sw_if_index[sw_if_index] = t - igm->tunnels;
@@ -199,6 +201,7 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
       t = pool_elt_at_index (igm->tunnels, p[0]);
 
       sw_if_index = t->sw_if_index;
+      ip4_sw_interface_enable_disable (sw_if_index, 0);
       vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
       /* make sure tunnel is removed from l2 bd or xconnect */
       set_int_l2_mode (igm->vlib_main, vnm, MODE_L3, sw_if_index, 0, 0, 0, 0);
