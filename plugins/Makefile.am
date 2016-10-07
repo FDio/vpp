@@ -51,3 +51,7 @@ endif
 if ENABLE_lb_PLUGIN
 SUBDIRS += lb-plugin
 endif
+
+if ENABLE_flowperpkt_PLUGIN
+SUBDIRS += flowperpkt-plugin
+endif
