@@ -115,152 +115,19 @@ adj_nbr_find (fib_protocol_t nh_proto,
     }
 }
 
-static inline vlib_node_registration_t*
+static inline u32
 adj_get_nd_node (fib_protocol_t proto)
 {
     switch (proto) {
     case FIB_PROTOCOL_IP4:
-	return (&ip4_arp_node);
+	return (ip4_arp_node.index);
     case FIB_PROTOCOL_IP6:
-	return (&ip6_discover_neighbor_node);
+	return (ip6_discover_neighbor_node.index);
     case FIB_PROTOCOL_MPLS:
 	break;
     }
     ASSERT(0);
-    return (NULL);
-}
-
-static void
-adj_ip4_nbr_probe (ip_adjacency_t *adj)
-{
-    vnet_main_t * vnm = vnet_get_main();
-    ip4_main_t * im = &ip4_main;
-    ip_interface_address_t * ia;
-    ethernet_arp_header_t * h;
-    vnet_hw_interface_t * hi;
-    vnet_sw_interface_t * si;
-    ip4_address_t * src;
-    vlib_buffer_t * b;
-    vlib_main_t * vm;
-    u32 bi = 0;
-
-    vm = vlib_get_main();
-
-    si = vnet_get_sw_interface (vnm,
-				adj->rewrite_header.sw_if_index);
-
-    if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
-    {
-        return;
-    }
-
-    src =
-      ip4_interface_address_matching_destination(im,
-						 &adj->sub_type.nbr.next_hop.ip4,
-						 adj->rewrite_header.sw_if_index,
-						 &ia);
-    if (! src)
-    {
-        return;
-    }
-
-    h = vlib_packet_template_get_packet (vm, &im->ip4_arp_request_packet_template, &bi);
-
-    hi = vnet_get_sup_hw_interface (vnm, adj->rewrite_header.sw_if_index);
-
-    clib_memcpy (h->ip4_over_ethernet[0].ethernet,
-		 hi->hw_address,
-		 sizeof (h->ip4_over_ethernet[0].ethernet));
-
-    h->ip4_over_ethernet[0].ip4 = src[0];
-    h->ip4_over_ethernet[1].ip4 = adj->sub_type.nbr.next_hop.ip4;
-
-    b = vlib_get_buffer (vm, bi);
-    vnet_buffer (b)->sw_if_index[VLIB_RX] =
-      vnet_buffer (b)->sw_if_index[VLIB_TX] =
-          adj->rewrite_header.sw_if_index;
-
-    /* Add encapsulation string for software interface (e.g. ethernet header). */
-    vnet_rewrite_one_header (adj[0], h, sizeof (ethernet_header_t));
-    vlib_buffer_advance (b, -adj->rewrite_header.data_bytes);
-
-    {
-        vlib_frame_t * f = vlib_get_frame_to_node (vm, hi->output_node_index);
-	u32 * to_next = vlib_frame_vector_args (f);
-	to_next[0] = bi;
-	f->n_vectors = 1;
-	vlib_put_frame_to_node (vm, hi->output_node_index, f);
-    }
-}
-
-static void
-adj_ip6_nbr_probe (ip_adjacency_t *adj)
-{
-    icmp6_neighbor_solicitation_header_t * h;
-    vnet_main_t * vnm = vnet_get_main();
-    ip6_main_t * im = &ip6_main;
-    ip_interface_address_t * ia;
-    ip6_address_t * dst, *src;
-    vnet_hw_interface_t * hi;
-    vnet_sw_interface_t * si;
-    vlib_buffer_t * b;
-    int bogus_length;
-    vlib_main_t * vm;
-    u32 bi = 0;
-
-    vm = vlib_get_main();
-
-    si = vnet_get_sw_interface(vnm, adj->rewrite_header.sw_if_index);
-    dst = &adj->sub_type.nbr.next_hop.ip6;
-
-    if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
-    {
-        return;
-    }
-    src = ip6_interface_address_matching_destination(im, dst,
-						     adj->rewrite_header.sw_if_index,
-						     &ia);
-    if (! src)
-    {
-       return;
-    }
-
-    h = vlib_packet_template_get_packet(vm,
-					&im->discover_neighbor_packet_template,
-					&bi);
-
-    hi = vnet_get_sup_hw_interface(vnm, adj->rewrite_header.sw_if_index);
-
-    h->ip.dst_address.as_u8[13] = dst->as_u8[13];
-    h->ip.dst_address.as_u8[14] = dst->as_u8[14];
-    h->ip.dst_address.as_u8[15] = dst->as_u8[15];
-    h->ip.src_address = src[0];
-    h->neighbor.target_address = dst[0];
-
-    clib_memcpy (h->link_layer_option.ethernet_address,
-		 hi->hw_address,
-		 vec_len(hi->hw_address));
-
-    h->neighbor.icmp.checksum = 
-	ip6_tcp_udp_icmp_compute_checksum(vm, 0, &h->ip, &bogus_length);
-    ASSERT(bogus_length == 0);
-
-    b = vlib_get_buffer (vm, bi);
-    vnet_buffer (b)->sw_if_index[VLIB_RX] =
-	vnet_buffer (b)->sw_if_index[VLIB_TX] =
-          adj->rewrite_header.sw_if_index;
-
-    /* Add encapsulation string for software interface (e.g. ethernet header). */
-    vnet_rewrite_one_header(adj[0], h, sizeof (ethernet_header_t));
-    vlib_buffer_advance(b, -adj->rewrite_header.data_bytes);
-
-    {
-	vlib_frame_t * f = vlib_get_frame_to_node(vm, hi->output_node_index);
-	u32 * to_next = vlib_frame_vector_args(f);
-	to_next[0] = bi;
-	f->n_vectors = 1;
-	vlib_put_frame_to_node(vm, hi->output_node_index, f);
-    }
+    return (ip4_arp_node.index);
 }
 
 static ip_adjacency_t*
@@ -285,6 +152,7 @@ adj_nbr_alloc (fib_protocol_t nh_proto,
     adj->sub_type.nbr.next_hop = *nh_addr;
     adj->ia_link = link_type;
     adj->ia_nh_proto = nh_proto;
+    adj->rewrite_header.sw_if_index = sw_if_index;
     memset(&adj->sub_type.midchain.next_dpo, 0,
            sizeof(adj->sub_type.midchain.next_dpo));
 
@@ -300,8 +168,6 @@ adj_nbr_alloc (fib_protocol_t nh_proto,
  *   - the Next-hops protocol (i.e. v4 or v6)
  *   - the address of the next-hop
  *   - the interface the next-hop is reachable through
- *   - fib_index; this is broken. i will fix it.
- *     the adj lookup currently occurs in the FIB.
  */
 adj_index_t
 adj_nbr_add_or_lock (fib_protocol_t nh_proto,
@@ -316,55 +182,31 @@ adj_nbr_add_or_lock (fib_protocol_t nh_proto,
 
     if (ADJ_INDEX_INVALID == adj_index)
     {
+	vnet_main_t *vnm;
+
+	vnm = vnet_get_main();
 	adj = adj_nbr_alloc(nh_proto, link_type, nh_addr, sw_if_index);
+	adj_index = adj_get_index(adj);
+	adj_lock(adj_index);
+
+	vnet_rewrite_init(vnm, sw_if_index,
+			  adj_get_nd_node(nh_proto),
+			  vnet_tx_node_index_for_sw_interface(vnm, sw_if_index),
+			  &adj->rewrite_header);
 
 	/*
-	 * If there is no next-hop, this is the 'auto-adj' used on p2p
-	 * links instead of a glean.
+	 * we need a rewrite where the destination IP address is converted
+	 * to the appropriate link-layer address. This is interface specific.
+	 * So ask the interface to do it.
 	 */
-	if (ip46_address_is_zero(nh_addr))
-	{
-	    adj->lookup_next_index = IP_LOOKUP_NEXT_REWRITE;
-
-	    vnet_rewrite_for_sw_interface(vnet_get_main(),
-					  adj_fib_link_2_vnet(link_type),
-					  sw_if_index,
-					  adj_get_rewrite_node(link_type)->index,
-					  VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST,
-					  &adj->rewrite_header,
-					  sizeof (adj->rewrite_data));
-	}
-	else
-	{
-	    vnet_rewrite_for_sw_interface(vnet_get_main(),
-					  adj_fib_proto_2_nd(nh_proto),
-					  sw_if_index,
-					  adj_get_nd_node(nh_proto)->index,
-					  VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST,
-					  &adj->rewrite_header,
-					  sizeof (adj->rewrite_data));
-
-	    switch (nh_proto)
-	    {
-	    case FIB_PROTOCOL_IP4:
-		adj_ip4_nbr_probe(adj);
-		break;
-	    case FIB_PROTOCOL_IP6:
-		adj_ip6_nbr_probe(adj);
-		break;
-	    case FIB_PROTOCOL_MPLS:
-		break;
-	    }
-	}
+	vnet_update_adjacency_for_sw_interface(vnm, sw_if_index, adj_index);
     }
     else
     {
-	adj = adj_get(adj_index);
+	adj_lock(adj_index);
     }
 
-    adj_lock(adj_get_index(adj));
-
-    return (adj_get_index(adj));
+    return (adj_index);
 }
 
 adj_index_t
@@ -390,7 +232,9 @@ adj_nbr_add_or_lock_w_rewrite (fib_protocol_t nh_proto,
     }
 
     adj_lock(adj_get_index(adj));
-    adj_nbr_update_rewrite(adj_get_index(adj), rewrite);
+    adj_nbr_update_rewrite(adj_get_index(adj),
+			   ADJ_NBR_REWRITE_FLAG_COMPLETE,
+			   rewrite);
 
     return (adj_get_index(adj));
 }
@@ -404,86 +248,134 @@ adj_nbr_add_or_lock_w_rewrite (fib_protocol_t nh_proto,
  */
 void
 adj_nbr_update_rewrite (adj_index_t adj_index,
+			adj_nbr_rewrite_flag_t flags,
 			u8 *rewrite)
 {
     ip_adjacency_t *adj;
+    u32 old_next;
 
     ASSERT(ADJ_INDEX_INVALID != adj_index);
 
     adj = adj_get(adj_index);
+    old_next = adj->lookup_next_index;
+
+    if (flags & ADJ_NBR_REWRITE_FLAG_COMPLETE)
+    {
+	/*
+	 * update the adj's rewrite string and build the arc
+	 * from the rewrite node to the interface's TX node
+	 */
+	adj_nbr_update_rewrite_internal(adj, IP_LOOKUP_NEXT_REWRITE,
+					adj_get_rewrite_node(adj->ia_link),
+					vnet_tx_node_index_for_sw_interface(
+					    vnet_get_main(),
+					    adj->rewrite_header.sw_if_index),
+					rewrite);
+    }
+    else
+    {
+	adj_nbr_update_rewrite_internal(adj, IP_LOOKUP_NEXT_ARP,
+					adj_get_nd_node(adj->ia_nh_proto),
+					vnet_tx_node_index_for_sw_interface(
+					    vnet_get_main(),
+					    adj->rewrite_header.sw_if_index),
+					rewrite);
+    }
+
+    if (old_next != adj->lookup_next_index)
+    {
+	/*
+	 * time for walkies fido.
+	 * The link type MPLS Adj never has children. So if it is this adj
+	 * that is updated, we need to walk from its IP sibling.
+	 */
+	if (FIB_LINK_MPLS == adj->ia_link)
+	{
+	    adj_index = adj_nbr_find(adj->ia_nh_proto,
+				     fib_proto_to_link(adj->ia_nh_proto),
+				     &adj->sub_type.nbr.next_hop,
+				     adj->rewrite_header.sw_if_index);
+
+	    ASSERT(ADJ_INDEX_INVALID != adj_index);
+	}
+
+	fib_node_back_walk_ctx_t bw_ctx = {
+	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE,
+	    /*
+	     * This walk only needs to go back one level, but there is no control
+	     * here. the first receiving fib_entry_t will quash the walk
+	     */
+	};
+
+	fib_walk_sync(FIB_NODE_TYPE_ADJ, adj_index, &bw_ctx);
+    }
+}
+
+/**
+ * adj_nbr_update_rewrite_internal
+ *
+ * Update the adjacency's rewrite string. A NULL string implies the
+ * rewirte is reset (i.e. when ARP/ND etnry is gone).
+ * NB: the adj being updated may be handling traffic in the DP.
+ */
+void
+adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
+				 u32 adj_next_index,
+				 u32 this_node,
+				 u32 next_node,
+				 u8 *rewrite)
+{
+    vlib_main_t * vm = vlib_get_main();
+
+    /*
+     * Updating a rewrite string is not atomic;
+     *  - the rewrite string is too long to write in one instruction
+     *  - when swapping from incomplete to complete, we also need to update
+     *    the VLIB graph next-index.
+     * ideally we would only want to suspend forwarding via this adj whilst we
+     * do this, but we do not have that level of granularity - it's suspend all
+     * worker threads or nothing.
+     * The other chioces are:
+     *  - to mark the adj down and back walk so child load-balances drop this adj
+     *    from the set.
+     *  - update the next_node index of this adj to point to error-drop
+     * both of which will mean for MAC change we will drop for this adj
+     * which is not acceptable.
+     * So the pause all threads is preferable. We don't update MAC addresses often
+     * so it's no big deal.
+     */
+    vlib_worker_thread_barrier_sync(vm);
+
+    adj->lookup_next_index = adj_next_index;
 
     if (NULL != rewrite)
     {
 	/*
 	 * new rewrite provided.
-	 * use a dummy rewrite header to get the interface to print into.
+	 * fill in the adj's rewrite string, and build the VLIB graph arc.
 	 */
-	ip_adjacency_t dummy;
+	vnet_rewrite_set_data_internal(&adj->rewrite_header,
+				       sizeof(adj->rewrite_data),
+				       rewrite,
+				       vec_len(rewrite));
 
-	vnet_rewrite_for_sw_interface(vnet_get_main(),
-				      adj_fib_link_2_vnet(adj->ia_link),
-				      adj->rewrite_header.sw_if_index,
-				      adj_get_rewrite_node(adj->ia_link)->index,
-				      rewrite,
-				      &dummy.rewrite_header,
-				      sizeof (dummy.rewrite_data));
+	adj->rewrite_header.node_index = this_node;
+	adj->rewrite_header.next_index = vlib_node_add_next (vlib_get_main(),
+							     this_node,
+							     next_node);
 
-	if (IP_LOOKUP_NEXT_REWRITE == adj->lookup_next_index)
-	{
-	    /*
-	     * this is an update of an existing rewrite.
-	     * we can't just paste in the new rewrite as that is not atomic.
-	     * So we briefly swap the ADJ to ARP type, paste, then swap back.
-	     */
-	    adj->lookup_next_index = IP_LOOKUP_NEXT_ARP;
-	    CLIB_MEMORY_BARRIER();
-	}
-	/*
-	 * else
-	 *   this is the first time the rewrite is added.
-	 *   paste it on then swap the next type.
-	 */
-	clib_memcpy(&adj->rewrite_header,
-		    &dummy.rewrite_header,
-		    VLIB_BUFFER_PRE_DATA_SIZE);
-
-	adj->lookup_next_index = IP_LOOKUP_NEXT_REWRITE;
+	vec_free(rewrite);
     }
     else
     {
-	/*
-	 * clear the rewrite.
-	 */
-	adj->lookup_next_index = IP_LOOKUP_NEXT_ARP;
-	CLIB_MEMORY_BARRIER();
-
-	adj->rewrite_header.data_bytes = 0;
+	vnet_rewrite_clear_data_internal(&adj->rewrite_header,
+					 sizeof(adj->rewrite_data));
     }
 
     /*
-     * time for walkies fido.
-     * The link type MPLS Adj never has children. So if it is this adj
-     * that is updated, we need to walk from its IP sibling.
+     * done with the rewirte update - let the workers loose.
      */
-    if (FIB_LINK_MPLS == adj->ia_link)
-    {
-        adj_index = adj_nbr_find(adj->ia_nh_proto,
-				 fib_proto_to_link(adj->ia_nh_proto),
-				 &adj->sub_type.nbr.next_hop,
-				 adj->rewrite_header.sw_if_index);
-
-        ASSERT(ADJ_INDEX_INVALID != adj_index);
-    }
-
-    fib_node_back_walk_ctx_t bw_ctx = {
-	.fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE,
-	/*
-	 * This walk only needs to go back one level, but there is no control here.
-         * the first receiving fib_entry_t will quash the walk
-	 */
-    };
-
-    fib_walk_sync(FIB_NODE_TYPE_ADJ, adj_index, &bw_ctx);
+    vlib_worker_thread_barrier_release(vm);
 }
 
 typedef struct adj_db_count_ctx_t_ {
@@ -524,6 +416,152 @@ adj_nbr_db_size (void)
 }
 
 /**
+ * @brief Context for a walk of the adjacency neighbour DB
+ */
+typedef struct adj_walk_ctx_t_
+{
+    adj_walk_cb_t awc_cb;
+    void *awc_ctx;
+} adj_walk_ctx_t;
+
+static void
+adj_nbr_walk_cb (BVT(clib_bihash_kv) * kvp,
+		 void *arg)
+{
+    adj_walk_ctx_t *ctx = arg;
+
+    // FIXME: can't stop early...
+    ctx->awc_cb(kvp->value, ctx->awc_ctx);
+}
+
+void
+adj_nbr_walk (u32 sw_if_index,
+	      fib_protocol_t adj_nh_proto,
+	      adj_walk_cb_t cb,
+	      void *ctx)
+{
+    if (!ADJ_NBR_ITF_OK(adj_nh_proto, sw_if_index))
+	return;
+
+    adj_walk_ctx_t awc = {
+	.awc_ctx = ctx,
+	.awc_cb = cb,
+    };
+
+    BV(clib_bihash_foreach_key_value_pair) (
+	adj_nbr_tables[adj_nh_proto][sw_if_index],
+	adj_nbr_walk_cb,
+	&awc);
+}
+
+/**
+ * @brief Context for a walk of the adjacency neighbour DB
+ */
+typedef struct adj_walk_nh_ctx_t_
+{
+    adj_walk_cb_t awc_cb;
+    void *awc_ctx;
+    const ip46_address_t *awc_nh;
+} adj_walk_nh_ctx_t;
+
+static void
+adj_nbr_walk_nh_cb (BVT(clib_bihash_kv) * kvp,
+		    void *arg)
+{
+    ip_adjacency_t *adj;
+    adj_walk_nh_ctx_t *ctx = arg;
+
+    adj = adj_get(kvp->value);
+
+    if (!ip46_address_cmp(&adj->sub_type.nbr.next_hop, ctx->awc_nh)) 
+	ctx->awc_cb(kvp->value, ctx->awc_ctx);
+}
+
+/**
+ * @brief Walk adjacencies on a link with a given v4 next-hop.
+ * that is visit the adjacencies with different link types.
+ */
+void
+adj_nbr_walk_nh4 (u32 sw_if_index,
+		 const ip4_address_t *addr,
+		 adj_walk_cb_t cb,
+		 void *ctx)
+{
+    if (!ADJ_NBR_ITF_OK(FIB_PROTOCOL_IP4, sw_if_index))
+	return;
+
+    ip46_address_t nh = {
+	.ip4 = *addr,
+    };
+
+    adj_walk_nh_ctx_t awc = {
+	.awc_ctx = ctx,
+	.awc_cb = cb,
+	.awc_nh = &nh,
+    };
+
+    BV(clib_bihash_foreach_key_value_pair) (
+	adj_nbr_tables[FIB_PROTOCOL_IP4][sw_if_index],
+	adj_nbr_walk_nh_cb,
+	&awc);
+}
+
+/**
+ * @brief Walk adjacencies on a link with a given v6 next-hop.
+ * that is visit the adjacencies with different link types.
+ */
+void
+adj_nbr_walk_nh6 (u32 sw_if_index,
+		 const ip6_address_t *addr,
+		 adj_walk_cb_t cb,
+		 void *ctx)
+{
+    if (!ADJ_NBR_ITF_OK(FIB_PROTOCOL_IP6, sw_if_index))
+	return;
+
+    ip46_address_t nh = {
+	.ip6 = *addr,
+    };
+
+    adj_walk_nh_ctx_t awc = {
+	.awc_ctx = ctx,
+	.awc_cb = cb,
+	.awc_nh = &nh,
+    };
+
+    BV(clib_bihash_foreach_key_value_pair) (
+	adj_nbr_tables[FIB_PROTOCOL_IP6][sw_if_index],
+	adj_nbr_walk_nh_cb,
+	&awc);
+}
+
+/**
+ * @brief Walk adjacencies on a link with a given next-hop.
+ * that is visit the adjacencies with different link types.
+ */
+void
+adj_nbr_walk_nh (u32 sw_if_index,
+		 fib_protocol_t adj_nh_proto,
+		 const ip46_address_t *nh,
+		 adj_walk_cb_t cb,
+		 void *ctx)
+{
+    if (!ADJ_NBR_ITF_OK(adj_nh_proto, sw_if_index))
+	return;
+
+    adj_walk_nh_ctx_t awc = {
+	.awc_ctx = ctx,
+	.awc_cb = cb,
+	.awc_nh = nh,
+    };
+
+    BV(clib_bihash_foreach_key_value_pair) (
+	adj_nbr_tables[adj_nh_proto][sw_if_index],
+	adj_nbr_walk_nh_cb,
+	&awc);
+}
+
+/**
  * Context for the state change walk of the DB
  */
 typedef struct adj_nbr_interface_state_change_ctx_t_
@@ -534,8 +572,8 @@ typedef struct adj_nbr_interface_state_change_ctx_t_
     int flags;
 } adj_nbr_interface_state_change_ctx_t;
 
-static void
-adj_nbr_interface_state_change_one (BVT(clib_bihash_kv) * kvp,
+static adj_walk_rc_t
+adj_nbr_interface_state_change_one (adj_index_t ai,
 				    void *arg)
 {
     /*
@@ -550,7 +588,9 @@ adj_nbr_interface_state_change_one (BVT(clib_bihash_kv) * kvp,
 			FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN),
     };
 
-    fib_walk_sync(FIB_NODE_TYPE_ADJ, kvp->value, &bw_ctx);
+    fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
+
+    return (ADJ_WALK_RC_CONTINUE);
 }
 
 static clib_error_t *
@@ -565,17 +605,13 @@ adj_nbr_interface_state_change (vnet_main_t * vnm,
      */
     for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
     {
-	if (!ADJ_NBR_ITF_OK(proto, sw_if_index))
-	    continue;
-
 	adj_nbr_interface_state_change_ctx_t ctx = {
 	    .flags = flags,
 	};
 
-	BV(clib_bihash_foreach_key_value_pair) (
-	    adj_nbr_tables[proto][sw_if_index],
-	    adj_nbr_interface_state_change_one,
-	    &ctx);
+	adj_nbr_walk(sw_if_index, proto,
+		     adj_nbr_interface_state_change_one,
+		     &ctx);
     }
 
     return (NULL);
@@ -583,8 +619,8 @@ adj_nbr_interface_state_change (vnet_main_t * vnm,
 
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION(adj_nbr_interface_state_change);
 
-static void
-adj_nbr_interface_delete_one (BVT(clib_bihash_kv) * kvp,
+static adj_walk_rc_t
+adj_nbr_interface_delete_one (adj_index_t ai,
 			      void *arg)
 {
     /*
@@ -595,7 +631,9 @@ adj_nbr_interface_delete_one (BVT(clib_bihash_kv) * kvp,
 	.fnbw_reason = FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE,
     };
 
-    fib_walk_sync(FIB_NODE_TYPE_ADJ, kvp->value, &bw_ctx);
+    fib_walk_sync(FIB_NODE_TYPE_ADJ, ai, &bw_ctx);
+
+    return (ADJ_WALK_RC_CONTINUE);
 }
 
 /**
@@ -630,13 +668,9 @@ adj_nbr_interface_add_del (vnet_main_t * vnm,
 
     for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
     {
-	if (!ADJ_NBR_ITF_OK(proto, sw_if_index))
-	    continue;
-
-	BV(clib_bihash_foreach_key_value_pair) (
-	    adj_nbr_tables[proto][sw_if_index],
-	    adj_nbr_interface_delete_one,
-	    NULL);
+	adj_nbr_walk(sw_if_index, proto,
+		     adj_nbr_interface_delete_one,
+		     NULL);
     }
 
     return (NULL);
@@ -646,15 +680,16 @@ adj_nbr_interface_add_del (vnet_main_t * vnm,
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION(adj_nbr_interface_add_del);
 
 
-static void
-adj_nbr_show_one (BVT(clib_bihash_kv) * kvp,
+static adj_walk_rc_t
+adj_nbr_show_one (adj_index_t ai,
 		  void *arg)
 {
     vlib_cli_output (arg, "[@%d]  %U",
-                     kvp->value,
-                     format_ip_adjacency,
-                     vnet_get_main(), kvp->value,
+                     ai,
+                     format_ip_adjacency, ai,
 		     FORMAT_IP_ADJACENCY_NONE);
+
+    return (ADJ_WALK_RC_CONTINUE);
 }
 
 static clib_error_t *
@@ -663,10 +698,15 @@ adj_nbr_show (vlib_main_t * vm,
 	      vlib_cli_command_t * cmd)
 {
     adj_index_t ai = ADJ_INDEX_INVALID;
+    u32 sw_if_index = ~0;
 
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
 	if (unformat (input, "%d", &ai))
+	    ;
+	else if (unformat (input, "%U",
+			   unformat_vnet_sw_interface, vnet_get_main(),
+			   &sw_if_index))
 	    ;
 	else
 	    break;
@@ -676,10 +716,19 @@ adj_nbr_show (vlib_main_t * vm,
     {
 	vlib_cli_output (vm, "[@%d] %U",
                          ai,
-
-                         format_ip_adjacency,
-			 vnet_get_main(), ai,
+                         format_ip_adjacency, ai,
 			 FORMAT_IP_ADJACENCY_DETAIL);
+    }
+    else if (~0 != sw_if_index)
+    {
+	fib_protocol_t proto;
+
+	for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
+	{
+	    adj_nbr_walk(sw_if_index, proto,
+			 adj_nbr_show_one,
+			 vm);
+	}
     }
     else
     {
@@ -687,17 +736,11 @@ adj_nbr_show (vlib_main_t * vm,
 
 	for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
 	{
-	    u32 sw_if_index;
-
 	    vec_foreach_index(sw_if_index, adj_nbr_tables[proto])
 	    {
-		if (!ADJ_NBR_ITF_OK(proto, sw_if_index))
-		    continue;
-
-		BV(clib_bihash_foreach_key_value_pair) (
-		    adj_nbr_tables[proto][sw_if_index],
-		    adj_nbr_show_one,
-		    vm);
+		adj_nbr_walk(sw_if_index, proto,
+			     adj_nbr_show_one,
+			     vm);
 	    }
 	}
     }
@@ -705,11 +748,36 @@ adj_nbr_show (vlib_main_t * vm,
     return 0;
 }
 
+/*?
+ * Show all neighbour adjacencies.
+ * @cliexpar
+ * @cliexstart{sh adj nbr}
+ * [@2] ipv4 via 1.0.0.2 loop0: IP4: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
+ * [@3] mpls via 1.0.0.2 loop0: MPLS_UNICAST: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
+ * [@4] ipv4 via 1.0.0.3 loop0: IP4: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
+ * [@5] mpls via 1.0.0.3 loop0: MPLS_UNICAST: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
+ * @cliexend
+ ?*/
 VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .path = "show adj nbr",
-    .short_help = "show adj nbr [<adj_index>] [sw_if_index <index>]",
+    .short_help = "show adj nbr [<adj_index>] [interface]",
     .function = adj_nbr_show,
 };
+
+static ip46_type_t
+adj_proto_to_46 (fib_protocol_t proto)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (IP46_TYPE_IP4);
+    case FIB_PROTOCOL_IP6:
+	return (IP46_TYPE_IP6);
+    default:
+	return (IP46_TYPE_IP4);
+    }
+    return (IP46_TYPE_IP4);
+}
 
 u8*
 format_adj_nbr_incomplete (u8* s, va_list *ap)
@@ -721,7 +789,8 @@ format_adj_nbr_incomplete (u8* s, va_list *ap)
 
     s = format (s, "arp-%U", format_fib_link, adj->ia_link);
     s = format (s, ": via %U",
-                format_ip46_address, &adj->sub_type.nbr.next_hop, IP46_TYPE_ANY);
+                format_ip46_address, &adj->sub_type.nbr.next_hop,
+		adj_proto_to_46(adj->ia_nh_proto));
     s = format (s, " %U",
                 format_vnet_sw_interface_name,
                 vnm,
@@ -741,7 +810,8 @@ format_adj_nbr (u8* s, va_list *ap)
 
     s = format (s, "%U", format_fib_link, adj->ia_link);
     s = format (s, " via %U ",
-		format_ip46_address, &adj->sub_type.nbr.next_hop, IP46_TYPE_ANY);
+		format_ip46_address, &adj->sub_type.nbr.next_hop,
+		adj_proto_to_46(adj->ia_nh_proto));
     s = format (s, "%U",
 		format_vnet_rewrite,
 		vnm->vlib_main, &adj->rewrite_header, sizeof (adj->rewrite_data), 0);

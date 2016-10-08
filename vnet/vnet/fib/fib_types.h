@@ -73,21 +73,17 @@ typedef enum fib_protocol_t_ {
  * Link Type. This maps directly into the ethertype.
  */
 typedef enum fib_link_t_ {
-#if CLIB_DEBUG > 0
-    FIB_LINK_IP4 = 1,
-#else
-    FIB_LINK_IP4 = 0,
-#endif
-    FIB_LINK_IP6,
-    FIB_LINK_ETHERNET,
-    FIB_LINK_MPLS,
+    FIB_LINK_IP4 = VNET_LINK_IP4,
+    FIB_LINK_IP6 = VNET_LINK_IP6,
+    FIB_LINK_MPLS = VNET_LINK_MPLS,
+    FIB_LINK_ETHERNET = VNET_LINK_ETHERNET,
 }  __attribute__ ((packed)) fib_link_t;
 
 /**
  * Definition outside of enum so it does not need to be included in non-defaulted
  * switch statements
  */
-#define FIB_LINK_NUM (FIB_LINK_MPLS+1)
+#define FIB_LINK_NUM (FIB_LINK_ETHERNET+1)
 
 #define FIB_LINKS {		      \
     [FIB_LINK_ETHERNET] = "ethernet", \

@@ -44,23 +44,15 @@ dhcp_client_release_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
                                  c->subnet_mask_width, 1 /*is_del*/);
 }
 
-static void set_l2_rewrite (dhcp_client_main_t * dcm, dhcp_client_t * c)
+static void
+set_l2_rewrite (dhcp_client_main_t * dcm, dhcp_client_t * c)
 {
-  vnet_main_t * vnm = dcm->vnet_main;
-  vnet_hw_interface_t * hw = vnet_get_sup_hw_interface (vnm, c->sw_if_index);
-  vnet_hw_interface_class_t * hc = 
-    vnet_get_hw_interface_class (vnm, hw->hw_class_index);
-  u32 n_rw;
-
   /* Acquire the L2 rewrite string for the indicated sw_if_index */
-  vec_validate (c->l2_rewrite, 32);
-  ASSERT (hc->set_rewrite);
-  n_rw = hc->set_rewrite (dcm->vnet_main, c->sw_if_index, 
-                          VNET_L3_PACKET_TYPE_IP4,
-                          0 /* broadcast */, c->l2_rewrite, 
-                          vec_len(c->l2_rewrite));
-                          
-  _vec_len (c->l2_rewrite) = n_rw;
+  c->l2_rewrite = vnet_build_rewrite_for_sw_interface(
+                      dcm->vnet_main,
+		      c->sw_if_index, 
+		      VNET_LINK_IP4,
+		      0 /* broadcast */);
 }
 
 /* 

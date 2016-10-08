@@ -121,25 +121,25 @@ VNET_DEVICE_CLASS (pg_dev_class) = {
 };
 /* *INDENT-ON* */
 
-static uword
-pg_set_rewrite (vnet_main_t * vnm,
-		u32 sw_if_index,
-		u32 l3_type,
-		void *dst_address, void *rewrite, uword max_rewrite_bytes)
+static u8 *
+pg_build_rewrite (vnet_main_t * vnm,
+		  u32 sw_if_index,
+		  vnet_link_t link_type, const void *dst_address)
 {
-  u16 *h = rewrite;
+  u8 *rewrite = NULL;
+  u16 *h;
 
-  if (max_rewrite_bytes < sizeof (h[0]))
-    return 0;
+  vec_validate (rewrite, sizeof (*h) - 1);
+  h = (u16 *) rewrite;
+  h[0] = clib_host_to_net_u16 (vnet_link_to_l3_proto (link_type));
 
-  h[0] = clib_host_to_net_u16 (l3_type);
-  return sizeof (h[0]);
+  return (rewrite);
 }
 
 /* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (pg_interface_class,static) = {
   .name = "Packet generator",
-  .set_rewrite = pg_set_rewrite,
+  .build_rewrite = pg_build_rewrite,
 };
 /* *INDENT-ON* */
 

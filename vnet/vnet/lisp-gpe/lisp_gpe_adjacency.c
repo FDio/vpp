@@ -18,7 +18,8 @@
  *
  */
 
-#include <vnet/dpo/dpo.h>
+#include <vnet/dpo/load_balance.h>
+#include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/lisp-gpe/lisp_gpe_sub_interface.h>
 #include <vnet/lisp-gpe/lisp_gpe_adjacency.h>
 #include <vnet/lisp-gpe/lisp_gpe_tunnel.h>
@@ -106,28 +107,97 @@ lisp_gpe_adj_get_fib_chain_type (const lisp_gpe_adjacency_t * ladj)
   return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
 }
 
+static void
+ip46_address_to_ip_address (const ip46_address_t * a, ip_address_t * b)
+{
+  if (ip46_address_is_ip4 (a))
+    {
+      memset (b, 0, sizeof (*b));
+      ip_address_set (b, &a->ip4, IP4);
+    }
+  else
+    {
+      ip_address_set (b, &a->ip6, IP6);
+    }
+}
+
 /**
  * @brief Stack the tunnel's midchain on the IP forwarding chain of the via
  */
 static void
-lisp_gpe_adj_stack (lisp_gpe_adjacency_t * ladj)
+lisp_gpe_adj_stack_one (lisp_gpe_adjacency_t * ladj, adj_index_t ai)
 {
   const lisp_gpe_tunnel_t *lgt;
   dpo_id_t tmp = DPO_NULL;
-  fib_link_t linkt;
 
   lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
   fib_entry_contribute_forwarding (lgt->fib_entry_index,
 				   lisp_gpe_adj_get_fib_chain_type (ladj),
 				   &tmp);
 
-  FOR_EACH_FIB_LINK (linkt)
-  {
-    if (FIB_LINK_MPLS == linkt)
-      continue;
-    adj_nbr_midchain_stack (ladj->adjs[linkt], &tmp);
-  }
+  if (DPO_LOAD_BALANCE == tmp.dpoi_type)
+    {
+      /*
+       * post LISP rewrite we will load-balance. However, the LISP encap
+       * is always the same for this adjacency/tunnel and hence the IP/UDP src,dst
+       * hash is always the same result too. So we do that hash now and
+       * stack on the choice.
+       * If the choice is an incomplete adj then we will need a poke when
+       * it becomes complete. This happens since the adj update walk propagates
+       * as far a recursive paths.
+       */
+      const dpo_id_t *choice;
+      load_balance_t *lb;
+      int hash;
+
+      lb = load_balance_get (tmp.dpoi_index);
+
+      if (IP4 == ip_addr_version (&ladj->remote_rloc))
+	{
+	  hash = ip4_compute_flow_hash ((ip4_header_t *) adj_get_rewrite (ai),
+					lb->lb_hash_config);
+	}
+      else
+	{
+	  hash = ip6_compute_flow_hash ((ip6_header_t *) adj_get_rewrite (ai),
+					lb->lb_hash_config);
+	}
+
+      choice =
+	load_balance_get_bucket_i (lb, hash & lb->lb_n_buckets_minus_1);
+      dpo_copy (&tmp, choice);
+    }
+
+  adj_nbr_midchain_stack (ai, &tmp);
   dpo_reset (&tmp);
+}
+
+/**
+ * @brief Call back when restacking all adjacencies on a GRE interface
+ */
+static adj_walk_rc_t
+lisp_gpe_adj_walk_cb (adj_index_t ai, void *ctx)
+{
+  lisp_gpe_adjacency_t *ladj = ctx;
+
+  lisp_gpe_adj_stack_one (ladj, ai);
+
+  return (ADJ_WALK_RC_CONTINUE);
+}
+
+static void
+lisp_gpe_adj_stack (lisp_gpe_adjacency_t * ladj)
+{
+  fib_protocol_t nh_proto;
+  ip46_address_t nh;
+
+  ip_address_to_46 (&ladj->remote_rloc, &nh, &nh_proto);
+
+  /*
+   * walk all the adjacencies on th lisp interface and restack them
+   */
+  adj_nbr_walk_nh (ladj->sw_if_index,
+		   nh_proto, &nh, lisp_gpe_adj_walk_cb, ladj);
 }
 
 static lisp_gpe_next_protocol_e
@@ -157,10 +227,59 @@ lisp_gpe_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b)
   ip_udp_fixup_one (vm, b, is_v4_packet (vlib_buffer_get_current (b)));
 }
 
+/**
+ * @brief The LISP-GPE interface registered function to update, i.e.
+ * provide an rewrite string for, an adjacency.
+ */
+void
+lisp_gpe_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
+{
+  const lisp_gpe_tunnel_t *lgt;
+  lisp_gpe_adjacency_t *ladj;
+  ip_adjacency_t *adj;
+  ip_address_t rloc;
+  vnet_link_t linkt;
+  index_t lai;
+
+  adj = adj_get (ai);
+  ip46_address_to_ip_address (&adj->sub_type.nbr.next_hop, &rloc);
+
+  /*
+   * find an existing or create a new adj
+   */
+  lai = lisp_adj_find (&rloc, sw_if_index);
+
+  ASSERT (INDEX_INVALID != lai);
+
+  ladj = pool_elt_at_index (lisp_adj_pool, lai);
+  lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
+  linkt = adj_get_link_type (ai);
+
+  adj_nbr_midchain_update_rewrite
+    (ai, lisp_gpe_fixup,
+     (VNET_LINK_ETHERNET == linkt ?
+      ADJ_MIDCHAIN_FLAG_NO_COUNT :
+      ADJ_MIDCHAIN_FLAG_NONE),
+     lisp_gpe_tunnel_build_rewrite
+     (lgt, ladj, lisp_gpe_adj_proto_from_fib_link_type (linkt)));
+
+  lisp_gpe_adj_stack_one (ladj, ai);
+}
+
+u8 *
+lisp_gpe_build_rewrite (vnet_main_t * vnm,
+			u32 sw_if_index,
+			vnet_link_t link_type, const void *dst_address)
+{
+  ASSERT (0);
+  return (NULL);
+}
+
 index_t
 lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
 					    u32 overlay_table_id, u32 vni)
 {
+  const lisp_gpe_sub_interface_t *l3s;
   const lisp_gpe_tunnel_t *lgt;
   lisp_gpe_adjacency_t *ladj;
   index_t lai, l3si;
@@ -171,29 +290,24 @@ lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
   l3si = lisp_gpe_sub_interface_find_or_create_and_lock (&pair->lcl_loc,
 							 overlay_table_id,
 							 vni);
+  l3s = lisp_gpe_sub_interface_get (l3si);
 
   /*
    * find an existing or create a new adj
    */
-  lai = lisp_adj_find (&pair->rmt_loc, l3si);
+  lai = lisp_adj_find (&pair->rmt_loc, l3s->sw_if_index);
 
   if (INDEX_INVALID == lai)
     {
-      const lisp_gpe_sub_interface_t *l3s;
-      u8 *rewrite = NULL;
-      fib_link_t linkt;
-      fib_prefix_t nh;
 
       pool_get (lisp_adj_pool, ladj);
       memset (ladj, 0, sizeof (*ladj));
       lai = (ladj - lisp_adj_pool);
 
-      ladj->remote_rloc = pair->rmt_loc;
+      ip_address_copy (&ladj->remote_rloc, &pair->rmt_loc);
       ladj->vni = vni;
       /* transfer the lock to the adj */
       ladj->lisp_l3_sub_index = l3si;
-
-      l3s = lisp_gpe_sub_interface_get (l3si);
       ladj->sw_if_index = l3s->sw_if_index;
 
       /* if vni is non-default */
@@ -219,38 +333,8 @@ lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
       ladj->fib_entry_child_index = fib_entry_child_add (lgt->fib_entry_index,
 							 FIB_NODE_TYPE_LISP_ADJ,
 							 lai);
-      ip_address_to_fib_prefix (&pair->rmt_loc, &nh);
 
-      /*
-       * construct and stack the FIB midchain adjacencies
-       */
-      FOR_EACH_FIB_LINK (linkt)
-      {
-	if (FIB_LINK_MPLS == linkt)
-	  continue;
-
-	ladj->adjs[linkt] = adj_nbr_add_or_lock (nh.fp_proto,
-						 linkt,
-						 &nh.fp_addr,
-						 ladj->sw_if_index);
-
-	rewrite =
-	  lisp_gpe_tunnel_build_rewrite (lgt, ladj,
-					 lisp_gpe_adj_proto_from_fib_link_type
-					 (linkt));
-
-	adj_nbr_midchain_update_rewrite (ladj->adjs[linkt],
-					 lisp_gpe_fixup,
-					 (FIB_LINK_ETHERNET == linkt ?
-					  ADJ_MIDCHAIN_FLAG_NO_COUNT :
-					  ADJ_MIDCHAIN_FLAG_NONE), rewrite);
-
-	vec_free (rewrite);
-      }
-
-      lisp_gpe_adj_stack (ladj);
-
-      lisp_adj_insert (&ladj->remote_rloc, ladj->lisp_l3_sub_index, lai);
+      lisp_adj_insert (&ladj->remote_rloc, ladj->sw_if_index, lai);
     }
   else
     {
@@ -278,15 +362,21 @@ lisp_gpe_adjacency_from_fib_node (const fib_node_t * node)
 static void
 lisp_gpe_adjacency_last_lock_gone (lisp_gpe_adjacency_t * ladj)
 {
+  const lisp_gpe_tunnel_t *lgt;
+
   /*
    * no children so we are not counting locks. no-op.
    * at least not counting
    */
-  lisp_adj_remove (&ladj->remote_rloc, ladj->lisp_l3_sub_index);
+  lisp_adj_remove (&ladj->remote_rloc, ladj->sw_if_index);
 
   /*
    * unlock the resources this adj holds
    */
+  lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
+
+  fib_entry_child_remove (lgt->fib_entry_index, ladj->fib_entry_child_index);
+
   lisp_gpe_tunnel_unlock (ladj->tunnel_index);
   lisp_gpe_sub_interface_unlock (ladj->lisp_l3_sub_index);
 
@@ -375,9 +465,9 @@ format_lisp_gpe_adjacency (u8 * s, va_list * args)
       s = format (s, " %U\n",
 		  format_lisp_gpe_tunnel,
 		  lisp_gpe_tunnel_get (ladj->tunnel_index));
-      s = format (s, " FIB adjacencies: IPV4:%d IPv6:%d L2:%d\n",
-		  ladj->adjs[FIB_LINK_IP4],
-		  ladj->adjs[FIB_LINK_IP6], ladj->adjs[FIB_LINK_ETHERNET]);
+      /* s = format (s, " FIB adjacencies: IPV4:%d IPv6:%d L2:%d\n", */
+      /*                  ladj->adjs[FIB_LINK_IP4], */
+      /*                  ladj->adjs[FIB_LINK_IP6], ladj->adjs[FIB_LINK_ETHERNET]); */
     }
   else
     {

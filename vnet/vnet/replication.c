@@ -225,6 +225,12 @@ replication_recycle_callback (vlib_main_t * vm, vlib_buffer_free_list_t * fl)
 	  /* Mark that this buffer was just recycled */
 	  b0->flags |= VLIB_BUFFER_IS_RECYCLED;
 
+#if (CLIB_DEBUG > 0)
+#if DPDK == 0
+	  vlib_buffer_set_known_state (vm, bi0, VLIB_BUFFER_KNOWN_ALLOCATED);
+#endif
+#endif
+
 	  /* If buffer is traced, mark frame as traced */
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    f->flags |= VLIB_FRAME_TRACE;

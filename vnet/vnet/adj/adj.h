@@ -76,6 +76,28 @@ extern void adj_child_remove(adj_index_t adj_index,
 			     u32 sibling_index);
 
 /**
+ * @brief Walk the Adjacencies on a given interface
+ */
+extern void adj_walk (u32 sw_if_index,
+		      adj_walk_cb_t cb,
+		      void *ctx);
+
+/**
+ * @brief Return the link type of the adjacency
+ */
+extern vnet_link_t adj_get_link_type (adj_index_t ai);
+
+/**
+ * @brief Return the sw interface index of the adjacency.
+ */
+extern u32 adj_get_sw_if_index (adj_index_t ai);
+
+/**
+ * @brief Return the link type of the adjacency
+ */
+extern const u8* adj_get_rewrite (adj_index_t ai);
+
+/**
  * @brief
  * The global adjacnecy pool. Exposed for fast/inline data-plane access
  */

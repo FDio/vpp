@@ -32,11 +32,10 @@ format_adj_l2_trace (u8 * s, va_list * args)
     CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
     CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
     adj_l2_trace_t * t = va_arg (*args, adj_l2_trace_t *);
-    vnet_main_t * vnm = vnet_get_main();
 
     s = format (s, "adj-idx %d : %U",
 		t->adj_index,
-		format_ip_adjacency, vnm, t->adj_index, FORMAT_IP_ADJACENCY_NONE);
+		format_ip_adjacency, t->adj_index, FORMAT_IP_ADJACENCY_NONE);
     return s;
 }
 

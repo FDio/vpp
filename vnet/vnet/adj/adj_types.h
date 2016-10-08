@@ -35,4 +35,19 @@ typedef u32 adj_index_t;
  */
 #define ADJ_INDEX_INVALID ((u32)~0)
 
+/**
+ * @brief return codes from a adjacency walker callback function
+ */
+typedef enum adj_walk_rc_t_
+{
+    ADJ_WALK_RC_STOP,
+    ADJ_WALK_RC_CONTINUE,
+} adj_walk_rc_t;
+
+/**
+ * @brief Call back function when walking adjacencies
+ */
+typedef adj_walk_rc_t (*adj_walk_cb_t)(adj_index_t ai,
+				       void *ctx);
+
 #endif
