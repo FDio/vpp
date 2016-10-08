@@ -402,35 +402,21 @@ fib_entry_back_walk_notify (fib_node_t *node,
                                             fib_entry_get_index(fib_entry)));
     }
 
-    if (FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason)
-    {
-        /*
-         * ADJ updates (complete<->incomplete) do not need to propagate to
-         * recursive entries.
-         * The only reason its needed as far back as here, is that the adj
-         * and the incomplete adj are a different DPO type, so the LBs need
-         * to re-stack.
-         */
-        return (FIB_NODE_BACK_WALK_CONTINUE);
-    }
-    else
-    {
-        /*
-         * all other walk types can be reclassifed to a re-evaluate to
-         * all recursive dependents.
-         * By reclassifying we ensure that should any of these walk types meet
-         * they can be merged.
-         */
-        ctx->fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE;
+    /*
+     * all other walk types can be reclassifed to a re-evaluate to
+     * all recursive dependents.
+     * By reclassifying we ensure that should any of these walk types meet
+     * they can be merged.
+     */
+    ctx->fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE;
 
-        /*
-         * propagate the backwalk further if we haven't already reached the
-         * maximum depth.
-         */
-        fib_walk_sync(FIB_NODE_TYPE_ENTRY,
-                      fib_entry_get_index(fib_entry),
-                      ctx);
-    }
+    /*
+     * propagate the backwalk further if we haven't already reached the
+     * maximum depth.
+     */
+    fib_walk_sync(FIB_NODE_TYPE_ENTRY,
+		  fib_entry_get_index(fib_entry),
+		  ctx);
 
     return (FIB_NODE_BACK_WALK_CONTINUE);
 }

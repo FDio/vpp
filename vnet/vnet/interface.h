@@ -41,10 +41,12 @@
 #define included_vnet_interface_h
 
 #include <vnet/unix/pcap.h>
+#include <vnet/l3_types.h>
 
 struct vnet_main_t;
 struct vnet_hw_interface_t;
 struct vnet_sw_interface_t;
+struct ip46_address_t;
 
 /* Interface up/down callback. */
 typedef clib_error_t *(vnet_interface_function_t)
@@ -196,6 +198,39 @@ __VA_ARGS__ vnet_device_class_t x
   { dev.tx_function = fn ## _multiarch_select(); }
 #endif
 
+/**
+ * Link Type: A description of the protocol of packets on the link.
+ * On an ethernet link this maps directly into the ethertype. On a GRE tunnel
+ * it maps to the GRE-proto, etc for other lnk types.
+ */
+typedef enum vnet_link_t_
+{
+#if CLIB_DEBUG > 0
+  VNET_LINK_IP4 = 1,
+#else
+  VNET_LINK_IP4 = 0,
+#endif
+  VNET_LINK_IP6,
+  VNET_LINK_MPLS,
+  VNET_LINK_ETHERNET,
+  VNET_LINK_ARP,
+} __attribute__ ((packed)) vnet_link_t;
+
+/**
+ * @brief Convert a link to to an Ethertype
+ */
+extern vnet_l3_packet_type_t vnet_link_to_l3_proto (vnet_link_t link);
+
+/**
+ * @brief Attributes assignable to a HW interface Class.
+ */
+typedef enum vnet_hw_interface_class_flags_t_
+{
+  /**
+   * @brief a point 2 point interface
+   */
+  VNET_HW_INTERFACE_CLASS_FLAG_P2P = (1 << 0),
+} vnet_hw_interface_class_flags_t;
 
 /* Layer-2 (e.g. Ethernet) interface class. */
 typedef struct _vnet_hw_interface_class
@@ -205,6 +240,9 @@ typedef struct _vnet_hw_interface_class
 
   /* Class name (e.g. "Ethernet"). */
   char *name;
+
+  /* Flags */
+  vnet_hw_interface_class_flags_t flags;
 
   /* Function to call when hardware interface is added/deleted. */
   vnet_interface_function_t *interface_add_del_function;
@@ -233,13 +271,16 @@ typedef struct _vnet_hw_interface_class
   /* Parser for packet header for e.g. rewrite string. */
   unformat_function_t *unformat_header;
 
-  /* Forms adjacency for given l3 packet type and destination address.
-     Returns number of bytes in adjacency. */
-    uword (*set_rewrite) (struct vnet_main_t * vnm,
-			  u32 sw_if_index,
-			  u32 l3_packet_type,
-			  void *dst_address,
-			  void *rewrite, uword max_rewrite_bytes);
+  /* Builds a rewrite string for the interface to the destination
+   * for the payload/link type. */
+  u8 *(*build_rewrite) (struct vnet_main_t * vnm,
+			u32 sw_if_index,
+			vnet_link_t link_type, const void *dst_hw_address);
+
+  /* Update an adjacecny added by FIB (as opposed to via the
+   * neighbour resolution protocol). */
+  void (*update_adjacency) (struct vnet_main_t * vnm,
+			    u32 sw_if_index, u32 adj_index);
 
     uword (*is_valid_class_for_interface) (struct vnet_main_t * vnm,
 					   u32 hw_if_index,
@@ -254,6 +295,20 @@ typedef struct _vnet_hw_interface_class
   struct _vnet_hw_interface_class *next_class_registration;
 
 } vnet_hw_interface_class_t;
+
+/**
+ * @brief Return a complete, zero-length (aka dummy) rewrite
+ */
+extern u8 *default_build_rewrite (struct vnet_main_t *vnm,
+				  u32 sw_if_index,
+				  vnet_link_t link_type,
+				  const void *dst_hw_address);
+
+/**
+ * @brief Default adjacency update function
+ */
+extern void default_update_adjacency (struct vnet_main_t *vnm,
+				      u32 sw_if_index, u32 adj_index);
 
 #define VNET_HW_INTERFACE_CLASS(x,...)                                  \
   __VA_ARGS__ vnet_hw_interface_class_t x;                              \

@@ -17,7 +17,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/gre/gre.h>
-#include <vnet/adj/adj.h>
+#include <vnet/adj/adj_midchain.h>
 
 gre_main_t gre_main;
 
@@ -162,133 +162,95 @@ unformat_gre_header (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-static uword gre_set_rewrite (vnet_main_t * vnm,
-			       u32 sw_if_index,
-			       u32 l3_type,
-			       void * dst_address,
-			       void * rewrite,
-			       uword max_rewrite_bytes)
+static int
+gre_proto_from_vnet_link (vnet_link_t link)
 {
-  /*
-   * Conundrum: packets from tun/tap destined for the tunnel
-   * actually have this rewrite applied. Transit packets do not.
-   * To make the two cases equivalent, don't generate a
-   * rewrite here, build the entire header in the fast path.
-   */
-  return 0;
-
-#ifdef THINGS_WORKED_AS_ONE_MIGHT_LIKE
-  ip4_and_gre_header_t * h = rewrite;
-  gre_protocol_t protocol;
-
-  if (max_rewrite_bytes < sizeof (h[0]))
-    return 0;
-
-  switch (l3_type) {
-#define _(a,b) case VNET_L3_PACKET_TYPE_##a: protocol = GRE_PROTOCOL_##b; break
-    _ (IP4, ip4);
-    _ (IP6, ip6);
-#undef _
-  default:
-    return 0;
-  }
-
-  memset (h, 0, sizeof (*h));
-  h->ip4.ip_version_and_header_length = 0x45;
-  h->ip4.ttl = 64;
-  h->ip4.protocol = IP_PROTOCOL_GRE;
-  h->gre.protocol = clib_host_to_net_u16 (protocol);
-
-  return sizeof (h[0]);
-#endif
+    switch (link)
+    {
+    case VNET_LINK_IP4:
+        return (GRE_PROTOCOL_ip4);
+    case VNET_LINK_IP6:
+        return (GRE_PROTOCOL_ip6);
+    case VNET_LINK_MPLS:
+        return (GRE_PROTOCOL_mpls_unicast);
+    case VNET_LINK_ETHERNET:
+        return (GRE_PROTOCOL_teb);
+    case VNET_LINK_ARP:
+        return (GRE_PROTOCOL_arp);
+    }
+    ASSERT(0);
+    return (GRE_PROTOCOL_ip4);
 }
 
-static uword
-gre_interface_tx (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame)
+static u8*
+gre_build_rewrite (vnet_main_t * vnm,
+		   u32 sw_if_index,
+		   vnet_link_t link_type,
+		   const void *dst_address)
 {
   gre_main_t * gm = &gre_main;
-  u32 next_index;
-  u32 * from, * to_next, n_left_from, n_left_to_next;
-  vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
-  gre_tunnel_t *t = pool_elt_at_index (gm->tunnels, rd->dev_instance);
+  ip4_and_gre_header_t * h;
+  u8* rewrite = NULL;
+  gre_tunnel_t *t;
+  u32 ti;
 
-  /* Vector of buffer / pkt indices we're supposed to process */
-  from = vlib_frame_vector_args (frame);
+  ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
 
-  /* Number of buffers / pkts */
-  n_left_from = frame->n_vectors;
+  if (~0 == ti)
+      /* not one of ours */
+      return (0);
 
-  /* Speculatively send the first buffer to the last disposition we used */
-  next_index = node->cached_next_index;
+  t = pool_elt_at_index(gm->tunnels, ti);
 
-  while (n_left_from > 0)
-    {
-      /* set up to enqueue to our disposition with index = next_index */
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+  vec_validate(rewrite, sizeof(*h)-1);
+  h = (ip4_and_gre_header_t*)rewrite;
+  h->gre.protocol = clib_host_to_net_u16(gre_proto_from_vnet_link(link_type));
 
-      /*
-       * FIXME DUAL LOOP
-       */
+  h->ip4.ip_version_and_header_length = 0x45;
+  h->ip4.ttl = 254;
+  h->ip4.protocol = IP_PROTOCOL_GRE;
+  /* fixup ip4 header length and checksum after-the-fact */
+  h->ip4.src_address.as_u32 = t->tunnel_src.as_u32;
+  h->ip4.dst_address.as_u32 = t->tunnel_dst.as_u32;
+  h->ip4.checksum = ip4_header_checksum (&h->ip4);
 
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 bi0, adj_index0, next0;
-	  const ip_adjacency_t * adj0;
-	  const dpo_id_t *dpo0;
-	  ip4_header_t * ip0;
-	  vlib_buffer_t * b0;
-
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-
-	  b0 = vlib_get_buffer(vm, bi0);
-	  ip0 = vlib_buffer_get_current (b0);
-
-	  /* Fixup the checksum and len fields in the GRE tunnel encap
-	   * that was applied at the midchain node */
-	  ip0->length =
-	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-	  ip0->checksum = ip4_header_checksum (ip0);
-
-	  /* Follow the DPO on which the midchain is stacked */
-	  adj_index0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-	  adj0 = adj_get(adj_index0);
-	  dpo0 = &adj0->sub_type.midchain.next_dpo;
-	  next0 = dpo0->dpoi_next_node;
-	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-
-	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      gre_tx_trace_t *tr = vlib_add_trace (vm, node,
-						   b0, sizeof (*tr));
-	      tr->tunnel_id = t - gm->tunnels;
-	      tr->length = ip0->length;
-	      tr->src.as_u32 = ip0->src_address.as_u32;
-	      tr->dst.as_u32 = ip0->dst_address.as_u32;
-	    }
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-
-  vlib_node_increment_counter (vm, gre_input_node.index,
-			       GRE_ERROR_PKTS_ENCAP, frame->n_vectors);
-
-  return frame->n_vectors;
+  return (rewrite);
 }
 
+void
+gre_fixup (vlib_main_t *vm,
+	   ip_adjacency_t *adj,
+	   vlib_buffer_t *b0)
+{
+    ip4_header_t * ip0;
+
+    ip0 = vlib_buffer_get_current (b0);
+
+    /* Fixup the checksum and len fields in the GRE tunnel encap
+     * that was applied at the midchain node */
+    ip0->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+    ip0->checksum = ip4_header_checksum (ip0);
+}
+
+void
+gre_update_adj (vnet_main_t * vnm,
+		u32 sw_if_index,
+		adj_index_t ai)
+{
+    adj_nbr_midchain_update_rewrite (ai, gre_fixup, 
+				     ADJ_MIDCHAIN_FLAG_NONE,
+				     gre_build_rewrite(vnm, sw_if_index,
+						       adj_get_link_type(ai),
+						       NULL));
+
+    gre_tunnel_stack(ai);
+}
+
+/**
+ * @brief TX function. Only called L2. L3 traffic uses the adj-midchains
+ */
 static uword
-gre_l2_interface_tx (vlib_main_t * vm,
+gre_interface_tx (vlib_main_t * vm,
 		     vlib_node_runtime_t * node,
 		     vlib_frame_t * frame)
 {
@@ -330,7 +292,7 @@ gre_l2_interface_tx (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer(vm, bi0);
 
-	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = gt->adj_index[FIB_LINK_ETHERNET];
+	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = gt->l2_adj_index;
 
 	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -356,38 +318,6 @@ gre_l2_interface_tx (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static clib_error_t *
-gre_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
-{
-  gre_main_t * gm = &gre_main;
-  vnet_hw_interface_t * hi;
-  gre_tunnel_t *t;
-  u32 ti;
-
-  hi = vnet_get_hw_interface (vnm, hw_if_index);
-
-  if (NULL == gm->tunnel_index_by_sw_if_index ||
-      hi->sw_if_index >= vec_len(gm->tunnel_index_by_sw_if_index))
-      return (NULL);
-
-  ti = gm->tunnel_index_by_sw_if_index[hi->sw_if_index];
-
-  if (~0 == ti)
-      /* not one of ours */
-      return (NULL);
-
-  t = pool_elt_at_index(gm->tunnels, ti);
-
-  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-    vnet_hw_interface_set_flags (vnm, hw_if_index, VNET_HW_INTERFACE_FLAG_LINK_UP);
-  else
-    vnet_hw_interface_set_flags (vnm, hw_if_index, 0 /* down */);
-
-  gre_tunnel_stack(t);
-
-  return /* no error */ 0;
-}
-
 static u8 * format_gre_tunnel_name (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
@@ -400,15 +330,6 @@ static u8 * format_gre_device (u8 * s, va_list * args)
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
 
   s = format (s, "GRE tunnel: id %d\n", dev_instance);
-  return s;
-}
-
-static u8 * format_gre_l2_device (u8 * s, va_list * args)
-{
-  u32 dev_instance = va_arg (*args, u32);
-  CLIB_UNUSED (int verbose) = va_arg (*args, int);
-
-  s = format (s, "GRE L2-tunnel: id %d\n", dev_instance);
   return s;
 }
 
@@ -427,27 +348,13 @@ VNET_DEVICE_CLASS (gre_device_class) = {
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (gre_device_class,
 				   gre_interface_tx)
 
-VNET_DEVICE_CLASS (gre_l2_device_class) = {
-  .name = "GRE L2 tunnel device",
-  .format_device_name = format_gre_tunnel_name,
-  .format_device = format_gre_l2_device,
-  .format_tx_trace = format_gre_tx_trace,
-  .tx_function = gre_l2_interface_tx,
-  .admin_up_down_function = gre_interface_admin_up_down,
-#ifdef SOON
-  .clear counter = 0;
-#endif
-};
-
-VLIB_DEVICE_TX_FUNCTION_MULTIARCH (gre_l2_device_class,
-				   gre_l2_interface_tx)
-
-
 VNET_HW_INTERFACE_CLASS (gre_hw_interface_class) = {
   .name = "GRE",
   .format_header = format_gre_header_with_length,
   .unformat_header = unformat_gre_header,
-  .set_rewrite = gre_set_rewrite,
+  .build_rewrite = gre_build_rewrite,
+  .update_adjacency = gre_update_adj,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 
 static void add_protocol (gre_main_t * gm,

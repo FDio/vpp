@@ -75,6 +75,28 @@ extern adj_index_t adj_nbr_add_or_lock_w_rewrite(fib_protocol_t nh_proto,
 						 const ip46_address_t *nh_addr,
 						 u32 sw_if_index,
 						 u8 *rewrite);
+/**
+ * @brief When adding a rewrite to an adjacency these are flags that
+ * apply to that rewrite
+ */
+typedef enum adj_nbr_rewrite_flag_t_
+{
+    ADJ_NBR_REWRITE_FLAG_NONE,
+
+    /**
+     * An indication that the rewrite is incomplete, i.e. that it describes the
+     * ARP/ND rewrite when probing.
+     */
+    ADJ_NBR_REWRITE_FLAG_INCOMPLETE = ADJ_NBR_REWRITE_FLAG_NONE,
+
+    /**
+     * An indication that the rewrite is complete, i.e. that it fully describes
+     * the link-layer addressing for the desintation.
+     * The opposite of this is an incomplete rewrite that describes the ARP/ND
+     * rewrite when probing.
+     */
+    ADJ_NBR_REWRITE_FLAG_COMPLETE = (1 << 0),
+} adj_nbr_rewrite_flag_t;
 
 /**
  * @brief
@@ -87,6 +109,7 @@ extern adj_index_t adj_nbr_add_or_lock_w_rewrite(fib_protocol_t nh_proto,
  *  The new rewrite
  */
 extern void adj_nbr_update_rewrite(adj_index_t adj_index,
+				   adj_nbr_rewrite_flag_t flags,
 				   u8 *rewrite);
 
 /**
@@ -100,6 +123,43 @@ extern u8* format_adj_nbr_incomplete(u8* s, va_list *ap);
  * Format a neigbour (REWRITE) adjacency
  */
 extern u8* format_adj_nbr(u8* s, va_list *ap);
+
+/**
+ * @brief Walk the neighbour Adjacencies on a given interface
+ */
+extern void adj_nbr_walk (u32 sw_if_index,
+			  fib_protocol_t adj_nh_proto,
+			  adj_walk_cb_t cb,
+			  void *ctx);
+/**
+ * @brief Walk the neighbour Adjacencies on a given interface with a given next-hop
+ */
+void
+adj_nbr_walk_nh (u32 sw_if_index,
+		 fib_protocol_t adj_nh_proto,
+		 const ip46_address_t *nh,
+		 adj_walk_cb_t cb,
+		 void *ctx);
+
+/**
+ * @brief Walk adjacencies on a link with a given v4 next-hop.
+ * that is visit the adjacencies with different link types.
+ */
+void
+adj_nbr_walk_nh4 (u32 sw_if_index,
+		  const ip4_address_t *addr,
+		  adj_walk_cb_t cb,
+		  void *ctx);
+
+/**
+ * @brief Walk adjacencies on a link with a given v6 next-hop.
+ * that is visit the adjacencies with different link types.
+ */
+void
+adj_nbr_walk_nh6 (u32 sw_if_index,
+		  const ip6_address_t *addr,
+		  adj_walk_cb_t cb,
+		  void *ctx);
 
 /**
  * @brief

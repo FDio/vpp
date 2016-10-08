@@ -167,42 +167,41 @@ unformat_hdlc_header (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-static uword hdlc_set_rewrite (vnet_main_t * vnm,
-			       u32 sw_if_index,
-			       u32 l3_type,
-			       void * dst_address,
-			       void * rewrite,
-			       uword max_rewrite_bytes)
+static u8*
+hdlc_build_rewrite (vnet_main_t * vnm,
+		    u32 sw_if_index,
+		    vnet_link_t link_type,
+		    const void *dst_address)
 {
-  hdlc_header_t * h = rewrite;
+  hdlc_header_t * h;
+  u8* rewrite = NULL;
   hdlc_protocol_t protocol;
 
-  if (max_rewrite_bytes < sizeof (h[0]))
-    return 0;
-
-  switch (l3_type) {
-#define _(a,b) case VNET_L3_PACKET_TYPE_##a: protocol = HDLC_PROTOCOL_##b; break
+  switch (link_type) {
+#define _(a,b) case VNET_LINK_##a: protocol = HDLC_PROTOCOL_##b; break
     _ (IP4, ip4);
     _ (IP6, ip6);
-    _ (MPLS_UNICAST, mpls_unicast);
-    _ (MPLS_MULTICAST, mpls_multicast);
+    _ (MPLS, mpls_unicast);
 #undef _
   default:
-    return 0;
+      return (NULL);
   }
 
+  vec_validate(rewrite, sizeof(*h)-1);
+  h = (hdlc_header_t *)rewrite;
   h->address = 0x0f;
   h->control = 0x00;
   h->protocol = clib_host_to_net_u16 (protocol);
 		     
-  return sizeof (h[0]);
+  return (rewrite);
 }
 
 VNET_HW_INTERFACE_CLASS (hdlc_hw_interface_class) = {
   .name = "HDLC",
   .format_header = format_hdlc_header_with_length,
   .unformat_header = unformat_hdlc_header,
-  .set_rewrite = hdlc_set_rewrite,
+  .build_rewrite = hdlc_build_rewrite,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 
 static void add_protocol (hdlc_main_t * pm,

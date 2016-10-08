@@ -188,7 +188,8 @@ format_adj_glean (u8* s, va_list *ap)
     vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 
-    return (format(s, " glean: %U",
+    return (format(s, "%U-glean: %U",
+		   format_fib_protocol, adj->ia_nh_proto,
                    format_vnet_sw_interface_name,
                    vnm,
                    vnet_get_sw_interface(vnm,

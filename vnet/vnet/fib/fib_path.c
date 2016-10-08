@@ -757,6 +757,20 @@ fib_path_back_walk_notify (fib_node_t *node,
 		fib_path_proto_to_chain_type(path->fp_nh_proto),
 		&path->fp_dpo);
 	}
+	if (FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason)
+	{
+	    /*
+	     * ADJ updates (complete<->incomplete) do not need to propagate to
+	     * recursive entries.
+	     * The only reason its needed as far back as here, is that the adj
+	     * and the incomplete adj are a different DPO type, so the LBs need
+	     * to re-stack.
+	     * If this walk was quashed in the fib_entry, then any non-fib_path
+	     * children (like tunnels that collapse out the LB when they stack)
+	     * would not see the update.
+	     */
+	    return (FIB_NODE_BACK_WALK_CONTINUE);
+	}
 	break;
     case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
 	/*

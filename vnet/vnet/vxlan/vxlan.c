@@ -103,16 +103,6 @@ VNET_DEVICE_CLASS (vxlan_device_class,static) = {
   .admin_up_down_function = vxlan_interface_admin_up_down,
 };
 
-static uword dummy_set_rewrite (vnet_main_t * vnm,
-                                u32 sw_if_index,
-                                u32 l3_type,
-                                void * dst_address,
-                                void * rewrite,
-                                uword max_rewrite_bytes)
-{
-  return 0;
-}
-
 static u8 * format_vxlan_header_with_length (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
@@ -123,7 +113,7 @@ static u8 * format_vxlan_header_with_length (u8 * s, va_list * args)
 VNET_HW_INTERFACE_CLASS (vxlan_hw_class) = {
   .name = "VXLAN",
   .format_header = format_vxlan_header_with_length,
-  .set_rewrite = dummy_set_rewrite,
+  .build_rewrite = default_build_rewrite,
 };
 
 #define foreach_copy_field                      \

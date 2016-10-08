@@ -130,7 +130,7 @@ format_adj_midchain_tx_trace (u8 * s, va_list * args)
     adj_midchain_tx_trace_t *tr = va_arg (*args, adj_midchain_tx_trace_t*);
 
     s = format(s, "adj-midchain:[%d]:%U", tr->ai,
-	       format_ip_adjacency, vnet_get_main(), tr->ai,
+	       format_ip_adjacency, tr->ai,
 	       FORMAT_IP_ADJACENCY_NONE);
 
     return (s);
@@ -294,7 +294,17 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     ASSERT(ADJ_INDEX_INVALID != adj_index);
 
     adj = adj_get(adj_index);
-    adj->lookup_next_index = IP_LOOKUP_NEXT_MIDCHAIN;
+
+    /*
+     * one time only update. since we don't support chainging the tunnel
+     * src,dst, this is all we need.
+     */
+    ASSERT(adj->lookup_next_index == IP_LOOKUP_NEXT_ARP);
+    /*
+     * tunnels can always provide a rewrite.
+     */
+    ASSERT(NULL != rewrite);
+
     adj->sub_type.midchain.fixup_func = fixup;
 
     cm = adj_midchain_get_cofing_for_link_type(adj);
@@ -334,69 +344,26 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
 
     cm->config_index_by_sw_if_index[adj->rewrite_header.sw_if_index] = ci;
 
-    if (NULL != rewrite)
-    {
-	/*
-	 * new rewrite provided.
-	 * use a dummy rewrite header to get the interface to print into.
-	 */
-	ip_adjacency_t dummy;
-	dpo_id_t tmp = DPO_NULL;
 
-	vnet_rewrite_for_tunnel(vnet_get_main(),
-				adj->rewrite_header.sw_if_index,
-				adj_get_midchain_node(adj->ia_link),
-				adj->sub_type.midchain.tx_function_node,
-				&dummy.rewrite_header,
-				rewrite,
-				vec_len(rewrite));
+    /*
+     * stack the midchain on the drop so it's ready to forward in the adj-midchain-tx.
+     * The graph arc used/created here is from the midchain-tx node to the
+     * child's registered node. This is because post adj processing the next
+     * node are any output features, then the midchain-tx.  from there we
+     * need to get to the stacked child's node.
+     */
+    dpo_stack_from_node(adj->sub_type.midchain.tx_function_node,
+			&adj->sub_type.midchain.next_dpo,
+			drop_dpo_get(fib_link_to_dpo_proto(adj->ia_link)));
 
-	/*
-	 * this is an update of an existing rewrite.
-	 * packets are in flight. we'll need to briefly stack on the drop DPO
-	 * whilst the rewrite is written, so any packets that see the partial update
-	 * are binned.
-	 */
-	if (!dpo_id_is_valid(&adj->sub_type.midchain.next_dpo))
-	{
-	    /*
-	     * not stacked yet. stack on the drop
-	     */
-	    dpo_stack(DPO_ADJACENCY_MIDCHAIN,
-		      fib_link_to_dpo_proto(adj->ia_link),
-		      &adj->sub_type.midchain.next_dpo,
-		      drop_dpo_get(fib_link_to_dpo_proto(adj->ia_link)));
-	}
-
-	dpo_copy(&tmp, &adj->sub_type.midchain.next_dpo);
-	dpo_stack(DPO_ADJACENCY_MIDCHAIN,
-		  fib_link_to_dpo_proto(adj->ia_link),
-		  &adj->sub_type.midchain.next_dpo,
-		  drop_dpo_get(fib_link_to_dpo_proto(adj->ia_link)));
-
-	CLIB_MEMORY_BARRIER();
-
-	clib_memcpy(&adj->rewrite_header,
-		    &dummy.rewrite_header,
-		    VLIB_BUFFER_PRE_DATA_SIZE);
-
-	CLIB_MEMORY_BARRIER();
-
-	/*
-	 * The graph arc used/created here is from the midchain-tx node to the
-	 * child's registered node. This is because post adj processing the next
-	 * node are any output features, then the midchain-tx.  from there we
-	 * need to get to the stacked child's node.
-	 */
-	dpo_stack_from_node(adj->sub_type.midchain.tx_function_node,
-			    &adj->sub_type.midchain.next_dpo,
-			    &tmp);
-	dpo_reset(&tmp);
-    }
-    else
-    {
-	ASSERT(0);
-    }
+    /*
+     * update the rewirte with the workers paused.
+     */
+    adj_nbr_update_rewrite_internal(adj,
+				    IP_LOOKUP_NEXT_MIDCHAIN,
+				    adj_get_midchain_node(adj->ia_link),
+				    adj->sub_type.midchain.tx_function_node,
+				    rewrite);
 
     /*
      * time for walkies fido.

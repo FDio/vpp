@@ -23,22 +23,6 @@
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/dpo/classify_dpo.h>
 
-static uword mpls_gre_set_rewrite (vnet_main_t * vnm,
-			       u32 sw_if_index,
-			       u32 l3_type,
-			       void * dst_address,
-			       void * rewrite,
-			       uword max_rewrite_bytes)
-{
-  /*
-   * Conundrum: packets from tun/tap destined for the tunnel
-   * actually have this rewrite applied. Transit packets do not.
-   * To make the two cases equivalent, don't generate a
-   * rewrite here, build the entire header in the fast path.
-   */
-  return 0;
-}
-
 /* manually added to the interface output node */
 #define MPLS_GRE_OUTPUT_NEXT_POST_REWRITE	1
 
@@ -271,25 +255,9 @@ VNET_HW_INTERFACE_CLASS (mpls_gre_hw_interface_class) = {
 #if 0
   .unformat_header = unformat_mpls_gre_header,
 #endif
-  .set_rewrite = mpls_gre_set_rewrite,
+  .build_rewrite = default_build_rewrite,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-
-
-static uword mpls_eth_set_rewrite (vnet_main_t * vnm,
-			       u32 sw_if_index,
-			       u32 l3_type,
-			       void * dst_address,
-			       void * rewrite,
-			       uword max_rewrite_bytes)
-{
-  /*
-   * Conundrum: packets from tun/tap destined for the tunnel
-   * actually have this rewrite applied. Transit packets do not.
-   * To make the two cases equivalent, don't generate a
-   * rewrite here, build the entire header in the fast path.
-   */
-  return 0;
-}
 
 /* manually added to the interface output node */
 #define MPLS_ETH_OUTPUT_NEXT_OUTPUT	1
@@ -525,7 +493,8 @@ VNET_HW_INTERFACE_CLASS (mpls_eth_hw_interface_class) = {
 #if 0
   .unformat_header = unformat_mpls_eth_header,
 #endif
-  .set_rewrite = mpls_eth_set_rewrite,
+  .build_rewrite = default_build_rewrite,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 
 /**
@@ -609,7 +578,6 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
                                   u32 sw_if_index,
                                   u8 is_enable)
 {
-  mpls_interface_state_change_callback_t *callback;
   vlib_main_t * vm = vlib_get_main();
   ip_config_main_t * cm = &mm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   vnet_config_main_t * vcm = &cm->config_main;
@@ -660,14 +628,6 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
                                   /* # bytes of config data */ 0);
 
   cm->config_index_by_sw_if_index[sw_if_index] = ci;
-
-  /*
-   * notify all interested clients of the change of state.
-   */
-  vec_foreach(callback, mm->mpls_interface_state_change_callbacks)
-  {
-      (*callback)(sw_if_index, is_enable);
-  }
 }
 
 static mpls_gre_tunnel_t *
@@ -1578,7 +1538,7 @@ int vnet_mpls_ethernet_add_del_tunnel (u8 *dst,
   
   vnet_rewrite_for_sw_interface
     (vnm,
-     VNET_L3_PACKET_TYPE_MPLS_UNICAST, 
+     VNET_LINK_MPLS, 
      tx_sw_if_index,
      ip4_rewrite_node.index,
      tp->tunnel_dst,
@@ -1763,7 +1723,7 @@ int vnet_mpls_policy_tunnel_add_rewrite (mpls_main_t * mm,
   /* Build L2 encap */
   vnet_rewrite_for_sw_interface
     (mm->vnet_main, 
-     VNET_L3_PACKET_TYPE_MPLS_UNICAST, 
+     VNET_LINK_MPLS, 
      t->tx_sw_if_index,
      mpls_policy_encap_node.index,
      t->tunnel_dst,

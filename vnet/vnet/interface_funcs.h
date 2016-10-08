@@ -129,6 +129,22 @@ vnet_hw_interface_get_flags (vnet_main_t * vnm, u32 hw_if_index)
 }
 
 always_inline uword
+vnet_hw_interface_get_mtu (vnet_main_t * vnm, u32 hw_if_index,
+			   vlib_rx_or_tx_t dir)
+{
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  return hw->max_l3_packet_bytes[dir];
+}
+
+always_inline uword
+vnet_sw_interface_get_mtu (vnet_main_t * vnm, u32 sw_if_index,
+			   vlib_rx_or_tx_t dir)
+{
+  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  return (hw->max_l3_packet_bytes[dir]);
+}
+
+always_inline uword
 vnet_hw_interface_is_link_up (vnet_main_t * vnm, u32 hw_if_index)
 {
   return (vnet_hw_interface_get_flags (vnm, hw_if_index) &

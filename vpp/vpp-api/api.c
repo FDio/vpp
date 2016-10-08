@@ -3211,7 +3211,9 @@ dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
   mp->hostname[vec_len (hostname) + 1] = '\n';
   clib_memcpy (&mp->host_address[0], host_address, 16);
   clib_memcpy (&mp->router_address[0], router_address, 16);
-  clib_memcpy (&mp->host_mac[0], host_mac, 6);
+
+  if (NULL != host_mac)
+    clib_memcpy (&mp->host_mac[0], host_mac, 6);
 
   mp->_vl_msg_id = ntohs (VL_API_DHCP_COMPL_EVENT);
 

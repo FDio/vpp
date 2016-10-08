@@ -51,6 +51,7 @@ unformat_function_t unformat_tcp_udp_port;
 typedef enum format_ip_adjacency_flags_t_
 {
     FORMAT_IP_ADJACENCY_NONE,
+    FORMAT_IP_ADJACENCY_BRIEF  = FORMAT_IP_ADJACENCY_NONE,
     FORMAT_IP_ADJACENCY_DETAIL = (1 << 0),
 } format_ip_adjacency_flags_t;
 

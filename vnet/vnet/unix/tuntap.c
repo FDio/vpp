@@ -946,6 +946,7 @@ tuntap_nopunt_frame (vlib_main_t * vm,
 
 VNET_HW_INTERFACE_CLASS (tuntap_interface_class,static) = {
   .name = "tuntap",
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 
 /**

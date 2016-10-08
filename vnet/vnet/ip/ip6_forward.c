@@ -916,7 +916,7 @@ static u8 * format_ip6_rewrite_trace (u8 * s, va_list * args)
 
   s = format (s, "tx_sw_if_index %d adj-idx %d : %U flow hash: 0x%08x",
               t->fib_index, t->adj_index, format_ip_adjacency,
-              vnm, t->adj_index, FORMAT_IP_ADJACENCY_NONE,
+              t->adj_index, FORMAT_IP_ADJACENCY_NONE,
 	      t->flow_hash);
   s = format (s, "\n%U%U",
               format_white_space, indent,
@@ -1605,6 +1605,13 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	  if (drop0)
 	    continue;
 
+	  /*
+	   * the adj has been updated to a rewrite but the node the DPO that got
+	   * us here hasn't - yet. no big deal. we'll drop while we wait.
+	   */
+	  if (IP_LOOKUP_NEXT_REWRITE == adj0->lookup_next_index)
+	    continue;
+
 	  {
 	    u32 bi0 = 0;
 	    icmp6_neighbor_solicitation_header_t * h0;
@@ -2167,10 +2174,6 @@ VLIB_REGISTER_NODE (ip6_midchain_node) = {
   .format_trace = format_ip6_forward_next_trace,
 
   .sibling_of = "ip6-rewrite",
-
-  .next_nodes = {
-    [IP6_REWRITE_NEXT_DROP] = "error-drop",
-  },
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_midchain_node, ip6_midchain)

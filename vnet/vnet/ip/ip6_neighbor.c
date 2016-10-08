@@ -51,7 +51,7 @@ typedef struct {
 #define IP6_NEIGHBOR_FLAG_STATIC (1 << 0)
 #define IP6_NEIGHBOR_FLAG_DYNAMIC  (2 << 0)
   u64 cpu_time_last_updated;
-  adj_index_t adj_index;
+  fib_node_index_t fib_entry_index;
 } ip6_neighbor_t;
 
 /* advertised prefix option */ 
@@ -267,6 +267,7 @@ ip6_neighbor_sw_interface_up_down (vnet_main_t * vnm,
 	{
 	  n = pool_elt_at_index (nm->neighbor_pool, to_delete[i]);
 	  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
+	  fib_table_entry_delete_index (n->fib_entry_index,  FIB_SOURCE_ADJ);
 	  pool_put (nm->neighbor_pool, n);
 	}
 
@@ -342,48 +343,182 @@ static void set_unset_ip6_neighbor_rpc
 #endif
 
 static void
-ip6_nd_mk_complete (ip6_neighbor_t * nbr)
+ip6_nbr_probe (ip_adjacency_t *adj)
 {
-  fib_prefix_t pfx = {
-      .fp_len = 128,
-      .fp_proto = FIB_PROTOCOL_IP6,
-      .fp_addr = {
-	  .ip6 = nbr->key.ip6_address,
-      },
-  };
-  ip6_main_t *im;
-  u32 fib_index;
+  icmp6_neighbor_solicitation_header_t * h;
+  vnet_main_t * vnm = vnet_get_main();
+  ip6_main_t * im = &ip6_main;
+  ip_interface_address_t * ia;
+  ip6_address_t * dst, *src;
+  vnet_hw_interface_t * hi;
+  vnet_sw_interface_t * si;
+  vlib_buffer_t * b;
+  int bogus_length;
+  vlib_main_t * vm;
+  u32 bi = 0;
 
-  im = &ip6_main;
-  fib_index = im->fib_index_by_sw_if_index[nbr->key.sw_if_index];
+  vm = vlib_get_main();
 
-  /* only once please */
-  if (ADJ_INDEX_INVALID == nbr->adj_index)
+  si = vnet_get_sw_interface(vnm, adj->rewrite_header.sw_if_index);
+  dst = &adj->sub_type.nbr.next_hop.ip6;
+
+  if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
     {
-      nbr->adj_index =
-	  adj_nbr_add_or_lock_w_rewrite(FIB_PROTOCOL_IP6,
-					FIB_LINK_IP6,
-					&pfx.fp_addr,
-					nbr->key.sw_if_index,
-					nbr->link_layer_address);
-      ASSERT(ADJ_INDEX_INVALID != nbr->adj_index);
+      return;
+    }
+  src = ip6_interface_address_matching_destination(im, dst,
+						   adj->rewrite_header.sw_if_index,
+						   &ia);
+  if (! src)
+    {
+      return;
+    }
 
-      fib_table_entry_update_one_path(fib_index,
-				      &pfx,
-				      FIB_SOURCE_ADJ,
-				      FIB_ENTRY_FLAG_NONE,
-				      FIB_PROTOCOL_IP6,
-				      &pfx.fp_addr,
-				      nbr->key.sw_if_index,
-				      ~0,
-				      1,
-				      MPLS_LABEL_INVALID,
-				      FIB_ROUTE_PATH_FLAG_NONE);
+  h = vlib_packet_template_get_packet(vm,
+				      &im->discover_neighbor_packet_template,
+				      &bi);
+
+  hi = vnet_get_sup_hw_interface(vnm, adj->rewrite_header.sw_if_index);
+
+  h->ip.dst_address.as_u8[13] = dst->as_u8[13];
+  h->ip.dst_address.as_u8[14] = dst->as_u8[14];
+  h->ip.dst_address.as_u8[15] = dst->as_u8[15];
+  h->ip.src_address = src[0];
+  h->neighbor.target_address = dst[0];
+
+  clib_memcpy (h->link_layer_option.ethernet_address,
+	       hi->hw_address,
+	       vec_len(hi->hw_address));
+
+  h->neighbor.icmp.checksum =
+      ip6_tcp_udp_icmp_compute_checksum(vm, 0, &h->ip, &bogus_length);
+  ASSERT(bogus_length == 0);
+
+  b = vlib_get_buffer (vm, bi);
+  vnet_buffer (b)->sw_if_index[VLIB_RX] =
+      vnet_buffer (b)->sw_if_index[VLIB_TX] =
+      adj->rewrite_header.sw_if_index;
+
+  /* Add encapsulation string for software interface (e.g. ethernet header). */
+  vnet_rewrite_one_header(adj[0], h, sizeof (ethernet_header_t));
+  vlib_buffer_advance(b, -adj->rewrite_header.data_bytes);
+
+  {
+      vlib_frame_t * f = vlib_get_frame_to_node(vm, hi->output_node_index);
+      u32 * to_next = vlib_frame_vector_args(f);
+      to_next[0] = bi;
+      f->n_vectors = 1;
+      vlib_put_frame_to_node(vm, hi->output_node_index, f);
+  }
+}
+
+static void
+ip6_nd_mk_complete (adj_index_t ai, ip6_neighbor_t * nbr)
+{
+  adj_nbr_update_rewrite (ai, ADJ_NBR_REWRITE_FLAG_COMPLETE,
+			  ethernet_build_rewrite (vnet_get_main (),
+						  nbr->key.sw_if_index,
+						  adj_get_link_type(ai),
+						  nbr->link_layer_address));
+}
+
+static void
+ip6_nd_mk_incomplete (adj_index_t ai, ip6_neighbor_t * nbr)
+{
+  adj_nbr_update_rewrite (
+      ai,
+      ADJ_NBR_REWRITE_FLAG_INCOMPLETE,
+      ethernet_build_rewrite (vnet_get_main (),
+			      nbr->key.sw_if_index,
+			      adj_get_link_type(ai),
+			      VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST));
+}
+
+#define IP6_NBR_MK_KEY(k, sw_if_index, addr) \
+{					     \
+    k.sw_if_index = sw_if_index;	     \
+    k.ip6_address = *addr;		     \
+    k.pad = 0;				     \
+}
+
+static ip6_neighbor_t *
+ip6_nd_find (u32 sw_if_index,
+	     const ip6_address_t * addr)
+{
+  ip6_neighbor_main_t * nm = &ip6_neighbor_main;
+  ip6_neighbor_t * n = NULL;
+  ip6_neighbor_key_t k;
+  uword *p;
+
+  IP6_NBR_MK_KEY(k, sw_if_index, addr);
+
+  p = mhash_get (&nm->neighbor_index_by_key, &k);
+  if (p) {
+    n = pool_elt_at_index (nm->neighbor_pool, p[0]);
+  }
+
+  return (n);
+}
+
+static adj_walk_rc_t
+ip6_nd_mk_complete_walk (adj_index_t ai, void *ctx)
+{
+  ip6_neighbor_t *nbr = ctx;
+
+  ip6_nd_mk_complete (ai, nbr);
+
+  return (ADJ_WALK_RC_CONTINUE);
+}
+
+static adj_walk_rc_t
+ip6_nd_mk_incomplete_walk (adj_index_t ai, void *ctx)
+{
+  ip6_neighbor_t *nbr = ctx;
+
+  ip6_nd_mk_incomplete (ai, nbr);
+
+  return (ADJ_WALK_RC_CONTINUE);
+}
+
+void
+ip6_ethernet_update_adjacency (vnet_main_t * vnm,
+			       u32 sw_if_index,
+			       u32 ai)
+{
+  ip6_neighbor_t *nbr;
+  ip_adjacency_t *adj;
+
+  adj = adj_get (ai);
+
+  nbr = ip6_nd_find (sw_if_index, &adj->sub_type.nbr.next_hop.ip6);
+
+  if (NULL != nbr)
+    {
+      adj_nbr_walk_nh6 (sw_if_index, &nbr->key.ip6_address,
+			ip6_nd_mk_complete_walk, nbr);
     }
   else
     {
-      adj_nbr_update_rewrite(nbr->adj_index,
-			     nbr->link_layer_address);
+      /*
+       * no matching ND entry.
+       * construct the rewrite required to for an ND packet, and stick
+       * that in the adj's pipe to smoke.
+       */
+      adj_nbr_update_rewrite (ai,
+			      ADJ_NBR_REWRITE_FLAG_INCOMPLETE,
+			      ethernet_build_rewrite (vnm,
+						      sw_if_index,
+						      VNET_LINK_IP6,
+						      VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST));
+
+      /*
+       * since the FIB has added this adj for a route, it makes sense it may
+       * want to forward traffic sometime soon. Let's send a speculative ND.
+       * just one. If we were to do periodically that wouldn't be bad either,
+       * but that's more code than i'm prepared to write at this time for
+       * relatively little reward.
+       */
+      ip6_nbr_probe (adj);
     }
 }
 
@@ -416,8 +551,6 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
   k.ip6_address = a[0];
   k.pad = 0;
 
-  vlib_worker_thread_barrier_sync (vm);
-
   p = mhash_get (&nm->neighbor_index_by_key, &k);
   if (p) {
     n = pool_elt_at_index (nm->neighbor_pool, p[0]);
@@ -429,11 +562,40 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
   }
 
   if (make_new_nd_cache_entry) {
+      fib_prefix_t pfx = {
+	  .fp_len = 128,
+	  .fp_proto = FIB_PROTOCOL_IP6,
+	  .fp_addr = {
+	      .ip6 = k.ip6_address,
+	  },
+      };
+      u32 fib_index;
+
     pool_get (nm->neighbor_pool, n);
     mhash_set (&nm->neighbor_index_by_key, &k, n - nm->neighbor_pool,
                /* old value */ 0);
     n->key = k;
-    n->adj_index = ADJ_INDEX_INVALID;
+
+    clib_memcpy (n->link_layer_address,
+		 link_layer_address,
+		 n_bytes_link_layer_address);
+
+    /*
+     * create the adj-fib. the entry in the FIB table for and to the peer.
+     */
+    fib_index = ip6_main.fib_index_by_sw_if_index[n->key.sw_if_index];
+    n->fib_entry_index =
+	fib_table_entry_update_one_path(fib_index,
+					&pfx,
+					FIB_SOURCE_ADJ,
+					FIB_ENTRY_FLAG_NONE,
+					FIB_PROTOCOL_IP6,
+					&pfx.fp_addr,
+					n->key.sw_if_index,
+					~0,
+					1,
+					MPLS_LABEL_INVALID,
+					FIB_ROUTE_PATH_FLAG_NONE);
   }
   else
   {
@@ -445,20 +607,22 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 		    link_layer_address,
 		    n_bytes_link_layer_address))
       return -1;
+
+    clib_memcpy (n->link_layer_address,
+		 link_layer_address,
+		 n_bytes_link_layer_address);
   }
 
-  /* Update time stamp and ethernet address. */
-  clib_memcpy (n->link_layer_address,
-	       link_layer_address,
-	       n_bytes_link_layer_address);
-
+  /* Update time stamp and flags. */
   n->cpu_time_last_updated = clib_cpu_time_now ();
   if (is_static)
     n->flags |= IP6_NEIGHBOR_FLAG_STATIC;
   else
     n->flags |= IP6_NEIGHBOR_FLAG_DYNAMIC;
 
-  ip6_nd_mk_complete(n);
+  adj_nbr_walk_nh6 (sw_if_index,
+		    &n->key.ip6_address,
+		    ip6_nd_mk_complete_walk, n);
 
   /* Customer(s) waiting for this address to be resolved? */
   p = mhash_get (&nm->pending_resolutions_by_address, a);
@@ -507,42 +671,7 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
         }
     }
 
-  vlib_worker_thread_barrier_release(vm);
   return 0;
-}
-
-static void
-ip6_nd_mk_incomplete (ip6_neighbor_t *nbr)
-{
-  fib_prefix_t pfx = {
-      .fp_len = 128,
-      .fp_proto = FIB_PROTOCOL_IP6,
-      .fp_addr = {
-	  .ip6 = nbr->key.ip6_address,
-      },
-  };
-  u32 fib_index;
-  ip6_main_t *im;
-
-  im = &ip6_main;
-  fib_index = im->fib_index_by_sw_if_index[nbr->key.sw_if_index];
-
-  /*
-   * revert the adj this ND entry sourced to incomplete
-   */
-  adj_nbr_update_rewrite(nbr->adj_index,
-			 NULL);
-
-  /*
-   * remove the FIB entry the ND entry sourced
-   */
-  fib_table_entry_delete(fib_index, &pfx, FIB_SOURCE_ADJ);
-
-  /*
-   * Unlock the adj now that the ARP entry is no longer a source
-   */
-  adj_unlock(nbr->adj_index);
-  nbr->adj_index = ADJ_INDEX_INVALID;
 }
 
 int
@@ -571,8 +700,6 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
   k.ip6_address = a[0];
   k.pad = 0;
   
-  vlib_worker_thread_barrier_sync (vm);
-  
   p = mhash_get (&nm->neighbor_index_by_key, &k);
   if (p == 0)
     {
@@ -582,12 +709,16 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
   
   n = pool_elt_at_index (nm->neighbor_pool, p[0]);
 
-  ip6_nd_mk_incomplete(n);
+  adj_nbr_walk_nh6 (sw_if_index,
+		    &n->key.ip6_address,
+		    ip6_nd_mk_incomplete_walk,
+		    n);
+
   mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
+  fib_table_entry_delete_index (n->fib_entry_index,  FIB_SOURCE_ADJ);
   pool_put (nm->neighbor_pool, n);
   
  out:
-  vlib_worker_thread_barrier_release(vm);
   return rv;
 }
 
@@ -3725,11 +3856,9 @@ ethernet_ndp_change_mac (vlib_main_t * vm, u32 sw_if_index)
   pool_foreach (n, nm->neighbor_pool, ({
     if (n->key.sw_if_index == sw_if_index)
     {
-      if (ADJ_INDEX_INVALID != n->adj_index)
-        {
-          adj_nbr_update_rewrite(n->adj_index,
-               n->link_layer_address);
-        }
+	adj_nbr_walk_nh6 (sw_if_index,
+			  &n->key.ip6_address,
+			  ip6_nd_mk_complete_walk, n);
     }
   }));
   /* *INDENT-ON* */

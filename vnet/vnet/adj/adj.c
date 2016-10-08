@@ -92,43 +92,50 @@ adj_index_is_special (adj_index_t adj_index)
 u8 *
 format_ip_adjacency (u8 * s, va_list * args)
 {
-  vnet_main_t * vnm = va_arg (*args, vnet_main_t *);
-  u32 adj_index = va_arg (*args, u32);
-  format_ip_adjacency_flags_t fiaf = va_arg (*args, format_ip_adjacency_flags_t);
-  ip_adjacency_t * adj = adj_get(adj_index);
+    format_ip_adjacency_flags_t fiaf;
+    ip_adjacency_t * adj;
+    u32 adj_index;
+
+    adj_index = va_arg (*args, u32);
+    fiaf = va_arg (*args, format_ip_adjacency_flags_t);
+    adj = adj_get(adj_index);
   
-  switch (adj->lookup_next_index)
-  {
-  case IP_LOOKUP_NEXT_REWRITE:
-      s = format (s, "%U", format_adj_nbr, adj_index, 0);
-      break;
-  case IP_LOOKUP_NEXT_ARP:
-      s = format (s, "%U", format_adj_nbr_incomplete, adj_index, 0);
-      break;
-  case IP_LOOKUP_NEXT_GLEAN:
-      s = format (s, " %U",
-		  format_vnet_sw_interface_name,
-		  vnm,
-		  vnet_get_sw_interface(vnm,
-					adj->rewrite_header.sw_if_index));
-      break;
+    switch (adj->lookup_next_index)
+    {
+    case IP_LOOKUP_NEXT_REWRITE:
+	s = format (s, "%U", format_adj_nbr, adj_index, 0);
+	break;
+    case IP_LOOKUP_NEXT_ARP:
+	s = format (s, "%U", format_adj_nbr_incomplete, adj_index, 0);
+	break;
+    case IP_LOOKUP_NEXT_GLEAN:
+	s = format (s, "%U", format_adj_glean, adj_index, 0);
+	break;
+    case IP_LOOKUP_NEXT_MIDCHAIN:
+	s = format (s, "%U", format_adj_midchain, adj_index, 2);
+	break;
+    default:
+	break;
+    }
 
-  case IP_LOOKUP_NEXT_MIDCHAIN:
-      s = format (s, "%U", format_adj_midchain, adj_index, 2);
-      break;
-  default:
-      break;
-  }
-  s = format (s, " index:%d", adj_index);
+    if (fiaf & FORMAT_IP_ADJACENCY_DETAIL)
+    {
+	s = format (s, "\n locks:%d", adj->ia_node.fn_locks);
+	s = format (s, " node:[%d]:%U",
+		    adj->rewrite_header.node_index,
+		    format_vlib_node_name, vlib_get_main(),
+		    adj->rewrite_header.node_index);
+	s = format (s, " next:[%d]:%U",
+		    adj->rewrite_header.next_index,
+		    format_vlib_next_node_name,
+		    vlib_get_main(),
+		    adj->rewrite_header.node_index,
+		    adj->rewrite_header.next_index);
+	s = format(s, "\n children:\n  ");
+	s = fib_node_children_format(adj->ia_node.fn_children, s);
+    }
 
-  if (fiaf & FORMAT_IP_ADJACENCY_DETAIL)
-  {
-      s = format (s, " locks:%d", adj->ia_node.fn_locks);
-      s = format(s, "\nchildren:\n ");
-      s = fib_node_children_format(adj->ia_node.fn_children, s);
-  }
-
-  return s;
+    return s;
 }
 
 /*
@@ -139,8 +146,12 @@ format_ip_adjacency (u8 * s, va_list * args)
 static void
 adj_last_lock_gone (ip_adjacency_t *adj)
 {
+    vlib_main_t * vm = vlib_get_main();
+
     ASSERT(0 == fib_node_list_get_size(adj->ia_node.fn_children));
     ADJ_DBG(adj, "last-lock-gone");
+
+    vlib_worker_thread_barrier_sync (vm);
 
     switch (adj->lookup_next_index)
     {
@@ -167,6 +178,8 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 	 */
 	break;
     }
+
+    vlib_worker_thread_barrier_release(vm);
 
     fib_node_deinit(&adj->ia_node);
     pool_put(adj_pool, adj);
@@ -239,6 +252,49 @@ adj_child_remove (adj_index_t adj_index,
                           sibling_index);
 }
 
+/**
+ * @brief Return the link type of the adjacency
+ */
+vnet_link_t
+adj_get_link_type (adj_index_t ai)
+{
+    const ip_adjacency_t *adj;
+
+    adj = adj_get(ai);
+
+    return (adj->ia_link); 
+}
+
+/**
+ * @brief Return the sw interface index of the adjacency.
+ */
+u32
+adj_get_sw_if_index (adj_index_t ai)
+{
+    const ip_adjacency_t *adj;
+
+    adj = adj_get(ai);
+
+    return (adj->rewrite_header.sw_if_index);
+}
+
+/**
+ * @brief Return the link type of the adjacency
+ */
+const u8*
+adj_get_rewrite (adj_index_t ai)
+{
+    vnet_rewrite_header_t *rw;
+    ip_adjacency_t *adj;
+
+    adj = adj_get(ai);
+    rw = &adj->rewrite_header;
+
+    ASSERT (rw->data_bytes != 0xfefe);
+
+    return (rw->data - rw->data_bytes);
+}
+
 static fib_node_t *
 adj_get_node (fib_node_index_t index)
 {
@@ -289,7 +345,7 @@ adj_module_init (vlib_main_t * vm)
     adj_midchain_module_init();
 
     /*
-     * 4 special adjs for v4 and v6 resp.
+     * one special adj to reserve index 0
      */
     special_v4_miss_adj_with_index_zero = adj_alloc(FIB_PROTOCOL_IP4);
 
@@ -298,10 +354,73 @@ adj_module_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (adj_module_init);
 
+static clib_error_t *
+adj_show (vlib_main_t * vm,
+	  unformat_input_t * input,
+	  vlib_cli_command_t * cmd)
+{
+    adj_index_t ai = ADJ_INDEX_INVALID;
+    u32 sw_if_index = ~0;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+	if (unformat (input, "%d", &ai))
+	    ;
+	else if (unformat (input, "%U",
+			   unformat_vnet_sw_interface, vnet_get_main(),
+			   &sw_if_index))
+	    ;
+	else
+	    break;
+    }
+
+    if (ADJ_INDEX_INVALID != ai)
+    {
+	vlib_cli_output (vm, "[@%d] %U",
+                         ai,
+                         format_ip_adjacency,  ai,
+			 FORMAT_IP_ADJACENCY_DETAIL);
+    }
+    else
+    {
+	/* *INDENT-OFF* */
+	pool_foreach_index(ai, adj_pool,
+	({
+	    if (~0 != sw_if_index &&
+		sw_if_index == adj_get_sw_if_index(ai))
+	    {
+		vlib_cli_output (vm, "[@%d] %U",
+				 ai,
+				 format_ip_adjacency, ai,
+				 FORMAT_IP_ADJACENCY_NONE);
+	    }
+	}));
+	/* *INDENT-ON* */
+    }
+
+    return 0;
+}
+
+/*?
+ * Show all adjacencies.
+ * @cliexpar
+ * @cliexstart{sh adj}
+ * [@0]
+ * [@1]  glean: loop0
+ * [@2] ipv4 via 1.0.0.2 loop0: IP4: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
+ * [@3] mpls via 1.0.0.2 loop0: MPLS_UNICAST: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
+ * [@4] ipv4 via 1.0.0.3 loop0: IP4: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
+ * [@5] mpls via 1.0.0.3 loop0: MPLS_UNICAST: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
+ * @cliexend
+ ?*/
+VLIB_CLI_COMMAND (adj_show_command, static) = {
+    .path = "show adj",
+    .short_help = "show adj [<adj_index>] [interface]",
+    .function = adj_show,
+};
+
 /* 
  * DEPRECATED: DO NOT USE
- *
- * Create new block of given number of contiguous adjacencies.
  */
 ip_adjacency_t *
 ip_add_adjacency (ip_lookup_main_t * lm,

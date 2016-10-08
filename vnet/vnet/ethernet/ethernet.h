@@ -562,6 +562,13 @@ int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
 
 void ethernet_arp_change_mac (vnet_main_t * vnm, u32 sw_if_index);
 
+void arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
+
+void ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
+u8 *ethernet_build_rewrite (vnet_main_t * vnm,
+			    u32 sw_if_index,
+			    vnet_link_t link_type, const void *dst_address);
+
 extern vlib_node_registration_t ethernet_input_node;
 
 #endif /* included_ethernet_h */

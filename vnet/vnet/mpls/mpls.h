@@ -163,9 +163,6 @@ typedef struct {
   /* IP4 enabled count by software interface */
   u8 * mpls_enabled_by_sw_if_index;
 
-  /* Functions to call when MPLS state on an interface changes. */
-  mpls_interface_state_change_callback_t * mpls_interface_state_change_callbacks;
-
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;

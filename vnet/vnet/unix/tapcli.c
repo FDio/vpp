@@ -585,6 +585,7 @@ tapcli_nopunt_frame (vlib_main_t * vm,
 
 VNET_HW_INTERFACE_CLASS (tapcli_interface_class,static) = {
   .name = "tapcli",
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 
 /**
