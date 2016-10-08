@@ -48,6 +48,11 @@ extern adj_index_t adj_glean_add_or_lock(fib_protocol_t proto,
 					 const ip46_address_t *nh_addr);
 
 /**
+ * @brief Format/display a glean adjacency.
+ */
+extern u8* format_adj_glean(u8* s, va_list *ap);
+
+/**
  * @brief
  *  Module initialisation
  */

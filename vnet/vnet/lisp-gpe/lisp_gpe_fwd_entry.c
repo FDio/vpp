@@ -190,26 +190,6 @@ ip_src_fib_add_route_w_dpo (u32 src_fib_index,
     }
 }
 
-static void
-ip_address_to_46 (const ip_address_t * addr,
-		  ip46_address_t * a, fib_protocol_t * proto)
-{
-  *proto = (IP4 == ip_addr_version (addr) ?
-	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
-  switch (*proto)
-    {
-    case FIB_PROTOCOL_IP4:
-      a->ip4 = addr->ip.v4;
-      break;
-    case FIB_PROTOCOL_IP6:
-      a->ip6 = addr->ip.v6;
-      break;
-    default:
-      ASSERT (0);
-      break;
-    }
-}
-
 static fib_route_path_t *
 lisp_gpe_mk_fib_paths (const lisp_fwd_path_t * paths)
 {

@@ -42,9 +42,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_input.h>
-#include <vnet/srp/srp.h>
-#include <vnet/lisp-gpe/lisp_gpe.h>
-#include <vnet/devices/af_packet/af_packet.h>
+#include <vnet/adj/adj.h>
 
 /**
  * @file
@@ -53,32 +51,24 @@
  * This file contains code to manage loopback interfaces.
  */
 
-int
-vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index)
-{
-  // FIXME - use flags on the HW itf
-  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  return (!(hw->hw_class_index == ethernet_hw_interface_class.index ||
-	    hw->hw_class_index == af_packet_device_class.index ||
-	    hw->hw_class_index == lisp_gpe_hw_class.index ||
-	    hw->hw_class_index == srp_hw_interface_class.index));
-}
-
-static uword
-ethernet_set_rewrite (vnet_main_t * vnm,
-		      u32 sw_if_index,
-		      u32 l3_type,
-		      void *dst_address,
-		      void *rewrite, uword max_rewrite_bytes)
+/**
+ * @brief build a rewrite string to use for sending packets of type 'link_type'
+ * to 'dst_address'
+ */
+u8 *
+ethernet_build_rewrite (vnet_main_t * vnm,
+			u32 sw_if_index,
+			vnet_link_t link_type, const void *dst_address)
 {
   vnet_sw_interface_t *sub_sw = vnet_get_sw_interface (vnm, sw_if_index);
   vnet_sw_interface_t *sup_sw = vnet_get_sup_sw_interface (vnm, sw_if_index);
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   ethernet_main_t *em = &ethernet_main;
   ethernet_interface_t *ei;
-  ethernet_header_t *h = rewrite;
+  ethernet_header_t *h;
   ethernet_type_t type;
   uword n_bytes = sizeof (h[0]);
+  u8 *rewrite = NULL;
 
   if (sub_sw != sup_sw)
     {
@@ -100,22 +90,20 @@ ethernet_set_rewrite (vnet_main_t * vnm,
 	}
     }
 
-  if (n_bytes > max_rewrite_bytes)
-    return 0;
-
-  switch (l3_type)
+  switch (link_type)
     {
-#define _(a,b) case VNET_L3_PACKET_TYPE_##a: type = ETHERNET_TYPE_##b; break
+#define _(a,b) case VNET_LINK_##a: type = ETHERNET_TYPE_##b; break
       _(IP4, IP4);
       _(IP6, IP6);
-      _(MPLS_UNICAST, MPLS_UNICAST);
-      _(MPLS_MULTICAST, MPLS_MULTICAST);
+      _(MPLS, MPLS_UNICAST);
       _(ARP, ARP);
 #undef _
     default:
-      return 0;
+      return NULL;
     }
 
+  vec_validate (rewrite, n_bytes - 1);
+  h = (ethernet_header_t *) rewrite;
   ei = pool_elt_at_index (em->interfaces, hw->hw_instance);
   clib_memcpy (h->src_address, ei->address, sizeof (h->src_address));
   if (dst_address)
@@ -156,7 +144,28 @@ ethernet_set_rewrite (vnet_main_t * vnm,
       h->type = clib_host_to_net_u16 (type);
     }
 
-  return n_bytes;
+  return (rewrite);
+}
+
+void
+ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
+{
+  ip_adjacency_t *adj;
+
+  adj = adj_get (ai);
+
+  if (FIB_PROTOCOL_IP4 == adj->ia_nh_proto)
+    {
+      arp_update_adjacency (vnm, sw_if_index, ai);
+    }
+  else if (FIB_PROTOCOL_IP6 == adj->ia_nh_proto)
+    {
+      ip6_ethernet_update_adjacency (vnm, sw_if_index, ai);
+    }
+  else
+    {
+      ASSERT (0);
+    }
 }
 
 /* *INDENT-OFF* */
@@ -166,7 +175,8 @@ VNET_HW_INTERFACE_CLASS (ethernet_hw_interface_class) = {
   .format_header = format_ethernet_header_with_length,
   .unformat_hw_address = unformat_ethernet_address,
   .unformat_header = unformat_ethernet_header,
-  .set_rewrite = ethernet_set_rewrite,
+  .build_rewrite = ethernet_build_rewrite,
+  .update_adjacency = ethernet_update_adjacency,
 };
 /* *INDENT-ON* */
 

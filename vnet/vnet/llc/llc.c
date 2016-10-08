@@ -155,31 +155,30 @@ unformat_llc_header (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-static uword
-llc_set_rewrite (vnet_main_t * vnm,
-		 u32 sw_if_index,
-		 u32 l3_type,
-		 void *dst_address, void *rewrite, uword max_rewrite_bytes)
+static u8 *
+llc_build_rewrite (vnet_main_t * vnm,
+		   u32 sw_if_index,
+		   vnet_link_t link_type, const void *dst_address)
 {
-  llc_header_t *h = rewrite;
+  llc_header_t *h;
+  u8 *rewrite = NULL;
   llc_protocol_t protocol;
 
-  if (max_rewrite_bytes < sizeof (h[0]))
-    return 0;
-
-  switch (l3_type)
+  switch (link_type)
     {
-#define _(a,b) case VNET_L3_PACKET_TYPE_##a: protocol = LLC_PROTOCOL_##b; break
+#define _(a,b) case VNET_LINK_##a: protocol = LLC_PROTOCOL_##b; break
       _(IP4, ip4);
 #undef _
     default:
-      return 0;
+      return (NULL);
     }
 
+  vec_validate (rewrite, sizeof (*h) - 1);
+  h = (llc_header_t *) rewrite;
   h->src_sap = h->dst_sap = protocol;
   h->control = 0x3;
 
-  return sizeof (h[0]);
+  return (rewrite);
 }
 
 /* *INDENT-OFF* */
@@ -187,7 +186,7 @@ VNET_HW_INTERFACE_CLASS (llc_hw_interface_class) = {
   .name = "LLC",
   .format_header = format_llc_header_with_length,
   .unformat_header = unformat_llc_header,
-  .set_rewrite = llc_set_rewrite,
+  .build_rewrite = llc_build_rewrite,
 };
 /* *INDENT-ON* */
 

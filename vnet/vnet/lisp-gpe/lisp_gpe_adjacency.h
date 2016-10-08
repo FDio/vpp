@@ -80,12 +80,6 @@ typedef struct lisp_gpe_adjacency_t_
   u32 tunnel_index;
 
   /**
-   * Per-link-type FIB adjacencies contributed.
-   * These will be used as a result of a FIB lookup.
-   */
-  adj_index_t adjs[FIB_LINK_NUM];
-
-  /**
    * This adjacency is a child of the FIB entry to reach the RLOC.
    * This is so when the reachability of that RLOC changes, we can restack
    * the FIB adjacnecies.
@@ -111,6 +105,14 @@ extern index_t lisp_gpe_adjacency_find_or_create_and_lock (const
 extern void lisp_gpe_adjacency_unlock (index_t l3si);
 
 extern const lisp_gpe_adjacency_t *lisp_gpe_adjacency_get (index_t l3si);
+
+extern void lisp_gpe_update_adjacency (vnet_main_t * vnm,
+				       u32 sw_if_index, adj_index_t ai);
+extern u8 *lisp_gpe_build_rewrite (vnet_main_t * vnm,
+				   u32 sw_if_index,
+				   vnet_link_t link_type,
+				   const void *dst_address);
+
 
 /**
  * @brief Flags for displaying the adjacency

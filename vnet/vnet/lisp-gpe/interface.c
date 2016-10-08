@@ -28,6 +28,7 @@
 #include <vnet/lisp-gpe/lisp_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
 #include <vnet/lisp-gpe/lisp_gpe_tenant.h>
+#include <vnet/lisp-gpe/lisp_gpe_adjacency.h>
 #include <vnet/adj/adj.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
@@ -167,13 +168,6 @@ VNET_DEVICE_CLASS (lisp_gpe_device_class) = {
 };
 /* *INDENT-ON* */
 
-static uword
-dummy_set_rewrite (vnet_main_t * vnm, u32 sw_if_index, u32 l3_type,
-		   void *dst_address, void *rewrite, uword max_rewrite_bytes)
-{
-  return 0;
-}
-
 u8 *
 format_lisp_gpe_header_with_length (u8 * s, va_list * args)
 {
@@ -200,7 +194,9 @@ format_lisp_gpe_header_with_length (u8 * s, va_list * args)
 VNET_HW_INTERFACE_CLASS (lisp_gpe_hw_class) = {
   .name = "LISP_GPE",
   .format_header = format_lisp_gpe_header_with_length,
-  .set_rewrite = dummy_set_rewrite,
+  .build_rewrite = default_build_rewrite,
+  .build_rewrite = lisp_gpe_build_rewrite,
+  .update_adjacency = lisp_gpe_update_adjacency,
 };
 /* *INDENT-ON* */
 

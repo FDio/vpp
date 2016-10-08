@@ -222,6 +222,19 @@ fib_test_urpf_is_equal (fib_node_index_t fei,
     return (1);
 }
 
+static u8*
+fib_test_build_rewrite (u8 *eth_addr)
+{
+    u8* rewrite = NULL;
+
+    vec_validate(rewrite, 13);
+
+    memcpy(rewrite, eth_addr, 6);
+    memcpy(rewrite+6, eth_addr, 6);
+
+    return (rewrite);
+}
+
 static void
 fib_test_v4 (void)
 {
@@ -523,6 +536,7 @@ fib_test_v4 (void)
     u8 eth_addr[] = {
 	0xde, 0xde, 0xde, 0xba, 0xba, 0xba,
     };
+
     ip46_address_t nh_12_12_12_12 = {
 	.ip4.as_u32 = clib_host_to_net_u32(0x0c0c0c0c),
     };
@@ -561,7 +575,8 @@ fib_test_v4 (void)
 				    &adj->sub_type.nbr.next_hop)),
 	      "adj nbr next-hop ok");
 
-    adj_nbr_update_rewrite(ai_01, eth_addr);
+    adj_nbr_update_rewrite(ai_01, ADJ_NBR_REWRITE_FLAG_COMPLETE,
+			   fib_test_build_rewrite(eth_addr));
     FIB_TEST((IP_LOOKUP_NEXT_REWRITE == adj->lookup_next_index),
 	     "adj is complete");
     FIB_TEST((0 == ip46_address_cmp(&pfx_10_10_10_1_s_32.fp_addr,
@@ -589,7 +604,8 @@ fib_test_v4 (void)
     FIB_TEST((0 == ip46_address_cmp(&nh_12_12_12_12,
 				    &adj->sub_type.nbr.next_hop)),
 	      "adj nbr next-hop ok");
-    adj_nbr_update_rewrite(ai_12_12_12_12, eth_addr);
+    adj_nbr_update_rewrite(ai_12_12_12_12, ADJ_NBR_REWRITE_FLAG_COMPLETE,
+			   fib_test_build_rewrite(eth_addr));
     FIB_TEST((IP_LOOKUP_NEXT_REWRITE == adj->lookup_next_index),
 	     "adj is complete");
 
@@ -636,7 +652,8 @@ fib_test_v4 (void)
 				    &adj->sub_type.nbr.next_hop)),
 	      "adj nbr next-hop ok");
 
-    adj_nbr_update_rewrite(ai_02, eth_addr);
+    adj_nbr_update_rewrite(ai_02, ADJ_NBR_REWRITE_FLAG_COMPLETE,
+			   fib_test_build_rewrite(eth_addr));
     FIB_TEST((IP_LOOKUP_NEXT_REWRITE == adj->lookup_next_index),
 	     "adj is complete");
     FIB_TEST((0 == ip46_address_cmp(&pfx_10_10_10_2_s_32.fp_addr,
@@ -3113,7 +3130,8 @@ fib_test_v6 (void)
 				    &adj->sub_type.nbr.next_hop)),
 	      "adj nbr next-hop ok");
 
-    adj_nbr_update_rewrite(ai_01, eth_addr);
+    adj_nbr_update_rewrite(ai_01, ADJ_NBR_REWRITE_FLAG_COMPLETE,
+			   fib_test_build_rewrite(eth_addr));
     FIB_TEST((IP_LOOKUP_NEXT_REWRITE == adj->lookup_next_index),
 	     "adj is complete");
     FIB_TEST((0 == ip46_address_cmp(&pfx_2001_1_2_s_128.fp_addr,
@@ -3150,7 +3168,8 @@ fib_test_v6 (void)
 				    &adj->sub_type.nbr.next_hop)),
 	      "adj nbr next-hop ok");
 
-    adj_nbr_update_rewrite(ai_02, eth_addr);
+    adj_nbr_update_rewrite(ai_02, ADJ_NBR_REWRITE_FLAG_COMPLETE,
+			   fib_test_build_rewrite(eth_addr));
     FIB_TEST((IP_LOOKUP_NEXT_REWRITE == adj->lookup_next_index),
 	     "adj is complete");
     FIB_TEST((0 == ip46_address_cmp(&pfx_2001_1_3_s_128.fp_addr,

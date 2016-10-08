@@ -271,21 +271,6 @@ VNET_DEVICE_CLASS (l2tpv3_device_class,static) = {
 };
 /* *INDENT-ON* */
 
-static uword
-dummy_set_rewrite (vnet_main_t * vnm,
-		   u32 sw_if_index,
-		   u32 l3_type,
-		   void *dst_address, void *rewrite, uword max_rewrite_bytes)
-{
-  /*
-   * Conundrum: packets from tun/tap destined for the tunnel
-   * actually have this rewrite applied. Transit packets do not.
-   * To make the two cases equivalent, don't generate a
-   * rewrite here, build the entire header in the fast path.
-   */
-  return 0;
-}
-
 static u8 *
 format_l2tp_header_with_length (u8 * s, va_list * args)
 {
@@ -298,7 +283,8 @@ format_l2tp_header_with_length (u8 * s, va_list * args)
 VNET_HW_INTERFACE_CLASS (l2tpv3_hw_class) = {
   .name = "L2TPV3",
   .format_header = format_l2tp_header_with_length,
-  .set_rewrite = dummy_set_rewrite,
+  .build_rewrite = default_build_rewrite,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 /* *INDENT-ON* */
 

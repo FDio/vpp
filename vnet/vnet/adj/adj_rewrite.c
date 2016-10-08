@@ -32,15 +32,17 @@ adj_rewrite_add_and_lock (fib_protocol_t nh_proto,
     adj = adj_alloc(nh_proto);
 
     adj->lookup_next_index = IP_LOOKUP_NEXT_REWRITE;
+    memset(&adj->sub_type.nbr.next_hop, 0, sizeof(adj->sub_type.nbr.next_hop));
     adj->ia_link = link_type;
+    adj->ia_nh_proto = nh_proto;
     adj->rewrite_header.sw_if_index = sw_if_index;
 
     ASSERT(NULL != rewrite);
 
     vnet_rewrite_for_sw_interface(vnet_get_main(),
-				  adj_fib_link_2_vnet(link_type),
+				  link_type,
 				  adj->rewrite_header.sw_if_index,
-				  adj_get_rewrite_node(link_type)->index,
+				  adj_get_rewrite_node(link_type),
 				  rewrite,
 				  &adj->rewrite_header,
 				  sizeof (adj->rewrite_data));
