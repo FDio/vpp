@@ -698,7 +698,17 @@ ip_address_cmp (const ip_address_t * ip1, const ip_address_t * ip2)
 void
 ip_address_copy (ip_address_t * dst, const ip_address_t * src)
 {
-  clib_memcpy (dst, src, sizeof (ip_address_t));
+  if (IP4 == ip_addr_version (src))
+    {
+      /* don't copy any garbe from the union */
+      memset (dst, 0, sizeof (*dst));
+      dst->ip.v4 = src->ip.v4;
+      dst->version = IP4;
+    }
+  else
+    {
+      clib_memcpy (dst, src, sizeof (ip_address_t));
+    }
 }
 
 void
@@ -712,6 +722,26 @@ ip_address_set (ip_address_t * dst, const void *src, u8 version)
 {
   clib_memcpy (dst, src, ip_version_to_size (version));
   ip_addr_version (dst) = version;
+}
+
+void
+ip_address_to_46 (const ip_address_t * addr,
+		  ip46_address_t * a, fib_protocol_t * proto)
+{
+  *proto = (IP4 == ip_addr_version (addr) ?
+	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
+  switch (*proto)
+    {
+    case FIB_PROTOCOL_IP4:
+      ip46_address_set_ip4 (a, &addr->ip.v4);
+      break;
+    case FIB_PROTOCOL_IP6:
+      a->ip6 = addr->ip.v6;
+      break;
+    default:
+      ASSERT (0);
+      break;
+    }
 }
 
 static void

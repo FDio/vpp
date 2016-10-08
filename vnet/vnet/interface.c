@@ -40,6 +40,7 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/fib/ip6_fib.h>
+#include <vnet/adj/adj.h>
 
 #define VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE (1 << 0)
 #define VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE (1 << 1)
@@ -1044,6 +1045,16 @@ vnet_hw_interface_compare (vnet_main_t * vnm,
   return (word) h0->hw_instance - (word) h1->hw_instance;
 }
 
+int
+vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index)
+{
+  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  vnet_hw_interface_class_t *hc =
+    vnet_get_hw_interface_class (vnm, hw->hw_class_index);
+
+  return (hc->flags & VNET_HW_INTERFACE_CLASS_FLAG_P2P);
+}
+
 clib_error_t *
 vnet_interface_init (vlib_main_t * vm)
 {
@@ -1120,6 +1131,12 @@ vnet_interface_init (vlib_main_t * vm)
       {
 	c->index = vec_len (im->hw_interface_classes);
 	hash_set_mem (im->hw_interface_class_by_name, c->name, c->index);
+
+	if (NULL == c->build_rewrite)
+	  c->build_rewrite = default_build_rewrite;
+	if (NULL == c->update_adjacency)
+	  c->update_adjacency = default_update_adjacency;
+
 	vec_add1 (im->hw_interface_classes, c[0]);
 	c = c->next_class_registration;
       }
@@ -1286,6 +1303,48 @@ vnet_hw_interface_change_mac_address (vnet_main_t * vnm, u32 hw_if_index,
   return vnet_hw_interface_change_mac_address_helper
     (vnm, hw_if_index, mac_address);
 }
+
+vnet_l3_packet_type_t
+vnet_link_to_l3_proto (vnet_link_t link)
+{
+  switch (link)
+    {
+    case VNET_LINK_IP4:
+      return (VNET_L3_PACKET_TYPE_IP4);
+    case VNET_LINK_IP6:
+      return (VNET_L3_PACKET_TYPE_IP6);
+    case VNET_LINK_MPLS:
+      return (VNET_L3_PACKET_TYPE_MPLS_UNICAST);
+    case VNET_LINK_ARP:
+      return (VNET_L3_PACKET_TYPE_ARP);
+    case VNET_LINK_ETHERNET:
+      ASSERT (0);
+      break;
+    }
+  ASSERT (0);
+  return (0);
+}
+
+u8 *
+default_build_rewrite (vnet_main_t * vnm,
+		       u32 sw_if_index,
+		       vnet_link_t link_type, const void *dst_address)
+{
+  return (NULL);
+}
+
+void
+default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
+{
+  u8 *rewrite;
+
+  rewrite = vnet_build_rewrite_for_sw_interface (vnm, sw_if_index,
+						 adj_get_link_type (ai),
+						 NULL);
+
+  adj_nbr_update_rewrite (ai, ADJ_NBR_REWRITE_FLAG_COMPLETE, rewrite);
+}
+
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -89,6 +89,16 @@ struct {								\
 }
 
 always_inline void
+vnet_rewrite_clear_data_internal (vnet_rewrite_header_t * rw, int max_size)
+{
+  /* Sanity check values carefully for this memset operation */
+  ASSERT ((max_size > 0) && (max_size < VLIB_BUFFER_PRE_DATA_SIZE));
+
+  rw->data_bytes = 0;
+  memset (rw->data, 0xfe, max_size);
+}
+
+always_inline void
 vnet_rewrite_set_data_internal (vnet_rewrite_header_t * rw,
 				int max_size, void *data, int data_bytes)
 {
@@ -252,20 +262,29 @@ _vnet_rewrite_two_headers (vnet_rewrite_header_t * h0,
 			     (most_likely_size))
 
 #define VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST ((void *) 0)
+/** Deprecated */
 void vnet_rewrite_for_sw_interface (struct vnet_main_t *vnm,
-				    vnet_l3_packet_type_t packet_type,
+				    vnet_link_t packet_type,
 				    u32 sw_if_index,
 				    u32 node_index,
 				    void *dst_address,
 				    vnet_rewrite_header_t * rw,
 				    u32 max_rewrite_bytes);
 
-void vnet_rewrite_for_tunnel (struct vnet_main_t *vnm,
-			      u32 tx_sw_if_index,
-			      u32 rewrite_node_index,
-			      u32 post_rewrite_node_index,
-			      vnet_rewrite_header_t * rw,
-			      u8 * rewrite_data, u32 rewrite_length);
+u32 vnet_tx_node_index_for_sw_interface (struct vnet_main_t *vnm,
+					 u32 sw_if_index);
+
+void vnet_rewrite_init (struct vnet_main_t *vnm,
+			u32 sw_if_index,
+			u32 this_node,
+			u32 next_node, vnet_rewrite_header_t * rw);
+
+u8 *vnet_build_rewrite_for_sw_interface (struct vnet_main_t *vnm,
+					 u32 sw_if_index,
+					 vnet_link_t packet_type,
+					 const void *dst_address);
+void vnet_update_adjacency_for_sw_interface (struct vnet_main_t *vnm,
+					     u32 sw_if_index, u32 ai);
 
 /* Parser for unformat header & rewrite string. */
 unformat_function_t unformat_vnet_rewrite;

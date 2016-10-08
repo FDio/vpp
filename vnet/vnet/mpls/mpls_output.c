@@ -39,7 +39,7 @@ format_mpls_output_trace (u8 * s, va_list * args)
 
   s = format (s, "adj-idx %d : %U flow hash: 0x%08x",
               t->adj_index,
-              format_ip_adjacency, vnm, t->adj_index, FORMAT_IP_ADJACENCY_NONE,
+              format_ip_adjacency, t->adj_index, FORMAT_IP_ADJACENCY_NONE,
 	      t->flow_hash);
   s = format (s, "\n%U%U",
               format_white_space, indent,

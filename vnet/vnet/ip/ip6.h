@@ -375,6 +375,10 @@ void ip6_register_protocol (u32 protocol, u32 node_index);
 
 serialize_function_t serialize_vnet_ip6_main, unserialize_vnet_ip6_main;
 
+void ip6_ethernet_update_adjacency (vnet_main_t * vnm,
+				    u32 sw_if_index,
+				    u32 ai);
+
 int
 vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
                                 u32 sw_if_index,

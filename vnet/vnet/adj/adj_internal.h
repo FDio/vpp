@@ -41,21 +41,21 @@
 #define ADJ_DBG(_e, _fmt, _args...)
 #endif
 
-static inline vlib_node_registration_t*
+static inline u32
 adj_get_rewrite_node (fib_link_t linkt)
 {
     switch (linkt) {
     case FIB_LINK_IP4:
-	return (&ip4_rewrite_node);
+	return (ip4_rewrite_node.index);
     case FIB_LINK_IP6:
-	return (&ip6_rewrite_node);
+	return (ip6_rewrite_node.index);
     case FIB_LINK_MPLS:
-	return (&mpls_output_node);
+	return (mpls_output_node.index);
     case FIB_LINK_ETHERNET:
-	return (&adj_l2_rewrite_node);
+	return (adj_l2_rewrite_node.index);
     }
     ASSERT(0);
-    return (NULL);
+    return (0);
 }
 
 static inline vnet_l3_packet_type_t
@@ -75,17 +75,17 @@ adj_fib_link_2_vnet (fib_link_t linkt)
     return (0);
 }
 
-static inline vnet_l3_packet_type_t
+static inline vnet_link_t
 adj_fib_proto_2_nd (fib_protocol_t fp)
 {
     switch (fp)
     {
     case FIB_PROTOCOL_IP4:
-	return (VNET_L3_PACKET_TYPE_ARP);
+	return (VNET_LINK_ARP);
     case FIB_PROTOCOL_IP6:
-	return (VNET_L3_PACKET_TYPE_IP6);
+	return (VNET_LINK_IP6);
     case FIB_PROTOCOL_MPLS:
-	return (VNET_L3_PACKET_TYPE_MPLS_UNICAST);
+	return (VNET_LINK_MPLS);
     }
     return (0);
 }
@@ -99,6 +99,12 @@ adj_get_index (ip_adjacency_t *adj)
 {
     return (adj - adj_pool);
 }
+
+extern void adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
+					     adj_nbr_rewrite_flag_t flags,
+					     u32 complete_next_index,
+					     u32 next_index,
+					     u8 *rewrite);
 
 extern ip_adjacency_t * adj_alloc(fib_protocol_t proto);
 

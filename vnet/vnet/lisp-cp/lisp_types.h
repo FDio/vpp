@@ -186,6 +186,8 @@ u16 ip_address_size_to_write (ip_address_t * a);
 u16 ip_address_iana_afi (ip_address_t * a);
 u8 ip_address_max_len (u8 ver);
 u32 ip_address_put (u8 * b, ip_address_t * a);
+void ip_address_to_46 (const ip_address_t * addr,
+		       ip46_address_t * a, fib_protocol_t * proto);
 
 /* LISP AFI codes  */
 typedef enum

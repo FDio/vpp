@@ -121,17 +121,6 @@ VNET_DEVICE_CLASS (vxlan_gpe_device_class,static) = {
   .admin_up_down_function = vxlan_gpe_interface_admin_up_down,
 };
 
-static uword dummy_set_rewrite (vnet_main_t * vnm,
-                                u32 sw_if_index,
-                                u32 l3_type,
-                                void * dst_address,
-                                void * rewrite,
-                                uword max_rewrite_bytes)
-{
-  return 0;
-}
-
-
 /**
  * @brief Formatting function for tracing VXLAN GPE with length
  *
@@ -151,7 +140,8 @@ static u8 * format_vxlan_gpe_header_with_length (u8 * s, va_list * args)
 VNET_HW_INTERFACE_CLASS (vxlan_gpe_hw_class) = {
   .name = "VXLAN_GPE",
   .format_header = format_vxlan_gpe_header_with_length,
-  .set_rewrite = dummy_set_rewrite,
+  .build_rewrite = default_build_rewrite,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 
 

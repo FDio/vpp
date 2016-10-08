@@ -41,33 +41,32 @@
 #include <vnet/pg/pg.h>
 #include <vnet/srp/srp.h>
 
-static uword srp_set_rewrite (vnet_main_t * vnm,
-			      u32 sw_if_index,
-			      u32 l3_type,
-			      void * dst_address,
-			      void * rewrite,
-			      uword max_rewrite_bytes)
+static u8*
+srp_build_rewrite (vnet_main_t * vnm,
+		   u32 sw_if_index,
+		   vnet_link_t link_type,
+		   const void * dst_address)
 {
   vnet_hw_interface_t * hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   srp_main_t * sm = &srp_main;
-  srp_and_ethernet_header_t * h = rewrite;
+  srp_and_ethernet_header_t * h;
+  u8* rewrite = NULL;
   u16 type;
   uword n_bytes = sizeof (h[0]);
 
-  if (n_bytes > max_rewrite_bytes)
-    return 0;
-
-  switch (l3_type) {
-#define _(a,b) case VNET_L3_PACKET_TYPE_##a: type = ETHERNET_TYPE_##b; break
+  switch (link_type) {
+#define _(a,b) case VNET_LINK_##a: type = ETHERNET_TYPE_##b; break
     _ (IP4, IP4);
     _ (IP6, IP6);
-    _ (MPLS_UNICAST, MPLS_UNICAST);
-    _ (MPLS_MULTICAST, MPLS_MULTICAST);
+    _ (MPLS, MPLS_UNICAST);
     _ (ARP, ARP);
 #undef _
   default:
-    return 0;
+      return (NULL);
   }
+
+  vec_validate(rewrite, n_bytes-1);
+  h = (srp_and_ethernet_header_t *)rewrite;
 
   clib_memcpy (h->ethernet.src_address, hw->hw_address, sizeof (h->ethernet.src_address));
   if (dst_address)
@@ -82,7 +81,7 @@ static uword srp_set_rewrite (vnet_main_t * vnm,
   h->srp.ttl = sm->default_data_ttl;
   srp_header_compute_parity (&h->srp);
 
-  return n_bytes;
+  return (rewrite);
 }
 
 static void srp_register_interface_helper (u32 * hw_if_indices_by_side, u32 redistribute);
@@ -293,7 +292,8 @@ VNET_HW_INTERFACE_CLASS (srp_hw_interface_class) = {
   .format_device = format_srp_device,
   .unformat_hw_address = unformat_ethernet_address,
   .unformat_header = unformat_srp_header,
-  .set_rewrite = srp_set_rewrite,
+  .build_rewrite = srp_build_rewrite,
+  .update_adjacency = ethernet_update_adjacency,
   .is_valid_class_for_interface = srp_is_valid_class_for_interface,
   .hw_class_change = srp_interface_hw_class_change,
 };
