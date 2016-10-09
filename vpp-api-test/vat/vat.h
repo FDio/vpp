@@ -147,6 +147,8 @@ typedef struct
 
   /* Unwind (so we can quit) */
   jmp_buf jump_buf;
+  int jump_buf_set;
+  volatile int do_exit;
 
   /* temporary parse buffer */
   unformat_input_t *input;
