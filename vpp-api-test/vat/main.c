@@ -14,6 +14,7 @@
  */
 #include "vat.h"
 #include "plugin.h"
+#include <signal.h>
 
 vat_main_t vat_main;
 
@@ -72,6 +73,8 @@ do_one_file (vat_main_t * vam)
   if (setjmp (vam->jump_buf) != 0)
     return;
 
+  vam->jump_buf_set = 1;
+
   while (1)
     {
       if (vam->ifp == stdin)
@@ -84,7 +87,8 @@ do_one_file (vat_main_t * vam)
 
       _vec_len (vam->inbuf) = 4096;
 
-      if (fgets ((char *) vam->inbuf, vec_len (vam->inbuf), vam->ifp) == 0)
+      if (vam->do_exit ||
+	  fgets ((char *) vam->inbuf, vec_len (vam->inbuf), vam->ifp) == 0)
 	break;
 
       vam->input_line_number++;
@@ -195,6 +199,68 @@ eval_current_line (macro_main_t * mm, i32 complain)
   return ((i8 *) format (0, "%d%c", vam->input_line_number, 0));
 }
 
+static void
+signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
+{
+  vat_main_t *vam = &vat_main;
+
+  switch (signum)
+    {
+      /* these (caught) signals cause the application to exit */
+    case SIGINT:
+    case SIGTERM:
+      if (vam->jump_buf_set)
+	{
+	  vam->do_exit = 1;
+	  return;
+	}
+
+      /* FALLTHROUGH on purpose */
+
+    default:
+      break;
+    }
+
+  _exit (1);
+}
+
+static void
+setup_signal_handlers (void)
+{
+  uword i;
+  struct sigaction sa;
+
+  for (i = 1; i < 32; i++)
+    {
+      memset (&sa, 0, sizeof (sa));
+      sa.sa_sigaction = (void *) signal_handler;
+      sa.sa_flags = SA_SIGINFO;
+
+      switch (i)
+	{
+	  /* these signals take the default action */
+	case SIGABRT:
+	case SIGKILL:
+	case SIGSTOP:
+	case SIGUSR1:
+	case SIGUSR2:
+	  continue;
+
+	  /* ignore SIGPIPE, SIGCHLD */
+	case SIGPIPE:
+	case SIGCHLD:
+	  sa.sa_sigaction = (void *) SIG_IGN;
+	  break;
+
+	  /* catch and handle all other signals */
+	default:
+	  break;
+	}
+
+      if (sigaction (i, &sa, 0) < 0)
+	clib_unix_warning ("sigaction %U", format_signal, i);
+    }
+}
 
 int
 main (int argc, char **argv)
@@ -272,6 +338,8 @@ main (int argc, char **argv)
 
   vat_api_hookup (vam);
   vat_plugin_api_reference ();
+
+  setup_signal_handlers ();
 
   if (connect_to_vpe ("vpp_api_test") < 0)
     {
