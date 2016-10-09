@@ -5829,6 +5829,9 @@ api_ip_add_del_route (vat_main_t * vam)
 	}
       /* send it... */
       S;
+      /* If we receive SIGTERM, stop now... */
+      if (vam->do_exit)
+	break;
     }
 
   /* When testing multiple add/del ops, use a control-ping to sync */
@@ -5860,6 +5863,10 @@ api_ip_add_del_route (vat_main_t * vam)
 	}
       vam->async_errors = 0;
       after = vat_time_now (vam);
+
+      /* slim chance, but we might have eaten SIGTERM on the first iteration */
+      if (j > 0)
+	count = j;
 
       fformat (vam->ofp, "%d routes in %.6f secs, %.2f routes/sec\n",
 	       count, after - before, count / (after - before));
