@@ -366,6 +366,8 @@ _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
+_(OUTPUT_ACL_SET_INTERFACE, output_acl_set_interface)                   \
+_(OUTPUT_ACL_BY_INTERFACE, output_acl_by_interface)                   \
 _(IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)                                 \
 _(IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)             \
 _(IPSEC_SPD_ADD_DEL_ENTRY, ipsec_spd_add_del_entry)                     \
@@ -6479,6 +6481,40 @@ static void vl_api_input_acl_set_interface_t_handler
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_INPUT_ACL_SET_INTERFACE_REPLY);
+}
+
+static void vl_api_output_acl_set_interface_t_handler
+  (vl_api_output_acl_set_interface_t * mp)
+{
+  vl_api_output_acl_set_interface_reply_t *rmp;
+  int rv = -1;
+
+  /* Not implemented yet */
+  rv = 0;
+  clib_warning ("Not implemented yet.\n");
+
+  REPLY_MACRO (VL_API_OUTPUT_ACL_SET_INTERFACE_REPLY);
+}
+
+static void vl_api_output_acl_by_interface_t_handler
+  (vl_api_output_acl_by_interface_t * mp)
+{
+  vl_api_output_acl_by_interface_reply_t *rmp;
+  int rv = -1;
+
+  /* Not implemented yet */
+  rv = 0;
+  clib_warning ("Not implemented yet.\n");
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_OUTPUT_ACL_BY_INTERFACE_REPLY,
+  ({
+    rmp->sw_if_index = ntohl(mp->sw_if_index);
+    rmp->l2_table_id = ntohl(-1);
+    rmp->ip4_table_id = ntohl(-1);
+    rmp->ip6_table_id = ntohl(-1);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void vl_api_ipsec_spd_add_del_t_handler
