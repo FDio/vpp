@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_26a44e56",
+        "filename": "vpp/conf/startup.conf",
+        "patchSetId": 5
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-10T19:33:59Z",
+      "side": 1,
+      "message": "manual pinning also includes main-core",
+      "range": {
+        "startLine": 23,
+        "startChar": 4,
+        "endLine": 23,
+        "endChar": 19
+      },
+      "revId": "8ad59ebce373fff5919fecc88ae73339209e3bd5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_86953ae6",
+        "filename": "vpp/conf/startup.conf",
+        "patchSetId": 5
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-10T19:33:59Z",
+      "side": 1,
+      "message": "automatically pinning",
+      "range": {
+        "startLine": 32,
+        "startChar": 4,
+        "endLine": 32,
+        "endChar": 11
+      },
+      "revId": "8ad59ebce373fff5919fecc88ae73339209e3bd5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_469f5204",
+        "filename": "vpp/conf/startup.conf",
+        "patchSetId": 5
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-10T19:33:59Z",
+      "side": 1,
+      "message": "we also skilp 1st core after \"skip-cores\" as that one is used for main thread.",
+      "range": {
+        "startLine": 37,
+        "startChar": 36,
+        "endLine": 37,
+        "endChar": 37
+      },
+      "revId": "8ad59ebce373fff5919fecc88ae73339209e3bd5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
