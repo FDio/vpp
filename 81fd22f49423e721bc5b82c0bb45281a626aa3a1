@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_a6eefeb2",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-10T10:24:39Z",
+      "side": 1,
+      "message": "vpp_lite: add cpu pinning support (VPP-467)",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 44
+      },
+      "revId": "81fd22f49423e721bc5b82c0bb45281a626aa3a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_46fe326d",
+        "filename": "vlib/vlib/threads.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-10T10:24:39Z",
+      "side": 1,
+      "message": "just rename to lcore_id....",
+      "range": {
+        "startLine": 108,
+        "startChar": 0,
+        "endLine": 111,
+        "endChar": 6
+      },
+      "revId": "81fd22f49423e721bc5b82c0bb45281a626aa3a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_26032e75",
+        "filename": "vlib/vlib/threads_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-10T10:24:39Z",
+      "side": 1,
+      "message": "Don\u0027t change table layout. Just leave \"State\" empty",
+      "range": {
+        "startLine": 49,
+        "startChar": 0,
+        "endLine": 57,
+        "endChar": 6
+      },
+      "revId": "81fd22f49423e721bc5b82c0bb45281a626aa3a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_06f82a7b",
+        "filename": "vpp/conf/startup.conf",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-10T10:24:39Z",
+      "side": 1,
+      "message": "remove trailing whitespace",
+      "range": {
+        "startLine": 18,
+        "startChar": 38,
+        "endLine": 18,
+        "endChar": 40
+      },
+      "revId": "81fd22f49423e721bc5b82c0bb45281a626aa3a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
