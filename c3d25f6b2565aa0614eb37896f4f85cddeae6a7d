@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_269e8e57",
+        "filename": "vpp-api-test/vat/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-10-10T08:55:31Z",
+      "side": 1,
+      "message": "https://www.securecoding.cert.org/confluence/display/c/SIG30-C.+Call+only+asynchronous-safe+functions+within+signal+handlers\n\nw.r.t:\n - malloc? of the msg string\n - use _exit not exit\n - I/O of msg and call to fformat (stderr, ...)\n\nIMHO doing useful work in a signal handler is more trouble than its worth. forget the I/O, call _exit or return.",
+      "revId": "c3d25f6b2565aa0614eb37896f4f85cddeae6a7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_06a38a9f",
+        "filename": "vpp-api-test/vat/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-10-10T08:55:31Z",
+      "side": 1,
+      "message": "can we use fatal \u003d 0 or 1 to change the control flow here rather than have more exit points? msg is mem leaked.",
+      "revId": "c3d25f6b2565aa0614eb37896f4f85cddeae6a7d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
