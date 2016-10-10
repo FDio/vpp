@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_e622c600",
+        "filename": "vlib/vlib/threads.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-10-10T10:37:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa3479d7_46fe326d",
+      "range": {
+        "startLine": 108,
+        "startChar": 0,
+        "endLine": 111,
+        "endChar": 6
+      },
+      "revId": "81fd22f49423e721bc5b82c0bb45281a626aa3a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_26032e75",
         "filename": "vlib/vlib/threads_cli.c",
         "patchSetId": 2
@@ -71,6 +95,30 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_c61fc2b6",
+        "filename": "vlib/vlib/threads_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-10-10T10:37:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa3479d7_26032e75",
+      "range": {
+        "startLine": 49,
+        "startChar": 0,
+        "endLine": 57,
+        "endChar": 6
+      },
+      "revId": "81fd22f49423e721bc5b82c0bb45281a626aa3a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_06f82a7b",
         "filename": "vpp/conf/startup.conf",
         "patchSetId": 2
@@ -82,6 +130,30 @@
       "writtenOn": "2016-10-10T10:24:39Z",
       "side": 1,
       "message": "remove trailing whitespace",
+      "range": {
+        "startLine": 18,
+        "startChar": 38,
+        "endLine": 18,
+        "endChar": 40
+      },
+      "revId": "81fd22f49423e721bc5b82c0bb45281a626aa3a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_a61cbec2",
+        "filename": "vpp/conf/startup.conf",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-10-10T10:37:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa3479d7_06f82a7b",
       "range": {
         "startLine": 18,
         "startChar": 38,
