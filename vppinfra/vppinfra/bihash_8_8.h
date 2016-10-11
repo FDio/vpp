@@ -25,6 +25,10 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/xxhash.h>
 
+#if __SSE4_2__
+#include <x86intrin.h>
+#endif
+
 /** 8 octet key, 8 octet key value pair */
 typedef struct
 {
@@ -49,7 +53,11 @@ clib_bihash_is_free_8_8 (clib_bihash_kv_8_8_t * v)
 static inline u64
 clib_bihash_hash_8_8 (clib_bihash_kv_8_8_t * v)
 {
+#if __SSE4_2__
+  return _mm_crc32_u64 (v->key, 0);
+#else
   return clib_xxhash (v->key);
+#endif
 }
 
 /** Format a clib_bihash_kv_8_8_t instance
