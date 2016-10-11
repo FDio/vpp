@@ -46,6 +46,8 @@
 
 #include "dpdk_priv.h"
 
+#define HQOS_MAX_SCHED_DELAY 0.1
+
 dpdk_main_t dpdk_main;
 
 /***
@@ -394,6 +396,7 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
   dpdk_main_t *dm = &dpdk_main;
   u32 cpu_index = vm->cpu_index;
   u32 dev_pos;
+  f64 transmit_deadline = vlib_time_now (vm) + HQOS_MAX_SCHED_DELAY;
 
   dev_pos = 0;
   while (1)
@@ -435,7 +438,8 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
 	  hqos->swq_pos = swq_pos;
 
 	  /* HWQ TX enqueue when burst available */
-	  if (pkts_enq_len >= hqos->hqos_burst_enq)
+	  if ((pkts_enq_len >= hqos->hqos_burst_enq) ||
+	      (pkts_enq_len > 0 && vlib_time_now (vm) > transmit_deadline))
 	    {
 	      u32 n_pkts = rte_eth_tx_burst (device_index,
 					     (uint16_t) queue_id,
@@ -446,6 +450,7 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
 		rte_pktmbuf_free (pkts_enq[n_pkts]);
 
 	      pkts_enq_len = 0;
+	      transmit_deadline = vlib_time_now (vm) + HQOS_MAX_SCHED_DELAY;
 	      break;
 	    }
 	}
@@ -462,6 +467,7 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
   dpdk_main_t *dm = &dpdk_main;
   u32 cpu_index = vm->cpu_index;
   u32 dev_pos;
+  f64 enqueue_deadline = vlib_time_now (vm) + HQOS_MAX_SCHED_DELAY;
 
   dev_pos = 0;
   while (1)
@@ -512,11 +518,13 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
 	  hqos->swq_pos = swq_pos;
 
 	  /* HQoS enqueue when burst available */
-	  if (pkts_enq_len >= hqos->hqos_burst_enq)
+	  if ((pkts_enq_len >= hqos->hqos_burst_enq) ||
+	      (pkts_enq_len > 0 && vlib_time_now (vm) > enqueue_deadline))
 	    {
 	      rte_sched_port_enqueue (hqos->hqos, pkts_enq, pkts_enq_len);
 
 	      pkts_enq_len = 0;
+	      enqueue_deadline = vlib_time_now (vm) + HQOS_MAX_SCHED_DELAY;
 	      break;
 	    }
 	}
