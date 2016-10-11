@@ -4,9 +4,6 @@
 #
 #  The module provides a set of tools for L2 cross-connect tests.
 
-import logging
-logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-
 import unittest
 import random
 from framework import VppTestCase, VppTestRunner

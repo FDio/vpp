@@ -4,9 +4,6 @@
 #
 #  The module provides a set of tools for L2 bridge domain tests.
 
-import logging
-logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-
 import unittest
 import random
 

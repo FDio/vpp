@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-import logging
-logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-
 import unittest
 from framework import VppTestCase, VppTestRunner
 from util import Util
