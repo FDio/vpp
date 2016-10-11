@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_c7757c33",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-11T18:47:43Z",
+      "side": 1,
+      "message": "Can we handle virtualenv stuff in test/Makefile ?",
+      "range": {
+        "startLine": 192,
+        "startChar": 0,
+        "endLine": 199,
+        "endChar": 4
+      },
+      "revId": "adb8cfb6d0ee2e3eb71cf2a7119b12aa52e464e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_e778802d",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-11T18:47:43Z",
+      "side": 1,
+      "message": "This looks like a good candidate for function (define test-prepare).",
+      "range": {
+        "startLine": 208,
+        "startChar": 0,
+        "endLine": 218,
+        "endChar": 36
+      },
+      "revId": "adb8cfb6d0ee2e3eb71cf2a7119b12aa52e464e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
