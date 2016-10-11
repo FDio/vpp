@@ -188,33 +188,36 @@ plugins-release: $(BR)/.bootstrap.ok
 build-vpp-api: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-api-install)
 
+PYTHON_PATH=$(BR)/python
+
 define test
-	@make -C test \
+	$(if $(filter-out $(2),retest),make -C $(BR) PLATFORM=$(1) TAG=$(1) vpp-api-install plugins-install vpp-install vpp-api-test-install,)
+	make -C test \
 	  VPP_TEST_BIN=$(BR)/install-$(1)-native/vpp/bin/vpp \
 	  VPP_TEST_API_TEST_BIN=$(BR)/install-$(1)-native/vpp-api-test/bin/vpp_api_test \
 	  VPP_TEST_PLUGIN_PATH=$(BR)/install-$(1)-native/plugins/lib64/vpp_plugins \
-	  V=$(V) TEST=$(TEST)
+	  LD_LIBRARY_PATH=$(BR)/install-$(1)-native/vpp-api/lib64/ \
+	  WS_ROOT=$(WS_ROOT) I=$(I) V=$(V) TEST=$(TEST) PYTHON_PATH=$(PYTHON_PATH) $(2)
 endef
 
-test:
-ifeq ($(OS_ID),ubuntu)
-	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
-endif
-	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite plugins-install vpp-install vpp-api-test-install
-	$(call test,vpp_lite)
+test: bootstrap
+	$(call test,vpp_lite,test)
 
-test-debug:
-ifeq ($(OS_ID),ubuntu)
-	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
-endif
-	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite_debug plugins-install vpp-install vpp-api-test-install
-	$(call test,vpp_lite_debug)
+test-debug: bootstrap
+	$(call test,vpp_lite_debug,test)
+
+test-doc:
+	make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite vpp-api-install plugins-install vpp-install vpp-api-test-install
+	make -C test PYTHON_PATH=$(PYTHON_PATH) LD_LIBRARY_PATH=$(BR)/install-vpp_lite-native/vpp-api/lib64/ doc
+
+test-clean:
+	make -C test clean
 
 retest:
-	$(call test,vpp_lite)
+	$(call test,vpp_lite,retest)
 
 retest-debug:
-	$(call test,vpp_lite_debug)
+	$(call test,vpp_lite_debug,retest)
 
 STARTUP_DIR ?= $(PWD)
 ifeq ("$(wildcard $(STARTUP_CONF))","")
