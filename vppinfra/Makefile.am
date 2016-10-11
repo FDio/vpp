@@ -224,6 +224,9 @@ nobase_include_HEADERS = \
 CLIB_CORE = \
   vppinfra/asm_x86.c \
   vppinfra/backtrace.c \
+  vppinfra/bihash_8_8.h \
+  vppinfra/bihash_24_8.h \
+  vppinfra/bihash_template.h \
   vppinfra/cpu.c \
   vppinfra/elf.c \
   vppinfra/elog.c \
