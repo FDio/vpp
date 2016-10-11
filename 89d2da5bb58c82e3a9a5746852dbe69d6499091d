@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_4c3bf3eb",
+        "filename": "plugins/flowperpkt-plugin/flowperpkt_plugin_doc.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-11T14:36:28Z",
+      "side": 1,
+      "message": "Add \"    {#flowperpkt_plugin_doc}\" to the end of this line. By convention I\u0027ve been using 4 spaces. (NB: I keep wanting to read/type: flowerpotpkt :)\n\nThen add an entry to the bullet list in doxygen/user_doc.md, something like:\n\n- @subpage flowperpkt_plugin_doc\n\nThat should insert the doc into the hierarchy properly. Otherwise Doxy doesn\u0027t know where it needs to go, so dumpts it in the root. This also controls the name of the resultinh .html file, making it more reliably linkable.",
+      "revId": "89d2da5bb58c82e3a9a5746852dbe69d6499091d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
