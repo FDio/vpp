@@ -7,100 +7,94 @@ from scapy.layers.inet import IP, UDP
 
 
 class BridgeDomain(object):
-    def __init__(self):
-        ## Ethernet frame which is send to pg0 interface and is forwarded to pg1
-        self.payload_0_1 = (
-            Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02') /
-            IP(src='1.2.3.4', dst='4.3.2.1') /
-            UDP(sport=10000, dport=20000) /
-            Raw('\xa5' * 100))
+    """ Bridge domain abstraction """
 
-        ## Ethernet frame which is send to pg1 interface and is forwarded to pg0
-        self.payload_1_0 = (
-            Ether(src='00:00:00:00:00:02', dst='00:00:00:00:00:01') /
-            IP(src='4.3.2.1', dst='1.2.3.4') /
-            UDP(sport=20000, dport=10000) /
-            Raw('\xa5' * 100))
+    @property
+    def frame_pg0_to_pg1(self):
+        """ Ethernet frame sent from pg0 and expected to arrive at pg1 """
+        return (Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02') /
+                IP(src='1.2.3.4', dst='4.3.2.1') /
+                UDP(sport=10000, dport=20000) /
+                Raw('\xa5' * 100))
 
-    ## Test case must implement this method, so template known how to send
-    #  encapsulated frame.
+    @property
+    def frame_pg1_to_pg0(self):
+        """ Ethernet frame sent from pg1 and expected to arrive at pg0 """
+        return (Ether(src='00:00:00:00:00:02', dst='00:00:00:00:00:01') /
+                IP(src='4.3.2.1', dst='1.2.3.4') /
+                UDP(sport=20000, dport=10000) /
+                Raw('\xa5' * 100))
+
     @abstractmethod
     def encapsulate(self, pkt):
+        """ Encapsulate packet """
         pass
 
-    ## Test case must implement this method, so template known how to get
-    #  original payload.
     @abstractmethod
     def decapsulate(self, pkt):
+        """ Decapsulate packet """
         pass
 
-    ## Test case must implement this method, so template known how if the
-    #  received frame is corectly encapsulated.
     @abstractmethod
     def check_encapsulation(self, pkt):
+        """ Verify the encapsulation """
         pass
 
-    ## On pg0 interface are encapsulated frames, on pg1 are testing frames
-    #  without encapsulation
     def test_decap(self):
-        ## Prepare Ethernet frame that will be send encapsulated.
-        pkt_to_send = self.encapsulate(self.payload_0_1)
+        """ Decapsulation test
+        Send encapsulated frames from pg0
+        Verify receipt of decapsulated frames on pg1
+        """
 
-        ## Add packet to list of packets.
-        self.pg_add_stream(0, [pkt_to_send, ])
+        encapsulated_pkt = self.encapsulate(self.frame_pg0_to_pg1)
 
-        ## Enable Packet Capture on both ports.
-        self.pg_enable_capture([0, 1])
+        self.pg0.add_stream([encapsulated_pkt, ])
 
-        ## Start all streams
+        self.pg1.enable_capture()
+
         self.pg_start()
 
-        ## Pick first received frame and check if is same as non-encapsulated
-        #  frame.
-        out = self.pg_get_capture(1)
+        # Pick first received frame and check if it's the non-encapsulated frame
+        out = self.pg1.get_capture()
         self.assertEqual(len(out), 1,
                          'Invalid number of packets on '
                          'output: {}'.format(len(out)))
         pkt = out[0]
 
         # TODO: add error messages
-        self.assertEqual(pkt[Ether].src, self.payload_0_1[Ether].src)
-        self.assertEqual(pkt[Ether].dst, self.payload_0_1[Ether].dst)
-        self.assertEqual(pkt[IP].src, self.payload_0_1[IP].src)
-        self.assertEqual(pkt[IP].dst, self.payload_0_1[IP].dst)
-        self.assertEqual(pkt[UDP].sport, self.payload_0_1[UDP].sport)
-        self.assertEqual(pkt[UDP].dport, self.payload_0_1[UDP].dport)
-        self.assertEqual(pkt[Raw], self.payload_0_1[Raw])
+        self.assertEqual(pkt[Ether].src, self.frame_pg0_to_pg1[Ether].src)
+        self.assertEqual(pkt[Ether].dst, self.frame_pg0_to_pg1[Ether].dst)
+        self.assertEqual(pkt[IP].src, self.frame_pg0_to_pg1[IP].src)
+        self.assertEqual(pkt[IP].dst, self.frame_pg0_to_pg1[IP].dst)
+        self.assertEqual(pkt[UDP].sport, self.frame_pg0_to_pg1[UDP].sport)
+        self.assertEqual(pkt[UDP].dport, self.frame_pg0_to_pg1[UDP].dport)
+        self.assertEqual(pkt[Raw], self.frame_pg0_to_pg1[Raw])
 
-    ## Send non-encapsulated Ethernet frame from pg1 interface and expect
-    #  encapsulated frame on pg0. On pg0 interface are encapsulated frames,
-    #  on pg1 are testing frames without encapsulation.
     def test_encap(self):
-        ## Create packet generator stream.
-        self.pg_add_stream(1, [self.payload_1_0])
+        """ Encapsulation test
+        Send frames from pg1
+        Verify receipt of encapsulated frames on pg0
+        """
+        self.pg1.add_stream([self.frame_pg1_to_pg0])
 
-        ## Enable Packet Capture on both ports.
-        self.pg_enable_capture([0, 1])
+        self.pg0.enable_capture()
 
-        ## Start all streams.
         self.pg_start()
 
-        ## Pick first received frame and check if is corectly encapsulated.
-        out = self.pg_get_capture(0)
+        # Pick first received frame and check if it's corectly encapsulated.
+        out = self.pg0.get_capture()
         self.assertEqual(len(out), 1,
                          'Invalid number of packets on '
                          'output: {}'.format(len(out)))
-        rcvd = out[0]
-        self.check_encapsulation(rcvd)
+        pkt = out[0]
+        self.check_encapsulation(pkt)
 
-        ## Get original frame from received packet and check if is same as
-        #  sended frame.
-        rcvd_payload = self.decapsulate(rcvd)
+        payload = self.decapsulate(pkt)
         # TODO: add error messages
-        self.assertEqual(rcvd_payload[Ether].src, self.payload_1_0[Ether].src)
-        self.assertEqual(rcvd_payload[Ether].dst, self.payload_1_0[Ether].dst)
-        self.assertEqual(rcvd_payload[IP].src, self.payload_1_0[IP].src)
-        self.assertEqual(rcvd_payload[IP].dst, self.payload_1_0[IP].dst)
-        self.assertEqual(rcvd_payload[UDP].sport, self.payload_1_0[UDP].sport)
-        self.assertEqual(rcvd_payload[UDP].dport, self.payload_1_0[UDP].dport)
-        self.assertEqual(rcvd_payload[Raw], self.payload_1_0[Raw])
+        self.assertEqual(payload[Ether].src, self.frame_pg1_to_pg0[Ether].src)
+        self.assertEqual(payload[Ether].dst, self.frame_pg1_to_pg0[Ether].dst)
+        self.assertEqual(payload[IP].src, self.frame_pg1_to_pg0[IP].src)
+        self.assertEqual(payload[IP].dst, self.frame_pg1_to_pg0[IP].dst)
+        self.assertEqual(payload[UDP].sport, self.frame_pg1_to_pg0[UDP].sport)
+        self.assertEqual(payload[UDP].dport, self.frame_pg1_to_pg0[UDP].dport)
+        self.assertEqual(payload[Raw], self.frame_pg1_to_pg0[Raw])
