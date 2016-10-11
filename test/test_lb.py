@@ -2,14 +2,13 @@ import unittest
 import time
 import socket
 from framework import VppTestCase, VppTestRunner
-from util import Util
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
-## TestLB is a subclass of Util and VPPTestCase classes.
+## TestLB is a subclass of  VPPTestCase classes.
 #
 #  TestLB class defines Load Balancer test cases for:
 #   - IP4 to GRE4 encap
@@ -21,7 +20,7 @@ from scapy.layers.inet6 import IPv6
 #  All test cases involving IPv6 are executed, but
 #  received packets are not parsed and checked.
 #
-class TestLB(Util, VppTestCase):
+class TestLB(VppTestCase):
     """ Load Balancer Test Case """
 
     @classmethod
