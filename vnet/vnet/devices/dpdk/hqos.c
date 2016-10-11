@@ -46,6 +46,9 @@
 
 #include "dpdk_priv.h"
 
+/* don't allow a packet to be held for more loops than this */
+#define HQOS_MAX_SCHED_DELAY (1 << 17)	/* roughly 100,000 */
+
 dpdk_main_t dpdk_main;
 
 /***
@@ -394,6 +397,7 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
   dpdk_main_t *dm = &dpdk_main;
   u32 cpu_index = vm->cpu_index;
   u32 dev_pos;
+  u32 loop_counter = 0;
 
   dev_pos = 0;
   while (1)
@@ -403,6 +407,14 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
       u32 n_devs = vec_len (dm->devices_by_hqos_cpu[cpu_index]);
       if (dev_pos >= n_devs)
 	dev_pos = 0;
+
+      /* we've only completed a loop when we get back to the first device */
+      if (dev_pos == 0)
+	{
+	  loop_counter++;
+	  if (loop_counter >= HQOS_MAX_SCHED_DELAY)
+	    loop_counter = 0;
+	}
 
       dpdk_device_and_queue_t *dq =
 	vec_elt_at_index (dm->devices_by_hqos_cpu[cpu_index], dev_pos);
@@ -435,7 +447,8 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
 	  hqos->swq_pos = swq_pos;
 
 	  /* HWQ TX enqueue when burst available */
-	  if (pkts_enq_len >= hqos->hqos_burst_enq)
+	  if ((pkts_enq_len >= hqos->hqos_burst_enq) ||
+	      (loop_counter == 0 && pkts_enq_len > 0))
 	    {
 	      u32 n_pkts = rte_eth_tx_burst (device_index,
 					     (uint16_t) queue_id,
@@ -462,6 +475,7 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
   dpdk_main_t *dm = &dpdk_main;
   u32 cpu_index = vm->cpu_index;
   u32 dev_pos;
+  u32 loop_counter = 0;
 
   dev_pos = 0;
   while (1)
@@ -476,6 +490,14 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
 	}
       if (dev_pos >= n_devs)
 	dev_pos = 0;
+
+      /* we've only completed a loop when we get back to the first device */
+      if (dev_pos == 0)
+	{
+	  loop_counter++;
+	  if (loop_counter >= HQOS_MAX_SCHED_DELAY)
+	    loop_counter = 0;
+	}
 
       dpdk_device_and_queue_t *dq =
 	vec_elt_at_index (dm->devices_by_hqos_cpu[cpu_index], dev_pos);
@@ -512,7 +534,8 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
 	  hqos->swq_pos = swq_pos;
 
 	  /* HQoS enqueue when burst available */
-	  if (pkts_enq_len >= hqos->hqos_burst_enq)
+	  if ((pkts_enq_len >= hqos->hqos_burst_enq) ||
+	      (loop_counter == 0 && pkts_enq_len > 0))
 	    {
 	      rte_sched_port_enqueue (hqos->hqos, pkts_enq, pkts_enq_len);
 
