@@ -47,17 +47,18 @@ class BridgeDomain(object):
         pkt_to_send = self.encapsulate(self.payload_0_1)
 
         ## Add packet to list of packets.
-        self.pg_add_stream(0, [pkt_to_send, ])
+        self.pg0.add_stream([pkt_to_send, ])
 
         ## Enable Packet Capture on both ports.
-        self.pg_enable_capture([0, 1])
+        self.pg0.enable_capture()
+        self.pg1.enable_capture()
 
         ## Start all streams
         self.pg_start()
 
         ## Pick first received frame and check if is same as non-encapsulated
         #  frame.
-        out = self.pg_get_capture(1)
+        out = self.pg1.get_capture()
         self.assertEqual(len(out), 1,
                          'Invalid number of packets on '
                          'output: {}'.format(len(out)))
@@ -77,16 +78,17 @@ class BridgeDomain(object):
     #  on pg1 are testing frames without encapsulation.
     def test_encap(self):
         ## Create packet generator stream.
-        self.pg_add_stream(1, [self.payload_1_0])
+        self.pg1.add_stream([self.payload_1_0])
 
         ## Enable Packet Capture on both ports.
-        self.pg_enable_capture([0, 1])
+        self.pg0.enable_capture()
+        self.pg1.enable_capture()
 
         ## Start all streams.
         self.pg_start()
 
         ## Pick first received frame and check if is corectly encapsulated.
-        out = self.pg_get_capture(0)
+        out = self.pg0.get_capture()
         self.assertEqual(len(out), 1,
                          'Invalid number of packets on '
                          'output: {}'.format(len(out)))

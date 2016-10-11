@@ -188,26 +188,37 @@ plugins-release: $(BR)/.bootstrap.ok
 build-vpp-api: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-api-install)
 
+PYTHON_PATH=$(BR)/python
+PYTHON_VENV_PATH=$(PYTHON_PATH)/virtualenv
+
+python-virtualenv:
+	@virtualenv $(PYTHON_VENV_PATH)
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install scapy"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && cd $(WS_ROOT)/vpp-api/python && python setup.py install"
+
 define test
-	@make -C test \
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && make -C test \
 	  VPP_TEST_BIN=$(BR)/install-$(1)-native/vpp/bin/vpp \
 	  VPP_TEST_API_TEST_BIN=$(BR)/install-$(1)-native/vpp-api-test/bin/vpp_api_test \
 	  VPP_TEST_PLUGIN_PATH=$(BR)/install-$(1)-native/plugins/lib64/vpp_plugins \
-	  V=$(V) TEST=$(TEST)
+	  V=$(V) TEST=$(TEST) BR=$(BR) PLATFORM=$(1)"
 endef
 
-test:
+test-prepare:
 ifeq ($(OS_ID),ubuntu)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
 endif
-	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite plugins-install vpp-install vpp-api-test-install
+	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite vpp-api-install plugins-install vpp-install vpp-api-test-install
+test-prepare-debug:
+ifeq ($(OS_ID),ubuntu)
+	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
+endif
+	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite_debug vpp-api-install plugins-install vpp-install vpp-api-test-install
+
+test: test-prepare python-virtualenv
 	$(call test,vpp_lite)
 
-test-debug:
-ifeq ($(OS_ID),ubuntu)
-	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
-endif
-	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite_debug plugins-install vpp-install vpp-api-test-install
+test-debug: test-prepare-debug python-virtualenv
 	$(call test,vpp_lite_debug)
 
 retest:
