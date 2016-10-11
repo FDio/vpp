@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_e76400e7",
+        "filename": "vnet/vnet/flow/flow_report_classify.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-10-11T16:09:44Z",
+      "side": 1,
+      "message": "What\u0027s the plan for single / double VLAN tagged pkts?",
+      "revId": "1db75bb82021246c01244a75003914131dc46fd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
