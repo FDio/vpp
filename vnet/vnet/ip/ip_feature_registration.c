@@ -128,14 +128,30 @@ comma_split (u8 * s, u8 ** a, u8 ** b)
   return 0;
 }
 
+/**
+ * @brief Initialize a feature graph arc
+ * @param vm vlib main structure pointer
+ * @param vcm vnet config main structure pointer
+ * @param feature_start_nodes names of start-nodes which use this
+ *	  feature graph arc
+ * @param num_feature_start_nodes number of start-nodes
+ * @param first_reg first element in
+ *        [an __attribute__((constructor)) function built, or
+ *        otherwise created] singly-linked list of feature registrations
+ * @param [out] in_feature_nodes returned vector of
+ *        topologically-sorted feature node names, for use in
+ *        show commands
+ * @returns 0 on success, otherwise an error message. Errors
+ *        are fatal since they invariably involve mistyped node-names, or
+ *        genuinely missing node-names
+ */
 clib_error_t *
-ip_feature_init_cast (vlib_main_t * vm,
-		      ip_config_main_t * cm,
-		      vnet_config_main_t * vcm,
-		      char **feature_start_nodes,
-		      int num_feature_start_nodes,
-		      vnet_ip_feature_registration_t * first_reg,
-		      char ***in_feature_nodes)
+vnet_feature_arc_init (vlib_main_t * vm,
+		       vnet_config_main_t * vcm,
+		       char **feature_start_nodes,
+		       int num_feature_start_nodes,
+		       vnet_ip_feature_registration_t * first_reg,
+		       char ***in_feature_nodes)
 {
   uword *index_by_name;
   uword *reg_by_index;
@@ -305,12 +321,12 @@ again:
   return 0;
 }
 
-#define foreach_af_cast                         \
-_(4, VNET_IP_RX_UNICAST_FEAT, "ip4 unicast")               \
-_(4, VNET_IP_RX_MULTICAST_FEAT, "ip4 multicast")           \
-_(4, VNET_IP_TX_FEAT, "ip4 output")                 \
-_(6, VNET_IP_RX_UNICAST_FEAT, "ip6 unicast")               \
-_(6, VNET_IP_RX_MULTICAST_FEAT, "ip6 multicast")		\
+#define foreach_af_cast                                 \
+_(4, VNET_IP_RX_UNICAST_FEAT, "ip4 unicast")            \
+_(4, VNET_IP_RX_MULTICAST_FEAT, "ip4 multicast")        \
+_(4, VNET_IP_TX_FEAT, "ip4 output")                     \
+_(6, VNET_IP_RX_UNICAST_FEAT, "ip6 unicast")            \
+_(6, VNET_IP_RX_MULTICAST_FEAT, "ip6 multicast")        \
 _(6, VNET_IP_TX_FEAT, "ip6 output")
 
 /** Display the set of available ip features.
@@ -342,6 +358,15 @@ show_ip_features_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Display the set of available ip features
+ *
+ * @cliexpar
+ * Example:
+ * @cliexcmd{show ip features}
+ * @cliexend
+ * @endparblock
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_features_command, static) = {
   .path = "show ip features",
@@ -437,6 +462,15 @@ show_ip_interface_features_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Display the ip features configured on a specific interface
+ *
+ * @cliexpar
+ * Example:
+ * @cliexcmd{show ip interface features GigabitEthernet2/0/0}
+ * @cliexend
+ * @endparblock
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_interface_features_command, static) = {
   .path = "show ip interface features",

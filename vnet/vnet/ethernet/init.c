@@ -81,12 +81,12 @@ ethernet_feature_init (vlib_main_t * vm)
   ip_config_main_t *cm = &ethernet_main.feature_config_mains[VNET_IP_TX_FEAT];
   vnet_config_main_t *vcm = &cm->config_main;
 
-  return (ip_feature_init_cast (vm, cm, vcm,
-				feature_start_nodes,
-				ARRAY_LEN (feature_start_nodes),
-				ethernet_main.next_feature[VNET_IP_TX_FEAT],
-				&ethernet_main.feature_nodes
-				[VNET_IP_TX_FEAT]));
+  return (vnet_feature_arc_init (vm, vcm,
+				 feature_start_nodes,
+				 ARRAY_LEN (feature_start_nodes),
+				 ethernet_main.next_feature[VNET_IP_TX_FEAT],
+				 &ethernet_main.feature_nodes
+				 [VNET_IP_TX_FEAT]));
 }
 
 static clib_error_t *

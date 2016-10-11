@@ -124,7 +124,7 @@ static char * rx_feature_start_nodes[] =
 {
     "mpls-input",
 };
-static char * tx_feature_start_nodes[] = 
+static char * tx_feature_start_nodes[] =
 {
     "mpls-output",
     "mpls-midchain",
@@ -137,22 +137,24 @@ mpls_feature_init (vlib_main_t * vm)
   vnet_config_main_t * vcm = &cm->config_main;
   clib_error_t *error;
 
-  if ((error = ip_feature_init_cast (vm, cm, vcm,
-				     rx_feature_start_nodes,
-				     ARRAY_LEN(rx_feature_start_nodes),
-				     mpls_main.next_feature[VNET_IP_RX_UNICAST_FEAT],
-				     &mpls_main.feature_nodes[VNET_IP_RX_UNICAST_FEAT])))
+  error = vnet_feature_arc_init
+      (vm, vcm, rx_feature_start_nodes,
+       ARRAY_LEN(rx_feature_start_nodes),
+       mpls_main.next_feature[VNET_IP_RX_UNICAST_FEAT],
+       &mpls_main.feature_nodes[VNET_IP_RX_UNICAST_FEAT]);
+
+  if (error)
       return error;
 
   cm  = &mpls_main.feature_config_mains[VNET_IP_TX_FEAT];
   vcm = &cm->config_main;
 
-  if ((error = ip_feature_init_cast (vm, cm, vcm,
-				     tx_feature_start_nodes,
-				     ARRAY_LEN(tx_feature_start_nodes),
-				     mpls_main.next_feature[VNET_IP_TX_FEAT],
-				     &mpls_main.feature_nodes[VNET_IP_TX_FEAT])))
-      return error;
+  error = vnet_feature_arc_init
+      (vm, vcm,
+       tx_feature_start_nodes,
+       ARRAY_LEN(tx_feature_start_nodes),
+       mpls_main.next_feature[VNET_IP_TX_FEAT],
+       &mpls_main.feature_nodes[VNET_IP_TX_FEAT]);
 
   return error;
 }
@@ -256,7 +258,7 @@ show_mpls_interface_features_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "MPLS feature paths configured on %U...",
                    format_vnet_sw_if_index_name, vnm, sw_if_index);
 
-  ip_interface_features_show (vm, "MPLS", 
+  ip_interface_features_show (vm, "MPLS",
 			      mpls_main.feature_config_mains,
 			      sw_if_index);
 
