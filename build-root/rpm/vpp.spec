@@ -17,12 +17,15 @@
 
 %{!?python2_minor_version: %define python2_minor_version %(%{__python} -c "import sys ; print sys.version[2:3]")}
 
+%{?systemd_requires}
+
 Name: vpp
 Summary: Vector Packet Processing
 License: MIT
 Version: %{_version}
 Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
+BuildRequires: systemd
 
 %description
 This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
@@ -171,8 +174,29 @@ done
 sysctl --system
 %systemd_post vpp.service
 
+%preun
+%systemd_preun vpp.service
+
 %postun
-%systemd_postun_with_restart vpp.service
+%systemd_postun
+
+# Unbind user-mode PCI drivers
+removed=
+pci_dirs=`find /sys/bus/pci/drivers -type d -name igb_uio -o -name uio_pci_generic -o -name vfio-pci`
+for d in $pci_dirs; do
+    for f in ${d}/*; do
+        [ -e "${f}/config" ] || continue
+        echo 1 > ${f}/remove
+        basename `dirname ${f}` | xargs echo -n "Removing driver"; echo " for PCI ID" `basename ${f}`
+        removed=y
+    done
+done
+if [ -n "${removed}" ]; then
+    echo "There are changes in PCI drivers, rescaning"
+    echo 1 > /sys/bus/pci/rescan
+else
+    echo "There weren't PCI devices binded"
+fi
 
 %files
 %defattr(-,bin,bin)
