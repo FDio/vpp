@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_872bf4ea",
+        "filename": "vnet/vnet/ip/ip_feature_registration.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-11T21:01:44Z",
+      "side": 1,
+      "message": "Repeating the types of parameters is generally considered poor practice since it duplicates information; Doxygen already extracts it from the function signature and renders it in the documentation. I\u0027ll admit it would be nice if it included it inline in the @param lines, though.",
+      "range": {
+        "startLine": 133,
+        "startChar": 13,
+        "endLine": 133,
+        "endChar": 37
+      },
+      "revId": "90f99e1de8d4bbc28908f55f3e920f4c4e648e66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_27032875",
+        "filename": "vnet/vnet/ip/ip_feature_registration.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-11T21:01:44Z",
+      "side": 1,
+      "message": "You want \"@param[in] ...\" I think (see https://www.stack.nl/~dimitri/doxygen/manual/commands.html#cmdparam)",
+      "range": {
+        "startLine": 141,
+        "startChar": 9,
+        "endLine": 141,
+        "endChar": 17
+      },
+      "revId": "90f99e1de8d4bbc28908f55f3e920f4c4e648e66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_67301057",
+        "filename": "vnet/vnet/ip/ip_feature_registration.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-11T21:01:44Z",
+      "side": 1,
+      "message": "redundant; this is parsed from .path in the initializer and rendered in the documentation",
+      "range": {
+        "startLine": 362,
+        "startChar": 3,
+        "endLine": 362,
+        "endChar": 30
+      },
+      "revId": "90f99e1de8d4bbc28908f55f3e920f4c4e648e66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_e73be036",
+        "filename": "vnet/vnet/ip/ip_feature_registration.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 466,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-11T21:01:44Z",
+      "side": 1,
+      "message": "redundant",
+      "range": {
+        "startLine": 466,
+        "startChar": 3,
+        "endLine": 466,
+        "endChar": 40
+      },
+      "revId": "90f99e1de8d4bbc28908f55f3e920f4c4e648e66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
