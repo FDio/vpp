@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_271448f4",
+        "filename": "build-root/deb/debian/vpp.postrm",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-11T17:56:41Z",
+      "side": 1,
+      "message": "Why you removed \"fuser -s ${f}/config  \u0026\u0026 continue\" ?",
+      "range": {
+        "startLine": 10,
+        "startChar": 8,
+        "endLine": 10,
+        "endChar": 28
+      },
+      "revId": "dfa9c5bb9a6e9548267f3456724a5a1a7f342b06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
