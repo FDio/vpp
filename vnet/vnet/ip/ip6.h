@@ -101,8 +101,8 @@ typedef enum ip6_fib_table_instance_type_t_ {
     IP6_FIB_TABLE_FWDING,
     /**
      * The table that stores ALL routes learned by the DP.
-     * Some of these routes may not be ready to install in forwarding 
-     * at a given time. 
+     * Some of these routes may not be ready to install in forwarding
+     * at a given time.
      * The key in this table is the prefix, the result is the fib_entry_t
      */
     IP6_FIB_TABLE_NON_FWDING,
@@ -130,7 +130,7 @@ typedef struct ip6_main_t {
   ip6_fib_table_instance_t ip6_table[IP6_FIB_NUM_TABLES];
 
   ip_lookup_main_t lookup_main;
-  
+
   /* Pool of FIBs. */
   struct fib_table_t_ * fibs;
 
@@ -163,7 +163,7 @@ typedef struct ip6_main_t {
   /* feature path configuration lists */
   vnet_ip_feature_registration_t * next_feature[VNET_N_IP_FEAT];
 
-  /* Built-in unicast feature path indices, see ip_feature_init_cast(...)  */
+  /* Built-in unicast feature path indices, see vnet_feature_arc_init(...)  */
   u32 ip6_unicast_rx_feature_check_access;
   u32 ip6_unicast_rx_feature_policer_classify;
   u32 ip6_unicast_rx_feature_flow_classify;
@@ -177,7 +177,7 @@ typedef struct ip6_main_t {
   u32 ip6_multicast_rx_feature_drop;
   u32 ip6_multicast_rx_feature_vpath;
   u32 ip6_multicast_rx_feature_lookup;
-  
+
   /* Built-in tx feature path index */
   u32 ip6_tx_feature_interface_output;
 
@@ -211,7 +211,7 @@ static void __vnet_add_feature_registration_uc_##x (void)       \
   uc_##x.next = im->next_feature[VNET_IP_RX_UNICAST_FEAT];      \
   im->next_feature[VNET_IP_RX_UNICAST_FEAT] = &uc_##x;          \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t uc_##x 
+__VA_ARGS__ vnet_ip_feature_registration_t uc_##x
 
 #define VNET_IP6_MULTICAST_FEATURE_INIT(x,...)                  \
   __VA_ARGS__ vnet_ip_feature_registration_t mc_##x;            \
@@ -223,7 +223,7 @@ static void __vnet_add_feature_registration_mc_##x (void)       \
   mc_##x.next = im->next_feature[VNET_IP_RX_MULTICAST_FEAT];    \
   im->next_feature[VNET_IP_RX_MULTICAST_FEAT] = &mc_##x;        \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t mc_##x 
+__VA_ARGS__ vnet_ip_feature_registration_t mc_##x
 
 #define VNET_IP6_TX_FEATURE_INIT(x,...)                         \
   __VA_ARGS__ vnet_ip_feature_registration_t tx_##x;            \
@@ -235,7 +235,7 @@ static void __vnet_add_feature_registration_tx_##x (void)       \
   tx_##x.next = im->next_feature[VNET_IP_TX_FEAT];              \
   im->next_feature[VNET_IP_TX_FEAT] = &tx_##x;                  \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t tx_##x 
+__VA_ARGS__ vnet_ip_feature_registration_t tx_##x
 
 
 /* Global ip6 input node.  Errors get attached to ip6 input node. */
@@ -306,12 +306,12 @@ ip6_src_address_for_packet (ip_lookup_main_t * lm,
 			    u32 sw_if_index,
 			    ip6_address_t * src)
 {
-    u32 if_add_index = 
+    u32 if_add_index =
 	lm->if_address_pool_index_by_sw_if_index[sw_if_index];
     if (PREDICT_TRUE(if_add_index != ~0)) {
-	ip_interface_address_t *if_add = 
+	ip_interface_address_t *if_add =
 	    pool_elt_at_index(lm->if_address_pool, if_add_index);
-	ip6_address_t *if_ip = 
+	ip6_address_t *if_ip =
 	    ip_interface_address_get_address(lm, if_add);
 	*src = *if_ip;
 	return (0);
@@ -333,7 +333,7 @@ ip6_interface_address_matching_destination (ip6_main_t * im, ip6_address_t * dst
   ip_interface_address_t * ia;
   ip6_address_t * result = 0;
 
-  foreach_ip_interface_address (lm, ia, sw_if_index, 
+  foreach_ip_interface_address (lm, ia, sw_if_index,
                                 1 /* honor unnumbered */,
   ({
     ip6_address_t * a = ip_interface_address_get_address (lm, ia);
@@ -389,28 +389,28 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
                                   u8 * link_layer_address,
                                   uword n_bytes_link_layer_address);
 
-void 
+void
 ip6_link_local_address_from_ethernet_mac_address (ip6_address_t *ip,
                                                   u8 *mac);
 
-void 
-ip6_ethernet_mac_address_from_link_local_address (u8 *mac, 
+void
+ip6_ethernet_mac_address_from_link_local_address (u8 *mac,
                                                   ip6_address_t *ip);
 
 int vnet_set_ip6_flow_hash (u32 table_id,
 			    flow_hash_config_t flow_hash_config);
 
 int
-ip6_neighbor_ra_config(vlib_main_t * vm, u32 sw_if_index, 
+ip6_neighbor_ra_config(vlib_main_t * vm, u32 sw_if_index,
 		       u8 suppress, u8 managed, u8 other,
-		       u8 ll_option,  u8 send_unicast,  u8 cease, 
+		       u8 ll_option,  u8 send_unicast,  u8 cease,
 		       u8 use_lifetime,  u32 lifetime,
-		       u32 initial_count,  u32 initial_interval,  
+		       u32 initial_count,  u32 initial_interval,
 		       u32 max_interval,  u32 min_interval,
 		       u8 is_no);
 
 int
-ip6_neighbor_ra_prefix(vlib_main_t * vm, u32 sw_if_index,  
+ip6_neighbor_ra_prefix(vlib_main_t * vm, u32 sw_if_index,
 		       ip6_address_t *prefix_addr,  u8 prefix_len,
 		       u8 use_default,  u32 val_lifetime, u32 pref_lifetime,
 		       u8 no_advertise,  u8 off_link, u8 no_autoconfig, u8 no_onlink,
@@ -421,7 +421,7 @@ clib_error_t *
 enable_ip6_interface(vlib_main_t * vm,
 		     u32 sw_if_index);
 
-clib_error_t * 
+clib_error_t *
 disable_ip6_interface(vlib_main_t * vm,
 		     u32 sw_if_index);
 
@@ -435,19 +435,19 @@ set_ip6_link_local_address(vlib_main_t * vm,
 			   ip6_address_t *address,
 			   u8 address_length);
 
-void vnet_register_ip6_neighbor_resolution_event(vnet_main_t * vnm, 
+void vnet_register_ip6_neighbor_resolution_event(vnet_main_t * vnm,
                                                  void * address_arg,
                                                  uword node_index,
                                                  uword type_opaque,
                                                  uword data);
 
-int vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm, 
+int vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm,
 				      void * data_callback,
 				      u32 pid,
 				      void * address_arg,
 				      uword node_index,
 				      uword type_opaque,
-				      uword data, 
+				      uword data,
 				      int is_add);
 
 int vnet_ip6_nd_term (vlib_main_t * vm,
@@ -459,7 +459,7 @@ int vnet_ip6_nd_term (vlib_main_t * vm,
 		      u16 bd_index,
 		      u8 shg);
 
-int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index, 
+int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
                                  u32 table_index);
 extern vlib_node_registration_t ip6_lookup_node;
 
@@ -477,10 +477,10 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
 
     t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
     t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? t1 : 0;
-    
+
     t2 = (ip->dst_address.as_u64[0] ^ ip->dst_address.as_u64[1]);
     t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR) ? t2 : 0;
-    
+
     a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
     b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
     b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
@@ -490,7 +490,7 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
 
     t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
     t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
-    
+
     c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
         ((t1<<16) | t2) : ((t2<<16) | t1);
 

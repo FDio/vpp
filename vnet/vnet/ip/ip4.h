@@ -119,25 +119,25 @@ typedef struct ip4_main_t {
   /** Feature path configuration lists */
   vnet_ip_feature_registration_t * next_feature[VNET_N_IP_FEAT];
 
-  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_check_access;
-  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_source_reachable_via_rx;
-  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_source_reachable_via_any;
-  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_policer_classify;
-  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_flow_classify;
-  /** Built-in unicast feature path indix, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path indix, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_ipsec;
-  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_vpath;
-  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_lookup;
-  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_source_and_port_range_check;
-  /** Built-in unicast feature path indice, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path indice, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_drop;
 
   /** Built-in multicast feature path index */
@@ -147,7 +147,7 @@ typedef struct ip4_main_t {
   /** Built-in multicast feature path indices */
   u32 ip4_multicast_rx_feature_drop;
 
-  /** Built-in unicast feature path index, see @ref ip_feature_init_cast()  */
+  /** Built-in unicast feature path index, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_tx_feature_source_and_port_range_check;
 
   /** Built-in tx feature path index */
@@ -184,7 +184,7 @@ static void __vnet_add_feature_registration_uc_##x (void)       \
   uc_##x.next = im->next_feature[VNET_IP_RX_UNICAST_FEAT];      \
   im->next_feature[VNET_IP_RX_UNICAST_FEAT] = &uc_##x;          \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t uc_##x 
+__VA_ARGS__ vnet_ip_feature_registration_t uc_##x
 
 #define VNET_IP4_MULTICAST_FEATURE_INIT(x,...)                  \
   __VA_ARGS__ vnet_ip_feature_registration_t mc_##x;            \
@@ -196,7 +196,7 @@ static void __vnet_add_feature_registration_mc_##x (void)       \
   mc_##x.next = im->next_feature[VNET_IP_RX_MULTICAST_FEAT];    \
   im->next_feature[VNET_IP_RX_MULTICAST_FEAT] = &mc_##x;        \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t mc_##x 
+__VA_ARGS__ vnet_ip_feature_registration_t mc_##x
 
 #define VNET_IP4_TX_FEATURE_INIT(x,...)                         \
   __VA_ARGS__ vnet_ip_feature_registration_t tx_##x;            \
@@ -208,7 +208,7 @@ static void __vnet_add_feature_registration_tx_##x (void)       \
   tx_##x.next = im->next_feature[VNET_IP_TX_FEAT];              \
   im->next_feature[VNET_IP_TX_FEAT] = &tx_##x;                  \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t tx_##x 
+__VA_ARGS__ vnet_ip_feature_registration_t tx_##x
 
 
 /** Global ip4 input node.  Errors get attached to ip4 input node. */
@@ -249,12 +249,12 @@ ip4_src_address_for_packet (ip_lookup_main_t * lm,
 			    u32 sw_if_index,
 			    ip4_address_t * src)
 {
-    u32 if_add_index = 
+    u32 if_add_index =
 	lm->if_address_pool_index_by_sw_if_index[sw_if_index];
     if (PREDICT_TRUE(if_add_index != ~0)) {
-	ip_interface_address_t *if_add = 
+	ip_interface_address_t *if_add =
 	    pool_elt_at_index(lm->if_address_pool, if_add_index);
-	ip4_address_t *if_ip = 
+	ip4_address_t *if_ip =
 	    ip_interface_address_get_address(lm, if_add);
 	*src = *if_ip;
 	return 0;
@@ -276,7 +276,7 @@ ip4_interface_address_matching_destination (ip4_main_t * im, ip4_address_t * dst
   ip_interface_address_t * ia;
   ip4_address_t * result = 0;
 
-  foreach_ip_interface_address (lm, ia, sw_if_index, 
+  foreach_ip_interface_address (lm, ia, sw_if_index,
                                 1 /* honor unnumbered */,
   ({
     ip4_address_t * a = ip_interface_address_get_address (lm, ia);
@@ -318,8 +318,8 @@ ip4_udp_register_listener (vlib_main_t * vm,
 			   u16 dst_port,
 			   u32 next_node_index);
 
-void 
-ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type, 
+void
+ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type,
                         u32 node_index);
 
 u16 ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0, ip4_header_t * ip0);
@@ -332,7 +332,7 @@ int vnet_set_ip4_flow_hash (u32 table_id, flow_hash_config_t flow_hash_config);
 
 void ip4_mtrie_init (ip4_fib_mtrie_t * m);
 
-int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index, 
+int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
                                  u32 table_index);
 
 /* Compute flow hash.  We'll use it to select which adjacency to use for this
@@ -346,18 +346,18 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
     uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP
 			|| ip->protocol == IP_PROTOCOL_UDP);
 
-    t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) 
+    t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR)
         ? ip->src_address.data_u32 : 0;
-    t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR) 
+    t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR)
         ? ip->dst_address.data_u32 : 0;
-    
+
     a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
     b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
     b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
 
     t1 = is_tcp_udp ? tcp->ports.src : 0;
     t2 = is_tcp_udp ? tcp->ports.dst : 0;
-    
+
     t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
     t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
 
