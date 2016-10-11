@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_ac7dbfb3",
+        "filename": "build-root/deb/debian/vpp.postrm",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-11T13:54:14Z",
+      "side": 1,
+      "message": "For cleanliness, add \"removed\u003d\" to make sure it\u0027s initialized empty.",
+      "revId": "cd2b812656d835bda6431931294c6b4240202ec2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_2c49cf8b",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-11T13:54:14Z",
+      "side": 1,
+      "message": "add \"removed\u003d\" to make sure it\u0027s un-set before use",
+      "revId": "cd2b812656d835bda6431931294c6b4240202ec2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
