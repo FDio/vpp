@@ -1164,6 +1164,7 @@ distclean:
 	rm -rf $(MU_BUILD_ROOT_DIR)/*.deb
 	rm -rf $(MU_BUILD_ROOT_DIR)/*.rpm
 	rm -rf $(MU_BUILD_ROOT_DIR)/*.changes
+	rm -rf $(MU_BUILD_ROOT_DIR)/python
 	if [ -e /usr/bin/dh ];then (cd $(MU_BUILD_ROOT_DIR)/deb/;debian/rules clean); fi
 	rm -f $(MU_BUILD_ROOT_DIR)/deb/debian/*.install
 	rm -f $(MU_BUILD_ROOT_DIR)/deb/debian/*.dkms
