@@ -69,11 +69,6 @@ typedef struct {
   /* Enabling analyis of iOAM data on decap node */
   u8 has_analyse_option;
 
-#define TSP_SECONDS              0
-#define TSP_MILLISECONDS         1
-#define TSP_MICROSECONDS         2
-#define TSP_NANOSECONDS          3
-  
   /* Array of function pointers to ADD and POP HBH option handling routines */
   u8 options_size[MAX_IP6_HBH_OPTION];
   int (*add_options[MAX_IP6_HBH_OPTION])(u8 *rewrite_string, u8 *rewrite_size);
@@ -189,4 +184,6 @@ static inline u8 is_seqno_enabled (void)
   return (ip6_hop_by_hop_ioam_main.has_seqno_option);
 }
 
+int
+ip6_trace_profile_setup ();
 #endif /* __included_ip6_hop_by_hop_ioam_h__ */

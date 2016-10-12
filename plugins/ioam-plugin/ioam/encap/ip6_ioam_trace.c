@@ -38,6 +38,15 @@ typedef union
   u32 as_u32[2];
 } time_u64_t;
 
+/* *INDENT-OFF* */
+typedef CLIB_PACKED(struct {
+  ip6_hop_by_hop_option_t hdr;
+  u8 ioam_trace_type;
+  u8 data_list_elts_left;
+  u32 elts[0]; /* Variable type. So keep it generic */
+}) ioam_trace_option_t;
+/* *INDENT-ON* */
+
 
 extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
 extern ip6_main_t ip6_main;
@@ -130,7 +139,7 @@ format_ioam_data_list_element (u8 * s, va_list * args)
 
 
 int
-ioam_trace_get_sizeof_handler (u32 * result)
+ip6_ioam_trace_get_sizeof_handler (u32 * result)
 {
   u16 size = 0;
   u8 trace_data_size = 0;
@@ -290,12 +299,6 @@ ip6_hbh_ioam_trace_data_list_trace_handler (u8 * s,
   int elt_index = 0;
 
   trace = (ioam_trace_option_t *) opt;
-#if 0
-  s =
-    format (s, "  Trace Type 0x%x , %d elts left ts msb(s) 0x%x\n",
-	    trace->ioam_trace_type, trace->data_list_elts_left,
-	    t->timestamp_msbs);
-#endif
   s =
     format (s, "  Trace Type 0x%x , %d elts left\n", trace->ioam_trace_type,
 	    trace->data_list_elts_left);
@@ -384,6 +387,45 @@ ip6_hop_by_hop_ioam_trace_init (vlib_main_t * vm)
 
   return (0);
 }
+
+int
+ip6_trace_profile_cleanup (void)
+{
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+
+  hm->options_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] = 0;
+
+  return 0;
+
+}
+
+
+int
+ip6_trace_profile_setup (void)
+{
+  u32 trace_size = 0;
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+
+  trace_profile *profile = NULL;
+
+
+  profile = trace_profile_find ();
+
+  if (PREDICT_FALSE (!profile))
+    {
+      ip6_ioam_trace_stats_increment_counter (IP6_IOAM_TRACE_PROFILE_MISS, 1);
+      return (-1);
+    }
+
+
+  if (ip6_ioam_trace_get_sizeof_handler (&trace_size) < 0)
+    return (-1);
+
+  hm->options_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] = trace_size;
+
+  return (0);
+}
+
 
 VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_trace_init);
 

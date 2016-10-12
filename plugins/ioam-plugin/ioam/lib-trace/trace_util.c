@@ -21,22 +21,13 @@
 
 trace_main_t trace_main;
 
-extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
-
 static int
 trace_profile_cleanup (trace_profile * profile)
 {
-  int rv;
-  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
   memset (profile, 0, sizeof (trace_profile));
   profile->trace_tsp = TSP_MICROSECONDS;	/* Micro seconds */
-  hm->options_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] = 0;
-  if (0 !=
-      (rv =
-       ip6_ioam_set_rewrite (&hm->rewrite, hm->has_trace_option,
-			     hm->has_pot_option, hm->has_seqno_option)))
-    return (-1);
+  ip6_trace_profile_cleanup ();	/* lib-trace_TODO: Remove this once IOAM-IPv6 transport is a plugin */
   return 0;
 
 }
@@ -65,10 +56,11 @@ int
 trace_profile_create (trace_profile * profile, u8 trace_type, u8 num_elts,
 		      u32 trace_tsp, u32 node_id, u32 app_data)
 {
-  u32 trace_size = 0;
-  int rv;
-  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
+  if (!trace_type || !num_elts || !(node_id))
+    {
+      return (-1);
+    }
   if (profile && !profile->valid)
     {
       //rv = trace_profile_cleanup (profile);
@@ -79,21 +71,8 @@ trace_profile_create (trace_profile * profile, u8 trace_type, u8 num_elts,
       profile->app_data = app_data;
       profile->valid = 1;
 
-      if (ioam_trace_get_sizeof_handler (&trace_size) < 0)
-	return (-1);
-
-      hm->options_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] = trace_size;
-
-      if (hm->has_trace_option)
-	{
-	  if (0 !=
-	      (rv =
-	       ip6_ioam_set_rewrite (&hm->rewrite, hm->has_trace_option,
-				     hm->has_pot_option,
-				     hm->has_seqno_option)))
-	    return (-1);
-
-	}
+      /* lib-trace_TODO: Remove this once IOAM-IPv6 transport is a plugin */
+      ip6_trace_profile_setup ();
       return (0);
     }
 
