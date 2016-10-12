@@ -42,5 +42,14 @@ typedef CLIB_PACKED(struct {
 }) ip4_udp_header_t;
 
 extern vlib_node_registration_t li_hit_node;
+extern vlib_node_registration_t li_hit_ip4_node;
+extern vlib_node_registration_t li_hit_ip6_node;
+
+clib_error_t *
+set_li_add_delete_entry (vlib_main_t * vm,
+        ip4_address_t src_ip4_addr,
+        ip4_address_t collector,
+               u16 udp_port,
+               u8 delete);
 
 #endif /* __lawful_intercept_h__ */
