@@ -45,6 +45,75 @@
       "revId": "adb8cfb6d0ee2e3eb71cf2a7119b12aa52e464e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_a77dd8b3",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2016-10-12T10:46:57Z",
+      "side": 1,
+      "message": "Imports should be grouped in the following order:\n1. standard library imports, \n2. related third party imports, \n3. local application/library specific imports.",
+      "range": {
+        "startLine": 8,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 13
+      },
+      "revId": "adb8cfb6d0ee2e3eb71cf2a7119b12aa52e464e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_999b5cc9",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2016-10-12T10:46:57Z",
+      "side": 1,
+      "message": "Please, use the value of variable expected_retval instead of default value:\n... expected retval \u003d\u003d %u, got %s\" % (expected_retval, repr(reply))",
+      "range": {
+        "startLine": 45,
+        "startChar": 55,
+        "endLine": 45,
+        "endChar": 56
+      },
+      "revId": "adb8cfb6d0ee2e3eb71cf2a7119b12aa52e464e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_d9b8c42c",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2016-10-12T10:46:57Z",
+      "side": 1,
+      "message": "Please, remove redundant parentheses:\nif hasattr(r, \u0027reply\u0027):",
+      "range": {
+        "startLine": 62,
+        "startChar": 8,
+        "endLine": 62,
+        "endChar": 31
+      },
+      "revId": "adb8cfb6d0ee2e3eb71cf2a7119b12aa52e464e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
