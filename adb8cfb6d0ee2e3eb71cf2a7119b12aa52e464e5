@@ -71,6 +71,23 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_e76e4096",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-10-12T12:14:51Z",
+      "side": 1,
+      "message": "These interface classes are a great addition.\nShould they belong in their own file?\nI\u0027d like to see us model more constructs in this way, tables, routes, features, etc. I don\u0027t want to end up piling everything into this one file.",
+      "revId": "adb8cfb6d0ee2e3eb71cf2a7119b12aa52e464e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_999b5cc9",
         "filename": "test/vpp_papi_provider.py",
         "patchSetId": 1
@@ -111,6 +128,23 @@
         "endLine": 62,
         "endChar": 31
       },
+      "revId": "adb8cfb6d0ee2e3eb71cf2a7119b12aa52e464e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_998fdc23",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-10-12T12:14:51Z",
+      "side": 1,
+      "message": "how about creating classes to represent routes, like you do to represent interfaces?",
       "revId": "adb8cfb6d0ee2e3eb71cf2a7119b12aa52e464e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
