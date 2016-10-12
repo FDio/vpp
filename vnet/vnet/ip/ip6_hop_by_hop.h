@@ -48,17 +48,11 @@ typedef struct {
 #define PPC_DECAP 2
   u8 has_ppc_option;
 
-#define TSP_SECONDS              0
-#define TSP_MILLISECONDS         1
-#define TSP_MICROSECONDS         2
-#define TSP_NANOSECONDS          3
-  
   /* Array of function pointers to ADD and POP HBH option handling routines */
   u8 options_size[256];
   int (*add_options[256])(u8 *rewrite_string, u8 *rewrite_size);
   int (*pop_options[256])(ip6_header_t *ip, ip6_hop_by_hop_option_t *opt);
-  int (*get_sizeof_options[256])(u32 *rewrite_size);
-  
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
@@ -117,4 +111,6 @@ ip6_hbh_get_sizeof_register_option (u8 option,
 int
 ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
 		      int has_pot_option, int has_ppc_option);
+int
+ip6_trace_profile_setup ();
 #endif /* __included_ip6_hop_by_hop_ioam_h__ */
