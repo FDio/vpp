@@ -106,6 +106,8 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
     {
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	ASSERT(0);
+        return (nhs);
+	break;
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
 	if (MPLS_IETF_IMPLICIT_NULL_LABEL == path_ext->fpe_label)

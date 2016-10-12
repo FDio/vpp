@@ -193,7 +193,7 @@ ip4_lookup_inline (vlib_main_t * vm,
               hash_c0 = vnet_buffer (p0)->ip.flow_hash =
                 ip4_compute_flow_hash (ip0, flow_hash_config0);
             }
-          if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
+          if (PREDICT_FALSE(lb1->lb_n_buckets > 1))
             {
 	      flow_hash_config1 = lb1->lb_hash_config;
               hash_c1 = vnet_buffer (p1)->ip.flow_hash =
