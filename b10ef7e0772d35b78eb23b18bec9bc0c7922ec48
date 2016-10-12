@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_476d0c04",
+        "filename": "vlib/vlib/threads_cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-10-12T06:54:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa3479d7_0772647c",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 78,
+        "endChar": 17
+      },
+      "revId": "b10ef7e0772d35b78eb23b18bec9bc0c7922ec48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_074b842c",
         "filename": "vpp/conf/startup.conf",
         "patchSetId": 6
@@ -36,6 +60,30 @@
       "writtenOn": "2016-10-11T17:23:18Z",
       "side": 1,
       "message": "trailing whitespace",
+      "range": {
+        "startLine": 38,
+        "startChar": 30,
+        "endLine": 38,
+        "endChar": 31
+      },
+      "revId": "b10ef7e0772d35b78eb23b18bec9bc0c7922ec48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_277208e6",
+        "filename": "vpp/conf/startup.conf",
+        "patchSetId": 6
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-10-12T06:54:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa3479d7_074b842c",
       "range": {
         "startLine": 38,
         "startChar": 30,
