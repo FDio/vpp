@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_9cd34a38",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 15242,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-10-12T15:47:37Z",
+      "side": 1,
+      "message": "What is the maximum size of the LI table being dumped?  Assuming that it is going to be less than or equal to the size of the interface table, the api control ping technique is acceptable.  If the table can be very large, then this is not the correct way to retrieve the table.",
+      "range": {
+        "startLine": 15226,
+        "startChar": 0,
+        "endLine": 15242,
+        "endChar": 1
+      },
+      "revId": "527c5cb254d515855ffa4ca04ac9e3987dd1ea8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_fc1c9615",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 4990,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-10-12T15:47:37Z",
+      "side": 1,
+      "message": "Please combine the create \u0026 delete api messages into a single li_add_del api message (e.g. ip_add_del_route).",
+      "range": {
+        "startLine": 4948,
+        "startChar": 0,
+        "endLine": 4990,
+        "endChar": 2
+      },
+      "revId": "527c5cb254d515855ffa4ca04ac9e3987dd1ea8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
