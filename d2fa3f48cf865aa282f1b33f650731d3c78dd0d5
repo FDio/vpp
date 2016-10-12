@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_bca96e7d",
+        "filename": "plugins/snat-plugin/snat/snat.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-12T19:10:37Z",
+      "side": 1,
+      "message": "Can you avoid this lock by using simple per-worker counters?\n\ni.e. vlib_simple_counter_main_t or vlib_combined_counter_main_t ?",
+      "range": {
+        "startLine": 104,
+        "startChar": 17,
+        "endLine": 104,
+        "endChar": 29
+      },
+      "revId": "d2fa3f48cf865aa282f1b33f650731d3c78dd0d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
