@@ -361,49 +361,55 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 	  /* save for next feature graph nodes */
 	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
 
-	  if (PREDICT_TRUE (table_index0 != ~0))
+	  if ((b0->flags & VLIB_NODE_FLAG_IS_L2_CLASSIFY) == 0)
 	    {
-	      hash0 = vnet_buffer (b0)->l2_classify.hash;
-	      t0 = pool_elt_at_index (vcm->tables, table_index0);
+	      if (PREDICT_TRUE (table_index0 != ~0))
+		{
+		  hash0 = vnet_buffer (b0)->l2_classify.hash;
+		  t0 = pool_elt_at_index (vcm->tables, table_index0);
 
-	      e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
-	      if (e0)
-		{
-		  vnet_buffer (b0)->l2_classify.opaque_index
-		    = e0->opaque_index;
-		  vlib_buffer_advance (b0, e0->advance);
-		  next0 = (e0->next_index < n_next_nodes) ?
-		    e0->next_index : next0;
-		  hits++;
-		}
-	      else
-		{
-		  while (1)
+		  e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
+		  if (e0)
 		    {
-		      if (t0->next_table_index != ~0)
-			t0 = pool_elt_at_index (vcm->tables,
-						t0->next_table_index);
-		      else
+		      vnet_buffer (b0)->l2_classify.opaque_index
+			= e0->opaque_index;
+		      vlib_buffer_advance (b0, e0->advance);
+		      next0 = (e0->next_index < n_next_nodes) ?
+			e0->next_index : next0;
+		      hits++;
+		      b0->flags |= VLIB_NODE_FLAG_IS_L2_CLASSIFY;
+		    }
+		  else
+		    {
+		      while (1)
 			{
-			  next0 = (t0->miss_next_index < n_next_nodes) ?
-			    t0->miss_next_index : next0;
-			  misses++;
-			  break;
-			}
+			  if (t0->next_table_index != ~0)
+			    t0 = pool_elt_at_index (vcm->tables,
+						    t0->next_table_index);
+			  else
+			    {
+			      next0 = (t0->miss_next_index < n_next_nodes) ?
+				t0->miss_next_index : next0;
+			      misses++;
+			      break;
+			    }
 
-		      hash0 = vnet_classify_hash_packet (t0, (u8 *) h0);
-		      e0 =
-			vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
-		      if (e0)
-			{
-			  vnet_buffer (b0)->l2_classify.opaque_index
-			    = e0->opaque_index;
-			  vlib_buffer_advance (b0, e0->advance);
-			  next0 = (e0->next_index < n_next_nodes) ?
-			    e0->next_index : next0;
-			  hits++;
-			  chain_hits++;
-			  break;
+			  hash0 = vnet_classify_hash_packet (t0, (u8 *) h0);
+			  e0 =
+			    vnet_classify_find_entry (t0, (u8 *) h0, hash0,
+						      now);
+			  if (e0)
+			    {
+			      vnet_buffer (b0)->l2_classify.opaque_index
+				= e0->opaque_index;
+			      vlib_buffer_advance (b0, e0->advance);
+			      next0 = (e0->next_index < n_next_nodes) ?
+				e0->next_index : next0;
+			      hits++;
+			      chain_hits++;
+			      b0->flags |= VLIB_NODE_FLAG_IS_L2_CLASSIFY;
+			      break;
+			    }
 			}
 		    }
 		}
@@ -606,7 +612,7 @@ int_l2_input_classify_command_fn (vlib_main_t * vm,
       && other_table_index == ~0)
     {
       vlib_cli_output (vm, "L2 classification disabled");
-      vnet_l2_input_classify_enable_disable (sw_if_index, 0 /* enable */ );
+      vnet_l2_input_classify_enable_disable (sw_if_index, 0 /* disable */ );
       return 0;
     }
 
