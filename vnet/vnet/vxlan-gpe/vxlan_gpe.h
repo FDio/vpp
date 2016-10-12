@@ -114,17 +114,26 @@ typedef struct {
 
   /** flags */
   u32 flags;
+
+  /** rewrite size for dynamic plugins like iOAM */
+  u8  rewrite_size;
+
+  /** Next node after VxLAN-GPE encap */
+  uword encap_next_node;
 } vxlan_gpe_tunnel_t;
 
 /** Flags for vxlan_gpe_tunnel_t */
 #define VXLAN_GPE_TUNNEL_IS_IPV4	1
+#define VXLAN_GPE_TUNNEL_IS_IOAM_CAPABLE 0x2
 
 /** next nodes for VXLAN GPE input */
 #define foreach_vxlan_gpe_input_next        \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")                       \
-_(ETHERNET_INPUT, "ethernet-input")
+_(ETHERNET_INPUT, "ethernet-input")             \
+_(NSH_INPUT, "ip4-load-balance")                      \
+_(IOAM_INPUT, "vxlan-gpe-decap-ioam-v4")
 
 /** struct for next nodes for VXLAN GPE input */
 typedef enum {
@@ -158,10 +167,14 @@ typedef struct {
   /** Mapping from sw_if_index to tunnel index */
   u32 * tunnel_index_by_sw_if_index;
 
+
   /** State convenience vlib_main_t */
   vlib_main_t * vlib_main;
   /** State convenience vnet_main_t */
   vnet_main_t * vnet_main;
+
+  /** Whether iOAM enabled ? */
+  u8            ioam_enabled;
 } vxlan_gpe_main_t;
 
 vxlan_gpe_main_t vxlan_gpe_main;
@@ -187,8 +200,117 @@ typedef struct {
 int vnet_vxlan_gpe_add_del_tunnel
 (vnet_vxlan_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
 
+int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size, u8 protocol_override);
+int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size, u8 protocol_override);
+
+/*
+ * iOAM handling
+ */
+typedef struct {
+  /* Option Type */
+  u8 type;
+  /* Length in octets of the option data field */
+  u8 length;
+} vxlan_gpe_ioam_option_t;
 
 
+/*
+ * Primary h-b-h handler trace support
+ * We work pretty hard on the problem for obvious reasons
+ */
+typedef struct {
+  u32 next_index;
+  u32 trace_len;
+  u8 option_data[256];
+} ioam_hop_by_hop_trace_t;
+
+
+typedef struct vxlan_gpe_ioam_main_  {
+  /* The current rewrite we're using */
+  u8 * rewrite;
+
+  /* Trace data processing callback */
+  void *ioam_end_of_path_cb;
+  /* Configuration data */
+  /* Adjacency */
+  ip6_address_t adj;
+#define IOAM_HBYH_ADD  0
+#define IOAM_HBYH_MOD  1
+#define IOAM_HBYH_POP  2
+  u8 ioam_flag;
+  /* time scale transform. Joy. */
+  u32 unix_time_0;
+  f64 vlib_time_0;
+
+
+  /* Trace option */
+  u8 has_trace_option;
+
+  /* Pot option */
+  u8 has_pot_option;
+
+#define PPC_NONE  0
+#define PPC_ENCAP 1
+#define PPC_DECAP 2
+  u8 has_ppc_option;
+
+#define TSP_SECONDS              0
+#define TSP_MILLISECONDS         1
+#define TSP_MICROSECONDS         2
+#define TSP_NANOSECONDS          3
+
+  /* Array of function pointers to ADD and POP HBH option handling routines */
+  u8 options_size[256];
+  int (*add_options[256])(u8 *rewrite_string, u8 *rewrite_size);
+  int (*pop_options[256])(ip4_header_t *ip, vxlan_gpe_ioam_option_t *opt);
+
+  /* Array of function pointers to HBH option handling routines */
+  int (*options[256])(vlib_buffer_t *b, vxlan_gpe_tunnel_t *ip, vxlan_gpe_ioam_option_t *opt, u8 is_ipv4);
+  u8 *(*trace[256])(u8 *s, vxlan_gpe_ioam_option_t *opt);
+
+  /* API message ID base */
+  u16 msg_id_base;
+
+  /* Override to export for iOAM */
+  uword decap_next_override;
+
+  /* sequence of node graph for encap */
+  uword encap_v4_next_node;
+  uword encap_v6_next_node;
+
+  /** State convenience vlib_main_t */
+  vlib_main_t * vlib_main;
+  /** State convenience vnet_main_t */
+  vnet_main_t * vnet_main;
+
+
+} vxlan_gpe_ioam_main_t;
+extern vxlan_gpe_ioam_main_t vxlan_gpe_ioam_main;
+
+typedef enum
+{
+  VXLAN_GPE_DECAP_IOAM_V4_NEXT_POP,
+  VXLAN_GPE_DECAP_IOAM_V4_NEXT_DROP,
+  VXLAN_GPE_DECAP_IOAM_V4_N_NEXT
+} vxlan_gpe_decap_ioam_v4_next_t;
+
+typedef enum
+{
+  VXLAN_GPE_POP_IOAM_V4_NEXT_ETHER,
+  VXLAN_GPE_POP_IOAM_V4_NEXT_DROP,
+  VXLAN_GPE_POP_IOAM_V4_N_NEXT
+} vxlan_gpe_pop_ioam_v4_next_t;
+
+
+/**
+ * @brief Struct for defining VXLAN GPE next nodes
+ */
+typedef enum {
+  VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
+  VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP,
+  VXLAN_GPE_ENCAP_NEXT_DROP,
+  VXLAN_GPE_ENCAP_N_NEXT
+} vxlan_gpe_encap_next_t;
 
 
 #endif /* included_vnet_vxlan_gpe_h */

@@ -18,6 +18,8 @@
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
 #include <ioam/export/ioam_export.h>
+#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
 
 typedef struct
 {
@@ -59,7 +61,7 @@ static char *export_error_strings[] = {
 
 typedef enum
 {
-  EXPORT_NEXT_POP_HBYH,
+  EXPORT_NEXT_VXLAN_GPE_INPUT,
   EXPORT_N_NEXT,
 } export_next_t;
 
@@ -119,11 +121,94 @@ copy3cachelines (void *dst, const void *src, size_t n)
 #endif
 }
 
-static uword
-ip6_export_node_fn (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+#if 0
+always_inline void
+ioam_pop_hop_by_hop_processing_v4 (vlib_main_t * vm,
+				   ip4_header_t * ip0,
+				   vxlan_gpe_ioam_hdr_t * gpe_ioam0)
 {
-  ioam_export_main_t *em = &ioam_export_main;
+  vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
+  vxlan_gpe_ioam_option_t *opt0, *limit0;
+  u8 type0;
+
+  if (!gpe_ioam0 || !ip0)
+    {
+      return;
+    }
+
+  opt0 = (vxlan_gpe_ioam_option_t *) (gpe_ioam0 + 1);
+  limit0 = (vxlan_gpe_ioam_option_t *) ((u8 *) gpe_ioam0 + gpe_ioam0->length);
+
+  /* Scan the set of h-b-h options, process ones that we understand */
+  while (opt0 < limit0)
+    {
+      type0 = opt0->type;
+      switch (type0)
+	{
+	case 0:		/* Pad1 */
+	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0) + 1;
+	  continue;
+	case 1:		/* PadN */
+	  break;
+	default:
+	  if (hm->pop_options[type0])
+	    {
+	      if ((*hm->pop_options[type0]) ((ip4_header_t *) ip0,
+					     (vxlan_gpe_ioam_option_t *) opt0)
+		  < 0)
+		{
+		  //vlib_node_increment_counter (vm, ip6_pop_hop_by_hop_node.index,
+		  //               IP6_POP_HOP_BY_HOP_ERROR_OPTION_FAILED, 1);
+		}
+	    }
+	}
+      opt0 =
+	(vxlan_gpe_ioam_option_t *) (((u8 *) opt0) + opt0->length +
+				     sizeof (vxlan_gpe_ioam_option_t));
+    }
+}
+
+always_inline void
+vxlan_gpe_decap_ioam_pop_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
+			     vlib_buffer_t * b0)
+{
+  ip4_header_t *ip0;
+  udp_header_t *udp_hdr0;
+  vxlan_gpe_header_t *gpe_hdr0;
+  vxlan_gpe_ioam_hdr_t *gpe_ioam0;
+  u64 *copy_dst0, *copy_src0;
+
+  ip0 = vlib_buffer_get_current (b0);
+
+  /* Perfectly normal to end up here w/ out h-b-h header */
+  udp_hdr0 = (udp_header_t *) (ip0 + 1);
+  gpe_hdr0 = (vxlan_gpe_header_t *) (udp_hdr0 + 1);
+  gpe_ioam0 = (vxlan_gpe_ioam_hdr_t *) (gpe_hdr0 + 1);
+
+  /* TODO:Temporarily doing it here.. do this validation in end_of_path_cb */
+  ioam_pop_hop_by_hop_processing_v4 (vm, ip0, gpe_ioam0);
+  /* Pop the trace data */
+  vlib_buffer_advance (b0, gpe_ioam0->length);
+
+  gpe_hdr0->protocol = gpe_ioam0->protocol;
+  copy_src0 = (u64 *) ((u8 *) ip0 - 4);
+  copy_dst0 = (u64 *) ((u8 *) copy_src0 + gpe_ioam0->length);
+
+  copy_dst0[4] = copy_src0[4];
+  copy_dst0[3] = copy_src0[3];
+  copy_dst0[2] = copy_src0[2];
+  copy_dst0[1] = copy_src0[1];
+  copy_dst0[0] = copy_src0[0];
+
+  return;
+}
+#endif
+
+static uword
+vxlan_gpe_export_node_fn (vlib_main_t * vm,
+			  vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  ioam_export_main_t *em = &vxlan_gpe_ioam_export_main;
   u32 n_left_from, *from, *to_next;
   export_next_t next_index;
   u32 pkts_recorded = 0;
@@ -145,10 +230,10 @@ ip6_export_node_fn (vlib_main_t * vm,
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-	  u32 next0 = EXPORT_NEXT_POP_HBYH;
-	  u32 next1 = EXPORT_NEXT_POP_HBYH;
+	  u32 next0 = EXPORT_NEXT_VXLAN_GPE_INPUT;
+	  u32 next1 = EXPORT_NEXT_VXLAN_GPE_INPUT;
 	  u32 bi0, bi1;
-	  ip6_header_t *ip60, *ip61;
+	  ip4_header_t *ip40, *ip41;
 	  vlib_buffer_t *p0, *p1;
 	  u32 ip_len0, ip_len1;
 
@@ -180,15 +265,13 @@ ip6_export_node_fn (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, bi0);
 	  p1 = vlib_get_buffer (vm, bi1);
 
-	  ip60 = vlib_buffer_get_current (p0);
-	  ip61 = vlib_buffer_get_current (p1);
+	  ip40 = vlib_buffer_get_current (p0);
+	  ip41 = vlib_buffer_get_current (p1);
 
 	  ip_len0 =
-	    clib_net_to_host_u16 (ip60->payload_length) +
-	    sizeof (ip6_header_t);
+	    clib_net_to_host_u16 (ip40->length) + sizeof (ip6_header_t);
 	  ip_len1 =
-	    clib_net_to_host_u16 (ip61->payload_length) +
-	    sizeof (ip6_header_t);
+	    clib_net_to_host_u16 (ip41->length) + sizeof (ip6_header_t);
 
 	  ebi0 = my_buf->buffer_index;
 	  eb0 = vlib_get_buffer (vm, ebi0);
@@ -200,7 +283,7 @@ ip6_export_node_fn (vlib_main_t * vm,
 	  ip_len1 =
 	    ip_len1 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : ip_len1;
 
-	  copy3cachelines (eb0->data + eb0->current_length, ip60, ip_len0);
+	  copy3cachelines (eb0->data + eb0->current_length, ip40, ip_len0);
 	  eb0->current_length += DEFAULT_EXPORT_SIZE;
 	  /* To maintain uniform size per export, each
 	   * record is default size, ip6 hdr can be
@@ -221,7 +304,7 @@ ip6_export_node_fn (vlib_main_t * vm,
 	  if (PREDICT_FALSE (eb0 == 0))
 	    goto NO_BUFFER1;
 
-	  copy3cachelines (eb0->data + eb0->current_length, ip61, ip_len1);
+	  copy3cachelines (eb0->data + eb0->current_length, ip41, ip_len1);
 	  eb0->current_length += DEFAULT_EXPORT_SIZE;
 	  my_buf->records_in_this_buffer++;
 	  if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)
@@ -239,8 +322,7 @@ ip6_export_node_fn (vlib_main_t * vm,
 		  export_trace_t *t =
 		    vlib_add_trace (vm, node, p0, sizeof (*t));
 		  t->flow_label =
-		    clib_net_to_host_u32 (ip60->
-					  ip_version_traffic_class_and_flow_label);
+		    clib_net_to_host_u32 (ip40->ip_version_and_header_length);
 		  t->next_index = next0;
 		}
 	      if (p1->flags & VLIB_BUFFER_IS_TRACED)
@@ -248,8 +330,7 @@ ip6_export_node_fn (vlib_main_t * vm,
 		  export_trace_t *t =
 		    vlib_add_trace (vm, node, p1, sizeof (*t));
 		  t->flow_label =
-		    clib_net_to_host_u32 (ip61->
-					  ip_version_traffic_class_and_flow_label);
+		    clib_net_to_host_u32 (ip41->ip_version_and_header_length);
 		  t->next_index = next1;
 		}
 	    }
@@ -264,8 +345,8 @@ ip6_export_node_fn (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *p0;
-	  u32 next0 = EXPORT_NEXT_POP_HBYH;
-	  ip6_header_t *ip60;
+	  u32 next0 = EXPORT_NEXT_VXLAN_GPE_INPUT;
+	  ip4_header_t *ip40;
 	  u32 ip_len0;
 
 	  /* speculatively enqueue p0 to the current next frame */
@@ -277,10 +358,9 @@ ip6_export_node_fn (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  p0 = vlib_get_buffer (vm, bi0);
-	  ip60 = vlib_buffer_get_current (p0);
+	  ip40 = vlib_buffer_get_current (p0);
 	  ip_len0 =
-	    clib_net_to_host_u16 (ip60->payload_length) +
-	    sizeof (ip6_header_t);
+	    clib_net_to_host_u16 (ip40->length) + sizeof (ip4_header_t);
 
 	  ebi0 = my_buf->buffer_index;
 	  eb0 = vlib_get_buffer (vm, ebi0);
@@ -289,10 +369,10 @@ ip6_export_node_fn (vlib_main_t * vm,
 
 	  ip_len0 =
 	    ip_len0 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : ip_len0;
-	  copy3cachelines (eb0->data + eb0->current_length, ip60, ip_len0);
+	  copy3cachelines (eb0->data + eb0->current_length, ip40, ip_len0);
 	  eb0->current_length += DEFAULT_EXPORT_SIZE;
 	  /* To maintain uniform size per export, each
-	   * record is default size, ip6 hdr can be
+	   * record is default size, ip4 hdr can be
 	   * used to parse the record correctly
 	   */
 	  my_buf->records_in_this_buffer++;
@@ -309,8 +389,7 @@ ip6_export_node_fn (vlib_main_t * vm,
 	    {
 	      export_trace_t *t = vlib_add_trace (vm, node, p0, sizeof (*t));
 	      t->flow_label =
-		clib_net_to_host_u32 (ip60->
-				      ip_version_traffic_class_and_flow_label);
+		clib_net_to_host_u32 (ip40->ip_version_and_header_length);
 	      t->next_index = next0;
 	    }
 
@@ -332,21 +411,19 @@ ip6_export_node_fn (vlib_main_t * vm,
 }
 
 /*
- * Node for IP6 export
+ * Node for VXLAN-GPE export
  */
 VLIB_REGISTER_NODE (export_node) =
 {
-  .function = ip6_export_node_fn,
-  .name = "ip6-export",
+  .function = vxlan_gpe_export_node_fn,
+  .name = "vxlan-gpe-ioam-export",
   .vector_size = sizeof (u32),
   .format_trace = format_export_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN (export_error_strings),
   .error_strings = export_error_strings,
   .n_next_nodes = EXPORT_N_NEXT,
-  /* edit / add dispositions here */
-  .next_nodes =
-  {
-    [EXPORT_NEXT_POP_HBYH] = "ip6-pop-hop-by-hop"
-  },
+    /* edit / add dispositions here */
+    .next_nodes =
+  {[EXPORT_NEXT_VXLAN_GPE_INPUT] = "vxlan-gpe-pop-ioam-v4"},
 };

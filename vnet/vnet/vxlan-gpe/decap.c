@@ -287,7 +287,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 
       t0 = pool_elt_at_index(ngm->tunnels, tunnel_index0);
 
-      next0 = t0->protocol;
+      //next0 = t0->protocol;
 
       sw_if_index0 = t0->sw_if_index;
       len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -372,7 +372,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 
       t1 = pool_elt_at_index(ngm->tunnels, tunnel_index1);
 
-      next1 = t1->protocol;
+      //next1 = t1->protocol;
       sw_if_index1 = t1->sw_if_index;
       len1 = vlib_buffer_length_in_chain (vm, b1);
 
@@ -530,7 +530,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 
       t0 = pool_elt_at_index(ngm->tunnels, tunnel_index0);
 
-      next0 = t0->protocol;
+      //next0 = t0->protocol;
 
       sw_if_index0 = t0->sw_if_index;
       len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -607,6 +607,16 @@ vxlan4_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   return vxlan_gpe_input (vm, node, from_frame, /* is_ip4 */1);
 }
+
+extern vxlan_gpe_ioam_main_t vxlan_gpe_ioam_main;
+void
+vxlan_gpe_set_next_override (uword next)
+{
+  vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
+
+  hm->decap_next_override = next;
+}
+
 
 /**
  * @brief Graph processing dispatch function for IPv6 VXLAN GPE
