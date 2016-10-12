@@ -18,6 +18,8 @@
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
 #include <ioam/export-common/ioam_export.h>
+#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
 
 typedef struct
 {
@@ -59,7 +61,7 @@ static char *export_error_strings[] = {
 
 typedef enum
 {
-  EXPORT_NEXT_POP_HBYH,
+  EXPORT_NEXT_VXLAN_GPE_INPUT,
   EXPORT_N_NEXT,
 } export_next_t;
 
@@ -119,33 +121,42 @@ copy3cachelines (void *dst, const void *src, size_t n)
 #endif
 }
 
+
 static uword
-ip6_export_node_fn (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+vxlan_gpe_export_node_fn (vlib_main_t * vm,
+			  vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  ioam_export_main_t *em = &ioam_export_main;
-  ioam_export_node_common(em, vm, node, frame, ip6_header_t, payload_length,
-                          ip_version_traffic_class_and_flow_label, 
-                          EXPORT_NEXT_POP_HBYH);
+  ioam_export_main_t *em = &vxlan_gpe_ioam_export_main;
+  ioam_export_node_common (em, vm, node, frame, ip4_header_t, length,
+			   ip_version_and_header_length,
+			   EXPORT_NEXT_VXLAN_GPE_INPUT);
   return frame->n_vectors;
 }
 
 /*
- * Node for IP6 export
+ * Node for VXLAN-GPE export
  */
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (export_node) =
 {
-  .function = ip6_export_node_fn,
-  .name = "ip6-export",
+  .function = vxlan_gpe_export_node_fn,
+  .name = "vxlan-gpe-ioam-export",
   .vector_size = sizeof (u32),
   .format_trace = format_export_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN (export_error_strings),
   .error_strings = export_error_strings,
   .n_next_nodes = EXPORT_N_NEXT,
-  /* edit / add dispositions here */
-  .next_nodes =
-  {
-    [EXPORT_NEXT_POP_HBYH] = "ip6-pop-hop-by-hop"
-  },
+    /* edit / add dispositions here */
+    .next_nodes =
+  {[EXPORT_NEXT_VXLAN_GPE_INPUT] = "vxlan-gpe-pop-ioam-v4"},
 };
+/* *INDENT-ON* */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

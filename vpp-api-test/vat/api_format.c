@@ -11140,7 +11140,7 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
 
   mp->encap_vrf_id = ntohl (encap_vrf_id);
   mp->decap_vrf_id = ntohl (decap_vrf_id);
-  mp->protocol = ntohl (protocol);
+  mp->protocol = protocol;
   mp->vni = ntohl (vni);
   mp->is_add = is_add;
   mp->is_ipv6 = ipv6_set;
