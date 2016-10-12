@@ -2667,18 +2667,17 @@ add_del_interface_table (vlib_main_t * vm,
 }
 
 /*?
- * Place the indicated interface into the supplied VRF
+ * Place the indicated interface into the supplied VRF.
+ *
+ * Interface addresses added after setting the interface IP table end up in
+ * the indicated VRF table. Predictable but potentially counter-intuitive
+ * results occur if you provision interface addresses in multiple FIBs.
+ * Upon RX, packets will be processed in the last IP table ID provisioned.
+ * It might be marginally useful to evade source RPF drops to put an interface
+ * address into multiple FIBs.
  *
  * @cliexpar
- * @cliexstart{set interface ip table}
- *
- *  vpp# set interface ip table GigabitEthernet2/0/0 2
- *
- * Interface addresses added after setting the interface IP table end up in the indicated VRF table.
- * Predictable but potentially counter-intuitive results occur if you provision interface addresses in multiple FIBs.
- * Upon RX, packets will be processed in the last IP table ID provisioned.
- * It might be marginally useful to evade source RPF drops to put an interface address into multiple FIBs.
- * @cliexend
+ * @cliexcmd{set interface ip table GigabitEthernet2/0/0 2}
  ?*/
 VLIB_CLI_COMMAND (set_interface_ip_table_command, static) = {
   .path = "set interface ip table",

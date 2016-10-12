@@ -382,23 +382,23 @@ set_ip_source_check (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 /*?
- * Add the unicast RPF check feature to an input interface
+ * Add the unicast IPv4 and IPv6 RPF check feature to an input interface.
+ *
+ * Two flavours are supported;
+ * - @c loose:  accept ingress packet if there is a route to reach the source.
+ * - @c strict: accept ingress packet if it arrived on an interface which
+ *           the route to the source uses. i.e. an interface that the source
+ *           is reachable via.
+ *
+ * The default is @c strict.
  *
  * @cliexpar
- * @cliexstart{set interface ip source-check}
- * Two flavours are supported;
- *  loose: accept ingress packet if there is a route to reach the source
- *  strict: accept ingress packet if it arrived on an interface which
- *          the route to the source uses. i.e. an interface that the source
- *          is reachable via.
- * the deafult is strict.
- *
- * @cliexend
+ * @cliexcmd{set interface ip source-check GigabitEthernet2/1/0 loose}
 ?*/
 VLIB_CLI_COMMAND (set_interface_ip_source_check_command, static) = {
   .path = "set interface ip source-check",
   .function = set_ip_source_check,
-  .short_help = "Set IP4/IP6 interface unicast source check",
+  .short_help = "set interface ip source-check <intfc> [del] [loose|strict]",
 };
 /* *INDENT-ON* */
 
@@ -478,15 +478,13 @@ done:
 
 /* *INDENT-OFF* */
 /*?
- * Add an exemption for a prefix to pass the uRPF loose check. Testing purposes only.
+ * Add an exception for a prefix to pass the loose RPF tests. This is useful
+ * for testing purposes.
+ *
+ * VPP always performs a loose uRPF check for for-us traffic.
  *
  * @cliexpar
- * @cliexstart{ip rpf-accept}
- *
- * Add an exception for a prefix to pass the loose RPF tests. This is usefull
- * for testing purposes.
- * VPP always performs a loose uRPF check for for-us traffic.
- * @cliexend
+ * @cliexcmd{ip rpf-accept}
 ?*/
 VLIB_CLI_COMMAND (ip_source_check_accept_command, static) = {
   .path = "ip urpf-accept",

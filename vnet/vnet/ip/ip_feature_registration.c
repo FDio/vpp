@@ -359,13 +359,10 @@ show_ip_features_command_fn (vlib_main_t * vm,
 }
 
 /*?
- * Display the set of available ip features
+ * Display the set of available ip features.
  *
  * @cliexpar
- * Example:
  * @cliexcmd{show ip features}
- * @cliexend
- * @endparblock
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_features_command, static) = {
@@ -463,13 +460,10 @@ show_ip_interface_features_command_fn (vlib_main_t * vm,
 }
 
 /*?
- * Display the ip features configured on a specific interface
+ * Display the ip features configured on a specific interface.
  *
  * @cliexpar
- * Example:
  * @cliexcmd{show ip interface features GigabitEthernet2/0/0}
- * @cliexend
- * @endparblock
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_interface_features_command, static) = {
