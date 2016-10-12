@@ -1,0 +1,450 @@
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/*
+ *------------------------------------------------------------------
+ * vxlan_gpe_test.c - test harness for vxlan_gpe plugin
+ *------------------------------------------------------------------
+ */
+
+#include <vat/vat.h>
+#include <vlibapi/api.h>
+#include <vlibmemory/api.h>
+#include <vlibsocket/api.h>
+#include <vppinfra/error.h>
+
+/* Declare message IDs */
+#include <ioam/lib-vxlan-gpe/vxlan_gpe_msg_enum.h>
+
+/* define message structures */
+#define vl_typedefs
+#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
+#undef vl_typedefs
+
+/* declare message handlers for each api */
+
+#define vl_endianfun		/* define message structures */
+#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
+#undef vl_endianfun
+
+/* instantiate all the print functions we know about */
+#define vl_print(handle, ...)
+#define vl_printfun
+#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
+#undef vl_printfun
+
+/* Get the API version number. */
+#define vl_api_version(n,v) static u32 api_version=(v);
+#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
+#undef vl_api_version
+#include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h>
+#include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
+
+typedef struct
+{
+  /* API message ID base */
+  u16 msg_id_base;
+  vat_main_t *vat_main;
+} vxlan_gpe_test_main_t;
+
+vxlan_gpe_test_main_t vxlan_gpe_test_main;
+
+#define foreach_standard_reply_retval_handler     \
+_(vxlan_gpe_ioam_enable_reply)                    \
+_(vxlan_gpe_ioam_disable_reply)                   \
+_(vxlan_gpe_ioam_vni_enable_reply)                \
+_(vxlan_gpe_ioam_vni_disable_reply)
+
+#define _(n)                                            \
+    static void vl_api_##n##_t_handler                  \
+    (vl_api_##n##_t * mp)                               \
+    {                                                   \
+        vat_main_t * vam = vxlan_gpe_test_main.vat_main;   \
+        i32 retval = ntohl(mp->retval);                 \
+        if (vam->async_mode) {                          \
+            vam->async_errors += (retval < 0);          \
+        } else {                                        \
+            vam->retval = retval;                       \
+            vam->result_ready = 1;                      \
+        }                                               \
+    }
+foreach_standard_reply_retval_handler;
+#undef _
+
+/*
+ * Table of message reply handlers, must include boilerplate handlers
+ * we just generated
+ */
+#define foreach_vpe_api_reply_msg                                       \
+_(VXLAN_GPE_IOAM_ENABLE_REPLY, vxlan_gpe_ioam_enable_reply)             \
+_(VXLAN_GPE_IOAM_DISABLE_REPLY, vxlan_gpe_ioam_disable_reply)           \
+_(VXLAN_GPE_IOAM_VNI_ENABLE_REPLY, vxlan_gpe_ioam_vni_enable_reply)     \
+_(VXLAN_GPE_IOAM_VNI_DISABLE_REPLY, vxlan_gpe_ioam_vni_disable_reply)   \
+
+
+/* M: construct, but don't yet send a message */
+
+#define M(T,t)                                                  \
+do {                                                            \
+    vam->result_ready = 0;                                      \
+    mp = vl_msg_api_alloc(sizeof(*mp));                         \
+    memset (mp, 0, sizeof (*mp));                               \
+    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \
+    mp->client_index = vam->my_client_index;                    \
+} while(0);
+
+#define M2(T,t,n)                                               \
+do {                                                            \
+    vam->result_ready = 0;                                      \
+    mp = vl_msg_api_alloc(sizeof(*mp)+(n));                     \
+    memset (mp, 0, sizeof (*mp));                               \
+    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \
+    mp->client_index = vam->my_client_index;                    \
+} while(0);
+
+/* S: send a message */
+#define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
+
+/* W: wait for results, with timeout */
+#define W                                       \
+do {                                            \
+    timeout = vat_time_now (vam) + 1.0;         \
+                                                \
+    while (vat_time_now (vam) < timeout) {      \
+        if (vam->result_ready == 1) {           \
+            return (vam->retval);               \
+        }                                       \
+    }                                           \
+    return -99;                                 \
+} while(0);
+
+
+static int
+api_vxlan_gpe_ioam_enable (vat_main_t * vam)
+{
+  vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
+
+  unformat_input_t *input = vam->input;
+  vl_api_vxlan_gpe_ioam_enable_t *mp;
+  f64 timeout;
+  u32 id = 0;
+  int has_trace_option = 0;
+  int has_pow_option = 0;
+  int has_ppc_option = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "trace"))
+	has_trace_option = 1;
+      else if (unformat (input, "pow"))
+	has_pow_option = 1;
+      else if (unformat (input, "ppc encap"))
+	has_ppc_option = PPC_ENCAP;
+      else if (unformat (input, "ppc decap"))
+	has_ppc_option = PPC_DECAP;
+      else if (unformat (input, "ppc none"))
+	has_ppc_option = PPC_NONE;
+      else
+	break;
+    }
+  M (VXLAN_GPE_IOAM_ENABLE, vxlan_gpe_ioam_enable);
+  mp->id = htons (id);
+  mp->trace_ppc = has_ppc_option;
+  mp->pow_enable = has_pow_option;
+  mp->trace_enable = has_trace_option;
+
+
+  S;
+  W;
+
+  return (0);
+}
+
+
+static int
+api_vxlan_gpe_ioam_disable (vat_main_t * vam)
+{
+  vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
+  vl_api_vxlan_gpe_ioam_disable_t *mp;
+  f64 timeout;
+
+  M (VXLAN_GPE_IOAM_DISABLE, vxlan_gpe_ioam_disable);
+  S;
+  W;
+  return 0;
+}
+
+static int
+api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
+{
+  vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
+
+  unformat_input_t *line_input = vam->input;
+  vl_api_vxlan_gpe_ioam_vni_enable_t *mp;
+  ip4_address_t local4, remote4;
+  ip6_address_t local6, remote6;
+  u8 ipv4_set = 0, ipv6_set = 0;
+  u8 local_set = 0;
+  u8 remote_set = 0;
+  u32 vni;
+  u8 vni_set = 0;
+  f64 timeout;
+
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "local %U", unformat_ip4_address, &local4))
+	{
+	  local_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "remote %U",
+			 unformat_ip4_address, &remote4))
+	{
+	  remote_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "local %U",
+			 unformat_ip6_address, &local6))
+	{
+	  local_set = 1;
+	  ipv6_set = 1;
+	}
+      else if (unformat (line_input, "remote %U",
+			 unformat_ip6_address, &remote6))
+	{
+	  remote_set = 1;
+	  ipv6_set = 1;
+	}
+
+      else if (unformat (line_input, "vni %d", &vni))
+	vni_set = 1;
+      else
+	{
+	  errmsg ("parse error '%U'\n", format_unformat_error, line_input);
+	  return -99;
+	}
+    }
+
+  if (local_set == 0)
+    {
+      errmsg ("tunnel local address not specified\n");
+      return -99;
+    }
+  if (remote_set == 0)
+    {
+      errmsg ("tunnel remote address not specified\n");
+      return -99;
+    }
+  if (ipv4_set && ipv6_set)
+    {
+      errmsg ("both IPv4 and IPv6 addresses specified");
+      return -99;
+    }
+
+  if (vni_set == 0)
+    {
+      errmsg ("vni not specified\n");
+      return -99;
+    }
+
+  M (VXLAN_GPE_IOAM_VNI_ENABLE, vxlan_gpe_ioam_vni_enable);
+
+
+  if (ipv6_set)
+    {
+      clib_memcpy (&mp->local, &local6, sizeof (local6));
+      clib_memcpy (&mp->remote, &remote6, sizeof (remote6));
+    }
+  else
+    {
+      clib_memcpy (&mp->local, &local4, sizeof (local4));
+      clib_memcpy (&mp->remote, &remote4, sizeof (remote4));
+    }
+
+  mp->vni = ntohl (vni);
+  mp->is_ipv6 = ipv6_set;
+
+  S;
+  W;
+
+  return (0);
+}
+
+static int
+api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
+{
+  vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
+
+  unformat_input_t *line_input = vam->input;
+  vl_api_vxlan_gpe_ioam_vni_disable_t *mp;
+  ip4_address_t local4, remote4;
+  ip6_address_t local6, remote6;
+  u8 ipv4_set = 0, ipv6_set = 0;
+  u8 local_set = 0;
+  u8 remote_set = 0;
+  u32 vni;
+  u8 vni_set = 0;
+  f64 timeout;
+
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "local %U", unformat_ip4_address, &local4))
+	{
+	  local_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "remote %U",
+			 unformat_ip4_address, &remote4))
+	{
+	  remote_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "local %U",
+			 unformat_ip6_address, &local6))
+	{
+	  local_set = 1;
+	  ipv6_set = 1;
+	}
+      else if (unformat (line_input, "remote %U",
+			 unformat_ip6_address, &remote6))
+	{
+	  remote_set = 1;
+	  ipv6_set = 1;
+	}
+
+      else if (unformat (line_input, "vni %d", &vni))
+	vni_set = 1;
+      else
+	{
+	  errmsg ("parse error '%U'\n", format_unformat_error, line_input);
+	  return -99;
+	}
+    }
+
+  if (local_set == 0)
+    {
+      errmsg ("tunnel local address not specified\n");
+      return -99;
+    }
+  if (remote_set == 0)
+    {
+      errmsg ("tunnel remote address not specified\n");
+      return -99;
+    }
+  if (ipv4_set && ipv6_set)
+    {
+      errmsg ("both IPv4 and IPv6 addresses specified");
+      return -99;
+    }
+
+  if (vni_set == 0)
+    {
+      errmsg ("vni not specified\n");
+      return -99;
+    }
+
+  M (VXLAN_GPE_IOAM_VNI_DISABLE, vxlan_gpe_ioam_vni_disable);
+
+
+  if (ipv6_set)
+    {
+      clib_memcpy (&mp->local, &local6, sizeof (local6));
+      clib_memcpy (&mp->remote, &remote6, sizeof (remote6));
+    }
+  else
+    {
+      clib_memcpy (&mp->local, &local4, sizeof (local4));
+      clib_memcpy (&mp->remote, &remote4, sizeof (remote4));
+    }
+
+  mp->vni = ntohl (vni);
+  mp->is_ipv6 = ipv6_set;
+
+  S;
+  W;
+
+  return 0;
+}
+
+
+
+/*
+ * List of messages that the api test plugin sends,
+ * and that the data plane plugin processes
+ */
+#define foreach_vpe_api_msg \
+_(vxlan_gpe_ioam_enable, ""\
+  "[trace] [pow] [ppc <encap|ppc decap>]") \
+_(vxlan_gpe_ioam_disable, "")                    \
+_(vxlan_gpe_ioam_vni_enable, ""\
+  "local <local_vtep_ip> remote <remote_vtep_ip> vni <vnid>") \
+_(vxlan_gpe_ioam_vni_disable, ""\
+  "local <local_vtep_ip> remote <remote_vtep_ip> vni <vnid>") \
+
+
+void
+vat_api_hookup (vat_main_t * vam)
+{
+  vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
+  /* Hook up handlers for replies from the data plane plug-in */
+#define _(N,n)                                                  \
+    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
+                           #n,                                  \
+                           vl_api_##n##_t_handler,              \
+                           vl_noop_handler,                     \
+                           vl_api_##n##_t_endian,               \
+                           vl_api_##n##_t_print,                \
+                           sizeof(vl_api_##n##_t), 1);
+  foreach_vpe_api_reply_msg;
+#undef _
+
+  /* API messages we can send */
+#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
+  foreach_vpe_api_msg;
+#undef _
+
+  /* Help strings */
+#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
+  foreach_vpe_api_msg;
+#undef _
+}
+
+clib_error_t *
+vat_plugin_register (vat_main_t * vam)
+{
+  vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
+  u8 *name;
+
+  sm->vat_main = vam;
+
+  name = format (0, "ioam_vxlan_gpe_%08x%c", api_version, 0);
+  sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
+
+  if (sm->msg_id_base != (u16) ~ 0)
+    vat_api_hookup (vam);
+
+  vec_free (name);
+
+  return 0;
+}
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

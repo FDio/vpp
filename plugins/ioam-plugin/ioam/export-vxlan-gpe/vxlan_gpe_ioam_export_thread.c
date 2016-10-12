@@ -19,20 +19,31 @@
 #include <vppinfra/pool.h>
 #include <ioam/export-common/ioam_export.h>
 
-static vlib_node_registration_t ioam_export_process_node;
+static vlib_node_registration_t vxlan_gpe_ioam_export_process_node;
 
 static uword
-ioam_export_process (vlib_main_t * vm,
-		     vlib_node_runtime_t * rt, vlib_frame_t * f)
+vxlan_gpe_ioam_export_process (vlib_main_t * vm,
+			       vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
-   return (ioam_export_process_common(&ioam_export_main,
-                                      vm, rt, f,
-                                      ioam_export_process_node.index));
+  return (ioam_export_process_common (&vxlan_gpe_ioam_export_main,
+				      vm, rt, f,
+				      vxlan_gpe_ioam_export_process_node.index));
 }
 
-VLIB_REGISTER_NODE (ioam_export_process_node, static) =
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (vxlan_gpe_ioam_export_process_node, static) =
 {
- .function = ioam_export_process,
+ .function = vxlan_gpe_ioam_export_process,
  .type = VLIB_NODE_TYPE_PROCESS,
- .name = "ioam-export-process",
+ .name = "vxlan-gpe-ioam-export-process",
 };
+/* *INDENT-ON* */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

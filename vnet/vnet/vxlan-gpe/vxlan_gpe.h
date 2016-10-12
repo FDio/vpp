@@ -114,6 +114,12 @@ typedef struct {
 
   /** flags */
   u32 flags;
+
+  /** rewrite size for dynamic plugins like iOAM */
+  u8  rewrite_size;
+
+  /** Next node after VxLAN-GPE encap */
+  uword encap_next_node;
 } vxlan_gpe_tunnel_t;
 
 /** Flags for vxlan_gpe_tunnel_t */
@@ -162,6 +168,9 @@ typedef struct {
   vlib_main_t * vlib_main;
   /** State convenience vnet_main_t */
   vnet_main_t * vnet_main;
+
+  /** List of next nodes for the decap indexed on protocol */
+  uword decap_next_node_list[VXLAN_GPE_PROTOCOL_MAX];
 } vxlan_gpe_main_t;
 
 vxlan_gpe_main_t vxlan_gpe_main;
@@ -188,7 +197,25 @@ int vnet_vxlan_gpe_add_del_tunnel
 (vnet_vxlan_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
 
 
+int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size,
+                        u8 protocol_override, uword encap_next_node);
+int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size,
+                       u8 protocol_override, uword encap_next_node);
 
+/**
+ * @brief Struct for defining VXLAN GPE next nodes
+ */
+typedef enum {
+  VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
+  VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP,
+  VXLAN_GPE_ENCAP_NEXT_DROP,
+  VXLAN_GPE_ENCAP_N_NEXT
+} vxlan_gpe_encap_next_t;
+
+
+void vxlan_gpe_unregister_decap_protocol (u8 protocol_id, uword next_node_index);
+
+void vxlan_gpe_register_decap_protocol (u8 protocol_id, uword next_node_index);
 
 
 #endif /* included_vnet_vxlan_gpe_h */

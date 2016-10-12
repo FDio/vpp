@@ -211,10 +211,14 @@ vxlan_gpe_input (vlib_main_t * vm,
 
       if (is_ip4)
       {
-        next0 = (iuvn4_0->vxlan.protocol < node->n_next_nodes) ?
-                iuvn4_0->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
-        next1 = (iuvn4_1->vxlan.protocol < node->n_next_nodes) ?
-                iuvn4_1->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
+        next0 =
+            (iuvn4_0->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX)?
+            ngm->decap_next_node_list[iuvn4_0->vxlan.protocol]: \
+            VXLAN_GPE_INPUT_NEXT_DROP;
+        next1 =
+            (iuvn4_1->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX)?
+            ngm->decap_next_node_list[iuvn4_1->vxlan.protocol]: \
+            VXLAN_GPE_INPUT_NEXT_DROP;
 
         key4_0.local = iuvn4_0->ip4.dst_address.as_u32;
         key4_1.local = iuvn4_1->ip4.dst_address.as_u32;
@@ -273,6 +277,28 @@ vxlan_gpe_input (vlib_main_t * vm,
       }
       else /* is_ip6 */
       {
+        next0 =
+            (iuvn6_0->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX)?
+            ngm->decap_next_node_list[iuvn6_0->vxlan.protocol]: \
+            VXLAN_GPE_INPUT_NEXT_DROP;
+        next1 =
+            (iuvn6_1->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX)?
+            ngm->decap_next_node_list[iuvn6_1->vxlan.protocol]: \
+            VXLAN_GPE_INPUT_NEXT_DROP;
+
+        key6_0.local.as_u64[0] = iuvn6_0->ip6.dst_address.as_u64[0];
+        key6_0.local.as_u64[1] = iuvn6_0->ip6.dst_address.as_u64[1];
+        key6_1.local.as_u64[0] = iuvn6_1->ip6.dst_address.as_u64[0];
+        key6_1.local.as_u64[1] = iuvn6_1->ip6.dst_address.as_u64[1];
+
+        key6_0.remote.as_u64[0] = iuvn6_0->ip6.src_address.as_u64[0];
+        key6_0.remote.as_u64[1] = iuvn6_0->ip6.src_address.as_u64[1];
+        key6_1.remote.as_u64[0] = iuvn6_1->ip6.src_address.as_u64[0];
+        key6_1.remote.as_u64[1] = iuvn6_1->ip6.src_address.as_u64[1];
+
+        key6_0.vni = iuvn6_0->vxlan.vni_res;
+        key6_1.vni = iuvn6_1->vxlan.vni_res;
+
         /* Processing for key6_0 */
         if (PREDICT_FALSE(memcmp (&key6_0, &last_key6, sizeof(last_key6)) != 0))
         {
@@ -293,7 +319,6 @@ vxlan_gpe_input (vlib_main_t * vm,
 
       t0 = pool_elt_at_index(ngm->tunnels, tunnel_index0);
 
-      next0 = t0->protocol;
 
       sw_if_index0 = t0->sw_if_index;
       len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -378,7 +403,6 @@ vxlan_gpe_input (vlib_main_t * vm,
 
       t1 = pool_elt_at_index(ngm->tunnels, tunnel_index1);
 
-      next1 = t1->protocol;
       sw_if_index1 = t1->sw_if_index;
       len1 = vlib_buffer_length_in_chain (vm, b1);
 
@@ -477,8 +501,9 @@ vxlan_gpe_input (vlib_main_t * vm,
       if (is_ip4)
       {
         next0 =
-            (iuvn4_0->vxlan.protocol < node->n_next_nodes) ?
-                iuvn4_0->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
+            (iuvn4_0->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX)?
+            ngm->decap_next_node_list[iuvn4_0->vxlan.protocol]: \
+            VXLAN_GPE_INPUT_NEXT_DROP;
 
         key4_0.local = iuvn4_0->ip4.dst_address.as_u32;
         key4_0.remote = iuvn4_0->ip4.src_address.as_u32;
@@ -507,8 +532,10 @@ vxlan_gpe_input (vlib_main_t * vm,
       }
       else /* is_ip6 */
       {
-        next0 = (iuvn6_0->vxlan.protocol < node->n_next_nodes) ?
-                iuvn6_0->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
+        next0 =
+            (iuvn6_0->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX)?
+            ngm->decap_next_node_list[iuvn6_0->vxlan.protocol]: \
+            VXLAN_GPE_INPUT_NEXT_DROP;
 
         key6_0.local.as_u64[0] = iuvn6_0->ip6.dst_address.as_u64[0];
         key6_0.local.as_u64[1] = iuvn6_0->ip6.dst_address.as_u64[1];
@@ -536,7 +563,6 @@ vxlan_gpe_input (vlib_main_t * vm,
 
       t0 = pool_elt_at_index(ngm->tunnels, tunnel_index0);
 
-      next0 = t0->protocol;
 
       sw_if_index0 = t0->sw_if_index;
       len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -613,6 +639,24 @@ vxlan4_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   return vxlan_gpe_input (vm, node, from_frame, /* is_ip4 */1);
 }
+
+
+void
+vxlan_gpe_register_decap_protocol (u8 protocol_id, uword next_node_index)
+{
+  vxlan_gpe_main_t *hm = &vxlan_gpe_main;
+  hm->decap_next_node_list[protocol_id] = next_node_index;
+  return;
+}
+
+void
+vxlan_gpe_unregister_decap_protocol (u8 protocol_id, uword next_node_index)
+{
+  vxlan_gpe_main_t *hm = &vxlan_gpe_main;
+  hm->decap_next_node_list[protocol_id] = VXLAN_GPE_INPUT_NEXT_DROP;
+  return;
+}
+
 
 /**
  * @brief Graph processing dispatch function for IPv6 VXLAN GPE

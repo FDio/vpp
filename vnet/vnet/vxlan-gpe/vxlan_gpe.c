@@ -121,6 +121,7 @@ VNET_DEVICE_CLASS (vxlan_gpe_device_class,static) = {
   .admin_up_down_function = vxlan_gpe_interface_admin_up_down,
 };
 
+
 /**
  * @brief Formatting function for tracing VXLAN GPE with length
  *
@@ -172,15 +173,17 @@ _(decap_fib_index)
  * @return rc
  *
  */
-static int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t)
+int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size, 
+                        u8 protocol_override, uword encap_next_node)
 {
   u8 *rw = 0;
   ip4_header_t * ip0;
   ip4_vxlan_gpe_header_t * h0;
   int len;
 
-  len = sizeof (*h0);
+  len = sizeof (*h0) + extension_size;
 
+  vec_free(t->rewrite);
   vec_validate_aligned (rw, len-1, CLIB_CACHE_LINE_BYTES);
 
   h0 = (ip4_vxlan_gpe_header_t *) rw;
@@ -203,10 +206,19 @@ static int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t)
   /* VXLAN header. Are we having fun yet? */
   h0->vxlan.flags = VXLAN_GPE_FLAGS_I | VXLAN_GPE_FLAGS_P;
   h0->vxlan.ver_res = VXLAN_GPE_VERSION;
-  h0->vxlan.protocol = t->protocol;
+  if (protocol_override)
+  {
+      h0->vxlan.protocol = protocol_override;
+  }
+  else
+  {
+      h0->vxlan.protocol = t->protocol;
+  }
+  t->rewrite_size = sizeof(ip4_vxlan_gpe_header_t) +  extension_size;
   h0->vxlan.vni_res = clib_host_to_net_u32 (t->vni<<8);
 
   t->rewrite = rw;
+  t->encap_next_node = encap_next_node;
   return (0);
 }
 
@@ -218,15 +230,17 @@ static int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t)
  * @return rc
  *
  */
-static int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t)
+int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size, 
+                        u8 protocol_override, uword encap_next_node)
 {
   u8 *rw = 0;
   ip6_header_t * ip0;
   ip6_vxlan_gpe_header_t * h0;
   int len;
 
-  len = sizeof (*h0);
+  len = sizeof (*h0) + extension_size;
 
+  vec_free(t->rewrite);
   vec_validate_aligned (rw, len-1, CLIB_CACHE_LINE_BYTES);
 
   h0 = (ip6_vxlan_gpe_header_t *) rw;
@@ -249,10 +263,19 @@ static int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t)
   /* VXLAN header. Are we having fun yet? */
   h0->vxlan.flags = VXLAN_GPE_FLAGS_I | VXLAN_GPE_FLAGS_P;
   h0->vxlan.ver_res = VXLAN_GPE_VERSION;
-  h0->vxlan.protocol = t->protocol;
+  if (protocol_override)
+  {
+      h0->vxlan.protocol = t->protocol;
+  }
+  else
+  {
+      h0->vxlan.protocol = protocol_override;
+  }
+  t->rewrite_size = sizeof(ip4_vxlan_gpe_header_t) +  extension_size;
   h0->vxlan.vni_res = clib_host_to_net_u32 (t->vni<<8);
 
   t->rewrite = rw;
+  t->encap_next_node = encap_next_node;
   return (0);
 }
 
@@ -319,9 +342,9 @@ int vnet_vxlan_gpe_add_del_tunnel
       if (!a->is_ip6) t->flags |= VXLAN_GPE_TUNNEL_IS_IPV4;
 
       if (!a->is_ip6) {
-        rv = vxlan4_gpe_rewrite (t);
+        rv = vxlan4_gpe_rewrite (t, 0, 0, VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP);
       } else {
-        rv = vxlan6_gpe_rewrite (t);
+        rv = vxlan6_gpe_rewrite (t, 0, 0, VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP);
       }
 
       if (rv)
@@ -621,6 +644,14 @@ clib_error_t *vxlan_gpe_init (vlib_main_t *vm)
                          vxlan4_gpe_input_node.index, 1 /* is_ip4 */);
   udp_register_dst_port (vm, UDP_DST_PORT_vxlan6_gpe,
                          vxlan6_gpe_input_node.index, 0 /* is_ip4 */);
+
+  /* Register the list of standard decap protocols supported */
+  vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_IP4,
+                                     VXLAN_GPE_INPUT_NEXT_IP4_INPUT);
+  vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_IP6,
+                                     VXLAN_GPE_INPUT_NEXT_IP6_INPUT);
+  vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_ETHERNET,
+                                     VXLAN_GPE_INPUT_NEXT_ETHERNET_INPUT);
   return 0;
 }
 
