@@ -105,7 +105,6 @@ static void vl_api_trace_profile_add_t_handler
   int rv = 0;
   vl_api_trace_profile_add_reply_t *rmp;
   trace_profile *profile = NULL;
-  u8 *name = 0;
 
   profile = trace_profile_find ();
   if (profile)
@@ -122,7 +121,6 @@ static void vl_api_trace_profile_add_t_handler
       rv = -3;
     }
 ERROROUT:
-  vec_free (name);
   TRACE_REPLY_MACRO (VL_API_TRACE_PROFILE_ADD_REPLY);
 }
 

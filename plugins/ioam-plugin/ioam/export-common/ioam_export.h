@@ -73,6 +73,7 @@ typedef struct {
 } ioam_export_main_t;
 
 ioam_export_main_t ioam_export_main;
+ioam_export_main_t vxlan_gpe_ioam_export_main;
 
 vlib_node_registration_t export_node;
 
@@ -83,18 +84,16 @@ vlib_node_registration_t export_node;
  */
 #define DEFAULT_EXPORT_RECORDS 7
 
-always_inline ioam_export_buffer_t *ioam_export_get_my_buffer(u32 thread_id)
+always_inline ioam_export_buffer_t *ioam_export_get_my_buffer(ioam_export_main_t *em, u32 thread_id)
 {
-  ioam_export_main_t *em = &ioam_export_main;
 
   if (vec_len(em->buffer_per_thread) > thread_id)
     return(pool_elt_at_index(em->buffer_pool, em->buffer_per_thread[thread_id]));
   return(0);
 }
 
-inline static int ioam_export_buffer_add_header (vlib_buffer_t *b0)
+inline static int ioam_export_buffer_add_header (ioam_export_main_t *em, vlib_buffer_t *b0)
 {
-  ioam_export_main_t *em = &ioam_export_main;
   clib_memcpy(b0->data, em->record_header, vec_len(em->record_header));
   b0->current_data = 0;
   b0->current_length = vec_len(em->record_header);
@@ -102,7 +101,7 @@ inline static int ioam_export_buffer_add_header (vlib_buffer_t *b0)
   return(1);
 }
 
-inline static int ioam_export_init_buffer (vlib_main_t *vm,
+inline static int ioam_export_init_buffer (ioam_export_main_t *em, vlib_main_t *vm,
 					   ioam_export_buffer_t *eb)
 {
   vlib_buffer_t *b = 0;
@@ -115,15 +114,14 @@ inline static int ioam_export_init_buffer (vlib_main_t *vm,
   eb->records_in_this_buffer = 0;
   eb->touched_at = vlib_time_now(vm);
   b = vlib_get_buffer(vm, eb->buffer_index);
-  (void) ioam_export_buffer_add_header(b);
+  (void) ioam_export_buffer_add_header(em, b);
   vnet_buffer(b)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer(b)->sw_if_index[VLIB_TX] = ~0;
   return(1);
 }
 
-inline static void ioam_export_thread_buffer_free (void)
+inline static void ioam_export_thread_buffer_free (ioam_export_main_t *em)
 {
-  ioam_export_main_t *em = &ioam_export_main;
   vlib_main_t *vm = em->vlib_main;
   ioam_export_buffer_t *eb = 0;
   int i;
@@ -143,9 +141,8 @@ inline static void ioam_export_thread_buffer_free (void)
   em->lockp = 0;
 }
 
-inline static int ioam_export_thread_buffer_init (vlib_main_t *vm)
+inline static int ioam_export_thread_buffer_init (ioam_export_main_t *em, vlib_main_t *vm)
 {
-  ioam_export_main_t *em = &ioam_export_main;
   int no_of_threads = vec_len(vlib_worker_threads);
   int i;
   ioam_export_buffer_t *eb = 0;
@@ -171,9 +168,9 @@ inline static int ioam_export_thread_buffer_init (vlib_main_t *vm)
       pool_get_aligned(em->buffer_pool, eb, CLIB_CACHE_LINE_BYTES);
       memset(eb, 0, sizeof (*eb));
       em->buffer_per_thread[i] = eb - em->buffer_pool;
-      if (ioam_export_init_buffer(vm, eb) != 1)
+      if (ioam_export_init_buffer(em, vm, eb) != 1)
 	{
-	  ioam_export_thread_buffer_free();
+	  ioam_export_thread_buffer_free(em);
 	  return(-2);
 	}
       em->lockp[i] = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
@@ -199,18 +196,17 @@ typedef struct {
 } ip4_ipfix_data_packet_t;
 
 
-inline static void ioam_export_header_cleanup (ip4_address_t * collector_address,
+inline static void ioam_export_header_cleanup (ioam_export_main_t *em,
+                                               ip4_address_t * collector_address,
 					       ip4_address_t * src_address)
 {
-  ioam_export_main_t *em = &ioam_export_main;
   vec_free(em->record_header);
   em->record_header = 0;
 }
 
-inline static int ioam_export_header_create (ip4_address_t * collector_address,
+inline static int ioam_export_header_create (ioam_export_main_t *em, ip4_address_t * collector_address,
 					     ip4_address_t * src_address)
 {
-  ioam_export_main_t *em = &ioam_export_main;
   ip4_header_t * ip;
   udp_header_t * udp;
   ipfix_message_header_t * h;
@@ -263,10 +259,9 @@ inline static int ioam_export_header_create (ip4_address_t * collector_address,
   return(1);
 }
 
-inline static int ioam_export_send_buffer (vlib_main_t *vm,
+inline static int ioam_export_send_buffer (ioam_export_main_t *em, vlib_main_t *vm,
     ioam_export_buffer_t *eb)
 {
-  ioam_export_main_t *em = &ioam_export_main;
   ip4_header_t * ip;
   udp_header_t * udp;
   ipfix_message_header_t * h;
@@ -321,6 +316,118 @@ inline static int ioam_export_send_buffer (vlib_main_t *vm,
   vlib_put_frame_to_node(vm, em->ip4_lookup_node_index, nf);
   return(1);
 
+}
+
+#define EXPORT_TIMEOUT (20.0)
+#define THREAD_PERIOD (30.0)
+inline static uword
+ioam_export_process_common (ioam_export_main_t *em, vlib_main_t * vm,
+		     vlib_node_runtime_t * rt, vlib_frame_t * f, u32 index)
+{
+  f64 now;
+  f64 timeout = 30.0;
+  uword event_type;
+  uword *event_data = 0;
+  int i;
+  ioam_export_buffer_t *eb = 0, *new_eb = 0;
+  u32 *vec_buffer_indices = 0;
+  u32 *vec_buffer_to_be_sent = 0;
+  u32 *thread_index = 0;
+  u32 new_pool_index = 0;
+
+  em->export_process_node_index = index;
+  /* Wait for Godot... */
+  vlib_process_wait_for_event_or_clock (vm, 1e9);
+  event_type = vlib_process_get_events (vm, &event_data);
+  if (event_type != 1)
+    clib_warning ("bogus kickoff event received, %d", event_type);
+  vec_reset_length (event_data);
+
+  while (1)
+    {
+      vlib_process_wait_for_event_or_clock (vm, timeout);
+      event_type = vlib_process_get_events (vm, &event_data);
+      switch (event_type)
+	{
+	case 2:		/* Stop and Wait for kickoff again */
+	  timeout = 1e9;
+	  break;
+	case 1:		/* kickoff : Check for unsent buffers */
+	  timeout = THREAD_PERIOD;
+	  break;
+	case ~0:		/* timeout */
+	  break;
+	}
+      vec_reset_length (event_data);
+      now = vlib_time_now (vm);
+      /*
+       * Create buffers for threads that are not active enough
+       * to send out the export records
+       */
+      for (i = 0; i < vec_len (em->buffer_per_thread); i++)
+	{
+	  /* If the worker thread is processing export records ignore further checks */
+	  if (*em->lockp[i] == 1)
+	    continue;
+	  eb = pool_elt_at_index (em->buffer_pool, em->buffer_per_thread[i]);
+	  if (eb->records_in_this_buffer > 0 && now > (eb->touched_at + EXPORT_TIMEOUT))
+	    {
+	      pool_get_aligned (em->buffer_pool, new_eb,
+				CLIB_CACHE_LINE_BYTES);
+	      memset (new_eb, 0, sizeof (*new_eb));
+	      if (ioam_export_init_buffer (em, vm, new_eb) == 1)
+		{
+		  new_pool_index = new_eb - em->buffer_pool;
+		  vec_add (vec_buffer_indices, &new_pool_index, 1);
+		  vec_add (vec_buffer_to_be_sent, &em->buffer_per_thread[i],
+			   1);
+		  vec_add (thread_index, &i, 1);
+		}
+	      else
+		{
+		  pool_put (em->buffer_pool, new_eb);
+		  /*Give up */
+		  goto CLEANUP;
+		}
+	    }
+	}
+      if (vec_len (thread_index) != 0)
+	{
+	  /*
+	   * Now swap the buffers out
+	   */
+	  for (i = 0; i < vec_len (thread_index); i++)
+	    {
+	      while (__sync_lock_test_and_set (em->lockp[thread_index[i]], 1))
+		;
+	      em->buffer_per_thread[thread_index[i]] =
+		vec_pop (vec_buffer_indices);
+	      *em->lockp[thread_index[i]] = 0;
+	    }
+
+	  /* Send the buffers */
+	  for (i = 0; i < vec_len (vec_buffer_to_be_sent); i++)
+	    {
+	      eb =
+		pool_elt_at_index (em->buffer_pool, vec_buffer_to_be_sent[i]);
+	      ioam_export_send_buffer (em, vm, eb);
+	      pool_put (em->buffer_pool, eb);
+	    }
+	}
+
+    CLEANUP:
+      /* Free any leftover/unused buffers and everything that was allocated */
+      for (i = 0; i < vec_len (vec_buffer_indices); i++)
+	{
+	  new_eb = pool_elt_at_index (em->buffer_pool, vec_buffer_indices[i]);
+	  vlib_buffer_free (vm, &new_eb->buffer_index, 1);
+	  pool_put (em->buffer_pool, new_eb);
+	}
+      vec_free (vec_buffer_indices);
+      vec_free (vec_buffer_to_be_sent);
+      vec_free (thread_index);
+    }
+  return 0;			/* not so much */
 }
 
 #endif /* __included_ioam_export_h__ */
