@@ -248,8 +248,8 @@ fib_walk_destroy (fib_walk_t *fwalk)
      * add the stats to the continuous histogram collection.
      */
     bucket = (fwalk->fw_n_visits / HISTOGRAM_VISITS_PER_WALK_INCR);
-    bucket = (bucket > HISTOGRAM_VISITS_PER_WALK_MAX ?
-	      HISTOGRAM_VISITS_PER_WALK_MAX - 1 :
+    bucket = (bucket > HISTOGRAM_VISITS_PER_WALK_N_BUCKETS ?
+	      HISTOGRAM_VISITS_PER_WALK_N_BUCKETS - 1 :
 	      bucket);
     fib_walk_hist_vists_per_walk[bucket]++;
 

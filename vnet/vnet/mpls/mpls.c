@@ -744,6 +744,8 @@ vnet_mpls_local_label (vlib_main_t * vm,
   is_ip = 0;
   table_id = 0;
   eos = MPLS_EOS;
+  is_del = 0;
+  local_label = MPLS_LABEL_INVALID;
 
    /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -817,6 +819,14 @@ vnet_mpls_local_label (vlib_main_t * vm,
       }
 
     }
+
+  if (MPLS_LABEL_INVALID == local_label)
+  {
+      error = clib_error_return (0, "local-label required: %U",
+				 format_unformat_error, input);
+      goto done;
+  }
+
 
   if (is_ip)
   {
