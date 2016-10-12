@@ -43,9 +43,18 @@ VNET_DEVICE_CLASS (ipsec_device_class, static) =
 .name = "IPSec",.format_device_name = format_ipsec_name,.format_tx_trace =
     format_ipsec_if_output_trace,.tx_function = dummy_interface_tx,};
 
+static uword
+dummy_set_rewrite (vnet_main_t * vnm,
+		   u32 sw_if_index,
+		   u32 l3_type,
+		   void *dst_address, void *rewrite, uword max_rewrite_bytes)
+{
+  return 0;
+}
+
 VNET_HW_INTERFACE_CLASS (ipsec_hw_class) =
 {
-.name = "IPSec",};
+.name = "IPSec",.set_rewrite = dummy_set_rewrite,};
 
 
 static int
