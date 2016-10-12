@@ -262,7 +262,9 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr)
             clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0);
             kv.key = ses->out2in.as_u64;
             clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0);
+            snat_lru_list_lock();
             clib_dlist_remove (sm->list_pool, ses->per_user_index);
+            snat_lru_list_unlock();
             user_key.addr = ses->in2out.addr;
             user_key.fib_index = ses->in2out.fib_index;
             kv.key = user_key.as_u64;
@@ -502,6 +504,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                       elt = pool_elt_at_index (sm->list_pool, elt_index);
                       ses_index = elt->value;
                     }
+                  snat_lru_list_lock();
                   if (addr_only)
                     {
                       while ((elt_index = clib_dlist_remove_head(sm->list_pool, head_index)) != ~0)
@@ -518,6 +521,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                           u->nstaticsessions--;
                         }
                     }
+                  snat_lru_list_unlock();
                 }
             }
         }
@@ -915,6 +919,10 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->ip4_main = im;
   sm->ip4_lookup_main = lm;
   sm->api_main = &api_main;
+
+  sm->lru_list_lock =
+    clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+  *sm->lru_list_lock = 0;
 
   error = snat_plugin_api_hookup (vm);
   plugin_custom_dump_configure (sm);

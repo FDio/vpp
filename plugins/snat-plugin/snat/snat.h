@@ -100,6 +100,8 @@ typedef CLIB_PACKED(struct {
   /* Outside address */
   u32 outside_address_index;    /* 64-67 */
 
+  /* Counter lock */
+  volatile u32 * counter_lock;
 }) snat_session_t;
 
 
@@ -154,6 +156,7 @@ typedef struct {
 
   /* Pool of doubly-linked list elements */
   dlist_elt_t * list_pool;
+  volatile u32 * lru_list_lock;
 
   /* Randomize port allocation order */
   u32 random_seed;
@@ -220,6 +223,42 @@ typedef struct {
     @return 1 if SNAT session is created from static mapping otherwise 0
 */
 #define snat_is_session_static(s) s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING
+
+/** \brief Lock Per-user LRU list. */
+#define snat_lru_list_lock() while (__sync_lock_test_and_set(snat_main.lru_list_lock, 1)) {}
+/** \brief Unlock Per-user LRU list. */
+#define snat_lru_list_unlock() do {CLIB_MEMORY_BARRIER(); *snat_main.lru_list_lock = 0;} while(0)
+
+/** \brief Lock SNAT session counters.
+    @param s SNAT session
+*/
+always_inline void
+snat_session_counter_lock (snat_session_t *s)
+{
+  while (__sync_lock_test_and_set (s->counter_lock, 1))
+    ;
+}
+
+/** \brief Unlock SNAT session counters.
+    @param s SNAT session
+*/
+always_inline void
+snat_session_counter_unlock (snat_session_t *s)
+{
+  CLIB_MEMORY_BARRIER();
+  *s->counter_lock = 0;
+}
+
+/** \brief Init SNAT session counters lock.
+    @param s SNAT session
+*/
+always_inline void
+snat_session_counter_lock_init (snat_session_t *s)
+{
+  s->counter_lock =
+    clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+  *s->counter_lock = 0;
+}
 
 /* 
  * Why is this here? Because we don't need to touch this layer to
