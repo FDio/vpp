@@ -157,6 +157,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
     {
       /* Remove the oldest dynamic translation */
       do {
+          snat_lru_list_lock();
           oldest_per_user_translation_list_index =
             clib_dlist_remove_head
             (sm->list_pool, u->sessions_per_user_list_head_index);
@@ -177,6 +178,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
 
           /* Get the session */
           s = pool_elt_at_index (sm->sessions, session_index);
+          snat_lru_list_unlock();
       } while (!snat_is_session_static (s));
 
       /* Remove in2out, out2in keys */
@@ -190,6 +192,11 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
       snat_free_outside_address_and_port 
         (sm, &s->out2in, s->outside_address_index);
       s->outside_address_index = ~0;
+      snat_session_counter_lock (s);
+      s->last_heard = 0;
+      s->total_bytes = 0;
+      s->total_pkts = 0;
+      snat_session_counter_unlock (s);
 
       if (snat_alloc_outside_address_and_port (sm, &key1, &address_index))
         {
@@ -219,7 +226,8 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
       /* Create a new session */
       pool_get (sm->sessions, s);
       memset (s, 0, sizeof (*s));
-      
+
+      snat_session_counter_lock_init (s);
       s->outside_address_index = address_index;
 
       if (static_mapping)
@@ -233,6 +241,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
         }
 
       /* Create list elts */
+      snat_lru_list_lock();
       pool_get (sm->list_pool, per_user_translation_list_elt);
       clib_dlist_init (sm->list_pool, per_user_translation_list_elt -
                        sm->list_pool);
@@ -243,6 +252,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
 
       clib_dlist_addtail (sm->list_pool, s->per_user_list_head_index,
                           per_user_translation_list_elt - sm->list_pool);
+      snat_lru_list_unlock();
    }
   
   s->in2out = *key0;
@@ -348,15 +358,19 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
   icmp0->checksum = ip_csum_fold (sum0);
 
   /* Accounting */
+  snat_session_counter_lock (s0);
   s0->last_heard = now;
   s0->total_pkts++;
   s0->total_bytes += vlib_buffer_length_in_chain (sm->vlib_main, b0);
+  snat_session_counter_unlock (s0);
   /* Per-user LRU list maintenance for dynamic translations */
   if (!snat_is_session_static (s0))
     {
+      snat_lru_list_lock();
       clib_dlist_remove (sm->list_pool, s0->per_user_index);
       clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
                           s0->per_user_index);
+      snat_lru_list_unlock();
     }
 
   return next0;
@@ -558,15 +572,19 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             }
 
           /* Accounting */
+          snat_session_counter_lock (s0);
           s0->last_heard = now;
           s0->total_pkts++;
           s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
+          snat_session_counter_unlock (s0);
           /* Per-user LRU list maintenance for dynamic translation */
           if (!snat_is_session_static (s0))
             {
+              snat_lru_list_lock();
               clib_dlist_remove (sm->list_pool, s0->per_user_index);
               clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
                                   s0->per_user_index);
+              snat_lru_list_unlock();
             }
         trace00:
 
@@ -707,15 +725,19 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             }
 
           /* Accounting */
+          snat_session_counter_lock (s1);
           s1->last_heard = now;
           s1->total_pkts++;
           s1->total_bytes += vlib_buffer_length_in_chain (vm, b1);
+          snat_session_counter_unlock (s1);
           /* Per-user LRU list maintenance for dynamic translation */
           if (!snat_is_session_static (s1))
             {
+              snat_lru_list_lock();
               clib_dlist_remove (sm->list_pool, s1->per_user_index);
               clib_dlist_addtail (sm->list_pool, s1->per_user_list_head_index,
                                   s1->per_user_index);
+              snat_lru_list_unlock();
             }
         trace01:
 
@@ -892,15 +914,19 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             }
 
           /* Accounting */
+          snat_session_counter_lock (s0);
           s0->last_heard = now;
           s0->total_pkts++;
           s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
+          snat_session_counter_unlock (s0);
           /* Per-user LRU list maintenance for dynamic translation */
           if (!snat_is_session_static (s0))
             {
+              snat_lru_list_lock();
               clib_dlist_remove (sm->list_pool, s0->per_user_index);
               clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
                                   s0->per_user_index);
+              snat_lru_list_unlock();
             }
 
         trace0:

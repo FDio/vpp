@@ -142,11 +142,14 @@ create_session_for_static_mapping (snat_main_t *sm,
   pool_get (sm->sessions, s);
   memset (s, 0, sizeof (*s));
 
+  snat_session_counter_lock_init (s);
+
   s->outside_address_index = ~0;
   s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
   u->nstaticsessions++;
 
   /* Create list elts */
+  snat_lru_list_lock();
   pool_get (sm->list_pool, per_user_translation_list_elt);
   clib_dlist_init (sm->list_pool, per_user_translation_list_elt -
                    sm->list_pool);
@@ -157,6 +160,7 @@ create_session_for_static_mapping (snat_main_t *sm,
 
   clib_dlist_addtail (sm->list_pool, s->per_user_list_head_index,
                       per_user_translation_list_elt - sm->list_pool);
+  snat_lru_list_unlock();
 
   s->in2out = in2out;
   s->out2in = out2in;
@@ -260,15 +264,19 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
   icmp0->checksum = ip_csum_fold (sum0);
 
   /* Accounting */
+  snat_session_counter_lock (s0);
   s0->last_heard = now;
   s0->total_pkts++;
   s0->total_bytes += vlib_buffer_length_in_chain (sm->vlib_main, b0);
+  snat_session_counter_unlock (s0);
   /* Per-user LRU list maintenance for dynamic translation */
   if (!snat_is_session_static (s0))
     {
+      snat_lru_list_lock();
       clib_dlist_remove (sm->list_pool, s0->per_user_index);
       clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
                           s0->per_user_index);
+      snat_lru_list_unlock();
     }
 
   return next0;
@@ -437,15 +445,19 @@ snat_out2in_node_fn (vlib_main_t * vm,
             }
 
           /* Accounting */
+          snat_session_counter_lock (s0);
           s0->last_heard = now;
           s0->total_pkts++;
           s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
+          snat_session_counter_unlock (s0);
           /* Per-user LRU list maintenance for dynamic translation */
           if (!snat_is_session_static (s0))
             {
+              snat_lru_list_lock();
               clib_dlist_remove (sm->list_pool, s0->per_user_index);
               clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
                                   s0->per_user_index);
+              snat_lru_list_unlock();
             }
         trace0:
 
@@ -556,15 +568,19 @@ snat_out2in_node_fn (vlib_main_t * vm,
             }
 
           /* Accounting */
+          snat_session_counter_lock (s1);
           s1->last_heard = now;
           s1->total_pkts++;
           s1->total_bytes += vlib_buffer_length_in_chain (vm, b1);
+          snat_session_counter_unlock (s1);
           /* Per-user LRU list maintenance for dynamic translation */
           if (!snat_is_session_static (s1))
             {
+              snat_lru_list_lock();
               clib_dlist_remove (sm->list_pool, s1->per_user_index);
               clib_dlist_addtail (sm->list_pool, s1->per_user_list_head_index,
                                   s1->per_user_index);
+              snat_lru_list_unlock();
             }
         trace1:
 
@@ -580,7 +596,6 @@ snat_out2in_node_fn (vlib_main_t * vm,
                   t->session_index = s1 - sm->sessions;
             }
 
-          pkts_processed += next0 != SNAT_OUT2IN_NEXT_DROP;
           pkts_processed += next1 != SNAT_OUT2IN_NEXT_DROP;
 
           /* verify speculative enqueues, maybe switch current next frame */
@@ -710,15 +725,19 @@ snat_out2in_node_fn (vlib_main_t * vm,
             }
 
           /* Accounting */
+          snat_session_counter_lock (s0);
           s0->last_heard = now;
           s0->total_pkts++;
           s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
+          snat_session_counter_unlock (s0);
           /* Per-user LRU list maintenance for dynamic translation */
           if (!snat_is_session_static (s0))
             {
+              snat_lru_list_lock();
               clib_dlist_remove (sm->list_pool, s0->per_user_index);
               clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
                                   s0->per_user_index);
+              snat_lru_list_unlock();
             }
         trace00:
 
