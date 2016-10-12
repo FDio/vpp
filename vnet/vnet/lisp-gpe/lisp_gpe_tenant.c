@@ -142,6 +142,7 @@ lisp_gpe_tenant_l3_iface_unlock (u32 vni)
   if (NULL == lt)
     {
       clib_warning ("No tenant for VNI %d", vni);
+      return;
     }
 
   if (0 == lt->lt_locks[LISP_GPE_TENANT_LOCK_L3_IFACE])

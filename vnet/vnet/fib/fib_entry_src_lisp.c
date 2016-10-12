@@ -86,7 +86,10 @@ fib_entry_src_lisp_add (fib_entry_src_t *src,
 {
     if (FIB_ENTRY_FLAG_NONE != flags)
     {
-	src->fes_pl = fib_path_list_create_special(proto, flags, dpo);
+	src->fes_pl = fib_path_list_create_special(
+	                  proto,
+			  fib_entry_src_flags_2_path_list_flags(flags),
+			  dpo);
     }
 }
 

@@ -51,7 +51,7 @@ fib_entry_src_interface_path_swap (fib_entry_src_t *src,
 			  src->fes_pl,
 			  fib_entry_get_default_chain_type(entry)));
 
-	if (IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index);
+	if (IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index)
         {
             /*
              * the connected prefix will link to a glean on a non-p2p

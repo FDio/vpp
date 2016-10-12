@@ -217,6 +217,8 @@ fib_test_urpf_is_equal (fib_node_index_t fei,
 
     dpo_reset(&dpo);
 
+    va_end(ap);
+
     return (1);
 }
 
@@ -4835,7 +4837,9 @@ fib_test_validate_entry (fib_node_index_t fei,
 	break;
     case FIB_PROTOCOL_MPLS:
 	{
-	    mpls_unicast_header_t hdr;
+	    mpls_unicast_header_t hdr = {
+		.label_exp_s_ttl = 0,
+	    };
 
 	    vnet_mpls_uc_set_label(&hdr.label_exp_s_ttl, pfx.fp_label);
 	    vnet_mpls_uc_set_s(&hdr.label_exp_s_ttl, pfx.fp_eos);

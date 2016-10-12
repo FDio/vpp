@@ -71,7 +71,7 @@ fib_entry_src_mpls_set_data (fib_entry_src_t *src,
                              const fib_entry_t *entry,
                              const void *data)
 {
-    dpo_proto_t payload_proto;
+    fib_protocol_t payload_proto;
     fib_node_index_t fei;
     mpls_label_t label;
     mpls_eos_bit_t eos;
