@@ -251,6 +251,7 @@ _(OAM_ADD_DEL, oam_add_del)                                             \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                                 \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
+_(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                           \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(IS_ADDRESS_REACHABLE, is_address_reachable)                           \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)           \
@@ -2562,6 +2563,55 @@ vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_FLAGS_REPLY);
+}
+
+static void
+vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
+{
+  vl_api_sw_interface_set_mtu_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  ethernet_main_t *em = &ethernet_main;
+  u32 flags = ETHERNET_INTERFACE_FLAG_MTU;
+  u16 link_mtu;
+  u32 sw_if_index;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  link_mtu = ntohl (mp->link_mtu);
+
+  ethernet_interface_t *eif = ethernet_get_interface (em, sw_if_index);
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, sw_if_index);
+
+  if (!eif)
+    {
+      rv = -1;
+      goto out;
+    }
+
+  if (link_mtu < hi->min_supported_packet_bytes)
+    {
+      rv = -1;
+      goto out;
+    }
+
+  if (link_mtu > hi->max_supported_packet_bytes)
+    {
+      rv = -1;
+      goto out;
+    }
+
+  if (hi->max_packet_bytes != link_mtu)
+    {
+      hi->max_packet_bytes = link_mtu;
+      ethernet_set_flags (vnm, sw_if_index, flags);
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_MTU_REPLY);
 }
 
 static void

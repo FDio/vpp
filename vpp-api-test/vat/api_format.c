@@ -3433,6 +3433,7 @@ static void vl_api_flow_classify_details_t_handler_json
 
 #define foreach_standard_reply_retval_handler           \
 _(sw_interface_set_flags_reply)                         \
+_(sw_interface_set_mtu_reply)                           \
 _(sw_interface_add_del_address_reply)                   \
 _(sw_interface_set_table_reply)                         \
 _(sw_interface_set_vpath_reply)                         \
@@ -3574,6 +3575,7 @@ _(CREATE_LOOPBACK_REPLY, create_loopback_reply)                         \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
+_(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)               \
 _(CONTROL_PING_REPLY, control_ping_reply)                               \
 _(CLI_REPLY, cli_reply)                                                 \
 _(CLI_INBAND_REPLY, cli_inband_reply)                                   \
@@ -4525,6 +4527,47 @@ api_sw_interface_set_flags (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
   mp->admin_up_down = admin_up;
   mp->link_up_down = link_up;
+
+  /* send it... */
+  S;
+
+  /* Wait for a reply, return the good/bad news... */
+  W;
+}
+
+static int
+api_sw_interface_set_mtu (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_mtu_t *mp;
+  f64 timeout;
+  u32 sw_if_index;
+  u16 link_mtu;
+  u8 sw_if_index_set = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "link_mtu %d", &link_mtu))
+	;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_SET_MTU, sw_interface_set_mtu);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->link_mtu = link_mtu;
 
   /* send it... */
   S;
@@ -15990,6 +16033,8 @@ _(create_loopback,"[mac <mac-addr>]")                                   \
 _(sw_interface_dump,"")                                                 \
 _(sw_interface_set_flags,                                               \
   "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down") \
+_(sw_interface_set_mtu,                                                \
+  "<intfc> | sw_if_index <id> link_mtu <link_mtu>")		\
 _(sw_interface_add_del_address,                                         \
   "<intfc> | sw_if_index <id> <ip4-address> | <ip6-address> [del] [del-all] ") \
 _(sw_interface_set_table,                                               \

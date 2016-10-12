@@ -119,6 +119,30 @@ define sw_interface_details
   u32 vtr_tag2;			// second pushed tag
 };
 
+/** \brief Set MTU on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to set MTU on
+    @param link_mtu - desired MTU speed
+*/
+define sw_interface_set_mtu
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u16 link_mtu;
+};
+
+/** \brief reply to sw_interface_set_mtu
+    @param context - sender context which was passed in the request                                               
+    @param retval - return code of the set flags request 
+*/
+define sw_interface_set_mtu_reply
+{
+  u32 context;
+  i32 retval;
+};
+
 /** \brief Set flags on the interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

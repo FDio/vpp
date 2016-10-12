@@ -104,6 +104,18 @@ static void *vl_api_sw_interface_set_flags_t_print
   FINISH;
 }
 
+static void *vl_api_sw_interface_set_mtu_t_print
+  (vl_api_sw_interface_set_mtu_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_set_mtu ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "link_mtu %d", ntohl (mp->link_mtu));
+
+  FINISH;
+}
+
 static void *vl_api_sw_interface_add_del_address_t_print
   (vl_api_sw_interface_add_del_address_t * mp, void *handle)
 {
@@ -2850,6 +2862,7 @@ foreach_custom_print_no_arg_function
 #define foreach_custom_print_function                                   \
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
+_(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                           \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)           \
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
