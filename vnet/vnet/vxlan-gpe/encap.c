@@ -48,16 +48,6 @@ typedef enum {
 } vxlan_gpe_encap_error_t;
 
 /**
- * @brief Struct for defining VXLAN GPE next nodes
- */
-typedef enum {
-  VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
-  VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP,
-  VXLAN_GPE_ENCAP_NEXT_DROP,
-  VXLAN_GPE_ENCAP_N_NEXT
-} vxlan_gpe_encap_next_t;
-
-/**
  * @brief Struct for tracing VXLAN GPE encapsulated packets
  */
 typedef struct {
@@ -101,17 +91,8 @@ vxlan_gpe_encap_one_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
   ASSERT(sizeof(ip4_vxlan_gpe_header_t) == 36);
   ASSERT(sizeof(ip6_vxlan_gpe_header_t) == 56);
 
-  if (is_v4)
-    {
-      ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, 36, 1);
-      next0[0] = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
-
-    }
-  else
-    {
-      ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, 56, 0);
-      next0[0] = VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP;
-    }
+  ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size, is_v4);
+  next0[0] = t0->encap_next_node;
 }
 
 /**
@@ -135,18 +116,9 @@ vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0, vlib_buf
   ASSERT(sizeof(ip4_vxlan_gpe_header_t) == 36);
   ASSERT(sizeof(ip6_vxlan_gpe_header_t) == 56);
 
-  if (is_v4)
-    {
-      ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, 36, 1);
-      ip_udp_encap_one (ngm->vlib_main, b1, t1->rewrite, 36, 1);
-      next0[0] = next1[0] = VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP;
-    }
-  else
-    {
-      ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, 56, 0);
-      ip_udp_encap_one (ngm->vlib_main, b1, t1->rewrite, 56, 0);
-      next0[0] = next1[0] = VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP;
-    }
+  ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size, is_v4);
+  ip_udp_encap_one (ngm->vlib_main, b1, t1->rewrite, t1->rewrite_size, is_v4);
+  next0[0] = next1[0] = t0->encap_next_node;
 }
 
 /**
