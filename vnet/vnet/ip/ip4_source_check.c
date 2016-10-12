@@ -478,15 +478,13 @@ done:
 
 /* *INDENT-OFF* */
 /*?
- * Add an exemption for a prefix to pass the uRPF loose check. Testing purposes only.
+ * Add an exception for a prefix to pass the loose RPF tests. This is useful
+ * for testing purposes.
+ *
+ * VPP always performs a loose uRPF check for for-us traffic.
  *
  * @cliexpar
- * @cliexstart{ip rpf-accept}
- *
- * Add an exception for a prefix to pass the loose RPF tests. This is usefull
- * for testing purposes.
- * VPP always performs a loose uRPF check for for-us traffic.
- * @cliexend
+ * @cliexcmd{ip rpf-accept}
 ?*/
 VLIB_CLI_COMMAND (ip_source_check_accept_command, static) = {
   .path = "ip urpf-accept",
