@@ -64,7 +64,7 @@ vppapitestplugins_LTLIBRARIES = ioam_pot_test_plugin.la
 vppplugins_LTLIBRARIES = ioam_pot_plugin.la
 
 ########################################
-# iOAM trace export
+# iOAM trace export for IPv6
 ########################################
 
 ioam_export_plugin_la_SOURCES =   \
@@ -90,10 +90,10 @@ vppplugins_LTLIBRARIES += ioam_export_plugin.la
 ########################################
 # iOAM Trace
 ########################################
-ioam_trace_plugin_la_SOURCES =			\
-	ioam/lib-trace/trace_util.c			\
+libioam_trace_plugin_la_SOURCES =		\
+	ioam/lib-trace/trace_util.c		\
 	ioam/encap/ip6_ioam_trace.c		\
-	ioam/lib-trace/trace_util.h			\
+	ioam/lib-trace/trace_util.h		\
 	ioam/lib-trace/trace_api.c
 
 BUILT_SOURCES +=					\
@@ -103,17 +103,79 @@ pyapi_DATA += ioam/lib-trace/trace.py
 
 noinst_HEADERS +=                       \
   ioam/export/ioam_export_all_api_h.h   \
-  ioam/lib-trace/trace_all_api_h.h			\
-  ioam/lib-trace/trace_msg_enum.h			\
-  ioam/lib-trace/trace.api.h			\
+  ioam/lib-trace/trace_all_api_h.h	\
+  ioam/lib-trace/trace_msg_enum.h	\
+  ioam/lib-trace/trace.api.h		\
   ioam/lib-trace/trace_util.h
 
 ioam_trace_test_plugin_la_SOURCES =		\
-	ioam/lib-trace/trace_test.c			\
+	ioam/lib-trace/trace_test.c		\
 	ioam/lib-trace/trace_plugin.api.h
 
 vppapitestplugins_LTLIBRARIES += ioam_trace_test_plugin.la
-vppplugins_LTLIBRARIES += ioam_trace_plugin.la
+vppplugins_LTLIBRARIES += libioam_trace_plugin.la
+
+########################################
+# VxLAN-GPE
+########################################
+libioam_vxlan_gpe_plugin_la_SOURCES =			\
+	ioam/lib-vxlan-gpe/ioam_encap.c			\
+	ioam/lib-vxlan-gpe/ioam_decap.c			\
+	ioam/lib-vxlan-gpe/ioam_pop.c			\
+	ioam/lib-vxlan-gpe/vxlan_gpe_api.c		\
+	ioam/lib-vxlan-gpe/vxlan_gpe_ioam_trace.c	\
+    ioam/lib-vxlan-gpe/vxlan_gpe_ioam.c
+
+BUILT_SOURCES +=					\
+	ioam/lib-vxlan-gpe/vxlan_gpe.api.h ioam/lib-vxlan-gpe/vxlan_gpe.py
+
+pyapi_DATA += ioam/lib-vxlan-gpe/vxlan_gpe.py
+
+noinst_HEADERS +=                       \
+  ioam/export/ioam_export_all_api_h.h   \
+  ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h			\
+  ioam/lib-vxlan-gpe/vxlan_gpe_msg_enum.h			\
+  ioam/lib-vxlan-gpe/vxlan_gpe.api.h			\
+  ioam/lib-vxlan-gpe/vxlan_gpe_ioam_util.h			\
+  ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h                    \
+  ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h
+
+ioam_vxlan_gpe_test_plugin_la_SOURCES =		\
+	ioam/lib-vxlan-gpe/vxlan_gpe_test.c			\
+	ioam/lib-vxlan-gpe/vxlan_gpe_plugin.api.h
+
+libioam_vxlan_gpe_plugin_la_LIBADD = libioam_trace_plugin.la
+
+vppapitestplugins_LTLIBRARIES += ioam_vxlan_gpe_test_plugin.la
+vppplugins_LTLIBRARIES += libioam_vxlan_gpe_plugin.la
+
+########################################
+# iOAM export for VxLAN-GPE
+########################################
+
+libvxlan_gpe_ioam_export_plugin_la_SOURCES =   \
+ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.c         \
+ioam/export-vxlan-gpe/vxlan_gpe_node.c                \
+ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h     \
+ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_thread.c
+
+BUILT_SOURCES += ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h
+
+pyapi_DATA += ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.py
+
+noinst_HEADERS +=                                            \
+  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_all_api_h.h       \
+  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_msg_enum.h        \
+  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h
+
+vxlan_gpe_ioam_export_test_plugin_la_SOURCES =          \
+  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_test.c      \
+  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_plugin.api.h
+
+libvxlan_gpe_ioam_export_plugin_la_LIBADD = libioam_vxlan_gpe_plugin.la
+
+vppapitestplugins_LTLIBRARIES += vxlan_gpe_ioam_export_test_plugin.la
+vppplugins_LTLIBRARIES += libvxlan_gpe_ioam_export_plugin.la
 
 
 
