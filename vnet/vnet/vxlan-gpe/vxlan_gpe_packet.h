@@ -68,7 +68,8 @@
 _ (0x01, IP4)                         \
 _ (0x02, IP6)                         \
 _ (0x03, ETHERNET)		     \
-_ (0x04, NSH)
+_ (0x04, NSH)		     \
+_ (0x05, IOAM)
 
 
 /**
@@ -77,6 +78,7 @@ _ (0x04, NSH)
  * 2 - IP6
  * 3 - ETHERNET
  * 4 - NSH
+ * 5 - IOAM
  */
 typedef enum {
 #define _(n,f) VXLAN_GPE_PROTOCOL_##f = n,
@@ -103,5 +105,17 @@ typedef struct {
 #define VXLAN_GPE_FLAGS_P 0x04
 #define VXLAN_GPE_FLAGS_O 0x01
 #define VXLAN_GPE_VERSION 0x0
+
+/**
+ * @brief VXLAN GPE Extension (iOAM) Header definition
+ */
+typedef struct {
+  u8 type;
+  u8 length;
+  /** Reserved */
+  u8 reserved;
+  /** see vxlan_gpe_protocol_t */
+  u8 protocol;
+} vxlan_gpe_ioam_hdr_t;
 
 #endif /* included_vxlan_gpe_packet_h */

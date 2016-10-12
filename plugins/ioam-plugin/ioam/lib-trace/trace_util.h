@@ -18,7 +18,6 @@
 #ifndef include_vnet_trace_util_h
 #define include_vnet_trace_util_h
 
-#include <vnet/ip/ip6_hop_by_hop.h>
 #define debug_ioam debug_ioam_fn
 
 
@@ -209,15 +208,6 @@ typedef struct
 } ioam_trace_ts_app_t;
 
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct {
-  ip6_hop_by_hop_option_t hdr;
-  u8 ioam_trace_type;
-  u8 data_list_elts_left;
-  u32 elts[0]; /* Variable type. So keep it generic */
-}) ioam_trace_option_t;
-/* *INDENT-ON* */
-
 
 static inline u8
 fetch_trace_data_size (u8 trace_type)
@@ -239,6 +229,16 @@ fetch_trace_data_size (u8 trace_type)
 }
 
 int ioam_trace_get_sizeof_handler (u32 * result);
+int vxlan_gpe_trace_profile_setup (void);
+int ip6_trace_profile_setup (void);
+int ip6_trace_profile_cleanup (void);
+int vxlan_gpe_trace_profile_cleanup (void);
+
+#define TSP_SECONDS              0
+#define TSP_MILLISECONDS         1
+#define TSP_MICROSECONDS         2
+#define TSP_NANOSECONDS          3
+
 #endif
 
 /*
