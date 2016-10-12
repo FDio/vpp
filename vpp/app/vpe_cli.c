@@ -72,8 +72,7 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
 				    format_unformat_error, input);
 	}
     }
-  if (vec_len (mac_addrs) == 0 ||
-      vec_len (next_hops) == 0 || vec_len (mac_addrs) != vec_len (next_hops))
+  if (vec_len (mac_addrs) == 0 || vec_len (mac_addrs) != vec_len (next_hops))
     goto barf;
 
   /* Create / delete special interface route /32's */

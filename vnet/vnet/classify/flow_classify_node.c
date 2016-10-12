@@ -267,7 +267,7 @@ flow_classify_inline (vlib_main_t * vm,
               t->sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
               t->next_index = next0;
               t->table_index = t0 ? t0 - vcm->tables : ~0;
-              t->offset = e0 ? vnet_classify_get_offset (t0, e0): ~0;
+              t->offset = (t0 && e0) ? vnet_classify_get_offset (t0, e0): ~0;
             }
 
           /* Verify speculative enqueue, maybe switch current next frame */

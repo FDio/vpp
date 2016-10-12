@@ -1705,7 +1705,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	 a->seed = random_default_seed();
 	 
 	 /* for generating random interface ids */
-	 a->randomizer = 0x1119194911191949;
+	 a->randomizer = 0x1119194911191949ULL;
 	 a->randomizer = random_u64 ((u32 *)&a->randomizer);
 	 
 	 a->initial_adverts_count = MAX_INITIAL_RTR_ADVERTISEMENTS ; 

@@ -1597,6 +1597,14 @@ static void
 
   /* Detect the set of worker threads */
   uword *p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+
+  if (p == 0)
+    {
+      clib_warning ("worker thread registration AWOL !!");
+      rv = VNET_API_ERROR_INVALID_VALUE_2;
+      goto done;
+    }
+
   vlib_thread_registration_t *tr = (vlib_thread_registration_t *) p[0];
   int worker_thread_first = tr->first_index;
   int worker_thread_count = tr->count;
