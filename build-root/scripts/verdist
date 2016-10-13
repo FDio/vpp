@@ -1,0 +1,31 @@
+#!/bin/bash
+
+#
+# Add version to dist tarball.
+#
+BR=$1
+prefix=$2
+verstring=$3
+BASE=`pwd`
+
+git rev-parse 2> /dev/null
+if [ $? == 0 ]; then
+    git archive --prefix=${prefix}/ HEAD | gzip -9 > ${verstring}.tar.gz
+else
+    cd ..
+    tar -c ${prefix} | gzip -9 > ${verstring}.tar.gz
+    cp ${verstring}.tar.gz $BASE
+    cd $BASE
+fi
+
+mkdir ${BASE}/tmp
+cd ${BASE}/tmp
+tar -xzf ${BASE}/${verstring}.tar.gz
+rm ${BASE}/${verstring}.tar.gz
+
+cp ${BR}/scripts/.version ${BASE}/tmp/${prefix}/build-root/scripts
+tar -c ${prefix} | gzip -9 > ${verstring}.tar.gz
+mv ${verstring}.tar.gz ${BASE}
+
+cd ${BASE}
+rm -rf tmp

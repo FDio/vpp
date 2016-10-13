@@ -1,8 +1,32 @@
 #!/bin/bash
 
-TAG=$(git describe | cut -d- -f1 | sed -e 's/^v//')
-ADD=$(git describe | cut -s -d- -f2)
-CMT=$(git describe --dirty --match 'v*'| cut -s -d- -f3,4)
+path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
+
+cd "$path"
+
+git rev-parse 2> /dev/null
+if [ $? == 0 ]; then
+    vstring=$(git describe)
+elif [ -f .version ]; then
+    vstring=$(cat .version)
+else
+    if [ -f ../rpm/*.gz ]; then
+        vstring=$(ls ../rpm/*.gz)
+    else
+        exit 1
+    fi
+fi
+
+TAG=$(echo ${vstring} | cut -d- -f1 | sed -e 's/^v//')
+ADD=$(echo ${vstring} | cut -s -d- -f2)
+
+git rev-parse 2> /dev/null
+if [ $? == 0 ]; then
+    CMT=$(git describe --dirty --match 'v*'| cut -s -d- -f3,4)
+else
+    CMT=$(echo ${vstring} | cut -s -d- -f3,4)
+fi
+CMTR=$(echo $CMT | sed 's/-/_/')
 
 if [ -n "${BUILD_NUMBER}" ]; then
        BLD="~b${BUILD_NUMBER}"
@@ -15,13 +39,16 @@ fi
 
 if [ "$1" = "rpm-release" ]; then
   [ -z "${ADD}" ] && echo release && exit
-  CMT=$(git describe --dirty --match 'v*'| cut -s -d- -f3,4 | sed 's/-/_/')
-  echo ${ADD}${CMT:+~${CMT}}${BLD}
+  echo ${ADD}${CMTR:+~${CMTR}}${BLD}
   exit
 fi
 
-if [ -n "${ADD}" ]; then
-  echo ${TAG}-${ADD}${CMT:+~${CMT}}${BLD}
-else
-  echo ${TAG}
+  if [ -n "${ADD}" ]; then
+    if [ "$1" = "rpm-string" ]; then
+      echo ${TAG}-${ADD}${CMTR:+~${CMTR}}${BLD}
+    else
+      echo ${TAG}-${ADD}${CMT:+~${CMT}}${BLD}
+    fi
+  else
+    echo ${TAG}
 fi
