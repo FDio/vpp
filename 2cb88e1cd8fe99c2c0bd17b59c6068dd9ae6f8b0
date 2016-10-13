@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_6d20ee9b",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 4999,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-10-13T17:23:17Z",
+      "side": 1,
+      "message": "Please change the name to li_add_del or li_add_delete which is the standard nomenclature.",
+      "range": {
+        "startLine": 4999,
+        "startChar": 0,
+        "endLine": 4999,
+        "endChar": 26
+      },
+      "revId": "2cb88e1cd8fe99c2c0bd17b59c6068dd9ae6f8b0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_2d3ae6cd",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 5005,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-10-13T17:23:17Z",
+      "side": 1,
+      "message": "Please use \"is_add\" which is the standard nomenclature for add/delete api messages.",
+      "range": {
+        "startLine": 5005,
+        "startChar": 0,
+        "endLine": 5005,
+        "endChar": 17
+      },
+      "revId": "2cb88e1cd8fe99c2c0bd17b59c6068dd9ae6f8b0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
