@@ -28,8 +28,8 @@ define trace_profile_add {
   u32 context;
   u8 trace_type;
   u8 num_elts;
+  u8 trace_tsp;
   u32 node_id;
-  u32 trace_tsp;
   u32 app_data;
 };
 
