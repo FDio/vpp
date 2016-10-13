@@ -48,6 +48,7 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/policer/xlate.h>
+#include <vnet/lawful-intercept/lawful_intercept.h>
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police.h>
 
@@ -3601,6 +3602,7 @@ _(ipfix_classify_table_add_del_reply)                   \
 _(flow_classify_set_interface_reply)                    \
 _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
+_(li_add_del_reply)                                     \
 _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
@@ -3835,6 +3837,8 @@ _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
 _(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
 _(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
 _(PG_ENABLE_DISABLE_REPLY, pg_enable_disable_reply)                     \
+_(LI_ADD_DEL_REPLY, li_add_del_reply)                                   \
+_(LI_DETAILS, li_details)                                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
  ip_source_and_port_range_check_add_del_reply)                          \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
@@ -15233,6 +15237,101 @@ api_pg_enable_disable (vat_main_t * vam)
   return 0;
 }
 
+static int
+api_li_add_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_li_add_del_t *mp;
+  f64 timeout;
+  ip4_address_t collector;
+  ip4_address_t src;
+  u32 tmp;
+  u16 udp_port = 0;
+  u8 is_add = 1;
+
+  collector.data_u32 = 0;
+  src.data_u32 = 0;
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "collector %U", unformat_ip4_address, &collector))
+	;
+      else if (unformat (i, "src %U", unformat_ip4_address, &src))
+	;
+      else if (unformat (i, "port %d", &tmp))
+	udp_port = tmp;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else
+	break;
+    }
+
+  M (LI_ADD_DEL, li_add_del);
+
+  mp->src_ip4_addr = src.as_u32;
+  mp->collector = collector.as_u32;
+  mp->port = htons (udp_port);
+  mp->is_add = is_add;
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static void
+vl_api_li_details_t_handler (vl_api_li_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  ip4_address_t collector;
+  ip4_address_t src;
+
+  collector.data_u32 = mp->collector;
+  src.data_u32 = mp->src_ip4_addr;
+  fformat (vam->ofp, "%U => %U:%u\n",
+	   format_ip4_address, &src,
+	   format_ip4_address, &collector, ntohs (mp->port));
+}
+
+static void
+vl_api_li_details_t_handler_json (vl_api_li_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+  struct in_addr ip4;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  clib_memcpy (&ip4, &mp->src_ip4_addr, sizeof (ip4));
+  vat_json_object_add_ip4 (node, "src-ip4-addr", ip4);
+  clib_memcpy (&ip4, &mp->collector, sizeof (ip4));
+  vat_json_object_add_ip4 (node, "collector", ip4);
+  vat_json_object_add_uint (node, "udp-port", ntohs (mp->port));
+}
+
+static int
+api_li_dump (vat_main_t * vam)
+{
+  vl_api_li_dump_t *mp;
+  f64 timeout;
+
+  M (LI_DUMP, li_dump);
+  S;
+
+  /* Use a control ping for synchronization */
+  {
+    vl_api_control_ping_t *mp;
+    M (CONTROL_PING, control_ping);
+    S;
+  }
+  W;
+}
+
 int
 api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
 {
@@ -16394,6 +16493,8 @@ _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(pg_create_interface, "if_id <nn>")                                    \
 _(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \
 _(pg_enable_disable, "[stream <id>] disable")                           \
+_(li_add_del, "src <ip> collector <ip> port <port_num> [del]")          \
+_(li_dump, "")                                                          \
 _(ip_source_and_port_range_check_add_del,                               \
   "<ip-addr>/<mask> range <nn>-<nn> vrf <id>")                          \
 _(ip_source_and_port_range_check_interface_add_del,                     \
