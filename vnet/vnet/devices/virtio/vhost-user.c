@@ -588,6 +588,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	}
 
       vui->vrings[msg.state.index].last_used_idx =
+	vui->vrings[msg.state.index].last_avail_idx =
 	vui->vrings[msg.state.index].used->idx;
 
       /* tell driver that we don't want interrupts */
