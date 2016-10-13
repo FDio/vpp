@@ -4988,6 +4988,97 @@ define pg_enable_disable_reply
   i32 retval;
 };
 
+/** \brief Create/Delete LI entry to mirror traffic from one interface to another
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context which was passed in the request
+    @param src_ip4_addr - ipv4 source address
+    @param collector - lawful-intercept destination address
+    @param port - lawful-intercept destination port
+    @param is_delete - 0 to add, 1 to delete lawful-intercept entry
+*/
+define li_enable_disable {
+    u32 client_index;
+    u32 context;
+    u32 src_ip4_addr;
+    u32 collector;
+    u16 port;
+    u8 is_delete;
+};
+
+/** \brief Reply to LI enable_disable request
+    @param context - sender context which was passed in the request
+*/
+define li_enable_disable_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief Create LI entry to mirror traffic from one interface to another
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context which was passed in the request
+    @param src_ip4_addr - ipv4 source address
+    @param collector - lawful-intercept destination address
+    @param port - lawful-intercept destination port
+*/
+define li_create {
+    u32 client_index;
+    u32 context;
+    u32 src_ip4_addr;
+    u32 collector;
+    u16 port;
+};
+
+/** \brief Reply to LI create request
+    @param context - sender context which was passed in the request
+*/
+define li_create_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief Delete LI entry mirroring traffic of an interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context which was passed in the request
+    @param collector - lawful-intercept destination address
+    @param port - lawful-intercept destination port
+*/
+define li_delete {
+    u32 client_index;
+    u32 context;
+    u32 collector;
+    u16 port;
+};
+
+/** \brief Reply to LI deleterequest
+    @param context - sender context which was passed in the request
+*/
+define li_delete_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief LI dump request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define li_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply to LI dump request
+    @param context - sender context which was passed in the request
+    @param src_ip4_addr - ipv4 source address
+    @param collector - lawful-intercept destination address
+    @param port - lawful-intercept destination port
+*/
+define li_details {
+    u32 context;
+    u32 src_ip4_addr;
+    u32 collector;
+    u16 port;
+};
+
 /** \brief Configure IP source and L4 port-range check
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

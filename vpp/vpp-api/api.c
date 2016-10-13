@@ -110,6 +110,7 @@
 #include <vnet/l2/l2_fib.h>
 #include <vnet/l2/l2_bd.h>
 #include <vpp-api/vpe_msg_enum.h>
+#include <vnet/lawful-intercept/lawful_intercept.h>
 
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
@@ -434,6 +435,10 @@ _(GET_NEXT_INDEX, get_next_index)                                       \
 _(PG_CREATE_INTERFACE, pg_create_interface)                             \
 _(PG_CAPTURE, pg_capture)                                               \
 _(PG_ENABLE_DISABLE, pg_enable_disable)                                 \
+_(LI_ENABLE_DISABLE, li_enable_disable)                                 \
+_(LI_CREATE, li_create)                                                 \
+_(LI_DELETE, li_delete)                                                 \
+_(LI_DUMP, li_dump)                                                     \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
   ip_source_and_port_range_check_add_del)                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
@@ -8319,6 +8324,105 @@ vl_api_pg_enable_disable_t_handler (vl_api_pg_enable_disable_t * mp)
   pg_enable_disable (stream_index, is_enable);
 
   REPLY_MACRO (VL_API_PG_ENABLE_DISABLE_REPLY);
+}
+
+static void
+vl_api_li_enable_disable_t_handler (vl_api_li_enable_disable_t * mp)
+{
+  vl_api_li_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+#if DPDK > 0			/* Cannot call LI without DPDK */
+  vlib_main_t *vm = vlib_get_main ();
+
+  ip4_address_t src_ip4_addr;
+  ip4_address_t collector;
+  src_ip4_addr.data_u32 = mp->src_ip4_addr;
+  collector.data_u32 = mp->collector;
+  rv = (0 == set_li_add_delete_entry (vm, src_ip4_addr,
+				      collector, ntohs (mp->port),
+				      mp->is_delete));
+#else
+  clib_warning ("LI without DPDK not implemented");
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif /* DPDK */
+
+  REPLY_MACRO (VL_API_LI_ENABLE_DISABLE_REPLY);
+}
+
+static void
+vl_api_li_create_t_handler (vl_api_li_create_t * mp)
+{
+  vl_api_li_create_reply_t *rmp;
+  int rv;
+
+#if DPDK > 0			/* Cannot call LI without DPDK */
+  vlib_main_t *vm = vlib_get_main ();
+
+  ip4_address_t src_ip4_addr;
+  ip4_address_t collector;
+  src_ip4_addr.data_u32 = mp->src_ip4_addr;
+  collector.data_u32 = mp->collector;
+  rv = (0 == set_li_add_delete_entry (vm, src_ip4_addr,
+				      collector, ntohs (mp->port), 0));
+#else
+  clib_warning ("LI without DPDK not implemented");
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif /* DPDK */
+
+  REPLY_MACRO (VL_API_LI_CREATE_REPLY);
+}
+
+static void
+vl_api_li_delete_t_handler (vl_api_li_delete_t * mp)
+{
+  vl_api_li_delete_reply_t *rmp;
+  int rv;
+
+#if DPDK > 0			/* Cannot call LI without DPDK */
+  vlib_main_t *vm = vlib_get_main ();
+
+  ip4_address_t src_ip4_addr;
+  ip4_address_t collector;
+  src_ip4_addr.data_u32 = ~0;
+  collector.data_u32 = mp->collector;
+  rv = (0 == set_li_add_delete_entry (vm, src_ip4_addr,
+				      collector, ntohs (mp->port), 1));
+#else
+  clib_warning ("LI without DPDK not implemented");
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif /* DPDK */
+
+  REPLY_MACRO (VL_API_LI_DELETE_REPLY);
+}
+
+static void
+vl_api_li_dump_t_handler (vl_api_li_dump_t * mp)
+{
+#if DPDK > 0			/* Cannot call LI without DPDK */
+  unix_shared_memory_queue_t *q;
+  vl_api_li_details_t *rmp;
+  li_main_t *lm = &li_main;
+  int i;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+
+  for (i = 0; i < vec_len (lm->collectors); i++)
+    {
+      rmp = vl_msg_api_alloc (sizeof (*rmp));
+      memset (rmp, 0, sizeof (*rmp));
+      rmp->_vl_msg_id = ntohs (VL_API_LI_DETAILS);
+      rmp->context = mp->context;
+
+      rmp->src_ip4_addr = lm->src_addrs[i].as_u32;
+      rmp->collector = lm->collectors[i].as_u32;
+      rmp->port = htons (lm->ports[i]);
+
+      vl_msg_api_send_shmem (q, (u8 *) & rmp);
+    }
+#else
+  clib_warning ("LI without DPDK not implemented");
+#endif /* DPDK */
 }
 
 static void
