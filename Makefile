@@ -36,6 +36,7 @@ DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
 DEB_DEPENDS += python-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
+	DEB_DEPENDS += gcc-5
 else
 	DEB_DEPENDS += default-jdk-headless
 endif
@@ -147,6 +148,7 @@ ifeq ($(OS_ID),ubuntu)
 ifeq ($(OS_VERSION_ID),14.04)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install software-properties-common
 	@sudo -E add-apt-repository ppa:openjdk-r/ppa $(CONFIRM)
+	@sudo -E add-apt-repository ppa:ubuntu-toolchain-r/test $(CONFIRM)
 	@sudo -E apt-get update
 endif
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
