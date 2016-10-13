@@ -136,7 +136,7 @@ api_trace_profile_add (vat_main_t * vam)
   int rv = 0;
   u32 node_id = 0;
   u32 app_data = 0;
-  u32 trace_tsp = 0;
+  u8 trace_tsp = 0;
   f64 timeout;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -160,9 +160,9 @@ api_trace_profile_add (vat_main_t * vam)
   M (TRACE_PROFILE_ADD, trace_profile_add);
 
   mp->trace_type = trace_type;
-  mp->trace_tsp = ntohl (trace_tsp);
-  mp->node_id = ntohl (node_id);
-  mp->app_data = ntohl (app_data);
+  mp->trace_tsp = trace_tsp;
+  mp->node_id = htonl (node_id);
+  mp->app_data = htonl (app_data);
   mp->num_elts = num_elts;
 
   S;
@@ -231,7 +231,7 @@ vat_plugin_register (vat_main_t * vam)
 
   sm->vat_main = vam;
 
-  name = format (0, "trace_%08x%c", api_version, 0);
+  name = format (0, "ioam_trace_%08x%c", api_version, 0);
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~ 0)

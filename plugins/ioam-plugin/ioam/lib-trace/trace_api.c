@@ -112,7 +112,8 @@ static void vl_api_trace_profile_add_t_handler
     {
       rv =
 	trace_profile_create (profile, mp->trace_type, mp->num_elts,
-			      mp->trace_tsp, mp->node_id, mp->app_data);
+			      mp->trace_tsp, ntohl (mp->node_id),
+			      ntohl (mp->app_data));
       if (rv != 0)
 	goto ERROROUT;
     }
@@ -186,7 +187,7 @@ trace_init (vlib_main_t * vm)
 
   bzero (sm, sizeof (trace_main));
   (void) trace_util_init ();
-  name = format (0, "trace_%08x%c", api_version, 0);
+  name = format (0, "ioam_trace_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
   sm->msg_id_base = vl_msg_api_get_msg_ids
