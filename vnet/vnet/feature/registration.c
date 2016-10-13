@@ -292,7 +292,9 @@ again:
       p = hash_get (reg_by_index, result[i]);
       ASSERT (p != 0);
       this_reg = (vnet_feature_registration_t *) p[0];
-      *this_reg->feature_index = n_features - (i + 1);
+      if (this_reg->feature_index)
+	*this_reg->feature_index = n_features - (i + 1);
+      this_reg->feature_index_u32 = n_features - (i + 1);
       vec_add1 (feature_nodes, this_reg->node_name);
     }
 
