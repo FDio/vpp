@@ -167,10 +167,27 @@ define make
 	@make -C $(BR) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
 endef
 
+$(BR)/scripts/.version:
+ifneq ("$(wildcard /etc/redhat-release)","")
+	$(shell $(BR)/scripts/version rpm-string > $(BR)/scripts/.version)
+else
+	$(shell $(BR)/scripts/version > $(BR)/scripts/.version)
+endif
+
+dist:	$(BR)/scripts/.version
+	$(MAKE) verstring=$(PLATFORM)-$(shell cat $(BR)/scripts/.version) prefix=$(PLATFORM) distversion
+
+distversion:	$(BR)/scripts/.version
+	$(BR)/scripts/verdist ${BR} ${prefix}-$(shell $(BR)/scripts/version rpm-version) ${verstring}
+	mv $(verstring).tar.gz $(BR)/rpm
+
 build: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-install)
 
-wipe: $(BR)/.bootstrap.ok
+wipedist:
+	$(RM) $(BR)/scripts/.version $(BR)/rpm/*.tar.gz
+
+wipe: wipedist $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-wipe)
 
 rebuild: wipe build
@@ -271,7 +288,7 @@ run-vat:
 pkg-deb:
 	$(call make,$(PLATFORM),install-deb)
 
-pkg-rpm:
+pkg-rpm: dist
 	$(call make,$(PLATFORM),install-rpm)
 
 ctags: ctags.files

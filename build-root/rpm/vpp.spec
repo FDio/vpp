@@ -1,5 +1,6 @@
-%define _vpp_install_dir ../%{_install_dir}
-%define _vpp_build_dir   ../build-tool-native
+%define _mu_build_dir    %{_mu_build_root_dir}
+%define _vpp_install_dir %{_install_dir}
+%define _vpp_build_dir   build-tool-native
 %define _unitdir         /lib/systemd/system
 %define _topdir          %(pwd)
 %define _builddir        %{_topdir}
@@ -26,6 +27,8 @@ Version: %{_version}
 Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd
+
+Source: %{name}-%{_version}-%{_release}.tar.gz
 
 %description
 This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
@@ -76,6 +79,13 @@ Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}
 %description python-api
 This package contains the python bindings for the vpp api
 
+%prep
+%setup -q -n %{name}-%{_version}
+
+%build
+make bootstrap
+make build-release
+
 %pre
 # Add the vpp group
 groupadd -f -r vpp
@@ -86,22 +96,22 @@ groupadd -f -r vpp
 #
 mkdir -p -m755 %{buildroot}%{_bindir}
 mkdir -p -m755 %{buildroot}%{_unitdir}
-install -p -m 755 %{_vpp_install_dir}/*/bin/* %{buildroot}%{_bindir}
-install -p -m 755 %{_vpp_build_dir}/vppapigen/vppapigen %{buildroot}%{_bindir}
-install -p -m 755 ../../vppapigen/pyvppapigen.py %{buildroot}%{_bindir}
+install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/*/bin/* %{buildroot}%{_bindir}
+install -p -m 755 %{_mu_build_dir}/%{_vpp_build_dir}/vppapigen/vppapigen %{buildroot}%{_bindir}
+install -p -m 755 %{_mu_build_dir}/../vppapigen/pyvppapigen.py %{buildroot}%{_bindir}
 #
 # configs
 #
 mkdir -p -m755 %{buildroot}/etc/vpp
 mkdir -p -m755 %{buildroot}/etc/sysctl.d
-install -p -m 644 vpp.service %{buildroot}%{_unitdir}
-install -p -m 644 ../../vpp/conf/startup.uiopcigeneric.conf %{buildroot}/etc/vpp/startup.conf
-install -p -m 644 ../../vpp/conf/80-vpp.conf %{buildroot}/etc/sysctl.d
+install -p -m 644 %{_mu_build_dir}/rpm/vpp.service %{buildroot}%{_unitdir}
+install -p -m 644 %{_mu_build_dir}/../vpp/conf/startup.uiopcigeneric.conf %{buildroot}/etc/vpp/startup.conf
+install -p -m 644 %{_mu_build_dir}/../vpp/conf/80-vpp.conf %{buildroot}/etc/sysctl.d
 #
 # libraries
 #
 mkdir -p -m755 %{buildroot}%{_libdir}
-for file in $(find %{_vpp_install_dir}/*/lib* -type f -name '*.so.*.*.*' -print )
+for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/*/lib* -type f -name '*.so.*.*.*' -print )
 do
 	install -p -m 755 $file %{buildroot}%{_libdir}
 done
@@ -116,7 +126,7 @@ done
 
 # Python bindings
 mkdir -p -m755 %{buildroot}%{python2_sitelib}/vpp_papi
-for file in $(find %{_vpp_install_dir}/*/lib/python2.7/site-packages/ -type f -print | grep -v pyc | grep -v pyo)
+for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/*/lib/python2.7/site-packages/ -type f -print | grep -v pyc | grep -v pyo)
 do
 	install -p -m 666 $file %{buildroot}%{python2_sitelib}/vpp_papi/
 done
@@ -124,7 +134,7 @@ done
 #
 # devel
 #
-for dir in $(find %{_vpp_install_dir}/*/include/ -maxdepth 0 -type d -print | grep -v dpdk)
+for dir in $(find %{_mu_build_dir}/%{_vpp_install_dir}/*/include/ -maxdepth 0 -type d -print | grep -v dpdk)
 do
 	for subdir in $(cd ${dir} && find . -type d -print)
 	do
@@ -137,16 +147,16 @@ do
 done
 
 mkdir -p -m755 %{buildroot}%{python2_sitelib}/jvppgen
-install -p -m755 ../../vpp-api/java/jvpp/gen/jvpp_gen.py %{buildroot}/usr/bin
-for i in $(ls ../../vpp-api/java/jvpp/gen/jvppgen/*.py); do
+install -p -m755 %{_mu_build_dir}/../vpp-api/java/jvpp/gen/jvpp_gen.py %{buildroot}/usr/bin
+for i in $(ls %{_mu_build_dir}/../vpp-api/java/jvpp/gen/jvppgen/*.py); do
    install -p -m666 ${i} %{buildroot}%{python2_sitelib}/jvppgen
 done;
 
 # sample plugin
 mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/sample
-for file in $(cd %{_vpp_install_dir}/../../sample-plugin && find -type f -print)
+for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../sample-plugin && find -type f -print)
 do
-	install -p -m 644 %{_vpp_install_dir}/../../sample-plugin/$file \
+	install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/../../sample-plugin/$file \
 	   %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/$file
 done
 
@@ -156,15 +166,15 @@ done
 # 
 mkdir -p -m755 %{buildroot}/usr/lib/vpp_plugins
 mkdir -p -m755 %{buildroot}/usr/lib/vpp_api_test_plugins
-for file in $(cd %{_vpp_install_dir}/plugins/lib64/vpp_plugins && find -type f -print)
+for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_plugins && find -type f -print)
 do
-        install -p -m 644 %{_vpp_install_dir}/plugins/lib64/vpp_plugins/$file \
+        install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_plugins/$file \
            %{buildroot}/usr/lib/vpp_plugins/$file
 done
 
-for file in $(cd %{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins && find -type f -print)
+for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins && find -type f -print)
 do
-        install -p -m 644 %{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins/$file \
+        install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins/$file \
            %{buildroot}/usr/lib/vpp_api_test_plugins/$file
 done
 
