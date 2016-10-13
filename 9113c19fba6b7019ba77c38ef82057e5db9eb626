@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_8fbc2a6e",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/vxlan_gpe.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa3479d7_8f82ea50",
+      "range": {
+        "startLine": 18,
+        "startChar": 11,
+        "endLine": 18,
+        "endChar": 16
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_cfbd9204",
         "filename": "vnet/vnet/vxlan-gpe/decap.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2016-10-13T07:27:48Z",
       "side": 1,
       "message": "is this required?\nFor decap, we have the next protocol in vxlan header that should give an indication of what should be the next node for processing.\nI was thinking something like this:\n from the dictionary in vxlan main determine the next node index to pass the packet post vxlan decap\n\nWhen ioam plugin is present it will register decap node index for ioam protocol.\nWhen export is enabled it will override it with its own index.",
+      "range": {
+        "startLine": 611,
+        "startChar": 0,
+        "endLine": 618,
+        "endChar": 1
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_0f771ad6",
+        "filename": "vnet/vnet/vxlan-gpe/decap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 618,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "This is required here as the export plugin needs to register the decap_next_override to include export when it is enabled.",
+      "parentUuid": "fa3479d7_cfbd9204",
       "range": {
         "startLine": 611,
         "startChar": 0,
@@ -95,6 +143,30 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_8f630a1a",
+        "filename": "vnet/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa3479d7_4f41a20a",
+      "range": {
+        "startLine": 97,
+        "startChar": 55,
+        "endLine": 97,
+        "endChar": 71
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_afe36e32",
         "filename": "vnet/vnet/vxlan-gpe/encap.c",
         "patchSetId": 2
@@ -106,6 +178,30 @@
       "writtenOn": "2016-10-13T07:27:48Z",
       "side": 1,
       "message": "same comments as vxlan_gpe_encap_one_inline",
+      "range": {
+        "startLine": 128,
+        "startChar": 2,
+        "endLine": 128,
+        "endChar": 21
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_6f68e6f5",
+        "filename": "vnet/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa3479d7_afe36e32",
       "range": {
         "startLine": 128,
         "startChar": 2,
@@ -141,6 +237,30 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_efcdf65e",
+        "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "Yes, the decap protocols defined for VXLAN_GPE start from 1.",
+      "parentUuid": "fa3479d7_8fe9ca1c",
+      "range": {
+        "startLine": 217,
+        "startChar": 6,
+        "endLine": 217,
+        "endChar": 23
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_af8c8e80",
         "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.c",
         "patchSetId": 2
@@ -152,6 +272,30 @@
       "writtenOn": "2016-10-13T07:27:48Z",
       "side": 1,
       "message": "what if there was a t-\u003erewrite without the extension header already?",
+      "range": {
+        "startLine": 227,
+        "startChar": 2,
+        "endLine": 227,
+        "endChar": 18
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_cfda3217",
+        "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "If the extension header is iOAM only, the iOAM headers will be re-constructed. If the headers have more than iOAM (i.e. some other type, then the headers will be overwritten). Is this a fair assumption for now?",
+      "parentUuid": "fa3479d7_af8c8e80",
       "range": {
         "startLine": 227,
         "startChar": 2,
@@ -187,6 +331,30 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_af8feecb",
+        "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 270,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "VxLAN-GPE protocols start from 1. The number 0 is currently set to drop. Hence this assumption seems valid.",
+      "parentUuid": "fa3479d7_2ff89ee4",
+      "range": {
+        "startLine": 270,
+        "startChar": 6,
+        "endLine": 270,
+        "endChar": 23
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_4ff3e20a",
         "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.c",
         "patchSetId": 2
@@ -198,6 +366,30 @@
       "writtenOn": "2016-10-13T07:27:48Z",
       "side": 1,
       "message": "if t-\u003erewrite existed it needs to be freed",
+      "range": {
+        "startLine": 280,
+        "startChar": 2,
+        "endLine": 280,
+        "endChar": 18
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_afd7eeec",
+        "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa3479d7_4ff3e20a",
       "range": {
         "startLine": 280,
         "startChar": 2,
@@ -233,6 +425,30 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_4fe762e5",
+        "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa3479d7_efabb6d4",
+      "range": {
+        "startLine": 135,
+        "startChar": 41,
+        "endLine": 135,
+        "endChar": 55
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_6f87c662",
         "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.h",
         "patchSetId": 2
@@ -244,6 +460,30 @@
       "writtenOn": "2016-10-13T07:27:48Z",
       "side": 1,
       "message": "We can remove this. Instead of maintaining the state of iOAM being enabled for vxlan here I was thinking of something like this instead of a flag to enable iOAM for vxlan:\nadd the following in the tunnel struct vxlan_gpe_tunnel_t:\nencap_next_node_index;\n\nAdd apis here to set encap_override_next_node_index or as part of applying rewrite send the next node index that will be set in the t-\u003eencap_next_node_index.\n\nWhen ioam apis/config are applied for a vni then call encap_next_node_index gets set.\n\nFor decap though we need to maintain a dictionary of protocol -\u003e node index.\nforeach_vxlan_gpe_protocol add a MAX node as the end\ne.g. u32 decap_next_by_protocol[VXLAN_GPE_PROTOCOL_MAX];\nset it  at init, and add an api to override next node index e.g\ndecap_next_by_protocol[VXLAN_GPE_PROTOCOL_IP4] \u003d IP4_INPUT;\ndecap_next_by_protocol[VXLAN_GPE_PROTOCOL_IP6] \u003d IP6_INPUT;\ndecap_next_by_protocol[VXLAN_GPE_PROTOCOL_ETHERNET] \u003d ETHER_INPUT;\nothers to ~0.\nprovide an api vxlan_decap_next_protocol_register_node(u8 protocol, u32 node_index)\nthat will be called by the respective plugins/protocol implementation",
+      "range": {
+        "startLine": 177,
+        "startChar": 2,
+        "endLine": 177,
+        "endChar": 29
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_2fec1ec7",
+        "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "The encap part already has the encap_next_node method you have mentioned. The decap part can be implemented using the translation table.",
+      "parentUuid": "fa3479d7_6f87c662",
       "range": {
         "startLine": 177,
         "startChar": 2,
@@ -290,6 +530,30 @@
       "writtenOn": "2016-10-13T07:27:48Z",
       "side": 1,
       "message": "should be inthe plugin not here",
+      "range": {
+        "startLine": 206,
+        "startChar": 0,
+        "endLine": 314,
+        "endChar": 0
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_0fd15afb",
+        "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T11:25:39Z",
+      "side": 1,
+      "message": "Will be done as part of the file re-org",
+      "parentUuid": "fa3479d7_4f7c0273",
       "range": {
         "startLine": 206,
         "startChar": 0,
