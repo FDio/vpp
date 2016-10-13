@@ -42,7 +42,7 @@
     feature subgraph arc, which needs to run before @c ip4-lookup.  In
     either base code or a plugin,
     <CODE><PRE>
-    \#include <vnet/ip/ip_feature_registration.h>
+    \#include <vnet/ip/feature_registration.h>
     </PRE></CODE>
 
     and add the new feature as shown:
@@ -152,7 +152,7 @@ vnet_feature_arc_init (vlib_main_t * vm,
 		       vnet_config_main_t * vcm,
 		       char **feature_start_nodes,
 		       int num_feature_start_nodes,
-		       vnet_ip_feature_registration_t * first_reg,
+		       vnet_feature_registration_t * first_reg,
 		       char ***in_feature_nodes)
 {
   uword *index_by_name;
@@ -171,7 +171,7 @@ vnet_feature_arc_init (vlib_main_t * vm,
   int a_index, b_index;
   int n_features;
   u32 *result = 0;
-  vnet_ip_feature_registration_t *this_reg = 0;
+  vnet_feature_registration_t *this_reg = 0;
   char **feature_nodes = 0;
   hash_pair_t *hp;
   u8 **keys_to_delete = 0;
@@ -291,7 +291,7 @@ again:
     {
       p = hash_get (reg_by_index, result[i]);
       ASSERT (p != 0);
-      this_reg = (vnet_ip_feature_registration_t *) p[0];
+      this_reg = (vnet_feature_registration_t *) p[0];
       *this_reg->feature_index = n_features - (i + 1);
       vec_add1 (feature_nodes, this_reg->node_name);
     }

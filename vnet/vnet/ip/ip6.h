@@ -46,7 +46,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/lookup.h>
-#include <vnet/ip/ip_feature_registration.h>
+#include <vnet/ip/feature_registration.h>
 #include <stdbool.h>
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_template.h>
@@ -161,7 +161,7 @@ typedef struct ip6_main_t {
   uword lookup_table_size;
 
   /* feature path configuration lists */
-  vnet_ip_feature_registration_t * next_feature[VNET_N_IP_FEAT];
+  vnet_feature_registration_t * next_feature[VNET_N_IP_FEAT];
 
   /* Built-in unicast feature path indices, see vnet_feature_arc_init(...)  */
   u32 ip6_unicast_rx_feature_check_access;
@@ -202,7 +202,7 @@ typedef struct ip6_main_t {
 extern ip6_main_t ip6_main;
 
 #define VNET_IP6_UNICAST_FEATURE_INIT(x,...)                    \
-  __VA_ARGS__ vnet_ip_feature_registration_t uc_##x;            \
+  __VA_ARGS__ vnet_feature_registration_t uc_##x;            \
 static void __vnet_add_feature_registration_uc_##x (void)       \
   __attribute__((__constructor__)) ;                            \
 static void __vnet_add_feature_registration_uc_##x (void)       \
@@ -211,10 +211,10 @@ static void __vnet_add_feature_registration_uc_##x (void)       \
   uc_##x.next = im->next_feature[VNET_IP_RX_UNICAST_FEAT];      \
   im->next_feature[VNET_IP_RX_UNICAST_FEAT] = &uc_##x;          \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t uc_##x
+__VA_ARGS__ vnet_feature_registration_t uc_##x
 
 #define VNET_IP6_MULTICAST_FEATURE_INIT(x,...)                  \
-  __VA_ARGS__ vnet_ip_feature_registration_t mc_##x;            \
+  __VA_ARGS__ vnet_feature_registration_t mc_##x;            \
 static void __vnet_add_feature_registration_mc_##x (void)       \
   __attribute__((__constructor__)) ;                            \
 static void __vnet_add_feature_registration_mc_##x (void)       \
@@ -223,10 +223,10 @@ static void __vnet_add_feature_registration_mc_##x (void)       \
   mc_##x.next = im->next_feature[VNET_IP_RX_MULTICAST_FEAT];    \
   im->next_feature[VNET_IP_RX_MULTICAST_FEAT] = &mc_##x;        \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t mc_##x
+__VA_ARGS__ vnet_feature_registration_t mc_##x
 
 #define VNET_IP6_TX_FEATURE_INIT(x,...)                         \
-  __VA_ARGS__ vnet_ip_feature_registration_t tx_##x;            \
+  __VA_ARGS__ vnet_feature_registration_t tx_##x;            \
 static void __vnet_add_feature_registration_tx_##x (void)       \
   __attribute__((__constructor__)) ;                            \
 static void __vnet_add_feature_registration_tx_##x (void)       \
@@ -235,7 +235,7 @@ static void __vnet_add_feature_registration_tx_##x (void)       \
   tx_##x.next = im->next_feature[VNET_IP_TX_FEAT];              \
   im->next_feature[VNET_IP_TX_FEAT] = &tx_##x;                  \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t tx_##x
+__VA_ARGS__ vnet_feature_registration_t tx_##x
 
 
 /* Global ip6 input node.  Errors get attached to ip6 input node. */
