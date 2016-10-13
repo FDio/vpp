@@ -43,7 +43,7 @@
 #include <vnet/ip/ip4_mtrie.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/lookup.h>
-#include <vnet/ip/ip_feature_registration.h>
+#include <vnet/ip/feature_registration.h>
 
 typedef struct ip4_fib_t {
   /* Hash table for each prefix length mapping. */
@@ -117,7 +117,7 @@ typedef struct ip4_main_t {
   vlib_packet_template_t ip4_arp_request_packet_template;
 
   /** Feature path configuration lists */
-  vnet_ip_feature_registration_t * next_feature[VNET_N_IP_FEAT];
+  vnet_feature_registration_t * next_feature[VNET_N_IP_FEAT];
 
   /** Built-in unicast feature path index, see @ref vnet_feature_arc_init()  */
   u32 ip4_unicast_rx_feature_check_access;
@@ -175,7 +175,7 @@ typedef struct ip4_main_t {
 extern ip4_main_t ip4_main;
 
 #define VNET_IP4_UNICAST_FEATURE_INIT(x,...)                    \
-  __VA_ARGS__ vnet_ip_feature_registration_t uc_##x;            \
+  __VA_ARGS__ vnet_feature_registration_t uc_##x;            \
 static void __vnet_add_feature_registration_uc_##x (void)       \
   __attribute__((__constructor__)) ;                            \
 static void __vnet_add_feature_registration_uc_##x (void)       \
@@ -184,10 +184,10 @@ static void __vnet_add_feature_registration_uc_##x (void)       \
   uc_##x.next = im->next_feature[VNET_IP_RX_UNICAST_FEAT];      \
   im->next_feature[VNET_IP_RX_UNICAST_FEAT] = &uc_##x;          \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t uc_##x
+__VA_ARGS__ vnet_feature_registration_t uc_##x
 
 #define VNET_IP4_MULTICAST_FEATURE_INIT(x,...)                  \
-  __VA_ARGS__ vnet_ip_feature_registration_t mc_##x;            \
+  __VA_ARGS__ vnet_feature_registration_t mc_##x;            \
 static void __vnet_add_feature_registration_mc_##x (void)       \
   __attribute__((__constructor__)) ;                            \
 static void __vnet_add_feature_registration_mc_##x (void)       \
@@ -196,10 +196,10 @@ static void __vnet_add_feature_registration_mc_##x (void)       \
   mc_##x.next = im->next_feature[VNET_IP_RX_MULTICAST_FEAT];    \
   im->next_feature[VNET_IP_RX_MULTICAST_FEAT] = &mc_##x;        \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t mc_##x
+__VA_ARGS__ vnet_feature_registration_t mc_##x
 
 #define VNET_IP4_TX_FEATURE_INIT(x,...)                         \
-  __VA_ARGS__ vnet_ip_feature_registration_t tx_##x;            \
+  __VA_ARGS__ vnet_feature_registration_t tx_##x;            \
 static void __vnet_add_feature_registration_tx_##x (void)       \
   __attribute__((__constructor__)) ;                            \
 static void __vnet_add_feature_registration_tx_##x (void)       \
@@ -208,7 +208,7 @@ static void __vnet_add_feature_registration_tx_##x (void)       \
   tx_##x.next = im->next_feature[VNET_IP_TX_FEAT];              \
   im->next_feature[VNET_IP_TX_FEAT] = &tx_##x;                  \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t tx_##x
+__VA_ARGS__ vnet_feature_registration_t tx_##x
 
 
 /** Global ip4 input node.  Errors get attached to ip4 input node. */

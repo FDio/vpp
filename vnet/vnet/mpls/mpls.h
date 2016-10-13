@@ -155,7 +155,7 @@ typedef struct {
   u32 ip6_classify_mpls_policy_encap_next_index;
 
   /* feature path configuration lists */
-  vnet_ip_feature_registration_t * next_feature[VNET_N_IP_FEAT];
+  vnet_feature_registration_t * next_feature[VNET_N_IP_FEAT];
 
   /* Save feature results for show command */
   char **feature_nodes[VNET_N_IP_FEAT];
@@ -174,7 +174,7 @@ typedef struct {
 extern mpls_main_t mpls_main;
 
 #define VNET_MPLS_FEATURE_INIT(x,...)                           \
-  __VA_ARGS__ vnet_ip_feature_registration_t uc_##x;            \
+  __VA_ARGS__ vnet_feature_registration_t uc_##x;            \
 static void __vnet_add_feature_registration_uc_##x (void)       \
   __attribute__((__constructor__)) ;                            \
 static void __vnet_add_feature_registration_uc_##x (void)       \
@@ -183,10 +183,10 @@ static void __vnet_add_feature_registration_uc_##x (void)       \
   uc_##x.next = mm->next_feature[VNET_IP_RX_UNICAST_FEAT];      \
   mm->next_feature[VNET_IP_RX_UNICAST_FEAT] = &uc_##x;          \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t uc_##x
+__VA_ARGS__ vnet_feature_registration_t uc_##x
 
 #define VNET_MPLS_TX_FEATURE_INIT(x,...)                        \
-  __VA_ARGS__ vnet_ip_feature_registration_t tx_##x;            \
+  __VA_ARGS__ vnet_feature_registration_t tx_##x;            \
 static void __vnet_add_feature_registration_tx_##x (void)       \
   __attribute__((__constructor__)) ;                            \
 static void __vnet_add_feature_registration_tx_##x (void)       \
@@ -195,7 +195,7 @@ static void __vnet_add_feature_registration_tx_##x (void)       \
   tx_##x.next = mm->next_feature[VNET_IP_TX_FEAT];              \
   mm->next_feature[VNET_IP_TX_FEAT] = &tx_##x;                  \
 }                                                               \
-__VA_ARGS__ vnet_ip_feature_registration_t tx_##x
+__VA_ARGS__ vnet_feature_registration_t tx_##x
 
 extern clib_error_t * mpls_feature_init(vlib_main_t * vm);
 
