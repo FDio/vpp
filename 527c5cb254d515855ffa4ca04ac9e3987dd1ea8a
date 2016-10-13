@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "fa3479d7_b22bd593",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-10-13T16:44:12Z",
+      "side": 1,
+      "message": "What is the purpose of this change for LI? Note that there is code all over VPP that use this convention to store fib_index in sw_if_index[VLIB_TX] to over-ride IP4/6 forwarding using fib_index from the input interface. This totally changed this convention where it seems you are trying to use the fib_index of the output interface? Is the output interface sw_if_index already setup here? This means other code trying to change fib_index by storing it in sw_if_index[VLIB_TX] won\u0027t work any more.....",
+      "range": {
+        "startLine": 297,
+        "startChar": 25,
+        "endLine": 297,
+        "endChar": 32
+      },
+      "revId": "527c5cb254d515855ffa4ca04ac9e3987dd1ea8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_9cd34a38",
         "filename": "vpp-api-test/vat/api_format.c",
         "patchSetId": 1
