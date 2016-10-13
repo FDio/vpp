@@ -294,7 +294,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p0)->sw_if_index[VLIB_RX]);
           fib_index0 = (vnet_buffer(p0)->sw_if_index[VLIB_TX] == (u32)~0) ?
-            fib_index0 : vnet_buffer(p0)->sw_if_index[VLIB_TX];
+            fib_index0 : vec_elt (im->fib_index_by_sw_if_index, vnet_buffer(p0)->sw_if_index[VLIB_TX]);
 
 	  if (! lookup_for_responses_to_locally_received_packets)
 	    {

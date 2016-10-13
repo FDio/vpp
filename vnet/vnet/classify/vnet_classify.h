@@ -35,6 +35,8 @@
 #include <vppinfra/cache.h>
 #include <vppinfra/xxhash.h>
 
+#define VLIB_NODE_FLAG_IS_IP_CLASSIFY (1 << 10)
+
 extern vlib_node_registration_t ip4_classify_node;
 extern vlib_node_registration_t ip6_classify_node;
 
