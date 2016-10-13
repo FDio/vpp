@@ -121,3 +121,58 @@ vppplugins_LTLIBRARIES += ioam_trace_plugin.la
 install-data-hook:
 	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
 	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
+
+
+#
+# Java code generation
+#
+jvpp_registry_root = ../../vpp-api/java
+jvpp_registry_version = 16.12
+jioam_trace_jarfile = jvpp-ioam-trace-$(PACKAGE_VERSION).jar
+jvpp_package_dir = io/fd/vpp/jvpp/ioamtrace
+jvpp_root = ioam/jvpp
+jvpp_target_dir = target
+jvpp_target = $(jvpp_root)/$(jvpp_target_dir)
+api_file=$(srcdir)/ioam/lib-trace/trace.api
+
+
+lib_LTLIBRARIES = libjvpp_ioamtrace.la
+libjvpp_ioamtrace_la_SOURCES = ioam/lib-trace/trace.api.h ioam/lib-trace/jvpp_ioam_trace.c ioam/jvpp/io_fd_vpp_jvpp_ioam_trace_JVppIoamTraceImpl.h
+libjvpp_ioamtrace_la_LIBADD = -lvlibmemoryclient -lvlibapi -lvppinfra \
+	              -lpthread -lm -lrt -L$(jvpp_registry_root)/.libs -ljvpp_common
+libjvpp_ioamtrace_la_LDFLAGS = -module
+libjvpp_ioamtrace_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I../ -I$(srcdir)/../
+
+BUILT_SOURCES += $(jvpp_root)/io_fd_vpp_jvpp_ioamtrace_JVppIoamtraceImpl.h
+
+$(jvpp_root)/io_fd_vpp_jvpp_ioamtrace_JVppIoamtraceImpl.h: defs_ioam_trace_papi.py
+	dir=`pwd`;						\
+	mkdir -p $(jvpp_target); \
+	mkdir -p $(jvpp_root)/$(jvpp_package_dir); 		\
+	cd $(jvpp_root)/$(jvpp_package_dir);			\
+	mkdir -p dto future callfacade callback notification test; 	\
+	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/defs_ioam_trace_papi.py --plugin_name ioamtrace --control_ping_class IoamTraceControlPing;		\
+	cd -;							\
+	mv -f $(jvpp_root)/$(jvpp_package_dir)/jvpp_ioamtrace_gen.h $(jvpp_root)/jvpp_ioam_trace_gen.h;							\
+	cp $(srcdir)/$(jvpp_root)/$(jvpp_package_dir)/test/*.java $(jvpp_root)/$(jvpp_package_dir)/test/;				\
+	cd $(jvpp_root);				\
+	$(JAVAC) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d $(jvpp_target_dir) $(jvpp_package_dir)/*.java \
+		$(jvpp_package_dir)/dto/*.java \
+		$(jvpp_package_dir)/callback/*.java \
+		$(jvpp_package_dir)/notification/*.java \
+		$(jvpp_package_dir)/future/*.java 	\
+		$(jvpp_package_dir)/callfacade/*.java 	\
+		$(jvpp_package_dir)/test/*.java \
+		|| (echo "ioam trace jvpp compilation failed: $$?"; exit 1);	\
+	$(JAVAH) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d . io.fd.vpp.jvpp.ioamtrace.JVppIoamtraceImpl ;
+
+$(jioam_trace_jarfile): libjvpp_ioamtrace.la
+	cp .libs/libjvpp_ioamtrace.so.0.0.0 $(jvpp_target);				\
+	cd $(jvpp_target);				\
+	$(JAR) cfv $(JARFLAGS) ../../../$@ libjvpp_ioamtrace.so.0.0.0 $(jvpp_package_dir)/* ; cd ..;
+
+defs_ioam_trace_papi.py:
+	@echo "  jIoam_trace API"; \
+        vppapigen --input $(api_file) --python defs_ioam_trace_papi.py;
+
+all-local: $(jioam_trace_jarfile)
