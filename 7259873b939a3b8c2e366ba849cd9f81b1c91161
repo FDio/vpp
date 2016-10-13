@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_92bc516e",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-10-13T15:55:47Z",
+      "side": 1,
+      "message": "these docstrings are wrong (s/4/6/)",
+      "range": {
+        "startLine": 49,
+        "startChar": 2,
+        "endLine": 66,
+        "endChar": 32
+      },
+      "revId": "7259873b939a3b8c2e366ba849cd9f81b1c91161",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_72c1ede3",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-10-13T15:55:47Z",
+      "side": 1,
+      "message": "get_interface_mac() is not needed, extract the mac when doing the sw_interface_dump call to extract self._name below",
+      "revId": "7259873b939a3b8c2e366ba849cd9f81b1c91161",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
