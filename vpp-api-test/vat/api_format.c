@@ -3435,6 +3435,7 @@ static void vl_api_flow_classify_details_t_handler_json
 _(sw_interface_set_flags_reply)                         \
 _(sw_interface_add_del_address_reply)                   \
 _(sw_interface_set_table_reply)                         \
+_(sw_interface_del_table_reply)                         \
 _(sw_interface_set_vpath_reply)                         \
 _(sw_interface_set_l2_bridge_reply)                     \
 _(sw_interface_set_dpdk_hqos_pipe_reply)                \
@@ -3580,6 +3581,7 @@ _(CLI_INBAND_REPLY, cli_inband_reply)                                   \
 _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY,                                   \
   sw_interface_add_del_address_reply)                                   \
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
+_(SW_INTERFACE_DEL_TABLE_REPLY, sw_interface_del_table_reply)           \
 _(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
 _(SW_INTERFACE_SET_L2_XCONNECT_REPLY,                                   \
   sw_interface_set_l2_xconnect_reply)                                   \
@@ -4896,6 +4898,50 @@ api_sw_interface_set_table (vat_main_t * vam)
 
   /* Construct the API message */
   M (SW_INTERFACE_SET_TABLE, sw_interface_set_table);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_ipv6 = is_ipv6;
+  mp->vrf_id = ntohl (vrf_id);
+
+  /* send it... */
+  S;
+
+  /* Wait for a reply... */
+  W;
+}
+
+static int
+api_sw_interface_del_table (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_del_table_t *mp;
+  f64 timeout;
+  u32 sw_if_index, vrf_id = 0;
+  u8 sw_if_index_set = 0;
+  u8 is_ipv6 = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "vrf %d", &vrf_id))
+	;
+      else if (unformat (i, "ipv6"))
+	is_ipv6 = 1;
+      else
+	break;
+    }
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_DEL_TABLE, sw_interface_del_table);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_ipv6 = is_ipv6;
@@ -15993,6 +16039,8 @@ _(sw_interface_set_flags,                                               \
 _(sw_interface_add_del_address,                                         \
   "<intfc> | sw_if_index <id> <ip4-address> | <ip6-address> [del] [del-all] ") \
 _(sw_interface_set_table,                                               \
+  "<intfc> | sw_if_index <id> vrf <table-id> [ipv6]")                   \
+_(sw_interface_del_table,                                               \
   "<intfc> | sw_if_index <id> vrf <table-id> [ipv6]")                   \
 _(sw_interface_set_vpath,                                               \
   "<intfc> | sw_if_index <id> enable | disable")                        \

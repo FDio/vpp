@@ -215,6 +215,32 @@ define sw_interface_set_table_reply
   i32 retval;
 };
 
+/** \brief Deletes the specified interface with fib table
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface
+    @param is_ipv6 - if non-zero ipv6, else ipv4
+    @param vrf_id - fib table/vrd id to associate the interface with
+*/
+define sw_interface_del_table
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_ipv6;
+  u32 vrf_id;
+};
+
+/** \brief Reply for interface events deletion
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define sw_interface_del_table_reply
+{
+  u32 context;
+  i32 retval;
+};
+
 /** \brief Enable or Disable MPLS on and interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
