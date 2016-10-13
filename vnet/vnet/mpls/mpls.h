@@ -126,14 +126,6 @@ typedef struct {
   /** A hash table to lookup the mpls_fib by table ID */
   uword *fib_index_by_table_id;
 
-  /* rx/tx interface/feature configuration. */
-  ip_config_main_t feature_config_mains[VNET_N_IP_FEAT];
-
-  /* Built-in unicast feature path indices, see vnet_feature_arc_init(...)  */
-  u32 mpls_rx_feature_lookup;
-  u32 mpls_rx_feature_not_enabled;
-  u32 mpls_tx_feature_interface_output;
-
   /* pool of gre tunnel instances */
   mpls_gre_tunnel_t *gre_tunnels;
   u32 * free_gre_sw_if_indices;
@@ -169,32 +161,6 @@ typedef struct {
 } mpls_main_t;
 
 extern mpls_main_t mpls_main;
-
-#define VNET_MPLS_FEATURE_INIT(x,...)                           \
-  __VA_ARGS__ vnet_feature_registration_t uc_##x;            \
-static void __vnet_add_feature_registration_uc_##x (void)       \
-  __attribute__((__constructor__)) ;                            \
-static void __vnet_add_feature_registration_uc_##x (void)       \
-{                                                               \
-  mpls_main_t * mm = &mpls_main;                                \
-  uc_##x.next = mm->next_feature[VNET_IP_RX_UNICAST_FEAT];      \
-  mm->next_feature[VNET_IP_RX_UNICAST_FEAT] = &uc_##x;          \
-}                                                               \
-__VA_ARGS__ vnet_feature_registration_t uc_##x
-
-#define VNET_MPLS_TX_FEATURE_INIT(x,...)                        \
-  __VA_ARGS__ vnet_feature_registration_t tx_##x;            \
-static void __vnet_add_feature_registration_tx_##x (void)       \
-  __attribute__((__constructor__)) ;                            \
-static void __vnet_add_feature_registration_tx_##x (void)       \
-{                                                               \
-  mpls_main_t * mm = &mpls_main;                                \
-  tx_##x.next = mm->next_feature[VNET_IP_TX_FEAT];              \
-  mm->next_feature[VNET_IP_TX_FEAT] = &tx_##x;                  \
-}                                                               \
-__VA_ARGS__ vnet_feature_registration_t tx_##x
-
-extern clib_error_t * mpls_feature_init(vlib_main_t * vm);
 
 format_function_t format_mpls_protocol;
 format_function_t format_mpls_gre_header_with_length;
