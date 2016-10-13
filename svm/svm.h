@@ -149,7 +149,8 @@ svm_mem_alloc_aligned_at_offset (svm_region_t * rp,
 
   pthread_mutex_lock (&rp->mutex);
   oldheap = clib_mem_set_heap (rp->data_heap);
-  rv = clib_mem_alloc_aligned_at_offset (size, align, offset);
+  rv = clib_mem_alloc_aligned_at_offset (size, align, offset,
+					 1 /* yes, call os_out_of_memory */ );
   clib_mem_set_heap (oldheap);
   pthread_mutex_unlock (&rp->mutex);
   return (rv);

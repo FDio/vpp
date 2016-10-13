@@ -67,9 +67,10 @@ clib_mem_set_per_cpu_heap (u8 * new_heap)
   return old;
 }
 
-/* Memory allocator which returns null when it fails. */
+/* Memory allocator which may call os_out_of_memory() if it fails */
 always_inline void *
-clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset)
+clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
+				  int os_out_of_memory_on_failure)
 {
   void *heap, *p;
   uword offset, cpu;
@@ -97,24 +98,45 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset)
     }
   else
     {
-      os_out_of_memory ();
+      if (os_out_of_memory_on_failure)
+	os_out_of_memory ();
       return 0;
     }
 }
 
-/* Memory allocator which returns null when it fails. */
+/* Memory allocator which calls os_out_of_memory() when it fails */
 always_inline void *
 clib_mem_alloc (uword size)
 {
   return clib_mem_alloc_aligned_at_offset (size, /* align */ 1,
-					   /* align_offset */ 0);
+					   /* align_offset */ 0,
+					   /* os_out_of_memory */ 1);
 }
 
 always_inline void *
 clib_mem_alloc_aligned (uword size, uword align)
 {
-  return clib_mem_alloc_aligned_at_offset (size, align, /* align_offset */ 0);
+  return clib_mem_alloc_aligned_at_offset (size, align, /* align_offset */ 0,
+					   /* os_out_of_memory */ 1);
 }
+
+/* Memory allocator which calls os_out_of_memory() when it fails */
+always_inline void *
+clib_mem_alloc_or_null (uword size)
+{
+  return clib_mem_alloc_aligned_at_offset (size, /* align */ 1,
+					   /* align_offset */ 0,
+					   /* os_out_of_memory */ 0);
+}
+
+always_inline void *
+clib_mem_alloc_aligned_or_null (uword size, uword align)
+{
+  return clib_mem_alloc_aligned_at_offset (size, align, /* align_offset */ 0,
+					   /* os_out_of_memory */ 0);
+}
+
+
 
 /* Memory allocator which panics when it fails.
    Use macro so that clib_panic macro can expand __FUNCTION__ and __LINE__. */

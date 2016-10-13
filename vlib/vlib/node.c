@@ -375,7 +375,8 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
 	p = clib_mem_alloc_aligned_at_offset
 	  (sizeof (p[0]) + (1 << log2_n_stack_bytes),
-	   STACK_ALIGN, STRUCT_OFFSET_OF (vlib_process_t, stack));
+	   STACK_ALIGN, STRUCT_OFFSET_OF (vlib_process_t, stack),
+	   0 /* no, don't call os_out_of_memory */ );
 	if (p == 0)
 	  clib_panic ("failed to allocate process stack (%d bytes)",
 		      1 << log2_n_stack_bytes);
