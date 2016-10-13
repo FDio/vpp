@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_8d79d295",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-10-13T18:21:27Z",
+      "side": 1,
+      "message": "From your change description, I see you think this is done incorrectly and tried to fix it. Please make sure to remove this change as the original code is correct as intended. There are many other places in ip4_forward.c and ip6_forward.c that has the same code sequence to allow fib_index override by storing its value in sw_if_index[VLIB_TX] directly. There are many features like ARP and DHCP relay etc. that depends on this mechanism.",
+      "parentUuid": "fa3479d7_b22bd593",
+      "range": {
+        "startLine": 297,
+        "startChar": 25,
+        "endLine": 297,
+        "endChar": 32
+      },
+      "revId": "527c5cb254d515855ffa4ca04ac9e3987dd1ea8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_9cd34a38",
         "filename": "vpp-api-test/vat/api_format.c",
         "patchSetId": 1
