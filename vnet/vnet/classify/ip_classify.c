@@ -230,6 +230,7 @@ ip_classify_inline (vlib_main_t * vm,
           t0 = 0;
           vnet_buffer(b0)->l2_classify.opaque_index = ~0;
 
+          if ((b0->flags & VLIB_NODE_FLAG_IS_IP_CLASSIFY) == 0) {
           if (PREDICT_TRUE(table_index0 != ~0))
             {
               hash0 = vnet_buffer(b0)->l2_classify.hash;
@@ -245,6 +246,7 @@ ip_classify_inline (vlib_main_t * vm,
                   next0 = (e0->next_index < node->n_next_nodes)?
                            e0->next_index:next0;
                   hits++;
+                  b0->flags |= VLIB_NODE_FLAG_IS_IP_CLASSIFY;
                 }
               else
                 {
@@ -273,11 +275,13 @@ ip_classify_inline (vlib_main_t * vm,
                                    e0->next_index:next0;
                           hits++;
                           chain_hits++;
+                          b0->flags |= VLIB_NODE_FLAG_IS_IP_CLASSIFY;
                           break;
                         }
                     }
                 }
             }
+          }
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
                             && (b0->flags & VLIB_BUFFER_IS_TRACED))) 
