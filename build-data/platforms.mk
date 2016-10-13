@@ -89,7 +89,11 @@ install-rpm: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	      $(ROOT_PACKAGES))	|| exit 1;				\
 									\
 	cd rpm ;							\
+	mkdir -p SOURCES ;                                              \
+	if test -f *.tar.gz ; then mv *.tar.gz SOURCES ; fi ;           \
 	rpmbuild -bb --define "_topdir $$PWD" --define			\
-		"_install_dir $(INSTALL_PREFIX)$(ARCH)" vpp.spec ;	\
+		"_install_dir $(INSTALL_PREFIX)$(ARCH)"                 \
+		--define "_mu_build_root_dir $(MU_BUILD_ROOT_DIR)"      \
+		vpp.spec ;                                              \
 	mv $$(find RPMS -name \*.rpm -type f) ..
 
