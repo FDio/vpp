@@ -31,46 +31,63 @@
 
 #include <vnet/vnet.h>
 
-#define LBHASH_ENTRY_PER_BUCKET_LOG2 2
-#define LBHASH_ENTRY_PER_BUCKET (1 << LBHASH_ENTRY_PER_BUCKET_LOG2)
-#define LBHASH_ENTRY_PER_BUCKET_MASK (LBHASH_ENTRY_PER_BUCKET - 1)
+#include <immintrin.h>
 
+/*
+ * @brief Number of entries per bucket.
+ */
+#define LBHASH_ENTRY_PER_BUCKET 4
+
+#define LB_HASH_DO_NOT_USE_SSE_BUCKETS 0
+
+/*
+ * @brief One bucket contains 4 entries.
+ * Each bucket takes one 64B cache line in memory.
+ */
 typedef struct {
-  u64 key[5];
-  u32 value;
-  u32 last_seen;
-} lb_hash_entry_t;
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 hash[LBHASH_ENTRY_PER_BUCKET];
+  u32 timeout[LBHASH_ENTRY_PER_BUCKET];
+  u32 vip[LBHASH_ENTRY_PER_BUCKET];
+  u32 value[LBHASH_ENTRY_PER_BUCKET];
+} lb_hash_bucket_t;
 
 typedef struct {
   u32 buckets_mask;
   u32 timeout;
-  lb_hash_entry_t entries[];
+  lb_hash_bucket_t buckets[];
 } lb_hash_t;
 
-#define lb_hash_nbuckets(h) (((h)->buckets_mask >> LBHASH_ENTRY_PER_BUCKET_LOG2) + 1)
+#define lb_hash_nbuckets(h) (((h)->buckets_mask) + 1)
 #define lb_hash_size(h) ((h)->buckets_mask + LBHASH_ENTRY_PER_BUCKET)
 
-#define lb_hash_foreach_entry(h, e) \
-  for (e = (h)->entries; e < h->entries + lb_hash_size(h); e++)
+#define lb_hash_foreach_bucket(h, bucket) \
+  for (bucket = (h)->buckets; \
+	bucket < (h)->buckets + lb_hash_nbuckets(h); \
+	bucket++)
 
-#define lb_hash_foreach_valid_entry(h, e, now) \
-    lb_hash_foreach_entry(h, e) \
-       if (!clib_u32_loop_gt((now), (e)->last_seen + (h)->timeout))
+#define lb_hash_foreach_entry(h, bucket, i) \
+    lb_hash_foreach_bucket(h, bucket) \
+      for (i = 0; i < LBHASH_ENTRY_PER_BUCKET; i++)
+
+#define lb_hash_foreach_valid_entry(h, bucket, i, now) \
+    lb_hash_foreach_entry(h, bucket, i) \
+       if (!clib_u32_loop_gt((now), bucket->timeout[i]))
 
 static_always_inline
 lb_hash_t *lb_hash_alloc(u32 buckets, u32 timeout)
 {
-  if ((!is_pow2(buckets)) ||
-      ((buckets << LBHASH_ENTRY_PER_BUCKET_LOG2) == 0))
+  if (!is_pow2(buckets))
     return NULL;
 
   // Allocate 1 more bucket for prefetch
-  u32 size = sizeof(lb_hash_t) + ((buckets << LBHASH_ENTRY_PER_BUCKET_LOG2) + 1)* sizeof(lb_hash_entry_t);
+  u32 size = ((u64)&((lb_hash_t *)(0))->buckets[0]) +
+      sizeof(lb_hash_bucket_t) * (buckets + 1);
   u8 *mem = 0;
   lb_hash_t *h;
   vec_alloc_aligned(mem, size, CLIB_CACHE_LINE_BYTES);
   h = (lb_hash_t *)mem;
-  h->buckets_mask = (buckets - 1) << LBHASH_ENTRY_PER_BUCKET_LOG2;
+  h->buckets_mask = (buckets - 1);
   h->timeout = timeout;
   return h;
 }
@@ -78,102 +95,117 @@ lb_hash_t *lb_hash_alloc(u32 buckets, u32 timeout)
 static_always_inline
 void lb_hash_free(lb_hash_t *h)
 {
-  vec_free(h);
+  u8 *mem = (u8 *)h;
+  vec_free(mem);
 }
 
 #if __SSE4_2__
 static_always_inline
-u32 lb_hash_crc_u32(u32 data, u32 value)
+u32 lb_hash_hash(u64 k0, u64 k1, u64 k2, u64 k3, u64 k4)
 {
-  __asm__ volatile( "crc32l %[data], %[value];"
-                    : [value] "+r" (value)
-                    : [data] "rm" (data));
-  return value;
-}
-
-static_always_inline
-u32 lb_hash_hash(u64 k[5])
-{
-  u32 * dp = (u32 *) k;
-  u32 value = 0;
-
-  value = lb_hash_crc_u32 (dp[0], value);
-  value = lb_hash_crc_u32 (dp[1], value);
-  value = lb_hash_crc_u32 (dp[2], value);
-  value = lb_hash_crc_u32 (dp[3], value);
-  value = lb_hash_crc_u32 (dp[4], value);
-  value = lb_hash_crc_u32 (dp[5], value);
-  value = lb_hash_crc_u32 (dp[6], value);
-  value = lb_hash_crc_u32 (dp[7], value);
-  value = lb_hash_crc_u32 (dp[8], value);
-  value = lb_hash_crc_u32 (dp[9], value);
-  return value;
+  u64 val = 0;
+  val = _mm_crc32_u64(val, k0);
+  val = _mm_crc32_u64(val, k1);
+  val = _mm_crc32_u64(val, k2);
+  val = _mm_crc32_u64(val, k3);
+  val = _mm_crc32_u64(val, k4);
+  return (u32) val;
 }
 #else
 static_always_inline
-u32 lb_hash_hash(u64 k[5])
+u32 lb_hash_hash(u64 k0, u64 k1, u64 k2, u64 k3, u64 k4)
 {
-  u64 tmp = k[0] ^ k[1] ^ k[2] ^ k[3] ^ k[4];
+  u64 tmp = k0 ^ k1 ^ k2 ^ k3 ^ k4;
   return (u32)clib_xxhash (tmp);
 }
 #endif
 
-
+static_always_inline
+void lb_hash_prefetch_bucket(lb_hash_t *ht, u32 hash)
+{
+  lb_hash_bucket_t *bucket = &ht->buckets[hash & ht->buckets_mask];
+  CLIB_PREFETCH(bucket, sizeof(*bucket), READ);
+}
 
 static_always_inline
-void lb_hash_get(lb_hash_t *h, u64 k[5], u32 hash, u32 time_now, u32 *available_index, u32 *value)
+void lb_hash_get(lb_hash_t *ht, u32 hash, u32 vip, u32 time_now,
+		 u32 *available_index, u32 *found_value)
 {
-  lb_hash_entry_t *e = &h->entries[hash & h->buckets_mask];
-  u32 i;
-  *value = ~0;
+  lb_hash_bucket_t *bucket = &ht->buckets[hash & ht->buckets_mask];
+  *found_value = ~0;
   *available_index = ~0;
-  CLIB_PREFETCH (&(e[1]), sizeof(lb_hash_entry_t), STORE);
-  for (i=0; i<LBHASH_ENTRY_PER_BUCKET; i++) {
-    CLIB_PREFETCH (&(e[i+2]), sizeof(lb_hash_entry_t), STORE); //+2 somehow performs best
-    u64 cmp =
-        (e[i].key[0] ^ k[0]) |
-        (e[i].key[1] ^ k[1]) |
-        (e[i].key[2] ^ k[2]) |
-        (e[i].key[3] ^ k[3]) |
-        (e[i].key[4] ^ k[4]);
+#if __SSE4_2__ && LB_HASH_DO_NOT_USE_SSE_BUCKETS == 0
+  u32 bitmask, found_index;
+  __m128i mask;
 
-    u8 timeouted = clib_u32_loop_gt(time_now, e[i].last_seen + h->timeout);
+  // mask[*] = timeout[*] > now
+  mask = _mm_cmpgt_epi32(_mm_loadu_si128 ((__m128i *) bucket->timeout),
+			 _mm_set1_epi32 (time_now));
+  // bitmask[*] = now <= timeout[*/4]
+  bitmask = (~_mm_movemask_epi8(mask)) & 0xffff;
+  // Get first index with now <= timeout[*], if any.
+  *available_index = (bitmask)?__builtin_ctz(bitmask)/4:*available_index;
 
-    *value = (cmp || timeouted)?*value:e[i].value;
-    e[i].last_seen = (cmp || timeouted)?e[i].last_seen:time_now;
-    *available_index = (timeouted && (*available_index == ~0))?(&e[i] - h->entries):*available_index;
+  // mask[*] = (timeout[*] > now) && (hash[*] == hash)
+  mask = _mm_and_si128(mask,
+		       _mm_cmpeq_epi32(
+			   _mm_loadu_si128 ((__m128i *) bucket->hash),
+			   _mm_set1_epi32 (hash)));
 
-    if (!cmp)
-      return;
+  // Load the array of vip values
+  // mask[*] = (timeout[*] > now) && (hash[*] == hash) && (vip[*] == vip)
+  mask = _mm_and_si128(mask,
+		       _mm_cmpeq_epi32(
+			   _mm_loadu_si128 ((__m128i *) bucket->vip),
+			   _mm_set1_epi32 (vip)));
+
+  // mask[*] = (timeout[*x4] > now) && (hash[*x4] == hash) && (vip[*x4] == vip)
+  bitmask = _mm_movemask_epi8(mask);
+  // Get first index, if any
+  found_index = (bitmask)?__builtin_ctzll(bitmask)/4:0;
+  ASSERT(found_index < 4);
+  *found_value = (bitmask)?bucket->value[found_index]:*found_value;
+  bucket->timeout[found_index] =
+      (bitmask)?time_now + ht->timeout:bucket->timeout[found_index];
+#else
+  u32 i;
+  for (i = 0; i < LBHASH_ENTRY_PER_BUCKET; i++) {
+      u8 cmp = (bucket->hash[i] == hash && bucket->vip[i] == vip);
+      u8 timeouted = clib_u32_loop_gt(time_now, bucket->timeout[i]);
+      *found_value = (cmp || timeouted)?*found_value:bucket->value[i];
+      bucket->timeout[i] = (cmp || timeouted)?time_now + ht->timeout:bucket->timeout[i];
+      *available_index = (timeouted && (*available_index == ~0))?i:*available_index;
+
+      if (!cmp)
+	return;
   }
+#endif
 }
 
 static_always_inline
-u32 lb_hash_available_value(lb_hash_t *h, u32 available_index)
+u32 lb_hash_available_value(lb_hash_t *h, u32 hash, u32 available_index)
 {
-  return h->entries[available_index].value;
+  return h->buckets[hash & h->buckets_mask].value[available_index];
 }
 
 static_always_inline
-u32 lb_hash_put(lb_hash_t *h, u64 k[5], u32 value, u32 available_index, u32 time_now)
+void lb_hash_put(lb_hash_t *h, u32 hash, u32 value, u32 vip,
+		 u32 available_index, u32 time_now)
 {
-  lb_hash_entry_t *e = &h->entries[available_index];
-  e->key[0] = k[0];
-  e->key[1] = k[1];
-  e->key[2] = k[2];
-  e->key[3] = k[3];
-  e->key[4] = k[4];
-  e->value = value;
-  e->last_seen = time_now;
-  return 0;
+  lb_hash_bucket_t *bucket = &h->buckets[hash & h->buckets_mask];
+  bucket->hash[available_index] = hash;
+  bucket->value[available_index] = value;
+  bucket->timeout[available_index] = time_now + h->timeout;
+  bucket->vip[available_index] = vip;
 }
 
 static_always_inline
 u32 lb_hash_elts(lb_hash_t *h, u32 time_now)
 {
   u32 tot = 0;
-  lb_hash_entry_t *e;
-  lb_hash_foreach_valid_entry(h, e, time_now) {
+  lb_hash_bucket_t *bucket;
+  u32 i;
+  lb_hash_foreach_valid_entry(h, bucket, i, time_now) {
     tot++;
   }
   return tot;
