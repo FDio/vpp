@@ -116,8 +116,10 @@ typedef struct {
 } lb_new_flow_entry_t;
 
 #define lb_foreach_vip_counter \
- _(TRACKED_SESSION, "tracked session", 0) \
- _(UNTRACKED_PACKET, "untracked packet", 1)
+ _(NEXT_PACKET, "packet from existing sessions", 0) \
+ _(FIRST_PACKET, "first session packet", 1) \
+ _(UNTRACKED_PACKET, "untracked packet", 2) \
+ _(NO_SERVER, "no server configured", 3)
 
 typedef enum {
 #define _(a,b,c) LB_VIP_COUNTER_##a = c,
