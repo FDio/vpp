@@ -147,6 +147,24 @@ static void *vl_api_sw_interface_set_table_t_print
   FINISH;
 }
 
+static void *vl_api_sw_interface_del_table_t_print
+  (vl_api_sw_interface_del_table_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interace_del_table ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  if (mp->vrf_id)
+    s = format (s, "vrf $d ", ntohl (mp->vrf_id));
+
+  if (mp->is_ipv6)
+    s = format (s, "ipv6 ");
+
+  FINISH;
+}
+
 static void *vl_api_sw_interface_set_mpls_enable_t_print
   (vl_api_sw_interface_set_mpls_enable_t * mp, void *handle)
 {
@@ -2965,6 +2983,7 @@ _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)           \
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \
+_(SW_INTERFACE_DEL_TABLE, sw_interface_del_table)                       \
 _(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
 _(SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass)         \
