@@ -71,6 +71,30 @@
     },
     {
       "key": {
+        "uuid": "fa3479d7_4f41a20a",
+        "filename": "vnet/vnet/vxlan-gpe/encap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-10-13T07:34:21Z",
+      "side": 1,
+      "message": "The is_v4/6 checks have existed to set the next node in addition to determining the rewrite_size (Which can be made common)",
+      "parentUuid": "fa3479d7_cfe6b244",
+      "range": {
+        "startLine": 97,
+        "startChar": 55,
+        "endLine": 97,
+        "endChar": 71
+      },
+      "revId": "9113c19fba6b7019ba77c38ef82057e5db9eb626",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa3479d7_afe36e32",
         "filename": "vnet/vnet/vxlan-gpe/encap.c",
         "patchSetId": 2
