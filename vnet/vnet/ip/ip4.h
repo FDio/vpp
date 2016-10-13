@@ -43,7 +43,7 @@
 #include <vnet/ip/ip4_mtrie.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/lookup.h>
-#include <vnet/ip/feature_registration.h>
+#include <vnet/feature/feature.h>
 
 typedef struct ip4_fib_t {
   /* Hash table for each prefix length mapping. */

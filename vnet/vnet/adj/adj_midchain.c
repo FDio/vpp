@@ -198,22 +198,22 @@ VNET_IP6_TX_FEATURE_INIT (adj_midchain_tx_no_count_ip6, static) = {
     .runs_before = ORDER_CONSTRAINTS {"interface-output"},
     .feature_index = &adj_midchain_tx_no_count_feature_node[FIB_LINK_IP6],
 };
-VNET_MPLS_TX_FEATURE_INIT (adj_midchain_tx_mpls, static) = {
+VNET_FEATURE_INIT (MPLS_OUTPUT, adj_midchain_tx_mpls, static) = {
     .node_name = "adj-midchain-txs",
     .runs_before = ORDER_CONSTRAINTS {"interface-output"},
     .feature_index = &adj_midchain_tx_feature_node[FIB_LINK_MPLS],
 };
-VNET_MPLS_TX_FEATURE_INIT (adj_midchain_tx_no_count_mpls, static) = {
+VNET_FEATURE_INIT (MPLS_OUTPUT, adj_midchain_tx_no_count_mpls, static) = {
     .node_name = "adj-midchain-tx-no-count",
     .runs_before = ORDER_CONSTRAINTS {"interface-output"},
     .feature_index = &adj_midchain_tx_no_count_feature_node[FIB_LINK_MPLS],
 };
-VNET_ETHERNET_TX_FEATURE_INIT (adj_midchain_tx_ethernet, static) = {
+VNET_FEATURE_INIT (ETHERNET_TX, adj_midchain_tx_ethernet, static) = {
     .node_name = "adj-midchain-tx",
     .runs_before = ORDER_CONSTRAINTS {"error-drop"},
     .feature_index = &adj_midchain_tx_feature_node[FIB_LINK_ETHERNET],
 };
-VNET_ETHERNET_TX_FEATURE_INIT (adj_midchain_tx_no_count_ethernet, static) = {
+VNET_FEATURE_INIT (ETHERNET_TX, adj_midchain_tx_no_count_ethernet, static) = {
     .node_name = "adj-midchain-tx-no-count",
     .runs_before = ORDER_CONSTRAINTS {"error-drop"},
     .feature_index = &adj_midchain_tx_no_count_feature_node[FIB_LINK_ETHERNET],
@@ -240,6 +240,7 @@ static ip_config_main_t *
 adj_midchain_get_cofing_for_link_type (const ip_adjacency_t *adj)
 {
     ip_config_main_t *cm = NULL;
+    vnet_feature_main_t *fm = &feature_main;
 
     switch (adj->ia_link)
     {
@@ -259,13 +260,12 @@ adj_midchain_get_cofing_for_link_type (const ip_adjacency_t *adj)
 	}
     case FIB_LINK_MPLS:
 	{
-	    mpls_main_t * mm = &mpls_main;
-	    cm = &mm->feature_config_mains[VNET_IP_TX_FEAT];
+	    cm = &fm->feature_config_mains[VNET_FEAT_MPLS_OUTPUT];
 	    break;
 	}
     case FIB_LINK_ETHERNET:
 	{
-	    cm = &ethernet_main.feature_config_mains[VNET_IP_TX_FEAT];
+	    cm = &fm->feature_config_mains[VNET_FEAT_ETHERNET_TX];
 	    break;
 	}
     }

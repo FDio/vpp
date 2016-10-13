@@ -18,6 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/feature/feature.h>
 
 typedef struct {
   u32 next_index;
@@ -62,7 +63,7 @@ mpls_input_inline (vlib_main_t * vm,
 {
   u32 n_left_from, next_index, * from, * to_next;
   mpls_input_runtime_t * rt;
-  mpls_main_t * mm;
+  vnet_feature_main_t *fm = &feature_main;
   u32 cpu_index = os_get_cpu_number();
   vlib_simple_counter_main_t * cm;
   vnet_main_t * vnm = vnet_get_main();
@@ -70,7 +71,6 @@ mpls_input_inline (vlib_main_t * vm,
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
   rt = vlib_node_get_runtime_data (vm, mpls_input_node.index);
-  mm = rt->mpls_main;
   /* 
    * Force an initial lookup every time, in case the control-plane
    * changed the label->FIB mapping.
@@ -110,7 +110,7 @@ mpls_input_inline (vlib_main_t * vm,
           h0 = vlib_buffer_get_current (b0);
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  cm0 = &mm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+	  cm0 = &fm->feature_config_mains[VNET_FEAT_MPLS_INPUT];
 	  b0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index,
 					      sw_if_index0);
 
@@ -211,13 +211,17 @@ static clib_error_t * mpls_input_init (vlib_main_t * vm)
 {
   clib_error_t * error; 
 
+  error = vlib_call_init_function (vm, vnet_feature_init);
+  if (error)
+    clib_error_report (error);
+
   error = vlib_call_init_function (vm, mpls_init);
   if (error)
     clib_error_report (error);
 
   mpls_setup_nodes (vm);
 
-  return (mpls_feature_init(vm));
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (mpls_input_init);
