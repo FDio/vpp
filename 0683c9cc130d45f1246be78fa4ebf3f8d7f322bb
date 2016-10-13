@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_12caa14f",
+        "filename": "vnet/vnet/ip/ip46_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-13T14:18:04Z",
+      "side": 1,
+      "message": "Hm. I had forgotten about these stub commands. They add context to the CLI for sure, but I think they just take up space in the doc. I\u0027ll consider omitting them from the generated docs.",
+      "range": {
+        "startLine": 66,
+        "startChar": 0,
+        "endLine": 66,
+        "endChar": 55
+      },
+      "revId": "0683c9cc130d45f1246be78fa4ebf3f8d7f322bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_7209ed94",
+        "filename": "vnet/vnet/ip/ip6_neighbor.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3128,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-13T14:18:04Z",
+      "side": 1,
+      "message": "Wonder if this would be better using a markdown header like \"#### Format 1\". Something to try another time perhaps. Right now that would interfere with how the \"example usage\" section is rendered.",
+      "range": {
+        "startLine": 3128,
+        "startChar": 3,
+        "endLine": 3128,
+        "endChar": 49
+      },
+      "revId": "0683c9cc130d45f1246be78fa4ebf3f8d7f322bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_9204517f",
+        "filename": "vnet/vnet/ip/ip6_neighbor.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3138,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-13T14:18:04Z",
+      "side": 1,
+      "message": "Would this list look better if it were a bullet list? I think it needs something to offset it.",
+      "range": {
+        "startLine": 3134,
+        "startChar": 3,
+        "endLine": 3138,
+        "endChar": 36
+      },
+      "revId": "0683c9cc130d45f1246be78fa4ebf3f8d7f322bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
