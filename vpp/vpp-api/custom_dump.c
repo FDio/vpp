@@ -2280,6 +2280,35 @@ static void *vl_api_pg_enable_disable_t_print
   FINISH;
 }
 
+static void *vl_api_li_enable_disable_t_print
+  (vl_api_li_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  ip4_address_t src_ip4_addr;
+  ip4_address_t collector;
+  src_ip4_addr.data_u32 = mp->src_ip4_addr;
+  collector.data_u32 = mp->collector;
+
+  s = format (0, "SCRIPT: li_enable_disable ");
+  s = format (s, "src_ip4_addr %U ", format_ip4_address, &src_ip4_addr);
+  s = format (s, "collector %U ", format_ip4_address, &collector);
+  s = format (s, "port %u ", ntohl (mp->port));
+  s = format (s, "delete %u ", mp->is_delete);
+
+  FINISH;
+}
+
+static void *
+vl_api_li_dump_t_print (vl_api_li_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: li_dump ");
+
+  FINISH;
+}
+
 static void *vl_api_ip_source_and_port_range_check_add_del_t_print
   (vl_api_ip_source_and_port_range_check_add_del_t * mp, void *handle)
 {
@@ -2969,6 +2998,8 @@ _(GET_NEXT_INDEX, get_next_index)                                       \
 _(PG_CREATE_INTERFACE,pg_create_interface)                              \
 _(PG_CAPTURE, pg_capture)                                               \
 _(PG_ENABLE_DISABLE, pg_enable_disable)                                 \
+_(LI_ENABLE_DISABLE, li_enable_disable)                                 \
+_(LI_DUMP, li_dump)                                                     \
 _(POLICER_ADD_DEL, policer_add_del)                                     \
 _(POLICER_DUMP, policer_dump)                                           \
 _(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \

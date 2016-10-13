@@ -34,6 +34,8 @@
 
 #include <vnet/classify/vnet_classify.h>
 
+#define VLIB_NODE_FLAG_IS_L2_CLASSIFY (1 << 11)
+
 typedef enum
 {
   L2_INPUT_CLASSIFY_NEXT_DROP,
