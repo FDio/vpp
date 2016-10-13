@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_6f090695",
+        "filename": "plugins/snat-plugin/snat/snat.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-10-13T09:52:04Z",
+      "side": 1,
+      "message": "You may not want to be so verbose?",
+      "range": {
+        "startLine": 225,
+        "startChar": 2,
+        "endLine": 225,
+        "endChar": 48
+      },
+      "revId": "31008d430de052fb1990e5561c11e0d151466685",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_4ffe426d",
+        "filename": "plugins/snat-plugin/snat/snat.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-10-13T09:52:04Z",
+      "side": 1,
+      "message": "Style?",
+      "range": {
+        "startLine": 236,
+        "startChar": 7,
+        "endLine": 236,
+        "endChar": 10
+      },
+      "revId": "31008d430de052fb1990e5561c11e0d151466685",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
