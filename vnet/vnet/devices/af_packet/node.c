@@ -23,6 +23,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/feature/feature.h>
 
 #include <vnet/devices/af_packet/af_packet.h>
 
@@ -236,6 +237,11 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->hw_if_index = apif->hw_if_index;
 	      clib_memcpy (&tr->tph, tph, sizeof (struct tpacket2_hdr));
 	    }
+
+	  /* redirect if feature path enabled */
+	  vlib_feature_device_input_redirect_x1 (apif->sw_if_index, &next0,
+						 b0, 0);
+
 	  /* enque and take next packet */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, first_bi0, next0);

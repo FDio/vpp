@@ -721,6 +721,16 @@ nobase_include_HEADERS +=			\
 
 
 ########################################
+# Driver feature graph arc support
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/feature/feature.c
+
+nobase_include_HEADERS +=			\
+  vnet/feature/feature.h
+
+########################################
 # Unix kernel related
 ########################################
 

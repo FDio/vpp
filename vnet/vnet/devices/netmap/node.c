@@ -22,6 +22,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/feature/feature.h>
 
 #include <vnet/devices/netmap/net_netmap.h>
 #include <vnet/devices/netmap/netmap.h>
@@ -235,6 +236,11 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      memcpy (&tr->slot, slot, sizeof (struct netmap_slot));
 		    }
 		}
+
+	      /* redirect if feature path enabled */
+	      vlib_feature_device_input_redirect_x1 (nif->sw_if_index, &next0,
+						     b0, 0);
+
 	      /* enque and take next packet */
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					       n_left_to_next, first_bi0,
