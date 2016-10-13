@@ -39,6 +39,14 @@
 
 #include <vnet/ip/ip.h>
 
+/**
+ * @file
+ * @brief Set IP Address.
+ *
+ * Configure an IPv4 or IPv6 address for on an interface.
+ */
+
+
 int ip4_address_compare (ip4_address_t * a1, ip4_address_t * a2)
 { return clib_net_to_host_u32 (a1->data_u32) - clib_net_to_host_u32 (a2->data_u32); }
 
@@ -54,10 +62,12 @@ int ip6_address_compare (ip6_address_t * a1, ip6_address_t * a2)
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_command, static) = {
   .path = "set interface ip",
   .short_help = "IP4/IP6 commands",
 };
+/* *INDENT-ON* */
 
 void ip_del_all_interface_addresses (vlib_main_t *vm, u32 sw_if_index)
 {
@@ -161,27 +171,41 @@ add_del_ip_address (vlib_main_t * vm,
  done:
   return error;
 }
+
 /*?
- * To set an interface ip address, use "set interface ip address":
+ * Add an IP Address to an interface or remove and IP Address from an interface.
+ * The IP Address can be an IPv4 or an IPv6 address. Interfaces may have multiple
+ * IPv4 and IPv6 addresses. There is no concept of primary vs. secondary
+ * interface addresses; they're just addresses.
+ *
+ * To display the addresses associated with a given interface, use the command
+ * '<em>show interface address <interface></em>'.
+ *
+ * Note that the debug CLI does not enforce classful mask-width / addressing
+ * constraints.
  *
  * @cliexpar
- * @cliexstart{set interface ip address}
-
- *  vpp# set interface ip address GigabitEthernet2/0/0 db01::1/64
- * Note that the debug CLI does not enforce classful mask-width / addressing constraints.
- * Interfaces may have multiple ip4 and ip6 addresses.
- * There is no concept of primary vs. secondary interface addresses; they're just addresses.
- * To delete a specific interface ip address, use "set interface ip address del":
- *  vpp# set interface ip address del GigabitEthernet2/0/0 6.0.0.2/24
- * To delete all interfaces addresses (ip4+ip6), use "set interface ip address del <intfc> all"
- *  vpp# set interface ip address del GigabitEthernet2/0/0 all
- * @cliexend
+ * @parblock
+ * An example of how to add an IPv4 address to an interface:
+ * @cliexcmd{set interface ip address GigabitEthernet2/0/0 172.16.2.12/24}
+ *
+ * An example of how to add an IPv6 address to an interface:
+ * @cliexcmd{set interface ip address GigabitEthernet2/0/0 @::a:1:1:0:7/126}
+ *
+ * To delete a specific interface ip address:
+ * @cliexcmd{set interface ip address GigabitEthernet2/0/0 172.16.2.12/24 del}
+ *
+ * To delete all interfaces addresses (IPv4 and IPv6):
+ * @cliexcmd{set interface ip address GigabitEthernet2/0/0 del all}
+ * @endparblock
  ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_address_command, static) = {
   .path = "set interface ip address",
   .function = add_del_ip_address,
-  .short_help = "Add/delete IP4/IP6 address for interface",
+  .short_help = "set interface ip address <interface> [<ip-addr>/<mask> [del]] | [del all]",
 };
+/* *INDENT-ON* */
 
 /* Dummy init function to get us linked in. */
 static clib_error_t * ip4_cli_init (vlib_main_t * vm)

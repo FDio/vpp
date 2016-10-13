@@ -15,8 +15,11 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
-/* 
- * ip4 FIB tester. Add, probe, delete a bunch of
+/**
+ * @file
+ * @brief IPv4 FIB Tester.
+ *
+ * Not compiled in by default. IPv4 FIB tester. Add, probe, delete a bunch of
  * random routes / masks and make sure that the mtrie agrees with
  * the hash-table FIB.
  * 
@@ -298,11 +301,31 @@ thrash (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * This command in not in the build by default. It is an internal
+ * command used to test the route functonality.
+ *
+ * Create test routes on IPv4 FIB table 11. Table will be created if it
+ * does not exist.
+ *
+ * There are several optional attributes:
+ * - If not provided, <seed> defaults to 0xdeaddabe.
+ * - If not provided, <num-iter> defaults to 10.
+ * - If not provided, <num-iface> defaults to 4.
+ * - If not provided, <min-mask> defaults to 7.0.
+ * - If not provided, <max-mask> defaults to 32.0.
+ *
+ * @cliexpar
+ * Example of how to run:
+ * @cliexcmd{test route}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_route_command, static) = {
     .path = "test route",
-    .short_help = "test route",
+    .short_help = "test route [seed <seed-num>] [niter <num-iter>] [ninterfaces <num-iface>] [min-mask-bits <min-mask>] [max-mask-bits <max-mask>] [verbose]",    .function = thrash,
     .function = thrash,
 };
+/* *INDENT-ON* */
 
 clib_error_t *test_route_init (vlib_main_t *vm)
 {

@@ -512,31 +512,60 @@ ip4_show_fib (vlib_main_t * vm,
 }
 
 /*?
- * Show FIB/route entries
+ * This command displays the IPv4 FIB Tables (VRF Tables) and the route
+ * entries for each table.
+ *
+ * @note This command will run for a long time when the FIB tables are
+ * comprised of millions of entries. For those senarios, consider displaying
+ * a single table or summary mode.
  *
  * @cliexpar
+ * Example of how to display all the IPv4 FIB tables:
  * @cliexstart{show ip fib}
- * Display the IPv4 FIB.
- * This command will run for a long time when the FIBs comprise millions of entries.
- *   vpp# sh ip fib
- *   Table 0
- *   Destination         Packets          Bytes         Adjacency
- *   6.0.0.0/8                          0               0 weight 1, index 3
- *                                                       arp fake-eth0 6.0.0.1/8
- *   6.0.0.1/32                         0               0 weight 1, index 4
- *                                                        local 6.0.0.1/8
- *
- *  And so forth. Use 'show ip fib summary' for a summary:
- *
- *   vpp# sh ip fib summary
- *   Table 0
- *   Prefix length         Count
- *         8               1
- *        32               4
+ * Table 0, fib_index 0, flow hash: src dst sport dport proto
+ *      Destination         Packets          Bytes         Adjacency
+ * 172.16.2.0/24                      0               0 weight 1, index 5
+ *                                                       172.16.2.1/24
+ * 172.16.2.1/32                      0               0 weight 1, index 6
+ *                                                       172.16.2.1/24
+ * Table 7, fib_index 1, flow hash: dst sport dport proto
+ *      Destination         Packets          Bytes         Adjacency
+ * 172.16.1.0/24                      0               0 weight 1, index 3
+ *                                                       172.16.1.1/24
+ * 172.16.1.1/32                      1              98 weight 1, index 4
+ *                                                       172.16.1.1/24
+ * 172.16.1.2/32                      0               0 weight 1, index 7
+ *                                                      GigabitEthernet2/0/0
+ *                                                      IP4: 02:fe:6a:07:39:6f -> 16:d9:e0:91:79:86
+ * @cliexend
+ * Example of how to display a single IPv4 FIB table:
+ * @cliexstart{show ip fib table 7}
+ * Table 7, fib_index 1, flow hash: dst sport dport proto
+ *      Destination         Packets          Bytes         Adjacency
+ * 172.16.1.0/24                      0               0 weight 1, index 3
+ *                                                       172.16.1.1/24
+ * 172.16.1.1/32                      1              98 weight 1, index 4
+ *                                                       172.16.1.1/24
+ * 172.16.1.2/32                      0               0 weight 1, index 7
+ *                                                      GigabitEthernet2/0/0
+ *                                                      IP4: 02:fe:6a:07:39:6f -> 16:d9:e0:91:79:86
+ * @cliexend
+ * Example of how to display a summary of all IPv4 FIB tables:
+ * @cliexstart{show ip fib summary}
+ * Table 0, fib_index 0, flow hash: src dst sport dport proto
+ *     Prefix length         Count
+ *                   24               1
+ *                   32               1
+ * Table 7, fib_index 1, flow hash: dst sport dport proto
+ *     Prefix length         Count
+ *                   24               1
+ *                   32               2
  * @cliexend
  ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .path = "show ip fib",
     .short_help = "show ip fib [mtrie] [summary] [table <n>] [<ip4-addr>] [clear] [include-empty]",
     .function = ip4_show_fib,
 };
+/* *INDENT-ON* */

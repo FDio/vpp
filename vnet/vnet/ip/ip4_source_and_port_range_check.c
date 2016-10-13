@@ -19,6 +19,15 @@
 #include <vnet/fib/ip4_fib.h>
 
 /**
+ * @file
+ * @brief IPv4 Source and Port Range Checking.
+ *
+ * This file contains the source code for IPv4 source and port range
+ * checking.
+ */
+
+
+/**
  * @brief The pool of range chack DPOs
  */
 static protocol_port_range_dpo_t *ppr_dpo_pool;
@@ -781,12 +790,74 @@ set_ip_source_and_port_range_check_fn (vlib_main_t * vm,
   return error;
 }
 
+/*?
+ * Add the 'ip4-source-and-port-range-check-rx' or
+ * 'ip4-source-and-port-range-check-tx' graph node for a given
+ * interface. 'tcp-out-vrf' and 'udp-out-vrf' will add to
+ * the RX path. 'tcp-in-vrf' and 'udp-in-vrf' will add to
+ * the TX path. A graph node will be inserted into the chain when
+ * the range check is added to the first interface. It will not
+ * be removed from when range check is removed from the last
+ * interface.
+ *
+ * By adding the range check graph node to the interface, incoming
+ * or outgoing TCP/UDP packets will be validated using the
+ * provided IPv4 FIB table (VRF).
+ *
+ * @note 'ip4-source-and-port-range-check-rx' and
+ * 'ip4-source-and-port-range-check-tx' strings are too long, so
+ * they are truncated on the 'show vlib graph' output.
+ *
+ * @todo This content needs to be validated and potentially more detail added.
+ *
+ * @cliexpar
+ * @parblock
+ * Example of graph node before range checking is enabled:
+ * @cliexstart{show vlib graph ip4-source-and-port-range-check-tx}
+ *            Name                      Next                    Previous
+ * ip4-source-and-port-range-      error-drop [0]
+ * @cliexend
+ *
+ * Example of how to enable range checking on TX:
+ * @cliexcmd{set interface ip source-and-port-range-check GigabitEthernet2/0/0 udp-in-vrf 7}
+ *
+ * Example of graph node after range checking is enabled:
+ * @cliexstart{show vlib graph ip4-source-and-port-range-check-tx}
+ *            Name                      Next                    Previous
+ * ip4-source-and-port-range-      error-drop [0]           ip4-rewrite-local
+ *                              interface-output [1]       ip4-rewrite-transit
+ * @cliexend
+ *
+ * Example of how to display the features enabed on an interface:
+ * @cliexstart{show ip interface features GigabitEthernet2/0/0}
+ * IP feature paths configured on GigabitEthernet2/0/0...
+ *
+ * ipv4 unicast:
+ *   ip4-source-and-port-range-check-rx
+ *   ip4-lookup
+ *
+ * ipv4 multicast:
+ *   ip4-lookup-multicast
+ *
+ * ipv4 multicast:
+ *   interface-output
+ *
+ * ipv6 unicast:
+ *   ip6-lookup
+ *
+ * ipv6 multicast:
+ *   ip6-lookup
+ *
+ * ipv6 multicast:
+ *   interface-output
+ * @cliexend
+ * @endparblock
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_interface_ip_source_and_port_range_check_command,
-                  static) = {
+VLIB_CLI_COMMAND (set_interface_ip_source_and_port_range_check_command, static) = {
   .path = "set interface ip source-and-port-range-check",
   .function = set_ip_source_and_port_range_check_fn,
-  .short_help = "set int ip source-and-port-range-check <intfc> [tcp-out-vrf <n>] [udp-out-vrf <n>] [tcp-in-vrf <n>] [udp-in-vrf <n>] [del]",
+  .short_help = "set interface ip source-and-port-range-check <interface> [tcp-out-vrf <table-id>] [udp-out-vrf <table-id>] [tcp-in-vrf <table-id>] [udp-in-vrf <table-id>] [del]",
 };
 /* *INDENT-ON* */
 
@@ -1223,12 +1294,29 @@ ip_source_and_port_range_check_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * This command adds an IP Subnet and range of ports to be validated
+ * by an IP FIB table (VRF).
+ *
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+ *
+ * @cliexpar
+ * Example of how to add an IPv4 subnet and single port to an IPv4 FIB table:
+ * @cliexcmd{set ip source-and-port-range-check vrf 7 172.16.1.0/24 port 23}
+ * Example of how to add an IPv4 subnet and range of ports to an IPv4 FIB table:
+ * @cliexcmd{set ip source-and-port-range-check vrf 7 172.16.1.0/24 range 23 - 100}
+ * Example of how to delete an IPv4 subnet and single port from an IPv4 FIB table:
+ * @cliexcmd{set ip source-and-port-range-check vrf 7 172.16.1.0/24 port 23 del}
+ * Example of how to delete an IPv4 subnet and range of ports from an IPv4 FIB table:
+ * @cliexcmd{set ip source-and-port-range-check vrf 7 172.16.1.0/24 range 23 - 100 del}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_source_and_port_range_check_command, static) = {
   .path = "set ip source-and-port-range-check",
   .function = ip_source_and_port_range_check_command_fn,
   .short_help =
-  "set ip source-and-port-range-check <ip-addr>/<mask> [range <nn> - <nn>] [vrf <id>] [del]",
+  "set ip source-and-port-range-check vrf <table-id> <ip-addr>/<mask> {port nn | range <nn> - <nn>} [del]",
 };
 /* *INDENT-ON* */
 
@@ -1327,12 +1415,34 @@ show_source_and_port_range_check_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Display the range of ports being validated by an IPv4 FIB for a given
+ * IP or subnet, or test if a given IP and port are being validated.
+ *
+ * @todo This is incomplete. This needs a detailed description and a
+ * practical example.
+ *
+ * @cliexpar
+ * Example of how to display the set of ports being validated for a given
+ * IPv4 subnet:
+ * @cliexstart{show ip source-and-port-range-check vrf 7 172.16.2.0}
+ * 172.16.2.0: 23 - 101
+ * @cliexend
+ * Example of how to test to determine of a given Pv4 address and port
+ * are being validated:
+ * @cliexstart{show ip source-and-port-range-check vrf 7 172.16.2.2 port 23}
+ * 172.16.2.2 port 23 PASS
+ * @cliexend
+ * @cliexstart{show ip source-and-port-range-check vrf 7 172.16.2.2 port 250}
+ * 172.16.2.2 port 250 FAIL
+ * @cliexend
+ ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_source_and_port_range_check, static) = {
   .path = "show ip source-and-port-range-check",
   .function = show_source_and_port_range_check_fn,
   .short_help =
-  "show ip source-and-port-range-check vrf <nn> <ip-addr> <port>",
+  "show ip source-and-port-range-check vrf <table-id> <ip-addr> [port <n>]",
 };
 /* *INDENT-ON* */
 

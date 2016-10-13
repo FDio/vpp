@@ -27,6 +27,14 @@
 #include <vnet/devices/dpdk/dpdk.h>
 #endif
 
+/**
+ * @file
+ * @brief IPv6 Neighbor Adjacency and Neighbor Discovery.
+ *
+ * The files contains the API and CLI code for managing IPv6 neighbor
+ * adjacency tables and neighbor discovery logic.
+ */
+
 typedef struct {
   ip6_address_t ip6_address;
   u32 sw_if_index;
@@ -639,11 +647,33 @@ show_ip6_neighbors (vlib_main_t * vm,
   return error;
 }
 
+/*?
+ * This command is used to display the adjacent IPv6 hosts found via
+ * neighbor discovery. Optionally, limit the output to the specified
+ * interface.
+ *
+ * @cliexpar
+ * Example of how to display the IPv6 neighbor adjacency table:
+ * @cliexstart{show ip6 neighbors}
+ *     Time           Address       Flags     Link layer                     Interface
+ *      34.0910     ::a:1:1:0:7            02:fe:6a:07:39:6f                GigabitEthernet2/0/0
+ *     173.2916     ::b:5:1:c:2            02:fe:50:62:3a:94                GigabitEthernet2/0/0
+ *     886.6654     ::1:1:c:0:9       S    02:fe:e4:45:27:5b                GigabitEthernet3/0/0
+ * @cliexend
+ * Example of how to display the IPv6 neighbor adjacency table for given interface:
+ * @cliexstart{show ip6 neighbors GigabitEthernet2/0/0}
+ *     Time           Address       Flags     Link layer                     Interface
+ *      34.0910     ::a:1:1:0:7            02:fe:6a:07:39:6f                GigabitEthernet2/0/0
+ *     173.2916     ::b:5:1:c:2            02:fe:50:62:3a:94                GigabitEthernet2/0/0
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip6_neighbors_command, static) = {
   .path = "show ip6 neighbors",
   .function = show_ip6_neighbors,
-  .short_help = "Show ip6 neighbors",
+  .short_help = "show ip6 neighbors [<interface>]",
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 set_ip6_neighbor (vlib_main_t * vm,
@@ -687,11 +717,25 @@ set_ip6_neighbor (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * This command is used to manually add an entry to the IPv6 neighbor
+ * adjacency table. Optionally, the entry can be added as static. It is
+ * also used to remove an entry from the table. Use the '<em>show ip6
+ * neighbors</em>' command to display all learned and manually entered entries.
+ *
+ * @cliexpar
+ * Example of how to add a static entry to the IPv6 neighbor adjacency table:
+ * @cliexcmd{set ip6 neighbor GigabitEthernet2/0/0 ::1:1:c:0:9 02:fe:e4:45:27:5b static}
+ * Example of how to delete an entry from the IPv6 neighbor adjacency table:
+ * @cliexcmd{set ip6 neighbor del GigabitEthernet2/0/0 ::1:1:c:0:9 02:fe:e4:45:27:5b}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip6_neighbor_command, static) = {
   .path = "set ip6 neighbor",
   .function = set_ip6_neighbor,
-  .short_help = "set ip6 neighbor [del] <intfc> <ip6-address> <mac-address> [static]",
+  .short_help = "set ip6 neighbor [del] <interface> <ip6-address> <mac-address> [static]",
 };
+/* *INDENT-ON* */
 
 typedef enum {
   ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP,
@@ -2817,11 +2861,49 @@ show_ip6_interface_cmd (vlib_main_t * vm,
   return error;
 }
 
+/*?
+ * This command is used to display various IPv6 attributes on a given
+ * interface.
+ *
+ * @cliexpar
+ * Example of how to display IPv6 settings:
+ * @cliexstart{show ip6 interface GigabitEthernet2/0/0}
+ * GigabitEthernet2/0/0 is admin up
+ *         Link-local address(es):
+ *                 fe80::ab8/64
+ *         Joined group address(es):
+ *                 ff02::1
+ *                 ff02::2
+ *                 ff02::16
+ *                 ff02::1:ff00:ab8
+ *         Advertised Prefixes:
+ *                 prefix fe80::fe:28ff:fe9c:75b3,  length 64
+ *         MTU is 1500
+ *         ICMP error messages are unlimited
+ *         ICMP redirects are disabled
+ *         ICMP unreachables are not sent
+ *         ND DAD is disabled
+ *         ND advertised reachable time is 0
+ *         ND advertised retransmit interval is 0 (msec)
+ *         ND router advertisements are sent every 200 seconds (min interval is 150)
+ *         ND router advertisements live for 600 seconds
+ *         Hosts use stateless autoconfig for addresses
+ *         ND router advertisements sent 19336
+ *         ND router solicitations received 0
+ *         ND router solicitations dropped 0
+ * @cliexend
+ * Example of output if IPv6 is not enabled on the interface:
+ * @cliexstart{show ip6 interface GigabitEthernet2/0/0}
+ * show ip6 interface: IPv6 not enabled on interface
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip6_interface_command, static) = {
   .path = "show ip6 interface",
   .function = show_ip6_interface_cmd,
-  .short_help = "show ip6 interface <iface name>",
+  .short_help = "show ip6 interface <interface>",
 };
+/* *INDENT-ON* */
 
 clib_error_t *
 disable_ip6_interface(vlib_main_t * vm,
@@ -2981,11 +3063,20 @@ enable_ip6_interface_cmd (vlib_main_t * vm,
   return error;
 }
 
+/*?
+ * This command is used to enable IPv6 on a given interface.
+ *
+ * @cliexpar
+ * Example of how enable IPv6 on a given interface:
+ * @cliexcmd{enable ip6 interface GigabitEthernet2/0/0}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_ip6_interface_command, static) = {
   .path = "enable ip6 interface",
   .function = enable_ip6_interface_cmd,
-  .short_help = "enable ip6 interface <iface name>",
+  .short_help = "enable ip6 interface <interface>",
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 disable_ip6_interface_cmd (vlib_main_t * vm,
@@ -3012,17 +3103,143 @@ disable_ip6_interface_cmd (vlib_main_t * vm,
   return error;
 }
 
+/*?
+ * This command is used to disable IPv6 on a given interface.
+ *
+ * @cliexpar
+ * Example of how disable IPv6 on a given interface:
+ * @cliexcmd{disable ip6 interface GigabitEthernet2/0/0}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (disable_ip6_interface_command, static) = {
-  .path = "disable  ip6 interface",
+  .path = "disable ip6 interface",
   .function = disable_ip6_interface_cmd,
-  .short_help = "disable ip6 interface <iface name>",
+  .short_help = "disable ip6 interface <interface>",
 };
+/* *INDENT-ON* */
 
+/*?
+ * This command is used to configure the neighbor discovery
+ * parameters on a given interface. Use the '<em>show ip6 interface</em>'
+ * command to display some of the current neighbor discovery parameters
+ * on a given interface. This command has three formats:
+ *
+ *
+ * <b>Format 1 - Router Advertisement Options:</b> (Only one can be entered in a single command)
+ *
+ * '<em><b>ip6 nd <interface> [no] [ra-managed-config-flag] | [ra-other-config-flag] | [ra-suppress] | [ra-suppress-link-layer] | [ra-send-unicast] | [ra-lifetime <lifetime>] | [ra-initial <cnt> <interval>] | [ra-interval <max-interval> [<min-interval>]] | [ra-cease]</b></em>'
+ *
+ * Where:
+ *
+ * <em>[no] ra-managed-config-flag</em> - Advertises in ICMPv6
+ * router-advertisement messages to use stateful address
+ * auto-configuration to obtain address information (sets the M-bit).
+ * Default is the M-bit is not set and the '<em>no</em>' option
+ * returns it to this default state.
+ *
+ * <em>[no] ra-other-config-flag</em> - Indicates in ICMPv6
+ * router-advertisement messages that hosts use stateful auto
+ * configuration to obtain nonaddress related information (sets
+ * the O-bit). Default is the O-bit is not set and the '<em>no</em>'
+ * option returns it to this default state.
+ *
+ * <em>[no] ra-suppress</em> - Disables sending ICMPv6 router-advertisement
+ * messages. The '<em>no</em>' option implies to enable sending ICMPv6
+ * router-advertisement messages.
+ *
+ * <em>[no] ra-suppress-link-layer</em> - Indicates not to include the
+ * optional source link-layer address in the ICMPv6 router-advertisement
+ * messages. Default is to include the optional source link-layer address
+ * and the '<em>no</em>' option returns it to this default state.
+ *
+ * <em>[no] ra-send-unicast</em> - Use the source address of the
+ * router-solicitation message if availiable. The default is to use
+ * multicast address of all nodes, and the '<em>no</em>' option returns
+ * it to this default state.
+ *
+ * <em>[no] ra-lifetime <lifetime></em> - Advertises the lifetime of a
+ * default router in ICMPv6 router-advertisement messages. The range is
+ * from 0 to 9000 seconds. '<em><lifetime></em>' must be greater than
+ * '<em><max-interval></em>'. The default value is 600 seconds and the
+ * '<em>no</em>' option returns it to this default value.
+ *
+ * <em>[no] ra-initial <cnt> <interval></em> - Number of initial ICMPv6
+ * router-advertisement messages sent and the interval between each
+ * message. Range for count is 1 - 3 and default is 3. Range for interval
+ * is 1 to 16 seconds, and default is 16 seconds. The '<em>no</em>' option
+ * returns both to their default value.
+ *
+ * <em>[no] ra-interval <max-interval> [<min-interval>]</em> - Configures the
+ * interval between sending ICMPv6 router-advertisement messages. The
+ * range for max-interval is from 4 to 200 seconds. min-interval can not
+ * be more than 75% of max-interval. If not set, min-interval will be
+ * set to 75% of max-interval. The range for min-interval is from 3 to
+ * 150 seconds.  The '<em>no</em>' option returns both to their default
+ * value.
+ *
+ * <em>[no] ra-cease</em> - Cease sending ICMPv6 router-advertisement messages.
+ * The '<em>no</em>' options implies to start (or restart) sending
+ * ICMPv6 router-advertisement messages.
+ *
+ *
+ * <b>Format 2 - Prefix Options:</b>
+ *
+ * '<em><b>ip6 nd <interface> [no] prefix <ip6-address>/<width> [<valid-lifetime> <pref-lifetime> | infinite] [no-advertise] [off-link] [no-autoconfig] [no-onlink]</b></em>'
+ *
+ * Where:
+ *
+ * <em>no</em> - All additional flags are ignored and the prefix is deleted.
+ *
+ * <em><valid-lifetime> <pref-lifetime></em> - '<em><valid-lifetime></em>' is the
+ * length of time in seconds during what the prefix is valid for the purpose of
+ * on-link determination. Range is 7203 to 2592000 seconds and default is 2592000
+ * seconds (30 days). '<em><pref-lifetime></em>' is the prefered-lifetime and is the
+ * length of time in seconds during what addresses generated from the prefix remain
+ * preferred. Range is 0 to 604800 seconds and default is 604800 seconds (7 days).
+ *
+ * <em>infinite</em> - Both '<em><valid-lifetime></em>' and '<em><<pref-lifetime></em>'
+ * are inifinte, no timeout.
+ *
+ * <em>no-advertise</em> - Do not send full router address in prefix
+ * advertisement. Default is to advertise (i.e. - This flag is off by default).
+ *
+ * <em>off-link</em> - Prefix is off-link, clear L-bit in packet. Default is on-link
+ * (i.e. - This flag is off and L-bit in packet is set by default and this prefix can
+ * be used for on-link determination). '<em>no-onlink</em>' also controls the L-bit.
+ *
+ * <em>no-autoconfig</em> - Do not use prefix for autoconfiguration, clear A-bit in packet.
+ * Default is autoconfig (i.e. - This flag is off and A-bit in packet is set by default.
+ *
+ * <em>no-onlink</em> - Do not use prefix for onlink determination, clear L-bit in packet.
+ * Default is on-link (i.e. - This flag is off and L-bit in packet is set by default and
+ * this prefix can be used for on-link determination). '<em>off-link</em>' also controls
+ * the L-bit.
+ *
+ *
+ * <b>Format 3: - Default of Prefix:</b>
+ *
+ * '<em><b>ip6 nd <interface> [no] prefix <ip6-address>/<width> default</b></em>'
+ *
+ * When a new prefix is added (or existing one is being overwritten) <em>default</em>
+ * uses default values for the prefix. If <em>no</em> is used, the <em>default</em>
+ * is ignored and the prefix is deleted.
+ *
+ *
+ * @cliexpar
+ * Example of how set a router advertisement option:
+ * @cliexcmd{ip6 nd GigabitEthernet2/0/0 ra-interval 100 20}
+ * Example of how to add a prefix:
+ * @cliexcmd{ip6 nd GigabitEthernet2/0/0 prefix fe80::fe:28ff:fe9c:75b3/64 infinite no-advertise}
+ * Example of how to delete a prefix:
+ * @cliexcmd{ip6 nd GigabitEthernet2/0/0 no prefix fe80::fe:28ff:fe9c:75b3/64}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_nd_command, static) = {
   .path = "ip6 nd",
-  .short_help = "Set ip6 neighbor discovery parameters",
+  .short_help = "ip6 nd <interface> ...",
   .function = ip6_neighbor_cmd,
 };
+/* *INDENT-ON* */
 
 clib_error_t *
 set_ip6_link_local_address(vlib_main_t * vm,
@@ -3116,11 +3333,23 @@ set_ip6_link_local_address_cmd (vlib_main_t * vm,
   return error;
 }
 
+/*?
+ * This command is used to assign an IPv6 Link-local address to an
+ * interface. This command will enable IPv6 on an interface if it
+ * is not already enabled. Use the '<em>show ip6 interface</em>' command
+ * to display the assigned Link-local address.
+ *
+ * @cliexpar
+ * Example of how to assign an IPv6 Link-local address to an interface:
+ * @cliexcmd{set ip6 link-local address GigabitEthernet2/0/0 FE80::AB8/64}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip6_link_local_address_command, static) = {
   .path = "set ip6 link-local address",
-  .short_help = "Set ip6 interface link-local address <intfc> <address.>",
+  .short_help = "set ip6 link-local address <interface> <ip6-address>/<width>",
   .function = set_ip6_link_local_address_cmd,
 };
+/* *INDENT-ON* */
 
 /* callback when an interface address is added or deleted */
 static void

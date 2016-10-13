@@ -26,6 +26,20 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/fib/ip6_fib.h>
 
+/**
+ * @file
+ * @brief In-band OAM (iOAM).
+ *
+ * In-band OAM (iOAM) is an implementation study to record operational
+ * information in the packet while the packet traverses a path between
+ * two points in the network.
+ *
+ * VPP can function as in-band OAM encapsulating, transit and
+ * decapsulating node. In this version of VPP in-band OAM data is
+ * transported as options in an IPv6 hop-by-hop extension header. Hence
+ * in-band OAM can be enabled for IPv6 traffic.
+ */
+
 char *ppc_state[] = { "None", "Encap", "Decap" };
 
 ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
@@ -793,11 +807,21 @@ clear_ioam_rewrite_command_fn (vlib_main_t * vm,
   return (clear_ioam_rewrite_fn ());
 }
 
+/*?
+ * This command clears all the In-band OAM (iOAM) features enabled by
+ * the '<em>set ioam rewrite</em>' command. Use '<em>show ioam summary</em>' to
+ * verify the configured settings cleared.
+ *
+ * @cliexpar
+ * Example of how to clear iOAM features:
+ * @cliexcmd{clear ioam rewrite}
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ip6_clear_ioam_rewrite_cmd, static) =
-{
-.path = "clear ioam rewrite",.short_help = "clear ioam rewrite",.function =
-    clear_ioam_rewrite_command_fn,};
+VLIB_CLI_COMMAND (ip6_clear_ioam_rewrite_cmd, static) = {
+  .path = "clear ioam rewrite",
+  .short_help = "clear ioam rewrite",
+  .function = clear_ioam_rewrite_command_fn,
+};
 /* *INDENT-ON* */
 
 clib_error_t *
@@ -857,12 +881,30 @@ ip6_set_ioam_rewrite_command_fn (vlib_main_t * vm,
   return rv;
 }
 
+/*?
+ * This command is used to enable In-band OAM (iOAM) features on IPv6.
+ * '<em>trace</em>' is used to enable iOAM trace feature. '<em>pot</em>' is used to
+ * enable the Proof Of Transit feature. '<em>ppc</em>' is used to indicate the
+ * Per Packet Counter feature for Edge to Edge processing. '<em>ppc</em>' is
+ * used to indicate if this node is an '<em>encap</em>' node (iOAM edge node
+ * where packet enters iOAM domain), a '<em>decap</em>' node (iOAM edge node
+ * where packet leaves iOAM domain) or '<em>none</em>' (iOAM node where packet
+ * is in-transit through the iOAM domain). '<em>ppc</em>' can only be set if
+ * '<em>trace</em>' or '<em>pot</em>' is enabled.
+ *
+ * Use '<em>clear ioam rewrite</em>' to disable all features enabled by this
+ * command. Use '<em>show ioam summary</em>' to verify the configured settings.
+ *
+ * @cliexpar
+ * Example of how to enable trace and pot with ppc set to encap:
+ * @cliexcmd{set ioam rewrite trace pot ppc encap}
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ip6_set_ioam_rewrite_cmd, static) =
-{
-.path = "set ioam rewrite",.short_help =
-    "set ioam [trace] [pot] [ppc <encap|decap>]",.function =
-    ip6_set_ioam_rewrite_command_fn,};
+VLIB_CLI_COMMAND (ip6_set_ioam_rewrite_cmd, static) = {
+  .path = "set ioam rewrite",
+  .short_help = "set ioam rewrite [trace] [pot] [ppc <encap|decap|none>]",
+  .function = ip6_set_ioam_rewrite_command_fn,
+};
 /* *INDENT-ON* */
 
 static clib_error_t *
@@ -911,20 +953,41 @@ ip6_show_ioam_summary_cmd_fn (vlib_main_t * vm,
 
   s = format (s, "         EDGE TO EDGE - PPC OPTION - %d (%s)\n",
 	      hm->has_ppc_option, ppc_state[hm->has_ppc_option]);
+#if 0
+  /* 'show ioam ppc' command does not exist. Not sure if it was removed */
+  /* or yet to be added. Comment out for now. */
   if (hm->has_ppc_option)
     s = format (s, "Try 'show ioam ppc' for more information\n");
+#endif
 
   vlib_cli_output (vm, "%v", s);
   vec_free (s);
   return 0;
 }
 
+/*?
+ * This command displays the current configuration data for In-band
+ * OAM (iOAM).
+ *
+ * @cliexpar
+ * Example to show the iOAM configuration:
+ * @cliexstart{show ioam summary}
+ *               REWRITE FLOW CONFIGS -
+ *                Destination Address : ff02::1
+ *                     Flow operation : 2 (Pop)
+ *                         TRACE OPTION - 1 (Enabled)
+ * Try 'show ioam trace and show ioam-trace profile' for more information
+ *                         POT OPTION - 1 (Enabled)
+ * Try 'show ioam pot and show pot profile' for more information
+ *          EDGE TO EDGE - PPC OPTION - 1 (Encap)
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ip6_show_ioam_run_cmd, static) =
-{
-.path = "show ioam summary",.short_help =
-    "Summary of IOAM configuration",.function =
-    ip6_show_ioam_summary_cmd_fn,};
+VLIB_CLI_COMMAND (ip6_show_ioam_run_cmd, static) = {
+  .path = "show ioam summary",
+  .short_help = "show ioam summary",
+  .function = ip6_show_ioam_summary_cmd_fn,
+};
 /* *INDENT-ON* */
 
 int
@@ -1032,12 +1095,26 @@ ip6_set_ioam_destination_command_fn (vlib_main_t * vm,
 			    1);
 }
 
+/*?
+ * This command sets the In-band OAM (iOAM) destination IPv6 address
+ * subnet. An action is required (add, pop or none).  Optionally, an IPv6
+ * FIB table (aka VRF Table) can be provided. If not provided, table 0
+ * used.
+ *
+ * Use '<em>show ioam summary</em>' to verify the configured settings.
+ *
+ * @todo This content needs to be validated and potentially more detail added.
+ *
+ * @cliexpar
+ * Example of how to set the iOAM destination:
+ * @cliexcmd{set ioam destination ff02::1/128 pop vrf-id 8}
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ip6_set_ioam_destination_cmd, static) =
-{
-.path = "set ioam destination",.short_help =
-    "set ioam destination <ip6-address>/<width> add | pop | none",.function
-    = ip6_set_ioam_destination_command_fn,};
+VLIB_CLI_COMMAND (ip6_set_ioam_destination_cmd, static) = {
+  .path = "set ioam destination",
+  .short_help = "set ioam destination <ip6-address>/<width> {add|pop|none} [vrf-id <table-id>]",
+  .function = ip6_set_ioam_destination_command_fn,
+};
 /* *INDENT-ON* */
 
 

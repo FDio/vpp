@@ -51,6 +51,13 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/classify_dpo.h>
 
+/**
+ * @file
+ * @brief IPv4 Forwarding.
+ *
+ * This file contains the source code for IPv4 forwarding.
+ */
+
 void
 ip4_forward_next_trace (vlib_main_t * vm,
                         vlib_node_runtime_t * node,
@@ -1760,11 +1767,25 @@ show_ip_local_command_fn (vlib_main_t * vm,
 
 
 
+/*?
+ * Display the set of protocols handled by the local IPv4 stack.
+ *
+ * @cliexpar
+ * Example of how to display local protocol table:
+ * @cliexstart{show ip local}
+ * Protocols handled by ip4_local
+ * 1
+ * 17
+ * 47
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_local, static) = {
   .path = "show ip local",
   .function = show_ip_local_command_fn,
-  .short_help = "Show ip local protocol table",
+  .short_help = "show ip local",
 };
+/* *INDENT-ON* */
 
 always_inline uword
 ip4_arp_inline (vlib_main_t * vm,
@@ -2667,24 +2688,32 @@ add_del_interface_table (vlib_main_t * vm,
 }
 
 /*?
- * Place the indicated interface into the supplied VRF
+ * Place the indicated interface into the supplied IPv4 FIB table (also known
+ * as a VRF). If the FIB table does not exist, this command creates it. To
+ * display the current IPv4 FIB table, use the command '<em>show ip fib</em>'.
+ * FIB table will only be displayed if a route has been added to the table, or
+ * an IP Address is assigned to an interface in the table (which adds a route
+ * automatically), or '<em>include-empty</em>' is included.
+ *
+ * @note IP addresses added after setting the interface IP table end up in
+ * the indicated FIB table. If the IP address is added prior to adding the
+ * interface to the FIB table, it will NOT be part of the FIB table. Predictable
+ * but potentially counter-intuitive results occur if you provision interface
+ * addresses in multiple FIBs. Upon RX, packets will be processed in the last
+ * IP table ID provisioned. It might be marginally useful to evade source RPF
+ * drops to put an interface address into multiple FIBs.
  *
  * @cliexpar
- * @cliexstart{set interface ip table}
- *
- *  vpp# set interface ip table GigabitEthernet2/0/0 2
- *
- * Interface addresses added after setting the interface IP table end up in the indicated VRF table.
- * Predictable but potentially counter-intuitive results occur if you provision interface addresses in multiple FIBs.
- * Upon RX, packets will be processed in the last IP table ID provisioned.
- * It might be marginally useful to evade source RPF drops to put an interface address into multiple FIBs.
- * @cliexend
+ * Example of how to add an interface to an IPv4 FIB table (where 2 is the table-id):
+ * @cliexcmd{set interface ip table GigabitEthernet2/0/0 2}
  ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_table_command, static) = {
   .path = "set interface ip table",
   .function = add_del_interface_table,
-  .short_help = "Add/delete FIB table id for interface",
+  .short_help = "set interface ip table <interface> <table-id>",
 };
+/* *INDENT-ON* */
 
 
 static uword
@@ -2994,11 +3023,30 @@ test_lookup_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Perform a lookup of an IPv4 Address (or range of addresses) in the
+ * given FIB table to determine if there is a conflict with the
+ * adjacency table. The fib-id can be determined by using the
+ * '<em>show ip fib</em>' command. If fib-id is not entered, default value
+ * of 0 is used.
+ *
+ * @todo This command uses fib-id, other commands use table-id (not
+ * just a name, they are different indexes). Would like to change this
+ * to table-id for consistency.
+ *
+ * @cliexpar
+ * Example of how to run the test lookup command:
+ * @cliexstart{test lookup 172.16.1.1 table 1 count 2}
+ * No errors in 2 lookups
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lookup_test_command, static) = {
     .path = "test lookup",
-    .short_help = "test lookup",
+    .short_help = "test lookup <ipv4-addr> [table <fib-id>] [count <nn>]",
     .function = test_lookup_command_fn,
 };
+/* *INDENT-ON* */
 
 int vnet_set_ip4_flow_hash (u32 table_id, u32 flow_hash_config)
 {
@@ -3056,12 +3104,39 @@ set_ip_flow_hash_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Configure the set of IPv4 fields used by the flow hash.
+ *
+ * @cliexpar
+ * Example of how to set the flow hash on a given table:
+ * @cliexcmd{set ip flow-hash table 7 dst sport dport proto}
+ * Example of display the configured flow hash:
+ * @cliexstart{show ip fib}
+ * Table 0, fib_index 0, flow hash: src dst sport dport proto
+ *      Destination         Packets          Bytes         Adjacency
+ * 172.16.2.0/24                      0               0 weight 1, index 5
+ *                                                       172.16.2.1/24
+ * 172.16.2.1/32                      0               0 weight 1, index 6
+ *                                                       172.16.2.1/24
+ * Table 7, fib_index 1, flow hash: dst sport dport proto
+ *      Destination         Packets          Bytes         Adjacency
+ * 172.16.1.0/24                      0               0 weight 1, index 3
+ *                                                       172.16.1.1/24
+ * 172.16.1.1/32                      1              98 weight 1, index 4
+ *                                                       172.16.1.1/24
+ * 172.16.1.2/32                      0               0 weight 1, index 7
+ *                                                      GigabitEthernet2/0/0
+ *                                                      IP4: 02:fe:6a:07:39:6f -> 16:d9:e0:91:79:86
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip_flow_hash_command, static) = {
   .path = "set ip flow-hash",
   .short_help =
-  "set ip table flow-hash table <fib-id> src dst sport dport proto reverse",
+  "set ip flow-hash table <table-id> [src] [dst] [sport] [dport] [proto] [reverse]",
   .function = set_ip_flow_hash_command_fn,
 };
+/* *INDENT-ON* */
 
 int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
                                  u32 table_index)
@@ -3167,10 +3242,22 @@ set_ip_classify_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Assign a classification table to an interface. The classification
+ * table is created using the '<em>classify table</em>' and '<em>classify session</em>'
+ * commands. Once the table is create, use this command to filter packets
+ * on an interface.
+ *
+ * @cliexpar
+ * Example of how to assign a classification table to an interface:
+ * @cliexcmd{set ip classify intfc GigabitEthernet2/0/0 table-index 1}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip_classify_command, static) = {
     .path = "set ip classify",
     .short_help =
-    "set ip classify intfc <int> table-index <index>",
+    "set ip classify intfc <interface> table-index <classify-idx>",
     .function = set_ip_classify_command_fn,
 };
+/* *INDENT-ON* */
 

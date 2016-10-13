@@ -18,6 +18,16 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_entry.h>
 
+/**
+ * @file
+ * @brief IPv4 and IPv6 ICMP Ping.
+ *
+ * This file contains code to suppport IPv4 or IPv6 ICMP ECHO_REQUEST to
+ * network hosts.
+ *
+ */
+
+
 u8 *
 format_icmp4_input_trace (u8 * s, va_list * va)
 {
@@ -765,25 +775,53 @@ done:
   return error;
 }
 
+/*?
+ * This command sends an ICMP ECHO_REQUEST to network hosts. The address
+ * can be an IPv4 or IPv6 address (or both at the same time).
+ *
+ * @cliexpar
+ * @parblock
+ * Example of how ping an IPv4 address:
+ * @cliexstart{ping 172.16.1.2 source GigabitEthernet2/0/0 repeat 2}
+ * 64 bytes from 172.16.1.2: icmp_seq=1 ttl=64 time=.1090 ms
+ * 64 bytes from 172.16.1.2: icmp_seq=2 ttl=64 time=.0914 ms
+ *
+ * Statistics: 2 sent, 2 received, 0% packet loss
+ * @cliexend
+ *
+ * Example of how ping both an IPv4 address and IPv6 address at the same time:
+ * @cliexstart{ping 172.16.1.2 ipv6 fe80::24a5:f6ff:fe9c:3a36 source GigabitEthernet2/0/0 repeat 2 verbose}
+ * Adjacency index: 10, sw_if_index: 1
+ * Adj: ip6-discover-neighbor
+ * Adj Interface: 0
+ * Forced set interface: 1
+ * Adjacency index: 0, sw_if_index: 4294967295
+ * Adj: ip4-miss
+ * Adj Interface: 0
+ * Forced set interface: 1
+ * Source address: 172.16.1.1
+ * 64 bytes from 172.16.1.2: icmp_seq=1 ttl=64 time=.1899 ms
+ * Adjacency index: 10, sw_if_index: 1
+ * Adj: ip6-discover-neighbor
+ * Adj Interface: 0
+ * Forced set interface: 1
+ * Adjacency index: 0, sw_if_index: 4294967295
+ * Adj: ip4-miss
+ * Adj Interface: 0
+ * Forced set interface: 1
+ * Source address: 172.16.1.1
+ * 64 bytes from 172.16.1.2: icmp_seq=2 ttl=64 time=.0910 ms
+ *
+ * Statistics: 4 sent, 2 received, 50% packet loss
+ * @cliexend
+ * @endparblock
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ping_command, static) =
 {
   .path = "ping",
   .function = ping_ip_address,
-  .short_help = "Ping IP4/IP6 address from interface",
-  .long_help =
-  "Ping IPv4/IPv6 address (or both at the same time)\n"
-  "\n"
-  "Arguments:\n"
-  "\n"
-  "ADDRESS              target (IPv4/IPv6)\n"
-  "ipv4 ADDRESS         target IPv4 address\n"
-  "ipv6 ADDRESS         target IPv6 address\n"
-  "interface STRING     interface for the source address\n"
-  "size NUMBER          size to send\n"
-  "repeat NUMBER        how many echo requests to send\n"
-  "interval NUMBER      interval between echo requests, in seconds (integer or fractional)\n"
-  "verbose              print various low-level information\n"
+  .short_help = "ping {<ip-addr> | ipv4 <ip4-addr> | ipv6 <ip6-addr>} [ipv4 <ip4-addr> | ipv6 <ip6-addr>] [source <interface>] [size <pktsize>] [interval <sec>] [repeat <cnt>] [verbose]",
 };
 /* *INDENT-ON* */
 

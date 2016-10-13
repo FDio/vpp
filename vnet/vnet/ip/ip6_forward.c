@@ -49,6 +49,13 @@
 
 #include <vppinfra/bihash_template.c>
 
+/**
+ * @file
+ * @brief IPv6 Forwarding.
+ *
+ * This file contains the source code for IPv6 forwarding.
+ */
+
 void
 ip6_forward_next_trace (vlib_main_t * vm,
                         vlib_node_runtime_t * node,
@@ -2755,11 +2762,33 @@ add_del_ip6_interface_table (vlib_main_t * vm,
   return error;
 }
 
+/*?
+ * Place the indicated interface into the supplied IPv6 FIB table (also known
+ * as a VRF). If the FIB table does not exist, this command creates it. To
+ * display the current IPv6 FIB table, use the command '<em>show ip6 fib</em>'.
+ * FIB table will only be displayed if a route has been added to the table, or
+ * an IP Address is assigned to an interface in the table (which adds a route
+ * automatically).
+ *
+ * @note IP addresses added after setting the interface IP table end up in
+ * the indicated FIB table. If the IP address is added prior to adding the
+ * interface to the FIB table, it will NOT be part of the FIB table. Predictable
+ * but potentially counter-intuitive results occur if you provision interface
+ * addresses in multiple FIBs. Upon RX, packets will be processed in the last
+ * IP table ID provisioned. It might be marginally useful to evade source RPF
+ * drops to put an interface address into multiple FIBs.
+ *
+ * @cliexpar
+ * Example of how to add an interface to an IPv6 FIB table (where 2 is the table-id):
+ * @cliexcmd{set interface ip6 table GigabitEthernet2/0/0 2}
+ ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip6_table_command, static) = {
   .path = "set interface ip6 table",
   .function = add_del_ip6_interface_table,
-  .short_help = "set interface ip6 table <intfc> <table-id>"
+  .short_help = "set interface ip6 table <interface> <table-id>"
 };
+/* *INDENT-ON* */
 
 void
 ip6_link_local_address_from_ethernet_mac_address (ip6_address_t *ip,
@@ -2811,11 +2840,24 @@ test_ip6_link_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * This command converts the given MAC Address into an IPv6 link-local
+ * address.
+ *
+ * @cliexpar
+ * Example of how to create an IPv6 link-local address:
+ * @cliexstart{test ip6 link 16:d9:e0:91:79:86}
+ * Link local address: fe80::14d9:e0ff:fe91:7986
+ * Original MAC address: 16:d9:e0:91:79:86
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_link_command, static) = {
   .path = "test ip6 link",
   .function = test_ip6_link_command_fn,
   .short_help = "test ip6 link <mac-address>",
 };
+/* *INDENT-ON* */
 
 int vnet_set_ip6_flow_hash (u32 table_id, u32 flow_hash_config)
 {
@@ -2873,12 +2915,49 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Configure the set of IPv6 fields used by the flow hash.
+ *
+ * @cliexpar
+ * @parblock
+ * Example of how to set the flow hash on a given table:
+ * @cliexcmd{set ip6 flow-hash table 12 dst sport dport proto}
+ * Example of display the configured flow hash:
+ * @cliexstart{show ip6 fib}
+ * FIB lookup table: 65536 buckets, 32 MB heap
+ * 11 objects, 513k of 515k used, 424 free, 0 reclaimed, 2k overhead, 32764k capacity
+ *
+ * VRF 0, fib_index 0, flow hash: src dst sport dport proto
+ *                  Destination                      Packets          Bytes         Adjacency
+ * ff02::1/128                                                 0               0 weight 1, index 5
+ *
+ * ff02::2/128                                                 0               0 weight 1, index 4
+ *
+ * ff02::16/128                                                0               0 weight 1, index 6
+ *
+ * ff02::1:ff00:0/104                                          0               0 weight 1, index 3
+ *
+ *
+ * VRF 12, fib_index 1, flow hash: dst sport dport proto
+ *                  Destination                      Packets          Bytes         Adjacency
+ * ff02::1/128                                                 0               0 weight 1, index 9
+ *
+ * ff02::2/128                                                 0               0 weight 1, index 8
+ *
+ * ff02::16/128                                                0               0 weight 1, index 10
+ *
+ * ff02::1:ff00:0/104                                          0               0 weight 1, index 7
+ * @cliexend
+ * @endparblock
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip6_flow_hash_command, static) = {
     .path = "set ip6 flow-hash",
     .short_help =
-    "set ip table flow-hash table <fib-id> src dst sport dport proto reverse",
+    "set ip6 flow-hash table <table-id> [src] [dst] [sport] [dport] [proto] [reverse]",
     .function = set_ip6_flow_hash_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 show_ip6_local_command_fn (vlib_main_t * vm,
@@ -2900,11 +2979,26 @@ show_ip6_local_command_fn (vlib_main_t * vm,
 
 
 
+/*?
+ * Display the set of protocols handled by the local IPv6 stack.
+ *
+ * @cliexpar
+ * Example of how to display local protocol table:
+ * @cliexstart{show ip6 local}
+ * Protocols handled by ip6_local
+ * 17
+ * 43
+ * 58
+ * 115
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip6_local, static) = {
   .path = "show ip6 local",
   .function = show_ip6_local_command_fn,
-  .short_help = "Show ip6 local protocol table",
+  .short_help = "show ip6 local",
 };
+/* *INDENT-ON* */
 
 int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
                                  u32 table_index)
@@ -3010,12 +3104,24 @@ set_ip6_classify_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Assign a classification table to an interface. The classification
+ * table is created using the '<em>classify table</em>' and '<em>classify session</em>'
+ * commands. Once the table is create, use this command to filter packets
+ * on an interface.
+ *
+ * @cliexpar
+ * Example of how to assign a classification table to an interface:
+ * @cliexcmd{set ip6 classify intfc GigabitEthernet2/0/0 table-index 1}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip6_classify_command, static) = {
     .path = "set ip6 classify",
     .short_help =
-    "set ip6 classify intfc <int> table-index <index>",
+    "set ip6 classify intfc <interface> table-index <classify-idx>",
     .function = set_ip6_classify_command_fn,
 };
+/* *INDENT-ON* */
 
 static clib_error_t *
 ip6_config (vlib_main_t * vm, unformat_input_t * input)
@@ -3083,9 +3189,23 @@ set_interface_ip6_output_feature_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Enable or disable the output feature on an interface.
+ *
+ * @todo Need a more detailed description.
+ *
+ * @cliexpar
+ * Example of how to enable the output feature on an interface:
+ * @cliexcmd{set interface ip6 output feature GigabitEthernet2/0/0}
+ * Example of how to disable the output feature on an interface:
+ * @cliexcmd{set interface ip6 output feature GigabitEthernet2/0/0 del}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip6_output_feature, static) = {
   .path = "set interface ip6 output feature",
   .function = set_interface_ip6_output_feature_command_fn,
-  .short_help = "set interface output feature <intfc>",
+  .short_help = "set interface ip6 output feature <interface> [del]",
 };
+/* *INDENT-ON* */
+
 #endif /* TEST_CODE */

@@ -42,6 +42,14 @@
 #include <vnet/fib/fib_urpf_list.h>
 #include <vnet/dpo/load_balance.h>
 
+/**
+ * @file
+ * @brief IPv4 Unicast Source Check.
+ *
+ * This file contains the IPv4 interface unicast source check.
+ */
+
+
 typedef struct {
   u8 packet_data[64];
     index_t urpf;
@@ -380,25 +388,68 @@ set_ip_source_check (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 /*?
- * Add the unicast RPF check feature to an input interface
- *
- * @cliexpar
- * @cliexstart{set interface ip source-check}
- * Two flavours are supported;
- *  loose: accept ingress packet if there is a route to reach the source
- *  strict: accept ingress packet if it arrived on an interface which
+ * This command adds the 'ip4-source-check-via-rx' graph node for
+ * a given interface. By adding the IPv4 source check graph node to
+ * an interface, the code verifies that the source address of incoming
+ * unicast packets are reachable over the incoming interface. Two flavours
+ * are supported (the default is strict):
+ * - loose: accept ingress packet if there is a route to reach the source
+ * - strict: accept ingress packet if it arrived on an interface which
  *          the route to the source uses. i.e. an interface that the source
  *          is reachable via.
- * the deafult is strict.
  *
+ * @cliexpar
+ * @parblock
+ * Example of graph node before range checking is enabled:
+ * @cliexstart{show vlib graph ip4-source-check-via-rx}
+ *            Name                      Next                    Previous
+ * ip4-source-check-via-rx         error-drop [0]
  * @cliexend
+ *
+ * Example of how to enable unicast source checking on an interface:
+ * @cliexcmd{set interface ip source-check GigabitEthernet2/0/0 loose}
+ *
+ * Example of graph node after range checking is enabled:
+ * @cliexstart{show vlib graph ip4-source-check-via-rx}
+ *            Name                      Next                    Previous
+ * ip4-source-check-via-rx         error-drop [0]         ip4-input-no-checksum
+ *                           ip4-source-and-port-range-         ip4-input
+ * @cliexend
+ *
+ * Example of how to display the feature enabed on an interface:
+ * @cliexstart{show ip interface features GigabitEthernet2/0/0}
+ * IP feature paths configured on GigabitEthernet2/0/0...
+ *
+ * ipv4 unicast:
+ *   ip4-source-check-via-rx
+ *   ip4-lookup
+ *
+ * ipv4 multicast:
+ *   ip4-lookup-multicast
+ *
+ * ipv4 multicast:
+ *   interface-output
+ *
+ * ipv6 unicast:
+ *   ip6-lookup
+ *
+ * ipv6 multicast:
+ *   ip6-lookup
+ *
+ * ipv6 multicast:
+ *   interface-output
+ * @cliexend
+ *
+ * Example of how to disable unicast source checking on an interface:
+ * @cliexcmd{set interface ip source-check GigabitEthernet2/0/0 del}
+ * @endparblock
 ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_source_check_command, static) = {
   .path = "set interface ip source-check",
   .function = set_ip_source_check,
-  .short_help = "Set IP4/IP6 interface unicast source check",
+  .short_help = "set interface ip source-check <interface> [strict|loose] [del]",
 };
 /* *INDENT-ON* */
 
@@ -476,22 +527,23 @@ done:
   return (error);
 }
 
-/* *INDENT-OFF* */
 /*?
- * Add an exemption for a prefix to pass the uRPF loose check. Testing purposes only.
+ * Add an exemption for a prefix to pass the Unicast Reverse Path
+ * Forwarding (uRPF) loose check. This is for testing purposes only.
+ * If the '<em>table</em>' is not enter it is defaulted to 0. Default
+ * is to '<em>add</em>'. VPP always performs a loose uRPF check for
+ * for-us traffic.
  *
  * @cliexpar
- * @cliexstart{ip rpf-accept}
- *
- * Add an exception for a prefix to pass the loose RPF tests. This is usefull
- * for testing purposes.
- * VPP always performs a loose uRPF check for for-us traffic.
- * @cliexend
+ * Example of how to add a uRPF exception to a FIB table to pass the
+ * loose RPF tests:
+ * @cliexcmd{ip urpf-accept table 7 add}
 ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_source_check_accept_command, static) = {
   .path = "ip urpf-accept",
   .function = ip_source_check_accept,
-  .short_help = "Add a loose uRPF check exemption",
+  .short_help = "ip urpf-accept [table <table-id>] [add|del]",
 };
 /* *INDENT-ON* */
 

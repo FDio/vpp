@@ -17,7 +17,9 @@
 #include <vnet/ip/ip.h>
 #include <vnet/mpls/mpls.h>
 
-/** \file
+/**
+ * @file
+ * @brief IP Feature Subgraph Ordering.
 
     Dynamically compute IP feature subgraph ordering by performing a
     topological sort across a set of "feature A before feature B" and
@@ -359,13 +361,44 @@ show_ip_features_command_fn (vlib_main_t * vm,
 }
 
 /*?
- * Display the set of available ip features
+ * This command is used to display the set of available IP features.
+ * This can be useful for verifying that expected features are present.
  *
  * @cliexpar
- * Example:
- * @cliexcmd{show ip features}
+ * Example of how to display the set of available IP features:
+ * @cliexstart{show ip features}
+ * Available IP feature nodes
+ * ip4 unicast:
+ *   ip4-inacl
+ *   ip4-source-check-via-rx
+ *   ip4-source-check-via-any
+ *   ip4-source-and-port-range-check-rx
+ *   ip4-policer-classify
+ *   ipsec-input-ip4
+ *   vpath-input-ip4
+ *   snat-in2out
+ *   snat-out2in
+ *   ip4-lookup
+ * ip4 multicast:
+ *   vpath-input-ip4
+ *   ip4-lookup-multicast
+ * ip4 output:
+ *   ip4-source-and-port-range-check-tx
+ *   interface-output
+ * ip6 unicast:
+ *   ip6-inacl
+ *   ip6-policer-classify
+ *   ipsec-input-ip6
+ *   l2tp-decap
+ *   vpath-input-ip6
+ *   sir-to-ila
+ *   ip6-lookup
+ * ip6 multicast:
+ *   vpath-input-ip6
+ *   ip6-lookup
+ * ip6 output:
+ *   interface-output
  * @cliexend
- * @endparblock
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_features_command, static) = {
@@ -463,18 +496,31 @@ show_ip_interface_features_command_fn (vlib_main_t * vm,
 }
 
 /*?
- * Display the ip features configured on a specific interface
+ * This command is used to display the set of IP features configured
+ * on a specific interface
  *
  * @cliexpar
- * Example:
- * @cliexcmd{show ip interface features GigabitEthernet2/0/0}
+ * Example of how to display the set of available IP features on an interface:
+ * @cliexstart{show ip interface features GigabitEthernet2/0/0}
+ * IP feature paths configured on GigabitEthernet2/0/0...
+ * ipv4 unicast:
+ *   ip4-lookup
+ * ipv4 multicast:
+ *   ip4-lookup-multicast
+ * ipv4 multicast:
+ *   interface-output
+ * ipv6 unicast:
+ *   ip6-lookup
+ * ipv6 multicast:
+ *   ip6-lookup
+ * ipv6 multicast:
+ *   interface-output
  * @cliexend
- * @endparblock
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_interface_features_command, static) = {
   .path = "show ip interface features",
-  .short_help = "show ip interface features <intfc>",
+  .short_help = "show ip interface features <interface>",
   .function = show_ip_interface_features_command_fn,
 };
 /* *INDENT-ON* */

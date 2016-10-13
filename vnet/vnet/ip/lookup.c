@@ -48,6 +48,12 @@
 #include <vnet/dpo/punt_dpo.h>
 #include <vnet/dpo/receive_dpo.h>
 
+/**
+ * @file
+ * @brief IPv4 and IPv6 adjacency and lookup table managment.
+ *
+ */
+
 clib_error_t *
 ip_interface_address_add_del (ip_lookup_main_t * lm,
 			      u32 sw_if_index,
@@ -672,54 +678,56 @@ VLIB_CLI_COMMAND (vlib_cli_ip_command, static) = {
   .short_help = "Internet protocol (IP) commands",
 };
 
+VLIB_CLI_COMMAND (vlib_cli_ip6_command, static) = {
+  .path = "ip6",
+  .short_help = "Internet protocol version 6 (IPv6) commands",
+};
+
 VLIB_CLI_COMMAND (vlib_cli_show_ip_command, static) = {
   .path = "show ip",
   .short_help = "Internet protocol (IP) show commands",
 };
 
-VLIB_CLI_COMMAND (vlib_cli_show_ip4_command, static) = {
-  .path = "show ip4",
-  .short_help = "Internet protocol version 4 (IP4) show commands",
-};
-
 VLIB_CLI_COMMAND (vlib_cli_show_ip6_command, static) = {
   .path = "show ip6",
-  .short_help = "Internet protocol version 6 (IP6) show commands",
+  .short_help = "Internet protocol version 6 (IPv6) show commands",
 };
 
 /*?
- * To add or delete routes, use ip route add / del
+ * This command is used to add or delete IPv4 or IPv6 routes. All
+ * IP Addresses ('<em><dst-ip-addr>/<width></em>',
+ * '<em><next-hop-ip-addr></em>' and '<em><adj-hop-ip-addr></em>')
+ * can be IPv4 or IPv6, but all must be of the same form in a single
+ * command. To display the current set of routes, use the commands
+ * '<em>show ip fib</em>' and '<em>show ip6 fib</em>'.
+ *
  * @cliexpar
- * @cliexstart{ip route}
- * To add or delete straightforward static routes, use ip route add / del:
- *  vpp# ip route add 6.0.1.2/32 via 6.0.0.1 GigabitEthernet2/0/0
- *  vpp# ip route del 6.0.1.2/32 via 6.0.0.1 GigabitEthernet2/0/0
- *
- * Multiple routes
- *
+ * Example of how to add a straight forward static route:
+ * @cliexcmd{ip route add 6.0.1.2/32 via 6.0.0.1 GigabitEthernet2/0/0}
+ * Example of how to delete a straight forward static route:
+ * @cliexcmd{ip route del 6.0.1.2/32 via 6.0.0.1 GigabitEthernet2/0/0}
  * Mainly for route add/del performance testing, one can add or delete
  * multiple routes by adding 'count N' to the previous item:
- *  vpp# ip route add count 10 7.0.0.0/24 via 6.0.0.1 GigabitEthernet2/0/0
- *
- * Multipath
- *
+ * @cliexcmd{ip route add count 10 7.0.0.0/24 via 6.0.0.1 GigabitEthernet2/0/0}
  * Add multiple routes for the same destination to create equal-cost multipath:
- *  vpp# ip route add 7.0.0.1/32 via 6.0.0.1 GigabitEthernet2/0/0
- *  vpp# ip route add 7.0.0.1/32 via 6.0.0.2 GigabitEthernet2/0/0
- *
- * For unequal-cost multipath, specify the desired weights:
- *  vpp# ip route add 7.0.0.1/32 via 6.0.0.1 GigabitEthernet2/0/0 weight 1
- *  vpp# ip route add 7.0.0.1/32 via 6.0.0.2 GigabitEthernet2/0/0 weight 3
- *
- * This combination of weights results in 3/4 of the traffic following the second path, 1/4 following the first path.
- * @cliexend
+ * @cliexcmd{ip route add 7.0.0.1/32 via 6.0.0.1 GigabitEthernet2/0/0}
+ * @cliexcmd{ip route add 7.0.0.1/32 via 6.0.0.2 GigabitEthernet2/0/0}
+ * For unequal-cost multipath, specify the desired weights. This
+ * combination of weights results in 3/4 of the traffic following the
+ * second path, 1/4 following the first path:
+ * @cliexcmd{ip route add 7.0.0.1/32 via 6.0.0.1 GigabitEthernet2/0/0 weight 1}
+ * @cliexcmd{ip route add 7.0.0.1/32 via 6.0.0.2 GigabitEthernet2/0/0 weight 3}
+ * To add a route to a particular FIB table (VRF), use:
+ * @cliexcmd{ip route add 172.16.24.0/24 table 7 via GigabitEthernet2/0/0}
  ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_route_command, static) = {
   .path = "ip route",
-  .short_help = "Add/delete IP routes",
+  .short_help = "ip route [add|del] [count <n>] <dst-ip-addr>/<width> [table <table-id>] [via <next-hop-ip-addr> [<interface>] [weight <weight>]] | [via arp <interface> <adj-hop-ip-addr>] | [via drop|punt|local<id>|arp|classify <classify-idx>] [lookup in table <out-table-id>]",
   .function = vnet_ip_route_cmd,
   .is_mp_safe = 1,
 };
+/* *INDENT-ON* */
 
 /*
  * The next two routines address a longstanding script hemorrhoid.
@@ -890,9 +898,27 @@ probe_neighbor_address (vlib_main_t * vm,
   return error;
 }
 
+/*?
+ * The '<em>ip probe-neighbor</em>' command ARPs for IPv4 addresses or
+ * attempts IPv6 neighbor discovery depending on the supplied IP address
+ * format.
+ *
+ * @note This command will not immediately affect the indicated FIB; it
+ * is not suitable for use in establishing a FIB entry prior to adding
+ * recursive FIB entries. As in: don't use it in a script to probe a
+ * gateway prior to adding a default route. It won't work. Instead,
+ * configure a static ARP cache entry [see '<em>set ip arp</em>'], or
+ * a static IPv6 neighbor [see '<em>set ip6 neighbor</em>'].
+ *
+ * @cliexpar
+ * Example of probe for an IPv4 address:
+ * @cliexcmd{ip probe-neighbor GigabitEthernet2/0/0 172.16.1.2}
+?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_probe_neighbor_command, static) = {
   .path = "ip probe-neighbor",
   .function = probe_neighbor_address,
-  .short_help = "ip probe-neighbor <intfc> <ip4-addr> | <ip6-addr> [retry nn]",
+  .short_help = "ip probe-neighbor <interface> <ip4-addr> | <ip6-addr> [retry nn]",
   .is_mp_safe = 1,
 };
+/* *INDENT-ON* */

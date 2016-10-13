@@ -682,17 +682,71 @@ ip6_show_fib (vlib_main_t * vm,
 }
 
 /*?
- * Show FIB6/route entries
+ * This command displays the IPv6 FIB Tables (VRF Tables) and the route
+ * entries for each table.
+ *
+ * @note This command will run for a long time when the FIB tables are
+ * comprised of millions of entries. For those senarios, consider displaying
+ * in summary mode.
  *
  * @cliexpar
- * @cliexstart{show ip fib}
- * Display the IPv6 FIB.
- * This command will run for a long time when the FIBs comprise millions of entries.
- * See 'show ip fib'
+ * @parblock
+ * Example of how to display all the IPv6 FIB tables:
+ * @cliexstart{show ip6 fib}
+ *  FIB lookup table: 65536 buckets, 32 MB heap
+ * 15 objects, 513k of 516k used, 600 free, 0 reclaimed, 2k overhead, 32764k capacity
+ *
+ * VRF 0, fib_index 0, flow hash: src dst sport dport proto
+ *                  Destination                      Packets          Bytes         Adjacency
+ * ff02::1/128                                                 0               0 weight 1, index 5
+ *
+ * ff02::2/128                                                 0               0 weight 1, index 4
+ *
+ * ff02::16/128                                                0               0 weight 1, index 6
+ *
+ * ff02::1:ff00:0/104                                          0               0 weight 1, index 3
+ *
+ *
+ * VRF 8, fib_index 1, flow hash: src dst sport dport proto
+ *                  Destination                      Packets          Bytes         Adjacency
+ * ::a:1:1:0:4/126                                             0               0 weight 1, index 11
+ *                                                                                ::a:1:1:0:7/126
+ * ::a:1:1:0:7/128                                             0               0 weight 1, index 12
+ *                                                                                ::a:1:1:0:7/126
+ * fe80::/64                                                   0               0 weight 1, index 16
+ *                                                                                fe80::fe:68ff:fe72:a773/64
+ * fe80::fe:68ff:fe72:a773/128                                 0               0 weight 1, index 17
+ *                                                                                fe80::fe:68ff:fe72:a773/64
+ * ff02::1/128                                                 0               0 weight 1, index 9
+ *
+ * ff02::2/128                                                 0               0 weight 1, index 8
+ *
+ * ff02::16/128                                                0               0 weight 1, index 10
+ *
+ * ff02::1:ff00:0/104                                          0               0 weight 1, index 7
  * @cliexend
+ * Example of how to display a summary of all IPv6 FIB tables:
+ * @cliexstart{show ip6 fib summary}
+ * FIB lookup table: 65536 buckets, 32 MB heap
+ * 15 objects, 513k of 516k used, 600 free, 0 reclaimed, 2k overhead, 32764k capacity
+ *
+ * VRF 0, fib_index 0, flow hash: src dst sport dport proto
+ *     Prefix length         Count
+ *          128                3
+ *          104                1
+ * VRF 8, fib_index 1, flow hash: src dst sport dport proto
+ *     Prefix length         Count
+ *          128                5
+ *          126                1
+ *          104                1
+ *          64                 1
+ * @cliexend
+ * @endparblock
  ?*/
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_show_fib_command, static) = {
     .path = "show ip6 fib",
-    .short_help = "show ip6 fib [summary] [table <n>] [<ip6-addr>] [verboase]",
+    .short_help = "show ip6 fib [summary] [table <table-id>] [index <fib-id>] [<ip6-addr>[/<width>]]",
     .function = ip6_show_fib,
 };
+/* *INDENT-ON* */
