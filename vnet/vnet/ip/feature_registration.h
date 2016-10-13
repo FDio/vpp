@@ -25,6 +25,7 @@ typedef struct _vnet_feature_registration
   char *node_name;
   /** Pointer to this feature index, filled in by vnet_feature_arc_init */
   u32 *feature_index;
+  u32 feature_index_u32;
   /** Constraints of the form "this feature runs before X" */
   char **runs_before;
   /** Constraints of the form "this feature runs after Y" */
