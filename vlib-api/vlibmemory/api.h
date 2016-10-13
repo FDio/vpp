@@ -124,7 +124,9 @@ vl_msg_api_handle_from_index_and_epoch (u32 index, u32 epoch)
 }
 
 void *vl_msg_api_alloc (int nbytes);
+void *vl_msg_api_alloc_or_null (int nbytes);
 void *vl_msg_api_alloc_as_if_client (int nbytes);
+void *vl_msg_api_alloc_as_if_client_or_null (int nbytes);
 void vl_msg_api_free (void *a);
 int vl_map_shmem (char *region_name, int is_vlib);
 void vl_register_mapped_shmem_region (svm_region_t * rp);

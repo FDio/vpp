@@ -40,7 +40,7 @@
 #undef vl_typedefs
 
 static inline void *
-vl_msg_api_alloc_internal (int nbytes, int pool)
+vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
 {
   int i;
   msgbuf_t *rv;
@@ -64,13 +64,15 @@ vl_msg_api_alloc_internal (int nbytes, int pool)
   if (shmem_hdr->vl_rings == 0)
     {
       clib_warning ("vl_rings NULL");
-      return 0;
+      ASSERT (0);
+      abort ();
     }
 
   if (shmem_hdr->client_rings == 0)
     {
       clib_warning ("client_rings NULL");
-      return 0;
+      ASSERT (0);
+      abort ();
     }
 
   ap = pool ? shmem_hdr->vl_rings : shmem_hdr->client_rings;
@@ -123,7 +125,19 @@ vl_msg_api_alloc_internal (int nbytes, int pool)
 
   pthread_mutex_lock (&am->vlib_rp->mutex);
   oldheap = svm_push_data_heap (am->vlib_rp);
-  rv = clib_mem_alloc (nbytes);
+  if (may_return_null)
+    {
+      rv = clib_mem_alloc_or_null (nbytes);
+      if (PREDICT_FALSE (rv == 0))
+	{
+	  svm_pop_heap (oldheap);
+	  pthread_mutex_unlock (&am->vlib_rp->mutex);
+	  return 0;
+	}
+    }
+  else
+    rv = clib_mem_alloc (nbytes);
+
   rv->q = 0;
   svm_pop_heap (oldheap);
   pthread_mutex_unlock (&am->vlib_rp->mutex);
@@ -144,13 +158,30 @@ vl_msg_api_alloc (int nbytes)
    * Clients use pool-0, vlib proc uses pool 1
    */
   pool = (am->our_pid == shmem_hdr->vl_pid);
-  return vl_msg_api_alloc_internal (nbytes, pool);
+  return vl_msg_api_alloc_internal (nbytes, pool, 0 /* may_return_null */ );
+}
+
+void *
+vl_msg_api_alloc_or_null (int nbytes)
+{
+  int pool;
+  api_main_t *am = &api_main;
+  vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
+
+  pool = (am->our_pid == shmem_hdr->vl_pid);
+  return vl_msg_api_alloc_internal (nbytes, pool, 1 /* may_return_null */ );
 }
 
 void *
 vl_msg_api_alloc_as_if_client (int nbytes)
 {
-  return vl_msg_api_alloc_internal (nbytes, 0);
+  return vl_msg_api_alloc_internal (nbytes, 0, 0 /* may_return_null */ );
+}
+
+void *
+vl_msg_api_alloc_as_if_client_or_null (int nbytes)
+{
+  return vl_msg_api_alloc_internal (nbytes, 0, 1 /* may_return_null */ );
 }
 
 void
