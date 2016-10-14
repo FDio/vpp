@@ -13,45 +13,31 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-# To add a new plugin subdirectory:
-#
-# add a stanza here:
-# if ENABLE_new_PLUGIN
-# SUBDIRS += new-plugin
-# endif
-#
-# Also: add PLUGIN(new) to configure.ac
+AM_CFLAGS = -Wall
+AM_LDFLAGS = -module -shared -avoid-version
 
-SUBDIRS =
+vpppluginsdir = ${libdir}/vpp_plugins
+vppplugins_LTLIBRARIES = acl_plugin.la
 
-if ENABLE_sample_PLUGIN
-SUBDIRS += sample-plugin
-endif
+acl_plugin_la_SOURCES =				\
+	acl/acl.c				\
+	acl/node.c				\
+	acl/acl_plugin.api.h
 
-if ENABLE_sixrd_PLUGIN
-SUBDIRS += sixrd-plugin
-endif
+BUILT_SOURCES = acl/acl.api.h
 
-if ENABLE_ioam_PLUGIN
-SUBDIRS += ioam-plugin
-endif
+SUFFIXES = .api.h .api
 
-if ENABLE_vcgn_PLUGIN
-SUBDIRS += vcgn-plugin
-endif
+%.api.h: %.api
+	mkdir -p `dirname $@` ; \
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
+	| vppapigen --input - --output $@ --show-name $@
 
-if ENABLE_snat_PLUGIN
-SUBDIRS += snat-plugin
-endif
+noinst_HEADERS =				\
+  acl/acl_all_api_h.h				\
+  acl/acl_msg_enum.h				\
+  acl/acl.api.h
 
-if ENABLE_ila_PLUGIN
-SUBDIRS += ila-plugin
-endif
-
-if ENABLE_lb_PLUGIN
-SUBDIRS += lb-plugin
-endif
-
-if ENABLE_acl_PLUGIN
-SUBDIRS += acl-plugin
-endif
+# Remove *.la files
+install-data-hook:
+	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
