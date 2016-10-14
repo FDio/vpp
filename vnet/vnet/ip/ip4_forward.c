@@ -2989,6 +2989,7 @@ test_lookup_command_fn (vlib_main_t * vm,
                         unformat_input_t * input,
                         vlib_cli_command_t * cmd)
 {
+  ip4_fib_t *fib;
   u32 table_id = 0;
   f64 count = 1;
   u32 n;
@@ -2998,7 +2999,13 @@ test_lookup_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
       if (unformat (input, "table %d", &table_id))
-	;
+      {
+          /* Make sure the entry exists. */
+          fib = ip4_fib_get(table_id);
+          if ((fib) && (fib->index != table_id))
+              return clib_error_return (0, "<fib-index> %d does not exist",
+                                        table_id);
+      }
       else if (unformat (input, "count %f", &count))
 	;
 
