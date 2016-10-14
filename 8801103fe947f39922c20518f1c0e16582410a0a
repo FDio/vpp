@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_283ad4cd",
+        "filename": "vnet/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1258,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-10-14T08:54:02Z",
+      "side": 1,
+      "message": "7? Is the MAC address 8 bytes long?",
+      "revId": "8801103fe947f39922c20518f1c0e16582410a0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
