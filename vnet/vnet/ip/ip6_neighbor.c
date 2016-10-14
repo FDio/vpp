@@ -766,14 +766,17 @@ show_ip6_neighbors (vlib_main_t * vm,
 
   ns = 0;
   pool_foreach (n, nm->neighbor_pool, ({ vec_add1 (ns, n[0]); }));
-  vec_sort_with_function (ns, ip6_neighbor_sort);
-  vlib_cli_output (vm, "%U", format_ip6_neighbor_ip6_entry, vm, 0);
-  vec_foreach (n, ns) {
-    if (sw_if_index != ~0 && n->key.sw_if_index != sw_if_index)
-      continue;
-    vlib_cli_output (vm, "%U", format_ip6_neighbor_ip6_entry, vm, n);
-  }
-  vec_free (ns);
+  if (ns)
+    {
+      vec_sort_with_function (ns, ip6_neighbor_sort);
+      vlib_cli_output (vm, "%U", format_ip6_neighbor_ip6_entry, vm, 0);
+      vec_foreach (n, ns) {
+        if (sw_if_index != ~0 && n->key.sw_if_index != sw_if_index)
+          continue;
+        vlib_cli_output (vm, "%U", format_ip6_neighbor_ip6_entry, vm, n);
+      }
+      vec_free (ns);
+    }
 
   return error;
 }
