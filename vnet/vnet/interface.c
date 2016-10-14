@@ -1272,8 +1272,11 @@ vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
 	  ethernet_interface_t *ei =
 	    pool_elt_at_index (em->interfaces, hi->hw_instance);
 
-	  clib_memcpy (hi->hw_address, (u8 *) & mac_address,
-		       sizeof (hi->hw_address));
+	  vec_validate (hi->hw_address,
+			STRUCT_SIZE_OF (ethernet_header_t, src_address) - 1);
+	  clib_memcpy (hi->hw_address, &mac_address,
+		       vec_len (hi->hw_address));
+
 	  clib_memcpy (ei->address, (u8 *) & mac_address,
 		       sizeof (ei->address));
 	  ethernet_arp_change_mac (vnm, hw_if_index);
