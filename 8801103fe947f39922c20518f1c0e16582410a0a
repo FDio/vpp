@@ -16,6 +16,24 @@
       "revId": "8801103fe947f39922c20518f1c0e16582410a0a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_083ef0b8",
+        "filename": "vnet/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1258,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-10-14T09:28:54Z",
+      "side": 1,
+      "message": "mac address is 6bytes long. as vec_validate creates N+1  bytes long vector, it has to be 5 instead of 7.",
+      "parentUuid": "fa3479d7_283ad4cd",
+      "revId": "8801103fe947f39922c20518f1c0e16582410a0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
