@@ -446,7 +446,7 @@ format_lisp_gpe_adjacency (u8 * s, va_list * args)
 {
   lisp_gpe_adjacency_t *ladj = va_arg (*args, lisp_gpe_adjacency_t *);
   lisp_gpe_adjacency_format_flags_t flags =
-    va_arg (args, lisp_gpe_adjacency_format_flags_t);
+    va_arg (*args, lisp_gpe_adjacency_format_flags_t);
 
   if (flags & LISP_GPE_ADJ_FORMAT_FLAG_DETAIL)
     {

@@ -183,8 +183,8 @@ VNET_SW_INTERFACE_ADD_DEL_FUNCTION(adj_glean_interface_delete);
 u8*
 format_adj_glean (u8* s, va_list *ap)
 {
-    index_t index = va_arg(ap, index_t);
-    CLIB_UNUSED(u32 indent) = va_arg(ap, u32);
+    index_t index = va_arg(*ap, index_t);
+    CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
     vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 

@@ -497,14 +497,6 @@ VNET_HW_INTERFACE_CLASS (mpls_eth_hw_interface_class) = {
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 
-/**
- * A conversion of DPO next object tpyes to VLIB graph next nodes from
- * the mpls_post_rewrite node
- */
-static const int dpo_next_2_mpls_post_rewrite[DPO_LAST] = {
-    [DPO_LOAD_BALANCE] = IP_LOOKUP_NEXT_LOAD_BALANCE,
-};
-
 static void
 mpls_gre_fixup (vlib_main_t *vm,
 		ip_adjacency_t *adj,

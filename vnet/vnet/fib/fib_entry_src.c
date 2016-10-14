@@ -34,6 +34,21 @@ fib_entry_get_proto (const fib_entry_t * fib_entry)
     return (fib_entry->fe_prefix.fp_proto);
 }
 
+static dpo_proto_t
+fib_entry_get_payload_proto (const fib_entry_t * fib_entry)
+{
+    switch (fib_entry->fe_prefix.fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+    case FIB_PROTOCOL_IP6:
+	return fib_proto_to_dpo(fib_entry->fe_prefix.fp_proto);
+    case FIB_PROTOCOL_MPLS:
+	return fib_entry->fe_prefix.fp_payload_proto;
+    }
+
+    return (fib_entry->fe_prefix.fp_proto);
+}
+
 void
 fib_entry_src_register (fib_source_t source,
 			const fib_entry_src_vft_t *vft)
@@ -329,7 +344,7 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
         .fct = fct,
     };
 
-    lb_proto = fib_proto_to_dpo(fib_entry_get_proto(fib_entry));
+    lb_proto = fib_entry_get_payload_proto(fib_entry);
 
     fib_path_list_walk(esrc->fes_pl,
                        fib_entry_src_collect_forwarding,

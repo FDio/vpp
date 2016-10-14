@@ -456,7 +456,8 @@ always_inline uword
 lookup_dpo_ip6_inline (vlib_main_t * vm,
                        vlib_node_runtime_t * node,
                        vlib_frame_t * from_frame,
-                       int input_src_addr)
+                       int input_src_addr,
+                       int table_from_interface)
 {
     vlib_combined_counter_main_t * cm = &load_balance_main.lbm_to_counters;
     u32 n_left_from, next_index, * from, * to_next;
@@ -497,7 +498,21 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
             /* dst lookup was done by ip6 lookup */
             lkdi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
             lkd0 = lookup_dpo_get(lkdi0);
-            fib_index0 = lkd0->lkd_fib_index;
+
+            /*
+             * choose between a lookup using the fib index in the DPO
+             * or getting the FIB index from the interface.
+             */
+            if (table_from_interface)
+            {
+                fib_index0 =
+                    ip4_fib_table_get_index_for_sw_if_index(
+                        vnet_buffer(b0)->sw_if_index[VLIB_RX]);
+            }
+            else
+            {
+                fib_index0 = lkd0->lkd_fib_index;
+            }
 
             /*
              * choose between a source or destination address lookup in the table
@@ -559,7 +574,7 @@ lookup_ip6_dst (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * from_frame)
 {
-    return (lookup_dpo_ip6_inline(vm, node, from_frame, 0 /*use src*/));
+    return (lookup_dpo_ip6_inline(vm, node, from_frame, 0 /*use src*/, 0));
 }
 
 VLIB_REGISTER_NODE (lookup_ip6_dst_node) = {
@@ -572,11 +587,28 @@ VLIB_REGISTER_NODE (lookup_ip6_dst_node) = {
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_ip6_dst_node, lookup_ip6_dst)
 
 always_inline uword
+lookup_ip6_dst_itf (vlib_main_t * vm,
+		    vlib_node_runtime_t * node,
+		    vlib_frame_t * from_frame)
+{
+    return (lookup_dpo_ip6_inline(vm, node, from_frame, 0 /*use src*/, 1));
+}
+
+VLIB_REGISTER_NODE (lookup_ip6_dst_itf_node) = {
+    .function = lookup_ip6_dst_itf,
+    .name = "lookup-ip6-dst-itf",
+    .vector_size = sizeof (u32),
+    .format_trace = format_lookup_trace,
+    .sibling_of = "ip6-lookup",
+};
+VLIB_NODE_FUNCTION_MULTIARCH (lookup_ip6_dst_itf_node, lookup_ip6_dst_itf)
+
+always_inline uword
 lookup_ip6_src (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * from_frame)
 {
-    return (lookup_dpo_ip6_inline(vm, node, from_frame, 1 /*use src*/));
+    return (lookup_dpo_ip6_inline(vm, node, from_frame, 1, 0));
 }
 
 VLIB_REGISTER_NODE (lookup_ip6_src_node) = {
@@ -834,5 +866,5 @@ lookup_dpo_module_init (void)
     lookup_dpo_sub_types[LOOKUP_SUB_TYPE_DST] =
         dpo_register_new_type(&lkd_vft, lookup_dst_nodes);
     lookup_dpo_sub_types[LOOKUP_SUB_TYPE_DST_TABLE_FROM_INTERFACE] =
-        dpo_register_new_type(&lkd_vft, lookup_dst_nodes);
+        dpo_register_new_type(&lkd_vft, lookup_dst_from_interface_nodes);
 }

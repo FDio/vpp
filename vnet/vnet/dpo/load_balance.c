@@ -148,16 +148,16 @@ load_balance_format (index_t lbi,
 u8*
 format_load_balance (u8 * s, va_list * args)
 {
-    index_t lbi = va_arg(args, index_t);
-    load_balance_format_flags_t flags = va_arg(args, load_balance_format_flags_t);
+    index_t lbi = va_arg(*args, index_t);
+    load_balance_format_flags_t flags = va_arg(*args, load_balance_format_flags_t);
 
     return (load_balance_format(lbi, flags, 0, s));
 }
 static u8*
 format_load_balance_dpo (u8 * s, va_list * args)
 {
-    index_t lbi = va_arg(args, index_t);
-    u32 indent = va_arg(args, u32);
+    index_t lbi = va_arg(*args, index_t);
+    u32 indent = va_arg(*args, u32);
 
     return (load_balance_format(lbi, LOAD_BALANCE_FORMAT_DETAIL, indent, s));
 }

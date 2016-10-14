@@ -782,8 +782,8 @@ adj_proto_to_46 (fib_protocol_t proto)
 u8*
 format_adj_nbr_incomplete (u8* s, va_list *ap)
 {
-    index_t index = va_arg(ap, index_t);
-    CLIB_UNUSED(u32 indent) = va_arg(ap, u32);
+    index_t index = va_arg(*ap, index_t);
+    CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
     vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 
@@ -803,8 +803,8 @@ format_adj_nbr_incomplete (u8* s, va_list *ap)
 u8*
 format_adj_nbr (u8* s, va_list *ap)
 {
-    index_t index = va_arg(ap, index_t);
-    CLIB_UNUSED(u32 indent) = va_arg(ap, u32);
+    index_t index = va_arg(*ap, index_t);
+    CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
     vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 

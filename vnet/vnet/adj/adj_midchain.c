@@ -423,8 +423,8 @@ adj_nbr_midchain_stack (adj_index_t adj_index,
 u8*
 format_adj_midchain (u8* s, va_list *ap)
 {
-    index_t index = va_arg(ap, index_t);
-    u32 indent = va_arg(ap, u32);
+    index_t index = va_arg(*ap, index_t);
+    u32 indent = va_arg(*ap, u32);
     vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 
