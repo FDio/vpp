@@ -864,8 +864,8 @@ VLIB_CLI_COMMAND (set_interface_ip_source_and_port_range_check_command, static) 
 static u8 *
 format_ppr_dpo (u8 * s, va_list * args)
 {
-  index_t index = va_arg (args, index_t);
-  CLIB_UNUSED (u32 indent) = va_arg (args, u32);
+  index_t index = va_arg (*args, index_t);
+  CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
 
   protocol_port_range_dpo_t *ppr_dpo;
   int i, j;

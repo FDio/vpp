@@ -52,8 +52,8 @@ drop_dpo_unlock (dpo_id_t *dpo)
 static u8*
 format_drop_dpo (u8 *s, va_list *ap)
 {
-    CLIB_UNUSED(index_t index) = va_arg(ap, index_t);
-    CLIB_UNUSED(u32 indent) = va_arg(ap, u32);
+    CLIB_UNUSED(index_t index) = va_arg(*ap, index_t);
+    CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
 
     return (format(s, "dpo-drop %U", format_dpo_proto, index));
 }
