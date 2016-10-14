@@ -116,14 +116,14 @@ public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
 
     public static final class CompletableDumpFuture<T extends JVppReplyDump<?, ?>> extends CompletableFuture<T> {
         private final T replyDump;
-        private final long contextId;
+        private final int contextId;
 
-        public CompletableDumpFuture(final long contextId, final T emptyDump) {
+        public CompletableDumpFuture(final int contextId, final T emptyDump) {
             this.contextId = contextId;
             this.replyDump = emptyDump;
         }
 
-        public long getContextId() {
+        public int getContextId() {
             return contextId;
         }
 

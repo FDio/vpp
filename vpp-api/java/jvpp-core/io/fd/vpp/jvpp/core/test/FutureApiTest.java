@@ -46,7 +46,7 @@ public class FutureApiTest {
         final ShowVersionReply reply = replyFuture.get();
         LOG.info(
                 String.format(
-                        "Received ShowVersionReply: context=%d, program=%s, version=%s, buildDate=%s, buildDirectory=%s\n",
+                        "Received ShowVersionReply: context=%d, program=%s, version=%s, buildDate=%s, buildDirectory=%s%n",
                         reply.context, new String(reply.program), new String(reply.version), new String(reply.buildDate),
                         new String(reply.buildDirectory)));
     }
@@ -79,7 +79,7 @@ public class FutureApiTest {
             final GetNodeIndexReply reply = replyFuture.get();
             LOG.info(
                     String.format(
-                            "Received GetNodeIndexReply: context=%d, nodeIndex=%d\n", reply.context, reply.nodeIndex));
+                            "Received GetNodeIndexReply: context=%d, nodeIndex=%d%n", reply.context, reply.nodeIndex));
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "GetNodeIndex request failed", e);
         }
@@ -97,7 +97,7 @@ public class FutureApiTest {
             Objects.requireNonNull(details, "reply.swInterfaceDetails contains null element!");
             LOG.info(
                     String.format("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
-                                    + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d\n",
+                                    + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
                             new String(details.interfaceName), details.l2AddressLength, details.adminUpDown,
                             details.linkUpDown, details.linkSpeed, (int) details.linkMtu));
         }

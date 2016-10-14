@@ -35,7 +35,7 @@ public class ControlPingTest {
         registry.register(jvpp, new ControlPingCallback() {
             @Override
             public void onControlPingReply(final ControlPingReply reply) {
-                System.out.printf("Received ControlPingReply: %s\n", reply);
+                System.out.printf("Received ControlPingReply: %s%n", reply);
             }
 
             @Override

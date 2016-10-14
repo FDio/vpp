@@ -50,7 +50,7 @@ public class CallbackJVppFacadeNotificationTest {
 
                     @Override
                     public void onError(final VppCallbackException ex) {
-                        System.out.printf("Received onError exception: call=%s, context=%d, retval=%d\n",
+                        System.out.printf("Received onError exception: call=%s, context=%d, retval=%d%n",
                                 ex.getMethodName(), ex.getCtxId(), ex.getErrorCode());
                     }
                 });
@@ -69,7 +69,7 @@ public class CallbackJVppFacadeNotificationTest {
 
                     @Override
                     public void onError(final VppCallbackException ex) {
-                        System.out.printf("Received onError exception: call=%s, context=%d, retval=%d\n",
+                        System.out.printf("Received onError exception: call=%s, context=%d, retval=%d%n",
                                 ex.getMethodName(), ex.getCtxId(), ex.getErrorCode());
                     }
                 });

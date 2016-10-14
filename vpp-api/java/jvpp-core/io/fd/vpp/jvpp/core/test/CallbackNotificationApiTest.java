@@ -56,7 +56,7 @@ public class CallbackNotificationApiTest {
 
         @Override
         public void onError(VppCallbackException ex) {
-            System.out.printf("Received onError exception in getNodeIndexCallback: call=%s, reply=%d, context=%d\n",
+            System.out.printf("Received onError exception in getNodeIndexCallback: call=%s, reply=%d, context=%d%n",
                     ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
 
         }

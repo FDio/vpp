@@ -31,13 +31,13 @@ public class CallbackApiTest {
 
         @Override
         public void onSnatInterfaceAddDelFeatureReply(final SnatInterfaceAddDelFeatureReply msg) {
-            System.out.printf("Received SnatInterfaceAddDelFeatureReply: context=%d\n",
+            System.out.printf("Received SnatInterfaceAddDelFeatureReply: context=%d%n",
                 msg.context);
         }
 
         @Override
         public void onError(VppCallbackException ex) {
-            System.out.printf("Received onError exception: call=%s, context=%d, retval=%d\n", ex.getMethodName(),
+            System.out.printf("Received onError exception: call=%s, context=%d, retval=%d%n", ex.getMethodName(),
                 ex.getCtxId(), ex.getErrorCode());
         }
     }
@@ -59,7 +59,7 @@ public class CallbackApiTest {
         request.isInside = 1;
         request.swIfIndex = 1;
         final int result = jvpp.send(request);
-        System.out.printf("SnatInterfaceAddDelFeature send result = %d\n", result);
+        System.out.printf("SnatInterfaceAddDelFeature send result = %d%n", result);
 
         Thread.sleep(1000);
 
