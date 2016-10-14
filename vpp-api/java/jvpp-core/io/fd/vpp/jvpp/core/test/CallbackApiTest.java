@@ -37,13 +37,13 @@ public class CallbackApiTest {
 
         @Override
         public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
-            System.out.printf("Received GetNodeIndexReply: %s\n", msg);
+            System.out.printf("Received GetNodeIndexReply: %s%n", msg);
         }
 
         @Override
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("Received ShowVersionReply: context=%d, program=%s, version=%s, "
-                            + "buildDate=%s, buildDirectory=%s\n",
+                            + "buildDate=%s, buildDirectory=%s%n",
                     msg.context, new String(msg.program), new String(msg.version),
                     new String(msg.buildDate), new String(msg.buildDirectory));
         }
@@ -51,14 +51,14 @@ public class CallbackApiTest {
         @Override
         public void onSwInterfaceDetails(final SwInterfaceDetails msg) {
             System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
-                            + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d\n",
+                            + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
                     new String(msg.interfaceName), msg.l2AddressLength, msg.adminUpDown,
                     msg.linkUpDown, msg.linkSpeed, (int) msg.linkMtu);
         }
 
         @Override
         public void onError(VppCallbackException ex) {
-            System.out.printf("Received onError exception: call=%s, context=%d, retval=%d\n", ex.getMethodName(),
+            System.out.printf("Received onError exception: call=%s, context=%d, retval=%d%n", ex.getMethodName(),
                     ex.getCtxId(), ex.getErrorCode());
         }
     }
@@ -76,7 +76,7 @@ public class CallbackApiTest {
 
         System.out.println("Sending ShowVersion request...");
         final int result = jvpp.send(new ShowVersion());
-        System.out.printf("ShowVersion send result = %d\n", result);
+        System.out.printf("ShowVersion send result = %d%n", result);
 
         System.out.println("Sending GetNodeIndex request...");
         GetNodeIndex getNodeIndexRequest = new GetNodeIndex();

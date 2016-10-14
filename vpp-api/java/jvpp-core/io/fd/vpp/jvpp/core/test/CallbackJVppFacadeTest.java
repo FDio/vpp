@@ -38,13 +38,13 @@ public class CallbackJVppFacadeTest {
         @Override
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("ShowVersionCallback1 received ShowVersionReply: context=%d, program=%s,"
-                            + "version=%s, buildDate=%s, buildDirectory=%s\n", msg.context, new String(msg.program),
+                            + "version=%s, buildDate=%s, buildDirectory=%s%n", msg.context, new String(msg.program),
                     new String(msg.version), new String(msg.buildDate), new String(msg.buildDirectory));
         }
 
         @Override
         public void onError(VppCallbackException ex) {
-            System.out.printf("Received onError exception in showVersionCallback1: call=%s, reply=%d, context=%d\n",
+            System.out.printf("Received onError exception in showVersionCallback1: call=%s, reply=%d, context=%d%n",
                     ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
         }
     };
@@ -53,13 +53,13 @@ public class CallbackJVppFacadeTest {
         @Override
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("ShowVersionCallback2 received ShowVersionReply: context=%d, program=%s,"
-                            + "version=%s, buildDate=%s, buildDirectory=%s\n", msg.context, new String(msg.program),
+                            + "version=%s, buildDate=%s, buildDirectory=%s%n", msg.context, new String(msg.program),
                     new String(msg.version), new String(msg.buildDate), new String(msg.buildDirectory));
         }
 
         @Override
         public void onError(VppCallbackException ex) {
-            System.out.printf("Received onError exception in showVersionCallback2: call=%s, reply=%d, context=%d\n",
+            System.out.printf("Received onError exception in showVersionCallback2: call=%s, reply=%d, context=%d%n",
                     ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
         }
 
@@ -68,12 +68,12 @@ public class CallbackJVppFacadeTest {
     private static GetNodeIndexCallback getNodeIndexCallback = new GetNodeIndexCallback() {
         @Override
         public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
-            System.out.printf("Received GetNodeIndexReply: %s\n", msg);
+            System.out.printf("Received GetNodeIndexReply: %s%n", msg);
         }
 
         @Override
         public void onError(VppCallbackException ex) {
-            System.out.printf("Received onError exception in getNodeIndexCallback: call=%s, reply=%d, context=%d\n",
+            System.out.printf("Received onError exception in getNodeIndexCallback: call=%s, reply=%d, context=%d%n",
                     ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
         }
     };

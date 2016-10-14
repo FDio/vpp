@@ -111,11 +111,11 @@ public class L2AclTest {
     }
 
     private static void print(ClassifyAddDelTableReply reply) {
-        System.out.printf("ClassifyAddDelTableReply: %s\n", reply);
+        System.out.printf("ClassifyAddDelTableReply: %s%n", reply);
     }
 
     private static void print(ClassifyTableIdsReply reply) {
-        System.out.printf("ClassifyTableIdsReply: %s\n", reply);
+        System.out.printf("ClassifyTableIdsReply: %s%n", reply);
     }
 
     private static void print(final ClassifyTableInfoReply reply) {
@@ -126,7 +126,7 @@ public class L2AclTest {
     }
 
     private static void print(ClassifyAddDelSessionReply reply) {
-        System.out.printf("ClassifyAddDelSessionReply: context=%s\n", reply);
+        System.out.printf("ClassifyAddDelSessionReply: context=%s%n", reply);
     }
 
     private static void print(final ClassifySessionDetailsReplyDump reply) {
@@ -138,11 +138,11 @@ public class L2AclTest {
     }
 
     private static void print(final InputAclSetInterfaceReply reply) {
-        System.out.printf("InputAclSetInterfaceReply: context=%s\n", reply);
+        System.out.printf("InputAclSetInterfaceReply: context=%s%n", reply);
     }
 
     private static void print(final ClassifyTableByInterfaceReply reply) {
-        System.out.printf("ClassifyAddDelTableReply: %s\n", reply);
+        System.out.printf("ClassifyAddDelTableReply: %s%n", reply);
     }
 
     private static void testL2Acl() throws Exception {

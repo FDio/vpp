@@ -26,7 +26,7 @@ final class NotificationUtils {
     private NotificationUtils() {}
 
     static PrintStream printNotification(final SwInterfaceSetFlagsNotification msg) {
-        return System.out.printf("Received interface notification: ifc: %s\n", msg);
+        return System.out.printf("Received interface notification: ifc: %s%n", msg);
     }
 
     static SwInterfaceSetFlags getChangeInterfaceState() {

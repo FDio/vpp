@@ -77,7 +77,7 @@ public class CreateSubInterfaceTest {
     }
 
     private static void print(CreateSubifReply reply) {
-        System.out.printf("CreateSubifReply: %s\n", reply);
+        System.out.printf("CreateSubifReply: %s%n", reply);
     }
 
     private static void testCreateSubInterface() throws Exception {
