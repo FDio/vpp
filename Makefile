@@ -196,18 +196,22 @@ define test
 	  V=$(V) TEST=$(TEST)
 endef
 
-test:
+test: bootstrap
 ifeq ($(OS_ID),ubuntu)
-	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
+	@if ! (dpkg -l python-dev python-scapy &> /dev/null); then \
+	  sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy; \
+	fi
 endif
-	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite plugins-install vpp-install vpp-api-test-install
+	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite vpp-api-install plugins-install vpp-install vpp-api-test-install
 	$(call test,vpp_lite)
 
-test-debug:
+test-debug: bootstrap
 ifeq ($(OS_ID),ubuntu)
-	@sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy
+	@if ! (dpkg -l python-dev python-scapy &> /dev/null); then \
+	  sudo -E apt-get $(CONFIRM) $(FORCE) install python-dev python-scapy; \
+	fi
 endif
-	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite_debug plugins-install vpp-install vpp-api-test-install
+	@make -C $(BR) PLATFORM=vpp_lite TAG=vpp_lite_debug vpp-api-install plugins-install vpp-install vpp-api-test-install
 	$(call test,vpp_lite_debug)
 
 retest:
