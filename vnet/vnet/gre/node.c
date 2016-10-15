@@ -68,7 +68,6 @@ gre_input (vlib_main_t * vm,
 	   vlib_frame_t * from_frame)
 {
   gre_main_t * gm = &gre_main;
-  mpls_main_t * mm = &mpls_main;
   ip4_main_t * ip4m = &ip4_main;
   gre_input_runtime_t * rt = (void *) node->runtime_data;
   __attribute__((unused)) u32 n_left_from, next_index, * from, * to_next;
@@ -169,9 +168,10 @@ gre_input (vlib_main_t * vm,
 
 
           /* RPF check for ip4/ip6 input */
-          if (PREDICT_FALSE(next0 == GRE_INPUT_NEXT_IP4_INPUT
-                            || next0 == GRE_INPUT_NEXT_IP6_INPUT
-                            || next0 == GRE_INPUT_NEXT_ETHERNET_INPUT))
+          if (PREDICT_TRUE(next0 == GRE_INPUT_NEXT_IP4_INPUT
+			   || next0 == GRE_INPUT_NEXT_IP6_INPUT
+			   || next0 == GRE_INPUT_NEXT_ETHERNET_INPUT
+			   || next0 == GRE_INPUT_NEXT_MPLS_INPUT))
             {
               u64 key = ((u64)(vnet_buffer(b0)->gre.dst) << 32) |
                          (u64)(vnet_buffer(b0)->gre.src);
@@ -192,40 +192,6 @@ gre_input (vlib_main_t * vm,
                   t = pool_elt_at_index (gm->tunnels, p[0]);
                   hi = vnet_get_hw_interface (gm->vnet_main,
                             t->hw_if_index);
-                  tunnel_sw_if_index = hi->sw_if_index;
-                  tunnel_fib_index = vec_elt (ip4m->fib_index_by_sw_if_index,
-                                              tunnel_sw_if_index);
-
-                  cached_tunnel_sw_if_index = tunnel_sw_if_index;
-                  cached_tunnel_fib_index = tunnel_fib_index;
-                }
-              else
-                {
-                  tunnel_sw_if_index = cached_tunnel_sw_if_index;
-                  tunnel_fib_index = cached_tunnel_fib_index;
-                }
-            }
-          else if (PREDICT_TRUE(next0 == GRE_INPUT_NEXT_MPLS_INPUT))
-            {
-              u64 key = ((u64)(vnet_buffer(b0)->gre.dst) << 32) |
-                         (u64)(vnet_buffer(b0)->gre.src);
-
-              if (cached_tunnel_key != key)
-                {
-                  vnet_hw_interface_t * hi;
-                  mpls_gre_tunnel_t * t;
-                  uword * p;
-
-                  p = hash_get (gm->tunnel_by_key, key);
-                  if (!p)
-                    {
-                      next0 = GRE_INPUT_NEXT_DROP;
-                      b0->error = node->errors[GRE_ERROR_NO_SUCH_TUNNEL];
-                      goto drop0;
-                    }
-                  t = pool_elt_at_index (mm->gre_tunnels, p[0]);
-                  hi = vnet_get_hw_interface (gm->vnet_main,
-                                              t->hw_if_index);
                   tunnel_sw_if_index = hi->sw_if_index;
                   tunnel_fib_index = vec_elt (ip4m->fib_index_by_sw_if_index,
                                               tunnel_sw_if_index);
@@ -256,9 +222,10 @@ gre_input (vlib_main_t * vm,
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = tunnel_sw_if_index;
 
 drop0:
-          if (PREDICT_FALSE(next1 == GRE_INPUT_NEXT_IP4_INPUT
-                            || next1 == GRE_INPUT_NEXT_IP6_INPUT
-                            || next1 == GRE_INPUT_NEXT_ETHERNET_INPUT))
+          if (PREDICT_TRUE(next1 == GRE_INPUT_NEXT_IP4_INPUT
+			   || next1 == GRE_INPUT_NEXT_IP6_INPUT
+			   || next1 == GRE_INPUT_NEXT_ETHERNET_INPUT
+			   || next1 == GRE_INPUT_NEXT_MPLS_INPUT))
             {
               u64 key = ((u64)(vnet_buffer(b1)->gre.dst) << 32) |
                          (u64)(vnet_buffer(b1)->gre.src);
@@ -279,41 +246,6 @@ drop0:
                   t = pool_elt_at_index (gm->tunnels, p[0]);
                   hi = vnet_get_hw_interface (gm->vnet_main,
                             t->hw_if_index);
-                  tunnel_sw_if_index = hi->sw_if_index;
-                  tunnel_fib_index = vec_elt (ip4m->fib_index_by_sw_if_index,
-                                              tunnel_sw_if_index);
-
-                  cached_tunnel_sw_if_index = tunnel_sw_if_index;
-                  cached_tunnel_fib_index = tunnel_fib_index;
-                }
-              else
-                {
-                  tunnel_sw_if_index = cached_tunnel_sw_if_index;
-                  tunnel_fib_index = cached_tunnel_fib_index;
-                }
-            }
-          else if (PREDICT_TRUE(next1 == GRE_INPUT_NEXT_MPLS_INPUT))
-            {
-              u64 key = ((u64)(vnet_buffer(b1)->gre.dst) << 32) |
-                         (u64)(vnet_buffer(b1)->gre.src);
-
-              if (cached_tunnel_key != key)
-                {
-                  vnet_hw_interface_t * hi;
-                  mpls_gre_tunnel_t * t;
-                  uword * p;
-
-                  ip4_main_t * ip4m = &ip4_main;
-                  p = hash_get (gm->tunnel_by_key, key);
-                  if (!p)
-                    {
-                      next1 = GRE_INPUT_NEXT_DROP;
-                      b1->error = node->errors[GRE_ERROR_NO_SUCH_TUNNEL];
-                      goto drop1;
-                    }
-                  t = pool_elt_at_index (mm->gre_tunnels, p[0]);
-                  hi = vnet_get_hw_interface (gm->vnet_main,
-                                              t->hw_if_index);
                   tunnel_sw_if_index = hi->sw_if_index;
                   tunnel_fib_index = vec_elt (ip4m->fib_index_by_sw_if_index,
                                               tunnel_sw_if_index);
@@ -417,9 +349,10 @@ drop1:
              so we can increase counters and help forward node to
              pick right FIB */
           /* RPF check for ip4/ip6 input */
-          if (PREDICT_FALSE(next0 == GRE_INPUT_NEXT_IP4_INPUT
-                            || next0 == GRE_INPUT_NEXT_IP6_INPUT
-                            || next0 == GRE_INPUT_NEXT_ETHERNET_INPUT))
+          if (PREDICT_TRUE(next0 == GRE_INPUT_NEXT_IP4_INPUT
+			   || next0 == GRE_INPUT_NEXT_IP6_INPUT
+			   || next0 == GRE_INPUT_NEXT_ETHERNET_INPUT
+			   || next0 == GRE_INPUT_NEXT_MPLS_INPUT))
             {
               u64 key = ((u64)(vnet_buffer(b0)->gre.dst) << 32) |
                          (u64)(vnet_buffer(b0)->gre.src);
@@ -440,40 +373,6 @@ drop1:
                   t = pool_elt_at_index (gm->tunnels, p[0]);
                   hi = vnet_get_hw_interface (gm->vnet_main,
                             t->hw_if_index);
-                  tunnel_sw_if_index = hi->sw_if_index;
-                  tunnel_fib_index = vec_elt (ip4m->fib_index_by_sw_if_index,
-                                              tunnel_sw_if_index);
-
-                  cached_tunnel_sw_if_index = tunnel_sw_if_index;
-                  cached_tunnel_fib_index = tunnel_fib_index;
-                }
-              else
-                {
-                  tunnel_sw_if_index = cached_tunnel_sw_if_index;
-                  tunnel_fib_index = cached_tunnel_fib_index;
-                }
-            }
-          else if (PREDICT_TRUE(next0 == GRE_INPUT_NEXT_MPLS_INPUT))
-            {
-              u64 key = ((u64)(vnet_buffer(b0)->gre.dst) << 32) |
-                         (u64)(vnet_buffer(b0)->gre.src);
-
-              if (cached_tunnel_key != key)
-                {
-                  vnet_hw_interface_t * hi;
-                  mpls_gre_tunnel_t * t;
-                  uword * p;
-
-                  p = hash_get (gm->tunnel_by_key, key);
-                  if (!p)
-                    {
-                      next0 = GRE_INPUT_NEXT_DROP;
-                      b0->error = node->errors[GRE_ERROR_NO_SUCH_TUNNEL];
-                      goto drop;
-                    }
-                  t = pool_elt_at_index (mm->gre_tunnels, p[0]);
-                  hi = vnet_get_hw_interface (gm->vnet_main,
-                                              t->hw_if_index);
                   tunnel_sw_if_index = hi->sw_if_index;
                   tunnel_fib_index = vec_elt (ip4m->fib_index_by_sw_if_index,
                                               tunnel_sw_if_index);
