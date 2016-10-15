@@ -746,6 +746,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
   eos = MPLS_EOS;
   is_del = 0;
   local_label = MPLS_LABEL_INVALID;
+  memset(&pfx, 0, sizeof(pfx));
 
    /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -754,7 +755,6 @@ vnet_mpls_local_label (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       memset(&rpath, 0, sizeof(rpath));
-      memset(&pfx, 0, sizeof(pfx));
 
       if (unformat (line_input, "table %d", &table_id))
 	;
@@ -763,9 +763,9 @@ vnet_mpls_local_label (vlib_main_t * vm,
       else if (unformat (line_input, "add"))
 	is_del = 0;
       else if (unformat (line_input, "eos"))
-	eos = MPLS_EOS;
+	pfx.fp_eos = MPLS_EOS;
       else if (unformat (line_input, "non-eos"))
-	eos = MPLS_NON_EOS;
+	pfx.fp_eos = MPLS_NON_EOS;
       else if (unformat (line_input, "%U/%d",
 			 unformat_ip4_address,
 			 &pfx.fp_addr.ip4,
@@ -791,6 +791,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 	  rpath.frp_label = MPLS_LABEL_INVALID;
           rpath.frp_proto = FIB_PROTOCOL_IP4;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
+	  pfx.fp_payload_proto = FIB_PROTOCOL_IP4;
 	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input,
@@ -801,14 +802,16 @@ vnet_mpls_local_label (vlib_main_t * vm,
           rpath.frp_proto = FIB_PROTOCOL_IP6;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
 	  vec_add1(rpaths, rpath);
+	  pfx.fp_payload_proto = FIB_PROTOCOL_IP6;
       }
       else if (unformat (line_input,
 			 "mpls-lookup-in-table %d",
 			 &rpath.frp_fib_index))
       {
 	  rpath.frp_label = MPLS_LABEL_INVALID;
-          rpath.frp_proto = FIB_PROTOCOL_IP4;
+          rpath.frp_proto = FIB_PROTOCOL_MPLS;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
+	  pfx.fp_payload_proto = FIB_PROTOCOL_MPLS;
 	  vec_add1(rpaths, rpath);
       }
       else
@@ -851,11 +854,26 @@ vnet_mpls_local_label (vlib_main_t * vm,
   else
   {
       fib_node_index_t lfe, fib_index;
-      fib_prefix_t prefix = {
-	  .fp_proto = FIB_PROTOCOL_MPLS,
-	  .fp_label = local_label,
-	  .fp_eos = eos,
-      };
+      u32 fi;
+
+      pfx.fp_proto = FIB_PROTOCOL_MPLS;
+      pfx.fp_len = 21;
+      pfx.fp_label = local_label;
+
+      /*
+       * the CLI parsing stored table Ids, swap to FIB indicies
+       */
+      fi = fib_table_id_find_fib_index(pfx.fp_payload_proto,
+				       rpaths[0].frp_fib_index);
+
+      if (~0 == fi)
+      {
+	  error = clib_error_return(0 , "%U Via table %d does not exist",
+				    format_fib_protocol, pfx.fp_payload_proto,
+				    rpaths[0].frp_fib_index);
+	  goto done;
+      }
+      rpaths[0].frp_fib_index = fi;
 
       fib_index = mpls_fib_index_from_table_id(table_id);
 
@@ -867,7 +885,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
       }
 
       lfe = fib_table_entry_path_add2(fib_index,
-				      &prefix,
+				      &pfx,
 				      FIB_SOURCE_CLI,
 				      FIB_ENTRY_FLAG_NONE,
 				      rpaths);
