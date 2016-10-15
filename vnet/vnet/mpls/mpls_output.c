@@ -52,7 +52,8 @@ format_mpls_output_trace (u8 * s, va_list * args)
 static inline uword
 mpls_output_inline (vlib_main_t * vm,
                     vlib_node_runtime_t * node,
-                    vlib_frame_t * from_frame)
+                    vlib_frame_t * from_frame,
+		    int is_midchain)
 {
   u32 n_left_from, next_index, * from, * to_next, cpu_index;
   vlib_node_runtime_t * error_node;
@@ -121,6 +122,11 @@ mpls_output_inline (vlib_main_t * vm,
               vnet_buffer (p0)->sw_if_index[VLIB_TX] =
                   adj0[0].rewrite_header.sw_if_index;
               next0 = adj0[0].rewrite_header.next_index;
+
+	      if (is_midchain)
+	        {
+		  adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
+		}
             }
           else
             {
@@ -165,7 +171,7 @@ mpls_output (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
-    return (mpls_output_inline(vm, node, from_frame));
+    return (mpls_output_inline(vm, node, from_frame, /* is_midchain */ 0));
 }
 
 VLIB_REGISTER_NODE (mpls_output_node) = {
@@ -193,11 +199,11 @@ mpls_midchain (vlib_main_t * vm,
                vlib_node_runtime_t * node,
                vlib_frame_t * from_frame)
 {
-    return (mpls_output_inline(vm, node, from_frame));
+    return (mpls_output_inline(vm, node, from_frame, /* is_midchain */ 1));
 }
 
 VLIB_REGISTER_NODE (mpls_midchain_node) = {
-  .function = mpls_output,
+  .function = mpls_midchain,
   .name = "mpls-midchain",
   .vector_size = sizeof (u32),
 
