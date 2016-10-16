@@ -96,25 +96,29 @@ u8 * format_mpls_header (u8 * s, va_list * args)
 		 vnet_mpls_uc_get_s(hdr.label_exp_s_ttl)));
 }
 
-u8 * format_mpls_gre_tx_trace (u8 * s, va_list * args)
+uword
+unformat_mpls_header (unformat_input_t * input, va_list * args)
 {
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  mpls_gre_tx_trace_t * t = va_arg (*args, mpls_gre_tx_trace_t *);
-  mpls_main_t * mm = &mpls_main;
-    
-  if (t->lookup_miss)
-    s = format (s, "MPLS: lookup miss");
-  else
-    {
-      s = format (s, "MPLS: tunnel %d labels %U len %d src %U dst %U",
-                  t->tunnel_id,
-                  format_mpls_encap_index, mm, t->mpls_encap_index, 
-                  clib_net_to_host_u16 (t->length),
-                  format_ip4_address, &t->src.as_u8,
-                  format_ip4_address, &t->dst.as_u8);
-    }
-  return s;
+  u8 ** result = va_arg (*args, u8 **);
+  mpls_unicast_header_t _h, * h = &_h;
+  u32 label, label_exp_s_ttl;
+
+  if (! unformat (input, "MPLS %d", &label))
+    return 0;
+
+  label_exp_s_ttl = (label<<12) | (1<<8) /* s-bit */ | 0xFF;
+  h->label_exp_s_ttl = clib_host_to_net_u32 (label_exp_s_ttl);
+
+  /* Add gre, mpls headers to result. */
+  {
+    void * p;
+    u32 h_n_bytes = sizeof (h[0]);
+
+    vec_add2 (*result, p, h_n_bytes);
+    clib_memcpy (p, h, h_n_bytes);
+  }
+
+  return 1;
 }
 
 u8 * format_mpls_eth_tx_trace (u8 * s, va_list * args)
@@ -154,62 +158,6 @@ u8 * format_mpls_eth_header_with_length (u8 * s, va_list * args)
      vnet_mpls_uc_get_label (clib_net_to_host_u32 (m->label_exp_s_ttl)));
 
   return s;
-}
-
-u8 * format_mpls_gre_header_with_length (u8 * s, va_list * args)
-{
-  gre_header_t * h = va_arg (*args, gre_header_t *);
-  mpls_unicast_header_t * m = (mpls_unicast_header_t *)(h+1);
-  u32 max_header_bytes = va_arg (*args, u32);
-  uword header_bytes;
-
-  header_bytes = sizeof (h[0]);
-  if (max_header_bytes != 0 && header_bytes > max_header_bytes)
-    return format (s, "gre header truncated");
-
-  s = format 
-    (s, "GRE-MPLS label %d", 
-     vnet_mpls_uc_get_label (clib_net_to_host_u32 (m->label_exp_s_ttl)));
-
-  return s;
-}
-
-u8 * format_mpls_gre_header (u8 * s, va_list * args)
-{
-  gre_header_t * h = va_arg (*args, gre_header_t *);
-  return format (s, "%U", format_mpls_gre_header_with_length, h, 0);
-}
-
-uword
-unformat_mpls_gre_header (unformat_input_t * input, va_list * args)
-{
-  u8 ** result = va_arg (*args, u8 **);
-  gre_header_t _g, * g = &_g;
-  mpls_unicast_header_t _h, * h = &_h;
-  u32 label, label_exp_s_ttl;
-  
-  if (! unformat (input, "MPLS %d", &label))
-    return 0;
-
-  g->protocol = clib_host_to_net_u16 (GRE_PROTOCOL_mpls_unicast);
-
-  label_exp_s_ttl = (label<<12) | (1<<8) /* s-bit */ | 0xFF;
-  h->label_exp_s_ttl = clib_host_to_net_u32 (label_exp_s_ttl);
-
-  /* Add gre, mpls headers to result. */
-  {
-    void * p;
-    u32 g_n_bytes = sizeof (g[0]);
-    u32 h_n_bytes = sizeof (h[0]);
-
-    vec_add2 (*result, p, g_n_bytes);
-    clib_memcpy (p, g, g_n_bytes);
-
-    vec_add2 (*result, p, h_n_bytes);
-    clib_memcpy (p, h, h_n_bytes);
-  }
-  
-  return 1;
 }
 
 uword
@@ -441,217 +389,6 @@ VLIB_CLI_COMMAND (mpls_del_encap_command, static) = {
   .path = "mpls encap delete",
   .short_help = "mpls encap delete fib <id> dest <ip4-address>",
   .function = mpls_del_encap_command_fn,
-};
-
-int vnet_mpls_add_del_decap (u32 rx_fib_id, 
-                             u32 tx_fib_id,
-                             u32 label_host_byte_order, 
-                             int s_bit, int next_index, int is_add)
-{
-  mpls_main_t * mm = &mpls_main;
-  ip4_main_t * im = &ip4_main;
-  mpls_decap_t * d;
-  u32 rx_fib_index, tx_fib_index_or_output_swif_index;
-  uword *p;
-  u64 key;
-  
-  p = hash_get (im->fib_index_by_table_id, rx_fib_id);
-  if (! p)
-    return VNET_API_ERROR_NO_SUCH_FIB;
-
-  rx_fib_index = p[0];
-
-  /* L3 decap => transform fib ID to fib index */
-  if (next_index == MPLS_LOOKUP_NEXT_IP4_INPUT)
-    {
-      p = hash_get (im->fib_index_by_table_id, tx_fib_id);
-      if (! p)
-        return VNET_API_ERROR_NO_SUCH_INNER_FIB;
-      
-      tx_fib_index_or_output_swif_index = p[0];
-    }
-  else
-    {
-      /* L2 decap, tx_fib_id is actually the output sw_if_index */
-      tx_fib_index_or_output_swif_index = tx_fib_id;
-    }
-
-  key = ((u64) rx_fib_index<<32) | ((u64) label_host_byte_order<<12)
-    | ((u64) s_bit<<8);
-
-  p = hash_get (mm->mpls_decap_by_rx_fib_and_label, key);
-
-  /* If deleting, or replacing an old entry */
-  if (is_add == 0 || p)
-    {
-      if (is_add == 0 && p == 0)
-        return VNET_API_ERROR_NO_SUCH_LABEL;
-
-      d = pool_elt_at_index (mm->decaps, p[0]);
-      hash_unset (mm->mpls_decap_by_rx_fib_and_label, key);
-      pool_put (mm->decaps, d);
-      /* Deleting, we're done... */
-      if (is_add == 0)
-        return 0;
-    }
-
-  /* add decap entry... */
-  pool_get (mm->decaps, d);
-  memset (d, 0, sizeof (*d));
-  d->tx_fib_index = tx_fib_index_or_output_swif_index;
-  d->next_index = next_index;
-
-  hash_set (mm->mpls_decap_by_rx_fib_and_label, key, d - mm->decaps);
-
-  return 0;
-}
-
-uword
-unformat_mpls_gre_input_next (unformat_input_t * input, va_list * args)
-{
-  u32 * result = va_arg (*args, u32 *);
-  int rv = 0;
-
-  if (unformat (input, "lookup"))
-    {
-      *result = MPLS_LOOKUP_NEXT_IP4_INPUT;
-      rv = 1;
-    }
-  else if (unformat (input, "output"))
-    {
-      *result = MPLS_LOOKUP_NEXT_L2_OUTPUT;
-      rv = 1;
-    }
-  return rv;
-}
-
-static clib_error_t *
-mpls_add_decap_command_fn (vlib_main_t * vm,
-                           unformat_input_t * input,
-                           vlib_cli_command_t * cmd)
-{
-  vnet_main_t * vnm = vnet_get_main();
-  u32 rx_fib_id = 0;
-  u32 tx_fib_or_sw_if_index;
-  u32 label;
-  int s_bit = 1;
-  u32 next_index = 1;           /* ip4_lookup, see node.c */
-  int tx_fib_id_set = 0;
-  int label_set = 0;
-  int rv;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "fib %d", &tx_fib_or_sw_if_index))
-        tx_fib_id_set = 1;
-      else if (unformat (input, "sw_if_index %d", &tx_fib_or_sw_if_index))
-        tx_fib_id_set = 1;
-      else if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
-                         &tx_fib_or_sw_if_index))
-        tx_fib_id_set = 1;
-      else if (unformat (input, "rx-fib %d", &rx_fib_id))
-        ;
-      else if (unformat (input, "label %d", &label))
-        label_set = 1;
-      else if (unformat (input, "s-bit-clear"))
-        s_bit = 0;
-      else if (unformat (input, "next %U", unformat_mpls_gre_input_next, 
-                         &next_index))
-        ;
-      else
-        break;
-    }
-
-  if (tx_fib_id_set == 0)
-    return clib_error_return (0, "lookup FIB ID not set");
-  if (label_set == 0)
-    return clib_error_return (0, "missing label");
-  
-  rv = vnet_mpls_add_del_decap (rx_fib_id, tx_fib_or_sw_if_index, 
-                                label, s_bit, next_index, 1 /* is_add */);
-  switch (rv)
-    {
-    case 0:
-      break;
-
-    case VNET_API_ERROR_NO_SUCH_FIB:
-      return clib_error_return (0, "no such rx fib id %d", rx_fib_id);
-
-    case VNET_API_ERROR_NO_SUCH_INNER_FIB:
-      return clib_error_return (0, "no such tx fib / swif %d", 
-                                tx_fib_or_sw_if_index);
-
-    default:
-      return clib_error_return (0, "vnet_mpls_add_del_decap returned %d",
-                                rv);
-    }
-  return 0;
-}
-
-VLIB_CLI_COMMAND (mpls_add_decap_command, static) = {
-    .path = "mpls decap add",
-    .short_help = 
-    "mpls decap add fib <id> label <nn> [s-bit-clear] [next-index <nn>]",
-    .function = mpls_add_decap_command_fn, 
-};
-
-static clib_error_t *
-mpls_del_decap_command_fn (vlib_main_t * vm,
-                           unformat_input_t * input,
-                           vlib_cli_command_t * cmd)
-{
-  u32 rx_fib_id = 0;
-  u32 tx_fib_id = 0;
-  u32 label;
-  int s_bit = 1;
-  int label_set = 0;
-  int rv;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "rx-fib %d", &rx_fib_id))
-        ;
-      else if (unformat (input, "label %d", &label))
-        label_set = 1;
-      else if (unformat (input, "s-bit-clear"))
-        s_bit = 0;
-    }
-
-  if (!label_set)
-    return clib_error_return (0, "label not set");
-
-  rv = vnet_mpls_add_del_decap (rx_fib_id, 
-                                tx_fib_id /* not interesting */,
-                                label, s_bit, 
-                                0 /* next_index not interesting */,
-                                0 /* is_add */);
-  switch (rv)
-    {
-    case 0:
-      break;
-
-    case VNET_API_ERROR_NO_SUCH_FIB:
-      return clib_error_return (0, "no such rx fib id %d", rx_fib_id);
-
-    case VNET_API_ERROR_NO_SUCH_INNER_FIB:
-      return clib_error_return (0, "no such lookup fib id %d", tx_fib_id);
-
-    case VNET_API_ERROR_NO_SUCH_LABEL:
-      return clib_error_return (0, "no such label %d rx fib id %d", 
-                                label, rx_fib_id);
-
-    default:
-      return clib_error_return (0, "vnet_mpls_add_del_decap returned %d",
-                                rv);
-    }
-  return 0;
-}
-
-
-VLIB_CLI_COMMAND (mpls_del_decap_command, static) = {
-  .path = "mpls decap delete",
-  .short_help = "mpls decap delete label <label> rx-fib <id> [s-bit-clear]",
-  .function = mpls_del_decap_command_fn,
 };
 
 int
@@ -943,28 +680,6 @@ int mpls_fib_reset_labels (u32 fib_id)
       pool_put_index (mm->encaps, s->entry_index);
     }
                 
-  vec_reset_length(records);
-
-  hash_foreach (key, value, mm->mpls_decap_by_rx_fib_and_label, 
-  ({
-    if (fib_index == (u32) (key>>32)) {
-        vec_add2 (records, s, 1);
-        s->entry_index = value;
-        s->fib_index = fib_index;
-        s->s_bit = key & (1<<8);
-        s->dest = (u32)((key & 0xFFFFFFFF)>>12);
-    }
-  }));
-  
-  vec_foreach (s, records)
-    {
-       key = ((u64) fib_index <<32) | ((u64) s->dest<<12) |
-        ((u64) s->s_bit);
-      
-      hash_unset (mm->mpls_decap_by_rx_fib_and_label, key);
-      pool_put_index (mm->decaps, s->entry_index);
-    }
-
   vec_free(records);
   return 0;
 }
@@ -981,7 +696,6 @@ static clib_error_t * mpls_init (vlib_main_t * vm)
     return error;
 
   mm->mpls_encap_by_fib_and_dest = hash_create (0, sizeof (uword));
-  mm->mpls_decap_by_rx_fib_and_label = hash_create (0, sizeof (uword));
 
   return vlib_call_init_function (vm, mpls_input_init);
 }

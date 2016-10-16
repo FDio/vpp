@@ -1,5 +1,5 @@
 /*
- * node.c: mpls-o-gre decap processing
+ * mpls_lookup.c: MPLS lookup
  *
  * Copyright (c) 2012-2014 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -167,9 +167,9 @@ VLIB_REGISTER_NODE (mpls_lookup_node) = {
 
   .sibling_of = "ip4-lookup",
 
-  .format_buffer = format_mpls_gre_header_with_length,
+  .format_buffer = format_mpls_header,
   .format_trace = format_mpls_lookup_trace,
-  .unformat_buffer = unformat_mpls_gre_header,
+  .unformat_buffer = unformat_mpls_header,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (mpls_lookup_node, mpls_lookup)

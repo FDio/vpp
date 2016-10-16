@@ -5558,11 +5558,58 @@ fib_test_label (void)
 	     "label 99 over 10.10.10.1");
 
     /*
-     * remove the local label
+     * change the local label
+     */
+    fib_table_entry_local_label_add(fib_index,
+				    &pfx_1_1_1_1_s_32,
+				    25005);
+
+    fib_prefix_t pfx_25005_eos = {
+	.fp_proto = FIB_PROTOCOL_MPLS,
+	.fp_label = 25005,
+	.fp_eos = MPLS_EOS,
+    };
+    fib_prefix_t pfx_25005_neos = {
+	.fp_proto = FIB_PROTOCOL_MPLS,
+	.fp_label = 25005,
+	.fp_eos = MPLS_NON_EOS,
+    };
+
+    FIB_TEST((FIB_NODE_INDEX_INVALID ==
+	      fib_table_lookup(fib_index, &pfx_24001_eos)),
+	     "24001/eos removed after label change");
+    FIB_TEST((FIB_NODE_INDEX_INVALID ==
+	      fib_table_lookup(fib_index, &pfx_24001_neos)),
+	     "24001/eos removed after label change");
+
+    fei = fib_table_lookup(MPLS_FIB_DEFAULT_TABLE_ID,
+			   &pfx_25005_eos);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+				     2,
+				     &l99_eos_o_10_10_10_1,
+				     &adj_o_10_10_11_2),
+	     "25005/eos LB 2 buckets via: "
+	     "label 99 over 10.10.10.1, "
+	     "adj over 10.10.11.2");
+
+    fei = fib_table_lookup(MPLS_FIB_DEFAULT_TABLE_ID,
+			   &pfx_25005_neos);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+				     1,
+				     &l99_neos_o_10_10_10_1),
+	     "25005/neos LB 1 buckets via: "
+	     "label 99 over 10.10.10.1");
+
+    /*
+     * remove the local label.
+     * the check that the MPLS entries are gone is done by the fact the
+     * MPLS table is no longer present.
      */
     fib_table_entry_local_label_remove(fib_index,
 				       &pfx_1_1_1_1_s_32,
-				       24001);
+				       25005);
 
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_1_s_32);
     FIB_TEST(fib_test_validate_entry(fei, 
