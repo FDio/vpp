@@ -805,10 +805,21 @@ fib_table_entry_local_label_add (u32 fib_index,
 {
     fib_node_index_t fib_entry_index;
  
-    fib_entry_index = fib_table_entry_special_dpo_add(fib_index, prefix, 
-                                                      FIB_SOURCE_MPLS,
-                                                      FIB_ENTRY_FLAG_NONE,
-                                                      NULL);
+    fib_entry_index = fib_table_lookup_exact_match(fib_index, prefix);
+
+    if (FIB_NODE_INDEX_INVALID == fib_entry_index ||
+	!fib_entry_is_sourced(fib_entry_index, FIB_SOURCE_MPLS))
+    {
+	/*
+	 * only source the prefix once. this allows the label change
+	 * operation to work
+	 */
+	fib_entry_index = fib_table_entry_special_dpo_add(fib_index, prefix,
+							  FIB_SOURCE_MPLS,
+							  FIB_ENTRY_FLAG_NONE,
+							  NULL);
+    }
+
     fib_entry_set_source_data(fib_entry_index, FIB_SOURCE_MPLS, &label);
 
     return (fib_entry_index);

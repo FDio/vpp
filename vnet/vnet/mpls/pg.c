@@ -1,5 +1,5 @@
 /*
- * pg.c: packet generator mpls/gre interface
+ * pg.c: packet generator mpls interface
  *
  * Copyright (c) 2012 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
