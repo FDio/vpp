@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da3975d1_91733c15",
+        "filename": "vnet/vnet/gre/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-10-16T09:10:29Z",
+      "side": 1,
+      "message": "let\u0027s be optimistic. the expectation is that we receive traffic in a tunnel that has a protocol field that we expect. So this should be the PREDICT_TRUE case.",
+      "revId": "d04e0661a9f37d1d30ed4b4b2d8bf41b82ff38b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
