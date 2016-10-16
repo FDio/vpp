@@ -1,5 +1,5 @@
 /*
- * node.c: mpls-o-gre decap processing
+ * node.c: MPLS input
  *
  * Copyright (c) 2012-2014 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
