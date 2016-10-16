@@ -225,24 +225,10 @@ vl_api_create_vlan_subif_reply_t_handler (vl_api_create_vlan_subif_reply_t *
 }
 
 static void
-  vl_api_mpls_gre_add_del_tunnel_reply_t_handler
-  (vl_api_mpls_gre_add_del_tunnel_reply_t * mp)
-{
-  fformat (stdout, "add_del mpls gre tunnel reply %d\n", ntohl (mp->retval));
-}
-
-static void
 vl_api_mpls_add_del_encap_reply_t_handler (vl_api_mpls_add_del_encap_reply_t *
 					   mp)
 {
   fformat (stdout, "add del mpls label reply %d\n", ntohl (mp->retval));
-}
-
-static void
-vl_api_mpls_add_del_decap_reply_t_handler (vl_api_mpls_add_del_decap_reply_t *
-					   mp)
-{
-  fformat (stdout, "add del mpls decap label reply %d\n", ntohl (mp->retval));
 }
 
 static void vl_api_proxy_arp_add_del_reply_t_handler
@@ -604,9 +590,7 @@ _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY, sw_interface_add_del_address_reply) \
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply)           \
 _(TAP_CONNECT_REPLY, tap_connect_reply)                                 \
 _(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
-_(MPLS_GRE_ADD_DEL_TUNNEL_REPLY, mpls_gre_add_del_tunnel_reply)         \
 _(MPLS_ADD_DEL_ENCAP_REPLY, mpls_add_del_encap_reply)                   \
-_(MPLS_ADD_DEL_DECAP_REPLY, mpls_add_del_decap_reply)                   \
 _(PROXY_ARP_ADD_DEL_REPLY, proxy_arp_add_del_reply)			\
 _(PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY, proxy_arp_intfc_enable_disable_reply) \
 _(IP_NEIGHBOR_ADD_DEL_REPLY, ip_neighbor_add_del_reply)                 \
@@ -751,7 +735,7 @@ add_del_ip4_route (test_main_t * tm, int enable_disable)
   mp->_vl_msg_id = ntohs (VL_API_IP_ADD_DEL_ROUTE);
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
-  mp->vrf_id = ntohl (0);
+  mp->table_id = ntohl (0);
   mp->create_vrf_if_needed = 1;
   /* Arp, please, if needed */
   mp->resolve_if_needed = 1;
@@ -911,63 +895,6 @@ create_vlan_subif (test_main_t * tm, u32 vlan_id)
   mp->context = 0xdeadbeef;
   mp->sw_if_index = ntohl (5);
   mp->vlan_id = ntohl (vlan_id);
-
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
-}
-
-void
-create_mpls_gre_tunnel (test_main_t * tm, u32 vrf_id, u32 label, u8 is_add)
-{
-  vl_api_mpls_add_del_encap_t *lp;
-  vl_api_mpls_add_del_decap_t *dlp;
-  vl_api_mpls_gre_add_del_tunnel_t *mp;
-  u32 tmp;
-
-  dlp = vl_msg_api_alloc (sizeof (*dlp));
-  memset (dlp, 0, sizeof (*dlp));
-  dlp->_vl_msg_id = ntohs (VL_API_MPLS_ADD_DEL_DECAP);
-  dlp->client_index = tm->my_client_index;
-  dlp->context = 0xdeadbeef;
-  dlp->tx_vrf_id = ntohl (vrf_id);
-  dlp->label = ntohl (label);
-  dlp->s_bit = 1;
-  dlp->is_add = is_add;
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & dlp);
-
-  lp = vl_msg_api_alloc (sizeof (*lp) + sizeof (u32));
-  memset (lp, 0, sizeof (*lp) + sizeof (u32));
-  lp->_vl_msg_id = ntohs (VL_API_MPLS_ADD_DEL_ENCAP);
-  lp->client_index = tm->my_client_index;
-  lp->context = 0xdeadbeef;
-  lp->vrf_id = ntohl (vrf_id);
-  lp->labels[0] = ntohl (label);
-  lp->nlabels = 1;
-  lp->is_add = is_add;
-  /* dst: 5.0.0.1 */
-  tmp = ntohl (0x05000001);
-  clib_memcpy (lp->dst_address, &tmp, 4);
-
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & lp);
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_MPLS_GRE_ADD_DEL_TUNNEL);
-  mp->client_index = tm->my_client_index;
-  mp->context = 0xdeadbeef;
-  mp->inner_vrf_id = ntohl (vrf_id);
-  mp->outer_vrf_id = 0;
-  mp->is_add = is_add;
-
-  /* src: 6.0.0.1 */
-  tmp = ntohl (0x06000001);
-  clib_memcpy (mp->src_address, &tmp, 4);
-  /* dst: 5.0.0.1 */
-  tmp = ntohl (0x05000001);
-  clib_memcpy (mp->dst_address, &tmp, 4);
-  /* intfc: 5.0.0.1/24 */
-  tmp = ntohl (0x05000001);
-  clib_memcpy (mp->intfc_address, &tmp, 4);
-  mp->intfc_address_length = 24;
 
   vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
 }
@@ -1439,16 +1366,6 @@ main (int argc, char **argv)
 
 	case 'c':
 	  connect_unix_tap (tm, "foo");
-	  break;
-
-	case 'M':
-	  create_mpls_gre_tunnel (tm, 11 /* fib */ , 123 /* label */ ,
-				  1 /* is_add */ );
-	  break;
-
-	case 'm':
-	  create_mpls_gre_tunnel (tm, 11 /* fib */ , 123 /* label */ ,
-				  0 /* is_add */ );
 	  break;
 
 	case 'n':

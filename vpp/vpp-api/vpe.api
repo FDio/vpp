@@ -367,6 +367,120 @@ define create_vlan_subif_reply
   u32 sw_if_index;
 };
 
+/** \brief MPLS Route Add / del route
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mr_label - The MPLS label value
+    @param mr_eos - The End of stack bit
+    @param mr_table_id - The MPLS table-id the route is added in
+    @param mr_classify_table_index - If this is a classify route, 
+                                     this is the classify table index
+    @param  mr_create_table_if_needed - If the MPLS or IP tables do not exist,
+                                        create them
+    @param mr_is_add - Is this a route add or delete
+    @param mr_is_classify - Is this route result a classify
+    @param mr_is_multipath - Is this route update a multipath - i.e. is this
+                             a path addition to an existing route
+    @param mr_is_resolve_host - Recurse resolution constraint via a host prefix
+    @param mr_is_resolve_attached - Recurse resolution constraint via attached prefix
+    @param mr_next_hop_proto_is_ip4 - The next-hop is IPV4
+    @param mr_next_hop_weight - The weight, for UCMP
+    @param mr_next_hop[16] - the nextop address
+    @param mr_next_hop_sw_if_index - the next-hop SW interface
+    @param mr_next_hop_table_id - the next-hop table-id (if appropriate)
+    @param mr_next_hop_out_label - the next-hop output label
+*/
+define mpls_route_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 mr_label;
+  u8 mr_eos;
+  u32 mr_table_id;
+  u32 mr_classify_table_index;
+  u8 mr_create_table_if_needed;
+  u8 mr_is_add;
+  u8 mr_is_classify;
+  u8 mr_is_multipath;
+  u8 mr_is_resolve_host;
+  u8 mr_is_resolve_attached;
+  u8 mr_next_hop_proto_is_ip4;
+  u8 mr_next_hop_weight;
+  u8 mr_next_hop[16];
+  u32 mr_next_hop_sw_if_index;
+  u32 mr_next_hop_table_id;
+  u32 mr_next_hop_out_label;
+};
+
+/** \brief Reply for MPLS route add / del request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define mpls_route_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Dump MPLS fib table
+    @param client_index - opaque cookie to identify the sender
+*/
+define mpls_fib_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief mpls FIB table response
+    @param table_id - MPLS fib table id
+    @param s_bit - End-of-stack bit
+    @param label - MPLS label value
+*/
+define mpls_fib_details
+{
+  u32 context;
+  u32 table_id;
+  u8  eos_bit;
+  u32 label;
+};
+
+/** \brief Bind/Unbind an MPLS local label to an IP prefix. i.e. create
+           a per-prefix label entry.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mb_mpls_table_id - The MPLS table-id the MPLS entry will be added in
+    @param mb_label - The MPLS label value to bind
+    @param mb_ip_table_id - The IP table-id of the IP prefix to bind to.
+    @param mb_create_table_if_needed - Create either/both tables if required.
+    @param mb_is_bind - Bind or unbind
+    @param mb_is_ip4 - The prefix to bind to is IPv4
+    @param mb_address_length - Length of IP prefix
+    @param mb_address[16] - IP prefix/
+*/
+define mpls_ip_bind_unbind
+{
+  u32 client_index;
+  u32 context;
+  u32 mb_mpls_table_id;
+  u32 mb_label;
+  u32 mb_ip_table_id;
+  u8 mb_create_table_if_needed;
+  u8 mb_is_bind;
+  u8 mb_is_ip4;
+  u8 mb_address_length;
+  u8 mb_address[16];
+};
+
+/** \brief Reply for MPLS IP bind/unbind request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define mpls_ip_bind_unbind_reply
+{
+  u32 context;
+  i32 retval;
+};
+
 /** \brief Add / del route request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -394,10 +508,11 @@ define ip_add_del_route
   u32 client_index;
   u32 context;
   u32 next_hop_sw_if_index;
-  u32 vrf_id;
-  u32 lookup_in_vrf;
+  u32 table_id;
   u32 resolve_attempts;
   u32 classify_table_index;
+  u32 next_hop_out_label;
+  u32 next_hop_table_id;
   u8 create_vrf_if_needed;
   u8 resolve_if_needed;
   u8 is_add;
@@ -426,44 +541,6 @@ define ip_add_del_route_reply
   i32 retval;
 };
 
-/* works */
-/** \brief Add / del gre tunnel request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - software index of the new vlan's parent interface
-    @param inner_vrf_id -
-    @param outer_vrf_id - 
-    @param is_add - 1 if adding the tunnel, 0 if deleting
-    @param src_address[4] - tunnel source address
-    @param dst_address[4] - tunnel destination address
-    @param intf_address - 
-    @param intf_address_length - 
-*/
-define mpls_gre_add_del_tunnel
-{
-  u32 client_index;
-  u32 context;
-  u32 inner_vrf_id;
-  u32 outer_vrf_id;
-  u8 is_add;
-  u8 l2_only;
-  u8 src_address[4];
-  u8 dst_address[4];
-  u8 intfc_address[4];
-  u8 intfc_address_length;
-};
-
-/** \brief Reply for add / del tunnel request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define mpls_gre_add_del_tunnel_reply
-{
-  u32 context;
-  i32 retval;
-  u32 tunnel_sw_if_index;
-};
-
 /** \brief Add / del MPLS encapsulation request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -490,38 +567,6 @@ define mpls_add_del_encap
     @param retval - return code
 */
 define mpls_add_del_encap_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief Add / del MPLS decapsulation request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param rx_vrf_id - receive vrf
-    @param tx_vrf_id - transmit vrf
-    @param label - 
-    @param next_index - 
-    @param s_bit - 
-    @param is_add - 1 if adding the encap, 0 if deleting
-*/
-define mpls_add_del_decap
-{
-  u32 client_index;
-  u32 context;
-  u32 rx_vrf_id;
-  u32 tx_vrf_id;
-  u32 label;
-  u32 next_index;
-  u8 s_bit;
-  u8 is_add;
-};
-
-/** \brief Reply for MPLS decap add / del request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define mpls_add_del_decap_reply
 {
   u32 context;
   i32 retval;
@@ -4520,40 +4565,6 @@ define mpls_fib_encap_details
   u32 s_bit;
   u32 nlabels;
   u32 labels[nlabels];
-};
-
-/** \brief Dump mpls fib decap table
-    @param client_index - opaque cookie to identify the sender
-    @param fib_index    - mpls fib entry identifier or -1 in case of all entries
-*/
-define mpls_fib_decap_dump
-{
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief mpls fib decap table response
-    @param fib_index - fib table id
-    @param entry_index - reference to mpls label table
-    @param dest - destination ipv4 addr
-    @param s_bit -
-    @param label - mpls labels
-    @param rx_table_id - rx fib id
-    @param tx_table_id - tx fib id
-    @param swif_tag -
-*/
-define mpls_fib_decap_details
-{
-  u32 context;
-
-  u32 fib_index;
-  u32 entry_index;
-  u32 dest;
-  u32 s_bit;
-  u32 label;
-  u32 rx_table_id;
-  u32 tx_table_id;
-  u8 swif_tag[8];
 };
 
 /** \brief Classify get table IDs request
