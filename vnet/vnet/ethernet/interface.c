@@ -579,6 +579,17 @@ vnet_delete_sub_interface (u32 sw_if_index)
 
   if (si->type == VNET_SW_INTERFACE_TYPE_SUB)
     {
+      vlib_main_t *vm = vlib_get_main ();
+      l2_input_config_t *config;
+      config = vec_elt_at_index (l2input_main.configs, sw_if_index);
+      if (config->xconnect)
+	{
+	  u32 sw_peerif_index = config->output_sw_if_index;
+	  rv = set_int_l2_mode (vm, vnm, MODE_L3, sw_if_index, 0, 0, 0, 0);
+	  rv =
+	    set_int_l2_mode (vm, vnm, MODE_L3, sw_peerif_index, 0, 0, 0, 0);
+	}
+
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
       u64 sup_and_sub_key =
 	((u64) (si->sup_sw_if_index) << 32) | (u64) si->sub.id;
