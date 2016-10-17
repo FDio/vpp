@@ -623,6 +623,16 @@ vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
   vnet_sw_interface_t *sw =
     pool_elt_at_index (im->sw_interfaces, sw_if_index);
 
+  /* Make sure the interface is in L3 mode (removed from L2 BD or XConnect) */
+  vlib_main_t *vm = vlib_get_main ();
+  l2_input_config_t *config;
+  config = vec_elt_at_index (l2input_main.configs, sw_if_index);
+  if (config->xconnect)
+    set_int_l2_mode (vm, vnm, MODE_L3, config->output_sw_if_index, 0, 0, 0,
+		     0);
+  if (config->xconnect || config->bridge)
+    set_int_l2_mode (vm, vnm, MODE_L3, sw_if_index, 0, 0, 0, 0);
+
   /* Bring down interface in case it is up. */
   if (sw->flags != 0)
     vnet_sw_interface_set_flags (vnm, sw_if_index, /* flags */ 0);
