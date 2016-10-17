@@ -721,6 +721,8 @@ vnet_register_interface (vnet_main_t * vnm,
     {
       vnet_hw_interface_nodes_t *hn;
       vnet_interface_output_runtime_t *rt;
+      vlib_node_t *node;
+      vlib_node_runtime_t *nrt;
 
       hn = vec_end (im->deleted_hw_interface_nodes) - 1;
 
@@ -741,6 +743,22 @@ vnet_register_interface (vnet_main_t * vnm,
       rt->hw_if_index = hw_index;
       rt->sw_if_index = hw->sw_if_index;
       rt->dev_instance = hw->dev_instance;
+
+      /* The new class may differ from the old one.
+       * Functions have to be updated. */
+      node = vlib_get_node (vm, hw->output_node_index);
+      node->function = dev_class->no_flatten_output_chains ?
+	vnet_interface_output_node_no_flatten_multiarch_select () :
+	vnet_interface_output_node_multiarch_select ();
+      node->format_trace = format_vnet_interface_output_trace;
+      nrt = vlib_node_get_runtime (vm, hw->output_node_index);
+      nrt->function = node->function;
+
+      node = vlib_get_node (vm, hw->tx_node_index);
+      node->function = dev_class->tx_function;
+      node->format_trace = dev_class->format_tx_trace;
+      nrt = vlib_node_get_runtime (vm, hw->tx_node_index);
+      nrt->function = node->function;
 
       vlib_worker_thread_node_runtime_update ();
       _vec_len (im->deleted_hw_interface_nodes) -= 1;
