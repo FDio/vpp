@@ -35,6 +35,8 @@
 #define MAC_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define MAC_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
 
+typedef void (*foreach_subprefix_match_cb_t) (u32, void *);
+
 typedef struct
 {
   BVT (clib_bihash) ip4_lookup_table;
@@ -102,6 +104,10 @@ u32 gid_dictionary_sd_lookup (gid_dictionary_t * db, gid_address_t * dst,
 			      gid_address_t * src);
 
 void gid_dictionary_init (gid_dictionary_t * db);
+
+void
+gid_dict_foreach_subprefix (gid_dictionary_t * db, gid_address_t * eid,
+			    foreach_subprefix_match_cb_t cb, void *arg);
 
 #endif /* VNET_LISP_GPE_GID_DICTIONARY_H_ */
 

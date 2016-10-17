@@ -69,7 +69,17 @@ ip_dst_fib_add_route (u32 dst_fib_index, const ip_prefix_t * dst_prefix)
 				   "LISP-src for [%d,%U]",
 				   dst_fib_index,
 				   format_fib_prefix, &dst_fib_prefix);
-
+      /*
+       * add src fib default route
+       */
+      fib_prefix_t prefix = {
+	.fp_proto = dst_fib_prefix.fp_proto,
+      };
+      fib_table_entry_special_dpo_add (src_fib_index, &prefix,
+				       FIB_SOURCE_LISP,
+				       FIB_ENTRY_FLAG_EXCLUSIVE,
+				       lisp_cp_dpo_get (fib_proto_to_dpo
+							(dst_fib_prefix.fp_proto)));
       /*
        * create a data-path object to perform the source address lookup
        * in the SRC FIB
@@ -363,11 +373,9 @@ static void
 lisp_gpe_fwd_entry_mk_paths (lisp_gpe_fwd_entry_t * lfe,
 			     vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
 {
-  const lisp_gpe_tenant_t *lt;
   lisp_fwd_path_t *path;
   u32 index;
 
-  lt = lisp_gpe_tenant_get (lfe->tenant);
   vec_validate (lfe->paths, vec_len (a->locator_pairs) - 1);
 
   vec_foreach_index (index, a->locator_pairs)
@@ -380,8 +388,7 @@ lisp_gpe_fwd_entry_mk_paths (lisp_gpe_fwd_entry_t * lfe,
     path->lisp_adj =
       lisp_gpe_adjacency_find_or_create_and_lock (&a->locator_pairs
 						  [index],
-						  lt->lt_table_id,
-						  lfe->key->vni);
+						  a->dp_table, lfe->key->vni);
   }
   vec_sort_with_function (lfe->paths, lisp_gpe_fwd_entry_path_sort);
 }
@@ -529,6 +536,8 @@ lisp_l2_fib_lookup (lisp_gpe_main_t * lgm, u16 bd_index, u8 src_mac[6],
       if (rv == 0)
 	return value.value;
     }
+  else
+    return value.value;
 
   return lisp_gpe_main.l2_lb_cp_lkup.dpoi_index;
 }
@@ -886,7 +895,7 @@ format_lisp_fwd_path (u8 * s, va_list ap)
 {
   lisp_fwd_path_t *lfp = va_arg (ap, lisp_fwd_path_t *);
 
-  s = format (s, "pirority:%d weight:%d ", lfp->priority, lfp->weight);
+  s = format (s, "priority:%d weight:%d ", lfp->priority, lfp->weight);
   s = format (s, "adj:[%U]\n",
 	      format_lisp_gpe_adjacency,
 	      lisp_gpe_adjacency_get (lfp->lisp_adj),
