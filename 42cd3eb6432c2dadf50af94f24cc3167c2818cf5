@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da3975d1_14873a11",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-17T12:25:42Z",
+      "side": 1,
+      "message": "Why end user needs this targets?",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 60
+      },
+      "revId": "42cd3eb6432c2dadf50af94f24cc3167c2818cf5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
