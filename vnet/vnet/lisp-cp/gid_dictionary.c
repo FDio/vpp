@@ -15,6 +15,127 @@
 
 #include <vnet/lisp-cp/gid_dictionary.h>
 
+typedef struct
+{
+  void *arg;
+  ip_prefix_t src;
+  foreach_subprefix_match_cb_t cb;
+  union
+  {
+    gid_ip4_table_t *ip4_table;
+    gid_ip6_table_t *ip6_table;
+  };
+} sfib_entry_arg_t;
+
+static u32 ip4_lookup (gid_ip4_table_t * db, u32 vni, ip_prefix_t * key);
+
+static u32 ip6_lookup (gid_ip6_table_t * db, u32 vni, ip_prefix_t * key);
+
+static void
+foreach_sfib4_subprefix (BVT (clib_bihash_kv) * kvp, void *arg)
+{
+  sfib_entry_arg_t *a = arg;
+  u32 ip = (u32) kvp->key[0];
+  ip4_address_t *mask;
+  u8 plen = ip_prefix_len (&a->src);
+
+  ASSERT (plen >= 0 && plen <= 32);
+  mask = &a->ip4_table->ip4_fib_masks[plen];
+
+  u32 src_ip = clib_host_to_net_u32 (ip_prefix_v4 (&a->src).as_u32);
+  src_ip &= mask->as_u32;
+  if (src_ip == ip)
+    {
+      /* found sub-prefix of src prefix */
+      (a->cb) (kvp->value, a->arg);
+    }
+}
+
+static void
+gid_dict_foreach_ip4_subprefix (gid_dictionary_t * db, u32 vni,
+				ip_prefix_t * src, ip_prefix_t * dst,
+				foreach_subprefix_match_cb_t cb, void *arg)
+{
+  u32 sfi;
+  gid_ip4_table_t *sfib4;
+  sfib_entry_arg_t a;
+
+  sfi = ip4_lookup (&db->dst_ip4_table, vni, dst);
+  if (GID_LOOKUP_MISS == sfi)
+    return;
+
+  sfib4 = pool_elt_at_index (db->src_ip4_table_pool, sfi);
+
+  a.arg = arg;
+  a.cb = cb;
+  a.src = src[0];
+  a.ip4_table = sfib4;
+
+  BV (clib_bihash_foreach_key_value_pair) (&sfib4->ip4_lookup_table,
+					   foreach_sfib4_subprefix, &a);
+}
+
+static void
+foreach_sfib6_subprefix (BVT (clib_bihash_kv) * kvp, void *arg)
+{
+  sfib_entry_arg_t *a = arg;
+  ip6_address_t ip;
+  ip6_address_t *mask;
+  u8 plen = ip_prefix_len (&a->src);
+
+  mask = &a->ip6_table->ip6_fib_masks[plen];
+  ip.as_u64[0] = kvp->key[0];
+  ip.as_u64[1] = kvp->key[1];
+
+  if (ip6_address_is_equal_masked (&ip_prefix_v6 (&a->src), &ip, mask))
+    {
+      /* found sub-prefix of src prefix */
+      (a->cb) (kvp->value, a->arg);
+    }
+}
+
+static void
+gid_dict_foreach_ip6_subprefix (gid_dictionary_t * db, u32 vni,
+				ip_prefix_t * src, ip_prefix_t * dst,
+				foreach_subprefix_match_cb_t cb, void *arg)
+{
+  u32 sfi;
+  gid_ip6_table_t *sfib6;
+  sfib_entry_arg_t a;
+
+  sfi = ip6_lookup (&db->dst_ip6_table, vni, dst);
+  if (GID_LOOKUP_MISS == sfi)
+    return;
+
+  sfib6 = pool_elt_at_index (db->src_ip6_table_pool, sfi);
+
+  a.arg = arg;
+  a.cb = cb;
+  a.src = src[0];
+  a.ip6_table = sfib6;
+
+  BV (clib_bihash_foreach_key_value_pair) (&sfib6->ip6_lookup_table,
+					   foreach_sfib6_subprefix, &a);
+}
+
+void
+gid_dict_foreach_subprefix (gid_dictionary_t * db, gid_address_t * eid,
+			    foreach_subprefix_match_cb_t cb, void *arg)
+{
+  ip_prefix_t *ippref = &gid_address_sd_dst_ippref (eid);
+
+  if (IP4 == ip_prefix_version (ippref))
+    gid_dict_foreach_ip4_subprefix (db, gid_address_vni (eid),
+				    &gid_address_sd_src_ippref (eid),
+				    &gid_address_sd_dst_ippref (eid), cb,
+				    arg);
+  else
+    gid_dict_foreach_ip6_subprefix (db, gid_address_vni (eid),
+				    &gid_address_sd_src_ippref (eid),
+				    &gid_address_sd_dst_ippref (eid), cb,
+				    arg);
+}
+
 static void
 make_mac_sd_key (BVT (clib_bihash_kv) * kv, u32 vni, u8 src_mac[6],
 		 u8 dst_mac[6])
@@ -255,6 +376,24 @@ gid_dictionary_sd_lookup (gid_dictionary_t * db, gid_address_t * dst,
     case GID_ADDR_MAC:
       return mac_sd_lookup (&db->sd_mac_table, gid_address_vni (dst),
 			    gid_address_mac (dst), gid_address_mac (src));
+    case GID_ADDR_SRC_DST:
+      switch (gid_address_sd_dst_type (dst))
+	{
+	case FID_ADDR_IP_PREF:
+	  return ip_sd_lookup (db, gid_address_vni (dst),
+			       &gid_address_sd_dst_ippref (dst),
+			       &gid_address_sd_src_ippref (dst));
+	  break;
+	case FID_ADDR_MAC:
+	  return mac_sd_lookup (&db->sd_mac_table, gid_address_vni (dst),
+				gid_address_sd_dst_mac (dst),
+				gid_address_sd_src_mac (dst));
+	  break;
+	default:
+	  clib_warning ("Source/Dest address type %d not supported!",
+			gid_address_sd_dst_type (dst));
+	  break;
+	}
     default:
       clib_warning ("address type %d not supported!", gid_address_type (dst));
       break;
