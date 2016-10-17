@@ -395,7 +395,16 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
       is_src_dst = 1;
     }
   else
-    gid_address_copy (&a->rmt_eid, &dst_map->eid);
+    {
+      gid_address_copy (&a->rmt_eid, &dst_map->eid);
+
+      if (MR_MODE_SRC_DST == lcm->map_request_mode)
+        {
+          // TODO we don't want 0/0 in src fib
+          is_src_dst = 1;
+          gid_address_copy (&a->lcl_eid, &src_map->eid);
+        }
+    }
 
   a->vni = gid_address_vni (&a->rmt_eid);
 
@@ -873,6 +882,98 @@ compare_locators (lisp_cp_main_t * lcm, u32 * old_ls_indexes,
   return 0;
 }
 
+typedef struct
+{
+  u8 is_negative;
+  void *lcm;
+  gid_address_t *eid_to_be_deleted;
+} remove_mapping_args_t;
+
+/**
+ * Callback invoked when a sub-prefix is found
+ */
+static void
+remove_mapping_if_needed (u32 mi, void *arg)
+{
+  u8 delete = 0;
+  remove_mapping_args_t *a = arg;
+  lisp_cp_main_t *lcm = a->lcm;
+  mapping_t *m;
+  locator_set_t *ls;
+
+  m = pool_elt_at_index (lcm->mapping_pool, mi);
+  if (!m)
+    return;
+
+  ls = pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
+
+  if (a->is_negative)
+    {
+      if (0 != vec_len (ls->locator_indices))
+        delete = 1;
+    }
+  else
+    {
+      if (0 == vec_len (ls->locator_indices))
+        delete = 1;
+    }
+
+  if (delete)
+    vec_add1 (a->eid_to_be_deleted, m->eid);
+}
+
+/**
+ * This function searches map cache and looks for IP prefixes that are subset
+ * of the provided one. If such prefix is found depending on 'is_negative'
+ * it does follows:
+ *
+ * 1) if is_negative is true and found prefix points to positive mapping,
+ *    then the mapping is removed
+ * 2) if is_negative is false and found prefix points to negative mapping,
+ *    then the mapping is removed
+ */
+static void
+remove_colliding_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
+                               u8 is_negative)
+{
+  gid_address_t *e;
+  ip_prefix_t *ippref;
+  remove_mapping_args_t a;
+  memset (&a, 0, sizeof (a));
+
+  /* do this only in src/dst mode ... */
+  if (MR_MODE_SRC_DST != lcm->map_request_mode)
+    return;
+
+  /* ... and  only for IP prefix */
+  if (GID_ADDR_SRC_DST != gid_address_type (eid)
+      || (FID_ADDR_IP_PREF != gid_address_sd_dst_type (eid)))
+    return;
+
+  a.is_negative = is_negative;
+  a.lcm = lcm;
+
+  ippref = &gid_address_sd_dst_ippref (eid);
+
+  if (IP4 == ip_prefix_version (ippref))
+    gid_dict_foreach_ip4_entry (&lcm->mapping_index_by_gid,
+                                gid_address_vni (eid),
+                                &gid_address_sd_src_ippref (eid),
+                                &gid_address_sd_dst_ippref (eid),
+                                remove_mapping_if_needed, &a);
+  else
+    gid_dict_foreach_ip6_entry (&lcm->mapping_index_by_gid,
+                                gid_address_vni (eid),
+                                &gid_address_sd_src_ippref (eid),
+                                &gid_address_sd_dst_ippref (eid),
+                                remove_mapping_if_needed, &a);
+
+  vec_foreach (e, a.eid_to_be_deleted)
+    vnet_lisp_add_del_mapping (e, 0, 0, 0, 0, 0 /* is add */, 0, 0);
+
+  vec_free (a.eid_to_be_deleted);
+}
+
 /**
  * Adds/removes/updates mapping. Does not program forwarding.
  *
@@ -925,7 +1026,7 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
 	      /* do not overwrite local or static remote mappings */
 	      clib_warning ("mapping %U rejected due to collision with local "
 			    "or static remote mapping!", format_gid_address,
-			    &eid);
+			    eid);
 	      return 0;
 	    }
 
@@ -952,6 +1053,8 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
       /* new mapping */
       else
 	{
+          remove_colliding_sub_prefixes (lcm, eid, 0 == ls_args->locators);
+
 	  ls_args->is_add = 1;
 	  ls_args->index = ~0;
 
