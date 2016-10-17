@@ -222,11 +222,13 @@ VLIB_REGISTER_NODE (worker_handoff_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (worker_handoff_node, worker_handoff_node_fn)
-     int interface_handoff_enable_disable (vlib_main_t * vm, u32 sw_if_index,
-					   uword * bitmap, int enable_disable)
+/* *INDENT-ON* */
+
+int
+interface_handoff_enable_disable (vlib_main_t * vm, u32 sw_if_index,
+				  uword * bitmap, int enable_disable)
 {
   handoff_main_t *hm = &handoff_main;
   vnet_sw_interface_t *sw;
@@ -522,10 +524,12 @@ VLIB_REGISTER_NODE (handoff_dispatch_node) = {
         [HANDOFF_DISPATCH_NEXT_MPLS_INPUT] = "mpls-input",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (handoff_dispatch_node, handoff_dispatch_node_fn)
-     clib_error_t *handoff_init (vlib_main_t * vm)
+/* *INDENT-ON* */
+
+clib_error_t *
+handoff_init (vlib_main_t * vm)
 {
   handoff_main_t *hm = &handoff_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();

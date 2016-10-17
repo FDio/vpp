@@ -397,10 +397,12 @@ VLIB_REGISTER_NODE (sr_replicate_node) = {
         [SR_REPLICATE_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (sr_replicate_node, sr_replicate_node_fn)
-     clib_error_t *sr_replicate_init (vlib_main_t * vm)
+/* *INDENT-ON* */
+
+clib_error_t *
+sr_replicate_init (vlib_main_t * vm)
 {
   sr_replicate_main_t *msm = &sr_replicate_main;
 
