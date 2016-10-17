@@ -455,7 +455,8 @@ oam_node_fn (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   oam_next_t next_index;
   oam_main_t *om = &oam_main;
-  u32 next01 = OAM_NEXT_DROP;	/* all pkts go to the hopper... */
+  u32 next0 = OAM_NEXT_DROP;	/* all pkts go to the hopper... */
+  u32 next1 = OAM_NEXT_DROP;
   uword *u0, *u1;
   oam_template_t *oam0, *oam1;
   u32 fib_index0, fib_index1;
@@ -554,12 +555,12 @@ oam_node_fn (vlib_main_t * vm,
 	    }
 
 	  if (vm->os_punt_frame)
-	    next01 = OAM_NEXT_PUNT;
+	    next0 = next1 = OAM_NEXT_PUNT;
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
-					   bi0, bi1, next01, next01);
+					   bi0, bi1, next0, next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -603,12 +604,12 @@ oam_node_fn (vlib_main_t * vm,
 	    }
 
 	  if (vm->os_punt_frame)
-	    next01 = OAM_NEXT_PUNT;
+	    next0 = OAM_NEXT_PUNT;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
-					   bi0, next01);
+					   bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
