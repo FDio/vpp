@@ -2924,32 +2924,72 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
  * @cliexpar
  * @parblock
  * Example of how to set the flow hash on a given table:
- * @cliexcmd{set ip6 flow-hash table 12 dst sport dport proto}
+ * @cliexcmd{set ip6 flow-hash table 8 dst sport dport proto}
+ *
  * Example of display the configured flow hash:
  * @cliexstart{show ip6 fib}
- * FIB lookup table: 65536 buckets, 32 MB heap
- * 11 objects, 513k of 515k used, 424 free, 0 reclaimed, 2k overhead, 32764k capacity
- *
- * VRF 0, fib_index 0, flow hash: src dst sport dport proto
- *                  Destination                      Packets          Bytes         Adjacency
- * ff02::1/128                                                 0               0 weight 1, index 5
- *
- * ff02::2/128                                                 0               0 weight 1, index 4
- *
- * ff02::16/128                                                0               0 weight 1, index 6
- *
- * ff02::1:ff00:0/104                                          0               0 weight 1, index 3
- *
- *
- * VRF 12, fib_index 1, flow hash: dst sport dport proto
- *                  Destination                      Packets          Bytes         Adjacency
- * ff02::1/128                                                 0               0 weight 1, index 9
- *
- * ff02::2/128                                                 0               0 weight 1, index 8
- *
- * ff02::16/128                                                0               0 weight 1, index 10
- *
- * ff02::1:ff00:0/104                                          0               0 weight 1, index 7
+ * ipv6-VRF:0, fib_index 0, flow hash: src dst sport dport proto
+ * @::/0
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:5 buckets:1 uRPF:5 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * fe80::/10
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:10 buckets:1 uRPF:10 to:[0:0]]
+ *     [0] [@2]: dpo-receive
+ * ff02::1/128
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:8 buckets:1 uRPF:8 to:[0:0]]
+ *     [0] [@2]: dpo-receive
+ * ff02::2/128
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:7 buckets:1 uRPF:7 to:[0:0]]
+ *     [0] [@2]: dpo-receive
+ * ff02::16/128
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:9 buckets:1 uRPF:9 to:[0:0]]
+ *     [0] [@2]: dpo-receive
+ * ff02::1:ff00:0/104
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:6 buckets:1 uRPF:6 to:[0:0]]
+ *     [0] [@2]: dpo-receive
+ * ipv6-VRF:8, fib_index 1, flow hash: dst sport dport proto
+ * @::/0
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:21 buckets:1 uRPF:20 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * @::a:1:1:0:4/126
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:27 buckets:1 uRPF:26 to:[0:0]]
+ *     [0] [@4]: ipv6-glean: af_packet0
+ * @::a:1:1:0:7/128
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:28 buckets:1 uRPF:27 to:[0:0]]
+ *     [0] [@2]: dpo-receive: @::a:1:1:0:7 on af_packet0
+ * fe80::/10
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:26 buckets:1 uRPF:25 to:[0:0]]
+ *     [0] [@2]: dpo-receive
+ * fe80::fe:3eff:fe3e:9222/128
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:29 buckets:1 uRPF:28 to:[0:0]]
+ *     [0] [@2]: dpo-receive: fe80::fe:3eff:fe3e:9222 on af_packet0
+ * ff02::1/128
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:24 buckets:1 uRPF:23 to:[0:0]]
+ *     [0] [@2]: dpo-receive
+ * ff02::2/128
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:23 buckets:1 uRPF:22 to:[0:0]]
+ *     [0] [@2]: dpo-receive
+ * ff02::16/128
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:25 buckets:1 uRPF:24 to:[0:0]]
+ *     [0] [@2]: dpo-receive
+ * ff02::1:ff00:0/104
+ *   unicast-ip6-chain
+ *   [@0]: dpo-load-balance: [index:22 buckets:1 uRPF:21 to:[0:0]]
+ *     [0] [@2]: dpo-receive
  * @cliexend
  * @endparblock
 ?*/

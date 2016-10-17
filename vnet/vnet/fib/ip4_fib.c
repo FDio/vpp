@@ -522,50 +522,143 @@ ip4_show_fib (vlib_main_t * vm,
  * @cliexpar
  * Example of how to display all the IPv4 FIB tables:
  * @cliexstart{show ip fib}
- * Table 0, fib_index 0, flow hash: src dst sport dport proto
- *      Destination         Packets          Bytes         Adjacency
- * 172.16.2.0/24                      0               0 weight 1, index 5
- *                                                       172.16.2.1/24
- * 172.16.2.1/32                      0               0 weight 1, index 6
- *                                                       172.16.2.1/24
- * Table 7, fib_index 1, flow hash: dst sport dport proto
- *      Destination         Packets          Bytes         Adjacency
- * 172.16.1.0/24                      0               0 weight 1, index 3
- *                                                       172.16.1.1/24
- * 172.16.1.1/32                      1              98 weight 1, index 4
- *                                                       172.16.1.1/24
- * 172.16.1.2/32                      0               0 weight 1, index 7
- *                                                      GigabitEthernet2/0/0
- *                                                      IP4: 02:fe:6a:07:39:6f -> 16:d9:e0:91:79:86
+ * ipv4-VRF:0, fib_index 0, flow hash: src dst sport dport proto
+ * 0.0.0.0/0
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:0 buckets:1 uRPF:0 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 0.0.0.0/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:1 buckets:1 uRPF:1 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 6.0.1.2/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:30 buckets:1 uRPF:29 to:[0:0]]
+ *     [0] [@3]: arp-ipv4: via 6.0.0.1 af_packet0
+ * 7.0.0.1/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:31 buckets:4 uRPF:30 to:[0:0]]
+ *     [0] [@3]: arp-ipv4: via 6.0.0.2 af_packet0
+ *     [1] [@3]: arp-ipv4: via 6.0.0.2 af_packet0
+ *     [2] [@3]: arp-ipv4: via 6.0.0.2 af_packet0
+ *     [3] [@3]: arp-ipv4: via 6.0.0.1 af_packet0
+ * 224.0.0.0/8
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:3 buckets:1 uRPF:3 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 240.0.0.0/8
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:2 buckets:1 uRPF:2 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 255.255.255.255/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:4 buckets:1 uRPF:4 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * ipv4-VRF:7, fib_index 1, flow hash: src dst sport dport proto
+ * 0.0.0.0/0
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:12 buckets:1 uRPF:11 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 0.0.0.0/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:13 buckets:1 uRPF:12 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 172.16.1.0/24
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:17 buckets:1 uRPF:16 to:[0:0]]
+ *     [0] [@4]: ipv4-glean: af_packet0
+ * 172.16.1.1/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:18 buckets:1 uRPF:17 to:[1:84]]
+ *     [0] [@2]: dpo-receive: 172.16.1.1 on af_packet0
+ * 172.16.1.2/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:21 buckets:1 uRPF:20 to:[0:0]]
+ *     [0] [@5]: ipv4 via 172.16.1.2 af_packet0: IP4: 02:fe:9e:70:7a:2b -> 26:a5:f6:9c:3a:36
+ * 172.16.2.0/24
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:19 buckets:1 uRPF:18 to:[0:0]]
+ *     [0] [@4]: ipv4-glean: af_packet1
+ * 172.16.2.1/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:20 buckets:1 uRPF:19 to:[0:0]]
+ *     [0] [@2]: dpo-receive: 172.16.2.1 on af_packet1
+ * 224.0.0.0/8
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:15 buckets:1 uRPF:14 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 240.0.0.0/8
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:14 buckets:1 uRPF:13 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 255.255.255.255/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:16 buckets:1 uRPF:15 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
  * @cliexend
  * Example of how to display a single IPv4 FIB table:
  * @cliexstart{show ip fib table 7}
- * Table 7, fib_index 1, flow hash: dst sport dport proto
- *      Destination         Packets          Bytes         Adjacency
- * 172.16.1.0/24                      0               0 weight 1, index 3
- *                                                       172.16.1.1/24
- * 172.16.1.1/32                      1              98 weight 1, index 4
- *                                                       172.16.1.1/24
- * 172.16.1.2/32                      0               0 weight 1, index 7
- *                                                      GigabitEthernet2/0/0
- *                                                      IP4: 02:fe:6a:07:39:6f -> 16:d9:e0:91:79:86
+ * ipv4-VRF:7, fib_index 1, flow hash: src dst sport dport proto
+ * 0.0.0.0/0
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:12 buckets:1 uRPF:11 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 0.0.0.0/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:13 buckets:1 uRPF:12 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 172.16.1.0/24
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:17 buckets:1 uRPF:16 to:[0:0]]
+ *     [0] [@4]: ipv4-glean: af_packet0
+ * 172.16.1.1/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:18 buckets:1 uRPF:17 to:[1:84]]
+ *     [0] [@2]: dpo-receive: 172.16.1.1 on af_packet0
+ * 172.16.1.2/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:21 buckets:1 uRPF:20 to:[0:0]]
+ *     [0] [@5]: ipv4 via 172.16.1.2 af_packet0: IP4: 02:fe:9e:70:7a:2b -> 26:a5:f6:9c:3a:36
+ * 172.16.2.0/24
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:19 buckets:1 uRPF:18 to:[0:0]]
+ *     [0] [@4]: ipv4-glean: af_packet1
+ * 172.16.2.1/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:20 buckets:1 uRPF:19 to:[0:0]]
+ *     [0] [@2]: dpo-receive: 172.16.2.1 on af_packet1
+ * 224.0.0.0/8
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:15 buckets:1 uRPF:14 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 240.0.0.0/8
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:14 buckets:1 uRPF:13 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
+ * 255.255.255.255/32
+ *   unicast-ip4-chain
+ *   [@0]: dpo-load-balance: [index:16 buckets:1 uRPF:15 to:[0:0]]
+ *     [0] [@0]: dpo-drop ip6
  * @cliexend
  * Example of how to display a summary of all IPv4 FIB tables:
  * @cliexstart{show ip fib summary}
- * Table 0, fib_index 0, flow hash: src dst sport dport proto
+ * ipv4-VRF:0, fib_index 0, flow hash: src dst sport dport proto
  *     Prefix length         Count
- *                   24               1
- *                   32               1
- * Table 7, fib_index 1, flow hash: dst sport dport proto
+ *                    0               1
+ *                    8               2
+ *                   32               4
+ * ipv4-VRF:7, fib_index 1, flow hash: src dst sport dport proto
  *     Prefix length         Count
- *                   24               1
- *                   32               2
+ *                    0               1
+ *                    8               2
+ *                   24               2
+ *                   32               4
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .path = "show ip fib",
-    .short_help = "show ip fib [mtrie] [summary] [table <n>] [<ip4-addr>] [clear] [include-empty]",
+    .short_help = "show ip fib [summary] [table <table-id>] [index <fib-id>] [<ip4-addr>[/<mask>]] [mtrie]",
     .function = ip4_show_fib,
 };
 /* *INDENT-ON* */
