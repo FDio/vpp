@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da3975d1_149e1a57",
+        "filename": "plugins/lb-plugin/lb/lbhash.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-17T12:30:13Z",
+      "side": 1,
+      "message": "is this still needed?",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 110,
+        "endChar": 1
+      },
+      "revId": "a348020493637fd58e9dcd3fb0bf933234c5f64e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
