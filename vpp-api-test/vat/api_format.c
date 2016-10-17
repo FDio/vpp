@@ -15935,6 +15935,8 @@ api_delete_subif (vat_main_t * vam)
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
       if (unformat (i, "sw_if_index %d", &sw_if_index))
 	;
       else
@@ -16727,7 +16729,7 @@ _(ip_source_and_port_range_check_interface_add_del,                     \
 _(ipsec_gre_add_del_tunnel,                                             \
   "src <addr> dst <addr> local_sa <sa-id> remote_sa <sa-id> [del]")     \
 _(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")                          \
-_(delete_subif,"sub_sw_if_index <nn> sub_if_id <nn>")                   \
+_(delete_subif,"<intfc> | sw_if_index <nn>")                            \
 _(l2_interface_pbb_tag_rewrite,                                         \
   "<intfc> | sw_if_index <nn> \n"                                       \
   "[disable | push | pop | translate_pbb_stag <outer_tag>] \n"          \
