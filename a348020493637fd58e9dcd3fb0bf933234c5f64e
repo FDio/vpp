@@ -22,6 +22,30 @@
       "revId": "a348020493637fd58e9dcd3fb0bf933234c5f64e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_34b0fedc",
+        "filename": "plugins/lb-plugin/lb/lbhash.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-10-17T12:33:21Z",
+      "side": 1,
+      "message": "Good catch. It is not.",
+      "parentUuid": "da3975d1_149e1a57",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 110,
+        "endChar": 1
+      },
+      "revId": "a348020493637fd58e9dcd3fb0bf933234c5f64e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
