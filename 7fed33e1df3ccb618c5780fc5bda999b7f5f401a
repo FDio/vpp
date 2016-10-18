@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da3975d1_9a723148",
+        "filename": "vnet/vnet/feature/device_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-10-18T11:12:20Z",
+      "side": 1,
+      "message": "Could we call this l2-patch, please?",
+      "revId": "7fed33e1df3ccb618c5780fc5bda999b7f5f401a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_baacd58d",
+        "filename": "vnet/vnet/feature/feature.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-10-18T11:12:20Z",
+      "side": 1,
+      "message": "For the cost of an extra argument, we could use this routine with any bitmap-optimized class of feature",
+      "revId": "7fed33e1df3ccb618c5780fc5bda999b7f5f401a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_7ab66dde",
+        "filename": "vnet/vnet/feature/feature.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-10-18T11:12:20Z",
+      "side": 1,
+      "message": "For the cost of an extra argument, we could use this routine with any class of feature...",
+      "revId": "7fed33e1df3ccb618c5780fc5bda999b7f5f401a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_5abba9c4",
+        "filename": "vnet/vnet/l2/l2_patch.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-10-18T11:12:20Z",
+      "side": 1,
+      "message": "I know this wasn\u0027t your doing, but please rename l2_patch -\u003e l2-patch...",
+      "revId": "7fed33e1df3ccb618c5780fc5bda999b7f5f401a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
