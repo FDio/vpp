@@ -107,6 +107,92 @@ do {									\
     }									\
 } while (0)
 
+
+/** \brief Finish enqueueing four buffers forward in the graph.
+ Standard quad loop boilerplate element. This is a MACRO,
+ with MULTIPLE SIDE EFFECTS. In the ideal case,
+ <code>next_index == next0 == next1 == next2 == next3</code>,
+ which means that the speculative enqueue at the top of the quad loop
+ has correctly dealt with all four packets. In that case, the macro does
+ nothing at all.
+
+ @param vm vlib_main_t pointer, varies by thread
+ @param node current node vlib_node_runtime_t pointer
+ @param next_index speculated next index used for both packets
+ @param to_next speculated vector pointer used for both packets
+ @param n_left_to_next number of slots left in speculated vector
+ @param bi0 first buffer index
+ @param bi1 second buffer index
+ @param bi2 third buffer index
+ @param bi3 fourth buffer index
+ @param next0 actual next index to be used for the first packet
+ @param next1 actual next index to be used for the second packet
+ @param next2 actual next index to be used for the third packet
+ @param next3 actual next index to be used for the fourth packet
+
+ @return @c next_index -- speculative next index to be used for future packets
+ @return @c to_next -- speculative frame to be used for future packets
+ @return @c n_left_to_next -- number of slots left in speculative frame
+*/
+
+#define vlib_validate_buffer_enqueue_x4(vm,node,next_index,to_next,n_left_to_next,bi0,bi1,bi2,bi3,next0,next1,next2,next3) \
+do {                                                                    \
+  /* After the fact: check the [speculative] enqueue to "next" */       \
+  u32 fix_speculation = next_index != next0 || next_index != next1      \
+    || next_index != next2 || next_index != next3;                      \
+  if (PREDICT_FALSE(fix_speculation))                                   \
+    {                                                                   \
+      /* rewind... */                                                   \
+      to_next -= 4;                                                     \
+      n_left_to_next += 4;                                              \
+                                                                        \
+      /* If pi0 belongs to "next", send it there */                     \
+      if (next_index == next0)                                          \
+        {                                                               \
+          to_next[0] = pi0;                                             \
+          to_next++;                                                    \
+          n_left_to_next --;                                            \
+        }                                                               \
+      else              /* send it where it needs to go */              \
+        vlib_set_next_frame_buffer (vm, node, next0, pi0);              \
+                                                                        \
+      if (next_index == next1)                                          \
+        {                                                               \
+          to_next[0] = pi1;                                             \
+          to_next++;                                                    \
+          n_left_to_next --;                                            \
+        }                                                               \
+      else                                                              \
+        vlib_set_next_frame_buffer (vm, node, next1, pi1);              \
+                                                                        \
+      if (next_index == next2)                                          \
+        {                                                               \
+          to_next[0] = pi2;                                             \
+          to_next++;                                                    \
+          n_left_to_next --;                                            \
+        }                                                               \
+      else                                                              \
+        vlib_set_next_frame_buffer (vm, node, next2, pi2);              \
+                                                                        \
+      if (next_index == next3)                                          \
+        {                                                               \
+          to_next[0] = pi3;                                             \
+          to_next++;                                                    \
+          n_left_to_next --;                                            \
+        }                                                               \
+      else                                                              \
+        vlib_set_next_frame_buffer (vm, node, next3, pi3);              \
+                                                                        \
+      /* Change speculation: last 2 packets went to the same node */    \
+      if (next2 == next3)                                               \
+        {                                                               \
+          vlib_put_next_frame (vm, node, next_index, n_left_to_next);   \
+          next_index = next3;                                           \
+          vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next); \
+        }                                                               \
+    }                                                                   \
+ } while(0);
+
 /** \brief Finish enqueueing one buffer forward in the graph.
  Standard single loop boilerplate element. This is a MACRO,
  with MULTIPLE SIDE EFFECTS. In the ideal case,
