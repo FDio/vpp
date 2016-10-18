@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da3975d1_fa5dbd49",
+        "filename": "vnet/vnet/ethernet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-10-18T14:11:23Z",
+      "side": 1,
+      "message": "Isn\u0027t it better for this to be done at deletion time? Otherwise, a deleted sub-interface will still be used by xconnect if packet is recived from its partner. Also the check and cleanup should not be limited to xconnect alone, as it should be applied if it is in a BD. \nCome to think of it, I don\u0027t think the other interface delete for certain interface type (such as loopback or vhost) check for this either. The usual requirement is that cleanup for an interface or sub-interface such as removal from L2 mode, or removal of IP addresses and associated route entry should be done before the (sub-)interface is removed. I wonder if such API/CLI usage restriction is reasonable or should we do automatic cleanup on (sub-)interface deletion. If so, all the other interface deletion should be cleaned up as well. May be you can send an email to key people like Damjan or DaveB to discuss this to find some consensus?",
+      "range": {
+        "startLine": 585,
+        "startChar": 16,
+        "endLine": 585,
+        "endChar": 18
+      },
+      "revId": "0f8aa83f50b50c037855adb4db7b9b07bfacc5ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
