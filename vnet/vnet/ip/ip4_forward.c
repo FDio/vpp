@@ -217,7 +217,7 @@ ip4_lookup_inline (vlib_main_t * vm,
                                             (lb0->lb_n_buckets_minus_1)));
 	  dpo1 = load_balance_get_bucket_i(lb1,
                                            (hash_c1 &
-                                            (lb0->lb_n_buckets_minus_1)));
+                                            (lb1->lb_n_buckets_minus_1)));
 
 	  next0 = dpo0->dpoi_next_node;
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
@@ -2807,7 +2807,7 @@ ip4_lookup_multicast (vlib_main_t * vm,
                                             (lb0->lb_n_buckets_minus_1)));
 	  dpo1 = load_balance_get_bucket_i(lb1,
                                            (vnet_buffer (p1)->ip.flow_hash &
-                                            (lb0->lb_n_buckets_minus_1)));
+                                            (lb1->lb_n_buckets_minus_1)));
 
 	  next0 = dpo0->dpoi_next_node;
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
