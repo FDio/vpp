@@ -85,115 +85,167 @@ ip4_lookup_inline (vlib_main_t * vm,
       vlib_get_next_frame (vm, node, next,
 			   to_next, n_left_to_next);
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      while (n_left_from >= 8 && n_left_to_next >= 4)
       	{
-      	  vlib_buffer_t * p0, * p1;
-      	  ip4_header_t * ip0, * ip1;
-      	  __attribute__((unused)) tcp_header_t * tcp0, * tcp1;
-      	  ip_lookup_next_t next0, next1;
-      	  const load_balance_t * lb0, * lb1;
-      	  ip4_fib_mtrie_t * mtrie0, * mtrie1;
-      	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
-      	  ip4_address_t * dst_addr0, *dst_addr1;
+      	  vlib_buffer_t * p0, * p1, * p2, * p3;
+      	  ip4_header_t * ip0, * ip1, * ip2, * ip3;
+      	  __attribute__((unused)) tcp_header_t * tcp0, * tcp1, * tcp2, * tcp3;
+      	  ip_lookup_next_t next0, next1, next2, next3;
+      	  const load_balance_t * lb0, * lb1, * lb2, * lb3;
+      	  ip4_fib_mtrie_t * mtrie0, * mtrie1, * mtrie2, * mtrie3;
+      	  ip4_fib_mtrie_leaf_t leaf0, leaf1, leaf2, leaf3;
+      	  ip4_address_t * dst_addr0, *dst_addr1, *dst_addr2, *dst_addr3;
       	  __attribute__((unused)) u32 pi0, fib_index0, lb_index0, is_tcp_udp0;
       	  __attribute__((unused)) u32 pi1, fib_index1, lb_index1, is_tcp_udp1;
+      	  __attribute__((unused)) u32 pi2, fib_index2, lb_index2, is_tcp_udp2;
+      	  __attribute__((unused)) u32 pi3, fib_index3, lb_index3, is_tcp_udp3;
           flow_hash_config_t flow_hash_config0, flow_hash_config1;
-          u32 hash_c0, hash_c1;
-      	  u32 wrong_next;
-	  const dpo_id_t *dpo0, *dpo1;
+          flow_hash_config_t flow_hash_config2, flow_hash_config3;
+          u32 hash_c0, hash_c1, hash_c2, hash_c3;
+	  const dpo_id_t *dpo0, *dpo1, *dpo2, *dpo3;
 
       	  /* Prefetch next iteration. */
       	  {
-      	    vlib_buffer_t * p2, * p3;
+            vlib_buffer_t * p4, * p5, * p6, * p7;
 
-      	    p2 = vlib_get_buffer (vm, from[2]);
-      	    p3 = vlib_get_buffer (vm, from[3]);
+      	    p4 = vlib_get_buffer (vm, from[4]);
+      	    p5 = vlib_get_buffer (vm, from[5]);
+      	    p6 = vlib_get_buffer (vm, from[6]);
+      	    p7 = vlib_get_buffer (vm, from[7]);
 
-      	    vlib_prefetch_buffer_header (p2, LOAD);
-      	    vlib_prefetch_buffer_header (p3, LOAD);
+      	    vlib_prefetch_buffer_header (p4, LOAD);
+      	    vlib_prefetch_buffer_header (p5, LOAD);
+      	    vlib_prefetch_buffer_header (p6, LOAD);
+      	    vlib_prefetch_buffer_header (p7, LOAD);
 
-      	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD);
-      	    CLIB_PREFETCH (p3->data, sizeof (ip0[0]), LOAD);
+      	    CLIB_PREFETCH (p4->data, sizeof (ip0[0]), LOAD);
+      	    CLIB_PREFETCH (p5->data, sizeof (ip0[0]), LOAD);
+      	    CLIB_PREFETCH (p6->data, sizeof (ip0[0]), LOAD);
+      	    CLIB_PREFETCH (p7->data, sizeof (ip0[0]), LOAD);
       	  }
 
       	  pi0 = to_next[0] = from[0];
       	  pi1 = to_next[1] = from[1];
+      	  pi2 = to_next[2] = from[2];
+      	  pi3 = to_next[3] = from[3];
+
+      	  from += 4;
+      	  to_next += 4;
+      	  n_left_to_next -= 4;
+      	  n_left_from -= 4;
 
       	  p0 = vlib_get_buffer (vm, pi0);
       	  p1 = vlib_get_buffer (vm, pi1);
+      	  p2 = vlib_get_buffer (vm, pi2);
+      	  p3 = vlib_get_buffer (vm, pi3);
 
       	  ip0 = vlib_buffer_get_current (p0);
       	  ip1 = vlib_buffer_get_current (p1);
+      	  ip2 = vlib_buffer_get_current (p2);
+      	  ip3 = vlib_buffer_get_current (p3);
 
       	  dst_addr0 = &ip0->dst_address;
       	  dst_addr1 = &ip1->dst_address;
+      	  dst_addr2 = &ip2->dst_address;
+      	  dst_addr3 = &ip3->dst_address;
 
       	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p0)->sw_if_index[VLIB_RX]);
       	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p1)->sw_if_index[VLIB_RX]);
+      	  fib_index2 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p2)->sw_if_index[VLIB_RX]);
+      	  fib_index3 = vec_elt (im->fib_index_by_sw_if_index, vnet_buffer (p3)->sw_if_index[VLIB_RX]);
           fib_index0 = (vnet_buffer(p0)->sw_if_index[VLIB_TX] == (u32)~0) ?
             fib_index0 : vnet_buffer(p0)->sw_if_index[VLIB_TX];
           fib_index1 = (vnet_buffer(p1)->sw_if_index[VLIB_TX] == (u32)~0) ?
             fib_index1 : vnet_buffer(p1)->sw_if_index[VLIB_TX];
+          fib_index2 = (vnet_buffer(p2)->sw_if_index[VLIB_TX] == (u32)~0) ?
+            fib_index2 : vnet_buffer(p2)->sw_if_index[VLIB_TX];
+          fib_index3 = (vnet_buffer(p3)->sw_if_index[VLIB_TX] == (u32)~0) ?
+            fib_index3 : vnet_buffer(p3)->sw_if_index[VLIB_TX];
 
 
       	  if (! lookup_for_responses_to_locally_received_packets)
       	    {
 	      mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 	      mtrie1 = &ip4_fib_get (fib_index1)->mtrie;
+	      mtrie2 = &ip4_fib_get (fib_index2)->mtrie;
+	      mtrie3 = &ip4_fib_get (fib_index3)->mtrie;
 
-      	      leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
+      	      leaf0 = leaf1 = leaf2 = leaf3 = IP4_FIB_MTRIE_LEAF_ROOT;
 
       	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 0);
       	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 0);
+      	      leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 0);
+      	      leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 0);
       	    }
 
       	  tcp0 = (void *) (ip0 + 1);
       	  tcp1 = (void *) (ip1 + 1);
+      	  tcp2 = (void *) (ip2 + 1);
+      	  tcp3 = (void *) (ip3 + 1);
 
       	  is_tcp_udp0 = (ip0->protocol == IP_PROTOCOL_TCP
       			 || ip0->protocol == IP_PROTOCOL_UDP);
       	  is_tcp_udp1 = (ip1->protocol == IP_PROTOCOL_TCP
+      			 || ip1->protocol == IP_PROTOCOL_UDP);
+      	  is_tcp_udp2 = (ip2->protocol == IP_PROTOCOL_TCP
+      			 || ip2->protocol == IP_PROTOCOL_UDP);
+      	  is_tcp_udp3 = (ip1->protocol == IP_PROTOCOL_TCP
       			 || ip1->protocol == IP_PROTOCOL_UDP);
 
       	  if (! lookup_for_responses_to_locally_received_packets)
       	    {
       	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 1);
       	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 1);
+      	      leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 1);
+      	      leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 1);
       	    }
 
       	  if (! lookup_for_responses_to_locally_received_packets)
       	    {
       	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 2);
       	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 2);
+      	      leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 2);
+      	      leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 2);
       	    }
 
       	  if (! lookup_for_responses_to_locally_received_packets)
       	    {
       	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 3);
       	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 3);
+      	      leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 3);
+      	      leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 3);
       	    }
 
       	  if (lookup_for_responses_to_locally_received_packets)
       	    {
       	      lb_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_RX];
       	      lb_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_RX];
+      	      lb_index2 = vnet_buffer (p2)->ip.adj_index[VLIB_RX];
+      	      lb_index3 = vnet_buffer (p3)->ip.adj_index[VLIB_RX];
       	    }
       	  else
       	    {
       	      /* Handle default route. */
       	      leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
       	      leaf1 = (leaf1 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie1->default_leaf : leaf1);
-
+      	      leaf2 = (leaf2 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie2->default_leaf : leaf2);
+      	      leaf3 = (leaf3 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie3->default_leaf : leaf3);
       	      lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
       	      lb_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
+      	      lb_index2 = ip4_fib_mtrie_leaf_get_adj_index (leaf2);
+      	      lb_index3 = ip4_fib_mtrie_leaf_get_adj_index (leaf3);
       	    }
 
 	  lb0 = load_balance_get (lb_index0);
 	  lb1 = load_balance_get (lb_index1);
+	  lb2 = load_balance_get (lb_index2);
+	  lb3 = load_balance_get (lb_index3);
 
       	  /* Use flow hash to compute multipath adjacency. */
           hash_c0 = vnet_buffer (p0)->ip.flow_hash = 0;
           hash_c1 = vnet_buffer (p1)->ip.flow_hash = 0;
+          hash_c2 = vnet_buffer (p2)->ip.flow_hash = 0;
+          hash_c3 = vnet_buffer (p3)->ip.flow_hash = 0;
           if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
             {
               flow_hash_config0 = lb0->lb_hash_config;
@@ -206,11 +258,27 @@ ip4_lookup_inline (vlib_main_t * vm,
               hash_c1 = vnet_buffer (p1)->ip.flow_hash =
                 ip4_compute_flow_hash (ip1, flow_hash_config1);
             }
+          if (PREDICT_FALSE (lb2->lb_n_buckets > 1))
+            {
+              flow_hash_config2 = lb2->lb_hash_config;
+              hash_c2 = vnet_buffer (p2)->ip.flow_hash =
+                ip4_compute_flow_hash (ip2, flow_hash_config2);
+            }
+          if (PREDICT_FALSE(lb3->lb_n_buckets > 1))
+            {
+	      flow_hash_config3 = lb3->lb_hash_config;
+              hash_c3 = vnet_buffer (p3)->ip.flow_hash =
+                ip4_compute_flow_hash (ip3, flow_hash_config3);
+            }
 
 	  ASSERT (lb0->lb_n_buckets > 0);
 	  ASSERT (is_pow2 (lb0->lb_n_buckets));
  	  ASSERT (lb1->lb_n_buckets > 0);
 	  ASSERT (is_pow2 (lb1->lb_n_buckets));
+	  ASSERT (lb2->lb_n_buckets > 0);
+	  ASSERT (is_pow2 (lb2->lb_n_buckets));
+ 	  ASSERT (lb3->lb_n_buckets > 0);
+	  ASSERT (is_pow2 (lb3->lb_n_buckets));
 
 	  dpo0 = load_balance_get_bucket_i(lb0,
                                            (hash_c0 &
@@ -218,11 +286,21 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  dpo1 = load_balance_get_bucket_i(lb1,
                                            (hash_c1 &
                                             (lb1->lb_n_buckets_minus_1)));
+	  dpo2 = load_balance_get_bucket_i(lb2,
+                                           (hash_c2 &
+                                            (lb2->lb_n_buckets_minus_1)));
+	  dpo3 = load_balance_get_bucket_i(lb3,
+                                           (hash_c3 &
+                                            (lb3->lb_n_buckets_minus_1)));
 
 	  next0 = dpo0->dpoi_next_node;
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 	  next1 = dpo1->dpoi_next_node;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+	  next2 = dpo2->dpoi_next_node;
+	  vnet_buffer (p2)->ip.adj_index[VLIB_TX] = dpo2->dpoi_index;
+	  next3 = dpo3->dpoi_next_node;
+	  vnet_buffer (p3)->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
 
           vlib_increment_combined_counter
               (cm, cpu_index, lb_index0, 1,
@@ -232,48 +310,20 @@ ip4_lookup_inline (vlib_main_t * vm,
               (cm, cpu_index, lb_index1, 1,
                vlib_buffer_length_in_chain (vm, p1)
                + sizeof(ethernet_header_t));
+          vlib_increment_combined_counter
+              (cm, cpu_index, lb_index2, 1,
+               vlib_buffer_length_in_chain (vm, p2)
+               + sizeof(ethernet_header_t));
+          vlib_increment_combined_counter
+              (cm, cpu_index, lb_index3, 1,
+               vlib_buffer_length_in_chain (vm, p3)
+               + sizeof(ethernet_header_t));
 
-      	  from += 2;
-      	  to_next += 2;
-      	  n_left_to_next -= 2;
-      	  n_left_from -= 2;
-
-      	  wrong_next = (next0 != next) + 2*(next1 != next);
-      	  if (PREDICT_FALSE (wrong_next != 0))
-      	    {
-      	      switch (wrong_next)
-      		{
-      		case 1:
-      		  /* A B A */
-      		  to_next[-2] = pi1;
-      		  to_next -= 1;
-      		  n_left_to_next += 1;
-      		  vlib_set_next_frame_buffer (vm, node, next0, pi0);
-      		  break;
-
-      		case 2:
-      		  /* A A B */
-      		  to_next -= 1;
-      		  n_left_to_next += 1;
-      		  vlib_set_next_frame_buffer (vm, node, next1, pi1);
-      		  break;
-
-      		case 3:
-      		  /* A B C */
-      		  to_next -= 2;
-      		  n_left_to_next += 2;
-      		  vlib_set_next_frame_buffer (vm, node, next0, pi0);
-      		  vlib_set_next_frame_buffer (vm, node, next1, pi1);
-      		  if (next0 == next1)
-      		    {
-      		      /* A B B */
-      		      vlib_put_next_frame (vm, node, next, n_left_to_next);
-      		      next = next1;
-      		      vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
-      		    }
-      		}
-      	    }
-      	}
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next,
+					   to_next, n_left_to_next,
+					   pi0, pi1, pi2, pi3,
+                                           next0, next1, next2, next3);
+        }
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
