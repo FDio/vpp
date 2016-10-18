@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da3975d1_056dc232",
+        "filename": "vlib/vlib/buffer_node.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-10-18T19:50:17Z",
+      "side": 1,
+      "message": "how about;\n u32x4 next;\n\n next[0] \u003d \u003clookup-result\u003e\n ...etc..\n\n fix_speculation \u003d next - last_next;\n\nso one vector arithmetic operation versus several branches.",
+      "revId": "b492ab13b5f461dec82f8e650e5d8668bc04b565",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
