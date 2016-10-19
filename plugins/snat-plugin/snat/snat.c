@@ -103,6 +103,16 @@ VNET_FEATURE_INIT (ip4_snat_out2in, static) = {
   .node_name = "snat-out2in",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
+VNET_FEATURE_INIT (ip4_snat_in2out_worker_handoff, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "snat-in2out-worker-handoff",
+  .runs_before = VNET_FEATURES ("snat-out2in-worker-handoff"),
+};
+VNET_FEATURE_INIT (ip4_snat_out2in_worker_handoff, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "snat-out2in-worker-handoff",
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
 VNET_FEATURE_INIT (ip4_snat_in2out_fast, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "snat-in2out-fast",
@@ -229,13 +239,13 @@ static int is_snat_address_used_in_static_mapping (snat_main_t *sm,
 
 int snat_del_address (snat_main_t *sm, ip4_address_t addr)
 {
-  clib_warning("%U", format_ip4_address, &addr);
   snat_address_t *a = 0;
   snat_session_t *ses;
   u32 *ses_to_be_removed = 0, *ses_index;
   clib_bihash_kv_8_8_t kv, value;
   snat_user_key_t user_key;
   snat_user_t *u;
+  snat_main_per_thread_data_t *tsm;
 
   int i;
 
@@ -261,30 +271,33 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr)
   /* Delete sessions using address */
   if (a->busy_ports)
     {
-      pool_foreach (ses, sm->sessions, ({
-        if (ses->out2in.addr.as_u32 == addr.as_u32)
-          {
-            vec_add1 (ses_to_be_removed, ses - sm->sessions);
-            kv.key = ses->in2out.as_u64;
-            clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0);
-            kv.key = ses->out2in.as_u64;
-            clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0);
-            clib_dlist_remove (sm->list_pool, ses->per_user_index);
-            user_key.addr = ses->in2out.addr;
-            user_key.fib_index = ses->in2out.fib_index;
-            kv.key = user_key.as_u64;
-            if (!clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+      vec_foreach (tsm, sm->per_thread_data)
+        {
+          pool_foreach (ses, tsm->sessions, ({
+            if (ses->out2in.addr.as_u32 == addr.as_u32)
               {
-                u = pool_elt_at_index (sm->users, value.value);
-                u->nsessions--;
+                vec_add1 (ses_to_be_removed, ses - tsm->sessions);
+                kv.key = ses->in2out.as_u64;
+                clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0);
+                kv.key = ses->out2in.as_u64;
+                clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0);
+                clib_dlist_remove (tsm->list_pool, ses->per_user_index);
+                user_key.addr = ses->in2out.addr;
+                user_key.fib_index = ses->in2out.fib_index;
+                kv.key = user_key.as_u64;
+                if (!clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+                  {
+                    u = pool_elt_at_index (tsm->users, value.value);
+                    u->nsessions--;
+                  }
               }
-          }
-      }));
+          }));
 
-      vec_foreach (ses_index, ses_to_be_removed)
-        pool_put_index (sm->sessions, ses_index[0]);
+          vec_foreach (ses_index, ses_to_be_removed)
+            pool_put_index (tsm->sessions, ses_index[0]);
 
-      vec_free (ses_to_be_removed);
+          vec_free (ses_to_be_removed);
+       }
     }
 
   vec_del1 (sm->addresses, i);
@@ -469,26 +482,35 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           snat_user_key_t u_key;
           snat_user_t *u;
           dlist_elt_t * head, * elt;
-          u32 elt_index, head_index;
+          u32 elt_index, head_index, del_elt_index;
           u32 ses_index;
+          u64 user_index;
           snat_session_t * s;
+          snat_main_per_thread_data_t *tsm;
 
           u_key.addr = m->local_addr;
           u_key.fib_index = m->fib_index;
           kv.key = u_key.as_u64;
           if (!clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
             {
-              u = pool_elt_at_index (sm->users, value.value);
+              user_index = value.value;
+              clib_bihash_search_8_8 (&sm->worker_by_in, &kv, &value);
+              tsm = vec_elt_at_index (sm->per_thread_data, value.value);
+              u = pool_elt_at_index (tsm->users, user_index);
               if (u->nstaticsessions)
                 {
                   head_index = u->sessions_per_user_list_head_index;
-                  head = pool_elt_at_index (sm->list_pool, head_index);
+                  head = pool_elt_at_index (tsm->list_pool, head_index);
                   elt_index = head->next;
-                  elt = pool_elt_at_index (sm->list_pool, elt_index);
+                  elt = pool_elt_at_index (tsm->list_pool, elt_index);
                   ses_index = elt->value;
                   while (ses_index != ~0)
                     {
-                      s =  pool_elt_at_index (sm->sessions, ses_index);
+                      s =  pool_elt_at_index (tsm->sessions, ses_index);
+                      del_elt_index = elt_index;
+                      elt_index = elt->next;
+                      elt = pool_elt_at_index (tsm->list_pool, elt_index);
+                      ses_index = elt->value;
 
                       if (!addr_only)
                         {
@@ -496,34 +518,24 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                               (clib_net_to_host_u16 (s->out2in.port) != e_port))
                             continue;
                         }
+
                       value.key = s->in2out.as_u64;
                       clib_bihash_add_del_8_8 (&sm->in2out, &value, 0);
                       value.key = s->out2in.as_u64;
                       clib_bihash_add_del_8_8 (&sm->out2in, &value, 0);
-                      pool_put (sm->sessions, s);
+                      pool_put (tsm->sessions, s);
+
+                      clib_dlist_remove (tsm->list_pool, del_elt_index);
+                      pool_put_index (tsm->list_pool, del_elt_index);
+                      u->nstaticsessions--;
 
                       if (!addr_only)
                         break;
-
-                      elt_index = elt->next;
-                      elt = pool_elt_at_index (sm->list_pool, elt_index);
-                      ses_index = elt->value;
                     }
                   if (addr_only)
                     {
-                      while ((elt_index = clib_dlist_remove_head(sm->list_pool, head_index)) != ~0)
-                        pool_put_index (sm->list_pool, elt_index);
-                      pool_put (sm->users, u);
+                      pool_put (tsm->users, u);
                       clib_bihash_add_del_8_8 (&sm->user_hash, &kv, 0);
-                    }
-                  else
-                    {
-                      if (ses_index != ~0)
-                        {
-                          clib_dlist_remove (sm->list_pool, elt_index);
-                          pool_put (sm->list_pool, elt);
-                          u->nstaticsessions--;
-                        }
                     }
                 }
             }
@@ -545,10 +557,21 @@ static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
     feature_name = is_inside ?  "snat-in2out-fast" : "snat-out2in-fast";
   else
-    feature_name = is_inside ?  "snat-in2out" : "snat-out2in";
+    {
+      if (sm->num_workers > 1)
+        feature_name = is_inside ?  "snat-in2out-worker-handoff" : "snat-out2in-worker-handoff";
+      else
+        feature_name = is_inside ?  "snat-in2out" : "snat-out2in";
+    }
 
   vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index,
 			       !is_del, 0, 0);
+
+  if (sm->fq_in2out_index == ~0)
+    sm->fq_in2out_index = vlib_frame_queue_main_init (snat_in2out_node.index, 0);
+
+  if (sm->fq_out2in_index == ~0)
+    sm->fq_out2in_index = vlib_frame_queue_main_init (snat_out2in_node.index, 0);
 
   pool_foreach (i, sm->interfaces,
   ({
@@ -569,6 +592,26 @@ static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   pool_get (sm->interfaces, i);
   i->sw_if_index = sw_if_index;
   i->is_inside = is_inside;
+
+  return 0;
+}
+
+static int snat_set_workers (uword * bitmap)
+{
+  snat_main_t *sm = &snat_main;
+  int i;
+
+  if (sm->num_workers < 2)
+    return VNET_API_ERROR_FEATURE_DISABLED;
+
+  if (clib_bitmap_last_set (bitmap) >= sm->num_workers)
+    return VNET_API_ERROR_INVALID_WORKER;
+
+  vec_free (sm->workers);
+  clib_bitmap_foreach (i, bitmap,
+    ({
+      vec_add1(sm->workers, i);
+    }));
 
   return 0;
 }
@@ -925,6 +968,101 @@ static void *vl_api_snat_show_config_t_print
   FINISH;
 }
 
+static void 
+vl_api_snat_set_workers_t_handler
+(vl_api_snat_set_workers_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_set_workers_reply_t * rmp;
+  int rv = 0;
+  uword *bitmap = 0;
+  u64 mask = clib_net_to_host_u64 (mp->worker_mask);
+
+  if (sm->num_workers < 2)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto send_reply;
+    }
+
+  bitmap = clib_bitmap_set_multiple (bitmap, 0, mask, BITS (mask)); 
+  rv = snat_set_workers(bitmap);
+  clib_bitmap_free (bitmap);
+
+ send_reply:
+  REPLY_MACRO (VL_API_SNAT_SET_WORKERS_REPLY);
+}
+
+static void *vl_api_snat_set_workers_t_print
+(vl_api_snat_set_workers_t *mp, void * handle)
+{
+  u8 * s;
+  uword *bitmap = 0;
+  u8 first = 1;
+  int i;
+  u64 mask = clib_net_to_host_u64 (mp->worker_mask);
+
+  s = format (0, "SCRIPT: snat_set_workers ");
+  bitmap = clib_bitmap_set_multiple (bitmap, 0, mask, BITS (mask)); 
+  clib_bitmap_foreach (i, bitmap,
+    ({
+      if (first)
+        s = format (s, "%d", i);
+      else
+        s = format (s, ",%d", i);
+      first = 0;
+    }));
+  clib_bitmap_free (bitmap);
+  FINISH;
+}
+
+static void
+send_snat_worker_details
+(u32 worker_index, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_snat_worker_details_t *rmp;
+  snat_main_t * sm = &snat_main;
+  vlib_worker_thread_t *w =
+    vlib_worker_threads + worker_index + sm->first_worker_index;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_WORKER_DETAILS+sm->msg_id_base);
+  rmp->context = context;
+  rmp->worker_index = htonl (worker_index);
+  rmp->lcore_id = htonl (w->lcore_id);
+  strncpy ((char *) rmp->name, (char *) w->name, ARRAY_LEN (rmp->name) - 1);
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_snat_worker_dump_t_handler
+(vl_api_snat_worker_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t * sm = &snat_main;
+  u32 * worker_index;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  vec_foreach (worker_index, sm->workers)
+    {
+      send_snat_worker_details(*worker_index, q, mp->context);
+    }
+}
+
+static void *vl_api_snat_worker_dump_t_print
+(vl_api_snat_worker_dump_t *mp, void * handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_worker_dump ");
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -934,7 +1072,9 @@ _(SNAT_CONTROL_PING, snat_control_ping)                                 \
 _(SNAT_STATIC_MAPPING_DUMP, snat_static_mapping_dump)                   \
 _(SNAT_SHOW_CONFIG, snat_show_config)                                   \
 _(SNAT_ADDRESS_DUMP, snat_address_dump)                                 \
-_(SNAT_INTERFACE_DUMP, snat_interface_dump)
+_(SNAT_INTERFACE_DUMP, snat_interface_dump)                             \
+_(SNAT_SET_WORKERS, snat_set_workers)                                   \
+_(SNAT_WORKER_DUMP, snat_worker_dump)
 
 /* Set up the API message handling tables */
 static clib_error_t *
@@ -984,6 +1124,11 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   ip4_main_t * im = &ip4_main;
   ip_lookup_main_t * lm = &im->lookup_main;
   u8 * name;
+  uword *p;
+  vlib_thread_registration_t *tr;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  uword *bitmap = 0;
+  u32 i;
 
   name = format (0, "snat_%08x%c", api_version, 0);
 
@@ -996,6 +1141,32 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->ip4_main = im;
   sm->ip4_lookup_main = lm;
   sm->api_main = &api_main;
+  sm->first_worker_index = 0;
+  sm->next_worker = 0;
+  sm->num_workers = 0;
+  sm->workers = 0;
+  sm->fq_in2out_index = ~0;
+  sm->fq_out2in_index = ~0;
+
+  p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+  if (p)
+    {
+      tr = (vlib_thread_registration_t *) p[0];
+      if (tr)
+        {
+          sm->num_workers = tr->count;
+          sm->first_worker_index = tr->first_index;
+        }
+    }
+
+  /* Use all available workers by default */
+  if (sm->num_workers > 1)
+    {
+      for (i=0; i < sm->num_workers; i++)
+        bitmap = clib_bitmap_set (bitmap, i, 1);
+      snat_set_workers(bitmap);
+      clib_bitmap_free (bitmap);
+    }
 
   error = snat_plugin_api_hookup (vm);
 
@@ -1363,6 +1534,66 @@ VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
 };
 
 static clib_error_t *
+set_workers_command_fn (vlib_main_t * vm,
+                        unformat_input_t * input,
+                        vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  uword *bitmap = 0;
+  int rv = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_bitmap_list, &bitmap))
+        ;
+      else
+        return clib_error_return (0, "unknown input '%U'",
+          format_unformat_error, input);
+     }
+  unformat_free (line_input);
+
+  if (bitmap == 0)
+    return clib_error_return (0, "List of workers must be specified.");
+
+  rv = snat_set_workers(bitmap);
+
+  clib_bitmap_free (bitmap);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_INVALID_WORKER:
+      return clib_error_return (0, "Invalid worker(s).");
+      break;
+    case VNET_API_ERROR_FEATURE_DISABLED:
+      return clib_error_return (0,
+        "Supported only if 2 or more workes available.");
+      break;
+    default:
+      break;
+    }
+
+  return 0;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{set snat workers}
+ * Set SNAT workers if 2 or more workers available, use:
+ *  vpp# set snat workers 0-2,5
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (set_workers_command, static) = {
+  .path = "set snat workers",
+  .function = set_workers_command_fn,
+  .short_help =
+    "set snat workers <workers-list>",
+};
+
+static clib_error_t *
 snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
   snat_main_t * sm = &snat_main;
@@ -1377,6 +1608,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u32 static_mapping_memory_size = 64<<20;
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1425,6 +1657,14 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   if (!static_mapping_only ||
       (static_mapping_only && static_mapping_connection_tracking))
     {
+      clib_bihash_init_8_8 (&sm->worker_by_in, "worker-by-in", user_buckets,
+                            user_memory_size);
+
+      clib_bihash_init_8_8 (&sm->worker_by_out, "worker-by-out", user_buckets,
+                            user_memory_size);
+
+      vec_validate (sm->per_thread_data, tm->n_vlib_mains - 1);
+
       clib_bihash_init_8_8 (&sm->in2out, "in2out", translation_buckets,
                             translation_memory_size);
 
@@ -1485,7 +1725,7 @@ u8 * format_snat_session (u8 * s, va_list * args)
 
 u8 * format_snat_user (u8 * s, va_list * args)
 {
-  snat_main_t * sm = va_arg (*args, snat_main_t *);
+  snat_main_per_thread_data_t * sm = va_arg (*args, snat_main_per_thread_data_t *);
   snat_user_t * u = va_arg (*args, snat_user_t *);
   int verbose = va_arg (*args, int);
   dlist_elt_t * head, * elt;
@@ -1552,6 +1792,9 @@ show_snat_command_fn (vlib_main_t * vm,
   snat_static_mapping_t *m;
   snat_interface_t *i;
   vnet_main_t *vnm = vnet_get_main();
+  snat_main_per_thread_data_t *tsm;
+  u32 users_num = 0, sessions_num = 0, *worker;
+  uword j = 0;
 
   if (unformat (input, "detail"))
     verbose = 1;
@@ -1581,6 +1824,20 @@ show_snat_command_fn (vlib_main_t * vm,
       }));
     }
 
+  if (sm->num_workers > 1)
+    {
+      vlib_cli_output (vm, "%d workers", vec_len (sm->workers));
+      if (verbose > 0)
+        {
+          vec_foreach (worker, sm->workers)
+            {
+              vlib_worker_thread_t *w =
+                vlib_worker_threads + *worker + sm->first_worker_index;
+              vlib_cli_output (vm, "  %s", w->name);
+            }
+        }
+    }
+
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
     {
       vlib_cli_output (vm, "%d static mappings",
@@ -1596,11 +1853,17 @@ show_snat_command_fn (vlib_main_t * vm,
     }
   else
     {
+      vec_foreach (tsm, sm->per_thread_data)
+        {
+          users_num += pool_elts (tsm->users);
+          sessions_num += pool_elts (tsm->sessions);
+        }
+
       vlib_cli_output (vm, "%d users, %d outside addresses, %d active sessions,"
                        " %d static mappings",
-                       pool_elts (sm->users),
+                       users_num,
                        vec_len (sm->addresses),
-                       pool_elts (sm->sessions),
+                       sessions_num,
                        pool_elts (sm->static_mappings));
 
       if (verbose > 0)
@@ -1609,13 +1872,29 @@ show_snat_command_fn (vlib_main_t * vm,
                            verbose - 1);
           vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->out2in,
                            verbose - 1);
-          vlib_cli_output (vm, "%d list pool elements",
-                           pool_elts (sm->list_pool));
+          vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->worker_by_in,
+                           verbose - 1);
+          vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->worker_by_out,
+                           verbose - 1);
+          vec_foreach_index (j, sm->per_thread_data)
+            {
+              tsm = vec_elt_at_index (sm->per_thread_data, j);
 
-          pool_foreach (u, sm->users,
-          ({
-            vlib_cli_output (vm, "%U", format_snat_user, sm, u, verbose - 1);
-          }));
+              if (pool_elts (tsm->users) == 0)
+                continue;
+
+              vlib_worker_thread_t *w = vlib_worker_threads + j;
+              vlib_cli_output (vm, "Thread %d (%s at lcore %u):", j, w->name,
+                               w->lcore_id);
+              vlib_cli_output (vm, "  %d list pool elements",
+                               pool_elts (tsm->list_pool));
+
+              pool_foreach (u, tsm->users,
+              ({
+                vlib_cli_output (vm, "  %U", format_snat_user, tsm, u,
+                                 verbose - 1);
+              }));
+            }
 
           if (pool_elts (sm->static_mappings))
             {
