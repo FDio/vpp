@@ -1,0 +1,34 @@
+packet-generator new {
+  name f1
+  limit 1000000
+  node ip4-input
+  size 64-64
+  no-recycle
+  worker 0
+  data {
+    UDP: 10.0.0.3 -> 172.16.1.2
+    UDP: 3000 -> 3001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+
+packet-generator new {
+  name f2
+  limit 1000000
+  node ip4-input
+  size 64-64
+  no-recycle
+  worker 1
+  data {
+    UDP: 10.0.0.3 -> 172.16.1.2
+    UDP: 3005 -> 3006
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+snat add address 172.16.1.3
+ip route 172.16.1.2/32 via drop
+set int ip address pg0 10.0.0.1/24
+set int snat in pg0
+trace add pg-input 10
