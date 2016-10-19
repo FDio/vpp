@@ -501,7 +501,7 @@ fib_path_last_lock_gone (fib_node_t *node)
 
 static const adj_index_t
 fib_path_attached_next_hop_get_adj (fib_path_t *path,
-				    fib_link_t link)
+				    vnet_link_t link)
 {
     if (vnet_sw_interface_is_p2p(vnet_get_main(),
 				 path->attached_next_hop.fp_interface))

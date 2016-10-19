@@ -196,7 +196,7 @@ typedef struct ip_adjacency_t_ {
   /*
    * link/ether-type
    */
-  u8 ia_link;
+  vnet_link_t ia_link;
   u8 ia_nh_proto;
 
   union {

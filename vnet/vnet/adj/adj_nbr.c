@@ -43,7 +43,7 @@ static BVT(clib_bihash) **adj_nbr_tables[FIB_PROTOCOL_MAX];
 
 static void
 adj_nbr_insert (fib_protocol_t nh_proto,
-		fib_link_t link_type,
+		vnet_link_t link_type,
 		const ip46_address_t *nh_addr,
 		u32 sw_if_index,
 		adj_index_t adj_index)
@@ -77,7 +77,7 @@ adj_nbr_insert (fib_protocol_t nh_proto,
 
 void
 adj_nbr_remove (fib_protocol_t nh_proto,
-		fib_link_t link_type,
+		vnet_link_t link_type,
 		const ip46_address_t *nh_addr,
 		u32 sw_if_index)
 {
@@ -93,7 +93,7 @@ adj_nbr_remove (fib_protocol_t nh_proto,
 
 static adj_index_t
 adj_nbr_find (fib_protocol_t nh_proto,
-	      fib_link_t link_type,
+	      vnet_link_t link_type,
 	      const ip46_address_t *nh_addr,
 	      u32 sw_if_index)
 {
@@ -132,7 +132,7 @@ adj_get_nd_node (fib_protocol_t proto)
 
 static ip_adjacency_t*
 adj_nbr_alloc (fib_protocol_t nh_proto,
-	       fib_link_t link_type,
+	       vnet_link_t link_type,
 	       const ip46_address_t *nh_addr,
 	       u32 sw_if_index)
 {
@@ -171,7 +171,7 @@ adj_nbr_alloc (fib_protocol_t nh_proto,
  */
 adj_index_t
 adj_nbr_add_or_lock (fib_protocol_t nh_proto,
-		     fib_link_t link_type,
+		     vnet_link_t link_type,
 		     const ip46_address_t *nh_addr,
 		     u32 sw_if_index)
 {
@@ -211,7 +211,7 @@ adj_nbr_add_or_lock (fib_protocol_t nh_proto,
 
 adj_index_t
 adj_nbr_add_or_lock_w_rewrite (fib_protocol_t nh_proto,
-			       fib_link_t link_type,
+			       vnet_link_t link_type,
 			       const ip46_address_t *nh_addr,
 			       u32 sw_if_index,
 			       u8 *rewrite)
@@ -289,7 +289,7 @@ adj_nbr_update_rewrite (adj_index_t adj_index,
 	 * The link type MPLS Adj never has children. So if it is this adj
 	 * that is updated, we need to walk from its IP sibling.
 	 */
-	if (FIB_LINK_MPLS == adj->ia_link)
+	if (VNET_LINK_MPLS == adj->ia_link)
 	{
 	    adj_index = adj_nbr_find(adj->ia_nh_proto,
 				     fib_proto_to_link(adj->ia_nh_proto),
@@ -787,7 +787,7 @@ format_adj_nbr_incomplete (u8* s, va_list *ap)
     vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 
-    s = format (s, "arp-%U", format_fib_link, adj->ia_link);
+    s = format (s, "arp-%U", format_vnet_link, adj->ia_link);
     s = format (s, ": via %U",
                 format_ip46_address, &adj->sub_type.nbr.next_hop,
 		adj_proto_to_46(adj->ia_nh_proto));
@@ -808,7 +808,7 @@ format_adj_nbr (u8* s, va_list *ap)
     vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 
-    s = format (s, "%U", format_fib_link, adj->ia_link);
+    s = format (s, "%U", format_vnet_link, adj->ia_link);
     s = format (s, " via %U ",
 		format_ip46_address, &adj->sub_type.nbr.next_hop,
 		adj_proto_to_46(adj->ia_nh_proto));

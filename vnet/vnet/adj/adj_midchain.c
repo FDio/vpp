@@ -24,8 +24,8 @@
 /**
  * The two midchain tx feature node indices
  */
-static u32 adj_midchain_tx_feature_node[FIB_LINK_NUM];
-static u32 adj_midchain_tx_no_count_feature_node[FIB_LINK_NUM];
+static u32 adj_midchain_tx_feature_node[VNET_LINK_NUM];
+static u32 adj_midchain_tx_no_count_feature_node[VNET_LINK_NUM];
 
 /**
  * @brief Trace data for packets traversing the midchain tx node
@@ -178,56 +178,58 @@ VLIB_REGISTER_NODE (adj_midchain_tx_no_count_node, static) = {
 VNET_IP4_TX_FEATURE_INIT (adj_midchain_tx_ip4, static) = {
     .node_name = "adj-midchain-tx",
     .runs_before = ORDER_CONSTRAINTS {"interface-output"},
-    .feature_index = &adj_midchain_tx_feature_node[FIB_LINK_IP4],
+    .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_IP4],
 };
 VNET_IP4_TX_FEATURE_INIT (adj_midchain_tx_no_count_ip4, static) = {
     .node_name = "adj-midchain-tx-no-count",
     .runs_before = ORDER_CONSTRAINTS {"interface-output"},
-    .feature_index = &adj_midchain_tx_no_count_feature_node[FIB_LINK_IP4],
+    .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_IP4],
 };
 VNET_IP6_TX_FEATURE_INIT (adj_midchain_tx_ip6, static) = {
     .node_name = "adj-midchain-tx",
     .runs_before = ORDER_CONSTRAINTS {"interface-output"},
-    .feature_index = &adj_midchain_tx_feature_node[FIB_LINK_IP6],
+    .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_IP6],
 };
 VNET_IP6_TX_FEATURE_INIT (adj_midchain_tx_no_count_ip6, static) = {
     .node_name = "adj-midchain-tx-no-count",
     .runs_before = ORDER_CONSTRAINTS {"interface-output"},
-    .feature_index = &adj_midchain_tx_no_count_feature_node[FIB_LINK_IP6],
+    .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_IP6],
 };
 VNET_MPLS_TX_FEATURE_INIT (adj_midchain_tx_mpls, static) = {
     .node_name = "adj-midchain-txs",
     .runs_before = ORDER_CONSTRAINTS {"interface-output"},
-    .feature_index = &adj_midchain_tx_feature_node[FIB_LINK_MPLS],
+    .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_MPLS],
 };
 VNET_MPLS_TX_FEATURE_INIT (adj_midchain_tx_no_count_mpls, static) = {
     .node_name = "adj-midchain-tx-no-count",
     .runs_before = ORDER_CONSTRAINTS {"interface-output"},
-    .feature_index = &adj_midchain_tx_no_count_feature_node[FIB_LINK_MPLS],
+    .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_MPLS],
 };
 VNET_ETHERNET_TX_FEATURE_INIT (adj_midchain_tx_ethernet, static) = {
     .node_name = "adj-midchain-tx",
     .runs_before = ORDER_CONSTRAINTS {"error-drop"},
-    .feature_index = &adj_midchain_tx_feature_node[FIB_LINK_ETHERNET],
+    .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_ETHERNET],
 };
 VNET_ETHERNET_TX_FEATURE_INIT (adj_midchain_tx_no_count_ethernet, static) = {
     .node_name = "adj-midchain-tx-no-count",
     .runs_before = ORDER_CONSTRAINTS {"error-drop"},
-    .feature_index = &adj_midchain_tx_no_count_feature_node[FIB_LINK_ETHERNET],
+    .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_ETHERNET],
 };
 
 static inline u32
-adj_get_midchain_node (fib_link_t link)
+adj_get_midchain_node (vnet_link_t link)
 {
     switch (link) {
-    case FIB_LINK_IP4:
+    case VNET_LINK_IP4:
 	return (ip4_midchain_node.index);
-    case FIB_LINK_IP6:
+    case VNET_LINK_IP6:
 	return (ip6_midchain_node.index);
-    case FIB_LINK_MPLS:
+    case VNET_LINK_MPLS:
 	return (mpls_midchain_node.index);
-    case FIB_LINK_ETHERNET:
+    case VNET_LINK_ETHERNET:
 	return (adj_l2_midchain_node.index);
+    case VNET_LINK_ARP:
+	break;
     }
     ASSERT(0);
     return (0);
@@ -240,31 +242,34 @@ adj_midchain_get_cofing_for_link_type (const ip_adjacency_t *adj)
 
     switch (adj->ia_link)
     {
-    case FIB_LINK_IP4:
+    case VNET_LINK_IP4:
 	{
 	    ip4_main_t * im = &ip4_main;
 	    ip_lookup_main_t * lm = &im->lookup_main;
 	    cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
 	    break;
 	}
-    case FIB_LINK_IP6:
+    case VNET_LINK_IP6:
 	{
 	    ip6_main_t * im = &ip6_main;
 	    ip_lookup_main_t * lm = &im->lookup_main;
 	    cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
 	    break;
 	}
-    case FIB_LINK_MPLS:
+    case VNET_LINK_MPLS:
 	{
 	    mpls_main_t * mm = &mpls_main;
 	    cm = &mm->feature_config_mains[VNET_IP_TX_FEAT];
 	    break;
 	}
-    case FIB_LINK_ETHERNET:
+    case VNET_LINK_ETHERNET:
 	{
 	    cm = &ethernet_main.feature_config_mains[VNET_IP_TX_FEAT];
 	    break;
 	}
+    case VNET_LINK_ARP:
+	ASSERT(0);
+	break;
     }
 
     return (cm);
@@ -351,7 +356,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
      */
     dpo_stack_from_node(adj->sub_type.midchain.tx_function_node,
 			&adj->sub_type.midchain.next_dpo,
-			drop_dpo_get(fib_link_to_dpo_proto(adj->ia_link)));
+			drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
 
     /*
      * update the rewirte with the workers paused.
@@ -390,9 +395,9 @@ adj_nbr_midchain_unstack (adj_index_t adj_index)
      * stack on the drop
      */
     dpo_stack(DPO_ADJACENCY_MIDCHAIN,
-	      fib_link_to_dpo_proto(adj->ia_link),
+	      vnet_link_to_dpo_proto(adj->ia_link),
 	      &adj->sub_type.midchain.next_dpo,
-	      drop_dpo_get(fib_link_to_dpo_proto(adj->ia_link)));
+	      drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
 
     CLIB_MEMORY_BARRIER();
 }
@@ -425,7 +430,7 @@ format_adj_midchain (u8* s, va_list *ap)
     vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 
-    s = format (s, "%U", format_fib_link, adj->ia_link);
+    s = format (s, "%U", format_vnet_link, adj->ia_link);
     s = format (s, " via %U ",
 		format_ip46_address, &adj->sub_type.nbr.next_hop);
     s = format (s, " %U",

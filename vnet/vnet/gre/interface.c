@@ -368,7 +368,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
   if (t->teb)
   {
       t->l2_adj_index = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-					    FIB_LINK_ETHERNET,
+					    VNET_LINK_ETHERNET,
 					    &zero_addr,
 					    sw_if_index);
 

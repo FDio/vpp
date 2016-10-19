@@ -23,7 +23,7 @@
  * arrays of protocol and link names
  */
 static const char* fib_protocol_names[] = FIB_PROTOCOLS;
-static const char* fib_link_names[] = FIB_LINKS;
+static const char* vnet_link_names[] = VNET_LINKS;
 static const char* fib_forw_chain_names[] = FIB_FORW_CHAINS;
 
 u8 *
@@ -35,11 +35,11 @@ format_fib_protocol (u8 * s, va_list ap)
 }
 
 u8 *
-format_fib_link (u8 * s, va_list ap)
+format_vnet_link (u8 * s, va_list ap)
 {
-    fib_link_t link = va_arg(ap, int); // fib_link_t promotion
+    vnet_link_t link = va_arg(ap, int); // vnet_link_t promotion
 
-    return (format (s, "%s", fib_link_names[link]));
+    return (format (s, "%s", vnet_link_names[link]));
 }
 
 u8 *
@@ -215,18 +215,20 @@ fib_proto_to_dpo (fib_protocol_t fib_proto)
 }
 
 dpo_proto_t
-fib_link_to_dpo_proto (fib_link_t linkt)
+vnet_link_to_dpo_proto (vnet_link_t linkt)
 {
     switch (linkt)
     {
-    case FIB_LINK_IP6:
+    case VNET_LINK_IP6:
         return (DPO_PROTO_IP6);
-    case FIB_LINK_IP4:
+    case VNET_LINK_IP4:
         return (DPO_PROTO_IP4);
-    case FIB_LINK_MPLS:
+    case VNET_LINK_MPLS:
         return (DPO_PROTO_MPLS);
-    case FIB_LINK_ETHERNET:
+    case VNET_LINK_ETHERNET:
         return (DPO_PROTO_ETHERNET);
+    case VNET_LINK_ARP:
+	break;
     }
     ASSERT(0);
     return (0);
@@ -250,17 +252,17 @@ dpo_proto_to_fib (dpo_proto_t dpo_proto)
     return (0);
 }
 
-fib_link_t
+vnet_link_t
 fib_proto_to_link (fib_protocol_t proto)
 {
     switch (proto)
     {
     case FIB_PROTOCOL_IP4:
-	return (FIB_LINK_IP4);
+	return (VNET_LINK_IP4);
     case FIB_PROTOCOL_IP6:
-	return (FIB_LINK_IP6);
+	return (VNET_LINK_IP6);
     case FIB_PROTOCOL_MPLS:
-	return (FIB_LINK_MPLS);
+	return (VNET_LINK_MPLS);
     }
     ASSERT(0);
     return (0);
@@ -284,17 +286,17 @@ fib_forw_chain_type_from_dpo_proto (dpo_proto_t proto)
     return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
 }
 
-fib_link_t
+vnet_link_t
 fib_forw_chain_type_to_link_type (fib_forward_chain_type_t fct)
 {
     switch (fct)
     {
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
-	return (FIB_LINK_IP4);
+	return (VNET_LINK_IP4);
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
-	return (FIB_LINK_IP6);
+	return (VNET_LINK_IP6);
     case FIB_FORW_CHAIN_TYPE_ETHERNET:
-	return (FIB_LINK_ETHERNET);
+	return (VNET_LINK_ETHERNET);
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	/*
 	 * insufficient information to to convert
@@ -302,9 +304,9 @@ fib_forw_chain_type_to_link_type (fib_forward_chain_type_t fct)
 	ASSERT(0);
 	break;
     case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
-	return (FIB_LINK_MPLS);
+	return (VNET_LINK_MPLS);
     }
-    return (FIB_LINK_IP4);
+    return (VNET_LINK_IP4);
 }
 
 dpo_proto_t
@@ -327,5 +329,5 @@ fib_forw_chain_type_to_dpo_proto (fib_forward_chain_type_t fct)
     case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 	return (DPO_PROTO_MPLS);
     }
-    return (FIB_LINK_IP4);
+    return (VNET_LINK_IP4);
 }

@@ -216,6 +216,20 @@ typedef enum vnet_link_t_
   VNET_LINK_ARP,
 } __attribute__ ((packed)) vnet_link_t;
 
+#define VNET_LINKS {                   \
+    [VNET_LINK_ETHERNET] = "ethernet", \
+    [VNET_LINK_IP4] = "ipv4",          \
+    [VNET_LINK_IP6] = "ipv6",          \
+    [VNET_LINK_MPLS] = "mpls",         \
+    [VNET_LINK_ARP] = "arp",	       \
+}
+
+/**
+ * @brief Number of link types. Not part of the enum so it does not have to be included in
+ * switch statements
+ */
+#define VNET_LINK_NUM (VNET_LINK_ARP+1)
+
 /**
  * @brief Convert a link to to an Ethertype
  */
