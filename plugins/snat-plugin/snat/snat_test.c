@@ -60,7 +60,8 @@ snat_test_main_t snat_test_main;
 #define foreach_standard_reply_retval_handler   \
 _(snat_add_address_range_reply)                 \
 _(snat_interface_add_del_feature_reply)         \
-_(snat_add_static_mapping_reply)
+_(snat_add_static_mapping_reply)                \
+_(snat_set_workers_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -91,7 +92,9 @@ _(SNAT_CONTROL_PING_REPLY, snat_control_ping_reply)             \
 _(SNAT_STATIC_MAPPING_DETAILS, snat_static_mapping_details)     \
 _(SNAT_SHOW_CONFIG_REPLY, snat_show_config_reply)               \
 _(SNAT_ADDRESS_DETAILS, snat_address_details)                   \
-_(SNAT_INTERFACE_DETAILS, snat_interface_details)
+_(SNAT_INTERFACE_DETAILS, snat_interface_details)               \
+_(SNAT_SET_WORKERS_REPLY, snat_set_workers_reply)               \
+_(SNAT_WORKER_DETAILS, snat_worker_details)
 
 /* M: construct, but don't yet send a message */
 #define M(T,t)                                                  \
@@ -473,6 +476,69 @@ static int api_snat_interface_dump(vat_main_t * vam)
   return 0;
 }
 
+static int api_snat_set_workers (vat_main_t * vam)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  unformat_input_t * i = vam->input;
+  f64 timeout;
+  vl_api_snat_set_workers_t * mp;
+  uword *bitmap;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_bitmap_list, &bitmap))
+        ;
+      else
+        {
+          clib_warning("unknown input '%U'", format_unformat_error, i);
+          return -99;
+        }
+    }
+
+  M(SNAT_SET_WORKERS, snat_set_workers);
+  mp->worker_mask = clib_host_to_net_u64 (bitmap[0]);
+
+  S; W;
+
+  /* NOTREACHED */
+  return 0;
+}
+
+static void vl_api_snat_worker_details_t_handler
+  (vl_api_snat_worker_details_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+
+  fformat (vam->ofp, "worker_index %d (%s at lcore %u)\n",
+           ntohl (mp->worker_index), mp->name, ntohl (mp->lcore_id));
+}
+
+static int api_snat_worker_dump(vat_main_t * vam)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  f64 timeout;
+  vl_api_snat_worker_dump_t * mp;
+
+  if (vam->json_output)
+    {
+      clib_warning ("JSON output not supported for snat_address_dump");
+      return -99;
+    }
+
+  M(SNAT_WORKER_DUMP, snat_worker_dump);
+  S;
+  /* Use a control ping for synchronization */
+  {
+    vl_api_snat_control_ping_t *mp;
+    M (SNAT_CONTROL_PING, snat_control_ping);
+    S;
+  }
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -483,10 +549,12 @@ _(snat_interface_add_del_feature,                                \
   "<intfc> | sw_if_index <id> [in] [out] [del]")                 \
 _(snat_add_static_mapping, "local_addr <ip> external_addr <ip> " \
   "[local_port <n>] [external_port <n>] [vrf <table-id>] [del]") \
+_(snat_set_workers, "<wokrers_bitmap>")                          \
 _(snat_static_mapping_dump, "")                                  \
 _(snat_show_config, "")                                          \
 _(snat_address_dump, "")                                         \
-_(snat_interface_dump, "")
+_(snat_interface_dump, "")                                       \
+_(snat_worker_dump, "")
 
 void vat_api_hookup (vat_main_t *vam)
 {
