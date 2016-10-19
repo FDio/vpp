@@ -1046,7 +1046,6 @@ add_del_route_t_handler (u8 is_multipath,
 			 u32 next_hop_weight, u32 next_hop_out_label)
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
-  fib_protocol_t proto = prefix->fp_proto;
   stats_main_t *sm = &stats_main;
 
   if (is_multipath)
@@ -1116,7 +1115,7 @@ add_del_route_t_handler (u8 is_multipath,
 		  return VNET_API_ERROR_NO_SUCH_TABLE;
 		}
 
-	      dpo_set (&dpo, DPO_CLASSIFY, proto,
+	      dpo_set (&dpo, DPO_CLASSIFY, dproto,
 		       classify_dpo_create (prefix->fp_proto,
 					    ntohl (classify_table_index)));
 	    }

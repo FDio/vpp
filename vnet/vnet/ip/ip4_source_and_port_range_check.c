@@ -97,7 +97,6 @@ static inline u32
 check_adj_port_range_x1 (const protocol_port_range_dpo_t * ppr_dpo,
 			 u16 dst_port, u32 next)
 {
-  const protocol_port_range_t *range;
   u16x8vec_t key;
   u16x8vec_t diff1;
   u16x8vec_t diff2;
@@ -140,7 +139,6 @@ check_adj_port_range_x1 (const protocol_port_range_dpo_t * ppr_dpo,
       winner_mask = sum_nonzero & sum_equal;
       if (winner_mask)
 	return next;
-      range++;
     }
   return IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP;
 }

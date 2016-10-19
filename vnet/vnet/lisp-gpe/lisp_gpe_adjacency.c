@@ -201,15 +201,15 @@ lisp_gpe_adj_stack (lisp_gpe_adjacency_t * ladj)
 }
 
 static lisp_gpe_next_protocol_e
-lisp_gpe_adj_proto_from_fib_link_type (fib_link_t linkt)
+lisp_gpe_adj_proto_from_vnet_link_type (vnet_link_t linkt)
 {
   switch (linkt)
     {
-    case FIB_LINK_IP4:
+    case VNET_LINK_IP4:
       return (LISP_GPE_NEXT_PROTO_IP4);
-    case FIB_LINK_IP6:
+    case VNET_LINK_IP6:
       return (LISP_GPE_NEXT_PROTO_IP6);
-    case FIB_LINK_ETHERNET:
+    case VNET_LINK_ETHERNET:
       return (LISP_GPE_NEXT_PROTO_ETHERNET);
     default:
       ASSERT (0);
@@ -261,7 +261,7 @@ lisp_gpe_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
       ADJ_MIDCHAIN_FLAG_NO_COUNT :
       ADJ_MIDCHAIN_FLAG_NONE),
      lisp_gpe_tunnel_build_rewrite
-     (lgt, ladj, lisp_gpe_adj_proto_from_fib_link_type (linkt)));
+     (lgt, ladj, lisp_gpe_adj_proto_from_vnet_link_type (linkt)));
 
   lisp_gpe_adj_stack_one (ladj, ai);
 }
@@ -465,9 +465,6 @@ format_lisp_gpe_adjacency (u8 * s, va_list * args)
       s = format (s, " %U\n",
 		  format_lisp_gpe_tunnel,
 		  lisp_gpe_tunnel_get (ladj->tunnel_index));
-      /* s = format (s, " FIB adjacencies: IPV4:%d IPv6:%d L2:%d\n", */
-      /*                  ladj->adjs[FIB_LINK_IP4], */
-      /*                  ladj->adjs[FIB_LINK_IP6], ladj->adjs[FIB_LINK_ETHERNET]); */
     }
   else
     {

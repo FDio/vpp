@@ -68,44 +68,10 @@ typedef enum fib_protocol_t_ {
 	 _item <= FIB_PROTOCOL_IP6;        \
 	 _item++)
 
-
-/**
- * Link Type. This maps directly into the ethertype.
- */
-typedef enum fib_link_t_ {
-    FIB_LINK_IP4 = VNET_LINK_IP4,
-    FIB_LINK_IP6 = VNET_LINK_IP6,
-    FIB_LINK_MPLS = VNET_LINK_MPLS,
-    FIB_LINK_ETHERNET = VNET_LINK_ETHERNET,
-}  __attribute__ ((packed)) fib_link_t;
-
-/**
- * Definition outside of enum so it does not need to be included in non-defaulted
- * switch statements
- */
-#define FIB_LINK_NUM (FIB_LINK_ETHERNET+1)
-
-#define FIB_LINKS {		      \
-    [FIB_LINK_ETHERNET] = "ethernet", \
-    [FIB_LINK_IP4] = "ipv4",	      \
-    [FIB_LINK_IP6] = "ipv6",          \
-    [FIB_LINK_MPLS] = "mpls",         \
-}
-
-#define FOR_EACH_FIB_LINK(_item)    \
-    for (_item = FIB_LINK_IP4;      \
-	 _item <= FIB_LINK_MPLS;    \
-	 _item++)
-
-#define FOR_EACH_FIB_IP_LINK(_item)  \
-    for (_item = FIB_LINK_IP4;	     \
-	 _item <= FIB_LINK_IP6;      \
-	 _item++)
-
 /**
  * @brief Convert from a protocol to a link type
  */
-fib_link_t fib_proto_to_link (fib_protocol_t proto);
+vnet_link_t fib_proto_to_link (fib_protocol_t proto);
 
 /**
  * FIB output chain type. When a child object requests a forwarding contribution
@@ -165,7 +131,7 @@ typedef enum fib_forward_chain_type_t_ {
 /**
  * @brief Convert from a chain type to the adjacencies link type
  */
-extern fib_link_t fib_forw_chain_type_to_link_type(fib_forward_chain_type_t fct);
+extern vnet_link_t fib_forw_chain_type_to_link_type(fib_forward_chain_type_t fct);
 
 /**
  * @brief Convert from a payload-protocol to a chain type.
@@ -244,7 +210,7 @@ extern u8 * format_fib_prefix(u8 * s, va_list * args);
 extern u8 * format_fib_forw_chain_type(u8 * s, va_list * args);
 
 extern dpo_proto_t fib_proto_to_dpo(fib_protocol_t fib_proto);
-extern dpo_proto_t fib_link_to_dpo_proto(fib_link_t linkt);
+extern dpo_proto_t vnet_link_to_dpo_proto(vnet_link_t linkt);
 extern fib_protocol_t dpo_proto_to_fib(dpo_proto_t dpo_proto);
 
 /**
@@ -279,7 +245,7 @@ typedef enum fib_special_type_t_ {
 	 _item <= FIB_SPEICAL_TYPE_LAST; _item++)
 
 extern u8 * format_fib_protocol(u8 * s, va_list ap);
-extern u8 * format_fib_link(u8 *s, va_list ap);
+extern u8 * format_vnet_link(u8 *s, va_list ap);
 
 /**
  * Path flags from the control plane

@@ -45,7 +45,7 @@
  *  The interface on which the peer resides
  */
 extern adj_index_t adj_nbr_add_or_lock(fib_protocol_t nh_proto,
-				       fib_link_t link_type,
+				       vnet_link_t link_type,
 				       const ip46_address_t *nh_addr,
 				       u32 sw_if_index);
 
@@ -71,7 +71,7 @@ extern adj_index_t adj_nbr_add_or_lock(fib_protocol_t nh_proto,
  *  The rewrite to prepend to packets
  */
 extern adj_index_t adj_nbr_add_or_lock_w_rewrite(fib_protocol_t nh_proto,
-						 fib_link_t link_type,
+						 vnet_link_t link_type,
 						 const ip46_address_t *nh_addr,
 						 u32 sw_if_index,
 						 u8 *rewrite);

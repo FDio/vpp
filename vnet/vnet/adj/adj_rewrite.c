@@ -23,7 +23,7 @@
  */
 adj_index_t
 adj_rewrite_add_and_lock (fib_protocol_t nh_proto,
-			  fib_link_t link_type,
+			  vnet_link_t link_type,
 			  u32 sw_if_index,
 			  u8 *rewrite)
 {
