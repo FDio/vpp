@@ -238,3 +238,46 @@ define snat_show_config_reply
   u32 outside_vrf_id;
   u32 inside_vrf_id;
 };
+
+/** \brief Set S-NAT workers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param worker_mask - S-NAT workers mask
+*/
+define snat_set_workers {
+  u32 client_index;
+  u32 context;
+  u64 worker_mask;
+};
+
+/** \brief Set S-NAT workers reply
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+*/
+define snat_set_workers_reply {
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Dump S-NAT workers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_worker_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief S-NAT workers details response
+    @param context - sender context, to match reply w/ request
+    @param worker_index - worker index
+    @param lcore_id - lcore ID
+    @param name - worker name
+*/
+define snat_worker_details {
+  u32 context;
+  u32 worker_index;
+  u32 lcore_id;
+  u8 name[64];
+};
