@@ -82,7 +82,7 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
       fib_route_path_t *rpath;
 
       adj_nbr_add_or_lock_w_rewrite (FIB_PROTOCOL_IP4,
-				     FIB_LINK_IP4,
+				     VNET_LINK_IP4,
 				     &next_hops[i],
 				     sw_if_index, mac_addrs[i].mac_addr);
 

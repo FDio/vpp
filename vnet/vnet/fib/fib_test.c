@@ -460,7 +460,7 @@ fib_test_v4 (void)
      * find the adj in the shared db
      */
     locked_ai = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-				    FIB_LINK_IP4,
+				    VNET_LINK_IP4,
 				    &nh_10_10_10_1,
 				    tm->hw[0]->sw_if_index);
     FIB_TEST((locked_ai == ai), "ADJ NBR DB find");
@@ -564,7 +564,7 @@ fib_test_v4 (void)
              "11.11.11.11/32 via incomplete adj");
 
     ai_01 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-				FIB_LINK_IP4,
+				VNET_LINK_IP4,
 				&pfx_10_10_10_1_s_32.fp_addr,
 				tm->hw[0]->sw_if_index);
     FIB_TEST((FIB_NODE_INDEX_INVALID != ai_01), "adj created");
@@ -594,7 +594,7 @@ fib_test_v4 (void)
 	     "RPF list for adj-fib contains adj");
 
     ai_12_12_12_12 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-					 FIB_LINK_IP4,
+					 VNET_LINK_IP4,
 					 &nh_12_12_12_12,
 					 tm->hw[1]->sw_if_index);
     FIB_TEST((FIB_NODE_INDEX_INVALID != ai_12_12_12_12), "adj created");
@@ -641,7 +641,7 @@ fib_test_v4 (void)
     eth_addr[5] = 0xb2;
 
     ai_02 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-				FIB_LINK_IP4,
+				VNET_LINK_IP4,
 				&pfx_10_10_10_2_s_32.fp_addr,
 				tm->hw[0]->sw_if_index);
     FIB_TEST((FIB_NODE_INDEX_INVALID != ai_02), "adj created");
@@ -1705,7 +1705,7 @@ fib_test_v4 (void)
 	     fib_entry_pool_size());
 
     ai_03 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-				FIB_LINK_IP4,
+				VNET_LINK_IP4,
 				&nh_10_10_10_3,
 				tm->hw[0]->sw_if_index);
 
@@ -2663,7 +2663,7 @@ fib_test_v4 (void)
     ai = fib_entry_get_adj(fei);
 
     ai2 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-			      FIB_LINK_IP4,
+			      VNET_LINK_IP4,
 			      &pfx_4_1_1_1_s_32.fp_addr,
 			      tm->hw[0]->sw_if_index);
     FIB_TEST((ai == ai2), "Attached-host link to incomplete ADJ");
@@ -2718,7 +2718,7 @@ fib_test_v4 (void)
     adj = adj_get(ai);
     FIB_TEST((adj->lookup_next_index == IP_LOOKUP_NEXT_ARP),
 	     "2001::/64 via ARP-adj");
-    FIB_TEST((adj->ia_link == FIB_LINK_IP6),
+    FIB_TEST((adj->ia_link == VNET_LINK_IP6),
 	     "2001::/64 is link type v6");
     FIB_TEST((adj->ia_nh_proto == FIB_PROTOCOL_IP4),
 	     "2001::/64 ADJ-adj is NH proto v4");
@@ -3043,7 +3043,7 @@ fib_test_v6 (void)
      * find the adj in the shared db
      */
     locked_ai = adj_nbr_add_or_lock(FIB_PROTOCOL_IP6,
-				    FIB_LINK_IP6,
+				    VNET_LINK_IP6,
 				    &nh_2001_2,
 				    tm->hw[0]->sw_if_index);
     FIB_TEST((locked_ai == ai), "ADJ NBR DB find");
@@ -3119,7 +3119,7 @@ fib_test_v6 (void)
     };
 
     ai_01 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP6,
-				FIB_LINK_IP6,
+				VNET_LINK_IP6,
 				&pfx_2001_1_2_s_128.fp_addr,
 				tm->hw[0]->sw_if_index);
     FIB_TEST((FIB_NODE_INDEX_INVALID != ai_01), "adj created");
@@ -3157,7 +3157,7 @@ fib_test_v6 (void)
     eth_addr[5] = 0xb2;
 
     ai_02 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP6,
-				FIB_LINK_IP6,
+				VNET_LINK_IP6,
 				&pfx_2001_1_3_s_128.fp_addr,
 				tm->hw[0]->sw_if_index);
     FIB_TEST((FIB_NODE_INDEX_INVALID != ai_02), "adj created");
@@ -3297,7 +3297,7 @@ fib_test_v6 (void)
     adj = adj_get(ai);
     FIB_TEST((adj->lookup_next_index == IP_LOOKUP_NEXT_ARP),
 	     "1.1.1.1/32 via ARP-adj");
-    FIB_TEST((adj->ia_link == FIB_LINK_IP4),
+    FIB_TEST((adj->ia_link == VNET_LINK_IP4),
 	     "1.1.1.1/32 ADJ-adj is link type v4");
     FIB_TEST((adj->ia_nh_proto == FIB_PROTOCOL_IP6),
 	     "1.1.1.1/32 ADJ-adj is NH proto v6");
@@ -3955,7 +3955,7 @@ fib_test_gre (void)
     /* vec_add(rewrite, &byte, 6); */
 
     /* adjfib_ai1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4, */
-    /* 				    FIB_LINK_IP4, */
+    /* 				    VNET_LINK_IP4, */
     /* 				    &nh_10_10_10_2, */
     /* 				    tm->hw[0]->sw_if_index); */
     /* adj_nbr_update_rewrite(FIB_PROTOCOL_IP4, */
@@ -3966,7 +3966,7 @@ fib_test_gre (void)
     /* 	     "Adj-fib10 adj is rewrite"); */
 
     /* adjfib_ai2 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4, */
-    /* 				    FIB_LINK_IP4, */
+    /* 				    VNET_LINK_IP4, */
     /* 				    &nh_10_10_11_2, */
     /* 				    tm->hw[1]->sw_if_index); */
     /* adj_nbr_update_rewrite(FIB_PROTOCOL_IP4, */
@@ -5014,23 +5014,23 @@ fib_test_label (void)
     };
 
     ai_v4_10_10_11_1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-                                           FIB_LINK_IP4,
+                                           VNET_LINK_IP4,
                                            &nh_10_10_11_1,
                                            tm->hw[1]->sw_if_index);
     ai_v4_10_10_11_2 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-                                           FIB_LINK_IP4,
+                                           VNET_LINK_IP4,
                                            &nh_10_10_11_2,
                                            tm->hw[1]->sw_if_index);
     ai_mpls_10_10_10_1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-                                             FIB_LINK_MPLS,
+                                             VNET_LINK_MPLS,
                                              &nh_10_10_10_1,
                                              tm->hw[0]->sw_if_index);
     ai_mpls_10_10_11_2 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-                                             FIB_LINK_MPLS,
+                                             VNET_LINK_MPLS,
                                              &nh_10_10_11_2,
                                              tm->hw[1]->sw_if_index);
     ai_mpls_10_10_11_1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
-                                             FIB_LINK_MPLS,
+                                             VNET_LINK_MPLS,
                                              &nh_10_10_11_1,
                                              tm->hw[1]->sw_if_index);
 

@@ -42,36 +42,21 @@
 #endif
 
 static inline u32
-adj_get_rewrite_node (fib_link_t linkt)
+adj_get_rewrite_node (vnet_link_t linkt)
 {
     switch (linkt) {
-    case FIB_LINK_IP4:
+    case VNET_LINK_IP4:
 	return (ip4_rewrite_node.index);
-    case FIB_LINK_IP6:
+    case VNET_LINK_IP6:
 	return (ip6_rewrite_node.index);
-    case FIB_LINK_MPLS:
+    case VNET_LINK_MPLS:
 	return (mpls_output_node.index);
-    case FIB_LINK_ETHERNET:
+    case VNET_LINK_ETHERNET:
 	return (adj_l2_rewrite_node.index);
-    }
-    ASSERT(0);
-    return (0);
-}
-
-static inline vnet_l3_packet_type_t
-adj_fib_link_2_vnet (fib_link_t linkt)
-{
-    switch (linkt)
-    {
-    case FIB_LINK_IP4:
-	return (VNET_L3_PACKET_TYPE_IP4);
-    case FIB_LINK_IP6:
-	return (VNET_L3_PACKET_TYPE_IP6);
-    case FIB_LINK_MPLS:
-	return (VNET_L3_PACKET_TYPE_MPLS_UNICAST);
-    case FIB_LINK_ETHERNET:
+    case VNET_LINK_ARP:
 	break;
     }
+    ASSERT(0);
     return (0);
 }
 
@@ -109,7 +94,7 @@ extern void adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 extern ip_adjacency_t * adj_alloc(fib_protocol_t proto);
 
 extern void adj_nbr_remove(fib_protocol_t nh_proto,
-			   fib_link_t link_type,
+			   vnet_link_t link_type,
 			   const ip46_address_t *nh_addr,
 			   u32 sw_if_index);
 extern void adj_glean_remove(fib_protocol_t proto,

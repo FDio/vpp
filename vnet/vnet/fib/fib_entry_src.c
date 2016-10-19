@@ -46,7 +46,7 @@ fib_entry_get_payload_proto (const fib_entry_t * fib_entry)
 	return fib_entry->fe_prefix.fp_payload_proto;
     }
 
-    return (fib_entry->fe_prefix.fp_proto);
+    return (fib_proto_to_dpo(fib_entry->fe_prefix.fp_proto));
 }
 
 void

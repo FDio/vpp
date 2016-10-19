@@ -1910,7 +1910,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	     {0x33, 0x33, 0x00, 0x00, 0x00, IP6_MULTICAST_GROUP_ID_all_hosts};
 	   
 	   a->all_nodes_adj_index = adj_rewrite_add_and_lock(FIB_PROTOCOL_IP6,
-							     FIB_LINK_IP6,
+							     VNET_LINK_IP6,
 							     sw_if_index,
 							     link_layer_address);
 	 } 
@@ -1920,7 +1920,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	     {0x33, 0x33, 0x00, 0x00, 0x00, IP6_MULTICAST_GROUP_ID_all_routers};
 	
 	   a->all_routers_adj_index = adj_rewrite_add_and_lock(FIB_PROTOCOL_IP6,
-							       FIB_LINK_IP6,
+							       VNET_LINK_IP6,
 							       sw_if_index,
 							       link_layer_address);
 	 } 
@@ -1931,7 +1931,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	   
 	   a->all_mldv2_routers_adj_index = 
 	       adj_rewrite_add_and_lock(FIB_PROTOCOL_IP6,
-					FIB_LINK_IP6,
+					VNET_LINK_IP6,
 					sw_if_index,
 					link_layer_address);
 	 } 
