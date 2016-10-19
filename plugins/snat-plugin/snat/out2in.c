@@ -16,6 +16,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
+#include <vnet/handoff.h>
 
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
@@ -31,6 +32,10 @@ typedef struct {
   u32 next_index;
   u32 session_index;
 } snat_out2in_trace_t;
+
+typedef struct {
+  u32 next_worker_index;
+} snat_out2in_worker_handoff_trace_t;
 
 /* packet trace format function */
 static u8 * format_snat_out2in_trace (u8 * s, va_list * args)
@@ -55,9 +60,20 @@ static u8 * format_snat_out2in_fast_trace (u8 * s, va_list * args)
   return s;
 }
 
+static u8 * format_snat_out2in_worker_handoff_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  snat_out2in_worker_handoff_trace_t * t = va_arg (*args, snat_out2in_worker_handoff_trace_t *);
+
+  s = format (s, "SNAT_IN2OUT_WORKER_HANDOFF: next worker %d", t->next_worker_index);
+
+  return s;
+}
 
 vlib_node_registration_t snat_out2in_node;
 vlib_node_registration_t snat_out2in_fast_node;
+vlib_node_registration_t snat_out2in_worker_handoff_node;
 
 #define foreach_snat_out2in_error                       \
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
@@ -110,6 +126,8 @@ create_session_for_static_mapping (snat_main_t *sm,
   clib_bihash_kv_8_8_t kv0, value0;
   dlist_elt_t * per_user_translation_list_elt;
   dlist_elt_t * per_user_list_head_elt;
+  u32 cpu_index = os_get_cpu_number ();
+  snat_static_mapping_key_t worker_by_out_key;
 
   user_key.addr = in2out.addr;
   user_key.fib_index = in2out.fib_index;
@@ -119,28 +137,32 @@ create_session_for_static_mapping (snat_main_t *sm,
   if (clib_bihash_search_8_8 (&sm->user_hash, &kv0, &value0))
     {
       /* no, make a new one */
-      pool_get (sm->users, u);
+      pool_get (sm->per_thread_data[cpu_index].users, u);
       memset (u, 0, sizeof (*u));
       u->addr = in2out.addr;
 
-      pool_get (sm->list_pool, per_user_list_head_elt);
+      pool_get (sm->per_thread_data[cpu_index].list_pool, per_user_list_head_elt);
 
       u->sessions_per_user_list_head_index = per_user_list_head_elt -
-        sm->list_pool;
+        sm->per_thread_data[cpu_index].list_pool;
 
-      clib_dlist_init (sm->list_pool, u->sessions_per_user_list_head_index);
+      clib_dlist_init (sm->per_thread_data[cpu_index].list_pool, u->sessions_per_user_list_head_index);
 
-      kv0.value = u - sm->users;
+      kv0.value = u - sm->per_thread_data[cpu_index].users;
 
       /* add user */
       clib_bihash_add_del_8_8 (&sm->user_hash, &kv0, 1 /* is_add */);
+
+      /* add non-traslated packets worker lookup */
+      kv0.value = cpu_index;
+      clib_bihash_add_del_8_8 (&sm->worker_by_in, &kv0, 1);
     }
   else
     {
-      u = pool_elt_at_index (sm->users, value0.value);
+      u = pool_elt_at_index (sm->per_thread_data[cpu_index].users, value0.value);
     }
 
-  pool_get (sm->sessions, s);
+  pool_get (sm->per_thread_data[cpu_index].sessions, s);
   memset (s, 0, sizeof (*s));
 
   s->outside_address_index = ~0;
@@ -148,16 +170,16 @@ create_session_for_static_mapping (snat_main_t *sm,
   u->nstaticsessions++;
 
   /* Create list elts */
-  pool_get (sm->list_pool, per_user_translation_list_elt);
-  clib_dlist_init (sm->list_pool, per_user_translation_list_elt -
-                   sm->list_pool);
+  pool_get (sm->per_thread_data[cpu_index].list_pool, per_user_translation_list_elt);
+  clib_dlist_init (sm->per_thread_data[cpu_index].list_pool, per_user_translation_list_elt -
+                   sm->per_thread_data[cpu_index].list_pool);
 
-  per_user_translation_list_elt->value = s - sm->sessions;
-  s->per_user_index = per_user_translation_list_elt - sm->list_pool;
+  per_user_translation_list_elt->value = s - sm->per_thread_data[cpu_index].sessions;
+  s->per_user_index = per_user_translation_list_elt - sm->per_thread_data[cpu_index].list_pool;
   s->per_user_list_head_index = u->sessions_per_user_list_head_index;
 
-  clib_dlist_addtail (sm->list_pool, s->per_user_list_head_index,
-                      per_user_translation_list_elt - sm->list_pool);
+  clib_dlist_addtail (sm->per_thread_data[cpu_index].list_pool, s->per_user_list_head_index,
+                      per_user_translation_list_elt - sm->per_thread_data[cpu_index].list_pool);
 
   s->in2out = in2out;
   s->out2in = out2in;
@@ -165,16 +187,23 @@ create_session_for_static_mapping (snat_main_t *sm,
 
   /* Add to translation hashes */
   kv0.key = s->in2out.as_u64;
-  kv0.value = s - sm->sessions;
+  kv0.value = s - sm->per_thread_data[cpu_index].sessions;
   if (clib_bihash_add_del_8_8 (&sm->in2out, &kv0, 1 /* is_add */))
       clib_warning ("in2out key add failed");
 
   kv0.key = s->out2in.as_u64;
-  kv0.value = s - sm->sessions;
+  kv0.value = s - sm->per_thread_data[cpu_index].sessions;
 
   if (clib_bihash_add_del_8_8 (&sm->out2in, &kv0, 1 /* is_add */))
       clib_warning ("out2in key add failed");
 
+  /* Add to translated packets worker lookup */
+  worker_by_out_key.addr = s->out2in.addr;
+  worker_by_out_key.port = s->out2in.port;
+  worker_by_out_key.fib_index = s->out2in.fib_index;
+  kv0.key = worker_by_out_key.as_u64;
+  kv0.value = cpu_index;
+  clib_bihash_add_del_8_8 (&sm->worker_by_out, &kv0, 1);
   return s;
 }
 
@@ -195,6 +224,7 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
   u16 old_id0, new_id0;
   ip_csum_t sum0;
   snat_runtime_t * rt = (snat_runtime_t *)node->runtime_data;
+  u32 cpu_index = os_get_cpu_number ();
 
   echo0 = (icmp_echo_header_t *)(icmp0+1);
 
@@ -238,7 +268,7 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
         return SNAT_OUT2IN_NEXT_DROP;
     }
   else
-    s0 = pool_elt_at_index (sm->sessions, value0.value);
+    s0 = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions, value0.value);
 
   old_addr0 = ip0->dst_address.as_u32;
   ip0->dst_address = s0->in2out.addr;
@@ -267,8 +297,8 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
   /* Per-user LRU list maintenance for dynamic translation */
   if (!snat_is_session_static (s0))
     {
-      clib_dlist_remove (sm->list_pool, s0->per_user_index);
-      clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
+      clib_dlist_remove (sm->per_thread_data[cpu_index].list_pool, s0->per_user_index);
+      clib_dlist_addtail (sm->per_thread_data[cpu_index].list_pool, s0->per_user_list_head_index,
                           s0->per_user_index);
     }
 
@@ -287,6 +317,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
   ip_lookup_main_t * lm = sm->ip4_lookup_main;
   ip_config_main_t * cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   f64 now = vlib_time_now (vm);
+  u32 cpu_index = os_get_cpu_number ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -401,7 +432,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
                 goto trace0;
             }
           else
-            s0 = pool_elt_at_index (sm->sessions, value0.value);
+            s0 = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions, value0.value);
 
           old_addr0 = ip0->dst_address.as_u32;
           ip0->dst_address = s0->in2out.addr;
@@ -444,8 +475,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
           /* Per-user LRU list maintenance for dynamic translation */
           if (!snat_is_session_static (s0))
             {
-              clib_dlist_remove (sm->list_pool, s0->per_user_index);
-              clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
+              clib_dlist_remove (sm->per_thread_data[cpu_index].list_pool, s0->per_user_index);
+              clib_dlist_addtail (sm->per_thread_data[cpu_index].list_pool, s0->per_user_list_head_index,
                                   s0->per_user_index);
             }
         trace0:
@@ -459,7 +490,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
               t->next_index = next0;
               t->session_index = ~0;
               if (s0)
-                  t->session_index = s0 - sm->sessions;
+                  t->session_index = s0 - sm->per_thread_data[cpu_index].sessions;
             }
 
           pkts_processed += next0 != SNAT_OUT2IN_NEXT_DROP;
@@ -520,7 +551,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
                 goto trace1;
             }
           else
-            s1 = pool_elt_at_index (sm->sessions, value1.value);
+            s1 = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions, value1.value);
 
           old_addr1 = ip1->dst_address.as_u32;
           ip1->dst_address = s1->in2out.addr;
@@ -563,8 +594,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
           /* Per-user LRU list maintenance for dynamic translation */
           if (!snat_is_session_static (s1))
             {
-              clib_dlist_remove (sm->list_pool, s1->per_user_index);
-              clib_dlist_addtail (sm->list_pool, s1->per_user_list_head_index,
+              clib_dlist_remove (sm->per_thread_data[cpu_index].list_pool, s1->per_user_index);
+              clib_dlist_addtail (sm->per_thread_data[cpu_index].list_pool, s1->per_user_list_head_index,
                                   s1->per_user_index);
             }
         trace1:
@@ -578,7 +609,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
               t->next_index = next1;
               t->session_index = ~0;
               if (s1)
-                  t->session_index = s1 - sm->sessions;
+                  t->session_index = s1 - sm->per_thread_data[cpu_index].sessions;
             }
 
           pkts_processed += next0 != SNAT_OUT2IN_NEXT_DROP;
@@ -674,7 +705,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
                 goto trace00;
             }
           else
-            s0 = pool_elt_at_index (sm->sessions, value0.value);
+            s0 = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions, value0.value);
 
           old_addr0 = ip0->dst_address.as_u32;
           ip0->dst_address = s0->in2out.addr;
@@ -717,8 +748,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
           /* Per-user LRU list maintenance for dynamic translation */
           if (!snat_is_session_static (s0))
             {
-              clib_dlist_remove (sm->list_pool, s0->per_user_index);
-              clib_dlist_addtail (sm->list_pool, s0->per_user_list_head_index,
+              clib_dlist_remove (sm->per_thread_data[cpu_index].list_pool, s0->per_user_index);
+              clib_dlist_addtail (sm->per_thread_data[cpu_index].list_pool, s0->per_user_list_head_index,
                                   s0->per_user_index);
             }
         trace00:
@@ -732,7 +763,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
               t->next_index = next0;
               t->session_index = ~0;
               if (s0)
-                  t->session_index = s0 - sm->sessions;
+                  t->session_index = s0 - sm->per_thread_data[cpu_index].sessions;
             }
 
           pkts_processed += next0 != SNAT_OUT2IN_NEXT_DROP;
@@ -772,6 +803,153 @@ VLIB_REGISTER_NODE (snat_out2in_node) = {
   },
 };
 VLIB_NODE_FUNCTION_MULTIARCH (snat_out2in_node, snat_out2in_node_fn);
+
+static uword
+snat_out2in_worker_handoff_fn (vlib_main_t * vm,
+                               vlib_node_runtime_t * node,
+                               vlib_frame_t * frame)
+{
+  snat_main_t *sm = &snat_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  u32 n_left_from, *from;
+  static __thread vlib_frame_queue_elt_t **handoff_queue_elt_by_worker_index;
+  static __thread vlib_frame_queue_t **congested_handoff_queue_by_worker_index
+    = 0;
+  vlib_frame_queue_elt_t *hf = 0;
+  int i;
+  u32 n_left_to_next_worker = 0, *to_next_worker = 0;
+  u32 next_worker_index = 0;
+  u32 current_worker_index = ~0;
+
+  if (PREDICT_FALSE (handoff_queue_elt_by_worker_index == 0))
+    {
+      vec_validate (handoff_queue_elt_by_worker_index, tm->n_vlib_mains - 1);
+
+      vec_validate_init_empty (congested_handoff_queue_by_worker_index,
+			       sm->first_worker_index + sm->num_workers - 1,
+			       (vlib_frame_queue_t *) (~0));
+    }
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  while (n_left_from > 0)
+    {
+      u32 bi0;
+      vlib_buffer_t *b0;
+      u32 sw_if_index0;
+      u32 rx_fib_index0;
+      ip4_header_t * ip0;
+      udp_header_t * udp0;
+      snat_static_mapping_key_t key0;
+      clib_bihash_kv_8_8_t kv0, value0;
+
+      bi0 = from[0];
+      from += 1;
+      n_left_from -= 1;
+
+      b0 = vlib_get_buffer (vm, bi0);
+
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index0);
+
+      ip0 = vlib_buffer_get_current (b0) + sizeof (ethernet_header_t);
+      udp0 = ip4_next_header (ip0);
+
+      key0.addr = ip0->dst_address;
+      key0.port = udp0->dst_port;
+      key0.fib_index = rx_fib_index0;
+
+      kv0.key = key0.as_u64;
+
+      /* Ever heard of of the "user" before? */
+      if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
+        /* No, assign next available worker (RR) */
+        next_worker_index = (sm->next_worker++ % sm->num_workers) +
+          sm->first_worker_index;
+      else
+        next_worker_index = value0.value;
+
+      if (next_worker_index != current_worker_index)
+	{
+	  if (hf)
+	    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
+
+	  hf = dpdk_get_handoff_queue_elt (next_worker_index,
+					   handoff_queue_elt_by_worker_index);
+
+	  n_left_to_next_worker = VLIB_FRAME_SIZE - hf->n_vectors;
+	  to_next_worker = &hf->buffer_index[hf->n_vectors];
+	  current_worker_index = next_worker_index;
+	}
+
+      /* enqueue to correct worker thread */
+      to_next_worker[0] = bi0;
+      to_next_worker++;
+      n_left_to_next_worker--;
+
+      if (n_left_to_next_worker == 0)
+	{
+	  hf->n_vectors = VLIB_FRAME_SIZE;
+	  vlib_put_handoff_queue_elt (hf);
+	  current_worker_index = ~0;
+	  handoff_queue_elt_by_worker_index[next_worker_index] = 0;
+	  hf = 0;
+	}
+
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+          snat_out2in_worker_handoff_trace_t *t =
+            vlib_add_trace (vm, node, b0, sizeof (*t));
+          t->next_worker_index = next_worker_index;
+        }
+    }
+
+  if (hf)
+    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
+
+  /* Ship frames to the worker nodes */
+  for (i = 0; i < vec_len (handoff_queue_elt_by_worker_index); i++)
+    {
+      if (handoff_queue_elt_by_worker_index[i])
+	{
+	  hf = handoff_queue_elt_by_worker_index[i];
+	  /*
+	   * It works better to let the handoff node
+	   * rate-adapt, always ship the handoff queue element.
+	   */
+	  if (1 || hf->n_vectors == hf->last_n_vectors)
+	    {
+	      vlib_put_handoff_queue_elt (hf);
+	      handoff_queue_elt_by_worker_index[i] = 0;
+	    }
+	  else
+	    hf->last_n_vectors = hf->n_vectors;
+	}
+      congested_handoff_queue_by_worker_index[i] =
+	(vlib_frame_queue_t *) (~0);
+    }
+  hf = 0;
+  current_worker_index = ~0;
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (snat_out2in_worker_handoff_node) = {
+  .function = snat_out2in_worker_handoff_fn,
+  .name = "snat-out2in-worker-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_snat_out2in_worker_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (snat_out2in_worker_handoff_node, snat_out2in_worker_handoff_fn);
 
 static inline u32 icmp_out2in_fast (snat_main_t *sm,
                                     vlib_buffer_t * b0,

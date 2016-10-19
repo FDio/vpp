@@ -127,6 +127,17 @@ typedef struct {
 } snat_static_mapping_t;
 
 typedef struct {
+  /* User pool */
+  snat_user_t * users;
+
+  /* Session pool */
+  snat_session_t * sessions;
+
+  /* Pool of doubly-linked list elements */
+  dlist_elt_t * list_pool;
+} snat_main_per_thread_data_t;
+
+typedef struct {
   /* Main lookup tables */
   clib_bihash_8_8_t out2in;
   clib_bihash_8_8_t in2out;
@@ -134,26 +145,30 @@ typedef struct {
   /* Find-a-user => src address lookup */
   clib_bihash_8_8_t user_hash;
 
+  /* Non-translated packets worker lookup => src address + VRF */
+  clib_bihash_8_8_t worker_by_in;
+
+  /* Translated packets worker lookup => IP address + port number */
+  clib_bihash_8_8_t worker_by_out;
+
+  u32 num_workers;
+  u32 first_worker_index;
+  u32 next_worker;
+
+  /* Per thread data */
+  snat_main_per_thread_data_t * per_thread_data;
+
   /* Find a static mapping by local */
   clib_bihash_8_8_t static_mapping_by_local;
 
   /* Find a static mapping by external */
   clib_bihash_8_8_t static_mapping_by_external;
 
-  /* User pool */
-  snat_user_t * users;
-
-  /* Session pool */
-  snat_session_t * sessions;
-
   /* Static mapping pool */
   snat_static_mapping_t * static_mappings;
 
   /* Vector of outside addresses */
   snat_address_t * addresses;
-
-  /* Pool of doubly-linked list elements */
-  dlist_elt_t * list_pool;
 
   /* Randomize port allocation order */
   u32 random_seed;
@@ -194,6 +209,8 @@ extern vlib_node_registration_t snat_in2out_node;
 extern vlib_node_registration_t snat_out2in_node;
 extern vlib_node_registration_t snat_in2out_fast_node;
 extern vlib_node_registration_t snat_out2in_fast_node;
+extern vlib_node_registration_t snat_in2out_worker_handoff_node;
+extern vlib_node_registration_t snat_out2in_worker_handoff_node;
 
 void snat_free_outside_address_and_port (snat_main_t * sm, 
                                          snat_session_key_t * k, 
