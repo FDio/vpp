@@ -350,7 +350,7 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 	  lm->classify_table_index_by_sw_if_index [sw_if_index];
       if (classify_table_index != (u32) ~0)
       {
-          dpo_id_t dpo = DPO_NULL;
+          dpo_id_t dpo = DPO_INVALID;
 
           dpo_set(&dpo,
                   DPO_CLASSIFY,
@@ -3079,7 +3079,7 @@ int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 
       if (table_index != (u32) ~0)
       {
-          dpo_id_t dpo = DPO_NULL;
+          dpo_id_t dpo = DPO_INVALID;
 
           dpo_set(&dpo,
                   DPO_CLASSIFY,

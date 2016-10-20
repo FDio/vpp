@@ -834,7 +834,7 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   u8 hmac_key_index = 0;
   ip6_sr_policy_t *pt;
   int i;
-  dpo_id_t dpo = DPO_NULL;
+  dpo_id_t dpo = DPO_INVALID;
 
   /* Make sure that the rx FIB exists */
   p = hash_get (im->fib_index_by_table_id, a->rx_table_id);
@@ -1728,7 +1728,7 @@ ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
    * We don't handle ugly RFC-related cases yet, but I'm sure PL will complain
    * at some point...
    */
-  dpo_id_t dpo = DPO_NULL;
+  dpo_id_t dpo = DPO_INVALID;
 
   dpo_set (&dpo, sr_dpo_type, DPO_PROTO_IP6, t - sm->tunnels);
 

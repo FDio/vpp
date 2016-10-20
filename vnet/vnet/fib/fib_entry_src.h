@@ -233,6 +233,10 @@ extern fib_entry_t* fib_entry_src_action_add(fib_entry_t *fib_entry,
 					     fib_source_t source,
 					     fib_entry_flag_t flags,
 					     const dpo_id_t *dpo);
+extern fib_entry_t* fib_entry_src_action_update(fib_entry_t *fib_entry,
+						fib_source_t source,
+						fib_entry_flag_t flags,
+						const dpo_id_t *dpo);
 
 extern fib_entry_src_flag_t fib_entry_src_action_remove(fib_entry_t *fib_entry,
 							fib_source_t source);

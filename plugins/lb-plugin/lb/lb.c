@@ -594,7 +594,7 @@ int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n)
 static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip)
 {
   dpo_proto_t proto = 0;
-  dpo_id_t dpo = DPO_NULL;
+  dpo_id_t dpo = DPO_INVALID;
   fib_prefix_t pfx = {};
   if (lb_vip_is_ip4(vip)) {
       pfx.fp_addr.ip4 = vip->prefix.ip4;
