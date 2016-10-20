@@ -47,6 +47,7 @@ libjvpp_registry_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
 	              -lpthread -lm -lrt -ljvpp_common
 libjvpp_registry_la_LDFLAGS = -module
 libjvpp_registry_la_CPPFLAGS = -Ijvpp-registry -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
+EXTRA_libjvpp_registry_la_DEPENDENCIES=libjvpp_common.la
 
 jarfile_jvpp_registry = jvpp-registry-$(PACKAGE_VERSION).jar
 packagedir_jvpp_registry = io/fd/vpp/jvpp
