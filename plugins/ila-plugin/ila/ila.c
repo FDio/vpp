@@ -752,7 +752,7 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 	  /*
 	   * Create a route that results in the ILA entry
 	   */
-	  dpo_id_t dpo = DPO_NULL;
+	  dpo_id_t dpo = DPO_INVALID;
 	  fib_prefix_t pfx = {
 	      .fp_addr = {
 		  .ip6 = e->ila_address,

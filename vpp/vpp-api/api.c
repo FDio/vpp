@@ -117,6 +117,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/lookup_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
+#include <vnet/dpo/ip_null_dpo.h>
 
 #define f64_endian(a)
 #define f64_print(a,b)
@@ -1032,6 +1033,8 @@ static int
 add_del_route_t_handler (u8 is_multipath,
 			 u8 is_add,
 			 u8 is_drop,
+			 u8 is_unreach,
+			 u8 is_prohibit,
 			 u8 is_local,
 			 u8 is_classify,
 			 u32 classify_table_index,
@@ -1090,22 +1093,29 @@ add_del_route_t_handler (u8 is_multipath,
 
   dslock (sm, 1 /* release hint */ , 2 /* tag */ );
 
-  if (is_drop || is_local || is_classify)
+  if (is_drop || is_local || is_classify || is_unreach || is_prohibit)
     {
       /*
        * special route types that link directly to the adj
        */
       if (is_add)
 	{
-	  dpo_id_t dpo = DPO_NULL;
+	  dpo_id_t dpo = DPO_INVALID;
 	  dpo_proto_t dproto;
 
 	  dproto = fib_proto_to_dpo (prefix->fp_proto);
 
 	  if (is_drop)
-	    dpo_copy (&dpo, drop_dpo_get (dproto));
+	    ip_null_dpo_add_and_lock (dproto, IP_NULL_ACTION_NONE, &dpo);
 	  else if (is_local)
 	    receive_dpo_add_or_lock (dproto, ~0, NULL, &dpo);
+	  else if (is_unreach)
+	    ip_null_dpo_add_and_lock (dproto,
+				      IP_NULL_ACTION_SEND_ICMP_UNREACH, &dpo);
+	  else if (is_prohibit)
+	    ip_null_dpo_add_and_lock (dproto,
+				      IP_NULL_ACTION_SEND_ICMP_PROHIBIT,
+				      &dpo);
 	  else if (is_classify)
 	    {
 	      if (pool_is_free_index (cm->tables,
@@ -1125,10 +1135,10 @@ add_del_route_t_handler (u8 is_multipath,
 	      return VNET_API_ERROR_NO_SUCH_TABLE;
 	    }
 
-	  fib_table_entry_special_dpo_add (fib_index,
-					   prefix,
-					   FIB_SOURCE_API,
-					   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
+	  fib_table_entry_special_dpo_update (fib_index,
+					      prefix,
+					      FIB_SOURCE_API,
+					      FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
 	  dpo_reset (&dpo);
 	}
       else
@@ -1255,7 +1265,17 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
   memset (&nh, 0, sizeof (nh));
   memcpy (&nh.ip4, mp->next_hop_address, sizeof (nh.ip4));
 
-  return (add_del_route_t_handler (mp->is_multipath, mp->is_add, mp->is_drop, mp->is_local, mp->is_classify, mp->classify_table_index, mp->is_resolve_host, mp->is_resolve_attached, fib_index, &pfx, 1,	// is_ip4
+  return (add_del_route_t_handler (mp->is_multipath,
+				   mp->is_add,
+				   mp->is_drop,
+				   mp->is_unreach,
+				   mp->is_prohibit,
+				   mp->is_local,
+				   mp->is_classify,
+				   mp->classify_table_index,
+				   mp->is_resolve_host,
+				   mp->is_resolve_attached,
+				   fib_index, &pfx, 1,
 				   &nh,
 				   ntohl (mp->next_hop_sw_if_index),
 				   next_hop_fib_index,
@@ -1290,7 +1310,17 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
   memset (&nh, 0, sizeof (nh));
   memcpy (&nh.ip6, mp->next_hop_address, sizeof (nh.ip6));
 
-  return (add_del_route_t_handler (mp->is_multipath, mp->is_add, mp->is_drop, mp->is_local, mp->is_classify, mp->classify_table_index, mp->is_resolve_host, mp->is_resolve_attached, fib_index, &pfx, 0,	// is_ip4
+  return (add_del_route_t_handler (mp->is_multipath,
+				   mp->is_add,
+				   mp->is_drop,
+				   mp->is_unreach,
+				   mp->is_prohibit,
+				   mp->is_local,
+				   mp->is_classify,
+				   mp->classify_table_index,
+				   mp->is_resolve_host,
+				   mp->is_resolve_attached,
+				   fib_index, &pfx, 0,
 				   &nh, ntohl (mp->next_hop_sw_if_index),
 				   next_hop_fib_index,
 				   mp->next_hop_weight,
@@ -1347,6 +1377,8 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
     memcpy (&nh.ip6, mp->mr_next_hop, sizeof (nh.ip6));
 
   return (add_del_route_t_handler (mp->mr_is_multipath, mp->mr_is_add, 0,	// mp->is_drop,
+				   0,	// mp->is_unreach,
+				   0,	// mp->is_prohibit,
 				   0,	// mp->is_local,
 				   mp->mr_is_classify,
 				   mp->mr_classify_table_index,

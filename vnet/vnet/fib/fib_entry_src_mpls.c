@@ -104,7 +104,7 @@ fib_entry_src_mpls_set_data (fib_entry_src_t *src,
 	    .fp_label = label,
 	};
 	fib_node_index_t fib_index;
-	dpo_id_t dpo = DPO_NULL;
+	dpo_id_t dpo = DPO_INVALID;
 
         /*
          * adding a new local label. make sure the MPLS fib exists.

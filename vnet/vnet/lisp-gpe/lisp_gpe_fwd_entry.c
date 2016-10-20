@@ -61,7 +61,7 @@ ip_dst_fib_add_route (u32 dst_fib_index, const ip_prefix_t * dst_prefix)
   if (dst_fei == FIB_NODE_INDEX_INVALID ||
       NULL == fib_entry_get_source_data (dst_fei, FIB_SOURCE_LISP))
     {
-      dpo_id_t src_lkup_dpo = DPO_NULL;
+      dpo_id_t src_lkup_dpo = DPO_INVALID;
 
       /* create a new src FIB.  */
       src_fib_index =
@@ -274,7 +274,7 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE == lfe->type)
     {
-      dpo_id_t dpo = DPO_NULL;
+      dpo_id_t dpo = DPO_INVALID;
 
       switch (lfe->action)
 	{
@@ -659,7 +659,7 @@ static void
 lisp_gpe_l2_update_fwding (lisp_gpe_fwd_entry_t * lfe)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
-  dpo_id_t dpo = DPO_NULL;
+  dpo_id_t dpo = DPO_INVALID;
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
     {

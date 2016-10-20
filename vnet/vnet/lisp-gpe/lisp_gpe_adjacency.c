@@ -128,7 +128,7 @@ static void
 lisp_gpe_adj_stack_one (lisp_gpe_adjacency_t * ladj, adj_index_t ai)
 {
   const lisp_gpe_tunnel_t *lgt;
-  dpo_id_t tmp = DPO_NULL;
+  dpo_id_t tmp = DPO_INVALID;
 
   lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
   fib_entry_contribute_forwarding (lgt->fib_entry_index,

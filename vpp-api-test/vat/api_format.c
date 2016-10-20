@@ -5757,6 +5757,7 @@ api_ip_add_del_route (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u8 is_ipv6 = 0;
   u8 is_local = 0, is_drop = 0;
+  u8 is_unreach = 0, is_prohibit = 0;
   u8 create_vrf_if_needed = 0;
   u8 is_add = 1;
   u8 next_hop_weight = 1;
@@ -5822,6 +5823,14 @@ api_ip_add_del_route (vat_main_t * vam)
 	{
 	  is_drop = 1;
 	}
+      else if (unformat (i, "null-send-unreach"))
+	{
+	  is_unreach = 1;
+	}
+      else if (unformat (i, "null-send-prohibit"))
+	{
+	  is_prohibit = 1;
+	}
       else if (unformat (i, "local"))
 	{
 	  is_local = 1;
@@ -5871,9 +5880,11 @@ api_ip_add_del_route (vat_main_t * vam)
       return -99;
     }
 
-  if (!next_hop_set && !is_drop && !is_local && !is_classify)
+  if (!next_hop_set && !is_drop && !is_local &&
+      !is_classify && !is_unreach && !is_prohibit)
     {
-      errmsg ("next hop / local / drop / classify not set\n");
+      errmsg
+	("next hop / local / drop / unreach / prohibit / classify not set\n");
       return -99;
     }
 
@@ -5936,6 +5947,8 @@ api_ip_add_del_route (vat_main_t * vam)
 
       mp->is_add = is_add;
       mp->is_drop = is_drop;
+      mp->is_unreach = is_unreach;
+      mp->is_prohibit = is_prohibit;
       mp->is_ipv6 = is_ipv6;
       mp->is_local = is_local;
       mp->is_classify = is_classify;
