@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da3975d1_3a0ea035",
+        "filename": "vnet/vnet/classify/ip_classify.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-10-20T22:23:14Z",
+      "side": 1,
+      "message": "These two if\u0027s look awkward as the indentation looks bad. Can you either fix the indentation or combine them to be one if with \"\u0026\u0026\", please?",
+      "range": {
+        "startLine": 233,
+        "startChar": 27,
+        "endLine": 233,
+        "endChar": 56
+      },
+      "revId": "3ed971e273f7474294fc904864faa89511824bb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_ba19707b",
+        "filename": "vnet/vnet/classify/vnet_classify.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-10-20T22:23:14Z",
+      "side": 1,
+      "message": "The VLIB_NODE_FLAGS... bit should be defined in vlib/vlib/node.h so it is clear which bits are being used in the flags field.",
+      "range": {
+        "startLine": 38,
+        "startChar": 8,
+        "endLine": 38,
+        "endChar": 37
+      },
+      "revId": "3ed971e273f7474294fc904864faa89511824bb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_9a26acb9",
+        "filename": "vnet/vnet/l2/l2_classify.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-10-20T22:23:14Z",
+      "side": 1,
+      "message": "The VLIB_NODE_FLAGS... bit should be defined in vlib/vlib/node.h so it is clear which bits are being used in the flags field. BTW, there are total 16 bits for flags and LI is using two of them for one feature. Is there anyway of not use up these precious bits in VLIB buffer flags field to achieve the same goal? I confess I yet to read the LI code carefully to fully understand how these bits are used. Are they used to store packet state? Is it possible to use some reusable area rather than claim dedicated bits? Or, if other feature can reuse these bits for other purposes, it would be good to document how, etc.",
+      "range": {
+        "startLine": 37,
+        "startChar": 8,
+        "endLine": 37,
+        "endChar": 37
+      },
+      "revId": "3ed971e273f7474294fc904864faa89511824bb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
