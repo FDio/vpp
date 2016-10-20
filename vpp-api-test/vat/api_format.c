@@ -3689,6 +3689,7 @@ _(MPLS_ETHERNET_ADD_DEL_TUNNEL_2_REPLY,                                 \
 _(SW_INTERFACE_SET_UNNUMBERED_REPLY,                                    \
   sw_interface_set_unnumbered_reply)                                    \
 _(IP_NEIGHBOR_ADD_DEL_REPLY, ip_neighbor_add_del_reply)                 \
+_(IP_NEIGHBOR_DUMP_DETAILS, ip_neighbor_dump_details)                   \
 _(RESET_VRF_REPLY, reset_vrf_reply)                                     \
 _(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
 _(CREATE_SUBIF_REPLY, create_subif_reply)                     		\
@@ -6541,6 +6542,22 @@ api_ip_neighbor_add_del (vat_main_t * vam)
 
   /* NOTREACHED */
   return 0;
+}
+
+static int
+api_ip_neighbor_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_neighbor_dump_t *mp;
+  u8 is_ipv6 = 1;
+  f64 timeout;
+
+  M (IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del);
+  /* send it... */
+  S;
+
+  /* Wait for a reply, return good/bad news */
+  W;
 }
 
 static int
