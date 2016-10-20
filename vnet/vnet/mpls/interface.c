@@ -934,7 +934,7 @@ int vnet_mpls_ethernet_add_del_policy_tunnel (u8 *dst,
 	  .fp_len = tp->mask_width,
 	  .fp_proto = FIB_PROTOCOL_IP4,
       };
-      dpo_id_t dpo = DPO_NULL;
+      dpo_id_t dpo = DPO_INVALID;
 
       if (is_add)
         {

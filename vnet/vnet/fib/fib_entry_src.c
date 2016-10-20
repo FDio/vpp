@@ -745,6 +745,56 @@ fib_entry_src_action_add (fib_entry_t *fib_entry,
     return (fib_entry);
 }
 
+/*
+ * fib_entry_src_action_update
+ *
+ * Adding a source can result in a new fib_entry being created, which
+ * can inturn mean the pool is realloc'd and thus the entry passed as
+ * an argument it also realloc'd
+ * @return the original entry
+ */
+fib_entry_t *
+fib_entry_src_action_update (fib_entry_t *fib_entry,
+			     fib_source_t source,
+			     fib_entry_flag_t flags,
+			     const dpo_id_t *dpo)
+{
+    fib_node_index_t fib_entry_index, old_path_list_index;
+    fib_entry_src_t *esrc;
+
+    esrc = fib_entry_src_find_or_create(fib_entry, source, NULL);
+
+    if (NULL == esrc)
+	return (fib_entry_src_action_add(fib_entry, source, flags, dpo));
+
+    old_path_list_index = esrc->fes_pl;
+    esrc->fes_entry_flags = flags;
+
+    /*
+     * save variable so we can recover from a fib_entry realloc.
+     */
+    fib_entry_index = fib_entry_get_index(fib_entry);
+
+    if (NULL != fib_entry_src_vft[source].fesv_add)
+    {
+	fib_entry_src_vft[source].fesv_add(esrc,
+					   fib_entry,
+					   flags,
+					   fib_entry_get_proto(fib_entry),
+					   dpo);
+    }
+
+    fib_entry = fib_entry_get(fib_entry_index);
+
+    esrc->fes_flags |= FIB_ENTRY_SRC_FLAG_ADDED;
+
+    fib_path_list_lock(esrc->fes_pl);
+    fib_path_list_unlock(old_path_list_index);
+
+    return (fib_entry);
+}
+
+
 fib_entry_src_flag_t
 fib_entry_src_action_remove (fib_entry_t *fib_entry,
 			     fib_source_t source)

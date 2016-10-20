@@ -94,6 +94,7 @@ typedef enum dpo_type_t_ {
      */
     DPO_FIRST,
     DPO_DROP,
+    DPO_IP_NULL,
     DPO_PUNT,
     /**
      * @brief load-balancing over a choice of [un]equal cost paths
@@ -116,6 +117,7 @@ typedef enum dpo_type_t_ {
 #define DPO_TYPES {			\
     [DPO_FIRST] = "dpo-invalid",	\
     [DPO_DROP] = "dpo-drop",	\
+    [DPO_IP_NULL] = "dpo-ip-null",		\
     [DPO_PUNT] = "dpo-punt",	\
     [DPO_ADJACENCY] = "dpo-adjacency",	\
     [DPO_ADJACENCY_INCOMPLETE] = "dpo-adjacency-incomplete",	\
@@ -126,7 +128,7 @@ typedef enum dpo_type_t_ {
     [DPO_LOAD_BALANCE] = "dpo-load-balance",	\
     [DPO_LISP_CP] = "dpo-lisp-cp",	\
     [DPO_CLASSIFY] = "dpo-classify",	\
-    [DPO_MPLS_LABEL] = "dpo-mpls-label",	\
+    [DPO_MPLS_LABEL] = "dpo-mpls-label"	\
 }
 
 /**
@@ -159,7 +161,7 @@ _Static_assert(sizeof(dpo_id_t) <= sizeof(u64),
 /**
  * @brief An initialiser for DPos declared on the stack.
  */
-#define DPO_NULL {0}
+#define DPO_INVALID {0}
 
 /**
  * @brief Return true if the DPO object is valid, i.e. has been initialised.

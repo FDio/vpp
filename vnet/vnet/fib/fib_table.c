@@ -324,6 +324,48 @@ fib_table_entry_special_dpo_add (u32 fib_index,
 }
 
 fib_node_index_t
+fib_table_entry_special_dpo_update (u32 fib_index,
+				    const fib_prefix_t *prefix,
+				    fib_source_t source,
+				    fib_entry_flag_t flags,
+				    const dpo_id_t *dpo)
+{
+    fib_node_index_t fib_entry_index;
+    fib_table_t *fib_table;
+
+    fib_table = fib_table_get(fib_index, prefix->fp_proto);
+    fib_entry_index = fib_table_lookup_exact_match_i(fib_table, prefix);
+
+    if (FIB_NODE_INDEX_INVALID == fib_entry_index)
+    {
+	fib_entry_index = fib_entry_create_special(fib_index, prefix,
+						   source, flags,
+						   dpo);
+
+	fib_table_entry_insert(fib_table, prefix, fib_entry_index);
+        fib_table->ft_src_route_counts[source]++;
+    }
+    else
+    {
+        int was_sourced;
+
+        was_sourced = fib_entry_is_sourced(fib_entry_index, source);
+
+	if (was_sourced)
+	    fib_entry_special_update(fib_entry_index, source, flags, dpo);
+	else
+	    fib_entry_special_add(fib_entry_index, source, flags, dpo);
+
+        if (was_sourced != fib_entry_is_sourced(fib_entry_index, source))
+        {
+            fib_table->ft_src_route_counts[source]++;
+        }
+    }
+
+    return (fib_entry_index);
+}
+
+fib_node_index_t
 fib_table_entry_special_add (u32 fib_index,
 			     const fib_prefix_t *prefix,
 			     fib_source_t source,
@@ -331,7 +373,7 @@ fib_table_entry_special_add (u32 fib_index,
 			     adj_index_t adj_index)
 {
     fib_node_index_t fib_entry_index;
-    dpo_id_t tmp_dpo = DPO_NULL;
+    dpo_id_t tmp_dpo = DPO_INVALID;
 
     if (ADJ_INDEX_INVALID != adj_index)
     {
@@ -351,22 +393,6 @@ fib_table_entry_special_add (u32 fib_index,
     dpo_unlock(&tmp_dpo);
 
     return (fib_entry_index);
-}
-
-void
-fib_table_entry_special_dpo_update (fib_node_index_t fib_entry_index,
-				    fib_source_t source,
-				    fib_entry_flag_t flags,
-				    const dpo_id_t *dpo)
-{
-    fib_prefix_t prefix;
-    u32 fib_index;
-
-    fib_entry_get_prefix(fib_entry_index, &prefix);
-    fib_index = fib_entry_get_fib_index(fib_entry_index);
-
-    fib_table_entry_special_dpo_add(fib_index, &prefix, source, flags, dpo);
-    fib_table_entry_special_remove(fib_index, &prefix, source);
 }
 
 void
