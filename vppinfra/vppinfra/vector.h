@@ -95,6 +95,21 @@ typedef u64 u64x2 _vector_size (16);
 
 typedef f32 f32x4 _vector_size (16);
 typedef f64 f64x2 _vector_size (16);
+
+/* Signed 256 bit. */
+typedef i8 i8x32 _vector_size (32);
+typedef i16 i16x16 _vector_size (32);
+typedef i32 i32x8 _vector_size (32);
+typedef long long i64x4 _vector_size (32);
+
+/* Unsigned 256 bit. */
+typedef u8 u8x32 _vector_size (32);
+typedef u16 u16x16 _vector_size (32);
+typedef u32 u32x8 _vector_size (32);
+typedef u64 u64x4 _vector_size (32);
+
+typedef f32 f32x8 _vector_size (32);
+typedef f64 f64x4 _vector_size (32);
 #endif /* CLIB_HAVE_VEC128 */
 
 /* Vector word sized types. */
