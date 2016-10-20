@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "da3975d1_2b409555",
+        "filename": "plugins/ioam-plugin/ioam/jvpp/io/fd/vpp/jvpp/ioamtrace/test/ioamTraceApiTest.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T11:07:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da3975d1_25aa06d5",
+      "range": {
+        "startLine": 35,
+        "startChar": 78,
+        "endLine": 35,
+        "endChar": 80
+      },
+      "revId": "7108afb946cf031a222222720da9e424a179df45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da3975d1_45f3ca0a",
         "filename": "plugins/ioam-plugin/ioam/jvpp/io/fd/vpp/jvpp/ioamtrace/test/ioamTraceApiTest.java",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2016-10-18T15:51:18Z",
       "side": 1,
       "message": "Here coverity would also complain.\nClosing registry and jvpp in finally block should make coverity happy.",
+      "range": {
+        "startLine": 68,
+        "startChar": 7,
+        "endLine": 71,
+        "endChar": 25
+      },
+      "revId": "7108afb946cf031a222222720da9e424a179df45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_0b25d1c1",
+        "filename": "plugins/ioam-plugin/ioam/jvpp/io/fd/vpp/jvpp/ioamtrace/test/ioamTraceApiTest.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T11:07:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da3975d1_45f3ca0a",
       "range": {
         "startLine": 68,
         "startChar": 7,
