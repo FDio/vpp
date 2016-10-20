@@ -285,6 +285,7 @@ _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(IS_ADDRESS_REACHABLE, is_address_reachable)                           \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)           \
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \
+_(SW_INTERFACE_DUMP_TABLE, sw_interface_dump_table)                     \
 _(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
@@ -1343,6 +1344,42 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_TABLE_REPLY);
+}
+
+static void
+vl_api_sw_interface_dump_table_t_handler (vl_api_sw_interface_dump_table_t * mp)
+{
+  int rv = 0;
+  u32 table_id = ntohl (mp->vrf_id);
+  u32 sf_if_index = ntohl (mp->sw_if_index);
+  vl_api_sw_interface_dump_table_reply_t *rmp;
+  stats_main_t *sm;
+  
+  VALIDATE_SW_IF_INDEX (mp);
+
+  if (mp->is_ipv6)
+    {
+      fib_index = fib_table_find (FIB_PROTOCOL_IP6, table_id);
+      if (fib_index == ~0)
+	goto out;
+      vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
+    }
+  else
+    {
+      fib_index = fib_table_find (FIB_PROTOCOL_IP4, table_id);
+      if (fib_index == ~0)
+	goto out;
+      vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
+    }
+
+  if (!pool_is_free_index(fib_entry_pool, fib_index))
+    {
+      
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_DUMP_TABLE_REPLY);
 }
 
 static void
@@ -7284,7 +7321,7 @@ static void
   (vl_api_policer_classify_set_interface_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vl_api_policer_classify_set_interface_reply_t *rmp;
+  vl_api_policer_classify_set_interface_rply_t *rmp;
   int rv;
   u32 sw_if_index, ip4_table_index, ip6_table_index, l2_table_index;
 
