@@ -313,6 +313,8 @@ _(MPLS_ADD_DEL_DECAP, mpls_add_del_decap)                               \
 _(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
+_(IP_NEIGHBOR_DUMP, ip_neighbor_dump)                                   \
+_(IP_NEIGHBOR_DUMP_DETAILS, ip_neighbor_dump_details)                   \
 _(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats)			\
 _(RESET_FIB, reset_fib)							\
 _(DHCP_PROXY_CONFIG,dhcp_proxy_config)					\
@@ -2495,6 +2497,71 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 
   dsunlock (sm);
   REPLY_MACRO (VL_API_IP_NEIGHBOR_ADD_DEL_REPLY);
+}
+
+static void
+send_ip_neighbor_details (/* ip6_neighbor_main_t * nm, */ unix_shared_memory_queue_t * q,/* ip6_neighbor_t * n, */ u32 context)
+{
+  //vl_api_ip_neighbor_dump_details_t *mp;
+  /*
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  clib_memcpy(mp->link_layer_address, n->link_layer_address, sizeof(n->link_layer_address));
+  mp->flags = n->flags;
+  mp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  */
+}
+
+static void
+vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t *mp, vlib_main_t * vm)
+{
+  //vnet_main_t *vnm = vnet_get_main ();
+  stats_main_t *sm = &stats_main;
+  unix_shared_memory_queue_t *q;
+  u32 rv = 0;
+  u32 sw_if_index =  ntohl (mp->sw_if_index);
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  dslock (sm, 1 /* release hint */ , 7 /* tag */ );
+
+  if (mp->is_ipv6)
+    {
+      //ip6_neighbor_main_t * nm = &ip6_neighbor_main;
+      //ip6_neighbor_t *n, *ns;
+
+      /* *INDENT OFF* */
+      //      pool_foreach (n, nm->neighbor_pool, ({ vec_add1 (ns, n[0]; })));
+      /* *INDENT ON* */
+      /*
+      if (ns)
+	{
+	  vec_sort_with_function (ns, ip6_neighbor_sort);
+	  vec_foreach (n, ns)
+	    {
+	      if (sw_if_index != ~0 && n->key.sw_if_index != sw_if_index)
+		continue;
+	      send_ip_neighbor_details (nm, q, n, mp->context);
+	    }
+	}
+      */
+      // To compile
+      send_ip_neighbor_details (q, mp->context);
+    }
+  else 
+    {
+      clib_warning ("BUG");
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  ds_unlock (sm);
 }
 
 static void

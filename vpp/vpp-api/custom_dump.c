@@ -716,6 +716,16 @@ static void *vl_api_ip_neighbor_add_del_t_print
   FINISH;
 }
 
+static void *vl_api_ip_neighbor_dump_t_print
+  (vl_api_neighbor_dump_t * mp, void * handle)
+{
+  u8 *s;
+  
+  s = format (0, "SCRIPT: if_ip_neighbor_dump ");
+
+  FINISH;
+}
+
 static void *
 vl_api_reset_vrf_t_print (vl_api_reset_vrf_t * mp, void *handle)
 {
@@ -2878,6 +2888,7 @@ _(MPLS_ETHERNET_ADD_DEL_TUNNEL, mpls_ethernet_add_del_tunnel)		\
 _(MPLS_ETHERNET_ADD_DEL_TUNNEL_2, mpls_ethernet_add_del_tunnel_2)	\
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)             \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
+_(IP_NEIGHBOR_DUMP, ip_neighbor_dump)                                   \
 _(RESET_VRF, reset_vrf)                                                 \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \
 _(CREATE_SUBIF, create_subif)                                           \
