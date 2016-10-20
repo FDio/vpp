@@ -511,8 +511,10 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       vnet_sw_interface_t *si0;
       u32 error0 = (u32)~0;
       vnet_sw_interface_t *swif;
-      dhcpv6_option_t *r0, *o; 
+      dhcpv6_option_t *r0 = 0, *o;
       u16 len = 0;
+      u8 interface_opt_flag = 0;
+      u8 relay_msg_opt_flag = 0;
       u32 svr_fib_index, svr_fib_id;
       ip6_fib_t * svr_fib;
       ip6_main_t * im = &ip6_main;
@@ -520,7 +522,7 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       bi0 = from[0];
       from += 1;
       n_left_from -= 1;
-      
+
       b0 = vlib_get_buffer (vm, bi0);
       h0 = vlib_buffer_get_current (b0);
 
@@ -547,30 +549,49 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
         }
       u0 = (void *)h0 -(sizeof(*u0));
       ip0 = (void *)u0 -(sizeof(*ip0));
-      
+
       vlib_buffer_advance (b0, sizeof(*h0));
-      o = r0 = vlib_buffer_get_current (b0);
-      
-      /* Parse through TLVs looking for option 9 (DHCPV6_OPTION_INTERFACE_ID).
+      o = vlib_buffer_get_current (b0);
+
+      /* Parse through TLVs looking for option 18 (DHCPV6_OPTION_INTERFACE_ID)
+         _and_ option 9 (DHCPV6_OPTION_RELAY_MSG) option which must be there.
+         Currently assuming no other options need to be processed
          The interface-ID is the FIB number we need
          to track down the client-facing interface */
-          
+
       while ((u8 *) o < (b0->data + b0->current_data + b0->current_length))
         {
            if (DHCPV6_OPTION_INTERFACE_ID == clib_net_to_host_u16(o->option))
              {
+                interface_opt_flag = 1;
                 if (clib_net_to_host_u16(o->length) == sizeof(sw_if_index))
                     sw_if_index = clib_net_to_host_u32(((dhcpv6_int_id_t*)o)->int_idx);
-                break;
-             } 
+             }
+           if (DHCPV6_OPTION_RELAY_MSG == clib_net_to_host_u16(o->option))
+             {
+                relay_msg_opt_flag = 1;
+                r0 = vlib_buffer_get_current (b0);
+             }
+           if ((relay_msg_opt_flag == 1) && (interface_opt_flag == 1))
+             break;
+           vlib_buffer_advance (b0, sizeof(*o) + clib_net_to_host_u16(o->length));
            o = (dhcpv6_option_t *) (((uword) o) + clib_net_to_host_u16(o->length) + sizeof(*o));
         }
-      
+
+      if ((relay_msg_opt_flag == 0) || (r0 == 0))
+        {
+    	  error0 = DHCPV6_PROXY_ERROR_NO_RELAY_MESSAGE_OPTION;
+    	  goto drop_packet;
+        }
+
       if ((u32)~0 == sw_if_index)
         {
           error0 = DHCPV6_PROXY_ERROR_NO_CIRCUIT_ID_OPTION;
           goto drop_packet;
         }
+
+      //Advance buffer to start of encapsulated DHCPv6 message
+      vlib_buffer_advance (b0, sizeof(*r0));
 
       svr_fib_index = im->fib_index_by_sw_if_index
           [vnet_buffer(b0)->sw_if_index[VLIB_RX]];
@@ -586,16 +607,16 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
           goto drop_packet;
         }
 
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = original_sw_if_index 
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = original_sw_if_index
           = sw_if_index;
 
       swif = vnet_get_sw_interface (vnm, original_sw_if_index);
       if (swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
           sw_if_index = swif->unnumbered_sw_if_index;
 
-      vlib_buffer_advance (b0, sizeof(*r0));
-      /* 
-       * udp_local hands us the DHCPV6 header, need udp hdr, 
+
+      /*
+       * udp_local hands us the DHCPV6 header, need udp hdr,
        * ip hdr to relay to client
        */
       vlib_buffer_advance (b0, -(sizeof(*u1)));
