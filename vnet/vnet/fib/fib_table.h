@@ -210,9 +210,8 @@ extern fib_node_index_t fib_table_entry_special_dpo_add(u32 fib_index,
  *  Instead the client/source provides the DPO to link to.
  *  Special entries are add/remove reference counted per-source. So n
  * 'removes' are required for n 'adds', if the entry is no longer required.
- *  An 'update' can only be used after an 'add' and is therefore assumed to act
- * on the reference instance of that add (an update is implemented as add/remove
- * pair).
+ *  An 'update' is an 'add' if no 'add' has already been called, otherwise an 'add'
+ * is therefore assumed to act on the reference instance of that add.
  *
  * @param fib_entry_index
  *  The index of the FIB entry to update
@@ -229,10 +228,11 @@ extern fib_node_index_t fib_table_entry_special_dpo_add(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern void fib_table_entry_special_dpo_update (fib_node_index_t fib_entry_index,
-						fib_source_t source,
-						fib_entry_flag_t stype,
-						const dpo_id_t *dpo);
+extern fib_node_index_t fib_table_entry_special_dpo_update (u32 fib_index,
+							    const fib_prefix_t *prefix,
+							    fib_source_t source,
+							    fib_entry_flag_t stype,
+							    const dpo_id_t *dpo);
 
 /**
  * @brief

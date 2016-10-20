@@ -47,6 +47,7 @@
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/dpo/punt_dpo.h>
 #include <vnet/dpo/receive_dpo.h>
+#include <vnet/dpo/ip_null_dpo.h>
 
 /**
  * @file
@@ -278,6 +279,12 @@ static uword unformat_dpo (unformat_input_t * input, va_list * args)
     dpo_copy(dpo, punt_dpo_get(proto));
   else if (unformat (input, "local"))
     receive_dpo_add_or_lock(proto, ~0, NULL, dpo);
+  else if (unformat (input, "null-send-unreach"))
+      ip_null_dpo_add_and_lock(proto, IP_NULL_ACTION_SEND_ICMP_UNREACH, dpo);
+  else if (unformat (input, "null-send-prohibit"))
+      ip_null_dpo_add_and_lock(proto, IP_NULL_ACTION_SEND_ICMP_PROHIBIT, dpo);
+  else if (unformat (input, "null"))
+      ip_null_dpo_add_and_lock(proto, IP_NULL_ACTION_NONE, dpo);
   else if (unformat (input, "classify"))
     {
       u32 classify_table_index;
@@ -337,7 +344,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   fib_route_path_t *rpaths = NULL, rpath;
-  dpo_id_t dpo = DPO_NULL, *dpos = NULL;
+  dpo_id_t dpo = DPO_INVALID, *dpos = NULL;
   fib_prefix_t *prefixs = NULL, pfx;
   clib_error_t * error = NULL;
   mpls_label_t out_label;

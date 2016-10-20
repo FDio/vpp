@@ -753,6 +753,47 @@ fib_entry_post_update_actions (fib_entry_t *fib_entry,
     fib_entry_post_install_actions(fib_entry, source, old_flags);
 }
 
+static void
+fib_entry_source_change (fib_entry_t *fib_entry,
+			 fib_source_t best_source,
+			 fib_source_t new_source,
+			 fib_entry_flag_t old_flags)
+{
+    /*
+     * if the path list for the source passed is invalid,
+     * then we need to create a new one. else we are updating
+     * an existing.
+     */
+    if (new_source < best_source)
+    {
+	/*
+	 * we have a new winning source.
+	 */
+	fib_entry_src_action_deactivate(fib_entry, best_source);
+	fib_entry_src_action_activate(fib_entry, new_source);
+    }
+    else if (new_source > best_source)
+    {
+	/*
+	 * the new source loses. nothing to do here.
+	 * the data from the source is saved in the path-list created
+	 */
+	return;
+    }
+    else
+    {
+	/*
+	 * the new source is one this entry already has.
+	 * But the path-list was updated, which will contribute new forwarding,
+	 * so install it.
+	 */
+	fib_entry_src_action_deactivate(fib_entry, new_source);
+	fib_entry_src_action_activate(fib_entry, new_source);
+    }
+
+    fib_entry_post_update_actions(fib_entry, new_source, old_flags);
+}
+
 void
 fib_entry_special_add (fib_node_index_t fib_entry_index,
 		       fib_source_t source,
@@ -771,41 +812,30 @@ fib_entry_special_add (fib_node_index_t fib_entry_index,
     bflags = fib_entry_src_get_flags(bsrc);
 
     fib_entry = fib_entry_src_action_add(fib_entry, source, flags, dpo);
-
-    /*
-     * if the path list for the source passed is invalid,
-     * then we need to create a new one. else we are updating
-     * an existing.
-     */
-    if (source < best_source)
-    {
-	/*
-	 * we have a new winning source.
-	 */
-	fib_entry_src_action_deactivate(fib_entry, best_source);
-	fib_entry_src_action_activate(fib_entry, source);
-    }
-    else if (source > best_source)
-    {
-	/*
-	 * the new source loses. nothing to do here.
-	 * the data from the source is saved in the path-list created
-	 */
-	return;
-    }
-    else
-    {
-	/*
-	 * the new source is one this entry already has.
-	 * But the path-list was updated, which will contribute new forwarding,
-	 * so install it.
-	 */
-	fib_entry_src_action_deactivate(fib_entry, source);
-	fib_entry_src_action_activate(fib_entry, source);
-    }
-
-    fib_entry_post_update_actions(fib_entry, source, bflags);
+    fib_entry_source_change(fib_entry, best_source, source, bflags);
 }
+
+void
+fib_entry_special_update (fib_node_index_t fib_entry_index,
+			  fib_source_t source,
+			  fib_entry_flag_t flags,
+			  const dpo_id_t *dpo)
+{
+    fib_source_t best_source;
+    fib_entry_flag_t bflags;
+    fib_entry_t *fib_entry;
+    fib_entry_src_t *bsrc;
+
+    fib_entry = fib_entry_get(fib_entry_index);
+
+    bsrc = fib_entry_get_best_src_i(fib_entry);
+    best_source = fib_entry_src_get_source(bsrc);
+    bflags = fib_entry_src_get_flags(bsrc);
+
+    fib_entry = fib_entry_src_action_update(fib_entry, source, flags, dpo);
+    fib_entry_source_change(fib_entry, best_source, source, bflags);
+}
+
 
 void
 fib_entry_path_add (fib_node_index_t fib_entry_index,

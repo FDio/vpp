@@ -563,7 +563,7 @@ fib_path_recursive_adj_update (fib_path_t *path,
 			       fib_forward_chain_type_t fct,
 			       dpo_id_t *dpo)
 {
-    dpo_id_t via_dpo = DPO_NULL;
+    dpo_id_t via_dpo = DPO_INVALID;
 
     /*
      * get the DPO to resolve through from the via-entry

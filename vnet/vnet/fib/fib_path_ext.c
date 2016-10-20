@@ -135,7 +135,7 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
 	break;
     }
 
-    dpo_id_t via_dpo = DPO_NULL;
+    dpo_id_t via_dpo = DPO_INVALID;
 
     /*
      * The next object in the graph after the imposition of the label

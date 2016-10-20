@@ -446,6 +446,10 @@ extern void fib_entry_special_add(fib_node_index_t fib_entry_index,
 				  fib_source_t source,
 				  fib_entry_flag_t flags,
 				  const dpo_id_t *dpo);
+extern void fib_entry_special_update(fib_node_index_t fib_entry_index,
+				     fib_source_t source,
+				     fib_entry_flag_t flags,
+				     const dpo_id_t *dpo);
 extern fib_entry_src_flag_t fib_entry_special_remove(fib_node_index_t fib_entry_index,
 						     fib_source_t source);
 

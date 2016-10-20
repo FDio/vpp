@@ -89,7 +89,7 @@ mpls_fib_index_from_table_id (u32 table_id)
 static u32
 mpls_fib_create_with_table_id (u32 table_id)
 {
-    dpo_id_t dpo = DPO_NULL;
+    dpo_id_t dpo = DPO_INVALID;
     fib_table_t *fib_table;
     mpls_eos_bit_t eos;
     mpls_fib_t *mf;

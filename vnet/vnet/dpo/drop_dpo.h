@@ -13,14 +13,8 @@
  * limitations under the License.
  */
 /**
- * @brief
- * A Data-Path Object is an object that represents actions that are
- * applied to packets are they are switched through VPP.
- * 
- * The DPO is a base class that is specialised by other objects to provide
- * concreate actions
- *
- * The VLIB graph nodes are graph of types, the DPO graph is a graph of instances.
+ * @brief The Drop DPO will drop all packets, no questions asked. It is valid
+ * for any packet protocol.
  */
 
 #ifndef __DROP_DPO_H__

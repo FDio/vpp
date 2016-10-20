@@ -23,6 +23,7 @@
 #include <vnet/dpo/lookup_dpo.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/receive_dpo.h>
+#include <vnet/dpo/ip_null_dpo.h>
 
 #include <vnet/mpls/mpls.h>
 
@@ -181,7 +182,7 @@ fib_test_urpf_is_equal (fib_node_index_t fei,
 		       fib_forward_chain_type_t fct,
 		       u32 num, ...)
 {
-    dpo_id_t dpo = DPO_NULL;
+    dpo_id_t dpo = DPO_INVALID;
     fib_urpf_list_t *urpf;
     index_t ui;
     va_list ap;
@@ -940,7 +941,7 @@ fib_test_v4 (void)
      * An EXCLUSIVE route; one where the user (me) provides the exclusive
      * adjacency through which the route will resovle
      */
-    dpo_id_t ex_dpo = DPO_NULL;
+    dpo_id_t ex_dpo = DPO_INVALID;
 
     lookup_dpo_add_or_lock_w_fib_index(fib_index,
                                        DPO_PROTO_IP4,
@@ -957,6 +958,21 @@ fib_test_v4 (void)
     dpo = fib_entry_contribute_ip_forwarding(fei);
     FIB_TEST(!dpo_cmp(&ex_dpo, load_balance_get_bucket(dpo->dpoi_index, 0)),
 	     "exclusive remote uses lookup DPO");
+
+    /*
+     * update the exclusive to use a different DPO
+     */
+    ip_null_dpo_add_and_lock(FIB_PROTOCOL_IP4,
+			     IP_NULL_ACTION_SEND_ICMP_UNREACH,
+			     &ex_dpo);
+    fib_table_entry_special_dpo_update(fib_index,
+				       &ex_pfx,
+				       FIB_SOURCE_SPECIAL,
+				       FIB_ENTRY_FLAG_EXCLUSIVE,
+				       &ex_dpo);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(!dpo_cmp(&ex_dpo, load_balance_get_bucket(dpo->dpoi_index, 0)),
+	     "exclusive remote uses now uses NULL DPO");
 
     fib_table_entry_special_remove(fib_index,
 				   &ex_pfx,
@@ -1181,7 +1197,7 @@ fib_test_v4 (void)
     /*
      * test the uRPF check functions
      */
-    dpo_id_t dpo_44 = DPO_NULL;
+    dpo_id_t dpo_44 = DPO_INVALID;
     index_t urpfi;
 
     fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, &dpo_44);
@@ -4822,7 +4838,7 @@ fib_test_validate_entry (fib_node_index_t fei,
 			 ...)
 {
     const load_balance_t *lb;
-    dpo_id_t dpo = DPO_NULL;
+    dpo_id_t dpo = DPO_INVALID;
     fib_prefix_t pfx;
     index_t fw_lbi;
     u32 fib_index;
@@ -5214,7 +5230,7 @@ fib_test_label (void)
     /*
      * get and lock a reference to the non-eos of the via entry 1.1.1.1/32
      */
-    dpo_id_t non_eos_1_1_1_1 = DPO_NULL;
+    dpo_id_t non_eos_1_1_1_1 = DPO_INVALID;
     fib_entry_contribute_forwarding(fei,
 				    FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
 				    &non_eos_1_1_1_1);
@@ -5273,7 +5289,7 @@ fib_test_label (void)
 	     "2.2.2.2.2/32 LB 1 buckets via: "
 	     "label 1600 over 1.1.1.1");
 
-    dpo_id_t dpo_44 = DPO_NULL;
+    dpo_id_t dpo_44 = DPO_INVALID;
     index_t urpfi;
 
     fib_entry_contribute_forwarding(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, &dpo_44);
@@ -5339,7 +5355,7 @@ fib_test_label (void)
      * test that the pre-failover load-balance has been in-place
      * modified
      */
-    dpo_id_t current = DPO_NULL;
+    dpo_id_t current = DPO_INVALID;
     fib_entry_contribute_forwarding(fei,
 				    FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
 				    &current);
@@ -5663,7 +5679,7 @@ fib_test_label (void)
 	     "1.1.1.2/32 LB 1 buckets via: "
 	     "label 101 over 10.10.10.1");
 
-    dpo_id_t non_eos_1_1_1_2 = DPO_NULL;
+    dpo_id_t non_eos_1_1_1_2 = DPO_INVALID;
     fib_entry_contribute_forwarding(fib_table_lookup(fib_index,
 						     &pfx_1_1_1_1_s_32),
 				    FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
@@ -5781,7 +5797,7 @@ fib_test_label (void)
 	    .ip4.as_u32 = clib_host_to_net_u32(0x02020203),
 	},
     };
-    dpo_id_t ip_1_1_1_1 = DPO_NULL;
+    dpo_id_t ip_1_1_1_1 = DPO_INVALID;
 
     fib_table_entry_update_one_path(fib_index,
 				    &pfx_2_2_2_3_s_32,
@@ -6396,7 +6412,7 @@ lfib_test_deagg (void)
     const mpls_label_t deag_label = 50;
     const u32 lfib_index = 0;
     const u32 fib_index = 0;
-    dpo_id_t dpo = DPO_NULL;
+    dpo_id_t dpo = DPO_INVALID;
     const dpo_id_t *dpo1;
     fib_node_index_t lfe;
     lookup_dpo_t *lkd;

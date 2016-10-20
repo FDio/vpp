@@ -955,7 +955,7 @@ add_port_range_adjacency (u32 fib_index,
 			  u32 length, u16 * low_ports, u16 * high_ports)
 {
   protocol_port_range_dpo_t *ppr_dpo;
-  dpo_id_t dpop = DPO_NULL;
+  dpo_id_t dpop = DPO_INVALID;
   int i, j, k;
 
   fib_node_index_t fei;
@@ -985,7 +985,7 @@ add_port_range_adjacency (u32 fib_index,
        * the prefix is already there.
        * check it was sourced by us, and if so get the ragne DPO from it.
        */
-      dpo_id_t dpo = DPO_NULL;
+      dpo_id_t dpo = DPO_INVALID;
       const dpo_id_t *bucket;
 
       if (fib_entry_get_dpo_for_source (fei, FIB_SOURCE_SPECIAL, &dpo))
@@ -1045,9 +1045,9 @@ add_port_range_adjacency (u32 fib_index,
     }
   else
     {
-      fib_table_entry_special_dpo_update (fei,
-					  FIB_SOURCE_SPECIAL,
-					  FIB_ENTRY_FLAG_NONE, &dpop);
+      fib_entry_special_update (fei,
+				FIB_SOURCE_SPECIAL,
+				FIB_ENTRY_FLAG_NONE, &dpop);
     }
 
   return 0;
@@ -1088,7 +1088,7 @@ remove_port_range_adjacency (u32 fib_index,
        * the prefix is already there.
        * check it was sourced by us
        */
-      dpo_id_t dpo = DPO_NULL;
+      dpo_id_t dpo = DPO_INVALID;
       const dpo_id_t *bucket;
 
       if (fib_entry_get_dpo_for_source (fei, FIB_SOURCE_SPECIAL, &dpo))
@@ -1361,7 +1361,7 @@ show_source_and_port_range_check_fn (vlib_main_t * vm,
    * find the longest prefix match on the address requested,
    * check it was sourced by us
    */
-  dpo_id_t dpo = DPO_NULL;
+  dpo_id_t dpo = DPO_INVALID;
   const dpo_id_t *bucket;
 
   if (!fib_entry_get_dpo_for_source (fib_table_lookup (fib_index, &pfx),
