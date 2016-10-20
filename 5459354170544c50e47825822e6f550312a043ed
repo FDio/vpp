@@ -1,0 +1,280 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da3975d1_ebf5edcb",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_encap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "If we fix the  vnet_buffer(pak)-\u003esw_if_index[VLIB_RX] may be in vxlan_gpe_input, then we can avoid this lookup? From our discussion since tunnel is required ot populated ingress if, if that is available in \nvnet_buffer(pak)-\u003esw_if_index[VLIB_RX] then reference to tunnel will not be required.",
+      "range": {
+        "startLine": 124,
+        "startChar": 0,
+        "endLine": 134,
+        "endChar": 60
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_abc0052b",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_pop.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "If vxlan_gpe_input advances the buffer to pop (ip, udp, vxlan), per discussion could we have ioam_pop to advance the buffer for ioam?\nI see that we are rewinding the buffer back to IP header in export/decap processing, but that can be avoided by simply passing the offset to read the packet from which copyign in export and ioam processing anyway needs only the ioam options in the ioam protocol header.",
+      "range": {
+        "startLine": 142,
+        "startChar": 8,
+        "endLine": 142,
+        "endChar": 37
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_8b04217f",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/vxlan_gpe_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "we are doing host to net twice here.. why?\n\nvpp client does host to net for apis and vpp does net to host.",
+      "range": {
+        "startLine": 162,
+        "startChar": 6,
+        "endLine": 164,
+        "endChar": 6
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_0bf8317b",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/vxlan_gpe_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "similar comment as in enable",
+      "range": {
+        "startLine": 211,
+        "startChar": 5,
+        "endLine": 213,
+        "endChar": 4
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_2b11b5ac",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/vxlan_gpe_ioam.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "do we need this?",
+      "range": {
+        "startLine": 108,
+        "startChar": 15,
+        "endLine": 108,
+        "endChar": 47
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_eb228d00",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/vxlan_gpe_ioam.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "wont vxlan*_gpe_rewrite take care of setting the encap_next_node if we pass it here with extended rewrite size to 0?\n\nIf yes then\nt-\u003eencap_next_node \u003d\n    ipv6_set ? VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP :\n    VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP; is not needed..\n\neither ways t-\u003eencap_next_node \u003d VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP; again here he not needed",
+      "range": {
+        "startLine": 115,
+        "startChar": 4,
+        "endLine": 121,
+        "endChar": 5
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_4b351945",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "should we have one for v4 and another for v6... so we can have export/pop corresponding to v4 \u0026 v6?",
+      "range": {
+        "startLine": 59,
+        "startChar": 8,
+        "endLine": 59,
+        "endChar": 27
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_4b83d9cc",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/vxlan_gpe_ioam_trace.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "Trace in / out of policy does seem right. We can record when we fail to add trace e.g. space is full i.e elements left is zero.",
+      "range": {
+        "startLine": 54,
+        "startChar": 2,
+        "endLine": 55,
+        "endChar": 44
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_2b8895e6",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/vxlan_gpe_ioam_trace.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "per another comment, please check if we can avoid having the tunnel here.",
+      "range": {
+        "startLine": 255,
+        "startChar": 5,
+        "endLine": 255,
+        "endChar": 42
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_0b6dd132",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/vxlan_gpe_ioam_util.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "populate ioam header?",
+      "range": {
+        "startLine": 99,
+        "startChar": 4,
+        "endLine": 99,
+        "endChar": 24
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_eb696d26",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/vxlan_gpe_ioam_util.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "Incase of decap current header will be pointing to ioam header.\nHere we only are interested in ioam header.\nTo help with encap case where the current buffer is still at ip header.. may be we can pass the current_buffer_offset_for_ioam to vxlan_gpe_encap_decap_ioam_v4_*_inline functions so it can find ioam header correctly?",
+      "range": {
+        "startLine": 100,
+        "startChar": 2,
+        "endLine": 102,
+        "endChar": 51
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_4b7cf972",
+        "filename": "vnet/vnet/vxlan-gpe/vxlan_gpe.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-10-20T09:53:53Z",
+      "side": 1,
+      "message": "Do we need this?",
+      "range": {
+        "startLine": 127,
+        "startChar": 8,
+        "endLine": 127,
+        "endChar": 40
+      },
+      "revId": "5459354170544c50e47825822e6f550312a043ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
