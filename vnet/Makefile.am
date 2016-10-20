@@ -805,6 +805,7 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=				\
   vnet/dpo/dpo.c                                \
   vnet/dpo/drop_dpo.c                           \
+  vnet/dpo/ip_null_dpo.c                        \
   vnet/dpo/punt_dpo.c                           \
   vnet/dpo/receive_dpo.c                        \
   vnet/dpo/load_balance.c			\
@@ -820,6 +821,7 @@ nobase_include_HEADERS +=			\
   vnet/dpo/punt_dpo.h                           \
   vnet/dpo/classify_dpo.h                       \
   vnet/dpo/receive_dpo.h                        \
+  vnet/dpo/ip_null_dpo.h                        \
   vnet/dpo/dpo.h
 
 ########################################

@@ -649,7 +649,7 @@ ip4_add_interface_routes (u32 sw_if_index,
 	  lm->classify_table_index_by_sw_if_index [sw_if_index];
       if (classify_table_index != (u32) ~0)
       {
-          dpo_id_t dpo = DPO_NULL;
+          dpo_id_t dpo = DPO_INVALID;
 
           dpo_set(&dpo,
                   DPO_CLASSIFY,
@@ -1899,10 +1899,6 @@ ip4_arp_inline (vlib_main_t * vm,
 	  adj0 = ip_get_adjacency (lm, adj_index0);
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  /*
-	   * this is the Glean case, so we are ARPing for the
-	   * packet's destination
-	   */
 	  a0 = hash_seeds[0];
 	  b0 = hash_seeds[1];
 	  c0 = hash_seeds[2];
@@ -1912,6 +1908,10 @@ ip4_arp_inline (vlib_main_t * vm,
 
           if (is_glean)
           {
+	      /*
+	       * this is the Glean case, so we are ARPing for the
+	       * packet's destination
+	       */
               a0 ^= ip0->dst_address.data_u32;
           }
           else
@@ -3296,7 +3296,7 @@ int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 
       if (table_index != (u32) ~0)
       {
-          dpo_id_t dpo = DPO_NULL;
+          dpo_id_t dpo = DPO_INVALID;
 
           dpo_set(&dpo,
                   DPO_CLASSIFY,

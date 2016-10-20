@@ -35,6 +35,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/punt_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
+#include <vnet/dpo/ip_null_dpo.h>
 
 /**
  * Array of char* names for the DPO types and protos
@@ -342,7 +343,7 @@ dpo_stack_i (u32 edge,
      * in order to get an atomic update of the parent we create a temporary,
      * from a copy of the child, and add the next_node. then we copy to the parent
      */
-    dpo_id_t tmp = DPO_NULL;
+    dpo_id_t tmp = DPO_INVALID;
     dpo_copy(&tmp, parent);
 
     /*
@@ -417,6 +418,7 @@ dpo_module_init (vlib_main_t * vm)
     mpls_label_dpo_module_init();
     classify_dpo_module_init();
     lookup_dpo_module_init();
+    ip_null_dpo_module_init();
 
     return (NULL);
 }

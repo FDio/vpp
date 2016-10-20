@@ -40,7 +40,7 @@ sixrd_create_domain (ip6_address_t *ip6_prefix,
 		     u32 *sixrd_domain_index,
 		     u16 mtu)
 {
-  dpo_id_t dpo_v6 = DPO_NULL, dpo_v4 = DPO_NULL;
+  dpo_id_t dpo_v6 = DPO_INVALID, dpo_v4 = DPO_INVALID;
   sixrd_main_t *mm = &sixrd_main;
   fib_node_index_t fei;
   sixrd_domain_t *d;
@@ -94,7 +94,7 @@ sixrd_create_domain (ip6_address_t *ip6_prefix,
 
   if (FIB_NODE_INDEX_INVALID != fei)
   {
-      dpo_id_t dpo = DPO_NULL;
+      dpo_id_t dpo = DPO_INVALID;
 
       if (fib_entry_get_dpo_for_source (fei, FIB_SOURCE_SIXRD, &dpo))
       {
