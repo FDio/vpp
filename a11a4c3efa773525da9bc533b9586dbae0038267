@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da3975d1_ebd72dbe",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-10-20T11:28:38Z",
+      "side": 1,
+      "message": "Not entirely sure about this. I\u0027d expect to get src/dst only if the request was src/dst and this can happen iff lcm-\u003emap_request_mode is MR_MODE_SRC_DST. So perhaps this should be the \u0027outer\u0027 if condition and the test if the dest is an actual src/dst should be within.",
+      "range": {
+        "startLine": 389,
+        "startChar": 0,
+        "endLine": 389,
+        "endChar": 59
+      },
+      "revId": "a11a4c3efa773525da9bc533b9586dbae0038267",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_eb504d60",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 403,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-10-20T11:28:38Z",
+      "side": 1,
+      "message": "Is this still needed?",
+      "range": {
+        "startLine": 403,
+        "startChar": 10,
+        "endLine": 403,
+        "endChar": 17
+      },
+      "revId": "a11a4c3efa773525da9bc533b9586dbae0038267",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_ab8fe5cb",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 889,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-10-20T11:28:38Z",
+      "side": 1,
+      "message": "Maybe convert this to: \"eids_to_be_deleted\".",
+      "range": {
+        "startLine": 889,
+        "startChar": 19,
+        "endLine": 889,
+        "endChar": 20
+      },
+      "revId": "a11a4c3efa773525da9bc533b9586dbae0038267",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_8bee618a",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 936,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-10-20T11:28:38Z",
+      "side": 1,
+      "message": "overlapping?",
+      "range": {
+        "startLine": 936,
+        "startChar": 7,
+        "endLine": 936,
+        "endChar": 16
+      },
+      "revId": "a11a4c3efa773525da9bc533b9586dbae0038267",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_cb9229f6",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 969,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-10-20T11:28:38Z",
+      "side": 1,
+      "message": "Perhaps move this to gid_dictionary function to keep it IP AFI independent.",
+      "range": {
+        "startLine": 958,
+        "startChar": 0,
+        "endLine": 969,
+        "endChar": 62
+      },
+      "revId": "a11a4c3efa773525da9bc533b9586dbae0038267",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_eb85edad",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 972,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-10-20T11:28:38Z",
+      "side": 1,
+      "message": "Wow, this looks ugly :-)\n\nWe may have to consider using an aggregate \"args\" variable for this function. Not in this patch though!",
+      "range": {
+        "startLine": 972,
+        "startChar": 30,
+        "endLine": 972,
+        "endChar": 68
+      },
+      "revId": "a11a4c3efa773525da9bc533b9586dbae0038267",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_0b54b152",
+        "filename": "vnet/vnet/lisp-cp/gid_dictionary.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-10-20T11:28:38Z",
+      "side": 1,
+      "message": "\"Entry\" would be a good suffix if the match rule would be part of arguments. But as it stands the match rule is fixed to subprefixes.",
+      "range": {
+        "startLine": 37,
+        "startChar": 14,
+        "endLine": 37,
+        "endChar": 19
+      },
+      "revId": "a11a4c3efa773525da9bc533b9586dbae0038267",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_4b5ab984",
+        "filename": "vnet/vnet/lisp-cp/gid_dictionary.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-10-20T11:28:38Z",
+      "side": 1,
+      "message": "Wouldn\u0027t subprefix be a better suffix here? Same for v6.",
+      "range": {
+        "startLine": 57,
+        "startChar": 21,
+        "endLine": 57,
+        "endChar": 26
+      },
+      "revId": "a11a4c3efa773525da9bc533b9586dbae0038267",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da3975d1_6bc1fde3",
+        "filename": "vnet/vnet/lisp-gpe/lisp_gpe_fwd_entry.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-10-20T11:28:38Z",
+      "side": 1,
+      "message": "Either remove the commented lines OR use the type of the eids to decide if l2 or l3 table of the lisp tenant should be used.",
+      "range": {
+        "startLine": 395,
+        "startChar": 2,
+        "endLine": 395,
+        "endChar": 4
+      },
+      "revId": "a11a4c3efa773525da9bc533b9586dbae0038267",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
