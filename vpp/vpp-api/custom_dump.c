@@ -2779,6 +2779,16 @@ static void *vl_api_flow_classify_dump_t_print
   FINISH;
 }
 
+static void *vl_api_get_first_msg_id_t_print
+  (vl_api_get_first_msg_id_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: get_first_msg_id %s ", mp->name);
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -2941,7 +2951,8 @@ _(DELETE_SUBIF, delete_subif)                                           \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
 _(PUNT, punt)                                                           \
 _(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
-_(FLOW_CLASSIFY_DUMP, flow_classify_dump)
+_(FLOW_CLASSIFY_DUMP, flow_classify_dump)				\
+_(GET_FIRST_MSG_ID, get_first_msg_id)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
