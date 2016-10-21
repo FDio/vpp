@@ -51,20 +51,19 @@
 #include <stdint.h>
 #include <x86intrin.h>
 
+typedef u8 u8x16u __attribute__ ((vector_size (16), aligned (1)));
+typedef u8 u8x32u __attribute__ ((vector_size (32), aligned (1)));
+
 static inline void
 clib_mov16 (u8 * dst, const u8 * src)
 {
-  __m128i xmm0;
-
-  xmm0 = _mm_loadu_si128 ((const __m128i *) src);
-  _mm_storeu_si128 ((__m128i *) dst, xmm0);
+  *(u8x16u *) dst = *(u8x16u *) src;
 }
 
 static inline void
 clib_mov32 (u8 * dst, const u8 * src)
 {
-  clib_mov16 ((u8 *) dst + 0 * 16, (const u8 *) src + 0 * 16);
-  clib_mov16 ((u8 *) dst + 1 * 16, (const u8 *) src + 1 * 16);
+  *(u8x32u *) dst = *(u8x32u *) src;
 }
 
 static inline void
