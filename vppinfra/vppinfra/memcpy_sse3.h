@@ -54,17 +54,13 @@
 static inline void
 clib_mov16 (u8 * dst, const u8 * src)
 {
-  __m128i xmm0;
-
-  xmm0 = _mm_loadu_si128 ((const __m128i *) src);
-  _mm_storeu_si128 ((__m128i *) dst, xmm0);
+  *(u8x16 *) dst = *(u8x16 *) src;
 }
 
 static inline void
 clib_mov32 (u8 * dst, const u8 * src)
 {
-  clib_mov16 ((u8 *) dst + 0 * 16, (const u8 *) src + 0 * 16);
-  clib_mov16 ((u8 *) dst + 1 * 16, (const u8 *) src + 1 * 16);
+  *(u8x32 *) dst = *(u8x32 *) src;
 }
 
 static inline void
