@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba3e81b7_1625fcaa",
+        "filename": "vlib/vlib/unix/util.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2016-10-22T02:24:36Z",
+      "side": 1,
+      "message": "When setting nr_hugepages by hand on systems with fragmented memory (e.g. echo 10000 \u003e /proc/sys/vm/nr_hugepages), I have seen this take many seconds (sometime more than a minute) for the read to return the allocated number of pages.  Repeating the read during that time would return different values.  Sometimes the final read value would not be the same as what was written.  So I\u0027m not sure if the routine work as intended without polling until the read value stops changing.\n\nIf the behavior described is present, this is also going to wreak havoc with the restart time.\n\nIn anycase, I would advocate that this be heavily tested by hand in VM, container, and bare metal environments.  IMO, passing CSIT functional testing will not be rigorous enough to verify this patch.",
+      "range": {
+        "startLine": 266,
+        "startChar": 0,
+        "endLine": 267,
+        "endChar": 41
+      },
+      "revId": "66b472edbfc8e1ed811cd458fc7488f8eb4a08da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
