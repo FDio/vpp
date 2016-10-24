@@ -127,6 +127,11 @@ typedef struct {
 } snat_static_mapping_t;
 
 typedef struct {
+  u32 sw_if_index;
+  u8 is_inside;
+} snat_interface_t;
+
+typedef struct {
   /* Main lookup tables */
   clib_bihash_8_8_t out2in;
   clib_bihash_8_8_t in2out;
@@ -148,6 +153,9 @@ typedef struct {
 
   /* Static mapping pool */
   snat_static_mapping_t * static_mappings;
+
+  /* Interface pool */
+  snat_interface_t * interfaces;
 
   /* Vector of outside addresses */
   snat_address_t * addresses;

@@ -529,6 +529,57 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   return 0;
 }
 
+static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
+{
+  snat_main_t *sm = &snat_main;
+  snat_interface_t *i;
+  u32 ci;
+  ip4_main_t * im = &ip4_main;
+  ip_lookup_main_t * lm = &im->lookup_main;
+  ip_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  u32 feature_index;
+
+  if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
+    feature_index = is_inside ?  sm->rx_feature_in2out_fast
+      : sm->rx_feature_out2in_fast;
+  else
+    feature_index = is_inside ? sm->rx_feature_in2out
+      : sm->rx_feature_out2in;
+
+  ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
+  ci = (is_del
+        ? vnet_config_del_feature
+        : vnet_config_add_feature)
+    (sm->vlib_main, &rx_cm->config_main,
+     ci,
+     feature_index,
+     0 /* config struct */,
+     0 /* sizeof config struct*/);
+  rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+
+  pool_foreach (i, sm->interfaces,
+  ({
+    if (i->sw_if_index == sw_if_index)
+      {
+        if (is_del)
+          pool_put (sm->interfaces, i);
+        else
+          return VNET_API_ERROR_VALUE_EXIST;
+
+        return 0;
+      }
+  }));
+
+  if (is_del)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  pool_get (sm->interfaces, i);
+  i->sw_if_index = sw_if_index;
+  i->is_inside = is_inside;
+
+  return 0;
+}
+
 static void 
 vl_api_snat_add_address_range_t_handler
 (vl_api_snat_add_address_range_t * mp)
@@ -650,32 +701,11 @@ vl_api_snat_interface_add_del_feature_t_handler
   vl_api_snat_interface_add_del_feature_reply_t * rmp;
   u8 is_del = mp->is_add == 0;
   u32 sw_if_index = ntohl(mp->sw_if_index);
-  u32 ci;
-  ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  u32 feature_index;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX(mp);
 
-  if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
-    feature_index = mp->is_inside ?  sm->rx_feature_in2out_fast
-      : sm->rx_feature_out2in_fast;
-  else
-    feature_index = mp->is_inside ? sm->rx_feature_in2out
-      : sm->rx_feature_out2in;
-
-  ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
-  ci = (is_del
-        ? vnet_config_del_feature
-        : vnet_config_add_feature)
-    (sm->vlib_main, &rx_cm->config_main,
-     ci,
-     feature_index,
-     0 /* config struct */, 
-     0 /* sizeof config struct*/);
-  rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+  rv = snat_interface_add_del (sw_if_index, mp->is_inside, is_del);
   
   BAD_SW_IF_INDEX_LABEL;
 
@@ -697,6 +727,50 @@ static void *vl_api_snat_interface_add_del_feature_t_print
 }
 
 static void
+send_snat_interface_details
+(snat_interface_t * i, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_snat_interface_details_t *rmp;
+  snat_main_t * sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_INTERFACE_DETAILS+sm->msg_id_base);
+  rmp->sw_if_index = ntohl (i->sw_if_index);
+  rmp->is_inside = i->is_inside;
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_snat_interface_dump_t_handler
+(vl_api_snat_interface_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t * sm = &snat_main;
+  snat_interface_t * i;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  pool_foreach (i, sm->interfaces,
+  ({
+    send_snat_interface_details(i, q, mp->context);
+  }));
+}
+
+static void *vl_api_snat_interface_dump_t_print
+(vl_api_snat_interface_dump_t *mp, void * handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_interface_dump ");
+
+  FINISH;
+}static void
+
 vl_api_snat_add_static_mapping_t_handler
 (vl_api_snat_add_static_mapping_t * mp)
 {
@@ -866,7 +940,8 @@ _(SNAT_ADD_STATIC_MAPPING, snat_add_static_mapping)                     \
 _(SNAT_CONTROL_PING, snat_control_ping)                                 \
 _(SNAT_STATIC_MAPPING_DUMP, snat_static_mapping_dump)                   \
 _(SNAT_SHOW_CONFIG, snat_show_config)                                   \
-_(SNAT_ADDRESS_DUMP, snat_address_dump)
+_(SNAT_ADDRESS_DUMP, snat_address_dump)                                 \
+_(SNAT_INTERFACE_DUMP, snat_interface_dump)
 
 /* Set up the API message handling tables */
 static clib_error_t *
@@ -1132,13 +1207,8 @@ snat_feature_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t * vnm = vnet_get_main();
-  snat_main_t * sm = &snat_main;
-  ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   clib_error_t * error = 0;
-  u32 sw_if_index, ci;
-  u32 feature_index;
+  u32 sw_if_index;
   u32 * inside_sw_if_indices = 0;
   u32 * outside_sw_if_indices = 0;
   int is_del = 0;
@@ -1168,47 +1238,19 @@ snat_feature_command_fn (vlib_main_t * vm,
 
   if (vec_len (inside_sw_if_indices))
     {
-      if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
-        feature_index = sm->rx_feature_in2out_fast;
-      else
-        feature_index = sm->rx_feature_in2out;
-
       for (i = 0; i < vec_len(inside_sw_if_indices); i++)
         {
           sw_if_index = inside_sw_if_indices[i];
-          ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
-          ci = (is_del
-                ? vnet_config_del_feature
-                : vnet_config_add_feature)
-            (vm, &rx_cm->config_main,
-             ci,
-             feature_index,
-             0 /* config struct */, 
-             0 /* sizeof config struct*/);
-          rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+          snat_interface_add_del (sw_if_index, 1, is_del);
         }
     }
 
   if (vec_len (outside_sw_if_indices))
     {
-      if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
-        feature_index = sm->rx_feature_out2in_fast;
-      else
-        feature_index = sm->rx_feature_out2in;
-
       for (i = 0; i < vec_len(outside_sw_if_indices); i++)
         {
           sw_if_index = outside_sw_if_indices[i];
-          ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
-          ci = (is_del
-                ? vnet_config_del_feature
-                : vnet_config_add_feature)
-            (vm, &rx_cm->config_main,
-             ci,
-             feature_index,
-             0 /* config struct */, 
-             0 /* sizeof config struct*/);
-          rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+          snat_interface_add_del (sw_if_index, 0, is_del);
         }
     }
 
@@ -1498,6 +1540,8 @@ show_snat_command_fn (vlib_main_t * vm,
   snat_main_t * sm = &snat_main;
   snat_user_t * u;
   snat_static_mapping_t *m;
+  snat_interface_t *i;
+  vnet_main_t *vnm = vnet_get_main();
 
   if (unformat (input, "detail"))
     verbose = 1;
@@ -1515,6 +1559,16 @@ show_snat_command_fn (vlib_main_t * vm,
   else
     {
       vlib_cli_output (vm, "SNAT mode: dynamic translations enabled");
+    }
+
+  if (verbose > 0)
+    {
+      pool_foreach (i, sm->interfaces,
+      ({
+        vlib_cli_output (vm, "%U %s", format_vnet_sw_interface_name, vnm,
+                         vnet_get_sw_interface (vnm, i->sw_if_index),
+                         i->is_inside ? "in" : "out");
+      }));
     }
 
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
