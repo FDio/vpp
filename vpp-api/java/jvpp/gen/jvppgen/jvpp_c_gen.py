@@ -124,11 +124,14 @@ i32_struct_setter_template = Template("""
 u64_struct_setter_template = Template("""
     mp->${c_name} = clib_host_to_net_u64(${java_name});""")
 
+fixed_array_length_enforcement_template = Template("""
+        size_t max_size = ${field_length};
+        if (cnt > max_size) cnt = max_size;""")
+
 u8_array_struct_setter_template = Template("""
     if (${java_name}) {
         jsize cnt = (*env)->GetArrayLength (env, ${java_name});
-        size_t max_size = ${field_length};
-        if (max_size != 0 && cnt > max_size) cnt = max_size;
+        ${field_length_check}
         (*env)->GetByteArrayRegion(env, ${java_name}, 0, cnt, (jbyte *)mp->${c_name});
     }
 """)
@@ -138,8 +141,7 @@ u16_array_struct_setter_template = Template("""
     if (${java_name}) {
         size_t _i;
         jsize cnt = (*env)->GetArrayLength (env, ${java_name});
-        size_t max_size = ${field_length};
-        if (max_size != 0 && cnt > max_size) cnt = max_size;
+        ${field_length_check}
         for (_i = 0; _i < cnt; _i++) {
             mp->${c_name}[_i] = clib_host_to_net_u16(${java_name}ArrayElements[_i]);
         }
@@ -152,8 +154,7 @@ u32_array_struct_setter_template = Template("""
     if (${java_name}) {
         size_t _i;
         jsize cnt = (*env)->GetArrayLength (env, ${java_name});
-        size_t max_size = ${field_length};
-        if (max_size != 0 && cnt > max_size) cnt = max_size;
+        ${field_length_check}
         for (_i = 0; _i < cnt; _i++) {
             mp->${c_name}[_i] = clib_host_to_net_u32(${java_name}ArrayElements[_i]);
         }
@@ -166,8 +167,7 @@ u64_array_struct_setter_template = Template("""
     if (${java_name}) {
         size_t _i;
         jsize cnt = (*env)->GetArrayLength (env, ${java_name});
-        size_t max_size = ${field_length};
-        if (max_size != 0 && cnt > max_size) cnt = max_size;
+        ${field_length_check}
         for (_i = 0; _i < cnt; _i++) {
             mp->${c_name}[_i] = clib_host_to_net_u64(${java_name}ArrayElements[_i]);
         }
@@ -264,10 +264,15 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
                 c_type = t[0]
                 c_name = t[1]
                 field_length = t[2][0]
+                field_length_check = ""
 
                 # check if we are processing variable length array:
                 if t[2][1]:
                     field_length = util.underscore_to_camelcase(t[2][0])
+
+                # enforce max length if array has fixed length or uses variable length syntax
+                if str(t[2][0]) != "0":
+                    field_length_check = fixed_array_length_enforcement_template.substitute(field_length=field_length)
 
                 java_field_name = util.underscore_to_camelcase(c_name)
 
@@ -276,7 +281,7 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
                 struct_setters += struct_setter_template.substitute(
                         c_name=c_name,
                         java_name=java_field_name,
-                        field_length=field_length)
+                        field_length_check=field_length_check)
 
         jni_impl.append(jni_impl_template.substitute(
                 inputfile=inputfile,
