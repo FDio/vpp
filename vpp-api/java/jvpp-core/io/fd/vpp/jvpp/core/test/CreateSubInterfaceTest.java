@@ -18,7 +18,6 @@ package io.fd.vpp.jvpp.core.test;
 
 import static java.util.Objects.requireNonNull;
 
-import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
@@ -54,8 +53,8 @@ public class CreateSubInterfaceTest {
     private static void requireSingleIface(final SwInterfaceDetailsReplyDump response, final String ifaceName) {
         if (response.swInterfaceDetails.size() != 1) {
             throw new IllegalStateException(
-                    String.format("Expected one interface matching filter %s but was %d", ifaceName,
-                            response.swInterfaceDetails.size()));
+                String.format("Expected one interface matching filter %s but was %d", ifaceName,
+                    response.swInterfaceDetails.size()));
         }
     }
 
@@ -82,38 +81,36 @@ public class CreateSubInterfaceTest {
 
     private static void testCreateSubInterface() throws Exception {
         System.out.println("Testing sub-interface creation using Java callback API");
-        final JVppRegistry registry = new JVppRegistryImpl("CreateSubInterface");
-        final JVpp jvpp = new JVppCoreImpl();
-        final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, jvpp);
+        try (final JVppRegistry registry = new JVppRegistryImpl("CreateSubInterface");
+             final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
+            System.out.println("Successfully connected to VPP");
+            Thread.sleep(1000);
 
-        System.out.println("Successfully connected to VPP");
-        Thread.sleep(1000);
+            final String ifaceName = "GigabitEthernet0/8/0";
 
-        final String ifaceName = "GigabitEthernet0/8/0";
-
-        final SwInterfaceDetailsReplyDump swInterfaceDetails =
+            final SwInterfaceDetailsReplyDump swInterfaceDetails =
                 jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(ifaceName)).toCompletableFuture().get();
 
-        requireNonNull(swInterfaceDetails, "swInterfaceDump returned null");
-        requireNonNull(swInterfaceDetails.swInterfaceDetails, "swInterfaceDetails is null");
-        requireSingleIface(swInterfaceDetails, ifaceName);
+            requireNonNull(swInterfaceDetails, "swInterfaceDump returned null");
+            requireNonNull(swInterfaceDetails.swInterfaceDetails, "swInterfaceDetails is null");
+            requireSingleIface(swInterfaceDetails, ifaceName);
 
-        final int swIfIndex = swInterfaceDetails.swInterfaceDetails.get(0).swIfIndex;
-        final int subId = 1;
+            final int swIfIndex = swInterfaceDetails.swInterfaceDetails.get(0).swIfIndex;
+            final int subId = 1;
 
-        final CreateSubifReply createSubifReply =
+            final CreateSubifReply createSubifReply =
                 jvppFacade.createSubif(createSubifRequest(swIfIndex, subId)).toCompletableFuture().get();
-        print(createSubifReply);
+            print(createSubifReply);
 
-        final String subIfaceName = "GigabitEthernet0/8/0." + subId;
-        final SwInterfaceDetailsReplyDump subIface =
+            final String subIfaceName = "GigabitEthernet0/8/0." + subId;
+            final SwInterfaceDetailsReplyDump subIface =
                 jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(subIfaceName)).toCompletableFuture().get();
-        requireNonNull(swInterfaceDetails, "swInterfaceDump returned null");
-        requireNonNull(subIface.swInterfaceDetails, "swInterfaceDump returned null");
-        requireSingleIface(swInterfaceDetails, ifaceName);
+            requireNonNull(swInterfaceDetails, "swInterfaceDump returned null");
+            requireNonNull(subIface.swInterfaceDetails, "swInterfaceDump returned null");
+            requireSingleIface(swInterfaceDetails, ifaceName);
 
-        System.out.println("Disconnecting...");
-        registry.close();
+            System.out.println("Disconnecting...");
+        }
         Thread.sleep(1000);
     }
 

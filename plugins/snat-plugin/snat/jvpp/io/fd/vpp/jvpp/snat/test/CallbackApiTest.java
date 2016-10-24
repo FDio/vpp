@@ -48,23 +48,22 @@ public class CallbackApiTest {
 
     private static void testCallbackApi() throws Exception {
         System.out.println("Testing Java callback API for snat plugin");
-        JVppRegistry registry = new JVppRegistryImpl("SnatCallbackApiTest");
-        JVpp jvpp = new JVppSnatImpl();
+        try (final JVppRegistry registry = new JVppRegistryImpl("SnatCallbackApiTest");
+             final JVpp jvpp = new JVppSnatImpl()) {
+            registry.register(jvpp, new TestCallback());
 
-        registry.register(jvpp, new TestCallback());
+            System.out.println("Sending SnatInterfaceAddDelFeature request...");
+            SnatInterfaceAddDelFeature request = new SnatInterfaceAddDelFeature();
+            request.isAdd = 1;
+            request.isInside = 1;
+            request.swIfIndex = 1;
+            final int result = jvpp.send(request);
+            System.out.printf("SnatInterfaceAddDelFeature send result = %d%n", result);
 
-        System.out.println("Sending SnatInterfaceAddDelFeature request...");
-        SnatInterfaceAddDelFeature request = new SnatInterfaceAddDelFeature();
-        request.isAdd = 1;
-        request.isInside = 1;
-        request.swIfIndex = 1;
-        final int result = jvpp.send(request);
-        System.out.printf("SnatInterfaceAddDelFeature send result = %d%n", result);
+            Thread.sleep(1000);
 
-        Thread.sleep(1000);
-
-        System.out.println("Disconnecting...");
-        registry.close();
+            System.out.println("Disconnecting...");
+        }
         Thread.sleep(1000);
     }
 }

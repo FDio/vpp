@@ -27,14 +27,15 @@ public class ConnectionTest {
 
     private static void testConnect() throws Exception {
         System.out.println("Testing JNI connection with JVppRegistry");
-        JVppRegistry registry = new JVppRegistryImpl("ConnectionTest");
-        System.out.println("Successfully connected to vpp");
-
-        Thread.sleep(5000);
-
-        System.out.println("Disconnecting...");
-        registry.close();
-        Thread.sleep(1000);
+        final JVppRegistry registry = new JVppRegistryImpl("ConnectionTest");
+        try {
+            System.out.println("Successfully connected to vpp");
+            Thread.sleep(5000);
+            System.out.println("Disconnecting...");
+            Thread.sleep(1000);
+        } finally {
+            registry.close();
+        }
     }
 
     public static void main(String[] args) throws Exception {

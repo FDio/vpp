@@ -20,7 +20,6 @@ import static io.fd.vpp.jvpp.core.test.NotificationUtils.getChangeInterfaceState
 import static io.fd.vpp.jvpp.core.test.NotificationUtils.getDisableInterfaceNotificationsReq;
 import static io.fd.vpp.jvpp.core.test.NotificationUtils.getEnableInterfaceNotificationsReq;
 
-import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
@@ -30,32 +29,24 @@ public class FutureApiNotificationTest {
 
     private static void testFutureApi() throws Exception {
         System.out.println("Testing Java future API for notifications");
+        try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiNotificationTest");
+             final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl());
+             final AutoCloseable notificationListenerReg =
+                 jvppFacade.getNotificationRegistry()
+                     .registerSwInterfaceSetFlagsNotificationCallback(NotificationUtils::printNotification)) {
+            System.out.println("Successfully connected to VPP");
+            jvppFacade.wantInterfaceEvents(getEnableInterfaceNotificationsReq()).toCompletableFuture().get();
+            System.out.println("Interface events started");
 
-        final JVppRegistry registry = new JVppRegistryImpl("FutureApiNotificationTest");
-        final JVpp jvpp = new JVppCoreImpl();
-        final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, jvpp);
+            System.out.println("Changing interface configuration");
+            jvppFacade.swInterfaceSetFlags(getChangeInterfaceState()).toCompletableFuture().get();
 
-        System.out.println("Successfully connected to VPP");
+            Thread.sleep(1000);
 
-        final AutoCloseable notificationListenerReg =
-                jvppFacade.getNotificationRegistry()
-                        .registerSwInterfaceSetFlagsNotificationCallback(NotificationUtils::printNotification);
-
-        jvppFacade.wantInterfaceEvents(getEnableInterfaceNotificationsReq()).toCompletableFuture().get();
-        System.out.println("Interface events started");
-
-        System.out.println("Changing interface configuration");
-        jvppFacade.swInterfaceSetFlags(getChangeInterfaceState()).toCompletableFuture().get();
-
-        Thread.sleep(1000);
-
-        jvppFacade.wantInterfaceEvents(getDisableInterfaceNotificationsReq()).toCompletableFuture().get();
-        System.out.println("Interface events stopped");
-
-        notificationListenerReg.close();
-
-        System.out.println("Disconnecting...");
-        registry.close();
+            jvppFacade.wantInterfaceEvents(getDisableInterfaceNotificationsReq()).toCompletableFuture().get();
+            System.out.println("Interface events stopped");
+            System.out.println("Disconnecting...");
+        }
     }
 
     public static void main(String[] args) throws Exception {

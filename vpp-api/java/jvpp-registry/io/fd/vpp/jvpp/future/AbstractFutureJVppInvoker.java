@@ -51,7 +51,7 @@ public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
         this.requests = Objects.requireNonNull(requestMap, "Null requestMap");
     }
 
-    protected final Map<Integer, CompletableFuture<? extends JVppReply<?>>> getRequests() {
+    protected synchronized final Map<Integer, CompletableFuture<? extends JVppReply<?>>> getRequests() {
         return this.requests;
     }
 
