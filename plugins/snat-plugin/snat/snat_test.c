@@ -90,7 +90,8 @@ _(SNAT_ADD_STATIC_MAPPING_REPLY, snat_add_static_mapping_reply) \
 _(SNAT_CONTROL_PING_REPLY, snat_control_ping_reply)             \
 _(SNAT_STATIC_MAPPING_DETAILS, snat_static_mapping_details)     \
 _(SNAT_SHOW_CONFIG_REPLY, snat_show_config_reply)               \
-_(SNAT_ADDRESS_DETAILS, snat_address_details)
+_(SNAT_ADDRESS_DETAILS, snat_address_details)                   \
+_(SNAT_INTERFACE_DETAILS, snat_interface_details)
 
 /* M: construct, but don't yet send a message */
 #define M(T,t)                                                  \
@@ -437,6 +438,41 @@ static int api_snat_address_dump(vat_main_t * vam)
   return 0;
 }
 
+static void vl_api_snat_interface_details_t_handler
+  (vl_api_snat_interface_details_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+
+  fformat (vam->ofp, "sw_if_index %d %s\n", ntohl (mp->sw_if_index),
+           mp->is_inside ? "in" : "out");
+}
+
+static int api_snat_interface_dump(vat_main_t * vam)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  f64 timeout;
+  vl_api_snat_interface_dump_t * mp;
+
+  if (vam->json_output)
+    {
+      clib_warning ("JSON output not supported for snat_address_dump");
+      return -99;
+    }
+
+  M(SNAT_INTERFACE_DUMP, snat_interface_dump);
+  S;
+  /* Use a control ping for synchronization */
+  {
+    vl_api_snat_control_ping_t *mp;
+    M (SNAT_CONTROL_PING, snat_control_ping);
+    S;
+  }
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -449,7 +485,8 @@ _(snat_add_static_mapping, "local_addr <ip> external_addr <ip> " \
   "[local_port <n>] [external_port <n>] [vrf <table-id>] [del]") \
 _(snat_static_mapping_dump, "")                                  \
 _(snat_show_config, "")                                          \
-_(snat_address_dump, "")
+_(snat_address_dump, "")                                         \
+_(snat_interface_dump, "")
 
 void vat_api_hookup (vat_main_t *vam)
 {

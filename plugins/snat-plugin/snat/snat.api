@@ -92,6 +92,26 @@ define snat_interface_add_del_feature_reply {
   i32 retval;
 };
 
+/** \brief Dump interfaces with S-NAT feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_interface_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief S-NAT interface details response
+    @param context - sender context, to match reply w/ request
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - software index of the interface
+*/
+define snat_interface_details {
+  u32 context;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
 /** \brief Add/delete S-NAT static mapping
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
