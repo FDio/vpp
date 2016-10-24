@@ -95,7 +95,7 @@ for this can be found [on the Setting up Vagrant wiki page]
 
 ## More information
 
-Several modules provide documentation, see @subpage user_doc for more
+Several modules provide documentation, see @subpage user doc for more
 information.
 
 Visit the [VPP wiki](https://wiki.fd.io/view/VPP) for details on more
