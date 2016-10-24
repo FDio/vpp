@@ -369,13 +369,13 @@ int vnet_vxlan_add_del_tunnel
       if (!a->is_ip6)
         {
           hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
-          ip4_sw_interface_enable_disable(sw_if_index, 1);
+          ip4_sw_interface_enable_disable(t->sw_if_index, 1);
 	}
       else
         {
 	  hash_unset_mem (vxm->vxlan6_tunnel_by_key, t->key6);
 	  clib_mem_free (t->key6);
-          ip6_sw_interface_enable_disable(sw_if_index, 1);
+          ip6_sw_interface_enable_disable(t->sw_if_index, 1);
 	}
       vec_free (t->rewrite);
       pool_put (vxm->tunnels, t);
